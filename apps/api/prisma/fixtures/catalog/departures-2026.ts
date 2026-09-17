@@ -32,6 +32,14 @@ import type { TourDepartureFixture } from './types.js';
  * lệch theo `pha` riêng của tour (bội số tỉ lệ vàng) nên các tour không dồn cùng
  * một ngày và tổng số chuyến theo tháng phẳng.
  *
+ * ── Một chuyến "đã qua hạn chót mà chưa khởi hành" cho mỗi tour dài ──
+ * Luật một hạn chót (ADR-0041) cho tour từ 4 ngày trở lên N = 7, nên chuyến khởi hành
+ * trong [H + 2, H + 6] đã đóng đặt chỗ mà chưa đi — đúng thứ spec 2026-09-15 §11 cần để
+ * demo "Booking closed" và "huỷ quá hạn, không hoàn". Rải đều không bao giờ tự cho ra
+ * khoảng đó: khe đầu của cửa sổ còn bán rộng vài chục ngày. Vì vậy sáu tour ≥ 4 ngày
+ * được kéo RIÊNG chuyến còn bán đầu tiên về khoảng ấy, và chỉ kéo SỚM hơn — chuyến thứ
+ * hai trở đi vẫn muộn hơn nên không tour nào có hai chuyến cùng ngày.
+ *
  * ── Thứ KHÔNG nằm ở đây ──
  * `seatsBooked` để 0 và `fixedCostAmount` để null: cả hai là số DẪN XUẤT, seed
  * tính lại từ booking thật và từ các dòng giá vốn `PER_DEPARTURE`.
@@ -43,6 +51,10 @@ const BAT_DAU_LICH_SU = Date.UTC(2026, 0, 8);
 const CHUYEN_MOI_THANG = 0.6;
 const SAN_CHUYEN_LICH_SU = 3;
 const CHUYEN_BAN_DUOC = 4;
+/** Tour từ chừng này ngày trở lên có N = 7 (ADR-0041) — nhóm được kéo chuyến đầu về khoảng demo. */
+const CHUYEN_DAI_NGAY = 4;
+/** Ngày khởi hành muộn nhất của chuyến demo, tính từ H: H + 6 vẫn qua hạn chót vì D = H + 6 − 7. */
+const QUA_HAN_MUON_NHAT = 6;
 const NGAY_MOI_THANG = 30.44;
 /** Tỉ lệ chuyến LỊCH SỬ bị công ty huỷ. */
 const TY_LE_HUY = 0.13;
@@ -100,6 +112,18 @@ export function sinhLich(homNay: Date): TourDepartureFixture[] {
         (batDau) => ({ batDau, banDuoc: true }),
       ),
     ];
+
+    // ── Kéo chuyến còn bán đầu tiên của tour dài về khoảng demo ──
+    // Đặt TRƯỚC bước chọn khuyến mãi để mọi bước sau (khuyến mãi, id, mốc mở bán) đọc
+    // cùng một ngày khởi hành. H luôn là nửa đêm UTC (`docMocHomNay`) nên phép cộng ngày
+    // ở đây vẫn ra nửa đêm, khớp khuôn của `raiDeu`.
+    if (tour.durationDays >= CHUYEN_DAI_NGAY) {
+      const dau = moc.find((m) => m.banDuoc);
+      if (dau && dau.batDau > H + QUA_HAN_MUON_NHAT * NGAY_MS) {
+        const rndQuaHan = boSinh(`lich-qua-han:${tour.slug}`);
+        dau.batDau = H + nguyen(rndQuaHan, 2, QUA_HAN_MUON_NHAT) * NGAY_MS;
+      }
+    }
 
     // ── Chọn chuyến khuyến mãi ──
     const rndKM = boSinh(`km:${tour.slug}`);

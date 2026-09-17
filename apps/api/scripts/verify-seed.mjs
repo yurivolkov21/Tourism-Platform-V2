@@ -7,7 +7,11 @@
  * CHỈ ĐỌC: không có câu INSERT/UPDATE/DELETE nào. Mỗi bất biến là một câu đếm vi phạm;
  * còn vi phạm thì exit 1. Chạy NGAY sau khi seed — dữ liệu thật phát sinh về sau
  * (booking thử, đăng nhập của khách) làm lệch các bất biến khung ngày.
+ * Một số bất biến gọi thẳng hàm luật của `@tourism/contract` thay vì chép lại luật bằng SQL —
+ * hai bản luật là hai chỗ để sai. Vì vậy `seed:verify` cần contract đã build
+ * (`pnpm --filter @tourism/contract build`), y như `db:seed`.
  */
+import { isWithinDeadline, refundOnCancel } from '@tourism/contract';
 import pg from 'pg';
 
 const url = process.env.DATABASE_URL ?? 'postgresql://tourism:tourism@localhost:5432/tourism';
@@ -230,12 +234,90 @@ const BAT_BIEN = [
     `select count(*)::int as n from subscribers where updated_at <> greatest(created_at, welcome_sent_at, confirmed_at, unsubscribed_at)`,
     false,
   ],
+  // ── Luật một hạn chót (ADR-0041, spec 2026-09-15 §7) ──
+  [
+    'yêu cầu huỷ còn REQUESTED hoặc DENIED (luồng duyệt đã gỡ)',
+    `select count(*)::int as n from cancellation_requests where status in ('REQUESTED', 'DENIED')`,
+    false,
+  ],
+  [
+    'dòng hoàn lúc khách tự huỷ lại có admin_id',
+    `select count(*)::int as n from refunds r join bookings b on b.id = r.booking_id where b.status = 'CANCELLED' and b.paid_at is not null and r.admin_id is not null`,
+    false,
+  ],
+  [
+    'yêu cầu huỷ có người quyết không phải chính khách',
+    `select count(*)::int as n from cancellation_requests where decided_by is distinct from user_id`,
+    false,
+  ],
   // ── Tác dụng phụ ──
   [
     'outbox còn dòng PENDING (mail sẽ bị gửi thật)',
     `select count(*)::int as n from outbox where status = 'PENDING'`,
     false,
   ],
+];
+
+/**
+ * Mốc "hôm nay" dạng `Date` để đưa vào hàm luật: 05:00 UTC = 12:00 trưa giờ Việt Nam của H,
+ * nên `vietnamToday(MOC_H)` đúng bằng `homNay` bất kể máy chạy ở múi nào.
+ */
+const MOC_H = new Date(`${homNay}T05:00:00.000Z`);
+/**
+ * Lấy mốc và ngày ra dạng CHỮ. Cột `timestamp without time zone` giữ giờ UTC, nhưng node-pg
+ * dựng `Date` từ nó theo giờ MÁY — đọc thẳng là lệch đúng offset của máy (ở đây UTC+7), đủ để
+ * một mốc sát nửa đêm nhảy sang ngày khác và bất biến báo sai.
+ */
+const utc = (cot) => `to_char(${cot}, 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"')`;
+const ngayIso = (cot) => `to_char(${cot}, 'YYYY-MM-DD')`;
+
+/**
+ * Bất biến cần LUẬT: `sql` trả về NHIỀU dòng, `dem(rows)` đếm vi phạm bằng chính hàm của
+ * contract; `dungMoc` (mặc định false) quyết có truyền tham số H ($1) vào câu SQL không.
+ */
+const BAT_BIEN_LUAT = [
+  {
+    ten: 'booking trả tiền sau hạn chót của chuyến',
+    sql: `select b.id, ${utc('b.paid_at')} as paid_at, ${ngayIso('b.departure_start_date')} as bat_dau, ${ngayIso('b.departure_end_date')} as ket_thuc
+          from bookings b where b.paid_at is not null`,
+    dem: (rows) =>
+      rows.filter((r) => !isWithinDeadline(new Date(r.paid_at), r.bat_dau, r.ket_thuc)).length,
+  },
+  {
+    ten: 'lần huỷ của khách hoàn sai luật (trong hạn = phần còn lại một dòng, quá hạn = không dòng nào)',
+    sql: `select c.id, ${utc('c.created_at')} as huy_luc, ${ngayIso('b.departure_start_date')} as bat_dau,
+            ${ngayIso('b.departure_end_date')} as ket_thuc, b.total_amount::text as tong,
+            (select coalesce(sum(r.amount), 0) from refunds r where r.booking_id = b.id)::text as da_hoan,
+            (select count(*) from refunds r where r.booking_id = b.id)::int as so_dong
+          from cancellation_requests c join bookings b on b.id = c.booking_id
+          where c.status = 'REFUNDED' and b.status = 'CANCELLED' and b.paid_at is not null`,
+    dem: (rows) =>
+      rows.filter((r) => {
+        // Booking đã huỷ trong seed chưa từng được hoàn phần nào trước đó, nên phần còn lại
+        // là toàn bộ `total_amount`; một hàm phủ cả hai nhánh, không rẽ if theo ngày.
+        const can = refundOnCancel({
+          now: new Date(r.huy_luc),
+          startDate: r.bat_dau,
+          endDate: r.ket_thuc,
+          totalAmount: r.tong,
+          refundedTotal: '0.00',
+        });
+        return Number(r.da_hoan) !== Number(can) || r.so_dong !== (Number(can) > 0 ? 1 : 0);
+      }).length,
+  },
+  {
+    ten: 'thiếu booking đã trả trên chuyến đã qua hạn chót mà chưa khởi hành (demo §11)',
+    sql: `select ${ngayIso('d.start_date')} as bat_dau, ${ngayIso('d.end_date')} as ket_thuc,
+            (select count(*) from bookings b where b.departure_id = d.id and b.status = 'PAID')::int as so_booking
+          from tour_departures d where d.status = 'OPEN' and d.start_date > $1::date`,
+    dungMoc: true,
+    dem: (rows) =>
+      rows
+        .filter((r) => !isWithinDeadline(MOC_H, r.bat_dau, r.ket_thuc))
+        .reduce((tong, r) => tong + r.so_booking, 0) >= 3
+        ? 0
+        : 1,
+  },
 ];
 
 const client = new pg.Client({ connectionString: url });
@@ -301,11 +383,13 @@ for (const { table_name: bang, column_name: ten } of cotGiuLai) {
 }
 
 for (const [ten, sql, dungMoc] of BAT_BIEN) kiemTra.push({ ten, sql, dungMoc });
+for (const bb of BAT_BIEN_LUAT) kiemTra.push({ ...bb, dungMoc: bb.dungMoc ?? false });
 
 let tongViPham = 0;
-for (const { ten, sql, dungMoc } of kiemTra) {
+for (const { ten, sql, dungMoc, dem } of kiemTra) {
   const { rows } = await client.query(sql, dungMoc ? [H] : []);
-  const n = rows[0]?.n ?? 0;
+  // Bất biến thường trả đúng một dòng có cột `n`; bất biến cần luật trả nhiều dòng và tự đếm.
+  const n = dem ? dem(rows) : (rows[0]?.n ?? 0);
   tongViPham += n;
   console.log(`${n === 0 ? '✓' : '✖'} ${String(n).padStart(5)}  ${ten}`);
 }

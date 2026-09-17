@@ -38,10 +38,6 @@ export interface TourFixture {
   factGroupSizeNote: string | null;
   factDifficultyNote: string | null;
   factGoodForNote: string | null;
-  // Cửa sổ huỷ miễn phí tính bằng NGÀY. `null` cho tour ghi cửa sổ bằng GIỜ
-  // (15/30 tour) — ép 24 giờ thành "1 ngày" là nói sai, mốc đó tính từ giờ
-  // khởi hành chứ không phải nửa đêm.
-  freeCancellationDays: number | null;
   createdAt: string; // ISO
   updatedAt: string; // ISO
 }
@@ -73,11 +69,16 @@ export interface TourFaqFixture {
   order: number;
 }
 
-/** `kind` đủ 3 giá trị enum `PolicyKind`, mỗi tour cần đủ cả 3 (spec §4). */
+/**
+ * `kind` chỉ còn BOOKING và GENERAL, mỗi tour đủ cả hai. Loại CANCELLATION rút khỏi fixture
+ * từ ADR-0041: chính sách huỷ sinh từ luật chung ở `@tourism/contract`, không còn là văn bản
+ * riêng của từng tour. Enum `PolicyKind` của DB vẫn giữ giá trị ấy; `seed.ts` xoá các dòng
+ * CANCELLATION cũ.
+ */
 export interface TourPolicyFixture {
   id: string;
   tourId: string;
-  kind: 'CANCELLATION' | 'BOOKING' | 'GENERAL';
+  kind: 'BOOKING' | 'GENERAL';
   title: string;
   body: string;
   order: number;

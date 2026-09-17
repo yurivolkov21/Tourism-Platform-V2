@@ -1,4 +1,4 @@
-import { policyRefundAmount, refundPercentForRequest } from '@tourism/contract';
+import { cancellationDeadline, isWithinDeadline, refundOnCancel } from '@tourism/contract';
 import { describe, expect, it } from 'vitest';
 import { Prisma } from '../../../src/generated/prisma/client.js';
 import { effectiveUnitPrice, totalAmount } from '../../../src/modules/bookings/pricing.js';
@@ -16,9 +16,10 @@ import {
 } from '../khung-thoi-gian.js';
 import { sinhKhach } from '../people/customers.js';
 import {
-  apDungYeuCauHuy,
+  apDungKhachTuHuy,
   type BookingFixture,
   baoDamBookingDaDi,
+  baoDamBookingQuaHan,
   type DuLieuVanHanh,
   sinhVanHanh,
   themGioBoDo,
@@ -123,6 +124,8 @@ describe.each(MOC)('tầng vận hành với H = %s', (giaTri) => {
       expect(hoan, b.id).toHaveLength(1);
       expect(hoan[0]?.amount).toBe(b.totalAmount);
       expect(hoan[0]?.reason).toBeTruthy();
+      // Đường admin phát hành: seed ghi `admin_id` = admin, khác hẳn dòng hoàn khi khách tự huỷ.
+      expect(hoan[0]?.issuedByAdmin, b.id).toBe(true);
       const luc = ms(hoan[0]?.createdAt ?? null);
       expect(luc, b.id).toBeGreaterThan(ms(b.paidAt));
       expect(luc, b.id).toBeLessThan(ngay(b.departureStartDate));
@@ -178,7 +181,6 @@ describe.each(MOC)('huỷ và hoàn với H = %s', (giaTri) => {
   const khach = sinhKhach(homNay);
   const lich = sinhLich(homNay);
   const kq = sinhVanHanh(homNay, lich, khach);
-  const bangTour = new Map(tours.map((t) => [t.id, t]));
   const bangBooking = new Map(kq.bookings.map((b) => [b.id, b]));
 
   it('giỏ bỏ dở: CANCELLED, chưa trả, huỷ sau khi tạo 65–80 phút, không sự kiện, không refund', () => {
@@ -196,82 +198,86 @@ describe.each(MOC)('huỷ và hoàn với H = %s', (giaTri) => {
       expect(kq.paymentEvents.some((e) => e.bookingId === b.id)).toBe(false);
       expect(kq.refunds.some((r) => r.bookingId === b.id)).toBe(false);
       expect(kq.cancellationRequests.some((c) => c.bookingId === b.id)).toBe(false);
+      // Giỏ bỏ dở là một lượt checkout THẬT, nên nó cũng phải nằm trong hạn đặt chỗ.
+      expect(
+        isWithinDeadline(new Date(b.createdAt), b.departureStartDate, b.departureEndDate),
+        b.id,
+      ).toBe(true);
     }
   });
 
-  it('huỷ đã duyệt: đúng một yêu cầu REFUNDED, số hoàn theo chính sách, phủ đủ bốn bậc', () => {
+  it('khách tự huỷ: yêu cầu REFUNDED do chính khách, mốc gửi = mốc quyết, hoàn đúng luật', () => {
     const huyDaTra = kq.bookings.filter((b) => b.status === 'CANCELLED' && b.paidAt !== null);
-    const demBac = new Map<number, number>();
+    let trongHan = 0;
+    let quaHan = 0;
     for (const b of huyDaTra) {
       const yeuCau = kq.cancellationRequests.filter((c) => c.bookingId === b.id);
       expect(yeuCau, b.id).toHaveLength(1);
       const c = yeuCau[0];
       if (!c) continue;
       expect(c.status).toBe('REFUNDED');
-      expect(c.decisionNote).toBeNull();
+      expect(c.userId).toBe(b.userId);
+      // Lõi huỷ Task 6 ghi yêu cầu và dòng hoàn bằng CÙNG một `now()`; báo cáo (Hợp đồng D)
+      // xếp loại trong/quá hạn bằng `createdAt` còn tiền tính tại mốc huỷ — hai mốc lệch
+      // nhau là hai câu trả lời cho cùng một lần huỷ.
+      expect(c.createdAt).toBe(c.decidedAt);
+      expect(c.updatedAt).toBe(c.decidedAt);
       expect(b.cancelledAt).toBe(c.decidedAt);
       expect(b.updatedAt).toBe(c.decidedAt);
-      expect(ms(c.createdAt), c.id).toBeGreaterThan(ms(b.paidAt) + 24 * GIO_MS);
-      expect(ms(c.decidedAt), c.id).toBeGreaterThan(ms(c.createdAt));
-      expect(ms(c.decidedAt), c.id).toBeLessThan(Math.min(ngay(b.departureStartDate), H));
-      expect(c.freeCancellationDays).toBe(bangTour.get(b.tourId)?.freeCancellationDays ?? null);
-      const phanTram = refundPercentForRequest({
-        requestedAt: new Date(ms(c.createdAt)),
-        paidAt: b.paidAt,
-        departureStartDate: b.departureStartDate,
-        freeCancellationDays: c.freeCancellationDays,
-      });
-      const soTien = policyRefundAmount({
-        percent: phanTram,
+      expect(ms(c.createdAt), c.id).toBeGreaterThan(ms(b.paidAt));
+      expect(ms(c.createdAt), c.id).toBeLessThan(Math.min(ngay(b.departureStartDate), H));
+      const canHoan = refundOnCancel({
+        now: new Date(c.createdAt),
+        startDate: b.departureStartDate,
+        endDate: b.departureEndDate,
         totalAmount: b.totalAmount,
         refundedTotal: '0.00',
       });
       const hoan = kq.refunds.filter((r) => r.bookingId === b.id);
-      if (Number(soTien) > 0) {
+      if (Number(canHoan) > 0) {
+        trongHan++;
+        expect(canHoan, b.id).toBe(b.totalAmount);
         expect(hoan, b.id).toHaveLength(1);
-        expect(hoan[0]?.amount).toBe(soTien);
-        expect(hoan[0]?.reason).toBeNull();
-        expect(hoan[0]?.createdAt).toBe(c.decidedAt);
+        expect(hoan[0]?.amount, b.id).toBe(canHoan);
+        expect(hoan[0]?.reason, b.id).toBeNull();
+        expect(hoan[0]?.issuedByAdmin, b.id).toBe(false);
+        expect(hoan[0]?.createdAt, b.id).toBe(c.decidedAt);
+        expect(
+          kq.paymentEvents.filter((e) => e.bookingId === b.id && e.payload.kind === 'refund'),
+          b.id,
+        ).toHaveLength(1);
       } else {
+        quaHan++;
         expect(hoan, b.id).toHaveLength(0);
+        expect(
+          kq.paymentEvents.some((e) => e.bookingId === b.id && e.payload.kind === 'refund'),
+          b.id,
+        ).toBe(false);
       }
-      demBac.set(phanTram, (demBac.get(phanTram) ?? 0) + 1);
     }
-    for (const bac of [100, 50, 25, 0]) {
-      expect(demBac.get(bac) ?? 0, `bậc ${bac}%`).toBeGreaterThanOrEqual(2);
-    }
+    expect(trongHan).toBeGreaterThanOrEqual(5);
+    expect(quaHan).toBeGreaterThanOrEqual(3);
   });
 
-  it('yêu cầu bị từ chối giữ booking PAID và có ghi chú; yêu cầu đang chờ nằm trong 25 ngày trước H', () => {
-    const tuChoi = kq.cancellationRequests.filter((c) => c.status === 'DENIED');
-    const dangCho = kq.cancellationRequests.filter((c) => c.status === 'REQUESTED');
-    expect(tuChoi.length).toBeGreaterThanOrEqual(3);
-    expect(dangCho.length).toBeGreaterThanOrEqual(5);
-    for (const c of tuChoi) {
+  it('không còn yêu cầu DENIED hay REQUESTED; ca quá hạn nằm sau ngày chót và trước ngày đi', () => {
+    for (const c of kq.cancellationRequests) expect(c.status, c.id).toBe('REFUNDED');
+    const quaHan = kq.cancellationRequests.filter((c) => {
       const b = bangBooking.get(c.bookingId);
       if (!b) throw new Error(`yêu cầu ${c.id} trỏ booking không có thật`);
-      expect(b.status).toBe('PAID');
-      expect(c.decisionNote).toBeTruthy();
-      expect(ms(c.createdAt), c.id).toBeGreaterThan(ms(b.paidAt));
-      expect(ms(c.decidedAt), c.id).toBeGreaterThan(ms(c.createdAt));
-      expect(ms(c.decidedAt), c.id).toBeLessThan(Math.min(H, ngay(b.departureStartDate)));
-      const lechQuyet = ms(c.decidedAt) - ms(c.createdAt);
-      expect(lechQuyet, c.id).toBeGreaterThanOrEqual(24 * GIO_MS);
-      expect(lechQuyet, c.id).toBeLessThanOrEqual(72 * GIO_MS);
-    }
-    for (const c of dangCho) {
+      return !isWithinDeadline(new Date(c.createdAt), b.departureStartDate, b.departureEndDate);
+    });
+    expect(quaHan.length).toBeGreaterThanOrEqual(3);
+    for (const c of quaHan) {
       const b = bangBooking.get(c.bookingId);
-      if (!b) throw new Error(`yêu cầu ${c.id} trỏ booking không có thật`);
-      expect(b.status).toBe('PAID');
-      expect(c.decidedAt).toBeNull();
-      expect(c.decisionNote).toBeNull();
-      expect(ngay(b.departureStartDate)).toBeGreaterThan(H);
-      expect(ms(c.createdAt), c.id).toBeGreaterThanOrEqual(H - 25 * NGAY_MS);
-      expect(ms(c.createdAt), c.id).toBeLessThan(H);
-      expect(c.updatedAt).toBe(c.createdAt);
+      if (!b) continue;
+      const chot = ngay(cancellationDeadline(b.departureStartDate, b.departureEndDate));
+      expect(ms(c.createdAt), c.id).toBeGreaterThan(chot);
+      // Huỷ online chỉ được TRƯỚC ngày khởi hành (`canCancelOnline`).
+      expect(ms(c.createdAt), c.id).toBeLessThan(ngay(b.departureStartDate));
+      // Tour 1 ngày có D = ngày đi − 1 nên khoảng (D, ngày đi) rỗng: ca quá hạn chỉ rơi
+      // vào tour ≥ 2 ngày. Đây là hệ quả của luật, không phải thiếu sót của bộ sinh.
+      expect(ngay(b.departureEndDate), c.id).toBeGreaterThan(ngay(b.departureStartDate));
     }
-    const dangChoTheoBooking = dangCho.map((c) => c.bookingId);
-    expect(new Set(dangChoTheoBooking).size).toBe(dangChoTheoBooking.length);
   });
 
   it('booking REFUNDED không có yêu cầu huỷ; mọi yêu cầu trỏ booking có thật; mã booking không trùng', () => {
@@ -388,19 +394,16 @@ describe.each(['2026-06-01', '2026-09-20'] as const)('bù booking đã đi với
   });
 });
 
-describe('apDungYeuCauHuy trên sổ một booking tổng hợp', () => {
+describe('apDungKhachTuHuy trên sổ một booking tổng hợp', () => {
   const homNay = docMocHomNay('2026-09-20');
   const H = Date.UTC(2026, 8, 20);
   const tuNhien = sinhVanHanh(homNay, sinhLich(homNay), sinhKhach(homNay));
-  const nguongCua = new Map(tours.map((t) => [t.id, t.freeCancellationDays]));
-  // Mẫu là booking PAID thật trên tour có ngưỡng huỷ miễn phí 2–30 ngày: bậc 100% gửi trước khởi
-  // hành từ 2 tới 50 ngày, nên ở ca đối chứng mốc quyết không bao giờ chạm ngày khởi hành.
+  // Mẫu là booking PAID trên tour 5 ngày: N = 7, đủ rộng để dựng được CẢ ca trong hạn lẫn
+  // ca quá hạn chỉ bằng cách dời ngày khởi hành.
   const mau = (() => {
-    const b = tuNhien.bookings.find((x) => {
-      const nguong = nguongCua.get(x.tourId) ?? null;
-      return x.status === 'PAID' && nguong !== null && nguong >= 2 && nguong <= 30;
-    });
-    if (!b) throw new Error('bộ sinh không có booking PAID trên tour ngưỡng 2–30 ngày');
+    const dai = new Map(tours.map((t) => [t.id, t.durationDays]));
+    const b = tuNhien.bookings.find((x) => x.status === 'PAID' && (dai.get(x.tourId) ?? 0) === 5);
+    if (!b) throw new Error('bộ sinh không có booking PAID trên tour 5 ngày');
     return b;
   })();
   const soNgayDi = ngay(mau.departureEndDate) - ngay(mau.departureStartDate);
@@ -423,39 +426,86 @@ describe('apDungYeuCauHuy trên sổ một booking tổng hợp', () => {
     cancellationRequests: [],
   });
 
-  it('(a) ân hạn, (b) cửa sổ từ chối rỗng: khởi hành H − 5 ngày, trả tiền trước đó 23 giờ → không có yêu cầu nào', () => {
-    // Vòng duyệt: mốc gửi của mọi bậc ≤ khởi hành − 1 ngày + 15 giờ, luôn ≤ paidAt + 25 giờ (tức
-    // khởi hành + 2 giờ). Vòng từ chối: den = khởi hành − 4 ngày, tu = paidAt + 2 ngày, nên den < tu.
-    // Vòng đang chờ: chuyến khởi hành trước H.
-    const khoiHanh = H - 5 * NGAY_MS;
-    const kq = soMotBooking('syn-c3-an-han', khoiHanh, khoiHanh - NGAY_MS + GIO_MS);
-    apDungYeuCauHuy(kq, H);
+  it('(a) trong hạn: khởi hành H + 30 ngày, trả tiền trước 60 ngày → hoàn đủ, admin_id để trống', () => {
+    const khoiHanh = H + 30 * NGAY_MS;
+    const kq = soMotBooking('syn-huy-trong-han', khoiHanh, khoiHanh - 60 * NGAY_MS);
+    apDungKhachTuHuy(kq, H);
+    expect(kq.cancellationRequests).toHaveLength(1);
+    const c = kq.cancellationRequests[0];
+    expect(c?.status).toBe('REFUNDED');
+    expect(c?.createdAt).toBe(c?.decidedAt);
+    expect(kq.bookings[0]?.status).toBe('CANCELLED');
+    expect(kq.refunds).toHaveLength(1);
+    expect(kq.refunds[0]?.amount).toBe(mau.totalAmount);
+    expect(kq.refunds[0]?.issuedByAdmin).toBe(false);
+    expect(kq.paymentEvents).toHaveLength(1);
+  });
+
+  it('(b) quá hạn: trả tiền ĐÚNG ngày chót, khởi hành H + 3 ngày → REFUNDED mà không dòng hoàn nào', () => {
+    // D = khởi hành − 7 = H − 4. Trả tiền đúng ngày D nên cửa sổ TRONG HẠN rỗng (mốc huỷ
+    // sớm nhất là D + 1 ngày, đã quá hạn) và chỉ còn nhánh quá hạn: [D + 1, H − 1].
+    const khoiHanh = H + 3 * NGAY_MS;
+    const kq = soMotBooking('syn-huy-qua-han', khoiHanh, khoiHanh - 7 * NGAY_MS + 5 * GIO_MS);
+    apDungKhachTuHuy(kq, H);
+    expect(kq.cancellationRequests).toHaveLength(1);
+    expect(kq.cancellationRequests[0]?.status).toBe('REFUNDED');
+    expect(kq.bookings[0]?.status).toBe('CANCELLED');
+    expect(kq.refunds).toEqual([]);
+    expect(kq.paymentEvents).toEqual([]);
+  });
+
+  it('(c) cửa sổ rỗng: trả tiền hôm qua cho chuyến khởi hành đúng ngày H → không huỷ ai', () => {
+    // Mốc huỷ sớm nhất của cả hai nhánh là ngày sau ngày trả tiền, tức chính H; mà mọi mốc
+    // giao dịch phải < H và mọi lần huỷ phải trước ngày khởi hành (`canCancelOnline`). Mốc
+    // trả tiền ở đây cố tình nằm ngoài trần "≤ ngày chót" của `datMotBooking`: sổ tổng hợp
+    // chỉ kiểm nhánh của `apDungKhachTuHuy`, không kiểm luật đặt chỗ.
+    const kq = soMotBooking('syn-huy-rong', H, H - NGAY_MS + 5 * GIO_MS);
+    apDungKhachTuHuy(kq, H);
     expect(kq.cancellationRequests).toEqual([]);
     expect(kq.refunds).toEqual([]);
     expect(kq.bookings[0]?.status).toBe('PAID');
   });
+});
 
-  it('(c) cửa sổ đang chờ rỗng: khởi hành H + 10 ngày, trả tiền H − 1 giờ → không có yêu cầu REQUESTED', () => {
-    // Vòng đang chờ: tu = paidAt + 1 ngày = H + 23 giờ, den = H − 2 giờ. Hai vòng trước cũng bỏ qua:
-    // mốc gửi hoặc ≤ paidAt + 25 giờ hoặc ≥ H; vòng từ chối có den = H − 4 ngày < tu = H + 47 giờ.
-    const kq = soMotBooking('syn-c3-dang-cho', H + 10 * NGAY_MS, H - GIO_MS);
-    apDungYeuCauHuy(kq, H);
-    expect(kq.cancellationRequests).toEqual([]);
-    expect(kq.bookings[0]?.status).toBe('PAID');
+describe.each(MOC)('sàn booking quá hạn với H = %s', (giaTri) => {
+  const homNay = docMocHomNay(giaTri);
+  const H = homNay.getTime();
+  const khach = sinhKhach(homNay);
+  const lich = sinhLich(homNay);
+  /** Chuyến còn bán đã qua hạn chót tại H mà chưa khởi hành. */
+  const quaHan = lich.filter(
+    (d) =>
+      d.status === 'OPEN' &&
+      ngay(d.startDate) > H &&
+      ngay(cancellationDeadline(d.startDate, d.endDate)) < H,
+  );
+  const soTrong = (kq: DuLieuVanHanh): number => {
+    const hopLe = new Set(quaHan.map((d) => d.id));
+    return kq.bookings.filter((b) => b.status === 'PAID' && hopLe.has(b.departureId)).length;
+  };
+
+  it('sổ trống: bù vừa đủ sàn, chạy lại không thêm gì', () => {
+    const kq: DuLieuVanHanh = {
+      bookings: [],
+      paymentEvents: [],
+      refunds: [],
+      cancellationRequests: [],
+    };
+    baoDamBookingQuaHan(kq, H, lich, khach);
+    expect(soTrong(kq)).toBeGreaterThanOrEqual(3);
+    const soDong = kq.bookings.length;
+    baoDamBookingQuaHan(kq, H, lich, khach);
+    expect(kq.bookings).toHaveLength(soDong);
   });
 
-  it('(d) đối chứng: khởi hành H − 10 ngày, trả tiền trước 120 ngày → đúng một yêu cầu REFUNDED, booking CANCELLED', () => {
-    // Bậc 100%: gửi trước khởi hành [ngưỡng, ngưỡng + 20] ⊂ [2, 50] ngày — sau paidAt ≥ 70 ngày và
-    // trước H; mốc quyết ≤ khởi hành − 3 giờ; số ngày lịch ≥ ngưỡng nên phần trăm đúng 100.
-    const khoiHanh = H - 10 * NGAY_MS;
-    const kq = soMotBooking('syn-c3-doi-chung', khoiHanh, khoiHanh - 120 * NGAY_MS);
-    apDungYeuCauHuy(kq, H);
-    expect(kq.cancellationRequests).toHaveLength(1);
-    expect(kq.cancellationRequests[0]).toMatchObject({
-      bookingId: 'syn-c3-doi-chung',
-      status: 'REFUNDED',
-    });
-    expect(kq.bookings[0]?.status).toBe('CANCELLED');
+  it('hụt sàn thì ném lỗi, không âm thầm để seed thiếu ca demo huỷ quá hạn', () => {
+    const kq: DuLieuVanHanh = {
+      bookings: [],
+      paymentEvents: [],
+      refunds: [],
+      cancellationRequests: [],
+    };
+    expect(() => baoDamBookingQuaHan(kq, H, lich, [])).toThrow(/sàn booking quá hạn/);
   });
 });
 

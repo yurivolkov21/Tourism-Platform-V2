@@ -32,7 +32,6 @@ import { auth } from '../src/auth/auth.config.js';
 import { Prisma, PrismaClient } from '../src/generated/prisma/client.js';
 import {
   BookingStatus,
-  CancellationRequestStatus,
   PaymentProvider,
   PostStatus,
   ReviewSource,
@@ -164,15 +163,17 @@ const connectionString =
 // `db:seed` nạp `.env.local`, mà từ 14/09/2026 file đó trỏ Postgres Docker. Muốn
 // nhắm Supabase phải ghi đè DATABASE_URL bằng chuỗi của `.env.production` — biến môi
 // trường thắng `--env-file` — và thêm cờ tường minh bên dưới. Seed ghi đè nội dung
-// biên tập của 29 tour và 87 policy (upsert), nên prod không bao giờ được là đích
+// biên tập của 29 tour, 58 policy và toàn bộ FAQ (upsert), đồng thời XOÁ mọi policy
+// loại CANCELLATION còn lại, nên prod không bao giờ được là đích
 // mặc định.
 const LA_PROD = /supabase\.(com|co)$/i.test(new URL(connectionString).hostname);
 if (LA_PROD && !process.argv.includes('--toi-biet-day-la-production')) {
   console.error(`
 ✖ TỪ CHỐI: ${new URL(connectionString).hostname} là Supabase production.
 
-  Seed sẽ GHI ĐÈ nội dung biên tập của 29 tour và 87 policy (cả hai dùng
-  upsert), và chèn toàn bộ tầng vận hành. Muốn chạy thật thì cần CẢ cờ lẫn mốc
+  Seed sẽ GHI ĐÈ nội dung biên tập của 29 tour, 58 policy và toàn bộ FAQ (cả ba
+  dùng upsert), XOÁ mọi policy loại CANCELLATION (ADR-0041), và chèn toàn bộ
+  tầng vận hành. Muốn chạy thật thì cần CẢ cờ lẫn mốc
   ngày chạy (thiếu SEED_HOM_NAY thì chốt chặn mốc H bên dưới từ chối tiếp):
 
       SEED_HOM_NAY=YYYY-MM-DD pnpm --filter @tourism/api db:seed -- --toi-biet-day-la-production
@@ -282,7 +283,24 @@ async function insertCatalog(): Promise<number> {
           skipDuplicates: true,
         }),
     ],
-    ['tourFaqs', () => prisma.tourFaq.createMany({ data: catalog.tourFaqs, skipDuplicates: true })],
+    [
+      'tourFaqs',
+      // UPSERT cùng lý do với `tourPolicies` (ADR-0023 §3): câu hỏi và câu trả lời là NỘI
+      // DUNG BIÊN TẬP. ADR-0041 sửa sáu câu còn hứa mốc huỷ riêng hoặc đổi ngày miễn phí;
+      // giữ `createMany({ skipDuplicates })` thì DB đang chạy KHÔNG BAO GIỜ thấy bản sửa —
+      // đúng cái bẫy đã dính ngày 14/08 với năm cột mới của tour.
+      async () => {
+        for (const f of catalog.tourFaqs) {
+          const data = { question: f.question, answer: f.answer, order: f.order };
+          await prisma.tourFaq.upsert({
+            where: { id: f.id },
+            create: { id: f.id, tour: { connect: { id: f.tourId } }, ...data },
+            update: data,
+          });
+        }
+        return { count: catalog.tourFaqs.length };
+      },
+    ],
     [
       'tourPolicies',
       // UPSERT chứ không `createMany({ skipDuplicates })` như các bảng cấu trúc
@@ -304,6 +322,15 @@ async function insertCatalog(): Promise<number> {
         }
         return { count: catalog.tourPolicies.length };
       },
+    ],
+    [
+      'tourPoliciesHuyCu',
+      // Fixture không còn policy loại CANCELLATION (ADR-0041): nội dung huỷ nay sinh từ luật
+      // chung ở `@tourism/contract`. Upsert ở trên chỉ ghi đè dòng CÓ trong fixture, nên 29
+      // dòng cũ trên DB đang chạy sẽ ở lại vĩnh viễn và trang tour in hai chính sách đá nhau.
+      // Xoá theo `kind` nên chạy bao nhiêu lần cũng ra cùng kết quả; giá trị enum vẫn còn
+      // trong `PolicyKind` của DB, chỉ fixture thôi không dùng.
+      () => prisma.tourPolicy.deleteMany({ where: { kind: 'CANCELLATION' } }),
     ],
     [
       'tourDepartures',
@@ -550,7 +577,9 @@ async function main(): Promise<void> {
         providerRefundId: r.providerRefundId,
         providerPaymentId: r.providerPaymentId,
         reason: r.reason,
-        adminId: admin.id,
+        // Hợp đồng C: dòng hoàn sinh ra lúc KHÁCH tự huỷ không có admin đứng sau, `admin_id`
+        // phải NULL. Chỉ hoàn do admin phát hành (chuyến công ty huỷ, hoàn thiện chí) mới gán.
+        adminId: r.issuedByAdmin ? admin.id : null,
         createdAt: new Date(r.createdAt),
       })) as unknown as Prisma.RefundCreateManyInput[],
     skipDuplicates: true,
@@ -562,12 +591,13 @@ async function main(): Promise<void> {
       bookingId: c.bookingId,
       userId: c.userId,
       reason: c.reason,
-      freeCancellationDays: c.freeCancellationDays,
-      status: c.status as CancellationRequestStatus,
-      decisionNote: c.decisionNote,
-      // Yêu cầu đang CHỜ chưa có ai quyết — người quyết và mốc quyết đều null.
-      decidedById: c.decidedAt ? admin.id : null,
-      decidedAt: c.decidedAt ? new Date(c.decidedAt) : null,
+      status: c.status,
+      // ADR-0041: không còn ai duyệt, chính KHÁCH là người quyết. Task 8 dựng cờ
+      // `decidedByCustomer` của contract từ đúng phép so `decided_by = user_id` này, nên
+      // ghi admin vào đây là nói sai ai đã huỷ. `free_cancellation_days` và `decision_note`
+      // để trống — hai cột đó ra đi cùng nhánh M2 (Phụ lục A).
+      decidedById: c.userId,
+      decidedAt: new Date(c.decidedAt),
       createdAt: new Date(c.createdAt),
       updatedAt: new Date(c.updatedAt),
     })) as unknown as Prisma.CancellationRequestCreateManyInput[],

@@ -27,7 +27,7 @@ import type {
  *     Bắc dùng 1–100, Trung dùng 101–200 — xem `tours-north.ts`/
  *     `tours-central.ts` — để 3 file không đụng số dù viết song song).
  *   - `tourFaqs[].id`          d2000002-0000-4000-8000-000000000201 → …0235
- *   - `tourPolicies[].id`      d3000002-0000-4000-8000-000000000201 → …0227
+ *   - `tourPolicies[].id`      d3000002-0000-4000-8000-000000000202 → …0224 (id loại CANCELLATION đã rút theo ADR-0041, dải có lỗ)
  *   - `tourDepartures[].id`    e0000002-0000-4000-8000-000000000201 → …0236,
  *     mở rộng …0237–…0238 (final review 31/07, đợt bổ sung qua mốc bảo vệ)
  * Đánh số tuần tự theo thứ tự roster #22→#30, không có khoảng hở — dễ đối
@@ -78,7 +78,6 @@ export const tours: TourFixture[] = [
       'Sixteen seats, with hotel pickup arranged across District 1 and District 3.',
     factDifficultyNote: 'Beach time and a short headland walk; nothing demanding.',
     factGoodForNote: 'An easy weekend out of Sài Gòn for any size of group.',
-    freeCancellationDays: 3,
     createdAt: '2026-07-31T09:00:00.000Z',
     updatedAt: '2026-07-31T09:00:00.000Z',
   },
@@ -120,7 +119,6 @@ export const tours: TourFixture[] = [
     factGroupSizeNote: 'Sixteen seats, though the tunnel-entrance quota is what fixes the number.',
     factDifficultyNote: 'The crawl through the tunnels is optional — anyone can wait above ground.',
     factGoodForNote: 'History-first, and honest about the war it describes.',
-    freeCancellationDays: 1,
     createdAt: '2026-07-31T09:00:00.000Z',
     updatedAt: '2026-07-31T09:00:00.000Z',
   },
@@ -161,7 +159,6 @@ export const tours: TourFixture[] = [
     factGroupSizeNote: 'Eight riders, because each one needs a rider and a bike of their own.',
     factDifficultyNote: 'You are a passenger the whole way; the effort is staying out late.',
     factGoodForNote: 'Made for people who want the city at night, not the museum version.',
-    freeCancellationDays: 2,
     createdAt: '2026-07-31T09:00:00.000Z',
     updatedAt: '2026-07-31T09:00:00.000Z',
   },
@@ -204,7 +201,6 @@ export const tours: TourFixture[] = [
     factGroupSizeNote: 'Sixteen seats, with the Cần Thơ hotel held by headcount.',
     factDifficultyNote: 'An early boat and a warm open deck; the walking is minimal.',
     factGoodForNote: 'Works for families who can manage one very early morning.',
-    freeCancellationDays: 5,
     createdAt: '2026-07-31T09:00:00.000Z',
     updatedAt: '2026-07-31T09:00:00.000Z',
   },
@@ -246,7 +242,6 @@ export const tours: TourFixture[] = [
     factGroupSizeNote: 'Fourteen places, with the workshop and boat crew booked for the day.',
     factDifficultyNote: 'Rowing boats, a horse cart and short flat walks between them.',
     factGoodForNote: 'Gentle enough for grandparents, busy enough for children.',
-    freeCancellationDays: 1,
     createdAt: '2026-07-31T09:00:00.000Z',
     updatedAt: '2026-07-31T09:00:00.000Z',
   },
@@ -292,7 +287,6 @@ export const tours: TourFixture[] = [
     factGroupSizeNote: 'Fourteen guests, with the room block held five days out.',
     factDifficultyNote: 'Waterfall steps and the Langbiang trail are the two efforts of the trip.',
     factGoodForNote: 'For people who like a hill town better than a beach.',
-    freeCancellationDays: 5,
     createdAt: '2026-07-31T09:00:00.000Z',
     updatedAt: '2026-07-31T09:00:00.000Z',
   },
@@ -333,7 +327,6 @@ export const tours: TourFixture[] = [
     factGroupSizeNote: 'Sixteen seats on the boat, with lunch counted per head.',
     factDifficultyNote: 'Snorkelling from the boat; you can stay aboard and still have the day.',
     factGoodForNote: 'An easy first taste of the island for any group.',
-    freeCancellationDays: 1,
     createdAt: '2026-07-31T09:00:00.000Z',
     updatedAt: '2026-07-31T09:00:00.000Z',
   },
@@ -379,7 +372,6 @@ export const tours: TourFixture[] = [
     factGroupSizeNote: 'Six guests at most — this is a bungalow itinerary, not a group tour.',
     factDifficultyNote: 'No walking to speak of; the spa slot is the busiest part of the day.',
     factGoodForNote: 'Two people, a bungalow, and a turn-down surprise if you tell us the date.',
-    freeCancellationDays: 14,
     createdAt: '2026-07-31T09:00:00.000Z',
     updatedAt: '2026-07-31T09:00:00.000Z',
   },
@@ -1021,14 +1013,6 @@ export const tourFaqs: TourFaqFixture[] = [
 
 export const tourPolicies: TourPolicyFixture[] = [
   {
-    id: 'd3000002-0000-4000-8000-000000000201',
-    tourId: 'd0000002-0000-4000-8000-000000000022',
-    kind: 'CANCELLATION',
-    order: 1,
-    title: 'Free until 72 hours out',
-    body: 'Free cancellation up to 3 days before pickup; inside 3 days, or a no-show, the fare is non-refundable, as the ferry seat and room are held by headcount.',
-  },
-  {
     id: 'd3000002-0000-4000-8000-000000000202',
     tourId: 'd0000002-0000-4000-8000-000000000022',
     kind: 'BOOKING',
@@ -1043,14 +1027,6 @@ export const tourPolicies: TourPolicyFixture[] = [
     order: 3,
     title: 'Sunscreen and swimwear',
     body: 'Bring sunscreen and swimwear; hotel pickup is available within District 1 and District 3.',
-  },
-  {
-    id: 'd3000002-0000-4000-8000-000000000204',
-    tourId: 'd0000002-0000-4000-8000-000000000023',
-    kind: 'CANCELLATION',
-    order: 1,
-    title: 'Free until 24 hours out',
-    body: 'Cancel at least 24 hours before pickup for a full refund; cancellations after that point, or a no-show, are charged in full.',
   },
   {
     id: 'd3000002-0000-4000-8000-000000000205',
@@ -1069,14 +1045,6 @@ export const tourPolicies: TourPolicyFixture[] = [
     body: "Wear closed shoes and clothes you don't mind getting dusty in the tunnels; anyone uneasy in tight spaces can skip the crawl and wait at the surface pavilion.",
   },
   {
-    id: 'd3000002-0000-4000-8000-000000000207',
-    tourId: 'd0000002-0000-4000-8000-000000000024',
-    kind: 'CANCELLATION',
-    order: 1,
-    title: 'Free until 48 hours out',
-    body: 'Cancellations more than 48 hours before departure are refunded in full; inside 48 hours the rider and food stops are already booked and non-refundable.',
-  },
-  {
     id: 'd3000002-0000-4000-8000-000000000208',
     tourId: 'd0000002-0000-4000-8000-000000000024',
     kind: 'BOOKING',
@@ -1091,14 +1059,6 @@ export const tourPolicies: TourPolicyFixture[] = [
     order: 3,
     title: 'Closed-toe shoes for the Vespa',
     body: 'Closed-toe shoes are required for the Vespa ride; a light jacket is worth carrying even on wet-season evenings.',
-  },
-  {
-    id: 'd3000002-0000-4000-8000-000000000210',
-    tourId: 'd0000002-0000-4000-8000-000000000025',
-    kind: 'CANCELLATION',
-    order: 1,
-    title: 'Free until 5 days out',
-    body: 'Free cancellation up to 5 days before departure; inside 5 days, or a no-show, the fare is non-refundable, as the Cần Thơ hotel is held by headcount.',
   },
   {
     id: 'd3000002-0000-4000-8000-000000000211',
@@ -1117,14 +1077,6 @@ export const tourPolicies: TourPolicyFixture[] = [
     body: 'Bring a hat and a light rain jacket for the open boat; motion-sickness tablets are worth packing for the early crossing.',
   },
   {
-    id: 'd3000002-0000-4000-8000-000000000213',
-    tourId: 'd0000002-0000-4000-8000-000000000026',
-    kind: 'CANCELLATION',
-    order: 1,
-    title: 'Free until 24 hours out',
-    body: 'Cancel at least 24 hours ahead for a full refund; workshop and boat slots booked inside 24 hours, or no-shows, are non-refundable.',
-  },
-  {
     id: 'd3000002-0000-4000-8000-000000000214',
     tourId: 'd0000002-0000-4000-8000-000000000026',
     kind: 'BOOKING',
@@ -1139,14 +1091,6 @@ export const tourPolicies: TourPolicyFixture[] = [
     order: 3,
     title: 'Closed shoes and a hat',
     body: 'Wear closed shoes for the horse-cart step-up and bring a hat — most of the day is outdoors in the sun.',
-  },
-  {
-    id: 'd3000002-0000-4000-8000-000000000216',
-    tourId: 'd0000002-0000-4000-8000-000000000027',
-    kind: 'CANCELLATION',
-    order: 1,
-    title: 'Free until 5 days out',
-    body: 'Free cancellation up to 5 days before departure; inside 5 days, or a no-show, the fare is non-refundable, as hotel rooms are pre-booked.',
   },
   {
     id: 'd3000002-0000-4000-8000-000000000217',
@@ -1165,14 +1109,6 @@ export const tourPolicies: TourPolicyFixture[] = [
     body: 'Đà Lạt nights are cool year-round — pack a light jacket; comfortable shoes for the waterfall steps and the Langbiang trail.',
   },
   {
-    id: 'd3000002-0000-4000-8000-000000000219',
-    tourId: 'd0000002-0000-4000-8000-000000000028',
-    kind: 'CANCELLATION',
-    order: 1,
-    title: 'Free until 24 hours out',
-    body: 'A full refund applies to cancellations at least 24 hours before departure; the boat and lunch are booked by headcount, so later cancellations and no-shows are non-refundable.',
-  },
-  {
     id: 'd3000002-0000-4000-8000-000000000220',
     tourId: 'd0000002-0000-4000-8000-000000000028',
     kind: 'BOOKING',
@@ -1187,14 +1123,6 @@ export const tourPolicies: TourPolicyFixture[] = [
     order: 3,
     title: 'Reef-safe sunscreen only',
     body: 'Reef-safe sunscreen only — regular sunscreen is not allowed on the boat; bring a rash guard if you sunburn easily.',
-  },
-  {
-    id: 'd3000002-0000-4000-8000-000000000222',
-    tourId: 'd0000002-0000-4000-8000-000000000029',
-    kind: 'CANCELLATION',
-    order: 1,
-    title: 'Free until 14 days out',
-    body: 'Free cancellation up to 14 days before departure; 25% is refunded from 7 days out; inside 7 days, or a no-show, the fare is forfeited, as the bungalow category is held for your dates.',
   },
   {
     id: 'd3000002-0000-4000-8000-000000000223',

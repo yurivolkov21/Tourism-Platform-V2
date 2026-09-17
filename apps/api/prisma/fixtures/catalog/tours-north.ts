@@ -23,7 +23,7 @@ import type {
  *     Trung dùng 101–200, Nam dùng 201–300 — xem `tours-central.ts`/
  *     `tours-south.ts` — để 3 file không đụng số dù viết song song).
  *   - `tourFaqs[].id`          d2000002-0000-4000-8000-000000000001 → …0052
- *   - `tourPolicies[].id`      d3000002-0000-4000-8000-000000000001 → …0036
+ *   - `tourPolicies[].id`      d3000002-0000-4000-8000-000000000002 → …0036 (id loại CANCELLATION đã rút theo ADR-0041, dải có lỗ)
  *   - `tourDepartures[].id`    e0000002-0000-4000-8000-000000000001 → …0057,
  *     mở rộng …0058 (final review 31/07, đợt bổ sung qua mốc bảo vệ)
  * Đánh số tuần tự theo thứ tự roster #1→#12, không có khoảng hở — dễ đối
@@ -75,7 +75,6 @@ export const tours: TourFixture[] = [
     factDifficultyNote:
       'Flat pavement the whole way; the only effort is pacing yourself across the stops.',
     factGoodForNote: 'Built for people who eat first and sightsee second.',
-    freeCancellationDays: 1,
     createdAt: '2026-07-31T09:00:00.000Z',
     updatedAt: '2026-07-31T09:00:00.000Z',
   },
@@ -124,7 +123,6 @@ export const tours: TourFixture[] = [
     factDifficultyNote:
       'Level ground and short walks between stops, with the coach doing the distance.',
     factGoodForNote: 'Works for a first day in Hà Nội, whatever the shape of your group.',
-    freeCancellationDays: 1,
     createdAt: '2026-07-31T09:00:00.000Z',
     updatedAt: '2026-07-31T09:00:00.000Z',
   },
@@ -173,7 +171,6 @@ export const tours: TourFixture[] = [
     factDifficultyNote:
       'Standing and hands-on work rather than walking — comfortable for most ages.',
     factGoodForNote: "Hands-on enough for children, calm enough for a couple's day out.",
-    freeCancellationDays: 1,
     createdAt: '2026-07-31T09:00:00.000Z',
     updatedAt: '2026-07-31T09:00:00.000Z',
   },
@@ -215,7 +212,6 @@ export const tours: TourFixture[] = [
     factGroupSizeNote: 'Sixteen seats, though the sampans split the group into pairs on the water.',
     factDifficultyNote: 'The Múa Cave steps are the one real climb; the boat leg is all sitting.',
     factGoodForNote: 'A good compromise when the group wants scenery without an overnight.',
-    freeCancellationDays: 2,
     createdAt: '2026-07-31T09:00:00.000Z',
     updatedAt: '2026-07-31T09:00:00.000Z',
   },
@@ -264,7 +260,6 @@ export const tours: TourFixture[] = [
     factGroupSizeNote: 'Twenty-two guests across the boat, with cabins allocated per booking.',
     factDifficultyNote: 'The bay does the work — kayaking and the cave walk are both optional.',
     factGoodForNote: 'The classic Hạ Long night out, easy for grandparents and children alike.',
-    freeCancellationDays: 7,
     createdAt: '2026-07-31T09:00:00.000Z',
     updatedAt: '2026-07-31T09:00:00.000Z',
   },
@@ -311,7 +306,6 @@ export const tours: TourFixture[] = [
     factGroupSizeNote: 'Twenty on board, small enough that the kayaks go out together.',
     factDifficultyNote: 'Kayaking and snorkelling are daily, so a basic level of swimming helps.',
     factGoodForNote: 'Built for people who would rather paddle than photograph from the deck.',
-    freeCancellationDays: 7,
     createdAt: '2026-07-31T09:00:00.000Z',
     updatedAt: '2026-07-31T09:00:00.000Z',
   },
@@ -357,7 +351,6 @@ export const tours: TourFixture[] = [
     factGroupSizeNote: 'Twelve trekkers, matching the number of beds in the stilt-house homestay.',
     factDifficultyNote: 'A descent through terraced fields; the return climb is the tiring half.',
     factGoodForNote: 'Suits people happy to sleep on a mat and eat what the family cooks.',
-    freeCancellationDays: 5,
     createdAt: '2026-07-31T09:00:00.000Z',
     updatedAt: '2026-07-31T09:00:00.000Z',
   },
@@ -399,7 +392,6 @@ export const tours: TourFixture[] = [
     factGroupSizeNote: 'Twelve places, tied to the cable-car booking made ahead of departure.',
     factDifficultyNote: 'The cable car removes the climb, but the village walks still add up.',
     factGoodForNote: "Reaches the roof of Indochina without asking for a mountaineer's legs.",
-    freeCancellationDays: 5,
     createdAt: '2026-07-31T09:00:00.000Z',
     updatedAt: '2026-07-31T09:00:00.000Z',
   },
@@ -449,7 +441,6 @@ export const tours: TourFixture[] = [
     factDifficultyNote:
       'Long saddle days on narrow mountain roads; the riding is done for you, the sitting is not.',
     factGoodForNote: 'For people who want the pass road itself, not a view of it from a coach.',
-    freeCancellationDays: 10,
     createdAt: '2026-07-31T09:00:00.000Z',
     updatedAt: '2026-07-31T09:00:00.000Z',
   },
@@ -491,7 +482,6 @@ export const tours: TourFixture[] = [
     factDifficultyNote:
       'Flat valley lanes rather than climbs — distance, not gradient, is the effort.',
     factGoodForNote: 'A first cycling trip that a family can finish together.',
-    freeCancellationDays: 3,
     createdAt: '2026-07-31T09:00:00.000Z',
     updatedAt: '2026-07-31T09:00:00.000Z',
   },
@@ -538,7 +528,6 @@ export const tours: TourFixture[] = [
     factGroupSizeNote: 'Sixteen guests, with hotel rooms and the cruise cabin blocked ahead.',
     factDifficultyNote: 'Coach transfers do the distance; the walking is short and optional.',
     factGoodForNote: 'The sampler itinerary for a first visit to the north.',
-    freeCancellationDays: 14,
     createdAt: '2026-07-31T09:00:00.000Z',
     updatedAt: '2026-07-31T09:00:00.000Z',
   },
@@ -586,7 +575,6 @@ export const tours: TourFixture[] = [
     factGroupSizeNote: 'Sixteen travellers, kept to one coach and one guide throughout.',
     factDifficultyNote: 'Early starts and frequent packing are the real demand, not the terrain.',
     factGoodForNote: 'For travellers with the time to see the whole country in one run.',
-    freeCancellationDays: 30,
     createdAt: '2026-07-31T09:00:00.000Z',
     updatedAt: '2026-07-31T09:00:00.000Z',
   },
@@ -1439,7 +1427,7 @@ export const tourFaqs: TourFaqFixture[] = [
     order: 5,
     question: 'What if the cruise is cancelled for weather?',
     answer:
-      'A full refund or free rebooking to the next available departure is offered if the port authority halts sailing for that day.',
+      'If the port authority halts sailing and we cancel the departure, you get a full refund. You are then free to book any other departure.',
   },
   // ---- Tour #6 ----
   {
@@ -1733,7 +1721,7 @@ export const tourFaqs: TourFaqFixture[] = [
     order: 5,
     question: 'How late can I cancel?',
     answer:
-      'Free cancellation up to 3 days before departure. It is a short window because the stilt-house rooms in Bản Lác are held for you individually.',
+      'Every departure shows its free-cancellation deadline, and your confirmation email repeats it. Cancel online before then for a full refund; after it, bookings close and cancellations are not refunded.',
   },
   {
     id: 'd2000002-0000-4000-8000-000000000514',
@@ -1765,20 +1753,12 @@ export const tourFaqs: TourFaqFixture[] = [
     order: 5,
     question: 'How late can I cancel?',
     answer:
-      'Free cancellation up to 5 days before departure — the homestay family shops for your meals ahead of time.',
+      'Cancel online before the free-cancellation deadline shown on your departure and you get a full refund. After that, the homestay family has already shopped for your meals, so cancellations are not refunded.',
   },
 ];
 
 export const tourPolicies: TourPolicyFixture[] = [
   // ---- Tour #1 ----
-  {
-    id: 'd3000002-0000-4000-8000-000000000001',
-    tourId: 'd0000002-0000-4000-8000-000000000001',
-    kind: 'CANCELLATION',
-    order: 1,
-    title: 'Free until 24 hours out',
-    body: 'Free cancellation up to 24 hours before the tour start time. Inside 24 hours or no-show, the full amount is non-refundable — kitchens are booked by headcount that evening.',
-  },
   {
     id: 'd3000002-0000-4000-8000-000000000002',
     tourId: 'd0000002-0000-4000-8000-000000000001',
@@ -1797,14 +1777,6 @@ export const tourPolicies: TourPolicyFixture[] = [
   },
   // ---- Tour #2 ----
   {
-    id: 'd3000002-0000-4000-8000-000000000004',
-    tourId: 'd0000002-0000-4000-8000-000000000002',
-    kind: 'CANCELLATION',
-    order: 1,
-    title: 'Free until 24 hours out',
-    body: 'Free cancellation up to 24 hours before pickup. Inside 24 hours or no-show, the full amount is non-refundable.',
-  },
-  {
     id: 'd3000002-0000-4000-8000-000000000005',
     tourId: 'd0000002-0000-4000-8000-000000000002',
     kind: 'BOOKING',
@@ -1821,14 +1793,6 @@ export const tourPolicies: TourPolicyFixture[] = [
     body: 'Modest dress is required at the Mausoleum grounds and Temple of Literature — no shorts above the knee or sleeveless tops. Bring water and comfortable shoes.',
   },
   // ---- Tour #3 ----
-  {
-    id: 'd3000002-0000-4000-8000-000000000007',
-    tourId: 'd0000002-0000-4000-8000-000000000003',
-    kind: 'CANCELLATION',
-    order: 1,
-    title: 'Free until 24 hours out',
-    body: "You can cancel at no charge until 24 hours before pickup — after that cutoff, or if you don't show, the tour is billed in full.",
-  },
   {
     id: 'd3000002-0000-4000-8000-000000000008',
     tourId: 'd0000002-0000-4000-8000-000000000003',
@@ -1847,14 +1811,6 @@ export const tourPolicies: TourPolicyFixture[] = [
   },
   // ---- Tour #4 ----
   {
-    id: 'd3000002-0000-4000-8000-000000000010',
-    tourId: 'd0000002-0000-4000-8000-000000000004',
-    kind: 'CANCELLATION',
-    order: 1,
-    title: 'Free until 48 hours out',
-    body: 'Free cancellation up to 48 hours before pickup, given the early departure time. Inside 48 hours or no-show, the full amount is non-refundable.',
-  },
-  {
     id: 'd3000002-0000-4000-8000-000000000011',
     tourId: 'd0000002-0000-4000-8000-000000000004',
     kind: 'BOOKING',
@@ -1871,14 +1827,6 @@ export const tourPolicies: TourPolicyFixture[] = [
     body: 'Bring sun protection and a hat for the boat leg, and shoes with grip for the Múa Cave steps. Life jackets are compulsory on the sampan.',
   },
   // ---- Tour #5 ----
-  {
-    id: 'd3000002-0000-4000-8000-000000000013',
-    tourId: 'd0000002-0000-4000-8000-000000000005',
-    kind: 'CANCELLATION',
-    order: 1,
-    title: 'Free until 7 days out',
-    body: 'Free cancellation up to 7 days before departure; inside 7 days, or a no-show, the fare is non-refundable, matching the cabin-lock the boat operator requires.',
-  },
   {
     id: 'd3000002-0000-4000-8000-000000000014',
     tourId: 'd0000002-0000-4000-8000-000000000005',
@@ -1897,14 +1845,6 @@ export const tourPolicies: TourPolicyFixture[] = [
   },
   // ---- Tour #6 ----
   {
-    id: 'd3000002-0000-4000-8000-000000000016',
-    tourId: 'd0000002-0000-4000-8000-000000000006',
-    kind: 'CANCELLATION',
-    order: 1,
-    title: 'Free until 7 days out',
-    body: 'Free cancellation up to 7 days before departure; inside 7 days, or a no-show, the fare is non-refundable, matching the cabin and bungalow bookings we hold for you.',
-  },
-  {
     id: 'd3000002-0000-4000-8000-000000000017',
     tourId: 'd0000002-0000-4000-8000-000000000006',
     kind: 'BOOKING',
@@ -1921,14 +1861,6 @@ export const tourPolicies: TourPolicyFixture[] = [
     body: 'Bring swimwear, a quick-dry towel, and reef-safe sun cream — kayaking and snorkelling both happen close to the boat.',
   },
   // ---- Tour #7 ----
-  {
-    id: 'd3000002-0000-4000-8000-000000000019',
-    tourId: 'd0000002-0000-4000-8000-000000000007',
-    kind: 'CANCELLATION',
-    order: 1,
-    title: 'Free until 5 days out',
-    body: 'Free cancellation up to 5 days before departure; inside 5 days, or a no-show, the fare is non-refundable, as the homestay is booked ahead by headcount.',
-  },
   {
     id: 'd3000002-0000-4000-8000-000000000020',
     tourId: 'd0000002-0000-4000-8000-000000000007',
@@ -1947,14 +1879,6 @@ export const tourPolicies: TourPolicyFixture[] = [
   },
   // ---- Tour #8 ----
   {
-    id: 'd3000002-0000-4000-8000-000000000022',
-    tourId: 'd0000002-0000-4000-8000-000000000008',
-    kind: 'CANCELLATION',
-    order: 1,
-    title: 'Free until 5 days out',
-    body: 'Free cancellation up to 5 days before departure; inside 5 days, or a no-show, the fare is non-refundable, as the cable car ticket is bought ahead in your name.',
-  },
-  {
     id: 'd3000002-0000-4000-8000-000000000023',
     tourId: 'd0000002-0000-4000-8000-000000000008',
     kind: 'BOOKING',
@@ -1971,14 +1895,6 @@ export const tourPolicies: TourPolicyFixture[] = [
     body: 'Bring layers — the summit is notably colder than the valley — and trekking shoes for the village walks. The cable car can close briefly in high wind.',
   },
   // ---- Tour #9 ----
-  {
-    id: 'd3000002-0000-4000-8000-000000000025',
-    tourId: 'd0000002-0000-4000-8000-000000000009',
-    kind: 'CANCELLATION',
-    order: 1,
-    title: 'Free until 10 days out',
-    body: 'Free cancellation up to 10 days before departure; 25% is refunded from 7 days out; inside 7 days, or a no-show, the fare is forfeited, as your driver is committed to the route.',
-  },
   {
     id: 'd3000002-0000-4000-8000-000000000026',
     tourId: 'd0000002-0000-4000-8000-000000000009',
@@ -1997,14 +1913,6 @@ export const tourPolicies: TourPolicyFixture[] = [
   },
   // ---- Tour #10 ----
   {
-    id: 'd3000002-0000-4000-8000-000000000028',
-    tourId: 'd0000002-0000-4000-8000-000000000010',
-    kind: 'CANCELLATION',
-    order: 1,
-    title: 'Free until 3 days out',
-    body: 'Free cancellation up to 3 days before departure; inside 3 days, or a no-show, the fare is non-refundable, as the stilt-house beds are booked by headcount.',
-  },
-  {
     id: 'd3000002-0000-4000-8000-000000000029',
     tourId: 'd0000002-0000-4000-8000-000000000010',
     kind: 'BOOKING',
@@ -2022,14 +1930,6 @@ export const tourPolicies: TourPolicyFixture[] = [
   },
   // ---- Tour #11 ----
   {
-    id: 'd3000002-0000-4000-8000-000000000031',
-    tourId: 'd0000002-0000-4000-8000-000000000011',
-    kind: 'CANCELLATION',
-    order: 1,
-    title: 'Free until 14 days out',
-    body: 'Free cancellation up to 14 days before departure; 25% is refunded from 7 days out; inside 7 days, or a no-show, the fare is forfeited, as hotels along the route are pre-booked.',
-  },
-  {
     id: 'd3000002-0000-4000-8000-000000000032',
     tourId: 'd0000002-0000-4000-8000-000000000011',
     kind: 'BOOKING',
@@ -2046,14 +1946,6 @@ export const tourPolicies: TourPolicyFixture[] = [
     body: 'Bring ID/passport for hotel check-ins, modest dress for temple and pagoda stops, and motion sickness tablets if prone to seasickness on the boat legs.',
   },
   // ---- Tour #12 ----
-  {
-    id: 'd3000002-0000-4000-8000-000000000034',
-    tourId: 'd0000002-0000-4000-8000-000000000012',
-    kind: 'CANCELLATION',
-    order: 1,
-    title: 'Free until 30 days out',
-    body: 'Free cancellation up to 30 days before departure; 50% is refunded 15–29 days out and 25% from 7 days out; inside 7 days, or a no-show, the fare is forfeited, as domestic flights and hotels across three regions are ticketed at booking.',
-  },
   {
     id: 'd3000002-0000-4000-8000-000000000035',
     tourId: 'd0000002-0000-4000-8000-000000000012',

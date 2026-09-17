@@ -1,3 +1,4 @@
+import { cancellationDeadline } from '@tourism/contract';
 import { describe, expect, it } from 'vitest';
 import { CUOI_KHUNG, DAU_KHUNG, docMocHomNay, NGAY_MS } from '../khung-thoi-gian.js';
 import { sinhLich } from './departures-2026.js';
@@ -88,5 +89,26 @@ describe.each(MOC)('lịch khởi hành với H = %s', (giaTri) => {
       expect(moBan, d.id).toBeLessThan(ngay(d.startDate));
       expect(d.updatedAt).toBe(d.createdAt);
     }
+  });
+
+  it('mỗi tour ≥ 4 ngày có chuyến OPEN đã qua hạn chót mà chưa khởi hành tại H', () => {
+    // H là nửa đêm UTC của ngày mốc, tức 07:00 cùng ngày ở Việt Nam, nên ngày Việt Nam
+    // của H bằng đúng `isoNgay(H)` — so hạn chót bằng mốc ms là đủ, không cần đổi múi.
+    const daiNgay = tours.filter((t) => t.durationDays >= 4);
+    expect(daiNgay).toHaveLength(6);
+    for (const tour of daiNgay) {
+      const quaHan = conBan.filter(
+        (d) =>
+          d.tourId === tour.id &&
+          ngay(d.startDate) > H &&
+          ngay(cancellationDeadline(d.startDate, d.endDate)) < H,
+      );
+      expect(quaHan.length, tour.slug).toBeGreaterThanOrEqual(1);
+    }
+  });
+
+  it('không hai chuyến nào của cùng một tour rơi vào cùng một ngày', () => {
+    const cap = lich.map((d) => `${d.tourId}:${d.startDate}`);
+    expect(new Set(cap).size).toBe(cap.length);
   });
 });

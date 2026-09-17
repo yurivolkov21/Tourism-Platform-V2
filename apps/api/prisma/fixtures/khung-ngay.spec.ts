@@ -1,3 +1,4 @@
+import { cancellationDeadline, isWithinDeadline, refundOnCancel } from '@tourism/contract';
 import { describe, expect, it } from 'vitest';
 import { sinhLich } from './catalog/departures-2026.js';
 import { tours } from './catalog/index.js';
@@ -149,5 +150,77 @@ describe.each(MOC)('sàn cấu trúc với H = %s', (giaTri) => {
       true,
     );
     expect(ds.filter((s) => Date.parse(s.createdAt) >= tu28).length).toBeGreaterThanOrEqual(3);
+  });
+});
+
+/**
+ * Sàn của luật một hạn chót (ADR-0041, spec 2026-09-15 §7 và §11). Quét CẢ 30 mốc chứ
+ * không chỉ hai mốc cố định: lượt seed prod lấy ngày chạy làm H, mà cửa sổ "đã qua hạn
+ * chót nhưng chưa khởi hành" hẹp — 5 ngày với tour ≥ 4 ngày — nên đây đúng là chỗ một
+ * mốc lẻ dễ rơi ra ngoài mà hai mốc cố định không thấy.
+ */
+describe.each(MOC)('sàn hạn chót với H = %s', (giaTri) => {
+  const homNay = docMocHomNay(giaTri);
+  const H = homNay.getTime();
+  const khach = sinhKhach(homNay);
+  const lich = sinhLich(homNay);
+  const vanHanh = sinhVanHanh(homNay, lich, khach);
+  /** Chuyến còn bán đã qua hạn chót tại H mà chưa khởi hành — nguồn của ca demo "huỷ quá hạn". */
+  const quaHan = lich.filter(
+    (d) =>
+      d.status === 'OPEN' &&
+      Date.parse(`${d.startDate}T00:00:00.000Z`) > H &&
+      Date.parse(`${cancellationDeadline(d.startDate, d.endDate)}T00:00:00.000Z`) < H,
+  );
+
+  it('mỗi tour ≥ 4 ngày có chuyến đã qua hạn chót mà chưa khởi hành; ≥ 3 booking PAID trên nhóm đó', () => {
+    for (const tour of tours.filter((t) => t.durationDays >= 4)) {
+      expect(quaHan.filter((d) => d.tourId === tour.id).length, tour.slug).toBeGreaterThanOrEqual(
+        1,
+      );
+    }
+    const hopLe = new Set(quaHan.map((d) => d.id));
+    const daTra = vanHanh.bookings.filter((b) => b.status === 'PAID' && hopLe.has(b.departureId));
+    expect(daTra.length).toBeGreaterThanOrEqual(3);
+  });
+
+  it('không booking nào trả tiền sau hạn chót của chuyến', () => {
+    for (const b of vanHanh.bookings) {
+      if (b.paidAt === null) continue;
+      expect(
+        isWithinDeadline(new Date(b.paidAt), b.departureStartDate, b.departureEndDate),
+        `${b.id} paidAt=${b.paidAt} đi=${b.departureStartDate}`,
+      ).toBe(true);
+    }
+  });
+
+  it('mỗi lần khách tự huỷ hoàn đúng luật: trong hạn một dòng bằng phần còn lại, quá hạn không dòng nào', () => {
+    const bangBooking = new Map(vanHanh.bookings.map((b) => [b.id, b]));
+    let trongHan = 0;
+    let quaHanHuy = 0;
+    for (const c of vanHanh.cancellationRequests) {
+      expect(c.status, c.id).toBe('REFUNDED');
+      const b = bangBooking.get(c.bookingId);
+      if (!b) throw new Error(`yêu cầu ${c.id} trỏ booking không có thật`);
+      const canHoan = refundOnCancel({
+        now: new Date(c.createdAt),
+        startDate: b.departureStartDate,
+        endDate: b.departureEndDate,
+        totalAmount: b.totalAmount,
+        refundedTotal: '0.00',
+      });
+      const hoan = vanHanh.refunds.filter((r) => r.bookingId === b.id);
+      if (Number(canHoan) > 0) {
+        trongHan++;
+        expect(hoan, c.id).toHaveLength(1);
+        expect(hoan[0]?.amount, c.id).toBe(canHoan);
+        expect(hoan[0]?.issuedByAdmin, c.id).toBe(false);
+      } else {
+        quaHanHuy++;
+        expect(hoan, c.id).toHaveLength(0);
+      }
+    }
+    expect(trongHan).toBeGreaterThanOrEqual(5);
+    expect(quaHanHuy).toBeGreaterThanOrEqual(3);
   });
 });
