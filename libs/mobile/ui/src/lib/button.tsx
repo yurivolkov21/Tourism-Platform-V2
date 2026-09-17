@@ -71,10 +71,12 @@ export function Button({
       style={({ pressed }) => [
         {
           backgroundColor,
-          borderRadius: shape === 'pill' ? theme.touchTargetMin : theme.radius.base,
+          // Pill: 46dp khớp mockup auth (docs/design/mockups/mobile-auth-screens.src.html),
+          // vẫn trên ngưỡng a11y touchTargetMin (44). Bản rounded giữ đúng ngưỡng token.
+          borderRadius: shape === 'pill' ? theme.spacing(11.5) : theme.radius.base,
           flexDirection: 'row',
           gap: theme.spacing(2),
-          minHeight: theme.touchTargetMin,
+          minHeight: shape === 'pill' ? theme.spacing(11.5) : theme.touchTargetMin,
           paddingHorizontal: theme.spacing(5),
           alignItems: 'center',
           justifyContent: 'center',
