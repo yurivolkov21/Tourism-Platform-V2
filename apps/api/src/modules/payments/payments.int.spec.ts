@@ -10,6 +10,7 @@ import { WEBHOOK_THROTTLE } from '../../config/throttle.js';
 import type { Prisma } from '../../generated/prisma/client.js';
 import { BookingStatus, DepartureStatus, EmailType } from '../../generated/prisma/enums.js';
 import { BookingsService } from '../bookings/bookings.service.js';
+import { CancellationsService } from '../bookings/cancellations.service.js';
 import { FAKE_SIGNATURE_HEADER, FAKE_VALID_SIGNATURE, FakeGateway } from './fake.gateway.js';
 import type { VerifiedEvent } from './gateway.js';
 
@@ -166,6 +167,27 @@ describe('payments integration (webhooks + PAID atomic claim)', () => {
 
   const seatsOf = async (id: string) =>
     (await prisma.tourDeparture.findUniqueOrThrow({ where: { id } })).seatsBooked;
+
+  /**
+   * Khách trả tiền qua webhook thật rồi TỰ HUỶ sau hạn chót (ADR-0041): hoàn 0, booking
+   * CANCELLED, capture của lần trả vẫn nằm trên booking và sổ `refunds` trống.
+   */
+  async function paidThenCancelledAfterDeadline(email: string) {
+    const cookie = await signUpUser(email);
+    const booking = await createBooking(cookie); // party 3, 117.00 USD, chuyến 2 ngày → N = 3
+    const claim = await postWebhook(fake.emitPaymentCompleted(booking.id));
+    expect(claim.json()).toMatchObject({ outcome: 'claimed' });
+    const { id: userId } = await prisma.user.findUniqueOrThrow({ where: { email } });
+    // Một ngày trước khởi hành: đã qua hạn chót (khởi hành − 3) mà chưa tới ngày đi.
+    const afterDeadline = new Date(
+      Date.parse(`${booking.departureStartDate}T05:00:00Z`) - 86_400_000,
+    );
+    const result = await app
+      .get(CancellationsService)
+      .cancelByCustomer(userId, booking.code, null, afterDeadline);
+    expect(result.refundedAmount).toBe('0.00');
+    return booking;
+  }
 
   it('happy path: payment.completed → PAID, seats claimed once, outbox + PaymentEvent audit row', async () => {
     const cookie = await signUpUser('alice@example.com', 'Alice');
@@ -577,6 +599,45 @@ describe('payments integration (webhooks + PAID atomic claim)', () => {
       amount: '117.00',
       reason: 'orphaned capture',
     });
+  });
+
+  it('ADR-0041: capture của CHÍNH lần trả tới lại sau khi khách tự huỷ quá hạn → không hoàn, giữ CANCELLED', async () => {
+    const booking = await paidThenCancelledAfterDeadline('late-cancel-redelivery@example.com');
+
+    // Lượt xử lý đầu chết trước `finishEvent` nên provider gửi lại event của CHÍNH
+    // capture đã claim. Không phải tiền mồ côi: tiền đã thuộc booking, và lõi huỷ đã
+    // quyết giữ nó (quá hạn chót).
+    const res = await postWebhook(fake.emitPaymentCompleted(booking.id));
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toMatchObject({ status: 'processed', outcome: 'cancelled' });
+
+    expect(fake.refunds).toHaveLength(0);
+    expect(await prisma.refund.count({ where: { bookingId: booking.id } })).toBe(0);
+    const row = await prisma.booking.findUniqueOrThrow({ where: { id: booking.id } });
+    expect(row.status).toBe(BookingStatus.CANCELLED);
+    expect(await prisma.outbox.count({ where: { type: EmailType.BOOKING_REFUNDED } })).toBe(0);
+  });
+
+  it('ADR-0041: capture KHÁC tới sau khi khách tự huỷ quá hạn → hoàn capture đó NGOÀI SỔ, giữ CANCELLED', async () => {
+    const booking = await paidThenCancelledAfterDeadline('late-cancel-second-capture@example.com');
+
+    // Khách trả lần hai ở một tab khác: khoản này nằm ngoài total mà sổ đang theo dõi.
+    const res = await postWebhook(
+      fake.emitPaymentCompleted(booking.id, { providerPaymentId: 'pay_second_after_cancel' }),
+    );
+    expect(res.json()).toMatchObject({ status: 'processed', outcome: 'cancelled' });
+
+    expect(fake.refunds).toHaveLength(1);
+    expect(fake.refunds[0]).toMatchObject({
+      providerPaymentId: 'pay_second_after_cancel',
+      amount: '117.00',
+      idempotencyKey: 'dup-capture:pay_second_after_cancel',
+    });
+    // Ghi sổ khoản này là nói tiền của lần trả ĐẦU đã hoàn — báo cáo mất doanh thu thật.
+    expect(await prisma.refund.count({ where: { bookingId: booking.id } })).toBe(0);
+    const row = await prisma.booking.findUniqueOrThrow({ where: { id: booking.id } });
+    expect(row.status).toBe(BookingStatus.CANCELLED);
+    expect(row.providerPaymentId).toBe(`fake_pay_${booking.id}`);
   });
 
   it('ADR-0006 AMEND 1d + 2a: amount/currency của event LỆCH booking → KHÔNG PAID, hoàn NGAY đúng số event khai, note ghi lý do + refund, event vẫn processed', async () => {

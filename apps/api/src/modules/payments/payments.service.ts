@@ -148,7 +148,7 @@ export class PaymentsService {
         if (outcome === 'overbooked' || outcome === 'departure-closed') {
           await this.refundUnclaimablePending(provider, verified.bookingId, verified, outcome);
         } else if (outcome === 'cancelled') {
-          await this.refundOrphanedCapture(provider, verified.bookingId, verified);
+          await this.handleCaptureOnCancelled(provider, verified.bookingId, verified);
         } else if (outcome === 'already-paid') {
           // ADR-0006 AMEND 1b: booking đã settle mà event mang capture KHÁC =
           // khách bị trừ tiền HAI lần — không được nuốt im lặng.
@@ -294,6 +294,45 @@ export class PaymentsService {
         this.logger.warn(`Auto-refunded ${cause} booking ${bookingId} (${provider}) — CANCELLED`);
       },
     });
+  }
+
+  /**
+   * Capture tới trên một booking đã CANCELLED — hai ca khác hẳn nhau, phân biệt bằng
+   * `provider_payment_id` của booking:
+   *
+   * - CHƯA từng nhận capture nào (NULL: PENDING hết hạn rồi tiền mới về) → tiền mồ côi
+   *   thật → {@link refundOrphanedCapture}.
+   * - ĐÃ nhận capture, tức booking từng PAID rồi mới bị huỷ (khách tự huỷ qua lõi huỷ,
+   *   ADR-0041), hoặc đường overbook/departure-closed đã ghi capture lên booking
+   *   (AMEND 2b). Capture TRÙNG là event gửi lại của chính lần trả ấy — tiền đã thuộc
+   *   booking và đường huỷ đã quyết số hoàn, nên không làm gì. Capture KHÁC là khách
+   *   trả hai lần → {@link refundDuplicateCapture}, hoàn ngoài sổ.
+   *
+   * Trước ADR-0041 một booking đã trả mà bị huỷ luôn có dòng hoàn trên sổ, nên đường
+   * orphan tự dừng ở 'already-refunded'. Nay khách huỷ QUÁ hạn giữ nguyên capture mà
+   * sổ trống: đi đường orphan là hoàn trọn khoản tiền luật cho giữ, rồi ghi sổ như thể
+   * tiền của lần trả đầu đã trả lại.
+   */
+  private async handleCaptureOnCancelled(
+    provider: PaymentProvider,
+    bookingId: string,
+    verified: VerifiedEvent,
+  ): Promise<void> {
+    const booking = await prisma.booking.findUnique({
+      where: { id: bookingId },
+      select: { code: true, providerPaymentId: true },
+    });
+    if (!booking?.providerPaymentId) {
+      await this.refundOrphanedCapture(provider, bookingId, verified);
+      return;
+    }
+    if (booking.providerPaymentId === verified.providerPaymentId) {
+      this.logger.log(
+        `${provider} event ${verified.eventId} re-delivers capture ${verified.providerPaymentId} of cancelled booking ${booking.code} — nothing to refund`,
+      );
+      return;
+    }
+    await this.refundDuplicateCapture(provider, verified);
   }
 
   /**
