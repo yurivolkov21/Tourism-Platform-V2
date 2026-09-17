@@ -359,13 +359,6 @@ export const messages = {
       continue: 'Continue',
       secureNote: 'Secure encrypted checkout',
       payCta: (total: string) => `Pay ${total}`,
-      // Tour hết sạch chỗ: KHÔNG dựng wizard rỗng. Thay hành vi tự-rơi-về-Private
-      // của `BookingModes` (gỡ 18/08 khi hai nhánh tách trang).
-      soldOut: {
-        heading: 'This trip is fully booked',
-        body: 'Every scheduled departure is sold out. We can still run it on your own dates — tell us when, and we’ll quote within 24h.',
-        cta: 'Request a private trip',
-      },
     },
     // Friendly EN for each error code (form + API). Keep the keys in sync with BookingFormError.
     errors: {
@@ -376,7 +369,6 @@ export const messages = {
       SEATS_NOT_AVAILABLE: 'Sorry — those seats just sold out. Try a different departure.',
       PARTY_TOO_LARGE:
         'Your group is larger than this tour allows. Reduce the party size or ask us about a private trip.',
-      DEPARTURE_NOT_OPEN: 'That departure is no longer open for booking.',
       DEPARTURE_DEPARTED: 'That departure has already started.',
       CHECKOUT_FAILED: 'We couldn’t start the payment session. Please try again.',
       UNAUTHORIZED: 'Your session has expired — please sign in again, then retry.',
@@ -521,10 +513,11 @@ export const messages = {
   // Task 2 cụm redesign checkout/account). Đặt cạnh `booking` cho dễ tìm.
   checkoutSummary: {
     heading: 'Order summary',
-    // Đợt review cuối (Critical + §2.2): "Free cancellation" NGỤ Ý hoàn 100%
-    // vô điều kiện — sai với chính sách thật (`legal/cancellation.ts`: 30+
-    // ngày mới hoàn đủ, có xét duyệt tay). Chip trung tính, KHÔNG hứa số.
-    flexibleCancellation: 'Flexible cancellation',
+    // Mọi tour huỷ miễn phí tới ngày chót của chuyến (ADR-0041), nên chip nói
+    // thẳng điều đó; ngày chót cụ thể in ngay dưới CTA (`cancellationDeadline.full`).
+    // Chip trung tính "Flexible cancellation" cũ tồn tại vì bảng bậc không giữ
+    // được lời hứa hoàn đủ — luật một hạn chót giữ được.
+    freeCancellation: 'Free cancellation',
     instantConfirmation: 'Instant confirmation',
     adultsLine: (n: number) => `${n} adult${n > 1 ? 's' : ''}`,
     childrenLine: (n: number) => `${n} child${n > 1 ? 'ren' : ''}`,
@@ -533,20 +526,6 @@ export const messages = {
     trustRow: 'Stripe & PayPal · SSL encrypted · 24/7 support',
     // Chưa chọn đợt khởi hành — breakdown hiện câu này thay vì các dòng số tiền.
     pickDeparture: 'Select a departure to see your total',
-    // Dòng trấn an TRUNG THỰC ngay dưới CTA, tính từ mốc thật của
-    // `legal/cancellation.ts` (30 ngày → hoàn đủ · 15 ngày → hoàn 50%).
-    // "cancellation policy" LUÔN là link `/cancellation-policy` — lắp trong
-    // component, không bịa số/chữ hứa hơn chính sách thật.
-    cancellationAssurance: {
-      policyLinkLabel: 'cancellation policy',
-      full: (date: string) => `Full refund available until ${date} — see our`,
-      // % lấy từ bậc đang áp (ADR-0030) chứ không viết cứng 50: bảng bậc nay
-      // có cả dải 25%, và bản cũ hardcode nên dải ấy vô hình ở checkout.
-      partial: (percent: number, date: string) =>
-        `${percent}% refund available until ${date} — see our`,
-      closeWindow: 'This departure is close — review our',
-      closeWindowSuffix: 'before booking.',
-    },
   },
   /**
    * Câu hạn chót huỷ miễn phí (ADR-0041) — MỘT nguồn cho mọi chỗ in ngày chót:
@@ -560,6 +539,12 @@ export const messages = {
     passed: (date: string) => `The free-cancellation deadline (${date}) has passed.`,
     /** Nhãn link sang `/cancellation-policy` đứng cạnh các câu hạn chót — không còn "refund schedule" theo bậc. */
     policyLink: 'Read the cancellation policy',
+    /** Dòng ngắn trên từng đợt (tab Departures, modal All dates) — `date` từ `bookingDeadline`. */
+    short: (date: string) => `Free cancellation until ${date}`,
+    /** Luật N theo độ dài chuyến (`windowDaysForTripLength`: 1, 3 hoặc 7) — thẻ chính sách ở trang tour. */
+    rule: (days: number) =>
+      `Free cancellation until ${days} ${days === 1 ? 'day' : 'days'} before departure`,
+    ruleAfter: 'After that, bookings close and cancellations aren’t refunded.',
   },
   common: {
     home: 'Home',
@@ -1437,9 +1422,14 @@ export const messages = {
           giữ đường dẫn tới bảng, vì dải chỉ hiện 4–6 đợt gần nhất. */
       seeAll: (n: number) => `See all ${n} dates`,
       railLabel: 'Your departure',
-      /** departures[] rỗng: dải và rail đổi sang dòng này + CTA hỏi. */
-      none: 'No departures scheduled yet',
-      noneBody: 'Dates for this trip are still being confirmed. Ask us and we’ll tell you first.',
+      /** Không còn đợt nào ĐẶT ĐƯỢC (chưa có đợt, hết chỗ, hoặc đã qua hạn đặt):
+          MỘT câu chung cho rail, bar đáy, panel đặt chỗ và trang /book, luôn kèm
+          CTA hỏi. */
+      none: 'No departures are open for booking',
+      noneBody:
+        'Ask us about this trip — we’ll tell you when new dates open, or plan one around you.',
+      /** Đợt đã qua hạn đặt (`bookable = false`, server tính): vẫn hiện, không chọn được. */
+      closed: 'Booking closed',
       /** Ba nhãn ghế = suy diễn ở tầng UI từ seatsLeft (ngưỡng 0 / 1–3 / >3 trong
           departureStatus). Contract KHÔNG có field `status` — đừng đi tìm. */
       soldOut: 'Sold out',
@@ -1527,19 +1517,7 @@ export const messages = {
       cardSecuring: 'Securing a seat',
       cardChanging: 'Changing your mind',
       cardGroup: 'Travelling as a group',
-      /** Nhãn nổi bật của thẻ huỷ khi tour CÓ `freeCancellationDays`. Tour tính
-          cửa sổ bằng giờ để null → rơi về `policy.title` như hai thẻ kia. */
-      freeUntil: (days: number) => `Free until ${days} ${days === 1 ? 'day' : 'days'} out`,
-      /**
-       * Vế SAU của lời hứa miễn phí (ADR-0030 §3b). Badge cũ dừng ở đúng hạn
-       * chót nên khách lỡ một ngày bị bất ngờ — mà cái họ rơi vào không phải
-       * hư không, nó là bảng bậc đã công bố. Câu này nói ra điều đó, và link
-       * đổi hướng về chính bảng ấy thay vì tab policy riêng của tour.
-       */
-      afterFreeWindow: 'After that, our standard refund schedule applies.',
-      viewRefundSchedule: 'See the refund schedule',
       groupCap: (max: number) => `Up to ${max} ${max === 1 ? 'guest' : 'guests'}`,
-      readFullPolicy: 'Read the full policy',
       /** Tour chưa mở đợt nào: nói thẳng và mở một lối đi tiếp, không để tab
           trống trơn. Khác câu ở `booking.box.noDepartures` vì chỗ này không
           đứng cạnh form hỏi nào. */
@@ -1608,7 +1586,8 @@ export const messages = {
             : `${days} ${days === 1 ? 'day' : 'days'}`;
         return `${tourTitle} · ${length} · max ${maxGroupSize} guests`;
       },
-      onlyOpen: 'Only show dates with seats left',
+      /** Lọc theo `isDepartureOpen`: còn chỗ VÀ còn hạn đặt. */
+      onlyOpen: 'Only show dates you can book',
       /** Một hàng đợt: khoảng ngày · ghế còn / sức chứa · thời lượng. */
       dateRange: (start: string, end: string) => `${start} → ${end}`,
       seatsOf: (left: number, capacity: number) => `${left} of ${capacity} seats left`,

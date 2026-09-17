@@ -183,7 +183,11 @@ export function bookingSubmitErrorCopy(error: unknown): string {
     if (error.status === 429) return messages.accountActionErrors.throttle;
     if (error.code === 'SEATS_UNAVAILABLE') return t.SEATS_NOT_AVAILABLE;
     if (error.code === 'PARTY_TOO_LARGE') return t.PARTY_TOO_LARGE;
-    if (error.code === 'DEPARTURE_NOT_AVAILABLE') return t.DEPARTURE_NOT_OPEN;
+    // Cùng MỘT câu với nút "Pay now" ở trang booking (Task 7):
+    // `booking.errors.DEPARTURE_NOT_OPEN` đã xoá vì khai trùng câu ở hai khoá
+    // là sửa một quên một. Tiền lệ: dòng throttle ngay trên cũng đọc
+    // `accountActionErrors`.
+    if (error.code === 'DEPARTURE_NOT_AVAILABLE') return messages.accountActionErrors.bookingClosed;
   }
   return t.CHECKOUT_FAILED;
 }

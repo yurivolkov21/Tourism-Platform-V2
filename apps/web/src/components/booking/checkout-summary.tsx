@@ -1,7 +1,6 @@
 'use client';
 
 import type { MediaItem } from '@tourism/contract';
-import { REFUND_POLICY_TIERS } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
 import { Badge } from '@tourism/ui/components/badge';
 import { motion } from 'motion/react';
@@ -10,7 +9,7 @@ import type { ReactNode } from 'react';
 import type { DepartureVM } from '@/lib/api/tours';
 import { computeBookingTotal } from '@/lib/checkout';
 import { SPRING } from '@/lib/motion';
-import { formatDateRange, formatMoney } from '@/lib/tours';
+import { formatChipDate, formatDateRange, formatMoney } from '@/lib/tours';
 
 /** Dữ liệu tour cần cho card tóm tắt — CHỈ những field card này thật sự vẽ,
     không phải toàn bộ `TourDetailVM` (tránh siết component vào một shape lớn
@@ -24,102 +23,26 @@ export interface CheckoutSummaryTour {
   ratingCount: number;
 }
 
-/** Ba mức trấn an hủy/hoàn tiền, suy từ `REFUND_POLICY_TIERS` (ADR-0030) —
-    một nguồn với văn bản công khai, không bịa số khác. */
-export type CancellationAssuranceKind = 'full' | 'partial' | 'closeWindow';
-
-export interface CancellationAssurance {
-  kind: CancellationAssuranceKind;
-  /** Phần trăm của bậc đang áp — câu chữ lấy số từ đây, không viết cứng. */
-  percent: number;
-  /** Ngày cắt (YYYY-MM-DD) cho `full`/`partial`; `null` ở `closeWindow` —
-   *  không có mốc nào để nói, câu closeWindow không mang ngày. */
-  cutoffDate: string | null;
-}
-
-/** Số ngày lịch từ 00:00 UTC tới một mốc `y-m-d` — dùng làm trục chung để trừ
-    hai ngày lịch mà không dính múi giờ/DST (`Date.UTC` không có DST). */
-function utcDayIndex(y: number, m: number, d: number): number {
-  return Math.floor(Date.UTC(y, m - 1, d) / 86_400_000);
-}
-
-/** Trừ N ngày khỏi một chuỗi ngày `YYYY-MM-DD`, trả về cùng khuôn dạng. Tách
-    riêng thay vì `new Date(dateStr)`: chuỗi date-only bị hiểu là UTC rồi hiển
-    thị theo giờ máy (bẫy đã ghi ở `formatDateRange`) — ở đây luôn thao tác
-    trên trục UTC nên không dính bẫy đó. */
-function subtractDays(dateStr: string, days: number): string {
-  const [y, m, d] = dateStr.split('-').map(Number) as [number, number, number];
-  const t = Date.UTC(y, m - 1, d) - days * 86_400_000;
-  const dt = new Date(t);
-  const yy = dt.getUTCFullYear();
-  const mm = String(dt.getUTCMonth() + 1).padStart(2, '0');
-  const dd = String(dt.getUTCDate()).padStart(2, '0');
-  return `${yy}-${mm}-${dd}`;
-}
-
 /**
- * Mốc trấn an hủy/hoàn tiền, tính từ `startDate` của đợt đang chọn — hàm
- * THUẦN, `now` truyền vào được để test không phụ thuộc đồng hồ thật (cùng
- * khuôn `pendingExpiry` ở `lib/checkout.ts`).
+ * Dòng hạn chót dưới CTA — in thẳng `bookingDeadline` của đợt đang chọn, do
+ * server tính theo ngày Việt Nam (ADR-0041 §7). Web KHÔNG tự trừ N ngày và
+ * KHÔNG so với giờ trình duyệt, nên chỉnh đồng hồ máy không đổi được câu này
+ * (spec §2 Q7); cũng không có biến thể "until today" — luôn là một ngày cụ thể.
  *
- * Từ ADR-0030 các mốc ĐỌC TỪ `REFUND_POLICY_TIERS` chứ không viết cứng. Bản
- * cũ hardcode 30 và 15, nên khi bảng bậc mọc thêm dải **25% ở 7–14 ngày** thì
- * dải ấy hoàn toàn vô hình ở đây: khách đặt tour còn 10 ngày đọc "This
- * departure is close" trong khi chính sách nói rõ họ được hoàn 25%.
- *
- * Nhánh cuối (`closeWindow`) nay chỉ còn đúng nghĩa của nó: rơi vào bậc 0%,
- * tức thật sự không hoàn — không phải "chúng tôi không biết nói gì".
- *
- * `now` lấy theo giờ ĐỊA PHƯƠNG của khách (`getFullYear/Month/Date`, không
- * phải `getUTCFullYear`) — đó là ngày lịch khách đang thấy trên máy mình;
- * `startDate` (date-only) lại luôn đọc theo UTC (theo quy ước
- * `formatDateRange`). Quy cả hai về trục `utcDayIndex` trước khi trừ để phép
- * trừ ra đúng số ngày lịch, không lệch theo offset múi giờ.
+ * Link `/cancellation-policy` là đích DUY NHẤT, không bịa link riêng cho từng
+ * tour: chính sách thật sống ở đó.
  */
-export function computeCancellationAssurance(
-  startDate: string,
-  now: Date = new Date(),
-): CancellationAssurance {
-  const [sy, sm, sd] = startDate.split('-').map(Number) as [number, number, number];
-  const startDay = utcDayIndex(sy, sm, sd);
-  const todayDay = utcDayIndex(now.getFullYear(), now.getMonth() + 1, now.getDate());
-  const diffDays = startDay - todayDay;
-
-  // Bậc RỘNG RÃI NHẤT mà khoảng cách này còn với tới — cùng phép tra của
-  // `refundPercentForDays`, chỉ khác là ở đây còn cần biết mốc CẮT để in ngày.
-  const tier = REFUND_POLICY_TIERS.find((entry) => diffDays >= entry.minDaysBefore);
-  if (!tier || tier.percent === 0) return { kind: 'closeWindow', percent: 0, cutoffDate: null };
-  return {
-    kind: tier.percent === 100 ? 'full' : 'partial',
-    percent: tier.percent,
-    cutoffDate: subtractDays(startDate, tier.minDaysBefore),
-  };
-}
-
-/** Dòng trấn an dưới CTA — lắp câu từ `messages` + link `cancellation policy`
-    trỏ `/cancellation-policy`, KHÔNG bịa link riêng cho từng nhánh (một đích
-    duy nhất, đúng chính sách thật đang sống ở đó). */
-export function CancellationAssuranceLine({ departure }: { departure: DepartureVM }) {
-  const t = messages.checkoutSummary.cancellationAssurance;
-  const assurance = computeCancellationAssurance(departure.startDate);
-
-  const prefix =
-    assurance.kind === 'full' && assurance.cutoffDate !== null
-      ? t.full(formatDateRange(assurance.cutoffDate, assurance.cutoffDate))
-      : assurance.kind === 'partial' && assurance.cutoffDate !== null
-        ? t.partial(assurance.percent, formatDateRange(assurance.cutoffDate, assurance.cutoffDate))
-        : t.closeWindow;
-
+export function CancellationDeadlineLine({ departure }: { departure: DepartureVM }): ReactNode {
+  const t = messages.cancellationDeadline;
   return (
     <p className="text-xs text-muted-foreground">
-      {prefix}{' '}
+      {t.full(formatChipDate(departure.bookingDeadline))}{' '}
       <Link
         href="/cancellation-policy"
         className="underline underline-offset-4 hover:text-foreground"
       >
-        {t.policyLinkLabel}
+        {t.policyLink}
       </Link>
-      {assurance.kind === 'closeWindow' ? ` ${t.closeWindowSuffix}` : ''}
     </p>
   );
 }
@@ -214,7 +137,7 @@ export function CheckoutSummary({
         <div className="flex flex-wrap gap-2">
           <Badge variant="outline">
             <span aria-hidden className="size-1.5 rounded-full bg-success" />
-            {t.flexibleCancellation}
+            {t.freeCancellation}
           </Badge>
           <Badge variant="outline">
             <span aria-hidden className="size-1.5 rounded-full bg-info" />
@@ -262,9 +185,9 @@ export function CheckoutSummary({
 
         {cta ?? null}
 
-        {/* Trấn an TRUNG THỰC ngay dưới CTA — chỉ hiện khi đã có đợt để tính
-            mốc thật; `departure: null` không bịa mốc. */}
-        {departure ? <CancellationAssuranceLine departure={departure} /> : null}
+        {/* Ngày chót ngay dưới CTA — chỉ hiện khi đã chọn đợt; `departure: null`
+            không có ngày nào để in và cũng không được bịa ra. */}
+        {departure ? <CancellationDeadlineLine departure={departure} /> : null}
 
         <p className="border-t pt-4 text-xs text-muted-foreground">{t.trustRow}</p>
       </div>

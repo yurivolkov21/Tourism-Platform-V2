@@ -14,6 +14,8 @@ const DEPARTURES = [
     seatsLeft: 6,
     effectivePrice: '329.00',
     compareAtPrice: null,
+    bookingDeadline: '2026-09-07',
+    bookable: true,
   },
 ] as unknown as DepartureVM[];
 

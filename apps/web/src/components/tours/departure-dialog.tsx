@@ -11,7 +11,13 @@ import { useId, useState } from 'react';
 import { useDepartureSelection } from '@/components/tours/departure-selection';
 import type { DepartureVM } from '@/lib/api/tours';
 import { departureMonths, monthLabel } from '@/lib/tour-detail';
-import { departureStatus, formatDialogDate, formatMoney } from '@/lib/tours';
+import {
+  departureStatus,
+  formatChipDate,
+  formatDialogDate,
+  formatMoney,
+  isDepartureOpen,
+} from '@/lib/tours';
 
 /** Chấm trạng thái ghế — cùng ba mức với dải chip ở panel. */
 const DOT_TONE: Record<ReturnType<typeof departureStatus>, string> = {
@@ -48,7 +54,7 @@ export function DepartureDialog({
   const [onlyOpen, setOnlyOpen] = useState(false);
   const filterId = useId();
 
-  const visible = onlyOpen ? departures.filter((d) => d.seatsLeft > 0) : departures;
+  const visible = onlyOpen ? departures.filter(isDepartureOpen) : departures;
   const months = departureMonths(visible);
   const picked = departures.find((d) => d.id === selectedId);
 
@@ -158,6 +164,11 @@ export function DepartureDialog({
                 {group.items.map((d) => {
                   const status = departureStatus(d.seatsLeft);
                   const soldOut = status === 'sold-out';
+                  // Hai lý do KHÁC NHAU để không bấm được, và khách cần đọc ra
+                  // lý do nào: hết chỗ thì chờ chỗ trống, quá hạn đặt thì không
+                  // còn gì để chờ. `bookable` do server tính (ADR-0041 §7).
+                  const closed = !d.bookable;
+                  const pickable = isDepartureOpen(d);
                   const selected = d.id === selectedId;
                   return (
                     <FramePanel
@@ -167,16 +178,16 @@ export function DepartureDialog({
                         'p-0',
                         selected &&
                           'border-primary bg-[color-mix(in_oklab,var(--primary)_7%,var(--card))]',
-                        soldOut && 'opacity-55',
+                        !pickable && 'opacity-55',
                       )}
                     >
                       <button
                         type="button"
-                        disabled={soldOut}
+                        disabled={!pickable}
                         onClick={() => pick(d)}
                         className={cn(
                           'grid w-full cursor-pointer grid-cols-[1fr_auto_auto] items-center gap-4 p-3 text-left',
-                          soldOut && 'cursor-not-allowed',
+                          !pickable && 'cursor-not-allowed',
                         )}
                       >
                         <span>
@@ -189,13 +200,31 @@ export function DepartureDialog({
                           <span className="mt-0.5 flex items-center gap-2 text-xs leading-[14px] text-muted-foreground">
                             <i
                               aria-hidden="true"
-                              className={cn('size-[7px] rounded-full', DOT_TONE[status])}
+                              className={cn(
+                                'size-[7px] rounded-full',
+                                DOT_TONE[closed ? 'sold-out' : status],
+                              )}
                             />
                             {t.rowMeta(
-                              soldOut ? t.soldOut : t.seatsOf(d.seatsLeft, maxGroupSize),
+                              closed
+                                ? messages.tourDetail.departures.closed
+                                : soldOut
+                                  ? t.soldOut
+                                  : t.seatsOf(d.seatsLeft, maxGroupSize),
                               durationDays,
                             )}
                           </span>
+                          {/* Ngày chót huỷ miễn phí của CHÍNH đợt này — in từ
+                              `bookingDeadline` server trả, không tự trừ ngày
+                              bằng giờ trình duyệt (spec §2 Q7). Đợt đã đóng
+                              không in: lời hứa đó đã hết hiệu lực. */}
+                          {d.bookable ? (
+                            <span className="mt-0.5 block text-xs leading-[14px] text-muted-foreground">
+                              {messages.cancellationDeadline.short(
+                                formatChipDate(d.bookingDeadline),
+                              )}
+                            </span>
+                          ) : null}
                         </span>
                         <span className="text-right text-[15px] leading-[20px] font-semibold text-price tabular-nums">
                           {formatMoney(d.effectivePrice, currency)}
@@ -206,7 +235,7 @@ export function DepartureDialog({
                           ) : null}
                         </span>
                         <span className="flex items-center gap-1 text-xs leading-none font-medium whitespace-nowrap text-primary-emphasis">
-                          {soldOut ? null : selected ? (
+                          {!pickable ? null : selected ? (
                             <>
                               <CheckIcon className="size-3" />
                               {t.selected}

@@ -1,7 +1,9 @@
 'use client';
 
+import { windowDaysForTripLength } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
 import { Button } from '@tourism/ui/components/button';
+import { ButtonLink } from '@tourism/ui/components/button-link';
 import { cn } from '@tourism/ui/lib/utils';
 import { ChevronDownIcon, CreditCardIcon, RotateCcwIcon, UsersIcon } from 'lucide-react';
 import { type CSSProperties, useId, useState } from 'react';
@@ -19,9 +21,14 @@ import {
   monthLabel,
   monthNotice,
   monthSeason,
-  orderPolicies,
 } from '@/lib/tour-detail';
-import { departureStatus, formatChipDate, formatDialogDate, formatMoney } from '@/lib/tours';
+import {
+  departureStatus,
+  formatChipDate,
+  formatDialogDate,
+  formatMoney,
+  isDepartureOpen,
+} from '@/lib/tours';
 
 /**
  * Thanh ghế chia đốt — MỘT ĐỐT LÀ MỘT GHẾ, và luôn đúng `maxGroupSize` đốt.
@@ -82,8 +89,25 @@ const BADGE_BASE =
 
 /** Bốn mức ghế trên hàng đợt. Ngưỡng đi qua `departureStatus` để bảng, ô ngày
     và modal dùng chung đúng một con số. */
-function SeatBadge({ seatsLeft, capacity }: { seatsLeft: number; capacity: number }) {
+function SeatBadge({
+  seatsLeft,
+  capacity,
+  bookable,
+}: {
+  seatsLeft: number;
+  capacity: number;
+  bookable: boolean;
+}) {
   const t = messages.tourDetail.departuresTab;
+  // Hạn đặt xét TRƯỚC ghế: đợt đã đóng thì còn bao nhiêu ghế cũng không mua
+  // được, in "Almost full" ở đó là mời khách bấm vào chỗ không có gì.
+  if (!bookable) {
+    return (
+      <span className={cn(BADGE_BASE, 'border-border bg-muted text-muted-foreground')}>
+        {messages.tourDetail.departures.closed}
+      </span>
+    );
+  }
   if (seatsLeft <= 0) {
     return (
       <span className={cn(BADGE_BASE, 'border-border bg-muted text-muted-foreground')}>
@@ -178,9 +202,11 @@ export function DeparturesPanel({ tour }: { tour: TourDetailVM }) {
     );
   }
 
-  const openTotal = departures.filter((d) => d.seatsLeft > 0).length;
+  // "Dates open" và "Next departure" đếm theo ĐẶT ĐƯỢC, cùng vị từ với mọi nơi
+  // chọn đợt khác — nếu không, ô thống kê hứa 5 ngày còn bảng chỉ cho bấm 3.
+  const openTotal = departures.filter(isDepartureOpen).length;
   const seatsTotal = departures.reduce((sum, d) => sum + d.seatsLeft, 0);
-  const next = departures.find((d) => d.seatsLeft > 0) ?? departures[0];
+  const next = departures.find(isDepartureOpen) ?? departures[0];
   const prices = departures.map((d) => Number(d.effectivePrice));
   const lo = Math.min(...prices);
   const hi = Math.max(...prices);
@@ -351,6 +377,7 @@ export function DeparturesPanel({ tour }: { tour: TourDetailVM }) {
                     key={departure.id}
                     rowIndex={rowIndex}
                     departure={departure}
+                    slug={tour.slug}
                     capacity={capacity}
                     currency={tour.currency}
                     durationDays={tour.durationDays}
@@ -394,20 +421,20 @@ export function DeparturesPanel({ tour }: { tour: TourDetailVM }) {
  * Cùng dữ liệu với tab Good to know, đóng khung lại cho khoảnh khắc chọn ngày:
  * lúc đang cân nhắc một đợt, câu hỏi là "đặt cọc bao nhiêu, huỷ được tới khi
  * nào", không phải "mặc gì trên xe". Nên nhãn thẻ nói VAI TRÒ chứ không lặp tên
- * nhóm policy, và thẻ giữa có link sang tab Good to know cho toàn văn.
+ * nhóm policy.
  *
- * Thẻ thứ ba KHÔNG lấy từ `policies` — nó nói về sức chứa, nên giá trị suy từ
- * `maxGroupSize` và câu mô tả dùng lại `factGroupSizeNote` (ADR-0023), vốn viết
- * đúng về chuyện đó.
+ * Từ ADR-0041 chỉ còn THẺ ĐẦU đọc `policies` (nhóm BOOKING). Thẻ huỷ sinh từ
+ * luật — `windowDaysForTripLength(durationDays)` — nên nó đúng cho mọi tour và
+ * không bao giờ vắng mặt; policy loại CANCELLATION không còn được đọc ở đâu
+ * trên trang tour (spec §5.1). Thẻ thứ ba vẫn suy từ `maxGroupSize` và
+ * `factGroupSizeNote` (ADR-0023).
  */
 function BookingPolicyCards({ tour }: { tour: TourDetailVM }) {
   const t = messages.tourDetail.departuresTab;
-  const byKind = Object.fromEntries(orderPolicies(tour.policies).map((p) => [p.kind, p]));
-  const booking = byKind.BOOKING;
-  const cancellation = byKind.CANCELLATION;
-
-  // Không có policy nào thì bỏ hẳn hàng thẻ — một hàng thẻ rỗng tệ hơn không có.
-  if (!booking && !cancellation) return null;
+  const td = messages.cancellationDeadline;
+  // `find` chứ không `orderPolicies`: chỉ lấy đúng MỘT nhóm nên thứ tự API
+  // không ảnh hưởng gì.
+  const booking = tour.policies.find((p) => p.kind === 'BOOKING');
 
   return (
     <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -419,34 +446,16 @@ function BookingPolicyCards({ tour }: { tour: TourDetailVM }) {
           note={booking.body}
         />
       ) : null}
-      {cancellation ? (
-        <FactCard
-          icon={<RotateCcwIcon aria-hidden="true" />}
-          label={t.cardChanging}
-          // Con số thắng khi có: "Free until 10 days out" đọc nhanh hơn một câu.
-          // Tour tính cửa sổ bằng GIỜ để `null` → rơi về tiêu đề policy.
-          value={
-            tour.freeCancellationDays === null
-              ? cancellation.title
-              : t.freeUntil(tour.freeCancellationDays)
-          }
-          // Có badge thì phải nói nốt VẾ SAU (ADR-0030 §3b): badge cũ dừng ở
-          // đúng hạn chót, nên khách lỡ một ngày bị bất ngờ — trong khi thứ họ
-          // rơi vào là bảng bậc đã công bố, không phải hư không. Link đổi
-          // hướng về chính bảng ấy; tour không có badge thì giữ nguyên đường
-          // cũ về policy riêng của tour.
-          note={
-            tour.freeCancellationDays === null
-              ? cancellation.body
-              : `${cancellation.body} ${t.afterFreeWindow}`
-          }
-          link={
-            tour.freeCancellationDays === null
-              ? { href: '#good-to-know', label: t.readFullPolicy }
-              : { href: '/cancellation-policy', label: t.viewRefundSchedule }
-          }
-        />
-      ) : null}
+      {/* Vế SAU của lời hứa nói ngay trong `note`: luật mới KHÔNG có bậc nào
+          sau hạn chót, nên câu "our standard refund schedule applies" cũ giờ
+          trỏ vào một bảng không còn tồn tại. */}
+      <FactCard
+        icon={<RotateCcwIcon aria-hidden="true" />}
+        label={t.cardChanging}
+        value={td.rule(windowDaysForTripLength(tour.durationDays))}
+        note={td.ruleAfter}
+        link={{ href: '/cancellation-policy', label: td.policyLink }}
+      />
       <FactCard
         icon={<UsersIcon aria-hidden="true" />}
         label={t.cardGroup}
@@ -493,6 +502,7 @@ function StatCard({
  */
 function DepartureRow({
   departure,
+  slug,
   capacity,
   currency,
   durationDays,
@@ -502,6 +512,8 @@ function DepartureRow({
   onSelect,
 }: {
   departure: DepartureVM;
+  /** Slug tour — dựng href `/tours/{slug}/enquire` cho hàng đã đóng. */
+  slug: string;
   capacity: number;
   currency: string;
   durationDays: number;
@@ -513,6 +525,9 @@ function DepartureRow({
 }) {
   const t = messages.tourDetail.departuresTab;
   const soldOut = departure.seatsLeft <= 0;
+  // Đợt đã qua hạn đặt VẪN HIỆN (spec §5.1) — biến mất thì khách tưởng mình
+  // nhớ nhầm ngày. Chỉ bỏ cách chọn, và thay bằng một lối đi tiếp.
+  const closed = !departure.bookable;
   const saving =
     departure.compareAtPrice !== null
       ? Number(departure.compareAtPrice) - Number(departure.effectivePrice)
@@ -536,7 +551,7 @@ function DepartureRow({
         <span
           className={cn(
             'block text-sm leading-5 font-medium tabular-nums',
-            soldOut ? 'text-muted-foreground line-through' : 'text-foreground',
+            soldOut || closed ? 'text-muted-foreground line-through' : 'text-foreground',
           )}
         >
           {formatDialogDate(departure.startDate)} <span className="text-muted-foreground">→</span>{' '}
@@ -545,6 +560,13 @@ function DepartureRow({
         <span className="block text-xs leading-4 text-muted-foreground">
           {t.departureMeta(durationDays)}
         </span>
+        {/* Ngày chót của CHÍNH đợt này, từ `bookingDeadline` server trả — web
+            không tự trừ N ngày bằng giờ trình duyệt (spec §2 Q7). */}
+        {departure.bookable ? (
+          <span className="block text-xs leading-4 text-muted-foreground">
+            {messages.cancellationDeadline.short(formatChipDate(departure.bookingDeadline))}
+          </span>
+        ) : null}
       </td>
       <td>
         <SeatMeter seatsLeft={departure.seatsLeft} capacity={capacity} />
@@ -553,7 +575,11 @@ function DepartureRow({
         </span>
       </td>
       <td>
-        <SeatBadge seatsLeft={departure.seatsLeft} capacity={capacity} />
+        <SeatBadge
+          seatsLeft={departure.seatsLeft}
+          capacity={capacity}
+          bookable={departure.bookable}
+        />
       </td>
       <td className="text-right tabular-nums">
         <span className="text-sm leading-5 font-medium text-foreground">
@@ -571,15 +597,28 @@ function DepartureRow({
         ) : null}
       </td>
       <td className="text-right">
-        <Button
-          type="button"
-          className={PANEL_BTN_SM}
-          variant={selected ? 'outline' : 'default'}
-          disabled={soldOut}
-          onClick={onSelect}
-        >
-          {soldOut ? t.statusSoldOut : selected ? t.selected : t.select}
-        </Button>
+        {closed ? (
+          // Nhãn dài trong cột ghim 120px: cho XUỐNG DÒNG thay vì nới cột —
+          // nới cột thì cột ngày ("Thu, 20 Aug → Sun, 23 Aug") bị bóp ở bề
+          // ngang ~820px, mà đó mới là ô khách đọc.
+          <ButtonLink
+            variant="outline"
+            className={cn(PANEL_BTN_SM, 'h-auto py-1.5 leading-4 whitespace-normal')}
+            href={`/tours/${slug}/enquire`}
+          >
+            {messages.tourDetail.booking.ask}
+          </ButtonLink>
+        ) : (
+          <Button
+            type="button"
+            className={PANEL_BTN_SM}
+            variant={selected ? 'outline' : 'default'}
+            disabled={soldOut}
+            onClick={onSelect}
+          >
+            {soldOut ? t.statusSoldOut : selected ? t.selected : t.select}
+          </Button>
+        )}
       </td>
     </tr>
   );

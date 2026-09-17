@@ -1,3 +1,4 @@
+import { windowDaysForTripLength } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
 import {
   Accordion,
@@ -26,51 +27,68 @@ import { orderPolicies, policyEyebrow } from '@/lib/tour-detail';
  */
 export function GoodToKnowPanel({ tour }: { tour: TourDetailVM }) {
   const t = messages.tourDetail.goodToKnow;
-  const policies = orderPolicies(tour.policies);
+  const td = messages.cancellationDeadline;
+  // Mục chính sách huỷ sinh TỪ LUẬT (spec §5.1) nên nó không đến từ `policies`;
+  // policy loại CANCELLATION trên dữ liệu cũ bị bỏ hẳn, nếu không trang in hai
+  // mốc khác nhau ("Free up to 10 days" cạnh N = 7) và khách tin cái sai.
+  const policies = orderPolicies(tour.policies.filter((p) => p.kind !== 'CANCELLATION'));
 
   return (
     <div>
-      {policies.length > 0 ? (
-        // `.pol` — 3 cột đều, gap 12. Xuống 1 cột ở mobile vì thẻ có văn bản
-        // dài; ba cột 13px trên màn hẹp là ba cột chữ vụn.
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {policies.map((policy, index) => {
-            const eyebrow = policyEyebrow(t.policyKinds[policy.kind], policy.title);
-            return (
-              // Thẻ policy trồi lên theo bậc thang (nhóm motion 1, 19/08) —
-              // wrapper mang nhịp, thẻ bên trong giữ `data-testid` spec đang đọc.
-              <RevealItem
-                key={policy.kind + policy.title}
-                enter="rise"
-                delay={index * STAGGER.grid}
-                className="h-full"
+      {/* `.pol` — 3 cột đều, gap 12. Xuống 1 cột ở mobile vì thẻ có văn bản
+          dài; ba cột 13px trên màn hẹp là ba cột chữ vụn. Hàng thẻ LUÔN có mặt
+          vì thẻ huỷ sinh từ luật, không còn nhánh `policies.length > 0`. */}
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <RevealItem enter="rise" delay={0} className="h-full">
+          <div
+            data-testid="policy-card"
+            className="h-full rounded-md border border-border bg-card p-4"
+          >
+            <p className="font-mono text-[11px] leading-4 tracking-[0.12em] text-muted-foreground uppercase">
+              {t.policyKinds.CANCELLATION}
+            </p>
+            <h3 className="mt-1.5 mb-2 font-heading text-[17px] leading-6 font-medium text-foreground">
+              {td.rule(windowDaysForTripLength(tour.durationDays))}
+            </h3>
+            <p className="text-[13px] leading-5 text-muted-foreground">{td.ruleAfter}</p>
+          </div>
+        </RevealItem>
+        {policies.map((policy, index) => {
+          const eyebrow = policyEyebrow(t.policyKinds[policy.kind], policy.title);
+          return (
+            // Thẻ policy trồi lên theo bậc thang (nhóm motion 1, 19/08) —
+            // wrapper mang nhịp, thẻ bên trong giữ `data-testid` spec đang đọc.
+            <RevealItem
+              key={policy.kind + policy.title}
+              enter="rise"
+              delay={(index + 1) * STAGGER.grid}
+              className="h-full"
+            >
+              <div
+                data-testid="policy-card"
+                className="h-full rounded-md border border-border bg-card p-4"
               >
-                <div
-                  data-testid="policy-card"
-                  className="h-full rounded-md border border-border bg-card p-4"
+                {eyebrow ? (
+                  <p className="font-mono text-[11px] leading-4 tracking-[0.12em] text-muted-foreground uppercase">
+                    {eyebrow}
+                  </p>
+                ) : null}
+                {/* Lề trên 6px là khoảng cách VỚI eyebrow; bỏ eyebrow mà giữ
+                  lề là để lại 6px chết ở đỉnh thẻ. */}
+                <h3
+                  className={cn(
+                    'mb-2 font-heading text-[17px] leading-6 font-medium text-foreground',
+                    eyebrow && 'mt-1.5',
+                  )}
                 >
-                  {eyebrow ? (
-                    <p className="font-mono text-[11px] leading-4 tracking-[0.12em] text-muted-foreground uppercase">
-                      {eyebrow}
-                    </p>
-                  ) : null}
-                  {/* Lề trên 6px là khoảng cách VỚI eyebrow; bỏ eyebrow mà giữ
-                    lề là để lại 6px chết ở đỉnh thẻ. */}
-                  <h3
-                    className={cn(
-                      'mb-2 font-heading text-[17px] leading-6 font-medium text-foreground',
-                      eyebrow && 'mt-1.5',
-                    )}
-                  >
-                    {policy.title}
-                  </h3>
-                  <p className="text-[13px] leading-5 text-muted-foreground">{policy.body}</p>
-                </div>
-              </RevealItem>
-            );
-          })}
-        </div>
-      ) : null}
+                  {policy.title}
+                </h3>
+                <p className="text-[13px] leading-5 text-muted-foreground">{policy.body}</p>
+              </div>
+            </RevealItem>
+          );
+        })}
+      </div>
 
       {tour.faqs.length > 0 ? (
         // Khung 768 giống `.pane.narrow`: khối hỏi–đáp là văn bản thuần, dòng

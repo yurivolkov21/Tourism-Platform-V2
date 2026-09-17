@@ -29,6 +29,8 @@ const DEPARTURES = [
     seatsLeft: 2,
     effectivePrice: '329.00',
     compareAtPrice: null,
+    bookingDeadline: '2026-08-13',
+    bookable: true,
   },
   {
     id: 'sep',
@@ -37,6 +39,8 @@ const DEPARTURES = [
     seatsLeft: 10,
     effectivePrice: '329.00',
     compareAtPrice: null,
+    bookingDeadline: '2026-09-17',
+    bookable: true,
   },
   {
     id: 'nov',
@@ -45,10 +49,13 @@ const DEPARTURES = [
     seatsLeft: 7,
     effectivePrice: '299.00',
     compareAtPrice: '329.00',
+    bookingDeadline: '2026-10-29',
+    bookable: true,
   },
 ] as unknown as DepartureVM[];
 
 const TOUR = {
+  slug: 'ha-giang-loop-4d',
   currency: 'USD',
   basePrice: '329.00',
   durationDays: 4,
@@ -159,6 +166,35 @@ describe('DeparturesPanel', () => {
     expect(within(row).getByRole('button', { name: 'Sold out' })).toBeDisabled();
   });
 
+  it('mỗi hàng đợt in ngày chót huỷ miễn phí của CHÍNH đợt đó', () => {
+    render(wrap());
+    expect(
+      within(rowFor('Thu, 20 Aug')).getByText('Free cancellation until 13 Aug'),
+    ).toBeInTheDocument();
+  });
+
+  it('đợt đã qua hạn đặt: vẫn hiện, không chọn được, và mở lối hỏi thay nút Select', () => {
+    // Hai đợt CÙNG tháng 8 để hàng đợt đã đóng nằm trong tháng mở sẵn — hàng
+    // của tháng đóng nằm trong DOM nhưng `hidden`, và `getByRole` bỏ qua nó.
+    const closed = {
+      ...DEPARTURES[0],
+      id: 'aug-late',
+      startDate: '2026-08-28',
+      endDate: '2026-08-31',
+      bookingDeadline: '2026-08-21',
+      bookable: false,
+    } as DepartureVM;
+    render(wrap([DEPARTURES[0] as DepartureVM, closed]));
+    const row = rowFor('Fri, 28 Aug');
+    expect(within(row).getByText('Booking closed')).toBeInTheDocument();
+    expect(within(row).queryByRole('button', { name: 'Select' })).toBeNull();
+    expect(within(row).getByRole('link', { name: /ask about this trip/i })).toHaveAttribute(
+      'href',
+      '/tours/ha-giang-loop-4d/enquire',
+    );
+    expect(within(row).queryByText(/Free cancellation until/)).toBeNull();
+  });
+
   it('huy hiệu tháng im lặng khi cả tháng còn rộng chỗ', () => {
     render(wrap([DEPARTURES[1] as DepartureVM]));
     // Đợt còn 10/10 → hàng con là "Open"; hàng cha KHÔNG được có huy hiệu nào.
@@ -208,23 +244,19 @@ describe('DeparturesPanel', () => {
     expect(screen.getByText('Travelling as a group')).toBeInTheDocument();
   });
 
-  it('thẻ huỷ in CON SỐ khi tour có freeCancellationDays', () => {
+  it('thẻ huỷ sinh TỪ LUẬT theo độ dài chuyến, KHÔNG đọc policy CANCELLATION', () => {
     render(wrap());
-    expect(screen.getAllByText('Free until 10 days out').length).toBeGreaterThan(0);
-  });
-
-  it('tour tính cửa sổ bằng GIỜ (null) thì rơi về tiêu đề policy, không in "Free until null"', () => {
-    render(
-      wrap(DEPARTURES, {
-        ...TOUR,
-        freeCancellationDays: null,
-        policies: [
-          { kind: 'CANCELLATION', title: 'Free until 24 hours out', body: 'Free up to 24 hours.' },
-        ],
-      } as unknown as TourDetailVM),
+    // Tour 4 ngày → N = 7. Fixture vẫn mang policy CANCELLATION cũ
+    // ("Free until 10 days out") để chốt rằng panel thôi đọc nó.
+    expect(screen.getByText('Free cancellation until 7 days before departure')).toBeInTheDocument();
+    expect(
+      screen.getByText('After that, bookings close and cancellations aren’t refunded.'),
+    ).toBeInTheDocument();
+    expect(screen.queryByText('Free until 10 days out')).toBeNull();
+    expect(screen.getByRole('link', { name: 'Read the cancellation policy' })).toHaveAttribute(
+      'href',
+      '/cancellation-policy',
     );
-    expect(screen.getByText('Free until 24 hours out')).toBeInTheDocument();
-    expect(screen.queryByText(/Free until null/)).toBeNull();
   });
 
   it('thẻ nhóm suy từ maxGroupSize, KHÔNG lấy từ policies', () => {
@@ -233,9 +265,11 @@ describe('DeparturesPanel', () => {
     expect(screen.getByText('Ten riders, one driver each.')).toBeInTheDocument();
   });
 
-  it('tour không có policy nào thì bỏ hẳn hàng thẻ', () => {
+  it('tour không có policy nào: vẫn còn thẻ huỷ (từ luật) và thẻ nhóm, chỉ mất thẻ đặt cọc', () => {
     render(wrap(DEPARTURES, { ...TOUR, policies: [] } as unknown as TourDetailVM));
     expect(screen.queryByText('Securing a seat')).toBeNull();
+    expect(screen.getByText('Changing your mind')).toBeInTheDocument();
+    expect(screen.getByText('Travelling as a group')).toBeInTheDocument();
   });
 });
 

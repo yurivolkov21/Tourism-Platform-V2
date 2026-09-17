@@ -208,9 +208,9 @@ describe('bookingSubmitErrorCopy — lỗi API khi tạo booking', () => {
     expect(bookingSubmitErrorCopy(err)).toBe(t.SEATS_NOT_AVAILABLE);
   });
 
-  it('DEPARTURE_NOT_AVAILABLE (400) → câu đợt đã đóng', () => {
+  it('DEPARTURE_NOT_AVAILABLE (400) → đúng câu "Booking for this departure has closed."', () => {
     const err = new ORPCError('DEPARTURE_NOT_AVAILABLE', { status: 400 });
-    expect(bookingSubmitErrorCopy(err)).toBe(t.DEPARTURE_NOT_OPEN);
+    expect(bookingSubmitErrorCopy(err)).toBe(messages.accountActionErrors.bookingClosed);
   });
 
   it('PARTY_TOO_LARGE (422) → câu nhóm quá trần tour (W1)', () => {

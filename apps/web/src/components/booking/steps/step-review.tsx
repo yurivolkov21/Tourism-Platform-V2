@@ -1,7 +1,7 @@
 import { messages } from '@tourism/i18n';
 import type { BookingStep } from '@/lib/booking-form';
 import { formatDateRange, formatMoney } from '@/lib/tours';
-import { CancellationAssuranceLine } from '../checkout-summary';
+import { CancellationDeadlineLine } from '../checkout-summary';
 import type { StepShared } from './types';
 
 /**
@@ -57,12 +57,11 @@ export function StepReview({
         <Row k={t.requests} v={state.specialRequests || t.none} />
       </Group>
 
-      {/* Dùng LẠI đúng component của cột tóm tắt, không chép câu sang đây: các
-          chuỗi i18n cố ý bỏ lửng để nối link chính sách ("… — see our"), nên
-          một bản chỉ-chữ sẽ đọc cụt, và hai bản thì sớm muộn lệch nhau. */}
+      {/* Dùng LẠI đúng component của cột tóm tắt, không chép câu sang đây: câu
+          hạn chót đi kèm link chính sách, và hai bản thì sớm muộn lệch nhau. */}
       {selected ? (
         <div className="mt-4 rounded-xl border bg-card p-3.5">
-          <CancellationAssuranceLine departure={selected} />
+          <CancellationDeadlineLine departure={selected} />
         </div>
       ) : null}
     </div>

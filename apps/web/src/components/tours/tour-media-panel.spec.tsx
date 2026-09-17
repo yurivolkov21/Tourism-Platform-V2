@@ -29,6 +29,9 @@ const DEPARTURES: DepartureVM[] = [
     seatsLeft: 6,
     effectivePrice: '329.00',
     compareAtPrice: '369.00',
+    // Tour 4 ngày → N = 7 (ADR-0041 §3): ngày chót = ngày đi − 7.
+    bookingDeadline: '2026-09-07',
+    bookable: true,
   },
   {
     id: 'd2',
@@ -37,6 +40,8 @@ const DEPARTURES: DepartureVM[] = [
     seatsLeft: 9,
     effectivePrice: '329.00',
     compareAtPrice: null,
+    bookingDeadline: '2026-09-21',
+    bookable: true,
   },
   {
     id: 'd3',
@@ -45,6 +50,8 @@ const DEPARTURES: DepartureVM[] = [
     seatsLeft: 3,
     effectivePrice: '349.00',
     compareAtPrice: null,
+    bookingDeadline: '2026-10-05',
+    bookable: true,
   },
 ] as unknown as DepartureVM[];
 
@@ -174,13 +181,39 @@ describe('TourMediaPanel — panel đặt chỗ', () => {
     expect(screen.getByText('3 seats left')).toHaveClass('text-warning');
   });
 
-  it('ba thẻ điều khoản sinh từ policies và trỏ sang tab Good to know', () => {
+  it('ô điều khoản huỷ sinh TỪ LUẬT, KHÔNG đọc policy loại CANCELLATION nữa', () => {
     render(<TourMediaPanel tour={tourWith(3)} />, { wrapper });
-    const card = screen.getByRole('link', { name: 'Cancellation' });
+    // Tour 4 ngày → N = 7. Fixture vẫn có policy CANCELLATION title "Cancellation"
+    // (dữ liệu cũ) để chốt rằng trang thôi đọc nó.
+    const card = screen.getByRole('link', {
+      name: 'Free cancellation until 7 days before departure',
+    });
     expect(card).toHaveAttribute('href', '#good-to-know');
-    expect(screen.getAllByRole('link', { name: /Cancellation|Booking|Good to know/ })).toHaveLength(
-      3,
+    expect(screen.queryByRole('link', { name: 'Cancellation' })).toBeNull();
+    expect(
+      screen.getAllByRole('link', { name: /Free cancellation|Booking|Good to know/ }),
+    ).toHaveLength(3);
+  });
+
+  it('đợt đã ngừng nhận đặt không chiếm ô ngày và không được chọn sẵn', () => {
+    const closed = {
+      ...DEPARTURES[0],
+      id: 'd0',
+      startDate: '2026-09-02',
+      endDate: '2026-09-05',
+      bookingDeadline: '2026-08-26',
+      bookable: false,
+    } as DepartureVM;
+    const departures = [closed, ...DEPARTURES];
+    render(
+      <DepartureSelectionProvider departures={departures}>
+        <TourMediaPanel tour={tourWith(3, { departures } as Partial<TourDetailVM>)} />
+      </DepartureSelectionProvider>,
     );
+    // Ô ngày chỉ dành cho đợt đặt được; đợt đã đóng vẫn hiện ở tab Departures
+    // và modal All dates, không hiện ở đây.
+    expect(screen.queryByText('2 Sep')).toBeNull();
+    expect(screen.getByRole('button', { name: /14 Sep/ })).toHaveAttribute('aria-pressed', 'true');
   });
 
   /** Đích đổi 19/08: `/contact` → `/tours/{slug}/enquire`. Form liên hệ chung

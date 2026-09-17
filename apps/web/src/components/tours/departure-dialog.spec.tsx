@@ -17,6 +17,8 @@ const DEPARTURES: DepartureVM[] = [
     seatsLeft: 6,
     effectivePrice: '329.00',
     compareAtPrice: '369.00',
+    bookingDeadline: '2026-09-07',
+    bookable: true,
   },
   {
     id: 'd2',
@@ -25,6 +27,8 @@ const DEPARTURES: DepartureVM[] = [
     seatsLeft: 0,
     effectivePrice: '329.00',
     compareAtPrice: null,
+    bookingDeadline: '2026-09-21',
+    bookable: true,
   },
   {
     id: 'd3',
@@ -33,6 +37,8 @@ const DEPARTURES: DepartureVM[] = [
     seatsLeft: 3,
     effectivePrice: '349.00',
     compareAtPrice: null,
+    bookingDeadline: '2026-10-05',
+    bookable: true,
   },
 ] as unknown as DepartureVM[];
 
@@ -89,11 +95,50 @@ describe('DepartureDialog', () => {
     expect(soldOut).toBeDisabled();
   });
 
-  it('ô lọc "only open" giấu đợt hết chỗ', async () => {
-    const user = await open();
-    expect(screen.getByText('Sold out · 4 days')).toBeInTheDocument();
-    await user.click(screen.getByRole('checkbox', { name: /only show dates with seats left/i }));
-    expect(screen.queryByText('Sold out · 4 days')).toBeNull();
+  it('ô lọc "chỉ ngày đặt được" giấu CẢ đợt hết chỗ lẫn đợt đã qua hạn đặt', async () => {
+    const user = userEvent.setup();
+    render(<Harness />);
+    await user.click(screen.getByRole('button', { name: 'MỞ' }));
+    await user.click(screen.getByRole('checkbox', { name: /only show dates you can book/i }));
+    expect(screen.queryByText('Sun, 28 Sep →')).toBeNull();
+    expect(screen.getByText('Mon, 14 Sep →')).toBeInTheDocument();
+  });
+
+  it('mỗi hàng đợt đặt được in ngày chót huỷ miễn phí của CHÍNH đợt đó', async () => {
+    const user = userEvent.setup();
+    render(<Harness />);
+    await user.click(screen.getByRole('button', { name: 'MỞ' }));
+    expect(screen.getByText('Free cancellation until 7 Sep')).toBeInTheDocument();
+    expect(screen.getByText('Free cancellation until 5 Oct')).toBeInTheDocument();
+  });
+
+  it('đợt đã qua hạn đặt: ghi "Booking closed", KHÔNG bấm được, không hứa ngày chót', async () => {
+    const user = userEvent.setup();
+    const departures = [
+      { ...DEPARTURES[0], bookable: false },
+      DEPARTURES[2],
+    ] as unknown as DepartureVM[];
+    render(
+      <DepartureSelectionProvider departures={departures}>
+        <OpenButton />
+        <DepartureDialog
+          tourTitle="Hà Giang Loop"
+          currency="USD"
+          durationDays={4}
+          maxGroupSize={10}
+        />
+      </DepartureSelectionProvider>,
+    );
+    await user.click(screen.getByRole('button', { name: 'MỞ' }));
+    const row = screen.getByRole('button', { name: /Mon, 14 Sep/ });
+    expect(row).toBeDisabled();
+    expect(screen.getByText(/Booking closed/)).toBeInTheDocument();
+    expect(screen.queryByText('Free cancellation until 7 Sep')).toBeNull();
+    // Ô lọc giấu cả đợt đã đóng dù nó còn ghế — vế mà fixture chung (chỉ có
+    // đợt hết chỗ) không chạm tới.
+    await user.click(screen.getByRole('checkbox', { name: /only show dates you can book/i }));
+    expect(screen.queryByText('Mon, 14 Sep →')).toBeNull();
+    expect(screen.getByText('Mon, 12 Oct →')).toBeInTheDocument();
   });
 
   it('lọc tới mức không còn đợt nào thì nói rõ là do bộ lọc', async () => {

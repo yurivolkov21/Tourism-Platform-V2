@@ -387,6 +387,16 @@ export function departureStatus(seatsLeft: number): DepartureStatus {
   return 'available';
 }
 
+/**
+ * Đợt CHỌN ĐƯỢC để đặt: server nói còn trong hạn đặt (`bookable`, tính theo ngày
+ * Việt Nam — ADR-0041 §7) VÀ còn chỗ. Web không tự so ngày chót với giờ trình
+ * duyệt; mọi chỗ chọn đợt (provider, ô ngày, bảng Departures, modal All dates,
+ * wizard, trang /book) đi qua đúng hàm này để không nơi nào nói khác nơi nào.
+ */
+export function isDepartureOpen(departure: { bookable: boolean; seatsLeft: number }): boolean {
+  return departure.bookable && departure.seatsLeft > 0;
+}
+
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
 /** Dải ngày gọn: gộp phần trùng nhau. `startDate`/`endDate` là ngày lịch

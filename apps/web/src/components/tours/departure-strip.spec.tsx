@@ -107,7 +107,8 @@ describe('DepartureStrip', () => {
 
   it('không có đợt nào thì hiện dòng trạng thái thay vì dải rỗng', () => {
     renderStrip({ departures: [], selectedId: undefined });
-    expect(screen.getByText(/no departures scheduled/i)).toBeInTheDocument();
+    // Copy chung 15/09 (ADR-0041) cho mọi lý do "không đặt được".
+    expect(screen.getByText(/no departures are open for booking/i)).toBeInTheDocument();
     expect(screen.queryAllByRole('button')).toHaveLength(0);
   });
 });

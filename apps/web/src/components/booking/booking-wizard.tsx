@@ -19,7 +19,7 @@ import {
 import { computeBookingTotal } from '@/lib/checkout';
 import { isCheckoutUrl } from '@/lib/checkout-url';
 import { SPRING } from '@/lib/motion';
-import { formatMoney } from '@/lib/tours';
+import { formatMoney, isDepartureOpen } from '@/lib/tours';
 import { CheckoutSummary, type CheckoutSummaryTour } from './checkout-summary';
 import { StepDates } from './steps/step-dates';
 import { StepPay } from './steps/step-pay';
@@ -64,10 +64,11 @@ export function BookingWizard({
   const t = messages.booking.wizard;
 
   const [step, setStep] = useState<BookingStep>('dates');
-  // Chọn sẵn đợt CÒN CHỖ đầu tiên, không phải phần tử [0]: đợt đầu có thể đã hết
-  // chỗ, và mở trang ra với một đợt không đặt được là dẫn vào ngõ cụt ngay.
+  // Chọn sẵn đợt ĐẶT ĐƯỢC đầu tiên — còn chỗ VÀ còn hạn đặt — không phải phần
+  // tử [0]: mở trang ra với một đợt không đặt được là dẫn vào ngõ cụt ngay, và
+  // bước Pay sẽ trả `DEPARTURE_NOT_AVAILABLE` sau khi khách gõ xong cả form.
   const [state, setState] = useState<BookingFormState>({
-    departureId: departures.find((d) => d.seatsLeft > 0)?.id ?? null,
+    departureId: departures.find(isDepartureOpen)?.id ?? null,
     numAdults: 1,
     numChildren: 0,
     contactName: defaultName,

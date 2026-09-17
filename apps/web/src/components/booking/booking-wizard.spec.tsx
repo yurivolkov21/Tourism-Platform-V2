@@ -31,6 +31,8 @@ function makeDeparture(over: Partial<DepartureVM> = {}): DepartureVM {
     seatsLeft: 9,
     effectivePrice: '1290.00',
     compareAtPrice: null,
+    bookingDeadline: '2026-09-05',
+    bookable: true,
     ...over,
   } as DepartureVM;
 }
@@ -78,13 +80,23 @@ describe('BookingWizard — điều hướng bước', () => {
     expect(screen.queryByRole('heading', { name: tw.pay.heading })).toBeNull();
   });
 
-  it('chọn sẵn đợt CÒN CHỖ đầu tiên, không phải phần tử [0]', () => {
-    renderWizard([
-      makeDeparture({ id: 'sold-out', seatsLeft: 0 }),
-      makeDeparture({ id: 'open-one', seatsLeft: 4 }),
-    ]);
-    const open = screen.getAllByRole('button', { pressed: true });
-    expect(open).toHaveLength(1);
+  it('chọn sẵn đợt ĐẶT ĐƯỢC đầu tiên — bỏ qua cả đợt hết chỗ lẫn đợt đã qua hạn đặt', () => {
+    render(
+      <BookingWizard
+        {...BASE}
+        departures={[
+          makeDeparture({ id: 'dep-full', seatsLeft: 0 }),
+          makeDeparture({ id: 'dep-closed', bookable: false }),
+          makeDeparture({ id: 'dep-open', startDate: '2026-10-02', endDate: '2026-10-13' }),
+        ]}
+      />,
+    );
+    const pressed = screen
+      .getAllByRole('button')
+      .filter((b) => b.getAttribute('aria-pressed') === 'true');
+    expect(pressed).toHaveLength(1);
+    // `formatDateRange` gộp tháng chung: 2/10 → 13/10 in thành "2–13 Oct 2026".
+    expect(pressed[0]?.textContent).toContain('2–13 Oct 2026');
   });
 
   it('chưa chọn đợt thì Continue KHÔNG sang bước 2, và hiện lỗi tại chỗ', async () => {

@@ -1,5 +1,6 @@
 'use client';
 
+import { windowDaysForTripLength } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
 import { Button } from '@tourism/ui/components/button';
 import { ButtonLink } from '@tourism/ui/components/button-link';
@@ -328,11 +329,26 @@ export function TourMediaPanel({ tour }: { tour: TourDetailVM }) {
           </>
         )}
 
-        {/* .trust — sinh từ `policies[]`, không hardcode. Bấm sang tab Good to
-            know nơi có `policy.body` đầy đủ. */}
-        {tour.policies.length > 0 ? (
-          <div className="grid grid-cols-[repeat(auto-fit,minmax(0,1fr))] gap-2">
-            {tour.policies.map((policy) => {
+        {/* .trust — ô huỷ sinh TỪ LUẬT (ADR-0041), các ô còn lại vẫn từ
+            `policies[]`. Trang tour KHÔNG đọc policy loại CANCELLATION nữa
+            (spec §5.1): dữ liệu cũ ghi những câu kiểu "Free until 10 days out"
+            trong khi N mới tối đa là 7, hai con số chỏi nhau ngay trên cùng
+            một trang. Hàng ô vì vậy LUÔN có ít nhất một ô, không còn nhánh
+            `policies.length > 0`. Bấm sang tab Good to know, nơi đoạn chính
+            sách đầy đủ cũng sinh từ chính luật này. */}
+        <div className="grid grid-cols-[repeat(auto-fit,minmax(0,1fr))] gap-2">
+          <a
+            href="#good-to-know"
+            className="flex flex-col items-center gap-1.5 rounded-sm border border-border bg-card px-2 py-3 text-center text-foreground transition-colors hover:border-input"
+          >
+            <CalendarXIcon className="size-4 shrink-0" aria-hidden="true" />
+            <span className="text-xs leading-[14px]">
+              {messages.cancellationDeadline.rule(windowDaysForTripLength(tour.durationDays))}
+            </span>
+          </a>
+          {tour.policies
+            .filter((policy) => policy.kind !== 'CANCELLATION')
+            .map((policy) => {
               const Icon = POLICY_ICON[policy.kind];
               return (
                 <a
@@ -345,8 +361,7 @@ export function TourMediaPanel({ tour }: { tour: TourDetailVM }) {
                 </a>
               );
             })}
-          </div>
-        ) : null}
+        </div>
       </div>
 
       <Lightbox

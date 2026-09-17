@@ -1,7 +1,7 @@
 import { messages } from '@tourism/i18n';
 import { cn } from '@tourism/ui/lib/utils';
 import type { DepartureVM } from '@/lib/api/tours';
-import { departureStatus, formatDateRange, formatMoney } from '@/lib/tours';
+import { departureStatus, formatDateRange, formatMoney, isDepartureOpen } from '@/lib/tours';
 import { FieldError } from '../form-parts';
 import type { StepShared } from './types';
 
@@ -35,19 +35,22 @@ export function StepDates({
       <ul className="mt-4 flex flex-col gap-2">
         {departures.map((d) => {
           const soldOut = departureStatus(d.seatsLeft) === 'sold-out';
+          // Đợt đã qua hạn đặt cũng vào trạng thái "hiện nhưng không bấm được",
+          // cùng lý do với đợt hết chỗ: biến mất thì khách tưởng nhớ nhầm ngày.
+          const pickable = isDepartureOpen(d);
           const isSelected = d.id === state.departureId;
           return (
             <li key={d.id}>
               <button
                 type="button"
-                disabled={soldOut}
+                disabled={!pickable}
                 aria-pressed={isSelected}
                 onClick={() => set('departureId', d.id)}
                 className={cn(
                   'flex w-full items-center gap-3 rounded-xl border bg-card p-3.5 text-left transition-colors',
                   isSelected && 'border-primary ring-1 ring-primary',
-                  soldOut && 'cursor-default opacity-60',
-                  !soldOut && !isSelected && 'hover:bg-muted/50',
+                  !pickable && 'cursor-default opacity-60',
+                  pickable && !isSelected && 'hover:bg-muted/50',
                 )}
               >
                 <span
@@ -66,11 +69,13 @@ export function StepDates({
                     {formatDateRange(d.startDate, d.endDate)}
                   </span>
                   <span className="block text-xs text-muted-foreground">
-                    {soldOut
-                      ? messages.tourDetail.departures.soldOut
-                      : departureStatus(d.seatsLeft) === 'limited'
-                        ? messages.tourDetail.departures.seatsLimited(d.seatsLeft)
-                        : messages.tourDetail.departures.seatsAvailable(d.seatsLeft)}
+                    {!d.bookable
+                      ? messages.tourDetail.departures.closed
+                      : soldOut
+                        ? messages.tourDetail.departures.soldOut
+                        : departureStatus(d.seatsLeft) === 'limited'
+                          ? messages.tourDetail.departures.seatsLimited(d.seatsLeft)
+                          : messages.tourDetail.departures.seatsAvailable(d.seatsLeft)}
                   </span>
                 </span>
                 <span className="shrink-0 text-right">

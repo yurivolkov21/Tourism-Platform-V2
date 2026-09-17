@@ -75,4 +75,13 @@ describe('BookingRail — đích của hai CTA', () => {
       }
     }
   });
+
+  /** Copy 15/09 (ADR-0041): MỘT câu chung cho mọi lý do "không đặt được" — chưa
+   *  có đợt, hết chỗ, hoặc đã qua hạn đặt. Câu cũ hứa "still being confirmed",
+   *  sai với tour đã có đủ ngày nhưng đã đóng cửa đặt. */
+  it('không còn đợt đặt được: một câu chung, không còn "still being confirmed"', () => {
+    render(<BookingRail {...BASE} departure={undefined} variant="rail" />);
+    expect(screen.getByText('No departures are open for booking')).toBeInTheDocument();
+    expect(screen.queryByText(/still being confirmed/i)).toBeNull();
+  });
 });

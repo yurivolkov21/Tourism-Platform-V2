@@ -20,6 +20,7 @@ beforeAll(() => {
 });
 
 const TOUR = {
+  durationDays: 4,
   policies: [
     { kind: 'GENERAL', title: 'Good to know', body: 'Long sleeves and closed shoes are required.' },
     { kind: 'CANCELLATION', title: 'Cancellation', body: 'Free up to 10 days before departure.' },
@@ -32,20 +33,36 @@ const TOUR = {
 } as unknown as TourDetailVM;
 
 describe('GoodToKnowPanel', () => {
-  it('ba thẻ policy xếp Cancellation → Booking → General bất kể API trả thứ tự nào', () => {
+  it('thẻ huỷ sinh TỪ LUẬT đứng đầu, rồi Booking → General; policy CANCELLATION cũ bị bỏ', () => {
     render(<GoodToKnowPanel tour={TOUR} />);
     // Hỏi trong phạm vi thẻ policy: `AccordionTrigger` của Base UI cũng bọc
     // câu hỏi trong <h3>, nên `getAllByRole('heading')` gom cả FAQ vào.
     const titles = screen
       .getAllByTestId('policy-card')
       .map((card) => within(card).getByRole('heading', { level: 3 }).textContent);
-    expect(titles).toEqual(['Cancellation', 'Booking & payment', 'Good to know']);
+    expect(titles).toEqual([
+      'Free cancellation until 7 days before departure',
+      'Booking & payment',
+      'Good to know',
+    ]);
+    // Câu cũ của policy CANCELLATION không còn ở đâu trên panel.
+    expect(screen.queryByText('Free up to 10 days before departure.')).toBeNull();
+  });
+
+  it('vế SAU của lời hứa in ngay dưới thẻ huỷ, không hứa bảng bậc nào nữa', () => {
+    render(<GoodToKnowPanel tour={TOUR} />);
+    expect(
+      screen.getByText('After that, bookings close and cancellations aren’t refunded.'),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/standard refund schedule/)).toBeNull();
   });
 
   it('nhãn nhóm TRÙNG tiêu đề thì bỏ nhãn, không in cùng một chuỗi hai lần', () => {
     render(<GoodToKnowPanel tour={TOUR} />);
-    // Fixture đặt title "Cancellation" cho kind CANCELLATION.
-    expect(screen.getAllByText('Cancellation')).toHaveLength(1);
+    // Fixture đặt title "Booking & payment" cho kind BOOKING — trùng đúng nhãn
+    // nhóm. (Trước ADR-0041 ca này canh trên thẻ CANCELLATION, nay thẻ đó sinh
+    // từ luật chứ không từ policy.)
+    expect(screen.getAllByText('Booking & payment')).toHaveLength(1);
   });
 
   it('nhãn nhóm KHÁC tiêu đề thì giữ cả hai', () => {
@@ -81,9 +98,9 @@ describe('GoodToKnowPanel', () => {
     expect(first).toHaveAttribute('aria-expanded', 'false');
   });
 
-  it('tour không có policy thì bỏ hẳn hàng thẻ, KHÔNG để lưới rỗng', () => {
+  it('tour không có policy nào: vẫn còn ĐÚNG thẻ huỷ sinh từ luật', () => {
     render(<GoodToKnowPanel tour={{ ...TOUR, policies: [] } as unknown as TourDetailVM} />);
-    expect(screen.queryByTestId('policy-card')).toBeNull();
+    expect(screen.getAllByTestId('policy-card')).toHaveLength(1);
     expect(screen.getByRole('button', { name: /ride a motorbike/ })).toBeInTheDocument();
   });
 

@@ -14,7 +14,12 @@ import { TourHero } from './tour-hero';
 // ra khỏi `fetchTourDetail`, theo luật giá gạch 15/09/2026 (chỉ gạch khi có
 // khuyến mãi thật): đợt đúng base 129 KHÔNG gạch, đợt 119 gạch base 129 — còn
 // giá niêm yết 149 của tour không hiện ở nhánh nào.
-const dep = (id: string, price: string, compareAtPrice: string | null = null): DepartureVM =>
+const dep = (
+  id: string,
+  price: string,
+  compareAtPrice: string | null = null,
+  bookable = true,
+): DepartureVM =>
   ({
     id,
     startDate: '2026-09-19',
@@ -22,6 +27,9 @@ const dep = (id: string, price: string, compareAtPrice: string | null = null): D
     effectivePrice: price,
     compareAtPrice,
     seatsLeft: 10,
+    // Chuyến 2 ngày → N = 3 (ADR-0041 §3).
+    bookingDeadline: '2026-09-16',
+    bookable,
     status: 'OPEN',
   }) as unknown as DepartureVM;
 
@@ -108,5 +116,17 @@ describe('TourHero — giá bám đợt đang chọn', () => {
     expect(screen.getByText('$129')).toBeInTheDocument();
     expect(screen.queryByText('$149')).toBeNull();
     expect(screen.queryByText(/−\d+%/)).toBeNull();
+  });
+
+  it('giá "from" bỏ qua đợt đã qua hạn đặt, dù nó rẻ nhất', () => {
+    // Cùng tập với giá "from" của `catalog.tours.list` (Task 5): đợt đã đóng
+    // không còn là giá khách mua được, tính vào thì thẻ tour và hero in hai số.
+    const tour = {
+      ...TOUR,
+      departures: [dep('a', '119.00', null, false), dep('b', '129.00')],
+    } as unknown as TourDetailVM;
+    render(<TourHero tour={tour} />);
+    expect(screen.getByText(/\$129/)).toBeInTheDocument();
+    expect(screen.queryByText(/\$119/)).toBeNull();
   });
 });

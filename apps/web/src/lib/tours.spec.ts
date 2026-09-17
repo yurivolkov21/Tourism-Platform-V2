@@ -30,6 +30,7 @@ import {
   formatMoney,
   formatReviewDate,
   formatTicketDate,
+  isDepartureOpen,
   priceBucket,
   relatedTours,
   routeChain,
@@ -388,6 +389,21 @@ describe('departureStatus', () => {
   it('từ 4 ghế trở lên là còn chỗ', () => {
     expect(departureStatus(4)).toBe('available');
     expect(departureStatus(12)).toBe('available');
+  });
+});
+
+describe('isDepartureOpen — đợt chọn được để đặt', () => {
+  it('còn hạn đặt và còn chỗ → chọn được', () => {
+    expect(isDepartureOpen({ bookable: true, seatsLeft: 1 })).toBe(true);
+  });
+
+  it('đã qua hạn đặt → KHÔNG chọn được, dù còn chỗ', () => {
+    // `bookable` do server tính theo ngày Việt Nam (ADR-0041 §7); web chỉ đọc cờ.
+    expect(isDepartureOpen({ bookable: false, seatsLeft: 12 })).toBe(false);
+  });
+
+  it('hết chỗ → không chọn được, dù còn hạn đặt', () => {
+    expect(isDepartureOpen({ bookable: true, seatsLeft: 0 })).toBe(false);
   });
 });
 

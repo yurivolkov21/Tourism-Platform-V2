@@ -40,16 +40,21 @@ const STATE: BookingFormState = {
 const SHARED = { state: STATE, errors: {}, set: vi.fn(), selected: DEPARTURE, currency: 'USD' };
 
 describe('StepDates', () => {
-  it('đợt hết chỗ vẫn HIỆN nhưng không bấm được', () => {
+  it('đợt hết chỗ và đợt đã qua hạn đặt đều HIỆN nhưng không bấm được', () => {
     render(
       <StepDates
         {...SHARED}
-        departures={[DEPARTURE, { ...DEPARTURE, id: 'dep-full', seatsLeft: 0 }]}
+        departures={[
+          DEPARTURE,
+          { ...DEPARTURE, id: 'dep-full', seatsLeft: 0 },
+          { ...DEPARTURE, id: 'dep-closed', bookable: false },
+        ]}
       />,
     );
     const buttons = screen.getAllByRole('button');
-    expect(buttons).toHaveLength(2);
-    expect(buttons.filter((b) => (b as HTMLButtonElement).disabled)).toHaveLength(1);
+    expect(buttons).toHaveLength(3);
+    expect(buttons.filter((b) => (b as HTMLButtonElement).disabled)).toHaveLength(2);
+    expect(screen.getByText(messages.tourDetail.departures.closed)).toBeInTheDocument();
   });
 
   it('bấm một đợt thì báo lên trên bằng set(departureId)', async () => {

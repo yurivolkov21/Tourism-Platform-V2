@@ -4,6 +4,7 @@ import { createContext, type ReactNode, useContext, useMemo, useState } from 're
 import { BookingRail } from '@/components/tours/booking-rail';
 import { DepartureStrip } from '@/components/tours/departure-strip';
 import type { DepartureVM } from '@/lib/api/tours';
+import { isDepartureOpen } from '@/lib/tours';
 
 /**
  * Trạng thái "đợt đang chọn" dùng chung cho BỐN nơi: dải chip dưới hero, panel
@@ -64,11 +65,13 @@ export function DepartureSelectionProvider({
   departures: DepartureVM[];
   children: ReactNode;
 }) {
-  // Khởi tạo bằng đợt CÒN CHỖ đầu tiên, không phải phần tử [0]: đợt đầu có thể
-  // đã hết chỗ, và mở trang ra với một đợt không đặt được là dẫn người dùng vào
-  // ngõ cụt ngay từ đầu. Không đợt nào còn chỗ → undefined, rail đổi sang CTA hỏi.
+  // Khởi tạo bằng đợt ĐẶT ĐƯỢC đầu tiên — còn chỗ VÀ còn hạn đặt — không phải
+  // phần tử [0]: đợt đầu có thể đã hết chỗ hoặc đã qua hạn đặt, và mở trang ra
+  // với một đợt không đặt được là dẫn người dùng vào ngõ cụt ngay từ đầu (nút
+  // Reserve dẫn thẳng vào lỗi 400 của `bookings.create`). Không đợt nào đặt
+  // được → undefined, rail đổi sang CTA hỏi.
   const [selectedId, setSelectedId] = useState<string | undefined>(
-    () => departures.find((d) => d.seatsLeft > 0)?.id,
+    () => departures.find(isDepartureOpen)?.id,
   );
   const [allDatesOpen, setAllDatesOpen] = useState(false);
 

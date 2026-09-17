@@ -1,4 +1,4 @@
-import { departureStatus, strikePrice } from './tours';
+import { departureStatus, isDepartureOpen, strikePrice } from './tours';
 
 /** Trần thumb: 7×64 + 6×8 = 496 ≤ 541 (cạnh ảnh vuông). Ô thứ 8 thành 568 > 541. */
 export const GALLERY_THUMB_SLOTS = 7;
@@ -9,12 +9,12 @@ export function galleryThumbs<T>(media: readonly T[], slots = GALLERY_THUMB_SLOT
   return { thumbs: media.slice(0, slots), hiddenCount: Math.max(0, media.length - slots) };
 }
 
-export function visibleDepartureChips<T extends { id: string; seatsLeft: number }>(
-  departures: readonly T[],
-  selectedId: string | null,
-  slots = DEPARTURE_CHIP_SLOTS,
-): T[] {
-  const open = departures.filter((d) => d.seatsLeft > 0);
+export function visibleDepartureChips<
+  T extends { id: string; seatsLeft: number; bookable: boolean },
+>(departures: readonly T[], selectedId: string | null, slots = DEPARTURE_CHIP_SLOTS): T[] {
+  // Chỉ đợt chọn được (còn chỗ VÀ còn hạn đặt). Đợt đã ngừng nhận đặt vẫn hiện
+  // ở tab Departures và modal All dates, nhưng không chiếm ô chọn nhanh.
+  const open = departures.filter(isDepartureOpen);
   const head = open.slice(0, slots);
   if (head.some((d) => d.id === selectedId)) return head;
   const picked = open.find((d) => d.id === selectedId);
@@ -341,7 +341,7 @@ export function resolveDepartureAnchors<
 }
 
 /**
- * Giá "from" ở hero = đợt RẺ NHẤT còn chỗ (hoà thì đợt sớm hơn — thứ tự mảng),
+ * Giá "from" ở hero = đợt RẺ NHẤT còn đặt được — còn chỗ VÀ còn hạn đặt (hoà thì đợt sớm hơn — thứ tự mảng),
  * kèm giá gạch của CHÍNH đợt đó (đã qua `resolveDepartureAnchors`) — nên hero nói
  * đúng con số khách sẽ thấy khi chọn đợt rẻ nhất. Trước sweep 19/08 hero in
  * `basePrice` (129) dù có đợt 119: "from" mà không phải giá thấp nhất là nói sai.
@@ -356,11 +356,14 @@ export function heroPrice(tour: {
     effectivePrice: string;
     compareAtPrice: string | null;
     seatsLeft: number;
+    bookable: boolean;
   }[];
 }): { price: string; compareAtPrice: string | null } {
   let cheapest: { effectivePrice: string; compareAtPrice: string | null } | null = null;
   for (const d of tour.departures) {
-    if (d.seatsLeft <= 0) continue;
+    // Cùng tập với giá "from" của `catalog.tours.list`: đợt đã qua hạn đặt không
+    // còn là giá khách mua được, tính vào thì thẻ tour và hero nói hai con số.
+    if (!isDepartureOpen(d)) continue;
     if (cheapest === null || Number(d.effectivePrice) < Number(cheapest.effectivePrice)) {
       cheapest = d;
     }

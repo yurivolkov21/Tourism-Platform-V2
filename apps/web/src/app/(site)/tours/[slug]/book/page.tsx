@@ -7,6 +7,7 @@ import type { CheckoutSummaryTour } from '@/components/booking/checkout-summary'
 import { TourHeroBoard } from '@/components/tours/tour-hero-board';
 import { requireSession } from '@/lib/api/session';
 import { fetchTourDetail } from '@/lib/api/tours';
+import { isDepartureOpen } from '@/lib/tours';
 
 export const metadata: Metadata = {
   title: `${messages.booking.page.title} — Nexora`,
@@ -36,10 +37,11 @@ export default async function BookTourPage({ params }: { params: Promise<{ slug:
     ratingCount: tour.ratingCount,
   };
 
-  // Còn ít nhất một đợt đặt được không. `BookingModes` cũ tự rơi về nhánh Private
-  // khi hết sạch chỗ; nay hai nhánh ở hai trang nên hành vi đó phải dựng lại
-  // TƯỜNG MINH ở đây, nếu không khách vào đây gặp một wizard rỗng.
-  const bookable = tour.departures.some((d) => d.seatsLeft > 0);
+  // Còn ít nhất một đợt đặt được không — còn chỗ VÀ còn hạn đặt. `BookingModes`
+  // cũ tự rơi về nhánh Private khi hết sạch chỗ; nay hai nhánh ở hai trang nên
+  // hành vi đó phải dựng lại TƯỜNG MINH ở đây, nếu không khách vào đây gặp một
+  // wizard rỗng hoặc một wizard chỉ toàn đợt bấm không được.
+  const bookable = tour.departures.some(isDepartureOpen);
 
   return (
     // Hero THẬT từ 19/08 (user chốt) thay cho `pt-36` bù khoảng: hero tự mang
@@ -60,7 +62,7 @@ export default async function BookTourPage({ params }: { params: Promise<{ slug:
             summaryTour={summaryTour}
           />
         ) : (
-          <SoldOut slug={tour.slug} />
+          <NoOpenDepartures slug={tour.slug} />
         )}
       </div>
     </>
@@ -68,20 +70,26 @@ export default async function BookTourPage({ params }: { params: Promise<{ slug:
 }
 
 /**
- * Tour đã bán hết mọi đợt — KHÔNG dựng wizard rỗng.
+ * Không còn đợt nào đặt được — KHÔNG dựng wizard rỗng.
  *
  * Thay hành vi tự-rơi-về-Private của `BookingModes` (gỡ 19/08 khi hai nhánh
  * tách trang). Khách vẫn tới được nhánh khả thi, chỉ khác đường đi: một khối
  * giải thích cộng CTA sang `/enquire` — trang công khai, không cần đăng nhập.
+ *
+ * Copy dùng CHUNG với rail, bar đáy và panel đặt chỗ (`tourDetail.departures`):
+ * ba lý do khác nhau (chưa có đợt, hết chỗ, quá hạn đặt) nhưng việc khách làm
+ * tiếp thì giống hệt, nên một câu là đủ và không có chỗ nào để lệch nhau.
  */
-function SoldOut({ slug }: { slug: string }) {
-  const t = messages.booking.wizard.soldOut;
+function NoOpenDepartures({ slug }: { slug: string }) {
+  const t = messages.tourDetail.departures;
   return (
     <div className="rounded-2xl border bg-card p-8 text-center">
-      <h2 className="font-heading text-xl font-semibold">{t.heading}</h2>
-      <p className="mx-auto mt-2 max-w-prose text-sm text-pretty text-muted-foreground">{t.body}</p>
+      <h2 className="font-heading text-xl font-semibold">{t.none}</h2>
+      <p className="mx-auto mt-2 max-w-prose text-sm text-pretty text-muted-foreground">
+        {t.noneBody}
+      </p>
       <ButtonLink className="mt-6" href={`/tours/${slug}/enquire`}>
-        {t.cta}
+        {messages.tourDetail.booking.ask}
       </ButtonLink>
     </div>
   );

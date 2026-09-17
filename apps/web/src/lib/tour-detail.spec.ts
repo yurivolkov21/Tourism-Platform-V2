@@ -37,12 +37,12 @@ describe('galleryThumbs', () => {
 
 describe('visibleDepartureChips', () => {
   const deps = [
-    { id: 'a', seatsLeft: 6 },
-    { id: 'b', seatsLeft: 9 },
-    { id: 'c', seatsLeft: 3 },
-    { id: 'd', seatsLeft: 0 },
-    { id: 'e', seatsLeft: 8 },
-    { id: 'f', seatsLeft: 5 },
+    { id: 'a', seatsLeft: 6, bookable: true },
+    { id: 'b', seatsLeft: 9, bookable: true },
+    { id: 'c', seatsLeft: 3, bookable: true },
+    { id: 'd', seatsLeft: 0, bookable: true },
+    { id: 'e', seatsLeft: 8, bookable: true },
+    { id: 'f', seatsLeft: 5, bookable: true },
   ];
   it('chỉ lấy đợt CÒN CHỖ, tối đa 4', () => {
     expect(visibleDepartureChips(deps, 'a').map((d) => d.id)).toEqual(['a', 'b', 'c', 'e']);
@@ -53,6 +53,10 @@ describe('visibleDepartureChips', () => {
   });
   it('đợt đang chọn đã hết chỗ thì KHÔNG chen vào', () => {
     expect(visibleDepartureChips(deps, 'd').map((d) => d.id)).toEqual(['a', 'b', 'c', 'e']);
+  });
+  it('đợt đã ngừng nhận đặt không chiếm ô nào, kể cả khi còn chỗ hoặc đang được chọn', () => {
+    const withClosed = [{ id: 'z', seatsLeft: 10, bookable: false }, ...deps];
+    expect(visibleDepartureChips(withClosed, 'z').map((d) => d.id)).toEqual(['a', 'b', 'c', 'e']);
   });
 });
 
@@ -347,6 +351,7 @@ const PRICED_TOUR = {
       effectivePrice: '129.00',
       compareAtPrice: null,
       seatsLeft: 16,
+      bookable: true,
     },
     {
       id: 'oct',
@@ -354,6 +359,7 @@ const PRICED_TOUR = {
       effectivePrice: '119.00',
       compareAtPrice: '129.00',
       seatsLeft: 6,
+      bookable: true,
     },
     {
       id: 'nov',
@@ -361,6 +367,7 @@ const PRICED_TOUR = {
       effectivePrice: '129.00',
       compareAtPrice: null,
       seatsLeft: 13,
+      bookable: true,
     },
   ],
 };
@@ -451,6 +458,7 @@ describe('heroPrice', () => {
           effectivePrice: '119.00',
           compareAtPrice: '139.00',
           seatsLeft: 5,
+          bookable: true,
         },
         {
           id: 'late',
@@ -458,6 +466,7 @@ describe('heroPrice', () => {
           effectivePrice: '119.00',
           compareAtPrice: null,
           seatsLeft: 5,
+          bookable: true,
         },
       ],
     });
@@ -468,6 +477,18 @@ describe('heroPrice', () => {
     const t = resolveDepartureAnchors({
       ...PRICED_TOUR,
       departures: PRICED_TOUR.departures.map((d) => (d.id === 'oct' ? { ...d, seatsLeft: 0 } : d)),
+    });
+    expect(heroPrice(t)).toEqual({ price: '129.00', compareAtPrice: null });
+  });
+
+  it('bỏ qua đợt đã ngừng nhận đặt dù rẻ nhất — khớp giá "from" của thẻ tour', () => {
+    // Giá "from" của `catalog.tours.list` chỉ tính đợt còn hạn đặt; hero tính
+    // khác đi là thẻ tour và trang tour in hai con số cho cùng một tour.
+    const t = resolveDepartureAnchors({
+      ...PRICED_TOUR,
+      departures: PRICED_TOUR.departures.map((d) =>
+        d.id === 'oct' ? { ...d, bookable: false } : d,
+      ),
     });
     expect(heroPrice(t)).toEqual({ price: '129.00', compareAtPrice: null });
   });
