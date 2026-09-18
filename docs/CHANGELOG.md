@@ -8,6 +8,48 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-09-18 — Tinh chỉnh giao diện web và admin: hạn chót huỷ, hộp huỷ, nút Export, nút Ask about, favicon (nhánh `fix/ui-polish-web-admin`, ff vào `main`)
+
+User gom năm góp ý giao diện từ hai lượt nghiệm thu (test tay 17/09, nghiệm thu
+prod 18/09) vào một nhánh. Bốn commit, không migration, không đổi API:
+
+- `8039a8f3` nút "Ask about this trip" ở hàng chuyến đã đóng của tab Departures:
+  chữ xuống hai dòng kế thừa `text-right` của ô bảng nên canh phải, nay canh giữa.
+- `c3fc9dec` favicon: web vẫn dùng `favicon.ico` mặc định của create-next-app
+  (chính là logo Vercel, có từ scaffold 22/07), admin không có favicon nào. Hai
+  app nay sinh `app/icon.tsx` (32px) và `app/apple-icon.tsx` (180px) bằng
+  `ImageResponse`: hai viên kim cương của logo trên ô vuông nền primary, màu lấy
+  từ `@tourism/tokens/theme`; hình mark tách thành hằng `LOGO_MARK` dùng chung
+  với `Logo`. Ở admin, `/icon` và `/apple-icon` vào `PUBLIC_PATHS` (không thì
+  trang login mất icon) và vào allowlist của `check-admin-prerender.mjs`, ghi
+  thành ADR-0038 AMEND 4.
+- `02edc785` nút Export CSV của admin: cao 32 → 28px, rộng tối thiểu 192 → 144px,
+  chữ 11 → 10px; giữ nguyên kiểu HUD.
+- `8646aa7c` trang booking của khách: hạn chót huỷ miễn phí từ dòng chú thích xám
+  cỡ nhỏ thành khối có viền, tiêu đề, icon lịch và chữ cỡ thân bài; quá hạn thì
+  cả khối sang tông cảnh báo. Hộp xác nhận huỷ rộng 384 → 512px, tiêu đề
+  `text-xl`, thân và link `text-base`, hai nút cỡ lớn.
+
+Nghiệm thu: user xem bằng mắt trên localhost bốn mục (DB Docker riêng
+`tourism_ui`, H = 2026-09-18). Nút Export để kiểm trên production vì admin local
+không đăng nhập được: thư đặt lại mật khẩu bị Resend từ chối 403, do `.env.local`
+gửi từ tên miền `tourism.test` chưa xác minh.
+
+**Review findings:** không có vòng review riêng; đây là tinh chỉnh giao diện nhỏ,
+user duyệt bằng mắt từng mục.
+
+**CÒN TREO:** kiểm nút Export trên production sau deploy · xoá DB Docker
+`tourism_ui` khi nghiệm thu xong · ở máy dev không gửi được thư thật (tên miền gửi
+`tourism.test`), muốn thử luồng email ở máy thì đổi địa chỉ gửi sang tên miền đã
+xác minh · ba đề xuất 18/09 user chưa chọn làm: chuyển domain `.vercel.app` về
+www, gửi OTP ngay khi tạo mã, tự đăng nhập sau khi xác minh OTP.
+
+Tests after: cổng đầy đủ xanh. Int 495 ở 39 file. Vitest 3661 (admin 838 có thêm 2
+test cổng icon, web 1506, api 936, contract 279, core 46, ui 22, tokens 18, i18n
+16) và jest mobile 245. Build 8/8, web 75/75 trang (thêm hai route icon, bớt
+`favicon.ico`). Typecheck 15/15. Lint chỉ còn 1 warning và 1 info có từ trước.
+`check-admin-prerender` OK, tokens-only ✓.
+
 ## 2026-09-18 — Triển khai hoàn tiền một hạn chót lên prod và seed lại dữ liệu (Phụ lục B Bước 2–6)
 
 Phần hạ tầng của entry ngay dưới. Không đổi code; commit này chỉ mang snapshot,
