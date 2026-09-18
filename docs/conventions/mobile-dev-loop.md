@@ -83,8 +83,13 @@ thanh toán mobile mở checkout web, đúng cách Nexora làm
 ([ADR-0001 AMEND 1](../adr/0001-tech-stack.md)).
 
 Lưu ý về `EXPO_PUBLIC_API_URL` khi chạy thật: `localhost:3001` là địa chỉ của
-**máy dev**, điện thoại không hiểu. Muốn bấm ra dữ liệu thật (từ P5b) thì trỏ
-vào API đã deploy, hoặc mở thêm một tunnel cho cổng 3001.
+**máy dev**, điện thoại không hiểu. Chạy `dev:lan` thì `env()` tự thay host
+loopback (`localhost`, `127.0.0.1`) bằng IP LAN mà Metro đang phục vụ, giữ
+nguyên scheme và cổng — để mặc định là điện thoại gọi được API trên máy dev (API
+nghe `0.0.0.0`; tường lửa Windows phải cho Node nhận kết nối vào). Chạy tunnel
+thì không có phép thay đó, vì ngrok chỉ chuyển cổng Metro: trỏ vào API đã
+deploy, hoặc mở thêm một tunnel cho cổng 3001. Giá trị trỏ host thật luôn được
+giữ nguyên ở mọi chế độ.
 
 ## 3. Nghiệm thu bằng máy
 
