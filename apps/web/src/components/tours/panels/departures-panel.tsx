@@ -612,10 +612,11 @@ function DepartureRow({
         {closed ? (
           // Nhãn dài trong cột ghim 120px: cho XUỐNG DÒNG thay vì nới cột —
           // nới cột thì cột ngày ("Thu, 20 Aug → Sun, 23 Aug") bị bóp ở bề
-          // ngang ~820px, mà đó mới là ô khách đọc.
+          // ngang ~820px, mà đó mới là ô khách đọc. `text-center` vì chữ xuống
+          // dòng kế thừa `text-right` của ô, hai dòng canh phải (user góp ý 18/09).
           <ButtonLink
             variant="outline"
-            className={cn(PANEL_BTN_SM, 'h-auto py-1.5 leading-4 whitespace-normal')}
+            className={cn(PANEL_BTN_SM, 'h-auto py-1.5 text-center leading-4 whitespace-normal')}
             href={`/tours/${slug}/enquire`}
           >
             {messages.tourDetail.booking.ask}
