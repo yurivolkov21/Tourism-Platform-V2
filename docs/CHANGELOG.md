@@ -8,6 +8,105 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-09-18 — Hoàn tiền một hạn chót mỗi chuyến (ADR-0041, nhánh `feat/refund-deadline`, ff vào `main`)
+
+Thay bảng bậc 100/50/25/0, ân hạn 24 giờ và luồng duyệt huỷ bằng MỘT hạn chót
+cho mỗi chuyến: ngày chót = khởi hành trừ N, với N là 1 cho tour trong ngày, 3
+cho tour 2–3 ngày, 7 cho tour từ 4 ngày. Cùng một mốc vừa ngừng nhận đặt vừa hết
+huỷ miễn phí. Khách tự huỷ và hệ thống xử lý ngay: trong hạn hoàn trọn phần còn
+lại, quá hạn hoàn `0.00` và không gọi cổng thanh toán. Mọi phép so ngày theo giờ
+Việt Nam, tính ở server. 15 task, 14 commit thi công (`b11c5a5f..e5cf0cbf`, kèm
+hai commit ghi chú cổng), một commit vá sau nghiệm thu, một commit ghi điều chỉnh
+seed prod và bốn commit vá sau review: 22 commit, rebase lên `main` `2060c457`.
+
+- Luật là bộ hàm thuần ở `libs/shared/contract/src/schemas/refund-policy.ts`
+  (`cancellationDeadline`, `isWithinDeadline`, `canCancelOnline`,
+  `refundOnCancel`, `vietnamToday`); API, web, admin, seed và email gọi chung.
+- Lõi huỷ `cancelInLock` chạy trong advisory lock của booking: gọi cổng thanh
+  toán TRƯỚC, một CTE ghi SAU (booking CANCELLED, yêu cầu REFUNDED, dòng hoàn
+  nếu có, trả ghế, outbox `BOOKING_CANCELLED`). P4e-1 dùng lại cho nút
+  "Cancel departure".
+- Gỡ: vùng Cancellations của admin, `admin.cancellations.*`, stepper duyệt,
+  `CANCELLATION_OPEN`, `refundEstimate`, badge `freeCancellationDays`.
+- Báo cáo tháng đổi cặp approved/denied thành huỷ trong hạn và huỷ quá hạn; P&L
+  tính tiền giữ lại của booking huỷ quá hạn là doanh thu (ADR-0033 AMEND 2).
+- Hai migration: M1 `20260915120000_refund_deadline_expand` (mở rộng) chạy cùng
+  đợt này; M2 thu hẹp đi ở nhánh riêng sau khi prod đã seed lại.
+- Plan 15 task sai hoặc sót khoảng một chục chỗ nhỏ (fixture, vòng đếm grep, copy,
+  số ca seed); mỗi chỗ đã vá lúc thi công và ghi trong message commit của task đó.
+
+**Đóng hai mục CÒN TREO:**
+
+- Chốt chặn đặt chỗ: từ nay `create` và `checkout` bị chặn sau hạn chót của
+  chuyến, thay cho đề xuất "chốt chặn 3 ngày" còn treo từ vòng rà 04/09.
+- `search_path` của `refunds_sum_within_total()` đã ghim
+  (`SET search_path = public, pg_temp`), đóng cảnh báo
+  `function_search_path_mutable` của linter Supabase.
+
+**Nghiệm thu 17/09:** `seed:verify` 0 vi phạm trên 106 bất biến ở ba mốc H
+(20/09, 03/11, 17/09), mỗi mốc một DB Docker mới dựng bằng `migrate deploy`. User
+test tay 10 bước trên trình duyệt, đạt cả 10: khách huỷ trong hạn và quá hạn, cổng
+lỗi thì booking giữ nguyên, API chặn đặt chuyến đã đóng, lịch sử huỷ và hoàn
+thiện chí ở admin, outbox, báo cáo và file Excel. Bốn phát hiện giao diện, vá
+trong `0d0659db`:
+
+- Tháng chỉ còn chuyến đã đóng vẫn báo "Almost full": `monthNotice` nay bỏ chuyến
+  đã đóng khi xét ghế và báo "Booking closed" khi tháng hết chuyến nhận đặt.
+- Ô "Seats left" cộng cả ghế chuyến đã đóng dưới nhãn "across every open date".
+- Ô "Price range" tính cả giá chuyến đã đóng; hết chuyến nhận đặt thì lùi về
+  `basePrice` như `heroPrice`. Ô "Next departure" cùng lỗi, nay ghi "Booking closed".
+- Testimonial mẫu "Cancelled two days before … refunded" trái luật với chuyến từ
+  hai ngày trở lên, đổi thành huỷ trước một tuần.
+
+**Review findings:** 3, cả ba trên đường tiền, vá trong `c95d5fa4`, `f283d829`,
+`896b1b15`; `64151282` ghi lại vào ADR-0041 §4 và spec §4.4.
+
+- Event `payment.completed` gửi lại trên booking khách đã huỷ quá hạn đi đường
+  tiền mồ côi, tức hoàn trọn khoản luật cho giữ và đổi booking sang REFUNDED.
+  `handleCaptureOnCancelled` nay xét `provider_payment_id` của booking: NULL là
+  tiền mồ côi thật (đường cũ), trùng capture là event gửi lại nên không làm gì,
+  capture khác là khách trả hai lần nên hoàn ngoài sổ.
+- Hộp xác nhận in số hoàn lúc tải trang còn server tính lại lúc bấm: mở trang
+  trước nửa đêm ngày hạn chót rồi bấm sau nửa đêm thì booking bị huỷ với 0 đồng
+  mà khách không được hỏi lại. `bookings.cancel` nay bắt buộc
+  `expectedRefundAmount`; lệch thì 409 `REFUND_AMOUNT_CHANGED` và không ghi gì,
+  web báo khách rồi tải lại số mới.
+- Khoá chống trùng `cancel:<bookingId>` giữ nguyên qua mọi lần thử trong khi số
+  tiền tính lại từ sổ: hoàn thiện chí xen giữa hai lần thử thì cổng từ chối vì
+  trùng khoá, khách kẹt ở `REFUND_FAILED`. Khoá nay là
+  `cancel:<bookingId>:<tổng đã hoàn>`; câu `REFUND_FAILED` thôi khẳng định booking
+  "không đổi gì", log API ghi khoá và nhắc đối soát khi lỗi là hết giờ chờ.
+
+Rủi ro còn lại, đã báo user và chấp nhận: Stripe lưu cả phản hồi lỗi 500 theo khoá
+trong 24 giờ; cổng hết giờ chờ nhưng thật ra đã hoàn, sau đó khách quá hạn xác
+nhận huỷ 0 đồng, thì sổ lệch cổng và phải đối soát tay.
+
+**Trạng thái deploy:** M1 chạy lên Supabase 18/09 (Phụ lục B Bước 2 của plan),
+TRƯỚC khi push. Seed lại prod chạy sau push và ghi ở entry sau.
+
+**CÒN TREO:**
+
+- Seed lại prod theo seed spec §8.3 và nghiệm thu sandbox Stripe năm mục (Phụ lục
+  B Bước 6).
+- M2 (xoá hai cột `free_cancellation_days` và ba loại email duyệt huỷ, Phụ lục A):
+  chỉ chạy sau khi bản mới đã chạy prod vài ngày (Bước 7).
+- Lượt seed prod 2 khoảng 03/11 với bốn điều chỉnh ghi 17/09 (Bước 8).
+- Nợ P4e-1: nút "Cancel departure" mở `cancelInLock` cho `initiator: 'operator'`
+  và CHECK `end_date >= start_date` trên `tour_departures`.
+- JSDoc của `CancellationRequestStatusSchema` (`libs/shared/contract/src/schemas/bookings.ts`)
+  còn tả luồng duyệt cũ. `DepartureStrip` (giữ có chủ đích, chưa trang nào dùng)
+  chưa theo cờ `bookable`.
+- Góp ý giao diện user để làm sau: dòng hạn chót ở trang booking và hộp huỷ quá
+  nhỏ, nút Export của admin quá to.
+- DB Docker dùng chung `tourism` đã có M1 nhưng dữ liệu vẫn theo seed cũ; seed
+  lại theo code mới trước khi dev tiếp.
+
+Tests after: cổng đầy đủ xanh sau rebase (bảy lệnh của Phụ lục B Bước 4). Int 495
+test ở 39 file. Unit Vitest 3659 (contract 279, api 936, admin 836, web 1506, core
+46, ui 22, tokens 18, i18n 16) và jest mobile 245 (mobile 159, mobile-ui 86). Build
+8/8, web 74/74 trang với API sống ở `localhost:3001`. Typecheck 15/15. Lint chỉ
+còn 1 warning và 1 info có từ trước nhánh. Tokens-only ✓ 65 file nguồn mobile.
+
 ## 2026-09-18 — Vòng vá review 2 cụm auth mobile: review nhánh của Nghĩa, giữ ba phần, vá bốn chỗ (`fix/p5b-auth-review-2`, ff vào `main`)
 
 User review nhánh `feat/mobile-dev-api-url-auto-derive` của Nghĩa (2 commit
