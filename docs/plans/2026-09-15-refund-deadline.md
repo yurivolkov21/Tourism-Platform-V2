@@ -16687,7 +16687,7 @@ Expected: lệnh `grep` không in gì; `git diff` chỉ thêm entry mới, KHÔN
 
 (c) Sau khi rebase ở Bước 4, hash trong entry sẽ đổi. Nếu entry có nhắc hash commit của nhánh thì cập nhật rồi `git commit --amend` TRƯỚC khi `merge --ff-only`. Bản mẫu trên chỉ nhắc tên migration và ngày, nên thường không phải sửa.
 
-- [ ] **Bước 1 xong:** entry CHANGELOG đã commit trên nhánh, `git diff` sạch.
+- [x] **Bước 1 xong:** entry CHANGELOG đã commit trên nhánh, `git diff` sạch.
 
 ---
 
@@ -16704,7 +16704,7 @@ cd apps/api
 # `tr -d '\r'`: .env.production sửa trên Windows có thể mang CRLF (đo 15/09) —
 # thiếu nó thì giá trị export dính \r ở cuối và chuỗi kết nối hỏng.
 export DATABASE_URL="$(grep '^DATABASE_URL=' .env.production | cut -d= -f2- | tr -d '\r')"
-echo "${DATABASE_URL%%@*}@…"   # in phần trước @ để mắt xác nhận đúng host pooler
+echo "…@${DATABASE_URL##*@}"   # chỉ in phần SAU @ (host:cổng/db); phần trước @ chứa mật khẩu
 pnpm prisma migrate status
 pnpm prisma migrate deploy
 pnpm prisma migrate status
@@ -16718,7 +16718,7 @@ Expected:
 
 M1 chỉ THÊM và NỚI (`ADD VALUE` enum, `DROP NOT NULL`, `ALTER FUNCTION … SET search_path`), nên API cũ đang chạy trên Render không hỏng vì nó — đó là lý do bước này đi TRƯỚC.
 
-- [ ] **Bước 2 xong:** `migrate status` trên Supabase in "up to date".
+- [x] **Bước 2 xong:** `migrate status` trên Supabase in "up to date".
 
 ---
 
@@ -16733,7 +16733,7 @@ deployment mới. Ghi lại giá trị cũ của ô đó để Bước 5 trả v
 ⚠️ **KHÔNG dùng Pause Project hay Suspend.** Hai thứ đó tắt hẳn site đang chạy,
 không phải tắt build — spec §10 nói rõ. Cũng không Disconnect Git repository.
 
-- [ ] **Bước 3 xong:** cả hai project Vercel có Ignored Build Step = `exit 0`; giá trị cũ đã ghi lại.
+- [x] **Bước 3 xong:** cả hai project Vercel có Ignored Build Step = `exit 0`; giá trị cũ đã ghi lại.
 
 ---
 
@@ -16787,7 +16787,7 @@ Expected: `{"status":"ok","database":"up","uptimeSec":…}` với **`uptimeSec` 
 còn lớn nghĩa là bản cũ vẫn đang chạy; đợi và gọi lại. `"database":"up"` xác nhận
 API mới nói chuyện được với Supabase đã có M1.
 
-- [ ] **Bước 4 xong:** CI `success`, `/health` trả `uptimeSec` nhỏ và `database: up`.
+- [x] **Bước 4 xong:** CI `success`, `/health` trả `uptimeSec` nhỏ và `database: up`.
 
 ---
 
@@ -16800,6 +16800,12 @@ Việc của USER:
 2. Deployments → deployment mới nhất → **Redeploy**, và **bỏ tick** "Use existing
    Build Cache" — phải build lại với API mới.
 
+   **Ghi chú 18/09 (lượt chạy thật):** deployment mới nhất là bản **Canceled** của
+   commit vừa push, và danh sách Deployments của Vercel KHÔNG hiện bản Canceled —
+   mở thẳng trang của nó (`vercel.com/<team>/<project>/<id deployment bỏ tiền tố
+   dpl_>`, lấy id từ `list_deployments` của Vercel MCP) rồi Redeploy ở đó. Đừng
+   Redeploy bản Ready cũ hơn: Vercel build lại đúng commit CŨ của bản ấy.
+
 Kiểm sau khi cả hai deployment xanh:
 
 ```bash
@@ -16811,7 +16817,7 @@ Expected: cả hai 200. Gọi mỗi URL **hai lần** — stale-while-revalidate
 ở lần đầu. User tự đăng nhập admin và mở `/bookings`, `/outbox`, `/reports`: cả
 ba tải được, `/cancellations` ra 404 (đúng — vùng đã gỡ).
 
-- [ ] **Bước 5 xong:** web và admin đã build lại với API mới, các trang trả 200.
+- [x] **Bước 5 xong:** web và admin đã build lại với API mới, các trang trả 200.
 
 ---
 
@@ -16872,7 +16878,7 @@ seed (mã thanh toán seed là giả nên trả `REFUND_FAILED`):
    dòng hoàn nào, không gọi cổng, email biến thể "không hoàn".
 5. Chốt chặn: mở một tour có chuyến đã qua hạn, thấy "Booking closed".
 
-- [ ] **Bước 6 xong:** `seed:verify` 0 vi phạm trên prod; năm mục nghiệm thu ở trên đều đạt.
+- [x] **Bước 6 xong:** `seed:verify` 0 vi phạm trên prod; năm mục nghiệm thu ở trên đều đạt.
 
 ---
 

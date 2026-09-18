@@ -8,6 +8,67 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-09-18 — Triển khai hoàn tiền một hạn chót lên prod và seed lại dữ liệu (Phụ lục B Bước 2–6)
+
+Phần hạ tầng của entry ngay dưới. Không đổi code; commit này chỉ mang snapshot,
+bản đồ tài liệu và hai ghi chú cho plan.
+
+- **Bước 2 (09:40 giờ VN):** M1 `20260915120000_refund_deadline_expand` lên
+  Supabase qua Session pooler cổng 5432, `migrate status` báo "up to date"; API cũ
+  vẫn `database: up`.
+- **Bước 3–5:** Ignored Build Step của hai project Vercel tạm để không build. Push
+  `2060c457..3569f496` thì deployment của web và admin đều Canceled, đúng ý đồ.
+  Render chạy API mới sau khoảng 100 giây; CI run `35301236930` success. Redeploy
+  web và admin từ chính bản Canceled của `3569f496`, bỏ build cache, rồi trả
+  Ignored Build Step về giá trị cũ. Web: `/`, `/tours`, `/cancellation-policy` và
+  trang tour trả 200, in hạn chót từng chuyến. Admin: `/bookings`, `/outbox`,
+  `/reports` tải được, `/cancellations` ra 404.
+- **Bước 6, seed lại prod với H = 2026-09-18.** Đo trước: prod không có dòng nào
+  tạo sau lượt seed 15/09, tức toàn dữ liệu seed. Tập dượt trên DB Docker rỗng dựng
+  bằng `migrate deploy`: `seed:verify` 0 vi phạm trên 106 bất biến; bốn chốt chặn
+  nhắm prod (thiếu cờ, thiếu H, H ở tương lai, mật khẩu khách trống) đều dừng trước
+  khi kết nối. Lượt prod: `snapshot:export` 3117 dòng (`docs/snapshots/2026-09-18/`
+  đi cùng commit này, `backups/2026-09-18/` gitignored); `data:reset` chạy khô rồi
+  chạy thật, xoá 2662 dòng (có 9 yêu cầu `REQUESTED` của luồng duyệt cũ), giữ đúng
+  một admin; `db:seed` ghi 702 booking, 730 payment event, 44 dòng hoàn, 15 yêu cầu
+  huỷ, 261 chuyến, 119 review, 67 enquiry, 177 subscriber, 120 khách giả và gỡ 29
+  policy `CANCELLATION` cũ; `seed:verify` 0 vi phạm trên 106 bất biến.
+- **Nghiệm thu sandbox Stripe, đạt 5/5**, trên tài khoản khách mới do user tạo:
+  1. `BK-7WKW9ESB` (tour trong ngày, đi 22/11) trả bằng thẻ test: `PAID`, webhook
+     xử lý ngay, thư xác nhận Sent.
+  2. Huỷ trong hạn: hộp xác nhận "Cancel and refund $49.00"; booking `CANCELLED`,
+     một dòng hoàn $49 mang mã refund Stripe, `admin_id` NULL, thư huỷ Sent.
+  3. Admin ghi "By the customer · Within the free-cancellation deadline (21 Nov
+     2026) · Refunded $49.00". Mã refund do Stripe trả về, API chỉ ghi dòng hoàn
+     sau khi có mã; phía dashboard Stripe do user tự xem (Stripe MCP của agent nối
+     một tài khoản khác).
+  4. Huỷ quá hạn trên booking seed `BK-9L93LTWH`: "Cancel without refund", không
+     dòng hoàn, không gọi cổng. Thư biến thể không hoàn bị Resend từ chối 422 vì
+     địa chỉ `@example.com` của khách seed: outbox có một dòng FAILED, không thử
+     lại, lượt seed 2 sẽ dọn.
+  5. Trang `central-honeymoon-5d`: chuyến 22/09 ghi "Booking closed" kèm "Ask about
+     this trip", bốn ô tổng hợp bỏ qua chuyến đã đóng.
+
+**Phát hiện trong lúc triển khai:**
+
+- Danh sách Deployments của Vercel không hiện bản Canceled, phải mở thẳng trang
+  deployment để Redeploy; Redeploy bản Ready cũ hơn là build lại code cũ. Đã ghi
+  vào Bước 5 của plan.
+- Lệnh `echo "${DATABASE_URL%%@*}"` ở Bước 2 của plan in ra MẬT KHẨU (phần trước
+  `@`). Lượt này không dùng nó; plan đã sửa thành `${DATABASE_URL##*@}`.
+- Mở web qua `tourism-platform-v2-web.vercel.app` thì đăng ký báo "Something went
+  wrong": API chỉ trả CORS cho `www.nexora-travel.agency`, đúng thiết kế W3/W4.
+  Nên cho domain `.vercel.app` chuyển hướng về www.
+- Thư OTP chờ khoảng 1,5 phút vì outbox gửi theo cron mỗi phút. Xác minh OTP xong
+  phải đăng nhập lại là cố ý từ 20/08 (verify không phát session).
+
+**CÒN TREO:** Bước 7 (nhánh M2, sau vài ngày chạy thật) · Bước 8 (lượt seed 2
+khoảng 03/11) · nhánh tinh chỉnh giao diện web và admin mà user gom ngày 18/09 ·
+chuyển `backups/2026-09-18/` từ worktree về checkout gốc trước khi gỡ worktree ·
+seed lại DB Docker `tourism` theo code mới.
+
+Tests after: không đổi code; CI của `3569f496` success.
+
 ## 2026-09-18 — Hoàn tiền một hạn chót mỗi chuyến (ADR-0041, nhánh `feat/refund-deadline`, ff vào `main`)
 
 Thay bảng bậc 100/50/25/0, ân hạn 24 giờ và luồng duyệt huỷ bằng MỘT hạn chót
