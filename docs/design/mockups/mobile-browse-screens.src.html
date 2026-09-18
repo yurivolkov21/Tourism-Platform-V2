@@ -1,0 +1,954 @@
+<!--
+  BẢN GHI VÒNG THIẾT KẾ — cụm xem tour app mobile (P5b-2): Home · Explore · chi tiết tour.
+  Dựng 17/09/2026, user duyệt 18/09/2026 sau ba lượt chỉnh:
+  (1) tab vùng Bắc/Trung/Nam chia đều theo chiều cao thẻ carousel;
+  (2) Home duyệt ĐỊA DANH thay cho tour — Home trả lời "đi đâu", Explore trả lời "tour nào";
+  (3) một ô tìm chung (kết quả chia Destinations / Tours) và đầu trang địa danh trong
+      Explore thay cho trang địa danh riêng.
+  Bản ghi bất biến như mockup auth — đừng sửa để lint xanh; muốn đổi thiết kế thì thêm
+  file mới. Phần giao diện do thành viên khác dựng: đọc kèm
+  docs/conventions/mobile-browse-handoff.md.
+
+  Khác mockup auth ở ba điểm, rút từ vòng nghiệm thu P5b-1:
+  1. Khung vẽ 390×844 — đúng dp của máy thật. Số trên bản vẽ chép thẳng thành dp.
+  2. Biến CSS trùng TÊN token (`--primary-emphasis` ⇔ theme.colors['primary-emphasis']),
+     khoảng cách viết `calc(var(--s) * n)` ⇔ theme.spacing(n), mép trên/dưới viết theo
+     `--inset-top` / `--inset-bottom` ⇔ useSafeAreaInsets().
+  3. Có nút chuyển nền sáng/tối — màu lấy nguyên hai bảng Wuling từ
+     libs/shared/tokens/generated/theme.js.
+
+  Dữ liệu: tên tour, ảnh (Cloudinary), lịch trình, câu review lấy từ seed thật
+  (apps/api/prisma/fixtures/catalog). Số sao, số ghế, ngày khởi hành là số minh hoạ.
+-->
+<title>P5b-2 · Cụm xem tour</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=Literata:opsz,wght@7..72,700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --page-bg: #eef1f0; --page-card: #ffffff; --page-line: #d1d6d4;
+    --page-text: #1d1d1f; --page-muted: #6b7280; --page-accent: #2e6e66;
+  }
+  body { margin: 0; padding: 2rem; background: var(--page-bg); color: var(--page-text); font: 14px/1.5 system-ui, sans-serif; }
+  h2 { font-size: 1.5rem; margin: 0 0 .3rem; }
+  .subtitle { color: var(--page-muted); margin: 0 0 1rem; max-width: 980px; }
+  .toolbar { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; margin: 0 0 1rem; }
+  .toolbar button { font: 600 13px/1 system-ui; padding: .55rem .85rem; border-radius: 999px; border: 1px solid var(--page-line); background: var(--page-card); color: var(--page-text); cursor: pointer; }
+  .toolbar button[aria-pressed="true"] { background: var(--page-accent); border-color: var(--page-accent); color: #fff; }
+  .toolbar .sep { width: 1px; height: 22px; background: var(--page-line); margin: 0 .25rem; }
+  .legend { display: grid; grid-template-columns: repeat(auto-fit, minmax(270px, 1fr)); gap: .8rem; max-width: 1240px; margin: 0 0 1.5rem; }
+  .legend .it { background: var(--page-card); border: 1px solid var(--page-line); border-radius: 12px; padding: .8rem 1rem; }
+  .legend h3 { font-size: .95rem; margin: 0 0 .3rem; }
+  .legend p { font-size: .82rem; color: var(--page-muted); margin: 0; }
+  .legend code, .cap code { font-size: .78rem; background: #f1f3f2; padding: 0 .25rem; border-radius: 4px; }
+  .sec { margin: 2rem 0 .7rem; font-size: 1.1rem; }
+  .sec small { font-weight: 400; color: var(--page-muted); font-size: .82rem; margin-left: .5rem; }
+  .row { display: flex; flex-wrap: wrap; gap: 1.5rem; align-items: flex-start; zoom: var(--zoom, 1); }
+  .shot { width: 414px; padding: 12px 12px 10px; border: 1px solid var(--page-line); border-radius: 20px; background: var(--page-card); }
+  .cap { padding: 14px 4px 2px; }
+  .cap b { display: block; font-size: .95rem; margin-bottom: .2rem; }
+  .cap > span { font-size: .84rem; color: var(--page-muted); }
+  .cap ul { margin: .45rem 0 0; padding-left: 1.1rem; font-size: .8rem; color: var(--page-text); }
+  .cap li { margin: .15rem 0; }
+
+  /* ── Khung máy: token Wuling, mặc định nền tối ─────────────────────────── */
+  .phone {
+    --background: #202a28; --foreground: #dce8e4; --card: #243430; --muted: #2f443f;
+    --muted-foreground: #9db3ac; --primary: #2f7a6e; --primary-foreground: #f2f8f6;
+    --primary-emphasis: #78c1b4; --secondary: #2f443f; --secondary-foreground: #a9cec6;
+    --border: #3a4d47; --input: #6b8079; --destructive-emphasis: #f37c71; --on-media: #f5faf8;
+    --scrim: #010a08cc; --overlay: #00000099; --rating: #e8aa4e; --rating-muted: #ffffff33;
+    --price-compare: #9db3ac; --warning: #f3b94c;
+    --kb: #2b3033; --kb-key: #474d51; --kb-text: #f1f3f4;
+    --s: 4px; --r: 6px; --touch: 44px; --inset-top: 47px; --inset-bottom: 34px;
+    position: relative; width: 390px; height: 844px; margin: 0 auto; border-radius: 52px; overflow: hidden;
+    background: var(--background); color: var(--foreground);
+    font: 400 16px/24px 'Archivo', system-ui, sans-serif;
+    box-shadow: 0 0 0 8px #0d1211, 0 18px 40px rgba(0, 0, 0, .22);
+  }
+  body[data-scheme="light"] .phone {
+    --background: #f5f8f7; --foreground: #1b2b2b; --card: #fcfefe; --muted: #dce5e2;
+    --muted-foreground: #4f605c; --primary: #2e6e66; --primary-foreground: #f2f8f6;
+    --primary-emphasis: #2e6e66; --secondary: #dce5e2; --secondary-foreground: #24544e;
+    --border: #aebbb8; --input: #838f8c; --destructive-emphasis: #a8423a; --on-media: #f5faf8;
+    --scrim: #030e0cbf; --overlay: #00000080; --rating: #bb7e17; --rating-muted: #c9d6d2;
+    --price-compare: #4f605c; --warning: #e9ab2b;
+    --kb: #d1d4d9; --kb-key: #ffffff; --kb-text: #1b1b1b;
+  }
+  .phone * { box-sizing: border-box; }
+  .phone svg { display: block; flex-shrink: 0; }
+  .abs { position: absolute; }
+
+  /* Vai chữ — trùng tên biến thể AppText */
+  .t-display { font: 700 30px/36px 'Literata', Georgia, serif; letter-spacing: -.01em; }
+  .t-title { font: 700 24px/32px 'Literata', Georgia, serif; }
+  .t-heading { font: 600 18px/28px 'Archivo', system-ui, sans-serif; }
+  .t-body { font: 400 16px/24px 'Archivo', system-ui, sans-serif; }
+  .t-subtitle { font: 400 14px/20px 'Archivo', system-ui, sans-serif; }
+  .t-label { font: 600 14px/20px 'Archivo', system-ui, sans-serif; }
+  .t-caption { font: 400 12px/16px 'Archivo', system-ui, sans-serif; }
+  .muted { color: var(--muted-foreground); }
+  .link { color: var(--primary-emphasis); }
+  .media { color: var(--on-media); }
+  .strike { text-decoration: line-through; }
+  .clamp1 { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .clamp2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .clamp3 { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+
+  /* Vùng an toàn: thanh trạng thái và thanh cử chỉ */
+  .sb { position: absolute; top: 0; left: 0; right: 0; height: var(--inset-top); padding: 16px 32px 0; display: flex; justify-content: space-between; font: 600 15px/20px system-ui, sans-serif; z-index: 30; }
+  .sb .icons { display: flex; gap: 6px; align-items: center; }
+  .sb .icons i { display: block; background: currentColor; border-radius: 2px; }
+  .sb.on-media { color: var(--on-media); }
+  .hi { position: absolute; left: 0; right: 0; bottom: 0; height: var(--inset-bottom); z-index: 30; pointer-events: none; }
+  .hi::after { content: ''; position: absolute; left: 50%; bottom: 8px; width: 134px; height: 5px; margin-left: -67px; border-radius: 99px; background: var(--foreground); opacity: .85; }
+  .hi.on-media::after { background: var(--on-media); }
+  body[data-safe="on"] .sb, body[data-safe="on"] .hi { background-image: repeating-linear-gradient(45deg, rgba(236, 72, 153, .28) 0 6px, rgba(236, 72, 153, .08) 6px 12px); }
+
+  /* Primitive — IconButton, Button, Chip, SearchField, Card */
+  .icon-btn { width: var(--touch); height: var(--touch); border-radius: 999px; display: flex; align-items: center; justify-content: center; }
+  .icon-btn.glass { background: rgb(from var(--scrim) r g b / .45); color: var(--on-media); }
+  .icon-btn.plain { color: var(--foreground); }
+  .btn { height: var(--touch); padding: 0 calc(var(--s) * 5); border-radius: 999px; display: flex; align-items: center; justify-content: center; gap: calc(var(--s) * 2); font: 600 14px/20px 'Archivo', system-ui, sans-serif; }
+  .btn.primary { background: var(--primary); color: var(--primary-foreground); }
+  .btn.ghost { border: 1px solid var(--border); color: var(--primary-emphasis); }
+  .chip { height: calc(var(--s) * 8); padding: 0 calc(var(--s) * 3.5); border-radius: 999px; display: inline-flex; align-items: center; gap: calc(var(--s) * 1.5); border: 1px solid var(--border); color: var(--foreground); font: 500 14px/20px 'Archivo', system-ui, sans-serif; white-space: nowrap; }
+  .chip.on { background: var(--primary); border-color: var(--primary); color: var(--primary-foreground); font-weight: 600; }
+  .chip.soft { background: var(--secondary); border-color: var(--secondary); color: var(--secondary-foreground); }
+  .chips { display: flex; flex-wrap: wrap; gap: calc(var(--s) * 2); }
+  .chips.scroll { flex-wrap: nowrap; overflow: hidden; }
+  .search { height: var(--touch); border-radius: 999px; background: var(--card); border: 1px solid var(--border); display: flex; align-items: center; gap: calc(var(--s) * 2.5); padding: 0 calc(var(--s) * 4); color: var(--muted-foreground); }
+  .search.focus { border: 2px solid var(--primary-emphasis); color: var(--foreground); }
+  .caret { display: inline-block; width: 2px; height: 20px; background: var(--primary-emphasis); vertical-align: -4px; margin-left: 1px; }
+  .filter-btn { width: var(--touch); height: var(--touch); border-radius: calc(var(--r) * 2.5); background: var(--card); border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; color: var(--foreground); position: absolute; }
+  .badge { position: absolute; top: -6px; right: -6px; min-width: 20px; height: 20px; padding: 0 6px; border-radius: 999px; background: var(--primary); color: var(--primary-foreground); font: 600 12px/20px 'Archivo', system-ui, sans-serif; text-align: center; }
+  .square-icon { width: calc(var(--s) * 16); height: calc(var(--s) * 16); border-radius: calc(var(--r) * 2); background: var(--secondary); color: var(--primary-emphasis); display: flex; align-items: center; justify-content: center; }
+  .rating-chip { height: 28px; padding: 0 10px; border-radius: 999px; display: inline-flex; align-items: center; gap: 4px; background: rgb(from var(--scrim) r g b / .45); color: var(--on-media); font: 600 12px/16px 'Archivo', system-ui, sans-serif; }
+  .rating-chip svg { color: var(--rating); }
+  .rating-chip.plain svg { color: inherit; }
+  .mini-dest { position: relative; flex: 0 0 140px; height: 100px; border-radius: calc(var(--r) * 2.5); overflow: hidden; background-size: cover; background-position: center; background-color: var(--muted); display: flex; flex-direction: column; justify-content: flex-end; padding: 10px 12px; }
+  .mini-dest::before { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, rgb(from var(--scrim) r g b / 0) 35%, rgb(from var(--scrim) r g b / .85) 100%); }
+  .mini-dest > * { position: relative; z-index: 1; }
+  .dest-head { position: relative; height: calc(var(--s) * 33); border-radius: calc(var(--r) * 3); overflow: hidden; background-size: cover; background-position: center; background-color: var(--muted); display: flex; flex-direction: column; justify-content: flex-end; padding: 14px 16px; }
+  .dest-head::before { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, rgb(from var(--scrim) r g b / .1) 20%, rgb(from var(--scrim) r g b / .85) 100%); }
+  .dest-head > * { position: relative; z-index: 1; }
+  .stars { display: flex; gap: 2px; color: var(--rating); }
+  .stars .off { color: var(--rating-muted); }
+
+  /* Thanh tab 5 mục — icon Feather + nhãn, mục đang chọn có viên nền primary */
+  .tabbar { position: absolute; left: 0; right: 0; bottom: 0; height: calc(62px + var(--inset-bottom)); padding: 6px 8px var(--inset-bottom); background: var(--card); border-top: 1px solid var(--border); display: flex; z-index: 20; }
+  .tab { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; color: var(--muted-foreground); font: 400 12px/16px 'Archivo', system-ui, sans-serif; }
+  .tab .pill { width: 56px; height: 32px; border-radius: 999px; display: flex; align-items: center; justify-content: center; }
+  .tab.on { color: var(--foreground); font-weight: 600; }
+  .tab.on .pill { background: var(--primary); color: var(--primary-foreground); }
+
+  /* Home */
+  /* Tab vùng: cột cao ĐÚNG bằng thẻ carousel, chia ba đoạn bằng nhau; mỗi đoạn là
+     cả một vùng chạm, chữ nằm giữa đoạn. Vạch dọc bên trái đánh dấu vùng đang chọn. */
+  .rail { position: absolute; left: calc(var(--s) * 6); width: 32px; height: calc(var(--s) * 135); display: flex; flex-direction: column; }
+  .rail .seg { flex: 1; position: relative; display: flex; align-items: center; justify-content: center; }
+  .rail .seg span { writing-mode: vertical-rl; transform: rotate(180deg); font: 400 18px/28px 'Archivo', system-ui, sans-serif; color: var(--muted-foreground); white-space: nowrap; }
+  .rail .seg.on span { color: var(--primary-emphasis); font-weight: 600; }
+  .rail .seg.on::before { content: ''; position: absolute; left: -12px; top: 50%; width: 3px; height: 40px; margin-top: -20px; border-radius: 99px; background: var(--primary-emphasis); }
+  .carousel { position: absolute; left: calc(var(--s) * 17); right: 0; display: flex; gap: calc(var(--s) * 3); overflow: hidden; }
+  .big-card { position: relative; flex: 0 0 calc(var(--s) * 70); height: calc(var(--s) * 135); border-radius: calc(var(--r) * 4); overflow: hidden; background-size: cover; background-position: center; background-color: var(--muted); }
+  .big-card::before { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, rgb(from var(--scrim) r g b / .35) 0%, rgb(from var(--scrim) r g b / 0) 26%, rgb(from var(--scrim) r g b / 0) 48%, rgb(from var(--scrim) r g b / .9) 100%); }
+  .big-card > * { position: absolute; z-index: 1; }
+  .skeleton { background: var(--muted); }
+  .big-card.skeleton::before { display: none; }
+  .skeleton .bar { position: absolute; border-radius: 8px; background: rgb(from var(--muted-foreground) r g b / .22); }
+
+  /* Explore */
+  .list-card { position: relative; height: calc(var(--s) * 42); border-radius: calc(var(--r) * 3); overflow: hidden; background-size: cover; background-position: center; background-color: var(--muted); }
+  .list-card::before { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, rgb(from var(--scrim) r g b / .35) 0%, rgb(from var(--scrim) r g b / 0) 30%, rgb(from var(--scrim) r g b / .1) 50%, rgb(from var(--scrim) r g b / .88) 100%); }
+  .list-card > * { position: absolute; z-index: 1; }
+  .stack { position: absolute; left: calc(var(--s) * 6); right: calc(var(--s) * 6); display: flex; flex-direction: column; gap: calc(var(--s) * 3); }
+  .result-row { display: flex; gap: calc(var(--s) * 3); align-items: center; height: 64px; }
+  .thumb { flex: 0 0 56px; height: 56px; border-radius: calc(var(--r) * 2); background-size: cover; background-position: center; background-color: var(--muted); }
+  .kb { position: absolute; left: 0; right: 0; bottom: 0; height: 291px; background: var(--kb); padding: 10px 4px var(--inset-bottom); z-index: 25; }
+  .kb .kr { display: flex; justify-content: center; gap: 6px; margin-bottom: 11px; }
+  .kb .k { flex: 0 0 33px; height: 43px; border-radius: 6px; background: var(--kb-key); color: var(--kb-text); font: 400 22px/43px system-ui, sans-serif; text-align: center; }
+  .kb .k.wide { flex: 0 0 188px; font-size: 15px; }
+  .kb .k.fn { flex: 0 0 46px; font-size: 15px; }
+  .sheet { position: absolute; left: 0; right: 0; bottom: 0; background: var(--card); border-radius: 28px 28px 0 0; z-index: 25; }
+  .sheet .handle { position: absolute; top: 8px; left: 50%; width: 36px; height: 4px; margin-left: -18px; border-radius: 99px; background: rgb(from var(--muted-foreground) r g b / .5); }
+  .dim { position: absolute; inset: 0; background: var(--overlay); z-index: 24; }
+
+  /* Chi tiết tour */
+  .hero { position: absolute; top: 0; left: 0; right: 0; background-size: cover; background-position: center; }
+  .hero::before { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, rgb(from var(--scrim) r g b / .45) 0%, rgb(from var(--background) r g b / 0) 24%, rgb(from var(--background) r g b / 0) 46%, rgb(from var(--background) r g b / .65) 74%, var(--background) 100%); }
+  .thumbs { position: absolute; right: calc(var(--s) * 4); display: flex; flex-direction: column; gap: 10px; z-index: 2; }
+  .thumbs .th { width: 52px; height: 52px; border-radius: 14px; background-size: cover; background-position: center; border: 2px solid transparent; }
+  .thumbs .th.on { border-color: var(--on-media); }
+  .thumbs .more { width: 52px; height: 28px; border-radius: 999px; background: rgb(from var(--scrim) r g b / .6); color: var(--on-media); font: 600 12px/28px 'Archivo', system-ui, sans-serif; text-align: center; }
+  .tabs { position: absolute; left: 0; right: 0; height: var(--touch); display: flex; gap: calc(var(--s) * 6); padding: 0 calc(var(--s) * 6); border-bottom: 1px solid var(--border); background: var(--background); z-index: 3; }
+  .tabs span { position: relative; display: flex; align-items: center; font: 400 14px/20px 'Archivo', system-ui, sans-serif; color: var(--muted-foreground); }
+  .tabs span.on { color: var(--foreground); font-weight: 600; }
+  .tabs span.on::after { content: ''; position: absolute; left: 0; right: 0; bottom: -1px; height: 2px; border-radius: 2px; background: var(--primary-emphasis); }
+  .compact-head { position: absolute; top: 0; left: 0; right: 0; height: calc(var(--inset-top) + 52px); padding: var(--inset-top) calc(var(--s) * 2) 0; display: flex; align-items: center; gap: calc(var(--s) * 1); background: var(--background); z-index: 4; }
+  .facts { display: grid; grid-template-columns: 1fr 1fr; gap: calc(var(--s) * 3); }
+  .fact { background: var(--card); border: 1px solid var(--border); border-radius: calc(var(--r) * 2); padding: calc(var(--s) * 3); display: flex; flex-direction: column; gap: 2px; }
+  .fact svg { color: var(--primary-emphasis); margin-bottom: 4px; }
+  .bottom-bar { position: absolute; left: 0; right: 0; bottom: 0; height: calc(76px + var(--inset-bottom)); padding: calc(var(--s) * 4) calc(var(--s) * 6) var(--inset-bottom); background: var(--card); border-top: 1px solid var(--border); display: flex; align-items: flex-start; justify-content: space-between; gap: calc(var(--s) * 4); z-index: 20; }
+  .day { display: flex; gap: calc(var(--s) * 3); }
+  .day .rail-dot { flex: 0 0 24px; display: flex; flex-direction: column; align-items: center; }
+  .day .dot { width: 24px; height: 24px; border-radius: 99px; background: var(--secondary); color: var(--primary-emphasis); font: 600 12px/24px 'Archivo', system-ui, sans-serif; text-align: center; }
+  .day .dot.on { background: var(--primary); color: var(--primary-foreground); }
+  .day .line { flex: 1; width: 2px; background: var(--border); margin-top: 4px; }
+  .times { display: grid; grid-template-columns: 44px 1fr; column-gap: calc(var(--s) * 2); row-gap: 6px; margin-top: 8px; }
+  .dep { border: 1px solid var(--border); border-radius: calc(var(--r) * 2.5); padding: calc(var(--s) * 3) calc(var(--s) * 4); display: flex; align-items: center; gap: calc(var(--s) * 3); background: var(--card); }
+  .dep.on { border: 2px solid var(--primary-emphasis); }
+  .dep.closed { background: transparent; }
+  .radio { flex: 0 0 20px; height: 20px; border-radius: 99px; border: 2px solid var(--input); }
+  .dep.on .radio { border: 6px solid var(--primary-emphasis); }
+  .tag { display: inline-flex; align-items: center; height: 20px; padding: 0 8px; border-radius: 999px; font: 600 12px/16px 'Archivo', system-ui, sans-serif; }
+  .tag.warn { background: rgb(from var(--warning) r g b / .2); color: var(--foreground); }
+  .tag.closed { background: var(--muted); color: var(--muted-foreground); }
+  .bar-row { display: grid; grid-template-columns: 10px 1fr; gap: 8px; align-items: center; }
+  .track { height: 6px; border-radius: 99px; background: var(--rating-muted); overflow: hidden; }
+  .track i { display: block; height: 100%; border-radius: 99px; background: var(--rating); }
+  .avatar { flex: 0 0 36px; height: 36px; border-radius: 99px; background: var(--secondary); color: var(--secondary-foreground); font: 600 13px/36px 'Archivo', system-ui, sans-serif; text-align: center; }
+  .review-photos { display: flex; gap: 8px; margin-top: 8px; }
+  .review-photos i { width: 64px; height: 64px; border-radius: calc(var(--r) * 2); background-size: cover; background-position: center; }
+</style>
+
+<header>
+  <h2>P5b-2 · Cụm xem tour — Home · Explore · chi tiết tour</h2>
+  <p class="subtitle">16 khung, user duyệt 18/09. Bố cục theo bộ Navel (ảnh 17–34), dữ liệu theo contract thật. Bấm các nút dưới đây để đổi nền, hiện vùng an toàn, hoặc thu nhỏ trang. Tài liệu bàn giao: <code>docs/conventions/mobile-browse-handoff.md</code>.</p>
+  <div class="toolbar">
+    <button type="button" data-scheme-btn="dark" aria-pressed="true">Nền tối</button>
+    <button type="button" data-scheme-btn="light" aria-pressed="false">Nền sáng</button>
+    <span class="sep"></span>
+    <button type="button" data-safe-btn aria-pressed="false">Hiện vùng an toàn</button>
+    <span class="sep"></span>
+    <button type="button" data-zoom-btn="1" aria-pressed="true">100%</button>
+    <button type="button" data-zoom-btn="0.75" aria-pressed="false">75%</button>
+    <button type="button" data-zoom-btn="0.5" aria-pressed="false">50%</button>
+  </div>
+  <div class="legend">
+    <div class="it">
+      <h3>Đọc bản vẽ 1:1</h3>
+      <p>Khung 390×844 là dp thật. <code>calc(var(--s) * n)</code> ⇔ <code>theme.spacing(n)</code>; biến CSS trùng tên token; sọc hồng (nút "Hiện vùng an toàn") là inset trên 47 / dưới 34 — code đo bằng <code>useSafeAreaInsets()</code>, không đặt cứng. Chiều cao khối lớn (thẻ Home, ảnh bìa) là phần còn lại của màn, không phải số cố định.</p>
+    </div>
+    <div class="it">
+      <h3>Chữ theo vai của AppText</h3>
+      <p><code>.t-display</code> 30/36 · <code>.t-title</code> 24/32 (Literata 700) · <code>.t-heading</code> 18/28 · <code>.t-body</code> 16/24 · <code>.t-subtitle</code> 14/20 · <code>.t-label</code> 14/20 đậm 600 · <code>.t-caption</code> 12/16 (Archivo). Icon là bộ Feather của <code>@expo/vector-icons</code>, tên ghi trong chú thích từng khung.</p>
+    </div>
+    <div class="it">
+      <h3>Màn đọc dữ liệu luôn có 3 trạng thái</h3>
+      <p>Đang tải (khung xám cùng bố cục; sau ~3 giây hiện câu "Waking the server…" vì Render ngủ) · lỗi (icon + câu + Try again, giữ header và thanh tab) · rỗng. Vẽ đủ ở Home (H2–H4); Explore và chi tiết dùng lại đúng khuôn đó.</p>
+    </div>
+    <div class="it">
+      <h3>Phải thêm trước khi dựng</h3>
+      <p>Token: mở <code>rating</code>, <code>rating-muted</code>, <code>price-compare</code>, <code>warning</code>, <code>overlay</code> trong <code>MOBILE_COLOR_KEYS</code> (token đã có sẵn). Primitive mới: <code>SearchField</code>, <code>Chip</code>, <code>BottomSheet</code>, thanh tab có icon. Copy: dùng khối <code>mobile.home</code> / <code>explore</code> / <code>tourDetail</code> / <code>authPrompts</code> có sẵn; khoá mới ghi rõ ở từng khung.</p>
+    </div>
+  </div>
+</header>
+
+<!-- ═══════════════════════════════ 1 · HOME ═══════════════════════════════ -->
+<h3 class="sec">1 · Home <small>tab đầu tiên, khách chưa đăng nhập vẫn xem được</small></h3>
+<div class="row">
+
+  <div class="shot">
+    <div class="phone">
+      <div class="sb"><span>9:41</span><span class="icons"><i style="width:17px;height:10px"></i><i style="width:15px;height:10px;border-radius:6px"></i><i style="width:25px;height:11px"></i></span></div>
+      <div class="abs" style="top:calc(var(--inset-top) + var(--s)*2);left:calc(var(--s)*6);right:calc(var(--s)*6);height:var(--touch);display:flex;align-items:center;gap:calc(var(--s)*3)">
+        <div style="width:var(--touch);height:var(--touch);border-radius:99px;background:var(--muted);color:var(--muted-foreground);display:flex;align-items:center;justify-content:center"><i data-icon="user" data-size="20"></i></div>
+        <div><div class="t-caption muted">Welcome</div><div class="t-label">Traveller</div></div>
+      </div>
+      <div class="abs" style="top:calc(var(--inset-top) + var(--s)*16);left:calc(var(--s)*6);right:calc(var(--s)*3);height:var(--touch);display:flex;align-items:center;justify-content:space-between">
+        <span class="t-title link">Recommendations</span>
+        <span class="icon-btn plain"><i data-icon="search" data-size="22"></i></span>
+      </div>
+      <div class="rail" style="top:calc(var(--inset-top) + var(--s)*31)"><div class="seg on"><span>North</span></div><div class="seg"><span>Central</span></div><div class="seg"><span>South</span></div></div>
+      <div class="carousel" style="top:calc(var(--inset-top) + var(--s)*31)">
+        <div class="big-card" style="background-image:url('https://res.cloudinary.com/dbkgeehow/image/upload/c_fill,w_560,h_1080,g_auto,q_auto,f_auto/tourism/catalog/destination/hanoi/hero')">
+          <span class="rating-chip plain" style="top:16px;left:16px"><i data-icon="compass" data-size="12"></i>11 tours</span>
+          <div style="left:20px;right:20px;bottom:20px">
+            <div class="t-caption media" style="opacity:.8">Recommended</div>
+            <div class="t-display media" style="margin-top:2px">Hà Nội</div>
+            <div class="t-caption media" style="display:flex;align-items:center;gap:4px;margin-top:4px;opacity:.9"><i data-icon="pin" data-size="12"></i>Northern Vietnam</div>
+            <div class="t-subtitle media clamp3" style="margin-top:12px;opacity:.85">Vietnam&#39;s capital for over a thousand years, where French-era boulevards give way to the motorbike-thrummed lanes of the Old Quarter and a street-food scene built around single-dish specialists.</div>
+            <div style="display:flex;justify-content:flex-end;margin-top:14px"><span class="icon-btn glass" style="position:static"><i data-icon="arrow" data-size="20"></i></span></div>
+          </div>
+        </div>
+        <div class="big-card" style="background-image:url('https://res.cloudinary.com/dbkgeehow/image/upload/c_fill,w_560,h_1080,g_auto,q_auto,f_auto/tourism/catalog/destination/ha-long/hero')"></div>
+      </div>
+      <div class="tabbar">
+        <div class="tab on"><span class="pill"><i data-icon="home" data-size="20"></i></span>Home</div>
+        <div class="tab"><span class="pill"><i data-icon="compass" data-size="20"></i></span>Explore</div>
+        <div class="tab"><span class="pill"><i data-icon="heart" data-size="20"></i></span>Saved</div>
+        <div class="tab"><span class="pill"><i data-icon="briefcase" data-size="20"></i></span>Trips</div>
+        <div class="tab"><span class="pill"><i data-icon="user" data-size="20"></i></span>Account</div>
+      </div>
+      <div class="hi"></div>
+    </div>
+    <div class="cap">
+      <b>H1 · Home — đã tải</b>
+      <span>Ảnh Navel 17. Home trả lời "đi đâu": tab dọc là ba vùng, carousel là ĐỊA DANH của vùng đang chọn, xếp theo số tour giảm dần. Bấm thẻ → Explore đã lọc theo địa danh đó (E4). Kính lúp → màn tìm chung (E2). Khách chưa đăng nhập thấy "Welcome / Traveller"; bấm avatar mở tab Account.</span>
+      <ul>
+        <li>Dữ liệu: <code>Destination</code> — cover, name, region, description (cắt 3 dòng), tourCount. Mỗi địa danh thuộc đúng MỘT vùng nên chia tab gọn (Bắc 7 · Trung 5 · Nam 6); tour thì có thể đi qua nhiều vùng.</li>
+        <li>Không tim (danh sách yêu thích chỉ lưu tour), không sao (địa danh không có điểm đánh giá). Chip góc trên là số tour: <code>explore.resultsCount(n)</code>.</li>
+        <li>Chữ có sẵn: <code>home.welcome</code>, <code>guestName</code>, <code>browseHeadline</code>, <code>recommendedEyebrow</code>, <code>regionShort</code>.</li>
+        <li>Icon: <code>user</code>, <code>search</code>, <code>compass</code>, <code>map-pin</code>, <code>arrow-right</code>. Kính mờ = <code>IconButton variant="glass"</code>.</li>
+        <li>Thẻ rộng <code>spacing(70)</code>, bo <code>radius.base × 4</code>; thẻ kế ló ra để báo còn vuốt được.</li>
+        <li>Tab vùng: cột cao BẰNG thẻ carousel, ba đoạn <code>flex: 1</code> bằng nhau, chữ vai heading (18/28) xoay đọc từ dưới lên nằm giữa đoạn — mỗi đoạn là cả một vùng chạm ~180dp. Vùng đang chọn: chữ đậm <code>primary-emphasis</code> + vạch dọc 3×40 bên trái.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="shot">
+    <div class="phone">
+      <div class="sb"><span>9:41</span><span class="icons"><i style="width:17px;height:10px"></i><i style="width:15px;height:10px;border-radius:6px"></i><i style="width:25px;height:11px"></i></span></div>
+      <div class="abs" style="top:calc(var(--inset-top) + var(--s)*2);left:calc(var(--s)*6);right:calc(var(--s)*6);height:var(--touch);display:flex;align-items:center;gap:calc(var(--s)*3)">
+        <div style="width:var(--touch);height:var(--touch);border-radius:99px;background:var(--muted);color:var(--muted-foreground);display:flex;align-items:center;justify-content:center"><i data-icon="user" data-size="20"></i></div>
+        <div><div class="t-caption muted">Welcome</div><div class="t-label">Traveller</div></div>
+      </div>
+      <div class="abs" style="top:calc(var(--inset-top) + var(--s)*16);left:calc(var(--s)*6);right:calc(var(--s)*3);height:var(--touch);display:flex;align-items:center;justify-content:space-between">
+        <span class="t-title link">Recommendations</span>
+        <span class="icon-btn plain"><i data-icon="search" data-size="22"></i></span>
+      </div>
+      <div class="rail" style="top:calc(var(--inset-top) + var(--s)*31)"><div class="seg on"><span>North</span></div><div class="seg"><span>Central</span></div><div class="seg"><span>South</span></div></div>
+      <div class="carousel" style="top:calc(var(--inset-top) + var(--s)*31)">
+        <div class="big-card skeleton" style="height:calc(var(--s)*128)">
+          <span class="bar" style="top:16px;left:16px;width:52px;height:28px;border-radius:99px"></span>
+          <span class="bar" style="left:20px;bottom:108px;width:90px;height:12px"></span>
+          <span class="bar" style="left:20px;bottom:74px;width:200px;height:24px"></span>
+          <span class="bar" style="left:20px;bottom:48px;width:140px;height:24px"></span>
+          <span class="bar" style="left:20px;bottom:20px;width:70px;height:16px"></span>
+        </div>
+        <div class="big-card skeleton" style="height:calc(var(--s)*128)"></div>
+      </div>
+      <div class="abs t-caption muted" style="left:calc(var(--s)*17);right:calc(var(--s)*6);bottom:calc(96px + var(--s)*4);display:flex;align-items:center;gap:8px"><i data-icon="loader" data-size="14"></i>Waking the server — the first load can take up to a minute…</div>
+      <div class="tabbar">
+        <div class="tab on"><span class="pill"><i data-icon="home" data-size="20"></i></span>Home</div>
+        <div class="tab"><span class="pill"><i data-icon="compass" data-size="20"></i></span>Explore</div>
+        <div class="tab"><span class="pill"><i data-icon="heart" data-size="20"></i></span>Saved</div>
+        <div class="tab"><span class="pill"><i data-icon="briefcase" data-size="20"></i></span>Trips</div>
+        <div class="tab"><span class="pill"><i data-icon="user" data-size="20"></i></span>Account</div>
+      </div>
+      <div class="hi"></div>
+    </div>
+    <div class="cap">
+      <b>H2 · Home — đang tải</b>
+      <span>Khung xám đúng bố cục thẻ thật, không spinner giữa màn. Tab vùng vẫn bấm được ngay.</span>
+      <ul>
+        <li>Dòng "Waking the server…" (<code>home.slowServer</code>) chỉ hiện nếu tải quá ~3 giây — API trên Render ngủ, lần đầu có thể mất cả phút.</li>
+        <li>Thanh xám: <code>muted-foreground</code> pha 22% trên nền <code>muted</code> (<code>withAlpha</code>). Icon <code>loader</code>.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="shot">
+    <div class="phone">
+      <div class="sb"><span>9:41</span><span class="icons"><i style="width:17px;height:10px"></i><i style="width:15px;height:10px;border-radius:6px"></i><i style="width:25px;height:11px"></i></span></div>
+      <div class="abs" style="top:calc(var(--inset-top) + var(--s)*2);left:calc(var(--s)*6);right:calc(var(--s)*6);height:var(--touch);display:flex;align-items:center;gap:calc(var(--s)*3)">
+        <div style="width:var(--touch);height:var(--touch);border-radius:99px;background:var(--muted);color:var(--muted-foreground);display:flex;align-items:center;justify-content:center"><i data-icon="user" data-size="20"></i></div>
+        <div><div class="t-caption muted">Welcome</div><div class="t-label">Traveller</div></div>
+      </div>
+      <div class="abs" style="top:calc(var(--inset-top) + var(--s)*16);left:calc(var(--s)*6);right:calc(var(--s)*3);height:var(--touch);display:flex;align-items:center;justify-content:space-between">
+        <span class="t-title link">Recommendations</span>
+        <span class="icon-btn plain"><i data-icon="search" data-size="22"></i></span>
+      </div>
+      <div class="abs" style="top:calc(var(--inset-top) + var(--s)*31);left:calc(var(--s)*6);right:calc(var(--s)*6);bottom:96px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:calc(var(--s)*4);padding-bottom:calc(var(--s)*12)">
+        <div class="square-icon"><i data-icon="wifiOff" data-size="28"></i></div>
+        <div class="t-subtitle muted" style="max-width:260px">Couldn't load destinations. Check your connection and try again.</div>
+        <span class="btn primary" style="width:180px">Try again</span>
+      </div>
+      <div class="tabbar">
+        <div class="tab on"><span class="pill"><i data-icon="home" data-size="20"></i></span>Home</div>
+        <div class="tab"><span class="pill"><i data-icon="compass" data-size="20"></i></span>Explore</div>
+        <div class="tab"><span class="pill"><i data-icon="heart" data-size="20"></i></span>Saved</div>
+        <div class="tab"><span class="pill"><i data-icon="briefcase" data-size="20"></i></span>Trips</div>
+        <div class="tab"><span class="pill"><i data-icon="user" data-size="20"></i></span>Account</div>
+      </div>
+      <div class="hi"></div>
+    </div>
+    <div class="cap">
+      <b>H3 · Home — lỗi</b>
+      <span>Thay phần thân dưới tiêu đề, giữ header và thanh tab để khách vẫn đi tab khác được. Khuôn này dùng lại cho Explore và chi tiết tour.</span>
+      <ul>
+        <li>Chữ: <code>home.retry</code> có sẵn; <code>home.error</code> đang nói "tours" — đổi thành "destinations" (khoá này chưa màn nào dùng). Icon <code>wifi-off</code> trong ô vuông <code>secondary</code>, 64dp, bo <code>radius.base × 2</code>.</li>
+        <li>Khác lỗi của form auth: màn đọc dữ liệu không có ô nào để gắn lỗi, nên chỉ có kênh "thay cả thân màn".</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="shot">
+    <div class="phone">
+      <div class="sb"><span>9:41</span><span class="icons"><i style="width:17px;height:10px"></i><i style="width:15px;height:10px;border-radius:6px"></i><i style="width:25px;height:11px"></i></span></div>
+      <div class="abs" style="top:calc(var(--inset-top) + var(--s)*2);left:calc(var(--s)*6);right:calc(var(--s)*6);height:var(--touch);display:flex;align-items:center;gap:calc(var(--s)*3)">
+        <div style="width:var(--touch);height:var(--touch);border-radius:99px;background:var(--muted);color:var(--muted-foreground);display:flex;align-items:center;justify-content:center"><i data-icon="user" data-size="20"></i></div>
+        <div><div class="t-caption muted">Welcome</div><div class="t-label">Traveller</div></div>
+      </div>
+      <div class="abs" style="top:calc(var(--inset-top) + var(--s)*16);left:calc(var(--s)*6);right:calc(var(--s)*3);height:var(--touch);display:flex;align-items:center;justify-content:space-between">
+        <span class="t-title link">Recommendations</span>
+        <span class="icon-btn plain"><i data-icon="search" data-size="22"></i></span>
+      </div>
+      <div class="rail" style="top:calc(var(--inset-top) + var(--s)*31)"><div class="seg"><span>North</span></div><div class="seg"><span>Central</span></div><div class="seg on"><span>South</span></div></div>
+      <div class="abs" style="top:calc(var(--inset-top) + var(--s)*31);left:calc(var(--s)*17);right:calc(var(--s)*6);bottom:96px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:calc(var(--s)*3);padding-bottom:calc(var(--s)*12)">
+        <div class="square-icon"><i data-icon="compass" data-size="28"></i></div>
+        <div class="t-subtitle muted" style="max-width:240px">No destinations in this region yet.</div>
+        <span class="t-label link">See all tours</span>
+      </div>
+      <div class="tabbar">
+        <div class="tab on"><span class="pill"><i data-icon="home" data-size="20"></i></span>Home</div>
+        <div class="tab"><span class="pill"><i data-icon="compass" data-size="20"></i></span>Explore</div>
+        <div class="tab"><span class="pill"><i data-icon="heart" data-size="20"></i></span>Saved</div>
+        <div class="tab"><span class="pill"><i data-icon="briefcase" data-size="20"></i></span>Trips</div>
+        <div class="tab"><span class="pill"><i data-icon="user" data-size="20"></i></span>Account</div>
+      </div>
+      <div class="hi"></div>
+    </div>
+    <div class="cap">
+      <b>H4 · Home — vùng chưa có tour</b>
+      <span>Trạng thái rỗng theo TỪNG vùng: tab dọc vẫn còn, chỉ phần carousel đổi. "See all tours" mở tab Explore.</span>
+      <ul>
+        <li>Chữ có sẵn: <code>home.regionEmpty</code> ("No destinations in this region yet."). Khoá mới: <code>home.seeAllTours</code>.</li>
+        <li>Seed hiện có tour ở cả ba vùng; khung này để admin gỡ hết tour một vùng không làm Home trắng.</li>
+      </ul>
+    </div>
+  </div>
+
+</div>
+
+<!-- ═══════════════════════════════ 2 · EXPLORE ═══════════════════════════════ -->
+<h3 class="sec">2 · Explore <small>tab thứ hai — tìm, lọc, xem toàn bộ tour</small></h3>
+<div class="row">
+
+  <div class="shot">
+    <div class="phone">
+      <div class="sb"><span>9:41</span><span class="icons"><i style="width:17px;height:10px"></i><i style="width:15px;height:10px;border-radius:6px"></i><i style="width:25px;height:11px"></i></span></div>
+      <div class="abs t-title" style="top:calc(var(--inset-top) + var(--s)*2);left:calc(var(--s)*6)">Explore tours</div>
+      <div class="abs search" style="top:calc(var(--inset-top) + var(--s)*12);left:calc(var(--s)*6);right:calc(var(--s)*20)"><i data-icon="search" data-size="18"></i><span class="t-subtitle">Search tours or destinations</span></div>
+      <span class="filter-btn" style="top:calc(var(--inset-top) + var(--s)*12);right:calc(var(--s)*6)"><i data-icon="sliders" data-size="20"></i></span>
+      <div class="abs chips scroll" style="top:calc(var(--inset-top) + var(--s)*27);left:calc(var(--s)*6);right:0"><span class="chip on">All</span><span class="chip">Day Tours</span><span class="chip">Multi-day Packages</span><span class="chip">Cruises</span></div>
+      <div class="abs t-caption muted" style="top:calc(var(--inset-top) + var(--s)*39);left:calc(var(--s)*6)">29 tours</div>
+      <div class="stack" style="top:calc(var(--inset-top) + var(--s)*45)">
+        <div class="list-card" style="background-image:url('https://res.cloudinary.com/dbkgeehow/image/upload/c_fill,w_684,h_336,g_auto,q_auto,f_auto/tourism/catalog/tour/hoi-an-lantern-evening/hero')">
+          <span class="rating-chip" style="top:12px;left:12px"><i data-icon="star" data-size="12" data-fill="1"></i>4.8</span>
+          <span class="icon-btn glass" style="top:4px;right:4px"><i data-icon="heart" data-size="20"></i></span>
+          <div style="left:16px;right:96px;bottom:14px"><div class="t-heading media clamp1">Hội An Old Town &amp; Lantern Evening</div><div class="t-caption media" style="opacity:.85">Hội An · 1 day</div></div>
+          <div class="media" style="right:16px;bottom:14px;text-align:right"><div class="t-caption" style="opacity:.8">From</div><div class="t-label">$39</div></div>
+        </div>
+        <div class="list-card" style="background-image:url('https://res.cloudinary.com/dbkgeehow/image/upload/c_fill,w_684,h_336,g_auto,q_auto,f_auto/tourism/catalog/tour/central-heritage-4d/hero')">
+          <span class="rating-chip" style="top:12px;left:12px"><i data-icon="star" data-size="12" data-fill="1"></i>4.3</span>
+          <span class="icon-btn glass" style="top:4px;right:4px"><i data-icon="heart" data-size="20" data-fill="1"></i></span>
+          <div style="left:16px;right:96px;bottom:14px"><div class="t-heading media clamp1">Central Heritage: Đà Nẵng–Hội An–Huế 4D3N</div><div class="t-caption media" style="opacity:.85">Đà Nẵng · 4 days</div></div>
+          <div class="media" style="right:16px;bottom:14px;text-align:right"><div class="t-caption strike" style="opacity:.7">$459</div><div class="t-label">$419</div></div>
+        </div>
+        <div class="list-card" style="background-image:url('https://res.cloudinary.com/dbkgeehow/image/upload/c_fill,w_684,h_336,g_auto,q_auto,f_auto/tourism/catalog/tour/da-lat-highlands-3d/hero')">
+          <span class="rating-chip" style="top:12px;left:12px"><i data-icon="star" data-size="12" data-fill="1"></i>4.7</span>
+          <span class="icon-btn glass" style="top:4px;right:4px"><i data-icon="heart" data-size="20"></i></span>
+          <div style="left:16px;right:96px;bottom:14px"><div class="t-heading media clamp1">Đà Lạt Highlands, Waterfalls &amp; Farms 3D2N</div><div class="t-caption media" style="opacity:.85">Đà Lạt · 3 days</div></div>
+          <div class="media" style="right:16px;bottom:14px;text-align:right"><div class="t-caption" style="opacity:.8">From</div><div class="t-label">$219</div></div>
+        </div>
+      </div>
+      <div class="tabbar">
+        <div class="tab"><span class="pill"><i data-icon="home" data-size="20"></i></span>Home</div>
+        <div class="tab on"><span class="pill"><i data-icon="compass" data-size="20"></i></span>Explore</div>
+        <div class="tab"><span class="pill"><i data-icon="heart" data-size="20"></i></span>Saved</div>
+        <div class="tab"><span class="pill"><i data-icon="briefcase" data-size="20"></i></span>Trips</div>
+        <div class="tab"><span class="pill"><i data-icon="user" data-size="20"></i></span>Account</div>
+      </div>
+      <div class="hi"></div>
+    </div>
+    <div class="cap">
+      <b>E1 · Explore — mặc định</b>
+      <span>Ảnh Navel 24. Ô tìm + nút lọc, hàng chip danh mục cuộn ngang, danh sách thẻ ngang toàn bộ tour.</span>
+      <ul>
+        <li>Chip lấy từ <code>TourCategory</code> (6 danh mục seed). Đếm: <code>explore.resultsCount(n)</code>.</li>
+        <li>Giá gạch CHỈ khi có khuyến mãi thật: <code>priceFrom &lt; basePrice</code> (luật 15/09 của web). Không in <code>compareAtPrice</code> cấp tour.</li>
+        <li>Thẻ cao <code>spacing(42)</code>, bo <code>radius.base × 3</code>; tim đặc = đã lưu (chỉ khi đã đăng nhập).</li>
+        <li>Icon: <code>search</code>, <code>sliders</code>, <code>star</code>, <code>heart</code>.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="shot">
+    <div class="phone">
+      <div class="sb"><span>9:41</span><span class="icons"><i style="width:17px;height:10px"></i><i style="width:15px;height:10px;border-radius:6px"></i><i style="width:25px;height:11px"></i></span></div>
+      <div class="abs t-title" style="top:calc(var(--inset-top) + var(--s)*2);left:calc(var(--s)*6)">Explore tours</div>
+      <div class="abs search focus" style="top:calc(var(--inset-top) + var(--s)*12);left:calc(var(--s)*6);right:calc(var(--s)*20)"><i data-icon="search" data-size="18"></i><span class="t-body" style="flex:1">ha<span class="caret"></span></span><i data-icon="x" data-size="18"></i></div>
+      <span class="filter-btn" style="top:calc(var(--inset-top) + var(--s)*12);right:calc(var(--s)*6)"><i data-icon="sliders" data-size="20"></i></span>
+      <div class="abs" style="top:calc(var(--inset-top) + var(--s)*29);left:calc(var(--s)*6);right:0">
+        <div class="t-caption muted">Destinations</div>
+        <div style="display:flex;gap:12px;margin-top:8px;overflow:hidden">
+          <div class="mini-dest" style="background-image:url('https://res.cloudinary.com/dbkgeehow/image/upload/c_fill,w_280,h_200,g_auto,q_auto,f_auto/tourism/catalog/destination/hanoi/hero')"><span class="t-label media">Hà Nội</span><span class="t-caption media" style="opacity:.85">11 tours</span></div>
+          <div class="mini-dest" style="background-image:url('https://res.cloudinary.com/dbkgeehow/image/upload/c_fill,w_280,h_200,g_auto,q_auto,f_auto/tourism/catalog/destination/ha-long/hero')"><span class="t-label media">Hạ Long</span><span class="t-caption media" style="opacity:.85">4 tours</span></div>
+          <div class="mini-dest" style="background-image:url('https://res.cloudinary.com/dbkgeehow/image/upload/c_fill,w_280,h_200,g_auto,q_auto,f_auto/tourism/catalog/destination/ha-giang/hero')"><span class="t-label media">Hà Giang</span><span class="t-caption media" style="opacity:.85">1 tour</span></div>
+        </div>
+        <div style="margin-right:calc(var(--s)*6)">
+          <div class="t-caption muted" style="margin-top:20px">6 tours</div>
+          <div style="margin-top:8px;display:flex;flex-direction:column;gap:8px">
+            <div class="result-row"><span class="thumb" style="background-image:url('https://res.cloudinary.com/dbkgeehow/image/upload/c_fill,w_112,h_112,g_auto,q_auto,f_auto/tourism/catalog/tour/ha-giang-loop-4d/hero')"></span><div style="min-width:0"><div class="t-label clamp1">Hà Giang Loop by Easyrider 4D3N</div><div class="t-caption muted">Hà Giang · 4 days · From $329</div></div></div>
+            <div class="result-row"><span class="thumb" style="background-image:url('https://res.cloudinary.com/dbkgeehow/image/upload/c_fill,w_112,h_112,g_auto,q_auto,f_auto/tourism/catalog/tour/halong-bay-overnight-cruise/hero')"></span><div style="min-width:0"><div class="t-label clamp1">Hạ Long Bay Overnight Cruise 2D1N</div><div class="t-caption muted">Hạ Long · 2 days · From $185</div></div></div>
+            <div class="result-row"><span class="thumb" style="background-image:url('https://res.cloudinary.com/dbkgeehow/image/upload/c_fill,w_112,h_112,g_auto,q_auto,f_auto/tourism/catalog/tour/hanoi-heritage-day/hero')"></span><div style="min-width:0"><div class="t-label clamp1">Hanoi Heritage in a Day</div><div class="t-caption muted">Hà Nội · 1 day · From $49</div></div></div>
+          </div>
+        </div>
+      </div>
+      <div class="kb" data-keyboard></div>
+      <div class="hi"></div>
+    </div>
+    <div class="cap">
+      <b>E2 · Tìm — một ô tìm chung cho cả app</b>
+      <span>Ảnh Navel 19. Kính lúp ở Home mở ĐÚNG màn này (con trỏ đặt sẵn). Kết quả chia hai nhóm: Destinations (thẻ nhỏ cuộn ngang) rồi Tours — gõ tên nơi thì ra cả địa danh lẫn tour, gõ hoạt động ("kayak", "cooking") thì ra tour, không lần nào ra trống oan.</span>
+      <ul>
+        <li>Tour: <code>ToursListQuery.search</code> (tên/tóm tắt). Địa danh: lọc <code>Destination.name</code> — chỉ 18 mục, lọc ngay ở máy được. Chờ ~300ms sau phím cuối mới gọi.</li>
+        <li>Khớp ĐẦU TỪ và BỎ DẤU: "ha" ra Hà Nội, Hạ Long, Hà Giang — không ra Mai Châu hay Phong Nha dù chuỗi "ha" nằm giữa từ. API hiện ILIKE có dấu, khớp giữa từ — ghi cho người nối API.</li>
+        <li>Bấm thẻ địa danh → E4 (Explore lọc theo địa danh, có đầu trang). Bấm tour → chi tiết. Thẻ địa danh nhỏ 140×100, bo <code>radius.base × 2.5</code>.</li>
+        <li>Chữ có sẵn: <code>explore.destinationsTitle</code>, <code>resultsCount(n)</code>. Bàn phím là của hệ thống, không vẽ bằng token.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="shot">
+    <div class="phone">
+      <div class="sb"><span>9:41</span><span class="icons"><i style="width:17px;height:10px"></i><i style="width:15px;height:10px;border-radius:6px"></i><i style="width:25px;height:11px"></i></span></div>
+      <div class="abs t-title" style="top:calc(var(--inset-top) + var(--s)*2);left:calc(var(--s)*6)">Explore tours</div>
+      <div class="abs search" style="top:calc(var(--inset-top) + var(--s)*12);left:calc(var(--s)*6);right:calc(var(--s)*20)"><i data-icon="search" data-size="18"></i><span class="t-subtitle">Search tours or destinations</span></div>
+      <span class="filter-btn" style="top:calc(var(--inset-top) + var(--s)*12);right:calc(var(--s)*6)"><i data-icon="sliders" data-size="20"></i></span>
+      <div class="abs chips scroll" style="top:calc(var(--inset-top) + var(--s)*27);left:calc(var(--s)*6);right:0"><span class="chip on">All</span><span class="chip">Day Tours</span><span class="chip">Multi-day Packages</span></div>
+      <div class="dim"></div>
+      <div class="sheet" style="height:612px">
+        <span class="handle"></span>
+        <div class="abs" style="top:24px;left:calc(var(--s)*6);right:calc(var(--s)*6);display:flex;justify-content:space-between;align-items:center">
+          <span class="t-heading">Filters</span><span class="t-label link">Clear all</span>
+        </div>
+        <div class="abs" style="top:72px;left:calc(var(--s)*6);right:calc(var(--s)*6);display:flex;flex-direction:column;gap:calc(var(--s)*5)">
+          <div><div class="t-caption muted">Region</div><div class="chips" style="margin-top:8px"><span class="chip on">All</span><span class="chip">North</span><span class="chip">Central</span><span class="chip">South</span></div></div>
+          <div><div class="t-caption muted">Duration</div><div class="chips" style="margin-top:8px"><span class="chip">1 day</span><span class="chip on">2–3 days</span><span class="chip">4+ days</span></div></div>
+          <div><div class="t-caption muted">Price</div><div class="chips" style="margin-top:8px"><span class="chip">Under $100</span><span class="chip on">$100–300</span><span class="chip">Over $300</span></div></div>
+          <div><div class="t-caption muted">Difficulty</div><div class="chips" style="margin-top:8px"><span class="chip">Easy</span><span class="chip">Moderate</span><span class="chip">Challenging</span></div></div>
+          <div><div class="t-caption muted">Sort by</div><div class="chips" style="margin-top:8px"><span class="chip on">Newest first</span><span class="chip">Price: low to high</span><span class="chip">Price: high to low</span><span class="chip">Duration: short to long</span></div></div>
+        </div>
+        <span class="abs btn primary" style="left:calc(var(--s)*6);right:calc(var(--s)*6);bottom:calc(var(--inset-bottom) + var(--s)*3)">Show 7 results</span>
+      </div>
+      <div class="hi"></div>
+    </div>
+    <div class="cap">
+      <b>E3 · Explore — tấm lọc</b>
+      <span>Ảnh Navel 22, thay facet bằng đúng bộ lọc web đang có. Bỏ "View", lọc theo sao và lọc theo km — hệ thống không có dữ liệu tương ứng.</span>
+      <ul>
+        <li>Nút chính đếm SỐ KẾT QUẢ SẼ RA khi còn đang chọn: <code>explore.showResults(n)</code>. <code>clearAll</code>, <code>durationTitle</code>, <code>priceTitle</code>, <code>sortTitle</code>, <code>duration</code>, <code>price</code> có sẵn.</li>
+        <li>Sắp xếp: đúng 4 kiểu web đang dùng — <code>toursPage.sortOptions</code> (newest, priceAsc, priceDesc, durationAsc), API đỡ đủ. KHÔNG dùng <code>mobile.explore.sort</code> (popular/rating) chép từ Nexora: xếp theo độ phổ biến/sao đã bị bỏ có chủ đích, <code>TourSortKeySchema</code> không cho.</li>
+        <li>Thời lượng, giá, độ khó: API CHƯA lọc được — web lọc ở máy trên toàn bộ tour (29 tour, nhẹ); mobile làm y vậy. Vùng, địa danh, danh mục, ô tìm: API lọc được.</li>
+        <li>Khoá mới: <code>explore.regionTitle</code>, <code>explore.difficultyTitle</code> + nhãn độ khó (web có sẵn nhãn Easy/Moderate/Challenging — dùng chung).</li>
+        <li>Nền mờ = token <code>overlay</code>; tấm bo trên 28dp, nền <code>card</code>, tay nắm <code>muted-foreground</code> 50%.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="shot">
+    <div class="phone">
+      <div class="sb"><span>9:41</span><span class="icons"><i style="width:17px;height:10px"></i><i style="width:15px;height:10px;border-radius:6px"></i><i style="width:25px;height:11px"></i></span></div>
+      <div class="abs t-title" style="top:calc(var(--inset-top) + var(--s)*2);left:calc(var(--s)*6)">Explore tours</div>
+      <div class="abs search" style="top:calc(var(--inset-top) + var(--s)*12);left:calc(var(--s)*6);right:calc(var(--s)*20)"><i data-icon="search" data-size="18"></i><span class="t-subtitle">Search tours or destinations</span></div>
+      <span class="filter-btn" style="top:calc(var(--inset-top) + var(--s)*12);right:calc(var(--s)*6)"><i data-icon="sliders" data-size="20"></i><span class="badge">1</span></span>
+      <div class="abs chips scroll" style="top:calc(var(--inset-top) + var(--s)*27);left:calc(var(--s)*6);right:0;align-items:center"><span class="chip soft">Hội An <i data-icon="x" data-size="14"></i></span><span class="t-label link" style="margin-left:4px">Clear filters</span></div>
+      <div class="stack" style="top:calc(var(--inset-top) + var(--s)*39)">
+        <div class="dest-head" style="background-image:url('https://res.cloudinary.com/dbkgeehow/image/upload/c_fill,w_684,h_264,g_auto,q_auto,f_auto/tourism/catalog/destination/hoi-an/hero')">
+          <span class="t-title media">Hội An</span>
+          <span class="t-caption media" style="display:flex;align-items:center;gap:4px;opacity:.9"><i data-icon="pin" data-size="12"></i>Central Vietnam</span>
+        </div>
+        <div>
+          <div class="t-subtitle muted clamp2">A UNESCO-listed trading port frozen at its 16th-century peak, its lantern-lit merchant houses, tailor shops and riverside markets barely touched by traffic.</div>
+          <span class="t-label link">Read more</span>
+        </div>
+        <div class="t-caption muted">6 tours</div>
+        <div class="list-card" style="background-image:url('https://res.cloudinary.com/dbkgeehow/image/upload/c_fill,w_684,h_336,g_auto,q_auto,f_auto/tourism/catalog/tour/hoi-an-lantern-evening/hero')">
+          <span class="rating-chip" style="top:12px;left:12px"><i data-icon="star" data-size="12" data-fill="1"></i>4.8</span>
+          <span class="icon-btn glass" style="top:4px;right:4px"><i data-icon="heart" data-size="20"></i></span>
+          <div style="left:16px;right:96px;bottom:14px"><div class="t-heading media clamp1">Hội An Old Town &amp; Lantern Evening</div><div class="t-caption media" style="opacity:.85">Hội An · 1 day</div></div>
+          <div class="media" style="right:16px;bottom:14px;text-align:right"><div class="t-caption" style="opacity:.8">From</div><div class="t-label">$39</div></div>
+        </div>
+        <div class="list-card" style="background-image:url('https://res.cloudinary.com/dbkgeehow/image/upload/c_fill,w_684,h_336,g_auto,q_auto,f_auto/tourism/catalog/tour/hoi-an-countryside-cooking-day/hero')">
+          <span class="rating-chip" style="top:12px;left:12px"><i data-icon="star" data-size="12" data-fill="1"></i>4.6</span>
+          <span class="icon-btn glass" style="top:4px;right:4px"><i data-icon="heart" data-size="20"></i></span>
+          <div style="left:16px;right:96px;bottom:14px"><div class="t-heading media clamp1">Hội An Countryside, Basket Boat &amp; Cooking</div><div class="t-caption media" style="opacity:.85">Hội An · 1 day</div></div>
+          <div class="media" style="right:16px;bottom:14px;text-align:right"><div class="t-caption" style="opacity:.8">From</div><div class="t-label">$52</div></div>
+        </div>
+      </div>
+      <div class="tabbar">
+        <div class="tab"><span class="pill"><i data-icon="home" data-size="20"></i></span>Home</div>
+        <div class="tab on"><span class="pill"><i data-icon="compass" data-size="20"></i></span>Explore</div>
+        <div class="tab"><span class="pill"><i data-icon="heart" data-size="20"></i></span>Saved</div>
+        <div class="tab"><span class="pill"><i data-icon="briefcase" data-size="20"></i></span>Trips</div>
+        <div class="tab"><span class="pill"><i data-icon="user" data-size="20"></i></span>Account</div>
+      </div>
+      <div class="hi"></div>
+    </div>
+    <div class="cap">
+      <b>E4 · Explore — lọc theo một địa danh (đầu trang địa danh)</b>
+      <span>Mở từ thẻ địa danh ở Home hoặc từ nhóm Destinations khi tìm. Đầu trang địa danh THAY cho trang địa danh riêng: ảnh bìa, tên, vùng, mô tả (Read more mở hết), rồi các tour của địa danh.</span>
+      <ul>
+        <li>Dữ liệu: <code>Destination</code> (cover, name, region, description, tourCount) + <code>catalog.tours.list</code> với <code>destination=&lt;slug&gt;</code>. Cả 18 địa danh trong seed đều có mô tả và ảnh bìa.</li>
+        <li>Đầu trang CHỈ hiện khi đúng MỘT địa danh đang được chọn. Bật thêm lọc khác (thời lượng, giá…) vẫn giữ đầu trang; gỡ chip địa danh thì đầu trang biến mất, màn về dạng E1.</li>
+        <li>Bộ lọc đang bật hiện thành chip gỡ được, thay cho hàng danh mục; nút lọc mang số bộ lọc đang bật. Chip gỡ: nền <code>secondary</code>, chữ <code>secondary-foreground</code>, icon <code>x</code>.</li>
+        <li>Chữ có sẵn: <code>explore.clearFilters</code>, <code>resultsCount(n)</code>. Khoá mới: <code>explore.readMore</code>. Đầu trang cao <code>spacing(33)</code>, bo <code>radius.base × 3</code>.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="shot">
+    <div class="phone">
+      <div class="sb"><span>9:41</span><span class="icons"><i style="width:17px;height:10px"></i><i style="width:15px;height:10px;border-radius:6px"></i><i style="width:25px;height:11px"></i></span></div>
+      <div class="abs t-title" style="top:calc(var(--inset-top) + var(--s)*2);left:calc(var(--s)*6)">Explore tours</div>
+      <div class="abs search" style="top:calc(var(--inset-top) + var(--s)*12);left:calc(var(--s)*6);right:calc(var(--s)*20);color:var(--foreground)"><i data-icon="search" data-size="18"></i><span class="t-body" style="flex:1">phu yen</span><i data-icon="x" data-size="18"></i></div>
+      <span class="filter-btn" style="top:calc(var(--inset-top) + var(--s)*12);right:calc(var(--s)*6)"><i data-icon="sliders" data-size="20"></i></span>
+      <div class="abs" style="top:calc(var(--inset-top) + var(--s)*27);left:calc(var(--s)*6);right:calc(var(--s)*6);bottom:96px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:calc(var(--s)*4);padding-bottom:calc(var(--s)*16)">
+        <div class="square-icon"><i data-icon="search" data-size="28"></i></div>
+        <div class="t-subtitle muted" style="max-width:240px">No tours match your search.</div>
+        <span class="btn ghost" style="width:180px">Clear filters</span>
+      </div>
+      <div class="tabbar">
+        <div class="tab"><span class="pill"><i data-icon="home" data-size="20"></i></span>Home</div>
+        <div class="tab on"><span class="pill"><i data-icon="compass" data-size="20"></i></span>Explore</div>
+        <div class="tab"><span class="pill"><i data-icon="heart" data-size="20"></i></span>Saved</div>
+        <div class="tab"><span class="pill"><i data-icon="briefcase" data-size="20"></i></span>Trips</div>
+        <div class="tab"><span class="pill"><i data-icon="user" data-size="20"></i></span>Account</div>
+      </div>
+      <div class="hi"></div>
+    </div>
+    <div class="cap">
+      <b>E5 · Explore — không có kết quả</b>
+      <span>Ảnh Navel 21. Cùng khuôn với H3/H4, nút xoá cả ô tìm lẫn bộ lọc.</span>
+      <ul>
+        <li>Chữ có sẵn: <code>explore.empty</code>, <code>explore.clearFilters</code>. Nút phụ = <code>Button variant="ghost" shape="pill"</code>.</li>
+      </ul>
+    </div>
+  </div>
+
+</div>
+
+<!-- ═══════════════════════════════ 3 · CHI TIẾT TOUR ═══════════════════════════════ -->
+<h3 class="sec">3 · Chi tiết tour <small>màn stack, không có thanh tab — tour mẫu: Central Heritage 4D3N</small></h3>
+<div class="row">
+
+  <div class="shot">
+    <div class="phone">
+      <div class="hero" style="height:420px;background-image:url('https://res.cloudinary.com/dbkgeehow/image/upload/c_fill,w_780,h_840,g_auto,q_auto,f_auto/tourism/catalog/tour/central-heritage-4d/hero')"></div>
+      <div class="sb on-media"><span>9:41</span><span class="icons"><i style="width:17px;height:10px"></i><i style="width:15px;height:10px;border-radius:6px"></i><i style="width:25px;height:11px"></i></span></div>
+      <span class="abs icon-btn glass" style="top:calc(var(--inset-top) + var(--s)*1.5);left:calc(var(--s)*3);z-index:2"><i data-icon="back" data-size="20"></i></span>
+      <span class="abs icon-btn glass" style="top:calc(var(--inset-top) + var(--s)*1.5);right:calc(var(--s)*3);z-index:2"><i data-icon="heart" data-size="20"></i></span>
+      <div class="thumbs" style="top:150px">
+        <span class="th on" style="background-image:url('https://res.cloudinary.com/dbkgeehow/image/upload/c_fill,w_104,h_104,g_auto,q_auto,f_auto/tourism/catalog/tour/central-heritage-4d/hero')"></span>
+        <span class="th" style="background-image:url('https://res.cloudinary.com/dbkgeehow/image/upload/c_fill,w_104,h_104,g_auto,q_auto,f_auto/tourism/catalog/destination/hoi-an/gallery-01')"></span>
+        <span class="th" style="background-image:url('https://res.cloudinary.com/dbkgeehow/image/upload/c_fill,w_104,h_104,g_auto,q_auto,f_auto/tourism/catalog/destination/hoi-an/gallery-02')"></span>
+        <span class="more">+14</span>
+      </div>
+      <div class="abs" style="left:calc(var(--s)*6);right:84px;bottom:calc(844px - 412px);z-index:2">
+        <span class="rating-chip" style="position:static;background:var(--secondary);color:var(--secondary-foreground)"><i data-icon="star" data-size="12" data-fill="1"></i>4.3 · 3 reviews</span>
+        <div class="t-display" style="margin-top:10px">Central Heritage: Đà Nẵng–Hội An–Huế 4D3N</div>
+        <div class="t-caption muted" style="display:flex;align-items:center;gap:4px;margin-top:6px"><i data-icon="pin" data-size="12"></i>Đà Nẵng · Hội An · Huế</div>
+      </div>
+      <div class="tabs" style="top:420px"><span class="on">Overview</span><span>Itinerary</span><span>Dates</span><span>Reviews</span></div>
+      <div class="abs" style="top:calc(420px + var(--touch) + var(--s)*4);left:calc(var(--s)*6);right:calc(var(--s)*6)">
+        <div class="t-subtitle muted clamp3">Four days over the Hải Vân Pass — Đà Nẵng's Marble Mountains, Hội An's lanterns and cooking class, and Huế's Imperial Citadel and royal tombs.</div>
+        <div class="facts" style="margin-top:16px">
+          <div class="fact"><i data-icon="clock" data-size="16"></i><span class="t-caption muted">Duration</span><span class="t-label">4 days</span></div>
+          <div class="fact"><i data-icon="users" data-size="16"></i><span class="t-caption muted">Group size</span><span class="t-label">Up to 16 guests</span></div>
+          <div class="fact"><i data-icon="activity" data-size="16"></i><span class="t-caption muted">Difficulty</span><span class="t-label">Easy</span></div>
+          <div class="fact"><i data-icon="smile" data-size="16"></i><span class="t-caption muted">Good for</span><span class="t-label">Families · Couples</span></div>
+        </div>
+      </div>
+      <div class="bottom-bar">
+        <div><div class="t-caption muted">From</div><div><span class="t-title">$419</span> <span class="t-caption muted">/ person</span></div></div>
+        <span class="btn primary" style="min-width:164px">Choose a date</span>
+      </div>
+      <div class="hi"></div>
+    </div>
+    <div class="cap">
+      <b>D1 · Chi tiết — Overview</b>
+      <span>Ảnh Navel 28/29. Ảnh bìa mờ dần về màu nền (cùng cách <code>AuthHero</code>), dải ảnh nhỏ bên phải đổi ảnh bìa, "+14" mở trình xem ảnh (D5). Kéo lên thì ảnh thu thành header gọn và hàng tab dính trên cùng (D2–D4).</p>
+      <ul>
+        <li>Dữ liệu: <code>TourDetail</code> — media[], ratingAvg/Count, title, destinations[], summary, durationDays, maxGroupSize, difficulty, suitableFor. Dưới màn: highlights, included/excluded, meetingPoint, faqs, policies (thu gọn, bấm mở).</li>
+        <li>Ảnh bìa cao ~50% màn (<code>420/844</code>), tiêu đề neo đáy ảnh, cách dải ảnh nhỏ 84dp. Đáy: <code>priceFrom</code> + nút mở tab Dates.</li>
+        <li>Chữ có sẵn: <code>tourDetail.from</code>, <code>reviewsLine()</code>, <code>maxGroup()</code>, <code>overviewTitle</code>, <code>highlightsTitle</code>, <code>includedTitle</code>… Khoá mới: nhãn 4 tab (web có <code>tabs.overview/itinerary/departures/reviews</code> — mobile gọi "Dates" cho gọn), <code>tourDetail.chooseDate</code>, <code>perPerson</code>, nhãn 4 thẻ dữ kiện.</li>
+        <li>Icon: <code>arrow-left</code>, <code>heart</code>, <code>star</code>, <code>map-pin</code>, <code>clock</code>, <code>users</code>, <code>activity</code>, <code>smile</code>.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="shot">
+    <div class="phone">
+      <div class="sb"><span>9:41</span><span class="icons"><i style="width:17px;height:10px"></i><i style="width:15px;height:10px;border-radius:6px"></i><i style="width:25px;height:11px"></i></span></div>
+      <div class="compact-head"><span class="icon-btn plain"><i data-icon="back" data-size="22"></i></span><span class="t-label clamp1" style="flex:1">Central Heritage: Đà Nẵng–Hội An–Huế 4D3N</span><span class="icon-btn plain"><i data-icon="heart" data-size="22"></i></span></div>
+      <div class="tabs" style="top:calc(var(--inset-top) + 52px)"><span>Overview</span><span class="on">Itinerary</span><span>Dates</span><span>Reviews</span></div>
+      <div class="abs" style="top:calc(var(--inset-top) + 52px + var(--touch) + var(--s)*5);left:calc(var(--s)*6);right:calc(var(--s)*6);display:flex;flex-direction:column;gap:14px">
+        <div class="day"><div class="rail-dot"><span class="dot on">1</span><span class="line"></span></div>
+          <div style="flex:1;padding-bottom:6px">
+            <div style="display:flex;justify-content:space-between;align-items:center"><span class="t-label">Arrival in Đà Nẵng and My Khê Beach</span><i data-icon="chevronUp" data-size="18"></i></div>
+            <div class="times t-caption">
+              <span class="t-label" style="font-size:12px;line-height:16px">09:00</span><span class="muted">Arrival pickup at Đà Nẵng International Airport</span>
+              <span class="t-label" style="font-size:12px;line-height:16px">10:30</span><span class="muted">Check in near My Khê Beach</span>
+              <span class="t-label" style="font-size:12px;line-height:16px">14:00</span><span class="muted">Marble Mountains cave-temple complex</span>
+              <span class="t-label" style="font-size:12px;line-height:16px">16:00</span><span class="muted">Free time or a swim at My Khê Beach</span>
+              <span class="t-label" style="font-size:12px;line-height:16px">18:30</span><span class="muted">Welcome dinner, Dragon Bridge fire show</span>
+            </div>
+          </div>
+        </div>
+        <div class="day"><div class="rail-dot"><span class="dot">2</span><span class="line"></span></div><div style="flex:1;display:flex;justify-content:space-between;align-items:center;min-height:40px"><span class="t-label">A full day in Hội An</span><i data-icon="chevronDown" data-size="18"></i></div></div>
+        <div class="day"><div class="rail-dot"><span class="dot">3</span><span class="line"></span></div><div style="flex:1;display:flex;justify-content:space-between;align-items:center;min-height:40px"><span class="t-label">Over the Hải Vân Pass to Huế</span><i data-icon="chevronDown" data-size="18"></i></div></div>
+        <div class="day"><div class="rail-dot"><span class="dot">4</span></div><div style="flex:1;display:flex;justify-content:space-between;align-items:center;min-height:24px"><span class="t-label">Huế's citadel and departure</span><i data-icon="chevronDown" data-size="18"></i></div></div>
+        <div class="fact" style="flex-direction:row;gap:12px;align-items:flex-start;margin-top:6px"><i data-icon="flag" data-size="18"></i><div><div class="t-caption muted">Meeting point</div><div class="t-subtitle">Arrival pickup at Đà Nẵng International Airport (day 1)</div></div></div>
+      </div>
+      <div class="bottom-bar">
+        <div><div class="t-caption muted">From</div><div><span class="t-title">$419</span> <span class="t-caption muted">/ person</span></div></div>
+        <span class="btn primary" style="min-width:164px">Choose a date</span>
+      </div>
+      <div class="hi"></div>
+    </div>
+    <div class="cap">
+      <b>D2 · Chi tiết — Itinerary (đã kéo lên)</b>
+      <span>Header gọn (lùi, tên tour một dòng, tim) và hàng tab dính trên cùng. Ngày đầu mở sẵn, các ngày sau thu gọn.</span>
+      <ul>
+        <li>Dữ liệu: <code>itinerary[]</code> (dayNumber, title, description). Mô tả seed là các dòng "09:00 — …" nối bằng xuống dòng — tách giờ ra cột trái nếu dòng khớp mẫu, không khớp thì in nguyên dòng.</li>
+        <li>Chữ có sẵn: <code>tourDetail.dayLabel()</code>, <code>itineraryTitle</code>, <code>showAllDays()</code>. Khoá mới: <code>tourDetail.meetingPointTitle</code>.</li>
+        <li>Icon: <code>chevron-up</code>/<code>chevron-down</code>, <code>flag</code>. Chấm ngày: <code>secondary</code>, ngày đang mở: <code>primary</code>.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="shot">
+    <div class="phone">
+      <div class="sb"><span>9:41</span><span class="icons"><i style="width:17px;height:10px"></i><i style="width:15px;height:10px;border-radius:6px"></i><i style="width:25px;height:11px"></i></span></div>
+      <div class="compact-head"><span class="icon-btn plain"><i data-icon="back" data-size="22"></i></span><span class="t-label clamp1" style="flex:1">Central Heritage: Đà Nẵng–Hội An–Huế 4D3N</span><span class="icon-btn plain"><i data-icon="heart" data-size="22"></i></span></div>
+      <div class="tabs" style="top:calc(var(--inset-top) + 52px)"><span>Overview</span><span>Itinerary</span><span class="on">Dates</span><span>Reviews</span></div>
+      <div class="abs" style="top:calc(var(--inset-top) + 52px + var(--touch) + var(--s)*4);left:calc(var(--s)*6);right:calc(var(--s)*6);display:flex;flex-direction:column;gap:10px">
+        <div style="display:flex;gap:10px;align-items:center;padding:10px 14px;border-radius:calc(var(--r)*2);background:var(--secondary);color:var(--secondary-foreground)"><i data-icon="shield" data-size="18"></i><span class="t-subtitle">Free cancellation up to 7 days before departure.</span></div>
+        <div class="t-caption muted" style="margin-top:4px">September 2026</div>
+        <div class="dep closed"><span class="radio" style="opacity:.4"></span><div style="flex:1"><div class="t-label muted">Wed 23 – Sat 26 Sep</div><div style="display:flex;gap:8px;align-items:center;margin-top:2px"><span class="tag closed">Booking closed</span><span class="t-caption link">Ask about this date</span></div></div><span class="t-label muted">$459</span></div>
+        <div class="t-caption muted" style="margin-top:4px">October 2026</div>
+        <div class="dep on"><span class="radio"></span><div style="flex:1"><div class="t-label">Sat 3 – Tue 6 Oct</div><div class="t-caption muted">12 seats left</div></div><span class="t-label">$459</span></div>
+        <div class="dep"><span class="radio"></span><div style="flex:1"><div class="t-label">Sat 10 – Tue 13 Oct</div><div style="display:flex;gap:6px;align-items:center"><span class="tag warn">Almost full</span><span class="t-caption muted">3 seats left</span></div></div><span class="t-label">$459</span></div>
+        <div class="dep"><span class="radio"></span><div style="flex:1"><div class="t-label">Sat 17 – Tue 20 Oct</div><div class="t-caption muted">9 seats left</div></div><div style="text-align:right"><div class="t-caption strike" style="color:var(--price-compare)">$459</div><div class="t-label">$419</div></div></div>
+      </div>
+      <div class="bottom-bar">
+        <div style="min-width:0"><div><span class="t-title">$459</span> <span class="t-caption muted">/ person</span></div><div class="t-caption link clamp1">Free cancellation until Sat 26 Sep</div></div>
+        <span class="btn primary" style="min-width:140px">Book now</span>
+      </div>
+      <div class="hi"></div>
+    </div>
+    <div class="cap">
+      <b>D3 · Chi tiết — Dates (đã chọn một đợt)</b>
+      <span>Danh sách đợt khởi hành theo tháng. Đợt qua hạn chót vẫn hiện nhưng khoá, kèm đường hỏi đợt đó — đúng luật "một hạn chót mỗi chuyến" (ADR-0041).</span>
+      <ul>
+        <li>Dữ liệu: <code>departures[]</code> — startDate, endDate, seatsLeft, effectivePrice, compareAtPrice, và hai cờ SERVER TÍNH <code>bookable</code> + <code>bookingDeadline</code> (có sau khi nhánh hoàn tiền merge). Không tự tính hạn chót bằng giờ máy.</li>
+        <li>Hạn chót = ngày đi − N; N theo độ dài chuyến: 1 ngày → 1, 2–3 ngày → 3, từ 4 ngày → 7. Đáy màn in hạn huỷ miễn phí của ĐỢT ĐANG CHỌN.</li>
+        <li>"Almost full" khi ≤ 3 ghế (khớp web). Giá gạch chỉ khi đợt có <code>compareAtPrice</code> thật. Nhãn <code>warn</code>: nền <code>warning</code> pha 20%.</li>
+        <li>Chữ có sẵn: <code>tourDetail.seatsLeft()</code>, <code>booking.bookCta</code>, <code>booking.soldOut</code>. Khoá mới: <code>bookingClosed</code>, <code>askAboutDate</code>, <code>almostFull</code>, câu huỷ miễn phí (dùng chung chữ luật với web). "Ask about this date" mở form hỏi (cụm P5b-3).</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="shot">
+    <div class="phone">
+      <div class="sb"><span>9:41</span><span class="icons"><i style="width:17px;height:10px"></i><i style="width:15px;height:10px;border-radius:6px"></i><i style="width:25px;height:11px"></i></span></div>
+      <div class="compact-head"><span class="icon-btn plain"><i data-icon="back" data-size="22"></i></span><span class="t-label clamp1" style="flex:1">Central Heritage: Đà Nẵng–Hội An–Huế 4D3N</span><span class="icon-btn plain"><i data-icon="heart" data-size="22"></i></span></div>
+      <div class="tabs" style="top:calc(var(--inset-top) + 52px)"><span>Overview</span><span>Itinerary</span><span>Dates</span><span class="on">Reviews</span></div>
+      <div class="abs" style="top:calc(var(--inset-top) + 52px + var(--touch) + var(--s)*4);left:calc(var(--s)*6);right:calc(var(--s)*6)">
+        <div style="display:flex;gap:20px;align-items:center">
+          <div style="flex:0 0 96px"><div class="t-display">4.3</div><div class="stars"><i data-icon="star" data-size="14" data-fill="1"></i><i data-icon="star" data-size="14" data-fill="1"></i><i data-icon="star" data-size="14" data-fill="1"></i><i data-icon="star" data-size="14" data-fill="1"></i><i data-icon="star" data-size="14" data-fill="1" class="off"></i></div><div class="t-caption muted" style="margin-top:4px">3 reviews</div></div>
+          <div style="flex:1;display:flex;flex-direction:column;gap:6px">
+            <div class="bar-row t-caption muted"><span>5</span><span class="track"><i style="width:33%"></i></span></div>
+            <div class="bar-row t-caption muted"><span>4</span><span class="track"><i style="width:67%"></i></span></div>
+            <div class="bar-row t-caption muted"><span>3</span><span class="track"><i style="width:0"></i></span></div>
+            <div class="bar-row t-caption muted"><span>2</span><span class="track"><i style="width:0"></i></span></div>
+            <div class="bar-row t-caption muted"><span>1</span><span class="track"><i style="width:0"></i></span></div>
+          </div>
+        </div>
+        <div class="chips scroll" style="margin-top:16px"><span class="chip on">Newest</span><span class="chip">Highest</span><span class="chip">Lowest</span><span class="chip">Oldest</span></div>
+        <div style="margin-top:16px;display:flex;flex-direction:column;gap:16px">
+          <div>
+            <div style="display:flex;gap:10px;align-items:center"><span class="avatar">YO</span><div style="flex:1"><div class="t-label">Yerin Oh</div><div class="t-caption muted">5 Jul 2026</div></div><div class="stars"><i data-icon="star" data-size="12" data-fill="1"></i><i data-icon="star" data-size="12" data-fill="1"></i><i data-icon="star" data-size="12" data-fill="1"></i><i data-icon="star" data-size="12" data-fill="1"></i><i data-icon="star" data-size="12" data-fill="1" class="off"></i></div></div>
+            <div class="t-label" style="margin-top:8px">Solid four days</div>
+            <div class="t-subtitle muted clamp3">Good pacing overall, though the royal-style dinner in Huế on the last night was a bit overpriced for what was served.</div>
+          </div>
+          <div>
+            <div style="display:flex;gap:10px;align-items:center"><span class="avatar">SP</span><div style="flex:1"><div class="t-label">Simon Peters</div><div class="t-caption muted">26 Apr 2026</div></div><div class="stars"><i data-icon="star" data-size="12" data-fill="1"></i><i data-icon="star" data-size="12" data-fill="1"></i><i data-icon="star" data-size="12" data-fill="1"></i><i data-icon="star" data-size="12" data-fill="1"></i><i data-icon="star" data-size="12" data-fill="1" class="off"></i></div></div>
+            <div class="t-subtitle muted clamp2" style="margin-top:8px">The Hải Vân Pass drive between Hội An and Huế was a highlight on its own, better than any of the museum stops honestly.</div>
+            <div class="review-photos"><i style="background-image:url('https://res.cloudinary.com/dbkgeehow/image/upload/c_fill,w_128,h_128,g_auto,q_auto,f_auto/tourism/catalog/destination/hoi-an/gallery-04')"></i><i style="background-image:url('https://res.cloudinary.com/dbkgeehow/image/upload/c_fill,w_128,h_128,g_auto,q_auto,f_auto/tourism/catalog/destination/hoi-an/gallery-05')"></i></div>
+          </div>
+        </div>
+      </div>
+      <div class="bottom-bar">
+        <div><div class="t-caption muted">From</div><div><span class="t-title">$419</span> <span class="t-caption muted">/ person</span></div></div>
+        <span class="btn primary" style="min-width:164px">Choose a date</span>
+      </div>
+      <div class="hi"></div>
+    </div>
+    <div class="cap">
+      <b>D4 · Chi tiết — Reviews</b>
+      <span>Ảnh Navel 31. Điểm trung bình + thanh phân bố sao, chip sắp xếp, danh sách review có ảnh khách chụp (bấm ảnh mở D5).</span>
+      <ul>
+        <li>Dữ liệu: <code>ratingAvg</code>, <code>ratingCount</code>, <code>ReviewBreakdown</code> (đếm 1–5), <code>PublicReview[]</code> — rating, title (có thể null), body, authorName (null → "Deleted account"), createdAt, media[]. Sắp xếp: <code>ReviewSort</code> newest/oldest/highest/lowest, phân trang.</li>
+        <li><code>reviews.listByTour</code> còn có lọc theo số sao (<code>rating</code>) và chỉ review có ảnh (<code>withPhotos</code>). Bản vẽ chỉ dùng sắp xếp cho gọn; muốn thêm hàng chip lọc sao như Navel 31 thì dữ liệu đã đủ. (Comment trong i18n <code>toursPage.reviews</code> nói API không có phân bố sao/sắp xếp — đã cũ, contract đã có.)</li>
+        <li>Sao: <code>rating</code>, rãnh trống: <code>rating-muted</code>. Avatar là chữ cái đầu trên nền <code>secondary</code> — review không có ảnh đại diện.</li>
+        <li>Chữ có sẵn: <code>tourDetail.reviewsTitle</code>, <code>seeAllReviews()</code>. Khoá mới: nhãn 4 kiểu sắp xếp (web có sẵn — dùng chung).</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="shot">
+    <div class="phone" style="background:rgb(from var(--scrim) r g b / 1)">
+      <div class="sb on-media"><span>9:41</span><span class="icons"><i style="width:17px;height:10px"></i><i style="width:15px;height:10px;border-radius:6px"></i><i style="width:25px;height:11px"></i></span></div>
+      <div class="abs" style="top:calc(var(--inset-top) + var(--s)*1.5);left:calc(var(--s)*3);right:calc(var(--s)*3);display:flex;align-items:center;justify-content:space-between">
+        <span class="icon-btn glass"><i data-icon="x" data-size="20"></i></span>
+        <span class="t-label media">3 / 17</span>
+        <span style="width:var(--touch)"></span>
+      </div>
+      <div class="abs" style="top:186px;left:0;right:0;height:470px;background:url('https://res.cloudinary.com/dbkgeehow/image/upload/c_fit,w_780,h_940,q_auto,f_auto/tourism/catalog/destination/hoi-an/gallery-03') center/contain no-repeat"></div>
+      <div class="abs" style="left:calc(var(--s)*6);right:calc(var(--s)*6);bottom:calc(var(--inset-bottom) + var(--s)*6)">
+        <div class="t-subtitle media" style="opacity:.9">An Old Town street with bolts of fabric hung outside the tailor shops, bougainvillea overhead and people strolling and cycling down the middle.</div>
+        <div class="t-caption media" style="opacity:.6;margin-top:8px">Photo: Nguyễn Minh · CC BY-SA 4.0</div>
+      </div>
+      <div class="hi on-media"></div>
+    </div>
+    <div class="cap">
+      <b>D5 · Trình xem ảnh</b>
+      <span>Ảnh Navel 34. Vuốt ngang qua từng ảnh, chụm để phóng to, vuốt xuống để đóng. Dùng chung cho ảnh tour (từ D1) và ảnh review (từ D4).</span>
+      <ul>
+        <li>Dữ liệu: <code>MediaItem</code> — url, alt, và <b>ghi công</b> <code>author</code> + <code>license</code> (ADR-0020: ảnh CC BY bắt buộc ghi công — thiếu dòng này là phát hành ảnh sai giấy phép). Cả hai null thì bỏ dòng.</li>
+        <li>Nền = <code>scrim</code> đặc (<code>withAlpha(scrim, 1)</code>), gần đen ở cả hai chế độ. Bỏ nút tải ảnh của Navel.</li>
+        <li>Media <code>type: 'VIDEO'</code>: chỉ hiện <code>posterUrl</code>, chưa phát video ở đợt này.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="shot">
+    <div class="phone">
+      <div class="hero" style="height:420px;background-image:url('https://res.cloudinary.com/dbkgeehow/image/upload/c_fill,w_780,h_840,g_auto,q_auto,f_auto/tourism/catalog/tour/central-heritage-4d/hero')"></div>
+      <div class="sb on-media"><span>9:41</span><span class="icons"><i style="width:17px;height:10px"></i><i style="width:15px;height:10px;border-radius:6px"></i><i style="width:25px;height:11px"></i></span></div>
+      <div class="abs" style="left:calc(var(--s)*6);right:84px;bottom:calc(844px - 412px);z-index:2">
+        <div class="t-display">Central Heritage: Đà Nẵng–Hội An–Huế 4D3N</div>
+      </div>
+      <div class="tabs" style="top:420px"><span class="on">Overview</span><span>Itinerary</span><span>Dates</span><span>Reviews</span></div>
+      <div class="dim"></div>
+      <div class="sheet" style="height:352px">
+        <span class="handle"></span>
+        <div class="abs" style="top:32px;left:calc(var(--s)*6);right:calc(var(--s)*6);display:flex;flex-direction:column;align-items:center;text-align:center">
+          <div class="square-icon" style="width:56px;height:56px"><i data-icon="heart" data-size="26"></i></div>
+          <div class="t-heading" style="margin-top:16px">Save tours you love</div>
+          <div class="t-subtitle muted" style="margin-top:4px">Sign in to save tours you love.</div>
+          <span class="btn primary" style="align-self:stretch;margin-top:24px">Sign in</span>
+          <span class="btn ghost" style="align-self:stretch;margin-top:12px">Create account</span>
+        </div>
+      </div>
+      <div class="hi"></div>
+    </div>
+    <div class="cap">
+      <b>D6 · Khách bấm tim khi chưa đăng nhập</b>
+      <span>Tấm mời đăng nhập thay vì nhảy thẳng sang màn Sign in — khách không mất chỗ đang xem. Dùng chung cho mọi nút tim (E1, E4, D1).</span>
+      <ul>
+        <li>Chữ có sẵn: <code>authPrompts.savedGateTitle</code>, <code>wishlistReason</code>, <code>signIn</code>, <code>createAccount</code>.</li>
+        <li>Đăng nhập xong quay về đúng tour và tự lưu tour đó — người nối API giữ ý định "lưu tour X" qua bước đăng nhập.</li>
+        <li>Đã đăng nhập: bấm tim đổi trạng thái ngay (lạc quan), lỗi thì trả tim về cũ và báo lỗi ngắn.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="shot">
+    <div class="phone">
+      <div class="sb"><span>9:41</span><span class="icons"><i style="width:17px;height:10px"></i><i style="width:15px;height:10px;border-radius:6px"></i><i style="width:25px;height:11px"></i></span></div>
+      <span class="abs icon-btn plain" style="top:calc(var(--inset-top) + var(--s)*1.5);left:calc(var(--s)*2)"><i data-icon="back" data-size="22"></i></span>
+      <div class="abs" style="top:calc(var(--inset-top) + 52px);left:calc(var(--s)*6);right:calc(var(--s)*6);bottom:calc(var(--inset-bottom) + var(--s)*20);display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:calc(var(--s)*4)">
+        <div class="square-icon"><i data-icon="map" data-size="28"></i></div>
+        <div class="t-heading" style="max-width:280px">This tour isn't available anymore.</div>
+        <span class="btn primary" style="width:200px">Go back</span>
+        <span class="t-label link">Explore other tours</span>
+      </div>
+      <div class="hi"></div>
+    </div>
+    <div class="cap">
+      <b>D7 · Tour không còn</b>
+      <span>Mở từ link cũ hoặc tour vừa bị gỡ publish. Cùng khuôn với H3; bản lỗi mạng đổi câu thành "Couldn't load this tour." và nút "Try again".</span>
+      <ul>
+        <li>Chữ có sẵn: <code>tourDetail.notFound</code>, <code>goBack</code>, <code>error</code>, <code>retry</code>. Khoá mới: <code>tourDetail.exploreOther</code>.</li>
+        <li>Mở bằng deep link <code>nexora://tours/&lt;slug&gt;</code> thì "Go back" rơi về tab Home (neo <code>(tabs)</code> của stack gốc).</li>
+      </ul>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  // Thay thẻ <i data-icon> bằng SVG nét (bộ Feather), cho bản ghi gọn và không lặp path.
+  (function () {
+    var P = {
+      x: '<path d="M18 6 6 18M6 6l12 12"/>',
+      back: '<path d="M19 12H5M12 19l-7-7 7-7"/>',
+      arrow: '<path d="M5 12h14M13 5l7 7-7 7"/>',
+      user: '<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>',
+      pin: '<path d="M20 10c0 6-8 12-8 12S4 16 4 10a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/>',
+      search: '<circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>',
+      sliders: '<path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"/>',
+      heart: '<path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78Z"/>',
+      star: '<path d="m12 2 3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2Z"/>',
+      home: '<path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"/><path d="M9 22V12h6v10"/>',
+      compass: '<circle cx="12" cy="12" r="10"/><path d="m16.24 7.76-2.12 6.36-6.36 2.12 2.12-6.36 6.36-2.12Z"/>',
+      briefcase: '<rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>',
+      loader: '<path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>',
+      wifiOff: '<path d="M1 1l22 22M16.72 11.06A10.94 10.94 0 0 1 19 12.55M5 12.55a10.94 10.94 0 0 1 5.17-2.39M10.71 5.05A16 16 0 0 1 22.58 9M1.42 9a15.91 15.91 0 0 1 4.7-2.88M8.53 16.11a6 6 0 0 1 6.95 0M12 20h.01"/>',
+      clock: '<circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>',
+      users: '<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>',
+      activity: '<path d="M22 12h-4l-3 9L9 3l-3 9H2"/>',
+      smile: '<circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2M9 9h.01M15 9h.01"/>',
+      chevronDown: '<path d="m6 9 6 6 6-6"/>',
+      chevronUp: '<path d="m18 15-6-6-6 6"/>',
+      flag: '<path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1ZM4 22v-7"/>',
+      shield: '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/><path d="m9 12 2 2 4-4"/>',
+      map: '<path d="M1 6v16l7-4 8 4 7-4V2l-7 4-8-4-7 4ZM8 2v16M16 6v16"/>'
+    };
+    document.querySelectorAll('i[data-icon]').forEach(function (el) {
+      var name = el.getAttribute('data-icon');
+      var size = el.getAttribute('data-size') || '18';
+      var stroke = el.getAttribute('data-stroke') || '1.8';
+      var fill = el.getAttribute('data-fill') === '1' ? 'currentColor' : 'none';
+      var cls = el.getAttribute('class');
+      el.outerHTML = '<svg' + (cls ? ' class="' + cls + '"' : '') + ' width="' + size + '" height="' + size + '" viewBox="0 0 24 24" fill="' + fill + '" stroke="currentColor" stroke-width="' + stroke + '" stroke-linecap="round" stroke-linejoin="round">' + P[name] + '</svg>';
+    });
+
+    // Bàn phím hệ thống (E2) — chỉ để thấy phần màn còn lại khi bàn phím bật.
+    document.querySelectorAll('[data-keyboard]').forEach(function (kb) {
+      var rows = ['qwertyuiop', 'asdfghjkl', 'zxcvbnm'];
+      var html = rows.map(function (r, i) {
+        var keys = r.split('').map(function (c) { return '<span class="k">' + c + '</span>'; }).join('');
+        if (i === 2) keys = '<span class="k fn">⇧</span>' + keys + '<span class="k fn">⌫</span>';
+        return '<div class="kr">' + keys + '</div>';
+      }).join('');
+      html += '<div class="kr"><span class="k fn">123</span><span class="k wide">space</span><span class="k fn">search</span></div>';
+      kb.innerHTML = html;
+    });
+
+    // Thanh công cụ: nền sáng/tối, vùng an toàn, thu phóng.
+    function press(group, active) {
+      document.querySelectorAll(group).forEach(function (b) { b.setAttribute('aria-pressed', String(b === active)); });
+    }
+    // Tham số URL để gửi link đúng trạng thái cho người khác: ?scheme=light&safe=on&zoom=0.5
+    var params = new URLSearchParams(location.search);
+    document.body.setAttribute('data-scheme', params.get('scheme') === 'light' ? 'light' : 'dark');
+    if (params.get('safe') === 'on') document.body.setAttribute('data-safe', 'on');
+    if (params.get('zoom')) document.querySelectorAll('.row').forEach(function (row) { row.style.setProperty('--zoom', params.get('zoom')); });
+    document.querySelectorAll('[data-scheme-btn]').forEach(function (b) {
+      b.setAttribute('aria-pressed', String(b.getAttribute('data-scheme-btn') === document.body.getAttribute('data-scheme')));
+      b.addEventListener('click', function () {
+        document.body.setAttribute('data-scheme', b.getAttribute('data-scheme-btn'));
+        press('[data-scheme-btn]', b);
+      });
+    });
+    document.querySelectorAll('[data-safe-btn]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        var on = document.body.getAttribute('data-safe') !== 'on';
+        document.body.setAttribute('data-safe', on ? 'on' : 'off');
+        b.setAttribute('aria-pressed', String(on));
+      });
+    });
+    document.querySelectorAll('[data-zoom-btn]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        document.querySelectorAll('.row').forEach(function (row) { row.style.setProperty('--zoom', b.getAttribute('data-zoom-btn')); });
+        press('[data-zoom-btn]', b);
+      });
+    });
+  })();
+</script>
