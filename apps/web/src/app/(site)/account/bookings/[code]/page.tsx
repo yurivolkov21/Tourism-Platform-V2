@@ -2,10 +2,13 @@ import { BookingCodeSchema } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
 import { ButtonLink } from '@tourism/ui/components/button-link';
 import { Frame, FramePanel } from '@tourism/ui/components/reui/frame';
+import { cn } from '@tourism/ui/lib/utils';
+import { CalendarClockIcon } from 'lucide-react';
 import type { Metadata } from 'next';
 import { cookies } from 'next/headers';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import type { ReactNode } from 'react';
 import { BookingActions } from '@/components/account/booking-actions';
 import { RetractReviewButton } from '@/components/account/retract-review-button';
 import { ReviewComposer } from '@/components/account/review-composer';
@@ -108,6 +111,26 @@ export default async function AccountBookingDetailPage({
   const refund = refundSummary(booking);
   const canCancel = view.actions.includes('cancelBooking');
   const deadlineText = canCancel ? cancellationDeadlineText(booking.cancellation) : null;
+  const actions = (
+    <BookingActions
+      view={view}
+      code={booking.code}
+      // Hộp xác nhận in số tiền và ngày chót do SERVER tính lúc đọc
+      // (`bookings.byCode.cancellation`) — cùng hàm luật mà lõi huỷ dùng, nên
+      // con số trong hộp là con số sẽ hoàn.
+      booking={{
+        code: booking.code,
+        tourTitle: booking.tourTitle,
+        tourSlug: booking.tourSlug,
+        departureStartDate: booking.departureStartDate,
+        departureEndDate: booking.departureEndDate,
+        numAdults: booking.numAdults,
+        numChildren: booking.numChildren,
+        currency: booking.currency,
+        cancellation: booking.cancellation,
+      }}
+    />
+  );
   const legacyNote = legacyCancellationNote(booking);
   const sec = t.sections;
 
@@ -248,30 +271,17 @@ export default async function AccountBookingDetailPage({
           {/* Câu dẫn và ngày chót chỉ đứng trước một nút huỷ THẬT. PENDING có
               "Pay now" + "Cancel booking" tự nói đủ; booking PAID đã khởi hành
               không còn hành động nào, câu dẫn đứng một mình là lơ lửng. */}
-          {canCancel ? <p className="text-sm text-muted-foreground">{tv.cancelLead}</p> : null}
-          {deadlineText ? (
-            <p className="mt-0.5 text-sm text-muted-foreground">{deadlineText}</p>
-          ) : null}
-          <div className="mt-1.5">
-            <BookingActions
-              view={view}
-              code={booking.code}
-              // Hộp xác nhận in số tiền và ngày chót do SERVER tính lúc đọc
-              // (`bookings.byCode.cancellation`) — cùng hàm luật mà lõi huỷ
-              // dùng, nên con số trong hộp là con số sẽ hoàn.
-              booking={{
-                code: booking.code,
-                tourTitle: booking.tourTitle,
-                tourSlug: booking.tourSlug,
-                departureStartDate: booking.departureStartDate,
-                departureEndDate: booking.departureEndDate,
-                numAdults: booking.numAdults,
-                numChildren: booking.numChildren,
-                currency: booking.currency,
-                cancellation: booking.cancellation,
-              }}
-            />
-          </div>
+          {canCancel ? (
+            <CancellationPanel
+              lead={tv.cancelLead}
+              deadlineText={deadlineText}
+              withinDeadline={booking.cancellation?.withinDeadline ?? true}
+            >
+              {actions}
+            </CancellationPanel>
+          ) : (
+            <div className="mt-1.5">{actions}</div>
+          )}
         </div>
 
         {/* Review giữ nguyên slot logic + đích anchor #review từ journey. */}
@@ -306,6 +316,55 @@ export default async function AccountBookingDetailPage({
         )}
       </div>
     </div>
+  );
+}
+
+/**
+ * Khối "Need to change plans?" của booking còn huỷ online được.
+ *
+ * Hạn chót huỷ miễn phí là thông tin TIỀN: qua nó là mất quyền hoàn. Bản trước
+ * in nó thành một dòng chú thích xám cỡ nhỏ và user thấy khách rất dễ bỏ qua
+ * (góp ý 17/09), nên nay nó đứng thành khối có viền, tiêu đề, icon lịch và chữ
+ * cỡ thân bài. Quá hạn thì cả khối sang tông cảnh báo — lúc đó huỷ vẫn được
+ * nhưng không còn hoàn.
+ *
+ * Cờ `withinDeadline` là cờ SERVER tính (`bookings.byCode.cancellation`),
+ * trang không tự so ngày với giờ trình duyệt.
+ */
+function CancellationPanel({
+  lead,
+  deadlineText,
+  withinDeadline,
+  children,
+}: {
+  lead: string;
+  deadlineText: string | null;
+  withinDeadline: boolean;
+  children: ReactNode;
+}) {
+  return (
+    <section
+      aria-label={lead}
+      className={cn(
+        'rounded-xl border p-4 sm:p-5',
+        withinDeadline ? 'border-border bg-card' : 'border-warning/60 bg-warning/10',
+      )}
+    >
+      <h2 className="font-heading text-lg font-semibold text-foreground">{lead}</h2>
+      {deadlineText ? (
+        <p className="mt-1.5 flex items-start gap-2 text-base font-medium text-foreground">
+          <CalendarClockIcon
+            aria-hidden="true"
+            className={cn(
+              'mt-0.5 size-5 shrink-0',
+              withinDeadline ? 'text-primary-emphasis' : 'text-warning-foreground',
+            )}
+          />
+          <span>{deadlineText}</span>
+        </p>
+      ) : null}
+      <div className="mt-3">{children}</div>
+    </section>
   );
 }
 

@@ -89,7 +89,7 @@ function PolicyLink() {
   return (
     <Link
       href="/cancellation-policy"
-      className="text-sm text-primary-emphasis underline-offset-4 hover:underline"
+      className="text-base text-primary-emphasis underline-offset-4 hover:underline"
     >
       {messages.accountBookingDetail.policyLink}
     </Link>
@@ -162,11 +162,12 @@ function CancelBookingDialog({
         <AlertDialogTrigger
           render={
             // Text-link chứ không phải Button nổi: huỷ là hành động phụ của
-            // trang. `h-auto px-0` gỡ khung/đệm của size mặc định.
+            // trang. `h-auto px-0` gỡ khung/đệm của size mặc định; `text-base`
+            // cho cùng cỡ chữ thân bài với câu hạn chót đứng ngay trên.
             <Button
               type="button"
               variant="link"
-              className="h-auto px-0 text-destructive-emphasis"
+              className="h-auto px-0 text-base text-destructive-emphasis"
               disabled={pending}
             >
               {t.actions.cancel}
@@ -175,11 +176,18 @@ function CancelBookingDialog({
         />
         {/* `max-h`+`overflow-y-auto`: `AlertDialogContent` neo `top-1/2` và KHÔNG
             có trần chiều cao — trên laptop màn thấp nội dung tràn ra hai đầu mà
-            không cuộn được, tức mất luôn nút xác nhận. */}
-        <AlertDialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto">
+            không cuộn được, tức mất luôn nút xác nhận.
+
+            Khổ rộng: mặc định của `AlertDialogContent` là 384px, tiêu đề
+            `text-base`, thân `text-sm` — user thấy hộp quyết định chuyện TIỀN
+            này quá nhỏ (góp ý 17/09), nên nới cả hộp chứ không chỉ chữ. Class
+            phải mang cùng tiền tố `data-[size=default]` với mặc định để
+            `tailwind-merge` thay nó; không tiền tố thì selector thuộc tính của
+            mặc định thắng và hộp vẫn 384px. */}
+        <AlertDialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto data-[size=default]:max-w-[calc(100%-2rem)] data-[size=default]:sm:max-w-lg">
           <AlertDialogHeader>
-            <AlertDialogTitle>{t.actions.cancelConfirmTitle}</AlertDialogTitle>
-            <AlertDialogDescription>
+            <AlertDialogTitle className="text-xl">{t.actions.cancelConfirmTitle}</AlertDialogTitle>
+            <AlertDialogDescription className="text-base">
               {/* Một chuỗi duy nhất (một text node) cho cả hai dạng. */}
               {within
                 ? d.withinBody(amount)
@@ -190,20 +198,20 @@ function CancelBookingDialog({
           {/* Viền chứ không nền để tách khối: dialog là `bg-popover`, và
               `--card`/`--popover` trong bộ token có thể trùng nhau. */}
           <div className="flex flex-col gap-1 rounded-lg border border-border p-4">
-            <p className="font-medium text-foreground">{booking.tourTitle}</p>
-            <p className="text-sm text-muted-foreground">
+            <p className="text-lg font-medium text-foreground">{booking.tourTitle}</p>
+            <p className="text-base text-muted-foreground">
               {formatDateRange(booking.departureStartDate, booking.departureEndDate)}
             </p>
-            <p className="text-sm text-muted-foreground">
+            <p className="text-base text-muted-foreground">
               {messages.accountBookings.travellers(booking.numAdults, booking.numChildren)}
             </p>
-            <p className="pt-1 font-mono text-xs text-muted-foreground">{booking.code}</p>
+            <p className="pt-1 font-mono text-sm text-muted-foreground">{booking.code}</p>
           </div>
 
           {within ? null : (
             <Link
               href={`/tours/${booking.tourSlug}/enquire`}
-              className="w-fit text-sm text-primary-emphasis underline-offset-4 hover:underline"
+              className="w-fit text-base text-primary-emphasis underline-offset-4 hover:underline"
             >
               {d.afterContact}
             </Link>
@@ -229,8 +237,12 @@ function CancelBookingDialog({
           {error}
 
           <AlertDialogFooter>
-            <AlertDialogCancel>{t.actions.cancelDismiss}</AlertDialogCancel>
+            <AlertDialogCancel size="lg" className="px-4 text-base">
+              {t.actions.cancelDismiss}
+            </AlertDialogCancel>
             <AlertDialogAction
+              size="lg"
+              className="px-4 text-base"
               disabled={pending}
               onClick={() => onSubmit(trimmed.length > 0 ? trimmed : undefined)}
             >
