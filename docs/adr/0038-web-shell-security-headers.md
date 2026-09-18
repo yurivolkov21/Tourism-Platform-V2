@@ -306,3 +306,18 @@ Chốt:
   `csp-report-suppressed {n}`** — dedupe không được im lặng tuyệt đối.
 - **Preflight:** e2e ghim `OPTIONS /api/webhooks/csp-report` cho CẢ web lẫn
   admin origin (endpoint không ở vùng `/api/admin` nên CORS bình thường).
+
+## AMEND 4 — 18/09/2026 (nhánh tinh chỉnh giao diện): favicon sinh bằng code, hai route tĩnh mới của admin
+
+Web và admin thay favicon mặc định bằng `app/icon.tsx` + `app/apple-icon.tsx`
+(`ImageResponse` của `next/og`, màu lấy từ `@tourism/tokens/theme`). Next sinh
+sẵn hai route này lúc build, nên `prerender-manifest.json` của admin có thêm
+`/icon` và `/apple-icon`. Allowlist của `scripts/check-admin-prerender.mjs`
+(AMEND 1) nay là `/robots.txt`, `/_global-error`, `/icon`, `/apple-icon`. Lý do
+mở: hai route trả ảnh PNG, không phải HTML, không có script nào cần nonce —
+cùng loại với `/robots.txt`. Luật của AMEND 1 giữ nguyên: HTML admin không được
+prerender, và mọi route tĩnh phải khai tường minh.
+
+Cùng lý do trình duyệt xin favicon khi chưa đăng nhập, hai path này vào
+`PUBLIC_PATHS` của `apps/admin/src/lib/admin-gate.ts` — thiếu nó thì proxy trả
+redirect `/login` cho request ảnh và tab trang login không có icon.

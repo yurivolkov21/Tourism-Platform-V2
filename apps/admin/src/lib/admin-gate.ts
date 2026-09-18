@@ -16,11 +16,13 @@ export type GateDecision =
   | { kind: 'deny' };
 
 /**
- * Path không cần session: trang login, màn từ chối quyền, và `/robots.txt`
+ * Path không cần session: trang login, màn từ chối quyền, `/robots.txt`
  * (W3-H3 — crawler không có cookie; bị đá về /login là file disallow không
- * bao giờ được đọc, noindex chỉ còn mỗi lớp X-Robots-Tag).
+ * bao giờ được đọc, noindex chỉ còn mỗi lớp X-Robots-Tag), và hai route icon
+ * sinh từ `app/icon.tsx` + `app/apple-icon.tsx` — thiếu chúng thì trình duyệt
+ * xin favicon lúc chưa đăng nhập nhận về redirect /login, tab trang login mất icon.
  */
-const PUBLIC_PATHS = ['/login', '/not-authorized', '/robots.txt'] as const;
+const PUBLIC_PATHS = ['/login', '/not-authorized', '/robots.txt', '/icon', '/apple-icon'] as const;
 
 export function decideAdminAccess(session: GateSession | null, path: string): GateDecision {
   const isPublic = PUBLIC_PATHS.some((p) => path === p || path.startsWith(`${p}/`));

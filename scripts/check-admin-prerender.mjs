@@ -15,7 +15,9 @@ import path from 'node:path';
 const MANIFEST = path.resolve('apps/admin/.next/prerender-manifest.json');
 // /robots.txt: file text, không script. /_global-error: 500.html tĩnh Next tự
 // dựng, không ép động được — chấp nhận mất hydrate (chỉ chữ), ghi ở ADR.
-const ALLOWED_STATIC = new Set(['/robots.txt', '/_global-error']);
+// /icon, /apple-icon: ảnh PNG sinh từ `app/icon.tsx`/`app/apple-icon.tsx`
+// (favicon 18/09) — không phải HTML, không script nào cần nonce.
+const ALLOWED_STATIC = new Set(['/robots.txt', '/_global-error', '/icon', '/apple-icon']);
 
 let manifest;
 try {

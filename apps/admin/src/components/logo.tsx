@@ -34,6 +34,20 @@ const TONES = {
   },
 } as const;
 
+/**
+ * Hình học của mark — MỘT nguồn cho logo trên trang và favicon sinh ở
+ * `app/icon.tsx`/`app/apple-icon.tsx` (bản web giữ đúng hằng này ở
+ * `apps/web/src/components/logo.tsx`).
+ */
+export const LOGO_MARK = {
+  viewBox: '0 0 46 33',
+  /** Viên sau (trái). */
+  back: 'M30.966 12.968 19.938 1.945a2.75 2.75 0 0 0-3.891 0l-14.1 14.093a2.75 2.75 0 0 0 0 3.89L12.975 30.95a2.75 2.75 0 0 0 3.891 0l14.1-14.094a2.75 2.75 0 0 0 0-3.889',
+  /** Viên trước (phải), vẽ sau nên đè lên viên sau. */
+  front:
+    'M44.032 12.968 33.004 1.945a2.75 2.75 0 0 0-3.89 0l-14.1 14.093a2.75 2.75 0 0 0 0 3.89L26.041 30.95a2.75 2.75 0 0 0 3.89 0l14.1-14.094a2.75 2.75 0 0 0 0-3.889',
+} as const;
+
 export function Logo({
   className,
   tone = 'default',
@@ -45,15 +59,9 @@ export function Logo({
 
   return (
     <span className={cn('flex items-center gap-2', className)}>
-      <svg viewBox="0 0 46 33" aria-hidden="true" className="h-6 w-auto shrink-0">
-        <path
-          className={c.back}
-          d="M30.966 12.968 19.938 1.945a2.75 2.75 0 0 0-3.891 0l-14.1 14.093a2.75 2.75 0 0 0 0 3.89L12.975 30.95a2.75 2.75 0 0 0 3.891 0l14.1-14.094a2.75 2.75 0 0 0 0-3.889"
-        />
-        <path
-          className={c.front}
-          d="M44.032 12.968 33.004 1.945a2.75 2.75 0 0 0-3.89 0l-14.1 14.093a2.75 2.75 0 0 0 0 3.89L26.041 30.95a2.75 2.75 0 0 0 3.89 0l14.1-14.094a2.75 2.75 0 0 0 0-3.889"
-        />
+      <svg viewBox={LOGO_MARK.viewBox} aria-hidden="true" className="h-6 w-auto shrink-0">
+        <path className={c.back} d={LOGO_MARK.back} />
+        <path className={c.front} d={LOGO_MARK.front} />
       </svg>
       <span className={cn('font-heading text-xl font-semibold tracking-tight', c.word)}>
         Nex<span className={c.accent}>ora</span>

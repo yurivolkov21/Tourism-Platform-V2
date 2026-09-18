@@ -40,4 +40,13 @@ describe('decideAdminAccess', () => {
   it('/robots.txt public — crawler không cookie phải đọc được disallow (W3-H3)', () => {
     expect(decideAdminAccess(null, '/robots.txt')).toEqual({ kind: 'allow' });
   });
+
+  it('/icon và /apple-icon public — favicon phải hiện cả ở trang login chưa có session', () => {
+    expect(decideAdminAccess(null, '/icon')).toEqual({ kind: 'allow' });
+    expect(decideAdminAccess(null, '/apple-icon')).toEqual({ kind: 'allow' });
+  });
+
+  it('chỉ đúng path icon mới public — path trùng tiền tố như /icons vẫn phải đăng nhập', () => {
+    expect(decideAdminAccess(null, '/icons')).toEqual({ kind: 'login', redirectTo: '/icons' });
+  });
 });
