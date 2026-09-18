@@ -8,6 +8,76 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-09-18 — Vòng vá review 2 cụm auth mobile: review nhánh của Nghĩa, giữ ba phần, vá bốn chỗ (`fix/p5b-auth-review-2`, ff vào `main`)
+
+User review nhánh `feat/mobile-dev-api-url-auto-derive` của Nghĩa (2 commit
+`32ef255e`, `dacc4fdd`, rẽ từ `ee91d5b1` — TRƯỚC vòng vá review 1) bằng review 10
+góc có kiểm chứng; 15 phát hiện đều xác nhận. User chốt 18/09: dựng nhánh mới từ
+`main`, chỉ đưa sang phần khớp bản vẽ, commit của Nghĩa đứng tên Nghĩa; nhánh gốc
+xoá sau merge.
+
+Đưa sang, đứng tên Nghĩa:
+
+- `1f2efd15` nút pill cao 46dp — đúng `.btn` 46px của bản vẽ.
+- `ed2d0353` tự suy origin API dev từ `hostUri` của Metro (bản gốc, vá ở dưới).
+- `60154a49` nút Next onboarding tròn 54dp nền primary — đúng `.round` của bản vẽ;
+  main đang lệch với `IconButton` glass 44dp.
+
+Vá chồng lên:
+
+- `403425a8` bản tự suy gốc ĐÈ `EXPO_PUBLIC_API_URL` ở mọi phiên Metro và tắt chốt
+  https. Lệnh dev mặc định (`--tunnel`) cho `hostUri` là host ngrok không cổng, nên
+  origin thành `http://…exp.direct:3001` — cổng tunnel không mở — còn API đã deploy
+  khai trong `.env.local` bị bỏ qua mà không báo gì. Nay env tường minh thắng; chỉ
+  thay host loopback bằng IPv4 LAN của Metro, giữ scheme và cổng; tunnel,
+  `--localhost`, IPv6 và bản phát hành giữ nguyên env. Lỗi đang ngủ vì chưa màn nào
+  dùng `apiUrl`.
+- `20ddcf3b` pill lấy `touchTargetMin` làm sàn — 46 > 44 trước đó chỉ là trùng số.
+- `246cb9d9` font nạp lỗi thì `fontsLoaded` mãi false: cây không vẽ, splash không
+  gỡ, không gì ném lên `ErrorBoundary` (lỗi có từ trước). Nay nạp lỗi cũng tính là
+  xong, app vẽ bằng chữ hệ thống.
+- `e6bd9500` runbook `mobile-dev-loop.md` và `.env.example` theo hành vi mới.
+
+Không đưa sang, lý do đã kiểm bằng mã nguồn thư viện:
+
+- **Dev build/EAS** (`expo-dev-client`, `eas.json`, `extra.eas.projectId`, `owner:
+  ngh1az`) và `@expo/ngrok` trong devDependencies: đảo ADR-0040 §1 mà không có AMEND
+  (CLAUDE.md #5). Có `expo-dev-client` là `expo start` tự chuyển sang dev client nên
+  QR hết mở bằng Expo Go; `projectId` bật ký manifest ở mỗi request nên người chưa
+  đăng nhập Expo bị prompt chặn. User chọn giữ Expo Go.
+- **Splash poster 1080×2340** kèm `resizeMode: cover` và bỏ `imageWidth`: plugin
+  `expo-splash-screen` 57 chỉ vẽ ảnh trong ô vuông `imageWidth` (mặc định 100) trên
+  cả hai nền tảng, nên poster còn khoảng 46×100dp — mark 9dp, tagline 1dp. Kèm mốc
+  giữ splash 900ms áp cho cả bản phát hành.
+- **Tinh chỉnh khoảng cách** 5 màn auth, onboarding và gallery: rẽ từ trước review 1
+  nên conflict 8 file, và chọn phía nhánh là đảo ba bản vá (`autoFocus` màn quên mật
+  khẩu, vai `subtitle`, `insets.bottom` ở onboarding). `View` bọc cộng dồn margin lên
+  primitive nên lệch bản vẽ xa hơn (OrDivider 16 so với 10, Checkbox 24 so với 14);
+  `OnboardingButton` cao cứng 68dp; cỡ chữ viết số; `\n` cứng trong tiêu đề i18n.
+
+Tests after: mobile 159 test ở 31 file (149, thêm 9 cho `resolveDevApiUrl` và 1 cho
+font lỗi), mobile-ui 86 (thêm 1 cho sàn vùng chạm) — mỗi test mới đã chạy đỏ trước
+khi sửa. Build và typecheck 6/6 task của các gói bị ảnh hưởng, Biome exit 0,
+tokens-only ✓ 65 file nguồn mobile, `bundle` xanh cả iOS lẫn Android, `expo-doctor`
+21/21, user test tay nút Next trên máy thật. `test:int` KHÔNG chạy ở máy: DB
+`tourism_test` đang mang migration `20260915120000_refund_deadline_expand` của nhánh
+hoàn tiền chưa merge, chạy chung dễ phá session kia; nhánh này không chạm `apps/api`
+và CI chạy `test:int` với Postgres riêng.
+
+**CÒN TREO:**
+
+- Splash chưa có wordmark và tagline như khung 1a — plugin chỉ vẽ một ảnh nhỏ giữa
+  màn, cần chốt cách làm trước.
+- Phần vá giao diện giao cho Nghĩa vẫn mở: 6 khung chưa đối chiếu trên máy (4a–4c,
+  5b, 5c, 5d), nền tối chưa soi. Làm lại trên nền `main` hiện tại: số dọc qua
+  `fromMockup`, cỡ chữ qua vai `AppText`, khoảng cách sửa trong primitive.
+- Runbook `mobile-dev-loop.md` và ADR-0040 §8 còn tiền đề WSL NAT, tunnel mặc định —
+  lỗi thời từ 14/09 khi máy dev chuyển sang Windows native.
+- `expo start` tự gỡ `expo-env.d.ts` khỏi `include` của `apps/mobile/tsconfig.json`
+  mỗi lần chạy (typedRoutes tắt), để lại file bẩn — commit sẵn thay đổi đó.
+- Nợ cũ giữ nguyên: chặn tab khi chưa đăng nhập · icon app · admin chuyển sang
+  `@tourism/core` · nối API thật.
+
 ## 2026-09-16 — Vòng vá review 1 cụm auth mobile: chờ font rồi mới vẽ, dựng lại đúng tỉ lệ bản vẽ (`fix/p5b-auth-review-1`, ff vào `main`)
 
 User nghiệm thu bằng máy thật (Android, nền sáng) ngay sau entry dưới và bắt được
