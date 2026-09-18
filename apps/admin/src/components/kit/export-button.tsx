@@ -21,11 +21,13 @@ import * as React from 'react';
  *    nút này là route handler trả `Content-Disposition: attachment`; một cú
  *    tải file qua button + điều hướng client sẽ thành một cú render trang
  *    hỏng. Dùng `motion.a` để giữ nguyên hiệu ứng mà vẫn là link thật.
- * 2. **Thấp và rộng.** Bản gốc `px-6 py-3` (~44px cao). Nút này sống trong Ô
+ * 2. **Thấp và gọn.** Bản gốc `px-6 py-3` (~44px cao). Nút này sống trong Ô
  *    TIÊU ĐỀ của bảng, nên nó cao bao nhiêu thì cả hàng tiêu đề dày lên bấy
- *    nhiêu — user báo nó "chiếm quá nhiều không gian". Hạ còn `h-8`, bù lại
- *    ghim `min-w` để nhãn đổi từ "Export CSV" sang "Export 12 rows" không làm
- *    nút co giãn giật theo mỗi ô checkbox được tích.
+ *    nhiêu — user báo nó "chiếm quá nhiều không gian". Lần một hạ còn `h-8`;
+ *    18/09 user thấy vẫn to (rộng 192px lấn sang cột cạnh) nên hạ tiếp còn
+ *    `h-7`, chữ 10px giãn `wider`, rộng tối thiểu 144px. Vẫn ghim `min-w` để
+ *    nhãn đổi từ "Export CSV" sang "Export 12 rows" không làm nút co giãn giật
+ *    theo mỗi ô checkbox được tích.
  * 3. **Icon Download thay bộ Lock/Terminal/Unlock.** Ổ khoá nói về mã hoá;
  *    việc ở đây là tải file.
  * 4. **Tôn trọng `prefers-reduced-motion`.** Xáo chữ + tia quét là chuyển động
@@ -41,11 +43,11 @@ const SCRAMBLE_CHARS = '010101_!@#$%^&*()<>{}[]░▒▓█';
 
 /**
  * Bề rộng tối thiểu, đo cho nhãn dài nhất thực tế ("Export 100 rows" ở `limit`
- * lớn nhất, chữ mono in hoa có giãn ký tự). Ghim ở đây thay vì để nút tự co:
- * nút nằm sát mép phải bảng, co giãn theo từng cú tích sẽ kéo cả ô tiêu đề
- * nhảy ngang — đúng thứ user muốn tránh khi bảo "tăng chiều dài nút ra".
+ * lớn nhất: 15 ký tự mono 10px giãn `wider` ≈ 98px, cộng icon 12px, khe 6px và
+ * đệm 2 × 12px ≈ 140px). Ghim ở đây thay vì để nút tự co: nút nằm sát mép phải
+ * bảng, co giãn theo từng cú tích sẽ kéo cả ô tiêu đề nhảy ngang.
  */
-const MIN_WIDTH = 'min-w-48';
+const MIN_WIDTH = 'min-w-36';
 
 function useScramble(label: string, active: boolean) {
   const [display, setDisplay] = React.useState(label);
@@ -110,8 +112,8 @@ export function ExportButton({ href, label, disabledReason }: ExportButtonProps)
   const { display, start, stop } = useScramble(label, !reduced);
 
   const shell = cn(
-    'group relative inline-flex h-8 items-center justify-center gap-2 overflow-hidden rounded-lg px-4',
-    'font-mono text-[11px] font-semibold tracking-widest uppercase transition-all duration-300',
+    'group relative inline-flex h-7 items-center justify-center gap-1.5 overflow-hidden rounded-lg px-3',
+    'font-mono text-[10px] font-semibold tracking-wider uppercase transition-all duration-300',
     'border border-border bg-background text-foreground select-none',
     MIN_WIDTH,
   );
@@ -119,7 +121,7 @@ export function ExportButton({ href, label, disabledReason }: ExportButtonProps)
   const chrome = (
     <>
       {/* Ngoặc góc HUD — chữ ký thị giác của bản gốc. Thu về `size-1` cho vừa
-          nút cao 32px; ở `size-1.5` chúng chạm nhau giữa cạnh. */}
+          nút cao 28px; ở `size-1.5` chúng chạm nhau giữa cạnh. */}
       <span className="absolute top-0.5 left-0.5 size-1 border-t border-l border-border transition-colors duration-300 group-hover:border-primary" />
       <span className="absolute top-0.5 right-0.5 size-1 border-t border-r border-border transition-colors duration-300 group-hover:border-primary" />
       <span className="absolute bottom-0.5 left-0.5 size-1 border-b border-l border-border transition-colors duration-300 group-hover:border-primary" />
@@ -145,7 +147,7 @@ export function ExportButton({ href, label, disabledReason }: ExportButtonProps)
       </AnimatePresence>
       <DownloadIcon
         aria-hidden="true"
-        className="relative z-10 size-3.5 text-muted-foreground transition-colors group-hover:text-primary"
+        className="relative z-10 size-3 text-muted-foreground transition-colors group-hover:text-primary"
       />
       {/* Hai lớp chữ: lớp dưới TRONG SUỐT giữ chỗ theo nhãn thật, lớp trên vẽ
           chuỗi đang xáo. Không có lớp giữ chỗ thì mỗi ký tự bị thay sẽ làm nút
