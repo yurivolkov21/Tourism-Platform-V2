@@ -1,4 +1,4 @@
-import { deriveDevApiUrl, readEnv } from './env';
+import { readEnv, resolveDevApiUrl } from './env';
 
 describe('readEnv', () => {
   it('trả nguyên giá trị khi có đủ hai biến', () => {
@@ -75,30 +75,47 @@ describe('readEnv', () => {
       webUrl: 'https://www.example.test',
     });
   });
-
-  it('cho phép http khi apiUrlRequireHttps=false (origin tự suy từ Metro, không phải input tự tay)', () => {
-    const env = readEnv(
-      {
-        EXPO_PUBLIC_API_URL: 'http://192.168.0.143:3001',
-        EXPO_PUBLIC_WEB_URL: 'https://www.example.test',
-      },
-      { apiUrlRequireHttps: false },
-    );
-
-    expect(env.apiUrl).toBe('http://192.168.0.143:3001');
-  });
 });
 
-describe('deriveDevApiUrl', () => {
-  it('lấy host từ hostUri của Metro, ghép cổng API cố định', () => {
-    expect(deriveDevApiUrl('192.168.0.143:8081')).toBe('http://192.168.0.143:3001');
+describe('resolveDevApiUrl', () => {
+  // `hostUri` là host:cổng mà Metro phục vụ bundle. Điện thoại vừa tải bundle
+  // qua đúng địa chỉ đó, nên nó tới được máy dev — nhưng CHỈ khi đó là IP LAN.
+  it.each([
+    // [mô tả, EXPO_PUBLIC_API_URL, hostUri của Metro, origin mong đợi]
+    [
+      'thay localhost bằng IP LAN của Metro',
+      'http://localhost:3001',
+      '192.168.0.143:8081',
+      'http://192.168.0.143:3001',
+    ],
+    [
+      'giữ cổng khai trong env, không ép 3001',
+      'http://localhost:3002',
+      '192.168.0.143:8081',
+      'http://192.168.0.143:3002',
+    ],
+    [
+      'coi 127.0.0.1 cũng là máy dev',
+      'http://127.0.0.1:3001',
+      '10.0.0.5:8081',
+      'http://10.0.0.5:3001',
+    ],
+  ])('%s', (_, apiUrl, hostUri, expected) => {
+    expect(resolveDevApiUrl(apiUrl, hostUri)).toBe(expected);
   });
 
-  it('trả undefined khi không có hostUri — build production không qua Metro dev', () => {
-    expect(deriveDevApiUrl(undefined)).toBeUndefined();
-  });
-
-  it('trả undefined khi hostUri rỗng', () => {
-    expect(deriveDevApiUrl('')).toBeUndefined();
+  it.each([
+    ['URL trỏ host thật (API đã deploy)', 'https://api.nexora-travel.agency', '192.168.0.143:8081'],
+    [
+      'chạy tunnel — ngrok chỉ chuyển cổng Metro',
+      'http://localhost:3001',
+      'abc-anonymous-8081.exp.direct',
+    ],
+    ['chạy --localhost — Metro cũng ở loopback', 'http://localhost:3001', '127.0.0.1:8081'],
+    ['hostUri là IPv6', 'http://localhost:3001', '[fe80::1]:8081'],
+    ['không có hostUri (bản phát hành)', 'http://localhost:3001', undefined],
+    ['hostUri rỗng', 'http://localhost:3001', ''],
+  ])('giữ nguyên env khi %s', (_, apiUrl, hostUri) => {
+    expect(resolveDevApiUrl(apiUrl, hostUri)).toBe(apiUrl);
   });
 });

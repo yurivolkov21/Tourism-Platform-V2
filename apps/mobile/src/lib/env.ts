@@ -50,15 +50,14 @@ function isLoopback(hostname: string): boolean {
  * 3. Trả `.origin` — bỏ path/query/dấu `/` cuối, nên `…/agency/` không thành
  *    `https://…//rpc/...` (nhiều reverse proxy trả 404 chứ không chuẩn hoá).
  */
-function readOrigin(raw: string, key: string, opts: { requireHttps?: boolean } = {}): string {
-  const requireHttps = opts.requireHttps ?? true;
+function readOrigin(raw: string, key: string): string {
   let url: URL;
   try {
     url = new URL(raw);
   } catch {
     throw new Error(`@tourism/mobile: ${key} không phải URL hợp lệ ("${raw}").`);
   }
-  if (requireHttps && url.protocol !== 'https:' && !isLoopback(url.hostname)) {
+  if (url.protocol !== 'https:' && !isLoopback(url.hostname)) {
     throw new Error(
       `@tourism/mobile: ${key} phải dùng https khi trỏ host thật, đang là "${url.protocol}//". ` +
         'Android chặn cleartext mặc định nên mọi request sẽ chết câm.',
@@ -67,10 +66,7 @@ function readOrigin(raw: string, key: string, opts: { requireHttps?: boolean } =
   return url.origin;
 }
 
-export function readEnv(
-  source: Record<string, string | undefined>,
-  opts: { apiUrlRequireHttps?: boolean } = {},
-): MobileEnv {
+export function readEnv(source: Record<string, string | undefined>): MobileEnv {
   const missing = KEYS.filter((key) => !source[key]?.trim());
   if (missing.length > 0) {
     throw new Error(
@@ -82,28 +78,45 @@ export function readEnv(
   // `noUncheckedIndexedAccess` bật: đã lọc ở trên nên hai giá trị chắc chắn có,
   // nhưng kiểu vẫn là `string | undefined` — dùng `?? ''` cho tsgo yên tâm.
   return {
-    apiUrl: readOrigin(source.EXPO_PUBLIC_API_URL ?? '', 'EXPO_PUBLIC_API_URL', {
-      requireHttps: opts.apiUrlRequireHttps ?? true,
-    }),
+    apiUrl: readOrigin(source.EXPO_PUBLIC_API_URL ?? '', 'EXPO_PUBLIC_API_URL'),
     webUrl: readOrigin(source.EXPO_PUBLIC_WEB_URL ?? '', 'EXPO_PUBLIC_WEB_URL'),
   };
 }
 
-/** Cổng `@tourism/api` (PORT trong apps/api/.env.example) — khác cổng Metro (8081). */
-const DEV_API_PORT = '3001';
+/**
+ * IP LAN mà Metro đang phục vụ bundle, lấy từ `hostUri` ("192.168.0.143:8081").
+ * Chỉ nhận IPv4 không phải loopback — tức phiên `expo start` chạy LAN. Mọi dạng
+ * khác trả `undefined`: host tunnel `*.exp.direct` (ngrok chỉ chuyển cổng Metro,
+ * không chuyển cổng API), `127.0.0.1` của `--localhost`, IPv6, và bản phát hành
+ * (không qua Metro nên không có `hostUri`).
+ */
+function metroLanHost(hostUri: string | undefined): string | undefined {
+  const host = hostUri?.split(':')[0] ?? '';
+  const isIpv4 = /^\d{1,3}(\.\d{1,3}){3}$/.test(host);
+  return isIpv4 && !host.startsWith('127.') ? host : undefined;
+}
 
 /**
- * Phiên Metro dev thật (Expo Go/dev client) tự lộ IP LAN nó đang bind qua
- * `Constants.expoConfig.hostUri` (vd "192.168.0.143:8081") — chính là IP điện
- * thoại vừa dùng để tải bundle. Suy origin API từ đó thay vì đọc
- * EXPO_PUBLIC_API_URL tĩnh nên đổi wifi/địa điểm KHÔNG cần sửa `.env.local`,
- * chỉ cần restart Metro (đằng nào cũng phải làm khi đổi mạng).
- * Build production không qua Metro nên `hostUri` luôn `undefined` — env tĩnh
- * vẫn là nguồn duy nhất, hàm này không có tác dụng ở đó.
+ * Origin API cho phiên dev. `EXPO_PUBLIC_API_URL` khai trong `.env.local` luôn là
+ * nguồn chính: trỏ API đã deploy hay một tunnel thì giữ nguyên. Chỉ khi nó trỏ
+ * loopback — "API trên máy dev" — và app đang chạy qua Metro LAN thì mới thay
+ * host bằng IP của Metro, vì `localhost` trên điện thoại là chính điện thoại.
+ * Scheme và cổng giữ đúng như env khai, nên API chạy cổng khác 3001 vẫn đúng.
+ *
+ * Kết quả là `http` tới một IP LAN, nằm ngoài chốt https của `readOrigin` — chấp
+ * nhận được vì nó chỉ sinh ra từ một giá trị loopback đã qua chốt đó, và chỉ khi
+ * có Metro (bản dev); bản phát hành không bao giờ đi vào nhánh này.
  */
-export function deriveDevApiUrl(hostUri: string | undefined): string | undefined {
-  const host = hostUri?.split(':')[0]?.trim();
-  return host ? `http://${host}:${DEV_API_PORT}` : undefined;
+export function resolveDevApiUrl(apiUrl: string, hostUri: string | undefined): string {
+  const lanHost = metroLanHost(hostUri);
+  if (lanHost === undefined) return apiUrl;
+
+  const url = new URL(apiUrl);
+  if (!isLoopback(url.hostname)) return apiUrl;
+
+  // Dựng chuỗi từ getter thay vì gán `url.hostname`: `URL` của runtime Expo là
+  // bản whatwg rút gọn, getter là phần chắc chắn có.
+  return `${url.protocol}//${lanHost}${url.port === '' ? '' : `:${url.port}`}`;
 }
 
 let cached: MobileEnv | undefined;
@@ -116,15 +129,12 @@ let cached: MobileEnv | undefined;
 export function env(): MobileEnv {
   // Metro nội tuyến `process.env.EXPO_PUBLIC_*` lúc bundle CHỈ khi truy cập
   // tĩnh — viết `process.env[key]` trong vòng lặp là bundle ra `undefined`.
-  const derivedApiUrl = deriveDevApiUrl(Constants.expoConfig?.hostUri);
-  cached ??= readEnv(
-    {
-      EXPO_PUBLIC_API_URL: derivedApiUrl ?? process.env.EXPO_PUBLIC_API_URL,
+  if (cached === undefined) {
+    const read = readEnv({
+      EXPO_PUBLIC_API_URL: process.env.EXPO_PUBLIC_API_URL,
       EXPO_PUBLIC_WEB_URL: process.env.EXPO_PUBLIC_WEB_URL,
-    },
-    // http chấp nhận được ở đây: origin tự suy từ Metro, không phải chuỗi ai
-    // gõ tay — Expo Go vẫn cho cleartext trong dev.
-    { apiUrlRequireHttps: !derivedApiUrl },
-  );
+    });
+    cached = { ...read, apiUrl: resolveDevApiUrl(read.apiUrl, Constants.expoConfig?.hostUri) };
+  }
   return cached;
 }
