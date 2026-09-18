@@ -62,6 +62,9 @@ export function Button({
       ? 'transparent'
       : theme.colors[background];
   const textColor = isDisabled ? theme.colors['muted-foreground'] : theme.colors[foreground];
+  // Pill cao 46dp như `.btn` của bản vẽ cụm auth, nhưng lấy ngưỡng a11y của token
+  // làm sàn: nâng `--touch-target-min` thì pill lên theo, không tụt dưới ngưỡng.
+  const pillHeight = Math.max(theme.touchTargetMin, theme.spacing(11.5));
 
   return (
     <Pressable
@@ -71,12 +74,10 @@ export function Button({
       style={({ pressed }) => [
         {
           backgroundColor,
-          // Pill: 46dp khớp mockup auth (docs/design/mockups/mobile-auth-screens.src.html),
-          // vẫn trên ngưỡng a11y touchTargetMin (44). Bản rounded giữ đúng ngưỡng token.
-          borderRadius: shape === 'pill' ? theme.spacing(11.5) : theme.radius.base,
+          borderRadius: shape === 'pill' ? pillHeight : theme.radius.base,
           flexDirection: 'row',
           gap: theme.spacing(2),
-          minHeight: shape === 'pill' ? theme.spacing(11.5) : theme.touchTargetMin,
+          minHeight: shape === 'pill' ? pillHeight : theme.touchTargetMin,
           paddingHorizontal: theme.spacing(5),
           alignItems: 'center',
           justifyContent: 'center',
