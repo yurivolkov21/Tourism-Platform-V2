@@ -110,13 +110,16 @@ export default function RootLayout() {
   // Bộ chữ brand giống web: Literata cho tiêu đề, Archivo cho chữ thân (ADR-0040
   // §AMEND 1). Mỗi độ đậm là một khuôn riêng vì `AppText` chọn family thay vì đặt
   // `fontWeight`.
-  const [fontsLoaded] = useFonts({
+  const [fontsLoaded, fontError] = useFonts({
     Literata_700Bold,
     Archivo_400Regular,
     Archivo_500Medium,
     Archivo_600SemiBold,
     Archivo_700Bold,
   });
+  // Nạp LỖI cũng tính là xong: vẽ bằng chữ hệ thống còn hơn splash đứng vĩnh
+  // viễn — lỗi nạp font không ném gì lên `ErrorBoundary` để nó gỡ splash hộ.
+  const fontsReady = fontsLoaded || fontError !== null;
 
   // Cờ "đã xem onboarding" đọc MỘT lần lúc mở app. Chưa xem thì thay màn ngay,
   // không đẩy thêm một bước vào stack: onboarding không phải chỗ để lùi về.
@@ -125,7 +128,7 @@ export default function RootLayout() {
   useEffect(() => {
     // Đợi có cây thật rồi mới đổi màn: `router.replace` gọi lúc cây còn `null`
     // là gọi khi chưa có navigator nào mounted.
-    if (!fontsLoaded) return;
+    if (!fontsReady) return;
 
     let cancelled = false;
 
@@ -138,19 +141,19 @@ export default function RootLayout() {
     return () => {
       cancelled = true;
     };
-  }, [fontsLoaded]);
+  }, [fontsReady]);
 
   // Splash chỉ gỡ khi xong CẢ font lẫn cờ onboarding — không ai kịp thấy một
   // nháy Home trước khi nhảy sang onboarding.
   useEffect(() => {
-    if (fontsLoaded && onboardingChecked) void SplashScreen.hideAsync();
-  }, [fontsLoaded, onboardingChecked]);
+    if (fontsReady && onboardingChecked) void SplashScreen.hideAsync();
+  }, [fontsReady, onboardingChecked]);
 
   // CHƯA có font thì chưa vẽ gì. Vẽ bằng chữ hệ thống rồi đổi sang chữ brand làm
   // BỐ CỤC đo xong bằng khuôn cũ: đo trên máy 16/09, "Skip" ra "Ski" ở trang
   // onboarding và chỉ đúng lại sau khi reload (lần hai font đã nằm trong cache).
   // Splash vẫn đang che nên quãng chờ này không ai thấy.
-  if (!fontsLoaded) return null;
+  if (!fontsReady) return null;
 
   return (
     <ThemeProvider>
