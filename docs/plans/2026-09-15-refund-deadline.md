@@ -16299,7 +16299,7 @@ sống (CLAUDE.md luật 15). Step 12 là merge và deploy, thuộc session gố
 - GIỮ: `EmailType.BOOKING_CANCELLED` (Task 2) và họ `'cancellation'` của `outbox-type-menu.tsx` — sau M2 họ ấy còn đúng một thành viên là `BOOKING_CANCELLED`, nên `FAMILY_ORDER` KHÔNG đổi.
 - Sau M2 `EmailTypeSchema.options` có **12** phần tử, `BOOKING_CANCELLED` vẫn ở CUỐI (int test `refund-deadline-migration.int.spec.ts` của Task 2 so thứ tự hai mảng).
 
-- [ ] **Step 1: Tách nhánh và kiểm điều kiện vào**
+- [x] **Step 1: Tách nhánh và kiểm điều kiện vào**
 
 ```bash
 git switch main && git pull --ff-only
@@ -16309,7 +16309,7 @@ git log --oneline -3
 
 Expected: `main` chứa commit merge của `feat/refund-deadline`; CHANGELOG mới nhất có entry của đợt đó và ghi lượt seed lại prod đã chạy. Nếu chưa có, DỪNG — M2 chạy sớm là xoá cột khi API cũ có thể còn phục vụ.
 
-- [ ] **Step 2: Viết migration M2**
+- [x] **Step 2: Viết migration M2**
 
 ```bash
 pnpm --filter @tourism/api exec prisma migrate dev --create-only --name refund_deadline_contract
@@ -16371,7 +16371,7 @@ ALTER TABLE "outbox"
 DROP TYPE "EmailType_old";
 ```
 
-- [ ] **Step 3: Dọn `schema.prisma`**
+- [x] **Step 3: Dọn `schema.prisma`**
 
 (a) Model `Tour` — xoá khối comment `// KHÔNG CÒN ĐỌC (ADR-0041): …` (Task 13 Step 12) và dòng:
 
@@ -16393,7 +16393,7 @@ DROP TYPE "EmailType_old";
   CANCELLATION_DENIED
 ```
 
-- [ ] **Step 4: Áp lên Docker và xác nhận không drift**
+- [x] **Step 4: Áp lên Docker và xác nhận không drift**
 
 ```bash
 docker compose up -d postgres
@@ -16406,7 +16406,7 @@ Expected: lần 1 áp migration mới và in "Your database is now in sync with 
 
 Từ sau bước này tuyệt đối không sửa `migration.sql` ấy nữa, kể cả một dấu cách (checksum).
 
-- [ ] **Step 5: Gỡ ba giá trị khỏi contract**
+- [x] **Step 5: Gỡ ba giá trị khỏi contract**
 
 (a) `libs/shared/contract/src/schemas/outbox.ts` — trong mảng của `EmailTypeSchema`, xoá ba dòng:
 
@@ -16433,7 +16433,7 @@ Sau:
 Run: `pnpm --filter @tourism/contract exec vitest run src/schemas/outbox.spec.ts && pnpm --filter @tourism/contract build && pnpm --filter @tourism/i18n build`
 Expected: PASS; hai build exit 0.
 
-- [ ] **Step 6: Gỡ ba template khỏi `render-email.tsx`**
+- [x] **Step 6: Gỡ ba template khỏi `render-email.tsx`**
 
 Trong `apps/api/src/worker/emails/render-email.tsx`, xoá nguyên ba nhánh `case` cùng phần thân và component riêng của chúng nếu component ấy không còn ai gọi:
 
@@ -16453,7 +16453,7 @@ Expected: chỉ còn các dòng thuộc nhánh `BOOKING_CANCELLED` của Task 2 
 
 ⚠️ Nhánh `default` của `switch` KHÔNG được nới thành nhánh nuốt: kiểm nó vẫn là `never`-exhaustive như trước (typecheck ở Step 9 là lưới).
 
-- [ ] **Step 7: Gỡ test của ba template**
+- [x] **Step 7: Gỡ test của ba template**
 
 Trong `apps/api/src/worker/resend.deliverer.spec.ts`:
 
@@ -16472,7 +16472,7 @@ Trong `apps/api/src/worker/resend.deliverer.spec.ts`:
 Run: `pnpm --filter @tourism/api exec vitest run src/worker/resend.deliverer.spec.ts`
 Expected: PASS, không test nào FAIL, không lỗi "Cannot read properties of undefined".
 
-- [ ] **Step 8: Gỡ nhãn ở admin và i18n**
+- [x] **Step 8: Gỡ nhãn ở admin và i18n**
 
 (a) `apps/admin/src/components/outbox/outbox-type-menu.tsx` — trong `TYPE_META`, xoá ba dòng:
 
@@ -16494,7 +16494,7 @@ Expected: PASS, không test nào FAIL, không lỗi "Cannot read properties of u
 
 `type` là `Record<EmailTypeValue, string>` đủ member, nên thừa nhãn cũng là đỏ typecheck — hai bên phải rút cùng lúc.
 
-- [ ] **Step 9: Grep sạch, format, cổng đầy đủ**
+- [x] **Step 9: Grep sạch, format, cổng đầy đủ**
 
 ```bash
 grep -rn "CANCELLATION_REQUESTED\|CANCELLATION_APPROVED\|CANCELLATION_DENIED" \
@@ -16523,7 +16523,7 @@ node scripts/check-mobile-tokens-only.mjs
 
 Expected: cả sáu exit 0. Int test `refund-deadline-migration.int.spec.ts` (Task 2) chạy trên DB test đã nhận M2 nên nó khoá luôn thứ tự enum mới; nếu nó đỏ thì thứ tự trong `CREATE TYPE` ở Step 2 lệch với `schema.prisma`.
 
-- [ ] **Step 10: Tài liệu (luật 13)**
+- [x] **Step 10: Tài liệu (luật 13)**
 
 (a) `docs/CHANGELOG.md` — thêm entry MỚI ở đầu, dưới khối trích dẫn về archive. Viết theo khuôn "ngày · hash · nội dung · review findings · số test", và **không để dòng nào bắt đầu bằng `+` ở cột 0** (gotcha CLAUDE.md: formatter markdown đổi `+` thành `-` và nói sai con số):
 
@@ -16557,7 +16557,7 @@ Tests after: `<số unit>` unit và `<số int>` integration, `pnpm gate:int` xa
 Run: `git diff -- '*.md' | grep -nE "^[-+]\+" || true`
 Expected: không in gì. Đọc `git diff docs/CHANGELOG.md` bằng mắt: KHÔNG được có dòng nào của entry CŨ bị đổi (entry cũ là bản ghi bất biến; mở file bằng editor có markdownlint là đủ để nó tự sửa).
 
-- [ ] **Step 11: Commit**
+- [x] **Step 11: Commit**
 
 ```bash
 git add apps/api/prisma/migrations apps/api/prisma/schema.prisma \
@@ -16571,7 +16571,7 @@ git add apps/api/prisma/migrations apps/api/prisma/schema.prisma \
 git commit -m "chore(api): xoá hai cột free_cancellation_days và ba loại email duyệt huỷ (M2)"
 ```
 
-- [ ] **Step 12: Merge và deploy — session gốc, sau review**
+- [x] **Step 12: Merge và deploy — session gốc, sau review**
 
 Cùng trình tự Phụ lục B nhưng ngắn hơn, vì M2 chỉ thu hẹp thứ code mới đã ngừng dùng:
 
@@ -16581,7 +16581,24 @@ git switch chore/refund-deadline-m2 && git rebase main
 git switch main && git merge --ff-only chore/refund-deadline-m2
 ```
 
-Trước khi push, chạy M2 lên Supabase từ `apps/api`, trong Git Bash (gotcha `tr -d '\r'` của CLAUDE.md — `.env.production` sửa trên Windows mang CRLF):
+⚠️ **Sửa 19/09 (lượt chạy thật): push code TRƯỚC, chạy M2 SAU.** Bản đầu của
+bước này bảo chạy M2 trước khi push — sai. API đang chạy trên prod vẫn khai hai
+cột trong `schema.prisma` (chỉ đánh dấu "không còn đọc"), mà Prisma Client liệt
+kê MỌI cột scalar khi SELECT/RETURNING nếu query không có `select` riêng — ví dụ
+`catalog.service.ts` (`tour.findFirst` + `include`, trang chi tiết tour) và
+`cancellations.service.ts` (`cancellationRequest.findMany`, lịch sử huỷ). Xoá cột
+khi bản đó còn chạy là 500 cho tới khi Render dựng xong API mới. Chiều ngược lại
+an toàn: API mới (không khai hai cột, enum ít hơn) chạy trên DB còn đủ cột và đủ
+giá trị enum không sao, miễn `outbox` không còn dòng mang ba loại cũ — kiểm trước.
+
+```bash
+git push
+gh run list --branch main --limit 1
+```
+
+Chờ CI `success` (luật 14) VÀ Render chạy API mới (`/health` có `uptimeSec` nhỏ).
+Rồi mới chạy M2 lên Supabase từ `apps/api`, trong Git Bash (gotcha `tr -d '\r'`
+của CLAUDE.md — `.env.production` sửa trên Windows mang CRLF):
 
 ```bash
 cd apps/api
@@ -16592,15 +16609,7 @@ pnpm prisma migrate status
 
 Expected: `migrate deploy` áp đúng một migration mới; `migrate status` in "Database schema is up to date!". Nếu chốt chặn `RAISE EXCEPTION` nổ thì `outbox` prod còn dòng cũ — chạy lại lượt seed (hoặc xoá đúng các dòng ấy) rồi chạy lại, **đừng** sửa migration.
 
-Rồi:
-
-```bash
-cd ../..
-git push
-gh run list --branch main --limit 1
-```
-
-Expected: run mới nhất `success` (luật 14 — chờ nếu đang chạy). Render tự deploy API; Vercel tự deploy web và admin. Ở M2 **không** cần tắt tự deploy Vercel: code mới không đọc gì từ API mà API cũ chưa có — chiều phụ thuộc ngược với M1. Kiểm cuối: mở `www.nexora-travel.agency` một trang tour và `/account/bookings`, mở trang `/outbox` của admin và lọc theo `Booking cancelled`, cả hai trả 200.
+Ở M2 **không** cần tắt tự deploy Vercel: web và admin không đọc gì mới từ API. Kiểm cuối: mở `www.nexora-travel.agency` một trang tour và `/account/bookings`, mở trang `/outbox` của admin và lọc theo `Booking cancelled`, cả hai trả 200. Kết quả chạy M2 ghi vào một entry CHANGELOG ngắn đi sau (entry của nhánh đã push trước lúc M2 chạy, và entry đã push là bất biến).
 
 Xoá nhánh: `git branch -d chore/refund-deadline-m2`.
 ---
@@ -16895,7 +16904,7 @@ trong migration M2 sẽ dừng nếu `outbox` còn dòng mang ba giá trị cũ.
 Để bản mới chạy trên prod vài ngày và đạt đủ năm mục nghiệm thu của Bước 6 rồi
 mới vào bước này — sau M2 không còn đường lùi về code cũ (xem "Nếu phải lùi").
 
-- [ ] **Bước 7 xong:** `prisma migrate status` trên Supabase in "up to date" sau M2; site vẫn 200.
+- [x] **Bước 7 xong:** `prisma migrate status` trên Supabase in "up to date" sau M2; site vẫn 200.
 
 ---
 

@@ -8,6 +8,63 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-09-21 — M2 hoàn tiền một hạn chót: xoá hai cột badge huỷ và ba loại email duyệt (nhánh `chore/refund-deadline-m2`, ff vào `main`)
+
+Migration thu hẹp đi sau M1 đúng một nhịp (Phụ lục B Bước 7 của plan 15/09,
+spec 15/09 §10 bước 7). Code viết 19/09; merge và deploy 21/09 sau khi bản
+ADR-0041 đã chạy thật ba ngày, đúng khoảng chờ user chốt 17/09. Prod đã seed lại
+18/09 nên không bản API nào còn đọc hai cột.
+
+- `22ec285a` chore(api): migration `20260919111406_refund_deadline_contract` xoá
+  `tours.free_cancellation_days` và `cancellation_requests.free_cancellation_days`;
+  dựng lại enum `EmailType` không còn `CANCELLATION_REQUESTED`,
+  `CANCELLATION_APPROVED`, `CANCELLATION_DENIED` (Postgres không có
+  `ALTER TYPE … DROP VALUE`). Migration mang chốt chặn `DO $$ … RAISE`: còn dòng
+  `outbox` mang ba giá trị ấy thì dừng, không đổi kiểu nửa chừng.
+- Code theo sau trong cùng commit: `EmailTypeSchema` còn 12 giá trị
+  (`BOOKING_CANCELLED` vẫn cuối); gỡ ba `case` của `render-email.tsx` (105 dòng),
+  ba mục của `outbox-type-menu.tsx` cùng ba icon mồ côi, và ba nhãn ở
+  `@tourism/i18n`. Hành vi "hoàn 0 thì không hứa tiền" đã nằm ở biến thể không
+  hoàn của `BOOKING_CANCELLED` (hai ca `amount: '0.00'` trong spec), nên xoá
+  describe cũ không mất bất biến nào.
+- Lệch plan, đã xử lý: Step 4 chạy `prisma migrate dev` không kèm `DATABASE_URL`,
+  tức rơi vào DB Docker `tourism` dùng chung. Checkout gốc còn trên `main` chưa
+  có M2 sẽ hỏng, vì Prisma Client ở đó vẫn SELECT hai cột. Lượt này tạo và kiểm
+  migration trên DB riêng `tourism_m2` rồi xoá; sau cổng xoá luôn `tourism_test`,
+  vì globalSetup chỉ `migrate deploy` chứ không reset — lần chạy sau tự dựng lại
+  theo migration của checkout đang chạy.
+- Chú thích ở `seed.ts` từng nói M2 xoá cả `decision_note`; sai, M2 chỉ xoá
+  `free_cancellation_days`. Đã sửa.
+- **Lệch plan nặng nhất, bắt được trước khi deploy:** Step 12 bảo chạy M2 lên
+  Supabase TRƯỚC khi push. API đang chạy vẫn khai hai cột trong `schema.prisma`,
+  và Prisma Client liệt kê mọi cột khi query không có `select` riêng
+  (`catalog.service.ts` trang chi tiết tour, `cancellations.service.ts` lịch sử
+  huỷ) — xoá cột trước là 500 cho tới khi Render dựng xong API mới. Thứ tự đúng:
+  push code, chờ Render chạy API mới, rồi mới chạy M2. Step 12 của plan đã sửa.
+
+Kiểm trên DB riêng: `migrate dev` lần hai báo "Already in sync" (SQL viết tay
+khớp `schema.prisma`); seed H = 2026-09-18 trên schema M2 rồi `seed:verify`
+0 vi phạm trên 106 bất biến. Trên prod trước khi push: `outbox` không còn dòng
+nào mang ba loại cũ (chốt chặn sẽ qua), `migrate status` chỉ còn M2 chưa áp.
+
+**Trạng thái deploy:** commit code push lên `main` lúc 07:19 giờ VN 21/09; Render
+dựng xong bản mới lúc 07:23 (deploy `dep-dao7g72jnfac739etisg`, `status: live`),
+CI `gate` của `22ec285a` xanh; **M2 chạy lên Supabase lúc 07:28 giờ VN 21/09**,
+`migrate status` in "Database schema is up to date!". Đo lại trên prod ngay sau
+đó: không còn cột `free_cancellation_days` nào, enum `EmailType` còn 12 giá trị
+đúng thứ tự với `BOOKING_CANCELLED` ở cuối, kiểu tạm `EmailType_old` đã bị xoá.
+Kiểm chạy: `/api/tours/{slug}` (đường Prisma đọc mọi cột của `Tour`),
+`/api/tours`, `/health` và bốn trang web đều 200 — gọi mỗi trang hai lần vì ISR.
+
+**Review findings:** không có vòng review riêng; migration và phần gỡ code theo
+đúng plan đã duyệt, cổng đầy đủ là lưới.
+
+Tests after: cổng đầy đủ xanh. Int 495 ở 39 file (có spec đối chiếu thứ tự enum
+giữa DB và contract). Vitest 3650 (api 925, bớt 11 test của ba template; contract
+279, admin 838, web 1506, core 46, ui 22, tokens 18, i18n 16) và jest mobile 245.
+Build 8/8, web 75/75 trang. Typecheck 15/15. Lint chỉ còn 1 warning và 1 info có
+từ trước. `check-admin-prerender` OK, tokens-only ✓.
+
 ## 2026-09-18 — Tinh chỉnh giao diện web và admin: hạn chót huỷ, hộp huỷ, nút Export, nút Ask about, favicon (nhánh `fix/ui-polish-web-admin`, ff vào `main`)
 
 User gom năm góp ý giao diện từ hai lượt nghiệm thu (test tay 17/09, nghiệm thu
