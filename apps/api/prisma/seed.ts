@@ -594,8 +594,8 @@ async function main(): Promise<void> {
       status: c.status,
       // ADR-0041: không còn ai duyệt, chính KHÁCH là người quyết. Task 8 dựng cờ
       // `decidedByCustomer` của contract từ đúng phép so `decided_by = user_id` này, nên
-      // ghi admin vào đây là nói sai ai đã huỷ. `free_cancellation_days` và `decision_note`
-      // để trống — hai cột đó ra đi cùng nhánh M2 (Phụ lục A).
+      // ghi admin vào đây là nói sai ai đã huỷ. `decision_note` để trống vì không ai duyệt;
+      // cột `free_cancellation_days` đã xoá ở migration M2.
       decidedById: c.userId,
       decidedAt: new Date(c.decidedAt),
       createdAt: new Date(c.createdAt),

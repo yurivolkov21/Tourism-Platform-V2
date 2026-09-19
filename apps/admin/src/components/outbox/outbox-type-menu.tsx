@@ -4,7 +4,6 @@ import { EmailTypeSchema, type EmailTypeValue } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
 import {
   BellRingIcon,
-  CircleDashedIcon,
   KeyRoundIcon,
   MailCheckIcon,
   MailIcon,
@@ -13,8 +12,6 @@ import {
   PenLineIcon,
   RectangleEllipsisIcon,
   RotateCcwIcon,
-  ShieldCheckIcon,
-  ShieldXIcon,
   StarIcon,
   TicketIcon,
   TicketXIcon,
@@ -30,7 +27,7 @@ import { type OutboxQuery, outboxHref } from '@/lib/outbox-query';
 /**
  * Lọc theo loại email của `/outbox` — kit `ToolbarFilterMenu`.
  *
- * Vì sao là menu có nhóm chứ không phải một Select phẳng: 13 loại email + mục
+ * Vì sao là menu có nhóm chứ không phải một Select phẳng: 12 loại email + mục
  * "All" là danh sách DÀI NHẤT trong cả admin, và chúng chia đúng năm họ — thứ
  * một danh sách phẳng không nói ra được. Vùng chỉ giữ phần kiến thức RIÊNG
  * của nó (loại nào thuộc họ nào, icon gì); hình dạng menu nằm ở kit.
@@ -50,10 +47,8 @@ type Family = (typeof FAMILY_ORDER)[number];
  *
  * 1. Ưu tiên glyph dự án ĐÃ dùng cho đúng khái niệm đó (user chốt 03/09):
  *    `TicketIcon` là booking (user-menu web, cột bookingCode), `RotateCcwIcon`
- *    là REFUNDED (tab bookings), `CircleDashedIcon` là "chưa xử lý" (tab
- *    enquiries), `ShieldCheck`/`ShieldX` là duyệt/từ chối (`decision-button`),
- *    `MessageSquareIcon` là enquiry, `StarIcon` là review, `PenLineIcon` là
- *    sửa. Chỉ khi dự án CHƯA có glyph nào cho khái niệm ấy mới lấy glyph mới
+ *    là REFUNDED (tab bookings), `MessageSquareIcon` là enquiry, `StarIcon` là
+ *    review, `PenLineIcon` là sửa. Chỉ khi dự án CHƯA có glyph nào cho khái niệm ấy mới lấy glyph mới
  *    của lucide (bell-ring · megaphone · key-round · rectangle-ellipsis).
  * 2. Né bộ của tab trạng thái đứng ngay bên trái (list/clock/circle-check/
  *    circle-x/ban) và cột `recipient` của menu Columns (at-sign): trong cùng
@@ -62,11 +57,8 @@ type Family = (typeof FAMILY_ORDER)[number];
 const TYPE_META: Record<EmailTypeValue, { family: Family; icon: typeof MailIcon }> = {
   BOOKING_CONFIRMATION: { family: 'booking', icon: TicketIcon },
   BOOKING_REFUNDED: { family: 'booking', icon: RotateCcwIcon },
-  CANCELLATION_REQUESTED: { family: 'cancellation', icon: CircleDashedIcon },
-  CANCELLATION_APPROVED: { family: 'cancellation', icon: ShieldCheckIcon },
-  CANCELLATION_DENIED: { family: 'cancellation', icon: ShieldXIcon },
-  // ADR-0041: email huỷ DUY NHẤT còn phát sinh (khách tự huỷ); ba loại trên ở
-  // lại để lọc dữ liệu cũ. Luật 1 không có glyph sẵn cho "booking đã huỷ" dùng
+  // ADR-0041: email huỷ DUY NHẤT của họ `cancellation` — ba loại của luồng
+  // duyệt huỷ đã gỡ ở M2. Luật 1 không có glyph sẵn cho "booking đã huỷ" dùng
   // được: `CircleXIcon` của tab CANCELLED bên /bookings trùng tab FAILED của
   // chính toolbar này (luật 2). Nên lấy `ticket-x` — vé (booking) bị gạch.
   BOOKING_CANCELLED: { family: 'cancellation', icon: TicketXIcon },

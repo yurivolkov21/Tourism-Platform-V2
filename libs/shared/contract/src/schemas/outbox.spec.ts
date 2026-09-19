@@ -43,7 +43,9 @@ describe('enums', () => {
     // ADR-0041 thêm `BOOKING_CANCELLED` ở CUỐI cho khớp enum Prisma — int test
     // của API so hai mảng theo đúng thứ tự.
     expect(EmailTypeSchema.options.at(-1)).toBe('BOOKING_CANCELLED');
-    expect(EmailTypeSchema.options).toHaveLength(15);
+    // M2 (ADR-0041) rút ba loại của luồng duyệt huỷ; BOOKING_CANCELLED vẫn cuối.
+    expect(EmailTypeSchema.options).not.toContain('CANCELLATION_REQUESTED');
+    expect(EmailTypeSchema.options).toHaveLength(12);
   });
 });
 

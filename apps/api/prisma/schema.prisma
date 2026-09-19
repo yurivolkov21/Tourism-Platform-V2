@@ -173,9 +173,6 @@ enum EmailType {
   /// Alert nội bộ cho admin khi có lead mới (A13 — Nexora chỉ gửi ack cho
   /// khách nên lead mới không ai biết cho tới khi mở CRM).
   ENQUIRY_ADMIN_ALERT
-  CANCELLATION_REQUESTED
-  CANCELLATION_APPROVED
-  CANCELLATION_DENIED
   NEWSLETTER_WELCOME
   EMAIL_CHANGED
   /// Reset mật khẩu + xác minh email (AUTH-2, ADR-0008) — dây callback Better Auth
@@ -186,8 +183,9 @@ enum EmailType {
   /// `emailOTP`, giữ nguyên hook afterEmailVerification cho SEC-1).
   EMAIL_OTP
   /// Khách tự huỷ booking đã trả (ADR-0041 §4): một email, hai biến thể — đã
-  /// hoàn hoặc không hoàn (quá hạn chót). Thêm ở CUỐI để thứ tự khớp
-  /// `EmailTypeSchema` của contract. Ba loại CANCELLATION_* ở lại cho dữ liệu cũ.
+  /// hoàn hoặc không hoàn (quá hạn chót). Đứng CUỐI để thứ tự khớp
+  /// `EmailTypeSchema` của contract. Ba loại CANCELLATION_* của luồng duyệt
+  /// huỷ đã gỡ ở migration M2 `20260919111406_refund_deadline_contract`.
   BOOKING_CANCELLED
 }
 
@@ -393,12 +391,6 @@ model Tour {
   factGroupSizeNote    String?         @map("fact_group_size_note") @db.VarChar(280)
   factDifficultyNote   String?         @map("fact_difficulty_note") @db.VarChar(280)
   factGoodForNote      String?         @map("fact_good_for_note") @db.VarChar(280)
-  // KHÔNG CÒN ĐỌC (ADR-0041): luật huỷ nay là một hạn chót mỗi CHUYẾN, tự tính
-  // từ độ dài chuyến bằng `cancellationDeadline` của `@tourism/contract`; không
-  // tour nào mang mốc riêng nữa. Cột giữ lại một nhịp để migration xoá cột đi
-  // SAU khi code mới đã sống (nhánh M2) — thứ tự bắt buộc vì API cũ còn chạy
-  // vài phút cạnh code mới lúc deploy. Không ghi gì vào cột này nữa.
-  freeCancellationDays Int?            @map("free_cancellation_days")
   createdAt            DateTime        @default(now()) @map("created_at")
   updatedAt            DateTime        @updatedAt @map("updated_at")
 
@@ -675,10 +667,6 @@ model CancellationRequest {
   userId       String                    @map("user_id") @db.Uuid
   /// Null = khách tự huỷ mà không ghi lý do (ADR-0041); yêu cầu cũ luôn có.
   reason       String?                   @db.VarChar(1000)
-  /// KHÔNG CÒN ĐỌC (ADR-0041): ảnh chụp badge của tour lúc khách gửi yêu cầu,
-  /// dùng cho luồng duyệt huỷ đã gỡ. Mức hoàn nay chỉ phụ thuộc hạn chót của
-  /// chuyến, nên không có gì để chụp. Xoá cột ở nhánh M2.
-  freeCancellationDays Int?              @map("free_cancellation_days")
   status       CancellationRequestStatus @default(REQUESTED)
   decisionNote String?                   @map("decision_note") @db.VarChar(500)
   decidedById  String?                   @map("decided_by") @db.Uuid

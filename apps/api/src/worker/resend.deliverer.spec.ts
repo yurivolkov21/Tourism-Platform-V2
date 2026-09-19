@@ -40,9 +40,6 @@ describe('renderEmail type → subject mapping', () => {
     [EmailType.REVIEW_REJECTED, /About your review/],
     [EmailType.ENQUIRY_RECEIVED, /enquiry/i],
     [EmailType.ENQUIRY_ADMIN_ALERT, /New enquiry from/],
-    [EmailType.CANCELLATION_REQUESTED, /reviewing your cancellation request — BK-1/],
-    [EmailType.CANCELLATION_APPROVED, /Cancellation approved — BK-1/],
-    [EmailType.CANCELLATION_DENIED, /About your cancellation request — BK-1/],
     [EmailType.NEWSLETTER_WELCOME, /newsletter/i],
     [EmailType.EMAIL_CHANGED, /email address/i],
     [EmailType.PASSWORD_RESET, /reset your password/i],
@@ -170,51 +167,6 @@ describe('renderEmail — bác bỏ review (ADR-0031 §6)', () => {
   });
 });
 
-describe('renderEmail — duyệt huỷ mà KHÔNG hoàn đồng nào (ADR-0029 §AMEND 3)', () => {
-  const ZERO_PAYLOAD = { ...BOOKING_PAYLOAD, amount: '0.00' };
-
-  it('KHÔNG hứa tiền: không có dòng "Refund issued", không có "on its way"', async () => {
-    // `'0.00'` là chuỗi TRUTHY, nên bản cũ in "Refund issued 0.00 USD" kèm câu
-    // "your refund is on its way". Từ §AMEND 3 đây là ĐƯỜNG THƯỜNG — mọi yêu
-    // cầu huỷ sát ngày khởi hành đều duyệt ở mức 0%.
-    const { html } = await renderEmail(EmailType.CANCELLATION_APPROVED, ZERO_PAYLOAD);
-
-    expect(html).not.toContain('Refund issued');
-    expect(html).not.toContain('on its way');
-    expect(html).not.toContain('0.00');
-  });
-
-  it('NÓI RA rằng không còn gì để hoàn, kèm đường tới bảng bậc', async () => {
-    // Im lặng còn tệ hơn: khách đọc "đã duyệt huỷ" rồi ngồi đợi một khoản
-    // không bao giờ tới. `frontendUrl` truyền vào vì link chỉ dựng được khi
-    // biết gốc site — worker lấy từ options, ở đây phải đưa tay.
-    const { html } = await renderEmail(
-      EmailType.CANCELLATION_APPROVED,
-      ZERO_PAYLOAD,
-      OPTS.frontendUrl,
-    );
-
-    expect(html).toContain('No further refund is due');
-    expect(html).toContain('/cancellation-policy');
-  });
-
-  it('không có frontendUrl thì vẫn nói đủ ý, chỉ mất cái link', async () => {
-    // Env thiếu biến không được biến câu giải thích thành một câu cụt.
-    const { html } = await renderEmail(EmailType.CANCELLATION_APPROVED, ZERO_PAYLOAD);
-
-    expect(html).toContain('No further refund is due');
-    expect(html).toContain('See our refund schedule');
-  });
-
-  it('có tiền thật thì vẫn in số và vẫn hứa như cũ', async () => {
-    const { html } = await renderEmail(EmailType.CANCELLATION_APPROVED, BOOKING_PAYLOAD);
-
-    expect(html).toContain('117.00');
-    expect(html).toContain('on its way');
-    expect(html).not.toContain('No further refund is due');
-  });
-});
-
 describe('renderEmail — khách tự huỷ (BOOKING_CANCELLED, ADR-0041)', () => {
   // Payload đúng Hợp đồng C của plan 15/09 — lõi huỷ (Task 6) ghi đúng bộ khoá này.
   const REFUNDED = {
@@ -289,14 +241,6 @@ describe('renderEmail payload rendering', () => {
       reason: 'some-new-cause',
     });
     expect(unknownReason).toContain('some-new-cause');
-  });
-
-  it('renders the denial note when present', async () => {
-    const { html } = await renderEmail(EmailType.CANCELLATION_DENIED, {
-      ...BOOKING_PAYLOAD,
-      note: 'Departure is within 24h',
-    });
-    expect(html).toContain('Departure is within 24h');
   });
 
   it('renders the OTP code to-rõ trong body EMAIL_OTP', async () => {
