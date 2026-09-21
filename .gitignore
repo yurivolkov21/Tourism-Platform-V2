@@ -72,6 +72,8 @@ backups/
 .claude/worktrees/
 
 # Ảnh tham chiếu thiết kế của user (bộ Navel dùng cho các cụm màn mobile, ~98 MB).
-# Repo này PUBLIC và ảnh là tài sản riêng của user, nên không bao giờ commit —
-# trước đây phải nhớ bằng tay ở mỗi lần `git add`, nay để máy nhớ (user chốt 16/09).
+# Repo này PUBLIC và ảnh là tài sản riêng của user, nên không bao giờ commit.
+# Từ 21/09 bộ ảnh đã dời HẲN ra ngoài repo (`C:ProgrammingDevsAssets`) nên
+# thư mục này không còn tồn tại — giữ dòng ignore làm lưới an toàn phòng khi có
+# ai thả ảnh vào lại.
 docs/screenshot/
