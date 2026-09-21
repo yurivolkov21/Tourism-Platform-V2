@@ -106,6 +106,50 @@ nguồn nào). Vitest 3657 chia ra api 932, web 1506, admin 838, contract 279, c
 497 ở 39 file. Lint vẫn đúng 1 warning và 1 info có từ trước. `pnpm audit
 --audit-level=moderate` nay exit 0.
 
+## 2026-09-21 — Nghiệm thu trên prod: hoàn tiền đã để lại vết ở `/payment-events` (không đổi code)
+
+Đóng mục CÒN TREO quan trọng nhất của entry ADR-0043 bên dưới. Chạy tay trên
+site thật theo từng bước, user bấm, agent đo.
+
+**Đường đi:** đặt `BK-XKEHLSZL` (Hanoi Old Quarter Street Food by Night, đợt
+16/10/2026, 1 người lớn, 35.00 USD) bằng tài khoản khách `boscowong31@`, trả qua
+Stripe test mode, rồi huỷ. Chọn đợt 16/10 vì tour 1 ngày nên N = 1, hạn chót
+15/10 — còn xa, huỷ phải hoàn ĐỦ. Hộp xác nhận in đúng "full refund of $35.00".
+
+**Đo được, khớp từng lời hứa của ADR-0043:**
+
+| Kiểm | Kết quả |
+| --- | --- |
+| Dòng sổ `refunds` | 35.00 USD, `re_3UHzrvK1oRTwa7qk1hs4Rxnw`, `admin_id` NULL |
+| Row `payment_events` | type `payment.refunded`, gắn `BK-XKEHLSZL` |
+| `event_id` là id refund của CỔNG | trùng `provider_refund_id` |
+| `processed_at` = `received_at` = `refunds.created_at` | cả ba đúng `05:37:06.615` |
+| `payload` | `source: refund-core`, `cause: cancel`, đủ ba id |
+| `payment.refunded` toàn prod | 0 trước, **1** sau |
+| Trang admin `/payment-events` | có dòng "Refund issued", 35.00, gắn đúng booking; drawer in đúng payload |
+
+**Sửa một con số ghi sai ở entry ADR-0043 bên dưới.** Entry đó viết "hai khoản
+hoàn cũ trên prod sẽ còn làm bất biến báo **2** cho tới lượt seed 03/11". Đo
+thật thì là **46**: prod seed ngày 18/09 bằng bộ sinh CŨ nên 44 dòng hoàn của
+seed mang type thô (`charge.refunded` 30, `PAYMENT.CAPTURE.REFUNDED` 14) và
+cũng trượt bất biến mới, cộng 2 khoản hoàn thật. Bản chất không đổi — lượt seed
+lại khoảng 03/11 ghi đúng `payment.refunded` và xoá cả 46 cùng lúc — nhưng con
+số thì phải nói đúng.
+
+**Một quan sát củng cố quyết định của ADR-0043:** lượt thanh toán này lại đẻ
+thêm đúng 2 event Stripe không map được (`other` đi từ 4 lên 6), y như hôm
+18/09. Nếu chọn hướng "bật `charge.refunded` ở dashboard" thay vì để lõi tự
+ghi, dòng hoàn sẽ rơi vào đúng cái hố "Other / Not linked" đó.
+
+**CÒN TREO:** connector Stripe trong phiên đã hết hạn nên KHÔNG đối chiếu được
+dashboard cổng; `re_…` là id do chính Stripe trả về nên khoản hoàn chắc chắn đã
+phát, nhưng muốn nhìn tận mắt thì mở dashboard test mode tìm
+`pi_3UHzrvK1oRTwa7qk1fb0095a`. Booking `BK-XKEHLSZL` ở lại prod dưới dạng
+CANCELLED đã hoàn đủ — không cần dọn, lượt seed 03/11 xoá sạch.
+
+Tests after: không đổi code, không chạy lại cổng. Bằng chứng là dữ liệu prod đo
+trực tiếp, liệt kê ở bảng trên.
+
 ## 2026-09-21 — Ba món nợ nhỏ sau đợt hoàn tiền: JSDoc cũ, dải chip chết, favicon 404 (nhánh `chore/refund-followups`)
 
 Gom ba mục còn treo trong bản bàn giao sau đợt "hoàn tiền một hạn chót". Không
