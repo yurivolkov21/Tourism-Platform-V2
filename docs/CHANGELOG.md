@@ -8,6 +8,55 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-09-21 — Prerender thử lại khi API hắt hơi (ADR-0044, nhánh `fix/prerender-retry`)
+
+Ba lượt build web trên Vercel chết liên tiếp, **ba mã lỗi khác nhau trên cùng
+một đường**, trong khi gọi tay chính endpoint ấy trả 200 dưới 0,6 giây:
+
+| Deploy | Trang chết | Lỗi |
+| --- | --- | --- |
+| `f4809d3f` | `/tours/bana-hills-golden-bridge-day` (trang 57/75) | `TimeoutError`, quá 10s |
+| `659a48fc` | `/blog/what-to-pack-for-the-mist-season` (trang đầu) | HTTP 502, header `x-render-routing: dynamic-free-error` |
+| redeploy `659a48fc` | cùng trang | HTTP 520, trang lỗi HTML của Cloudflare |
+
+- **Chẩn đoán sai một nhịp rồi sửa lại giữa chừng.** Bản đầu kết luận "flake do
+  Render ngủ dậy" và đề nghị deploy lại; deploy lại VẪN chết, lần này 520 dù API
+  đã tỉnh ổn định 11 phút. Kết luận đúng có hai tầng: (a) service Render đặt
+  `autoDeploy` theo MỌI commit nên push docs cũng dựng lại API — log Render
+  `03:22:59 ==> Deploying…` rồi `03:23:34 Starting Nest…` trong khi build web gọi
+  lúc `03:23:48`; (b) instance **free** một mình ở Singapore không nuốt nổi loạt
+  75 request prerender bắn từ vùng IAD, Cloudflare đứng trước trả 520/502.
+- **`settle()` của ADR-0016 không dùng được ở đây.** `fetchPostDetail` cố ý ném
+  lại mọi lỗi khác `POST_NOT_FOUND` để error boundary xử lý; đổi sang `settle` là
+  build XANH trong khi xuất bản một trang bài viết rỗng. Thà đỏ.
+- **Vá ở tầng vận chuyển**, một chỗ duy nhất: bọc `fetch` của `OpenAPILink` bằng
+  `createRetryingFetch` (`apps/web/src/lib/api/retry-fetch.ts`). Bốn ràng buộc
+  của ADR-0044 đều có test canh: CHỈ `GET` (gửi lại POST là nguy cơ đặt trùng chỗ
+  và thu tiền hai lần), CHỈ phía server, CHỈ lỗi tạm thời (network/timeout cộng
+  `408 425 429 500 502 503 504 520 521 522 523 524`; 404 và 4xx nghiệp vụ đi
+  thẳng để `notFound()` còn chạy), và đúng ba lượt giãn 400ms rồi 1200ms.
+- **Timeout tách hai phía:** server 20s, trình duyệt giữ nguyên 10s.
+  `AbortSignal.timeout()` phải dựng LẠI từng lượt — dùng chung một signal thì
+  lượt thử thứ hai nhận signal đã hết hạn và chết tức khắc.
+
+**Phần (1) đã xong bằng tay 21/09:** user bật Build Filter trên dashboard Render
+(service `Tourism-Platform-V2` → Settings → Build Filters → Ignored Paths →
+`docs/**`) — Render chưa mở cấu hình này qua API lẫn MCP nên không tự động hoá
+được. Từ nay commit chỉ đụng `docs/` không dựng lại API nữa.
+
+Còn một mức siết nữa CHƯA làm, để dành khi cần: `apps/web/**`, `apps/admin/**`
+và `apps/mobile/**` cũng không vào ảnh Docker của API, nên thêm chúng vào
+Ignored Paths sẽ chặn nốt phần lớn ca còn lại. **Đừng thêm `libs/**`** — API ăn
+`@tourism/contract` và `@tourism/core`, ignore chúng là deploy API thiếu bản
+contract mới mà không ai hay.
+
+**Review findings:** chưa có vòng review riêng.
+
+Tests after: Vitest 3689, trong đó web 1538 (thêm **32** test mới cho
+`retry-fetch`), api 932, admin 838, contract 279, core 46, ui 22, tokens 18,
+i18n 16. Jest mobile 245 không đổi. Int 497 ở 39 file. `pnpm gate:int` trọn
+xanh; lint vẫn đúng 1 warning và 1 info có từ trước.
+
 ## 2026-09-21 — Audit hết đỏ: metro bỏ `image-size`, ghim `@types/react`, ghi nhận lỗ `decode-uri-component` (nhánh `fix/audit-metro-image-size`)
 
 Workflow `Audit` (lịch, 09:00 thứ Hai) đỏ từ **14/09** mà không ai nhìn — lần
