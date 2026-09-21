@@ -142,6 +142,9 @@ Mỗi spec đi kèm một plan cùng tên ở [`plans/`](plans/), trừ vài đ�
 [**một hạn chót**](specs/2026-09-15-refund-deadline-design.md) ·
 [P5b-1 auth mobile](specs/2026-09-16-p5b-auth-wireframe-design.md)
 
+**Admin catalog (P4e, đang mở)**
+[**P4e-1 chuyến + trạng thái đăng**](specs/2026-09-21-p4e-1-departures-design.md)
+
 ## Plans — làm theo bước nào
 
 Kế hoạch thi công, **hầu hết đã đóng**; kết quả thật của mỗi kế hoạch nằm ở
