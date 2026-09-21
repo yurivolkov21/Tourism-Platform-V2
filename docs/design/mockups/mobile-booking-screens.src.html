@@ -1,0 +1,715 @@
+<!--
+  BẢN NHÁP VÒNG THIẾT KẾ — cụm đặt tour app mobile (P5b-3): đặt chỗ · thanh toán ·
+  chuyến của tôi · hỏi về chuyến. Dựng 21/09/2026, CHỜ user duyệt.
+
+  Cùng hệ với mockup P5b-2 (`mobile-browse-screens.src.html`): khung 390×844 đúng dp,
+  `calc(var(--s) * n)` ⇔ `theme.spacing(n)`, biến CSS trùng tên token, `--inset-top` /
+  `--inset-bottom` ⇔ `useSafeAreaInsets()`, có nút chuyển nền sáng/tối.
+
+  Luật tiền và hạn chót theo ADR-0041 (một hạn chót mỗi chuyến) — đã lên main 18–21/09.
+  Thanh toán mở TRÌNH DUYỆT ngoài vì Expo Go không nạp được Stripe PaymentSheet
+  (ADR-0001 AMEND 1). Dữ liệu: tour, giá, ngày lấy từ seed thật; mã booking và ngày
+  thanh toán là số minh hoạ.
+-->
+<title>P5b-3 · Cụm đặt tour</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=Literata:opsz,wght@7..72,700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --page-bg: #eef1f0; --page-card: #ffffff; --page-line: #d1d6d4;
+    --page-text: #1d1d1f; --page-muted: #6b7280; --page-accent: #2e6e66;
+  }
+  body { margin: 0; padding: 2rem; background: var(--page-bg); color: var(--page-text); font: 14px/1.5 system-ui, sans-serif; }
+  h2 { font-size: 1.5rem; margin: 0 0 .3rem; }
+  .subtitle { color: var(--page-muted); margin: 0 0 1rem; max-width: 980px; }
+  .toolbar { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; margin: 0 0 1rem; }
+  .toolbar button { font: 600 13px/1 system-ui; padding: .55rem .85rem; border-radius: 999px; border: 1px solid var(--page-line); background: var(--page-card); color: var(--page-text); cursor: pointer; }
+  .toolbar button[aria-pressed="true"] { background: var(--page-accent); border-color: var(--page-accent); color: #fff; }
+  .toolbar .sep { width: 1px; height: 22px; background: var(--page-line); margin: 0 .25rem; }
+  .legend { display: grid; grid-template-columns: repeat(auto-fit, minmax(270px, 1fr)); gap: .8rem; max-width: 1240px; margin: 0 0 1.5rem; }
+  .legend .it { background: var(--page-card); border: 1px solid var(--page-line); border-radius: 12px; padding: .8rem 1rem; }
+  .legend h3 { font-size: .95rem; margin: 0 0 .3rem; }
+  .legend p { font-size: .82rem; color: var(--page-muted); margin: 0; }
+  .legend code, .cap code { font-size: .78rem; background: #f1f3f2; padding: 0 .25rem; border-radius: 4px; }
+  .sec { margin: 2rem 0 .7rem; font-size: 1.1rem; }
+  .sec small { font-weight: 400; color: var(--page-muted); font-size: .82rem; margin-left: .5rem; }
+  .row { display: flex; flex-wrap: wrap; gap: 1.5rem; align-items: flex-start; zoom: var(--zoom, 1); }
+  .shot { width: 414px; padding: 12px 12px 10px; border: 1px solid var(--page-line); border-radius: 20px; background: var(--page-card); }
+  .cap { padding: 14px 4px 2px; }
+  .cap b { display: block; font-size: .95rem; margin-bottom: .2rem; }
+  .cap > span { font-size: .84rem; color: var(--page-muted); }
+  .cap ul { margin: .45rem 0 0; padding-left: 1.1rem; font-size: .8rem; color: var(--page-text); }
+  .cap li { margin: .15rem 0; }
+
+  /* ── Khung máy: token Wuling, mặc định nền tối ─────────────────────────── */
+  .phone {
+    --background: #202a28; --foreground: #dce8e4; --card: #243430; --muted: #2f443f;
+    --muted-foreground: #9db3ac; --primary: #2f7a6e; --primary-foreground: #f2f8f6;
+    --primary-emphasis: #78c1b4; --secondary: #2f443f; --secondary-foreground: #a9cec6;
+    --border: #3a4d47; --input: #6b8079; --destructive-emphasis: #f37c71; --on-media: #f5faf8;
+    --scrim: #010a08cc; --overlay: #00000099; --rating: #e8aa4e; --rating-muted: #ffffff33;
+    --price-compare: #9db3ac; --warning: #f3b94c;
+    --kb: #2b3033; --kb-key: #474d51; --kb-text: #f1f3f4;
+    --s: 4px; --r: 6px; --touch: 44px; --inset-top: 47px; --inset-bottom: 34px;
+    position: relative; width: 390px; height: 844px; margin: 0 auto; border-radius: 52px; overflow: hidden;
+    background: var(--background); color: var(--foreground);
+    font: 400 16px/24px 'Archivo', system-ui, sans-serif;
+    box-shadow: 0 0 0 8px #0d1211, 0 18px 40px rgba(0, 0, 0, .22);
+  }
+  body[data-scheme="light"] .phone {
+    --background: #f5f8f7; --foreground: #1b2b2b; --card: #fcfefe; --muted: #dce5e2;
+    --muted-foreground: #4f605c; --primary: #2e6e66; --primary-foreground: #f2f8f6;
+    --primary-emphasis: #2e6e66; --secondary: #dce5e2; --secondary-foreground: #24544e;
+    --border: #aebbb8; --input: #838f8c; --destructive-emphasis: #a8423a; --on-media: #f5faf8;
+    --scrim: #030e0cbf; --overlay: #00000080; --rating: #bb7e17; --rating-muted: #c9d6d2;
+    --price-compare: #4f605c; --warning: #e9ab2b;
+    --kb: #d1d4d9; --kb-key: #ffffff; --kb-text: #1b1b1b;
+  }
+  .phone * { box-sizing: border-box; }
+  .phone svg { display: block; flex-shrink: 0; }
+  .abs { position: absolute; }
+
+  /* Vai chữ — trùng tên biến thể AppText */
+  .t-display { font: 700 30px/36px 'Literata', Georgia, serif; letter-spacing: -.01em; }
+  .t-title { font: 700 24px/32px 'Literata', Georgia, serif; }
+  .t-heading { font: 600 18px/28px 'Archivo', system-ui, sans-serif; }
+  .t-body { font: 400 16px/24px 'Archivo', system-ui, sans-serif; }
+  .t-subtitle { font: 400 14px/20px 'Archivo', system-ui, sans-serif; }
+  .t-label { font: 600 14px/20px 'Archivo', system-ui, sans-serif; }
+  .t-caption { font: 400 12px/16px 'Archivo', system-ui, sans-serif; }
+  .muted { color: var(--muted-foreground); }
+  .link { color: var(--primary-emphasis); }
+  .media { color: var(--on-media); }
+  .strike { text-decoration: line-through; }
+  .clamp1 { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .clamp2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .clamp3 { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+
+  /* Vùng an toàn: thanh trạng thái và thanh cử chỉ */
+  .sb { position: absolute; top: 0; left: 0; right: 0; height: var(--inset-top); padding: 16px 32px 0; display: flex; justify-content: space-between; font: 600 15px/20px system-ui, sans-serif; z-index: 30; }
+  .sb .icons { display: flex; gap: 6px; align-items: center; }
+  .sb .icons i { display: block; background: currentColor; border-radius: 2px; }
+  .sb.on-media { color: var(--on-media); }
+  .hi { position: absolute; left: 0; right: 0; bottom: 0; height: var(--inset-bottom); z-index: 30; pointer-events: none; }
+  .hi::after { content: ''; position: absolute; left: 50%; bottom: 8px; width: 134px; height: 5px; margin-left: -67px; border-radius: 99px; background: var(--foreground); opacity: .85; }
+  .hi.on-media::after { background: var(--on-media); }
+  body[data-safe="on"] .sb, body[data-safe="on"] .hi { background-image: repeating-linear-gradient(45deg, rgba(236, 72, 153, .28) 0 6px, rgba(236, 72, 153, .08) 6px 12px); }
+
+  /* Primitive — IconButton, Button, Chip, SearchField, Card */
+  .icon-btn { width: var(--touch); height: var(--touch); border-radius: 999px; display: flex; align-items: center; justify-content: center; }
+  .icon-btn.glass { background: rgb(from var(--scrim) r g b / .45); color: var(--on-media); }
+  .icon-btn.plain { color: var(--foreground); }
+  .btn { height: var(--touch); padding: 0 calc(var(--s) * 5); border-radius: 999px; display: flex; align-items: center; justify-content: center; gap: calc(var(--s) * 2); font: 600 14px/20px 'Archivo', system-ui, sans-serif; }
+  .btn.primary { background: var(--primary); color: var(--primary-foreground); }
+  .btn.ghost { border: 1px solid var(--border); color: var(--primary-emphasis); }
+  .chip { height: calc(var(--s) * 8); padding: 0 calc(var(--s) * 3.5); border-radius: 999px; display: inline-flex; align-items: center; gap: calc(var(--s) * 1.5); border: 1px solid var(--border); color: var(--foreground); font: 500 14px/20px 'Archivo', system-ui, sans-serif; white-space: nowrap; }
+  .chip.on { background: var(--primary); border-color: var(--primary); color: var(--primary-foreground); font-weight: 600; }
+  .chip.soft { background: var(--secondary); border-color: var(--secondary); color: var(--secondary-foreground); }
+  .chips { display: flex; flex-wrap: wrap; gap: calc(var(--s) * 2); }
+  .chips.scroll { flex-wrap: nowrap; overflow: hidden; }
+  .search { height: var(--touch); border-radius: 999px; background: var(--card); border: 1px solid var(--border); display: flex; align-items: center; gap: calc(var(--s) * 2.5); padding: 0 calc(var(--s) * 4); color: var(--muted-foreground); }
+  .search.focus { border: 2px solid var(--primary-emphasis); color: var(--foreground); }
+  .caret { display: inline-block; width: 2px; height: 20px; background: var(--primary-emphasis); vertical-align: -4px; margin-left: 1px; }
+  .filter-btn { width: var(--touch); height: var(--touch); border-radius: calc(var(--r) * 2.5); background: var(--card); border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; color: var(--foreground); position: absolute; }
+  .badge { position: absolute; top: -6px; right: -6px; min-width: 20px; height: 20px; padding: 0 6px; border-radius: 999px; background: var(--primary); color: var(--primary-foreground); font: 600 12px/20px 'Archivo', system-ui, sans-serif; text-align: center; }
+  .square-icon { width: calc(var(--s) * 16); height: calc(var(--s) * 16); border-radius: calc(var(--r) * 2); background: var(--secondary); color: var(--primary-emphasis); display: flex; align-items: center; justify-content: center; }
+  .rating-chip { height: 28px; padding: 0 10px; border-radius: 999px; display: inline-flex; align-items: center; gap: 4px; background: rgb(from var(--scrim) r g b / .45); color: var(--on-media); font: 600 12px/16px 'Archivo', system-ui, sans-serif; }
+  .rating-chip svg { color: var(--rating); }
+  .rating-chip.plain svg { color: inherit; }
+  .mini-dest { position: relative; flex: 0 0 140px; height: 100px; border-radius: calc(var(--r) * 2.5); overflow: hidden; background-size: cover; background-position: center; background-color: var(--muted); display: flex; flex-direction: column; justify-content: flex-end; padding: 10px 12px; }
+  .mini-dest::before { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, rgb(from var(--scrim) r g b / 0) 35%, rgb(from var(--scrim) r g b / .85) 100%); }
+  .mini-dest > * { position: relative; z-index: 1; }
+  .dest-head { position: relative; height: calc(var(--s) * 33); border-radius: calc(var(--r) * 3); overflow: hidden; background-size: cover; background-position: center; background-color: var(--muted); display: flex; flex-direction: column; justify-content: flex-end; padding: 14px 16px; }
+  .dest-head::before { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, rgb(from var(--scrim) r g b / .1) 20%, rgb(from var(--scrim) r g b / .85) 100%); }
+  .dest-head > * { position: relative; z-index: 1; }
+  .stars { display: flex; gap: 2px; color: var(--rating); }
+  .stars .off { color: var(--rating-muted); }
+
+  /* Thanh tab 5 mục — icon Feather + nhãn, mục đang chọn có viên nền primary */
+  .tabbar { position: absolute; left: 0; right: 0; bottom: 0; height: calc(62px + var(--inset-bottom)); padding: 6px 8px var(--inset-bottom); background: var(--card); border-top: 1px solid var(--border); display: flex; z-index: 20; }
+  .tab { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; color: var(--muted-foreground); font: 400 12px/16px 'Archivo', system-ui, sans-serif; }
+  .tab .pill { width: 56px; height: 32px; border-radius: 999px; display: flex; align-items: center; justify-content: center; }
+  .tab.on { color: var(--foreground); font-weight: 600; }
+  .tab.on .pill { background: var(--primary); color: var(--primary-foreground); }
+
+  /* Home */
+  /* Tab vùng: cột cao ĐÚNG bằng thẻ carousel, chia ba đoạn bằng nhau; mỗi đoạn là
+     cả một vùng chạm, chữ nằm giữa đoạn. Vạch dọc bên trái đánh dấu vùng đang chọn. */
+  .rail { position: absolute; left: calc(var(--s) * 6); width: 32px; height: calc(var(--s) * 135); display: flex; flex-direction: column; }
+  .rail .seg { flex: 1; position: relative; display: flex; align-items: center; justify-content: center; }
+  .rail .seg span { writing-mode: vertical-rl; transform: rotate(180deg); font: 400 18px/28px 'Archivo', system-ui, sans-serif; color: var(--muted-foreground); white-space: nowrap; }
+  .rail .seg.on span { color: var(--primary-emphasis); font-weight: 600; }
+  .rail .seg.on::before { content: ''; position: absolute; left: -12px; top: 50%; width: 3px; height: 40px; margin-top: -20px; border-radius: 99px; background: var(--primary-emphasis); }
+  .carousel { position: absolute; left: calc(var(--s) * 17); right: 0; display: flex; gap: calc(var(--s) * 3); overflow: hidden; }
+  .big-card { position: relative; flex: 0 0 calc(var(--s) * 70); height: calc(var(--s) * 135); border-radius: calc(var(--r) * 4); overflow: hidden; background-size: cover; background-position: center; background-color: var(--muted); }
+  .big-card::before { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, rgb(from var(--scrim) r g b / .35) 0%, rgb(from var(--scrim) r g b / 0) 26%, rgb(from var(--scrim) r g b / 0) 48%, rgb(from var(--scrim) r g b / .9) 100%); }
+  .big-card > * { position: absolute; z-index: 1; }
+  .skeleton { background: var(--muted); }
+  .big-card.skeleton::before { display: none; }
+  .skeleton .bar { position: absolute; border-radius: 8px; background: rgb(from var(--muted-foreground) r g b / .22); }
+
+  /* Explore */
+  .list-card { position: relative; height: calc(var(--s) * 42); border-radius: calc(var(--r) * 3); overflow: hidden; background-size: cover; background-position: center; background-color: var(--muted); }
+  .list-card::before { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, rgb(from var(--scrim) r g b / .35) 0%, rgb(from var(--scrim) r g b / 0) 30%, rgb(from var(--scrim) r g b / .1) 50%, rgb(from var(--scrim) r g b / .88) 100%); }
+  .list-card > * { position: absolute; z-index: 1; }
+  .stack { position: absolute; left: calc(var(--s) * 6); right: calc(var(--s) * 6); display: flex; flex-direction: column; gap: calc(var(--s) * 3); }
+  .result-row { display: flex; gap: calc(var(--s) * 3); align-items: center; height: 64px; }
+  .thumb { flex: 0 0 56px; height: 56px; border-radius: calc(var(--r) * 2); background-size: cover; background-position: center; background-color: var(--muted); }
+  .kb { position: absolute; left: 0; right: 0; bottom: 0; height: 291px; background: var(--kb); padding: 10px 4px var(--inset-bottom); z-index: 25; }
+  .kb .kr { display: flex; justify-content: center; gap: 6px; margin-bottom: 11px; }
+  .kb .k { flex: 0 0 33px; height: 43px; border-radius: 6px; background: var(--kb-key); color: var(--kb-text); font: 400 22px/43px system-ui, sans-serif; text-align: center; }
+  .kb .k.wide { flex: 0 0 188px; font-size: 15px; }
+  .kb .k.fn { flex: 0 0 46px; font-size: 15px; }
+  .sheet { position: absolute; left: 0; right: 0; bottom: 0; background: var(--card); border-radius: 28px 28px 0 0; z-index: 25; }
+  .sheet .handle { position: absolute; top: 8px; left: 50%; width: 36px; height: 4px; margin-left: -18px; border-radius: 99px; background: rgb(from var(--muted-foreground) r g b / .5); }
+  .dim { position: absolute; inset: 0; background: var(--overlay); z-index: 24; }
+
+  /* Chi tiết tour */
+  .hero { position: absolute; top: 0; left: 0; right: 0; background-size: cover; background-position: center; }
+  .hero::before { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, rgb(from var(--scrim) r g b / .45) 0%, rgb(from var(--background) r g b / 0) 24%, rgb(from var(--background) r g b / 0) 46%, rgb(from var(--background) r g b / .65) 74%, var(--background) 100%); }
+  .thumbs { position: absolute; right: calc(var(--s) * 4); display: flex; flex-direction: column; gap: 10px; z-index: 2; }
+  .thumbs .th { width: 52px; height: 52px; border-radius: 14px; background-size: cover; background-position: center; border: 2px solid transparent; }
+  .thumbs .th.on { border-color: var(--on-media); }
+  .thumbs .more { width: 52px; height: 28px; border-radius: 999px; background: rgb(from var(--scrim) r g b / .6); color: var(--on-media); font: 600 12px/28px 'Archivo', system-ui, sans-serif; text-align: center; }
+  .tabs { position: absolute; left: 0; right: 0; height: var(--touch); display: flex; gap: calc(var(--s) * 6); padding: 0 calc(var(--s) * 6); border-bottom: 1px solid var(--border); background: var(--background); z-index: 3; }
+  .tabs span { position: relative; display: flex; align-items: center; font: 400 14px/20px 'Archivo', system-ui, sans-serif; color: var(--muted-foreground); }
+  .tabs span.on { color: var(--foreground); font-weight: 600; }
+  .tabs span.on::after { content: ''; position: absolute; left: 0; right: 0; bottom: -1px; height: 2px; border-radius: 2px; background: var(--primary-emphasis); }
+  .compact-head { position: absolute; top: 0; left: 0; right: 0; height: calc(var(--inset-top) + 52px); padding: var(--inset-top) calc(var(--s) * 2) 0; display: flex; align-items: center; gap: calc(var(--s) * 1); background: var(--background); z-index: 4; }
+  .facts { display: grid; grid-template-columns: 1fr 1fr; gap: calc(var(--s) * 3); }
+  .fact { background: var(--card); border: 1px solid var(--border); border-radius: calc(var(--r) * 2); padding: calc(var(--s) * 3); display: flex; flex-direction: column; gap: 2px; }
+  .fact svg { color: var(--primary-emphasis); margin-bottom: 4px; }
+  .bottom-bar { position: absolute; left: 0; right: 0; bottom: 0; height: calc(76px + var(--inset-bottom)); padding: calc(var(--s) * 4) calc(var(--s) * 6) var(--inset-bottom); background: var(--card); border-top: 1px solid var(--border); display: flex; align-items: flex-start; justify-content: space-between; gap: calc(var(--s) * 4); z-index: 20; }
+  .day { display: flex; gap: calc(var(--s) * 3); }
+  .day .rail-dot { flex: 0 0 24px; display: flex; flex-direction: column; align-items: center; }
+  .day .dot { width: 24px; height: 24px; border-radius: 99px; background: var(--secondary); color: var(--primary-emphasis); font: 600 12px/24px 'Archivo', system-ui, sans-serif; text-align: center; }
+  .day .dot.on { background: var(--primary); color: var(--primary-foreground); }
+  .day .line { flex: 1; width: 2px; background: var(--border); margin-top: 4px; }
+  .times { display: grid; grid-template-columns: 44px 1fr; column-gap: calc(var(--s) * 2); row-gap: 6px; margin-top: 8px; }
+  .dep { border: 1px solid var(--border); border-radius: calc(var(--r) * 2.5); padding: calc(var(--s) * 3) calc(var(--s) * 4); display: flex; align-items: center; gap: calc(var(--s) * 3); background: var(--card); }
+  .dep.on { border: 2px solid var(--primary-emphasis); }
+  .dep.closed { background: transparent; }
+  .radio { flex: 0 0 20px; height: 20px; border-radius: 99px; border: 2px solid var(--input); }
+  .dep.on .radio { border: 6px solid var(--primary-emphasis); }
+  .tag { display: inline-flex; align-items: center; height: 20px; padding: 0 8px; border-radius: 999px; font: 600 12px/16px 'Archivo', system-ui, sans-serif; }
+  .tag.warn { background: rgb(from var(--warning) r g b / .2); color: var(--foreground); }
+  .tag.closed { background: var(--muted); color: var(--muted-foreground); }
+  .bar-row { display: grid; grid-template-columns: 10px 1fr; gap: 8px; align-items: center; }
+  .track { height: 6px; border-radius: 99px; background: var(--rating-muted); overflow: hidden; }
+  .track i { display: block; height: 100%; border-radius: 99px; background: var(--rating); }
+  .avatar { flex: 0 0 36px; height: 36px; border-radius: 99px; background: var(--secondary); color: var(--secondary-foreground); font: 600 13px/36px 'Archivo', system-ui, sans-serif; text-align: center; }
+  .review-photos { display: flex; gap: 8px; margin-top: 8px; }
+  .review-photos i { width: 64px; height: 64px; border-radius: calc(var(--r) * 2); background-size: cover; background-position: center; }
+</style><style>
+  /* Bổ sung cho cụm đặt tour và tài khoản — cùng hệ biến với file P5b-2. */
+  .phone { --success: #5bb661; }
+  body[data-scheme="light"] .phone { --success: #2f9f3d; }
+  .field { display: flex; align-items: center; gap: calc(var(--s) * 2.5); min-height: var(--touch); border-bottom: 1px solid var(--border); margin-top: calc(var(--s) * 2.5); color: var(--muted-foreground); }
+  .field .stack { display: flex; flex-direction: column; flex: 1; }
+  .field .stack small { font: 400 11px/14px 'Archivo', system-ui, sans-serif; color: var(--muted-foreground); }
+  .field .stack span { font: 400 14px/20px 'Archivo', system-ui, sans-serif; color: var(--foreground); }
+  .field.ph .stack span { color: var(--muted-foreground); }
+  .field.invalid { border-bottom-color: var(--destructive-emphasis); }
+  .err { font: 400 12px/16px 'Archivo', system-ui, sans-serif; color: var(--destructive-emphasis); margin-top: 6px; }
+  .kv { display: flex; justify-content: space-between; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--border); }
+  .progress { display: flex; gap: 6px; }
+  .progress i { flex: 1; height: 4px; border-radius: 99px; background: var(--muted); }
+  .progress i.on { background: var(--primary-emphasis); }
+  .stepper-row { display: flex; align-items: center; justify-content: space-between; padding: 12px 0; }
+  .step-btn { width: 36px; height: 36px; border-radius: 99px; border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; color: var(--foreground); }
+  .step-btn.off { color: var(--muted-foreground); border-color: var(--muted); }
+  .provider { display: flex; align-items: center; gap: calc(var(--s) * 3); padding: 14px 16px; border: 1px solid var(--border); border-radius: calc(var(--r) * 2.5); }
+  .provider.on { border: 2px solid var(--primary-emphasis); padding: 13px 15px; }
+  .pill-status { display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 10px; border-radius: 999px; font: 600 12px/16px 'Archivo', system-ui, sans-serif; }
+  .pill-status.paid { background: rgb(from var(--success) r g b / .18); color: var(--success); }
+  .pill-status.pending { background: rgb(from var(--warning) r g b / .22); color: var(--foreground); }
+  .pill-status.off { background: var(--muted); color: var(--muted-foreground); }
+  .note { display: flex; gap: 10px; padding: 12px 14px; border-radius: calc(var(--r) * 2); }
+  .note.good { background: rgb(from var(--success) r g b / .14); }
+  .note.warn { background: rgb(from var(--warning) r g b / .16); }
+  .note.info { background: var(--secondary); color: var(--secondary-foreground); }
+  .trip-card { display: flex; gap: calc(var(--s) * 3); padding: 12px; border: 1px solid var(--border); border-radius: calc(var(--r) * 3); background: var(--card); }
+  .trip-thumb { flex: 0 0 72px; height: 72px; border-radius: calc(var(--r) * 2); background-size: cover; background-position: center; background-color: var(--muted); }
+  .menu-row { display: flex; align-items: center; gap: calc(var(--s) * 3); min-height: 52px; border-bottom: 1px solid var(--border); color: var(--foreground); }
+</style><header>
+  <h2>P5b-3 · Cụm đặt tour — đặt chỗ · thanh toán · chuyến của tôi</h2>
+  <p class="subtitle">19 khung, bản nháp 21/09. Tiếp nối mockup P5b-2: nút "Book now" ở tab Dates dẫn vào đây. Bấm các nút dưới đây để đổi nền, hiện vùng an toàn, hoặc thu nhỏ trang.</p>
+  <div class="toolbar">
+    <button type="button" data-scheme-btn="dark" aria-pressed="true">Nền tối</button>
+    <button type="button" data-scheme-btn="light" aria-pressed="false">Nền sáng</button>
+    <span class="sep"></span>
+    <button type="button" data-safe-btn aria-pressed="false">Hiện vùng an toàn</button>
+    <span class="sep"></span>
+    <button type="button" data-zoom-btn="1" aria-pressed="true">100%</button>
+    <button type="button" data-zoom-btn="0.75" aria-pressed="false">75%</button>
+    <button type="button" data-zoom-btn="0.5" aria-pressed="false">50%</button>
+  </div>
+  <div class="legend">
+    <div class="it">
+      <h3>Tiền và hạn chót do SERVER tính</h3>
+      <p>Không so ngày bằng giờ máy: hạn huỷ, số tiền hoàn, cờ còn-đặt-được đều đọc từ API (<code>cancellation.deadline</code>, <code>refundAmount</code>, <code>withinDeadline</code>, <code>canCancel</code>). Giáo viên hay chỉnh đồng hồ máy khi chấm.</p>
+    </div>
+    <div class="it">
+      <h3>Thanh toán đi qua trình duyệt</h3>
+      <p>Expo Go không nạp được Stripe PaymentSheet nên app mở <code>checkoutUrl</code> bằng <code>expo-web-browser</code>. Đóng trình duyệt xong, app HỎI LẠI server (<code>bookings.byCode</code>) chứ không tự cho là đã trả — ba khung B5–B7 là ba trạng thái của quãng đó.</p>
+    </div>
+    <div class="it">
+      <h3>Không để khách trả hai lần</h3>
+      <p>Booking PENDING đã có <code>checkoutUrl</code>: mở lại đúng link đó, và chỉ gọi <code>bookings.checkout</code> khi link hết hạn. Mọi màn chờ đều có đường "kiểm tra lại" thay vì nút trả tiền mới.</p>
+    </div>
+    <div class="it">
+      <h3>Token và chữ</h3>
+      <p>Mở thêm <code>success</code> trong <code>MOBILE_COLOR_KEYS</code> (nhãn PAID, hộp đã hoàn tiền). Copy: khối <code>mobile.booking</code> và <code>mobile.enquiry</code> có sẵn phần lớn; khoá mới ghi ở từng khung.</p>
+    </div>
+  </div>
+</header>
+<h3 class="sec">1 · Đặt tour <small>ba bước, ngày đã chọn từ tab Dates</small></h3>
+<div class="row"><div class="shot"><div class="phone"><div class="sb"><span>9:41</span><span class="icons"><i style="width:17px;height:10px"></i><i style="width:15px;height:10px;border-radius:6px"></i><i style="width:25px;height:11px"></i></span></div>
+<div class="compact-head"><span class="icon-btn plain"><i data-icon="back" data-size="22"></i></span><span class="t-label clamp1" style="flex:1">Book this tour</span></div>
+<div class="abs" style="top:calc(var(--inset-top) + 52px + var(--s)*4);left:calc(var(--s)*6);right:calc(var(--s)*6)">
+  <div class="t-caption muted">Step 1 of 3</div>
+  <div class="progress" style="margin-top:8px"><i class="on"></i><i></i><i></i></div>
+  <div class="t-heading" style="margin:calc(var(--s)*4) 0 calc(var(--s)*2)">Your trip</div>
+  <div class="trip-card" style="margin-bottom:calc(var(--s)*4)">
+  <span class="trip-thumb" style="background-image:url('https://res.cloudinary.com/dbkgeehow/image/upload/c_fill,w_160,h_160,g_auto,q_auto,f_auto/tourism/catalog/tour/central-heritage-4d/hero')"></span>
+  <div style="flex:1;min-width:0">
+    <div class="t-label clamp2">Central Heritage: Đà Nẵng–Hội An–Huế 4D3N</div>
+    <div class="t-caption muted" style="margin-top:4px">Sat 3 – Tue 6 Oct 2026</div>
+    <div class="t-caption link" style="margin-top:4px">Edit</div>
+  </div>
+</div>
+  <div class="t-heading">Travellers</div>
+  <div class="stepper-row" style="border-bottom:1px solid var(--border)">
+    <div><div class="t-label">Adults</div><div class="t-caption muted">$459 each</div></div>
+    <div style="display:flex;align-items:center;gap:calc(var(--s)*4)"><span class="step-btn"><i data-icon="minus" data-size="18"></i></span><span class="t-heading">2</span><span class="step-btn"><i data-icon="plus" data-size="18"></i></span></div>
+  </div>
+  <div class="stepper-row">
+    <div><div class="t-label">Children</div><div class="t-caption muted">Same price as adults</div></div>
+    <div style="display:flex;align-items:center;gap:calc(var(--s)*4)"><span class="step-btn off"><i data-icon="minus" data-size="18"></i></span><span class="t-heading">1</span><span class="step-btn"><i data-icon="plus" data-size="18"></i></span></div>
+  </div>
+  <div class="t-caption muted" style="margin-top:calc(var(--s)*3)">12 seats left on this date</div>
+</div>
+<div class="bottom-bar">
+  <div><div class="t-caption muted">3 travellers × $459</div><div><span class="t-title">$1,377</span></div></div>
+  <span class="btn primary" style="min-width:150px">Continue</span>
+</div>
+<div class="hi"></div></div><div class="cap"><b>B1 · Đặt tour — bước 1: số khách</b><span>Ngày đã chọn ở tab Dates nên bước đầu chỉ hỏi số khách. Tổng tiền đổi ngay dưới đáy màn theo từng lần bấm.</span><ul><li>Dữ liệu: <code>numAdults</code> ≥ 1, <code>numChildren</code> ≥ 0 (<code>CreateBookingInput</code>). Tổng = đơn giá × TỔNG chỗ — API không có giá trẻ em riêng, nên phải nói rõ trên màn.</li><li>Trần nhóm là <code>maxGroupSize</code> của tour và số ghế còn của đợt: nút + tắt khi chạm trần, kèm câu "12 seats left" (<code>tourDetail.seatsLeft</code>).</li><li>Chữ có sẵn: <code>booking.stepLabel(n, total)</code>, <code>tripHeading</code>, <code>editTrip</code>, <code>continueCta</code>, <code>stepperDecrease/Increase</code>. Khoá mới: nhãn Adults/Children, câu giá trẻ em.</li><li>Icon: <code>minus</code>, <code>plus</code>. Nút tròn 36dp nhưng vùng chạm phải ≥ 44dp (hitSlop).</li></ul></div></div><div class="shot"><div class="phone"><div class="sb"><span>9:41</span><span class="icons"><i style="width:17px;height:10px"></i><i style="width:15px;height:10px;border-radius:6px"></i><i style="width:25px;height:11px"></i></span></div>
+<div class="compact-head"><span class="icon-btn plain"><i data-icon="back" data-size="22"></i></span><span class="t-label clamp1" style="flex:1">Book this tour</span></div>
+<div class="abs" style="top:calc(var(--inset-top) + 52px + var(--s)*4);left:calc(var(--s)*6);right:calc(var(--s)*6)">
+  <div class="t-caption muted">Step 1 of 3</div>
+  <div class="progress" style="margin-top:8px"><i class="on"></i><i></i><i></i></div>
+  <div class="t-heading" style="margin:calc(var(--s)*4) 0 calc(var(--s)*2)">Your trip</div>
+  <div class="trip-card" style="margin-bottom:calc(var(--s)*4)">
+  <span class="trip-thumb" style="background-image:url('https://res.cloudinary.com/dbkgeehow/image/upload/c_fill,w_160,h_160,g_auto,q_auto,f_auto/tourism/catalog/tour/central-heritage-4d/hero')"></span>
+  <div style="flex:1;min-width:0">
+    <div class="t-label clamp2">Central Heritage: Đà Nẵng–Hội An–Huế 4D3N</div>
+    <div class="t-caption muted" style="margin-top:4px">Sat 3 – Tue 6 Oct 2026</div>
+    <div class="t-caption link" style="margin-top:4px">Edit</div>
+  </div>
+</div>
+  <div class="t-heading">Travellers</div>
+  <div class="stepper-row" style="border-bottom:1px solid var(--border)">
+    <div><div class="t-label">Adults</div><div class="t-caption muted">$459 each</div></div>
+    <div style="display:flex;align-items:center;gap:calc(var(--s)*4)"><span class="step-btn"><i data-icon="minus" data-size="18"></i></span><span class="t-heading">16</span><span class="step-btn off"><i data-icon="plus" data-size="18"></i></span></div>
+  </div>
+  <div class="stepper-row">
+    <div><div class="t-label">Children</div><div class="t-caption muted">Same price as adults</div></div>
+    <div style="display:flex;align-items:center;gap:calc(var(--s)*4)"><span class="step-btn"><i data-icon="minus" data-size="18"></i></span><span class="t-heading">0</span><span class="step-btn off"><i data-icon="plus" data-size="18"></i></span></div>
+  </div>
+  <div class="t-caption muted" style="margin-top:calc(var(--s)*3)">Up to 16 guests on this tour</div>
+</div>
+<div class="bottom-bar" style="height:calc(112px + var(--inset-bottom));flex-direction:column;align-items:stretch;gap:calc(var(--s)*2.5)">
+  <div class="note warn"><i data-icon="alert" data-size="18"></i><span class="t-subtitle">Party size exceeds the maximum group size for this tour.</span></div>
+  <div style="display:flex;align-items:center;justify-content:space-between">
+    <div><div class="t-caption muted">16 travellers × $459</div><div><span class="t-title">$7,344</span></div></div>
+    <span class="btn primary" style="min-width:150px;opacity:.5">Continue</span>
+  </div>
+</div>
+<div class="hi"></div></div><div class="cap"><b>B2 · Đặt tour — vượt trần nhóm</b><span>Chặn ngay ở máy khi chạm trần, không để khách đi tiếp rồi mới nhận lỗi 422 từ server.</span><ul><li>Trần cứng ở server: <code>PARTY_TOO_LARGE</code> (422) theo <code>maxGroupSize</code>, <code>SEATS_UNAVAILABLE</code> (409) theo ghế còn. Máy chỉ chặn trước cho đỡ một lượt gọi — server vẫn là nơi quyết.</li><li>Câu lỗi nằm ngay trên nút chính (kênh 2 của luật lỗi cụm auth), không phải toast.</li><li>Chữ: dùng chung câu của web (<code>booking.errors.PARTY_TOO_LARGE</code>, <code>SEATS_UNAVAILABLE</code>) — cùng API thì hai client không nói hai kiểu.</li></ul></div></div><div class="shot"><div class="phone"><div class="sb"><span>9:41</span><span class="icons"><i style="width:17px;height:10px"></i><i style="width:15px;height:10px;border-radius:6px"></i><i style="width:25px;height:11px"></i></span></div>
+<div class="compact-head"><span class="icon-btn plain"><i data-icon="back" data-size="22"></i></span><span class="t-label clamp1" style="flex:1">Book this tour</span></div>
+<div class="abs" style="top:calc(var(--inset-top) + 52px + var(--s)*4);left:calc(var(--s)*6);right:calc(var(--s)*6)">
+  <div class="t-caption muted">Step 2 of 3</div>
+  <div class="progress" style="margin-top:8px"><i class="on"></i><i class="on"></i><i></i></div>
+  <div class="t-heading" style="margin:calc(var(--s)*4) 0 0">Contact details</div>
+  <div class="t-subtitle muted" style="margin-top:4px">We send the confirmation here.</div>
+  <div class="field"><i data-icon="user" data-size="18"></i><span class="stack"><small>Full name</small><span>Lan Nguyen</span></span></div>
+  <div class="field"><i data-icon="mail" data-size="18"></i><span class="stack"><small>Email</small><span>lan.nguyen@example.com</span></span></div>
+  <div class="field"><i data-icon="phone" data-size="18"></i><span class="stack"><small>Phone (optional)</small><span>+84 912 345 678</span></span></div>
+  <div class="field ph" style="align-items:flex-start;min-height:88px;padding-top:10px"><i data-icon="messageSquare" data-size="18"></i><span class="stack"><small>Anything we should know? (optional)</small><span>Dietary needs, arrival flight, celebrations…</span></span></div>
+</div>
+<div class="bottom-bar">
+  <div><div class="t-caption muted">3 travellers × $459</div><div><span class="t-title">$1,377</span></div></div>
+  <span class="btn primary" style="min-width:150px">Continue</span>
+</div>
+<div class="hi"></div></div><div class="cap"><b>B3 · Đặt tour — bước 2: liên hệ</b><span>Điền sẵn tên và email từ tài khoản đang đăng nhập; khách sửa được vì người đi có thể không phải người đặt.</span><ul><li>Dữ liệu: <code>contactName</code>, <code>contactEmail</code>, <code>contactPhone</code> (tuỳ chọn, 6–30 ký tự), <code>specialRequests</code> (≤ 1000).</li><li>Kiểm ở máy dùng lại <code>@tourism/core</code>: <code>validateProfileName</code>, <code>validateProfilePhone</code>, email theo <code>EmailSchema</code> — đừng viết luật mới.</li><li>Ô nhập là <code>TextField</code> sẵn có của <code>@tourism/mobile-ui</code>; ô yêu cầu riêng là bản nhiều dòng (khoá mới: <code>multiline</code>).</li></ul></div></div><div class="shot"><div class="phone"><div class="sb"><span>9:41</span><span class="icons"><i style="width:17px;height:10px"></i><i style="width:15px;height:10px;border-radius:6px"></i><i style="width:25px;height:11px"></i></span></div>
+<div class="compact-head"><span class="icon-btn plain"><i data-icon="back" data-size="22"></i></span><span class="t-label clamp1" style="flex:1">Review and pay</span></div>
+<div class="abs" style="top:calc(var(--inset-top) + 52px + var(--s)*4);left:calc(var(--s)*6);right:calc(var(--s)*6)">
+  <div class="t-caption muted">Step 3 of 3</div>
+  <div class="progress" style="margin-top:8px"><i class="on"></i><i class="on"></i><i class="on"></i></div>
+  <div class="t-heading" style="margin:calc(var(--s)*4) 0 calc(var(--s)*2)">Your trip</div>
+  <div class="trip-card" style="margin-bottom:calc(var(--s)*4)">
+  <span class="trip-thumb" style="background-image:url('https://res.cloudinary.com/dbkgeehow/image/upload/c_fill,w_160,h_160,g_auto,q_auto,f_auto/tourism/catalog/tour/central-heritage-4d/hero')"></span>
+  <div style="flex:1;min-width:0">
+    <div class="t-label clamp2">Central Heritage: Đà Nẵng–Hội An–Huế 4D3N</div>
+    <div class="t-caption muted" style="margin-top:4px">Sat 3 – Tue 6 Oct 2026</div>
+    <div class="t-caption link" style="margin-top:4px">Edit</div>
+  </div>
+</div>
+  <div class="kv"><span class="t-subtitle muted">3 travellers × $459</span><span class="t-label">$1,377</span></div>
+  <div class="kv" style="border-bottom:none"><span class="t-label">Total</span><span class="t-title">$1,377</span></div>
+  <div class="note good" style="margin-top:calc(var(--s)*2)"><i data-icon="shield" data-size="18"></i><span class="t-subtitle">Free cancellation until Sat 26 Sep.</span></div>
+  <div class="t-heading" style="margin:calc(var(--s)*5) 0 calc(var(--s)*2)">Payment method</div>
+  <div class="provider on"><span class="radio" style="border:6px solid var(--primary-emphasis)"></span><i data-icon="creditCard" data-size="20"></i><span class="t-label" style="flex:1">Card — Stripe</span></div>
+  <div class="provider" style="margin-top:calc(var(--s)*2)"><span class="radio"></span><i data-icon="creditCard" data-size="20"></i><span class="t-label" style="flex:1">PayPal</span></div>
+  <div class="t-caption muted" style="margin-top:calc(var(--s)*3)">You'll finish payment in your browser, then come back here.</div>
+</div>
+<div class="bottom-bar">
+  <div><div class="t-caption muted">Total</div><div><span class="t-title">$1,377</span></div></div>
+  <span class="btn primary" style="min-width:160px">Pay $1,377</span>
+</div>
+<div class="hi"></div></div><div class="cap"><b>B4 · Đặt tour — bước 3: xem lại và chọn cổng</b><span>Màn cuối trước khi rời app: bảng tiền, hạn huỷ miễn phí, chọn Stripe hay PayPal.</span><ul><li>Dữ liệu: <code>paymentProvider</code> = STRIPE | PAYPAL (<code>PaymentProviderSchema</code>). Cả hai đều ở chế độ test/sandbox (dự án không có doanh thu thật).</li><li>Dòng hạn huỷ lấy <code>bookingDeadline</code> của đợt (ADR-0041) — cùng ngày chót đặt chỗ, không tính bằng giờ máy.</li><li>Nút chính in SỐ TIỀN, không phải chữ chung chung: khách rời app sang trình duyệt nên phải biết mình sắp trả bao nhiêu.</li><li>Chữ có sẵn: <code>booking.browserHint</code>. Khoá mới: nhãn hai cổng, tiêu đề "Payment method", các dòng bảng tiền.</li></ul></div></div><div class="shot"><div class="phone"><div class="sb"><span>9:41</span><span class="icons"><i style="width:17px;height:10px"></i><i style="width:15px;height:10px;border-radius:6px"></i><i style="width:25px;height:11px"></i></span></div>
+<div class="compact-head"><span class="icon-btn plain"><i data-icon="back" data-size="22"></i></span><span class="t-label clamp1" style="flex:1">Payment</span></div>
+<div class="abs" style="top:calc(var(--inset-top) + 52px);left:calc(var(--s)*6);right:calc(var(--s)*6);bottom:calc(var(--inset-bottom) + var(--s)*6);display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:calc(var(--s)*4)">
+  <div class="square-icon"><i data-icon="externalLink" data-size="28"></i></div>
+  <div class="t-heading">Finish in your browser</div>
+  <div class="t-subtitle muted">Complete your payment in the secure browser window - we'll confirm your booking here when you're back.</div>
+  <span class="btn primary" style="align-self:stretch;margin-top:calc(var(--s)*2)">Open payment page</span>
+  <span class="btn ghost" style="align-self:stretch">I've finished paying</span>
+</div>
+<div class="hi"></div></div><div class="cap"><b>B5 · Rời app sang trình duyệt</b><span>Màn giữ chỗ trong lúc trình duyệt mở. Khách đóng trình duyệt giữa chừng vẫn quay về đúng đây, không rơi ra ngoài luồng.</span><ul><li>App mở <code>booking.checkoutUrl</code> bằng <code>expo-web-browser</code>. Booking đã là PENDING từ lúc bấm trả tiền — ghế đã giữ.</li><li>Hai đường ra: "Open payment page" mở LẠI đúng link cũ (không tạo link mới), "I've finished paying" chuyển sang B6.</li><li>Chữ có sẵn: <code>booking.browserHint</code>, <code>openCheckout</code>. Khoá mới: nhãn "I've finished paying".</li></ul></div></div></div>
+<h3 class="sec">2 · Sau khi rời app trả tiền <small>ba trạng thái của quãng qua trình duyệt</small></h3>
+<div class="row"><div class="shot"><div class="phone"><div class="sb"><span>9:41</span><span class="icons"><i style="width:17px;height:10px"></i><i style="width:15px;height:10px;border-radius:6px"></i><i style="width:25px;height:11px"></i></span></div>
+<div class="compact-head"><span class="icon-btn plain"><i data-icon="back" data-size="22"></i></span><span class="t-label clamp1" style="flex:1">Payment</span></div>
+<div class="abs" style="top:calc(var(--inset-top) + 52px);left:calc(var(--s)*6);right:calc(var(--s)*6);bottom:calc(var(--inset-bottom) + var(--s)*6);display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:calc(var(--s)*4)">
+  <div class="square-icon"><i data-icon="loader" data-size="28"></i></div>
+  <div class="t-heading">Confirming your payment…</div>
+  <div class="t-subtitle muted">This takes a few seconds. Keep the app open.</div>
+</div>
+<div class="hi"></div></div><div class="cap"><b>B6 · Đang xác nhận thanh toán</b><span>App hỏi lại server chứ không tin trình duyệt: webhook của cổng có thể tới sau vài giây.</span><ul><li>Gọi <code>bookings.byCode</code> vài lượt cách nhau (ví dụ 2s, 4s, 8s) rồi dừng — không quay vòng vô hạn.</li><li>Chữ có sẵn: <code>booking.verifying</code>. Khoá mới: câu "Đừng đóng app".</li><li>Không có nút nào ở màn này: mọi đường đi tiếp nằm ở B7 hoặc B8.</li></ul></div></div><div class="shot"><div class="phone"><div class="sb"><span>9:41</span><span class="icons"><i style="width:17px;height:10px"></i><i style="width:15px;height:10px;border-radius:6px"></i><i style="width:25px;height:11px"></i></span></div>
+<div class="compact-head"><span class="icon-btn plain"><i data-icon="back" data-size="22"></i></span><span class="t-label clamp1" style="flex:1">Payment</span></div>
+<div class="abs" style="top:calc(var(--inset-top) + 52px);left:calc(var(--s)*6);right:calc(var(--s)*6);bottom:calc(var(--inset-bottom) + var(--s)*6);display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:calc(var(--s)*3)">
+  <div class="square-icon"><i data-icon="clock" data-size="28"></i></div>
+  <div class="t-heading">Payment not confirmed yet</div>
+  <div class="t-subtitle muted">We haven't received the payment confirmation yet. If you just paid, it can take a moment - verify again in a few seconds (don't pay twice). If you didn't finish paying, you can pay now.</div>
+  <span class="btn primary" style="align-self:stretch;margin-top:calc(var(--s)*3)">Verify again</span>
+  <span class="btn ghost" style="align-self:stretch">Open payment page</span>
+</div>
+<div class="hi"></div></div><div class="cap"><b>B7 · Chưa nhận được xác nhận</b><span>Trạng thái thật hay gặp: khách đã trả nhưng webhook chưa về, hoặc khách bỏ dở. Màn phải nói được cả hai mà không doạ khách trả lần nữa.</span><ul><li>Chữ có sẵn nguyên văn: <code>booking.stillPendingTitle</code>, <code>stillPendingBody</code> (đã dặn "đừng trả hai lần"), <code>verifyAgain</code>, <code>openCheckout</code>.</li><li>Nút chính là "Verify again" — KHÔNG phải trả tiền lại. Trả tiền lại nằm ở nút phụ, và mở đúng <code>checkoutUrl</code> cũ.</li><li>Booking vẫn PENDING và vẫn giữ ghế; khách bỏ đi thì nó nằm trong tab Trips với nhãn PENDING (T1).</li></ul></div></div><div class="shot"><div class="phone"><div class="hero" style="height:300px;background-image:url('https://res.cloudinary.com/dbkgeehow/image/upload/c_fill,w_780,h_600,g_auto,q_auto,f_auto/tourism/catalog/tour/central-heritage-4d/hero')"></div>
+<div class="sb on-media"><span>9:41</span><span class="icons"><i style="width:17px;height:10px"></i><i style="width:15px;height:10px;border-radius:6px"></i><i style="width:25px;height:11px"></i></span></div>
+<div class="abs" style="top:196px;left:calc(var(--s)*6);right:calc(var(--s)*6);display:flex;flex-direction:column;align-items:center;text-align:center">
+  <div class="square-icon" style="background:var(--primary);color:var(--primary-foreground)"><i data-icon="checkCircle" data-size="30"></i></div>
+  <div class="t-display" style="margin-top:calc(var(--s)*4)">You're going!</div>
+  <div class="t-subtitle muted" style="margin-top:calc(var(--s)*1.5)">Confirmation is on its way to lan.nguyen@example.com</div>
+  <div class="note info" style="margin-top:calc(var(--s)*4);align-self:stretch;justify-content:space-between"><span class="t-caption">Booking code</span><span class="t-label">BK-4QP8ZT2M</span></div>
+  <div style="align-self:stretch;margin-top:calc(var(--s)*2)">
+    <div class="kv"><span class="t-subtitle muted">Central Heritage 4D3N</span><span class="t-label">3 travellers</span></div>
+    <div class="kv"><span class="t-subtitle muted">Sat 3 – Tue 6 Oct 2026</span><span class="t-label">$1,377</span></div>
+  </div>
+</div>
+<div class="bottom-bar" style="height:calc(128px + var(--inset-bottom));flex-direction:column;align-items:stretch;gap:calc(var(--s)*2)">
+  <span class="btn primary">View booking</span>
+  <span class="btn ghost">Browse more tours</span>
+</div>
+<div class="hi"></div></div><div class="cap"><b>B8 · Đặt chỗ xong</b><span>Mã booking là thứ khách cần nhất ở đây — in to, chạm để chép. Ảnh tour để khung này không khô khan.</span><ul><li>Dữ liệu: <code>code</code> (<code>BK-XXXXXXXX</code>), ngày đợt, số khách, tổng tiền, và hạn huỷ miễn phí.</li><li>Chữ có sẵn: <code>booking.viewBooking</code>, <code>browseTours</code>. Khoá mới: tiêu đề, câu phụ, nhãn "Booking code".</li><li>Email xác nhận do server gửi (outbox) — màn này không hứa hẹn gì thêm ngoài những gì đã gửi.</li></ul></div></div><div class="shot"><div class="phone"><div class="sb"><span>9:41</span><span class="icons"><i style="width:17px;height:10px"></i><i style="width:15px;height:10px;border-radius:6px"></i><i style="width:25px;height:11px"></i></span></div>
+<div class="compact-head"><span class="icon-btn plain"><i data-icon="back" data-size="22"></i></span><span class="t-label clamp1" style="flex:1">Review and pay</span></div>
+<div class="abs" style="top:calc(var(--inset-top) + 52px + var(--s)*4);left:calc(var(--s)*6);right:calc(var(--s)*6)">
+  <div class="t-caption muted">Step 3 of 3</div>
+  <div class="progress" style="margin-top:8px"><i class="on"></i><i class="on"></i><i class="on"></i></div>
+  <div class="t-heading" style="margin:calc(var(--s)*4) 0 calc(var(--s)*2)">Your trip</div>
+  <div class="trip-card" style="margin-bottom:calc(var(--s)*4)">
+  <span class="trip-thumb" style="background-image:url('https://res.cloudinary.com/dbkgeehow/image/upload/c_fill,w_160,h_160,g_auto,q_auto,f_auto/tourism/catalog/tour/central-heritage-4d/hero')"></span>
+  <div style="flex:1;min-width:0">
+    <div class="t-label clamp2">Central Heritage: Đà Nẵng–Hội An–Huế 4D3N</div>
+    <div class="t-caption muted" style="margin-top:4px">Sat 3 – Tue 6 Oct 2026</div>
+    <div class="t-caption link" style="margin-top:4px">Edit</div>
+  </div>
+</div>
+  <div class="kv"><span class="t-subtitle muted">3 travellers × $459</span><span class="t-label">$1,377</span></div>
+  <div class="kv" style="border-bottom:none"><span class="t-label">Total</span><span class="t-title">$1,377</span></div>
+</div>
+<div class="bottom-bar" style="height:calc(132px + var(--inset-bottom));flex-direction:column;align-items:stretch;gap:calc(var(--s)*2.5)">
+  <div class="note warn"><i data-icon="alert" data-size="18"></i><div><div class="t-subtitle">Not enough seats left on this departure.</div><div class="t-caption link" style="margin-top:2px">Choose another date</div></div></div>
+  <div style="display:flex;align-items:center;justify-content:space-between">
+    <div><div class="t-caption muted">Total</div><div><span class="t-title">$1,377</span></div></div>
+    <span class="btn primary" style="min-width:160px">Pay $1,377</span>
+  </div>
+</div>
+<div class="hi"></div></div><div class="cap"><b>B9 · Không tạo được booking</b><span>Bốn mã lỗi của <code>bookings.create</code> đều hiện ở cùng một chỗ: khung ngay trên nút chính, kèm đường đi tiếp hợp với từng lỗi.</span><ul><li><code>SEATS_UNAVAILABLE</code> (409) → "Choose another date" mở lại tab Dates. <code>DEPARTURE_NOT_AVAILABLE</code> (400) → đợt đã qua hạn đặt, cũng về tab Dates.</li><li><code>PARTY_TOO_LARGE</code> (422) → quay về bước 1. <code>CHECKOUT_FAILED</code> (502) → giữ nguyên màn, nút đổi thành "Try again" (booking chưa được tạo).</li><li>Ghế chỉ giữ khi booking đã tạo — khách ngồi lâu ở bước 3 thì ghế có thể bị người khác lấy, nên lỗi này là chuyện thường, không phải sự cố.</li></ul></div></div></div>
+<h3 class="sec">3 · Chuyến của tôi <small>tab Trips, chi tiết booking và huỷ</small></h3>
+<div class="row"><div class="shot"><div class="phone"><div class="sb"><span>9:41</span><span class="icons"><i style="width:17px;height:10px"></i><i style="width:15px;height:10px;border-radius:6px"></i><i style="width:25px;height:11px"></i></span></div>
+<div class="abs t-title" style="top:calc(var(--inset-top) + var(--s)*2);left:calc(var(--s)*6)">Your trips</div>
+<div class="abs chips scroll" style="top:calc(var(--inset-top) + var(--s)*13);left:calc(var(--s)*6);right:0"><span class="chip on">All</span><span class="chip">Upcoming</span><span class="chip">Past</span></div>
+<div class="stack" style="top:calc(var(--inset-top) + var(--s)*24)">
+  <div class="trip-card">
+  <span class="trip-thumb" style="background-image:url('https://res.cloudinary.com/dbkgeehow/image/upload/c_fill,w_160,h_160,g_auto,q_auto,f_auto/tourism/catalog/tour/central-heritage-4d/hero')"></span>
+  <div style="flex:1;min-width:0">
+    <div style="display:flex;justify-content:space-between;gap:8px"><span class="pill-status paid">Paid</span><span class="t-caption muted">3 travellers</span></div>
+    <div class="t-label clamp1" style="margin-top:6px">Central Heritage: Đà Nẵng–Hội An–Huế 4D3N</div>
+    <div class="t-caption muted" style="margin-top:2px">Sat 3 – Tue 6 Oct 2026</div>
+    <div style="display:flex;justify-content:space-between;margin-top:6px"><span class="t-caption muted">BK-4QP8ZT2M</span><span class="t-label">$1,377</span></div>
+    
+  </div>
+</div>
+  <div class="trip-card">
+  <span class="trip-thumb" style="background-image:url('https://res.cloudinary.com/dbkgeehow/image/upload/c_fill,w_160,h_160,g_auto,q_auto,f_auto/tourism/catalog/tour/halong-bay-overnight-cruise/hero')"></span>
+  <div style="flex:1;min-width:0">
+    <div style="display:flex;justify-content:space-between;gap:8px"><span class="pill-status pending">Payment due</span><span class="t-caption muted">2 travellers</span></div>
+    <div class="t-label clamp1" style="margin-top:6px">Hạ Long Bay Overnight Cruise 2D1N</div>
+    <div class="t-caption muted" style="margin-top:2px">Sat 17 – Sun 18 Oct 2026</div>
+    <div style="display:flex;justify-content:space-between;margin-top:6px"><span class="t-caption muted">BK-9TR2WK5C</span><span class="t-label">$370</span></div>
+    <div class="t-caption link" style="margin-top:6px">Finish payment</div>
+  </div>
+</div>
+  <div class="trip-card">
+  <span class="trip-thumb" style="background-image:url('https://res.cloudinary.com/dbkgeehow/image/upload/c_fill,w_160,h_160,g_auto,q_auto,f_auto/tourism/catalog/tour/sapa-terraces-homestay-2d/hero')"></span>
+  <div style="flex:1;min-width:0">
+    <div style="display:flex;justify-content:space-between;gap:8px"><span class="pill-status off">Refunded</span><span class="t-caption muted">2 travellers</span></div>
+    <div class="t-label clamp1" style="margin-top:6px">Sa Pa Terraces &amp; Homestay Trek 2D1N</div>
+    <div class="t-caption muted" style="margin-top:2px">Fri 21 – Sat 22 Aug 2026</div>
+    <div style="display:flex;justify-content:space-between;margin-top:6px"><span class="t-caption muted">BK-1HD7VN3P</span><span class="t-label">$238</span></div>
+    
+  </div>
+</div>
+</div>
+<div class="tabbar"><div class="tab"><span class="pill"><i data-icon="home" data-size="20"></i></span>Home</div><div class="tab"><span class="pill"><i data-icon="compass" data-size="20"></i></span>Explore</div><div class="tab"><span class="pill"><i data-icon="heart" data-size="20"></i></span>Saved</div><div class="tab on"><span class="pill"><i data-icon="briefcase" data-size="20"></i></span>Trips</div><div class="tab"><span class="pill"><i data-icon="user" data-size="20"></i></span>Account</div></div>
+<div class="hi"></div></div><div class="cap"><b>T1 · Trips — danh sách</b><span>Ảnh Navel 50. Mỗi chuyến một thẻ, trạng thái nằm ngay góc trên để lướt là thấy. Chuyến chưa trả tiền có đường trả tiếp ngay trên thẻ.</span><ul><li>Dữ liệu: <code>bookings.mine</code> (phân trang, mới nhất trước) — <code>status</code>, <code>tourTitle</code>, <code>tourImage</code>, ngày đợt, <code>code</code>, <code>totalAmount</code>.</li><li>Năm trạng thái của <code>BookingStatusSchema</code>: PENDING (nền warning) · PAID (nền success) · CANCELLED · REFUNDED · PARTIALLY_REFUNDED (ba cái sau dùng nền muted, chữ nói rõ).</li><li>Chip lọc Upcoming/Past lọc ở máy theo ngày đợt — API chưa có tham số đó (<code>BookingsListQuerySchema</code> chỉ có phân trang và status).</li><li>Chữ có sẵn: <code>booking.listError</code>, <code>retry</code>. Khoá mới: nhãn trạng thái, chip lọc, "Finish payment".</li></ul></div></div><div class="shot"><div class="phone"><div class="sb"><span>9:41</span><span class="icons"><i style="width:17px;height:10px"></i><i style="width:15px;height:10px;border-radius:6px"></i><i style="width:25px;height:11px"></i></span></div>
+<div class="abs t-title" style="top:calc(var(--inset-top) + var(--s)*2);left:calc(var(--s)*6)">Your trips</div>
+<div class="abs" style="top:calc(var(--inset-top) + var(--s)*20);left:calc(var(--s)*6);right:calc(var(--s)*6);bottom:96px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:calc(var(--s)*4);padding-bottom:calc(var(--s)*12)">
+  <div class="square-icon"><i data-icon="briefcase" data-size="28"></i></div>
+  <div class="t-subtitle muted" style="max-width:250px">No trips yet — your bookings will show up here.</div>
+  <span class="btn primary" style="width:200px">Browse tours</span>
+</div>
+<div class="tabbar"><div class="tab"><span class="pill"><i data-icon="home" data-size="20"></i></span>Home</div><div class="tab"><span class="pill"><i data-icon="compass" data-size="20"></i></span>Explore</div><div class="tab"><span class="pill"><i data-icon="heart" data-size="20"></i></span>Saved</div><div class="tab on"><span class="pill"><i data-icon="briefcase" data-size="20"></i></span>Trips</div><div class="tab"><span class="pill"><i data-icon="user" data-size="20"></i></span>Account</div></div>
+<div class="hi"></div></div><div class="cap"><b>T2 · Trips — chưa có chuyến nào</b><span>Khách đã đăng nhập nhưng chưa đặt gì. Một đường duy nhất: đi xem tour.</span><ul><li>Chữ có sẵn: <code>booking.browseTours</code>. Khoá mới: câu "No trips yet".</li><li>Cùng khuôn trạng thái rỗng của cụm P5b-2 (ô vuông icon + câu + nút), giữ header và thanh tab.</li></ul></div></div><div class="shot"><div class="phone"><div class="sb"><span>9:41</span><span class="icons"><i style="width:17px;height:10px"></i><i style="width:15px;height:10px;border-radius:6px"></i><i style="width:25px;height:11px"></i></span></div>
+<div class="abs t-title" style="top:calc(var(--inset-top) + var(--s)*2);left:calc(var(--s)*6)">Your trips</div>
+<div class="abs" style="top:calc(var(--inset-top) + var(--s)*20);left:calc(var(--s)*6);right:calc(var(--s)*6);bottom:96px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:calc(var(--s)*3);padding-bottom:calc(var(--s)*10)">
+  <div class="square-icon"><i data-icon="briefcase" data-size="28"></i></div>
+  <div class="t-heading">Your trips, in one place</div>
+  <div class="t-subtitle muted" style="max-width:260px">Sign in to see your bookings, tickets and cancellation dates.</div>
+  <span class="btn primary" style="align-self:stretch;margin-top:calc(var(--s)*3)">Sign in</span>
+  <span class="btn ghost" style="align-self:stretch">Create account</span>
+</div>
+<div class="tabbar"><div class="tab"><span class="pill"><i data-icon="home" data-size="20"></i></span>Home</div><div class="tab"><span class="pill"><i data-icon="compass" data-size="20"></i></span>Explore</div><div class="tab"><span class="pill"><i data-icon="heart" data-size="20"></i></span>Saved</div><div class="tab on"><span class="pill"><i data-icon="briefcase" data-size="20"></i></span>Trips</div><div class="tab"><span class="pill"><i data-icon="user" data-size="20"></i></span>Account</div></div>
+<div class="hi"></div></div><div class="cap"><b>T3 · Trips — chưa đăng nhập</b><span>Ba tab Saved · Trips · Account đều chặn như nhau: không đá ra màn Sign in, mà mời ngay tại tab.</span><ul><li>Chữ: <code>authPrompts.signIn</code>, <code>createAccount</code> có sẵn. Khoá mới: <code>authPrompts.tripsGateTitle</code>, <code>tripsGateBody</code> (đã có cặp cho Saved và Account).</li><li>Đăng nhập xong quay lại ĐÚNG tab này, không nhảy về Home.</li><li>Đây là mục CÒN TREO "chặn tab khi chưa đăng nhập" của P5b-1 — dựng luôn ở đợt này cho cả ba tab.</li></ul></div></div><div class="shot"><div class="phone"><div class="sb"><span>9:41</span><span class="icons"><i style="width:17px;height:10px"></i><i style="width:15px;height:10px;border-radius:6px"></i><i style="width:25px;height:11px"></i></span></div>
+<div class="compact-head"><span class="icon-btn plain"><i data-icon="back" data-size="22"></i></span><span class="t-label clamp1" style="flex:1">BK-4QP8ZT2M</span></div>
+<div class="abs" style="top:calc(var(--inset-top) + 52px + var(--s)*4);left:calc(var(--s)*6);right:calc(var(--s)*6)">
+  <div class="trip-card" style="border:none;padding:0;background:transparent">
+    <span class="trip-thumb" style="background-image:url('https://res.cloudinary.com/dbkgeehow/image/upload/c_fill,w_160,h_160,g_auto,q_auto,f_auto/tourism/catalog/tour/central-heritage-4d/hero')"></span>
+    <div style="flex:1;min-width:0">
+      <span class="pill-status paid">Paid</span>
+      <div class="t-label clamp2" style="margin-top:6px">Central Heritage: Đà Nẵng–Hội An–Huế 4D3N</div>
+      <div class="t-caption muted" style="margin-top:2px">Sat 3 – Tue 6 Oct 2026</div>
+    </div>
+  </div>
+  <div class="note good" style="margin-top:calc(var(--s)*4)"><i data-icon="shield" data-size="20"></i><div><div class="t-label">Free cancellation until Sat 26 Sep</div><div class="t-caption muted" style="margin-top:2px">Cancel by then and you get $1,377 back.</div></div></div>
+  <div style="margin-top:calc(var(--s)*3)">
+    <div class="kv"><span class="t-subtitle muted">Booking code</span><span class="t-label">BK-4QP8ZT2M</span></div>
+    <div class="kv"><span class="t-subtitle muted">Travellers</span><span class="t-label">2 adults · 1 child</span></div>
+    <div class="kv"><span class="t-subtitle muted">Contact</span><span class="t-label">lan.nguyen@example.com</span></div>
+    <div class="kv"><span class="t-subtitle muted">Paid on</span><span class="t-label">21 Sep 2026</span></div>
+    <div class="kv" style="border-bottom:none"><span class="t-label">Total paid</span><span class="t-title">$1,377</span></div>
+  </div>
+</div>
+<div class="bottom-bar" style="height:calc(116px + var(--inset-bottom));flex-direction:column;align-items:stretch;gap:calc(var(--s)*2)">
+  <span class="btn ghost">Cancel booking</span>
+  <span class="t-caption muted" style="text-align:center">Questions about this trip? <span class="link">Contact us</span></span>
+</div>
+<div class="hi"></div></div><div class="cap"><b>T4 · Chi tiết booking — đã trả tiền</b><span>Ảnh Navel 44. Hạn huỷ miễn phí là khối nổi bật chứ không phải một dòng chữ nhỏ — đúng góp ý user đã áp cho web 18/09.</span><ul><li>Dữ liệu: <code>bookings.byCode</code> → <code>BookingDetail</code>. Khối huỷ đọc <code>cancellation</code>: <code>deadline</code>, <code>withinDeadline</code>, <code>refundAmount</code>, <code>canCancel</code> — server tính hết.</li><li>Nút "Cancel booking" CHỈ hiện khi <code>canCancel</code>. Trong hạn → T6; quá hạn → T7.</li><li>Mã booking chạm để chép. Liên hệ và yêu cầu riêng in lại để khách kiểm được thứ mình đã gửi.</li><li>Chữ có sẵn: <code>booking.detailError</code>, <code>retry</code>. Khoá mới: nhãn các dòng, "Cancel booking", câu hạn huỷ (dùng chung chữ luật với web).</li></ul></div></div><div class="shot"><div class="phone"><div class="sb"><span>9:41</span><span class="icons"><i style="width:17px;height:10px"></i><i style="width:15px;height:10px;border-radius:6px"></i><i style="width:25px;height:11px"></i></span></div>
+<div class="compact-head"><span class="icon-btn plain"><i data-icon="back" data-size="22"></i></span><span class="t-label clamp1" style="flex:1">BK-9TR2WK5C</span></div>
+<div class="abs" style="top:calc(var(--inset-top) + 52px + var(--s)*4);left:calc(var(--s)*6);right:calc(var(--s)*6)">
+  <div class="trip-card" style="border:none;padding:0;background:transparent">
+    <span class="trip-thumb" style="background-image:url('https://res.cloudinary.com/dbkgeehow/image/upload/c_fill,w_160,h_160,g_auto,q_auto,f_auto/tourism/catalog/tour/halong-bay-overnight-cruise/hero')"></span>
+    <div style="flex:1;min-width:0">
+      <span class="pill-status pending">Payment due</span>
+      <div class="t-label clamp2" style="margin-top:6px">Hạ Long Bay Overnight Cruise 2D1N</div>
+      <div class="t-caption muted" style="margin-top:2px">Sat 17 – Sun 18 Oct 2026</div>
+    </div>
+  </div>
+  <div class="note warn" style="margin-top:calc(var(--s)*4)"><i data-icon="alert" data-size="20"></i><div><div class="t-label">Payment not finished</div><div class="t-caption muted" style="margin-top:2px">Your seats are held until you pay. Finish now to confirm them.</div></div></div>
+  <div style="margin-top:calc(var(--s)*3)">
+    <div class="kv"><span class="t-subtitle muted">Booking code</span><span class="t-label">BK-9TR2WK5C</span></div>
+    <div class="kv"><span class="t-subtitle muted">Travellers</span><span class="t-label">2 adults</span></div>
+    <div class="kv" style="border-bottom:none"><span class="t-label">Total due</span><span class="t-title">$370</span></div>
+  </div>
+</div>
+<div class="bottom-bar" style="height:calc(116px + var(--inset-bottom));flex-direction:column;align-items:stretch;gap:calc(var(--s)*2)">
+  <span class="btn primary">Pay $370</span>
+  <span class="btn ghost">Cancel this booking</span>
+</div>
+<div class="hi"></div></div><div class="cap"><b>T5 · Chi tiết booking — chưa trả tiền</b><span>Booking PENDING vẫn giữ ghế nhưng chưa phải của khách. Màn nói thẳng việc cần làm và mở lại đúng link thanh toán cũ.</span><ul><li>Mở lại <code>booking.checkoutUrl</code> đang có; chỉ gọi <code>bookings.checkout</code> (mint link mới) khi link cũ hết hạn hoặc lỗi.</li><li><code>bookings.cancelPending</code> để khách bỏ booking chưa trả — nhả ghế ngay, không dính luật hoàn tiền.</li><li>Nếu đợt đã qua hạn đặt trong lúc khách chần chừ: <code>checkout</code> trả <code>DEPARTURE_NOT_AVAILABLE</code>, màn đổi sang câu "đợt này đã đóng" và chỉ còn nút bỏ booking.</li></ul></div></div><div class="shot"><div class="phone"><div class="sb"><span>9:41</span><span class="icons"><i style="width:17px;height:10px"></i><i style="width:15px;height:10px;border-radius:6px"></i><i style="width:25px;height:11px"></i></span></div>
+<div class="compact-head"><span class="icon-btn plain"><i data-icon="back" data-size="22"></i></span><span class="t-label clamp1" style="flex:1">BK-4QP8ZT2M</span></div>
+<div class="abs" style="top:calc(var(--inset-top) + 52px + var(--s)*4);left:calc(var(--s)*6);right:calc(var(--s)*6);opacity:.5">
+  <div class="t-label">Central Heritage: Đà Nẵng–Hội An–Huế 4D3N</div>
+  <div class="t-caption muted" style="margin-top:4px">Sat 3 – Tue 6 Oct 2026</div>
+</div>
+<div class="dim"></div>
+<div class="sheet" style="height:430px">
+  <span class="handle"></span>
+  <div class="abs" style="top:32px;left:calc(var(--s)*6);right:calc(var(--s)*6)">
+    <div class="t-heading">Cancel this booking?</div>
+    <div class="t-subtitle muted" style="margin-top:calc(var(--s)*2)">You're inside the free-cancellation window, so you get the full amount back to the card you paid with. This can't be undone.</div>
+    <div class="note good" style="margin-top:calc(var(--s)*3);justify-content:space-between"><span class="t-label">Refund</span><span class="t-title">$1,377</span></div>
+    <div class="field ph"><i data-icon="messageSquare" data-size="18"></i><span class="stack"><small>Reason (optional)</small><span>Tell us what changed…</span></span></div>
+    <span class="btn primary" style="margin-top:calc(var(--s)*5);background:var(--destructive-emphasis);color:var(--background)">Cancel and refund $1,377</span>
+    <span class="btn ghost" style="margin-top:calc(var(--s)*2)">Keep booking</span>
+  </div>
+</div>
+<div class="hi"></div></div><div class="cap"><b>T6 · Huỷ — còn trong hạn</b><span>Hộp xác nhận in SỐ TIỀN sẽ hoàn, vì đó là con số khách gửi lại cho server để đối chiếu.</span><ul><li>Gửi <code>expectedRefundAmount</code> đúng bằng số đang hiện. Server tính lại trong khoá; lệch thì trả <code>REFUND_AMOUNT_CHANGED</code> — app phải ĐỌC LẠI và hỏi lại, không huỷ với số khách chưa đồng ý.</li><li>Lý do không bắt buộc (ADR-0041). <code>NOT_CANCELLABLE</code> (422) khi hạn đã trôi qua giữa chừng; <code>REFUND_FAILED</code> (502) khi cổng lỗi — booking giữ nguyên PAID, câu lỗi không được khẳng định đã hoàn.</li><li>Hộp đủ rộng, chữ đủ lớn (góp ý user 17/09 đã áp cho web). Nút huỷ dùng tông destructive.</li></ul></div></div><div class="shot"><div class="phone"><div class="sb"><span>9:41</span><span class="icons"><i style="width:17px;height:10px"></i><i style="width:15px;height:10px;border-radius:6px"></i><i style="width:25px;height:11px"></i></span></div>
+<div class="compact-head"><span class="icon-btn plain"><i data-icon="back" data-size="22"></i></span><span class="t-label clamp1" style="flex:1">BK-1HD7VN3P</span></div>
+<div class="abs" style="top:calc(var(--inset-top) + 52px + var(--s)*4);left:calc(var(--s)*6);right:calc(var(--s)*6);opacity:.5">
+  <div class="t-label">Sa Pa Terraces &amp; Homestay Trek 2D1N</div>
+  <div class="t-caption muted" style="margin-top:4px">Fri 21 – Sat 22 Aug 2026</div>
+</div>
+<div class="dim"></div>
+<div class="sheet" style="height:404px">
+  <span class="handle"></span>
+  <div class="abs" style="top:32px;left:calc(var(--s)*6);right:calc(var(--s)*6)">
+    <div class="t-heading">The free-cancellation date has passed</div>
+    <div class="t-subtitle muted" style="margin-top:calc(var(--s)*2)">It ended on Wed 19 Aug. You can still cancel, but this booking won't be refunded.</div>
+    <div class="note info" style="margin-top:calc(var(--s)*3);justify-content:space-between"><span class="t-label">Refund</span><span class="t-title">$0</span></div>
+    <div class="t-subtitle muted" style="margin-top:calc(var(--s)*3)">Something serious happened? <span class="link">Contact us</span> and we'll look at it.</div>
+    <span class="btn primary" style="margin-top:calc(var(--s)*4);background:var(--destructive-emphasis);color:var(--background)">Cancel without refund</span>
+    <span class="btn ghost" style="margin-top:calc(var(--s)*2)">Keep booking</span>
+  </div>
+</div>
+<div class="hi"></div></div><div class="cap"><b>T7 · Huỷ — đã quá hạn</b><span>Quá hạn vẫn huỷ được nhưng không hoàn tiền (ADR-0041). Màn nói thẳng điều đó trước khi khách bấm, và mở đường xin xét ngoại lệ.</span><ul><li><code>withinDeadline: false</code> → <code>refundAmount</code> là <code>"0.00"</code>. Vẫn gửi đúng số đó trong <code>expectedRefundAmount</code>.</li><li>Trường hợp bất khả kháng (ốm, việc gấp) đi qua form liên hệ (E1) — công ty xử tay bằng nút hoàn thiện chí ở admin.</li><li>Không đổi màu cả màn thành đỏ: đây là thông tin, không phải lỗi. Chỉ nút huỷ mang tông destructive.</li></ul></div></div><div class="shot"><div class="phone"><div class="sb"><span>9:41</span><span class="icons"><i style="width:17px;height:10px"></i><i style="width:15px;height:10px;border-radius:6px"></i><i style="width:25px;height:11px"></i></span></div>
+<div class="compact-head"><span class="icon-btn plain"><i data-icon="back" data-size="22"></i></span><span class="t-label clamp1" style="flex:1">BK-1HD7VN3P</span></div>
+<div class="abs" style="top:calc(var(--inset-top) + 52px + var(--s)*4);left:calc(var(--s)*6);right:calc(var(--s)*6)">
+  <div class="trip-card" style="border:none;padding:0;background:transparent">
+    <span class="trip-thumb" style="background-image:url('https://res.cloudinary.com/dbkgeehow/image/upload/c_fill,w_160,h_160,g_auto,q_auto,f_auto/tourism/catalog/tour/sapa-terraces-homestay-2d/hero')"></span>
+    <div style="flex:1;min-width:0">
+      <span class="pill-status off">Refunded</span>
+      <div class="t-label clamp2" style="margin-top:6px">Sa Pa Terraces &amp; Homestay Trek 2D1N</div>
+      <div class="t-caption muted" style="margin-top:2px">Fri 21 – Sat 22 Aug 2026</div>
+    </div>
+  </div>
+  <div class="note good" style="margin-top:calc(var(--s)*4)"><i data-icon="refresh" data-size="20"></i><div><div class="t-label">$238 refunded on 12 Aug</div><div class="t-caption muted" style="margin-top:2px">Back on your card within 5–10 business days, depending on your bank.</div></div></div>
+  <div style="margin-top:calc(var(--s)*3)">
+    <div class="kv"><span class="t-subtitle muted">Booking code</span><span class="t-label">BK-1HD7VN3P</span></div>
+    <div class="kv"><span class="t-subtitle muted">Cancelled on</span><span class="t-label">12 Aug 2026</span></div>
+    <div class="kv" style="border-bottom:none"><span class="t-subtitle muted">Paid</span><span class="t-label">$238</span></div>
+  </div>
+</div>
+<div class="bottom-bar"><span class="btn primary" style="flex:1">Browse tours</span></div>
+<div class="hi"></div></div><div class="cap"><b>T8 · Chi tiết booking — đã huỷ và hoàn tiền</b><span>Sau khi huỷ, màn giữ nguyên chỗ cũ nhưng đổi trạng thái và thêm khối tiền đã hoàn — khách quay lại vẫn tra được.</span><ul><li>Dữ liệu: <code>status</code> REFUNDED hoặc PARTIALLY_REFUNDED, <code>cancelledAt</code>, và số đã hoàn từ <code>CancelBookingResult.refundedAmount</code> (lần huỷ) hoặc sổ hoàn của booking.</li><li>Câu "5–10 ngày làm việc" là thời gian của cổng thanh toán, không phải của hệ thống — viết đúng như web đang viết.</li><li>Không còn nút huỷ. Đường đi tiếp: xem tour khác.</li></ul></div></div></div>
+<h3 class="sec">4 · Hỏi về chuyến <small>mở từ đợt đã đóng hoặc hộp huỷ quá hạn</small></h3>
+<div class="row"><div class="shot"><div class="phone"><div class="sb"><span>9:41</span><span class="icons"><i style="width:17px;height:10px"></i><i style="width:15px;height:10px;border-radius:6px"></i><i style="width:25px;height:11px"></i></span></div>
+<div class="compact-head"><span class="icon-btn plain"><i data-icon="back" data-size="22"></i></span><span class="t-label clamp1" style="flex:1">Ask about this trip</span></div>
+<div class="abs" style="top:calc(var(--inset-top) + 52px + var(--s)*4);left:calc(var(--s)*6);right:calc(var(--s)*6)">
+  <div class="trip-card" style="margin-bottom:calc(var(--s)*4)">
+    <span class="trip-thumb" style="background-image:url('https://res.cloudinary.com/dbkgeehow/image/upload/c_fill,w_160,h_160,g_auto,q_auto,f_auto/tourism/catalog/tour/central-heritage-4d/hero')"></span>
+    <div style="flex:1;min-width:0"><div class="t-label clamp2">Central Heritage: Đà Nẵng–Hội An–Huế 4D3N</div><div class="t-caption muted" style="margin-top:4px">Wed 23 – Sat 26 Sep 2026 · booking closed</div></div>
+  </div>
+  <div class="field"><i data-icon="user" data-size="18"></i><span class="stack"><small>Full name</small><span>Lan Nguyen</span></span></div>
+  <div class="field"><i data-icon="mail" data-size="18"></i><span class="stack"><small>Email</small><span>lan.nguyen@example.com</span></span></div>
+  <div class="field ph"><i data-icon="phone" data-size="18"></i><span class="stack"><small>Phone (optional)</small><span>+84…</span></span></div>
+  <div class="field ph" style="align-items:flex-start;min-height:96px;padding-top:10px"><i data-icon="messageSquare" data-size="18"></i><span class="stack"><small>Message</small><span>Tell us about your dates, group size and questions…</span></span></div>
+</div>
+<div class="bottom-bar"><span class="btn primary" style="flex:1">Send enquiry</span></div>
+<div class="hi"></div></div><div class="cap"><b>E1 · Hỏi về chuyến</b><span>Mở từ ba chỗ: đợt đã đóng ở tab Dates, tour không còn đợt nào, và đường "Contact us" ở hộp huỷ quá hạn.</span><ul><li>Dữ liệu: <code>enquiries.create</code> — tên, email, điện thoại (tuỳ chọn), nội dung; kèm slug tour khi mở từ một tour.</li><li>Chữ có sẵn nguyên khối: <code>mobile.enquiry</code> (nhãn ô, nút, câu thành công, 5 câu lỗi kể cả <code>rateLimited</code>).</li><li>Form có honeypot và trần request phía API — app không cần làm gì thêm ngoài việc hiện đúng câu lỗi.</li><li>Điền sẵn tên/email từ tài khoản nếu đã đăng nhập; khách chưa đăng nhập vẫn gửi được.</li></ul></div></div><div class="shot"><div class="phone"><div class="sb"><span>9:41</span><span class="icons"><i style="width:17px;height:10px"></i><i style="width:15px;height:10px;border-radius:6px"></i><i style="width:25px;height:11px"></i></span></div>
+<div class="compact-head"><span class="icon-btn plain"><i data-icon="back" data-size="22"></i></span><span class="t-label clamp1" style="flex:1">Ask about this trip</span></div>
+<div class="abs" style="top:calc(var(--inset-top) + 52px);left:calc(var(--s)*6);right:calc(var(--s)*6);bottom:calc(var(--inset-bottom) + var(--s)*6);display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:calc(var(--s)*4)">
+  <div class="square-icon"><i data-icon="checkCircle" data-size="28"></i></div>
+  <div class="t-heading">Message sent</div>
+  <div class="t-subtitle muted" style="max-width:260px">Thanks! We'll get back to you within 24 hours.</div>
+  <span class="btn primary" style="width:200px;margin-top:calc(var(--s)*2)">Back to tour</span>
+</div>
+<div class="hi"></div></div><div class="cap"><b>E2 · Đã gửi câu hỏi</b><span>Hứa đúng điều đội ngũ làm được: trả lời trong 24 giờ. Không hứa gì về chỗ hay giá.</span><ul><li>Chữ có sẵn: <code>enquiry.success</code> ("Thanks! We'll get back to you within 24 hours.").</li><li>Đóng màn là quay về đúng chỗ khách đang xem trước đó (tab Dates hoặc hộp huỷ), không đá về Home.</li></ul></div></div></div>
+<script>
+  // Thay thẻ <i data-icon> bằng SVG nét (bộ Feather), cho bản ghi gọn và không lặp path.
+  (function () {
+    var P = {
+      creditCard: '<rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/>',
+      externalLink: '<path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><path d="M15 3h6v6"/><path d="M10 14 21 3"/>',
+      alert: '<circle cx="12" cy="12" r="9"/><path d="M12 7.5v5.5M12 16.5h.01"/>',
+      checkCircle: '<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="m22 4-10 10.01-3-3"/>',
+      minus: '<path d="M5 12h14"/>',
+      plus: '<path d="M12 5v14M5 12h14"/>',
+      trash: '<path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6M10 11v6M14 11v6"/>',
+      logOut: '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/>',
+      camera: '<path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2Z"/><circle cx="12" cy="13" r="4"/>',
+      image: '<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/>',
+      lock: '<rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>',
+      mail: '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/>',
+      phone: '<path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.8.7 2.6a2 2 0 0 1-.5 2.1L8.1 9.5a16 16 0 0 0 6 6l1.1-1.1a2 2 0 0 1 2.1-.5c.8.3 1.7.6 2.6.7a2 2 0 0 1 1.7 2Z"/>',
+      messageSquare: '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2Z"/>',
+      edit: '<path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.1 2.1 0 0 1 3 3L12 15l-4 1 1-4Z"/>',
+      refresh: '<path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.5 9a9 9 0 0 1 14.9-3.4L23 10M20.5 15a9 9 0 0 1-14.9 3.4L1 14"/>',
+      fileText: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6M8 13h8M8 17h8M8 9h2"/>',
+      x: '<path d="M18 6 6 18M6 6l12 12"/>',
+      back: '<path d="M19 12H5M12 19l-7-7 7-7"/>',
+      arrow: '<path d="M5 12h14M13 5l7 7-7 7"/>',
+      user: '<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>',
+      pin: '<path d="M20 10c0 6-8 12-8 12S4 16 4 10a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/>',
+      search: '<circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>',
+      sliders: '<path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"/>',
+      heart: '<path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78Z"/>',
+      star: '<path d="m12 2 3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2Z"/>',
+      home: '<path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"/><path d="M9 22V12h6v10"/>',
+      compass: '<circle cx="12" cy="12" r="10"/><path d="m16.24 7.76-2.12 6.36-6.36 2.12 2.12-6.36 6.36-2.12Z"/>',
+      briefcase: '<rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>',
+      loader: '<path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>',
+      wifiOff: '<path d="M1 1l22 22M16.72 11.06A10.94 10.94 0 0 1 19 12.55M5 12.55a10.94 10.94 0 0 1 5.17-2.39M10.71 5.05A16 16 0 0 1 22.58 9M1.42 9a15.91 15.91 0 0 1 4.7-2.88M8.53 16.11a6 6 0 0 1 6.95 0M12 20h.01"/>',
+      clock: '<circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>',
+      users: '<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>',
+      activity: '<path d="M22 12h-4l-3 9L9 3l-3 9H2"/>',
+      smile: '<circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2M9 9h.01M15 9h.01"/>',
+      chevronDown: '<path d="m6 9 6 6 6-6"/>',
+      chevronUp: '<path d="m18 15-6-6-6 6"/>',
+      flag: '<path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1ZM4 22v-7"/>',
+      shield: '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/><path d="m9 12 2 2 4-4"/>',
+      map: '<path d="M1 6v16l7-4 8 4 7-4V2l-7 4-8-4-7 4ZM8 2v16M16 6v16"/>'
+    };
+    document.querySelectorAll('i[data-icon]').forEach(function (el) {
+      var name = el.getAttribute('data-icon');
+      var size = el.getAttribute('data-size') || '18';
+      var stroke = el.getAttribute('data-stroke') || '1.8';
+      var fill = el.getAttribute('data-fill') === '1' ? 'currentColor' : 'none';
+      var cls = el.getAttribute('class');
+      el.outerHTML = '<svg' + (cls ? ' class="' + cls + '"' : '') + ' width="' + size + '" height="' + size + '" viewBox="0 0 24 24" fill="' + fill + '" stroke="currentColor" stroke-width="' + stroke + '" stroke-linecap="round" stroke-linejoin="round">' + P[name] + '</svg>';
+    });
+
+    // Bàn phím hệ thống (E2) — chỉ để thấy phần màn còn lại khi bàn phím bật.
+    document.querySelectorAll('[data-keyboard]').forEach(function (kb) {
+      var rows = ['qwertyuiop', 'asdfghjkl', 'zxcvbnm'];
+      var html = rows.map(function (r, i) {
+        var keys = r.split('').map(function (c) { return '<span class="k">' + c + '</span>'; }).join('');
+        if (i === 2) keys = '<span class="k fn">⇧</span>' + keys + '<span class="k fn">⌫</span>';
+        return '<div class="kr">' + keys + '</div>';
+      }).join('');
+      html += '<div class="kr"><span class="k fn">123</span><span class="k wide">space</span><span class="k fn">search</span></div>';
+      kb.innerHTML = html;
+    });
+
+    // Thanh công cụ: nền sáng/tối, vùng an toàn, thu phóng.
+    function press(group, active) {
+      document.querySelectorAll(group).forEach(function (b) { b.setAttribute('aria-pressed', String(b === active)); });
+    }
+    // Tham số URL để gửi link đúng trạng thái cho người khác: ?scheme=light&safe=on&zoom=0.5
+    var params = new URLSearchParams(location.search);
+    document.body.setAttribute('data-scheme', params.get('scheme') === 'light' ? 'light' : 'dark');
+    if (params.get('safe') === 'on') document.body.setAttribute('data-safe', 'on');
+    if (params.get('zoom')) document.querySelectorAll('.row').forEach(function (row) { row.style.setProperty('--zoom', params.get('zoom')); });
+    document.querySelectorAll('[data-scheme-btn]').forEach(function (b) {
+      b.setAttribute('aria-pressed', String(b.getAttribute('data-scheme-btn') === document.body.getAttribute('data-scheme')));
+      b.addEventListener('click', function () {
+        document.body.setAttribute('data-scheme', b.getAttribute('data-scheme-btn'));
+        press('[data-scheme-btn]', b);
+      });
+    });
+    document.querySelectorAll('[data-safe-btn]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        var on = document.body.getAttribute('data-safe') !== 'on';
+        document.body.setAttribute('data-safe', on ? 'on' : 'off');
+        b.setAttribute('aria-pressed', String(on));
+      });
+    });
+    document.querySelectorAll('[data-zoom-btn]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        document.querySelectorAll('.row').forEach(function (row) { row.style.setProperty('--zoom', b.getAttribute('data-zoom-btn')); });
+        press('[data-zoom-btn]', b);
+      });
+    });
+  })();
+</script>
