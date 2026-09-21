@@ -106,6 +106,69 @@ nguồn nào). Vitest 3657 chia ra api 932, web 1506, admin 838, contract 279, c
 497 ở 39 file. Lint vẫn đúng 1 warning và 1 info có từ trước. `pnpm audit
 --audit-level=moderate` nay exit 0.
 
+## 2026-09-21 — Ba món nợ nhỏ sau đợt hoàn tiền: JSDoc cũ, dải chip chết, favicon 404 (nhánh `chore/refund-followups`)
+
+Gom ba mục còn treo trong bản bàn giao sau đợt "hoàn tiền một hạn chót". Không
+mục nào đổi hành vi money-path; không migration.
+
+- `71050455` docs(contract): khối JSDoc trên `CancellationRequestStatusSchema`
+  còn tả luồng duyệt huỷ của ADR-0029/0030 (REQUESTED là đơn đang mở, DENIED là
+  admin từ chối, REFUNDED là đã duyệt rồi hoàn theo bảng bậc) — cả ba vế đều sai
+  từ ADR-0041. Viết lại: `REFUNDED` là kết cục thường và mang nghĩa "đã giải
+  quyết", KHÔNG phải "đã có tiền về" (huỷ quá hạn hoàn 0 cũng ghi nó mà không
+  sinh dòng sổ `refunds`); `REQUESTED`/`DENIED` chỉ còn để đọc dữ liệu cũ. Câu
+  cuối là đo được chứ không đoán: `verify-seed.mjs` dòng 242 đã có bất biến
+  "yêu cầu huỷ còn REQUESTED hoặc DENIED" phải bằng 0. Chỉ sửa comment.
+- `139c6f5a` refactor(web): xoá `DepartureStrip`. Bản bàn giao ghi "không trang
+  nào render" — đúng nhưng chưa đủ: nó CÓ một người import là
+  `DepartureStripConnected`, mà chính wrapper đó mới là thứ không ai gọi. Trang
+  chi tiết tour cố ý bỏ dải chip theo wireframe đã duyệt (panel đặt chỗ ngay
+  dưới đã in đúng bốn ô ngày đó), nên cả cụm là mã chết — và là mã chết mang
+  LUẬT CŨ: nó chọn đợt theo mỗi `seatsLeft`, chưa qua `isDepartureOpen` của
+  ADR-0041. Xoá component, spec 13 test, wrapper, và `MockTourDeparture` (consumer
+  duy nhất của type đó là chính file vừa xoá — đúng tiền lệ `mocks/types.ts` đã
+  ghi sẵn cho `MockTourDifficulty`/`MockTourBadge`). Hình dạng một đợt ở web nay
+  chỉ còn `DepartureVM`. Vá năm chỗ chú thích trỏ tới file đã xoá, trong đó
+  `tour-hero.spec.tsx` là chỗ ngoài kế hoạch tự lòi ra khi quét.
+- `8d8da389` fix(web): rewrite `/favicon.ico` sang `/icon` ở `next.config.ts`.
+  Icon sinh động từ `app/icon.tsx` (ADR-0038 AMEND 4) nên tab trình duyệt vẫn
+  đúng, nhưng trình đọc RSS, crawler và trình duyệt cũ gọi thẳng `/favicon.ico`
+  và nhận 404. Chọn rewrite thay vì đặt `public/favicon.ico` để giữ MỘT nguồn
+  sự thật cho icon. Đo thật sau khi dựng, không chỉ khai là đã thêm dòng config:
+  `/favicon.ico` trả 200, `content-type: image/png`, magic byte PNG đúng.
+- `5caf15ef` chore(api): `EMAIL_FROM` mẫu ở `.env.example` đổi từ `tourism.test`
+  sang `noreply@nexora-travel.agency`. Tên miền cũ chưa verify ở Resend nên mọi
+  lượt gửi ở máy dev bị 403 và outbox đánh FAILED — đó là lý do luồng quên mật
+  khẩu không thử được ở máy hôm 18/09. Kèm chú thích nói rõ phần sau `@` phải là
+  tên miền đã verify. (`.env.local` của máy cũng đổi theo, nhưng file đó không
+  commit.)
+
+**Một lượt gate đỏ vì FLAKE, không phải hồi quy — ghi lại để khỏi truy lại lần
+sau.** `apps/web/src/mocks/mocks.spec.ts` (test FAQ) timeout đúng 30 000ms trong
+lượt `gate:int` đầu. Truy: test là hàm thuần (`await import('./faq.js')` rồi so
+chuỗi), không I/O, không có gì để mất 30 giây; chạy riêng 14/14 xanh; chạy trọn
+bộ web một mình 1525/1525 xanh; file đó lần cuối đổi ở `8e3f52e2` chứ không phải
+đợt này, và thứ đợt này sửa trong `src/mocks/` chỉ là type — bị xoá lúc runtime,
+mà typecheck trong chính lượt gate ấy đã xanh. Nguyên nhân là tranh tài nguyên:
+bộ web tốn 631 giây CPU chỉ để import trên 96 giây thực, nên khi turbo chạy 8
+package cùng lúc kèm một API server thì một `import()` kẹt là chuyện sẽ tới.
+Chạy lại với `--concurrency=2` xanh trọn 28/28. Kết luận vận hành: ở máy này
+chạy gate nên hãm concurrency, đừng đọc một lượt đỏ kiểu này là hồi quy.
+
+**CÒN TREO:** Việc 4 của bản bàn giao (chuyển hướng `.vercel.app` về www, OTP gửi
+ngay, tự đăng nhập sau OTP) vẫn chưa làm — cả ba chờ user chọn. Lỗ hổng
+`image-size` mà workflow Audit bắt được đã do `f4809d3f` xử lý ở nhánh khác,
+không thuộc đợt này.
+
+**Review findings:** chưa có vòng review riêng.
+
+Tests after: cổng đầy đủ xanh (28/28 task với `--concurrency=2`, int 6/6, API nền
+sống cho build web). Int 497 ở 39 file, không đổi. Vitest 3676, trong đó web 1525
+(bớt 13 test của `departure-strip.spec.tsx`; phần tăng so với entry trước là của
+`969ccb7b` thêm `retry-fetch.spec.ts` theo ADR-0044, không phải đợt này); api 932,
+admin 838, contract 279, core 46, ui 22, tokens 18, i18n 16 đều không đổi. Jest
+mobile 245 không đổi. Lint vẫn đúng 1 warning và 1 info có từ trước.
+
 ## 2026-09-21 — Hoàn tiền để lại vết ở sổ `payment_events` (nhánh `feat/refund-payment-event`, ff vào `main` `a1544081` — ĐẨY NHẦM, xem mục Review findings)
 
 Hai khoản hoàn THẬT trên prod (`BK-7WKW9ESB`, `BK-PY7IZMD4`, nghiệm thu 18/09)
