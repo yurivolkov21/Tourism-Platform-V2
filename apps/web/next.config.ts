@@ -22,6 +22,18 @@ const nextConfig: NextConfig = {
       },
     ];
   },
+  /**
+   * `/favicon.ico` → `/icon`. Icon của site sinh động từ `app/icon.tsx` (Next
+   * phục vụ nó ở `/icon` và tự chèn <link rel="icon"> vào <head>), nên tab
+   * trình duyệt vẫn đúng icon mà KHÔNG cần file nào trong `public/`. Nhưng một
+   * số client — trình đọc RSS, crawler, trình duyệt cũ — vẫn gọi thẳng
+   * `/favicon.ico` theo quy ước, và đường đó trả 404 (đo trên prod 21/09).
+   * Rewrite thay vì thêm `public/favicon.ico`: giữ MỘT nguồn sự thật cho icon,
+   * không phải nhớ dựng lại file .ico mỗi lần đổi thiết kế.
+   */
+  async rewrites() {
+    return [{ source: '/favicon.ico', destination: '/icon' }];
+  },
   // Transpile gói UI dùng chung (source .tsx, không build dist) — ADR-0011.
   transpilePackages: ['@tourism/ui'],
   images: {
