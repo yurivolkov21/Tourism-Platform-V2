@@ -1,6 +1,6 @@
 <!--
   BẢN NHÁP VÒNG THIẾT KẾ — cụm đặt tour app mobile (P5b-3): đặt chỗ · thanh toán ·
-  chuyến của tôi · hỏi về chuyến. Dựng 21/09/2026, CHỜ user duyệt.
+  chuyến của tôi · bám ngày khởi hành · hỏi về chuyến. Dựng 21/09/2026, CHỜ user duyệt.
 
   Cùng hệ với mockup P5b-2 (`mobile-browse-screens.src.html`): khung 390×844 đúng dp,
   `calc(var(--s) * n)` ⇔ `theme.spacing(n)`, biến CSS trùng tên token, `--inset-top` /
@@ -242,9 +242,40 @@
      giờ bị đẩy xuống vùng an toàn. */
   .float-note { position: absolute; left: calc(var(--s) * 6); right: calc(var(--s) * 6); bottom: calc(76px + var(--inset-bottom) + var(--s) * 3); z-index: 21; box-shadow: 0 6px 18px rgb(from var(--scrim) r g b / .35); }
   .menu-row { display: flex; align-items: center; gap: calc(var(--s) * 3); min-height: 52px; border-bottom: 1px solid var(--border); color: var(--foreground); }
+
+  /* ── Bám ngày khởi hành (P1–P6) ───────────────────────────────────────────
+     Mượn ngữ pháp của trang theo dõi đơn hàng: một con số lớn trả lời "còn bao
+     lâu", một thanh tiến trình, rồi một rail dọc các mốc ĐÃ QUA / ĐANG TỚI. Mốc
+     nào cũng là ngày SERVER biết (tạo đơn, trả tiền, hạn huỷ, ngày đi) — không
+     có mốc nào bịa. */
+  .count { background: var(--card); border: 1px solid var(--border); border-radius: calc(var(--r) * 3); padding: calc(var(--s) * 4) calc(var(--s) * 5); }
+  .meter { height: 8px; border-radius: 99px; background: var(--muted); overflow: hidden; }
+  .meter i { display: block; height: 100%; border-radius: 99px; background: var(--primary-emphasis); }
+  .trail { display: flex; flex-direction: column; }
+  .trail .node { display: flex; gap: calc(var(--s) * 3); }
+  .trail .gut { flex: 0 0 24px; display: flex; flex-direction: column; align-items: center; }
+  .trail .pt { width: 24px; height: 24px; border-radius: 99px; border: 2px solid var(--border); display: flex; align-items: center; justify-content: center; color: var(--muted-foreground); }
+  .trail .pt.done { background: var(--primary); border-color: var(--primary); color: var(--primary-foreground); }
+  .trail .pt.now { border-color: var(--primary-emphasis); color: var(--primary-emphasis); }
+  .trail .ln { flex: 1; width: 2px; background: var(--border); margin: 2px 0; }
+  .trail .node.done .ln { background: var(--primary); }
+  .trail .bd { flex: 1; padding-bottom: calc(var(--s) * 4); }
+  .trail .node.off .bd { opacity: .55; }
+  /* Dòng chạm được: ô vuông icon + hai dòng chữ + mũi tên — cùng ngữ pháp với ô
+     nhập boxed ở B3 để cả app đọc thành một hệ. */
+  .row-link { display: flex; align-items: center; gap: calc(var(--s) * 3); padding: calc(var(--s) * 3) 0; border-bottom: 1px solid var(--border); color: var(--muted-foreground); }
+  .row-link .ico { flex: 0 0 calc(var(--s) * 10); height: calc(var(--s) * 10); border-radius: calc(var(--r) * 2); background: var(--secondary); color: var(--primary-emphasis); display: flex; align-items: center; justify-content: center; }
+  .row-link .lines { display: flex; flex-direction: column; flex: 1; min-width: 0; gap: 2px; }
+  /* Dòng gạch đầu: dấu tích (có), dấu chéo (không có), ô vuông (việc khách tự đánh dấu). */
+  .tick { display: flex; gap: calc(var(--s) * 3); align-items: flex-start; padding: calc(var(--s) * 2) 0; }
+  .tick svg { margin-top: 3px; color: var(--primary-emphasis); flex: 0 0 auto; }
+  .tick.no svg { color: var(--muted-foreground); }
+  .tick.todo svg { color: var(--muted-foreground); }
+  .tick.did span { color: var(--muted-foreground); text-decoration: line-through; }
+  .sec-label { font: 600 12px/16px 'Archivo', system-ui, sans-serif; letter-spacing: .06em; color: var(--muted-foreground); text-transform: uppercase; }
 </style><header>
   <h2>P5b-3 · Cụm đặt tour — đặt chỗ · thanh toán · chuyến của tôi</h2>
-  <p class="subtitle">19 khung, bản nháp 21/09. Tiếp nối mockup P5b-2: nút "Book now" ở tab Dates dẫn vào đây. Bấm các nút dưới đây để đổi nền, hiện vùng an toàn, hoặc thu nhỏ trang.</p>
+  <p class="subtitle">25 khung, bản nháp 21/09. Tiếp nối mockup P5b-2: nút "Book now" ở tab Dates dẫn vào đây. Bấm các nút dưới đây để đổi nền, hiện vùng an toàn, hoặc thu nhỏ trang.</p>
   <div class="toolbar">
     <button type="button" data-scheme-btn="dark" aria-pressed="true">Nền tối</button>
     <button type="button" data-scheme-btn="light" aria-pressed="false">Nền sáng</button>
@@ -436,14 +467,12 @@
   <div class="kv"><span class="t-subtitle muted">3 travellers × $459</span><span class="t-label">$1,377</span></div>
   <div class="kv" style="border-bottom:none"><span class="t-label">Total</span><span class="t-title">$1,377</span></div>
 </div>
-<div class="bottom-bar" style="height:calc(132px + var(--inset-bottom));flex-direction:column;align-items:stretch;gap:calc(var(--s)*2.5)">
-  <div class="note warn"><i data-icon="alert" data-size="18"></i><div><div class="t-subtitle">Not enough seats left on this departure.</div><div class="t-caption link" style="margin-top:2px">Choose another date</div></div></div>
-  <div style="display:flex;align-items:center;justify-content:space-between">
-    <div><div class="t-caption muted">Total</div><div><span class="t-title">$1,377</span></div></div>
-    <span class="btn primary" style="min-width:160px">Pay $1,377</span>
-  </div>
+<div class="note warn float-note"><i data-icon="alert" data-size="18"></i><div><div class="t-subtitle">Not enough seats left on this departure.</div><div class="t-caption link" style="margin-top:2px">Choose another date</div></div></div>
+<div class="bottom-bar">
+  <div><div class="t-caption muted">Total</div><div><span class="t-title">$1,377</span></div></div>
+  <span class="btn primary" style="min-width:160px">Pay $1,377</span>
 </div>
-<div class="hi"></div></div><div class="cap"><b>B9 · Không tạo được booking</b><span>Bốn mã lỗi của <code>bookings.create</code> đều hiện ở cùng một chỗ: khung ngay trên nút chính, kèm đường đi tiếp hợp với từng lỗi.</span><ul><li><code>SEATS_UNAVAILABLE</code> (409) → "Choose another date" mở lại tab Dates. <code>DEPARTURE_NOT_AVAILABLE</code> (400) → đợt đã qua hạn đặt, cũng về tab Dates.</li><li><code>PARTY_TOO_LARGE</code> (422) → quay về bước 1. <code>CHECKOUT_FAILED</code> (502) → giữ nguyên màn, nút đổi thành "Try again" (booking chưa được tạo).</li><li>Ghế chỉ giữ khi booking đã tạo — khách ngồi lâu ở bước 3 thì ghế có thể bị người khác lấy, nên lỗi này là chuyện thường, không phải sự cố.</li></ul></div></div></div>
+<div class="hi"></div></div><div class="cap"><b>B9 · Không tạo được booking</b><span>Bốn mã lỗi của <code>bookings.create</code> đều hiện ở cùng một chỗ: khung ngay trên nút chính, kèm đường đi tiếp hợp với từng lỗi.</span><ul><li><code>SEATS_UNAVAILABLE</code> (409) → "Choose another date" mở lại tab Dates. <code>DEPARTURE_NOT_AVAILABLE</code> (400) → đợt đã qua hạn đặt, cũng về tab Dates.</li><li><code>PARTY_TOO_LARGE</code> (422) → quay về bước 1. <code>CHECKOUT_FAILED</code> (502) → giữ nguyên màn, nút đổi thành "Try again" (booking chưa được tạo).</li><li>Ghế chỉ giữ khi booking đã tạo — khách ngồi lâu ở bước 3 thì ghế có thể bị người khác lấy, nên lỗi này là chuyện thường, không phải sự cố.</li><li><b>Khung lỗi NỔI trên thanh đáy</b> (<code>position: absolute</code>, neo <code>bottom: 76 + insets.bottom + spacing(3)</code>), giống dải nhắc ở B2. Thanh đáy giữ nguyên chiều cao nên nút trả tiền không bao giờ bị đẩy xuống vùng an toàn — nhét khung lỗi VÀO thanh đáy là đúng lỗi ấy.</li></ul></div></div></div>
 <h3 class="sec">3 · Chuyến của tôi <small>tab Trips, chi tiết booking và huỷ</small></h3>
 <div class="row"><div class="shot"><div class="phone"><div class="sb"><span>9:41</span><span class="icons"><i style="width:17px;height:10px"></i><i style="width:15px;height:10px;border-radius:6px"></i><i style="width:25px;height:11px"></i></span></div>
 <div class="abs t-title" style="top:calc(var(--inset-top) + var(--s)*2);left:calc(var(--s)*6)">Your trips</div>
@@ -481,7 +510,7 @@
 </div>
 </div>
 <div class="tabbar"><div class="tab"><span class="pill"><i data-icon="home" data-size="20"></i></span>Home</div><div class="tab"><span class="pill"><i data-icon="compass" data-size="20"></i></span>Explore</div><div class="tab"><span class="pill"><i data-icon="heart" data-size="20"></i></span>Saved</div><div class="tab on"><span class="pill"><i data-icon="briefcase" data-size="20"></i></span>Trips</div><div class="tab"><span class="pill"><i data-icon="user" data-size="20"></i></span>Account</div></div>
-<div class="hi"></div></div><div class="cap"><b>T1 · Trips — danh sách</b><span>Ảnh Navel 50. Mỗi chuyến một thẻ, trạng thái nằm ngay góc trên để lướt là thấy. Chuyến chưa trả tiền có đường trả tiếp ngay trên thẻ.</span><ul><li>Dữ liệu: <code>bookings.mine</code> (phân trang, mới nhất trước) — <code>status</code>, <code>tourTitle</code>, <code>tourImage</code>, ngày đợt, <code>code</code>, <code>totalAmount</code>.</li><li>Năm trạng thái của <code>BookingStatusSchema</code>: PENDING (nền warning) · PAID (nền success) · CANCELLED · REFUNDED · PARTIALLY_REFUNDED (ba cái sau dùng nền muted, chữ nói rõ).</li><li>Chip lọc Upcoming/Past lọc ở máy theo ngày đợt — API chưa có tham số đó (<code>BookingsListQuerySchema</code> chỉ có phân trang và status).</li><li>Chữ có sẵn: <code>booking.listError</code>, <code>retry</code>. Khoá mới: nhãn trạng thái, chip lọc, "Finish payment".</li></ul></div></div><div class="shot"><div class="phone"><div class="sb"><span>9:41</span><span class="icons"><i style="width:17px;height:10px"></i><i style="width:15px;height:10px;border-radius:6px"></i><i style="width:25px;height:11px"></i></span></div>
+<div class="hi"></div></div><div class="cap"><b>T1 · Trips — danh sách</b><span>Ảnh Navel 50. Mỗi chuyến một thẻ, trạng thái nằm ngay góc trên để lướt là thấy. Chuyến chưa trả tiền có đường trả tiếp ngay trên thẻ.</span><ul><li>Dữ liệu: <code>bookings.mine</code> (phân trang, mới nhất trước) — <code>status</code>, <code>tourTitle</code>, <code>tourImage</code>, ngày đợt, <code>code</code>, <code>totalAmount</code>.</li><li>Năm trạng thái của <code>BookingStatusSchema</code>: PENDING (nền warning) · PAID (nền success) · CANCELLED · REFUNDED · PARTIALLY_REFUNDED (ba cái sau dùng nền muted, chữ nói rõ).</li><li>Chip lọc Upcoming/Past lọc ở máy theo ngày đợt — API chưa có tham số đó (<code>BookingsListQuerySchema</code> chỉ có phân trang và status).</li><li><b>Chạm thẻ đi đâu tuỳ trạng thái:</b> PAID và chưa đi → P1 (bám ngày khởi hành) · PAID và đang đi → P5 · PAID và đã về → P6 · PENDING → T5 · đã huỷ/hoàn → T8. Hoá đơn (T4) luôn ở một chạm nữa từ các màn đó.</li><li>Chữ có sẵn: <code>booking.listError</code>, <code>retry</code>. Khoá mới: nhãn trạng thái, chip lọc, "Finish payment".</li></ul></div></div><div class="shot"><div class="phone"><div class="sb"><span>9:41</span><span class="icons"><i style="width:17px;height:10px"></i><i style="width:15px;height:10px;border-radius:6px"></i><i style="width:25px;height:11px"></i></span></div>
 <div class="abs t-title" style="top:calc(var(--inset-top) + var(--s)*2);left:calc(var(--s)*6)">Your trips</div>
 <div class="abs" style="top:calc(var(--inset-top) + var(--s)*20);left:calc(var(--s)*6);right:calc(var(--s)*6);bottom:96px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:calc(var(--s)*4);padding-bottom:calc(var(--s)*12)">
   <div class="square-icon"><i data-icon="briefcase" data-size="28"></i></div>
@@ -523,7 +552,7 @@
   <span class="btn ghost">Cancel booking</span>
   <span class="t-caption muted" style="text-align:center">Questions about this trip? <span class="link">Contact us</span></span>
 </div>
-<div class="hi"></div></div><div class="cap"><b>T4 · Chi tiết booking — đã trả tiền</b><span>Ảnh Navel 44. Hạn huỷ miễn phí là khối nổi bật chứ không phải một dòng chữ nhỏ — đúng góp ý user đã áp cho web 18/09.</span><ul><li>Dữ liệu: <code>bookings.byCode</code> → <code>BookingDetail</code>. Khối huỷ đọc <code>cancellation</code>: <code>deadline</code>, <code>withinDeadline</code>, <code>refundAmount</code>, <code>canCancel</code> — server tính hết.</li><li>Nút "Cancel booking" CHỈ hiện khi <code>canCancel</code>. Trong hạn → T6; quá hạn → T7.</li><li>Mã booking chạm để chép. Liên hệ và yêu cầu riêng in lại để khách kiểm được thứ mình đã gửi.</li><li>Chữ có sẵn: <code>booking.detailError</code>, <code>retry</code>. Khoá mới: nhãn các dòng, "Cancel booking", câu hạn huỷ (dùng chung chữ luật với web).</li></ul></div></div><div class="shot"><div class="phone"><div class="sb"><span>9:41</span><span class="icons"><i style="width:17px;height:10px"></i><i style="width:15px;height:10px;border-radius:6px"></i><i style="width:25px;height:11px"></i></span></div>
+<div class="hi"></div></div><div class="cap"><b>T4 · Chi tiết booking — đã trả tiền</b><span>Ảnh Navel 44. Hạn huỷ miễn phí là khối nổi bật chứ không phải một dòng chữ nhỏ — đúng góp ý user đã áp cho web 18/09.</span><ul><li>Dữ liệu: <code>bookings.byCode</code> → <code>BookingDetail</code>. Khối huỷ đọc <code>cancellation</code>: <code>deadline</code>, <code>withinDeadline</code>, <code>refundAmount</code>, <code>canCancel</code> — server tính hết.</li><li>Nút "Cancel booking" CHỈ hiện khi <code>canCancel</code>. Trong hạn → T6; quá hạn → T7.</li><li>Mã booking chạm để chép. Liên hệ và yêu cầu riêng in lại để khách kiểm được thứ mình đã gửi.</li><li>Đây là HOÁ ĐƠN, không phải màn khách mở hằng ngày — thẻ ở tab Trips mở P1 trước, T4 nằm sau nút "Booking details". Lý do: khách quay lại để xem còn mấy ngày, không phải để đọc lại số tiền.</li><li>Chữ có sẵn: <code>booking.detailError</code>, <code>retry</code>. Khoá mới: nhãn các dòng, "Cancel booking", câu hạn huỷ (dùng chung chữ luật với web).</li></ul></div></div><div class="shot"><div class="phone"><div class="sb"><span>9:41</span><span class="icons"><i style="width:17px;height:10px"></i><i style="width:15px;height:10px;border-radius:6px"></i><i style="width:25px;height:11px"></i></span></div>
 <div class="compact-head"><span class="icon-btn plain"><i data-icon="back" data-size="22"></i></span><span class="t-label clamp1" style="flex:1">BK-9TR2WK5C</span></div>
 <div class="abs" style="top:calc(var(--inset-top) + 52px + var(--s)*4);left:calc(var(--s)*6);right:calc(var(--s)*6)">
   <div class="trip-card" style="border:none;padding:0;background:transparent">
@@ -601,7 +630,131 @@
 </div>
 <div class="bottom-bar"><span class="btn primary" style="flex:1">Browse tours</span></div>
 <div class="hi"></div></div><div class="cap"><b>T8 · Chi tiết booking — đã huỷ và hoàn tiền</b><span>Sau khi huỷ, màn giữ nguyên chỗ cũ nhưng đổi trạng thái và thêm khối tiền đã hoàn — khách quay lại vẫn tra được.</span><ul><li>Dữ liệu: <code>status</code> REFUNDED hoặc PARTIALLY_REFUNDED, <code>cancelledAt</code>, và số đã hoàn từ <code>CancelBookingResult.refundedAmount</code> (lần huỷ) hoặc sổ hoàn của booking.</li><li>Câu "5–10 ngày làm việc" là thời gian của cổng thanh toán, không phải của hệ thống — viết đúng như web đang viết.</li><li>Không còn nút huỷ. Đường đi tiếp: xem tour khác.</li></ul></div></div></div>
-<h3 class="sec">4 · Hỏi về chuyến <small>mở từ đợt đã đóng hoặc hộp huỷ quá hạn</small></h3>
+<h3 class="sec">4 · Bám ngày khởi hành <small>sau khi trả tiền xong: đếm ngược, chuẩn bị, và những ngày đang đi</small></h3>
+<div class="row"><div class="shot"><div class="phone"><div class="sb"><span>9:41</span><span class="icons"><i style="width:17px;height:10px"></i><i style="width:15px;height:10px;border-radius:6px"></i><i style="width:25px;height:11px"></i></span></div><div class="compact-head"><span class="icon-btn plain"><i data-icon="back" data-size="22"></i></span><span class="t-label clamp1" style="flex:1">Your trip</span></div>
+<div class="abs" style="top:calc(var(--inset-top) + 52px + var(--s)*3);left:calc(var(--s)*6);right:calc(var(--s)*6)">
+  <div class="count">
+    <div class="sec-label">Departing in</div>
+    <div class="t-display" style="margin-top:2px">12 days</div>
+    <div class="t-subtitle muted" style="margin-top:2px">Sat 3 – Tue 6 Oct 2026 · 3 travellers</div>
+    <div class="meter" style="margin-top:calc(var(--s)*3)"><i style="width:18%"></i></div>
+    <div style="display:flex;justify-content:space-between;margin-top:6px"><span class="t-caption muted">Booked 21 Sep</span><span class="t-caption muted">Departure 3 Oct</span></div>
+  </div>
+  <div class="trail" style="margin-top:calc(var(--s)*4)">
+    <div class="node done"><div class="gut"><span class="pt done"><i data-icon="check" data-size="13"></i></span><span class="ln"></span></div><div class="bd"><div class="t-label">Booking confirmed</div><div class="t-caption muted">21 Sep 2026 · BK-4QP8ZT2M</div></div></div>
+    <div class="node done"><div class="gut"><span class="pt done"><i data-icon="check" data-size="13"></i></span><span class="ln"></span></div><div class="bd"><div class="t-label">Paid in full</div><div class="t-caption muted">21 Sep 2026 · $1,377 · Card</div></div></div>
+    <div class="node"><div class="gut"><span class="pt now"><i data-icon="shield" data-size="12"></i></span><span class="ln"></span></div><div class="bd"><div class="t-label">Free cancellation until Sat 26 Sep</div><div class="t-caption muted">5 days left to cancel for a full $1,377 refund</div></div></div>
+    <div class="node"><div class="gut"><span class="pt"><i data-icon="flag" data-size="12"></i></span></div><div class="bd" style="padding-bottom:0"><div class="t-label">Departure · Sat 3 Oct</div><div class="t-caption muted">Arrival pickup at Đà Nẵng International Airport</div></div></div>
+  </div>
+  <div class="sec-label" style="margin-top:calc(var(--s)*4)">Get ready</div>
+  <div class="row-link"><span class="ico"><i data-icon="briefcase" data-size="20"></i></span><div class="lines"><span class="t-label">What to bring</span><span class="t-caption muted clamp1">Pack light — three hotels in four days</span></div><i data-icon="chevronRight" data-size="20"></i></div>
+  <div class="row-link"><span class="ico"><i data-icon="map" data-size="20"></i></span><div class="lines"><span class="t-label">Your itinerary</span><span class="t-caption muted clamp1">Đà Nẵng → Hội An → Huế</span></div><i data-icon="chevronRight" data-size="20"></i></div>
+  <div class="row-link" style="border-bottom:none"><span class="ico"><i data-icon="checkCircle" data-size="20"></i></span><div class="lines"><span class="t-label">What's included</span><span class="t-caption muted clamp1">Hotels, transfers, tickets, guide</span></div><i data-icon="chevronRight" data-size="20"></i></div>
+</div>
+<div class="bottom-bar" style="align-items:center"><span class="btn ghost" style="flex:1">Booking details</span></div>
+<div class="hi"></div></div><div class="cap"><b>P1 · Chuyến sắp tới — còn 12 ngày</b><span>Màn khách mở nhiều nhất sau khi trả tiền xong. Mượn ngữ pháp trang theo dõi đơn hàng: một con số lớn trả lời "còn bao lâu", rồi rail dọc các mốc đã qua và đang tới.</span><ul><li><b>Bốn mốc đều là ngày SERVER biết</b>, không mốc nào bịa: <code>createdAt</code> (đặt) · <code>paidAt</code> (trả tiền) · <code>cancellation.deadline</code> (hạn huỷ miễn phí, ADR-0041) · <code>departureStartDate</code> (khởi hành). Thanh tiến trình chạy từ <code>createdAt</code> tới <code>departureStartDate</code>.</li><li><b>Đếm ngược tính theo giờ SERVER, không phải giờ máy.</b> Gọi <code>health.check</code> một lần lúc mở app, lấy <code>timestamp</code>, lưu độ lệch với đồng hồ máy rồi dùng độ lệch đó cho mọi phép trừ ngày. Máy chấm hay chỉnh đồng hồ máy để thử — chỉnh xong màn này vẫn đúng.</li><li>Mốc "hạn huỷ" đọc <code>cancellation.withinDeadline</code> chứ không tự so ngày; hết hạn thì mốc chuyển xám và câu đổi thành "Free cancellation ended".</li><li>Chỉ booking <code>PAID</code> và chưa khởi hành mới vào đây. PENDING → T5 (trả tiền trước), CANCELLED/REFUNDED → T8.</li><li>Khoá chữ mới: "Departing in", "Booking confirmed", "Paid in full", "Free cancellation until {ngày}", "Departure", "Get ready", ba nhãn dòng chạm.</li></ul></div></div><div class="shot"><div class="phone"><div class="sb"><span>9:41</span><span class="icons"><i style="width:17px;height:10px"></i><i style="width:15px;height:10px;border-radius:6px"></i><i style="width:25px;height:11px"></i></span></div><div class="compact-head"><span class="icon-btn plain"><i data-icon="back" data-size="22"></i></span><span class="t-label clamp1" style="flex:1">Your trip</span></div>
+<div class="abs" style="top:calc(var(--inset-top) + 52px + var(--s)*3);left:calc(var(--s)*6);right:calc(var(--s)*6)">
+  <div class="count">
+    <div class="sec-label">Departing</div>
+    <div class="t-display" style="margin-top:2px">Tomorrow</div>
+    <div class="t-subtitle muted" style="margin-top:2px">Sat 3 Oct 2026 · 3 travellers</div>
+    <div class="meter" style="margin-top:calc(var(--s)*3)"><i style="width:92%"></i></div>
+  </div>
+  <div class="note info" style="margin-top:calc(var(--s)*4)"><i data-icon="pin" data-size="20"></i><div><div class="t-label">Arrival pickup at Đà Nẵng International Airport</div><div class="t-caption" style="margin-top:2px;opacity:.85">Day 1 starts here. Have booking code BK-4QP8ZT2M ready.</div></div></div>
+  <div class="sec-label" style="margin-top:calc(var(--s)*5)">Packing checklist</div>
+  <div class="tick did"><i data-icon="checkSquare" data-size="20"></i><span class="t-subtitle">ID or passport — three hotel check-ins</span></div>
+  <div class="tick did"><i data-icon="checkSquare" data-size="20"></i><span class="t-subtitle">Modest dress for the citadel and temple stops</span></div>
+  <div class="tick todo"><i data-icon="square" data-size="20"></i><span class="t-subtitle">Pack light — the route changes hotels three times</span></div>
+  <div class="tick todo"><i data-icon="square" data-size="20"></i><span class="t-subtitle">Travel insurance (not included)</span></div>
+  <div class="tick todo"><i data-icon="square" data-size="20"></i><span class="t-subtitle">Cash for meals not on the itinerary and tips</span></div>
+  <div class="t-caption muted" style="margin-top:calc(var(--s)*2)">Ticks are kept on this phone only.</div>
+</div>
+<div class="bottom-bar" style="align-items:center"><span class="btn ghost" style="flex:1">Full trip notes</span></div>
+<div class="hi"></div></div><div class="cap"><b>P2 · Sát ngày — cùng màn, đổi giọng</b><span>Dưới 3 ngày thì con số nhường chỗ cho chữ ("Tomorrow"), rail thu lại, và thứ khách cần lúc này — chỗ gặp và danh sách đồ — nổi lên trên.</span><ul><li>Cùng MỘT màn với P1, không phải màn thứ hai: ngưỡng đổi giọng là ≤ 3 ngày. "Tomorrow" / "Today" viết bằng chữ, từ 2 ngày trở lên mới in số.</li><li>Chỗ gặp là <code>meetingPoint</code> của tour (<code>catalog.tours.bySlug</code>, công khai — booking chỉ mang <code>tourSlug</code>). Seed thật có câu này cho cả 30 tour.</li><li><b>Danh sách đồ dựng từ dữ liệu CÓ THẬT</b>: hai dòng đầu tách từ policy <code>kind: GENERAL</code> của tour ("Pack light — three hotels"), hai dòng cuối từ <code>excluded[]</code> (travel insurance, meals/tips). Không có cột "đồ cần mang" riêng trong DB — nếu muốn danh sách biên tập hẳn hoi thì phải thêm cột, xem mục 6 của tài liệu bàn giao.</li><li>Ô tích lưu ở <code>AsyncStorage</code> theo mã booking — API không có chỗ chứa và cũng không nên có: đây là ghi chú riêng của máy, không phải dữ liệu đơn hàng.</li><li>Không hứa GIỜ đón: dữ liệu chỉ có địa điểm. Giờ nằm trong ngày 1 của lịch trình, khách xem ở P4.</li></ul></div></div><div class="shot"><div class="phone"><div class="sb"><span>9:41</span><span class="icons"><i style="width:17px;height:10px"></i><i style="width:15px;height:10px;border-radius:6px"></i><i style="width:25px;height:11px"></i></span></div><div class="compact-head"><span class="icon-btn plain"><i data-icon="back" data-size="22"></i></span><span class="t-label clamp1" style="flex:1">Before you go</span></div>
+<div class="abs" style="top:calc(var(--inset-top) + 52px + var(--s)*3);left:calc(var(--s)*6);right:calc(var(--s)*6)">
+  <div class="sec-label">What to bring</div>
+  <div class="tick"><i data-icon="check" data-size="18"></i><span class="t-subtitle">ID or passport for hotel check-ins</span></div>
+  <div class="tick"><i data-icon="check" data-size="18"></i><span class="t-subtitle">Modest dress for temple and citadel stops</span></div>
+  <div class="tick"><i data-icon="check" data-size="18"></i><span class="t-subtitle">A light bag — the itinerary changes hotels three times over four days</span></div>
+  <div class="sec-label" style="margin-top:calc(var(--s)*5)">Included in your fare</div>
+  <div class="tick"><i data-icon="check" data-size="18"></i><span class="t-subtitle">3 nights accommodation (Đà Nẵng, Hội An, Huế — twin-share)</span></div>
+  <div class="tick"><i data-icon="check" data-size="18"></i><span class="t-subtitle">Daily breakfast and meals as per itinerary</span></div>
+  <div class="tick"><i data-icon="check" data-size="18"></i><span class="t-subtitle">Marble Mountains and Hội An Ancient Town entrance tickets</span></div>
+  <div class="t-caption link" style="margin-top:calc(var(--s)*1)">Show all 7</div>
+  <div class="sec-label" style="margin-top:calc(var(--s)*5)">Not included — sort these yourself</div>
+  <div class="tick no"><i data-icon="x" data-size="18"></i><span class="t-subtitle muted">International/domestic flights</span></div>
+  <div class="tick no"><i data-icon="x" data-size="18"></i><span class="t-subtitle muted">Travel insurance</span></div>
+  <div class="tick no"><i data-icon="x" data-size="18"></i><span class="t-subtitle muted">Tips</span></div>
+  <div class="row-link" style="margin-top:calc(var(--s)*4);border-top:1px solid var(--border)"><span class="ico"><i data-icon="messageSquare" data-size="20"></i></span><div class="lines"><span class="t-label">Good to know</span><span class="t-caption muted clamp1">5 questions other travellers asked</span></div><i data-icon="chevronRight" data-size="20"></i></div>
+</div>
+<div class="hi"></div></div><div class="cap"><b>P3 · Trước khi đi — bản đầy đủ</b><span>Trang khách quay lại nhiều lần nên viết dài được, miễn chia đầu mục rõ. Cuộn; khung vẽ phần trên.</span><ul><li>Mọi dòng đều từ <code>catalog.tours.bySlug</code> (không cần đăng nhập, cache được): "What to bring" = policy <code>GENERAL</code>, "Included" = <code>included[]</code>, "Not included" = <code>excluded[]</code>, "Good to know" = <code>faqs[]</code>.</li><li>Ba đầu mục xếp theo thứ tự khách hỏi: mang gì → đã trả rồi thì khỏi lo gì → còn phải tự lo gì. "Not included" cố tình nói bằng giọng việc-cần-làm chứ không phải giọng từ chối.</li><li><code>included[]</code> của tour này có 7 dòng nên cắt 3 + "Show all 7"; <code>excluded[]</code> ngắn thì in hết.</li><li>Chỗ gặp không lặp lại ở đây — nó đã nằm ở P1 (mốc cuối của rail) và P2 (hộp nổi). Nói một chỗ, nói rõ.</li><li>Khoá chữ mới: ba tiêu đề đầu mục, "Show all {n}", "Good to know". Nội dung là dữ liệu tour, KHÔNG dịch, KHÔNG viết lại trong app.</li></ul></div></div><div class="shot"><div class="phone"><div class="sb"><span>9:41</span><span class="icons"><i style="width:17px;height:10px"></i><i style="width:15px;height:10px;border-radius:6px"></i><i style="width:25px;height:11px"></i></span></div><div class="compact-head"><span class="icon-btn plain"><i data-icon="back" data-size="22"></i></span><span class="t-label clamp1" style="flex:1">Your itinerary</span></div>
+<div class="abs" style="top:calc(var(--inset-top) + 52px + var(--s)*3);left:calc(var(--s)*6);right:calc(var(--s)*6)">
+  <div class="t-caption muted">4 days · Đà Nẵng → Hội An → Huế</div>
+  <div class="day" style="margin-top:calc(var(--s)*4)">
+    <div class="rail-dot"><span class="dot on">1</span><span class="line"></span></div>
+    <div style="flex:1;padding-bottom:calc(var(--s)*4)">
+      <div class="t-label">Arrival in Đà Nẵng and My Khê Beach</div>
+      <div class="times">
+        <span class="t-caption muted">09:00</span><span class="t-subtitle">Arrival pickup at Đà Nẵng International Airport</span>
+        <span class="t-caption muted">10:30</span><span class="t-subtitle">Check in to your hotel near My Khê Beach</span>
+        <span class="t-caption muted">14:00</span><span class="t-subtitle">Marble Mountains cave-temple complex</span>
+        <span class="t-caption muted">16:00</span><span class="t-subtitle">Free time or a swim at My Khê Beach</span>
+        <span class="t-caption muted">18:30</span><span class="t-subtitle">Welcome dinner, Dragon Bridge fire show</span>
+      </div>
+    </div>
+  </div>
+  <div class="day">
+    <div class="rail-dot"><span class="dot">2</span><span class="line"></span></div>
+    <div style="flex:1;padding-bottom:calc(var(--s)*4)"><div class="t-label">A full day in Hội An</div><div class="t-caption muted" style="margin-top:2px">6 stops · cooking class, lantern walk</div></div>
+  </div>
+  <div class="day">
+    <div class="rail-dot"><span class="dot">3</span><span class="line"></span></div>
+    <div style="flex:1;padding-bottom:calc(var(--s)*4)"><div class="t-label">Over the Hải Vân Pass to Huế</div><div class="t-caption muted" style="margin-top:2px">5 stops · coastal road, Perfume River boat</div></div>
+  </div>
+  <div class="day">
+    <div class="rail-dot"><span class="dot">4</span></div>
+    <div style="flex:1"><div class="t-label">Huế's citadel and departure</div><div class="t-caption muted" style="margin-top:2px">5 stops · Imperial Citadel, Khải Định tomb</div></div>
+  </div>
+</div>
+<div class="hi"></div></div><div class="cap"><b>P4 · Hành trình theo ngày</b><span>Cùng khuôn tab Itinerary của trang tour (P5b-2), nhưng đây là lịch trình của CHUYẾN ĐÃ MUA nên gắn ngày thật và mở sẵn ngày sắp tới.</span><ul><li>Dữ liệu: <code>itinerary[]</code> của <code>catalog.tours.bySlug</code> — <code>dayNumber</code>, <code>title</code>, <code>description</code>. Seed thật viết <code>description</code> theo dòng "HH:MM — việc", nên lưới giờ/việc là CHẺ chuỗi theo <code>\n</code> rồi tách ở "—", không phải cột riêng trong DB.</li><li>Ngày lịch của từng ngày = <code>departureStartDate + (dayNumber − 1)</code>. Đây là phép cộng ngày, không phải phép so giờ — an toàn với đồng hồ máy.</li><li>Dòng nào không đúng khuôn "HH:MM — …" thì in nguyên đoạn văn, đừng cố tách. Tour khác trong seed có ngày viết kiểu đoạn văn.</li><li>Không có khoá chữ mới: tiêu đề và nội dung là dữ liệu tour.</li></ul></div></div><div class="shot"><div class="phone"><div class="sb"><span>9:41</span><span class="icons"><i style="width:17px;height:10px"></i><i style="width:15px;height:10px;border-radius:6px"></i><i style="width:25px;height:11px"></i></span></div><div class="compact-head"><span class="icon-btn plain"><i data-icon="back" data-size="22"></i></span><span class="t-label clamp1" style="flex:1">Day 2 of 4</span></div>
+<div class="abs" style="top:calc(var(--inset-top) + 52px + var(--s)*3);left:calc(var(--s)*6);right:calc(var(--s)*6)">
+  <div class="count">
+    <div style="display:flex;justify-content:space-between;align-items:baseline"><span class="sec-label">On tour now</span><span class="t-caption muted">Sun 4 Oct</span></div>
+    <div class="t-title" style="margin-top:4px">A full day in Hội An</div>
+    <div class="meter" style="margin-top:calc(var(--s)*3)"><i style="width:50%"></i></div>
+    <div style="display:flex;justify-content:space-between;margin-top:6px"><span class="t-caption muted">Day 2 of 4</span><span class="t-caption muted">Ends Tue 6 Oct</span></div>
+  </div>
+  <div class="sec-label" style="margin-top:calc(var(--s)*5)">Today</div>
+  <div class="times" style="margin-top:calc(var(--s)*2)">
+    <span class="t-caption muted">08:00</span><span class="t-subtitle muted strike">Drive to Hội An, check in</span>
+    <span class="t-caption muted">09:00</span><span class="t-subtitle muted strike">Ancient Town walking tour: Tấn Ký house, Chùa Cầu</span>
+    <span class="t-caption" style="color:var(--primary-emphasis)">11:00</span><span class="t-label">Cooking class: shop the market, learn cao lầu</span>
+    <span class="t-caption muted">12:30</span><span class="t-subtitle">Lunch: your own cooked dishes</span>
+    <span class="t-caption muted">14:30</span><span class="t-subtitle">Free time for tailoring or the riverside cafes</span>
+    <span class="t-caption muted">19:00</span><span class="t-subtitle">Lantern-lit Old Town walk and basket-boat ride</span>
+  </div>
+  <div class="row-link" style="margin-top:calc(var(--s)*4);border-top:1px solid var(--border)"><span class="ico"><i data-icon="calendar" data-size="20"></i></span><div class="lines"><span class="t-label">Tomorrow · Day 3</span><span class="t-caption muted clamp1">Over the Hải Vân Pass to Huế</span></div><i data-icon="chevronRight" data-size="20"></i></div><div class="row-link"><span class="ico"><i data-icon="briefcase" data-size="20"></i></span><div class="lines"><span class="t-label">Trip notes</span><span class="t-caption muted clamp1">What to bring, what's included</span></div><i data-icon="chevronRight" data-size="20"></i></div><div class="row-link" style="border-bottom:none"><span class="ico"><i data-icon="fileText" data-size="20"></i></span><div class="lines"><span class="t-label">Booking details</span><span class="t-caption muted clamp1">BK-4QP8ZT2M · 3 travellers</span></div><i data-icon="chevronRight" data-size="20"></i></div>
+</div>
+<div class="bottom-bar" style="align-items:center"><span class="btn ghost" style="flex:1"><i data-icon="messageSquare" data-size="18"></i>Contact us</span></div>
+<div class="hi"></div></div><div class="cap"><b>P5 · Đang trong chuyến — ngày 2/4</b><span>Phiên bản KHẢ THI của ý "theo dõi chuyến đi": bám theo LỊCH TRÌNH chứ không bám GPS. Việc đã qua trong ngày gạch mờ, việc đang tới in đậm.</span><ul><li><b>Vì sao không phải bản đồ định vị:</b> bảng <code>destinations</code> chỉ có <code>slug/name/country/region</code> — KHÔNG có toạ độ, nên không chấm được điểm thật lên bản đồ. Và không có ai gửi vị trí: hướng dẫn viên không có app, không có bảng lưu toạ độ, không có kênh realtime. Dựng "bản đồ sống" nghĩa là bịa số ngay giữa buổi bảo vệ. Phân tích đầy đủ ở mục 6 của tài liệu bàn giao.</li><li><b>Vì sao bản này vẫn cho cảm giác theo dõi:</b> lịch trình seed đã có giờ từng việc, nên chỉ cần mốc "bây giờ" là màn tự chạy suốt ngày mà không cần thêm một byte dữ liệu nào.</li><li>"Bây giờ" lấy từ độ lệch đồng hồ đã đo ở P1, quy về giờ Việt Nam (<code>VIETNAM_TIME_ZONE</code> của contract) — khách bay về múi giờ khác thì lịch vẫn là giờ địa phương của chuyến.</li><li>Ngày đang chạy = <code>today − departureStartDate + 1</code>, kẹp trong <code>[1, durationDays]</code>. Vào đây khi <code>status = PAID</code> và hôm nay nằm giữa ngày đi và ngày về.</li><li>Không có số điện thoại hướng dẫn viên trong dữ liệu — nút chỉ mở form hỏi (<code>enquiries.create</code>, khung E1), không hứa gọi được ai.</li></ul></div></div><div class="shot"><div class="phone"><div class="sb"><span>9:41</span><span class="icons"><i style="width:17px;height:10px"></i><i style="width:15px;height:10px;border-radius:6px"></i><i style="width:25px;height:11px"></i></span></div><div class="compact-head"><span class="icon-btn plain"><i data-icon="back" data-size="22"></i></span><span class="t-label clamp1" style="flex:1">Your trip</span></div>
+<div class="abs" style="top:calc(var(--inset-top) + 52px + var(--s)*3);left:calc(var(--s)*6);right:calc(var(--s)*6)">
+  <div class="count" style="text-align:center;padding:calc(var(--s)*6) calc(var(--s)*5)">
+    <div class="square-icon" style="margin:0 auto"><i data-icon="flag" data-size="28"></i></div>
+    <div class="t-title" style="margin-top:calc(var(--s)*3)">Welcome back</div>
+    <div class="t-subtitle muted" style="margin-top:4px">You finished Central Heritage: Đà Nẵng–Hội An–Huế 4D3N on Tue 6 Oct 2026.</div>
+    <div style="display:flex;justify-content:center;gap:calc(var(--s)*6);margin-top:calc(var(--s)*4)">
+      <div><div class="t-title">4</div><div class="t-caption muted">days</div></div>
+      <div><div class="t-title">3</div><div class="t-caption muted">places</div></div>
+      <div><div class="t-title">3</div><div class="t-caption muted">travellers</div></div>
+    </div>
+  </div>
+  <div class="note info" style="margin-top:calc(var(--s)*4)"><i data-icon="star" data-size="20"></i><div><div class="t-label">How was it?</div><div class="t-caption" style="margin-top:2px;opacity:.85">Your review helps the next traveller pick this route.</div></div></div>
+  <span class="btn primary" style="margin-top:calc(var(--s)*4)">Write a review</span>
+  <div class="row-link" style="margin-top:calc(var(--s)*4);border-top:1px solid var(--border)"><span class="ico"><i data-icon="fileText" data-size="20"></i></span><div class="lines"><span class="t-label">Booking details</span><span class="t-caption muted clamp1">BK-4QP8ZT2M · $1,377 paid</span></div><i data-icon="chevronRight" data-size="20"></i></div>
+  <div class="row-link" style="border-bottom:none"><span class="ico"><i data-icon="compass" data-size="20"></i></span><div class="lines"><span class="t-label">Where to next?</span><span class="t-caption muted clamp1">Tours near Huế and Đà Nẵng</span></div><i data-icon="chevronRight" data-size="20"></i></div>
+</div>
+<div class="hi"></div></div><div class="cap"><b>P6 · Chuyến đã kết thúc</b><span>Đóng vòng: đếm ngược hết thì màn đổi sang lời cảm ơn và MỘT việc duy nhất — viết đánh giá.</span><ul><li>Vào đây khi hôm nay đã qua <code>departureEndDate</code>. Ba con số đều đếm được từ dữ liệu đã có: <code>durationDays</code>, số <code>tourDestinations</code>, <code>numAdults + numChildren</code>.</li><li>Nút "Write a review" CHỈ hiện khi <code>reviewedAt === null</code> — <code>reviews.create</code> có ràng buộc <code>bookingId</code> duy nhất, nên hiện nút sau khi đã viết là dẫn khách gõ xong cả bài rồi mới báo 409. Đã viết rồi thì đổi thành "You reviewed this trip".</li><li>Không dựng "hộ chiếu tem" như web ở đợt này: đó là cả một cụm màn riêng của web, hứa ở đây mà không có màn là nói dối.</li><li>Khoá chữ mới: "Welcome back", câu tổng kết, ba nhãn số, "How was it?", "Write a review", "Where to next?".</li></ul></div></div></div>
+<h3 class="sec">5 · Hỏi về chuyến <small>mở từ đợt đã đóng hoặc hộp huỷ quá hạn</small></h3>
 <div class="row"><div class="shot"><div class="phone"><div class="sb"><span>9:41</span><span class="icons"><i style="width:17px;height:10px"></i><i style="width:15px;height:10px;border-radius:6px"></i><i style="width:25px;height:11px"></i></span></div>
 <div class="compact-head"><span class="icon-btn plain"><i data-icon="back" data-size="22"></i></span><span class="t-label clamp1" style="flex:1">Ask about this trip</span></div>
 <div class="abs" style="top:calc(var(--inset-top) + 52px + var(--s)*4);left:calc(var(--s)*6);right:calc(var(--s)*6)">
@@ -667,6 +820,11 @@
       chevronUp: '<path d="m18 15-6-6-6 6"/>',
       flag: '<path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1ZM4 22v-7"/>',
       shield: '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/><path d="m9 12 2 2 4-4"/>',
+      check: '<path d="M20 6 9 17l-5-5"/>',
+      chevronRight: '<path d="m9 18 6-6-6-6"/>',
+      square: '<rect x="3" y="3" width="18" height="18" rx="2"/>',
+      checkSquare: '<path d="m9 11 3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>',
+      calendar: '<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>',
       map: '<path d="M1 6v16l7-4 8 4 7-4V2l-7 4-8-4-7 4ZM8 2v16M16 6v16"/>'
     };
     document.querySelectorAll('i[data-icon]').forEach(function (el) {
