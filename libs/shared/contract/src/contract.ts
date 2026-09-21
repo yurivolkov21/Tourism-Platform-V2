@@ -7,6 +7,14 @@ import {
   AdminToursListQuerySchema,
 } from './schemas/admin-catalog.js';
 import {
+  AdminDepartureCreateInputSchema,
+  AdminDepartureRowSchema,
+  AdminDepartureSetStatusInputSchema,
+  AdminDeparturesListQuerySchema,
+  AdminDeparturesListResultSchema,
+  AdminDepartureUpdateInputSchema,
+} from './schemas/admin-departures.js';
+import {
   AdminBookingDetailSchema,
   AdminBookingsListQuerySchema,
   AdminRefundInputSchema,
@@ -1048,6 +1056,114 @@ export const contract = {
         .input(AdminTourSetPublishedInputSchema)
         .errors({ NOT_FOUND: { status: 404, message: 'Tour not found' } })
         .output(AdminTourSetPublishedResultSchema),
+    },
+    /**
+     * Chuyến khởi hành của MỘT tour (spec P4e-1 F12) — bề mặt GHI đầu tiên
+     * của catalog, và là nơi lịch chạy thật sự được dựng.
+     *
+     * Ba lệnh ghi, ba phán quyết riêng, mỗi cái một mã để màn in đúng câu:
+     *
+     * - `update` từ chối **đổi ngày** khi chuyến đã có booking sống
+     *   (`DEPARTURE_HAS_BOOKINGS`). `Booking` giữ BẢN SAO ngày khởi hành và
+     *   ADR-0041 tính hạn huỷ từ bản sao ấy, nên đổi ngày chuyến là tạo hai
+     *   sự thật — bất biến spec §2b: hạn huỷ không bao giờ xấu đi sau khi
+     *   khách đã trả tiền. Sửa GIÁ và GHẾ thì vẫn được, kể cả khi có khách.
+     * - `update` từ chối **hạ ghế** dưới số đã đặt (`SEATS_BELOW_BOOKED`).
+     *   CHECK `departures_seats_within_total` vẫn đứng sau làm backstop,
+     *   nhưng một SQLSTATE 23514 phơi lên màn hình là câu trả lời cho máy,
+     *   không phải cho người đang sửa lịch (§2c).
+     * - `setStatus` từ chối **mở lại** sau hạn chót (`DEADLINE_PASSED`): hạn
+     *   chót cũng là lúc ngừng nhận đặt (ADR-0041 §3), nên mở lại sau mốc đó
+     *   là bày ra một chuyến không ai đặt được.
+     *
+     * Cả hai lệnh còn từ chối động vào chuyến đã `CANCELLED`
+     * (`DEPARTURE_CANCELLED`): đó là bản ghi ĐÓNG — khách của nó đã được hoàn
+     * tiền theo đường F13, và sửa lại nó là đi vòng quanh chính việc ấy.
+     *
+     * Ba mã đều 409 chứ không 422: input hoàn toàn hợp lệ, chỉ là thế giới đã
+     * đổi dưới chân dialog — và 409 là thứ nói cho UI biết nên đóng dialog và
+     * đọc lại dữ liệu thay vì mời bấm lại.
+     *
+     * KHÔNG có `cancel` ở đây (F13) và KHÔNG có `delete`: một chuyến đã có
+     * người đặt thì không xoá được mà phải huỷ có hoàn tiền, còn chuyến chưa
+     * ai đặt thì `CLOSED` đã đủ — thêm một lệnh xoá là thêm một đường làm mất
+     * bản ghi mà báo cáo tháng đang đếm.
+     *
+     * Guard `AuthGuard` + `@Roles(ADMIN)` ở controller như mọi endpoint admin.
+     */
+    departures: {
+      list: oc
+        .route({
+          method: 'GET',
+          path: '/api/admin/departures',
+          summary: 'Departures of one tour (admin, paged, status filter) + the tour itself',
+        })
+        .input(AdminDeparturesListQuerySchema)
+        .errors({ NOT_FOUND: { status: 404, message: 'Tour not found' } })
+        .output(AdminDeparturesListResultSchema),
+      create: oc
+        .route({
+          method: 'POST',
+          path: '/api/admin/departures',
+          summary: 'Add a departure to a tour',
+        })
+        .input(AdminDepartureCreateInputSchema)
+        .errors({
+          NOT_FOUND: { status: 404, message: 'Tour not found' },
+          // Hai ca dưới là 422: input đúng hình dạng nhưng vô nghĩa về nghiệp
+          // vụ, và người gõ sửa được ngay tại chỗ — khác hẳn ba mã 409 ở
+          // `update`/`setStatus`, nơi thứ đã đổi nằm ngoài tầm tay họ.
+          INVALID_DATE_RANGE: { status: 422, message: 'The return date is before the start date' },
+          START_IN_PAST: {
+            status: 422,
+            message: 'A departure cannot start in the past',
+          },
+        })
+        .output(AdminDepartureRowSchema),
+      update: oc
+        .route({
+          method: 'POST',
+          path: '/api/admin/departures/{id}',
+          summary: 'Edit the dates, seats or price of one departure',
+        })
+        .input(AdminDepartureUpdateInputSchema)
+        .errors({
+          NOT_FOUND: { status: 404, message: 'Departure not found' },
+          INVALID_DATE_RANGE: { status: 422, message: 'The return date is before the start date' },
+          START_IN_PAST: { status: 422, message: 'A departure cannot start in the past' },
+          DEPARTURE_HAS_BOOKINGS: {
+            status: 409,
+            message: 'This departure already has live bookings, so its dates can no longer change',
+          },
+          SEATS_BELOW_BOOKED: {
+            status: 409,
+            message: 'The seat total cannot go below the seats already booked',
+          },
+          DEPARTURE_CANCELLED: {
+            status: 409,
+            message: 'A cancelled departure can no longer be edited',
+          },
+        })
+        .output(AdminDepartureRowSchema),
+      setStatus: oc
+        .route({
+          method: 'POST',
+          path: '/api/admin/departures/{id}/status',
+          summary: 'Close a departure to new bookings, or reopen it',
+        })
+        .input(AdminDepartureSetStatusInputSchema)
+        .errors({
+          NOT_FOUND: { status: 404, message: 'Departure not found' },
+          DEADLINE_PASSED: {
+            status: 409,
+            message: 'The booking deadline has passed, so this departure can no longer reopen',
+          },
+          DEPARTURE_CANCELLED: {
+            status: 409,
+            message: 'A cancelled departure can no longer change status',
+          },
+        })
+        .output(AdminDepartureRowSchema),
     },
   },
 };
