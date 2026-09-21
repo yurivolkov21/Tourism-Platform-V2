@@ -197,7 +197,8 @@ entry CHANGELOG cùng ngày.
 [prompt các phase còn lại](plans/2026-09-08-prompts-cac-phase-con-lai.md) ·
 [seed trọn năm 2026](plans/2026-09-14-seed-khung-2026.md) ·
 [**một hạn chót**](plans/2026-09-15-refund-deadline.md) ·
-[P5b-1 auth mobile](plans/2026-09-16-p5b-auth-wireframe.md)
+[P5b-1 auth mobile](plans/2026-09-16-p5b-auth-wireframe.md) ·
+[**P4e-1 chuyến khởi hành**](plans/2026-09-21-p4e-1-departures.md)
 
 ## Conventions — luật áp dụng mãi
 
