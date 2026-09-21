@@ -96,7 +96,11 @@ export const NAV_GROUPS: NavGroup[] = [
     key: 'content',
     label: t.groups.content,
     items: [
-      { key: 'tours', label: t.tours, href: '/tours', enabled: false, icon: Compass },
+      // Vùng thật đầu tiên của P4e (F11) — bảng catalogue + công tắc đăng.
+      // Href TRƠN (không `?published=false` kiểu `/outbox?status=FAILED`):
+      // vùng này không có "việc cần làm" mặc định nào, và tab "All tours" là
+      // câu hỏi thường ngày — xem tour nào đang chạy, chuyến nào sắp tới.
+      { key: 'tours', label: t.tours, href: '/tours', enabled: true, icon: Compass },
       { key: 'categories', label: t.categories, href: '/categories', enabled: false, icon: Tags },
       {
         key: 'destinations',

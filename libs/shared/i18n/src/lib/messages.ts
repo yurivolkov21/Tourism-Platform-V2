@@ -3861,6 +3861,76 @@ export const messages = {
       },
     },
     /**
+     * Vùng tours (spec P4e-1 §3-F11) — bảng vận hành toàn bộ catalogue cộng
+     * ĐÚNG MỘT hành vi ghi: đưa một tour lên kệ hoặc rút khỏi kệ. Tạo/sửa/xoá
+     * tour là P4e-3; chuyến khởi hành của một tour là màn con của F12.
+     *
+     * Copy của công tắc phải nói đúng hệ quả và KHÔNG doạ người dùng: gỡ đăng
+     * chỉ thôi chào bán, khách đã đặt vẫn đi (spec §3-F11). Một câu kiểu "this
+     * will cancel…" ở đây sẽ khiến vận hành không dám bấm đúng cái nút họ cần
+     * nhất khi có chuyện.
+     */
+    tours: {
+      list: {
+        empty: 'No tours match these filters.',
+        columns: {
+          tour: 'Tour',
+          category: 'Category',
+          /**
+           * Giá NIÊM YẾT của tour, không phải giá "from" của thẻ ngoài web —
+           * giá riêng của từng chuyến là chuyện của màn chuyến khởi hành.
+           */
+          price: 'Base price',
+          departures: 'Open departures',
+          published: 'On sale',
+          actions: 'Actions',
+        },
+        featured: 'Featured',
+        /** Ô ảnh của tour chưa gắn hero — ô trống câm đọc thành "hỏng ảnh". */
+        noImage: 'No image yet',
+        categoryLabel: 'Filter by category',
+        categoryAll: 'All categories',
+        statusLabel: 'Filter by sale status',
+        statusAll: 'All tours',
+        statusLive: 'On sale',
+        statusDraft: 'Off sale',
+        /**
+         * Bộ lọc tháng KHÔNG bỏ bớt tour nào — nó đổi khoảng mà cột "Open
+         * departures" đếm. Nhãn phải nói ra điều đó, không thì người dùng chờ
+         * danh sách ngắn lại và tưởng bộ lọc hỏng.
+         */
+        monthLabel: 'Count departures in',
+        /** Mục mặc định: từ hôm nay trở đi, không có mốc cuối. */
+        monthUpcoming: 'Upcoming',
+        /** Nhãn đọc-màn-hình cho con số ở cột đếm — số trần không nói nó là gì. */
+        openDepartures: (count: number) =>
+          count === 1 ? '1 open departure' : `${count} open departures`,
+        manageDepartures: (title: string) => `Manage departures for ${title}`,
+      },
+      publish: {
+        /**
+         * Tên đọc-màn-hình của công tắc: thứ ĐANG được bật/tắt, không phải
+         * hành động — đó là cách một `role="switch"` được đọc lên.
+         */
+        toggleLabel: (title: string) => `On sale — ${title}`,
+        errors: {
+          /** Trạng-thái-cũ: hàng đã biến mất giữa lúc trang render và lúc bấm. */
+          NOT_FOUND: 'This tour is no longer in the catalogue. The list below has been refreshed.',
+        },
+        toast: {
+          live: (title: string) => `${title} is on sale again — it is back on the public site.`,
+          /**
+           * Nói rõ điều KHÔNG xảy ra: khách đã đặt vẫn đi. Đây là câu duy nhất
+           * ngăn vận hành ngần ngại rút một tour khỏi kệ khi cần.
+           */
+          off: (title: string) =>
+            `${title} is off sale. Guests who already booked it still travel.`,
+          /** Hàng đã ở sẵn trạng thái vừa bấm — không phải lỗi, nhưng phải nói. */
+          unchanged: (title: string) => `${title} was already in that state.`,
+        },
+      },
+    },
+    /**
      * Vùng outbox (spec P4c §3-F7) — hàng đợi email mà worker drain mỗi phút,
      * cộng MỘT hành vi ghi: `admin.outbox.retry` (đưa hàng FAILED về hàng đợi).
      *

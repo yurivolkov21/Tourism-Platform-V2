@@ -1,5 +1,21 @@
 import { ReportMonthSchema } from '@tourism/contract';
+import {
+  currentMonth,
+  formatMonthLabel,
+  groupMonthOptions,
+  type MonthOption,
+  type MonthOptionGroup,
+  shiftMonth,
+} from './month-options';
 import { firstParam, type RawSearchParams, tableHref } from './table-query';
+
+export type { MonthOption, MonthOptionGroup };
+/**
+ * Số học và nhãn tháng nâng lên `month-options.ts` ở F11 (21/09) khi bộ lọc
+ * tháng khởi hành của `/tours` cần đúng chúng. Re-export để mọi chỗ import từ
+ * file này — trang `/reports`, menu tháng, spec của cả hai — không phải đổi gì.
+ */
+export { currentMonth, formatMonthLabel, groupMonthOptions };
 
 /**
  * Trạng thái trang `/reports` sống TRÊN URL (`?month=YYYY-MM`, spec P4b
@@ -26,28 +42,6 @@ export const REPORTS_FIRST_MONTH = '2026-01';
 
 /** Số tháng tối đa trong ô chọn — một năm gần nhất là khoảng người thật hay so. */
 const MONTH_OPTION_COUNT = 12;
-
-/** Tên tháng đầy đủ (English, luật 7) — đọc bằng tay để KHÔNG qua `Intl`
- *  với một `Date` giả, thứ sẽ kéo múi giờ máy vào một nhãn thuần lịch. */
-const MONTH_NAMES = [
-  'January',
-  'February',
-  'March',
-  'April',
-  'May',
-  'June',
-  'July',
-  'August',
-  'September',
-  'October',
-  'November',
-  'December',
-];
-
-/** Tháng UTC của một mốc, dạng `YYYY-MM`. */
-export function currentMonth(now: Date): string {
-  return now.toISOString().slice(0, 7);
-}
 
 /**
  * `?month=` rác rơi về tháng hiện tại — cùng mức khoan dung với status/ngày
@@ -80,21 +74,6 @@ export function reportsExportHref(month: string): string {
   return tableHref('/reports/export', new URLSearchParams({ month }));
 }
 
-/** `2026-09` → `September 2026`. */
-export function formatMonthLabel(month: string): string {
-  const [year, monthNumber] = month.split('-').map(Number) as [number, number];
-  return `${MONTH_NAMES[monthNumber - 1]} ${year}`;
-}
-
-/** Một tháng lịch, đơn vị `YYYY-MM`, để lùi dần mà không đụng `Date`. */
-function shiftMonth(month: string, delta: number): string {
-  const [year, monthNumber] = month.split('-').map(Number) as [number, number];
-  // Đếm theo tổng số tháng rồi tách lại — không có ca riêng nào cho mốc giao
-  // năm, và không `Date` nào tham gia nên không có múi giờ nào len vào.
-  const total = year * 12 + (monthNumber - 1) + delta;
-  return `${String(Math.floor(total / 12)).padStart(4, '0')}-${String((total % 12) + 1).padStart(2, '0')}`;
-}
-
 /**
  * Các tháng trong ô chọn: tối đa `count` tháng gần nhất, mới nhất trước, dừng ở
  * `REPORTS_FIRST_MONTH` — không bao giờ bày một tháng trước mốc dữ liệu.
@@ -120,39 +99,4 @@ export function monthOptions(
     values.unshift(selected);
   }
   return values.map((value) => ({ value, label: formatMonthLabel(value) }));
-}
-
-/** Một đoạn liên tiếp cùng năm trong danh sách tháng. */
-export interface MonthOptionGroup {
-  /**
-   * Khoá React. Là tháng ĐẦU đoạn, không phải năm: `monthOptions` chèn tháng
-   * đang xem lên đầu nên cùng một năm có thể thành hai đoạn rời nhau, và hai
-   * `key` trùng là lỗi React thật.
-   */
-  key: string;
-  year: string;
-  months: Array<{ value: string; label: string }>;
-}
-
-/**
- * Cắt danh sách tháng thành các đoạn cùng năm, cho menu tháng của `/reports`
- * (khuôn `dropdown-menu-10`, user chốt 03/09) đặt separator giữa các năm.
- *
- * Gom theo ĐOẠN LIÊN TIẾP chứ không gom theo khoá: danh sách vào đã sắp
- * mới-nhất-trước và có thể mở đầu bằng một tháng ngoài dải; gom-theo-khoá sẽ
- * kéo tháng ấy xuống dưới, làm menu không còn mở ra ở đúng tháng đang đọc.
- */
-export function groupMonthOptions(
-  options: Array<{ value: string; label: string }>,
-): MonthOptionGroup[] {
-  const groups: MonthOptionGroup[] = [];
-
-  for (const month of options) {
-    const year = month.value.slice(0, 4);
-    const last = groups.at(-1);
-    if (last && last.year === year) last.months.push(month);
-    else groups.push({ key: month.value, year, months: [month] });
-  }
-
-  return groups;
 }
