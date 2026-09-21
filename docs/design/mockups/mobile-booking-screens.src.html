@@ -231,6 +231,9 @@
   .note.info { background: var(--secondary); color: var(--secondary-foreground); }
   .trip-card { display: flex; gap: calc(var(--s) * 3); padding: 12px; border: 1px solid var(--border); border-radius: calc(var(--r) * 3); background: var(--card); }
   .trip-thumb { flex: 0 0 72px; height: 72px; border-radius: calc(var(--r) * 2); background-size: cover; background-position: center; background-color: var(--muted); }
+  /* Dải nhắc NỔI trên thanh đáy: thanh đáy giữ nguyên chiều cao nên nút không bao
+     giờ bị đẩy xuống vùng an toàn. */
+  .float-note { position: absolute; left: calc(var(--s) * 6); right: calc(var(--s) * 6); bottom: calc(76px + var(--inset-bottom) + var(--s) * 3); z-index: 21; box-shadow: 0 6px 18px rgb(from var(--scrim) r g b / .35); }
   .menu-row { display: flex; align-items: center; gap: calc(var(--s) * 3); min-height: 52px; border-bottom: 1px solid var(--border); color: var(--foreground); }
 </style><header>
   <h2>P5b-3 · Cụm đặt tour — đặt chỗ · thanh toán · chuyến của tôi</h2>
@@ -319,14 +322,12 @@
   </div>
   <div class="t-caption muted" style="margin-top:calc(var(--s)*3)">Up to 16 guests on this tour</div>
 </div>
-<div class="bottom-bar" style="height:calc(112px + var(--inset-bottom));flex-direction:column;align-items:stretch;gap:calc(var(--s)*2.5)">
-  <div class="note warn"><i data-icon="alert" data-size="18"></i><span class="t-subtitle">Party size exceeds the maximum group size for this tour.</span></div>
-  <div style="display:flex;align-items:center;justify-content:space-between">
-    <div><div class="t-caption muted">16 travellers × $459</div><div><span class="t-title">$7,344</span></div></div>
-    <span class="btn primary" style="min-width:150px;opacity:.5">Continue</span>
-  </div>
+<div class="note warn float-note"><i data-icon="alert" data-size="18"></i><span class="t-subtitle">That's the most this tour takes — 16 guests.</span></div>
+<div class="bottom-bar">
+  <div><div class="t-caption muted">16 travellers × $459</div><div><span class="t-title">$7,344</span></div></div>
+  <span class="btn primary" style="min-width:150px">Continue</span>
 </div>
-<div class="hi"></div></div><div class="cap"><b>B2 · Đặt tour — vượt trần nhóm</b><span>Chặn ngay ở máy khi chạm trần, không để khách đi tiếp rồi mới nhận lỗi 422 từ server.</span><ul><li>Trần cứng ở server: <code>PARTY_TOO_LARGE</code> (422) theo <code>maxGroupSize</code>, <code>SEATS_UNAVAILABLE</code> (409) theo ghế còn. Máy chỉ chặn trước cho đỡ một lượt gọi — server vẫn là nơi quyết.</li><li>Câu lỗi nằm ngay trên nút chính (kênh 2 của luật lỗi cụm auth), không phải toast.</li><li>Chữ: dùng chung câu của web (<code>booking.errors.PARTY_TOO_LARGE</code>, <code>SEATS_UNAVAILABLE</code>) — cùng API thì hai client không nói hai kiểu.</li></ul></div></div><div class="shot"><div class="phone"><div class="sb"><span>9:41</span><span class="icons"><i style="width:17px;height:10px"></i><i style="width:15px;height:10px;border-radius:6px"></i><i style="width:25px;height:11px"></i></span></div>
+<div class="hi"></div></div><div class="cap"><b>B2 · Chạm trần nhóm — nhắc tại chỗ</b><span>Chạm trần thì nút + tắt và một dải nhắc NỔI lên phía trên thanh đáy. Thanh đáy giữ nguyên chiều cao nên nút Continue không bao giờ bị đẩy xuống vùng an toàn.</span><ul><li>Dải nhắc <code>position: absolute</code>, neo <code>bottom: 76 + insets.bottom + spacing(3)</code>, có bóng đổ để tách khỏi nền. Tự ẩn sau ~4 giây hoặc khi khách bấm tiếp.</li><li>Đây KHÔNG phải lỗi: khách chưa làm sai gì, chỉ là hết chỗ. Nên không chặn thao tác, không đổi màu cả màn, và nút Continue vẫn bấm được với 16 khách.</li><li>Trần cứng vẫn ở server: <code>PARTY_TOO_LARGE</code> (422) theo <code>maxGroupSize</code>, <code>SEATS_UNAVAILABLE</code> (409) theo ghế còn. Máy chặn trước chỉ để đỡ một lượt gọi.</li><li>Câu chữ nói giới hạn LÀ BAO NHIÊU ("16 guests") thay vì đọc nguyên câu lỗi kỹ thuật của server — câu đó để dành cho B9, nơi khách thật sự bị chặn.</li></ul></div></div><div class="shot"><div class="phone"><div class="sb"><span>9:41</span><span class="icons"><i style="width:17px;height:10px"></i><i style="width:15px;height:10px;border-radius:6px"></i><i style="width:25px;height:11px"></i></span></div>
 <div class="compact-head"><span class="icon-btn plain"><i data-icon="back" data-size="22"></i></span><span class="t-label clamp1" style="flex:1">Book this tour</span></div>
 <div class="abs" style="top:calc(var(--inset-top) + 52px + var(--s)*4);left:calc(var(--s)*6);right:calc(var(--s)*6)">
   <div class="t-caption muted">Step 2 of 3</div>
