@@ -65,7 +65,7 @@ Không đổi kiểu field nào đang có, nên không consumer nào vỡ.
 
 | Field | Kiểu | Điền ở đâu | Vì sao |
 | --- | --- | --- | --- |
-| `refundedTotal` | `DecimalStringSchema` | chỉ `bookings.byCode` | Ô Payment của thiết kế là một **con số**, không phải tính từ. Đã hẹn trước ở [prompt booking](../design/prompts/booking.md) và ghi thành nợ M-2 trong CHANGELOG cụm A |
+| `refundedTotal` | `DecimalStringSchema` | chỉ `bookings.byCode` | Ô Payment của thiết kế là một **con số**, không phải tính từ. Đã hẹn trước ở [prompt booking](../design/prompt-booking.md) và ghi thành nợ M-2 trong CHANGELOG cụm A |
 | `cancellationRequestedAt` | `z.iso.datetime().nullable()` | chỉ `bookings.byCode` | "Requested — pending review" không có ngày thì khách không biết yêu cầu đã tới chưa, và gửi lại lần hai |
 | `cancellationDecidedAt` | `z.iso.datetime().nullable()` | chỉ `bookings.byCode` | Cặp với field trên cho nhánh DENIED |
 

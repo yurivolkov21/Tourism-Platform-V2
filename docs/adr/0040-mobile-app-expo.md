@@ -257,3 +257,31 @@ không nằm trong lời dặn.
 **Hệ quả:** ranh giới gate giữ nguyên (§5 — `bundle` vẫn ngoài `pnpm gate`); runbook
 dev đổi bước build sang `pnpm turbo run build --filter=@tourism/mobile^...` vì Metro
 cần `dist` của `tokens`, `i18n` và `core`.
+
+## AMEND 2 — 21/09/2026: LAN trở lại làm mặc định (đảo §8)
+
+**Tiền đề của §8 đã hết hiệu lực.** §8 chọn tunnel làm mặc định vì đúng một sự
+thật của máy: WSL chạy ở chế độ NAT nên điện thoại trong LAN không tới được
+Metro. Ngày 14/09/2026 máy dev dựng lại sang **Windows native** — Metro nay chạy
+thẳng trên Windows, điện thoại cùng mạng tới được như mọi dự án Expo bình
+thường. Lý do duy nhất khiến tunnel thành mặc định không còn.
+
+**Quyết định:** `dev` = `expo start` (LAN). Thêm `dev:tunnel` = `expo start
+--tunnel` cho ba ca còn cần: máy và điện thoại khác mạng, mạng công ty chặn
+client-to-client, hoặc quay lại làm việc trong WSL. `dev:lan` giữ làm bí danh
+của `dev` để lệnh đã ghi trong spec 08/09 (bản ghi lịch sử, không sửa được)
+vẫn chạy.
+
+**Cái được:** hết phụ thuộc `@expo/ngrok` — gói cài toàn cục, không nằm trong
+kho mã, và Expo CLI dừng lại hỏi y/n khi thiếu nó, làm người chạy lệnh ngồi
+nhìn màn hình đứng im. Bundle qua LAN cũng nhanh hơn hẳn và không cần Internet.
+
+**Cái mất:** người chạy phải để máy và điện thoại cùng mạng, và tường lửa
+Windows phải cho Node nhận kết nối vào. Đổi lấy tốc độ thì đáng.
+
+Đây là quay về đúng đường Nexora đã đi (`start-dev.ps1` set
+`REACT_NATIVE_PACKAGER_HOSTNAME`, chạy Expo từ Windows native) — bảng đối chiếu
+luật 10 ở trên xếp mục này vào "làm khác mà tương đương vì tiền đề mạng đổi";
+nay tiền đề đổi lần thứ hai và hai bên gặp lại nhau.
+
+Nợ này do CHANGELOG 16/09 ghi nhận, trả ngày 21/09 trong đợt rà soát tài liệu.

@@ -7,7 +7,7 @@ Bản vẽ user đã duyệt 18/09: `docs/design/mockups/mobile-browse-screens.s
 trình duyệt) · Nền tảng: [ADR-0040](../adr/0040-mobile-app-expo.md) · Luật hạn chót đặt chỗ:
 [ADR-0041](../adr/0041-single-cancellation-deadline.md) · Khuôn code mẫu:
 [mobile-auth-handoff.md](mobile-auth-handoff.md) · Chạy thử:
-[mobile-dev-loop.md](mobile-dev-loop.md).
+[mobile-dev-loop.md](../conventions/mobile-dev-loop.md).
 
 ## 1. Đọc bản vẽ
 

@@ -41,55 +41,58 @@ Mọi biến `EXPO_PUBLIC_*` **nằm trong bundle JS và đọc được bằng 
 là client công khai, cùng hạng browser: không secret nào ở đây, kể cả
 `INTERNAL_READ_KEY` (ADR-0040 §9).
 
-## 2. Chạy — tunnel là mặc định, không phải phương án dự phòng
-
-**Cửa ải trước tiên, làm MỘT lần cho cả máy:** `--tunnel` đòi `@expo/ngrok`,
-gói này không nằm trong repo và Expo CLI không tự cài ngầm — nó **dừng lại hỏi
-y/n** rồi chạy `npm install --global`. Chạy lệnh dev rồi bỏ đi chờ QR là ngồi
-nhìn màn hình đứng im mà không có lỗi nào. Cài trước cho khỏi vấp (ở thư mục
-nào cũng được, nhưng phải trong WSL — CLI chạy trong WSL nên chỉ tìm ở prefix
-npm của WSL; không cần `sudo`, không đụng `pnpm-lock.yaml`):
-
-```bash
-npm install --global '@expo/ngrok@^4.1.0'
-```
-
-Kiểm bằng `npm ls -g --depth=0 @expo/ngrok`. **Đừng kiểm bằng `which ngrok`** —
-gói này không khai trường `bin` nên lệnh đó vẫn rỗng sau khi cài.
-
-Rồi mới:
+## 2. Chạy — LAN là mặc định
 
 ```bash
 pnpm --filter @tourism/mobile dev
 ```
 
-Đó là `expo start --tunnel`. Lý do là một sự thật của máy chứ không phải sở
-thích: **WSL ở chế độ NAT** (đo 08/09: `hostname -I` → `172.26.107.162`, không
-có `C:\Users\<user>\.wslconfig`), nên điện thoại trong LAN **không tới được**
-Metro chạy trong WSL. Tunnel đi vòng qua Internet nên chạy được ngay, đổi lại
-chậm hơn và cần mạng.
+Đó là `expo start`. Máy dev chạy **Windows native** (từ 14/09/2026) nên Metro
+nghe thẳng trên Windows và điện thoại trong cùng mạng Wi-Fi tới được — không
+cần tunnel, không cần cài gì thêm. Tường lửa Windows phải cho Node nhận kết
+nối vào; lần đầu chạy nó sẽ hỏi, chọn Allow cho mạng Private.
 
-Ngày nào bật mirrored networking trên Windows (việc của user, không phải của
-agent) thì đường LAN nhanh hơn có sẵn:
-
-```bash
-pnpm --filter @tourism/mobile dev:lan
-```
-
-Trên điện thoại: cài **Expo Go** rồi quét QR. Không cần Mac, Android Studio
-hay tài khoản EAS — đó chính là thứ đổi lấy việc **Stripe PaymentSheet không
-dùng được** (Expo Go không nạp native module ngoài danh sách dựng sẵn);
-thanh toán mobile mở checkout web, đúng cách Nexora làm
+Trên điện thoại: cài **Expo Go** rồi quét QR. Không cần Mac, Android Studio hay
+tài khoản EAS — đó chính là thứ đổi lấy việc **Stripe PaymentSheet không dùng
+được** (Expo Go không nạp native module ngoài danh sách dựng sẵn); thanh toán
+mobile mở checkout web, đúng cách Nexora làm
 ([ADR-0001 AMEND 1](../adr/0001-tech-stack.md)).
 
-Lưu ý về `EXPO_PUBLIC_API_URL` khi chạy thật: `localhost:3001` là địa chỉ của
-**máy dev**, điện thoại không hiểu. Chạy `dev:lan` thì `env()` tự thay host
-loopback (`localhost`, `127.0.0.1`) bằng IP LAN mà Metro đang phục vụ, giữ
-nguyên scheme và cổng — để mặc định là điện thoại gọi được API trên máy dev (API
-nghe `0.0.0.0`; tường lửa Windows phải cho Node nhận kết nối vào). Chạy tunnel
-thì không có phép thay đó, vì ngrok chỉ chuyển cổng Metro: trỏ vào API đã
-deploy, hoặc mở thêm một tunnel cho cổng 3001. Giá trị trỏ host thật luôn được
-giữ nguyên ở mọi chế độ.
+### Khi nào cần tunnel
+
+```bash
+pnpm --filter @tourism/mobile dev:tunnel
+```
+
+Ba ca: máy và điện thoại **khác mạng** · mạng chặn thiết bị nói chuyện với nhau
+(Wi-Fi công ty, khách sạn) · hoặc quay lại làm việc **trong WSL**, nơi mạng ở
+chế độ NAT nên điện thoại trong LAN không tới được Metro (đó là lý do tunnel
+từng là mặc định tới 14/09 — xem [ADR-0040 AMEND 2](../adr/0040-mobile-app-expo.md)).
+
+Tunnel có một cửa ải riêng, làm **một lần cho cả máy**: nó đòi `@expo/ngrok`,
+gói này không nằm trong kho mã và Expo CLI không tự cài ngầm — nó **dừng lại
+hỏi y/n** rồi chạy `npm install --global`. Chạy lệnh rồi bỏ đi chờ QR là ngồi
+nhìn màn hình đứng im mà không có lỗi nào. Cài trước cho khỏi vấp (thư mục nào
+cũng được, không cần quyền quản trị, không đụng `pnpm-lock.yaml`):
+
+```bash
+npm install --global "@expo/ngrok@^4.1.0"
+```
+
+Kiểm bằng `npm ls -g --depth=0 @expo/ngrok`. **Đừng kiểm bằng `which ngrok`** —
+gói này không khai trường `bin` nên lệnh đó vẫn rỗng sau khi cài.
+
+### `EXPO_PUBLIC_API_URL` khi chạy thật
+
+`localhost:3001` là địa chỉ của **máy dev**, điện thoại không hiểu — với điện
+thoại, `localhost` là chính nó. Nên khi chạy LAN, `env()` tự thay host loopback
+(`localhost`, `127.0.0.1`) bằng IP LAN mà Metro đang phục vụ, giữ nguyên scheme
+và cổng. Để mặc định là điện thoại gọi được API trên máy dev (API nghe
+`0.0.0.0`).
+
+Chạy tunnel thì **không có phép thay đó**, vì ngrok chỉ chuyển cổng Metro: trỏ
+vào API đã deploy, hoặc mở thêm một tunnel cho cổng 3001. Giá trị trỏ host thật
+luôn được giữ nguyên ở mọi chế độ.
 
 ## 3. Nghiệm thu bằng máy
 

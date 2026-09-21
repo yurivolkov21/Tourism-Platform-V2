@@ -93,7 +93,7 @@ bản thật có cư xử giống không.
 | nút Google | `notAvailable` |
 
 Xem đủ 17 khung trên máy: mở `/dev/gallery` (chỉ có ở bản dev — xem
-[mobile-dev-loop.md](mobile-dev-loop.md) §5).
+[mobile-dev-loop.md](../conventions/mobile-dev-loop.md) §5).
 
 ## 7. KHÔNG được sửa khi nối hạ tầng
 

@@ -58,6 +58,7 @@ là "đừng để khoảng hở giữa đọc và ghi", không phải "nhồi m
 | --- | --- | --- |
 | Claim seat khi webhook thanh toán (P2-W2) | Lần 1 | Bookings-first conditional claim + CHECK constraint abort (23514) |
 | Recompute `Tour.ratingAvg/ratingCount` khi duyệt review (P3a-A) | Lần 2 | `SELECT … FOR UPDATE` rồi `UPDATE … FROM (SELECT …)` |
+| Đổi trạng thái câu hỏi khách + ghi lịch sử (W4) | — | Cùng khuôn: `SELECT … FOR UPDATE` đọc `status` rồi mới ghi; dùng lại thay vì nghĩ lại |
 
 ## Checklist khi review
 
