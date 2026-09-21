@@ -48,6 +48,17 @@ describe('parsePaging', () => {
     }
   });
 
+  /**
+   * `page` có TRẦN, không chỉ sàn: `AdminPageQuerySchema` cap ở `max(10_000)`
+   * (thêm ở W4 R3). Thiếu trần thì `?page=10001` lọt qua đây rồi ăn 400 ở API
+   * và rơi vào error boundary — trước khi `orphanPageHref`, thứ sinh ra để xử
+   * đúng ca "URL trỏ quá cuối danh sách", kịp chạy.
+   */
+  it('page vượt trần contract (>10 000) rơi về 1, không ném lên API', () => {
+    expect(parsePaging({ page: '10001' }).page).toBe(1);
+    expect(parsePaging({ page: '10000' }).page).toBe(10_000);
+  });
+
   it('limit ngoài trần contract (>100) hoặc rác rơi về mặc định, không ném lên API', () => {
     for (const limit of ['101', '0', '-5', 'many', '10.5']) {
       expect(parsePaging({ limit })).toEqual({ page: 1, limit: 20 });

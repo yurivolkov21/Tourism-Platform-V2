@@ -138,7 +138,7 @@ function buildColumns(setPublished: SetPublishedAction) {
           className={buttonVariants({ variant: 'outline', size: 'sm' })}
         >
           <CalendarRangeIcon data-icon="inline-start" aria-hidden="true" />
-          {t.columns.departures}
+          {t.departuresAction}
         </Link>
       ),
       enableHiding: false,
@@ -158,11 +158,13 @@ function buildColumns(setPublished: SetPublishedAction) {
 function TourThumb({ row }: { row: TourRowVM }) {
   if (!row.heroUrl) {
     return (
-      <div
-        className="size-10 shrink-0 rounded-md border border-dashed bg-muted"
-        aria-hidden="true"
-        title={t.noImage}
-      />
+      // `aria-hidden` + `title` là hai thứ TRIỆT TIÊU nhau: cái đầu gỡ hẳn nút
+      // khỏi cây trợ năng, còn `title` trên một div không tương tác thì vốn
+      // không được đọc — cộng lại thành một ô câm, đúng thứ JSDoc trên nói phải
+      // tránh. Một span `sr-only` mới thật sự nói được.
+      <div className="size-10 shrink-0 rounded-md border border-dashed bg-muted">
+        <span className="sr-only">{t.noImage}</span>
+      </div>
     );
   }
   return (

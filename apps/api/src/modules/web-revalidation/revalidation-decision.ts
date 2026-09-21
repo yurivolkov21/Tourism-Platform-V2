@@ -1,7 +1,16 @@
 /**
  * Taxonomy cache-tag của web, nhìn từ phía API (ADR-0016 §3) — gương của
- * `apps/web/src/lib/api/tags.ts`, không import được vì hai app không chung
- * đường build. Đổi tên tag ở một bên thì phải đổi ở đây.
+ * `apps/web/src/lib/api/tags.ts`. Đổi tên tag ở một bên thì phải đổi ở đây.
+ *
+ * ⚠️ Gương này là NỢ, không phải giới hạn kỹ thuật. Cả `apps/web` lẫn `apps/api`
+ * đều khai `@tourism/contract` là phụ thuộc workspace, nên contract CHÍNH LÀ
+ * đường build chung và taxonomy tag đặt được ở đó. Chưa dời vì nằm ngoài phạm
+ * vi F11. Cái giá của việc để nguyên: ngày web đổi tên tag, API vẫn POST chuỗi
+ * cũ, `/api/revalidate` trả 200 cho một tag không khớp gì,
+ * `WebRevalidationService` chỉ cảnh báo khi khác 200 nên không ai thấy, và
+ * trang tour công khai phục vụ nội dung cũ trọn 300 giây trong khi admin nhận
+ * toast thành công. Không test nào bắt được vì hai bên không bao giờ gặp nhau
+ * trong một tiến trình.
  *
  * MỘT bản cho cả API (F11, 21/09): `admin.tours.setPublished` bust đúng cặp
  * tag mà `ReviewsService.moderate` đã bust từ 03/08. Hai chuỗi `'tour:' + …`

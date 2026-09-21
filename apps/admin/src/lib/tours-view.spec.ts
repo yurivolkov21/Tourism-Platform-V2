@@ -39,9 +39,9 @@ describe('toTourRowVM', () => {
   it('giữ con số THÔ cộng một câu đầy đủ cho trình đọc màn hình', () => {
     // Bảng in số to; `countLabel` là thứ duy nhất nói con số ấy là số GÌ.
     expect(toTourRowVM(ROW).openDepartureCount).toBe(3);
-    expect(toTourRowVM(ROW).countLabel).toBe('3 open departures');
-    expect(toTourRowVM({ ...ROW, openDepartureCount: 1 }).countLabel).toBe('1 open departure');
-    expect(toTourRowVM({ ...ROW, openDepartureCount: 0 }).countLabel).toBe('0 open departures');
+    expect(toTourRowVM(ROW).countLabel).toBe('3 bookable departures');
+    expect(toTourRowVM({ ...ROW, openDepartureCount: 1 }).countLabel).toBe('1 bookable departure');
+    expect(toTourRowVM({ ...ROW, openDepartureCount: 0 }).countLabel).toBe('0 bookable departures');
   });
 
   it('chuyển thẳng ba cờ và ảnh bìa, kể cả khi chưa có ảnh', () => {

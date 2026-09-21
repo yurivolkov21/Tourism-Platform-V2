@@ -170,4 +170,76 @@ describe('PublishToggle', () => {
     await waitFor(() => expect(success).toHaveBeenCalled());
     expect(setPublished).toHaveBeenCalledTimes(1);
   });
+
+  /**
+   * Hai ca dưới đây là lý do state của component đổi trục so sánh ở vòng review
+   * 21/09: từ "prop có vừa đổi không" sang "server đã đuổi kịp chưa".
+   *
+   * Bản trước giữ một gương `serverValue` và `setChecked` mỗi khi prop khác
+   * gương. Đã đo: cả hai ca ĐỎ với bản cũ, XANH với bản mới.
+   */
+  it('refresh của lệnh TRƯỚC không đè lên cú bấm đang bay', async () => {
+    const user = userEvent.setup();
+    let treo: (() => void) | undefined;
+    const setPublished = vi
+      .fn()
+      // Lệnh 1 (bật) xong ngay.
+      .mockResolvedValueOnce({ ok: true, id: ROW.id, isPublished: true, changed: true })
+      // Lệnh 2 (tắt) treo, để một lượt refresh cũ kịp về giữa chừng.
+      .mockReturnValueOnce(
+        new Promise((resolve) => {
+          // Giải phóng ở cuối test bằng một kết quả HỢP LỆ: resolve bằng
+          // `undefined` làm `result.ok` nổ thành unhandled rejection, và vitest
+          // vẫn báo "889 passed" kèm một Error lạc lõng ở cuối log.
+          treo = () => resolve({ ok: true, id: ROW.id, isPublished: false, changed: true });
+        }),
+      );
+
+    const { rerender } = render(
+      <PublishToggle row={{ ...ROW, isPublished: false }} setPublished={setPublished} />,
+    );
+
+    await user.click(toggle()); // BẬT
+    // Chờ công tắc thật sự NHẢ (pending về false và React đã vẽ xong) — bấm
+    // tiếp khi chưa nhả thì cú thứ hai đọc trạng thái cũ và đo sai thứ khác.
+    await waitFor(() => expect(toggle()).toBeChecked());
+    await waitFor(() => expect(toggle()).not.toBeDisabled());
+    await user.click(toggle()); // TẮT — lệnh còn đang bay
+    expect(toggle()).not.toBeChecked();
+
+    // Giờ mới tới lượt router.refresh() của lệnh BẬT, mang giá trị đã cũ.
+    rerender(<PublishToggle row={{ ...ROW, isPublished: true }} setPublished={setPublished} />);
+
+    // Phải giữ ý người dùng. Bản cũ lật ngược về BẬT ở đúng đây.
+    expect(toggle()).not.toBeChecked();
+    treo?.();
+  });
+
+  it('lệnh hỏng giữa lúc người khác đã đổi trạng thái: theo server, không kẹt', async () => {
+    const user = userEvent.setup();
+    let hong: ((value: { ok: false; code: 'GENERIC' }) => void) | undefined;
+    const setPublished = vi.fn().mockReturnValue(
+      new Promise<{ ok: false; code: 'GENERIC' }>((resolve) => {
+        hong = resolve;
+      }),
+    );
+
+    const { rerender } = render(
+      <PublishToggle row={{ ...ROW, isPublished: false }} setPublished={setPublished} />,
+    );
+
+    await user.click(toggle()); // bấm BẬT, lệnh chưa về
+
+    // Trong lúc chờ, một tab khác publish chính tour này; một lượt refresh bất
+    // kỳ mang sự thật đó về.
+    rerender(<PublishToggle row={{ ...ROW, isPublished: true }} setPublished={setPublished} />);
+
+    hong?.({ ok: false, code: 'GENERIC' });
+    await waitFor(() => expect(errorToast).toHaveBeenCalled());
+
+    // Server đang nói "đang bán" → công tắc phải nói thế. Bản cũ kẹt ở TẮT
+    // (giá trị trước khi bấm) và không lối nào thoát trừ tải lại cả trang.
+    rerender(<PublishToggle row={{ ...ROW, isPublished: true }} setPublished={setPublished} />);
+    expect(toggle()).toBeChecked();
+  });
 });

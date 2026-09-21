@@ -3881,7 +3881,13 @@ export const messages = {
            * giá riêng của từng chuyến là chuyện của màn chuyến khởi hành.
            */
           price: 'Base price',
-          departures: 'Open departures',
+          /**
+           * "Bookable", không phải "Open". Con số này cắt HAI nhát như bề mặt
+           * công khai: chuyến còn mở VÀ còn trong hạn đặt (ADR-0041 §3). Gọi nó
+           * là "Open" thì admin đọc ra "chưa đóng" và trông đợi thấy cả chuyến
+           * quá hạn — thứ con số này cố ý không đếm.
+           */
+          departures: 'Bookable departures',
           published: 'On sale',
           actions: 'Actions',
         },
@@ -3895,17 +3901,29 @@ export const messages = {
         statusLive: 'On sale',
         statusDraft: 'Off sale',
         /**
-         * Bộ lọc tháng KHÔNG bỏ bớt tour nào — nó đổi khoảng mà cột "Open
+         * Bộ lọc tháng KHÔNG bỏ bớt tour nào — nó đổi khoảng mà cột "Bookable
          * departures" đếm. Nhãn phải nói ra điều đó, không thì người dùng chờ
          * danh sách ngắn lại và tưởng bộ lọc hỏng.
+         *
+         * Tháng hoàn toàn trong quá khứ luôn ra 0: không chuyến nào trong đó
+         * còn đặt được. Muốn soi chuyến quên đóng thì vào màn chuyến của tour.
          */
-        monthLabel: 'Count departures in',
+        monthLabel: 'Count bookable departures in',
         /** Mục mặc định: từ hôm nay trở đi, không có mốc cuối. */
         monthUpcoming: 'Upcoming',
         /** Nhãn đọc-màn-hình cho con số ở cột đếm — số trần không nói nó là gì. */
         openDepartures: (count: number) =>
-          count === 1 ? '1 open departure' : `${count} open departures`,
+          count === 1 ? '1 bookable departure' : `${count} bookable departures`,
         manageDepartures: (title: string) => `Manage departures for ${title}`,
+        /**
+         * Chữ TRÊN nút ở cột Actions. Phải là khoá riêng, không mượn
+         * `columns.departures`: khoá đó là tiêu đề cột ĐẾM ("Open departures"),
+         * nên mượn nó làm nhãn nút khiến chữ nhìn thấy không nằm trong tên khả
+         * truy cập ("Manage departures for X") — người dùng điều khiển bằng
+         * giọng nói đọc một đằng, ra lệnh một nẻo (WCAG 2.5.3). Ẩn cột đếm đi
+         * thì vẫn còn một cái nút ghi "Open departures".
+         */
+        departuresAction: 'Departures',
       },
       publish: {
         /**
@@ -3918,7 +3936,17 @@ export const messages = {
           NOT_FOUND: 'This tour is no longer in the catalogue. The list below has been refreshed.',
         },
         toast: {
-          live: (title: string) => `${title} is on sale again — it is back on the public site.`,
+          /**
+           * Hai câu cho hai việc khác nhau. `Tour.isPublished` mặc định `false`,
+           * nên một tour vừa tạo rồi đăng LẦN ĐẦU mà nhận câu có "again" và
+           * "back on the public site" là nói sai hai lần về một tour chưa từng
+           * lên sóng. Người gọi chọn câu theo `changed`… không đủ — `changed`
+           * chỉ nói "có đổi gì không", không nói "đã từng lên sóng chưa". Ta
+           * chọn câu TRUNG TÍNH, đúng với cả hai. Ngày nào P4e-3 biết chắc một
+           * tour từng bị rút xuống thì thêm khoá riêng lúc đó — thêm sẵn bây
+           * giờ là đẻ một câu không ai đọc.
+           */
+          live: (title: string) => `${title} is on sale — it is live on the public site.`,
           /**
            * Nói rõ điều KHÔNG xảy ra: khách đã đặt vẫn đi. Đây là câu duy nhất
            * ngăn vận hành ngần ngại rút một tour khỏi kệ khi cần.

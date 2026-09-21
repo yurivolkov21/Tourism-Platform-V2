@@ -1,5 +1,6 @@
-import { CalendarMonthSchema } from '@tourism/contract';
-import { currentMonth, formatMonthLabel, type MonthOption, shiftMonth } from './month-options';
+import { CalendarMonthSchema, vietnamToday } from '@tourism/contract';
+import { z } from 'zod';
+import { formatMonthLabel, type MonthOption, shiftMonth } from './month-options';
 import {
   appendPaging,
   firstParam,
@@ -43,8 +44,16 @@ export interface ToursQuery {
 /** Số tháng bày trong ô chọn — một năm tới là khoảng lịch khởi hành người thật dựng. */
 const MONTH_OPTION_COUNT = 12;
 
-/** uuid v4 của `categoryId` — cùng thứ `z.uuid()` bên contract nhận. */
-const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+/**
+ * `categoryId` — CHÍNH `z.uuid()` mà contract dùng, không phải một regex gương.
+ *
+ * Bản trước tự viết `/^[0-9a-f]{8}-…$/i` và chú thích rằng nó "cùng thứ z.uuid()
+ * bên contract nhận". Không đúng: zod 4 còn đòi nibble phiên bản `[1-8]` và biến
+ * thể `[89abAB]`, nên `aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee` lọt regex mà trượt
+ * schema — tức lọt lớp lọc rồi ăn 400 từ API, đúng thứ hàm này hứa không xảy ra.
+ * Tiền lệ: `enquiries-query.ts` cũng `z.uuid()`.
+ */
+const CategoryIdSchema = z.uuid();
 
 /**
  * URL là thứ NGƯỜI gõ được: mọi giá trị rác rơi về mặc định AN TOÀN chứ không
@@ -58,13 +67,13 @@ const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{
  * thật, và cửa sổ đếm bên API là tuyệt đối nên nó trả lời được.
  */
 export function parseToursSearchParams(raw: RawSearchParams): ToursQuery {
-  const categoryId = firstParam(raw.category);
+  const categoryId = CategoryIdSchema.safeParse(firstParam(raw.category));
   const published = firstParam(raw.published);
   const month = CalendarMonthSchema.safeParse(firstParam(raw.month));
 
   return {
     ...parsePaging(raw),
-    ...(categoryId && UUID_PATTERN.test(categoryId) ? { categoryId } : {}),
+    ...(categoryId.success ? { categoryId: categoryId.data } : {}),
     ...(published === 'true' || published === 'false' ? { isPublished: published === 'true' } : {}),
     ...(month.success ? { month: month.data } : {}),
   };
@@ -133,7 +142,12 @@ export function departureMonthOptions(
   count = MONTH_OPTION_COUNT,
   selected?: string,
 ): MonthOption[] {
-  const first = currentMonth(now);
+  // Tháng "bây giờ" đo bằng LỊCH VIỆT NAM, không phải UTC. Cửa sổ đếm bên API
+  // neo theo `vietnamToday` (ADR-0041 §7); dùng `currentMonth` (UTC) ở đây thì
+  // trong 7 giờ cuối mỗi tháng UTC — tức giờ làm việc bình thường ở Việt Nam —
+  // menu mở đầu bằng một tháng đã kết thúc theo lịch VN, còn mặc định
+  // "Upcoming" thì đã đếm sang tháng sau. Cả dải 12 tháng cũng lệch một nấc.
+  const first = vietnamToday(now).slice(0, 7);
   const values: string[] = [];
   for (let index = 0; index < count; index++) values.push(shiftMonth(first, index));
   if (selected && !values.includes(selected)) values.unshift(selected);

@@ -44,6 +44,23 @@ describe('parseToursSearchParams', () => {
     expect(parseToursSearchParams({ category: '' }).categoryId).toBeUndefined();
   });
 
+  /**
+   * Ca này ĐỎ với bản dùng regex tự chế (vòng review 21/09): chuỗi dưới đúng
+   * hình dạng 8-4-4-4-12 nên regex nhận, nhưng `z.uuid()` của zod 4 còn đòi
+   * nibble phiên bản [1-8] và biến thể [89abAB] nên contract từ chối — tức nó
+   * lọt lớp lọc rồi ăn 400 ở API, đúng thứ hàm này hứa không xảy ra.
+   */
+  it('uuid ĐÚNG HÌNH DẠNG nhưng sai phiên bản/biến thể cũng rơi im lặng', () => {
+    expect(parseToursSearchParams({ category: 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee' })).toEqual({
+      page: 1,
+      limit: 20,
+    });
+    expect(parseToursSearchParams({ category: '00000000-0000-0000-0000-000000000001' })).toEqual({
+      page: 1,
+      limit: 20,
+    });
+  });
+
   it('month rác rơi im lặng, month ĐÃ QUA thì KHÔNG', () => {
     expect(parseToursSearchParams({ month: '2026-13' }).month).toBeUndefined();
     expect(parseToursSearchParams({ month: '2026-11-01' }).month).toBeUndefined();
@@ -107,6 +124,19 @@ describe('departureMonthOptions', () => {
     const options = departureMonthOptions(NOW, 3);
     expect(options.map((option) => option.value)).toEqual(['2026-09', '2026-10', '2026-11']);
     expect(options[0]?.label).toBe('September 2026');
+  });
+
+  /**
+   * Ca biên 17:00–23:59 UTC: giờ Việt Nam đã sang ngày (và ở đây là THÁNG) kế
+   * tiếp. Cửa sổ đếm bên API neo theo `vietnamToday` (ADR-0041 §7), nên danh
+   * sách tháng phải neo cùng một thước — nếu không, trong 7 giờ cuối mỗi tháng
+   * menu mở đầu bằng một tháng đã kết thúc theo lịch VN trong khi mặc định
+   * "Upcoming" đã đếm sang tháng sau. Đối xứng với ca NIGHT_UTC của
+   * `departure-window.spec.ts` bên API.
+   */
+  it('18:00 UTC ngày cuối tháng: mở đầu bằng tháng MỚI theo giờ Việt Nam', () => {
+    const options = departureMonthOptions(new Date('2026-09-30T18:00:00.000Z'), 3);
+    expect(options.map((o) => o.value)).toEqual(['2026-10', '2026-11', '2026-12']);
   });
 
   it('vắt qua năm đúng chỗ', () => {

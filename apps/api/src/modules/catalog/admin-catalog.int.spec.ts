@@ -89,6 +89,8 @@ describe('admin catalog integration (F11 — tours list + publish toggle)', () =
   /** Chuyến đã khởi hành — ngoài cửa sổ "sắp tới", nhưng vẫn trong tháng của nó. */
   const PAST_START = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 2, 15));
   const PAST_MONTH = PAST_START.toISOString().slice(0, 7);
+  /** Khởi hành HÔM NAY: còn trong cửa sổ "sắp tới" nhưng hạn đặt đã trôi. */
+  const TODAY_START = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
 
   const tour = (
     id: string,
@@ -141,6 +143,10 @@ describe('admin catalog integration (F11 — tours list + publish toggle)', () =
     departure(5, { tourId: ALPHA, startDate: PAST_START }),
     // BETA: 1 OPEN trong tháng A.
     departure(6, { tourId: BETA, startDate: dayIn(0, 12) }),
+    // BETA: khởi hành HÔM NAY, vẫn OPEN. Cửa sổ "sắp tới" nhận nó (startDate
+    // >= hôm nay giờ VN) nhưng hạn ĐẶT đã trôi — tour 1 ngày thì N = 1 nên hạn
+    // là hôm qua. Đây là ca mà nhát cắt thứ hai sinh ra để loại.
+    departure(7, { tourId: BETA, startDate: TODAY_START }),
   ];
 
   const list = (query: string, cookie: string) =>
@@ -277,10 +283,32 @@ describe('admin catalog integration (F11 — tours list + publish toggle)', () =
     expect(rowOf(monthB, BETA).openDepartureCount).toBe(0);
   });
 
-  it('tháng ĐÃ QUA vẫn đếm được — cửa sổ tháng là tuyệt đối, không cắt theo hôm nay', async () => {
-    // Câu hỏi vận hành thật: "tháng trước còn chuyến nào tôi quên đóng không?"
+  /**
+   * Cột đếm trả lời ĐÚNG MỘT câu: "còn bao nhiêu chuyến khách ĐẶT ĐƯỢC" — nên
+   * nó cắt hai nhát, y như bề mặt công khai: `status = OPEN` VÀ còn trong hạn
+   * đặt (`isWithinDeadline`, ADR-0041 §3). Thiếu nhát thứ hai thì bảng admin
+   * in "2 open departures" cho một tour mà khách vào trang thấy cả hai đều
+   * "Booking closed" (vòng review 21/09).
+   *
+   * Hệ quả cố ý: tháng hoàn toàn trong quá khứ luôn trả 0, vì không chuyến nào
+   * trong đó còn bán được. Câu hỏi "tháng trước còn chuyến nào tôi quên đóng
+   * không" KHÔNG hỏi bằng con số này nữa — nó thuộc màn chuyến của F12, nơi
+   * nhìn thấy từng chuyến kèm trạng thái và hạn chót, tức đúng chỗ để bấm đóng.
+   */
+  it('tháng ĐÃ QUA trả 0 — không chuyến nào trong đó còn bán được', async () => {
     const paged = await listOk(`?month=${PAST_MONTH}`);
-    expect(rowOf(paged, ALPHA).openDepartureCount).toBe(1);
+    expect(rowOf(paged, ALPHA).openDepartureCount).toBe(0);
+  });
+
+  /**
+   * Nhát cắt thứ hai, đo trực tiếp: chuyến 7 của BETA khởi hành HÔM NAY và vẫn
+   * OPEN, nên cửa sổ "sắp tới" nhận nó — nhưng tour 1 ngày có N = 1 nên hạn đặt
+   * là HÔM QUA. Bỏ nhát này thì BETA in 2 trong khi khách chỉ đặt được 1, và
+   * trang tour công khai hiện chuyến ấy là "Booking closed" (ADR-0041 §3).
+   */
+  it('chuyến chưa khởi hành nhưng ĐÃ QUÁ HẠN ĐẶT thì không đếm', async () => {
+    const paged = await listOk('');
+    expect(rowOf(paged, BETA).openDepartureCount).toBe(1);
   });
 
   it('tour KHÔNG có chuyến nào trả 0 chứ không vắng mặt', async () => {

@@ -1,4 +1,4 @@
-import { vietnamToday } from '@tourism/contract';
+import { CalendarMonthSchema, vietnamToday } from '@tourism/contract';
 import { startOfDayUtc } from '../../lib/calendar-date.js';
 
 /**
@@ -25,10 +25,14 @@ import { startOfDayUtc } from '../../lib/calendar-date.js';
 export function departureWindow(month: string | undefined, now: Date): { gte: Date; lt?: Date } {
   if (!month) return { gte: startOfDayUtc(vietnamToday(now)) };
 
-  // `month` đã qua `CalendarMonthSchema` (năm khoá 1900–2099) nên `Date.UTC`
-  // không rơi vào hai hành vi legacy ở biên — xem JSDoc của schema đó.
-  const year = Number(month.slice(0, 4));
-  const monthIndex = Number(month.slice(5, 7)) - 1;
+  // TỰ canh thay vì tin người gọi. Trước đợt tách này, luật năm 1900–2099 và
+  // chỗ tiêu thụ nó nằm cùng một file; giờ hàm nhận `string` trần nên một lời
+  // gọi chưa qua schema — ví dụ `'0050-06'` — sẽ được `Date.UTC(50, …)` ánh xạ
+  // legacy thành năm 1950, cho ra cửa sổ rỗng và MỌI tour đếm 0 mà không lỗi
+  // nào đỏ. Một lượt parse rẻ hơn một con số sai câm lặng.
+  const parsed = CalendarMonthSchema.parse(month);
+  const year = Number(parsed.slice(0, 4));
+  const monthIndex = Number(parsed.slice(5, 7)) - 1;
   return {
     gte: new Date(Date.UTC(year, monthIndex, 1)),
     // `monthIndex + 1` = 12 ở tháng 12 → `Date.UTC` tự cuộn sang tháng 1 năm

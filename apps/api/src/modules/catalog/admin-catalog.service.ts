@@ -6,9 +6,11 @@ import type {
   AdminToursListQuery,
   Paged,
 } from '@tourism/contract';
+import { isWithinDeadline } from '@tourism/contract';
 import { prisma } from '../../auth/auth.config.js';
 import type { Prisma } from '../../generated/prisma/client.js';
 import { DepartureStatus, MediaOwnerType, MediaRole } from '../../generated/prisma/enums.js';
+import { calendarDate } from '../../lib/calendar-date.js';
 import { MediaService } from '../media/media.service.js';
 import { tourRevalidationTags } from '../web-revalidation/revalidation-decision.js';
 import { WebRevalidationService } from '../web-revalidation/web-revalidation.service.js';
@@ -86,20 +88,31 @@ export class AdminCatalogService {
       // MỘT query media cho cả trang (chống N+1) — lọc hero ngay ở query, bảng
       // chỉ vẽ một ô ảnh nhỏ nên không cần cả bộ.
       this.media.resolveForOwners(MediaOwnerType.TOUR, ids, [MediaRole.hero]),
-      // MỘT câu gom nhóm cho cả trang, KHÔNG phải một câu mỗi tour: 29 tour ×
-      // một round-trip là đúng cái N+1 mà `catalog.service` đã né ở đường công
-      // khai.
-      prisma.tourDeparture.groupBy({
-        by: ['tourId'],
+      // MỘT câu cho cả trang, KHÔNG phải một câu mỗi tour: 29 tour × một
+      // round-trip là đúng cái N+1 mà `catalog.service` đã né ở đường công khai.
+      //
+      // Vì sao `findMany` chứ không `groupBy` đếm hộ: nhát cắt thứ hai —
+      // `isWithinDeadline` — là luật `N` theo ĐỘ DÀI chuyến (ADR-0041 §2), SQL
+      // không biểu diễn được bằng một vị ngữ. Lấy ba cột rồi đếm ở Node, đúng
+      // cách `catalog.service.ts` làm cho `priceFrom`.
+      prisma.tourDeparture.findMany({
         where: {
           tourId: { in: ids },
           status: DepartureStatus.OPEN,
           startDate: departureWindow(month, now),
         },
-        _count: { _all: true },
+        select: { tourId: true, startDate: true, endDate: true },
       }),
     ]);
-    const countByTour = new Map(openCounts.map((row) => [row.tourId, row._count._all]));
+
+    // Nhát thứ hai: chuyến đã qua hạn đặt thì KHÔNG đếm. Thiếu nhát này, bảng
+    // admin in "2 open departures" cho một tour mà khách vào trang thấy cả hai
+    // đều "Booking closed" — hai màn của cùng một hệ thống nói hai chuyện.
+    const countByTour = new Map<string, number>();
+    for (const d of openCounts) {
+      if (!isWithinDeadline(now, calendarDate(d.startDate), calendarDate(d.endDate))) continue;
+      countByTour.set(d.tourId, (countByTour.get(d.tourId) ?? 0) + 1);
+    }
 
     return {
       items: tours.map((tour) => ({
@@ -156,11 +169,14 @@ export class AdminCatalogService {
     // `reviews.service.ts`): một lượt fetch tới web nằm trong transaction là
     // giữ khoá DB suốt thời gian chờ mạng.
     //
-    // Chỉ bust khi ĐỔI THẬT: bấm lại đúng trạng thái đang có không đổi gì trên
-    // web, nên không có lý do gì bắt Next dựng lại trang.
-    if (outcome.changed) {
-      void this.webRevalidation.revalidate(tourRevalidationTags(outcome.slug));
-    }
+    // Bust KỂ CẢ khi `changed` là false, và đó là chủ đích. `revalidate` là
+    // fire-and-forget: mọi thất bại (non-200, timeout 3s, mạng) chỉ thành một
+    // dòng `logger.warn`, không ai thấy. Nếu gác bust sau `changed`, lượt bust
+    // hỏng sẽ không còn đường chạy lại — admin bấm lại để ép thì đọc-trước-khi-ghi
+    // thấy trạng thái đã đúng, trả `changed: false`, và tour ở lại trên site
+    // công khai trọn cửa sổ ISR 300 giây mà người vận hành không còn đòn bẩy nào.
+    // Một lượt POST thừa rẻ hơn nhiều so với một tour không rút khỏi kệ được.
+    void this.webRevalidation.revalidate(tourRevalidationTags(outcome.slug));
 
     return { id, isPublished, changed: outcome.changed };
   }

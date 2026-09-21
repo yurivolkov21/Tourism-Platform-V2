@@ -44,22 +44,42 @@ export function PublishToggle({
   setPublished: SetPublishedAction;
 }) {
   const router = useRouter();
-  const [checked, setChecked] = useState(row.isPublished);
   const [pending, setPending] = useState(false);
-  // Đồng bộ lại khi server gửi hàng mới (sau `router.refresh()`, hoặc đổi
-  // trang/lọc dùng lại cùng một instance): chỉnh state NGAY TRONG RENDER thay
-  // vì `useEffect` — React chạy lại render trước khi vẽ, nên không có một
-  // khung hình nào hiện giá trị cũ.
-  const [serverValue, setServerValue] = useState(row.isPublished);
-  if (serverValue !== row.isPublished) {
-    setServerValue(row.isPublished);
-    setChecked(row.isPublished);
-  }
+  /**
+   * Giá trị LẠC QUAN đang hiển thị, hoặc `null` khi đang tin server.
+   *
+   * Trục so sánh là "server đã đuổi kịp chưa", KHÔNG phải "prop có vừa đổi
+   * không". Bản trước giữ một gương `serverValue` rồi `setChecked` mỗi lần prop
+   * khác gương, và hai ca hỏng theo:
+   *
+   * 1. Bấm bật → xong → bấm tắt ngay (lúc này `pending` đã nhả). Lượt
+   *    `router.refresh()` của lệnh ĐẦU về sau, mang giá trị bật, và gương lật
+   *    công tắc ngược lại giữa lúc lệnh tắt còn đang bay.
+   * 2. Lệnh hỏng thì nhánh revert chỉ đặt lại `checked` mà để `serverValue`
+   *    nguyên ở giá trị một lượt refresh khác vừa nâng lên. Từ đó
+   *    `serverValue !== row.isPublished` không bao giờ đúng nữa, và công tắc
+   *    kẹt sai cho tới khi tải lại CẢ trang.
+   *
+   * Với trục mới, một lượt refresh mang giá trị lạc hậu chỉ đơn giản không khớp
+   * và bị bỏ qua, thay vì đè lên ý người dùng.
+   */
+  const [optimistic, setOptimistic] = useState<boolean | null>(null);
+  const checked = optimistic ?? row.isPublished;
+  // Server đã nói đúng thứ ta đang hiển thị → thôi giữ lạc quan, trả quyền cho
+  // prop. Chỉnh state NGAY TRONG RENDER thay vì `useEffect`: React chạy lại
+  // render trước khi vẽ nên không có khung hình nào hiện giá trị cũ.
+  //
+  // `!pending` KHÔNG thừa: ngay sau một cú bấm, `optimistic` thường TÌNH CỜ
+  // bằng `row.isPublished` — người dùng vừa bấm ngược về đúng giá trị server
+  // đang giữ, vì prop chưa kịp đổi. Thiếu cổng này thì giá trị lạc quan bị xoá
+  // ngay trong lượt render của chính cú bấm ấy, và lượt refresh kế tiếp mang
+  // giá trị mới sẽ lật công tắc — đúng cái bug đang vá. Đo được bằng test
+  // "refresh của lệnh TRƯỚC không đè lên cú bấm đang bay".
+  if (!pending && optimistic !== null && optimistic === row.isPublished) setOptimistic(null);
 
   async function onCheckedChange(next: boolean) {
     if (pending) return;
-    const previous = checked;
-    setChecked(next); // lạc quan
+    setOptimistic(next); // lạc quan
     setPending(true);
 
     let result: Awaited<ReturnType<SetPublishedAction>>;
@@ -73,7 +93,9 @@ export function PublishToggle({
     setPending(false);
 
     if (!result.ok) {
-      setChecked(previous);
+      // Bỏ lạc quan, trả về đúng thứ server đang nói — kể cả khi trong lúc chờ
+      // đã có người khác đổi trạng thái tour này.
+      setOptimistic(null);
       toast.error(setPublishedErrorCopy(result.code));
       // Trạng-thái-cũ hoặc kết cục KHÔNG RÕ: kéo dữ liệu tươi về trước khi ai
       // đó bấm lại mù (cùng luật ba lối ra của kit).
@@ -81,7 +103,7 @@ export function PublishToggle({
       return;
     }
 
-    setChecked(result.isPublished);
+    setOptimistic(result.isPublished);
     toast.success(setPublishedToast(row.title, result));
     // Cột "Open departures" và cả các hàng khác không đổi theo lệnh này, nhưng
     // bảng vẫn phải tươi: bộ lọc "Off sale" co lại đúng sau mỗi lần bấm.

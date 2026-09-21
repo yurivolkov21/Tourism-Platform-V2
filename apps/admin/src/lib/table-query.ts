@@ -23,6 +23,13 @@ export const ADMIN_PAGE_SIZE = 20;
 /** Trần `limit` của contract (`z.int().max(100)`) — vượt là 400 ở server. */
 const PAGE_SIZE_MAX = 100;
 
+/**
+ * Trần số trang — gương của `AdminPageQuerySchema.page` (`max(10_000)`) bên
+ * contract. Hai con số này PHẢI khớp: lệch một nấc là một URL lọt qua đây rồi
+ * ăn 400 ở API.
+ */
+const PAGE_MAX = 10_000;
+
 /** Các mức cho ô "Rows per page" — cùng dãy với kit data-table dashboard-01. */
 export const PAGE_SIZE_OPTIONS = [10, 20, 30, 40, 50] as const;
 
@@ -97,7 +104,12 @@ export function parsePaging(raw: RawSearchParams): TablePaging {
 
   return {
     // Number.isInteger loại luôn NaN/1.5/Infinity — chỉ số nguyên ≥ 1 sống sót.
-    page: Number.isInteger(page) && page >= 1 ? page : 1,
+    //
+    // Trần `PAGE_MAX` phải có, không chỉ sàn: `AdminPageQuerySchema` cap ở
+    // `max(10_000)` (thêm ở W4 R3) nên `?page=10001` lọt qua đây là 400 từ API
+    // rồi rơi vào error boundary — TRƯỚC khi `orphanPageHref`, thứ sinh ra để
+    // xử đúng ca "URL trỏ quá cuối danh sách", kịp chạy.
+    page: Number.isInteger(page) && page >= 1 && page <= PAGE_MAX ? page : 1,
     limit:
       Number.isInteger(limit) && limit >= 1 && limit <= PAGE_SIZE_MAX ? limit : ADMIN_PAGE_SIZE,
   };
