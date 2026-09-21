@@ -106,6 +106,89 @@ nguồn nào). Vitest 3657 chia ra api 932, web 1506, admin 838, contract 279, c
 497 ở 39 file. Lint vẫn đúng 1 warning và 1 info có từ trước. `pnpm audit
 --audit-level=moderate` nay exit 0.
 
+## 2026-09-21 — Việc 4: OTP gửi ngay, `.vercel.app` chuyển hướng về www, và chốt KHÔNG tự đăng nhập sau OTP (nhánh `feat/outbox-nudge`)
+
+Đóng mục cuối của bản bàn giao sau đợt hoàn tiền — ba đề xuất từ 18/09 user
+chưa chọn. Kết cục ba kiểu khác nhau: một cái sửa code, một cái đổi thiết lập
+hạ tầng, một cái chốt KHÔNG làm.
+
+### 1. OTP và đặt lại mật khẩu xin drain ngay
+
+- `9c10a5e3` feat(api): thêm `worker/outbox-nudge.ts` — registry cấp module,
+  vòng worker đăng ký hàm `boss.send` của chính instance nó, đường request gọi
+  `nudgeOutboxDrain()` để đẩy một job vào queue `outbox-drain` thay vì đợi tick
+  cron (mỗi phút, granularity nhỏ nhất pg-boss cho). Gọi ở hai chỗ tạo email
+  auth trong `auth.config.ts`: `PASSWORD_RESET` và `EMAIL_OTP` (callback OTP
+  phục vụ cả ba loại OTP của plugin nên một dòng phủ hết).
+
+  **Vì sao là registry chứ không phải DI** — bản bàn giao đề xuất "đẩy job cho
+  pg-boss" mà chưa biết chỗ vướng: `sendVerificationOTP` là callback của plugin
+  better-auth ở TẦNG MODULE, không nằm trong container Nest và ghi bằng `prisma`
+  trần, nên không inject được gì vào đó. Dùng lại đúng instance pg-boss của
+  worker (không mở client thứ hai) vì pool Postgres chốt ~10 kết nối.
+
+  **BEST-EFFORT là toàn bộ hợp đồng**: không worker nào đăng ký, pg-boss lỗi,
+  queue chưa tạo — đều log rồi đi tiếp, vì cron vẫn là lưới cuối. Để một lỗi
+  pg-boss lan ra ngoài `sendVerificationOTP` là biến "email chậm một phút"
+  thành "không đăng ký được".
+
+  **Giới hạn đã biết, ghi trong JSDoc**: chỉ có tác dụng khi worker chạy CÙNG
+  tiến trình API (`WORKER_INLINE=true` — đúng cấu hình prod trên Render free).
+  Tách worker ra process riêng thì nudge trả `no-worker` và OTP quay lại nhịp
+  cron; muốn phủ cả ca đó thì API phải tự mở một client pg-boss, tức thêm một
+  kết nối vào pool — cố ý không làm khi prod chưa cần.
+
+  Hai đường đã cân và loại: gọi thẳng `outbox.drainOnce()` trong request (app
+  API không import `WorkerModule` nên KHÔNG có deliverer, và nó kéo cả lô 50
+  row vào đường request); gửi thẳng qua Resend bỏ qua outbox (mất kiểm
+  `email_suppressions`, mất retry, mất audit — đúng loại email không được phép
+  mất mấy thứ đó).
+
+- **Test của chính đợt này bắt được lỗi của chính nó.** Int spec mới ghim ca
+  "queue chưa tạo → `failed` chứ không ném" — ca duy nhất soi được lỗi đăng ký
+  sai thứ tự, vì nudge nuốt lỗi nên mọi thứ sai ở tầng queue đều hỏng IM LẶNG.
+  Lượt đầu nó xanh, lượt sau đỏ: schema `pgboss` của `tourism_test` KHÔNG bị
+  truncate giữa các lượt (globalSetup chỉ `migrate deploy` schema Prisma) nên
+  queue do lượt trước tạo vẫn còn. Sửa bằng `deleteQueue` tường minh trước khi
+  khẳng định, rồi chạy hai lượt liên tiếp để chứng minh tính lặp lại.
+
+### 2. `.vercel.app` chuyển hướng về www — user đổi trên Vercel
+
+Domain `tourism-platform-v2-web.vercel.app` đang phục vụ app trực tiếp
+(`redirect: null`), nên mở site qua host đó thì đăng ký/đăng nhập hỏng: API chỉ
+trả CORS cho `www.nexora-travel.agency` (đúng thiết kế W3/W4). User đặt redirect
+308 sang www, giống hệt apex đã có sẵn. Đo sau khi đổi: `/`, `/login` và một
+trang tour đều trả 308 và GIỮ NGUYÊN path; đi theo chuỗi thì đúng một lượt
+chuyển hướng rồi 200 ở www.
+
+Hệ quả phụ đã lường và đo: `robots.txt` trên host cũ nay cũng 308 sang www, nên
+host đó không còn tự phục vụ `disallow: /` nữa. Chặt hơn chứ không hở — 308
+vĩnh viễn gom tín hiệu về www và không còn nội dung nào ở host cũ để index,
+trong khi `disallow` chỉ ngăn thu thập mà vẫn để URL tồn tại. Không file nào
+trong repo ghi cứng host đó; `robots.ts` khớp theo mẫu `*.vercel.app` nên không
+phải sửa.
+
+### 3. Tự đăng nhập sau OTP — CHỐT KHÔNG LÀM
+
+- `ab57f8dd` docs(web): ghi lý do ngay cạnh chỗ redirect trong `otp-form.tsx`.
+
+Đọc plugin `email-otp` của better-auth 1.6.23: nó KHÔNG có tuỳ chọn phát session
+sau `verify-email`. Hai route tách bạch — `/email-otp/verify-email` chỉ đánh dấu
+email đã xác minh, còn `/sign-in/email-otp` là một luồng ĐĂNG NHẬP KHÔNG MẬT
+KHẨU riêng. Nên "tự đăng nhập sau OTP" chỉ làm được bằng cách chuyển sang route
+thứ hai, và cái giá là mã 6 số gửi qua email trở thành yếu tố đăng nhập đầy đủ
+cho MỌI tài khoản, không riêng tài khoản vừa đăng ký — đúng thứ lần siết 20/08
+cố ý bỏ. User chốt không đánh đổi. Ghi vào code chứ không chỉ vào đây, để lần
+sau không ai đề xuất lại mà không biết điều đó; đổi ý thì phải đi qua một ADR.
+
+**Review findings:** chưa có vòng review riêng.
+
+Tests after: cổng đầy đủ xanh (28/28 task với `--concurrency=2`, int 6/6, API
+nền sống cho build web). Int 498 ở 39 file (thêm 1: nối dây nudge trên pg-boss
+thật). Vitest 3680, trong đó api 936 có thêm 4 test cho `outbox-nudge`; web
+1525, admin 838, contract 279, core 46, ui 22, tokens 18, i18n 16 đều không
+đổi. Jest mobile 245 không đổi. Lint vẫn đúng 1 warning và 1 info có từ trước.
+
 ## 2026-09-21 — Nghiệm thu trên prod: hoàn tiền đã để lại vết ở `/payment-events` (không đổi code)
 
 Đóng mục CÒN TREO quan trọng nhất của entry ADR-0043 bên dưới. Chạy tay trên
