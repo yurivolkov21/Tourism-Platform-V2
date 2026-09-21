@@ -205,12 +205,19 @@
   /* Bổ sung cho cụm đặt tour và tài khoản — cùng hệ biến với file P5b-2. */
   .phone { --success: #5bb661; }
   body[data-scheme="light"] .phone { --success: #2f9f3d; }
-  .field { display: flex; align-items: center; gap: calc(var(--s) * 2.5); min-height: var(--touch); border-bottom: 1px solid var(--border); margin-top: calc(var(--s) * 2.5); color: var(--muted-foreground); }
-  .field .stack { display: flex; flex-direction: column; flex: 1; }
-  .field .stack small { font: 400 11px/14px 'Archivo', system-ui, sans-serif; color: var(--muted-foreground); }
-  .field .stack span { font: 400 14px/20px 'Archivo', system-ui, sans-serif; color: var(--foreground); }
-  .field.ph .stack span { color: var(--muted-foreground); }
+  /* Ô nhập: icon nằm trong ô vuông bo góc, nhãn nhỏ và giá trị xếp dọc, gạch chân
+     dưới cùng. Chiều cao và khoảng cách giữa các dòng bằng nhau để cả cụm form
+     đọc thành một nhịp. */
+  .field { display: flex; align-items: center; gap: calc(var(--s) * 3); min-height: calc(var(--s) * 15); padding: calc(var(--s) * 2.5) 0; border-bottom: 1px solid var(--border); margin-top: calc(var(--s) * 3); color: var(--muted-foreground); }
+  .field .ico { flex: 0 0 calc(var(--s) * 10); height: calc(var(--s) * 10); border-radius: calc(var(--r) * 2); background: var(--secondary); color: var(--primary-emphasis); display: flex; align-items: center; justify-content: center; }
+  .field .lines { display: flex; flex-direction: column; flex: 1; gap: 2px; }
+  .field .lines small { font: 400 11px/14px 'Archivo', system-ui, sans-serif; color: var(--muted-foreground); }
+  .field .lines span { font: 400 15px/20px 'Archivo', system-ui, sans-serif; color: var(--foreground); }
+  .field.ph .lines span { color: var(--muted-foreground); }
+  .field.tall { align-items: flex-start; }
+  .field.tall .ico { margin-top: calc(var(--s) * 1); }
   .field.invalid { border-bottom-color: var(--destructive-emphasis); }
+  .field.invalid .ico { background: rgb(from var(--destructive-emphasis) r g b / .16); color: var(--destructive-emphasis); }
   .err { font: 400 12px/16px 'Archivo', system-ui, sans-serif; color: var(--destructive-emphasis); margin-top: 6px; }
   .kv { display: flex; justify-content: space-between; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--border); }
   .progress { display: flex; gap: 6px; }
@@ -334,16 +341,16 @@
   <div class="progress" style="margin-top:8px"><i class="on"></i><i class="on"></i><i></i></div>
   <div class="t-heading" style="margin:calc(var(--s)*4) 0 0">Contact details</div>
   <div class="t-subtitle muted" style="margin-top:4px">We send the confirmation here.</div>
-  <div class="field"><i data-icon="user" data-size="18"></i><span class="stack"><small>Full name</small><span>Lan Nguyen</span></span></div>
-  <div class="field"><i data-icon="mail" data-size="18"></i><span class="stack"><small>Email</small><span>lan.nguyen@example.com</span></span></div>
-  <div class="field"><i data-icon="phone" data-size="18"></i><span class="stack"><small>Phone (optional)</small><span>+84 912 345 678</span></span></div>
-  <div class="field ph" style="align-items:flex-start;min-height:88px;padding-top:10px"><i data-icon="messageSquare" data-size="18"></i><span class="stack"><small>Anything we should know? (optional)</small><span>Dietary needs, arrival flight, celebrations…</span></span></div>
+  <div class="field"><span class="ico"><i data-icon="user" data-size="20"></i></span><span class="lines"><small>Full name</small><span>Lan Nguyen</span></span></div>
+  <div class="field"><span class="ico"><i data-icon="mail" data-size="20"></i></span><span class="lines"><small>Email</small><span>lan.nguyen@example.com</span></span></div>
+  <div class="field"><span class="ico"><i data-icon="phone" data-size="20"></i></span><span class="lines"><small>Phone (optional)</small><span>+84 912 345 678</span></span></div>
+  <div class="field ph tall" style="min-height:calc(var(--s)*24)"><span class="ico"><i data-icon="messageSquare" data-size="20"></i></span><span class="lines"><small>Anything we should know? (optional)</small><span>Dietary needs, arrival flight, celebrations…</span></span></div>
 </div>
 <div class="bottom-bar">
   <div><div class="t-caption muted">3 travellers × $459</div><div><span class="t-title">$1,377</span></div></div>
   <span class="btn primary" style="min-width:150px">Continue</span>
 </div>
-<div class="hi"></div></div><div class="cap"><b>B3 · Đặt tour — bước 2: liên hệ</b><span>Điền sẵn tên và email từ tài khoản đang đăng nhập; khách sửa được vì người đi có thể không phải người đặt.</span><ul><li>Dữ liệu: <code>contactName</code>, <code>contactEmail</code>, <code>contactPhone</code> (tuỳ chọn, 6–30 ký tự), <code>specialRequests</code> (≤ 1000).</li><li>Kiểm ở máy dùng lại <code>@tourism/core</code>: <code>validateProfileName</code>, <code>validateProfilePhone</code>, email theo <code>EmailSchema</code> — đừng viết luật mới.</li><li>Ô nhập là <code>TextField</code> sẵn có của <code>@tourism/mobile-ui</code>; ô yêu cầu riêng là bản nhiều dòng (khoá mới: <code>multiline</code>).</li></ul></div></div><div class="shot"><div class="phone"><div class="sb"><span>9:41</span><span class="icons"><i style="width:17px;height:10px"></i><i style="width:15px;height:10px;border-radius:6px"></i><i style="width:25px;height:11px"></i></span></div>
+<div class="hi"></div></div><div class="cap"><b>B3 · Đặt tour — bước 2: liên hệ</b><span>Điền sẵn tên và email từ tài khoản đang đăng nhập; khách sửa được vì người đi có thể không phải người đặt.</span><ul><li>Dữ liệu: <code>contactName</code>, <code>contactEmail</code>, <code>contactPhone</code> (tuỳ chọn, 6–30 ký tự), <code>specialRequests</code> (≤ 1000).</li><li>Kiểm ở máy dùng lại <code>@tourism/core</code>: <code>validateProfileName</code>, <code>validateProfilePhone</code>, email theo <code>EmailSchema</code> — đừng viết luật mới.</li><li>Ô nhập là <code>TextField</code> của <code>@tourism/mobile-ui</code>, sửa lại theo bản vẽ này: icon nằm trong ô vuông 40dp bo <code>radius.base × 2</code>, nền <code>secondary</code>, icon màu <code>primary-emphasis</code> và canh giữa ô.</li><li>Nhịp dòng: mỗi ô cao tối thiểu <code>spacing(15)</code>, đệm trên dưới <code>spacing(2.5)</code>, cách dòng trên <code>spacing(3)</code> — bốn ô đọc thành một nhịp đều. Ô nhiều dòng (<code>multiline</code>, khoá mới) neo icon lên đầu.</li><li>Ô sai thì ô vuông icon cũng đổi sang tông lỗi, không chỉ gạch chân — người dùng quét mắt theo cột icon nhanh hơn theo đường kẻ.</li><li><b>Ảnh hưởng ngược cụm auth:</b> <code>TextField</code> đang dùng chung với 17 khung của P5b-1. Đổi ở primitive là bốn màn auth đổi theo — đó là ý muốn (một kiểu ô nhập cho cả app), nhưng phải xem lại bốn màn đó sau khi sửa.</li></ul></div></div><div class="shot"><div class="phone"><div class="sb"><span>9:41</span><span class="icons"><i style="width:17px;height:10px"></i><i style="width:15px;height:10px;border-radius:6px"></i><i style="width:25px;height:11px"></i></span></div>
 <div class="compact-head"><span class="icon-btn plain"><i data-icon="back" data-size="22"></i></span><span class="t-label clamp1" style="flex:1">Review and pay</span></div>
 <div class="abs" style="top:calc(var(--inset-top) + 52px + var(--s)*4);left:calc(var(--s)*6);right:calc(var(--s)*6)">
   <div class="t-caption muted">Step 3 of 3</div>
@@ -551,7 +558,7 @@
     <div class="t-heading">Cancel this booking?</div>
     <div class="t-subtitle muted" style="margin-top:calc(var(--s)*2)">You're inside the free-cancellation window, so you get the full amount back to the card you paid with. This can't be undone.</div>
     <div class="note good" style="margin-top:calc(var(--s)*3);justify-content:space-between"><span class="t-label">Refund</span><span class="t-title">$1,377</span></div>
-    <div class="field ph"><i data-icon="messageSquare" data-size="18"></i><span class="stack"><small>Reason (optional)</small><span>Tell us what changed…</span></span></div>
+    <div class="field ph"><span class="ico"><i data-icon="messageSquare" data-size="20"></i></span><span class="lines"><small>Reason (optional)</small><span>Tell us what changed…</span></span></div>
     <span class="btn primary" style="margin-top:calc(var(--s)*5);background:var(--destructive-emphasis);color:var(--background)">Cancel and refund $1,377</span>
     <span class="btn ghost" style="margin-top:calc(var(--s)*2)">Keep booking</span>
   </div>
@@ -602,10 +609,10 @@
     <span class="trip-thumb" style="background-image:url('https://res.cloudinary.com/dbkgeehow/image/upload/c_fill,w_160,h_160,g_auto,q_auto,f_auto/tourism/catalog/tour/central-heritage-4d/hero')"></span>
     <div style="flex:1;min-width:0"><div class="t-label clamp2">Central Heritage: Đà Nẵng–Hội An–Huế 4D3N</div><div class="t-caption muted" style="margin-top:4px">Wed 23 – Sat 26 Sep 2026 · booking closed</div></div>
   </div>
-  <div class="field"><i data-icon="user" data-size="18"></i><span class="stack"><small>Full name</small><span>Lan Nguyen</span></span></div>
-  <div class="field"><i data-icon="mail" data-size="18"></i><span class="stack"><small>Email</small><span>lan.nguyen@example.com</span></span></div>
-  <div class="field ph"><i data-icon="phone" data-size="18"></i><span class="stack"><small>Phone (optional)</small><span>+84…</span></span></div>
-  <div class="field ph" style="align-items:flex-start;min-height:96px;padding-top:10px"><i data-icon="messageSquare" data-size="18"></i><span class="stack"><small>Message</small><span>Tell us about your dates, group size and questions…</span></span></div>
+  <div class="field"><span class="ico"><i data-icon="user" data-size="20"></i></span><span class="lines"><small>Full name</small><span>Lan Nguyen</span></span></div>
+  <div class="field"><span class="ico"><i data-icon="mail" data-size="20"></i></span><span class="lines"><small>Email</small><span>lan.nguyen@example.com</span></span></div>
+  <div class="field ph"><span class="ico"><i data-icon="phone" data-size="20"></i></span><span class="lines"><small>Phone (optional)</small><span>+84…</span></span></div>
+  <div class="field ph tall" style="min-height:calc(var(--s)*26)"><span class="ico"><i data-icon="messageSquare" data-size="20"></i></span><span class="lines"><small>Message</small><span>Tell us about your dates, group size and questions…</span></span></div>
 </div>
 <div class="bottom-bar"><span class="btn primary" style="flex:1">Send enquiry</span></div>
 <div class="hi"></div></div><div class="cap"><b>E1 · Hỏi về chuyến</b><span>Mở từ ba chỗ: đợt đã đóng ở tab Dates, tour không còn đợt nào, và đường "Contact us" ở hộp huỷ quá hạn.</span><ul><li>Dữ liệu: <code>enquiries.create</code> — tên, email, điện thoại (tuỳ chọn), nội dung; kèm slug tour khi mở từ một tour.</li><li>Chữ có sẵn nguyên khối: <code>mobile.enquiry</code> (nhãn ô, nút, câu thành công, 5 câu lỗi kể cả <code>rateLimited</code>).</li><li>Form có honeypot và trần request phía API — app không cần làm gì thêm ngoài việc hiện đúng câu lỗi.</li><li>Điền sẵn tên/email từ tài khoản nếu đã đăng nhập; khách chưa đăng nhập vẫn gửi được.</li></ul></div></div><div class="shot"><div class="phone"><div class="sb"><span>9:41</span><span class="icons"><i style="width:17px;height:10px"></i><i style="width:15px;height:10px;border-radius:6px"></i><i style="width:25px;height:11px"></i></span></div>

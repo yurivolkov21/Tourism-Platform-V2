@@ -29,6 +29,11 @@ Khuôn code mẫu: cụm auth trong `apps/mobile/src/features/auth`.
 - Thêm `expo-web-browser` (mở trang thanh toán) — dependency mới thì theo đúng nếp
   [ADR-0040](../adr/0040-mobile-app-expo.md) §AMEND 1: ghi vào ADR trước.
 - Mở token `success` trong `MOBILE_COLOR_KEYS` (nhãn PAID, hộp đã hoàn tiền).
+- **Sửa `TextField` theo bản vẽ mới:** icon nằm trong ô vuông 40dp (bo `radius.base × 2`,
+  nền `secondary`, icon `primary-emphasis`), ô cao tối thiểu `spacing(15)`, cách dòng
+  `spacing(3)`, và ô sai thì ô vuông icon cũng đổi sang tông lỗi. Thêm bản `multiline`.
+  Primitive này dùng CHUNG với 17 khung auth đã dựng ở P5b-1, nên sửa xong phải xem lại
+  bốn màn auth có ô nhập — đây là ý muốn (một kiểu ô nhập cho cả app), không phải tai nạn.
 
 ## 3. Chia việc đề xuất
 
