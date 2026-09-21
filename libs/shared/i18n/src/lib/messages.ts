@@ -4532,6 +4532,162 @@ export const messages = {
         },
       },
     },
+    /**
+     * Vùng chuyến khởi hành (spec P4e-1 F12) — lịch chạy của MỘT tour, cộng
+     * ba thao tác: thêm · sửa · đóng/mở lại.
+     *
+     * Giọng của cả khối nhớ một điều: hàng ở đây là một chuyến đi mà khách ĐÃ
+     * có thể đặt chỗ. Nên copy không bao giờ nói "delete" (không có đường
+     * xoá), và mỗi câu từ chối phải nói RÕ cái gì đang chặn — admin không sửa
+     * được thứ mình không biết là gì.
+     *
+     * Ba khối `errors` là NGUỒN duy nhất của tập mã phía admin
+     * (`departures-write.ts` derive từ keys), nên tên khoá phải trùng TỪNG CHỮ
+     * với `errors` của contract.
+     */
+    departures: {
+      list: {
+        back: 'Back to tours',
+        heading: (tour: string) => `Departures · ${tour}`,
+        /** Nói ngay luật đắt nhất của màn, trước khi ai đó mở form sửa. */
+        subtitle:
+          'Dates can only change while a departure has no live bookings — every booking keeps its own copy of the travel dates.',
+        filterLabel: 'Filter by status',
+        all: 'All',
+        empty: 'This tour has no departures matching this filter.',
+        columns: {
+          dates: 'Dates',
+          price: 'Price',
+          seats: 'Seats',
+          deadline: 'Book/cancel by',
+          bookings: 'Live bookings',
+          status: 'Status',
+          actions: 'Actions',
+        },
+        /** "4 / 20" — đã đặt trên tổng. Nhãn đầy đủ đi trong `title`. */
+        seats: (booked: number, total: number) => `${booked} / ${total}`,
+        seatsLabel: (booked: number, total: number) => `${booked} of ${total} seats booked`,
+        bookings: (count: number) => (count === 1 ? '1 live booking' : `${count} live bookings`),
+        /** Chuyến không có giá riêng — bảng in giá áp dụng, dòng phụ nói nó từ đâu. */
+        inheritedPrice: 'Tour base price',
+        deadlinePassed: 'Passed',
+      },
+      /** Nhãn enum `DepartureStatus` — `Record` đủ member để thêm trạng thái là đỏ typecheck. */
+      status: {
+        OPEN: 'Open',
+        CLOSED: 'Closed',
+        CANCELLED: 'Cancelled',
+      },
+      form: {
+        startDate: 'Start date',
+        endDate: 'Return date',
+        seats: 'Seats',
+        seatsHint: (max: number) => `Between 1 and ${max}.`,
+        price: 'Price per traveller',
+        priceHint: (base: string) => `Leave empty to use the tour base price (${base}).`,
+        /** Ô ngày bị khoá — câu này nằm NGAY dưới ô, không giấu trong tooltip. */
+        datesLocked: (count: number) =>
+          count === 1
+            ? 'One traveller has already booked this departure, so its dates are fixed. Cancel the departure instead if it cannot run.'
+            : `${count} bookings are already on this departure, so its dates are fixed. Cancel the departure instead if it cannot run.`,
+        /** Kiểm ở client để khỏi đi một vòng server cho lỗi đọc thấy ngay tại ô. */
+        errors: {
+          startRequired: 'Pick a start date.',
+          endRequired: 'Pick a return date.',
+          range: 'The return date cannot be before the start date.',
+          seats: (max: number) => `Seats must be a whole number between 1 and ${max}.`,
+          seatsBelowBooked: (booked: number) =>
+            `This departure already has ${booked} seats booked — the total cannot go below that.`,
+          price: 'Price must be an amount like 129.00, or empty to use the tour base price.',
+        },
+        cancel: 'Cancel',
+      },
+      create: {
+        action: 'Add departure',
+        dialog: {
+          title: 'Add a departure',
+          body: 'It goes on sale straight away — the tour page shows it as soon as the cache refreshes.',
+          submit: 'Add departure',
+          submitting: 'Adding…',
+        },
+        /** Mã CONTRACT của `admin.departures.create`. */
+        errors: {
+          NOT_FOUND: 'This tour no longer exists — the departure was not created.',
+          INVALID_DATE_RANGE: 'The return date is before the start date.',
+          START_IN_PAST: 'A departure cannot start in the past.',
+        },
+        toast: {
+          title: 'Departure added',
+          body: (dates: string) => `${dates} is now on sale.`,
+        },
+      },
+      edit: {
+        action: 'Edit',
+        actionLabel: (dates: string) => `Edit the departure on ${dates}`,
+        dialog: {
+          title: 'Edit this departure',
+          body: 'Price and seats can always change. Dates can only change while nobody has booked.',
+          submit: 'Save changes',
+          submitting: 'Saving…',
+        },
+        /** Mã CONTRACT của `admin.departures.update` — ba mã cuối là trạng-thái-cũ. */
+        errors: {
+          NOT_FOUND: 'This departure no longer exists. The table has been refreshed.',
+          INVALID_DATE_RANGE: 'The return date is before the start date.',
+          START_IN_PAST: 'A departure cannot start in the past.',
+          DEPARTURE_HAS_BOOKINGS:
+            'Someone booked this departure while the form was open, so its dates can no longer change. The table has been refreshed.',
+          SEATS_BELOW_BOOKED:
+            'More seats were booked while the form was open, so this seat total is now too low. The table has been refreshed.',
+          DEPARTURE_CANCELLED:
+            'This departure has been cancelled and can no longer be edited. The table has been refreshed.',
+        },
+        toast: {
+          title: 'Departure updated',
+          body: (dates: string) => `${dates} is saved.`,
+        },
+      },
+      setStatus: {
+        close: 'Close',
+        reopen: 'Reopen',
+        closeLabel: (dates: string) => `Close the departure on ${dates} to new bookings`,
+        reopenLabel: (dates: string) => `Reopen the departure on ${dates}`,
+        rows: {
+          departure: 'Departure',
+          bookings: 'Live bookings',
+          deadline: 'Book/cancel by',
+        },
+        dialog: {
+          closeTitle: 'Close this departure to new bookings?',
+          closeBody: 'It disappears from the tour page, and nobody new can book it.',
+          /** Nói thẳng thứ KHÔNG xảy ra — đó là câu admin cần nhất ở đây. */
+          closeWarning:
+            'Travellers who already booked keep their places and are told nothing. To call the trip off and refund them, cancel the departure instead.',
+          closeSubmit: 'Close departure',
+          closeSubmitting: 'Closing…',
+          reopenTitle: 'Reopen this departure?',
+          reopenBody: 'It goes back on sale on the tour page.',
+          reopenWarning:
+            'Reopening only works while the booking deadline is still ahead — once it passes, the departure stays closed.',
+          reopenSubmit: 'Reopen departure',
+          reopenSubmitting: 'Reopening…',
+        },
+        /** Mã CONTRACT của `admin.departures.setStatus`. */
+        errors: {
+          NOT_FOUND: 'This departure no longer exists. The table has been refreshed.',
+          DEADLINE_PASSED:
+            'The booking deadline has passed, so this departure can no longer reopen. The table has been refreshed.',
+          DEPARTURE_CANCELLED:
+            'This departure has been cancelled and can no longer change status. The table has been refreshed.',
+        },
+        toast: {
+          closedTitle: 'Departure closed',
+          closedBody: (dates: string) => `${dates} is off sale.`,
+          reopenedTitle: 'Departure reopened',
+          reopenedBody: (dates: string) => `${dates} is back on sale.`,
+        },
+      },
+    },
   },
 } as const;
 
