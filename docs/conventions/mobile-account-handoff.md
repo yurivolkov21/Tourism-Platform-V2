@@ -62,8 +62,14 @@ là dòng "Travel stories" ở tab Account (user chốt 21/09), không phải v�
 | G2 | `posts.list` với `search` | Gọi trễ ~300ms sau nhịp gõ cuối; đừng lọc ở máy vì danh sách có phân trang |
 | G3, G4 | `posts.bySlug` | `PostDetailSchema` — `content` là markdown, `relatedTours` dùng lại `TourCardSchema` nên không phải gọi thêm |
 
-Ba trang pháp lý (huỷ/hoàn tiền, quyền riêng tư, điều khoản) mở bằng **trình duyệt ngoài**,
-đúng cách màn Create account đang làm — app không dựng lại trang pháp lý.
+**Năm** trang mở bằng **trình duyệt ngoài**, đúng cách màn Create account đang làm: ba trang
+pháp lý (huỷ/hoàn tiền, quyền riêng tư, điều khoản) cộng **Help & FAQ** và **About Nexora**
+(user chốt 21/09). Đường ghép trên `EXPO_PUBLIC_WEB_URL`: `/faq`, `/about`,
+`/cancellation-policy`, `/privacy`, `/terms` — **đừng ghi cứng tên miền**.
+
+Vì sao không dựng lại trong app: cả năm là nội dung biên tập đổi theo thời gian, dựng lại là
+có hai bản nói hai kiểu và bản trong app luôn là bản cũ hơn. FAQ theo TỪNG TOUR thì khác —
+cái đó là dữ liệu (`faqs[]`) và đã nằm trong màn P3 của cụm P5b-3.
 
 ## 5. Chữ
 
