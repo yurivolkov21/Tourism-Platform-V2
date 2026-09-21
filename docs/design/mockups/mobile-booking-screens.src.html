@@ -236,6 +236,9 @@
   .note.good { background: rgb(from var(--success) r g b / .14); }
   .note.warn { background: rgb(from var(--warning) r g b / .16); }
   .note.info { background: var(--secondary); color: var(--secondary-foreground); }
+  /* Hàng "nhãn — số": hai bên khác cỡ chữ (t-label 20 vs t-title 32), để mặc
+     định stretch thì nhãn dính lên mép trên. Canh giữa theo trục dọc. */
+  .note.split { align-items: center; justify-content: space-between; }
   .trip-card { display: flex; gap: calc(var(--s) * 3); padding: 12px; border: 1px solid var(--border); border-radius: calc(var(--r) * 3); background: var(--card); }
   .trip-thumb { flex: 0 0 72px; height: 72px; border-radius: calc(var(--r) * 2); background-size: cover; background-position: center; background-color: var(--muted); }
   /* Dải nhắc NỔI trên thanh đáy: thanh đáy giữ nguyên chiều cao nên nút không bao
@@ -440,7 +443,7 @@
   <div class="square-icon" style="background:var(--primary);color:var(--primary-foreground)"><i data-icon="checkCircle" data-size="30"></i></div>
   <div class="t-display" style="margin-top:calc(var(--s)*4)">You're going!</div>
   <div class="t-subtitle muted" style="margin-top:calc(var(--s)*1.5)">Confirmation is on its way to lan.nguyen@example.com</div>
-  <div class="note info" style="margin-top:calc(var(--s)*4);align-self:stretch;justify-content:space-between"><span class="t-caption">Booking code</span><span class="t-label">BK-4QP8ZT2M</span></div>
+  <div class="note info split" style="margin-top:calc(var(--s)*4);align-self:stretch"><span class="t-caption">Booking code</span><span class="t-label">BK-4QP8ZT2M</span></div>
   <div style="align-self:stretch;margin-top:calc(var(--s)*2)">
     <div class="kv"><span class="t-subtitle muted">Central Heritage 4D3N</span><span class="t-label">3 travellers</span></div>
     <div class="kv"><span class="t-subtitle muted">Sat 3 – Tue 6 Oct 2026</span><span class="t-label">$1,377</span></div>
@@ -586,7 +589,7 @@
   <div class="abs" style="top:32px;left:calc(var(--s)*6);right:calc(var(--s)*6)">
     <div class="t-heading">Cancel this booking?</div>
     <div class="t-subtitle muted" style="margin-top:calc(var(--s)*2)">You're inside the free-cancellation window, so you get the full amount back to the card you paid with. This can't be undone.</div>
-    <div class="note good" style="margin-top:calc(var(--s)*3);justify-content:space-between"><span class="t-label">Refund</span><span class="t-title">$1,377</span></div>
+    <div class="note good split" style="margin-top:calc(var(--s)*3)"><span class="t-label">Refund</span><span class="t-title">$1,377</span></div>
     <div class="field ph"><span class="ico"><i data-icon="messageSquare" data-size="20"></i></span><span class="lines"><small>Reason (optional)</small><span>Tell us what changed…</span></span></div>
     <span class="btn primary" style="margin-top:calc(var(--s)*5);background:var(--destructive-emphasis);color:var(--background)">Cancel and refund $1,377</span>
     <span class="btn ghost" style="margin-top:calc(var(--s)*2)">Keep booking</span>
@@ -604,7 +607,7 @@
   <div class="abs" style="top:32px;left:calc(var(--s)*6);right:calc(var(--s)*6)">
     <div class="t-heading">The free-cancellation date has passed</div>
     <div class="t-subtitle muted" style="margin-top:calc(var(--s)*2)">It ended on Wed 19 Aug. You can still cancel, but this booking won't be refunded.</div>
-    <div class="note info" style="margin-top:calc(var(--s)*3);justify-content:space-between"><span class="t-label">Refund</span><span class="t-title">$0</span></div>
+    <div class="note info split" style="margin-top:calc(var(--s)*3)"><span class="t-label">Refund</span><span class="t-title">$0</span></div>
     <div class="t-subtitle muted" style="margin-top:calc(var(--s)*3)">Something serious happened? <span class="link">Contact us</span> and we'll look at it.</div>
     <span class="btn primary" style="margin-top:calc(var(--s)*4);background:var(--destructive-emphasis);color:var(--background)">Cancel without refund</span>
     <span class="btn ghost" style="margin-top:calc(var(--s)*2)">Keep booking</span>
