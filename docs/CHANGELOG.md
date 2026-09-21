@@ -8,7 +8,7 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
-## 2026-09-21 — Hoàn tiền để lại vết ở sổ `payment_events` (nhánh `feat/refund-payment-event`, CHƯA merge)
+## 2026-09-21 — Hoàn tiền để lại vết ở sổ `payment_events` (nhánh `feat/refund-payment-event`, ff vào `main` `a1544081` — ĐẨY NHẦM, xem mục Review findings)
 
 Hai khoản hoàn THẬT trên prod (`BK-7WKW9ESB`, `BK-PY7IZMD4`, nghiệm thu 18/09)
 chỉ có event lượt thu, nên `/payment-events` — kính soi tiền của admin — không
@@ -80,12 +80,21 @@ làm đường ghi thứ hai.
   biết, không phải lỗi mới.
 - **Nhánh này mang thêm 5 commit docs/mockup của một session khác**
   (`a176b7b4`…`8dafd4ee`, cụm mobile P5b và mục lục thư mục mockup) commit chồng
-  lên trong lúc thi công. Không phải của đợt này — người merge cần biết trước
-  khi rebase lên `main`.
-- `main` đang **ahead 2 so với origin** từ trước đợt này (hai commit docs mobile
-  `47196fec`, `a6c9533b` chưa push).
+  lên trong lúc thi công. Không phải của đợt này. Cả 5 nay đã ở `main`.
 
-**Review findings:** chưa có vòng review riêng — nhánh chờ user review.
+**Review findings:** chưa có vòng review riêng. **Nhánh lên `main` do ĐẨY NHẦM
+21/09**: session mockup được user duyệt đẩy MỘT commit docs (`8dafd4ee`) nhưng
+chạy `git push origin HEAD:main` mà không kiểm lại HEAD — HEAD đã dịch sang
+`a1544081` vì session này commit chồng lên trong lúc đó, nên ba commit của đợt
+này đi theo. User chốt 21/09 **giữ trên `main` và review tại chỗ** thay vì
+revert: không có migration nào đi kèm (0 file trong `prisma/migrations/`) nên
+không có thay đổi DB nào được deploy, và revert thì Render/Vercel phải dựng
+thêm một lượt nữa. Việc còn lại: chạy vòng review, sửa gì thì vá bằng commit
+MỚI trên `main`.
+
+Bài học cho lần sau: nhánh dùng chung nhiều session thì `git push HEAD:main`
+là cái bẫy — phải `git log --oneline origin/main..HEAD` ngay trước khi đẩy,
+hoặc đẩy đích danh SHA (`git push origin <sha>:main`).
 
 Tests after: cổng đầy đủ xanh (28/28 task, int 6/6, với API nền sống). Int 497 ở
 39 file (thêm 2: đường admin và đường khách tự huỷ). Vitest 3657, trong đó api
