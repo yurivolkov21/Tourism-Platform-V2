@@ -1,5 +1,9 @@
 # Kế hoạch: wizard 4 bước cho trang đặt chỗ + tách route hỏi báo giá
 
+> **ĐÃ ĐÓNG.** Kế hoạch đã thi công xong; kết quả thật nằm ở
+> [CHANGELOG](../CHANGELOG.md), tra từ ngày 2026-08-19. Giữ làm bản ghi lịch sử —
+> đừng sửa cho khớp mã nguồn hôm nay.
+
 > **For agentic workers:** dùng `superpowers:executing-plans` để thi công từng
 > task. Các bước dùng checkbox (`- [ ]`) để theo dõi. **KHÔNG dispatch subagent**
 > — user chốt 13/08 là làm inline.

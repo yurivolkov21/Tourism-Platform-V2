@@ -1,5 +1,9 @@
 # Bản đồ thật `/contact` + gom một nguồn sự thật liên hệ — Implementation Plan
 
+> **ĐÃ ĐÓNG.** Kế hoạch đã thi công xong; kết quả thật nằm ở
+> [CHANGELOG](../CHANGELOG.md), tra từ ngày 2026-08-06. Giữ làm bản ghi lịch sử —
+> đừng sửa cho khớp mã nguồn hôm nay.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Thay ô placeholder bản đồ trên `/contact` bằng bản đồ MapLibre thật 2 marker (Hà Nội + Hồ Chí Minh), đồng thời gom ba nguồn thông tin liên hệ đang chỏi nhau về một nguồn duy nhất.

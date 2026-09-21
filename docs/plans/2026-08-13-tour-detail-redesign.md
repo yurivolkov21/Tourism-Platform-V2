@@ -1,5 +1,9 @@
 # Kế hoạch: trùng tu trang Tour Details
 
+> **ĐÃ ĐÓNG.** Kế hoạch đã thi công xong; kết quả thật nằm ở
+> [CHANGELOG](../CHANGELOG.md), tra từ ngày 2026-08-13. Giữ làm bản ghi lịch sử —
+> đừng sửa cho khớp mã nguồn hôm nay.
+
 > ⚠️ **PLAN NÀY ĐÃ KHAI TỬ (13/08/2026).** Nó dựng theo bản spec cũ vốn ghi sai
 > số đo (1104 thay vì 1056) và ghi thêm một khối wireframe không có (dải khởi
 > hành). Bản thi công theo nó đã bị **xoá trọn phần thân** để dựng lại bám thẳng

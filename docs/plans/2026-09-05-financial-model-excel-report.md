@@ -1,5 +1,9 @@
 # Plan — Mô hình tài chính cho báo cáo tháng, và xuất Excel
 
+> **ĐÃ ĐÓNG.** Kế hoạch đã thi công xong; kết quả thật nằm ở
+> [CHANGELOG](../CHANGELOG.md), tra từ ngày 2026-09-05. Giữ làm bản ghi lịch sử —
+> đừng sửa cho khớp mã nguồn hôm nay.
+
 > Thi công **inline trong session này**, KHÔNG subagent (user chốt 13/08).
 > Nhánh `fix/p4c-backend-logic`. **KHÔNG merge, KHÔNG push** — site đang chạy
 > production.

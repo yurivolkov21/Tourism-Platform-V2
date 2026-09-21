@@ -1,5 +1,9 @@
 # Prompt session THI CÔNG — P5a template mobile (08/09/2026)
 
+> **ĐÃ ĐÓNG.** Kế hoạch đã thi công xong; kết quả thật nằm ở
+> [CHANGELOG](../CHANGELOG.md), tra từ ngày 2026-09-08. Giữ làm bản ghi lịch sử —
+> đừng sửa cho khớp mã nguồn hôm nay.
+
 Mở session Claude Code mới trong `~/projects/tourism-v2`, dán **nguyên khối**
 bên dưới là chạy. Đây là prompt do session gốc sinh ra sau vòng hỏi–đáp ngày
 08/09; văn bản nguồn của nó là [ADR-0040](../adr/0040-mobile-app-expo.md) và

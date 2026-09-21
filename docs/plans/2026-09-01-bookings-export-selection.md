@@ -1,5 +1,9 @@
 # Export theo lựa chọn cho `/bookings` — kế hoạch thi công
 
+> **ĐÃ ĐÓNG.** Kế hoạch đã thi công xong; kết quả thật nằm ở
+> [CHANGELOG](../CHANGELOG.md), tra từ ngày 2026-09-01. Giữ làm bản ghi lịch sử —
+> đừng sửa cho khớp mã nguồn hôm nay.
+
 > **Cho người thi công:** spec nguồn là
 > [2026-09-01-bookings-export-selection-design](../specs/2026-09-01-bookings-export-selection-design.md).
 > Các bước dùng checkbox (`- [ ]`) để theo dõi.

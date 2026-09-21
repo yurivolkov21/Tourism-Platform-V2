@@ -1,5 +1,9 @@
 # Hoàn tiền một hạn chót — Implementation Plan
 
+> **GẦN XONG.** Bước 1–7 đã thi công và deploy; còn Bước 8 (lượt seed
+> 2, khoảng 03/11) — xem [open-items.md](../open-items.md). Kết quả từng bước ở
+> [CHANGELOG](../CHANGELOG.md) từ 18/09/2026.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Thay bảng bậc 100/50/25/0, ân hạn 24 giờ và luồng duyệt huỷ bằng một hạn chót mỗi chuyến (N theo độ dài chuyến): khách tự huỷ ngay, ngừng nhận đặt sau hạn chót, mọi phép so ngày theo giờ Việt Nam; kèm giao diện, báo cáo, seed và tài liệu.
@@ -15546,7 +15550,7 @@ Sau:
 
 ```markdown
 - **Trạng thái:** Accepted (2026-09-04) · **thay một phần bởi
-  [ADR-0041](0041-single-cancellation-deadline.md) (15/09)** — luồng
+  [ADR-0041](../adr/0041-single-cancellation-deadline.md) (15/09)** — luồng
   request → approve/deny, stepper duyệt và chốt chặn `CANCELLATION_OPEN` đã gỡ;
   khách tự huỷ và hệ thống xử lý ngay. GIỮ NGUYÊN và được lõi huỷ mới dùng lại:
   gọi cổng thanh toán TRONG advisory lock rồi một CTE ghi sau, hoàn 0 vẫn huỷ và
@@ -15564,7 +15568,7 @@ Sau:
 
 ```markdown
 - **Trạng thái:** Accepted (2026-09-04) · **thay một phần bởi
-  [ADR-0041](0041-single-cancellation-deadline.md) (15/09)** — bảng bậc
+  [ADR-0041](../adr/0041-single-cancellation-deadline.md) (15/09)** — bảng bậc
   100/50/25/0 (§2), ân hạn 24 giờ (§3c), badge `freeCancellationDays` nâng
   ngưỡng (§3) và đường vượt bậc `OFF_POLICY_NOTE_REQUIRED` (§5, §5b) đã gỡ khỏi
   code. GIỮ: luật "MỘT nguồn sinh cả văn bản lẫn phép tính" (§6) — nay là bộ hàm
@@ -15577,7 +15581,7 @@ Sau:
 Chèn vào `docs/adr/0009-refund-correctness.md` NGAY TRƯỚC dòng `## Đã cân nhắc và loại` (file này xếp AMEND trước mục đó, khác ADR-0030):
 
 ```markdown
-## AMEND 3 15/09 ([ADR-0041](0041-single-cancellation-deadline.md)) — thước ngày đổi từ UTC sang giờ Việt Nam
+## AMEND 3 15/09 ([ADR-0041](../adr/0041-single-cancellation-deadline.md)) — thước ngày đổi từ UTC sang giờ Việt Nam
 
 AMEND 2 chốt "MỘT thước ngày UTC" cho mọi gate *chuyến đã đi chưa*, và ghi nhận
 lề bảy giờ: `start_date` là ngày lịch của điểm khởi hành (Việt Nam, UTC+7), nên
@@ -15612,7 +15616,7 @@ trạng thái chuyến của AMEND 1.
 Chèn vào CUỐI `docs/adr/0023-tour-merchandising-fields.md` (sau mục `## Hệ quả`; file này chưa có AMEND nào):
 
 ```markdown
-## AMEND 1 15/09 ([ADR-0041](0041-single-cancellation-deadline.md)) — cột `free_cancellation_days` bỏ
+## AMEND 1 15/09 ([ADR-0041](../adr/0041-single-cancellation-deadline.md)) — cột `free_cancellation_days` bỏ
 
 ADR này thêm năm cột; cột thứ năm, `freeCancellationDays`, sinh ra để tách MỘT
 con số khỏi văn xuôi `TourPolicy` cho thẻ giữa trong cụm ba thẻ chính sách ở tab
@@ -15644,7 +15648,7 @@ khách đang xem. Bốn cột còn lại của ADR này (`factDurationNote`,
 Chèn vào `docs/adr/0033-financial-model.md` NGAY TRƯỚC dòng `## Hình dạng câu trả lời` (ngay sau khối `## AMEND 1 05/09 …`, giữ đúng chỗ mà file này đặt AMEND):
 
 ```markdown
-## AMEND 2 15/09 ([ADR-0041](0041-single-cancellation-deadline.md)) — ba tập khác nhau, gọi tên từng tập
+## AMEND 2 15/09 ([ADR-0041](../adr/0041-single-cancellation-deadline.md)) — ba tập khác nhau, gọi tên từng tập
 
 §1 dựng cách đọc P&L trên "tập booking được ghi nhận trong kỳ"; §4 tách giá vốn
 cố định khỏi giá vốn biến đổi; §6 đặt phí cổng trên "đúng tập booking được ghi
@@ -15835,37 +15839,37 @@ cả ba, vì hai lớp đầu không bảo vệ được dữ liệu sửa tay.
 
 - [ ] **Step 15: `docs/README.md` — bốn dòng**
 
-(a) Mục "ADR — quyết định kiến trúc", dòng `| [0041](adr/0041-single-cancellation-deadline.md) | …` — đổi cụm mở đầu. Trước:
+(a) Mục "ADR — quyết định kiến trúc", dòng `| [0041](../adr/0041-single-cancellation-deadline.md) | …` — đổi cụm mở đầu. Trước:
 
 ```markdown
-| [0041](adr/0041-single-cancellation-deadline.md) | **Một hạn chót mỗi chuyến (15/09, CHƯA thi hành).**
+| [0041](../adr/0041-single-cancellation-deadline.md) | **Một hạn chót mỗi chuyến (15/09, CHƯA thi hành).**
 ```
 
 Sau:
 
 ```markdown
-| [0041](adr/0041-single-cancellation-deadline.md) | **Một hạn chót mỗi chuyến (15/09).**
+| [0041](../adr/0041-single-cancellation-deadline.md) | **Một hạn chót mỗi chuyến (15/09).**
 ```
 
-Và ở CUỐI cùng ô đó, ngay trước ` · [spec](specs/2026-09-15-refund-deadline-design.md)`, chèn (câu này nối vào sau cụm "sửa định nghĩa doanh thu của 0033" có sẵn):
+Và ở CUỐI cùng ô đó, ngay trước ` · [spec](../specs/2026-09-15-refund-deadline-design.md)`, chèn (câu này nối vào sau cụm "sửa định nghĩa doanh thu của 0033" có sẵn):
 
 ```markdown
-. Thi hành trên nhánh `feat/refund-deadline` theo [plan 15 task](plans/2026-09-15-refund-deadline.md); ADR-0023 cũng có AMEND (bỏ `free_cancellation_days`)
+. Thi hành trên nhánh `feat/refund-deadline` theo [plan 15 task](2026-09-15-refund-deadline.md); ADR-0023 cũng có AMEND (bỏ `free_cancellation_days`)
 ```
 
 (b) Mục "Specs — theo phase", dòng `| **Hoàn tiền một hạn chót** | …` — thay ô trạng thái. Trước:
 
 ```markdown
-| 📝 **spec + ADR duyệt 15/09** · [plan 15 task](plans/2026-09-15-refund-deadline.md) viết xong 16/09 — chờ user duyệt plan, CHƯA thi công |
+| 📝 **spec + ADR duyệt 15/09** · [plan 15 task](2026-09-15-refund-deadline.md) viết xong 16/09 — chờ user duyệt plan, CHƯA thi công |
 ```
 
 Sau:
 
 ```markdown
-| ✅ **spec + ADR duyệt 15/09** · [plan 15 task](plans/2026-09-15-refund-deadline.md) — thi công trên nhánh `feat/refund-deadline`, **CHƯA merge**; bước triển khai (M1 lên Supabase, tắt/bật tự deploy Vercel, seed lại prod, nhánh M2) ở Phụ lục B của plan, session gốc làm sau review |
+| ✅ **spec + ADR duyệt 15/09** · [plan 15 task](2026-09-15-refund-deadline.md) — thi công trên nhánh `feat/refund-deadline`, **CHƯA merge**; bước triển khai (M1 lên Supabase, tắt/bật tự deploy Vercel, seed lại prod, nhánh M2) ở Phụ lục B của plan, session gốc làm sau review |
 ```
 
-(c) Mục "Plans", dòng `| [Hoàn tiền một hạn chót](plans/2026-09-15-refund-deadline.md) | …` đã có sẵn (thêm lúc commit plan 16/09) — chỉ thay ô trạng thái cuối dòng. Trước:
+(c) Mục "Plans", dòng `| [Hoàn tiền một hạn chót](2026-09-15-refund-deadline.md) | …` đã có sẵn (thêm lúc commit plan 16/09) — chỉ thay ô trạng thái cuối dòng. Trước:
 
 ```markdown
 | 📝 **viết xong 16/09** — chờ user duyệt, CHƯA thi công |

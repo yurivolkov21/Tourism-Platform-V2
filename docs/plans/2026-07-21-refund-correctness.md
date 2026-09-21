@@ -1,5 +1,9 @@
 # Refund correctness (BK-R1 / PAY-R1 / TOCTOU) — Implementation Plan
 
+> **ĐÃ ĐÓNG.** Kế hoạch đã thi công xong; kết quả thật nằm ở
+> [CHANGELOG](../CHANGELOG.md), tra từ ngày 2026-07-21. Giữ làm bản ghi lịch sử —
+> đừng sửa cho khớp mã nguồn hôm nay.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: superpowers:subagent-driven-development hoặc
 > superpowers:executing-plans, task-by-task. Steps dùng checkbox `- [ ]`.
 

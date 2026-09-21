@@ -1,5 +1,8 @@
 # Prompt sẵn cho các phase còn lại (từ 08/09/2026)
 
+> **CÒN DÙNG.** Prompt cho các phase chưa mở (P5b-2…5, P6, P7) — đọc
+> khi bắt đầu một phase mới.
+
 Mỗi tính năng còn lại của roadmap có **một prompt "session gốc"** ở dưới — mở
 session Claude Code mới trong `~/projects/tourism-v2`, dán nguyên khối là chạy.
 Session gốc sẽ hỏi lại vài điểm, viết spec + ADR, rồi **tự sinh prompt cho

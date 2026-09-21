@@ -1,5 +1,9 @@
 # P3a contract closeout (C1 · R1 · R2) — Implementation Plan
 
+> **ĐÃ ĐÓNG.** Kế hoạch đã thi công xong; kết quả thật nằm ở
+> [CHANGELOG](../CHANGELOG.md), tra từ ngày 2026-07-21. Giữ làm bản ghi lịch sử —
+> đừng sửa cho khớp mã nguồn hôm nay.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: superpowers:executing-plans, task-by-task. Steps dùng checkbox `- [ ]`.
 
 **Goal:** Đóng 3 gap hình dạng contract customer/admin API ([spec](../specs/2026-07-21-p3a-contract-closeout-design.md))

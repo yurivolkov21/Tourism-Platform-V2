@@ -1,5 +1,9 @@
 # P3a-B — Wishlist · Enquiry · Newsletter Implementation Plan
 
+> **ĐÃ ĐÓNG.** Kế hoạch đã thi công xong; kết quả thật nằm ở
+> [CHANGELOG](../CHANGELOG.md), tra từ ngày 2026-07-19. Giữ làm bản ghi lịch sử —
+> đừng sửa cho khớp mã nguồn hôm nay.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Xây 3 module ghi phía khách (wishlist, enquiry, newsletter) cùng hạ tầng rate limiting mà v2 đang thiếu so với Nexora.

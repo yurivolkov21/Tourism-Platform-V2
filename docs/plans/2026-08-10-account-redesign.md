@@ -1,5 +1,9 @@
 # Redesign khu account — Implementation Plan
 
+> **ĐÃ ĐÓNG.** Kế hoạch đã thi công xong; kết quả thật nằm ở
+> [CHANGELOG](../CHANGELOG.md), tra từ ngày 2026-08-10. Giữ làm bản ghi lịch sử —
+> đừng sửa cho khớp mã nguồn hôm nay.
+
 **Goal:** Thay lớp trình bày của 5 màn `/account/*` theo mockup đã chốt, đồng
 thời đóng ba khoản nợ cùng lúc: A1 (thiết kế lại), A2 (ô lý do huỷ), A3 (tương
 phản dark). Giữ NGUYÊN toàn bộ tầng gọi API và hành động đã wire.

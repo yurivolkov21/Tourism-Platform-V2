@@ -1,5 +1,9 @@
 # Kế hoạch: receipt thay tấm vé ở `/checkout/success`
 
+> **ĐÃ ĐÓNG.** Kế hoạch đã thi công xong; kết quả thật nằm ở
+> [CHANGELOG](../CHANGELOG.md), tra từ ngày 2026-08-19. Giữ làm bản ghi lịch sử —
+> đừng sửa cho khớp mã nguồn hôm nay.
+
 > **For agentic workers:** dùng `superpowers:executing-plans`. **KHÔNG dispatch
 > subagent** — user chốt 13/08 là làm inline.
 

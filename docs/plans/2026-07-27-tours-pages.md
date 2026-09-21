@@ -1,5 +1,9 @@
 # Cụm trang Tours — kế hoạch triển khai
 
+> **ĐÃ ĐÓNG.** Kế hoạch đã thi công xong; kết quả thật nằm ở
+> [CHANGELOG](../CHANGELOG.md), tra từ ngày 2026-07-27. Giữ làm bản ghi lịch sử —
+> đừng sửa cho khớp mã nguồn hôm nay.
+
 > **Cho agent thực thi:** SUB-SKILL BẮT BUỘC — dùng `superpowers:subagent-driven-development`
 > (khuyến nghị) hoặc `superpowers:executing-plans` để chạy plan này theo từng task.
 > Các bước dùng checkbox (`- [ ]`) để theo dõi.

@@ -1,5 +1,9 @@
 # Vòng đời PENDING (BK-1 · BK-2 · PAY-1 · WRK-1) — Implementation Plan
 
+> **ĐÃ ĐÓNG.** Kế hoạch đã thi công xong; kết quả thật nằm ở
+> [CHANGELOG](../CHANGELOG.md), tra từ ngày 2026-07-22. Giữ làm bản ghi lịch sử —
+> đừng sửa cho khớp mã nguồn hôm nay.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: superpowers:executing-plans, task-by-task. Steps dùng checkbox `- [ ]`.
 
 **Goal:** Đưa booking PENDING mồ côi về terminal theo [ADR-0006](../adr/0006-pending-lifecycle.md) (Accepted) —

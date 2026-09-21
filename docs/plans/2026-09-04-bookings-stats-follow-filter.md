@@ -1,5 +1,9 @@
 # Plan — Stat card `/bookings` ăn theo bộ lọc ngày (+ 3 mục kit còn treo)
 
+> **ĐÃ ĐÓNG.** Kế hoạch đã thi công xong; kết quả thật nằm ở
+> [CHANGELOG](../CHANGELOG.md), tra từ ngày 2026-09-04. Giữ làm bản ghi lịch sử —
+> đừng sửa cho khớp mã nguồn hôm nay.
+
 > Thi công **inline trong session này**, KHÔNG subagent (user chốt 13/08).
 > Nhánh `fix/p4c-backend-logic`. KHÔNG merge, KHÔNG push.
 

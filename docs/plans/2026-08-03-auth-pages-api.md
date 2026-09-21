@@ -1,5 +1,9 @@
 # Plan — Bước 7: 6 trang auth + session Better Auth ở web
 
+> **ĐÃ ĐÓNG.** Kế hoạch đã thi công xong; kết quả thật nằm ở
+> [CHANGELOG](../CHANGELOG.md), tra từ ngày 2026-08-03. Giữ làm bản ghi lịch sử —
+> đừng sửa cho khớp mã nguồn hôm nay.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: dùng
 > `superpowers:subagent-driven-development` (khuyến nghị) hoặc
 > `superpowers:executing-plans`. Step dùng checkbox (`- [ ]`).

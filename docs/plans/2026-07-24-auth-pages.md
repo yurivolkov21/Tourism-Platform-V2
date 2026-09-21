@@ -1,5 +1,9 @@
 # Kế hoạch — Cụm 6 trang Auth (static-first)
 
+> **ĐÃ ĐÓNG.** Kế hoạch đã thi công xong; kết quả thật nằm ở
+> [CHANGELOG](../CHANGELOG.md), tra từ ngày 2026-07-24. Giữ làm bản ghi lịch sử —
+> đừng sửa cho khớp mã nguồn hôm nay.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: superpowers:executing-plans (inline,
 > có chốt review với user sau Task 2 — Login là MẪU layout, duyệt rồi mới nhân rộng).
 

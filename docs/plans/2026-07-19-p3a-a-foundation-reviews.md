@@ -1,5 +1,9 @@
 # P3a-A — Nền chung + Reviews · Kế hoạch triển khai
 
+> **ĐÃ ĐÓNG.** Kế hoạch đã thi công xong; kết quả thật nằm ở
+> [CHANGELOG](../CHANGELOG.md), tra từ ngày 2026-07-19. Giữ làm bản ghi lịch sử —
+> đừng sửa cho khớp mã nguồn hôm nay.
+
 > **Cho agent thực thi:** BẮT BUỘC dùng sub-skill `superpowers:subagent-driven-development`
 > (khuyến nghị) hoặc `superpowers:executing-plans` để làm từng task. Các bước
 > dùng checkbox `- [ ]` để theo dõi.
