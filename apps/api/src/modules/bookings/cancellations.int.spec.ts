@@ -325,6 +325,36 @@ describe('cancellations integration (W4, D1-B append-only)', () => {
       });
     });
 
+    it('ADR-0043: khách tự huỷ để lại đúng một row payment.refunded, mốc bằng dòng sổ', async () => {
+      const alice = await signUpUser('cancel-event@example.com', 'Alice');
+      const booking = await createPaidBooking(alice);
+
+      const res = await postCancel(alice, booking.code, { reason: 'Change of plans' });
+      expect(res.statusCode).toBe(200);
+
+      const refund = await prisma.refund.findFirstOrThrow({ where: { bookingId: booking.id } });
+      const events = await prisma.paymentEvent.findMany({
+        where: { bookingId: booking.id, type: 'payment.refunded' },
+      });
+      expect(events).toHaveLength(1);
+      expect(events[0]).toMatchObject({
+        eventId: refund.providerRefundId,
+        currency: 'USD',
+        bookingId: booking.id,
+      });
+      expect(events[0]?.amount?.toFixed(2)).toBe('117.00');
+      // Đường huỷ ghi dòng sổ bằng CTE raw SQL — mốc phải là `created_at` mà
+      // câu lệnh đó trả về, không phải đồng hồ của tiến trình Node.
+      expect(events[0]?.processedAt).toEqual(refund.createdAt);
+      expect(events[0]?.receivedAt).toEqual(refund.createdAt);
+      expect(events[0]?.payload).toMatchObject({
+        source: 'refund-core',
+        cause: 'cancel',
+        refundId: refund.id,
+        amount: '117.00',
+      });
+    });
+
     it('W1 + ADR-0041: lý do toàn khoảng trắng → 400, không ghi gì; vắng lý do → reason NULL', async () => {
       const alice = await signUpUser('no-reason@example.com', 'Alice');
       const booking = await createPaidBooking(alice);
@@ -364,6 +394,12 @@ describe('cancellations integration (W4, D1-B append-only)', () => {
       // Không đồng nào phải chuyển: không gọi cổng, sổ không có dòng 0.00.
       expect(fake.refunds).toHaveLength(0);
       expect(await prisma.refund.count({ where: { bookingId: booking.id } })).toBe(0);
+      // ADR-0043 §3: row event đi THEO dòng sổ — không dòng sổ thì không row.
+      expect(
+        await prisma.paymentEvent.count({
+          where: { bookingId: booking.id, type: 'payment.refunded' },
+        }),
+      ).toBe(0);
       // Vẫn MỘT yêu cầu REFUNDED (nghĩa "đã giải quyết"), vẫn nhả ghế.
       const request = await prisma.cancellationRequest.findFirstOrThrow({
         where: { bookingId: booking.id },

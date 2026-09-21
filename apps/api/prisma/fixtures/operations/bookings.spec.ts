@@ -1,4 +1,9 @@
-import { cancellationDeadline, isWithinDeadline, refundOnCancel } from '@tourism/contract';
+import {
+  cancellationDeadline,
+  isWithinDeadline,
+  PAYMENT_EVENT_TYPES,
+  refundOnCancel,
+} from '@tourism/contract';
 import { describe, expect, it } from 'vitest';
 import { Prisma } from '../../../src/generated/prisma/client.js';
 import { effectiveUnitPrice, totalAmount } from '../../../src/modules/bookings/pricing.js';
@@ -151,6 +156,30 @@ describe.each(MOC)('tầng vận hành với H = %s', (giaTri) => {
       expect(hoan, r.id).toHaveLength(1);
       expect(hoan[0]?.amount).toBe(r.amount);
       expect(hoan[0]?.processedAt).toBe(r.createdAt);
+    }
+  });
+
+  it('ADR-0043: sự kiện seed dùng đúng từ vựng type của app thật, và dòng hoàn khớp id cổng', () => {
+    // Trước ADR-0043 seed ghi type THÔ của provider ("checkout.session.completed",
+    // "charge.refunded") trong khi `beginEvent` ghi type TRUNG LẬP — nên dữ liệu
+    // demo nằm ngoài bộ lọc type của admin và bất biến nghiệm thu không thể đúng
+    // với dữ liệu thật. Đây là chốt chặn để nó không trôi lại.
+    for (const e of kq.paymentEvents) {
+      expect(PAYMENT_EVENT_TYPES, e.id).toContain(e.type);
+    }
+    for (const b of daTra) {
+      const thu = kq.paymentEvents.filter(
+        (e) => e.bookingId === b.id && e.payload.kind === 'capture',
+      );
+      expect(thu[0]?.type, b.id).toBe('payment.completed');
+    }
+    for (const r of kq.refunds) {
+      const hoan = kq.paymentEvents.find(
+        (e) => e.bookingId === r.bookingId && e.payload.kind === 'refund',
+      );
+      expect(hoan?.type, r.id).toBe('payment.refunded');
+      // `eventId` mang id refund của CỔNG, y như app thật ghi.
+      expect(hoan?.eventId, r.id).toBe(r.providerRefundId);
     }
   });
 

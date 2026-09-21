@@ -8,6 +8,7 @@ import { prisma } from '../../auth/auth.config.js';
 import { Prisma } from '../../generated/prisma/client.js';
 import { calendarDate } from '../../lib/calendar-date.js';
 import { MediaService } from '../media/media.service.js';
+import { buildRefundEventRow } from '../payments/refund-event.js';
 import { cancellationBlocker, refundOnCancelForBooking } from './booking-cancellation.js';
 import { bookingTourInclude, resolveTourCover, toBooking } from './bookings.service.js';
 import { withBookingRefundLock } from './refund-lock.js';
@@ -232,7 +233,9 @@ export class CancellationsService {
         )
       : null;
 
-    const written = await tx.$queryRaw<{ id: string; released: bigint }[]>(Prisma.sql`
+    const written = await tx.$queryRaw<
+      { id: string; released: bigint; refundId: string | null; refundCreatedAt: Date | null }[]
+    >(Prisma.sql`
       WITH cancel AS (
         UPDATE bookings b
         SET status = 'CANCELLED'::"BookingStatus",
@@ -258,7 +261,7 @@ export class CancellationsService {
                ${providerRefundId}::text, ${booking.providerPaymentId}::text, NULL
         FROM cancel c
         WHERE ${amountText}::numeric > 0
-        RETURNING id
+        RETURNING id, created_at
       ),
       seat_release AS (
         UPDATE tour_departures d
@@ -287,7 +290,13 @@ export class CancellationsService {
         FROM cancel c
         ON CONFLICT (dedupe_key) DO NOTHING
       )
-      SELECT c.id, (SELECT count(*) FROM seat_release) AS released FROM cancel c
+      SELECT c.id,
+             (SELECT count(*) FROM seat_release) AS released,
+             -- ADR-0043 §3: mốc của dòng sổ là đồng hồ TRANSACTION, không phải
+             -- đồng hồ tiến trình Node. Null khi hoàn 0 (không có dòng sổ).
+             (SELECT id FROM refund_insert) AS "refundId",
+             (SELECT created_at FROM refund_insert) AS "refundCreatedAt"
+      FROM cancel c
     `);
 
     const flip = written[0];
@@ -300,6 +309,23 @@ export class CancellationsService {
           `${providerRefundId ?? 'none'} (${amountText} ${booking.currency}) NOT ledgered`,
       );
       throw new BookingNotCancellableError('the booking changed state while cancelling');
+    }
+    // ADR-0043 §3: vết ở sổ sự kiện tiền, vẫn trong tx của khoá. Đi THEO dòng
+    // sổ — huỷ quá hạn hoàn 0 không ghi dòng nào thì cũng không có row này.
+    if (providerRefundId && flip.refundId && flip.refundCreatedAt) {
+      await tx.paymentEvent.create({
+        data: buildRefundEventRow({
+          provider: booking.paymentProvider,
+          bookingId: booking.id,
+          refundId: flip.refundId,
+          providerRefundId,
+          providerPaymentId: booking.providerPaymentId as string,
+          amount,
+          currency: booking.currency,
+          cause: 'cancel',
+          at: flip.refundCreatedAt,
+        }),
+      });
     }
     if (Number(flip.released) === 0) {
       this.logger.error(

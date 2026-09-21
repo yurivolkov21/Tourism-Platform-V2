@@ -333,6 +333,13 @@ describe('payments integration (webhooks + PAID atomic claim)', () => {
     // KHÔNG ghi sổ `refunds`: tiền này NGOÀI total của booking — ghi vào là
     // phá trigger SUM ≤ total và chặn refund hợp lệ về sau.
     expect(await prisma.refund.count({ where: { bookingId: booking.id } })).toBe(0);
+    // ADR-0043 §4: hoàn NGOÀI sổ cũng không sinh row `payment.refunded` — luật
+    // là "một dòng sổ ↔ đúng một row hoàn", vết của nó là `note` bên dưới.
+    expect(
+      await prisma.paymentEvent.count({
+        where: { bookingId: booking.id, type: 'payment.refunded' },
+      }),
+    ).toBe(0);
     const row = await prisma.booking.findUniqueOrThrow({ where: { id: booking.id } });
     expect(row.status).toBe(BookingStatus.PAID);
     expect(row.providerPaymentId).toBe('pay_dup_A'); // capture gốc giữ nguyên
@@ -422,6 +429,25 @@ describe('payments integration (webhooks + PAID atomic claim)', () => {
     expect(outbox[0]).toMatchObject({
       type: EmailType.BOOKING_REFUNDED,
       dedupeKey: `overbook-refund:${booking.id}`,
+    });
+
+    // ADR-0043 §3: auto-refund cũng để lại vết ở sổ sự kiện tiền — và nó nằm
+    // CẠNH row capture của chính webhook vừa xử lý, không đè lên nó.
+    const refundEvents = await prisma.paymentEvent.findMany({
+      where: { bookingId: booking.id, type: 'payment.refunded' },
+    });
+    expect(refundEvents).toHaveLength(1);
+    expect(refundEvents[0]).toMatchObject({
+      eventId: refunds[0]?.providerRefundId,
+      currency: 'USD',
+      bookingId: booking.id,
+    });
+    expect(refundEvents[0]?.amount?.toFixed(2)).toBe('234.00');
+    expect(refundEvents[0]?.processedAt).toEqual(refunds[0]?.createdAt);
+    expect(refundEvents[0]?.payload).toMatchObject({
+      source: 'refund-core',
+      cause: 'auto',
+      refundId: refunds[0]?.id,
     });
   });
 

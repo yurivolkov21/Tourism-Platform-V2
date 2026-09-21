@@ -5,6 +5,7 @@ import { Prisma } from '../../generated/prisma/client.js';
 import { BookingStatus, EmailType, type PaymentProvider } from '../../generated/prisma/enums.js';
 import { MediaService } from '../media/media.service.js';
 import { PAYMENT_GATEWAYS, type PaymentGateway, resolveGateway } from '../payments/gateway.js';
+import { buildRefundEventRow } from '../payments/refund-event.js';
 import { bookingTourInclude, resolveTourCover, toBooking } from './bookings.service.js';
 import { withBookingRefundLock } from './refund-lock.js';
 import {
@@ -179,6 +180,22 @@ export class RefundsService {
           adminId: adminUserId,
           reason: input.reason,
         },
+      });
+      // ADR-0043 §3: dòng sổ đi đâu, vết ở sổ sự kiện tiền đi đó — cùng tx,
+      // nên `/payment-events` không bao giờ thấy nửa câu chuyện. Mốc lấy từ
+      // `createdAt` mà `create` vừa trả về, không phải `new Date()`.
+      await tx.paymentEvent.create({
+        data: buildRefundEventRow({
+          provider: booking.paymentProvider,
+          bookingId: booking.id,
+          refundId: refundRow.id,
+          providerRefundId,
+          providerPaymentId: booking.providerPaymentId,
+          amount,
+          currency: booking.currency,
+          cause: 'admin',
+          at: refundRow.createdAt,
+        }),
       });
       const row = await tx.booking.update({
         where: { id: booking.id },

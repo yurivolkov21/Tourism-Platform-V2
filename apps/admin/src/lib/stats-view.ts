@@ -507,7 +507,7 @@ export function toPaymentEventsStatCards(stats: AdminPaymentEventsStats): StatCa
  * Ba card của `/enquiries` (spec P4c §3-F9). `created`/`won` là cặp hai kỳ và
  * CÓ hướng: lead mới đổ vào nhiều hơn là nhu cầu tốt hơn, lượt thắng nhiều
  * hơn là bán được nhiều hơn — khác `received`/`linked` của payment events
- * (thông lượng webhook không có chiều tốt/xấu).
+ * (thông lượng sổ sự kiện tiền không có chiều tốt/xấu).
  *
  * `open` là ảnh chụp KHÔNG có callout đỏ — khác `outbox.failed`: hàng chờ CRM
  * là trạng thái bình thường của một đường bán hàng đang sống (0 lead đang mở

@@ -14,7 +14,9 @@ import { orphanPageHref, type RawSearchParams } from '@/lib/table-query';
 import { getPaymentEventAction } from './actions';
 
 /**
- * `/payment-events` — sổ webhook Stripe/PayPal (spec P4c §3-F8), hoàn toàn đọc.
+ * `/payment-events` — sổ sự kiện tiền Stripe/PayPal (spec P4c §3-F8), hoàn
+ * toàn đọc: webhook đã verify chiều vào, khoản hoàn ta phát chiều ra
+ * (ADR-0043).
  *
  * Server component đúng nếp `/outbox` (spec P4b §2.2): `searchParams`
  * (page/provider/type/q/unprocessed) → input contract → fetch oRPC kèm cookie

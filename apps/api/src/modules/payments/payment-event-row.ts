@@ -12,7 +12,10 @@ import { redactDeep } from '../../lib/redact.js';
  *
  * Payload là `VerifiedEvent.raw` = event provider NGUYÊN VĂN (`stripe.gateway.ts`
  * `mapStripeEvent`, `paypal.gateway.ts` `mapPayPalEvent`, FakeGateway ghi
- * `{ fake, sessionId }`). Đã rà từng loại:
+ * `{ fake, sessionId }`) — TRỪ row `payment.refunded` do lõi hoàn tiền tự ghi
+ * (ADR-0043), payload do ta dựng ở `refund-event.ts` và mang khoá `source` nói
+ * rõ điều đó; nó không chứa credential nào nhưng vẫn đi qua cùng máy che.
+ * Đã rà từng loại payload provider:
  *
  * - Stripe `checkout.session.*`: KHÔNG có credential. `url` là hosted checkout
  *   URL (KHÁC `url` của email PASSWORD_RESET bên outbox — không phải link mang

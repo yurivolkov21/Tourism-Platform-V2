@@ -179,8 +179,11 @@ const BAT_BIEN = [
     false,
   ],
   [
+    // ADR-0043: type TRUNG LẬP `payment.refunded` — thứ mà CẢ seed lẫn lõi
+    // hoàn tiền của app thật cùng ghi. Trước đó bất biến này dò hai chuỗi thô
+    // của provider, tức chỉ đúng được với dữ liệu seed.
     'refund không có đúng một payment event hoàn',
-    `select count(*)::int as n from refunds r where (select count(*) from payment_events e where e.booking_id = r.booking_id and e.amount = r.amount and e.processed_at = r.created_at and e.type in ('charge.refunded', 'PAYMENT.CAPTURE.REFUNDED')) <> 1`,
+    `select count(*)::int as n from refunds r where (select count(*) from payment_events e where e.booking_id = r.booking_id and e.amount = r.amount and e.processed_at = r.created_at and e.type = 'payment.refunded') <> 1`,
     false,
   ],
   [

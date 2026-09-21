@@ -19,9 +19,11 @@ export class PaymentEventNotFoundError extends Error {
 }
 
 /**
- * Bề mặt payment events cho admin (spec P4c §3-F8): ĐỌC sổ webhook
- * `payment_events` mà `PaymentsService.beginEvent`/`finishEvent` ghi. Không
- * có hành vi ghi nào (§2.2) — kẻ duy nhất đổi row là chính webhook.
+ * Bề mặt payment events cho admin (spec P4c §3-F8): ĐỌC sổ sự kiện tiền
+ * `payment_events` — `PaymentsService.beginEvent`/`finishEvent` ghi chiều VÀO
+ * (webhook đã verify), lõi hoàn tiền ghi chiều RA (`payment.refunded`,
+ * ADR-0043). Không có hành vi ghi nào ở bề mặt này (§2.2) — kẻ duy nhất đổi
+ * row là chính money-path.
  *
  * Service RIÊNG chứ không phải method trên `PaymentsService` (quyết định tự
  * chọn F8, cùng khuôn `AdminOutboxService`): PaymentsService là lớp money-path

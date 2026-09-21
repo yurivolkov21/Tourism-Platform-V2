@@ -130,7 +130,7 @@ export const NAV_GROUPS: NavGroup[] = [
         enabled: true,
         icon: Send,
       },
-      // Vùng thật thứ hai của P4c (F8) — sổ webhook, hoàn toàn đọc; không có
+      // Vùng thật thứ hai của P4c (F8) — sổ sự kiện tiền, hoàn toàn đọc; không có
       // "việc cần làm" mặc định nên href trơn (tab All), toggle Unprocessed
       // trong trang lọc phần cần soi.
       {

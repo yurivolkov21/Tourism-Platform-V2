@@ -224,8 +224,10 @@ function suKienThu(b: BookingFixture, luc: number): PaymentEventFixture {
     id: idTinh('pe-thu', b.id),
     provider: b.paymentProvider,
     eventId: `evt_${khongGach(idTinh('evt-thu', b.id)).slice(0, 24)}`,
-    type:
-      b.paymentProvider === 'STRIPE' ? 'checkout.session.completed' : 'PAYMENT.CAPTURE.COMPLETED',
+    // Type TRUNG LẬP, y như `PaymentsService.beginEvent` ghi (ADR-0043 §5).
+    // Type thô của provider ("checkout.session.completed") chỉ sống trong
+    // payload ở app thật, không bao giờ vào cột này.
+    type: 'payment.completed',
     payload: { seeded: true, bookingId: b.id, kind: 'capture' },
     amount: b.totalAmount,
     currency: b.currency,
@@ -239,8 +241,10 @@ function suKienHoan(b: BookingFixture, soTien: string, luc: number): PaymentEven
   return {
     id: idTinh('pe-hoan', b.id),
     provider: b.paymentProvider,
-    eventId: `evt_${khongGach(idTinh('evt-hoan', b.id)).slice(0, 24)}`,
-    type: b.paymentProvider === 'STRIPE' ? 'charge.refunded' : 'PAYMENT.CAPTURE.REFUNDED',
+    // `eventId` mang id refund của CỔNG — đúng thứ lõi hoàn tiền ghi
+    // (ADR-0043 §3), không phải một id event bịa.
+    eventId: maHoan(b.paymentProvider, b.id),
+    type: 'payment.refunded',
     payload: { seeded: true, bookingId: b.id, kind: 'refund' },
     amount: soTien,
     currency: b.currency,

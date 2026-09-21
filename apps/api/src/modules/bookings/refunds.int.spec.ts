@@ -283,6 +283,42 @@ describe('refunds integration (admin refund ledger)', () => {
     });
   });
 
+  it('ADR-0043: hoàn thiện chí để lại đúng một row payment.refunded gắn booking, mốc bằng dòng sổ', async () => {
+    const admin = await signUpAdmin();
+    const booking = await createPaidBooking(await signUpUser('alice@example.com', 'Alice'));
+
+    const res = await postRefund(admin, booking.code, { amount: '30.00', reason: 'goodwill' });
+    expect(res.statusCode).toBe(200);
+
+    const refund = await prisma.refund.findFirstOrThrow({ where: { bookingId: booking.id } });
+    const bookingRow = await prisma.booking.findUniqueOrThrow({ where: { id: booking.id } });
+    const events = await prisma.paymentEvent.findMany({
+      where: { bookingId: booking.id, type: 'payment.refunded' },
+    });
+    expect(events).toHaveLength(1);
+    expect(events[0]).toMatchObject({
+      provider: bookingRow.paymentProvider,
+      // Id refund của CỔNG, không phải id dòng sổ — nửa kia của khoá chống trùng.
+      eventId: refund.providerRefundId,
+      currency: 'USD',
+      bookingId: booking.id,
+      note: null,
+    });
+    expect(events[0]?.amount?.toFixed(2)).toBe('30.00');
+    // Bất biến nghiệm thu seed so hai mốc bằng `=`, nên phải khớp CHÍNH XÁC —
+    // `new Date()` lúc ghi event sẽ lệch vài phần nghìn giây và làm nó đỏ.
+    expect(events[0]?.processedAt).toEqual(refund.createdAt);
+    expect(events[0]?.receivedAt).toEqual(refund.createdAt);
+    expect(events[0]?.payload).toMatchObject({
+      source: 'refund-core',
+      cause: 'admin',
+      refundId: refund.id,
+      providerPaymentId: refund.providerPaymentId,
+      amount: '30.00',
+      currency: 'USD',
+    });
+  });
+
   it('provider refund FAIL → 502 REFUND_FAILED, KHÔNG ledger/outbox, booking giữ PAID (W3: không bao giờ ghi refund chưa xảy ra)', async () => {
     const admin = await signUpAdmin();
     const booking = await createPaidBooking(await signUpUser('alice@example.com', 'Alice'));

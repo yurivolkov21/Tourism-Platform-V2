@@ -836,9 +836,10 @@ export const contract = {
         .output(OutboxRowSchema),
     },
     /**
-     * Payment events (spec P4c §3-F8) — sổ webhook Stripe/PayPal, một row mỗi
-     * delivery đã verify chữ ký (`PaymentsService.beginEvent`). HOÀN TOÀN
-     * ĐỌC: không endpoint ghi (§2.2) — kẻ duy nhất đổi row là chính webhook.
+     * Payment events (spec P4c §3-F8) — sổ sự kiện tiền Stripe/PayPal: một row
+     * mỗi delivery đã verify chữ ký (`PaymentsService.beginEvent`), CỘNG một
+     * row `payment.refunded` mỗi khoản hoàn ta phát ở cổng (ADR-0043). HOÀN
+     * TOÀN ĐỌC: không endpoint ghi (§2.2) — kẻ duy nhất đổi row là money-path.
      *
      * `list` KHÔNG mang payload (mỗi event Stripe ~3KB JSON); drawer gọi
      * `byId` khi mở. Payload đã redact khoá credential ở mapper API (Stripe

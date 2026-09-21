@@ -11,6 +11,7 @@ import {
   resolveGateway,
   type VerifiedEvent,
 } from './gateway.js';
+import { buildRefundEventRow } from './refund-event.js';
 
 /** Thứ mà {@link PaymentsService.handleEvent} báo lại cho webhook controller. */
 export interface HandleEventResult {
@@ -568,7 +569,7 @@ export class PaymentsService {
         return 'already-refunded';
       }
 
-      await tx.refund.create({
+      const refundRow = await tx.refund.create({
         data: {
           bookingId,
           amount,
@@ -577,6 +578,22 @@ export class PaymentsService {
           providerPaymentId, // capture được hoàn — nguồn cho guard phía trên
           adminId: null, // đường tự động (schema: null = không phải admin phát hành)
         },
+      });
+      // ADR-0043 §3: vết ở sổ sự kiện tiền, cùng tx với dòng sổ. Row này nằm
+      // CẠNH row capture của chính webhook đang chạy (eventId khác nhau), nên
+      // `note` của AMEND 2a trên row kia vẫn nguyên.
+      await tx.paymentEvent.create({
+        data: buildRefundEventRow({
+          provider,
+          bookingId,
+          refundId: refundRow.id,
+          providerRefundId,
+          providerPaymentId,
+          amount,
+          currency: booking.currency,
+          cause: 'auto',
+          at: refundRow.createdAt,
+        }),
       });
       await opts.finalize?.(tx, 'refunded');
       return 'refunded';

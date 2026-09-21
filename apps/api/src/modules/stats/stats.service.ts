@@ -171,11 +171,12 @@ import {
  *   action có `updateTag` — cache là card cãi nhau với bảng ngay bên dưới.
  *
  * **paymentEvents** (F8, spec P4c §3-F8)
- * - `received` — số webhook ĐÃ VERIFY chữ ký và được ghi sổ, theo
- *   `received_at` trong kỳ, MỌI provider và MỌI type (kể cả `other`: một
- *   `PAYMENT.CAPTURE.REFUNDED` echo về cũng là một delivery đã nhận). Đây là
- *   thông lượng webhook, không phải số thanh toán thành công — con số đó là
- *   `paidBookings`. Query đối chứng:
+ * - `received` — số dòng sổ sự kiện tiền trong kỳ theo `received_at`, MỌI
+ *   provider và MỌI type: webhook đã verify chữ ký (kể cả `other` — một event
+ *   không map được cũng là một delivery đã nhận) CỘNG row `payment.refunded`
+ *   mà lõi hoàn tiền tự ghi (ADR-0043). Cố ý gộp: loại một type ra khỏi một
+ *   chỉ số thông lượng là luật chồng luật rồi không ai nhớ. Không phải số
+ *   thanh toán thành công — con số đó là `paidBookings`. Query đối chứng:
  *   `SELECT COUNT(*) FROM payment_events WHERE received_at >= $from AND received_at < $to`.
  *   Có kỳ trước: `received_at` ghi một lần lúc nhận, không purge, nên kỳ
  *   28–56 ngày trước dựng lại được thật (khác outbox).
