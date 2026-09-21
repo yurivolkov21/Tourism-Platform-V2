@@ -42,11 +42,14 @@ describe('PaymentEventTypeSchema', () => {
 });
 
 describe('PAYMENT_EVENT_TYPES', () => {
-  it('là bốn type trung lập provider mà gateway phát ra — nguồn của Select lọc admin', () => {
+  it('là năm type trung lập của sổ sự kiện tiền — nguồn của Select lọc admin', () => {
     expect(PAYMENT_EVENT_TYPES).toEqual([
       'payment.completed',
       'payment.failed',
       'payment.expired',
+      // ADR-0043: bốn type trên do `verifyWebhook` phát; type này do lõi hoàn
+      // tiền tự ghi khi phát một khoản hoàn ở cổng.
+      'payment.refunded',
       'other',
     ]);
   });

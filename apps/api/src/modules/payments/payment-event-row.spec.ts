@@ -41,6 +41,7 @@ describe('PAYMENT_EVENT_TYPES soi gương union `VerifiedEvent["type"]` của ga
       'payment.completed': 'payment.completed',
       'payment.failed': 'payment.failed',
       'payment.expired': 'payment.expired',
+      'payment.refunded': 'payment.refunded',
       other: 'other',
     };
     expect([...Object.keys(exhaustive)].sort()).toEqual([...tuple].sort());

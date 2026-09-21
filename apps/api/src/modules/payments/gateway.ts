@@ -111,7 +111,15 @@ export interface RefundInput {
 export interface VerifiedEvent {
   /** Event id của provider — nửa của idempotency key (`PaymentEvent @@unique([provider, eventId])`). */
   eventId: string;
-  type: 'payment.completed' | 'payment.failed' | 'payment.expired' | 'other';
+  /**
+   * TỪ VỰNG của cột `payment_events.type`, không còn chỉ là "thứ
+   * `verifyWebhook` phát ra" (ADR-0043 §2). Bốn giá trị đầu đến từ webhook;
+   * `payment.refunded` do lõi hoàn tiền tự ghi khi phát một khoản hoàn ở cổng
+   * (`refund-event.ts`) — không gateway nào map ra nó hôm nay, nhưng nó sẽ là
+   * đích của `charge.refunded` nếu về sau làm phần đối soát webhook. Tuple
+   * `PAYMENT_EVENT_TYPES` ở contract soi gương union này (spec ép hai chiều).
+   */
+  type: 'payment.completed' | 'payment.failed' | 'payment.expired' | 'payment.refunded' | 'other';
   bookingId?: string;
   /**
    * Checkout session mà event này nói về (ADR-0006 AMEND 1c) — Stripe:

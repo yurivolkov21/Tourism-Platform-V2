@@ -4,31 +4,39 @@ import { DecimalStringSchema } from './catalog.js';
 import { AdminPageQuerySchema } from './common.js';
 
 /**
- * Vùng payment events cho admin (spec P4c §3-F8) — sổ webhook Stripe/PayPal
- * mà `PaymentsService.beginEvent` ghi một row cho MỖI delivery đã verify
- * chữ ký (bảng `payment_events`, unique `[provider, eventId]`).
+ * Vùng payment events cho admin (spec P4c §3-F8) — sổ SỰ KIỆN TIỀN giữa ta và
+ * cổng thanh toán (bảng `payment_events`, unique `[provider, eventId]`), ghi
+ * cả hai chiều (ADR-0043 §1):
+ * - chiều VÀO — `PaymentsService.beginEvent` ghi một row cho MỖI webhook
+ *   delivery đã verify chữ ký;
+ * - chiều RA — lõi hoàn tiền ghi một row `payment.refunded` cho mỗi khoản hoàn
+ *   ta phát ở cổng, nguyên tử cùng dòng sổ `refunds`.
  *
  * HOÀN TOÀN ĐỌC: không có endpoint ghi nào (spec §2.2 — F8 là vùng duy nhất
- * của P4c không có hành vi ghi). Thứ duy nhất đổi row là chính webhook
- * (`finishEvent` đặt `processedAt`), nên bề mặt admin chỉ là kính soi.
+ * của P4c không có hành vi ghi). Thứ duy nhất đổi row là chính money-path,
+ * nên bề mặt admin chỉ là kính soi.
  */
 
 /**
- * Bốn type trung lập provider mà gateway phát ra (`VerifiedEvent['type']`
- * ở `apps/api/src/modules/payments/gateway.ts`): mọi event Stripe/PayPal đều
- * bị gom về một trong bốn — rừng `checkout.session.*`/`PAYMENT.CAPTURE.*`
- * chỉ còn nằm trong payload.
+ * Từ vựng của cột `payment_events.type` (`VerifiedEvent['type']` ở
+ * `apps/api/src/modules/payments/gateway.ts`). Bốn giá trị đầu do
+ * `verifyWebhook` phát: mọi event Stripe/PayPal đều bị gom về một trong số đó
+ * — rừng `checkout.session.*`/`PAYMENT.CAPTURE.*` chỉ còn nằm trong payload.
+ * `payment.refunded` KHÔNG đến từ webhook mà do lõi hoàn tiền tự ghi
+ * (ADR-0043 §2) — và sẽ là đích map của `charge.refunded` nếu về sau làm phần
+ * đối soát webhook.
  *
  * Tập này HỮU HẠN nên admin lọc bằng Select (quyết định tự chọn F8) — nhưng
  * cột DB là `varchar(100)` và input contract giữ `string` (spec §3-F8), vì
- * đây là gương của một union TypeScript chứ không phải enum Prisma: gateway
- * thêm type thứ năm thì list vẫn trả được row đó, Select chỉ thiếu một mục
- * (unit test bên API đối chiếu tuple này với union của gateway).
+ * đây là gương của một union TypeScript chứ không phải enum Prisma: thêm một
+ * type nữa thì list vẫn trả được row đó, Select chỉ thiếu một mục (unit test
+ * bên API đối chiếu tuple này với union của gateway).
  */
 export const PAYMENT_EVENT_TYPES = [
   'payment.completed',
   'payment.failed',
   'payment.expired',
+  'payment.refunded',
   'other',
 ] as const;
 export type PaymentEventTypeValue = (typeof PAYMENT_EVENT_TYPES)[number];

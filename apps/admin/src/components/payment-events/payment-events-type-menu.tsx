@@ -9,6 +9,7 @@ import {
   ShapesIcon,
   TagsIcon,
   TimerOffIcon,
+  Undo2Icon,
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { ALL_FILTER_VALUE as ALL, fromFreeValue, toFreeValue } from '@/components/kit/filter-value';
@@ -44,6 +45,8 @@ const TYPE_ICONS: Record<(typeof PAYMENT_EVENT_TYPES)[number], typeof CircleChec
   'payment.failed': CircleXIcon,
   // Hết hạn chứ không phải hỏng: đồng hồ tắt, không phải chữ X.
   'payment.expired': TimerOffIcon,
+  // Tiền đi NGƯỢC lại, không phải một lượt thu hỏng: mũi tên quay đầu.
+  'payment.refunded': Undo2Icon,
   other: ShapesIcon,
 };
 

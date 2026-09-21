@@ -4041,14 +4041,16 @@ export const messages = {
         PAYPAL: 'PayPal',
       },
       /**
-       * Nhãn bốn type trung lập của gateway (`PAYMENT_EVENT_TYPES`). Cột DB là
+       * Nhãn năm type của sổ sự kiện tiền (`PAYMENT_EVENT_TYPES`). Cột DB là
        * chuỗi tự do nên VM rơi về chuỗi thô khi gặp type lạ — không có nhãn
        * "Unknown" ở đây vì chuỗi thô ("payment.chargeback") nói nhiều hơn.
+       * `payment.refunded` là tiền đi RA, do lõi hoàn tiền ghi (ADR-0043).
        */
       type: {
         'payment.completed': 'Payment completed',
         'payment.failed': 'Payment failed',
         'payment.expired': 'Checkout expired',
+        'payment.refunded': 'Refund issued',
         other: 'Other',
       },
       /** Drawer chi tiết: field bảng + payload provider nguyên văn (đã redact credential). */
