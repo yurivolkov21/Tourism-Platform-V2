@@ -61,12 +61,25 @@ export const CreateBookingInputSchema = z.object({
 export type CreateBookingInput = z.output<typeof CreateBookingInputSchema>;
 
 /**
- * Mirror enum Prisma CancellationRequestStatus. REQUESTED = đang mở (nhiều nhất
- * một cái mỗi booking — partial unique index), DENIED = admin từ chối (booking
- * vẫn PAID), REFUNDED = đã duyệt → hoàn theo mức chính sách (hoặc số admin
- * ghi lý do, ADR-0029/0030) + booking CANCELLED (docs/conventions/booking-states.md). Đặt TRƯỚC `BookingSchema` (thay vì ở
- * cụm Cancellation phía dưới) vì `BookingSchema.cancellationStatus` cần tham
- * chiếu nó — const khai sau không dùng được do temporal dead zone.
+ * Mirror enum Prisma CancellationRequestStatus.
+ *
+ * ADR-0041 đã bỏ luồng DUYỆT huỷ: khách tự huỷ và hệ thống chốt NGAY trong
+ * cùng một lượt — trong hạn thì hoàn đủ, quá hạn thì hoàn 0 — nên không còn
+ * khoảng chờ nào để admin từ chối. Vì vậy:
+ *
+ * - `REFUNDED` là kết cục THƯỜNG và trên thực tế là giá trị duy nhất đường
+ *   sống còn ghi. Nó mang nghĩa "đã giải quyết", KHÔNG phải "đã có tiền về":
+ *   một lượt huỷ quá hạn hoàn 0 đồng cũng ghi REFUNDED (và không sinh dòng sổ
+ *   `refunds` nào).
+ * - `REQUESTED`/`DENIED` chỉ còn tồn tại để đọc được DỮ LIỆU CŨ sinh trước
+ *   ADR-0041. Không code path nào ghi chúng nữa; sau lượt seed lại prod
+ *   (ADR-0041 Phụ lục B Bước 8, khoảng 03/11/2026) sẽ không còn dòng nào mang
+ *   chúng. Giữ trong enum vì xoá giá trị enum Postgres là dựng lại cả kiểu, và
+ *   bất biến nghiệm thu seed vẫn canh hai giá trị này (phải bằng 0).
+ *
+ * Đặt TRƯỚC `BookingSchema` (thay vì ở cụm Cancellation phía dưới) vì
+ * `BookingSchema.cancellationStatus` cần tham chiếu nó — const khai sau không
+ * dùng được do temporal dead zone.
  */
 export const CancellationRequestStatusSchema = z.enum(['REQUESTED', 'REFUNDED', 'DENIED']);
 export type CancellationRequestStatusValue = z.output<typeof CancellationRequestStatusSchema>;
