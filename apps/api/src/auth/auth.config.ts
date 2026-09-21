@@ -6,6 +6,10 @@ import { emailOTP } from 'better-auth/plugins/email-otp';
 import { adminEmails, env, trustedOrigins, trustedProxyCidrs } from '../config/env.js';
 import { PrismaClient } from '../generated/prisma/client.js';
 import { EmailType, UserRole } from '../generated/prisma/enums.js';
+// Chỉ một hàm THUẦN cấp module (registry + best-effort send) — không kéo
+// `worker/` vào đường auth: `outbox-nudge.ts` không import gì từ đây nên
+// không có vòng phụ thuộc.
+import { nudgeOutboxDrain } from '../worker/outbox-nudge.js';
 import { isBootstrapAdmin } from './admin-bootstrap.js';
 
 /**
@@ -73,6 +77,9 @@ export const auth = betterAuth({
           dedupeKey: `pwreset:${user.id}:${url}`.slice(0, 200),
         },
       });
+      // Có người đang nhìn màn hình "check your email" — xin drain ngay thay
+      // vì đợi tick cron kế (tới 1 phút). Best-effort, không bao giờ ném.
+      await nudgeOutboxDrain();
     },
   },
   emailVerification: {
@@ -197,6 +204,10 @@ export const auth = betterAuth({
             dedupeKey: `email-otp:${email}:${otp}`.slice(0, 200),
           },
         });
+        // Mã sống 10 phút mà tick drain có thể cách tới 1 phút — xin drain
+        // ngay. Callback này phục vụ CẢ ba loại OTP của plugin (xác minh email,
+        // đăng nhập, quên mật khẩu), nên một dòng ở đây phủ hết.
+        await nudgeOutboxDrain();
       },
     }),
   ],

@@ -6,6 +6,7 @@ import { env } from '../config/env.js';
 import { MediaGarbageService } from '../modules/media/media-garbage.service.js';
 import { EnquiryRetentionService } from './enquiry-retention.service.js';
 import { OutboxService } from './outbox.service.js';
+import { clearOutboxNudge, OUTBOX_DRAIN_QUEUE, registerOutboxNudge } from './outbox-nudge.js';
 import { PENDING_TTL_MINUTES, PendingSweepService } from './pending-sweep.service.js';
 import { WorkerModule } from './worker.module.js';
 
@@ -21,8 +22,11 @@ import { WorkerModule } from './worker.module.js';
  *
  * Trả về hàm `stop` — idempotent, dừng pg-boss graceful rồi đóng app context.
  */
-const OUTBOX_DRAIN_QUEUE = 'outbox-drain';
-/** Mỗi phút — granularity nhỏ nhất của cron pg-boss. */
+/**
+ * Mỗi phút — granularity nhỏ nhất của cron pg-boss. Email có người ngồi chờ
+ * (OTP, đặt lại mật khẩu) không đợi tick này: đường request đẩy thêm một job
+ * qua `nudgeOutboxDrain` để drain chạy ngay. Cron vẫn là lưới cuối.
+ */
 const OUTBOX_DRAIN_CRON = '* * * * *';
 const OUTBOX_PURGE_QUEUE = 'outbox-purge';
 /** Hằng ngày 03:00 UTC (off-peak) — retention audit M5. */
@@ -67,6 +71,10 @@ export async function startWorker(logger: Logger): Promise<{ stop: () => Promise
     await outbox.drainOnce();
   });
   await boss.schedule(OUTBOX_DRAIN_QUEUE, OUTBOX_DRAIN_CRON);
+  // Mở cửa cho đường request xin drain ngay (OTP, đặt lại mật khẩu). Đăng ký
+  // SAU `createQueue` — đẩy vào một queue chưa tồn tại là lỗi, mà nudge nuốt
+  // lỗi nên sẽ hỏng âm thầm. Dùng lại đúng instance này, không mở client thứ hai.
+  registerOutboxNudge((queue) => boss.send(queue, {}));
 
   // Outbox retention — SENT > 30 ngày bị xóa; FAILED giữ cho triage.
   await boss.createQueue(OUTBOX_PURGE_QUEUE, { policy: 'short' });
@@ -127,6 +135,9 @@ export async function startWorker(logger: Logger): Promise<{ stop: () => Promise
     stop: async () => {
       if (stopped) return;
       stopped = true;
+      // Gỡ TRƯỚC khi stop: một request đến giữa chừng mà đẩy vào instance đang
+      // tắt sẽ chỉ nhận lỗi rồi nuốt — thà trả 'no-worker' cho gọn.
+      clearOutboxNudge();
       await boss.stop({ graceful: true, timeout: 10_000 });
       await app.close();
       logger.log('worker loops stopped');
