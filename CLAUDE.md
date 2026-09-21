@@ -214,7 +214,12 @@ pnpm lint:fix                    # biome tự sửa format + lint
   markdown = extension markdownlint). Các chỗ như vậy nay nằm TRỌN trong
   `docs/changelog/*.md` (archive tách 03/08 — 4 dòng cột 0, cùng luật bất
   biến); file `docs/CHANGELOG.md` chính hiện KHÔNG còn dòng `+` cột 0 nào,
-  giữ vậy. Vì vậy:
+  giữ vậy. **Nhưng đo lại 21/09: rủi ro rộng hơn changelog — 11 file có dòng
+  `+` ở cột 0 ngoài code fence**, gồm 4 ADR (0017 · 0032 · 0042 · 0043), 2 bản
+  phân tích (`2026-07-21-full-parity-sweep` một mình 37 dòng), 2 plan, 1 spec,
+  archive `p3b-static`, và `libs/shared/tokens/README.md`. Tất cả là dòng tiếp
+  nối hoặc phép cộng bị ngắt dòng, không phải bullet — mở-rồi-save bất kỳ file
+  nào trong số đó là làm sai nghĩa. Vì vậy:
   entry mới **không bao giờ** để `+` ở đầu dòng (viết `và`, hoặc gói cả tổng vào
   một dòng), và **luôn `git diff` file .md trước khi stage** — churn kiểu này
   không hiện ở `pnpm gate` vì Biome bỏ qua `.md` hoàn toàn (đo được:

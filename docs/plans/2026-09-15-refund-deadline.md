@@ -15715,7 +15715,7 @@ Trong `docs/specs/2026-09-14-seed-khung-2026-design.md`, THÊM ngay sau đoạn 
 > ngày sau, [ADR-0041](../adr/0041-single-cancellation-deadline.md) đổi luật
 > huỷ: có ADR, có hai migration (M1 mở rộng, M2 xoá hai cột), và contract đổi
 > hình dạng. Bộ sinh seed phải viết lại phần huỷ/hoàn theo
-> [spec 15/09 §7](2026-09-15-refund-deadline-design.md#7-seed); §4.4 và §6 mục 5
+> [spec 15/09 §7](../specs/2026-09-15-refund-deadline-design.md#7-seed); §4.4 và §6 mục 5
 > dưới đây đã cập nhật theo. Mọi quyết định Q1–Q10 giữ nguyên.
 ```
 

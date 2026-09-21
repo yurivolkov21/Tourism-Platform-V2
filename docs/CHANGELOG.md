@@ -8,6 +8,89 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-09-21 — Đại tu tài liệu: bản đồ gọn lại, thêm lớp cho người đọc phổ thông, tách CHANGELOG (nhánh `docs/overhaul-2026-09`)
+
+Đợt rà soát toàn bộ `docs/` đầu tiên kể từ 03/08. Quy mô lúc bắt đầu: **159 file
+Markdown · 78.970 dòng · 4,40 MB**, cộng 114 file khác. Bảy đợt sửa, ghi đầy đủ ở
+[báo cáo rà soát](analysis/2026-09-21-docs-audit.md).
+
+| Chỉ số | Trước | Sau |
+| --- | ---: | ---: |
+| `docs/README.md` | 149 KB, 665 ký tự/dòng | **19 KB**, 68 ký tự/dòng |
+| `docs/CHANGELOG.md` | 589 KB, 133 entry | **60 KB**, 17 entry |
+| File lưu trữ changelog | 2 | **12** (tối đa 75 KB) |
+| `conventions/` | 12 file, 86 KB | **7 file, 41 KB** |
+| File `.md` ngoài bản đồ | 4 | **0** |
+| Link `.md` gãy trong `docs/` | 17 | **0** |
+| Trang cho người không lập trình | 0 | **3** |
+| `docs/` trên đĩa | 109 MB | **11 MB** |
+
+**Thông tin sai ở đúng chỗ người lạ đọc đầu tiên.** `README.md` gốc ghi admin là
+Vite/TanStack trong khi thật ra là Next 16.3.4, mobile Expo 56 và RN 0.85 trong
+khi thật ra 57 và 0.86.3, ba app còn đánh dấu chưa làm trong khi đã chạy thật,
+thiếu hẳn hai gói `ui`, và vẫn trỏ repo tham chiếu Nexora đã bỏ từ 14/09.
+`CLAUDE.md` còn ghi P4 admin là phase kế tiếp.
+
+**Bản đồ đã hoá thành bách khoa.** 224 dòng nhưng 149 KB: mỗi ô bảng là bản tóm
+tắt đầy đủ của một ADR kèm cả AMEND, ô dài nhất 5.772 ký tự. Cắt được vì mọi
+AMEND chép trong đó đều đã có đủ trong chính file ADR — và bản chép còn cũ hơn
+bản gốc (ghi ADR-0026 tới AMEND 4 trong khi ADR có AMEND 5).
+
+**Ba tài liệu mới cho người không lập trình**: [overview](overview.md) (sản phẩm
+là gì, ai dùng, sáu luồng chính, sơ đồ bốn app), [glossary](glossary.md) (khoảng
+60 thuật ngữ chia sáu nhóm), [open-items](open-items.md) (gom hơn 30 mục CÒN TREO
+vốn rải khắp 133 entry). Không dịch ADR và plan sang ngôn ngữ phổ thông — làm
+loãng chúng thì mất chính xác mà không ai được lợi.
+
+**Tách CHANGELOG, kiểm nguyên văn bằng máy.** 116 entry vào 10 file lưu trữ theo
+kỷ nguyên, cộng [mục lục](changelog/README.md) kể lại 12 giai đoạn bằng ngôn ngữ
+thường. Ghép 11 file lại rồi so từng dòng với bản gốc lấy từ git: 6.904 dòng nội
+dung khớp 100%, đủ 133 entry. Chỗ duy nhất đụng là **89 đường dẫn tương đối** phải
+thêm `../` vì file xuống sâu một cấp — đúng cách hai file lưu trữ đợt 03/08 đã
+làm, dù header của chúng tuyên bố "0 ký tự đổi".
+
+**Rà `conventions/` bằng cách đối chiếu mã nguồn.** Bốn file đúng nguyên
+(`booking-states`, `read-then-write-races`, `soft-404-loading-tsx`,
+`supabase-data-api-surface` — kiểm `cancelInLock`, `vietnamToday`, `FOR UPDATE`,
+vị trí `loading.tsx`, 36 bảng RLS). Ba file lệch:
+
+- `mobile-dev-loop` §2 đứng trọn trên tiền đề WSL NAT, lỗi thời từ 14/09 khi máy
+  dev sang Windows native. Nợ này CHANGELOG 16/09 đã ghi nhận mà chưa trả. Kèm
+  [ADR-0040 AMEND 2](adr/0040-mobile-app-expo.md) đảo §8: `dev` = `expo start`
+  (LAN), thêm `dev:tunnel`, `dev:lan` giữ làm bí danh.
+- `outbox-dedupe-key` sai bốn chỗ: hai dòng bảng trùng nhau, ví dụ
+  `cancellation-denied` thuộc luồng ADR-0041 đã xoá, tên sự kiện `booking-paid`
+  trong khi mã dùng `booking-confirmed`, và thiếu ba dạng đang chạy thật.
+- `read-then-write-races` thiếu nơi áp dụng thứ ba (`admin-enquiries`, W4).
+
+**Sắp xếp lại ba chỗ.** Năm tài liệu bàn giao mobile sang [`handoff/`](handoff/README.md)
+— chúng có hình dạng của plan và có ngày hết hạn, khác luật áp dụng mãi mãi.
+`color-system` tách đôi: luật thi hành ở lại (4 KB), phần đo đạc sang
+[analysis](analysis/2026-07-22-color-system-analysis.md) (9 KB). `design/prompts/`
+gộp lên một cấp vì thư mục chỉ có đúng một file.
+
+**Hai thư mục không phải Markdown.** `snapshots/` (28 file JSON, có commit) nay có
+[mục lục](snapshots/README.md) — trước đó không một dòng giải thích, dù
+`reset-operational-data.mjs` đọc `keep-list.json` ở thư mục có ngày lớn nhất nên
+thêm một lượt là đổi luôn hành vi script dọn dữ liệu. `screenshot/` (98 MB ảnh
+tham chiếu riêng của user, gitignored) đã dời hẳn ra ngoài kho mã.
+
+**Đo được một rủi ro rộng hơn tưởng.** Gotcha `+` ở cột 0 lâu nay chỉ nhắc
+changelog; đo lại thì **11 file** dính, gồm 4 ADR, 2 bản phân tích (một file 37
+dòng), 2 plan, 1 spec và `libs/shared/tokens/README.md`. Tất cả là dòng tiếp nối
+hoặc phép cộng bị ngắt dòng — mở rồi save bằng editor có markdownlint là làm sai
+nghĩa. CLAUDE.md đã ghi đúng phạm vi.
+
+**CÒN TREO:** quét QR thử app điện thoại sau khi đổi lệnh `dev` sang LAN (nếu
+không chạy được thì `dev:tunnel` vẫn còn nguyên) · `.claude/skills/` có 41 link
+gãy nhưng đó là bản sao upstream của skill bên thứ ba, không đụng.
+
+**Review findings:** chưa có vòng review riêng.
+
+Tests after: không đổi code sản phẩm — thay đổi duy nhất ngoài `docs/` là một
+dòng script `dev` trong `apps/mobile/package.json` và ghi chú `.gitignore`. Vitest
+3689, Jest mobile 245, int 497 ở 39 file, tất cả giữ nguyên so với entry trước.
+
 ## 2026-09-21 — Prerender thử lại khi API hắt hơi (ADR-0044, nhánh `fix/prerender-retry`)
 
 Ba lượt build web trên Vercel chết liên tiếp, **ba mã lỗi khác nhau trên cùng
