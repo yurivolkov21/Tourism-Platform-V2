@@ -7,7 +7,7 @@
   endpoint ghi công khai duy nhất mà người lạ điều khiển được NỘI DUNG lẫn
   NGƯỜI NHẬN của email hệ thống gửi đi. Ba đợt trước (W1 tiền, W2 phiên,
   W3 vỏ Next) vá thứ kẻ tấn công đã có tài khoản; đợt này vá máy-gửi-thư.
-- **Liên quan:** [ADR-0007](0007-transactional-outbox.md) (outbox),
+- **Liên quan:** spec P2 §3 W5 (outbox — không có ADR riêng),
   [ADR-0025](0025-transactional-email-react-email.md) (render), ADR-0037
   (throttle), [quy ước dedupe-key](../conventions/outbox-dedupe-key.md).
 

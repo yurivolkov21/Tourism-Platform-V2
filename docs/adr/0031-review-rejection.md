@@ -5,7 +5,7 @@
   CLAUDE.md #5
 - **Liên quan:** [ADR-0028](0028-bookings-stats-follow-filter.md) §AMEND 2
   (ADR này **đổi nghĩa** card `Pending` vừa dựng ở đó) · spec P4b §3-F4 ·
-  [ADR-0016](0016-web-revalidation.md) (bust cache web sau moderate)
+  [ADR-0016](0016-web-data-layer.md) (bust cache web sau moderate)
 
 ## Bối cảnh
 

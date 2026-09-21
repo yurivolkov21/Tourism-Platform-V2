@@ -4,7 +4,8 @@
 - **Trạng thái:** Chấp nhận
 - **Liên quan:** [ADR-0024](0024-deploy-targets.md) (Resend là deliverer prod),
   spec deploy v1 §10 (sổ nợ "template email in-code — quyết bằng ADR"),
-  [ADR-0006](0006-outbox-email.md) nếu có / spec P2 §3 W5 (outbox → deliverer).
+  spec P2 §3 W5 (outbox → deliverer) — outbox chưa có ADR riêng lúc viết, nay
+  nằm ở [ADR-0039](0039-inbound-channels-outbound-email.md).
 
 ## Bối cảnh
 
