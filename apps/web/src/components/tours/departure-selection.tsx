@@ -2,15 +2,14 @@
 
 import { createContext, type ReactNode, useContext, useMemo, useState } from 'react';
 import { BookingRail } from '@/components/tours/booking-rail';
-import { DepartureStrip } from '@/components/tours/departure-strip';
 import type { DepartureVM } from '@/lib/api/tours';
 import { isDepartureOpen } from '@/lib/tours';
 
 /**
- * Trạng thái "đợt đang chọn" dùng chung cho BỐN nơi: dải chip dưới hero, panel
- * đặt chỗ cạnh gallery, tab Departures, rail booking (+ bar đáy mobile). Một
- * hành động → mọi nơi phản hồi. Modal "All dates" cũng sống ở đây vì hai chỗ
- * khác nhau cùng mở nó mà trang chỉ render một instance.
+ * Trạng thái "đợt đang chọn" dùng chung cho BA nơi: panel đặt chỗ cạnh gallery,
+ * tab Departures, rail booking (+ bar đáy mobile). Một hành động → mọi nơi phản
+ * hồi. Modal "All dates" cũng sống ở đây vì hai chỗ khác nhau cùng mở nó mà
+ * trang chỉ render một instance.
  *
  * VÌ SAO LÀ CONTEXT chứ không phải state nâng lên `page.tsx`: các nơi đó nằm ở
  * những vị trí khác nhau trong bố cục, và nâng state lên page sẽ buộc cả trang
@@ -18,11 +17,14 @@ import { isDepartureOpen } from '@/lib/tours';
  * Provider là client, còn `children` truyền vào nó vẫn được server render
  * bình thường.
  *
- * Hai component trình bày (`DepartureStrip`/`BookingRail`) giữ nguyên dạng NHẬN
- * PROP THUẦN để test được độc lập; các bản `…Connected` dưới đây chỉ làm một
- * việc là nối chúng vào context. (`DeparturesTableConnected` đã xoá cùng
- * `departures-table.tsx` ở đợt trùng tu 13/08 — bảng đợt giữa trang nay là
- * tab Departures + modal "All dates".)
+ * Component trình bày (`BookingRail`) giữ nguyên dạng NHẬN PROP THUẦN để test
+ * được độc lập; bản `…Connected` dưới đây chỉ làm một việc là nối nó vào
+ * context. (`DeparturesTableConnected` đã xoá cùng `departures-table.tsx` ở đợt
+ * trùng tu 13/08 — bảng đợt giữa trang nay là tab Departures + modal
+ * "All dates". `DepartureStripConnected` đã xoá cùng `departure-strip.tsx`
+ * ngày 21/09: trang chi tiết cố ý không render dải chip theo bản wireframe đã
+ * duyệt, nên nó không còn call-site nào, và nó vẫn chọn đợt theo mỗi `seatsLeft`
+ * — tức mang LUẬT CŨ trước ADR-0041, không qua `isDepartureOpen`.)
  */
 interface DepartureSelection {
   selectedId: string | undefined;
@@ -88,25 +90,6 @@ export function DepartureSelectionProvider({
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
-}
-
-export function DepartureStripConnected({
-  currency,
-  className,
-}: {
-  currency: string;
-  className?: string;
-}) {
-  const { departures, selectedId, select } = useDepartureSelection();
-  return (
-    <DepartureStrip
-      departures={departures}
-      currency={currency}
-      selectedId={selectedId}
-      onSelect={select}
-      className={className}
-    />
-  );
 }
 
 export function BookingRailConnected({

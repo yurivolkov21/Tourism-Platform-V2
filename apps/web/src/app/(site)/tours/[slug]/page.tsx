@@ -155,8 +155,8 @@ export default async function TourDetailPage({ params }: { params: Promise<{ slu
             lý do đọc ra ngay trên màn hình: panel đặt chỗ ngay dưới đã có đúng
             bốn ô ngày đó — giữ cả hai là in cùng một thông tin hai lần cách nhau
             một màn cuộn. Spec §1 của mình ghi "giữ nguyên dải khởi hành" là ghi
-            sai so với bản đã duyệt; bản duyệt thắng. `DepartureStrip` vẫn còn
-            trong repo, chỉ là trang này không dùng. */}
+            sai so với bản đã duyệt; bản duyệt thắng. `DepartureStrip` đã XOÁ
+            khỏi repo ngày 21/09 vì không còn call-site nào. */}
       </div>
 
       {/* Khung 1152, đệm ngang 48 → nội dung ĐÚNG 1056px.

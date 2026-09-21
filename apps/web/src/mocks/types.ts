@@ -21,11 +21,16 @@ export type MockRegionKey = 'north' | 'central' | 'south';
 // consumer DUY NHẤT là chính `MockTourCard` vừa xoá, không nơi nào khác import
 // riêng chúng.
 //
+// `MockTourDeparture` XOÁ 21/09 theo cùng luật đó: consumer duy nhất của nó là
+// `components/tours/departure-strip.tsx`, xoá cùng lượt vì dải chip không còn
+// call-site nào (trang chi tiết cố ý bỏ nó theo wireframe đã duyệt) và nó vẫn
+// chọn đợt theo mỗi `seatsLeft`, tức chưa qua `isDepartureOpen` của ADR-0041.
+// Hình dạng một đợt ở web nay chỉ còn `DepartureVM` (`@/lib/api/tours`).
+//
 // Các type dưới đây GIỮ LẠI vì vẫn còn consumer thật độc lập với hai mock đã
 // xoá (component chi tiết tour, UI tour card) — không có VM tương ứng gọn hơn
 // đáng để đổi:
 //  · `MockDestinationLink` — `components/tours/route-ribbon.tsx`, `lib/tours.ts`
-//  · `MockTourDeparture` — `components/tours/departure-strip.tsx`
 //  · `MockItineraryDay` — `components/destinations/region-day-trips.tsx`
 //  · `MockMediaItem` — `lib/tours.ts` (`tourGallery`)
 //
@@ -48,22 +53,6 @@ export interface MockItineraryDay {
   dayNumber: number;
   title: string;
   description: string | null;
-}
-
-export interface MockTourDeparture {
-  id: string;
-  /** YYYY-MM-DD — cột @db.Date serialize thành ngày lịch, KHÔNG phải datetime.
-      Đừng dựng new Date() từ chuỗi này: nó bị hiểu là UTC rồi hiển thị theo
-      giờ máy, lệch một ngày ở múi giờ âm. */
-  startDate: string;
-  endDate: string;
-  seatsLeft: number;
-  /** = priceOverride của đợt ?? basePrice của tour. */
-  effectivePrice: string;
-  /** Giá gạch ĐỂ HIỂN THỊ — dữ liệu tới đây đã qua `resolveDepartureAnchors`
-      (`fetchTourDetail`), không còn là neo thô từ API: chỉ khác null khi đợt có
-      khuyến mãi thật (luật giá gạch 15/09/2026). */
-  compareAtPrice: string | null;
 }
 
 /**

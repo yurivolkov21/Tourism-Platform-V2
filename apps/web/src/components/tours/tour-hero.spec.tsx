@@ -51,7 +51,8 @@ const TOUR = {
   departures: [dep('sep', '129.00'), dep('oct', '119.00', '129.00'), dep('nov', '129.00')],
 } as unknown as TourDetailVM;
 
-/** Nút chọn đợt tối giản — thay cho DepartureStrip để test không kéo cả strip. */
+/** Nút chọn đợt tối giản — đẩy `select()` của context vào mà không phải dựng cả
+    panel đặt chỗ, thứ duy nhất test này cần là hero phản ứng khi đợt đổi. */
 function Picker() {
   const { departures, select } = useDepartureSelection();
   return (
