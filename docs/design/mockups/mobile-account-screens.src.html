@@ -9,7 +9,7 @@
   Đợt này đóng luôn mục CÒN TREO của P5b-1: "chặn tab khi chưa đăng nhập" — ba tab
   Saved · Trips · Account dùng CHUNG một khuôn mời đăng nhập.
 -->
-<title>P5b-4 · Cụm tài khoản</title>
+<title>P5b-4 · Cụm tài khoản và bài viết</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=Literata:opsz,wght@7..72,700&display=swap" rel="stylesheet">
@@ -235,11 +235,32 @@
   .note.warn { background: rgb(from var(--warning) r g b / .16); }
   .note.info { background: var(--secondary); color: var(--secondary-foreground); }
   .trip-card { display: flex; gap: calc(var(--s) * 3); padding: 12px; border: 1px solid var(--border); border-radius: calc(var(--r) * 3); background: var(--card); }
+  .sec-label { font: 600 12px/16px 'Archivo', system-ui, sans-serif; letter-spacing: .06em; color: var(--muted-foreground); text-transform: uppercase; }
+  .row-link { display: flex; align-items: center; gap: calc(var(--s) * 3); padding: calc(var(--s) * 3) 0; border-bottom: 1px solid var(--border); color: var(--muted-foreground); }
+  .row-link .lines { display: flex; flex-direction: column; flex: 1; min-width: 0; gap: 2px; }
+
+  /* ── Bài viết (G1–G4) ────────────────────────────────────────────────────
+     Thẻ bài: ảnh bìa 16:9 rồi mới tới chữ, KHÔNG phải chữ đè lên ảnh như thẻ
+     tour. Lý do: thẻ tour bán một nơi chốn nên ảnh là chính; thẻ bài bán một
+     câu chuyện nên tiêu đề phải đọc được ngay, không tranh nền với ảnh. */
+  .post-card { border-bottom: 1px solid var(--border); padding-bottom: calc(var(--s) * 4); }
+  .post-cover { height: calc(var(--s) * 40); border-radius: calc(var(--r) * 3); background-size: cover; background-position: center; background-color: var(--muted); }
+  .post-row { display: flex; gap: calc(var(--s) * 3); padding: calc(var(--s) * 3) 0; border-bottom: 1px solid var(--border); }
+  .post-row .th { flex: 0 0 72px; height: 72px; border-radius: calc(var(--r) * 2); background-size: cover; background-position: center; background-color: var(--muted); }
+  .byline { display: flex; align-items: center; gap: calc(var(--s) * 2); color: var(--muted-foreground); }
+  .byline .dot { width: 3px; height: 3px; border-radius: 99px; background: currentColor; }
+  /* Thân bài markdown: seed CHỈ dùng `##`, đoạn văn và `- ` (đã đếm 21/09:
+     43 heading, 19 bullet, không link/ảnh/đậm nào). Ba kiểu chữ dưới đây phủ
+     trọn nội dung hiện có. */
+  .md h2 { font: 700 20px/28px 'Literata', Georgia, serif; margin: calc(var(--s) * 5) 0 calc(var(--s) * 2); }
+  .md p { font: 400 16px/26px 'Archivo', system-ui, sans-serif; margin: 0 0 calc(var(--s) * 3); }
+  .md ul { margin: 0 0 calc(var(--s) * 3); padding-left: calc(var(--s) * 5); }
+  .md li { font: 400 16px/26px 'Archivo', system-ui, sans-serif; margin-bottom: calc(var(--s) * 1); }
   .trip-thumb { flex: 0 0 72px; height: 72px; border-radius: calc(var(--r) * 2); background-size: cover; background-position: center; background-color: var(--muted); }
   .menu-row { display: flex; align-items: center; gap: calc(var(--s) * 3); min-height: 52px; border-bottom: 1px solid var(--border); color: var(--foreground); }
 </style><header>
-  <h2>P5b-4 · Cụm tài khoản — tour đã lưu · hồ sơ · bảo mật</h2>
-  <p class="subtitle">10 khung, bản nháp 21/09. Cùng bộ quy ước với mockup P5b-2 và P5b-3. Bấm các nút dưới đây để đổi nền, hiện vùng an toàn, hoặc thu nhỏ trang.</p>
+  <h2>P5b-4 · Cụm tài khoản — tour đã lưu · hồ sơ · bảo mật · bài viết</h2>
+  <p class="subtitle">14 khung, bản nháp 21/09. Cùng bộ quy ước với mockup P5b-2 và P5b-3. Bấm các nút dưới đây để đổi nền, hiện vùng an toàn, hoặc thu nhỏ trang.</p>
   <div class="toolbar">
     <button type="button" data-scheme-btn="dark" aria-pressed="true">Nền tối</button>
     <button type="button" data-scheme-btn="light" aria-pressed="false">Nền sáng</button>
@@ -323,6 +344,8 @@
 <div class="abs" style="top:calc(var(--inset-top) + var(--s)*27);left:calc(var(--s)*6);right:calc(var(--s)*6)">
   <div class="menu-row"><i data-icon="user" data-size="20"></i><span class="t-label" style="flex:1">Personal details</span><i data-icon="chevronRight" data-size="18"></i></div>
   <div class="menu-row"><i data-icon="heart" data-size="20"></i><span class="t-label" style="flex:1">Saved tours</span><i data-icon="chevronRight" data-size="18"></i></div>
+  <div class="menu-row"><i data-icon="star" data-size="20"></i><span class="t-label" style="flex:1">My reviews</span><i data-icon="chevronRight" data-size="18"></i></div>
+  <div class="menu-row"><i data-icon="bookOpen" data-size="20"></i><span class="t-label" style="flex:1">Travel stories</span><i data-icon="chevronRight" data-size="18"></i></div>
   <div class="menu-row"><i data-icon="lock" data-size="20"></i><span class="t-label" style="flex:1">Password</span><i data-icon="chevronRight" data-size="18"></i></div>
   <div class="menu-row"><i data-icon="fileText" data-size="20"></i><span class="t-label" style="flex:1">Cancellation &amp; refund policy</span><i data-icon="externalLink" data-size="16"></i></div>
   <div class="menu-row"><i data-icon="fileText" data-size="20"></i><span class="t-label" style="flex:1">Privacy policy</span><i data-icon="externalLink" data-size="16"></i></div>
@@ -331,7 +354,7 @@
   <div class="t-caption muted" style="text-align:center;margin-top:calc(var(--s)*3)">Nexora Travel 1.0.0</div>
 </div>
 <div class="tabbar"><div class="tab"><span class="pill"><i data-icon="home" data-size="20"></i></span>Home</div><div class="tab"><span class="pill"><i data-icon="compass" data-size="20"></i></span>Explore</div><div class="tab"><span class="pill"><i data-icon="heart" data-size="20"></i></span>Saved</div><div class="tab"><span class="pill"><i data-icon="briefcase" data-size="20"></i></span>Trips</div><div class="tab on"><span class="pill"><i data-icon="user" data-size="20"></i></span>Account</div></div>
-<div class="hi"></div></div><div class="cap"><b>A1 · Account — đã đăng nhập</b><span>Ảnh Navel 49. Ảnh đại diện, tên, email ở trên; dưới là danh sách việc, mỗi dòng một chỗ đến.</span><ul><li>Dữ liệu: phiên Better Auth (<code>name</code>, <code>email</code>, <code>image</code>). Chưa có ảnh thì hiện chữ cái đầu trên nền <code>secondary</code>.</li><li>Chữ có sẵn: <code>account.menuSaved</code>, <code>menuPrivacy</code>, <code>menuTerms</code>, <code>menuCancellation</code>, <code>signOut</code>, <code>loadError</code>, <code>retry</code>. Khoá mới: "Personal details", "Password", "Delete account".</li><li>Ba trang pháp lý mở bằng trình duyệt ngoài (cùng cách màn Create account đang làm) — app không dựng lại trang pháp lý.</li><li>Đăng xuất nằm cuối, tách khỏi nhóm trên bằng khoảng trắng, chữ tông destructive.</li></ul></div></div><div class="shot"><div class="phone"><div class="sb"><span>9:41</span><span class="icons"><i style="width:17px;height:10px"></i><i style="width:15px;height:10px;border-radius:6px"></i><i style="width:25px;height:11px"></i></span></div>
+<div class="hi"></div></div><div class="cap"><b>A1 · Account — đã đăng nhập</b><span>Ảnh Navel 49. Ảnh đại diện, tên, email ở trên; dưới là danh sách việc, mỗi dòng một chỗ đến.</span><ul><li>Dữ liệu: phiên Better Auth (<code>name</code>, <code>email</code>, <code>image</code>). Chưa có ảnh thì hiện chữ cái đầu trên nền <code>secondary</code>.</li><li>Chữ có sẵn: <code>account.menuSaved</code>, <code>menuPrivacy</code>, <code>menuTerms</code>, <code>menuCancellation</code>, <code>signOut</code>, <code>loadError</code>, <code>retry</code>. Khoá mới: "Personal details", "Password", "Delete account".</li><li>Ba trang pháp lý mở bằng trình duyệt ngoài (cùng cách màn Create account đang làm) — app không dựng lại trang pháp lý.</li><li>Đăng xuất nằm cuối, tách khỏi nhóm trên bằng khoảng trắng, chữ tông destructive.</li><li><b>Hai dòng thêm 21/09:</b> "My reviews" mở cụm đánh giá (khung R4 của P5b-5), "Travel stories" mở cụm bài viết (G1 bên dưới). Cả hai nằm TRÊN nhóm pháp lý vì là nơi để đi tới, còn ba dòng pháp lý là thứ để tra khi cần.</li><li>Thứ tự nhóm trên đọc theo tần suất chứ không theo bảng chữ cái: hồ sơ · tour đã lưu · bài đánh giá · bài viết · mật khẩu.</li></ul></div></div><div class="shot"><div class="phone"><div class="sb"><span>9:41</span><span class="icons"><i style="width:17px;height:10px"></i><i style="width:15px;height:10px;border-radius:6px"></i><i style="width:25px;height:11px"></i></span></div>
 <div class="abs t-title" style="top:calc(var(--inset-top) + var(--s)*2);left:calc(var(--s)*6)">Account</div>
 <div class="abs" style="top:calc(var(--inset-top) + var(--s)*16);left:calc(var(--s)*6);right:calc(var(--s)*6);display:flex;flex-direction:column;align-items:center;text-align:center;gap:calc(var(--s)*3)">
   <div class="square-icon"><i data-icon="user" data-size="28"></i></div>
@@ -420,6 +443,85 @@
   </div>
 </div>
 <div class="hi"></div></div><div class="cap"><b>A7 · Xoá tài khoản</b><span>Việc một chiều nên nói thật đủ: cái gì mất, cái gì ở lại, và phải nhập mật khẩu mới xoá được.</span><ul><li>Booking đã thanh toán KHÔNG mất theo tài khoản — hồ sơ kế toán phải giữ; nói thẳng điều đó thay vì để khách tự đoán.</li><li>Yêu cầu mật khẩu hiện tại (cùng cách web đang làm). Xoá xong: về Home ở tư cách khách kèm một câu xác nhận ngắn.</li><li>Khoá mới: toàn bộ chữ của tấm này. Dòng "Delete account" ở màn A1 nằm trong Personal details, KHÔNG để cạnh Sign out — tránh bấm nhầm.</li></ul></div></div></div>
+<h3 class="sec">3 · Bài viết <small>mở từ dòng "Travel stories" ở tab Account</small></h3>
+<div class="row"><div class="shot"><div class="phone"><div class="sb"><span>9:41</span><span class="icons"><i style="width:17px;height:10px"></i><i style="width:15px;height:10px;border-radius:6px"></i><i style="width:25px;height:11px"></i></span></div><div class="compact-head"><span class="icon-btn plain"><i data-icon="back" data-size="22"></i></span><span class="t-label clamp1" style="flex:1">Travel stories</span></div>
+<div class="abs" style="top:calc(var(--inset-top) + 52px + var(--s)*3);left:calc(var(--s)*6);right:calc(var(--s)*6)">
+  <div class="search"><i data-icon="search" data-size="18"></i><span class="t-body">Search stories</span></div>
+  <div class="chips scroll" style="margin-top:calc(var(--s)*3)"><span class="chip on">All</span><span class="chip">Food</span><span class="chip">Nature</span><span class="chip">Culture</span><span class="chip">Practical</span></div>
+  <div class="post-card" style="margin-top:calc(var(--s)*4)">
+    <div class="post-cover" style="background-image:url('https://res.cloudinary.com/dbkgeehow/image/upload/c_fill,w_800,h_450,g_auto,q_auto,f_auto/tourism/catalog/post/eating-your-way-through-hoi-an/hero')"></div>
+    <div class="t-heading" style="margin-top:calc(var(--s)*3)">Eating your way through Hoi An</div>
+    <div class="t-subtitle muted clamp2" style="margin-top:4px">Cao lầu, white rose dumplings and the bánh mì queue worth joining — a morning-to-midnight eating route.</div>
+    <div class="byline" style="margin-top:calc(var(--s)*2)"><span class="t-caption">24 Jul 2026</span><span class="dot"></span><span class="t-caption">Food</span><span class="dot"></span><span class="t-caption">Hoi An</span></div>
+  </div>
+  <div class="post-row">
+    <span class="th" style="background-image:url('https://res.cloudinary.com/dbkgeehow/image/upload/c_fill,w_160,h_160,g_auto,q_auto,f_auto/tourism/catalog/post/what-to-pack-for-the-mist-season/hero')"></span>
+    <div style="flex:1;min-width:0"><div class="t-label clamp2">What to pack for the mist season</div><div class="byline" style="margin-top:4px"><span class="t-caption">22 Jul 2026</span><span class="dot"></span><span class="t-caption">Packing</span></div></div>
+  </div>
+  <div class="post-row">
+    <span class="th" style="background-image:url('https://res.cloudinary.com/dbkgeehow/image/upload/c_fill,w_160,h_160,g_auto,q_auto,f_auto/tourism/catalog/post/floating-markets-before-sunrise/hero')"></span>
+    <div style="flex:1;min-width:0"><div class="t-label clamp2">Floating markets before sunrise</div><div class="byline" style="margin-top:4px"><span class="t-caption">18 Jul 2026</span><span class="dot"></span><span class="t-caption">Markets</span></div></div>
+  </div>
+  <div class="post-row" style="border-bottom:none">
+    <span class="th" style="background-image:url('https://res.cloudinary.com/dbkgeehow/image/upload/c_fill,w_160,h_160,g_auto,q_auto,f_auto/tourism/catalog/post/reading-a-hue-royal-tomb/hero')"></span>
+    <div style="flex:1;min-width:0"><div class="t-label clamp2">Reading a Huế royal tomb</div><div class="byline" style="margin-top:4px"><span class="t-caption">15 Jul 2026</span><span class="dot"></span><span class="t-caption">Culture</span></div></div>
+  </div>
+</div>
+<div class="hi"></div></div><div class="cap"><b>G1 · Travel stories — danh sách</b><span>Mở từ dòng "Travel stories" ở tab Account. Bài mới nhất được một thẻ lớn có ảnh bìa, phần còn lại là hàng gọn — lướt nhanh mà vẫn có một thứ đáng dừng lại.</span><ul><li>Dữ liệu: <code>posts.list</code> (<code>PostsListQuerySchema</code>) — phân trang, <code>sort: publishedAt</code> <code>order: desc</code> mặc định. Hai tham số còn lại app dùng thật: <code>search</code> và <code>tag</code>.</li><li><b>Chip lọc là MỘT tag một lúc</b> — API nhận <code>tag</code> đơn, không nhận mảng. Web lọc đa tuyển bằng cách tự lọc ở máy; mobile đừng bắt chước: đơn tuyển hợp ngón tay hơn và đi thẳng qua API.</li><li>Danh sách chip lấy từ <code>posts.tags</code> (toàn cục, không phân trang). <b>Đừng in <code>count</code></b> — đó là tổng TOÀN CỤC, sau khi lọc nó nói sai ngay (bài học đã ghi ở vòng thiết kế <code>/blog</code> của web).</li><li><code>cover</code> và <code>excerpt</code> đều <b>nullable</b>: thiếu ảnh thì thẻ lớn tụt xuống thành hàng gọn, thiếu excerpt thì bỏ hẳn dòng đó — đừng chừa chỗ trống.</li><li>Byline in ngày và tối đa hai tag. Tên tác giả CÓ trong <code>PostAuthorSchema</code> nhưng bỏ ở danh sách: cả 9 bài seed cùng một tác giả, in ra chỉ tốn dòng.</li></ul></div></div><div class="shot"><div class="phone"><div class="sb"><span>9:41</span><span class="icons"><i style="width:17px;height:10px"></i><i style="width:15px;height:10px;border-radius:6px"></i><i style="width:25px;height:11px"></i></span></div><div class="compact-head"><span class="icon-btn plain"><i data-icon="back" data-size="22"></i></span><span class="t-label clamp1" style="flex:1">Travel stories</span></div>
+<div class="abs" style="top:calc(var(--inset-top) + 52px + var(--s)*3);left:calc(var(--s)*6);right:calc(var(--s)*6)">
+  <div class="search focus"><i data-icon="search" data-size="18"></i><span class="t-body">sapa trekking<span class="caret"></span></span><i data-icon="x" data-size="18"></i></div>
+  <div class="chips scroll" style="margin-top:calc(var(--s)*3)"><span class="chip on">All</span><span class="chip">Food</span><span class="chip">Nature</span><span class="chip">Culture</span><span class="chip">Practical</span></div>
+</div>
+<div class="abs" style="top:calc(var(--inset-top) + 52px + var(--s)*30);left:calc(var(--s)*6);right:calc(var(--s)*6);display:flex;flex-direction:column;align-items:center;text-align:center;gap:calc(var(--s)*4)">
+  <div class="square-icon"><i data-icon="search" data-size="28"></i></div>
+  <div class="t-heading">No stories match "sapa trekking"</div>
+  <div class="t-subtitle muted" style="max-width:260px">Try a shorter word, or browse by topic instead.</div>
+  <span class="btn ghost" style="width:200px">Clear search</span>
+</div>
+<div class="hi"></div></div><div class="cap"><b>G2 · Tìm mà không có gì</b><span>Trạng thái hay bị quên nhất của mọi ô tìm kiếm. Nhắc lại ĐÚNG chuỗi khách gõ, rồi mở hai đường đi tiếp.</span><ul><li>Ô tìm và hàng chip Ở LẠI trên màn — khách sửa chữ ngay tại chỗ, không phải bấm back rồi gõ lại.</li><li><code>search</code> đi thẳng qua API (trần 160 ký tự), gọi trễ ~300ms sau nhịp gõ cuối. Đừng lọc ở máy: danh sách bài có phân trang, lọc ở máy chỉ thấy trang đang tải.</li><li>Cùng khuôn trạng thái rỗng với Explore và Saved (ô vuông icon + câu + nút), giữ một ngôn ngữ cho cả app.</li><li>Khoá chữ mới: câu "No stories match {{query}}", câu gợi ý, "Clear search".</li></ul></div></div><div class="shot"><div class="phone"><div class="sb"><span>9:41</span><span class="icons"><i style="width:17px;height:10px"></i><i style="width:15px;height:10px;border-radius:6px"></i><i style="width:25px;height:11px"></i></span></div>
+<div class="hero" style="height:calc(var(--s)*62);background-image:url('https://res.cloudinary.com/dbkgeehow/image/upload/c_fill,w_780,h_500,g_auto,q_auto,f_auto/tourism/catalog/post/what-to-pack-for-the-mist-season/hero')"></div>
+<div class="abs" style="top:var(--inset-top);left:calc(var(--s)*2);right:calc(var(--s)*2);display:flex;justify-content:space-between;z-index:5">
+  <span class="icon-btn glass"><i data-icon="back" data-size="22"></i></span>
+  <span class="icon-btn glass"><i data-icon="externalLink" data-size="20"></i></span>
+</div>
+<div class="abs" style="top:calc(var(--s)*52);left:calc(var(--s)*6);right:calc(var(--s)*6)">
+  <div class="chips"><span class="chip soft">Packing</span><span class="chip soft">Sa Pa</span></div>
+  <div class="t-title" style="margin-top:calc(var(--s)*3)">What to pack for the mist season</div>
+  <div class="byline" style="margin-top:calc(var(--s)*2)"><span class="avatar" style="flex:0 0 28px;height:28px;line-height:28px;font-size:11px">NT</span><span class="t-caption">Nexora Travel</span><span class="dot"></span><span class="t-caption">22 Jul 2026</span></div>
+  <div class="md" style="margin-top:calc(var(--s)*4)">
+    <h2>Layers beat one big coat</h2>
+    <p>Sa Pa runs cold at 6am and warm by noon. I have watched guests peel off a puffer jacket on the Cat Cat trail before 11am and carry it the rest of the day.</p>
+    <p>Bring gloves for the cable car up to Fansipan. The summit platform sits well below freezing from November through February.</p>
+    <h2>Shoes that already know mud</h2>
+    <p>The rice terrace paths turn to red clay after rain, and it rains most afternoons from June to September.</p>
+  </div>
+</div>
+<div class="hi"></div></div><div class="cap"><b>G3 · Bài viết — đầu bài</b><span>Ảnh bìa tràn mép, tiêu đề và thân bài trên nền thường. Không dùng khuôn hero-có-tab của trang tour: bài viết đọc một mạch từ trên xuống, không có tab nào.</span><ul><li>Dữ liệu: <code>posts.bySlug</code> → <code>PostDetailSchema</code>. <code>content</code> là <b>markdown</b>.</li><li><b>Đã đếm toàn bộ 9 bài seed (21/09): chỉ có <code>##</code> (43 lần), đoạn văn, và <code>- </code> (19 lần).</b> Không link, không ảnh chèn, không chữ đậm. Ba kiểu chữ là đủ — chưa cần thêm thư viện markdown nào.</li><li>Nhưng admin CÓ THỂ đăng markdown giàu hơn về sau, nên bộ vẽ phải rơi về đoạn-văn-thường cho cú pháp lạ, TUYỆT ĐỐI không in ra ký hiệu thô kiểu <code>**đậm**</code> giữa bài.</li><li>Web dùng <code>react-markdown</code> (<code>article-markdown.tsx</code>) — thư viện ấy trả thẻ HTML nên KHÔNG dùng lại được ở React Native. Đừng cố import.</li><li>Nút góc phải mở bài trên web (chia sẻ được đường dẫn thật). Tác giả lấy từ <code>PostAuthorSchema</code>, chưa có ảnh thì hiện chữ cái đầu.</li></ul></div></div><div class="shot"><div class="phone"><div class="sb"><span>9:41</span><span class="icons"><i style="width:17px;height:10px"></i><i style="width:15px;height:10px;border-radius:6px"></i><i style="width:25px;height:11px"></i></span></div><div class="compact-head"><span class="icon-btn plain"><i data-icon="back" data-size="22"></i></span><span class="t-label clamp1" style="flex:1">What to pack for the mist season</span></div>
+<div class="abs" style="top:calc(var(--inset-top) + 52px + var(--s)*3);left:calc(var(--s)*6);right:calc(var(--s)*6)">
+  <div class="md">
+    <h2>The one thing everyone forgets</h2>
+    <p>Signal drops out past Silver Waterfall and stays patchy for most of the trek. Download your offline maps while you still have a connection in Hanoi.</p>
+  </div>
+  <div class="row-link" style="border-top:1px solid var(--border);border-bottom:none;margin-top:calc(var(--s)*3)"><span class="t-subtitle muted" style="flex:1">Read this on nexora-travel.agency</span><i data-icon="externalLink" data-size="18"></i></div>
+  <div class="sec-label" style="margin-top:calc(var(--s)*5)">Trips in this story</div>
+  <div class="post-row" style="border-bottom:none;padding-top:calc(var(--s)*3)">
+    <span class="th" style="background-image:url('https://res.cloudinary.com/dbkgeehow/image/upload/c_fill,w_160,h_160,g_auto,q_auto,f_auto/tourism/catalog/tour/sapa-terraces-homestay-2d/hero')"></span>
+    <div style="flex:1;min-width:0">
+      <div class="t-label clamp2">Sa Pa Terraces &amp; Homestay Trek 2D1N</div>
+      <div class="byline" style="margin-top:4px"><span class="t-caption">2 days</span><span class="dot"></span><span class="t-caption">Moderate</span></div>
+      <div class="t-label" style="margin-top:4px">$119</div>
+    </div>
+  </div>
+  <div class="post-row" style="border-bottom:none">
+    <span class="th" style="background-image:url('https://res.cloudinary.com/dbkgeehow/image/upload/c_fill,w_160,h_160,g_auto,q_auto,f_auto/tourism/catalog/tour/sapa-fansipan-summit-3d/hero')"></span>
+    <div style="flex:1;min-width:0">
+      <div class="t-label clamp2">Sa Pa &amp; Fansipan Summit 3D2N</div>
+      <div class="byline" style="margin-top:4px"><span class="t-caption">3 days</span><span class="dot"></span><span class="t-caption">Challenging</span></div>
+      <div class="t-label" style="margin-top:4px">$189</div>
+    </div>
+  </div>
+</div>
+<div class="hi"></div></div><div class="cap"><b>G4 · Cuối bài — tour liên quan</b><span>Chỗ DUY NHẤT của cụm này chạm vào việc bán hàng, và nó đứng ở cuối chứ không cắt ngang bài.</span><ul><li><code>relatedTours</code> có sẵn trong <code>PostDetailSchema</code> (dùng lại <code>TourCardSchema</code>) — không phải gọi thêm lần nào.</li><li>Mảng rỗng là hợp lệ: cả khối tự ẩn, đừng hiện tiêu đề trống.</li><li>Thẻ tour ở đây dùng khuôn HÀNG GỌN, không phải thẻ lớn của Explore: đang đọc bài thì tour là gợi ý, không phải món chính.</li><li>Chạm một tour đi thẳng vào màn chi tiết tour của P5b-2 — cùng màn, không dựng bản thứ hai.</li><li>Khoá chữ mới: "Trips in this story", "Read this on {{domain}}".</li></ul></div></div></div>
 <script>
   // Thay thẻ <i data-icon> bằng SVG nét (bộ Feather), cho bản ghi gọn và không lặp path.
   (function () {
@@ -465,6 +567,7 @@
       chevronUp: '<path d="m18 15-6-6-6 6"/>',
       flag: '<path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1ZM4 22v-7"/>',
       shield: '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/><path d="m9 12 2 2 4-4"/>',
+      bookOpen: '<path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2Z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7Z"/>',
       map: '<path d="M1 6v16l7-4 8 4 7-4V2l-7 4-8-4-7 4ZM8 2v16M16 6v16"/>'
     };
     document.querySelectorAll('i[data-icon]').forEach(function (el) {

@@ -22,7 +22,7 @@ sáng/tối và hiện vùng an toàn. Tài liệu bàn giao đi kèm ở `docs/
 | `mobile-auth-screens.src.html` | P5b-1 auth | 17 | 16/09 · đã dựng xong, [bàn giao](../../conventions/mobile-auth-handoff.md) |
 | `mobile-browse-screens.src.html` | P5b-2 xem tour | 16 | 18/09 · [bàn giao](../../conventions/mobile-browse-handoff.md) |
 | `mobile-booking-screens.src.html` | P5b-3 đặt tour · Trips · bám ngày đi | 25 | 21/09 · [bàn giao](../../conventions/mobile-booking-handoff.md) |
-| `mobile-account-screens.src.html` | P5b-4 Saved · tài khoản | 10 | 21/09 · [bàn giao](../../conventions/mobile-account-handoff.md) |
+| `mobile-account-screens.src.html` | P5b-4 Saved · tài khoản · bài viết | 14 | 21/09 · [bàn giao](../../conventions/mobile-account-handoff.md) |
 | `mobile-review-screens.src.html` | P5b-5 đánh giá | 7 | 21/09 · [bàn giao](../../conventions/mobile-review-handoff.md) |
 
 ## Đã dựng xong — bản ghi thiết kế web và admin

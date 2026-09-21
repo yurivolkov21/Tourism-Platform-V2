@@ -4,7 +4,7 @@
 > trước — luật chung, cách đọc bản vẽ và quy ước code nằm ở đó; tài liệu này chỉ nói phần
 > KHÁC.
 
-Bản vẽ: `docs/design/mockups/mobile-account-screens.src.html` (10 khung) ·
+Bản vẽ: `docs/design/mockups/mobile-account-screens.src.html` (14 khung) ·
 Phiên và mật khẩu: [ADR-0017](../adr/0017-web-session-better-auth.md) §7a ·
 Ảnh đại diện: [ADR-0021](../adr/0021-media-write-surface.md) ·
 Cụm auth đã dựng: [mobile-auth-handoff.md](mobile-auth-handoff.md).
@@ -41,6 +41,10 @@ Cụm auth đã dựng: [mobile-auth-handoff.md](mobile-auth-handoff.md).
 | V4 | Sửa tên và ảnh đại diện | A3, A4 | V3 |
 | V5 | Đổi mật khẩu | A6 | V3 |
 | V6 | Đăng xuất và xoá tài khoản | A5, A7 | V3 |
+| V7 | Cụm bài viết: danh sách, tìm, đọc bài | G1–G4 | V3 (chỉ cần dòng ở tab Account) |
+
+V7 KHÔNG cần đăng nhập — `posts.*` là route công khai. Nó nằm trong cụm này chỉ vì cửa vào
+là dòng "Travel stories" ở tab Account (user chốt 21/09), không phải vì nó thuộc về tài khoản.
 
 ## 4. Endpoint cho từng màn
 
@@ -54,6 +58,9 @@ Cụm auth đã dựng: [mobile-auth-handoff.md](mobile-auth-handoff.md).
 | A6 | `authClient.changePassword` | Kèm `revokeOtherSessions`; kiểm bằng `validateChangePassword` của `@tourism/core` |
 | A5 | `authClient.signOut()` | Xoá phiên trong `expo-secure-store`, về Home ở tư cách khách |
 | A7 | xoá tài khoản (Better Auth) | Cần mật khẩu hiện tại, như web |
+| G1 | `posts.list` + `posts.tags` | `PostsListQuerySchema`: phân trang, `sort: publishedAt` `order: desc`, `tag` (**một tag một lúc** — API không nhận mảng), `search` ≤160 |
+| G2 | `posts.list` với `search` | Gọi trễ ~300ms sau nhịp gõ cuối; đừng lọc ở máy vì danh sách có phân trang |
+| G3, G4 | `posts.bySlug` | `PostDetailSchema` — `content` là markdown, `relatedTours` dùng lại `TourCardSchema` nên không phải gọi thêm |
 
 Ba trang pháp lý (huỷ/hoàn tiền, quyền riêng tư, điều khoản) mở bằng **trình duyệt ngoài**,
 đúng cách màn Create account đang làm — app không dựng lại trang pháp lý.
@@ -67,3 +74,19 @@ Saved và ba cặp chữ chặn tab). Khoá mới: nhãn "No longer available"; 
 
 Câu lỗi mật khẩu **dùng chung với web** qua `authForms.errors` và `formErrors`, và đặt đúng
 kênh bằng `placeAuthError` của cụm auth — đừng viết câu lỗi mới.
+
+Cụm bài viết: khoá mới gồm "Travel stories", "Search stories", câu rỗng khi tìm không thấy,
+"Clear search", "Trips in this story", "Read this on {domain}". Nội dung bài là DỮ LIỆU.
+
+## 6. Ba chỗ dễ làm sai ở cụm bài viết
+
+1. **Markdown phải tự vẽ.** Web dùng `react-markdown` (`article-markdown.tsx`) — thư viện đó
+   trả thẻ HTML nên KHÔNG chạy trên React Native, đừng cố import. Đã đếm toàn bộ 9 bài seed
+   (21/09): chỉ có `##` (43 lần), đoạn văn, và `- ` (19 lần) — không link, không ảnh chèn,
+   không chữ đậm. Một bộ vẽ ~30 dòng cho ba kiểu ấy là đủ. Nhưng admin CÓ THỂ đăng markdown
+   giàu hơn sau này, nên cú pháp lạ phải rơi về đoạn-văn-thường, tuyệt đối không in ký hiệu
+   thô kiểu `**đậm**` ra giữa bài.
+2. **Đừng in `count` của tag.** `PostTagSchema.count` là tổng TOÀN CỤC; sau lần lọc đầu nó
+   nói sai ngay — đúng bài học đã ghi ở vòng thiết kế `/blog` của web.
+3. **`cover` và `excerpt` đều nullable.** Thiếu ảnh thì thẻ lớn tụt xuống thành hàng gọn,
+   thiếu excerpt thì bỏ hẳn dòng đó — đừng chừa chỗ trống.
