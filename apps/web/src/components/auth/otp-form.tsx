@@ -102,6 +102,16 @@ export function OtpForm({
       });
       // Siết 20/08 (đo int test d): verify KHÔNG phát session → về /login,
       // mang theo đích cũ để đăng nhập xong đi tiếp đúng chỗ.
+      //
+      // Đã cân lại 21/09 và GIỮ NGUYÊN — đừng đề xuất lần nữa mà không đọc
+      // đoạn này. Plugin `email-otp` của better-auth KHÔNG có tuỳ chọn phát
+      // session sau `verify-email`: hai route tách bạch,
+      // `/email-otp/verify-email` chỉ đánh dấu email đã xác minh, còn
+      // `/sign-in/email-otp` là một luồng ĐĂNG NHẬP KHÔNG MẬT KHẨU riêng. Nên
+      // "tự đăng nhập sau OTP" chỉ làm được bằng cách chuyển sang route thứ
+      // hai, và cái giá là mã 6 số gửi qua email trở thành yếu tố đăng nhập
+      // đầy đủ cho MỌI tài khoản — ai đọc được hộp thư là vào được, không cần
+      // mật khẩu. User chốt không đánh đổi; đổi ý thì phải đi qua một ADR.
       router.push(`/login?redirect=${encodeURIComponent(safeRedirect(redirect))}`);
       router.refresh();
     } catch {
