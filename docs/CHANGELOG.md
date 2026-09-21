@@ -8,6 +8,92 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-09-21 — Hoàn tiền để lại vết ở sổ `payment_events` (nhánh `feat/refund-payment-event`, CHƯA merge)
+
+Hai khoản hoàn THẬT trên prod (`BK-7WKW9ESB`, `BK-PY7IZMD4`, nghiệm thu 18/09)
+chỉ có event lượt thu, nên `/payment-events` — kính soi tiền của admin — không
+bao giờ thấy tiền đi ra. Rà ra **ba** nguyên nhân chứ không một, và hai cái sau
+khiến "bật thêm event ở dashboard" một mình là vô nghĩa:
+
+1. Cả ba đường ghi dòng sổ `refunds` (admin hoàn thiện chí, khách tự huỷ,
+   auto-refund của money-path) đều chỉ ghi `refunds`, không đường nào chạm
+   `payment_events`.
+2. Với Stripe, `data.object` của `charge.refunded` là một **Charge** — ta chỉ
+   đặt `metadata[bookingId]` trên Checkout Session, không bao giờ đặt
+   `payment_intent_data[metadata]`, nên Charge không mang metadata đó.
+   `mapStripeEvent` đọc `object.metadata?.bookingId` và `object.amount_total`,
+   Charge không có cả hai → row sẽ là `other` / không gắn booking / **không cả
+   số tiền**. Đúng hình dạng hai row "Other / Not linked" prod đã ghi 18/09.
+3. Seed ghi type **thô** của provider (`checkout.session.completed`,
+   `charge.refunded`) còn `beginEvent` của app thật ghi type **trung lập**
+   (`payment.completed`…). Nên không chỉ dòng hoàn lệch — dòng thu cũng lệch,
+   mọi row seed nằm ngoài bộ lọc type của admin, và bất biến nghiệm thu seed
+   (dò hai chuỗi thô) **không thể đúng với dữ liệu thật dù chọn hướng nào**.
+
+Chốt hướng sau brainstorming ([ADR-0043](adr/0043-refund-payment-event.md)):
+`payment_events` đổi nghĩa thành sổ sự kiện tiền CẢ HAI CHIỀU. Row hoàn không
+phải dữ liệu bịa — cổng thật sự có phát event hoàn, ta ghi nó từ response của
+API refund thay vì đợi echo. Đối soát qua webhook để dành dạng CHỈ ĐỌC, không
+làm đường ghi thứ hai.
+
+- `23768ed2` docs(adr): ADR-0043, ba nguyên nhân đo được, hai phương án đã bỏ
+  (chỉ-bật-webhook; và giữ `payment_events` thuần webhook rồi cho admin đọc sổ
+  `refunds` ở vùng khác — bỏ vì không đạt nghiệm thu user đặt ra).
+- `41575415` feat(api): `VerifiedEvent['type']` nay là TỪ VỰNG của cột
+  `payment_events.type`, thêm giá trị thứ năm `payment.refunded`; kéo theo
+  `PAYMENT_EVENT_TYPES`, nhãn i18n "Refund issued" và icon `Undo2` ở menu lọc
+  admin. **Không migration** — cột là `varchar(100)` tự do, không phải enum
+  Prisma, nên không có gì phải deploy lên Supabase. Mirror spec ép hai chiều
+  tuple ⊆ union và union ⊆ tuple nên quên chỗ nào là đỏ typecheck.
+- `5d3d83d0` feat(api): builder THUẦN `refund-event.ts`, ba call-site ghi row
+  trong ĐÚNG transaction đang ghi dòng sổ (vẫn trong advisory lock ADR-0009).
+  `eventId` lấy id refund của CỔNG để khoá `[provider, eventId]` vẫn là lớp
+  chống trùng thật; hai mốc bằng ĐÚNG `refunds.created_at` — đường huỷ cho CTE
+  `refund_insert` trả `created_at` rồi dùng lại, hai đường kia lấy từ row Prisma
+  vừa tạo. Ba khoản hoàn NGOÀI sổ (lệch tiền, dup-capture, nhánh off-ledger)
+  giữ nguyên đường `note` của ADR-0006 AMEND 2a, có test chốt chặn. Seed ghi
+  type trung lập và `eventId` là id refund của cổng; bất biến `verify-seed` đổi
+  sang `payment.refunded`. Viết lại JSDoc ở bảy chỗ còn gọi bảng này là "sổ
+  webhook".
+- Chỉ số `paymentEvents.received` của dashboard nay gộp cả row hoàn. **Cố ý**
+  (user chốt 21/09): mô tả đổi từ "thông lượng webhook" sang "số dòng sổ sự kiện
+  tiền trong kỳ". Loại một type ra khỏi một chỉ số thông lượng là đúng thứ
+  luật-chồng-luật rồi không ai nhớ.
+- Hai thứ phải sửa dọc đường, đều là **rác cục bộ chứ không phải lỗi mã**:
+  Prisma Client sinh ra ở máy còn bản trước M2 (thiếu `BOOKING_CANCELLED`) nên
+  `typecheck` đỏ 19 lỗi `EmailType` cho tới khi `prisma generate`; và `.next` của
+  admin còn trỏ hai trang `cancellations` đã xoá theo ADR-0041 nên
+  `admin#typecheck` đỏ cho tới khi xoá thư mục. Lượt gate đầu còn đỏ ở
+  `web#build` với `ECONNREFUSED` — đó là yêu cầu đã biết của ADR-0016 (build web
+  cần API SỐNG, xem `ci.yml` bước "Migrate + seed db rồi mở API nền"), không
+  phải hồi quy; chạy lại với API nền ở `localhost:3001` thì xanh.
+
+**CÒN TREO cho session gốc:**
+
+- **Nghiệm thu trên site thật** (thứ duy nhất chứng minh xong): huỷ một booking
+  sandbox → `/payment-events` phải có dòng `Refund issued` gắn đúng booking,
+  đúng số tiền.
+- **Hai khoản hoàn cũ trên prod KHÔNG backfill** (user chốt 21/09): lượt seed
+  lại prod khoảng 03/11 (ADR-0041 Phụ lục B Bước 8) xoá sạch chúng, nên
+  migration backfill là làm việc rồi bị xoá. Tới lúc đó `seed:verify` trên prod
+  vẫn báo 2 ở mục "refund không có đúng một payment event hoàn" — con số đã
+  biết, không phải lỗi mới.
+- **Nhánh này mang thêm 5 commit docs/mockup của một session khác**
+  (`a176b7b4`…`8dafd4ee`, cụm mobile P5b và mục lục thư mục mockup) commit chồng
+  lên trong lúc thi công. Không phải của đợt này — người merge cần biết trước
+  khi rebase lên `main`.
+- `main` đang **ahead 2 so với origin** từ trước đợt này (hai commit docs mobile
+  `47196fec`, `a6c9533b` chưa push).
+
+**Review findings:** chưa có vòng review riêng — nhánh chờ user review.
+
+Tests after: cổng đầy đủ xanh (28/28 task, int 6/6, với API nền sống). Int 497 ở
+39 file (thêm 2: đường admin và đường khách tự huỷ). Vitest 3657, trong đó api
+932 có thêm 7 test (5 cho builder `refund-event`, 2 cho chốt chặn từ vựng type ở
+fixture seed chạy trên hai mốc H); các package còn lại không đổi — admin 838,
+web 1506, contract 279, core 46, ui 22, tokens 18, i18n 16. Jest mobile 245
+không đổi. Lint vẫn đúng 1 warning và 1 info có từ trước.
+
 ## 2026-09-21 — M2 hoàn tiền một hạn chót: xoá hai cột badge huỷ và ba loại email duyệt (nhánh `chore/refund-deadline-m2`, ff vào `main`)
 
 Migration thu hẹp đi sau M1 đúng một nhịp (Phụ lục B Bước 7 của plan 15/09,
