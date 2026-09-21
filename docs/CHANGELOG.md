@@ -8,6 +8,55 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-09-21 — Audit hết đỏ: metro bỏ `image-size`, ghim `@types/react`, ghi nhận lỗ `decode-uri-component` (nhánh `fix/audit-metro-image-size`)
+
+Workflow `Audit` (lịch, 09:00 thứ Hai) đỏ từ **14/09** mà không ai nhìn — lần
+xanh cuối là 07/09. Ba lỗ, cả ba chỉ đến từ bộ công cụ Expo trong `apps/mobile`;
+web và api sạch.
+
+- **Hai lỗ high `image-size` (GHSA-w3rx-r6r6-pgpr, GHSA-5p2g-fcmc-qvqq)** — vá
+  bằng MỘT lượt làm mới lockfile, không cần override: `metro@0.87.1` đã **bỏ hẳn**
+  dependency `image-size`, và `metro-config@0.87.1` nằm trọn trong dải `^0.87.0`
+  mà `@react-native/metro-config@0.87.1` (bản repo đang cài) khai. Lock chỉ đang
+  giữ 0.87.0 vì `--frozen-lockfile`. Đây là patch BÊN TRONG dải upstream đã cho
+  phép, không đụng Expo SDK 57 của ADR-0040 — hợp chính sách freeze 15/10.
+- **KHÔNG override `image-size` lên 2.x** dù advisory bảo `>=2.0.3`:
+  `metro/src/Assets.js` gọi `_interopRequireDefault(require("image-size"))`, tức
+  dùng default export, mà v2 chỉ xuất named `imageSize` → Metro sẽ chết khi bundle
+  bất kỳ ảnh nào. Đã kiểm bằng cách đọc mã nguồn metro trong `node_modules`.
+- **Lỗ moderate `decode-uri-component` (GHSA-vcc3-ghjq-m6fr) KHÔNG vá được**, ghi
+  nhận có chủ đích bằng `auditConfig.ignoreGhsas` kèm lý do đo được và điều kiện
+  gỡ. Advisory ghi "Patched versions >=0.4.3" nhưng **bản 0.4.3 không tồn tại trên
+  npm** (registry chỉ tới 0.4.1 rồi nhảy 0.5.0), và 0.5.0 là `"type": "module"`
+  trong khi `query-string@7.1.3` là CJS `require()` nó → ép lên là
+  `ERR_REQUIRE_ESM`, expo-router hỏng lúc CHẠY. Gỡ được khi Expo kéo
+  `query-string >=9.5.1` (bản đó khai `decode-uri-component: ^0.5.0`; 9.0 vẫn khai
+  `^0.4.1` nên chưa đủ).
+- **Tác dụng phụ bắt được nhờ gate, không phải nhờ may:** lượt làm mới lock kéo
+  thêm `@types/react@19.2.18` cạnh 19.2.17 mà react-native và `apps/web` đang
+  dùng → hai bản types trong store → `tsc` ở `libs/shared/ui` báo *"Two different
+  types with this name exist, but they are unrelated"* cho `Ref<SVGSVGElement>`.
+  Ghim `'@types/react': '19.2.17'` theo đúng nếp đã có cho `react`/`react-dom`, và
+  cùng lý lẽ: hạ xuống cho khớp, KHÔNG phải nâng cấp. Lỗi này không hiện ở runtime.
+- **Phạm vi lock:** 33 gói đổi version, toàn bộ patch/minor trong dải đã khai,
+  **không gói nào nhảy major**. Phần lớn là họ `metro-*` 0.87.0 lên 0.87.1; vài gói
+  là đích của override bảo mật sẵn có tự trôi tới (hono 4.13.5 lên 4.13.8, postcss
+  8.5.23 lên 8.5.28, nanoid 3.3.17 lên 3.3.19).
+
+**Kiểm metro riêng vì gate không đụng tới nó:** `pnpm gate` chạy jest-expo chứ
+không chạy Metro (ADR-0040 §5 — `expo export` tốn 1–2 phút nên đứng ngoài vòng
+lặp TDD). Đã chạy `turbo run bundle --filter=@tourism/mobile`: ra bundle iOS
+3.4MB và Android 3.7MB, đúng như CI. Build web thì cần API sống (ADR-0016) nên
+chạy tay với API nền ở cổng 3001 — xanh.
+
+**Review findings:** chưa có vòng review riêng.
+
+Tests after: không đổi con số nào so với entry trước (thay đổi không chạm file
+nguồn nào). Vitest 3657 chia ra api 932, web 1506, admin 838, contract 279, core
+46, ui 22, tokens 18, i18n 16. Jest mobile 245 (mobile 159 và mobile-ui 86). Int
+497 ở 39 file. Lint vẫn đúng 1 warning và 1 info có từ trước. `pnpm audit
+--audit-level=moderate` nay exit 0.
+
 ## 2026-09-21 — Hoàn tiền để lại vết ở sổ `payment_events` (nhánh `feat/refund-payment-event`, ff vào `main` `a1544081` — ĐẨY NHẦM, xem mục Review findings)
 
 Hai khoản hoàn THẬT trên prod (`BK-7WKW9ESB`, `BK-PY7IZMD4`, nghiệm thu 18/09)

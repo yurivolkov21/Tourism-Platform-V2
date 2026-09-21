@@ -50,6 +50,33 @@ minimumReleaseAgeExclude:
   - expo@57.0.21 || 57.0.23
   - '@expo/router-server@57.0.10'
 
+# Lỗ hổng KHÔNG vá được, ghi nhận có chủ đích thay vì để Audit đỏ mãi.
+#
+# GHSA-vcc3-ghjq-m6fr (moderate — decode-uri-component <=0.4.2, DoS khi giải mã
+# chuỗi percent-encoded dị dạng). Đường vào DUY NHẤT: apps/mobile → expo-router
+# → query-string@7.1.3 → decode-uri-component@0.2.2.
+#
+# Vì sao không override (đo 21/09, không suy đoán):
+#   1. Advisory ghi "Patched versions >=0.4.3" nhưng bản 0.4.3 KHÔNG TỒN TẠI
+#      trên npm — registry chỉ có tới 0.4.1 rồi nhảy thẳng 0.5.0.
+#   2. decode-uri-component@0.5.0 là `"type": "module"`, tức ESM thuần. Mà
+#      query-string@7.1.3 là CJS và `require()` nó → ép lên sẽ nổ ERR_REQUIRE_ESM
+#      và expo-router hỏng LÚC CHẠY, không phải lúc build.
+#   3. Nâng expo-router để thoát query-string@7 nghĩa là đụng Expo SDK 57 đã
+#      ghim ở ADR-0040 — sát freeze 15/10, không đáng.
+#
+# Mức độ thực tế: hàm này giải mã query string của deep link. App là bài capstone
+# không phát hành, và ngay cả khi phát hành thì đây là DoS tự-gây-ra trên máy
+# chính người dùng, không phải lỗ ở server.
+#
+# GỠ DÒNG NÀY KHI: Expo lên bản kéo query-string >=9.5.1 — bản đó khai
+# `decode-uri-component: ^0.5.0`, tức chính dòng ĐÃ VÁ (đo 21/09: query-string 9.0
+# vẫn khai ^0.4.1 nên chưa đủ, phải 9.5.1 trở lên). Hoặc khi npm có một bản 0.4.x
+# mang bản vá.
+auditConfig:
+  ignoreGhsas:
+    - GHSA-vcc3-ghjq-m6fr
+
 # Vá lỗ hổng bảo mật ở dependency bắc cầu (medium: middleware bypass qua
 # serveStatic). Đường đi: prisma CLI (devDep) → @prisma/dev → @hono/node-server.
 # Ta không dùng Hono, và prisma là devDependency nên không vào bundle prod —
@@ -72,6 +99,14 @@ overrides:
   # Ghim ĐÚNG bản apps/web đang chạy — đây là hạ xuống cho khớp, KHÔNG nâng cấp.
   react: '19.2.4'
   react-dom: '19.2.4'
+  # 21/09 — CÙNG BỆNH với hai dòng trên, lần này là kiểu chứ không phải runtime.
+  # Lượt làm mới lock để vá `image-size` kéo thêm `@types/react@19.2.18` trong khi
+  # react-native và apps/web vẫn ở 19.2.17 → HAI bản @types/react trong store, và
+  # `tsc` ở `libs/shared/ui` báo "Two different types with this name exist, but
+  # they are unrelated" cho `Ref<SVGSVGElement>`. Lỗi này KHÔNG hiện ở runtime,
+  # chỉ gate mới bắt được.
+  # Ghim ĐÚNG bản đang chạy — hạ xuống cho khớp, KHÔNG phải nâng cấp.
+  '@types/react': '19.2.17'
   '@hono/node-server': '^1.19.13'
   # Alert #6 (high, libvips CVE 2026-33327/28 + 35590/91): sharp là optional dep
   # của Next (image optimization, CÓ chạy ở prod) nhưng Next khai báo ^0.34 —
