@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { BookingStatusSchema } from './bookings.js';
 import { DecimalStringSchema, SignedDecimalStringSchema } from './catalog.js';
+import { CalendarMonthSchema } from './common.js';
 
 /**
  * Báo cáo THÁNG của admin (spec P4b §3-F6) — nguồn cho trang `/reports`, nút
@@ -36,17 +37,12 @@ import { DecimalStringSchema, SignedDecimalStringSchema } from './catalog.js';
 /**
  * Tháng lịch `YYYY-MM` — đơn vị URL-state của `/reports` và của báo cáo.
  *
- * Năm bị KHOÁ vào 1900–2099 (vòng vá review F6) vì `?month=` là thứ người gõ
- * được và `Date.UTC` có hai hành vi legacy ở biên: năm 0–99 bị ánh xạ thành
- * 1900+năm (`0050-06` âm thầm thành tháng 6/1950 — nhãn nói một đằng, số liệu
- * một nẻo), còn `9999-12` sinh mốc cuối kỳ ở năm 10000 mà `toISOString()` in
- * thành `+010000-…`, thứ `z.iso.datetime()` của chính response từ chối — một
- * URL gõ tay nổ thành trang lỗi. Cùng trần với `CalendarDateSchema` bên
- * `bookings.ts` — hai bộ lọc ngày của admin chung MỘT luật năm.
+ * BÍ DANH của `CalendarMonthSchema` (`common.ts`), nơi định nghĩa thật và cả
+ * lý do khoá năm 1900–2099 nằm: từ 21/09 `/tours` cũng lọc theo tháng, nên
+ * luật tháng phải có đúng MỘT bản. Tên `ReportMonthSchema` giữ nguyên để mọi
+ * chỗ import từ `'./reports.js'` không phải đổi gì.
  */
-export const ReportMonthSchema = z
-  .string()
-  .regex(/^(19|20)\d{2}-(0[1-9]|1[0-2])$/, 'month must be YYYY-MM between 1900 and 2099');
+export const ReportMonthSchema = CalendarMonthSchema;
 
 export type ReportMonth = z.output<typeof ReportMonthSchema>;
 

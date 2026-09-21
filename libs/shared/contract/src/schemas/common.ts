@@ -103,3 +103,26 @@ export const CalendarDateSchema = z.iso
   .refine((value) => value >= '1900-01-01' && value <= '2099-12-31', {
     message: 'date must be between 1900 and 2099',
   });
+
+/**
+ * Tháng lịch `YYYY-MM` — đơn vị URL-state của MỌI bộ lọc theo tháng phía
+ * admin: `?month=` của `/reports` (báo cáo tháng) và `?month=` của `/tours`
+ * (khoảng đếm "chuyến sắp tới", spec P4e-1 §3-F11).
+ *
+ * Chuyển từ `reports.ts` sang đây 21/09 khi có consumer thứ hai — cùng nước
+ * đi đã làm với `CalendarDateSchema` và `BookingCodeSchema`: hai bản regex ở
+ * hai file là hai thứ sẽ trôi lệch nhau. `ReportMonthSchema` bên `reports.ts`
+ * nay là BÍ DANH của schema này, không phải bản thứ hai.
+ *
+ * Năm bị KHOÁ vào 1900–2099 (vòng vá review F6) vì `?month=` là thứ người gõ
+ * được và `Date.UTC` có hai hành vi legacy ở biên: năm 0–99 bị ánh xạ thành
+ * 1900+năm (`0050-06` âm thầm thành tháng 6/1950 — nhãn nói một đằng, số liệu
+ * một nẻo), còn `9999-12` sinh mốc cuối kỳ ở năm 10000 mà `toISOString()` in
+ * thành `+010000-…`, thứ `z.iso.datetime()` của chính response từ chối — một
+ * URL gõ tay nổ thành trang lỗi. Cùng trần năm với `CalendarDateSchema`.
+ */
+export const CalendarMonthSchema = z
+  .string()
+  .regex(/^(19|20)\d{2}-(0[1-9]|1[0-2])$/, 'month must be YYYY-MM between 1900 and 2099');
+
+export type CalendarMonth = z.output<typeof CalendarMonthSchema>;

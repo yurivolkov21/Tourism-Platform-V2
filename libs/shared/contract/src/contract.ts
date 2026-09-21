@@ -1,6 +1,12 @@
 import { oc } from '@orpc/contract';
 import { z } from 'zod';
 import {
+  AdminTourRowSchema,
+  AdminTourSetPublishedInputSchema,
+  AdminTourSetPublishedResultSchema,
+  AdminToursListQuerySchema,
+} from './schemas/admin-catalog.js';
+import {
   AdminBookingDetailSchema,
   AdminBookingsListQuerySchema,
   AdminRefundInputSchema,
@@ -1001,6 +1007,47 @@ export const contract = {
         })
         .input(AdminMonthlyReportQuerySchema)
         .output(AdminMonthlyReportSchema),
+    },
+    /**
+     * Tours phía admin (spec P4e-1 §3-F11) — bề mặt ĐỌC danh sách vận hành
+     * cộng ĐÚNG MỘT công tắc: đăng / gỡ đăng. Tạo, sửa và xoá tour là P4e-3;
+     * chuyến khởi hành của một tour là `admin.departures.*` (F12).
+     *
+     * `list` khác `catalog.tours.list` ở ba chỗ, và cả ba đều là lý do nó
+     * phải là một endpoint riêng chứ không phải một cờ trên endpoint công
+     * khai: nó trả CẢ tour chưa đăng (bề mặt công khai không được biết chúng
+     * tồn tại), nó trả `isPublished` (thứ luôn `true` ở bề mặt kia nên không
+     * có chỗ), và nó đếm chuyến còn mở theo khoảng lọc của người đang xem.
+     *
+     * `setPublished` CỐ Ý không khai mã lỗi nào ngoài `NOT_FOUND`. Gỡ đăng
+     * một tour đang có booking sống là HỢP LỆ và không được chặn (spec
+     * §3-F11): khách đã mua vẫn đi, tour chỉ thôi được chào bán. Một guard ở
+     * đây sẽ khoá đúng thao tác mà vận hành cần nhất — rút một tour khỏi kệ
+     * ngay khi có chuyện.
+     *
+     * Bust cache web (`tours` + `tour:<slug>`) gọi SAU khi transaction commit,
+     * KHÔNG trong transaction — tiền lệ ở `reviews.service.ts`.
+     *
+     * Guard `AuthGuard` + `@Roles(ADMIN)` ở controller như mọi endpoint admin.
+     */
+    tours: {
+      list: oc
+        .route({
+          method: 'GET',
+          path: '/api/admin/tours',
+          summary: 'List ALL tours (admin, paged, category/published filters + open departures)',
+        })
+        .input(AdminToursListQuerySchema)
+        .output(PagedSchema(AdminTourRowSchema)),
+      setPublished: oc
+        .route({
+          method: 'POST',
+          path: '/api/admin/tours/{id}/published',
+          summary: 'Put a tour on sale or take it off — never blocked by live bookings',
+        })
+        .input(AdminTourSetPublishedInputSchema)
+        .errors({ NOT_FOUND: { status: 404, message: 'Tour not found' } })
+        .output(AdminTourSetPublishedResultSchema),
     },
   },
 };

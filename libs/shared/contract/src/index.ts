@@ -2,6 +2,7 @@
 import './zod-config.js';
 
 export * from './contract.js';
+export * from './schemas/admin-catalog.js';
 export * from './schemas/bookings.js';
 export * from './schemas/catalog.js';
 export * from './schemas/common.js';
