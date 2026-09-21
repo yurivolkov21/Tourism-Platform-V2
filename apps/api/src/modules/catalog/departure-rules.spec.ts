@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { dateChangeBlocker, reopenBlocker, seatsChangeBlocker } from './departure-rules.js';
+import {
+  dateChangeBlocker,
+  departureRevalidationTags,
+  reopenBlocker,
+  seatsChangeBlocker,
+} from './departure-rules.js';
 
 /**
  * Ba luật chuyến khởi hành (spec P4e-1 §2b, §2c, F12) — THUẦN, nên mọi biên
@@ -97,6 +102,78 @@ describe('departure-rules', () => {
       expect(reopenBlocker(ONE_DAY.start, ONE_DAY.end, new Date('2026-10-09T17:30:00Z'))).toContain(
         '2026-10-09',
       );
+    });
+  });
+
+  describe('departureRevalidationTags (spec §2g)', () => {
+    const SLUG = 'ha-long-bay-cruise';
+    const TAG = `tour:${SLUG}`;
+    // "Hôm nay" 01/10; chuyến 5 ngày khởi hành 10/10 → N = 7 → hạn chót 03/10.
+    const NOW = new Date('2026-10-01T12:00:00Z');
+    const BOOKABLE = {
+      status: 'OPEN' as const,
+      startDate: '2026-10-10',
+      endDate: '2026-10-14',
+      priceOverride: null,
+    };
+
+    it('chuyến mới còn nhận đặt → bust cả `tours` vì nó có thể kéo giá "from" xuống', () => {
+      expect(
+        departureRevalidationTags({ tourSlug: SLUG, before: null, after: BOOKABLE, now: NOW }),
+      ).toEqual(['tours', TAG]);
+    });
+
+    it('chuyến mới đã quá hạn đặt → chỉ trang tour', () => {
+      // Card in `priceFrom` = min giá trên các chuyến CÒN ĐẶT ĐƯỢC, nên một
+      // chuyến sinh ra đã đóng cửa không đụng tới con số ấy.
+      const past = { ...BOOKABLE, startDate: '2026-10-02', endDate: '2026-10-06' };
+
+      expect(
+        departureRevalidationTags({ tourSlug: SLUG, before: null, after: past, now: NOW }),
+      ).toEqual([TAG]);
+    });
+
+    it('đóng một chuyến đang nhận đặt → bust cả `tours` (giá "from" có thể nhảy lên)', () => {
+      expect(
+        departureRevalidationTags({
+          tourSlug: SLUG,
+          before: BOOKABLE,
+          after: { ...BOOKABLE, status: 'CLOSED' },
+          now: NOW,
+        }),
+      ).toEqual(['tours', TAG]);
+    });
+
+    it('đổi giá riêng của một chuyến đang nhận đặt → bust cả `tours`', () => {
+      expect(
+        departureRevalidationTags({
+          tourSlug: SLUG,
+          before: BOOKABLE,
+          after: { ...BOOKABLE, priceOverride: '99.00' },
+          now: NOW,
+        }),
+      ).toEqual(['tours', TAG]);
+    });
+
+    it('chỉ đổi ghế trên một chuyến đang nhận đặt → KHÔNG đụng `tours`', () => {
+      // Card không in số ghế; bust danh sách vì một con số nó không hiện là
+      // bắt cả trang /tours dựng lại cho vui.
+      expect(
+        departureRevalidationTags({ tourSlug: SLUG, before: BOOKABLE, after: BOOKABLE, now: NOW }),
+      ).toEqual([TAG]);
+    });
+
+    it('sửa một chuyến đã đóng, vẫn đóng → chỉ trang tour', () => {
+      const closed = { ...BOOKABLE, status: 'CLOSED' as const };
+
+      expect(
+        departureRevalidationTags({
+          tourSlug: SLUG,
+          before: closed,
+          after: { ...closed, priceOverride: '80.00' },
+          now: NOW,
+        }),
+      ).toEqual([TAG]);
     });
   });
 });

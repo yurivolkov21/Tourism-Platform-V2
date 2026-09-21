@@ -79,3 +79,57 @@ export function reopenBlocker(startDate: string, endDate: string, now: Date): st
   const deadline = cancellationDeadline(startDate, endDate);
   return `The booking deadline for this departure passed on ${deadline} — it can no longer reopen.`;
 }
+
+/** Đúng những field của một chuyến mà CARD `/tours` của web nhìn thấy gián tiếp. */
+export interface DepartureCardInput {
+  status: 'OPEN' | 'CLOSED' | 'CANCELLED';
+  startDate: string;
+  endDate: string;
+  priceOverride: string | null;
+}
+
+/**
+ * Chuyến này có nuôi giá "from" trên card không: đang `OPEN` và CÒN nhận đặt.
+ * Cùng bộ lọc mà `CatalogService` dùng để tính `priceFrom` (ADR-0041 §3) —
+ * chuyến qua hạn đặt không bán được nên không được kéo giá xuống.
+ */
+function feedsCardPrice(departure: DepartureCardInput, now: Date): boolean {
+  return (
+    departure.status === 'OPEN' && isWithinDeadline(now, departure.startDate, departure.endDate)
+  );
+}
+
+/**
+ * Tag cache-web cần bust sau một lệnh ghi lên chuyến (spec §2g).
+ *
+ * `tour:<slug>` LUÔN có: trang chi tiết in danh sách chuyến, mọi thay đổi đều
+ * thấy được ở đó. `tours` thì CÓ ĐIỀU KIỆN, vì card danh sách chỉ nhìn thấy
+ * chuyến qua đúng một con số — `priceFrom` = min giá trên các chuyến còn đặt
+ * được. Đổi số GHẾ của một chuyến không đụng tới con số ấy, mà bust `tours` là
+ * bắt cả trang danh sách dựng lại.
+ *
+ * `before: null` = vừa tạo chuyến.
+ *
+ * Hàm THUẦN và tách riêng đúng nếp `moderationRevalidationTags`: quyết định
+ * "bust cái gì" là thứ đáng có test, còn service thì chỉ gọi `void revalidate`
+ * SAU commit.
+ */
+export function departureRevalidationTags(args: {
+  tourSlug: string;
+  before: DepartureCardInput | null;
+  after: DepartureCardInput;
+  now: Date;
+}): string[] {
+  const tourTag = `tour:${args.tourSlug}`;
+  const fedBefore = args.before !== null && feedsCardPrice(args.before, args.now);
+  const feedsAfter = feedsCardPrice(args.after, args.now);
+  // Giá "from" đổi được khi: chuyến bước vào/rời khỏi tập còn-đặt-được, hoặc
+  // vẫn ở trong tập mà giá (hay ngày, thứ quyết định còn-đặt-được) đã khác.
+  const priceMoved =
+    feedsAfter &&
+    (args.before === null ||
+      args.before.priceOverride !== args.after.priceOverride ||
+      args.before.startDate !== args.after.startDate ||
+      args.before.endDate !== args.after.endDate);
+  return fedBefore !== feedsAfter || priceMoved ? ['tours', tourTag] : [tourTag];
+}
