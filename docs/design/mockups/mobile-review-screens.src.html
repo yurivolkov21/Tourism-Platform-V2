@@ -1,0 +1,553 @@
+<!--
+  BẢN NHÁP VÒNG THIẾT KẾ — cụm đánh giá app mobile (P5b-5): viết đánh giá · ảnh kèm ·
+  đánh giá của tôi · sửa khi bị bác · rút bài. Dựng 21/09/2026, CHỜ user duyệt.
+
+  Cùng hệ với mockup P5b-2/3/4: khung 390×844 đúng dp, `calc(var(--s) * n)` ⇔
+  `theme.spacing(n)`, biến CSS trùng tên token, `--inset-top` / `--inset-bottom` ⇔
+  `useSafeAreaInsets()`, có nút chuyển nền sáng/tối.
+
+  Vì sao cụm này tồn tại: P5b-3 khung P6 đã có nút "Write a review" nhưng chưa có màn
+  nào ở đầu kia. Vòng đời đánh giá của contract có BỐN trạng thái (pending · approved ·
+  rejected · retracted), có hạn hai lần bị bác (`REVIEW_REJECTION_LIMIT = 2`), có đường
+  sửa và đường rút — không vẽ thì người dựng màn phải tự đoán.
+
+  Chữ: gần như KHÔNG có khoá mới — khối `messages.reviews` của web đã viết đủ
+  (heading, nhãn sao, đếm ký tự, bốn cặp tiêu đề/thân theo trạng thái, cụm rút bài,
+  câu lỗi tải ảnh). Dữ liệu tour và ngày lấy từ seed thật.
+-->
+<title>P5b-5 · Cụm đánh giá</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=Literata:opsz,wght@7..72,700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --page-bg: #eef1f0; --page-card: #ffffff; --page-line: #d1d6d4;
+    --page-text: #1d1d1f; --page-muted: #6b7280; --page-accent: #2e6e66;
+  }
+  body { margin: 0; padding: 2rem; background: var(--page-bg); color: var(--page-text); font: 14px/1.5 system-ui, sans-serif; }
+  h2 { font-size: 1.5rem; margin: 0 0 .3rem; }
+  .subtitle { color: var(--page-muted); margin: 0 0 1rem; max-width: 980px; }
+  .toolbar { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; margin: 0 0 1rem; }
+  .toolbar button { font: 600 13px/1 system-ui; padding: .55rem .85rem; border-radius: 999px; border: 1px solid var(--page-line); background: var(--page-card); color: var(--page-text); cursor: pointer; }
+  .toolbar button[aria-pressed="true"] { background: var(--page-accent); border-color: var(--page-accent); color: #fff; }
+  .toolbar .sep { width: 1px; height: 22px; background: var(--page-line); margin: 0 .25rem; }
+  .legend { display: grid; grid-template-columns: repeat(auto-fit, minmax(270px, 1fr)); gap: .8rem; max-width: 1240px; margin: 0 0 1.5rem; }
+  .legend .it { background: var(--page-card); border: 1px solid var(--page-line); border-radius: 12px; padding: .8rem 1rem; }
+  .legend h3 { font-size: .95rem; margin: 0 0 .3rem; }
+  .legend p { font-size: .82rem; color: var(--page-muted); margin: 0; }
+  .legend code, .cap code { font-size: .78rem; background: #f1f3f2; padding: 0 .25rem; border-radius: 4px; }
+  .sec { margin: 2rem 0 .7rem; font-size: 1.1rem; }
+  .sec small { font-weight: 400; color: var(--page-muted); font-size: .82rem; margin-left: .5rem; }
+  .row { display: flex; flex-wrap: wrap; gap: 1.5rem; align-items: flex-start; zoom: var(--zoom, 1); }
+  .shot { width: 414px; padding: 12px 12px 10px; border: 1px solid var(--page-line); border-radius: 20px; background: var(--page-card); }
+  .cap { padding: 14px 4px 2px; }
+  .cap b { display: block; font-size: .95rem; margin-bottom: .2rem; }
+  .cap > span { font-size: .84rem; color: var(--page-muted); }
+  .cap ul { margin: .45rem 0 0; padding-left: 1.1rem; font-size: .8rem; color: var(--page-text); }
+  .cap li { margin: .15rem 0; }
+
+  /* ── Khung máy: token Wuling, mặc định nền tối ─────────────────────────── */
+  .phone {
+    --background: #202a28; --foreground: #dce8e4; --card: #243430; --muted: #2f443f;
+    --muted-foreground: #9db3ac; --primary: #2f7a6e; --primary-foreground: #f2f8f6;
+    --primary-emphasis: #78c1b4; --secondary: #2f443f; --secondary-foreground: #a9cec6;
+    --border: #3a4d47; --input: #6b8079; --destructive-emphasis: #f37c71; --on-media: #f5faf8;
+    --scrim: #010a08cc; --overlay: #00000099; --rating: #e8aa4e; --rating-muted: #ffffff33;
+    --price-compare: #9db3ac; --warning: #f3b94c;
+    --kb: #2b3033; --kb-key: #474d51; --kb-text: #f1f3f4;
+    --s: 4px; --r: 6px; --touch: 44px; --inset-top: 47px; --inset-bottom: 34px;
+    position: relative; width: 390px; height: 844px; margin: 0 auto; border-radius: 52px; overflow: hidden;
+    background: var(--background); color: var(--foreground);
+    font: 400 16px/24px 'Archivo', system-ui, sans-serif;
+    box-shadow: 0 0 0 8px #0d1211, 0 18px 40px rgba(0, 0, 0, .22);
+  }
+  body[data-scheme="light"] .phone {
+    --background: #f5f8f7; --foreground: #1b2b2b; --card: #fcfefe; --muted: #dce5e2;
+    --muted-foreground: #4f605c; --primary: #2e6e66; --primary-foreground: #f2f8f6;
+    --primary-emphasis: #2e6e66; --secondary: #dce5e2; --secondary-foreground: #24544e;
+    --border: #aebbb8; --input: #838f8c; --destructive-emphasis: #a8423a; --on-media: #f5faf8;
+    --scrim: #030e0cbf; --overlay: #00000080; --rating: #bb7e17; --rating-muted: #c9d6d2;
+    --price-compare: #4f605c; --warning: #e9ab2b;
+    --kb: #d1d4d9; --kb-key: #ffffff; --kb-text: #1b1b1b;
+  }
+  .phone * { box-sizing: border-box; }
+  .phone svg { display: block; flex-shrink: 0; }
+  .abs { position: absolute; }
+
+  /* Vai chữ — trùng tên biến thể AppText */
+  .t-display { font: 700 30px/36px 'Literata', Georgia, serif; letter-spacing: -.01em; }
+  .t-title { font: 700 24px/32px 'Literata', Georgia, serif; }
+  .t-heading { font: 600 18px/28px 'Archivo', system-ui, sans-serif; }
+  .t-body { font: 400 16px/24px 'Archivo', system-ui, sans-serif; }
+  .t-subtitle { font: 400 14px/20px 'Archivo', system-ui, sans-serif; }
+  .t-label { font: 600 14px/20px 'Archivo', system-ui, sans-serif; }
+  .t-caption { font: 400 12px/16px 'Archivo', system-ui, sans-serif; }
+  .muted { color: var(--muted-foreground); }
+  .link { color: var(--primary-emphasis); }
+  .media { color: var(--on-media); }
+  .strike { text-decoration: line-through; }
+  .clamp1 { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .clamp2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .clamp3 { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+
+  /* Vùng an toàn: thanh trạng thái và thanh cử chỉ */
+  .sb { position: absolute; top: 0; left: 0; right: 0; height: var(--inset-top); padding: 16px 32px 0; display: flex; justify-content: space-between; font: 600 15px/20px system-ui, sans-serif; z-index: 30; }
+  .sb .icons { display: flex; gap: 6px; align-items: center; }
+  .sb .icons i { display: block; background: currentColor; border-radius: 2px; }
+  .sb.on-media { color: var(--on-media); }
+  .hi { position: absolute; left: 0; right: 0; bottom: 0; height: var(--inset-bottom); z-index: 30; pointer-events: none; }
+  .hi::after { content: ''; position: absolute; left: 50%; bottom: 8px; width: 134px; height: 5px; margin-left: -67px; border-radius: 99px; background: var(--foreground); opacity: .85; }
+  .hi.on-media::after { background: var(--on-media); }
+  body[data-safe="on"] .sb, body[data-safe="on"] .hi { background-image: repeating-linear-gradient(45deg, rgba(236, 72, 153, .28) 0 6px, rgba(236, 72, 153, .08) 6px 12px); }
+
+  /* Primitive — IconButton, Button, Chip, SearchField, Card */
+  .icon-btn { width: var(--touch); height: var(--touch); border-radius: 999px; display: flex; align-items: center; justify-content: center; }
+  .icon-btn.glass { background: rgb(from var(--scrim) r g b / .45); color: var(--on-media); }
+  .icon-btn.plain { color: var(--foreground); }
+  .btn { height: var(--touch); padding: 0 calc(var(--s) * 5); border-radius: 999px; display: flex; align-items: center; justify-content: center; gap: calc(var(--s) * 2); font: 600 14px/20px 'Archivo', system-ui, sans-serif; }
+  .btn.primary { background: var(--primary); color: var(--primary-foreground); }
+  .btn.ghost { border: 1px solid var(--border); color: var(--primary-emphasis); }
+  .chip { height: calc(var(--s) * 8); padding: 0 calc(var(--s) * 3.5); border-radius: 999px; display: inline-flex; align-items: center; gap: calc(var(--s) * 1.5); border: 1px solid var(--border); color: var(--foreground); font: 500 14px/20px 'Archivo', system-ui, sans-serif; white-space: nowrap; }
+  .chip.on { background: var(--primary); border-color: var(--primary); color: var(--primary-foreground); font-weight: 600; }
+  .chip.soft { background: var(--secondary); border-color: var(--secondary); color: var(--secondary-foreground); }
+  .chips { display: flex; flex-wrap: wrap; gap: calc(var(--s) * 2); }
+  .chips.scroll { flex-wrap: nowrap; overflow: hidden; }
+  .search { height: var(--touch); border-radius: 999px; background: var(--card); border: 1px solid var(--border); display: flex; align-items: center; gap: calc(var(--s) * 2.5); padding: 0 calc(var(--s) * 4); color: var(--muted-foreground); }
+  .search.focus { border: 2px solid var(--primary-emphasis); color: var(--foreground); }
+  .caret { display: inline-block; width: 2px; height: 20px; background: var(--primary-emphasis); vertical-align: -4px; margin-left: 1px; }
+  .filter-btn { width: var(--touch); height: var(--touch); border-radius: calc(var(--r) * 2.5); background: var(--card); border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; color: var(--foreground); position: absolute; }
+  .badge { position: absolute; top: -6px; right: -6px; min-width: 20px; height: 20px; padding: 0 6px; border-radius: 999px; background: var(--primary); color: var(--primary-foreground); font: 600 12px/20px 'Archivo', system-ui, sans-serif; text-align: center; }
+  .square-icon { width: calc(var(--s) * 16); height: calc(var(--s) * 16); border-radius: calc(var(--r) * 2); background: var(--secondary); color: var(--primary-emphasis); display: flex; align-items: center; justify-content: center; }
+  .rating-chip { height: 28px; padding: 0 10px; border-radius: 999px; display: inline-flex; align-items: center; gap: 4px; background: rgb(from var(--scrim) r g b / .45); color: var(--on-media); font: 600 12px/16px 'Archivo', system-ui, sans-serif; }
+  .rating-chip svg { color: var(--rating); }
+  .rating-chip.plain svg { color: inherit; }
+  .mini-dest { position: relative; flex: 0 0 140px; height: 100px; border-radius: calc(var(--r) * 2.5); overflow: hidden; background-size: cover; background-position: center; background-color: var(--muted); display: flex; flex-direction: column; justify-content: flex-end; padding: 10px 12px; }
+  .mini-dest::before { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, rgb(from var(--scrim) r g b / 0) 35%, rgb(from var(--scrim) r g b / .85) 100%); }
+  .mini-dest > * { position: relative; z-index: 1; }
+  .dest-head { position: relative; height: calc(var(--s) * 33); border-radius: calc(var(--r) * 3); overflow: hidden; background-size: cover; background-position: center; background-color: var(--muted); display: flex; flex-direction: column; justify-content: flex-end; padding: 14px 16px; }
+  .dest-head::before { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, rgb(from var(--scrim) r g b / .1) 20%, rgb(from var(--scrim) r g b / .85) 100%); }
+  .dest-head > * { position: relative; z-index: 1; }
+  .stars { display: flex; gap: 2px; color: var(--rating); }
+  .stars .off { color: var(--rating-muted); }
+
+  /* Thanh tab 5 mục — icon Feather + nhãn, mục đang chọn có viên nền primary */
+  .tabbar { position: absolute; left: 0; right: 0; bottom: 0; height: calc(62px + var(--inset-bottom)); padding: 6px 8px var(--inset-bottom); background: var(--card); border-top: 1px solid var(--border); display: flex; z-index: 20; }
+  .tab { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; color: var(--muted-foreground); font: 400 12px/16px 'Archivo', system-ui, sans-serif; }
+  .tab .pill { width: 56px; height: 32px; border-radius: 999px; display: flex; align-items: center; justify-content: center; }
+  .tab.on { color: var(--foreground); font-weight: 600; }
+  .tab.on .pill { background: var(--primary); color: var(--primary-foreground); }
+
+  /* Home */
+  /* Tab vùng: cột cao ĐÚNG bằng thẻ carousel, chia ba đoạn bằng nhau; mỗi đoạn là
+     cả một vùng chạm, chữ nằm giữa đoạn. Vạch dọc bên trái đánh dấu vùng đang chọn. */
+  .rail { position: absolute; left: calc(var(--s) * 6); width: 32px; height: calc(var(--s) * 135); display: flex; flex-direction: column; }
+  .rail .seg { flex: 1; position: relative; display: flex; align-items: center; justify-content: center; }
+  .rail .seg span { writing-mode: vertical-rl; transform: rotate(180deg); font: 400 18px/28px 'Archivo', system-ui, sans-serif; color: var(--muted-foreground); white-space: nowrap; }
+  .rail .seg.on span { color: var(--primary-emphasis); font-weight: 600; }
+  .rail .seg.on::before { content: ''; position: absolute; left: -12px; top: 50%; width: 3px; height: 40px; margin-top: -20px; border-radius: 99px; background: var(--primary-emphasis); }
+  .carousel { position: absolute; left: calc(var(--s) * 17); right: 0; display: flex; gap: calc(var(--s) * 3); overflow: hidden; }
+  .big-card { position: relative; flex: 0 0 calc(var(--s) * 70); height: calc(var(--s) * 135); border-radius: calc(var(--r) * 4); overflow: hidden; background-size: cover; background-position: center; background-color: var(--muted); }
+  .big-card::before { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, rgb(from var(--scrim) r g b / .35) 0%, rgb(from var(--scrim) r g b / 0) 26%, rgb(from var(--scrim) r g b / 0) 48%, rgb(from var(--scrim) r g b / .9) 100%); }
+  .big-card > * { position: absolute; z-index: 1; }
+  .skeleton { background: var(--muted); }
+  .big-card.skeleton::before { display: none; }
+  .skeleton .bar { position: absolute; border-radius: 8px; background: rgb(from var(--muted-foreground) r g b / .22); }
+
+  /* Explore */
+  .list-card { position: relative; height: calc(var(--s) * 42); border-radius: calc(var(--r) * 3); overflow: hidden; background-size: cover; background-position: center; background-color: var(--muted); }
+  .list-card::before { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, rgb(from var(--scrim) r g b / .35) 0%, rgb(from var(--scrim) r g b / 0) 30%, rgb(from var(--scrim) r g b / .1) 50%, rgb(from var(--scrim) r g b / .88) 100%); }
+  .list-card > * { position: absolute; z-index: 1; }
+  .stack { position: absolute; left: calc(var(--s) * 6); right: calc(var(--s) * 6); display: flex; flex-direction: column; gap: calc(var(--s) * 3); }
+  .result-row { display: flex; gap: calc(var(--s) * 3); align-items: center; height: 64px; }
+  .thumb { flex: 0 0 56px; height: 56px; border-radius: calc(var(--r) * 2); background-size: cover; background-position: center; background-color: var(--muted); }
+  .kb { position: absolute; left: 0; right: 0; bottom: 0; height: 291px; background: var(--kb); padding: 10px 4px var(--inset-bottom); z-index: 25; }
+  .kb .kr { display: flex; justify-content: center; gap: 6px; margin-bottom: 11px; }
+  .kb .k { flex: 0 0 33px; height: 43px; border-radius: 6px; background: var(--kb-key); color: var(--kb-text); font: 400 22px/43px system-ui, sans-serif; text-align: center; }
+  .kb .k.wide { flex: 0 0 188px; font-size: 15px; }
+  .kb .k.fn { flex: 0 0 46px; font-size: 15px; }
+  .sheet { position: absolute; left: 0; right: 0; bottom: 0; background: var(--card); border-radius: 28px 28px 0 0; z-index: 25; }
+  .sheet .handle { position: absolute; top: 8px; left: 50%; width: 36px; height: 4px; margin-left: -18px; border-radius: 99px; background: rgb(from var(--muted-foreground) r g b / .5); }
+  .dim { position: absolute; inset: 0; background: var(--overlay); z-index: 24; }
+
+  /* Chi tiết tour */
+  .hero { position: absolute; top: 0; left: 0; right: 0; background-size: cover; background-position: center; }
+  .hero::before { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, rgb(from var(--scrim) r g b / .45) 0%, rgb(from var(--background) r g b / 0) 24%, rgb(from var(--background) r g b / 0) 46%, rgb(from var(--background) r g b / .65) 74%, var(--background) 100%); }
+  .thumbs { position: absolute; right: calc(var(--s) * 4); display: flex; flex-direction: column; gap: 10px; z-index: 2; }
+  .thumbs .th { width: 52px; height: 52px; border-radius: 14px; background-size: cover; background-position: center; border: 2px solid transparent; }
+  .thumbs .th.on { border-color: var(--on-media); }
+  .thumbs .more { width: 52px; height: 28px; border-radius: 999px; background: rgb(from var(--scrim) r g b / .6); color: var(--on-media); font: 600 12px/28px 'Archivo', system-ui, sans-serif; text-align: center; }
+  .tabs { position: absolute; left: 0; right: 0; height: var(--touch); display: flex; gap: calc(var(--s) * 6); padding: 0 calc(var(--s) * 6); border-bottom: 1px solid var(--border); background: var(--background); z-index: 3; }
+  .tabs span { position: relative; display: flex; align-items: center; font: 400 14px/20px 'Archivo', system-ui, sans-serif; color: var(--muted-foreground); }
+  .tabs span.on { color: var(--foreground); font-weight: 600; }
+  .tabs span.on::after { content: ''; position: absolute; left: 0; right: 0; bottom: -1px; height: 2px; border-radius: 2px; background: var(--primary-emphasis); }
+  .compact-head { position: absolute; top: 0; left: 0; right: 0; height: calc(var(--inset-top) + 52px); padding: var(--inset-top) calc(var(--s) * 2) 0; display: flex; align-items: center; gap: calc(var(--s) * 1); background: var(--background); z-index: 4; }
+  .facts { display: grid; grid-template-columns: 1fr 1fr; gap: calc(var(--s) * 3); }
+  .fact { background: var(--card); border: 1px solid var(--border); border-radius: calc(var(--r) * 2); padding: calc(var(--s) * 3); display: flex; flex-direction: column; gap: 2px; }
+  .fact svg { color: var(--primary-emphasis); margin-bottom: 4px; }
+  .bottom-bar { position: absolute; left: 0; right: 0; bottom: 0; height: calc(76px + var(--inset-bottom)); padding: calc(var(--s) * 4) calc(var(--s) * 6) var(--inset-bottom); background: var(--card); border-top: 1px solid var(--border); display: flex; align-items: flex-start; justify-content: space-between; gap: calc(var(--s) * 4); z-index: 20; }
+  .day { display: flex; gap: calc(var(--s) * 3); }
+  .day .rail-dot { flex: 0 0 24px; display: flex; flex-direction: column; align-items: center; }
+  .day .dot { width: 24px; height: 24px; border-radius: 99px; background: var(--secondary); color: var(--primary-emphasis); font: 600 12px/24px 'Archivo', system-ui, sans-serif; text-align: center; }
+  .day .dot.on { background: var(--primary); color: var(--primary-foreground); }
+  .day .line { flex: 1; width: 2px; background: var(--border); margin-top: 4px; }
+  .times { display: grid; grid-template-columns: 44px 1fr; column-gap: calc(var(--s) * 2); row-gap: 6px; margin-top: 8px; }
+  .dep { border: 1px solid var(--border); border-radius: calc(var(--r) * 2.5); padding: calc(var(--s) * 3) calc(var(--s) * 4); display: flex; align-items: center; gap: calc(var(--s) * 3); background: var(--card); }
+  .dep.on { border: 2px solid var(--primary-emphasis); }
+  .dep.closed { background: transparent; }
+  .radio { flex: 0 0 20px; height: 20px; border-radius: 99px; border: 2px solid var(--input); }
+  .dep.on .radio { border: 6px solid var(--primary-emphasis); }
+  .tag { display: inline-flex; align-items: center; height: 20px; padding: 0 8px; border-radius: 999px; font: 600 12px/16px 'Archivo', system-ui, sans-serif; }
+  .tag.warn { background: rgb(from var(--warning) r g b / .2); color: var(--foreground); }
+  .tag.closed { background: var(--muted); color: var(--muted-foreground); }
+  .bar-row { display: grid; grid-template-columns: 10px 1fr; gap: 8px; align-items: center; }
+  .track { height: 6px; border-radius: 99px; background: var(--rating-muted); overflow: hidden; }
+  .track i { display: block; height: 100%; border-radius: 99px; background: var(--rating); }
+  .avatar { flex: 0 0 36px; height: 36px; border-radius: 99px; background: var(--secondary); color: var(--secondary-foreground); font: 600 13px/36px 'Archivo', system-ui, sans-serif; text-align: center; }
+  .review-photos { display: flex; gap: 8px; margin-top: 8px; }
+  .review-photos i { width: 64px; height: 64px; border-radius: calc(var(--r) * 2); background-size: cover; background-position: center; }
+</style><style>
+  /* Bổ sung cho cụm đặt tour và tài khoản — cùng hệ biến với file P5b-2. */
+  .phone { --success: #5bb661; }
+  body[data-scheme="light"] .phone { --success: #2f9f3d; }
+  /* Ô nhập: icon nằm trong ô vuông bo góc, nhãn nhỏ và giá trị xếp dọc, gạch chân
+     dưới cùng. Chiều cao và khoảng cách giữa các dòng bằng nhau để cả cụm form
+     đọc thành một nhịp. */
+  .field { display: flex; align-items: center; gap: calc(var(--s) * 3); min-height: calc(var(--s) * 15); padding: calc(var(--s) * 2.5) 0; border-bottom: 1px solid var(--border); margin-top: calc(var(--s) * 3); color: var(--muted-foreground); }
+  .field .ico { flex: 0 0 calc(var(--s) * 10); height: calc(var(--s) * 10); border-radius: calc(var(--r) * 2); background: var(--secondary); color: var(--primary-emphasis); display: flex; align-items: center; justify-content: center; }
+  .field .lines { display: flex; flex-direction: column; flex: 1; gap: 2px; }
+  .field .lines small { font: 400 11px/14px 'Archivo', system-ui, sans-serif; color: var(--muted-foreground); }
+  .field .lines span { font: 400 15px/20px 'Archivo', system-ui, sans-serif; color: var(--foreground); }
+  .field.ph .lines span { color: var(--muted-foreground); }
+  .field.tall { align-items: flex-start; }
+  .field.tall .ico { margin-top: calc(var(--s) * 1); }
+  .field.invalid { border-bottom-color: var(--destructive-emphasis); }
+  .field.invalid .ico { background: rgb(from var(--destructive-emphasis) r g b / .16); color: var(--destructive-emphasis); }
+  .err { font: 400 12px/16px 'Archivo', system-ui, sans-serif; color: var(--destructive-emphasis); margin-top: 6px; }
+  .kv { display: flex; justify-content: space-between; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--border); }
+  .progress { display: flex; gap: 6px; }
+  .progress i { flex: 1; height: 4px; border-radius: 99px; background: var(--muted); }
+  .progress i.on { background: var(--primary-emphasis); }
+  .stepper-row { display: flex; align-items: center; justify-content: space-between; padding: 12px 0; }
+  .step-btn { width: 36px; height: 36px; border-radius: 99px; border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; color: var(--foreground); }
+  .step-btn.off { color: var(--muted-foreground); border-color: var(--muted); }
+  .provider { display: flex; align-items: center; gap: calc(var(--s) * 3); padding: 14px 16px; border: 1px solid var(--border); border-radius: calc(var(--r) * 2.5); }
+  .provider.on { border: 2px solid var(--primary-emphasis); padding: 13px 15px; }
+  .pill-status { display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 10px; border-radius: 999px; font: 600 12px/16px 'Archivo', system-ui, sans-serif; }
+  .pill-status.paid { background: rgb(from var(--success) r g b / .18); color: var(--success); }
+  .pill-status.pending { background: rgb(from var(--warning) r g b / .22); color: var(--foreground); }
+  .pill-status.off { background: var(--muted); color: var(--muted-foreground); }
+  .note { display: flex; gap: 10px; padding: 12px 14px; border-radius: calc(var(--r) * 2); }
+  .note.good { background: rgb(from var(--success) r g b / .14); }
+  .note.warn { background: rgb(from var(--warning) r g b / .16); }
+  .note.info { background: var(--secondary); color: var(--secondary-foreground); }
+  /* Hàng "nhãn — số": hai bên khác cỡ chữ (t-label 20 vs t-title 32), để mặc
+     định stretch thì nhãn dính lên mép trên. Canh giữa theo trục dọc. */
+  .note.split { align-items: center; justify-content: space-between; }
+  .trip-card { display: flex; gap: calc(var(--s) * 3); padding: 12px; border: 1px solid var(--border); border-radius: calc(var(--r) * 3); background: var(--card); }
+  .trip-thumb { flex: 0 0 72px; height: 72px; border-radius: calc(var(--r) * 2); background-size: cover; background-position: center; background-color: var(--muted); }
+  /* Dải nhắc NỔI trên thanh đáy: thanh đáy giữ nguyên chiều cao nên nút không bao
+     giờ bị đẩy xuống vùng an toàn. */
+  .float-note { position: absolute; left: calc(var(--s) * 6); right: calc(var(--s) * 6); bottom: calc(76px + var(--inset-bottom) + var(--s) * 3); z-index: 21; box-shadow: 0 6px 18px rgb(from var(--scrim) r g b / .35); }
+  .menu-row { display: flex; align-items: center; gap: calc(var(--s) * 3); min-height: 52px; border-bottom: 1px solid var(--border); color: var(--foreground); }
+
+  /* ── Bám ngày khởi hành (P1–P6) ───────────────────────────────────────────
+     Mượn ngữ pháp của trang theo dõi đơn hàng: một con số lớn trả lời "còn bao
+     lâu", một thanh tiến trình, rồi một rail dọc các mốc ĐÃ QUA / ĐANG TỚI. Mốc
+     nào cũng là ngày SERVER biết (tạo đơn, trả tiền, hạn huỷ, ngày đi) — không
+     có mốc nào bịa. */
+  .count { background: var(--card); border: 1px solid var(--border); border-radius: calc(var(--r) * 3); padding: calc(var(--s) * 4) calc(var(--s) * 5); }
+  .meter { height: 8px; border-radius: 99px; background: var(--muted); overflow: hidden; }
+  .meter i { display: block; height: 100%; border-radius: 99px; background: var(--primary-emphasis); }
+  .trail { display: flex; flex-direction: column; }
+  .trail .node { display: flex; gap: calc(var(--s) * 3); }
+  .trail .gut { flex: 0 0 24px; display: flex; flex-direction: column; align-items: center; }
+  .trail .pt { width: 24px; height: 24px; border-radius: 99px; border: 2px solid var(--border); display: flex; align-items: center; justify-content: center; color: var(--muted-foreground); }
+  .trail .pt.done { background: var(--primary); border-color: var(--primary); color: var(--primary-foreground); }
+  .trail .pt.now { border-color: var(--primary-emphasis); color: var(--primary-emphasis); }
+  .trail .ln { flex: 1; width: 2px; background: var(--border); margin: 2px 0; }
+  .trail .node.done .ln { background: var(--primary); }
+  .trail .bd { flex: 1; padding-bottom: calc(var(--s) * 4); }
+  .trail .node.off .bd { opacity: .55; }
+  /* Dòng chạm được: ô vuông icon + hai dòng chữ + mũi tên — cùng ngữ pháp với ô
+     nhập boxed ở B3 để cả app đọc thành một hệ. */
+  .row-link { display: flex; align-items: center; gap: calc(var(--s) * 3); padding: calc(var(--s) * 3) 0; border-bottom: 1px solid var(--border); color: var(--muted-foreground); }
+  .row-link .ico { flex: 0 0 calc(var(--s) * 10); height: calc(var(--s) * 10); border-radius: calc(var(--r) * 2); background: var(--secondary); color: var(--primary-emphasis); display: flex; align-items: center; justify-content: center; }
+  .row-link .lines { display: flex; flex-direction: column; flex: 1; min-width: 0; gap: 2px; }
+  /* Dòng gạch đầu: dấu tích (có), dấu chéo (không có), ô vuông (việc khách tự đánh dấu). */
+  .tick { display: flex; gap: calc(var(--s) * 3); align-items: flex-start; padding: calc(var(--s) * 2) 0; }
+  .tick svg { margin-top: 3px; color: var(--primary-emphasis); flex: 0 0 auto; }
+  .tick.no svg { color: var(--muted-foreground); }
+  .tick.todo svg { color: var(--muted-foreground); }
+  .tick.did span { color: var(--muted-foreground); text-decoration: line-through; }
+  .sec-label { font: 600 12px/16px 'Archivo', system-ui, sans-serif; letter-spacing: .06em; color: var(--muted-foreground); text-transform: uppercase; }
+</style><style>
+  /* ── Cụm đánh giá (P5b-5) ────────────────────────────────────────────────
+     Hàng sao chạm được, lưới ảnh kèm, và bốn tông trạng thái duyệt. */
+  .star-row { display: flex; gap: calc(var(--s) * 2); }
+  /* Script icon thay <i> bằng <svg> và CHÉP class sang, nên selector phải nhắm
+     svg chứ không nhắm i — nhắm i thì sao nào cũng rỗng. */
+  .star-row svg { color: var(--rating-muted); }
+  .star-row svg.on { color: var(--rating); fill: currentColor; }
+  .photo-grid { display: flex; flex-wrap: wrap; gap: calc(var(--s) * 2); }
+  .photo-grid .ph { position: relative; width: calc(var(--s) * 19); height: calc(var(--s) * 19); border-radius: calc(var(--r) * 2); background-size: cover; background-position: center; background-color: var(--muted); }
+  .photo-grid .ph .kill { position: absolute; top: -6px; right: -6px; width: 22px; height: 22px; border-radius: 99px; background: var(--card); border: 1px solid var(--border); color: var(--foreground); display: flex; align-items: center; justify-content: center; }
+  .photo-grid .ph .veil { position: absolute; inset: 0; border-radius: calc(var(--r) * 2); background: var(--overlay); display: flex; align-items: center; justify-content: center; color: var(--on-media); }
+  .photo-grid .add { width: calc(var(--s) * 19); height: calc(var(--s) * 19); border-radius: calc(var(--r) * 2); border: 1px dashed var(--input); color: var(--muted-foreground); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; }
+  /* Ô nhập nhiều dòng của bài đánh giá: viền trọn hộp chứ không gạch chân —
+     đây là ô CHÍNH của màn, khác các dòng hồ sơ ngắn ở B3/A3. */
+  .area { border: 1px solid var(--border); border-radius: calc(var(--r) * 2.5); padding: calc(var(--s) * 3) calc(var(--s) * 3.5); background: var(--card); }
+  .area.focus { border: 2px solid var(--primary-emphasis); padding: calc(var(--s) * 3 - 1px) calc(var(--s) * 3.5 - 1px); }
+  .counter { display: flex; justify-content: flex-end; margin-top: 6px; }
+  .state { display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 10px; border-radius: 999px; font: 600 12px/16px 'Archivo', system-ui, sans-serif; }
+  .state.pending { background: rgb(from var(--warning) r g b / .22); color: var(--foreground); }
+  .state.live { background: rgb(from var(--success) r g b / .18); color: var(--success); }
+  .state.rejected { background: rgb(from var(--destructive-emphasis) r g b / .16); color: var(--destructive-emphasis); }
+  .state.gone { background: var(--muted); color: var(--muted-foreground); }
+  .rev-card { border: 1px solid var(--border); border-radius: calc(var(--r) * 3); padding: calc(var(--s) * 4); background: var(--card); }
+</style><header>
+  <h2>P5b-5 · Cụm đánh giá — viết · ảnh kèm · bài của tôi · sửa · rút</h2>
+  <p class="subtitle">7 khung, bản nháp 21/09. Nối tiếp P5b-3: khung P6 "chuyến đã kết thúc" dẫn vào đây. Bấm các nút dưới đây để đổi nền, hiện vùng an toàn, hoặc thu nhỏ trang.</p>
+  <div class="toolbar">
+    <button type="button" data-scheme-btn="dark" aria-pressed="true">Nền tối</button>
+    <button type="button" data-scheme-btn="light" aria-pressed="false">Nền sáng</button>
+    <span class="sep"></span>
+    <button type="button" data-safe-btn aria-pressed="false">Hiện vùng an toàn</button>
+    <span class="sep"></span>
+    <button type="button" data-zoom-btn="1" aria-pressed="true">100%</button>
+    <button type="button" data-zoom-btn="0.75" aria-pressed="false">75%</button>
+    <button type="button" data-zoom-btn="0.5" aria-pressed="false">50%</button>
+  </div>
+  <div class="legend">
+    <div class="it"><h3>Vòng đời một bài đánh giá</h3><p>Bốn trạng thái của <code>moderationState</code>: chờ duyệt → đăng / bị bác. Bị bác sửa được tối đa <b>hai lần</b>; đã đăng thì chỉ rút được, và rút là chung cuộc.</p></div>
+    <div class="it"><h3>Chữ gần như không phải viết mới</h3><p>Khối <code>`reviews`</code> của web đã có đủ nhãn, câu lỗi, bốn cặp tiêu đề trạng thái và cụm rút bài. Dùng lại, đừng viết câu thứ hai cho cùng khái niệm.</p></div>
+    <div class="it"><h3>Ảnh đi thẳng lên Cloudinary</h3><p><code>media.signUpload</code> ký, app tải thẳng, chỉ <code>publicId</code> mới đi qua API của mình (ADR-0021 §4). Trần 5 ảnh.</p></div>
+    <div class="it"><h3>Luật ở contract, không ở màn</h3><p><code>canAuthorEdit</code> quyết còn sửa được không; <code>REVIEW_REJECTION_LIMIT</code> là 2. Màn gọi hàm, không tự so số.</p></div>
+  </div>
+</header>
+<h3 class="sec">1 · Viết và gửi <small>từ chuyến đã kết thúc</small></h3>
+<div class="row"><div class="shot"><div class="phone"><div class="sb"><span>9:41</span><span class="icons"><i style="width:17px;height:10px"></i><i style="width:15px;height:10px;border-radius:6px"></i><i style="width:25px;height:11px"></i></span></div><div class="compact-head"><span class="icon-btn plain"><i data-icon="back" data-size="22"></i></span><span class="t-label clamp1" style="flex:1">Rate this trip</span></div>
+<div class="abs" style="top:calc(var(--inset-top) + 52px + var(--s)*3);left:calc(var(--s)*6);right:calc(var(--s)*6)">
+  <div class="trip-card" style="border:none;padding:0;background:transparent">
+    <span class="trip-thumb" style="background-image:url('https://res.cloudinary.com/dbkgeehow/image/upload/c_fill,w_160,h_160,g_auto,q_auto,f_auto/tourism/catalog/tour/central-heritage-4d/hero')"></span>
+    <div style="flex:1;min-width:0">
+      <div class="t-label clamp2">Central Heritage: Đà Nẵng–Hội An–Huế 4D3N</div>
+      <div class="t-caption muted" style="margin-top:2px">Sat 3 – Tue 6 Oct 2026 · BK-4QP8ZT2M</div>
+    </div>
+  </div>
+  <div class="sec-label" style="margin-top:calc(var(--s)*5)">Your rating</div>
+  <div class="star-row"><i data-icon="star" data-size="32" class="on"></i><i data-icon="star" data-size="32" class="on"></i><i data-icon="star" data-size="32" class="on"></i><i data-icon="star" data-size="32" class="on"></i><i data-icon="star" data-size="32"></i></div>
+  <div class="t-caption muted" style="margin-top:6px">4 stars</div>
+  <div class="sec-label" style="margin-top:calc(var(--s)*5)">Title (optional)</div>
+  <div class="area" style="margin-top:calc(var(--s)*2)"><span class="t-subtitle">Three cities, zero wasted days</span></div>
+  <div class="sec-label" style="margin-top:calc(var(--s)*4)">Your review</div>
+  <div class="area focus" style="margin-top:calc(var(--s)*2);height:calc(var(--s)*30)"><span class="t-subtitle">The Hải Vân Pass drive alone was worth it. Our guide moved the Hội An walk to the evening so we caught the lanterns<span class="caret"></span></span></div>
+  <div class="counter"><span class="t-caption muted">168/2000</span></div>
+  <div class="sec-label" style="margin-top:calc(var(--s)*3)">Photos <span class="t-caption muted" style="text-transform:none;letter-spacing:0;font-weight:400">· up to 5</span></div>
+  <div class="photo-grid" style="margin-top:calc(var(--s)*2)">
+    <span class="ph" style="background-image:url('https://res.cloudinary.com/dbkgeehow/image/upload/c_fill,w_200,h_200,g_auto,q_auto,f_auto/tourism/catalog/tour/central-heritage-4d/hero')"><span class="kill"><i data-icon="x" data-size="13"></i></span></span>
+    <span class="ph" style="background-image:url('https://res.cloudinary.com/dbkgeehow/image/upload/c_fill,w_200,h_200,g_auto,q_auto,f_auto/tourism/catalog/tour/hoi-an-lantern-evening/hero')"><span class="kill"><i data-icon="x" data-size="13"></i></span></span>
+    <span class="add"><i data-icon="camera" data-size="22"></i><span class="t-caption">Add</span></span>
+  </div>
+</div>
+<div class="bottom-bar" style="align-items:center"><span class="btn primary" style="flex:1">Submit review</span></div>
+<div class="hi"></div></div><div class="cap"><b>R1 · Viết đánh giá</b><span>Mở từ P6 (chuyến đã kết thúc), từ chi tiết booking, hoặc từ dòng "My reviews" ở tab Account. Một màn cuộn, không chia bước — bài đánh giá không đáng một wizard.</span><ul><li>Dữ liệu gửi đi: <code>reviews.create</code> với <code>CreateReviewInputSchema</code> — <code>bookingCode</code>, <code>rating</code> 1–5, <code>title</code> tuỳ chọn ≤120, <code>body</code> <b>10–2000</b>, <code>photos</code> ≤ <code>REVIEW_PHOTOS_MAX</code> (5).</li><li>Nút gửi TẮT cho tới khi có sao và body đủ 10 ký tự — hai luật duy nhất chặn ở máy; còn lại để server nói.</li><li>Bộ đếm ký tự hiện từ đầu chứ không chỉ khi sắp tràn: trần 2000 rộng, nhưng sàn 10 mới là thứ khách hay vấp.</li><li>Ảnh là <code>publicId</code> ĐÃ upload xong qua <code>media.signUpload</code> (ADR-0021 §4, nhánh <code>REVIEW_PHOTO</code>, folder <code>reviews/&lt;bookingCode&gt;</code>) — xem R2.</li><li>Chữ CÓ SẴN, không viết mới: <code>reviews.heading</code>, <code>ratingLabel</code>, <code>ratingValueLabel</code>, <code>titleLabel</code>, <code>titlePlaceholder</code>, <code>bodyLabel</code>, <code>bodyPlaceholder</code>, <code>bodyCounter</code>, <code>bodyTooShort</code>, <code>ratingRequired</code>, <code>submit</code>.</li></ul></div></div><div class="shot"><div class="phone"><div class="sb"><span>9:41</span><span class="icons"><i style="width:17px;height:10px"></i><i style="width:15px;height:10px;border-radius:6px"></i><i style="width:25px;height:11px"></i></span></div><div class="compact-head"><span class="icon-btn plain"><i data-icon="back" data-size="22"></i></span><span class="t-label clamp1" style="flex:1">Rate this trip</span></div>
+<div class="abs" style="top:calc(var(--inset-top) + 52px + var(--s)*3);left:calc(var(--s)*6);right:calc(var(--s)*6);opacity:.45">
+  <div class="sec-label">Photos · up to 5</div>
+  <div class="photo-grid" style="margin-top:calc(var(--s)*2)">
+    <span class="ph" style="background-image:url('https://res.cloudinary.com/dbkgeehow/image/upload/c_fill,w_160,h_160,g_auto,q_auto,f_auto/tourism/catalog/tour/central-heritage-4d/hero')"></span>
+    <span class="ph" style="background-image:url('https://res.cloudinary.com/dbkgeehow/image/upload/c_fill,w_200,h_200,g_auto,q_auto,f_auto/tourism/catalog/tour/hoi-an-lantern-evening/hero')"></span>
+    <span class="ph" style="background-image:url('https://res.cloudinary.com/dbkgeehow/image/upload/c_fill,w_200,h_200,g_auto,q_auto,f_auto/tourism/catalog/tour/hue-imperial-day/hero')"><span class="veil"><i data-icon="loader" data-size="22"></i></span></span>
+  </div>
+</div>
+<div class="dim"></div>
+<div class="sheet" style="height:calc(230px + var(--inset-bottom));padding:calc(var(--s)*7) calc(var(--s)*6) var(--inset-bottom)">
+  <span class="handle"></span>
+  <div class="t-heading">Add a photo</div>
+  <div class="menu-row" style="margin-top:calc(var(--s)*3)"><span class="square-icon" style="width:calc(var(--s)*10);height:calc(var(--s)*10)"><i data-icon="camera" data-size="20"></i></span><span class="t-body" style="flex:1;margin-left:calc(var(--s)*3)">Take a photo</span></div>
+  <div class="menu-row" style="border-bottom:none"><span class="square-icon" style="width:calc(var(--s)*10);height:calc(var(--s)*10)"><i data-icon="image" data-size="20"></i></span><span class="t-body" style="flex:1;margin-left:calc(var(--s)*3)">Choose from library</span></div>
+</div>
+<div class="hi"></div></div><div class="cap"><b>R2 · Thêm ảnh và lúc đang tải lên</b><span>Cùng tấm trượt hai lựa chọn với màn đổi ảnh đại diện (A4 của P5b-4) — một thao tác thì một khuôn, đừng đẻ hai kiểu chọn ảnh.</span><ul><li>Đường đi đúng: xin chữ ký <code>media.signUpload</code> → tải THẲNG lên Cloudinary → giữ <code>publicId</code> → gửi kèm khi bấm Submit. App KHÔNG đẩy ảnh qua API của mình.</li><li>Ảnh đang tải phủ lớp mờ và có vòng xoay NGAY TẠI Ô của nó, không phải một thanh tiến trình toàn màn: khách bỏ một ảnh hỏng mà giữ ba ảnh kia.</li><li>Tải xong mới thêm vào danh sách. Hỏng thì ô đó đổi sang tông lỗi kèm <code>reviews.photos.errUpload</code> và nút thử lại — đừng gửi review với <code>publicId</code> ma.</li><li>Chữ lỗi CÓ SẴN: <code>errNotImage</code>, <code>errTooLarge</code>, <code>errTooMany</code>, <code>errUpload</code>, <code>errorsTitle</code>.</li><li>Cần <code>expo-image-picker</code> — dependency mới thì ghi vào ADR-0040 trước, kèm hai quyền máy ảnh và thư viện ảnh (đã nêu ở bàn giao P5b-4, dùng chung).</li></ul></div></div><div class="shot"><div class="phone"><div class="sb"><span>9:41</span><span class="icons"><i style="width:17px;height:10px"></i><i style="width:15px;height:10px;border-radius:6px"></i><i style="width:25px;height:11px"></i></span></div><div class="compact-head"><span class="icon-btn plain"><i data-icon="back" data-size="22"></i></span><span class="t-label clamp1" style="flex:1">Rate this trip</span></div>
+<div class="abs" style="top:calc(var(--inset-top) + 52px);left:calc(var(--s)*6);right:calc(var(--s)*6);bottom:calc(var(--inset-bottom) + var(--s)*6);display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:calc(var(--s)*4)">
+  <div class="square-icon"><i data-icon="checkCircle" data-size="28"></i></div>
+  <div class="t-heading">Thanks for your review</div>
+  <div class="t-subtitle muted" style="max-width:270px">Your review is awaiting moderation — thank you for sharing your trip.</div>
+  <div class="state pending" style="margin-top:calc(var(--s)*1)"><i data-icon="clock" data-size="13"></i>Pending review</div>
+  <span class="btn primary" style="width:220px;margin-top:calc(var(--s)*2)">Back to my trip</span>
+  <span class="t-caption link">See my reviews</span>
+</div>
+<div class="hi"></div></div><div class="cap"><b>R3 · Đã gửi, đang chờ duyệt</b><span>Nói thẳng là bài chưa lên site. Thiếu câu này thì khách mở trang tour, không thấy bài mình, và gửi lại — rồi ăn <code>REVIEW_ALREADY_EXISTS</code>.</span><ul><li>Chữ có sẵn nguyên văn: <code>reviews.successTitle</code> và <code>successBody</code>.</li><li>Hai ca cần màn riêng, đừng để thành lỗi đỏ: chuyến CHƯA đi xong → <code>tooEarlyTitle</code>/<code>tooEarlyBody</code>; đã viết rồi → <code>alreadyReviewedTitle</code>/<code>alreadyReviewedBody</code>. Tốt nhất là chặn từ trước: chỉ hiện nút viết khi <code>booking.reviewedAt === null</code> và chuyến đã qua ngày về.</li><li>Sau khi gửi, đọc lại <code>bookings.byCode</code> để <code>reviewedAt</code> và khối <code>review</code> của màn chi tiết cập nhật theo.</li></ul></div></div></div>
+<h3 class="sec">2 · Bài của tôi và vòng đời sau khi gửi <small>bốn trạng thái, hai đường đi tiếp</small></h3>
+<div class="row"><div class="shot"><div class="phone"><div class="sb"><span>9:41</span><span class="icons"><i style="width:17px;height:10px"></i><i style="width:15px;height:10px;border-radius:6px"></i><i style="width:25px;height:11px"></i></span></div><div class="compact-head"><span class="icon-btn plain"><i data-icon="back" data-size="22"></i></span><span class="t-label clamp1" style="flex:1">My reviews</span></div>
+<div class="abs" style="top:calc(var(--inset-top) + 52px + var(--s)*3);left:calc(var(--s)*6);right:calc(var(--s)*6)">
+  <div class="rev-card">
+    <div style="display:flex;justify-content:space-between;align-items:center"><span class="state live"><i data-icon="check" data-size="13"></i>Published</span><span class="t-caption muted">12 Aug 2026</span></div>
+    <div class="star-row"><i data-icon="star" data-size="15" class="on"></i><i data-icon="star" data-size="15" class="on"></i><i data-icon="star" data-size="15" class="on"></i><i data-icon="star" data-size="15" class="on"></i><i data-icon="star" data-size="15" class="on"></i></div>
+    <div class="t-label" style="margin-top:6px">Worth every early start</div>
+    <div class="t-caption muted clamp2" style="margin-top:2px">Hạ Long Bay Overnight Cruise 2D1N</div>
+    <div class="t-caption link" style="margin-top:calc(var(--s)*3)">Retract my review</div>
+  </div>
+  <div class="rev-card" style="margin-top:calc(var(--s)*3)">
+    <div style="display:flex;justify-content:space-between;align-items:center"><span class="state pending"><i data-icon="clock" data-size="13"></i>Pending review</span><span class="t-caption muted">21 Sep 2026</span></div>
+    <div class="star-row"><i data-icon="star" data-size="15" class="on"></i><i data-icon="star" data-size="15" class="on"></i><i data-icon="star" data-size="15" class="on"></i><i data-icon="star" data-size="15" class="on"></i><i data-icon="star" data-size="15"></i></div>
+    <div class="t-label" style="margin-top:6px">Three cities, zero wasted days</div>
+    <div class="t-caption muted clamp2" style="margin-top:2px">Central Heritage: Đà Nẵng–Hội An–Huế 4D3N</div>
+  </div>
+  <div class="rev-card" style="margin-top:calc(var(--s)*3)">
+    <div style="display:flex;justify-content:space-between;align-items:center"><span class="state rejected"><i data-icon="alert" data-size="13"></i>Not published</span><span class="t-caption muted">04 Jul 2026</span></div>
+    <div class="star-row"><i data-icon="star" data-size="15" class="on"></i><i data-icon="star" data-size="15" class="on"></i><i data-icon="star" data-size="15"></i><i data-icon="star" data-size="15"></i><i data-icon="star" data-size="15"></i></div>
+    <div class="t-label" style="margin-top:6px">Rained the whole time</div>
+    <div class="t-caption muted clamp2" style="margin-top:2px">Sa Pa Terraces &amp; Homestay Trek 2D1N</div>
+    <div class="t-caption link" style="margin-top:calc(var(--s)*3)">See why and rewrite</div>
+  </div>
+  <div class="rev-card" style="margin-top:calc(var(--s)*3)">
+    <div style="display:flex;justify-content:space-between;align-items:center"><span class="state gone">Retracted</span><span class="t-caption muted">02 Jun 2026</span></div>
+    <div class="t-caption muted clamp2" style="margin-top:calc(var(--s)*2)">Mekong Delta &amp; Cái Răng Floating Market 2D1N</div>
+  </div>
+</div>
+<div class="hi"></div></div><div class="cap"><b>R4 · Đánh giá của tôi — bốn trạng thái</b><span>Mở từ dòng "My reviews" ở tab Account. Trạng thái nằm ở góc trên mỗi thẻ vì đó là thứ khách vào đây để xem.</span><ul><li>Dữ liệu: <code>reviews.mine</code> (có auth, phân trang, mới nhất trước) → <code>MyReviewSchema</code>. Route này trả CẢ bài chưa duyệt — đó là lý do nó tồn tại tách khỏi <code>listByTour</code>.</li><li>Bốn tông theo <code>moderationState</code>: <code>approved</code> (nền success) · <code>pending</code> (warning) · <code>rejected</code> (destructive) · <code>retracted</code> (muted). ĐỪNG suy trạng thái từ <code>isApproved</code> — cờ đó gộp mất hai ca và đã sửa ở ADR-0031 §6.</li><li>Đường đi tiếp cũng theo trạng thái: đã đăng → rút (R7) · bị bác → sửa (R5) hoặc hết lượt (R6) · chờ duyệt và đã rút → không có nút nào.</li><li>Quyết "còn sửa được không" bằng <code>canAuthorEdit</code> của <code>@tourism/contract</code>, KHÔNG tự so <code>rejectionCount</code> — web gọi đúng hàm ấy (ADR-0032 §6).</li><li>Tên tour lấy từ <code>tourSlug</code>/<code>tourTitle</code> trên chính <code>MyReviewSchema</code>; cả hai nullable (review curated không gắn tour) nên phải chịu được null.</li></ul></div></div><div class="shot"><div class="phone"><div class="sb"><span>9:41</span><span class="icons"><i style="width:17px;height:10px"></i><i style="width:15px;height:10px;border-radius:6px"></i><i style="width:25px;height:11px"></i></span></div><div class="compact-head"><span class="icon-btn plain"><i data-icon="back" data-size="22"></i></span><span class="t-label clamp1" style="flex:1">Rewrite your review</span></div>
+<div class="abs" style="top:calc(var(--inset-top) + 52px + var(--s)*3);left:calc(var(--s)*6);right:calc(var(--s)*6)">
+  <div class="note warn"><i data-icon="alert" data-size="20"></i><div><div class="t-label">Your review wasn't published</div><div class="t-caption" style="margin-top:2px;opacity:.85">Rewrite it below and we'll take another look.</div></div></div>
+  <div class="sec-label" style="margin-top:calc(var(--s)*4)">Why</div>
+  <div class="rev-card" style="margin-top:calc(var(--s)*2);padding:calc(var(--s)*3)"><span class="t-subtitle">The review names another guest. Please take the name out and we'll publish it.</span></div>
+  <div class="sec-label" style="margin-top:calc(var(--s)*5)">Your rating</div>
+  <div class="star-row"><i data-icon="star" data-size="32" class="on"></i><i data-icon="star" data-size="32" class="on"></i><i data-icon="star" data-size="32"></i><i data-icon="star" data-size="32"></i><i data-icon="star" data-size="32"></i></div>
+  <div class="sec-label" style="margin-top:calc(var(--s)*4)">Your review</div>
+  <div class="area" style="margin-top:calc(var(--s)*2);height:calc(var(--s)*26)"><span class="t-subtitle">Rained the whole time and the homestay had no heating. Our guide Mai did her best but there was nowhere dry to sit.</span></div>
+  <div class="counter"><span class="t-caption muted">112/2000</span></div>
+  <div class="t-caption muted" style="margin-top:calc(var(--s)*3)">One more rewrite left. After that this review can't be sent back.</div>
+</div>
+<div class="bottom-bar" style="align-items:center"><span class="btn primary" style="flex:1">Send for review again</span></div>
+<div class="hi"></div></div><div class="cap"><b>R5 · Bị bác — viết lại</b><span>Cùng khuôn ô nhập với R1, nhưng mở đầu bằng LÝ DO người duyệt viết. Không có lý do thì khách chỉ biết là bị từ chối, sửa mò rồi bị bác tiếp.</span><ul><li>Gửi bằng <code>reviews.update</code> (<code>UpdateReviewInputSchema</code>: <code>id</code>, <code>rating</code>, <code>title</code>, <code>body</code>, <code>photos</code>) — bài quay lại hàng đợi duyệt.</li><li><b>Ảnh THAY TRỌN, không cộng dồn</b> (JSDoc của schema): vắng <code>photos</code> nghĩa là không còn ảnh nào. Bài bị bác vì một tấm ảnh có mặt người khác mà không gỡ được ảnh thì đường sửa là đồ giả — màn phải cho xoá từng ảnh như R1.</li><li>Lý do là <code>moderationNote</code> của <code>MyReviewSchema</code>. In NGUYÊN VĂN, đừng diễn giải lại.</li><li>Câu "còn một lượt" tính từ <code>REVIEW_REJECTION_LIMIT</code> (2) trừ <code>rejectionCount</code> — nói trước khi khách gõ, không phải sau khi hết lượt.</li><li>Chữ có sẵn: <code>rejectedTitle</code>, <code>rejectedReason</code>, <code>rejectedBody</code>.</li></ul></div></div><div class="shot"><div class="phone"><div class="sb"><span>9:41</span><span class="icons"><i style="width:17px;height:10px"></i><i style="width:15px;height:10px;border-radius:6px"></i><i style="width:25px;height:11px"></i></span></div><div class="compact-head"><span class="icon-btn plain"><i data-icon="back" data-size="22"></i></span><span class="t-label clamp1" style="flex:1">My reviews</span></div>
+<div class="abs" style="top:calc(var(--inset-top) + 52px + var(--s)*3);left:calc(var(--s)*6);right:calc(var(--s)*6)">
+  <div class="rev-card">
+    <div style="display:flex;justify-content:space-between;align-items:center"><span class="state rejected"><i data-icon="alert" data-size="13"></i>Not published</span><span class="t-caption muted">04 Jul 2026</span></div>
+    <div class="star-row"><i data-icon="star" data-size="15" class="on"></i><i data-icon="star" data-size="15" class="on"></i><i data-icon="star" data-size="15"></i><i data-icon="star" data-size="15"></i><i data-icon="star" data-size="15"></i></div>
+    <div class="t-label" style="margin-top:6px">Rained the whole time</div>
+    <div class="t-caption muted clamp2" style="margin-top:2px">Sa Pa Terraces &amp; Homestay Trek 2D1N</div>
+  </div>
+  <div class="note info" style="margin-top:calc(var(--s)*4)"><i data-icon="lock" data-size="20"></i><div><div class="t-label">This review can't be sent back again</div><div class="t-caption" style="margin-top:2px;opacity:.85">It was returned twice, so the rewrite option is closed. Your trip and booking are not affected.</div></div></div>
+  <div class="sec-label" style="margin-top:calc(var(--s)*5)">Last reason given</div>
+  <div class="rev-card" style="margin-top:calc(var(--s)*2);padding:calc(var(--s)*3)"><span class="t-subtitle">Still names another guest.</span></div>
+  <div class="row-link" style="margin-top:calc(var(--s)*4);border-top:1px solid var(--border)"><span class="ico"><i data-icon="messageSquare" data-size="20"></i></span><div class="lines"><span class="t-label">Think this is a mistake?</span><span class="t-caption muted clamp1">Write to us about it</span></div><i data-icon="chevronRight" data-size="20"></i></div>
+</div>
+<div class="hi"></div></div><div class="cap"><b>R6 · Hết lượt viết lại</b><span>Bị bác lần thứ hai (<code>rejectionCount === REVIEW_REJECTION_LIMIT</code>). Nút sửa biến mất, và màn nói RÕ vì sao nó biến mất.</span><ul><li>Đây là ca KHÁC hẳn "không sửa được vì đã duyệt" — contract tách hai hàm riêng đúng vì hai câu phải khác nhau. Đừng dùng chung một câu "không sửa được".</li><li>Trấn an một dòng: chuyến và booking không bị ảnh hưởng. Khách bị bác hai lần dễ tưởng mình đang bị phạt.</li><li>Đường cuối cùng là form hỏi (<code>enquiries.create</code>, khung E1 của P5b-3) — có người đọc, không phải nút vô hiệu.</li><li>Khoá chữ mới của riêng khung này: tiêu đề và thân câu "hết lượt", nhãn "Last reason given".</li></ul></div></div><div class="shot"><div class="phone"><div class="sb"><span>9:41</span><span class="icons"><i style="width:17px;height:10px"></i><i style="width:15px;height:10px;border-radius:6px"></i><i style="width:25px;height:11px"></i></span></div><div class="compact-head"><span class="icon-btn plain"><i data-icon="back" data-size="22"></i></span><span class="t-label clamp1" style="flex:1">My reviews</span></div>
+<div class="abs" style="top:calc(var(--inset-top) + 52px + var(--s)*3);left:calc(var(--s)*6);right:calc(var(--s)*6);opacity:.45">
+  <div class="rev-card">
+    <div style="display:flex;justify-content:space-between;align-items:center"><span class="state live"><i data-icon="check" data-size="13"></i>Published</span><span class="t-caption muted">12 Aug 2026</span></div>
+    <div class="star-row"><i data-icon="star" data-size="15" class="on"></i><i data-icon="star" data-size="15" class="on"></i><i data-icon="star" data-size="15" class="on"></i><i data-icon="star" data-size="15" class="on"></i><i data-icon="star" data-size="15" class="on"></i></div>
+    <div class="t-label" style="margin-top:6px">Worth every early start</div>
+    <div class="t-caption muted clamp2" style="margin-top:2px">Hạ Long Bay Overnight Cruise 2D1N</div>
+  </div>
+</div>
+<div class="dim"></div>
+<div class="sheet" style="height:calc(300px + var(--inset-bottom));padding:calc(var(--s)*7) calc(var(--s)*6) calc(var(--inset-bottom) + var(--s)*4)">
+  <span class="handle"></span>
+  <div class="t-heading">Retract this review?</div>
+  <div class="t-subtitle muted" style="margin-top:calc(var(--s)*3)">It comes off the site straight away and can't be put back. Its photos will be deleted shortly.</div>
+  <div class="note info split" style="margin-top:calc(var(--s)*4)"><span class="t-label">Your rating</span><div class="star-row"><i data-icon="star" data-size="16" class="on"></i><i data-icon="star" data-size="16" class="on"></i><i data-icon="star" data-size="16" class="on"></i><i data-icon="star" data-size="16" class="on"></i><i data-icon="star" data-size="16" class="on"></i></div></div>
+  <span class="btn ghost" style="margin-top:calc(var(--s)*4);border-color:var(--destructive-emphasis);color:var(--destructive-emphasis)">Retract my review</span>
+  <span class="btn" style="margin-top:calc(var(--s)*2);color:var(--foreground)">Keep my review</span>
+</div>
+<div class="hi"></div></div><div class="cap"><b>R7 · Rút bài đã đăng</b><span>Rút là CHUNG CUỘC (ADR-0032 AMEND 1): không có đường quay lại, rút rồi không "sửa" để về hàng đợi được. Tấm trượt nói đúng ba hệ quả trước khi khách bấm.</span><ul><li>Gửi <code>reviews.retract</code> (chỉ <code>id</code> — không có gì để sửa, đây là một động từ chung cuộc).</li><li>Ảnh bị xoá theo, nên phải nói trước. Chữ có sẵn nguyên văn: <code>reviews.retract.confirm</code>, <code>button</code>, <code>cancel</code>, <code>retracting</code>, cặp toast <code>toast.done</code> / <code>toast.error</code>.</li><li>Nút rút dùng tông destructive nhưng là nút VIỀN, không phải nút đặc: việc này không nguy hiểm bằng huỷ chuyến hay xoá tài khoản, và nút giữ bài phải dễ bấm không kém.</li><li>Xong thì thẻ đổi sang <code>retracted</code> ở R4 kèm <code>retractedTitle</code>/<code>retractedBody</code> — bài vẫn còn trong danh sách, không biến mất, để khách không tưởng mình mất dữ liệu.</li></ul></div></div></div>
+<script>
+  // Thay thẻ <i data-icon> bằng SVG nét (bộ Feather), cho bản ghi gọn và không lặp path.
+  (function () {
+    var P = {
+      creditCard: '<rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/>',
+      externalLink: '<path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><path d="M15 3h6v6"/><path d="M10 14 21 3"/>',
+      alert: '<circle cx="12" cy="12" r="9"/><path d="M12 7.5v5.5M12 16.5h.01"/>',
+      checkCircle: '<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="m22 4-10 10.01-3-3"/>',
+      minus: '<path d="M5 12h14"/>',
+      plus: '<path d="M12 5v14M5 12h14"/>',
+      trash: '<path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6M10 11v6M14 11v6"/>',
+      logOut: '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/>',
+      camera: '<path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2Z"/><circle cx="12" cy="13" r="4"/>',
+      image: '<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/>',
+      lock: '<rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>',
+      mail: '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/>',
+      phone: '<path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.8.7 2.6a2 2 0 0 1-.5 2.1L8.1 9.5a16 16 0 0 0 6 6l1.1-1.1a2 2 0 0 1 2.1-.5c.8.3 1.7.6 2.6.7a2 2 0 0 1 1.7 2Z"/>',
+      messageSquare: '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2Z"/>',
+      edit: '<path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.1 2.1 0 0 1 3 3L12 15l-4 1 1-4Z"/>',
+      refresh: '<path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.5 9a9 9 0 0 1 14.9-3.4L23 10M20.5 15a9 9 0 0 1-14.9 3.4L1 14"/>',
+      fileText: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6M8 13h8M8 17h8M8 9h2"/>',
+      x: '<path d="M18 6 6 18M6 6l12 12"/>',
+      back: '<path d="M19 12H5M12 19l-7-7 7-7"/>',
+      arrow: '<path d="M5 12h14M13 5l7 7-7 7"/>',
+      user: '<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>',
+      pin: '<path d="M20 10c0 6-8 12-8 12S4 16 4 10a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/>',
+      search: '<circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>',
+      sliders: '<path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"/>',
+      heart: '<path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78Z"/>',
+      star: '<path d="m12 2 3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2Z"/>',
+      home: '<path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"/><path d="M9 22V12h6v10"/>',
+      compass: '<circle cx="12" cy="12" r="10"/><path d="m16.24 7.76-2.12 6.36-6.36 2.12 2.12-6.36 6.36-2.12Z"/>',
+      briefcase: '<rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>',
+      loader: '<path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>',
+      wifiOff: '<path d="M1 1l22 22M16.72 11.06A10.94 10.94 0 0 1 19 12.55M5 12.55a10.94 10.94 0 0 1 5.17-2.39M10.71 5.05A16 16 0 0 1 22.58 9M1.42 9a15.91 15.91 0 0 1 4.7-2.88M8.53 16.11a6 6 0 0 1 6.95 0M12 20h.01"/>',
+      clock: '<circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>',
+      users: '<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>',
+      activity: '<path d="M22 12h-4l-3 9L9 3l-3 9H2"/>',
+      smile: '<circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2M9 9h.01M15 9h.01"/>',
+      chevronDown: '<path d="m6 9 6 6 6-6"/>',
+      chevronUp: '<path d="m18 15-6-6-6 6"/>',
+      flag: '<path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1ZM4 22v-7"/>',
+      shield: '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/><path d="m9 12 2 2 4-4"/>',
+      check: '<path d="M20 6 9 17l-5-5"/>',
+      chevronRight: '<path d="m9 18 6-6-6-6"/>',
+      square: '<rect x="3" y="3" width="18" height="18" rx="2"/>',
+      checkSquare: '<path d="m9 11 3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>',
+      calendar: '<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>',
+      map: '<path d="M1 6v16l7-4 8 4 7-4V2l-7 4-8-4-7 4ZM8 2v16M16 6v16"/>'
+    };
+    document.querySelectorAll('i[data-icon]').forEach(function (el) {
+      var name = el.getAttribute('data-icon');
+      var size = el.getAttribute('data-size') || '18';
+      var stroke = el.getAttribute('data-stroke') || '1.8';
+      var fill = el.getAttribute('data-fill') === '1' ? 'currentColor' : 'none';
+      var cls = el.getAttribute('class');
+      el.outerHTML = '<svg' + (cls ? ' class="' + cls + '"' : '') + ' width="' + size + '" height="' + size + '" viewBox="0 0 24 24" fill="' + fill + '" stroke="currentColor" stroke-width="' + stroke + '" stroke-linecap="round" stroke-linejoin="round">' + P[name] + '</svg>';
+    });
+
+    // Bàn phím hệ thống (E2) — chỉ để thấy phần màn còn lại khi bàn phím bật.
+    document.querySelectorAll('[data-keyboard]').forEach(function (kb) {
+      var rows = ['qwertyuiop', 'asdfghjkl', 'zxcvbnm'];
+      var html = rows.map(function (r, i) {
+        var keys = r.split('').map(function (c) { return '<span class="k">' + c + '</span>'; }).join('');
+        if (i === 2) keys = '<span class="k fn">⇧</span>' + keys + '<span class="k fn">⌫</span>';
+        return '<div class="kr">' + keys + '</div>';
+      }).join('');
+      html += '<div class="kr"><span class="k fn">123</span><span class="k wide">space</span><span class="k fn">search</span></div>';
+      kb.innerHTML = html;
+    });
+
+    // Thanh công cụ: nền sáng/tối, vùng an toàn, thu phóng.
+    function press(group, active) {
+      document.querySelectorAll(group).forEach(function (b) { b.setAttribute('aria-pressed', String(b === active)); });
+    }
+    // Tham số URL để gửi link đúng trạng thái cho người khác: ?scheme=light&safe=on&zoom=0.5
+    var params = new URLSearchParams(location.search);
+    document.body.setAttribute('data-scheme', params.get('scheme') === 'light' ? 'light' : 'dark');
+    if (params.get('safe') === 'on') document.body.setAttribute('data-safe', 'on');
+    if (params.get('zoom')) document.querySelectorAll('.row').forEach(function (row) { row.style.setProperty('--zoom', params.get('zoom')); });
+    document.querySelectorAll('[data-scheme-btn]').forEach(function (b) {
+      b.setAttribute('aria-pressed', String(b.getAttribute('data-scheme-btn') === document.body.getAttribute('data-scheme')));
+      b.addEventListener('click', function () {
+        document.body.setAttribute('data-scheme', b.getAttribute('data-scheme-btn'));
+        press('[data-scheme-btn]', b);
+      });
+    });
+    document.querySelectorAll('[data-safe-btn]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        var on = document.body.getAttribute('data-safe') !== 'on';
+        document.body.setAttribute('data-safe', on ? 'on' : 'off');
+        b.setAttribute('aria-pressed', String(on));
+      });
+    });
+    document.querySelectorAll('[data-zoom-btn]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        document.querySelectorAll('.row').forEach(function (row) { row.style.setProperty('--zoom', b.getAttribute('data-zoom-btn')); });
+        press('[data-zoom-btn]', b);
+      });
+    });
+  })();
+</script>

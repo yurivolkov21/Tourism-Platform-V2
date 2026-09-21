@@ -14,7 +14,7 @@ xong mới có font).
 
 ## Đang dùng — cụm mobile P5b
 
-Bốn file này là bản vẽ thành viên đang dựng màn theo. Khung 390×844 đúng dp, có nút đổi nền
+Năm file này là bản vẽ thành viên đang dựng màn theo. Khung 390×844 đúng dp, có nút đổi nền
 sáng/tối và hiện vùng an toàn. Tài liệu bàn giao đi kèm ở `docs/conventions/mobile-*-handoff.md`.
 
 | File | Cụm | Khung | Chốt |
@@ -23,6 +23,7 @@ sáng/tối và hiện vùng an toàn. Tài liệu bàn giao đi kèm ở `docs/
 | `mobile-browse-screens.src.html` | P5b-2 xem tour | 16 | 18/09 · [bàn giao](../../conventions/mobile-browse-handoff.md) |
 | `mobile-booking-screens.src.html` | P5b-3 đặt tour · Trips · bám ngày đi | 25 | 21/09 · [bàn giao](../../conventions/mobile-booking-handoff.md) |
 | `mobile-account-screens.src.html` | P5b-4 Saved · tài khoản | 10 | 21/09 · [bàn giao](../../conventions/mobile-account-handoff.md) |
+| `mobile-review-screens.src.html` | P5b-5 đánh giá | 7 | 21/09 · [bàn giao](../../conventions/mobile-review-handoff.md) |
 
 ## Đã dựng xong — bản ghi thiết kế web và admin
 
