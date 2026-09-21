@@ -9,16 +9,18 @@ hành đã chứng minh ở Nexora, cập nhật cho toolchain mới.
 
 Capstone tốt nghiệp (bảo vệ dự kiến sau ~10/11/2026) — nền tảng đặt tour vận
 hành như trang thương mại thật nhưng **không doanh thu**: Stripe/PayPal luôn ở
-test/sandbox mode. Rebuild nâng cấp từ Nexora; repo cũ tại
-`/mnt/c/Dev Program Files/Dev/Projects/Tourism-Platform` là **tham chiếu chỉ
-đọc — tuyệt đối không sửa**.
+test/sandbox mode. Rebuild nâng cấp từ Nexora. **Bản sao Nexora không còn trên
+máy** (user chốt 14/09/2026 không clone lại) — mọi đối chiếu từ nay đọc các bản
+ghi đã có trong [`docs/analysis/`](docs/analysis/), đừng đi tìm thư mục cũ.
 
 Stack đã chốt + lý do: [docs/adr/0001-tech-stack.md](docs/adr/0001-tech-stack.md).
 Roadmap: P0 khung xương ✅ → P1 API lõi ✅ → P2 money-path ✅ → P3a API khách ✅
 → P3b web ✅ → **deploy v1 ✅ 20/08** (site sống tại `www.nexora-travel.agency`,
 ADR-0024 — push main là Vercel/Render tự deploy, sửa gì cũng là sửa đồ ĐANG
-CHẠY) → P4 admin (kế tiếp) → P5 mobile → P6 AI concierge → P7 polish UI →
-freeze 15/10.
+CHẠY) → P4 admin (a–d ✅ sống trên `admin.nexora-travel.agency`; **P4e catalog
+CRUD + P4f media/users chưa làm**) → P5 mobile (P5a khung ✅ · P5b-1 auth ✅ ·
+P5b-2…5 mới có bản vẽ, thành viên khác dựng màn) → P6 AI concierge → P7 polish
+UI → freeze 15/10. Việc còn nợ gom ở [docs/open-items.md](docs/open-items.md).
 
 ## Quy ước làm việc (bất di bất dịch trừ khi user nói khác)
 
