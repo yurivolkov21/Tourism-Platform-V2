@@ -25,7 +25,6 @@ const ROW: AdminDepartureRow = {
   cancellationDeadline: '2026-10-03',
   liveBookingCount: 2,
   pendingBookingCount: 1,
-  cancelledBookingCount: 0,
   version: '2026-09-20T08:00:00.000Z',
 };
 
@@ -116,14 +115,12 @@ describe('departureStatusBadgeVariant', () => {
   });
 });
 
-describe('toDepartureRowVM — huỷ chuyến và tiến độ hoàn tiền (F13)', () => {
-  it('chuyến còn sống: huỷ được, KHÔNG có cột tiến độ', () => {
-    // Tiến độ chỉ có nghĩa sau khi đã huỷ; in "0 / 2" ở mọi hàng là nhiễu.
+describe('toDepartureRowVM — huỷ chuyến và hoàn tiền (F13)', () => {
+  it('chuyến còn sống: huỷ được, cột hoàn tiền TRỐNG', () => {
     const vm = toDepartureRowVM(ROW, BEFORE);
 
     expect(vm.canCancel).toBe(true);
-    expect(vm.refundProgress).toBeNull();
-    expect(vm.refundPending).toBe(false);
+    expect(vm.refundOutstanding).toBeNull();
   });
 
   it('QUÁ hạn đặt vẫn huỷ được — khác hẳn nút Mở lại', () => {
@@ -140,25 +137,28 @@ describe('toDepartureRowVM — huỷ chuyến và tiến độ hoàn tiền (F13
     expect(toDepartureRowVM(ROW, '2026-10-09').canCancel).toBe(true);
   });
 
-  it('chuyến đã huỷ: tiến độ là ĐÃ HUỶ trên ĐÃ HUỶ CỘNG CÒN SỐNG', () => {
-    const vm = toDepartureRowVM(
-      { ...ROW, status: 'CANCELLED', cancelledBookingCount: 3, liveBookingCount: 2 },
-      BEFORE,
-    );
+  it('chuyến đã huỷ còn người chờ: in ĐÚNG số người chưa nhận tiền', () => {
+    const vm = toDepartureRowVM({ ...ROW, status: 'CANCELLED', liveBookingCount: 2 }, BEFORE);
 
-    expect(vm.refundProgress).toBe(t.list.refundProgress(3, 5));
-    // Còn 2 người chưa hoàn → bảng in dòng nói worker có thể đang ngủ.
-    expect(vm.refundPending).toBe(true);
+    expect(vm.refundOutstanding).toBe(t.list.refundOutstanding(2));
     expect(vm.canCancel).toBe(false);
   });
 
-  it('hoàn xong hết thì tỉ lệ chạy tới đủ và dòng giải thích biến mất', () => {
+  it('hoàn xong hết thì cột TRỐNG, không in "0"', () => {
+    // Cột Status đã nói chuyến đã huỷ; một con số 0 ở đây chỉ là nhiễu.
+    const vm = toDepartureRowVM({ ...ROW, status: 'CANCELLED', liveBookingCount: 0 }, BEFORE);
+
+    expect(vm.refundOutstanding).toBeNull();
+  });
+
+  it('chuyến huỷ khi CHƯA AI ĐẶT cũng trống — không có gì để hoàn', () => {
+    // Ca phổ biến nhất của nút huỷ (dọn lịch dựng nhầm). Bản đầu in
+    // "0 / 0 refunded" ở đây, một tỉ lệ không nói gì trên màn tiền.
     const vm = toDepartureRowVM(
-      { ...ROW, status: 'CANCELLED', cancelledBookingCount: 5, liveBookingCount: 0 },
+      { ...ROW, status: 'CANCELLED', liveBookingCount: 0, seatsBooked: 0 },
       BEFORE,
     );
 
-    expect(vm.refundProgress).toBe(t.list.refundProgress(5, 5));
-    expect(vm.refundPending).toBe(false);
+    expect(vm.refundOutstanding).toBeNull();
   });
 });

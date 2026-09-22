@@ -289,4 +289,91 @@ describe('departure-refund worker integration (F13)', () => {
       expect(fake.refunds).toHaveLength(0);
     });
   });
+  describe('job chạy MUỘN — sau ngày khởi hành', () => {
+    /**
+     * Ca này là lỗ hổng mà vòng review F13 bắt được: lượt hoàn tiền của công
+     * ty chạy bất đồng bộ, nên nó hoàn toàn có thể chạy sau ngày khởi hành
+     * (worker gói free ngủ 15 phút, hoặc cổng thanh toán hờn rồi retry giãn
+     * luỹ thừa). Bản đầu mượn chốt ngày của ĐƯỜNG KHÁCH nên job im lặng ack
+     * thành công và khách không bao giờ được hoàn.
+     */
+    async function seedStartedDeparture(): Promise<{ bookingId: string; depId: string }> {
+      const past = new Date(Date.now() - 2 * 86_400_000);
+      const dep = await prisma.tourDeparture.create({
+        data: {
+          tourId,
+          startDate: past,
+          endDate: past,
+          seatsTotal: 20,
+          seatsBooked: 3,
+          status: DepartureStatus.CANCELLED,
+          cancelledBy: adminId,
+          cancelReason: REASON,
+          cancelledAt: new Date(Date.now() - 3 * 86_400_000),
+        },
+      });
+      const row = await prisma.booking.create({
+        data: {
+          code: 'BK-LATE-1',
+          userId,
+          tourId,
+          departureId: dep.id,
+          numAdults: 2,
+          numChildren: 1,
+          totalAmount: '117.00',
+          currency: 'USD',
+          status: BookingStatus.PAID,
+          tourTitle: 'Refund Tour',
+          departureStartDate: past,
+          departureEndDate: past,
+          unitPrice: '39.00',
+          contactName: 'Alice Nguyen',
+          contactEmail: 'alice@example.com',
+          paymentProvider: 'STRIPE',
+          providerPaymentId: 'pi_BK-LATE-1',
+          paidAt: new Date(),
+        } satisfies Prisma.BookingUncheckedCreateInput,
+      });
+      return { bookingId: row.id, depId: dep.id };
+    }
+
+    it('VẪN hoàn tiền — ngày khởi hành không phải lý do giữ tiền của khách', async () => {
+      const { bookingId, depId } = await seedStartedDeparture();
+
+      const refunded = await service.refundOne({
+        bookingId,
+        departureId: depId,
+        adminId,
+        reason: REASON,
+      });
+
+      expect(refunded).toBe('117.00');
+      const booking = await prisma.booking.findUniqueOrThrow({ where: { id: bookingId } });
+      expect(booking.status).toBe(BookingStatus.CANCELLED);
+    });
+
+    it('lưới quét cũng vớt được ca ấy, không bỏ lại im lặng', async () => {
+      await seedStartedDeparture();
+
+      expect(await service.sweepStranded()).toBe(1);
+    });
+  });
+
+  describe('booking PAID không có capture', () => {
+    it('NÉM chứ không im lặng — không có chỗ nào để hoàn vào, cần người xử', async () => {
+      // `claimSeatsForPaid` nhận `providerPaymentId ?? null`, nên một webhook
+      // thiếu mã capture sinh ra đúng hàng này. Trả `null` ở đây là hứa một
+      // lượt hoàn không bao giờ xảy ra.
+      const bookingId = await seedPaidBooking();
+      await prisma.booking.update({
+        where: { id: bookingId },
+        data: { providerPaymentId: null },
+      });
+
+      await expect(
+        service.refundOne({ bookingId, departureId, adminId, reason: REASON }),
+      ).rejects.toThrow(/captured payment/);
+      expect(fake.refunds).toHaveLength(0);
+    });
+  });
 });

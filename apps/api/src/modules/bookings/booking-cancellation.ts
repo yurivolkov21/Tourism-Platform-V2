@@ -39,15 +39,37 @@ export function isCancellableStatus(status: BookingStatus): boolean {
  * Lý do booking KHÔNG huỷ online được lúc `now`, hoặc `null` khi huỷ được. Chuỗi
  * trả về là chi tiết cho log và thông điệp lỗi 422, không phải copy cho khách
  * (web in câu của `@tourism/i18n`).
+ *
+ * `initiator` đổi ĐÚNG MỘT chốt, và đó là chốt ngày khởi hành:
+ *
+ * - `'customer'` (mặc định) — chốt áp dụng. Khách không huỷ được một chuyến
+ *   đang chạy hoặc đã chạy xong; lúc đó là chuyện sau chuyến đi, không phải huỷ.
+ * - `'operator'` — chốt KHÔNG áp dụng. Chuyến đã bị công ty bỏ trước ngày khởi
+ *   hành (`departureCancelBlocker` gác ở API), nên "đã tới ngày khởi hành" chỉ
+ *   còn là một sự thật về tờ lịch, không phải lý do giữ tiền của khách
+ *   (ADR-0041 §6: hoàn 100%, mọi lý do).
+ *
+ * Vì sao phải khai tường minh thay vì để lõi tự đoán: lượt hoàn tiền của công
+ * ty chạy BẤT ĐỒNG BỘ qua hàng đợi. Worker gói free ngủ 15 phút, cổng thanh
+ * toán hờn một lúc rồi retry giãn luỹ thừa — job hoàn toàn có thể chạy sau
+ * ngày khởi hành. Để chốt của khách áp vào đó là im lặng bỏ rơi một khách đã
+ * trả tiền, và không có gì báo lại.
+ *
+ * Hai chốt còn lại (trạng thái booking, thiếu capture) áp cho CẢ HAI đường:
+ * chúng là chuyện của chính booking, không phải chuyện của ai bấm nút.
  */
-export function cancellationBlocker(booking: CancellableBooking, now: Date): string | null {
+export function cancellationBlocker(
+  booking: CancellableBooking,
+  now: Date,
+  initiator: 'customer' | 'operator' = 'customer',
+): string | null {
   if (!isCancellableStatus(booking.status)) {
     return `booking is ${booking.status}; only a PAID or PARTIALLY_REFUNDED booking can be cancelled online`;
   }
   if (booking.providerPaymentId === null) {
     return 'booking has no captured payment to refund against';
   }
-  if (!canCancelOnline(now, calendarDate(booking.departureStartDate))) {
+  if (initiator === 'customer' && !canCancelOnline(now, calendarDate(booking.departureStartDate))) {
     return 'the departure date has been reached (Vietnam time)';
   }
   return null;

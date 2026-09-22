@@ -64,12 +64,14 @@ export interface DepartureRowVM {
    */
   canCancel: boolean;
   /**
-   * Tiến độ hoàn tiền — chỉ có nghĩa trên hàng ĐÃ HUỶ, `null` ở mọi hàng khác.
-   * Hoàn tiền chạy qua hàng đợi nên con số này bò dần qua vài lượt refresh.
+   * Còn BAO NHIÊU khách chưa nhận được tiền trên một chuyến đã huỷ — `null`
+   * khi chuyến chưa huỷ, hoặc khi không còn ai phải chờ.
+   *
+   * Không phải tỉ lệ `x / y`: xem `refundOutstanding` ở i18n về việc vì sao
+   * một tử số đếm booking `CANCELLED` lại nói sai. Hoàn tiền chạy qua hàng
+   * đợi nên con số này tụt dần qua vài lượt refresh rồi biến mất.
    */
-  refundProgress: string | null;
-  /** Còn khách chưa được hoàn — bảng in dòng giải thích worker có thể đang ngủ. */
-  refundPending: boolean;
+  refundOutstanding: string | null;
 }
 
 /**
@@ -84,9 +86,6 @@ export function toDepartureRowVM(row: AdminDepartureRow, today: string): Departu
   // không cần dựng `Date` nào (và không mở cửa cho lệch một ngày vì múi giờ).
   const deadlinePassed = today > row.cancellationDeadline;
   const cancelled = row.status === 'CANCELLED';
-  // Mẫu số của tiến độ: đã huỷ CỘNG còn sống. Booking khách tự huỷ từ trước
-  // cộng vào cả tử lẫn mẫu nên tỉ lệ vẫn chạy tới đủ khi lượt cuối xong.
-  const refundTotal = row.cancelledBookingCount + row.liveBookingCount;
 
   return {
     id: row.id,
@@ -117,10 +116,8 @@ export function toDepartureRowVM(row: AdminDepartureRow, today: string): Departu
     // `today` là ngày lịch VIỆT NAM của SERVER — cùng thước `canCancelOnline`
     // dùng ở API, nên nút không bao giờ mời bấm một thứ server sẽ từ chối.
     canCancel: !cancelled && today < row.startDate,
-    refundProgress: cancelled
-      ? t.list.refundProgress(row.cancelledBookingCount, refundTotal)
-      : null,
-    refundPending: cancelled && row.liveBookingCount > 0,
+    refundOutstanding:
+      cancelled && row.liveBookingCount > 0 ? t.list.refundOutstanding(row.liveBookingCount) : null,
   };
 }
 

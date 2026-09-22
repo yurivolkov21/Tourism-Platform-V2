@@ -4572,8 +4572,21 @@ export const messages = {
         /** Chuyến không có giá riêng — bảng in giá áp dụng, dòng phụ nói nó từ đâu. */
         inheritedPrice: 'Tour base price',
         deadlinePassed: 'Passed',
-        /** Cột tiến độ hoàn tiền — chỉ có nghĩa trên hàng đã huỷ. */
-        refundProgress: (done: number, total: number) => `${done} / ${total} refunded`,
+        /**
+         * Số khách CÒN CHỜ hoàn tiền trên một chuyến đã huỷ.
+         *
+         * Cố ý KHÔNG phải một tỉ lệ "x / y". Bản đầu in `cancelledBookingCount`
+         * trên tổng, nhưng tử số ấy đếm cả booking `PENDING` vừa bị huỷ tại chỗ
+         * (chưa trả tiền nên chưa từng được hoàn đồng nào) lẫn booking khách tự
+         * huỷ từ trước — một con số mang nhãn "refunded" mà không phải số lượt
+         * hoàn. Trên màn tiền, một con số nói sai tệ hơn hẳn không có con số.
+         *
+         * Con số này thì luôn đúng theo đúng nghĩa đen của nó: còn bao nhiêu
+         * người chưa nhận được tiền. Hết người chờ thì cột để TRỐNG — cột
+         * Status đã nói chuyến đã huỷ, không cần nhắc lại bằng "0".
+         */
+        refundOutstanding: (count: number) =>
+          count === 1 ? '1 traveller still to refund' : `${count} travellers still to refund`,
         /**
          * Tiến độ đứng im quá lâu. Worker chạy trên gói free của Render và ngủ
          * sau 15 phút không việc; job nằm nguyên trong hàng đợi tới khi nó

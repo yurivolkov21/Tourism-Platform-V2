@@ -11,6 +11,7 @@ import { MediaService } from '../media/media.service.js';
 import { buildRefundEventRow } from '../payments/refund-event.js';
 import {
   cancellationBlocker,
+  isCancellableStatus,
   refundOnCancelForBooking,
   refundOnOperatorCancelForBooking,
 } from './booking-cancellation.js';
@@ -218,9 +219,19 @@ export class CancellationsService {
   ): Promise<string | null> {
     return withBookingRefundLock(bookingId, async (tx) => {
       const booking = await tx.booking.findUniqueOrThrow({ where: { id: bookingId } });
-      // Đọc TRONG khoá rồi mới quyết: một lượt giao lại, hay một lệnh huỷ của
-      // chính khách chen vào trước, đều hiện ra ở đây.
-      if (cancellationBlocker(booking, now) !== null) return null;
+      // Đọc TRONG khoá rồi mới quyết. HAI kết cục khác nhau, và gộp chúng
+      // lại là cách đánh mất tiền của khách một cách im lặng:
+      //
+      //  ① trạng thái đã đóng (`CANCELLED`/`REFUNDED`, hoặc chính khách vừa
+      //     huỷ trước) → việc ĐÃ XONG. Trả `null`, job ack thành công.
+      //  ② còn lại (thiếu capture để hoàn vào) → CẦN NGƯỜI NHÌN. Ném, để
+      //     pg-boss retry rồi lượt quét còn kêu tiếp; im lặng ở đây là hứa
+      //     một lượt hoàn không bao giờ xảy ra.
+      //
+      // Chốt ngày khởi hành KHÔNG nằm trong cả hai: xem `cancellationBlocker`.
+      if (!isCancellableStatus(booking.status)) return null;
+      const blocked = cancellationBlocker(booking, now, 'operator');
+      if (blocked !== null) throw new BookingNotCancellableError(blocked);
 
       const ledger = await tx.refund.aggregate({
         where: { bookingId: booking.id },
@@ -284,7 +295,9 @@ export class CancellationsService {
     booking: Prisma.BookingModel,
     input: CancelInLockInput,
   ): Promise<void> {
-    const blocker = cancellationBlocker(booking, input.now);
+    // Chốt áp THEO ĐƯỜNG: chốt ngày khởi hành là luật của khách, không phải
+    // của lượt hoàn tiền chạy muộn sau khi công ty đã bỏ chuyến.
+    const blocker = cancellationBlocker(booking, input.now, input.initiator);
     if (blocker) throw new BookingNotCancellableError(blocker);
 
     const amount = input.refundAmount;

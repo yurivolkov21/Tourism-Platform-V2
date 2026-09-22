@@ -31,7 +31,6 @@ const ROW = {
   cancellationDeadline: '2026-10-03',
   liveBookingCount: 2,
   pendingBookingCount: 1,
-  cancelledBookingCount: 2,
   version: '2026-09-20T08:00:00.000Z',
 };
 

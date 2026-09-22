@@ -124,18 +124,6 @@ export const AdminDepartureRowSchema = z.object({
    */
   pendingBookingCount: z.int().nonnegative(),
   /**
-   * Số booking của chuyến này đã ở trạng thái `CANCELLED`.
-   *
-   * Nuôi cột tiến độ *"đã hoàn x/y"* sau khi công ty huỷ chuyến (F13): hoàn
-   * tiền chạy bất đồng bộ qua hàng đợi, mỗi booking một job, và booking chỉ
-   * flip sang `CANCELLED` khi tiền đã đi. Nên `x = cancelledBookingCount` và
-   * `y = x + liveBookingCount` — không cần bảng tiến độ riêng.
-   *
-   * Đếm cả booking khách tự huỷ từ trước, và điều đó KHÔNG sai số: chúng cộng
-   * vào cả tử lẫn mẫu, nên tỉ lệ vẫn chạy tới đủ khi lượt cuối xong.
-   */
-  cancelledBookingCount: z.int().nonnegative(),
-  /**
    * Phiên bản hàng, gửi lại nguyên xi khi sửa — chống ghi đè mù giữa hai tab.
    * Giá trị là `updatedAt` dạng ISO; xem `AdminDepartureUpdateInputSchema.version`
    * về việc vì sao `FOR UPDATE` một mình không đủ.

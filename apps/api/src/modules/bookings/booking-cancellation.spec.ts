@@ -176,3 +176,34 @@ describe('refundOnOperatorCancelForBooking', () => {
     );
   });
 });
+
+describe('cancellationBlocker — đường OPERATOR không chịu chốt ngày khởi hành', () => {
+  /** 10:00 ngày 20/10 giờ Việt Nam — ĐÚNG ngày khởi hành, khách hết cửa huỷ. */
+  const ON_DEPARTURE_DAY = new Date('2026-10-20T03:00:00.000Z');
+
+  it('ngày khởi hành chặn KHÁCH nhưng KHÔNG chặn lượt hoàn của công ty', () => {
+    // Một khi công ty đã quyết huỷ, chuyến KHÔNG chạy — "đã tới ngày khởi
+    // hành" thôi là một sự thật về lịch, không còn là lý do giữ tiền
+    // (ADR-0041 §6). Job hoàn tiền có thể chạy muộn vì worker ngủ hoặc vì cổng
+    // thanh toán vừa hờn; nó không được phép im lặng bỏ cuộc.
+    expect(cancellationBlocker(makeBooking(), ON_DEPARTURE_DAY)).toMatch(/departure date/);
+    expect(cancellationBlocker(makeBooking(), ON_DEPARTURE_DAY, 'operator')).toBeNull();
+  });
+
+  it('hai chốt còn lại vẫn áp cho CẢ HAI đường', () => {
+    // Trạng thái sai và thiếu capture là chuyện của chính booking, không phải
+    // chuyện của ai bấm nút.
+    expect(
+      cancellationBlocker(makeBooking({ status: BookingStatus.CANCELLED }), EARLY, 'operator'),
+    ).toMatch(/CANCELLED/);
+    expect(
+      cancellationBlocker(makeBooking({ providerPaymentId: null }), EARLY, 'operator'),
+    ).toMatch(/captured payment/);
+  });
+
+  it('bỏ trống tham số thì vẫn là luật của KHÁCH — mọi chỗ gọi cũ không đổi nghĩa', () => {
+    expect(cancellationBlocker(makeBooking(), ON_DEPARTURE_DAY)).toBe(
+      cancellationBlocker(makeBooking(), ON_DEPARTURE_DAY, 'customer'),
+    );
+  });
+});

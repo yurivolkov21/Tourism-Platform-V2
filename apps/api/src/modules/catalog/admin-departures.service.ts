@@ -501,8 +501,6 @@ function toDecimal(value: string | null): Prisma.Decimal | null {
 export interface BookingCounts {
   live: number;
   pending: number;
-  /** Đã `CANCELLED` — nuôi cột tiến độ hoàn tiền sau khi công ty huỷ chuyến (F13). */
-  cancelled: number;
 }
 
 /**
@@ -521,30 +519,21 @@ async function bookingCounts(departureIds: string[]): Promise<Map<string, Bookin
   if (departureIds.length === 0) return new Map();
   const groups = await prisma.booking.groupBy({
     by: ['departureId', 'status'],
-    // Gồm cả `CANCELLED`: tiến độ hoàn tiền của F13 là tỉ lệ giữa số đã huỷ
-    // và tổng, nên một câu gom nhóm phải chở đủ cả hai vế.
-    where: {
-      departureId: { in: departureIds },
-      status: { in: [...LIVE_BOOKING_STATUSES, BookingStatus.CANCELLED] },
-    },
+    where: { departureId: { in: departureIds }, status: { in: LIVE_BOOKING_STATUSES } },
     _count: { _all: true },
   });
   const byDeparture = new Map<string, BookingCounts>();
   for (const group of groups) {
-    const current = byDeparture.get(group.departureId) ?? { live: 0, pending: 0, cancelled: 0 };
-    if (group.status === BookingStatus.CANCELLED) {
-      current.cancelled += group._count._all;
-    } else {
-      current.live += group._count._all;
-      if (group.status === BookingStatus.PENDING) current.pending += group._count._all;
-    }
+    const current = byDeparture.get(group.departureId) ?? { live: 0, pending: 0 };
+    current.live += group._count._all;
+    if (group.status === BookingStatus.PENDING) current.pending += group._count._all;
     byDeparture.set(group.departureId, current);
   }
   return byDeparture;
 }
 
 /** Chuyến chưa ai đặt — giá trị đọc ra khi chuyến vắng mặt trong kết quả gom nhóm. */
-const ZERO_COUNTS: BookingCounts = { live: 0, pending: 0, cancelled: 0 };
+const ZERO_COUNTS: BookingCounts = { live: 0, pending: 0 };
 
 function toRow(
   row: DepartureRowData,
@@ -571,7 +560,6 @@ function toRow(
     cancellationDeadline: cancellationDeadline(startDate, endDate),
     liveBookingCount: counts.live,
     pendingBookingCount: counts.pending,
-    cancelledBookingCount: counts.cancelled,
     version: row.updatedAt.toISOString(),
   };
 }

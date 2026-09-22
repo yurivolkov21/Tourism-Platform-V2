@@ -63,7 +63,7 @@ const COLUMN_LABELS: Record<string, string> = {
   seats: t.list.columns.seats,
   deadline: t.list.columns.deadline,
   bookingsLabel: t.list.columns.bookings,
-  refundProgress: t.list.columns.refunds,
+  refundOutstanding: t.list.columns.refunds,
   statusLabel: t.list.columns.status,
 };
 
@@ -72,7 +72,7 @@ const COLUMN_ICONS = {
   seats: UsersIcon,
   deadline: CalendarDaysIcon,
   bookingsLabel: UsersIcon,
-  refundProgress: BanIcon,
+  refundOutstanding: BanIcon,
   statusLabel: CircleCheckIcon,
 };
 
@@ -188,20 +188,18 @@ export function DeparturesTable({
             <span className="tabular-nums whitespace-nowrap">{row.original.liveBookingCount}</span>
           ),
         }),
-        columnHelper.accessor('refundProgress', {
+        columnHelper.accessor('refundOutstanding', {
           header: t.list.columns.refunds,
-          // Chỉ hàng ĐÃ HUỶ mới có tiến độ; hàng khác để trống thay vì in
-          // "0 / 0" — một con số vô nghĩa ở mọi hàng là nhiễu ở mọi hàng.
+          // Chỉ nói khi CÒN người phải chờ. Hàng đã hoàn xong và hàng chưa huỷ
+          // đều để trống — cột Status đã nói chuyến ở đâu rồi.
           cell: ({ row }) =>
-            row.original.refundProgress ? (
+            row.original.refundOutstanding ? (
               <div className="whitespace-nowrap">
-                <div className="tabular-nums">{row.original.refundProgress}</div>
+                <div className="tabular-nums">{row.original.refundOutstanding}</div>
                 {/* Worker gói free của Render ngủ sau 15 phút: job nằm nguyên
                     trong hàng đợi tới khi nó tỉnh nên không mất gì, nhưng admin
                     nhìn màn hình thì không đoán được điều đó. */}
-                {row.original.refundPending ? (
-                  <div className="text-xs text-muted-foreground">{t.list.refundStalled}</div>
-                ) : null}
+                <div className="text-xs text-muted-foreground">{t.list.refundStalled}</div>
               </div>
             ) : null,
         }),
