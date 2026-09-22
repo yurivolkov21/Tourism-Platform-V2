@@ -4717,8 +4717,17 @@ export const messages = {
             'Everyone who paid gets their full remaining amount back, even if the cancellation deadline has passed. This cannot be undone — a cancelled departure stays cancelled.',
           noteLabel: 'Why is it called off?',
           notePlaceholder: 'The guide is unavailable',
-          /** Ô lý do trống là một dòng sổ trắng ở chỗ duy nhất còn lại sáu tháng sau. */
-          noteRequired: 'Say why — travellers see this on their booking.',
+          /**
+           * Ô lý do trống là một dòng sổ trắng ở chỗ duy nhất còn lại sáu tháng sau.
+           *
+           * Câu này TỪNG nói "travellers see this on their booking" và đó là một
+           * lời hứa SAI — phát hiện khi chạy thử tay trên production 22/09. Lý do
+           * có vào `cancellation_requests.reason` thật, nhưng email báo huỷ không
+           * mang nó và trang booking phía khách không render nó ở đâu cả. Nói cho
+           * đúng thứ đang xảy ra: nó là ghi chép NỘI BỘ. Cho khách đọc được là
+           * việc riêng, đã ghi vào `docs/open-items.md`.
+           */
+          noteRequired: 'Say why — it is kept on every affected booking for your team.',
           submit: 'Cancel departure',
           submitting: 'Cancelling…',
         },

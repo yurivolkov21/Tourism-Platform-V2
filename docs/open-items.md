@@ -1,6 +1,6 @@
 # Việc còn treo
 
-> Bản tóm tắt để điều hướng, cập nhật 22/09/2026. **Không phải nguồn sự thật** —
+> Bản tóm tắt để điều hướng, cập nhật 22/09/2026 (lượt hai). **Không phải nguồn sự thật** —
 > chi tiết của từng mục sống ở [CHANGELOG](CHANGELOG.md) (mục "CÒN TREO" của
 > entry tương ứng) và ở [sổ nợ kỹ thuật](analysis/2026-08-06-backlog-no-ky-thuat.md).
 > Trả xong một mục thì gạch ở đây và ghi vào CHANGELOG.
@@ -27,8 +27,28 @@
 
 | Việc | Nêu ngày | Tình trạng |
 | --- | --- | --- |
+| Cho KHÁCH đọc được lý do công ty huỷ chuyến | 22/09 | Chưa quyết — xem mục ngay dưới |
 | Tự đăng nhập sau khi xác minh OTP | 18/09 | Đã chốt **không làm** (21/09), lý do ghi trong mã nguồn |
 | Gỡ nhánh tinh chỉnh giao diện web + admin gom 18/09 | 18/09 | Chưa mở |
+
+## Đề xuất sản phẩm: cho khách biết VÌ SAO chuyến bị huỷ
+
+Nêu 22/09 sau lượt chạy thử tay F13 trên production. Khi công ty huỷ chuyến,
+admin bắt buộc phải gõ lý do và lý do ấy được lưu vào `cancellation_requests`
+của TỪNG booking — nhưng hiện **chỉ admin đọc được**: email báo huỷ không mang
+nó, và trang booking phía khách không hiện nó ở đâu.
+
+Khách bị huỷ chuyến nhận một email nói "đã huỷ và hoàn tiền" mà không biết vì
+sao. Với một chuyến bị bỏ vì hướng dẫn viên ốm hay vì bão, câu giải thích là
+thứ khác biệt giữa một khách hiểu chuyện và một khách mất lòng tin.
+
+Làm thì phải đụng ba chỗ: thêm `reason` vào payload outbox `BOOKING_CANCELLED`,
+thêm một khối vào template email, và hiện nó trên trang booking của khách. Kèm
+một quyết định về copy: lý do admin gõ là câu NỘI BỘ ("guide bỏ việc"), nên
+hoặc ô nhập phải đổi giọng thành câu-cho-khách-đọc, hoặc cần hai ô.
+
+Trong lúc chưa quyết, câu nhắc ở màn admin đã sửa cho nói đúng sự thật (nó là
+ghi chép nội bộ) — trước đó nó hứa nhầm rằng khách sẽ đọc được.
 
 ## Cần thử lại bằng máy thật
 
@@ -47,12 +67,6 @@
   `tourism` theo mã mới.
 - Chuyển `backups/2026-09-18/` từ worktree về bản checkout gốc trước khi gỡ
   worktree.
-- Deploy migration `20260922120000_departure_cancellation_audit` lên Supabase
-  (ba cột sổ huỷ chuyến của F13). Đã chạy trên Postgres Docker `tourism` và
-  `tourism_test`; prod còn chờ.
-- Chạy thử tay đường huỷ chuyến của F13 theo mục nghiệm thu của
-  [plan P4e-1](plans/2026-09-21-p4e-1-departures.md): tạo một chuyến, đóng, mở
-  lại, rồi huỷ một chuyến có booking sandbox và xem cột tiến độ chạy tới đủ.
 - Tắt tự-động-cập-nhật marketplace `claude-plugins-official` trước freeze 15/10.
 - Cân nhắc siết thêm Build Filter của Render: thêm `apps/web/**`,
   `apps/admin/**`, `apps/mobile/**` vào Ignored Paths. **Đừng thêm `libs/**`** —

@@ -8,6 +8,44 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-09-22 — Chạy thử tay F13 trên production, và một câu copy nói dối (nhánh `fix/departure-cancel-reason-copy`)
+
+Lượt nghiệm thu cuối của [plan P4e-1](plans/2026-09-21-p4e-1-departures.md), chạy
+trên chính production (Stripe test mode, worker inline). Đường huỷ chuyến chạy
+đúng từ đầu tới cuối; một lỗi copy lộ ra, và nó là loại lỗi chỉ thử tay mới bắt.
+
+**Đường huỷ: đạt.** Tạo chuyến 22/10 trên tour `hanoi-old-quarter-food-night`,
+đóng rồi mở lại, đặt một chỗ và trả bằng thẻ test, rồi huỷ chuyến. Đo được trong
+DB prod: chuyến `CANCELLED` với đủ ba cột sổ (`cancelled_at/by/reason`), booking
+`CANCELLED`, một dòng sổ hoàn **35.00 USD** mang mã `re_…` do chính Stripe trả
+về, ghế trả lại `0 / 4`, `cancellation_requests` ở `REFUNDED` đúng lý do, email
+`BOOKING_CANCELLED` đã gửi và in đúng số tiền. Từ lúc bấm huỷ tới lúc hoàn xong:
+**1,4 giây** — ảnh chụp kịp thấy cột "1 traveller still to refund" rồi nó biến
+mất sau một lượt refresh, đúng hành vi đã đổi ở vòng review.
+
+**Lỗi tìm được.** Hộp xác nhận huỷ nhắc dưới ô lý do: *"Say why — travellers see
+this on their booking."* Câu ấy SAI. Lý do có vào `cancellation_requests.reason`
+thật và admin đọc được, nhưng email báo huỷ không mang nó và trang booking phía
+khách không render nó ở đâu cả — tra lại mã nguồn thì `apps/web` chỉ có ô
+`reason` để KHÁCH tự gõ khi họ huỷ. Không mất tiền, nhưng là copy nói dối trên
+màn tiền: nó khiến admin cân nhắc câu chữ cho một người đọc không tồn tại. Cùng
+loại lỗi mà vòng review vừa bắt ở cột "x / y refunded".
+
+Vá bằng cách nói đúng thứ đang xảy ra — câu nhắc nay là *"it is kept on every
+affected booking for your team"*. Cho khách thật sự đọc được là việc KHÁC (phải
+đụng payload outbox, template email và một vùng trên web, cộng một quyết định về
+giọng văn vì lý do admin gõ là câu nội bộ); đã ghi thành đề xuất sản phẩm ở
+[open-items](open-items.md) chờ chủ dự án quyết.
+
+Ghi chú vận hành: 3.877 test tự động không cái nào biết email trông ra sao. Đây
+là giá trị của mục "chạy thử tay" trong plan, và là lý do nên giữ nó ở mọi phase
+sau.
+
+**Review findings:** không có vòng review riêng — đây là lượt vá một câu copy.
+
+Tests after: không đổi con số nào (chỉ sửa chuỗi i18n và hai khối JSDoc). Vitest
+3875, int 564 ở 42 file.
+
 ## 2026-09-22 — P4e-1 F13: nút công ty huỷ chuyến, hoàn tiền qua hàng đợi (nhánh `feat/p4e-departure-cancel`)
 
 Đóng món nợ [ADR-0041 §6](adr/0041-single-cancellation-deadline.md) mở từ đầu

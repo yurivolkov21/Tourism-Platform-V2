@@ -47,8 +47,11 @@ export interface DepartureRefundJob {
    * Lý do admin gõ ở hộp xác nhận, chép vào `cancellation_requests.reason` của
    * TỪNG booking.
    *
-   * KHÁCH ĐỌC ĐƯỢC chuỗi này (lịch sử huỷ ở trang booking của họ) — copy ở màn
-   * admin phải nói rõ điều đó, vì "guide bỏ việc" là câu ghi cho nội bộ.
+   * Hiện là ghi chép NỘI BỘ: chỉ admin đọc được (qua `admin.bookings.byCode`).
+   * Email báo huỷ không mang nó, và trang booking phía khách không render nó —
+   * đo được khi chạy thử tay trên production 22/09, và copy ở màn admin đã sửa
+   * lại cho đúng. Muốn khách đọc được thì phải thêm nó vào payload outbox lẫn
+   * template email; đề xuất ấy nằm ở `docs/open-items.md`.
    */
   reason: string;
 }
