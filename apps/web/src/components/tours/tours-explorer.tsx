@@ -103,7 +103,15 @@ export function ToursExplorer({
   initial,
 }: {
   tours: TourCardVM[];
-  categories: { slug: string; name: string; count: number }[];
+  /**
+   * Danh mục ĐANG BẬT, theo đúng thứ tự server trả về — chip render theo thứ
+   * tự này, kể cả danh mục không có tour nào trong lưới (nó hiện mờ).
+   *
+   * Chỉ `slug` + `name`: con số trên chip KHÔNG lấy từ đây mà đếm lại từ danh
+   * sách đã lọc bên dưới. `toursCount` của endpoint là số toàn catalogue, in
+   * nó ra khi khách đang tìm kiếm là hứa nhiều hơn thực tế.
+   */
+  categories: { slug: string; name: string }[];
   destinations: DestinationVM[];
   initial: ToursExplorerInitial;
 }) {

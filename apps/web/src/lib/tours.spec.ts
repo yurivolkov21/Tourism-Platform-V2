@@ -37,26 +37,8 @@ import {
   searchTours,
   sortTours,
   strikePrice,
-  tourCategories,
   tourGallery,
 } from './tours';
-
-describe('tourCategories', () => {
-  it('trả chuyên mục duy nhất, tổng count bằng số tour', () => {
-    const cats = tourCategories(TOURS);
-    expect(new Set(cats.map((c) => c.slug)).size).toBe(cats.length);
-    expect(cats.reduce((sum, c) => sum + c.count, 0)).toBe(TOURS.length);
-  });
-
-  it('giữ thứ tự xuất hiện — chip không nhảy chỗ khi thêm tour', () => {
-    const cats = tourCategories(TOURS);
-    expect(cats[0]?.slug).toBe(TOURS[0]?.category.slug);
-  });
-
-  it('danh sách rỗng trả mảng rỗng', () => {
-    expect(tourCategories([])).toEqual([]);
-  });
-});
 
 describe('durationBucket', () => {
   it('1 ngày là day trip', () => {

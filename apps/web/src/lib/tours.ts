@@ -2,20 +2,6 @@ import type { TourCardVM } from '@/lib/api/tours';
 import type { MockDestinationLink, MockMediaItem } from '@/mocks/types';
 import { foldAccents } from './text';
 
-/** Chuyên mục duy nhất kèm số tour — nguồn cho hàng chip lọc. Giữ thứ tự xuất
-    hiện trong mảng gốc (không sắp lại) để chip không nhảy chỗ khi thêm tour. */
-export function tourCategories(
-  tours: readonly TourCardVM[],
-): { slug: string; name: string; count: number }[] {
-  const map = new Map<string, { slug: string; name: string; count: number }>();
-  for (const tour of tours) {
-    const existing = map.get(tour.category.slug);
-    if (existing) existing.count += 1;
-    else map.set(tour.category.slug, { ...tour.category, count: 1 });
-  }
-  return [...map.values()];
-}
-
 export type DurationBucket = '1' | '2-3' | '4+';
 export type PriceBucket = '<100' | '100-300' | '300+';
 

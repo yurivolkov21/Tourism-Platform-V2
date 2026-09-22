@@ -21,6 +21,8 @@ export type TourReviewVM = ContractOutputs['reviews']['listByTour']['items'][num
     gương đúng `DestinationSchema` từ trước), đặt tên VM ở đây cho nhất quán với
     ba type trên khi ToursExplorer/ToursFilters đổi nguồn sang API thật. */
 export type DestinationVM = ContractOutputs['catalog']['destinations']['list'][number];
+/** Một danh mục tour đang bật — nuôi chip lọc ở `/tours` (xem `fetchCategories`). */
+export type CategoryVM = ContractOutputs['catalog']['categories']['list'][number];
 /** Một đợt khởi hành trong `TourDetailVM.departures` — tách riêng để component
     nhận dữ liệu THẲNG từ `fetchTourDetail()` (`departure-selection.tsx`/
     `booking-rail.tsx`) khai prop theo VM thay vì mượn `MockTourDeparture`
@@ -56,6 +58,25 @@ export async function fetchDestinations(): Promise<
   ContractOutputs['catalog']['destinations']['list']
 > {
   return api.catalog.destinations.list(undefined, {
+    context: { next: { revalidate: REVALIDATE_SEC, tags: [TAGS.TOURS] } },
+  });
+}
+
+/**
+ * Danh mục tour ĐANG BẬT, đã sắp theo `order` — nguồn DUY NHẤT của chip lọc
+ * danh mục ở `/tours`.
+ *
+ * Trước 22/09 trang listing suy bộ chip từ chính danh sách tour đã tải
+ * (`tourCategories`), nên hai nút của back office không với tới trang công
+ * khai: ẩn một danh mục vẫn thấy chip, đổi thứ tự vẫn không đổi gì. Đọc
+ * endpoint là cách duy nhất để `is_active` và `order` có nghĩa thật.
+ *
+ * `toursCount` của endpoint đếm TOÀN catalogue. Nó KHÔNG phải con số in trên
+ * chip: số trên chip phải thu hẹp theo ô tìm kiếm, nếu không nó hứa nhiều hơn
+ * thực tế — `ToursExplorer` tự đếm lấy từ danh sách đã lọc.
+ */
+export async function fetchCategories(): Promise<ContractOutputs['catalog']['categories']['list']> {
+  return api.catalog.categories.list(undefined, {
     context: { next: { revalidate: REVALIDATE_SEC, tags: [TAGS.TOURS] } },
   });
 }

@@ -117,12 +117,19 @@ mà transaction đã canh rồi. Đo prod 22/09: `order` hiện là 1..6, không
 
 Hiện `/tours` dựng chip lọc bằng `tourCategories(tours)` — suy từ **danh sách
 tour đã tải**. Hệ quả đo được: `is_active` và `order` của danh mục **không ảnh
-hưởng gì tới trang công khai**; chúng chỉ đổi menu lọc trong back office. Và
-một sai lệch có sẵn: **trang 2 của danh sách tour có bộ chip khác trang 1**, vì
-mỗi trang suy từ tour của chính nó.
+hưởng gì tới trang công khai**; chúng chỉ đổi menu lọc trong back office.
 
-Nối `/tours` đọc `catalog.categories.list` sửa cả hai: nút bật/tắt và nút
-lên/xuống có nghĩa thật, và bộ chip ổn định qua các trang.
+> **Đính chính 22/09 (đo lại khi thi công Task 5).** Bản spec đầu tiên còn
+> nói "trang 2 của danh sách tour có bộ chip khác trang 1". **Sai.** Trang
+> listing gọi `fetchTours()` MỘT lần với `limit: 50` rồi `ToursExplorer` phân
+> trang phía client bằng `history.replaceState` — đổi trang không có vòng
+> server nào, nên bộ chip vốn đã ổn định. Hai hệ quả thật vẫn nguyên: `is_active`
+> và `order` không với tới trang công khai, và một danh mục **chưa có tour
+> published nào thì không có chip**, nên admin vừa tạo xong không thấy nó đâu.
+
+Nối `/tours` đọc `catalog.categories.list` sửa cả ba: nút bật/tắt và nút
+lên/xuống có nghĩa thật, và danh mục mới tạo hiện ngay (ở dạng khoá, vì bấm
+vào chỉ ra lưới trống).
 
 ## 3. Bề mặt API
 

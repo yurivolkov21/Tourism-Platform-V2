@@ -189,16 +189,24 @@ này không kèm prompt bàn giao — nó là danh sách việc để làm tuầ
 - Modify/Delete: `apps/web/src/lib/tours.ts` (`tourCategories`)
 - Test: spec của trang listing
 
-- [ ] **B1.** Spec TRƯỚC: chip lọc đọc từ endpoint · danh mục `isActive: false`
-      **không** hiện · thứ tự theo `order` · **trang 2 có cùng bộ chip trang 1**
-      (đây là sai lệch đang có — spec §2e).
-- [ ] **B2.** Chạy ĐỎ.
+- [x] **B1.** Spec TRƯỚC: chip lọc đọc từ endpoint · thứ tự theo `order` ·
+      danh mục **chưa có tour nào vẫn hiện** (ở dạng khoá).
+      *Sửa khi thi công:* bước này ban đầu ghi "trang 2 có cùng bộ chip trang
+      1" như một sai lệch cần vá — **đo lại thì không có sai lệch đó**, vì
+      `fetchTours()` gọi một lần `limit: 50` và explorer phân trang phía
+      client. Đính chính đã ghi vào spec §2e.
+- [x] **B2.** Chạy ĐỎ.
 - [ ] **B3.** Thêm `fetchCategories()` vào `tours.ts`, tag `TAGS.TOURS`, cùng
       `REVALIDATE_SEC` như `fetchDestinations`.
 - [ ] **B4.** Trang listing dùng nó thay `tourCategories(tours)`. Gỡ hàm cũ nếu
       không còn ai gọi (kiểm bằng grep trước khi xoá).
-- [ ] **B5.** `count` của chip: lấy từ `tourCount` của endpoint (số tour đã
-      publish), KHÔNG đếm lại từ trang hiện tại.
+- [x] **B5.** `count` của chip: **giữ nguyên cách đếm cũ** — đếm từ danh sách
+      đã lọc, KHÔNG lấy `toursCount` của endpoint.
+      *Sửa khi thi công:* bước này ban đầu ghi ngược lại. `toursCount` là số
+      TOÀN catalogue, in nó ra khi khách đang tìm kiếm hoặc đang bật facet
+      khác là hứa nhiều hơn thực tế — đúng loại lỗi copy mà cụm này đang vá.
+      Endpoint quyết định chip NÀO có mặt và theo thứ tự nào; con số vẫn do
+      `facetOptionCounts` tính trên lưới đã lọc.
 - [ ] **B6.** Dựng web với API sống, xác nhận không hỏng prerender (rủi ro ghi
       ở spec §6).
 - [ ] **B7.** `pnpm gate:int` xanh.

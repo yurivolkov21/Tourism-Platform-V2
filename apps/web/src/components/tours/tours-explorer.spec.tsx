@@ -2,13 +2,13 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MotionConfig } from 'motion/react';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
-import { tourCategories } from '@/lib/tours';
 // `mocks/tours.ts` + `mocks/destinations.ts` đã khai tử ở Task 7 (cụm
 // destinations-api) — hai biến dưới đây giờ là fixture nội bộ trích nguyên vẹn
 // từ mock cũ, xem đầu file fixture để biết vì sao (mọi con số các test dưới
 // đây đang canh — 16 tour, 9 destination, 3 tour trekking, … — vẫn đúng
 // nguyên xi).
 import {
+  FIXTURE_CATEGORIES as CATEGORIES,
   FIXTURE_DESTINATIONS as DESTINATIONS,
   FIXTURE_TOURS as TOURS,
 } from '@/test/fixtures/catalog';
@@ -49,7 +49,7 @@ function renderExplorer(initial: Parameters<typeof ToursExplorer>[0]['initial'] 
     <MotionConfig reducedMotion="always">
       <ToursExplorer
         tours={TOURS}
-        categories={tourCategories(TOURS)}
+        categories={CATEGORIES}
         destinations={DESTINATIONS}
         initial={initial}
       />
@@ -316,6 +316,70 @@ describe('ToursExplorer — facet đa chọn', () => {
     );
   });
 
+  /**
+   * Ba test dưới đây pin HỢP ĐỒNG mà trang listing dựa vào từ 22/09: bộ chip
+   * danh mục đến từ endpoint `catalog.categories.list`, không còn suy từ danh
+   * sách tour đã tải. Điều đó chỉ có nghĩa nếu explorer render ĐÚNG thứ nó
+   * được đưa — đúng thứ tự, đủ cả danh mục không có tour nào — mà vẫn tự đếm
+   * lấy con số in trên chip.
+   */
+  it('chip danh mục theo thứ tự PROP, không theo thứ tự xuất hiện trong lưới', async () => {
+    const user = userEvent.setup();
+    renderExplorer();
+    await openFilters(user);
+
+    // Đọc `htmlFor` của nhãn chứ không `id` của ô: Base UI tự sinh id cho phần
+    // tử mang `role="checkbox"`, chỉ nhãn mới giữ `facet-<slug>`.
+    const slugs = new Set(CATEGORIES.map((c) => c.slug));
+    const rendered = [...screen.getByRole('dialog').querySelectorAll('label')]
+      .map((label) => label.htmlFor.replace(/^facet-/, ''))
+      .filter((slug) => slugs.has(slug));
+
+    // `FIXTURE_TOURS` mở đầu bằng một tour `cruises`; nếu chip vẫn suy từ lưới
+    // thì `cruises` đứng đầu thay vì `food`.
+    expect(rendered).toEqual(CATEGORIES.map((c) => c.slug));
+  });
+
+  it('danh mục KHÔNG có tour nào vẫn có mặt trong danh sách, ở dạng khoá', async () => {
+    const user = userEvent.setup();
+    render(
+      <MotionConfig reducedMotion="always">
+        <ToursExplorer
+          tours={TOURS}
+          categories={[...CATEGORIES, { slug: 'wellness', name: 'Wellness retreats' }]}
+          destinations={DESTINATIONS}
+          initial={{}}
+        />
+      </MotionConfig>,
+    );
+    await openFilters(user);
+    // Danh sách gập ở 6 mục; danh mục thứ bảy nằm sau nút "Show all".
+    await user.click(screen.getByRole('button', { name: 'Show all 7' }));
+
+    // Admin vừa tạo danh mục và chưa gắn tour nào: nó phải có mặt để họ thấy
+    // mình đã tạo đúng, nhưng khoá lại vì bấm chỉ dẫn tới một lưới trống.
+    // `aria-disabled` chứ không `toBeDisabled()`: Base UI dựng ô bằng `<span>`,
+    // và thuộc tính `disabled` không có nghĩa trên thẻ đó.
+    expect(screen.getByRole('checkbox', { name: 'Wellness retreats, 0 tours' })).toHaveAttribute(
+      'aria-disabled',
+      'true',
+    );
+  });
+
+  it('con số trên chip đếm từ lưới đã lọc, KHÔNG lấy `toursCount` của endpoint', async () => {
+    const user = userEvent.setup();
+    renderExplorer();
+    await openFilters(user);
+
+    // Endpoint khai `trekking` có 3 tour trên toàn catalogue. Bật thêm một
+    // facet thì chỉ còn 1 — in 3 lúc ấy là hứa nhiều hơn thực tế.
+    expect(CATEGORIES.find((c) => c.slug === 'trekking')?.toursCount).toBe(3);
+    await user.click(screen.getByRole('button', { name: /^4\+ days, / }));
+    await waitFor(() =>
+      expect(screen.getByRole('checkbox', { name: 'Trekking, 1 tour' })).toBeInTheDocument(),
+    );
+  });
+
   it('lọc theo độ khó bỏ qua tour không ghi độ khó', async () => {
     const user = userEvent.setup();
     renderExplorer();
@@ -434,7 +498,7 @@ describe('ToursExplorer — facet destination từ API (19 slug thật, khác 9 
       <MotionConfig reducedMotion="always">
         <ToursExplorer
           tours={tours}
-          categories={tourCategories(tours)}
+          categories={CATEGORIES}
           destinations={[...DESTINATIONS, vungTauDestination]}
           initial={{ destinations: 'vung-tau' }}
         />

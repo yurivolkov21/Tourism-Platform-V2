@@ -4,8 +4,7 @@ import { ContentHero } from '@/components/content/content-hero';
 import { LoadErrorState } from '@/components/feedback/load-error-state';
 import { ToursExplorer } from '@/components/tours/tours-explorer';
 import { contentState, settle } from '@/lib/api/resilience';
-import { fetchDestinations, fetchTours } from '@/lib/api/tours';
-import { tourCategories } from '@/lib/tours';
+import { fetchCategories, fetchDestinations, fetchTours } from '@/lib/api/tours';
 
 export const revalidate = 300; // ADR-0016 §3 — khớp REVALIDATE_SEC của fetchTours/fetchDestinations
 
@@ -35,14 +34,15 @@ export default async function ToursPage({
 }) {
   const params = await searchParams;
 
-  // settle() không bao giờ throw — hai fetch chạy song song, mỗi cái tự đứng
+  // settle() không bao giờ throw — ba fetch chạy song song, mỗi cái tự đứng
   // độc lập, một cái sập không kéo cái kia theo (ADR-0016 §4, giống cụm Blog).
-  const [toursRes, destinationsRes] = await Promise.all([
+  const [toursRes, destinationsRes, categoriesRes] = await Promise.all([
     settle(fetchTours()),
     settle(fetchDestinations()),
+    settle(fetchCategories()),
   ]);
-  // Facet destination là điều hướng PHỤ — tours sống mà facet chết thì vẫn hiện
-  // lưới tour, sidebar destination rơi về rỗng; chỉ tours chết mới là lỗi trang.
+  // Hai facet đều là điều hướng PHỤ — tours sống mà facet chết thì vẫn hiện
+  // lưới tour, sidebar rơi về rỗng; chỉ tours chết mới là lỗi trang.
   // `isEmpty` cố tình luôn false: 0 tour do lọc/tìm đã có màn "Nothing here yet"
   // riêng của ToursExplorer, page không cần một trạng thái rỗng thứ hai.
   const state = contentState({ failed: !toursRes.ok, isEmpty: false });
@@ -87,11 +87,16 @@ export default async function ToursPage({
 
   const tours = toursRes.data ?? [];
   const destinations = destinationsRes.data ?? [];
+  // Bộ chip danh mục đọc THẲNG từ endpoint, đã lọc `is_active` và sắp theo
+  // `order` ở server. Suy từ danh sách tour đã tải (cách cũ) làm hai nút của
+  // back office không với tới trang này: ẩn một danh mục vẫn thấy chip, đổi
+  // thứ tự vẫn không đổi gì.
+  const categories = categoriesRes.data ?? [];
 
   return (
     <ToursExplorer
       tours={tours}
-      categories={tourCategories(tours)}
+      categories={categories}
       destinations={destinations}
       initial={initial}
     />

@@ -22,7 +22,7 @@
 // lại (cần cho test sort/đếm theo vùng); `rating`/`title`/`body`/`authorName`/
 // `authorDeleted` là giá trị hợp lệ tự sinh (cycle qua vài mức) vì không spec
 // nào canh NỘI DUNG của chúng, chỉ cần đúng `PublicReviewSchema`.
-import type { DestinationVM, TourCardVM, TourReviewVM } from '@/lib/api/tours';
+import type { CategoryVM, DestinationVM, TourCardVM, TourReviewVM } from '@/lib/api/tours';
 
 export const FIXTURE_TOURS: TourCardVM[] = [
   {
@@ -529,6 +529,66 @@ export const FIXTURE_TOURS: TourCardVM[] = [
     ratingAvg: 4.7,
     ratingCount: 3,
     cover: null,
+  },
+];
+
+/**
+ * Sáu danh mục của `FIXTURE_TOURS`, theo thứ tự `order` như endpoint công
+ * khai trả về.
+ *
+ * Thứ tự ở đây CỐ Ý khác thứ tự xuất hiện trong `FIXTURE_TOURS` (ở đó
+ * `cruises` đi đầu): từ 22/09 chip lọc đọc endpoint chứ không suy từ danh
+ * sách tour nữa, nên một fixture trùng hai thứ tự sẽ không phân biệt nổi hai
+ * cách làm.
+ */
+export const FIXTURE_CATEGORIES: CategoryVM[] = [
+  {
+    id: '9c2e0d4b-2222-4b22-8b01-000000000001',
+    slug: 'food',
+    name: 'Food & markets',
+    description: null,
+    order: 1,
+    toursCount: 3,
+  },
+  {
+    id: '9c2e0d4b-2222-4b22-8b01-000000000002',
+    slug: 'culture',
+    name: 'Culture & heritage',
+    description: null,
+    order: 2,
+    toursCount: 4,
+  },
+  {
+    id: '9c2e0d4b-2222-4b22-8b01-000000000003',
+    slug: 'trekking',
+    name: 'Trekking',
+    description: null,
+    order: 3,
+    toursCount: 3,
+  },
+  {
+    id: '9c2e0d4b-2222-4b22-8b01-000000000004',
+    slug: 'beaches',
+    name: 'Beaches & islands',
+    description: null,
+    order: 4,
+    toursCount: 1,
+  },
+  {
+    id: '9c2e0d4b-2222-4b22-8b01-000000000005',
+    slug: 'cruises',
+    name: 'Cruises',
+    description: null,
+    order: 5,
+    toursCount: 3,
+  },
+  {
+    id: '9c2e0d4b-2222-4b22-8b01-000000000006',
+    slug: 'scenic',
+    name: 'Scenic routes',
+    description: null,
+    order: 6,
+    toursCount: 2,
   },
 ];
 
