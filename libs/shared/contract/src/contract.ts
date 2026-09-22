@@ -7,6 +7,13 @@ import {
   AdminToursListQuerySchema,
 } from './schemas/admin-catalog.js';
 import {
+  AdminCategoryCreateInputSchema,
+  AdminCategoryMoveInputSchema,
+  AdminCategoryRowSchema,
+  AdminCategorySetActiveInputSchema,
+  AdminCategoryUpdateInputSchema,
+} from './schemas/admin-categories.js';
+import {
   AdminDepartureCancelInputSchema,
   AdminDepartureCreateInputSchema,
   AdminDepartureRowSchema,
@@ -1057,6 +1064,75 @@ export const contract = {
         .input(AdminTourSetPublishedInputSchema)
         .errors({ NOT_FOUND: { status: 404, message: 'Tour not found' } })
         .output(AdminTourSetPublishedResultSchema),
+    },
+    /**
+     * Danh mục tour phía admin (spec P4e-2 F14) — năm thao tác, KHÔNG có xoá.
+     *
+     * `is_active` đã có sẵn ở DB và endpoint công khai đã lọc theo nó, nên tắt
+     * một danh mục là nó biến khỏi chip lọc `/tours` mà mọi tour thuộc nó vẫn
+     * hiện nguyên. Đảo ngược bằng một cú bấm. Xoá thì không — nên không có.
+     *
+     * `move` nhận HƯỚNG chứ không nhận số thứ tự: client không cần biết `order`
+     * đang là bao nhiêu, và hai admin bấm cùng lúc không thể ghi hai hàng cùng
+     * số. Server khoá hai hàng liền kề theo thứ tự id cố định rồi mới đổi chỗ.
+     *
+     * `SLUG_TAKEN` là 409 chứ không 422: input hoàn toàn hợp lệ, chỉ là có
+     * người khác đã lấy chuỗi ấy — đúng họ "thế giới đã đổi" như `DEPARTURE_STALE`.
+     *
+     * Guard `AuthGuard` + `@Roles(ADMIN)` ở controller như mọi endpoint admin.
+     */
+    categories: {
+      list: oc
+        .route({
+          method: 'GET',
+          path: '/api/admin/categories',
+          summary: 'All tour categories (admin, including inactive) with published-tour counts',
+        })
+        .output(z.array(AdminCategoryRowSchema)),
+      create: oc
+        .route({
+          method: 'POST',
+          path: '/api/admin/categories',
+          summary: 'Add a tour category',
+        })
+        .input(AdminCategoryCreateInputSchema)
+        .errors({
+          SLUG_TAKEN: { status: 409, message: 'Another category already uses this slug' },
+        })
+        .output(AdminCategoryRowSchema),
+      update: oc
+        .route({
+          method: 'POST',
+          path: '/api/admin/categories/{id}',
+          summary: 'Edit the name or description of one category',
+        })
+        .input(AdminCategoryUpdateInputSchema)
+        .errors({ NOT_FOUND: { status: 404, message: 'Category not found' } })
+        .output(AdminCategoryRowSchema),
+      setActive: oc
+        .route({
+          method: 'POST',
+          path: '/api/admin/categories/{id}/active',
+          summary: 'Show or hide a category, without touching the tours in it',
+        })
+        .input(AdminCategorySetActiveInputSchema)
+        .errors({ NOT_FOUND: { status: 404, message: 'Category not found' } })
+        .output(AdminCategoryRowSchema),
+      move: oc
+        .route({
+          method: 'POST',
+          path: '/api/admin/categories/{id}/move',
+          summary: 'Swap a category with the one next to it',
+        })
+        .input(AdminCategoryMoveInputSchema)
+        .errors({
+          NOT_FOUND: { status: 404, message: 'Category not found' },
+          CANNOT_MOVE: {
+            status: 409,
+            message: 'This category is already at the end of the list',
+          },
+        })
+        .output(z.array(AdminCategoryRowSchema)),
     },
     /**
      * Chuyến khởi hành của MỘT tour (spec P4e-1 F12) — bề mặt GHI đầu tiên

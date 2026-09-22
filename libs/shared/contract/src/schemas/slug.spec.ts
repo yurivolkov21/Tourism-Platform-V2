@@ -1,3 +1,4 @@
+import { CATEGORY_SLUG_MAX } from './admin-categories.js';
 import { slugifyVietnamese } from './slug.js';
 
 /**
@@ -12,8 +13,12 @@ import { slugifyVietnamese } from './slug.js';
  * anchor mục lục nên xoá sạch ký tự có dấu — `Đà Lạt` ra `l-t`.
  */
 
-/** Trần thật của hai cột dùng hàm này. */
-const CATEGORY_MAX = 60;
+/**
+ * Trần thật của hai cột dùng hàm này. Danh mục lấy từ contract (một nguồn);
+ * điểm đến còn viết số ở đây vì `admin-destinations.ts` là việc của F15 — đổi
+ * sang hằng thật ngay khi file ấy có.
+ */
+const CATEGORY_MAX = CATEGORY_SLUG_MAX;
 const DESTINATION_MAX = 80;
 
 describe('slugifyVietnamese', () => {
