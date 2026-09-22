@@ -201,7 +201,8 @@ entry CHANGELOG cùng ngày.
 [**một hạn chót**](plans/2026-09-15-refund-deadline.md) ·
 [P5b-1 auth mobile](plans/2026-09-16-p5b-auth-wireframe.md) ·
 [**P4e-1 chuyến khởi hành**](plans/2026-09-21-p4e-1-departures.md) ·
-[prompt ba session P4e-1](plans/2026-09-21-p4e-1-prompts.md)
+[prompt ba session P4e-1](plans/2026-09-21-p4e-1-prompts.md) ·
+[**P4e-2 danh mục + điểm đến**](plans/2026-09-22-p4e-2-categories-destinations.md)
 
 ## Conventions — luật áp dụng mãi
 
