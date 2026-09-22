@@ -72,19 +72,6 @@ ghi chép nội bộ) — trước đó nó hứa nhầm rằng khách sẽ đ�
   `apps/admin/**`, `apps/mobile/**` vào Ignored Paths. **Đừng thêm `libs/**`** —
   máy chủ ăn `@tourism/contract` và `@tourism/core`.
 
-## Lỗ hổng đã biết, chưa vá
-
-- **Đổi ngày chuyến trong lúc khách đang thanh toán** (phát hiện khi review F12,
-  22/09). Booking `PENDING` KHÔNG làm tăng `seats_booked`, mà khoá ô ngày lại
-  đo bằng `seats_booked` — nên admin vẫn dời được ngày một chuyến đang có người
-  dở tay ở trang thanh toán. Lượt claim về sau vẫn flip booking sang `PAID` với
-  BẢN SAO ngày cũ, vì cổng claim ở `bookings.service.ts` chỉ kiểm chuyến còn
-  `OPEN` và chưa khởi hành, không so bản sao ngày với ngày thật của chuyến. Kết
-  quả: khách giữ một booking có ngày và hạn huỷ khác hẳn chuyến họ sẽ đi. Vá ở
-  cổng claim (thêm phép so ngày, trượt thì đi đường hoàn tiền tự động như
-  `departure-closed`) chứ không ở màn admin — chặn phía admin không đóng được
-  cửa sổ giữa hai lần đọc.
-
 ## Con số đã biết, không phải lỗi mới
 
 - `seed:verify` trên prod báo **2** ở mục "refund không có đúng một payment

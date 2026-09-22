@@ -576,6 +576,59 @@ describe('payments integration (webhooks + PAID atomic claim)', () => {
     expect(fake.refunds).toHaveLength(1);
   });
 
+  it('ADR-0009 AMEND 4: chuyến DỜI NGÀY lúc khách đang trả tiền → departure-moved, auto-refund + CANCELLED', async () => {
+    // Lỗ hổng vòng review F12: booking PENDING không làm tăng `seats_booked`,
+    // mà chốt chặn đổi ngày của admin lại đo bằng `seats_booked` — nên admin
+    // dời chuyến một cách hợp lệ trong lúc khách còn ngồi ở trang thanh toán.
+    // Gate claim của AMEND 1 chỉ hỏi "chuyến còn mở và chưa đi chưa", nên
+    // capture về vẫn flip PAID với BẢN SAO NGÀY CŨ: khách cầm voucher in sai
+    // ngày, và một hạn huỷ tính từ một ngày không còn tồn tại.
+    const cookie = await signUpUser('moved-dep@example.com');
+    const booking = await createBooking(cookie); // party 3, 117.00, depMain OPEN
+    const moved = new Date(future45.getTime() + 3 * 86_400_000);
+    await prisma.tourDeparture.update({
+      where: { id: depMain.id },
+      // Chuyến vẫn OPEN và vẫn ở tương lai — chỉ ngày là khác.
+      data: { startDate: moved, endDate: new Date(moved.getTime() + 86_400_000) },
+    });
+
+    const res = await postWebhook(fake.emitPaymentCompleted(booking.id));
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toMatchObject({ status: 'processed', outcome: 'departure-moved' });
+
+    // Không xác nhận một chỗ mà khách chưa hề đồng ý: booking CANCELLED, ghế
+    // của chuyến nguyên vẹn.
+    const row = await prisma.booking.findUniqueOrThrow({ where: { id: booking.id } });
+    expect(row.status).toBe(BookingStatus.CANCELLED);
+    expect(row.paidAt).toBeNull();
+    expect(await seatsOf(depMain.id)).toBe(3);
+
+    // Cùng đường auto-refund của overbook/departure-closed, nhưng dedupe key và
+    // lý do mang tên RIÊNG: chuyến này đang mở và đang bán, nói nó "closed" là
+    // để lại một câu sai trong sổ sự kiện tiền.
+    expect(fake.refunds).toHaveLength(1);
+    expect(await prisma.refund.count({ where: { bookingId: booking.id } })).toBe(1);
+    const outbox = await prisma.outbox.findMany({ where: { type: EmailType.BOOKING_REFUNDED } });
+    expect(outbox).toHaveLength(1);
+    expect(outbox[0]).toMatchObject({ dedupeKey: `departure-moved-refund:${booking.id}` });
+    expect(outbox[0]?.payload).toMatchObject({ reason: 'departure-moved' });
+  });
+
+  it('ADR-0009 AMEND 4: chuyến dời ngày RỒI khởi hành luôn → vẫn là departure-closed', async () => {
+    // Thứ tự phân loại có nghĩa: "đã đi rồi" là sự thật nặng hơn "đã dời ngày".
+    const cookie = await signUpUser('moved-departed@example.com');
+    const booking = await createBooking(cookie);
+    const past = new Date(Date.now() - 2 * 86_400_000);
+    await prisma.tourDeparture.update({
+      where: { id: depMain.id },
+      data: { startDate: past, endDate: past },
+    });
+
+    const res = await postWebhook(fake.emitPaymentCompleted(booking.id));
+
+    expect(res.json()).toMatchObject({ outcome: 'departure-closed' });
+  });
+
   it('orphaned capture: completed AFTER cancel → auto-refund + ledger-derived REFUNDED (invariant #4)', async () => {
     const cookie = await signUpUser('orphan@example.com');
     const booking = await createBooking(cookie);

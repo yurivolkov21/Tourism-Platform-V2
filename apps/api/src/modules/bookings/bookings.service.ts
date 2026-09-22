@@ -251,6 +251,11 @@ export function toBooking(
  * - `departure-closed` — chuyến không còn OPEN hoặc đã khởi hành khi capture
  *                     về (ADR-0009 AMEND 1) → caller auto-refund + cancel,
  *                     cùng lý lẽ với `overbooked` (chưa từng là doanh thu).
+ * - `departure-moved` — chuyến vẫn OPEN và vẫn ở tương lai, nhưng NGÀY đã đổi
+ *                     khác bản sao trên booking (ADR-0009 AMEND 4) → cùng
+ *                     đường auto-refund. Outcome riêng chứ không gộp vào
+ *                     `departure-closed`: chuyến đang mở và đang bán, nói nó
+ *                     "closed" là để lại một câu sai trong sổ sự kiện tiền.
  * - `not-found`     — không có booking id này (webhook tham chiếu thứ ta chưa
  *                     bao giờ mint) → log-and-skip.
  */
@@ -260,6 +265,7 @@ export type ClaimOutcome =
   | 'cancelled'
   | 'already-paid'
   | 'departure-closed'
+  | 'departure-moved'
   | 'not-found'
   | 'expired';
 
@@ -890,6 +896,16 @@ export class BookingsService {
               WHERE dep.id = b.departure_id
                 AND dep.status = 'OPEN'::"DepartureStatus"
                 AND dep.start_date >= ${vietnamDateSql(Prisma.sql`now()`)}
+                -- AMEND 4: chuyến còn phải là THỨ KHÁCH ĐÃ MUA. Booking giữ
+                -- bản sao ngày lúc đặt và ADR-0041 tính hạn huỷ từ bản sao
+                -- ấy; một booking PENDING không giữ ghế nên admin dời được
+                -- ngày chuyến ngay giữa lúc khách đang trả tiền. Thiếu hai
+                -- phép so này thì capture về vẫn flip PAID với ngày CŨ —
+                -- voucher in sai ngày, hạn huỷ neo vào một ngày không còn.
+                -- (Không dùng dấu ngược ở comment SQL: khối này nằm trong một
+                -- tagged template, một dấu ngược là đóng template sớm.)
+                AND dep.start_date = b.departure_start_date
+                AND dep.end_date = b.departure_end_date
             )
           RETURNING b.id, b.departure_id, (b.num_adults + b.num_children) AS seats,
                     b.code, b.contact_email, b.contact_name, b.tour_title,
@@ -941,7 +957,12 @@ export class BookingsService {
     // Không có gì đổi — classify trên snapshot tươi (SELECT follow-up).
     const booking = await prisma.booking.findUnique({
       where: { id: bookingId },
-      select: { status: true, departureId: true },
+      select: {
+        status: true,
+        departureId: true,
+        departureStartDate: true,
+        departureEndDate: true,
+      },
     });
     let outcome: ClaimOutcome;
     if (!booking) outcome = 'not-found';
@@ -951,7 +972,7 @@ export class BookingsService {
       // gate chuyến không (không còn OPEN / đã khởi hành) → departure-closed.
       const departure = await prisma.tourDeparture.findUnique({
         where: { id: booking.departureId },
-        select: { status: true, startDate: true },
+        select: { status: true, startDate: true, endDate: true },
       });
       if (
         !departure ||
@@ -959,6 +980,14 @@ export class BookingsService {
         calendarDate(departure.startDate) < vietnamToday(new Date())
       ) {
         outcome = 'departure-closed';
+      } else if (
+        // AMEND 4, xét SAU chốt trên có chủ đích: "đã đi rồi" là sự thật nặng
+        // hơn "đã dời ngày", và một chuyến vừa dời vừa khởi hành thì câu đúng
+        // hơn vẫn là departure-closed.
+        calendarDate(departure.startDate) !== calendarDate(booking.departureStartDate) ||
+        calendarDate(departure.endDate) !== calendarDate(booking.departureEndDate)
+      ) {
+        outcome = 'departure-moved';
       } else {
         // Về lý thuyết là bất khả tới: không exception + zero claim row + vẫn
         // PENDING + chuyến OPEN. Map phòng thủ: coi như overbooked — đường

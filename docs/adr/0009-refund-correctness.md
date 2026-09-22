@@ -168,6 +168,65 @@ KHÔNG đổi: advisory lock một khoá cho mọi đường hoàn của một b
 `SUM(refunds) ≤ total_amount`, sổ `refunds` append-only, và gate claim theo
 trạng thái chuyến của AMEND 1.
 
+## AMEND 4 22/09 — gate claim so thêm BẢN SAO NGÀY: chuyến dời ngày giữa chừng thì không xác nhận
+
+Lỗ hổng phát hiện ở vòng review F12 (21/09), vá sau khi P4e-1 đóng. AMEND 1 hỏi
+"chuyến còn mở và chưa đi chưa"; nó KHÔNG hỏi "chuyến còn là thứ khách đã mua
+không".
+
+Đường đi của lỗi:
+
+1. Khách mở trang thanh toán cho chuyến 22/10. `Booking` lưu BẢN SAO
+   `departure_start_date`/`departure_end_date` = 22/10, và ADR-0041 tính hạn huỷ
+   từ bản sao ấy chứ không từ chuyến.
+2. Booking `PENDING` **không** làm tăng `seats_booked` (bất biến #1), mà chốt
+   chặn đổi ngày của `admin.departures.update` lại đo bằng `seats_booked`. Nên
+   admin dời chuyến sang 25/10 một cách hợp lệ.
+3. Capture về. Gate claim thấy chuyến vẫn `OPEN` và vẫn ở tương lai → cho qua.
+   Booking flip `PAID` mang ngày 22/10 trong khi chuyến chạy 25/10.
+
+Khách cầm một voucher in sai ngày, và một hạn huỷ tính từ một ngày không còn tồn
+tại. Không có gì báo cho ai.
+
+**Đổi:** qual của AMEND 1 thêm hai phép so:
+
+```sql
+EXISTS (SELECT 1 FROM tour_departures d
+        WHERE d.id = b.departure_id
+          AND d.status = 'OPEN' AND d.start_date >= <hôm nay VN>
+          AND d.start_date = b.departure_start_date
+          AND d.end_date   = b.departure_end_date)
+```
+
+Zero row vì LỆCH NGÀY → outcome MỚI **`departure-moved`** → đi đúng đường
+auto-refund sẵn có của `overbooked`/`departure-closed` (hoàn toàn phần, booking
+→ `CANCELLED`, email `BOOKING_REFUNDED`), dedupe key riêng
+`departure-moved-refund:<bookingId>`.
+
+**Vì sao outcome RIÊNG chứ không dùng lại `departure-closed`:** hai đường xử lý
+giống hệt nhau, nên gộp là rẻ hơn. Nhưng chuyến ở đây KHÔNG đóng — nó đang mở
+và đang bán. Một dòng log nói "departure-closed" về một chuyến đang mở là một
+câu sai nằm lại trong sổ sự kiện tiền, và người đọc nó sáu tháng sau sẽ đi tìm
+nhầm chỗ. Cùng lý lẽ đã dùng khi bỏ cột "x / y refunded" của F13: nhãn sai tệ
+hơn không có nhãn.
+
+**Vì sao HOÀN TIỀN chứ không dời booking theo chuyến:** đồng bộ bản sao xuống
+booking là âm thầm đổi thứ khách đã đồng ý — họ trả tiền cho ngày 22/10, không
+phải 25/10. ADR-0041 §2b đã loại chính cách ấy cho người ĐÃ trả tiền; người
+ĐANG trả tiền lại càng chưa đồng ý gì. Booking chưa từng rời `PENDING`, chưa
+từng là doanh thu, nên hoàn trọn là đường sạch nhất.
+
+**KHÔNG đổi chốt chặn ở `admin.departures.update`.** Đo bằng `seats_booked` vẫn
+đúng (F12 review: hoàn thiện chí trọn tiền không trả ghế, nên đếm theo trạng
+thái booking đọc ra 0 trên chuyến vẫn còn khách). Thêm "chặn khi có PENDING" chỉ
+thu hẹp cửa sổ chứ không đóng được nó — `bookings.create` không khoá chuyến, nên
+một booking mới luôn có thể chen vào giữa lúc admin đọc và lúc admin ghi. Chỉ
+gate claim mới đóng được, vì nó là nơi duy nhất nhìn thấy cả hai sự thật cùng lúc.
+
+Ghi chú EPQ: giữ nguyên cảnh báo của AMEND 1 — qual nằm trong subquery nên không
+được re-evaluate tươi. Kẹt lại phía nào cũng nghiêng về phía khách: hoặc một
+booking vào được đúng chuyến nó mua, hoặc một booking được hoàn tiền.
+
 ## Đã cân nhắc và loại
 
 - **Two-phase reservation** (TX1 `FOR UPDATE` + placeholder reserve → gateway → TX2 finalize):

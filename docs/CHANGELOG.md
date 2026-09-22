@@ -8,6 +8,54 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-09-22 — Vá lỗ hổng đường claim: chuyến dời ngày giữa lúc khách đang trả tiền (ADR-0009 AMEND 4, nhánh `fix/claim-gate-departure-moved`)
+
+Mục cuối cùng còn chạm tiền của P4e-1, phát hiện ở vòng review F12 và để lại
+trong [open-items](open-items.md) vì nằm ngoài phạm vi F12.
+
+**Lỗ hổng.** Booking `PENDING` không làm tăng `seats_booked` (bất biến #1 của
+ADR-0009), mà chốt chặn đổi ngày của `admin.departures.update` lại đo bằng
+`seats_booked`. Nên admin dời được ngày một chuyến ngay trong lúc khách còn ngồi
+ở trang thanh toán — hoàn toàn hợp lệ theo luật hiện hành. Khi capture về, gate
+claim của [ADR-0009 AMEND 1](adr/0009-refund-correctness.md) chỉ hỏi *"chuyến
+còn mở và chưa đi chưa"*, không hỏi *"chuyến còn là thứ khách đã mua không"* —
+nên booking flip `PAID` mang BẢN SAO NGÀY CŨ. Khách cầm voucher in sai ngày và
+một hạn huỷ tính từ một ngày không còn tồn tại, không có gì báo cho ai.
+
+**Vá.** Qual của AMEND 1 thêm hai phép so `dep.start_date = b.departure_start_date`
+và `dep.end_date = b.departure_end_date`. Lệch ngày → outcome MỚI
+`departure-moved` → đi đúng đường auto-refund sẵn có của
+`overbooked`/`departure-closed`: hoàn trọn, booking `CANCELLED`, email
+`BOOKING_REFUNDED`, dedupe key riêng `departure-moved-refund:<bookingId>`.
+
+**Ba quyết định, ghi đủ ở [AMEND 4](adr/0009-refund-correctness.md):**
+
+- *Outcome RIÊNG chứ không dùng lại `departure-closed`.* Hai đường xử lý giống
+  hệt nhau nên gộp là rẻ hơn, nhưng chuyến ở đây đang MỞ và đang bán — một dòng
+  log nói "departure-closed" về nó là câu sai nằm lại trong sổ sự kiện tiền.
+  Cùng lý lẽ đã dùng khi bỏ cột "x / y refunded".
+- *HOÀN TIỀN chứ không dời booking theo chuyến.* Đồng bộ bản sao xuống booking là
+  âm thầm đổi thứ khách đã đồng ý; ADR-0041 §2b đã loại cách ấy cho người ĐÃ trả
+  tiền, người ĐANG trả lại càng chưa đồng ý gì.
+- *KHÔNG siết chốt chặn ở `admin.departures.update`.* Thêm "chặn khi có PENDING"
+  chỉ thu hẹp cửa sổ chứ không đóng được: `bookings.create` không khoá chuyến,
+  nên một booking mới luôn chen được vào giữa lúc admin đọc và lúc admin ghi.
+  Chỉ gate claim mới đóng được, vì nó là nơi duy nhất thấy cả hai sự thật.
+
+**Một test cũ phải sửa SETUP, và đó là phát hiện phụ đáng giữ.** Ca §3.2
+("thanh toán đang dở lúc hạn chót trôi qua vẫn được nhận") giả lập hạn chót đã
+qua bằng cách DỜI NGÀY CHUYẾN mà không dời bản sao trên booking — tức nó đang
+giả lập nhầm một chuyện khác hẳn, và gate mới trả `departure-moved` đúng như nó
+phải làm. §3.2 nói về ĐỒNG HỒ chạy tới, không nói về lịch bị sửa; setup nay dời
+cả hai.
+
+**Review findings:** không có vòng review riêng — bản vá một mục đã được review
+gọi tên từ 21/09.
+
+Tests after: Vitest 3875 không đổi, int **566 ở 42 file** (thêm 2 ca AMEND 4 —
+một ca dời ngày, một ca dời-rồi-khởi-hành để ghim thứ tự phân loại). Ca dời ngày
+đã kiểm ĐỎ bằng cách gỡ hai phép so ra khỏi CTE.
+
 ## 2026-09-22 — Chạy thử tay F13 trên production, và một câu copy nói dối (nhánh `fix/departure-cancel-reason-copy`)
 
 Lượt nghiệm thu cuối của [plan P4e-1](plans/2026-09-21-p4e-1-departures.md), chạy

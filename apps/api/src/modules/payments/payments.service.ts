@@ -45,6 +45,13 @@ type BeginOutcome = 'new' | 'retry' | 'duplicate';
  *     `status = 'PENDING'` ({@link BookingsService.claimSeatsForPaid}), nên
  *     replay không bao giờ đếm trùng seat.
  */
+/** Tiền tố dedupe key của đường auto-refund, một cho mỗi nguyên nhân. */
+const DEDUPE_PREFIX = {
+  overbooked: 'overbook-refund',
+  'departure-closed': 'departure-closed-refund',
+  'departure-moved': 'departure-moved-refund',
+} as const;
+
 @Injectable()
 export class PaymentsService {
   private readonly logger = new Logger(PaymentsService.name);
@@ -146,7 +153,11 @@ export class PaymentsService {
           verified.bookingId,
           verified.providerPaymentId ?? null,
         );
-        if (outcome === 'overbooked' || outcome === 'departure-closed') {
+        if (
+          outcome === 'overbooked' ||
+          outcome === 'departure-closed' ||
+          outcome === 'departure-moved'
+        ) {
           await this.refundUnclaimablePending(provider, verified.bookingId, verified, outcome);
         } else if (outcome === 'cancelled') {
           await this.handleCaptureOnCancelled(provider, verified.bookingId, verified);
@@ -216,7 +227,10 @@ export class PaymentsService {
    * Invariant #3 (+ ADR-0009 AMEND 1) — buyer đã trả tiền nhưng booking không
    * claim được trong khi VẪN PENDING, vì một trong hai lẽ:
    * - `overbooked`: thua cuộc đua giành seat khi còn ở trang hosted checkout;
-   * - `departure-closed`: chuyến không còn OPEN / đã khởi hành lúc capture về.
+   * - `departure-closed`: chuyến không còn OPEN / đã khởi hành lúc capture về;
+   * - `departure-moved`: chuyến vẫn mở nhưng đã DỜI NGÀY khác thứ khách mua
+   *   (AMEND 4) — đồng bộ bản sao xuống booking là âm thầm đổi thứ họ đã đồng
+   *   ý, nên hoàn tiền mới là đường sạch.
    *
    * Cùng một cách xử vì cùng một sự thật — booking chưa từng rời PENDING, chưa
    * từng là doanh thu. Refund provider TRƯỚC (HTTP outbound nằm ngoài mọi DB
@@ -238,12 +252,11 @@ export class PaymentsService {
     provider: PaymentProvider,
     bookingId: string,
     verified: VerifiedEvent,
-    cause: 'overbooked' | 'departure-closed',
+    cause: 'overbooked' | 'departure-closed' | 'departure-moved',
   ): Promise<void> {
-    const dedupeKey =
-      cause === 'overbooked'
-        ? `overbook-refund:${bookingId}`
-        : `departure-closed-refund:${bookingId}`;
+    // Mỗi nguyên nhân một key: ba đường xử lý giống hệt nhau, nhưng sổ sự kiện
+    // tiền phải nói đúng chuyện gì đã xảy ra (ADR-0009 AMEND 4).
+    const dedupeKey = `${DEDUPE_PREFIX[cause]}:${bookingId}`;
     // 'failed' (thiếu payment id / provider lỗi) để booking ở PENDING cho
     // operator. 'already-refunded' vẫn chạy CTE cancel — nó đóng lại crash
     // window giữa lúc insert Refund và lúc flip khi retry (CTE idempotent,

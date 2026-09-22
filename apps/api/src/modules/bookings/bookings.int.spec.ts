@@ -600,9 +600,20 @@ describe('bookings integration (create PENDING + FakeGateway)', () => {
       const body = (
         await createBooking(cookie, { ...createPayload, departureId: depShort2d.id })
       ).json();
+      // Dời NGÀY CỦA CHUYẾN là cách duy nhất giả lập "hạn chót đã trôi qua" mà
+      // không phải vặn đồng hồ — nhưng phải dời CẢ bản sao trên booking, nếu
+      // không thì ta đang giả lập nhầm một chuyện KHÁC: chuyến bị dời ngày
+      // (ADR-0009 AMEND 4), và gate claim sẽ trả `departure-moved` đúng như nó
+      // phải làm. §3.2 nói về ĐỒNG HỒ chạy tới, không nói về lịch bị sửa.
+      const newStart = vnDay(2);
+      const newEnd = vnDay(3);
       await prisma.tourDeparture.update({
         where: { id: depShort2d.id },
-        data: { startDate: vnDay(2), endDate: vnDay(3) },
+        data: { startDate: newStart, endDate: newEnd },
+      });
+      await prisma.booking.update({
+        where: { id: body.id },
+        data: { departureStartDate: newStart, departureEndDate: newEnd },
       });
       try {
         const outcome = await app
