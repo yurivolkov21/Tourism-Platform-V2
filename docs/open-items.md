@@ -1,6 +1,6 @@
 # Việc còn treo
 
-> Bản tóm tắt để điều hướng, cập nhật 21/09/2026. **Không phải nguồn sự thật** —
+> Bản tóm tắt để điều hướng, cập nhật 22/09/2026. **Không phải nguồn sự thật** —
 > chi tiết của từng mục sống ở [CHANGELOG](CHANGELOG.md) (mục "CÒN TREO" của
 > entry tương ứng) và ở [sổ nợ kỹ thuật](analysis/2026-08-06-backlog-no-ky-thuat.md).
 > Trả xong một mục thì gạch ở đây và ghi vào CHANGELOG.
@@ -17,7 +17,7 @@
 
 | Mã | Việc | Ghi chú |
 | --- | --- | --- |
-| **P4e** | Quản trị catalog: thêm/sửa/xoá tour, chuyến, điểm đến | Gồm nút "công ty huỷ chuyến" (ADR-0041 §6) — lõi đã viết, chỉ thiếu nút |
+| **P4e** | Quản trị catalog: thêm/sửa/xoá tour, điểm đến, danh mục | Danh sách tour có công tắc đăng và lịch chạy của từng tour đã xong 22/09 (F11 + F12). Còn nút "công ty huỷ chuyến" (F13, ADR-0041 §6) — lõi đã viết, chỉ thiếu nút |
 | **P4f** | Quản trị media và người dùng | Gồm màn hạ quyền / thu hồi phiên admin (ADR-0026 AMEND 1) |
 | **P5b-2…5** | Bốn cụm màn mobile: xem tour · đặt tour · tài khoản · đánh giá | **Đã có bản vẽ và tài liệu bàn giao đầy đủ**; thành viên khác dựng màn — xem [`handoff/`](handoff/README.md) |
 | **P6** | Trợ lý AI tư vấn tour | Bảng dữ liệu đã có sẵn (`chat_conversations`, `chat_messages`) |
@@ -47,10 +47,26 @@
   `tourism` theo mã mới.
 - Chuyển `backups/2026-09-18/` từ worktree về bản checkout gốc trước khi gỡ
   worktree.
+- Deploy migration `20260922090000_departure_date_range_check` lên Supabase
+  (CHECK `end_date >= start_date` cho bảng chuyến). Đã chạy trên Postgres Docker
+  `tourism` và `tourism_test`; prod còn chờ.
 - Tắt tự-động-cập-nhật marketplace `claude-plugins-official` trước freeze 15/10.
 - Cân nhắc siết thêm Build Filter của Render: thêm `apps/web/**`,
   `apps/admin/**`, `apps/mobile/**` vào Ignored Paths. **Đừng thêm `libs/**`** —
   máy chủ ăn `@tourism/contract` và `@tourism/core`.
+
+## Lỗ hổng đã biết, chưa vá
+
+- **Đổi ngày chuyến trong lúc khách đang thanh toán** (phát hiện khi review F12,
+  22/09). Booking `PENDING` KHÔNG làm tăng `seats_booked`, mà khoá ô ngày lại
+  đo bằng `seats_booked` — nên admin vẫn dời được ngày một chuyến đang có người
+  dở tay ở trang thanh toán. Lượt claim về sau vẫn flip booking sang `PAID` với
+  BẢN SAO ngày cũ, vì cổng claim ở `bookings.service.ts` chỉ kiểm chuyến còn
+  `OPEN` và chưa khởi hành, không so bản sao ngày với ngày thật của chuyến. Kết
+  quả: khách giữ một booking có ngày và hạn huỷ khác hẳn chuyến họ sẽ đi. Vá ở
+  cổng claim (thêm phép so ngày, trượt thì đi đường hoàn tiền tự động như
+  `departure-closed`) chứ không ở màn admin — chặn phía admin không đóng được
+  cửa sổ giữa hai lần đọc.
 
 ## Con số đã biết, không phải lỗi mới
 

@@ -8,6 +8,112 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-09-22 — P4e-1: danh sách tour có công tắc đăng, và lịch chạy của từng tour (nhánh `feat/p4e-tours-list` rebase dưới `feat/p4e-departures-crud`)
+
+Hai cụm việc đầu của P4e, dựng song song ở hai worktree rồi gộp làm một lượt vì
+F12 nối thẳng từ màn F11 (nút "Departures" trên mỗi hàng tour). Thiết kế đi
+trước: [spec](specs/2026-09-21-p4e-1-departures-design.md) ·
+[plan 11 task](plans/2026-09-21-p4e-1-departures.md).
+
+**F11 — `/tours`.** `admin.tours.list` trả CẢ tour chưa đăng (bề mặt công khai
+không được biết chúng tồn tại), kèm `isPublished` và số chuyến còn bán được
+trong khoảng lọc. `admin.tours.setPublished` là ĐÚNG MỘT công tắc, cố ý không
+khai mã lỗi nào ngoài `NOT_FOUND`: gỡ đăng một tour đang có khách là hợp lệ và
+không được chặn — khách đã mua vẫn đi, tour chỉ thôi được chào bán. Chặn ở đây
+là khoá đúng thao tác vận hành cần nhất khi có chuyện.
+
+**F12 — `/tours/[slug]/departures`.** Bốn thao tác: đọc danh sách, thêm, sửa,
+đóng/mở lại. Hạn chót có CỘT RIÊNG chứ không giấu sau tooltip, vì nó là mốc
+quyết định mọi thao tác trên hàng. Ba luật viết thành hàm thuần có test:
+
+- **Đổi ngày** bị khoá khi chuyến đã có ghế bị giữ. `Booking` lưu BẢN SAO ngày
+  khởi hành và ADR-0041 tính hạn huỷ từ bản sao ấy, nên đổi ngày chuyến là tạo
+  hai sự thật. Bất biến: hạn huỷ không bao giờ xấu đi sau khi khách đã trả tiền.
+  Giá và ghế thì vẫn sửa được, kể cả khi đã có khách.
+- **Hạ ghế** dưới số đã đặt bị từ chối ở tầng nghiệp vụ. CHECK
+  `departures_seats_within_total` vẫn đứng sau làm lưới, nhưng một SQLSTATE
+  23514 phơi lên màn hình là câu trả lời cho máy, không phải cho người sửa lịch.
+- **Mở lại** sau hạn chót bị từ chối: hạn chót cũng là lúc ngừng nhận đặt, nên
+  mở lại sau mốc đó là bày ra một chuyến không ai đặt được.
+
+KHÔNG có nút huỷ chuyến (đó là F13, và nó chạm tiền) và KHÔNG có lệnh xoá:
+chuyến đã có người đặt thì phải huỷ có hoàn tiền, chuyến chưa ai đặt thì `CLOSED`
+đã đủ — thêm lệnh xoá là thêm một đường làm mất bản ghi mà báo cáo tháng đang đếm.
+
+**Review findings:** hai vòng review riêng, 10 góc mỗi vòng, tổng **28 mục vá**.
+
+*F11 — mười ba mục* (`c3fc83c6`). Sáu mục chặn merge. Nặng nhất: công tắc đăng
+KẸT sai trạng thái tới khi tải lại cả trang, vì gương `serverValue` được nâng
+khi prop đổi giữa lúc lệnh ghi đang bay; bản vá ĐẦU TIÊN của vòng này cũng sai
+theo đúng cách ấy, và chính hai test mới bắt được. Bust cache thôi gác sau
+`changed` (revalidate là fire-and-forget, gác lại thì tour ở lại trên site trọn
+300 giây ISR). Menu lọc danh mục gọi endpoint công khai nên ăn trần đọc theo
+IP — nay hỏng thì trả rỗng thay vì kéo sập cả bảng. `page` kẹp cả TRẦN 10 000
+theo contract: lỗ này ở kit dùng chung nên **sáu bảng admin cùng được vá**.
+Đếm chuyến cắt thêm nhát `isWithinDeadline`, hệ quả cố ý là tháng quá khứ trả 0
+và nhãn đổi sang "Bookable departures".
+
+*F12 — mười lăm phát hiện, bảy mục vá* (`048cfc48`); tám mục còn lại dồn sang
+vòng hai vì chúng không chạm tiền và không làm sập trang.
+
+Năm mục chạm tiền:
+
+1. **Trần giá và đúng 2 chữ số lẻ.** `129.999` từng đi lọt cả ba tầng rồi bị
+   cột `Decimal(14,2)` làm tròn thành `130.00` — một con số khách phải trả mà
+   không ai gõ vào. Quá 12 chữ số phần nguyên thì Postgres ném `22003`,
+   `mapError` không nhận ra nên thành 500 trần, admin phân loại `GENERIC`, rồi
+   kit ĐÓNG dialog: mất sạch bốn ô vừa điền.
+2. **Token `version` chống ghi đè mù giữa hai tab**, kèm mã `DEPARTURE_STALE`.
+   `FOR UPDATE` tuần tự hoá hai lệnh ghi nhưng KHÔNG phát hiện được cái cũ, vì
+   giá trị "hiện tại" trong payload đến từ form trình duyệt chứ không từ hàng
+   vừa khoá. A đổi 20 ghế thành 45, B bấm Lưu từ form mở trước đó và ghi đè về
+   20: 25 ghế biến mất im lặng, khách đặt tiếp đâm trần, claim trả `overbooked`,
+   hệ thống tự hoàn tiền người ĐÃ trả. Token là `updatedAt` nên không thêm cột;
+   form CHỤP nó lúc mở chứ không đọc lại lúc gửi.
+3. **Thước khoá ô ngày đổi sang `seats_booked`.** Bản đầu đếm trạng thái
+   booking, nhưng [`booking-states`](conventions/booking-states.md) nói ngược
+   đúng chỗ đó: hoàn tiền thiện chí trọn tiền KHÔNG trả ghế, khách vẫn đi tour.
+   Nên đếm theo trạng thái đọc ra 0 trên một chuyến vẫn còn khách thật rồi mở
+   khoá ô ngày. Đổi thước còn xoá một mâu thuẫn bày ngay trên màn hình:
+   "Seats 4 / 20" đứng cạnh "Live bookings 0".
+4. **Tách `pendingBookingCount`.** Đóng chuyến gây hai hệ quả khác hẳn nhau:
+   khách ĐÃ trả giữ chỗ và không ai báo gì, còn khách ĐANG trả bị đường claim
+   từ chối rồi hoàn tiền tự động kèm email. Hộp xác nhận nay in hai dòng, và
+   thêm một câu cảnh báo khi còn checkout dở.
+5. **Copy tạo chuyến thôi hứa "goes on sale straight away"**, và form cảnh báo
+   ngay khi chuyến sắp tạo đã quá hạn nhận đặt — hạn là `ngày đi − N` với N tới
+   7 ngày, nên một chuyến 5 ngày khởi hành tuần sau đã quá hạn ngay lúc tạo.
+
+Hai mục làm sập cả trang: `seatsTotal` ở hàng ĐẦU RA nới về `nonnegative()` (khai
+chặt 1..500 nghĩa là một hàng hợp lệ với DB nhưng ngoài dải sẽ trượt validation
+đầu ra và 500 cả trang, kể cả chính cái form dùng để sửa nó); và CHECK
+`departures_date_range` (`end_date >= start_date`) — một hàng ngược ngày sinh ra
+độ dài âm, `tripLengthDays` ném `RangeError`, mà hàm đó chạy cho MỌI hàng ở
+`admin.departures.list` lẫn `catalog.getTourBySlug`, nên đúng một hàng hỏng kéo
+sập luôn trang tour công khai.
+
+**CÒN TREO:**
+
+- **Vòng hai của F12** (8 mục, không chạm tiền): bọc `<form>` để Enter gửi được ·
+  `aria-describedby` cho ô có gợi ý · `update` thiếu dòng nhật ký kiểm toán ·
+  một test xanh giả ở `departure-row-actions.spec.tsx` · `TourNotFoundError` bắt
+  bằng `error.name` thay vì `instanceof` · `isRefreshing` nằm trong deps của
+  `useMemo` nên ô bảng bị dựng lại · thiếu kiểm `maxGroupSize` lúc tạo · dời
+  ngày một chuyến đã qua thì viết lại sổ P&L của tháng đã chốt.
+- **Lỗ hổng đường claim** (ngoài phạm vi F12, đã ghi ở
+  [open-items](open-items.md)): booking `PENDING` không làm tăng `seats_booked`,
+  nên chuyến vẫn đổi ngày được trong lúc khách đang thanh toán; lượt claim về
+  sau vẫn flip sang `PAID` với bản sao ngày CŨ. Cổng claim hiện chỉ kiểm chuyến
+  còn `OPEN` và chưa khởi hành, không so bản sao ngày với ngày thật.
+- **Deploy migration `20260922090000_departure_date_range_check` lên Supabase**
+  sau khi merge (luật 15: hạ tầng sống chỉ đụng ở session gốc, sau review).
+
+Tests after: Vitest **3852** (web 1525, api 965, admin 942, contract 318, core 46,
+ui 22, tokens 18, i18n 16), int **545 ở 41 file**, Jest mobile 245 không đổi.
+Riêng hai cụm này thêm 163 ca unit và 48 ca int. Ba ca mới của vòng vá F12 đã
+kiểm ĐỎ bằng đột biến mã trước khi nhận là xanh thật. Build web chạy với API
+sống trên máy (đúng cấu hình CI) — xanh.
+
 ## 2026-09-21 — Đại tu tài liệu: bản đồ gọn lại, thêm lớp cho người đọc phổ thông, tách CHANGELOG (nhánh `docs/overhaul-2026-09`)
 
 Đợt rà soát toàn bộ `docs/` đầu tiên kể từ 03/08. Quy mô lúc bắt đầu: **159 file
