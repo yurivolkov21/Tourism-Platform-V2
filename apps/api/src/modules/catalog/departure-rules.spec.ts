@@ -190,27 +190,26 @@ describe('departure-rules', () => {
 describe('departureCancelBlocker (F13 — công ty huỷ chuyến)', () => {
   // Chuyến 1 ngày khởi hành 10/10/2026.
   const START = '2026-10-10';
-  const END = '2026-10-10';
 
   it('trước ngày khởi hành thì huỷ được, KỂ CẢ khi đã quá hạn nhận đặt', () => {
     // Khác hẳn `reopenBlocker`: hạn nhận đặt là luật cho việc BÁN. Một chuyến
     // quá hạn đặt mà hướng dẫn viên gãy chân vẫn phải huỷ được — đó chính là
     // lúc người ta cần nút này nhất.
-    expect(departureCancelBlocker(START, END, new Date('2026-10-09T16:59:59.999Z'))).toBeNull();
-    expect(departureCancelBlocker(START, END, new Date('2026-09-01T03:00:00.000Z'))).toBeNull();
+    expect(departureCancelBlocker(START, new Date('2026-10-09T16:59:59.999Z'))).toBeNull();
+    expect(departureCancelBlocker(START, new Date('2026-09-01T03:00:00.000Z'))).toBeNull();
   });
 
   it('ĐÃ TỚI ngày khởi hành (giờ Việt Nam) thì không còn là huỷ', () => {
     // 17:00 UTC = 00:00 hôm sau giờ Việt Nam. Từ khoảnh khắc ấy chuyến đang
     // chạy, và `cancellationBlocker` của từng booking cũng sẽ từ chối — chặn ở
     // đây để admin biết TRƯỚC khi bấm, không phải sau khi nửa hàng đợi đã đi.
-    expect(departureCancelBlocker(START, END, new Date('2026-10-09T17:00:00.000Z'))).toMatch(
+    expect(departureCancelBlocker(START, new Date('2026-10-09T17:00:00.000Z'))).toMatch(
       /already started|has started/i,
     );
   });
 
   it('câu từ chối mang ngày khởi hành thật', () => {
-    expect(departureCancelBlocker(START, END, new Date('2026-10-20T03:00:00.000Z'))).toContain(
+    expect(departureCancelBlocker(START, new Date('2026-10-20T03:00:00.000Z'))).toContain(
       '2026-10-10',
     );
   });

@@ -103,12 +103,11 @@ export function reopenBlocker(startDate: string, endDate: string, now: Date): st
  * sau ngày khởi hành, nhưng lúc ấy nửa hàng đợi đã đi và admin chỉ thấy một
  * cột tiến độ đứng im. Cùng thước (`canCancelOnline`, ngày lịch Việt Nam) nên
  * hai tầng không bao giờ nói ngược nhau.
+ *
+ * Chỉ nhận `startDate` — khác `reopenBlocker` vốn cần cả hai ngày để suy ra N.
+ * Ở đây độ dài chuyến không nói gì: chuyến đã bắt đầu là đã bắt đầu.
  */
-export function departureCancelBlocker(
-  startDate: string,
-  endDate: string,
-  now: Date,
-): string | null {
+export function departureCancelBlocker(startDate: string, now: Date): string | null {
   if (canCancelOnline(now, startDate)) return null;
   return `This departure has already started on ${startDate} — it can no longer be cancelled.`;
 }

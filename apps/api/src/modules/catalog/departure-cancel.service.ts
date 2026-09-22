@@ -57,96 +57,90 @@ export class DepartureCancelService {
 
   async cancel(input: AdminDepartureCancelInput, adminId: string): Promise<AdminDepartureRow> {
     const now = new Date();
-    const { tourSlug, toRefund, cancelledPending, startDate, endDate } = await prisma.$transaction(
-      async (tx) => {
-        const [locked] = await tx.$queryRaw<
-          {
-            id: string;
-            tour_id: string;
-            start_date: Date;
-            end_date: Date;
-            status: DepartureStatus;
-          }[]
-        >(Prisma.sql`
+    const { tourSlug, toRefund, cancelledPending } = await prisma.$transaction(async (tx) => {
+      const [locked] = await tx.$queryRaw<
+        {
+          id: string;
+          tour_id: string;
+          start_date: Date;
+          end_date: Date;
+          status: DepartureStatus;
+        }[]
+      >(Prisma.sql`
           SELECT id, tour_id, start_date, end_date, status
           FROM tour_departures WHERE id = ${input.id}::uuid FOR UPDATE
         `);
-        if (!locked) throw new DepartureNotFoundError(input.id);
-        // Bấm huỷ lần hai: từ chối và KHÔNG đẩy job trùng. Lượt đầu đã xếp đủ
-        // job rồi; xếp thêm một bộ nữa là nhân đôi số lần gọi cổng thanh toán
-        // cho cùng một khách (job idempotent nên không hoàn hai lần, nhưng
-        // đốt retry và làm cột tiến độ nói dối).
-        if (locked.status === DepartureStatus.CANCELLED) {
-          throw new DepartureRuleError(
-            'DEPARTURE_CANCELLED',
-            'This departure has already been cancelled — its travellers are being refunded.',
-          );
-        }
+      if (!locked) throw new DepartureNotFoundError(input.id);
+      // Bấm huỷ lần hai: từ chối và KHÔNG đẩy job trùng. Lượt đầu đã xếp đủ
+      // job rồi; xếp thêm một bộ nữa là nhân đôi số lần gọi cổng thanh toán
+      // cho cùng một khách (job idempotent nên không hoàn hai lần, nhưng
+      // đốt retry và làm cột tiến độ nói dối).
+      if (locked.status === DepartureStatus.CANCELLED) {
+        throw new DepartureRuleError(
+          'DEPARTURE_CANCELLED',
+          'This departure has already been cancelled — its travellers are being refunded.',
+        );
+      }
 
-        const startDate = calendarDate(locked.start_date);
-        const endDate = calendarDate(locked.end_date);
-        const blocked = departureCancelBlocker(startDate, endDate, now);
-        if (blocked) throw new DepartureRuleError('DEPARTURE_STARTED', blocked);
+      const blocked = departureCancelBlocker(calendarDate(locked.start_date), now);
+      if (blocked) throw new DepartureRuleError('DEPARTURE_STARTED', blocked);
 
-        const tourRow = await tx.tour.findUniqueOrThrow({
-          where: { id: locked.tour_id },
-          select: { slug: true },
-        });
+      const tourRow = await tx.tour.findUniqueOrThrow({
+        where: { id: locked.tour_id },
+        select: { slug: true },
+      });
 
-        // Chụp TRONG khoá, trước khi đụng vào trạng thái nào: đây là danh sách
-        // sẽ biến thành hàng đợi, và nó phải khớp đúng thực tại lúc khoá.
-        const live = await tx.booking.findMany({
-          where: {
-            departureId: locked.id,
-            status: {
-              in: [BookingStatus.PENDING, BookingStatus.PAID, BookingStatus.PARTIALLY_REFUNDED],
-            },
+      // Chụp TRONG khoá, trước khi đụng vào trạng thái nào: đây là danh sách
+      // sẽ biến thành hàng đợi, và nó phải khớp đúng thực tại lúc khoá.
+      const live = await tx.booking.findMany({
+        where: {
+          departureId: locked.id,
+          status: {
+            in: [BookingStatus.PENDING, BookingStatus.PAID, BookingStatus.PARTIALLY_REFUNDED],
           },
-          select: { id: true, status: true },
+        },
+        select: { id: true, status: true },
+      });
+
+      await tx.tourDeparture.update({
+        where: { id: locked.id },
+        data: {
+          status: DepartureStatus.CANCELLED,
+          // Sổ ở cấp CHUYẾN: một chuyến không có khách nào thì không để lại
+          // vết ở `cancellation_requests`, mà đó lại là ca hay gặp nhất khi
+          // dọn lịch. Lưới quét hoàn tiền sót cũng đọc `cancelledBy` ở đây.
+          cancelledAt: now,
+          cancelledBy: adminId,
+          cancelReason: input.reason,
+        },
+      });
+
+      const pendingIds = live
+        .filter((row) => row.status === BookingStatus.PENDING)
+        .map((row) => row.id);
+      if (pendingIds.length > 0) {
+        await tx.booking.updateMany({
+          where: { id: { in: pendingIds } },
+          data: { status: BookingStatus.CANCELLED, cancelledAt: now },
         });
+      }
 
-        await tx.tourDeparture.update({
-          where: { id: locked.id },
-          data: {
-            status: DepartureStatus.CANCELLED,
-            // Sổ ở cấp CHUYẾN: một chuyến không có khách nào thì không để lại
-            // vết ở `cancellation_requests`, mà đó lại là ca hay gặp nhất khi
-            // dọn lịch. Lưới quét hoàn tiền sót cũng đọc `cancelledBy` ở đây.
-            cancelledAt: now,
-            cancelledBy: adminId,
-            cancelReason: input.reason,
-          },
-        });
-
-        const pendingIds = live
-          .filter((row) => row.status === BookingStatus.PENDING)
-          .map((row) => row.id);
-        if (pendingIds.length > 0) {
-          await tx.booking.updateMany({
-            where: { id: { in: pendingIds } },
-            data: { status: BookingStatus.CANCELLED, cancelledAt: now },
-          });
-        }
-
-        return {
-          tourSlug: tourRow.slug,
-          startDate,
-          endDate,
-          cancelledPending: pendingIds.length,
-          toRefund: live
-            .filter((row) => row.status !== BookingStatus.PENDING)
-            .map(
-              (row) =>
-                ({
-                  bookingId: row.id,
-                  departureId: locked.id,
-                  adminId,
-                  reason: input.reason,
-                }) satisfies DepartureRefundJob,
-            ),
-        };
-      },
-    );
+      return {
+        tourSlug: tourRow.slug,
+        cancelledPending: pendingIds.length,
+        toRefund: live
+          .filter((row) => row.status !== BookingStatus.PENDING)
+          .map(
+            (row) =>
+              ({
+                bookingId: row.id,
+                departureId: locked.id,
+                adminId,
+                reason: input.reason,
+              }) satisfies DepartureRefundJob,
+          ),
+      };
+    });
 
     // Xếp hàng SAU commit: một job trỏ vào một booking chưa CANCELLED là một
     // job chạy sớm hơn sự thật.
