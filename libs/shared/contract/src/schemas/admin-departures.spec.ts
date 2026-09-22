@@ -5,6 +5,7 @@ import {
   AdminDepartureSetStatusInputSchema,
   AdminDeparturesListQuerySchema,
   AdminDepartureUpdateInputSchema,
+  DEPARTURE_PRICE_MAX,
   DEPARTURE_SEATS_MAX,
 } from './admin-departures.js';
 
@@ -27,6 +28,8 @@ const ROW = {
   status: 'OPEN',
   cancellationDeadline: '2026-10-03',
   liveBookingCount: 2,
+  pendingBookingCount: 1,
+  version: '2026-09-20T08:00:00.000Z',
 };
 
 describe('AdminDepartureRowSchema', () => {
@@ -44,6 +47,16 @@ describe('AdminDepartureRowSchema', () => {
 
   it('tiền đi qua dây dạng CHUỖI, không phải số', () => {
     expect(AdminDepartureRowSchema.safeParse({ ...ROW, price: 129 }).success).toBe(false);
+  });
+
+  it('`seatsTotal` ở ĐẦU RA rộng hơn ở đầu vào — một hàng lệch dải không được 500 cả trang', () => {
+    // DB chỉ bảo đảm `seats_total >= 0`, không có trần. Khai chặt ở đầu ra thì
+    // một hàng vá tay / import / tour `maxGroupSize > 500` sẽ trượt validation
+    // và giết chính cái form dùng để sửa nó.
+    expect(
+      AdminDepartureRowSchema.safeParse({ ...ROW, seatsTotal: DEPARTURE_SEATS_MAX + 1 }).success,
+    ).toBe(true);
+    expect(AdminDepartureRowSchema.safeParse({ ...ROW, seatsTotal: -1 }).success).toBe(false);
   });
 
   it('`priceOverride` phân biệt được "giá riêng" với "thừa hưởng basePrice"', () => {
@@ -114,6 +127,33 @@ describe('AdminDepartureCreateInputSchema', () => {
     ).toBe(true);
   });
 
+  it('giá quá 2 chữ số lẻ bị CHẶN, không bị cột làm tròn hộ', () => {
+    // `129.999` đi lọt sẽ thành `130.00` ở cột `Decimal(14,2)` — một con số
+    // khách phải trả mà không ai gõ vào.
+    expect(
+      AdminDepartureCreateInputSchema.safeParse({
+        ...BASE,
+        seatsTotal: 12,
+        priceOverride: '129.999',
+      }).success,
+    ).toBe(false);
+  });
+
+  it('giá có TRẦN — tràn cột là 500, mà 500 thì kit đóng dialog và mất cả form', () => {
+    const qua = String(DEPARTURE_PRICE_MAX + 1);
+    expect(
+      AdminDepartureCreateInputSchema.safeParse({ ...BASE, seatsTotal: 12, priceOverride: qua })
+        .success,
+    ).toBe(false);
+    expect(
+      AdminDepartureCreateInputSchema.safeParse({
+        ...BASE,
+        seatsTotal: 12,
+        priceOverride: '999999999999.99',
+      }).success,
+    ).toBe(true);
+  });
+
   it('ngày ngoài dải 1900–2099 bị chặn ngay ở biên', () => {
     // `CalendarDateSchema` dùng chung: một ngày năm 9999 rơi xuống driver
     // Postgres qua phép cộng biên là một `+010000-…` không schema nào bắt.
@@ -138,11 +178,30 @@ describe('AdminDepartureUpdateInputSchema', () => {
       endDate: '2026-12-03',
       seatsTotal: 18,
       priceOverride: null,
+      version: '2026-09-20T08:00:00.000Z',
     };
 
     expect(AdminDepartureUpdateInputSchema.safeParse(full).success).toBe(true);
     const { seatsTotal: _seats, ...missingSeats } = full;
     expect(AdminDepartureUpdateInputSchema.safeParse(missingSeats).success).toBe(false);
+  });
+
+  it('BẮT BUỘC có `version` — thiếu token là mở lại đúng cửa ghi đè mù', () => {
+    // `FOR UPDATE` tuần tự hoá hai lệnh ghi nhưng không phát hiện được cái cũ:
+    // payload mang giá trị từ FORM, không từ hàng vừa khoá. Không token thì
+    // tab mở lúc 10:00 ghi đè êm ru thay đổi của tab 10:01.
+    const khongVersion = {
+      id: '4f1b1f2e-0000-4000-8000-000000000001',
+      startDate: '2026-12-01',
+      endDate: '2026-12-03',
+      seatsTotal: 18,
+      priceOverride: null,
+    };
+
+    expect(AdminDepartureUpdateInputSchema.safeParse(khongVersion).success).toBe(false);
+    expect(
+      AdminDepartureUpdateInputSchema.safeParse({ ...khongVersion, version: 'hôm qua' }).success,
+    ).toBe(false);
   });
 });
 
@@ -194,6 +253,8 @@ describe('contract admin.departures', () => {
     expect(update.DEPARTURE_HAS_BOOKINGS?.status).toBe(409);
     expect(update.SEATS_BELOW_BOOKED?.status).toBe(409);
     expect(setStatus.DEADLINE_PASSED?.status).toBe(409);
+    // Cùng họ: ai đó vừa sửa chính chuyến này, thế giới đã đổi dưới chân form.
+    expect(update.DEPARTURE_STALE?.status).toBe(409);
   });
 
   it('mọi lệnh ghi khai NOT_FOUND và từ chối động tới chuyến đã huỷ', () => {

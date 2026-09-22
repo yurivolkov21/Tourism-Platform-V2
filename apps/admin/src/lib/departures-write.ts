@@ -4,7 +4,7 @@ import type {
   AdminDepartureSetStatusInput,
   AdminDepartureUpdateInput,
 } from '@tourism/contract';
-import { DEPARTURE_SEATS_MAX } from '@tourism/contract';
+import { cancellationDeadline, DEPARTURE_SEATS_MAX } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
 import { createWriteErrorCodec, type TransportFailureCode } from './api/write-error';
 
@@ -32,7 +32,15 @@ const t = messages.admin.departures;
  */
 const createCodec = createWriteErrorCodec(t.create.errors, { stale: ['NOT_FOUND'] });
 const updateCodec = createWriteErrorCodec(t.edit.errors, {
-  stale: ['NOT_FOUND', 'DEPARTURE_HAS_BOOKINGS', 'SEATS_BELOW_BOOKED', 'DEPARTURE_CANCELLED'],
+  stale: [
+    'NOT_FOUND',
+    'DEPARTURE_HAS_BOOKINGS',
+    'SEATS_BELOW_BOOKED',
+    'DEPARTURE_CANCELLED',
+    // Ai đó vừa sửa chính chuyến này: thế giới đã đổi dưới chân dialog, bấm
+    // lại cùng một payload cũ thì lần nào cũng hỏng như nhau.
+    'DEPARTURE_STALE',
+  ],
 });
 const setStatusCodec = createWriteErrorCodec(t.setStatus.errors, {
   stale: ['NOT_FOUND', 'DEADLINE_PASSED', 'DEPARTURE_CANCELLED'],
@@ -141,6 +149,32 @@ export function validateDepartureForm(
   return errors;
 }
 
+/**
+ * Chuyến SẮP tạo đã quá hạn nhận đặt chưa — câu cảnh báo, hoặc `undefined`.
+ *
+ * Vì sao cần: hạn đặt là `ngày khởi hành − N` với N tới 7 ngày cho tour dài
+ * (ADR-0041 §2), nên một chuyến 5 ngày khởi hành TUẦN SAU đã quá hạn ngay lúc
+ * tạo. Server vẫn cho tạo (ghi nhận một chuyến chốt ngoài hệ thống là việc
+ * thật) nhưng nó sẽ không bán được — và copy cũ hứa "goes on sale straight
+ * away" thì nói sai đúng chỗ đó.
+ *
+ * Luật tính hạn lấy TỪ CONTRACT (`cancellationDeadline`), một nguồn duy nhất
+ * cho cả API lẫn web lẫn đây (ADR-0041 §8) — không chép lại phép trừ.
+ *
+ * `today` là ngày lịch VIỆT NAM do server đưa xuống, cùng lý do với
+ * `toDepartureRowVM`: đồng hồ trình duyệt không quyết định luật tiền.
+ */
+export function createDeadlineHint(values: DepartureFormValues, today: string): string | undefined {
+  // Ngày chưa gõ xong / ngược nhau: `cancellationDeadline` sẽ ném `RangeError`.
+  // Im lặng ở đây là đúng — ô ngày đã có câu lỗi riêng của nó.
+  if (!ISO_DATE.test(values.startDate) || !ISO_DATE.test(values.endDate)) return undefined;
+  if (values.endDate < values.startDate) return undefined;
+
+  const deadline = cancellationDeadline(values.startDate, values.endDate);
+  // Hạn hết lúc 23:59:59 giờ Việt Nam của CHÍNH ngày đó — bằng nhau là còn kịp.
+  return today > deadline ? t.create.deadlinePassedHint : undefined;
+}
+
 /** Form có ô nào hỏng không — một chỗ hỏi, để không nơi nào tự đếm keys. */
 export function hasFormErrors(errors: DepartureFormErrors): boolean {
   return Object.keys(errors).length > 0;
@@ -164,14 +198,27 @@ export function departureFormPayload(values: DepartureFormValues): {
 
 // ── Dialog đóng/mở lại ──────────────────────────────────────────────────────
 
-/** Copy của `ConfirmWriteDialog` cho một trong hai chiều đóng/mở. */
-export function setStatusDialogCopy(next: 'OPEN' | 'CLOSED') {
+/**
+ * Copy của `ConfirmWriteDialog` cho một trong hai chiều đóng/mở.
+ *
+ * `pendingBookingCount` chỉ đổi chiều ĐÓNG: kit chỉ có MỘT ô `warning`, nên
+ * câu thứ hai nối vào đó thay vì phải nới hợp đồng của kit cho một vùng.
+ *
+ * Vì sao phải có câu thứ hai: câu gốc hứa khách "are told nothing" — đúng với
+ * người ĐÃ trả, sai với người ĐANG trả. Đường claim đòi chuyến còn mở, nên một
+ * lượt thanh toán về SAU khi đóng sẽ bị từ chối rồi hoàn tiền tự động kèm
+ * email. Admin phải biết trước khi bấm, không phải đọc lại trong sổ sự kiện.
+ */
+export function setStatusDialogCopy(next: 'OPEN' | 'CLOSED', pendingBookingCount = 0) {
   const d = t.setStatus.dialog;
   return next === 'CLOSED'
     ? {
         title: d.closeTitle,
         body: d.closeBody,
-        warning: d.closeWarning,
+        warning:
+          pendingBookingCount > 0
+            ? `${d.closeWarning} ${d.closePendingWarning(pendingBookingCount)}`
+            : d.closeWarning,
         submit: d.closeSubmit,
         submitting: d.closeSubmitting,
         cancel: t.form.cancel,
@@ -187,20 +234,32 @@ export function setStatusDialogCopy(next: 'OPEN' | 'CLOSED') {
 }
 
 /**
- * Ngữ cảnh hàng trong dialog: ngày nào, mấy khách, hạn chót ngày nào. Ba dòng
+ * Ngữ cảnh hàng trong dialog: ngày nào, mấy khách, hạn chót ngày nào. Mấy dòng
  * này là lớp bảo vệ duy nhất chống bấm nhầm hàng — bảng có thể dài, mà dialog
  * thì không nhớ hộ ai cả.
+ *
+ * Khách ĐÃ trả và khách ĐANG trả đứng thành HAI dòng, vì đóng chuyến gây cho
+ * họ hai hệ quả khác hẳn nhau. Dòng "đang trả" chỉ hiện khi khác 0: một dòng
+ * `0` cố định là nhiễu ở mọi chuyến bình thường, mà nhiễu thì người ta thôi đọc.
  */
 export function setStatusConfirmRows(row: {
   dates: string;
-  bookingsLabel: string;
+  paidBookingCount: number;
+  pendingBookingCount: number;
   deadline: string;
 }): Array<{ label: string; value: string }> {
-  return [
+  const rows: Array<{ label: string; value: string }> = [
     { label: t.setStatus.rows.departure, value: row.dates },
-    { label: t.setStatus.rows.bookings, value: row.bookingsLabel },
-    { label: t.setStatus.rows.deadline, value: row.deadline },
+    { label: t.setStatus.rows.paidBookings, value: String(row.paidBookingCount) },
   ];
+  if (row.pendingBookingCount > 0) {
+    rows.push({
+      label: t.setStatus.rows.pendingBookings,
+      value: String(row.pendingBookingCount),
+    });
+  }
+  rows.push({ label: t.setStatus.rows.deadline, value: row.deadline });
+  return rows;
 }
 
 /** Toast của nhánh thành công — hai giọng, đọc trạng thái TỪ RESPONSE. */

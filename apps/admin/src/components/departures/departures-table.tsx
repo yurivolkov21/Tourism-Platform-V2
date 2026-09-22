@@ -30,6 +30,7 @@ import { type DepartureRowVM, departureStatusBadgeVariant } from '@/lib/departur
 import {
   type CreateContractCode,
   type CreateDepartureAction,
+  createDeadlineHint,
   createErrorCopy,
   isCreateStale,
   type SetDepartureStatusAction,
@@ -96,6 +97,11 @@ export interface DeparturesTableProps {
   total: number;
   totalPages: number;
   tour: { slug: string; basePriceLabel: string };
+  /**
+   * Ngày lịch VIỆT NAM do server tính — cùng giá trị đã nấu ra `rows`. Form
+   * thêm cần nó để biết chuyến sắp tạo có quá hạn nhận đặt hay chưa.
+   */
+  today: string;
   create: CreateDepartureAction;
   update: UpdateDepartureAction;
   setStatus: SetDepartureStatusAction;
@@ -107,6 +113,7 @@ export function DeparturesTable({
   total,
   totalPages,
   tour,
+  today,
   create,
   update,
   setStatus,
@@ -264,8 +271,11 @@ export function DeparturesTable({
           // placeholder/hint chứ không điền hộ — một con số điền sẵn là một
           // con số không ai đọc lại.
           initial={{ startDate: '', endDate: '', seats: '', price: '' }}
-          liveBookingCount={0}
           seatsBooked={0}
+          // Hạn nhận đặt là `ngày đi − N` với N tới 7 ngày: một chuyến khởi
+          // hành tuần sau có thể đã quá hạn ngay lúc tạo. Vẫn cho tạo, nhưng
+          // nói trước rằng nó sẽ không bán được.
+          notice={(values) => createDeadlineHint(values, today)}
           basePriceLabel={tour.basePriceLabel}
           isStale={isCreateStale}
           errorCopy={createErrorCopy}

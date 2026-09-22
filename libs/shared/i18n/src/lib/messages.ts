@@ -4585,11 +4585,18 @@ export const messages = {
         seatsHint: (max: number) => `Between 1 and ${max}.`,
         price: 'Price per traveller',
         priceHint: (base: string) => `Leave empty to use the tour base price (${base}).`,
-        /** Ô ngày bị khoá — câu này nằm NGAY dưới ô, không giấu trong tooltip. */
-        datesLocked: (count: number) =>
-          count === 1
-            ? 'One traveller has already booked this departure, so its dates are fixed. Cancel the departure instead if it cannot run.'
-            : `${count} bookings are already on this departure, so its dates are fixed. Cancel the departure instead if it cannot run.`,
+        /**
+         * Ô ngày bị khoá — câu này nằm NGAY dưới ô, không giấu trong tooltip.
+         *
+         * Đếm GHẾ chứ không đếm booking, khớp thước server dùng để chặn
+         * (`dateChangeBlocker`): một booking chở nhiều khách, và cột "Seats"
+         * ngay cạnh đã in đúng con số này — hai con số khác nhau cho cùng một
+         * luật là chỗ để admin nghi ngờ màn hình.
+         */
+        datesLocked: (seats: number) =>
+          seats === 1
+            ? 'One seat is already booked on this departure, so its dates are fixed. Cancel the departure instead if it cannot run.'
+            : `${seats} seats are already booked on this departure, so its dates are fixed. Cancel the departure instead if it cannot run.`,
         /** Kiểm ở client để khỏi đi một vòng server cho lỗi đọc thấy ngay tại ô. */
         errors: {
           startRequired: 'Pick a start date.',
@@ -4606,10 +4613,18 @@ export const messages = {
         action: 'Add departure',
         dialog: {
           title: 'Add a departure',
-          body: 'It goes on sale straight away — the tour page shows it as soon as the cache refreshes.',
+          body: 'It goes on sale as soon as the cache refreshes — unless its booking deadline has already passed.',
           submit: 'Add departure',
           submitting: 'Adding…',
         },
+        /**
+         * Chuyến tạo ra đã qua hạn nhận đặt — vẫn cho tạo (ghi nhận một chuyến
+         * chốt ngoài hệ thống là việc thật), nhưng phải nói rõ nó sẽ không bán
+         * được. Hạn đặt là `ngày khởi hành − N` với N tới 7 ngày cho tour dài,
+         * nên một chuyến 5 ngày khởi hành tuần sau đã quá hạn ngay lúc tạo.
+         */
+        deadlinePassedHint:
+          'Heads up: this departure is already past its booking deadline, so it will show as closed on the tour page and nobody can book it.',
         /** Mã CONTRACT của `admin.departures.create`. */
         errors: {
           NOT_FOUND: 'This tour no longer exists — the departure was not created.',
@@ -4641,6 +4656,13 @@ export const messages = {
             'More seats were booked while the form was open, so this seat total is now too low. The table has been refreshed.',
           DEPARTURE_CANCELLED:
             'This departure has been cancelled and can no longer be edited. The table has been refreshed.',
+          /**
+           * Ghi đè mù giữa hai tab. Câu phải nói rõ thay đổi của người dùng
+           * CHƯA được lưu, vì kit sẽ đóng dialog và làm mới bảng — không nói
+           * thì họ tưởng đã lưu xong.
+           */
+          DEPARTURE_STALE:
+            'Someone else changed this departure while the form was open, so nothing was saved. The table has been refreshed — reopen the form and make the change again.',
         },
         toast: {
           title: 'Departure updated',
@@ -4654,7 +4676,13 @@ export const messages = {
         reopenLabel: (dates: string) => `Reopen the departure on ${dates}`,
         rows: {
           departure: 'Departure',
-          bookings: 'Live bookings',
+          /**
+           * Hai dòng, không phải một. Khách ĐÃ trả và khách ĐANG trả nhận hai
+           * hệ quả khác hẳn nhau khi chuyến bị đóng, nên gộp thành một con số
+           * là lấy mất thứ admin cần để quyết.
+           */
+          paidBookings: 'Paid bookings',
+          pendingBookings: 'Checkouts in progress',
           deadline: 'Book/cancel by',
         },
         dialog: {
@@ -4662,7 +4690,18 @@ export const messages = {
           closeBody: 'It disappears from the tour page, and nobody new can book it.',
           /** Nói thẳng thứ KHÔNG xảy ra — đó là câu admin cần nhất ở đây. */
           closeWarning:
-            'Travellers who already booked keep their places and are told nothing. To call the trip off and refund them, cancel the departure instead.',
+            'Travellers who already paid keep their places and are told nothing. To call the trip off and refund them, cancel the departure instead.',
+          /**
+           * Chỉ hiện khi còn checkout đang dở. Câu trước đó hứa "nobody is told
+           * anything", đúng với khách đã trả nhưng SAI với khách đang trả: đường
+           * claim đòi chuyến còn mở, nên một lượt thanh toán về sau khi đóng sẽ
+           * bị từ chối rồi hoàn tiền tự động kèm email. Admin phải biết trước khi
+           * bấm, không phải đọc lại trong sổ sự kiện sau đó.
+           */
+          closePendingWarning: (count: number) =>
+            count === 1
+              ? 'One traveller is paying for this departure right now. If their payment lands after you close it, they are refunded automatically and emailed about it.'
+              : `${count} travellers are paying for this departure right now. If their payments land after you close it, they are refunded automatically and emailed about it.`,
           closeSubmit: 'Close departure',
           closeSubmitting: 'Closing…',
           reopenTitle: 'Reopen this departure?',

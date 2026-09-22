@@ -53,7 +53,15 @@ export function DepartureRowActions({
   disabled: boolean;
   onSettled: () => void;
 }) {
-  const [editing, setEditing] = useState(false);
+  /**
+   * Mở form sửa = CHỤP phiên bản hàng tại đúng lúc bấm, không đọc lại
+   * `row.version` lúc gửi. Bảng có thể được vẽ lại dưới chân dialog (một
+   * `router.refresh()`), và nếu lúc ấy version mới trôi vào payload thì token
+   * chống-ghi-đè-mù tự vô hiệu hoá chính nó: server so hai giá trị bằng nhau
+   * rồi cho ghi đè thứ người dùng chưa hề nhìn thấy. `initial` đã được đóng
+   * băng theo cách tương tự (`useState` trong dialog) — đây là nửa còn lại.
+   */
+  const [editingVersion, setEditingVersion] = useState<string | null>(null);
   const [toggling, setToggling] = useState(false);
 
   // Chuyến đã huỷ: không sửa, không đóng, không mở — bảng chỉ còn là bản ghi.
@@ -70,7 +78,7 @@ export function DepartureRowActions({
         size="sm"
         aria-label={t.edit.actionLabel(row.dates)}
         disabled={disabled}
-        onClick={() => setEditing(true)}
+        onClick={() => setEditingVersion(row.version)}
       >
         <PencilIcon data-icon="inline-start" aria-hidden="true" />
         {t.edit.action}
@@ -98,7 +106,7 @@ export function DepartureRowActions({
         {nextStatus === 'CLOSED' ? t.setStatus.close : t.setStatus.reopen}
       </Button>
 
-      {editing ? (
+      {editingVersion !== null ? (
         <DepartureFormDialog<UpdateContractCode>
           copy={t.edit.dialog}
           formId={`departure-edit-${row.id}`}
@@ -110,25 +118,24 @@ export function DepartureRowActions({
             // giá tour vào đây là để một cú bấm Save đóng đinh nó vào chuyến.
             price: row.priceOverride ?? '',
           }}
-          liveBookingCount={row.liveBookingCount}
           seatsBooked={row.seatsBooked}
           basePriceLabel={basePriceLabel}
           isStale={isUpdateStale}
           errorCopy={updateErrorCopy}
-          onSubmit={(values) => update({ id: row.id, ...values })}
+          onSubmit={(values) => update({ id: row.id, version: editingVersion, ...values })}
           toast={(saved) => ({
             title: t.edit.toast.title,
             // Ngày đọc từ RESPONSE, không từ form đã gửi.
             description: t.edit.toast.body(formatDateRange(saved.startDate, saved.endDate)),
           })}
-          onClose={() => setEditing(false)}
+          onClose={() => setEditingVersion(null)}
           onSettled={onSettled}
         />
       ) : null}
 
       {toggling ? (
         <ConfirmWriteDialog<SetStatusContractCode>
-          copy={setStatusDialogCopy(nextStatus)}
+          copy={setStatusDialogCopy(nextStatus, row.pendingBookingCount)}
           rows={setStatusConfirmRows(row)}
           submitVariant={nextStatus === 'CLOSED' ? 'destructive' : 'default'}
           onSubmit={async () => {

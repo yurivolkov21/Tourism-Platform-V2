@@ -43,7 +43,7 @@ export function seatsChangeBlocker(seatsTotal: number, seatsBooked: number): str
 }
 
 /**
- * Đổi ngày chuyến khi đã có booking SỐNG (spec §2b).
+ * Đổi ngày chuyến khi GHẾ đã bị giữ (spec §2b).
  *
  * `Booking` lưu BẢN SAO `departureStartDate`/`departureEndDate` tại lúc đặt,
  * và ADR-0041 tính hạn huỷ từ bản sao ấy chứ không từ chuyến. Đổi ngày mà
@@ -53,14 +53,25 @@ export function seatsChangeBlocker(seatsTotal: number, seatsBooked: number): str
  *
  * Bất biến: hạn huỷ không bao giờ xấu đi sau khi khách đã trả tiền.
  *
- * "Sống" = `PENDING`, `PAID`, `PARTIALLY_REFUNDED` — tập do chỗ gọi đếm; hàm
- * này chỉ biết con số, và con số ấy phải đọc TRONG cùng transaction với phép
- * ghi (`docs/conventions/read-then-write-races.md`).
+ * **Thước là `seats_booked`, KHÔNG phải tập trạng thái booking** (chốt lại ở
+ * vòng review 21/09). Bản đầu đếm `PENDING`/`PAID`/`PARTIALLY_REFUNDED` và loại
+ * `REFUNDED` với lý do "kết cục đã đóng, không giữ ghế" — nhưng
+ * `booking-states.md` nói ngược đúng chỗ đó: hoàn thiện chí trọn tiền KHÔNG trả
+ * ghế, khách VẪN đi tour. Chỉ lõi huỷ mới trừ ghế. Nên một booking `REFUNDED`
+ * kiểu ấy để lại `seats_booked > 0` mà đếm-theo-trạng-thái đọc ra 0, và ô ngày
+ * mở khoá cho một chuyến vẫn còn khách thật.
+ *
+ * Đổi thước còn xoá được một mâu thuẫn bày ngay trên màn hình: hàng hiện
+ * "Seats 4 / 20" cạnh "Live bookings: 0".
+ *
+ * Con số phải đọc TRONG cùng transaction với phép ghi
+ * (`docs/conventions/read-then-write-races.md`) — ở đây nó đến thẳng từ hàng
+ * vừa `SELECT … FOR UPDATE`, nên không có khoảng hở nào.
  */
-export function dateChangeBlocker(liveBookingCount: number): string | null {
-  if (liveBookingCount <= 0) return null;
-  const plural = liveBookingCount === 1 ? 'booking' : 'bookings';
-  return `This departure already has ${liveBookingCount} live ${plural} — its dates can no longer change.`;
+export function dateChangeBlocker(seatsBooked: number): string | null {
+  if (seatsBooked <= 0) return null;
+  const plural = seatsBooked === 1 ? 'seat' : 'seats';
+  return `This departure already has ${seatsBooked} ${plural} booked — its dates can no longer change.`;
 }
 
 /**

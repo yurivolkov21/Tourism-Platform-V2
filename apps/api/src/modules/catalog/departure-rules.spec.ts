@@ -42,22 +42,30 @@ describe('departure-rules', () => {
   });
 
   describe('dateChangeBlocker (§2b — đổi ngày)', () => {
-    it('chưa có booking sống thì đổi ngày thoải mái', () => {
+    it('chưa ai giữ ghế thì đổi ngày thoải mái', () => {
       // Ca hay gặp nhất: đang dựng lịch, gõ nhầm ngày, sửa lại.
       expect(dateChangeBlocker(0)).toBeNull();
     });
 
-    it('một booking sống là đủ để chặn', () => {
+    it('một ghế đã chốt là đủ để chặn', () => {
       // Booking lưu BẢN SAO ngày khởi hành và ADR-0041 tính hạn huỷ từ bản
       // sao đó — đổi ngày mà không đồng bộ là hai sự thật.
       const reason = dateChangeBlocker(1);
 
       expect(reason).toContain('1');
-      expect(reason).toMatch(/booking/i);
+      expect(reason).toMatch(/seat/i);
     });
 
-    it('nhiều booking sống thì câu từ chối đếm đúng', () => {
+    it('nhiều ghế thì câu từ chối đếm đúng', () => {
       expect(dateChangeBlocker(12)).toContain('12');
+    });
+
+    it('thước là GHẾ, không phải số booking — hoàn tiền thiện chí KHÔNG trả ghế', () => {
+      // `booking-states.md`: chỉ lõi huỷ mới trừ `seats_booked`. Một booking
+      // hoàn trọn tiền kiểu thiện chí vẫn đi tour, vẫn giữ ghế — đếm theo
+      // trạng thái booking sẽ đọc ra 0 rồi mở khoá ô ngày cho một chuyến vẫn
+      // còn khách thật.
+      expect(dateChangeBlocker(4)).toMatch(/4 seats booked/);
     });
   });
 

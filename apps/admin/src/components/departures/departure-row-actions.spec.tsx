@@ -38,6 +38,8 @@ const ROW: AdminDepartureRow = {
   status: 'OPEN',
   cancellationDeadline: '2026-10-03',
   liveBookingCount: 2,
+  pendingBookingCount: 0,
+  version: '2026-09-20T08:00:00.000Z',
 };
 
 const BEFORE_DEADLINE = '2026-10-01';
@@ -108,10 +110,32 @@ describe('DepartureRowActions — hộp xác nhận đóng chuyến', () => {
 
     expect(await screen.findByText(t.setStatus.dialog.closeTitle)).toBeInTheDocument();
     expect(screen.getByText(t.setStatus.dialog.closeWarning)).toBeInTheDocument();
-    // Ba dòng ngữ cảnh: chuyến nào, mấy khách, hạn chót ngày nào.
+    // Ba dòng ngữ cảnh: chuyến nào, mấy khách ĐÃ trả, hạn chót ngày nào.
     expect(screen.getByText(dates)).toBeInTheDocument();
-    expect(screen.getByText(t.list.bookings(2))).toBeInTheDocument();
+    expect(screen.getByText(t.setStatus.rows.paidBookings)).toBeInTheDocument();
+    // Không ai đang thanh toán dở → dòng ấy không có mặt, câu cảnh báo cũng vậy.
+    expect(screen.queryByText(t.setStatus.rows.pendingBookings)).not.toBeInTheDocument();
     expect(setStatus).not.toHaveBeenCalled();
+  });
+
+  it('CÒN checkout đang dở: thêm một dòng và một câu — họ sẽ bị hoàn tiền kèm email', async () => {
+    // Câu gốc hứa khách "are told nothing", đúng với người ĐÃ trả nhưng sai
+    // với người ĐANG trả: claim đòi chuyến còn mở, nên lượt thanh toán về sau
+    // khi đóng sẽ bị từ chối rồi hoàn tiền tự động.
+    const user = userEvent.setup();
+    const { dates } = renderActions(
+      { ...ROW, liveBookingCount: 5, pendingBookingCount: 2 },
+      BEFORE_DEADLINE,
+    );
+
+    await user.click(screen.getByRole('button', { name: t.setStatus.closeLabel(dates) }));
+
+    expect(await screen.findByText(t.setStatus.rows.pendingBookings)).toBeInTheDocument();
+    // Hai câu nằm trong CÙNG một thẻ cảnh báo của kit, nên tìm theo câu đầu
+    // rồi soi nội dung — khớp trọn chuỗi sẽ trượt.
+    expect(screen.getByText(t.setStatus.dialog.closeWarning, { exact: false })).toHaveTextContent(
+      t.setStatus.dialog.closePendingWarning(2),
+    );
   });
 
   it('xác nhận: gửi đúng `CLOSED` và toast đọc trạng thái TỪ RESPONSE', async () => {
@@ -125,5 +149,49 @@ describe('DepartureRowActions — hộp xác nhận đóng chuyến', () => {
     expect(success).toHaveBeenCalledWith(t.setStatus.toast.closedTitle, {
       description: t.setStatus.toast.closedBody(dates),
     });
+  });
+});
+
+describe('DepartureRowActions — form sửa mang theo token phiên bản', () => {
+  it('gửi kèm `version` CHỤP LÚC MỞ, không phải giá trị mới nhất của hàng', async () => {
+    // Token là thứ duy nhất phát hiện được ghi đè mù giữa hai tab: `FOR UPDATE`
+    // tuần tự hoá hai lệnh ghi nhưng không biết cái nào cũ, vì payload mang
+    // giá trị từ FORM chứ không từ hàng vừa khoá. Đọc lại `row.version` lúc
+    // gửi là tự vô hiệu hoá lớp ấy — một `router.refresh()` dưới chân dialog
+    // sẽ đẩy token mới vào payload và server thấy hai giá trị bằng nhau.
+    const user = userEvent.setup();
+    const update = vi.fn(async () => ({ ok: true as const, row: ROW }));
+    const vm = toDepartureRowVM(ROW, BEFORE_DEADLINE);
+    const { rerender } = render(
+      <DepartureRowActions
+        row={vm}
+        basePriceLabel="$129.00"
+        update={update}
+        setStatus={vi.fn()}
+        disabled={false}
+        onSettled={vi.fn()}
+      />,
+    );
+
+    await user.click(screen.getByRole('button', { name: t.edit.actionLabel(vm.dates) }));
+    await screen.findByText(t.edit.dialog.title);
+
+    // Bảng được vẽ lại dưới chân dialog đang mở — token của hàng đã đổi.
+    rerender(
+      <DepartureRowActions
+        row={toDepartureRowVM({ ...ROW, version: '2026-09-21T09:00:00.000Z' }, BEFORE_DEADLINE)}
+        basePriceLabel="$129.00"
+        update={update}
+        setStatus={vi.fn()}
+        disabled={false}
+        onSettled={vi.fn()}
+      />,
+    );
+
+    await user.click(screen.getByRole('button', { name: t.edit.dialog.submit }));
+
+    expect(update).toHaveBeenCalledWith(
+      expect.objectContaining({ id: ROW.id, version: ROW.version }),
+    );
   });
 });

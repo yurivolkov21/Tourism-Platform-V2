@@ -45,7 +45,8 @@ export type DepartureRuleCode =
   | 'DEPARTURE_HAS_BOOKINGS'
   | 'SEATS_BELOW_BOOKED'
   | 'DEADLINE_PASSED'
-  | 'DEPARTURE_CANCELLED';
+  | 'DEPARTURE_CANCELLED'
+  | 'DEPARTURE_STALE';
 
 /**
  * Một lệnh ghi bị luật nghiệp vụ chặn. `code` để controller chọn đúng lỗi
@@ -81,6 +82,8 @@ const DEPARTURE_SELECT = {
   seatsTotal: true,
   seatsBooked: true,
   status: true,
+  /** Token chống ghi đè mù — xem `version` của `AdminDepartureUpdateInputSchema`. */
+  updatedAt: true,
 } satisfies Prisma.TourDepartureSelect;
 
 type DepartureRowData = Prisma.TourDepartureGetPayload<{ select: typeof DEPARTURE_SELECT }>;
@@ -146,11 +149,11 @@ export class AdminDeparturesService {
         take: limit,
       }),
     ]);
-    const live = await liveBookingCounts(rows.map((row) => row.id));
+    const counts = await bookingCounts(rows.map((row) => row.id));
 
     return {
       ...toPaged(
-        rows.map((row) => toRow(row, tour, live.get(row.id) ?? 0)),
+        rows.map((row) => toRow(row, tour, counts.get(row.id) ?? ZERO_COUNTS)),
         { page, limit, total },
       ),
       tour: toTour(tour),
@@ -202,7 +205,7 @@ export class AdminDeparturesService {
 
     // Chuyến chưa ai đặt nên `liveBookingCount` là 0 — không cần một câu đếm
     // để biết điều mình vừa tạo ra.
-    const row = toRow(created, tour, 0);
+    const row = toRow(created, tour, ZERO_COUNTS);
     this.bust(tour.slug, null, row, now);
     return row;
   }
@@ -252,9 +255,10 @@ export class AdminDeparturesService {
           price_override: Prisma.Decimal | null;
           seats_booked: number;
           status: DepartureStatus;
+          updated_at: Date;
         }[]
       >(Prisma.sql`
-        SELECT id, tour_id, start_date, end_date, price_override, seats_booked, status
+        SELECT id, tour_id, start_date, end_date, price_override, seats_booked, status, updated_at
         FROM tour_departures WHERE id = ${input.id}::uuid FOR UPDATE
       `);
       if (!locked) throw new DepartureNotFoundError(input.id);
@@ -265,17 +269,26 @@ export class AdminDeparturesService {
         );
       }
 
+      // Chống ghi đè mù: form gửi lại phiên bản nó ĐANG hiển thị. `FOR UPDATE`
+      // tuần tự hoá hai lệnh ghi nhưng không biết cái nào cũ — giá trị "hiện
+      // tại" trong payload đến từ trình duyệt chứ không từ hàng này.
+      if (locked.updated_at.toISOString() !== input.version) {
+        throw new DepartureRuleError(
+          'DEPARTURE_STALE',
+          'Someone else changed this departure while the form was open.',
+        );
+      }
+
       const currentStart = calendarDate(locked.start_date);
       const currentEnd = calendarDate(locked.end_date);
       const datesChanged = currentStart !== input.startDate || currentEnd !== input.endDate;
 
       if (datesChanged) {
         assertNotInPast(input.startDate, now);
-        // Statement RIÊNG, sau khoá → snapshot mới, thấy mọi booking đã commit.
-        const liveBookings = await tx.booking.count({
-          where: { departureId: input.id, status: { in: LIVE_BOOKING_STATUSES } },
-        });
-        const blocked = dateChangeBlocker(liveBookings);
+        // Thước là `seats_booked` của chính hàng vừa khoá, không phải một lượt
+        // đếm booking theo trạng thái — xem JSDoc của `dateChangeBlocker`. Lợi
+        // thêm: con số đã nằm trong hàng nên không cần câu đọc thứ hai.
+        const blocked = dateChangeBlocker(locked.seats_booked);
         if (blocked) throw new DepartureRuleError('DEPARTURE_HAS_BOOKINGS', blocked);
       }
 
@@ -308,8 +321,8 @@ export class AdminDeparturesService {
       };
     });
 
-    const live = await liveBookingCounts([row.id]);
-    const result = toRow(row, tour, live.get(row.id) ?? 0);
+    const counts = await bookingCounts([row.id]);
+    const result = toRow(row, tour, counts.get(row.id) ?? ZERO_COUNTS);
     this.bust(tour.slug, before, result, now);
     return result;
   }
@@ -386,8 +399,8 @@ export class AdminDeparturesService {
       return { row: updated, tour: tourRow, before, changed: true };
     });
 
-    const live = await liveBookingCounts([row.id]);
-    const result = toRow(row, tour, live.get(row.id) ?? 0);
+    const counts = await bookingCounts([row.id]);
+    const result = toRow(row, tour, counts.get(row.id) ?? ZERO_COUNTS);
     if (changed) {
       this.logger.log(
         `[admin] departure status ${JSON.stringify({
@@ -460,25 +473,48 @@ function toDecimal(value: string | null): Prisma.Decimal | null {
   return value === null ? null : new Prisma.Decimal(value);
 }
 
+/** Hai con số của một chuyến: tổng booking sống, và phần CHƯA trả tiền. */
+export interface BookingCounts {
+  live: number;
+  pending: number;
+}
+
 /**
- * Số booking còn sống của từng chuyến — MỘT câu gom nhóm cho cả trang.
+ * Đếm booking của từng chuyến — MỘT câu gom nhóm cho cả trang, tách theo trạng
+ * thái để chỗ gọi biết bao nhiêu trong số đó là `PENDING`.
+ *
+ * Vì sao phải tách: đóng một chuyến gây hai hệ quả khác hẳn nhau. Khách ĐÃ trả
+ * giữ chỗ và không ai báo gì; khách ĐANG trả sẽ bị đường claim từ chối
+ * (`departure-closed`) rồi hoàn tiền tự động kèm email. Một con số gộp thì hộp
+ * xác nhận không thể nói đúng sự thật.
+ *
  * Chuyến không có booking nào vắng mặt trong kết quả, nên chỗ gọi đọc bằng
- * `?? 0` thay vì mong đợi một hàng 0.
+ * `?? ZERO_COUNTS` thay vì mong đợi một hàng 0.
  */
-async function liveBookingCounts(departureIds: string[]): Promise<Map<string, number>> {
+async function bookingCounts(departureIds: string[]): Promise<Map<string, BookingCounts>> {
   if (departureIds.length === 0) return new Map();
   const groups = await prisma.booking.groupBy({
-    by: ['departureId'],
+    by: ['departureId', 'status'],
     where: { departureId: { in: departureIds }, status: { in: LIVE_BOOKING_STATUSES } },
     _count: { _all: true },
   });
-  return new Map(groups.map((group) => [group.departureId, group._count._all]));
+  const byDeparture = new Map<string, BookingCounts>();
+  for (const group of groups) {
+    const current = byDeparture.get(group.departureId) ?? { live: 0, pending: 0 };
+    current.live += group._count._all;
+    if (group.status === BookingStatus.PENDING) current.pending += group._count._all;
+    byDeparture.set(group.departureId, current);
+  }
+  return byDeparture;
 }
+
+/** Chuyến chưa ai đặt — giá trị đọc ra khi chuyến vắng mặt trong kết quả gom nhóm. */
+const ZERO_COUNTS: BookingCounts = { live: 0, pending: 0 };
 
 function toRow(
   row: DepartureRowData,
   tour: Pick<TourData, 'basePrice' | 'currency'>,
-  liveBookingCount: number,
+  counts: BookingCounts,
 ): AdminDepartureRow {
   const startDate = calendarDate(row.startDate);
   const endDate = calendarDate(row.endDate);
@@ -498,7 +534,9 @@ function toRow(
     // Server tính hạn chót bằng chính hàm của contract (ADR-0041 §8) — màn
     // hình IN nó, không dựng lại luật N.
     cancellationDeadline: cancellationDeadline(startDate, endDate),
-    liveBookingCount,
+    liveBookingCount: counts.live,
+    pendingBookingCount: counts.pending,
+    version: row.updatedAt.toISOString(),
   };
 }
 

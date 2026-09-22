@@ -1143,6 +1143,10 @@ export const contract = {
             status: 409,
             message: 'A cancelled departure can no longer be edited',
           },
+          DEPARTURE_STALE: {
+            status: 409,
+            message: 'Someone else changed this departure while the form was open',
+          },
         })
         .output(AdminDepartureRowSchema),
       setStatus: oc

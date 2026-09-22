@@ -38,10 +38,14 @@ import { useConfirmWrite } from '@/lib/use-confirm-write';
  * `RefundDialog` (form hai bước cũng chạy trên hook này, không chép máy lần
  * thứ ba).
  *
- * Ô NGÀY KHOÁ khi chuyến đã có booking sống, kèm câu giải thích NGAY DƯỚI ô
+ * Ô NGÀY KHOÁ khi chuyến đã có GHẾ bị giữ, kèm câu giải thích NGAY DƯỚI ô
  * (không phải tooltip): `Booking` giữ bản sao ngày khởi hành và ADR-0041 tính
  * hạn huỷ từ bản sao ấy (spec §2b). Khoá ở đây chỉ là phép lịch sự — server
  * vẫn từ chối thật bằng `DEPARTURE_HAS_BOOKINGS`.
+ *
+ * Thước là `seatsBooked`, ĐÚNG thước server dùng: một hoàn tiền thiện chí
+ * trọn tiền KHÔNG trả ghế (`booking-states.md`), nên đếm theo trạng thái
+ * booking sẽ đọc ra 0 trên một chuyến vẫn còn khách thật và mở khoá ô ngày.
  */
 const t = messages.admin.departures;
 
@@ -50,12 +54,16 @@ export interface DepartureFormDialogProps<Code extends string> {
   copy: { title: string; body: string; submit: string; submitting: string };
   initial: DepartureFormValues;
   /**
-   * Số booking SỐNG trên chuyến — `0` ở form thêm. Khác 0 thì hai ô ngày khoá
-   * lại và câu giải thích hiện ra.
+   * Ghế đã bị giữ trên chuyến — `0` ở form thêm. Một con số cho HAI luật: nó
+   * khoá hai ô ngày (kèm câu giải thích), và nó là sàn của ô tổng ghế.
    */
-  liveBookingCount: number;
-  /** Ghế đã đặt — soi gương luật hạ ghế ngay tại ô, trước khi đi một vòng 409. */
   seatsBooked: number;
+  /**
+   * Cảnh báo phụ thuộc thứ NGƯỜI TA ĐANG GÕ — nhận values hiện tại, trả câu
+   * cần nói hoặc `undefined`. Hàm chứ không chuỗi, vì cha không nhìn thấy
+   * state của form (chỉ dùng ở chiều THÊM: chuyến tạo ra đã quá hạn đặt).
+   */
+  notice?: (values: DepartureFormValues) => string | undefined;
   /** Giá gốc của tour, đã format — gợi ý cho ô giá để trống. */
   basePriceLabel: string;
   /** `id` riêng cho mỗi dialog: nhiều hàng cùng DOM, label phải trỏ đúng ô. */
@@ -78,8 +86,8 @@ export interface DepartureFormDialogProps<Code extends string> {
 export function DepartureFormDialog<Code extends string>({
   copy,
   initial,
-  liveBookingCount,
   seatsBooked,
+  notice,
   basePriceLabel,
   formId,
   isStale,
@@ -97,10 +105,13 @@ export function DepartureFormDialog<Code extends string>({
    */
   const [showValidation, setShowValidation] = useState(false);
 
-  const datesLocked = liveBookingCount > 0;
+  const datesLocked = seatsBooked > 0;
   const errors: DepartureFormErrors = showValidation
     ? validateDepartureForm(values, { seatsBooked })
     : {};
+  // Hiện NGAY khi gõ đủ hai ngày, không đợi bấm gửi: đây là lời báo trước để
+  // người ta đổi ý, không phải lời mắng sau khi đã quyết.
+  const noticeMessage = notice?.(values);
 
   const { pending, failure, onOpenChange, run, clearFailure } = useConfirmWrite<Code>({
     isStale,
@@ -140,7 +151,7 @@ export function DepartureFormDialog<Code extends string>({
               id={`${formId}-start`}
               label={t.form.startDate}
               error={errors.startDate}
-              hint={datesLocked ? t.form.datesLocked(liveBookingCount) : undefined}
+              hint={datesLocked ? t.form.datesLocked(seatsBooked) : undefined}
             >
               <Input
                 id={`${formId}-start`}
@@ -162,6 +173,12 @@ export function DepartureFormDialog<Code extends string>({
               />
             </Field>
           </div>
+
+          {/* Cảnh báo NGAY dưới hai ô ngày, vì nó nói về chính hai ô ấy — và
+              tông destructive vì thứ sắp tạo ra sẽ không bán được. */}
+          {noticeMessage ? (
+            <p className="text-sm text-destructive-emphasis">{noticeMessage}</p>
+          ) : null}
 
           <Field
             id={`${formId}-seats`}

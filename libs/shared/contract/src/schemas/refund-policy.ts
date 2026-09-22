@@ -134,8 +134,10 @@ export function windowDaysForTripLength(tripDays: number): CancellationWindowDay
 export function tripLengthDays(startDate: string, endDate: string): number {
   const start = calendarDayIndex(startDate);
   const end = calendarDayIndex(endDate);
-  // DB chưa có CHECK end_date >= start_date (ghi cho P4e-1) — chặn ở đây để dòng
-  // hỏng không sinh độ dài âm rồi lọt vào bảng N.
+  // DB đã có CHECK `departures_date_range` từ P4e-1 (migration 22/09), nhưng
+  // guard này GIỮ NGUYÊN: hàm nhận chuỗi từ nhiều nguồn, không phải chỉ từ bảng
+  // chuyến — seed, test và bản sao ngày trên `bookings` đều gọi tới. CHECK là
+  // lớp dưới, đây là lớp trên.
   if (end < start) {
     throw new RangeError(`Trip ends before it starts: ${startDate} → ${endDate}`);
   }

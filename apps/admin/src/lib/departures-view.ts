@@ -37,6 +37,18 @@ export interface DepartureRowVM {
   deadlinePassed: boolean;
   liveBookingCount: number;
   bookingsLabel: string;
+  /**
+   * Phần CHƯA trả tiền trong `liveBookingCount`, và phần ĐÃ trả (hiệu của hai
+   * số). Hộp xác nhận Close in hai dòng riêng vì đóng chuyến gây hai hệ quả
+   * khác hẳn nhau cho hai nhóm này.
+   */
+  pendingBookingCount: number;
+  paidBookingCount: number;
+  /**
+   * Token phiên bản của hàng (`updatedAt` dạng ISO) — form sửa gửi ngược lên
+   * để server phát hiện ghi đè mù giữa hai tab. VM chỉ chở qua, không đọc.
+   */
+  version: string;
   status: AdminDepartureStatus;
   statusLabel: string;
   /** Sửa được không — chuyến đã huỷ là bản ghi đóng. */
@@ -76,6 +88,11 @@ export function toDepartureRowVM(row: AdminDepartureRow, today: string): Departu
     deadlinePassed,
     liveBookingCount: row.liveBookingCount,
     bookingsLabel: t.list.bookings(row.liveBookingCount),
+    pendingBookingCount: row.pendingBookingCount,
+    // Hiệu, không phải một con số thứ ba từ server: hai nguồn cho cùng một
+    // phép trừ là hai chỗ có thể lệch nhau.
+    paidBookingCount: row.liveBookingCount - row.pendingBookingCount,
+    version: row.version,
     status: row.status,
     statusLabel: t.status[row.status],
     canEdit: !cancelled,

@@ -24,6 +24,8 @@ const ROW: AdminDepartureRow = {
   status: 'OPEN',
   cancellationDeadline: '2026-10-03',
   liveBookingCount: 2,
+  pendingBookingCount: 1,
+  version: '2026-09-20T08:00:00.000Z',
 };
 
 /** Trước hạn chót (03/10) và sau nó — hai thế giới của mọi ca dưới đây. */
@@ -88,6 +90,20 @@ describe('toDepartureRowVM', () => {
     expect(vm.seats).toBe('4 / 20');
     expect(vm.liveBookingCount).toBe(2);
     expect(vm.bookingsLabel).toBe(t.list.bookings(2));
+  });
+
+  it('khách ĐÃ trả là HIỆU, không phải một con số thứ ba từ server', () => {
+    // Hai nguồn cho cùng một phép trừ là hai chỗ có thể lệch nhau.
+    const vm = toDepartureRowVM({ ...ROW, liveBookingCount: 5, pendingBookingCount: 2 }, BEFORE);
+
+    expect(vm.pendingBookingCount).toBe(2);
+    expect(vm.paidBookingCount).toBe(3);
+  });
+
+  it('chở NGUYÊN token phiên bản xuống form, không diễn giải gì', () => {
+    // Form sửa gửi ngược token này lên để server phát hiện ghi đè mù giữa hai
+    // tab; VM mà "làm sạch" nó là tự vô hiệu hoá lớp chống ấy.
+    expect(toDepartureRowVM(ROW, BEFORE).version).toBe(ROW.version);
   });
 });
 

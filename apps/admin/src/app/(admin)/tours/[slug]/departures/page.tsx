@@ -98,6 +98,7 @@ export default async function DeparturesPage({
           slug: paged.tour.slug,
           basePriceLabel: formatAmount(paged.tour.basePrice, paged.tour.currency),
         }}
+        today={today}
         create={createDepartureAction}
         update={updateDepartureAction}
         setStatus={setDepartureStatusAction}

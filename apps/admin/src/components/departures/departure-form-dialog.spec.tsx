@@ -38,6 +38,8 @@ const SAVED: AdminDepartureRow = {
   status: 'OPEN',
   cancellationDeadline: '2026-11-24',
   liveBookingCount: 2,
+  pendingBookingCount: 0,
+  version: '2026-09-20T08:00:00.000Z',
 };
 
 const COPY = t.edit.dialog;
@@ -53,7 +55,6 @@ function renderDialog(
       copy={COPY}
       formId="departure-edit-1"
       initial={{ startDate: '2026-12-01', endDate: '2026-12-03', seats: '18', price: '' }}
-      liveBookingCount={0}
       seatsBooked={0}
       basePriceLabel="$129.00"
       isStale={() => true}
@@ -82,18 +83,20 @@ describe('DepartureFormDialog — ô ngày và luật của nó', () => {
     expect(screen.queryByText(t.form.datesLocked(1))).not.toBeInTheDocument();
   });
 
-  it('chuyến ĐÃ có booking sống: hai ô ngày KHOÁ và câu giải thích hiện ra', () => {
-    renderDialog({ liveBookingCount: 2, seatsBooked: 4 });
+  it('chuyến ĐÃ có ghế bị giữ: hai ô ngày KHOÁ và câu giải thích hiện ra', () => {
+    renderDialog({ seatsBooked: 4 });
 
     expect(screen.getByLabelText(t.form.startDate)).toBeDisabled();
     expect(screen.getByLabelText(t.form.endDate)).toBeDisabled();
-    // Câu phải nói ĐÚNG số booking đang chặn, và chỉ đường đi tiếp (huỷ chuyến).
-    expect(screen.getByText(t.form.datesLocked(2))).toBeInTheDocument();
+    // Câu phải nói đúng số GHẾ đang chặn — cùng con số cột "Seats" in ra, và
+    // cùng thước server dùng để từ chối. Nói "2 bookings" cạnh "4 / 20" là
+    // mời admin nghi ngờ màn hình.
+    expect(screen.getByText(t.form.datesLocked(4))).toBeInTheDocument();
   });
 
   it('giá và ghế VẪN sửa được trên chuyến đã có khách', () => {
     // Đây là nửa còn lại của luật §2b: chỉ NGÀY bị khoá, không phải cả hàng.
-    renderDialog({ liveBookingCount: 2, seatsBooked: 4 });
+    renderDialog({ seatsBooked: 4 });
 
     expect(screen.getByLabelText(t.form.seats)).toBeEnabled();
     expect(screen.getByLabelText(t.form.price)).toBeEnabled();
@@ -103,7 +106,7 @@ describe('DepartureFormDialog — ô ngày và luật của nó', () => {
 describe('DepartureFormDialog — validate trước khi bắn', () => {
   it('ghế hạ dưới số đã đặt: báo tại ô, KHÔNG gọi server', async () => {
     const user = userEvent.setup();
-    const { onSubmit } = renderDialog({ liveBookingCount: 2, seatsBooked: 4 });
+    const { onSubmit } = renderDialog({ seatsBooked: 4 });
 
     const seats = screen.getByLabelText(t.form.seats);
     await user.clear(seats);
@@ -116,7 +119,7 @@ describe('DepartureFormDialog — validate trước khi bắn', () => {
 
   it('sửa đúng lại thì câu lỗi tự biến — lỗi là DERIVED, không nằm trong state', async () => {
     const user = userEvent.setup();
-    renderDialog({ liveBookingCount: 2, seatsBooked: 4 });
+    renderDialog({ seatsBooked: 4 });
 
     const seats = screen.getByLabelText(t.form.seats);
     await user.clear(seats);

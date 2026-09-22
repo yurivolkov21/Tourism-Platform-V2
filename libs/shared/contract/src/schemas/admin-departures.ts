@@ -32,6 +32,35 @@ import { AdminPageQuerySchema, CalendarDateSchema } from './common.js';
  */
 export const DEPARTURE_SEATS_MAX = 500;
 
+/**
+ * Trần cho giá — gương của cột `Decimal(14, 2)`, tức 12 chữ số phần nguyên.
+ *
+ * Phải có, và đây là lý do: không trần thì một lần gõ nhầm 13 chữ số đi lọt cả
+ * ba tầng rồi mới chết ở Postgres bằng `22003 numeric field overflow`.
+ * `mapError` không nhận ra lỗi Prisma nên nó thành 500 trần, phía admin phân
+ * loại ra `GENERIC`, mà `GENERIC` nằm trong nhóm "kết cục KHÔNG RÕ" — kit sẽ
+ * ĐÓNG dialog, toast rồi refresh. Người dùng mất sạch bốn ô vừa điền kèm một
+ * câu nói lệnh có thể đã đi qua. Chặn ở schema thì lỗi hiện ngay dưới ô giá.
+ */
+export const DEPARTURE_PRICE_MAX = 999_999_999_999.99;
+
+/**
+ * Giá một chuyến: chuỗi thập phân TỐI ĐA 2 chữ số lẻ và không vượt trần cột.
+ *
+ * Hai chữ số lẻ là ràng buộc thật chứ không phải khó tính: `DecimalStringSchema`
+ * cho phép số lẻ tuỳ ý, nên `'129.999'` đi qua rồi bị cột làm tròn thành
+ * `130.00` — một con số khách sẽ trả mà không ai gõ vào.
+ */
+export const DeparturePriceSchema = DecimalStringSchema.refine(
+  (value) => {
+    const [, phanLe] = value.split('.');
+    return (phanLe?.length ?? 0) <= 2;
+  },
+  { message: 'price must have at most 2 decimal places' },
+).refine((value) => Number(value) <= DEPARTURE_PRICE_MAX, {
+  message: 'price is above the maximum this catalogue supports',
+});
+
 /** Mirrors Prisma enum `DepartureStatus` — ĐỌC thấy cả ba giá trị. */
 export const AdminDepartureStatusSchema = z.enum(['OPEN', 'CLOSED', 'CANCELLED']);
 export type AdminDepartureStatus = z.output<typeof AdminDepartureStatusSchema>;
@@ -64,7 +93,15 @@ export const AdminDepartureRowSchema = z.object({
   priceOverride: DecimalStringSchema.nullable(),
   currency: z.string().length(3),
   seatsBooked: z.int().nonnegative(),
-  seatsTotal: z.int().min(1).max(DEPARTURE_SEATS_MAX),
+  /**
+   * Cố ý RỘNG hơn ràng buộc của `Create`/`Update` (1..500): đây là hàng ĐỌC RA,
+   * và DB chỉ bảo đảm `seats_total >= 0` (CHECK `departures_seats_nonneg`),
+   * không có trần. Khai chặt ở đầu ra nghĩa là một hàng hợp lệ với DB nhưng
+   * ngoài dải — do một lệnh UPDATE vá tay, một lần import, hay một tour có
+   * `maxGroupSize > 500` — sẽ làm TRƯỢT validation đầu ra và 500 cả trang
+   * `/tours/<slug>/departures`, kể cả chính cái form dùng để sửa hàng đó.
+   */
+  seatsTotal: z.int().nonnegative(),
   status: AdminDepartureStatusSchema,
   /** `cancellationDeadline(startDate, endDate)` — ngày chót huỷ miễn phí VÀ chót nhận đặt. */
   cancellationDeadline: z.iso.date(),
@@ -76,6 +113,22 @@ export const AdminDepartureRowSchema = z.object({
    * GHẾ mà CHECK canh. Đừng dùng thay nhau.
    */
   liveBookingCount: z.int().nonnegative(),
+  /**
+   * Trong số `liveBookingCount`, bao nhiêu là booking CHƯA trả tiền (`PENDING`,
+   * phiên thanh toán còn sống).
+   *
+   * Tách ra vì hai con số dẫn tới hai hệ quả khác hẳn nhau khi admin đóng
+   * chuyến: khách ĐÃ trả thì giữ chỗ và không ai báo gì, còn khách ĐANG trả sẽ
+   * bị đường claim từ chối (`departure-closed`) rồi hoàn tiền tự động kèm email.
+   * Gộp chung một số thì hộp xác nhận không thể nói đúng sự thật.
+   */
+  pendingBookingCount: z.int().nonnegative(),
+  /**
+   * Phiên bản hàng, gửi lại nguyên xi khi sửa — chống ghi đè mù giữa hai tab.
+   * Giá trị là `updatedAt` dạng ISO; xem `AdminDepartureUpdateInputSchema.version`
+   * về việc vì sao `FOR UPDATE` một mình không đủ.
+   */
+  version: z.iso.datetime(),
 });
 export type AdminDepartureRow = z.output<typeof AdminDepartureRowSchema>;
 
@@ -126,7 +179,7 @@ export const AdminDepartureCreateInputSchema = z.object({
   endDate: CalendarDateSchema,
   seatsTotal: z.int().min(1).max(DEPARTURE_SEATS_MAX),
   /** Bỏ trống = thừa hưởng `basePrice` của tour (spec F12). */
-  priceOverride: DecimalStringSchema.nullable().default(null),
+  priceOverride: DeparturePriceSchema.nullable().default(null),
 });
 export type AdminDepartureCreateInput = z.output<typeof AdminDepartureCreateInputSchema>;
 
@@ -145,7 +198,21 @@ export const AdminDepartureUpdateInputSchema = z.object({
   startDate: CalendarDateSchema,
   endDate: CalendarDateSchema,
   seatsTotal: z.int().min(1).max(DEPARTURE_SEATS_MAX),
-  priceOverride: DecimalStringSchema.nullable(),
+  priceOverride: DeparturePriceSchema.nullable(),
+  /**
+   * Phiên bản hàng mà form ĐANG hiển thị — chống ghi đè mù giữa hai tab.
+   *
+   * `FOR UPDATE` tuần tự hoá hai lệnh ghi nhưng KHÔNG phát hiện được cái cũ, vì
+   * giá trị "hiện tại" trong payload đến từ form trình duyệt chứ không từ hàng
+   * vừa khoá. Không có token này thì: A đổi 20 ghế thành 45 lúc 10:01, B bấm
+   * Lưu từ form mở lúc 10:00 và ghi đè về 20 — 25 ghế biến mất im lặng, không
+   * lỗi, không toast. Rồi khách đặt tiếp đâm vào trần 20, claim trả
+   * `overbooked`, và hệ thống tự hoàn tiền người ĐÃ trả.
+   *
+   * Dùng `updatedAt` làm token: Prisma tự cập nhật nó mỗi lần ghi, nên không
+   * cần thêm cột. Server so token với hàng đã khoá; lệch là `DEPARTURE_STALE`.
+   */
+  version: z.iso.datetime(),
 });
 export type AdminDepartureUpdateInput = z.output<typeof AdminDepartureUpdateInputSchema>;
 
