@@ -85,6 +85,7 @@ Mỗi ADR tự chứa đầy đủ phần sửa bổ sung (AMEND) của nó; b�
 | [0042](adr/0042-shared-client-rules-core.md) | `@tourism/core`: luật dùng chung cho mọi client | |
 | [0043](adr/0043-refund-payment-event.md) | Hoàn tiền để lại vết ở sổ `payment_events` | |
 | [0044](adr/0044-prerender-retry-transient-api.md) | Prerender thử lại khi API hắt hơi | |
+| [0045](adr/0045-region-vocabulary-in-contract.md) | Ba vùng miền là từ vựng chung, sống ở contract | |
 
 ## Specs — sẽ xây gì
 
@@ -143,7 +144,8 @@ Mỗi spec đi kèm một plan cùng tên ở [`plans/`](plans/), trừ vài đ�
 [P5b-1 auth mobile](specs/2026-09-16-p5b-auth-wireframe-design.md)
 
 **Admin catalog (P4e, đang mở)**
-[**P4e-1 chuyến + trạng thái đăng**](specs/2026-09-21-p4e-1-departures-design.md)
+[**P4e-1 chuyến + trạng thái đăng**](specs/2026-09-21-p4e-1-departures-design.md) ·
+[**P4e-2 danh mục + điểm đến**](specs/2026-09-22-p4e-2-categories-destinations-design.md)
 
 ## Plans — làm theo bước nào
 
