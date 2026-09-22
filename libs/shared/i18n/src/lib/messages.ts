@@ -4533,19 +4533,6 @@ export const messages = {
       },
     },
     /**
-     * Vùng chuyến khởi hành (spec P4e-1 F12) — lịch chạy của MỘT tour, cộng
-     * ba thao tác: thêm · sửa · đóng/mở lại.
-     *
-     * Giọng của cả khối nhớ một điều: hàng ở đây là một chuyến đi mà khách ĐÃ
-     * có thể đặt chỗ. Nên copy không bao giờ nói "delete" (không có đường
-     * xoá), và mỗi câu từ chối phải nói RÕ cái gì đang chặn — admin không sửa
-     * được thứ mình không biết là gì.
-     *
-     * Ba khối `errors` là NGUỒN duy nhất của tập mã phía admin
-     * (`departures-write.ts` derive từ keys), nên tên khoá phải trùng TỪNG CHỮ
-     * với `errors` của contract.
-     */
-    /**
      * Danh mục tour (P4e-2 F14) — bảng nhỏ nhất của back office: 6 hàng, không
      * phân trang, không tìm kiếm.
      */
@@ -4553,15 +4540,16 @@ export const messages = {
       list: {
         heading: 'Tour categories',
         /**
-         * Nói ngay luật đắt nhất của màn, trước khi ai đó mở form sửa: slug
-         * khoá sau khi tạo, và thứ tự ở đây là thứ tự khách nhìn thấy.
+         * Nói ngay HAI luật đắt nhất của màn, trước khi ai đó mở form sửa.
          *
-         * Vế "thứ tự khách nhìn thấy" CHỈ đúng khi web đọc endpoint danh mục —
-         * đó là Task 5 của cùng nhánh F14. Task 5 mà rớt thì câu này thành lời
-         * nói dối với admin, nên hai task phải merge CÙNG một lượt.
+         * Vế thứ tự phải nói đủ CẢ vế sau: bảng admin liệt kê cả hàng đã ẩn,
+         * còn `catalog.categories.list` lọc chúng đi. Bản đầu chỉ viết "thứ tự
+         * ở đây là thứ tự khách nhìn thấy" — vòng review F14 chỉ ra câu ấy nói
+         * dối ở đúng ca hay gặp: đổi chỗ quanh một hàng đã ẩn thì bảng admin
+         * đổi thấy rõ mà trang khách không nhúc nhích.
          */
         subtitle:
-          'The order here is the order travellers see. A slug is set once — it lives in shared links and cannot be changed later.',
+          'Arrows set the order travellers see. Hidden categories keep their place here but never appear there. A slug is set once — it lives in shared links and cannot be changed later.',
         empty: 'No categories yet.',
         columns: {
           name: 'Category',
@@ -4594,7 +4582,7 @@ export const messages = {
         action: 'Add category',
         dialog: {
           title: 'Add a category',
-          body: 'It goes to the end of the list. Use the arrows to move it.',
+          body: 'It goes to the end of the list and is visible to travellers straight away. Use the arrows to move it, or Hide to keep it off the tours page for now.',
           submit: 'Add category',
           submitting: 'Adding…',
         },
@@ -4655,8 +4643,6 @@ export const messages = {
         },
       },
       move: {
-        up: 'Move up',
-        down: 'Move down',
         upLabel: (name: string) => `Move ${name} up`,
         downLabel: (name: string) => `Move ${name} down`,
         /** Mã CONTRACT của `admin.categories.move`. */
@@ -4667,6 +4653,19 @@ export const messages = {
         },
       },
     },
+    /**
+     * Vùng chuyến khởi hành (spec P4e-1 F12) — lịch chạy của MỘT tour, cộng
+     * ba thao tác: thêm · sửa · đóng/mở lại.
+     *
+     * Giọng của cả khối nhớ một điều: hàng ở đây là một chuyến đi mà khách ĐÃ
+     * có thể đặt chỗ. Nên copy không bao giờ nói "delete" (không có đường
+     * xoá), và mỗi câu từ chối phải nói RÕ cái gì đang chặn — admin không sửa
+     * được thứ mình không biết là gì.
+     *
+     * Ba khối `errors` là NGUỒN duy nhất của tập mã phía admin
+     * (`departures-write.ts` derive từ keys), nên tên khoá phải trùng TỪNG CHỮ
+     * với `errors` của contract.
+     */
     departures: {
       list: {
         back: 'Back to tours',

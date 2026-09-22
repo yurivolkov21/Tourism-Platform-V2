@@ -4,6 +4,7 @@ import { messages } from '@tourism/i18n';
 import { Button } from '@tourism/ui/components/button';
 import { ArrowDownIcon, ArrowUpIcon, EyeIcon, EyeOffIcon, PencilIcon } from 'lucide-react';
 import { useState } from 'react';
+import { toast } from 'sonner';
 import { CategoryFormDialog } from '@/components/categories/category-form-dialog';
 import { ConfirmWriteDialog } from '@/components/kit/confirm-write-dialog';
 import type { CategoryRowVM } from '@/lib/categories-view';
@@ -46,38 +47,44 @@ export function CategoryRowActions({
   setActive,
   move,
   disabled,
+  onMoveStart,
   onSettled,
 }: {
   row: CategoryRowVM;
   update: UpdateCategoryAction;
   setActive: SetCategoryActiveAction;
   move: MoveCategoryAction;
-  /** Đang kéo bảng tươi về — khoá mọi nút cho tới khi xong. */
+  /**
+   * Bảng đang bận — kéo dữ liệu tươi về, HOẶC có một lượt đổi chỗ đang bay ở
+   * một hàng BẤT KỲ. Khoá mọi nút cho tới khi xong.
+   *
+   * Cờ đổi-chỗ nằm ở cấp BẢNG chứ không phải state riêng của hàng này, và đó
+   * là bản vá của vòng review F14: để nó ở cấp hàng thì trong lúc lệnh của
+   * hàng 2 đang bay, mũi tên hàng 3 vẫn bấm được — hai lệnh chồng nhau trên
+   * hai cặp giao nhau là đúng cuộc đua làm hai danh mục cùng `order`. Tức một
+   * admin bấm nhanh là đủ, không cần hai người.
+   */
   disabled: boolean;
+  /** Bật cờ bận của bảng TRƯỚC khi gửi — xem JSDoc của `disabled`. */
+  onMoveStart: () => void;
   onSettled: () => void;
 }) {
   const [editing, setEditing] = useState(false);
   const [toggling, setToggling] = useState(false);
-  /** Một lượt đổi chỗ đang bay — khoá cả hai mũi tên để không bấm chồng. */
-  const [moving, setMoving] = useState(false);
 
   async function runMove(direction: 'up' | 'down') {
-    setMoving(true);
+    onMoveStart();
     try {
       const result = await move({ id: row.id, direction });
       // Mã TRẠNG-THÁI-CŨ ở đây luôn có nghĩa "danh sách đã đổi dưới chân bạn",
       // nên đường ra đúng là làm mới bảng — `onSettled` lo việc ấy.
       if (!result.ok) {
-        const { toast } = await import('sonner');
         toast.error(moveErrorCopy(result.code));
       }
     } finally {
-      setMoving(false);
       onSettled();
     }
   }
-
-  const busy = disabled || moving;
 
   return (
     <div className="flex items-center justify-end gap-1">
@@ -86,7 +93,7 @@ export function CategoryRowActions({
         variant="ghost"
         size="icon"
         aria-label={t.move.upLabel(row.name)}
-        disabled={busy || !row.canMoveUp}
+        disabled={disabled || !row.canMoveUp}
         onClick={() => void runMove('up')}
       >
         <ArrowUpIcon aria-hidden="true" />
@@ -96,7 +103,7 @@ export function CategoryRowActions({
         variant="ghost"
         size="icon"
         aria-label={t.move.downLabel(row.name)}
-        disabled={busy || !row.canMoveDown}
+        disabled={disabled || !row.canMoveDown}
         onClick={() => void runMove('down')}
       >
         <ArrowDownIcon aria-hidden="true" />
@@ -107,7 +114,7 @@ export function CategoryRowActions({
         variant="outline"
         size="sm"
         aria-label={t.edit.actionLabel(row.name)}
-        disabled={busy}
+        disabled={disabled}
         onClick={() => setEditing(true)}
       >
         <PencilIcon data-icon="inline-start" aria-hidden="true" />
@@ -121,7 +128,7 @@ export function CategoryRowActions({
         aria-label={
           row.isActive ? t.setActive.hideLabel(row.name) : t.setActive.showLabel(row.name)
         }
-        disabled={busy}
+        disabled={disabled}
         onClick={() => setToggling(true)}
       >
         {row.isActive ? (

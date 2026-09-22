@@ -18,6 +18,7 @@ import { cn } from '@tourism/ui/lib/utils';
 import type * as React from 'react';
 import { useState } from 'react';
 import { DIALOG_FRAME } from '@/components/kit/confirm-write-dialog';
+import { FormField } from '@/components/kit/form-field';
 import type { TransportFailureCode } from '@/lib/api/write-error';
 import {
   type CategoryFormErrors,
@@ -136,7 +137,7 @@ export function CategoryFormDialog<Code extends string>({
           }}
         >
           <div className="grid gap-4">
-            <Field id={`${formId}-name`} label={t.form.name} error={errors.name}>
+            <FormField id={`${formId}-name`} label={t.form.name} error={errors.name}>
               {(describedBy) => (
                 <Input
                   id={`${formId}-name`}
@@ -147,10 +148,10 @@ export function CategoryFormDialog<Code extends string>({
                   onChange={(event) => patchName(event.target.value)}
                 />
               )}
-            </Field>
+            </FormField>
 
             {mode === 'create' ? (
-              <Field
+              <FormField
                 id={`${formId}-slug`}
                 label={t.form.slug}
                 hint={t.form.slugHint}
@@ -169,10 +170,10 @@ export function CategoryFormDialog<Code extends string>({
                     }}
                   />
                 )}
-              </Field>
+              </FormField>
             ) : null}
 
-            <Field
+            <FormField
               id={`${formId}-description`}
               label={t.form.description}
               hint={t.form.descriptionHint(CATEGORY_DESCRIPTION_MAX)}
@@ -189,7 +190,7 @@ export function CategoryFormDialog<Code extends string>({
                   onChange={(event) => patch({ description: event.target.value })}
                 />
               )}
-            </Field>
+            </FormField>
           </div>
 
           {failure ? (
@@ -214,46 +215,5 @@ export function CategoryFormDialog<Code extends string>({
         </form>
       </DialogContent>
     </Dialog>
-  );
-}
-
-/**
- * Một ô: nhãn · control · (gợi ý) · (lỗi). Cùng khuôn `Field` của
- * `DepartureFormDialog`, gồm cả render-prop `describedBy` — gợi ý và câu lỗi
- * chỉ hữu ích nếu trình đọc màn hình đọc chúng CÙNG ô nhập.
- */
-function Field({
-  id,
-  label,
-  hint,
-  error,
-  children,
-}: {
-  id: string;
-  label: string;
-  hint?: string;
-  error?: string;
-  children: (describedBy: string | undefined) => React.ReactNode;
-}) {
-  const hintId = `${id}-hint`;
-  const errorId = `${id}-error`;
-  const describedBy = [hint ? hintId : null, error ? errorId : null]
-    .filter((value): value is string => value !== null)
-    .join(' ');
-  return (
-    <div className="grid gap-1.5">
-      <Label htmlFor={id}>{label}</Label>
-      {children(describedBy === '' ? undefined : describedBy)}
-      {hint ? (
-        <p id={hintId} className="text-xs text-muted-foreground">
-          {hint}
-        </p>
-      ) : null}
-      {error ? (
-        <p id={errorId} role="alert" className="text-sm text-destructive-emphasis">
-          {error}
-        </p>
-      ) : null}
-    </div>
   );
 }

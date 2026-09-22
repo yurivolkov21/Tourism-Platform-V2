@@ -5,7 +5,12 @@ import type {
   AdminCategorySetActiveInput,
   AdminCategoryUpdateInput,
 } from '@tourism/contract';
-import { CATEGORY_DESCRIPTION_MAX, CATEGORY_NAME_MAX, CATEGORY_SLUG_MAX } from '@tourism/contract';
+import {
+  CATEGORY_DESCRIPTION_MAX,
+  CATEGORY_NAME_MAX,
+  CATEGORY_SLUG_MAX,
+  CATEGORY_SLUG_PATTERN,
+} from '@tourism/contract';
 import { messages } from '@tourism/i18n';
 import { createWriteErrorCodec, type TransportFailureCode } from './api/write-error';
 
@@ -32,9 +37,15 @@ const t = messages.admin.categories;
 const createCodec = createWriteErrorCodec(t.create.errors, { stale: [] });
 const updateCodec = createWriteErrorCodec(t.edit.errors, { stale: ['NOT_FOUND'] });
 const setActiveCodec = createWriteErrorCodec(t.setActive.errors, { stale: ['NOT_FOUND'] });
-const moveCodec = createWriteErrorCodec(t.move.errors, {
-  stale: ['NOT_FOUND', 'CANNOT_MOVE'],
-});
+/**
+ * `move` KHÔNG khai mã trạng-thái-cũ nào, khác ba codec trên.
+ *
+ * Không phải bỏ sót: `runMove` toast rồi làm mới bảng ở MỌI nhánh hỏng, vì
+ * hàng đổi chỗ không có dialog nào để mà đóng. Khai một tập `stale` ở đây là
+ * dựng một cấu hình không nơi nào đọc — và người thêm mã lỗi sau sẽ tưởng
+ * mình vừa đổi hành vi giao diện.
+ */
+const moveCodec = createWriteErrorCodec(t.move.errors, { stale: [] });
 
 export const CREATE_CONTRACT_CODES = createCodec.codes;
 export const UPDATE_CONTRACT_CODES = updateCodec.codes;
@@ -60,7 +71,6 @@ export const isSetActiveStale = setActiveCodec.isStale;
 
 export const classifyMoveError = moveCodec.classify;
 export const moveErrorCopy = moveCodec.copy;
-export const isMoveStale = moveCodec.isStale;
 
 /**
  * Kết quả một lệnh ghi. Nhánh thành công chở NGUYÊN hàng server vừa ghi (hoặc
@@ -106,8 +116,15 @@ export interface CategoryFormErrors {
   description?: string;
 }
 
-/** Cùng khuôn `CategorySlugSchema` của contract — soi gương, không tự chế luật. */
-const SLUG_SHAPE = /^[a-z0-9-]+$/;
+/**
+ * Khuôn slug lấy TỪ contract, không chép tay.
+ *
+ * Bản đầu viết lại `/^[a-z0-9-]+$/` ở đây với chú thích "soi gương" — nhưng
+ * gương làm bằng cách gõ lại thì chỉ đúng tới lúc ai đó sửa một bên. Hai hằng
+ * `MAX` ngay trên đã import từ contract vì đúng lý do ấy; regex là chỗ duy
+ * nhất bị bỏ quên (vòng review F14).
+ */
+const SLUG_SHAPE = CATEGORY_SLUG_PATTERN;
 
 /**
  * Soi gương luật server để lỗi đọc-thấy-ngay không phải đi một vòng mạng.

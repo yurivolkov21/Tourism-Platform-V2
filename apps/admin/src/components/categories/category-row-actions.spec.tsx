@@ -48,6 +48,7 @@ function renderRow(rows: AdminCategoryRow[], index: number, over: Record<string,
     row: rows[index] as AdminCategoryRow,
   }));
   const move = vi.fn(async () => ({ ok: true as const, rows }));
+  const onMoveStart = vi.fn();
   render(
     <CategoryRowActions
       row={vm}
@@ -55,11 +56,12 @@ function renderRow(rows: AdminCategoryRow[], index: number, over: Record<string,
       setActive={setActive}
       move={move}
       disabled={false}
+      onMoveStart={onMoveStart}
       onSettled={vi.fn()}
       {...over}
     />,
   );
-  return { vm, update, setActive, move };
+  return { vm, update, setActive, move, onMoveStart };
 }
 
 beforeEach(() => {
@@ -88,11 +90,19 @@ describe('CategoryRowActions — nút nào được bấm', () => {
     expect(screen.getByRole('button', { name: t.move.downLabel(vm.name) })).toBeDisabled();
   });
 
-  it('bảng đang làm mới: khoá HẾT, kể cả nút sửa', async () => {
+  it('bảng đang bận: khoá HẾT, và bấm vào cũng không gửi gì', async () => {
+    // Khẳng định `move` chưa được gọi chỉ có nghĩa khi ĐÃ bấm: bản đầu của ca
+    // này không click lần nào nên nó xanh kể cả khi `disabled` bị bỏ qua hoàn
+    // toàn (vòng review F14).
+    const user = userEvent.setup();
     const { vm, move } = renderRow([row(1), row(2)], 0, { disabled: true });
+    const down = screen.getByRole('button', { name: t.move.downLabel(vm.name) });
 
     expect(screen.getByRole('button', { name: t.edit.actionLabel(vm.name) })).toBeDisabled();
-    expect(screen.getByRole('button', { name: t.move.downLabel(vm.name) })).toBeDisabled();
+    expect(down).toBeDisabled();
+
+    await user.click(down);
+
     expect(move).not.toHaveBeenCalled();
   });
 
@@ -103,6 +113,27 @@ describe('CategoryRowActions — nút nào được bấm', () => {
     await user.click(screen.getByRole('button', { name: t.move.downLabel(vm.name) }));
 
     await waitFor(() => expect(move).toHaveBeenCalledWith({ id: vm.id, direction: 'down' }));
+  });
+
+  it('báo bảng bận NGAY khi bấm, trước cả khi lệnh về', async () => {
+    // Đây là nửa client của bản vá đua `order`: nếu cờ bận chỉ bật sau khi
+    // response về, thì giữa hai mốc ấy mũi tên của HÀNG KHÁC vẫn bấm được và
+    // một admin bấm nhanh bắn được hai lệnh chồng nhau.
+    const user = userEvent.setup();
+    let resolveMove: (() => void) | undefined;
+    const move = vi.fn(
+      () =>
+        new Promise<{ ok: true; rows: AdminCategoryRow[] }>((resolve) => {
+          resolveMove = () => resolve({ ok: true, rows: [] });
+        }),
+    );
+    const { vm, onMoveStart } = renderRow([row(1), row(2)], 0, { move });
+
+    await user.click(screen.getByRole('button', { name: t.move.downLabel(vm.name) }));
+
+    // Lệnh còn đang bay — cha đã phải biết là bảng đang bận.
+    expect(onMoveStart).toHaveBeenCalledTimes(1);
+    resolveMove?.();
   });
 });
 

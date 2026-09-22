@@ -1,6 +1,6 @@
 'use client';
 
-import { CalendarMonthSchema, type TourCategory } from '@tourism/contract';
+import { CalendarMonthSchema } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
 import {
   CalendarClockIcon,
@@ -20,6 +20,7 @@ import {
   ToolbarFilterMenu,
   type ToolbarFilterMenuGroup,
 } from '@/components/kit/toolbar-filter-menu';
+import type { TourCategoryOption } from '@/lib/api/tours';
 import { groupMonthOptions, type MonthOption } from '@/lib/month-options';
 import { type ToursQuery, toursHref } from '@/lib/tours-query';
 
@@ -66,18 +67,20 @@ export function ToursStatusTabs({ query }: { query: ToursQuery }) {
 /**
  * Lọc theo danh mục — kit `ToolbarFilterMenu`.
  *
- * Danh sách mục đến từ `catalog.categories.list`, endpoint CÔNG KHAI đã có,
- * chứ không phải một endpoint admin mới: P4e-1 cố ý không mở bề mặt danh mục
- * (đó là P4e-2). Hệ quả phải biết: endpoint ấy chỉ trả danh mục ĐANG BẬT, nên
- * một tour nằm trong danh mục đã tắt sẽ không có mục nào để chọn — mục TẠM
- * (`unknownItem`) đỡ ca `?category=` gõ tay, và P4e-2 sẽ thay nguồn này.
+ * Danh sách mục đến từ `admin.categories.list` — endpoint ADMIN, trả CẢ danh
+ * mục đã tắt. Đổi nguồn ở P4e-2 (22/09) đúng như bản P4e-1 đã hẹn: từ F14
+ * admin có nút Hide, mà đường công khai chỉ trả hàng đang bật, nên ẩn một danh
+ * mục là mất luôn cách lọc ra các tour thuộc nó để đi sửa.
+ *
+ * Mục TẠM (`unknownItem`) vẫn giữ: nó đỡ ca `?category=<uuid>` gõ tay và ca
+ * lời gọi danh mục hỏng (khi ấy danh sách rỗng, xem `fetchTourCategories`).
  */
 export function ToursCategoryMenu({
   query,
   categories,
 }: {
   query: ToursQuery;
-  categories: readonly TourCategory[];
+  categories: readonly TourCategoryOption[];
 }) {
   const router = useRouter();
   const current = query.categoryId;

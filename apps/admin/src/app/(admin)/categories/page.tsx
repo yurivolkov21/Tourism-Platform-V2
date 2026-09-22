@@ -20,8 +20,8 @@ import {
  * một danh sách đã format xuống bảng client.
  *
  * KHÔNG có `searchParams`: bảng này sáu hàng, không phân trang, không lọc. Thứ
- * tự hàng là `order` do server sắp — sẽ thành thứ tự chip lọc khách nhìn thấy
- * khi Task 5 nối web vào endpoint danh mục (hôm nay web vẫn suy chip từ tour).
+ * tự hàng là `order` do server sắp, và cũng là thứ tự chip lọc trên `/tours`
+ * của khách — web đọc thẳng `catalog.categories.list`.
  *
  * Trang chở cả bốn server action xuống bảng (thay vì để component tự import):
  * bảng và dialog test được với hàm giả, không phải mock `next/headers`.

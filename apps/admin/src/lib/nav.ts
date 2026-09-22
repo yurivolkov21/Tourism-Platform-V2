@@ -101,9 +101,9 @@ export const NAV_GROUPS: NavGroup[] = [
       // vùng này không có "việc cần làm" mặc định nào, và tab "All tours" là
       // câu hỏi thường ngày — xem tour nào đang chạy, chuyến nào sắp tới.
       { key: 'tours', label: t.tours, href: '/tours', enabled: true, icon: Compass },
-      // Vùng thứ hai của P4e (F14) — sáu hàng, không phân trang.
-      // (Thứ tự ở đây CHƯA phải thứ tự chip lọc trên `/tours` của khách: web vẫn
-      // suy chip từ danh sách tour. Task 5 cùng nhánh nối web vào endpoint này.)
+      // Vùng thứ hai của P4e (F14) — sáu hàng, không phân trang. Thứ tự ở đây
+      // là thứ tự chip lọc trên `/tours` của khách, vì web đọc thẳng
+      // `catalog.categories.list`.
       { key: 'categories', label: t.categories, href: '/categories', enabled: true, icon: Tags },
       {
         key: 'destinations',

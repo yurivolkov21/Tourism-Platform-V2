@@ -1,7 +1,6 @@
 'use client';
 
 import { type ColumnVisibilityState, createColumnHelper, useTable } from '@tanstack/react-table';
-import type { TourCategory } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
 import { Badge } from '@tourism/ui/components/badge';
 import { buttonVariants } from '@tourism/ui/components/button';
@@ -19,6 +18,7 @@ import {
   ToursMonthMenu,
   ToursStatusTabs,
 } from '@/components/tours/tours-toolbar';
+import type { TourCategoryOption } from '@/lib/api/tours';
 import type { MonthOption } from '@/lib/month-options';
 import { PAGE_SIZE_OPTIONS } from '@/lib/table-query';
 import type { SetPublishedAction } from '@/lib/tours-publish';
@@ -185,7 +185,7 @@ export interface ToursTableProps {
   /** Trạng thái URL hiện tại — nguồn để dựng href phân trang/lọc. */
   query: ToursQuery;
   /** Nguồn của menu lọc danh mục (`catalog.categories.list`). */
-  categories: TourCategory[];
+  categories: TourCategoryOption[];
   /** Các tháng bày trong menu khoảng đếm — server tính để nhãn không theo đồng hồ máy. */
   monthOptions: MonthOption[];
   total: number;

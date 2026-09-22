@@ -102,8 +102,12 @@ describe('toCategoryRowVMs', () => {
   it('giữ NGUYÊN thứ tự server trả về, không tự sắp lại', () => {
     // Server đã sắp theo `order`; sắp lần hai ở client là mở đường cho hai
     // thước khác nhau nói hai chuyện.
+    //
+    // Canh trên `slug` chứ không trên `order`: VM thôi chở `order` (không bảng
+    // nào, dialog nào đọc tới nó), mà bất biến cần ghim vẫn nguyên — mapper
+    // KHÔNG tự sắp lại.
     const vms = toCategoryRowVMs([row(3), row(1), row(2)]);
 
-    expect(vms.map((vm) => vm.order)).toEqual([3, 1, 2]);
+    expect(vms.map((vm) => vm.slug)).toEqual(['cat-3', 'cat-1', 'cat-2']);
   });
 });

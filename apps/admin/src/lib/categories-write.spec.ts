@@ -7,7 +7,7 @@ import {
   categoryUpdatePayload,
   hasFormErrors,
   isCreateStale,
-  isMoveStale,
+  isSetActiveStale,
   isUpdateStale,
   MOVE_CONTRACT_CODES,
   SET_ACTIVE_CONTRACT_CODES,
@@ -51,9 +51,9 @@ describe('tập mã lỗi khớp contract', () => {
     expect(isCreateStale('SLUG_TAKEN')).toBe(false);
   });
 
-  it('`NOT_FOUND` và `CANNOT_MOVE` thì có — thế giới đã đổi dưới chân dialog', () => {
+  it('`NOT_FOUND` thì có — thế giới đã đổi dưới chân dialog', () => {
     expect(isUpdateStale('NOT_FOUND')).toBe(true);
-    expect(isMoveStale('CANNOT_MOVE')).toBe(true);
+    expect(isSetActiveStale('NOT_FOUND')).toBe(true);
   });
 });
 

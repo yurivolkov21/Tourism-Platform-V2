@@ -16,6 +16,7 @@ import { Label } from '@tourism/ui/components/label';
 import { cn } from '@tourism/ui/lib/utils';
 import { useState } from 'react';
 import { DIALOG_FRAME } from '@/components/kit/confirm-write-dialog';
+import { FormField } from '@/components/kit/form-field';
 import type { TransportFailureCode } from '@/lib/api/write-error';
 import {
   type DepartureFormErrors,
@@ -156,7 +157,7 @@ export function DepartureFormDialog<Code extends string>({
         >
           <div className="grid gap-4">
             <div className="grid gap-3 sm:grid-cols-2">
-              <Field
+              <FormField
                 id={`${formId}-start`}
                 label={t.form.startDate}
                 error={errors.startDate}
@@ -173,8 +174,8 @@ export function DepartureFormDialog<Code extends string>({
                     onChange={(event) => patch({ startDate: event.target.value })}
                   />
                 )}
-              </Field>
-              <Field id={`${formId}-end`} label={t.form.endDate} error={errors.endDate}>
+              </FormField>
+              <FormField id={`${formId}-end`} label={t.form.endDate} error={errors.endDate}>
                 {(describedBy) => (
                   <Input
                     id={`${formId}-end`}
@@ -186,7 +187,7 @@ export function DepartureFormDialog<Code extends string>({
                     onChange={(event) => patch({ endDate: event.target.value })}
                   />
                 )}
-              </Field>
+              </FormField>
             </div>
 
             {/* Cảnh báo NGAY dưới hai ô ngày, vì nó nói về chính hai ô ấy — và
@@ -195,7 +196,7 @@ export function DepartureFormDialog<Code extends string>({
               <p className="text-sm text-destructive-emphasis">{noticeMessage}</p>
             ) : null}
 
-            <Field
+            <FormField
               id={`${formId}-seats`}
               label={t.form.seats}
               error={errors.seats}
@@ -214,9 +215,9 @@ export function DepartureFormDialog<Code extends string>({
                   onChange={(event) => patch({ seats: event.target.value })}
                 />
               )}
-            </Field>
+            </FormField>
 
-            <Field
+            <FormField
               id={`${formId}-price`}
               label={t.form.price}
               error={errors.price}
@@ -234,7 +235,7 @@ export function DepartureFormDialog<Code extends string>({
                   onChange={(event) => patch({ price: event.target.value })}
                 />
               )}
-            </Field>
+            </FormField>
           </div>
 
           {failure ? (
@@ -259,50 +260,5 @@ export function DepartureFormDialog<Code extends string>({
         </form>
       </DialogContent>
     </Dialog>
-  );
-}
-
-/**
- * Một ô: nhãn · control · (gợi ý) · (lỗi). Lỗi đứng dưới cùng, `role="alert"`.
- *
- * `children` là RENDER-PROP nhận `describedBy` (F12 vòng hai): gợi ý và câu lỗi
- * chỉ hữu ích nếu trình đọc màn hình đọc chúng CÙNG ô nhập, mà muốn vậy thì ô
- * phải trỏ `aria-describedby` tới đúng id đang tồn tại. Để mỗi chỗ gọi tự ghép
- * chuỗi id là bốn nơi phải nhớ hai luật (có hint không, có lỗi không) — và một
- * `aria-describedby` trỏ vào id không tồn tại còn tệ hơn không có.
- */
-function Field({
-  id,
-  label,
-  hint,
-  error,
-  children,
-}: {
-  id: string;
-  label: string;
-  hint?: string;
-  error?: string;
-  children: (describedBy: string | undefined) => React.ReactNode;
-}) {
-  const hintId = `${id}-hint`;
-  const errorId = `${id}-error`;
-  const describedBy = [hint ? hintId : null, error ? errorId : null]
-    .filter((value): value is string => value !== null)
-    .join(' ');
-  return (
-    <div className="grid gap-1.5">
-      <Label htmlFor={id}>{label}</Label>
-      {children(describedBy === '' ? undefined : describedBy)}
-      {hint ? (
-        <p id={hintId} className="text-xs text-muted-foreground">
-          {hint}
-        </p>
-      ) : null}
-      {error ? (
-        <p id={errorId} role="alert" className="text-sm text-destructive-emphasis">
-          {error}
-        </p>
-      ) : null}
-    </div>
   );
 }

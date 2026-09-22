@@ -32,10 +32,14 @@ import {
  * có SÁU hàng. Một thanh công cụ cho sáu hàng là nhiễu, và `TablePagination`
  * cho sáu hàng thì chỉ in "1–6 of 6".
  *
- * Thứ tự hàng là thứ tự server trả về (`order`) — thứ tự sẽ dẫn dắt chip lọc
- * của khách sau Task 5 — nên bảng KHÔNG cho sắp theo cột nào khác. Sắp lại
- * bằng hai mũi tên trên từng hàng; một cột sắp-theo-tên ở đây sẽ nói dối về
- * thứ tự thật.
+ * Thứ tự hàng là thứ tự server trả về (`order`), và nó dẫn dắt thứ tự chip
+ * lọc trên `/tours` của khách — nên bảng KHÔNG cho sắp theo cột nào khác. Sắp
+ * lại bằng hai mũi tên trên từng hàng; một cột sắp-theo-tên ở đây sẽ nói dối
+ * về thứ tự thật.
+ *
+ * Lưu ý bảng này liệt kê CẢ hàng đã ẩn, mà trang khách thì lọc chúng đi. Nên
+ * đổi chỗ quanh một hàng đã ẩn không đổi gì ở ngoài kia — câu phụ đề của màn
+ * nói thẳng điều đó.
  */
 const t = messages.admin.categories;
 
@@ -55,12 +59,19 @@ const COLUMN_ICONS = {
 };
 
 /**
- * Bảng đang kéo dữ liệu tươi về hay không — đi qua CONTEXT chứ không qua deps
- * của `useMemo` dựng cột (bài học vòng hai F12): cờ ấy đổi hai lần mỗi lệnh
- * ghi, và nằm trong deps thì cột dựng lại cả hai lần, kéo theo ô unmount cùng
- * toàn bộ state của nó.
+ * Bảng đang bận hay không, cộng cái cần để bật cờ ấy — đi qua CONTEXT chứ
+ * không qua deps của `useMemo` dựng cột (bài học vòng hai F12): cờ ấy đổi hai
+ * lần mỗi lệnh ghi, và nằm trong deps thì cột dựng lại cả hai lần, kéo theo ô
+ * unmount cùng toàn bộ state của nó.
+ *
+ * "Bận" gộp HAI thứ: đang kéo dữ liệu tươi về, và đang có một lượt đổi chỗ bay
+ * ở một hàng bất kỳ. Vế thứ hai là bản vá vòng review F14 — xem JSDoc prop
+ * `disabled` của `CategoryRowActions`.
  */
-const RefreshingContext = React.createContext(false);
+const BusyContext = React.createContext<{ busy: boolean; onMoveStart: () => void }>({
+  busy: false,
+  onMoveStart: () => {},
+});
 
 function ActionsCell({
   row,
@@ -75,14 +86,15 @@ function ActionsCell({
   move: MoveCategoryAction;
   onSettled: () => void;
 }) {
-  const disabled = React.useContext(RefreshingContext);
+  const { busy, onMoveStart } = React.useContext(BusyContext);
   return (
     <CategoryRowActions
       row={row}
       update={update}
       setActive={setActive}
       move={move}
-      disabled={disabled}
+      disabled={busy}
+      onMoveStart={onMoveStart}
       onSettled={onSettled}
     />
   );
@@ -101,11 +113,23 @@ export function CategoriesTable({ rows, create, update, setActive, move }: Categ
   const [columnVisibility, setColumnVisibility] = React.useState<ColumnVisibilityState>({});
   const [isRefreshing, startRefresh] = React.useTransition();
   const [adding, setAdding] = React.useState(false);
+  /**
+   * Một lượt đổi chỗ đang bay — khoá mũi tên của MỌI hàng, không riêng hàng
+   * vừa bấm. `isRefreshing` một mình không đủ: nó chỉ bật ở `finally`, tức
+   * SAU khi request về, nên giữa cú bấm và lúc ấy các hàng khác vẫn bấm được.
+   */
+  const [isMoving, setIsMoving] = React.useState(false);
 
   /** Sau MỌI kết cục đã-chạm-server: kéo bảng tươi về, khoá nút tới khi xong. */
   const refreshList = React.useCallback(() => {
+    setIsMoving(false);
     startRefresh(() => router.refresh());
   }, [router]);
+
+  const busyValue = React.useMemo(
+    () => ({ busy: isRefreshing || isMoving, onMoveStart: () => setIsMoving(true) }),
+    [isRefreshing, isMoving],
+  );
 
   const columns = React.useMemo(
     () =>
@@ -158,7 +182,7 @@ export function CategoriesTable({ rows, create, update, setActive, move }: Categ
           enableHiding: false,
         }),
       ]),
-    // KHÔNG có `isRefreshing` ở đây — xem `RefreshingContext`.
+    // KHÔNG có cờ bận ở đây — xem `BusyContext`.
     [update, setActive, move, refreshList],
   );
 
@@ -175,23 +199,29 @@ export function CategoriesTable({ rows, create, update, setActive, move }: Categ
     <>
       {/* `views`/`footer` là `null` TƯỜNG MINH, không phải prop optional: bảng
           này cố ý không có tab lọc lẫn phân trang, còn prop vẫn bắt buộc để
-          bảng nào QUÊN phân trang thật thì đỏ ở compiler. */}
+          bảng nào QUÊN phân trang thật thì đỏ ở compiler. Khung tự bọc khe
+          trái nên cụm hành động vẫn nằm bên phải như mọi bảng khác. */}
       <DataTableFrame
         views={null}
         footer={null}
         actions={
           <>
             <ColumnVisibilityMenu table={table} labels={COLUMN_LABELS} icons={COLUMN_ICONS} />
-            <Button type="button" size="sm" disabled={isRefreshing} onClick={() => setAdding(true)}>
+            <Button
+              type="button"
+              size="sm"
+              disabled={busyValue.busy}
+              onClick={() => setAdding(true)}
+            >
               <PlusIcon data-icon="inline-start" aria-hidden="true" />
               {t.create.action}
             </Button>
           </>
         }
       >
-        <RefreshingContext.Provider value={isRefreshing}>
+        <BusyContext.Provider value={busyValue}>
           <DataTableBody table={table} empty={t.list.empty} />
-        </RefreshingContext.Provider>
+        </BusyContext.Provider>
       </DataTableFrame>
 
       {adding ? (

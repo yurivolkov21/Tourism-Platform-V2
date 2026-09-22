@@ -29,7 +29,6 @@ export interface CategoryRowVM {
    * sẽ mở ra ô trống, và lưu một phát là mất mô tả.
    */
   descriptionValue: string;
-  order: number;
   isActive: boolean;
   statusLabel: string;
   tourCount: number;
@@ -56,7 +55,6 @@ export function toCategoryRowVMs(rows: AdminCategoryRow[]): CategoryRowVM[] {
     name: row.name,
     description: row.description ?? t.list.inherited,
     descriptionValue: row.description ?? '',
-    order: row.order,
     isActive: row.isActive,
     statusLabel: row.isActive ? t.list.active : t.list.inactive,
     tourCount: row.tourCount,
