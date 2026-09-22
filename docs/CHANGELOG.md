@@ -8,6 +8,88 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-09-22 — Vòng review F14: mười lăm phát hiện, ba nhóm, ba cái gốc (nhánh `feat/p4e-2-categories`)
+
+Vòng review chạy TRƯỚC merge, mười góc tìm cộng một lượt quét sót. Mười lăm
+phát hiện, nhưng chúng gom về ba gốc chứ không phải mười lăm chỗ vá.
+
+**Gốc thứ nhất — không ai bảo đảm mỗi lúc chỉ một người ghi thứ tự.** Năm phát
+hiện quanh cột `order`. `move` đọc hai hàng RỒI mới `SELECT … FOR UPDATE`, nên
+khoá xếp hàng người ghi mà không bảo vệ giá trị đã đọc: hai lượt trên hai cặp
+giao nhau — (2,3) và (3,4) — để lượt sau ghi bằng ảnh chụp cũ, và vì cột ấy
+không unique nên hai hàng cùng số sống chung im lặng, vĩnh viễn. JSDoc ngay
+trên hai câu UPDATE khẳng định ngược lại. `create` tính `max + 1` cũng đua.
+`assertSlugFree` là SELECT pre-flight, mà READ COMMITTED không serialize hai
+INSERT — nên slug trùng thoát ra thành `P2002` trần, tức 500, tức admin phân
+loại `GENERIC` rồi mất cả form vừa gõ. Và cờ đổi-chỗ ở phía client là state
+của MỘT hàng, nên một admin bấm nhanh hai hàng là đủ gây đua, không cần hai
+người.
+
+Vá bằng một câu thay vì ba miếng dán: `withCategoryOrderLock`, khoá advisory
+cấp bảng, cùng khuôn `withBookingRefundLock` (ADR-0006 AMEND 2b). Mọi lệnh đọc
+nằm SAU khoá theo CẤU TRÚC, nên `move` hết stale read, `create` hết đua, và
+`assertSlugFree` từ một lời hứa hão thành đúng thật. `FOR UPDATE` thô, phép
+`.sort()` theo id và nhánh `CannotMoveError` không-thể-xảy-ra chết theo. Ba
+lớp lưới cho đường không đi qua khoá: bắt `P2002`, bắt `P2025` (thay
+`assertExists` + `update` vốn là check-then-act, bớt luôn một vòng mạng), và
+khoá phụ `{ id: 'asc' }` ở cả hai đường đọc danh mục.
+
+**Gốc thứ hai — web và admin đọc `is_active` bằng hai nghĩa khác nhau.** Ba
+phát hiện. Menu lọc `/tours` của chính back office vẫn đọc endpoint CÔNG KHAI,
+nên từ khi F14 có nút Hide, ẩn một danh mục là mất luôn cách lọc ra các tour
+thuộc nó để đi sửa — đúng lúc cần nhất. Ở trang khách, một danh mục vừa ẩn thì
+chip đang bật in slug máy và thẻ facet không có ô nào để bỏ tick, dù link cũ
+vẫn lọc đúng. Và câu phụ đề "thứ tự ở đây là thứ tự khách nhìn thấy" nói sai,
+vì bảng admin xen cả hàng ĐÃ ẨN còn trang khách lọc chúng đi.
+
+Vá: menu back office đổi sang `admin.categories.list` (JSDoc ở đó đã hẹn
+"P4e-2 sẽ thay nguồn" — P4e-2 chính là nhánh này). Trang khách tách "danh sách
+chip nào tồn tại" khỏi "chip đang bật tên là gì", gom vào `resolveCategoryOptions`;
+hàm ấy cũng phân biệt lời gọi HỎNG (`null`) với mảng rỗng hợp lệ, nên một lượt
+500 của `/api/categories` không còn xoá sạch thẻ facet khỏi trang đang sống.
+Câu phụ đề viết lại cho đúng.
+
+**Gốc thứ ba — chỗ tự gây, và mấy cái nói sai.** `slugifyVietnamese` nuốt mất
+`Ð`/`ð` (U+00D0, ETH) vì chỉ xử `Đ`/`đ` (U+0110): hai cặp vẽ y hệt nhau mà
+TCVN3/VNI vẫn sinh ra cặp đầu, nên admin thấy tên ĐÚNG còn slug mất chữ đầu —
+và slug khoá vĩnh viễn sau khi tạo. Regex dấu phụ viết bằng ký tự tổ hợp THÔ,
+vô hình với mắt lẫn với diff; đo bằng `cat -A` thì viết escape cũng không
+thoát, công cụ ghi file đổi nó thành ký tự thô, nên chuyển hẳn sang `\p{M}` và
+dựng bốn ký tự D-có-gạch từ MÃ SỐ. `boDauTiengViet` đổi tên (luật 8 đòi
+identifier tiếng Anh) và nuốt luôn bản trùng ở `apps/web/src/lib/text.ts`.
+Khuôn slug siết lại — bản cũ nhận `-`, `---`, `-day-`; đã đo sáu slug đang
+chạy trên production, tất cả đều qua. Mô tả rỗng nay thành `null` thật, đúng
+như JSDoc của chính nó vẫn hứa. Bốn comment khai "Task 5 chưa làm" — sai từ
+một commit CÙNG NHÁNH.
+
+**`views={null}` sửa ở KHUNG, không ở call site.** Hàng điều khiển là
+`justify-between` với đúng hai con, nên `views` rỗng làm cụm nút dạt sang
+TRÁI, lệch với mười bảng còn lại. Khung nay tự bọc khe trái.
+
+**Ba test xanh giả.** Ca int "hai lượt đối đầu" bắn `move(2,'down')` +
+`move(3,'up')` — cùng MỘT phép đổi chỗ, nên không interleaving nào làm nó đỏ
+được, kể cả khi gỡ sạch khoá. `expect(move).not.toHaveBeenCalled()` nằm trong
+một ca không bấm gì. Ca contract "KHÔNG nhận số thứ tự" xanh vì thiếu
+`direction` bắt buộc, chẳng liên quan tới `order`. Cả ba viết lại; khối guard
+của int spec cũng thiếu `update`, nay đủ năm đường cộng một ca 401.
+
+**Dọn.** `Field` chép nguyên văn giữa hai dialog về kit thành `FormField`,
+trước khi màn `/destinations` của F15 chép lần thứ ba. Regex slug phía admin
+thôi chép tay. Gỡ `isMoveStale`, `CategoryRowVM.order`, hai khoá i18n
+`move.up`/`move.down`. JSDoc của `departures` về đúng key nó mô tả.
+
+**Ba món ghi vào sổ nợ** (`open-items.md` G1–G3), có chủ đích chứ không bỏ
+quên: payload `move` mà client vứt đi (tiêu thụ nó cần hai nguồn sự thật cho
+một bảng sáu hàng), 23 bản chép `sessionCookie` trong int spec, và hai bản
+`mapError` đáng rút chung khi F15 thêm bản thứ ba.
+
+**Review findings:** 15 phát hiện, tất cả CONFIRMED, tất cả đã vá.
+
+Tests after: Vitest **3964** (web 1533, api 978, admin 998, contract 353,
+core 46, ui 22, tokens 18, i18n 16), int **596 ở 43 file**. Mười lăm ca mới.
+Đo đột biến từng cụm: gỡ khoá khỏi `move` hay `create` → đỏ 3/3 lượt; mười ba
+đột biến còn lại ở contract, admin và web đều bị giết.
+
 ## 2026-09-22 — F14 quản trị danh mục tour, và bộ chip của khách thôi nói dối (nhánh `feat/p4e-2-categories`)
 
 Vùng thứ hai của P4e: `/categories` trong back office, cộng một đoạn dây nối

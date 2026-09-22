@@ -74,22 +74,22 @@ này không kèm prompt bàn giao — nó là danh sách việc để làm tuầ
 
 **Produces:** `slugifyVietnamese(value: string, maxLength: number): string`
 
-- [ ] **B1.** Viết spec TRƯỚC, các ca:
+- [x] **B1.** Viết spec TRƯỚC, các ca:
       `'Đà Lạt' → 'da-lat'` · `'Hà Nội' → 'ha-noi'` (đề xuất, KHÁC slug thật
       `hanoi` — ghi comment nói rõ đây là gợi ý) · `'Cần Thơ' → 'can-tho'` ·
       `'  Hạ  Long  ' → 'ha-long'` · `'Việt Nam 2026!' → 'viet-nam-2026'` ·
       chuỗi dài hơn `maxLength` bị cắt và **không để gạch ở cuối** ·
       `'' → ''`.
-- [ ] **B2.** Chạy cho ĐỎ: `pnpm --filter @tourism/contract exec vitest run src/schemas/slug.spec.ts`
+- [x] **B2.** Chạy cho ĐỎ: `pnpm --filter @tourism/contract exec vitest run src/schemas/slug.spec.ts`
       — mong "is not a function".
-- [ ] **B3.** Cài: `normalize('NFD')` bỏ dấu phụ, `đ/Đ → d` TRƯỚC khi normalize
+- [x] **B3.** Cài: `normalize('NFD')` bỏ dấu phụ, `đ/Đ → d` TRƯỚC khi normalize
       (NFD không tách `đ`), lowercase, gom mọi ký tự ngoài `[a-z0-9]` thành một
       gạch, cắt `maxLength`, rồi mới trim gạch hai đầu.
-- [ ] **B4.** Export ở `index.ts`. Chạy XANH.
-- [ ] **B5.** JSDoc tiếng Việt nói rõ: đây là GỢI Ý, không phải luật — dẫn bảng
+- [x] **B4.** Export ở `index.ts`. Chạy XANH.
+- [x] **B5.** JSDoc tiếng Việt nói rõ: đây là GỢI Ý, không phải luật — dẫn bảng
       đo trong spec §2c (`Hà Nội` → `hanoi` do người chọn).
-- [ ] **B6.** `pnpm gate:int` xanh.
-- [ ] **B7.** Commit: `feat(contract): slugifyVietnamese bỏ dấu, cắt theo trần cột`
+- [x] **B6.** `pnpm gate:int` xanh.
+- [x] **B7.** Commit: `feat(contract): slugifyVietnamese bỏ dấu, cắt theo trần cột`
 
 ## Task 2 — Contract `admin.categories`
 
@@ -103,20 +103,20 @@ này không kèm prompt bàn giao — nó là danh sách việc để làm tuầ
 `isActive` · `tourCount`) · `AdminCategoryCreateInput` · `AdminCategoryUpdateInput` ·
 `AdminCategorySetActiveInput` · `AdminCategoryMoveInput` (`{ id, direction: 'up' | 'down' }`)
 
-- [ ] **B1.** Spec TRƯỚC: slug đúng khuôn `^[a-z0-9-]+$` và ≤ 60 · name 1..120 ·
+- [x] **B1.** Spec TRƯỚC: slug đúng khuôn `^[a-z0-9-]+$` và ≤ 60 · name 1..120 ·
       description ≤ 500 và nullable · `direction` chỉ nhận hai giá trị ·
       `update` KHÔNG có trường `slug`. Repo KHÔNG dùng `.strict()` ở đâu cả
       (đã kiểm 22/09), nên ca test là: `safeParse` một input có `slug` thừa vẫn
       `success`, và `parsed.data` KHÔNG mang `slug` — tức server không bao giờ
       nhìn thấy nó.
-- [ ] **B2.** Chạy ĐỎ.
-- [ ] **B3.** Viết schema. Mỗi trần cột một hằng export (`CATEGORY_SLUG_MAX = 60`…)
+- [x] **B2.** Chạy ĐỎ.
+- [x] **B3.** Viết schema. Mỗi trần cột một hằng export (`CATEGORY_SLUG_MAX = 60`…)
       để admin dùng lại, không chép số.
-- [ ] **B4.** Thêm năm procedure vào `contract.ts` dưới `admin.categories`, đủ
+- [x] **B4.** Thêm năm procedure vào `contract.ts` dưới `admin.categories`, đủ
       `errorMap` theo bảng mã lỗi ở Ràng buộc toàn cục.
-- [ ] **B5.** Spec thêm: tập mã lỗi của mỗi procedure đúng như spec §3.
-- [ ] **B6.** `pnpm gate:int` xanh.
-- [ ] **B7.** Commit: `feat(contract): thêm admin.categories với năm thao tác`
+- [x] **B5.** Spec thêm: tập mã lỗi của mỗi procedure đúng như spec §3.
+- [x] **B6.** `pnpm gate:int` xanh.
+- [x] **B7.** Commit: `feat(contract): thêm admin.categories với năm thao tác`
 
 ## Task 3 — API danh mục (service + controller + int spec)
 
@@ -128,7 +128,7 @@ này không kèm prompt bàn giao — nó là danh sách việc để làm tuầ
 
 **Consumes:** contract từ Task 2.
 
-- [ ] **B1.** Int spec TRƯỚC, các ca:
+- [x] **B1.** Int spec TRƯỚC, các ca:
       `list` trả CẢ hàng đã tắt kèm `tourCount` (endpoint công khai thì không) ·
       `create` slug trùng → **409 `SLUG_TAKEN`**, không phải 500 ·
       `create` đặt `order` = max + 1 ·
@@ -137,19 +137,29 @@ này không kèm prompt bàn giao — nó là danh sách việc để làm tuầ
       `move` đổi chỗ hai hàng liền kề ·
       `move` ở biên → **409 `CANNOT_MOVE`**, thứ tự không đổi ·
       khách thường gọi bất kỳ endpoint nào → 403.
-- [ ] **B2.** Chạy ĐỎ (thiếu module).
-- [ ] **B3.** Service: `list` · `create` · `update` · `setActive` · `move`.
-      `move` khoá hai hàng bằng `SELECT … FOR UPDATE` **sắp theo id** rồi đổi
-      chỗ trong một transaction (spec §2d). Slug trùng kiểm bằng `findUnique`
-      TRONG transaction rồi ném `SlugTakenError`.
-- [ ] **B4.** Bust cache `TAGS.TOURS` sau commit, `void`, fire-and-forget.
-- [ ] **B5.** Controller đúng khuôn `AdminDeparturesController`: `@Roles(ADMIN)`
+- [x] **B2.** Chạy ĐỎ (thiếu module).
+- [x] **B3.** Service: `list` · `create` · `update` · `setActive` · `move`.
+      *Sửa ở vòng review 22/09:* bước này ghi `SELECT … FOR UPDATE` sắp theo
+      id, và kiểm slug bằng `findUnique` TRONG transaction. **Cả hai đều
+      không đủ.** Khoá đặt SAU hai lệnh đọc nên nó xếp hàng người ghi mà không
+      bảo vệ giá trị đã đọc — hai lượt trên hai cặp giao nhau để lại hai hàng
+      cùng `order`. Và ở READ COMMITTED, một câu SELECT không serialize được
+      hai INSERT, nên `P2002` vẫn lọt ra thành 500. Bản cuối dùng **khoá
+      advisory cấp bảng** (`withCategoryOrderLock`, cùng khuôn
+      `withBookingRefundLock`) bọc CẢ `create` lẫn `move`, cộng lưới bắt
+      `P2002`/`P2025`.
+- [x] **B4.** Bust cache `TAGS.TOURS` sau commit, `void`, fire-and-forget.
+- [x] **B5.** Controller đúng khuôn `AdminDeparturesController`: `@Roles(ADMIN)`
       cấp class, `mapError` dùng `instanceof` (KHÔNG so `error.name` — bài học
       vòng hai F12).
-- [ ] **B6.** Thêm một ca int cho đua ghi: hai lượt `move` đối đầu không sinh
+- [x] **B6.** Thêm một ca int cho đua ghi: hai lượt `move` đối đầu không sinh
       `order` trùng.
-- [ ] **B7.** `pnpm gate:int` xanh.
-- [ ] **B8.** Commit: `feat(api): năm endpoint quản trị danh mục tour`
+      *Sửa ở vòng review 22/09:* ca viết theo bước này bắn `move(2,'down')` +
+      `move(3,'up')` — hai lệnh ấy là CÙNG MỘT phép đổi chỗ, nên không
+      interleaving nào làm nó đỏ được, kể cả khi gỡ sạch khoá. Ca hiện tại
+      chọn hai cặp GIAO NHAU; đo được: gỡ khoá thì đỏ 3/3 lượt.
+- [x] **B7.** `pnpm gate:int` xanh.
+- [x] **B8.** Commit: `feat(api): năm endpoint quản trị danh mục tour`
 
 ## Task 4 — Màn `/categories`
 
@@ -163,23 +173,23 @@ này không kèm prompt bàn giao — nó là danh sách việc để làm tuầ
 - Modify: `apps/admin/src/lib/nav.ts` (bật mục `categories`)
 - Modify: `libs/shared/i18n/src/lib/messages.ts`
 
-- [ ] **B1.** Spec VM TRƯỚC: `canMoveUp` false ở hàng đầu · `canMoveDown` false
+- [x] **B1.** Spec VM TRƯỚC: `canMoveUp` false ở hàng đầu · `canMoveDown` false
       ở hàng cuối · hàng đã tắt có nhãn riêng · `tourCount` thành nhãn đọc được.
-- [ ] **B2.** Chạy ĐỎ, rồi viết `categories-view.ts`.
-- [ ] **B3.** `categories-write.ts`: codec lỗi derive từ khối i18n (khuôn
+- [x] **B2.** Chạy ĐỎ, rồi viết `categories-view.ts`.
+- [x] **B3.** `categories-write.ts`: codec lỗi derive từ khối i18n (khuôn
       `departures-write.ts`), hợp đồng `DepartureWriteResult` tương đương.
-- [ ] **B4.** Component spec TRƯỚC cho ba thứ: ô slug **mở** ở form tạo và
+- [x] **B4.** Component spec TRƯỚC cho ba thứ: ô slug **mở** ở form tạo và
       **vắng mặt** ở form sửa · nút lên/xuống **tắt** đúng ở hai biên · hộp xác
       nhận tắt danh mục in đúng `tourCount` và nói đủ BA hệ quả (chip biến khỏi
       `/tours` · tour vẫn hiện · link `/tours?categories=<slug>` vẫn lọc được).
-- [ ] **B5.** Dựng bảng trên kit (`DataTableFrame` + `DataTableBody`), form
+- [x] **B5.** Dựng bảng trên kit (`DataTableFrame` + `DataTableBody`), form
       dialog theo khuôn `DepartureFormDialog` (bọc `<form>`, `aria-describedby`
       — hai thứ vòng hai F12 vừa sửa, đừng dựng lại bản cũ).
-- [ ] **B6.** Ô slug ở form tạo điền sẵn bằng `slugifyVietnamese(name, 60)` và
+- [x] **B6.** Ô slug ở form tạo điền sẵn bằng `slugifyVietnamese(name, 60)` và
       **thôi tự điền** ngay khi admin sửa tay ô ấy.
-- [ ] **B7.** Bật `enabled: true` cho mục `categories` ở `nav.ts`.
-- [ ] **B8.** `pnpm gate:int` xanh.
-- [ ] **B9.** Commit: `feat(admin): màn quản trị danh mục tour`
+- [x] **B7.** Bật `enabled: true` cho mục `categories` ở `nav.ts`.
+- [x] **B8.** `pnpm gate:int` xanh.
+- [x] **B9.** Commit: `feat(admin): màn quản trị danh mục tour`
 
 ## Task 5 — Web đọc endpoint danh mục
 
@@ -196,9 +206,9 @@ này không kèm prompt bàn giao — nó là danh sách việc để làm tuầ
       `fetchTours()` gọi một lần `limit: 50` và explorer phân trang phía
       client. Đính chính đã ghi vào spec §2e.
 - [x] **B2.** Chạy ĐỎ.
-- [ ] **B3.** Thêm `fetchCategories()` vào `tours.ts`, tag `TAGS.TOURS`, cùng
+- [x] **B3.** Thêm `fetchCategories()` vào `tours.ts`, tag `TAGS.TOURS`, cùng
       `REVALIDATE_SEC` như `fetchDestinations`.
-- [ ] **B4.** Trang listing dùng nó thay `tourCategories(tours)`. Gỡ hàm cũ nếu
+- [x] **B4.** Trang listing dùng nó thay `tourCategories(tours)`. Gỡ hàm cũ nếu
       không còn ai gọi (kiểm bằng grep trước khi xoá).
 - [x] **B5.** `count` của chip: **giữ nguyên cách đếm cũ** — đếm từ danh sách
       đã lọc, KHÔNG lấy `toursCount` của endpoint.
@@ -207,16 +217,16 @@ này không kèm prompt bàn giao — nó là danh sách việc để làm tuầ
       khác là hứa nhiều hơn thực tế — đúng loại lỗi copy mà cụm này đang vá.
       Endpoint quyết định chip NÀO có mặt và theo thứ tự nào; con số vẫn do
       `facetOptionCounts` tính trên lưới đã lọc.
-- [ ] **B6.** Dựng web với API sống, xác nhận không hỏng prerender (rủi ro ghi
+- [x] **B6.** Dựng web với API sống, xác nhận không hỏng prerender (rủi ro ghi
       ở spec §6).
-- [ ] **B7.** `pnpm gate:int` xanh.
-- [ ] **B8.** Commit: `fix(web): chip lọc danh mục đọc endpoint, thôi suy từ trang hiện tại`
+- [x] **B7.** `pnpm gate:int` xanh.
+- [x] **B8.** Commit: `fix(web): chip lọc danh mục đọc endpoint, thôi suy từ trang hiện tại`
 
 ## Task 5b — Docs sweep F14
 
-- [ ] **B1.** Entry `docs/CHANGELOG.md`: nội dung · review findings · số test.
-- [ ] **B2.** `./scripts/docs-freshness.sh` xanh.
-- [ ] **B3.** Commit `docs: entry CHANGELOG cho F14`, rồi **hỏi user trước khi
+- [x] **B1.** Entry `docs/CHANGELOG.md`: nội dung · review findings · số test.
+- [x] **B2.** `./scripts/docs-freshness.sh` xanh.
+- [x] **B3.** Commit `docs: entry CHANGELOG cho F14`, rồi **hỏi user trước khi
       merge** (luật 2), ff-only, xem CI (luật 14).
 
 ---
