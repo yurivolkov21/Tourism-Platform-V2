@@ -17,7 +17,12 @@ import {
 } from '@/lib/departures-query';
 import { toDepartureRowVM } from '@/lib/departures-view';
 import { orphanPageHref, type RawSearchParams } from '@/lib/table-query';
-import { createDepartureAction, setDepartureStatusAction, updateDepartureAction } from './actions';
+import {
+  cancelDepartureAction,
+  createDepartureAction,
+  setDepartureStatusAction,
+  updateDepartureAction,
+} from './actions';
 
 /**
  * `/tours/[slug]/departures` — lịch chạy của MỘT tour (spec P4e-1 F12).
@@ -102,6 +107,7 @@ export default async function DeparturesPage({
         create={createDepartureAction}
         update={updateDepartureAction}
         setStatus={setDepartureStatusAction}
+        cancel={cancelDepartureAction}
       />
     </AdminShell>
   );

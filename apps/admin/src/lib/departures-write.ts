@@ -1,4 +1,5 @@
 import type {
+  AdminDepartureCancelInput,
   AdminDepartureCreateInput,
   AdminDepartureRow,
   AdminDepartureSetStatusInput,
@@ -89,6 +90,62 @@ export type UpdateDepartureAction = (
 export type SetDepartureStatusAction = (
   input: AdminDepartureSetStatusInput,
 ) => Promise<DepartureWriteResult<SetStatusContractCode>>;
+
+/**
+ * Mã TRẠNG-THÁI-CŨ của huỷ chuyến: cả ba đều nói "thế giới đã đổi dưới chân
+ * dialog", không cái nào sửa tại chỗ được.
+ */
+const cancelCodec = createWriteErrorCodec(t.cancel.errors, {
+  stale: ['NOT_FOUND', 'DEPARTURE_CANCELLED', 'DEPARTURE_STARTED'],
+});
+
+export const CANCEL_CONTRACT_CODES = cancelCodec.codes;
+export type CancelContractCode = keyof typeof t.cancel.errors;
+export const classifyCancelError = cancelCodec.classify;
+export const cancelErrorCopy = cancelCodec.copy;
+export const isCancelStale = cancelCodec.isStale;
+
+export type CancelDepartureAction = (
+  input: AdminDepartureCancelInput,
+) => Promise<DepartureWriteResult<CancelContractCode>>;
+
+/** Copy của `ConfirmWriteDialog` cho lệnh huỷ chuyến — ô lý do BẮT BUỘC. */
+export function cancelDialogCopy() {
+  const d = t.cancel.dialog;
+  return {
+    title: d.title,
+    body: d.body,
+    warning: d.warning,
+    noteLabel: d.noteLabel,
+    notePlaceholder: d.notePlaceholder,
+    submit: d.submit,
+    submitting: d.submitting,
+    cancel: t.form.cancel,
+  };
+}
+
+/**
+ * Ngữ cảnh hàng trong hộp xác nhận huỷ: chuyến nào, bao nhiêu người ĐƯỢC HOÀN
+ * TIỀN, bao nhiêu phiên thanh toán bị huỷ.
+ *
+ * Hai con số chứ không một, vì hai nhóm nhận hai hệ quả khác nhau: người đã
+ * trả được hoàn trọn phần còn lại, người đang trả chỉ mất phiên thanh toán.
+ * Dòng "checkouts" chỉ hiện khi khác 0 — cùng lý lẽ với hộp xác nhận Close.
+ */
+export function cancelConfirmRows(row: {
+  dates: string;
+  paidBookingCount: number;
+  pendingBookingCount: number;
+}): Array<{ label: string; value: string }> {
+  const rows: Array<{ label: string; value: string }> = [
+    { label: t.cancel.rows.departure, value: row.dates },
+    { label: t.cancel.rows.toRefund, value: String(row.paidBookingCount) },
+  ];
+  if (row.pendingBookingCount > 0) {
+    rows.push({ label: t.cancel.rows.checkouts, value: String(row.pendingBookingCount) });
+  }
+  return rows;
+}
 
 // ── Form tạo/sửa ────────────────────────────────────────────────────────────
 

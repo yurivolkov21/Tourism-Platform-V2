@@ -1,6 +1,8 @@
 'use server';
 
 import {
+  type AdminDepartureCancelInput,
+  AdminDepartureCancelInputSchema,
   type AdminDepartureCreateInput,
   AdminDepartureCreateInputSchema,
   type AdminDepartureRow,
@@ -11,12 +13,15 @@ import {
 } from '@tourism/contract';
 import { cookies } from 'next/headers';
 import {
+  cancelAdminDeparture,
   createAdminDeparture,
   setAdminDepartureStatus,
   updateAdminDeparture,
 } from '@/lib/api/departures';
 import {
+  type CancelContractCode,
   type CreateContractCode,
+  classifyCancelError,
   classifyCreateError,
   classifySetStatusError,
   classifyUpdateError,
@@ -95,5 +100,21 @@ export async function setDepartureStatusAction(
   }
   // Trạng thái đọc từ RESPONSE, không từ input đã gửi — toast kể đúng chuyện
   // server vừa làm.
+  return { ok: true, row };
+}
+
+export async function cancelDepartureAction(
+  input: AdminDepartureCancelInput,
+): Promise<DepartureWriteResult<CancelContractCode>> {
+  const parsed = AdminDepartureCancelInputSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, code: 'INVALID_INPUT' };
+
+  const cookie = (await cookies()).toString();
+  let row: AdminDepartureRow;
+  try {
+    row = await cancelAdminDeparture(cookie, parsed.data);
+  } catch (error) {
+    return { ok: false, code: classifyCancelError(error) };
+  }
   return { ok: true, row };
 }

@@ -2,13 +2,19 @@
 
 import { messages } from '@tourism/i18n';
 import { Button } from '@tourism/ui/components/button';
-import { LockIcon, PencilIcon, UnlockIcon } from 'lucide-react';
+import { BanIcon, LockIcon, PencilIcon, UnlockIcon } from 'lucide-react';
 import { useState } from 'react';
 import { DepartureFormDialog } from '@/components/departures/departure-form-dialog';
 import { ConfirmWriteDialog } from '@/components/kit/confirm-write-dialog';
 import { formatDateRange } from '@/lib/bookings-view';
 import type { DepartureRowVM } from '@/lib/departures-view';
 import {
+  type CancelContractCode,
+  type CancelDepartureAction,
+  cancelConfirmRows,
+  cancelDialogCopy,
+  cancelErrorCopy,
+  isCancelStale,
   isSetStatusStale,
   isUpdateStale,
   type SetDepartureStatusAction,
@@ -42,6 +48,7 @@ export function DepartureRowActions({
   basePriceLabel,
   update,
   setStatus,
+  cancel,
   disabled,
   onSettled,
 }: {
@@ -49,6 +56,7 @@ export function DepartureRowActions({
   basePriceLabel: string;
   update: UpdateDepartureAction;
   setStatus: SetDepartureStatusAction;
+  cancel: CancelDepartureAction;
   /** Đang kéo bảng tươi về — khoá mọi nút cho tới khi xong. */
   disabled: boolean;
   onSettled: () => void;
@@ -63,6 +71,7 @@ export function DepartureRowActions({
    */
   const [editingVersion, setEditingVersion] = useState<string | null>(null);
   const [toggling, setToggling] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
 
   // Chuyến đã huỷ: không sửa, không đóng, không mở — bảng chỉ còn là bản ghi.
   if (!row.canEdit) return null;
@@ -106,6 +115,20 @@ export function DepartureRowActions({
         {nextStatus === 'CLOSED' ? t.setStatus.close : t.setStatus.reopen}
       </Button>
 
+      {row.canCancel ? (
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          aria-label={t.cancel.actionLabel(row.dates)}
+          disabled={disabled}
+          onClick={() => setCancelling(true)}
+        >
+          <BanIcon data-icon="inline-start" aria-hidden="true" />
+          {t.cancel.action}
+        </Button>
+      ) : null}
+
       {editingVersion !== null ? (
         <DepartureFormDialog<UpdateContractCode>
           copy={t.edit.dialog}
@@ -146,6 +169,34 @@ export function DepartureRowActions({
           isStale={isSetStatusStale}
           errorCopy={setStatusErrorCopy}
           onClose={() => setToggling(false)}
+          onSettled={onSettled}
+        />
+      ) : null}
+
+      {cancelling ? (
+        <ConfirmWriteDialog<CancelContractCode>
+          copy={cancelDialogCopy()}
+          noteId={`departure-cancel-${row.id}`}
+          noteRequired={t.cancel.dialog.noteRequired}
+          rows={cancelConfirmRows(row)}
+          submitVariant="destructive"
+          onSubmit={async (reason) => {
+            const result = await cancel({ id: row.id, reason });
+            if (!result.ok) return { ok: false, code: result.code };
+            return {
+              ok: true,
+              toast: {
+                title: t.cancel.toast.title,
+                // Ngày đọc từ RESPONSE, không từ hàng đang hiển thị.
+                description: t.cancel.toast.body(
+                  formatDateRange(result.row.startDate, result.row.endDate),
+                ),
+              },
+            };
+          }}
+          isStale={isCancelStale}
+          errorCopy={cancelErrorCopy}
+          onClose={() => setCancelling(false)}
           onSettled={onSettled}
         />
       ) : null}

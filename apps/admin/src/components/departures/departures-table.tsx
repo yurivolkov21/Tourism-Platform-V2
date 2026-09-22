@@ -28,6 +28,7 @@ import { formatDateRange } from '@/lib/bookings-view';
 import { type DeparturesQuery, departuresHref } from '@/lib/departures-query';
 import { type DepartureRowVM, departureStatusBadgeVariant } from '@/lib/departures-view';
 import {
+  type CancelDepartureAction,
   type CreateContractCode,
   type CreateDepartureAction,
   createDeadlineHint,
@@ -62,6 +63,7 @@ const COLUMN_LABELS: Record<string, string> = {
   seats: t.list.columns.seats,
   deadline: t.list.columns.deadline,
   bookingsLabel: t.list.columns.bookings,
+  refundProgress: t.list.columns.refunds,
   statusLabel: t.list.columns.status,
 };
 
@@ -70,6 +72,7 @@ const COLUMN_ICONS = {
   seats: UsersIcon,
   deadline: CalendarDaysIcon,
   bookingsLabel: UsersIcon,
+  refundProgress: BanIcon,
   statusLabel: CircleCheckIcon,
 };
 
@@ -105,6 +108,7 @@ export interface DeparturesTableProps {
   create: CreateDepartureAction;
   update: UpdateDepartureAction;
   setStatus: SetDepartureStatusAction;
+  cancel: CancelDepartureAction;
 }
 
 export function DeparturesTable({
@@ -117,6 +121,7 @@ export function DeparturesTable({
   create,
   update,
   setStatus,
+  cancel,
 }: DeparturesTableProps) {
   const router = useRouter();
   const [columnVisibility, setColumnVisibility] = React.useState<ColumnVisibilityState>({});
@@ -183,6 +188,23 @@ export function DeparturesTable({
             <span className="tabular-nums whitespace-nowrap">{row.original.liveBookingCount}</span>
           ),
         }),
+        columnHelper.accessor('refundProgress', {
+          header: t.list.columns.refunds,
+          // Chỉ hàng ĐÃ HUỶ mới có tiến độ; hàng khác để trống thay vì in
+          // "0 / 0" — một con số vô nghĩa ở mọi hàng là nhiễu ở mọi hàng.
+          cell: ({ row }) =>
+            row.original.refundProgress ? (
+              <div className="whitespace-nowrap">
+                <div className="tabular-nums">{row.original.refundProgress}</div>
+                {/* Worker gói free của Render ngủ sau 15 phút: job nằm nguyên
+                    trong hàng đợi tới khi nó tỉnh nên không mất gì, nhưng admin
+                    nhìn màn hình thì không đoán được điều đó. */}
+                {row.original.refundPending ? (
+                  <div className="text-xs text-muted-foreground">{t.list.refundStalled}</div>
+                ) : null}
+              </div>
+            ) : null,
+        }),
         columnHelper.accessor('statusLabel', {
           header: t.list.columns.status,
           cell: ({ row }) => (
@@ -200,6 +222,7 @@ export function DeparturesTable({
               basePriceLabel={tour.basePriceLabel}
               update={update}
               setStatus={setStatus}
+              cancel={cancel}
               disabled={isRefreshing}
               onSettled={refreshList}
             />
@@ -207,7 +230,7 @@ export function DeparturesTable({
           enableHiding: false,
         }),
       ]),
-    [tour.basePriceLabel, update, setStatus, isRefreshing, refreshList],
+    [tour.basePriceLabel, update, setStatus, cancel, isRefreshing, refreshList],
   );
 
   const table = useTable({

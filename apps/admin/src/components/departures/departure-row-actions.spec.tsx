@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { AdminDepartureRow } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
@@ -39,6 +39,7 @@ const ROW: AdminDepartureRow = {
   cancellationDeadline: '2026-10-03',
   liveBookingCount: 2,
   pendingBookingCount: 0,
+  cancelledBookingCount: 0,
   version: '2026-09-20T08:00:00.000Z',
 };
 
@@ -60,6 +61,7 @@ function renderActions(
       basePriceLabel="$129.00"
       update={update}
       setStatus={setStatus}
+      cancel={vi.fn()}
       disabled={false}
       onSettled={vi.fn()}
     />,
@@ -168,6 +170,7 @@ describe('DepartureRowActions — form sửa mang theo token phiên bản', () =
         basePriceLabel="$129.00"
         update={update}
         setStatus={vi.fn()}
+        cancel={vi.fn()}
         disabled={false}
         onSettled={vi.fn()}
       />,
@@ -183,6 +186,7 @@ describe('DepartureRowActions — form sửa mang theo token phiên bản', () =
         basePriceLabel="$129.00"
         update={update}
         setStatus={vi.fn()}
+        cancel={vi.fn()}
         disabled={false}
         onSettled={vi.fn()}
       />,
@@ -193,5 +197,78 @@ describe('DepartureRowActions — form sửa mang theo token phiên bản', () =
     expect(update).toHaveBeenCalledWith(
       expect.objectContaining({ id: ROW.id, version: ROW.version }),
     );
+  });
+});
+
+describe('DepartureRowActions — huỷ chuyến (F13)', () => {
+  const REASON = 'The guide is unavailable';
+
+  /** Chuyến 5 khách, 2 trong số đó đang thanh toán dở. */
+  const BUSY: AdminDepartureRow = { ...ROW, liveBookingCount: 5, pendingBookingCount: 2 };
+
+  function renderCancellable(row: AdminDepartureRow, cancel = vi.fn()) {
+    render(
+      <DepartureRowActions
+        row={toDepartureRowVM(row, BEFORE_DEADLINE)}
+        basePriceLabel="$129.00"
+        update={vi.fn()}
+        setStatus={vi.fn()}
+        cancel={cancel}
+        disabled={false}
+        onSettled={vi.fn()}
+      />,
+    );
+    return { cancel, dates: toDepartureRowVM(row, BEFORE_DEADLINE).dates };
+  }
+
+  it('hộp xác nhận in ĐÚNG số khách phải hoàn và số checkout phải huỷ', async () => {
+    // Hai con số, không phải một: khách đã trả được hoàn tiền, còn khách đang
+    // thanh toán chỉ bị huỷ phiên. Gộp lại là nói sai với người sắp bấm.
+    const user = userEvent.setup();
+    const { dates } = renderCancellable(BUSY);
+
+    await user.click(screen.getByRole('button', { name: t.cancel.actionLabel(dates) }));
+
+    expect(await screen.findByText(t.cancel.dialog.title)).toBeInTheDocument();
+    const toRefund = screen.getByText(t.cancel.rows.toRefund).closest('div');
+    expect(toRefund).toHaveTextContent('3');
+    const checkouts = screen.getByText(t.cancel.rows.checkouts).closest('div');
+    expect(checkouts).toHaveTextContent('2');
+  });
+
+  it('lý do TRỐNG thì không bắn lệnh nào', async () => {
+    // Sổ trắng ở chỗ duy nhất còn lại sáu tháng sau.
+    const user = userEvent.setup();
+    const { cancel, dates } = renderCancellable(BUSY);
+
+    await user.click(screen.getByRole('button', { name: t.cancel.actionLabel(dates) }));
+    await user.click(await screen.findByRole('button', { name: t.cancel.dialog.submit }));
+
+    expect(await screen.findByText(t.cancel.dialog.noteRequired)).toBeInTheDocument();
+    expect(cancel).not.toHaveBeenCalled();
+  });
+
+  it('có lý do thì gửi kèm nguyên văn, và toast đọc ngày từ RESPONSE', async () => {
+    const user = userEvent.setup();
+    const cancelFn = vi.fn(async () => ({
+      ok: true as const,
+      row: { ...BUSY, status: 'CANCELLED' as const },
+    }));
+    const { dates } = renderCancellable(BUSY, cancelFn);
+
+    await user.click(screen.getByRole('button', { name: t.cancel.actionLabel(dates) }));
+    await user.type(await screen.findByLabelText(t.cancel.dialog.noteLabel), REASON);
+    await user.click(screen.getByRole('button', { name: t.cancel.dialog.submit }));
+
+    await waitFor(() => expect(cancelFn).toHaveBeenCalledWith({ id: ROW.id, reason: REASON }));
+    expect(success).toHaveBeenCalledWith(t.cancel.toast.title, {
+      description: t.cancel.toast.body(dates),
+    });
+  });
+
+  it('chuyến ĐÃ huỷ: không còn nút nào, kể cả nút huỷ', async () => {
+    renderCancellable({ ...ROW, status: 'CANCELLED' });
+
+    expect(screen.queryAllByRole('button')).toHaveLength(0);
   });
 });

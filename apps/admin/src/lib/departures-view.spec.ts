@@ -25,6 +25,7 @@ const ROW: AdminDepartureRow = {
   cancellationDeadline: '2026-10-03',
   liveBookingCount: 2,
   pendingBookingCount: 1,
+  cancelledBookingCount: 0,
   version: '2026-09-20T08:00:00.000Z',
 };
 
@@ -112,5 +113,52 @@ describe('departureStatusBadgeVariant', () => {
     expect(departureStatusBadgeVariant('OPEN')).toBe('default');
     expect(departureStatusBadgeVariant('CLOSED')).toBe('secondary');
     expect(departureStatusBadgeVariant('CANCELLED')).toBe('destructive');
+  });
+});
+
+describe('toDepartureRowVM — huỷ chuyến và tiến độ hoàn tiền (F13)', () => {
+  it('chuyến còn sống: huỷ được, KHÔNG có cột tiến độ', () => {
+    // Tiến độ chỉ có nghĩa sau khi đã huỷ; in "0 / 2" ở mọi hàng là nhiễu.
+    const vm = toDepartureRowVM(ROW, BEFORE);
+
+    expect(vm.canCancel).toBe(true);
+    expect(vm.refundProgress).toBeNull();
+    expect(vm.refundPending).toBe(false);
+  });
+
+  it('QUÁ hạn đặt vẫn huỷ được — khác hẳn nút Mở lại', () => {
+    // Hạn chót là luật cho việc BÁN. Một chuyến quá hạn đặt mà hướng dẫn viên
+    // gãy chân vẫn phải huỷ được; đó đúng là lúc cần nút này nhất.
+    const vm = toDepartureRowVM(ROW, AFTER);
+
+    expect(vm.canCancel).toBe(true);
+    expect(vm.canReopen).toBe(false);
+  });
+
+  it('ĐÃ tới ngày khởi hành thì thôi huỷ', () => {
+    expect(toDepartureRowVM(ROW, '2026-10-10').canCancel).toBe(false);
+    expect(toDepartureRowVM(ROW, '2026-10-09').canCancel).toBe(true);
+  });
+
+  it('chuyến đã huỷ: tiến độ là ĐÃ HUỶ trên ĐÃ HUỶ CỘNG CÒN SỐNG', () => {
+    const vm = toDepartureRowVM(
+      { ...ROW, status: 'CANCELLED', cancelledBookingCount: 3, liveBookingCount: 2 },
+      BEFORE,
+    );
+
+    expect(vm.refundProgress).toBe(t.list.refundProgress(3, 5));
+    // Còn 2 người chưa hoàn → bảng in dòng nói worker có thể đang ngủ.
+    expect(vm.refundPending).toBe(true);
+    expect(vm.canCancel).toBe(false);
+  });
+
+  it('hoàn xong hết thì tỉ lệ chạy tới đủ và dòng giải thích biến mất', () => {
+    const vm = toDepartureRowVM(
+      { ...ROW, status: 'CANCELLED', cancelledBookingCount: 5, liveBookingCount: 0 },
+      BEFORE,
+    );
+
+    expect(vm.refundProgress).toBe(t.list.refundProgress(5, 5));
+    expect(vm.refundPending).toBe(false);
   });
 });

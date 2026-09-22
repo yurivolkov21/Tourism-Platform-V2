@@ -1,5 +1,6 @@
 import { isDefinedError, safe } from '@orpc/client';
 import type {
+  AdminDepartureCancelInput,
   AdminDepartureCreateInput,
   AdminDepartureRow,
   AdminDepartureSetStatusInput,
@@ -60,4 +61,15 @@ export async function setAdminDepartureStatus(
   input: AdminDepartureSetStatusInput,
 ): Promise<AdminDepartureRow> {
   return api.admin.departures.setStatus(input, { context: withAdminAuth(cookie) });
+}
+
+/**
+ * CÔNG TY huỷ chuyến, có hoàn tiền (F13). Trả về NGAY sau khi transaction ở
+ * API commit — tiền đi qua hàng đợi, bảng theo dõi bằng cột tiến độ.
+ */
+export async function cancelAdminDeparture(
+  cookie: string,
+  input: AdminDepartureCancelInput,
+): Promise<AdminDepartureRow> {
+  return api.admin.departures.cancel(input, { context: withAdminAuth(cookie) });
 }

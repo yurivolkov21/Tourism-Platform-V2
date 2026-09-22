@@ -39,6 +39,7 @@ const SAVED: AdminDepartureRow = {
   cancellationDeadline: '2026-11-24',
   liveBookingCount: 2,
   pendingBookingCount: 0,
+  cancelledBookingCount: 0,
   version: '2026-09-20T08:00:00.000Z',
 };
 

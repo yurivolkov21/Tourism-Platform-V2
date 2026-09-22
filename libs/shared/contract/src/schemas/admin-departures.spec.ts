@@ -1,10 +1,12 @@
 import { contract } from '../contract.js';
 import {
+  AdminDepartureCancelInputSchema,
   AdminDepartureCreateInputSchema,
   AdminDepartureRowSchema,
   AdminDepartureSetStatusInputSchema,
   AdminDeparturesListQuerySchema,
   AdminDepartureUpdateInputSchema,
+  DEPARTURE_CANCEL_REASON_MAX,
   DEPARTURE_PRICE_MAX,
   DEPARTURE_SEATS_MAX,
 } from './admin-departures.js';
@@ -29,6 +31,7 @@ const ROW = {
   cancellationDeadline: '2026-10-03',
   liveBookingCount: 2,
   pendingBookingCount: 1,
+  cancelledBookingCount: 2,
   version: '2026-09-20T08:00:00.000Z',
 };
 
@@ -272,5 +275,29 @@ describe('contract admin.departures', () => {
 
   it('list chỉ khai NOT_FOUND của tour, không lỗi nghiệp vụ nào khác', () => {
     expect(Object.keys(contract.admin.departures.list['~orpc'].errorMap)).toEqual(['NOT_FOUND']);
+  });
+});
+
+describe('AdminDepartureCancelInputSchema (F13)', () => {
+  const ID = '4f1b1f2e-0000-4000-8000-000000000001';
+
+  it('lý do BẮT BUỘC — sổ của một lệnh tiêu tiền không được để trắng', () => {
+    expect(AdminDepartureCancelInputSchema.safeParse({ id: ID }).success).toBe(false);
+    expect(AdminDepartureCancelInputSchema.safeParse({ id: ID, reason: '' }).success).toBe(false);
+  });
+
+  it('khoảng trắng KHÔNG tính là lý do', () => {
+    // `trim()` chạy TRƯỚC `min(1)`, nếu không thì một dấu cách đi lọt.
+    expect(AdminDepartureCancelInputSchema.safeParse({ id: ID, reason: '   ' }).success).toBe(
+      false,
+    );
+  });
+
+  it('lý do bị CẮT ở trần cột, không để tràn xuống Postgres', () => {
+    const vua = 'x'.repeat(DEPARTURE_CANCEL_REASON_MAX);
+    const qua = 'x'.repeat(DEPARTURE_CANCEL_REASON_MAX + 1);
+
+    expect(AdminDepartureCancelInputSchema.safeParse({ id: ID, reason: vua }).success).toBe(true);
+    expect(AdminDepartureCancelInputSchema.safeParse({ id: ID, reason: qua }).success).toBe(false);
   });
 });

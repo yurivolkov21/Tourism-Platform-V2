@@ -4561,6 +4561,7 @@ export const messages = {
           seats: 'Seats',
           deadline: 'Book/cancel by',
           bookings: 'Live bookings',
+          refunds: 'Refunds',
           status: 'Status',
           actions: 'Actions',
         },
@@ -4571,6 +4572,15 @@ export const messages = {
         /** Chuyến không có giá riêng — bảng in giá áp dụng, dòng phụ nói nó từ đâu. */
         inheritedPrice: 'Tour base price',
         deadlinePassed: 'Passed',
+        /** Cột tiến độ hoàn tiền — chỉ có nghĩa trên hàng đã huỷ. */
+        refundProgress: (done: number, total: number) => `${done} / ${total} refunded`,
+        /**
+         * Tiến độ đứng im quá lâu. Worker chạy trên gói free của Render và ngủ
+         * sau 15 phút không việc; job nằm nguyên trong hàng đợi tới khi nó
+         * tỉnh, nên không mất gì — nhưng admin nhìn màn hình thì không đoán
+         * được điều đó. Một dòng nói thật còn hơn một cột im lặng.
+         */
+        refundStalled: 'Refunds resume as soon as the background worker wakes up.',
       },
       /** Nhãn enum `DepartureStatus` — `Record` đủ member để thêm trạng thái là đỏ typecheck. */
       status: {
@@ -4667,6 +4677,50 @@ export const messages = {
         toast: {
           title: 'Departure updated',
           body: (dates: string) => `${dates} is saved.`,
+        },
+      },
+      /**
+       * CÔNG TY huỷ chuyến (F13, ADR-0041 §6) — thao tác duy nhất ở màn này
+       * tiêu tiền thật, nên copy phải nói đủ ba thứ trước khi admin bấm: ai bị
+       * ảnh hưởng, tiền đi bao nhiêu, và thứ này KHÔNG đảo ngược được.
+       */
+      cancel: {
+        action: 'Cancel departure',
+        actionLabel: (dates: string) => `Cancel the departure on ${dates} and refund everyone`,
+        rows: {
+          departure: 'Departure',
+          toRefund: 'Travellers to refund',
+          checkouts: 'Checkouts to cancel',
+        },
+        dialog: {
+          title: 'Call off this departure?',
+          body: 'It disappears from the tour page and everyone who paid is refunded in full.',
+          /**
+           * Nói thẳng hai điều admin hay đoán sai: hoàn TRỌN kể cả khi hạn huỷ
+           * đã qua (hạn chót là luật cho khách đổi ý, không phải cho chuyến bị
+           * bỏ), và không có nút hoàn tác.
+           */
+          warning:
+            'Everyone who paid gets their full remaining amount back, even if the cancellation deadline has passed. This cannot be undone — a cancelled departure stays cancelled.',
+          noteLabel: 'Why is it called off?',
+          notePlaceholder: 'The guide is unavailable',
+          /** Ô lý do trống là một dòng sổ trắng ở chỗ duy nhất còn lại sáu tháng sau. */
+          noteRequired: 'Say why — travellers see this on their booking.',
+          submit: 'Cancel departure',
+          submitting: 'Cancelling…',
+        },
+        /** Mã CONTRACT của `admin.departures.cancel`. */
+        errors: {
+          NOT_FOUND: 'This departure no longer exists. The table has been refreshed.',
+          DEPARTURE_CANCELLED:
+            'This departure was already cancelled while the dialog was open — its travellers are being refunded. The table has been refreshed.',
+          DEPARTURE_STARTED:
+            'This departure has already started, so it can no longer be cancelled. The table has been refreshed.',
+        },
+        toast: {
+          title: 'Departure cancelled',
+          body: (dates: string) =>
+            `${dates} is off sale. Refunds are on their way — the table shows the progress.`,
         },
       },
       setStatus: {
