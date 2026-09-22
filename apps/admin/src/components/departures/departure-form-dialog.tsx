@@ -12,7 +12,6 @@ import {
   DialogTitle,
 } from '@tourism/ui/components/dialog';
 import { Input } from '@tourism/ui/components/input';
-import { Label } from '@tourism/ui/components/label';
 import { cn } from '@tourism/ui/lib/utils';
 import { useState } from 'react';
 import { DIALOG_FRAME } from '@/components/kit/confirm-write-dialog';

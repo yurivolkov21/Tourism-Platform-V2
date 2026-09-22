@@ -12,10 +12,8 @@ import {
   DialogTitle,
 } from '@tourism/ui/components/dialog';
 import { Input } from '@tourism/ui/components/input';
-import { Label } from '@tourism/ui/components/label';
 import { Textarea } from '@tourism/ui/components/textarea';
 import { cn } from '@tourism/ui/lib/utils';
-import type * as React from 'react';
 import { useState } from 'react';
 import { DIALOG_FRAME } from '@/components/kit/confirm-write-dialog';
 import { FormField } from '@/components/kit/form-field';
