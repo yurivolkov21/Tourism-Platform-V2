@@ -2,6 +2,8 @@ import { Module } from '@nestjs/common';
 import { MediaModule } from '../media/media.module.js';
 import { WebRevalidationModule } from '../web-revalidation/web-revalidation.module.js';
 import { AdminCatalogService } from './admin-catalog.service.js';
+import { AdminCategoriesController } from './admin-categories.controller.js';
+import { AdminCategoriesService } from './admin-categories.service.js';
 import { AdminDeparturesController } from './admin-departures.controller.js';
 import { AdminDeparturesService } from './admin-departures.service.js';
 import { AdminToursController } from './admin-tours.controller.js';
@@ -14,7 +16,12 @@ import { DepartureCancelService } from './departure-cancel.service.js';
   // `admin.departures.*` đều bust cache web SAU commit — cả hai service cần
   // WebRevalidationModule, cùng nếp ReviewsModule đã làm từ Task 3 của ADR-0016.
   imports: [MediaModule, WebRevalidationModule],
-  controllers: [CatalogController, AdminToursController, AdminDeparturesController],
+  controllers: [
+    CatalogController,
+    AdminToursController,
+    AdminDeparturesController,
+    AdminCategoriesController,
+  ],
   providers: [
     CatalogService,
     AdminCatalogService,
@@ -22,6 +29,8 @@ import { DepartureCancelService } from './departure-cancel.service.js';
     // F13: huỷ chuyến có hoàn tiền — service riêng vì nó là lệnh ghi duy nhất
     // của vùng catalog tiêu tiền thật.
     DepartureCancelService,
+    // F14 (P4e-2): danh mục tour — bề mặt ghi đầu tiên cho bảng này.
+    AdminCategoriesService,
   ],
 })
 export class CatalogModule {}
