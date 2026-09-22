@@ -68,7 +68,31 @@ trả `DEPARTURE_NOT_AVAILABLE` vì lịch chạy biến mất giữa chừng. L
 trỏ tới, mà khoá ngoại chỉ cho chọn giữa `SET NULL` (xoá admin là xoá luôn vết
 họ từng huỷ chuyến nào) và `RESTRICT` (không xoá được tài khoản nữa).
 
-**Review findings:** chưa có vòng review riêng — F13 chưa qua review.
+**Review findings:** vòng review 22/09 báo **4 phát hiện, nhưng chỉ hai chỗ
+sai** — vá ở gốc thay vì vá bốn triệu chứng (`b221754f`).
+
+*Gốc 1 — đường operator mượn cổng chặn của đường khách.* `cancellationBlocker`
+chặn khi "đã tới ngày khởi hành": đúng với khách, SAI với lượt hoàn tiền của
+công ty. Lượt ấy chạy bất đồng bộ — worker gói free ngủ 15 phút, cổng thanh
+toán hờn rồi retry giãn luỹ thừa — nên job hoàn toàn có thể chạy sau ngày khởi
+hành, mà chuyến khi ấy đã bị bỏ từ trước. Đo được bằng test: chuyến 10/10 huỷ
+ngày 09/10, worker tỉnh ngày 11/10 → `cancelByOperator` trả `null` → pg-boss
+ack THÀNH CÔNG → khách mất tiền, không log, không alert; lưới quét 10 phút/lần
+vấp đúng chốt ấy nên không bao giờ cứu được, và vì chỉ đếm thành công nên cũng
+không kêu. Vá: `cancellationBlocker` nhận `initiator` (mặc định `'customer'`
+để mọi chỗ gọi cũ giữ nguyên nghĩa), chốt ngày chỉ áp cho khách. Kèm theo,
+`cancelByOperator` tách hai kết cục vốn bị gộp: trạng thái đã đóng là ĐÃ XONG
+(trả `null`), còn thiếu capture là CẦN NGƯỜI NHÌN (ném) — `claimSeatsForPaid`
+nhận `providerPaymentId ?? null` nên hàng PAID không capture là có thật.
+
+*Gốc 2 — cột "x / y refunded" nói sai.* Tử số `cancelledBookingCount` đếm cả
+booking `PENDING` vừa bị huỷ tại chỗ (chưa trả tiền nên chưa từng được hoàn)
+lẫn booking khách tự huỷ từ trước: chuyến 2 PENDING cộng 3 PAID hiện
+"2 / 5 refunded" ngay khi chưa một đồng nào đi, và chuyến huỷ lúc chưa ai đặt
+hiện "0 / 0 refunded". Vá bằng cách THAY thước chứ không sửa phép tính: cột in
+"N travellers still to refund" đọc thẳng từ `liveBookingCount` và để TRỐNG khi
+hết người chờ. `cancelledBookingCount` bỏ hẳn khỏi contract — một field không
+ai dùng trên hàng tiền là một field sẽ lệch.
 
 **CÒN TREO:**
 
@@ -76,13 +100,11 @@ họ từng huỷ chuyến nào) và `RESTRICT` (không xoá được tài kho�
   sau khi merge (luật 15).
 - **Chạy thử tay** theo mục nghiệm thu của plan: tạo một chuyến, đóng, mở lại,
   rồi huỷ một chuyến có booking sandbox và xem cột tiến độ chạy tới đủ.
-- **Vòng review F13** chưa chạy. Hai vòng trước (F11 13 mục, F12 7 mục) đều
-  tìm ra thứ chạm tiền, mà F13 là phần chạm tiền nặng nhất của cả phase.
 - Vòng hai của F12 (8 mục) vẫn mở.
 
-Tests after: Vitest **3871** (web 1525, api 972, admin 951, contract 321, core 46,
-ui 22, tokens 18, i18n 16), int **561 ở 42 file**, Jest mobile 245 không đổi.
-Riêng F13 thêm 19 ca unit và 16 ca int. Task 8, Task 9 và luật
+Tests after: Vitest **3875** (web 1525, api 975, admin 952, contract 321, core 46,
+ui 22, tokens 18, i18n 16), int **564 ở 42 file**, Jest mobile 245 không đổi.
+Riêng F13 thêm 23 ca unit và 19 ca int (gồm vòng vá review). Task 8, Task 9 và luật
 `departureCancelBlocker` đi đúng TDD (đỏ trước rồi mới implement); bảy ca int
 của endpoint viết SAU phần cài đặt và được bù bằng đột biến mã — bỏ chốt
 huỷ-lần-hai, bỏ chặn chuyến đã khởi hành, bỏ ghi sổ, bỏ huỷ nhóm `PENDING`,
