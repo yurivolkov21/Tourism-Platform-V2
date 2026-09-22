@@ -4545,6 +4545,128 @@ export const messages = {
      * (`departures-write.ts` derive từ keys), nên tên khoá phải trùng TỪNG CHỮ
      * với `errors` của contract.
      */
+    /**
+     * Danh mục tour (P4e-2 F14) — bảng nhỏ nhất của back office: 6 hàng, không
+     * phân trang, không tìm kiếm.
+     */
+    categories: {
+      list: {
+        heading: 'Tour categories',
+        /**
+         * Nói ngay luật đắt nhất của màn, trước khi ai đó mở form sửa: slug
+         * khoá sau khi tạo, và thứ tự ở đây là thứ tự khách nhìn thấy.
+         *
+         * Vế "thứ tự khách nhìn thấy" CHỈ đúng khi web đọc endpoint danh mục —
+         * đó là Task 5 của cùng nhánh F14. Task 5 mà rớt thì câu này thành lời
+         * nói dối với admin, nên hai task phải merge CÙNG một lượt.
+         */
+        subtitle:
+          'The order here is the order travellers see. A slug is set once — it lives in shared links and cannot be changed later.',
+        empty: 'No categories yet.',
+        columns: {
+          name: 'Category',
+          slug: 'Slug',
+          tours: 'Published tours',
+          status: 'Status',
+          actions: 'Actions',
+        },
+        tours: (count: number) => (count === 1 ? '1 tour' : `${count} tours`),
+        inherited: 'No description',
+        active: 'Visible',
+        inactive: 'Hidden',
+      },
+      form: {
+        name: 'Name',
+        slug: 'Slug',
+        /** Ô slug CHỈ có ở form tạo — câu này giải thích vì sao nó một đi không trở lại. */
+        slugHint: 'Set once. It appears in shared links, so it cannot be changed later.',
+        description: 'Description',
+        descriptionHint: (max: number) => `Optional, up to ${max} characters.`,
+        cancel: 'Cancel',
+        errors: {
+          nameRequired: 'Give the category a name.',
+          slugRequired: 'Give the category a slug.',
+          slugShape: 'Use lowercase letters, digits and hyphens only.',
+          tooLong: (max: number) => `Keep it under ${max} characters.`,
+        },
+      },
+      create: {
+        action: 'Add category',
+        dialog: {
+          title: 'Add a category',
+          body: 'It goes to the end of the list. Use the arrows to move it.',
+          submit: 'Add category',
+          submitting: 'Adding…',
+        },
+        errors: {
+          SLUG_TAKEN: 'Another category already uses this slug. Pick a different one.',
+        },
+        toast: { title: 'Category added', body: (name: string) => `${name} is on the list.` },
+      },
+      edit: {
+        action: 'Edit',
+        actionLabel: (name: string) => `Edit ${name}`,
+        dialog: {
+          title: 'Edit this category',
+          body: 'Name and description can change. The slug cannot.',
+          submit: 'Save changes',
+          submitting: 'Saving…',
+        },
+        errors: {
+          NOT_FOUND: 'This category no longer exists. The table has been refreshed.',
+        },
+        toast: { title: 'Category updated', body: (name: string) => `${name} is saved.` },
+      },
+      setActive: {
+        hide: 'Hide',
+        show: 'Show',
+        hideLabel: (name: string) => `Hide ${name} from the tours page`,
+        showLabel: (name: string) => `Show ${name} on the tours page`,
+        rows: { category: 'Category', tours: 'Published tours' },
+        dialog: {
+          hideTitle: 'Hide this category?',
+          hideBody: 'It disappears from the filter on the tours page.',
+          /**
+           * BA hệ quả, và cả ba đều phải nói ra. Bài học `closeWarning` của F12
+           * và câu "travellers see this" của F13: một câu copy nói sai trên màn
+           * quản trị là một quyết định sai của người đọc nó.
+           *
+           * Thứ admin hay đoán nhầm nhất là vế thứ hai — họ tưởng ẩn danh mục
+           * là ẩn luôn tour trong đó.
+           */
+          hideWarning:
+            'The tours in it stay on sale and keep showing this category. Links that already point at it keep working — hiding it only removes the filter chip.',
+          hideSubmit: 'Hide category',
+          hideSubmitting: 'Hiding…',
+          showTitle: 'Show this category again?',
+          showBody: 'It comes back to the filter on the tours page.',
+          showWarning: 'Nothing else changes — the tours in it were never hidden.',
+          showSubmit: 'Show category',
+          showSubmitting: 'Showing…',
+        },
+        errors: {
+          NOT_FOUND: 'This category no longer exists. The table has been refreshed.',
+        },
+        toast: {
+          hiddenTitle: 'Category hidden',
+          hiddenBody: (name: string) => `${name} is off the tours page filter.`,
+          shownTitle: 'Category visible',
+          shownBody: (name: string) => `${name} is back on the tours page filter.`,
+        },
+      },
+      move: {
+        up: 'Move up',
+        down: 'Move down',
+        upLabel: (name: string) => `Move ${name} up`,
+        downLabel: (name: string) => `Move ${name} down`,
+        /** Mã CONTRACT của `admin.categories.move`. */
+        errors: {
+          NOT_FOUND: 'This category no longer exists. The table has been refreshed.',
+          CANNOT_MOVE:
+            'Someone else reordered the list while this page was open. The table has been refreshed.',
+        },
+      },
+    },
     departures: {
       list: {
         back: 'Back to tours',

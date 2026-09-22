@@ -1,0 +1,183 @@
+import { render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import type { AdminCategoryRow } from '@tourism/contract';
+import { messages } from '@tourism/i18n';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { toCategoryRowVMs } from '@/lib/categories-view';
+import { CategoryRowActions } from './category-row-actions';
+
+/**
+ * Bốn nút của một hàng bảng danh mục (spec P4e-2 F14). Phần đáng pin là chuyện
+ * nút nào ĐƯỢC BẤM, vì đó là nơi luật server hiện ra thành giao diện:
+ *
+ *  ① hàng đầu không lên được, hàng cuối không xuống được — gương của
+ *    `CANNOT_MOVE`, và mời bấm là mời ăn một 409;
+ *  ② hộp xác nhận ẨN phải nói đủ BA hệ quả, vì thứ admin hay đoán nhầm nhất
+ *    là tưởng ẩn danh mục thì ẩn luôn tour trong đó.
+ */
+
+const t = messages.admin.categories;
+
+const success = vi.fn();
+const errorToast = vi.fn();
+vi.mock('sonner', () => ({
+  toast: {
+    success: (...args: unknown[]) => success(...args),
+    error: (...args: unknown[]) => errorToast(...args),
+  },
+}));
+
+const row = (n: number, over: Partial<AdminCategoryRow> = {}): AdminCategoryRow => ({
+  id: `c1400001-0000-4000-8000-${String(n).padStart(12, '0')}`,
+  slug: `cat-${n}`,
+  name: `Category ${n}`,
+  description: null,
+  order: n,
+  isActive: true,
+  tourCount: 0,
+  ...over,
+});
+
+/** Dựng một hàng ở vị trí `index` trong danh sách `rows`. */
+function renderRow(rows: AdminCategoryRow[], index: number, over: Record<string, unknown> = {}) {
+  const vm = toCategoryRowVMs(rows)[index];
+  if (!vm) throw new Error(`no row at ${index}`);
+  const update = vi.fn();
+  const setActive = vi.fn(async () => ({
+    ok: true as const,
+    row: rows[index] as AdminCategoryRow,
+  }));
+  const move = vi.fn(async () => ({ ok: true as const, rows }));
+  render(
+    <CategoryRowActions
+      row={vm}
+      update={update}
+      setActive={setActive}
+      move={move}
+      disabled={false}
+      onSettled={vi.fn()}
+      {...over}
+    />,
+  );
+  return { vm, update, setActive, move };
+}
+
+beforeEach(() => {
+  success.mockReset();
+  errorToast.mockReset();
+});
+
+describe('CategoryRowActions — nút nào được bấm', () => {
+  it('hàng GIỮA đi được cả hai chiều', () => {
+    const { vm } = renderRow([row(1), row(2), row(3)], 1);
+
+    expect(screen.getByRole('button', { name: t.move.upLabel(vm.name) })).toBeEnabled();
+    expect(screen.getByRole('button', { name: t.move.downLabel(vm.name) })).toBeEnabled();
+  });
+
+  it('hàng ĐẦU: nút lên TẮT — server sẽ trả CANNOT_MOVE, mời bấm là mời ăn lỗi', () => {
+    const { vm } = renderRow([row(1), row(2)], 0);
+
+    expect(screen.getByRole('button', { name: t.move.upLabel(vm.name) })).toBeDisabled();
+    expect(screen.getByRole('button', { name: t.move.downLabel(vm.name) })).toBeEnabled();
+  });
+
+  it('hàng CUỐI: nút xuống TẮT', () => {
+    const { vm } = renderRow([row(1), row(2)], 1);
+
+    expect(screen.getByRole('button', { name: t.move.downLabel(vm.name) })).toBeDisabled();
+  });
+
+  it('bảng đang làm mới: khoá HẾT, kể cả nút sửa', async () => {
+    const { vm, move } = renderRow([row(1), row(2)], 0, { disabled: true });
+
+    expect(screen.getByRole('button', { name: t.edit.actionLabel(vm.name) })).toBeDisabled();
+    expect(screen.getByRole('button', { name: t.move.downLabel(vm.name) })).toBeDisabled();
+    expect(move).not.toHaveBeenCalled();
+  });
+
+  it('bấm xuống gửi đúng hướng và đúng id', async () => {
+    const user = userEvent.setup();
+    const { vm, move } = renderRow([row(1), row(2)], 0);
+
+    await user.click(screen.getByRole('button', { name: t.move.downLabel(vm.name) }));
+
+    await waitFor(() => expect(move).toHaveBeenCalledWith({ id: vm.id, direction: 'down' }));
+  });
+});
+
+describe('CategoryRowActions — hộp xác nhận ẩn danh mục', () => {
+  it('in tên, SỐ TOUR, và nói đủ ba hệ quả', async () => {
+    const user = userEvent.setup();
+    const { vm } = renderRow([row(1, { name: 'Day trips', tourCount: 7 }), row(2)], 0);
+
+    await user.click(screen.getByRole('button', { name: t.setActive.hideLabel(vm.name) }));
+
+    expect(await screen.findByText(t.setActive.dialog.hideTitle)).toBeInTheDocument();
+    expect(screen.getByText(t.setActive.rows.tours)).toBeInTheDocument();
+    expect(screen.getByText('7')).toBeInTheDocument();
+    // Câu cảnh báo là thứ ngăn admin hiểu nhầm rằng ẩn danh mục là ẩn tour.
+    expect(screen.getByText(t.setActive.dialog.hideWarning)).toBeInTheDocument();
+  });
+
+  it('hàng ĐÃ ẨN: nút đổi thành Hiện và câu cảnh báo đổi theo', async () => {
+    const user = userEvent.setup();
+    const { vm } = renderRow([row(1, { isActive: false }), row(2)], 0);
+
+    await user.click(screen.getByRole('button', { name: t.setActive.showLabel(vm.name) }));
+
+    expect(await screen.findByText(t.setActive.dialog.showTitle)).toBeInTheDocument();
+    expect(screen.getByText(t.setActive.dialog.showWarning)).toBeInTheDocument();
+  });
+
+  it('xác nhận: gửi cờ NGƯỢC với trạng thái hiện tại, toast đọc TỪ RESPONSE', async () => {
+    const user = userEvent.setup();
+    const rows = [row(1, { name: 'Day trips' }), row(2)];
+    const setActive = vi.fn(async () => ({
+      ok: true as const,
+      row: { ...(rows[0] as AdminCategoryRow), isActive: false },
+    }));
+    const { vm } = renderRow(rows, 0, { setActive });
+
+    await user.click(screen.getByRole('button', { name: t.setActive.hideLabel(vm.name) }));
+    await user.click(await screen.findByRole('button', { name: t.setActive.dialog.hideSubmit }));
+
+    await waitFor(() => expect(setActive).toHaveBeenCalledWith({ id: vm.id, isActive: false }));
+    expect(success).toHaveBeenCalledWith(t.setActive.toast.hiddenTitle, {
+      description: t.setActive.toast.hiddenBody('Day trips'),
+    });
+  });
+});
+
+describe('CategoryRowActions — form sửa', () => {
+  it('mở form sửa với tên hiện tại, và KHÔNG có ô slug', async () => {
+    const user = userEvent.setup();
+    const { vm } = renderRow([row(1, { name: 'Day trips' }), row(2)], 0);
+
+    await user.click(screen.getByRole('button', { name: t.edit.actionLabel(vm.name) }));
+
+    expect(await screen.findByText(t.edit.dialog.title)).toBeInTheDocument();
+    expect(screen.getByLabelText(t.form.name)).toHaveValue('Day trips');
+    expect(screen.queryByLabelText(t.form.slug)).not.toBeInTheDocument();
+  });
+
+  it('ô mô tả nạp bản THÔ — kể cả khi nó trùng câu thay thế', async () => {
+    // Danh mục có mô tả thật đúng bằng câu "chưa có mô tả" là ca hiểm: đọc bản
+    // hiển thị rồi so chuỗi sẽ mở ra ô trống, và lưu một phát là mất mô tả.
+    const user = userEvent.setup();
+    const { vm } = renderRow([row(1, { description: t.list.inherited }), row(2)], 0);
+
+    await user.click(screen.getByRole('button', { name: t.edit.actionLabel(vm.name) }));
+
+    expect(await screen.findByLabelText(t.form.description)).toHaveValue(t.list.inherited);
+  });
+
+  it('ô mô tả TRỐNG khi danh mục chưa có mô tả', async () => {
+    const user = userEvent.setup();
+    const { vm } = renderRow([row(1), row(2)], 0);
+
+    await user.click(screen.getByRole('button', { name: t.edit.actionLabel(vm.name) }));
+
+    expect(await screen.findByLabelText(t.form.description)).toHaveValue('');
+  });
+});
