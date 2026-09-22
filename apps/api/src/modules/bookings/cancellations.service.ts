@@ -9,7 +9,11 @@ import { Prisma } from '../../generated/prisma/client.js';
 import { calendarDate } from '../../lib/calendar-date.js';
 import { MediaService } from '../media/media.service.js';
 import { buildRefundEventRow } from '../payments/refund-event.js';
-import { cancellationBlocker, refundOnCancelForBooking } from './booking-cancellation.js';
+import {
+  cancellationBlocker,
+  refundOnCancelForBooking,
+  refundOnOperatorCancelForBooking,
+} from './booking-cancellation.js';
 import { bookingTourInclude, resolveTourCover, toBooking } from './bookings.service.js';
 import { withBookingRefundLock } from './refund-lock.js';
 import { BookingNotFoundError, RefundsService } from './refunds.service.js';
@@ -187,6 +191,60 @@ export class CancellationsService {
       booking: toBooking(row, null, tourImage, { refundedTotal: refunded._sum.amount }),
       refundedAmount: refundedAmount.toFixed(2),
     };
+  }
+
+  /**
+   * CÔNG TY huỷ chuyến: huỷ MỘT booking của chuyến ấy và hoàn trọn phần chưa
+   * hoàn (ADR-0041 §6, F13). Người gọi là job hoàn tiền của worker, mỗi booking
+   * một job.
+   *
+   * Trả về số tiền đã hoàn, hoặc `null` khi booking không còn ở trạng thái huỷ
+   * được — nghĩa là **đã xong rồi**. Đó là toàn bộ cơ chế idempotent của hàng
+   * đợi: pg-boss giao lại một job (worker chết giữa chừng, job hết hạn rồi
+   * retry) thì lượt sau đọc trạng thái TRONG KHOÁ, thấy `CANCELLED`, và dừng
+   * TRƯỚC cổng thanh toán chứ không phải sau. Không cần bảng chống trùng riêng.
+   *
+   * `null` chứ không ném, vì "đã hoàn rồi" là kết cục THÀNH CÔNG của job: ném ở
+   * đây sẽ đốt hết `retryLimit` rồi báo lỗi cho một việc đã xong.
+   *
+   * KHÔNG dùng lại `refundOnCancelForBooking`: hạn chót là luật cho khách đổi
+   * ý, mà đây là chuyến bị bỏ — xem {@link CancelInLockInput}.
+   */
+  async cancelByOperator(
+    bookingId: string,
+    adminId: string,
+    reason: string | null,
+    now: Date = new Date(),
+  ): Promise<string | null> {
+    return withBookingRefundLock(bookingId, async (tx) => {
+      const booking = await tx.booking.findUniqueOrThrow({ where: { id: bookingId } });
+      // Đọc TRONG khoá rồi mới quyết: một lượt giao lại, hay một lệnh huỷ của
+      // chính khách chen vào trước, đều hiện ra ở đây.
+      if (cancellationBlocker(booking, now) !== null) return null;
+
+      const ledger = await tx.refund.aggregate({
+        where: { bookingId: booking.id },
+        _sum: { amount: true },
+      });
+      const refundAmount = new Prisma.Decimal(
+        refundOnOperatorCancelForBooking(booking, ledger._sum.amount),
+      );
+      await this.cancelInLock(tx, booking, {
+        decidedById: adminId,
+        refundAmount,
+        refundedTotal: ledger._sum.amount ?? new Prisma.Decimal(0),
+        // Không có hộp xác nhận nào in số cho TỪNG khách — admin xác nhận huỷ
+        // cả chuyến, không xác nhận từng con số. Phép so thành no-op.
+        expectedRefundAmount: refundAmount,
+        reason,
+        initiator: 'operator',
+        now,
+      });
+      this.logger.log(
+        `Booking ${booking.code} cancelled by the operator: refunded ${refundAmount.toFixed(2)} ${booking.currency}`,
+      );
+      return refundAmount.toFixed(2);
+    });
   }
 
   /**

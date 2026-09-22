@@ -4,6 +4,11 @@ import { NestFactory } from '@nestjs/core';
 import { PgBoss } from 'pg-boss';
 import { env } from '../config/env.js';
 import { MediaGarbageService } from '../modules/media/media-garbage.service.js';
+import {
+  DEPARTURE_REFUND_QUEUE,
+  type DepartureRefundJob,
+  DepartureRefundService,
+} from './departure-refund.service.js';
 import { EnquiryRetentionService } from './enquiry-retention.service.js';
 import { OutboxService } from './outbox.service.js';
 import { clearOutboxNudge, OUTBOX_DRAIN_QUEUE, registerOutboxNudge } from './outbox-nudge.js';
@@ -49,6 +54,21 @@ const MEDIA_GC_QUEUE = 'media-gc';
  * kia, và mỗi lượt là một loạt lời gọi API ra ngoài (ADR-0035 §5).
  */
 const MEDIA_GC_CRON = '0 4 * * *';
+/**
+ * Hàng đợi hoàn tiền khi công ty huỷ chuyến (F13) — queue ĐẦU TIÊN của dự án
+ * mang payload và chạy theo yêu cầu, không theo cron.
+ *
+ * `retryLimit: 5` với giãn luỹ thừa, ngược hẳn `retryLimit: 0` của năm queue
+ * kia: chúng là cron nên lượt kế bù được, còn ở đây bỏ một lượt là MỘT KHÁCH
+ * KHÔNG ĐƯỢC HOÀN TIỀN. Retry chỉ an toàn nhờ job idempotent — lượt giao lại
+ * đọc trạng thái booking trong khoá rồi dừng trước cổng thanh toán.
+ *
+ * `policy` để mặc định ('standard'): 'short' của năm queue kia gộp các job
+ * cùng queue đang chờ thành một, mà ở đây mỗi job là một khách khác nhau.
+ */
+const DEPARTURE_REFUND_RETRY_LIMIT = 5;
+/** Giãn 30s, 60s, 120s… — đủ để cổng thanh toán qua một cơn rate-limit. */
+const DEPARTURE_REFUND_RETRY_DELAY_SECONDS = 30;
 
 export async function startWorker(logger: Logger): Promise<{ stop: () => Promise<void> }> {
   // Application context tối giản — không HTTP listener.
@@ -56,6 +76,7 @@ export async function startWorker(logger: Logger): Promise<{ stop: () => Promise
   const outbox = app.get(OutboxService);
   const pendingSweep = app.get(PendingSweepService);
   const enquiryRetention = app.get(EnquiryRetentionService);
+  const departureRefund = app.get(DepartureRefundService);
 
   const boss = new PgBoss({
     connectionString: env.DATABASE_URL,
@@ -97,6 +118,19 @@ export async function startWorker(logger: Logger): Promise<{ stop: () => Promise
   });
   await boss.schedule(ENQUIRY_RETENTION_QUEUE, ENQUIRY_RETENTION_CRON);
 
+  // Hoàn tiền khi công ty huỷ chuyến (F13) — theo yêu cầu, không cron.
+  await boss.createQueue(DEPARTURE_REFUND_QUEUE, {
+    retryLimit: DEPARTURE_REFUND_RETRY_LIMIT,
+    retryDelay: DEPARTURE_REFUND_RETRY_DELAY_SECONDS,
+    retryBackoff: true,
+  });
+  await boss.work<DepartureRefundJob>(DEPARTURE_REFUND_QUEUE, async ([job]) => {
+    // Một job một booking, nên để lỗi LAN RA: pg-boss đếm nó vào retryLimit.
+    // Nuốt lỗi ở đây là biến "cổng thanh toán đang hờn" thành "khách này coi
+    // như đã hoàn", và không còn gì đánh thức nó dậy.
+    if (job) await departureRefund.refundOne(job.data);
+  });
+
   // Dọn ảnh mồ côi trên Cloudinary (ADR-0035).
   //
   // ⚠️ Queue chỉ được ĐĂNG KÝ khi có cờ, chứ không phải đăng ký rồi bên trong
@@ -124,7 +158,7 @@ export async function startWorker(logger: Logger): Promise<{ stop: () => Promise
   }
 
   logger.log(
-    `worker loops started (${env.NODE_ENV}) — outbox-drain ${OUTBOX_DRAIN_CRON} · outbox-purge ${OUTBOX_PURGE_CRON} · booking-sweep ${BOOKING_SWEEP_CRON} · enquiry-retention ${ENQUIRY_RETENTION_CRON}` +
+    `worker loops started (${env.NODE_ENV}) — outbox-drain ${OUTBOX_DRAIN_CRON} · outbox-purge ${OUTBOX_PURGE_CRON} · booking-sweep ${BOOKING_SWEEP_CRON} · enquiry-retention ${ENQUIRY_RETENTION_CRON} · departure-refund theo yêu cầu (retry ${DEPARTURE_REFUND_RETRY_LIMIT})` +
       (env.MEDIA_GC_ENABLED
         ? ` · media-gc ${MEDIA_GC_CRON} (chờ ${env.MEDIA_GC_GRACE_DAYS} ngày)`
         : ' · media-gc TẮT'),
