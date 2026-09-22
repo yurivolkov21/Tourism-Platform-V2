@@ -8,6 +8,86 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-09-22 — P4e-1 F13: nút công ty huỷ chuyến, hoàn tiền qua hàng đợi (nhánh `feat/p4e-departure-cancel`)
+
+Đóng món nợ [ADR-0041 §6](adr/0041-single-cancellation-deadline.md) mở từ đầu
+tháng 9: *công ty huỷ chuyến hoàn 100% mọi lý do — lõi đã viết sẵn nhưng chưa
+có nút*. Bốn task theo [plan](plans/2026-09-21-p4e-1-departures.md), mỗi task
+một commit.
+
+**Hai đường huỷ, hai cách tính tiền.** `refundOnOperatorCancelForBooking` là
+hàm mới, và toàn bộ lý do nó tồn tại nằm ở chỗ nó KHÔNG nhận `now`: hạn chót
+là luật cho KHÁCH đổi ý (qua hạn thì chỗ không bán lại được nữa nên không tự
+hoàn), còn chuyến bị công ty bỏ thì khách chẳng đổi ý gì cả. Cùng một mốc
+18/10 với hạn chót 17/10, khách tự huỷ ra `0.00` và công ty huỷ ra trọn
+`117.00`. Thêm `now` vào chữ ký là mời người đọc sau tin rằng thời điểm có ảnh
+hưởng.
+
+**Hàng đợi đầu tiên của dự án mang payload.** Năm queue hiện có đều là cron
+không tham số với `retryLimit: 0`, vì lượt kế bù được. Ở đây bỏ một lượt là
+MỘT KHÁCH KHÔNG ĐƯỢC HOÀN TIỀN, nên queue khai `retryLimit: 5` giãn luỹ thừa
+từ 30 giây, và `policy` để mặc định chứ không `'short'` (`'short'` gộp các job
+đang chờ thành một, mà mỗi job ở đây là một khách khác nhau). Retry chỉ an
+toàn nhờ job idempotent: lượt giao lại đọc trạng thái booking TRONG khoá, thấy
+`CANCELLED`, và dừng TRƯỚC cổng thanh toán. Trả `null` chứ không ném — "đã
+hoàn rồi" là kết cục THÀNH CÔNG, ném ở đó sẽ đốt hết retry để báo lỗi cho một
+việc đã xong.
+
+**Một job mỗi booking, không phải mỗi chuyến.** Mỗi booking là một lời gọi ra
+cổng thanh toán và hỏng độc lập; gom cả chuyến thì khách thứ 7 hỏng kéo theo
+lượt retry của 6 người đã hoàn xong.
+
+**Endpoint đồng bộ, tiền bất đồng bộ.** `admin.departures.cancel` khoá chuyến,
+đổi `CANCELLED`, huỷ luôn nhóm `PENDING` tại chỗ (chưa trả tiền nên không có
+gì hoàn; không trả ghế vì `PENDING` chưa từng claim ghế), chụp nhóm cần hoàn,
+rồi trả về. Đợi hoàn tiền ngay trong request là sai: một chuyến 30 khách là 30
+lời gọi ra cổng, và request đầu tiên hết giờ chờ để lại một lượt huỷ nửa chừng
+mà không ai biết đã tới đâu.
+
+**Màn admin.** Nút huỷ dùng thước NGÀY KHỞI HÀNH chứ không phải hạn nhận đặt —
+khác hẳn nút Mở lại ngay bên cạnh, vì một chuyến quá hạn đặt mà hướng dẫn viên
+gãy chân vẫn phải huỷ được. Hộp xác nhận in hai con số (bao nhiêu người được
+hoàn, bao nhiêu phiên thanh toán bị huỷ) và bắt nhập lý do, kèm câu nhắc rằng
+KHÁCH đọc được lý do ấy. Cột tiến độ đọc từ đếm booking, không thêm bảng nào.
+
+**Hai thứ làm THÊM so với plan, cùng vì một lỗ hổng.** Job được đẩy SAU khi
+transaction commit, nên có một khoảng hở thật: không worker nào đăng ký, hoặc
+pg-boss lỗi, hoặc tiến trình chết đúng khe giữa — thì booking đã trả tiền nằm
+lại trên chuyến đã huỷ và KHÔNG có gì đánh thức nó dậy (khác mọi queue khác,
+ở đây không có cron nào tự chạy lại). Vá bằng: ba cột sổ trên `tour_departures`
+(`cancelled_at/by/reason` — cũng là nơi DUY NHẤT trả lời "ai huỷ, vì sao" với
+một chuyến không có khách nào), và lượt quét `sweepStranded` đi ké nhịp
+`booking-sweep` 10 phút. Chuyến huỷ từ trước F13 không có sổ thì lượt quét BỎ
+QUA và cảnh báo, không bịa ra người quyết.
+
+**Một quyết định đo được, không phải suy đoán.** `cancelled_by` cố ý KHÔNG có
+khoá ngoại tới `users`. Bản đầu có, và `TRUNCATE users CASCADE` lập tức kéo
+theo cả `tour_departures` làm 25 integration test đỏ — `POST /api/bookings`
+trả `DEPARTURE_NOT_AVAILABLE` vì lịch chạy biến mất giữa chừng. Lý do thứ nhất
+đứng độc lập với lỗi ấy: một dấu vết kiểm toán phải sống lâu hơn tài khoản nó
+trỏ tới, mà khoá ngoại chỉ cho chọn giữa `SET NULL` (xoá admin là xoá luôn vết
+họ từng huỷ chuyến nào) và `RESTRICT` (không xoá được tài khoản nữa).
+
+**Review findings:** chưa có vòng review riêng — F13 chưa qua review.
+
+**CÒN TREO:**
+
+- **Deploy migration `20260922120000_departure_cancellation_audit` lên Supabase**
+  sau khi merge (luật 15).
+- **Chạy thử tay** theo mục nghiệm thu của plan: tạo một chuyến, đóng, mở lại,
+  rồi huỷ một chuyến có booking sandbox và xem cột tiến độ chạy tới đủ.
+- **Vòng review F13** chưa chạy. Hai vòng trước (F11 13 mục, F12 7 mục) đều
+  tìm ra thứ chạm tiền, mà F13 là phần chạm tiền nặng nhất của cả phase.
+- Vòng hai của F12 (8 mục) vẫn mở.
+
+Tests after: Vitest **3871** (web 1525, api 972, admin 951, contract 321, core 46,
+ui 22, tokens 18, i18n 16), int **561 ở 42 file**, Jest mobile 245 không đổi.
+Riêng F13 thêm 19 ca unit và 16 ca int. Task 8, Task 9 và luật
+`departureCancelBlocker` đi đúng TDD (đỏ trước rồi mới implement); bảy ca int
+của endpoint viết SAU phần cài đặt và được bù bằng đột biến mã — bỏ chốt
+huỷ-lần-hai, bỏ chặn chuyến đã khởi hành, bỏ ghi sổ, bỏ huỷ nhóm `PENDING`,
+bỏ chốt idempotent và bỏ guard chuyến đều làm đúng số ca dự kiến đỏ.
+
 ## 2026-09-22 — P4e-1: danh sách tour có công tắc đăng, và lịch chạy của từng tour (nhánh `feat/p4e-tours-list` rebase dưới `feat/p4e-departures-crud`)
 
 Hai cụm việc đầu của P4e, dựng song song ở hai worktree rồi gộp làm một lượt vì

@@ -17,7 +17,7 @@
 
 | Mã | Việc | Ghi chú |
 | --- | --- | --- |
-| **P4e** | Quản trị catalog: thêm/sửa/xoá tour, điểm đến, danh mục | Danh sách tour có công tắc đăng và lịch chạy của từng tour đã xong 22/09 (F11 + F12). Còn nút "công ty huỷ chuyến" (F13, ADR-0041 §6) — lõi đã viết, chỉ thiếu nút |
+| **P4e** | Quản trị catalog: thêm/sửa/xoá tour, điểm đến, danh mục | P4e-1 XONG 22/09 (F11 danh sách tour · F12 lịch chạy · F13 huỷ chuyến có hoàn tiền, đóng nợ ADR-0041 §6). Còn P4e-2 danh mục và điểm đến, P4e-3 tour CRUD, P4e-4 bài viết |
 | **P4f** | Quản trị media và người dùng | Gồm màn hạ quyền / thu hồi phiên admin (ADR-0026 AMEND 1) |
 | **P5b-2…5** | Bốn cụm màn mobile: xem tour · đặt tour · tài khoản · đánh giá | **Đã có bản vẽ và tài liệu bàn giao đầy đủ**; thành viên khác dựng màn — xem [`handoff/`](handoff/README.md) |
 | **P6** | Trợ lý AI tư vấn tour | Bảng dữ liệu đã có sẵn (`chat_conversations`, `chat_messages`) |
@@ -47,9 +47,12 @@
   `tourism` theo mã mới.
 - Chuyển `backups/2026-09-18/` từ worktree về bản checkout gốc trước khi gỡ
   worktree.
-- Deploy migration `20260922090000_departure_date_range_check` lên Supabase
-  (CHECK `end_date >= start_date` cho bảng chuyến). Đã chạy trên Postgres Docker
-  `tourism` và `tourism_test`; prod còn chờ.
+- Deploy migration `20260922120000_departure_cancellation_audit` lên Supabase
+  (ba cột sổ huỷ chuyến của F13). Đã chạy trên Postgres Docker `tourism` và
+  `tourism_test`; prod còn chờ.
+- Chạy thử tay đường huỷ chuyến của F13 theo mục nghiệm thu của
+  [plan P4e-1](plans/2026-09-21-p4e-1-departures.md): tạo một chuyến, đóng, mở
+  lại, rồi huỷ một chuyến có booking sandbox và xem cột tiến độ chạy tới đủ.
 - Tắt tự-động-cập-nhật marketplace `claude-plugins-official` trước freeze 15/10.
 - Cân nhắc siết thêm Build Filter của Render: thêm `apps/web/**`,
   `apps/admin/**`, `apps/mobile/**` vào Ignored Paths. **Đừng thêm `libs/**`** —
