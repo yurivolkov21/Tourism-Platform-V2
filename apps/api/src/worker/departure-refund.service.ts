@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { prisma } from '../auth/auth.config.js';
+import { BookingStatus, DepartureStatus } from '../generated/prisma/enums.js';
 import { CancellationsService } from '../modules/bookings/cancellations.service.js';
 
 /**
@@ -42,6 +43,14 @@ export interface DepartureRefundJob {
   departureId: string;
   /** Admin đã bấm nút huỷ — vào `cancellation_requests.decided_by`. */
   adminId: string;
+  /**
+   * Lý do admin gõ ở hộp xác nhận, chép vào `cancellation_requests.reason` của
+   * TỪNG booking.
+   *
+   * KHÁCH ĐỌC ĐƯỢC chuỗi này (lịch sử huỷ ở trang booking của họ) — copy ở màn
+   * admin phải nói rõ điều đó, vì "guide bỏ việc" là câu ghi cho nội bộ.
+   */
+  reason: string;
 }
 
 @Injectable()
@@ -73,15 +82,70 @@ export class DepartureRefundService {
       );
       return null;
     }
-    return this.cancellations.cancelByOperator(booking.id, job.adminId, REASON);
+    return this.cancellations.cancelByOperator(booking.id, job.adminId, job.reason);
+  }
+
+  /**
+   * LƯỚI CUỐI cho hoàn tiền sót — chạy theo cron `booking-sweep` (10 phút).
+   *
+   * Vì sao cần: job được đẩy SAU khi transaction huỷ đã commit, nên có một
+   * khoảng hở thật. Nếu lúc ấy không worker nào đăng ký (API chạy tách khỏi
+   * worker), hoặc pg-boss lỗi, hoặc tiến trình chết giữa commit và đẩy — thì
+   * booking đã trả tiền nằm lại trên một chuyến đã huỷ và KHÔNG có gì đánh
+   * thức nó dậy. Khác mọi queue khác của dự án, ở đây không có cron nào tự
+   * chạy lại công việc.
+   *
+   * Câu hỏi đủ hẹp để chạy mỗi 10 phút mà không tốn gì: chuyến nào `CANCELLED`
+   * mà còn booking sống. Ca thường gặp trả 0 hàng.
+   *
+   * Gọi thẳng {@link refundOne} thay vì đẩy lại vào hàng đợi: nếu đường đẩy
+   * đang hỏng thì đẩy lại cũng hỏng. `decided_by` lấy từ `cancelled_by` của
+   * chính chuyến — đó là lý do ba cột sổ ở `tour_departures` tồn tại.
+   */
+  async sweepStranded(): Promise<number> {
+    const stranded = await prisma.booking.findMany({
+      where: {
+        status: { in: [BookingStatus.PAID, BookingStatus.PARTIALLY_REFUNDED] },
+        departure: { status: DepartureStatus.CANCELLED },
+      },
+      select: {
+        id: true,
+        departureId: true,
+        departure: { select: { cancelledBy: true, cancelReason: true } },
+      },
+    });
+
+    let done = 0;
+    for (const booking of stranded) {
+      const adminId = booking.departure.cancelledBy;
+      if (!adminId) {
+        // Chuyến huỷ từ trước đợt F13 (seed lịch sử) không có sổ. Không bịa ra
+        // một người quyết: để yên và nói rõ, vì đây là tiền thật.
+        this.logger.warn(
+          `Booking ${booking.id} nằm trên một chuyến đã huỷ nhưng chuyến ấy không có sổ người huỷ — bỏ qua, cần xử lý tay`,
+        );
+        continue;
+      }
+      try {
+        const refunded = await this.refundOne({
+          bookingId: booking.id,
+          departureId: booking.departureId,
+          adminId,
+          reason: booking.departure.cancelReason ?? FALLBACK_REASON,
+        });
+        if (refunded !== null) done += 1;
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'unknown';
+        // Một khách hỏng không được kéo theo phần còn lại — lượt quét kế thử lại.
+        this.logger.error(`Không hoàn được cho booking ${booking.id}: ${message}`);
+      }
+    }
+    if (done > 0) {
+      this.logger.log(`Đã dọn ${done} lượt hoàn tiền sót của chuyến đã huỷ`);
+    }
+    return done;
   }
 }
 
-/**
- * Lý do ghi vào `cancellation_requests` cho mọi booking của lượt huỷ này.
- *
- * Tiếng ANH vì nó lọt ra bề mặt người dùng thấy (luật 7): lịch sử huỷ ở trang
- * booking của khách in đúng chuỗi này. Lý do RIÊNG mà admin gõ sống ở sổ của
- * chuyến, không nhân bản xuống từng booking — nội bộ và khách không cần đọc.
- */
-const REASON = 'The operator cancelled this departure';
+/** Dùng khi chuyến có người huỷ nhưng lý do trống — không để sổ của khách rỗng. */
+const FALLBACK_REASON = 'The operator cancelled this departure';

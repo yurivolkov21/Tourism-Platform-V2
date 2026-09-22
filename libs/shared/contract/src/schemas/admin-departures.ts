@@ -124,6 +124,18 @@ export const AdminDepartureRowSchema = z.object({
    */
   pendingBookingCount: z.int().nonnegative(),
   /**
+   * Số booking của chuyến này đã ở trạng thái `CANCELLED`.
+   *
+   * Nuôi cột tiến độ *"đã hoàn x/y"* sau khi công ty huỷ chuyến (F13): hoàn
+   * tiền chạy bất đồng bộ qua hàng đợi, mỗi booking một job, và booking chỉ
+   * flip sang `CANCELLED` khi tiền đã đi. Nên `x = cancelledBookingCount` và
+   * `y = x + liveBookingCount` — không cần bảng tiến độ riêng.
+   *
+   * Đếm cả booking khách tự huỷ từ trước, và điều đó KHÔNG sai số: chúng cộng
+   * vào cả tử lẫn mẫu, nên tỉ lệ vẫn chạy tới đủ khi lượt cuối xong.
+   */
+  cancelledBookingCount: z.int().nonnegative(),
+  /**
    * Phiên bản hàng, gửi lại nguyên xi khi sửa — chống ghi đè mù giữa hai tab.
    * Giá trị là `updatedAt` dạng ISO; xem `AdminDepartureUpdateInputSchema.version`
    * về việc vì sao `FOR UPDATE` một mình không đủ.
@@ -222,3 +234,27 @@ export const AdminDepartureSetStatusInputSchema = z.object({
   status: AdminDepartureSettableStatusSchema,
 });
 export type AdminDepartureSetStatusInput = z.output<typeof AdminDepartureSetStatusInputSchema>;
+
+/**
+ * Trần cho lý do huỷ chuyến — gương của cột `cancellation_requests.reason`.
+ *
+ * Có trần vì cùng lý do với trần giá: không trần thì một lần dán nhầm cả trang
+ * văn bản đi lọt cả ba tầng rồi chết ở Postgres, và `mapError` không nhận ra
+ * lỗi Prisma nên nó thành 500 trần — kit đóng dialog, admin mất cả ô lý do vừa
+ * gõ mà không biết vì sao.
+ */
+export const DEPARTURE_CANCEL_REASON_MAX = 500;
+
+/**
+ * Công ty huỷ chuyến (F13, ADR-0041 §6).
+ *
+ * `reason` BẮT BUỘC và không được rỗng: đây là lệnh ghi duy nhất của vùng này
+ * tiêu tiền thật, và câu "vì sao" là thứ duy nhất còn lại khi ai đó mở sổ ra
+ * đọc sáu tháng sau. Ba lệnh kia (`create`/`update`/`setStatus`) không đòi lý
+ * do vì chúng đảo ngược được bằng đúng một thao tác ngược lại.
+ */
+export const AdminDepartureCancelInputSchema = z.object({
+  id: z.uuid(),
+  reason: z.string().trim().min(1).max(DEPARTURE_CANCEL_REASON_MAX),
+});
+export type AdminDepartureCancelInput = z.output<typeof AdminDepartureCancelInputSchema>;

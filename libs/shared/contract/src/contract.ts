@@ -7,6 +7,7 @@ import {
   AdminToursListQuerySchema,
 } from './schemas/admin-catalog.js';
 import {
+  AdminDepartureCancelInputSchema,
   AdminDepartureCreateInputSchema,
   AdminDepartureRowSchema,
   AdminDepartureSetStatusInputSchema,
@@ -1146,6 +1147,41 @@ export const contract = {
           DEPARTURE_STALE: {
             status: 409,
             message: 'Someone else changed this departure while the form was open',
+          },
+        })
+        .output(AdminDepartureRowSchema),
+      /**
+       * CÔNG TY huỷ chuyến, có hoàn tiền (F13, ADR-0041 §6) — lệnh ghi duy
+       * nhất của vùng catalog tiêu tiền thật.
+       *
+       * Trả về NGAY sau khi transaction commit, KHÔNG đợi hoàn tiền xong:
+       * chuyến đã `CANCELLED` và biến khỏi web lập tức, còn tiền đi qua hàng
+       * đợi, mỗi booking một job. Màn admin theo dõi bằng cột tiến độ
+       * `cancelledBookingCount / (cancelledBookingCount + liveBookingCount)`.
+       *
+       * Đợi đồng bộ là sai ở đây: một chuyến 30 khách là 30 lời gọi ra cổng
+       * thanh toán, và request HTTP đầu tiên hết giờ chờ sẽ để lại một lượt
+       * huỷ nửa chừng mà không ai biết đã tới đâu.
+       */
+      cancel: oc
+        .route({
+          method: 'POST',
+          path: '/api/admin/departures/{id}/cancel',
+          summary: 'Call off a departure and refund every traveller on it',
+        })
+        .input(AdminDepartureCancelInputSchema)
+        .errors({
+          NOT_FOUND: { status: 404, message: 'Departure not found' },
+          DEPARTURE_CANCELLED: {
+            status: 409,
+            message: 'This departure has already been cancelled',
+          },
+          // Ngày khởi hành đã tới: không còn là huỷ chuyến mà là chuyện sau
+          // chuyến đi. Cùng thước với `cancellationBlocker` của từng booking,
+          // nên hai tầng không bao giờ nói ngược nhau.
+          DEPARTURE_STARTED: {
+            status: 409,
+            message: 'This departure has already started and can no longer be cancelled',
           },
         })
         .output(AdminDepartureRowSchema),

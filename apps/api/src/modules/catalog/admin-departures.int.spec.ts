@@ -17,6 +17,11 @@ import {
   TourCostCategory,
 } from '../../generated/prisma/enums.js';
 import { calendarDate, startOfDayUtc } from '../../lib/calendar-date.js';
+import type { DepartureRefundJob } from '../../worker/departure-refund.service.js';
+import {
+  clearDepartureRefundSender,
+  registerDepartureRefundSender,
+} from '../../worker/departure-refund-queue.js';
 
 /**
  * Integration (Docker PG, db tourism_test) — bảng chuyến phía admin (spec
@@ -136,6 +141,9 @@ describe('admin departures integration (F12)', () => {
       contactName: 'Ada Lovelace',
       contactEmail: CUSTOMER_EMAIL,
       paymentProvider: PaymentProvider.STRIPE,
+      // Có capture thì mới hoàn vào đâu được — `cancellationBlocker` loại
+      // booking không có nó, và đường huỷ chuyến của F13 đi qua đúng chốt ấy.
+      providerPaymentId: row.status === BookingStatus.PAID ? `pi_dep_${n}` : null,
     };
   }
 
@@ -151,6 +159,14 @@ describe('admin departures integration (F12)', () => {
       url: `/api/admin/departures/${id}`,
       headers: { cookie },
       payload,
+    });
+
+  const cancel = (id: string, reason: string, cookie: string) =>
+    app.inject({
+      method: 'POST',
+      url: `/api/admin/departures/${id}/cancel`,
+      headers: { cookie },
+      payload: { reason },
     });
 
   const setStatus = (id: string, status: string, cookie: string) =>
@@ -626,6 +642,99 @@ describe('admin departures integration (F12)', () => {
 
     it('id lạ → 404', async () => {
       expect((await setStatus(MISSING_ID, 'CLOSED', adminCookie)).statusCode).toBe(404);
+    });
+  });
+  describe('cancel — công ty huỷ chuyến (F13)', () => {
+    /**
+     * Không có worker nào chạy trong int test, nên đăng ký một sender GIẢ để
+     * quan sát đúng thứ đáng quan sát: job nào được xếp, cho booking nào.
+     */
+    let queued: DepartureRefundJob[];
+
+    beforeEach(() => {
+      queued = [];
+      registerDepartureRefundSender(async (_queue, job) => {
+        queued.push(job);
+      });
+    });
+
+    afterEach(() => {
+      clearDepartureRefundSender();
+    });
+
+    const REASON = 'The guide is unavailable, so this departure is called off.';
+
+    it('ba nhóm booking đi ba đường khác nhau', async () => {
+      // PAID → xếp job hoàn tiền; PENDING → huỷ NGAY tại chỗ (chưa trả tiền
+      // nên không có gì để hoàn, mà để lại thì một lượt thanh toán về sau sẽ
+      // đâm vào chuyến đã huỷ); đã CANCELLED → không đụng tới.
+      const res = await cancel(BOOKED, REASON, adminCookie);
+
+      expect(res.statusCode).toBe(200);
+      expect((await rowById(BOOKED)).status).toBe('CANCELLED');
+
+      expect(queued).toHaveLength(1);
+      expect(queued[0]?.bookingId).toBe(bookingId(1));
+      expect(queued[0]?.reason).toBe(REASON);
+
+      const rows = await prisma.booking.findMany({
+        where: { departureId: BOOKED },
+        orderBy: { code: 'asc' },
+        select: { id: true, status: true },
+      });
+      // PAID vẫn PAID cho tới khi job chạy xong — tiền chưa đi thì chưa đổi sổ.
+      expect(rows.map((row) => row.status)).toEqual([
+        BookingStatus.PAID,
+        BookingStatus.CANCELLED,
+        BookingStatus.CANCELLED,
+      ]);
+    });
+
+    it('ghi sổ vào CHÍNH chuyến: ai huỷ, khi nào, vì sao', async () => {
+      // Một chuyến không có khách nào sẽ không để lại vết ở
+      // `cancellation_requests`, nên ba cột này là nơi duy nhất trả lời.
+      await cancel(FREE, REASON, adminCookie);
+
+      const admin = await prisma.user.findUniqueOrThrow({ where: { email: ADMIN_EMAIL } });
+      const row = await prisma.tourDeparture.findUniqueOrThrow({ where: { id: FREE } });
+      expect(row.cancelReason).toBe(REASON);
+      expect(row.cancelledBy).toBe(admin.id);
+      expect(row.cancelledAt).not.toBeNull();
+    });
+
+    it('bấm huỷ LẦN HAI → 409 và KHÔNG xếp thêm job nào', async () => {
+      await cancel(BOOKED, REASON, adminCookie);
+      queued = [];
+
+      const again = await cancel(BOOKED, REASON, adminCookie);
+
+      expect(again.statusCode).toBe(409);
+      expect(again.json().code).toBe('DEPARTURE_CANCELLED');
+      expect(queued).toHaveLength(0);
+    });
+
+    it('chuyến ĐÃ khởi hành → 409 DEPARTURE_STARTED, không phải 200 im lặng', async () => {
+      const res = await cancel(PAST, REASON, adminCookie);
+
+      expect(res.statusCode).toBe(409);
+      expect(res.json().code).toBe('DEPARTURE_STARTED');
+      expect((await rowById(PAST)).status).not.toBe('CANCELLED');
+    });
+
+    it('lý do RỖNG bị từ chối ngay ở schema — sổ không được để trắng', async () => {
+      const res = await cancel(FREE, '   ', adminCookie);
+
+      expect(res.statusCode).toBe(400);
+      expect((await rowById(FREE)).status).toBe('OPEN');
+    });
+
+    it('id lạ → 404', async () => {
+      expect((await cancel(MISSING_ID, REASON, adminCookie)).statusCode).toBe(404);
+    });
+
+    it('khách thường không huỷ được chuyến', async () => {
+      expect((await cancel(FREE, REASON, customerCookie)).statusCode).toBe(403);
+      expect((await rowById(FREE)).status).toBe('OPEN');
     });
   });
 });

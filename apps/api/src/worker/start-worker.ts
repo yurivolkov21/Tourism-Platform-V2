@@ -9,6 +9,10 @@ import {
   type DepartureRefundJob,
   DepartureRefundService,
 } from './departure-refund.service.js';
+import {
+  clearDepartureRefundSender,
+  registerDepartureRefundSender,
+} from './departure-refund-queue.js';
 import { EnquiryRetentionService } from './enquiry-retention.service.js';
 import { OutboxService } from './outbox.service.js';
 import { clearOutboxNudge, OUTBOX_DRAIN_QUEUE, registerOutboxNudge } from './outbox-nudge.js';
@@ -108,6 +112,10 @@ export async function startWorker(logger: Logger): Promise<{ stop: () => Promise
   await boss.createQueue(BOOKING_SWEEP_QUEUE, { policy: 'short' });
   await boss.work(BOOKING_SWEEP_QUEUE, async () => {
     await pendingSweep.sweepAbandoned(PENDING_TTL_MINUTES);
+    // Lưới cuối của F13: booking đã trả tiền còn nằm trên chuyến đã huỷ vì
+    // job hoàn tiền không đẩy được. Đi ké nhịp 10 phút này thay vì mở queue
+    // thứ bảy — câu hỏi rất hẹp và ca thường gặp trả 0 hàng.
+    await departureRefund.sweepStranded();
   });
   await boss.schedule(BOOKING_SWEEP_QUEUE, BOOKING_SWEEP_CRON);
 
@@ -130,6 +138,8 @@ export async function startWorker(logger: Logger): Promise<{ stop: () => Promise
     // như đã hoàn", và không còn gì đánh thức nó dậy.
     if (job) await departureRefund.refundOne(job.data);
   });
+  // Đăng ký SAU `createQueue` — đẩy vào một queue chưa tồn tại là lỗi.
+  registerDepartureRefundSender((queue, data) => boss.send(queue, data));
 
   // Dọn ảnh mồ côi trên Cloudinary (ADR-0035).
   //
@@ -172,6 +182,7 @@ export async function startWorker(logger: Logger): Promise<{ stop: () => Promise
       // Gỡ TRƯỚC khi stop: một request đến giữa chừng mà đẩy vào instance đang
       // tắt sẽ chỉ nhận lỗi rồi nuốt — thà trả 'no-worker' cho gọn.
       clearOutboxNudge();
+      clearDepartureRefundSender();
       await boss.stop({ graceful: true, timeout: 10_000 });
       await app.close();
       logger.log('worker loops stopped');

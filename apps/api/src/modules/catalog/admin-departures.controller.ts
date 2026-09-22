@@ -1,6 +1,8 @@
 import { Controller } from '@nestjs/common';
 import { Implement, implement } from '@orpc/nest';
 import { contract } from '@tourism/contract';
+import type { SessionUser } from '../../auth/auth.config.js';
+import { CurrentUser } from '../../auth/current-user.decorator.js';
 import { Roles } from '../../auth/roles.decorator.js';
 import { UserRole } from '../../generated/prisma/enums.js';
 import {
@@ -8,6 +10,7 @@ import {
   DepartureNotFoundError,
   DepartureRuleError,
 } from './admin-departures.service.js';
+import { DepartureCancelService } from './departure-cancel.service.js';
 
 /**
  * Bề mặt chuyến khởi hành cho admin (spec P4e-1 F12). Cùng cách ghép guard
@@ -22,7 +25,10 @@ import {
 @Controller()
 @Roles(UserRole.ADMIN)
 export class AdminDeparturesController {
-  constructor(private readonly departures: AdminDeparturesService) {}
+  constructor(
+    private readonly departures: AdminDeparturesService,
+    private readonly departureCancel: DepartureCancelService,
+  ) {}
 
   @Implement(contract.admin.departures.list)
   list() {
@@ -51,6 +57,22 @@ export class AdminDeparturesController {
     return implement(contract.admin.departures.update).handler(async ({ input, errors }) => {
       try {
         return await this.departures.update(input);
+      } catch (error) {
+        throw mapError(error, errors);
+      }
+    });
+  }
+
+  /**
+   * CÔNG TY huỷ chuyến (F13) — lệnh ghi duy nhất của vùng này cần danh tính
+   * admin: nó ghi `cancellation_requests.decided_by` cho từng khách, và đó là
+   * chỗ duy nhất còn lại khi ai đó mở sổ ra hỏi ai đã quyết.
+   */
+  @Implement(contract.admin.departures.cancel)
+  cancel(@CurrentUser() user: SessionUser) {
+    return implement(contract.admin.departures.cancel).handler(async ({ input, errors }) => {
+      try {
+        return await this.departureCancel.cancel(input, user.id);
       } catch (error) {
         throw mapError(error, errors);
       }

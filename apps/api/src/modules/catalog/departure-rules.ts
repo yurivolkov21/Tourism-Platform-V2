@@ -1,4 +1,4 @@
-import { cancellationDeadline, isWithinDeadline } from '@tourism/contract';
+import { canCancelOnline, cancellationDeadline, isWithinDeadline } from '@tourism/contract';
 
 /**
  * Ba luật của một chuyến khởi hành (spec P4e-1 §2b, §2c, F12) — THUẦN, không
@@ -89,6 +89,28 @@ export function reopenBlocker(startDate: string, endDate: string, now: Date): st
   if (isWithinDeadline(now, startDate, endDate)) return null;
   const deadline = cancellationDeadline(startDate, endDate);
   return `The booking deadline for this departure passed on ${deadline} — it can no longer reopen.`;
+}
+
+/**
+ * Công ty huỷ chuyến được không lúc `now` (F13, ADR-0041 §6) — `null` = được.
+ *
+ * Thước là NGÀY KHỞI HÀNH, không phải hạn nhận đặt. Khác biệt ấy là chủ đích:
+ * hạn nhận đặt là luật cho việc BÁN (`reopenBlocker`), còn một chuyến quá hạn
+ * đặt mà hướng dẫn viên gãy chân vẫn phải huỷ được — đó đúng là lúc người ta
+ * cần nút này nhất.
+ *
+ * Chặn ở đây là chặn SỚM: `cancellationBlocker` của từng booking cũng từ chối
+ * sau ngày khởi hành, nhưng lúc ấy nửa hàng đợi đã đi và admin chỉ thấy một
+ * cột tiến độ đứng im. Cùng thước (`canCancelOnline`, ngày lịch Việt Nam) nên
+ * hai tầng không bao giờ nói ngược nhau.
+ */
+export function departureCancelBlocker(
+  startDate: string,
+  endDate: string,
+  now: Date,
+): string | null {
+  if (canCancelOnline(now, startDate)) return null;
+  return `This departure has already started on ${startDate} — it can no longer be cancelled.`;
 }
 
 /** Đúng những field của một chuyến mà CARD `/tours` của web nhìn thấy gián tiếp. */

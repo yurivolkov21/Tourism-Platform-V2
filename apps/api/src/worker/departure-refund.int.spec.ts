@@ -19,6 +19,9 @@ import { WorkerModule } from './worker.module.js';
 /** Chuyến khởi hành +45 ngày — xa mọi hạn chót, để test không phụ thuộc đồng hồ. */
 const FUTURE = new Date(Date.now() + 45 * 86_400_000);
 
+/** Lý do admin gõ ở hộp xác nhận — KHÁCH đọc được ở lịch sử huỷ của họ. */
+const REASON = 'The guide is unavailable, so this departure is called off.';
+
 describe('departure-refund worker integration (F13)', () => {
   let service: DepartureRefundService;
   let fake: FakeGateway;
@@ -124,7 +127,7 @@ describe('departure-refund worker integration (F13)', () => {
   it('hoàn TRỌN phần chưa hoàn, huỷ booking và trả ghế về chuyến', async () => {
     const bookingId = await seedPaidBooking();
 
-    const refunded = await service.refundOne({ bookingId, departureId, adminId });
+    const refunded = await service.refundOne({ bookingId, departureId, adminId, reason: REASON });
 
     expect(refunded).toBe('117.00');
     const booking = await prisma.booking.findUniqueOrThrow({ where: { id: bookingId } });
@@ -144,8 +147,8 @@ describe('departure-refund worker integration (F13)', () => {
     // nên dừng TRƯỚC cổng thanh toán, không phải sau.
     const bookingId = await seedPaidBooking();
 
-    const first = await service.refundOne({ bookingId, departureId, adminId });
-    const second = await service.refundOne({ bookingId, departureId, adminId });
+    const first = await service.refundOne({ bookingId, departureId, adminId, reason: REASON });
+    const second = await service.refundOne({ bookingId, departureId, adminId, reason: REASON });
 
     expect(first).toBe('117.00');
     expect(second).toBeNull();
@@ -169,7 +172,7 @@ describe('departure-refund worker integration (F13)', () => {
       },
     });
 
-    const refunded = await service.refundOne({ bookingId, departureId, adminId });
+    const refunded = await service.refundOne({ bookingId, departureId, adminId, reason: REASON });
 
     expect(refunded).toBe('77.00');
     // Trigger `refunds_sum_within_total` là lưới cuối; đụng tới nó nghĩa là đã
@@ -187,6 +190,7 @@ describe('departure-refund worker integration (F13)', () => {
       bookingId,
       departureId: otherDepartureId,
       adminId,
+      reason: REASON,
     });
 
     expect(refunded).toBeNull();
@@ -198,8 +202,8 @@ describe('departure-refund worker integration (F13)', () => {
   it('xếp email BOOKING_CANCELLED đúng MỘT lần cho mỗi booking', async () => {
     const bookingId = await seedPaidBooking();
 
-    await service.refundOne({ bookingId, departureId, adminId });
-    await service.refundOne({ bookingId, departureId, adminId });
+    await service.refundOne({ bookingId, departureId, adminId, reason: REASON });
+    await service.refundOne({ bookingId, departureId, adminId, reason: REASON });
 
     const mails = await prisma.outbox.findMany({ where: { type: EmailType.BOOKING_CANCELLED } });
     expect(mails).toHaveLength(1);
@@ -214,10 +218,75 @@ describe('departure-refund worker integration (F13)', () => {
     const bookingId = await seedPaidBooking();
     fake.failRefunds = true;
 
-    await expect(service.refundOne({ bookingId, departureId, adminId })).rejects.toThrow();
+    await expect(
+      service.refundOne({ bookingId, departureId, adminId, reason: REASON }),
+    ).rejects.toThrow();
 
     expect(await ledger(bookingId)).toHaveLength(0);
     const booking = await prisma.booking.findUniqueOrThrow({ where: { id: bookingId } });
     expect(booking.status).toBe(BookingStatus.PAID);
+  });
+  describe('sweepStranded — lưới cuối khi job không đẩy được', () => {
+    it('hoàn nốt cho booking đã trả tiền nằm trên chuyến đã huỷ', async () => {
+      // Đây là ca mà hàng đợi KHÔNG cứu được: transaction huỷ đã commit, rồi
+      // lượt đẩy job hỏng (không worker nào đăng ký, pg-boss lỗi, tiến trình
+      // chết đúng khe giữa). Không có cron nào khác chạy lại việc này.
+      const bookingId = await seedPaidBooking();
+      await prisma.tourDeparture.update({
+        where: { id: departureId },
+        data: { cancelledBy: adminId, cancelReason: REASON, cancelledAt: new Date() },
+      });
+
+      const done = await service.sweepStranded();
+
+      expect(done).toBe(1);
+      const booking = await prisma.booking.findUniqueOrThrow({ where: { id: bookingId } });
+      expect(booking.status).toBe(BookingStatus.CANCELLED);
+      const rows = await prisma.refund.findMany({ where: { bookingId } });
+      expect(rows).toHaveLength(1);
+      // Lý do của admin chép xuống sổ của khách, không phải câu mặc định.
+      const request = await prisma.cancellationRequest.findFirstOrThrow({ where: { bookingId } });
+      expect(request.reason).toBe(REASON);
+    });
+
+    it('chuyến huỷ từ trước F13 (không có sổ người huỷ) thì BỎ QUA, không bịa', async () => {
+      // Seed lịch sử có ~13% chuyến CANCELLED, và chúng không có `cancelled_by`.
+      // Bịa ra một người quyết trên một dòng sổ tiền là tệ hơn hẳn để yên.
+      const bookingId = await seedPaidBooking();
+
+      const done = await service.sweepStranded();
+
+      expect(done).toBe(0);
+      const booking = await prisma.booking.findUniqueOrThrow({ where: { id: bookingId } });
+      expect(booking.status).toBe(BookingStatus.PAID);
+      expect(fake.refunds).toHaveLength(0);
+    });
+
+    it('không đụng tới booking của chuyến còn sống', async () => {
+      await prisma.booking.create({
+        data: {
+          code: 'BK-OTHER-1',
+          userId,
+          tourId,
+          departureId: otherDepartureId,
+          numAdults: 1,
+          totalAmount: '39.00',
+          currency: 'USD',
+          status: BookingStatus.PAID,
+          tourTitle: 'Refund Tour',
+          departureStartDate: FUTURE,
+          departureEndDate: FUTURE,
+          unitPrice: '39.00',
+          contactName: 'Bob',
+          contactEmail: 'bob@example.com',
+          paymentProvider: 'STRIPE',
+          providerPaymentId: 'pi_other',
+          paidAt: new Date(),
+        } satisfies Prisma.BookingUncheckedCreateInput,
+      });
+
+      expect(await service.sweepStranded()).toBe(0);
+      expect(fake.refunds).toHaveLength(0);
+    });
   });
 });

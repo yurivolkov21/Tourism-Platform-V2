@@ -352,47 +352,47 @@ model Destination {
 // ─────────────────────────────────────────────────────────────────────────────
 
 model Tour {
-  id                   String          @id @default(uuid()) @db.Uuid
-  slug                 String          @unique @db.VarChar(120)
-  title                String          @db.VarChar(200)
-  summary              String?         @db.VarChar(500)
-  categoryId           String          @map("category_id") @db.Uuid
-  durationDays         Int             @map("duration_days")
-  maxGroupSize         Int             @default(20) @map("max_group_size")
-  basePrice            Decimal         @map("base_price") @db.Decimal(14, 2)
+  id                 String          @id @default(uuid()) @db.Uuid
+  slug               String          @unique @db.VarChar(120)
+  title              String          @db.VarChar(200)
+  summary            String?         @db.VarChar(500)
+  categoryId         String          @map("category_id") @db.Uuid
+  durationDays       Int             @map("duration_days")
+  maxGroupSize       Int             @default(20) @map("max_group_size")
+  basePrice          Decimal         @map("base_price") @db.Decimal(14, 2)
   // Chi phí trên mỗi traveller theo currency của tour (margin analytics).
   // Null = chưa biết → tính 0 cost (margin đọc như một cận trên).
-  costPrice            Decimal?        @map("cost_price") @db.Decimal(14, 2)
+  costPrice          Decimal?        @map("cost_price") @db.Decimal(14, 2)
   // Price anchoring — giá "compare at" / gạch ngang, optional.
-  compareAtPrice       Decimal?        @map("compare_at_price") @db.Decimal(14, 2)
-  currency             String          @default("USD") @db.VarChar(3)
-  difficulty           TourDifficulty?
-  isPublished          Boolean         @default(false) @map("is_published")
-  isFeatured           Boolean         @default(false) @map("is_featured")
+  compareAtPrice     Decimal?        @map("compare_at_price") @db.Decimal(14, 2)
+  currency           String          @default("USD") @db.VarChar(3)
+  difficulty         TourDifficulty?
+  isPublished        Boolean         @default(false) @map("is_published")
+  isFeatured         Boolean         @default(false) @map("is_featured")
   // Rating denormalized (audit A9): Nexora aggregate live mỗi page load
   // (`summarize()` scan toàn bảng reviews). Ở đây cập nhật trong CÙNG
   // transaction duyệt review nên không bao giờ lệch — xem ReviewsService.
-  ratingAvg            Decimal?        @map("rating_avg") @db.Decimal(2, 1)
-  ratingCount          Int             @default(0) @map("rating_count")
+  ratingAvg          Decimal?        @map("rating_avg") @db.Decimal(2, 1)
+  ratingCount        Int             @default(0) @map("rating_count")
   // Merchandising — tour hợp với ai + badge trên card.
-  suitableFor          TravellerType[] @default([]) @map("suitable_for")
-  badges               TourBadge[]     @default([])
+  suitableFor        TravellerType[] @default([]) @map("suitable_for")
+  badges             TourBadge[]     @default([])
   // Array EN-only (ADR-0005) → Postgres text[].
-  included             String[]        @default([])
-  excluded             String[]        @default([])
-  highlights           String[]        @default([])
-  meetingPoint         String?         @map("meeting_point") @db.VarChar(300)
+  included           String[]        @default([])
+  excluded           String[]        @default([])
+  highlights         String[]        @default([])
+  meetingPoint       String?         @map("meeting_point") @db.VarChar(300)
   // ── Nội dung bán hàng cho trang chi tiết (ADR-0023) ──
   // Một câu mô tả dưới mỗi card dữ kiện ở tab Overview. Bốn cột rời chứ không
   // một cột JSON: bốn card là bốn ô CỐ ĐỊNH của một bố cục đã chốt, nên Zod
   // kiểm được từng trường và admin P4 dựng được bốn ô nhập bình thường.
   // Trần 280 là để card không cao vống lên làm lệch hàng bốn card.
-  factDurationNote     String?         @map("fact_duration_note") @db.VarChar(280)
-  factGroupSizeNote    String?         @map("fact_group_size_note") @db.VarChar(280)
-  factDifficultyNote   String?         @map("fact_difficulty_note") @db.VarChar(280)
-  factGoodForNote      String?         @map("fact_good_for_note") @db.VarChar(280)
-  createdAt            DateTime        @default(now()) @map("created_at")
-  updatedAt            DateTime        @updatedAt @map("updated_at")
+  factDurationNote   String?         @map("fact_duration_note") @db.VarChar(280)
+  factGroupSizeNote  String?         @map("fact_group_size_note") @db.VarChar(280)
+  factDifficultyNote String?         @map("fact_difficulty_note") @db.VarChar(280)
+  factGoodForNote    String?         @map("fact_good_for_note") @db.VarChar(280)
+  createdAt          DateTime        @default(now()) @map("created_at")
+  updatedAt          DateTime        @updatedAt @map("updated_at")
 
   category     TourCategory       @relation(fields: [categoryId], references: [id], onDelete: Restrict)
   costItems    TourCostItem[]
@@ -497,11 +497,20 @@ model TourDeparture {
   seatsTotal      Int             @map("seats_total")
   seatsBooked     Int             @default(0) @map("seats_booked")
   status          DepartureStatus @default(OPEN)
+  /// Sổ của lượt CÔNG TY huỷ chuyến (F13). Cả ba NULL khi chuyến chưa bị huỷ,
+  /// và cũng NULL với chuyến CANCELLED có từ trước đợt này — bịa một dòng sổ
+  /// giả còn tệ hơn để trống.
+  cancelledAt     DateTime?       @map("cancelled_at")
+  /// KHÔNG có khoá ngoại tới `users` — xem migration 20260922120000: một dấu
+  /// vết kiểm toán phải sống lâu hơn tài khoản nó trỏ tới, và `TRUNCATE users
+  /// CASCADE` sẽ kéo theo cả bảng catalogue này.
+  cancelledBy     String?         @map("cancelled_by") @db.Uuid
+  cancelReason    String?         @map("cancel_reason")
   createdAt       DateTime        @default(now()) @map("created_at")
   updatedAt       DateTime        @updatedAt @map("updated_at")
 
-  tour     Tour      @relation(fields: [tourId], references: [id], onDelete: Cascade)
-  bookings Booking[]
+  tour            Tour      @relation(fields: [tourId], references: [id], onDelete: Cascade)
+  bookings        Booking[]
 
   @@index([tourId, startDate])
   @@map("tour_departures")
@@ -552,22 +561,22 @@ model TourPolicy {
 // ─────────────────────────────────────────────────────────────────────────────
 
 model Booking {
-  id                 String          @id @default(uuid()) @db.Uuid
-  code               String          @unique @db.VarChar(20)
-  userId             String          @map("user_id") @db.Uuid
-  tourId             String          @map("tour_id") @db.Uuid
-  departureId        String          @map("departure_id") @db.Uuid
-  numAdults          Int             @map("num_adults")
-  numChildren        Int             @default(0) @map("num_children")
-  totalAmount        Decimal         @map("total_amount") @db.Decimal(14, 2)
-  currency           String          @default("USD") @db.VarChar(3)
-  status             BookingStatus   @default(PENDING)
+  id                       String          @id @default(uuid()) @db.Uuid
+  code                     String          @unique @db.VarChar(20)
+  userId                   String          @map("user_id") @db.Uuid
+  tourId                   String          @map("tour_id") @db.Uuid
+  departureId              String          @map("departure_id") @db.Uuid
+  numAdults                Int             @map("num_adults")
+  numChildren              Int             @default(0) @map("num_children")
+  totalAmount              Decimal         @map("total_amount") @db.Decimal(14, 2)
+  currency                 String          @default("USD") @db.VarChar(3)
+  status                   BookingStatus   @default(PENDING)
   // Snapshot lúc create (audit H3) — live join vẫn giữ cho tiện, mấy field này
   // đóng băng đúng thứ khách đã mua.
-  tourTitle          String          @map("tour_title") @db.VarChar(160)
-  departureStartDate DateTime        @map("departure_start_date") @db.Date
-  departureEndDate   DateTime        @map("departure_end_date") @db.Date
-  unitPrice          Decimal         @map("unit_price") @db.Decimal(14, 2)
+  tourTitle                String          @map("tour_title") @db.VarChar(160)
+  departureStartDate       DateTime        @map("departure_start_date") @db.Date
+  departureEndDate         DateTime        @map("departure_end_date") @db.Date
+  unitPrice                Decimal         @map("unit_price") @db.Decimal(14, 2)
   /// Giá vốn theo ĐẦU KHÁCH, đóng băng lúc tạo booking (ADR-0033 §3). Cùng lý
   /// do với `unit_price` ngay trên: join sống thì sửa giá thuê xe hôm nay sẽ
   /// VIẾT LẠI lợi nhuận của báo cáo tháng trước, và một báo cáo đọc lại ra số
@@ -576,27 +585,27 @@ model Booking {
   /// Null = tour chưa khai giá vốn lúc ấy. KHÔNG dùng 0: báo cáo đếm số
   /// booking thiếu dữ liệu và NÓI RA (§6), còn `0.00` sẽ tự nhận là "tour này
   /// không tốn gì" và biến một lỗ hổng dữ liệu thành lợi nhuận.
-  costPerPerson      Decimal?        @map("cost_per_person") @db.Decimal(14, 2)
-  contactName        String          @map("contact_name") @db.VarChar(120)
-  contactEmail       String          @map("contact_email") @db.VarChar(200)
-  contactPhone       String?         @map("contact_phone") @db.VarChar(30)
-  specialRequests    String?         @map("special_requests") @db.VarChar(1000)
+  costPerPerson            Decimal?        @map("cost_per_person") @db.Decimal(14, 2)
+  contactName              String          @map("contact_name") @db.VarChar(120)
+  contactEmail             String          @map("contact_email") @db.VarChar(200)
+  contactPhone             String?         @map("contact_phone") @db.VarChar(30)
+  specialRequests          String?         @map("special_requests") @db.VarChar(1000)
   // Payment ref không phụ thuộc provider (ADR-0006). `providerSessionId` là id
   // của Checkout session; `providerPaymentId` là payment đã capture.
-  paymentProvider    PaymentProvider @map("payment_provider")
-  providerSessionId  String?         @unique @map("provider_session_id") @db.VarChar(255)
+  paymentProvider          PaymentProvider @map("payment_provider")
+  providerSessionId        String?         @unique @map("provider_session_id") @db.VarChar(255)
   /// URL hosted checkout của session HIỆN TẠI (ADR-0006 AMEND 1a): chỉ lúc mint
   /// provider mới trả URL về, nên phải lưu thì `reCheckout` mới "trả session
   /// hiện có" được thay vì mint chồng — hai session sống là cửa double charge.
-  checkoutSessionUrl String?         @map("checkout_session_url") @db.VarChar(2048)
+  checkoutSessionUrl       String?         @map("checkout_session_url") @db.VarChar(2048)
   /// Hạn của session hiện tại (gateway tự khai). Null = booking cũ trước
   /// migration / chưa mint — coi như "không rõ, hết sống".
-  checkoutSessionExpiresAt DateTime? @map("checkout_session_expires_at")
-  providerPaymentId  String?         @map("provider_payment_id") @db.VarChar(255)
-  paidAt             DateTime?       @map("paid_at")
-  cancelledAt        DateTime?       @map("cancelled_at")
-  createdAt          DateTime        @default(now()) @map("created_at")
-  updatedAt          DateTime        @updatedAt @map("updated_at")
+  checkoutSessionExpiresAt DateTime?       @map("checkout_session_expires_at")
+  providerPaymentId        String?         @map("provider_payment_id") @db.VarChar(255)
+  paidAt                   DateTime?       @map("paid_at")
+  cancelledAt              DateTime?       @map("cancelled_at")
+  createdAt                DateTime        @default(now()) @map("created_at")
+  updatedAt                DateTime        @updatedAt @map("updated_at")
 
   user                 User                  @relation("BookingCustomer", fields: [userId], references: [id], onDelete: Restrict)
   tour                 Tour                  @relation(fields: [tourId], references: [id], onDelete: Restrict)
@@ -621,23 +630,23 @@ model Booking {
 // ─────────────────────────────────────────────────────────────────────────────
 
 model Refund {
-  id               String   @id @default(uuid()) @db.Uuid
-  bookingId        String   @map("booking_id") @db.Uuid
-  amount           Decimal  @db.Decimal(14, 2)
-  currency         String   @db.VarChar(3)
+  id                String   @id @default(uuid()) @db.Uuid
+  bookingId         String   @map("booking_id") @db.Uuid
+  amount            Decimal  @db.Decimal(14, 2)
+  currency          String   @db.VarChar(3)
   // Refund id phía provider (Stripe re_…, PayPal capture refund id). Unique để
   // một webhook retry không double-insert cùng một provider refund.
-  providerRefundId String?  @unique @map("provider_refund_id") @db.VarChar(255)
+  providerRefundId  String?  @unique @map("provider_refund_id") @db.VarChar(255)
   /// Capture mà khoản hoàn này hoàn VÀO (ADR-0006 AMEND 1b): guard idempotency
   /// của auto-refund đối chiếu theo cột này thay vì "booking đã có Refund row
   /// bất kỳ" — một capture THỨ HAI trên cùng booking không còn bị nuốt im lặng.
   /// Null = row cũ trước migration.
-  providerPaymentId String? @map("provider_payment_id") @db.VarChar(255)
+  providerPaymentId String?  @map("provider_payment_id") @db.VarChar(255)
   /// Lý do NỘI BỘ của refund thiện chí (ADR-0030 AMEND 2) — ở trên sổ để không
   /// bị purge cùng outbox và không đi vào email khách. Null = auto-refund/row cũ.
-  reason           String?  @db.VarChar(500)
-  adminId          String?  @map("admin_id") @db.Uuid
-  createdAt        DateTime @default(now()) @map("created_at")
+  reason            String?  @db.VarChar(500)
+  adminId           String?  @map("admin_id") @db.Uuid
+  createdAt         DateTime @default(now()) @map("created_at")
 
   booking Booking @relation(fields: [bookingId], references: [id], onDelete: Restrict)
   admin   User?   @relation("RefundAdmin", fields: [adminId], references: [id], onDelete: SetNull)
@@ -818,34 +827,34 @@ model PaymentEvent {
 // ─────────────────────────────────────────────────────────────────────────────
 
 model Enquiry {
-  id          String        @id @default(uuid(7)) @db.Uuid
-  name        String        @db.VarChar(120)
+  id           String        @id @default(uuid(7)) @db.Uuid
+  name         String        @db.VarChar(120)
   // citext (audit A2): Nexora KHÔNG lowercase email nhưng repeat-lead lại
   // `groupBy(['email'])` so khớp chính xác → Jane@x.com và jane@x.com thành
   // hai lead khác nhau, tính năng phát hiện trùng hỏng âm thầm.
-  email       String        @db.Citext
-  phone       String?       @db.VarChar(30)
-  message     String        @db.VarChar(2000)
-  tourId      String?       @map("tour_id") @db.Uuid
+  email        String        @db.Citext
+  phone        String?       @db.VarChar(30)
+  message      String        @db.VarChar(2000)
+  tourId       String?       @map("tour_id") @db.Uuid
   // Field lead có cấu trúc — đều optional (enquiry chung bỏ trống);
   // EN-only (ADR-0005). `interests` là multi-select tự do.
-  nationality String?       @db.VarChar(80)
-  travelDate  DateTime?     @map("travel_date") @db.Date
-  groupSize   Int?          @map("group_size")
-  budgetTier  String?       @map("budget_tier") @db.VarChar(40)
-  interests   String[]      @default([])
-  status      EnquiryStatus @default(NEW)
+  nationality  String?       @db.VarChar(80)
+  travelDate   DateTime?     @map("travel_date") @db.Date
+  groupSize    Int?          @map("group_size")
+  budgetTier   String?       @map("budget_tier") @db.VarChar(40)
+  interests    String[]      @default([])
+  status       EnquiryStatus @default(NEW)
   /// Chủ tài khoản LÚC GỬI form (W4 E8, ADR-0039 §6) — chỉ ghi khi request
   /// mang session; enquiry ẩn danh giữ null (email form tự do KHÔNG chứng
   /// minh sở hữu nên không truy ngược theo email). deleteAccount anonymize
   /// ngay mọi enquiry theo cột này. SetNull vì row user là tombstone bất tử —
   /// nhánh này chỉ chạy nếu một ngày user bị hard-delete thật.
-  userId      String?       @map("user_id") @db.Uuid
+  userId       String?       @map("user_id") @db.Uuid
   /// Mốc job retention (hoặc deleteAccount) đã xoá PII của row — null = còn
   /// nguyên. Job đếm theo ngưỡng ENQUIRY_RETENTION_MONTHS trên createdAt.
-  anonymizedAt DateTime?    @map("anonymized_at")
-  createdAt   DateTime      @default(now()) @map("created_at")
-  updatedAt   DateTime      @updatedAt @map("updated_at")
+  anonymizedAt DateTime?     @map("anonymized_at")
+  createdAt    DateTime      @default(now()) @map("created_at")
+  updatedAt    DateTime      @updatedAt @map("updated_at")
 
   tour         Tour?                @relation(fields: [tourId], references: [id], onDelete: SetNull)
   user         User?                @relation(fields: [userId], references: [id], onDelete: SetNull)
@@ -1117,19 +1126,19 @@ model PostTour {
 // ─────────────────────────────────────────────────────────────────────────────
 
 model Outbox {
-  id          String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  type        EmailType
-  payload     Json
-  status      OutboxStatus @default(PENDING)
-  attempts    Int          @default(0)
-  dedupeKey   String       @unique @map("dedupe_key") @db.VarChar(200)
-  lastError   String?      @map("last_error") @db.VarChar(1000)
+  id            String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  type          EmailType
+  payload       Json
+  status        OutboxStatus @default(PENDING)
+  attempts      Int          @default(0)
+  dedupeKey     String       @unique @map("dedupe_key") @db.VarChar(200)
+  lastError     String?      @map("last_error") @db.VarChar(1000)
   /// Backoff luỹ thừa (ADR-0039 §4, W4 E5): drain chỉ lấy row PENDING có
   /// next_attempt_at <= now (null = tới hạn ngay — row mới hoặc trước W4).
   /// Lỗi tạm set now + 2^attempts phút, trần 60′; admin retry reset về null.
-  nextAttemptAt DateTime?  @map("next_attempt_at")
-  createdAt   DateTime     @default(now()) @map("created_at")
-  processedAt DateTime?    @map("processed_at")
+  nextAttemptAt DateTime?    @map("next_attempt_at")
+  createdAt     DateTime     @default(now()) @map("created_at")
+  processedAt   DateTime?    @map("processed_at")
 
   @@index([status, createdAt])
   @@map("outbox")

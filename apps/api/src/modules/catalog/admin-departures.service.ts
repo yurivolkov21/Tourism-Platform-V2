@@ -46,7 +46,9 @@ export type DepartureRuleCode =
   | 'SEATS_BELOW_BOOKED'
   | 'DEADLINE_PASSED'
   | 'DEPARTURE_CANCELLED'
-  | 'DEPARTURE_STALE';
+  | 'DEPARTURE_STALE'
+  /** F13: chuyến đã tới ngày khởi hành nên không còn huỷ được. */
+  | 'DEPARTURE_STARTED';
 
 /**
  * Một lệnh ghi bị luật nghiệp vụ chặn. `code` để controller chọn đúng lỗi
@@ -414,6 +416,28 @@ export class AdminDeparturesService {
   }
 
   /**
+   * Một hàng bảng, đọc lại từ đầu — dùng sau một lệnh ghi đã commit.
+   *
+   * Công khai vì `DepartureCancelService` cần trả đúng hình dạng hàng mà bảng
+   * admin đang hiển thị, và hai bản dựng hàng là hai chỗ có thể lệch nhau.
+   */
+  async rowById(id: string): Promise<AdminDepartureRow> {
+    const row = await prisma.tourDeparture.findUnique({
+      where: { id },
+      // `tourId` không nằm trong DEPARTURE_SELECT dùng chung (list đã join tour
+      // theo đường khác) nên xin thêm ngay tại đây.
+      select: { ...DEPARTURE_SELECT, tourId: true },
+    });
+    if (!row) throw new DepartureNotFoundError(id);
+    const tour = await prisma.tour.findUniqueOrThrow({
+      where: { id: row.tourId },
+      select: TOUR_SELECT,
+    });
+    const counts = await bookingCounts([row.id]);
+    return toRow(row, tour, counts.get(row.id) ?? ZERO_COUNTS);
+  }
+
+  /**
    * Bust cache web SAU khi transaction đã commit (ADR-0016 §3, tiền lệ
    * `reviews.service.ts`): bust trước commit là bảo web dựng lại từ dữ liệu
    * cũ rồi cache thêm 300 giây nữa.
@@ -477,6 +501,8 @@ function toDecimal(value: string | null): Prisma.Decimal | null {
 export interface BookingCounts {
   live: number;
   pending: number;
+  /** Đã `CANCELLED` — nuôi cột tiến độ hoàn tiền sau khi công ty huỷ chuyến (F13). */
+  cancelled: number;
 }
 
 /**
@@ -495,21 +521,30 @@ async function bookingCounts(departureIds: string[]): Promise<Map<string, Bookin
   if (departureIds.length === 0) return new Map();
   const groups = await prisma.booking.groupBy({
     by: ['departureId', 'status'],
-    where: { departureId: { in: departureIds }, status: { in: LIVE_BOOKING_STATUSES } },
+    // Gồm cả `CANCELLED`: tiến độ hoàn tiền của F13 là tỉ lệ giữa số đã huỷ
+    // và tổng, nên một câu gom nhóm phải chở đủ cả hai vế.
+    where: {
+      departureId: { in: departureIds },
+      status: { in: [...LIVE_BOOKING_STATUSES, BookingStatus.CANCELLED] },
+    },
     _count: { _all: true },
   });
   const byDeparture = new Map<string, BookingCounts>();
   for (const group of groups) {
-    const current = byDeparture.get(group.departureId) ?? { live: 0, pending: 0 };
-    current.live += group._count._all;
-    if (group.status === BookingStatus.PENDING) current.pending += group._count._all;
+    const current = byDeparture.get(group.departureId) ?? { live: 0, pending: 0, cancelled: 0 };
+    if (group.status === BookingStatus.CANCELLED) {
+      current.cancelled += group._count._all;
+    } else {
+      current.live += group._count._all;
+      if (group.status === BookingStatus.PENDING) current.pending += group._count._all;
+    }
     byDeparture.set(group.departureId, current);
   }
   return byDeparture;
 }
 
 /** Chuyến chưa ai đặt — giá trị đọc ra khi chuyến vắng mặt trong kết quả gom nhóm. */
-const ZERO_COUNTS: BookingCounts = { live: 0, pending: 0 };
+const ZERO_COUNTS: BookingCounts = { live: 0, pending: 0, cancelled: 0 };
 
 function toRow(
   row: DepartureRowData,
@@ -536,6 +571,7 @@ function toRow(
     cancellationDeadline: cancellationDeadline(startDate, endDate),
     liveBookingCount: counts.live,
     pendingBookingCount: counts.pending,
+    cancelledBookingCount: counts.cancelled,
     version: row.updatedAt.toISOString(),
   };
 }
