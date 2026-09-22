@@ -13,11 +13,6 @@
 /** Dạng ngày DUY NHẤT đi trên URL (khớp `bookings-query`). */
 const ISO_DATE = /^(\d{4})-(\d{2})-(\d{2})$/;
 
-/** Ngày hợp lệ? (`new Date` trả Invalid Date chứ không ném.) */
-function isValidDate(date: Date): boolean {
-  return !Number.isNaN(date.getTime());
-}
-
 /**
  * ISO `YYYY-MM-DD` → `Date` ở giờ ĐỊA PHƯƠNG.
  *
