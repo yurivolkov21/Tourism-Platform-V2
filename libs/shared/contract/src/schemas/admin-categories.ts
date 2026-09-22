@@ -37,11 +37,41 @@ export const CATEGORY_DESCRIPTION_MAX = 500;
  * sẵn bằng `slugifyVietnamese`, mà hàm ấy trả chuỗi RỖNG khi tên toàn ký tự lạ
  * ("!!!"). Không chặn ở đây thì chuỗi rỗng đi thẳng xuống cột `@unique`.
  */
+/**
+ * Khuôn slug — export để phía client soi GƯƠNG chứ không chép tay.
+ *
+ * Gạch nối chỉ được nằm GIỮA hai cụm chữ-số. Khuôn lỏng `^[a-z0-9-]+$` nhận cả
+ * `-`, `---` và `-day-`: `slugifyVietnamese` không bao giờ sinh ra chúng (nó
+ * cắt gạch ở hai đầu) nhưng ô slug là text tự do, gõ tay là lọt. Đã đo sáu
+ * slug đang chạy trên production — `day`, `package`, `cruise`, `trekking`,
+ * `honeymoon`, `seasonal-classics` — tất cả đều qua khuôn siết này.
+ *
+ * Khai TRƯỚC `CategorySlugSchema`: `.regex()` chạy lúc nạp module, nên một
+ * `const` khai sau sẽ vào vùng chết tạm thời.
+ */
+export const CATEGORY_SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+
 export const CategorySlugSchema = z
   .string()
   .min(1)
   .max(CATEGORY_SLUG_MAX)
-  .regex(/^[a-z0-9-]+$/, 'slug may only contain lowercase letters, digits and hyphens');
+  .regex(CATEGORY_SLUG_PATTERN, 'slug may only contain lowercase letters, digits and hyphens');
+
+/**
+ * Ô mô tả: cắt khoảng trắng, và RỖNG thì thành `null`.
+ *
+ * `.trim().max().nullable()` một mình chỉ biến `undefined` thành `null` —
+ * chuỗi rỗng hay toàn khoảng trắng vẫn đi thẳng xuống cột nullable. Khi đó
+ * `row.description ?? 'No description'` không cứu được (chuỗi rỗng không
+ * nullish) và bảng in một dòng trắng. Server action không phải cổng duy nhất
+ * tới endpoint này, nên chốt phải nằm ở schema.
+ */
+const CategoryDescriptionSchema = z
+  .string()
+  .trim()
+  .max(CATEGORY_DESCRIPTION_MAX)
+  .nullable()
+  .transform((value) => (value === null || value === '' ? null : value));
 
 /** Một hàng của bảng `/categories` phía admin — gồm cả hàng đã tắt. */
 export const AdminCategoryRowSchema = z.object({
@@ -68,7 +98,7 @@ export const AdminCategoryCreateInputSchema = z.object({
    * Bỏ trống thành `null` chứ không thành chuỗi rỗng: cột nullable, và "chưa
    * viết mô tả" khác "mô tả là một chuỗi rỗng".
    */
-  description: z.string().trim().max(CATEGORY_DESCRIPTION_MAX).nullable().default(null),
+  description: CategoryDescriptionSchema.default(null),
 });
 export type AdminCategoryCreateInput = z.output<typeof AdminCategoryCreateInputSchema>;
 
@@ -76,7 +106,7 @@ export type AdminCategoryCreateInput = z.output<typeof AdminCategoryCreateInputS
 export const AdminCategoryUpdateInputSchema = z.object({
   id: z.uuid(),
   name: z.string().trim().min(1).max(CATEGORY_NAME_MAX),
-  description: z.string().trim().max(CATEGORY_DESCRIPTION_MAX).nullable(),
+  description: CategoryDescriptionSchema,
 });
 export type AdminCategoryUpdateInput = z.output<typeof AdminCategoryUpdateInputSchema>;
 

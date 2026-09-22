@@ -332,7 +332,11 @@ export class CatalogService {
   async listCategories(): Promise<TourCategory[]> {
     const categories = await prisma.tourCategory.findMany({
       where: { isActive: true },
-      orderBy: { order: 'asc' },
+      // Khoá phụ `id`: cột `order` không unique, và hai hàng ngang số thì
+      // Postgres trả theo thứ tự tuỳ kế hoạch truy vấn — chip lọc sẽ đảo chỗ
+      // giữa hai lượt ISR regenerate dù admin không đụng gì. Cùng thước với
+      // `CATEGORY_ORDER_BY` của bề mặt admin, để hai nơi không nói hai chuyện.
+      orderBy: [{ order: 'asc' }, { id: 'asc' }],
       // Chỉ đếm tour đã publish — cùng lý do với `listDestinations`: đếm cả
       // draft là endpoint công khai gián tiếp lộ số tour nháp.
       include: { _count: { select: { tours: { where: { isPublished: true } } } } },

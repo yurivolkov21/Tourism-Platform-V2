@@ -1,5 +1,5 @@
-import { CATEGORY_SLUG_MAX } from './admin-categories.js';
-import { slugifyVietnamese } from './slug.js';
+import { CATEGORY_SLUG_MAX, CATEGORY_SLUG_PATTERN } from './admin-categories.js';
+import { foldAccents, slugifyVietnamese } from './slug.js';
 
 /**
  * Sinh slug từ tên tiếng Việt (spec P4e-2 §2c).
@@ -29,6 +29,32 @@ describe('slugifyVietnamese', () => {
     expect(slugifyVietnamese('Cần Thơ', DESTINATION_MAX)).toBe('can-tho');
   });
 
+  it('ETH (U+00D0/U+00F0) cũng là `Đ` — trông y hệt, mã khác', () => {
+    // TCVN3/VNI và vài bộ gõ tiếng Việt sinh ra ETH thay vì D-CÓ-GẠCH. Hai mã
+    // vẽ giống nhau nên admin thấy tên ĐÚNG mà slug mất chữ đầu — và slug thì
+    // khoá vĩnh viễn sau khi tạo.
+    //
+    // Dựng tên từ MÃ SỐ: gõ ký tự thẳng vào đây thì hai ca dưới trông y hệt
+    // nhau và người đọc không biết ca nào đang thử mã nào.
+    const eth = String.fromCodePoint(0x00d0);
+    const dStroke = String.fromCodePoint(0x0110);
+
+    expect(slugifyVietnamese(`${eth}à Lạt`, DESTINATION_MAX)).toBe('da-lat');
+    expect(slugifyVietnamese(`${eth}ồng Hới`, DESTINATION_MAX)).toBe('dong-hoi');
+    // Và bản D-CÓ-GẠCH phải cho ra ĐÚNG cùng một chuỗi.
+    expect(slugifyVietnamese(`${dStroke}ồng Hới`, DESTINATION_MAX)).toBe(
+      slugifyVietnamese(`${eth}ồng Hới`, DESTINATION_MAX),
+    );
+  });
+
+  it('kết quả luôn qua được `CATEGORY_SLUG_PATTERN`, hoặc là chuỗi rỗng', () => {
+    // Hàm sinh và khuôn kiểm phải khớp nhau: sinh ra thứ chính schema từ chối
+    // là bày cho admin một câu lỗi ngay trên ô vừa tự điền.
+    for (const name of ['Đà Lạt', '  Hạ Long  ', 'A---B', '!!!', 'Tour 2026', '-Huế-']) {
+      const slug = slugifyVietnamese(name, CATEGORY_MAX);
+      if (slug !== '') expect(CATEGORY_SLUG_PATTERN.test(slug)).toBe(true);
+    }
+  });
   it('`đ` và `Đ` thành `d` — NFD không tách được chữ này', () => {
     // `'Đ'.normalize('NFD')` vẫn là một ký tự, không phải D + dấu gạch. Bỏ sót
     // là `Đà Lạt` ra `-a-lat`.
@@ -66,5 +92,23 @@ describe('slugifyVietnamese', () => {
 
   it('slug sẵn đúng khuôn thì đi qua nguyên vẹn', () => {
     expect(slugifyVietnamese('ha-long', DESTINATION_MAX)).toBe('ha-long');
+  });
+});
+
+describe('foldAccents', () => {
+  it('cùng một bản cài đặt với `slugifyVietnamese`', () => {
+    // Hàm này trước 22/09 có bản riêng ở `apps/web/src/lib/text.ts`. Hai bản
+    // trôi lệch thì ô tìm kiếm của web và ô slug của admin đọc cùng một cái
+    // tên ra hai chuỗi khác nhau.
+    expect(foldAccents('Hạ Long')).toBe('ha long');
+    expect(foldAccents('Đà Nẵng')).toBe('da nang');
+    expect(foldAccents(`${String.fromCodePoint(0x00d0)}à Nẵng`)).toBe('da nang');
+  });
+
+  it('giữ nguyên hành vi cũ mà web đang dựa vào', () => {
+    // Ba ca này là nguyên văn thứ `searchTours`/`searchPosts` đang canh.
+    expect(foldAccents('bún chả')).toBe('bun cha');
+    expect(foldAccents('HỘI AN')).toBe('hoi an');
+    expect(foldAccents('plain text')).toBe('plain text');
   });
 });

@@ -1,7 +1,15 @@
 /**
- * Sinh slug từ tên tiếng Việt — dùng ở form TẠO của admin (spec P4e-2 §2c).
+ * Bỏ dấu tiếng Việt, và sinh slug từ tên tiếng Việt.
  *
- * ## Đây là GỢI Ý, không phải luật
+ * ## `foldAccents` sống ở đây, không ở `apps/web`
+ *
+ * Hàm bỏ dấu ra đời ở `apps/web/src/lib/text.ts` (nuôi ô tìm kiếm của blog và
+ * tours: gõ "ha long" phải ra "Hạ Long"). Từ 22/09 nó chuyển xuống đây và
+ * `text.ts` re-export lại — vì `slugifyVietnamese` cần đúng luật ấy, mà gói
+ * `contract` KHÔNG import được `apps/web`. Hai bản riêng thì sửa một ca lạ ở
+ * một bên là hai bên đọc cùng một cái tên ra hai chuỗi khác nhau, im lặng.
+ *
+ * ## Slug là GỢI Ý, không phải luật
  *
  * Slug đang có trong DB do người chọn, và có cái không suy máy móc ra được: đo
  * trên production 22/09, `Hà Nội` mang slug `hanoi` chứ không phải `ha-noi`.
@@ -9,22 +17,55 @@
  * form sửa thì không có ô ấy vì slug khoá sau khi tạo (slug nằm trong URL công
  * khai dạng tham số truy vấn, mà tham số truy vấn thì không chuyển hướng được).
  *
- * ## Vì sao không dùng lại `slugify` của web
+ * ## Vì sao không dùng `slugify` của web
  *
  * `apps/web/src/lib/slug.ts` viết cho id section và anchor mục lục: nó xoá mọi
  * ký tự ngoài `[a-z0-9]`, nên `Đà Lạt` ra `l-t` và `Hà Nội` ra `h-n-i`. Với
- * tên địa danh tiếng Việt thì đó là rác, không phải slug.
+ * tên địa danh tiếng Việt thì đó là rác, không phải slug. Hàm ấy KHÁC
+ * `foldAccents` — chính nó mới là thứ cần dùng lại.
  */
 
 /**
- * Dấu tiếng Việt bỏ được bằng `normalize('NFD')` — trừ `đ`/`Đ`.
+ * Dấu phụ sau khi NFD tách ra — dùng lớp Unicode `\p{M}`, KHÔNG viết dải tay.
  *
- * NFD tách một chữ có dấu thành chữ gốc cộng ký tự dấu phụ, rồi ta xoá dải dấu
- * phụ đi. Nhưng `đ` KHÔNG phải `d` cộng dấu: nó là một ký tự Latin riêng, NFD
- * trả lại chính nó. Bỏ sót chỗ này thì `Đà Lạt` ra `-a-lat` — mất luôn chữ đầu.
+ * Bản đầu viết `/[<U+0300>-<U+036F>]/` bằng chính hai ký tự tổ hợp, và trên
+ * màn hình nó trông như một cặp ngoặc vuông méo: cả hai đầu dải đều vô hình,
+ * dấu huyền vẽ đè lên chính dấu ngoặc. Repo đã trả giá hai lần cho lớp lỗi
+ * ký-tự-vô-hình (797 file CRLF, dấu `+` cột 0 trong CHANGELOG), và viết
+ * `̀-ͯ` cũng không thoát: công cụ ghi file biến escape thành ký tự
+ * thô (đo 22/09 bằng `cat -A`). `\p{M}` không có ký tự nào để mà vô hình, và
+ * nó còn ĐÚNG hơn — phủ mọi dấu phụ chứ không riêng một dải.
  */
-function boDauTiengViet(value: string): string {
-  return value.replace(/đ/g, 'd').replace(/Đ/g, 'D').normalize('NFD').replace(/[̀-ͯ]/g, '');
+const COMBINING_MARKS = /\p{M}/gu;
+
+/**
+ * `Đ`/`đ` có HAI mã Unicode trông y hệt nhau, phải xử cả hai.
+ *
+ * U+0110/U+0111 là D-CÓ-GẠCH, chữ cái tiếng Việt thật. U+00D0/U+00F0 là ETH —
+ * chữ của tiếng Iceland — nhưng TCVN3/VNI và vài bộ gõ tiếng Việt vẫn sinh ra
+ * nó, và trên màn hình không phân biệt được. Cả bốn đều KHÔNG phân rã qua NFD
+ * (chúng là ký tự Latin riêng, không phải `d` cộng dấu), nên bỏ sót là chữ ấy
+ * rơi thẳng vào `[^a-z0-9]` và biến mất: ETH-à-Lạt ra `a-lat`. Mà slug thì
+ * khoá vĩnh viễn sau khi tạo.
+ *
+ * Dựng từ MÃ SỐ chứ không gõ ký tự vào regex: bốn ký tự này vẽ giống nhau từng
+ * đôi một, nên trong mã nguồn chúng phải đọc được bằng mắt là bốn thứ khác nhau.
+ */
+const D_STROKE_UPPER = new RegExp(`[${String.fromCodePoint(0x0110, 0x00d0)}]`, 'g');
+const D_STROKE_LOWER = new RegExp(`[${String.fromCodePoint(0x0111, 0x00f0)}]`, 'g');
+
+/**
+ * Bỏ dấu tiếng Việt và hạ chữ thường — `Hạ Long` → `ha long`.
+ *
+ * Dùng cho MỌI phép so khớp bỏ dấu: ô tìm kiếm của web và ô slug của admin.
+ */
+export function foldAccents(value: string): string {
+  return value
+    .replace(D_STROKE_UPPER, 'D')
+    .replace(D_STROKE_LOWER, 'd')
+    .normalize('NFD')
+    .replace(COMBINING_MARKS, '')
+    .toLowerCase();
 }
 
 /**
@@ -36,11 +77,11 @@ function boDauTiengViet(value: string): string {
  * phải nhớ sửa khi cột đổi độ rộng.
  *
  * Trả chuỗi RỖNG khi không còn gì dùng được (tên toàn ký tự lạ). Không trả một
- * dấu gạch: `'-'` sẽ lọt qua schema slug và để lại một hàng vô nghĩa trong DB.
+ * dấu gạch: `CATEGORY_SLUG_PATTERN` từ chối `'-'`, nhưng trả về một thứ chắc
+ * chắn bị từ chối là để người ta thấy một câu lỗi khó hiểu ở ô slug.
  */
 export function slugifyVietnamese(value: string, maxLength: number): string {
-  const base = boDauTiengViet(value)
-    .toLowerCase()
+  const base = foldAccents(value)
     .replace(/[^a-z0-9]+/g, '-')
     // Trim gạch ở hai đầu TRƯỚC khi cắt, để "  Hạ Long  " không tốn mất hai ký
     // tự đầu của hạn mức cho hai dấu gạch rồi bị cắt hụt.

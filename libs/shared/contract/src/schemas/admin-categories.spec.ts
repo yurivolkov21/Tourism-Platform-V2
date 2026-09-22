@@ -71,6 +71,31 @@ describe('AdminCategoryCreateInputSchema', () => {
     expect(AdminCategoryCreateInputSchema.safeParse({ ...BASE, slug: '' }).success).toBe(false);
   });
 
+  it('gạch nối phải nằm GIỮA hai cụm chữ-số, không đứng một mình', () => {
+    // Ô slug là text tự do nên `-`, `---`, `-day-` gõ tay là lọt qua khuôn
+    // lỏng `^[a-z0-9-]+$` và để lại một hàng vô nghĩa ở cột `@unique`.
+    for (const slug of ['-', '---', '-day-trips', 'day-trips-', 'day--trips']) {
+      expect(AdminCategoryCreateInputSchema.safeParse({ ...BASE, slug }).success).toBe(false);
+    }
+    // Sáu slug đang chạy trên production vẫn phải qua được.
+    for (const slug of ['day', 'package', 'cruise', 'trekking', 'honeymoon', 'seasonal-classics']) {
+      expect(AdminCategoryCreateInputSchema.safeParse({ ...BASE, slug }).success).toBe(true);
+    }
+  });
+
+  it('mô tả RỖNG hoặc toàn khoảng trắng thành `null`, không thành chuỗi rỗng', () => {
+    // Chuỗi rỗng lọt vào cột nullable thì `?? 'No description'` không cứu được
+    // (chuỗi rỗng không nullish) và bảng in một dòng trắng.
+    const parse = (description: unknown) =>
+      AdminCategoryCreateInputSchema.safeParse({ ...BASE, description });
+
+    expect(parse('').success && parse('').data?.description).toBeNull();
+    expect(parse('   ').success && parse('   ').data?.description).toBeNull();
+    expect(parse(undefined).success && parse(undefined).data?.description).toBeNull();
+    // Mô tả thật thì giữ nguyên, đã cắt khoảng trắng hai đầu.
+    expect(parse('  Back by dinner.  ').data?.description).toBe('Back by dinner.');
+  });
+
   it('trần cột gương đúng độ rộng DB', () => {
     const qua = (n: number) => 'a'.repeat(n);
     expect(
@@ -130,7 +155,16 @@ describe('AdminCategoryMoveInputSchema', () => {
 
   it('KHÔNG nhận số thứ tự — client không cần biết `order` đang là bao nhiêu', () => {
     // Nhận số là mở cửa cho hai admin bấm cùng lúc rồi ghi hai hàng cùng số.
-    expect(AdminCategoryMoveInputSchema.safeParse({ id: ID, order: 3 }).success).toBe(false);
+    //
+    // Phải gửi KÈM `direction` hợp lệ mới kiểm được đúng thứ định kiểm: thiếu
+    // `direction` thì `safeParse` hỏng vì khoá bắt buộc vắng mặt, và ca test
+    // xanh cho một lý do chẳng liên quan gì tới `order`.
+    const parsed = AdminCategoryMoveInputSchema.safeParse({ id: ID, direction: 'up', order: 3 });
+
+    expect(parsed.success).toBe(true);
+    // Repo không dùng `.strict()`, nên khoá lạ bị LỘC BỎ chứ không bị từ chối —
+    // điều quan trọng là nó không đi tiếp xuống service.
+    expect(parsed.success && 'order' in parsed.data).toBe(false);
   });
 });
 
