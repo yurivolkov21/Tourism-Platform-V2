@@ -4,6 +4,7 @@ import {
   cancellationDeadline,
   isWithinDeadline,
   refundOnCancel,
+  remainingRefundable,
 } from '@tourism/contract';
 import { Prisma } from '../../generated/prisma/client.js';
 import { BookingStatus } from '../../generated/prisma/enums.js';
@@ -69,6 +70,29 @@ export function refundOnCancelForBooking(
     totalAmount: booking.totalAmount.toFixed(2),
     refundedTotal: (refundedTotal ?? new Prisma.Decimal(0)).toFixed(2),
   });
+}
+
+/**
+ * Số tiền hoàn khi CÔNG TY huỷ chuyến (ADR-0041 §6) — trọn phần chưa hoàn,
+ * KHÔNG xét hạn chót.
+ *
+ * Vì sao khác {@link refundOnCancelForBooking}: hạn chót là luật cho KHÁCH đổi
+ * ý — qua hạn thì chỗ không bán lại được nữa nên không tự hoàn (ADR-0041 §1).
+ * Chuyến bị công ty bỏ thì khách chẳng đổi ý gì cả; bắt họ chịu cùng luật ấy là
+ * giữ tiền của một chuyến sẽ không bao giờ chạy. Nên cùng một mốc thời gian,
+ * hai đường ra hai con số.
+ *
+ * `now` KHÔNG phải tham số ở đây, có chủ đích: thêm vào là mời người đọc tin
+ * rằng thời điểm có ảnh hưởng.
+ */
+export function refundOnOperatorCancelForBooking(
+  booking: CancellableBooking,
+  refundedTotal: Prisma.Decimal | null,
+): string {
+  return remainingRefundable(
+    booking.totalAmount.toFixed(2),
+    (refundedTotal ?? new Prisma.Decimal(0)).toFixed(2),
+  );
 }
 
 /**

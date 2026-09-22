@@ -45,22 +45,38 @@ export interface CustomerCancelInput {
 
 /**
  * Đầu vào lõi huỷ dùng chung (plan 15/09 Hợp đồng C). Người gọi đã giữ advisory
- * lock của booking và tính `refundAmount` trên sổ đọc TRONG khoá. P4e-1 sẽ thêm
- * initiator 'operator' (công ty huỷ chuyến, hoàn toàn bộ phần còn lại).
+ * lock của booking và tính `refundAmount` trên sổ đọc TRONG khoá.
+ *
+ * HAI đường vào, hai cách tính tiền (ADR-0041 §4 và §6):
+ *
+ * - `'customer'` — khách đổi ý. Số tiền theo hạn chót
+ *   ({@link refundOnCancelForBooking}): trong hạn hoàn trọn phần chưa hoàn, quá
+ *   hạn hoàn 0, vì chỗ đó không bán lại được nữa.
+ * - `'operator'` — CÔNG TY bỏ chuyến (F13). Số tiền là trọn phần chưa hoàn
+ *   ({@link refundOnOperatorCancelForBooking}), KHÔNG xét hạn chót: khách chẳng
+ *   đổi ý gì cả, và giữ tiền của một chuyến sẽ không bao giờ chạy là sai.
+ *
+ * Lõi huỷ KHÔNG tự chọn con số — người gọi tính rồi đưa vào, vì chỉ người gọi
+ * biết mình là đường nào. Ở đây `initiator` chỉ còn hai việc: vào payload email
+ * (câu chữ hai đường khác nhau) và làm tài liệu cho người đọc kế tiếp.
+ *
+ * {@link cancellationBlocker} áp dụng cho CẢ HAI đường, không nới: chuyến đã
+ * tới ngày khởi hành thì không còn là huỷ, mà là chuyện sau chuyến đi.
  */
 export interface CancelInLockInput {
-  /** Người quyết: chính khách khi `initiator` là 'customer'. */
+  /** Người quyết: chính khách với 'customer', admin bấm nút với 'operator'. */
   decidedById: string;
   refundAmount: Prisma.Decimal;
   /** SUM(refunds) đọc TRONG khoá — trạng thái sổ mà `refundAmount` tính từ, vào khoá chống trùng. */
   refundedTotal: Prisma.Decimal;
   /**
-   * Số khách đã xác nhận. Lệch `refundAmount` thì lõi huỷ dừng TRƯỚC khi gọi cổng
-   * ({@link RefundAmountChangedError}).
+   * Số khách đã xác nhận, hoặc — ở đường `'operator'` — chính `refundAmount`:
+   * không có hộp xác nhận nào in số cho từng khách, nên phép so này thành
+   * no-op. Giữ trường thay vì cho optional để không ai quên nó ở đường mới.
    */
   expectedRefundAmount: Prisma.Decimal;
   reason: string | null;
-  initiator: 'customer';
+  initiator: 'customer' | 'operator';
   /** Đồng hồ của lượt huỷ — dùng cho phép kiểm "chưa tới ngày khởi hành". */
   now: Date;
 }

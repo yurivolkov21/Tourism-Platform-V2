@@ -6,6 +6,7 @@ import {
   cancellationBlocker,
   isCancellableStatus,
   refundOnCancelForBooking,
+  refundOnOperatorCancelForBooking,
 } from './booking-cancellation.js';
 
 /**
@@ -140,5 +141,38 @@ describe('bookingCancellation', () => {
   it('chuyến 4 ngày → N = 7, ngày chót sớm hơn', () => {
     const long = makeBooking({ departureEndDate: new Date('2026-10-23T00:00:00.000Z') });
     expect(bookingCancellation(long, null, EARLY)?.deadline).toBe('2026-10-13');
+  });
+});
+
+describe('refundOnOperatorCancelForBooking', () => {
+  /** 10:00 ngày 18/10 giờ Việt Nam — ĐÃ qua ngày chót 17/10. */
+  const LATE = new Date('2026-10-18T03:00:00.000Z');
+
+  it('CÔNG TY huỷ chuyến thì hoàn trọn phần chưa hoàn, kể cả khi khách đã QUÁ hạn', () => {
+    // Đây là toàn bộ lý do hàm này tồn tại: hạn chót là luật cho KHÁCH đổi ý
+    // (ADR-0041 §3). Chuyến bị công ty bỏ thì khách không đổi ý gì cả, nên ở
+    // cùng một mốc thời gian hai đường phải ra hai con số khác nhau.
+    expect(refundOnOperatorCancelForBooking(makeBooking(), null)).toBe('117.00');
+    expect(refundOnCancelForBooking(makeBooking(), null, LATE)).toBe('0.00');
+  });
+
+  it('booking đã hoàn một phần thì chỉ hoàn phần CÒN LẠI', () => {
+    // Trigger `refunds_sum_within_total` vẫn là lưới cuối, nhưng đụng tới nó
+    // nghĩa là đã gọi cổng thanh toán một lượt thừa.
+    expect(refundOnOperatorCancelForBooking(makeBooking(), new Prisma.Decimal('40.00'))).toBe(
+      '77.00',
+    );
+  });
+
+  it('đã hoàn trọn rồi thì ra 0.00, không ra số âm', () => {
+    expect(refundOnOperatorCancelForBooking(makeBooking(), new Prisma.Decimal('117.00'))).toBe(
+      '0.00',
+    );
+  });
+
+  it('CÒN trong hạn thì hai đường ra CÙNG một số — khác biệt chỉ nằm sau hạn chót', () => {
+    expect(refundOnOperatorCancelForBooking(makeBooking(), null)).toBe(
+      refundOnCancelForBooking(makeBooking(), null, EARLY),
+    );
   });
 });
