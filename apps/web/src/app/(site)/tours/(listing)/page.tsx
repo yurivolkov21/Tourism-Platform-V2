@@ -91,7 +91,12 @@ export default async function ToursPage({
   // `order` ở server. Suy từ danh sách tour đã tải (cách cũ) làm hai nút của
   // back office không với tới trang này: ẩn một danh mục vẫn thấy chip, đổi
   // thứ tự vẫn không đổi gì.
-  const categories = categoriesRes.data ?? [];
+  //
+  // `null` khi lời gọi HỎNG, không phải `[]`: mảng rỗng là một câu trả lời
+  // hợp lệ (mọi danh mục đều đã ẩn), còn lẫn hai ca ấy thì một lượt 500 của
+  // `/api/categories` xoá sạch thẻ facet "Category" khỏi một trang vẫn đang
+  // sống. `resolveCategoryOptions` rơi về suy-từ-tour ở ca hỏng.
+  const categories = categoriesRes.ok ? categoriesRes.data : null;
 
   return (
     <ToursExplorer

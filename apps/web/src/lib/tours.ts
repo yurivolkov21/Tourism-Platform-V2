@@ -2,6 +2,51 @@ import type { TourCardVM } from '@/lib/api/tours';
 import type { MockDestinationLink, MockMediaItem } from '@/mocks/types';
 import { foldAccents } from './text';
 
+/** Một mục của thẻ facet "Category": slug để lọc, tên để người đọc. */
+export interface CategoryOption {
+  slug: string;
+  name: string;
+}
+
+/**
+ * Bộ chip danh mục của `/tours` — endpoint quyết chip NÀO có, tour đã tải chỉ
+ * bù tên và bù ca thiếu.
+ *
+ * Ba việc, và mỗi việc đóng đúng một lỗ mà vòng review F14 tìm ra:
+ *
+ * 1. **`categories` là nguồn và là THỨ TỰ.** `is_active` và `order` do admin
+ *    đặt chỉ có nghĩa nếu trang này tôn trọng đúng danh sách server trả về.
+ * 2. **Slug đang lọc mà vắng mặt thì bù vào CUỐI.** Ca thật: admin vừa ẩn một
+ *    danh mục, nhưng link cũ `/tours?categories=<slug>` vẫn lọc đúng vì API
+ *    công khai KHÔNG gác `isActive` khi lọc tour. Không bù thì chip đang bật
+ *    in slug máy (`?? value` ở `ToursExplorer`) và khách không có ô nào để bỏ
+ *    tick — lưới bị thu hẹp mà không ai giải thích vì sao.
+ * 3. **`categories === null` nghĩa là lời gọi HỎNG**, khác hẳn mảng rỗng
+ *    (mọi danh mục đều đã ẩn — hợp lệ). Hỏng thì suy từ tour đã tải, tức rơi
+ *    về đúng hành vi trước 22/09, thay vì bày một thẻ facet trống trơn.
+ */
+export function resolveCategoryOptions(
+  categories: readonly CategoryOption[] | null,
+  tours: readonly TourCardVM[],
+  selected: readonly string[],
+): CategoryOption[] {
+  const fromTours = new Map<string, string>();
+  for (const tour of tours) fromTours.set(tour.category.slug, tour.category.name);
+
+  if (categories === null) {
+    return [...fromTours].map(([slug, name]) => ({ slug, name }));
+  }
+
+  const options = categories.map((category) => ({ slug: category.slug, name: category.name }));
+  const known = new Set(options.map((option) => option.slug));
+  for (const slug of selected) {
+    if (known.has(slug)) continue;
+    known.add(slug);
+    options.push({ slug, name: fromTours.get(slug) ?? slug });
+  }
+  return options;
+}
+
 export type DurationBucket = '1' | '2-3' | '4+';
 export type PriceBucket = '<100' | '100-300' | '300+';
 

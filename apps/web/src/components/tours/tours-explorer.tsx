@@ -32,11 +32,13 @@ import type { DestinationVM, TourCardVM } from '@/lib/api/tours';
 import { paginate } from '@/lib/paginate';
 import { scrollToListTop } from '@/lib/scroll-to-list-top';
 import {
+  type CategoryOption,
   countActiveFilters,
   EMPTY_TOUR_FILTERS,
   facetOptionCounts,
   featuredOptionCount,
   filterTours,
+  resolveCategoryOptions,
   searchTours,
   sortTours,
   type TourFilterState,
@@ -110,8 +112,11 @@ export function ToursExplorer({
    * Chỉ `slug` + `name`: con số trên chip KHÔNG lấy từ đây mà đếm lại từ danh
    * sách đã lọc bên dưới. `toursCount` của endpoint là số toàn catalogue, in
    * nó ra khi khách đang tìm kiếm là hứa nhiều hơn thực tế.
+   *
+   * `null` nghĩa là lời gọi endpoint HỎNG, khác hẳn mảng rỗng (mọi danh mục
+   * đều đã ẩn) — `resolveCategoryOptions` xử hai ca ấy khác nhau.
    */
-  categories: { slug: string; name: string }[];
+  categories: CategoryOption[] | null;
   destinations: DestinationVM[];
   initial: ToursExplorerInitial;
 }) {
@@ -216,13 +221,23 @@ export function ToursExplorer({
   const paged = paginate(matched, page, pageSize);
   const activeCount = countActiveFilters(filters);
 
+  /**
+   * Bộ mục của thẻ facet "Category" — và cũng là bảng tra nhãn cho hàng chip
+   * đang bật. MỘT nguồn cho cả hai: tra nhãn từ một danh sách khác danh sách
+   * đang render là đúng cách sinh ra chip in slug máy (vòng review F14).
+   */
+  const categoryOptions = useMemo(
+    () => resolveCategoryOptions(categories, tours, filters.categories),
+    [categories, tours, filters.categories],
+  );
+
   const counts: FacetCounts = useMemo(
     () => ({
       categories: facetOptionCounts(
         searched,
         filters,
         'categories',
-        categories.map((c) => c.slug),
+        categoryOptions.map((c) => c.slug),
       ),
       destinations: facetOptionCounts(
         searched,
@@ -239,7 +254,7 @@ export function ToursExplorer({
       ]),
       featured: featuredOptionCount(searched, filters),
     }),
-    [searched, filters, categories, destinations],
+    [searched, filters, categoryOptions, destinations],
   );
 
   /** Nhãn hiển thị cho chip đang bật. Tra ngược từ slug sang tên người đọc
@@ -248,7 +263,7 @@ export function ToursExplorer({
     (filters[facet] as readonly string[]).map((value) => {
       const label =
         facet === 'categories'
-          ? (categories.find((c) => c.slug === value)?.name ?? value)
+          ? (categoryOptions.find((c) => c.slug === value)?.name ?? value)
           : facet === 'destinations'
             ? (destinations.find((d) => d.slug === value)?.name ?? value)
             : facet === 'durations'
@@ -272,7 +287,7 @@ export function ToursExplorer({
       counts={counts}
       onToggle={toggleFacet}
       onToggleFeatured={toggleFeatured}
-      categoryOptions={categories}
+      categoryOptions={categoryOptions}
       destinations={destinations}
     />
   );

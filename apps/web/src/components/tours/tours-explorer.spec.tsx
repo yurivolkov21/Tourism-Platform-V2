@@ -1,5 +1,6 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { messages } from '@tourism/i18n';
 import { MotionConfig } from 'motion/react';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 // `mocks/tours.ts` + `mocks/destinations.ts` đã khai tử ở Task 7 (cụm
@@ -364,6 +365,52 @@ describe('ToursExplorer — facet đa chọn', () => {
       'aria-disabled',
       'true',
     );
+  });
+
+  it('danh mục ĐÃ ẨN đang lọc: chip in TÊN, và vẫn có ô để bỏ tick', async () => {
+    // Admin ẩn "Cruises" → endpoint thôi trả nó, nhưng link cũ
+    // `/tours?categories=cruises` vẫn lọc đúng vì API công khai không gác
+    // `isActive` khi lọc tour. Trước bản vá: chip in chữ `cruises` (slug máy)
+    // và thẻ Category không có dòng nào tích, nên khách thấy lưới bị thu hẹp
+    // mà không tìm ra chỗ tắt.
+    const user = userEvent.setup();
+    const visible = CATEGORIES.filter((c) => c.slug !== 'cruises');
+    render(
+      <MotionConfig reducedMotion="always">
+        <ToursExplorer
+          tours={TOURS}
+          categories={visible}
+          destinations={DESTINATIONS}
+          initial={{ categories: 'cruises' }}
+        />
+      </MotionConfig>,
+    );
+
+    // Chip trên thanh kết quả mang TÊN, không phải slug. Khớp CHÍNH XÁC chứ
+    // không `/cruises/i`: slug `cruises` và tên `Cruises` chỉ khác mỗi chữ
+    // hoa, nên regex bỏ qua hoa-thường thì ca này xanh cả khi chip in slug.
+    expect(
+      screen.getByRole('button', { name: messages.toursPage.removeFilter('Cruises') }),
+    ).toBeInTheDocument();
+
+    // Và thẻ Category có đúng ô ấy, đang tích — 5 mục còn lại cộng mục bù là
+    // 6, vừa đúng trần gập nên không có nút "Show all".
+    await openFilters(user);
+    expect(screen.getByRole('checkbox', { name: /^Cruises, / })).toBeChecked();
+  });
+
+  it('endpoint danh mục RỚT: thẻ facet vẫn có mục, suy từ tour đã tải', async () => {
+    // `null` = lời gọi hỏng. Rơi về suy-từ-tour là hành vi trước 22/09 — xấu
+    // hơn bản đầy đủ nhưng còn dùng được, khác hẳn một thẻ có viền mà rỗng ruột.
+    const user = userEvent.setup();
+    render(
+      <MotionConfig reducedMotion="always">
+        <ToursExplorer tours={TOURS} categories={null} destinations={DESTINATIONS} initial={{}} />
+      </MotionConfig>,
+    );
+    await openFilters(user);
+
+    expect(screen.getByRole('checkbox', { name: /^Trekking, / })).toBeInTheDocument();
   });
 
   it('con số trên chip đếm từ lưới đã lọc, KHÔNG lấy `toursCount` của endpoint', async () => {

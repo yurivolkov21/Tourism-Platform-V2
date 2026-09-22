@@ -33,12 +33,63 @@ import {
   isDepartureOpen,
   priceBucket,
   relatedTours,
+  resolveCategoryOptions,
   routeChain,
   searchTours,
   sortTours,
   strikePrice,
   tourGallery,
 } from './tours';
+
+describe('resolveCategoryOptions', () => {
+  const CATEGORIES = [
+    { slug: 'food', name: 'Food & markets' },
+    { slug: 'trekking', name: 'Trekking' },
+  ];
+
+  it('giữ NGUYÊN thứ tự endpoint — đó là thứ tự admin vừa đặt', () => {
+    const options = resolveCategoryOptions(CATEGORIES, TOURS, []);
+
+    expect(options.map((option) => option.slug)).toEqual(['food', 'trekking']);
+  });
+
+  it('slug đang lọc mà KHÔNG có trong endpoint vẫn hiện, tên tra từ tour đã tải', () => {
+    // Đây là ca "admin vừa ẩn danh mục": endpoint thôi trả nó, nhưng link cũ
+    // `/tours?categories=cruises` vẫn lọc đúng (API công khai không gác
+    // `isActive` khi lọc tour). Không bù vào đây thì chip in slug máy và khách
+    // không có ô nào để bỏ tick.
+    const options = resolveCategoryOptions(CATEGORIES, TOURS, ['cruises']);
+
+    expect(options.map((option) => option.slug)).toEqual(['food', 'trekking', 'cruises']);
+    expect(options.at(-1)?.name).toBe('Cruises');
+  });
+
+  it('slug lọc lạ hoàn toàn thì lấy chính slug làm nhãn', () => {
+    const options = resolveCategoryOptions(CATEGORIES, TOURS, ['khong-ton-tai']);
+
+    expect(options.at(-1)).toEqual({ slug: 'khong-ton-tai', name: 'khong-ton-tai' });
+  });
+
+  it('KHÔNG nhân đôi một slug đã có trong endpoint', () => {
+    const options = resolveCategoryOptions(CATEGORIES, TOURS, ['food']);
+
+    expect(options).toHaveLength(2);
+  });
+
+  it('endpoint RỚT (`null`) thì suy từ tour — trang xuống cấp, không trắng thẻ', () => {
+    // `null` khác mảng rỗng: rỗng nghĩa là mọi danh mục đều đã ẩn (hợp lệ),
+    // còn `null` nghĩa là lời gọi hỏng. Không phân biệt thì một lượt 500 của
+    // `/api/categories` xoá sạch thẻ facet "Category" khỏi trang đang sống.
+    const options = resolveCategoryOptions(null, TOURS, []);
+
+    expect(options.length).toBeGreaterThan(0);
+    expect(options.map((option) => option.slug)).toContain(TOURS[0]?.category.slug);
+  });
+
+  it('endpoint trả mảng RỖNG thì tôn trọng: không có chip nào', () => {
+    expect(resolveCategoryOptions([], TOURS, [])).toEqual([]);
+  });
+});
 
 describe('durationBucket', () => {
   it('1 ngày là day trip', () => {
