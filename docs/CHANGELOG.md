@@ -8,6 +8,61 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-09-22 — F14 quản trị danh mục tour, và bộ chip của khách thôi nói dối (nhánh `feat/p4e-2-categories`)
+
+Vùng thứ hai của P4e: `/categories` trong back office, cộng một đoạn dây nối
+nó tới trang công khai mà trước nay không có.
+
+**Màn quản trị.** Sáu hàng, không phân trang, không lọc, không tìm kiếm — đo
+trên production thì bảng này có đúng sáu hàng, và một thanh công cụ cho sáu
+hàng là nhiễu. Bốn hành động trên từng hàng: sửa, ẩn/hiện, lên, xuống. KHÔNG
+có nút xoá: `is_active` đã có sẵn nên ẩn là đảo ngược được bằng một cú bấm,
+còn xoá thì không.
+
+**Slug khoá sau khi tạo**, và ô nhập chỉ CÓ MẶT ở form tạo — không phải mờ đi,
+mà vắng mặt hẳn. Slug đi vào `/tours?categories=<slug>`, mà tham số truy vấn
+thì không chuyển hướng được; một ô mờ chỉ mời người ta thử rồi bắt ta giải
+thích. Lúc tạo, slug tự điền theo tên qua `slugifyVietnamese` cho tới khi admin
+chạm vào ô đó — đo trên production thì slug thật do người chọn (`Hà Nội` thành
+`hanoi`, không phải `ha-noi`), nên quyền quyết cuối phải ở họ.
+
+**`move` khoá HAI hàng, sắp theo id trước khi khoá.** Đổi chỗ động tới hai
+dòng; hai admin bấm ngược chiều cùng lúc mà khoá theo thứ tự khác nhau là một
+deadlock có thật, không phải giả định.
+
+**Đoạn dây nối.** Đây là phần đáng kể nhất của cụm: `/tours` vốn dựng bộ chip
+lọc bằng cách suy từ danh sách tour đã tải, nên `is_active` và `order` **không
+với tới trang công khai** — ẩn một danh mục vẫn thấy chip, đổi thứ tự vẫn không
+đổi gì, và một danh mục mới tạo chưa gắn tour thì không có chip nào để admin
+nhìn thấy. Trang nay đọc `catalog.categories.list`; hàm suy-từ-tour xoá hẳn,
+vì còn để đó là còn đường quay lại.
+
+Con số in trên chip thì GIỮ cách đếm cũ, ngược với điều bản plan ghi:
+`toursCount` của endpoint là số toàn catalogue, in nó ra khi khách đang tìm
+kiếm là hứa nhiều hơn thực tế. Endpoint quyết chip NÀO có mặt và theo thứ tự
+nào; con số vẫn tính trên lưới đã lọc.
+
+**Hai chỗ doc nói sai code, đã sửa doc:**
+
+- Spec §2e ghi "trang 2 của danh sách tour có bộ chip khác trang 1" như một sai
+  lệch cần vá. Đo lại thì không có sai lệch đó — `fetchTours()` gọi một lần
+  `limit: 50` và explorer phân trang phía client bằng `history.replaceState`,
+  không có vòng server nào. Đính chính ghi thẳng vào spec.
+- Bước B5 của plan ghi ngược về con số trên chip (xem trên). Lý do lệch ghi
+  ngay tại bước đó.
+
+**Một lỗi tự bắt khi soát lại trước commit:** view model của bảng suy mô tả
+hiển thị ra `No description` khi cột trống, rồi form sửa lại so ngược chuỗi ấy
+để đoán về bản thô. Một danh mục có mô tả thật đúng bằng câu đó sẽ mở form ra ô
+trống, và lưu một phát là mất mô tả. Mô tả thô nay đi riêng khỏi mô tả hiển thị.
+
+**Review findings:** chưa chạy vòng review riêng cho F14.
+
+Tests after: Vitest **3949** (web 1525, api 978, admin 997, contract 347,
+core 46, ui 22, tokens 18, i18n 16), int **590 ở 43 file**. Thêm 41 ca admin,
+26 ca contract, 20 ca int, và 3 ca web thay cho 3 ca của hàm đã xoá. Mọi ca
+mới đều kiểm ĐỎ bằng đột biến — chín đột biến ở vùng admin, ba ở vùng web.
+
 ## 2026-09-22 — Vòng hai của F12: tám mục, và hai trong số đó đã tự đóng (nhánh `fix/p4e-f12-wave2`)
 
 Tám mục không-chạm-tiền mà vòng review F12 (21/09) gác lại. Rà từng mục trong mã
