@@ -92,6 +92,24 @@ export function reopenBlocker(startDate: string, endDate: string, now: Date): st
 }
 
 /**
+ * Ghế của chuyến vượt cỡ nhóm TỐI ĐA mà tour công bố (F12 vòng hai) — chuỗi lý
+ * do, hoặc `null` khi hợp lệ.
+ *
+ * `tours.max_group_size` không phải một con số trang trí: nó là lời hứa bán
+ * hàng in trên chính trang tour ("Small groups, always led by local guides"), và
+ * nó quyết cỡ xe với số hướng dẫn viên. Một chuyến 40 ghế trên một tour công bố
+ * tối đa 12 là bán thứ không giao được — và không có tầng nào bên dưới bắt:
+ * CHECK của DB chỉ canh `seats_booked <= seats_total`, không biết gì về tour.
+ *
+ * 422 chứ không 409: người gõ sửa được ngay tại ô, khác hẳn họ nhóm 409 nơi thứ
+ * đã đổi nằm ngoài tầm tay họ.
+ */
+export function seatsAboveTourMaxBlocker(seatsTotal: number, maxGroupSize: number): string | null {
+  if (seatsTotal <= maxGroupSize) return null;
+  return `This tour runs groups of at most ${maxGroupSize} travellers, so a departure cannot have ${seatsTotal} seats.`;
+}
+
+/**
  * Công ty huỷ chuyến được không lúc `now` (F13, ADR-0041 §6) — `null` = được.
  *
  * Thước là NGÀY KHỞI HÀNH, không phải hạn nhận đặt. Khác biệt ấy là chủ đích:

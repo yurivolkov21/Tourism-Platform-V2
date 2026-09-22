@@ -112,7 +112,10 @@ describe('admin departures integration (F12)', () => {
       tourId: row.tourId ?? tour.id,
       startDate: dayAt(row.start),
       endDate: dayAt(row.end),
-      seatsTotal: row.seatsTotal ?? 20,
+      // Dưới `max_group_size` của tour fixture (16) — F12 vòng hai thêm trần
+      // ghế theo cỡ nhóm tour, nên số mặc định cũ (20) nay là một chuyến không
+      // hợp lệ ngay từ lúc dựng.
+      seatsTotal: row.seatsTotal ?? 12,
       seatsBooked: row.seatsBooked ?? 0,
       status: row.status ?? DepartureStatus.OPEN,
       priceOverride: row.priceOverride ?? null,
@@ -287,7 +290,7 @@ describe('admin departures integration (F12)', () => {
     await prisma.tourDeparture.deleteMany();
     await prisma.tourDeparture.createMany({
       data: [
-        departure(BOOKED, { start: 60, end: 64, seatsTotal: 20, seatsBooked: 4 }),
+        departure(BOOKED, { start: 60, end: 64, seatsTotal: 12, seatsBooked: 4 }),
         departure(FREE, { start: 90, end: 92, priceOverride: '99.00' }),
         departure(PAST, { start: -30, end: -28, status: DepartureStatus.CLOSED }),
         departure(DEADLINE_GONE, { start: 0, end: 0, status: DepartureStatus.CLOSED }),
@@ -468,13 +471,13 @@ describe('admin departures integration (F12)', () => {
       const before = await rowById(BOOKED);
       const res = await update(
         BOOKED,
-        { ...editable(before), seatsTotal: 30, priceOverride: '111.00' },
+        { ...editable(before), seatsTotal: 14, priceOverride: '111.00' },
         adminCookie,
       );
 
       expect(res.statusCode).toBe(200);
       const row = AdminDepartureRowSchema.parse(res.json());
-      expect(row.seatsTotal).toBe(30);
+      expect(row.seatsTotal).toBe(14);
       expect(row.price).toBe('111.00');
       expect(row.liveBookingCount).toBe(2);
     });
@@ -499,7 +502,7 @@ describe('admin departures integration (F12)', () => {
       expect(res.statusCode).toBe(409);
       expect(res.json().code).toBe('SEATS_BELOW_BOOKED');
       expect(res.json().message).toContain('4');
-      expect((await rowById(BOOKED)).seatsTotal).toBe(20);
+      expect((await rowById(BOOKED)).seatsTotal).toBe(12);
     });
 
     it('hạ ghế xuống ĐÚNG bằng số đã đặt → cho đi', async () => {
@@ -566,15 +569,15 @@ describe('admin departures integration (F12)', () => {
       // người ĐÃ trả.
       const cu = await rowById(FREE);
 
-      const truoc = await update(FREE, { ...editable(cu), seatsTotal: 45 }, adminCookie);
+      const truoc = await update(FREE, { ...editable(cu), seatsTotal: 14 }, adminCookie);
       expect(truoc.statusCode).toBe(200);
 
-      const sau = await update(FREE, { ...editable(cu), seatsTotal: 20 }, adminCookie);
+      const sau = await update(FREE, { ...editable(cu), seatsTotal: 10 }, adminCookie);
 
       expect(sau.statusCode).toBe(409);
       expect(sau.json().code).toBe('DEPARTURE_STALE');
-      // 45 ghế của tab A còn nguyên — đó mới là điều đáng đo.
-      expect((await rowById(FREE)).seatsTotal).toBe(45);
+      // 14 ghế của tab A còn nguyên — đó mới là điều đáng đo.
+      expect((await rowById(FREE)).seatsTotal).toBe(14);
     });
   });
 
@@ -735,6 +738,116 @@ describe('admin departures integration (F12)', () => {
     it('khách thường không huỷ được chuyến', async () => {
       expect((await cancel(FREE, REASON, customerCookie)).statusCode).toBe(403);
       expect((await rowById(FREE)).status).toBe('OPEN');
+    });
+  });
+  describe('F12 vòng hai — trần ghế và sổ P&L', () => {
+    it('ghế vượt cỡ nhóm tour công bố → 422, không phải 500 ở tầng dưới', async () => {
+      // `tours.max_group_size` là lời hứa in trên chính trang tour và nó quyết
+      // cỡ xe. Không tầng nào bên dưới bắt được: CHECK của DB chỉ canh
+      // `seats_booked <= seats_total`, không biết gì về tour.
+      const max = (await prisma.tour.findUniqueOrThrow({ where: { id: tour.id } })).maxGroupSize;
+
+      const res = await create(
+        {
+          slug: PUBLISHED_SLUG,
+          startDate: dateAt(100),
+          endDate: dateAt(101),
+          seatsTotal: max + 1,
+        },
+        adminCookie,
+      );
+
+      expect(res.statusCode).toBe(422);
+      expect(res.json().code).toBe('SEATS_ABOVE_TOUR_MAX');
+      // Câu mang sẵn con số tour cho phép — câu hỏi kế tiếp của admin luôn là
+      // "vậy tối đa bao nhiêu?".
+      expect(res.json().message).toContain(String(max));
+    });
+
+    it('ĐÚNG cỡ nhóm tối đa thì tạo được — chặn ở biên, không chặn quá tay', async () => {
+      const max = (await prisma.tour.findUniqueOrThrow({ where: { id: tour.id } })).maxGroupSize;
+
+      const res = await create(
+        {
+          slug: PUBLISHED_SLUG,
+          startDate: dateAt(102),
+          endDate: dateAt(103),
+          seatsTotal: max,
+        },
+        adminCookie,
+      );
+
+      expect(res.statusCode).toBe(200);
+    });
+
+    it('SỬA ghế vượt trần cũng bị chặn, không chỉ lúc tạo', async () => {
+      const max = (await prisma.tour.findUniqueOrThrow({ where: { id: tour.id } })).maxGroupSize;
+      const before = await rowById(FREE);
+
+      const res = await update(FREE, { ...editable(before), seatsTotal: max + 5 }, adminCookie);
+
+      expect(res.statusCode).toBe(422);
+      expect(res.json().code).toBe('SEATS_ABOVE_TOUR_MAX');
+      expect((await rowById(FREE)).seatsTotal).toBe(before.seatsTotal);
+    });
+
+    it('chuyến ĐÃ CHẠY và có khách thì không dời được ngày — sổ P&L tháng đã chốt đứng yên', async () => {
+      // Báo cáo gom giá vốn cố định theo `end_date` của chuyến
+      // (`stats-aggregates.ts` → `fixedCostSlice`), và chỉ đếm chuyến CÓ khách
+      // đã trả tiền. Dời ngày một chuyến như thế là chuyển một khoản chi phí
+      // sang tháng khác — viết lại một con số đã báo cáo xong.
+      //
+      // Chốt chặn hiện tại đóng đúng cửa ấy: chuyến có khách thì `seats_booked`
+      // khác 0, mà đổi ngày đòi `seats_booked = 0`. Ca này GHIM lại tính chất
+      // đó, vì nó chỉ đúng nhờ thước `seats_booked` (vòng vá review F12) — bản
+      // cũ đếm theo trạng thái booking và một booking hoàn-thiện-chí-trọn-tiền
+      // đọc ra 0 trong khi vẫn tính vào P&L.
+      const past = await prisma.tourDeparture.create({
+        data: {
+          tourId: tour.id,
+          startDate: startOfDayUtc(dateAt(-40)),
+          endDate: startOfDayUtc(dateAt(-38)),
+          seatsTotal: 12,
+          seatsBooked: 4,
+          status: DepartureStatus.CLOSED,
+          fixedCostAmount: '400.00',
+        },
+      });
+
+      // Dời sang TƯƠNG LAI: qua được chốt "không lùi về quá khứ", nên thứ
+      // chặn nó là đúng chốt ta muốn ghim.
+      const res = await update(
+        past.id,
+        {
+          startDate: dateAt(40),
+          endDate: dateAt(42),
+          seatsTotal: 12,
+          priceOverride: null,
+          version: past.updatedAt.toISOString(),
+        },
+        adminCookie,
+      );
+
+      expect(res.statusCode).toBe(409);
+      expect(res.json().code).toBe('DEPARTURE_HAS_BOOKINGS');
+      const after = await prisma.tourDeparture.findUniqueOrThrow({ where: { id: past.id } });
+      expect(after.endDate.toISOString()).toBe(past.endDate.toISOString());
+
+      // Hướng còn lại — dời sang một ngày quá khứ KHÁC — bị chốt thứ hai chặn
+      // trước. Hai chốt, hai lý do, cùng một kết quả: sổ đã chốt đứng yên.
+      const lui = await update(
+        past.id,
+        {
+          startDate: dateAt(-10),
+          endDate: dateAt(-8),
+          seatsTotal: 12,
+          priceOverride: null,
+          version: past.updatedAt.toISOString(),
+        },
+        adminCookie,
+      );
+      expect(lui.statusCode).toBe(422);
+      expect(lui.json().code).toBe('START_IN_PAST');
     });
   });
 });

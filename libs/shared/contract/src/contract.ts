@@ -1119,6 +1119,14 @@ export const contract = {
             status: 422,
             message: 'A departure cannot start in the past',
           },
+          // F12 vòng hai: `tours.max_group_size` là lời hứa bán hàng in trên
+          // chính trang tour, và nó quyết cỡ xe. Một chuyến 40 ghế trên tour
+          // công bố tối đa 12 là bán thứ không giao được; không tầng nào bên
+          // dưới bắt được vì CHECK của DB chỉ canh `seats_booked <= seats_total`.
+          SEATS_ABOVE_TOUR_MAX: {
+            status: 422,
+            message: 'This departure has more seats than the tour allows per group',
+          },
         })
         .output(AdminDepartureRowSchema),
       update: oc
@@ -1132,6 +1140,14 @@ export const contract = {
           NOT_FOUND: { status: 404, message: 'Departure not found' },
           INVALID_DATE_RANGE: { status: 422, message: 'The return date is before the start date' },
           START_IN_PAST: { status: 422, message: 'A departure cannot start in the past' },
+          // F12 vòng hai: `tours.max_group_size` là lời hứa bán hàng in trên
+          // chính trang tour, và nó quyết cỡ xe. Một chuyến 40 ghế trên tour
+          // công bố tối đa 12 là bán thứ không giao được; không tầng nào bên
+          // dưới bắt được vì CHECK của DB chỉ canh `seats_booked <= seats_total`.
+          SEATS_ABOVE_TOUR_MAX: {
+            status: 422,
+            message: 'This departure has more seats than the tour allows per group',
+          },
           DEPARTURE_HAS_BOOKINGS: {
             status: 409,
             message: 'This departure already has live bookings, so its dates can no longer change',

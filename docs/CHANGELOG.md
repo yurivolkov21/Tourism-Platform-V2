@@ -8,6 +8,63 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-09-22 — Vòng hai của F12: tám mục, và hai trong số đó đã tự đóng (nhánh `fix/p4e-f12-wave2`)
+
+Tám mục không-chạm-tiền mà vòng review F12 (21/09) gác lại. Rà từng mục trong mã
+hiện tại TRƯỚC khi vá — và **hai mục hoá ra đã đóng** do chính bản vá F12 và F13,
+nên chúng được KIỂM chứ không được vá.
+
+**Sáu mục vá thật:**
+
+1. **Form giờ là `<form>` thật.** Gõ xong bốn ô rồi bấm Enter là phản xạ của mọi
+   người từng điền form; trước vòng này khối ô chỉ là một `<div>` nên Enter rơi
+   vào hư không.
+2. **`aria-describedby` nối ô nhập với gợi ý và câu lỗi của nó.** Helper `Field`
+   đổi sang render-prop và tự ghép chuỗi id — để mỗi chỗ gọi tự ghép là bốn nơi
+   phải nhớ hai luật, và một `aria-describedby` trỏ vào id không tồn tại còn tệ
+   hơn không có.
+3. **`update` ghi dòng nhật ký kiểm toán.** `create` và `setStatus` đã có, mà
+   `update` mới là lệnh đổi được nhiều thứ nhất (ngày, ghế, giá). Ghi CẢ trước
+   và sau, vì "đổi 20 thành 45" mới là câu trả lời được cho *"ai hạ ghế xuống?"*.
+4. **`TourNotFoundError` bắt bằng `instanceof`, không so `error.name`.** Repo có
+   **năm** lớp trùng tên ở năm module, nên so theo tên là bắt nhầm lỗi của bất kỳ
+   module nào lọt vào đây.
+5. **`isRefreshing` rời khỏi deps của `useMemo` dựng cột, đi qua context.** Cờ ấy
+   đổi hai lần mỗi lệnh ghi; nằm trong deps thì mảng cột dựng lại cả hai lần,
+   TanStack thấy cột mới nên dựng lại ô, kéo theo `DepartureRowActions` unmount
+   rồi mount lại cùng toàn bộ state của nó.
+6. **Trần ghế theo cỡ nhóm tour** (`SEATS_ABOVE_TOUR_MAX`, 422) ở cả `create` lẫn
+   `update`. `tours.max_group_size` là lời hứa in trên chính trang tour và nó
+   quyết cỡ xe; một chuyến 40 ghế trên tour công bố tối đa 12 là bán thứ không
+   giao được, mà không tầng nào bên dưới bắt — CHECK của DB chỉ canh
+   `seats_booked <= seats_total`, không biết gì về tour. Đo trước khi bật: prod
+   có **0** hàng vi phạm, nên không chuyến nào đang chạy bỗng thành không sửa được.
+
+**Hai mục đã tự đóng, kiểm bằng đột biến mã chứ không bằng suy đoán:**
+
+- *Test xanh giả ở `departure-row-actions.spec.tsx`.* Khối chứa nó đã được viết
+  lại ở vòng vá F12 (câu `t.list.bookings(2)` thay bằng cặp khẳng-định/phủ-định
+  theo nhãn). Quét đột biến ba hành vi mà file ấy canh — bỏ chốt hàng đã huỷ, mở
+  khoá nút Reopen, luôn hiện nút huỷ — đều làm đúng số ca đỏ.
+- *Dời ngày chuyến đã qua thì viết lại sổ P&L tháng đã chốt.* Báo cáo gom giá vốn
+  cố định theo `end_date` và **chỉ đếm chuyến có khách đã trả tiền**; mà chuyến
+  như thế thì `seats_booked` khác 0, nên chốt `dateChangeBlocker` chặn sẵn. Tính
+  chất này chỉ đúng NHỜ thước `seats_booked` của vòng vá F12 — bản cũ đếm theo
+  trạng thái booking và một booking hoàn-thiện-chí-trọn-tiền đọc ra 0 trong khi
+  vẫn tính vào P&L. Nay có ca int ghim lại, kèm ca thứ hai cho hướng dời-về-quá-khứ
+  (chốt `START_IN_PAST` bắt trước).
+
+**Một hệ quả phụ đáng ghi:** fixture của int spec dựng chuyến 20 và 30 ghế trên
+một tour fixture công bố tối đa **16** — tức dữ liệu test vốn đã mâu thuẫn với
+lời hứa của chính tour đó, chỉ là chưa ai hỏi. Hạ xuống 12/14 cho khớp.
+
+**Review findings:** không có vòng review riêng — đây là vòng hai của review F12.
+
+Tests after: Vitest **3882** (web 1525, api 978, admin 956, contract 321, core 46,
+ui 22, tokens 18, i18n 16), int **570 ở 42 file**. Thêm 7 ca unit và 4 ca int.
+Bốn ca component mới đã kiểm ĐỎ bằng đột biến (đổi nút submit về `type="button"`
+và cắt `aria-describedby`).
+
 ## 2026-09-22 — Vá lỗ hổng đường claim: chuyến dời ngày giữa lúc khách đang trả tiền (ADR-0009 AMEND 4, nhánh `fix/claim-gate-departure-moved`)
 
 Mục cuối cùng còn chạm tiền của P4e-1, phát hiện ở vòng review F12 và để lại

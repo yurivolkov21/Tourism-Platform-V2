@@ -145,102 +145,132 @@ export function DepartureFormDialog<Code extends string>({
           <DialogDescription>{copy.body}</DialogDescription>
         </DialogHeader>
 
-        <div className="grid gap-4">
-          <div className="grid gap-3 sm:grid-cols-2">
-            <Field
-              id={`${formId}-start`}
-              label={t.form.startDate}
-              error={errors.startDate}
-              hint={datesLocked ? t.form.datesLocked(seatsBooked) : undefined}
-            >
-              <Input
+        {/* `<form>` THẬT chứ không phải một đống input cạnh nhau (F12 vòng
+            hai): gõ xong bốn ô rồi bấm Enter là phản xạ của mọi người từng
+            điền form, và không có thẻ này thì Enter không làm gì cả. */}
+        <form
+          onSubmit={(event) => {
+            event.preventDefault();
+            submit();
+          }}
+        >
+          <div className="grid gap-4">
+            <div className="grid gap-3 sm:grid-cols-2">
+              <Field
                 id={`${formId}-start`}
-                type="date"
-                value={values.startDate}
-                disabled={datesLocked || pending}
-                aria-invalid={errors.startDate !== undefined}
-                onChange={(event) => patch({ startDate: event.target.value })}
-              />
+                label={t.form.startDate}
+                error={errors.startDate}
+                hint={datesLocked ? t.form.datesLocked(seatsBooked) : undefined}
+              >
+                {(describedBy) => (
+                  <Input
+                    id={`${formId}-start`}
+                    type="date"
+                    value={values.startDate}
+                    disabled={datesLocked || pending}
+                    aria-invalid={errors.startDate !== undefined}
+                    aria-describedby={describedBy}
+                    onChange={(event) => patch({ startDate: event.target.value })}
+                  />
+                )}
+              </Field>
+              <Field id={`${formId}-end`} label={t.form.endDate} error={errors.endDate}>
+                {(describedBy) => (
+                  <Input
+                    id={`${formId}-end`}
+                    type="date"
+                    value={values.endDate}
+                    disabled={datesLocked || pending}
+                    aria-invalid={errors.endDate !== undefined}
+                    aria-describedby={describedBy}
+                    onChange={(event) => patch({ endDate: event.target.value })}
+                  />
+                )}
+              </Field>
+            </div>
+
+            {/* Cảnh báo NGAY dưới hai ô ngày, vì nó nói về chính hai ô ấy — và
+              tông destructive vì thứ sắp tạo ra sẽ không bán được. */}
+            {noticeMessage ? (
+              <p className="text-sm text-destructive-emphasis">{noticeMessage}</p>
+            ) : null}
+
+            <Field
+              id={`${formId}-seats`}
+              label={t.form.seats}
+              error={errors.seats}
+              hint={t.form.seatsHint(DEPARTURE_SEATS_MAX)}
+            >
+              {(describedBy) => (
+                <Input
+                  id={`${formId}-seats`}
+                  // `inputMode` chứ không `type="number"`: mũi tên tăng/giảm và
+                  // cuộn-chuột-đổi-số là hai cách sửa nhầm một con số vận hành.
+                  inputMode="numeric"
+                  value={values.seats}
+                  disabled={pending}
+                  aria-invalid={errors.seats !== undefined}
+                  aria-describedby={describedBy}
+                  onChange={(event) => patch({ seats: event.target.value })}
+                />
+              )}
             </Field>
-            <Field id={`${formId}-end`} label={t.form.endDate} error={errors.endDate}>
-              <Input
-                id={`${formId}-end`}
-                type="date"
-                value={values.endDate}
-                disabled={datesLocked || pending}
-                aria-invalid={errors.endDate !== undefined}
-                onChange={(event) => patch({ endDate: event.target.value })}
-              />
+
+            <Field
+              id={`${formId}-price`}
+              label={t.form.price}
+              error={errors.price}
+              hint={t.form.priceHint(basePriceLabel)}
+            >
+              {(describedBy) => (
+                <Input
+                  id={`${formId}-price`}
+                  inputMode="decimal"
+                  placeholder={basePriceLabel}
+                  value={values.price}
+                  disabled={pending}
+                  aria-invalid={errors.price !== undefined}
+                  aria-describedby={describedBy}
+                  onChange={(event) => patch({ price: event.target.value })}
+                />
+              )}
             </Field>
           </div>
 
-          {/* Cảnh báo NGAY dưới hai ô ngày, vì nó nói về chính hai ô ấy — và
-              tông destructive vì thứ sắp tạo ra sẽ không bán được. */}
-          {noticeMessage ? (
-            <p className="text-sm text-destructive-emphasis">{noticeMessage}</p>
+          {failure ? (
+            <p role="alert" className="text-sm text-destructive-emphasis">
+              {errorCopy(failure)}
+            </p>
           ) : null}
 
-          <Field
-            id={`${formId}-seats`}
-            label={t.form.seats}
-            error={errors.seats}
-            hint={t.form.seatsHint(DEPARTURE_SEATS_MAX)}
-          >
-            <Input
-              id={`${formId}-seats`}
-              // `inputMode` chứ không `type="number"`: mũi tên tăng/giảm và
-              // cuộn-chuột-đổi-số là hai cách sửa nhầm một con số vận hành.
-              inputMode="numeric"
-              value={values.seats}
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="ghost"
               disabled={pending}
-              aria-invalid={errors.seats !== undefined}
-              onChange={(event) => patch({ seats: event.target.value })}
-            />
-          </Field>
-
-          <Field
-            id={`${formId}-price`}
-            label={t.form.price}
-            error={errors.price}
-            hint={t.form.priceHint(basePriceLabel)}
-          >
-            <Input
-              id={`${formId}-price`}
-              inputMode="decimal"
-              placeholder={basePriceLabel}
-              value={values.price}
-              disabled={pending}
-              aria-invalid={errors.price !== undefined}
-              onChange={(event) => patch({ price: event.target.value })}
-            />
-          </Field>
-        </div>
-
-        {failure ? (
-          <p role="alert" className="text-sm text-destructive-emphasis">
-            {errorCopy(failure)}
-          </p>
-        ) : null}
-
-        <DialogFooter>
-          <Button
-            type="button"
-            variant="ghost"
-            disabled={pending}
-            onClick={() => onOpenChange(false)}
-          >
-            {t.form.cancel}
-          </Button>
-          <Button type="button" disabled={pending} onClick={submit}>
-            {pending ? copy.submitting : copy.submit}
-          </Button>
-        </DialogFooter>
+              onClick={() => onOpenChange(false)}
+            >
+              {t.form.cancel}
+            </Button>
+            <Button type="submit" disabled={pending}>
+              {pending ? copy.submitting : copy.submit}
+            </Button>
+          </DialogFooter>
+        </form>
       </DialogContent>
     </Dialog>
   );
 }
 
-/** Một ô: nhãn · control · (gợi ý) · (lỗi). Lỗi đứng dưới cùng, `role="alert"`. */
+/**
+ * Một ô: nhãn · control · (gợi ý) · (lỗi). Lỗi đứng dưới cùng, `role="alert"`.
+ *
+ * `children` là RENDER-PROP nhận `describedBy` (F12 vòng hai): gợi ý và câu lỗi
+ * chỉ hữu ích nếu trình đọc màn hình đọc chúng CÙNG ô nhập, mà muốn vậy thì ô
+ * phải trỏ `aria-describedby` tới đúng id đang tồn tại. Để mỗi chỗ gọi tự ghép
+ * chuỗi id là bốn nơi phải nhớ hai luật (có hint không, có lỗi không) — và một
+ * `aria-describedby` trỏ vào id không tồn tại còn tệ hơn không có.
+ */
 function Field({
   id,
   label,
@@ -252,15 +282,24 @@ function Field({
   label: string;
   hint?: string;
   error?: string;
-  children: React.ReactNode;
+  children: (describedBy: string | undefined) => React.ReactNode;
 }) {
+  const hintId = `${id}-hint`;
+  const errorId = `${id}-error`;
+  const describedBy = [hint ? hintId : null, error ? errorId : null]
+    .filter((value): value is string => value !== null)
+    .join(' ');
   return (
     <div className="grid gap-1.5">
       <Label htmlFor={id}>{label}</Label>
-      {children}
-      {hint ? <p className="text-xs text-muted-foreground">{hint}</p> : null}
+      {children(describedBy === '' ? undefined : describedBy)}
+      {hint ? (
+        <p id={hintId} className="text-xs text-muted-foreground">
+          {hint}
+        </p>
+      ) : null}
       {error ? (
-        <p role="alert" className="text-sm text-destructive-emphasis">
+        <p id={errorId} role="alert" className="text-sm text-destructive-emphasis">
           {error}
         </p>
       ) : null}

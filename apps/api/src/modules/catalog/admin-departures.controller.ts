@@ -9,6 +9,7 @@ import {
   AdminDeparturesService,
   DepartureNotFoundError,
   DepartureRuleError,
+  TourNotFoundError,
 } from './admin-departures.service.js';
 import { DepartureCancelService } from './departure-cancel.service.js';
 
@@ -107,7 +108,12 @@ function mapError(error: unknown, errors: Record<string, (init?: { message: stri
   // `TourNotFoundError` đi cùng đường: `NOT_FOUND` của `list`/`create` nói về
   // tour, của `update`/`setStatus` nói về chuyến — mỗi procedure một câu, khai
   // ngay trong contract.
-  if (error instanceof Error && error.name === 'TourNotFoundError') {
+  //
+  // `instanceof` chứ KHÔNG so `error.name` (F12 vòng hai): repo có NĂM lớp
+  // cùng tên `TourNotFoundError` ở năm module, nên so theo tên là bắt nhầm lỗi
+  // của bất kỳ module nào lọt vào đây. Lớp của vùng này export ngay cạnh, và
+  // nó là lớp DUY NHẤT mà hai service của controller này ném.
+  if (error instanceof TourNotFoundError) {
     const notFound = errors.NOT_FOUND;
     if (notFound) return notFound();
   }

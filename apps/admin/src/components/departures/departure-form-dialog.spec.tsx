@@ -1,6 +1,7 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { AdminDepartureRow } from '@tourism/contract';
+import { DEPARTURE_SEATS_MAX } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { DepartureFormDialog } from './departure-form-dialog';
@@ -168,5 +169,55 @@ describe('DepartureFormDialog — validate trước khi bắn', () => {
     expect(errorToast).toHaveBeenCalledWith(t.edit.errors.NOT_FOUND);
     expect(onClose).toHaveBeenCalled();
     expect(onSettled).toHaveBeenCalled();
+  });
+});
+
+describe('DepartureFormDialog — bàn phím và trợ năng (F12 vòng hai)', () => {
+  it('bấm Enter trong một ô là GỬI form, không phải không làm gì', async () => {
+    // Gõ xong rồi bấm Enter là phản xạ của mọi người từng điền form. Trước vòng
+    // này khối ô chỉ là một `<div>`, nên Enter rơi vào hư không.
+    const user = userEvent.setup();
+    const { onSubmit } = renderDialog({ seatsBooked: 0 });
+
+    await user.click(screen.getByLabelText(t.form.seats));
+    await user.keyboard('{Enter}');
+
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1));
+  });
+
+  it('ô nhập TRỎ tới gợi ý của nó, để trình đọc màn hình đọc cùng một lượt', () => {
+    renderDialog({ seatsBooked: 0 });
+
+    const seats = screen.getByLabelText(t.form.seats);
+    const describedBy = seats.getAttribute('aria-describedby');
+    expect(describedBy).toBeTruthy();
+    // Id phải TỒN TẠI: trỏ vào một id rỗng còn tệ hơn không trỏ gì.
+    const hint = document.getElementById(describedBy as string);
+    expect(hint?.textContent).toBe(t.form.seatsHint(DEPARTURE_SEATS_MAX));
+  });
+
+  it('có lỗi thì ô trỏ tới CẢ gợi ý lẫn câu lỗi', async () => {
+    const user = userEvent.setup();
+    renderDialog({ seatsBooked: 4 });
+
+    const seats = screen.getByLabelText(t.form.seats);
+    await user.clear(seats);
+    await user.type(seats, '3');
+    await user.click(screen.getByRole('button', { name: COPY.submit }));
+    await screen.findByText(t.form.errors.seatsBelowBooked(4));
+
+    const ids = (seats.getAttribute('aria-describedby') ?? '').split(' ').filter(Boolean);
+    expect(ids).toHaveLength(2);
+    for (const id of ids) expect(document.getElementById(id)).not.toBeNull();
+  });
+
+  it('ô ngày bị KHOÁ vẫn trỏ tới câu giải thích vì sao nó khoá', () => {
+    // Ô disabled không đọc được bằng chuột, nhưng trình đọc màn hình vẫn đọc
+    // tới nó — và câu duy nhất giải thích vì sao lại nằm ở gợi ý.
+    renderDialog({ seatsBooked: 4 });
+
+    const start = screen.getByLabelText(t.form.startDate);
+    const id = start.getAttribute('aria-describedby');
+    expect(document.getElementById(id as string)?.textContent).toBe(t.form.datesLocked(4));
   });
 });

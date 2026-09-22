@@ -4,6 +4,7 @@ import {
   departureCancelBlocker,
   departureRevalidationTags,
   reopenBlocker,
+  seatsAboveTourMaxBlocker,
   seatsChangeBlocker,
 } from './departure-rules.js';
 
@@ -212,5 +213,23 @@ describe('departureCancelBlocker (F13 — công ty huỷ chuyến)', () => {
     expect(departureCancelBlocker(START, new Date('2026-10-20T03:00:00.000Z'))).toContain(
       '2026-10-10',
     );
+  });
+});
+
+describe('seatsAboveTourMaxBlocker (F12 vòng hai — trần ghế theo cỡ nhóm tour)', () => {
+  it('bằng trần thì được, vượt một ghế là chặn', () => {
+    expect(seatsAboveTourMaxBlocker(12, 12)).toBeNull();
+    expect(seatsAboveTourMaxBlocker(13, 12)).toMatch(/at most 12/);
+  });
+
+  it('câu từ chối mang CẢ hai con số — admin khỏi phải đi tra tour cho phép bao nhiêu', () => {
+    const reason = seatsAboveTourMaxBlocker(40, 12);
+
+    expect(reason).toContain('12');
+    expect(reason).toContain('40');
+  });
+
+  it('dưới trần thì không nói gì', () => {
+    expect(seatsAboveTourMaxBlocker(1, 6)).toBeNull();
   });
 });

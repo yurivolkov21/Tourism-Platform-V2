@@ -20,6 +20,7 @@ import {
   dateChangeBlocker,
   departureRevalidationTags,
   reopenBlocker,
+  seatsAboveTourMaxBlocker,
   seatsChangeBlocker,
 } from './departure-rules.js';
 import { perDepartureTotal } from './tour-costs.js';
@@ -48,7 +49,9 @@ export type DepartureRuleCode =
   | 'DEPARTURE_CANCELLED'
   | 'DEPARTURE_STALE'
   /** F13: chuyến đã tới ngày khởi hành nên không còn huỷ được. */
-  | 'DEPARTURE_STARTED';
+  | 'DEPARTURE_STARTED'
+  /** F12 vòng hai: ghế vượt cỡ nhóm tối đa mà tour công bố. */
+  | 'SEATS_ABOVE_TOUR_MAX';
 
 /**
  * Một lệnh ghi bị luật nghiệp vụ chặn. `code` để controller chọn đúng lỗi
@@ -96,6 +99,8 @@ const TOUR_SELECT = {
   title: true,
   basePrice: true,
   currency: true,
+  /** Cỡ nhóm tối đa tour công bố — trần cho `seatsTotal` của mọi chuyến. */
+  maxGroupSize: true,
 } satisfies Prisma.TourSelect;
 
 type TourData = Prisma.TourGetPayload<{ select: typeof TOUR_SELECT }>;
@@ -185,6 +190,7 @@ export class AdminDeparturesService {
     const now = new Date();
     assertDateRange(input.startDate, input.endDate);
     assertNotInPast(input.startDate, now);
+    assertSeatsWithinTourMax(input.seatsTotal, tour.maxGroupSize);
 
     const created = await prisma.tourDeparture.create({
       data: {
@@ -297,6 +303,14 @@ export class AdminDeparturesService {
       const seatsBlocked = seatsChangeBlocker(input.seatsTotal, locked.seats_booked);
       if (seatsBlocked) throw new DepartureRuleError('SEATS_BELOW_BOOKED', seatsBlocked);
 
+      // Đọc tour TRƯỚC phép ghi: trần ghế theo cỡ nhóm tour công bố là một chốt
+      // chặn, nên nó phải đứng trước `update`, không phải sau.
+      const tourRow = await tx.tour.findUniqueOrThrow({
+        where: { id: locked.tour_id },
+        select: TOUR_SELECT,
+      });
+      assertSeatsWithinTourMax(input.seatsTotal, tourRow.maxGroupSize);
+
       const updated = await tx.tourDeparture.update({
         where: { id: input.id },
         data: {
@@ -306,10 +320,6 @@ export class AdminDeparturesService {
           priceOverride: toDecimal(input.priceOverride),
         },
         select: DEPARTURE_SELECT,
-      });
-      const tourRow = await tx.tour.findUniqueOrThrow({
-        where: { id: locked.tour_id },
-        select: TOUR_SELECT,
       });
       return {
         row: updated,
@@ -325,6 +335,17 @@ export class AdminDeparturesService {
 
     const counts = await bookingCounts([row.id]);
     const result = toRow(row, tour, counts.get(row.id) ?? ZERO_COUNTS);
+    // Dấu vết kiểm toán: `create` và `setStatus` đã có, `update` thì chưa — mà
+    // nó là lệnh ghi đổi được NHIỀU thứ nhất (ngày, ghế, giá). Ghi cả trước và
+    // sau, vì "đổi 20 thành 45" mới là câu trả lời được cho "ai hạ ghế xuống?".
+    this.logger.log(
+      `[admin] departure updated ${JSON.stringify({
+        departureId: input.id,
+        dates: `${before.startDate}..${before.endDate} -> ${result.startDate}..${result.endDate}`,
+        seatsTotal: result.seatsTotal,
+        priceOverride: result.priceOverride,
+      })}`,
+    );
     this.bust(tour.slug, before, result, now);
     return result;
   }
@@ -482,6 +503,12 @@ function assertDateRange(startDate: string, endDate: string): void {
  * (ADR-0041 §7) chứ không phải đồng hồ trình duyệt — ô ngày của admin ở múi
  * giờ khác sẽ không bao giờ quyết định thay server.
  */
+/** Trần ghế theo cỡ nhóm tour công bố — chung cho `create` và `update`. */
+function assertSeatsWithinTourMax(seatsTotal: number, maxGroupSize: number): void {
+  const blocked = seatsAboveTourMaxBlocker(seatsTotal, maxGroupSize);
+  if (blocked) throw new DepartureRuleError('SEATS_ABOVE_TOUR_MAX', blocked);
+}
+
 function assertNotInPast(startDate: string, now: Date): void {
   const today = vietnamToday(now);
   if (startDate < today) {

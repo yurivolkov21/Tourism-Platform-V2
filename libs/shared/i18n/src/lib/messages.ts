@@ -4653,6 +4653,12 @@ export const messages = {
           NOT_FOUND: 'This tour no longer exists — the departure was not created.',
           INVALID_DATE_RANGE: 'The return date is before the start date.',
           START_IN_PAST: 'A departure cannot start in the past.',
+          /**
+           * Câu mang SẴN con số tour cho phép, vì câu hỏi kế tiếp của admin
+           * luôn là "vậy tối đa bao nhiêu?" — bắt họ đi tra là một vòng thừa.
+           */
+          SEATS_ABOVE_TOUR_MAX:
+            'This tour runs small groups — the departure has more seats than it allows. Lower the seat count.',
         },
         toast: {
           title: 'Departure added',
@@ -4673,6 +4679,8 @@ export const messages = {
           NOT_FOUND: 'This departure no longer exists. The table has been refreshed.',
           INVALID_DATE_RANGE: 'The return date is before the start date.',
           START_IN_PAST: 'A departure cannot start in the past.',
+          SEATS_ABOVE_TOUR_MAX:
+            'This tour runs small groups — the departure has more seats than it allows. Lower the seat count.',
           DEPARTURE_HAS_BOOKINGS:
             'Someone booked this departure while the form was open, so its dates can no longer change. The table has been refreshed.',
           SEATS_BELOW_BOOKED:

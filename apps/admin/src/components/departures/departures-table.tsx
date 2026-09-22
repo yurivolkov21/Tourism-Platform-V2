@@ -57,6 +57,52 @@ const t = messages.admin.departures;
 
 const columnHelper = createColumnHelper<typeof serverTableFeatures, DepartureRowVM>();
 
+/**
+ * Bảng đang kéo dữ liệu tươi về hay không — đi qua CONTEXT chứ không qua deps
+ * của `useMemo` dựng cột (F12 vòng hai).
+ *
+ * Vì sao: `isRefreshing` đổi hai lần mỗi lệnh ghi, và nếu nó nằm trong deps thì
+ * MẢNG CỘT được dựng lại cả hai lần — TanStack thấy cột mới nên dựng lại ô,
+ * kéo theo `DepartureRowActions` unmount rồi mount lại cùng toàn bộ state nội
+ * bộ của nó (dialog đang mở, phiên bản hàng đã chụp, ô lý do đang gõ).
+ *
+ * Với context thì cột đứng yên và chỉ những ô THẬT SỰ đọc cờ này mới vẽ lại.
+ */
+const RefreshingContext = React.createContext(false);
+
+/**
+ * Ô Actions — component riêng để nó đọc được context. Cột chỉ giữ một tham
+ * chiếu ổn định tới đây, không giữ giá trị của cờ.
+ */
+function ActionsCell({
+  row,
+  basePriceLabel,
+  update,
+  setStatus,
+  cancel,
+  onSettled,
+}: {
+  row: DepartureRowVM;
+  basePriceLabel: string;
+  update: UpdateDepartureAction;
+  setStatus: SetDepartureStatusAction;
+  cancel: CancelDepartureAction;
+  onSettled: () => void;
+}) {
+  const disabled = React.useContext(RefreshingContext);
+  return (
+    <DepartureRowActions
+      row={row}
+      basePriceLabel={basePriceLabel}
+      update={update}
+      setStatus={setStatus}
+      cancel={cancel}
+      disabled={disabled}
+      onSettled={onSettled}
+    />
+  );
+}
+
 /** Nhãn cho menu ẩn/hiện — chỉ cột ẩn ĐƯỢC mới cần entry. */
 const COLUMN_LABELS: Record<string, string> = {
   price: t.list.columns.price,
@@ -215,20 +261,20 @@ export function DeparturesTable({
           id: 'actions',
           header: () => <span className="sr-only">{t.list.columns.actions}</span>,
           cell: ({ row }) => (
-            <DepartureRowActions
+            <ActionsCell
               row={row.original}
               basePriceLabel={tour.basePriceLabel}
               update={update}
               setStatus={setStatus}
               cancel={cancel}
-              disabled={isRefreshing}
               onSettled={refreshList}
             />
           ),
           enableHiding: false,
         }),
       ]),
-    [tour.basePriceLabel, update, setStatus, cancel, isRefreshing, refreshList],
+    // KHÔNG có `isRefreshing` ở đây — xem `RefreshingContext`.
+    [tour.basePriceLabel, update, setStatus, cancel, refreshList],
   );
 
   const table = useTable({
@@ -281,7 +327,9 @@ export function DeparturesTable({
           />
         }
       >
-        <DataTableBody table={table} empty={t.list.empty} />
+        <RefreshingContext.Provider value={isRefreshing}>
+          <DataTableBody table={table} empty={t.list.empty} />
+        </RefreshingContext.Provider>
       </DataTableFrame>
 
       {adding ? (
