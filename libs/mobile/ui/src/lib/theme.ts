@@ -35,6 +35,12 @@ export const MOBILE_COLOR_KEYS = [
   'on-media',
   'primary-emphasis',
   'scrim',
+  // P5b-2 (ADR-0047): sao đánh giá, giá gạch, cảnh báo, scrim ảnh gallery.
+  'rating',
+  'rating-muted',
+  'price-compare',
+  'warning',
+  'overlay',
 ] as const;
 
 export type MobileColorKey = (typeof MOBILE_COLOR_KEYS)[number];
