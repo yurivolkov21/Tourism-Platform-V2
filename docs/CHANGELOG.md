@@ -8,6 +8,60 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-09-23 — F16 giai đoạn chuyến khởi hành (nhánh `feat/departure-phase`)
+
+Màn Departures của admin thôi in cột `status` làm trạng thái chuyến. Lượt thử
+tay F14 (23/09) cho thấy người đọc hiểu nhầm nó theo hai cách: chuyến đang
+chạy vẫn ghi Open, và chuyến đã về ghi Closed khiến người xem tưởng hệ thống tự
+đóng chuyến. Quyết định ở ADR-0046: `status` chỉ là công tắc bán hàng, còn giai
+đoạn SUY từ ngày bằng một hàm thuần ở contract. Không migration, không job,
+không đổi cổng tiền.
+
+**Sáu huy hiệu.** `departurePhase` ở `@tourism/contract` là chỗ duy nhất giữ
+luật: Cancelled, Completed, Departed, Closed, Deadline passed, On sale, xét
+theo đúng thứ tự ấy và theo lịch Việt Nam. API tính `phase` cho từng hàng với
+MỘT mốc `now` mỗi lượt xử lý; admin chỉ in `row.phase`, không gọi hàm (ngoại
+lệ duy nhất là helper fixture `apps/admin/src/test/departure-row.ts`). Huy hiệu
+dùng biến thể có sẵn của `Badge` kèm icon, xanh đặc đúng một chỗ là On sale.
+
+**Năm tab lọc theo nhóm.** All, Upcoming, Departed, Completed, Cancelled — URL
+`?phase=`. API lọc TRONG BỘ NHỚ bằng chính `departurePhase` rồi mới cắt trang,
+nên `total` đếm sau khi lọc. URL cũ `?status=OPEN` rơi êm về All.
+
+**Nút đóng/mở nhường chỗ từ ngày khởi hành.** Hàng Departed và Completed chỉ
+còn Sửa; ô nút đóng/mở thành một `span` `aria-hidden` mượn lớp của nút để cột
+vẫn thẳng. Quá hạn chót mà chưa đi thì Close vẫn bấm được, vì checkout mở
+trước hạn có thể đang dở. Nút huỷ chuyến nay đọc cùng `phase` với huy hiệu
+thay vì so `today` của trang.
+
+**Dòng báo tour chưa đăng.** `AdminDepartureTour` thêm `isPublished`; màn
+chuyến hiện một `Alert` với `role="status"` ngay dưới tiêu đề khi tour chưa
+đăng, vì chuyến On sale của tour đang ẩn vẫn không ai đặt được.
+
+**Lệch plan, đều nhỏ:**
+
+1. Task 1: spec viết theo plan đỏ typecheck (TS2345) vì callback `it.each`
+   nhận hai tham số trong khi tuple có ba — thêm tham số `_why`, cùng nếp
+   `_label` plan dùng ở Task 4.
+2. Task 2 B2: bốn ca đỏ chứ không phải ba — ca "key `status` cũ bị bỏ qua"
+   cũng đỏ vì schema cũ vẫn nhận `status`. Đúng lý do.
+3. Task 4: sửa thêm JSDoc của `canClose` và `canCancel` trong `DepartureRowVM`,
+   vì câu cũ ("đóng lúc nào cũng được, trừ khi đã huỷ") thành sai sau F16.
+4. Task 4 B3 và B11: đỏ vì B1 đã xoá `t.status` và B4 đã bỏ
+   `departureStatusBadgeVariant`, nên ca cũ nổ `TypeError` cùng lúc với ca mới
+   — vẫn là lý do "VM và bảng còn đọc công tắc".
+5. Task 5 B7: đảo điều kiện `isPublished` làm đỏ hai ca chứ không phải ba — ca
+   "không phải `alert`" vẫn xanh vì khi đảo thì không có `Alert` nào được
+   dựng. Đột biến vẫn bị bắt.
+
+**Review findings:** chưa review — session gốc review trước merge.
+
+Tests after: Vitest **4023** (web 1533, api 978, admin 1035, contract 375,
+core 46, ui 22, tokens 18, i18n 16), int **604 ở 43 file**. Ca mới: contract
+22, admin 22, int 8 (thêm chín, bỏ ca "lọc theo trạng thái"). Hai mươi đột
+biến đều bị giết: tám ở `departurePhase`, ba ở `list` và `toTour`, hai ở tab
+lọc, năm ở huy hiệu và nút, hai ở dòng báo.
+
 ## 2026-09-23 — Web tính "hôm nay" theo ngày lịch Việt Nam, khớp server và admin (nhánh `fix/web-vietnam-today`)
 
 Phát hiện ở vòng review F16, ngoài phạm vi F16. `todayDateString()` của web cắt
