@@ -8,6 +8,24 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-09-23 — Merge F16 lên main (`fc704e3a`)
+
+Nội dung đã kể ở HAI entry ngay bên dưới — "Vòng review F16" và "F16 giai
+đoạn chuyến khởi hành". Entry này chỉ ghi sự kiện merge, vì hai entry kia viết
+TRƯỚC merge nên chưa mang hash.
+
+Nhánh `feat/departure-phase` rebase lên `2711e755` (bản vá web tính "hôm nay"
+theo ngày lịch Việt Nam, từ một session riêng) rồi fast-forward: 8 commit. Xung
+đột duy nhất ở CHANGELOG, vì hai bên cùng thêm entry vào đầu file — giữ cả hai,
+entry F16 nằm trên. `pnpm gate:int` chạy lại xanh trên đỉnh mới trước khi đẩy.
+Không migration, không đổi env, nên không có bước hạ tầng nào.
+
+Việc còn lại: thử tay trên production sau khi Vercel và Render deploy xong
+(spec §6).
+
+Tests after: Vitest **4044** (web 1541, api 978, admin 1047, contract 376,
+core 46, ui 22, tokens 18, i18n 16), int **605 ở 43 file**, jest mobile 159.
+
 ## 2026-09-23 — Vòng review F16: mười lăm phát hiện, vá trọn (nhánh `feat/departure-phase`)
 
 Review chạy TRƯỚC merge, ở mức cao nhất: mười góc tìm độc lập, mỗi ứng viên
