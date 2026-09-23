@@ -23,7 +23,7 @@ Trong khi đó, **mọi cổng thật đã quyết theo ngày** chứ không the
 
 | Cổng | Điều kiện |
 | --- | --- |
-| Tạo booking (`assertDepartureBookable`) | `OPEN` **và** còn trong hạn chót |
+| Tạo booking (`assertDepartureBookable`) | tour đã đăng, `OPEN` **và** còn trong hạn chót |
 | Claim thanh toán (ADR-0009 AMEND 1, 3) | `OPEN` **và** ngày đi ≥ hôm nay (lịch VN) |
 | Danh sách chuyến trên web | `OPEN` **và** ngày đi ≥ hôm nay (lịch VN) |
 | Cờ `bookable` trên web | còn trong hạn chót |
@@ -106,3 +106,25 @@ Nghĩa thứ hai vốn đã nằm sẵn trong ngày đi và ngày về.
   hậu quả thật: hoàn tiền người khách ấy ngay ngày đi. Từ hôm sau thì cổng claim tự
   chặn theo ngày. Vậy UI thôi mời bấm là đủ. Thêm một mã lỗi contract để chặn
   một cú bấm không ai cần là không đáng.
+
+## AMEND 1 23/09 — vòng review F16
+
+Ba điều vòng review trước merge làm rõ; quyết định gốc không đổi.
+
+1. **Nhãn của `on-sale` là "Bookable", không phải "On sale".** Trang Tours đã
+   dùng "On sale"/"Off sale" cho công tắc ĐĂNG TOUR, nên một tour đang tắt
+   hiện "Off sale" ở đó mà mọi chuyến của nó lại ghi "On sale" ở màn chuyến.
+   Một chữ cho mỗi khái niệm: "On sale" là của tour, "Bookable" là của chuyến,
+   và nó khớp cột "Bookable departures" sẵn có ở trang Tours. Cột ấy nay đếm
+   bằng chính `departurePhase`, để luật chỉ sống ở một chỗ.
+2. **Màn admin nhìn MỘT đồng hồ.** Kết quả `admin.departures.list` trả thêm
+   `today` — ngày Việt Nam của chính lượt đọc đã tính `phase` — và mọi thứ gắn
+   với hạn chót trên màn (chữ "Passed", nút Reopen, gợi ý của form tạo) đọc
+   nó. Bản đầu để trang tự lấy đồng hồ riêng, nên quanh nửa đêm một hàng có
+   thể vừa "Bookable" vừa "Passed".
+3. **Từ ngày khởi hành, màn chuyến không còn cho thấy công tắc.** Nhãn là giai
+   đoạn, nút đóng/mở đã ẩn. Trong chính ngày khởi hành công tắc vẫn quyết một
+   khoản trả trễ được nhận hay bị hoàn tự động. Muốn tra vì sao một khoản bị
+   hoàn thì đọc payload `BOOKING_REFUNDED` ở Outbox (lưu 30 ngày), không phải
+   màn chuyến. Đưa công tắc trở lại bảng là mang lại đúng sự nhầm lẫn mà ADR
+   này sinh ra để sửa.

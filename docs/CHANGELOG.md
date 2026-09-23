@@ -8,6 +8,90 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-09-23 — Vòng review F16: mười lăm phát hiện, vá trọn (nhánh `feat/departure-phase`)
+
+Review chạy TRƯỚC merge, ở mức cao nhất: mười góc tìm độc lập, mỗi ứng viên
+một agent kiểm chứng, cộng một lượt quét sót. Sau lọc trùng còn 22 ứng viên, ba
+bị bác khi kiểm chứng. Mười lăm phát hiện vào bảng, vá cả mười lăm.
+
+**Ba ứng viên bị bác, và vì sao.** (1) Cho luật "đã khởi hành" gọi
+`canCancelOnline` thay vì tự so ngày: "đã đi" là một sự thật về lịch, nếu luật
+huỷ đổi thì huy hiệu KHÔNG được đổi theo. (2) Gộp `showToggle` với `canCancel`
+vì luôn bằng nhau: hai luật khác nhau, một gương server, một luật giao diện.
+(3) Tab All đọc hết lịch sử chuyến: spec đã chấp nhận, mỗi tour khoảng 10 chuyến.
+
+**Hai lỗi lúc chạy thật.**
+
+1. **Khe deploy làm trang Departures sập.** Vercel thường xong trước Render.
+   Trong vài phút ấy admin mới đọc API cũ, dựng `<undefined />` ở ô Status, và
+   React ném: 500 cho mọi tour có chuyến. Tour không có chuyến thì hiện câu báo
+   "chưa đăng" nhầm. Changelog 09/2026 đã ghi đúng bài học này (field bắt buộc
+   mới phải có đường lùi phía đọc) mà spec §7 lại chấp nhận rủi ro. Nay ô Status
+   để trống, hàng thiếu `phase` không mời đóng hay huỷ, câu báo chỉ hiện khi
+   `isPublished === false`, và thiếu `today` thì lùi về đồng hồ server admin.
+2. **Hai đồng hồ trên một hàng.** Huy hiệu tính bằng `now` của API, còn chữ
+   "Passed" và nút Reopen đọc đồng hồ riêng của trang. Quanh nửa đêm cùng một
+   hàng vừa xanh vừa "Passed". Nay `admin.departures.list` trả `today` của
+   chính lượt đọc, và cả màn đọc nó.
+
+**Chữ gây hiểu nhầm.**
+
+3. **"On sale" trùng chữ công tắc đăng tour** ở trang Tours: tour đang tắt hiện
+   "Off sale" ở đó mà mọi chuyến của nó ghi "On sale" ở đây. Huy hiệu đổi thành
+   **"Bookable"** (người dùng chọn "ngắn gọn, dễ hiểu"), khớp cột "Bookable
+   departures" sẵn có. Mọi copy cấp chuyến thôi nói "on/off sale"; câu báo tour
+   chưa đăng nói bằng chữ của trang Tours; toast tạo chuyến đọc giai đoạn từ
+   response, không hứa "bookable" cho chuyến vừa tạo đã quá hạn.
+4. **Trang Tours đếm "bookable" cả tour tắt bán**, ngược với câu báo ở màn
+   chuyến. Nay có câu phụ "Hidden while off sale", và bộ đếm gọi chính
+   `departurePhase` để luật chỉ sống ở một chỗ.
+5. **Chú thích đầu VM nói server chặn Close sau khởi hành** — thật ra chỉ giao
+   diện chặn (ADR-0046 cố ý không thêm mã lỗi). Viết lại, kèm một ca int ghim
+   rằng server vẫn nhận Close ngày khởi hành, để không ai nới chỗ ẩn nút.
+6. **Docstring "on-sale = khách còn đặt được" nói quá** cả hai chiều: chuyến kín
+   chỗ vẫn xanh, còn chuyến quá hạn vẫn có thể nhận khoản trả trễ.
+
+**Gọn lại.**
+
+7. Ba cờ `showToggle`/`canClose`/`canReopen` cộng chiều gửi mà component tự suy
+   từ `status` gộp thành một field `toggle`. `canClose` từng luôn `true` ở mọi
+   chỗ nó được đọc. Hộp đóng/mở nay chụp chiều lúc bấm, nên không đổi chiều khi
+   bảng vẽ lại dưới chân nó (admin khác vừa đóng chuyến).
+8. Ba tab một-giai-đoạn mượn nhãn và icon của huy hiệu thay vì khai lại.
+
+**Test và fixture.**
+
+9. Helper fixture tính cả `phase` lẫn hạn chót bằng chính hàm contract. Fixture
+   `SAVED` từng ghi hạn chót 24/11 cho chuyến mà contract tính ra 28/11.
+   `makeDepartureRow`, `serverRow`, `vmAt` thay ba bản chép tay.
+10. Ca int "mỗi hàng đúng giai đoạn" so cặp theo thứ tự và ghim `total`, thay
+    cho `Object.fromEntries` gộp mất hàng trùng.
+11. `khongPhase` đổi thành `missingPhase` (luật 8: identifier tiếng Anh).
+
+**Tài liệu lỗi thời (12–15):** glossary còn định nghĩa `status` kiểu cũ; JSDoc
+row-actions nói "không có nút huỷ"; comment trang mồ côi nói Close đổi tab; mô
+tả route contract, JSDoc `phaseOf` và JSDoc tháng ở trang Tours. Cộng ADR-0046
+AMEND 1 (nhãn Bookable, một đồng hồ, công tắc không còn hiện từ ngày khởi hành)
+và sửa bảng cổng thiếu điều kiện tour đã đăng; spec §2–§7 theo code.
+
+**Vá kèm ngoài bảng:** bỏ tham số `now` thừa của `rowById`; `TOGGLE_LABELS`
+dùng chung cho nút thật và ô giữ chỗ; đổi tên ca int "đóng sớm không hứa gì với
+ai" vốn nói ngược ADR-0046.
+
+**Ngoài phạm vi, đã tách việc:** khu account web tính "hôm nay" theo UTC. Một
+session riêng đã vá và đưa lên `main` (`144e4f23` tới `2711e755`).
+
+**Để lại, có lý do:** ca int có thể chập chờn đúng lúc 00:00 giờ Việt Nam (cửa
+sổ vài chục mili-giây, cùng kiểu với các ca cũ). Ca `zod-config.spec.ts` của
+contract hết giờ 5 giây khi chạy 16 worker trên máy này, xanh với 4 worker và
+trên CI — không dính F16.
+
+Bảy đột biến đều bị test bắt.
+
+Tests after: Vitest **4036** (web 1533, api 978, admin 1047, contract 376,
+core 46, ui 22, tokens 18, i18n 16), int **605 ở 43 file**. Ca mới: admin 12,
+contract 1, int 1; hai ca int viết lại cho đúng.
+
 ## 2026-09-23 — F16 giai đoạn chuyến khởi hành (nhánh `feat/departure-phase`)
 
 Màn Departures của admin thôi in cột `status` làm trạng thái chuyến. Lượt thử

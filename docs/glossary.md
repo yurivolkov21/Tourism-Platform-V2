@@ -28,7 +28,8 @@
 | `PARTIALLY_REFUNDED` | Đơn | Đã hoàn một phần, vẫn còn hiệu lực. |
 | `REFUNDED` | Đơn | Đã hoàn hết tiền. |
 | `CANCELLED` | Đơn | Đã huỷ. Có thể kèm hoàn tiền hoặc không. |
-| `OPEN` / `CLOSED` / `CANCELLED` | Chuyến | Còn nhận khách / đã đóng / công ty huỷ chuyến. |
+| `OPEN` / `CLOSED` / `CANCELLED` | Chuyến | **Công tắc bán hàng** của admin: cho bán / tạm ngừng bán / công ty huỷ chuyến. KHÔNG nói chuyến đã đi hay đã về: chuyến đã về vẫn có thể ghi `OPEN` mãi — đó là thiết kế ([ADR-0046](adr/0046-departure-phase-derived.md)). Muốn biết chuyến đang ở đâu thì đọc giai đoạn ở dòng dưới. |
+| Giai đoạn chuyến (*phase*) | Chuyến | Suy từ công tắc và ngày đi/về theo lịch Việt Nam, không lưu: Bookable / Deadline passed / Closed / Departed / Completed / Cancelled. Màn Departures của admin in cái này, không in công tắc. |
 | `NEW → CONTACTED → QUOTED → WON` / `LOST` | Câu hỏi khách | Vòng đời một lead. |
 | `DRAFT` / `PUBLISHED` | Bài blog | Nháp / đã đăng. |
 
