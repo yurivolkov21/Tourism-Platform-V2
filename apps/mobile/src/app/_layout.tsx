@@ -5,6 +5,7 @@ import {
   Archivo_700Bold,
 } from '@expo-google-fonts/archivo';
 import { Literata_700Bold } from '@expo-google-fonts/literata';
+import { QueryClientProvider } from '@tanstack/react-query';
 import { messages } from '@tourism/i18n';
 import { AppText, Button, EmptyState, Screen, ThemeProvider, useTheme } from '@tourism/mobile-ui';
 import { useFonts } from 'expo-font';
@@ -16,6 +17,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AuthActionsProvider } from '@/features/auth/auth-actions';
 import { createMockAuthActions } from '@/features/auth/mock-auth-actions';
 import { OnboardingStoreProvider, onboardingStore } from '@/features/onboarding/onboarding-store';
+import { queryClient } from '@/lib/api/query-client';
 import { env } from '@/lib/env';
 
 // Giữ splash cho tới khi vỏ điều hướng dựng xong — tránh một nháy nền trắng
@@ -159,10 +161,12 @@ export default function RootLayout() {
     <ThemeProvider>
       <SafeAreaProvider>
         <AuthActionsProvider value={authActions}>
-          <OnboardingStoreProvider value={onboardingStore}>
-            <StatusBar style="auto" />
-            <RootStack />
-          </OnboardingStoreProvider>
+          <QueryClientProvider client={queryClient}>
+            <OnboardingStoreProvider value={onboardingStore}>
+              <StatusBar style="auto" />
+              <RootStack />
+            </OnboardingStoreProvider>
+          </QueryClientProvider>
         </AuthActionsProvider>
       </SafeAreaProvider>
     </ThemeProvider>
