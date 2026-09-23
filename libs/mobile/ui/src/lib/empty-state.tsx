@@ -5,6 +5,8 @@ import { Card } from './card';
 import { useTheme } from './theme-provider';
 
 export interface EmptyStateProps extends ViewProps {
+  /** Icon vuông phía trên câu chính — dùng chung cho tri-state lỗi/rỗng (ADR-0047 §3). */
+  icon?: ReactNode;
   /** Câu chính — tiếng Anh, lấy từ `@tourism/i18n` (luật 7). */
   title: string;
   /** Câu phụ giải thích hoặc gợi ý bước tiếp theo. */
@@ -13,12 +15,13 @@ export interface EmptyStateProps extends ViewProps {
   children?: ReactNode;
 }
 
-/** Ô "chưa có gì ở đây" — dùng chung cho mọi danh sách rỗng và màn giữ chỗ. */
-export function EmptyState({ title, body, children, style, ...rest }: EmptyStateProps) {
+/** Ô "chưa có gì ở đây" / "không tải được" — dùng chung cho danh sách rỗng, lỗi tải, và màn giữ chỗ. */
+export function EmptyState({ icon, title, body, children, style, ...rest }: EmptyStateProps) {
   const theme = useTheme();
 
   return (
     <Card style={[{ alignItems: 'center', gap: theme.spacing(2) }, style]} {...rest}>
+      {icon}
       <AppText variant="heading" style={{ textAlign: 'center' }}>
         {title}
       </AppText>

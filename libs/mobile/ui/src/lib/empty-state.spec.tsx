@@ -47,4 +47,22 @@ describe('EmptyState', () => {
 
     expect(screen.getByText('Browse tours')).toBeTruthy();
   });
+
+  it('vẽ icon khi có truyền, không vẽ gì thêm khi không truyền (hợp đồng cũ không đổi)', async () => {
+    // Ghi chú: dùng hai lần renderWithTheme độc lập thay vì rerender() của
+    // lần render đầu — renderWithTheme tự bọc ThemeProvider/SafeAreaProvider
+    // quanh `ui` thay vì dùng option `wrapper` của RTL, nên rerender(uiMới)
+    // thay hẳn cây gốc và làm mất provider (useTheme() ném lỗi). Đây là giới
+    // hạn có sẵn của test-utils.tsx, ngoài phạm vi sửa của task này; hai lần
+    // render riêng vẫn kiểm đúng hợp đồng: có icon thì vẽ, không có thì không.
+    const { queryByTestId: withIcon } = await renderWithTheme(
+      <EmptyState title="Không có gì" icon={<Text testID="empty-icon">★</Text>} />,
+    );
+    expect(withIcon('empty-icon')).toBeTruthy();
+
+    const { queryByTestId: withoutIcon } = await renderWithTheme(
+      <EmptyState title="Không có gì" />,
+    );
+    expect(withoutIcon('empty-icon')).toBeNull();
+  });
 });
