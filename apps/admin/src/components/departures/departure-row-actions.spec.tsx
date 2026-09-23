@@ -93,6 +93,21 @@ describe('DepartureRowActions — nút nào được bấm', () => {
     expect(screen.getByRole('button', { name: t.setStatus.reopenLabel(dates) })).toBeDisabled();
   });
 
+  it('chuyến đã khởi hành: ô nút huỷ giữ chỗ, nhưng KHÔNG phải một nút', () => {
+    // Lượt thử tay F14 (23/09): hàng không huỷ được thì thiếu hẳn nút cuối,
+    // cụm nút canh phải nên Sửa và Đóng bị dồn lệch khỏi cột của hàng trên. Ô
+    // giữ chỗ vá chuyện bố cục — nhưng nó TUYỆT ĐỐI không được lộ ra như một
+    // nút, không thì trình đọc màn hình mời bấm một thứ không tồn tại.
+    renderActions(ROW, '2026-10-10');
+
+    expect(
+      screen.queryByRole('button', {
+        name: t.cancel.actionLabel(toDepartureRowVM(ROW, '2026-10-10').dates),
+      }),
+    ).not.toBeInTheDocument();
+    expect(screen.queryAllByRole('button')).toHaveLength(2);
+  });
+
   it('chuyến ĐÃ HUỶ: KHÔNG có nút nào', () => {
     // Khách của nó đã được hoàn tiền (F13) — mỗi nút ở đây là một cách đi
     // vòng quanh việc ấy.

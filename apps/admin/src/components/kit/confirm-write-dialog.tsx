@@ -65,7 +65,11 @@ export const DIALOG_FRAME = 'max-h-[85dvh] overflow-y-auto';
 export interface ConfirmWriteCopy {
   title: string;
   body: string;
-  /** Câu nói thẳng hệ quả không đảo ngược được — luôn hiện, không tuỳ chọn. */
+  /**
+   * Câu nói thẳng hệ quả — luôn hiện, không tuỳ chọn. Giọng của nó (đỏ hay
+   * trung tính) do vùng chọn qua `warningTone`, vì không phải câu nào ở đây
+   * cũng là cảnh báo: câu của hộp ẩn danh mục là câu TRẤN AN.
+   */
   warning: string;
   submit: string;
   submitting: string;
@@ -135,6 +139,16 @@ export type ConfirmWriteDialogProps<Code extends string> = ConfirmWriteNoteProps
   /** Nút xác nhận: `destructive` khi lệnh lấy đi thứ đang hiện ra ngoài. */
   submitVariant?: 'default' | 'destructive';
   /**
+   * Giọng của câu `copy.warning`. Mặc định `destructive`: phần lớn lệnh qua
+   * kit này lấy đi thứ đang hiện ra ngoài (đóng chuyến, huỷ chuyến), và một vùng
+   * quên khai thì nên mắc lỗi về phía thận trọng.
+   *
+   * `neutral` cho câu nói về điều KHÔNG xảy ra. Ra đời từ lượt thử tay F14
+   * (23/09): hộp ẩn danh mục tô đỏ cả câu "tour vẫn bán, link vẫn chạy", nên
+   * màu nói ngược với chữ và người đọc tưởng có gì nguy hiểm.
+   */
+  warningTone?: 'destructive' | 'neutral';
+  /**
    * Bề ngang DialogContent — vùng nào in nguyên văn nội dung thì cần rộng hơn.
    * Đè lên mặc định `sm:max-w-md`; trần chiều cao + cuộn thì kit luôn tự đắp,
    * vùng không phải nhớ (xem `DIALOG_FRAME`).
@@ -155,6 +169,7 @@ export function ConfirmWriteDialog<Code extends string>(props: ConfirmWriteDialo
     rows,
     extra,
     submitVariant = 'default',
+    warningTone = 'destructive',
     contentClassName = 'sm:max-w-md',
     isStale,
     errorCopy,
@@ -236,7 +251,15 @@ export function ConfirmWriteDialog<Code extends string>(props: ConfirmWriteDialo
           </div>
         ) : null}
 
-        <p className="text-sm text-destructive-emphasis">{copy.warning}</p>
+        <p
+          data-tone={warningTone}
+          className={cn(
+            'text-sm',
+            warningTone === 'neutral' ? 'text-muted-foreground' : 'text-destructive-emphasis',
+          )}
+        >
+          {copy.warning}
+        </p>
 
         {failure ? (
           <p role="alert" className="text-sm text-destructive-emphasis">

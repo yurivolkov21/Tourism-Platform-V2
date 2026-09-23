@@ -7,6 +7,7 @@ import { useState } from 'react';
 import { toast } from 'sonner';
 import { CategoryFormDialog } from '@/components/categories/category-form-dialog';
 import { ConfirmWriteDialog } from '@/components/kit/confirm-write-dialog';
+import { StableLabel } from '@/components/kit/stable-label';
 import type { CategoryRowVM } from '@/lib/categories-view';
 import {
   categoryUpdatePayload,
@@ -136,7 +137,13 @@ export function CategoryRowActions({
         ) : (
           <EyeIcon data-icon="inline-start" aria-hidden="true" />
         )}
-        {row.isActive ? t.setActive.hide : t.setActive.show}
+        {/* Giữ chỗ cho nhãn rộng hơn trong cặp Hide/Show: hai nhãn rộng khác
+            nhau, và cụm nút canh phải, nên hàng mang nhãn hẹp hơn từng kéo lệch
+            mũi tên với nút Edit khỏi cột của hàng trên (lượt thử tay F14). */}
+        <StableLabel
+          label={row.isActive ? t.setActive.hide : t.setActive.show}
+          reserve={[t.setActive.hide, t.setActive.show]}
+        />
       </Button>
 
       {editing ? (
@@ -168,6 +175,9 @@ export function CategoryRowActions({
           copy={setActiveDialogCopy(!row.isActive)}
           rows={setActiveConfirmRows(row)}
           submitVariant={row.isActive ? 'destructive' : 'default'}
+          // Câu của hộp này nói về điều KHÔNG xảy ra (tour vẫn bán, link vẫn
+          // chạy) — tô đỏ là để màu nói ngược với chữ.
+          warningTone="neutral"
           onSubmit={async () => {
             const result = await setActive({ id: row.id, isActive: !row.isActive });
             if (!result.ok) return { ok: false, code: result.code };

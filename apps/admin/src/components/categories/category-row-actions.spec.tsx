@@ -151,6 +151,20 @@ describe('CategoryRowActions — hộp xác nhận ẩn danh mục', () => {
     expect(screen.getByText(t.setActive.dialog.hideWarning)).toBeInTheDocument();
   });
 
+  it('câu cảnh báo mang giọng TRUNG TÍNH, không tô đỏ', async () => {
+    // Lượt thử tay F14 (23/09): câu này là câu TRẤN AN — tour vẫn bán, link
+    // vẫn chạy — mà kit tô đỏ mặc định, nên màu nói ngược với chữ.
+    const user = userEvent.setup();
+    const { vm } = renderRow([row(1), row(2)], 0);
+
+    await user.click(screen.getByRole('button', { name: t.setActive.hideLabel(vm.name) }));
+
+    expect(await screen.findByText(t.setActive.dialog.hideWarning)).toHaveAttribute(
+      'data-tone',
+      'neutral',
+    );
+  });
+
   it('hàng ĐÃ ẨN: nút đổi thành Hiện và câu cảnh báo đổi theo', async () => {
     const user = userEvent.setup();
     const { vm } = renderRow([row(1, { isActive: false }), row(2)], 0);

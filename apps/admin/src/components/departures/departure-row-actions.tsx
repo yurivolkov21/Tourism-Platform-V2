@@ -1,11 +1,13 @@
 'use client';
 
 import { messages } from '@tourism/i18n';
-import { Button } from '@tourism/ui/components/button';
+import { Button, buttonVariants } from '@tourism/ui/components/button';
+import { cn } from '@tourism/ui/lib/utils';
 import { BanIcon, LockIcon, PencilIcon, UnlockIcon } from 'lucide-react';
 import { useState } from 'react';
 import { DepartureFormDialog } from '@/components/departures/departure-form-dialog';
 import { ConfirmWriteDialog } from '@/components/kit/confirm-write-dialog';
+import { StableLabel } from '@/components/kit/stable-label';
 import { formatDateRange } from '@/lib/bookings-view';
 import type { DepartureRowVM } from '@/lib/departures-view';
 import {
@@ -112,7 +114,11 @@ export function DepartureRowActions({
         ) : (
           <UnlockIcon data-icon="inline-start" aria-hidden="true" />
         )}
-        {nextStatus === 'CLOSED' ? t.setStatus.close : t.setStatus.reopen}
+        {/* Giữ chỗ cho nhãn rộng hơn trong cặp Close/Reopen — xem `StableLabel`. */}
+        <StableLabel
+          label={nextStatus === 'CLOSED' ? t.setStatus.close : t.setStatus.reopen}
+          reserve={[t.setStatus.close, t.setStatus.reopen]}
+        />
       </Button>
 
       {row.canCancel ? (
@@ -127,7 +133,22 @@ export function DepartureRowActions({
           <BanIcon data-icon="inline-start" aria-hidden="true" />
           {t.cancel.action}
         </Button>
-      ) : null}
+      ) : (
+        // Ô GIỮ CHỖ cùng cỡ nút huỷ, cho hàng không còn huỷ được (đã khởi
+        // hành). Thiếu hẳn nút cuối thì cụm canh phải dồn Sửa và Đóng lệch khỏi
+        // cột của hàng trên (lượt thử tay F14, 23/09).
+        //
+        // Là một `span` mượn đúng lớp của nút chứ không phải một `Button` bị
+        // ẩn: ẩn đi rồi thì nó vẫn là một nút trong DOM, và chỉ cần quên một
+        // thuộc tính là trình đọc màn hình mời bấm một thứ không tồn tại.
+        <span
+          aria-hidden="true"
+          className={cn(buttonVariants({ variant: 'ghost', size: 'sm' }), 'invisible')}
+        >
+          <BanIcon data-icon="inline-start" />
+          {t.cancel.action}
+        </span>
+      )}
 
       {editingVersion !== null ? (
         <DepartureFormDialog<UpdateContractCode>

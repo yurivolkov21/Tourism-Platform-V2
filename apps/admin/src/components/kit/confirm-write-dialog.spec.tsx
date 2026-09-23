@@ -271,3 +271,36 @@ describe('ConfirmWriteDialog — khoá trong lúc bắn', () => {
     expect(dialog).toHaveClass('overflow-y-auto');
   });
 });
+
+describe('ConfirmWriteDialog — giọng của câu cảnh báo', () => {
+  /**
+   * Hai giọng, và vùng chọn. Mặc định là `destructive` vì phần lớn lệnh ghi
+   * qua kit này lấy đi thứ đang hiện ra ngoài (đóng chuyến, huỷ chuyến).
+   *
+   * `neutral` sinh ra từ lượt thử tay F14 (23/09): câu cảnh báo của hộp ẩn
+   * danh mục là câu TRẤN AN ("tour vẫn bán, link vẫn chạy"), mà tô đỏ thì
+   * người đọc tưởng có gì nguy hiểm — màu nói ngược với chữ.
+   */
+  it('mặc định là giọng cảnh báo — không vùng nào tự nhiên mất màu đỏ', async () => {
+    renderDialog(vi.fn());
+
+    expect(await screen.findByText(COPY.warning)).toHaveAttribute('data-tone', 'destructive');
+  });
+
+  it('vùng xin giọng trung tính thì được giọng trung tính', async () => {
+    render(
+      <ConfirmWriteDialog<TestCode>
+        copy={{ ...COPY, noteLabel: undefined, notePlaceholder: undefined }}
+        rows={ROWS}
+        warningTone="neutral"
+        onSubmit={vi.fn() as never}
+        isStale={() => false}
+        errorCopy={() => 'x'}
+        onClose={onClose}
+        onSettled={onSettled}
+      />,
+    );
+
+    expect(await screen.findByText(COPY.warning)).toHaveAttribute('data-tone', 'neutral');
+  });
+});
