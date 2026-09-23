@@ -392,20 +392,36 @@ describe('admin departures integration (F12)', () => {
 
     it('mỗi hàng mang ĐÚNG giai đoạn — công tắc không quyết vòng đời', async () => {
       const paged = await listOk(`?slug=${PUBLISHED_SLUG}&limit=100`);
-      const phaseById = Object.fromEntries(paged.items.map((item) => [item.id, item.phase]));
 
-      expect(phaseById).toEqual({
-        [FREE]: 'on-sale',
-        [BOOKED]: 'on-sale',
-        [CANCELLED]: 'cancelled',
-        [PAUSED]: 'closed',
-        [LAST_CALL]: 'deadline-passed',
+      // Cặp [id, giai đoạn] THEO THỨ TỰ, không gom thành object: gom theo id
+      // thì một hàng in hai lần vẫn xanh (vòng review F16).
+      expect(paged.items.map((item) => [item.id, item.phase])).toEqual([
+        [FREE, 'on-sale'],
+        [BOOKED, 'on-sale'],
+        [CANCELLED, 'cancelled'],
+        [PAUSED, 'closed'],
+        [LAST_CALL, 'deadline-passed'],
         // Khởi hành HÔM NAY: ngày đi đã là `departed`, dù công tắc ghi CLOSED.
-        [DEADLINE_GONE]: 'departed',
-        [RUNNING]: 'departed',
-        [ENDED_OPEN]: 'completed',
-        [PAST]: 'completed',
-      });
+        [DEADLINE_GONE, 'departed'],
+        [RUNNING, 'departed'],
+        [ENDED_OPEN, 'completed'],
+        [PAST, 'completed'],
+      ]);
+      // Tab All không lọc gì, nhưng `total` nay đếm trên tập đọc ra chứ không
+      // qua một câu `count` riêng — phải ghim cả nó.
+      expect(paged.total).toBe(9);
+    });
+
+    it('trả kèm `today` của CHÍNH lượt đọc — màn admin dùng nó cho hạn chót', async () => {
+      // Huy hiệu tính bằng `now` của API; chữ "Passed" và nút Reopen từng đọc
+      // đồng hồ riêng của trang, nên quanh nửa đêm hai bên nói khác nhau trên
+      // cùng một hàng (vòng review F16). Kẹp giữa hai mốc đo quanh lời gọi để
+      // ca này không chập chờn đúng lúc 00:00 giờ Việt Nam.
+      const before = vietnamToday(new Date());
+      const paged = await listOk(`?slug=${PUBLISHED_SLUG}`);
+      const after = vietnamToday(new Date());
+
+      expect([before, after]).toContain(paged.today);
     });
 
     it.each([
@@ -687,7 +703,10 @@ describe('admin departures integration (F12)', () => {
       expect((await rowById(DEADLINE_GONE)).status).toBe('CLOSED');
     });
 
-    it('ĐÓNG một chuyến đã quá hạn thì vẫn được — đóng sớm không hứa gì với ai', async () => {
+    it('server VẪN nhận Close kể cả ngày khởi hành — ẩn nút là việc của giao diện', async () => {
+      // Cố ý (ADR-0046, mục "Đã cân nhắc và loại"): không thêm mã lỗi cho một
+      // cú bấm mà admin không còn thấy nút để bấm từ ngày khởi hành. Ca này
+      // ghim điều đó, để không ai tưởng server đang chặn thay giao diện.
       await prisma.tourDeparture.update({
         where: { id: DEADLINE_GONE },
         data: { status: DepartureStatus.OPEN },

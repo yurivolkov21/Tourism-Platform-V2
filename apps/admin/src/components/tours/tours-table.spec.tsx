@@ -28,6 +28,7 @@ const row = (patch: Partial<TourRowVM> = {}): TourRowVM => ({
   price: '$39.00',
   openDepartureCount: 3,
   countLabel: t.openDepartures(3),
+  countNote: null,
   isPublished: true,
   isFeatured: false,
   heroUrl: null,
@@ -73,6 +74,13 @@ describe('ToursTable', () => {
     renderTable([row({ openDepartureCount: 3, countLabel: t.openDepartures(3) })]);
     expect(screen.getByText('3')).toBeInTheDocument();
     expect(screen.getByText(t.openDepartures(3))).toBeInTheDocument();
+  });
+
+  it('tour tắt bán còn chuyến bookable: in câu phụ ngay dưới con số', () => {
+    // Màn chuyến của tour ấy báo khách không đặt được chuyến nào (F16); cột
+    // đếm phải nói cùng một chuyện, không chỉ in số trần.
+    renderTable([row({ isPublished: false, countNote: t.hiddenWhileOffSale })]);
+    expect(screen.getByText(t.hiddenWhileOffSale)).toBeInTheDocument();
   });
 
   it('số 0 vẫn in ra — "không còn chuyến nào" là câu trả lời, không phải ô trống', () => {

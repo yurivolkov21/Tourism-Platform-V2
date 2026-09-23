@@ -120,6 +120,14 @@ function buildColumns(setPublished: SetPublishedAction) {
         >
           <span aria-hidden="true">{row.original.openDepartureCount}</span>
           <span className="sr-only">{row.original.countLabel}</span>
+          {/* Tour tắt bán mà còn chuyến bookable: nói ngay dưới con số rằng
+              khách không thấy chúng — màn chuyến báo đúng điều này (F16).
+              `aria-hidden` vì câu đọc-màn-hình ở trên đã mang đủ ý. */}
+          {row.original.countNote ? (
+            <div aria-hidden="true" className="text-xs whitespace-nowrap text-muted-foreground">
+              {row.original.countNote}
+            </div>
+          ) : null}
         </div>
       ),
     }),

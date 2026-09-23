@@ -6,7 +6,7 @@ import type {
   AdminToursListQuery,
   Paged,
 } from '@tourism/contract';
-import { isWithinDeadline } from '@tourism/contract';
+import { departurePhase } from '@tourism/contract';
 import { prisma } from '../../auth/auth.config.js';
 import type { Prisma } from '../../generated/prisma/client.js';
 import { DepartureStatus, MediaOwnerType, MediaRole } from '../../generated/prisma/enums.js';
@@ -92,25 +92,33 @@ export class AdminCatalogService {
       // round-trip là đúng cái N+1 mà `catalog.service` đã né ở đường công khai.
       //
       // Vì sao `findMany` chứ không `groupBy` đếm hộ: nhát cắt thứ hai —
-      // `isWithinDeadline` — là luật `N` theo ĐỘ DÀI chuyến (ADR-0041 §2), SQL
-      // không biểu diễn được bằng một vị ngữ. Lấy ba cột rồi đếm ở Node, đúng
-      // cách `catalog.service.ts` làm cho `priceFrom`.
+      // hạn chót — là luật `N` theo ĐỘ DÀI chuyến (ADR-0041 §2), SQL không
+      // biểu diễn được bằng một vị ngữ. Lấy bốn cột rồi đếm ở Node, đúng cách
+      // `catalog.service.ts` làm cho `priceFrom`.
       prisma.tourDeparture.findMany({
         where: {
           tourId: { in: ids },
           status: DepartureStatus.OPEN,
           startDate: departureWindow(month, now),
         },
-        select: { tourId: true, startDate: true, endDate: true },
+        select: { tourId: true, status: true, startDate: true, endDate: true },
       }),
     ]);
 
-    // Nhát thứ hai: chuyến đã qua hạn đặt thì KHÔNG đếm. Thiếu nhát này, bảng
-    // admin in "2 open departures" cho một tour mà khách vào trang thấy cả hai
-    // đều "Booking closed" — hai màn của cùng một hệ thống nói hai chuyện.
+    // Nhát thứ hai: chỉ đếm chuyến mà màn chuyến in "Bookable" — gọi CHÍNH
+    // `departurePhase` (ADR-0046) chứ không chép lại luật hạn chót, để cột này
+    // và huy hiệu của màn chuyến không thể nói hai chuyện (vòng review F16).
+    // Thiếu nhát này, bảng in "2 bookable departures" cho một tour mà khách
+    // vào trang thấy cả hai đều "Booking closed".
     const countByTour = new Map<string, number>();
     for (const d of openCounts) {
-      if (!isWithinDeadline(now, calendarDate(d.startDate), calendarDate(d.endDate))) continue;
+      const phase = departurePhase({
+        status: d.status,
+        startDate: calendarDate(d.startDate),
+        endDate: calendarDate(d.endDate),
+        now,
+      });
+      if (phase !== 'on-sale') continue;
       countByTour.set(d.tourId, (countByTour.get(d.tourId) ?? 0) + 1);
     }
 

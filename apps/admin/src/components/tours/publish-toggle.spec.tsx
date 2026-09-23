@@ -37,6 +37,7 @@ const ROW: TourRowVM = {
   price: '$39.00',
   openDepartureCount: 3,
   countLabel: messages.admin.tours.list.openDepartures(3),
+  countNote: null,
   isPublished: true,
   isFeatured: false,
   heroUrl: null,

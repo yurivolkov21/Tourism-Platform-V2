@@ -66,15 +66,21 @@ export default async function DeparturesPage({
   // Slug rác trên đường dẫn là `notFound()` của Next, không phải màn lỗi chung.
   if (!paged) notFound();
 
-  // Trang mồ côi: tab đang lọc co lại (một lệnh đóng hay huỷ đẩy chuyến sang
-  // nhóm khác chẳng hạn) trong khi URL vẫn trỏ trang cũ.
+  // Trang mồ côi: tab đang lọc co lại trong khi URL vẫn trỏ trang cũ — một
+  // lệnh huỷ chuyến, hay nửa đêm đẩy chuyến sang nhóm khác chẳng hạn. Đóng và
+  // mở lại thì KHÔNG đổi tab: `on-sale`/`deadline-passed` ↔ `closed` đều nằm
+  // trong Upcoming.
   const orphan = orphanPageHref(paged, query, (page) => departuresHref(query, { page }));
   if (orphan) redirect(orphan);
 
-  // "Hôm nay" theo giờ VIỆT NAM, tính một lần ở SERVER và đưa xuống: hạn chót
-  // là luật tiền (ADR-0041 §7), đồng hồ trình duyệt không được quyết nút nào
-  // sáng nút nào tối.
-  const today = vietnamToday(new Date());
+  // "Hôm nay" theo giờ VIỆT NAM của CHÍNH lượt đọc đã tính giai đoạn cho từng
+  // hàng (vòng review F16): hai đồng hồ đứng hai bên mốc nửa đêm là một hàng
+  // vừa "Bookable" vừa "Passed". Hạn chót là luật tiền (ADR-0041 §7), đồng hồ
+  // trình duyệt không được quyết nút nào sáng nút nào tối.
+  //
+  // `??` chỉ dành cho khe deploy: admin mới đọc API cũ chưa trả `today` thì
+  // lùi về đồng hồ của server admin, như trước F16.
+  const today = paged.today ?? vietnamToday(new Date());
 
   return (
     <AdminShell user={session}>

@@ -14,9 +14,13 @@ const t = messages.admin.departures.list.unpublished;
  * `role="status"` ghi đè `role="alert"` mặc định của `Alert`: đây là thông tin
  * có sẵn lúc mở trang chứ không phải sự kiện vừa xảy ra, và `alert` bắt trình
  * đọc màn hình ngắt lời người dùng mỗi lần vào trang.
+ *
+ * Chỉ báo khi server nói RÕ `false`. Trong vài phút giữa hai lần deploy, admin
+ * mới có thể đọc API cũ chưa có field này; coi "không biết" là "chưa đăng" thì
+ * mọi tour đang bán đều hiện câu báo sai (vòng review F16).
  */
 export function TourUnpublishedNotice({ isPublished }: { isPublished: boolean }) {
-  if (isPublished) return null;
+  if (isPublished !== false) return null;
 
   return (
     <Alert role="status">

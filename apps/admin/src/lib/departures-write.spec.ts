@@ -1,9 +1,11 @@
 import { contract, DEPARTURE_SEATS_MAX } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
 import { describe, expect, it } from 'vitest';
+import { makeDepartureRow, serverRow } from '@/test/departure-row';
 import {
   CREATE_CONTRACT_CODES,
   createDeadlineHint,
+  createdToast,
   departureFormPayload,
   hasFormErrors,
   isSetStatusStale,
@@ -205,5 +207,29 @@ describe('createDeadlineHint', () => {
     // phép giết cả dialog đang mở.
     expect(createDeadlineHint({ ...DATES, startDate: '' }, '2026-11-29')).toBeUndefined();
     expect(createDeadlineHint({ ...DATES, endDate: '2026-11-30' }, '2026-11-29')).toBeUndefined();
+  });
+});
+
+describe('createdToast', () => {
+  /** Chuyến 10/10 → 14/10, hạn chót 03/10. */
+  const ROW = makeDepartureRow();
+  const DATES = '10 Oct 2026 – 14 Oct 2026';
+
+  it('chuyến vừa tạo còn nhận booking: báo nó đã đặt được', () => {
+    expect(createdToast(serverRow(ROW, '2026-10-01'))).toEqual({
+      title: t.create.toast.title,
+      description: t.create.toast.body(DATES),
+    });
+  });
+
+  it.each([
+    ['đã quá hạn chót', '2026-10-05'],
+    ['khởi hành ngay hôm nay', '2026-10-10'],
+  ])('chuyến vừa tạo %s: KHÔNG hứa là bán được', (_why, today) => {
+    // Bản đầu in "is now on sale" vô điều kiện, ngay cạnh một huy hiệu nói
+    // điều ngược lại (vòng review F16). Toast đọc giai đoạn TỪ RESPONSE.
+    expect(createdToast(serverRow(ROW, today)).description).toBe(
+      t.create.toast.bodyNotBookable(DATES),
+    );
   });
 });

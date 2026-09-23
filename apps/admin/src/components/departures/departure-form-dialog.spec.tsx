@@ -4,6 +4,7 @@ import type { AdminDepartureRow } from '@tourism/contract';
 import { DEPARTURE_SEATS_MAX } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { makeDepartureRow, serverRow } from '@/test/departure-row';
 import { DepartureFormDialog } from './departure-form-dialog';
 
 /**
@@ -27,24 +28,15 @@ vi.mock('sonner', () => ({
   },
 }));
 
-const SAVED: AdminDepartureRow = {
-  id: '4f1b1f2e-0000-4000-8000-000000000001',
-  startDate: '2026-12-01',
-  endDate: '2026-12-03',
-  price: '129.00',
-  priceOverride: null,
-  currency: 'USD',
-  seatsBooked: 4,
-  seatsTotal: 18,
-  status: 'OPEN',
-  // Chuyến tháng 12 nhìn từ tháng 9: còn bán. Đây là RESPONSE giả, không gắn
-  // với `today` nào, nên điền thẳng thay vì qua `withPhase`.
-  phase: 'on-sale',
-  cancellationDeadline: '2026-11-24',
-  liveBookingCount: 2,
-  pendingBookingCount: 0,
-  version: '2026-09-20T08:00:00.000Z',
-};
+/**
+ * Response giả của lệnh lưu — dựng qua khuôn chung để `phase` và hạn chót do
+ * chính hàm của contract điền. Bản chép tay trước đây ghi hạn chót 24/11 cho
+ * chuyến 01/12 → 03/12, trong khi contract tính ra 28/11 (vòng review F16).
+ */
+const SAVED: AdminDepartureRow = serverRow(
+  makeDepartureRow({ startDate: '2026-12-01', endDate: '2026-12-03', seatsTotal: 18 }),
+  '2026-09-20',
+);
 
 const COPY = t.edit.dialog;
 

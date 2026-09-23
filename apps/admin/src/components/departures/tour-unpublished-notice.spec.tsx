@@ -30,4 +30,15 @@ describe('TourUnpublishedNotice', () => {
 
     expect(container).toBeEmptyDOMElement();
   });
+
+  it('`isPublished` VẮNG MẶT (API cũ trong khe deploy): không báo động giả', () => {
+    // Vercel thường deploy xong trước Render; vài phút ấy tour chưa có field
+    // này. Coi "không biết" là "chưa đăng" thì mọi tour đang bán đều hiện câu
+    // báo sai (vòng review F16) — chỉ báo khi server nói rõ `false`.
+    const { container } = render(
+      <TourUnpublishedNotice isPublished={undefined as unknown as boolean} />,
+    );
+
+    expect(container).toBeEmptyDOMElement();
+  });
 });

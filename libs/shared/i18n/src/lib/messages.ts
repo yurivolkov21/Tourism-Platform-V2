@@ -3912,7 +3912,8 @@ export const messages = {
          * danh sách ngắn lại và tưởng bộ lọc hỏng.
          *
          * Tháng hoàn toàn trong quá khứ luôn ra 0: không chuyến nào trong đó
-         * còn đặt được. Muốn soi chuyến quên đóng thì vào màn chuyến của tour.
+         * còn đặt được. Chuyến đã về mà công tắc còn OPEN là thiết kế
+         * (ADR-0046), không phải chuyến quên đóng — không có gì để soi ở đó.
          */
         monthLabel: 'Count bookable departures in',
         /** Mục mặc định: từ hôm nay trở đi, không có mốc cuối. */
@@ -3920,6 +3921,16 @@ export const messages = {
         /** Nhãn đọc-màn-hình cho con số ở cột đếm — số trần không nói nó là gì. */
         openDepartures: (count: number) =>
           count === 1 ? '1 bookable departure' : `${count} bookable departures`,
+        /**
+         * Tour TẮT BÁN mà vẫn còn chuyến bookable: khách không thấy tour nên
+         * không đặt được chuyến nào (màn chuyến báo đúng điều này — spec F16
+         * §2h). Con số trần ở đây thì nói ngược lại (vòng review F16).
+         */
+        hiddenWhileOffSale: 'Hidden while off sale',
+        openDeparturesOffSale: (count: number) =>
+          count === 1
+            ? '1 bookable departure, hidden while the tour is off sale'
+            : `${count} bookable departures, hidden while the tour is off sale`,
         manageDepartures: (title: string) => `Manage departures for ${title}`,
         /**
          * Chữ TRÊN nút ở cột Actions. Phải là khoá riêng, không mượn
@@ -4687,20 +4698,24 @@ export const messages = {
         /** Nói ngay luật đắt nhất của màn, trước khi ai đó mở form sửa. */
         subtitle:
           'Dates can only change while a departure has no live bookings — every booking keeps its own copy of the travel dates.',
-        /** Dòng báo đầu trang khi tour chưa đăng (spec F16 §2h). */
+        /**
+         * Dòng báo đầu trang khi tour chưa đăng (spec F16 §2h). Nói bằng ĐÚNG
+         * chữ của trang Tours — tab "Off sale", công tắc "On sale" — vì đó là
+         * chỗ người đọc sẽ đi sửa; bản đầu bảo "Publish" trong khi trang ấy
+         * không có chữ nào như thế (vòng review F16).
+         */
         unpublished: {
-          title: 'This tour is not published',
-          body: 'Travellers cannot see or book any of its departures, including those marked On sale. Publish the tour from the Tours list to start selling.',
+          title: 'This tour is off sale',
+          body: 'Travellers cannot see this tour, so none of its departures can be booked, even those marked Bookable. Turn on its On sale switch in the Tours list to start selling.',
         },
         filterLabel: 'Filter by status',
         all: 'All',
-        /** Bốn tab lọc theo NHÓM giai đoạn (spec F16 §2d) — "All" ở ngay trên. */
-        phaseFilter: {
-          upcoming: 'Upcoming',
-          departed: 'Departed',
-          completed: 'Completed',
-          cancelled: 'Cancelled',
-        },
+        /**
+         * Tab gom ba giai đoạn CHƯA ĐI (spec F16 §2d). Ba tab còn lại mỗi tab
+         * một giai đoạn nên mượn đúng nhãn huy hiệu (`phase`), không có bản
+         * chữ riêng — một khái niệm, một chữ (vòng review F16).
+         */
+        upcoming: 'Upcoming',
         empty: 'This tour has no departures matching this filter.',
         columns: {
           dates: 'Dates',
@@ -4746,9 +4761,14 @@ export const messages = {
        * Nhãn của sáu GIAI ĐOẠN (ADR-0046) — thứ cột Status in ra. Công tắc
        * `OPEN`/`CLOSED`/`CANCELLED` không còn nhãn riêng: nó chỉ quyết nút
        * đóng/mở gửi chiều nào.
+       *
+       * "Bookable", KHÔNG phải "On sale": trang Tours dùng "On sale"/"Off sale"
+       * cho công tắc ĐĂNG TOUR, nên một tour đang tắt sẽ hiện "Off sale" ở đó
+       * mà mọi chuyến của nó lại ghi "On sale" ở đây (vòng review F16). Một
+       * chữ cho mỗi khái niệm, và chữ này khớp cột "Bookable departures".
        */
       phase: {
-        'on-sale': 'On sale',
+        'on-sale': 'Bookable',
         'deadline-passed': 'Deadline passed',
         closed: 'Closed',
         departed: 'Departed',
@@ -4790,7 +4810,7 @@ export const messages = {
         action: 'Add departure',
         dialog: {
           title: 'Add a departure',
-          body: 'It goes on sale as soon as the cache refreshes — unless its booking deadline has already passed.',
+          body: 'Travellers can book it as soon as the cache refreshes — unless its booking deadline has already passed.',
           submit: 'Add departure',
           submitting: 'Adding…',
         },
@@ -4816,7 +4836,14 @@ export const messages = {
         },
         toast: {
           title: 'Departure added',
-          body: (dates: string) => `${dates} is now on sale.`,
+          body: (dates: string) => `${dates} is now bookable.`,
+          /**
+           * Chuyến vừa tạo đã qua hạn nhận đặt (hoặc khởi hành ngay hôm nay).
+           * Bản đầu báo "is now on sale" vô điều kiện, ngay cạnh một huy hiệu
+           * nói điều ngược lại (vòng review F16).
+           */
+          bodyNotBookable: (dates: string) =>
+            `${dates} was added, but its booking deadline has already passed, so nobody can book it.`,
         },
       },
       edit: {
@@ -4904,7 +4931,7 @@ export const messages = {
         toast: {
           title: 'Departure cancelled',
           body: (dates: string) =>
-            `${dates} is off sale. Refunds are on their way — the table shows the progress.`,
+            `${dates} is cancelled. Refunds are on their way — the table shows the progress.`,
         },
       },
       setStatus: {
@@ -4943,7 +4970,7 @@ export const messages = {
           closeSubmit: 'Close departure',
           closeSubmitting: 'Closing…',
           reopenTitle: 'Reopen this departure?',
-          reopenBody: 'It goes back on sale on the tour page.',
+          reopenBody: 'Travellers can book it again on the tour page.',
           reopenWarning:
             'Reopening only works while the booking deadline is still ahead — once it passes, the departure stays closed.',
           reopenSubmit: 'Reopen departure',
@@ -4959,9 +4986,9 @@ export const messages = {
         },
         toast: {
           closedTitle: 'Departure closed',
-          closedBody: (dates: string) => `${dates} is off sale.`,
+          closedBody: (dates: string) => `${dates} no longer takes new bookings.`,
           reopenedTitle: 'Departure reopened',
-          reopenedBody: (dates: string) => `${dates} is back on sale.`,
+          reopenedBody: (dates: string) => `${dates} is bookable again.`,
         },
       },
     },

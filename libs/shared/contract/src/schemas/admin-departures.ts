@@ -183,6 +183,13 @@ export const AdminDeparturesListResultSchema = z.object({
   total: z.int().nonnegative(),
   totalPages: z.int().nonnegative(),
   tour: AdminDepartureTourSchema,
+  /**
+   * Ngày lịch Việt Nam của CHÍNH lượt đọc đã tính `phase` cho từng hàng (vòng
+   * review F16). Màn admin dùng nó cho mọi thứ gắn với hạn chót — chữ "Passed",
+   * nút Reopen, gợi ý của form tạo — thay vì tự lấy đồng hồ của mình: hai đồng
+   * hồ đứng hai bên mốc nửa đêm là một hàng vừa "Bookable" vừa "Passed".
+   */
+  today: z.iso.date(),
 });
 export type AdminDeparturesListResult = z.output<typeof AdminDeparturesListResultSchema>;
 

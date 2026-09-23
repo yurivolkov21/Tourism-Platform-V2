@@ -44,6 +44,21 @@ describe('toTourRowVM', () => {
     expect(toTourRowVM({ ...ROW, openDepartureCount: 0 }).countLabel).toBe('0 bookable departures');
   });
 
+  it('tour TẮT BÁN mà còn chuyến bookable: con số kèm câu nói khách không thấy chúng', () => {
+    // Màn chuyến của tour tắt bán báo khách không đặt được chuyến nào (F16).
+    // Cột này mà chỉ in "3 bookable departures" thì hai màn cách nhau một cú
+    // bấm nói hai chuyện ngược nhau (vòng review F16).
+    const vm = toTourRowVM({ ...ROW, isPublished: false });
+
+    expect(vm.countNote).toBe(t.list.hiddenWhileOffSale);
+    expect(vm.countLabel).toBe(t.list.openDeparturesOffSale(3));
+  });
+
+  it('tour đang bán, hoặc tắt bán mà không còn chuyến nào: không có câu phụ', () => {
+    expect(toTourRowVM(ROW).countNote).toBeNull();
+    expect(toTourRowVM({ ...ROW, isPublished: false, openDepartureCount: 0 }).countNote).toBeNull();
+  });
+
   it('chuyển thẳng ba cờ và ảnh bìa, kể cả khi chưa có ảnh', () => {
     expect(toTourRowVM(ROW)).toMatchObject({
       category: 'Day Tours',

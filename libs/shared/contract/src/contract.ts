@@ -1173,7 +1173,8 @@ export const contract = {
         .route({
           method: 'GET',
           path: '/api/admin/departures',
-          summary: 'Departures of one tour (admin, paged, status filter) + the tour itself',
+          summary:
+            'Departures of one tour (admin, paged, phase-group filter) + the tour itself + the Vietnam date of the read',
         })
         .input(AdminDeparturesListQuerySchema)
         .errors({ NOT_FOUND: { status: 404, message: 'Tour not found' } })

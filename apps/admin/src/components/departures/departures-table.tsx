@@ -32,14 +32,18 @@ import { DataTableFrame } from '@/components/kit/data-table-frame';
 import { ALL_FILTER_VALUE as ALL, StatusFilterTabs } from '@/components/kit/status-filter-tabs';
 import { serverTableFeatures } from '@/components/kit/table-features';
 import { TablePagination } from '@/components/kit/table-pagination';
-import { formatDateRange } from '@/lib/bookings-view';
 import { type DeparturesQuery, departuresHref } from '@/lib/departures-query';
-import { type DepartureRowVM, departurePhaseBadgeVariant } from '@/lib/departures-view';
+import {
+  type DepartureRowVM,
+  departurePhaseBadgeVariant,
+  phaseFilterLabel,
+} from '@/lib/departures-view';
 import {
   type CancelDepartureAction,
   type CreateContractCode,
   type CreateDepartureAction,
   createDeadlineHint,
+  createdToast,
   createErrorCopy,
   isCreateStale,
   type SetDepartureStatusAction,
@@ -59,7 +63,8 @@ import { PAGE_SIZE_OPTIONS } from '@/lib/table-query';
  * lại được không, huỷ thì khách được hoàn bao nhiêu.
  *
  * Component này KHÔNG tự tính gì: mọi con chữ đã được `toDepartureRowVM`
- * (thuần, có test) nấu sẵn, kể cả ba lá cờ quyết định nút nào bấm được.
+ * (thuần, có test) nấu sẵn, kể cả các lá cờ quyết định nút nào hiện và bấm
+ * được.
  */
 const t = messages.admin.departures;
 
@@ -130,14 +135,6 @@ const COLUMN_ICONS = {
   phaseLabel: CircleCheckIcon,
 };
 
-/** Icon theo tab — `Record` trên enum để quên một nhóm là đỏ typecheck. */
-const PHASE_FILTER_ICONS: Record<DeparturePhaseFilter, typeof ListIcon> = {
-  upcoming: CalendarClockIcon,
-  departed: PlaneIcon,
-  completed: FlagIcon,
-  cancelled: BanIcon,
-};
-
 /** Icon theo giai đoạn — `Record` trên enum để quên một giai đoạn là đỏ typecheck. */
 const PHASE_ICONS: Record<DeparturePhase, typeof ListIcon> = {
   'on-sale': CircleCheckIcon,
@@ -148,11 +145,24 @@ const PHASE_ICONS: Record<DeparturePhase, typeof ListIcon> = {
   cancelled: BanIcon,
 };
 
+/**
+ * Icon theo tab. Ba nhóm một-giai-đoạn MƯỢN icon của huy hiệu thay vì khai
+ * lại: tab lọc đúng các hàng mang huy hiệu ấy, đổi một bên mà bên kia giữ
+ * icon cũ là hai hình cho một thứ (vòng review F16). Cùng luật với nhãn —
+ * xem `phaseFilterLabel`.
+ */
+const PHASE_FILTER_ICONS: Record<DeparturePhaseFilter, typeof ListIcon> = {
+  upcoming: CalendarClockIcon,
+  departed: PHASE_ICONS.departed,
+  completed: PHASE_ICONS.completed,
+  cancelled: PHASE_ICONS.cancelled,
+};
+
 /** All rồi bốn NHÓM giai đoạn (spec F16 §2d) — thôi lọc theo công tắc `status`. */
 const TAB_ITEMS = [
   { label: t.list.all, value: ALL, icon: ListIcon },
   ...DeparturePhaseFilterSchema.options.map((filter) => ({
-    label: t.list.phaseFilter[filter],
+    label: phaseFilterLabel(filter),
     value: filter,
     icon: PHASE_FILTER_ICONS[filter],
   })),
@@ -165,7 +175,8 @@ export interface DeparturesTableProps {
   totalPages: number;
   tour: { slug: string; basePriceLabel: string };
   /**
-   * Ngày lịch VIỆT NAM do server tính — cùng giá trị đã nấu ra `rows`. Form
+   * Ngày lịch VIỆT NAM của CHÍNH lượt đọc đã tính giai đoạn cho `rows`
+   * (`AdminDeparturesListResult.today`) — cùng giá trị đã nấu ra `rows`. Form
    * thêm cần nó để biết chuyến sắp tạo có quá hạn nhận đặt hay chưa.
    */
   today: string;
@@ -273,6 +284,12 @@ export function DeparturesTable({
           // (Deadline passed/Departed, Closed/Completed) — spec F16 §2e.
           cell: ({ row }) => {
             const Icon = PHASE_ICONS[row.original.phase];
+            // Hàng thiếu `phase` chỉ có một nguồn: admin mới đọc API cũ trong
+            // vài phút giữa hai lần deploy. Dựng `<undefined />` là React ném
+            // và cả trang thành 500 (vòng review F16) — để trống ô. Không lùi
+            // về huy hiệu mặc định: biến thể mặc định là xanh đặc, màu dành cho
+            // chuyến còn nhận booking.
+            if (!Icon) return null;
             return (
               <Badge variant={departurePhaseBadgeVariant(row.original.phase)} className="px-1.5">
                 <Icon data-icon="inline-start" aria-hidden="true" />
@@ -373,10 +390,9 @@ export function DeparturesTable({
           isStale={isCreateStale}
           errorCopy={createErrorCopy}
           onSubmit={(values) => create({ slug: tour.slug, ...values })}
-          toast={(created) => ({
-            title: t.create.toast.title,
-            description: t.create.toast.body(formatDateRange(created.startDate, created.endDate)),
-          })}
+          // Toast đọc giai đoạn TỪ RESPONSE: chuyến vừa tạo có thể đã quá hạn
+          // nhận đặt, và khi ấy nó không được hứa là đặt được.
+          toast={createdToast}
           onClose={() => setAdding(false)}
           onSettled={refreshList}
         />

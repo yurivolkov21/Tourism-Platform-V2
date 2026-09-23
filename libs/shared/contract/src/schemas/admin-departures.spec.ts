@@ -5,6 +5,7 @@ import {
   AdminDepartureRowSchema,
   AdminDepartureSetStatusInputSchema,
   AdminDeparturesListQuerySchema,
+  AdminDeparturesListResultSchema,
   AdminDepartureTourSchema,
   AdminDepartureUpdateInputSchema,
   DEPARTURE_CANCEL_REASON_MAX,
@@ -72,8 +73,8 @@ describe('AdminDepartureRowSchema', () => {
   });
 
   it('mang GIAI ĐOẠN do server tính — thiếu hay sai giá trị đều trượt (F16)', () => {
-    const { phase: _phase, ...khongPhase } = ROW;
-    expect(AdminDepartureRowSchema.safeParse(khongPhase).success).toBe(false);
+    const { phase: _phase, ...missingPhase } = ROW;
+    expect(AdminDepartureRowSchema.safeParse(missingPhase).success).toBe(false);
     // Giá trị công tắc KHÔNG phải giai đoạn: `OPEN` lọt vào đây là admin in
     // nhầm công tắc thành vòng đời — đúng lỗi F16 sinh ra để sửa.
     expect(AdminDepartureRowSchema.safeParse({ ...ROW, phase: 'OPEN' }).success).toBe(false);
@@ -127,6 +128,38 @@ describe('AdminDepartureTourSchema', () => {
   it('BẮT BUỘC nói tour đang đăng hay không (F16 §2h)', () => {
     expect(AdminDepartureTourSchema.safeParse(TOUR).success).toBe(false);
     expect(AdminDepartureTourSchema.safeParse({ ...TOUR, isPublished: false }).success).toBe(true);
+  });
+});
+
+describe('AdminDeparturesListResultSchema', () => {
+  const RESULT = {
+    items: [],
+    page: 1,
+    limit: 20,
+    total: 0,
+    totalPages: 0,
+    tour: {
+      id: '4f1b1f2e-0000-4000-8000-000000000009',
+      slug: 'hoi-an-lantern-evening',
+      title: 'Hoi An Lantern Evening',
+      basePrice: '39.00',
+      currency: 'USD',
+      isPublished: true,
+    },
+  };
+
+  it('BẮT BUỘC mang `today` — ngày Việt Nam của CHÍNH lượt đọc đã tính giai đoạn', () => {
+    // Vòng review F16: huy hiệu đọc `now` của API còn chữ "Passed" và nút
+    // Reopen đọc đồng hồ riêng của trang — quanh nửa đêm hai bên nói khác
+    // nhau trên cùng một hàng. Một lượt đọc, một ngày.
+    expect(AdminDeparturesListResultSchema.safeParse(RESULT).success).toBe(false);
+    expect(
+      AdminDeparturesListResultSchema.safeParse({ ...RESULT, today: '2026-10-01' }).success,
+    ).toBe(true);
+    expect(
+      AdminDeparturesListResultSchema.safeParse({ ...RESULT, today: '2026-10-01T05:00:00.000Z' })
+        .success,
+    ).toBe(false);
   });
 });
 

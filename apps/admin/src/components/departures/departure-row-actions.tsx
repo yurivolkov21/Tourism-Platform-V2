@@ -1,5 +1,6 @@
 'use client';
 
+import type { AdminDepartureSettableStatus } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
 import { Button, buttonVariants } from '@tourism/ui/components/button';
 import { cn } from '@tourism/ui/lib/utils';
@@ -31,22 +32,28 @@ import {
 } from '@/lib/departures-write';
 
 /**
- * Hai hành động của MỘT hàng trong bảng chuyến (spec P4e-1 F12): Sửa (dialog
- * form) và Đóng/Mở lại (dialog xác nhận của kit).
+ * Ba hành động của MỘT hàng trong bảng chuyến: Sửa (dialog form, F12), Đóng/Mở
+ * lại (dialog xác nhận của kit, F12) và Huỷ chuyến (F13 — chạm tiền, nên có
+ * dialog riêng đòi lý do).
  *
  * Hàng `CANCELLED` KHÔNG có nút nào — chuyến đã huỷ là bản ghi đóng, khách của
- * nó đã được hoàn tiền. Nút Reopen của một chuyến quá hạn chót cũng tắt: server
+ * nó đã được hoàn tiền. Nút Reopen của một chuyến quá hạn chót thì tắt: server
  * sẽ từ chối bằng `DEADLINE_PASSED`, nên mời bấm là mời ăn một câu lỗi.
  *
- * Từ F16 hàng `departed`/`completed` chỉ còn Sửa: nút đóng/mở nhường chỗ cho
- * một ô giữ chỗ cùng cỡ (spec F16 §2f).
- *
- * KHÔNG có nút huỷ chuyến ở đây: đó là F13, và nó chạm tiền.
+ * Từ F16 hàng `departed`/`completed` chỉ còn Sửa: nút đóng/mở và nút huỷ
+ * nhường chỗ cho hai ô giữ chỗ cùng cỡ (spec F16 §2f). Việc ẩn nút đóng/mở là
+ * luật của giao diện, không phải của server — xem JSDoc đầu `departures-view.ts`.
  *
  * Component KHÔNG tự import server action — nhận từ bảng, bảng nhận từ trang.
  * Test dựng với hàm giả, không mock `next/headers`.
  */
 const t = messages.admin.departures;
+
+/**
+ * Hai nhãn của nút đóng/mở. Nút thật và ô giữ chỗ của nó dùng CHUNG danh sách
+ * này làm `reserve` của `StableLabel`, để hai bên luôn rộng bằng nhau.
+ */
+const TOGGLE_LABELS = [t.setStatus.close, t.setStatus.reopen];
 
 export function DepartureRowActions({
   row,
@@ -75,14 +82,19 @@ export function DepartureRowActions({
    * băng theo cách tương tự (`useState` trong dialog) — đây là nửa còn lại.
    */
   const [editingVersion, setEditingVersion] = useState<string | null>(null);
-  const [toggling, setToggling] = useState(false);
+  /**
+   * Hộp đóng/mở đang mở cho CHIỀU nào — chụp lúc bấm, cùng lý do với
+   * `editingVersion`: bảng có thể refresh dưới chân hộp (admin khác vừa đóng
+   * chuyến), và đọc lại chiều từ hàng mới là đổi chữ trong hộp ngay dưới ngón
+   * tay người dùng, rồi gửi lệnh ngược với lệnh họ đã chọn.
+   */
+  const [toggling, setToggling] = useState<AdminDepartureSettableStatus | null>(null);
   const [cancelling, setCancelling] = useState(false);
 
   // Chuyến đã huỷ: không sửa, không đóng, không mở — bảng chỉ còn là bản ghi.
   if (!row.canEdit) return null;
 
-  const nextStatus = row.status === 'OPEN' ? 'CLOSED' : 'OPEN';
-  const toggleEnabled = row.status === 'OPEN' ? row.canClose : row.canReopen;
+  const toggle = row.toggle;
 
   return (
     <div className="flex items-center justify-end gap-2">
@@ -98,47 +110,44 @@ export function DepartureRowActions({
         {t.edit.action}
       </Button>
 
-      {row.showToggle ? (
+      {toggle ? (
         <Button
           type="button"
           variant="outline"
           size="sm"
           aria-label={
-            nextStatus === 'CLOSED'
+            toggle.next === 'CLOSED'
               ? t.setStatus.closeLabel(row.dates)
               : t.setStatus.reopenLabel(row.dates)
           }
           // Mở lại sau hạn chót là điều server từ chối — nút tắt, và cột "Book/
           // cancel by" ngay bên cạnh đã nói vì sao.
-          disabled={disabled || !toggleEnabled}
-          onClick={() => setToggling(true)}
+          disabled={disabled || !toggle.enabled}
+          onClick={() => setToggling(toggle.next)}
         >
-          {nextStatus === 'CLOSED' ? (
+          {toggle.next === 'CLOSED' ? (
             <LockIcon data-icon="inline-start" aria-hidden="true" />
           ) : (
             <UnlockIcon data-icon="inline-start" aria-hidden="true" />
           )}
           {/* Giữ chỗ cho nhãn rộng hơn trong cặp Close/Reopen — xem `StableLabel`. */}
           <StableLabel
-            label={nextStatus === 'CLOSED' ? t.setStatus.close : t.setStatus.reopen}
-            reserve={[t.setStatus.close, t.setStatus.reopen]}
+            label={toggle.next === 'CLOSED' ? t.setStatus.close : t.setStatus.reopen}
+            reserve={TOGGLE_LABELS}
           />
         </Button>
       ) : (
         // Ô GIỮ CHỖ cùng cỡ nút đóng/mở, cho chuyến đã khởi hành (spec F16
         // §2f): thiếu hẳn nút giữa thì cụm canh phải dồn Sửa lệch khỏi cột của
         // hàng trên. `span` mượn lớp của nút chứ không phải `Button` bị ẩn —
-        // cùng lý do với ô giữ chỗ nút huỷ bên dưới. `StableLabel` với cùng
-        // `reserve` để bề rộng trùng khít nút thật.
+        // cùng lý do với ô giữ chỗ nút huỷ bên dưới. Cùng `TOGGLE_LABELS` với
+        // nút thật để bề rộng trùng khít.
         <span
           aria-hidden="true"
           className={cn(buttonVariants({ variant: 'outline', size: 'sm' }), 'invisible')}
         >
           <LockIcon data-icon="inline-start" />
-          <StableLabel
-            label={t.setStatus.close}
-            reserve={[t.setStatus.close, t.setStatus.reopen]}
-          />
+          <StableLabel label={t.setStatus.close} reserve={TOGGLE_LABELS} />
         </span>
       )}
 
@@ -156,8 +165,9 @@ export function DepartureRowActions({
         </Button>
       ) : (
         // Ô GIỮ CHỖ cùng cỡ nút huỷ, cho hàng không còn huỷ được (đã khởi
-        // hành). Thiếu hẳn nút cuối thì cụm canh phải dồn Sửa và Đóng lệch khỏi
-        // cột của hàng trên (lượt thử tay F14, 23/09).
+        // hành). Thiếu hẳn nút cuối thì cụm canh phải dồn nút Sửa lệch khỏi
+        // cột của hàng trên (lượt thử tay F14, 23/09) — từ F16 hàng ấy cũng
+        // không còn nút đóng/mở, nên Sửa là nút duy nhất phải giữ cột.
         //
         // Là một `span` mượn đúng lớp của nút chứ không phải một `Button` bị
         // ẩn: ẩn đi rồi thì nó vẫn là một nút trong DOM, và chỉ cần quên một
@@ -198,19 +208,19 @@ export function DepartureRowActions({
         />
       ) : null}
 
-      {toggling ? (
+      {toggling !== null ? (
         <ConfirmWriteDialog<SetStatusContractCode>
-          copy={setStatusDialogCopy(nextStatus, row.pendingBookingCount)}
+          copy={setStatusDialogCopy(toggling, row.pendingBookingCount)}
           rows={setStatusConfirmRows(row)}
-          submitVariant={nextStatus === 'CLOSED' ? 'destructive' : 'default'}
+          submitVariant={toggling === 'CLOSED' ? 'destructive' : 'default'}
           onSubmit={async () => {
-            const result = await setStatus({ id: row.id, status: nextStatus });
+            const result = await setStatus({ id: row.id, status: toggling });
             if (!result.ok) return { ok: false, code: result.code };
             return { ok: true, toast: setStatusToast(result.row, row.dates) };
           }}
           isStale={isSetStatusStale}
           errorCopy={setStatusErrorCopy}
-          onClose={() => setToggling(false)}
+          onClose={() => setToggling(null)}
           onSettled={onSettled}
         />
       ) : null}

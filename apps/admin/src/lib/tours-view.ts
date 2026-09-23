@@ -28,8 +28,15 @@ export interface TourRowVM {
    * màn hình (`countLabel`). Giữ số để cột còn so sánh/nhấn mạnh được ở mức 0.
    */
   openDepartureCount: number;
-  /** "3 open departures" — tên đọc-màn-hình của ô đếm. */
+  /** "3 bookable departures" — tên đọc-màn-hình của ô đếm. */
   countLabel: string;
+  /**
+   * Câu phụ dưới con số khi tour TẮT BÁN mà vẫn còn chuyến bookable: khách
+   * không thấy tour nên không đặt được chuyến nào — đúng điều màn chuyến báo
+   * (spec F16 §2h). Thiếu câu này, hai màn cách nhau một cú bấm nói hai
+   * chuyện ngược nhau (vòng review F16). `null` khi không có gì phải nói.
+   */
+  countNote: string | null;
   isPublished: boolean;
   isFeatured: boolean;
   heroUrl: string | null;
@@ -37,6 +44,21 @@ export interface TourRowVM {
   departuresHref: string;
   /** Tên đọc-màn-hình của link sang màn chuyến. */
   departuresLabel: string;
+}
+
+/**
+ * Tên đọc-màn-hình và câu phụ của ô đếm. Tour tắt bán mà còn chuyến bookable
+ * thì cả hai nói thêm rằng khách không thấy chúng; tour tắt bán mà không còn
+ * chuyến nào thì không có gì để nói thêm.
+ */
+function countCopy(row: AdminTourRow): { countLabel: string; countNote: string | null } {
+  if (!row.isPublished && row.openDepartureCount > 0) {
+    return {
+      countLabel: t.openDeparturesOffSale(row.openDepartureCount),
+      countNote: t.hiddenWhileOffSale,
+    };
+  }
+  return { countLabel: t.openDepartures(row.openDepartureCount), countNote: null };
 }
 
 /** Row của contract → hàng bảng đã format sẵn (server component gọi). */
@@ -48,7 +70,7 @@ export function toTourRowVM(row: AdminTourRow): TourRowVM {
     category: row.categoryName,
     price: formatAmount(row.basePrice, row.currency),
     openDepartureCount: row.openDepartureCount,
-    countLabel: t.openDepartures(row.openDepartureCount),
+    ...countCopy(row),
     isPublished: row.isPublished,
     isFeatured: row.isFeatured,
     heroUrl: row.heroUrl,

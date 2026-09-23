@@ -35,8 +35,15 @@ export type DeparturePhase = z.output<typeof DeparturePhaseSchema>;
  *  4. công tắc `CLOSED` → `closed` (ý muốn admin thắng hạn chót, nhưng chỉ ở
  *     chuyến chưa đi vì luật 2–3 đứng trên);
  *  5. quá hạn chót → `deadline-passed` — CÙNG vị từ `isWithinDeadline` mà cổng
- *     tạo booking dùng, nên `on-sale` đúng nghĩa "khách còn đặt được";
+ *     tạo booking dùng;
  *  6. còn lại → `on-sale`.
+ *
+ * `on-sale` nghĩa HẸP đúng như vậy: xét theo NGÀY, cổng tạo booking còn nhận
+ * booking MỚI cho chuyến này. Nó KHÔNG hứa khách đặt được — ghế (chuyến kín
+ * chỗ vẫn là `on-sale`; cột Seats nói điều đó) và trạng thái đăng tour (dòng
+ * báo đầu màn chuyến) là hai trục riêng. Cũng không có nghĩa tiền thôi về khi
+ * hàng rời `on-sale`: một checkout mở trước hạn chót vẫn có thể thanh toán
+ * xong sau đó (vòng review F16 sửa câu cũ "khách còn đặt được").
  *
  * Ngày khởi hành đã là `departed`, khớp hai cổng huỷ (hôm nay < ngày đi). Cổng
  * claim vẫn nhận khoản trả trễ trong chính ngày ấy — cố ý (ADR-0046); đừng

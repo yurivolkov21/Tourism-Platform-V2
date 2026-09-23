@@ -8,6 +8,7 @@ import type {
 import { cancellationDeadline, DEPARTURE_SEATS_MAX } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
 import { createWriteErrorCodec, type TransportFailureCode } from './api/write-error';
+import { formatDateRange } from './bookings-view';
 
 /**
  * Logic THUẦN của ba hành vi ghi vùng chuyến (spec P4e-1 F12) — cùng khuôn
@@ -325,4 +326,24 @@ export function setStatusToast(row: AdminDepartureRow, dates: string) {
   return row.status === 'CLOSED'
     ? { title: toast.closedTitle, description: toast.closedBody(dates) }
     : { title: toast.reopenedTitle, description: toast.reopenedBody(dates) };
+}
+
+/**
+ * Toast của lệnh TẠO chuyến — đọc giai đoạn TỪ RESPONSE (vòng review F16).
+ *
+ * Bản đầu báo "is now on sale" vô điều kiện, trong khi chuyến vừa tạo có thể
+ * đã quá hạn nhận đặt (N tới 7 ngày) hoặc khởi hành ngay hôm nay — rồi bảng
+ * vẽ lại với một huy hiệu nói điều ngược lại ngay dưới cái toast ấy.
+ *
+ * Hỏi theo chiều PHỦ ĐỊNH (quá hạn hoặc đã đi thì báo không đặt được) chứ không
+ * hỏi `=== 'on-sale'`: trong vài phút giữa hai lần deploy, admin mới có thể
+ * đọc API cũ chưa có `phase` — khi ấy lùi về câu cũ, không báo nhầm là hỏng.
+ */
+export function createdToast(row: AdminDepartureRow) {
+  const dates = formatDateRange(row.startDate, row.endDate);
+  const notBookable = row.phase === 'deadline-passed' || row.phase === 'departed';
+  return {
+    title: t.create.toast.title,
+    description: notBookable ? t.create.toast.bodyNotBookable(dates) : t.create.toast.body(dates),
+  };
 }

@@ -170,6 +170,9 @@ export class AdminDeparturesService {
         { page, limit, total: matching.length },
       ),
       tour: toTour(tour),
+      // Ngày của CHÍNH lượt đọc này: màn admin dùng nó cho hạn chót thay vì
+      // đồng hồ riêng của trang (vòng review F16) — một lượt đọc, một ngày.
+      today: vietnamToday(now),
     };
   }
 
@@ -448,10 +451,11 @@ export class AdminDeparturesService {
    * Công khai vì `DepartureCancelService` cần trả đúng hình dạng hàng mà bảng
    * admin đang hiển thị, và hai bản dựng hàng là hai chỗ có thể lệch nhau.
    *
-   * `now` mặc định là lúc gọi — đường huỷ chuyến F13 gọi nó sau khi commit, và
-   * cần giai đoạn của đúng khoảnh khắc ấy.
+   * Giai đoạn tính theo lúc đọc. Chỗ gọi duy nhất là đường huỷ chuyến F13, mà
+   * hàng lúc ấy đã `CANCELLED` — giai đoạn luôn là `cancelled` bất kể giờ nào,
+   * nên không cần nhận `now` từ ngoài (vòng review F16 bỏ tham số thừa).
    */
-  async rowById(id: string, now: Date = new Date()): Promise<AdminDepartureRow> {
+  async rowById(id: string): Promise<AdminDepartureRow> {
     const row = await prisma.tourDeparture.findUnique({
       where: { id },
       // `tourId` không nằm trong DEPARTURE_SELECT dùng chung (list đã join tour
@@ -464,7 +468,7 @@ export class AdminDeparturesService {
       select: TOUR_SELECT,
     });
     const counts = await bookingCounts([row.id]);
-    return toRow(row, tour, counts.get(row.id) ?? ZERO_COUNTS, now);
+    return toRow(row, tour, counts.get(row.id) ?? ZERO_COUNTS, new Date());
   }
 
   /**
@@ -571,7 +575,10 @@ async function bookingCounts(departureIds: string[]): Promise<Map<string, Bookin
 /** Chuyến chưa ai đặt — giá trị đọc ra khi chuyến vắng mặt trong kết quả gom nhóm. */
 const ZERO_COUNTS: BookingCounts = { live: 0, pending: 0 };
 
-/** Giai đoạn của một hàng DB ở mốc `now` — một chỗ duy nhất đổi `Date` sang ngày lịch. */
+/**
+ * Giai đoạn của một hàng DB ở mốc `now` — ĐƯỜNG CHUNG của phép lọc trong
+ * `list` và của `toRow`, nên tab và huy hiệu không thể tính khác nhau.
+ */
 function phaseOf(row: DepartureRowData, now: Date): DeparturePhase {
   return departurePhase({
     status: row.status,
