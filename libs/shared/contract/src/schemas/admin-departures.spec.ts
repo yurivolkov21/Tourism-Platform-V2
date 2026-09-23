@@ -5,6 +5,7 @@ import {
   AdminDepartureRowSchema,
   AdminDepartureSetStatusInputSchema,
   AdminDeparturesListQuerySchema,
+  AdminDepartureTourSchema,
   AdminDepartureUpdateInputSchema,
   DEPARTURE_CANCEL_REASON_MAX,
   DEPARTURE_PRICE_MAX,
@@ -28,6 +29,7 @@ const ROW = {
   seatsBooked: 3,
   seatsTotal: 20,
   status: 'OPEN',
+  phase: 'on-sale',
   cancellationDeadline: '2026-10-03',
   liveBookingCount: 2,
   pendingBookingCount: 1,
@@ -68,6 +70,14 @@ describe('AdminDepartureRowSchema', () => {
       true,
     );
   });
+
+  it('mang GIAI ĐOẠN do server tính — thiếu hay sai giá trị đều trượt (F16)', () => {
+    const { phase: _phase, ...khongPhase } = ROW;
+    expect(AdminDepartureRowSchema.safeParse(khongPhase).success).toBe(false);
+    // Giá trị công tắc KHÔNG phải giai đoạn: `OPEN` lọt vào đây là admin in
+    // nhầm công tắc thành vòng đời — đúng lỗi F16 sinh ra để sửa.
+    expect(AdminDepartureRowSchema.safeParse({ ...ROW, phase: 'OPEN' }).success).toBe(false);
+  });
 });
 
 describe('AdminDeparturesListQuerySchema', () => {
@@ -82,10 +92,41 @@ describe('AdminDeparturesListQuerySchema', () => {
     expect(parsed.limit).toBe(20);
   });
 
-  it('lọc theo trạng thái nhận cả ba giá trị', () => {
+  it('lọc theo NHÓM giai đoạn: nhận bốn nhóm, từ chối giá trị công tắc (F16)', () => {
+    for (const phase of ['upcoming', 'departed', 'completed', 'cancelled']) {
+      expect(AdminDeparturesListQuerySchema.safeParse({ slug: 'a-tour', phase }).success).toBe(
+        true,
+      );
+    }
     expect(
-      AdminDeparturesListQuerySchema.safeParse({ slug: 'a-tour', status: 'CANCELLED' }).success,
-    ).toBe(true);
+      AdminDeparturesListQuerySchema.safeParse({ slug: 'a-tour', phase: 'OPEN' }).success,
+    ).toBe(false);
+    // Một giai đoạn lẻ không phải một nhóm lọc.
+    expect(
+      AdminDeparturesListQuerySchema.safeParse({ slug: 'a-tour', phase: 'on-sale' }).success,
+    ).toBe(false);
+  });
+
+  it('key `status` cũ bị BỎ QUA chứ không ném — URL cũ rơi êm về All', () => {
+    const parsed = AdminDeparturesListQuerySchema.parse({ slug: 'a-tour', status: 'OPEN' });
+
+    expect(parsed).not.toHaveProperty('status');
+    expect(parsed).not.toHaveProperty('phase');
+  });
+});
+
+describe('AdminDepartureTourSchema', () => {
+  const TOUR = {
+    id: '4f1b1f2e-0000-4000-8000-000000000009',
+    slug: 'hoi-an-lantern-evening',
+    title: 'Hoi An Lantern Evening',
+    basePrice: '39.00',
+    currency: 'USD',
+  };
+
+  it('BẮT BUỘC nói tour đang đăng hay không (F16 §2h)', () => {
+    expect(AdminDepartureTourSchema.safeParse(TOUR).success).toBe(false);
+    expect(AdminDepartureTourSchema.safeParse({ ...TOUR, isPublished: false }).success).toBe(true);
   });
 });
 

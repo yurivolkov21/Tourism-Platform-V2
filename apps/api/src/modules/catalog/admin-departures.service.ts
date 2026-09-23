@@ -7,8 +7,14 @@ import type {
   AdminDeparturesListResult,
   AdminDepartureTour,
   AdminDepartureUpdateInput,
+  DeparturePhase,
 } from '@tourism/contract';
-import { cancellationDeadline, vietnamToday } from '@tourism/contract';
+import {
+  cancellationDeadline,
+  DEPARTURE_PHASE_FILTER_GROUPS,
+  departurePhase,
+  vietnamToday,
+} from '@tourism/contract';
 import { prisma } from '../../auth/auth.config.js';
 import { Prisma } from '../../generated/prisma/client.js';
 import { BookingStatus, DepartureStatus } from '../../generated/prisma/enums.js';
@@ -101,6 +107,8 @@ const TOUR_SELECT = {
   currency: true,
   /** Cỡ nhóm tối đa tour công bố — trần cho `seatsTotal` của mọi chuyến. */
   maxGroupSize: true,
+  /** Màn chuyến báo một dòng khi tour chưa đăng (spec F16 §2h). */
+  isPublished: true,
 } satisfies Prisma.TourSelect;
 
 type TourData = Prisma.TourGetPayload<{ select: typeof TOUR_SELECT }>;
@@ -129,39 +137,37 @@ export class AdminDeparturesService {
 
   /**
    * Một trang chuyến của MỘT tour, GẦN NHẤT trước (`startDate desc`, `id` phụ
-   * để thứ tự ổn định khi hai chuyến cùng ngày — index sẵn `[tourId, startDate]`).
+   * để thứ tự ổn định khi hai chuyến cùng ngày).
    *
-   * Vì sao desc: chuyến vừa tạo cho mùa tới hiện ngay hàng đầu, còn lịch sử
-   * 2026 lùi dần xuống dưới — cùng giọng "mới nhất trước" của mọi bảng admin.
+   * Lọc theo NHÓM giai đoạn TRONG BỘ NHỚ bằng chính `departurePhase` (spec F16
+   * §2d): dịch luật sang SQL là để nó sống ở hai nơi, và chỉ cần lệch một dấu
+   * so sánh là tab nói khác huy hiệu. Mỗi tour chỉ có vài chục chuyến nên đọc
+   * hết là rẻ; tour nào tiến tới hàng nghìn chuyến thì phải xét lại.
    *
-   * `liveBookingCount` lấy bằng MỘT câu gom nhóm cho cả trang, không N+1 theo
-   * từng hàng.
+   * MỘT mốc `now` cho cả lượt đọc — lọc và giai đoạn in ra nhìn cùng một
+   * khoảnh khắc. `total` đếm SAU khi lọc. `liveBookingCount` vẫn là MỘT câu gom
+   * nhóm, chỉ cho các hàng của trang.
    */
   async list(query: AdminDeparturesListQuery): Promise<AdminDeparturesListResult> {
-    const { slug, status, page, limit } = query;
+    const { slug, phase, page, limit } = query;
     const tour = await prisma.tour.findUnique({ where: { slug }, select: TOUR_SELECT });
     if (!tour) throw new TourNotFoundError(slug);
 
-    const where: Prisma.TourDepartureWhereInput = {
-      tourId: tour.id,
-      ...(status ? { status } : {}),
-    };
-    const [total, rows] = await Promise.all([
-      prisma.tourDeparture.count({ where }),
-      prisma.tourDeparture.findMany({
-        where,
-        select: DEPARTURE_SELECT,
-        orderBy: [{ startDate: 'desc' }, { id: 'asc' }],
-        skip: (page - 1) * limit,
-        take: limit,
-      }),
-    ]);
+    const now = new Date();
+    const all = await prisma.tourDeparture.findMany({
+      where: { tourId: tour.id },
+      select: DEPARTURE_SELECT,
+      orderBy: [{ startDate: 'desc' }, { id: 'asc' }],
+    });
+    const wanted = phase ? DEPARTURE_PHASE_FILTER_GROUPS[phase] : null;
+    const matching = wanted ? all.filter((row) => wanted.includes(phaseOf(row, now))) : all;
+    const rows = matching.slice((page - 1) * limit, page * limit);
     const counts = await bookingCounts(rows.map((row) => row.id));
 
     return {
       ...toPaged(
-        rows.map((row) => toRow(row, tour, counts.get(row.id) ?? ZERO_COUNTS)),
-        { page, limit, total },
+        rows.map((row) => toRow(row, tour, counts.get(row.id) ?? ZERO_COUNTS, now)),
+        { page, limit, total: matching.length },
       ),
       tour: toTour(tour),
     };
@@ -213,7 +219,7 @@ export class AdminDeparturesService {
 
     // Chuyến chưa ai đặt nên `liveBookingCount` là 0 — không cần một câu đếm
     // để biết điều mình vừa tạo ra.
-    const row = toRow(created, tour, ZERO_COUNTS);
+    const row = toRow(created, tour, ZERO_COUNTS, now);
     this.bust(tour.slug, null, row, now);
     return row;
   }
@@ -334,7 +340,7 @@ export class AdminDeparturesService {
     });
 
     const counts = await bookingCounts([row.id]);
-    const result = toRow(row, tour, counts.get(row.id) ?? ZERO_COUNTS);
+    const result = toRow(row, tour, counts.get(row.id) ?? ZERO_COUNTS, now);
     // Dấu vết kiểm toán: `create` và `setStatus` đã có, `update` thì chưa — mà
     // nó là lệnh ghi đổi được NHIỀU thứ nhất (ngày, ghế, giá). Ghi cả trước và
     // sau, vì "đổi 20 thành 45" mới là câu trả lời được cho "ai hạ ghế xuống?".
@@ -423,7 +429,7 @@ export class AdminDeparturesService {
     });
 
     const counts = await bookingCounts([row.id]);
-    const result = toRow(row, tour, counts.get(row.id) ?? ZERO_COUNTS);
+    const result = toRow(row, tour, counts.get(row.id) ?? ZERO_COUNTS, now);
     if (changed) {
       this.logger.log(
         `[admin] departure status ${JSON.stringify({
@@ -441,8 +447,11 @@ export class AdminDeparturesService {
    *
    * Công khai vì `DepartureCancelService` cần trả đúng hình dạng hàng mà bảng
    * admin đang hiển thị, và hai bản dựng hàng là hai chỗ có thể lệch nhau.
+   *
+   * `now` mặc định là lúc gọi — đường huỷ chuyến F13 gọi nó sau khi commit, và
+   * cần giai đoạn của đúng khoảnh khắc ấy.
    */
-  async rowById(id: string): Promise<AdminDepartureRow> {
+  async rowById(id: string, now: Date = new Date()): Promise<AdminDepartureRow> {
     const row = await prisma.tourDeparture.findUnique({
       where: { id },
       // `tourId` không nằm trong DEPARTURE_SELECT dùng chung (list đã join tour
@@ -455,7 +464,7 @@ export class AdminDeparturesService {
       select: TOUR_SELECT,
     });
     const counts = await bookingCounts([row.id]);
-    return toRow(row, tour, counts.get(row.id) ?? ZERO_COUNTS);
+    return toRow(row, tour, counts.get(row.id) ?? ZERO_COUNTS, now);
   }
 
   /**
@@ -562,10 +571,25 @@ async function bookingCounts(departureIds: string[]): Promise<Map<string, Bookin
 /** Chuyến chưa ai đặt — giá trị đọc ra khi chuyến vắng mặt trong kết quả gom nhóm. */
 const ZERO_COUNTS: BookingCounts = { live: 0, pending: 0 };
 
+/** Giai đoạn của một hàng DB ở mốc `now` — một chỗ duy nhất đổi `Date` sang ngày lịch. */
+function phaseOf(row: DepartureRowData, now: Date): DeparturePhase {
+  return departurePhase({
+    status: row.status,
+    startDate: calendarDate(row.startDate),
+    endDate: calendarDate(row.endDate),
+    now,
+  });
+}
+
+/**
+ * `now` do CHỖ GỌI đưa vào, không tự gọi `new Date()`: cả lượt đọc hay ghi
+ * phải nhìn cùng một khoảnh khắc (spec F16 §2c).
+ */
 function toRow(
   row: DepartureRowData,
   tour: Pick<TourData, 'basePrice' | 'currency'>,
   counts: BookingCounts,
+  now: Date,
 ): AdminDepartureRow {
   const startDate = calendarDate(row.startDate);
   const endDate = calendarDate(row.endDate);
@@ -582,6 +606,7 @@ function toRow(
     seatsBooked: row.seatsBooked,
     seatsTotal: row.seatsTotal,
     status: row.status,
+    phase: phaseOf(row, now),
     // Server tính hạn chót bằng chính hàm của contract (ADR-0041 §8) — màn
     // hình IN nó, không dựng lại luật N.
     cancellationDeadline: cancellationDeadline(startDate, endDate),
@@ -598,5 +623,6 @@ function toTour(tour: TourData): AdminDepartureTour {
     title: tour.title,
     basePrice: money(tour.basePrice),
     currency: tour.currency,
+    isPublished: tour.isPublished,
   };
 }

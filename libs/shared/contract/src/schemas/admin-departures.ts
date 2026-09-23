@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { DecimalStringSchema } from './catalog.js';
 import { AdminPageQuerySchema, CalendarDateSchema } from './common.js';
+import { DeparturePhaseFilterSchema, DeparturePhaseSchema } from './departure-phase.js';
 
 /**
  * Bề mặt GHI đầu tiên của catalog (spec P4e-1 F12) — bảng chuyến khởi hành của
@@ -103,6 +104,13 @@ export const AdminDepartureRowSchema = z.object({
    */
   seatsTotal: z.int().nonnegative(),
   status: AdminDepartureStatusSchema,
+  /**
+   * Giai đoạn của chuyến, SERVER tính bằng `departurePhase` với cùng một mốc
+   * `now` cho cả lượt đọc (ADR-0046). Admin in nó ra, KHÔNG tính lại bằng đồng
+   * hồ trình duyệt. `status` vẫn đi kèm: nút đóng/mở cần biết công tắc đang ở
+   * đâu để gửi đúng chiều.
+   */
+  phase: DeparturePhaseSchema,
   /** `cancellationDeadline(startDate, endDate)` — ngày chót huỷ miễn phí VÀ chót nhận đặt. */
   cancellationDeadline: z.iso.date(),
   /**
@@ -139,13 +147,24 @@ export const AdminDepartureTourSchema = z.object({
   title: z.string().min(1).max(200),
   basePrice: DecimalStringSchema,
   currency: z.string().length(3),
+  /**
+   * Tour đang đăng hay không (spec F16 §2h). Chưa đăng thì khách không đặt
+   * được chuyến nào của nó, kể cả chuyến `on-sale` — màn chuyến báo điều đó
+   * một lần ở đầu trang thay vì trộn nó vào giai đoạn của từng chuyến.
+   */
+  isPublished: z.boolean(),
 });
 export type AdminDepartureTour = z.output<typeof AdminDepartureTourSchema>;
 
 export const AdminDeparturesListQuerySchema = AdminPageQuerySchema.extend({
   /** Bảng luôn thuộc về đúng MỘT tour — `slug` vì URL của màn là `/tours/[slug]/departures`. */
   slug: z.string().min(1).max(120),
-  status: AdminDepartureStatusSchema.optional(),
+  /**
+   * Lọc theo NHÓM giai đoạn (spec F16 §2d) — thôi lọc theo công tắc `status`.
+   * Server lọc bằng chính `departurePhase`, nên tab và huy hiệu không bao giờ
+   * nói khác nhau.
+   */
+  phase: DeparturePhaseFilterSchema.optional(),
 });
 export type AdminDeparturesListQuery = z.output<typeof AdminDeparturesListQuerySchema>;
 

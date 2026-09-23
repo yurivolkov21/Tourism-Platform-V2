@@ -37,6 +37,9 @@ const SAVED: AdminDepartureRow = {
   seatsBooked: 4,
   seatsTotal: 18,
   status: 'OPEN',
+  // Chuyến tháng 12 nhìn từ tháng 9: còn bán. Đây là RESPONSE giả, không gắn
+  // với `today` nào, nên điền thẳng thay vì qua `withPhase`.
+  phase: 'on-sale',
   cancellationDeadline: '2026-11-24',
   liveBookingCount: 2,
   pendingBookingCount: 0,

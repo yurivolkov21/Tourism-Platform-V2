@@ -1,9 +1,9 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import type { AdminDepartureRow } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { toDepartureRowVM } from '@/lib/departures-view';
+import { type DepartureRowFixture, withPhase } from '@/test/departure-row';
 import { DepartureRowActions } from './departure-row-actions';
 
 /**
@@ -26,7 +26,7 @@ vi.mock('sonner', () => ({
   },
 }));
 
-const ROW: AdminDepartureRow = {
+const ROW: DepartureRowFixture = {
   id: '4f1b1f2e-0000-4000-8000-000000000001',
   startDate: '2026-10-10',
   endDate: '2026-10-14',
@@ -45,18 +45,22 @@ const ROW: AdminDepartureRow = {
 const BEFORE_DEADLINE = '2026-10-01';
 const AFTER_DEADLINE = '2026-10-04';
 
+/** VM của một hàng ở ngày `today`, `phase` do chính hàm server tính. */
+const vmAt = (row: DepartureRowFixture, today: string) =>
+  toDepartureRowVM(withPhase(row, today), today);
+
 function renderActions(
-  row: AdminDepartureRow,
+  row: DepartureRowFixture,
   today: string,
   setStatus = vi.fn(async () => ({
     ok: true as const,
-    row: { ...row, status: 'CLOSED' as const },
+    row: withPhase({ ...row, status: 'CLOSED' as const }, today),
   })),
 ) {
   const update = vi.fn();
   render(
     <DepartureRowActions
-      row={toDepartureRowVM(row, today)}
+      row={vmAt(row, today)}
       basePriceLabel="$129.00"
       update={update}
       setStatus={setStatus}
@@ -65,7 +69,7 @@ function renderActions(
       onSettled={vi.fn()}
     />,
   );
-  return { update, setStatus, dates: toDepartureRowVM(row, today).dates };
+  return { update, setStatus, dates: vmAt(row, today).dates };
 }
 
 beforeEach(() => {
@@ -102,7 +106,7 @@ describe('DepartureRowActions — nút nào được bấm', () => {
 
     expect(
       screen.queryByRole('button', {
-        name: t.cancel.actionLabel(toDepartureRowVM(ROW, '2026-10-10').dates),
+        name: t.cancel.actionLabel(vmAt(ROW, '2026-10-10').dates),
       }),
     ).not.toBeInTheDocument();
     expect(screen.queryAllByRole('button')).toHaveLength(2);
@@ -176,8 +180,8 @@ describe('DepartureRowActions — form sửa mang theo token phiên bản', () =
     // gửi là tự vô hiệu hoá lớp ấy — một `router.refresh()` dưới chân dialog
     // sẽ đẩy token mới vào payload và server thấy hai giá trị bằng nhau.
     const user = userEvent.setup();
-    const update = vi.fn(async () => ({ ok: true as const, row: ROW }));
-    const vm = toDepartureRowVM(ROW, BEFORE_DEADLINE);
+    const update = vi.fn(async () => ({ ok: true as const, row: withPhase(ROW, BEFORE_DEADLINE) }));
+    const vm = vmAt(ROW, BEFORE_DEADLINE);
     const { rerender } = render(
       <DepartureRowActions
         row={vm}
@@ -196,7 +200,7 @@ describe('DepartureRowActions — form sửa mang theo token phiên bản', () =
     // Bảng được vẽ lại dưới chân dialog đang mở — token của hàng đã đổi.
     rerender(
       <DepartureRowActions
-        row={toDepartureRowVM({ ...ROW, version: '2026-09-21T09:00:00.000Z' }, BEFORE_DEADLINE)}
+        row={vmAt({ ...ROW, version: '2026-09-21T09:00:00.000Z' }, BEFORE_DEADLINE)}
         basePriceLabel="$129.00"
         update={update}
         setStatus={vi.fn()}
@@ -218,12 +222,12 @@ describe('DepartureRowActions — huỷ chuyến (F13)', () => {
   const REASON = 'The guide is unavailable';
 
   /** Chuyến 5 khách, 2 trong số đó đang thanh toán dở. */
-  const BUSY: AdminDepartureRow = { ...ROW, liveBookingCount: 5, pendingBookingCount: 2 };
+  const BUSY: DepartureRowFixture = { ...ROW, liveBookingCount: 5, pendingBookingCount: 2 };
 
-  function renderCancellable(row: AdminDepartureRow, cancel = vi.fn()) {
+  function renderCancellable(row: DepartureRowFixture, cancel = vi.fn()) {
     render(
       <DepartureRowActions
-        row={toDepartureRowVM(row, BEFORE_DEADLINE)}
+        row={vmAt(row, BEFORE_DEADLINE)}
         basePriceLabel="$129.00"
         update={vi.fn()}
         setStatus={vi.fn()}
@@ -232,7 +236,7 @@ describe('DepartureRowActions — huỷ chuyến (F13)', () => {
         onSettled={vi.fn()}
       />,
     );
-    return { cancel, dates: toDepartureRowVM(row, BEFORE_DEADLINE).dates };
+    return { cancel, dates: vmAt(row, BEFORE_DEADLINE).dates };
   }
 
   it('hộp xác nhận in ĐÚNG số khách phải hoàn và số checkout phải huỷ', async () => {
@@ -266,7 +270,7 @@ describe('DepartureRowActions — huỷ chuyến (F13)', () => {
     const user = userEvent.setup();
     const cancelFn = vi.fn(async () => ({
       ok: true as const,
-      row: { ...BUSY, status: 'CANCELLED' as const },
+      row: withPhase({ ...BUSY, status: 'CANCELLED' as const }, BEFORE_DEADLINE),
     }));
     const { dates } = renderCancellable(BUSY, cancelFn);
 

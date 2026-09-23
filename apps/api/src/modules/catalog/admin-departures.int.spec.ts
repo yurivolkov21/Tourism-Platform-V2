@@ -25,7 +25,7 @@ import {
 
 /**
  * Integration (Docker PG, db tourism_test) — bảng chuyến phía admin (spec
- * P4e-1 F12): `list` (một tour, lọc, đếm booking sống), `create` (hai phán
+ * P4e-1 F12): `list` (một tour, lọc theo nhóm giai đoạn — F16, đếm booking sống), `create` (hai phán
  * quyết ngày + đóng băng giá vốn cố định), `update` (ba phán quyết) và
  * `setStatus` (đóng/mở, chặn mở sau hạn chót).
  *
@@ -362,15 +362,93 @@ describe('admin departures integration (F12)', () => {
       expect(booked.cancellationDeadline).toBe(dateAt(53));
     });
 
-    it('lọc theo trạng thái', async () => {
-      const cancelled = await listOk(`?slug=${PUBLISHED_SLUG}&status=CANCELLED`);
-
-      expect(cancelled.items.map((item) => item.id)).toEqual([CANCELLED]);
-      expect(cancelled.total).toBe(1);
-    });
-
     it('slug lạ → 404', async () => {
       expect((await list('?slug=khong-co-tour-nay', adminCookie)).statusCode).toBe(404);
+    });
+  });
+
+  describe('giai đoạn và tab lọc (F16)', () => {
+    /** Đang chạy: đi hôm qua, về ngày mai. */
+    const RUNNING = depId(7);
+    /** Đã về mà công tắc vẫn OPEN — OPEN không giữ được một chuyến đã về. */
+    const ENDED_OPEN = depId(8);
+    /** 5 ngày → N = 7 → hạn chót hôm nay − 4: quá hạn nhưng chưa đi. */
+    const LAST_CALL = depId(9);
+    /** 3 ngày → N = 3 → hạn chót hôm nay + 17: còn hạn nhưng admin tạm ngừng. */
+    const PAUSED = depId(10);
+
+    beforeEach(async () => {
+      // Chèn THÊM, không đụng bộ fixture chung — để ca "gần nhất trước" của
+      // `describe('list')` giữ nguyên.
+      await prisma.tourDeparture.createMany({
+        data: [
+          departure(RUNNING, { start: -1, end: 1 }),
+          departure(ENDED_OPEN, { start: -10, end: -8 }),
+          departure(LAST_CALL, { start: 3, end: 7 }),
+          departure(PAUSED, { start: 20, end: 22, status: DepartureStatus.CLOSED }),
+        ],
+      });
+    });
+
+    it('mỗi hàng mang ĐÚNG giai đoạn — công tắc không quyết vòng đời', async () => {
+      const paged = await listOk(`?slug=${PUBLISHED_SLUG}&limit=100`);
+      const phaseById = Object.fromEntries(paged.items.map((item) => [item.id, item.phase]));
+
+      expect(phaseById).toEqual({
+        [FREE]: 'on-sale',
+        [BOOKED]: 'on-sale',
+        [CANCELLED]: 'cancelled',
+        [PAUSED]: 'closed',
+        [LAST_CALL]: 'deadline-passed',
+        // Khởi hành HÔM NAY: ngày đi đã là `departed`, dù công tắc ghi CLOSED.
+        [DEADLINE_GONE]: 'departed',
+        [RUNNING]: 'departed',
+        [ENDED_OPEN]: 'completed',
+        [PAST]: 'completed',
+      });
+    });
+
+    it.each([
+      ['upcoming', [FREE, BOOKED, PAUSED, LAST_CALL]],
+      ['departed', [DEADLINE_GONE, RUNNING]],
+      ['completed', [ENDED_OPEN, PAST]],
+      ['cancelled', [CANCELLED]],
+    ] as const)('tab %s: đúng tập hàng, gần nhất trước, total đếm SAU lọc', async (phase, ids) => {
+      const paged = await listOk(`?slug=${PUBLISHED_SLUG}&phase=${phase}&limit=100`);
+
+      expect(paged.items.map((item) => item.id)).toEqual(ids);
+      expect(paged.total).toBe(ids.length);
+    });
+
+    it('phân trang chạy trên tập ĐÃ lọc, không trên cả lịch của tour', async () => {
+      const paged = await listOk(`?slug=${PUBLISHED_SLUG}&phase=upcoming&limit=2&page=2`);
+
+      expect(paged.items.map((item) => item.id)).toEqual([PAUSED, LAST_CALL]);
+      expect(paged.total).toBe(4);
+      expect(paged.totalPages).toBe(2);
+    });
+
+    it('nhóm lạ → 400 ngay ở biên schema', async () => {
+      expect((await list(`?slug=${PUBLISHED_SLUG}&phase=OPEN`, adminCookie)).statusCode).toBe(400);
+    });
+
+    it('lệnh ghi trả hàng KÈM giai đoạn mới: đóng rồi mở lại', async () => {
+      const closed = await setStatus(FREE, 'CLOSED', adminCookie);
+      expect(AdminDepartureRowSchema.parse(closed.json()).phase).toBe('closed');
+
+      const reopened = await setStatus(FREE, 'OPEN', adminCookie);
+      expect(AdminDepartureRowSchema.parse(reopened.json()).phase).toBe('on-sale');
+    });
+
+    it('báo tour đang đăng hay không — và màn chuyến VẪN mở được khi tour đã ẩn', async () => {
+      expect((await listOk(`?slug=${PUBLISHED_SLUG}`)).tour.isPublished).toBe(true);
+
+      await prisma.tour.update({ where: { id: tour.id }, data: { isPublished: false } });
+      try {
+        expect((await listOk(`?slug=${PUBLISHED_SLUG}`)).tour.isPublished).toBe(false);
+      } finally {
+        await prisma.tour.update({ where: { id: tour.id }, data: { isPublished: true } });
+      }
     });
   });
 
