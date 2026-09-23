@@ -3,13 +3,15 @@
 **Spec:** [2026-09-22-p4e-2-categories-destinations-design.md](../specs/2026-09-22-p4e-2-categories-destinations-design.md)
 **ADR:** [0045 — từ vựng vùng miền ở contract](../adr/0045-region-vocabulary-in-contract.md)
 
-Chín task thi công cộng hai lượt dọn tài liệu, hai nhánh. Thi công **trong cùng một session** (chốt 22/09), nên plan
-này không kèm prompt bàn giao — nó là danh sách việc để làm tuần tự và tick.
+Mười task thi công (gồm Task 9a thêm sau vòng review F14) cộng hai lượt dọn
+tài liệu, hai nhánh. F14 thi công **trong cùng một session** (chốt 22/09). F15
+có thể chạy ở một session MỚI: mục "Bài học vòng review F14" ở đầu phần F15 là
+thứ bàn giao — session mới đọc nó trước khi viết dòng code nào.
 
 | Tính năng | Nhánh | Task | Phụ thuộc |
 | --- | --- | --- | --- |
 | **F14** danh mục tour | `feat/p4e-2-categories` | 1–5 | không |
-| **F15** điểm đến | `feat/p4e-2-destinations` | 6–9 | F14 đã merge (dùng chung `slugifyVietnamese`) |
+| **F15** điểm đến | `feat/p4e-2-destinations` | 6–9, cộng 9a | F14 đã merge 23/09 (`892de4e8`) |
 
 ## Ràng buộc toàn cục
 
@@ -235,6 +237,81 @@ này không kèm prompt bàn giao — nó là danh sách việc để làm tuầ
 
 > Mở nhánh SAU khi F14 đã merge: `git checkout -b feat/p4e-2-destinations`
 
+## Bài học vòng review F14 — đọc TRƯỚC khi viết dòng code nào
+
+Vòng review F14 (22/09) tìm ra 15 lỗi, cả 15 là thật. F15 là bản song sinh
+của F14, nên nếu không áp những bài học này ngay từ đầu thì nó sẽ đi lại đúng
+những lỗi ấy. Bản kể đầy đủ nằm ở entry "Vòng review F14" trong
+`docs/CHANGELOG.md`. Mục ghi dưới đây đã đo lại trên code ngày 23/09.
+
+**Tầng API**
+
+1. **Slug trùng thì bắt `P2002`, không kiểm trước bằng SELECT.** Ở mức READ
+   COMMITTED, một câu `findUnique` trong transaction không chặn được hai lệnh
+   INSERT chạy song song. `P2002` lọt ra ngoài thành 500, và admin mất cả form
+   vừa gõ. F15 không có cột `order` nên KHÔNG cần khoá advisory như F14 — chỉ
+   cần bắt `P2002` rồi đổi thành `SlugTakenError` ở `create`.
+2. **Không `assertExists` rồi mới `update`.** Bắt `P2025` ngay từ câu `update`
+   rồi đổi thành lỗi NOT_FOUND. Kiểm-trước-ghi-sau để hở một cửa sổ giữa hai
+   câu, và lỗi ở cửa sổ ấy ra thành 500.
+3. **`tourCount` đếm trong CÙNG câu với lệnh ghi** (`_count` nằm trong
+   `select`). Đếm bằng một câu riêng sau đó là đọc từ một ảnh chụp khác.
+4. **Rút `mapError` về một chỗ chung** ở `apps/api/src/lib/` khi thêm bản thứ
+   ba (nợ G3 trong `open-items.md`). Bản của departures giải gọn hơn: lỗi mang
+   `code`, nên ba mã gập lại thành một nhánh.
+5. **Khối guard của int spec phải kể ĐỦ mọi đường, cộng một ca 401.** Khối
+   guard của F14 từng bỏ sót `update`.
+
+**Tầng contract**
+
+6. **Dùng chung một khuôn slug.** Đổi `CATEGORY_SLUG_PATTERN` thành
+   `SLUG_PATTERN`, chuyển nó về `slug.ts` (khuôn ấy không riêng gì danh mục),
+   rồi cho cả hai bảng dùng. Gạch nối chỉ được nằm GIỮA hai cụm chữ-số.
+7. **Mô tả rỗng phải thành `null` bằng `.transform`.** Viết
+   `.nullable().default(null)` suông thì chuỗi rỗng vẫn lọt. Nên rút
+   `CategoryDescriptionSchema` thành một hàm dựng theo trần độ dài (danh mục
+   500, điểm đến 2000).
+8. **Câu báo lỗi khuôn slug phải khớp với khuôn đã siết.** Câu `slugShape`
+   hiện viết "lowercase letters, digits and hyphens", trong khi khuôn mới từ
+   chối cả `-` lẫn `a--b`. Viết lại câu ấy trước khi bảng thứ hai dùng nó.
+
+**Tầng web — bước mà bản plan đầu THIẾU (xem Task 9a)**
+
+9. **Điểm đến có đúng cái lỗ mà danh mục vừa vá.** `listDestinations` lọc
+   `isActive`, còn lọc tour theo điểm đến thì không. Hệ quả là link cũ vẫn lọc
+   đúng, nhưng chip đang bật in slug thô (nhánh `?? value` ở
+   `tours-explorer.tsx`) và thẻ facet không có ô nào để bỏ tick. Hôm nay lỗi
+   này đang ngủ vì chưa ai ẩn được điểm đến; F15 thêm nút Hide là nó thức dậy.
+10. **`fetchDestinations` có 11 chỗ gọi trên web**, không phải ba như spec §4.6
+    kể (trang vùng, tile, facet). Còn trang chủ, trang About (cả khối con số),
+    blog (`splitTagFamilies` xếp tag theo slug điểm đến), và trang Account (hộ
+    chiếu của khách). Đo xem ẩn một điểm đến gây ra gì ở TỪNG chỗ, rồi mới viết
+    câu cảnh báo trong hộp xác nhận. Cả hai câu copy nói sai của F14 đều sinh
+    ra vì viết trước, đo sau.
+
+**Tầng admin**
+
+11. `FormField` đã nằm ở kit — dùng lại, đừng chép. `hasFormErrors` đang có hai
+    bản (departures và categories); tới bản thứ ba thì rút chung.
+12. Cờ bận của bảng truyền qua context (nếp `BusyContext`), không nhét vào deps
+    của `useMemo` dựng cột.
+
+**Test và quy trình**
+
+13. **Mỗi ca test mới phải kiểm bằng đột biến.** F14 có ba ca xanh giả: một ca
+    đua bắn hai lệnh thực chất là CÙNG một phép đổi chỗ; một ca khẳng định
+    "không gọi" mà chẳng bấm gì; một ca contract xanh vì thiếu khoá bắt buộc,
+    chứ không vì cái luật nó định ghim.
+14. **Khớp tên CHÍNH XÁC, đừng dùng `/…/i`** khi slug và tên chỉ khác nhau ở
+    chữ hoa — regex bỏ qua hoa-thường xanh cả khi chip in slug.
+15. **Ký tự Unicode trong regex hay trong test thì dựng từ mã số**
+    (`String.fromCodePoint`) hoặc dùng lớp `\p{…}`. Công cụ ghi file đổi escape
+    `\uXXXX` thành ký tự thô (đo 22/09 bằng `cat -A`).
+16. **Comment không khai trạng thái tương lai** kiểu "Task X sẽ…" — merge xong
+    là nó thành lời nói sai.
+17. **Entry CHANGELOG viết vào đúng ngày merge.** `docs-freshness.sh` lọc theo
+    ngày commit, mà rebase thì đổi ngày commit — CI đỏ ngày 23/09 là vì thế.
+
 ## Task 6 — Từ vựng vùng miền về contract (ADR-0045)
 
 **Files:**
@@ -290,6 +367,31 @@ này không kèm prompt bàn giao — nó là danh sách việc để làm tuầ
 - [ ] **B4.** `pnpm gate:int` xanh.
 - [ ] **B5.** Commit: `feat(api): bốn endpoint quản trị điểm đến`
 
+## Task 9a — Web chịu được điểm đến đã ẩn (THÊM sau vòng review F14)
+
+Phải merge **cùng một lượt** với Task 9: nút Hide không được phép có mặt khi
+phía web chưa chịu được nó. Xem bài học 9 và 10 ở đầu phần F15.
+
+**Files:**
+- Modify: `apps/web/src/lib/tours.ts` — tổng quát `resolveCategoryOptions` để
+  dùng được cho cả hai facet (hoặc viết bản điểm đến song song, nếu tổng quát
+  làm hàm khó đọc hơn)
+- Modify: `apps/web/src/components/tours/tours-explorer.tsx`,
+  `apps/web/src/app/(site)/tours/(listing)/page.tsx`
+- Test: `apps/web/src/lib/tours.spec.ts`, `tours-explorer.spec.tsx`
+
+- [ ] **B1.** Đo 11 chỗ gọi `fetchDestinations` (bài học 10): ẩn một điểm đến
+      thì mỗi chỗ đổi ra sao. Ghi kết quả vào spec §4.6 TRƯỚC khi viết code —
+      bảng đo ấy chính là nguồn cho câu cảnh báo ở Task 9.
+- [ ] **B2.** Spec TRƯỚC: điểm đến đã ẩn mà đang lọc thì chip in TÊN, và thẻ
+      facet có ô đang tích để bỏ · endpoint hỏng (`null`) thì suy từ tour, khác
+      với mảng rỗng.
+- [ ] **B3.** Chạy ĐỎ, cài, rồi kiểm đột biến từng ca mới.
+- [ ] **B4.** Trang listing truyền `destinationsRes.ok ? data : null`, không
+      phải `data ?? []`.
+- [ ] **B5.** `pnpm gate:int` xanh.
+- [ ] **B6.** Commit: `fix(web): điểm đến đã ẩn vẫn có tên và vẫn bỏ tick được`
+
 ## Task 9 — Màn `/destinations`
 
 **Files:**
@@ -301,8 +403,9 @@ này không kèm prompt bàn giao — nó là danh sách việc để làm tuầ
 
 - [ ] **B1.** Component spec TRƯỚC: ô `region` là **danh sách chọn ba mục**,
       không phải ô chữ · ô slug mở khi tạo, vắng khi sửa · hộp xác nhận tắt in
-      đúng `tourCount` và nói đủ hệ quả (biến khỏi trang vùng, tile, facet; tour
-      vẫn hiện).
+      đúng `tourCount` và nói đủ hệ quả. Các hệ quả lấy từ bảng đo của Task 9a
+      B1, KHÔNG lấy từ danh sách ba mục của spec §4.6 bản đầu — danh sách ấy
+      thiếu trang chủ, About, blog và hộ chiếu của khách.
 - [ ] **B2.** Chạy ĐỎ, rồi dựng theo đúng khuôn Task 4.
 - [ ] **B3.** Ô slug điền sẵn bằng `slugifyVietnamese(name, 80)`.
 - [ ] **B4.** Bật mục `destinations` ở `nav.ts`.
@@ -318,6 +421,11 @@ này không kèm prompt bàn giao — nó là danh sách việc để làm tuầ
 ---
 
 ## Nghiệm thu cuối (sau khi cả hai merge)
+
+> **Đổi thứ tự 23/09:** F14 được thử tay RIÊNG ngay sau khi merge, không đợi
+> F15 — F14 đã chạy thật trên production, còn F15 sẽ chép lại cách làm của nó,
+> nên lỗi tìm được ở F14 lúc này là lỗi F15 khỏi phải lặp. Kết quả ghi ở
+> `docs/CHANGELOG.md`. Phần dưới đây còn lại cho F15.
 
 - [ ] `pnpm gate:int` trọn xanh trên `main`.
 - [ ] Liếc đèn CI sau push (luật 14).
