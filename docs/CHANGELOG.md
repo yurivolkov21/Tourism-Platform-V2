@@ -8,6 +8,52 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-09-23 — T0 mobile browse: tầng dữ liệu + primitive dùng chung, vá 6 phát hiện review cuối cụm (nhánh `feat/mobile-browse-screens`)
+
+Entry này khép cụm T0 của P5b-2 (xem tour trên mobile) — tầng dữ liệu oRPC
+`OpenAPILink` và TanStack Query cho `apps/mobile`, cộng sáu primitive dùng
+chung mới ở `@tourism/mobile-ui` (`SearchField`, `Chip`, `BottomSheet`,
+`AppImage`, khả năng "load lỗi" gộp vào `EmptyState`, tab bar có icon). Quyết
+định kiến trúc ở [ADR-0047](adr/0047-mobile-data-layer.md), kế hoạch thi công
+ở [plan T0](plans/2026-09-23-mobile-browse-t0-data-layer.md). **T1–T7 (các
+màn xem tour thật) vẫn CÒN TREO** — T0 chỉ là hạ tầng, chưa màn nào nối dữ
+liệu thật.
+
+Vòng review cuối cụm tìm sáu phát hiện, vá cả sáu trong lượt này:
+
+1. Biến thể `removable` của `Chip` không tới được VoiceOver — `Pressable`
+   ngoài gộp hết con cháu thành một khối chọn duy nhất, nuốt mất nút "x" lồng
+   bên trong. Chốt: đổi vỏ ngoài của biến thể này thành `View` thường, chỉ nút
+   "x" còn là `Pressable`.
+2. Vùng chạm 32dp của `Chip` chưa đạt `touchTargetMin` (44dp). Thêm `hitSlop`
+   cho các `Pressable` còn lại sau khi vá mục 1, không đổi chiều cao nhìn thấy
+   (mockup ấn định 32dp).
+3. `apps/mobile/src/lib/api/client.ts`: fetch wrapper đè mất signal huỷ của
+   caller bằng một `AbortSignal.timeout(10_000)` riêng. Đọc thẳng mã nguồn
+   `@orpc/client`/`@orpc/standard-server-fetch` xác nhận signal của caller
+   nằm ở `request.signal` (không phải `init.signal` như phỏng đoán ban đầu
+   của review — `init` ở đây luôn là hằng `{ redirect: 'manual' }`). Chốt
+   ghép hai signal bằng `AbortSignal.any`.
+4. ADR-0047 lệch code thật ba chỗ (tên component `LoadErrorState` chưa từng
+   tồn tại riêng, cơ chế `transformUrl` của `AppImage`, số dependency thêm
+   vào `apps/mobile`). Vá bằng AMEND 1 trong chính ADR, không sửa quyết định
+   gốc.
+5. `AppImage.transformUrl` (mặc định identity, đúng ý ADR-0040 §2) chưa có
+   nơi ghép thật với `cloudinaryUrl()` ở tầng app. Thêm module ghép ở
+   `apps/mobile/src/components/app-image.tsx`, kèm một test xác nhận
+   `source.uri` có đúng segment transform Cloudinary.
+6. Sweep docs sau merge còn thiếu (luật 13): entry này, dòng ADR-0047 vào
+   bảng ADR ở `docs/README.md`, và thêm plan T0 vào mục Plans cùng file.
+
+**Review findings:** 6/6 đã vá trong lượt này — chi tiết ở trên, không phát
+hiện nào bị bỏ lại.
+
+Tests after (mobile-ui): Jest 18 suite, 107 test — bốn ca `Chip` giữ nguyên
+sau khi đổi vỏ biến thể `removable`. Tests after (mobile): Jest 34 suite, 173
+test — thêm một ca mới cho module ghép `AppImage`/`cloudinaryUrl()`.
+`tsc --noEmit` xanh ở cả hai package, `check-mobile-tokens-only.mjs` xanh (75
+file nguồn, không màu viết tay nào).
+
 ## 2026-09-23 — Thử tay F14 trên production: 8/8 bước đạt, bốn mục vá (nhánh `fix/p4e-2-f14-manual-test`)
 
 Lượt thử tay chạy NGAY sau merge F14 thay vì đợi F15 như plan ghi: F14 đã

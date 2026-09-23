@@ -87,6 +87,7 @@ Mỗi ADR tự chứa đầy đủ phần sửa bổ sung (AMEND) của nó; b�
 | [0044](adr/0044-prerender-retry-transient-api.md) | Prerender thử lại khi API hắt hơi | |
 | [0045](adr/0045-region-vocabulary-in-contract.md) | Ba vùng miền là từ vựng chung, sống ở contract | |
 | [0046](adr/0046-departure-phase-derived.md) | Giai đoạn chuyến suy từ ngày; `status` chỉ là công tắc bán hàng | |
+| [0047](adr/0047-mobile-data-layer.md) | Tầng dữ liệu mobile: oRPC `OpenAPILink` + TanStack Query, client-first | 1 AMEND |
 
 ## Specs — sẽ xây gì
 
@@ -205,7 +206,8 @@ entry CHANGELOG cùng ngày.
 [**P4e-1 chuyến khởi hành**](plans/2026-09-21-p4e-1-departures.md) ·
 [prompt ba session P4e-1](plans/2026-09-21-p4e-1-prompts.md) ·
 [**P4e-2 danh mục + điểm đến**](plans/2026-09-22-p4e-2-categories-destinations.md) ·
-[**F16 giai đoạn chuyến** (kèm prompt thi công)](plans/2026-09-23-departure-phase.md)
+[**F16 giai đoạn chuyến** (kèm prompt thi công)](plans/2026-09-23-departure-phase.md) ·
+[**P5b-2 T0 tầng dữ liệu mobile browse**](plans/2026-09-23-mobile-browse-t0-data-layer.md)
 
 ## Conventions — luật áp dụng mãi
 
