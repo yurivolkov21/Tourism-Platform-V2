@@ -1,3 +1,4 @@
+import { vietnamToday } from '@tourism/contract';
 import { departureStatus, isDepartureOpen, strikePrice } from './tours';
 
 /** Trần thumb: 7×64 + 6×8 = 496 ≤ 541 (cạnh ảnh vuông). Ô thứ 8 thành 568 > 541. */
@@ -28,7 +29,8 @@ export function itineraryDayDate(startDate: string, dayNumber: number): Date {
   return d;
 }
 
-/** So theo NGÀY LỊCH UTC — cùng quy ước với `checkReviewEligibility` phía API. */
+/** Khoá thứ tự của một NGÀY LỊCH dựng ở nửa đêm UTC (như `itineraryDayDate`) —
+    đọc bằng getter UTC là ra đúng ngày ghi trên lịch. */
 function dayKey(d: Date): number {
   return d.getUTCFullYear() * 10000 + d.getUTCMonth() * 100 + d.getUTCDate();
 }
@@ -42,8 +44,11 @@ export function itineraryDayState(
   // đều "preview": không tick, không spinner, không làm mờ — làm mờ cả 4 ngày
   // của một chuyến tương lai khiến trang trông như hỏng.
   if (!live) return 'preview';
+  // `today` là một khoảnh khắc thật: quy về ngày lịch Việt Nam trước khi so
+  // (ADR-0041 §7). Đọc thẳng bằng getter UTC thì từ 00:00 tới 07:00 giờ VN
+  // ngày hôm qua còn quay "Today".
   const a = dayKey(dayDate),
-    b = dayKey(today);
+    b = dayKey(new Date(`${vietnamToday(today)}T00:00:00Z`));
   return a < b ? 'done' : a === b ? 'active' : 'upcoming';
 }
 

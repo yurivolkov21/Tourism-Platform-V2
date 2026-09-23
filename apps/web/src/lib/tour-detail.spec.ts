@@ -81,6 +81,16 @@ describe('itineraryDayState', () => {
     expect(itineraryDayState(d('2026-09-15'), d('2026-09-15'), true)).toBe('active');
     expect(itineraryDayState(d('2026-09-16'), d('2026-09-15'), true)).toBe('upcoming');
   });
+  it('"hôm nay" là ngày lịch Việt Nam — sang ngày mới lúc 00:00 giờ VN (17:00Z)', () => {
+    // Ngày của lịch trình là ngày lịch VN (ADR-0041 §7). Đọc `today` theo UTC
+    // thì từ 00:00 tới 07:00 giờ VN khách thấy ngày HÔM QUA còn quay "Today".
+    const lastMsOf14Vn = new Date('2026-09-14T16:59:59.999Z');
+    expect(itineraryDayState(d('2026-09-14'), lastMsOf14Vn, true)).toBe('active');
+    expect(itineraryDayState(d('2026-09-15'), lastMsOf14Vn, true)).toBe('upcoming');
+    const midnight15Vn = new Date('2026-09-14T17:00:00.000Z');
+    expect(itineraryDayState(d('2026-09-14'), midnight15Vn, true)).toBe('done');
+    expect(itineraryDayState(d('2026-09-15'), midnight15Vn, true)).toBe('active');
+  });
 });
 
 describe('departureMonths', () => {
