@@ -11,6 +11,8 @@ export type { CardProps } from './lib/card';
 export { Card } from './lib/card';
 export type { CheckboxProps } from './lib/checkbox';
 export { Checkbox } from './lib/checkbox';
+export type { ChipProps, ChipVariant } from './lib/chip';
+export { Chip } from './lib/chip';
 export type { EmptyStateProps } from './lib/empty-state';
 export { EmptyState } from './lib/empty-state';
 export type { FormMessageProps } from './lib/form-message';
