@@ -4687,6 +4687,11 @@ export const messages = {
         /** Nói ngay luật đắt nhất của màn, trước khi ai đó mở form sửa. */
         subtitle:
           'Dates can only change while a departure has no live bookings — every booking keeps its own copy of the travel dates.',
+        /** Dòng báo đầu trang khi tour chưa đăng (spec F16 §2h). */
+        unpublished: {
+          title: 'This tour is not published',
+          body: 'Travellers cannot see or book any of its departures, including those marked On sale. Publish the tour from the Tours list to start selling.',
+        },
         filterLabel: 'Filter by status',
         all: 'All',
         /** Bốn tab lọc theo NHÓM giai đoạn (spec F16 §2d) — "All" ở ngay trên. */

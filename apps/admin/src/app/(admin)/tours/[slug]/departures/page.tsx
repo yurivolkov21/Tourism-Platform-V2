@@ -7,6 +7,7 @@ import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
 import { AdminShell } from '@/components/admin-shell';
 import { DeparturesTable } from '@/components/departures/departures-table';
+import { TourUnpublishedNotice } from '@/components/departures/tour-unpublished-notice';
 import { fetchAdminDepartures } from '@/lib/api/departures';
 import { getServerSession } from '@/lib/api/session';
 import { formatAmount } from '@/lib/bookings-view';
@@ -65,8 +66,8 @@ export default async function DeparturesPage({
   // Slug rác trên đường dẫn là `notFound()` của Next, không phải màn lỗi chung.
   if (!paged) notFound();
 
-  // Trang mồ côi: bộ lọc co lại (đóng hết chuyến OPEN chẳng hạn) trong khi URL
-  // vẫn trỏ trang cũ.
+  // Trang mồ côi: tab đang lọc co lại (một lệnh đóng hay huỷ đẩy chuyến sang
+  // nhóm khác chẳng hạn) trong khi URL vẫn trỏ trang cũ.
   const orphan = orphanPageHref(paged, query, (page) => departuresHref(query, { page }));
   if (orphan) redirect(orphan);
 
@@ -92,6 +93,10 @@ export default async function DeparturesPage({
           </h2>
           <p className="text-sm text-muted-foreground">{t.list.subtitle}</p>
         </div>
+
+        {/* Tour chưa đăng thì khách không đặt được chuyến nào, kể cả chuyến On
+            sale — nói một lần ở đây (spec F16 §2h). */}
+        <TourUnpublishedNotice isPublished={paged.tour.isPublished} />
       </div>
 
       <DeparturesTable
