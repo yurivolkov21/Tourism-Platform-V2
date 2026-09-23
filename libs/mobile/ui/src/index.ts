@@ -5,6 +5,8 @@ export type { AppImageProps } from './lib/app-image';
 export { AppImage } from './lib/app-image';
 export type { AppTextProps, AppTextTone, AppTextVariant } from './lib/app-text';
 export { APP_TEXT_VARIANTS, AppText } from './lib/app-text';
+export type { BottomSheetProps } from './lib/bottom-sheet';
+export { BottomSheet } from './lib/bottom-sheet';
 export type { ButtonProps, ButtonVariant } from './lib/button';
 export { BUTTON_VARIANTS, Button } from './lib/button';
 export type { CardProps } from './lib/card';
