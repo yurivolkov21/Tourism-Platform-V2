@@ -1,5 +1,5 @@
 import Feather from '@expo/vector-icons/Feather';
-import { Pressable } from 'react-native';
+import { Pressable, View, type ViewStyle } from 'react-native';
 import { AppText } from './app-text';
 import type { MobileColorKey } from './theme';
 import { useTheme } from './theme-provider';
@@ -28,45 +28,65 @@ export function Chip({ label, variant = 'default', onPress, onRemove }: ChipProp
   const theme = useTheme();
   const { background, border, foreground } = CHIP_VARIANTS[variant];
 
-  return (
-    <Pressable
-      accessibilityRole="button"
-      // Đặt nhãn tường minh: nếu không, tên a11y của chip sẽ gộp cả nhãn "Remove
-      // …" của nút x lồng bên trong (VoiceOver đọc "Trekking Remove Trekking"),
-      // và khiến truy vấn theo tên "remove …" khớp NHẦM cả chip lẫn nút x.
-      accessibilityLabel={label}
-      onPress={onPress}
+  const shellStyle: ViewStyle = {
+    flexDirection: 'row',
+    alignItems: 'center',
+    height: theme.spacing(8),
+    paddingHorizontal: theme.spacing(3.5),
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: theme.colors[border],
+    backgroundColor: background === null ? 'transparent' : theme.colors[background],
+    gap: theme.spacing(1.5),
+  };
+
+  const labelNode = (
+    <AppText
+      variant="label"
       style={{
-        flexDirection: 'row',
-        alignItems: 'center',
-        height: theme.spacing(8),
-        paddingHorizontal: theme.spacing(3.5),
-        borderRadius: 999,
-        borderWidth: 1,
-        borderColor: theme.colors[border],
-        backgroundColor: background === null ? 'transparent' : theme.colors[background],
-        gap: theme.spacing(1.5),
+        color: theme.colors[foreground],
+        fontFamily: variant === 'selected' ? theme.fonts.semibold : theme.fonts.medium,
       }}
     >
-      <AppText
-        variant="label"
-        style={{
-          color: theme.colors[foreground],
-          fontFamily: variant === 'selected' ? theme.fonts.semibold : theme.fonts.medium,
-        }}
-      >
-        {label}
-      </AppText>
-      {variant === 'removable' ? (
+      {label}
+    </AppText>
+  );
+
+  if (variant === 'removable') {
+    // Shell là `View` thường, KHÔNG phải `Pressable`: `Pressable` mặc định
+    // `accessible: true`, khiến iOS gộp hết con cháu thành một khối chọn duy
+    // nhất, nuốt mất nút "x" lồng bên trong — VoiceOver không bao giờ focus
+    // riêng được nút đó (onPress của cả chip cũng thường bỏ trống ở biến thể
+    // này, nên khối gộp lại vô nghĩa). Nút "x" là `Pressable` DUY NHẤT ở đây.
+    return (
+      <View style={shellStyle}>
+        {labelNode}
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={`Remove ${label}`}
-          hitSlop={theme.spacing(2)}
+          // Icon "x" chỉ 14dp — hitSlop bù thêm ~16dp mỗi cạnh để vùng chạm
+          // chạm tới ngưỡng touchTargetMin (44dp), theo đúng quy ước a11y của
+          // package này (xem button.tsx, icon-button.tsx).
+          hitSlop={theme.spacing(4)}
           onPress={onRemove}
         >
           <Feather name="x" size={14} color={theme.colors[foreground]} />
         </Pressable>
-      ) : null}
+      </View>
+    );
+  }
+
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      onPress={onPress}
+      // Chip cao 32dp (mockup ấn định) — thấp hơn touchTargetMin (44dp). Bù
+      // vùng chạm bằng hitSlop dọc thay vì đổi chiều cao nhìn thấy được.
+      hitSlop={{ top: theme.spacing(1.5), bottom: theme.spacing(1.5) }}
+      style={shellStyle}
+    >
+      {labelNode}
     </Pressable>
   );
 }

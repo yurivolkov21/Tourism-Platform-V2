@@ -95,6 +95,7 @@ Mỗi ADR tự chứa đầy đủ phần sửa bổ sung (AMEND) của nó; b�
 | [0052](adr/0052-admin-staff-tier.md) | Nhân sự admin hai bậc: Owner từ `ADMIN_EMAILS`, Staff do Owner cấp; bảng quyền ở contract; khoá tài khoản chặn tạo phiên | 1 AMEND |
 | [0053](adr/0053-delete-unused-categories-destinations.md) | Xoá danh mục và điểm đến khi chưa tour nào dùng | 1 AMEND |
 | [0054](adr/0054-customer-bookings-list-phase-filters.md) | Đơn của khách: một luật giai đoạn dùng chung; `bookings.mine` lọc, tìm, xếp theo hành trình và phân trang ở server | |
+| [0047](adr/0047-mobile-data-layer.md) | Tầng dữ liệu mobile: oRPC `OpenAPILink` + TanStack Query, client-first | 1 AMEND |
 
 ## Specs — sẽ xây gì
 
@@ -240,7 +241,8 @@ entry CHANGELOG cùng ngày.
 [**P4f vùng Users: Owner và Staff** (kèm prompt thi công)](plans/2026-10-02-p4f-users-staff.md) ·
 [**P7 ba trang đơn của khách** (ba phần A, B, C)](plans/2026-10-05-booking-pages-redesign.md) ·
 [prompt thi công P7](plans/2026-10-05-booking-pages-redesign-prompts.md) ·
-[**sửa sạn giao diện admin**](plans/2026-10-05-admin-ui-polish.md)
+[**sửa sạn giao diện admin**](plans/2026-10-05-admin-ui-polish.md) ·
+[**P5b-2 T0 tầng dữ liệu mobile browse**](plans/2026-09-23-mobile-browse-t0-data-layer.md)
 
 **Công cụ máy dev (ngoài repo)**
 [mod `tourism-status` (kèm prompt thi công)](plans/2026-10-02-tourism-status-mod.md)
