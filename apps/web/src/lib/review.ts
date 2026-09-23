@@ -31,6 +31,11 @@ import { type BookingDetail, canAuthorEdit, isEditLimitReached } from '@tourism/
  *
  * Biên đóng: chuyến kết thúc ĐÚNG hôm nay là đã xong (API chặn khi
  * `end > now`, không phải `end >= now`).
+ *
+ * "Hôm nay" ở nhánh đó là ngày lịch UTC, CỐ Ý khác `todayDateString` (ngày
+ * Việt Nam) của trang account: đây là bản chép cổng `checkReviewEligibility`,
+ * mà cổng ấy giữ UTC (ADR-0009 AMEND 3). Đổi riêng web sang ngày VN là mở form
+ * từ 00:00 giờ VN của ngày về, trong khi API tới 07:00 mới nhận.
  */
 export type ReviewSlot =
   | 'form'
@@ -57,6 +62,7 @@ export function reviewSlot(booking: BookingDetail): ReviewSlot {
     return review.moderationState === 'rejected' ? 'rejected' : 'pending';
   }
   if (booking.status !== 'PAID') return 'hidden';
+  // Ngày UTC, cố ý — xem JSDoc của `ReviewSlot`.
   const today = new Date().toISOString().slice(0, 10);
   return booking.departureEndDate > today ? 'tooEarly' : 'form';
 }

@@ -107,6 +107,20 @@ describe('reviewSlot — trang chi tiết booking hiện gì ở chỗ đánh gi
     expect(reviewSlot(makeBooking({ status: 'PAID', departureEndDate: TODAY }))).toBe('form');
   });
 
+  it('"hôm nay" ở đây là ngày UTC, CỐ Ý — chép đúng cổng review của API', () => {
+    // `checkReviewEligibility` giữ ngày UTC (ADR-0009 AMEND 3). Chuyến về 05/08:
+    // lúc 00:00 giờ VN ngày 05/08 (17:00Z ngày 04/08) API vẫn trả
+    // TRIP_NOT_COMPLETED, tới 07:00 giờ VN (00:00Z) mới nhận. Web mà đổi sang
+    // ngày VN thì mở form sớm bảy tiếng — khách gõ xong bài mới bị từ chối.
+    const endsOn5th = makeBooking({ status: 'PAID', departureEndDate: '2026-08-05' });
+    vi.setSystemTime(new Date('2026-08-04T17:00:00.000Z'));
+    expect(reviewSlot(endsOn5th)).toBe('tooEarly');
+    vi.setSystemTime(new Date('2026-08-04T23:59:59.999Z'));
+    expect(reviewSlot(endsOn5th)).toBe('tooEarly');
+    vi.setSystemTime(new Date('2026-08-05T00:00:00.000Z'));
+    expect(reviewSlot(endsOn5th)).toBe('form');
+  });
+
   it('chuyến CHƯA kết thúc → "tooEarly", không phải ẩn hẳn', () => {
     // Ẩn hẳn thì khách tưởng site không có tính năng đánh giá.
     expect(reviewSlot(makeBooking({ status: 'PAID', departureEndDate: '2026-12-01' }))).toBe(
