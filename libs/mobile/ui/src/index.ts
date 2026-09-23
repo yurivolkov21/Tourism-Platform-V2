@@ -27,6 +27,8 @@ export type { ScreenEdge, ScreenProps } from './lib/screen';
 export { SCREEN_EDGES_UNDER_HEADER, SCREEN_EDGES_UNDER_TABS, Screen } from './lib/screen';
 export type { SearchFieldProps } from './lib/search-field';
 export { SearchField } from './lib/search-field';
+export type { TabBarIconProps } from './lib/tab-bar-icon';
+export { TabBarIcon } from './lib/tab-bar-icon';
 export type { FeatherIconName, TextFieldProps } from './lib/text-field';
 export { TextField } from './lib/text-field';
 export type { ColorScheme, FontWeight, MobileColorKey, MobileTheme } from './lib/theme';
