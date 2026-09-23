@@ -8,6 +8,28 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-09-23 — Merge F14 lên main (`892de4e8`)
+
+Nội dung của lượt merge này đã kể đủ ở HAI entry ngày 22/09 ngay bên dưới —
+"F14 quản trị danh mục tour" và "Vòng review F14". Entry này chỉ ghi sự kiện
+merge, vì hai entry kia viết TRƯỚC merge nên chưa mang hash.
+
+Nhánh `feat/p4e-2-categories` rebase lên `fa297460` (bản dọn `isValidDate` từ
+một session song song) rồi fast-forward: 11 commit, không xung đột,
+`pnpm gate:int` chạy lại xanh trên đỉnh mới trước khi đẩy. Không migration,
+nên không có bước Supabase nào.
+
+**Vì sao cần entry này — và vì sao CI lần đẩy đầu đỏ.** `docs-freshness.sh`
+lọc commit theo NGÀY COMMIT (`git log --since`). Rebase ghi lại ngày commit
+của cả 11 commit thành ngày rebase (23/09), còn entry mới nhất vẫn mang ngày
+làm việc (22/09) — nên script thấy tám commit `feat`/`fix` "mới hơn" entry
+cuối và đỏ, dù nội dung đã được kể. Bẫy này sẽ lặp lại MỖI KHI một nhánh viết
+entry hôm trước rồi rebase-và-merge hôm sau. Cách tránh: viết entry vào đúng
+ngày merge, hoặc thêm một entry merge ngắn như entry này.
+
+Tests after: không đổi so với entry vòng review — Vitest **3964**, int
+**596 ở 43 file**, đo lại trên đỉnh sau rebase.
+
 ## 2026-09-22 — Vòng review F14: mười lăm phát hiện, ba nhóm, ba cái gốc (nhánh `feat/p4e-2-categories`)
 
 Vòng review chạy TRƯỚC merge, mười góc tìm cộng một lượt quét sót. Mười lăm
