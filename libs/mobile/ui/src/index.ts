@@ -1,6 +1,8 @@
 // Bề mặt công khai của @tourism/mobile-ui. App mobile chỉ import từ đây —
 // không với tay vào `src/lib/*` (ranh giới package, ADR-0040 §2).
 
+export type { AppImageProps } from './lib/app-image';
+export { AppImage } from './lib/app-image';
 export type { AppTextProps, AppTextTone, AppTextVariant } from './lib/app-text';
 export { APP_TEXT_VARIANTS, AppText } from './lib/app-text';
 export type { ButtonProps, ButtonVariant } from './lib/button';
