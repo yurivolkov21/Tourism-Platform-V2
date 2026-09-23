@@ -23,6 +23,7 @@ import {
 import type { TourCategoryOption } from '@/lib/api/tours';
 import { groupMonthOptions, type MonthOption } from '@/lib/month-options';
 import { type ToursQuery, toursHref } from '@/lib/tours-query';
+import { categoryOptionLabel } from '@/lib/tours-view';
 
 /**
  * Bốn mẩu điều khiển của `/tours` (spec P4e-1 §3-F11). Cả bốn chỉ làm một
@@ -92,7 +93,7 @@ export function ToursCategoryMenu({
           {
             key: 'categories',
             items: categories.map((category) => ({
-              label: category.name,
+              label: categoryOptionLabel(category),
               value: toFreeValue(category.id),
               icon: TagIcon,
             })),

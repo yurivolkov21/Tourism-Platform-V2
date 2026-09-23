@@ -55,7 +55,10 @@ export const CategorySlugSchema = z
   .string()
   .min(1)
   .max(CATEGORY_SLUG_MAX)
-  .regex(CATEGORY_SLUG_PATTERN, 'slug may only contain lowercase letters, digits and hyphens');
+  .regex(
+    CATEGORY_SLUG_PATTERN,
+    'slug must be lowercase letters and digits, with single hyphens between words',
+  );
 
 /**
  * Ô mô tả: cắt khoảng trắng, và RỖNG thì thành `null`.

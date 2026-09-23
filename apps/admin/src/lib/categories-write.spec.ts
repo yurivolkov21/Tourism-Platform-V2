@@ -78,6 +78,22 @@ describe('validateCategoryForm', () => {
     );
   });
 
+  it('câu lỗi khuôn slug nói ĐÚNG luật đã siết: gạch nối nằm GIỮA hai từ', () => {
+    // Lượt thử tay F14 (23/09): câu cũ "lowercase letters, digits and hyphens
+    // only" bảo rằng gạch nối được phép — trong khi gõ đúng MỘT dấu `-` lại bị
+    // từ chối. Luật siết ở vòng review (gạch chỉ nằm giữa hai cụm chữ-số) mà
+    // câu thì không theo kịp.
+    for (const slug of ['-', '---', '-day-trips', 'day-trips-', 'day--trips']) {
+      expect(validateCategoryForm({ ...VALID, slug }, 'create').slug).toBe(t.form.errors.slugShape);
+    }
+    expect(t.form.errors.slugShape).toMatch(/between/i);
+    // Ví dụ in trong câu phải là một slug hợp lệ — câu lỗi dạy sai mẫu thì còn
+    // tệ hơn không có ví dụ.
+    const example = t.form.errors.slugShape.match(/[a-z0-9]+(?:-[a-z0-9]+)+/)?.[0];
+    expect(example).toBeDefined();
+    expect(validateCategoryForm({ ...VALID, slug: example ?? '' }, 'create').slug).toBeUndefined();
+  });
+
   it('chế độ SỬA KHÔNG xét ô slug — form ấy không có ô đó', () => {
     // Bắt một ô không tồn tại phải hợp lệ là khoá cứng nút Lưu mà không nói
     // được vì sao.

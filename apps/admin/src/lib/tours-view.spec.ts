@@ -2,7 +2,7 @@ import type { AdminTourRow } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
 import { describe, expect, it } from 'vitest';
 import { setPublishedToast } from './tours-publish';
-import { toTourRowVM } from './tours-view';
+import { categoryOptionLabel, toTourRowVM } from './tours-view';
 
 /**
  * Mapper hiển thị + câu toast của `/tours` (spec P4e-1 §3-F11). Bảng không tự
@@ -77,5 +77,24 @@ describe('setPublishedToast', () => {
     expect(setPublishedToast(ROW.title, { isPublished: false, changed: false })).toBe(
       t.publish.toast.unchanged(ROW.title),
     );
+  });
+});
+
+describe('categoryOptionLabel', () => {
+  /**
+   * Menu lọc danh mục của back office đọc CẢ danh mục đã ẩn (vòng review F14),
+   * để admin còn lọc ra được tour thuộc chúng mà đi sửa. Lượt thử tay 23/09 thấy
+   * menu in hai loại y hệt nhau — admin không biết vì sao một nhóm tour đang
+   * bán lại không có chip nào trên web.
+   */
+  it('danh mục đang bật: đúng cái tên', () => {
+    expect(categoryOptionLabel({ id: 'c1', name: 'Day Tours', isActive: true })).toBe('Day Tours');
+  });
+
+  it('danh mục đã ẩn: tên kèm dấu (hidden)', () => {
+    expect(categoryOptionLabel({ id: 'c4', name: 'Trekking & Adventure', isActive: false })).toBe(
+      t.list.categoryHidden('Trekking & Adventure'),
+    );
+    expect(t.list.categoryHidden('X')).toMatch(/hidden/i);
   });
 });

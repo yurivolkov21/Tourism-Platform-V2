@@ -1,5 +1,6 @@
 import type { AdminTourRow } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
+import type { TourCategoryOption } from './api/tours';
 import { formatAmount } from './bookings-view';
 import { departuresHref } from './tours-query';
 
@@ -54,4 +55,16 @@ export function toTourRowVM(row: AdminTourRow): TourRowVM {
     departuresHref: departuresHref(row.slug),
     departuresLabel: t.manageDepartures(row.title),
   };
+}
+
+/**
+ * Nhãn một mục của menu lọc danh mục.
+ *
+ * Danh mục đã ẩn mang dấu (hidden). Menu có đủ chúng để admin còn lọc ra được
+ * tour thuộc chúng mà đi sửa (vòng review F14), nhưng in y hệt danh mục đang bật
+ * thì admin không biết vì sao một nhóm tour đang bán lại không có chip nào trên
+ * trang khách (lượt thử tay F14, 23/09).
+ */
+export function categoryOptionLabel(option: TourCategoryOption): string {
+  return option.isActive ? option.name : messages.admin.tours.list.categoryHidden(option.name);
 }

@@ -1,7 +1,8 @@
 import { render, screen } from '@testing-library/react';
-import type { TourCategory } from '@tourism/contract';
+import userEvent from '@testing-library/user-event';
 import { messages } from '@tourism/i18n';
 import { describe, expect, it, vi } from 'vitest';
+import type { TourCategoryOption } from '@/lib/api/tours';
 import type { ToursQuery } from '@/lib/tours-query';
 import type { TourRowVM } from '@/lib/tours-view';
 import { ToursTable } from './tours-table';
@@ -36,15 +37,10 @@ const row = (patch: Partial<TourRowVM> = {}): TourRowVM => ({
 });
 
 const QUERY: ToursQuery = { page: 1, limit: 20 };
-const CATEGORIES: TourCategory[] = [
-  {
-    id: 'b0000001-0000-4000-8000-000000000001',
-    slug: 'day',
-    name: 'Day Tours',
-    description: null,
-    order: 1,
-    toursCount: 9,
-  },
+const CATEGORIES: TourCategoryOption[] = [
+  { id: 'b0000001-0000-4000-8000-000000000001', name: 'Day Tours', isActive: true },
+  // Danh mục đã ẩn vẫn có trong menu — admin phải lọc ra được tour thuộc nó.
+  { id: 'b0000001-0000-4000-8000-000000000004', name: 'Trekking & Adventure', isActive: false },
 ];
 
 function renderTable(rows: TourRowVM[]) {
@@ -127,5 +123,22 @@ describe('ToursTable', () => {
   it('danh sách rỗng nói đúng câu của vùng', () => {
     renderTable([]);
     expect(screen.getByText(t.empty)).toBeInTheDocument();
+  });
+});
+
+describe('ToursTable — menu lọc danh mục', () => {
+  it('danh mục đã ẩn có mặt trong menu, KÈM dấu (hidden)', async () => {
+    // Lượt thử tay F14 (23/09): menu đã có đủ danh mục ẩn (vòng review F14)
+    // nhưng in chúng y hệt danh mục đang bật — admin không biết vì sao một nhóm
+    // tour đang bán lại không có chip nào trên web.
+    const user = userEvent.setup();
+    renderTable([row()]);
+
+    await user.click(screen.getByRole('button', { name: new RegExp(t.categoryLabel) }));
+
+    expect(await screen.findByRole('menuitemradio', { name: 'Day Tours' })).toBeInTheDocument();
+    expect(
+      screen.getByRole('menuitemradio', { name: t.categoryHidden('Trekking & Adventure') }),
+    ).toBeInTheDocument();
   });
 });

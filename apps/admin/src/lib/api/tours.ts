@@ -31,6 +31,8 @@ export async function fetchAdminTours(
 export interface TourCategoryOption {
   id: string;
   name: string;
+  /** Danh mục đã ẩn vẫn có trong menu, nhưng mang dấu — xem `categoryOptionLabel`. */
+  isActive: boolean;
 }
 
 /**
@@ -55,7 +57,7 @@ export interface TourCategoryOption {
 export async function fetchTourCategories(cookie: string): Promise<TourCategoryOption[]> {
   return api.admin.categories
     .list(undefined, { context: withAdminAuth(cookie) })
-    .then((rows) => rows.map((row) => ({ id: row.id, name: row.name })))
+    .then((rows) => rows.map((row) => ({ id: row.id, name: row.name, isActive: row.isActive })))
     .catch(() => [] as TourCategoryOption[]);
 }
 

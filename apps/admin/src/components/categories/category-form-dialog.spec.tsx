@@ -70,6 +70,18 @@ describe('CategoryFormDialog — ô slug', () => {
     expect(screen.getByLabelText(t.form.slug)).toBeEnabled();
   });
 
+  it('ô slug KHÔNG bị soát chính tả hay tự sửa chữ', () => {
+    // Lượt thử tay F14 (23/09): trình duyệt gạch chân đỏ `dao-phu-quoc` như
+    // một lỗi chính tả. Slug không phải câu văn — soát chính tả chỉ gây nhiễu,
+    // còn tự viết hoa hay tự sửa chữ trên bàn phím điện thoại thì làm hỏng nó.
+    renderDialog();
+    const slug = screen.getByLabelText(t.form.slug);
+
+    expect(slug).toHaveAttribute('spellcheck', 'false');
+    expect(slug).toHaveAttribute('autocapitalize', 'none');
+    expect(slug).toHaveAttribute('autocorrect', 'off');
+  });
+
   it('chế độ SỬA: ô slug KHÔNG có mặt — đây là chốt của "đặt một lần"', () => {
     // Để ô đó ở đây dưới dạng disabled cũng không đủ: nó mời người ta thử, rồi
     // phải giải thích. Không render mới là câu trả lời gọn.

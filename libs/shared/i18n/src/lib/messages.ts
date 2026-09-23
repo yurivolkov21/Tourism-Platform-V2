@@ -3896,6 +3896,12 @@ export const messages = {
         noImage: 'No image yet',
         categoryLabel: 'Filter by category',
         categoryAll: 'All categories',
+        /**
+         * Danh mục ĐÃ ẨN trong menu lọc. Menu có đủ danh mục ẩn để admin còn lọc
+         * ra được tour thuộc chúng mà đi sửa (vòng review F14); dấu này cho biết
+         * vì sao nhóm tour ấy không có chip nào trên trang khách.
+         */
+        categoryHidden: (name: string) => `${name} (hidden)`,
         statusLabel: 'Filter by sale status',
         statusAll: 'All tours',
         statusLive: 'On sale',
@@ -4574,7 +4580,15 @@ export const messages = {
         errors: {
           nameRequired: 'Give the category a name.',
           slugRequired: 'Give the category a slug.',
-          slugShape: 'Use lowercase letters, digits and hyphens only.',
+          /**
+           * Phải nói ĐÚNG luật `CATEGORY_SLUG_PATTERN`: gạch nối chỉ nằm GIỮA hai
+           * cụm chữ-số. Câu cũ "lowercase letters, digits and hyphens only" bảo
+           * rằng gạch nối được phép, trong khi gõ đúng một dấu `-` lại bị từ chối
+           * (lượt thử tay F14, 23/09). Ví dụ trong câu phải là slug hợp lệ — có
+           * ca test ghim điều đó.
+           */
+          slugShape:
+            'Use lowercase letters and numbers, with single hyphens between words — for example day-trips.',
           tooLong: (max: number) => `Keep it under ${max} characters.`,
         },
       },

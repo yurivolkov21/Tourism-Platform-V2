@@ -159,6 +159,12 @@ export function CategoryFormDialog<Code extends string>({
                   <Input
                     id={`${formId}-slug`}
                     value={values.slug}
+                    // Slug không phải câu văn: soát chính tả gạch đỏ nó như một
+                    // lỗi (lượt thử tay F14), còn tự viết hoa hay tự sửa chữ
+                    // trên bàn phím điện thoại thì làm hỏng nó.
+                    spellCheck={false}
+                    autoCapitalize="none"
+                    autoCorrect="off"
                     disabled={pending}
                     aria-invalid={errors.slug !== undefined}
                     aria-describedby={describedBy}
