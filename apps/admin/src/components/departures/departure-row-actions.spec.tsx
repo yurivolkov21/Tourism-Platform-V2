@@ -109,7 +109,8 @@ describe('DepartureRowActions — nút nào được bấm', () => {
         name: t.cancel.actionLabel(vmAt(ROW, '2026-10-10').dates),
       }),
     ).not.toBeInTheDocument();
-    expect(screen.queryAllByRole('button')).toHaveLength(2);
+    // Từ F16 hàng đã khởi hành chỉ còn Sửa — nút đóng/mở cũng nhường chỗ.
+    expect(screen.queryAllByRole('button')).toHaveLength(1);
   });
 
   it('chuyến ĐÃ HUỶ: KHÔNG có nút nào', () => {
@@ -118,6 +119,40 @@ describe('DepartureRowActions — nút nào được bấm', () => {
     renderActions({ ...ROW, status: 'CANCELLED' }, BEFORE_DEADLINE);
 
     expect(screen.queryAllByRole('button')).toHaveLength(0);
+  });
+
+  it('QUÁ HẠN CHÓT mà chưa đi: Close VẪN bấm được — checkout mở trước hạn có thể đang dở', () => {
+    const { dates } = renderActions(ROW, AFTER_DEADLINE);
+
+    expect(screen.getByRole('button', { name: t.setStatus.closeLabel(dates) })).toBeEnabled();
+    expect(screen.getByRole('button', { name: t.cancel.actionLabel(dates) })).toBeEnabled();
+  });
+
+  it.each([
+    ['đang chạy', ROW, '2026-10-12'],
+    ['đã về', { ...ROW, status: 'CLOSED' as const }, '2026-10-20'],
+  ] as const)('chuyến %s: chỉ còn Sửa, không Close cũng không Reopen', (_label, row, today) => {
+    const { dates } = renderActions(row, today);
+
+    expect(screen.getByRole('button', { name: t.edit.actionLabel(dates) })).toBeEnabled();
+    expect(
+      screen.queryByRole('button', { name: t.setStatus.closeLabel(dates) }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: t.setStatus.reopenLabel(dates) }),
+    ).not.toBeInTheDocument();
+    expect(screen.queryAllByRole('button')).toHaveLength(1);
+  });
+
+  it('ô giữ chỗ của nút đóng/mở là một vùng `aria-hidden`, không phải một nút', () => {
+    // Giữ cột cho thẳng (lượt thử tay F14) mà không mời trình đọc màn hình bấm
+    // một thứ không tồn tại. `getByText` không lọc cây trợ năng, nên nó tìm
+    // thấy chữ nằm trong ô giữ chỗ.
+    renderActions(ROW, '2026-10-12');
+
+    const placeholder = screen.getByText(t.setStatus.close).closest('[aria-hidden="true"]');
+    expect(placeholder?.tagName).toBe('SPAN');
+    expect(placeholder?.closest('button')).toBeNull();
   });
 });
 

@@ -4737,11 +4737,18 @@ export const messages = {
          */
         refundStalled: 'Refunds resume as soon as the background worker wakes up.',
       },
-      /** Nhãn enum `DepartureStatus` — `Record` đủ member để thêm trạng thái là đỏ typecheck. */
-      status: {
-        OPEN: 'Open',
-        CLOSED: 'Closed',
-        CANCELLED: 'Cancelled',
+      /**
+       * Nhãn của sáu GIAI ĐOẠN (ADR-0046) — thứ cột Status in ra. Công tắc
+       * `OPEN`/`CLOSED`/`CANCELLED` không còn nhãn riêng: nó chỉ quyết nút
+       * đóng/mở gửi chiều nào.
+       */
+      phase: {
+        'on-sale': 'On sale',
+        'deadline-passed': 'Deadline passed',
+        closed: 'Closed',
+        departed: 'Departed',
+        completed: 'Completed',
+        cancelled: 'Cancelled',
       },
       form: {
         startDate: 'Start date',

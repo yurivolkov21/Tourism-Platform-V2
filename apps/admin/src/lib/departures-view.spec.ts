@@ -1,7 +1,7 @@
 import { messages } from '@tourism/i18n';
 import { describe, expect, it } from 'vitest';
 import { type DepartureRowFixture, withPhase } from '@/test/departure-row';
-import { departureStatusBadgeVariant, toDepartureRowVM } from './departures-view';
+import { departurePhaseBadgeVariant, toDepartureRowVM } from './departures-view';
 
 /**
  * VM của một hàng bảng chuyến (spec P4e-1 F12). Ba lá cờ `canEdit`/`canClose`/
@@ -111,11 +111,14 @@ describe('toDepartureRowVM', () => {
   });
 });
 
-describe('departureStatusBadgeVariant', () => {
-  it('ba trạng thái ba tone, và chỉ CANCELLED mới là tone cảnh báo', () => {
-    expect(departureStatusBadgeVariant('OPEN')).toBe('default');
-    expect(departureStatusBadgeVariant('CLOSED')).toBe('secondary');
-    expect(departureStatusBadgeVariant('CANCELLED')).toBe('destructive');
+describe('departurePhaseBadgeVariant', () => {
+  it('xanh đặc ĐÚNG MỘT chỗ — còn nhận tiền được; đỏ chỉ cho chuyến đã huỷ', () => {
+    expect(departurePhaseBadgeVariant('on-sale')).toBe('default');
+    expect(departurePhaseBadgeVariant('deadline-passed')).toBe('outline');
+    expect(departurePhaseBadgeVariant('closed')).toBe('secondary');
+    expect(departurePhaseBadgeVariant('departed')).toBe('outline');
+    expect(departurePhaseBadgeVariant('completed')).toBe('secondary');
+    expect(departurePhaseBadgeVariant('cancelled')).toBe('destructive');
   });
 });
 
@@ -161,5 +164,52 @@ describe('toDepartureRowVM — huỷ chuyến và hoàn tiền (F13)', () => {
     const vm = vmAt({ ...ROW, status: 'CANCELLED', liveBookingCount: 0, seatsBooked: 0 }, BEFORE);
 
     expect(vm.refundOutstanding).toBeNull();
+  });
+});
+
+describe('toDepartureRowVM — cờ theo GIAI ĐOẠN (F16)', () => {
+  // Chuyến 10/10 → 14/10, hạn chót 03/10. Mỗi ca chọn `status` và `today` để
+  // server ra đúng giai đoạn cần thử.
+  it.each([
+    // giai đoạn, status, today, showToggle, canClose, canReopen, canCancel, canEdit
+    ['on-sale', 'OPEN', '2026-10-01', true, true, false, true, true],
+    ['deadline-passed', 'OPEN', '2026-10-05', true, true, false, true, true],
+    ['closed', 'CLOSED', '2026-10-01', true, false, true, true, true],
+    ['departed', 'OPEN', '2026-10-12', false, false, false, false, true],
+    ['completed', 'CLOSED', '2026-10-20', false, false, false, false, true],
+    ['cancelled', 'CANCELLED', '2026-10-01', false, false, false, false, false],
+  ] as const)('%s', (phase, status, today, showToggle, canClose, canReopen, canCancel, canEdit) => {
+    const vm = vmAt({ ...ROW, status }, today);
+
+    expect(vm.phase).toBe(phase);
+    expect(vm.phaseLabel).toBe(t.phase[phase]);
+    expect({
+      showToggle: vm.showToggle,
+      canClose: vm.canClose,
+      canReopen: vm.canReopen,
+      canCancel: vm.canCancel,
+      canEdit: vm.canEdit,
+    }).toEqual({ showToggle, canClose, canReopen, canCancel, canEdit });
+  });
+
+  it('closed ĐÃ QUA hạn chót: còn chỗ cho nút Reopen nhưng nút tắt', () => {
+    const vm = vmAt({ ...ROW, status: 'CLOSED' }, '2026-10-05');
+
+    expect(vm.phase).toBe('closed');
+    expect(vm.showToggle).toBe(true);
+    expect(vm.canReopen).toBe(false);
+  });
+
+  it('VM TIN `phase` của server, không tự tính lại từ `today`', () => {
+    // Server nói `departed` trong khi `today` của trang còn trước ngày đi —
+    // chuyện có thật khi hai đồng hồ đứng hai bên mốc nửa đêm. Huy hiệu, nút
+    // đóng/mở và nút huỷ phải cùng nghe server.
+    const vm = toDepartureRowVM(
+      { ...withPhase(ROW, '2026-10-01'), phase: 'departed' },
+      '2026-10-01',
+    );
+
+    expect(vm.showToggle).toBe(false);
+    expect(vm.canCancel).toBe(false);
   });
 });

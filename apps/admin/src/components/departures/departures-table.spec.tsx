@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { messages } from '@tourism/i18n';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -110,5 +110,30 @@ describe('DeparturesTable — tab lọc theo NHÓM giai đoạn', () => {
     await user.click(screen.getByRole('button', { name: t.list.all }));
 
     expect(push).toHaveBeenCalledWith('/tours/hoi-an-lantern-evening/departures');
+  });
+});
+
+describe('DeparturesTable — cột Status in GIAI ĐOẠN, không in công tắc', () => {
+  /** Hàng dữ liệu duy nhất của bảng (hàng 0 là tiêu đề). */
+  function bodyRow() {
+    const [, row] = screen.getAllByRole('row');
+    if (!row) throw new Error('bảng không có hàng dữ liệu');
+    return row;
+  }
+
+  it('chuyến đang chạy mà công tắc vẫn OPEN: in Departed kèm icon máy bay', () => {
+    renderTable({ today: '2026-10-12' });
+
+    const badge = within(bodyRow()).getByText(t.phase.departed);
+    expect(badge.querySelector('svg')).toHaveClass('lucide-plane');
+    expect(within(bodyRow()).queryByText(t.phase['on-sale'])).not.toBeInTheDocument();
+  });
+
+  it('chuyến đã về: in Completed kèm icon cờ đích', () => {
+    renderTable({ today: '2026-10-20' });
+
+    expect(within(bodyRow()).getByText(t.phase.completed).querySelector('svg')).toHaveClass(
+      'lucide-flag',
+    );
   });
 });

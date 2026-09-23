@@ -1,7 +1,11 @@
 'use client';
 
 import { type ColumnVisibilityState, createColumnHelper, useTable } from '@tanstack/react-table';
-import { type DeparturePhaseFilter, DeparturePhaseFilterSchema } from '@tourism/contract';
+import {
+  type DeparturePhase,
+  type DeparturePhaseFilter,
+  DeparturePhaseFilterSchema,
+} from '@tourism/contract';
 import { messages } from '@tourism/i18n';
 import { Badge } from '@tourism/ui/components/badge';
 import { Button } from '@tourism/ui/components/button';
@@ -10,8 +14,10 @@ import {
   CalendarClockIcon,
   CalendarDaysIcon,
   CircleCheckIcon,
+  ClockIcon,
   FlagIcon,
   ListIcon,
+  LockIcon,
   PlaneIcon,
   PlusIcon,
   TicketIcon,
@@ -28,7 +34,7 @@ import { serverTableFeatures } from '@/components/kit/table-features';
 import { TablePagination } from '@/components/kit/table-pagination';
 import { formatDateRange } from '@/lib/bookings-view';
 import { type DeparturesQuery, departuresHref } from '@/lib/departures-query';
-import { type DepartureRowVM, departureStatusBadgeVariant } from '@/lib/departures-view';
+import { type DepartureRowVM, departurePhaseBadgeVariant } from '@/lib/departures-view';
 import {
   type CancelDepartureAction,
   type CreateContractCode,
@@ -112,7 +118,7 @@ const COLUMN_LABELS: Record<string, string> = {
   deadline: t.list.columns.deadline,
   bookingsLabel: t.list.columns.bookings,
   refundOutstanding: t.list.columns.refunds,
-  statusLabel: t.list.columns.status,
+  phaseLabel: t.list.columns.status,
 };
 
 const COLUMN_ICONS = {
@@ -121,12 +127,22 @@ const COLUMN_ICONS = {
   deadline: CalendarDaysIcon,
   bookingsLabel: UsersIcon,
   refundOutstanding: BanIcon,
-  statusLabel: CircleCheckIcon,
+  phaseLabel: CircleCheckIcon,
 };
 
 /** Icon theo tab — `Record` trên enum để quên một nhóm là đỏ typecheck. */
 const PHASE_FILTER_ICONS: Record<DeparturePhaseFilter, typeof ListIcon> = {
   upcoming: CalendarClockIcon,
+  departed: PlaneIcon,
+  completed: FlagIcon,
+  cancelled: BanIcon,
+};
+
+/** Icon theo giai đoạn — `Record` trên enum để quên một giai đoạn là đỏ typecheck. */
+const PHASE_ICONS: Record<DeparturePhase, typeof ListIcon> = {
+  'on-sale': CircleCheckIcon,
+  'deadline-passed': ClockIcon,
+  closed: LockIcon,
   departed: PlaneIcon,
   completed: FlagIcon,
   cancelled: BanIcon,
@@ -251,13 +267,19 @@ export function DeparturesTable({
               </div>
             ) : null,
         }),
-        columnHelper.accessor('statusLabel', {
+        columnHelper.accessor('phaseLabel', {
           header: t.list.columns.status,
-          cell: ({ row }) => (
-            <Badge variant={departureStatusBadgeVariant(row.original.status)} className="px-1.5">
-              {row.original.statusLabel}
-            </Badge>
-          ),
+          // Nghĩa nằm ở CHỮ; icon chỉ giúp mắt tách hai cặp chung biến thể
+          // (Deadline passed/Departed, Closed/Completed) — spec F16 §2e.
+          cell: ({ row }) => {
+            const Icon = PHASE_ICONS[row.original.phase];
+            return (
+              <Badge variant={departurePhaseBadgeVariant(row.original.phase)} className="px-1.5">
+                <Icon data-icon="inline-start" aria-hidden="true" />
+                {row.original.phaseLabel}
+              </Badge>
+            );
+          },
         }),
         columnHelper.display({
           id: 'actions',

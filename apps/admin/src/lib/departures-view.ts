@@ -1,4 +1,9 @@
-import type { AdminDepartureRow, AdminDepartureStatus } from '@tourism/contract';
+import {
+  type AdminDepartureRow,
+  type AdminDepartureStatus,
+  DEPARTURE_PHASE_FILTER_GROUPS,
+  type DeparturePhase,
+} from '@tourism/contract';
 import { messages } from '@tourism/i18n';
 import { formatAmount, formatCalendarDate, formatDateRange } from './bookings-view';
 
@@ -11,6 +16,9 @@ import { formatAmount, formatCalendarDate, formatDateRange } from './bookings-vi
  * chúng là bản SOI GƯƠNG của luật server (chuyến đã huỷ thì đóng sổ; mở lại
  * chỉ trước hạn chót). Gương chứ không phải nguồn — server vẫn chặn thật, còn
  * đây chỉ để nút không mời admin bấm một thứ chắc chắn bị từ chối.
+ *
+ * Từ F16 các cờ vòng đời đọc `phase` của server (ADR-0046); chỉ hai thứ gắn
+ * với hạn chót còn đọc `today`: dòng "Passed" và nút Reopen.
  */
 
 const t = messages.admin.departures;
@@ -50,17 +58,31 @@ export interface DepartureRowVM {
    */
   version: string;
   status: AdminDepartureStatus;
-  statusLabel: string;
+  /** Giai đoạn do SERVER tính (ADR-0046) — VM chỉ chở, không tính lại. */
+  phase: DeparturePhase;
+  /** Nhãn của giai đoạn — thứ cột Status in ra. */
+  phaseLabel: string;
   /** Sửa được không — chuyến đã huỷ là bản ghi đóng. */
   canEdit: boolean;
-  /** Đóng được không — đóng lúc nào cũng được, trừ khi đã huỷ. */
+  /**
+   * Hàng còn nút đóng/mở không — chỉ chuyến CHƯA ĐI (nhóm Upcoming). Từ ngày
+   * khởi hành, Reopen đã bị chặn vì quá hạn chót, còn Close chỉ còn một hậu
+   * quả thật là hoàn tiền một khách đặt đúng luật ngay ngày đi (ADR-0046). Ẩn
+   * nút thì ô vẫn giữ chỗ — xem `DepartureRowActions`.
+   */
+  showToggle: boolean;
+  /**
+   * Đóng được không — chuyến đang bán hoặc đã quá hạn chót mà CHƯA đi (F16);
+   * quá hạn vẫn đóng được vì checkout mở trước hạn có thể đang dở.
+   */
   canClose: boolean;
   /** Mở lại được không — cần chưa qua hạn chót VÀ chưa bị huỷ. */
   canReopen: boolean;
   /**
    * Huỷ chuyến được không (F13). Thước là NGÀY KHỞI HÀNH, không phải hạn nhận
    * đặt: một chuyến quá hạn đặt mà hướng dẫn viên gãy chân vẫn phải huỷ được.
-   * Gương của `departureCancelBlocker` ở server.
+   * Gương của `departureCancelBlocker` ở server; từ F16 đọc qua `phase` (ngày
+   * khởi hành đã là `departed`).
    */
   canCancel: boolean;
   /**
@@ -85,7 +107,10 @@ export function toDepartureRowVM(row: AdminDepartureRow, today: string): Departu
   // So CHUỖI ISO: chúng sắp thứ tự từ điển đúng bằng thứ tự thời gian, nên
   // không cần dựng `Date` nào (và không mở cửa cho lệch một ngày vì múi giờ).
   const deadlinePassed = today > row.cancellationDeadline;
-  const cancelled = row.status === 'CANCELLED';
+  const cancelled = row.phase === 'cancelled';
+  // Chuyến còn thao tác được = đúng tập của tab Upcoming — một định nghĩa, hai
+  // chỗ dùng (nút đóng/mở và nút huỷ).
+  const upcoming = DEPARTURE_PHASE_FILTER_GROUPS.upcoming.includes(row.phase);
 
   return {
     id: row.id,
@@ -109,23 +134,36 @@ export function toDepartureRowVM(row: AdminDepartureRow, today: string): Departu
     paidBookingCount: row.liveBookingCount - row.pendingBookingCount,
     version: row.version,
     status: row.status,
-    statusLabel: t.status[row.status],
+    phase: row.phase,
+    phaseLabel: t.phase[row.phase],
     canEdit: !cancelled,
-    canClose: !cancelled && row.status === 'OPEN',
-    canReopen: !cancelled && row.status === 'CLOSED' && !deadlinePassed,
-    // `today` là ngày lịch VIỆT NAM của SERVER — cùng thước `canCancelOnline`
-    // dùng ở API, nên nút không bao giờ mời bấm một thứ server sẽ từ chối.
-    canCancel: !cancelled && today < row.startDate,
+    showToggle: upcoming,
+    canClose: row.phase === 'on-sale' || row.phase === 'deadline-passed',
+    canReopen: row.phase === 'closed' && !deadlinePassed,
+    // Cùng mốc với huy hiệu vì cả hai đọc `phase` của server — trước F16 là
+    // `today < startDate` của trang, một đồng hồ thứ hai.
+    canCancel: upcoming,
     refundOutstanding:
       cancelled && row.liveBookingCount > 0 ? t.list.refundOutstanding(row.liveBookingCount) : null,
   };
 }
 
-/** Badge theo trạng thái — cùng bảng tone với các vùng khác của back office. */
-export function departureStatusBadgeVariant(
-  status: AdminDepartureStatus,
+/** Biến thể Badge theo giai đoạn — `Record` để thêm giai đoạn là đỏ typecheck. */
+const PHASE_BADGE_VARIANTS: Record<
+  DeparturePhase,
+  'default' | 'secondary' | 'destructive' | 'outline'
+> = {
+  // Xanh đặc ĐÚNG MỘT chỗ: còn nhận tiền được.
+  'on-sale': 'default',
+  'deadline-passed': 'outline',
+  closed: 'secondary',
+  departed: 'outline',
+  completed: 'secondary',
+  cancelled: 'destructive',
+};
+
+export function departurePhaseBadgeVariant(
+  phase: DeparturePhase,
 ): 'default' | 'secondary' | 'destructive' | 'outline' {
-  if (status === 'OPEN') return 'default';
-  if (status === 'CANCELLED') return 'destructive';
-  return 'secondary';
+  return PHASE_BADGE_VARIANTS[phase];
 }

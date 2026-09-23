@@ -38,6 +38,9 @@ import {
  * nó đã được hoàn tiền. Nút Reopen của một chuyến quá hạn chót cũng tắt: server
  * sẽ từ chối bằng `DEADLINE_PASSED`, nên mời bấm là mời ăn một câu lỗi.
  *
+ * Từ F16 hàng `departed`/`completed` chỉ còn Sửa: nút đóng/mở nhường chỗ cho
+ * một ô giữ chỗ cùng cỡ (spec F16 §2f).
+ *
  * KHÔNG có nút huỷ chuyến ở đây: đó là F13, và nó chạm tiền.
  *
  * Component KHÔNG tự import server action — nhận từ bảng, bảng nhận từ trang.
@@ -95,31 +98,49 @@ export function DepartureRowActions({
         {t.edit.action}
       </Button>
 
-      <Button
-        type="button"
-        variant="outline"
-        size="sm"
-        aria-label={
-          nextStatus === 'CLOSED'
-            ? t.setStatus.closeLabel(row.dates)
-            : t.setStatus.reopenLabel(row.dates)
-        }
-        // Mở lại sau hạn chót là điều server từ chối — nút tắt, và cột "Book/
-        // cancel by" ngay bên cạnh đã nói vì sao.
-        disabled={disabled || !toggleEnabled}
-        onClick={() => setToggling(true)}
-      >
-        {nextStatus === 'CLOSED' ? (
-          <LockIcon data-icon="inline-start" aria-hidden="true" />
-        ) : (
-          <UnlockIcon data-icon="inline-start" aria-hidden="true" />
-        )}
-        {/* Giữ chỗ cho nhãn rộng hơn trong cặp Close/Reopen — xem `StableLabel`. */}
-        <StableLabel
-          label={nextStatus === 'CLOSED' ? t.setStatus.close : t.setStatus.reopen}
-          reserve={[t.setStatus.close, t.setStatus.reopen]}
-        />
-      </Button>
+      {row.showToggle ? (
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          aria-label={
+            nextStatus === 'CLOSED'
+              ? t.setStatus.closeLabel(row.dates)
+              : t.setStatus.reopenLabel(row.dates)
+          }
+          // Mở lại sau hạn chót là điều server từ chối — nút tắt, và cột "Book/
+          // cancel by" ngay bên cạnh đã nói vì sao.
+          disabled={disabled || !toggleEnabled}
+          onClick={() => setToggling(true)}
+        >
+          {nextStatus === 'CLOSED' ? (
+            <LockIcon data-icon="inline-start" aria-hidden="true" />
+          ) : (
+            <UnlockIcon data-icon="inline-start" aria-hidden="true" />
+          )}
+          {/* Giữ chỗ cho nhãn rộng hơn trong cặp Close/Reopen — xem `StableLabel`. */}
+          <StableLabel
+            label={nextStatus === 'CLOSED' ? t.setStatus.close : t.setStatus.reopen}
+            reserve={[t.setStatus.close, t.setStatus.reopen]}
+          />
+        </Button>
+      ) : (
+        // Ô GIỮ CHỖ cùng cỡ nút đóng/mở, cho chuyến đã khởi hành (spec F16
+        // §2f): thiếu hẳn nút giữa thì cụm canh phải dồn Sửa lệch khỏi cột của
+        // hàng trên. `span` mượn lớp của nút chứ không phải `Button` bị ẩn —
+        // cùng lý do với ô giữ chỗ nút huỷ bên dưới. `StableLabel` với cùng
+        // `reserve` để bề rộng trùng khít nút thật.
+        <span
+          aria-hidden="true"
+          className={cn(buttonVariants({ variant: 'outline', size: 'sm' }), 'invisible')}
+        >
+          <LockIcon data-icon="inline-start" />
+          <StableLabel
+            label={t.setStatus.close}
+            reserve={[t.setStatus.close, t.setStatus.reopen]}
+          />
+        </span>
+      )}
 
       {row.canCancel ? (
         <Button
