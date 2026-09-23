@@ -8,6 +8,7 @@ export * from './schemas/admin-departures.js';
 export * from './schemas/bookings.js';
 export * from './schemas/catalog.js';
 export * from './schemas/common.js';
+export * from './schemas/departure-phase.js';
 export * from './schemas/enquiries.js';
 export * from './schemas/media.js';
 export * from './schemas/newsletter.js';
