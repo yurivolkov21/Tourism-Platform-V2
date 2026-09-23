@@ -124,6 +124,16 @@ describe('bốn khoá màu thêm cho cụm auth', () => {
   );
 });
 
+describe('năm khoá màu thêm cho cụm browse (P5b-2)', () => {
+  it.each(['rating', 'rating-muted', 'price-compare', 'warning', 'overlay'] as const)(
+    'khoá "%s" có mặt ở cả hai chế độ và lấy đúng giá trị cầu token',
+    (key) => {
+      expect(buildTheme('light').colors[key]).toBe(tokens.colors.light[key]);
+      expect(buildTheme('dark').colors[key]).toBe(tokens.colors.dark[key]);
+    },
+  );
+});
+
 describe('cầu font', () => {
   // Cầu token KHÔNG mang font family (ADR-0013 chỉ mang màu, bo góc, type
   // scale), nên tên khuôn chữ khai ở đây là hợp đồng — đổi nó phải là một
