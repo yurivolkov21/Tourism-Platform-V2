@@ -31,8 +31,10 @@ import { formatDateRange, formatMoney } from '@/lib/tours';
  * — kế thừa nguyên luật của JourneyRow mà nó thay thế; flow phức tạp (hủy,
  * review) vẫn ở trang chi tiết, ở đây chỉ có thông tin + lối vào.
  *
- * `today` truyền từ server (chuỗi `YYYY-MM-DD`, so lexicographic) — client
- * KHÔNG tự lấy giờ máy để tránh lệch hydration qua nửa đêm.
+ * `today` là ngày lịch VIỆT NAM do server truyền xuống (`todayDateString`,
+ * chuỗi `YYYY-MM-DD`, so lexicographic) — client KHÔNG tự lấy giờ máy để tránh
+ * lệch hydration qua nửa đêm, và để started/ended/đếm ngược đổi cùng lúc với
+ * cổng huỷ online và giai đoạn chuyến của admin (ADR-0041 §7, ADR-0046).
  */
 
 /** Chấm màu trong badge theo tone — tra bảng, thiếu thì rơi về muted. */
@@ -70,6 +72,9 @@ export function BookingAccordion({ bookings, today }: { bookings: Booking[]; tod
               ? tb.inDays(daysUntilDeparture(booking.departureStartDate, today))
               : null;
         const canPay = view.actions.includes('payNow') && !ended;
+        // Hôm sau ngày về theo giờ VN thì ngày UTC ít nhất đã tới ngày về, nên
+        // cổng review (UTC) của API chắc chắn đã mở — link không dẫn tới form
+        // bị từ chối.
         const canReview = view.tone === 'success' && ended;
 
         return (

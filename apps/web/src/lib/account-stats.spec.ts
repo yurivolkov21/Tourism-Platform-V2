@@ -1,8 +1,14 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { makeBooking } from '@/test/fixtures/booking';
-import { daysUntilDeparture, groupBookingsByTime } from './account-stats';
+import { daysUntilDeparture, groupBookingsByTime, todayDateString } from './account-stats';
 
 const TODAY = '2026-08-04';
+
+// Hai mốc biên của ngày lịch Việt Nam (UTC+7, không có giờ mùa hè): 23:59:59.999
+// giờ VN ngày 04/08 và 00:00 giờ VN ngày 05/08. Ở CẢ HAI mốc, ngày UTC vẫn là
+// 04/08 — nên hàm nào còn cắt ngày theo UTC sẽ trả cùng một đáp án cho cả hai.
+const LAST_MS_OF_TODAY_VN = `${TODAY}T16:59:59.999Z`;
+const MIDNIGHT_TOMORROW_VN = `${TODAY}T17:00:00.000Z`;
 
 // "Hôm nay" cố định để test biên ngày không phụ thuộc giờ chạy CI thật.
 beforeEach(() => {
@@ -12,6 +18,20 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.useRealTimers();
+});
+
+describe('todayDateString — "hôm nay" là ngày lịch Việt Nam (ADR-0041 §7)', () => {
+  it('23:59:59.999 giờ VN vẫn là ngày cũ', () => {
+    vi.setSystemTime(new Date(LAST_MS_OF_TODAY_VN));
+    expect(todayDateString()).toBe('2026-08-04');
+  });
+
+  it('00:00 giờ VN (17:00Z) đã sang ngày mới, dù ngày UTC còn là hôm trước', () => {
+    // Đây là khung 00:00–07:00 giờ VN: server đã tính ngày mới (hạn huỷ online,
+    // giai đoạn chuyến của admin), trang account không được tụt lại một ngày.
+    vi.setSystemTime(new Date(MIDNIGHT_TOMORROW_VN));
+    expect(todayDateString()).toBe('2026-08-05');
+  });
 });
 
 describe('daysUntilDeparture — đồng hồ đếm ngược trên thẻ chuyến kế tiếp', () => {
@@ -32,13 +52,13 @@ describe('daysUntilDeparture — đồng hồ đếm ngược trên thẻ chuy�
     expect(daysUntilDeparture('2026-08-01')).toBe(-3);
   });
 
-  it('KHÔNG lệch vì múi giờ — so theo ngày lịch UTC, không theo giờ máy', () => {
-    // Chạy lúc 12:00 UTC (beforeEach). Nếu hàm dùng giờ địa phương của máy
-    // thì một máy ở UTC+7 sẽ cho lệch một ngày ở các mốc gần nửa đêm.
-    vi.setSystemTime(new Date(`${TODAY}T23:59:59.000Z`));
+  it('đếm theo ngày lịch VIỆT NAM — về 0 đúng lúc 00:00 giờ VN, không đợi 00:00 UTC', () => {
+    // Đếm theo ngày UTC thì từ 00:00 tới 07:00 giờ VN của ngày khởi hành trang
+    // vẫn in "còn 1 ngày", trong khi server đã thôi cho huỷ online.
+    vi.setSystemTime(new Date(LAST_MS_OF_TODAY_VN));
     expect(daysUntilDeparture('2026-08-05')).toBe(1);
-    vi.setSystemTime(new Date(`${TODAY}T00:00:01.000Z`));
-    expect(daysUntilDeparture('2026-08-05')).toBe(1);
+    vi.setSystemTime(new Date(MIDNIGHT_TOMORROW_VN));
+    expect(daysUntilDeparture('2026-08-05')).toBe(0);
   });
 });
 
@@ -64,6 +84,24 @@ describe('groupBookingsByTime — ba nhóm của /account/bookings', () => {
     expect(groupBookingsByTime([trip('BK-ENDSTODA', '2026-08-01', TODAY)]).onTheRoad).toHaveLength(
       1,
     );
+  });
+
+  it('chuyến khởi hành ngày mai sang "đang đi" đúng lúc 00:00 giờ VN', () => {
+    const tomorrow = trip('BK-TOMORROW', '2026-08-05', '2026-08-07');
+    vi.setSystemTime(new Date(LAST_MS_OF_TODAY_VN));
+    expect(groupBookingsByTime([tomorrow]).upcoming).toHaveLength(1);
+    vi.setSystemTime(new Date(MIDNIGHT_TOMORROW_VN));
+    expect(groupBookingsByTime([tomorrow]).onTheRoad).toHaveLength(1);
+  });
+
+  it('chuyến về hôm nay sang "đã qua" đúng lúc 00:00 giờ VN hôm sau', () => {
+    // Cùng khoảnh khắc màn Departures của admin chuyển chuyến sang Completed
+    // (ADR-0046) — hai phía phải đổi nhãn cùng lúc.
+    const endsToday = trip('BK-ENDSTODA', '2026-08-01', TODAY);
+    vi.setSystemTime(new Date(LAST_MS_OF_TODAY_VN));
+    expect(groupBookingsByTime([endsToday]).onTheRoad).toHaveLength(1);
+    vi.setSystemTime(new Date(MIDNIGHT_TOMORROW_VN));
+    expect(groupBookingsByTime([endsToday]).past).toHaveLength(1);
   });
 
   it('CANCELLED luôn vào "đã qua", kể cả khi ngày còn ở tương lai', () => {
