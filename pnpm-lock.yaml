@@ -268,6 +268,24 @@ importers:
       '@expo/vector-icons':
         specifier: ^15.1.1
         version: 15.1.1(expo-font@57.0.4)(react-native@0.86.3(@babel/core@7.29.7)(@react-native/jest-preset@0.86.3(@babel/core@7.29.7)(react@19.2.4))(@react-native/metro-config@0.87.1(@babel/core@7.29.7))(@types/react@19.2.17)(react@19.2.4))(react@19.2.4)
+      '@orpc/client':
+        specifier: 1.14.8
+        version: 1.14.8
+      '@orpc/contract':
+        specifier: 1.14.8
+        version: 1.14.8
+      '@orpc/openapi-client':
+        specifier: 1.14.8
+        version: 1.14.8
+      '@orpc/tanstack-query':
+        specifier: 1.14.8
+        version: 1.14.8(@orpc/client@1.14.8)(@tanstack/query-core@5.103.2)
+      '@tanstack/react-query':
+        specifier: ^5.103.2
+        version: 5.103.2(react@19.2.4)
+      '@tourism/contract':
+        specifier: workspace:*
+        version: link:../../libs/shared/contract
       '@tourism/core':
         specifier: workspace:*
         version: link:../../libs/shared/core
@@ -2635,6 +2653,12 @@ packages:
   '@orpc/standard-server@1.14.8':
     resolution: {integrity: sha512-v0iqvzJ6NzoVRYhk/GJl3/SqC124hSwcDOjPotZbILvx8XwfBlG4V/uhyaZ8baj+l5h79afrhia6Dq9QzFomEQ==}
 
+  '@orpc/tanstack-query@1.14.8':
+    resolution: {integrity: sha512-F/tcJRS/62Whx99bwWFhLnjaw7cr8SB7U/22GfojaTZndXZzianqaHeTJ9uGVYmDIeuRF/W0ZdrqQ1ub+1EvnQ==}
+    peerDependencies:
+      '@orpc/client': 1.14.8
+      '@tanstack/query-core': '>=5.80.2'
+
   '@orpc/zod@1.14.8':
     resolution: {integrity: sha512-Gf7oywZziLst/MS0WOC4GHi51QoI399OQrPYqjSle2ks7nrmQp4e9JOZq1HKcNVZJ87NWXz24KA7mFwkS1LrJA==}
     peerDependencies:
@@ -3589,6 +3613,14 @@ packages:
 
   '@tailwindcss/postcss@4.3.3':
     resolution: {integrity: sha512-JTSZZGQi1AyKirbLN3azmjVzef92tcX7h+iSqPdaeStyFpGpDlKvvpxeOE8njhbUanbRwr3z8DyzhICWnMtQeg==}
+
+  '@tanstack/query-core@5.103.2':
+    resolution: {integrity: sha512-I8DkFXls5jXLqtm8+QpOhEmG07hIblhSZFzafg9wHsMSEvMzULy9hK17wU1T/ahfhMbtITJhbxutwwCoihkR7A==}
+
+  '@tanstack/react-query@5.103.2':
+    resolution: {integrity: sha512-B+fWiYZBc+0uUD5zDZAeLw9dKj7XEsdnuu6zRZ+no6LNKpeE3P3bJ+N6HINjcIlWR6fW3vUoTneEaGa2V6ehqw==}
+    peerDependencies:
+      react: 19.2.4
 
   '@tanstack/react-store@0.11.1':
     resolution: {integrity: sha512-HaIGKI3YLmjBYIvy5DFDY23oNaYZIsTZfngey07Uh5iLVJgM3bIGCnZeOFOqzjFld9JHWcaHJnasD/bKoGKwJQ==}
@@ -11755,6 +11787,14 @@ snapshots:
     transitivePeerDependencies:
       - '@opentelemetry/api'
 
+  '@orpc/tanstack-query@1.14.8(@orpc/client@1.14.8)(@tanstack/query-core@5.103.2)':
+    dependencies:
+      '@orpc/client': 1.14.8
+      '@orpc/shared': 1.14.8
+      '@tanstack/query-core': 5.103.2
+    transitivePeerDependencies:
+      - '@opentelemetry/api'
+
   '@orpc/zod@1.14.8(@orpc/contract@1.14.8)(@orpc/server@1.14.8(fastify@5.12.1)(ws@8.21.3))(fastify@5.12.1)(ws@8.21.3)(zod@4.4.3)':
     dependencies:
       '@orpc/contract': 1.14.8
@@ -12659,6 +12699,13 @@ snapshots:
       '@tailwindcss/oxide': 4.3.3
       postcss: 8.5.25
       tailwindcss: 4.3.3
+
+  '@tanstack/query-core@5.103.2': {}
+
+  '@tanstack/react-query@5.103.2(react@19.2.4)':
+    dependencies:
+      '@tanstack/query-core': 5.103.2
+      react: 19.2.4
 
   '@tanstack/react-store@0.11.1(react-dom@19.2.4(react@19.2.4))(react@19.2.4)':
     dependencies:
