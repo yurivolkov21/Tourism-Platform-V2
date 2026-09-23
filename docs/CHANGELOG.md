@@ -8,6 +8,65 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-09-23 — Thử tay F14 trên production: 8/8 bước đạt, bốn mục vá (nhánh `fix/p4e-2-f14-manual-test`)
+
+Lượt thử tay chạy NGAY sau merge F14 thay vì đợi F15 như plan ghi: F14 đã
+chạy thật, còn F15 sẽ chép lại cách làm của nó, nên lỗi tìm được lúc này là
+lỗi F15 khỏi phải lặp. Tám bước, mỗi bước chờ người thử xác nhận, và sau mỗi
+lệnh ghi thì đối chiếu thẳng với DB production.
+
+**Không tạo danh mục thật.** Hệ thống cố ý không có nút xoá, nên một hàng
+"test" sẽ nằm lại vĩnh viễn, kể cả lúc bảo vệ. Thay vào đó:
+`seasonal-classics` (đang ẩn sẵn, 0 tour) để thử chip không có tour, và ẩn rồi
+hiện `trekking` (5 tour) để thử đường "danh mục đã ẩn". Form tạo vẫn được kiểm,
+chỉ là bấm Cancel. Cuối lượt DB khớp TUYỆT ĐỐI trạng thái gốc — sáu `order`
+không trùng, trạng thái bật/tắt và số tour như cũ.
+
+**Ba lỗi của vòng review F14 ở đường "ẩn danh mục" — đã kiểm tận mắt là hết.**
+Link cũ `/tours?categories=trekking` vẫn lọc đúng 5 tour, chip đang bật in
+"Trekking & Adventure" chứ không phải slug, ô facet được bù vào cuối và đang
+tích nên bỏ được. Menu lọc bên back office vẫn có danh mục đã ẩn. Đường nối
+"thứ tự admin đặt → thứ tự chip của khách" chạy đúng từ đầu tới cuối.
+
+**Bốn mục lượt thử tìm ra, đã vá cả bốn:**
+
+1. **Cụm nút lệch cột** (góp ý của người thử). Hide và Show rộng khác nhau, mà
+   cụm nút canh phải, nên hàng mang nhãn hẹp hơn kéo mũi tên và nút Edit lệch
+   khỏi cột. Màn chuyến khởi hành lệch nặng hơn: nút "Cancel departure" chỉ có
+   ở hàng chưa khởi hành. Người thử đề xuất tách mỗi nút một cột bảng. Bản vá
+   xử cùng cái gốc mà không phải xẻ `DepartureRowActions` — component chứa nút
+   huỷ chuyến có hoàn tiền — chỉ để sửa bố cục: mỗi ô nút luôn chiếm bề rộng
+   của trạng thái rộng nhất của nó (kit `StableLabel` mới), và hàng thiếu nút
+   huỷ giữ một ô trống cùng cỡ.
+2. **Câu lỗi slug nói sai luật.** Câu cũ bảo gạch nối được phép, trong khi gõ
+   đúng một dấu `-` lại bị từ chối — vòng review siết khuôn slug mà câu báo
+   lỗi không theo kịp. Câu mới kèm một ví dụ, và có ca test ghim rằng ví dụ ấy
+   hợp lệ.
+3. **Ô slug bị soát chính tả** — trình duyệt gạch đỏ `dao-phu-quoc`. Đã tắt,
+   cùng tự viết hoa và tự sửa chữ trên bàn phím điện thoại.
+4. **Câu cảnh báo trấn an mà tô đỏ.** Hộp ẩn danh mục tô đỏ cả câu "tour vẫn
+   bán, link vẫn chạy" — màu nói ngược với chữ. Kit `ConfirmWriteDialog` nhận
+   thêm `warningTone`, mặc định vẫn đỏ; hộp danh mục xin giọng trung tính. Kèm
+   theo: menu lọc danh mục ở `/tours` nay đánh dấu "(hidden)" cho danh mục đã
+   ẩn, để admin biết vì sao nhóm tour ấy không có chip trên web.
+
+**Một lỗ test lượt đột biến bắt được:** `fetchTourCategories` chưa từng có
+test, nên gán cứng `isActive: true` ở đó thì dấu (hidden) chẳng bao giờ hiện
+mà không ca nào đỏ. Thêm spec theo khuôn mock client của `bookings.spec.ts`.
+
+**Bố cục cần mắt người.** jsdom không dàn trang, nên việc cụm nút đã thẳng cột
+chưa được test tự động nào chứng minh — bước kiểm cuối là nhìn trên production
+sau khi deploy.
+
+Plan F15 cập nhật theo: bài học 8 ghi câu lỗi slug đã sửa, thêm bài học 13
+(`StableLabel`) và 14 (`warningTone`).
+
+**Review findings:** không có vòng review riêng — đây là bản vá từ lượt thử tay.
+
+Tests after: Vitest **3979** (web 1533, api 978, admin 1013, contract 353,
+core 46, ui 22, tokens 18, i18n 16), int **596 ở 43 file**. Mười lăm ca mới ở
+admin. Tám đột biến đều bị giết.
+
 ## 2026-09-23 — Merge F14 lên main (`892de4e8`)
 
 Nội dung của lượt merge này đã kể đủ ở HAI entry ngày 22/09 ngay bên dưới —

@@ -271,9 +271,11 @@ những lỗi ấy. Bản kể đầy đủ nằm ở entry "Vòng review F14" t
    `.nullable().default(null)` suông thì chuỗi rỗng vẫn lọt. Nên rút
    `CategoryDescriptionSchema` thành một hàm dựng theo trần độ dài (danh mục
    500, điểm đến 2000).
-8. **Câu báo lỗi khuôn slug phải khớp với khuôn đã siết.** Câu `slugShape`
-   hiện viết "lowercase letters, digits and hyphens", trong khi khuôn mới từ
-   chối cả `-` lẫn `a--b`. Viết lại câu ấy trước khi bảng thứ hai dùng nó.
+8. **Câu báo lỗi khuôn slug phải khớp với khuôn đã siết.** ĐÃ SỬA 23/09 sau
+   lượt thử tay F14: `slugShape` nay nói "single hyphens between words" kèm
+   một ví dụ hợp lệ, và ô slug đã tắt soát chính tả / tự viết hoa / tự sửa
+   chữ. Form điểm đến dùng lại ĐÚNG câu và đúng ba thuộc tính ấy — chép lại
+   bằng tay là lại sinh ra một câu lỗi lệch luật.
 
 **Tầng web — bước mà bản plan đầu THIẾU (xem Task 9a)**
 
@@ -295,21 +297,28 @@ những lỗi ấy. Bản kể đầy đủ nằm ở entry "Vòng review F14" t
     bản (departures và categories); tới bản thứ ba thì rút chung.
 12. Cờ bận của bảng truyền qua context (nếp `BusyContext`), không nhét vào deps
     của `useMemo` dựng cột.
+13. **Nút Hide/Show dùng kit `StableLabel`** (có từ lượt thử tay F14, 23/09):
+    hai nhãn rộng khác nhau, cụm nút canh phải, nên thiếu nó thì cụm nút của
+    các hàng lệch cột. Nút nào chỉ có ở MỘT số hàng thì giữ một ô trống cùng
+    cỡ — xem ô giữ chỗ nút huỷ ở `departure-row-actions.tsx`.
+14. **Câu cảnh báo nào là câu TRẤN AN thì xin `warningTone="neutral"`** ở kit
+    `ConfirmWriteDialog`. Hộp ẩn danh mục từng tô đỏ cả câu "tour vẫn bán,
+    link vẫn chạy" — màu nói ngược với chữ.
 
 **Test và quy trình**
 
-13. **Mỗi ca test mới phải kiểm bằng đột biến.** F14 có ba ca xanh giả: một ca
+15. **Mỗi ca test mới phải kiểm bằng đột biến.** F14 có ba ca xanh giả: một ca
     đua bắn hai lệnh thực chất là CÙNG một phép đổi chỗ; một ca khẳng định
     "không gọi" mà chẳng bấm gì; một ca contract xanh vì thiếu khoá bắt buộc,
     chứ không vì cái luật nó định ghim.
-14. **Khớp tên CHÍNH XÁC, đừng dùng `/…/i`** khi slug và tên chỉ khác nhau ở
+16. **Khớp tên CHÍNH XÁC, đừng dùng `/…/i`** khi slug và tên chỉ khác nhau ở
     chữ hoa — regex bỏ qua hoa-thường xanh cả khi chip in slug.
-15. **Ký tự Unicode trong regex hay trong test thì dựng từ mã số**
+17. **Ký tự Unicode trong regex hay trong test thì dựng từ mã số**
     (`String.fromCodePoint`) hoặc dùng lớp `\p{…}`. Công cụ ghi file đổi escape
     `\uXXXX` thành ký tự thô (đo 22/09 bằng `cat -A`).
-16. **Comment không khai trạng thái tương lai** kiểu "Task X sẽ…" — merge xong
+18. **Comment không khai trạng thái tương lai** kiểu "Task X sẽ…" — merge xong
     là nó thành lời nói sai.
-17. **Entry CHANGELOG viết vào đúng ngày merge.** `docs-freshness.sh` lọc theo
+19. **Entry CHANGELOG viết vào đúng ngày merge.** `docs-freshness.sh` lọc theo
     ngày commit, mà rebase thì đổi ngày commit — CI đỏ ngày 23/09 là vì thế.
 
 ## Task 6 — Từ vựng vùng miền về contract (ADR-0045)
