@@ -3,6 +3,7 @@ import { messages } from '@tourism/i18n';
 import { cn } from '@tourism/ui/lib/utils';
 import { CopyCodeButton } from '@/components/checkout/copy-code-button';
 import { RevealItem } from '@/components/motion/reveal-item';
+import { todayDateString } from '@/lib/account-stats';
 import type { CheckoutMood } from '@/lib/checkout';
 import { ticketBarcodeWidths, ticketSerial } from '@/lib/checkout';
 import { STAGGER } from '@/lib/motion';
@@ -97,7 +98,11 @@ export function BookingReceipt({
 
   // Đã đi rồi thì nói "Departed", chưa đi thì "Departs" — một dòng chỉ đúng một
   // nửa thời gian là dòng sẽ sai trước mắt khách ở nửa còn lại.
-  const departed = new Date(booking.departureEndDate) < new Date();
+  // "Đã đi" = hôm nay (ngày lịch Việt Nam) đã tới NGÀY KHỞI HÀNH — cùng nghĩa với
+  // giai đoạn `departed` của admin (ADR-0046) và `started` của trang account. So
+  // CHUỖI ngày; đừng đem `new Date(ngày)` so với giờ thật: nó là nửa đêm UTC,
+  // lệch bảy tiếng so với lịch Việt Nam.
+  const departed = booking.departureStartDate <= todayDateString();
 
   const adultsAmount = formatMoney(
     (Number(booking.unitPrice) * booking.numAdults).toFixed(2),

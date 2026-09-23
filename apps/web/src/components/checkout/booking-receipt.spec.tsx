@@ -1,6 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import { messages } from '@tourism/i18n';
-import { beforeAll, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { formatDateRange } from '@/lib/tours';
 import { makeBooking } from '@/test/fixtures/booking';
 import { BookingReceipt } from './booking-receipt';
 
@@ -87,6 +88,38 @@ describe('BookingReceipt — cuống vé', () => {
     const { container } = render(<BookingReceipt booking={makeBooking()} mood="confirmed" />);
     expect(container.querySelectorAll('[data-slot="barcode"] span').length).toBeGreaterThan(40);
     expect(screen.getByText(/^NO\. \d{10}$/)).toBeInTheDocument();
+  });
+});
+
+/**
+ * "Departed" từ NGÀY KHỞI HÀNH theo lịch Việt Nam — cùng nghĩa với giai đoạn
+ * `departed` của admin (ADR-0046: ngày đi ≤ hôm nay), một chữ một nghĩa trên cả
+ * sản phẩm. Bản cũ neo NGÀY VỀ và so nửa đêm UTC với giờ thật: suốt chuyến
+ * nhiều ngày voucher vẫn ghi "Departs", rồi đổi chữ lúc 07:00 giờ VN ngày về.
+ */
+describe('BookingReceipt — cuống nói "Departs" hay "Departed"', () => {
+  const trip = makeBooking({ departureStartDate: '2026-09-01', departureEndDate: '2026-09-05' });
+  const dates = formatDateRange('2026-09-01', '2026-09-05');
+
+  // Chỉ giả `Date`: hoá đơn có motion, không cần đụng tới timer của nó.
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('giây cuối của hôm trước ngày đi (23:59:59.999 giờ VN) vẫn là "Departs"', () => {
+    vi.setSystemTime(new Date('2026-08-31T16:59:59.999Z'));
+    render(<BookingReceipt booking={trip} mood="confirmed" />);
+    expect(screen.getByText(t.departsOn(dates))).toBeInTheDocument();
+  });
+
+  it('00:00 giờ VN của ngày đi (17:00Z hôm trước) → "Departed", dù chuyến còn bốn ngày', () => {
+    vi.setSystemTime(new Date('2026-08-31T17:00:00.000Z'));
+    render(<BookingReceipt booking={trip} mood="confirmed" />);
+    expect(screen.getByText(t.departedOn(dates))).toBeInTheDocument();
   });
 });
 
