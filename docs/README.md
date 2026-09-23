@@ -204,7 +204,8 @@ entry CHANGELOG cùng ngày.
 [P5b-1 auth mobile](plans/2026-09-16-p5b-auth-wireframe.md) ·
 [**P4e-1 chuyến khởi hành**](plans/2026-09-21-p4e-1-departures.md) ·
 [prompt ba session P4e-1](plans/2026-09-21-p4e-1-prompts.md) ·
-[**P4e-2 danh mục + điểm đến**](plans/2026-09-22-p4e-2-categories-destinations.md)
+[**P4e-2 danh mục + điểm đến**](plans/2026-09-22-p4e-2-categories-destinations.md) ·
+[**F16 giai đoạn chuyến** (kèm prompt thi công)](plans/2026-09-23-departure-phase.md)
 
 ## Conventions — luật áp dụng mãi
 

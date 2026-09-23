@@ -50,8 +50,8 @@ Nghĩa thứ hai vốn đã nằm sẵn trong ngày đi và ngày về.
    | 2 | hôm nay > ngày về | `completed` |
    | 3 | ngày đi ≤ hôm nay ≤ ngày về | `departed` |
    | 4 | `status = CLOSED` | `closed` |
-   | 5 | đã qua hạn chót | `deadline_passed` |
-   | 6 | còn lại | `on_sale` |
+   | 5 | đã qua hạn chót | `deadline-passed` |
+   | 6 | còn lại | `on-sale` |
 
 3. **Server tính, client hiển thị.** API trả `phase` kèm từng hàng chuyến của
    admin, và lọc theo giai đoạn bằng CHÍNH hàm ấy — luật chỉ tồn tại ở một chỗ.
@@ -70,6 +70,9 @@ Nghĩa thứ hai vốn đã nằm sẵn trong ngày đi và ngày về.
 - Tab lọc của màn Departures đổi từ giá trị công tắc sang nhóm giai đoạn.
 - Nút Close/Reopen thôi hiện từ ngày khởi hành: Reopen lúc ấy đã bị chặn vì quá
   hạn chót, còn Close không còn việc gì đúng để làm (xem mục cuối).
+- Giai đoạn chỉ tả CHUYẾN. Tour chưa đăng thì khách không đặt được chuyến nào
+  của nó, kể cả chuyến đang `on-sale` — điều đó được báo một lần ở đầu màn
+  chuyến, không trộn vào hàm giai đoạn (spec §2h).
 
 ## Điều này KHÔNG mở ra
 

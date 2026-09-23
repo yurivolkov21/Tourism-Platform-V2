@@ -26,6 +26,8 @@ ngày, mà không thêm một nguồn sự thật thứ hai.
 - `admin.departures.list` lọc theo **nhóm giai đoạn** (`phase`) thay cho `status`.
 - Admin: huy hiệu theo giai đoạn (6 nhãn, kèm icon), 5 tab lọc, nút Close/Reopen
   ẩn từ ngày khởi hành.
+- Một dòng báo ở đầu màn chuyến khi tour chưa đăng (gộp vào F16 ngày 23/09,
+  §2h).
 - Copy tiếng Anh mới trong `@tourism/i18n`.
 
 ### Ngoài phạm vi, cố ý
@@ -38,7 +40,6 @@ ngày, mà không thêm một nguồn sự thật thứ hai.
 | Web, mobile | Đã tính theo ngày từ trước |
 | Sửa seed (124 chuyến lịch sử ghi `CLOSED`) | Giai đoạn của chúng là `completed` bất kể cột ghi gì; lượt seed 2 (~03/11) cũng không cần đổi |
 | Đổi thứ tự sắp theo tab (vd *Upcoming* gần nhất trước) | Chưa ai cần; mọi tab giữ `startDate desc` như hiện nay |
-| Báo "tour chưa đăng" ngay trên màn chuyến | Đề xuất riêng, chưa duyệt — xem §7 |
 
 ## 2. Quyết định thiết kế
 
@@ -59,7 +60,7 @@ thắng:
 Hai hệ quả phải giữ đúng:
 
 - `on-sale` nghĩa là cổng tạo booking nhận chuyến này (xét riêng chuyến; tour
-  chưa đăng là một trục khác — §7).
+  chưa đăng là một trục khác — §2h).
 - **Ngày khởi hành đã là `departed`**, khớp hai cổng huỷ: khách huỷ online
   (`canCancelOnline`) và công ty huỷ chuyến (`departureCancelBlocker`) đều chỉ
   cho khi hôm nay < ngày đi. Cổng claim thì vẫn nhận khoản trả trễ trong chính
@@ -210,9 +211,32 @@ Không phải một `Button` bị ẩn.
   `cancelled: 'Cancelled'`.
 - `list.phaseFilter`: `upcoming: 'Upcoming'` · `departed: 'Departed'` ·
   `completed: 'Completed'` · `cancelled: 'Cancelled'`.
+- `list.unpublished`: `title: 'This tour is not published'` · `body: 'Travellers
+  cannot see or book any of its departures, including those marked On sale.
+  Publish the tour from the Tours list to start selling.'`
 - Giữ nguyên `list.all`, `list.filterLabel` và tiêu đề cột "Status".
 - Map `status` (OPEN/CLOSED/CANCELLED) hết chỗ dùng thì xoá — grep lại trước khi
   xoá.
+
+### 2h. Báo tour chưa đăng
+
+Giai đoạn chỉ tả chuyến. Khi tour chưa đăng (`isPublished = false`), khách không
+thấy và không đặt được chuyến nào của nó — kể cả chuyến đang hiện *On sale* màu
+xanh. Màn chuyến nói điều đó MỘT lần, ngay dưới tiêu đề, chứ không đổi nhãn từng
+hàng: đăng hay chưa là công tắc cấp TOUR, trộn vào hàm giai đoạn thì hàm của
+chuyến phải biết về tour, và mười hàng sẽ cùng nhắc một điều mà một dòng nói đủ.
+
+- `AdminDepartureTourSchema` thêm `isPublished: z.boolean()`. API thêm
+  `isPublished` vào `TOUR_SELECT` và vào `toTour`.
+- Component mới `TourUnpublishedNotice`
+  (`apps/admin/src/components/departures/tour-unpublished-notice.tsx`) nhận
+  `isPublished`. Tour đã đăng thì trả `null`; chưa đăng thì dựng `Alert` của
+  `@tourism/ui` với icon `EyeOffIcon`, tiêu đề và một câu giải thích.
+- Ghi đè `role="status"` lên `role="alert"` mặc định của `Alert`: đây là thông
+  tin tĩnh có sẵn lúc mở trang, không phải sự kiện vừa xảy ra, và `alert` bắt
+  trình đọc màn hình ngắt lời người dùng mỗi lần mở trang.
+- Không thêm nút hay link: link "Back to tours" nằm ngay phía trên, và công tắc
+  đăng nằm ở trang đó.
 
 ## 3. Bề mặt API
 
@@ -224,6 +248,7 @@ service nên không đổi.
 | `DeparturePhaseSchema`, `departurePhase()` | chưa có | mới, `schemas/departure-phase.ts` |
 | `DeparturePhaseFilterSchema`, `DEPARTURE_PHASE_FILTER_GROUPS` | chưa có | mới, cùng file |
 | `AdminDepartureRowSchema` | có `status` | có `status` và `phase` |
+| `AdminDepartureTourSchema` | chưa có `isPublished` | có `isPublished` |
 | `AdminDeparturesListQuerySchema` | lọc bằng `status` (ba giá trị công tắc) | lọc bằng `phase` (bốn nhóm) |
 | Đầu ra `create`, `update`, `setStatus`, `cancel` | hàng không có `phase` | hàng có `phase` (cùng `toRow`) |
 | URL admin | `?status=OPEN` | `?phase=upcoming` |
@@ -237,7 +262,7 @@ service nên không đổi.
 | contract | `schemas/departure-phase.ts` (mới) và spec · `schemas/admin-departures.ts` và spec · `index.ts` |
 | i18n | `src/lib/messages.ts` |
 | api | `modules/catalog/admin-departures.service.ts` · `admin-departures.int.spec.ts` |
-| admin | `lib/departures-view.ts` · `lib/departures-query.ts` · `components/departures/departures-table.tsx` · `components/departures/departure-row-actions.tsx` · `app/(admin)/tours/[slug]/departures/page.tsx` (chỉ comment) · spec tương ứng và `departures-table.spec.tsx` (mới) |
+| admin | `lib/departures-view.ts` · `lib/departures-query.ts` · `components/departures/departures-table.tsx` · `components/departures/departure-row-actions.tsx` · `components/departures/tour-unpublished-notice.tsx` (mới) · `app/(admin)/tours/[slug]/departures/page.tsx` · spec tương ứng, cộng `departures-table.spec.tsx` và `tour-unpublished-notice.spec.tsx` (mới) |
 
 ## 4. Chỗ dễ sai
 
@@ -294,7 +319,7 @@ ném `RangeError`; sáu giai đoạn chia đúng một nhóm lọc mỗi giai đ
 
 **Contract — `admin-departures.spec.ts`.** Hàng thiếu `phase` hoặc mang giá trị
 lạ thì trượt; query nhận bốn nhóm và từ chối `'OPEN'`; key `status` cũ bị bỏ qua
-chứ không ném.
+chứ không ném; tour thiếu `isPublished` thì trượt.
 
 **API — `admin-departures.int.spec.ts`.** Thay ca "lọc theo trạng thái" bằng một
 `describe` riêng, có `beforeEach` chèn thêm bốn chuyến. Không thêm vào bộ
@@ -320,7 +345,9 @@ Ca phải có:
 - phân trang trên tập đã lọc: `phase=upcoming&limit=2&page=2` ra
   `PAUSED, LAST_CALL`, `total` 4, `totalPages` 2;
 - `phase` lạ → 400;
-- `setStatus` đóng rồi mở lại `FREE` trả `closed` rồi `on-sale`.
+- `setStatus` đóng rồi mở lại `FREE` trả `closed` rồi `on-sale`;
+- `tour.isPublished` là `true` với tour fixture; tắt đăng tour ấy trong DB thì
+  màn chuyến VẪN đọc được và trả `false` (bật lại trong `finally`).
 
 **Admin.**
 
@@ -333,6 +360,8 @@ Ca phải có:
   được và có Cancel; ca "đã khởi hành" cũ nay còn một nút thay vì hai.
 - `departures-table.spec.tsx` (mới, theo khuôn `tours-table.spec.tsx`): năm tab
   đúng nhãn, bấm tab đẩy `?phase=…`; ô Status in nhãn giai đoạn.
+- `tour-unpublished-notice.spec.tsx` (mới): tour chưa đăng thì hiện tiêu đề và
+  câu giải thích trong một vùng `role="status"`; tour đã đăng thì không hiện gì.
 
 Fixture admin dựng `phase` bằng `departurePhase` với `now` là 12:00 giờ Việt Nam
 của `today` (`${today}T05:00:00.000Z`) — một helper test, để hàng và `today`
@@ -348,7 +377,9 @@ không bao giờ nói khác nhau.
 - Thử tay trên production sau khi CẢ Render lẫn Vercel deploy xong, từng bước,
   chờ xác nhận. Phải thấy: chuyến đang chạy hiện *Departed*; chuyến seed đã về
   hiện *Completed*; tab *Upcoming* không còn chuyến nào đã đi; hàng *Departed* và
-  *Completed* không còn nút Close/Reopen mà cột nút vẫn thẳng.
+  *Completed* không còn nút Close/Reopen mà cột nút vẫn thẳng; màn chuyến của một
+  tour chưa đăng có dòng báo (không có tour nào đang ẩn thì tạm tắt đăng một tour
+  rồi bật lại ngay).
 - Không migration, không đổi env, không đụng hạ tầng sống (luật 15) — tính năng
   này không cần gì từ hạ tầng.
 
@@ -362,7 +393,3 @@ không bao giờ nói khác nhau.
   cột hạn chót hiện nay.
 - **Lọc trong bộ nhớ** hợp với vài chục chuyến mỗi tour. Tour nào tiến tới hàng
   nghìn chuyến thì dịch sang SQL, kèm một test đối chiếu hai bản luật.
-- **Tour chưa đăng vẫn hiện *On sale*.** Giai đoạn chỉ tả chuyến; đăng hay chưa
-  là công tắc cấp tour, hiện ở `/tours`. Đề xuất riêng, chưa duyệt, chưa làm:
-  một dòng nhắc dưới tiêu đề màn chuyến khi tour chưa đăng — cần thêm
-  `isPublished` vào `AdminDepartureTourSchema`.
