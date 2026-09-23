@@ -1,13 +1,22 @@
 import { messages } from '@tourism/i18n';
-import { useTheme } from '@tourism/mobile-ui';
+import { TabBarIcon, useTheme } from '@tourism/mobile-ui';
 import { Tabs } from 'expo-router';
+
+// Icon Feather cho 5 tab (handoff §T0) — khoá trùng tên route, trừ `index`
+// (route gốc) tra nhãn bằng `tabs.home`.
+const TAB_ICONS = {
+  index: 'home',
+  explore: 'compass',
+  saved: 'heart',
+  trips: 'briefcase',
+  account: 'user',
+} as const;
 
 /**
  * Thanh 5 tab — xương lấy từ Nexora (luật 10: thứ Nexora có mà đây thiếu là
  * thụt lùi). Nhãn đọc từ `@tourism/i18n`, màu đọc từ `useTheme()`.
  *
- * Chưa có icon: template P5a cố ý không cài `expo-symbols` hay bộ icon nào
- * (spec §4.2) — P5b gắn icon cùng lúc với nội dung màn.
+ * P5b: gắn icon Feather qua `TabBarIcon` (viên nền `primary` khi đang chọn).
  */
 export default function TabsLayout() {
   const theme = useTheme();
@@ -27,11 +36,16 @@ export default function TabsLayout() {
         },
       }}
     >
-      <Tabs.Screen name="index" options={{ title: tabs.home }} />
-      <Tabs.Screen name="explore" options={{ title: tabs.explore }} />
-      <Tabs.Screen name="saved" options={{ title: tabs.saved }} />
-      <Tabs.Screen name="trips" options={{ title: tabs.trips }} />
-      <Tabs.Screen name="account" options={{ title: tabs.account }} />
+      {(Object.keys(TAB_ICONS) as (keyof typeof TAB_ICONS)[]).map((name) => (
+        <Tabs.Screen
+          key={name}
+          name={name}
+          options={{
+            title: tabs[name === 'index' ? 'home' : name],
+            tabBarIcon: ({ focused }) => <TabBarIcon name={TAB_ICONS[name]} focused={focused} />,
+          }}
+        />
+      ))}
     </Tabs>
   );
 }
