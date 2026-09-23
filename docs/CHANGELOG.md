@@ -8,6 +8,59 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-09-23 — Web tính "hôm nay" theo ngày lịch Việt Nam, khớp server và admin (nhánh `fix/web-vietnam-today`)
+
+Phát hiện ở vòng review F16, ngoài phạm vi F16. `todayDateString()` của web cắt
+ngày theo UTC, trong khi mọi cổng phía server đo bằng ngày lịch Việt Nam
+(ADR-0041 §7) và màn Departures của admin cũng tính giai đoạn chuyến theo ngày
+ấy (ADR-0046). Từ 00:00 tới 07:00 giờ VN mỗi ngày, trang account chậm một ngày:
+in "còn 1 ngày" cho chuyến server đã thôi cho huỷ online và admin đã ghi
+Departed; hôm sau ngày về thì admin ghi Completed mà web vẫn "Ends …" và ẩn
+Review. Câu "web vốn đã tính theo ngày" ở ADR-0046 đúng về NGÀY, nhưng thước vẫn
+là UTC cho tới bản vá này.
+
+**Rà mọi chỗ web tự tính ngày quanh booking và chuyến đi:**
+
+| Chỗ | Trước | Sau |
+| --- | --- | --- |
+| `todayDateString()`: nhóm journey, accordion (đã đi/đã về, đếm ngược, `canPay`, `canReview`), hộ chiếu | ngày UTC | `vietnamToday(new Date())` |
+| Cuống receipt "Departs/Departed" | `new Date(ngày về) < giờ thật`, đổi chữ lúc 07:00 giờ VN của ngày về | từ NGÀY ĐI theo lịch VN, cùng nghĩa `departed` của admin |
+| `itineraryDayState` (lịch trình chế độ live, chưa bật ở đâu) | getter UTC | quy `today` về ngày VN |
+| `reviewSlot` (form review ở trang chi tiết) | ngày UTC | **giữ UTC có chủ đích**, thêm JSDoc và test ghim |
+| Date picker của form chuyến riêng | nửa đêm giờ trình duyệt | giữ: chỉ ràng buộc UI, server không có luật ngày nào cho `travelDate` |
+| Năm "member since" ở `/account` | năm UTC | giữ: trang trí, không quyết gì |
+| Ngày của mốc đã qua (Booked, Paid, yêu cầu huỷ cũ) | cắt theo UTC | giữ: chỉ hiển thị, khớp email vốn cũng format UTC |
+
+**Vì sao `reviewSlot` giữ UTC.** Nó là bản chép của `checkReviewEligibility`,
+mà cổng ấy giữ UTC có chủ đích ([ADR-0009 AMEND 3](adr/0009-refund-correctness.md)).
+Đổi riêng web sang ngày VN là mở form từ 00:00 giờ VN của ngày về, trong khi API
+tới 07:00 mới nhận: khách gõ xong bài mới bị từ chối. Link Review của accordion
+vẫn an toàn: nó chỉ hiện từ hôm sau ngày về theo giờ VN, lúc ấy ngày UTC ít nhất
+đã tới ngày về. Trước đây không test nào canh chuyện này; đột biến `reviewSlot`
+sang `vietnamToday` nay làm đúng ca ghim đỏ.
+
+**Receipt đổi neo, không chỉ đổi thước.** Code gốc neo "Departed" vào NGÀY VỀ,
+nên suốt một chuyến nhiều ngày voucher vẫn ghi "Departs". User chốt ở vòng
+review: "Departed" từ ngày khởi hành (`departureStartDate <= hôm nay`), để một
+chữ chỉ có một nghĩa trên cả sản phẩm.
+
+**Review findings** (một reviewer độc lập, 0 critical): một important là neo
+của receipt (user chốt như trên). Minor đã sửa: trích dẫn sai "ADR-0009 AMEND 2"
+(câu giữ UTC nằm ở AMEND 3), một câu JSDoc nói quá rộng, và test ghim review
+thêm mép 23:59:59.999Z. Bỏ qua có lý do: trang `/account/bookings` gọi
+`todayDateString()` hai lần (cách nhau vài micro giây, có từ trước), và
+`canPay` của accordion lỏng hơn cổng `reCheckout` (có từ trước, không dính múi
+giờ).
+
+Không migration, không đụng hạ tầng. Bốn commit `144e4f23` · `06add356` ·
+`cf7fd833` · `d8664032`.
+
+Tests after: Vitest **3987** (web 1541, api 978, admin 1013, contract 353,
+core 46, ui 22, tokens 18, i18n 16), int **596 ở 43 file**, jest mobile 159.
+Tám ca mới ở web: năm ca đỏ trên code cũ trước khi sửa (cùng ca đếm ngược viết
+lại); ba ca còn lại là mép trái hoặc ghim nên xanh sẵn theo thiết kế, và ca ghim
+review đã kiểm bằng đột biến.
+
 ## 2026-09-23 — Thử tay F14 trên production: 8/8 bước đạt, bốn mục vá (nhánh `fix/p4e-2-f14-manual-test`)
 
 Lượt thử tay chạy NGAY sau merge F14 thay vì đợi F15 như plan ghi: F14 đã
