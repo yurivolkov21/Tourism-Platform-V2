@@ -1,4 +1,4 @@
-import { type AdminDepartureStatus, AdminDepartureStatusSchema } from '@tourism/contract';
+import { type DeparturePhaseFilter, DeparturePhaseFilterSchema } from '@tourism/contract';
 import {
   appendPaging,
   firstParam,
@@ -20,7 +20,8 @@ import {
  * `searchParams`, và `departuresHref` luôn dựng lại đúng đường dẫn của tour
  * đang mở.
  *
- * MỘT filter duy nhất: `status`. Không có ô tìm kiếm (một chuyến không có
+ * MỘT filter duy nhất: `phase` — NHÓM giai đoạn của chuyến (spec F16 §2d),
+ * không còn là công tắc `status`. Không có ô tìm kiếm (một chuyến không có
  * chữ nào để tìm) và không có bộ lọc ngày (bảng của một tour hiếm khi quá
  * một trang — lịch 2026 rơi vào khoảng 10 chuyến mỗi tour).
  */
@@ -30,20 +31,20 @@ export interface DeparturesQuery {
   slug: string;
   page: number;
   limit: number;
-  status?: AdminDepartureStatus;
+  phase?: DeparturePhaseFilter;
 }
 
 /**
- * URL là thứ NGƯỜI gõ được: page/limit rác rơi về mặc định, `status` ngoài
- * enum thì bỏ filter. Không ném 400 lên API.
+ * URL là thứ NGƯỜI gõ được: page/limit rác rơi về mặc định, `phase` ngoài bốn
+ * nhóm (kể cả `status` của URL cũ) thì bỏ filter. Không ném 400 lên API.
  */
 export function parseDeparturesSearchParams(slug: string, raw: RawSearchParams): DeparturesQuery {
-  const status = AdminDepartureStatusSchema.safeParse(firstParam(raw.status));
+  const phase = DeparturePhaseFilterSchema.safeParse(firstParam(raw.phase));
 
   return {
     slug,
     ...parsePaging(raw),
-    ...(status.success ? { status: status.data } : {}),
+    ...(phase.success ? { phase: phase.data } : {}),
   };
 }
 
@@ -51,7 +52,7 @@ export function parseDeparturesSearchParams(slug: string, raw: RawSearchParams):
 export interface DeparturesHrefPatch {
   page?: number;
   limit?: number;
-  status?: AdminDepartureStatus | null;
+  phase?: DeparturePhaseFilter | null;
 }
 
 /**
@@ -59,12 +60,12 @@ export interface DeparturesHrefPatch {
  * trang đều ĐẶT LẠI trang về 1 (luật ở kit `resolvePagePatch`).
  */
 export function departuresHref(current: DeparturesQuery, patch: DeparturesHrefPatch): string {
-  const status = pickPatch(patch.status, current.status);
-  const scopeChanged = patch.status !== undefined || patch.limit !== undefined;
+  const phase = pickPatch(patch.phase, current.phase);
+  const scopeChanged = patch.phase !== undefined || patch.limit !== undefined;
   const paging = resolvePagePatch(current, patch, scopeChanged);
 
   const params = new URLSearchParams();
-  if (status) params.set('status', status);
+  if (phase) params.set('phase', phase);
   appendPaging(params, paging);
 
   return tableHref(departuresPath(current.slug), params);

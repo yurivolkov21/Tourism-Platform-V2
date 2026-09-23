@@ -4689,6 +4689,13 @@ export const messages = {
           'Dates can only change while a departure has no live bookings — every booking keeps its own copy of the travel dates.',
         filterLabel: 'Filter by status',
         all: 'All',
+        /** Bốn tab lọc theo NHÓM giai đoạn (spec F16 §2d) — "All" ở ngay trên. */
+        phaseFilter: {
+          upcoming: 'Upcoming',
+          departed: 'Departed',
+          completed: 'Completed',
+          cancelled: 'Cancelled',
+        },
         empty: 'This tour has no departures matching this filter.',
         columns: {
           dates: 'Dates',

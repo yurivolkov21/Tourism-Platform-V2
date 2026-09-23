@@ -1,16 +1,18 @@
 'use client';
 
 import { type ColumnVisibilityState, createColumnHelper, useTable } from '@tanstack/react-table';
-import { AdminDepartureStatusSchema } from '@tourism/contract';
+import { type DeparturePhaseFilter, DeparturePhaseFilterSchema } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
 import { Badge } from '@tourism/ui/components/badge';
 import { Button } from '@tourism/ui/components/button';
 import {
   BanIcon,
+  CalendarClockIcon,
   CalendarDaysIcon,
   CircleCheckIcon,
+  FlagIcon,
   ListIcon,
-  LockIcon,
+  PlaneIcon,
   PlusIcon,
   TicketIcon,
   UsersIcon,
@@ -122,21 +124,21 @@ const COLUMN_ICONS = {
   statusLabel: CircleCheckIcon,
 };
 
-const STATUSES = AdminDepartureStatusSchema.options;
-
-/** Icon theo trạng thái — `Record` trên enum để quên một member là đỏ typecheck. */
-const STATUS_ICONS: Record<(typeof STATUSES)[number], typeof ListIcon> = {
-  OPEN: CircleCheckIcon,
-  CLOSED: LockIcon,
-  CANCELLED: BanIcon,
+/** Icon theo tab — `Record` trên enum để quên một nhóm là đỏ typecheck. */
+const PHASE_FILTER_ICONS: Record<DeparturePhaseFilter, typeof ListIcon> = {
+  upcoming: CalendarClockIcon,
+  departed: PlaneIcon,
+  completed: FlagIcon,
+  cancelled: BanIcon,
 };
 
+/** All rồi bốn NHÓM giai đoạn (spec F16 §2d) — thôi lọc theo công tắc `status`. */
 const TAB_ITEMS = [
   { label: t.list.all, value: ALL, icon: ListIcon },
-  ...STATUSES.map((status) => ({
-    label: t.status[status],
-    value: status,
-    icon: STATUS_ICONS[status],
+  ...DeparturePhaseFilterSchema.options.map((filter) => ({
+    label: t.list.phaseFilter[filter],
+    value: filter,
+    icon: PHASE_FILTER_ICONS[filter],
   })),
 ];
 
@@ -287,11 +289,11 @@ export function DeparturesTable({
     onColumnVisibilityChange: setColumnVisibility,
   });
 
-  function goStatus(next: string) {
-    // `safeParse` chứ không `parse`: value lạ rơi êm về "All" thay vì ném
-    // ZodError giữa event handler (nếp bookings, review F1).
-    const parsed = AdminDepartureStatusSchema.safeParse(next);
-    router.push(departuresHref(query, { status: parsed.success ? parsed.data : null }));
+  function goPhase(next: string) {
+    // `safeParse` chứ không `parse`: value lạ (kể cả "All") rơi êm về không
+    // lọc thay vì ném ZodError giữa event handler (nếp bookings, review F1).
+    const parsed = DeparturePhaseFilterSchema.safeParse(next);
+    router.push(departuresHref(query, { phase: parsed.success ? parsed.data : null }));
   }
 
   return (
@@ -300,10 +302,10 @@ export function DeparturesTable({
         views={
           <StatusFilterTabs
             items={TAB_ITEMS}
-            value={query.status ?? ALL}
+            value={query.phase ?? ALL}
             label={t.list.filterLabel}
             selectId="departures-status-selector"
-            onSelect={goStatus}
+            onSelect={goPhase}
           />
         }
         actions={

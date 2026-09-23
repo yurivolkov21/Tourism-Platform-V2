@@ -25,9 +25,18 @@ describe('parseDeparturesSearchParams', () => {
     expect(query.limit).toBe(20);
   });
 
-  it('status ngoài enum thì bỏ filter, trong enum thì giữ', () => {
-    expect(parseDeparturesSearchParams('a-tour', { status: 'PENDING' }).status).toBeUndefined();
-    expect(parseDeparturesSearchParams('a-tour', { status: 'CANCELLED' }).status).toBe('CANCELLED');
+  it('phase ngoài bốn nhóm thì bỏ filter, trong nhóm thì giữ', () => {
+    // `on-sale` là một GIAI ĐOẠN, không phải một nhóm lọc.
+    expect(parseDeparturesSearchParams('a-tour', { phase: 'on-sale' }).phase).toBeUndefined();
+    expect(parseDeparturesSearchParams('a-tour', { phase: 'completed' }).phase).toBe('completed');
+  });
+
+  it('URL cũ `?status=OPEN` rơi êm về All — không còn nghĩa, không ném', () => {
+    expect(parseDeparturesSearchParams('a-tour', { status: 'OPEN' })).toEqual({
+      slug: 'a-tour',
+      page: 1,
+      limit: 20,
+    });
   });
 });
 
@@ -39,23 +48,23 @@ describe('departuresHref', () => {
   it('đổi filter ĐẶT LẠI trang về 1', () => {
     const onPage5 = { ...QUERY, page: 5 };
 
-    expect(departuresHref(onPage5, { status: 'OPEN' })).toBe(
-      '/tours/ha-long-bay-cruise/departures?status=OPEN',
+    expect(departuresHref(onPage5, { phase: 'upcoming' })).toBe(
+      '/tours/ha-long-bay-cruise/departures?phase=upcoming',
     );
   });
 
   it('đổi trang thì giữ filter', () => {
-    const filtered = { ...QUERY, status: 'CLOSED' as const };
+    const filtered = { ...QUERY, phase: 'departed' as const };
 
     expect(departuresHref(filtered, { page: 3 })).toBe(
-      '/tours/ha-long-bay-cruise/departures?status=CLOSED&page=3',
+      '/tours/ha-long-bay-cruise/departures?phase=departed&page=3',
     );
   });
 
   it('`null` xoá filter, `undefined` giữ nguyên', () => {
-    const filtered = { ...QUERY, status: 'OPEN' as const };
+    const filtered = { ...QUERY, phase: 'completed' as const };
 
-    expect(departuresHref(filtered, { status: null })).toBe('/tours/ha-long-bay-cruise/departures');
-    expect(departuresHref(filtered, {})).toContain('status=OPEN');
+    expect(departuresHref(filtered, { phase: null })).toBe('/tours/ha-long-bay-cruise/departures');
+    expect(departuresHref(filtered, {})).toContain('phase=completed');
   });
 });
