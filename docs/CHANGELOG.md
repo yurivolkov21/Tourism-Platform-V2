@@ -8,6 +8,49 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-09-23 — Thử tay F16 trên production (`d5b519a5`): 7/7 bước đạt, không phải vá
+
+Chạy khi cả hai nơi đã deploy xong: admin trên Vercel, API mới trên Render khởi
+động lúc 13:02 UTC. Connector Render đòi chọn workspace, nên mốc Render đo bằng
+`uptimeSec` của `/api/health`. Bảy bước, mỗi bước chờ người thử xác nhận; mỗi
+lệnh ghi đều đối chiếu thẳng với DB production. Phủ đủ các ý của spec §6.
+
+Hai tour thử chọn bằng một câu SQL chỉ đọc, tính giai đoạn ngay trên DB:
+`central-honeymoon-5d` có đủ ba giai đoạn chính (3 chuyến sắp đi, 1 chuyến đang
+chạy 22/09 → 26/09, 5 chuyến đã về); `ha-giang-loop-4d` có một chuyến quá hạn
+chót mà chưa đi (khởi hành 24/09) và hai chuyến đã huỷ.
+
+1. **Huy hiệu và nút.** Chuyến đang chạy ghi *Departed*, chỉ còn Edit, và nút
+   ấy thẳng cột với Edit của mọi hàng. Chuyến sắp đi ghi *Bookable* đủ ba nút,
+   chuyến đã về ghi *Completed*.
+2. **Tab lọc.** Upcoming 3, Departed 1, Completed 5, Cancelled rỗng kèm câu báo.
+   URL mang `?phase=…`; về All thì tham số biến mất.
+3. **Quá hạn chót mà chưa đi.** Chuyến 24/09 ghi *Deadline passed* (hạn 17/09
+   "Passed") và vẫn còn Close, vì có thể còn khách đang trả tiền dở. Hai chuyến
+   đã huỷ ghi *Cancelled*, không có nút nào.
+4. **Đóng** chuyến 25/12 (0 booking): toast câu mới, hàng ghi *Closed* kèm
+   Reopen bấm được, vẫn nằm ở tab Upcoming. DB `CLOSED`.
+5. **Mở lại:** thân hộp xác nhận và toast đều là câu mới, hàng về *Bookable*.
+   DB `OPEN`.
+6. **Tắt đăng tour.** Không tour nào đang ẩn, nên tạm tắt Hà Giang Loop như spec
+   §6 cho phép. Trang Tours ghi 3 kèm "Hidden while off sale".
+7. **Dòng báo tour chưa đăng.** Màn chuyến hiện khung "This tour is off sale",
+   bảng giữ nguyên. Bật đăng lại thì khung biến mất.
+
+**Cuối lượt DB khớp trạng thái gốc.** Tour `is_published = true` (tắt khoảng
+hai phút rưỡi, 13:17 → 13:20 UTC), chuyến 25/12 về `OPEN`, tám chuyến còn lại
+không đổi từ lượt seed 18/09. Trang khách `/tours/ha-giang-loop-4d` trả 200 kèm
+tên tour ngay sau khi bật lại.
+
+DB xác nhận thêm một điều: ba chuyến đã về của Hà Giang Loop vẫn ghi `CLOSED` ở
+cột `status` mà màn hình ghi *Completed* — đúng như ADR-0046 định: không sửa
+seed, giai đoạn suy từ ngày.
+
+**Review findings:** không có. Lượt thử không tìm ra lỗi nào, nên không có nhánh
+vá.
+
+Tests after: không đổi code, số test giữ như entry merge F16 ngay dưới.
+
 ## 2026-09-23 — Merge F16 lên main (`fc704e3a`)
 
 Nội dung đã kể ở HAI entry ngay bên dưới — "Vòng review F16" và "F16 giai
