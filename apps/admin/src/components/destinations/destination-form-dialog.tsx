@@ -1,6 +1,11 @@
 'use client';
 
-import { CATEGORY_DESCRIPTION_MAX, CATEGORY_SLUG_MAX, slugifyVietnamese } from '@tourism/contract';
+import {
+  DESTINATION_DESCRIPTION_MAX,
+  DESTINATION_SLUG_MAX,
+  REGIONS,
+  slugifyVietnamese,
+} from '@tourism/contract';
 import { messages } from '@tourism/i18n';
 import { Button } from '@tourism/ui/components/button';
 import {
@@ -19,41 +24,52 @@ import { DIALOG_FRAME } from '@/components/kit/confirm-write-dialog';
 import { FormField } from '@/components/kit/form-field';
 import type { TransportFailureCode } from '@/lib/api/write-error';
 import {
-  type CategoryFormErrors,
-  type CategoryFormValues,
-  type CategoryWriteResult,
-  validateCategoryForm,
-} from '@/lib/categories-write';
+  type DestinationFormErrors,
+  type DestinationFormValues,
+  type DestinationWriteResult,
+  validateDestinationForm,
+} from '@/lib/destinations-write';
 import { hasFormErrors } from '@/lib/form-errors';
 import { useConfirmWrite } from '@/lib/use-confirm-write';
 
 /**
- * Form THÊM và SỬA một danh mục (spec P4e-2 F14) — một component cho cả hai
- * chiều, cùng lý lẽ `DepartureFormDialog`: hai component song sinh là hai chỗ
- * phải nhớ sửa khi thêm một ô.
+ * Form THÊM và SỬA một điểm đến (spec P4e-2 F15) — một component cho cả hai
+ * chiều, cùng khuôn `CategoryFormDialog`: vòng đời lệnh ghi là của kit qua
+ * `useConfirmWrite`, mỗi ô là một `FormField` của kit.
  *
- * Ô SLUG chỉ render ở chiều TẠO. Không phải disabled mà là KHÔNG CÓ: một ô mờ
- * mời người ta thử rồi bắt ta giải thích, còn vắng mặt thì câu chuyện đã xong.
- * Lý do nó khoá nằm ở spec §2c — slug đi vào `/tours?categories=<slug>`, mà
- * tham số truy vấn thì không chuyển hướng được.
+ * Ô SLUG chỉ render ở chiều TẠO — không phải disabled mà là KHÔNG CÓ (spec
+ * §2c). Lúc tạo nó điền sẵn bằng `slugifyVietnamese(name, 80)` và thôi tự điền
+ * ngay khi admin chạm vào nó: slug thật do người chọn (`Hà Nội` → `hanoi`).
  *
- * VÒNG ĐỜI lệnh ghi là của kit, qua hook `useConfirmWrite` — đúng tiền lệ
- * `DepartureFormDialog`, không chép máy lần thứ ba.
+ * Ô VÙNG là một `<select>` gốc ba mục đọc thẳng từ `REGIONS` của contract,
+ * không phải ô chữ (spec §2b, ADR-0045): cột DB là chữ tự do mà web ghép với
+ * ba vùng cố định, nên một lần gõ nhầm là điểm đến biến khỏi mọi trang vùng.
+ * `<select>` gốc chứ không phải Select của kit UI: ba mục không cần ô tìm hay
+ * popup, và một popup lồng trong Dialog là thêm một lớp bẫy tiêu điểm — cùng
+ * lựa chọn với ô "Region" của form liên hệ bên web.
  */
-const t = messages.admin.categories;
+const t = messages.admin.destinations;
 
-export interface CategoryFormDialogProps<Code extends string> {
+/**
+ * Bộ class của `Input` kit UI, cho `<select>` gốc trông cùng họ với ô bên cạnh.
+ * Chỉ token màu (luật 6) — chép từ `libs/shared/ui/src/components/input.tsx`
+ * chứ không sửa file dùng chung ấy vì một chỗ dùng.
+ */
+const SELECT_CLASS =
+  'h-8 w-full min-w-0 cursor-pointer rounded-lg border border-input bg-transparent px-2.5 py-1 text-base transition-colors outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:cursor-not-allowed disabled:bg-input/50 disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 md:text-sm dark:bg-input/30 dark:disabled:bg-input/80 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40';
+
+export interface DestinationFormDialogProps<Code extends string> {
   copy: { title: string; body: string; submit: string; submitting: string };
   /** Chiều đang mở. Quyết định ô slug có mặt hay không, và luật validate nào áp. */
   mode: 'create' | 'edit';
-  initial: CategoryFormValues;
+  initial: DestinationFormValues;
   /** `id` riêng cho mỗi dialog: nhiều hàng cùng DOM, label phải trỏ đúng ô. */
   formId: string;
   isStale: (code: Code | TransportFailureCode) => boolean;
   errorCopy: (code: Code | TransportFailureCode) => string;
-  onSubmit: (values: CategoryFormValues) => Promise<CategoryWriteResult<Code>>;
+  onSubmit: (values: DestinationFormValues) => Promise<DestinationWriteResult<Code>>;
   /** Toast của nhánh thành công — vùng dựng, vì chỉ vùng biết server vừa làm gì. */
-  toast: (row: Extract<CategoryWriteResult<Code>, { ok: true }>['row']) => {
+  toast: (row: Extract<DestinationWriteResult<Code>, { ok: true }>['row']) => {
     title: string;
     description: string;
   };
@@ -62,7 +78,7 @@ export interface CategoryFormDialogProps<Code extends string> {
   onSettled: () => void;
 }
 
-export function CategoryFormDialog<Code extends string>({
+export function DestinationFormDialog<Code extends string>({
   copy,
   mode,
   initial,
@@ -73,20 +89,14 @@ export function CategoryFormDialog<Code extends string>({
   toast,
   onClose,
   onSettled,
-}: CategoryFormDialogProps<Code>) {
-  const [values, setValues] = useState<CategoryFormValues>(initial);
-  /**
-   * Admin đã tự gõ ô slug chưa.
-   *
-   * Tự điền slug theo tên là tiện; GHI ĐÈ thứ người ta vừa cố ý gõ là cướp
-   * quyền. Đo trên production: slug thật do người chọn (`Hà Nội` → `hanoi`,
-   * không phải `ha-noi`), nên quyền quyết cuối phải ở họ.
-   */
+}: DestinationFormDialogProps<Code>) {
+  const [values, setValues] = useState<DestinationFormValues>(initial);
+  /** Admin đã tự gõ ô slug chưa — gõ rồi thì tên thôi ghi đè nó. */
   const [slugTouched, setSlugTouched] = useState(false);
-  /** Chỉ mắng SAU lần bấm gửi đầu tiên; lỗi là DERIVED nên gõ sửa xong là câu lỗi tự biến. */
+  /** Chỉ mắng SAU lần bấm gửi đầu tiên; lỗi là DERIVED nên sửa xong là câu lỗi tự biến. */
   const [showValidation, setShowValidation] = useState(false);
 
-  const errors: CategoryFormErrors = showValidation ? validateCategoryForm(values, mode) : {};
+  const errors: DestinationFormErrors = showValidation ? validateDestinationForm(values, mode) : {};
 
   const { pending, failure, onOpenChange, run, clearFailure } = useConfirmWrite<Code>({
     isStale,
@@ -95,16 +105,17 @@ export function CategoryFormDialog<Code extends string>({
     onSettled,
   });
 
-  function patch(next: Partial<CategoryFormValues>) {
+  function patch(next: Partial<DestinationFormValues>) {
     setValues((current) => ({ ...current, ...next }));
     clearFailure();
   }
 
   function patchName(name: string) {
-    // Slug chạy theo tên tới khi admin chạm vào nó — và chỉ ở chiều TẠO, vì
-    // chiều sửa không có ô ấy để mà chạy theo.
+    // Slug chạy theo tên tới khi admin chạm vào nó — và chỉ ở chiều TẠO.
     const nextSlug =
-      mode === 'create' && !slugTouched ? slugifyVietnamese(name, CATEGORY_SLUG_MAX) : values.slug;
+      mode === 'create' && !slugTouched
+        ? slugifyVietnamese(name, DESTINATION_SLUG_MAX)
+        : values.slug;
     patch({ name, slug: nextSlug });
   }
 
@@ -112,7 +123,7 @@ export function CategoryFormDialog<Code extends string>({
     setShowValidation(true);
     // Ô hỏng thì KHÔNG bắn. Chặn ở đây chứ không disable nút — một nút mờ
     // không nói vì sao nó mờ.
-    if (hasFormErrors(validateCategoryForm(values, mode))) return;
+    if (hasFormErrors(validateDestinationForm(values, mode))) return;
     void run(async () => {
       const result = await onSubmit(values);
       if (!result.ok) return { ok: false, code: result.code };
@@ -159,9 +170,9 @@ export function CategoryFormDialog<Code extends string>({
                   <Input
                     id={`${formId}-slug`}
                     value={values.slug}
-                    // Slug không phải câu văn: soát chính tả gạch đỏ nó như một
-                    // lỗi (lượt thử tay F14), còn tự viết hoa hay tự sửa chữ
-                    // trên bàn phím điện thoại thì làm hỏng nó.
+                    // Ba thuộc tính của ô slug danh mục (lượt thử tay F14), dùng
+                    // lại nguyên: slug không phải câu văn — soát chính tả gạch đỏ
+                    // nó, còn tự viết hoa hay tự sửa chữ trên điện thoại làm hỏng nó.
                     spellCheck={false}
                     autoCapitalize="none"
                     autoCorrect="off"
@@ -178,15 +189,58 @@ export function CategoryFormDialog<Code extends string>({
             ) : null}
 
             <FormField
+              id={`${formId}-region`}
+              label={t.form.region}
+              hint={t.form.regionHint}
+              error={errors.region}
+            >
+              {(describedBy) => (
+                <select
+                  id={`${formId}-region`}
+                  value={values.region}
+                  disabled={pending}
+                  aria-invalid={errors.region !== undefined}
+                  aria-describedby={describedBy}
+                  onChange={(event) => patch({ region: event.target.value })}
+                  className={SELECT_CLASS}
+                >
+                  {/* Mục giữ chỗ: form tạo mới, hoặc chuỗi cũ trong DB không khớp
+                      vùng nào. `disabled` để không ai chọn lại được "chưa có vùng". */}
+                  <option value="" disabled>
+                    {t.form.regionPlaceholder}
+                  </option>
+                  {REGIONS.map((region) => (
+                    <option key={region.key} value={region.name}>
+                      {region.name}
+                    </option>
+                  ))}
+                </select>
+              )}
+            </FormField>
+
+            <FormField id={`${formId}-country`} label={t.form.country} error={errors.country}>
+              {(describedBy) => (
+                <Input
+                  id={`${formId}-country`}
+                  value={values.country}
+                  disabled={pending}
+                  aria-invalid={errors.country !== undefined}
+                  aria-describedby={describedBy}
+                  onChange={(event) => patch({ country: event.target.value })}
+                />
+              )}
+            </FormField>
+
+            <FormField
               id={`${formId}-description`}
               label={t.form.description}
-              hint={t.form.descriptionHint(CATEGORY_DESCRIPTION_MAX)}
+              hint={t.form.descriptionHint(DESTINATION_DESCRIPTION_MAX)}
               error={errors.description}
             >
               {(describedBy) => (
                 <Textarea
                   id={`${formId}-description`}
-                  rows={3}
+                  rows={4}
                   value={values.description}
                   disabled={pending}
                   aria-invalid={errors.description !== undefined}

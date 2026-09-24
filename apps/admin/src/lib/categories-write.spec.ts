@@ -5,7 +5,6 @@ import {
   CREATE_CONTRACT_CODES,
   categoryCreatePayload,
   categoryUpdatePayload,
-  hasFormErrors,
   isCreateStale,
   isSetActiveStale,
   isUpdateStale,
@@ -16,6 +15,7 @@ import {
   UPDATE_CONTRACT_CODES,
   validateCategoryForm,
 } from './categories-write';
+import { hasFormErrors } from './form-errors';
 
 /**
  * Logic thuần của bốn lệnh ghi vùng danh mục (spec P4e-2 F14).

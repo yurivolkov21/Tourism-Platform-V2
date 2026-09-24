@@ -518,16 +518,27 @@ phía web chưa chịu được nó. Xem bài học 9 và 10 ở đầu phần F
 - Create: `apps/admin/src/components/destinations/*.tsx` (+ spec)
 - Modify: `apps/admin/src/lib/nav.ts`, `libs/shared/i18n/src/lib/messages.ts`
 
-- [ ] **B1.** Component spec TRƯỚC: ô `region` là **danh sách chọn ba mục**,
+- [x] **B1.** Component spec TRƯỚC: ô `region` là **danh sách chọn ba mục**,
       không phải ô chữ · ô slug mở khi tạo, vắng khi sửa · hộp xác nhận tắt in
       đúng `tourCount` và nói đủ hệ quả. Các hệ quả lấy từ bảng đo của Task 9a
       B1, KHÔNG lấy từ danh sách ba mục của spec §4.6 bản đầu — danh sách ấy
       thiếu trang chủ, About, blog và hộ chiếu của khách.
-- [ ] **B2.** Chạy ĐỎ, rồi dựng theo đúng khuôn Task 4.
-- [ ] **B3.** Ô slug điền sẵn bằng `slugifyVietnamese(name, 80)`.
-- [ ] **B4.** Bật mục `destinations` ở `nav.ts`.
-- [ ] **B5.** `pnpm gate:int` xanh.
-- [ ] **B6.** Commit: `feat(admin): màn quản trị điểm đến`
+      *Ghi khi thi công:* hộp Hide có thân (ba chỗ điểm đến rời khỏi), một
+      danh sách bốn hệ quả không hiển nhiên (hai dòng trang vùng — vắng khi
+      điểm đến chưa có vùng — hộ chiếu của khách, tag blog) và câu trấn an
+      giọng trung tính.
+- [x] **B2.** Chạy ĐỎ, rồi dựng theo đúng khuôn Task 4.
+      *Ghi khi thi công:* ô vùng là `<select>` gốc đọc `REGIONS` của contract;
+      form sửa chọn sẵn tên CHUẨN qua `findRegion`, nên một hàng lưu kiểu cũ
+      (`central`) lưu lại là thành `Central Vietnam`. Cột Region báo "No region"
+      khi chuỗi trong DB không khớp vùng nào. Bài học 11: `hasFormErrors` về
+      `lib/form-errors.ts`, danh mục đổi sang dùng; bản của departures GIỮ
+      NGUYÊN (code F16). Bài học 20: Hide/Show/Visible/Hidden, câu lỗi và câu
+      gợi ý slug thành hằng dùng chung ở `messages.ts`, danh mục đọc cùng hằng.
+- [x] **B3.** Ô slug điền sẵn bằng `slugifyVietnamese(name, 80)`.
+- [x] **B4.** Bật mục `destinations` ở `nav.ts`.
+- [x] **B5.** `pnpm gate:int` xanh.
+- [x] **B6.** Commit: `feat(admin): màn quản trị điểm đến`
 
 ## Task 9b — Docs sweep F15
 

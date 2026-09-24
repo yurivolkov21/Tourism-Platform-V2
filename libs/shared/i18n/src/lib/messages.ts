@@ -39,6 +39,24 @@ const MOBILE_TAB_COPY = {
   account: 'Account',
 } as const;
 
+// MỘT bộ chữ cho công tắc ẩn/hiện của hai bảng tra cứu catalog (danh mục F14,
+// điểm đến F15) — bài học 20 của plan P4e-2: "On sale" là chữ của tour,
+// "Bookable" là của chuyến, còn hai bảng tra cứu nói hai chữ cho cùng một nút
+// là người đọc tưởng hai hành vi khác nhau.
+const CATALOG_VISIBILITY_COPY = {
+  hide: 'Hide',
+  show: 'Show',
+  visible: 'Visible',
+  hidden: 'Hidden',
+} as const;
+
+// MỘT câu cho luật `SLUG_PATTERN` và MỘT câu gợi ý "slug đặt một lần" ở mọi
+// form catalog của admin — bài học 8 của plan P4e-2: form điểm đến chép tay câu
+// của danh mục là lại sinh ra một câu lỗi lệch luật.
+const SLUG_SHAPE_COPY =
+  'Use lowercase letters and numbers, with single hyphens between words — for example day-trips.';
+const SLUG_HINT_COPY = 'Set once. It appears in shared links, so it cannot be changed later.';
+
 export const messages = {
   // Dọn 19/08 (sổ nợ B1 mở rộng): 21 khối cấp-1 KHÔNG consumer nào trên web —
   // bản nháp static-first/port Nexora đã bị thay bằng copy trong component hoặc
@@ -4577,14 +4595,14 @@ export const messages = {
         },
         tours: (count: number) => (count === 1 ? '1 tour' : `${count} tours`),
         inherited: 'No description',
-        active: 'Visible',
-        inactive: 'Hidden',
+        active: CATALOG_VISIBILITY_COPY.visible,
+        inactive: CATALOG_VISIBILITY_COPY.hidden,
       },
       form: {
         name: 'Name',
         slug: 'Slug',
         /** Ô slug CHỈ có ở form tạo — câu này giải thích vì sao nó một đi không trở lại. */
-        slugHint: 'Set once. It appears in shared links, so it cannot be changed later.',
+        slugHint: SLUG_HINT_COPY,
         description: 'Description',
         descriptionHint: (max: number) => `Optional, up to ${max} characters.`,
         cancel: 'Cancel',
@@ -4598,8 +4616,7 @@ export const messages = {
            * (lượt thử tay F14, 23/09). Ví dụ trong câu phải là slug hợp lệ — có
            * ca test ghim điều đó.
            */
-          slugShape:
-            'Use lowercase letters and numbers, with single hyphens between words — for example day-trips.',
+          slugShape: SLUG_SHAPE_COPY,
           tooLong: (max: number) => `Keep it under ${max} characters.`,
         },
       },
@@ -4631,8 +4648,8 @@ export const messages = {
         toast: { title: 'Category updated', body: (name: string) => `${name} is saved.` },
       },
       setActive: {
-        hide: 'Hide',
-        show: 'Show',
+        hide: CATALOG_VISIBILITY_COPY.hide,
+        show: CATALOG_VISIBILITY_COPY.show,
         hideLabel: (name: string) => `Hide ${name} from the tours page`,
         showLabel: (name: string) => `Show ${name} on the tours page`,
         rows: { category: 'Category', tours: 'Published tours' },
@@ -4675,6 +4692,151 @@ export const messages = {
           NOT_FOUND: 'This category no longer exists. The table has been refreshed.',
           CANNOT_MOVE:
             'Someone else reordered the list while this page was open. The table has been refreshed.',
+        },
+      },
+    },
+    /**
+     * Điểm đến (P4e-2 F15) — bản song sinh của khối `categories` ngay trên, cộng
+     * ô vùng là một danh sách chọn (ADR-0045).
+     *
+     * Chữ của công tắc ẩn/hiện, câu lỗi khuôn slug và câu gợi ý slug là CHÍNH
+     * hằng của danh mục (bài học 8 và 20 của plan P4e-2): cùng một luật thì cùng
+     * một câu, hai bảng nói hai chữ là người đọc tưởng hai hành vi.
+     *
+     * Mọi câu nói về hệ quả của nút Hide lấy từ bảng đo spec §4.6 (Task 9a B1),
+     * KHÔNG từ danh sách ba mục của bản spec đầu — danh sách ấy thiếu trang chủ,
+     * About, blog và hộ chiếu của khách.
+     */
+    destinations: {
+      list: {
+        heading: 'Destinations',
+        /**
+         * Nói ngay hai luật đắt nhất: vùng quyết định trang nào liệt kê điểm
+         * đến, và slug khoá sau khi tạo. Vế giữa trả lời câu hỏi hay gặp nhất
+         * trước khi ai đó bấm Hide: tour KHÔNG bị ẩn theo.
+         */
+        subtitle:
+          'The region decides which region page lists a destination. Hiding one takes it off the destination pages and the tour filter, but the tours that visit it stay on sale. A slug is set once — it lives in shared links and cannot be changed later.',
+        empty: 'No destinations yet.',
+        columns: {
+          name: 'Destination',
+          slug: 'Slug',
+          region: 'Region',
+          country: 'Country',
+          tours: 'Published tours',
+          status: 'Status',
+          actions: 'Actions',
+        },
+        tours: (count: number) => (count === 1 ? '1 tour' : `${count} tours`),
+        inherited: 'No description',
+        /**
+         * Chuỗi trong DB không khớp vùng nào — `findRegion` trả rỗng. Điểm đến
+         * ấy không hiện ở trang vùng nào, và trước F15 không có gì báo điều đó
+         * ở bất cứ đâu (ADR-0045 §Bối cảnh).
+         */
+        noRegion: 'No region',
+        active: CATALOG_VISIBILITY_COPY.visible,
+        inactive: CATALOG_VISIBILITY_COPY.hidden,
+      },
+      form: {
+        name: 'Name',
+        slug: 'Slug',
+        slugHint: SLUG_HINT_COPY,
+        country: 'Country',
+        region: 'Region',
+        /** Ô chọn khi tạo mới, hoặc khi chuỗi cũ trong DB không khớp vùng nào. */
+        regionPlaceholder: 'Choose a region',
+        regionHint: 'Decides which region page lists this destination.',
+        description: 'Description',
+        descriptionHint: (max: number) => `Optional, up to ${max} characters.`,
+        cancel: 'Cancel',
+        errors: {
+          nameRequired: 'Give the destination a name.',
+          slugRequired: 'Give the destination a slug.',
+          slugShape: SLUG_SHAPE_COPY,
+          countryRequired: 'Give the destination a country.',
+          regionRequired: 'Choose the region it belongs to.',
+          tooLong: (max: number) => `Keep it under ${max} characters.`,
+        },
+      },
+      create: {
+        action: 'Add destination',
+        dialog: {
+          title: 'Add a destination',
+          body: 'It shows up straight away on its region page and in the tour filter. Use Hide to keep it off the site for now.',
+          submit: 'Add destination',
+          submitting: 'Adding…',
+        },
+        errors: {
+          SLUG_TAKEN: 'Another destination already uses this slug. Pick a different one.',
+        },
+        toast: { title: 'Destination added', body: (name: string) => `${name} is on the list.` },
+      },
+      edit: {
+        action: 'Edit',
+        actionLabel: (name: string) => `Edit ${name}`,
+        dialog: {
+          title: 'Edit this destination',
+          body: 'Name, country, region and description can change. The slug cannot.',
+          submit: 'Save changes',
+          submitting: 'Saving…',
+        },
+        errors: {
+          NOT_FOUND: 'This destination no longer exists. The table has been refreshed.',
+        },
+        toast: { title: 'Destination updated', body: (name: string) => `${name} is saved.` },
+      },
+      setActive: {
+        hide: CATALOG_VISIBILITY_COPY.hide,
+        show: CATALOG_VISIBILITY_COPY.show,
+        hideLabel: (name: string) => `Hide ${name} from the destination pages`,
+        showLabel: (name: string) => `Show ${name} on the destination pages`,
+        rows: { destination: 'Destination', region: 'Region', tours: 'Published tours' },
+        dialog: {
+          hideTitle: 'Hide this destination?',
+          /** Ba chỗ nó rời khỏi — dòng `/`, `/destinations`, `/tours` của bảng đo. */
+          hideBody:
+            'It leaves the destination pages, the tour filter and — if it is one of the featured places — the home page.',
+          /**
+           * Bốn hệ quả KHÔNG hiển nhiên của bảng đo §4.6, mỗi câu một dòng danh
+           * sách. Hai câu đầu là hai dòng của trang vùng (`toursInRegion` gom
+           * theo `some`, `ownToursInRegion` đòi `every`) — điểm đến chưa có
+           * vùng thì không có trang vùng nào để mà nói, nên hai câu ấy vắng.
+           * Câu thứ ba nói về KHÁCH chứ không về trang: người đã đi nơi ấy nhìn
+           * thấy nó biến khỏi hộ chiếu của mình.
+           */
+          hideRegionTours: (region: string) =>
+            `Tours whose only stop in ${region} is this place drop off the ${region} page.`,
+          hideRegionOwnTours: (region: string) =>
+            `Tours that stay inside ${region} and stop here no longer count toward that page's trip-length, day-trip and longest-trip figures.`,
+          hidePassport:
+            'Travellers who have been there no longer see it in the travel log of their passport. Their bookings are untouched.',
+          hideJournal:
+            'If the journal has a tag with the same slug, that tag moves from Places to Topics.',
+          /**
+           * Câu TRẤN AN — hộp này xin `warningTone="neutral"` (bài học 14): nó
+           * nói điều KHÔNG xảy ra, tô đỏ là để màu nói ngược với chữ.
+           */
+          hideWarning:
+            'The tours that visit it stay on sale and still show it on their route. Links that already filter by it keep working.',
+          hideSubmit: 'Hide destination',
+          hideSubmitting: 'Hiding…',
+          showTitle: 'Show this destination again?',
+          showBody:
+            'Everything that hiding it changed comes back — the destination pages, the tour filter and travellers’ passports.',
+          showWarning: 'The tours that visit it were never hidden, so they do not change.',
+          showSubmit: 'Show destination',
+          showSubmitting: 'Showing…',
+        },
+        errors: {
+          NOT_FOUND: 'This destination no longer exists. The table has been refreshed.',
+        },
+        toast: {
+          hiddenTitle: 'Destination hidden',
+          hiddenBody: (name: string) => `${name} is off the destination pages and the tour filter.`,
+          shownTitle: 'Destination visible',
+          shownBody: (name: string) =>
+            `${name} is back on the destination pages and the tour filter.`,
         },
       },
     },

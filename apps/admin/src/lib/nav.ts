@@ -105,11 +105,13 @@ export const NAV_GROUPS: NavGroup[] = [
       // là thứ tự chip lọc trên `/tours` của khách, vì web đọc thẳng
       // `catalog.categories.list`.
       { key: 'categories', label: t.categories, href: '/categories', enabled: true, icon: Tags },
+      // Vùng thứ ba của P4e (F15) — mười tám hàng, ẩn/hiện chứ không xoá. Vùng
+      // của từng điểm đến quyết định trang vùng nào của web liệt kê nó.
       {
         key: 'destinations',
         label: t.destinations,
         href: '/destinations',
-        enabled: false,
+        enabled: true,
         icon: MapPin,
       },
       { key: 'posts', label: t.posts, href: '/posts', enabled: false, icon: FileText },

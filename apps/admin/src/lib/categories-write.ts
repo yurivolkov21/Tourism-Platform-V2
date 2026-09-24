@@ -159,11 +159,6 @@ export function validateCategoryForm(
   return errors;
 }
 
-/** Form có ô nào hỏng không — một chỗ hỏi, để không nơi nào tự đếm keys. */
-export function hasFormErrors(errors: CategoryFormErrors): boolean {
-  return Object.keys(errors).length > 0;
-}
-
 /**
  * Ba ô thô → hình dạng contract của `create`. Gọi SAU khi validate đã sạch.
  *
