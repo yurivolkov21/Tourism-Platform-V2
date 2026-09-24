@@ -11,6 +11,7 @@ import { DestinationFormDialog } from '@/components/destinations/destination-for
 import { DestinationRowActions } from '@/components/destinations/destination-row-actions';
 import { ColumnVisibilityMenu, DataTableBody } from '@/components/kit/data-table-body';
 import { DataTableFrame } from '@/components/kit/data-table-frame';
+import { NameDescriptionCell } from '@/components/kit/name-description-cell';
 import { serverTableFeatures } from '@/components/kit/table-features';
 import { type DestinationRowVM, destinationStatusBadgeVariant } from '@/lib/destinations-view';
 import {
@@ -114,12 +115,7 @@ export function DestinationsTable({ rows, create, update, setActive }: Destinati
           header: t.list.columns.name,
           // Danh tính của hàng — không ẩn được.
           cell: ({ row }) => (
-            <div className="min-w-0">
-              <div className="font-medium text-foreground">{row.original.name}</div>
-              <div className="truncate text-xs text-muted-foreground">
-                {row.original.description}
-              </div>
-            </div>
+            <NameDescriptionCell name={row.original.name} description={row.original.description} />
           ),
           enableHiding: false,
         }),

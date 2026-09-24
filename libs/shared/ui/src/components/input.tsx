@@ -3,8 +3,9 @@ import { cn } from '@tourism/ui/lib/utils';
 import type * as React from 'react';
 
 /**
- * Bộ class của ô nhập — export để một `<select>` gốc mặc cùng một bộ, thay vì
- * chép chuỗi rồi trôi lệch khi kit đổi (vòng review F15, form điểm đến).
+ * Bộ class của ô nhập. Từng được export cho `<select>` gốc của form điểm đến
+ * (vòng review F15); lượt thử tay F15 (24/09) thay ô ấy bằng `FormSelect` của
+ * admin (`Select` của kit), nên bộ class trở lại là chuyện riêng của `Input`.
  */
 const inputClassName =
   'h-8 w-full min-w-0 rounded-lg border border-input bg-transparent px-2.5 py-1 text-base transition-colors outline-none file:inline-flex file:h-6 file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:cursor-not-allowed disabled:bg-input/50 disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 md:text-sm dark:bg-input/30 dark:disabled:bg-input/80 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40';
@@ -20,4 +21,4 @@ function Input({ className, type, ...props }: React.ComponentProps<'input'>) {
   );
 }
 
-export { Input, inputClassName };
+export { Input };

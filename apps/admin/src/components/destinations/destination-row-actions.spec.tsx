@@ -176,7 +176,9 @@ describe('DestinationRowActions — form sửa', () => {
 
     expect(await screen.findByText(t.edit.dialog.title)).toBeInTheDocument();
     expect(screen.getByLabelText(t.form.name)).toHaveValue('Hội An');
-    expect(screen.getByLabelText(t.form.region)).toHaveValue('Central Vietnam');
+    expect(screen.getByRole('combobox', { name: t.form.region })).toHaveTextContent(
+      'Central Vietnam',
+    );
     expect(screen.queryByLabelText(t.form.slug)).not.toBeInTheDocument();
   });
 
@@ -185,7 +187,8 @@ describe('DestinationRowActions — form sửa', () => {
     const { vm, update } = renderRow(row());
 
     await user.click(screen.getByRole('button', { name: t.edit.actionLabel(vm.name) }));
-    await user.selectOptions(await screen.findByLabelText(t.form.region), 'Southern Vietnam');
+    await user.click(await screen.findByRole('combobox', { name: t.form.region }));
+    await user.click(await screen.findByRole('option', { name: 'Southern Vietnam' }));
     await user.click(screen.getByRole('button', { name: t.edit.dialog.submit }));
 
     await waitFor(() => expect(update).toHaveBeenCalledTimes(1));

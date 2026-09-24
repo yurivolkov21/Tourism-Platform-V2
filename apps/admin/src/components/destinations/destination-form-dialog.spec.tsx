@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { type AdminDestinationRow, REGIONS } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
@@ -64,6 +64,12 @@ function renderDialog(
   return { onSubmit, onClose, onSettled };
 }
 
+/** Chọn một vùng ở `FormSelect` của kit: mở trigger rồi bấm mục (Base UI Select). */
+async function chooseRegion(user: ReturnType<typeof userEvent.setup>, name: string) {
+  await user.click(screen.getByRole('combobox', { name: t.form.region }));
+  await user.click(await screen.findByRole('option', { name }));
+}
+
 beforeEach(() => {
   success.mockReset();
   errorToast.mockReset();
@@ -73,21 +79,22 @@ describe('DestinationFormDialog — ô vùng', () => {
   it('là một danh sách CHỌN, không phải ô chữ', () => {
     renderDialog();
 
-    const region = screen.getByLabelText(t.form.region);
-    expect(region.tagName).toBe('SELECT');
+    expect(screen.getByRole('combobox', { name: t.form.region })).toBeInTheDocument();
     expect(screen.queryByRole('textbox', { name: t.form.region })).not.toBeInTheDocument();
   });
 
-  it('chọn được ĐÚNG ba vùng của contract, cộng một mục giữ chỗ không chọn được', () => {
+  it('chưa chọn thì hiện câu giữ chỗ; mở ra chọn được ĐÚNG ba vùng của contract', async () => {
+    // Không có mục "chưa có vùng" trong danh sách — không ai chọn lại được trạng
+    // thái ấy (bản `<select>` gốc cũ dùng một `<option disabled>` cho việc này).
+    const user = userEvent.setup();
     renderDialog();
+    const region = screen.getByRole('combobox', { name: t.form.region });
+    expect(region).toHaveTextContent(t.form.regionPlaceholder);
 
-    const options = within(screen.getByLabelText(t.form.region)).getAllByRole('option');
-    const choosable = options.filter((option) => !(option as HTMLOptionElement).disabled);
+    await user.click(region);
+    const options = await screen.findAllByRole('option');
 
-    expect(choosable.map((option) => (option as HTMLOptionElement).value)).toEqual(
-      REGIONS.map((region) => region.name),
-    );
-    expect(options).toHaveLength(REGIONS.length + 1);
+    expect(options.map((option) => option.textContent)).toEqual(REGIONS.map((item) => item.name));
   });
 
   it('chưa chọn vùng mà bấm gửi: báo tại ô, KHÔNG gọi server', async () => {
@@ -106,7 +113,7 @@ describe('DestinationFormDialog — ô vùng', () => {
     const { onSubmit } = renderDialog();
 
     await user.type(screen.getByLabelText(t.form.name), 'Đà Lạt');
-    await user.selectOptions(screen.getByLabelText(t.form.region), 'Southern Vietnam');
+    await chooseRegion(user, 'Southern Vietnam');
     await user.click(screen.getByRole('button', { name: t.create.dialog.submit }));
 
     await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1));
@@ -122,7 +129,9 @@ describe('DestinationFormDialog — ô vùng', () => {
       initial: { ...EMPTY, name: 'Hà Nội', slug: 'hanoi', region: 'Northern Vietnam' },
     });
 
-    expect(screen.getByLabelText(t.form.region)).toHaveValue('Northern Vietnam');
+    expect(screen.getByRole('combobox', { name: t.form.region })).toHaveTextContent(
+      'Northern Vietnam',
+    );
   });
 
   it('quốc gia điền sẵn Vietnam ở form tạo', () => {
@@ -190,7 +199,7 @@ describe('DestinationFormDialog — ô slug', () => {
     await user.type(screen.getByLabelText(t.form.name), 'X');
     await user.clear(screen.getByLabelText(t.form.slug));
     await user.type(screen.getByLabelText(t.form.slug), 'hoi--an');
-    await user.selectOptions(screen.getByLabelText(t.form.region), 'Central Vietnam');
+    await chooseRegion(user, 'Central Vietnam');
     await user.click(screen.getByRole('button', { name: t.create.dialog.submit }));
 
     expect(

@@ -16,12 +16,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@tourism/ui/components/dialog';
-import { Input, inputClassName } from '@tourism/ui/components/input';
+import { Input } from '@tourism/ui/components/input';
 import { Textarea } from '@tourism/ui/components/textarea';
 import { cn } from '@tourism/ui/lib/utils';
 import { useState } from 'react';
 import { DIALOG_FRAME } from '@/components/kit/confirm-write-dialog';
 import { FormField } from '@/components/kit/form-field';
+import { FormSelect } from '@/components/kit/form-select';
 import type { TransportFailureCode } from '@/lib/api/write-error';
 import {
   type DestinationFormErrors,
@@ -41,20 +42,16 @@ import { useConfirmWrite } from '@/lib/use-confirm-write';
  * §2c). Lúc tạo nó điền sẵn bằng `slugifyVietnamese(name, 80)` và thôi tự điền
  * ngay khi admin chạm vào nó: slug thật do người chọn (`Hà Nội` → `hanoi`).
  *
- * Ô VÙNG là một `<select>` gốc ba mục đọc thẳng từ `REGIONS` của contract,
+ * Ô VÙNG là một danh sách chọn ba mục đọc thẳng từ `REGIONS` của contract,
  * không phải ô chữ (spec §2b, ADR-0045): cột DB là chữ tự do mà web ghép với
  * ba vùng cố định, nên một lần gõ nhầm là điểm đến biến khỏi mọi trang vùng.
- * `<select>` gốc chứ không phải Select của kit UI: ba mục không cần ô tìm hay
- * popup, và một popup lồng trong Dialog là thêm một lớp bẫy tiêu điểm — cùng
- * lựa chọn với ô "Region" của form liên hệ bên web.
+ * Từ lượt thử tay F15 (24/09) nó là `FormSelect` của kit — cùng dáng dropdown
+ * với mọi ô chọn khác của back office — thay cho `<select>` gốc mà user thấy thô.
  */
 const t = messages.admin.destinations;
 
-/**
- * `<select>` gốc mặc CHÍNH bộ class của `Input` kit UI (export từ kit), cộng con
- * trỏ tay — trông cùng họ với ô bên cạnh mà không chép chuỗi (vòng review F15).
- */
-const SELECT_CLASS = cn(inputClassName, 'cursor-pointer');
+/** Ba vùng của contract, nhãn là chính tên vùng — thứ tự Bắc, Trung, Nam. */
+const REGION_OPTIONS = REGIONS.map((region) => ({ value: region.name, label: region.name }));
 
 export interface DestinationFormDialogProps<Code extends string> {
   copy: { title: string; body: string; submit: string; submitting: string };
@@ -193,26 +190,19 @@ export function DestinationFormDialog<Code extends string>({
               error={errors.region}
             >
               {(describedBy) => (
-                <select
+                // Giá trị rỗng (form tạo mới, hoặc chuỗi cũ trong DB không khớp vùng
+                // nào) hiện câu giữ chỗ; danh sách không có mục "chưa có vùng" nên
+                // không ai chọn lại được trạng thái ấy.
+                <FormSelect
                   id={`${formId}-region`}
                   value={values.region}
+                  options={REGION_OPTIONS}
+                  placeholder={t.form.regionPlaceholder}
                   disabled={pending}
-                  aria-invalid={errors.region !== undefined}
-                  aria-describedby={describedBy}
-                  onChange={(event) => patch({ region: event.target.value })}
-                  className={SELECT_CLASS}
-                >
-                  {/* Mục giữ chỗ: form tạo mới, hoặc chuỗi cũ trong DB không khớp
-                      vùng nào. `disabled` để không ai chọn lại được "chưa có vùng". */}
-                  <option value="" disabled>
-                    {t.form.regionPlaceholder}
-                  </option>
-                  {REGIONS.map((region) => (
-                    <option key={region.key} value={region.name}>
-                      {region.name}
-                    </option>
-                  ))}
-                </select>
+                  invalid={errors.region !== undefined}
+                  describedBy={describedBy}
+                  onValueChange={(region) => patch({ region })}
+                />
               )}
             </FormField>
 
