@@ -8,6 +8,68 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-09-24 — Thử tay F15 trên production (`b39e6df3`): 5/5 bước đạt; ba góp ý giao diện vá trên nhánh `fix/f15-thu-tay-gop-y`
+
+Chạy khi cả ba nơi đã lên bản `b39e6df3`: admin và web trên Vercel (READY), API
+trên Render khởi động lại lúc 08:23 UTC, sau giờ push. Năm bước, mỗi bước chờ
+người thử xác nhận; mọi lệnh ghi đối chiếu thẳng với DB production bằng SQL chỉ
+đọc, mọi hệ quả phía khách đo bằng `curl` trên trang thật.
+
+Điểm đến thử chọn bằng một câu SQL chỉ đọc: **Quy Nhơn** — Central Vietnam, đúng
+một tour đang bán (`quy-nhon-coastal-3d`, điểm chính), nên mỗi lệnh ghi chạm ít
+khách nhất mà vẫn đủ để thấy hệ quả trên trang vùng.
+
+1. **Ẩn.** Hộp Hide nói đúng từng câu của bản vá review F15: hai câu về trang
+   Central Vietnam (bản của vùng Miền Trung, kết bằng "day-trip section"), ba câu
+   về số đếm, hộ chiếu, journal; câu trấn an màu trung tính. Toast đúng. DB
+   `is_active = false`, liên kết tour còn nguyên, tour vẫn đang bán. Phía khách:
+   Quy Nhơn rời trang Central Vietnam, `/about` và bộ lọc `/tours`; tour của nó rời
+   trang Central Vietnam (điểm dừng duy nhất ở vùng ấy) nhưng `/tours` vẫn đủ 29 tour
+   và trang tour vẫn in "Based in Quy Nhơn" kèm link lọc.
+2. **Web khi đang ẩn.** `/tours?destinations=quy-nhon` còn 1/29 tour; chip ghi TÊN
+   "Quy Nhơn" chứ không in slug; trong Filters, Quy Nhơn có mặt ở cuối danh sách và
+   đang được tích nên bỏ tích được — đúng hai lỗ mà Task 9a của F15 vá.
+3. **Hiện lại.** Hộp Show và toast đúng; DB `is_active = true`; Quy Nhơn và tour
+   của nó về lại trang Central Vietnam, `/tours`, `/about`.
+4. **Đổi vùng sang Southern Vietnam.** Hộp Edit không có ô slug, ô vùng là danh
+   sách chọn ba mục. DB đổi đúng cột `region`, tên/quốc gia/mô tả giữ nguyên. Trang
+   Central Vietnam mất Quy Nhơn và tour của nó; trang Southern Vietnam có cả hai.
+5. **Trả về Central Vietnam.** DB và hai trang vùng về như cũ.
+
+**Cuối lượt DB khớp trạng thái gốc:** Quy Nhơn `Central Vietnam`, đang hiện, tên,
+quốc gia, mô tả và liên kết tour không đổi. Trang `/destinations` không liệt kê
+Quy Nhơn ở mọi thời điểm — trang ấy chỉ bày các điểm nổi bật (Vũng Tàu, Đà Lạt
+cũng vắng), không phải hệ quả của lượt thử.
+
+**Chưa thử trên production: lệnh tạo.** Tạo thành công để lại một hàng không xoá
+được (F15 cố ý không có nút xoá, SQL trên prod chỉ đọc). Bước bổ sung thử đường
+tạo mà không ghi gì — gửi slug đã có, chờ `SLUG_TAKEN` — chạy sau commit này.
+
+**Ba góp ý của user trong lượt thử, vá cùng ngày trên nhánh `fix/f15-thu-tay-gop-y`:**
+
+- **Cột tên của bảng Destinations rộng gần 900px** (`6e934329`). Khối `truncate`
+  không có trần bề rộng, nên trong bảng tự giãn nó không cắt được gì. Rút thành
+  kit `NameDescriptionCell`: trần `max-w-md` (khoảng nửa bề rộng cũ, theo góp ý),
+  mô tả gói hai dòng, `title` giữ nguyên văn. Bảng Categories là bản chép y hệt,
+  cùng lỗi, nên dùng chung.
+- **Ô chọn vùng là `<select>` gốc, trông thô** (`6e934329`). Thay bằng kit
+  `FormSelect` bọc `Select` của @tourism/ui — cùng dáng dropdown với thanh công cụ
+  và phân trang. `inputClassName` hết người dùng nên thôi export. Plan F17 sửa theo:
+  mọi ô chọn của khu làm việc tour là `FormSelect` (commit docs này).
+- **Gỡ thành viên đã rút khỏi nhóm** (`22f245f1`). Trang About còn ba người, lưới
+  ba cột, thôi đọc khe ảnh `about-team-ops`; câu trích dẫn ở `/verify-email` chuyển
+  sang Giang Tử Dương, co-founder (user chọn).
+
+**Review findings:** lượt thử không tìm ra lỗi chức năng nào; ba mục trên là góp ý
+giao diện. Đột biến của hai mảnh kit mới: 7 cái, 6 chết; cái còn lại (đổi chuỗi
+rỗng thành `null` trước khi đưa xuống Base UI) tương đương vì Base UI 1.6 vốn coi
+`''` là chưa chọn, nên đoạn ấy đã bị bỏ.
+
+**CÒN TREO:** seed vẫn tạo khe ảnh `about-team-ops` (ảnh robot giữ chỗ, không ai
+đọc) — dọn ở lượt seed lại ~03/11 nếu muốn gọn.
+
+Tests after: Vitest **4191** (tokens 18, i18n 16, ui 22, contract 419, core 46, api 985, admin 1112, web 1573), int **626 ở 44 file**. Tám ca mới đều ở kit admin (`FormSelect` 6, `NameDescriptionCell` 2).
+
 ## 2026-09-24 — Merge F15 lên main (`387824d0`)
 
 Nội dung đã kể ở HAI entry ngay bên dưới — "Vòng review F15" và "F15 quản trị

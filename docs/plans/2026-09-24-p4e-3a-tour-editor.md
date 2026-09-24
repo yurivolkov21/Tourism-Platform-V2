@@ -182,7 +182,10 @@ lặp lại; F17 lớn hơn cả ba cộng lại nên càng dễ đi lại đún
 12. **Dùng lại, đừng chép:** `FormField`, `ConfirmWriteDialog` (kèm `warningTone`),
     `StableLabel`, `hasFormErrors`, `createWriteErrorCodec`, `slugifyVietnamese`,
     `SLUG_PATTERN`, câu lỗi `slugShape` và ba thuộc tính tắt soát chính tả của ô
-    slug, bộ class `inputClassName` của kit cho `<select>` gốc.
+    slug, và **`FormSelect` của kit admin cho MỌI ô chọn** — không dùng
+    `<select>` gốc (lượt thử tay F15, 24/09: user thấy dropdown gốc của trình
+    duyệt thô, lệch mọi dropdown khác). Test chọn bằng `combobox` rồi `option`,
+    khuôn `destination-form-dialog.spec.tsx`.
 
 **Quy trình**
 
@@ -5196,7 +5199,7 @@ git commit -m "feat(admin): khung khu làm việc tour với công tắc, khung 
 
 - Consumes: Task 8–10 (kit, lib thuần, `useSectionSave`, `EditorFormFrame`,
   `loadAdminTour`, `loadTourEditorOptions`); `ConfirmWriteDialog`,
-  `useConfirmWrite`, `FormField`, `slugifyVietnamese`, `inputClassName`.
+  `useConfirmWrite`, `FormField`, `FormSelect`, `slugifyVietnamese`.
 - Produces: `updateTourDetailsAction(input): Promise<EditorWriteResult<DetailsContractCode>>`,
   `deleteTourAction(input): Promise<DeleteTourResult>`,
   `createTourAction(input): Promise<CreateTourResult>`; `TourRowVM.editorHref`.
@@ -5473,13 +5476,14 @@ export function TourDetailsForm({
   return (
     <div className="flex flex-col gap-6 px-4 lg:px-6">
       <EditorFormFrame dirty={dirty} pending={pending} banner={banner} note={t.basePriceNote} onSubmit={submit}>
-        {/* Khung Basics: tên · tóm tắt (id="tour-summary") · danh mục (<select> gốc,
-            class `inputClassName` của kit, mọi mục qua `optionLabel`) · độ khó (có
-            "Not set") · ô tích Featured · số ngày (disabled + lock khi
+        {/* Khung Basics: tên · tóm tắt (id="tour-summary") · danh mục (`FormSelect`,
+            mọi mục qua `optionLabel`) · độ khó (`FormSelect` có mục "Not set" mang
+            giá trị canh `'NOT_SET'`, đổi qua lại với `''` của form — Base UI coi chuỗi
+            rỗng là CHƯA CHỌN nên một mục không mang được `''`) · ô tích Featured · số ngày (disabled + lock khi
             detail.departureCount > 0; cảnh báo `daysRemoved` khi `removed` khác rỗng)
             · số khách (hint `groupFloor` khi detail.liveSeatsMax có giá trị) · giá gốc. */}
         {/* Khung Destinations (id="tour-destinations"): ListEditor max TOUR_DESTINATIONS_MAX,
-            mỗi dòng một <select> điểm đến + radio "Primary" (name dùng chung, luôn đúng
+            mỗi dòng một `FormSelect` điểm đến + radio "Primary" (name dùng chung, luôn đúng
             một — chọn dòng khác thì bỏ dòng cũ) ; xoá dòng đang là điểm chính thì
             dòng đầu còn lại thành điểm chính. */}
         {/* Khung Selling points: ô tích "Good for" (TravellerTypeSchema.options) và
@@ -5550,7 +5554,8 @@ export default async function TourDetailsPage({ params }: { params: Promise<{ sl
   rỗng → thấy câu `noOptions` và nút tạo khoá; mục đã ẩn mang "(hidden)".
 
   Cài `new-tour-dialog.tsx` theo khuôn `DestinationFormDialog` (Dialog +
-  `useConfirmWrite` + `FormField`; slug chạy theo tên bằng
+  `useConfirmWrite` + `FormField`; danh mục và điểm đến chính là hai `FormSelect`
+  với nhãn qua `optionLabel`; slug chạy theo tên bằng
   `slugifyVietnamese(title, TOUR_SLUG_MAX)` tới khi admin chạm ô slug). Trong
   `run`, nhánh thành công gọi `router.push(tourTabHref(created.slug, 'details'))`
   TRƯỚC khi trả `{ ok: true, toast }`. Lỗi `SLUG_TAKEN` là lỗi của ô slug: hiện
@@ -5683,7 +5688,7 @@ git commit -m "feat(admin): tab Details, xoá tour chưa từng bán và hộp N
     các ngày có tiêu đề).
   - **FAQ & policies:** hai `ListEditor` (tối đa 20 và 10); thêm, dời, xoá một
     câu hỏi rồi Save → payload đúng thứ tự trên màn hình; ô trống → `required`;
-    loại chính sách là `<select>` hai mục "Booking"/"General"; câu
+    loại chính sách là `FormSelect` hai mục "Booking"/"General"; câu
     `cancellationNote` luôn hiện; `detailFixture` có một chính sách
     `CANCELLATION` → thấy `droppedCancellation(1)`.
   - **Costs:** thêm hai dòng (Lunch 8.50 theo khách, Boat 100.01 theo chuyến,
@@ -5700,7 +5705,8 @@ git commit -m "feat(admin): tab Details, xoá tour chưa từng bán và hộp N
   - Costs: khung Totals đọc `costBreakdown(costDraftItems(values), detail.basePrice, detail.maxGroupSize)`,
     có `aria-live="polite"` để trình đọc màn hình nghe tổng mới; không có ô nhập
     giá vốn.
-  - Mọi `<select>` gốc dùng `inputClassName` của kit UI (bài học 12).
+  - Mọi ô chọn (loại chính sách, hạng mục và cách tính chi phí) là `FormSelect`
+    của kit (bài học 12).
 
 - [ ] **Bước 4: Ba trang và ba action.** Mỗi trang cùng khuôn trang Details
   (`loadAdminTour`, `notFound()`, form với `key={detail.version}`), metadata
@@ -5858,8 +5864,9 @@ NĂM CHỖ DỄ SAI (plan có đủ chi tiết)
 4. Xoá tour: để khoá ngoại quyết (P2003 → TOUR_HAS_BOOKINGS), không đếm booking
    trước. DB xoá theo cả đánh giá gắn tour — hộp xác nhận phải nói đúng từng
    thứ mất (Task 5, 11).
-5. Admin: nút bị khoá lúc đang focus dùng focusableWhenDisabled; ô chọn có cả
-   danh mục/điểm đến đang ẩn, mang "(hidden)"; form dựng với key={detail.version};
+5. Admin: nút bị khoá lúc đang focus dùng focusableWhenDisabled; MỌI ô chọn là
+   FormSelect của kit (không <select> gốc); ô chọn có cả danh mục/điểm đến đang
+   ẩn, mang "(hidden)"; form dựng với key={detail.version};
    mọi câu copy hứa hệ quả đã đo trên code — đừng tự thêm câu hứa mới chưa đo
    (Task 8–12).
 
