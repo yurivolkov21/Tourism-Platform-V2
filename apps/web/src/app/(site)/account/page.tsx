@@ -54,7 +54,7 @@ export default async function AccountPassportPage() {
     : new Date().getUTCFullYear();
 
   const name = session.name || session.email;
-  const stats = passportStats(bookings, destinations.length);
+  const stats = passportStats(bookings, destinations);
   // Sổ hành trình: entries thuần từ lib (mỗi entry mang trips lần 1 → n
   // nuôi stepper) + ghép ảnh cover của catalog tại đây (giữ hàm thuần khỏi
   // type Media).

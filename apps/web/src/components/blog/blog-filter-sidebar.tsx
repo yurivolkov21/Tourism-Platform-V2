@@ -4,6 +4,7 @@ import { Input } from '@tourism/ui/components/input';
 import { cn } from '@tourism/ui/lib/utils';
 import { CheckIcon, SearchIcon, XIcon } from 'lucide-react';
 import type { FacetCounts, TagLike } from '@/lib/blog';
+import { slugLabel } from '@/lib/text';
 
 /**
  * Sidebar lọc /blog — dựng theo wireframe đã duyệt
@@ -152,11 +153,23 @@ export function BlogFilterSidebar({
       đổi khi tick. */
   resultCount: number;
 }) {
-  const byName = (slugs: readonly string[], pool: readonly TagLike[]) =>
-    slugs.map((s) => pool.find((t) => t.slug === s)).filter((t): t is TagLike => Boolean(t));
+  // MỌI slug đang lọc đều có chip, kể cả slug không còn trong họ của nó: ẩn một
+  // điểm đến làm tag cùng slug đổi từ Place sang Topic, link cũ vẫn lọc bài, và
+  // bỏ chip thì thành một bộ lọc vô hình không gỡ được (vòng review F15). Tên
+  // tra ở cả hai họ, không có thì viết slug thành chữ.
+  const nameOf = (slug: string) =>
+    [...topics, ...places].find((t) => t.slug === slug)?.name ?? slugLabel(slug);
   const activeChips = [
-    ...byName(selectedTopics, topics).map((t) => ({ ...t, onRemove: () => onToggleTopic(t.slug) })),
-    ...byName(selectedPlaces, places).map((t) => ({ ...t, onRemove: () => onTogglePlace(t.slug) })),
+    ...selectedTopics.map((slug) => ({
+      slug,
+      name: nameOf(slug),
+      onRemove: () => onToggleTopic(slug),
+    })),
+    ...selectedPlaces.map((slug) => ({
+      slug,
+      name: nameOf(slug),
+      onRemove: () => onTogglePlace(slug),
+    })),
   ];
   const anyActive = activeChips.length > 0 || query.trim().length > 0;
 

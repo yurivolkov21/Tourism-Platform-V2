@@ -39,6 +39,7 @@ import {
   facetOptionCounts,
   featuredOptionCount,
   filterTours,
+  ownLabel,
   resolveCategoryOptions,
   resolveDestinationOptions,
   searchTours,
@@ -137,8 +138,10 @@ export function ToursExplorer({
     featured: Boolean(initial.featured),
   });
   const [query, setQuery] = useState(initial.q ?? '');
+  // `Object.hasOwn` chứ không `in`: `in` đi cả prototype nên `?sort=__proto__`
+  // hay `?sort=toString` từng lọt qua (vòng review F15).
   const [sort, setSort] = useState<SortValue>(
-    initial.sort && initial.sort in SORT_MAP ? (initial.sort as SortValue) : 'newest',
+    initial.sort && Object.hasOwn(SORT_MAP, initial.sort) ? (initial.sort as SortValue) : 'newest',
   );
   const [page, setPage] = useState(Math.max(1, initial.page ?? 1));
   const gridRef = useRef<HTMLDivElement>(null);
@@ -272,25 +275,20 @@ export function ToursExplorer({
   );
 
   /** Nhãn hiển thị cho chip đang bật. Tra ngược từ slug sang tên người đọc
-      được; giá trị lạ giữ nguyên slug để người dùng thấy chính thứ trong URL. */
+      được; giá trị lạ giữ nguyên slug để người dùng thấy chính thứ trong URL.
+      Ba bảng nhãn tĩnh tra qua `ownLabel`: giá trị đến thẳng từ URL. */
   const chips = FACET_PARAMS.flatMap((facet) =>
     (filters[facet] as readonly string[]).map((value) => {
       const label =
         facet === 'categories'
-          ? (categoryOptions.find((c) => c.slug === value)?.name ?? value)
+          ? categoryOptions.find((c) => c.slug === value)?.name
           : facet === 'destinations'
-            ? (destinationOptions.find((d) => d.slug === value)?.name ?? value)
+            ? destinationOptions.find((d) => d.slug === value)?.name
             : facet === 'durations'
-              ? messages.toursPage.durationLabels[
-                  value as keyof typeof messages.toursPage.durationLabels
-                ]
+              ? ownLabel(messages.toursPage.durationLabels, value)
               : facet === 'prices'
-                ? messages.toursPage.priceLabels[
-                    value as keyof typeof messages.toursPage.priceLabels
-                  ]
-                : messages.toursPage.difficultyLabels[
-                    value as keyof typeof messages.toursPage.difficultyLabels
-                  ];
+                ? ownLabel(messages.toursPage.priceLabels, value)
+                : ownLabel(messages.toursPage.difficultyLabels, value);
       return { facet, value, label: label ?? value };
     }),
   );

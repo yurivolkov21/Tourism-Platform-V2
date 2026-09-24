@@ -24,6 +24,15 @@ const doneTrip = (over: Partial<Parameters<typeof makeBooking>[0]> = {}) =>
     ...over,
   });
 
+/**
+ * Danh mục điểm đến ĐANG HIỆN dài `n` — mở đầu bằng các slug cho trước, phần
+ * còn lại là slug giả. `passportStats` nhận chính danh sách này (vòng review
+ * F15), không chỉ độ dài của nó.
+ */
+function catalogOf(n: number, ...slugs: string[]): { slug: string }[] {
+  return Array.from({ length: n }, (_, i) => ({ slug: slugs[i] ?? `noi-khac-${i}` }));
+}
+
 describe('passportStats', () => {
   it('đếm chuyến hoàn thành, places distinct, % catalog và ngày trên đường', () => {
     const bookings = [
@@ -52,7 +61,7 @@ describe('passportStats', () => {
         departureEndDate: '2026-07-02',
       }),
     ];
-    const stats = passportStats(bookings, 19, TODAY);
+    const stats = passportStats(bookings, catalogOf(19, 'ha-long-bay', 'hoi-an'), TODAY);
     expect(stats.trips).toBe(2);
     expect(stats.places).toBe(2); // ha-long-bay + hoi-an, distinct
     // 2/19 = 10.5% → floor 10
@@ -61,16 +70,16 @@ describe('passportStats', () => {
   });
 
   it('REFUNDED không tính là chuyến đã đi (tiền đã hoàn thì không đóng tem)', () => {
-    const stats = passportStats([doneTrip({ status: 'REFUNDED' })], 19, TODAY);
+    const stats = passportStats([doneTrip({ status: 'REFUNDED' })], catalogOf(19), TODAY);
     expect(stats.trips).toBe(0);
     expect(stats.places).toBe(0);
     expect(stats.daysOnRoad).toBe(0);
   });
 
   it('0 chuyến → exploredPct 0; có chuyến nhưng tỉ lệ nhỏ → tối thiểu 1', () => {
-    expect(passportStats([], 19, TODAY).exploredPct).toBe(0);
+    expect(passportStats([], catalogOf(19), TODAY).exploredPct).toBe(0);
     // 1/200 = 0.5% → floor 0 nhưng đã có chuyến → kẹp sàn 1.
-    expect(passportStats([doneTrip()], 200, TODAY).exploredPct).toBe(1);
+    expect(passportStats([doneTrip()], catalogOf(200, 'ha-long-bay'), TODAY).exploredPct).toBe(1);
   });
 
   // Biên đóng (fix 11/08): chuyến kết thúc ĐÚNG HÔM NAY chưa "xong" — so
@@ -79,7 +88,7 @@ describe('passportStats', () => {
   it('kết thúc ĐÚNG HÔM NAY chưa tính là chuyến đã đi (biên đóng)', () => {
     const stats = passportStats(
       [doneTrip({ departureStartDate: '2026-08-13', departureEndDate: '2026-08-15' })],
-      19,
+      catalogOf(19, 'ha-long-bay'),
       TODAY,
     );
     expect(stats.trips).toBe(0);
@@ -88,9 +97,41 @@ describe('passportStats', () => {
   // RED trước fix 11/08 (controller chốt): PARTIALLY_REFUNDED = đi thật rồi
   // mới hoàn MỘT PHẦN — có tem, khác REFUNDED toàn phần (test ở trên, loại).
   it('PARTIALLY_REFUNDED đã kết thúc vẫn tính là chuyến đã đi (đi thật rồi mới hoàn một phần)', () => {
-    const stats = passportStats([doneTrip({ status: 'PARTIALLY_REFUNDED' })], 19, TODAY);
+    const stats = passportStats(
+      [doneTrip({ status: 'PARTIALLY_REFUNDED' })],
+      catalogOf(19, 'ha-long-bay'),
+      TODAY,
+    );
     expect(stats.trips).toBe(1);
     expect(stats.places).toBe(1);
+  });
+
+  // Vòng review F15: admin ẩn được điểm đến. Tử số từng đếm mọi nơi trong
+  // booking còn mẫu số chỉ đếm điểm đến đang hiện — "3 places visited" trong khi
+  // sổ hành trình chỉ còn 2 dòng, và đi đủ rồi ẩn một nơi thì ra 105%.
+  it('nơi đã đi mà KHÔNG còn trong danh mục đang hiện thì không đếm', () => {
+    const bookings = [
+      doneTrip({
+        tourDestinations: [
+          { slug: 'hoi-an', name: 'Hội An', isPrimary: true },
+          { slug: 'ha-long-bay', name: 'Hạ Long Bay', isPrimary: false },
+        ],
+      }),
+    ];
+    const stats = passportStats(bookings, catalogOf(18, 'ha-long-bay'), TODAY);
+    expect(stats.places).toBe(1);
+  });
+
+  it('đi đủ mọi nơi rồi một nơi bị ẩn thì vẫn không vượt 100%', () => {
+    const bookings = [
+      doneTrip({
+        tourDestinations: [
+          { slug: 'hoi-an', name: 'Hội An', isPrimary: true },
+          { slug: 'ha-long-bay', name: 'Hạ Long Bay', isPrimary: false },
+        ],
+      }),
+    ];
+    expect(passportStats(bookings, catalogOf(1, 'ha-long-bay'), TODAY).exploredPct).toBe(100);
   });
 });
 
@@ -192,6 +233,21 @@ describe('unstampedNames', () => {
       TODAY,
     );
     expect(names).toEqual(['Hội An', 'Cần Thơ', 'Nơi Lạ']);
+  });
+
+  it('vùng ghi bằng khoá ngắn (`north`) vẫn xếp đúng miền — cùng luật `findRegion` của contract', () => {
+    // Vòng review F15: hộ chiếu từng giữ bảng tên vùng chép tay, khớp đúng từng
+    // chữ, nên một hàng `north` rơi xuống cuối trong khi trang vùng và bảng
+    // admin đều xếp nó vào miền Bắc (ADR-0045).
+    const names = unstampedNames(
+      [
+        { slug: 'can-tho', name: 'Cần Thơ', region: 'Southern Vietnam' },
+        { slug: 'sa-pa', name: 'Sa Pa', region: 'north' },
+      ],
+      [],
+      TODAY,
+    );
+    expect(names).toEqual(['Sa Pa', 'Cần Thơ']);
   });
 
   it('chuyến sắp tới CHƯA tính là đã đi — nơi đó vẫn nằm trong danh sách chưa đóng', () => {

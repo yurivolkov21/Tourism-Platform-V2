@@ -5,6 +5,7 @@ import { LoadErrorState } from '@/components/feedback/load-error-state';
 import { ToursExplorer } from '@/components/tours/tours-explorer';
 import { contentState, settle } from '@/lib/api/resilience';
 import { fetchCategories, fetchDestinations, fetchTours } from '@/lib/api/tours';
+import { listParam, type RawSearchParam, singleParam } from '@/lib/search-params';
 
 export const revalidate = 300; // ADR-0016 §3 — khớp REVALIDATE_SEC của fetchTours/fetchDestinations
 
@@ -19,18 +20,9 @@ export const metadata: Metadata = {
 export default async function ToursPage({
   searchParams,
 }: {
-  searchParams: Promise<{
-    categories?: string;
-    destinations?: string;
-    durations?: string;
-    prices?: string;
-    difficulties?: string;
-    featured?: string;
-    q?: string;
-    sort?: string;
-    page?: string;
-    limit?: string;
-  }>;
+  // `string[]` khi một khoá lặp lại trên URL — chuẩn hoá ngay dưới, trước khi
+  // tới `ToursExplorer` (chỉ biết `string`).
+  searchParams: Promise<Record<string, RawSearchParam>>;
 }) {
   const params = await searchParams;
 
@@ -42,7 +34,8 @@ export default async function ToursPage({
     settle(fetchCategories()),
   ]);
   // Hai facet đều là điều hướng PHỤ — tours sống mà facet chết thì vẫn hiện
-  // lưới tour, sidebar rơi về rỗng; chỉ tours chết mới là lỗi trang.
+  // lưới tour, thẻ facet suy từ tour đã tải (`resolveCategoryOptions`,
+  // `resolveDestinationOptions`); chỉ tours chết mới là lỗi trang.
   // `isEmpty` cố tình luôn false: 0 tour do lọc/tìm đã có màn "Nothing here yet"
   // riêng của ToursExplorer, page không cần một trạng thái rỗng thứ hai.
   const state = contentState({ failed: !toursRes.ok, isEmpty: false });
@@ -52,16 +45,16 @@ export default async function ToursPage({
   // về "All". Đây đúng là bug đã sửa ở /blog — lọc sạch tag lạ thành undefined
   // làm URL vẫn ghi ?tag=… mà lưới hiện đủ bài với chip "All" sáng.
   const initial = {
-    categories: params.categories,
-    destinations: params.destinations,
-    durations: params.durations,
-    prices: params.prices,
-    difficulties: params.difficulties,
-    featured: params.featured === 'true',
-    q: params.q,
-    sort: params.sort,
-    page: Number(params.page) || 1,
-    limit: Number(params.limit) || undefined,
+    categories: listParam(params.categories),
+    destinations: listParam(params.destinations),
+    durations: listParam(params.durations),
+    prices: listParam(params.prices),
+    difficulties: listParam(params.difficulties),
+    featured: singleParam(params.featured) === 'true',
+    q: singleParam(params.q),
+    sort: singleParam(params.sort),
+    page: Number(singleParam(params.page)) || 1,
+    limit: Number(singleParam(params.limit)) || undefined,
   };
 
   if (state === 'error') {

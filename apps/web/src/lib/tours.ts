@@ -1,6 +1,6 @@
 import type { TourCardVM } from '@/lib/api/tours';
 import type { MockDestinationLink, MockMediaItem } from '@/mocks/types';
-import { foldAccents } from './text';
+import { foldAccents, slugLabel } from './text';
 
 /** Một mục của thẻ facet có danh sách từ endpoint: slug để lọc, tên để người đọc. */
 export interface FacetOption {
@@ -31,7 +31,13 @@ export type DestinationOption = FacetOption;
  *    không có ô nào để bỏ tick — lưới bị thu hẹp mà không ai giải thích vì sao.
  * 3. **`listed === null` nghĩa là lời gọi HỎNG**, khác hẳn mảng rỗng (mọi mục
  *    đều đã ẩn — hợp lệ). Hỏng thì suy từ tour đã tải, thay vì bày một thẻ
- *    facet trống trơn.
+ *    facet trống trơn. Đánh đổi đã biết (vòng review F15): thẻ tour không mang
+ *    cờ ẩn/hiện của điểm đến hay danh mục, nên trong lúc endpoint hỏng, một mục
+ *    đã ẩn mà tour còn mang sẽ hiện lại tới lượt render kế tiếp.
+ *
+ * Luật 2 áp cho CẢ hai nhánh: mục đang lọc thiếu tên thì lấy tên từ tour, không
+ * có tour nào mang nó thì viết slug thành chữ ("phong-nha" → "Phong Nha") — chip
+ * không bao giờ in slug máy.
  *
  * `namesFromTours` là bảng slug → tên dựng từ tour đã tải; mỗi facet dựng nó
  * theo cách của mình (danh mục có một, điểm đến có nhiều trên mỗi tour).
@@ -41,18 +47,31 @@ function resolveFacetOptions(
   namesFromTours: ReadonlyMap<string, string>,
   selected: readonly string[],
 ): FacetOption[] {
-  if (listed === null) {
-    return [...namesFromTours].map(([slug, name]) => ({ slug, name }));
-  }
-
-  const options = listed.map((option) => ({ slug: option.slug, name: option.name }));
+  const options =
+    listed === null
+      ? [...namesFromTours].map(([slug, name]) => ({ slug, name }))
+      : listed.map((option) => ({ slug: option.slug, name: option.name }));
   const known = new Set(options.map((option) => option.slug));
   for (const slug of selected) {
     if (known.has(slug)) continue;
     known.add(slug);
-    options.push({ slug, name: namesFromTours.get(slug) ?? slug });
+    options.push({ slug, name: namesFromTours.get(slug) ?? slugLabel(slug) });
   }
   return options;
+}
+
+/**
+ * Nhãn của một khoá lấy từ URL, tra trong bảng nhãn tĩnh (i18n).
+ *
+ * Chỉ nhận khoá CỦA CHÍNH bảng: tra thẳng `labels[value]` với `value` là
+ * `__proto__` trả về Object.prototype, và React ném lỗi khi in nó — một URL gõ
+ * tay làm sập cả trang /tours (vòng review F15).
+ */
+export function ownLabel(
+  labels: Readonly<Record<string, string>>,
+  value: string,
+): string | undefined {
+  return Object.hasOwn(labels, value) ? labels[value] : undefined;
 }
 
 /** Bộ chip danh mục của `/tours` — xem `resolveFacetOptions`. */
@@ -193,7 +212,9 @@ export function facetOptionCounts<T extends TourCardVM>(
   options: readonly string[],
 ): Record<string, number> {
   const base = { ...state, [facet]: [] } as TourFilterState;
-  const counts: Record<string, number> = {};
+  // Object không prototype: option lấy từ URL có thể là `__proto__`, và một object
+  // thường nuốt phép gán ấy rồi trả về Object.prototype khi đọc lại.
+  const counts: Record<string, number> = Object.create(null);
   for (const option of options) {
     counts[option] = filterTours(tours, { ...base, [facet]: [option] }).length;
   }

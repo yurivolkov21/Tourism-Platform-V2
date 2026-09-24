@@ -132,6 +132,33 @@ describe('ToursExplorer — drawer bộ lọc', () => {
   });
 });
 
+describe('ToursExplorer — URL gõ tay không làm sập trang', () => {
+  // Vòng review F15: giá trị URL đi thẳng vào phép tra object thường, và
+  // `__proto__` trả về Object.prototype — React ném lỗi khi in nó, error
+  // boundary thay cả trang /tours.
+  it('`?durations=__proto__` vẫn render, chip in đúng giá trị trên URL', () => {
+    renderExplorer({ durations: '__proto__' });
+
+    expect(screen.getByRole('button', { name: /remove filter __proto__/i })).toBeInTheDocument();
+    expect(screen.queryAllByRole('article')).toHaveLength(0);
+  });
+
+  it('`?destinations=__proto__` vẫn mở được drawer bộ lọc', async () => {
+    const user = userEvent.setup();
+    renderExplorer({ destinations: '__proto__' });
+
+    await openFilters(user);
+
+    expect(screen.getByRole('checkbox', { name: /__proto__, 0 tours/i })).toBeInTheDocument();
+  });
+
+  it('`?sort=__proto__` rơi về sắp mặc định (mới nhất)', () => {
+    renderExplorer({ sort: '__proto__' });
+
+    expect(screen.getAllByRole('article')[0]).toHaveTextContent(TOURS[0]?.title ?? '');
+  });
+});
+
 describe('ToursExplorer — lọc', () => {
   it('chuyên mục lạ trong URL cho trạng thái RỖNG, không âm thầm hiện hết', () => {
     renderExplorer({ categories: 'khong-ton-tai' });
@@ -330,10 +357,10 @@ describe('ToursExplorer — facet đa chọn', () => {
     await openFilters(user);
 
     // Đọc `htmlFor` của nhãn chứ không `id` của ô: Base UI tự sinh id cho phần
-    // tử mang `role="checkbox"`, chỉ nhãn mới giữ `facet-<slug>`.
+    // tử mang `role="checkbox"`, chỉ nhãn mới giữ `facet-categories-<slug>`.
     const slugs = new Set(CATEGORIES.map((c) => c.slug));
     const rendered = [...screen.getByRole('dialog').querySelectorAll('label')]
-      .map((label) => label.htmlFor.replace(/^facet-/, ''))
+      .map((label) => label.htmlFor.replace(/^facet-categories-/, ''))
       .filter((slug) => slugs.has(slug));
 
     // `FIXTURE_TOURS` mở đầu bằng một tour `cruises`; nếu chip vẫn suy từ lưới

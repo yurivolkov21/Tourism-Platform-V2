@@ -65,11 +65,14 @@ function FacetCard({ heading, children }: { heading: string; children: ReactNode
 
 /** Hàng checkbox — CẢ HÀNG là vùng bấm (mượn Drawer 01), không chỉ ô vuông. */
 function OptionRow({
+  facet,
   option,
   checked,
   last,
   onToggle,
 }: {
+  /** Khoá facet chứa hàng này — `featured` là công tắc riêng, không phải facet mảng. */
+  facet: FacetKey | 'featured';
   option: Option;
   checked: boolean;
   last: boolean;
@@ -78,7 +81,10 @@ function OptionRow({
   // Option ra 0 kết quả bị khoá — chặn ngõ cụt "bấm thêm một ô rồi trắng trang".
   // KHÔNG khoá option đang bật, nếu không người dùng tự nhốt mình.
   const dead = option.count === 0 && !checked;
-  const id = `facet-${option.value}`;
+  // Id kèm tên facet: danh mục và điểm đến có thể trùng slug, và `<label htmlFor>`
+  // trỏ vào phần tử ĐẦU mang id ấy — bấm dòng điểm đến từng bật ô danh mục
+  // (vòng review F15).
+  const id = `facet-${facet}-${option.value}`;
 
   return (
     <label
@@ -106,10 +112,12 @@ function OptionRow({
 
 /** Danh sách dài (Category, Destination) — hàng checkbox xếp dọc, có "Show all". */
 function OptionList({
+  facet,
   options,
   selected,
   onToggle,
 }: {
+  facet: FacetKey;
   options: Option[];
   selected: readonly string[];
   onToggle: (value: string) => void;
@@ -129,6 +137,7 @@ function OptionList({
       {visible.map((option, i) => (
         <OptionRow
           key={option.value}
+          facet={facet}
           option={option}
           checked={selected.includes(option.value)}
           last={i === visible.length - 1 && !hasFooterRow}
@@ -230,6 +239,7 @@ export function ToursFilters({
     <div className="space-y-4">
       <FacetCard heading={t.facets.category}>
         <OptionList
+          facet="categories"
           options={categoryOptions.map((c) => ({
             value: c.slug,
             label: c.name,
@@ -242,6 +252,7 @@ export function ToursFilters({
 
       <FacetCard heading={t.facets.destination}>
         <OptionList
+          facet="destinations"
           options={destinationOptions.map((d) => ({
             value: d.slug,
             label: d.name,
@@ -290,6 +301,7 @@ export function ToursFilters({
 
       <FacetCard heading={t.facets.highlights}>
         <OptionRow
+          facet="featured"
           option={{ value: 'featured', label: t.featuredLabel, count: counts.featured }}
           checked={value.featured}
           last

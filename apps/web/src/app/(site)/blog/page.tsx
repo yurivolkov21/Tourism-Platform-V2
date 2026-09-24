@@ -6,6 +6,7 @@ import { fetchPosts, fetchPostTags } from '@/lib/api/posts';
 import { contentState, settle } from '@/lib/api/resilience';
 import { fetchDestinations } from '@/lib/api/tours';
 import { parseFacetParams } from '@/lib/blog';
+import { listParam, type RawSearchParam, singleParam } from '@/lib/search-params';
 
 export const revalidate = 300; // ADR-0016 §3
 
@@ -23,17 +24,19 @@ export const metadata: Metadata = {
 export default async function BlogIndexPage({
   searchParams,
 }: {
-  searchParams: Promise<{
-    topic?: string;
-    place?: string;
-    /** Link CŨ — giữ chạy được, xem `parseFacetParams`. */
-    tag?: string;
-    q?: string;
-    page?: string;
-  }>;
+  // `topic` · `place` · `tag` (link CŨ, xem `parseFacetParams`) · `q` · `page`.
+  // `string[]` khi một khoá lặp lại trên URL — chuẩn hoá ngay dưới, cùng luật
+  // trang /tours (vòng review F15).
+  searchParams: Promise<Record<string, RawSearchParam>>;
 }) {
-  const { topic, place, tag, q, page } = await searchParams;
-  const facets = parseFacetParams({ topic, place, tag });
+  const params = await searchParams;
+  const q = singleParam(params.q);
+  const page = singleParam(params.page);
+  const facets = parseFacetParams({
+    topic: listParam(params.topic),
+    place: listParam(params.place),
+    tag: singleParam(params.tag),
+  });
   // settle() không bao giờ throw — hai fetch chạy song song, mỗi cái tự đứng
   // độc lập, một cái sập không kéo cái kia theo.
   // Destinations chỉ để TÁCH tag thành hai họ (Topic/Place). Nó hỏng thì

@@ -8,3 +8,15 @@
  * chỉ có MỘT bản cài đặt, chứ không phải hai bản trôi lệch nhau.
  */
 export { foldAccents } from '@tourism/contract';
+
+/**
+ * Slug viết thành chữ để làm NHÃN khi không còn nguồn tên nào: "phong-nha" →
+ * "Phong Nha". Dùng cho mục đang lọc mà danh sách đã thôi trả nó (điểm đến,
+ * danh mục hay tag đã ẩn) — in "Phong Nha" vẫn hơn in slug máy (vòng review F15).
+ */
+export function slugLabel(slug: string): string {
+  return slug
+    .split('-')
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
+}

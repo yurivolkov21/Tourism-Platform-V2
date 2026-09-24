@@ -1,4 +1,4 @@
-import type { Booking } from '@tourism/contract';
+import { type Booking, findRegion, REGIONS } from '@tourism/contract';
 import { todayDateString } from '@/lib/account-stats';
 import { bookingView } from '@/lib/booking-vm';
 import { foldAccents } from '@/lib/text';
@@ -141,9 +141,8 @@ export function unstampedNames(
   for (const b of bookings) {
     if (isCompleted(b, today)) for (const d of b.tourDestinations) stamped.add(d.slug);
   }
-  const cluster = (region: string | null) => (region && REGION_CLUSTER[region]) || 'other';
   return [...catalog]
-    .sort((a, b) => CLUSTER_ORDER[cluster(a.region)] - CLUSTER_ORDER[cluster(b.region)])
+    .sort((a, b) => CLUSTER_ORDER[clusterOf(a.region)] - CLUSTER_ORDER[clusterOf(b.region)])
     .filter((d) => !stamped.has(d.slug))
     .map((d) => d.name);
 }
@@ -229,9 +228,8 @@ export function travelLog(
     const trip = tripOf(b, 'start');
     for (const d of b.tourDestinations) push(upcomingBySlug, d.slug, trip);
   }
-  const cluster = (region: string | null) => (region && REGION_CLUSTER[region]) || 'other';
   return [...catalog]
-    .sort((a, b) => CLUSTER_ORDER[cluster(a.region)] - CLUSTER_ORDER[cluster(b.region)])
+    .sort((a, b) => CLUSTER_ORDER[clusterOf(a.region)] - CLUSTER_ORDER[clusterOf(b.region)])
     .flatMap((d) => {
       const trips = tripsBySlug.get(d.slug) ?? [];
       const upcoming = upcomingBySlug.get(d.slug) ?? [];
@@ -257,14 +255,27 @@ export interface PassportStats {
   daysOnRoad: number;
 }
 
+/**
+ * `catalog` là danh mục điểm đến ĐANG HIỆN — cùng danh sách mà sổ hành trình
+ * dựng từ đó. Nơi đã đi chỉ được đếm khi còn trong danh mục: admin ẩn được điểm
+ * đến (F15), mà booking thì vẫn mang nó, nên đếm theo booking từng cho "3 places
+ * visited" cạnh một sổ chỉ còn 2 dòng, và đi đủ rồi ẩn một nơi thì ra 105%
+ * (vòng review F15).
+ */
 export function passportStats(
   bookings: Booking[],
-  catalogTotal: number,
+  catalog: ReadonlyArray<{ slug: string }>,
   today: string = todayDateString(),
 ): PassportStats {
   const done = bookings.filter((b) => isCompleted(b, today));
-  const placeSlugs = new Set(done.flatMap((b) => b.tourDestinations.map((d) => d.slug)));
+  const catalogSlugs = new Set(catalog.map((d) => d.slug));
+  const placeSlugs = new Set(
+    done
+      .flatMap((b) => b.tourDestinations.map((d) => d.slug))
+      .filter((slug) => catalogSlugs.has(slug)),
+  );
   const places = placeSlugs.size;
+  const catalogTotal = catalogSlugs.size;
   const exploredPct =
     places === 0 || catalogTotal === 0 ? 0 : Math.max(1, Math.floor((places / catalogTotal) * 100));
   const daysOnRoad = done.reduce(
@@ -350,12 +361,15 @@ export function mrzLines(name: string, userId: string, sinceYear: number): [stri
 
 type RegionCluster = 'north' | 'central' | 'south' | 'other';
 
-/** Giá trị `Destination.region` thật của catalog → cụm miền (sort lưới tem). */
-const REGION_CLUSTER: Record<string, RegionCluster> = {
-  'Northern Vietnam': 'north',
-  'Central Vietnam': 'central',
-  'Southern Vietnam': 'south',
-};
+/**
+ * `Destination.region` → cụm miền để xếp lưới tem. Luật so khớp là `findRegion`
+ * của contract (ADR-0045): trước vòng review F15 file này giữ một bảng tên vùng
+ * chép tay, khớp đúng từng chữ, nên hàng ghi `north` rơi xuống cuối trong khi
+ * trang vùng và bảng admin đều xếp nó vào miền Bắc.
+ */
+function clusterOf(region: string | null): RegionCluster {
+  return findRegion(REGIONS, region)?.key ?? 'other';
+}
 
 const CLUSTER_ORDER: Record<RegionCluster, number> = {
   north: 0,

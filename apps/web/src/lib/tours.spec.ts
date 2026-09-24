@@ -31,6 +31,7 @@ import {
   formatReviewDate,
   formatTicketDate,
   isDepartureOpen,
+  ownLabel,
   priceBucket,
   relatedTours,
   resolveCategoryOptions,
@@ -65,10 +66,10 @@ describe('resolveCategoryOptions', () => {
     expect(options.at(-1)?.name).toBe('Cruises');
   });
 
-  it('slug lọc lạ hoàn toàn thì lấy chính slug làm nhãn', () => {
+  it('slug lọc không có tên ở đâu thì nhãn là slug viết thành chữ, không in slug máy', () => {
     const options = resolveCategoryOptions(CATEGORIES, TOURS, ['khong-ton-tai']);
 
-    expect(options.at(-1)).toEqual({ slug: 'khong-ton-tai', name: 'khong-ton-tai' });
+    expect(options.at(-1)).toEqual({ slug: 'khong-ton-tai', name: 'Khong Ton Tai' });
   });
 
   it('KHÔNG nhân đôi một slug đã có trong endpoint', () => {
@@ -138,10 +139,22 @@ describe('resolveDestinationOptions', () => {
     });
   });
 
-  it('slug lọc lạ hoàn toàn thì lấy chính slug làm nhãn', () => {
-    expect(resolveDestinationOptions(DESTINATIONS, TOURS, ['khong-ton-tai']).at(-1)).toEqual({
-      slug: 'khong-ton-tai',
-      name: 'khong-ton-tai',
+  it('điểm đến đã ẩn KHÔNG còn tour đang bán nào thì nhãn là slug viết thành chữ', () => {
+    // Vòng review F15: tên chỉ tra được từ tour đang bán đã tải. Điểm đến bị ẩn
+    // sau khi mọi tour của nó tắt bán thì không nguồn nào còn giữ tên — chip in
+    // "Phong Nha" vẫn hơn in "phong-nha".
+    expect(resolveDestinationOptions(DESTINATIONS, TOURS, ['phong-nha']).at(-1)).toEqual({
+      slug: 'phong-nha',
+      name: 'Phong Nha',
+    });
+  });
+
+  it('endpoint RỚT mà đang lọc một slug không có trên tour nào thì vẫn bù nó vào cuối', () => {
+    // Không bù thì chip đang bật không có ô nào để bỏ tick — đúng cái lỗ mà
+    // luật bù đã vá cho nhánh endpoint sống.
+    expect(resolveDestinationOptions(null, TOURS, ['phong-nha']).at(-1)).toEqual({
+      slug: 'phong-nha',
+      name: 'Phong Nha',
     });
   });
 
@@ -162,6 +175,21 @@ describe('resolveDestinationOptions', () => {
 
   it('endpoint trả mảng RỖNG thì tôn trọng: không có mục nào', () => {
     expect(resolveDestinationOptions([], TOURS, [])).toEqual([]);
+  });
+});
+
+describe('ownLabel', () => {
+  const LABELS = { '1': 'Day trip', '2-3': '2–3 days' } as const;
+
+  it('trả nhãn của khoá có thật', () => {
+    expect(ownLabel(LABELS, '2-3')).toBe('2–3 days');
+  });
+
+  it('khoá thừa kế từ Object.prototype không phải nhãn', () => {
+    // `__proto__`, `toString`, `constructor` đi thẳng từ URL vào đây.
+    expect(ownLabel(LABELS, '__proto__')).toBeUndefined();
+    expect(ownLabel(LABELS, 'toString')).toBeUndefined();
+    expect(ownLabel(LABELS, 'constructor')).toBeUndefined();
   });
 });
 
@@ -281,6 +309,15 @@ describe('countActiveFilters', () => {
 });
 
 describe('facetOptionCounts', () => {
+  it('option là `__proto__` (gõ tay trên URL) vẫn ra một con số của chính nó', () => {
+    // Object thường nuốt phép gán vào `__proto__` rồi trả về Object.prototype khi
+    // đọc lại — React ném lỗi khi in nó ra (vòng review F15).
+    const counts = facetOptionCounts(TOURS, EMPTY_FILTERS, 'destinations', ['__proto__']);
+
+    expect(Object.hasOwn(counts, '__proto__')).toBe(true);
+    expect(Object.getOwnPropertyDescriptor(counts, '__proto__')?.value).toBe(0);
+  });
+
   it('không có facet nào bật thì đếm bằng số tour thật của từng option', () => {
     const counts = facetOptionCounts(TOURS, EMPTY_FILTERS, 'categories', ['trekking', 'food']);
     expect(counts.trekking).toBe(TOURS.filter((t) => t.category.slug === 'trekking').length);
