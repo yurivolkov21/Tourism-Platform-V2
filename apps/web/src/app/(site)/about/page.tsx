@@ -72,10 +72,11 @@ export default async function AboutPage() {
   // Khe VIDEO nền dải CTA cuối trang.
   const ctaVideo = await siteMediaImage('about-cta-video');
 
-  // 4 avatar đội ngũ. Khoá theo CHỨC DANH, không theo tên người.
+  // 3 avatar đội ngũ (từ 24/09 — xem `mocks/team.ts`). Khoá theo CHỨC DANH,
+  // không theo tên người.
   const teamImages = Object.fromEntries(
     await Promise.all(
-      ['about-team-ceo', 'about-team-routes', 'about-team-guides', 'about-team-ops'].map(
+      ['about-team-ceo', 'about-team-routes', 'about-team-guides'].map(
         async (key) => [key, await siteMediaImage(key)] as const,
       ),
     ),

@@ -14,6 +14,10 @@ import type { MockTeamMember } from './types.js';
 // trong copy, đúng loại lỗi đã ghi ở CHANGELOG 14/08 (lời hứa toàn cục về
 // một con số thuộc dữ liệu thì sớm muộn cũng sai).
 //
+// Đổi 24/09: còn 3 tên — thành viên giữ vai Head of Operations đã rút khỏi nhóm
+// capstone, user dặn gỡ khỏi web (cả câu trích dẫn ở /verify-email). Khe ảnh `about-team-ops` vẫn còn trong seed và
+// Cloudinary (ảnh robot pixel giữ chỗ, không phải chân dung thật) nhưng web thôi đọc.
+//
 // Ứng viên schema khi gắn API: bảng team_members (name · role · line ·
 // portrait · sort_order).
 export const TEAM: MockTeamMember[] = [
@@ -34,11 +38,5 @@ export const TEAM: MockTeamMember[] = [
     role: 'Co-founder & Head of Guides',
     slot: 'about-team-guides',
     line: 'Hired every guide we have — and trained most.',
-  },
-  {
-    name: 'Nguyễn Khánh Minh',
-    role: 'Head of Operations',
-    slot: 'about-team-ops',
-    line: 'Keeps every departure running on time.',
   },
 ];

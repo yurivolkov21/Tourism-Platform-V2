@@ -31,10 +31,13 @@ describe('mock regions / testimonials', () => {
 });
 
 describe('mock team (About §5 — chỉ founder/vận hành, quyết định user 23/07)', () => {
-  it('4 thành viên, đủ tên/chức danh/chữ ký, tên duy nhất', async () => {
+  it('3 thành viên, đủ tên/chức danh/chữ ký, tên duy nhất', async () => {
     const { TEAM } = await import('./team.js');
-    expect(TEAM).toHaveLength(4);
-    expect(new Set(TEAM.map((m: { name: string }) => m.name)).size).toBe(4);
+    expect(TEAM).toHaveLength(3);
+    expect(new Set(TEAM.map((m: { name: string }) => m.name)).size).toBe(3);
+    // Thành viên giữ vai Head of Operations đã rút khỏi nhóm (user dặn 24/09): khe
+    // ảnh của vai ấy không còn ai đọc.
+    expect(TEAM.map((m: { slot: string }) => m.slot)).not.toContain('about-team-ops');
     for (const m of TEAM) {
       expect(m.name.length).toBeGreaterThan(0);
       expect(m.role.length).toBeGreaterThan(0);

@@ -10,7 +10,7 @@ import { SPRING, SPRING_HEADING } from '@/lib/motion';
 import { TEAM } from '@/mocks/team';
 
 // About §5 Team — §5 lần 2: bản slidex bị chê "trang nào cũng có", thay bằng
-// convert ShadcnSpace **Team 01** (user chọn sau vòng săn 3 nguồn): grid 4 cột
+// convert ShadcnSpace **Team 01** (user chọn sau vòng săn 3 nguồn): grid 3 cột (4 cột tới 24/09)
 // portrait LỚN, hover ảnh chuyển GRAYSCALE (thấy rõ khi có ảnh thật — ghi chú
 // dưới), name/role căn giữa + hàng social icon tròn. Motion đổi ease gốc
 // [0.21,0.47,0.32,0.98] về spring nhà, giữ stagger 0.1s. Trường `line` của
@@ -48,7 +48,7 @@ export function AboutTeam({
           The people who signed the lease, drew the first routes, and still answer the phone.
         </motion.p>
 
-        <div className="mt-14 grid w-full grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="mt-14 grid w-full grid-cols-1 gap-6 md:grid-cols-3">
           {TEAM.map((member, index) => (
             <motion.figure
               key={member.name}
@@ -70,7 +70,7 @@ export function AboutTeam({
                 image={images[member.slot] ?? null}
                 label={`Portrait — ${member.name}`}
                 className="h-80 w-full rounded-xl transition-all duration-500 [@media(hover:hover)]:grayscale group-hover:grayscale-0"
-                sizes="(min-width: 1024px) 25vw, (min-width: 640px) 50vw, 100vw"
+                sizes="(min-width: 768px) 33vw, 100vw"
               />
               <figcaption className="flex w-full flex-col items-center gap-4">
                 <div className="flex flex-col items-center gap-1.5 text-center">
