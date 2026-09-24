@@ -193,22 +193,31 @@ mọi controller admin.
    > | `/destinations` | 4 tile nổi bật mỗi vùng | X rời tile, điểm kế tiếp lên thay |
    > | `/destinations` | số tour mỗi vùng | tour có X là điểm DUY NHẤT trong vùng ấy thôi được đếm |
    > | `/destinations/[vùng]` | nơi chốn, lưới tour, review, số liệu hero | X rời danh sách nơi chốn; tour như dòng trên rời lưới tour của vùng, kéo review của nó theo |
-   > | `/destinations/[vùng]` | "bạn có mấy ngày", chuyến một ngày, "Longest trip" | tour có MỌI điểm trong vùng mà có X thôi là "chuyến riêng" của vùng — rời hai khu ấy, có thể đổi "Longest trip" |
+   > | `/destinations/[vùng]` | "How long have you got" (chỉ miền Bắc), chuyến một ngày (chỉ miền Trung), "Longest trip" (cả ba) | tour có MỌI điểm trong vùng mà có X thôi là "chuyến riêng" của vùng — rời khu mà vùng ấy có, có thể đổi "Longest trip" |
    > | `/tours` | thẻ facet Destination | X rời thẻ — trừ khi đang được lọc: Task 9a bù nó vào cuối, đang tích |
-   > | `/tours` | chip đang bật | trước Task 9a in slug thô (`?? value`), sau đó in tên |
+   > | `/tours` | chip đang bật | trước Task 9a in slug thô (`?? value`); sau đó in tên tra từ tour đang bán đã tải, và (vòng review F15) không còn tour nào mang X thì in slug viết thành chữ ("Phong Nha") |
    > | `/tours` | eyebrow "across n destinations" | n giảm 1 |
    > | `/about` | ô số "Destinations" | giảm 1 |
    > | `/about` | số tour trên bento từng vùng | như dòng "số tour mỗi vùng" ở `/destinations` |
-   > | `/blog` | hai trục Places / Topics | tag trùng slug X chuyển từ Places sang Topics; link `?place=x` vẫn lọc nhưng trục Places hết ô để bỏ. Đo DB dev: 7 điểm có tag như vậy (`can-tho`, `da-nang`, `hanoi`, `hoi-an`, `hue`, `ninh-binh`, `sa-pa`) |
-   > | `/account` | sổ hành trình của hộ chiếu | khách đã đi X mất mục X khỏi sổ; chuyến vẫn ở My bookings |
-   > | `/account` | dòng "% of the map explored" | mẫu số giảm 1, phần trăm nhích lên |
+   > | `/blog` | hai trục Places / Topics | tag trùng slug X chuyển từ Places sang Topics; link `?place=x` vẫn lọc. Trước vòng review F15 slug ấy mất chip và mất nút "Clear all" — một bộ lọc vô hình; nay mọi slug đang lọc đều có chip, tên tra ở cả hai trục. Đo DB dev: 7 điểm có tag như vậy (`can-tho`, `da-nang`, `hanoi`, `hoi-an`, `hue`, `ninh-binh`, `sa-pa`) |
+   > | `/account` | sổ hành trình của hộ chiếu | khách đã đi X, hoặc có chuyến sắp đi tới X, mất mục X khỏi sổ; chuyến vẫn ở My bookings |
+   > | `/account` | dòng "N places visited · % of the map explored" | từ vòng review F15 cả hai con số chỉ đếm điểm đến đang hiện: N giảm theo, phần trăm không vượt 100% (trước đó tử số đếm theo booking nên có thể ra 105%) |
    >
    > KHÔNG đổi: thẻ tour và trang tour vẫn in X trên lộ trình (`cardInclude`
    > không lọc `is_active`), link `/tours?destinations=x` vẫn lọc đúng, menu
    > Destinations trên navbar (bốn link cố định) và sitemap (chỉ đọc ba vùng).
    >
-   > Hai dòng `/blog` và `/account` là hệ quả thật nhưng Task 9a không vá — nằm
-   > ngoài danh sách file của plan; hộp xác nhận ở Task 9 nói thẳng cả hai.
+   > Hai dòng `/blog` và `/account` nằm ngoài danh sách file của Task 9a; vòng
+   > review F15 vá phần hỏng của cả hai (bộ lọc vô hình ở blog, con số lệch ở hộ
+   > chiếu). Hộp xác nhận Hide nói: thân hộp (trang điểm đến, bộ lọc tour, trang
+   > chủ nếu X nổi bật) · hai dòng trang vùng, câu thứ hai theo TỪNG vùng · dòng
+   > con số (About và `/tours`) · hộ chiếu · tag blog; cộng câu trấn an (tour vẫn
+   > bán, link vẫn lọc). Điểm đến chưa có vùng thì không câu nào nhắc trang vùng.
+   >
+   > Đánh đổi đã chấp nhận: `/api/destinations` hỏng đúng lúc làm mới thì thẻ facet
+   > suy từ tour, mà thẻ tour không mang cờ ẩn — X hiện lại trong bộ lọc tới lượt
+   > render kế tiếp (ghi ở `resolveFacetOptions`). Vá tận gốc phải thêm cờ vào
+   > contract công khai cho một ca chỉ xảy ra khi API trục trặc.
 7. **`move` ở biên**: hàng đầu bấm "lên" phải là **nút tắt**, không phải một
    lỗi 409 sau khi bấm. VM tính `canMoveUp`/`canMoveDown` làm gương luật server.
 8. **`order` trùng do đua ghi**: hai admin bấm cùng lúc. Chặn bằng khoá hai

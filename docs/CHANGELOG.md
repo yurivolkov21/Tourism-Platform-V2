@@ -8,6 +8,80 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-09-24 — Vòng review F15: 28 mục, vá 25, ba mục để lại có lý do (nhánh `feat/p4e-2-destinations`)
+
+Review chạy ở session gốc, mức cao nhất: mười góc tìm độc lập, mỗi ứng viên một
+agent kiểm chứng, cộng một lượt quét sót. 28 ứng viên sau lọc trùng, 27 xác nhận
+và 1 bị bác (hai kiểu `CategoryOption`/`DestinationOption` trùng hình dạng là có
+chủ đích). Lượt quét thêm 1 mục khả nghi: mất focus bàn phím sau khi hộp thoại
+đóng — đọc ra từ mã nguồn Base UI, chưa tái hiện trên trình duyệt.
+
+**URL gõ tay làm sập `/tours`.** Ba đường: `?durations=__proto__` (nhãn chip tra
+bảng i18n ra Object.prototype, React ném ngay lần render đầu — có từ trước),
+`?destinations=__proto__` (phần bù của Task 9a đưa slug ấy vào bộ đếm facet —
+mới ở nhánh), và một khoá lặp lại (Next 16 trả mảng, `parseList` gọi `.split`).
+Vá ở biên: `listParam`/`singleParam` chuẩn hoá tham số cho `/tours` lẫn
+`/blog`; bảng nhãn tra bằng `ownLabel` (`Object.hasOwn`), bộ đếm là object không
+prototype, sort cũng thôi dùng `in`.
+
+**Id ô tích trùng giữa hai facet.** `facet-<slug>` không kèm tên facet: danh mục
+`cruise` có sẵn trong seed, nên `/tours?destinations=cruise` — hoặc một điểm đến
+admin tạo trùng slug danh mục — làm bấm dòng điểm đến bật ô DANH MỤC. Id nay là
+`facet-<facet>-<slug>`.
+
+**Bốn câu của hộp Hide/Show nói sai hoặc thiếu.** (1) Câu về chuyến riêng của
+vùng hứa ba con số cho cả ba vùng, trong khi miền Bắc chỉ có khu "How long have
+you got", miền Trung chỉ có khu chuyến một ngày, miền Nam chỉ có ô "Longest
+trip" — nay mỗi vùng một câu. (2) Hộp Show chép câu của danh mục "tours do not
+change", sai với điểm đến. (3) Câu hộ chiếu bỏ sót khách có chuyến SẮP đi. (4)
+Điểm đến chưa có vùng vẫn bị nói "rời các trang điểm đến". Thêm dòng con số
+(About và `/tours` đếm điểm đến đang hiện).
+
+**Đính chính entry F15 ngay dưới.** Câu "Hộp xác nhận Hide nói đủ các điều ấy"
+sai ở About và dòng "across n destinations" — dòng con số mới là phần còn
+thiếu. Còn câu G4 cũ "hộp xác nhận nói thẳng cả hai" về link blog là một bộ lọc
+vô hình mà hộp không hề nhắc tới: phía web nay vá hẳn (blog giữ chip cho mọi slug
+đang lọc, tên tra ở cả hai trục), nên G4 đóng.
+
+**Web lệch dữ liệu khi ẩn điểm đến.** Hộ chiếu đếm "places visited" theo booking
+mà chia cho số điểm đến đang hiện — ẩn một nơi có thể ra 105%; nay chỉ đếm điểm
+đến đang hiện. Hộ chiếu cũng thôi giữ bảng tên vùng chép tay (khớp đúng từng
+chữ, trượt khi DB ghi `north`), gọi `findRegion` của contract như ADR-0045 đã
+chốt. Điểm đến ẩn không còn tour đang bán nào thì chip in slug viết thành chữ
+("Phong Nha") thay vì slug máy, ở cả nhánh endpoint hỏng.
+
+**API.** `errors` của oRPC là Proxy dựng lỗi cho MỌI mã, nên nhánh "mã procedure
+không khai thì trả nguyên lỗi" của `toContractError` — và của `mapError` phía
+chuyến — chưa từng chạy; spec cũ xanh vì dùng object giả. `declaredError` kiểm
+bằng `Object.hasOwn`, spec ghim bằng bảng lỗi thật của oRPC. Sửa hay ẩn/hiện
+điểm đến nay bust thêm `tour:<slug>` của mọi tour gắn nó (đóng G5). Lệnh tạo
+thôi đếm tour cho hàng vừa tạo.
+
+**Admin.** Nút mở hộp thoại khoá bằng `aria-disabled` (`focusableWhenDisabled`)
+trong lúc bảng làm mới, để Base UI trả focus về được — điểm đến, danh mục, nút
+Add của màn chuyến; năm màn khác cùng khuôn ghi thành G6. Câu "quá dài" nói
+đúng biên ("N characters or fewer"). `<select>` vùng mặc bộ class export từ
+`Input` của kit thay vì chép chuỗi.
+
+**Test xanh giả, đã sửa:** ca điền sẵn quốc gia tự cấp "Vietnam" qua fixture;
+ca "toast đọc từ response" có mock phản chiếu đúng request (cả danh mục); ca
+int "link lọc vẫn chạy" chỉ có một tour nên không phân biệt được bỏ lọc; ca
+`tourCount` "cùng câu ghi" đổi tên theo đúng điều nó chứng minh. Thêm ca biên
+độ dài cho slug, tên, quốc gia.
+
+**Ba mục để lại, có lý do.** Endpoint điểm đến hỏng đúng lúc làm mới thì thẻ
+facet suy từ tour và một điểm đến đã ẩn hiện lại tới lượt render kế — thẻ tour
+không mang cờ ẩn, vá tận gốc phải thêm field vào contract công khai cho một ca
+chỉ xảy ra khi API trục trặc; ghi ở `resolveFacetOptions` và spec §4.6. Bản đồ
+tên dựng lại mỗi lần bấm chip điểm đến: khoảng 50 tour, không đáng tối ưu. Hai
+hàm copy trùng danh mục tự hết trùng khi hộp điểm đến đổi theo vùng.
+
+Ba mươi đột biến, cả ba mươi bị test bắt (web 14, api 4, admin 12).
+
+Tests after: Vitest **4183** (web 1573, admin 1104, api 985, contract 419,
+core 46, ui 22, tokens 18, i18n 16), int **626 ở 44 file**, jest mobile 159 và
+mobile-ui 86.
+
 ## 2026-09-24 — F15 quản trị điểm đến, và web chịu được điểm đến đã ẩn (nhánh `feat/p4e-2-destinations`)
 
 Vùng thứ ba của P4e, bản song sinh của F14: `/destinations` trong back office
