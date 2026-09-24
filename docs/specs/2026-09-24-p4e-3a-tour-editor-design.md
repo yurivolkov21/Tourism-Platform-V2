@@ -111,7 +111,8 @@ export function tourReadiness(input: TourReadinessInput): TourReadiness;
 - **Tour đang bán thì luôn đủ để bán.** `updateDetails` và `setItinerary` trên
   tour đang bán tính lại `tourReadiness` sau khi ghi, trong cùng transaction;
   chưa `ready` → `TOUR_NOT_READY`. Ví dụ bị chặn: xoá tóm tắt, xoá tiêu đề một
-  ngày, giảm số ngày của tour đang bán chưa có chuyến.
+  ngày, TĂNG số ngày của tour đang bán chưa có chuyến (ngày mới chưa có lịch
+  trình). Giảm thì không bị chặn: ngày thừa bị xoá, các ngày còn lại vẫn đủ.
 - `get` trả `readiness` để khu làm việc hiện khung "Ready to sell" hoặc
   "Missing before it can go on sale: …", mỗi mục là link tới tab cần sửa.
 - F18 thêm `coverPhoto` vào `TourReadiness`. Cả 29 tour hiện có đều đạt cả bốn
@@ -123,7 +124,9 @@ export function tourReadiness(input: TourReadinessInput): TourReadiness;
 - Server gọi thẳng `tour.delete`. Khoá ngoại `Restrict` của booking chặn → bắt
   `P2003` → `TOUR_HAS_BOOKINGS` (409). `P2025` → `NOT_FOUND`. Không đếm trước.
 - DB tự xoá theo: chuyến, lịch trình, FAQ, chính sách, chi phí, liên kết điểm
-  đến, wishlist, liên kết bài viết. `Enquiry.tourId` thành `null`.
+  đến, wishlist, liên kết bài viết, và đánh giá gắn tour (`Review.tour` khai
+  `Cascade` — tour chưa từng có booking chỉ có thể có đánh giá `CURATED`).
+  `Enquiry.tourId` thành `null`.
 - Hộp xác nhận (kit `ConfirmWriteDialog`, giọng đỏ) liệt kê những gì mất, kèm số
   chuyến bị xoá theo. Xoá xong về `/tours` kèm toast.
 - F18 thêm bước đưa ảnh của tour vào `media_garbage` (ADR-0035).
@@ -147,8 +150,10 @@ export function tourReadiness(input: TourReadinessInput): TourReadiness;
   Câu `UPDATE` khoá hàng tour tới hết transaction, nên hai lệnh ghi vào cùng
   tour xếp hàng. Tab chỉ đổi bảng con thì `tabFields` rỗng, nhưng `updatedAt`
   vẫn được đẩy.
-- `setPublished` không nhận `version` (F11 giữ nguyên) nhưng cũng cập nhật hàng
-  tour, nên nó cũng xếp hàng với các lệnh sửa.
+- `setPublished` không nhận `version` (F11 giữ nguyên) nhưng khoá hàng tour
+  (`SELECT … FOR UPDATE`) trước khi đọc, nên nó cũng xếp hàng với các lệnh sửa.
+  Nó GIỮ NGUYÊN `updatedAt`: bật/tắt bán không làm form đang mở thành cũ (plan
+  F17, quyết định 2).
 - Bốn lệnh sửa (`updateDetails`, `setItinerary`, `setFaqsPolicies`, `setCosts`)
   trả về `AdminTourDetail` mới, đọc lại sau commit, để form lấy phiên bản mới mà
   không tải lại trang.
@@ -265,13 +270,15 @@ sách: điểm nổi bật, bao gồm, không bao gồm, FAQ, chính sách, chi 
 | --- | --- | --- | --- | --- |
 | `create` | `POST /api/admin/tours` | bảy ô §2a | `{ id, slug }` | `SLUG_TAKEN` · `NOT_FOUND` |
 | `get` | `GET /api/admin/tours/{slug}` | slug | `AdminTourDetail` | `NOT_FOUND` |
-| `updateDetails` | `PUT /api/admin/tours/{id}/details` | `version` + tab Details | `AdminTourDetail` | `STALE_TOUR` · `DURATION_LOCKED` · `GROUP_SIZE_BELOW_SEATS` · `TOUR_NOT_READY` · `NOT_FOUND` |
-| `setItinerary` | `PUT /api/admin/tours/{id}/itinerary` | `version` + `days[]` | `AdminTourDetail` | `STALE_TOUR` · `TOUR_NOT_READY` · `NOT_FOUND` |
-| `setFaqsPolicies` | `PUT /api/admin/tours/{id}/faqs-policies` | `version` + `faqs[]` + `policies[]` | `AdminTourDetail` | `STALE_TOUR` · `NOT_FOUND` |
-| `setCosts` | `PUT /api/admin/tours/{id}/costs` | `version` + `items[]` | `AdminTourDetail` | `STALE_TOUR` · `NOT_FOUND` |
-| `delete` | `DELETE /api/admin/tours/{id}` | `id` | `{ slug }` | `TOUR_HAS_BOOKINGS` · `NOT_FOUND` |
+| `updateDetails` | `POST /api/admin/tours/{id}/details` | `version` + tab Details | `AdminTourDetail` | `STALE_TOUR` · `DURATION_LOCKED` · `GROUP_SIZE_BELOW_SEATS` · `TOUR_NOT_READY` · `NOT_FOUND` |
+| `setItinerary` | `POST /api/admin/tours/{id}/itinerary` | `version` + `days[]` | `AdminTourDetail` | `STALE_TOUR` · `TOUR_NOT_READY` · `NOT_FOUND` |
+| `setFaqsPolicies` | `POST /api/admin/tours/{id}/faqs-policies` | `version` + `faqs[]` + `policies[]` | `AdminTourDetail` | `STALE_TOUR` · `NOT_FOUND` |
+| `setCosts` | `POST /api/admin/tours/{id}/costs` | `version` + `items[]` | `AdminTourDetail` | `STALE_TOUR` · `NOT_FOUND` |
+| `delete` | `POST /api/admin/tours/{id}/delete` | `id` | `{ slug }` | `TOUR_HAS_BOOKINGS` · `NOT_FOUND` |
 | `setPublished` (có sẵn) | như cũ | như cũ | như cũ | thêm `TOUR_NOT_READY` |
 
+- Mọi lệnh ghi đi `POST` như cả bề mặt admin: thêm verb mới là phải sửa danh
+  sách `methods` của CORS ở `bootstrap.ts` kèm test canh (plan F17, quyết định 1).
 - `NOT_FOUND` của `create`/`updateDetails`: danh mục hay điểm đến không tồn tại
   (khoá ngoại `P2003`). Không xảy ra với client đúng — danh mục và điểm đến không
   xoá được.
