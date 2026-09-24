@@ -97,6 +97,9 @@ Trang quản trị nằm ở tên miền riêng `admin.nexora-travel.agency`, v�
 - Sổ sự kiện thanh toán (mọi thứ cổng thanh toán báo về đều được lưu lại).
 - Hàng đợi email chờ gửi, để biết mail nào kẹt.
 - Bảng số liệu: doanh thu, số đơn, biểu đồ theo ngày, báo cáo tháng.
+- Catalog: bật/tắt đăng tour, lịch chuyến khởi hành của từng tour (kể cả công
+  ty huỷ chuyến có hoàn tiền), danh mục và điểm đến — hai bảng này chỉ ẩn/hiện,
+  không xoá.
 
 ## Bốn phần mềm, một máy chủ
 

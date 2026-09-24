@@ -542,10 +542,16 @@ phía web chưa chịu được nó. Xem bài học 9 và 10 ở đầu phần F
 
 ## Task 9b — Docs sweep F15
 
-- [ ] **B1.** Entry `docs/CHANGELOG.md`.
-- [ ] **B2.** Gạch mục P4e-2 ở `docs/open-items.md`; đóng nợ G3 nếu đã rút
+- [x] **B1.** Entry `docs/CHANGELOG.md`.
+- [x] **B2.** Gạch mục P4e-2 ở `docs/open-items.md`; đóng nợ G3 nếu đã rút
       `mapError` về một chỗ (bài học 4).
-- [ ] **B3.** `./scripts/docs-freshness.sh` xanh. **KHÔNG merge** (sửa 24/09):
+      *Ghi khi thi công:* G3 CHƯA đóng — `mapError` và `hasFormErrors` của
+      departures còn bản riêng (code F16, ngoài phạm vi F15); hàng G3 ghi lại
+      phần còn thiếu. Thêm G4 (hai hệ quả phía web của nút Hide chưa vá) và G5
+      (trang chi tiết tour giữ tên điểm đến cũ tới hết lượt ISR). Luật 13: cập
+      nhật `glossary.md` (thêm Vùng, trạng thái Visible/Hidden) và
+      `overview.md` (mục catalog của trang quản trị).
+- [x] **B3.** `./scripts/docs-freshness.sh` xanh. **KHÔNG merge** (sửa 24/09):
       dừng ở đây và bàn giao cho session review — merge, CI và nghiệm thu tay
       là việc của session ấy.
 

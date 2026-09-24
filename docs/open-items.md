@@ -1,6 +1,6 @@
 # Việc còn treo
 
-> Bản tóm tắt để điều hướng, cập nhật 22/09/2026 (lượt hai). **Không phải nguồn sự thật** —
+> Bản tóm tắt để điều hướng, cập nhật 24/09/2026. **Không phải nguồn sự thật** —
 > chi tiết của từng mục sống ở [CHANGELOG](CHANGELOG.md) (mục "CÒN TREO" của
 > entry tương ứng) và ở [sổ nợ kỹ thuật](analysis/2026-08-06-backlog-no-ky-thuat.md).
 > Trả xong một mục thì gạch ở đây và ghi vào CHANGELOG.
@@ -17,7 +17,7 @@
 
 | Mã | Việc | Ghi chú |
 | --- | --- | --- |
-| **P4e** | Quản trị catalog: thêm/sửa/xoá tour, điểm đến, danh mục | P4e-1 XONG 22/09 (F11 danh sách tour · F12 lịch chạy · F13 huỷ chuyến có hoàn tiền, đóng nợ ADR-0041 §6). **P4e-2 F14 danh mục XONG 22/09** (màn `/categories` cộng chip lọc của web đọc endpoint). Còn P4e-2 F15 điểm đến, P4e-3 tour CRUD, P4e-4 bài viết |
+| **P4e** | Quản trị catalog: thêm/sửa/xoá tour, điểm đến, danh mục | P4e-1 XONG 22/09 (F11 danh sách tour · F12 lịch chạy · F13 huỷ chuyến có hoàn tiền, đóng nợ ADR-0041 §6). **P4e-2 XONG**: F14 danh mục 22/09 (màn `/categories` cộng chip lọc của web đọc endpoint) và F15 điểm đến 24/09 (màn `/destinations`, ba vùng về contract, web chịu được điểm đến đã ẩn — chờ review và merge). Còn P4e-3 tour CRUD, P4e-4 bài viết |
 | **P4f** | Quản trị media và người dùng | Gồm màn hạ quyền / thu hồi phiên admin (ADR-0026 AMEND 1) |
 | **P5b-2…5** | Bốn cụm màn mobile: xem tour · đặt tour · tài khoản · đánh giá | **Đã có bản vẽ và tài liệu bàn giao đầy đủ**; thành viên khác dựng màn — xem [`handoff/`](handoff/README.md) |
 | **P6** | Trợ lý AI tư vấn tour | Bảng dữ liệu đã có sẵn (`chat_conversations`, `chat_messages`) |
@@ -94,4 +94,6 @@ deploy) nằm ở [sổ nợ kỹ thuật](analysis/2026-08-06-backlog-no-ky-thu
 | F1 | Webhook Resend (`delivered`/`bounced`/`complained`) — hiện `SENT` chỉ nghĩa là Resend đã nhận |
 | G1 | `admin.categories.move` trả CẢ danh sách đã sắp lại, mà client vứt đi rồi `router.refresh()`. Giữ nguyên có chủ đích ở vòng review F14: tiêu thụ payload ấy cần đưa `rows` vào state của bảng, tức hai nguồn sự thật cho một bảng sáu hàng. Cái giá hiện tại là MỘT truy vấn `list()` thừa mỗi cú bấm mũi tên |
 | G2 | 23 bản chép của `sessionCookie` trong `apps/api/src/**/*.int.spec.ts` — ngưỡng rút chung đã vượt từ lâu, nhưng nó không thuộc phạm vi một cụm tính năng nào. Better-auth đổi tên cookie là 23 chỗ phải sửa |
-| G3 | `mapError` của `admin-categories.controller.ts` và `admin-departures.controller.ts` trùng chữ ký lẫn cấu trúc. Bản departures còn có lời giải tốt hơn (lỗi mang `code` nên ba mã gập thành một nhánh) — đáng rút chung khi F15 thêm bản thứ ba |
+| G3 | Rút chung ở F15, còn thiếu một bản: `toContractError` (`apps/api/src/lib/contract-error.ts`) và `hasFormErrors` (`apps/admin/src/lib/form-errors.ts`) nay nuôi danh mục lẫn điểm đến, nhưng `admin-departures.controller.ts` và `departures-write.ts` vẫn giữ bản riêng — code departures của F16 nằm ngoài phạm vi F15. Đổi hai bản ấy sang là đóng G3 |
+| G4 | Ẩn một điểm đến có hai hệ quả phía web chưa vá (đo ở spec P4e-2 §4.6): `/blog` chuyển tag trùng slug của nó từ trục Places sang Topics, nên link `?place=<slug>` vẫn lọc mà hết ô để bỏ; và hộ chiếu của khách mất mục điểm đến ấy khỏi sổ hành trình (chuyến vẫn ở My bookings). Hộp xác nhận Hide nói thẳng cả hai |
+| G5 | Đổi TÊN một điểm đến chỉ bust tag `tours`; trang chi tiết của các tour gắn nó (tag `tour:<slug>`) giữ tên cũ tới hết lượt ISR 300 giây |

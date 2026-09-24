@@ -8,6 +8,98 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-09-24 — F15 quản trị điểm đến, và web chịu được điểm đến đã ẩn (nhánh `feat/p4e-2-destinations`)
+
+Vùng thứ ba của P4e, bản song sinh của F14: `/destinations` trong back office
+(tạo, sửa, ẩn/hiện — không xoá), ba vùng miền dời về `@tourism/contract`, và
+trang `/tours` của khách thôi in slug thô cho một điểm đến vừa bị ẩn. Sáu
+commit, mỗi task một commit, thi công ở một session riêng theo đúng 21 bài học
+mà vòng review F14 để lại ở đầu phần F15 của plan.
+
+**Ba vùng là từ vựng của contract (ADR-0045).** `REGIONS`, `RegionNameSchema`
+(cổng GHI: đúng ba tên) và `findRegion` (cổng ĐỌC: nhận cả tên lẫn khoá ngắn,
+không phân biệt hoa-thường). `regionOf` của web gọi sang `findRegion` thay vì
+giữ bản luật riêng — admin chọn sẵn ô vùng của form sửa bằng CHÍNH hàm ấy, nên
+bảng admin và trang vùng không thể đọc cùng một hàng ra hai vùng khác nhau.
+`mocks/regions.ts` chỉ còn tái xuất khẩu; `region-static-params.spec.ts` ghim
+`generateStaticParams` trả đủ ba slug, và ghim web dùng CHÍNH mảng của contract.
+
+**Đo trước, viết câu sau.** Bài học 10 bắt đo từng chỗ đọc `fetchDestinations`
+trước khi viết câu cảnh báo của nút Hide. Đo được 7 lời gọi ở 7 trang, tỏa ra
+14 hệ quả — bảng ở spec §4.6. Bản spec đầu chỉ kể ba (trang vùng, tile,
+facet); bảng đo thêm trang chủ, About, blog, hộ chiếu của khách, và một hệ quả
+không ai đoán ra: tour có điểm đến ấy là điểm DUY NHẤT trong vùng thì rời lưới
+tour của trang vùng. Hộp xác nhận Hide nói đủ các điều ấy, rồi trấn an bằng
+câu giọng trung tính: tour vẫn bán, vẫn in điểm đến trên lộ trình, link cũ vẫn
+lọc được.
+
+**Web chịu được điểm đến đã ẩn (Task 9a).** Đúng cái lỗ danh mục vừa vá:
+`resolveCategoryOptions` tổng quát thành `resolveFacetOptions`, thêm
+`resolveDestinationOptions` (tên tra từ MỌI điểm dừng của tour). Trang listing
+truyền `null` khi endpoint hỏng thay vì `[]` — nhánh cũ vừa xoá sạch thẻ
+Destination vừa in "across 0 destinations" lên hero.
+
+**Màn quản trị.** Ô vùng là `<select>` gốc ba mục đọc thẳng `REGIONS`; form
+sửa chọn sẵn tên CHUẨN, nên một hàng lưu kiểu cũ lưu lại là đúng tên; cột
+Region báo "No region" khi chuỗi trong DB không khớp vùng nào — ca mà ADR-0045
+mô tả là "biến khỏi mọi trang vùng mà không có lỗi nào ở đâu cả". Ô slug điền
+sẵn bằng `slugifyVietnamese(name, 80)`, vắng ở form sửa, tắt soát chính tả.
+Nút Hide/Show giữ chỗ bằng `StableLabel`.
+
+**Rút chung ở bản thứ ba** (bài học 4, 6, 7, 11, 20):
+
+- `SLUG_PATTERN` + `slugSchema(max)` về `slug.ts`, `descriptionSchema(max)`
+  (rỗng thành `null`) về `common.ts` — danh mục đổi sang dùng, câu lỗi giữ
+  nguyên.
+- `ContractError` + `toContractError` ở `apps/api/src/lib/contract-error.ts`:
+  lỗi mang mã, N nhánh `instanceof` gập thành một, vẫn nhận diện bằng
+  `instanceof`. Danh mục chuyển sang dùng, 26 ca int cũ vẫn xanh.
+- `hasFormErrors` về `apps/admin/src/lib/form-errors.ts`, danh mục đổi sang
+  dùng.
+- Hide/Show/Visible/Hidden, câu lỗi slug và câu gợi ý slug thành hằng ở đầu
+  `messages.ts`; hai bảng đọc cùng hằng.
+
+Bản của departures (`mapError`, `hasFormErrors`) GIỮ NGUYÊN, có chủ đích:
+code departures của F16 nằm ngoài phạm vi F15. Nợ G3 vì thế mới đóng hai trên
+ba bản.
+
+**Lệch plan, đã ghi tại bước của plan:** luật so khớp vùng dời về contract
+cùng ba vùng (plan chỉ kể ba giá trị và schema); `MockRegion`/`MockRegionKey`
+thành bí danh của kiểu contract; mặc định `country: 'Vietnam'` chỉ ở lệnh tạo
+(lệnh sửa bắt buộc gửi, không lặng lẽ ghi đè); schema HÀNG để `slug` và
+`region` lỏng (output chặt thì một hàng kiểu cũ làm cả bảng sập 500); ca ghim
+`generateStaticParams` XANH từ trước khi dời — cái đỏ ở web là ca so tham chiếu.
+
+**Test xanh giả bắt được trong lúc làm:** lượt chạy đỏ của int spec lộ ba ca
+xanh sẵn khi route chưa tồn tại (route lạ cũng trả 404 kèm `NOT_FOUND`), nên hai
+ca 404 nay khớp câu của contract; seed int đặt tên sắp ngược slug để ca "sắp
+theo tên" phân biệt được; ca "hai bảng báo cùng một câu lỗi slug" chỉ so câu
+đầu nên để lọt một luật gắn thêm — nay so cả danh sách; ca component của web ban
+đầu không canh số tour trên ô được bù.
+
+**Không có việc hạ tầng.** Không migration (bảng `destinations` đã đủ cột),
+không env mới, không webhook.
+
+CÒN TREO cho session review:
+
+- Merge (rebase + ff), CI (luật 14), rồi thử tay trên production mỗi lượt một
+  bước: đổi vùng của một điểm đến và xem nó nhảy sang trang vùng khác; ẩn một
+  điểm đến rồi mở `/tours?destinations=<slug>` (chip in tên, ô đang tích bỏ
+  được); bật lại. Nhớ lượt seed lại prod khoảng 03/11 xoá mọi dữ liệu tạo tay.
+- Hai hệ quả của nút Hide chưa vá, chỉ nói trong hộp xác nhận: `/blog` chuyển
+  tag trùng slug từ trục Places sang Topics (link `?place=<slug>` vẫn lọc nhưng
+  hết ô để bỏ), và hộ chiếu của khách mất mục điểm đến đã ẩn khỏi sổ hành trình.
+- Đổi TÊN một điểm đến bust tag `tours` nhưng không bust `tour:<slug>` của các
+  tour gắn nó: trang chi tiết tour giữ tên cũ tới hết lượt ISR 300 giây.
+
+**Review findings:** chưa chạy vòng review riêng cho F15.
+
+Tests after: Vitest **4152** (web 1552, api 983, admin 1096, contract 419,
+core 46, ui 22, tokens 18, i18n 16), int **625 ở 44 file**, jest mobile 159.
+Thêm 108 ca Vitest (contract 43, admin 49, web 11, api 5) và 20 ca int. Đột
+biến: mười ở Task 6, mười hai ở Task 7, mười lăm ở Task 8, mười ở Task 9a, hai
+mươi hai ở Task 9 — cả 69 đều bị giết.
+
 ## 2026-09-23 — Thử tay F16 trên production (`d5b519a5`): 7/7 bước đạt, không phải vá
 
 Chạy khi cả hai nơi đã deploy xong: admin trên Vercel, API mới trên Render khởi

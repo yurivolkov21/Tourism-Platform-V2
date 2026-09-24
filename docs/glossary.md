@@ -11,6 +11,7 @@
 | **Chuyến** (*departure*) | Một lần chạy cụ thể của tour, có ngày đi, ngày về và số chỗ riêng. Khách đặt **chuyến**. |
 | **Đơn** (*booking*) | Một lần đặt chỗ của một khách cho một chuyến. Có mã riêng để tra cứu. |
 | **Điểm đến** (*destination*) | Địa danh, ví dụ Hội An. Một tour đi qua nhiều điểm đến, một trong số đó là điểm chính. |
+| **Vùng** (*region*) | Một trong ba miền cố định — Northern, Central, Southern Vietnam — mỗi miền một trang riêng trên web. Mỗi điểm đến thuộc một vùng, admin chọn trong danh sách ba mục; từ vựng sống ở `@tourism/contract` ([ADR-0045](adr/0045-region-vocabulary-in-contract.md)). |
 | **Chỗ** (*seat*) | Suất cho một người trên một chuyến. Đặt thì trừ, huỷ thì trả lại. |
 | **Hạn chót** (*cancellation deadline*) | Mốc duy nhất mỗi chuyến: qua mốc đó thì vừa ngừng nhận đặt, vừa hết huỷ-miễn-phí. Tự tính theo độ dài chuyến — [ADR-0041](adr/0041-single-cancellation-deadline.md). |
 | **Hoàn thiện chí** (*goodwill refund*) | Khoản hoàn do nhân viên quyết cho trường hợp ngoại lệ, bắt buộc ghi số tiền và lý do. |
@@ -32,6 +33,7 @@
 | Giai đoạn chuyến (*phase*) | Chuyến | Suy từ công tắc và ngày đi/về theo lịch Việt Nam, không lưu: Bookable / Deadline passed / Closed / Departed / Completed / Cancelled. Màn Departures của admin in cái này, không in công tắc. |
 | `NEW → CONTACTED → QUOTED → WON` / `LOST` | Câu hỏi khách | Vòng đời một lead. |
 | `DRAFT` / `PUBLISHED` | Bài blog | Nháp / đã đăng. |
+| Visible / Hidden (`is_active`) | Danh mục, điểm đến | Ẩn là rời khỏi trang công khai (chip lọc, trang vùng…), KHÔNG xoá: tour thuộc nó vẫn bán và link cũ vẫn lọc được. Hai bảng này không có lệnh xoá. |
 
 Vì sao đơn đã huỷ lại có nhiều trạng thái khác nhau: [booking-states](conventions/booking-states.md).
 
