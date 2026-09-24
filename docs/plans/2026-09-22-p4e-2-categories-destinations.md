@@ -5,8 +5,9 @@
 
 Mười task thi công (gồm Task 9a thêm sau vòng review F14) cộng hai lượt dọn
 tài liệu, hai nhánh. F14 thi công **trong cùng một session** (chốt 22/09). F15
-có thể chạy ở một session MỚI: mục "Bài học vòng review F14" ở đầu phần F15 là
-thứ bàn giao — session mới đọc nó trước khi viết dòng code nào.
+chạy ở một session MỚI, session gốc review (chốt 24/09): mục "Bài học vòng
+review F14" ở đầu phần F15 là thứ bàn giao — session mới đọc nó trước khi viết
+dòng code nào. Prompt dán vào session ấy nằm ở cuối file.
 
 | Tính năng | Nhánh | Task | Phụ thuộc |
 | --- | --- | --- | --- |
@@ -18,16 +19,62 @@ thứ bàn giao — session mới đọc nó trước khi viết dòng code nào
 Áp cho **mọi** task, không nhắc lại ở từng chỗ:
 
 - **TDD trên logic thuần** (luật 4): viết test trước, chạy cho ĐỎ, rồi mới cài.
-- **`pnpm gate:int`** trước khi khai một task xong (luật 11). Build web cần API
-  sống — dựng bằng `node dist/main.js` rồi mới `turbo run build`.
+- **Gate trước khi khai một task xong** (luật 11), chạy theo mục *Quy trình
+  gate* ngay dưới — không chạy `pnpm gate:int` trần.
 - **Comment code tiếng Việt** (luật 8); **copy người dùng thấy bằng tiếng Anh**
   và nằm trong `@tourism/i18n` (luật 7).
 - **Không hex** ở frontend — chỉ token (luật 6).
-- **Commit Conventional, tiếng Việt CÓ DẤU**, không AI attribution (luật 12).
+- **Commit Conventional, tiếng Việt CÓ DẤU**, không AI attribution — không dòng
+  `Co-Authored-By` (luật 12). Stage theo **đường dẫn tường minh**, không
+  `git add -A`. Chạy `pnpm lint:fix` trước khi stage.
 - **Bust cache sau commit transaction**, fire-and-forget (ADR-0016 §3).
 - Mã lỗi: `NOT_FOUND` 404 · `SLUG_TAKEN` 409 · `CANNOT_MOVE` 409.
 - Trần cột phải gương đúng: slug 60 (danh mục) / 80 (điểm đến) · name 120 ·
   description 500 (danh mục) / 2000 (điểm đến) · country 60 · region 80.
+- **Contract và i18n được đọc từ `dist`** (thêm 24/09): sửa hai gói ấy xong phải
+  build lại trước khi test api/admin/web thấy thay đổi —
+  `pnpm turbo run build --filter=@tourism/contract --filter=@tourism/i18n --output-logs=errors-only`.
+- **Không đụng** (thêm 24/09, cho F15): `apps/api/prisma/` (F15 không có
+  migration — bảng `destinations` đã đủ cột), `apps/mobile`, module
+  bookings/payments, code departures của F16.
+- **Không hạ tầng sống** (luật 15). F15 không cần gì từ hạ tầng.
+- **Tài liệu `.md`:** không để dòng bắt đầu bằng `+` ở cột 0; `git diff` file
+  `.md` trước khi stage; không sửa entry CHANGELOG cũ.
+
+### Quy trình gate (luật 11) — dùng ở cuối MỖI task
+
+Thêm 24/09, chép từ plan F16 kèm một chỉnh: unit test chạy 4 worker mỗi gói.
+
+`pnpm gate:int` trần chạy song song 10 luồng và từng làm máy phình RAM, nên chạy
+tách bước, hãm song song. Build web prerender gọi API thật, nên phải có API sống.
+Chạy từ gốc repo bằng **Git Bash**, Docker Postgres phải đang chạy:
+
+```bash
+# 1. API sống cho bước build web
+pnpm turbo run build --filter=@tourism/api --output-logs=errors-only
+(cd apps/api && node dist/main.js > /tmp/f15-api.log 2>&1 &)
+for i in $(seq 1 30); do curl -sf http://localhost:3001/api/health > /dev/null && echo "API sống" && break; sleep 2; done
+
+# 2. build + typecheck
+NEXT_PUBLIC_API_URL=http://localhost:3001 NEXT_PUBLIC_SITE_URL=http://localhost:3000 pnpm turbo run build typecheck --concurrency=2 --output-logs=errors-only
+
+# 3. unit test — 16 worker làm ca zod-config.spec.ts của contract hết giờ (đo 23/09)
+pnpm turbo run test --concurrency=2 --output-logs=errors-only -- --maxWorkers=4
+
+# 4. lint + luật tokens của mobile
+pnpm lint && node scripts/check-mobile-tokens-only.mjs
+
+# 5. integration test
+pnpm test:int --concurrency=2
+```
+
+Tắt API sau khi xong (PowerShell) — chỉ giết đúng tiến trình đang nghe cổng 3001:
+
+```powershell
+Get-NetTCPConnection -LocalPort 3001 -State Listen -ErrorAction SilentlyContinue | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force }
+```
+
+Cả năm bước xanh mới được khai task xong. Máy chậm bất thường thì dừng và báo.
 
 ## Bản đồ file
 
@@ -58,7 +105,7 @@ thứ bàn giao — session mới đọc nó trước khi viết dòng code nào
 | `apps/api/src/modules/catalog/admin-destinations.service.ts` | Bốn thao tác |
 | `apps/api/src/modules/catalog/admin-destinations.controller.ts` | Guard + `mapError` |
 | `apps/admin/src/lib/destinations-view.ts` · `destinations-write.ts` · `api/destinations.ts` | Cùng khuôn F14 |
-| `apps/admin/src/app/(admin)/destinations/{page,actions}.tsx` | Trang + server action |
+| `apps/admin/src/app/(admin)/destinations/page.tsx` · `actions.ts` | Trang + server action |
 | `apps/admin/src/components/destinations/*.tsx` | Bảng, form dialog, row actions |
 
 ---
@@ -320,6 +367,23 @@ những lỗi ấy. Bản kể đầy đủ nằm ở entry "Vòng review F14" t
     là nó thành lời nói sai.
 19. **Entry CHANGELOG viết vào đúng ngày merge.** `docs-freshness.sh` lọc theo
     ngày commit, mà rebase thì đổi ngày commit — CI đỏ ngày 23/09 là vì thế.
+    Session thi công ghi entry theo ngày nó viết; session review thêm entry
+    merge vào đúng ngày merge.
+
+**Hai bài học từ vòng review F16 (23/09)**
+
+20. **Một chữ cho mỗi khái niệm.** Điểm đến ẩn/hiện bằng đúng cặp chữ của danh
+    mục (Hide/Show, dấu "(hidden)") — đọc `messages.admin.categories` trước khi
+    viết copy mới. "On sale"/"Off sale" là chữ của công tắc đăng TOUR, còn
+    "Bookable" là của chuyến; F16 từng để "On sale" nói hai nghĩa trên hai màn
+    cạnh nhau.
+21. **Khe deploy.** Vercel thường xong trước Render. Trong vài phút ấy màn
+    `/destinations` mới gọi `admin.destinations.*` mà API cũ chưa có — chấp
+    nhận được với một trang MỚI: page ném lỗi và boundary `app/error.tsx` hiện
+    trang báo lỗi kèm nút thử lại, cùng cách `/categories` xử lỗi fetch. Nhưng
+    KHÔNG thêm field bắt buộc vào response của endpoint CŨ
+    mà trang đang chạy đọc, trừ khi phía đọc có đường lùi: F16 từng làm trang
+    Departures sập 500 đúng vì thế.
 
 ## Task 6 — Từ vựng vùng miền về contract (ADR-0045)
 
@@ -406,7 +470,7 @@ phía web chưa chịu được nó. Xem bài học 9 và 10 ở đầu phần F
 **Files:**
 - Create: `apps/admin/src/lib/destinations-view.ts` · `destinations-write.ts` ·
   `api/destinations.ts` (+ spec)
-- Create: `apps/admin/src/app/(admin)/destinations/{page,actions}.tsx`
+- Create: `apps/admin/src/app/(admin)/destinations/page.tsx`, `actions.ts`
 - Create: `apps/admin/src/components/destinations/*.tsx` (+ spec)
 - Modify: `apps/admin/src/lib/nav.ts`, `libs/shared/i18n/src/lib/messages.ts`
 
@@ -424,8 +488,11 @@ phía web chưa chịu được nó. Xem bài học 9 và 10 ở đầu phần F
 ## Task 9b — Docs sweep F15
 
 - [ ] **B1.** Entry `docs/CHANGELOG.md`.
-- [ ] **B2.** Gạch mục P4e-2 ở `docs/open-items.md`.
-- [ ] **B3.** `./scripts/docs-freshness.sh` xanh, hỏi user rồi merge, xem CI.
+- [ ] **B2.** Gạch mục P4e-2 ở `docs/open-items.md`; đóng nợ G3 nếu đã rút
+      `mapError` về một chỗ (bài học 4).
+- [ ] **B3.** `./scripts/docs-freshness.sh` xanh. **KHÔNG merge** (sửa 24/09):
+      dừng ở đây và bàn giao cho session review — merge, CI và nghiệm thu tay
+      là việc của session ấy.
 
 ---
 
@@ -444,3 +511,81 @@ phía web chưa chịu được nó. Xem bài học 9 và 10 ở đầu phần F
       và xem nó nhảy sang trang vùng khác.
 - [ ] Ghi vào `open-items.md` bất cứ thứ gì lượt thử tay phát hiện — lượt thử
       tay của F13 tìm ra một câu copy nói dối mà 3.877 test không thấy.
+
+---
+
+## Prompt bàn giao cho session thi công F15
+
+Dán nguyên khối dưới đây vào một session Claude Code MỚI mở tại
+`C:\Programming\Devs\Projects\Tourism-Platform-V2`.
+
+```text
+Bạn là session THI CÔNG của tourism-v2, làm việc NGAY TRONG checkout gốc
+C:\Programming\Devs\Projects\Tourism-Platform-V2 (không tạo worktree). Đọc
+theo thứ tự:
+  CLAUDE.md                                                      (15 luật + gotcha)
+  docs/README.md                                                 (bản đồ tài liệu)
+  docs/adr/0045-region-vocabulary-in-contract.md                 (quyết định)
+  docs/specs/2026-09-22-p4e-2-categories-destinations-design.md  (spec — HỢP ĐỒNG)
+  docs/plans/2026-09-22-p4e-2-categories-destinations.md         (plan — phần F15)
+
+VIỆC: tính năng F15 — màn quản trị điểm đến /destinations (tạo, sửa, ẩn/hiện,
+không xoá), ba vùng miền dời về @tourism/contract, và web chịu được điểm đến đã
+ẩn. Làm Task 6 → 7 → 8 → 9a → 9 → 9b, đúng thứ tự ấy (9a TRƯỚC 9: bảng đo của
+9a là nguồn cho câu cảnh báo ở 9), mỗi task một commit. F14 (Task 1–5b) đã
+xong, đừng đụng lại. Không làm gì ngoài plan; thấy plan sai thì dừng và hỏi tôi.
+
+TRƯỚC DÒNG CODE ĐẦU TIÊN: đọc hết 21 bài học ở đầu phần F15 của plan. F15 là
+bản song sinh của F14; vòng review F14 tìm ra 15 lỗi thật, và lỗi nào cũng có
+thể lặp lại ở đây.
+
+MỞ ĐẦU
+- `git status` phải sạch và đang ở `main`; `git log --oneline -3` phải thấy
+  commit "docs: prompt bàn giao F15…". Rồi:
+  git checkout -b feat/p4e-2-destinations
+- Docker Postgres phải đang chạy (`docker ps`) — integration test cần nó.
+
+LUẬT BẤT DI BẤT DỊCH CỦA SESSION NÀY
+- KHÔNG merge, KHÔNG push, KHÔNG rebase, KHÔNG dùng subagent.
+- KHÔNG chạm hạ tầng sống (CLAUDE.md §15): không Supabase, không webhook, không
+  env/redeploy Render/Vercel, không Cloudinary. F15 không có migration; thấy
+  mình sắp cần một cái thì DỪNG và hỏi tôi.
+- KHÔNG sửa apps/api/prisma/, apps/mobile, module bookings/payments, code
+  departures của F16. Diff chạm vào chúng là bị trả review.
+- TDD (luật 4): test đỏ đúng lý do trước, rồi mới cài. Ca test mới nào cũng
+  phải kiểm bằng đột biến (bài học 15) — làm thật (sửa code cho sai, thấy đỏ,
+  trả lại), ghi kết quả.
+- Gate cuối mỗi task theo mục "Quy trình gate" của plan: chạy tách bước, hãm
+  song song (máy từng phình RAM khi chạy gate:int trần), cần API sống cho build
+  web; xong thì tắt API bằng lệnh PowerShell trong plan.
+- Comment code TIẾNG VIỆT (luật 8); copy người dùng thấy bằng TIẾNG ANH trong
+  @tourism/i18n (luật 7). Tokens-only, không hex (luật 6).
+- Commit Conventional Commits, message TIẾNG VIỆT CÓ DẤU, KHÔNG AI attribution —
+  không dòng Co-Authored-By (luật 12). Stage theo đường dẫn tường minh, không
+  `git add -A`. Chạy `pnpm lint:fix` trước khi stage.
+- Contract và i18n được đọc từ dist: sửa xong phải build lại trước khi test
+  api/admin/web (lệnh ở Ràng buộc toàn cục của plan).
+- Rà docs/skills.md trước khi bắt tay (luật 9).
+
+NĂM CHỖ DỄ SAI (plan có đủ 21 bài học)
+1. Slug trùng: bắt P2002 ngay ở lệnh ghi rồi đổi thành SLUG_TAKEN 409; không
+   SELECT kiểm trước, không assertExists rồi mới update (bài học 1–2).
+2. Dời ba vùng về contract mà generateStaticParams của /destinations/[region]
+   mất một slug là ba trang vùng biến khỏi build. Viết test ghim đủ ba slug
+   TRƯỚC khi dời (Task 6).
+3. Ẩn một điểm đến đụng 11 chỗ gọi fetchDestinations trên web. Đo từng chỗ, ghi
+   vào spec §4.6, RỒI mới viết câu cảnh báo của hộp Hide (Task 9a B1 → Task 9 B1).
+4. Web: điểm đến đã ẩn mà đang được lọc thì chip in TÊN chứ không in slug, và
+   thẻ facet có ô đang tích để bỏ; endpoint hỏng (null) khác mảng rỗng (Task 9a).
+   Test khớp tên chính xác, không dùng /…/i (bài học 16).
+5. Dùng lại, đừng chép: SLUG_PATTERN chung ở slug.ts; câu lỗi slugShape và ba
+   thuộc tính tắt soát chính tả của ô slug; FormField; StableLabel;
+   warningTone="neutral" cho câu trấn an; chữ Hide/Show của danh mục. Tới bản
+   thứ ba thì rút hasFormErrors và mapError về một chỗ (bài học 4, 6–8, 11,
+   13–14, 20).
+
+BÀN GIAO KHI XONG
+Không merge. Viết cho tôi: danh sách commit; kết quả gate (số test từng gói, số
+int); đột biến đã thử và kết quả; bảng đo 11 chỗ gọi fetchDestinations; chỗ lệch
+plan và vì sao; việc cần hạ tầng (dự kiến: không có).
+```
