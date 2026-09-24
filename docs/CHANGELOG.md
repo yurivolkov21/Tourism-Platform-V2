@@ -8,6 +8,26 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-09-24 — Merge F15 lên main (`387824d0`)
+
+Nội dung đã kể ở HAI entry ngay bên dưới — "Vòng review F15" và "F15 quản trị
+điểm đến". Entry này chỉ ghi sự kiện merge, vì hai entry kia viết TRƯỚC merge
+nên chưa mang hash.
+
+Nhánh `feat/p4e-2-destinations` đã nằm sẵn trên đỉnh `main` (`310d6e9d`, commit
+prompt bàn giao), nên fast-forward thẳng, không cần rebase: 10 commit — sáu
+của session thi công, bốn của vòng review. Gate đầy đủ đã chạy xanh trên chính
+đỉnh ấy. Cùng lượt đẩy có ADR-0047 và spec F17 (P4e-3a tạo và sửa tour), chỉ là
+tài liệu. Không migration, không đổi env, nên không có bước hạ tầng nào.
+
+Việc còn lại: thử tay trên production sau khi Vercel và Render deploy xong
+(plan P4e-2, mục Nghiệm thu cuối: ẩn rồi hiện một điểm đến, đổi vùng của một
+điểm đến và xem nó nhảy sang trang vùng khác).
+
+Tests after: Vitest **4183** (web 1573, admin 1104, api 985, contract 419,
+core 46, ui 22, tokens 18, i18n 16), int **626 ở 44 file**, jest mobile 159 và
+mobile-ui 86.
+
 ## 2026-09-24 — Vòng review F15: 28 mục, vá 25, ba mục để lại có lý do (nhánh `feat/p4e-2-destinations`)
 
 Review chạy ở session gốc, mức cao nhất: mười góc tìm độc lập, mỗi ứng viên một
