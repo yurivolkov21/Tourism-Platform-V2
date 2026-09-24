@@ -179,6 +179,36 @@ mọi controller admin.
    nói sai trên màn quản trị là một quyết định sai của người đọc nó.
 6. **Copy lúc tắt một điểm đến còn tour**: biến khỏi trang vùng, khỏi tile,
    khỏi facet; tour vẫn hiện và vẫn gắn điểm đến ấy. Kèm số tour đang gắn.
+
+   > **Đo lại 24/09 (Task 9a B1), TRƯỚC khi viết câu cảnh báo.** Ba chỗ ở câu
+   > trên thiếu phần lớn. `fetchDestinations` có 7 lời gọi ở 7 trang (plan đếm
+   > 11 là tính cả 4 component nhận danh sách qua prop: `home/gallery`,
+   > `about-numbers`, `about-gallery`, `blog-explorer`). Endpoint công khai lọc
+   > `is_active` còn hàng tour thì KHÔNG, nên ẩn một điểm đến X gây ra:
+   >
+   > | Trang | Chỗ đọc | Ẩn X thì |
+   > | --- | --- | --- |
+   > | `/` | 9 tile `topDestinations` | X rời lưới nếu đang ở top 9, tile thứ 10 lên thay |
+   > | `/destinations` | câu hero `heroSubtitle(n)` | "n places" giảm 1 |
+   > | `/destinations` | 4 tile nổi bật mỗi vùng | X rời tile, điểm kế tiếp lên thay |
+   > | `/destinations` | số tour mỗi vùng | tour có X là điểm DUY NHẤT trong vùng ấy thôi được đếm |
+   > | `/destinations/[vùng]` | nơi chốn, lưới tour, review, số liệu hero | X rời danh sách nơi chốn; tour như dòng trên rời lưới tour của vùng, kéo review của nó theo |
+   > | `/destinations/[vùng]` | "bạn có mấy ngày", chuyến một ngày, "Longest trip" | tour có MỌI điểm trong vùng mà có X thôi là "chuyến riêng" của vùng — rời hai khu ấy, có thể đổi "Longest trip" |
+   > | `/tours` | thẻ facet Destination | X rời thẻ — trừ khi đang được lọc: Task 9a bù nó vào cuối, đang tích |
+   > | `/tours` | chip đang bật | trước Task 9a in slug thô (`?? value`), sau đó in tên |
+   > | `/tours` | eyebrow "across n destinations" | n giảm 1 |
+   > | `/about` | ô số "Destinations" | giảm 1 |
+   > | `/about` | số tour trên bento từng vùng | như dòng "số tour mỗi vùng" ở `/destinations` |
+   > | `/blog` | hai trục Places / Topics | tag trùng slug X chuyển từ Places sang Topics; link `?place=x` vẫn lọc nhưng trục Places hết ô để bỏ. Đo DB dev: 7 điểm có tag như vậy (`can-tho`, `da-nang`, `hanoi`, `hoi-an`, `hue`, `ninh-binh`, `sa-pa`) |
+   > | `/account` | sổ hành trình của hộ chiếu | khách đã đi X mất mục X khỏi sổ; chuyến vẫn ở My bookings |
+   > | `/account` | dòng "% of the map explored" | mẫu số giảm 1, phần trăm nhích lên |
+   >
+   > KHÔNG đổi: thẻ tour và trang tour vẫn in X trên lộ trình (`cardInclude`
+   > không lọc `is_active`), link `/tours?destinations=x` vẫn lọc đúng, menu
+   > Destinations trên navbar (bốn link cố định) và sitemap (chỉ đọc ba vùng).
+   >
+   > Hai dòng `/blog` và `/account` là hệ quả thật nhưng Task 9a không vá — nằm
+   > ngoài danh sách file của plan; hộp xác nhận ở Task 9 nói thẳng cả hai.
 7. **`move` ở biên**: hàng đầu bấm "lên" phải là **nút tắt**, không phải một
    lỗi 409 sau khi bấm. VM tính `canMoveUp`/`canMoveDown` làm gương luật server.
 8. **`order` trùng do đua ghi**: hai admin bấm cùng lúc. Chặn bằng khoá hai

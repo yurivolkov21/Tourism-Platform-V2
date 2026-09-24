@@ -4,7 +4,7 @@ import { messages } from '@tourism/i18n';
 import { Checkbox } from '@tourism/ui/components/checkbox';
 import type { ReactNode } from 'react';
 import { useState } from 'react';
-import type { DestinationVM, TourCardVM } from '@/lib/api/tours';
+import type { TourCardVM } from '@/lib/api/tours';
 import type { ArrayFacetKey, DurationBucket, PriceBucket, TourFilterState } from '@/lib/tours';
 
 type Difficulty = NonNullable<TourCardVM['difficulty']>;
@@ -214,14 +214,15 @@ export function ToursFilters({
   onToggle,
   onToggleFeatured,
   categoryOptions,
-  destinations,
+  destinationOptions,
 }: {
   value: TourFilterState;
   counts: FacetCounts;
   onToggle: (facet: FacetKey, optionValue: string) => void;
   onToggleFeatured: () => void;
   categoryOptions: { slug: string; name: string }[];
-  destinations: DestinationVM[];
+  /** Đã qua `resolveDestinationOptions` — gồm cả điểm đến đã ẩn đang được lọc. */
+  destinationOptions: { slug: string; name: string }[];
 }) {
   const t = messages.toursPage;
 
@@ -241,7 +242,7 @@ export function ToursFilters({
 
       <FacetCard heading={t.facets.destination}>
         <OptionList
-          options={destinations.map((d) => ({
+          options={destinationOptions.map((d) => ({
             value: d.slug,
             label: d.name,
             count: counts.destinations[d.slug] ?? 0,

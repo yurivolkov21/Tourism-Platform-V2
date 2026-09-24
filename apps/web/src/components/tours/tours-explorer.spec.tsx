@@ -413,6 +413,62 @@ describe('ToursExplorer — facet đa chọn', () => {
     expect(screen.getByRole('checkbox', { name: /^Trekking, / })).toBeInTheDocument();
   });
 
+  it('điểm đến ĐÃ ẨN đang lọc: chip in TÊN, và vẫn có ô để bỏ tick', async () => {
+    // Task 9a (bài học 9 của vòng review F14): admin ẩn Hội An → endpoint thôi
+    // trả nó, nhưng link cũ `/tours?destinations=hoi-an` vẫn lọc đúng vì hàng
+    // tour vẫn gắn nó. Trước bản vá: chip in `hoi-an` (slug thô, nhánh
+    // `?? value`) và thẻ Destination không có dòng nào tích để bỏ.
+    const user = userEvent.setup();
+    const visible = DESTINATIONS.filter((d) => d.slug !== 'hoi-an');
+    render(
+      <MotionConfig reducedMotion="always">
+        <ToursExplorer
+          tours={TOURS}
+          categories={CATEGORIES}
+          destinations={visible}
+          initial={{ destinations: 'hoi-an' }}
+        />
+      </MotionConfig>,
+    );
+
+    // Khớp CHÍNH XÁC, không `/hoi an/i` (bài học 16).
+    expect(
+      screen.getByRole('button', { name: messages.toursPage.removeFilter('Hội An') }),
+    ).toBeInTheDocument();
+    // Dòng tóm tắt vẫn đếm theo endpoint — điểm đến đã ẩn không được đếm lại
+    // chỉ vì nó đang được bù vào thẻ facet.
+    expect(
+      screen.getByText(messages.toursPage.resultSummary(TOURS.length, visible.length)),
+    ).toBeInTheDocument();
+
+    await openFilters(user);
+    // Và ô ấy mang ĐÚNG số tour — đếm trên bộ mục đã bù, không trên danh sách
+    // của endpoint (nơi nó không còn, và số đếm sẽ rơi về 0).
+    const visiting = TOURS.filter((tour) => tour.destinations.some((d) => d.slug === 'hoi-an'));
+    expect(
+      screen.getByRole('checkbox', { name: `Hội An, ${visiting.length} tours` }),
+    ).toBeChecked();
+  });
+
+  it('endpoint điểm đến RỚT: thẻ facet suy từ tour, dòng tóm tắt không nói "0 destinations"', async () => {
+    // `null` = lời gọi hỏng. Trước Task 9a trang truyền `data ?? []`, nên một
+    // lượt 500 của `/api/destinations` vừa xoá sạch thẻ Destination vừa in
+    // "across 0 destinations" lên hero.
+    const user = userEvent.setup();
+    render(
+      <MotionConfig reducedMotion="always">
+        <ToursExplorer tours={TOURS} categories={CATEGORIES} destinations={null} initial={{}} />
+      </MotionConfig>,
+    );
+
+    // Chín điểm đến mà mười sáu tour fixture chạm tới.
+    expect(
+      screen.getByText(messages.toursPage.resultSummary(TOURS.length, DESTINATIONS.length)),
+    ).toBeInTheDocument();
+    await openFilters(user);
+    expect(screen.getByRole('checkbox', { name: /^Hội An, / })).toBeInTheDocument();
+  });
+
   it('con số trên chip đếm từ lưới đã lọc, KHÔNG lấy `toursCount` của endpoint', async () => {
     const user = userEvent.setup();
     renderExplorer();

@@ -34,6 +34,7 @@ import {
   priceBucket,
   relatedTours,
   resolveCategoryOptions,
+  resolveDestinationOptions,
   routeChain,
   searchTours,
   sortTours,
@@ -88,6 +89,79 @@ describe('resolveCategoryOptions', () => {
 
   it('endpoint trả mảng RỖNG thì tôn trọng: không có chip nào', () => {
     expect(resolveCategoryOptions([], TOURS, [])).toEqual([]);
+  });
+});
+
+describe('resolveDestinationOptions', () => {
+  // Bản song sinh của `resolveCategoryOptions` cho thẻ facet "Destination"
+  // (Task 9a, bài học 9 của vòng review F14): `catalog.destinations.list` lọc
+  // `is_active`, còn hàng tour thì KHÔNG — nên từ khi F15 có nút Hide, link cũ
+  // `/tours?destinations=<slug>` vẫn lọc đúng mà trang mất đường tra tên.
+  const DESTINATIONS = [
+    { slug: 'sa-pa', name: 'Sa Pa' },
+    { slug: 'hue', name: 'Huế' },
+  ];
+
+  it('giữ NGUYÊN thứ tự endpoint', () => {
+    const options = resolveDestinationOptions(DESTINATIONS, TOURS, []);
+
+    expect(options.map((option) => option.slug)).toEqual(['sa-pa', 'hue']);
+  });
+
+  it('điểm đến ĐÃ ẨN mà đang được lọc vẫn hiện ở CUỐI, tên tra từ tour đã tải', () => {
+    // Ca thật: admin vừa ẩn Hội An. Endpoint thôi trả nó, nhưng tour vẫn gắn
+    // nó — tên nằm sẵn trên `tour.destinations`.
+    const options = resolveDestinationOptions(DESTINATIONS, TOURS, ['hoi-an']);
+
+    expect(options.map((option) => option.slug)).toEqual(['sa-pa', 'hue', 'hoi-an']);
+    expect(options.at(-1)?.name).toBe('Hội An');
+  });
+
+  it('tên tra từ MỌI điểm dừng của tour, không riêng điểm chính', () => {
+    // Điểm đến chỉ là điểm phụ của mọi tour vẫn phải ra tên: tra riêng điểm
+    // chính thì chip của nó lại in slug thô.
+    const base = TOURS[0];
+    if (!base) throw new Error('fixture rỗng');
+    const tours = [
+      {
+        ...base,
+        destinations: [
+          { slug: 'ha-long', name: 'Hạ Long', isPrimary: true },
+          { slug: 'lan-ha', name: 'Lan Hạ', isPrimary: false },
+        ],
+      },
+    ];
+
+    expect(resolveDestinationOptions(DESTINATIONS, tours, ['lan-ha']).at(-1)).toEqual({
+      slug: 'lan-ha',
+      name: 'Lan Hạ',
+    });
+  });
+
+  it('slug lọc lạ hoàn toàn thì lấy chính slug làm nhãn', () => {
+    expect(resolveDestinationOptions(DESTINATIONS, TOURS, ['khong-ton-tai']).at(-1)).toEqual({
+      slug: 'khong-ton-tai',
+      name: 'khong-ton-tai',
+    });
+  });
+
+  it('KHÔNG nhân đôi một slug đã có trong endpoint', () => {
+    expect(resolveDestinationOptions(DESTINATIONS, TOURS, ['hue'])).toHaveLength(2);
+  });
+
+  it('endpoint RỚT (`null`) thì suy từ tour — trang xuống cấp, không trắng thẻ', () => {
+    // `null` khác mảng rỗng: rỗng nghĩa là mọi điểm đến đều đã ẩn (hợp lệ),
+    // `null` nghĩa là lời gọi hỏng. Trước Task 9a trang truyền `data ?? []`,
+    // nên một lượt 500 của `/api/destinations` xoá sạch thẻ facet.
+    const options = resolveDestinationOptions(null, TOURS, []);
+    const hoiAn = options.find((option) => option.slug === 'hoi-an');
+
+    expect(options.length).toBeGreaterThan(0);
+    expect(hoiAn?.name).toBe('Hội An');
+  });
+
+  it('endpoint trả mảng RỖNG thì tôn trọng: không có mục nào', () => {
+    expect(resolveDestinationOptions([], TOURS, [])).toEqual([]);
   });
 });
 

@@ -86,7 +86,6 @@ export default async function ToursPage({
   }
 
   const tours = toursRes.data ?? [];
-  const destinations = destinationsRes.data ?? [];
   // Bộ chip danh mục đọc THẲNG từ endpoint, đã lọc `is_active` và sắp theo
   // `order` ở server. Suy từ danh sách tour đã tải (cách cũ) làm hai nút của
   // back office không với tới trang này: ẩn một danh mục vẫn thấy chip, đổi
@@ -97,6 +96,10 @@ export default async function ToursPage({
   // `/api/categories` xoá sạch thẻ facet "Category" khỏi một trang vẫn đang
   // sống. `resolveCategoryOptions` rơi về suy-từ-tour ở ca hỏng.
   const categories = categoriesRes.ok ? categoriesRes.data : null;
+  // Cùng luật cho điểm đến (Task 9a của F15): trước đây `data ?? []`, nên một
+  // lượt 500 của `/api/destinations` xoá sạch thẻ Destination và in "across 0
+  // destinations" lên hero. `resolveDestinationOptions` rơi về suy-từ-tour.
+  const destinations = destinationsRes.ok ? destinationsRes.data : null;
 
   return (
     <ToursExplorer

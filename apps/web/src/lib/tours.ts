@@ -2,49 +2,85 @@ import type { TourCardVM } from '@/lib/api/tours';
 import type { MockDestinationLink, MockMediaItem } from '@/mocks/types';
 import { foldAccents } from './text';
 
-/** Một mục của thẻ facet "Category": slug để lọc, tên để người đọc. */
-export interface CategoryOption {
+/** Một mục của thẻ facet có danh sách từ endpoint: slug để lọc, tên để người đọc. */
+export interface FacetOption {
   slug: string;
   name: string;
 }
 
+/** Một mục của thẻ facet "Category". */
+export type CategoryOption = FacetOption;
+
+/** Một mục của thẻ facet "Destination". */
+export type DestinationOption = FacetOption;
+
 /**
- * Bộ chip danh mục của `/tours` — endpoint quyết chip NÀO có, tour đã tải chỉ
- * bù tên và bù ca thiếu.
+ * Bộ mục của một thẻ facet có danh sách từ endpoint — endpoint quyết mục NÀO
+ * có, tour đã tải chỉ bù tên và bù ca thiếu.
  *
- * Ba việc, và mỗi việc đóng đúng một lỗ mà vòng review F14 tìm ra:
+ * Ba việc, và mỗi việc đóng đúng một lỗ mà vòng review F14 tìm ra ở danh mục
+ * rồi Task 9a (F15) tìm lại ở điểm đến:
  *
- * 1. **`categories` là nguồn và là THỨ TỰ.** `is_active` và `order` do admin
- *    đặt chỉ có nghĩa nếu trang này tôn trọng đúng danh sách server trả về.
+ * 1. **`listed` là nguồn và là THỨ TỰ.** `is_active` (và `order` của danh mục)
+ *    do admin đặt chỉ có nghĩa nếu trang này tôn trọng đúng danh sách server
+ *    trả về.
  * 2. **Slug đang lọc mà vắng mặt thì bù vào CUỐI.** Ca thật: admin vừa ẩn một
- *    danh mục, nhưng link cũ `/tours?categories=<slug>` vẫn lọc đúng vì API
- *    công khai KHÔNG gác `isActive` khi lọc tour. Không bù thì chip đang bật
- *    in slug máy (`?? value` ở `ToursExplorer`) và khách không có ô nào để bỏ
- *    tick — lưới bị thu hẹp mà không ai giải thích vì sao.
- * 3. **`categories === null` nghĩa là lời gọi HỎNG**, khác hẳn mảng rỗng
- *    (mọi danh mục đều đã ẩn — hợp lệ). Hỏng thì suy từ tour đã tải, tức rơi
- *    về đúng hành vi trước 22/09, thay vì bày một thẻ facet trống trơn.
+ *    danh mục hay một điểm đến, nhưng link cũ vẫn lọc đúng vì API công khai
+ *    KHÔNG gác `isActive` khi lọc tour, và hàng tour vẫn mang slug ấy. Không
+ *    bù thì chip đang bật in slug máy (`?? value` ở `ToursExplorer`) và khách
+ *    không có ô nào để bỏ tick — lưới bị thu hẹp mà không ai giải thích vì sao.
+ * 3. **`listed === null` nghĩa là lời gọi HỎNG**, khác hẳn mảng rỗng (mọi mục
+ *    đều đã ẩn — hợp lệ). Hỏng thì suy từ tour đã tải, thay vì bày một thẻ
+ *    facet trống trơn.
+ *
+ * `namesFromTours` là bảng slug → tên dựng từ tour đã tải; mỗi facet dựng nó
+ * theo cách của mình (danh mục có một, điểm đến có nhiều trên mỗi tour).
  */
+function resolveFacetOptions(
+  listed: readonly FacetOption[] | null,
+  namesFromTours: ReadonlyMap<string, string>,
+  selected: readonly string[],
+): FacetOption[] {
+  if (listed === null) {
+    return [...namesFromTours].map(([slug, name]) => ({ slug, name }));
+  }
+
+  const options = listed.map((option) => ({ slug: option.slug, name: option.name }));
+  const known = new Set(options.map((option) => option.slug));
+  for (const slug of selected) {
+    if (known.has(slug)) continue;
+    known.add(slug);
+    options.push({ slug, name: namesFromTours.get(slug) ?? slug });
+  }
+  return options;
+}
+
+/** Bộ chip danh mục của `/tours` — xem `resolveFacetOptions`. */
 export function resolveCategoryOptions(
   categories: readonly CategoryOption[] | null,
   tours: readonly TourCardVM[],
   selected: readonly string[],
 ): CategoryOption[] {
-  const fromTours = new Map<string, string>();
-  for (const tour of tours) fromTours.set(tour.category.slug, tour.category.name);
+  const names = new Map<string, string>();
+  for (const tour of tours) names.set(tour.category.slug, tour.category.name);
+  return resolveFacetOptions(categories, names, selected);
+}
 
-  if (categories === null) {
-    return [...fromTours].map(([slug, name]) => ({ slug, name }));
+/**
+ * Bộ mục điểm đến của `/tours` — bản song sinh của `resolveCategoryOptions`
+ * (Task 9a). Tên tra từ MỌI điểm dừng của tour, không riêng điểm chính: một
+ * điểm đến chỉ là điểm phụ của mọi tour vẫn phải ra tên.
+ */
+export function resolveDestinationOptions(
+  destinations: readonly DestinationOption[] | null,
+  tours: readonly TourCardVM[],
+  selected: readonly string[],
+): DestinationOption[] {
+  const names = new Map<string, string>();
+  for (const tour of tours) {
+    for (const stop of tour.destinations) names.set(stop.slug, stop.name);
   }
-
-  const options = categories.map((category) => ({ slug: category.slug, name: category.name }));
-  const known = new Set(options.map((option) => option.slug));
-  for (const slug of selected) {
-    if (known.has(slug)) continue;
-    known.add(slug);
-    options.push({ slug, name: fromTours.get(slug) ?? slug });
-  }
-  return options;
+  return resolveFacetOptions(destinations, names, selected);
 }
 
 export type DurationBucket = '1' | '2-3' | '4+';

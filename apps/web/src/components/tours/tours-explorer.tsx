@@ -28,17 +28,19 @@ import { TourListCard } from '@/components/tours/tour-list-card';
 import { type FacetCounts, type FacetKey, ToursFilters } from '@/components/tours/tours-filters';
 import { ToursHero } from '@/components/tours/tours-hero';
 import { WishlistProvider } from '@/components/tours/wishlist-store';
-import type { DestinationVM, TourCardVM } from '@/lib/api/tours';
+import type { TourCardVM } from '@/lib/api/tours';
 import { paginate } from '@/lib/paginate';
 import { scrollToListTop } from '@/lib/scroll-to-list-top';
 import {
   type CategoryOption,
   countActiveFilters,
+  type DestinationOption,
   EMPTY_TOUR_FILTERS,
   facetOptionCounts,
   featuredOptionCount,
   filterTours,
   resolveCategoryOptions,
+  resolveDestinationOptions,
   searchTours,
   sortTours,
   type TourFilterState,
@@ -117,7 +119,13 @@ export function ToursExplorer({
    * đều đã ẩn) — `resolveCategoryOptions` xử hai ca ấy khác nhau.
    */
   categories: CategoryOption[] | null;
-  destinations: DestinationVM[];
+  /**
+   * Điểm đến ĐANG BẬT (`catalog.destinations.list` lọc `is_active`). Cùng hai
+   * luật với `categories` ngay trên, qua `resolveDestinationOptions`: điểm
+   * đến đã ẩn mà link cũ đang lọc thì vẫn có tên và ô để bỏ tick, và `null`
+   * (lời gọi HỎNG) khác mảng rỗng (Task 9a của F15).
+   */
+  destinations: DestinationOption[] | null;
   initial: ToursExplorerInitial;
 }) {
   const [filters, setFilters] = useState<TourFilterState>({
@@ -231,6 +239,12 @@ export function ToursExplorer({
     [categories, tours, filters.categories],
   );
 
+  /** Bộ mục của thẻ facet "Destination" — cùng luật MỘT nguồn với danh mục ngay trên. */
+  const destinationOptions = useMemo(
+    () => resolveDestinationOptions(destinations, tours, filters.destinations),
+    [destinations, tours, filters.destinations],
+  );
+
   const counts: FacetCounts = useMemo(
     () => ({
       categories: facetOptionCounts(
@@ -243,7 +257,7 @@ export function ToursExplorer({
         searched,
         filters,
         'destinations',
-        destinations.map((d) => d.slug),
+        destinationOptions.map((d) => d.slug),
       ),
       durations: facetOptionCounts(searched, filters, 'durations', ['1', '2-3', '4+']),
       prices: facetOptionCounts(searched, filters, 'prices', ['<100', '100-300', '300+']),
@@ -254,7 +268,7 @@ export function ToursExplorer({
       ]),
       featured: featuredOptionCount(searched, filters),
     }),
-    [searched, filters, categoryOptions, destinations],
+    [searched, filters, categoryOptions, destinationOptions],
   );
 
   /** Nhãn hiển thị cho chip đang bật. Tra ngược từ slug sang tên người đọc
@@ -265,7 +279,7 @@ export function ToursExplorer({
         facet === 'categories'
           ? (categoryOptions.find((c) => c.slug === value)?.name ?? value)
           : facet === 'destinations'
-            ? (destinations.find((d) => d.slug === value)?.name ?? value)
+            ? (destinationOptions.find((d) => d.slug === value)?.name ?? value)
             : facet === 'durations'
               ? messages.toursPage.durationLabels[
                   value as keyof typeof messages.toursPage.durationLabels
@@ -288,7 +302,7 @@ export function ToursExplorer({
       onToggle={toggleFacet}
       onToggleFeatured={toggleFeatured}
       categoryOptions={categoryOptions}
-      destinations={destinations}
+      destinationOptions={destinationOptions}
     />
   );
 
@@ -300,7 +314,13 @@ export function ToursExplorer({
   return (
     <WishlistProvider tourIds={pagedTourIds}>
       <ToursHero
-        eyebrow={messages.toursPage.resultSummary(tours.length, destinations.length)}
+        eyebrow={messages.toursPage.resultSummary(
+          tours.length,
+          // Đếm theo ENDPOINT, không theo bộ mục của thẻ facet: mục bù cho một
+          // điểm đến đã ẩn không được đếm lại. Endpoint hỏng thì đếm điểm đến
+          // suy từ tour — trước Task 9a nhánh ấy in "across 0 destinations".
+          destinations === null ? destinationOptions.length : destinations.length,
+        )}
         title={messages.toursPage.title}
         subtitle={messages.toursPage.subtitle}
       >

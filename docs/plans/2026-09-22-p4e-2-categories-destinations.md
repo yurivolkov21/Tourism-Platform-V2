@@ -487,17 +487,27 @@ phía web chưa chịu được nó. Xem bài học 9 và 10 ở đầu phần F
   `apps/web/src/app/(site)/tours/(listing)/page.tsx`
 - Test: `apps/web/src/lib/tours.spec.ts`, `tours-explorer.spec.tsx`
 
-- [ ] **B1.** Đo 11 chỗ gọi `fetchDestinations` (bài học 10): ẩn một điểm đến
+- [x] **B1.** Đo 11 chỗ gọi `fetchDestinations` (bài học 10): ẩn một điểm đến
       thì mỗi chỗ đổi ra sao. Ghi kết quả vào spec §4.6 TRƯỚC khi viết code —
       bảng đo ấy chính là nguồn cho câu cảnh báo ở Task 9.
-- [ ] **B2.** Spec TRƯỚC: điểm đến đã ẩn mà đang lọc thì chip in TÊN, và thẻ
+      *Ghi khi thi công:* 7 lời gọi ở 7 trang (số 11 của bài học 10 tính cả 4
+      component nhận danh sách qua prop), tỏa ra 14 hệ quả — bảng ở spec §4.6.
+      Hai hệ quả không nằm trong file của task này (`/blog` đổi trục tag,
+      hộ chiếu của khách mất mục) nên KHÔNG vá ở đây; hộp xác nhận nói thẳng.
+- [x] **B2.** Spec TRƯỚC: điểm đến đã ẩn mà đang lọc thì chip in TÊN, và thẻ
       facet có ô đang tích để bỏ · endpoint hỏng (`null`) thì suy từ tour, khác
       với mảng rỗng.
-- [ ] **B3.** Chạy ĐỎ, cài, rồi kiểm đột biến từng ca mới.
-- [ ] **B4.** Trang listing truyền `destinationsRes.ok ? data : null`, không
+- [x] **B3.** Chạy ĐỎ, cài, rồi kiểm đột biến từng ca mới.
+      *Ghi khi thi công:* tổng quát thành `resolveFacetOptions` riêng tư, hai
+      hàm bọc `resolveCategoryOptions` (chữ ký giữ nguyên) và
+      `resolveDestinationOptions` (tên tra từ MỌI điểm dừng, không riêng điểm
+      chính). Endpoint hỏng thì eyebrow "across n destinations" đếm điểm đến
+      suy từ tour — nhánh cũ in "across 0 destinations". Mười đột biến đều bị
+      giết; ca component ban đầu không canh số tour trên ô được bù, đã siết.
+- [x] **B4.** Trang listing truyền `destinationsRes.ok ? data : null`, không
       phải `data ?? []`.
-- [ ] **B5.** `pnpm gate:int` xanh.
-- [ ] **B6.** Commit: `fix(web): điểm đến đã ẩn vẫn có tên và vẫn bỏ tick được`
+- [x] **B5.** `pnpm gate:int` xanh.
+- [x] **B6.** Commit: `fix(web): điểm đến đã ẩn vẫn có tên và vẫn bỏ tick được`
 
 ## Task 9 — Màn `/destinations`
 
