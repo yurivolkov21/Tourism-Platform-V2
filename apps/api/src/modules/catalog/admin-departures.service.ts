@@ -13,6 +13,7 @@ import {
   cancellationDeadline,
   DEPARTURE_PHASE_FILTER_GROUPS,
   departurePhase,
+  perDepartureTotal,
   vietnamToday,
 } from '@tourism/contract';
 import { prisma } from '../../auth/auth.config.js';
@@ -29,7 +30,7 @@ import {
   seatsAboveTourMaxBlocker,
   seatsChangeBlocker,
 } from './departure-rules.js';
-import { perDepartureTotal } from './tour-costs.js';
+import { costItemsOf } from './tour-cost-items.js';
 
 export class TourNotFoundError extends Error {
   constructor(slug: string) {
@@ -208,7 +209,8 @@ export class AdminDeparturesService {
         endDate: startOfDayUtc(input.endDate),
         seatsTotal: input.seatsTotal,
         priceOverride: toDecimal(input.priceOverride),
-        fixedCostAmount: tour.costItems.length > 0 ? perDepartureTotal(tour.costItems) : null,
+        fixedCostAmount:
+          tour.costItems.length > 0 ? perDepartureTotal(costItemsOf(tour.costItems)) : null,
       },
       select: DEPARTURE_SELECT,
     });

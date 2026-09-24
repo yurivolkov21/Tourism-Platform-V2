@@ -8,7 +8,12 @@ import type {
   MediaItem,
   Paged,
 } from '@tourism/contract';
-import { cancellationDeadline, isWithinDeadline, vietnamToday } from '@tourism/contract';
+import {
+  cancellationDeadline,
+  isWithinDeadline,
+  perPersonTotal,
+  vietnamToday,
+} from '@tourism/contract';
 import { prisma } from '../../auth/auth.config.js';
 import { env } from '../../config/env.js';
 import { Prisma } from '../../generated/prisma/client.js';
@@ -24,7 +29,7 @@ import { escapeLike } from '../../lib/like.js';
 import { toPaged } from '../../lib/paged.js';
 import { vietnamDateSql } from '../../lib/vietnam-date-sql.js';
 import { pickCover } from '../catalog/catalog.service.js';
-import { perPersonTotal } from '../catalog/tour-costs.js';
+import { costItemsOf } from '../catalog/tour-cost-items.js';
 import { MediaService } from '../media/media.service.js';
 import {
   type CheckoutSession,
@@ -378,7 +383,7 @@ export class BookingsService {
     // (`tour_departures.fixed_cost_amount`) vì báo cáo tính nó một lần cho
     // mỗi chuyến đã chạy, bất kể bán được bao nhiêu ghế (§4).
     const costItems = departure.tour.costItems;
-    const costPerPerson = costItems.length > 0 ? perPersonTotal(costItems) : null;
+    const costPerPerson = costItems.length > 0 ? perPersonTotal(costItemsOf(costItems)) : null;
 
     // Resolve gateway TRƯỚC khi insert (W1 — audit 05/09 cụm 2, mục Thấp):
     // provider chưa cấu hình phải là 502 CHECKOUT_FAILED typed NGAY, không phải

@@ -17,8 +17,9 @@ import { canCancelOnline, cancellationDeadline, isWithinDeadline } from '@touris
  *
  * ## Vì sao ở `apps/api` chứ không ở contract
  *
- * Cùng lý lẽ với `tour-costs.ts`: hôm nay CHỈ api áp ba luật này (chúng là
- * CỔNG của ba lệnh ghi admin). Màn hình soi gương bằng dữ liệu nó đã có trong
+ * Cùng lý lẽ đã giữ ba hàm giá vốn ở api cho tới khi màn Costs của admin cần
+ * tính đúng con số ấy (F17 dời chúng lên contract — ADR-0047 §8): hôm nay CHỈ
+ * api áp ba luật này (chúng là CỔNG của ba lệnh ghi admin). Màn hình soi gương bằng dữ liệu nó đã có trong
  * tay — `seatsBooked`, `liveBookingCount`, `cancellationDeadline` đều nằm sẵn
  * trên hàng đang sửa — nên chưa có bên thứ hai đọc chung LUẬT. Ngày nào có,
  * đó là lúc nâng lên contract.

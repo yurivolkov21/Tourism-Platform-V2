@@ -28,6 +28,7 @@
  */
 
 import { PrismaPg } from '@prisma/adapter-pg';
+import { derivedCostPrice, perDepartureTotal, perPersonTotal } from '@tourism/contract';
 import { auth } from '../src/auth/auth.config.js';
 import { Prisma, PrismaClient } from '../src/generated/prisma/client.js';
 import {
@@ -37,11 +38,6 @@ import {
   ReviewSource,
   UserRole,
 } from '../src/generated/prisma/enums.js';
-import {
-  derivedCostPrice,
-  perDepartureTotal,
-  perPersonTotal,
-} from '../src/modules/catalog/tour-costs.js';
 import { accountDisplayName } from '../src/modules/enquiries/enquiry-row.js';
 import * as catalog from './fixtures/catalog/index.js';
 import {
@@ -495,13 +491,14 @@ async function main(): Promise<void> {
   //    SNAPSHOT, và phải sinh ra từ cùng một hàm mà `bookings.service.ts` dùng
   //    (`perPersonTotal`), nếu không số lịch sử và số tương lai sẽ nói khác
   //    nhau mà không test nào bắt được.
-  const giaVonTheoTour = new Map<string, Prisma.Decimal | null>();
+  const giaVonTheoTour = new Map<string, string | null>();
   for (const tour of catalog.tours) {
-    // Ép `Decimal` giống hệt bước 8 bên dưới: fixture giữ tiền dạng chuỗi để
-    // khớp cột `Decimal(14,2)`, còn `perPersonTotal` nhận `Prisma.Decimal`.
+    // Fixture giữ tiền dạng chuỗi để khớp cột `Decimal(14,2)` — đúng dạng mà
+    // `perPersonTotal` của contract nhận, cùng bản `bookings.service.ts` gọi
+    // (ADR-0047 §8).
     const items = catalog.tourCostItems
       .filter((c) => c.tourId === tour.id)
-      .map((c) => ({ amount: new Prisma.Decimal(c.amount), basis: c.basis }));
+      .map((c) => ({ amount: c.amount, basis: c.basis }));
     giaVonTheoTour.set(tour.id, items.length > 0 ? perPersonTotal(items) : null);
   }
 
@@ -809,7 +806,7 @@ async function main(): Promise<void> {
   for (const tour of catalog.tours) {
     const items = catalog.tourCostItems
       .filter((item) => item.tourId === tour.id)
-      .map((item) => ({ amount: new Prisma.Decimal(item.amount), basis: item.basis }));
+      .map((item) => ({ amount: item.amount, basis: item.basis }));
     if (items.length === 0) continue;
 
     // CHỈ điền chỗ còn trống. Hai cột này là SNAPSHOT (ADR-0033 §3: đóng

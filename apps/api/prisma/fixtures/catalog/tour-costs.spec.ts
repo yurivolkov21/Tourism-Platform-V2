@@ -1,10 +1,5 @@
+import { derivedCostPrice, perDepartureTotal, perPersonTotal, toCents } from '@tourism/contract';
 import { describe, expect, it } from 'vitest';
-import { Prisma } from '../../../src/generated/prisma/client.js';
-import {
-  derivedCostPrice,
-  perDepartureTotal,
-  perPersonTotal,
-} from '../../../src/modules/catalog/tour-costs.js';
 import { tours } from './index.js';
 import { stableId, tourCostItems } from './tour-costs.js';
 
@@ -26,11 +21,14 @@ import { stableId, tourCostItems } from './tour-costs.js';
  * bán so với chi phí cố định theo ngày, nên tour rẻ nhất tự nhiên mỏng hơn —
  * ép mọi tour vào một dải hẹp sẽ làm mô hình KÉM thật hơn. Bảng phân bố đo
  * được nằm ở JSDoc của `tour-costs.ts`.
+ *
+ * Ba hàm giá vốn là bản của `@tourism/contract` (ADR-0047 §8) — cùng bản mà
+ * seed, đường tạo booking và đường tạo chuyến gọi; tiền so trên cent nguyên.
  */
-const decimalItems = (tourId: string) =>
+const costItems = (tourId: string) =>
   tourCostItems
     .filter((item) => item.tourId === tourId)
-    .map((item) => ({ amount: new Prisma.Decimal(item.amount), basis: item.basis }));
+    .map((item) => ({ amount: item.amount, basis: item.basis }));
 
 describe('fixture giá vốn', () => {
   it('phủ ĐỦ mọi tour trong catalogue, không sót cái nào', () => {
@@ -65,9 +63,9 @@ describe('fixture giá vốn', () => {
     // `cogsFixed` của báo cáo luôn 0 và luật huỷ (§4) không có gì để chứng
     // minh; không có dòng theo khách thì `cogsVariable` luôn 0.
     for (const tour of tours) {
-      const items = decimalItems(tour.id);
-      expect(perPersonTotal(items).gt(0)).toBe(true);
-      expect(perDepartureTotal(items).gt(0)).toBe(true);
+      const items = costItems(tour.id);
+      expect(toCents(perPersonTotal(items))).toBeGreaterThan(0);
+      expect(toCents(perDepartureTotal(items))).toBeGreaterThan(0);
     }
   });
 
@@ -76,8 +74,8 @@ describe('fixture giá vốn', () => {
     expect(dayTours.length).toBeGreaterThan(0);
 
     for (const tour of dayTours) {
-      const cost = derivedCostPrice(decimalItems(tour.id), tour.maxGroupSize);
-      const margin = 1 - cost.toNumber() / Number(tour.basePrice);
+      const cost = derivedCostPrice(costItems(tour.id), tour.maxGroupSize);
+      const margin = 1 - toCents(cost) / toCents(tour.basePrice);
       expect(margin, `${tour.slug} biên ${(margin * 100).toFixed(1)}%`).toBeGreaterThanOrEqual(
         0.38,
       );
@@ -90,8 +88,8 @@ describe('fixture giá vốn', () => {
     expect(multiDay.length).toBeGreaterThan(0);
 
     for (const tour of multiDay) {
-      const cost = derivedCostPrice(decimalItems(tour.id), tour.maxGroupSize);
-      const margin = 1 - cost.toNumber() / Number(tour.basePrice);
+      const cost = derivedCostPrice(costItems(tour.id), tour.maxGroupSize);
+      const margin = 1 - toCents(cost) / toCents(tour.basePrice);
       expect(margin, `${tour.slug} biên ${(margin * 100).toFixed(1)}%`).toBeGreaterThanOrEqual(
         0.24,
       );
