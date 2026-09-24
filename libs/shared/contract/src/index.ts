@@ -24,6 +24,7 @@ export * from './schemas/reviews.js';
 export * from './schemas/site-media.js';
 export * from './schemas/slug.js';
 export * from './schemas/stats.js';
+export * from './schemas/tour-costs.js';
 export * from './schemas/wishlist.js';
 
 // Re-exported so consumers can write `ContractInputs['catalog']['tours']['list']`
