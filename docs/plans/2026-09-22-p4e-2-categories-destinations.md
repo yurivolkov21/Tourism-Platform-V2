@@ -453,14 +453,26 @@ những lỗi ấy. Bản kể đầy đủ nằm ở entry "Vòng review F14" t
   `admin-destinations.controller.ts`, `admin-destinations.int.spec.ts`
 - Modify: `apps/api/src/modules/catalog/catalog.module.ts`
 
-- [ ] **B1.** Int spec TRƯỚC: `list` trả cả hàng đã tắt kèm `tourCount` ·
+- [x] **B1.** Int spec TRƯỚC: `list` trả cả hàng đã tắt kèm `tourCount` ·
       slug trùng → 409 · `update` đổi được `region` và **không** đổi slug ·
       `setActive` không đụng liên kết `tour_destinations` (đếm trước/sau bằng
       nhau — đây là chốt của quyết định "không xoá", spec §2a) · khách → 403.
-- [ ] **B2.** Chạy ĐỎ, rồi viết service + controller đúng khuôn Task 3.
-- [ ] **B3.** Bust `TAGS.TOURS` sau commit.
-- [ ] **B4.** `pnpm gate:int` xanh.
-- [ ] **B5.** Commit: `feat(api): bốn endpoint quản trị điểm đến`
+      *Ghi khi thi công:* lượt chạy đỏ lộ ba ca xanh giả — một route CHƯA tồn
+      tại cũng trả 404 kèm `NOT_FOUND`, và "slug không đổi" đúng sẵn khi lệnh
+      sửa không chạy. Hai ca 404 nay khớp CÂU của contract, ca slug đòi lệnh sửa
+      trả 200 trước.
+- [x] **B2.** Chạy ĐỎ, rồi viết service + controller đúng khuôn Task 3.
+      *Ghi khi thi công:* KHÔNG có khoá advisory (bảng không có `order`) — mỗi
+      lệnh ghi là một câu, bắt `P2002`/`P2025` ngay tại câu ấy (bài học 1–2).
+      Bài học 4 làm ở đây: `apps/api/src/lib/contract-error.ts` (`ContractError`
+      mang mã + `toContractError`), danh mục chuyển sang dùng nó. `mapError`
+      của departures GIỮ NGUYÊN — code departures của F16 nằm ngoài phạm vi
+      F15 — nên nợ G3 mới đóng được hai trên ba bản.
+- [x] **B3.** Bust `TAGS.TOURS` sau commit.
+      *Ghi khi thi công:* có ca int canh thứ tự — cờ theo dõi đọc DB ngay lúc
+      bust được gọi và phải thấy giá trị mới; lệnh ghi hỏng thì không bust.
+- [x] **B4.** `pnpm gate:int` xanh.
+- [x] **B5.** Commit: `feat(api): bốn endpoint quản trị điểm đến`
 
 ## Task 9a — Web chịu được điểm đến đã ẩn (THÊM sau vòng review F14)
 

@@ -8,6 +8,7 @@ import type {
 } from '@tourism/contract';
 import { prisma } from '../../auth/auth.config.js';
 import { Prisma } from '../../generated/prisma/client.js';
+import { ContractError } from '../../lib/contract-error.js';
 import { WebRevalidationService } from '../web-revalidation/web-revalidation.service.js';
 
 /**
@@ -19,23 +20,33 @@ import { WebRevalidationService } from '../web-revalidation/web-revalidation.ser
  * `RESTRICT`, nên một lệnh xoá cũng sẽ chết ở DB với câu trả lời dành cho máy.
  */
 
-export class CategoryNotFoundError extends Error {
+/**
+ * Ba lỗi của vùng mang sẵn MÃ contract (`ContractError`), nên controller đổi
+ * chúng bằng `toContractError` dùng chung thay vì một `mapError` riêng (nợ G3,
+ * rút ở F15). Câu "không tìm thấy" không gửi ra ngoài — câu mặc định của
+ * contract đã đủ, còn câu này mang id để đọc log; hai câu kia thì gửi, vì
+ * chúng mang slug và hướng thật.
+ */
+export class CategoryNotFoundError extends ContractError<'NOT_FOUND'> {
   constructor(id: string) {
-    super(`Category not found: ${id}`);
+    super('NOT_FOUND', `Category not found: ${id}`, false);
   }
 }
 
 /** Slug đã có hàng khác dùng. 409 chứ không 422 — input đúng, thế giới đã đổi. */
-export class SlugTakenError extends Error {
+export class SlugTakenError extends ContractError<'SLUG_TAKEN'> {
   constructor(slug: string) {
-    super(`Slug already taken: ${slug}`);
+    super('SLUG_TAKEN', `Slug already taken: ${slug}`);
   }
 }
 
 /** Đã ở đầu hoặc cuối danh sách, không còn hàng nào để đổi chỗ. */
-export class CannotMoveError extends Error {
+export class CannotMoveError extends ContractError<'CANNOT_MOVE'> {
   constructor(direction: 'up' | 'down') {
-    super(`This category is already at the ${direction === 'up' ? 'start' : 'end'} of the list`);
+    super(
+      'CANNOT_MOVE',
+      `This category is already at the ${direction === 'up' ? 'start' : 'end'} of the list`,
+    );
   }
 }
 

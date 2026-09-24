@@ -6,6 +6,8 @@ import { AdminCategoriesController } from './admin-categories.controller.js';
 import { AdminCategoriesService } from './admin-categories.service.js';
 import { AdminDeparturesController } from './admin-departures.controller.js';
 import { AdminDeparturesService } from './admin-departures.service.js';
+import { AdminDestinationsController } from './admin-destinations.controller.js';
+import { AdminDestinationsService } from './admin-destinations.service.js';
 import { AdminToursController } from './admin-tours.controller.js';
 import { CatalogController } from './catalog.controller.js';
 import { CatalogService } from './catalog.service.js';
@@ -21,6 +23,7 @@ import { DepartureCancelService } from './departure-cancel.service.js';
     AdminToursController,
     AdminDeparturesController,
     AdminCategoriesController,
+    AdminDestinationsController,
   ],
   providers: [
     CatalogService,
@@ -31,6 +34,8 @@ import { DepartureCancelService } from './departure-cancel.service.js';
     DepartureCancelService,
     // F14 (P4e-2): danh mục tour — bề mặt ghi đầu tiên cho bảng này.
     AdminCategoriesService,
+    // F15 (P4e-2): điểm đến — ẩn/hiện, không xoá, không sắp thứ tự.
+    AdminDestinationsService,
   ],
 })
 export class CatalogModule {}
