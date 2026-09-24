@@ -431,12 +431,20 @@ những lỗi ấy. Bản kể đầy đủ nằm ở entry "Vòng review F14" t
 **Produces:** `AdminDestinationRowSchema` (`id` · `slug` · `name` · `country` ·
 `region` · `description` · `isActive` · `tourCount`) và ba input.
 
-- [ ] **B1.** Spec TRƯỚC: slug ≤ 80 · country ≤ 60 mặc định `'Vietnam'` ·
+- [x] **B1.** Spec TRƯỚC: slug ≤ 80 · country ≤ 60 mặc định `'Vietnam'` ·
       `region` dùng `RegionNameSchema` (từ chối chuỗi lạ) · description ≤ 2000 ·
       `update` KHÔNG có slug.
-- [ ] **B2.** Chạy ĐỎ, rồi viết schema + bốn procedure.
-- [ ] **B3.** `pnpm gate:int` xanh.
-- [ ] **B4.** Commit: `feat(contract): thêm admin.destinations với bốn thao tác`
+      *Ghi khi thi công:* mặc định `'Vietnam'` CHỈ ở lệnh tạo; lệnh sửa bắt
+      buộc gửi `country`, vì một client quên ô này mà schema tự điền là âm thầm
+      đổi dữ liệu người ta không chạm. Schema HÀNG để `slug` và `region` lỏng
+      (mô tả thứ DB đang giữ): output mà chặt thì một hàng kiểu cũ làm cả bảng
+      sập 500 đúng lúc admin cần mở nó ra sửa.
+- [x] **B2.** Chạy ĐỎ, rồi viết schema + bốn procedure.
+      *Ghi khi thi công:* bài học 6 và 7 làm ở đây — `SLUG_PATTERN` và
+      `slugSchema(max)` về `slug.ts`, `descriptionSchema(max)` về `common.ts`,
+      danh mục đổi sang dùng cả hai (hành vi không đổi, câu lỗi không đổi).
+- [x] **B3.** `pnpm gate:int` xanh.
+- [x] **B4.** Commit: `feat(contract): thêm admin.destinations với bốn thao tác`
 
 ## Task 8 — API điểm đến
 

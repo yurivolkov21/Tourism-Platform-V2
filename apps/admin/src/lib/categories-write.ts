@@ -9,7 +9,7 @@ import {
   CATEGORY_DESCRIPTION_MAX,
   CATEGORY_NAME_MAX,
   CATEGORY_SLUG_MAX,
-  CATEGORY_SLUG_PATTERN,
+  SLUG_PATTERN,
 } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
 import { createWriteErrorCodec, type TransportFailureCode } from './api/write-error';
@@ -122,9 +122,10 @@ export interface CategoryFormErrors {
  * Bản đầu viết lại `/^[a-z0-9-]+$/` ở đây với chú thích "soi gương" — nhưng
  * gương làm bằng cách gõ lại thì chỉ đúng tới lúc ai đó sửa một bên. Hai hằng
  * `MAX` ngay trên đã import từ contract vì đúng lý do ấy; regex là chỗ duy
- * nhất bị bỏ quên (vòng review F14).
+ * nhất bị bỏ quên (vòng review F14). Từ F15 khuôn ấy là `SLUG_PATTERN` dùng
+ * chung cho cả điểm đến.
  */
-const SLUG_SHAPE = CATEGORY_SLUG_PATTERN;
+const SLUG_SHAPE = SLUG_PATTERN;
 
 /**
  * Soi gương luật server để lỗi đọc-thấy-ngay không phải đi một vòng mạng.

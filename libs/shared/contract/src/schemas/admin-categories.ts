@@ -1,4 +1,6 @@
 import { z } from 'zod';
+import { descriptionSchema } from './common.js';
+import { slugSchema } from './slug.js';
 
 /**
  * Bề mặt danh mục tour phía ADMIN (spec P4e-2 F14).
@@ -31,50 +33,15 @@ export const CATEGORY_NAME_MAX = 120;
 export const CATEGORY_DESCRIPTION_MAX = 500;
 
 /**
- * Slug: chữ thường, số, gạch ngang. Không gạch dưới, không chữ hoa, không rỗng.
- *
- * Chặn rỗng là có lý do thật chứ không phải cho đủ bộ: ô slug ở form tạo điền
- * sẵn bằng `slugifyVietnamese`, mà hàm ấy trả chuỗi RỖNG khi tên toàn ký tự lạ
- * ("!!!"). Không chặn ở đây thì chuỗi rỗng đi thẳng xuống cột `@unique`.
+ * Slug: khuôn DÙNG CHUNG với điểm đến (`SLUG_PATTERN` ở `slug.ts`, bài học 6 của
+ * vòng review F14), trần của bảng này. Đã đo sáu slug đang chạy trên production
+ * — `day`, `package`, `cruise`, `trekking`, `honeymoon`, `seasonal-classics` —
+ * tất cả đều qua.
  */
-/**
- * Khuôn slug — export để phía client soi GƯƠNG chứ không chép tay.
- *
- * Gạch nối chỉ được nằm GIỮA hai cụm chữ-số. Khuôn lỏng `^[a-z0-9-]+$` nhận cả
- * `-`, `---` và `-day-`: `slugifyVietnamese` không bao giờ sinh ra chúng (nó
- * cắt gạch ở hai đầu) nhưng ô slug là text tự do, gõ tay là lọt. Đã đo sáu
- * slug đang chạy trên production — `day`, `package`, `cruise`, `trekking`,
- * `honeymoon`, `seasonal-classics` — tất cả đều qua khuôn siết này.
- *
- * Khai TRƯỚC `CategorySlugSchema`: `.regex()` chạy lúc nạp module, nên một
- * `const` khai sau sẽ vào vùng chết tạm thời.
- */
-export const CATEGORY_SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+export const CategorySlugSchema = slugSchema(CATEGORY_SLUG_MAX);
 
-export const CategorySlugSchema = z
-  .string()
-  .min(1)
-  .max(CATEGORY_SLUG_MAX)
-  .regex(
-    CATEGORY_SLUG_PATTERN,
-    'slug must be lowercase letters and digits, with single hyphens between words',
-  );
-
-/**
- * Ô mô tả: cắt khoảng trắng, và RỖNG thì thành `null`.
- *
- * `.trim().max().nullable()` một mình chỉ biến `undefined` thành `null` —
- * chuỗi rỗng hay toàn khoảng trắng vẫn đi thẳng xuống cột nullable. Khi đó
- * `row.description ?? 'No description'` không cứu được (chuỗi rỗng không
- * nullish) và bảng in một dòng trắng. Server action không phải cổng duy nhất
- * tới endpoint này, nên chốt phải nằm ở schema.
- */
-const CategoryDescriptionSchema = z
-  .string()
-  .trim()
-  .max(CATEGORY_DESCRIPTION_MAX)
-  .nullable()
-  .transform((value) => (value === null || value === '' ? null : value));
+/** Ô mô tả: cắt khoảng trắng, RỖNG thì thành `null` — xem `descriptionSchema`. */
+const CategoryDescriptionSchema = descriptionSchema(CATEGORY_DESCRIPTION_MAX);
 
 /** Một hàng của bảng `/categories` phía admin — gồm cả hàng đã tắt. */
 export const AdminCategoryRowSchema = z.object({

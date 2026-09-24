@@ -23,6 +23,12 @@ import {
   AdminDepartureUpdateInputSchema,
 } from './schemas/admin-departures.js';
 import {
+  AdminDestinationCreateInputSchema,
+  AdminDestinationRowSchema,
+  AdminDestinationSetActiveInputSchema,
+  AdminDestinationUpdateInputSchema,
+} from './schemas/admin-destinations.js';
+import {
   AdminBookingDetailSchema,
   AdminBookingsListQuerySchema,
   AdminRefundInputSchema,
@@ -1133,6 +1139,58 @@ export const contract = {
           },
         })
         .output(z.array(AdminCategoryRowSchema)),
+    },
+    /**
+     * Điểm đến phía admin (spec P4e-2 F15) — bốn thao tác, KHÔNG có xoá và
+     * KHÔNG có sắp thứ tự (bảng này không có cột `order`).
+     *
+     * Không xoá vì khoá ngoại `tour_destinations` khai `ON DELETE CASCADE`: DB
+     * sẽ không chặn, nó im lặng gỡ điểm đến khỏi mọi tour. Ẩn thì đảo ngược
+     * được bằng một cú bấm, và mọi liên kết tour còn nguyên (spec §2a).
+     *
+     * `region` ghi qua `RegionNameSchema` — danh sách chọn ba vùng, không phải
+     * chữ tự do (spec §2b, ADR-0045). `update` không mang `slug` (spec §2c).
+     * `SLUG_TAKEN` là 409 cùng lý lẽ của danh mục: input hợp lệ, thế giới đã đổi.
+     *
+     * Guard `AuthGuard` + `@Roles(ADMIN)` ở controller như mọi endpoint admin.
+     */
+    destinations: {
+      list: oc
+        .route({
+          method: 'GET',
+          path: '/api/admin/destinations',
+          summary: 'All destinations (admin, including hidden) with published-tour counts',
+        })
+        .output(z.array(AdminDestinationRowSchema)),
+      create: oc
+        .route({
+          method: 'POST',
+          path: '/api/admin/destinations',
+          summary: 'Add a destination',
+        })
+        .input(AdminDestinationCreateInputSchema)
+        .errors({
+          SLUG_TAKEN: { status: 409, message: 'Another destination already uses this slug' },
+        })
+        .output(AdminDestinationRowSchema),
+      update: oc
+        .route({
+          method: 'POST',
+          path: '/api/admin/destinations/{id}',
+          summary: 'Edit the name, country, region or description of one destination',
+        })
+        .input(AdminDestinationUpdateInputSchema)
+        .errors({ NOT_FOUND: { status: 404, message: 'Destination not found' } })
+        .output(AdminDestinationRowSchema),
+      setActive: oc
+        .route({
+          method: 'POST',
+          path: '/api/admin/destinations/{id}/active',
+          summary: 'Show or hide a destination, without touching the tours linked to it',
+        })
+        .input(AdminDestinationSetActiveInputSchema)
+        .errors({ NOT_FOUND: { status: 404, message: 'Destination not found' } })
+        .output(AdminDestinationRowSchema),
     },
     /**
      * Chuyến khởi hành của MỘT tour (spec P4e-1 F12) — bề mặt GHI đầu tiên

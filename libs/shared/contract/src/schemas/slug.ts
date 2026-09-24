@@ -1,5 +1,7 @@
+import { z } from 'zod';
+
 /**
- * Bỏ dấu tiếng Việt, và sinh slug từ tên tiếng Việt.
+ * Bỏ dấu tiếng Việt, sinh slug từ tên tiếng Việt, và khuôn slug dùng chung.
  *
  * ## `foldAccents` sống ở đây, không ở `apps/web`
  *
@@ -77,8 +79,8 @@ export function foldAccents(value: string): string {
  * phải nhớ sửa khi cột đổi độ rộng.
  *
  * Trả chuỗi RỖNG khi không còn gì dùng được (tên toàn ký tự lạ). Không trả một
- * dấu gạch: `CATEGORY_SLUG_PATTERN` từ chối `'-'`, nhưng trả về một thứ chắc
- * chắn bị từ chối là để người ta thấy một câu lỗi khó hiểu ở ô slug.
+ * dấu gạch: `SLUG_PATTERN` từ chối `'-'`, nhưng trả về một thứ chắc chắn bị từ
+ * chối là để người ta thấy một câu lỗi khó hiểu ở ô slug.
  */
 export function slugifyVietnamese(value: string, maxLength: number): string {
   const base = foldAccents(value)
@@ -90,4 +92,40 @@ export function slugifyVietnamese(value: string, maxLength: number): string {
   // Cắt RỒI mới trim lần hai: nhát cắt có thể rơi đúng vào một dấu phân cách,
   // và một slug kết thúc bằng gạch vừa xấu vừa khác thứ người ta tưởng đã đặt.
   return base.slice(0, maxLength).replace(/-+$/, '');
+}
+
+/**
+ * Khuôn slug của MỌI bảng catalog — chữ thường, số, và gạch nối chỉ nằm GIỮA
+ * hai cụm chữ-số. Export để phía client soi GƯƠNG chứ không chép tay.
+ *
+ * Sống ở đây chứ không ở file danh mục (bài học 6 của vòng review F14): khuôn
+ * ấy từng mang tên `CATEGORY_SLUG_PATTERN` trong khi nó không riêng gì danh
+ * mục, và điểm đến là bảng thứ hai cần đúng luật này.
+ *
+ * Khuôn lỏng `^[a-z0-9-]+$` nhận cả `-`, `---` và `-day-`: `slugifyVietnamese`
+ * không bao giờ sinh ra chúng (nó cắt gạch ở hai đầu) nhưng ô slug là text tự
+ * do, gõ tay là lọt. Đã đo: sáu slug danh mục trên production (22/09) và mười
+ * tám slug điểm đến của fixture seed mà production nạp (24/09) đều qua khuôn này.
+ */
+export const SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+
+/**
+ * Câu lỗi của khuôn — MỘT câu cho mọi bảng, vì nó đi thẳng ra response 400 của
+ * API. Câu mà admin đọc trên form thì nằm ở `@tourism/i18n` (`slugShape`), kèm
+ * một ví dụ hợp lệ.
+ */
+const SLUG_SHAPE_MESSAGE =
+  'slug must be lowercase letters and digits, with single hyphens between words';
+
+/**
+ * Schema slug theo trần cột của từng bảng (danh mục 60, điểm đến 80). Nhận trần
+ * qua tham số cùng lý do `slugifyVietnamese`: một schema tự biết trần của hai
+ * bảng khác nhau là một schema biết quá nhiều.
+ *
+ * Chặn rỗng là có lý do thật: ô slug ở form tạo điền sẵn bằng
+ * `slugifyVietnamese`, mà hàm ấy trả chuỗi RỖNG khi tên toàn ký tự lạ ("!!!").
+ * Không chặn ở đây thì chuỗi rỗng đi thẳng xuống cột `@unique`.
+ */
+export function slugSchema(maxLength: number) {
+  return z.string().min(1).max(maxLength).regex(SLUG_PATTERN, SLUG_SHAPE_MESSAGE);
 }

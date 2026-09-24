@@ -1,5 +1,6 @@
-import { CATEGORY_SLUG_MAX, CATEGORY_SLUG_PATTERN } from './admin-categories.js';
-import { foldAccents, slugifyVietnamese } from './slug.js';
+import { CATEGORY_SLUG_MAX, CategorySlugSchema } from './admin-categories.js';
+import { DESTINATION_SLUG_MAX, DestinationSlugSchema } from './admin-destinations.js';
+import { foldAccents, SLUG_PATTERN, slugifyVietnamese, slugSchema } from './slug.js';
 
 /**
  * Sinh slug từ tên tiếng Việt (spec P4e-2 §2c).
@@ -13,13 +14,9 @@ import { foldAccents, slugifyVietnamese } from './slug.js';
  * anchor mục lục nên xoá sạch ký tự có dấu — `Đà Lạt` ra `l-t`.
  */
 
-/**
- * Trần thật của hai cột dùng hàm này. Danh mục lấy từ contract (một nguồn);
- * điểm đến còn viết số ở đây vì `admin-destinations.ts` là việc của F15 — đổi
- * sang hằng thật ngay khi file ấy có.
- */
+/** Trần thật của hai cột dùng hàm này — cả hai lấy từ contract, một nguồn. */
 const CATEGORY_MAX = CATEGORY_SLUG_MAX;
-const DESTINATION_MAX = 80;
+const DESTINATION_MAX = DESTINATION_SLUG_MAX;
 
 describe('slugifyVietnamese', () => {
   it('bỏ dấu tiếng Việt thay vì xoá ký tự', () => {
@@ -47,12 +44,12 @@ describe('slugifyVietnamese', () => {
     );
   });
 
-  it('kết quả luôn qua được `CATEGORY_SLUG_PATTERN`, hoặc là chuỗi rỗng', () => {
+  it('kết quả luôn qua được `SLUG_PATTERN`, hoặc là chuỗi rỗng', () => {
     // Hàm sinh và khuôn kiểm phải khớp nhau: sinh ra thứ chính schema từ chối
     // là bày cho admin một câu lỗi ngay trên ô vừa tự điền.
     for (const name of ['Đà Lạt', '  Hạ Long  ', 'A---B', '!!!', 'Tour 2026', '-Huế-']) {
       const slug = slugifyVietnamese(name, CATEGORY_MAX);
-      if (slug !== '') expect(CATEGORY_SLUG_PATTERN.test(slug)).toBe(true);
+      if (slug !== '') expect(SLUG_PATTERN.test(slug)).toBe(true);
     }
   });
   it('`đ` và `Đ` thành `d` — NFD không tách được chữ này', () => {
@@ -110,5 +107,49 @@ describe('foldAccents', () => {
     expect(foldAccents('bún chả')).toBe('bun cha');
     expect(foldAccents('HỘI AN')).toBe('hoi an');
     expect(foldAccents('plain text')).toBe('plain text');
+  });
+});
+
+describe('SLUG_PATTERN và slugSchema — MỘT khuôn cho mọi bảng', () => {
+  // Bài học 6 của vòng review F14: khuôn slug từng mang tên `CATEGORY_SLUG_PATTERN`
+  // và nằm ở file danh mục, trong khi nó không riêng gì danh mục. Điểm đến dùng
+  // lại CHÍNH khuôn ấy — hai bản khuôn là hai luật slug trôi xa nhau.
+
+  it('gạch nối chỉ nằm GIỮA hai cụm chữ-số', () => {
+    for (const slug of ['-', '---', '-day', 'day-', 'day--trips', 'Day', 'day_trips', '']) {
+      expect(SLUG_PATTERN.test(slug), slug).toBe(false);
+    }
+    for (const slug of ['day', 'day-trips', 'ho-chi-minh-city', 'tour-2026']) {
+      expect(SLUG_PATTERN.test(slug), slug).toBe(true);
+    }
+  });
+
+  it('`slugSchema` cắt theo trần do chỗ gọi truyền vào', () => {
+    const schema = slugSchema(5);
+
+    expect(schema.safeParse('abcde').success).toBe(true);
+    expect(schema.safeParse('abcdef').success).toBe(false);
+    expect(schema.safeParse('').success).toBe(false);
+    expect(schema.safeParse('ab-').success).toBe(false);
+  });
+
+  it('danh mục và điểm đến báo CÙNG một câu cho cùng một slug hỏng', () => {
+    // Câu lỗi ấy đi thẳng ra response 400 của API; hai bảng nói hai câu khác
+    // nhau cho cùng một luật là dấu hiệu luật đã tách làm hai.
+    //
+    // So CẢ danh sách câu, không riêng câu đầu: một luật thứ hai gắn thêm vào
+    // một bảng vẫn để câu đầu trùng nhau (đo lúc kiểm đột biến).
+    const messages = (schema: typeof CategorySlugSchema) =>
+      schema.safeParse('day--trips').error?.issues.map((issue) => issue.message);
+
+    expect(messages(CategorySlugSchema)).toHaveLength(1);
+    expect(messages(DestinationSlugSchema)).toEqual(messages(CategorySlugSchema));
+  });
+
+  it('hai bảng giữ hai TRẦN riêng — 60 cho danh mục, 80 cho điểm đến', () => {
+    const slug = 'a'.repeat(70);
+
+    expect(CategorySlugSchema.safeParse(slug).success).toBe(false);
+    expect(DestinationSlugSchema.safeParse(slug).success).toBe(true);
   });
 });

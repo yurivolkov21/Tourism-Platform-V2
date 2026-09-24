@@ -4592,7 +4592,7 @@ export const messages = {
           nameRequired: 'Give the category a name.',
           slugRequired: 'Give the category a slug.',
           /**
-           * Phải nói ĐÚNG luật `CATEGORY_SLUG_PATTERN`: gạch nối chỉ nằm GIỮA hai
+           * Phải nói ĐÚNG luật `SLUG_PATTERN`: gạch nối chỉ nằm GIỮA hai
            * cụm chữ-số. Câu cũ "lowercase letters, digits and hyphens only" bảo
            * rằng gạch nối được phép, trong khi gõ đúng một dấu `-` lại bị từ chối
            * (lượt thử tay F14, 23/09). Ví dụ trong câu phải là slug hợp lệ — có

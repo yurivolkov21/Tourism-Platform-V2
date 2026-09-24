@@ -126,3 +126,25 @@ export const CalendarMonthSchema = z
   .regex(/^(19|20)\d{2}-(0[1-9]|1[0-2])$/, 'month must be YYYY-MM between 1900 and 2099');
 
 export type CalendarMonth = z.output<typeof CalendarMonthSchema>;
+
+/**
+ * Ô mô tả tự do của catalog: cắt khoảng trắng, và RỖNG thì thành `null`.
+ *
+ * `.trim().max().nullable()` một mình để chuỗi rỗng hay toàn khoảng trắng đi
+ * thẳng xuống cột nullable. Khi đó `row.description ?? 'No description'` không
+ * cứu được (chuỗi rỗng không nullish) và bảng in một dòng trắng. Server action
+ * không phải cổng duy nhất tới endpoint, nên chốt phải nằm ở schema (bài học 7
+ * của vòng review F14).
+ *
+ * Là HÀM dựng theo trần vì hai bảng khác độ rộng cột (danh mục 500, điểm đến
+ * 2000). KHÔNG tự `.default(null)`: lệnh tạo thêm vào, lệnh sửa thì không — một
+ * client quên gửi ô mô tả ở lệnh sửa không được lặng lẽ xoá mô tả đang có.
+ */
+export function descriptionSchema(maxLength: number) {
+  return z
+    .string()
+    .trim()
+    .max(maxLength)
+    .nullable()
+    .transform((value) => (value === null || value === '' ? null : value));
+}
