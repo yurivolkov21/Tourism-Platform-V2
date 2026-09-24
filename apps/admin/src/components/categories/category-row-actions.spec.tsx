@@ -97,13 +97,19 @@ describe('CategoryRowActions — nút nào được bấm', () => {
     const user = userEvent.setup();
     const { vm, move } = renderRow([row(1), row(2)], 0, { disabled: true });
     const down = screen.getByRole('button', { name: t.move.downLabel(vm.name) });
+    const edit = screen.getByRole('button', { name: t.edit.actionLabel(vm.name) });
 
-    expect(screen.getByRole('button', { name: t.edit.actionLabel(vm.name) })).toBeDisabled();
+    // Nút mở hộp thoại khoá bằng `aria-disabled` để vẫn nhận focus (vòng review
+    // F15); mũi tên không mở hộp thoại nào nên giữ `disabled` thật.
+    expect(edit).toHaveAttribute('aria-disabled', 'true');
+    expect(edit).not.toHaveAttribute('disabled');
     expect(down).toBeDisabled();
 
     await user.click(down);
+    await user.click(edit);
 
     expect(move).not.toHaveBeenCalled();
+    expect(screen.queryByText(t.edit.dialog.title)).not.toBeInTheDocument();
   });
 
   it('bấm xuống gửi đúng hướng và đúng id', async () => {
@@ -178,9 +184,12 @@ describe('CategoryRowActions — hộp xác nhận ẩn danh mục', () => {
   it('xác nhận: gửi cờ NGƯỢC với trạng thái hiện tại, toast đọc TỪ RESPONSE', async () => {
     const user = userEvent.setup();
     const rows = [row(1, { name: 'Day trips' }), row(2)];
+    // Response KHÁC request (một admin khác vừa đổi tên): mock phản chiếu đúng
+    // request thì ca này không phân biệt được toast dựng từ response với toast
+    // dựng từ hàng đang hiện (vòng review F15).
     const setActive = vi.fn(async () => ({
       ok: true as const,
-      row: { ...(rows[0] as AdminCategoryRow), isActive: false },
+      row: { ...(rows[0] as AdminCategoryRow), isActive: false, name: 'Short trips' },
     }));
     const { vm } = renderRow(rows, 0, { setActive });
 
@@ -189,7 +198,7 @@ describe('CategoryRowActions — hộp xác nhận ẩn danh mục', () => {
 
     await waitFor(() => expect(setActive).toHaveBeenCalledWith({ id: vm.id, isActive: false }));
     expect(success).toHaveBeenCalledWith(t.setActive.toast.hiddenTitle, {
-      description: t.setActive.toast.hiddenBody('Day trips'),
+      description: t.setActive.toast.hiddenBody('Short trips'),
     });
   });
 });

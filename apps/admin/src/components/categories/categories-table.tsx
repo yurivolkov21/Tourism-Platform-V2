@@ -211,6 +211,8 @@ export function CategoriesTable({ rows, create, update, setActive, move }: Categ
               type="button"
               size="sm"
               disabled={busyValue.busy}
+              // Hộp Add đóng đúng lúc bảng làm mới — focus phải quay về được nút này.
+              focusableWhenDisabled
               onClick={() => setAdding(true)}
             >
               <PlusIcon data-icon="inline-start" aria-hidden="true" />

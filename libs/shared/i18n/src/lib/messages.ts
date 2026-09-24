@@ -4617,7 +4617,7 @@ export const messages = {
            * ca test ghim điều đó.
            */
           slugShape: SLUG_SHAPE_COPY,
-          tooLong: (max: number) => `Keep it under ${max} characters.`,
+          tooLong: (max: number) => `Keep it to ${max} characters or fewer.`,
         },
       },
       create: {
@@ -4756,7 +4756,7 @@ export const messages = {
           slugShape: SLUG_SHAPE_COPY,
           countryRequired: 'Give the destination a country.',
           regionRequired: 'Choose the region it belongs to.',
-          tooLong: (max: number) => `Keep it under ${max} characters.`,
+          tooLong: (max: number) => `Keep it to ${max} characters or fewer.`,
         },
       },
       create: {
@@ -4789,14 +4789,19 @@ export const messages = {
       setActive: {
         hide: CATALOG_VISIBILITY_COPY.hide,
         show: CATALOG_VISIBILITY_COPY.show,
-        hideLabel: (name: string) => `Hide ${name} from the destination pages`,
-        showLabel: (name: string) => `Show ${name} on the destination pages`,
+        /** Chỉ tên, không nói "destination pages": điểm đến chưa có vùng vốn không
+            nằm trên trang vùng nào (vòng review F15). */
+        hideLabel: (name: string) => `Hide ${name}`,
+        showLabel: (name: string) => `Show ${name}`,
         rows: { destination: 'Destination', region: 'Region', tours: 'Published tours' },
         dialog: {
           hideTitle: 'Hide this destination?',
           /** Ba chỗ nó rời khỏi — dòng `/`, `/destinations`, `/tours` của bảng đo. */
           hideBody:
             'It leaves the destination pages, the tour filter and — if it is one of the featured places — the home page.',
+          /** Điểm đến chưa có vùng: không trang vùng nào liệt kê nó, nên không nói "destination pages". */
+          hideBodyNoRegion:
+            'It leaves the tour filter and — if it is one of the featured places — the home page.',
           /**
            * Bốn hệ quả KHÔNG hiển nhiên của bảng đo §4.6, mỗi câu một dòng danh
            * sách. Hai câu đầu là hai dòng của trang vùng (`toursInRegion` gom
@@ -4806,11 +4811,30 @@ export const messages = {
            * thấy nó biến khỏi hộ chiếu của mình.
            */
           hideRegionTours: (region: string) =>
-            `Tours whose only stop in ${region} is this place drop off the ${region} page.`,
-          hideRegionOwnTours: (region: string) =>
-            `Tours that stay inside ${region} and stop here no longer count toward that page's trip-length, day-trip and longest-trip figures.`,
+            `Tours whose only stop in ${region} is this place drop off the ${region} page and out of its tour count.`,
+          /**
+           * Theo TỪNG vùng, vì mỗi trang vùng dựng những khu khác nhau từ chuyến
+           * RIÊNG của vùng (`ownToursInRegion`): ô "Longest trip" ở cả ba, khu
+           * "How long have you got" chỉ miền Bắc, khu chuyến một ngày chỉ miền
+           * Trung (`region-theme.ts`). Một câu chung từng hứa ba con số cho cả ba
+           * vùng (vòng review F15).
+           */
+          hideRegionOwnTours: {
+            north: (region: string) =>
+              `Tours that stay inside ${region} and stop here no longer count toward its “Longest trip” figure or its “How long have you got” section.`,
+            central: (region: string) =>
+              `Tours that stay inside ${region} and stop here no longer count toward its “Longest trip” figure or its day-trip section.`,
+            south: (region: string) =>
+              `Tours that stay inside ${region} and stop here no longer count toward its “Longest trip” figure.`,
+          },
+          /** Ô "Destinations" của About và dòng "across n destinations" của /tours đếm điểm đến đang hiện. */
+          hideCounts: 'The destination counts on the About page and the tours page drop by one.',
+          /**
+           * Sổ hành trình dựng cả mục chỉ có chuyến SẮP đi, và con số "places
+           * visited" chỉ đếm điểm đến đang hiện — ẩn là cả hai đổi theo.
+           */
           hidePassport:
-            'Travellers who have been there no longer see it in the travel log of their passport. Their bookings are untouched.',
+            'Travellers who have been there, or have a trip there coming up, no longer see it in their passport’s travel log or its places count. Their bookings are untouched.',
           hideJournal:
             'If the journal has a tag with the same slug, that tag moves from Places to Topics.',
           /**
@@ -4822,9 +4846,13 @@ export const messages = {
           hideSubmit: 'Hide destination',
           hideSubmitting: 'Hiding…',
           showTitle: 'Show this destination again?',
-          showBody:
-            'Everything that hiding it changed comes back — the destination pages, the tour filter and travellers’ passports.',
-          showWarning: 'The tours that visit it were never hidden, so they do not change.',
+          showBody: 'Everything that hiding it changed comes back.',
+          /**
+           * Câu TRẤN AN, và chỉ nói điều đúng: tour chưa từng bị gỡ bán. Câu chép
+           * từ danh mục ("so they do not change") sai với điểm đến — hiện lại thì
+           * tour quay về trang vùng và các con số (vòng review F15).
+           */
+          showWarning: 'The tours that visit it were never taken off sale.',
           showSubmit: 'Show destination',
           showSubmitting: 'Showing…',
         },
@@ -4833,10 +4861,16 @@ export const messages = {
         },
         toast: {
           hiddenTitle: 'Destination hidden',
-          hiddenBody: (name: string) => `${name} is off the destination pages and the tour filter.`,
+          /** `onRegionPage`: điểm đến có vùng mới nằm trên trang vùng (vòng review F15). */
+          hiddenBody: (name: string, onRegionPage: boolean) =>
+            onRegionPage
+              ? `${name} is off the destination pages and the tour filter.`
+              : `${name} is off the tour filter.`,
           shownTitle: 'Destination visible',
-          shownBody: (name: string) =>
-            `${name} is back on the destination pages and the tour filter.`,
+          shownBody: (name: string, onRegionPage: boolean) =>
+            onRegionPage
+              ? `${name} is back on the destination pages and the tour filter.`
+              : `${name} is back in the tour filter.`,
         },
       },
     },

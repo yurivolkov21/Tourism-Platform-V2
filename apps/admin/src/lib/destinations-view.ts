@@ -1,4 +1,10 @@
-import { type AdminDestinationRow, findRegion, REGIONS, type RegionName } from '@tourism/contract';
+import {
+  type AdminDestinationRow,
+  findRegion,
+  REGIONS,
+  type RegionKey,
+  type RegionName,
+} from '@tourism/contract';
 import { messages } from '@tourism/i18n';
 
 /**
@@ -28,6 +34,11 @@ export interface DestinationRowVM {
    * sửa chọn sẵn ô vùng bằng giá trị này; `null` thì ô trống, bắt chọn lại.
    */
   regionName: RegionName | null;
+  /**
+   * Khoá của cùng vùng ấy (`null` khi không khớp) — hộp ẩn chọn câu theo khoá, vì
+   * mỗi trang vùng dựng những khu khác nhau (vòng review F15).
+   */
+  regionKey: RegionKey | null;
   /** Nhãn cột Region: tên vùng, hoặc một câu báo "không có vùng". */
   regionLabel: string;
   /** Mô tả để HIỂN THỊ: bản thô, hoặc một câu thay thế khi trống. */
@@ -53,6 +64,7 @@ export function toDestinationRowVM(row: AdminDestinationRow): DestinationRowVM {
     name: row.name,
     country: row.country,
     regionName: region?.name ?? null,
+    regionKey: region?.key ?? null,
     regionLabel: region?.name ?? t.list.noRegion,
     description: row.description ?? t.list.inherited,
     descriptionValue: row.description ?? '',

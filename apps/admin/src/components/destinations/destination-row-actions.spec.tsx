@@ -74,7 +74,8 @@ describe('DestinationRowActions — hộp xác nhận ẩn', () => {
     expect(screen.getByText('4')).toBeInTheDocument();
     for (const line of [
       t.setActive.dialog.hideRegionTours('Central Vietnam'),
-      t.setActive.dialog.hideRegionOwnTours('Central Vietnam'),
+      t.setActive.dialog.hideRegionOwnTours.central('Central Vietnam'),
+      t.setActive.dialog.hideCounts,
       t.setActive.dialog.hidePassport,
       t.setActive.dialog.hideJournal,
     ]) {
@@ -102,7 +103,9 @@ describe('DestinationRowActions — hộp xác nhận ẩn', () => {
     await user.click(screen.getByRole('button', { name: t.setActive.hideLabel(vm.name) }));
 
     await screen.findByText(t.setActive.dialog.hidePassport);
+    expect(screen.getByText(t.setActive.dialog.hideBodyNoRegion)).toBeInTheDocument();
     expect(screen.getAllByRole('listitem').map((item) => item.textContent)).toEqual([
+      t.setActive.dialog.hideCounts,
       t.setActive.dialog.hidePassport,
       t.setActive.dialog.hideJournal,
     ]);
@@ -120,15 +123,32 @@ describe('DestinationRowActions — hộp xác nhận ẩn', () => {
   });
 
   it('xác nhận: gửi cờ NGƯỢC với trạng thái hiện tại, toast đọc TỪ RESPONSE', async () => {
+    // Response KHÁC request — một admin khác vừa đổi tên và bỏ vùng. Mock phản
+    // chiếu đúng request thì ca này không phân biệt được toast dựng từ response
+    // với toast dựng từ hàng đang hiện (vòng review F15).
     const user = userEvent.setup();
-    const { vm, setActive } = renderRow(row());
+    const data = row();
+    const vm = toDestinationRowVM(data);
+    const setActive = vi.fn(async () => ({
+      ok: true as const,
+      row: { ...data, isActive: false, name: 'Phố cổ Hội An', region: null },
+    }));
+    render(
+      <DestinationRowActions
+        row={vm}
+        update={vi.fn()}
+        setActive={setActive}
+        disabled={false}
+        onSettled={vi.fn()}
+      />,
+    );
 
     await user.click(screen.getByRole('button', { name: t.setActive.hideLabel(vm.name) }));
     await user.click(await screen.findByRole('button', { name: t.setActive.dialog.hideSubmit }));
 
     await waitFor(() => expect(setActive).toHaveBeenCalledWith({ id: vm.id, isActive: false }));
     expect(success).toHaveBeenCalledWith(t.setActive.toast.hiddenTitle, {
-      description: t.setActive.toast.hiddenBody('Hội An'),
+      description: t.setActive.toast.hiddenBody('Phố cổ Hội An', false),
     });
   });
 
@@ -178,18 +198,28 @@ describe('DestinationRowActions — form sửa', () => {
     });
   });
 
-  it('bảng đang bận: khoá cả hai nút, và bấm vào cũng không mở gì', async () => {
+  it('bảng đang bận: khoá cả hai nút mà vẫn nhận focus, và bấm vào cũng không mở gì', async () => {
+    // Khoá bằng `aria-disabled`, KHÔNG bằng thuộc tính `disabled`: hộp thoại đóng
+    // đúng lúc bảng làm mới, và Base UI trả focus về nút đã mở nó — nút
+    // `disabled` thật thì focus rơi về <body> (vòng review F15).
     // Khẳng định "không mở" chỉ có nghĩa khi ĐÃ bấm (bài học 15, ca xanh giả
     // của F14).
     const user = userEvent.setup();
     const { vm } = renderRow(row(), { disabled: true });
     const edit = screen.getByRole('button', { name: t.edit.actionLabel(vm.name) });
+    const hide = screen.getByRole('button', { name: t.setActive.hideLabel(vm.name) });
 
-    expect(edit).toBeDisabled();
-    expect(screen.getByRole('button', { name: t.setActive.hideLabel(vm.name) })).toBeDisabled();
+    for (const button of [edit, hide]) {
+      expect(button).toHaveAttribute('aria-disabled', 'true');
+      expect(button).not.toHaveAttribute('disabled');
+    }
+    edit.focus();
+    expect(edit).toHaveFocus();
 
     await user.click(edit);
+    await user.click(hide);
 
     expect(screen.queryByText(t.edit.dialog.title)).not.toBeInTheDocument();
+    expect(screen.queryByText(t.setActive.dialog.hideTitle)).not.toBeInTheDocument();
   });
 });

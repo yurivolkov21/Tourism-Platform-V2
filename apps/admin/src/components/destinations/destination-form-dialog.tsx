@@ -16,7 +16,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@tourism/ui/components/dialog';
-import { Input } from '@tourism/ui/components/input';
+import { Input, inputClassName } from '@tourism/ui/components/input';
 import { Textarea } from '@tourism/ui/components/textarea';
 import { cn } from '@tourism/ui/lib/utils';
 import { useState } from 'react';
@@ -51,12 +51,10 @@ import { useConfirmWrite } from '@/lib/use-confirm-write';
 const t = messages.admin.destinations;
 
 /**
- * Bộ class của `Input` kit UI, cho `<select>` gốc trông cùng họ với ô bên cạnh.
- * Chỉ token màu (luật 6) — chép từ `libs/shared/ui/src/components/input.tsx`
- * chứ không sửa file dùng chung ấy vì một chỗ dùng.
+ * `<select>` gốc mặc CHÍNH bộ class của `Input` kit UI (export từ kit), cộng con
+ * trỏ tay — trông cùng họ với ô bên cạnh mà không chép chuỗi (vòng review F15).
  */
-const SELECT_CLASS =
-  'h-8 w-full min-w-0 cursor-pointer rounded-lg border border-input bg-transparent px-2.5 py-1 text-base transition-colors outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:cursor-not-allowed disabled:bg-input/50 disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 md:text-sm dark:bg-input/30 dark:disabled:bg-input/80 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40';
+const SELECT_CLASS = cn(inputClassName, 'cursor-pointer');
 
 export interface DestinationFormDialogProps<Code extends string> {
   copy: { title: string; body: string; submit: string; submitting: string };

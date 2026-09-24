@@ -4,9 +4,13 @@ import {
   type AdminDestinationSetActiveInput,
   type AdminDestinationUpdateInput,
   DESTINATION_COUNTRY_MAX,
+  DESTINATION_DEFAULT_COUNTRY,
   DESTINATION_DESCRIPTION_MAX,
   DESTINATION_NAME_MAX,
   DESTINATION_SLUG_MAX,
+  findRegion,
+  REGIONS,
+  type RegionKey,
   RegionNameSchema,
   SLUG_PATTERN,
 } from '@tourism/contract';
@@ -177,6 +181,21 @@ export function destinationUpdatePayload(
  * này vào (qua `findRegion`), hoặc rỗng khi chuỗi trong DB không khớp vùng nào
  * — admin phải chọn lại, và lưu xong là cột mang đúng một trong ba tên.
  */
+/**
+ * Giá trị đầu của hộp Add — quốc gia điền sẵn theo contract, mọi ô khác trống.
+ * Bảng dùng CHÍNH hàm này, nên spec canh được giá trị thật mà admin thấy (vòng
+ * review F15: spec của hộp thoại từng tự cấp "Vietnam" qua fixture).
+ */
+export function newDestinationFormValues(): DestinationFormValues {
+  return {
+    name: '',
+    slug: '',
+    country: DESTINATION_DEFAULT_COUNTRY,
+    region: '',
+    description: '',
+  };
+}
+
 export function destinationEditValues(row: DestinationRowVM): DestinationFormValues {
   return {
     name: row.name,
@@ -190,8 +209,12 @@ export function destinationEditValues(row: DestinationRowVM): DestinationFormVal
 
 // ── Dialog ẩn/hiện ──────────────────────────────────────────────────────────
 
-/** Copy của `ConfirmWriteDialog` cho một trong hai chiều ẩn/hiện. */
-export function setActiveDialogCopy(next: boolean) {
+/**
+ * Copy của `ConfirmWriteDialog` cho một trong hai chiều ẩn/hiện. Thân hộp ẩn
+ * đổi theo vùng: điểm đến chưa có vùng không nằm trên trang vùng nào, nên câu
+ * không được nói nó "rời các trang điểm đến" (vòng review F15).
+ */
+export function setActiveDialogCopy(next: boolean, row: { regionKey: RegionKey | null }) {
   const d = t.setActive.dialog;
   return next
     ? {
@@ -204,7 +227,7 @@ export function setActiveDialogCopy(next: boolean) {
       }
     : {
         title: d.hideTitle,
-        body: d.hideBody,
+        body: row.regionKey ? d.hideBody : d.hideBodyNoRegion,
         warning: d.hideWarning,
         submit: d.hideSubmit,
         submitting: d.hideSubmitting,
@@ -217,11 +240,17 @@ export function setActiveDialogCopy(next: boolean) {
  * B1). Hai câu về trang vùng chỉ có mặt khi điểm đến thật sự nằm trên một
  * trang vùng: chưa có vùng thì nói về một trang không tồn tại là nói sai.
  */
-export function hideConsequences(row: { regionName: string | null }): string[] {
+export function hideConsequences(row: {
+  regionName: string | null;
+  regionKey: RegionKey | null;
+}): string[] {
   const d = t.setActive.dialog;
-  const region = row.regionName;
+  const { regionName, regionKey } = row;
   return [
-    ...(region ? [d.hideRegionTours(region), d.hideRegionOwnTours(region)] : []),
+    ...(regionName && regionKey
+      ? [d.hideRegionTours(regionName), d.hideRegionOwnTours[regionKey](regionName)]
+      : []),
+    d.hideCounts,
     d.hidePassport,
     d.hideJournal,
   ];
@@ -244,10 +273,14 @@ export function setActiveConfirmRows(row: {
   ];
 }
 
-/** Toast của nhánh thành công — hai giọng, đọc trạng thái TỪ RESPONSE. */
+/**
+ * Toast của nhánh thành công — hai giọng, đọc trạng thái TỪ RESPONSE, kể cả vùng:
+ * điểm đến không khớp vùng nào thì không nhắc "destination pages".
+ */
 export function setActiveToast(row: AdminDestinationRow) {
   const toast = t.setActive.toast;
+  const onRegionPage = findRegion(REGIONS, row.region) !== undefined;
   return row.isActive
-    ? { title: toast.shownTitle, description: toast.shownBody(row.name) }
-    : { title: toast.hiddenTitle, description: toast.hiddenBody(row.name) };
+    ? { title: toast.shownTitle, description: toast.shownBody(row.name, onRegionPage) }
+    : { title: toast.hiddenTitle, description: toast.hiddenBody(row.name, onRegionPage) };
 }

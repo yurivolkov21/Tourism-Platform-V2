@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { type AdminDestinationRow, REGIONS } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { newDestinationFormValues } from '@/lib/destinations-write';
 import { DestinationFormDialog } from './destination-form-dialog';
 
 /**
@@ -125,7 +126,9 @@ describe('DestinationFormDialog — ô vùng', () => {
   });
 
   it('quốc gia điền sẵn Vietnam ở form tạo', () => {
-    renderDialog();
+    // Dựng bằng CHÍNH giá trị đầu mà bảng dùng — fixture `EMPTY` tự mang
+    // "Vietnam" nên ca cũ không canh gì cả (vòng review F15).
+    renderDialog({ initial: newDestinationFormValues() });
 
     expect(screen.getByLabelText(t.form.country)).toHaveValue('Vietnam');
   });

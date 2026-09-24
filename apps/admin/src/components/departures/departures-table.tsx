@@ -350,7 +350,15 @@ export function DeparturesTable({
         actions={
           <>
             <ColumnVisibilityMenu table={table} labels={COLUMN_LABELS} icons={COLUMN_ICONS} />
-            <Button type="button" size="sm" disabled={isRefreshing} onClick={() => setAdding(true)}>
+            {/* `focusableWhenDisabled`: hộp Add đóng đúng lúc bảng làm mới, và focus
+                phải quay về được nút này (vòng review F15). */}
+            <Button
+              type="button"
+              size="sm"
+              disabled={isRefreshing}
+              focusableWhenDisabled
+              onClick={() => setAdding(true)}
+            >
               <PlusIcon data-icon="inline-start" aria-hidden="true" />
               {t.create.action}
             </Button>

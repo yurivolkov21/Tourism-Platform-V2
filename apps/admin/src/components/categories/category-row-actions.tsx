@@ -116,6 +116,11 @@ export function CategoryRowActions({
         size="sm"
         aria-label={t.edit.actionLabel(row.name)}
         disabled={disabled}
+        // Khoá mà vẫn nhận focus (`aria-disabled`): hộp thoại đóng đúng lúc bảng
+        // làm mới, và Base UI trả focus về nút đã mở nó — nút `disabled` thật
+        // thì focus rơi về <body> (vòng review F15). Hai mũi tên giữ `disabled`
+        // thật: chúng không mở hộp thoại nào.
+        focusableWhenDisabled
         onClick={() => setEditing(true)}
       >
         <PencilIcon data-icon="inline-start" aria-hidden="true" />
@@ -130,6 +135,7 @@ export function CategoryRowActions({
           row.isActive ? t.setActive.hideLabel(row.name) : t.setActive.showLabel(row.name)
         }
         disabled={disabled}
+        focusableWhenDisabled
         onClick={() => setToggling(true)}
       >
         {row.isActive ? (

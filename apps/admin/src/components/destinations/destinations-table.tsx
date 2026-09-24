@@ -1,7 +1,6 @@
 'use client';
 
 import { type ColumnVisibilityState, createColumnHelper, useTable } from '@tanstack/react-table';
-import { DESTINATION_DEFAULT_COUNTRY } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
 import { Badge } from '@tourism/ui/components/badge';
 import { Button } from '@tourism/ui/components/button';
@@ -20,6 +19,7 @@ import {
   createErrorCopy,
   destinationCreatePayload,
   isCreateStale,
+  newDestinationFormValues,
   type SetDestinationActiveAction,
   type UpdateDestinationAction,
 } from '@/lib/destinations-write';
@@ -200,7 +200,15 @@ export function DestinationsTable({ rows, create, update, setActive }: Destinati
         actions={
           <>
             <ColumnVisibilityMenu table={table} labels={COLUMN_LABELS} icons={COLUMN_ICONS} />
-            <Button type="button" size="sm" disabled={isRefreshing} onClick={() => setAdding(true)}>
+            {/* `focusableWhenDisabled`: xem `DestinationRowActions` — hộp Add đóng đúng
+                lúc bảng làm mới, focus phải quay về được nút này. */}
+            <Button
+              type="button"
+              size="sm"
+              disabled={isRefreshing}
+              focusableWhenDisabled
+              onClick={() => setAdding(true)}
+            >
               <PlusIcon data-icon="inline-start" aria-hidden="true" />
               {t.create.action}
             </Button>
@@ -217,13 +225,7 @@ export function DestinationsTable({ rows, create, update, setActive }: Destinati
           copy={t.create.dialog}
           mode="create"
           formId="destination-create"
-          initial={{
-            name: '',
-            slug: '',
-            country: DESTINATION_DEFAULT_COUNTRY,
-            region: '',
-            description: '',
-          }}
+          initial={newDestinationFormValues()}
           isStale={isCreateStale}
           errorCopy={createErrorCopy}
           onSubmit={(values) => create(destinationCreatePayload(values))}
