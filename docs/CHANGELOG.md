@@ -8,10 +8,10 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
-## 2026-09-24 — Thử tay F15 trên production (`b39e6df3`): 5/5 bước đạt; ba góp ý giao diện vá trên nhánh `fix/f15-thu-tay-gop-y`
+## 2026-09-24 — Thử tay F15 trên production (`b39e6df3`): 6/6 bước đạt; ba góp ý giao diện vá trên nhánh `fix/f15-thu-tay-gop-y`
 
 Chạy khi cả ba nơi đã lên bản `b39e6df3`: admin và web trên Vercel (READY), API
-trên Render khởi động lại lúc 08:23 UTC, sau giờ push. Năm bước, mỗi bước chờ
+trên Render khởi động lại lúc 08:23 UTC, sau giờ push. Sáu bước, mỗi bước chờ
 người thử xác nhận; mọi lệnh ghi đối chiếu thẳng với DB production bằng SQL chỉ
 đọc, mọi hệ quả phía khách đo bằng `curl` trên trang thật.
 
@@ -41,9 +41,14 @@ quốc gia, mô tả và liên kết tour không đổi. Trang `/destinations` k
 Quy Nhơn ở mọi thời điểm — trang ấy chỉ bày các điểm nổi bật (Vũng Tàu, Đà Lạt
 cũng vắng), không phải hệ quả của lượt thử.
 
-**Chưa thử trên production: lệnh tạo.** Tạo thành công để lại một hàng không xoá
-được (F15 cố ý không có nút xoá, SQL trên prod chỉ đọc). Bước bổ sung thử đường
-tạo mà không ghi gì — gửi slug đã có, chờ `SLUG_TAKEN` — chạy sau commit này.
+6. **Tạo với slug đã có** (bước bổ sung, sau khi user hỏi phần tạo mới). Gõ tên
+   "Hội An", ô slug tự điền `hoi-an` — slug đã có — rồi bấm Add: server trả
+   `SLUG_TAKEN`, câu "Another destination already uses this slug…" hiện ở cuối
+   hộp, hộp giữ nguyên chữ đã gõ. DB vẫn 18 điểm đến, vẫn một `hoi-an`.
+
+**Không chạy trên production: nhánh tạo thành công.** Nó để lại một hàng không xoá
+được (F15 cố ý không có nút xoá, SQL trên prod chỉ đọc); int test đã canh nhánh ấy
+(`admin-destinations.int.spec.ts`, kể cả hai lượt tạo cùng slug bắn cùng lúc).
 
 **Ba góp ý của user trong lượt thử, vá cùng ngày trên nhánh `fix/f15-thu-tay-gop-y`:**
 
