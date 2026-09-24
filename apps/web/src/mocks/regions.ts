@@ -1,10 +1,6 @@
-import type { MockRegion } from './types.js';
-
-// 3 vùng — tên user-facing tiếng Anh (KHÔNG dùng codename nội bộ của tokens).
-// KHÔNG có `tagline` ở đây: phụ đề hero đến từ
-// `messages.regionPage.regions[key].tagline`. Xem ghi chú ở `MockRegion`.
-export const REGIONS: MockRegion[] = [
-  { key: 'north', slug: 'northern-vietnam', name: 'Northern Vietnam' },
-  { key: 'central', slug: 'central-vietnam', name: 'Central Vietnam' },
-  { key: 'south', slug: 'southern-vietnam', name: 'Southern Vietnam' },
-];
+// Ba vùng dời vào `@tourism/contract` (ADR-0045): picker của admin và các trang
+// vùng của web phải đọc MỘT nguồn, không thì chúng trôi xa nhau mà không gì bắt
+// được. File này chỉ còn tái xuất khẩu để các trang vùng khỏi phải sửa đường
+// import — và `generateStaticParams` của `/destinations/[region]` đọc qua đây,
+// nên `lib/region-static-params.spec.ts` ghim đủ ba slug.
+export { REGIONS } from '@tourism/contract';

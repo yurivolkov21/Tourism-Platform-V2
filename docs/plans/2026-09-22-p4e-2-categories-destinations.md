@@ -395,18 +395,32 @@ những lỗi ấy. Bản kể đầy đủ nằm ở entry "Vòng review F14" t
 **Produces:** `REGIONS` (ba mục `key`/`slug`/`name`) · `RegionNameSchema`
 (enum ba `name`) · type `RegionKey`
 
-- [ ] **B1.** Spec TRƯỚC ở contract: đúng ba vùng · slug là
+- [x] **B1.** Spec TRƯỚC ở contract: đúng ba vùng · slug là
       `northern-vietnam`/`central-vietnam`/`southern-vietnam` · `RegionNameSchema`
       nhận đúng ba `name` và từ chối `'North'`.
-- [ ] **B2.** Spec TRƯỚC ở web: `generateStaticParams()` trả đúng ba slug ấy.
+- [x] **B2.** Spec TRƯỚC ở web: `generateStaticParams()` trả đúng ba slug ấy.
       Đây là lưới của rủi ro spec §6 — dời sai là ba trang vùng biến khỏi build.
-- [ ] **B3.** Chạy ĐỎ cả hai.
-- [ ] **B4.** Viết `regions.ts` ở contract; `apps/web/src/mocks/regions.ts` chỉ
+- [x] **B3.** Chạy ĐỎ cả hai.
+      *Ghi khi thi công:* ca `generateStaticParams` là lưới ghim nên XANH từ
+      trước khi dời (mock cũ đã có đủ ba slug). Cái ĐỎ ở web là ca thứ hai:
+      `REGIONS` của web phải là CHÍNH mảng của contract (so tham chiếu). Ca
+      ghim được kiểm bằng đột biến — cắt một vùng ở contract, hay cắt lát
+      `REGIONS` trong page, đều đỏ.
+- [x] **B4.** Viết `regions.ts` ở contract; `apps/web/src/mocks/regions.ts` chỉ
       còn `export { REGIONS } from '@tourism/contract'` (giữ đường import cũ để
       các trang vùng không phải sửa).
-- [ ] **B5.** Xác nhận `regionOf` vẫn ghép được dữ liệu prod (`Northern Vietnam`).
-- [ ] **B6.** `pnpm gate:int` xanh.
-- [ ] **B7.** Commit: `refactor(contract): ba vùng miền về contract theo ADR-0045`
+      *Ghi khi thi công:* luật so khớp của `regionOf` cũng dời về contract
+      thành `findRegion` — admin cần CÙNG luật ấy để chọn sẵn ô vùng của form
+      sửa (spec §5 "chuẩn hoá `region`"), và hai bản luật là một hàng web xếp
+      vào miền Bắc mà admin báo "chưa có vùng". `regionOf` giữ nguyên chữ ký,
+      chỉ gọi sang. `MockRegion`/`MockRegionKey` thành bí danh của `Region`/
+      `RegionKey` ở contract, để web không còn bản khai kiểu thứ hai.
+- [x] **B5.** Xác nhận `regionOf` vẫn ghép được dữ liệu prod (`Northern Vietnam`).
+      *Ghi khi thi công:* đo trên DB dev (seed cùng fixture với prod 18/09, không
+      chạm Supabase theo luật 15) — ba giá trị `Central/Northern/Southern
+      Vietnam` của 18 hàng đều ra đúng vùng qua `findRegion`.
+- [x] **B6.** `pnpm gate:int` xanh.
+- [x] **B7.** Commit: `refactor(contract): ba vùng miền về contract theo ADR-0045`
 
 ## Task 7 — Contract `admin.destinations`
 

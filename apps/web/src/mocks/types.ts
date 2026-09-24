@@ -2,7 +2,11 @@
 // theo Prisma schema: chỗ nào vượt ra ngoài schema chính là danh sách trường
 // cần thêm khi chốt trang và gắn API (xem memory static-first-page-building).
 
-export type MockRegionKey = 'north' | 'central' | 'south';
+import type { Region, RegionKey } from '@tourism/contract';
+
+/** Ba vùng là từ vựng của contract (ADR-0045) — tên cũ giữ lại làm bí danh để
+    các component vùng khỏi phải đổi import. */
+export type MockRegionKey = RegionKey;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Tour — NGOẠI LỆ của luật "shape tự do" ghi ở đầu file.
@@ -87,18 +91,12 @@ export interface MockMediaItem {
   sortOrder: number;
 }
 
-export interface MockRegion {
-  key: MockRegionKey;
-  /** Từ vựng URL của `/destinations/[region]`. Cố tình KHÁC `key`: `key` là khoá
-      nội bộ (đổ ra `data-region`), còn slug là chuyện SEO — trộn lại mới là nợ. */
-  slug: string;
-  name: string;
-  // `tourCount` ĐÃ XOÁ (28/07): viết tay và sai (khai 24/27/17, thật 6/6/6). Số
-  // tour của một vùng dẫn xuất bằng `toursInRegion()` ở lib/regions.ts.
-  // `tagline` ĐÃ XOÁ (29/07): có HAI nguồn cho cùng một câu — field này và
-  // `messages.regionPage.regions[key].tagline`. Hero đọc i18n (luật 7: copy
-  // user-facing tập trung ở `@tourism/i18n`), nên field mock là nguồn chết.
-}
+/** Một vùng — hình dạng nay khai ở contract (`Region`, ADR-0045), cùng lời giải
+    thích vì sao `slug` cố tình khác `key`. Hai field từng có ở đây rồi xoá, đừng
+    thêm lại vào contract: `tourCount` (28/07 — viết tay và sai; số tour của một
+    vùng dẫn xuất bằng `toursInRegion()`) và `tagline` (29/07 — nguồn thứ hai của
+    `messages.regionPage.regions[key].tagline`, luật 7). */
+export type MockRegion = Region;
 
 export interface MockTestimonial {
   name: string;

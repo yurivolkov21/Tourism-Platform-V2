@@ -16,6 +16,7 @@ export * from './schemas/outbox.js';
 export * from './schemas/payment-events.js';
 export * from './schemas/posts.js';
 export * from './schemas/refund-policy.js';
+export * from './schemas/regions.js';
 export * from './schemas/reports.js';
 export * from './schemas/review-policy.js';
 export * from './schemas/reviews.js';

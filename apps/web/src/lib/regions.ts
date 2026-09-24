@@ -1,3 +1,4 @@
+import { findRegion } from '@tourism/contract';
 import type { MockRegion, MockRegionKey } from '@/mocks/types';
 import type { DestinationVM, TourCardVM, TourReviewVM } from './api/tours';
 
@@ -11,8 +12,9 @@ export type RegionKey = MockRegionKey;
  * (`regionSlugs()`), nên đây là parity chứ không phải đi tắt.
  * `DestinationSchema.region` (chuỗi tự do) chỉ dùng để XẾP địa điểm vào 3 vùng đó.
  *
- * Dữ liệu vùng nằm ở `mocks/regions.ts`; file này chỉ có hàm, và nhận dữ liệu qua
- * tham số — đúng khuôn `lib/tours.ts`, nhờ đó test được với fixture nhỏ.
+ * Ba vùng khai ở `@tourism/contract` (ADR-0045) — web đọc qua bản tái xuất khẩu ở
+ * `mocks/regions.ts`; file này chỉ có hàm, và nhận dữ liệu qua tham số — đúng khuôn
+ * `lib/tours.ts`, nhờ đó test được với fixture nhỏ.
  */
 export function regionBySlug(regions: readonly MockRegion[], slug: string): MockRegion | undefined {
   return regions.find((region) => region.slug === slug);
@@ -22,8 +24,9 @@ export function regionBySlug(regions: readonly MockRegion[], slug: string): Mock
  * Xếp `region` chuỗi tự do của contract vào một vùng đã biết. Nhận cả tên hiển thị
  * ('Northern Vietnam') lẫn khoá ngắn ('north'), không phân biệt hoa/thường.
  *
- * Bảng nhận dạng SUY TỪ chính `regions` chứ không khai riêng — một bảng alias tách
- * rời là một nguồn nữa có thể trôi khỏi danh sách vùng.
+ * Luật so khớp là `findRegion` của contract, KHÔNG viết lại ở đây: admin chọn sẵn ô
+ * vùng của form sửa điểm đến bằng chính hàm ấy, và hai bản luật là một hàng web xếp
+ * vào miền Bắc mà admin lại báo "chưa có vùng" (ADR-0045).
  *
  * Trả `null` khi không nhận ra — KHÔNG đoán, vì đoán sai thì địa điểm bị xếp vào
  * vùng sai. Xem bất biến "không địa điểm nào tàng hình" trong `regions.spec.ts`.
@@ -32,12 +35,7 @@ export function regionOf(
   regions: readonly MockRegion[],
   destination: { region: string | null },
 ): RegionKey | null {
-  if (destination.region === null) return null;
-  const needle = destination.region.trim().toLowerCase();
-  const match = regions.find(
-    (region) => region.key === needle || region.name.toLowerCase() === needle,
-  );
-  return match?.key ?? null;
+  return findRegion(regions, destination.region)?.key ?? null;
 }
 
 export function destinationsInRegion<T extends { region: string | null }>(
