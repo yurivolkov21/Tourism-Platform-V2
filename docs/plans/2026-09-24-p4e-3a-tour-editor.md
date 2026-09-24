@@ -5821,8 +5821,9 @@ bản nháp spec) và 16 bài học ở đầu plan. Ba vòng review gần nhấ
 và 15 lỗi thật; F17 lớn hơn cả ba cộng lại.
 
 MỞ ĐẦU
-- `git status` phải sạch và đang ở `main`; `git log --oneline -3` phải thấy
-  commit "docs: plan thi công F17…". Rồi:
+- `git status` phải sạch và đang ở `main`;
+  `git log --oneline -- docs/plans/2026-09-24-p4e-3a-tour-editor.md` phải thấy
+  hai commit: "docs: plan thi công F17…" và "…plan F17 dùng FormSelect…". Rồi:
   git checkout -b feat/p4e-3a-tour-editor
 - Docker Postgres phải đang chạy (`docker ps`) — integration test cần nó.
 
