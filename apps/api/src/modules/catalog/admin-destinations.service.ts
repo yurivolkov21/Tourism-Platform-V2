@@ -8,6 +8,7 @@ import type {
 import { prisma } from '../../auth/auth.config.js';
 import { Prisma } from '../../generated/prisma/client.js';
 import { ContractError } from '../../lib/contract-error.js';
+import { tourRevalidationTags } from '../web-revalidation/revalidation-decision.js';
 import { WebRevalidationService } from '../web-revalidation/web-revalidation.service.js';
 
 /**
@@ -54,7 +55,7 @@ export class DestinationSlugTakenError extends ContractError<'SLUG_TAKEN'> {
  * Đếm tour ĐÃ ĐĂNG, cùng thước với `catalog.listDestinations`: câu cảnh báo nói
  * về thứ khách đang nhìn thấy, và tour nháp thì không ai thấy.
  */
-const DESTINATION_SELECT = {
+const DESTINATION_COLUMNS = {
   id: true,
   slug: true,
   name: true,
@@ -62,10 +63,26 @@ const DESTINATION_SELECT = {
   region: true,
   description: true,
   isActive: true,
+} satisfies Prisma.DestinationSelect;
+
+const DESTINATION_SELECT = {
+  ...DESTINATION_COLUMNS,
   _count: { select: { tours: { where: { tour: { isPublished: true } } } } },
 } satisfies Prisma.DestinationSelect;
 
-type DestinationWithCount = Prisma.DestinationGetPayload<{ select: typeof DESTINATION_SELECT }>;
+/**
+ * Lệnh sửa và lệnh ẩn/hiện đọc thêm slug của MỌI tour gắn điểm đến, trong cùng
+ * câu ghi: trang chi tiết `/tours/<slug>` in tên điểm đến qua tag `tour:<slug>`,
+ * nên bust riêng `tours` thì trang ấy giữ tên cũ tới hết 300 giây ISR (nợ G5,
+ * đóng ở vòng review F15).
+ */
+const DESTINATION_WRITE_SELECT = {
+  ...DESTINATION_SELECT,
+  tours: { select: { tour: { select: { slug: true } } } },
+} satisfies Prisma.DestinationSelect;
+
+type DestinationColumns = Prisma.DestinationGetPayload<{ select: typeof DESTINATION_COLUMNS }>;
+type DestinationWritten = Prisma.DestinationGetPayload<{ select: typeof DESTINATION_WRITE_SELECT }>;
 
 /**
  * Sắp theo tên như bề mặt công khai (`catalog.listDestinations`), cộng `id` làm
@@ -78,7 +95,7 @@ const DESTINATION_ORDER_BY = [
 ] satisfies Prisma.DestinationOrderByWithRelationInput[];
 
 /** Hàng DB → hàng contract. `region` đi nguyên văn — chuẩn hoá là việc của người đọc. */
-function toRow(row: DestinationWithCount): AdminDestinationRow {
+function toRow(row: DestinationColumns, tourCount: number): AdminDestinationRow {
   return {
     id: row.id,
     slug: row.slug,
@@ -87,8 +104,15 @@ function toRow(row: DestinationWithCount): AdminDestinationRow {
     region: row.region,
     description: row.description,
     isActive: row.isActive,
-    tourCount: row._count.tours,
+    tourCount,
   };
+}
+
+/** Tag cần bust sau khi sửa hoặc ẩn/hiện một điểm đến — `tours` cộng trang của mọi tour gắn nó. */
+function writtenTags(row: DestinationWritten): string[] {
+  return [
+    ...new Set(['tours', ...row.tours.flatMap((link) => tourRevalidationTags(link.tour.slug))]),
+  ];
 }
 
 function isPrismaCode(error: unknown, code: 'P2002' | 'P2025'): boolean {
@@ -107,7 +131,7 @@ export class AdminDestinationsService {
       orderBy: DESTINATION_ORDER_BY,
       select: DESTINATION_SELECT,
     });
-    return rows.map(toRow);
+    return rows.map((row) => toRow(row, row._count.tours));
   }
 
   async create(input: AdminDestinationCreateInput): Promise<AdminDestinationRow> {
@@ -120,7 +144,7 @@ export class AdminDestinationsService {
           region: input.region,
           description: input.description,
         },
-        select: DESTINATION_SELECT,
+        select: DESTINATION_COLUMNS,
       })
       .catch((error: unknown) => {
         if (isPrismaCode(error, 'P2002')) throw new DestinationSlugTakenError(input.slug);
@@ -130,8 +154,9 @@ export class AdminDestinationsService {
     this.logger.log(
       `[admin] destination created ${JSON.stringify({ id: created.id, slug: created.slug })}`,
     );
-    this.bust();
-    return toRow(created);
+    this.bust(['tours']);
+    // Điểm đến vừa tạo chưa thể có tour nào — không đếm (cùng nếp danh mục).
+    return toRow(created, 0);
   }
 
   async update(input: AdminDestinationUpdateInput): Promise<AdminDestinationRow> {
@@ -144,7 +169,7 @@ export class AdminDestinationsService {
           region: input.region,
           description: input.description,
         },
-        select: DESTINATION_SELECT,
+        select: DESTINATION_WRITE_SELECT,
       })
       .catch((error: unknown) => {
         if (isPrismaCode(error, 'P2025')) throw new DestinationNotFoundError(input.id);
@@ -154,8 +179,8 @@ export class AdminDestinationsService {
     this.logger.log(
       `[admin] destination updated ${JSON.stringify({ id: input.id, region: input.region })}`,
     );
-    this.bust();
-    return toRow(updated);
+    this.bust(writtenTags(updated));
+    return toRow(updated, updated._count.tours);
   }
 
   /**
@@ -168,7 +193,7 @@ export class AdminDestinationsService {
       .update({
         where: { id: input.id },
         data: { isActive: input.isActive },
-        select: DESTINATION_SELECT,
+        select: DESTINATION_WRITE_SELECT,
       })
       .catch((error: unknown) => {
         if (isPrismaCode(error, 'P2025')) throw new DestinationNotFoundError(input.id);
@@ -178,21 +203,22 @@ export class AdminDestinationsService {
     this.logger.log(
       `[admin] destination active ${JSON.stringify({ id: input.id, isActive: input.isActive })}`,
     );
-    this.bust();
-    return toRow(updated);
+    this.bust(writtenTags(updated));
+    return toRow(updated, updated._count.tours);
   }
 
   /**
    * Bust cache web SAU khi lệnh ghi đã xong (ADR-0016 §3, tiền lệ F11–F14).
    *
-   * Tag `tours` là đủ cho mọi trang đọc danh sách điểm đến: `fetchDestinations`
-   * của web gắn đúng tag ấy (trang chủ, `/destinations`, ba trang vùng,
-   * `/tours`, About, blog, hộ chiếu của khách).
+   * Tag `tours` phủ mọi trang đọc danh sách điểm đến: `fetchDestinations` của
+   * web gắn đúng tag ấy (trang chủ, `/destinations`, ba trang vùng, `/tours`,
+   * About, blog, hộ chiếu của khách). Lệnh sửa và ẩn/hiện cộng thêm
+   * `tour:<slug>` của mọi tour gắn điểm đến (`writtenTags`).
    *
    * `void` có chủ đích — đường này chết thì site chỉ kém tươi, còn lệnh ghi đã
    * ăn rồi thì không được phép fail theo.
    */
-  private bust(): void {
-    void this.webRevalidation.revalidate(['tours']);
+  private bust(tags: string[]): void {
+    void this.webRevalidation.revalidate(tags);
   }
 }

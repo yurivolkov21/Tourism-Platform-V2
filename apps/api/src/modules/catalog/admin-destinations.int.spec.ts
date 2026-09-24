@@ -331,8 +331,13 @@ describe('admin destinations integration (P4e-2 F15)', () => {
       expect(row?.slug).toBe('hoi-an');
     });
 
-    it('trả `tourCount` của chính câu ghi', async () => {
+    it('trả `tourCount` đếm tour ĐÃ ĐĂNG, không đếm tour nháp', async () => {
+      // Ca này không chứng minh được "đếm trong CÙNG câu với lệnh ghi" (bài học
+      // 3 của F14) — muốn thế phải chen một lượt đăng tour vào giữa hai câu, và
+      // cửa sổ ấy không dựng tất định được. Luật ấy do `DESTINATION_SELECT`
+      // giữ; ca này chỉ ghim cái thước đếm (vòng review F15 đổi tên cho đúng).
       await tourVisiting('published-one', [destId(1)]);
+      await tourVisiting('draft-one', [destId(1)], false);
 
       const res = await update(destId(1), UPDATE, adminCookie);
 
@@ -382,7 +387,11 @@ describe('admin destinations integration (P4e-2 F15)', () => {
     it('điểm đến đã ẩn biến khỏi endpoint công khai, tour của nó vẫn lọc được theo slug', async () => {
       // Đây là điều câu cảnh báo ở màn admin phải nói đúng: link cũ
       // `/tours?destinations=hoi-an` vẫn chạy.
+      // Tour thứ hai KHÔNG gắn điểm đến ấy: có nó thì "lọc đúng" mới khác được
+      // "bỏ qua bộ lọc" — với một tour trong bảng, hai ca ra cùng một kết quả
+      // (vòng review F15).
       await tourVisiting('published-one', [destId(1)]);
+      await tourVisiting('published-two', [destId(2)]);
       await setActive(destId(1), false, adminCookie);
 
       const publicList = await app.inject({ method: 'GET', url: '/api/destinations' });
@@ -417,6 +426,24 @@ describe('admin destinations integration (P4e-2 F15)', () => {
 
       await vi.waitFor(() => expect(seen).toHaveLength(1));
       expect(seen[0]).toEqual({ tags: ['tours'], isActive: false });
+    });
+
+    it('đổi hay ẩn một điểm đến bust cả trang chi tiết của MỌI tour gắn nó', async () => {
+      // Trang `/tours/<slug>` đọc tên điểm đến qua tag `tour:<slug>`, không qua
+      // `tours` — bust riêng `tours` thì trang ấy giữ tên cũ tới hết 300 giây
+      // ISR (nợ G5, đóng ở vòng review F15).
+      await tourVisiting('published-one', [destId(1)]);
+      await tourVisiting('draft-one', [destId(1)], false);
+      await tourVisiting('published-two', [destId(2)]);
+      const revalidate = vi.spyOn(web, 'revalidate').mockResolvedValue(undefined);
+
+      await update(destId(1), UPDATE, adminCookie);
+      await setActive(destId(1), false, adminCookie);
+
+      expect(revalidate).toHaveBeenCalledTimes(2);
+      for (const call of revalidate.mock.calls) {
+        expect([...call[0]].sort()).toEqual(['tour:draft-one', 'tour:published-one', 'tours']);
+      }
     });
 
     it('bust đủ ba lệnh ghi, và KHÔNG bust khi lệnh ghi hỏng', async () => {

@@ -1,4 +1,5 @@
-import { ContractError, toContractError } from './contract-error.js';
+import { createORPCErrorConstructorMap, ORPCError } from '@orpc/server';
+import { ContractError, declaredError, toContractError } from './contract-error.js';
 
 /**
  * `toContractError` là cổng DUY NHẤT từ lỗi service sang lỗi contract của các
@@ -19,6 +20,28 @@ function fakeErrors(...codes: string[]) {
   }
   return { errors, calls };
 }
+
+/**
+ * `errors` THẬT mà oRPC đưa cho handler: một Proxy trả về hàm dựng cho MỌI mã,
+ * kể cả mã procedure không khai (vòng review F15). Object giả ở trên không có
+ * tính chất ấy, nên ca "mã không khai" từng xanh giả với nó.
+ */
+function orpcErrors(errorMap: Record<string, { status: number; message: string }>) {
+  return createORPCErrorConstructorMap(errorMap) as unknown as Record<
+    string,
+    (init?: { message: string }) => Error
+  >;
+}
+
+describe('declaredError', () => {
+  it('có hàm dựng cho mã procedure khai, KHÔNG có cho mã không khai — kể cả với Proxy của oRPC', () => {
+    const errors = orpcErrors({ NOT_FOUND: { status: 404, message: 'Tour not found' } });
+
+    expect(declaredError(errors, 'NOT_FOUND')).toBeTypeOf('function');
+    expect(declaredError(errors, 'SLUG_TAKEN')).toBeUndefined();
+    expect(declaredError(errors, 'toString')).toBeUndefined();
+  });
+});
 
 describe('toContractError', () => {
   it('mã mà procedure khai → lỗi contract của mã ấy, CHỞ theo câu của service', () => {
@@ -43,11 +66,24 @@ describe('toContractError', () => {
   });
 
   it('mã mà procedure KHÔNG khai → trả nguyên lỗi (500 nhìn thấy được), không đổi sai loại', () => {
-    const { errors, calls } = fakeErrors('NOT_FOUND');
+    const errors = orpcErrors({ NOT_FOUND: { status: 404, message: 'Destination not found' } });
     const original = new ContractError('SLUG_TAKEN', 'Slug already taken: x');
 
     expect(toContractError(original, errors)).toBe(original);
-    expect(calls).toEqual([]);
+  });
+
+  it('với `errors` thật của oRPC, mã đã khai vẫn thành lỗi contract của mã ấy', () => {
+    const errors = orpcErrors({ SLUG_TAKEN: { status: 409, message: 'Slug already taken' } });
+
+    const mapped = toContractError(
+      new ContractError('SLUG_TAKEN', 'Slug already taken: x'),
+      errors,
+    );
+
+    expect(mapped).toBeInstanceOf(ORPCError);
+    expect((mapped as ORPCError<string, unknown>).code).toBe('SLUG_TAKEN');
+    expect((mapped as ORPCError<string, unknown>).status).toBe(409);
+    expect((mapped as ORPCError<string, unknown>).message).toBe('Slug already taken: x');
   });
 
   it('lỗi KHÔNG dựng từ `ContractError` thì không được làm phán quyết, dù mang `code` trùng', () => {

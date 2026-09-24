@@ -5,6 +5,7 @@ import type { SessionUser } from '../../auth/auth.config.js';
 import { CurrentUser } from '../../auth/current-user.decorator.js';
 import { Roles } from '../../auth/roles.decorator.js';
 import { UserRole } from '../../generated/prisma/enums.js';
+import { declaredError } from '../../lib/contract-error.js';
 import {
   AdminDeparturesService,
   DepartureNotFoundError,
@@ -102,7 +103,7 @@ export class AdminDeparturesController {
  */
 function mapError(error: unknown, errors: Record<string, (init?: { message: string }) => Error>) {
   if (error instanceof DepartureNotFoundError) {
-    const notFound = errors.NOT_FOUND;
+    const notFound = declaredError(errors, 'NOT_FOUND');
     if (notFound) return notFound();
   }
   // `TourNotFoundError` đi cùng đường: `NOT_FOUND` của `list`/`create` nói về
@@ -114,11 +115,11 @@ function mapError(error: unknown, errors: Record<string, (init?: { message: stri
   // của bất kỳ module nào lọt vào đây. Lớp của vùng này export ngay cạnh, và
   // nó là lớp DUY NHẤT mà hai service của controller này ném.
   if (error instanceof TourNotFoundError) {
-    const notFound = errors.NOT_FOUND;
+    const notFound = declaredError(errors, 'NOT_FOUND');
     if (notFound) return notFound();
   }
   if (error instanceof DepartureRuleError) {
-    const rejected = errors[error.code];
+    const rejected = declaredError(errors, error.code);
     if (rejected) return rejected({ message: error.message });
   }
   return error;

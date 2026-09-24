@@ -31,6 +31,24 @@ export class ContractError<Code extends string = string> extends Error {
   }
 }
 
+type ErrorConstructors = Record<string, (init?: { message: string }) => Error>;
+
+/**
+ * Hàm dựng lỗi của `code` — CHỈ khi procedure đang chạy khai mã ấy.
+ *
+ * `errors` mà oRPC đưa cho handler là một Proxy trả về hàm dựng cho MỌI chuỗi,
+ * nên `errors[code]` không bao giờ rỗng: một mã procedure không khai từng thành
+ * lỗi `defined: false` — 404 im lặng không tới Sentry, hoặc 500 mang câu nội bộ
+ * của service — thay vì lỗi gốc (vòng review F15). Proxy không bẫy
+ * `getOwnPropertyDescriptor`, nên `Object.hasOwn` đọc đúng bảng mã đã khai.
+ */
+export function declaredError(
+  errors: ErrorConstructors,
+  code: string,
+): ((init?: { message: string }) => Error) | undefined {
+  return Object.hasOwn(errors, code) ? errors[code] : undefined;
+}
+
 /**
  * Lỗi của service → lỗi contract của ĐÚNG procedure đang chạy.
  *
@@ -38,12 +56,9 @@ export class ContractError<Code extends string = string> extends Error {
  * procedure không khai nó thì trả NGUYÊN lỗi (500 nhìn thấy được trong log)
  * thay vì biến thành một lỗi im lặng sai loại.
  */
-export function toContractError(
-  error: unknown,
-  errors: Record<string, (init?: { message: string }) => Error>,
-): unknown {
+export function toContractError(error: unknown, errors: ErrorConstructors): unknown {
   if (error instanceof ContractError) {
-    const make = errors[error.code];
+    const make = declaredError(errors, error.code);
     if (make) return error.exposeMessage ? make({ message: error.message }) : make();
   }
   return error;

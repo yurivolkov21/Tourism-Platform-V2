@@ -148,8 +148,8 @@ function toRowWithCount(row: CategoryWithCount): AdminCategoryRow {
  * Hàng biến mất giữa chừng: Prisma ném `P2025` cho `update` không tìm thấy
  * bản ghi. Bắt ở đây thay vì kiểm tồn tại bằng một câu SELECT riêng — kiểm
  * trước rồi ghi sau là check-then-act, cửa sổ giữa hai câu cho ra `P2025`
- * trần, và `mapError` không nhận nó nên admin ăn 500 kèm câu "kết cục không
- * rõ" cho một lệnh chắc chắn KHÔNG chạy.
+ * trần, và `toContractError` chỉ nhận `ContractError` nên admin ăn 500 kèm câu
+ * "kết cục không rõ" cho một lệnh chắc chắn KHÔNG chạy.
  */
 function asNotFound(error: unknown, id: string): unknown {
   if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
