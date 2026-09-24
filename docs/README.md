@@ -87,6 +87,7 @@ Mỗi ADR tự chứa đầy đủ phần sửa bổ sung (AMEND) của nó; b�
 | [0044](adr/0044-prerender-retry-transient-api.md) | Prerender thử lại khi API hắt hơi | |
 | [0045](adr/0045-region-vocabulary-in-contract.md) | Ba vùng miền là từ vựng chung, sống ở contract | |
 | [0046](adr/0046-departure-phase-derived.md) | Giai đoạn chuyến suy từ ngày; `status` chỉ là công tắc bán hàng | |
+| [0047](adr/0047-tour-editor-sections.md) | Sửa tour theo từng khối: thay nguyên danh sách, khoá phiên bản, cổng đăng tour | |
 
 ## Specs — sẽ xây gì
 
@@ -147,7 +148,8 @@ Mỗi spec đi kèm một plan cùng tên ở [`plans/`](plans/), trừ vài đ�
 **Admin catalog (P4e, đang mở)**
 [**P4e-1 chuyến + trạng thái đăng**](specs/2026-09-21-p4e-1-departures-design.md) ·
 [**P4e-2 danh mục + điểm đến**](specs/2026-09-22-p4e-2-categories-destinations-design.md) ·
-[**F16 giai đoạn chuyến**](specs/2026-09-23-departure-phase-design.md)
+[**F16 giai đoạn chuyến**](specs/2026-09-23-departure-phase-design.md) ·
+[**F17 tạo và sửa tour (P4e-3a)**](specs/2026-09-24-p4e-3a-tour-editor-design.md)
 
 ## Plans — làm theo bước nào
 
