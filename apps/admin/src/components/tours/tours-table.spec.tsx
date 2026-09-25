@@ -32,6 +32,7 @@ const row = (patch: Partial<TourRowVM> = {}): TourRowVM => ({
   isPublished: true,
   isFeatured: false,
   heroUrl: null,
+  editorHref: '/tours/hoi-an-lantern-evening',
   departuresHref: '/tours/hoi-an-lantern-evening/departures',
   departuresLabel: t.manageDepartures('Hoi An Lantern Evening'),
   ...patch,
@@ -54,20 +55,29 @@ function renderTable(rows: TourRowVM[]) {
       total={rows.length}
       totalPages={1}
       setPublished={vi.fn()}
+      createOptions={{ categories: CATEGORIES, destinations: [] }}
+      create={vi.fn()}
     />,
   );
 }
 
 describe('ToursTable', () => {
-  it('tên tour là link sang màn chuyến, và cột Actions có một link nữa', () => {
+  it('tên tour là link sang khu làm việc; cột Actions vẫn là lối tắt sang màn chuyến', () => {
     renderTable([row()]);
     expect(screen.getByRole('link', { name: 'Hoi An Lantern Evening' })).toHaveAttribute(
       'href',
-      '/tours/hoi-an-lantern-evening/departures',
+      '/tours/hoi-an-lantern-evening',
     );
     expect(
       screen.getByRole('link', { name: t.manageDepartures('Hoi An Lantern Evening') }),
     ).toHaveAttribute('href', '/tours/hoi-an-lantern-evening/departures');
+  });
+
+  it('thanh công cụ có nút New tour (spec F17 §2g)', () => {
+    renderTable([row()]);
+    expect(
+      screen.getByRole('button', { name: messages.admin.tours.editor.create.action }),
+    ).toBeInTheDocument();
   });
 
   it('con số chuyến đi kèm một câu nói nó là số GÌ', () => {

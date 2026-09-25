@@ -42,6 +42,7 @@ const ROW: TourRowVM = {
   isPublished: true,
   isFeatured: false,
   heroUrl: null,
+  editorHref: '/tours/hoi-an-lantern-evening',
   departuresHref: '/tours/hoi-an-lantern-evening/departures',
   departuresLabel: messages.admin.tours.list.manageDepartures('Hoi An Lantern Evening'),
 };

@@ -1,12 +1,16 @@
 'use server';
 
 import {
+  type AdminTourCreateInput,
+  AdminTourCreateInputSchema,
+  type AdminTourCreateResult,
   type AdminTourSetPublishedInput,
   AdminTourSetPublishedInputSchema,
   type AdminTourSetPublishedResult,
 } from '@tourism/contract';
 import { cookies } from 'next/headers';
-import { setAdminTourPublished } from '@/lib/api/tours';
+import { createAdminTour, setAdminTourPublished } from '@/lib/api/tours';
+import { type CreateTourResult, classifyCreateTourError } from '@/lib/tour-editor-write';
 import { classifySetPublishedError, type SetPublishedActionResult } from '@/lib/tours-publish';
 
 /**
@@ -41,4 +45,23 @@ export async function setTourPublishedAction(
   // Trả trạng thái SERVER vừa ghi (không phải cái client vừa bấm): công tắc
   // settle theo response nên một lệnh về muộn không để lại hình ảnh sai.
   return { ok: true, isPublished: result.isPublished, changed: result.changed };
+}
+
+/**
+ * Tạo tour từ hộp New tour (spec F17 §2a) — cùng khuôn: re-parse bằng schema
+ * contract, `try` chỉ ôm lời gọi API. Tour sinh ra đang TẮT bán; client tự điều
+ * hướng vào khu làm việc của nó.
+ */
+export async function createTourAction(input: AdminTourCreateInput): Promise<CreateTourResult> {
+  const parsed = AdminTourCreateInputSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, code: 'INVALID_INPUT' };
+
+  const cookie = (await cookies()).toString();
+  let created: AdminTourCreateResult;
+  try {
+    created = await createAdminTour(cookie, parsed.data);
+  } catch (error) {
+    return { ok: false, code: classifyCreateTourError(error) };
+  }
+  return { ok: true, created };
 }

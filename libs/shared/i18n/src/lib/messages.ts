@@ -4091,6 +4091,20 @@ export const messages = {
             SLUG_TAKEN: 'Another tour already uses this slug. Pick a different one.',
             NOT_FOUND: 'That category or destination no longer exists. Close this and try again.',
           },
+          action: 'New tour',
+          dialog: {
+            title: 'New tour',
+            body: 'It starts off sale. Fill in every tab, then put it on sale.',
+            submit: 'Create tour',
+            submitting: 'Creating…',
+            cancel: 'Cancel',
+          },
+          slug: 'Slug',
+          slugHint: SLUG_HINT_COPY,
+          primaryDestination: 'Primary destination',
+          noOptions:
+            'A tour needs a category and a destination. Add them first, or refresh if the lists did not load.',
+          toast: { title: 'Tour created', body: 'It stays off sale until you put it on sale.' },
         },
         details: {
           errors: {
@@ -4100,6 +4114,49 @@ export const messages = {
             TOUR_NOT_READY: 'This tour is on sale, so it has to stay ready to sell.',
             NOT_FOUND: 'This tour no longer exists.',
           },
+          sections: { basics: 'Basics', destinations: 'Destinations', selling: 'Selling points' },
+          title: 'Name',
+          summary: 'Summary',
+          summaryHint: (max: number) => `Up to ${max} characters.`,
+          category: 'Category',
+          categoryPlaceholder: 'Choose a category',
+          difficulty: 'Difficulty',
+          difficultyNotSet: 'Not set',
+          featured: 'Featured',
+          durationDays: 'Days',
+          /** Đo: `updateDetails` xoá các ngày vượt số ngày mới trong cùng lệnh. */
+          daysRemoved: (list: string, count: number) =>
+            count === 1
+              ? `Day ${list} of the itinerary will be removed when you save.`
+              : `Days ${list} of the itinerary will be removed when you save.`,
+          maxGroupSize: 'Maximum group size',
+          basePrice: 'Base price (USD)',
+          /**
+           * Đo: `bookings.service.ts` tính `unitPrice` từ `basePrice` lúc TẠO booking
+           * khi chuyến không có giá riêng; booking cũ giữ bản chụp `unitPrice`.
+           */
+          basePriceNote:
+            'A new base price applies straight away to every departure without its own price, from the next booking.',
+          destination: 'Destination',
+          destinationPlaceholder: 'Choose a destination',
+          primary: 'Primary',
+          destinationsHint: 'Mark exactly one as the primary destination.',
+          addDestination: 'Add destination',
+          destinationName: (n: number) => `destination ${n}`,
+          suitableFor: 'Good for',
+          badges: 'Badges',
+          highlights: 'Highlights',
+          addHighlight: 'Add highlight',
+          highlightName: (n: number) => `highlight ${n}`,
+          included: "What's included",
+          addIncluded: 'Add included item',
+          includedName: (n: number) => `included item ${n}`,
+          excluded: "What's not included",
+          addExcluded: 'Add excluded item',
+          excludedName: (n: number) => `excluded item ${n}`,
+          meetingPoint: 'Meeting point',
+          factsTitle: 'Notes under the four fact cards',
+          factHint: (max: number) => `One sentence, up to ${max} characters.`,
         },
         itinerary: {
           errors: {
@@ -4125,6 +4182,29 @@ export const messages = {
             TOUR_HAS_BOOKINGS:
               'This tour has bookings now, so it cannot be deleted. Take it off sale instead.',
             NOT_FOUND: 'This tour no longer exists.',
+          },
+          title: 'Delete this tour',
+          body: 'Only a tour that has never been booked can be deleted.',
+          action: 'Delete tour',
+          dialog: {
+            title: 'Delete this tour?',
+            /**
+             * Đo trên `schema.prisma` và int test `admin-tours.int.spec.ts`: khoá
+             * ngoại `Cascade` kéo theo chuyến, lịch trình, FAQ, chính sách, chi phí,
+             * liên kết điểm đến, wishlist, đánh giá gắn tour và liên kết bài viết
+             * (bài viết còn nguyên); câu hỏi của khách `SetNull` — còn, mất liên kết.
+             */
+            body: (departures: number) =>
+              `This removes the tour for good, together with ${departures === 1 ? '1 departure' : `${departures} departures`}, its itinerary, FAQ, policies, cost lines, destination links, wishlist saves, reviews and blog-post links. Enquiries about it are kept, without the link to the tour.`,
+            warning: 'This cannot be undone.',
+            submit: 'Delete tour',
+            submitting: 'Deleting…',
+            cancel: 'Cancel',
+          },
+          rows: { tour: 'Tour', departures: 'Departures' },
+          toast: {
+            title: 'Tour deleted',
+            body: (title: string) => `${title} is gone from the catalogue.`,
           },
         },
       },

@@ -4,11 +4,11 @@ import { redirect } from 'next/navigation';
 import { AdminShell } from '@/components/admin-shell';
 import { ToursTable } from '@/components/tours/tours-table';
 import { getServerSession } from '@/lib/api/session';
-import { fetchAdminTours, fetchTourCategories } from '@/lib/api/tours';
+import { fetchAdminTours, fetchTourCategories, fetchTourDestinationOptions } from '@/lib/api/tours';
 import { orphanPageHref, type RawSearchParams } from '@/lib/table-query';
 import { departureMonthOptions, parseToursSearchParams, toursHref } from '@/lib/tours-query';
 import { toTourRowVM } from '@/lib/tours-view';
-import { setTourPublishedAction } from './actions';
+import { createTourAction, setTourPublishedAction } from './actions';
 
 /**
  * `/tours` — bảng vận hành toàn bộ catalogue (spec P4e-1 §3-F11).
@@ -16,7 +16,8 @@ import { setTourPublishedAction } from './actions';
  * Server component đúng nếp `/subscribers`/`/outbox` (spec P4b §2.2):
  * `searchParams` (page/limit/category/published/month) → input contract →
  * fetch oRPC kèm cookie forward → truyền một trang đã format xuống bảng
- * client. Server action `setTourPublishedAction` truyền xuống như một prop.
+ * client. Server action `setTourPublishedAction` và `createTourAction` (hộp New
+ * tour, F17) truyền xuống như prop.
  *
  * KHÔNG có hàng stat card: P4e-1 không mở endpoint stats nào cho catalogue, và
  * bốn ô số bịa từ trang hiện tại sẽ nói dối ngay khi sang trang 2.
@@ -32,10 +33,11 @@ export default async function ToursPage({
 }) {
   const query = parseToursSearchParams(await searchParams);
   const cookie = (await cookies()).toString();
-  const [session, paged, categories] = await Promise.all([
+  const [session, paged, categories, destinations] = await Promise.all([
     getServerSession(),
     fetchAdminTours(cookie, query),
     fetchTourCategories(cookie),
+    fetchTourDestinationOptions(cookie),
   ]);
   // Null chỉ xảy ra khi phiên hết hạn ngay giữa hai request — layout xử lý ở
   // lần điều hướng kế (cùng nếp các trang vùng khác).
@@ -59,6 +61,8 @@ export default async function ToursPage({
         total={paged.total}
         totalPages={paged.totalPages}
         setPublished={setTourPublishedAction}
+        createOptions={{ categories, destinations }}
+        create={createTourAction}
       />
     </AdminShell>
   );

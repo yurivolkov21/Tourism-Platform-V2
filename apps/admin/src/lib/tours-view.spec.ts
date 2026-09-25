@@ -30,8 +30,9 @@ describe('toTourRowVM', () => {
     expect(toTourRowVM({ ...ROW, basePrice: '1299.5' }).price).toBe('$1,299.50');
   });
 
-  it('dựng sẵn đường sang màn chuyến, bảng không ghép chuỗi', () => {
+  it('dựng sẵn đường sang màn chuyến và khu làm việc, bảng không ghép chuỗi', () => {
     const vm = toTourRowVM(ROW);
+    expect(vm.editorHref).toBe('/tours/hoi-an-lantern-evening');
     expect(vm.departuresHref).toBe('/tours/hoi-an-lantern-evening/departures');
     expect(vm.departuresLabel).toBe(t.list.manageDepartures('Hoi An Lantern Evening'));
   });

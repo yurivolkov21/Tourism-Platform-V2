@@ -11,6 +11,7 @@ import { ColumnVisibilityMenu, DataTableBody } from '@/components/kit/data-table
 import { DataTableFrame } from '@/components/kit/data-table-frame';
 import { serverTableFeatures } from '@/components/kit/table-features';
 import { TablePagination } from '@/components/kit/table-pagination';
+import { NewTourDialog } from '@/components/tours/editor/new-tour-dialog';
 import { PublishToggle } from '@/components/tours/publish-toggle';
 import {
   ToursCategoryMenu,
@@ -18,9 +19,10 @@ import {
   ToursMonthMenu,
   ToursStatusTabs,
 } from '@/components/tours/tours-toolbar';
-import type { TourCategoryOption } from '@/lib/api/tours';
+import type { TourCategoryOption, TourEditorOptions } from '@/lib/api/tours';
 import type { MonthOption } from '@/lib/month-options';
 import { PAGE_SIZE_OPTIONS } from '@/lib/table-query';
+import type { CreateTourAction } from '@/lib/tour-editor-write';
 import type { SetPublishedAction } from '@/lib/tours-publish';
 import { type ToursQuery, toursHref } from '@/lib/tours-query';
 import type { TourRowVM } from '@/lib/tours-view';
@@ -34,11 +36,13 @@ import type { TourRowVM } from '@/lib/tours-view';
  * Cột theo spec: Tour · Category · Base price · Open departures · On sale ·
  * Actions. Cột Tour KHÔNG ẩn được — nó là danh tính của hàng.
  *
- * Đường sang màn chuyến khởi hành (F12 dựng) đi qua HAI chỗ có chủ đích, chứ
- * không phải một cú bấm lên cả hàng: tên tour là link, và cột Actions có nút
- * "Departures". Cả hàng bấm được sẽ nuốt luôn vùng bấm của công tắc và của
- * chính link ấy — một hàng mà cú bấm làm hai việc khác nhau tuỳ toạ độ là
- * hàng không ai đoán được.
+ * Hai đường ra khỏi hàng, có chủ đích, chứ không phải một cú bấm lên cả hàng:
+ * tên tour là link sang khu làm việc của tour (F17), và cột Actions giữ nút
+ * "Departures" làm lối tắt sang màn chuyến (F12). Cả hàng bấm được sẽ nuốt luôn
+ * vùng bấm của công tắc và của chính link ấy — một hàng mà cú bấm làm hai việc
+ * khác nhau tuỳ toạ độ là hàng không ai đoán được.
+ *
+ * Thanh công cụ có nút New tour (F17): hộp tạo tour sinh ra đang TẮT bán.
  *
  * Component này KHÔNG tự tính gì: mọi con chữ đã được `toTourRowVM` (thuần, có
  * test) nấu sẵn.
@@ -71,7 +75,7 @@ function buildColumns(setPublished: SetPublishedAction) {
           <TourThumb row={row.original} />
           <div className="grid min-w-0 gap-0.5">
             <Link
-              href={row.original.departuresHref}
+              href={row.original.editorHref}
               className="max-w-72 truncate font-medium text-foreground underline-offset-4 hover:underline"
               title={row.original.title}
             >
@@ -134,7 +138,13 @@ function buildColumns(setPublished: SetPublishedAction) {
     columnHelper.display({
       id: 'published',
       header: t.columns.published,
-      cell: ({ row }) => <PublishToggle tour={row.original} setPublished={setPublished} />,
+      cell: ({ row }) => (
+        <PublishToggle
+          tour={row.original}
+          setPublished={setPublished}
+          notReadyHref={row.original.editorHref}
+        />
+      ),
     }),
     columnHelper.display({
       id: 'actions',
@@ -199,6 +209,9 @@ export interface ToursTableProps {
   total: number;
   totalPages: number;
   setPublished: SetPublishedAction;
+  /** Hai danh sách chọn của hộp New tour — hỏng thì rỗng, hộp tự nói vì sao (F17). */
+  createOptions: TourEditorOptions;
+  create: CreateTourAction;
 }
 
 export function ToursTable({
@@ -209,6 +222,8 @@ export function ToursTable({
   total,
   totalPages,
   setPublished,
+  createOptions,
+  create,
 }: ToursTableProps) {
   const [columnVisibility, setColumnVisibility] = React.useState<ColumnVisibilityState>({});
   const columns = React.useMemo(() => buildColumns(setPublished), [setPublished]);
@@ -232,6 +247,7 @@ export function ToursTable({
           <ToursMonthMenu query={query} options={monthOptions} />
           <ToursClearFilters query={query} />
           <ColumnVisibilityMenu table={table} labels={COLUMN_LABELS} icons={COLUMN_ICONS} />
+          <NewTourDialog options={createOptions} create={create} />
         </>
       }
       footer={

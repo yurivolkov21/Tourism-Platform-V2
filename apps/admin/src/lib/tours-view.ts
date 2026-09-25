@@ -2,6 +2,7 @@ import type { AdminTourRow } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
 import type { TourCategoryOption } from './api/tours';
 import { formatAmount } from './bookings-view';
+import { tourTabHref } from './tour-editor-view';
 import { departuresHref } from './tours-query';
 
 /**
@@ -40,6 +41,8 @@ export interface TourRowVM {
   isPublished: boolean;
   isFeatured: boolean;
   heroUrl: string | null;
+  /** Khu làm việc của tour (F17) — đích của tên tour và của nút mở tour trong toast. */
+  editorHref: string;
   /** Màn chuyến khởi hành của tour này (F12 dựng). */
   departuresHref: string;
   /** Tên đọc-màn-hình của link sang màn chuyến. */
@@ -74,6 +77,7 @@ export function toTourRowVM(row: AdminTourRow): TourRowVM {
     isPublished: row.isPublished,
     isFeatured: row.isFeatured,
     heroUrl: row.heroUrl,
+    editorHref: tourTabHref(row.slug, 'details'),
     departuresHref: departuresHref(row.slug),
     departuresLabel: t.manageDepartures(row.title),
   };
