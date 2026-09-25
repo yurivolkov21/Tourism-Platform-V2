@@ -77,7 +77,10 @@ export function SavedScreen({
 
   return (
     <Screen edges={SCREEN_EDGES_UNDER_TABS} padded={false} scrollable={false}>
-      <View style={{ flex: 1, paddingTop: theme.spacing(3), gap: theme.spacing(4) }}>
+      {/* gap(2) chứ không gap(4) như trước: card đầu tiên phải NẰM GẦN dòng
+          đếm hơn là cách xa nó — khoảng cách title↔count (gap(4) trong khối
+          bên dưới) mới là khoảng lớn, count↔card phải hẹp hơn. */}
+      <View style={{ flex: 1, paddingTop: theme.spacing(3), gap: theme.spacing(2) }}>
         {wishlistErrorLabel === null ? null : (
           <View
             style={{
