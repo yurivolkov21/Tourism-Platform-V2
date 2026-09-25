@@ -1,0 +1,95 @@
+import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { useState } from 'react';
+import { describe, expect, it } from 'vitest';
+import { type Keyed, newItemKey } from '@/lib/list-editor';
+import { ListEditor } from './list-editor';
+
+interface Line extends Keyed {
+  text: string;
+}
+
+function Harness({ initial, max = 3 }: { initial: string[]; max?: number }) {
+  const [items, setItems] = useState<Line[]>(initial.map((text) => ({ key: newItemKey(), text })));
+  return (
+    <>
+      <ListEditor
+        items={items}
+        onChange={setItems}
+        max={max}
+        newItem={() => ({ key: newItemKey(), text: '' })}
+        addLabel="Add highlight"
+        itemName={(index) => `highlight ${index + 1}`}
+        renderItem={(item, index) => (
+          <input
+            aria-label={`Highlight ${index + 1}`}
+            value={item.text}
+            onChange={(event) =>
+              setItems((current) =>
+                current.map((line) =>
+                  line.key === item.key ? { ...line, text: event.target.value } : line,
+                ),
+              )
+            }
+          />
+        )}
+      />
+      <output data-testid="order">{items.map((item) => item.text).join('|')}</output>
+    </>
+  );
+}
+
+describe('ListEditor', () => {
+  it('dời lên / xuống đổi thứ tự; nút lên của dòng đầu bị khoá nhưng vẫn giữ được tiêu điểm', async () => {
+    const user = userEvent.setup();
+    render(<Harness initial={['Sunset', 'Kayak', 'Cave']} />);
+
+    const up = screen.getByRole('button', { name: 'Move highlight 2 up' });
+    await user.click(up);
+
+    expect(screen.getByTestId('order').textContent).toBe('Kayak|Sunset|Cave');
+    // Cùng nút DOM (dòng giữ key) — giờ là dòng đầu nên khoá, và tiêu điểm KHÔNG rơi về <body>.
+    expect(up).toHaveAttribute('aria-disabled', 'true');
+    expect(up).toHaveFocus();
+  });
+
+  it('dời xuống: tiêu điểm đi theo dòng vừa dời, kể cả khi dòng ấy thành dòng cuối', async () => {
+    const user = userEvent.setup();
+    render(<Harness initial={['Sunset', 'Kayak', 'Cave']} />);
+
+    const down = screen.getByRole('button', { name: 'Move highlight 2 down' });
+    await user.click(down);
+
+    expect(screen.getByTestId('order').textContent).toBe('Sunset|Cave|Kayak');
+    // Dòng Kayak giờ là dòng cuối: nút "xuống" của nó khoá mà vẫn giữ tiêu điểm.
+    expect(screen.getByRole('button', { name: 'Move highlight 3 down' })).toHaveFocus();
+    expect(screen.getByRole('button', { name: 'Move highlight 3 down' })).toHaveAttribute(
+      'aria-disabled',
+      'true',
+    );
+  });
+
+  it('xoá một dòng chuyển tiêu điểm sang nút xoá của dòng thay chỗ nó', async () => {
+    const user = userEvent.setup();
+    render(<Harness initial={['Sunset', 'Kayak']} />);
+
+    await user.click(screen.getByRole('button', { name: 'Remove highlight 1' }));
+
+    expect(screen.getByTestId('order').textContent).toBe('Kayak');
+    expect(screen.getByRole('button', { name: 'Remove highlight 1' })).toHaveFocus();
+  });
+
+  it('thêm dòng đưa tiêu điểm vào ô đầu tiên của dòng mới; đủ trần thì nút thêm khoá và nói trần', async () => {
+    const user = userEvent.setup();
+    render(<Harness initial={['Sunset', 'Kayak']} max={3} />);
+
+    const add = screen.getByRole('button', { name: 'Add highlight' });
+    await user.click(add);
+
+    expect(screen.getByRole('textbox', { name: 'Highlight 3' })).toHaveFocus();
+    expect(add).toHaveAttribute('aria-disabled', 'true');
+    expect(screen.getByText('You can add up to 3.')).toBeInTheDocument();
+    await user.click(add);
+    expect(screen.getByTestId('order').textContent).toBe('Sunset|Kayak|');
+  });
+});

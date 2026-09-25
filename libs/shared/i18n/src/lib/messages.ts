@@ -2920,6 +2920,24 @@ export const messages = {
       dateUntil: (date: string) => `Until ${date}`,
     },
     /**
+     * Khung sửa danh sách của kit (spec F17 §2h) — sáu danh sách của khu làm việc
+     * tour dùng chung. `name` là tên MỘT dòng do nơi dùng truyền vào
+     * ("highlight 2", "FAQ 3"), để trình đọc màn hình nghe được nút nào của dòng nào.
+     */
+    listEditor: {
+      moveUp: (name: string) => `Move ${name} up`,
+      moveDown: (name: string) => `Move ${name} down`,
+      remove: (name: string) => `Remove ${name}`,
+      limit: (max: number) => `You can add up to ${max}.`,
+    },
+    /** Hỏi lại khi rời một form có thay đổi chưa lưu (spec F17 §2i). */
+    unsavedChanges: {
+      title: 'Discard unsaved changes?',
+      body: 'You changed this tab but have not saved it. Leaving now throws those changes away.',
+      discard: 'Discard changes',
+      keep: 'Keep editing',
+    },
+    /**
      * Khối payload trong drawer chi tiết (kit `JsonDrawer` — `/outbox` và
      * `/payment-events` dùng chung). User chốt 03/09: back-office này không
      * phải ai cũng đọc được JSON, nên payload có HAI chế độ xem và chế độ dễ
