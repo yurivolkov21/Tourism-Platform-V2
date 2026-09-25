@@ -36,6 +36,7 @@ function baseProps(overrides: Partial<SavedScreenProps> = {}): SavedScreenProps 
     errorTitle: "Couldn't load your saved tours.",
     retryLabel: 'Try again',
     onRetry: jest.fn(),
+    countLabel: '2 tours',
     emptyTitle: 'Nothing saved yet — tap the heart on any tour.',
     browseLabel: 'Browse tours',
     onBrowse: jest.fn(),
@@ -73,6 +74,14 @@ describe('SavedScreen', () => {
     expect(screen.getByText('Hội An Old Town & Lantern Evening')).toBeTruthy();
     expect(screen.getByText('Mai Châu Valley Cycling 2D1N')).toBeTruthy();
     expect(screen.getByText('No longer available')).toBeTruthy();
+  });
+
+  it('countLabel: vẽ dòng đếm dưới tiêu đề khi có; ẩn khi null (S2)', async () => {
+    const { rerender } = await renderWithTheme(<SavedScreen {...baseProps()} />);
+    expect(screen.getByText('2 tours')).toBeTruthy();
+
+    await rerender(<SavedScreen {...baseProps({ items: [], countLabel: null })} />);
+    expect(screen.queryByText('2 tours')).toBeNull();
   });
 
   it('bấm tim trên thẻ gọi onRemovePress đúng tourId', async () => {

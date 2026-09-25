@@ -36,6 +36,9 @@ export interface SavedScreenProps {
   errorTitle: string;
   retryLabel: string;
   onRetry: () => void;
+  /** S1 — dòng đếm dưới tiêu đề ("3 tours"), `null` khi rỗng/lỗi/đang tải (S2/mockup
+      không có dòng này ngoài trạng thái có dữ liệu). */
+  countLabel: string | null;
   emptyTitle: string;
   browseLabel: string;
   onBrowse: () => void;
@@ -61,6 +64,7 @@ export function SavedScreen({
   errorTitle,
   retryLabel,
   onRetry,
+  countLabel,
   emptyTitle,
   browseLabel,
   onBrowse,
@@ -95,8 +99,15 @@ export function SavedScreen({
             </AppText>
           </View>
         )}
-        <View style={{ paddingHorizontal: theme.spacing(4) }}>
+        {/* gap(4)=16dp khớp mockup (title `top:s*2`, count `top:s*14` — lệch
+            s*12=48dp trừ chiều cao dòng title ~32dp ≈ 16dp khoảng cách thật). */}
+        <View style={{ paddingHorizontal: theme.spacing(4), gap: theme.spacing(4) }}>
           <AppText variant="title">{title}</AppText>
+          {countLabel === null ? null : (
+            <AppText variant="caption" tone="muted">
+              {countLabel}
+            </AppText>
+          )}
         </View>
 
         {status === 'loading' ? (

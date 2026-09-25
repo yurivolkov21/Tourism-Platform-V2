@@ -129,6 +129,7 @@ export default function SavedRoute() {
       errorTitle={saved.error}
       retryLabel={saved.retry}
       onRetry={() => void listQuery.refetch()}
+      countLabel={status === 'content' && items.length > 0 ? saved.count(items.length) : null}
       emptyTitle={saved.empty}
       browseLabel={saved.browse}
       onBrowse={() => router.navigate('/explore')}
