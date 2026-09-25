@@ -1,5 +1,5 @@
 import { isDefinedError } from '@orpc/client';
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { type PublicReview, windowDaysForTripLength } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -84,6 +84,14 @@ export default function TourDetailRoute() {
 
   const { data: session } = getAuthClient().useSession();
   const signedIn = Boolean(session?.user);
+  const queryClient = useQueryClient();
+  // D6 fix — sau khi mutation tim (replay HOẶC bấm tay) settle, ép `wishlist.check`
+  // refetch: màn có thể vẫn mount sẵn dưới modal đăng nhập nên GET (enabled khi vừa
+  // `signedIn`) và POST save có thể đua nhau; GET cũ về sau sẽ đè `wished` sai nếu
+  // không invalidate.
+  function invalidateWishlistCheck() {
+    queryClient.invalidateQueries({ queryKey: orpc.wishlist.check.key() });
+  }
 
   const query = useQuery(orpc.catalog.tours.bySlug.queryOptions({ input: { slug } }));
   const reviewsQuery = useQuery(
@@ -146,6 +154,7 @@ export default function TourDetailRoute() {
           setWished(false);
           setWishlistError(messages.wishlist.error);
         },
+        onSettled: invalidateWishlistCheck,
       },
     );
   }, [signedIn, tourId]);
@@ -183,7 +192,21 @@ export default function TourDetailRoute() {
           setWished(!next);
           setWishlistError(messages.wishlist.error);
         },
+        onSettled: invalidateWishlistCheck,
       },
+    );
+  }
+
+  // Ghi lại "quay về tour này + tự lưu tim" TRƯỚC khi rời màn (D6, mục 1c spec
+  // P5b-4) — dùng chung cho cả `onSignIn` lẫn `onCreateAccount` bên dưới, thay vì
+  // lặp lại cùng một điều kiện ở hai chỗ. `tourId` có thể chưa sẵn sàng (tour đang
+  // tải lúc khách bấm tim rất nhanh) — không set `replay` thì đăng nhập xong đơn
+  // giản KHÔNG tự lưu, không phải lỗi, chỉ là không có gì để replay.
+  function recordReturn() {
+    setPendingReturn(
+      tourId === undefined
+        ? { path: `/tours/${slug}` }
+        : { path: `/tours/${slug}`, replay: { kind: 'wishlist', tourId } },
     );
   }
 
@@ -380,26 +403,14 @@ export default function TourDetailRoute() {
       authGateBody={messages.mobile.authPrompts.wishlistReason}
       signInLabel={messages.mobile.authPrompts.signIn}
       createAccountLabel={messages.mobile.authPrompts.createAccount}
-      // Ghi lại "quay về tour này + tự lưu tim" TRƯỚC khi rời màn — đóng nợ D6 cũ
-      // (mục 1c spec P5b-4). `tourId` có thể chưa sẵn sàng (tour đang tải lúc
-      // khách bấm tim rất nhanh) — không set `replay` thì đăng nhập xong đơn
-      // giản KHÔNG tự lưu, không phải lỗi, chỉ là không có gì để replay.
       onSignIn={() => {
         setAuthGateOpen(false);
-        setPendingReturn(
-          tourId === undefined
-            ? { path: `/tours/${slug}` }
-            : { path: `/tours/${slug}`, replay: { kind: 'wishlist', tourId } },
-        );
+        recordReturn();
         router.navigate('/login');
       }}
       onCreateAccount={() => {
         setAuthGateOpen(false);
-        setPendingReturn(
-          tourId === undefined
-            ? { path: `/tours/${slug}` }
-            : { path: `/tours/${slug}`, replay: { kind: 'wishlist', tourId } },
-        );
+        recordReturn();
         router.navigate('/register');
       }}
       wishlistErrorLabel={wishlistError}

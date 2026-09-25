@@ -2,7 +2,7 @@ import { router } from 'expo-router';
 import { useState } from 'react';
 import { useAuthActions } from '@/features/auth/auth-actions';
 import { submitGoogle } from '@/features/auth/google-flow';
-import { consumeReturnPath } from '@/features/auth/return-to';
+import { clearPendingReturn, consumeReturnPath } from '@/features/auth/return-to';
 import { submitSignIn } from '@/features/auth/sign-in-flow';
 import {
   type SignInField,
@@ -77,7 +77,10 @@ export default function LoginRoute() {
       onGoogle={() => void google()}
       onForgot={() => router.push('/forgot-password')}
       onCreateAccount={() => router.navigate('/register')}
-      onClose={() => router.replace('/')}
+      onClose={() => {
+        clearPendingReturn();
+        router.replace('/');
+      }}
     />
   );
 }

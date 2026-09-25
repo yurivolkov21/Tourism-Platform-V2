@@ -1,4 +1,9 @@
-import { consumePendingReplay, consumeReturnPath, setPendingReturn } from './return-to';
+import {
+  clearPendingReturn,
+  consumePendingReplay,
+  consumeReturnPath,
+  setPendingReturn,
+} from './return-to';
 
 describe('return-to', () => {
   it('chưa set gì: consumeReturnPath trả null, consumePendingReplay trả undefined', () => {
@@ -30,5 +35,12 @@ describe('return-to', () => {
     setPendingReturn({ path: '/(tabs)/saved' });
     setPendingReturn({ path: '/(tabs)/account' });
     expect(consumeReturnPath()).toBe('/(tabs)/account');
+  });
+
+  it('clearPendingReturn xoá sạch entry đã set — consumeReturnPath trả null sau đó', () => {
+    setPendingReturn({ path: '/tours/hoi-an', replay: { kind: 'wishlist', tourId: 't1' } });
+    clearPendingReturn();
+    expect(consumeReturnPath()).toBeNull();
+    expect(consumePendingReplay()).toBeUndefined();
   });
 });
