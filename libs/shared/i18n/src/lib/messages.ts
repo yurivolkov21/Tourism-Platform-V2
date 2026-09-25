@@ -2201,6 +2201,9 @@ export const messages = {
       // S1 (P5b-4) — tour đã gỡ publish sau khi khách lưu; thẻ mờ + nhãn này,
       // không bấm vào được (WishlistItemSchema.unavailable).
       unavailable: 'No longer available',
+      // S1 — dòng đếm dưới tiêu đề, mockup: "3 tours". Cùng chữ với
+      // `accountSaved.savedCount` (web) nhưng khoá RIÊNG — hai bề mặt độc lập.
+      count: (n: number) => (n === 1 ? '1 tour' : `${n} tours`),
     },
   },
   /** Khuôn phản hồi dùng chung của tầng dữ liệu (ADR-0016 §4) — không gắn
