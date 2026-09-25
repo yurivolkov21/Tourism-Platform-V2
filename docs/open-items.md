@@ -56,6 +56,14 @@ ghi chép nội bộ) — trước đó nó hứa nhầm rằng khách sẽ đ�
   `pnpm --filter @tourism/mobile dev` nay là `expo start` thay vì
   `--tunnel`. Chưa ai quét QR thử sau khi đổi — cần một lượt trên điện thoại
   thật cùng mạng Wi-Fi. Không chạy được thì `dev:tunnel` vẫn còn nguyên.
+- **Cơ chế "quay lại đúng chỗ sau đăng nhập" (P5b-4, nhánh
+  `feat/mobile-account-screens`, plan
+  `docs/plans/2026-09-25-mobile-account-return-to-auth.md`)** — Bấm tim khi
+  chưa đăng nhập ở tour detail → Sign in → đăng nhập xong → kiểm PHẢI quay
+  đúng tour VÀ tim đã tự đặc sẵn (không cần bấm lại). Thử cả hai chiều: (a)
+  đăng nhập xong xuôi, (b) bấm X đóng màn Sign in nửa chừng RỒI đăng nhập lại
+  từ chỗ khác (Account/Explore) — PHẢI không bị "dạt" về tour cũ. Máy AI
+  không có thiết bị thật, chưa từng chạy tay bước này (Step 6 của plan).
 
 ## Việc tay trên hạ tầng
 
@@ -112,6 +120,28 @@ timezone khác UTC — chạy cô lập cũng fail, không phải do đụng đ�
 
 Chưa vá — ngoài phạm vi nhánh `feat/mobile-browse-screens` (luật 1 CLAUDE.md).
 Cần mở nhánh `fix/` riêng khi có người rảnh tay.
+
+## Nợ nhỏ phát sinh từ P5b-4 (nhánh `feat/mobile-account-screens`)
+
+Phát hiện 25/09 ở final review của plan return-to-auth (SDD, xem
+[ledger](../.superpowers/sdd/2026-09-25-mobile-account-return-to-auth/progress.md)
+nếu còn — file này bị xoá sau khi merge). Không chặn merge, ghi lại để không quên:
+
+1. **Explore-tab wishlist gate chưa gọi `setPendingReturn`** — chỉ tour-detail
+   (`[slug].tsx`) và các khối chặn tab tương lai (Saved/Account, V1 spec P5b-4)
+   mới nhớ đường quay lại; bấm tim ở thẻ tour trên Explore rồi đăng nhập xong
+   thì về Home, không về đúng Explore. Spec §1b bỏ sót nơi này.
+2. **`login.tsx`'s `onClose` (nút X) luôn về Home** — kể cả khi mở từ một tour
+   cụ thể. Giờ đã có hạ tầng return-to (P5b-4), sửa để về đúng tour là việc
+   nhỏ nhưng chưa làm (ngoài phạm vi plan return-to-auth, plan đó chỉ gọi
+   `clearPendingReturn()` ở đây, không đổi đích).
+3. **`router.replace` khi quay lại tour đã mount sẵn dưới modal login** —
+   Expo Router giữ màn tour-detail mount nguyên dưới modal `(auth)`, nên
+   `replace` có thể đẩy thêm một bản sao vào stack thay vì đóng modal về đúng
+   màn đang có sẵn. Đổi sang `router.back()`/dismiss khi đích trùng màn đã mở
+   là sửa đúng hơn nhưng cần test tay trên máy thật (xem mục "Cần thử lại
+   bằng máy thật" phía trên) trước khi đổi — rủi ro đổi sai điều hướng cao
+   hơn lợi ích nếu không kiểm chứng được trên thiết bị thật.
 
 ## Nợ kỹ thuật chi tiết
 
