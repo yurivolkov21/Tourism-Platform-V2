@@ -1,3 +1,4 @@
+import { expo } from '@better-auth/expo';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { betterAuth } from 'better-auth';
 import { prismaAdapter } from 'better-auth/adapters/prisma';
@@ -187,6 +188,11 @@ export const auth = betterAuth({
       : {}),
   },
   plugins: [
+    // ADR-0017 §9: mobile dùng @better-auth/expo (SecureStore, không cookie
+    // httpOnly). Đọc header `origin` giả BA client Expo gắn cho request thay
+    // vì origin trình duyệt thật — thiếu plugin này thì trustedOrigins không
+    // bao giờ khớp scheme `nexora://` và mọi request từ app mobile bị chặn.
+    expo(),
     emailOTP({
       otpLength: 6,
       expiresIn: 600, // 10 phút — khớp copy "code expires" nếu UI có
