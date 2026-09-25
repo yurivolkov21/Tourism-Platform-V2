@@ -8,6 +8,7 @@ import {
   RegisterScreen,
   type RegisterScreenProps,
 } from '@/features/auth/register-screen';
+import { consumeReturnPath } from '@/features/auth/return-to';
 
 /** Cùng khuôn với `login.tsx`; khác ở ô tick Terms và đích sau khi gửi. */
 export default function RegisterRoute() {
@@ -55,7 +56,7 @@ export default function RegisterRoute() {
     const outcome = await submitGoogle(actions, 'register');
     setPending(false);
 
-    if (outcome.kind === 'success') router.replace('/');
+    if (outcome.kind === 'success') router.replace(consumeReturnPath() ?? '/');
     else setFormMessage({ tone: outcome.tone, text: outcome.text });
   };
 

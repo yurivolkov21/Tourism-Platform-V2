@@ -2,6 +2,7 @@ import { router } from 'expo-router';
 import { useState } from 'react';
 import { useAuthActions } from '@/features/auth/auth-actions';
 import { submitGoogle } from '@/features/auth/google-flow';
+import { consumeReturnPath } from '@/features/auth/return-to';
 import { submitSignIn } from '@/features/auth/sign-in-flow';
 import {
   type SignInField,
@@ -42,7 +43,7 @@ export default function LoginRoute() {
     if (outcome.kind === 'formMessage') {
       setFormMessage({ tone: outcome.tone, text: outcome.text });
     }
-    if (outcome.kind === 'success') router.replace('/');
+    if (outcome.kind === 'success') router.replace(consumeReturnPath() ?? '/');
     if (outcome.kind === 'verifyEmail') {
       // `reason: 'blocked'` để màn Verify đổi phụ đề: khách này không vừa đăng
       // ký, mà bị chặn ngay ở cửa đăng nhập.
@@ -61,7 +62,7 @@ export default function LoginRoute() {
     const outcome = await submitGoogle(actions, 'signIn');
     setPending(false);
 
-    if (outcome.kind === 'success') router.replace('/');
+    if (outcome.kind === 'success') router.replace(consumeReturnPath() ?? '/');
     else setFormMessage({ tone: outcome.tone, text: outcome.text });
   };
 
