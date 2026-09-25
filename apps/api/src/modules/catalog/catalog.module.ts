@@ -9,6 +9,7 @@ import { AdminDeparturesService } from './admin-departures.service.js';
 import { AdminDestinationsController } from './admin-destinations.controller.js';
 import { AdminDestinationsService } from './admin-destinations.service.js';
 import { AdminToursController } from './admin-tours.controller.js';
+import { AdminToursService } from './admin-tours.service.js';
 import { CatalogController } from './catalog.controller.js';
 import { CatalogService } from './catalog.service.js';
 import { DepartureCancelService } from './departure-cancel.service.js';
@@ -36,6 +37,8 @@ import { DepartureCancelService } from './departure-cancel.service.js';
     AdminCategoriesService,
     // F15 (P4e-2): điểm đến — ẩn/hiện, không xoá, không sắp thứ tự.
     AdminDestinationsService,
+    // F17 (P4e-3a): khu làm việc tour — tạo, sửa theo tab, xoá.
+    AdminToursService,
   ],
 })
 export class CatalogModule {}

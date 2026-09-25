@@ -1,0 +1,498 @@
+import { FastifyAdapter, type NestFastifyApplication } from '@nestjs/platform-fastify';
+import { Test } from '@nestjs/testing';
+import {
+  AdminTourCreateResultSchema,
+  AdminTourDeleteResultSchema,
+  AdminTourDetailSchema,
+  vietnamToday,
+} from '@tourism/contract';
+import { AppModule } from '../../app.module.js';
+import { prisma } from '../../auth/auth.config.js';
+import type { Prisma } from '../../generated/prisma/client.js';
+import { BookingStatus, PaymentProvider, ReviewSource } from '../../generated/prisma/enums.js';
+import { WebRevalidationService } from '../web-revalidation/web-revalidation.service.js';
+
+/**
+ * Integration (Docker PG, db `tourism_test`) — khu làm việc tour (spec F17,
+ * ADR-0047). Bốn ca đắt nhất:
+ *
+ *  ① Hai lệnh sửa cùng một `version` bắn cùng lúc: ĐÚNG MỘT lệnh qua, lệnh kia
+ *    `STALE_TOUR` — phép so nằm trong câu `UPDATE` chứ không ở một câu đọc riêng.
+ *  ② Lưu tab con cũng đẩy `version` — lưu Itinerary xong thì form Details mở
+ *    trước đó phải bị từ chối.
+ *  ③ Tour đang bán không bao giờ trở nên thiếu: lệnh làm thiếu bị từ chối và
+ *    rollback trọn.
+ *  ④ Xoá kéo theo đúng các bảng con, giữ câu hỏi của khách, và bị khoá ngoại
+ *    chặn khi tour đã có booking.
+ */
+
+const PASSWORD = 'password-123';
+const ADMIN_EMAIL = 'bootstrap-admin@tourism.test';
+const CUSTOMER_EMAIL = 'tour-editor-customer@example.com';
+
+const uuid = (prefix: string, n: number) =>
+  `${prefix}-0000-4000-8000-${String(n).padStart(12, '0')}`;
+const tourId = (n: number) => uuid('f1700001', n);
+const CATEGORY_ID = uuid('f1700002', 1);
+const OTHER_CATEGORY_ID = uuid('f1700002', 2);
+const DEST_1 = uuid('f1700003', 1);
+const DEST_2 = uuid('f1700003', 2);
+const DEST_3 = uuid('f1700003', 3);
+const MISSING = uuid('f17000ff', 1);
+
+/** Ngày lịch Việt Nam hôm nay lệch `offset` ngày, khuôn 00:00 UTC của `@db.Date`. */
+const today = vietnamToday(new Date());
+const day = (offset: number) => {
+  const date = new Date(`${today}T00:00:00.000Z`);
+  date.setUTCDate(date.getUTCDate() + offset);
+  return date;
+};
+
+function sessionCookie(res: { headers: Record<string, unknown> }): string {
+  const raw = res.headers['set-cookie'];
+  const cookies = (Array.isArray(raw) ? raw : [raw]).filter(
+    (c): c is string => typeof c === 'string',
+  );
+  const session = cookies.find((c) => c.includes('session_token'));
+  if (!session) throw new Error(`No session cookie in: ${JSON.stringify(raw)}`);
+  const pair = session.split(';')[0];
+  if (!pair) throw new Error('Malformed set-cookie');
+  return pair;
+}
+
+describe('admin tours integration (F17)', () => {
+  let app: NestFastifyApplication;
+  let adminCookie: string;
+  let customerCookie: string;
+  let customerId: string;
+  let web: WebRevalidationService;
+
+  beforeAll(async () => {
+    // Int spec chạy tuần tự (`fileParallelism: false`), nên dọn cả `posts` ở đây
+    // không giẫm lên `posts.int.spec.ts`.
+    await prisma.$executeRawUnsafe(
+      'TRUNCATE TABLE users, tour_categories, destinations, media_assets, posts CASCADE',
+    );
+
+    const moduleRef = await Test.createTestingModule({ imports: [AppModule] }).compile();
+    app = moduleRef.createNestApplication<NestFastifyApplication>(new FastifyAdapter(), {
+      rawBody: true,
+    });
+    await app.init();
+    await app.getHttpAdapter().getInstance().ready();
+    web = moduleRef.get(WebRevalidationService);
+
+    for (const email of [ADMIN_EMAIL, CUSTOMER_EMAIL]) {
+      await app.inject({
+        method: 'POST',
+        url: '/api/auth/sign-up/email',
+        payload: { email, password: PASSWORD, name: 'Test User' },
+      });
+      await prisma.user.update({
+        where: { email },
+        data: { emailVerified: true, ...(email === ADMIN_EMAIL ? { role: 'ADMIN' } : {}) },
+      });
+    }
+    adminCookie = sessionCookie(
+      await app.inject({
+        method: 'POST',
+        url: '/api/auth/sign-in/email',
+        payload: { email: ADMIN_EMAIL, password: PASSWORD },
+      }),
+    );
+    customerCookie = sessionCookie(
+      await app.inject({
+        method: 'POST',
+        url: '/api/auth/sign-in/email',
+        payload: { email: CUSTOMER_EMAIL, password: PASSWORD },
+      }),
+    );
+    customerId = (await prisma.user.findUniqueOrThrow({ where: { email: CUSTOMER_EMAIL } })).id;
+  });
+
+  beforeEach(async () => {
+    vi.restoreAllMocks();
+    // Booking trỏ tour bằng khoá ngoại RESTRICT — xoá booking TRƯỚC tour.
+    await prisma.booking.deleteMany();
+    await prisma.enquiry.deleteMany();
+    await prisma.post.deleteMany();
+    await prisma.tour.deleteMany();
+    await prisma.destination.deleteMany();
+    await prisma.tourCategory.deleteMany();
+    await prisma.tourCategory.createMany({
+      data: [
+        { id: CATEGORY_ID, slug: 'day-trips', name: 'Day trips', order: 1 },
+        { id: OTHER_CATEGORY_ID, slug: 'retired', name: 'Retired', order: 2, isActive: false },
+      ],
+    });
+    await prisma.destination.createMany({
+      data: [
+        { id: DEST_1, slug: 'hoi-an', name: 'Hội An', region: 'Central Vietnam' },
+        { id: DEST_2, slug: 'hanoi', name: 'Hà Nội', region: 'Northern Vietnam' },
+        {
+          id: DEST_3,
+          slug: 'an-bang',
+          name: 'An Bàng',
+          region: 'Central Vietnam',
+          isActive: false,
+        },
+      ],
+    });
+  });
+
+  afterAll(async () => {
+    await app?.close();
+  });
+
+  /** Một tour ĐỦ để bán, 2 ngày, đang bán — ca nào cần khác thì đè bằng `patch`. */
+  const makeTour = (n: number, patch: Partial<Prisma.TourUncheckedCreateInput> = {}) =>
+    prisma.tour.create({
+      data: {
+        id: tourId(n),
+        slug: `f17-tour-${n}`,
+        title: `F17 Tour ${n}`,
+        summary: 'A day on the water.',
+        categoryId: CATEGORY_ID,
+        durationDays: 2,
+        maxGroupSize: 12,
+        basePrice: '99.00',
+        isPublished: true,
+        destinations: { create: [{ destinationId: DEST_1, isPrimary: true }] },
+        itinerary: {
+          create: [
+            { dayNumber: 1, title: 'Arrive' },
+            { dayNumber: 2, title: 'Leave' },
+          ],
+        },
+        ...patch,
+      },
+    });
+
+  const makeDeparture = (
+    tour: string,
+    patch: Partial<Prisma.TourDepartureUncheckedCreateInput> & { startDate: Date; endDate: Date },
+  ) => prisma.tourDeparture.create({ data: { tourId: tour, seatsTotal: 10, ...patch } });
+
+  /** Booking tối thiểu — khuôn `admin-catalog.int.spec.ts`. */
+  const makeBooking = async (tour: string, departure: string, code: string) =>
+    prisma.booking.create({
+      data: {
+        code,
+        userId: customerId,
+        tourId: tour,
+        departureId: departure,
+        numAdults: 1,
+        totalAmount: '99.00',
+        status: BookingStatus.PAID,
+        tourTitle: 'F17 Tour',
+        departureStartDate: day(30),
+        departureEndDate: day(31),
+        unitPrice: '99.00',
+        contactName: 'Ada Lovelace',
+        contactEmail: 'ada@example.com',
+        paymentProvider: PaymentProvider.STRIPE,
+        paidAt: new Date(),
+      },
+    });
+
+  const get = (slug: string, cookie = adminCookie) =>
+    app.inject({ method: 'GET', url: `/api/admin/tours/${slug}`, headers: { cookie } });
+  const post = (url: string, payload: Record<string, unknown>, cookie = adminCookie) =>
+    app.inject({ method: 'POST', url, headers: { cookie }, payload });
+  const create = (payload: Record<string, unknown>, cookie = adminCookie) =>
+    post('/api/admin/tours', payload, cookie);
+  const remove = (id: string, cookie = adminCookie) =>
+    post(`/api/admin/tours/${id}/delete`, {}, cookie);
+
+  const detailOf = async (slug: string) => {
+    const res = await get(slug);
+    expect(res.statusCode).toBe(200);
+    return AdminTourDetailSchema.parse(res.json());
+  };
+
+  const CREATE = {
+    title: 'Hoi An Lantern Walk',
+    slug: 'hoi-an-lantern-walk',
+    categoryId: CATEGORY_ID,
+    primaryDestinationId: DEST_1,
+    durationDays: 1,
+    maxGroupSize: 10,
+    basePrice: '45.00',
+  };
+
+  describe('guard', () => {
+    it('khách thường thì mọi đường đều 403', async () => {
+      await makeTour(1);
+      expect((await get('f17-tour-1', customerCookie)).statusCode).toBe(403);
+      expect((await create(CREATE, customerCookie)).statusCode).toBe(403);
+      expect((await remove(tourId(1), customerCookie)).statusCode).toBe(403);
+    });
+
+    it('chưa đăng nhập thì mọi đường đều 401', async () => {
+      await makeTour(1);
+      expect((await get('f17-tour-1', '')).statusCode).toBe(401);
+      expect((await create(CREATE, '')).statusCode).toBe(401);
+      expect((await remove(tourId(1), '')).statusCode).toBe(401);
+    });
+  });
+
+  describe('get', () => {
+    it('trả đủ tour, danh sách con theo thứ tự, version có mili-giây', async () => {
+      await makeTour(1, {
+        isPublished: false,
+        durationDays: 3,
+        destinations: {
+          create: [
+            { destinationId: DEST_2, isPrimary: false },
+            { destinationId: DEST_1, isPrimary: true },
+          ],
+        },
+        itinerary: {
+          create: [
+            { dayNumber: 3, title: 'Third' },
+            { dayNumber: 1, title: 'First' },
+          ],
+        },
+        faqs: {
+          create: [
+            { question: 'Second?', answer: 'B', order: 1 },
+            { question: 'First?', answer: 'A', order: 0 },
+          ],
+        },
+        costItems: {
+          create: [
+            {
+              category: 'GUIDE',
+              label: 'Guide',
+              amount: '40.00',
+              basis: 'PER_DEPARTURE',
+              sortOrder: 1,
+            },
+            {
+              category: 'MEALS',
+              label: 'Lunch',
+              amount: '8.50',
+              basis: 'PER_PERSON',
+              sortOrder: 0,
+            },
+          ],
+        },
+      });
+      const row = await prisma.tour.findUniqueOrThrow({ where: { id: tourId(1) } });
+
+      const detail = await detailOf('f17-tour-1');
+
+      // Tour TẮT bán vẫn đọc được — khu làm việc là nơi soạn tour chưa bán.
+      expect(detail.isPublished).toBe(false);
+      expect(detail.version).toBe(row.updatedAt.toISOString());
+      expect(detail.destinations).toEqual([
+        { destinationId: DEST_1, isPrimary: true },
+        { destinationId: DEST_2, isPrimary: false },
+      ]);
+      expect(detail.itinerary.map((d) => d.dayNumber)).toEqual([1, 3]);
+      expect(detail.faqs.map((f) => f.question)).toEqual(['First?', 'Second?']);
+      expect(detail.costItems.map((c) => c.label)).toEqual(['Lunch', 'Guide']);
+      expect(detail.costItems[0]?.amount).toBe('8.50');
+      expect(detail.readiness).toEqual({
+        summary: true,
+        primaryDestination: true,
+        missingDays: [2],
+        ready: false,
+      });
+    });
+
+    it('đếm chuyến, booking và sàn ghế theo giai đoạn', async () => {
+      await makeTour(1);
+      await makeDeparture(tourId(1), { startDate: day(-10), endDate: day(-9), seatsTotal: 30 }); // đã về
+      await makeDeparture(tourId(1), {
+        startDate: day(20),
+        endDate: day(21),
+        seatsTotal: 40,
+        status: 'CANCELLED',
+      });
+      const live = await makeDeparture(tourId(1), {
+        startDate: day(30),
+        endDate: day(31),
+        seatsTotal: 11,
+      });
+      await makeBooking(tourId(1), live.id, 'BK-F17GET01');
+
+      const detail = await detailOf('f17-tour-1');
+
+      expect(detail.departureCount).toBe(3);
+      expect(detail.liveSeatsMax).toBe(11);
+      expect(detail.bookingCount).toBe(1);
+    });
+
+    it('slug không có thì 404 với câu của contract', async () => {
+      const res = await get('no-such-tour');
+      expect(res.statusCode).toBe(404);
+      expect(res.json()).toMatchObject({ code: 'NOT_FOUND', message: 'Tour not found' });
+    });
+  });
+
+  describe('create', () => {
+    it('tạo tour TẮT bán, USD, một điểm chính, chưa có giá vốn — và không bust', async () => {
+      const revalidate = vi.spyOn(web, 'revalidate').mockResolvedValue(undefined);
+
+      const res = await create({ ...CREATE, title: '  Hoi An Lantern Walk  ' });
+
+      expect(res.statusCode).toBe(200);
+      const created = AdminTourCreateResultSchema.parse(res.json());
+      expect(created.slug).toBe('hoi-an-lantern-walk');
+      const row = await prisma.tour.findUniqueOrThrow({
+        where: { id: created.id },
+        include: { destinations: true, itinerary: true },
+      });
+      expect(row).toMatchObject({
+        title: 'Hoi An Lantern Walk',
+        isPublished: false,
+        currency: 'USD',
+        costPrice: null,
+        durationDays: 1,
+        maxGroupSize: 10,
+      });
+      expect(row.basePrice.toFixed(2)).toBe('45.00');
+      expect(row.destinations).toEqual([
+        expect.objectContaining({ destinationId: DEST_1, isPrimary: true }),
+      ]);
+      expect(row.itinerary).toEqual([]);
+      // Tour mới đang tắt bán — web chưa có trang nào chứa nó.
+      expect(revalidate).not.toHaveBeenCalled();
+    });
+
+    it('slug trùng thì 409 SLUG_TAKEN, kể cả hai lượt tạo bắn cùng lúc', async () => {
+      const [a, b] = await Promise.all([create(CREATE), create(CREATE)]);
+      expect([a.statusCode, b.statusCode].sort()).toEqual([200, 409]);
+      const loser = a.statusCode === 409 ? a : b;
+      expect(loser.json()).toMatchObject({ code: 'SLUG_TAKEN' });
+      expect(await prisma.tour.count({ where: { slug: CREATE.slug } })).toBe(1);
+    });
+
+    it('danh mục hay điểm đến không tồn tại thì 404 NOT_FOUND, không để lại hàng nào', async () => {
+      const noCategory = await create({ ...CREATE, categoryId: MISSING });
+      const noDestination = await create({
+        ...CREATE,
+        slug: 'other-slug',
+        primaryDestinationId: MISSING,
+      });
+
+      expect(noCategory.statusCode).toBe(404);
+      expect(noCategory.json()).toMatchObject({
+        code: 'NOT_FOUND',
+        message: 'Category or destination not found',
+      });
+      expect(noDestination.statusCode).toBe(404);
+      expect(noDestination.json()).toMatchObject({
+        code: 'NOT_FOUND',
+        message: 'Category or destination not found',
+      });
+      expect(await prisma.tour.count()).toBe(0);
+    });
+
+    it('danh mục và điểm đến ĐANG ẨN vẫn chọn được (spec §2b.4)', async () => {
+      const res = await create({
+        ...CREATE,
+        categoryId: OTHER_CATEGORY_ID,
+        primaryDestinationId: DEST_3,
+      });
+      expect(res.statusCode).toBe(200);
+    });
+  });
+
+  describe('delete', () => {
+    it('xoá tour chưa từng có booking kéo theo mọi bảng con, giữ câu hỏi của khách', async () => {
+      await makeTour(1, {
+        faqs: { create: [{ question: 'Q?', answer: 'A' }] },
+        policies: { create: [{ kind: 'GENERAL', title: 'T', body: 'B' }] },
+        costItems: {
+          create: [{ category: 'MEALS', label: 'Lunch', amount: '8.00', basis: 'PER_PERSON' }],
+        },
+      });
+      await makeDeparture(tourId(1), { startDate: day(30), endDate: day(31) });
+      // Một hàng cho mỗi bảng còn lại mà spec §2d và plan (quyết định 4) kể tên.
+      await prisma.wishlist.create({ data: { userId: customerId, tourId: tourId(1) } });
+      await prisma.review.create({
+        data: {
+          tourId: tourId(1),
+          rating: 5,
+          body: 'Lovely evening.',
+          authorName: 'Ada',
+          source: ReviewSource.CURATED,
+          isApproved: true,
+        },
+      });
+      await prisma.post.create({
+        data: {
+          slug: 'f17-post',
+          title: 'Lanterns',
+          content: 'A post about lanterns.',
+          authorId: customerId,
+          relatedTours: { create: [{ tourId: tourId(1) }] },
+        },
+      });
+      const enquiry = await prisma.enquiry.create({
+        data: {
+          name: 'Ada',
+          email: 'ada@example.com',
+          message: 'Is it rainy?',
+          tourId: tourId(1),
+        },
+      });
+
+      const res = await remove(tourId(1));
+
+      expect(res.statusCode).toBe(200);
+      expect(AdminTourDeleteResultSchema.parse(res.json())).toEqual({ slug: 'f17-tour-1' });
+      const where = { tourId: tourId(1) };
+      expect(await prisma.tour.count({ where: { id: tourId(1) } })).toBe(0);
+      expect(await prisma.tourDeparture.count({ where })).toBe(0);
+      expect(await prisma.tourItineraryDay.count({ where })).toBe(0);
+      expect(await prisma.tourFaq.count({ where })).toBe(0);
+      expect(await prisma.tourPolicy.count({ where })).toBe(0);
+      expect(await prisma.tourCostItem.count({ where })).toBe(0);
+      expect(await prisma.tourDestination.count({ where })).toBe(0);
+      expect(await prisma.wishlist.count({ where })).toBe(0);
+      expect(await prisma.review.count({ where })).toBe(0);
+      expect(await prisma.postTour.count({ where })).toBe(0);
+      // Bài viết còn nguyên — chỉ mất liên kết tới tour.
+      expect(await prisma.post.count({ where: { slug: 'f17-post' } })).toBe(1);
+      const kept = await prisma.enquiry.findUniqueOrThrow({ where: { id: enquiry.id } });
+      expect(kept.tourId).toBeNull();
+    });
+
+    it('tour đã có booking thì 409 TOUR_HAS_BOOKINGS, không mất gì, không bust', async () => {
+      await makeTour(1);
+      const departure = await makeDeparture(tourId(1), { startDate: day(30), endDate: day(31) });
+      await makeBooking(tourId(1), departure.id, 'BK-F17DEL01');
+      const revalidate = vi.spyOn(web, 'revalidate').mockResolvedValue(undefined);
+
+      const res = await remove(tourId(1));
+
+      expect(res.statusCode).toBe(409);
+      expect(res.json()).toMatchObject({ code: 'TOUR_HAS_BOOKINGS' });
+      expect(await prisma.tour.count({ where: { id: tourId(1) } })).toBe(1);
+      expect(await prisma.tourDeparture.count({ where: { tourId: tourId(1) } })).toBe(1);
+      expect(revalidate).not.toHaveBeenCalled();
+    });
+
+    it('bust hai tag của tour SAU khi xoá xong', async () => {
+      await makeTour(1);
+      const seen: Array<{ tags: string[]; exists: boolean }> = [];
+      vi.spyOn(web, 'revalidate').mockImplementation(async (tags) => {
+        seen.push({ tags, exists: (await prisma.tour.count({ where: { id: tourId(1) } })) > 0 });
+      });
+
+      await remove(tourId(1));
+
+      await vi.waitFor(() => expect(seen).toHaveLength(1));
+      expect(seen[0]).toEqual({ tags: ['tours', 'tour:f17-tour-1'], exists: false });
+    });
+
+    it('id không có thì 404', async () => {
+      const res = await remove(MISSING);
+      expect(res.statusCode).toBe(404);
+      expect(res.json()).toMatchObject({ code: 'NOT_FOUND', message: 'Tour not found' });
+    });
+  });
+});
