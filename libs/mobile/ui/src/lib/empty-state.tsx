@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { View, type ViewProps } from 'react-native';
-import { AppText } from './app-text';
+import { AppText, type AppTextTone, type AppTextVariant } from './app-text';
 import { Card } from './card';
 import { useTheme } from './theme-provider';
 
@@ -9,6 +9,14 @@ export interface EmptyStateProps extends ViewProps {
   icon?: ReactNode;
   /** Câu chính — tiếng Anh, lấy từ `@tourism/i18n` (luật 7). */
   title: string;
+  /**
+   * Kiểu chữ của `title` — mặc định `heading` (khuôn có sẵn: S3/`AuthGateScreen`
+   * kèm `body` riêng, hai tầng chữ). Đặt `subtitle` (+ `titleTone="muted"`) cho
+   * tri-state CHỈ MỘT dòng chữ, không có `body` (S1/S2 rỗng-lỗi của Saved/Explore
+   * — mockup dùng `.t-subtitle muted`, không phải `.t-heading`).
+   */
+  titleVariant?: AppTextVariant;
+  titleTone?: AppTextTone;
   /** Câu phụ giải thích hoặc gợi ý bước tiếp theo. */
   body?: string;
   /** Khe cho hành động đi kèm (thường là một `Button`). */
@@ -26,6 +34,8 @@ export interface EmptyStateProps extends ViewProps {
 export function EmptyState({
   icon,
   title,
+  titleVariant = 'heading',
+  titleTone = 'default',
   body,
   children,
   style,
@@ -38,7 +48,7 @@ export function EmptyState({
   return (
     <Container style={[{ alignItems: 'center', gap: theme.spacing(2) }, style]} {...rest}>
       {icon}
-      <AppText variant="heading" style={{ textAlign: 'center' }}>
+      <AppText variant={titleVariant} tone={titleTone} style={{ textAlign: 'center' }}>
         {title}
       </AppText>
       {body === undefined ? null : (

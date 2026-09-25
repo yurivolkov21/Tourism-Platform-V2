@@ -103,13 +103,25 @@ export function SavedScreen({
           <SavedLoading />
         ) : status === 'error' ? (
           <View style={{ flex: 1, justifyContent: 'center', paddingHorizontal: theme.spacing(4) }}>
-            <EmptyState icon={<SquareIcon name="wifi-off" />} title={errorTitle} surface={false}>
+            <EmptyState
+              icon={<SquareIcon name="wifi-off" />}
+              title={errorTitle}
+              titleVariant="subtitle"
+              titleTone="muted"
+              surface={false}
+            >
               <Button label={retryLabel} onPress={onRetry} shape="pill" />
             </EmptyState>
           </View>
         ) : items.length === 0 ? (
           <View style={{ flex: 1, justifyContent: 'center', paddingHorizontal: theme.spacing(4) }}>
-            <EmptyState icon={<SquareIcon name="heart" />} title={emptyTitle} surface={false}>
+            <EmptyState
+              icon={<SquareIcon name="heart" />}
+              title={emptyTitle}
+              titleVariant="subtitle"
+              titleTone="muted"
+              surface={false}
+            >
               <Button label={browseLabel} onPress={onBrowse} shape="pill" />
             </EmptyState>
           </View>
