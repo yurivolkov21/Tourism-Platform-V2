@@ -27,6 +27,7 @@
     "seed:verify": "node --env-file-if-exists=.env.local scripts/verify-seed.mjs"
   },
   "dependencies": {
+    "@better-auth/expo": "1.6.23",
     "@fastify/cors": "^11.3.0",
     "@fastify/helmet": "^13.1.0",
     "@nestjs/common": "11.1.28",
