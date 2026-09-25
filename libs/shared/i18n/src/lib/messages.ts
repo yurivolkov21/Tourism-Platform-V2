@@ -4016,6 +4016,103 @@ export const messages = {
           unchanged: (title: string) => `${title} was already in that state.`,
         },
       },
+      /**
+       * Khu làm việc của MỘT tour (spec F17). Chữ đăng bán là On sale / Off sale;
+       * KHÔNG "Draft", "Publish", "Active" (bài học 20 của P4e-2).
+       */
+      editor: {
+        saved: 'Changes saved',
+        save: 'Save changes',
+        saving: 'Saving…',
+        readiness: {
+          ready: 'Ready to sell',
+          readyBody: 'Everything a guest needs is filled in.',
+          missingTitle: 'Missing before it can go on sale:',
+          summary: 'A summary',
+          primaryDestination: 'A primary destination',
+          /** `list` từ `formatDayList`: "3", "3–5", "2, 4–6". */
+          days: (list: string, count: number) =>
+            count === 1 ? `An itinerary for day ${list}` : `An itinerary for days ${list}`,
+        },
+        banners: {
+          stale:
+            'Someone else saved this tour while you were editing. Reload to see their version — the changes on this tab will be lost.',
+          reload: 'Reload',
+          /** Dải của TOUR_NOT_READY: liệt kê chỗ thiếu như khung readiness. */
+          notReady:
+            'This tour is on sale, so it has to stay ready to sell. This change would leave it missing:',
+          /** Server nói thiếu mà bản dự tính ở trình duyệt thấy đủ — một lệnh khác vừa chen vào. */
+          notReadyUnknown:
+            'This tour is on sale, so it has to stay ready to sell. Reload to see what changed.',
+        },
+        form: {
+          errors: {
+            required: 'Fill this in.',
+            tooLong: (max: number) => `Keep it to ${max} characters or fewer.`,
+            wholeNumber: (min: number, max: number) =>
+              `Enter a whole number from ${min} to ${max}.`,
+            price: 'Enter an amount like 129 or 129.50.',
+            priceAboveZero: 'Enter an amount above zero.',
+            slugShape: SLUG_SHAPE_COPY,
+            chooseCategory: 'Choose a category.',
+            chooseDestination: 'Choose a destination.',
+            duplicateDestination: 'This destination is already on the list.',
+            emptyLine: 'Fill this line in, or remove it.',
+            /** Tour đang bán luôn phải đủ để bán (ADR-0047 §4). */
+            summaryOnSale: 'A tour on sale needs a summary. Take it off sale first to clear it.',
+            /** Ngày mới chưa có lịch trình → tour thiếu; đo: `tourReadiness` đếm ngày 1..N. */
+            addDaysOnSale:
+              'A tour on sale needs an itinerary for every day. Take it off sale before adding days.',
+            durationLocked: 'Locked — this tour has departures.',
+            groupFloor: (seats: number) =>
+              `At least ${seats} — the largest departure has ${seats} seats.`,
+            dayTitleOnSale: 'A tour on sale needs a title for every day.',
+            /** Ngày không tiêu đề thì không có hàng (spec §2b.3) — mô tả của nó sẽ mất. */
+            descriptionWithoutTitle: 'Add a title for this day, or clear its description.',
+          },
+        },
+        create: {
+          errors: {
+            SLUG_TAKEN: 'Another tour already uses this slug. Pick a different one.',
+            NOT_FOUND: 'That category or destination no longer exists. Close this and try again.',
+          },
+        },
+        details: {
+          errors: {
+            STALE_TOUR: 'Someone else saved this tour while you were editing.',
+            DURATION_LOCKED: 'This tour has departures, so its number of days is locked.',
+            GROUP_SIZE_BELOW_SEATS: 'A departure has more seats than this group size.',
+            TOUR_NOT_READY: 'This tour is on sale, so it has to stay ready to sell.',
+            NOT_FOUND: 'This tour no longer exists.',
+          },
+        },
+        itinerary: {
+          errors: {
+            STALE_TOUR: 'Someone else saved this tour while you were editing.',
+            TOUR_NOT_READY: 'This tour is on sale, so it has to stay ready to sell.',
+            NOT_FOUND: 'This tour no longer exists.',
+          },
+        },
+        content: {
+          errors: {
+            STALE_TOUR: 'Someone else saved this tour while you were editing.',
+            NOT_FOUND: 'This tour no longer exists.',
+          },
+        },
+        costs: {
+          errors: {
+            STALE_TOUR: 'Someone else saved this tour while you were editing.',
+            NOT_FOUND: 'This tour no longer exists.',
+          },
+        },
+        delete: {
+          errors: {
+            TOUR_HAS_BOOKINGS:
+              'This tour has bookings now, so it cannot be deleted. Take it off sale instead.',
+            NOT_FOUND: 'This tour no longer exists.',
+          },
+        },
+      },
     },
     /**
      * Vùng outbox (spec P4c §3-F7) — hàng đợi email mà worker drain mỗi phút,
