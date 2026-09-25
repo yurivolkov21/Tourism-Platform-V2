@@ -3994,6 +3994,8 @@ export const messages = {
            */
           TOUR_NOT_READY: "This tour isn't ready to sell yet — open it to see what's missing.",
         },
+        /** Nút trong toast TOUR_NOT_READY ở bảng Tours — mở thẳng khu làm việc của tour. */
+        openTour: 'Open tour',
         toast: {
           /**
            * Hai câu cho hai việc khác nhau. `Tour.isPublished` mặc định `false`,
@@ -4024,6 +4026,19 @@ export const messages = {
         saved: 'Changes saved',
         save: 'Save changes',
         saving: 'Saving…',
+        back: 'Back to tours',
+        tabsLabel: 'Tour sections',
+        tabs: {
+          details: 'Details',
+          itinerary: 'Itinerary',
+          content: 'FAQ & policies',
+          costs: 'Costs',
+          departures: 'Departures',
+        },
+        /** Nhãn nhìn thấy cạnh công tắc — cùng chữ với cột "On sale" của bảng Tours. */
+        onSale: 'On sale',
+        /** Công tắc khoá chiều bật khi tour còn thiếu (ADR-0047 §4). */
+        toggleBlocked: 'Fill in what is missing to put it on sale.',
         readiness: {
           ready: 'Ready to sell',
           readyBody: 'Everything a guest needs is filled in.',
@@ -5010,8 +5025,6 @@ export const messages = {
      */
     departures: {
       list: {
-        back: 'Back to tours',
-        heading: (tour: string) => `Departures · ${tour}`,
         /** Nói ngay luật đắt nhất của màn, trước khi ai đó mở form sửa. */
         subtitle:
           'Dates can only change while a departure has no live bookings — every booking keeps its own copy of the travel dates.',

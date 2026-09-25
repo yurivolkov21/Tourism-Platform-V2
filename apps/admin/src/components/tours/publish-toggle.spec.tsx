@@ -25,8 +25,9 @@ vi.mock('sonner', () => ({
 }));
 
 const refresh = vi.fn();
+const push = vi.fn();
 vi.mock('next/navigation', () => ({
-  useRouter: () => ({ refresh: () => refresh() }),
+  useRouter: () => ({ refresh: () => refresh(), push: (href: string) => push(href) }),
 }));
 
 const ROW: TourRowVM = {
@@ -49,20 +50,21 @@ beforeEach(() => {
   success.mockReset();
   errorToast.mockReset();
   refresh.mockReset();
+  push.mockReset();
 });
 
 const toggle = () => screen.getByRole('switch', { name: t.toggleLabel(ROW.title) });
 
 describe('PublishToggle', () => {
   it('công tắc mang tên riêng theo tour và phản ánh trạng thái đang bán', () => {
-    render(<PublishToggle row={ROW} setPublished={vi.fn()} />);
+    render(<PublishToggle tour={ROW} setPublished={vi.fn()} />);
     expect(toggle()).toBeChecked();
   });
 
   it('LỆNH HỎNG → hoàn nguyên về trạng thái cũ và nói vì sao', async () => {
     const user = userEvent.setup();
     const setPublished = vi.fn(async () => ({ ok: false as const, code: 'NOT_FOUND' as const }));
-    render(<PublishToggle row={ROW} setPublished={setPublished} />);
+    render(<PublishToggle tour={ROW} setPublished={setPublished} />);
 
     await user.click(toggle());
     // Hoàn nguyên: hàng vẫn đang bán, đúng như server vẫn đang giữ.
@@ -76,7 +78,7 @@ describe('PublishToggle', () => {
     const setPublished = vi.fn(async () => {
       throw new Error('network down');
     });
-    render(<PublishToggle row={ROW} setPublished={setPublished} />);
+    render(<PublishToggle tour={ROW} setPublished={setPublished} />);
 
     await user.click(toggle());
     await waitFor(() => expect(toggle()).toBeChecked());
@@ -92,7 +94,7 @@ describe('PublishToggle', () => {
       });
       return { ok: true as const, isPublished: false, changed: true };
     });
-    render(<PublishToggle row={ROW} setPublished={setPublished} />);
+    render(<PublishToggle tour={ROW} setPublished={setPublished} />);
 
     await user.click(toggle());
     // Chưa ai trả lời mà công tắc đã tắt — đó là toàn bộ điểm của "lạc quan".
@@ -110,7 +112,7 @@ describe('PublishToggle', () => {
       isPublished: false,
       changed: true,
     }));
-    render(<PublishToggle row={ROW} setPublished={setPublished} />);
+    render(<PublishToggle tour={ROW} setPublished={setPublished} />);
 
     await user.click(toggle());
     await waitFor(() =>
@@ -125,7 +127,7 @@ describe('PublishToggle', () => {
       isPublished: false,
       changed: true,
     }));
-    render(<PublishToggle row={ROW} setPublished={setPublished} />);
+    render(<PublishToggle tour={ROW} setPublished={setPublished} />);
 
     await user.click(toggle());
     // Câu này là thứ ngăn vận hành ngần ngại rút một tour khỏi kệ.
@@ -142,7 +144,7 @@ describe('PublishToggle', () => {
       isPublished: true,
       changed: false,
     }));
-    render(<PublishToggle row={draft} setPublished={setPublished} />);
+    render(<PublishToggle tour={draft} setPublished={setPublished} />);
 
     await user.click(toggle());
     await waitFor(() => expect(success).toHaveBeenCalledWith(t.toast.unchanged(ROW.title)));
@@ -158,7 +160,7 @@ describe('PublishToggle', () => {
       });
       return { ok: true as const, isPublished: false, changed: true };
     });
-    render(<PublishToggle row={ROW} setPublished={setPublished} />);
+    render(<PublishToggle tour={ROW} setPublished={setPublished} />);
 
     await user.click(toggle());
     // Base UI dựng switch bằng `<span role="switch">` + input ẩn, nên "đang
@@ -197,7 +199,7 @@ describe('PublishToggle', () => {
       );
 
     const { rerender } = render(
-      <PublishToggle row={{ ...ROW, isPublished: false }} setPublished={setPublished} />,
+      <PublishToggle tour={{ ...ROW, isPublished: false }} setPublished={setPublished} />,
     );
 
     await user.click(toggle()); // BẬT
@@ -209,7 +211,7 @@ describe('PublishToggle', () => {
     expect(toggle()).not.toBeChecked();
 
     // Giờ mới tới lượt router.refresh() của lệnh BẬT, mang giá trị đã cũ.
-    rerender(<PublishToggle row={{ ...ROW, isPublished: true }} setPublished={setPublished} />);
+    rerender(<PublishToggle tour={{ ...ROW, isPublished: true }} setPublished={setPublished} />);
 
     // Phải giữ ý người dùng. Bản cũ lật ngược về BẬT ở đúng đây.
     expect(toggle()).not.toBeChecked();
@@ -226,21 +228,66 @@ describe('PublishToggle', () => {
     );
 
     const { rerender } = render(
-      <PublishToggle row={{ ...ROW, isPublished: false }} setPublished={setPublished} />,
+      <PublishToggle tour={{ ...ROW, isPublished: false }} setPublished={setPublished} />,
     );
 
     await user.click(toggle()); // bấm BẬT, lệnh chưa về
 
     // Trong lúc chờ, một tab khác publish chính tour này; một lượt refresh bất
     // kỳ mang sự thật đó về.
-    rerender(<PublishToggle row={{ ...ROW, isPublished: true }} setPublished={setPublished} />);
+    rerender(<PublishToggle tour={{ ...ROW, isPublished: true }} setPublished={setPublished} />);
 
     hong?.({ ok: false, code: 'GENERIC' });
     await waitFor(() => expect(errorToast).toHaveBeenCalled());
 
     // Server đang nói "đang bán" → công tắc phải nói thế. Bản cũ kẹt ở TẮT
     // (giá trị trước khi bấm) và không lối nào thoát trừ tải lại cả trang.
-    rerender(<PublishToggle row={{ ...ROW, isPublished: true }} setPublished={setPublished} />);
+    rerender(<PublishToggle tour={{ ...ROW, isPublished: true }} setPublished={setPublished} />);
     expect(toggle()).toBeChecked();
+  });
+
+  // ── Cổng đăng tour (F17, ADR-0047 §4) ──
+
+  it('blocked + đang tắt bán: công tắc khoá chiều bật', async () => {
+    const user = userEvent.setup();
+    const setPublished = vi.fn();
+    render(
+      <PublishToggle tour={{ ...ROW, isPublished: false }} setPublished={setPublished} blocked />,
+    );
+
+    expect(toggle()).toHaveAttribute('aria-disabled', 'true');
+    await user.click(toggle());
+    expect(setPublished).not.toHaveBeenCalled();
+  });
+
+  it('blocked + đang bán (dữ liệu cũ): vẫn gỡ bán được', () => {
+    render(<PublishToggle tour={{ ...ROW, isPublished: true }} setPublished={vi.fn()} blocked />);
+    expect(toggle()).not.toHaveAttribute('aria-disabled', 'true');
+  });
+
+  it('TOUR_NOT_READY từ server: toast lỗi kèm nút mở tour, không refresh', async () => {
+    const user = userEvent.setup();
+    const setPublished = vi.fn().mockResolvedValue({ ok: false, code: 'TOUR_NOT_READY' });
+    render(
+      <PublishToggle
+        tour={{ ...ROW, isPublished: false }}
+        setPublished={setPublished}
+        notReadyHref="/tours/hoi-an-lantern-evening"
+      />,
+    );
+
+    await user.click(toggle());
+
+    await waitFor(() => expect(errorToast).toHaveBeenCalledTimes(1));
+    const [message, options] = errorToast.mock.calls[0] ?? [];
+    expect(message).toBe("This tour isn't ready to sell yet — open it to see what's missing.");
+    const action = (options as { action?: { label: string; onClick: () => void } } | undefined)
+      ?.action;
+    expect(action?.label).toBe('Open tour');
+    action?.onClick();
+    expect(push).toHaveBeenCalledWith('/tours/hoi-an-lantern-evening');
+    expect(refresh).not.toHaveBeenCalled();
+    // Hoàn nguyên: tour vẫn tắt bán, đúng như server vẫn đang giữ.
+    expect(toggle()).not.toBeChecked();
   });
 });

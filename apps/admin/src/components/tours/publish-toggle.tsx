@@ -31,17 +31,33 @@ import type { TourRowVM } from '@/lib/tours-view';
  * - **Settle theo RESPONSE, không theo cú bấm.** Tab khác vừa đổi trạng thái
  *   thì server trả về sự thật của nó, và công tắc phải theo sự thật ấy.
  *
- * Component KHÔNG tự import server action: nhận `setPublished` từ bảng — test
+ * Component KHÔNG tự import server action: nhận `setPublished` từ nơi dùng — test
  * dựng với hàm giả, không mock `next/headers`.
+ *
+ * Dùng ở HAI chỗ: hàng của bảng Tours và phần đầu khu làm việc tour (F17). Cổng
+ * đăng tour (ADR-0047 §4) chen vào hai điểm: `blocked` khoá CHIỀU BẬT khi tour
+ * còn thiếu (chiều gỡ bán không bao giờ khoá), và mã `TOUR_NOT_READY` từ server
+ * thành toast kèm nút mở thẳng tour (`notReadyHref`).
  */
 const t = messages.admin.tours.publish;
 
+export type PublishToggleTour = Pick<TourRowVM, 'id' | 'title' | 'isPublished'>;
+
 export function PublishToggle({
-  row,
+  tour,
   setPublished,
+  blocked = false,
+  notReadyHref,
+  describedBy,
 }: {
-  row: TourRowVM;
+  tour: PublishToggleTour;
   setPublished: SetPublishedAction;
+  /** Tour còn thiếu thứ khách cần — khoá chiều bật; đang bán thì vẫn gỡ được. */
+  blocked?: boolean;
+  /** Khu làm việc của tour, cho nút "Open tour" trong toast `TOUR_NOT_READY`. */
+  notReadyHref?: string;
+  /** `id` của câu giải thích vì sao công tắc khoá — trình đọc màn hình đọc kèm. */
+  describedBy?: string;
 }) {
   const router = useRouter();
   const [pending, setPending] = useState(false);
@@ -57,25 +73,25 @@ export function PublishToggle({
    *    công tắc ngược lại giữa lúc lệnh tắt còn đang bay.
    * 2. Lệnh hỏng thì nhánh revert chỉ đặt lại `checked` mà để `serverValue`
    *    nguyên ở giá trị một lượt refresh khác vừa nâng lên. Từ đó
-   *    `serverValue !== row.isPublished` không bao giờ đúng nữa, và công tắc
+   *    `serverValue !== tour.isPublished` không bao giờ đúng nữa, và công tắc
    *    kẹt sai cho tới khi tải lại CẢ trang.
    *
    * Với trục mới, một lượt refresh mang giá trị lạc hậu chỉ đơn giản không khớp
    * và bị bỏ qua, thay vì đè lên ý người dùng.
    */
   const [optimistic, setOptimistic] = useState<boolean | null>(null);
-  const checked = optimistic ?? row.isPublished;
+  const checked = optimistic ?? tour.isPublished;
   // Server đã nói đúng thứ ta đang hiển thị → thôi giữ lạc quan, trả quyền cho
   // prop. Chỉnh state NGAY TRONG RENDER thay vì `useEffect`: React chạy lại
   // render trước khi vẽ nên không có khung hình nào hiện giá trị cũ.
   //
   // `!pending` KHÔNG thừa: ngay sau một cú bấm, `optimistic` thường TÌNH CỜ
-  // bằng `row.isPublished` — người dùng vừa bấm ngược về đúng giá trị server
+  // bằng `tour.isPublished` — người dùng vừa bấm ngược về đúng giá trị server
   // đang giữ, vì prop chưa kịp đổi. Thiếu cổng này thì giá trị lạc quan bị xoá
   // ngay trong lượt render của chính cú bấm ấy, và lượt refresh kế tiếp mang
   // giá trị mới sẽ lật công tắc — đúng cái bug đang vá. Đo được bằng test
   // "refresh của lệnh TRƯỚC không đè lên cú bấm đang bay".
-  if (!pending && optimistic !== null && optimistic === row.isPublished) setOptimistic(null);
+  if (!pending && optimistic !== null && optimistic === tour.isPublished) setOptimistic(null);
 
   async function onCheckedChange(next: boolean) {
     if (pending) return;
@@ -84,7 +100,7 @@ export function PublishToggle({
 
     let result: Awaited<ReturnType<SetPublishedAction>>;
     try {
-      result = await setPublished({ id: row.id, isPublished: next });
+      result = await setPublished({ id: tour.id, isPublished: next });
     } catch {
       // Action ném ⇒ không biết lệnh đã đi tới đâu — cùng luật với
       // `useConfirmWrite`: coi như GENERIC.
@@ -96,6 +112,15 @@ export function PublishToggle({
       // Bỏ lạc quan, trả về đúng thứ server đang nói — kể cả khi trong lúc chờ
       // đã có người khác đổi trạng thái tour này.
       setOptimistic(null);
+      // Tour còn thiếu (ADR-0047 §4): không phải trạng-thái-cũ nên không refresh;
+      // toast kèm nút mở thẳng khu làm việc — nơi khung readiness nói thiếu gì.
+      if (result.code === 'TOUR_NOT_READY' && notReadyHref) {
+        const href = notReadyHref;
+        toast.error(setPublishedErrorCopy(result.code), {
+          action: { label: t.openTour, onClick: () => router.push(href) },
+        });
+        return;
+      }
       toast.error(setPublishedErrorCopy(result.code));
       // Trạng-thái-cũ hoặc kết cục KHÔNG RÕ: kéo dữ liệu tươi về trước khi ai
       // đó bấm lại mù (cùng luật ba lối ra của kit).
@@ -104,7 +129,7 @@ export function PublishToggle({
     }
 
     setOptimistic(result.isPublished);
-    toast.success(setPublishedToast(row.title, result));
+    toast.success(setPublishedToast(tour.title, result));
     // Cột "Open departures" và cả các hàng khác không đổi theo lệnh này, nhưng
     // bảng vẫn phải tươi: bộ lọc "Off sale" co lại đúng sau mỗi lần bấm.
     router.refresh();
@@ -113,8 +138,11 @@ export function PublishToggle({
   return (
     <Switch
       checked={checked}
-      disabled={pending}
-      aria-label={t.toggleLabel(row.title)}
+      // Khoá chiều BẬT khi tour còn thiếu; tour đang bán (kể cả dữ liệu cũ thiếu
+      // gì đó) thì vẫn gỡ được — gỡ bán không bao giờ bị chặn.
+      disabled={pending || (blocked && !checked)}
+      aria-label={t.toggleLabel(tour.title)}
+      aria-describedby={describedBy}
       onCheckedChange={(next) => {
         void onCheckedChange(next);
       }}

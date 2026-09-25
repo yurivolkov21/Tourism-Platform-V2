@@ -134,7 +134,7 @@ function buildColumns(setPublished: SetPublishedAction) {
     columnHelper.display({
       id: 'published',
       header: t.columns.published,
-      cell: ({ row }) => <PublishToggle row={row.original} setPublished={setPublished} />,
+      cell: ({ row }) => <PublishToggle tour={row.original} setPublished={setPublished} />,
     }),
     columnHelper.display({
       id: 'actions',
