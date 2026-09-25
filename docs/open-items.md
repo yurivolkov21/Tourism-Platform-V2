@@ -1,6 +1,6 @@
 # Việc còn treo
 
-> Bản tóm tắt để điều hướng, cập nhật 24/09/2026. **Không phải nguồn sự thật** —
+> Bản tóm tắt để điều hướng, cập nhật 25/09/2026. **Không phải nguồn sự thật** —
 > chi tiết của từng mục sống ở [CHANGELOG](CHANGELOG.md) (mục "CÒN TREO" của
 > entry tương ứng) và ở [sổ nợ kỹ thuật](analysis/2026-08-06-backlog-no-ky-thuat.md).
 > Trả xong một mục thì gạch ở đây và ghi vào CHANGELOG.
@@ -17,7 +17,7 @@
 
 | Mã | Việc | Ghi chú |
 | --- | --- | --- |
-| **P4e** | Quản trị catalog: thêm/sửa/xoá tour, điểm đến, danh mục | P4e-1 XONG 22/09 (F11 danh sách tour · F12 lịch chạy · F13 huỷ chuyến có hoàn tiền, đóng nợ ADR-0041 §6). **P4e-2 XONG**: F14 danh mục 22/09 (màn `/categories` cộng chip lọc của web đọc endpoint) và F15 điểm đến 24/09 (màn `/destinations`, ba vùng về contract, web chịu được điểm đến đã ẩn — chờ review và merge). Còn P4e-3 tour CRUD, P4e-4 bài viết |
+| **P4e** | Quản trị catalog: thêm/sửa/xoá tour, điểm đến, danh mục | P4e-1 XONG 22/09 (F11 danh sách tour · F12 lịch chạy · F13 huỷ chuyến có hoàn tiền, đóng nợ ADR-0041 §6). **P4e-2 XONG**: F14 danh mục 22/09 (màn `/categories` cộng chip lọc của web đọc endpoint) và F15 điểm đến 24/09 (màn `/destinations`, ba vùng về contract, web chịu được điểm đến đã ẩn). **P4e-3a** (F17 tạo và sửa tour) xong 25/09 trên nhánh `feat/p4e-3a-tour-editor`, chờ review và merge; kế là F18 ảnh tour. Còn P4e-4 bài viết |
 | **P4f** | Quản trị media và người dùng | Gồm màn hạ quyền / thu hồi phiên admin (ADR-0026 AMEND 1) |
 | **P5b-2…5** | Bốn cụm màn mobile: xem tour · đặt tour · tài khoản · đánh giá | **Đã có bản vẽ và tài liệu bàn giao đầy đủ**; thành viên khác dựng màn — xem [`handoff/`](handoff/README.md) |
 | **P6** | Trợ lý AI tư vấn tour | Bảng dữ liệu đã có sẵn (`chat_conversations`, `chat_messages`) |
@@ -96,3 +96,5 @@ deploy) nằm ở [sổ nợ kỹ thuật](analysis/2026-08-06-backlog-no-ky-thu
 | G2 | 23 bản chép của `sessionCookie` trong `apps/api/src/**/*.int.spec.ts` — ngưỡng rút chung đã vượt từ lâu, nhưng nó không thuộc phạm vi một cụm tính năng nào. Better-auth đổi tên cookie là 23 chỗ phải sửa |
 | G3 | Rút chung ở F15, còn thiếu một bản: `toContractError` (`apps/api/src/lib/contract-error.ts`) và `hasFormErrors` (`apps/admin/src/lib/form-errors.ts`) nay nuôi danh mục lẫn điểm đến, nhưng `admin-departures.controller.ts` và `departures-write.ts` vẫn giữ bản riêng — code departures của F16 nằm ngoài phạm vi F15. Vòng review F15 đã cho `mapError` của chuyến dùng `declaredError` chung (Proxy của oRPC); đổi hai bản ấy sang hẳn là đóng G3 |
 | G6 | Nút mở hộp thoại còn khoá bằng `disabled` thật khi bảng làm mới ở: hàng chuyến (`departure-row-actions.tsx`), `bookings/refund-panel.tsx`, `outbox/retry-action.tsx`, `reviews/moderate-actions.tsx`, `subscribers/unsubscribe-action.tsx`. Hộp đóng đúng lúc làm mới thì Base UI không trả focus về nút `disabled` được, và focus bàn phím rơi về `<body>`. Vòng review F15 vá danh mục, điểm đến và nút Add của màn chuyến bằng `focusableWhenDisabled`; áp cùng khuôn cho năm chỗ này là đóng |
+| G7 | Khu làm việc tour (F17): nút Back của trình duyệt không hỏi lại khi form còn thay đổi chưa lưu — chỉ link trong app và `beforeunload` được canh |
+| G8 | Tạo chuyến và hạ số khách tối đa của tour chạy cùng lúc có thể để lại một chuyến nhiều ghế hơn số khách tối đa: lệnh tạo chuyến của F12 không khoá hàng tour. Một admin thì không gặp (ghi ở F17) |

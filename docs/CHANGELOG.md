@@ -8,6 +8,122 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-09-25 — F17 tạo và sửa tour (nhánh `feat/p4e-3a-tour-editor`)
+
+Admin tạo được tour mới (đang tắt bán), sửa mọi nội dung chữ và số của tour qua
+bốn tab của khu làm việc `/tours/[slug]`, bật bán khi tour đủ để bán, và xoá
+được tour chưa từng có booking. Quyết định ở ADR-0047: mỗi tab một lệnh ghi,
+khối danh sách thay nguyên, một `version` cho cả tour so-và-ghi trong một câu,
+`tourReadiness` chặn bật bán. Ba hàm giá vốn dời lên contract, tính trên cent.
+Không migration, không sửa web. Mười ba commit (mười hai task, một commit docs),
+thi công ở một session riêng theo plan `2026-09-24-p4e-3a-tour-editor.md`.
+
+**Hộp New tour.** Nút ở thanh công cụ bảng `/tours`. Bảy ô: tên, slug (chạy theo
+tên bằng `slugifyVietnamese` tới khi admin chạm vào nó; tắt soát chính tả, tự viết
+hoa, tự sửa chữ), danh mục và điểm đến chính (ô chọn của kit, mục đã ẩn mang
+"(hidden)"), số ngày, số khách tối đa, giá gốc. Tour sinh ra TẮT bán; tạo xong mở
+thẳng tab Details của nó. `SLUG_TAKEN` hiện dưới ô slug, hộp giữ nguyên chữ đã gõ.
+Danh sách chọn không tải được thì hộp nói vì sao và khoá nút tạo. Tên tour trong
+bảng nay là link sang khu làm việc; nút Departures ở cột Actions giữ làm lối tắt.
+
+**Khu làm việc và thanh tab.** Layout `/tours/[slug]` dựng phần đầu dùng chung:
+Back to tours · tên tour · công tắc On sale · khung readiness ("Ready to sell"
+hoặc "Missing before it can go on sale: …", mỗi mục là link tới đúng ô cần sửa) ·
+thanh tab Details / Itinerary / FAQ & policies / Costs / Departures. Màn chuyến
+của F12 dời vào dưới layout, bỏ tiêu đề và link Back riêng. Form còn thay đổi chưa
+lưu thì bấm tab hay link khác hỏi "Discard unsaved changes?", rời trang thì
+`beforeunload` hỏi. Nút Save chỉ sáng khi có thay đổi và khoá bằng
+`focusableWhenDisabled`; lưu xong form nhận nguyên tour mới từ response rồi
+`router.refresh()` cho phần đầu theo kịp.
+
+**Bốn tab.** Details có ba khung (Basics, Destinations, Selling points): số ngày
+khoá khi tour có chuyến; hạ số ngày thì báo trước ngày nào của lịch trình sẽ mất;
+số khách tối đa không hạ dưới số ghế lớn nhất của các chuyến chưa xong và chưa
+huỷ; điểm đến có nút radio "Primary", luôn đúng một. Itinerary có đủ N thẻ ngày mang `id="day-N"`;
+ngày không tiêu đề không được lưu; ô mô tả gợi ý khuôn `09:00 — …` mà trang tour
+tách thành cột giờ. FAQ & policies là hai khung sửa danh sách; chính sách huỷ sinh
+tự động nên chỉ có một dòng ghi chú. Costs có khung Totals tính NGAY khi gõ bằng
+chính ba hàm contract mà API gọi lúc lưu: tổng theo khách, tổng theo chuyến, giá
+vốn mỗi khách khi đủ đoàn, biên lời so với giá gốc. Mọi ô chọn là `FormSelect`
+của kit.
+
+**Chống ghi đè, và "đang bán thì luôn đủ".** Mỗi lệnh sửa mở đầu bằng MỘT câu
+`updateMany` so `updatedAt` với `version` form gửi lên rồi đẩy nó đi (`claimTour`);
+phiên bản mới luôn lớn hơn bản cũ ít nhất 1 ms, kể cả khi đồng hồ server lùi
+(`nextTourVersion` — có ca int đẩy `updatedAt` ra tương lai). `STALE_TOUR` hiện
+dải báo kèm Reload, form giữ chữ đang gõ. Tour đang bán thì `updateDetails` và
+`setItinerary` tính lại `tourReadiness` sau khi ghi, trước commit; thiếu là
+`TOUR_NOT_READY`, và dải báo liệt kê chỗ thiếu tính từ chính lệnh vừa gửi.
+
+**Công tắc bị khoá khi thiếu.** `setPublished` khoá hàng tour (`FOR UPDATE`), xét
+no-op trước, chỉ kiểm readiness ở chiều BẬT, và giữ nguyên `updatedAt` — bật hay
+tắt bán không làm form đang mở thành cũ. Công tắc ở phần đầu khu làm việc khoá
+chiều bật khi tour chưa đủ, kèm câu "Fill in what is missing to put it on sale.";
+gỡ bán không bao giờ bị chặn. Ở bảng `/tours`, `TOUR_NOT_READY` ra toast kèm nút
+"Open tour".
+
+**Xoá tour.** Vùng Delete ở cuối tab Details chỉ hiện khi tour chưa từng có
+booking. Server gọi thẳng `tour.delete` và để khoá ngoại quyết: `Restrict` của
+booking cho `P2003` thành `TOUR_HAS_BOOKINGS` (câu lỗi hiện trong hộp), id không
+có cho `P2025` thành `NOT_FOUND`. Hộp xác nhận giọng đỏ kể đúng từng thứ mất theo
+(đo trên `schema.prisma`) kèm số chuyến; xoá xong về `/tours`.
+
+**Đường tạo booking đổi chỗ import.** `perPersonTotal`, `perDepartureTotal` và
+`derivedCostPrice` dời lên `@tourism/contract`, tính trên cent nguyên. Bản
+`Prisma.Decimal` của API chỉ bị xoá SAU khi test đối chiếu chứng minh hai bản ra
+cùng ba con số trên cả 29 tour seed. `bookings.service.ts` (`costPerPerson`),
+`admin-departures.service.ts` (`fixedCostAmount`) và `seed.ts` (`costPrice`) chỉ
+đổi chỗ import, qua bộ chuyển `costItemsOf` (Decimal thành chuỗi hai số lẻ).
+
+**Lệch plan, có lý do** (chi tiết theo từng task ở báo cáo bàn giao):
+
+- Task 2: plan sót chỗ import thứ tư (`prisma/fixtures/catalog/tour-costs.spec.ts`)
+  và một comment lỗi thời ở `departure-rules.ts`. User duyệt 24/09: chuyển spec
+  sang hàm contract, sửa comment.
+- Task 7: plan ghi "ba ca đầu đỏ", nhưng ca gỡ bán và ca no-op vốn xanh với code
+  cũ — đó là ca canh hồi quy, đã kiểm bằng đột biến.
+- Task 8: `ListEditor` đặt lại tiêu điểm tường minh sau mỗi lần dời (trình duyệt
+  bỏ focus của nút bị `insertBefore`), và "ô đầu của dòng mới" tính cả trigger
+  `role="combobox"` của `FormSelect`.
+- Task 10: spec hook ở `src/lib` không được vitest gom — user duyệt 25/09 thêm glob
+  `src/lib/**/*.spec.tsx` vào project dom. `toBeDisabled()` luôn sai với switch
+  của Base UI nên kiểm `aria-disabled`. `useSectionSave` chặn lệnh trùng bằng ref
+  chứ không bằng state.
+- Task 11 và 12: `FormSelect` bắt buộc `placeholder`, nên ba ô luôn có giá trị
+  truyền chính nhãn ô; dòng mới mặc định ở mục đầu của mỗi ô chọn; Totals in tiền
+  qua `formatAmount` ("$16.83") thay vì số trần; nhóm ô tích dùng `fieldset`
+  thay `div role="group"` (Biome `useSemanticElements`).
+- Gate: bước int chạy trên DB riêng `tourism_test_f17` bằng config tạm ở
+  `apps/api/out/` (session khác dùng `tourism_test` cùng lúc); script tắt API theo
+  đúng PID nó dựng.
+
+**Giới hạn đã biết:** nút Back của trình duyệt không hỏi lại khi form còn thay
+đổi (chỉ link trong app và `beforeunload` được canh); tạo chuyến và hạ số khách
+tối đa chạy cùng lúc có thể để lại một chuyến nhiều ghế hơn số khách tối đa (lệnh
+tạo chuyến của F12 không khoá hàng tour — một admin thì không gặp).
+
+**Không có việc hạ tầng.** Không migration, không env, không webhook.
+
+CÒN TREO cho session review:
+
+- Thử trong trình duyệt thật ba điều jsdom không canh được: dời một dòng của khung
+  sửa danh sách thì tiêu điểm ở lại nút vừa bấm; rời trang khi form còn thay đổi
+  thì trình duyệt hỏi (`beforeunload`); Reload sau `STALE_TOUR` dựng lại form theo
+  phiên bản mới (`key={detail.version}` ở bốn trang, không có test trang).
+- Merge (rebase + ff), CI (luật 14), rồi thử tay production theo mục "Sau khi bàn
+  giao" của plan.
+
+**Review findings:** chưa review — session gốc review trước merge.
+
+Tests after: Vitest **4473** (web 1573, api 989, admin 1287, contract 522,
+core 46, ui 22, tokens 18, i18n 16), int **666 ở 45 file**. So với main: thêm
+282 ca Vitest (admin 175, contract 103, api 4) và 40 ca int (file mới
+`admin-tours.int.spec.ts` 36 ca, `admin-catalog.int.spec.ts` thêm 4). Đột biến
+255 ở mười hai task: 243 bị giết; 12 còn sống, cái nào cũng có lý do — 8 tương
+đương, 3 chỉ lộ trong trình duyệt thật hoặc khi hai lệnh đua nhau thật, 1 vì dữ
+liệu seed không chạm nhánh làm tròn (unit Task 1 đã canh). Bảy lỗ test do đột
+biến lộ ra đều đã vá bằng ca mới hoặc ca siết lại.
+
 ## 2026-09-24 — Thử tay F15 trên production (`b39e6df3`): 6/6 bước đạt; ba góp ý giao diện vá trên nhánh `fix/f15-thu-tay-gop-y`
 
 Chạy khi cả ba nơi đã lên bản `b39e6df3`: admin và web trên Vercel (READY), API
