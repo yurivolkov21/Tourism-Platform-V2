@@ -1,4 +1,5 @@
 import { Redirect } from 'expo-router';
+import { GALLERY_ENTRIES } from '@/features/dev/gallery-entries';
 import { GalleryScreen } from '@/features/dev/gallery-screen';
 import { isDevBuild } from '@/lib/dev-only';
 
@@ -12,5 +13,5 @@ import { isDevBuild } from '@/lib/dev-only';
 export default function GalleryRoute() {
   if (!isDevBuild()) return <Redirect href="/" />;
 
-  return <GalleryScreen />;
+  return <GalleryScreen title="Gallery — cụm auth" entries={GALLERY_ENTRIES} />;
 }

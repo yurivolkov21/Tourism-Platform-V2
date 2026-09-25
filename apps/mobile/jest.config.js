@@ -4,16 +4,21 @@
 // package khác vẫn Vitest.
 const preset = require('jest-expo/jest-preset');
 
-// `@orpc/*` chỉ xuất bản ESM (`"type": "module"`, file `.mjs`, không có nhánh
-// `require` trong exports) và app kéo nó vào GIÁN TIẾP:
-// `@tourism/i18n` → `@tourism/contract` → `@orpc/contract`.
+// `@orpc/*` VÀ cả cây phụ thuộc runtime của `better-auth` (ADR-0017 §9,
+// `lib/auth-client.ts`) chỉ xuất bản ESM (`"type": "module"`, không có nhánh
+// `require` trong exports) — nhưng cây `better-auth` sâu và xuyên nhiều gói
+// (`@noble/*`, `jose`, `nanostores`, `better-call` → `rou3`, …), thêm gói nào
+// mai kia auth-client kéo theo là lại thêm một lỗi `import`/`export` mới. Thay
+// vì liệt kê tay từng gói (đợt trước đúng vậy: sửa xong lỗi này lộ lỗi kế),
+// BỎ HẲN danh sách allowlist của jest-expo (pattern có `(?!(` — chỉ chừa cho
+// vài gói RN/Expo được nêu tên) để Jest transform MỌI THỨ dưới `node_modules`.
+// Hai pattern còn lại (reanimated plugin, `@react-native/babel-preset` — file
+// nội bộ build tool, không phải code chạy) giữ nguyên, không đụng.
 // Phải nới hai chỗ, thiếu chỗ nào cũng vẫn chết ở token `import`:
-//   1. `transformIgnorePatterns` — danh sách của jest-expo không có `@orpc`.
+//   1. `transformIgnorePatterns` — bỏ allowlist hẹp của jest-expo.
 //   2. `transform` — mẫu `\.[jt]sx?$` của jest-expo KHÔNG khớp đuôi `.mjs`.
-// Sửa bằng cách map lại preset thay vì chép tay, để lần nâng jest-expo sau
-// không phải đồng bộ lại danh sách.
-const transformIgnorePatterns = preset.transformIgnorePatterns.map((pattern) =>
-  pattern.includes('(?!(') ? pattern.replace('(?!(', '(?!(@orpc|') : pattern,
+const transformIgnorePatterns = preset.transformIgnorePatterns.filter(
+  (pattern) => !pattern.includes('(?!('),
 );
 
 const transform = Object.fromEntries(

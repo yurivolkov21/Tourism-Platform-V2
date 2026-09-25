@@ -77,6 +77,7 @@ const EXPECTED_ROUTES = [
   '+not-found',
   'bookings/[code]',
   'dev/gallery',
+  'dev/tour-gallery',
   'onboarding',
   'tours/[slug]',
 ];
@@ -105,20 +106,25 @@ describe('vỏ điều hướng', () => {
     const app = await openApp('/');
 
     expect(app.pathname()).toBe('/');
-    expect(screen.getAllByText(shell.titles.home).length).toBeGreaterThan(0);
-    expect(screen.getByText(placeholder)).toBeTruthy();
+    // Home không còn placeholder (P5b-2 T1) — khẳng định bằng tiêu đề "Recommendations",
+    // luôn vẽ ở mọi trạng thái tải/lỗi/rỗng/có dữ liệu.
+    expect(screen.getByText(messages.mobile.home.browseHeadline)).toBeTruthy();
+    // Tab Home đang được chọn.
+    expect(screen.getByLabelText(shell.titles.home)).toBeTruthy();
   });
 
-  it('thanh tab hiện đủ 5 nhãn, đọc từ @tourism/i18n', async () => {
+  it('thanh tab có đủ 5 tab, tên đọc từ @tourism/i18n', async () => {
     await openApp('/');
 
+    // Thanh tab nổi (khuôn v1) KHÔNG vẽ nhãn chữ — tên tab đi qua
+    // `accessibilityLabel` cho trình đọc màn hình, nên phải tìm theo nhãn a11y
+    // chứ không phải theo text hiển thị.
     for (const label of Object.values(messages.mobile.tabs)) {
-      expect(screen.getAllByText(label).length).toBeGreaterThan(0);
+      expect(screen.getAllByLabelText(label).length).toBeGreaterThan(0);
     }
   });
 
   it.each([
-    ['/explore', shell.titles.explore],
     ['/saved', shell.titles.saved],
     ['/trips', shell.titles.trips],
     ['/account', shell.titles.account],
@@ -128,6 +134,16 @@ describe('vỏ điều hướng', () => {
     expect(app.pathname()).toBe(url);
     expect(screen.getAllByText(title).length).toBeGreaterThan(0);
     expect(screen.getByText(placeholder)).toBeTruthy();
+  });
+
+  it('tab /explore render được, không còn chỗ giữ chỗ', async () => {
+    const app = await openApp('/explore');
+
+    expect(app.pathname()).toBe('/explore');
+    // Explore không còn placeholder (P5b-2 T2) — khẳng định bằng tiêu đề thật
+    // của màn, khác chữ tab "Explore" (chỉ còn đọc qua a11y label của tab bar).
+    expect(screen.getByText(messages.mobile.explore.title)).toBeTruthy();
+    expect(screen.queryByText(placeholder)).toBeNull();
   });
 
   // Sáu màn có header KHÔNG in lại tiêu đề ở thân nữa (navigator đã vẽ) — nên
@@ -191,11 +207,13 @@ describe('vỏ điều hướng', () => {
     expect(screen.queryByLabelText(messages.mobile.auth.verifyEmail.codeLabel)).toBeNull();
   });
 
-  it('tours/[slug] render được và đọc được slug từ URL', async () => {
+  it('tours/[slug] render được, không còn chỗ giữ chỗ (P5b T5)', async () => {
     const app = await openApp('/tours/ha-giang-loop');
 
     expect(app.pathname()).toBe('/tours/ha-giang-loop');
-    expect(screen.getByText('ha-giang-loop')).toBeTruthy();
+    // Màn thật không còn in thẳng slug ra thân màn (P5b T5) — trạng thái
+    // đang tải chỉ vẽ khung xám, không có chữ nào để đọc slug qua đó nữa.
+    expect(screen.queryByText(placeholder)).toBeNull();
   });
 
   it('bookings/[code] render được và đọc được mã từ URL', async () => {

@@ -6,7 +6,10 @@ import { GalleryScreen } from './gallery-screen';
 
 describe('GalleryScreen', () => {
   it('liệt kê đủ 17 khung của spec §4', async () => {
-    await renderWithTheme(<GalleryScreen />, 'dark');
+    await renderWithTheme(
+      <GalleryScreen title="Gallery — cụm auth" entries={GALLERY_ENTRIES} />,
+      'dark',
+    );
 
     expect(screen.getAllByTestId('gallery-entry')).toHaveLength(GALLERY_ENTRIES.length);
     expect(GALLERY_ENTRIES).toHaveLength(17);
@@ -19,7 +22,9 @@ describe('GalleryScreen', () => {
   });
 
   it('bấm một dòng thì mở đúng khung đó, bấm đóng thì về danh sách', async () => {
-    const view = await renderWithTheme(<GalleryScreen />);
+    const view = await renderWithTheme(
+      <GalleryScreen title="Gallery — cụm auth" entries={GALLERY_ENTRIES} />,
+    );
     const user = userEvent.setup();
 
     await user.press(view.getByText('Sign in — trống'));

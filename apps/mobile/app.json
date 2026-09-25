@@ -25,7 +25,9 @@
           "imageWidth": 160,
           "backgroundColor": "#202a28"
         }
-      ]
+      ],
+      "expo-secure-store",
+      "expo-web-browser"
     ],
     "extra": {
       "router": {

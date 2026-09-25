@@ -15,6 +15,12 @@ export interface AppImageProps extends Omit<ImageProps, 'source' | 'style' | 'ac
    * `AppImage` đã curry sẵn `transformUrl` ở tầng app nếu muốn khỏi truyền lặp lại.
    */
   transformUrl?: (source: string, width: number) => string;
+  /**
+   * Phủ KÍN khung cha (`100%` cả hai chiều) thay vì lấy số đo từ
+   * `width`/`height`. Dùng cho ảnh nền nằm trong khung `absoluteFill` mà chiều
+   * cao do khung cha quyết định — `width` vẫn dùng để dựng URL transform.
+   */
+  fill?: boolean;
 }
 
 /** Ảnh chuẩn của app — cache đĩa + placeholder nền `muted` lúc tải (ADR-0047 §4). */
@@ -24,6 +30,7 @@ export function AppImage({
   height,
   alt,
   transformUrl = (src) => src,
+  fill = false,
   ...rest
 }: AppImageProps) {
   const theme = useTheme();
@@ -33,7 +40,12 @@ export function AppImage({
     <Image
       source={{ uri }}
       accessibilityLabel={alt}
-      style={{ width, height: height ?? width, backgroundColor: theme.colors.muted }}
+      style={
+        fill
+          ? { width: '100%', height: '100%', backgroundColor: theme.colors.muted }
+          : { width, height: height ?? width, backgroundColor: theme.colors.muted }
+      }
+      contentFit="cover"
       transition={200}
       {...rest}
     />

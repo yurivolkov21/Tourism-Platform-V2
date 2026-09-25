@@ -285,3 +285,99 @@ luật 10 ở trên xếp mục này vào "làm khác mà tương đương vì t
 nay tiền đề đổi lần thứ hai và hai bên gặp lại nhau.
 
 Nợ này do CHANGELOG 16/09 ghi nhận, trả ngày 21/09 trong đợt rà soát tài liệu.
+
+## AMEND 3 — 24/09/2026 (P5b-2 T7, D5): `react-native-gesture-handler` (KHÔNG `reanimated`)
+
+Bối cảnh: [handoff P5b-2](../handoff/mobile-browse-handoff.md) T7 (D5 — trình
+xem ảnh). Bản dựng đầu (24/09, cùng ngày) CỐ Ý bỏ chụm-để-phóng-to và
+vuốt-xuống-để-đóng — lý do ghi trong doc comment
+`features/tour-detail/photo-viewer.tsx` lúc đó: `PanResponder` lõi (RN core,
+đã dùng cho `BottomSheet`) không đáng tin cho một bề mặt có HAI gesture cạnh
+tranh (vuốt ngang đổi ảnh vs vuốt dọc đóng), và web cũng chưa làm zoom
+(`tourDetail.gallery.zoomIn` — nợ A12) nên đây không phải thụt lùi. User yêu
+cầu làm đủ trong phiên rà nợ treo cùng ngày.
+
+### Quyết định
+
+**Thêm MỘT dependency: `react-native-gesture-handler@~2.32.0`** (bản SDK 57
+tương thích, cài qua `npx expo install` — trọng tài vẫn là `expo-doctor`, §7).
+Chạy được trong **Expo Go** (§1) — native module NẰM SẴN trong danh sách Expo
+Go dựng sẵn (bản thân `expo-router`/`@react-navigation` đã phụ thuộc gián
+tiếp nó cho stack navigator mặc định), khác các thư viện dev-build-only mà §1
+đã loại.
+
+**THỬ rồi BỎ `react-native-reanimated@4.5.1`.** `npx expo install` chọn bản
+này là "SDK 57 tương thích", nhưng nó đòi
+`react-native-worklets@0.10.x` (`peerDependencies` của chính gói, đọc
+`package.json` không đoán) trong khi cây phụ thuộc của `@expo/ui`
+(kéo theo qua `expo-router`) lại tự kéo `react-native-worklets@0.12.1` — hai
+bản khác nhau cùng sống trong cây, và `react-native-reanimated` tự chặn lúc
+KHỞI TẠO module bằng `assertWorkletsVersion()`, ném lỗi *"is not compatible
+with installed version of Worklets"*. Đây là lỗi RUNTIME THẬT (native, không
+phải mock Jest) — dò bằng cách chạy thử `npx jest photo-viewer` sau khi cài,
+lỗi hiện ngay ở bước `require`, TRƯỚC khi chạm test nào. Ghim tay
+`react-native-worklets@0.10.1` để khớp reanimated thì gãy tiếp ở babel plugin
+của chính worklets 0.10.x (thiếu `@babel/traverse` truy cập được qua cây pnpm
+isolated) — hai lớp vỡ liên tiếp trong cùng một cặp gói, không phải một lần
+xui. Không đáng mạo hiểm một tính năng PHỤ gần freeze 15/10 khi không có máy
+thật để xác nhận runtime.
+
+**`GestureDetector` chạy được KHÔNG cần reanimated** — thiếu babel plugin của
+reanimated, gesture-handler tự rơi về gọi callback (`onUpdate`/`onEnd`…) như
+hàm JS thường (không phải worklet chạy trên UI thread), driving
+`Animated.Value` LÕI RN (đúng thứ `BottomSheet` đã dùng, `useNativeDriver:
+true` cho các thuộc tính transform). Mất phần mượt-trên-UI-thread của
+reanimated, không mất khả năng nhận diện/trọng tài gesture — thứ D5 thật sự
+cần.
+
+**`GestureHandlerRootView` bọc HAI nơi**, không chỉ gốc app:
+
+1. `RootLayout` VÀ `ErrorBoundary` ở `app/_layout.tsx` — hai cây riêng (§ export
+   `ErrorBoundary` không đi qua `RootLayout`), thiếu một trong hai là gesture
+   không hoạt động đúng trên đường lỗi.
+2. Bên TRONG `Modal` của `PhotoViewer` — `Modal` của RN dựng MỘT root native
+   riêng, tách khỏi cây app chính; `GestureHandlerRootView` ở `_layout.tsx`
+   không với vào được bên trong nó. Cùng lý do `BottomSheet` phải tự lo
+   `Pressable`/`PanResponder` của chính nó thay vì nhờ context ngoài.
+
+**Cử chỉ dựng bằng `Gesture.Pinch()` + `Gesture.Pan()` của gesture-handler,
+composed qua `Gesture.Simultaneous`** (không dùng lại `PanResponder` cho D5) —
+đây chính là thứ gesture-handler được viết ra để làm: trọng tài nhiều gesture
+tranh chấp trên cùng bề mặt (vuốt ngang đổi ảnh của `ScrollView`
+`pagingEnabled` vs chụm hai ngón vs vuốt dọc đóng), thứ mà bản dựng đầu đã từ
+chối tự làm bằng `PanResponder`. Mỗi gesture khai `.runOnJS(true)` tường minh
+— không cài reanimated nên không có worklet, để mặc định tự đoán thì
+gesture-handler tự cảnh báo *"some callbacks are worklets and some are not"*.
+
+**Jest cần setup CHÍNH THỨC của gói:** `apps/mobile/jest.setup.js` thêm
+`import 'react-native-gesture-handler/jestSetup'` — thiếu dòng này thì
+`GestureHandlerRootView` gọi `RNGestureHandlerModule.install()` (native thật,
+không có trong Jest) và vỡ test.
+
+### Hệ quả
+
+- **Cần rebuild native SAU KHI cài** — `react-native-gesture-handler` có mã
+  native, Expo Go cài sẵn nên KHÔNG cần `expo prebuild`/dev build riêng cho
+  capstone này; nhưng Metro/Expo Go phải RESTART (không phải Fast Refresh) để
+  nạp lại danh sách native module. Runbook: `expo start -c` (xoá cache) sau
+  lượt cài này.
+- **`expo-doctor` đã chạy lại sau khi cài** — vẫn 20/21 (1 fail cũ, lệch bản
+  patch 4 gói `expo`/`expo-constants`/`expo-linking`/`expo-router`, KHÔNG liên
+  quan gói mới — xem
+  [docs/analysis/2026-09-24-mobile-browse-screens-status.md](../analysis/2026-09-24-mobile-browse-screens-status.md)).
+- **Không đổi ranh giới gate** (§5) — gói chạy được trong Expo Go, không kéo
+  theo dev build/EAS nào.
+- **Animation không chạy trên UI thread** — đánh đổi đã nói ở trên. Nếu sau
+  này D5 (hoặc chỗ khác) cần animation mượt khi JS thread bận, quay lại xét
+  reanimated là hợp lý, nhưng phải giải quyết xung đột `react-native-worklets`
+  ở TRÊN trước (khả năng cao là chờ `@expo/ui` (hoặc `expo-router`) lên bản
+  đồng bộ `react-native-worklets`, không phải việc tự vá trong app này).
+
+### Đã cân nhắc và loại
+
+| Phương án | Vì sao loại |
+| --- | --- |
+| Giữ nguyên (không zoom/dismiss) | Đã là bản dựng đầu; user yêu cầu làm đủ hôm nay — mục "Đã cân nhắc và loại" của §1 bảng gốc ghi rõ nguyên tắc "thêm khi P5b thật sự dùng", và D5 giờ thật sự cần. |
+| Tự viết pinch bằng `PanResponder` (đo khoảng cách hai `touches[]`) | Né được dependency mới, nhưng chính doc comment bản dựng đầu đã từ chối hướng này vì phải tự trọng tài NHIỀU gesture cạnh tranh tay — đúng thứ gesture-handler làm sẵn, và tái phát minh nó là rủi ro bug cao hơn phần dependency thêm vào. |
+| `react-native-reanimated@4.5.1` (bản `npx expo install` chọn) | Xung đột `react-native-worklets` với cây phụ thuộc của `@expo/ui` — hai bản (`0.10.x` reanimated đòi vs `0.12.1` cây kéo theo) sống cùng lúc, reanimated tự chặn lúc khởi tạo. Ghim tay `0.10.1` thì gãy tiếp ở babel plugin của chính worklets (thiếu `@babel/traverse`). Chi tiết ở "Quyết định" trên. |
+| `react-native-reanimated@3.x` (bản cũ hơn, không cần `react-native-worklets` riêng) | Né được xung đột trên (reanimated 3 tự mang JSI, không tách gói worklets), nhưng lệch khỏi bản `npx expo install` coi là "SDK 57 tương thích" — đổi rủi ro version cũ lấy né một xung đột mà bản thân `Gesture.Pinch/Pan` (không cần reanimated) đã giải quyết được với chi phí thấp hơn nhiều. Không đáng cho một tính năng phụ. |

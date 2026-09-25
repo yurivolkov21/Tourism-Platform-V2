@@ -140,6 +140,40 @@ thấy. Lúc chúng vào DB thì có thể đã qua freeze 15/10: đọc lý do 
 - **@nestjs/microservices**: GHSA-m8vh-jmq9-5rjg và GHSA-96h4-vgxj-gvm2 — gói không có
   trong cây.
 
+## Bug tiềm ẩn: `pending-sweep.service.ts` so sánh timestamp phụ thuộc timezone server
+
+Phát hiện 25/09 khi chạy `pnpm gate:int` trên máy Windows native (Postgres
+service cài native, timezone hệ điều hành `Asia/Bangkok`) trong lúc soát nhánh
+`feat/mobile-browse-screens` — KHÔNG liên quan code nhánh đó, bug có sẵn từ
+trước, chỉ bị máy này làm lộ.
+
+[`pending-sweep.service.ts`](../apps/api/src/worker/pending-sweep.service.ts)
+so `checkout_session_expires_at < now()` bằng raw SQL. Mọi cột `DateTime`
+trong `schema.prisma` là `timestamp without time zone` (mặc định Prisma, không
+`@db.Timestamptz` chỗ nào). `now()` trả `timestamptz`; Postgres ép cột naive
+sang `timestamptz` theo **session timezone**, không phải UTC. Trên máy có
+session timezone khác UTC, một hạn session còn tương lai bị đọc thành "đã hết
+hạn" (đo được: lệch đúng bằng offset múi giờ).
+
+**Vì sao chưa ai gặp:** production (Supabase) và Docker Postgres mặc định UTC
+nên bug im lặng ở mọi nơi đã biết — chỉ lộ ra vì máy này cài Postgres native
+theo múi giờ hệ điều hành.
+
+**Vì sao vẫn phải vá:** worker này chạy CRON thật ở production (pg-boss, ADR-
+0006), không chỉ trong test. Bất kỳ lúc nào server Postgres đổi timezone khác
+UTC (đổi hạ tầng, admin sửa `postgresql.conf`, máy dev khác cài native) — logic
+"session re-mint còn sống thì đừng huỷ" (ADR-0006 AMEND 1c) vô hiệu âm thầm:
+khách đang gõ thẻ trên session còn sống bị huỷ oan booking.
+
+Vá đúng: ép UTC tường minh trong SQL
+(`checkout_session_expires_at AT TIME ZONE 'UTC' < now()`) hoặc đổi cột thời
+gian sang `@db.Timestamptz` trong schema. Repro: `int-full-3.log` gồm 2 test
+`pending-sweep.int.spec.ts` (AMEND 1c, AMEND 2d) fail đơn định trên máy
+timezone khác UTC — chạy cô lập cũng fail, không phải do đụng độ file khác.
+
+Chưa vá — ngoài phạm vi nhánh `feat/mobile-browse-screens` (luật 1 CLAUDE.md).
+Cần mở nhánh `fix/` riêng khi có người rảnh tay.
+
 ## Nợ kỹ thuật chi tiết
 
 Sáu nhóm (giao diện · dữ liệu · kiểm thử · thư viện bên thứ ba · nợ cũ · nợ sau
