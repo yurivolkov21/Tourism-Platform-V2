@@ -1,21 +1,39 @@
 'use server';
 
 import {
+  type AdminTourCostsInput,
+  AdminTourCostsInputSchema,
   type AdminTourDeleteInput,
   AdminTourDeleteInputSchema,
   type AdminTourDeleteResult,
   type AdminTourDetail,
   type AdminTourDetailsInput,
   AdminTourDetailsInputSchema,
+  type AdminTourFaqsPoliciesInput,
+  AdminTourFaqsPoliciesInputSchema,
+  type AdminTourItineraryInput,
+  AdminTourItineraryInputSchema,
 } from '@tourism/contract';
 import { cookies } from 'next/headers';
-import { deleteAdminTour, updateAdminTourDetails } from '@/lib/api/tours';
 import {
+  deleteAdminTour,
+  setAdminTourCosts,
+  setAdminTourFaqsPolicies,
+  setAdminTourItinerary,
+  updateAdminTourDetails,
+} from '@/lib/api/tours';
+import {
+  type ContentContractCode,
+  type CostsContractCode,
+  classifyContentError,
+  classifyCostsError,
   classifyDeleteTourError,
   classifyDetailsError,
+  classifyItineraryError,
   type DeleteTourResult,
   type DetailsContractCode,
   type EditorWriteResult,
+  type ItineraryContractCode,
 } from '@/lib/tour-editor-write';
 
 /**
@@ -42,6 +60,54 @@ export async function updateTourDetailsAction(
   } catch (error) {
     // `ORPCError` không sống sót qua ranh giới action — phân loại tại đây.
     return { ok: false, code: classifyDetailsError(error) };
+  }
+  return { ok: true, detail };
+}
+
+export async function setTourItineraryAction(
+  input: AdminTourItineraryInput,
+): Promise<EditorWriteResult<ItineraryContractCode>> {
+  const parsed = AdminTourItineraryInputSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, code: 'INVALID_INPUT' };
+
+  const cookie = (await cookies()).toString();
+  let detail: AdminTourDetail;
+  try {
+    detail = await setAdminTourItinerary(cookie, parsed.data);
+  } catch (error) {
+    return { ok: false, code: classifyItineraryError(error) };
+  }
+  return { ok: true, detail };
+}
+
+export async function setTourContentAction(
+  input: AdminTourFaqsPoliciesInput,
+): Promise<EditorWriteResult<ContentContractCode>> {
+  const parsed = AdminTourFaqsPoliciesInputSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, code: 'INVALID_INPUT' };
+
+  const cookie = (await cookies()).toString();
+  let detail: AdminTourDetail;
+  try {
+    detail = await setAdminTourFaqsPolicies(cookie, parsed.data);
+  } catch (error) {
+    return { ok: false, code: classifyContentError(error) };
+  }
+  return { ok: true, detail };
+}
+
+export async function setTourCostsAction(
+  input: AdminTourCostsInput,
+): Promise<EditorWriteResult<CostsContractCode>> {
+  const parsed = AdminTourCostsInputSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, code: 'INVALID_INPUT' };
+
+  const cookie = (await cookies()).toString();
+  let detail: AdminTourDetail;
+  try {
+    detail = await setAdminTourCosts(cookie, parsed.data);
+  } catch (error) {
+    return { ok: false, code: classifyCostsError(error) };
   }
   return { ok: true, detail };
 }

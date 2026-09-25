@@ -4164,18 +4164,85 @@ export const messages = {
             TOUR_NOT_READY: 'This tour is on sale, so it has to stay ready to sell.',
             NOT_FOUND: 'This tour no longer exists.',
           },
+          /** Đo: `itineraryPayload` chỉ gửi ngày có tiêu đề — ngày không tiêu đề không có hàng. */
+          intro: (days: number) =>
+            `${days === 1 ? '1 day' : `${days} days`}, one card per day. A day without a title is not saved.`,
+          day: (n: number) => `Day ${n}`,
+          dayTitle: 'Title',
+          description: 'Plan for the day',
+          /**
+           * Đo: `parseItineraryStops` (apps/web/src/lib/tour-detail.ts) tách mỗi dòng
+           * thành một điểm dừng; dòng mở đầu bằng `HH:MM —` có cột giờ riêng.
+           */
+          descriptionHint:
+            'One line per stop. Start a line with a time, like “09:00 — Pick-up at your hotel”, and the tour page shows the time in its own column.',
+          descriptionPlaceholder: '09:00 — Pick-up at your hotel',
         },
         content: {
           errors: {
             STALE_TOUR: 'Someone else saved this tour while you were editing.',
             NOT_FOUND: 'This tour no longer exists.',
           },
+          faqTitle: 'FAQ',
+          addFaq: 'Add question',
+          faqName: (n: number) => `question ${n}`,
+          question: 'Question',
+          answer: 'Answer',
+          emptyFaq: 'No questions yet.',
+          policiesTitle: 'Policies',
+          addPolicy: 'Add policy',
+          policyName: (n: number) => `policy ${n}`,
+          kind: 'Type',
+          kinds: { BOOKING: 'Booking', GENERAL: 'General' },
+          policyTitle: 'Title',
+          policyBody: 'Text',
+          emptyPolicies: 'No policies yet.',
+          /** Chính sách huỷ sinh từ độ dài chuyến (ADR-0041), không nhập tay. */
+          cancellationNote:
+            'The cancellation policy is generated from the trip length and shown automatically.',
+          /** Chỉ hiện khi dữ liệu cũ còn chính sách loại CANCELLATION (đo 24/09: không còn). */
+          droppedCancellation: (n: number) =>
+            n === 1
+              ? 'One old cancellation policy is not shown here and will be removed when you save.'
+              : `${n} old cancellation policies are not shown here and will be removed when you save.`,
         },
         costs: {
           errors: {
             STALE_TOUR: 'Someone else saved this tour while you were editing.',
             NOT_FOUND: 'This tour no longer exists.',
           },
+          addItem: 'Add cost line',
+          itemName: (n: number) => `cost line ${n}`,
+          category: 'Category',
+          categories: {
+            TRANSPORT: 'Transport',
+            ACCOMMODATION: 'Accommodation',
+            MEALS: 'Meals',
+            GUIDE: 'Guide',
+            ACTIVITIES: 'Activities',
+            PERMITS: 'Permits',
+            INSURANCE: 'Insurance',
+            OTHER: 'Other',
+          },
+          label: 'Label',
+          amount: 'Amount (USD)',
+          basis: 'Charged',
+          bases: { PER_PERSON: 'Per traveller', PER_DEPARTURE: 'Per departure' },
+          empty: 'No cost lines yet, so this tour has no cost price.',
+          totals: {
+            title: 'Totals',
+            perPerson: 'Per traveller',
+            perDeparture: 'Per departure',
+            costPrice: (group: number) => `Cost per traveller with a full group of ${group}`,
+            margin: 'Margin on the base price',
+            marginValue: (amount: string, percent: number) => `${amount} (${percent}%)`,
+            none: 'Add a cost line to see the cost price.',
+          },
+          /**
+           * Đo: `fixedCostAmount` của chuyến (admin-departures.service.ts) và
+           * `costPerPerson` của booking (bookings.service.ts) là bản chụp lúc TẠO.
+           */
+          note: 'Saved costs apply to departures and bookings created from now on. Existing ones keep the costs they were created with.',
         },
         delete: {
           errors: {
