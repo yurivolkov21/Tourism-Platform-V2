@@ -88,9 +88,12 @@ export default function TourDetailRoute() {
   // D6 fix — sau khi mutation tim (replay HOẶC bấm tay) settle, ép `wishlist.check`
   // refetch: màn có thể vẫn mount sẵn dưới modal đăng nhập nên GET (enabled khi vừa
   // `signedIn`) và POST save có thể đua nhau; GET cũ về sau sẽ đè `wished` sai nếu
-  // không invalidate.
-  function invalidateWishlistCheck() {
+  // không invalidate. Kèm `wishlist.list` (S1, P5b-4) — tab Saved mount sẵn song
+  // song (expo-router giữ mount qua các tab) và đọc query RIÊNG, không tự biết tim
+  // vừa đổi ở đây nếu không invalidate luôn cả hai.
+  function invalidateWishlist() {
     queryClient.invalidateQueries({ queryKey: orpc.wishlist.check.key() });
+    queryClient.invalidateQueries({ queryKey: orpc.wishlist.list.key() });
   }
 
   const query = useQuery(orpc.catalog.tours.bySlug.queryOptions({ input: { slug } }));
@@ -154,7 +157,7 @@ export default function TourDetailRoute() {
           setWished(false);
           setWishlistError(messages.wishlist.error);
         },
-        onSettled: invalidateWishlistCheck,
+        onSettled: invalidateWishlist,
       },
     );
   }, [signedIn, tourId]);
@@ -192,7 +195,7 @@ export default function TourDetailRoute() {
           setWished(!next);
           setWishlistError(messages.wishlist.error);
         },
-        onSettled: invalidateWishlistCheck,
+        onSettled: invalidateWishlist,
       },
     );
   }
