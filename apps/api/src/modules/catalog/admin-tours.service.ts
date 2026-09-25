@@ -1,10 +1,15 @@
 import { Injectable, Logger } from '@nestjs/common';
 import {
+  type AdminTourCostsInput,
   type AdminTourCreateInput,
   type AdminTourCreateResult,
   type AdminTourDeleteInput,
   type AdminTourDeleteResult,
   type AdminTourDetail,
+  type AdminTourDetailsInput,
+  type AdminTourFaqsPoliciesInput,
+  type AdminTourItineraryInput,
+  derivedCostPrice,
   TOUR_CURRENCY,
   tourReadiness,
 } from '@tourism/contract';
@@ -14,11 +19,16 @@ import { tourRevalidationTags } from '../web-revalidation/revalidation-decision.
 import { WebRevalidationService } from '../web-revalidation/web-revalidation.service.js';
 import {
   AdminTourNotFoundError,
+  ItineraryDayOutOfRangeError,
   TourHasBookingsError,
   TourLinkNotFoundError,
+  TourNotReadyError,
+  TourRuleError,
   TourSlugTakenError,
 } from './admin-tour-errors.js';
+import { costItemsOf } from './tour-cost-items.js';
 import { liveSeatsMax } from './tour-editor-rules.js';
+import { claimTour, readTourReadiness } from './tour-state.js';
 
 /**
  * Khu làm việc của MỘT tour phía admin (spec F17, ADR-0047): đọc, tạo, xoá, và
@@ -135,6 +145,42 @@ function toDetail(row: TourDetailRow, now: Date): AdminTourDetail {
   };
 }
 
+/** Các cột của tab Details — KHÔNG có slug, tiền tệ, giá gạch, cờ bán, điểm đánh giá, giá vốn. */
+function detailsColumns(input: AdminTourDetailsInput) {
+  return {
+    title: input.title,
+    summary: input.summary,
+    categoryId: input.categoryId,
+    difficulty: input.difficulty,
+    isFeatured: input.isFeatured,
+    durationDays: input.durationDays,
+    maxGroupSize: input.maxGroupSize,
+    basePrice: input.basePrice,
+    suitableFor: input.suitableFor,
+    badges: input.badges,
+    highlights: input.highlights,
+    included: input.included,
+    excluded: input.excluded,
+    meetingPoint: input.meetingPoint,
+    factDurationNote: input.factDurationNote,
+    factGroupSizeNote: input.factGroupSizeNote,
+    factDifficultyNote: input.factDifficultyNote,
+    factGoodForNote: input.factGoodForNote,
+  } satisfies Prisma.TourUncheckedUpdateInput;
+}
+
+/** Tour đang bán thì luôn đủ để bán (ADR-0047 §4) — kiểm sau khi ghi, trước commit. */
+async function assertStillReady(tx: Prisma.TransactionClient, id: string): Promise<void> {
+  const readiness = await readTourReadiness(tx, id);
+  if (!readiness.ready) throw new TourNotReadyError(readiness);
+}
+
+/** Khoá ngoại hỏng ở lệnh sửa = danh mục hay điểm đến không tồn tại. */
+function mapLinkError(error: unknown): never {
+  if (prismaCode(error) === 'P2003') throw new TourLinkNotFoundError();
+  throw error;
+}
+
 @Injectable()
 export class AdminToursService {
   private readonly logger = new Logger(AdminToursService.name);
@@ -201,6 +247,208 @@ export class AdminToursService {
     this.logger.log(`[admin] tour deleted ${JSON.stringify({ id: input.id, slug: deleted.slug })}`);
     this.bust(deleted.slug);
     return { slug: deleted.slug };
+  }
+
+  /**
+   * Tab Details (spec §2b). Thứ tự trong transaction: giành hàng tour → đọc
+   * trạng thái hiện tại DƯỚI khoá → hai luật khớp dữ liệu → xoá ngày thừa nếu
+   * giảm số ngày → thay điểm đến → ghi cột (kèm giá vốn nếu đổi số khách) →
+   * kiểm "vẫn đủ để bán" nếu đang bán.
+   */
+  async updateDetails(input: AdminTourDetailsInput): Promise<AdminTourDetail> {
+    const now = new Date();
+    const slug = await prisma
+      .$transaction(async (tx) => {
+        const next = await claimTour(tx, input.id, input.version, now);
+        const current = await tx.tour.findUniqueOrThrow({
+          where: { id: input.id },
+          select: {
+            slug: true,
+            durationDays: true,
+            maxGroupSize: true,
+            isPublished: true,
+            departures: {
+              select: { seatsTotal: true, startDate: true, endDate: true, status: true },
+            },
+          },
+        });
+
+        if (input.durationDays !== current.durationDays && current.departures.length > 0) {
+          throw new TourRuleError(
+            'DURATION_LOCKED',
+            'This tour has departures, so its number of days is locked.',
+          );
+        }
+        const floor = liveSeatsMax(current.departures, now);
+        if (floor !== null && input.maxGroupSize < floor) {
+          throw new TourRuleError(
+            'GROUP_SIZE_BELOW_SEATS',
+            `A departure of this tour has ${floor} seats, so the group size cannot go below ${floor}.`,
+          );
+        }
+
+        if (input.durationDays < current.durationDays) {
+          await tx.tourItineraryDay.deleteMany({
+            where: { tourId: input.id, dayNumber: { gt: input.durationDays } },
+          });
+        }
+        await tx.tourDestination.deleteMany({ where: { tourId: input.id } });
+        await tx.tourDestination.createMany({
+          data: input.destinations.map((link) => ({
+            tourId: input.id,
+            destinationId: link.destinationId,
+            isPrimary: link.isPrimary,
+          })),
+        });
+
+        // Giá vốn chỉ tính lại khi đổi số khách (spec §3) — mẫu số của nó.
+        let costPrice: string | null | undefined;
+        if (input.maxGroupSize !== current.maxGroupSize) {
+          const rows = await tx.tourCostItem.findMany({
+            where: { tourId: input.id },
+            select: { amount: true, basis: true },
+          });
+          costPrice =
+            rows.length > 0 ? derivedCostPrice(costItemsOf(rows), input.maxGroupSize) : null;
+        }
+        await tx.tour.update({
+          where: { id: input.id },
+          data: {
+            ...detailsColumns(input),
+            ...(costPrice === undefined ? {} : { costPrice }),
+            updatedAt: next,
+          },
+        });
+
+        if (current.isPublished) await assertStillReady(tx, input.id);
+        return current.slug;
+      })
+      .catch(mapLinkError);
+
+    this.logger.log(`[admin] tour details saved ${JSON.stringify({ id: input.id })}`);
+    this.bust(slug);
+    return this.get(slug);
+  }
+
+  /**
+   * Tab Itinerary — thay nguyên. Ngày vượt số ngày là client hỏng (400, quyết
+   * định 6); kiểm SAU phép so phiên bản, vì chỉ khi phiên bản khớp thì số ngày
+   * client thấy mới đúng là số ngày của tour.
+   */
+  async setItinerary(input: AdminTourItineraryInput): Promise<AdminTourDetail> {
+    const now = new Date();
+    const slug = await prisma.$transaction(async (tx) => {
+      await claimTour(tx, input.id, input.version, now);
+      const current = await tx.tour.findUniqueOrThrow({
+        where: { id: input.id },
+        select: { slug: true, durationDays: true, isPublished: true },
+      });
+      const outside = input.days.find((day) => day.dayNumber > current.durationDays);
+      if (outside) {
+        throw new ItineraryDayOutOfRangeError(
+          `Day ${outside.dayNumber} is outside this ${current.durationDays}-day tour.`,
+        );
+      }
+
+      await tx.tourItineraryDay.deleteMany({ where: { tourId: input.id } });
+      await tx.tourItineraryDay.createMany({
+        data: input.days.map((day) => ({
+          tourId: input.id,
+          dayNumber: day.dayNumber,
+          title: day.title,
+          description: day.description,
+        })),
+      });
+
+      if (current.isPublished) await assertStillReady(tx, input.id);
+      return current.slug;
+    });
+
+    this.logger.log(
+      `[admin] tour itinerary saved ${JSON.stringify({ id: input.id, days: input.days.length })}`,
+    );
+    this.bust(slug);
+    return this.get(slug);
+  }
+
+  /** Tab FAQ & policies — hai danh sách thay nguyên, `order` = vị trí trong danh sách gửi. */
+  async setFaqsPolicies(input: AdminTourFaqsPoliciesInput): Promise<AdminTourDetail> {
+    const now = new Date();
+    const slug = await prisma.$transaction(async (tx) => {
+      await claimTour(tx, input.id, input.version, now);
+      const { slug } = await tx.tour.findUniqueOrThrow({
+        where: { id: input.id },
+        select: { slug: true },
+      });
+
+      await tx.tourFaq.deleteMany({ where: { tourId: input.id } });
+      await tx.tourFaq.createMany({
+        data: input.faqs.map((faq, index) => ({
+          tourId: input.id,
+          question: faq.question,
+          answer: faq.answer,
+          order: index,
+        })),
+      });
+      await tx.tourPolicy.deleteMany({ where: { tourId: input.id } });
+      await tx.tourPolicy.createMany({
+        data: input.policies.map((policy, index) => ({
+          tourId: input.id,
+          kind: policy.kind,
+          title: policy.title,
+          body: policy.body,
+          order: index,
+        })),
+      });
+      return slug;
+    });
+
+    this.logger.log(`[admin] tour FAQ and policies saved ${JSON.stringify({ id: input.id })}`);
+    this.bust(slug);
+    return this.get(slug);
+  }
+
+  /**
+   * Tab Costs — dòng chi phí thay nguyên, giá vốn tính lại cùng lệnh (ADR-0033,
+   * ADR-0047 §8). KHÔNG đụng `fixedCostAmount` của chuyến có sẵn hay
+   * `costPerPerson` của booking có sẵn: hai cột ấy là bản chụp (spec §2b).
+   */
+  async setCosts(input: AdminTourCostsInput): Promise<AdminTourDetail> {
+    const now = new Date();
+    const slug = await prisma.$transaction(async (tx) => {
+      const next = await claimTour(tx, input.id, input.version, now);
+      const current = await tx.tour.findUniqueOrThrow({
+        where: { id: input.id },
+        select: { slug: true, maxGroupSize: true },
+      });
+
+      await tx.tourCostItem.deleteMany({ where: { tourId: input.id } });
+      await tx.tourCostItem.createMany({
+        data: input.items.map((item, index) => ({
+          tourId: input.id,
+          category: item.category,
+          label: item.label,
+          amount: item.amount,
+          basis: item.basis,
+          sortOrder: index,
+        })),
+      });
+      await tx.tour.update({
+        where: { id: input.id },
+        data: {
+          costPrice:
+            input.items.length > 0 ? derivedCostPrice(input.items, current.maxGroupSize) : null,
+          updatedAt: next,
+        },
+      });
+      return current.slug;
+    });
+
+    this.logger.log(
+      `[admin] tour costs saved ${JSON.stringify({ id: input.id, items: input.items.length })}`,
+    );
+    this.bust(slug);
+    return this.get(slug);
   }
 
   /**

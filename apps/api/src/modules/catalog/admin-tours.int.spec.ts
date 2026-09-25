@@ -3,6 +3,7 @@ import { Test } from '@nestjs/testing';
 import {
   AdminTourCreateResultSchema,
   AdminTourDeleteResultSchema,
+  type AdminTourDetail,
   AdminTourDetailSchema,
   vietnamToday,
 } from '@tourism/contract';
@@ -203,6 +204,40 @@ describe('admin tours integration (F17)', () => {
     post('/api/admin/tours', payload, cookie);
   const remove = (id: string, cookie = adminCookie) =>
     post(`/api/admin/tours/${id}/delete`, {}, cookie);
+  const details = (id: string, payload: Record<string, unknown>, cookie = adminCookie) =>
+    post(`/api/admin/tours/${id}/details`, payload, cookie);
+  const itinerary = (id: string, payload: Record<string, unknown>, cookie = adminCookie) =>
+    post(`/api/admin/tours/${id}/itinerary`, payload, cookie);
+  const faqsPolicies = (id: string, payload: Record<string, unknown>, cookie = adminCookie) =>
+    post(`/api/admin/tours/${id}/faqs-policies`, payload, cookie);
+  const costs = (id: string, payload: Record<string, unknown>, cookie = adminCookie) =>
+    post(`/api/admin/tours/${id}/costs`, payload, cookie);
+
+  /** Payload tab Details dựng từ CHÍNH tour đang đọc — ca nào cần khác thì đè. */
+  const detailsPayload = (detail: AdminTourDetail, patch: Record<string, unknown> = {}) => ({
+    id: detail.id,
+    version: detail.version,
+    title: detail.title,
+    summary: detail.summary,
+    categoryId: detail.categoryId,
+    difficulty: detail.difficulty,
+    isFeatured: detail.isFeatured,
+    durationDays: detail.durationDays,
+    maxGroupSize: detail.maxGroupSize,
+    basePrice: detail.basePrice,
+    destinations: detail.destinations,
+    suitableFor: detail.suitableFor,
+    badges: detail.badges,
+    highlights: detail.highlights,
+    included: detail.included,
+    excluded: detail.excluded,
+    meetingPoint: detail.meetingPoint,
+    factDurationNote: detail.factDurationNote,
+    factGroupSizeNote: detail.factGroupSizeNote,
+    factDifficultyNote: detail.factDifficultyNote,
+    factGoodForNote: detail.factGoodForNote,
+    ...patch,
+  });
 
   const detailOf = async (slug: string) => {
     const res = await get(slug);
@@ -226,6 +261,10 @@ describe('admin tours integration (F17)', () => {
       expect((await get('f17-tour-1', customerCookie)).statusCode).toBe(403);
       expect((await create(CREATE, customerCookie)).statusCode).toBe(403);
       expect((await remove(tourId(1), customerCookie)).statusCode).toBe(403);
+      expect((await details(tourId(1), {}, customerCookie)).statusCode).toBe(403);
+      expect((await itinerary(tourId(1), {}, customerCookie)).statusCode).toBe(403);
+      expect((await faqsPolicies(tourId(1), {}, customerCookie)).statusCode).toBe(403);
+      expect((await costs(tourId(1), {}, customerCookie)).statusCode).toBe(403);
     });
 
     it('chưa đăng nhập thì mọi đường đều 401', async () => {
@@ -233,6 +272,10 @@ describe('admin tours integration (F17)', () => {
       expect((await get('f17-tour-1', '')).statusCode).toBe(401);
       expect((await create(CREATE, '')).statusCode).toBe(401);
       expect((await remove(tourId(1), '')).statusCode).toBe(401);
+      expect((await details(tourId(1), {}, '')).statusCode).toBe(401);
+      expect((await itinerary(tourId(1), {}, '')).statusCode).toBe(401);
+      expect((await faqsPolicies(tourId(1), {}, '')).statusCode).toBe(401);
+      expect((await costs(tourId(1), {}, '')).statusCode).toBe(401);
     });
   });
 
@@ -493,6 +536,440 @@ describe('admin tours integration (F17)', () => {
       const res = await remove(MISSING);
       expect(res.statusCode).toBe(404);
       expect(res.json()).toMatchObject({ code: 'NOT_FOUND', message: 'Tour not found' });
+    });
+  });
+
+  describe('updateDetails', () => {
+    it('ghi các cột của tab, trả tour mới với version mới; slug gửi thừa bị bỏ qua', async () => {
+      await makeTour(1);
+      const before = await detailOf('f17-tour-1');
+
+      const res = await details(
+        tourId(1),
+        detailsPayload(before, {
+          title: 'Renamed',
+          slug: 'hijacked-slug',
+          highlights: ['Sunset', 'Kayak'],
+          difficulty: 'EASY',
+        }),
+      );
+
+      expect(res.statusCode).toBe(200);
+      const after = AdminTourDetailSchema.parse(res.json());
+      expect(after.title).toBe('Renamed');
+      expect(after.slug).toBe('f17-tour-1');
+      expect(after.highlights).toEqual(['Sunset', 'Kayak']);
+      expect(after.difficulty).toBe('EASY');
+      expect(after.version).not.toBe(before.version);
+      expect(Date.parse(after.version)).toBeGreaterThan(Date.parse(before.version));
+    });
+
+    it('phiên bản mới luôn lớn hơn bản cũ, kể cả khi đồng hồ server lùi (quyết định 3)', async () => {
+      // Đẩy hàng tour về một mốc TƯƠNG LAI: giả lập đồng hồ server lùi sau lần lưu
+      // trước. Câu ghi cột nào quên đặt `updatedAt: next` thì Prisma tự đặt
+      // `now()` — phiên bản đi LÙI, và form cầm phiên bản cũ ghi đè được.
+      await makeTour(1);
+      const future = new Date(Date.now() + 60 * 60 * 1000);
+      await prisma.tour.update({ where: { id: tourId(1) }, data: { updatedAt: future } });
+      const before = await detailOf('f17-tour-1');
+
+      const saved = AdminTourDetailSchema.parse(
+        (await details(tourId(1), detailsPayload(before, { title: 'After the slip' }))).json(),
+      );
+      const costed = AdminTourDetailSchema.parse(
+        (await costs(tourId(1), { id: tourId(1), version: saved.version, items: [] })).json(),
+      );
+
+      expect(Date.parse(saved.version)).toBeGreaterThan(Date.parse(before.version));
+      expect(Date.parse(costed.version)).toBeGreaterThan(Date.parse(saved.version));
+    });
+
+    it('version cũ thì 409 STALE_TOUR và không đổi gì', async () => {
+      await makeTour(1);
+      const before = await detailOf('f17-tour-1');
+      await details(tourId(1), detailsPayload(before, { title: 'First save' }));
+
+      const res = await details(tourId(1), detailsPayload(before, { title: 'Stale save' }));
+
+      expect(res.statusCode).toBe(409);
+      expect(res.json()).toMatchObject({ code: 'STALE_TOUR' });
+      expect((await detailOf('f17-tour-1')).title).toBe('First save');
+    });
+
+    it('hai lệnh cùng version bắn cùng lúc: đúng MỘT lệnh qua', async () => {
+      await makeTour(1);
+      const before = await detailOf('f17-tour-1');
+
+      const [a, b] = await Promise.all([
+        details(tourId(1), detailsPayload(before, { title: 'Writer A' })),
+        details(tourId(1), detailsPayload(before, { title: 'Writer B' })),
+      ]);
+
+      expect([a.statusCode, b.statusCode].sort()).toEqual([200, 409]);
+      const winner = a.statusCode === 200 ? 'Writer A' : 'Writer B';
+      expect((await detailOf('f17-tour-1')).title).toBe(winner);
+    });
+
+    it('lưu tab con đẩy version — form Details mở trước đó bị từ chối', async () => {
+      await makeTour(1);
+      const before = await detailOf('f17-tour-1');
+      await faqsPolicies(tourId(1), {
+        id: tourId(1),
+        version: before.version,
+        faqs: [],
+        policies: [],
+      });
+
+      const res = await details(tourId(1), detailsPayload(before, { title: 'Late' }));
+
+      expect(res.statusCode).toBe(409);
+      expect(res.json()).toMatchObject({ code: 'STALE_TOUR' });
+    });
+
+    it('id không có thì 404; danh mục không có thì 404 và rollback trọn', async () => {
+      await makeTour(1);
+      const before = await detailOf('f17-tour-1');
+
+      const noTour = await details(MISSING, detailsPayload(before, { id: MISSING }));
+      const noCategory = await details(
+        tourId(1),
+        detailsPayload(before, { categoryId: MISSING, title: 'X' }),
+      );
+
+      // Khớp cả mã lẫn câu của contract — 404 trần thì một route chưa tồn tại
+      // cũng trả được, ca này sẽ xanh giả.
+      for (const res of [noTour, noCategory]) {
+        expect(res.statusCode).toBe(404);
+        expect(res.json()).toMatchObject({
+          code: 'NOT_FOUND',
+          message: 'Tour, category or destination not found',
+        });
+      }
+      const after = await detailOf('f17-tour-1');
+      expect(after.title).toBe(before.title);
+      expect(after.version).toBe(before.version);
+    });
+
+    it('thay nguyên danh sách điểm đến, điểm chính đứng đầu', async () => {
+      await makeTour(1);
+      const before = await detailOf('f17-tour-1');
+
+      await details(
+        tourId(1),
+        detailsPayload(before, {
+          destinations: [
+            { destinationId: DEST_3, isPrimary: false },
+            { destinationId: DEST_2, isPrimary: true },
+          ],
+        }),
+      );
+
+      expect((await detailOf('f17-tour-1')).destinations).toEqual([
+        { destinationId: DEST_2, isPrimary: true },
+        { destinationId: DEST_3, isPrimary: false },
+      ]);
+    });
+
+    it('số ngày khoá khi có chuyến, KỂ CẢ chuyến đã huỷ; giữ nguyên số ngày thì qua', async () => {
+      await makeTour(1);
+      await makeDeparture(tourId(1), { startDate: day(30), endDate: day(31), status: 'CANCELLED' });
+      const before = await detailOf('f17-tour-1');
+
+      const changed = await details(tourId(1), detailsPayload(before, { durationDays: 3 }));
+      const same = await details(tourId(1), detailsPayload(before, { title: 'Same days' }));
+
+      expect(changed.statusCode).toBe(409);
+      expect(changed.json()).toMatchObject({ code: 'DURATION_LOCKED' });
+      expect(same.statusCode).toBe(200);
+    });
+
+    it('số khách không hạ dưới ghế của chuyến chưa về; chuyến đã về hay đã huỷ không khoá', async () => {
+      await makeTour(1, { maxGroupSize: 40 });
+      await makeDeparture(tourId(1), { startDate: day(-10), endDate: day(-9), seatsTotal: 30 });
+      await makeDeparture(tourId(1), {
+        startDate: day(20),
+        endDate: day(21),
+        seatsTotal: 40,
+        status: 'CANCELLED',
+      });
+      await makeDeparture(tourId(1), { startDate: day(30), endDate: day(31), seatsTotal: 12 });
+      const before = await detailOf('f17-tour-1');
+
+      const below = await details(tourId(1), detailsPayload(before, { maxGroupSize: 11 }));
+      const atFloor = await details(tourId(1), detailsPayload(before, { maxGroupSize: 12 }));
+
+      expect(below.statusCode).toBe(409);
+      expect(below.json()).toMatchObject({ code: 'GROUP_SIZE_BELOW_SEATS' });
+      expect(atFloor.statusCode).toBe(200);
+    });
+
+    it('đổi số khách thì tính lại giá vốn; giữ nguyên số khách thì không đụng', async () => {
+      await makeTour(1, {
+        maxGroupSize: 20,
+        costPrice: '99.99',
+        costItems: {
+          create: [
+            { category: 'MEALS', label: 'Lunch', amount: '30.00', basis: 'PER_PERSON' },
+            { category: 'TRANSPORT', label: 'Bus', amount: '400.00', basis: 'PER_DEPARTURE' },
+          ],
+        },
+      });
+      const before = await detailOf('f17-tour-1');
+
+      const same = AdminTourDetailSchema.parse(
+        (await details(tourId(1), detailsPayload(before, { title: 'No size change' }))).json(),
+      );
+      const resized = AdminTourDetailSchema.parse(
+        (await details(tourId(1), detailsPayload(same, { maxGroupSize: 10 }))).json(),
+      );
+
+      expect(same.costPrice).toBe('99.99');
+      // 30.00 + 400.00 / 10
+      expect(resized.costPrice).toBe('70.00');
+    });
+
+    it('giảm số ngày (chưa có chuyến) xoá các ngày lịch trình thừa trong cùng lệnh', async () => {
+      await makeTour(1, {
+        isPublished: false,
+        durationDays: 4,
+        itinerary: {
+          create: [1, 2, 3, 4].map((dayNumber) => ({ dayNumber, title: `Day ${dayNumber}` })),
+        },
+      });
+      const before = await detailOf('f17-tour-1');
+
+      const after = AdminTourDetailSchema.parse(
+        (await details(tourId(1), detailsPayload(before, { durationDays: 2 }))).json(),
+      );
+
+      expect(after.itinerary.map((d) => d.dayNumber)).toEqual([1, 2]);
+      expect(after.readiness.missingDays).toEqual([]);
+    });
+
+    it('tour đang bán: tăng số ngày hay xoá tóm tắt bị từ chối và rollback trọn', async () => {
+      await makeTour(1); // đang bán, đủ 2 ngày
+      const before = await detailOf('f17-tour-1');
+
+      const moreDays = await details(tourId(1), detailsPayload(before, { durationDays: 3 }));
+      const noSummary = await details(tourId(1), detailsPayload(before, { summary: '' }));
+
+      for (const res of [moreDays, noSummary]) {
+        expect(res.statusCode).toBe(409);
+        expect(res.json()).toMatchObject({ code: 'TOUR_NOT_READY' });
+      }
+      const after = await detailOf('f17-tour-1');
+      expect(after.durationDays).toBe(2);
+      expect(after.summary).toBe('A day on the water.');
+      expect(after.version).toBe(before.version);
+    });
+
+    it('tour TẮT bán: làm thiếu vẫn lưu được, readiness nói ra chỗ thiếu', async () => {
+      await makeTour(1, { isPublished: false });
+      const before = await detailOf('f17-tour-1');
+
+      const res = await details(
+        tourId(1),
+        detailsPayload(before, { durationDays: 3, summary: null }),
+      );
+
+      expect(res.statusCode).toBe(200);
+      expect(AdminTourDetailSchema.parse(res.json()).readiness).toEqual({
+        summary: false,
+        primaryDestination: true,
+        missingDays: [3],
+        ready: false,
+      });
+    });
+  });
+
+  describe('setItinerary', () => {
+    it('thay nguyên lịch trình và đẩy version', async () => {
+      await makeTour(1, { durationDays: 3, isPublished: false });
+      const before = await detailOf('f17-tour-1');
+
+      const res = await itinerary(tourId(1), {
+        id: tourId(1),
+        version: before.version,
+        days: [
+          { dayNumber: 3, title: 'Home', description: null },
+          { dayNumber: 1, title: 'Arrive', description: '09:00 — Pick-up at your hotel' },
+        ],
+      });
+
+      expect(res.statusCode).toBe(200);
+      const after = AdminTourDetailSchema.parse(res.json());
+      expect(after.itinerary).toEqual([
+        { dayNumber: 1, title: 'Arrive', description: '09:00 — Pick-up at your hotel' },
+        { dayNumber: 3, title: 'Home', description: null },
+      ]);
+      expect(after.readiness.missingDays).toEqual([2]);
+      expect(after.version).not.toBe(before.version);
+    });
+
+    it('ngày vượt số ngày thì 400 và không đổi gì', async () => {
+      await makeTour(1);
+      const before = await detailOf('f17-tour-1');
+
+      const res = await itinerary(tourId(1), {
+        id: tourId(1),
+        version: before.version,
+        days: [{ dayNumber: 3, title: 'Too far', description: null }],
+      });
+
+      expect(res.statusCode).toBe(400);
+      const after = await detailOf('f17-tour-1');
+      expect(after.itinerary).toHaveLength(2);
+      expect(after.version).toBe(before.version);
+    });
+
+    it('tour đang bán mà bỏ trống một ngày thì 409 TOUR_NOT_READY', async () => {
+      await makeTour(1);
+      const before = await detailOf('f17-tour-1');
+
+      const res = await itinerary(tourId(1), {
+        id: tourId(1),
+        version: before.version,
+        days: [{ dayNumber: 1, title: 'Only one', description: null }],
+      });
+
+      expect(res.statusCode).toBe(409);
+      expect(res.json()).toMatchObject({ code: 'TOUR_NOT_READY' });
+      expect((await detailOf('f17-tour-1')).itinerary).toHaveLength(2);
+    });
+
+    it('version cũ thì 409 STALE_TOUR', async () => {
+      await makeTour(1);
+      const before = await detailOf('f17-tour-1');
+      await details(tourId(1), detailsPayload(before, { title: 'Moved on' }));
+
+      const res = await itinerary(tourId(1), { id: tourId(1), version: before.version, days: [] });
+
+      expect(res.statusCode).toBe(409);
+      expect(res.json()).toMatchObject({ code: 'STALE_TOUR' });
+    });
+  });
+
+  describe('setFaqsPolicies', () => {
+    it('thay nguyên hai danh sách, giữ ĐÚNG thứ tự gửi', async () => {
+      await makeTour(1, { faqs: { create: [{ question: 'Old?', answer: 'Gone' }] } });
+      const before = await detailOf('f17-tour-1');
+
+      const res = await faqsPolicies(tourId(1), {
+        id: tourId(1),
+        version: before.version,
+        faqs: [
+          { question: 'Zebra?', answer: 'Z' },
+          { question: 'Alpha?', answer: 'A' },
+        ],
+        policies: [
+          { kind: 'GENERAL', title: 'Weather', body: 'We sail when it is safe.' },
+          { kind: 'BOOKING', title: 'Deposit', body: 'Pay in full to book.' },
+        ],
+      });
+
+      expect(res.statusCode).toBe(200);
+      const after = AdminTourDetailSchema.parse(res.json());
+      // Thứ tự cố ý NGƯỢC bảng chữ cái — một bản lỡ tay sắp theo chữ sẽ đỏ.
+      expect(after.faqs.map((f) => f.question)).toEqual(['Zebra?', 'Alpha?']);
+      expect(after.policies.map((p) => p.title)).toEqual(['Weather', 'Deposit']);
+    });
+
+    it('hai danh sách rỗng là hợp lệ', async () => {
+      await makeTour(1, { faqs: { create: [{ question: 'Q?', answer: 'A' }] } });
+      const before = await detailOf('f17-tour-1');
+
+      const res = await faqsPolicies(tourId(1), {
+        id: tourId(1),
+        version: before.version,
+        faqs: [],
+        policies: [],
+      });
+
+      expect(res.statusCode).toBe(200);
+      expect(AdminTourDetailSchema.parse(res.json()).faqs).toEqual([]);
+    });
+  });
+
+  describe('setCosts', () => {
+    it('thay nguyên dòng chi phí theo thứ tự gửi và tính lại giá vốn', async () => {
+      await makeTour(1, { maxGroupSize: 12 });
+      const before = await detailOf('f17-tour-1');
+
+      const res = await costs(tourId(1), {
+        id: tourId(1),
+        version: before.version,
+        items: [
+          { category: 'TRANSPORT', label: 'Boat', amount: '100.01', basis: 'PER_DEPARTURE' },
+          { category: 'MEALS', label: 'Lunch', amount: '8.50', basis: 'PER_PERSON' },
+        ],
+      });
+
+      expect(res.statusCode).toBe(200);
+      const after = AdminTourDetailSchema.parse(res.json());
+      expect(after.costItems.map((c) => c.label)).toEqual(['Boat', 'Lunch']);
+      // 8.50 + 100.01 / 12 = 8.50 + 8.33 (8.334…) = 16.83
+      expect(after.costPrice).toBe('16.83');
+    });
+
+    it('xoá hết dòng chi phí thì giá vốn về null — tour chưa khai giá vốn', async () => {
+      await makeTour(1, {
+        costPrice: '10.00',
+        costItems: {
+          create: [{ category: 'MEALS', label: 'Lunch', amount: '10.00', basis: 'PER_PERSON' }],
+        },
+      });
+      const before = await detailOf('f17-tour-1');
+
+      const res = await costs(tourId(1), { id: tourId(1), version: before.version, items: [] });
+
+      expect(AdminTourDetailSchema.parse(res.json()).costPrice).toBeNull();
+    });
+  });
+
+  describe('bust cache web của bốn lệnh sửa', () => {
+    it('mỗi lệnh bust đúng hai tag của tour, SAU commit', async () => {
+      await makeTour(1, { isPublished: false });
+      const seen: Array<{ tags: string[]; title: string | undefined }> = [];
+      vi.spyOn(web, 'revalidate').mockImplementation(async (tags) => {
+        const row = await prisma.tour.findUnique({ where: { id: tourId(1) } });
+        seen.push({ tags, title: row?.title });
+      });
+      let current = await detailOf('f17-tour-1');
+
+      current = AdminTourDetailSchema.parse(
+        (await details(tourId(1), detailsPayload(current, { title: 'Fresh' }))).json(),
+      );
+      current = AdminTourDetailSchema.parse(
+        (await itinerary(tourId(1), { id: tourId(1), version: current.version, days: [] })).json(),
+      );
+      current = AdminTourDetailSchema.parse(
+        (
+          await faqsPolicies(tourId(1), {
+            id: tourId(1),
+            version: current.version,
+            faqs: [],
+            policies: [],
+          })
+        ).json(),
+      );
+      await costs(tourId(1), { id: tourId(1), version: current.version, items: [] });
+
+      await vi.waitFor(() => expect(seen).toHaveLength(4));
+      for (const call of seen) {
+        expect(call).toEqual({ tags: ['tours', 'tour:f17-tour-1'], title: 'Fresh' });
+      }
+    });
+
+    it('lệnh hỏng thì không bust', async () => {
+      await makeTour(1);
+      const before = await detailOf('f17-tour-1');
+      await details(tourId(1), detailsPayload(before, { title: 'Moved on' }));
+      const revalidate = vi.spyOn(web, 'revalidate').mockResolvedValue(undefined);
+
+      await details(tourId(1), detailsPayload(before, { title: 'Stale' }));
+      await itinerary(tourId(1), { id: tourId(1), version: before.version, days: [] });
+
+      expect(revalidate).not.toHaveBeenCalled();
     });
   });
 });

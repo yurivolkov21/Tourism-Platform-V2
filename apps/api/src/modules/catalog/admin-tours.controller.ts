@@ -1,10 +1,12 @@
 import { Controller } from '@nestjs/common';
 import { Implement, implement } from '@orpc/nest';
+import { ORPCError } from '@orpc/server';
 import { contract } from '@tourism/contract';
 import { Roles } from '../../auth/roles.decorator.js';
 import { UserRole } from '../../generated/prisma/enums.js';
 import { toContractError } from '../../lib/contract-error.js';
 import { AdminCatalogService, TourNotFoundError } from './admin-catalog.service.js';
+import { ItineraryDayOutOfRangeError } from './admin-tour-errors.js';
 import { AdminToursService } from './admin-tours.service.js';
 
 /**
@@ -56,6 +58,55 @@ export class AdminToursController {
     return implement(contract.admin.tours.create).handler(async ({ input, errors }) => {
       try {
         return await this.adminTours.create(input);
+      } catch (error) {
+        throw toContractError(error, errors);
+      }
+    });
+  }
+
+  @Implement(contract.admin.tours.updateDetails)
+  updateDetails() {
+    return implement(contract.admin.tours.updateDetails).handler(async ({ input, errors }) => {
+      try {
+        return await this.adminTours.updateDetails(input);
+      } catch (error) {
+        throw toContractError(error, errors);
+      }
+    });
+  }
+
+  @Implement(contract.admin.tours.setItinerary)
+  setItinerary() {
+    return implement(contract.admin.tours.setItinerary).handler(async ({ input, errors }) => {
+      try {
+        return await this.adminTours.setItinerary(input);
+      } catch (error) {
+        // Ngày ngoài 1..N khi phiên bản đã khớp là client hỏng, không phải thế
+        // giới đổi — 400, không thêm mã contract (plan F17, quyết định 6).
+        if (error instanceof ItineraryDayOutOfRangeError) {
+          throw new ORPCError('BAD_REQUEST', { message: error.message });
+        }
+        throw toContractError(error, errors);
+      }
+    });
+  }
+
+  @Implement(contract.admin.tours.setFaqsPolicies)
+  setFaqsPolicies() {
+    return implement(contract.admin.tours.setFaqsPolicies).handler(async ({ input, errors }) => {
+      try {
+        return await this.adminTours.setFaqsPolicies(input);
+      } catch (error) {
+        throw toContractError(error, errors);
+      }
+    });
+  }
+
+  @Implement(contract.admin.tours.setCosts)
+  setCosts() {
+    return implement(contract.admin.tours.setCosts).handler(async ({ input, errors }) => {
+      try {
+        return await this.adminTours.setCosts(input);
       } catch (error) {
         throw toContractError(error, errors);
       }
