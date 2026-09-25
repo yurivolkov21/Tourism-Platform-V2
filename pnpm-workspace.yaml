@@ -3,6 +3,21 @@ packages:
   - 'libs/shared/*'
   - 'libs/web/*'
   - 'libs/mobile/*'
+
+# `react-native-worklets` (bắc cầu qua `@expo/ui` → `expo-router` → `expo`,
+# ADR-0040 §"THỬ rồi BỎ reanimated") KHÔNG khai `@babel/traverse` là
+# dependency của chính nó dù plugin babel của nó `require('@babel/traverse')`
+# thẳng — bug gói ngoài. Từ babel-preset-expo 57.0.12, plugin này được nạp
+# TỰ ĐỘNG bất kể app có cài reanimated hay không (gói có mặt trong node_modules
+# là đủ), nên dưới cây pnpm isolated (không hoist ngầm) Metro chết ngay ở
+# `expo start` với "Cannot find module '@babel/traverse'" — dính 25/09, không
+# liên quan code nào đang sửa. Vá đúng chỗ bằng packageExtensions thay vì hoist
+# rộng (`public-hoist-pattern`, sẽ kéo theo rủi ro khác).
+packageExtensions:
+  react-native-worklets:
+    dependencies:
+      '@babel/traverse': '^7.29.0'
+
 allowBuilds:
   '@prisma/engines': true
   '@swc/core': true
