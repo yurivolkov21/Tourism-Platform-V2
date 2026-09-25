@@ -3969,6 +3969,12 @@ export const messages = {
         errors: {
           /** Trạng-thái-cũ: hàng đã biến mất giữa lúc trang render và lúc bấm. */
           NOT_FOUND: 'This tour is no longer in the catalogue. The list below has been refreshed.',
+          /**
+           * Tour còn thiếu thứ khách cần (ADR-0047 §4). Không phải trạng-thái-cũ:
+           * mở tour ra, điền cho đủ, rồi bật lại. Toast ở bảng Tours kèm nút mở
+           * thẳng tour.
+           */
+          TOUR_NOT_READY: "This tour isn't ready to sell yet — open it to see what's missing.",
         },
         toast: {
           /**

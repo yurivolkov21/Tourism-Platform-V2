@@ -29,6 +29,18 @@ import {
   AdminDestinationUpdateInputSchema,
 } from './schemas/admin-destinations.js';
 import {
+  AdminTourCostsInputSchema,
+  AdminTourCreateInputSchema,
+  AdminTourCreateResultSchema,
+  AdminTourDeleteInputSchema,
+  AdminTourDeleteResultSchema,
+  AdminTourDetailSchema,
+  AdminTourDetailsInputSchema,
+  AdminTourFaqsPoliciesInputSchema,
+  AdminTourGetInputSchema,
+  AdminTourItineraryInputSchema,
+} from './schemas/admin-tours.js';
+import {
   AdminBookingDetailSchema,
   AdminBookingsListQuerySchema,
   AdminRefundInputSchema,
@@ -1031,9 +1043,9 @@ export const contract = {
         .output(AdminMonthlyReportSchema),
     },
     /**
-     * Tours phía admin (spec P4e-1 §3-F11) — bề mặt ĐỌC danh sách vận hành
-     * cộng ĐÚNG MỘT công tắc: đăng / gỡ đăng. Tạo, sửa và xoá tour là P4e-3;
-     * chuyến khởi hành của một tour là `admin.departures.*` (F12).
+     * Tours phía admin — danh sách vận hành cộng công tắc đăng / gỡ đăng (spec
+     * P4e-1 §3-F11), và khu làm việc của từng tour (spec F17). Chuyến khởi
+     * hành của một tour là `admin.departures.*` (F12).
      *
      * `list` khác `catalog.tours.list` ở ba chỗ, và cả ba đều là lý do nó
      * phải là một endpoint riêng chứ không phải một cờ trên endpoint công
@@ -1041,11 +1053,16 @@ export const contract = {
      * tồn tại), nó trả `isPublished` (thứ luôn `true` ở bề mặt kia nên không
      * có chỗ), và nó đếm chuyến còn mở theo khoảng lọc của người đang xem.
      *
-     * `setPublished` CỐ Ý không khai mã lỗi nào ngoài `NOT_FOUND`. Gỡ đăng
-     * một tour đang có booking sống là HỢP LỆ và không được chặn (spec
-     * §3-F11): khách đã mua vẫn đi, tour chỉ thôi được chào bán. Một guard ở
-     * đây sẽ khoá đúng thao tác mà vận hành cần nhất — rút một tour khỏi kệ
-     * ngay khi có chuyện.
+     * `setPublished` khai thêm `TOUR_NOT_READY` (ADR-0047 §4) — CHỈ ở chiều
+     * bật bán; gỡ bán vẫn không bao giờ bị chặn, kể cả khi tour có booking
+     * sống (lý do của F11 giữ nguyên): khách đã mua vẫn đi, tour chỉ thôi được
+     * chào bán, và một guard ở chiều ấy sẽ khoá đúng thao tác mà vận hành cần
+     * nhất — rút một tour khỏi kệ ngay khi có chuyện.
+     *
+     * Bảy thao tác của khu làm việc (spec F17): mỗi tab một lệnh ghi, khối
+     * danh sách thay nguyên, một `version` cho cả tour (ADR-0047). Mọi lệnh
+     * ghi là `POST` như cả bề mặt admin — thêm verb mới là phải sửa danh sách
+     * `methods` của CORS.
      *
      * Bust cache web (`tours` + `tour:<slug>`) gọi SAU khi transaction commit,
      * KHÔNG trong transaction — tiền lệ ở `reviews.service.ts`.
@@ -1061,14 +1078,108 @@ export const contract = {
         })
         .input(AdminToursListQuerySchema)
         .output(PagedSchema(AdminTourRowSchema)),
+      get: oc
+        .route({
+          method: 'GET',
+          path: '/api/admin/tours/{slug}',
+          summary: 'One tour with everything the editor needs (admin, on or off sale)',
+        })
+        .input(AdminTourGetInputSchema)
+        .errors({ NOT_FOUND: { status: 404, message: 'Tour not found' } })
+        .output(AdminTourDetailSchema),
+      create: oc
+        .route({
+          method: 'POST',
+          path: '/api/admin/tours',
+          summary: 'Create a tour — it starts off sale',
+        })
+        .input(AdminTourCreateInputSchema)
+        .errors({
+          SLUG_TAKEN: { status: 409, message: 'Another tour already uses this slug' },
+          NOT_FOUND: { status: 404, message: 'Category or destination not found' },
+        })
+        .output(AdminTourCreateResultSchema),
+      updateDetails: oc
+        .route({
+          method: 'POST',
+          path: '/api/admin/tours/{id}/details',
+          summary: 'Save the Details tab of one tour',
+        })
+        .input(AdminTourDetailsInputSchema)
+        .errors({
+          STALE_TOUR: { status: 409, message: 'This tour changed since it was opened' },
+          DURATION_LOCKED: {
+            status: 409,
+            message: 'The number of days is locked while the tour has departures',
+          },
+          GROUP_SIZE_BELOW_SEATS: {
+            status: 409,
+            message: 'The group size cannot go below the seats of a departure',
+          },
+          TOUR_NOT_READY: { status: 409, message: 'A tour on sale must stay ready to sell' },
+          NOT_FOUND: { status: 404, message: 'Tour, category or destination not found' },
+        })
+        .output(AdminTourDetailSchema),
+      setItinerary: oc
+        .route({
+          method: 'POST',
+          path: '/api/admin/tours/{id}/itinerary',
+          summary: 'Replace the itinerary of one tour',
+        })
+        .input(AdminTourItineraryInputSchema)
+        .errors({
+          STALE_TOUR: { status: 409, message: 'This tour changed since it was opened' },
+          TOUR_NOT_READY: { status: 409, message: 'A tour on sale must stay ready to sell' },
+          NOT_FOUND: { status: 404, message: 'Tour not found' },
+        })
+        .output(AdminTourDetailSchema),
+      setFaqsPolicies: oc
+        .route({
+          method: 'POST',
+          path: '/api/admin/tours/{id}/faqs-policies',
+          summary: 'Replace the FAQ and the policies of one tour',
+        })
+        .input(AdminTourFaqsPoliciesInputSchema)
+        .errors({
+          STALE_TOUR: { status: 409, message: 'This tour changed since it was opened' },
+          NOT_FOUND: { status: 404, message: 'Tour not found' },
+        })
+        .output(AdminTourDetailSchema),
+      setCosts: oc
+        .route({
+          method: 'POST',
+          path: '/api/admin/tours/{id}/costs',
+          summary: 'Replace the cost lines of one tour and recompute its cost price',
+        })
+        .input(AdminTourCostsInputSchema)
+        .errors({
+          STALE_TOUR: { status: 409, message: 'This tour changed since it was opened' },
+          NOT_FOUND: { status: 404, message: 'Tour not found' },
+        })
+        .output(AdminTourDetailSchema),
+      delete: oc
+        .route({
+          method: 'POST',
+          path: '/api/admin/tours/{id}/delete',
+          summary: 'Delete a tour that has never been booked',
+        })
+        .input(AdminTourDeleteInputSchema)
+        .errors({
+          TOUR_HAS_BOOKINGS: { status: 409, message: 'A tour with bookings cannot be deleted' },
+          NOT_FOUND: { status: 404, message: 'Tour not found' },
+        })
+        .output(AdminTourDeleteResultSchema),
       setPublished: oc
         .route({
           method: 'POST',
           path: '/api/admin/tours/{id}/published',
-          summary: 'Put a tour on sale or take it off — never blocked by live bookings',
+          summary: 'Put a tour on sale (only when it is ready) or take it off (never blocked)',
         })
         .input(AdminTourSetPublishedInputSchema)
-        .errors({ NOT_FOUND: { status: 404, message: 'Tour not found' } })
+        .errors({
+          NOT_FOUND: { status: 404, message: 'Tour not found' },
+          TOUR_NOT_READY: { status: 409, message: 'This tour is not ready to sell yet' },
+        })
         .output(AdminTourSetPublishedResultSchema),
     },
     /**

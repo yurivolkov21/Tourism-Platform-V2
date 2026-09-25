@@ -33,9 +33,11 @@ export const SignedDecimalStringSchema = z
 
 /** Mirrors Prisma enum TourDifficulty (audit M4). */
 export const TourDifficultySchema = z.enum(['EASY', 'MODERATE', 'CHALLENGING']);
+export type TourDifficulty = z.output<typeof TourDifficultySchema>;
 
 /** Mirrors Prisma enum TravellerType. */
 export const TravellerTypeSchema = z.enum(['FAMILY', 'COUPLE', 'FRIENDS', 'SOLO', 'BUSINESS']);
+export type TravellerType = z.output<typeof TravellerTypeSchema>;
 
 /** Mirrors Prisma enum TourBadge. */
 export const TourBadgeSchema = z.enum([
@@ -45,6 +47,7 @@ export const TourBadgeSchema = z.enum([
   'NEW',
   'POPULAR',
 ]);
+export type TourBadge = z.output<typeof TourBadgeSchema>;
 
 /** Mirrors Prisma enum PolicyKind. */
 export const PolicyKindSchema = z.enum(['CANCELLATION', 'BOOKING', 'GENERAL']);

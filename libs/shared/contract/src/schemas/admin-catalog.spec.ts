@@ -156,15 +156,17 @@ describe('contract admin.tours', () => {
     });
   });
 
-  it('setPublished khai NOT_FOUND và KHÔNG khai mã nào chặn vì có booking', () => {
+  it('setPublished khai NOT_FOUND và TOUR_NOT_READY, KHÔNG khai mã nào chặn vì có booking', () => {
     // Bất biến F11: tắt đăng một tour đang có booking sống là HỢP LỆ — khách
-    // đã mua vẫn đi, tour chỉ thôi được chào bán.
+    // đã mua vẫn đi, tour chỉ thôi được chào bán. `TOUR_NOT_READY` (ADR-0047
+    // §4) chỉ chặn chiều BẬT bán.
     const errorMap = contract.admin.tours.setPublished['~orpc'].errorMap as Record<
       string,
       { status?: number } | undefined
     >;
     expect(errorMap.NOT_FOUND?.status).toBe(404);
-    expect(Object.keys(errorMap)).toEqual(['NOT_FOUND']);
+    expect(errorMap.TOUR_NOT_READY?.status).toBe(409);
+    expect(Object.keys(errorMap).sort()).toEqual(['NOT_FOUND', 'TOUR_NOT_READY']);
   });
 
   it('list KHÔNG khai lỗi nghiệp vụ — đọc thuần', () => {
