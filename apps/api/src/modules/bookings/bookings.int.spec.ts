@@ -121,7 +121,6 @@ describe('bookings integration (create PENDING + FakeGateway)', () => {
     await prisma.tourDestination.createMany({
       data: catalog.tourDestinations.filter((row) => tourIds.has(row.tourId)),
     });
-    await prisma.tourDeparture.createMany({ data: departures });
     // Cover cho dayTour (Task 1: tourImage) — role hero, cùng khuôn seed của
     // `posts.int.spec.ts`. unpublishedTour cố ý KHÔNG có media: nó không bao
     // giờ được book (rejected ở create), nên không cần cover.
@@ -153,6 +152,13 @@ describe('bookings integration (create PENDING + FakeGateway)', () => {
     await prisma.$executeRawUnsafe(
       'TRUNCATE TABLE users, sessions, accounts, verifications, bookings, payment_events CASCADE',
     );
+    // Dựng lại chuyến mỗi ca, như cancellations/refunds/payments int spec: các ca
+    // cộng ghế, dời ngày, đóng chuyến ngay trên fixture, và ca hỏng giữa chừng
+    // không kịp trả lại. Thiếu bước này, ca khách tự huỷ hỏng trước lệnh huỷ để
+    // depOpen kẹt 6/8 ghế, và năm ca đặt ba khách phía sau đỏ theo vì hết chỗ.
+    // Đứng SAU TRUNCATE `bookings` vì khoá ngoại `bookings.departure_id` là RESTRICT.
+    await prisma.tourDeparture.deleteMany();
+    await prisma.tourDeparture.createMany({ data: departures });
     fake.reset();
   });
 
@@ -415,17 +421,10 @@ describe('bookings integration (create PENDING + FakeGateway)', () => {
         where: { id: depOpen.id },
         data: { status: DepartureStatus.CLOSED },
       });
-      try {
-        const retry = await postCheckout(cookie, body.code);
-        expect(retry.statusCode).toBe(400);
-        expect(retry.json()).toMatchObject({ code: 'DEPARTURE_NOT_AVAILABLE' });
-        expect(fake.sessions).toHaveLength(1);
-      } finally {
-        await prisma.tourDeparture.update({
-          where: { id: depOpen.id },
-          data: { status: DepartureStatus.OPEN },
-        });
-      }
+      const retry = await postCheckout(cookie, body.code);
+      expect(retry.statusCode).toBe(400);
+      expect(retry.json()).toMatchObject({ code: 'DEPARTURE_NOT_AVAILABLE' });
+      expect(fake.sessions).toHaveLength(1);
     });
 
     it('booking cũ trước migration (không có URL/hạn) → coi như hết sống: expire best-effort + mint mới', async () => {
@@ -569,19 +568,12 @@ describe('bookings integration (create PENDING + FakeGateway)', () => {
         where: { id: depShort2d.id },
         data: { startDate: vnDay(2), endDate: vnDay(3) },
       });
-      try {
-        const retry = await postCheckout(cookie, body.code);
-        expect(retry.statusCode).toBe(400);
-        expect(retry.json()).toMatchObject({ code: 'DEPARTURE_NOT_AVAILABLE' });
-        // Session của lần create chưa hết hạn, nhưng chốt chặn đứng TRƯỚC nhánh
-        // trả lại session: sau hạn chót không mở lại trang thanh toán nào.
-        expect(fake.sessions).toHaveLength(1);
-      } finally {
-        await prisma.tourDeparture.update({
-          where: { id: depShort2d.id },
-          data: { startDate: depShort2d.startDate, endDate: depShort2d.endDate },
-        });
-      }
+      const retry = await postCheckout(cookie, body.code);
+      expect(retry.statusCode).toBe(400);
+      expect(retry.json()).toMatchObject({ code: 'DEPARTURE_NOT_AVAILABLE' });
+      // Session của lần create chưa hết hạn, nhưng chốt chặn đứng TRƯỚC nhánh
+      // trả lại session: sau hạn chót không mở lại trang thanh toán nào.
+      expect(fake.sessions).toHaveLength(1);
     });
 
     it('"Pay again" cũng chặn khi tour đã gỡ publish — cùng một chốt chặn với create', async () => {
@@ -628,16 +620,8 @@ describe('bookings integration (create PENDING + FakeGateway)', () => {
         const row = await prisma.booking.findUniqueOrThrow({ where: { id: body.id } });
         expect(row.status).toBe(BookingStatus.PAID);
       } finally {
-        // Trả chuyến về nguyên trạng cho các test sau (ngày, ghế vừa claim) và gỡ
-        // dòng outbox xác nhận mà claim vừa xếp — file này không truncate outbox.
-        await prisma.tourDeparture.update({
-          where: { id: depShort2d.id },
-          data: {
-            startDate: depShort2d.startDate,
-            endDate: depShort2d.endDate,
-            seatsBooked: depShort2d.seatsBooked,
-          },
-        });
+        // Gỡ dòng outbox xác nhận mà claim vừa xếp — file này không truncate
+        // outbox. Chuyến vừa dời ngày và cộng ghế thì `beforeEach` dựng lại.
         await prisma.outbox.deleteMany({ where: { dedupeKey: `booking-confirmed:${body.id}` } });
       }
     });
@@ -817,8 +801,8 @@ describe('bookings integration (create PENDING + FakeGateway)', () => {
     const alice = await signUpUser('alice-cancel-status@example.com', 'Alice');
     const created = (await createBooking(alice)).json();
     // Mô phỏng claim PAID như webhook thật: có capture để hoàn vào (lõi huỷ chặn
-    // booking không có provider_payment_id) và ghế đã được đếm — để lượt nhả
-    // ghế khi huỷ trả depOpen về đúng 3 cho các test sau.
+    // booking không có provider_payment_id) và ghế đã được đếm — để assert cuối
+    // ca thấy lệnh huỷ nhả đúng ba ghế của đoàn, depOpen về lại 3.
     await prisma.booking.update({
       where: { code: created.code },
       data: {
