@@ -226,9 +226,10 @@ export function chunkPairs<T>(items: readonly T[]): T[][] {
  * tim (D1/D2 header gọn): chưa đăng nhập → `AuthGateSheet` (D6, route quyết
  * `authGateOpen`); đã đăng nhập → route tự lạc quan đổi `favorited` rồi gọi
  * `wishlist.set`, hỏng thì trả lại + `wishlistErrorLabel`. "Sign in"/"Create
- * account" của D6 điều hướng sang `/login`/`/register` — CHƯA giữ được ý định
- * "quay lại đúng tour + tự lưu" sau khi đăng nhập xong (nợ, chưa có hạ tầng
- * return-to chung cho cụm auth). Reviews (D4) phân trang bằng nút "Load more" —
+ * account" của D6 điều hướng sang `/login`/`/register`, route tự ghi lại ý định
+ * "quay lại đúng tour + tự lưu" qua `setPendingReturn` (P5b-4 mục 1c) trước khi
+ * điều hướng — đăng nhập xong quay đúng tour, tim tự lưu nếu khách đã bấm.
+ * Reviews (D4) phân trang bằng nút "Load more" —
  * route gộp các trang đã tải, `hasMoreReviews` tắt nút khi hết trang.
  */
 export function TourDetailScreen({

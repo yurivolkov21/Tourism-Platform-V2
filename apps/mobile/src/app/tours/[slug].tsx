@@ -4,6 +4,7 @@ import { type PublicReview, windowDaysForTripLength } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
+import { consumePendingReplay, setPendingReturn } from '@/features/auth/return-to';
 import {
   type AskAboutDateErrors,
   type AskAboutDateField,
@@ -125,6 +126,29 @@ export default function TourDetailRoute() {
   useEffect(() => {
     if (!signedIn) setWished(false);
   }, [signedIn]);
+
+  // D6 — quay lại từ chặng đăng nhập (mục 1c spec P5b-4): tự lưu tim nếu khách
+  // đã bấm tim TRƯỚC khi bị chặn. `consumePendingReplay` chỉ trả giá trị khi có
+  // gì đó thật sự đang chờ — lượt ghé màn bình thường (không qua auth gate) luôn
+  // trả `undefined`, effect no-op. Cố ý CHỈ phụ thuộc [signedIn, tourId] —
+  // setWishlistMutation không nên khiến effect chạy lại (đó không phải lúc
+  // "vừa có phiên", chỉ là mutation object đổi identity giữa các lần render).
+  // biome-ignore lint/correctness/useExhaustiveDependencies: xem giải thích trên.
+  useEffect(() => {
+    if (!signedIn || tourId === undefined) return;
+    const replay = consumePendingReplay();
+    if (replay?.kind !== 'wishlist' || replay.tourId !== tourId) return;
+    setWished(true);
+    setWishlistMutation.mutate(
+      { tourId, wished: true },
+      {
+        onError: () => {
+          setWished(false);
+          setWishlistError(messages.wishlist.error);
+        },
+      },
+    );
+  }, [signedIn, tourId]);
 
   // Báo lỗi ngắn (D6) tự biến mất — không cần khách bấm tắt.
   useEffect(() => {
@@ -356,16 +380,26 @@ export default function TourDetailRoute() {
       authGateBody={messages.mobile.authPrompts.wishlistReason}
       signInLabel={messages.mobile.authPrompts.signIn}
       createAccountLabel={messages.mobile.authPrompts.createAccount}
-      // "Sign in"/"Create account" chưa giữ ý định "quay lại tour này + tự lưu"
-      // sau khi đăng nhập xong (nợ — chưa có hạ tầng return-to chung cho cụm
-      // auth, xem doc comment `TourDetailScreen`). Đóng tấm mời trước khi điều
-      // hướng — quay lại tour vẫn thấy đúng trạng thái, chỉ là tim chưa tự lưu.
+      // Ghi lại "quay về tour này + tự lưu tim" TRƯỚC khi rời màn — đóng nợ D6 cũ
+      // (mục 1c spec P5b-4). `tourId` có thể chưa sẵn sàng (tour đang tải lúc
+      // khách bấm tim rất nhanh) — không set `replay` thì đăng nhập xong đơn
+      // giản KHÔNG tự lưu, không phải lỗi, chỉ là không có gì để replay.
       onSignIn={() => {
         setAuthGateOpen(false);
+        setPendingReturn(
+          tourId === undefined
+            ? { path: `/tours/${slug}` }
+            : { path: `/tours/${slug}`, replay: { kind: 'wishlist', tourId } },
+        );
         router.navigate('/login');
       }}
       onCreateAccount={() => {
         setAuthGateOpen(false);
+        setPendingReturn(
+          tourId === undefined
+            ? { path: `/tours/${slug}` }
+            : { path: `/tours/${slug}`, replay: { kind: 'wishlist', tourId } },
+        );
         router.navigate('/register');
       }}
       wishlistErrorLabel={wishlistError}
