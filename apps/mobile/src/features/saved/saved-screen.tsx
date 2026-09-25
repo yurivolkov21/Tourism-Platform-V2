@@ -109,8 +109,13 @@ export function SavedScreen({
               titleVariant="subtitle"
               titleTone="muted"
               surface={false}
+              // maxWidth 250 khớp mockup (`.t-subtitle` `max-width:250px`) — chữ
+              // xuống dòng đúng điểm ngắt của bản vẽ thay vì kéo hết bề ngang màn.
+              style={{ maxWidth: 250, alignSelf: 'center' }}
             >
-              <Button label={retryLabel} onPress={onRetry} shape="pill" />
+              <View style={{ width: 200 }}>
+                <Button label={retryLabel} onPress={onRetry} shape="pill" />
+              </View>
             </EmptyState>
           </View>
         ) : items.length === 0 ? (
@@ -121,8 +126,11 @@ export function SavedScreen({
               titleVariant="subtitle"
               titleTone="muted"
               surface={false}
+              style={{ maxWidth: 250, alignSelf: 'center' }}
             >
-              <Button label={browseLabel} onPress={onBrowse} shape="pill" />
+              <View style={{ width: 200 }}>
+                <Button label={browseLabel} onPress={onBrowse} shape="pill" />
+              </View>
             </EmptyState>
           </View>
         ) : (
