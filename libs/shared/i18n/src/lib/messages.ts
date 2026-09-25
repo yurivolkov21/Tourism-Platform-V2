@@ -2198,6 +2198,9 @@ export const messages = {
       heartUnsaveLabel: 'Remove from saved',
       error: "Couldn't load your saved tours.",
       retry: 'Try again',
+      // S1 (P5b-4) — tour đã gỡ publish sau khi khách lưu; thẻ mờ + nhãn này,
+      // không bấm vào được (WishlistItemSchema.unavailable).
+      unavailable: 'No longer available',
     },
   },
   /** Khuôn phản hồi dùng chung của tầng dữ liệu (ADR-0016 §4) — không gắn
