@@ -381,3 +381,55 @@ không có trong Jest) và vỡ test.
 | Tự viết pinch bằng `PanResponder` (đo khoảng cách hai `touches[]`) | Né được dependency mới, nhưng chính doc comment bản dựng đầu đã từ chối hướng này vì phải tự trọng tài NHIỀU gesture cạnh tranh tay — đúng thứ gesture-handler làm sẵn, và tái phát minh nó là rủi ro bug cao hơn phần dependency thêm vào. |
 | `react-native-reanimated@4.5.1` (bản `npx expo install` chọn) | Xung đột `react-native-worklets` với cây phụ thuộc của `@expo/ui` — hai bản (`0.10.x` reanimated đòi vs `0.12.1` cây kéo theo) sống cùng lúc, reanimated tự chặn lúc khởi tạo. Ghim tay `0.10.1` thì gãy tiếp ở babel plugin của chính worklets (thiếu `@babel/traverse`). Chi tiết ở "Quyết định" trên. |
 | `react-native-reanimated@3.x` (bản cũ hơn, không cần `react-native-worklets` riêng) | Né được xung đột trên (reanimated 3 tự mang JSI, không tách gói worklets), nhưng lệch khỏi bản `npx expo install` coi là "SDK 57 tương thích" — đổi rủi ro version cũ lấy né một xung đột mà bản thân `Gesture.Pinch/Pan` (không cần reanimated) đã giải quyết được với chi phí thấp hơn nhiều. Không đáng cho một tính năng phụ. |
+
+## AMEND 4 — 25/09/2026 (P5b-4): vá `@babel/traverse` thiếu ở `react-native-worklets` bằng `packageExtensions`
+
+Bối cảnh: dò được khi chạy thử `pnpm dev`/`expo start` thật lần đầu trong
+worktree `feat/mobile-account-screens` (không liên quan code Saved screen
+đang thêm) — Metro chết ngay ở bước babel với `Cannot find module
+'@babel/traverse'`, dẫn `require` qua
+`react-native-worklets/plugin/index.js`. ĐÚNG lỗi đã ghi ở AMEND 3
+("`react-native-worklets@0.10.x` thiếu `@babel/traverse` truy cập được qua
+cây pnpm isolated") — lúc đó né được vì quyết định BỎ `reanimated`, nhưng hoá
+ra không né trọn: `@expo/ui` (kéo qua `expo-router`) tự mang
+`react-native-worklets` vào cây ĐỘC LẬP với quyết định đó (xem `pnpm why
+react-native-worklets` — đường vào là `@expo/ui`, không phải `reanimated`).
+Từ `babel-preset-expo@57.0.12`, plugin babel của `react-native-worklets`
+được nạp **tự động hễ gói có mặt trong `node_modules`**, không cần app khai
+`reanimated` — nên đây không phải lỗi CHỌN cài gói mới, mà là toolchain Expo
+SDK 57 tự đụng vào một gói vốn đã có mặt transitively từ trước. Bất kỳ ai
+chạy `expo start`/`expo export` ở nhánh này đều dính, không phải hệ quả của
+việc dựng Saved screen.
+
+### Quyết định
+
+Vá bằng `pnpm.packageExtensions` (khai `react-native-worklets` có thêm
+dependency `@babel/traverse: ^7.29.0`) — đặt ở `pnpm-workspace.yaml`, KHÔNG
+phải field `"pnpm"` trong `package.json` (pnpm 11 đã dời chỗ đọc config đó,
+thử ở `package.json` trước bị cảnh báo "no longer read by pnpm", xem
+[pnpm.io/settings](https://pnpm.io/settings)). Cây có CẢ HAI bản
+`react-native-worklets` (`0.10.1` lẫn `0.12.x`, đúng như AMEND 3 mô tả) —
+`packageExtensions` áp theo TÊN gói nên vá cả hai, đã xác nhận bằng
+`ls node_modules/.pnpm/react-native-worklets@*/node_modules/@babel/` sau
+`pnpm install`.
+
+Đây là vá đúng chỗ (bug thiếu khai dependency của CHÍNH gói ngoài), không
+phải hoist rộng (`public-hoist-pattern`) — không đổi cách resolve của bất kỳ
+gói nào khác.
+
+### Xác nhận
+
+`pnpm --filter @tourism/mobile exec expo export --platform android` chạy hết
+không lỗi babel, sinh bundle `.hbc` (5.8MB) — trước đó chết ngay ở bước này.
+Dọn `apps/mobile/dist/` sau khi xác nhận (output thử, không commit).
+
+### Hệ quả
+
+- `pnpm-lock.yaml` đổi (74 dòng thêm/10 xoá) — `packageExtensions` làm pnpm
+  tính lại vài entry liên quan `react-native-worklets`, không đổi version
+  pin nào khác trong `overrides`.
+- Không đổi quyết định BỎ `reanimated` ở AMEND 3 — vẫn KHÔNG cài, vá này chỉ
+  giúp Metro tự khởi động được (bug babel của worklets chặn CẢ TIẾN TRÌNH
+  bundling, không riêng gì code liên quan reanimated).
+- Nếu sau này Expo/​`@expo/ui` phát hành bản tự khai `@babel/traverse` đúng
+  (sửa upstream), gỡ `packageExtensions` này đi — không cần giữ vĩnh viễn.
