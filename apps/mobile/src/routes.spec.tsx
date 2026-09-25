@@ -125,7 +125,6 @@ describe('vỏ điều hướng', () => {
   });
 
   it.each([
-    ['/saved', shell.titles.saved],
     ['/trips', shell.titles.trips],
     ['/account', shell.titles.account],
   ])('tab %s render được và mang đúng tiêu đề', async (url, title) => {
@@ -143,6 +142,16 @@ describe('vỏ điều hướng', () => {
     // Explore không còn placeholder (P5b-2 T2) — khẳng định bằng tiêu đề thật
     // của màn, khác chữ tab "Explore" (chỉ còn đọc qua a11y label của tab bar).
     expect(screen.getByText(messages.mobile.explore.title)).toBeTruthy();
+    expect(screen.queryByText(placeholder)).toBeNull();
+  });
+
+  it('tab /saved render được, không còn chỗ giữ chỗ — chưa đăng nhập nên vào thẳng S3', async () => {
+    const app = await openApp('/saved');
+
+    expect(app.pathname()).toBe('/saved');
+    // Chưa đăng nhập (không mock session) → AuthGateScreen (S3), tiêu đề khác
+    // "Saved tours" của S1 — cùng khuôn `savedGateTitle` dùng ở D6/tour-detail.
+    expect(screen.getByText(messages.mobile.authPrompts.savedGateTitle)).toBeTruthy();
     expect(screen.queryByText(placeholder)).toBeNull();
   });
 

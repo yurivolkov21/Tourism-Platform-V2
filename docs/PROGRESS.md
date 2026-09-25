@@ -66,10 +66,23 @@ tour cũ (đây chính là bug Important #1 vừa vá, cần xác nhận thật 
 Thứ tự đề xuất trong spec mục "Thứ tự implement":
 
 1. ~~return-to.ts + AuthGateScreen + đóng nợ D6~~ ✅ XONG (Plan A ở trên).
-2. **Saved (mục 2 spec)** — viết `apps/mobile/src/app/(tabs)/saved.tsx` (hiện
-   còn stub P5a, CHƯA đọc trước khi viết đè). Dùng `AuthGateScreen` (đã có,
-   Plan A) khi `!signedIn`. `wishlist.list`, tái dùng `TourListCard` (đã có
-   từ nhánh browse-screens, worktree này kế thừa sẵn).
+2. ~~**Saved (mục 2 spec)**~~ ✅ XONG 25/09 — `apps/mobile/src/app/(tabs)/saved.tsx`
+   (route, gọi `wishlist.list`/`wishlist.set`) + `features/saved/saved-screen.tsx`
+   (vẽ thuần, cùng khuôn `ExploreScreen`). `!signedIn` → `AuthGateScreen` (S3),
+   rỗng → `EmptyState` (S2), có dữ liệu → `TourListCard` mỗi thẻ luôn
+   `favorited`, bấm tim = bỏ lưu lạc quan (S1). Cờ `unavailable` → thẻ mờ
+   `opacity .55` + pill "No longer available" đè lên vị trí rating chip,
+   khoá `onPress` (không ẩn thẻ). Return-to chỉ ghi `path`, KHÔNG `replay`
+   (đăng nhập từ Saved quay lại đúng tab, không có gì để tự làm nốt — khác
+   D6 ở tour-detail). Thêm khoá i18n MỚI `mobile.saved.unavailable` (rebuild
+   `@tourism/i18n` sau khi sửa `messages.ts` — package này CÓ build step,
+   sửa `messages.ts` mà quên `pnpm --filter @tourism/i18n build` thì mobile
+   vẫn đọc `dist/` cũ). Sửa `routes.spec.tsx`: bỏ `/saved` khỏi cụm test
+   placeholder chung, thêm test riêng (chưa đăng nhập → vào thẳng S3, kiểm
+   bằng `authPrompts.savedGateTitle`, khác "Saved tours" của S1 vì mặc định
+   không mock session). 7 test mới (`saved-screen.spec.tsx`) + toàn bộ
+   `routes.spec.tsx` xanh, `tsc --noEmit`/biome sạch trên các file đã sửa.
+   **Chưa kiểm tay máy thật** (cùng lý do Plan A — phiên AI không có thiết bị).
 3. **Account hub + A3/A5/A6 (mục 3 spec)** — viết lại `account.tsx` (GIỮ 2
    link dev-gallery hiện có). Dùng `AuthGateScreen` cho A2 (`legalLinks` đã
    hỗ trợ sẵn trong component, xem props). A3 (sửa tên)/A5 (đăng xuất) sheet,
@@ -94,6 +107,18 @@ bite-sized riêng (giống T1-T7 của browse-screens) — port pattern có sẵ
 Xem lại `docs/PROGRESS.md` của nhánh browse-screens (trong lịch sử git nhánh
 đó) nếu cần đối chiếu cách né port-forward VS Code — vấn đề đó CÓ THỂ vẫn còn
 trên máy này.
+
+**Thử `pnpm gate:int` nguyên bộ 25/09 — ĐỎ, nhưng KHÔNG do nhánh này:**
+`@tourism/admin#build` chết ngay ở `next.config.ts` với
+`Error: Missing API origin: set NEXT_PUBLIC_API_URL in production` — biến
+môi trường thiếu ở máy/worktree này, không liên quan Saved screen. Xác nhận
+bằng `git stash` rồi build lại `@tourism/admin` một mình trên `main` sạch:
+lỗi Y HỆT, không đụng gì tới code vừa thêm. Đã chạy RIÊNG phần mobile:
+`pnpm --filter @tourism/mobile typecheck` + `pnpm --filter @tourism/mobile
+test -- saved`/`routes.spec` + `pnpm --filter @tourism/i18n test` đều xanh;
+`pnpm gate:int` ĐẦY ĐỦ (cả admin/web build, api int test) vẫn CHƯA chạy được
+trọn — cần ai đó set `NEXT_PUBLIC_API_URL` cho môi trường build admin trước
+(việc hạ tầng, luật 15 CLAUDE.md, không tự set ở đây).
 
 ## Chưa commit lên đâu cả, chưa hỏi push
 
