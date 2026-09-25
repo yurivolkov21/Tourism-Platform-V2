@@ -102,13 +102,17 @@ export function SavedScreen({
         {status === 'loading' ? (
           <SavedLoading />
         ) : status === 'error' ? (
-          <View style={{ flex: 1, justifyContent: 'center', paddingHorizontal: theme.spacing(4) }}>
+          // marginTop cố định (spacing(20) = 80dp, khớp `top: inset-top + s*20`
+          // của mockup) — KHÔNG `flex:1 + justifyContent:'center'`: trên máy
+          // cao (màn hình thật thường cao hơn khung mockup), center theo TOÀN
+          // BỘ vùng còn lại đẩy khối icon+chữ+nút xuống quá xa tiêu đề.
+          <View style={{ marginTop: theme.spacing(20), paddingHorizontal: theme.spacing(4) }}>
             <EmptyState icon={<SquareIcon name="wifi-off" />} title={errorTitle} surface={false}>
               <Button label={retryLabel} onPress={onRetry} shape="pill" />
             </EmptyState>
           </View>
         ) : items.length === 0 ? (
-          <View style={{ flex: 1, justifyContent: 'center', paddingHorizontal: theme.spacing(4) }}>
+          <View style={{ marginTop: theme.spacing(20), paddingHorizontal: theme.spacing(4) }}>
             <EmptyState icon={<SquareIcon name="heart" />} title={emptyTitle} surface={false}>
               <Button label={browseLabel} onPress={onBrowse} shape="pill" />
             </EmptyState>
