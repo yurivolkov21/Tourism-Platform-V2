@@ -145,8 +145,13 @@ describe('bookings integration (create PENDING + FakeGateway)', () => {
   });
 
   beforeEach(async () => {
+    // `payment_events` phải kể tên: bảng không có khoá ngoại tới `bookings`
+    // (`booking_id` là cột trần) nên CASCADE không với tới. Ca huỷ ghi vào đó
+    // dòng `fake_re_N`, mà id của FakeGateway lặp lại ở mọi lượt chạy (bộ đếm
+    // về 0 ở mỗi `reset()`) — dòng sót của lượt trước làm lệnh huỷ nổ trùng
+    // khoá (provider, event_id) → 500.
     await prisma.$executeRawUnsafe(
-      'TRUNCATE TABLE users, sessions, accounts, verifications, bookings CASCADE',
+      'TRUNCATE TABLE users, sessions, accounts, verifications, bookings, payment_events CASCADE',
     );
     fake.reset();
   });
