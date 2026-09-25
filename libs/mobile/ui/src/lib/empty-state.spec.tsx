@@ -38,6 +38,16 @@ describe('EmptyState', () => {
     expect(style.alignItems).toBe('center');
   });
 
+  it('surface=false: không nền thẻ, không viền — tri-state chiếm trọn vùng còn lại (H2–H4, E5)', async () => {
+    const theme = themeFor('light');
+    await renderWithTheme(<EmptyState testID="empty" title="Trống" surface={false} />);
+
+    const style = StyleSheet.flatten(screen.getByTestId('empty').props.style);
+    expect(style.backgroundColor).not.toBe(theme.colors.card);
+    expect(style.borderWidth).toBeFalsy();
+    expect(style.alignItems).toBe('center');
+  });
+
   it('có khe cho hành động đi kèm', async () => {
     await renderWithTheme(
       <EmptyState title="Trống">

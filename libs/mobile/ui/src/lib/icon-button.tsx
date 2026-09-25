@@ -11,6 +11,11 @@ export interface IconButtonProps {
   onPress: () => void;
   /** `glass` cho nút nằm trên ảnh (nền mờ, chữ sáng); `plain` cho nền thường. */
   variant?: 'glass' | 'plain';
+  /**
+   * Cỡ icon. Mặc định 18 (nút phụ: đóng, hiện/ẩn mật khẩu); nút chính trên
+   * đầu màn cần to hơn — vùng chạm KHÔNG đổi theo, vẫn `touchTargetMin`.
+   */
+  size?: number;
 }
 
 /**
@@ -22,6 +27,7 @@ export function IconButton({
   accessibilityLabel,
   onPress,
   variant = 'plain',
+  size = 18,
 }: IconButtonProps) {
   const theme = useTheme();
   const onMedia = variant === 'glass';
@@ -42,7 +48,7 @@ export function IconButton({
     >
       <Feather
         name={icon}
-        size={18}
+        size={size}
         color={onMedia ? theme.colors['on-media'] : theme.colors.foreground}
       />
     </Pressable>

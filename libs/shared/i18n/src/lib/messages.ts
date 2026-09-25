@@ -1921,7 +1921,9 @@ export const messages = {
       featuredTitle: 'Featured tours',
       destinationsTitle: 'Popular destinations',
       slowServer: 'Waking the server — the first load can take up to a minute…',
-      error: "Couldn't load tours. Check your connection and try again.",
+      // Bản vẽ 18/09 (H3) đổi "tours" → "destinations": Home hiển thị địa
+      // danh, không phải tour — khoá này trước đó chưa màn nào dùng thật.
+      error: "Couldn't load destinations. Check your connection and try again.",
       retry: 'Try again',
       empty: 'No tours to show yet — check back soon.',
       from: 'From',
@@ -1938,20 +1940,28 @@ export const messages = {
         'Southern Vietnam': 'South',
       } as Record<string, string>,
       regionEmpty: 'No destinations in this region yet.',
+      /** H4 (bản vẽ 18/09) — mở tab Explore khi vùng đang chọn chưa có địa danh. */
+      seeAllTours: 'See all tours',
     },
     explore: {
       title: 'Explore tours',
       searchPlaceholder: 'Search tours or destinations',
       destinationsTitle: 'Destinations',
+      /** Chip "All" — dùng chung cho hàng danh mục (E1) và facet Region (E3). */
+      allOption: 'All',
       resultsCount: (n: number) => `${n} ${n === 1 ? 'tour' : 'tours'}`,
       empty: 'No tours match your search.',
       clearFilters: 'Clear filters',
       filtersCta: 'Filters',
       showResults: (n: number) => `Show ${n} ${n === 1 ? 'result' : 'results'}`,
       clearAll: 'Clear all',
+      regionTitle: 'Region',
       durationTitle: 'Duration',
       priceTitle: 'Price',
+      difficultyTitle: 'Difficulty',
       sortTitle: 'Sort by',
+      /** E4 — mở/thu mô tả địa danh dưới đầu trang. */
+      readMore: 'Read more',
       error: "Couldn't load tours. Check your connection and try again.",
       retry: 'Try again',
       slowServer: 'Waking the server — the first load can take up to a minute…',
@@ -1990,8 +2000,60 @@ export const messages = {
       inquireNow: 'Inquire now',
       notFound: "This tour isn't available anymore.",
       goBack: 'Go back',
+      /** D7 — link phụ dưới nút "Go back". */
+      exploreOther: 'Explore other tours',
       error: "Couldn't load this tour.",
       retry: 'Try again',
+      /** D1 — tab thứ 4 (web gọi "Departures", mobile gọi ngắn "Dates" cho gọn). */
+      datesTitle: 'Dates',
+      chooseDate: 'Choose a date',
+      // Mockup ghi "/ person" (có gạch chéo) — KHÔNG phải "per person".
+      perPerson: '/ person',
+      /** D2 — nhãn khối "điểm hẹn" cuối tab Itinerary. */
+      meetingPointTitle: 'Meeting point',
+      /** D3 — nhãn đợt đã qua hạn đặt (`bookable: false`). Khác
+          `messages.tourDetail.departures.closed` (web) — hai app giữ khoá riêng,
+          "dùng chung chữ" chỉ áp cho câu huỷ miễn phí (`cancellationDeadline`). */
+      bookingClosed: 'Booking closed',
+      /** D3 — huy hiệu khi `seatsLeft <= departures.ALMOST_FULL_THRESHOLD`. */
+      almostFull: 'Almost full',
+      /** D3 — link trên đợt đã đóng, mở form hỏi. */
+      askAboutDate: 'Ask about this date',
+      /** D3 — tấm form mở từ link trên. `name`/`email` DÙNG CHUNG
+          `mobile.auth.register.name`/`mobile.auth.signIn.email` (cùng khái
+          niệm, cùng chữ — RegisterScreen đã tái dùng `signIn.email` theo nếp
+          này). Lỗi từng ô dùng chung `contactForm.errors` (quy ước mọi form
+          enquiry khác). */
+      askAboutDateSheet: {
+        description: (dateLabel: string) =>
+          `This departure (${dateLabel}) is closed for booking. Send us a message and we'll follow up by email.`,
+        message: 'Your message',
+        submit: 'Send message',
+        submitting: 'Sending…',
+        successTitle: 'Message sent',
+        successBody: "We'll reply by email soon.",
+        close: 'Close',
+        error: "Couldn't send your message. Please try again.",
+      },
+      /** D4 — chip sắp xếp review. Chữ NGẮN bám đúng bản vẽ (`chip` trong
+          `mobile-browse-screens.src.html`), KHÁC câu dài của web
+          (`tourDetail.dialogs.sortNewest` = "Newest first") — mobile không
+          dùng chung ở đây dù comment plan ghi "dùng chung", vì bản vẽ đã
+          duyệt là "Newest"/"Highest"/"Lowest"/"Oldest" trần, không có hậu tố. */
+      sortNewest: 'Newest',
+      sortHighest: 'Highest',
+      sortLowest: 'Lowest',
+      sortOldest: 'Oldest',
+      /** D4 — nút gộp thêm trang review; đổi chữ khi trang kế đang tải. */
+      loadMoreReviews: 'Load more reviews',
+      loadingReviews: 'Loading…',
+      /** Nhãn 4 thẻ dữ kiện tab Overview (D1) — giá trị lấy từ dữ liệu tour. */
+      facts: {
+        duration: 'Duration',
+        groupSize: 'Group size',
+        difficulty: 'Difficulty',
+        goodFor: 'Good for',
+      },
     },
     enquiry: {
       title: 'Inquire about this tour',

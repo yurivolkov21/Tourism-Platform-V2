@@ -12,18 +12,21 @@ beforeEach(async () => {
   await onboardingStore.markSeen();
 });
 
-it('ở chế độ dev thì mở được gallery', async () => {
+it.each([['/dev/gallery'], ['/dev/tour-gallery']])('ở chế độ dev thì mở được %s', async (url) => {
   isDevBuildMock.mockReturnValue(true);
-  const app = renderRouter('src/app', { initialUrl: '/dev/gallery' });
+  const app = renderRouter('src/app', { initialUrl: url });
   await app;
 
-  expect(app.getPathname()).toBe('/dev/gallery');
+  expect(app.getPathname()).toBe(url);
 });
 
-it('bản phát hành thì không có đường vào gallery', async () => {
-  isDevBuildMock.mockReturnValue(false);
-  const app = renderRouter('src/app', { initialUrl: '/dev/gallery' });
-  await app;
+it.each([['/dev/gallery'], ['/dev/tour-gallery']])(
+  'bản phát hành thì không có đường vào %s',
+  async (url) => {
+    isDevBuildMock.mockReturnValue(false);
+    const app = renderRouter('src/app', { initialUrl: url });
+    await app;
 
-  expect(app.getPathname()).toBe('/');
-});
+    expect(app.getPathname()).toBe('/');
+  },
+);

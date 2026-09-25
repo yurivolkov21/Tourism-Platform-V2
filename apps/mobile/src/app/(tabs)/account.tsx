@@ -41,6 +41,15 @@ export default function AccountScreen() {
             </AppText>
           </Link>
         ) : null}
+
+        {/* Đường tắt tới bảng tra cụm xem tour (P5b-2 T5) — cùng cổng dev. */}
+        {isDevBuild() ? (
+          <Link href="/dev/tour-gallery" style={{ alignSelf: 'center' }}>
+            <AppText variant="caption" tone="link">
+              Tour gallery (dev)
+            </AppText>
+          </Link>
+        ) : null}
       </View>
     </Screen>
   );

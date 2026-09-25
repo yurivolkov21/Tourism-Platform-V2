@@ -13,9 +13,10 @@ import { type ErrorBoundaryProps, router, Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AuthActionsProvider } from '@/features/auth/auth-actions';
-import { createMockAuthActions } from '@/features/auth/mock-auth-actions';
+import { createBetterAuthActions } from '@/features/auth/better-auth-actions';
 import { OnboardingStoreProvider, onboardingStore } from '@/features/onboarding/onboarding-store';
 import { queryClient } from '@/lib/api/query-client';
 import { env } from '@/lib/env';
@@ -25,13 +26,13 @@ import { env } from '@/lib/env';
 void SplashScreen.preventAutoHideAsync();
 
 /**
- * Hạ tầng auth của đợt P5b-1: bản GIẢ LẬP. Dựng một lần ở module scope chứ không
- * trong thân render — dựng lại mỗi lần render là mỗi lần đổi identity của
- * context, kéo theo toàn bộ cây con vẽ lại.
- *
- * Người làm hạ tầng đổi đúng dòng này sang bản `@better-auth/expo` thật.
+ * Hạ tầng auth thật (ADR-0017 §9, bàn giao P5b-1 → P5b-2): `@better-auth/expo`.
+ * Dựng một lần ở module scope chứ không trong thân render — dựng lại mỗi lần
+ * render là mỗi lần đổi identity của context, kéo theo toàn bộ cây con vẽ lại.
+ * Bản thân object này KHÔNG gọi `env()` (chỉ các method của nó gọi lúc được
+ * bấm) nên dựng ở module scope vẫn an toàn — xem `lib/auth-client.ts`.
  */
-const authActions = createMockAuthActions();
+const authActions = createBetterAuthActions();
 
 /**
  * Neo của stack gốc. KHÔNG có nó thì mở app bằng deep link (`nexora://tours/…`,
@@ -61,7 +62,12 @@ function RootStack() {
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
       {/* Nhóm auth mở dạng modal; header do stack bên trong nó vẽ. */}
       <Stack.Screen name="(auth)" options={{ presentation: 'modal', headerShown: false }} />
-      <Stack.Screen name="tours/[slug]" options={{ title: titles.tourDetail }} />
+      {/* Không header native (D1-D7 bản vẽ): màn tự vẽ nút lùi/tim kính mờ đè
+          lên ảnh bìa — có header là ra HAI nút lùi chồng nhau (phản hồi 24/09). */}
+      <Stack.Screen
+        name="tours/[slug]"
+        options={{ headerShown: false, title: titles.tourDetail }}
+      />
       <Stack.Screen name="bookings/[code]" options={{ title: titles.bookingDetail }} />
       {/* Onboarding phủ toàn màn và tự vẽ mọi thứ của nó. */}
       <Stack.Screen name="onboarding" options={{ headerShown: false }} />
@@ -90,16 +96,18 @@ export function ErrorBoundary({ error, retry }: ErrorBoundaryProps) {
   }, []);
 
   return (
-    <ThemeProvider>
-      <SafeAreaProvider>
-        <Screen>
-          <AppText variant="title">{crash.title}</AppText>
-          <EmptyState title={crash.body} body={error.message}>
-            <Button label={crash.retry} onPress={() => void retry()} />
-          </EmptyState>
-        </Screen>
-      </SafeAreaProvider>
-    </ThemeProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <ThemeProvider>
+        <SafeAreaProvider>
+          <Screen>
+            <AppText variant="title">{crash.title}</AppText>
+            <EmptyState title={crash.body} body={error.message}>
+              <Button label={crash.retry} onPress={() => void retry()} />
+            </EmptyState>
+          </Screen>
+        </SafeAreaProvider>
+      </ThemeProvider>
+    </GestureHandlerRootView>
   );
 }
 
@@ -158,17 +166,19 @@ export default function RootLayout() {
   if (!fontsReady) return null;
 
   return (
-    <ThemeProvider>
-      <SafeAreaProvider>
-        <AuthActionsProvider value={authActions}>
-          <QueryClientProvider client={queryClient}>
-            <OnboardingStoreProvider value={onboardingStore}>
-              <StatusBar style="auto" />
-              <RootStack />
-            </OnboardingStoreProvider>
-          </QueryClientProvider>
-        </AuthActionsProvider>
-      </SafeAreaProvider>
-    </ThemeProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <ThemeProvider>
+        <SafeAreaProvider>
+          <AuthActionsProvider value={authActions}>
+            <QueryClientProvider client={queryClient}>
+              <OnboardingStoreProvider value={onboardingStore}>
+                <StatusBar style="auto" />
+                <RootStack />
+              </OnboardingStoreProvider>
+            </QueryClientProvider>
+          </AuthActionsProvider>
+        </SafeAreaProvider>
+      </ThemeProvider>
+    </GestureHandlerRootView>
   );
 }
