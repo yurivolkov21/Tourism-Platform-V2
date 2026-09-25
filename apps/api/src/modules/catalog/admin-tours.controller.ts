@@ -131,7 +131,8 @@ export class AdminToursController {
         return await this.adminCatalog.setTourPublished(input);
       } catch (err) {
         if (err instanceof TourNotFoundError) throw errors.NOT_FOUND();
-        throw err;
+        // `TOUR_NOT_READY` và mọi `ContractError` khác đi qua bảng mã ĐÃ KHAI.
+        throw toContractError(err, errors);
       }
     });
   }

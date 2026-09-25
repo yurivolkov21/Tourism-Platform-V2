@@ -18,6 +18,7 @@ import {
   MediaType,
   PaymentProvider,
 } from '../../generated/prisma/enums.js';
+import { WebRevalidationService } from '../web-revalidation/web-revalidation.service.js';
 
 /**
  * Integration (Docker PG, db tourism_test — xem vitest.int.config.ts) — vùng
@@ -57,6 +58,8 @@ function sessionCookie(res: { headers: Record<string, unknown> }): string {
 
 const DAY_CATEGORY = 'b0000001-0000-4000-8000-000000000001'; // Day Tours
 const PACKAGE_CATEGORY = 'b0000001-0000-4000-8000-000000000002'; // Multi-day Packages
+/** Điểm đến chính của ALPHA — cổng đăng tour (ADR-0047 §4) đòi đúng một điểm chính. */
+const F11_DESTINATION = 'f1100003-0000-4000-8000-000000000001';
 
 const tourId = (n: number) => `f1100001-0000-4000-8000-${String(n).padStart(12, '0')}`;
 const departureId = (n: number) => `f1100002-0000-4000-8000-${String(n).padStart(12, '0')}`;
@@ -70,6 +73,7 @@ describe('admin catalog integration (F11 — tours list + publish toggle)', () =
   let adminCookie: string;
   let customerCookie: string;
   let customerId: string;
+  let web: WebRevalidationService;
 
   // Mốc động: ngày 1 của tháng thứ 3 kể từ hôm nay — luôn nằm trong TƯƠNG LAI
   // dù file chạy ngày nào, nên hai cửa sổ ("sắp tới" và "đúng tháng này") đều
@@ -120,7 +124,14 @@ describe('admin catalog integration (F11 — tours list + publish toggle)', () =
   });
 
   const tours = [
-    tour(ALPHA, { slug: 'f11-alpha-day', title: 'Alpha Day Trip', basePrice: '39.00' }),
+    // ALPHA đủ để bán (tóm tắt + điểm chính + ngày 1 ở beforeEach) — ca "tắt rồi bật
+    // lại" đi qua cổng đăng tour của F17 (ADR-0047 §4).
+    tour(ALPHA, {
+      slug: 'f11-alpha-day',
+      title: 'Alpha Day Trip',
+      basePrice: '39.00',
+      summary: 'A day out.',
+    }),
     tour(BETA, {
       slug: 'f11-beta-package',
       title: 'Beta Package',
@@ -178,6 +189,9 @@ describe('admin catalog integration (F11 — tours list + publish toggle)', () =
       'TRUNCATE TABLE users, tour_categories, destinations, media_assets CASCADE',
     );
     await prisma.tourCategory.createMany({ data: catalog.tourCategories });
+    await prisma.destination.create({
+      data: { id: F11_DESTINATION, slug: 'f11-bay', name: 'F11 Bay' },
+    });
 
     const moduleRef = await Test.createTestingModule({ imports: [AppModule] }).compile();
     app = moduleRef.createNestApplication<NestFastifyApplication>(new FastifyAdapter(), {
@@ -185,6 +199,7 @@ describe('admin catalog integration (F11 — tours list + publish toggle)', () =
     });
     await app.init();
     await app.getHttpAdapter().getInstance().ready();
+    web = moduleRef.get(WebRevalidationService);
 
     for (const email of [ADMIN_EMAIL, CUSTOMER_EMAIL]) {
       await app.inject({
@@ -217,12 +232,19 @@ describe('admin catalog integration (F11 — tours list + publish toggle)', () =
   beforeEach(async () => {
     // Mỗi test bắt đầu từ cùng một thế giới — `setPublished` là lệnh GHI nên
     // thứ tự test không được để lại dấu vết cho test sau.
+    vi.restoreAllMocks();
     await prisma.booking.deleteMany();
     await prisma.tourDeparture.deleteMany();
     await prisma.mediaAsset.deleteMany();
     await prisma.tour.deleteMany();
     await prisma.tour.createMany({ data: tours });
     await prisma.tourDeparture.createMany({ data: departures });
+    await prisma.tourDestination.create({
+      data: { tourId: ALPHA, destinationId: F11_DESTINATION, isPrimary: true },
+    });
+    await prisma.tourItineraryDay.create({
+      data: { tourId: ALPHA, dayNumber: 1, title: 'The day' },
+    });
   });
 
   afterAll(async () => {
@@ -445,5 +467,45 @@ describe('admin catalog integration (F11 — tours list + publish toggle)', () =
     const res = await setPublished('f1100001-0000-4000-8000-0000000000ff', false, adminCookie);
     expect(res.statusCode).toBe(404);
     expect(res.json()).toMatchObject({ code: 'NOT_FOUND' });
+  });
+
+  // ── Cổng đăng tour (F17, ADR-0047 §4) ──
+
+  it('bật bán tour THIẾU thì 409 TOUR_NOT_READY, câu nói đúng chỗ thiếu, không bust', async () => {
+    const revalidate = vi.spyOn(web, 'revalidate').mockResolvedValue(undefined);
+    // GAMMA: tắt bán, không tóm tắt, không điểm đến, không lịch trình.
+    const res = await setPublished(GAMMA, true, adminCookie);
+
+    expect(res.statusCode).toBe(409);
+    expect(res.json()).toMatchObject({
+      code: 'TOUR_NOT_READY',
+      message: 'This tour is missing: a summary, one primary destination, itinerary for day 1.',
+    });
+    const row = await prisma.tour.findUniqueOrThrow({ where: { id: GAMMA } });
+    expect(row.isPublished).toBe(false);
+    expect(revalidate).not.toHaveBeenCalled();
+  });
+
+  it('gỡ bán KHÔNG BAO GIỜ bị chặn, kể cả tour đang thiếu', async () => {
+    // BETA đang bán mà thiếu lịch trình (dữ liệu cũ) — vẫn gỡ được.
+    const res = await setPublished(BETA, false, adminCookie);
+    expect(res.statusCode).toBe(200);
+  });
+
+  it('bật một tour ĐÃ đang bán là no-op, không kiểm gì', async () => {
+    const res = await setPublished(BETA, true, adminCookie);
+    expect(res.statusCode).toBe(200);
+    expect(AdminTourSetPublishedResultSchema.parse(res.json()).changed).toBe(false);
+  });
+
+  it('bật/tắt bán KHÔNG đẩy updatedAt — form đang mở không thành cũ (plan F17, quyết định 2)', async () => {
+    const before = await prisma.tour.findUniqueOrThrow({ where: { id: ALPHA } });
+
+    await setPublished(ALPHA, false, adminCookie);
+    await setPublished(ALPHA, true, adminCookie);
+
+    const after = await prisma.tour.findUniqueOrThrow({ where: { id: ALPHA } });
+    expect(after.isPublished).toBe(true);
+    expect(after.updatedAt.toISOString()).toBe(before.updatedAt.toISOString());
   });
 });

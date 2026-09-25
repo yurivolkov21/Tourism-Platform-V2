@@ -8,14 +8,16 @@ import type {
 } from '@tourism/contract';
 import { departurePhase } from '@tourism/contract';
 import { prisma } from '../../auth/auth.config.js';
-import type { Prisma } from '../../generated/prisma/client.js';
+import { Prisma } from '../../generated/prisma/client.js';
 import { DepartureStatus, MediaOwnerType, MediaRole } from '../../generated/prisma/enums.js';
 import { calendarDate } from '../../lib/calendar-date.js';
 import { MediaService } from '../media/media.service.js';
 import { tourRevalidationTags } from '../web-revalidation/revalidation-decision.js';
 import { WebRevalidationService } from '../web-revalidation/web-revalidation.service.js';
+import { TourNotReadyError } from './admin-tour-errors.js';
 import { pickCover } from './catalog.service.js';
 import { departureWindow } from './departure-window.js';
+import { readTourReadiness } from './tour-state.js';
 
 /** Tour không tồn tại — controller dịch thành `NOT_FOUND` của contract. */
 export class TourNotFoundError extends Error {}
@@ -147,28 +149,38 @@ export class AdminCatalogService {
   /**
    * Đưa một tour lên kệ hoặc rút khỏi kệ.
    *
-   * KHÔNG có guard nào ngoài "tour có tồn tại không". Gỡ đăng một tour đang có
-   * booking sống là HỢP LỆ (spec §3-F11): khách đã mua vẫn đi, tour chỉ thôi
-   * được chào bán — và đó đúng là thao tác vận hành cần nhất khi có chuyện.
+   * **Bật bán có cổng** (ADR-0047 §4): tour phải đủ để bán theo
+   * `tourReadiness`, đọc DƯỚI khoá hàng tour. Khoá (`SELECT … FOR UPDATE` ở MỘT
+   * câu riêng, khuôn `admin-departures.service.ts`) để một lệnh sửa tab chen vào
+   * giữa lúc đọc và lúc ghi phải xếp hàng: lệnh sửa bắt đầu bằng câu `UPDATE`
+   * trên đúng hàng này (`claimTour`), và sau khi lệnh bật bán commit nó thấy tour
+   * đang bán rồi tự kiểm "vẫn đủ" — bất biến "đang bán ⇒ đủ để bán" không có khe.
    *
-   * Đọc-rồi-ghi trong CÙNG một transaction, nhưng KHÔNG cần `FOR UPDATE` (khác
-   * hẳn luật ghế của F12): phép ghi ở đây là TUYỆT ĐỐI (`isPublished = <đích>`)
-   * chứ không phải tương đối, nên hai admin bấm cùng lúc chỉ có thể cùng ghi ra
-   * một kết quả — không có lost update nào để mất. Lượt đọc chỉ để trả lời
-   * `changed`, và cùng lắm hai người cùng nhận `changed: true` cho một lượt đổi.
+   * **Gỡ bán không bao giờ bị chặn**, kể cả khi tour có booking sống hay đang
+   * thiếu (spec §3-F11): khách đã mua vẫn đi, tour chỉ thôi được chào bán.
+   *
+   * **Không đẩy `updatedAt`** (plan F17, quyết định 2): công tắc không đổi nội
+   * dung, nên form đang mở trong khu làm việc không được thành "cũ" chỉ vì admin
+   * bấm On sale ở phần đầu trang. Đặt tường minh giá trị cũ — Prisma tự đẩy cột
+   * `@updatedAt` ở mọi câu ghi nếu không truyền.
    */
   async setTourPublished(input: AdminTourSetPublishedInput): Promise<AdminTourSetPublishedResult> {
     const { id, isPublished } = input;
 
     const outcome = await prisma.$transaction(async (tx) => {
-      const before = await tx.tour.findUnique({
-        where: { id },
-        select: { slug: true, isPublished: true },
-      });
-      if (!before) return null;
-      if (before.isPublished === isPublished) return { slug: before.slug, changed: false };
-      await tx.tour.update({ where: { id }, data: { isPublished } });
-      return { slug: before.slug, changed: true };
+      const [locked] = await tx.$queryRaw<
+        { slug: string; is_published: boolean; updated_at: Date }[]
+      >(Prisma.sql`
+        SELECT slug, is_published, updated_at FROM tours WHERE id = ${id}::uuid FOR UPDATE
+      `);
+      if (!locked) return null;
+      if (locked.is_published === isPublished) return { slug: locked.slug, changed: false };
+      if (isPublished) {
+        const readiness = await readTourReadiness(tx, id);
+        if (!readiness.ready) throw new TourNotReadyError(readiness);
+      }
+      await tx.tour.update({ where: { id }, data: { isPublished, updatedAt: locked.updated_at } });
+      return { slug: locked.slug, changed: true };
     });
 
     if (!outcome) throw new TourNotFoundError();
