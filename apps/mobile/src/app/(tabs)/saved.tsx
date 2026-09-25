@@ -61,7 +61,12 @@ export default function SavedRoute() {
           });
           setWishlistError(messages.wishlist.error);
         },
-        onSettled: () => queryClient.invalidateQueries({ queryKey: orpc.wishlist.list.key() }),
+        // Explore/tour-detail (E1/E4/D6) mount sẵn song song, đọc `wishlist.check`
+        // RIÊNG — bỏ lưu ở đây mà không invalidate thì tim ở đó vẫn đứng ĐẶC sai.
+        onSettled: () => {
+          queryClient.invalidateQueries({ queryKey: orpc.wishlist.list.key() });
+          queryClient.invalidateQueries({ queryKey: orpc.wishlist.check.key() });
+        },
       },
     );
   }

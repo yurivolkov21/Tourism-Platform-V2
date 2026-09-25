@@ -1,4 +1,4 @@
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { messages } from '@tourism/i18n';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
@@ -61,6 +61,7 @@ export default function ExploreRoute() {
 
   const { data: session } = getAuthClient().useSession();
   const signedIn = Boolean(session?.user);
+  const queryClient = useQueryClient();
 
   // Tab (tabs) KHÔNG bị gỡ khi chuyển tab (expo-router giữ mount) — bấm thẻ
   // địa danh ở Home rồi nhảy `/explore?destination=x` khi Explore ĐÃ mount sẵn
@@ -153,6 +154,10 @@ export default function ExploreRoute() {
           setWishedIds((current) => toggleWishedId(current, tour.id));
           setWishlistError(messages.wishlist.error);
         },
+        // Tab Saved (S1, P5b-4) mount sẵn song song (expo-router giữ mount qua
+        // các tab) và đọc `wishlist.list` RIÊNG — không tự biết tim vừa đổi ở
+        // đây nếu không invalidate. Cùng khuôn `invalidateWishlist` ở tour-detail.
+        onSettled: () => queryClient.invalidateQueries({ queryKey: orpc.wishlist.list.key() }),
       },
     );
   }
