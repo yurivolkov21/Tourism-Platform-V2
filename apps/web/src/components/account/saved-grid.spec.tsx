@@ -41,6 +41,7 @@ function makeItem(overrides: Partial<WishlistItem> = {}): WishlistItem {
     basePrice: '79.00',
     currency: 'USD',
     durationDays: 1,
+    destinationName: 'Ninh Bình',
     ratingAvg: 4.8,
     ratingCount: 132,
     // Mặc định KHÔNG ảnh: nhánh ô giữ chỗ là nhánh dễ vỡ hơn, nên để test
