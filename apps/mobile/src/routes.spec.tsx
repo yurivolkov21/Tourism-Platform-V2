@@ -164,9 +164,12 @@ describe('vỏ điều hướng', () => {
     const app = await openApp('/saved');
 
     expect(app.pathname()).toBe('/saved');
-    // Chưa đăng nhập (không mock session) → AuthGateScreen (S3), tiêu đề khác
-    // "Saved tours" của S1 — cùng khuôn `savedGateTitle` dùng ở D6/tour-detail.
+    // Chưa đăng nhập (không mock session) → AuthGateScreen (S3) — cùng khuôn
+    // `savedGateTitle` dùng ở D6/tour-detail. Tiêu đề trang "Saved tours" vẫn
+    // giữ nguyên (pageTitle, phản hồi 26/09 — S1/S3 không lệch nhau, cùng luật
+    // A1/A2 của Account).
     expect(screen.getByText(messages.mobile.authPrompts.savedGateTitle)).toBeTruthy();
+    expect(screen.getByText(messages.mobile.saved.title)).toBeTruthy();
     expect(screen.queryByText(placeholder)).toBeNull();
   });
 
