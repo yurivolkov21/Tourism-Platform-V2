@@ -1,10 +1,14 @@
-import { BottomSheet, Button, FormMessage, TextField, useTheme } from '@tourism/mobile-ui';
+import { AppText, BottomSheet, Button, FormMessage, TextField, useTheme } from '@tourism/mobile-ui';
 import { View } from 'react-native';
 
 export interface EditNameSheetProps {
   visible: boolean;
   onClose: () => void;
+  /** Dùng CHO CẢ heading tấm trượt lẫn label nổi của ô — mockup dùng cùng
+      chữ "Display name" ở hai chỗ đó. */
   label: string;
+  /** Câu giải thích dưới heading, khoá MỚI `account.editNameDescription`. */
+  description: string;
   value: string;
   error?: string;
   formError: string | null;
@@ -24,6 +28,7 @@ export function EditNameSheet({
   visible,
   onClose,
   label,
+  description,
   value,
   error,
   formError,
@@ -38,8 +43,14 @@ export function EditNameSheet({
   return (
     <BottomSheet visible={visible} onClose={onClose}>
       <View style={{ paddingTop: theme.spacing(3) }}>
+        <AppText variant="heading">{label}</AppText>
+        <AppText variant="subtitle" tone="muted" style={{ marginTop: theme.spacing(1.5) }}>
+          {description}
+        </AppText>
         <TextField
           label={label}
+          icon="user"
+          iconVariant="boxed"
           value={value}
           error={error}
           onChangeText={onChangeText}

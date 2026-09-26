@@ -7,6 +7,7 @@ function baseProps(overrides: Partial<EditNameSheetProps> = {}): EditNameSheetPr
     visible: true,
     onClose: jest.fn(),
     label: 'Display name',
+    description: 'This is the name we use in emails and on your bookings.',
     value: 'Lan Nguyen',
     formError: null,
     pending: false,
@@ -19,10 +20,17 @@ function baseProps(overrides: Partial<EditNameSheetProps> = {}): EditNameSheetPr
 }
 
 describe('EditNameSheet', () => {
-  it('A3 — vẽ ô tên, bấm Save gọi onSave', async () => {
+  it('A3 — vẽ heading, câu giải thích, ô tên, bấm Save gọi onSave', async () => {
     const onSave = jest.fn();
     await renderWithTheme(<EditNameSheet {...baseProps({ onSave })} />);
 
+    // Heading "Display name" tách biệt với label nổi của ô (cùng chữ, hai
+    // chỗ khác nhau — mockup A3, phản hồi 26/09: bản trước thiếu cả hai dòng
+    // này lẫn icon "user" trong ô).
+    expect(screen.getAllByText('Display name').length).toBeGreaterThanOrEqual(1);
+    expect(
+      screen.getByText('This is the name we use in emails and on your bookings.'),
+    ).toBeTruthy();
     expect(screen.getByDisplayValue('Lan Nguyen')).toBeTruthy();
     await fireEvent.press(screen.getByText('Save'));
     expect(onSave).toHaveBeenCalled();

@@ -67,6 +67,7 @@ export function ChangePasswordScreen({
           ref={currentRef}
           label={copy.currentLabel}
           icon="lock"
+          iconVariant="boxed"
           secure
           revealLabel={auth.showPassword}
           hideLabel={auth.hidePassword}
@@ -81,6 +82,7 @@ export function ChangePasswordScreen({
           ref={newRef}
           label={copy.newLabel}
           icon="lock"
+          iconVariant="boxed"
           secure
           revealLabel={auth.showPassword}
           hideLabel={auth.hidePassword}
@@ -95,6 +97,7 @@ export function ChangePasswordScreen({
           ref={confirmRef}
           label={copy.confirmLabel}
           icon="lock"
+          iconVariant="boxed"
           secure
           revealLabel={auth.showPassword}
           hideLabel={auth.hidePassword}

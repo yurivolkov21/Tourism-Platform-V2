@@ -12,6 +12,14 @@ export interface TextFieldProps extends Omit<TextInputProps, 'style' | 'placehol
   label: string;
   value: string;
   icon?: FeatherIconName;
+  /**
+   * Cách vẽ `icon`. `plain` (mặc định) — icon trần, cùng khuôn cụm auth (bản
+   * duyệt 16/09: login/register/reset). `boxed` — icon trong khung vuông bo
+   * `secondary`+`primary-emphasis`, khuôn `.field` của cụm Account (A3/A6,
+   * mockup 21/09) — HAI mockup khác nhau nên KHÔNG đổi mặc định, chỉ thêm lựa
+   * chọn (phản hồi 26/09, đổi mặc định sẽ vỡ 4 màn auth đã duyệt).
+   */
+  iconVariant?: 'plain' | 'boxed';
   /** Câu lỗi của ô (kênh 1). Có nó thì gạch chân đổi màu và ô bị đánh dấu sai. */
   error?: string;
   /** Ô mật khẩu: che chữ và mọc thêm nút hiện/ẩn. */
@@ -28,7 +36,17 @@ export interface TextFieldProps extends Omit<TextInputProps, 'style' | 'placehol
  * `forwardRef` để màn gọi được `focus()` cho ô sai đầu tiên sau khi kiểm ở máy.
  */
 export const TextField = forwardRef<TextInput, TextFieldProps>(function TextField(
-  { label, value, icon, error, secure = false, revealLabel, hideLabel, ...rest },
+  {
+    label,
+    value,
+    icon,
+    iconVariant = 'plain',
+    error,
+    secure = false,
+    revealLabel,
+    hideLabel,
+    ...rest
+  },
   ref,
 ) {
   const theme = useTheme();
@@ -50,7 +68,21 @@ export const TextField = forwardRef<TextInput, TextFieldProps>(function TextFiel
           borderBottomColor: invalid ? theme.colors['destructive-emphasis'] : theme.colors.border,
         }}
       >
-        {icon === undefined ? null : (
+        {icon === undefined ? null : iconVariant === 'boxed' ? (
+          <View
+            testID="text-field-icon-box"
+            style={{
+              width: theme.spacing(10),
+              height: theme.spacing(10),
+              borderRadius: theme.radius.base * 2,
+              backgroundColor: theme.colors.secondary,
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <Feather name={icon} size={20} color={theme.colors['primary-emphasis']} />
+          </View>
+        ) : (
           <Feather name={icon} size={18} color={theme.colors['muted-foreground']} />
         )}
         <View style={{ flex: 1 }}>

@@ -2178,6 +2178,9 @@ export const messages = {
     },
     account: {
       editNameLabel: 'Display name',
+      // A3 — câu giải thích dưới heading tấm trượt (khoá MỚI, mockup có nhưng
+      // caption spec chỉ liệt các khoá editName* cũ, bỏ sót câu này).
+      editNameDescription: 'This is the name we use in emails and on your bookings.',
       editNameSave: 'Save',
       editNameSaving: 'Saving…',
       editNameSaved: 'Name updated.',
