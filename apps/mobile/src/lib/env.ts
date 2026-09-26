@@ -97,22 +97,28 @@ function metroLanHost(hostUri: string | undefined): string | undefined {
 }
 
 /**
- * Origin API cho phiên dev. `EXPO_PUBLIC_API_URL` khai trong `.env.local` luôn là
- * nguồn chính: trỏ API đã deploy hay một tunnel thì giữ nguyên. Chỉ khi nó trỏ
- * loopback — "API trên máy dev" — và app đang chạy qua Metro LAN thì mới thay
+ * Origin (API HOẶC web) cho phiên dev. Giá trị khai trong `.env.local` luôn là
+ * nguồn chính: trỏ host đã deploy hay một tunnel thì giữ nguyên. Chỉ khi nó trỏ
+ * loopback — "chạy trên máy dev" — và app đang chạy qua Metro LAN thì mới thay
  * host bằng IP của Metro, vì `localhost` trên điện thoại là chính điện thoại.
- * Scheme và cổng giữ đúng như env khai, nên API chạy cổng khác 3001 vẫn đúng.
+ * Scheme và cổng giữ đúng như env khai, nên chạy cổng khác mặc định vẫn đúng.
+ *
+ * Áp dụng cho CẢ `apiUrl` lẫn `webUrl` — cùng một máy dev phục vụ cả hai, cùng
+ * một lý do loopback không tới được. Trước 26/09 chỉ `apiUrl` được thay, nên
+ * mở link pháp lý (Help/About/Privacy/Terms/Cancellation) trên điện thoại thật
+ * luôn vỡ ("localhost đã từ chối kết nối") dù API vẫn chạy bình thường —
+ * không ai để ý vì hai origin đi qua hai đường code khác nhau.
  *
  * Kết quả là `http` tới một IP LAN, nằm ngoài chốt https của `readOrigin` — chấp
  * nhận được vì nó chỉ sinh ra từ một giá trị loopback đã qua chốt đó, và chỉ khi
  * có Metro (bản dev); bản phát hành không bao giờ đi vào nhánh này.
  */
-export function resolveDevApiUrl(apiUrl: string, hostUri: string | undefined): string {
+export function resolveDevOrigin(origin: string, hostUri: string | undefined): string {
   const lanHost = metroLanHost(hostUri);
-  if (lanHost === undefined) return apiUrl;
+  if (lanHost === undefined) return origin;
 
-  const url = new URL(apiUrl);
-  if (!isLoopback(url.hostname)) return apiUrl;
+  const url = new URL(origin);
+  if (!isLoopback(url.hostname)) return origin;
 
   // Dựng chuỗi từ getter thay vì gán `url.hostname`: `URL` của runtime Expo là
   // bản whatwg rút gọn, getter là phần chắc chắn có.
@@ -134,7 +140,11 @@ export function env(): MobileEnv {
       EXPO_PUBLIC_API_URL: process.env.EXPO_PUBLIC_API_URL,
       EXPO_PUBLIC_WEB_URL: process.env.EXPO_PUBLIC_WEB_URL,
     });
-    cached = { ...read, apiUrl: resolveDevApiUrl(read.apiUrl, Constants.expoConfig?.hostUri) };
+    const hostUri = Constants.expoConfig?.hostUri;
+    cached = {
+      apiUrl: resolveDevOrigin(read.apiUrl, hostUri),
+      webUrl: resolveDevOrigin(read.webUrl, hostUri),
+    };
   }
   return cached;
 }

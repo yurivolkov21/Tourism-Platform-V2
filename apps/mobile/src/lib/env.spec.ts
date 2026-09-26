@@ -1,4 +1,4 @@
-import { readEnv, resolveDevApiUrl } from './env';
+import { readEnv, resolveDevOrigin } from './env';
 
 describe('readEnv', () => {
   it('trả nguyên giá trị khi có đủ hai biến', () => {
@@ -77,7 +77,7 @@ describe('readEnv', () => {
   });
 });
 
-describe('resolveDevApiUrl', () => {
+describe('resolveDevOrigin', () => {
   // `hostUri` là host:cổng mà Metro phục vụ bundle. Điện thoại vừa tải bundle
   // qua đúng địa chỉ đó, nên nó tới được máy dev — nhưng CHỈ khi đó là IP LAN.
   it.each([
@@ -101,7 +101,7 @@ describe('resolveDevApiUrl', () => {
       'http://10.0.0.5:3001',
     ],
   ])('%s', (_, apiUrl, hostUri, expected) => {
-    expect(resolveDevApiUrl(apiUrl, hostUri)).toBe(expected);
+    expect(resolveDevOrigin(apiUrl, hostUri)).toBe(expected);
   });
 
   it.each([
@@ -116,6 +116,6 @@ describe('resolveDevApiUrl', () => {
     ['không có hostUri (bản phát hành)', 'http://localhost:3001', undefined],
     ['hostUri rỗng', 'http://localhost:3001', ''],
   ])('giữ nguyên env khi %s', (_, apiUrl, hostUri) => {
-    expect(resolveDevApiUrl(apiUrl, hostUri)).toBe(apiUrl);
+    expect(resolveDevOrigin(apiUrl, hostUri)).toBe(apiUrl);
   });
 });
