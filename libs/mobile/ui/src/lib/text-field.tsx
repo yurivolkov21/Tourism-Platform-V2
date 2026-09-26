@@ -62,7 +62,15 @@ export const TextField = forwardRef<TextInput, TextFieldProps>(function TextFiel
           flexDirection: 'row',
           alignItems: 'center',
           gap: theme.spacing(2.5),
-          minHeight: theme.touchTargetMin,
+          // `boxed` (Account, A3/A6): khớp `.field` mockup — `minHeight`
+          // spacing(15)=60dp KÈM `paddingVertical` riêng, không chỉ dựa vào
+          // `alignItems:'center'` để chừa khoảng cách. Icon 40dp giờ cao hơn
+          // chữ nhãn+giá trị cộng lại; canh giữa thuần làm chữ như dán sát
+          // gạch chân (phản hồi 26/09) vì khối chữ không có padding riêng để
+          // "nở" theo icon — `paddingVertical` đảm bảo khoảng trống LUÔN có,
+          // bất kể icon cao bao nhiêu.
+          minHeight: iconVariant === 'boxed' ? theme.spacing(15) : theme.touchTargetMin,
+          paddingVertical: iconVariant === 'boxed' ? theme.spacing(2.5) : 0,
           marginTop: theme.spacing(2.5),
           borderBottomWidth: 1,
           borderBottomColor: invalid ? theme.colors['destructive-emphasis'] : theme.colors.border,
