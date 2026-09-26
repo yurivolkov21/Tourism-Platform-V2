@@ -82,7 +82,10 @@ export function HomeScreen({
             style={{
               width: theme.spacing(12),
               height: theme.spacing(12),
-              borderRadius: theme.radius.base * 2,
+              // Tròn hoàn toàn — khớp `.avatar` mockup (border-radius:99px),
+              // trước đó bo góc vuông theo nhầm khuôn ô icon vuông (phản hồi
+              // 26/09).
+              borderRadius: theme.spacing(6),
               backgroundColor: theme.colors.muted,
               alignItems: 'center',
               justifyContent: 'center',
