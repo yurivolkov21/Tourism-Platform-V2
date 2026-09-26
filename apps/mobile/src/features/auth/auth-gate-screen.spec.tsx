@@ -55,4 +55,31 @@ describe('AuthGateScreen', () => {
     await fireEvent.press(screen.getByText('Privacy policy'));
     expect(onPrivacy).toHaveBeenCalled();
   });
+
+  it('dòng legalLinks CUỐI không có viền dưới (khớp mockup, không có gì theo sau để tách)', async () => {
+    await renderWithTheme(
+      <AuthGateScreen
+        {...baseProps({
+          legalLinks: [
+            { label: 'Privacy policy', icon: 'file-text', onPress: jest.fn() },
+            { label: 'Terms of service', icon: 'file-text', onPress: jest.fn() },
+          ],
+        })}
+      />,
+    );
+    const rows = screen.getAllByRole('button');
+    // Thứ tự dựng: Sign in, Create account, rồi từng dòng legalLinks — dòng
+    // cuối cùng ("Terms of service") là phần tử cuối trong cây.
+    expect(rows[rows.length - 1]?.props.style).toMatchObject({ borderBottomWidth: 0 });
+  });
+
+  it('pageTitle (A2): vẽ tiêu đề trang riêng phía trên khối chặn — không có thì không vẽ', async () => {
+    const { rerender } = await renderWithTheme(
+      <AuthGateScreen {...baseProps({ pageTitle: 'Account' })} />,
+    );
+    expect(screen.getByText('Account')).toBeTruthy();
+
+    await rerender(<AuthGateScreen {...baseProps()} />);
+    expect(screen.queryByText('Account')).toBeNull();
+  });
 });

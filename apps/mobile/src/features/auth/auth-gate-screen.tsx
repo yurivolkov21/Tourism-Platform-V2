@@ -17,6 +17,10 @@ export interface AuthGateScreenLegalLink {
 }
 
 export interface AuthGateScreenProps {
+  /** A2 riêng: "Account" đứng trên cùng, cùng vị trí tiêu đề của A1 (đăng nhập
+      rồi) — khác S3/T3 không có khối này (mockup không vẽ tiêu đề lặp lại ở
+      đó). Bỏ trống = không có tiêu đề trang riêng. */
+  pageTitle?: string;
   icon: FeatherIconName;
   title: string;
   body: string;
@@ -24,7 +28,7 @@ export interface AuthGateScreenProps {
   createAccountLabel: string;
   onSignIn: () => void;
   onCreateAccount: () => void;
-  /** A2 riêng: ba dòng pháp lý vẫn mở được dù chưa đăng nhập. Bỏ trống = không có khối này (S3). */
+  /** A2 riêng: năm dòng mở trình duyệt ngoài vẫn mở được dù chưa đăng nhập. Bỏ trống = không có khối này (S3). */
   legalLinks?: readonly AuthGateScreenLegalLink[];
 }
 
@@ -35,6 +39,7 @@ export interface AuthGateScreenProps {
  * lên trong lúc khách đang xem màn khác.
  */
 export function AuthGateScreen({
+  pageTitle,
   icon,
   title,
   body,
@@ -51,6 +56,11 @@ export function AuthGateScreen({
     // nằm DƯỚI tab bar (Saved/Account) — dùng edges mặc định ['top','bottom']
     // sẽ đệm đáy hai lần (safe-area + khoảng tab bar đã chừa).
     <Screen edges={SCREEN_EDGES_UNDER_TABS}>
+      {pageTitle === undefined ? null : (
+        <View style={{ paddingHorizontal: theme.spacing(6) }}>
+          <AppText variant="title">{pageTitle}</AppText>
+        </View>
+      )}
       <View style={{ flex: 1, justifyContent: 'center', paddingHorizontal: theme.spacing(4) }}>
         <EmptyState
           icon={
@@ -86,7 +96,7 @@ export function AuthGateScreen({
       </View>
       {legalLinks === undefined || legalLinks.length === 0 ? null : (
         <View style={{ paddingHorizontal: theme.spacing(6), paddingBottom: theme.spacing(6) }}>
-          {legalLinks.map((link) => (
+          {legalLinks.map((link, index) => (
             <Pressable
               key={link.label}
               accessibilityRole="button"
@@ -96,7 +106,9 @@ export function AuthGateScreen({
                 alignItems: 'center',
                 gap: theme.spacing(3),
                 minHeight: 52,
-                borderBottomWidth: 1,
+                // Dòng cuối bỏ viền dưới — khớp mockup (`Terms of service`
+                // `border-bottom:none`, không có gì theo sau để cần tách).
+                borderBottomWidth: index === legalLinks.length - 1 ? 0 : 1,
                 borderBottomColor: theme.colors.border,
               }}
             >
