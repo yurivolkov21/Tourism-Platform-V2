@@ -21,11 +21,6 @@ export interface AccountMenuItem {
 }
 
 export interface AccountScreenProps {
-  /** "Account" — tiêu đề trang, ĐỨNG RIÊNG phía trên tên người dùng (mockup
-      có hai dòng `t-title`: tiêu đề trang rồi mới tới tên). Cùng vị trí với
-      `AuthGateScreen`'s `pageTitle` (A2) để hai trạng thái của MỘT tab không
-      lệch nhau (phản hồi 26/09). */
-  pageTitle: string;
   name: string;
   email: string;
   avatarUrl: string | null;
@@ -51,7 +46,6 @@ const AVATAR_SIZE = 72;
  * riêng, dựng ở route theo `signedIn`, KHÔNG vẽ ở đây.
  */
 export function AccountScreen({
-  pageTitle,
   name,
   email,
   avatarUrl,
@@ -69,15 +63,12 @@ export function AccountScreen({
   return (
     <Screen edges={SCREEN_EDGES_UNDER_TABS} padded={false}>
       <ScrollView contentContainerStyle={{ paddingHorizontal: theme.spacing(6) }}>
-        <AppText variant="title" style={{ paddingTop: theme.spacing(3) }}>
-          {pageTitle}
-        </AppText>
         <View
           style={{
             flexDirection: 'row',
             alignItems: 'center',
             gap: theme.spacing(4),
-            paddingTop: theme.spacing(6),
+            paddingTop: theme.spacing(3),
           }}
         >
           <View
