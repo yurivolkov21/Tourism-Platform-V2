@@ -83,10 +83,36 @@ Thứ tự đề xuất trong spec mục "Thứ tự implement":
    không mock session). 7 test mới (`saved-screen.spec.tsx`) + toàn bộ
    `routes.spec.tsx` xanh, `tsc --noEmit`/biome sạch trên các file đã sửa.
    **Chưa kiểm tay máy thật** (cùng lý do Plan A — phiên AI không có thiết bị).
-3. **Account hub + A3/A5/A6 (mục 3 spec)** — viết lại `account.tsx` (GIỮ 2
-   link dev-gallery hiện có). Dùng `AuthGateScreen` cho A2 (`legalLinks` đã
-   hỗ trợ sẵn trong component, xem props). A3 (sửa tên)/A5 (đăng xuất) sheet,
-   A6 (đổi mật khẩu) màn riêng.
+3. ~~**Account hub + A3/A5/A6 (mục 3 spec)**~~ ✅ XONG 26/09 (commit `5fe11c3e`)
+   — `account.tsx` viết lại hoàn toàn, 2 link dev-gallery GIỮ nguyên (chuyển
+   vào slot `footer` mới của `AccountScreen` — đặt ngoài `Screen` như bản dự
+   định đầu sẽ mất tích vì `Screen` chiếm `flex:1` toàn màn, không có gì báo
+   lỗi, tự phát hiện khi review lại code trước khi commit).
+   A1: avatar (`reviewAuthorInitials` khi chưa có ảnh) + tên + email + bút chì,
+   8 dòng menu theo TẦN SUẤT + Sign out tách khoảng trắng. My reviews/Travel
+   stories (P5b-5/mục 4 dưới) chưa có màn đích — dòng menu tồn tại, `onPress`
+   no-op tạm, sẽ nối khi tới lượt.
+   A3: `EditNameSheet` (BottomSheet mới) — `validateProfileName` +
+   `authClient.updateUser`.
+   A5: `SignOutSheet` — thêm biến thể Button MỚI `"destructive"` vào
+   `@tourism/mobile-ui` (nền `destructive-emphasis`, chữ màu `background` —
+   tương phản đúng CẢ hai theme vì hai token đó luôn là hai đầu đối lập của
+   bảng màu, đúng cặp mockup dùng, không phải chọn bừa). Đăng xuất xong về
+   Home khách, KHÔNG dùng return-to.
+   A6: route `change-password.tsx` + màn riêng (header NATIVE, khác cụm auth
+   tự vẽ nút X vì có màn phía sau để lùi về) — logic thuần
+   `change-password-flow.ts` viết TDD trước (7 test): chỉ mật khẩu hiện tại
+   sai quy được về ô đầu, MỌI lỗi khác (kể cả lỗi bản thân quy được về "ô mật
+   khẩu" theo `placeAuthError`) rơi khung cấp form — đúng chữ spec, không tự
+   suy luận map field rộng hơn. `authClient.changePassword` kèm
+   `revokeOtherSessions:true` (ADR-0017 §7a).
+   Rút `openExternalPath` dùng chung (Account 5 dòng pháp lý/biên tập +
+   Register 2 dòng — Register trước đó tự có closure `openLegal` riêng, nay
+   dùng chung). Thêm khoá i18n `mobile.account.*` mới + `titles.changePassword`
+   (sửa test đếm tiêu đề route 14→15 trong `messages.spec.ts`).
+   17 test mới, toàn bộ `routes.spec.tsx`/mobile-ui xanh, `tsc --noEmit`/biome/
+   tokens-only sạch. **Chưa kiểm tay máy thật** (cùng lý do mọi mục trước —
+   phiên AI không có thiết bị).
 4. **Travel stories (mục 6 spec)** — độc lập hoàn toàn, không cần đăng nhập,
    không phụ thuộc Plan A ngoài 1 dòng dẫn vào ở `account.tsx`.
 5. **A4 (avatar)** — CẦN ADR mới (AMEND vào `docs/adr/0040-mobile-app-expo.md`)
