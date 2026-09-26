@@ -105,6 +105,7 @@ export default function SavedRoute() {
   if (!signedIn) {
     return (
       <AuthGateScreen
+        pageTitle={saved.title}
         icon="heart"
         title={messages.mobile.authPrompts.savedGateTitle}
         body={messages.mobile.authPrompts.savedGateBody}
