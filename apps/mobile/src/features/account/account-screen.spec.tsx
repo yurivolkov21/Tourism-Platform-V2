@@ -5,6 +5,7 @@ import { AccountScreen, type AccountScreenProps } from './account-screen';
 
 function baseProps(overrides: Partial<AccountScreenProps> = {}): AccountScreenProps {
   return {
+    pageTitle: 'Account',
     name: 'Lan Nguyen',
     email: 'lan.nguyen@example.com',
     avatarUrl: null,
@@ -29,9 +30,12 @@ function baseProps(overrides: Partial<AccountScreenProps> = {}): AccountScreenPr
 }
 
 describe('AccountScreen', () => {
-  it('A1 — vẽ tên, email, chữ cái đầu khi chưa có ảnh', async () => {
+  it('A1 — vẽ tiêu đề trang, tên, email, chữ cái đầu khi chưa có ảnh', async () => {
     await renderWithTheme(<AccountScreen {...baseProps()} />);
 
+    // Tiêu đề trang "Account" ĐỨNG RIÊNG với tên người dùng (phản hồi 26/09 —
+    // trước đó thiếu, làm A1/A2 lệch nhau).
+    expect(screen.getByText('Account')).toBeTruthy();
     expect(screen.getByText('Lan Nguyen')).toBeTruthy();
     expect(screen.getByText('lan.nguyen@example.com')).toBeTruthy();
     expect(screen.getByText('LN')).toBeTruthy();

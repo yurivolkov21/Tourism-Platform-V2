@@ -157,6 +157,7 @@ export default function AccountRoute() {
   return (
     <>
       <AccountScreen
+        pageTitle={messages.mobile.appShell.titles.account}
         name={name}
         email={email}
         avatarUrl={user.image ?? null}
