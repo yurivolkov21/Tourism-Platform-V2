@@ -156,4 +156,44 @@ describe('thu hồi phiên khi đổi/đặt lại mật khẩu (ADR-0017 §7a)'
     expect(await probe(cookieB)).toBe(401);
     expect(await probe(sessionCookie(change))).toBe(200);
   });
+
+  /**
+   * P5b-4 A6 (mobile) — `mapAuthError` (`libs/shared/core`) map `code ===
+   * 'INVALID_PASSWORD'` → `wrongCurrentPassword`, dựa trên đọc mã nguồn Better
+   * Auth pin 1.6.23 (`update-user.mjs`), không đoán. Test này gọi THẲNG endpoint
+   * thật để xác nhận version đang chạy trong repo trả ĐÚNG mã đó — không phải
+   * suy luận từ đọc code gói pin, mà từ một request thật.
+   */
+  it('4. change-password mật khẩu hiện tại sai → 400 INVALID_PASSWORD, mật khẩu cũ còn dùng được', async () => {
+    const email = 'change-wrong-current@example.com';
+    const cookie = await signUpVerifiedAndSignIn(email);
+
+    const change = await app.inject({
+      method: 'POST',
+      url: '/api/auth/change-password',
+      headers: { cookie, 'content-type': 'application/json' },
+      payload: JSON.stringify({
+        currentPassword: 'khong-phai-mat-khau-that',
+        newPassword: NEW_PASSWORD,
+        revokeOtherSessions: true,
+      }),
+    });
+
+    expect(change.statusCode).toBe(400);
+    expect(change.json()).toMatchObject({ code: 'INVALID_PASSWORD' });
+
+    // Đổi thất bại: mật khẩu CŨ vẫn đăng nhập được, mật khẩu mới thì không.
+    const signInOld = await app.inject({
+      method: 'POST',
+      url: '/api/auth/sign-in/email',
+      payload: { email, password: PASSWORD },
+    });
+    expect(signInOld.statusCode).toBe(200);
+    const signInNew = await app.inject({
+      method: 'POST',
+      url: '/api/auth/sign-in/email',
+      payload: { email, password: NEW_PASSWORD },
+    });
+    expect(signInNew.statusCode).toBe(401);
+  });
 });
