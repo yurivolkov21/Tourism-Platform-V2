@@ -58,6 +58,7 @@ export default function AccountRoute() {
   if (session?.user === undefined) {
     return (
       <AuthGateScreen
+        pageTitle={messages.mobile.appShell.titles.account}
         icon="user"
         title={messages.mobile.authPrompts.accountGateTitle}
         body={messages.mobile.authPrompts.accountGateBody}
