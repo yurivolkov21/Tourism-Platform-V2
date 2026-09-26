@@ -68,6 +68,14 @@ export class WishlistService {
               ratingAvg: true,
               ratingCount: true,
               isPublished: true,
+              // Địa danh CHÍNH — cùng khuôn `cardInclude` của catalog.service
+              // (primary trước, `take:1` vì đây chỉ cần MỘT tên hiển thị trên
+              // thẻ, không phải mảng đầy đủ như trang chi tiết).
+              destinations: {
+                select: { destination: { select: { name: true } } },
+                orderBy: [{ isPrimary: 'desc' }, { destination: { name: 'asc' } }],
+                take: 1,
+              },
             },
           },
         },
@@ -91,6 +99,7 @@ export class WishlistService {
       basePrice: row.tour.basePrice.toString(),
       currency: row.tour.currency,
       durationDays: row.tour.durationDays,
+      destinationName: row.tour.destinations[0]?.destination.name ?? null,
       ratingAvg: row.tour.ratingAvg === null ? null : Number(row.tour.ratingAvg),
       ratingCount: row.tour.ratingCount,
       addedAt: row.createdAt.toISOString(),

@@ -9,6 +9,12 @@ export const WishlistItemSchema = z.object({
   basePrice: z.string(),
   currency: z.string().length(3),
   durationDays: z.int().positive(),
+  // Địa danh CHÍNH của tour (primary trong `tour_destinations`, `null` nếu
+  // tour chưa gắn địa danh nào — không nên xảy ra ở dữ liệu thật nhưng không
+  // ràng buộc ở DB nên vẫn khai nullable). Thẻ mobile/web ghép
+  // `${destinationName} · ${duration}` giống ExploreScreen — thiếu field này
+  // là lý do thẻ Saved trước đây chỉ hiện mỗi số ngày, khác mockup.
+  destinationName: z.string().nullable(),
   ratingAvg: z.number().min(0).max(5).nullable(),
   ratingCount: z.int().nonnegative(),
   addedAt: z.iso.datetime(),

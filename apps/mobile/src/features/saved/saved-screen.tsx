@@ -18,7 +18,9 @@ export interface SavedTourVM {
   slug: string;
   imageUrl: string | null;
   title: string;
-  durationLabel: string;
+  /** "Hội An · 1 day" — địa danh chính + thời lượng đã ghép sẵn, cùng khuôn
+      `ExploreScreen`. Route tự nối, `null destinationName` rơi về chỉ số ngày. */
+  locationLabel: string;
   priceLabel: string;
   rating: number | null;
   unavailable: boolean;
@@ -161,7 +163,7 @@ export function SavedScreen({
                   imageUrl={item.imageUrl}
                   imageAlt={item.title}
                   title={item.title}
-                  locationLabel={item.durationLabel}
+                  locationLabel={item.locationLabel}
                   fromLabel={fromLabel}
                   priceLabel={item.priceLabel}
                   compareAtPriceLabel={null}

@@ -87,6 +87,14 @@ async function createPublishedTour(slug: string) {
   });
 }
 
+/** Gắn một địa danh vào tour — dùng cho test `destinationName` của `list`. */
+async function attachDestination(tourId: string, slug: string, name: string, isPrimary: boolean) {
+  const destination = await prisma.destination.create({ data: { slug, name } });
+  await prisma.tourDestination.create({
+    data: { tourId, destinationId: destination.id, isPrimary },
+  });
+}
+
 describe('wishlist (int)', () => {
   it('set({wished:true}) hai lần liên tiếp → cả hai 200, DB đúng MỘT row (idempotent)', async () => {
     const { user, cookie } = await signUpAndSignIn(app, 'wisher@example.com');
@@ -205,6 +213,27 @@ describe('wishlist (int)', () => {
     expect(body.items[0].tourId).toBe(tourB.id);
     expect(body.items[1].tourId).toBe(tourA.id);
     expect(body.total).toBe(2);
+    // `createPublishedTour` không gắn địa danh nào — `null`, không phải chuỗi rỗng.
+    expect(body.items[0].destinationName).toBeNull();
+  });
+
+  it('list trả destinationName của địa danh PRIMARY, không phải địa danh phụ', async () => {
+    const { cookie } = await signUpAndSignIn(app, 'list-destination@example.com');
+    const tour = await createPublishedTour('list-tour-destination');
+    // Gắn phụ TRƯỚC, chính SAU — thứ tự tạo không được quyết định kết quả,
+    // chỉ cờ `isPrimary` mới được (đo lỗi thật nếu code chỉ lấy item đầu mảng).
+    await attachDestination(tour.id, 'da-nang', 'Đà Nẵng', false);
+    await attachDestination(tour.id, 'hoi-an', 'Hội An', true);
+
+    await app.inject({
+      method: 'POST',
+      url: '/api/wishlist',
+      headers: { cookie },
+      payload: { tourId: tour.id, wished: true },
+    });
+    const res = await app.inject({ method: 'GET', url: '/api/wishlist', headers: { cookie } });
+
+    expect(res.json().items[0].destinationName).toBe('Hội An');
   });
 
   it('list trả unavailable:true cho tour đã bị unpublish sau khi lưu', async () => {

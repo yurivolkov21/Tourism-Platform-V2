@@ -90,7 +90,13 @@ export default function SavedRoute() {
       slug: item.slug,
       imageUrl: item.cover?.url ?? null,
       title: item.title,
-      durationLabel: messages.mobile.home.durationDays(item.durationDays),
+      // Cùng khuôn ExploreScreen ("Hội An · 1 day") — `destinationName` null
+      // (tour chưa gắn địa danh, không nên xảy ra ở dữ liệu thật) rơi về chỉ
+      // số ngày, không in dấu `·` treo.
+      locationLabel:
+        item.destinationName === null
+          ? messages.mobile.home.durationDays(item.durationDays)
+          : `${item.destinationName} · ${messages.mobile.home.durationDays(item.durationDays)}`,
       priceLabel: formatMoney(item.basePrice, item.currency),
       rating: item.ratingAvg,
       unavailable: item.unavailable,
