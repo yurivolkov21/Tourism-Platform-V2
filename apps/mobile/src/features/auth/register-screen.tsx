@@ -11,8 +11,8 @@ import {
   useTheme,
 } from '@tourism/mobile-ui';
 import { useEffect, useRef } from 'react';
-import { Linking, Pressable, type TextInput, useWindowDimensions, View } from 'react-native';
-import { env } from '@/lib/env';
+import { Pressable, type TextInput, useWindowDimensions, View } from 'react-native';
+import { openExternalPath } from '@/lib/open-external-path';
 import { AuthHero } from './auth-hero';
 import { AUTH_PHOTOS } from './auth-media';
 import { fromMockup } from './auth-metrics';
@@ -71,10 +71,6 @@ export function RegisterScreen({
     if (field === 'email') emailRef.current?.focus();
     if (field === 'password') passwordRef.current?.focus();
   }, [fieldErrors]);
-
-  const openLegal = (path: string) => {
-    void Linking.openURL(`${env().webUrl}${path}`);
-  };
 
   return (
     <Screen edges={SCREEN_EDGES_UNDER_HEADER} padded={false}>
@@ -143,7 +139,7 @@ export function RegisterScreen({
             <AppText variant="caption" tone="muted">
               {legal.agreePrefix}
             </AppText>
-            <Pressable onPress={() => openLegal('/terms')}>
+            <Pressable onPress={() => openExternalPath('/terms')}>
               <AppText variant="caption" tone="link">
                 {legal.agreeTerms}
               </AppText>
@@ -151,7 +147,7 @@ export function RegisterScreen({
             <AppText variant="caption" tone="muted">
               {legal.agreeAnd}
             </AppText>
-            <Pressable onPress={() => openLegal('/privacy')}>
+            <Pressable onPress={() => openExternalPath('/privacy')}>
               <AppText variant="caption" tone="link">
                 {legal.agreePrivacy}
               </AppText>

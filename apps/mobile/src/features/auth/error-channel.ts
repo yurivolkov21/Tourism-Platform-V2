@@ -7,7 +7,10 @@ export type AuthScreenName =
   | 'register'
   | 'verifyEmail'
   | 'forgotPassword'
-  | 'resetPassword';
+  | 'resetPassword'
+  // A6 (P5b-4) — đổi mật khẩu, đã đăng nhập nên KHÔNG thuộc nhóm `(auth)`,
+  // nhưng dùng chung luật ba kênh của cụm này.
+  | 'changePassword';
 
 export type ErrorPlacement =
   | { channel: 'field'; field: AuthErrorField; text: string }
