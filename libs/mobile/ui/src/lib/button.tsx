@@ -12,7 +12,16 @@ import { useTheme } from './theme-provider';
 export const BUTTON_VARIANTS = {
   primary: { background: 'primary', foreground: 'primary-foreground', border: null },
   secondary: { background: 'secondary', foreground: 'secondary-foreground', border: null },
-  ghost: { background: null, foreground: 'primary', border: { color: 'border', alpha: 1 } },
+  // `primary-emphasis`, KHÔNG `primary` — `primary` là màu NỀN của nút primary
+  // (đậm, gần màu nền ở dark mode), dùng làm CHỮ trên nền trong suốt gần như vô
+  // hình (phản hồi 26/09, "Stay signed in" đọc không ra). Mockup `.btn.ghost`
+  // luôn dùng `--primary-emphasis` — cùng token `.link`/`AppText tone="link"`
+  // đã dùng, token DÀNH RIÊNG cho chữ tương phản trên nền, không phải để fill.
+  ghost: {
+    background: null,
+    foreground: 'primary-emphasis',
+    border: { color: 'border', alpha: 1 },
+  },
   // A5 (Sign out) — chữ LẤY MÀU `background` của theme (không phải
   // `primary-foreground` cố định): tương phản đúng ở CẢ hai theme vì
   // `destructive-emphasis` là màu sáng ở dark mode, màu tối ở light mode —
