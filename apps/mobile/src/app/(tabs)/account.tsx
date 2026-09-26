@@ -192,6 +192,7 @@ export default function AccountRoute() {
         visible={editNameOpen}
         onClose={() => setEditNameOpen(false)}
         label={account.editNameLabel}
+        description={account.editNameDescription}
         value={nameValue}
         error={nameError}
         formError={nameFormError}

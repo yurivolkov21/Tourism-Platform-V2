@@ -59,6 +59,30 @@ describe('TextField', () => {
     expect(screen.getByDisplayValue('correct-horse').props.secureTextEntry).toBe(false);
   });
 
+  it('icon="plain" (mặc định, cụm auth): icon trần, không khung', async () => {
+    await renderWithTheme(
+      <TextField label="Display name" icon="user" value="" onChangeText={() => {}} />,
+    );
+    expect(screen.queryByTestId('text-field-icon-box')).toBeNull();
+  });
+
+  it('iconVariant="boxed" (cụm Account, A3/A6): icon nằm trong khung vuông bo', async () => {
+    const theme = themeFor('dark');
+    await renderWithTheme(
+      <TextField
+        label="Display name"
+        icon="user"
+        iconVariant="boxed"
+        value=""
+        onChangeText={() => {}}
+      />,
+      'dark',
+    );
+    expect(screen.getByTestId('text-field-icon-box').props.style).toMatchObject({
+      backgroundColor: theme.colors.secondary,
+    });
+  });
+
   it('không có lỗi thì gạch chân dùng màu viền bình thường', async () => {
     const theme = themeFor('dark');
     await renderWithTheme(<TextField label="Email" value="" onChangeText={() => {}} />, 'dark');
