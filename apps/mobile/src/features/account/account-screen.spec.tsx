@@ -67,6 +67,16 @@ describe('AccountScreen', () => {
     expect(onSignOutPress).toHaveBeenCalled();
   });
 
+  it('dòng menu CUỐI không có viền dưới — Sign out ngay sau đã có viền trên riêng, tránh gạch đôi', async () => {
+    await renderWithTheme(<AccountScreen {...baseProps()} />);
+
+    const rows = screen.getAllByRole('button');
+    // Ba dòng menu (personal/saved/terms) đứng TRƯỚC "Sign out"/"Edit name"
+    // trong cây — đọc theo đúng thứ tự dựng ở JSX.
+    const lastMenuRow = rows[rows.length - 2]; // dòng cuối menuItems, ngay trước Sign out
+    expect(lastMenuRow?.props.style).toMatchObject({ borderBottomWidth: 0 });
+  });
+
   it('footer render được BÊN TRONG ScrollView (không mất tích như sibling ngoài Screen)', async () => {
     await renderWithTheme(<AccountScreen {...baseProps({ footer: <Text>Gallery (dev)</Text> })} />);
 

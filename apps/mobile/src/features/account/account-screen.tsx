@@ -114,7 +114,7 @@ export function AccountScreen({
         </View>
 
         <View style={{ marginTop: theme.spacing(6) }}>
-          {menuItems.map((item) => (
+          {menuItems.map((item, index) => (
             <Pressable
               key={item.key}
               accessibilityRole="button"
@@ -124,7 +124,9 @@ export function AccountScreen({
                 alignItems: 'center',
                 gap: theme.spacing(3),
                 minHeight: 52,
-                borderBottomWidth: 1,
+                // Dòng CUỐI bỏ viền dưới — Sign out ngay sau đó đã có viền
+                // TRÊN riêng (mockup: hai viền sát nhau thành một gạch đôi).
+                borderBottomWidth: index === menuItems.length - 1 ? 0 : 1,
                 borderBottomColor: theme.colors.border,
               }}
             >
