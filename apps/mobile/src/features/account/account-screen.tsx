@@ -110,7 +110,7 @@ export function AccountScreen({
               {email}
             </AppText>
           </View>
-          <IconButton icon="edit-2" accessibilityLabel={editNameLabel} onPress={onEditName} />
+          <IconButton icon="edit" accessibilityLabel={editNameLabel} onPress={onEditName} />
         </View>
 
         <View style={{ marginTop: theme.spacing(6) }}>
