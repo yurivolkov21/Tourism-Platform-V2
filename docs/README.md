@@ -241,6 +241,8 @@ liệu, đừng coi là hiện trạng.
 | [**Sổ nợ kỹ thuật**](analysis/2026-08-06-backlog-no-ky-thuat.md) | **Sống.** Đọc TRƯỚC khi mở cụm việc mới, bắt buộc trước đợt thiết kế lại |
 | [**Rà bảo mật web 05/09**](analysis/2026-09-05-web-security-audit.md) | Đọc trước mỗi đợt vá web — 8 cụm nhìn từ kẻ tấn công, ~55 phát hiện |
 | [Rà soát docs 21/09](analysis/2026-09-21-docs-audit.md) | **Sống.** Đợt đại tu tài liệu đang chạy: quy mô, vấn đề, 4 đợt sửa |
+| [Tóm tắt nhánh `feat/mobile-browse-screens` 26/09](analysis/2026-09-26-branch-summary-mobile-browse-screens.md) | Đã làm/chưa làm/còn treo cho người chưa theo dõi nhánh |
+| [Tóm tắt nhánh `feat/mobile-account-screens` 26/09](analysis/2026-09-26-branch-summary-mobile-account-screens.md) | Đã làm/chưa làm/còn treo cho người chưa theo dõi nhánh |
 | [Hệ màu — nguồn gốc và số đo](analysis/2026-07-22-color-system-analysis.md) | Màu từ đâu ra, đo thế nào, ba palette vùng đã rút. Luật còn hiệu lực ở [conventions](conventions/color-system.md) |
 | [Schema audit](analysis/2026-07-18-schema-audit-nexora.md) | 27 model của dự án cũ và quyết định tối ưu cho bản này |
 | [API parity + upgrade map](analysis/2026-07-19-api-parity-upgrade-map.md) | ~64 endpoint còn thiếu, 14 nâng cấp, 10 khác biệt schema |
