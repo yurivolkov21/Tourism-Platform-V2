@@ -82,13 +82,16 @@ npm install --global "@expo/ngrok@^4.1.0"
 Kiểm bằng `npm ls -g --depth=0 @expo/ngrok`. **Đừng kiểm bằng `which ngrok`** —
 gói này không khai trường `bin` nên lệnh đó vẫn rỗng sau khi cài.
 
-### `EXPO_PUBLIC_API_URL` khi chạy thật
+### `EXPO_PUBLIC_API_URL`/`EXPO_PUBLIC_WEB_URL` khi chạy thật
 
-`localhost:3001` là địa chỉ của **máy dev**, điện thoại không hiểu — với điện
-thoại, `localhost` là chính nó. Nên khi chạy LAN, `env()` tự thay host loopback
-(`localhost`, `127.0.0.1`) bằng IP LAN mà Metro đang phục vụ, giữ nguyên scheme
-và cổng. Để mặc định là điện thoại gọi được API trên máy dev (API nghe
-`0.0.0.0`).
+`localhost:3001`/`localhost:3000` là địa chỉ của **máy dev**, điện thoại không
+hiểu — với điện thoại, `localhost` là chính nó. Nên khi chạy LAN, `env()` tự
+thay host loopback (`localhost`, `127.0.0.1`) bằng IP LAN mà Metro đang phục
+vụ, giữ nguyên scheme và cổng — cho CẢ HAI biến (`resolveDevOrigin`, đến
+25/09 chỉ API được thay, WEB thì không: bấm link pháp lý/biên tập ở Account
+trên điện thoại thật ra "localhost đã từ chối kết nối"). Để mặc định là điện
+thoại gọi được cả API lẫn web trên máy dev (cả hai đều nghe `0.0.0.0`, web
+chạy `pnpm dev` ở `apps/web`).
 
 Chạy tunnel thì **không có phép thay đó**, vì ngrok chỉ chuyển cổng Metro: trỏ
 vào API đã deploy, hoặc mở thêm một tunnel cho cổng 3001. Giá trị trỏ host thật
