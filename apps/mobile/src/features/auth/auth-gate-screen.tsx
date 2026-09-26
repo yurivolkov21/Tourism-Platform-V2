@@ -55,9 +55,14 @@ export function AuthGateScreen({
     // `SCREEN_EDGES_UNDER_TABS` (chỉ 'top'): cả hai chỗ dùng component này đều
     // nằm DƯỚI tab bar (Saved/Account) — dùng edges mặc định ['top','bottom']
     // sẽ đệm đáy hai lần (safe-area + khoảng tab bar đã chừa).
-    <Screen edges={SCREEN_EDGES_UNDER_TABS}>
+    // `padded={false}`: mọi khối bên trong đã tự canh `paddingHorizontal`
+    // riêng (spacing(4)/(6) tuỳ khối) — `padded` mặc định của `Screen` cộng
+    // dồn thêm spacing(5) ngang + spacing(4) dọc lên trên đó, làm `pageTitle`
+    // (A2) lệch phải so với tiêu đề cùng kiểu ở `AccountScreen`/`SavedScreen`
+    // (cả hai đều `padded={false}` + tự canh, phản hồi 26/09).
+    <Screen edges={SCREEN_EDGES_UNDER_TABS} padded={false}>
       {pageTitle === undefined ? null : (
-        <View style={{ paddingHorizontal: theme.spacing(6) }}>
+        <View style={{ paddingHorizontal: theme.spacing(6), paddingTop: theme.spacing(3) }}>
           <AppText variant="title">{pageTitle}</AppText>
         </View>
       )}
