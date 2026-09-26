@@ -1839,6 +1839,7 @@ export const messages = {
         success: 'All set',
         tourDetail: 'Tour details',
         bookingDetail: 'Your booking',
+        changePassword: 'Password',
         notFound: 'Page not found',
       },
       /**
@@ -2181,13 +2182,37 @@ export const messages = {
       editNameSaving: 'Saving…',
       editNameSaved: 'Name updated.',
       editNameError: "Couldn't update your name. Please try again.",
+      editNameAria: 'Edit name',
+      // A1 (P5b-4) — thứ tự đọc theo tần suất: hồ sơ · tour đã lưu · bài đánh
+      // giá · bài viết · mật khẩu, rồi nhóm pháp lý mở trình duyệt ngoài.
+      menuPersonalDetails: 'Personal details',
       menuSaved: 'Saved tours',
+      menuMyReviews: 'My reviews',
+      menuTravelStories: 'Travel stories',
+      menuPassword: 'Password',
+      menuHelp: 'Help & FAQ',
+      menuAbout: 'About Nexora',
       menuPrivacy: 'Privacy policy',
       menuTerms: 'Terms of service',
       menuCancellation: 'Cancellation & refund policy',
       signOut: 'Sign out',
+      // A5 — tấm xác nhận đăng xuất.
+      signOutTitle: 'Sign out?',
+      signOutBody:
+        'Your saved tours and bookings stay on your account — you can sign back in any time.',
+      signOutCancel: 'Stay signed in',
       loadError: "Couldn't load your profile.",
       retry: 'Try again',
+      // A6 — đổi mật khẩu, màn riêng (khác cụm auth vì đã đăng nhập).
+      password: {
+        title: 'Change password',
+        revokeNotice: 'Changing your password signs you out on every other device.',
+        currentLabel: 'Current password',
+        newLabel: 'New password',
+        confirmLabel: 'Confirm new password',
+        submit: 'Save password',
+        submitting: 'Saving…',
+      },
     },
     saved: {
       title: 'Saved tours',

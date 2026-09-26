@@ -14,9 +14,9 @@ describe('messages: mobile.appShell (P5a — vỏ điều hướng)', () => {
   const shell = messages.mobile.appShell;
 
   // 11 màn của template P5a, cộng ba màn P5b-1 thêm vào cụm auth (verify email,
-  // reset password, màn kết quả).
-  it('có đủ tiêu đề cho 14 màn của cây route', () => {
-    expect(Object.keys(shell.titles)).toHaveLength(14);
+  // reset password, màn kết quả), cộng đổi mật khẩu (A6, P5b-4).
+  it('có đủ tiêu đề cho 15 màn của cây route', () => {
+    expect(Object.keys(shell.titles)).toHaveLength(15);
   });
 
   it('mọi chuỗi trong appShell đều có chữ, không khoá nào rỗng', () => {

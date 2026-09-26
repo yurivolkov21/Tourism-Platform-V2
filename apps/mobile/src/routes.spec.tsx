@@ -76,6 +76,7 @@ const EXPECTED_ROUTES = [
   '(tabs)/trips',
   '+not-found',
   'bookings/[code]',
+  'change-password',
   'dev/gallery',
   'dev/tour-gallery',
   'onboarding',
@@ -124,15 +125,25 @@ describe('vỏ điều hướng', () => {
     }
   });
 
-  it.each([
-    ['/trips', shell.titles.trips],
-    ['/account', shell.titles.account],
-  ])('tab %s render được và mang đúng tiêu đề', async (url, title) => {
-    const app = await openApp(url);
+  it.each([['/trips', shell.titles.trips]])(
+    'tab %s render được và mang đúng tiêu đề',
+    async (url, title) => {
+      const app = await openApp(url);
 
-    expect(app.pathname()).toBe(url);
-    expect(screen.getAllByText(title).length).toBeGreaterThan(0);
-    expect(screen.getByText(placeholder)).toBeTruthy();
+      expect(app.pathname()).toBe(url);
+      expect(screen.getAllByText(title).length).toBeGreaterThan(0);
+      expect(screen.getByText(placeholder)).toBeTruthy();
+    },
+  );
+
+  it('tab /account render được, không còn chỗ giữ chỗ — chưa đăng nhập nên vào thẳng A2', async () => {
+    const app = await openApp('/account');
+
+    expect(app.pathname()).toBe('/account');
+    // Chưa đăng nhập (không mock session) → AuthGateScreen (A2), cùng khuôn
+    // S3 của Saved — tiêu đề khác "Account" (chữ tab, chỉ còn đọc qua a11y).
+    expect(screen.getByText(messages.mobile.authPrompts.accountGateTitle)).toBeTruthy();
+    expect(screen.queryByText(placeholder)).toBeNull();
   });
 
   it('tab /explore render được, không còn chỗ giữ chỗ', async () => {

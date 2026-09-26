@@ -13,6 +13,12 @@ export const BUTTON_VARIANTS = {
   primary: { background: 'primary', foreground: 'primary-foreground', border: null },
   secondary: { background: 'secondary', foreground: 'secondary-foreground', border: null },
   ghost: { background: null, foreground: 'primary', border: { color: 'border', alpha: 1 } },
+  // A5 (Sign out) — chữ LẤY MÀU `background` của theme (không phải
+  // `primary-foreground` cố định): tương phản đúng ở CẢ hai theme vì
+  // `destructive-emphasis` là màu sáng ở dark mode, màu tối ở light mode —
+  // "background" luôn là đầu đối lập của nó trong bảng màu. Mockup 21/09 dùng
+  // đúng cặp này, không phải chọn ngẫu nhiên.
+  destructive: { background: 'destructive-emphasis', foreground: 'background', border: null },
   // Nút phụ nằm TRÊN ẢNH (onboarding trang cuối): chữ lấy màu chữ-trên-ảnh, viền
   // cùng màu nhưng pha loãng để không cắt ngang ảnh.
   media: { background: null, foreground: 'on-media', border: { color: 'on-media', alpha: 0.35 } },

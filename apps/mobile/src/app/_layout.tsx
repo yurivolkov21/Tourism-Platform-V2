@@ -69,6 +69,9 @@ function RootStack() {
         options={{ headerShown: false, title: titles.tourDetail }}
       />
       <Stack.Screen name="bookings/[code]" options={{ title: titles.bookingDetail }} />
+      {/* A6 (spec P5b-4 §3) — đã đăng nhập, header native bình thường (khác
+          nhóm auth vốn tự vẽ nút X vì là chặng đầu Stack). */}
+      <Stack.Screen name="change-password" options={{ title: titles.changePassword }} />
       {/* Onboarding phủ toàn màn và tự vẽ mọi thứ của nó. */}
       <Stack.Screen name="onboarding" options={{ headerShown: false }} />
       {/* Nhóm dev cũng vậy: thiếu dòng này thì stack gốc đội cho nó một header
