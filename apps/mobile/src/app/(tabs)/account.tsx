@@ -1,6 +1,6 @@
 import { validateProfileName } from '@tourism/core';
 import { messages } from '@tourism/i18n';
-import { AppText } from '@tourism/mobile-ui';
+import { AppText, type FeatherIconName } from '@tourism/mobile-ui';
 import { Link, router } from 'expo-router';
 import { useState } from 'react';
 import { type AccountMenuItem, AccountScreen } from '@/features/account/account-screen';
@@ -15,8 +15,31 @@ import { isDevBuild } from '@/lib/dev-only';
 import { openExternalPath } from '@/lib/open-external-path';
 
 /**
+ * NĂM dòng mở trình duyệt ngoài — dùng CHUNG cho A1 (cuối menu, đã đăng nhập)
+ * và A2 (khối chặn tab, chưa đăng nhập): mockup vẽ y hệt nhau ở cả hai, KHÔNG
+ * phải "ba dòng pháp lý" như spec tóm tắt — Help & FAQ và About Nexora cũng mở
+ * được không cần phiên (phản hồi 26/09, đối chiếu trực tiếp ảnh mockup).
+ */
+function externalLinks(
+  account: (typeof messages.mobile)['account'],
+): readonly { key: string; icon: FeatherIconName; label: string; path: string }[] {
+  return [
+    { key: 'help', icon: 'help-circle', label: account.menuHelp, path: '/faq' },
+    { key: 'about', icon: 'info', label: account.menuAbout, path: '/about' },
+    {
+      key: 'cancellation',
+      icon: 'file-text',
+      label: account.menuCancellation,
+      path: '/cancellation-policy',
+    },
+    { key: 'privacy', icon: 'file-text', label: account.menuPrivacy, path: '/privacy' },
+    { key: 'terms', icon: 'file-text', label: account.menuTerms, path: '/terms' },
+  ];
+}
+
+/**
  * Route Account (A1-A3-A5, mục 3 spec P5b-4). Chưa đăng nhập → `AuthGateScreen`
- * (A2) kèm `legalLinks` — BA dòng pháp lý vẫn mở được, không cần phiên.
+ * (A2) kèm `legalLinks` — năm dòng mở trình duyệt ngoài vẫn mở được, không cần phiên.
  */
 export default function AccountRoute() {
   const { data: session } = getAuthClient().useSession();
@@ -48,23 +71,11 @@ export default function AccountRoute() {
           setPendingReturn({ path: '/(tabs)/account' });
           router.navigate('/register');
         }}
-        legalLinks={[
-          {
-            label: account.menuCancellation,
-            icon: 'file-text',
-            onPress: () => openExternalPath('/cancellation-policy'),
-          },
-          {
-            label: account.menuPrivacy,
-            icon: 'file-text',
-            onPress: () => openExternalPath('/privacy'),
-          },
-          {
-            label: account.menuTerms,
-            icon: 'file-text',
-            onPress: () => openExternalPath('/terms'),
-          },
-        ]}
+        legalLinks={externalLinks(account).map((link) => ({
+          label: link.label,
+          icon: link.icon,
+          onPress: () => openExternalPath(link.path),
+        }))}
       />
     );
   }
@@ -133,41 +144,13 @@ export default function AccountRoute() {
       label: account.menuPassword,
       onPress: () => router.push('/change-password'),
     },
-    {
-      key: 'help',
-      icon: 'help-circle',
-      label: account.menuHelp,
+    ...externalLinks(account).map((link) => ({
+      key: link.key,
+      icon: link.icon,
+      label: link.label,
       external: true,
-      onPress: () => openExternalPath('/faq'),
-    },
-    {
-      key: 'about',
-      icon: 'info',
-      label: account.menuAbout,
-      external: true,
-      onPress: () => openExternalPath('/about'),
-    },
-    {
-      key: 'cancellation',
-      icon: 'file-text',
-      label: account.menuCancellation,
-      external: true,
-      onPress: () => openExternalPath('/cancellation-policy'),
-    },
-    {
-      key: 'privacy',
-      icon: 'file-text',
-      label: account.menuPrivacy,
-      external: true,
-      onPress: () => openExternalPath('/privacy'),
-    },
-    {
-      key: 'terms',
-      icon: 'file-text',
-      label: account.menuTerms,
-      external: true,
-      onPress: () => openExternalPath('/terms'),
-    },
+      onPress: () => openExternalPath(link.path),
+    })),
   ];
 
   return (
