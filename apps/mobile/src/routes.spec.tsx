@@ -144,6 +144,10 @@ describe('vỏ điều hướng', () => {
     // S3 của Saved — tiêu đề khác "Account" (chữ tab, chỉ còn đọc qua a11y).
     expect(screen.getByText(messages.mobile.authPrompts.accountGateTitle)).toBeTruthy();
     expect(screen.queryByText(placeholder)).toBeNull();
+    // NĂM dòng mở trình duyệt ngoài, không chỉ ba dòng pháp lý (phản hồi
+    // 26/09, đối chiếu mockup — Help & FAQ/About Nexora từng bị thiếu ở A2).
+    expect(screen.getByText(messages.mobile.account.menuHelp)).toBeTruthy();
+    expect(screen.getByText(messages.mobile.account.menuAbout)).toBeTruthy();
   });
 
   it('tab /explore render được, không còn chỗ giữ chỗ', async () => {
