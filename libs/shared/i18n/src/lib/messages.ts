@@ -1904,6 +1904,8 @@ export const messages = {
         tourDetail: 'Tour details',
         bookingDetail: 'Your booking',
         changePassword: 'Password',
+        personalDetails: 'Personal details',
+        travelStories: 'Travel stories',
         notFound: 'Page not found',
       },
       /**
@@ -2280,6 +2282,38 @@ export const messages = {
         submit: 'Save password',
         submitting: 'Saving…',
       },
+      // A4 (P5b-4, ADR-0040 AMEND 5) — tấm chọn ảnh đại diện. Luồng ADR-0021
+      // (KHÔNG authClient.updateUser), avatar tròn ở A1 là nút bấm mở tấm này.
+      avatar: {
+        editLabel: 'Change profile photo',
+        sheetTitle: 'Profile photo',
+        takePhoto: 'Take a photo',
+        chooseLibrary: 'Choose from library',
+        removePhoto: 'Remove photo',
+        cancel: 'Cancel',
+        errNotImage: 'File must be an image.',
+        // AVATAR_MAX_BYTES (contract) = 2MB đúng số — không cần hàm format cỡ
+        // tệp riêng cho một hằng số cố định.
+        errTooLarge: 'File size must be less than 2MB.',
+        errPermission: 'Camera and photo library access is needed to change your photo.',
+        errUpload: "Couldn't update your photo. Please try again.",
+      },
+      // Personal details (spec P5b-4 §3, mockup A1 "Personal details" → màn
+      // riêng, KHÔNG phải tấm A3) — Name/Email hiển thị, "Delete account" nằm
+      // ở đây (KHÔNG cạnh Sign out, tránh bấm nhầm — mockup caption A7).
+      personalDetails: {
+        title: 'Personal details',
+        nameLabel: 'Name',
+        emailLabel: 'Email',
+        deleteAccount: 'Delete account',
+        // A7 (mockup, UI trước — API `deleteUser` CHƯA nối, phản hồi 27/09:
+        // cần ADR cascade riêng trước khi wire thật, xem ADR-0021 §Ngoài
+        // phạm vi / plan P5b-4 §5).
+        deleteSheetTitle: 'Delete your account?',
+        deleteSheetBody:
+          'Your profile, saved tours and reviews are removed for good. Bookings you already paid for stay in our records, as the law requires.',
+        keepAccount: 'Keep my account',
+      },
     },
     saved: {
       title: 'Saved tours',
@@ -2296,6 +2330,32 @@ export const messages = {
       // S1 — dòng đếm dưới tiêu đề, mockup: "3 tours". Cùng chữ với
       // `accountSaved.savedCount` (web) nhưng khoá RIÊNG — hai bề mặt độc lập.
       count: (n: number) => (n === 1 ? '1 tour' : `${n} tours`),
+    },
+    /**
+     * Travel stories (G1-G4, spec P5b-4 §6) — cụm bài viết công khai, không
+     * cần đăng nhập. `posts.*` là route KHÁC `account.*`/`saved.*` (không
+     * cần phiên) nhưng vẫn mở từ dòng "Travel stories" ở tab Account.
+     */
+    posts: {
+      title: 'Travel stories',
+      searchPlaceholder: 'Search stories',
+      allTag: 'All',
+      // G2 — nhắc lại ĐÚNG chuỗi khách gõ.
+      emptySearchTitle: (query: string) => `No stories match "${query}"`,
+      emptySearchBody: 'Try a shorter word, or browse by topic instead.',
+      // Rỗng KHÔNG do tìm kiếm (chưa đăng bài nào) — cạnh hiếm nhưng tránh
+      // màn trắng câm nếu xảy ra.
+      emptyTitle: 'No stories yet.',
+      clearSearch: 'Clear search',
+      loadMore: 'Load more',
+      error: "Couldn't load stories.",
+      errorDetail: "Couldn't load this story.",
+      retry: 'Try again',
+      back: 'Back',
+      // G3 — nút góc phải mở bài trên web thật.
+      readOnWeb: (domain: string) => `Read this on ${domain}`,
+      // G4 — chỉ hiện khi `relatedTours` không rỗng.
+      relatedToursTitle: 'Trips in this story',
     },
   },
   /** Khuôn phản hồi dùng chung của tầng dữ liệu (ADR-0016 §4) — không gắn
