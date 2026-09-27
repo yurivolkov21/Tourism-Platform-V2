@@ -54,8 +54,17 @@ function RootStack() {
   return (
     <Stack
       screenOptions={{
-        headerStyle: { backgroundColor: theme.colors.card },
+        // `background`, KHÔNG `card` — mockup `.compact-head` dùng
+        // `background: var(--background)` (khớp `contentStyle` dưới), hoà
+        // liền với thân màn. `card` đậm hơn một chút ở dark mode
+        // (`#243430` vs `#202a28`) — dùng nhầm tạo viền ngang không có trong
+        // mockup (phản hồi 27/09).
+        headerStyle: { backgroundColor: theme.colors.background },
         headerTintColor: theme.colors.foreground,
+        // Native Stack mặc định vẽ shadow/border dưới header (iOS: shadow,
+        // Android: elevation) — mockup không có viền này, header phải hoà
+        // phẳng vào nền (cùng phản hồi 27/09).
+        headerShadowVisible: false,
         contentStyle: { backgroundColor: theme.colors.background },
       }}
     >
@@ -72,6 +81,13 @@ function RootStack() {
       {/* A6 (spec P5b-4 §3) — đã đăng nhập, header native bình thường (khác
           nhóm auth vốn tự vẽ nút X vì là chặng đầu Stack). */}
       <Stack.Screen name="change-password" options={{ title: titles.changePassword }} />
+      {/* "Personal details" (mockup A1) — cùng khuôn header native với A6. */}
+      <Stack.Screen name="personal-details" options={{ title: titles.personalDetails }} />
+      {/* Travel stories (G1/G2) — header native, cùng khuôn A6/Personal details. */}
+      <Stack.Screen name="posts/index" options={{ title: titles.travelStories }} />
+      {/* Bài viết (G3/G4) — header TỰ VẼ đè lên ảnh bìa, không header native
+          (cùng lý do `tours/[slug]` ở trên). */}
+      <Stack.Screen name="posts/[slug]" options={{ headerShown: false }} />
       {/* Onboarding phủ toàn màn và tự vẽ mọi thứ của nó. */}
       <Stack.Screen name="onboarding" options={{ headerShown: false }} />
       {/* Nhóm dev cũng vậy: thiếu dòng này thì stack gốc đội cho nó một header

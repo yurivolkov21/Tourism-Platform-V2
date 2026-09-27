@@ -80,6 +80,9 @@ const EXPECTED_ROUTES = [
   'dev/gallery',
   'dev/tour-gallery',
   'onboarding',
+  'personal-details',
+  'posts/[slug]',
+  'posts/index',
   'tours/[slug]',
 ];
 
