@@ -56,9 +56,8 @@ function RootStack() {
       screenOptions={{
         // `background`, KHÔNG `card` — mockup `.compact-head` dùng
         // `background: var(--background)` (khớp `contentStyle` dưới), hoà
-        // liền với thân màn. `card` đậm hơn một chút ở dark mode
-        // (`#243430` vs `#202a28`) — dùng nhầm tạo viền ngang không có trong
-        // mockup (phản hồi 27/09).
+        // liền với thân màn. `card` đậm hơn một chút ở dark mode — dùng
+        // nhầm tạo viền ngang không có trong mockup (phản hồi 27/09).
         headerStyle: { backgroundColor: theme.colors.background },
         headerTintColor: theme.colors.foreground,
         // Native Stack mặc định vẽ shadow/border dưới header (iOS: shadow,
