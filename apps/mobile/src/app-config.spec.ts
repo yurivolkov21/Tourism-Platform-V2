@@ -19,7 +19,12 @@ function splashOptions(): { image: string; backgroundColor: string } {
     const [name, options] = plugin;
     if (name !== 'expo-splash-screen' || typeof options !== 'object') continue;
 
-    return options;
+    // `plugins` giờ có HAI entry mang options khác hình dạng (expo-splash-screen
+    // + expo-image-picker, ADR-0040 AMEND 5) — tsc suy `options` thành union hai
+    // shape đó chứ không tự thu hẹp theo `name` (JSON literal không giữ kiểu tuple
+    // gắn với literal). Guard runtime ở trên đã xác nhận đúng plugin, ép kiểu là
+    // an toàn.
+    return options as { image: string; backgroundColor: string };
   }
 
   throw new Error('app.json thiếu plugin expo-splash-screen');

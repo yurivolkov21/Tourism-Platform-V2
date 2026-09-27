@@ -100,6 +100,25 @@ describe('HomeScreen', () => {
     expect(onSeeAllTours).toHaveBeenCalled();
   });
 
+  it('avatarUrl null (mặc định) → hiện icon user, KHÔNG vẽ AppImage', async () => {
+    await renderWithTheme(<HomeScreen {...NOOP_PROPS} status="content" destinations={[]} />);
+    expect(screen.queryByLabelText('Traveller')).toBeNull();
+  });
+
+  it('có avatarUrl → vẽ AppImage thay icon (phản hồi 27/09: đồng bộ avatar Home/Account)', async () => {
+    const transformUrl = jest.fn((src: string) => src);
+    await renderWithTheme(
+      <HomeScreen
+        {...NOOP_PROPS}
+        status="content"
+        destinations={[]}
+        avatarUrl="https://res.cloudinary.com/demo/image/upload/avatars/u-1.jpg"
+        transformUrl={transformUrl}
+      />,
+    );
+    expect(screen.getByLabelText('Traveller')).toBeTruthy();
+  });
+
   it('bấm đoạn vùng khác gọi onSelectRegion', async () => {
     const onSelectRegion = jest.fn();
     await renderWithTheme(

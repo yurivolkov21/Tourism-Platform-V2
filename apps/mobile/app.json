@@ -27,7 +27,14 @@
         }
       ],
       "expo-secure-store",
-      "expo-web-browser"
+      "expo-web-browser",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Nexora Travel needs photo library access to choose a profile photo.",
+          "cameraPermission": "Nexora Travel needs camera access to take a profile photo."
+        }
+      ]
     ],
     "extra": {
       "router": {
