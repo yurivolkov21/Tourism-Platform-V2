@@ -1,4 +1,5 @@
 import { Image, type ImageProps } from 'expo-image';
+import { PixelRatio } from 'react-native';
 import { useTheme } from './theme-provider';
 
 export interface AppImageProps extends Omit<ImageProps, 'source' | 'style' | 'accessibilityLabel'> {
@@ -34,7 +35,14 @@ export function AppImage({
   ...rest
 }: AppImageProps) {
   const theme = useTheme();
-  const uri = transformUrl(source, width);
+  // Cloudinary co ảnh về ĐÚNG số pixel yêu cầu — truyền thẳng `width` (đơn vị
+  // dp) là xin ảnh 1 pixel vật lý cho mỗi dp, trong khi máy thật vẽ 2-3 pixel
+  // vật lý/dp. Kết quả: ảnh đủ để lấp khung nhưng mờ hẳn trên màn hình mật độ
+  // cao — đúng triệu chứng phản hồi 27/09 (avatar mờ trên máy thật, Jest
+  // không bắt được vì mock không chạy trên màn hình thật). Nhân theo
+  // `PixelRatio.get()` trước khi build URL — sửa Ở ĐÂY (một chỗ) là mọi
+  // `AppImage` trong app nét lại, không riêng avatar.
+  const uri = transformUrl(source, Math.round(width * PixelRatio.get()));
 
   return (
     <Image

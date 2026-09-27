@@ -28,6 +28,9 @@ export interface AccountScreenProps {
   initials: string;
   editNameLabel: string;
   onEditName: () => void;
+  /** A4 — bấm avatar mở tấm chọn nguồn ảnh (ADR-0040 AMEND 5). */
+  avatarEditLabel: string;
+  onEditAvatar: () => void;
   /** Đúng thứ tự hiển thị — mockup A1 đọc theo TẦN SUẤT, không theo bảng chữ cái. */
   menuItems: readonly AccountMenuItem[];
   signOutLabel: string;
@@ -52,6 +55,8 @@ export function AccountScreen({
   initials,
   editNameLabel,
   onEditName,
+  avatarEditLabel,
+  onEditAvatar,
   menuItems,
   signOutLabel,
   onSignOutPress,
@@ -71,7 +76,10 @@ export function AccountScreen({
             paddingTop: theme.spacing(3),
           }}
         >
-          <View
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={avatarEditLabel}
+            onPress={onEditAvatar}
             style={{
               width: AVATAR_SIZE,
               height: AVATAR_SIZE,
@@ -101,7 +109,7 @@ export function AccountScreen({
                 fill
               />
             )}
-          </View>
+          </Pressable>
           <View style={{ flex: 1, minWidth: 0 }}>
             <AppText variant="title" numberOfLines={1}>
               {name}

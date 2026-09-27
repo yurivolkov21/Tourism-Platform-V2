@@ -11,6 +11,8 @@ function baseProps(overrides: Partial<AccountScreenProps> = {}): AccountScreenPr
     initials: 'LN',
     editNameLabel: 'Edit name',
     onEditName: jest.fn(),
+    avatarEditLabel: 'Change profile photo',
+    onEditAvatar: jest.fn(),
     menuItems: [
       { key: 'personal', icon: 'user', label: 'Personal details', onPress: jest.fn() },
       { key: 'saved', icon: 'heart', label: 'Saved tours', onPress: jest.fn() },
@@ -46,6 +48,14 @@ describe('AccountScreen', () => {
 
     await fireEvent.press(screen.getByLabelText('Edit name'));
     expect(onEditName).toHaveBeenCalled();
+  });
+
+  it('A4 — bấm avatar gọi onEditAvatar', async () => {
+    const onEditAvatar = jest.fn();
+    await renderWithTheme(<AccountScreen {...baseProps({ onEditAvatar })} />);
+
+    await fireEvent.press(screen.getByLabelText('Change profile photo'));
+    expect(onEditAvatar).toHaveBeenCalled();
   });
 
   it('bấm dòng menu gọi đúng onPress của dòng đó', async () => {

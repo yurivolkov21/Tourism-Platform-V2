@@ -55,9 +55,11 @@ describe('DestinationCard', () => {
     expect(screen.getByText('Hà Nội')).toBeTruthy();
   });
 
-  it('gọi transformUrl với đúng bề rộng thẻ khi có ảnh', async () => {
+  it('gọi transformUrl với bề rộng ĐÃ nhân PixelRatio (mock jest-expo = 2, AppImage)', async () => {
     const transformUrl = jest.fn((src: string) => src);
     await renderWithTheme(<DestinationCard {...BASE_PROPS} transformUrl={transformUrl} />);
-    expect(transformUrl).toHaveBeenCalledWith(BASE_PROPS.imageUrl, BASE_PROPS.width);
+    // `AppImage` nhân width theo PixelRatio.get() trước khi gọi transformUrl
+    // (phản hồi 27/09 — ảnh mờ trên máy thật vì trước đây xin đúng số dp).
+    expect(transformUrl).toHaveBeenCalledWith(BASE_PROPS.imageUrl, BASE_PROPS.width * 2);
   });
 });

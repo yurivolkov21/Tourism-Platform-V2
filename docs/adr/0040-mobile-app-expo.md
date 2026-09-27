@@ -433,3 +433,86 @@ Dọn `apps/mobile/dist/` sau khi xác nhận (output thử, không commit).
   bundling, không riêng gì code liên quan reanimated).
 - Nếu sau này Expo/​`@expo/ui` phát hành bản tự khai `@babel/traverse` đúng
   (sửa upstream), gỡ `packageExtensions` này đi — không cần giữ vĩnh viễn.
+
+## AMEND 5 — 27/09/2026 (P5b-4, A4): `expo-image-picker` cho đổi ảnh đại diện
+
+Bối cảnh: [plan P5b-4](../plans/2026-09-25-mobile-account-screens.md) §4 đánh dấu
+A4 "CẦN QUYẾT ĐỊNH TRƯỚC (ADR)" — dependency mới, CLAUDE.md luật 5 đòi ADR đi
+trước code. AMEND này là bước đó.
+
+### Quyết định
+
+**Thêm MỘT dependency: `expo-image-picker`**, cài qua `npx expo install
+expo-image-picker` (trọng tài `expo-doctor`, §7, cùng khuôn AMEND 3) — chạy được
+trong **Expo Go** (§1), nằm sẵn trong danh sách native module Expo Go dựng sẵn,
+không kéo dev build.
+
+**Hai quyền khai trong `app.json`** — thêm entry plugin có cấu hình (thay chuỗi
+trần `"expo-router"` kiểu hiện có):
+
+```json
+[
+  "expo-image-picker",
+  {
+    "photosPermission": "Nexora Travel needs photo library access to choose a profile photo.",
+    "cameraPermission": "Nexora Travel needs camera access to take a profile photo."
+  }
+]
+```
+
+Plugin tự ghi hai giá trị đó vào `NSPhotoLibraryUsageDescription` và
+`NSCameraUsageDescription` phía iOS lúc `expo prebuild`/EAS build. Android xin
+quyền runtime tự động qua plugin (`READ_MEDIA_IMAGES`/`CAMERA`), không cần khai
+tay ở `android.permissions`. Copy tiếng Anh theo luật 7 (user-facing) — không đi
+qua `@tourism/i18n` vì đây là chuỗi hệ điều hành đọc lúc cài/build, không phải
+copy màn hình.
+
+### Sửa một chỗ sai trong plan trước khi code
+
+Plan §4 (dòng 202-204) ghi luồng: "…PUT thẳng lên Cloudinary → gọi
+`authClient.updateUser({ image })`". **Bước cuối đó SAI** — đối chiếu
+[ADR-0021 §3](0021-media-write-surface.md) (đã Accepted từ 12/08): *"CỐ Ý không
+cho client set field `image` tự do qua `authClient.updateUser`… mở từ client là
+cho phép trỏ avatar tới URL ngoài không kiểm soát"* — và code web thật
+(`apps/web/src/components/account/avatar-upload.tsx`) xác nhận bằng chính doc
+comment của nó: *"đường setAvatar ĐÓNG, KHÔNG dùng `authClient.updateUser({
+image })`"*. Server ghi `User.image` bằng Prisma NGAY TRONG procedure
+`account.setAvatar`, không qua Better Auth update-user.
+
+Đường mobile phải **giống web, không giống plan cũ**:
+
+1. Chọn ảnh (camera/thư viện qua `expo-image-picker`).
+2. Ký chữ ký `media.signUpload` (oRPC, `purpose: 'AVATAR'`).
+3. PUT thẳng lên Cloudinary bằng chữ ký đó.
+4. `account.setAvatar({ publicId })` — server ghi `User.image`, trả `image` mới.
+5. **Refetch session để avatar hiện ngay** — mobile không có `router.refresh()`
+   của Next; tương đương là gọi `refetch()` lấy từ `getAuthClient().useSession()`
+   (`better-auth/react` `useSession` trả `{ data, isPending, refetch, … }`, xác
+   nhận tại `node_modules/better-auth/dist/client/react/index.d.mts`) — KHÔNG
+   `authClient.updateUser`.
+6. Gỡ avatar: `account.setAvatar({ publicId: null })`, cùng bước refetch.
+7. Lỗi (ORPCError của `signUpload`/`setAvatar`, hay lỗi mạng của PUT Cloudinary)
+   báo NGAY trong sheet, không đóng sheet rồi mới báo (mockup A4 ghi rõ, khớp
+   `avatar-upload.tsx` phía web).
+
+Ghi ở đây vì đây là quyết định kiến trúc (nguồn ghi đúng cho phía server đã
+đóng), không phải chi tiết implement — session thi công đọc AMEND này thay vì
+đọc lại đoạn plan cũ (đoạn đó KHÔNG sửa, cùng luật "bản ghi lịch sử" của
+CLAUDE.md, chỉ đảo ở đây).
+
+### Đã cân nhắc và loại
+
+| Phương án | Vì sao loại |
+| --- | --- |
+| `authClient.updateUser({ image })` như plan cũ ghi | ADR-0021 §3 đã đóng đường này TỪ 12/08 — mở lại là cho client tự trỏ avatar tới URL ngoài không kiểm soát, đúng lỗ hổng ADR đó sinh ra để chặn. |
+| `expo-camera` + tự dựng UI chọn ảnh | `expo-image-picker` đã bọc sẵn cả camera VÀ thư viện qua một API, đúng nhu cầu A4 (mockup có cả hai nút "Take a photo"/"Choose from library"); tự dựng là tái phát minh không cần thiết gần freeze. |
+| `react-native-image-crop-picker` (thư viện ngoài Expo) | Không nằm trong danh sách Expo Go dựng sẵn — kéo dev build, đổi lấy tính năng crop/xoay mà ADR-0021 đã liệt vào "Ngoài phạm vi" (không làm ở cụm avatar này, kể cả web). |
+
+### Hệ quả
+
+- Không đổi ranh giới gate (§5) — gói chạy trong Expo Go, không kéo dev build/EAS.
+- `apps/mobile/.env.local`/`.env.example` không đổi — avatar dùng lại
+  `media.signUpload`/`account.setAvatar` đã có trên API, không thêm biến env.
+- Task đầu của A4 khi code: `npx expo install expo-image-picker`, thêm plugin
+  config trên vào `app.json`, chạy `expo-doctor`, restart Metro (`expo start
+  -c`) để nạp native module mới — cùng runbook AMEND 3 §Hệ quả.

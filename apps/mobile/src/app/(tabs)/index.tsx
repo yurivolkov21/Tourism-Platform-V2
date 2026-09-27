@@ -47,6 +47,7 @@ export default function HomeRoute() {
       }
       onSeeAllTours={() => router.navigate('/explore')}
       userName={session?.user.name ?? guestName}
+      avatarUrl={session?.user.image ?? null}
       transformUrl={cloudinaryUrl}
     />
   );

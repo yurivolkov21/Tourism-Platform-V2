@@ -2,6 +2,7 @@ import Feather from '@expo/vector-icons/Feather';
 import type { Destination } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
 import {
+  AppImage,
   AppText,
   Button,
   DestinationCard,
@@ -33,6 +34,8 @@ export interface HomeScreenProps {
   onSeeAllTours: () => void;
   /** `user.name` của phiên thật; chưa đăng nhập → `home.guestName` ("Traveller"). */
   userName: string;
+  /** `user.image` của phiên thật; `null`/chưa đăng nhập → giữ icon `user` (mặc định cũ). */
+  avatarUrl?: string | null;
   transformUrl?: (source: string, width: number) => string;
 }
 
@@ -57,6 +60,7 @@ export function HomeScreen({
   onDestinationPress,
   onSeeAllTours,
   userName,
+  avatarUrl = null,
   transformUrl,
 }: HomeScreenProps) {
   const theme = useTheme();
@@ -89,9 +93,20 @@ export function HomeScreen({
               backgroundColor: theme.colors.muted,
               alignItems: 'center',
               justifyContent: 'center',
+              overflow: 'hidden',
             }}
           >
-            <Feather name="user" size={20} color={theme.colors['primary-emphasis']} />
+            {avatarUrl === null ? (
+              <Feather name="user" size={20} color={theme.colors['primary-emphasis']} />
+            ) : (
+              <AppImage
+                source={avatarUrl}
+                width={theme.spacing(12)}
+                alt={userName}
+                transformUrl={transformUrl}
+                fill
+              />
+            )}
           </Pressable>
           <View style={{ flex: 1, gap: 1 }}>
             <AppText variant="caption" tone="muted">
