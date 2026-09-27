@@ -1,12 +1,121 @@
-# Tóm tắt nhánh `feat/mobile-account-screens` (P5b-4) — 2026-09-26
+# Tóm tắt nhánh `feat/mobile-account-screens` (P5b-4) — cập nhật 2026-09-27
 
 Đọc nhanh cho người chưa theo dõi nhánh. Nhánh này RẼ TỪ `feat/mobile-browse-screens`
 (chứa nguyên 35 commit của nhánh đó + 24 commit riêng lên trên) — nên đọc
 [tóm tắt browse-screens](2026-09-26-branch-summary-mobile-browse-screens.md)
 trước nếu cần nền. Nguồn: `git log`, [`docs/handoff/mobile-account-handoff.md`](../handoff/mobile-account-handoff.md),
 `docs/PROGRESS.md` (bản cuối 25/09, working-doc không còn trên `main`),
-[`docs/open-items.md`](../open-items.md). Diff so `main`: **149 file,
-+15776/-770 dòng** (riêng so browse-screens: 53 file, +3547/-300).
+[`docs/open-items.md`](../open-items.md). Diff so `main` tính tới 26/09: **149
+file, +15776/-770 dòng** (riêng so browse-screens: 53 file, +3547/-300) —
+**CHƯA tính đợt 27/09** bên dưới (31 file đổi thêm, chưa commit lúc ghi dòng
+này).
+
+> **Bản ghi 26/09 ở dưới GIỮ NGUYÊN làm lịch sử — mục "Cập nhật 27/09" ngay
+> sau đây là nguồn đúng cho tình trạng HIỆN TẠI.** Ba mục "Chưa làm trong
+> nhánh" (Travel stories, A4, A7) mà bản 26/09 liệt — hai mục ĐẦU đã xong,
+> A7 mới có UI.
+
+## Cập nhật 27/09 — A4 (avatar), Personal details, Travel stories (G1–G4)
+
+Phiên làm việc riêng, KHÔNG qua SDD — trực tiếp với user, nhiều vòng phản hồi
+trên máy thật (Android) đã bắt được vài bug UI/tầng RN mà không subagent nào
+tự thấy được nếu không cầm điện thoại lên.
+
+**1. A4 — đổi ảnh đại diện (đã xong, có ADR).**
+[ADR-0040 AMEND 5](../adr/0040-mobile-app-expo.md) duyệt trước khi code (luật
+5) — thêm `expo-image-picker@~57.0.20`, quyền camera/thư viện trong
+`app.json`. File mới: `features/account/avatar-flow.ts` (logic thuần: chọn
+MIME hợp lệ, trần `AVATAR_MAX_BYTES`, orchestrate sign→upload→setAvatar, có
+test), `features/account/edit-avatar-sheet.tsx` (tấm 3 lựa chọn: Take a
+photo/Choose from library/Remove photo), `lib/media-upload.ts` (upload thật).
+Route `account.tsx` refetch session sau khi đổi — mobile không có
+`router.refresh()` của web.
+
+Ba bug THẬT chỉ lộ ra khi chạy trên máy thật (không unit test nào bắt được):
+- **`Unsupported FormDataPart implementation`** — `globalThis.fetch` của
+  Expo SDK 57 là "winter" fetch chuẩn WHATWG, KHÔNG hiểu object
+  `{uri,name,type}` (mẹo riêng của XHR/fetch legacy RN).
+- **Blob 14 byte, MIME rỗng** — thử fetch(uri).blob() để né lỗi trên thì lại
+  đọc SAI file cục bộ, Cloudinary từ chối "Raw file format not allowed".
+  → **Chốt: dùng `XMLHttpRequest`** cho bước upload (native, không qua winter
+  fetch) — đúng cách chuẩn RN vẫn làm, không phải lối tắt.
+- **Ảnh mờ trên máy thật** — bug CHUNG của `AppImage` (`libs/mobile/ui`),
+  không riêng avatar: `transformUrl` nhận thẳng số **dp**, không nhân
+  `PixelRatio.get()`, nên Cloudinary trả ảnh đúng số dp = ít hơn số pixel vật
+  lý máy cần vẽ (2–3x). Sửa MỘT chỗ trong `AppImage`, mọi ảnh trong app nét
+  lại — không phải sửa riêng avatar.
+
+**2. "Personal details" — màn RIÊNG (đã xong, đổi hướng so với plan cũ).**
+Plan 25/09 viết "Personal details" mở tấm A3 (sửa tên) trực tiếp — SAI so với
+mockup thật: đó là một MÀN, không phải tấm. Route mới `/personal-details`
+(header native), hiển thị Name/Email (hàng ngang, nhãn trái/giá trị phải —
+đúng `.kv` mockup) + dòng "Delete account" cuối màn (tách khỏi Sign out).
+Bút chì sửa tên vẫn ở A1 như cũ, không đổi.
+
+**3. A7 — xoá tài khoản: CHỈ UI, chưa nối API (chốt "UI trước", user quyết).**
+`DeleteAccountSheet` dựng đúng khung mockup (heading, câu giải thích, ô mật
+khẩu, hai nút) nhưng `onConfirm` CỐ Ý no-op — `deleteUser` vẫn chưa tồn tại ở
+API/web, vẫn cần vòng ADR cascade riêng như bản 26/09 đã ghi. KHÔNG coi là
+xong.
+
+**4. Travel stories G1–G4 (đã xong, TOÀN BỘ — mục mà bản 26/09 ghi "chưa bắt
+đầu").** File mới: `features/posts/markdown.ts` (parser thuần — chỉ `##`
+heading/đoạn văn/`- ` bullet, cú pháp lạ rơi về đoạn-văn-thường đã lọc ký
+hiệu, có test riêng), `posts-list-screen.tsx` (G1 bài mới nhất thẻ lớn + hàng
+gọn, chip lọc MỘT tag qua API, ô tìm debounce 300ms; G2 rỗng-vì-tìm nhắc đúng
+chuỗi gõ), `post-detail-screen.tsx` (G3 ảnh bìa tràn mép + markdown render;
+G4 "Trips in this story", ẩn khi `relatedTours` rỗng). Route `/posts` (list,
+header native) + `/posts/[slug]` (detail, header TỰ VẼ đè ảnh bìa).
+"Travel stories" ở Account giờ điều hướng vào đây (trước là `onPress: () =>
+{}`).
+
+Hai bug thêm bắt được khi cuộn màn chi tiết bài viết trên máy thật:
+- Nút back + status bar dính đè lên ẢNH bìa lúc mới vào (thiếu cộng
+  `insets.top`).
+- **Bug sâu hơn:** ban đầu tưởng đã sửa xong bằng cách thêm dải che cố định,
+  nhưng dải đó lại là CON của `ScrollView` mà `Screen` tự bọc (`scrollable`
+  mặc định true) — nên nó CŨNG cuộn theo, và nút back biến mất khi cuộn qua
+  hero. Phải đổi `scrollable={false}` + tự dựng `ScrollView` riêng, đặt dải
+  che + nút back/mở-web làm SIBLING (ngoài `ScrollView`) mới thật sự cố định.
+  Ghi lại vì đây là bẫy dễ lặp lại ở bất kỳ màn full-bleed-hero nào khác.
+
+Ngoài ra: sửa `RootStack.screenOptions` (`_layout.tsx`) — `headerStyle` dùng
+nhầm `theme.colors.card` (đậm hơn `background` ở dark mode), và thiếu
+`headerShadowVisible: false` — mọi màn header native (Password, Personal
+details...) có viền ngang không có trong mockup. Sửa CHUNG, không riêng màn
+nào.
+
+**Kiểm đã chạy (27/09):** `pnpm turbo run typecheck test --filter=@tourism/mobile`
+— **436 test / 71 suite xanh** (từ 354 ở bản 26/09), biome sạch,
+`pnpm turbo run bundle --filter=@tourism/mobile` chạy được (android + ios),
+`expo-doctor` 20/21 (1 fail CŨ, lệch patch version, không liên quan
+`expo-image-picker` mới thêm). Đã bắt và sửa 1 test lệch thật khi chạy `pnpm
+gate` toàn repo: `messages.spec.ts` đếm cứng số tiêu đề route (15) — thêm 2
+route mới (`personalDetails`, `travelStories`) phải sửa lên 17.
+
+**`pnpm test:int` (Postgres) — chạy được lần đầu cho nhánh này, 592/598 pass.**
+6 fail KHÔNG liên quan nhánh (`apps/api` 0 file đổi, xác nhận `git status`) và
+**flaky** — tập lỗi cụ thể ĐỔI giữa các lần chạy (`payments`↔`refunds`↔
+`bookings`, `check-rls` lúc qua lúc không do Docker Desktop). Riêng
+`pending-sweep.int.spec.ts` ("expected 2 to be 1") lặp lại GIỐNG HỆT cả hai
+lần — nghi bug thật trong chính spec đó (thiếu dọn dữ liệu giữa test), có sẵn
+từ trước, không phải do nhánh này.
+
+**`@tourism/web#build` local: đã xanh sau khi xác định nguyên nhân —** một
+tiến trình VS Code (PID) chiếm `127.0.0.1:3000`/`3001`, trả `426 Upgrade
+Required` giả cho request SSG lúc build, làm build tưởng API chết. Đóng VS
+Code, bật lại `apps/api` dev server sạch → build web pass. CI thật
+(`.github/workflows/ci.yml`) dựng Postgres + API mới hoàn toàn mỗi lần chạy
+nên KHÔNG dính kiểu lỗi máy-cá-nhân này.
+
+**Còn treo sau 27/09:**
+- A7 vẫn cần ADR cascade (server) trước khi nối `onConfirm` thật.
+- G4 (tour liên quan) code xong nhưng **`PostRelatedTour` chưa được seed** —
+  `prisma/seed.ts` không gán record nào, nên `relatedTours` rỗng ở MỌI bài
+  hiện tại; muốn thấy G4 chạy thật cần thêm liên kết mẫu vào seed (chưa làm).
+- Chưa commit/push đợt 27/09 (31 file, xem `git status`).
+- Flaky int test (`pending-sweep`, và tổng thể `apps/api` test:int) — ghi
+  nhận, KHÔNG sửa (ngoài phạm vi nhánh mobile).
 
 ## Đã làm xong
 
@@ -98,3 +207,18 @@ trong commit message riêng lẻ).
 - Đổi mật khẩu LUÔN kèm `revokeOtherSessions: true` (khớp web, ADR-0017 §7a).
 - Xoá tài khoản đặt ở "Personal details", KHÔNG đặt cạnh nút đăng xuất (dễ
   bấm nhầm) — nhưng bản thân tính năng CHƯA làm (xem A7 ở trên).
+- **(27/09) Upload ảnh dùng `XMLHttpRequest`, KHÔNG `fetch`** — winter fetch
+  của Expo SDK 57 không đọc đúng file cục bộ qua `.blob()` và không hiểu
+  `{uri,name,type}`. Áp dụng cho MỌI upload ảnh sau này trong mobile, không
+  riêng avatar.
+- **(27/09) `AppImage` PHẢI nhân `width` theo `PixelRatio.get()` trước khi
+  gọi `transformUrl`** — đã sửa trong `libs/mobile/ui`, áp dụng chung mọi
+  ảnh. Đừng revert.
+- **(27/09) Màn full-bleed hero (ảnh tràn mép) + header tự vẽ đè lên ảnh:**
+  header/overlay PHẢI là sibling của `ScrollView` (Screen `scrollable={false}`
+  + tự dựng `ScrollView` riêng), KHÔNG được là children của `Screen`
+  scrollable mặc định — nếu không header cuộn mất theo nội dung. Xem
+  `post-detail-screen.tsx` làm mẫu.
+- **(27/09) `RootStack.screenOptions` header: dùng `theme.colors.background`
+  (không phải `card`) + `headerShadowVisible: false`** — khớp mockup
+  `.compact-head` hoà phẳng vào nền, không viền.
