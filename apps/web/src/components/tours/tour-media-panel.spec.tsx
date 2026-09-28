@@ -195,6 +195,36 @@ describe('TourMediaPanel — panel đặt chỗ', () => {
     ).toHaveLength(3);
   });
 
+  it('nhiều chính sách CÙNG loại (admin sửa được từ F17) → một ô mỗi loại, không trùng key', () => {
+    // Vòng review F17: hàng ô vẽ mọi chính sách trên MỘT dòng với key là loại —
+    // ba chính sách General là ba ô chen nhau và React báo key trùng.
+    const errors = vi.spyOn(console, 'error').mockImplementation(() => {});
+    render(
+      <TourMediaPanel
+        tour={tourWith(3, {
+          policies: [
+            { kind: 'GENERAL', title: 'What to bring', body: 'Sun cream.' },
+            { kind: 'GENERAL', title: 'Health', body: 'Moderate fitness.' },
+            { kind: 'BOOKING', title: 'Booking & payment', body: 'Pay in full.' },
+            { kind: 'GENERAL', title: 'Weather', body: 'Rainy season.' },
+          ],
+        } as Partial<TourDetailVM>)}
+      />,
+      { wrapper },
+    );
+
+    const tiles = screen.getAllByRole('link', {
+      name: /Free cancellation|What to bring|Health|Booking|Weather/,
+    });
+    expect(tiles.map((tile) => tile.textContent)).toEqual([
+      'Free cancellation until 7 days before departure',
+      'What to bring',
+      'Booking & payment',
+    ]);
+    expect(errors.mock.calls.some(([message]) => String(message).includes('same key'))).toBe(false);
+    errors.mockRestore();
+  });
+
   it('đợt đã ngừng nhận đặt không chiếm ô ngày và không được chọn sẵn', () => {
     const closed = {
       ...DEPARTURES[0],

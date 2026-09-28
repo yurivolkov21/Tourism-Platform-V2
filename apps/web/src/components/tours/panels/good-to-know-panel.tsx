@@ -58,8 +58,11 @@ export function GoodToKnowPanel({ tour }: { tour: TourDetailVM }) {
           return (
             // Thẻ policy trồi lên theo bậc thang (nhóm motion 1, 19/08) —
             // wrapper mang nhịp, thẻ bên trong giữ `data-testid` spec đang đọc.
+            // Key theo VỊ TRÍ (vòng review F17): admin sửa được danh sách từ F17,
+            // hai chính sách cùng loại cùng tiêu đề là dữ liệu hợp lệ.
             <RevealItem
-              key={policy.kind + policy.title}
+              // biome-ignore lint/suspicious/noArrayIndexKey: danh sách đọc từ server, trang không sắp lại, thêm hay bớt; nội dung có thể trùng nhau
+              key={`${policy.kind}-${index}`}
               enter="rise"
               delay={(index + 1) * STAGGER.grid}
               className="h-full"
@@ -103,7 +106,9 @@ export function GoodToKnowPanel({ tour }: { tour: TourDetailVM }) {
           <Accordion defaultValue={[0]} className="gap-3">
             {tour.faqs.map((faq, index) => (
               <AccordionItem
-                key={faq.question}
+                // Theo vị trí, không theo câu hỏi — hai câu trùng nhau vẫn hợp lệ.
+                // biome-ignore lint/suspicious/noArrayIndexKey: danh sách đọc từ server, trang không sắp lại, thêm hay bớt; câu hỏi có thể trùng nhau
+                key={index}
                 value={index}
                 className="group/faq rounded-md border border-border bg-card px-2.5 data-open:border-primary/35"
               >

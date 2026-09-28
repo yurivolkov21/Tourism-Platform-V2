@@ -346,8 +346,15 @@ export function TourMediaPanel({ tour }: { tour: TourDetailVM }) {
               {messages.cancellationDeadline.rule(windowDaysForTripLength(tour.durationDays))}
             </span>
           </a>
+          {/* MỘT ô mỗi loại (vòng review F17): từ F17 admin thêm được nhiều chính
+              sách cùng loại, mà hàng ô này là một dòng tóm tắt trỏ sang tab Good to
+              know — nơi in đủ mọi chính sách. Ô của loại lấy chính sách đầu tiên. */}
           {tour.policies
-            .filter((policy) => policy.kind !== 'CANCELLATION')
+            .filter(
+              (policy, index, all) =>
+                policy.kind !== 'CANCELLATION' &&
+                all.findIndex((other) => other.kind === policy.kind) === index,
+            )
             .map((policy) => {
               const Icon = POLICY_ICON[policy.kind];
               return (

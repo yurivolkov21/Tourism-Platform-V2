@@ -104,6 +104,23 @@ describe('GoodToKnowPanel', () => {
     expect(screen.getByRole('button', { name: /ride a motorbike/ })).toBeInTheDocument();
   });
 
+  it('chính sách trùng loại lẫn tiêu đề, câu hỏi trùng nhau → đủ thẻ, không cảnh báo key trùng', () => {
+    // Vòng review F17: admin sửa được danh sách từ F17, nên dữ liệu không còn
+    // "mỗi loại một chính sách, mỗi câu hỏi một lần" như seed.
+    const errors = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const policy = { kind: 'GENERAL', title: 'Weather', body: 'Rain in the afternoon.' };
+    const faq = { question: 'Is lunch included?', answer: 'Yes.' };
+    render(
+      <GoodToKnowPanel
+        tour={{ ...TOUR, policies: [policy, policy], faqs: [faq, faq] } as unknown as TourDetailVM}
+      />,
+    );
+
+    expect(screen.getAllByTestId('policy-card')).toHaveLength(3);
+    expect(errors.mock.calls.some(([message]) => String(message).includes('same key'))).toBe(false);
+    errors.mockRestore();
+  });
+
   it('tour không có FAQ thì bỏ hẳn khối hỏi–đáp, kể cả dòng tiêu đề', () => {
     render(<GoodToKnowPanel tour={{ ...TOUR, faqs: [] } as unknown as TourDetailVM} />);
     expect(screen.queryByText('Questions travellers ask')).toBeNull();
