@@ -8,6 +8,25 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-09-28 — Merge F17 lên main (`9b284e9b`)
+
+Nội dung đã kể ở HAI entry ngay bên dưới — "Vòng review F17" và "F17 tạo và
+sửa tour". Entry này chỉ ghi sự kiện merge, vì hai entry kia viết TRƯỚC merge
+nên chưa mang hash.
+
+Nhánh `feat/p4e-3a-tour-editor` rebase lên `8a6390c4` (bản dọn `payment_events`
+của `bookings.int.spec`, từ một session riêng) rồi fast-forward: 25 commit — 13
+của đợt thi công, 12 của vòng review. Không xung đột. Gate đủ năm bước xanh
+trước rebase; int chạy lại xanh trên đỉnh mới (678 ở 45 file). Không migration,
+không đổi env, nên không có bước hạ tầng nào.
+
+Việc còn lại: thử tay F17 trên production bằng tour MỚI tạo, sau khi Vercel và
+Render deploy xong; nhánh vá seed trước lượt seed lại 03/11 (open-items).
+
+Tests after: Vitest **4546** (web 1575, admin 1328, api 993, contract 547,
+core 46, ui 23, tokens 18, i18n 16), int **678 ở 45 file**, jest mobile 159 và
+mobile-ui 86.
+
 ## 2026-09-28 — Vòng review F17: 24 lỗi thật, vá 23, lỗi seed tách nhánh riêng (nhánh `feat/p4e-3a-tour-editor`)
 
 Review chạy TRƯỚC merge, ở mức cao nhất: mười một góc tìm độc lập, mười nhóm
