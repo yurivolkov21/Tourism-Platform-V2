@@ -38,6 +38,7 @@ import {
 import { messages } from '@tourism/i18n';
 import { createWriteErrorCodec, type TransportFailureCode } from './api/write-error';
 import type { Keyed } from './list-editor';
+import { onSaleShortfalls, projectedReadiness } from './tour-editor-view';
 
 /**
  * Logic THUẦN của sáu hành vi ghi của khu làm việc tour (spec F17) — cùng khuôn
@@ -45,8 +46,9 @@ import type { Keyed } from './list-editor';
  * server action, giá trị thô của form, validator soi gương contract, payload.
  *
  * Validator KHÔNG tự chế trần: mọi con số là hằng của contract (bài học 12).
- * Luật "tour đang bán" (ADR-0047 §4) cũng soi gương ở đây để admin thấy lỗi dưới
- * đúng ô trước khi bấm Save; server vẫn là trọng tài cuối.
+ * Luật "tour đang bán thì luôn đủ" (ADR-0047 §4) suy từ `onSaleShortfalls` trên
+ * readiness dự tính (G11, ADR-0048 §8) — không viết tay từng luật — để admin thấy
+ * lỗi dưới đúng ô trước khi bấm Save; server vẫn là trọng tài cuối.
  */
 const e = messages.admin.tours.editor;
 const fe = e.form.errors;
@@ -348,7 +350,8 @@ export function detailsFormValues(detail: AdminTourDetail): TourDetailsFormValue
 
 /**
  * Soi gương contract cộng ba luật phụ thuộc trạng thái server của `detail`:
- * tour đang bán (tóm tắt, thêm ngày), tour có chuyến (số ngày khoá), sàn ghế.
+ * tour đang bán (tóm tắt, thêm ngày — suy từ `onSaleShortfalls`, G11), tour có
+ * chuyến (số ngày khoá), sàn ghế.
  */
 export function validateTourDetailsForm(
   values: TourDetailsFormValues,
@@ -357,17 +360,27 @@ export function validateTourDetailsForm(
   const errors: TourDetailsFormErrors = {};
   const lines: Record<string, string> = {};
 
+  const days = parseWholeNumber(values.durationDays);
+  // G11: luật "tour đang bán" suy từ readiness dự tính, không viết tay từng luật.
+  const shortfalls = onSaleShortfalls(
+    detail,
+    projectedReadiness(detail, {
+      summary: orNull(values.summary),
+      destinations: values.destinations,
+      durationDays: Number.isInteger(days) ? days : detail.durationDays,
+    }),
+  );
+
   setError(errors, 'title', textError(values.title, TOUR_TITLE_MAX, true));
-  if (detail.isPublished && values.summary.trim() === '') errors.summary = fe.summaryOnSale;
+  if (shortfalls.summary) errors.summary = fe.summaryOnSale;
   else setError(errors, 'summary', textError(values.summary, TOUR_SUMMARY_MAX, false));
   if (values.categoryId === '') errors.categoryId = fe.chooseCategory;
 
-  const days = parseWholeNumber(values.durationDays);
   const daysError = wholeNumberError(values.durationDays, 1, TOUR_DURATION_MAX);
   if (daysError !== undefined) errors.durationDays = daysError;
   else if (days !== detail.durationDays && detail.departureCount > 0) {
     errors.durationDays = fe.durationLocked;
-  } else if (days > detail.durationDays && detail.isPublished) {
+  } else if (shortfalls.days.length > 0) {
     errors.durationDays = fe.addDaysOnSale;
   }
 
@@ -477,12 +490,16 @@ export function validateItineraryForm(
   detail: AdminTourDetail,
 ): ItineraryFormErrors {
   const errors: ItineraryFormErrors = {};
+  const titled = values.days.flatMap((day, index) => (day.title.trim() === '' ? [] : [index + 1]));
+  const newlyMissing = new Set(
+    onSaleShortfalls(detail, projectedReadiness(detail, { itineraryDays: titled })).days,
+  );
   values.days.forEach((day, index) => {
     const entry: { title?: string; description?: string } = {};
     const title = day.title.trim();
     const description = day.description.trim();
     if (title === '') {
-      if (detail.isPublished) entry.title = fe.dayTitleOnSale;
+      if (newlyMissing.has(index + 1)) entry.title = fe.dayTitleOnSale;
       if (description !== '') entry.description = fe.descriptionWithoutTitle;
     } else if (title.length > TOUR_DAY_TITLE_MAX) {
       entry.title = fe.tooLong(TOUR_DAY_TITLE_MAX);

@@ -5,6 +5,7 @@ import {
   activeTourTab,
   costBreakdown,
   formatDayList,
+  onSaleShortfalls,
   optionLabel,
   projectedReadiness,
   readinessIssues,
@@ -137,6 +138,53 @@ describe('projectedReadiness', () => {
     expect(projectedReadiness(detail, { photoCount: 0 }).cover).toBe(false);
     expect(projectedReadiness(detail, { photoCount: 0 }).ready).toBe(false);
     expect(projectedReadiness(detail, { photoCount: 2 }).cover).toBe(true);
+  });
+});
+
+describe('onSaleShortfalls (G11)', () => {
+  it('tour TẮT bán thì không có gì — tour nháp lưu thiếu thoải mái', () => {
+    const offSale = detailFixture({ isPublished: false });
+    expect(
+      onSaleShortfalls(offSale, projectedReadiness(offSale, { summary: null, photoCount: 0 })),
+    ).toEqual({
+      summary: false,
+      days: [],
+      cover: false,
+    });
+  });
+
+  it('tour đang bán: đếm đúng chỗ lệnh này làm hỏng', () => {
+    const detail = detailFixture();
+    expect(onSaleShortfalls(detail, projectedReadiness(detail, { summary: '  ' })).summary).toBe(
+      true,
+    );
+    expect(onSaleShortfalls(detail, projectedReadiness(detail, { durationDays: 5 })).days).toEqual([
+      4, 5,
+    ]);
+    expect(
+      onSaleShortfalls(detail, projectedReadiness(detail, { itineraryDays: [1, 3] })).days,
+    ).toEqual([2]);
+    expect(onSaleShortfalls(detail, projectedReadiness(detail, { photoCount: 0 })).cover).toBe(
+      true,
+    );
+  });
+
+  it('chỗ thiếu có TỪ TRƯỚC (dữ liệu cũ) không bị đổ cho lệnh này', () => {
+    // Tour đang bán mà đã thiếu tóm tắt, ngày 3 và ảnh bìa — server không để điều
+    // này xảy ra, nhưng dữ liệu sửa tay thì có thể.
+    const legacy = detailFixture({
+      summary: null,
+      itinerary: [
+        { dayNumber: 1, title: 'One', description: null },
+        { dayNumber: 2, title: 'Two', description: null },
+      ],
+      photos: [],
+    });
+    expect(onSaleShortfalls(legacy, projectedReadiness(legacy, { summary: null }))).toEqual({
+      summary: false,
+      days: [],
+      cover: false,
+    });
   });
 });
 

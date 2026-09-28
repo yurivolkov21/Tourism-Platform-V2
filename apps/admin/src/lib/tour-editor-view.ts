@@ -166,6 +166,36 @@ export function projectedReadiness(
   });
 }
 
+/** Điều kiện readiness mà lệnh sửa ĐANG SOẠN làm hỏng ở một tour đang bán (G11). */
+export interface OnSaleShortfalls {
+  summary: boolean;
+  /** Ngày đang đủ mà bản dự tính làm thiếu, tăng dần. */
+  days: number[];
+  cover: boolean;
+}
+
+/**
+ * Chỗ thiếu DO lệnh sửa này gây ra ở một tour ĐANG BÁN — nguồn DUY NHẤT của luật
+ * "tour đang bán thì luôn đủ" phía admin (G11, ADR-0048 §8). Ba tab tự gắn kết quả
+ * vào ô của mình.
+ *
+ * Chỉ đếm điều kiện bản hiện tại ĐẠT mà bản dự tính HỎNG: đúng ba luật viết tay cũ
+ * (xoá tóm tắt, thêm ngày, xoá tiêu đề ngày) cộng ảnh bìa, và không đổ cho lệnh
+ * này một chỗ thiếu có từ trước. Tour tắt bán thì rỗng. Server vẫn là trọng tài cuối.
+ */
+export function onSaleShortfalls(
+  detail: AdminTourDetail,
+  projected: TourReadiness,
+): OnSaleShortfalls {
+  if (!detail.isPublished) return { summary: false, days: [], cover: false };
+  const current = detail.readiness;
+  return {
+    summary: current.summary && !projected.summary,
+    days: projected.missingDays.filter((day) => !current.missingDays.includes(day)),
+    cover: current.cover && !projected.cover,
+  };
+}
+
 /** Nhãn một mục trong ô chọn danh mục/điểm đến — mục đã ẩn mang dấu "(hidden)". */
 export function optionLabel(option: { name: string; isActive: boolean }): string {
   return option.isActive ? option.name : messages.admin.tours.list.categoryHidden(option.name);

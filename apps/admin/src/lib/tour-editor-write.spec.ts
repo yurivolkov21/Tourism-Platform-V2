@@ -204,6 +204,12 @@ describe('tab Details', () => {
     ).toBeUndefined();
   });
 
+  it('G11: tour đang bán ĐÃ thiếu tóm tắt từ trước — sửa ô khác không bị đổ lỗi tóm tắt', () => {
+    const legacy = detailFixture({ summary: null });
+    const values = { ...detailsFormValues(legacy), title: 'Renamed' };
+    expect(validateTourDetailsForm(values, legacy).summary).toBeUndefined();
+  });
+
   it('đang bán: tăng số ngày bị chặn, giảm thì được', () => {
     expect(validateTourDetailsForm(withValues({ durationDays: '4' }), detail).durationDays).toBe(
       fe.addDaysOnSale,
@@ -412,6 +418,16 @@ describe('tab Itinerary', () => {
     expect(validateItineraryForm(values, onSale)).toEqual({ 2: { title: fe.dayTitleOnSale } });
 
     expect(validateItineraryForm(itineraryFormValues(fourDays), fourDays)).toEqual({});
+  });
+
+  it('G11: ngày vốn trống từ trước (dữ liệu cũ) không bị báo dayTitleOnSale', () => {
+    const legacy = detailFixture({
+      itinerary: [
+        { dayNumber: 1, title: 'One', description: null },
+        { dayNumber: 2, title: 'Two', description: null },
+      ],
+    });
+    expect(validateItineraryForm(itineraryFormValues(legacy), legacy)).toEqual({});
   });
 
   it('có mô tả mà không tiêu đề thì nhắc — ngày không tiêu đề không được lưu', () => {
