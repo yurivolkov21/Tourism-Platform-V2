@@ -237,6 +237,55 @@ describe('admin tours integration (F17)', () => {
     post(`/api/admin/tours/${id}/photo-uploads`, payload, cookie);
   const library = (cookie = adminCookie) =>
     app.inject({ method: 'GET', url: '/api/admin/tour-photo-library', headers: { cookie } });
+  const photosWrite = (id: string, payload: Record<string, unknown>, cookie = adminCookie) =>
+    post(`/api/admin/tours/${id}/photos`, payload, cookie);
+  const LIB_1 = 'tourism/catalog/destination/hoi-an/1';
+  const LIB_2 = 'tourism/catalog/destination/hoi-an/2';
+  const mine = (n: number, name: string) => `tourism/tours/${tourId(n)}/${name}`;
+  const UPLOAD_META = {
+    version: '1759000000',
+    width: 2000,
+    height: 1333,
+    format: 'jpg',
+    bytes: 523000,
+  };
+  /** Kho địa danh: LIB_1 có đủ ghi công — ca "chép ghi công" cần nó KHÁC thứ client gửi. */
+  const makeLibrary = () =>
+    prisma.mediaAsset.createMany({
+      data: [
+        {
+          ownerType: 'DESTINATION',
+          ownerId: DEST_1,
+          publicId: LIB_1,
+          type: 'IMAGE',
+          role: 'gallery',
+          sortOrder: 1,
+          alt: 'Lanterns at dusk',
+          width: 2400,
+          height: 1600,
+          version: '1600000001',
+          author: 'J. Nguyen',
+          license: 'CC BY-SA 4.0',
+          licenseUrl: 'https://creativecommons.org/licenses/by-sa/4.0/',
+          sourceUrl: 'https://commons.wikimedia.org/wiki/File:Lanterns.jpg',
+        },
+        {
+          ownerType: 'DESTINATION',
+          ownerId: DEST_1,
+          publicId: LIB_2,
+          type: 'IMAGE',
+          role: 'gallery',
+          sortOrder: 2,
+          alt: 'Old town',
+          version: '1600000002',
+        },
+      ],
+    });
+  const tourPhotoRows = (n: number) =>
+    prisma.mediaAsset.findMany({
+      where: { ownerType: 'TOUR', ownerId: tourId(n) },
+      orderBy: { sortOrder: 'asc' },
+    });
 
   /** Payload tab Details dựng từ CHÍNH tour đang đọc — ca nào cần khác thì đè. */
   const detailsPayload = (detail: AdminTourDetail, patch: Record<string, unknown> = {}) => ({
@@ -294,6 +343,7 @@ describe('admin tours integration (F17)', () => {
         (await signUploads(tourId(1), { id: tourId(1), count: 1 }, customerCookie)).statusCode,
       ).toBe(403);
       expect((await library(customerCookie)).statusCode).toBe(403);
+      expect((await photosWrite(tourId(1), {}, customerCookie)).statusCode).toBe(403);
     });
 
     it('chưa đăng nhập thì mọi đường đều 401', async () => {
@@ -307,6 +357,7 @@ describe('admin tours integration (F17)', () => {
       expect((await costs(tourId(1), {}, '')).statusCode).toBe(401);
       expect((await signUploads(tourId(1), { id: tourId(1), count: 1 }, '')).statusCode).toBe(401);
       expect((await library('')).statusCode).toBe(401);
+      expect((await photosWrite(tourId(1), {}, '')).statusCode).toBe(401);
     });
   });
 
@@ -1282,6 +1333,219 @@ describe('admin tours integration (F17)', () => {
         'tourism/catalog/destination/hoi-an/2',
       ]);
       expect(groups[1]?.photos[1]).toMatchObject({ author: 'J. Nguyen', license: 'CC BY-SA 4.0' });
+    });
+  });
+
+  describe('setPhotos (F18)', () => {
+    it('lưu đủ ba nguồn theo thứ tự gửi; ảnh đầu là bìa; bust sau commit', async () => {
+      await makeTour(1);
+      await makeLibrary();
+      const before = await detailOf('f17-tour-1');
+      const revalidate = vi.spyOn(web, 'revalidate').mockResolvedValue(undefined);
+
+      const res = await photosWrite(tourId(1), {
+        id: tourId(1),
+        version: before.version,
+        photos: [
+          { publicId: mine(1, 'new'), alt: 'Our own boat', upload: UPLOAD_META },
+          // `author` gửi kèm bị Zod bỏ — ghi công chỉ đến từ dòng thư viện.
+          { publicId: LIB_1, alt: 'Lanterns, our words', author: 'Someone else' },
+          { publicId: 'tourism/catalog/tour/f17-1', alt: 'The old cover' },
+        ],
+      });
+
+      expect(res.statusCode).toBe(200);
+      const detail = AdminTourDetailSchema.parse(res.json());
+      expect(detail.version > before.version).toBe(true);
+      expect(detail.photos.map((p) => [p.publicId, p.source])).toEqual([
+        [mine(1, 'new'), 'UPLOAD'],
+        [LIB_1, 'LIBRARY'],
+        ['tourism/catalog/tour/f17-1', 'LIBRARY'],
+      ]);
+      const rows = await tourPhotoRows(1);
+      expect(rows.map((r) => [r.publicId, r.role, r.sortOrder, r.alt])).toEqual([
+        [mine(1, 'new'), 'hero', 0, 'Our own boat'],
+        [LIB_1, 'gallery', 1, 'Lanterns, our words'],
+        ['tourism/catalog/tour/f17-1', 'gallery', 2, 'The old cover'],
+      ]);
+      expect(rows[0]).toMatchObject({ version: '1759000000', width: 2000, author: null });
+      expect(rows[1]).toMatchObject({
+        version: '1600000001',
+        author: 'J. Nguyen',
+        license: 'CC BY-SA 4.0',
+        licenseUrl: 'https://creativecommons.org/licenses/by-sa/4.0/',
+        sourceUrl: 'https://commons.wikimedia.org/wiki/File:Lanterns.jpg',
+      });
+      expect(rows[2]).toMatchObject({ version: '1700000000' });
+      expect(revalidate).toHaveBeenCalledWith(['tours', 'tour:f17-tour-1']);
+    });
+
+    it.each([
+      ['thư mục tải lên của tour khác', { publicId: mine(2, 'x'), alt: 'x', upload: UPLOAD_META }],
+      ['thư mục avatar', { publicId: 'tourism/avatars/u-1/x', alt: 'x', upload: UPLOAD_META }],
+      ['chuỗi bịa', { publicId: 'somewhere/else', alt: 'x' }],
+      ['ảnh tải lên thiếu metadata', { publicId: mine(1, 'no-meta'), alt: 'x' }],
+    ])('%s → 400 PHOTO_NOT_ALLOWED, không đổi gì, không bust', async (_name, photo) => {
+      await makeTour(1);
+      const before = await detailOf('f17-tour-1');
+      const revalidate = vi.spyOn(web, 'revalidate').mockResolvedValue(undefined);
+
+      const res = await photosWrite(tourId(1), {
+        id: tourId(1),
+        version: before.version,
+        photos: [photo],
+      });
+
+      expect(res.statusCode).toBe(400);
+      expect(res.json()).toMatchObject({ code: 'PHOTO_NOT_ALLOWED' });
+      expect(revalidate).not.toHaveBeenCalled();
+      const after = await detailOf('f17-tour-1');
+      expect(after.version).toBe(before.version);
+      expect(after.photos.map((p) => p.publicId)).toEqual(['tourism/catalog/tour/f17-1']);
+    });
+
+    it('version cũ → 409 STALE_TOUR; id không có → 404', async () => {
+      await makeTour(1);
+      const stale = await photosWrite(tourId(1), {
+        id: tourId(1),
+        version: '2020-01-01T00:00:00.000Z',
+        photos: [],
+      });
+      expect(stale.statusCode).toBe(409);
+      expect(stale.json()).toMatchObject({ code: 'STALE_TOUR' });
+
+      const missing = await photosWrite(MISSING, {
+        id: MISSING,
+        version: '2020-01-01T00:00:00.000Z',
+        photos: [],
+      });
+      expect(missing.statusCode).toBe(404);
+    });
+
+    it('tour ĐANG bán gỡ hết ảnh → 409 TOUR_NOT_READY, rollback trọn', async () => {
+      await makeTour(1);
+      const before = await detailOf('f17-tour-1');
+
+      const res = await photosWrite(tourId(1), {
+        id: tourId(1),
+        version: before.version,
+        photos: [],
+      });
+
+      expect(res.statusCode).toBe(409);
+      expect(res.json()).toMatchObject({
+        code: 'TOUR_NOT_READY',
+        message: 'This tour is missing: a cover photo.',
+      });
+      expect(await tourPhotoRows(1)).toHaveLength(1);
+      expect((await detailOf('f17-tour-1')).version).toBe(before.version);
+    });
+
+    it('lệnh hỏng SAU khi đã gỡ ảnh tải lên → hàng dọn không giữ dấu vết (requeue cùng transaction)', async () => {
+      await makeTour(1);
+      await prisma.mediaAsset.create({
+        data: {
+          ownerType: 'TOUR',
+          ownerId: tourId(1),
+          publicId: mine(1, 'old'),
+          type: 'IMAGE',
+          role: 'gallery',
+          sortOrder: 1,
+          alt: 'Old upload',
+        },
+      });
+      const before = await detailOf('f17-tour-1');
+
+      // Tour đang bán gỡ hết ảnh: `requeue` chạy TRƯỚC `assertStillReady`, rồi cả
+      // lệnh rollback — requeue ngoài transaction thì ảnh vẫn nằm trong hàng dọn và
+      // bảy ngày sau bị destroy dù tour còn dùng (ADR-0035 §7).
+      const res = await photosWrite(tourId(1), {
+        id: tourId(1),
+        version: before.version,
+        photos: [],
+      });
+
+      expect(res.statusCode).toBe(409);
+      expect(await prisma.mediaGarbage.count()).toBe(0);
+      expect(await tourPhotoRows(1)).toHaveLength(2);
+    });
+
+    it('tour TẮT bán gỡ hết ảnh được; readiness nói thiếu ảnh bìa', async () => {
+      await makeTour(1, { isPublished: false });
+      const before = await detailOf('f17-tour-1');
+
+      const res = await photosWrite(tourId(1), {
+        id: tourId(1),
+        version: before.version,
+        photos: [],
+      });
+
+      expect(res.statusCode).toBe(200);
+      const detail = AdminTourDetailSchema.parse(res.json());
+      expect(detail.photos).toEqual([]);
+      expect(detail.readiness.cover).toBe(false);
+    });
+
+    it('gỡ ảnh tải lên → vào lại hàng dọn với đồng hồ mới; gỡ ảnh thư viện → không', async () => {
+      await makeTour(1);
+      await makeLibrary();
+      await prisma.mediaAsset.createMany({
+        data: [
+          {
+            ownerType: 'TOUR',
+            ownerId: tourId(1),
+            publicId: mine(1, 'old'),
+            type: 'IMAGE',
+            role: 'gallery',
+            sortOrder: 1,
+            alt: 'Old upload',
+          },
+          {
+            ownerType: 'TOUR',
+            ownerId: tourId(1),
+            publicId: LIB_1,
+            type: 'IMAGE',
+            role: 'gallery',
+            sortOrder: 2,
+            alt: 'Borrowed',
+          },
+        ],
+      });
+      // Đồng hồ cũ: ký từ mười ngày trước (ADR-0035 §3).
+      const signedAt = new Date(Date.now() - 10 * 24 * 60 * 60 * 1000);
+      await prisma.mediaGarbage.create({ data: { publicId: mine(1, 'old'), createdAt: signedAt } });
+      const before = await detailOf('f17-tour-1');
+
+      const res = await photosWrite(tourId(1), {
+        id: tourId(1),
+        version: before.version,
+        photos: [{ publicId: 'tourism/catalog/tour/f17-1', alt: 'Cover' }],
+      });
+
+      expect(res.statusCode).toBe(200);
+      const queued = await prisma.mediaGarbage.findMany();
+      expect(queued.map((q) => q.publicId)).toEqual([mine(1, 'old')]);
+      expect(queued[0]?.createdAt.getTime()).toBeGreaterThan(signedAt.getTime());
+    });
+
+    it('schema: trùng publicId và 31 ảnh đều 400', async () => {
+      await makeTour(1);
+      const before = await detailOf('f17-tour-1');
+      const cover = { publicId: 'tourism/catalog/tour/f17-1', alt: 'Cover' };
+
+      const dup = await photosWrite(tourId(1), {
+        id: tourId(1),
+        version: before.version,
+        photos: [cover, cover],
+      });
+      expect(dup.statusCode).toBe(400);
+
+      const tooMany = await photosWrite(tourId(1), {
+        id: tourId(1),
+        version: before.version,
+        photos: Array.from({ length: 31 }, (_, i) => ({ publicId: `lib/${i}`, alt: 'x' })),
+      });
+      expect(tooMany.statusCode).toBe(400);
     });
   });
 

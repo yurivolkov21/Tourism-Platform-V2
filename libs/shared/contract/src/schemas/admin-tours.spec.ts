@@ -9,6 +9,7 @@ import {
   AdminTourFaqsPoliciesInputSchema,
   AdminTourItineraryInputSchema,
   AdminTourPhotoSchema,
+  AdminTourPhotosInputSchema,
   AdminTourSignPhotoUploadsInputSchema,
 } from './admin-tours.js';
 
@@ -457,5 +458,77 @@ describe('AdminPhotoLibrarySchema (ADR-0048 §9)', () => {
       },
     ];
     expect(AdminPhotoLibrarySchema.parse(library)).toEqual(library);
+  });
+});
+
+describe('AdminTourPhotosInputSchema (ADR-0048 §2–3)', () => {
+  const base = { id: '7a1b2c3d-0000-4000-8000-000000000001', version: '2026-09-28T01:02:03.456Z' };
+  const photo = (n: number) => ({
+    publicId: `tourism/catalog/destination/x/${n}`,
+    alt: `Photo ${n}`,
+  });
+
+  it('alt bỏ khoảng trắng hai đầu; rỗng hay quá 300 ký tự là hỏng', () => {
+    const parsed = AdminTourPhotosInputSchema.parse({
+      ...base,
+      photos: [{ ...photo(1), alt: '  A  ' }],
+    });
+    expect(parsed.photos[0]?.alt).toBe('A');
+    expect(
+      AdminTourPhotosInputSchema.safeParse({ ...base, photos: [{ ...photo(1), alt: '   ' }] })
+        .success,
+    ).toBe(false);
+    expect(
+      AdminTourPhotosInputSchema.safeParse({
+        ...base,
+        photos: [{ ...photo(1), alt: 'a'.repeat(300) }],
+      }).success,
+    ).toBe(true);
+    expect(
+      AdminTourPhotosInputSchema.safeParse({
+        ...base,
+        photos: [{ ...photo(1), alt: 'a'.repeat(301) }],
+      }).success,
+    ).toBe(false);
+  });
+
+  it('tối đa 30 ảnh, không trùng publicId; danh sách rỗng là hợp lệ', () => {
+    const many = (n: number) => Array.from({ length: n }, (_, i) => photo(i));
+    expect(AdminTourPhotosInputSchema.safeParse({ ...base, photos: many(30) }).success).toBe(true);
+    expect(AdminTourPhotosInputSchema.safeParse({ ...base, photos: many(31) }).success).toBe(false);
+    expect(
+      AdminTourPhotosInputSchema.safeParse({ ...base, photos: [photo(1), photo(1)] }).success,
+    ).toBe(false);
+    expect(AdminTourPhotosInputSchema.safeParse({ ...base, photos: [] }).success).toBe(true);
+  });
+
+  it('upload chỉ canh dạng: số nguyên dương, version là chuỗi chữ số (quyết định 3)', () => {
+    const upload = {
+      version: '1759000000',
+      width: 2000,
+      height: 1333,
+      format: 'jpg',
+      bytes: 523000,
+    };
+    const withUpload = (u: object) => ({ ...base, photos: [{ ...photo(1), upload: u }] });
+    expect(AdminTourPhotosInputSchema.safeParse(withUpload(upload)).success).toBe(true);
+    expect(
+      AdminTourPhotosInputSchema.safeParse(withUpload({ ...upload, version: 'v1' })).success,
+    ).toBe(false);
+    expect(AdminTourPhotosInputSchema.safeParse(withUpload({ ...upload, width: 0 })).success).toBe(
+      false,
+    );
+    expect(
+      AdminTourPhotosInputSchema.safeParse(withUpload({ ...upload, format: '' })).success,
+    ).toBe(false);
+  });
+
+  it('publicId đi qua cổng ký tự', () => {
+    expect(
+      AdminTourPhotosInputSchema.safeParse({
+        ...base,
+        photos: [{ ...photo(1), publicId: 'a/../b' }],
+      }).success,
+    ).toBe(false);
   });
 });

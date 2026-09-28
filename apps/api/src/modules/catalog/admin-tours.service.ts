@@ -11,6 +11,7 @@ import {
   type AdminTourDetailsInput,
   type AdminTourFaqsPoliciesInput,
   type AdminTourItineraryInput,
+  type AdminTourPhotosInput,
   type AdminTourSignPhotoUploadsInput,
   derivedCostPrice,
   type MediaItem,
@@ -37,13 +38,20 @@ import {
   TourHasBookingsError,
   TourLinkNotFoundError,
   TourNotReadyError,
+  TourPhotoNotAllowedError,
   TourPhotoUploadsNotConfiguredError,
   TourRuleError,
   TourSlugTakenError,
 } from './admin-tour-errors.js';
 import { costItemsOf } from './tour-cost-items.js';
 import { liveSeatsMax } from './tour-editor-rules.js';
-import { orderTourPhotos, toAdminTourPhoto, toLibraryPhoto } from './tour-photos.js';
+import {
+  orderTourPhotos,
+  planTourPhotos,
+  type StoredPhoto,
+  toAdminTourPhoto,
+  toLibraryPhoto,
+} from './tour-photos.js';
 import { claimTour, readTourReadiness } from './tour-state.js';
 
 /**
@@ -186,6 +194,30 @@ function detailsColumns(input: AdminTourDetailsInput) {
     factDifficultyNote: input.factDifficultyNote,
     factGoodForNote: input.factGoodForNote,
   } satisfies Prisma.TourUncheckedUpdateInput;
+}
+
+/** Các cột `planTourPhotos` chép khi giữ hay mượn một dòng — khớp `StoredPhoto`. */
+const STORED_PHOTO_SELECT = {
+  publicId: true,
+  type: true,
+  posterId: true,
+  format: true,
+  width: true,
+  height: true,
+  durationSec: true,
+  bytes: true,
+  version: true,
+  author: true,
+  license: true,
+  licenseUrl: true,
+  sourceUrl: true,
+} satisfies Prisma.MediaAssetSelect;
+
+/** Dòng theo publicId; trùng thì giữ dòng ĐẦU (danh sách đã sắp theo `createdAt`). */
+function byPublicId(rows: readonly StoredPhoto[]): Map<string, StoredPhoto> {
+  const map = new Map<string, StoredPhoto>();
+  for (const row of rows) if (!map.has(row.publicId)) map.set(row.publicId, row);
+  return map;
 }
 
 /** Tour đang bán thì luôn đủ để bán (ADR-0047 §4) — kiểm sau khi ghi, trước commit. */
@@ -481,6 +513,70 @@ export class AdminToursService {
 
     this.logger.log(
       `[admin] tour costs saved ${JSON.stringify({ id: input.id, items: input.items.length })}`,
+    );
+    this.bust(slug);
+    return this.get(slug);
+  }
+
+  /**
+   * Tab Photos (ADR-0048 §2): thay trọn danh sách ảnh. Thứ tự trong transaction:
+   * giành hàng tour → đọc ảnh hiện có → tra thư viện cho publicId lạ → lập kế
+   * hoạch (từ chối cả lệnh nếu một ảnh không thuộc nguồn nào) → thay dòng → đưa ảnh
+   * tải lên bị gỡ vào lại hàng dọn → kiểm "vẫn đủ để bán" nếu đang bán.
+   */
+  async setPhotos(input: AdminTourPhotosInput): Promise<AdminTourDetail> {
+    const now = new Date();
+    const slug = await prisma.$transaction(async (tx) => {
+      await claimTour(tx, input.id, input.version, now);
+      const tour = await tx.tour.findUniqueOrThrow({
+        where: { id: input.id },
+        select: { slug: true, isPublished: true },
+      });
+      const current = await tx.mediaAsset.findMany({
+        where: { ownerType: MediaOwnerType.TOUR, ownerId: input.id },
+        select: STORED_PHOTO_SELECT,
+      });
+      const known = new Set(current.map((row) => row.publicId));
+      const unknown = input.photos.map((photo) => photo.publicId).filter((id) => !known.has(id));
+      const library =
+        unknown.length === 0
+          ? []
+          : await tx.mediaAsset.findMany({
+              where: { ownerType: MediaOwnerType.DESTINATION, publicId: { in: unknown } },
+              select: STORED_PHOTO_SELECT,
+              orderBy: { createdAt: 'asc' },
+            });
+
+      const plan = planTourPhotos({
+        tourId: input.id,
+        rootFolder: env.CLOUDINARY_UPLOAD_FOLDER,
+        photos: input.photos,
+        current: byPublicId(current),
+        library: byPublicId(library),
+      });
+      if (!plan.ok) throw new TourPhotoNotAllowedError(plan.rejected);
+
+      await tx.mediaAsset.deleteMany({
+        where: { ownerType: MediaOwnerType.TOUR, ownerId: input.id },
+      });
+      if (plan.rows.length > 0) {
+        await tx.mediaAsset.createMany({
+          data: plan.rows.map((row) => ({
+            ...row,
+            ownerType: MediaOwnerType.TOUR,
+            ownerId: input.id,
+          })),
+        });
+      }
+      // Cùng transaction (ADR-0035 §7): rollback thì hàng dọn không giữ dấu vết nào.
+      await this.garbage.requeue(tx, plan.requeue);
+
+      if (tour.isPublished) await assertStillReady(tx, input.id);
+      return tour.slug;
+    });
+
+    this.logger.log(
+      `[admin] tour photos saved ${JSON.stringify({ id: input.id, photos: input.photos.length })}`,
     );
     this.bust(slug);
     return this.get(slug);

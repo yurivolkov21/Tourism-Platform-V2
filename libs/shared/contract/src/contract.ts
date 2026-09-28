@@ -40,6 +40,7 @@ import {
   AdminTourFaqsPoliciesInputSchema,
   AdminTourGetInputSchema,
   AdminTourItineraryInputSchema,
+  AdminTourPhotosInputSchema,
   AdminTourSignPhotoUploadsInputSchema,
 } from './schemas/admin-tours.js';
 import {
@@ -1156,6 +1157,23 @@ export const contract = {
         .input(AdminTourCostsInputSchema)
         .errors({
           STALE_TOUR: { status: 409, message: 'This tour changed since it was opened' },
+          NOT_FOUND: { status: 404, message: 'Tour not found' },
+        })
+        .output(AdminTourDetailSchema),
+      setPhotos: oc
+        .route({
+          method: 'POST',
+          path: '/api/admin/tours/{id}/photos',
+          summary: 'Replace the photos of one tour; the first one is the cover (ADR-0048)',
+        })
+        .input(AdminTourPhotosInputSchema)
+        .errors({
+          STALE_TOUR: { status: 409, message: 'This tour changed since it was opened' },
+          TOUR_NOT_READY: { status: 409, message: 'A tour on sale must stay ready to sell' },
+          PHOTO_NOT_ALLOWED: {
+            status: 400,
+            message: 'A photo is not from this tour, its uploads or the destination library',
+          },
           NOT_FOUND: { status: 404, message: 'Tour not found' },
         })
         .output(AdminTourDetailSchema),

@@ -67,6 +67,16 @@ export class TourPhotoUploadsNotConfiguredError extends ContractError<'MEDIA_UPL
   }
 }
 
+/**
+ * Một ảnh không thuộc nguồn nào trong ba (ADR-0048 §3). 400: client đúng không bao
+ * giờ gửi — nhưng chuỗi này là đối số của lệnh destroy sau này, nên từ chối cả lệnh.
+ */
+export class TourPhotoNotAllowedError extends ContractError<'PHOTO_NOT_ALLOWED'> {
+  constructor(publicId: string) {
+    super('PHOTO_NOT_ALLOWED', `Photo not allowed for this tour: ${publicId}`, false);
+  }
+}
+
 /** Khoá ngoại `Restrict` của booking chặn lệnh xoá (ADR-0047 §5). */
 export class TourHasBookingsError extends ContractError<'TOUR_HAS_BOOKINGS'> {
   constructor() {

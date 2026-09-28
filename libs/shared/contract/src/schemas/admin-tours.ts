@@ -8,6 +8,7 @@ import {
   TravellerTypeSchema,
 } from './catalog.js';
 import { descriptionSchema } from './common.js';
+import { MediaPublicIdSchema } from './media.js';
 import { slugSchema } from './slug.js';
 import { TourCostBasisSchema, TourCostCategorySchema } from './tour-costs.js';
 import { TourReadinessSchema } from './tour-readiness.js';
@@ -351,3 +352,38 @@ export const AdminPhotoLibrarySchema = z.array(
   }),
 );
 export type AdminPhotoLibrary = z.output<typeof AdminPhotoLibrarySchema>;
+
+/**
+ * Metadata Cloudinary trả về sau khi tải lên — admin gửi kèm ảnh MỚI tải
+ * (ADR-0048 §5). Chỉ canh DẠNG: trần 2400px và 10 MB do Cloudinary thi hành
+ * (tham số ký, gói free); đặt lại ở đây chỉ thêm một cách để một ảnh ĐÃ tải lên
+ * thành công bị từ chối lúc lưu.
+ */
+export const TourPhotoUploadSchema = z.object({
+  version: z.string().regex(/^\d{1,20}$/),
+  width: z.int().positive(),
+  height: z.int().positive(),
+  format: z.string().min(1).max(10),
+  bytes: z.int().positive(),
+});
+export type TourPhotoUpload = z.output<typeof TourPhotoUploadSchema>;
+
+export const AdminTourPhotoInputSchema = z.object({
+  publicId: MediaPublicIdSchema,
+  alt: z.string().trim().min(1).max(TOUR_PHOTO_ALT_MAX),
+  upload: TourPhotoUploadSchema.optional(),
+});
+export type AdminTourPhotoInput = z.output<typeof AdminTourPhotoInputSchema>;
+
+/** Tab Photos — danh sách mới theo đúng thứ tự; ảnh đầu là ảnh bìa (ADR-0048 §1–2). */
+export const AdminTourPhotosInputSchema = z.object({
+  id: z.uuid(),
+  version: VersionSchema,
+  photos: z
+    .array(AdminTourPhotoInputSchema)
+    .max(TOUR_PHOTOS_MAX)
+    .refine((photos) => new Set(photos.map((photo) => photo.publicId)).size === photos.length, {
+      message: 'a photo can only be listed once',
+    }),
+});
+export type AdminTourPhotosInput = z.output<typeof AdminTourPhotosInputSchema>;
