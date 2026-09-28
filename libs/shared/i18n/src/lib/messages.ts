@@ -5170,7 +5170,7 @@ export const messages = {
           title: 'Reject this review?',
           body: {
             editable:
-              'Rejecting runs everything below in one go, straight away. The author can edit the review once and send it back.',
+              'Rejecting runs everything below in one go, straight away. The author gets one more chance: they can edit the review and send it back.',
             final:
               'Rejecting closes the review for good and runs everything below in one go, straight away.',
           },
@@ -5191,7 +5191,8 @@ export const messages = {
             noRating: 'No tour rating changes — this review is not attached to a tour.',
             /** Khác `unpublish`: bác bỏ thì khách ĐƯỢC báo (ADR-0031 §6). */
             email: {
-              editable: 'Emails the author your reason, with a link to edit the review once.',
+              editable:
+                'Emails the author your reason, with a link to edit the review and send it back.',
               final:
                 'Emails the author your reason, and tells them the review can no longer be edited.',
             },

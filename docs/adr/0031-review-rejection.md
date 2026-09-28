@@ -242,7 +242,7 @@ Rà lúc thiết kế tìm ra thêm ba chỗ nói SAI kể từ khi ADR-0032 (c�
   queue for good"*: chỉ đúng ở lần bác chung cuộc. Lần đầu, tác giả sửa xong
   thì review quay lại hàng đợi (ADR-0032 §4).
 - Email `REVIEW_REJECTED` chỉ mời *"reply to this email"*, không nói khách
-  còn sửa được một lần. Trang booking có form sửa (ADR-0032 §7), nhưng khách
+  còn một cơ hội sửa. Trang booking có form sửa (ADR-0032 §7), nhưng khách
   không có lý do gì để mở lại trang ấy.
 
 ### Quyết định
@@ -281,13 +281,17 @@ contract** (ADR-0032 §6 — không chép luật sang chỗ thứ ba). Tác gi�
 VÀ `canAuthorEdit({ moderationState: 'rejected', rejectionCount: số lần bác
 đã có + 1 })`.
 
-- Dialog: còn sửa được thì nói *"tác giả sửa được một lần, sửa xong review
-  quay lại hàng đợi"*; hết đường thì nói rõ là chung cuộc. Lời khuyên
+- Dialog: còn sửa được thì nói *"tác giả còn một cơ hội: sửa rồi gửi lại,
+  review quay lại hàng đợi"*; hết đường thì nói rõ là chung cuộc. Câu chữ nói
+  "thêm một cơ hội" chứ không nói "sửa một lần": luật đếm LẦN BÁC, không đếm
+  lần sửa (ADR-0032 §5) — trong lúc chờ duyệt khách sửa bao nhiêu lần cũng
+  được. Lời khuyên
   *"còn phân vân thì Unpublish"* chỉ hiện với review ĐANG hiện trên site —
   review đang chờ không có nút Unpublish, phân vân thì cứ để nó trong hàng
   đợi.
 - Email: payload thêm `canEdit` (service tính bằng số lần bác vừa đếm TRONG
-  transaction — đúng con số đã dùng cho `dedupeKey`) và `bookingCode`. Còn sửa
+  transaction — đúng con số đã dùng cho `dedupeKey`) và mã booking (khoá
+  `code`, cùng tên với mọi mail booking khác). Còn sửa
   được thì thêm câu và nút tới `/account/bookings/<code>`; hết đường thì nói
   *"đã xem lại hai lần, không sửa được nữa"*. Payload xếp hàng TRƯỚC lúc deploy
   không có hai trường này, nên worker in đúng như cũ — không hứa điều nó không
@@ -300,7 +304,7 @@ VÀ `canAuthorEdit({ moderationState: 'rejected', rejectionCount: số lần bá
 | Contract | xuất hằng `REVIEW_MODERATION_NOTE_MAX` (schema dùng lại chính nó) — hình dạng input/output không đổi |
 | Admin | dialog Reject riêng, dựng trên hook `useConfirmWrite` (kit `ConfirmWriteDialog` không đổi — ba lệnh kia vẫn đi qua nó); cột trái là ô tìm và danh sách lý do |
 | i18n | danh sách lý do; copy dialog theo lần bác |
-| API | payload `REVIEW_REJECTED` thêm `canEdit`, `bookingCode`; worker in hai nhánh, payload cũ in như trước |
+| API | payload `REVIEW_REJECTED` thêm `canEdit`, `code`; worker in hai nhánh, payload cũ in như trước |
 
 KHÔNG migration. Web không đổi: trang booking đã hiện lý do và form sửa từ
 ADR-0032.
