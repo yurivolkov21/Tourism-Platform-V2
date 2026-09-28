@@ -104,7 +104,9 @@ Từ trên xuống:
 Bỏ: công tắc On sale và câu `toggleBlocked` (dời xuống bước Review, §2d.6); khung
 readiness (`TourReadinessPanel` — xoá component và spec của nó).
 
-`SITE_URL` đang khai ở `nav-user.tsx` dời ra `lib/site.ts` để hai chỗ dùng chung.
+`SITE_URL` đang khai ở bốn chỗ (`nav-user.tsx`, trang đăng nhập, trang not-authorized,
+`login-form.tsx`) dời ra `lib/site.ts` để mọi chỗ dùng chung. Link Departures dùng lại
+`departuresHref(slug)` sẵn có ở `lib/tours-query.ts`.
 
 ### 2c. Bố cục bước
 
@@ -162,7 +164,7 @@ Mọi khung form thành `Card` (`CardHeader` · `CardTitle` · `CardDescription`
     ảnh bìa (ảnh đầu của `detail.photos`, `tourPhotoThumb`, khung 3:2, `object-cover`;
     chưa có ảnh thì ô xám "No cover photo yet"); chip "Featured" trên ảnh khi đánh dấu
     Featured, kèm câu nhỏ "The Featured label shows unless the card shows a discount.";
-    dòng dữ kiện "<điểm đến chính> · N days · up to M guests"; tên 1 dòng (cắt …);
+    dòng dữ kiện "<điểm đến chính> · N days · Max M" (chữ của card web); tên 1 dòng (cắt …);
     tóm tắt 2 dòng; sao "4.7 (128)" hoặc "Not rated yet"; dòng giá **"Base price $89"**
     kèm câu "The site shows the cheapest upcoming departure."
   - `StepTips`: "Lead the summary with the one thing people remember." · "Two or three
@@ -247,7 +249,9 @@ Bộ tên "tab" đổi sang "step" cho khớp nghĩa (review sẽ grep đúng ch
 
 - `TourEditorStep = 'details' | 'photos' | 'itinerary' | 'content' | 'costs' | 'review'`
 - `TOUR_EDITOR_STEPS`, `tourStepHref(slug, step)`, `activeTourStep(pathname, slug)`
-  (trả `null` ở Departures), `tourSteps(detail)`, `departuresHref(slug)`.
+  (trả `null` ở Departures), `tourSteps(detail)`. Không thêm hàm đường dẫn Departures:
+  dùng lại `departuresHref(slug)` của `lib/tours-query.ts` (hàm thứ ba cùng tên là bẫy
+  import — `lib/departures-query.ts` có một `departuresHref` khác chữ ký).
 - Component: `TourStepNav` (`tour-step-nav.tsx`), `StepColumns`, `StepChecklist`,
   `StepTips`, `TourCardPreview`, `TourReviewStep` (`tour-review-step.tsx`).
 
@@ -273,10 +277,10 @@ know của trang tour; chi phí chỉ nội bộ.
 
 | File | Việc |
 | --- | --- |
-| `apps/admin/src/lib/tour-editor-view.ts` | bộ tên step, `tourSteps`, `departuresHref` |
+| `apps/admin/src/lib/tour-editor-view.ts` | bộ tên step, `tourSteps`, `tourCardPreview` |
 | `apps/admin/src/lib/site.ts` (mới) | `SITE_URL`, `tourPageUrl(slug)` |
 | `apps/admin/src/lib/tours-view.ts`, `components/tours/editor/new-tour-dialog.tsx` | đổi `tourTabHref` → `tourStepHref` |
-| `apps/admin/src/components/nav-user.tsx` | dùng `SITE_URL` từ `lib/site.ts` |
+| `apps/admin/src/components/nav-user.tsx`, `app/login/page.tsx`, `app/not-authorized/page.tsx`, `components/auth/login-form.tsx` | dùng `SITE_URL` từ `lib/site.ts` |
 | `apps/admin/src/components/tours/editor/tour-step-nav.tsx` (mới) | thanh bước |
 | `apps/admin/src/components/tours/editor/tour-workspace-header.tsx` | phần đầu mới |
 | `apps/admin/src/components/tours/editor/tour-workspace-top.tsx` | phần đầu + thanh bước |
@@ -309,7 +313,7 @@ know của trang tour; chi phí chỉ nội bộ.
 
 - **Logic thuần** (`tour-editor-view.spec.ts`): `tourSteps` cho mọi tổ hợp readiness;
   dòng trạng thái đúng chữ; `activeTourStep` (gốc, từng bước, Departures → `null`,
-  đoạn lạ → `details`); `tourStepHref`, `departuresHref`.
+  đoạn lạ → `details`); `tourStepHref`; `tourCardPreview`.
 - **Component**: thanh bước (sáu link, `aria-current`, chữ `sr-only`, tooltip hiện khi
   rê/focus, dấu đúng trạng thái); phần đầu (chip, View on site chỉ khi đang bán,
   Departures `aria-current`); `EditorFormFrame` (`lead` trên lưới, `aside` là
