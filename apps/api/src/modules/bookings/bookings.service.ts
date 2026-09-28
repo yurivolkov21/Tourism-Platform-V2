@@ -40,6 +40,7 @@ import {
 import { REVIEW_MINE_INCLUDE, toMyReview } from '../reviews/reviews.service.js';
 import { bookingCancellation } from './booking-cancellation.js';
 import { mintBookingCode } from './booking-code.js';
+import { checkoutDescription } from './checkout-description.js';
 import { effectiveUnitPrice, totalAmount } from './pricing.js';
 import { withBookingRefundLock } from './refund-lock.js';
 
@@ -283,6 +284,11 @@ function isCodeCollision(error: unknown): boolean {
   );
 }
 
+/** Khoá ngoại hỏng — hàng cha (tour, chuyến) đã bị xoá dưới chân lệnh ghi. */
+function isForeignKeyViolation(error: unknown): boolean {
+  return error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2003';
+}
+
 const CODE_MINT_ATTEMPTS = 3;
 
 /**
@@ -430,6 +436,10 @@ export class BookingsService {
         break;
       } catch (error) {
         if (isCodeCollision(error) && attempt < CODE_MINT_ATTEMPTS) continue;
+        // Chuyến hay tour biến mất giữa câu đọc ở đầu hàm và câu INSERT — admin
+        // xoá tour đúng khe ấy (F17, vòng review): khoá ngoại nổ P2003. Với
+        // khách đó đúng là "chuyến không còn nhận đặt", không phải 500.
+        if (isForeignKeyViolation(error)) throw new DepartureNotAvailableError();
         throw error;
       }
     }
@@ -446,7 +456,11 @@ export class BookingsService {
         code: booking.code,
         amount: total.toFixed(2),
         currency: booking.currency,
-        description: `${booking.tourTitle} (${calendarDate(booking.departureStartDate)} – ${calendarDate(booking.departureEndDate)})`,
+        description: checkoutDescription(
+          booking.tourTitle,
+          calendarDate(booking.departureStartDate),
+          calendarDate(booking.departureEndDate),
+        ),
         successUrl: `${env.FRONTEND_URL}/checkout/success?code=${booking.code}`,
         cancelUrl: `${env.FRONTEND_URL}/checkout/cancel?code=${booking.code}`,
       });
@@ -553,7 +567,11 @@ export class BookingsService {
           code: booking.code,
           amount: booking.totalAmount.toFixed(2),
           currency: booking.currency,
-          description: `${booking.tourTitle} (${calendarDate(booking.departureStartDate)} – ${calendarDate(booking.departureEndDate)})`,
+          description: checkoutDescription(
+            booking.tourTitle,
+            calendarDate(booking.departureStartDate),
+            calendarDate(booking.departureEndDate),
+          ),
           successUrl: `${env.FRONTEND_URL}/checkout/success?code=${booking.code}`,
           cancelUrl: `${env.FRONTEND_URL}/checkout/cancel?code=${booking.code}`,
         });

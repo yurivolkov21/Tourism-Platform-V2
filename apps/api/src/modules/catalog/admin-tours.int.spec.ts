@@ -537,6 +537,37 @@ describe('admin tours integration (F17)', () => {
       expect(res.statusCode).toBe(404);
       expect(res.json()).toMatchObject({ code: 'NOT_FOUND', message: 'Tour not found' });
     });
+
+    it('xoá tour chen giữa lúc khách đặt chỗ thì khách nhận DEPARTURE_NOT_AVAILABLE, không phải 500', async () => {
+      await makeTour(1);
+      const departure = await makeDeparture(tourId(1), { startDate: day(30), endDate: day(31) });
+      // Chen ĐÚNG khe giữa câu đọc chuyến và câu INSERT của `bookings.create`
+      // (vòng review F17): khoá ngoại nổ P2003, trước đây không ai map nên 500.
+      const insert = prisma.booking.create.bind(prisma.booking);
+      vi.spyOn(prisma.booking, 'create').mockImplementationOnce(((args: Prisma.BookingCreateArgs) =>
+        prisma.tour
+          .delete({ where: { id: tourId(1) } })
+          .then(() => insert(args))) as unknown as typeof prisma.booking.create);
+
+      const res = await app.inject({
+        method: 'POST',
+        url: '/api/bookings',
+        headers: { cookie: customerCookie },
+        payload: {
+          departureId: departure.id,
+          numAdults: 1,
+          numChildren: 0,
+          contactName: 'Ada Lovelace',
+          contactEmail: 'ada@example.com',
+          paymentProvider: 'STRIPE',
+        },
+      });
+
+      expect(res.statusCode).toBe(400);
+      expect(res.json()).toMatchObject({ code: 'DEPARTURE_NOT_AVAILABLE' });
+      expect(await prisma.tour.count({ where: { id: tourId(1) } })).toBe(0);
+      expect(await prisma.booking.count()).toBe(0);
+    });
   });
 
   describe('updateDetails', () => {
