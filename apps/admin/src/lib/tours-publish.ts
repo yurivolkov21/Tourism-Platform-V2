@@ -16,10 +16,11 @@ import { createWriteErrorCodec, type TransportFailureCode } from './api/write-er
 const t = messages.admin.tours.publish;
 
 /**
- * Mã contract DUY NHẤT, và nó là trạng-thái-cũ: tour đã biến mất giữa lúc
- * trang render và lúc bấm. Không có mã "thử lại tại chỗ" — lệnh này không đi
- * qua provider nào để mà bị từ chối, và cố ý KHÔNG có mã nào chặn vì tour đang
- * có booking sống (xem contract `admin.tours.setPublished`).
+ * Hai mã contract. `NOT_FOUND` là trạng-thái-cũ: tour đã biến mất giữa lúc trang
+ * render và lúc bấm. `TOUR_NOT_READY` (F17, ADR-0047 §4) là cổng đăng tour —
+ * KHÔNG phải trạng-thái-cũ ở bảng Tours: mở tour ra điền cho đủ rồi bật lại (ở
+ * phần đầu khu làm việc thì khác, xem `PublishToggle`). Không có mã nào chặn vì
+ * tour đang có booking sống, và gỡ bán không bao giờ bị chặn.
  */
 const codec = createWriteErrorCodec(t.errors, { stale: ['NOT_FOUND'] });
 

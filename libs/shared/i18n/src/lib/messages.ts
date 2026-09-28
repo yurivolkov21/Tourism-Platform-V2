@@ -4054,7 +4054,11 @@ export const messages = {
         toggleBlocked: 'Fill in what is missing to put it on sale.',
         readiness: {
           ready: 'Ready to sell',
-          readyBody: 'Everything a guest needs is filled in.',
+          /**
+           * Nói ĐÚNG thứ readiness đo (vòng review F17) — ba điều kiện, chưa có
+           * ảnh, FAQ hay giá vốn; "Everything a guest needs" là hứa quá.
+           */
+          readyBody: 'It has a summary, a primary destination and a plan for every day.',
           missingTitle: 'Missing before it can go on sale:',
           summary: 'A summary',
           primaryDestination: 'A primary destination',
@@ -4094,8 +4098,9 @@ export const messages = {
             addDaysOnSale:
               'A tour on sale needs an itinerary for every day. Take it off sale before adding days.',
             durationLocked: 'Locked — this tour has departures.',
+            /** Sàn là chuyến CHƯA về và chưa huỷ (`liveSeatsMax`), không phải mọi chuyến. */
             groupFloor: (seats: number) =>
-              `At least ${seats} — the largest departure has ${seats} seats.`,
+              `At least ${seats} — the largest departure still to run has ${seats} seats.`,
             dayTitleOnSale: 'A tour on sale needs a title for every day.',
             /** Ngày không tiêu đề thì không có hàng (spec §2b.3) — mô tả của nó sẽ mất. */
             descriptionWithoutTitle: 'Add a title for this day, or clear its description.',
@@ -4109,7 +4114,8 @@ export const messages = {
           action: 'New tour',
           dialog: {
             title: 'New tour',
-            body: 'It starts off sale. Fill in every tab, then put it on sale.',
+            /** Đúng điều server đòi để bật bán (vòng review F17) — không phải "mọi tab". */
+            body: 'It starts off sale. Add a summary and a plan for every day, then put it on sale.',
             submit: 'Create tour',
             submitting: 'Creating…',
             cancel: 'Cancel',
@@ -5199,11 +5205,13 @@ export const messages = {
          * Dòng báo đầu trang khi tour chưa đăng (spec F16 §2h). Nói bằng ĐÚNG
          * chữ của trang Tours — tab "Off sale", công tắc "On sale" — vì đó là
          * chỗ người đọc sẽ đi sửa; bản đầu bảo "Publish" trong khi trang ấy
-         * không có chữ nào như thế (vòng review F16).
+         * không có chữ nào như thế (vòng review F16). Từ F17 công tắc nằm ngay
+         * phần đầu khu làm việc, trên dòng báo này — bỏ "in the Tours list"
+         * (vòng review F17).
          */
         unpublished: {
           title: 'This tour is off sale',
-          body: 'Travellers cannot see this tour, so none of its departures can be booked, even those marked Bookable. Turn on its On sale switch in the Tours list to start selling.',
+          body: 'Travellers cannot see this tour, so none of its departures can be booked, even those marked Bookable. Turn on its On sale switch to start selling.',
         },
         filterLabel: 'Filter by status',
         all: 'All',

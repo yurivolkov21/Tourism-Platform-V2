@@ -18,7 +18,9 @@ describe('TourReadinessPanel', () => {
     render(<TourReadinessPanel readiness={ready} slug="ha-long" />);
 
     expect(screen.getByText('Ready to sell')).toBeInTheDocument();
-    expect(screen.getByText('Everything a guest needs is filled in.')).toBeInTheDocument();
+    expect(
+      screen.getByText('It has a summary, a primary destination and a plan for every day.'),
+    ).toBeInTheDocument();
     expect(screen.queryByRole('link')).not.toBeInTheDocument();
   });
 
