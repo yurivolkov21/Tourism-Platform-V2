@@ -88,6 +88,29 @@ export async function setAdminTourPublished(
 // ── Khu làm việc của một tour (spec F17) ────────────────────────────────────
 
 /**
+ * Hình dạng `admin.tours.get` của API TRƯỚC F18 — thiếu `photos` và `readiness.cover`.
+ */
+type PreF18TourDetail = Omit<AdminTourDetail, 'photos' | 'readiness'> & {
+  photos?: AdminTourDetail['photos'];
+  readiness: Omit<AdminTourDetail['readiness'], 'cover'> & { cover?: boolean };
+};
+
+/**
+ * Khe deploy (bài học 13 của F17): Vercel đưa admin lên trước khi Render đưa API
+ * lên, nên trong vài phút `get` của API cũ trả tour thiếu `photos` và
+ * `readiness.cover`. Client oRPC của admin KHÔNG kiểm response, nên thiếu là
+ * `undefined` và tab Photos sập. Lùi về: không ảnh, và coi như có ảnh bìa — API cũ
+ * không chặn bật bán vì ảnh, và cả 29 tour đều có ảnh bìa.
+ */
+export function withPhotoFallback(detail: PreF18TourDetail): AdminTourDetail {
+  return {
+    ...detail,
+    photos: detail.photos ?? [],
+    readiness: { ...detail.readiness, cover: detail.readiness.cover ?? true },
+  };
+}
+
+/**
  * Một tour cho khu làm việc; `null` khi slug không có (trang gọi `notFound()`).
  *
  * Slug sai hình dạng của contract (vd dài quá trần) cũng là `null`, không gọi
@@ -106,7 +129,7 @@ export async function fetchAdminTour(
     if (isDefinedError(error) && error.code === 'NOT_FOUND') return null;
     throw error;
   }
-  return data;
+  return withPhotoFallback(data);
 }
 
 export interface TourDestinationOption {

@@ -10,11 +10,15 @@ import {
   type AdminTourFaqsPoliciesInput,
   type AdminTourItineraryInput,
   derivedCostPrice,
+  type MediaItem,
   TOUR_CURRENCY,
   tourReadiness,
 } from '@tourism/contract';
 import { prisma } from '../../auth/auth.config.js';
+import { env } from '../../config/env.js';
 import { Prisma } from '../../generated/prisma/client.js';
+import { MediaOwnerType, MediaRole } from '../../generated/prisma/enums.js';
+import { MediaService } from '../media/media.service.js';
 import { tourRevalidationTags } from '../web-revalidation/revalidation-decision.js';
 import { WebRevalidationService } from '../web-revalidation/web-revalidation.service.js';
 import {
@@ -28,7 +32,8 @@ import {
 } from './admin-tour-errors.js';
 import { costItemsOf } from './tour-cost-items.js';
 import { liveSeatsMax } from './tour-editor-rules.js';
-import { claimTour, hasTourCover, readTourReadiness } from './tour-state.js';
+import { orderTourPhotos, toAdminTourPhoto } from './tour-photos.js';
+import { claimTour, readTourReadiness } from './tour-state.js';
 
 /**
  * Khu làm việc của MỘT tour phía admin (spec F17, ADR-0047): đọc, tạo, xoá, và
@@ -100,7 +105,8 @@ const TOUR_DETAIL_SELECT = {
 
 type TourDetailRow = Prisma.TourGetPayload<{ select: typeof TOUR_DETAIL_SELECT }>;
 
-function toDetail(row: TourDetailRow, now: Date, hasCover: boolean): AdminTourDetail {
+function toDetail(row: TourDetailRow, now: Date, media: readonly MediaItem[]): AdminTourDetail {
+  const ordered = orderTourPhotos(media);
   return {
     id: row.id,
     slug: row.slug,
@@ -136,12 +142,13 @@ function toDetail(row: TourDetailRow, now: Date, hasCover: boolean): AdminTourDe
     departureCount: row.departures.length,
     liveSeatsMax: liveSeatsMax(row.departures, now),
     bookingCount: row._count.bookings,
+    photos: ordered.map((item) => toAdminTourPhoto(item, env.CLOUDINARY_UPLOAD_FOLDER, row.id)),
     readiness: tourReadiness({
       summary: row.summary,
       destinations: row.destinations,
       durationDays: row.durationDays,
       itineraryDays: row.itinerary.map((day) => day.dayNumber),
-      hasCover,
+      hasCover: ordered.some((item) => item.role === 'hero'),
     }),
   };
 }
@@ -186,13 +193,21 @@ function mapLinkError(error: unknown): never {
 export class AdminToursService {
   private readonly logger = new Logger(AdminToursService.name);
 
-  constructor(private readonly webRevalidation: WebRevalidationService) {}
+  constructor(
+    private readonly webRevalidation: WebRevalidationService,
+    private readonly media: MediaService,
+  ) {}
 
   /** Một tour, mọi trạng thái bán — tour tắt bán chính là tour đang được soạn. */
   async get(slug: string): Promise<AdminTourDetail> {
     const row = await prisma.tour.findUnique({ where: { slug }, select: TOUR_DETAIL_SELECT });
     if (!row) throw new AdminTourNotFoundError(slug);
-    return toDetail(row, new Date(), await hasTourCover(prisma, row.id));
+    const media = await this.media.resolveForOwners(
+      MediaOwnerType.TOUR,
+      [row.id],
+      [MediaRole.hero, MediaRole.gallery],
+    );
+    return toDetail(row, new Date(), media.get(row.id) ?? []);
   }
 
   /**

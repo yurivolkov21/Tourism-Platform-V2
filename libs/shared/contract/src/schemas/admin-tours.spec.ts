@@ -7,6 +7,7 @@ import {
   AdminTourDetailsInputSchema,
   AdminTourFaqsPoliciesInputSchema,
   AdminTourItineraryInputSchema,
+  AdminTourPhotoSchema,
 } from './admin-tours.js';
 
 /**
@@ -317,6 +318,7 @@ describe('AdminTourDetailSchema', () => {
     departureCount: 0,
     liveSeatsMax: null,
     bookingCount: 0,
+    photos: [],
     readiness: {
       summary: true,
       primaryDestination: true,
@@ -400,5 +402,25 @@ describe('contract.admin.tours (F17)', () => {
     expect(
       (t.create['~orpc'].errorMap as Record<string, { status: number }>).SLUG_TAKEN?.status,
     ).toBe(409);
+  });
+});
+
+describe('AdminTourDetailSchema.photos (F18)', () => {
+  it('nhận ảnh có hoặc không có ghi công; nguồn chỉ là UPLOAD hay LIBRARY', () => {
+    const photo = {
+      publicId: 'tourism/catalog/destination/hoi-an/1',
+      url: 'https://res.cloudinary.com/demo/image/upload/f_auto,q_auto/v1/tourism/x',
+      alt: 'Lanterns',
+      width: 2400,
+      height: 1600,
+      source: 'LIBRARY',
+      author: 'J. Nguyen',
+      license: 'CC BY-SA 4.0',
+    };
+    expect(AdminTourPhotoSchema.parse(photo)).toEqual(photo);
+    expect(AdminTourPhotoSchema.safeParse({ ...photo, source: 'CATALOG' }).success).toBe(false);
+    expect(
+      AdminTourPhotoSchema.safeParse({ ...photo, alt: null, author: null, license: null }).success,
+    ).toBe(true);
   });
 });

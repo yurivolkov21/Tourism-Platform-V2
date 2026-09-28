@@ -70,8 +70,19 @@ describe('fetchAdminTour (spec F17 §2g)', () => {
     const detail = detailFixture();
     getTourMock.mockResolvedValue(detail);
 
-    await expect(fetchAdminTour('cookie=x', 'ha-long-bay-cruise')).resolves.toBe(detail);
+    await expect(fetchAdminTour('cookie=x', 'ha-long-bay-cruise')).resolves.toEqual(detail);
     expect(getTourMock).toHaveBeenCalledWith({ slug: 'ha-long-bay-cruise' }, expect.anything());
+  });
+
+  it('khe deploy: API cũ chưa trả photos và readiness.cover → lùi về [] và true', async () => {
+    const { photos: _photos, readiness, ...rest } = detailFixture();
+    const { cover: _cover, ...oldReadiness } = readiness;
+    getTourMock.mockResolvedValue({ ...rest, readiness: oldReadiness });
+
+    const detail = await fetchAdminTour('cookie=x', 'ha-long-bay-cruise');
+
+    expect(detail?.photos).toEqual([]);
+    expect(detail?.readiness.cover).toBe(true);
   });
 
   it('NOT_FOUND do contract KHAI thì trả null — trang gọi notFound()', async () => {

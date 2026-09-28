@@ -5,7 +5,9 @@ import {
   buildSignedUploadParams,
   INCOMING_TRANSFORMATION,
   isOwnAvatarPublicId,
+  isTourUploadPublicId,
   resolveUploadConfig,
+  tourPhotoFolder,
   uploadFolderFor,
 } from './upload-signing.js';
 
@@ -87,5 +89,23 @@ describe('isOwnAvatarPublicId', () => {
     expect(isOwnAvatarPublicId('tourism', 'u-1', 'tourism/reviews/BK-X/pid')).toBe(false);
     // Prefix giả kiểu "u-1-evil" không được lọt — phải so theo SEGMENT.
     expect(isOwnAvatarPublicId('tourism', 'u-1', 'tourism/avatars/u-1-evil/pid')).toBe(false);
+  });
+});
+
+describe('tourPhotoFolder / isTourUploadPublicId (ADR-0048 §3)', () => {
+  const TOUR = '7a1b2c3d-0000-4000-8000-000000000001';
+
+  it('thư mục tải lên của một tour nằm dưới <root>/tours/<tourId>', () => {
+    expect(tourPhotoFolder('tourism', TOUR)).toBe(`tourism/tours/${TOUR}`);
+  });
+
+  it('chỉ publicId trong ĐÚNG thư mục ấy mới là ảnh tải lên của tour', () => {
+    expect(isTourUploadPublicId('tourism', TOUR, `tourism/tours/${TOUR}/abc`)).toBe(true);
+    // Tiền tố gần giống: id tour khác bắt đầu bằng id này, thiếu `/` chốt đuôi thì khớp nhầm.
+    expect(isTourUploadPublicId('tourism', TOUR, `tourism/tours/${TOUR}0/abc`)).toBe(false);
+    expect(isTourUploadPublicId('tourism', TOUR, `tourism/tours/${TOUR}`)).toBe(false);
+    // Thư mục cũ có sẵn trên cloud (ADR-0020 Hệ quả) và ảnh thư viện.
+    expect(isTourUploadPublicId('tourism', TOUR, 'tourism/tours/hero/abc')).toBe(false);
+    expect(isTourUploadPublicId('tourism', TOUR, 'tourism/catalog/tour/abc')).toBe(false);
   });
 });

@@ -97,6 +97,26 @@ const DestinationsSchema = z
 
 // ── Đọc ─────────────────────────────────────────────────────────────────────
 
+/** Nguồn của một ảnh tour — suy từ thư mục của publicId, không lưu thành cột (ADR-0048 §3). */
+export const TourPhotoSourceSchema = z.enum(['UPLOAD', 'LIBRARY']);
+export type TourPhotoSource = z.output<typeof TourPhotoSourceSchema>;
+
+/**
+ * Một ảnh của tour như tab Photos cần. Lỏng như mọi schema HÀNG: `alt` có thể
+ * null ở dữ liệu cũ. Ghi công (ADR-0020) chỉ ảnh thư viện có.
+ */
+export const AdminTourPhotoSchema = z.object({
+  publicId: z.string().min(1),
+  url: z.url(),
+  alt: z.string().nullable(),
+  width: z.int().positive().nullable(),
+  height: z.int().positive().nullable(),
+  source: TourPhotoSourceSchema,
+  author: z.string().nullable(),
+  license: z.string().nullable(),
+});
+export type AdminTourPhoto = z.output<typeof AdminTourPhotoSchema>;
+
 /**
  * Một tour như khu làm việc cần. Schema HÀNG cố ý LỎNG hơn input (cùng lý lẽ
  * `AdminDestinationRowSchema`): nó mô tả thứ DB đang giữ, không phải luật ghi —
@@ -163,6 +183,8 @@ export const AdminTourDetailSchema = z.object({
   liveSeatsMax: z.int().nonnegative().nullable(),
   /** Mọi booking, mọi trạng thái — nút Delete chỉ hiện khi bằng 0. */
   bookingCount: z.int().nonnegative(),
+  /** Theo thứ tự hiển thị: ảnh bìa (`hero`) đầu, rồi gallery theo `sortOrder` (ADR-0048 §1). */
+  photos: z.array(AdminTourPhotoSchema),
   readiness: TourReadinessSchema,
 });
 export type AdminTourDetail = z.output<typeof AdminTourDetailSchema>;

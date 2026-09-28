@@ -393,6 +393,46 @@ describe('admin tours integration (F17)', () => {
       expect(res.json()).toMatchObject({ code: 'NOT_FOUND', message: 'Tour not found' });
     });
 
+    it('trả ảnh theo thứ tự hiển thị, mỗi ảnh mang nguồn và ghi công (F18)', async () => {
+      await makeTour(1);
+      const media = (publicId: string, patch: Partial<Prisma.MediaAssetUncheckedCreateInput>) =>
+        prisma.mediaAsset.create({
+          data: {
+            ownerType: 'TOUR',
+            ownerId: tourId(1),
+            publicId,
+            type: 'IMAGE',
+            role: 'gallery',
+            alt: publicId,
+            ...patch,
+          },
+        });
+      // Ảnh bìa mang sortOrder LỚN nhất: seed không bảo đảm nó là 0, và DB vốn đã
+      // sắp theo sortOrder — ảnh bìa ở 0 thì thiếu `orderTourPhotos` vẫn xanh.
+      await prisma.mediaAsset.updateMany({
+        where: { ownerId: tourId(1), role: 'hero' },
+        data: { sortOrder: 9 },
+      });
+      // Chèn NGƯỢC thứ tự hiển thị — kết quả phải sắp lại, không theo thứ tự tạo.
+      await media(`tourism/tours/${tourId(1)}/uploaded`, { sortOrder: 2, version: '1700000002' });
+      await media('tourism/catalog/destination/hoi-an/1', {
+        sortOrder: 1,
+        author: 'J. Nguyen',
+        license: 'CC BY-SA 4.0',
+      });
+
+      const detail = await detailOf('f17-tour-1');
+
+      expect(detail.photos.map((p) => [p.publicId, p.source])).toEqual([
+        ['tourism/catalog/tour/f17-1', 'LIBRARY'],
+        ['tourism/catalog/destination/hoi-an/1', 'LIBRARY'],
+        [`tourism/tours/${tourId(1)}/uploaded`, 'UPLOAD'],
+      ]);
+      expect(detail.photos[1]).toMatchObject({ author: 'J. Nguyen', license: 'CC BY-SA 4.0' });
+      expect(detail.photos[2]?.url).toContain(`/v1700000002/tourism/tours/${tourId(1)}/uploaded`);
+      expect(detail.readiness.cover).toBe(true);
+    });
+
     it('tour chưa có ảnh bìa thì readiness.cover = false và không ready (F18)', async () => {
       await makeTour(1);
       await prisma.mediaAsset.deleteMany({ where: { ownerId: tourId(1) } });

@@ -44,6 +44,25 @@ export function uploadFolderFor(
     : `${rootFolder}/reviews/${req.bookingCode}`;
 }
 
+/** Thư mục ảnh admin tải lên cho MỘT tour (ADR-0048 §3) — server quyết, client không chọn. */
+export function tourPhotoFolder(rootFolder: string, tourId: string): string {
+  return `${rootFolder}/tours/${tourId}`;
+}
+
+/**
+ * publicId có nằm trong thư mục tải lên của ĐÚNG tour này không. So theo tiền tố
+ * có `/` chốt đuôi — cùng nếp `isOwnAvatarPublicId` — để tour có id là tiền tố của
+ * id khác không khớp nhầm. Chỉ ảnh khớp ở đây mới được vào lại hàng dọn khi bị gỡ
+ * (ADR-0048 §6); ảnh thư viện thì không bao giờ.
+ */
+export function isTourUploadPublicId(
+  rootFolder: string,
+  tourId: string,
+  publicId: string,
+): boolean {
+  return publicId.startsWith(`${tourPhotoFolder(rootFolder, tourId)}/`);
+}
+
 /**
  * Format Cloudinary được phép LƯU (W4 U1, ADR-0021 AMEND 1) — chuỗi phẩy
  * đúng dạng tham số `allowed_formats`. Chữ ký không phủ endpoint
