@@ -27,15 +27,17 @@ import {
   TOUR_SUMMARY_MAX,
   TOUR_TITLE_MAX,
   type TourBadge,
+  TourBadgeSchema,
   TourBasePriceSchema,
   type TourCostBasis,
   type TourCostCategory,
   type TourDifficulty,
   type TravellerType,
+  TravellerTypeSchema,
 } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
 import { createWriteErrorCodec, type TransportFailureCode } from './api/write-error';
-import { type Keyed, newItemKey } from './list-editor';
+import type { Keyed } from './list-editor';
 
 /**
  * Logic THUẦN của sáu hành vi ghi của khu làm việc tour (spec F17) — cùng khuôn
@@ -131,9 +133,19 @@ function wholeNumberError(text: string, min: number, max: number): string | unde
     : fe.wholeNumber(min, max);
 }
 
+/** Khuôn tiền của contract: tối đa 2 chữ số lẻ — để tách "sai khuôn" khỏi "quá trần". */
+const AMOUNT = /^\d+(\.\d{1,2})?$/;
+
+/** Ô tiền đúng khuôn mà vẫn hỏng thì chỉ có thể là quá trần 999,999.99 (vòng review F17). */
+function amountError(value: string): string | undefined {
+  if (DeparturePriceSchema.safeParse(value).success) return undefined;
+  return AMOUNT.test(value) ? fe.priceMax : fe.price;
+}
+
 function basePriceError(text: string): string | undefined {
   const value = text.trim();
-  if (!DeparturePriceSchema.safeParse(value).success) return fe.price;
+  const error = amountError(value);
+  if (error !== undefined) return error;
   return TourBasePriceSchema.safeParse(value).success ? undefined : fe.priceAboveZero;
 }
 
@@ -282,8 +294,29 @@ export interface TourDetailsFormErrors {
   lines?: Record<string, string>;
 }
 
-const toLines = (texts: readonly string[]): LineDraft[] =>
-  texts.map((text) => ({ key: newItemKey(), text }));
+/**
+ * Key của dòng dựng từ dữ liệu SERVER: tất định, tiền tố riêng cho từng danh sách
+ * (vòng review F17). Form dựng lần đầu trên server (SSR) rồi dựng lại lúc
+ * hydrate; key UUID ngẫu nhiên ra hai giá trị khác nhau, và id/htmlFor ghép từ
+ * key lệch nhau giữa hai lần. Tiền tố riêng vì lỗi của tab Details khoá theo key
+ * chung cho mọi danh sách. Dòng thêm MỚI trên trình duyệt vẫn dùng `newItemKey()`.
+ */
+const serverKey = (list: string, index: number) => `${list}-${index}`;
+
+const toLines = (list: string, texts: readonly string[]): LineDraft[] =>
+  texts.map((text, index) => ({ key: serverKey(list, index), text }));
+
+/**
+ * Mảng enum xếp theo thứ tự danh sách chọn (vòng review F17): ô tích dựng mảng
+ * mới theo thứ tự danh sách, nên bản gốc lệch thứ tự (bốn tour seed) thì tích
+ * rồi bỏ tích cũng thành "có thay đổi".
+ */
+function inOptionOrder<Value extends string>(
+  options: readonly Value[],
+  selected: readonly Value[],
+): Value[] {
+  return options.filter((value) => selected.includes(value));
+}
 
 export function detailsFormValues(detail: AdminTourDetail): TourDetailsFormValues {
   return {
@@ -295,16 +328,16 @@ export function detailsFormValues(detail: AdminTourDetail): TourDetailsFormValue
     durationDays: String(detail.durationDays),
     maxGroupSize: String(detail.maxGroupSize),
     basePrice: detail.basePrice,
-    destinations: detail.destinations.map((link) => ({
-      key: newItemKey(),
+    destinations: detail.destinations.map((link, index) => ({
+      key: serverKey('dest', index),
       destinationId: link.destinationId,
       isPrimary: link.isPrimary,
     })),
-    suitableFor: [...detail.suitableFor],
-    badges: [...detail.badges],
-    highlights: toLines(detail.highlights),
-    included: toLines(detail.included),
-    excluded: toLines(detail.excluded),
+    suitableFor: inOptionOrder(TravellerTypeSchema.options, detail.suitableFor),
+    badges: inOptionOrder(TourBadgeSchema.options, detail.badges),
+    highlights: toLines('hl', detail.highlights),
+    included: toLines('inc', detail.included),
+    excluded: toLines('exc', detail.excluded),
     meetingPoint: detail.meetingPoint ?? '',
     factDurationNote: detail.factDurationNote ?? '',
     factGroupSizeNote: detail.factGroupSizeNote ?? '',
@@ -341,7 +374,12 @@ export function validateTourDetailsForm(
   const group = parseWholeNumber(values.maxGroupSize);
   const groupError = wholeNumberError(values.maxGroupSize, 1, TOUR_GROUP_MAX);
   if (groupError !== undefined) errors.maxGroupSize = groupError;
-  else if (detail.liveSeatsMax !== null && group < detail.liveSeatsMax) {
+  else if (
+    detail.liveSeatsMax !== null &&
+    group < detail.liveSeatsMax &&
+    // Chỉ chặn khi HẠ — cùng luật server (vòng review F17, spec §2b.2).
+    group < detail.maxGroupSize
+  ) {
     errors.maxGroupSize = fe.groupFloor(detail.liveSeatsMax);
   }
 
@@ -510,15 +548,22 @@ export function droppedCancellationCount(detail: AdminTourDetail): number {
 
 export function contentFormValues(detail: AdminTourDetail): ContentFormValues {
   return {
-    faqs: detail.faqs.map((faq) => ({
-      key: newItemKey(),
+    faqs: detail.faqs.map((faq, index) => ({
+      key: serverKey('faq', index),
       question: faq.question,
       answer: faq.answer,
     })),
-    policies: detail.policies.flatMap((policy) =>
+    policies: detail.policies.flatMap((policy, index) =>
       policy.kind === 'CANCELLATION'
         ? []
-        : [{ key: newItemKey(), kind: policy.kind, title: policy.title, body: policy.body }],
+        : [
+            {
+              key: serverKey('pol', index),
+              kind: policy.kind,
+              title: policy.title,
+              body: policy.body,
+            },
+          ],
     ),
   };
 }
@@ -575,8 +620,8 @@ export type CostsFormErrors = Record<string, Partial<Record<'label' | 'amount', 
 
 export function costsFormValues(detail: AdminTourDetail): CostsFormValues {
   return {
-    items: detail.costItems.map((item) => ({
-      key: newItemKey(),
+    items: detail.costItems.map((item, index) => ({
+      key: serverKey('cost', index),
       category: item.category,
       label: item.label,
       amount: item.amount,
@@ -591,7 +636,7 @@ export function validateCostsForm(values: CostsFormValues): CostsFormErrors {
     const entry: CostsFormErrors[string] = {};
     setError(entry, 'label', textError(item.label, TOUR_COST_LABEL_MAX, true));
     // Chi phí 0 là có thật (vé miễn phí) — khuôn giá chuyến, cho phép 0.
-    if (!DeparturePriceSchema.safeParse(item.amount.trim()).success) entry.amount = fe.price;
+    setError(entry, 'amount', amountError(item.amount.trim()));
     if (Object.keys(entry).length > 0) errors[item.key] = entry;
   }
   return errors;

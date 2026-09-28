@@ -14,10 +14,9 @@ import {
 import { messages } from '@tourism/i18n';
 import { Checkbox } from '@tourism/ui/components/checkbox';
 import { Input } from '@tourism/ui/components/input';
-import { RadioGroup, RadioGroupItem } from '@tourism/ui/components/radio-group';
 import { Textarea } from '@tourism/ui/components/textarea';
 import { LockIcon } from 'lucide-react';
-import { useState } from 'react';
+import { useId, useState } from 'react';
 import { FormField } from '@/components/kit/form-field';
 import { FormSelect } from '@/components/kit/form-select';
 import { ListEditor } from '@/components/kit/list-editor';
@@ -83,6 +82,8 @@ export function TourDetailsForm({
 }) {
   const publishSaved = usePublishSavedDetail();
   const form = useTourFormState<TourDetailsFormValues>(detail, detailsFormValues);
+  /** `name` chung của các radio điểm chính — duy nhất cho mỗi form trên trang. */
+  const primaryName = `${useId()}-primary`;
   const { values, version, dirty, showValidation } = form;
   /**
    * Lỗi server thuộc về một ô (DURATION_LOCKED, GROUP_SIZE_BELOW_SEATS), gắn với
@@ -138,6 +139,12 @@ export function TourDetailsForm({
     void save(() => saveAction(tourDetailsPayload(detail.id, version, values)));
   }
 
+  function setPrimary(key: string) {
+    patch({
+      destinations: values.destinations.map((line) => ({ ...line, isPrimary: line.key === key })),
+    });
+  }
+
   /** Danh sách điểm đến luôn có đúng một điểm chính khi còn dòng nào. */
   function setDestinations(next: DestinationDraft[]) {
     const hasPrimary = next.some((line) => line.isPrimary);
@@ -164,7 +171,10 @@ export function TourDetailsForm({
       label: messages.toursPage.difficultyLabels[level],
     })),
   ];
-  const primaryKey = values.destinations.find((line) => line.isPrimary)?.key;
+  /** Tên điểm đến của một dòng cho radio điểm chính; dòng chưa chọn thì "destination N". */
+  const destinationLabel = (line: DestinationDraft, index: number) =>
+    destinationOptions.find((option) => option.value === line.destinationId)?.label ??
+    t.destinationName(index + 1);
   const lineError = (key: string) => errors.lines?.[key];
   const durationError =
     errors.durationDays ??
@@ -336,64 +346,66 @@ export function TourDetailsForm({
               {errors.destinations}
             </p>
           ) : null}
-          <RadioGroup
-            value={primaryKey ?? ''}
+          {/* Radio GỐC ở từng dòng, không phải RadioGroup của Base UI bọc cả danh
+              sách (vòng review F17): gốc composite của RadioGroup bắt MỌI phím mũi
+              tên nổi bọt từ nút xoá hay ô chọn bên trong, dời tiêu điểm sang một
+              radio và radio tự bấm khi nhận tiêu điểm — điểm chính đổi mà admin
+              không chọn. Radio gốc cùng `name` chỉ nghe mũi tên khi chính nó đang
+              được focus. Không có nút dời: bảng không có cột thứ tự. */}
+          <ListEditor<DestinationDraft>
+            items={values.destinations}
+            onChange={setDestinations}
+            max={TOUR_DESTINATIONS_MAX}
+            reorderable={false}
+            newItem={() => ({
+              key: newItemKey(),
+              destinationId: '',
+              isPrimary: values.destinations.length === 0,
+            })}
+            addLabel={t.addDestination}
+            itemName={(index) => t.destinationName(index + 1)}
             disabled={pending}
-            onValueChange={(key) =>
-              patch({
-                destinations: values.destinations.map((line) => ({
-                  ...line,
-                  isPrimary: line.key === key,
-                })),
-              })
-            }
-          >
-            <ListEditor<DestinationDraft>
-              items={values.destinations}
-              onChange={setDestinations}
-              max={TOUR_DESTINATIONS_MAX}
-              newItem={() => ({
-                key: newItemKey(),
-                destinationId: '',
-                isPrimary: values.destinations.length === 0,
-              })}
-              addLabel={t.addDestination}
-              itemName={(index) => t.destinationName(index + 1)}
-              disabled={pending}
-              renderItem={(line) => (
-                <div className="grid gap-3 sm:grid-cols-[1fr_auto] sm:items-end">
-                  <FormField
-                    id={`tour-destination-${line.key}`}
-                    label={t.destination}
-                    error={lineError(line.key)}
-                  >
-                    {(describedBy) => (
-                      <FormSelect
-                        id={`tour-destination-${line.key}`}
-                        value={line.destinationId}
-                        options={destinationOptions}
-                        placeholder={t.destinationPlaceholder}
-                        disabled={pending}
-                        invalid={lineError(line.key) !== undefined}
-                        describedBy={describedBy}
-                        onValueChange={(destinationId) =>
-                          patch({
-                            destinations: values.destinations.map((item) =>
-                              item.key === line.key ? { ...item, destinationId } : item,
-                            ),
-                          })
-                        }
-                      />
-                    )}
-                  </FormField>
-                  <span className="flex items-center gap-2 pb-2 text-sm">
-                    <RadioGroupItem value={line.key} aria-label={t.primary} />
-                    <span aria-hidden="true">{t.primary}</span>
-                  </span>
-                </div>
-              )}
-            />
-          </RadioGroup>
+            renderItem={(line, index) => (
+              <div className="grid gap-3 sm:grid-cols-[1fr_auto] sm:items-end">
+                <FormField
+                  id={`tour-destination-${line.key}`}
+                  label={t.destination}
+                  error={lineError(line.key)}
+                >
+                  {(describedBy) => (
+                    <FormSelect
+                      id={`tour-destination-${line.key}`}
+                      value={line.destinationId}
+                      options={destinationOptions}
+                      placeholder={t.destinationPlaceholder}
+                      disabled={pending}
+                      invalid={lineError(line.key) !== undefined}
+                      describedBy={describedBy}
+                      onValueChange={(destinationId) =>
+                        patch({
+                          destinations: values.destinations.map((item) =>
+                            item.key === line.key ? { ...item, destinationId } : item,
+                          ),
+                        })
+                      }
+                    />
+                  )}
+                </FormField>
+                <label className="flex w-fit items-center gap-2 pb-2 text-sm">
+                  <input
+                    type="radio"
+                    name={primaryName}
+                    className="size-4 accent-primary disabled:opacity-50"
+                    checked={line.isPrimary}
+                    disabled={pending}
+                    aria-label={t.primaryFor(destinationLabel(line, index))}
+                    onChange={() => setPrimary(line.key)}
+                  />
+                  {t.primary}
+                </label>
+              </div>
+            )}
+          />
         </fieldset>
 
         <fieldset className="grid gap-5 rounded-lg border p-4">
@@ -505,7 +517,11 @@ export function TourDetailsForm({
   );
 }
 
-/** Một ô tích có nhãn thấy được — tên đọc-màn-hình trỏ vào chính nhãn ấy. */
+/**
+ * Một ô tích có nhãn thấy được. `<label htmlFor>` thật (vòng review F17): bấm vào
+ * CHỮ cũng tích được, không chỉ ô vuông nhỏ. `id` của Base UI rơi vào ô input ẩn
+ * của nó, và Base UI tự nối tên đọc-màn-hình của ô tích với nhãn trỏ vào input ấy.
+ */
 function CheckboxRow({
   id,
   label,
@@ -520,14 +536,14 @@ function CheckboxRow({
   onChange: (checked: boolean) => void;
 }) {
   return (
-    <span className="flex items-center gap-2 text-sm">
+    <span className="flex w-fit items-center gap-2 text-sm">
       <Checkbox
-        aria-labelledby={`${id}-label`}
+        id={id}
         checked={checked}
         disabled={disabled}
         onCheckedChange={(value) => onChange(value === true)}
       />
-      <span id={`${id}-label`}>{label}</span>
+      <label htmlFor={id}>{label}</label>
     </span>
   );
 }

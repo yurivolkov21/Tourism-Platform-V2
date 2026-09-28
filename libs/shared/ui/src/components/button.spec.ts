@@ -16,4 +16,13 @@ describe('buttonVariants', () => {
     expect(classes).toContain('dark:border-border');
     expect(classes).not.toContain('dark:border');
   });
+
+  it('nút khoá bằng focusableWhenDisabled (chỉ mang aria-disabled) cũng mờ và không bắt chuột', () => {
+    // Base UI không gắn thuộc tính `disabled` thật cho nút `focusableWhenDisabled`,
+    // nên biến thể `disabled:` không bao giờ khớp: nút Save khi chưa sửa gì trông
+    // y như nút bấm được (vòng review F17).
+    const classes = buttonVariants().split(' ');
+    expect(classes).toContain('aria-disabled:opacity-50');
+    expect(classes).toContain('aria-disabled:pointer-events-none');
+  });
 });

@@ -5,7 +5,7 @@ import type {
   AdminDepartureSetStatusInput,
   AdminDepartureUpdateInput,
 } from '@tourism/contract';
-import { cancellationDeadline, DEPARTURE_SEATS_MAX } from '@tourism/contract';
+import { cancellationDeadline, DEPARTURE_PRICE_MAX, DEPARTURE_SEATS_MAX } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
 import { createWriteErrorCodec, type TransportFailureCode } from './api/write-error';
 import { formatDateRange } from './bookings-view';
@@ -203,6 +203,7 @@ export function validateDepartureForm(
 
   const price = values.price.trim();
   if (price !== '' && !AMOUNT.test(price)) errors.price = e.price;
+  else if (price !== '' && Number(price) > DEPARTURE_PRICE_MAX) errors.price = e.priceMax;
 
   return errors;
 }

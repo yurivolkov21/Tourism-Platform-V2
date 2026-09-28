@@ -4080,6 +4080,8 @@ export const messages = {
             wholeNumber: (min: number, max: number) =>
               `Enter a whole number from ${min} to ${max}.`,
             price: 'Enter an amount like 129 or 129.50.',
+            /** Trần mọi ô tiền admin gõ tay (`DEPARTURE_PRICE_MAX`, vòng review F17). */
+            priceMax: 'Enter an amount up to 999,999.99.',
             priceAboveZero: 'Enter an amount above zero.',
             slugShape: SLUG_SHAPE_COPY,
             chooseCategory: 'Choose a category.',
@@ -4153,6 +4155,11 @@ export const messages = {
           destination: 'Destination',
           destinationPlaceholder: 'Choose a destination',
           primary: 'Primary',
+          /**
+           * Tên đọc-màn-hình của radio điểm chính — mang tên điểm đến của dòng
+           * (vòng review F17); chữ nhìn thấy "Primary" nằm trong tên (WCAG 2.5.3).
+           */
+          primaryFor: (name: string) => `Primary: ${name}`,
           destinationsHint: 'Mark exactly one as the primary destination.',
           addDestination: 'Add destination',
           destinationName: (n: number) => `destination ${n}`,
@@ -5293,6 +5300,8 @@ export const messages = {
           seatsBelowBooked: (booked: number) =>
             `This departure already has ${booked} seats booked — the total cannot go below that.`,
           price: 'Price must be an amount like 129.00, or empty to use the tour base price.',
+          /** Trần mọi ô tiền admin gõ tay (`DEPARTURE_PRICE_MAX`, vòng review F17). */
+          priceMax: 'Price must be 999,999.99 or less, or empty to use the tour base price.',
         },
         cancel: 'Cancel',
       },

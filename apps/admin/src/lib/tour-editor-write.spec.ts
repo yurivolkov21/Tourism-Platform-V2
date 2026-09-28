@@ -214,11 +214,14 @@ describe('tab Details', () => {
   });
 
   it('có chuyến thì số ngày khoá — cả tăng lẫn giảm', () => {
-    const locked = detailFixture({ departureCount: 2 });
-    expect(
-      validateTourDetailsForm({ ...detailsFormValues(locked), durationDays: '2' }, locked)
-        .durationDays,
-    ).toBe(fe.durationLocked);
+    const locked = detailFixture({ departureCount: 2, isPublished: false });
+    // Tour TẮT bán để chiều tăng không vướng luật "đang bán thì không thêm ngày".
+    for (const durationDays of ['2', '4']) {
+      expect(
+        validateTourDetailsForm({ ...detailsFormValues(locked), durationDays }, locked)
+          .durationDays,
+      ).toBe(fe.durationLocked);
+    }
   });
 
   it('sàn số khách là số ghế lớn nhất của chuyến chưa về', () => {
@@ -230,6 +233,79 @@ describe('tab Details', () => {
     expect(
       validateTourDetailsForm({ ...values, maxGroupSize: '12' }, floored).maxGroupSize,
     ).toBeUndefined();
+  });
+
+  it('dữ liệu đã lệch (chuyến nhiều ghế hơn số khách): giữ nguyên hay nâng thì qua, hạ thì chặn', () => {
+    // Cùng luật server sau vòng review F17 — "tăng thì luôn được" (spec §2b.2).
+    const drifted = detailFixture({ liveSeatsMax: 20, maxGroupSize: 12 });
+    const values = detailsFormValues(drifted);
+    const groupError = (maxGroupSize: string) =>
+      validateTourDetailsForm({ ...values, maxGroupSize }, drifted).maxGroupSize;
+
+    expect(groupError('12')).toBeUndefined();
+    expect(groupError('15')).toBeUndefined();
+    expect(groupError('11')).toBe(fe.groupFloor(20));
+  });
+
+  it('giá gốc có trần 999,999.99 — câu riêng, không phải câu "sai khuôn"', () => {
+    const priceError = (basePrice: string) =>
+      validateTourDetailsForm(withValues({ basePrice }), detail).basePrice;
+
+    expect(priceError('999999.99')).toBeUndefined();
+    expect(priceError('1000000')).toBe(fe.priceMax);
+    expect(priceError('12.345')).toBe(fe.price);
+  });
+
+  it('payload: bốn ghi chú dữ kiện đi ĐÚNG field của mình', () => {
+    const payload = tourDetailsPayload(
+      TOUR_ID,
+      VERSION,
+      withValues({
+        factDurationNote: 'duration',
+        factGroupSizeNote: 'group',
+        factDifficultyNote: 'difficulty',
+        factGoodForNote: 'good for',
+      }),
+    );
+    expect(payload).toMatchObject({
+      factDurationNote: 'duration',
+      factGroupSizeNote: 'group',
+      factDifficultyNote: 'difficulty',
+      factGoodForNote: 'good for',
+    });
+  });
+
+  it('dòng dựng từ dữ liệu server mang key TẤT ĐỊNH — SSR và hydrate ra cùng id', () => {
+    // Vòng review F17: key là UUID ngẫu nhiên thì server và trình duyệt sinh hai
+    // key khác nhau, và id/htmlFor ghép từ key lệch nhau lúc hydrate.
+    const rich = detailFixture({
+      destinations: [
+        { destinationId: DEST_A, isPrimary: true },
+        { destinationId: DEST_B, isPrimary: false },
+      ],
+      highlights: ['A', 'B'],
+      included: ['Meals'],
+      excluded: ['Tips'],
+    });
+    const first = detailsFormValues(rich);
+
+    expect(detailsFormValues(rich)).toEqual(first);
+    expect(first.destinations.map((line) => line.key)).toEqual(['dest-0', 'dest-1']);
+    expect(first.highlights.map((line) => line.key)).toEqual(['hl-0', 'hl-1']);
+    expect(first.included[0]?.key).toBe('inc-0');
+    expect(first.excluded[0]?.key).toBe('exc-0');
+  });
+
+  it('Good for và Badges chuẩn hoá theo thứ tự danh sách ngay khi mở — tích rồi bỏ tích không thành "có thay đổi"', () => {
+    // Bốn tour seed lưu suitableFor lệch thứ tự danh sách (vd FRIENDS, SOLO,
+    // COUPLE); ô tích dựng lại theo thứ tự danh sách nên bản gốc phải cùng dạng.
+    const unordered = detailFixture({
+      suitableFor: ['FRIENDS', 'SOLO', 'COUPLE'],
+      badges: ['POPULAR', 'BEST_VALUE'],
+    });
+
+    expect(detailsFormValues(unordered).suitableFor).toEqual(['COUPLE', 'FRIENDS', 'SOLO']);
+    expect(detailsFormValues(unordered).badges).toEqual(['BEST_VALUE', 'POPULAR']);
   });
 
   it('điểm đến: trùng thì lỗi ở dòng SAU, chưa chọn thì lỗi ở dòng ấy, rỗng thì lỗi cả khung', () => {
@@ -438,6 +514,28 @@ describe('tab Costs', () => {
     });
   });
 
+  it('số tiền một dòng có trần 999,999.99 — câu riêng', () => {
+    const errors = validateCostsForm({
+      items: [
+        { key: 'c1', category: 'OTHER', label: 'Big', amount: '1000000', basis: 'PER_PERSON' },
+        { key: 'c2', category: 'OTHER', label: 'Max', amount: '999999.99', basis: 'PER_PERSON' },
+      ],
+    });
+    expect(errors).toEqual({ c1: { amount: fe.priceMax } });
+  });
+
+  it('dòng chi phí và dòng FAQ, chính sách dựng từ server mang key tất định', () => {
+    expect(costsFormValues(detail).items.map((item) => item.key)).toEqual(['cost-0', 'cost-1']);
+    const content = contentFormValues(
+      detailFixture({
+        faqs: [{ question: 'Q?', answer: 'A' }],
+        policies: [{ kind: 'GENERAL', title: 'T', body: 'B' }],
+      }),
+    );
+    expect(content.faqs[0]?.key).toBe('faq-0');
+    expect(content.policies[0]?.key).toBe('pol-0');
+  });
+
   it('payload giữ thứ tự, cắt khoảng trắng, bỏ key', () => {
     const values = costsFormValues(detail);
     values.items.reverse();
@@ -473,8 +571,8 @@ describe('cờ "có thay đổi" và đếm lỗi lồng', () => {
   it('sameValues bỏ qua key của dòng; đổi một chữ là khác', () => {
     const detail = detailFixture();
     const a = detailsFormValues(detail);
-    const b = detailsFormValues(detail);
-    expect(a.highlights[0]?.key).not.toBe(b.highlights[0]?.key);
+    // Dòng thêm mới trên trình duyệt mang key UUID — cùng chữ thì vẫn là "không đổi".
+    const b = { ...a, highlights: a.highlights.map((line) => ({ ...line, key: 'client-key' })) };
     expect(sameValues(a, b)).toBe(true);
     expect(sameValues(a, { ...b, title: 'Renamed' })).toBe(false);
   });

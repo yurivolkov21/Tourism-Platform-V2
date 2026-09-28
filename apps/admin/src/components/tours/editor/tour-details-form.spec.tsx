@@ -174,15 +174,13 @@ describe('TourDetailsForm', () => {
     });
     const { user } = renderForm(detail, save);
 
-    const radios = screen.getAllByRole('radio', { name: t.primary });
-    expect(radios).toHaveLength(2);
-    await user.click(radios[1] as HTMLElement);
+    // Mỗi radio mang tên điểm đến của dòng mình (vòng review F17) — trước đây cả
+    // hai cùng tên "Primary", trình đọc màn hình không biết radio nào của dòng nào.
+    expect(screen.getAllByRole('radio')).toHaveLength(2);
+    await user.click(screen.getByRole('radio', { name: t.primaryFor('Hà Nội') }));
 
-    const checked = screen
-      .getAllByRole('radio')
-      .filter((radio) => radio.getAttribute('aria-checked') === 'true');
-    expect(checked).toHaveLength(1);
-    expect(checked[0]).toBe(radios[1]);
+    expect(screen.getByRole('radio', { name: t.primaryFor('Hà Nội') })).toBeChecked();
+    expect(screen.getByRole('radio', { name: t.primaryFor('Hạ Long') })).not.toBeChecked();
 
     await user.click(saveButton());
     await waitFor(() => expect(save).toHaveBeenCalledTimes(1));
@@ -212,6 +210,94 @@ describe('TourDetailsForm', () => {
     await waitFor(() => expect(save).toHaveBeenCalledTimes(1));
     expect(save.mock.calls[0]?.[0].destinations).toEqual([
       { destinationId: DEST_B, isPrimary: true },
+    ]);
+  });
+
+  it('phím mũi tên ở nút xoá hay ô chọn của dòng điểm đến KHÔNG đổi điểm chính (vòng review F17)', async () => {
+    // Bản đầu bọc cả danh sách trong RadioGroup của Base UI: gốc composite bắt
+    // MỌI phím mũi tên nổi bọt từ bên trong, dời tiêu điểm sang một radio và
+    // radio tự bấm khi nhận tiêu điểm — điểm chính đổi mà admin không hề chọn.
+    const { user } = renderForm(
+      detailFixture({
+        destinations: [
+          { destinationId: DEST_A, isPrimary: true },
+          { destinationId: DEST_B, isPrimary: false },
+        ],
+      }),
+    );
+    const primaryA = () => screen.getByRole('radio', { name: t.primaryFor('Hạ Long') });
+
+    screen
+      .getByRole('button', { name: messages.admin.listEditor.remove(t.destinationName(1)) })
+      .focus();
+    await user.keyboard('{ArrowDown}{ArrowRight}{ArrowUp}{ArrowLeft}');
+    expect(primaryA()).toBeChecked();
+
+    (screen.getAllByRole('combobox', { name: t.destination })[1] as HTMLElement).focus();
+    await user.keyboard('{ArrowRight}{ArrowLeft}');
+    expect(primaryA()).toBeChecked();
+  });
+
+  it('bấm vào CHỮ "Primary" hay "Featured" cũng chọn được, không chỉ ô tròn nhỏ', async () => {
+    const { user } = renderForm(
+      detailFixture({
+        destinations: [
+          { destinationId: DEST_A, isPrimary: true },
+          { destinationId: DEST_B, isPrimary: false },
+        ],
+      }),
+    );
+
+    await user.click(screen.getAllByText(t.primary)[1] as HTMLElement);
+    expect(screen.getByRole('radio', { name: t.primaryFor('Hà Nội') })).toBeChecked();
+
+    await user.click(screen.getByText(t.featured));
+    expect(screen.getByRole('checkbox', { name: t.featured })).toBeChecked();
+  });
+
+  it('dòng điểm đến không có nút dời lên/xuống — bảng không có cột thứ tự', () => {
+    renderForm(
+      detailFixture({
+        destinations: [
+          { destinationId: DEST_A, isPrimary: true },
+          { destinationId: DEST_B, isPrimary: false },
+        ],
+      }),
+    );
+
+    expect(
+      screen.queryByRole('button', {
+        name: messages.admin.listEditor.moveDown(t.destinationName(1)),
+      }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('xoá điểm chính khi còn BA dòng → chỉ dòng đầu còn lại thành điểm chính', async () => {
+    // Vòng review F17: ca hai dòng không phân biệt được "dòng đầu thành chính"
+    // với "mọi dòng thành chính".
+    const save = vi.fn().mockResolvedValue({ ok: true, detail: detailFixture() });
+    const { user } = renderForm(
+      detailFixture({
+        destinations: [
+          { destinationId: DEST_A, isPrimary: true },
+          { destinationId: DEST_B, isPrimary: false },
+          { destinationId: HIDDEN_DEST, isPrimary: false },
+        ],
+      }),
+      save,
+    );
+
+    await user.click(
+      screen.getByRole('button', {
+        name: messages.admin.listEditor.remove(t.destinationName(1)),
+      }),
+    );
+    await user.click(saveButton());
+
+    await waitFor(() => expect(save).toHaveBeenCalledTimes(1));
+    expect(save.mock.calls[0]?.[0].destinations).toEqual([
+      { destinationId: DEST_B, isPrimary: true },
+      { destinationId: HIDDEN_DEST, isPrimary: false },
     ]);
   });
 

@@ -9,7 +9,15 @@ interface Line extends Keyed {
   text: string;
 }
 
-function Harness({ initial, max = 3 }: { initial: string[]; max?: number }) {
+function Harness({
+  initial,
+  max = 3,
+  reorderable,
+}: {
+  initial: string[];
+  max?: number;
+  reorderable?: boolean;
+}) {
   const [items, setItems] = useState<Line[]>(initial.map((text) => ({ key: newItemKey(), text })));
   return (
     <>
@@ -19,6 +27,7 @@ function Harness({ initial, max = 3 }: { initial: string[]; max?: number }) {
         max={max}
         newItem={() => ({ key: newItemKey(), text: '' })}
         addLabel="Add highlight"
+        reorderable={reorderable}
         itemName={(index) => `highlight ${index + 1}`}
         renderItem={(item, index) => (
           <input
@@ -40,6 +49,16 @@ function Harness({ initial, max = 3 }: { initial: string[]; max?: number }) {
 }
 
 describe('ListEditor', () => {
+  it('danh sách không có thứ tự (reorderable={false}) thì không có nút lên/xuống', () => {
+    // Vòng review F17: điểm đến không có cột thứ tự — nút dời chỉ làm form
+    // "có thay đổi", lưu xong thứ tự lại quay về.
+    render(<Harness initial={['a', 'b']} reorderable={false} />);
+
+    expect(screen.queryByRole('button', { name: 'Move highlight 1 up' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Move highlight 1 down' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Remove highlight 1' })).toBeInTheDocument();
+  });
+
   it('dời lên / xuống đổi thứ tự; nút lên của dòng đầu bị khoá nhưng vẫn giữ được tiêu điểm', async () => {
     const user = userEvent.setup();
     render(<Harness initial={['Sunset', 'Kayak', 'Cave']} />);

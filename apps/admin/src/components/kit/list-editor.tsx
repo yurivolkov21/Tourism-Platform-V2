@@ -33,6 +33,12 @@ export interface ListEditorProps<Item extends Keyed> {
   itemName: (index: number) => string;
   renderItem: (item: Item, index: number) => React.ReactNode;
   disabled?: boolean;
+  /**
+   * `false` cho danh sách KHÔNG có thứ tự lưu được (điểm đến — bảng không có cột
+   * thứ tự): không vẽ nút lên/xuống, vì dời dòng chỉ làm form "có thay đổi" rồi
+   * lưu xong thứ tự lại quay về (vòng review F17).
+   */
+  reorderable?: boolean;
   /** Câu hiện khi danh sách rỗng. */
   empty?: string;
 }
@@ -47,6 +53,7 @@ export function ListEditor<Item extends Keyed>(props: ListEditorProps<Item>) {
     itemName,
     renderItem,
     disabled = false,
+    reorderable = true,
     empty,
   } = props;
   const rows = React.useRef(new Map<string, HTMLLIElement>());
@@ -121,30 +128,34 @@ export function ListEditor<Item extends Keyed>(props: ListEditorProps<Item>) {
             <div className="grid flex-1 gap-3">{renderItem(item, index)}</div>
             <div className="flex shrink-0 gap-1">
               {/* Ba nút icon; `aria-label` ghép tên dòng. Dòng đầu khoá "lên", dòng cuối khoá "xuống". */}
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                focusableWhenDisabled
-                disabled={disabled || index === 0}
-                aria-label={t.moveUp(itemName(index))}
-                data-move="up"
-                onClick={() => move(index, -1)}
-              >
-                <ArrowUpIcon aria-hidden="true" />
-              </Button>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                focusableWhenDisabled
-                disabled={disabled || index === items.length - 1}
-                aria-label={t.moveDown(itemName(index))}
-                data-move="down"
-                onClick={() => move(index, 1)}
-              >
-                <ArrowDownIcon aria-hidden="true" />
-              </Button>
+              {reorderable ? (
+                <>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    focusableWhenDisabled
+                    disabled={disabled || index === 0}
+                    aria-label={t.moveUp(itemName(index))}
+                    data-move="up"
+                    onClick={() => move(index, -1)}
+                  >
+                    <ArrowUpIcon aria-hidden="true" />
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    focusableWhenDisabled
+                    disabled={disabled || index === items.length - 1}
+                    aria-label={t.moveDown(itemName(index))}
+                    data-move="down"
+                    onClick={() => move(index, 1)}
+                  >
+                    <ArrowDownIcon aria-hidden="true" />
+                  </Button>
+                </>
+              ) : null}
               <Button
                 ref={(node: HTMLButtonElement | null) => {
                   if (node) removeButtons.current.set(item.key, node);

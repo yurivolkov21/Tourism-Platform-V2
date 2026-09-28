@@ -103,6 +103,15 @@ describe('validateDepartureForm', () => {
     expect(errors.seats).toBe(t.form.errors.seatsBelowBooked(4));
   });
 
+  it('giá riêng có trần 999,999.99 — câu riêng, không phải câu "sai khuôn" (vòng review F17)', () => {
+    const price = (value: string) =>
+      validateDepartureForm({ ...VALID, price: value }, { seatsBooked: 0 }).price;
+
+    expect(price('999999.99')).toBeUndefined();
+    expect(price('1000000')).toBe(t.form.errors.priceMax);
+    expect(price('12.345')).toBe(t.form.errors.price);
+  });
+
   it('hạ xuống ĐÚNG bằng số đã đặt thì cho đi — cùng biên với server', () => {
     expect(
       validateDepartureForm({ ...VALID, seats: '4' }, { seatsBooked: 4 }).seats,
