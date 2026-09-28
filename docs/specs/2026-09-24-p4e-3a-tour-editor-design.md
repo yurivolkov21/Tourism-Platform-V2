@@ -407,11 +407,17 @@ nên tour mới hiện ngay sau khi bật bán; tour bị xoá trả 404 sau khi
 
 ## 8. Rủi ro đã biết
 
-- **Lượt seed lại khoảng 03/11.** `seed.ts` upsert nội dung tour kèm cập nhật,
-  nên mọi chỉnh sửa trên 29 tour seed sẽ bị ghi đè; lượt ấy cũng làm lại DB, nên
-  tour tạo tay mất. Tour dùng để demo buổi bảo vệ phải tạo SAU lượt seed.
-- **Khe deploy** (ADR-0047 §Hệ quả): trang lỗi vài phút ở khu làm việc; thử tay
-  chỉ bắt đầu khi cả hai đã lên.
+- **Lượt seed lại khoảng 03/11.** Sửa ở vòng review F17 (bản đầu của mục này
+  sai cả hai vế). Bước `data:reset` GIỮ bảng `tours` và năm bảng con, chỉ xoá
+  tầng vận hành, nên tour tạo tay CÒN SỐNG — mất chuyến, booking, đánh giá. Tour
+  seed thì bị ghi đè trọn: cột của `tours` (upsert) và năm bảng con (xoá rồi chèn
+  lại theo fixture). Trước bản vá, seed chèn lại năm bảng con CẠNH bản admin nên
+  FAQ, chính sách, dòng chi phí nhân đôi và tour có thể mang hai điểm chính.
+  Tour thử phải gỡ bán hoặc xoá TRƯỚC lượt seed (`seed:verify` bắt tour đang bán
+  không có rating); tour demo buổi bảo vệ nên tạo SAU lượt seed.
+- **Khe deploy** (ADR-0047 §Hệ quả): trang lỗi vài phút ở bốn tab sửa của khu
+  làm việc; tab Departures vẫn sống (vòng review F17). Thử tay chỉ bắt đầu khi cả
+  hai đã lên.
 - **Đường tạo booking đổi chỗ import hàm giá vốn.** Công thức không đổi, có test
   đối chiếu; vẫn là thay đổi ở money-path nên review phải đọc kỹ.
 - **Khối lượng lớn so với freeze 15/10.** Plan chia task nhỏ; thi công ở session

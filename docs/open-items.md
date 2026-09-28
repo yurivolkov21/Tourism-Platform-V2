@@ -17,7 +17,7 @@
 
 | Mã | Việc | Ghi chú |
 | --- | --- | --- |
-| **P4e** | Quản trị catalog: thêm/sửa/xoá tour, điểm đến, danh mục | P4e-1 XONG 22/09 (F11 danh sách tour · F12 lịch chạy · F13 huỷ chuyến có hoàn tiền, đóng nợ ADR-0041 §6). **P4e-2 XONG**: F14 danh mục 22/09 (màn `/categories` cộng chip lọc của web đọc endpoint) và F15 điểm đến 24/09 (màn `/destinations`, ba vùng về contract, web chịu được điểm đến đã ẩn). **P4e-3a** (F17 tạo và sửa tour) XONG: merge 28/09 sau vòng review (24 lỗi thật, vá 23, lỗi seed làm nhánh riêng — xem mục ngay dưới); kế là F18 ảnh tour. Còn P4e-4 bài viết |
+| **P4e** | Quản trị catalog: thêm/sửa/xoá tour, điểm đến, danh mục | P4e-1 XONG 22/09 (F11 danh sách tour · F12 lịch chạy · F13 huỷ chuyến có hoàn tiền, đóng nợ ADR-0041 §6). **P4e-2 XONG**: F14 danh mục 22/09 (màn `/categories` cộng chip lọc của web đọc endpoint) và F15 điểm đến 24/09 (màn `/destinations`, ba vùng về contract, web chịu được điểm đến đã ẩn). **P4e-3a** (F17 tạo và sửa tour) XONG: merge 28/09 sau vòng review (24 lỗi thật, vá cả 24 — lỗi seed vá ở nhánh riêng cùng ngày); kế là F18 ảnh tour. Còn P4e-4 bài viết |
 | **P4f** | Quản trị media và người dùng | Gồm màn hạ quyền / thu hồi phiên admin (ADR-0026 AMEND 1) |
 | **P5b-2…5** | Bốn cụm màn mobile: xem tour · đặt tour · tài khoản · đánh giá | **Đã có bản vẽ và tài liệu bàn giao đầy đủ**; thành viên khác dựng màn — xem [`handoff/`](handoff/README.md) |
 | **P6** | Trợ lý AI tư vấn tour | Bảng dữ liệu đã có sẵn (`chat_conversations`, `chat_messages`) |
@@ -25,24 +25,14 @@
 
 ## Trước lượt seed lại 03/11
 
-Vòng review F17 (28/09) tìm ra một lỗi mức Cao chỉ nổ ở lượt seed lại, nên tách
-thành nhánh riêng làm ngay sau khi F17 lên `main`:
-
-- **Seed chạy lại nhân đôi bảng con của tour đã sửa.** Khu làm việc F17 thay
-  nguyên FAQ, chính sách và dòng chi phí bằng hàng id mới, còn seed upsert theo
-  id fixture tĩnh — sửa một tour seed rồi seed lại là trang tour in FAQ và
-  chính sách hai lần, dòng chi phí nhân đôi nên giá vốn chụp vào booking và
-  chuyến mới gần gấp đôi, và tour có thể mang hai điểm chính (tab Details trả
-  400). Seed vẫn xanh, `seed:verify` không bắt. Vá: seed xoá rồi chèn lại năm
-  bảng con của 29 tour fixture trong một transaction, tính lại `cost_price` vô
-  điều kiện, thêm truy vấn canh vào `verify-seed`, và sửa spec 2026-09-24 §8
-  (câu "tour tạo tay sẽ mất" sai — bước reset GIỮ bảng `tours`, tour tạo tay còn
-  sống, chỉ mất chuyến, booking, đánh giá).
-- **Chặn tạm tới khi nhánh ấy vào `main`:** thử tay F17 trên prod chỉ dùng tour
-  mới tạo; không lưu tab Details (phần điểm đến), FAQ & policies hay Costs của
-  29 tour seed.
 - **Ngay trước khi chạy seed:** gỡ bán hoặc xoá các tour thử tạo bằng F17 —
   `seed:verify` bắt "tour đang bán không có rating".
+- Lượt ấy ghi đè TRỌN nội dung 29 tour seed về fixture: cột của `tours` và năm
+  bảng con (điểm đến, lịch trình, FAQ, chính sách, dòng chi phí), cùng giá vốn.
+  Tour tạo tay còn sống, chỉ mất chuyến, booking, đánh giá. Vá 28/09 ở vòng
+  review F17 — trước đó seed chèn lại bảng con CẠNH bản admin nên FAQ, chính
+  sách, dòng chi phí nhân đôi; `seed:verify` nay có năm bất biến canh đúng dấu
+  vết ấy.
 
 ## Đang chờ chủ dự án quyết
 

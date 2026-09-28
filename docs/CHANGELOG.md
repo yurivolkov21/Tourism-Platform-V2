@@ -8,6 +8,50 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-09-28 — Seed thay nguyên bảng con của tour fixture: đóng lỗi mức Cao cuối cùng của vòng review F17 (nhánh `fix/seed-bang-con-f17`)
+
+Lỗi 1 của vòng review F17, tách nhánh vì chỉ nổ ở lượt seed lại 03/11. Khu làm
+việc F17 thay nguyên FAQ, chính sách và dòng chi phí bằng hàng id MỚI, còn seed
+upsert hay `createMany({ skipDuplicates })` theo id fixture: sửa một tour seed
+rồi seed lại là bản fixture nằm CẠNH bản admin — FAQ và chính sách in hai lần
+trên trang tour, dòng chi phí nhân đôi (giá vốn chụp vào booking và chuyến mới
+gần gấp đôi), bỏ điểm chính fixture là tour mang hai điểm chính (tab Details trả
+400). Seed vẫn báo thành công, `seed:verify` không bắt.
+
+**Seed.** Năm bảng con của 29 tour fixture (điểm đến, lịch trình, FAQ, chính
+sách, dòng chi phí) xoá rồi chèn lại trong MỘT transaction dạng mảng. Chỉ lọc
+theo id tour fixture, nên tour tạo tay không bị đụng; không bảng nào có khoá
+ngoại trỏ vào năm bảng này. Bước xoá chính sách CANCELLATION riêng nay thừa nên
+gỡ. `costPrice` tính lại vô điều kiện (bản cũ chỉ điền chỗ trống, nên giữ giá
+vốn tính từ dòng chi phí của admin mà bảng không còn); `fixedCostAmount` của
+chuyến vẫn chỉ điền chỗ trống vì là bản chụp. Upsert tour thôi ghi lùi
+`updatedAt` về mốc fixture — phiên bản của khu làm việc F17 không lùi.
+
+**`seed:verify` thêm năm bất biến:** số điểm chính khác 1, FAQ trùng câu hỏi,
+chính sách trùng loại và tiêu đề, dòng chi phí trùng nhãn, `cost_price` lệch
+công thức dẫn xuất.
+
+**Tập dượt trên DB Docker riêng** (seed → sửa một tour như admin qua bốn tab →
+seed lại → verify): seed cũ ra 13 vi phạm, tour bị sửa mang FAQ 5→10, chính
+sách 2→4, dòng chi phí 4→8, hai điểm chính, giá vốn của admin; seed mới ra 0
+vi phạm và tour về đúng fixture; chạy lần ba vẫn ổn; một tour tạo tay còn
+nguyên cùng FAQ và điểm đến của nó. Bước `data:reset` không nằm trong lượt tập
+dượt: script đòi tài khoản admin mang id của prod, và nó giữ nguyên năm bảng
+con nên kết quả không đổi.
+
+**Spec 2026-09-24 §8 sửa lại** — bản đầu sai cả hai vế: bước reset GIỮ bảng
+`tours`, nên tour tạo tay còn sống (mất chuyến, booking, đánh giá); tour seed bị
+ghi đè trọn. Mục khe deploy ghi thêm rằng tab Departures nay sống qua khe ấy.
+
+Chặn tạm ghi ở vòng review (thử tay chỉ bằng tour mới tạo) không còn cần: lượt
+seed 03/11 sẽ ghi đè mọi chỉnh sửa trên tour seed về fixture. Việc còn lại trước
+lượt ấy: gỡ bán hoặc xoá tour thử tạo bằng F17 (open-items).
+
+**Không có việc hạ tầng.** Seed chỉ chạy tay ở lượt 03/11; không migration.
+
+Tests after: Vitest **4546** (không đổi — seed không có unit test riêng ngoài 456
+ca fixture của `prisma/`), int **678 ở 45 file**, jest mobile 159 và mobile-ui 86.
+
 ## 2026-09-28 — Merge F17 lên main (`9b284e9b`)
 
 Nội dung đã kể ở HAI entry ngay bên dưới — "Vòng review F17" và "F17 tạo và
