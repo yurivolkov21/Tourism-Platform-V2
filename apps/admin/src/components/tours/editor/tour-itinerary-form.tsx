@@ -4,7 +4,6 @@ import type { AdminTourDetail } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
 import { Input } from '@tourism/ui/components/input';
 import { Textarea } from '@tourism/ui/components/textarea';
-import { useState } from 'react';
 import { FormField } from '@/components/kit/form-field';
 import { EditorFormFrame } from '@/components/tours/editor/editor-form-frame';
 import { projectedReadiness } from '@/lib/tour-editor-view';
@@ -18,10 +17,10 @@ import {
   itineraryFormValues,
   itineraryPayload,
   type SetItineraryAction,
-  sameValues,
   validateItineraryForm,
 } from '@/lib/tour-editor-write';
 import { useSectionSave } from '@/lib/use-section-save';
+import { useTourFormState } from '@/lib/use-tour-form-state';
 
 /**
  * Tab Itinerary (spec F17 §2h): đủ N thẻ ngày (Day 1…N), mỗi thẻ một tiêu đề và
@@ -44,17 +43,15 @@ export function TourItineraryForm({
   detail: AdminTourDetail;
   save: SetItineraryAction;
 }) {
-  const [base, setBase] = useState<ItineraryFormValues>(() => itineraryFormValues(detail));
-  const [values, setValues] = useState<ItineraryFormValues>(base);
-  const [version, setVersion] = useState(detail.version);
-  const [showValidation, setShowValidation] = useState(false);
+  const form = useTourFormState<ItineraryFormValues>(detail, itineraryFormValues);
+  const { values, version, dirty, showValidation } = form;
 
   const errors: ItineraryFormErrors = showValidation ? validateItineraryForm(values, detail) : {};
-  const dirty = !sameValues(values, base);
 
   const { pending, banner, save } = useSectionSave<ItineraryContractCode>({
     copy: itineraryErrorCopy,
     slug: detail.slug,
+    version,
     // Readiness NẾU lệnh này đi qua: chỉ ngày có tiêu đề mới thành hàng.
     projected: () =>
       projectedReadiness(detail, {
@@ -62,30 +59,31 @@ export function TourItineraryForm({
           (day) => day.dayNumber,
         ),
       }),
-    onSaved: (next) => {
-      const fresh = itineraryFormValues(next);
-      setBase(fresh);
-      setValues(fresh);
-      setVersion(next.version);
-      setShowValidation(false);
-    },
+    onSaved: form.adopt,
   });
 
   function patchDay(index: number, next: Partial<ItineraryDayDraft>) {
-    setValues((current) => ({
+    form.setValues((current) => ({
       days: current.days.map((day, position) => (position === index ? { ...day, ...next } : day)),
     }));
   }
 
   function submit() {
-    setShowValidation(true);
+    form.setShowValidation(true);
     if (hasNestedErrors(validateItineraryForm(values, detail))) return;
     void save(() => saveAction(itineraryPayload(detail.id, version, values)));
   }
 
   return (
     <div className="flex flex-col gap-6 px-4 pb-8 lg:px-6">
-      <EditorFormFrame dirty={dirty} pending={pending} banner={banner} onSubmit={submit}>
+      <EditorFormFrame
+        dirty={dirty}
+        pending={pending}
+        banner={banner}
+        serverChanged={form.serverChanged}
+        onSubmit={submit}
+        onReload={form.reload}
+      >
         <p className="text-sm text-muted-foreground">{t.intro(detail.durationDays)}</p>
         {values.days.map((day, index) => {
           const n = index + 1;

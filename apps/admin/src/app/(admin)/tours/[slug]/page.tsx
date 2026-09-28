@@ -13,7 +13,6 @@ export default async function TourDetailsPage({ params }: { params: Promise<{ sl
   if (!detail) notFound();
   return (
     <TourDetailsForm
-      key={detail.version}
       detail={detail}
       options={options}
       save={updateTourDetailsAction}

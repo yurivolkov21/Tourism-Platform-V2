@@ -5,7 +5,6 @@ import { Button } from '@tourism/ui/components/button';
 import { cn } from '@tourism/ui/lib/utils';
 import { CircleAlertIcon } from 'lucide-react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import type * as React from 'react';
 import { StableLabel } from '@/components/kit/stable-label';
 import { useReportUnsaved } from '@/components/kit/unsaved-changes';
@@ -19,27 +18,39 @@ import type { SectionBanner } from '@/lib/use-section-save';
  *   để bấm Save xong (nút khoá lúc đang lưu) tiêu điểm không rơi về `<body>`.
  * - Chữ nút trong `StableLabel` giữa "Save changes" / "Saving…": nút không co giãn.
  * - Tự báo "có thay đổi chưa lưu" cho `UnsavedChangesProvider` của khu làm việc.
+ * - Server có bản mới hơn thứ đang sửa (`serverChanged`) → dải stale dù lần lưu
+ *   chưa hỏng. Reload đi qua `onReload` của form: form tự nạp bản mới, không
+ *   phải gỡ rồi dựng lại (vòng review F17).
  */
 const t = messages.admin.tours.editor;
 const SAVE_LABELS = [t.save, t.saving] as const;
+
+const STALE: SectionBanner = { kind: 'stale' };
 
 export function EditorFormFrame({
   dirty,
   pending,
   banner,
+  serverChanged = false,
   note,
   onSubmit,
+  onReload,
   children,
 }: {
   dirty: boolean;
   pending: boolean;
   banner: SectionBanner | null;
+  /** Server đã có bản mới hơn thứ form đang sửa (`useTourFormState`). */
+  serverChanged?: boolean;
   /** Câu nói hệ quả của lần lưu, hiện cạnh nút Save. */
   note?: string;
   onSubmit: () => void;
+  /** Nút Reload của mọi dải báo — form nạp bản server mới. */
+  onReload: () => void;
   children: React.ReactNode;
 }) {
   useReportUnsaved(dirty);
+  const shown = banner ?? (serverChanged ? STALE : null);
 
   return (
     <form
@@ -50,7 +61,7 @@ export function EditorFormFrame({
         if (dirty && !pending) onSubmit();
       }}
     >
-      {banner ? <FormBanner banner={banner} /> : null}
+      {shown ? <FormBanner banner={shown} onReload={onReload} /> : null}
       {children}
       <div className="flex flex-wrap items-center justify-end gap-3 border-t pt-4">
         {note ? <p className="text-xs text-muted-foreground">{note}</p> : null}
@@ -63,10 +74,9 @@ export function EditorFormFrame({
 }
 
 /** Dải báo của một lần Save hỏng — giọng cảnh báo cho stale/notReady, đỏ cho lỗi. */
-function FormBanner({ banner }: { banner: SectionBanner }) {
-  const router = useRouter();
+function FormBanner({ banner, onReload }: { banner: SectionBanner; onReload: () => void }) {
   const reload = (
-    <Button type="button" variant="outline" size="sm" onClick={() => router.refresh()}>
+    <Button type="button" variant="outline" size="sm" onClick={onReload}>
       {t.banners.reload}
     </Button>
   );

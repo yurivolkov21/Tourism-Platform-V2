@@ -9,7 +9,6 @@ import {
 import { messages } from '@tourism/i18n';
 import { Input } from '@tourism/ui/components/input';
 import { Textarea } from '@tourism/ui/components/textarea';
-import { useState } from 'react';
 import { FormField } from '@/components/kit/form-field';
 import { FormSelect } from '@/components/kit/form-select';
 import { ListEditor } from '@/components/kit/list-editor';
@@ -27,10 +26,10 @@ import {
   hasNestedErrors,
   type PolicyDraft,
   type SetContentAction,
-  sameValues,
   validateContentForm,
 } from '@/lib/tour-editor-write';
 import { useSectionSave } from '@/lib/use-section-save';
+import { useTourFormState } from '@/lib/use-tour-form-state';
 
 /**
  * Tab FAQ & policies (spec F17 §2h): hai khung sửa danh sách, một nút Save.
@@ -56,30 +55,22 @@ export function TourContentForm({
   detail: AdminTourDetail;
   save: SetContentAction;
 }) {
-  const [base, setBase] = useState<ContentFormValues>(() => contentFormValues(detail));
-  const [values, setValues] = useState<ContentFormValues>(base);
-  const [version, setVersion] = useState(detail.version);
-  const [showValidation, setShowValidation] = useState(false);
+  const form = useTourFormState<ContentFormValues>(detail, contentFormValues);
+  const { values, version, dirty, showValidation } = form;
 
   const errors: ContentFormErrors = showValidation ? validateContentForm(values) : {};
-  const dirty = !sameValues(values, base);
   const dropped = droppedCancellationCount(detail);
 
   const { pending, banner, save } = useSectionSave<ContentContractCode>({
     copy: contentErrorCopy,
     slug: detail.slug,
+    version,
     projected: () => detail.readiness,
-    onSaved: (next) => {
-      const fresh = contentFormValues(next);
-      setBase(fresh);
-      setValues(fresh);
-      setVersion(next.version);
-      setShowValidation(false);
-    },
+    onSaved: form.adopt,
   });
 
   function patch(next: Partial<ContentFormValues>) {
-    setValues((current) => ({ ...current, ...next }));
+    form.setValues((current) => ({ ...current, ...next }));
   }
 
   function patchFaq(key: string, next: Partial<FaqDraft>) {
@@ -95,14 +86,21 @@ export function TourContentForm({
   }
 
   function submit() {
-    setShowValidation(true);
+    form.setShowValidation(true);
     if (hasNestedErrors(validateContentForm(values))) return;
     void save(() => saveAction(contentPayload(detail.id, version, values)));
   }
 
   return (
     <div className="flex flex-col gap-6 px-4 pb-8 lg:px-6">
-      <EditorFormFrame dirty={dirty} pending={pending} banner={banner} onSubmit={submit}>
+      <EditorFormFrame
+        dirty={dirty}
+        pending={pending}
+        banner={banner}
+        serverChanged={form.serverChanged}
+        onSubmit={submit}
+        onReload={form.reload}
+      >
         <fieldset className="grid gap-3 rounded-lg border p-4">
           <legend className="px-1 text-sm font-semibold">{t.faqTitle}</legend>
           <ListEditor<FaqDraft>

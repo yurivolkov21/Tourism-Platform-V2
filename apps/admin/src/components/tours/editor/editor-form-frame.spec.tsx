@@ -2,6 +2,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { messages } from '@tourism/i18n';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { UnsavedChangesProvider } from '@/components/kit/unsaved-changes';
 import { EditorFormFrame } from './editor-form-frame';
 
 /**
@@ -10,15 +11,26 @@ import { EditorFormFrame } from './editor-form-frame';
  */
 const t = messages.admin.tours.editor;
 
-const refresh = vi.fn();
-vi.mock('next/navigation', () => ({ useRouter: () => ({ refresh: () => refresh() }) }));
+const push = vi.fn();
+vi.mock('next/navigation', () => ({ useRouter: () => ({ push, refresh: vi.fn() }) }));
 
-beforeEach(() => refresh.mockReset());
+const onReload = vi.fn();
+beforeEach(() => {
+  push.mockReset();
+  onReload.mockReset();
+});
 
 function frame(props: Partial<React.ComponentProps<typeof EditorFormFrame>> = {}) {
   const onSubmit = vi.fn();
   render(
-    <EditorFormFrame dirty={false} pending={false} banner={null} onSubmit={onSubmit} {...props}>
+    <EditorFormFrame
+      dirty={false}
+      pending={false}
+      banner={null}
+      onSubmit={onSubmit}
+      onReload={onReload}
+      {...props}
+    >
       <input aria-label="Name" />
     </EditorFormFrame>,
   );
@@ -54,13 +66,45 @@ describe('EditorFormFrame', () => {
     expect(onSubmit).not.toHaveBeenCalled();
   });
 
-  it('dải stale: câu báo và nút Reload gọi router.refresh()', async () => {
+  it('dải stale: câu báo và nút Reload gọi đường nạp lại của form', async () => {
     const user = userEvent.setup();
     frame({ banner: { kind: 'stale' } });
 
     expect(screen.getByText(t.banners.stale)).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: t.banners.reload }));
-    expect(refresh).toHaveBeenCalledTimes(1);
+    expect(onReload).toHaveBeenCalledTimes(1);
+  });
+
+  it('server có bản mới hơn thứ đang sửa (serverChanged) → dải stale dù lần lưu chưa hỏng', async () => {
+    // Vòng review F17: bản mới trôi về lúc form đang sửa thì form giữ chữ và
+    // báo — không dựng lại form, không im lặng.
+    const user = userEvent.setup();
+    frame({ dirty: true, serverChanged: true });
+
+    expect(screen.getByText(t.banners.stale)).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: t.banners.reload }));
+    expect(onReload).toHaveBeenCalledTimes(1);
+  });
+
+  it('có thay đổi chưa lưu thì bấm link nội bộ bị hỏi lại (khung tự báo cho provider)', async () => {
+    // Vòng review F17: không spec nào bọc khung trong provider, nên xoá
+    // `useReportUnsaved(dirty)` khỏi khung vẫn xanh.
+    const user = userEvent.setup();
+    render(
+      <UnsavedChangesProvider>
+        <a href="/tours/ha-long/itinerary">Itinerary</a>
+        <EditorFormFrame dirty pending={false} banner={null} onSubmit={vi.fn()} onReload={onReload}>
+          <input aria-label="Name" />
+        </EditorFormFrame>
+      </UnsavedChangesProvider>,
+    );
+
+    await user.click(screen.getByRole('link', { name: 'Itinerary' }));
+
+    expect(
+      screen.getByRole('alertdialog', { name: messages.admin.unsavedChanges.title }),
+    ).toBeInTheDocument();
+    expect(push).not.toHaveBeenCalled();
   });
 
   it('dải notReady: câu báo và link của từng chỗ thiếu', () => {
@@ -100,6 +144,7 @@ describe('EditorFormFrame', () => {
         pending={false}
         banner={{ kind: 'error', message: 'Something broke', uncertain: true }}
         onSubmit={vi.fn()}
+        onReload={onReload}
       >
         <span />
       </EditorFormFrame>,

@@ -10,7 +10,6 @@ import {
 } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
 import { Input } from '@tourism/ui/components/input';
-import { useState } from 'react';
 import { FormField } from '@/components/kit/form-field';
 import { FormSelect } from '@/components/kit/form-select';
 import { ListEditor } from '@/components/kit/list-editor';
@@ -29,10 +28,10 @@ import {
   costsPayload,
   hasNestedErrors,
   type SetCostsAction,
-  sameValues,
   validateCostsForm,
 } from '@/lib/tour-editor-write';
 import { useSectionSave } from '@/lib/use-section-save';
+import { useTourFormState } from '@/lib/use-tour-form-state';
 
 /**
  * Tab Costs (spec F17 §2h): khung sửa danh sách dòng chi phí, và khung Totals
@@ -63,37 +62,29 @@ export function TourCostsForm({
   detail: AdminTourDetail;
   save: SetCostsAction;
 }) {
-  const [base, setBase] = useState<CostsFormValues>(() => costsFormValues(detail));
-  const [values, setValues] = useState<CostsFormValues>(base);
-  const [version, setVersion] = useState(detail.version);
-  const [showValidation, setShowValidation] = useState(false);
+  const form = useTourFormState<CostsFormValues>(detail, costsFormValues);
+  const { values, version, dirty, showValidation } = form;
 
   const errors: CostsFormErrors = showValidation ? validateCostsForm(values) : {};
-  const dirty = !sameValues(values, base);
   const totals = costBreakdown(costDraftItems(values), detail.basePrice, detail.maxGroupSize);
   const money = (amount: string) => formatAmount(amount, detail.currency);
 
   const { pending, banner, save } = useSectionSave<CostsContractCode>({
     copy: costsErrorCopy,
     slug: detail.slug,
+    version,
     projected: () => detail.readiness,
-    onSaved: (next) => {
-      const fresh = costsFormValues(next);
-      setBase(fresh);
-      setValues(fresh);
-      setVersion(next.version);
-      setShowValidation(false);
-    },
+    onSaved: form.adopt,
   });
 
   function patchItem(key: string, next: Partial<CostDraft>) {
-    setValues((current) => ({
+    form.setValues((current) => ({
       items: current.items.map((item) => (item.key === key ? { ...item, ...next } : item)),
     }));
   }
 
   function submit() {
-    setShowValidation(true);
+    form.setShowValidation(true);
     if (hasNestedErrors(validateCostsForm(values))) return;
     void save(() => saveAction(costsPayload(detail.id, version, values)));
   }
@@ -104,12 +95,14 @@ export function TourCostsForm({
         dirty={dirty}
         pending={pending}
         banner={banner}
+        serverChanged={form.serverChanged}
         note={t.note}
         onSubmit={submit}
+        onReload={form.reload}
       >
         <ListEditor<CostDraft>
           items={values.items}
-          onChange={(items) => setValues({ items })}
+          onChange={(items) => form.setValues({ items })}
           max={TOUR_COST_ITEMS_MAX}
           // Hai ô chọn luôn phải mang một giá trị — mặc định là mục đầu của mỗi ô.
           newItem={() => ({

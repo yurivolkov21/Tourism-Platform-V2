@@ -347,3 +347,54 @@ describe('TourDetailsForm', () => {
     expect(save.mock.calls[1]?.[0].version).toBe(NEXT_VERSION);
   });
 });
+
+describe('TourDetailsForm — không dựng lại form khi phiên bản đổi (vòng review F17)', () => {
+  const form = (detail: AdminTourDetail, save: UpdateDetailsAction = vi.fn()) => (
+    <TourDetailsForm detail={detail} options={OPTIONS} save={save} remove={vi.fn()} />
+  );
+
+  it('lưu xong, refresh mang CÙNG phiên bản về → tiêu điểm còn ở Save, chữ gõ tiếp còn nguyên', async () => {
+    const saved = detailFixture({ title: 'Renamed', version: NEXT_VERSION });
+    const save = vi.fn().mockResolvedValue({ ok: true, detail: saved });
+    const user = userEvent.setup();
+    const view = render(form(detailFixture(), save));
+
+    await user.clear(field(t.title));
+    await user.type(field(t.title), 'Renamed');
+    await user.click(saveButton());
+    await waitFor(() => expect(success).toHaveBeenCalledWith(e.saved));
+
+    // Lượt refresh sau lưu mang về đúng bản vừa lưu.
+    view.rerender(form(saved, save));
+    expect(saveButton()).toHaveFocus();
+
+    // Gõ trong khe giữa toast và một lượt refresh nữa: không được mất.
+    await user.type(field(t.summary), ' More.');
+    view.rerender(form(detailFixture({ title: 'Renamed', version: NEXT_VERSION }), save));
+    expect(field(t.summary)).toHaveValue('Three days on the bay. More.');
+    expect(screen.queryByText(e.banners.stale)).not.toBeInTheDocument();
+  });
+
+  it('bản MỚI hơn trôi về khi đang sửa → giữ chữ, hiện dải stale; Reload → nạp bản mới', async () => {
+    const user = userEvent.setup();
+    const view = render(form(detailFixture()));
+    await user.type(field(t.title), ' edited');
+
+    view.rerender(form(detailFixture({ title: 'Theirs', version: NEXT_VERSION })));
+
+    expect(field(t.title)).toHaveValue('Ha Long Bay Cruise edited');
+    expect(screen.getByText(e.banners.stale)).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: e.banners.reload }));
+    expect(field(t.title)).toHaveValue('Theirs');
+    expect(screen.queryByText(e.banners.stale)).not.toBeInTheDocument();
+  });
+
+  it('bản mới hơn trôi về khi form sạch → nạp luôn, không dải báo', () => {
+    const view = render(form(detailFixture()));
+
+    view.rerender(form(detailFixture({ title: 'Theirs', version: NEXT_VERSION })));
+
+    expect(field(t.title)).toHaveValue('Theirs');
+    expect(screen.queryByText(e.banners.stale)).not.toBeInTheDocument();
+  });
+});

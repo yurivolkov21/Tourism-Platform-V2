@@ -11,5 +11,5 @@ export default async function TourContentPage({ params }: { params: Promise<{ sl
   const { slug } = await params;
   const detail = await loadAdminTour(slug);
   if (!detail) notFound();
-  return <TourContentForm key={detail.version} detail={detail} save={setTourContentAction} />;
+  return <TourContentForm detail={detail} save={setTourContentAction} />;
 }

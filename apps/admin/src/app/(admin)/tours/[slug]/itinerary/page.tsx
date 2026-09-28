@@ -11,5 +11,5 @@ export default async function TourItineraryPage({ params }: { params: Promise<{ 
   const { slug } = await params;
   const detail = await loadAdminTour(slug);
   if (!detail) notFound();
-  return <TourItineraryForm key={detail.version} detail={detail} save={setTourItineraryAction} />;
+  return <TourItineraryForm detail={detail} save={setTourItineraryAction} />;
 }

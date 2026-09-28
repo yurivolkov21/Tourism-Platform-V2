@@ -45,14 +45,17 @@ const PROJECTED = tourReadiness({
 
 function setup(onFieldError?: (code: DetailsContractCode) => boolean) {
   const onSaved = vi.fn();
-  const hook = renderHook(() =>
-    useSectionSave<DetailsContractCode>({
-      copy: detailsErrorCopy,
-      projected: () => PROJECTED,
-      slug: 'ha-long',
-      onSaved,
-      onFieldError,
-    }),
+  const hook = renderHook(
+    ({ version }) =>
+      useSectionSave<DetailsContractCode>({
+        copy: detailsErrorCopy,
+        projected: () => PROJECTED,
+        slug: 'ha-long',
+        version,
+        onSaved,
+        onFieldError,
+      }),
+    { initialProps: { version: '2026-09-28T01:00:00.000Z' } },
   );
   const save = async (result: EditorWriteResult<DetailsContractCode>) => {
     await act(async () => {
@@ -119,6 +122,32 @@ describe('useSectionSave', () => {
     expect(onFieldError).toHaveBeenCalledWith('DURATION_LOCKED');
     expect(hook.result.current.banner).toBeNull();
     expect(errorToast).not.toHaveBeenCalled();
+  });
+
+  it('mã KHÔNG thuộc ô nào (onFieldError trả false) → vẫn ra dải lỗi', async () => {
+    // Vòng review F17: `onFieldError` thật của tab Details trả false cho mọi lỗi
+    // vận chuyển; một nhánh lỡ trả true ở đây là nuốt lỗi — không dải, không toast.
+    const onFieldError = vi.fn(() => false);
+    const { hook, save } = setup(onFieldError);
+
+    await save({ ok: false, code: 'FORBIDDEN' });
+
+    expect(onFieldError).toHaveBeenCalledWith('FORBIDDEN');
+    expect(hook.result.current.banner).toEqual({
+      kind: 'error',
+      message: detailsErrorCopy('FORBIDDEN'),
+      uncertain: false,
+    });
+  });
+
+  it('dải báo gắn với phiên bản của form: form nạp bản mới thì dải cũ tự tắt', async () => {
+    const { hook, save } = setup();
+    await save({ ok: false, code: 'STALE_TOUR' });
+    expect(hook.result.current.banner).toEqual({ kind: 'stale' });
+
+    hook.rerender({ version: '2026-09-28T02:00:00.000Z' });
+
+    expect(hook.result.current.banner).toBeNull();
   });
 
   it('GENERIC là kết cục KHÔNG RÕ; FORBIDDEN thì rõ', async () => {

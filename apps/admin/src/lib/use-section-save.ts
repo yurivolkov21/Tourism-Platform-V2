@@ -24,6 +24,10 @@ import type { EditorWriteResult } from '@/lib/tour-editor-write';
  * - `NOT_FOUND`: tour đã bị xoá — toast rồi về `/tours`.
  * - Mã thuộc về một ô (`onFieldError` trả `true`): form tự in dưới ô ấy.
  * - Còn lại: dải lỗi; `GENERIC` là kết cục KHÔNG RÕ nên dải mời Reload thay vì bấm lại.
+ *
+ * Dải báo gắn với `version` mà form cầm lúc bấm Save (vòng review F17): form nạp
+ * bản mới (Reload, hay bản server trôi về khi form sạch) là dải của lần lưu cũ
+ * tự tắt — nó nói về một phiên bản form không còn cầm.
  */
 export type SectionBanner =
   | { kind: 'stale' }
@@ -34,19 +38,23 @@ export function useSectionSave<Code extends string>(options: {
   copy: (code: Code | TransportFailureCode) => string;
   projected: () => TourReadiness;
   slug: string;
+  /** Phiên bản tour form đang cầm — dải báo chỉ sống cùng phiên bản ấy. */
+  version: string;
   onSaved: (detail: AdminTourDetail) => void;
   onFieldError?: (code: Code) => boolean;
 }) {
   const router = useRouter();
   const inFlight = useRef(false);
   const [pending, setPending] = useState(false);
-  const [banner, setBanner] = useState<SectionBanner | null>(null);
+  const [shown, setShown] = useState<{ banner: SectionBanner; version: string } | null>(null);
 
   async function save(run: () => Promise<EditorWriteResult<Code>>) {
     if (inFlight.current) return;
     inFlight.current = true;
     setPending(true);
-    setBanner(null);
+    setShown(null);
+    const version = options.version;
+    const setBanner = (banner: SectionBanner) => setShown({ banner, version });
     let result: EditorWriteResult<Code>;
     try {
       result = await run();
@@ -81,5 +89,6 @@ export function useSectionSave<Code extends string>(options: {
     setBanner({ kind: 'error', message: options.copy(code), uncertain: isUncertainOutcome(code) });
   }
 
+  const banner = shown !== null && shown.version === options.version ? shown.banner : null;
   return { pending, banner, save };
 }

@@ -39,7 +39,6 @@ import {
   detailsFormValues,
   type LineDraft,
   parseWholeNumber,
-  sameValues,
   type TourDetailsFormErrors,
   type TourDetailsFormValues,
   tourDetailsPayload,
@@ -47,6 +46,7 @@ import {
   validateTourDetailsForm,
 } from '@/lib/tour-editor-write';
 import { useSectionSave } from '@/lib/use-section-save';
+import { useTourFormState } from '@/lib/use-tour-form-state';
 
 /**
  * Tab Details (spec F17 §2h): ba khung — Basics, Destinations, Selling points —
@@ -54,10 +54,10 @@ import { useSectionSave } from '@/lib/use-section-save';
  *
  * `detail` đọc từ PROPS cho mọi luật phụ thuộc trạng thái server (đang bán? có
  * chuyến? sàn ghế?) — sau khi admin bấm On sale ở phần đầu, `router.refresh()`
- * đưa props mới xuống mà form không bị dựng lại (bật/tắt bán không đổi `version`,
- * plan F17 quyết định 2). Chỉ giá trị các ô, bản gốc để so "có thay đổi", và
- * `version` là state. Trang dựng form với `key={detail.version}`: phiên bản mới
- * (sau Reload) là một form mới.
+ * đưa props mới xuống. Giá trị các ô, bản gốc để so "có thay đổi" và `version`
+ * nằm trong `useTourFormState`: form KHÔNG bị dựng lại khi phiên bản đổi (vòng
+ * review F17) — bản mới được đón khi form sạch, hoặc báo bằng dải stale khi
+ * đang sửa.
  */
 const e = messages.admin.tours.editor;
 const t = e.details;
@@ -80,20 +80,22 @@ export function TourDetailsForm({
   save: UpdateDetailsAction;
   remove: DeleteTourAction;
 }) {
-  const [base, setBase] = useState<TourDetailsFormValues>(() => detailsFormValues(detail));
-  const [values, setValues] = useState<TourDetailsFormValues>(base);
-  const [version, setVersion] = useState(detail.version);
-  const [showValidation, setShowValidation] = useState(false);
-  /** Lỗi server thuộc về một ô (DURATION_LOCKED, GROUP_SIZE_BELOW_SEATS). */
+  const form = useTourFormState<TourDetailsFormValues>(detail, detailsFormValues);
+  const { values, version, dirty, showValidation } = form;
+  /**
+   * Lỗi server thuộc về một ô (DURATION_LOCKED, GROUP_SIZE_BELOW_SEATS), gắn với
+   * phiên bản lúc bấm Save — form nạp bản mới thì lỗi cũ tự tắt.
+   */
   const [fieldError, setFieldError] = useState<{
     field: 'durationDays' | 'maxGroupSize';
     message: string;
+    version: string;
   } | null>(null);
+  const shownFieldError = fieldError?.version === version ? fieldError : null;
 
   const errors: TourDetailsFormErrors = showValidation
     ? validateTourDetailsForm(values, detail)
     : {};
-  const dirty = !sameValues(values, base);
   const days = parseWholeNumber(values.durationDays);
   const removed = removedItineraryDays(detail.itinerary, days);
   const locked = detail.departureCount > 0;
@@ -101,37 +103,31 @@ export function TourDetailsForm({
   const { pending, banner, save } = useSectionSave<DetailsContractCode>({
     copy: detailsErrorCopy,
     slug: detail.slug,
+    version,
     projected: () =>
       projectedReadiness(detail, {
         summary: values.summary,
         destinations: values.destinations,
         durationDays: days,
       }),
-    onSaved: (next) => {
-      const fresh = detailsFormValues(next);
-      setBase(fresh);
-      setValues(fresh);
-      setVersion(next.version);
-      setShowValidation(false);
-      setFieldError(null);
-    },
+    onSaved: form.adopt,
     onFieldError: (code) => {
       if (code === 'DURATION_LOCKED') {
-        setFieldError({ field: 'durationDays', message: detailsErrorCopy(code) });
+        setFieldError({ field: 'durationDays', message: detailsErrorCopy(code), version });
       } else if (code === 'GROUP_SIZE_BELOW_SEATS') {
-        setFieldError({ field: 'maxGroupSize', message: detailsErrorCopy(code) });
+        setFieldError({ field: 'maxGroupSize', message: detailsErrorCopy(code), version });
       } else return false;
       return true;
     },
   });
 
   function patch(next: Partial<TourDetailsFormValues>) {
-    setValues((current) => ({ ...current, ...next }));
+    form.setValues((current) => ({ ...current, ...next }));
     setFieldError(null);
   }
 
   function submit() {
-    setShowValidation(true);
+    form.setShowValidation(true);
     if (Object.keys(validateTourDetailsForm(values, detail)).length > 0) return;
     void save(() => saveAction(tourDetailsPayload(detail.id, version, values)));
   }
@@ -165,9 +161,11 @@ export function TourDetailsForm({
   const primaryKey = values.destinations.find((line) => line.isPrimary)?.key;
   const lineError = (key: string) => errors.lines?.[key];
   const durationError =
-    errors.durationDays ?? (fieldError?.field === 'durationDays' ? fieldError.message : undefined);
+    errors.durationDays ??
+    (shownFieldError?.field === 'durationDays' ? shownFieldError.message : undefined);
   const groupError =
-    errors.maxGroupSize ?? (fieldError?.field === 'maxGroupSize' ? fieldError.message : undefined);
+    errors.maxGroupSize ??
+    (shownFieldError?.field === 'maxGroupSize' ? shownFieldError.message : undefined);
 
   return (
     <div className="flex flex-col gap-6 px-4 pb-8 lg:px-6">
@@ -175,8 +173,10 @@ export function TourDetailsForm({
         dirty={dirty}
         pending={pending}
         banner={banner}
+        serverChanged={form.serverChanged}
         note={t.basePriceNote}
         onSubmit={submit}
+        onReload={form.reload}
       >
         <fieldset className="grid gap-4 rounded-lg border p-4">
           <legend className="px-1 text-sm font-semibold">{t.sections.basics}</legend>
