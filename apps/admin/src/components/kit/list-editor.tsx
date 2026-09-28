@@ -19,7 +19,7 @@ import { type Keyed, moveItem, removeAt } from '@/lib/list-editor';
  *   đổi chỗ dòng bằng `insertBefore`, và trình duyệt bỏ tiêu điểm của nút bị dời
  *   (jsdom thì không — test không canh được luật này, phải thử tay).
  * - Xoá một dòng thì tiêu điểm sang nút xoá của dòng thay chỗ, hết dòng thì về
- *   nút thêm.
+ *   nút thêm — hoặc về `emptyFocus` ở danh sách không có nút thêm.
  * - Thêm dòng thì tiêu điểm vào ô nhập đầu tiên của dòng mới.
  */
 const t = messages.admin.listEditor;
@@ -28,8 +28,12 @@ export interface ListEditorProps<Item extends Keyed> {
   items: readonly Item[];
   onChange: (items: Item[]) => void;
   max: number;
-  newItem: () => Item;
-  addLabel: string;
+  /**
+   * Vắng (cùng `addLabel`) thì kit KHÔNG vẽ nút thêm — dòng vào danh sách bằng
+   * đường khác (tab Photos: tải lên, thư viện).
+   */
+  newItem?: () => Item;
+  addLabel?: string;
   /** Tên của một dòng cho trình đọc màn hình, vd "highlight 2". */
   itemName: (index: number) => string;
   renderItem: (item: Item, index: number) => React.ReactNode;
@@ -47,6 +51,11 @@ export interface ListEditorProps<Item extends Keyed> {
   labelledRows?: boolean;
   /** Câu hiện khi danh sách rỗng. */
   empty?: string;
+  /**
+   * Phần tử nhận tiêu điểm khi gỡ dòng CUỐI — mặc định là nút thêm của kit. Danh
+   * sách không có nút thêm phải truyền nó, không thì tiêu điểm rơi về `<body>`.
+   */
+  emptyFocus?: React.RefObject<HTMLElement | null>;
 }
 
 export function ListEditor<Item extends Keyed>(props: ListEditorProps<Item>) {
@@ -62,6 +71,7 @@ export function ListEditor<Item extends Keyed>(props: ListEditorProps<Item>) {
     reorderable = true,
     labelledRows = false,
     empty,
+    emptyFocus,
   } = props;
   const rows = React.useRef(new Map<string, HTMLLIElement>());
   const removeButtons = React.useRef(new Map<string, HTMLButtonElement>());
@@ -76,7 +86,7 @@ export function ListEditor<Item extends Keyed>(props: ListEditorProps<Item>) {
 
   React.useEffect(() => {
     if (focusAfter === null) return;
-    if (focusAfter.kind === 'add') addButton.current?.focus();
+    if (focusAfter.kind === 'add') (emptyFocus?.current ?? addButton.current)?.focus();
     else if (focusAfter.kind === 'remove') removeButtons.current.get(focusAfter.key)?.focus();
     else if (focusAfter.kind === 'move')
       rows.current
@@ -92,12 +102,12 @@ export function ListEditor<Item extends Keyed>(props: ListEditorProps<Item>) {
         ?.querySelector<HTMLElement>('input, textarea, select, [role="combobox"], button')
         ?.focus();
     setFocusAfter(null);
-  }, [focusAfter]);
+  }, [focusAfter, emptyFocus]);
 
   const full = items.length >= max;
 
   function add() {
-    if (disabled || full) return;
+    if (newItem === undefined || disabled || full) return;
     const item = newItem();
     onChange([...items, item]);
     setFocusAfter({ kind: 'row', key: item.key });
@@ -188,24 +198,26 @@ export function ListEditor<Item extends Keyed>(props: ListEditorProps<Item>) {
           </li>
         ))}
       </ol>
-      <div className="flex items-center gap-3">
-        <Button
-          ref={addButton}
-          type="button"
-          variant="outline"
-          focusableWhenDisabled
-          disabled={disabled || full}
-          onClick={add}
-        >
-          <PlusIcon aria-hidden="true" />
-          {addLabel}
-        </Button>
-        {full ? (
-          <p aria-live="polite" className="text-sm text-muted-foreground">
-            {t.limit(max)}
-          </p>
-        ) : null}
-      </div>
+      {newItem !== undefined && addLabel !== undefined ? (
+        <div className="flex items-center gap-3">
+          <Button
+            ref={addButton}
+            type="button"
+            variant="outline"
+            focusableWhenDisabled
+            disabled={disabled || full}
+            onClick={add}
+          >
+            <PlusIcon aria-hidden="true" />
+            {addLabel}
+          </Button>
+          {full ? (
+            <p aria-live="polite" className="text-sm text-muted-foreground">
+              {t.limit(max)}
+            </p>
+          ) : null}
+        </div>
+      ) : null}
     </div>
   );
 }

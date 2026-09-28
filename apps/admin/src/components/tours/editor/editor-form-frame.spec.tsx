@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { messages } from '@tourism/i18n';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -161,5 +161,36 @@ describe('EditorFormFrame', () => {
   it('ghi chú hiện cạnh nút Save', () => {
     frame({ note: 'A new base price applies straight away.' });
     expect(screen.getByText('A new base price applies straight away.')).toBeInTheDocument();
+  });
+
+  it('blockedNote: Save khoá dù form có thay đổi, câu lý do thay chỗ ghi chú, submit không chạy', async () => {
+    const onSubmit = vi.fn();
+    const user = userEvent.setup();
+    render(
+      <EditorFormFrame
+        dirty
+        pending={false}
+        banner={null}
+        note="Saved costs apply from now on."
+        blockedNote="Waiting for 2 uploads to finish."
+        onSubmit={onSubmit}
+        onReload={vi.fn()}
+      >
+        <input aria-label="Field" />
+      </EditorFormFrame>,
+    );
+
+    expect(screen.getByText('Waiting for 2 uploads to finish.')).toBeInTheDocument();
+    expect(screen.queryByText('Saved costs apply from now on.')).not.toBeInTheDocument();
+    const save = screen.getByRole('button', { name: messages.admin.tours.editor.save });
+    expect(save).toHaveAttribute('aria-disabled', 'true');
+    await user.type(screen.getByLabelText('Field'), '{Enter}');
+    expect(onSubmit).not.toHaveBeenCalled();
+    // Lưới thứ hai: nút khoá đã chặn gửi ngầm, nên gửi thẳng form để chạm điều kiện
+    // trong `onSubmit` của khung.
+    const form = screen.getByLabelText('Field').closest('form');
+    if (form === null) throw new Error('expected the field inside a form');
+    fireEvent.submit(form);
+    expect(onSubmit).not.toHaveBeenCalled();
   });
 });

@@ -11,7 +11,7 @@ import { useReportUnsaved } from '@/components/kit/unsaved-changes';
 import type { SectionBanner } from '@/lib/use-section-save';
 
 /**
- * Khung chung của bốn form tab (spec F17 §2i): dải báo TRÊN nội dung, rồi nội
+ * Khung chung của các form tab (spec F17 §2i): dải báo TRÊN nội dung, rồi nội
  * dung, rồi chân form — ghi chú hệ quả cạnh nút Save.
  *
  * - Nút Save chỉ sáng khi form có thay đổi; khoá bằng `focusableWhenDisabled`
@@ -33,6 +33,7 @@ export function EditorFormFrame({
   banner,
   serverChanged = false,
   note,
+  blockedNote,
   onSubmit,
   onReload,
   children,
@@ -44,6 +45,12 @@ export function EditorFormFrame({
   serverChanged?: boolean;
   /** Câu nói hệ quả của lần lưu, hiện cạnh nút Save. */
   note?: string;
+  /**
+   * Lý do Save đang khoá dù form có thay đổi (tab Photos: còn ảnh đang tải lên) —
+   * in thay chỗ `note`. Không dùng `pending`: nhãn nút sẽ thành "Saving…" trong khi
+   * chẳng có gì đang lưu.
+   */
+  blockedNote?: string;
   onSubmit: () => void;
   /** Nút Reload của mọi dải báo — form nạp bản server mới. */
   onReload: () => void;
@@ -58,14 +65,20 @@ export function EditorFormFrame({
       className="flex flex-col gap-6"
       onSubmit={(event) => {
         event.preventDefault();
-        if (dirty && !pending) onSubmit();
+        if (dirty && !pending && blockedNote === undefined) onSubmit();
       }}
     >
       {shown ? <FormBanner banner={shown} onReload={onReload} /> : null}
       {children}
       <div className="flex flex-wrap items-center justify-end gap-3 border-t pt-4">
-        {note ? <p className="text-xs text-muted-foreground">{note}</p> : null}
-        <Button type="submit" focusableWhenDisabled disabled={!dirty || pending}>
+        {(blockedNote ?? note) ? (
+          <p className="text-xs text-muted-foreground">{blockedNote ?? note}</p>
+        ) : null}
+        <Button
+          type="submit"
+          focusableWhenDisabled
+          disabled={!dirty || pending || blockedNote !== undefined}
+        >
           <StableLabel label={pending ? t.saving : t.save} reserve={SAVE_LABELS} />
         </Button>
       </div>

@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { describe, expect, it } from 'vitest';
 import { type Keyed, newItemKey } from '@/lib/list-editor';
 import { ListEditor } from './list-editor';
@@ -133,5 +133,42 @@ describe('ListEditor', () => {
     expect(screen.getByText('You can add up to 3.')).toBeInTheDocument();
     await user.click(add);
     expect(screen.getByTestId('order').textContent).toBe('Sunset|Kayak|');
+  });
+
+  it('không có newItem thì không vẽ nút thêm; gỡ dòng cuối đưa tiêu điểm tới emptyFocus', async () => {
+    // Tab Photos (F18): ảnh vào danh sách qua nút Upload photos và Add from library,
+    // nên kit không có nút thêm — gỡ dòng cuối mà không có đích thì tiêu điểm rơi về <body>.
+    function NoAdd() {
+      const [items, setItems] = useState<Line[]>([{ key: 'k-1', text: 'Only' }]);
+      const target = useRef<HTMLButtonElement>(null);
+      return (
+        <>
+          <button ref={target} type="button">
+            Upload photos
+          </button>
+          <ListEditor
+            items={items}
+            onChange={setItems}
+            max={3}
+            itemName={(index) => `photo ${index + 1}`}
+            emptyFocus={target}
+            renderItem={(item) => <span>{item.text}</span>}
+          />
+        </>
+      );
+    }
+    const user = userEvent.setup();
+    render(<NoAdd />);
+
+    expect(screen.queryByRole('button', { name: /^Add/ })).not.toBeInTheDocument();
+    // Đúng bốn nút: nút ngoài kit và ba nút của dòng — nút thêm không nhãn vẫn là
+    // một nút (tên rỗng) mà `/^Add/` không bắt được.
+    expect(
+      screen
+        .getAllByRole('button')
+        .map((button) => button.getAttribute('aria-label') ?? button.textContent),
+    ).toEqual(['Upload photos', 'Move photo 1 up', 'Move photo 1 down', 'Remove photo 1']);
+    await user.click(screen.getByRole('button', { name: 'Remove photo 1' }));
+    expect(screen.getByRole('button', { name: 'Upload photos' })).toHaveFocus();
   });
 });
