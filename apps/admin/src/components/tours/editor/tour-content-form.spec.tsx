@@ -170,4 +170,13 @@ describe('TourContentForm', () => {
     expect(save.mock.calls[0]?.[0].version).toBe(VERSION);
     expect(save.mock.calls[1]?.[0].version).toBe(NEXT_VERSION);
   });
+
+  it('dòng FAQ và dòng chính sách mở đầu bằng nhãn: cụm nút canh ngang ô nhập đầu tiên', () => {
+    // Thử tay F17: ↑ ↓ và thùng rác nằm ngang nhãn "Question" / "Kind", lệch khỏi ô nhập.
+    renderForm(detailFixture({ faqs: TWO_FAQS, policies: [BOOKING_POLICY] }));
+    const rows = document.querySelectorAll('[data-slot="row-actions"]');
+
+    expect(rows).toHaveLength(3);
+    for (const row of rows) expect(row).toHaveAttribute('data-align', 'field');
+  });
 });

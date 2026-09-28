@@ -176,4 +176,13 @@ describe('TourCostsForm', () => {
     expect(save.mock.calls[0]?.[0].version).toBe(VERSION);
     expect(save.mock.calls[1]?.[0].version).toBe(NEXT_VERSION);
   });
+
+  it('dòng chi phí mở đầu bằng nhãn: cụm nút canh ngang ô nhập đầu tiên', () => {
+    // Thử tay F17: ↑ ↓ và thùng rác nằm ngang nhãn "Category", lệch khỏi ô nhập.
+    renderForm(detailFixture({ costItems: [LUNCH] }));
+    const rows = document.querySelectorAll('[data-slot="row-actions"]');
+
+    expect(rows).toHaveLength(1);
+    for (const row of rows) expect(row).toHaveAttribute('data-align', 'field');
+  });
 });

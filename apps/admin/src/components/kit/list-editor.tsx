@@ -2,6 +2,7 @@
 
 import { messages } from '@tourism/i18n';
 import { Button } from '@tourism/ui/components/button';
+import { cn } from '@tourism/ui/lib/utils';
 import { ArrowDownIcon, ArrowUpIcon, PlusIcon, Trash2Icon } from 'lucide-react';
 import * as React from 'react';
 import { type Keyed, moveItem, removeAt } from '@/lib/list-editor';
@@ -39,6 +40,11 @@ export interface ListEditorProps<Item extends Keyed> {
    * lưu xong thứ tự lại quay về (vòng review F17).
    */
   reorderable?: boolean;
+  /**
+   * Dòng mở đầu bằng nhãn của `FormField` (điểm đến, FAQ, chính sách, chi phí):
+   * cụm nút hạ xuống ngang ô nhập đầu tiên thay vì ngang nhãn (thử tay F17).
+   */
+  labelledRows?: boolean;
   /** Câu hiện khi danh sách rỗng. */
   empty?: string;
 }
@@ -54,6 +60,7 @@ export function ListEditor<Item extends Keyed>(props: ListEditorProps<Item>) {
     renderItem,
     disabled = false,
     reorderable = true,
+    labelledRows = false,
     empty,
   } = props;
   const rows = React.useRef(new Map<string, HTMLLIElement>());
@@ -126,7 +133,13 @@ export function ListEditor<Item extends Keyed>(props: ListEditorProps<Item>) {
             className="flex items-start gap-2 rounded-md border p-3"
           >
             <div className="grid flex-1 gap-3">{renderItem(item, index)}</div>
-            <div className="flex shrink-0 gap-1">
+            <div
+              data-slot="row-actions"
+              data-align={labelledRows ? 'field' : undefined}
+              // `pt-5` = nhãn của `FormField` (`text-sm leading-none`, 14px) cộng
+              // khoảng `gap-1.5` (6px) tới ô nhập — nút và ô nhập cùng cao 32px.
+              className={cn('flex shrink-0 gap-1', labelledRows && 'pt-5')}
+            >
               {/* Ba nút icon; `aria-label` ghép tên dòng. Dòng đầu khoá "lên", dòng cuối khoá "xuống". */}
               {reorderable ? (
                 <>

@@ -113,6 +113,7 @@ export function TourContentForm({
             items={values.faqs}
             onChange={(faqs) => patch({ faqs })}
             max={TOUR_FAQS_MAX}
+            labelledRows
             newItem={() => ({ key: newItemKey(), question: '', answer: '' })}
             addLabel={t.addFaq}
             itemName={(index) => t.faqName(index + 1)}
@@ -172,6 +173,7 @@ export function TourContentForm({
             items={values.policies}
             onChange={(policies) => patch({ policies })}
             max={TOUR_POLICIES_MAX}
+            labelledRows
             // Ô chọn loại luôn phải mang một giá trị — mặc định là mục đầu, Booking.
             newItem={() => ({
               key: newItemKey(),

@@ -13,10 +13,12 @@ function Harness({
   initial,
   max = 3,
   reorderable,
+  labelledRows,
 }: {
   initial: string[];
   max?: number;
   reorderable?: boolean;
+  labelledRows?: boolean;
 }) {
   const [items, setItems] = useState<Line[]>(initial.map((text) => ({ key: newItemKey(), text })));
   return (
@@ -28,6 +30,7 @@ function Harness({
         newItem={() => ({ key: newItemKey(), text: '' })}
         addLabel="Add highlight"
         reorderable={reorderable}
+        labelledRows={labelledRows}
         itemName={(index) => `highlight ${index + 1}`}
         renderItem={(item, index) => (
           <input
@@ -57,6 +60,26 @@ describe('ListEditor', () => {
     expect(screen.queryByRole('button', { name: 'Move highlight 1 up' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Move highlight 1 down' })).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Remove highlight 1' })).toBeInTheDocument();
+  });
+
+  const actionsOf = (rowName: string) =>
+    screen.getByRole('button', { name: `Remove ${rowName}` }).closest('[data-slot="row-actions"]');
+
+  it('dòng mở đầu bằng nhãn (labelledRows): cụm nút hạ xuống ngang ô nhập đầu tiên', () => {
+    // Thử tay F17: dòng điểm đến, FAQ, chính sách, chi phí mở đầu bằng nhãn của
+    // FormField — cụm nút canh mép trên của dòng thì nằm ngang NHÃN, lệch khỏi ô nhập.
+    render(<Harness initial={['a']} labelledRows />);
+
+    expect(actionsOf('highlight 1')).toHaveAttribute('data-align', 'field');
+    expect(actionsOf('highlight 1')).toHaveClass('pt-5');
+  });
+
+  it('dòng không nhãn (mặc định): cụm nút giữ ở mép trên, vốn đã ngang ô nhập', () => {
+    render(<Harness initial={['a']} />);
+
+    expect(actionsOf('highlight 1')).not.toBeNull();
+    expect(actionsOf('highlight 1')).not.toHaveAttribute('data-align');
+    expect(actionsOf('highlight 1')).not.toHaveClass('pt-5');
   });
 
   it('dời lên / xuống đổi thứ tự; nút lên của dòng đầu bị khoá nhưng vẫn giữ được tiêu điểm', async () => {

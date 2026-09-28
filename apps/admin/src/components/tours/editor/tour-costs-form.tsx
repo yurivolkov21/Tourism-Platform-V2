@@ -110,6 +110,7 @@ export function TourCostsForm({
           items={values.items}
           onChange={(items) => form.setValues({ items })}
           max={TOUR_COST_ITEMS_MAX}
+          labelledRows
           // Hai ô chọn luôn phải mang một giá trị — mặc định là mục đầu của mỗi ô.
           newItem={() => ({
             key: newItemKey(),
