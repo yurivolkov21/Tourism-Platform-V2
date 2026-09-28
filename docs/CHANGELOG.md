@@ -8,6 +8,70 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-09-28 — Bác review bằng lý do chọn từ danh sách; dialog và email nói đúng đường sửa (nhánh `feat/review-reject-reasons`)
+
+Góp ý của giáo viên hướng dẫn (qua user): lý do bác gõ tay thì mỗi admin một kiểu,
+câu gửi khách không đồng nhất. User đề xuất một danh sách lý do kèm ô tìm ở bên
+trái dialog Reject, bấm là điền vào ô "Why it was rejected". Quyết định ghi ở
+ADR-0031 AMEND 1 (`c8e58545`, viết trước code).
+
+- **Lý do chọn từ danh sách, câu chuẩn khoá** (`a474cca7`). Dialog Reject rộng ra
+  hai cột: trái là ô tìm và chín lý do soạn sẵn (tìm theo cả tên lẫn câu, nhiều từ
+  thì phải khớp đủ); phải là ngữ cảnh review, ô "Why it was rejected" hiện nguyên
+  văn câu khách sẽ đọc, và ô "Add a detail" tuỳ chọn. User chọn phương án khoá câu
+  thay vì điền vào ô sửa được: điền rồi sửa được thì admin vẫn gõ đè cả câu. Mục
+  "Other" bắt buộc có chi tiết. Câu chuẩn chỉ nói VÌ SAO, không hứa đường sửa; danh
+  sách cố ý không có lý do kiểu "đánh giá tiêu cực". Note gửi server vẫn là một
+  chuỗi (câu chuẩn cộng chi tiết), trần 500 lấy từ hằng mới
+  `REVIEW_MODERATION_NOTE_MAX` của contract (`27dbd770`); ô chi tiết tính trần theo
+  câu dài nhất nên đổi lý do sau khi gõ không bao giờ vượt. Không migration, không
+  đổi hình dạng contract. Dialog dựng trên hook `useConfirmWrite`; kit
+  `ConfirmWriteDialog` không đổi, ba lệnh Approve, Unpublish, Reopen vẫn đi qua nó.
+- **Dialog nói theo lần bác.** Rà lúc thiết kế thấy copy dialog Reject vẫn nói như
+  trước ADR-0032: "The author cannot rewrite this review… no way to edit it",
+  "closes the review for good", nhắc một nút "Unapprove" không tồn tại. Nay câu mở,
+  hệ quả và câu cuối đổi theo `canAuthorEdit` của contract với số lần bác sau lần
+  này: lần đầu nói tác giả còn một cơ hội sửa rồi gửi lại (câu cuối giọng trung
+  tính), lần chung cuộc thì cảnh báo đỏ, và chỉ nhắc Unpublish với review đang hiện.
+  Review CURATED hay tài khoản đã xoá thì không có ai để sửa, nên nói chung cuộc.
+  Chữ "once" đổi thành "one more chance" (`1c62f51e`): luật đếm lần bác, không đếm
+  lần sửa.
+- **Hết hứa "gỡ khỏi trang tour" với review chưa lên site.** Bác một review đang
+  chờ, bản trước vẫn in "Removes the review from the tour page." — đúng câu trong ảnh
+  user gửi. Nay review chưa duyệt in "not on the site right now, so nothing comes
+  down".
+- **Email bác nói đường sửa** (`0661a20d`). Payload `REVIEW_REJECTED` thêm `canEdit`
+  (service tính bằng `canAuthorEdit` với số lần bác vừa đếm trong transaction) và
+  mã booking. Còn sửa được thì mail mời sửa, báo lần bác thứ hai là chung cuộc, kèm
+  nút "Edit your review" tới `/account/bookings/<code>`; hết đường thì nói đã xem hai
+  lần. Payload xếp hàng trước lúc deploy không có hai trường này nên mail in như cũ.
+
+**Review findings:** không mở vòng review riêng; test viết trước cho từng tầng.
+25 đột biến đều làm test đỏ: bảy ở logic danh sách (Other hết bắt buộc chi tiết,
+ghép thiếu dấu cách, không trim, trần chi tiết quên dấu cách nối, tìm một từ là đủ,
+tìm chỉ theo tên, chi tiết toàn khoảng trắng coi là có), năm ở câu hệ quả (quên
+cộng một khi đếm lần bác, CURATED vẫn hứa sửa, chung cuộc không nhắc Unpublish,
+review chờ vẫn hứa gỡ khỏi trang tour, email luôn hứa đường sửa), bảy ở dialog
+(bắn khi thiếu chi tiết, gửi bỏ chi tiết, trần ô chi tiết 500, nhãn không đổi với
+Other, ô không báo invalid, câu cuối luôn đỏ, nút Reject quay về dialog kit), một
+ở contract (trần 499), ba ở mail (payload cũ bị coi là còn sửa, nút về danh sách
+booking, payload cũ in câu hết đường) và hai ở service (canEdit luôn true, thiếu
+mã booking).
+Bố cục jsdom không đo được, nên soi bằng CSS của bản build admin (DOM từ jsdom đổ
+ra trang tĩnh): khổ 1400px hai cột, cột lý do 272px, danh sách cuộn trong khung
+26rem, mục đang chọn có viền nhấn; lần chung cuộc với review đang hiện thì câu cuối
+đỏ kèm lời nhắc Unpublish; khổ 390px còn một cột, danh sách lên trên, không tràn
+ngang.
+
+**Không có việc hạ tầng:** không migration, không env, không webhook. Web không đổi:
+trang booking đã hiện lý do và form sửa từ ADR-0032.
+
+Tests after: Vitest **4617** (web 1576, admin 1391, api 997, contract 548, core 46,
+ui 23, tokens 18, i18n 18), int **679 ở 45 file** (chạy trên DB riêng
+`tourism_test_reasons` vì session F18 đang dùng chung `tourism_test`), jest mobile
+159 và mobile-ui 86.
+
+
 ## 2026-10-01 — Merge G21 (`7844478c`), deploy API hỏng vì hết kết nối pooler, thử tay 2/2
 
 Nhánh `fix/reports-recognised-to-date` fast-forward thẳng (4 commit, `main` không đi thêm);
