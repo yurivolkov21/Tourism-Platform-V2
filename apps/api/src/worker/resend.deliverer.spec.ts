@@ -165,6 +165,50 @@ describe('renderEmail — bác bỏ review (ADR-0031 §6)', () => {
     const { html } = await renderEmail(EmailType.REVIEW_REJECTED, REJECTED);
     expect(html).toContain('take another look');
   });
+
+  // ADR-0031 AMEND 1 §5: mail nói đúng đường sửa theo `canEdit` service tính sẵn.
+  it('lần bác đầu (canEdit) → mời sửa, nút dẫn thẳng tới trang booking có form sửa', async () => {
+    const { html } = await renderEmail(
+      EmailType.REVIEW_REJECTED,
+      { ...REJECTED, canEdit: true },
+      OPTS.frontendUrl,
+    );
+
+    expect(html).toContain('Edit your review');
+    expect(html).toContain('https://tourism.test/account/bookings/BK-1');
+    expect(html).toContain('A second rejection is final');
+    expect(html).not.toContain('looked at this review twice');
+  });
+
+  it('lần chung cuộc (canEdit false) → nói đã xem hai lần, KHÔNG có nút sửa', async () => {
+    const { html } = await renderEmail(
+      EmailType.REVIEW_REJECTED,
+      { ...REJECTED, canEdit: false },
+      OPTS.frontendUrl,
+    );
+
+    expect(html).toContain('looked at this review twice');
+    expect(html).not.toContain('Edit your review');
+  });
+
+  it('payload xếp hàng TRƯỚC lúc deploy (không có canEdit) → in như cũ, không hứa điều không biết chắc', async () => {
+    const { html } = await renderEmail(EmailType.REVIEW_REJECTED, REJECTED, OPTS.frontendUrl);
+
+    expect(html).not.toContain('Edit your review');
+    expect(html).not.toContain('looked at this review twice');
+    expect(html).toContain('will not appear on the site');
+  });
+
+  it('còn sửa được nhưng thiếu mã booking hay FRONTEND_URL → vẫn nói đường sửa, chỉ bỏ nút', async () => {
+    const { html } = await renderEmail(EmailType.REVIEW_REJECTED, {
+      ...REJECTED,
+      code: undefined,
+      canEdit: true,
+    });
+
+    expect(html).toContain('A second rejection is final');
+    expect(html).not.toContain('Edit your review');
+  });
 });
 
 describe('renderEmail — khách tự huỷ (BOOKING_CANCELLED, ADR-0041)', () => {

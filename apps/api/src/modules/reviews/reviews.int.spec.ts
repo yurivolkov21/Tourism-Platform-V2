@@ -1556,6 +1556,36 @@ describe('reviews (int)', () => {
       expect(mails[1]?.payload).toMatchObject({ note: 'Lần hai — chung cuộc.' });
     });
 
+    it('mail bác nói ĐÚNG đường sửa: lần đầu còn sửa (kèm mã booking cho nút), lần hai hết', async () => {
+      // ADR-0031 AMEND 1 §5: worker không tự đếm số lần bác — service tính
+      // `canEdit` bằng chính `canAuthorEdit` với con số vừa đếm TRONG
+      // transaction (đúng số đã dùng cho dedupeKey), và mang mã booking để
+      // email dựng nút tới trang sửa.
+      const admin = await signUpAdmin(app, ADMIN_EMAIL);
+      const { cookie, reviewId } = await seedOwnReview('edit-path@example.com');
+
+      await reviewsService.moderate(admin.user.id, {
+        id: reviewId,
+        verdict: 'reject',
+        note: 'Lần một.',
+      });
+      await patch(cookie, reviewId, { id: reviewId, rating: 4, body: 'Viết lại lần một' });
+      await reviewsService.moderate(admin.user.id, {
+        id: reviewId,
+        verdict: 'reject',
+        note: 'Lần hai — chung cuộc.',
+      });
+
+      const mails = await prisma.outbox.findMany({
+        where: { type: EmailType.REVIEW_REJECTED },
+        orderBy: { createdAt: 'asc' },
+      });
+      expect(mails.map((mail) => mail.payload)).toEqual([
+        expect.objectContaining({ canEdit: true, code: 'BK-TESTREV1' }),
+        expect.objectContaining({ canEdit: false, code: 'BK-TESTREV1' }),
+      ]);
+    });
+
     it('ghi chú nội bộ của lần unpublish KHÔNG rò ra tác giả qua `mine`', async () => {
       // i18n admin hứa "the author never sees it" cho note ở approve/unpublish;
       // contract hứa `moderationNote` null ở mọi trạng thái khác `rejected`.

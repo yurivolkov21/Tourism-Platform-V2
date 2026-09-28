@@ -273,10 +273,24 @@ function buildEmail(
      * vòng vo: nói điều đã xảy ra, nói lý do người duyệt viết, và mở một cửa
      * để hỏi lại.
      *
-     * `note` là LÝ DO do admin gõ. Vắng thì bỏ hẳn khối trích dẫn — một ô
-     * trống có nhãn "vì sao" còn tệ hơn không có nhãn nào.
+     * `note` là LÝ DO do admin chọn (AMEND 1: câu chuẩn cộng chi tiết). Vắng
+     * thì bỏ hẳn khối trích dẫn — một ô trống có nhãn "vì sao" còn tệ hơn
+     * không có nhãn nào.
+     *
+     * AMEND 1 §5 — mail nói đường SỬA theo `canEdit` service tính sẵn bằng
+     * `canAuthorEdit` (worker không tự đếm lần bác). Còn sửa được: mời sửa,
+     * kèm nút tới trang booking — nơi form sửa sống (ADR-0032 §7) — khi có mã
+     * booking và FRONTEND_URL; thiếu một trong hai thì vẫn nói, chỉ bỏ nút.
+     * Hết đường: nói đã xem hai lần. Payload xếp hàng TRƯỚC lúc deploy không
+     * có `canEdit`, nên mail in như cũ — không hứa điều nó không biết chắc.
      */
-    case EmailType.REVIEW_REJECTED:
+    case EmailType.REVIEW_REJECTED: {
+      const canEdit = typeof payload.canEdit === 'boolean' ? payload.canEdit : undefined;
+      const reviewBookingCode = f('code');
+      const editUrl =
+        frontendUrl && reviewBookingCode
+          ? `${frontendUrl}/account/bookings/${encodeURIComponent(reviewBookingCode)}`
+          : undefined;
       return {
         subject: `About your review${s('title') ? ` — ${s('title')}` : ''}`,
         node: (
@@ -301,9 +315,24 @@ function buildEmail(
               will not appear on the site.
             </BodyParagraph>
             {f('note') ? <QuoteCard label="WHY">&quot;{f('note')}&quot;</QuoteCard> : null}
+            {canEdit === true ? (
+              <>
+                <BodyParagraph>
+                  You can edit your review from your booking page and send it back for another look.
+                  A second rejection is final.
+                </BodyParagraph>
+                {editUrl ? <CtaButton href={editUrl}>Edit your review</CtaButton> : null}
+              </>
+            ) : null}
+            {canEdit === false ? (
+              <BodyParagraph>
+                We’ve looked at this review twice, so it can’t be edited again.
+              </BodyParagraph>
+            ) : null}
           </EmailShell>
         ),
       };
+    }
     case EmailType.ENQUIRY_RECEIVED:
       return {
         subject: `We received your enquiry${s('tourTitle') ? ` — ${s('tourTitle')}` : ''}`,

@@ -626,6 +626,9 @@ export class ReviewsService {
         // ghi rating.
         user: { select: { email: true, name: true, deletedAt: true } },
         tour: { select: { title: true } },
+        // Mã booking cho nút "Edit your review" của mail bác (ADR-0031 AMEND 1
+        // §5) — form sửa sống ở trang booking của khách (ADR-0032 §7).
+        booking: { select: { code: true } },
       },
     });
     if (!existing) throw new ReviewNotFoundError();
@@ -811,6 +814,14 @@ export class ReviewsService {
                 name: existing.user.name ?? null,
                 title: existing.tour?.title ?? null,
                 note: input.note ?? null,
+                // AMEND 1 §5: mail nói đúng đường sửa. Tính bằng CHÍNH luật của
+                // contract với số lần bác vừa đếm trong tx — worker không tự đếm,
+                // và dialog admin đã hứa đúng câu này trước khi bấm.
+                canEdit: canAuthorEdit({
+                  moderationState: 'rejected',
+                  rejectionCount: rejectionNo,
+                }),
+                code: existing.booking?.code ?? null,
               },
               dedupeKey: `review-rejected:${input.id}:${rejectionNo}`,
             },
