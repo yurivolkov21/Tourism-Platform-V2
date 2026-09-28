@@ -89,6 +89,7 @@ Mỗi ADR tự chứa đầy đủ phần sửa bổ sung (AMEND) của nó; b�
 | [0046](adr/0046-departure-phase-derived.md) | Giai đoạn chuyến suy từ ngày; `status` chỉ là công tắc bán hàng | |
 | [0047](adr/0047-tour-editor-sections.md) | Sửa tour theo từng khối: thay nguyên danh sách, khoá phiên bản, cổng đăng tour | |
 | [0048](adr/0048-tour-photos.md) | Ảnh tour: một danh sách có thứ tự, kho địa danh làm thư viện, chỉ ảnh tự tải lên mới được dọn | |
+| [0049](adr/0049-tour-workspace-steps.md) | Khu sửa tour thành thanh bước: form một bên, cột phải một bên, bước cuối Review & publish | |
 
 ## Specs — sẽ xây gì
 
@@ -151,7 +152,8 @@ Mỗi spec đi kèm một plan cùng tên ở [`plans/`](plans/), trừ vài đ�
 [**P4e-2 danh mục + điểm đến**](specs/2026-09-22-p4e-2-categories-destinations-design.md) ·
 [**F16 giai đoạn chuyến**](specs/2026-09-23-departure-phase-design.md) ·
 [**F17 tạo và sửa tour (P4e-3a)**](specs/2026-09-24-p4e-3a-tour-editor-design.md) ·
-[**F18 ảnh tour (P4e-3b)**](specs/2026-09-28-p4e-3b-tour-photos-design.md)
+[**F18 ảnh tour (P4e-3b)**](specs/2026-09-28-p4e-3b-tour-photos-design.md) ·
+[**F19 khu sửa tour dạng thanh bước (P4e-3c)**](specs/2026-09-28-p4e-3c-tour-workspace-steps-design.md)
 
 ## Plans — làm theo bước nào
 
