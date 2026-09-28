@@ -481,9 +481,13 @@ describe('reviews (int)', () => {
       payload: { id: reviewId, verdict: 'approve' },
     });
 
+    const beforeApprove = fresh.updatedAt;
     fresh = await prisma.tour.findUniqueOrThrow({ where: { id: tour.id } });
     expect(Number(fresh.ratingAvg)).toBe(4);
     expect(fresh.ratingCount).toBe(1);
+    // `updated_at` là PHIÊN BẢN của khu làm việc tour (F17, ADR-0047 §3): duyệt
+    // review mà đẩy nó thì form admin đang mở dính STALE_TOUR giả (vòng review F17).
+    expect(fresh.updatedAt).toEqual(beforeApprove);
   });
 
   it('duyệt review: đúng 1 ReviewModerationEvent + đúng 1 outbox', async () => {
@@ -1869,6 +1873,9 @@ describe('reviews (int)', () => {
         // Rating recompute trong CÙNG tx: tour không còn review đăng nào.
         const tourAfter = await prisma.tour.findUniqueOrThrow({ where: { id: tour.id } });
         expect(tourAfter.ratingCount).toBe(0);
+        // Rút review không phải một lần sửa tour — phiên bản của khu làm việc
+        // tour (F17) giữ nguyên (vòng review F17).
+        expect(tourAfter.updatedAt).toEqual(before.updatedAt);
 
         // Bust cache SAU commit — đúng tag của trang tour.
         expect(spy).toHaveBeenCalledWith(['tours', `tour:${tour.slug}`]);

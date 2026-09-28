@@ -527,8 +527,7 @@ export class ReviewsService {
           await tx.$executeRaw(Prisma.sql`
             UPDATE tours t
             SET rating_avg = s.avg_rating,
-                rating_count = s.cnt,
-                updated_at = now()
+                rating_count = s.cnt
             FROM (
               SELECT AVG(rating)::numeric(2,1) AS avg_rating, COUNT(*)::int AS cnt
               FROM reviews
@@ -738,6 +737,11 @@ export class ReviewsService {
       // xong. Statement UPDATE...FROM theo sau là statement MỚI nên có
       // snapshot MỚI, thấy đủ mọi thay đổi đã commit trước đó (kể cả của
       // transaction vừa nhả lock) → aggregate luôn đúng, không mất update.
+      //
+      // KHÔNG đụng `updated_at`: từ F17 cột ấy là PHIÊN BẢN của khu làm việc
+      // tour (ADR-0047 §3). Đẩy nó ở đây thì mỗi lần duyệt hay rút một review,
+      // form admin đang mở tour đó nhận STALE_TOUR dù không ai sửa tour (vòng
+      // review F17). Điểm đánh giá là số liệu dẫn xuất, không phải một lần sửa.
       if (locked.tourId) {
         const [lockedTour] = await tx.$queryRaw<{ id: string }[]>(Prisma.sql`
           SELECT id FROM tours WHERE id = ${locked.tourId}::uuid FOR UPDATE
@@ -746,8 +750,7 @@ export class ReviewsService {
           await tx.$executeRaw(Prisma.sql`
             UPDATE tours t
             SET rating_avg = s.avg_rating,
-                rating_count = s.cnt,
-                updated_at = now()
+                rating_count = s.cnt
             FROM (
               SELECT AVG(rating)::numeric(2,1) AS avg_rating, COUNT(*)::int AS cnt
               FROM reviews
