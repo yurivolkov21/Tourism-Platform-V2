@@ -8,6 +8,64 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-09-28 — Góp ý giao diện của lượt thử tay F17 (nhánh `fix/f17-thu-tay-gop-y`)
+
+Đóng mục CÒN TREO của entry thử tay F17 ngay dưới, cộng các góp ý user gửi thêm sau
+lượt thử (tab Details, FAQ & policies, Costs). Toàn bộ là giao diện, không đổi API
+hay contract.
+
+Ba góp ý ghi trong lượt thử:
+
+- **Ngày một điểm dừng in "09:00–09:00"** (`62c3aec3`). Chuỗi `stopsSummary` của
+  i18n in khoảng đầu–cuối kể cả khi hai mốc trùng nhau; giờ mốc đầu trùng mốc cuối
+  thì in một giờ ("Day 2 · 1 stop · 09:00"). Sửa ở chuỗi nên đúng cả ngày nhiều
+  điểm dừng cùng một giờ.
+- **Hai thứ tự chính sách trên một trang** (`51aef65d`). Hàng ô dưới nút đặt chỗ
+  giờ đi qua cùng `orderPolicies` với tab Good to know (huỷ → thanh toán → chung).
+  Sắp xếp ổn định nên ô của mỗi loại vẫn lấy chính sách admin để đầu.
+- **Câu sàn số khách hiện hai lần** (`38dfa282`). Ô Max group size có lỗi thì gợi
+  ý sàn ẩn, lỗi nói một mình; hết lỗi thì gợi ý quay lại. Chọn luật "có lỗi thì ẩn
+  gợi ý" thay vì "ẩn khi trùng chữ": lỗi từ server có thể mang sàn mới hơn con số
+  trong gợi ý đang cầm, và hai câu lệch số còn tệ hơn hai câu trùng chữ.
+
+Góp ý gửi thêm:
+
+- **Nhãn và ô "Base price (USD)" tụt xuống** (`6a5442b6`). Nguyên nhân không phải
+  thiếu chú thích: mỗi ô (`FormField`) là một lưới; hàng ba cột kéo ô Base price cao
+  bằng hai ô có dòng gợi ý, và lưới bên trong chia phần dư cho nhãn và ô nhập. Kit
+  thêm `content-start` nên mọi hàng nhiều cột của admin thẳng mép, kể cả khi một ô
+  hiện lỗi đỏ còn ô bên cạnh thì không.
+- **Cụm nút ↑ ↓ và thùng rác nằm ngang nhãn** ở dòng FAQ, chính sách, chi phí
+  (`67d16115`), và thùng rác dòng điểm đến lệch lên trên nút Primary (`2b595c87`).
+  Bốn danh sách dùng chung `ListEditor`, cụm nút canh mép trên của dòng mà dòng mở
+  đầu bằng nhãn. Kit thêm `labelledRows`: cụm nút hạ 20px (nhãn 14px và khoảng 6px)
+  xuống ngang ô nhập đầu tiên. Highlights, Included, Excluded không có nhãn, giữ
+  nguyên.
+- **Ô tích không nói nó làm gì** (`2b595c87`). Good for và Badges có dòng gợi ý dưới
+  nhóm nói tác động trên web, đọc từ code web: Good for chỉ là thẻ "Good for" ở tab
+  Overview (không tích ô nào thì thẻ ẩn); Badges là chip cạnh giá đầu trang tour, tối
+  đa hai, còn một khi giá đang hiện có giảm, phần dư gộp "+N". Badges có thêm chú
+  thích nghĩa dưới từng ô — nghĩa là quy ước biên tập, hệ thống không tự tính;
+  "Limited offer" chỉ dùng khi có giảm giá thật, bám luật giá gạch 15/09. Featured
+  cũng có câu chú thích: chip "Featured" trên card trang /tours khi card không có
+  giảm giá, và bộ lọc "Featured trips". Mọi câu gắn với ô qua `aria-describedby`.
+
+**Review findings:** không mở vòng review riêng — mỗi thay đổi có test đỏ trước khi
+sửa. Đột biến ở ba bản vá đầu: bỏ nhánh trùng giờ, bỏ `orderPolicies`, bỏ điều kiện
+ẩn gợi ý, đảo điều kiện ấy — cả bốn đều làm test mới đỏ. Sáu đột biến ở phần gửi
+thêm cũng chết: bỏ `content-start`, đổi `pt-5` thành `pt-4`, bỏ `labelledRows` ở form
+chi phí, bỏ `aria-describedby` ở ô tích, bỏ nó ở nhóm, gắn chú thích cho cả các ô
+Good for. Bố cục jsdom không đo được,
+nên soi bằng trình duyệt: dựng ba form trong jsdom, đổ DOM ra trang tĩnh kèm CSS của
+bản build admin, khổ 1400px. Hàng Days, Maximum group size, Base price: ba nhãn cùng
+mép, ba ô nhập cùng mép; gỡ `content-start` ngay trên trang thì ô Base price tụt lại
+đúng 11px như ảnh user gửi. Cụm nút của năm loại dòng lệch ô nhập đầu tiên 0px.
+
+**Không có việc hạ tầng:** không migration, không env; API không đổi code.
+
+Tests after: Vitest **4558** (web 1576, admin 1337, api 993, contract 547, core 46,
+ui 23, tokens 18, i18n 18), int **678 ở 45 file**, jest mobile 159 và mobile-ui 86.
+
 ## 2026-09-28 — Thử tay F17 trên production (`e19d4ccc`): 8/8 bước đạt
 
 Lượt thử từng bước trên `admin.nexora-travel.agency` và `www.nexora-travel.agency`
