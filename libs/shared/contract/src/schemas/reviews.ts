@@ -148,6 +148,14 @@ export type MyReview = z.infer<typeof MyReviewSchema>;
 export const RetractReviewInputSchema = z.object({ id: z.uuid() });
 export type RetractReviewInput = z.output<typeof RetractReviewInputSchema>;
 
+/**
+ * Trần ghi chú của người duyệt — khớp cột `review_moderation_events.note`
+ * VARCHAR(500). Xuất ra vì admin cần nó để tính phần còn lại cho ô chi tiết đi
+ * sau câu lý do chuẩn (ADR-0031 AMEND 1): tự chép số 500 là hai bên trôi lệch,
+ * và admin cho gõ một thứ server từ chối.
+ */
+export const REVIEW_MODERATION_NOTE_MAX = 500;
+
 /** Input duyệt / bác / gỡ đăng một review (admin). */
 export const ModerateReviewInputSchema = z
   .object({
@@ -158,7 +166,7 @@ export const ModerateReviewInputSchema = z
      * vào email cho khách (ADR-0031 §6) — trước ADR này `note` được ghi vào audit
      * trail rồi không nơi nào đọc.
      */
-    note: z.string().trim().max(500).optional(),
+    note: z.string().trim().max(REVIEW_MODERATION_NOTE_MAX).optional(),
   })
   .superRefine((input, ctx) => {
     // ADR-0031 §7: "không có lý do thì không bác được". Bản đầu gác luật này

@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { ModerateReviewInputSchema, ReviewPhotoPublicIdSchema } from './reviews.js';
+import {
+  ModerateReviewInputSchema,
+  REVIEW_MODERATION_NOTE_MAX,
+  ReviewPhotoPublicIdSchema,
+} from './reviews.js';
 
 const ID = '11111111-1111-4111-8111-111111111111';
 
@@ -60,5 +64,16 @@ describe('ModerateReviewInputSchema', () => {
     expect(ModerateReviewInputSchema.safeParse({ id: ID, verdict: 'unpublish' }).success).toBe(
       true,
     );
+  });
+
+  it('trần note là REVIEW_MODERATION_NOTE_MAX — khớp cột `review_moderation_events.note` VARCHAR(500)', () => {
+    // Admin dùng hằng này để tính phần còn lại cho ô chi tiết sau câu lý do chuẩn
+    // (ADR-0031 AMEND 1): lệch với schema là admin cho gõ một thứ server từ chối.
+    expect(REVIEW_MODERATION_NOTE_MAX).toBe(500);
+    const at = (length: number) =>
+      ModerateReviewInputSchema.safeParse({ id: ID, verdict: 'reject', note: 'x'.repeat(length) })
+        .success;
+    expect(at(REVIEW_MODERATION_NOTE_MAX)).toBe(true);
+    expect(at(REVIEW_MODERATION_NOTE_MAX + 1)).toBe(false);
   });
 });
