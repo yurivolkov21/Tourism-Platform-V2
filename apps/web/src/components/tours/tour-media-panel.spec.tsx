@@ -218,11 +218,35 @@ describe('TourMediaPanel — panel đặt chỗ', () => {
     });
     expect(tiles.map((tile) => tile.textContent)).toEqual([
       'Free cancellation until 7 days before departure',
-      'What to bring',
       'Booking & payment',
+      'What to bring',
     ]);
     expect(errors.mock.calls.some(([message]) => String(message).includes('same key'))).toBe(false);
     errors.mockRestore();
+  });
+
+  it('hàng ô xếp theo loại như tab Good to know, không theo thứ tự admin nhập', () => {
+    // Thử tay F17 trên prod (28/09): admin nhập General trước Booking thì hàng ô
+    // in General trước, còn tab Good to know ngay dưới xếp Booking trước —
+    // cùng một trang, hai thứ tự.
+    render(
+      <TourMediaPanel
+        tour={tourWith(3, {
+          policies: [
+            { kind: 'GENERAL', title: 'What to bring', body: 'Sun cream.' },
+            { kind: 'BOOKING', title: 'Booking & payment', body: 'Pay in full.' },
+          ],
+        } as Partial<TourDetailVM>)}
+      />,
+      { wrapper },
+    );
+
+    const tiles = screen.getAllByRole('link', { name: /Free cancellation|What to bring|Booking/ });
+    expect(tiles.map((tile) => tile.textContent)).toEqual([
+      'Free cancellation until 7 days before departure',
+      'Booking & payment',
+      'What to bring',
+    ]);
   });
 
   it('đợt đã ngừng nhận đặt không chiếm ô ngày và không được chọn sẵn', () => {

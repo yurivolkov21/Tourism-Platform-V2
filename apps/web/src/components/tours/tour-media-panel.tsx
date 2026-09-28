@@ -27,6 +27,7 @@ import {
   GALLERY_THUMB_SLOTS,
   galleryThumbs,
   heroPrice,
+  orderPolicies,
   visibleDepartureChips,
 } from '@/lib/tour-detail';
 import { discountPercent, formatChipDate, formatMoney, tourGallery } from '@/lib/tours';
@@ -348,8 +349,11 @@ export function TourMediaPanel({ tour }: { tour: TourDetailVM }) {
           </a>
           {/* MỘT ô mỗi loại (vòng review F17): từ F17 admin thêm được nhiều chính
               sách cùng loại, mà hàng ô này là một dòng tóm tắt trỏ sang tab Good to
-              know — nơi in đủ mọi chính sách. Ô của loại lấy chính sách đầu tiên. */}
-          {tour.policies
+              know — nơi in đủ mọi chính sách. Ô của loại lấy chính sách đầu tiên.
+              Xếp theo loại bằng CÙNG `orderPolicies` với tab ấy (thử tay F17): theo
+              thứ tự admin nhập thì một trang có hai thứ tự. Sắp xếp ổn định nên
+              "chính sách đầu tiên của loại" vẫn là cái admin để đầu. */}
+          {orderPolicies(tour.policies)
             .filter(
               (policy, index, all) =>
                 policy.kind !== 'CANCELLATION' &&
