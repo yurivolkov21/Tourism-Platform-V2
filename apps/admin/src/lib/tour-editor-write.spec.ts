@@ -89,8 +89,8 @@ describe('hộp New tour', () => {
 
   it.each<[string, Partial<TourCreateFormValues>, keyof TourCreateFormValues, string | undefined]>([
     ['tên trống', { title: '  ' }, 'title', fe.required],
-    ['tên 200', { title: text(200) }, 'title', undefined],
-    ['tên 201', { title: text(201) }, 'title', fe.tooLong(200)],
+    ['tên 160', { title: text(160) }, 'title', undefined],
+    ['tên 161', { title: text(161) }, 'title', fe.tooLong(160)],
     ['slug trống', { slug: '' }, 'slug', fe.required],
     ['slug sai khuôn', { slug: 'Ha Long' }, 'slug', fe.slugShape],
     ['slug 120', { slug: text(120) }, 'slug', undefined],

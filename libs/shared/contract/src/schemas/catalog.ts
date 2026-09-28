@@ -237,7 +237,9 @@ export type TourCategory = z.output<typeof TourCategorySchema>;
 // List query + pagination envelope
 // ─────────────────────────────────────────────────────────────────────────────
 
-// `updatedAt`: parity Nexora — cho sort "mới cập nhật".
+// `updatedAt`: parity Nexora — cho sort "mới cập nhật". Từ F17 cột này là
+// phiên bản của khu làm việc tour (ADR-0047 §3), nên nó chỉ nhảy khi NỘI DUNG
+// tour được lưu: bật/tắt bán giữ nguyên, duyệt hay rút review cũng không đụng.
 export const TourSortKeySchema = z.enum([
   'createdAt',
   'updatedAt',

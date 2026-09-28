@@ -30,7 +30,13 @@ import { TourReadinessSchema } from './tour-readiness.js';
  * validate bằng CHÍNH các con số này.
  */
 export const TOUR_SLUG_MAX = 120;
-export const TOUR_TITLE_MAX = 200;
+/**
+ * Trần tên gương cột HẸP NHẤT mà tên đi tới, không phải `tours.title`
+ * VARCHAR(200): mỗi lượt đặt chỗ chép tên vào `bookings.tour_title` VARCHAR(160)
+ * làm bản chụp (vòng review F17). Tên 161–200 ký tự lọt ở đây thì mọi booking
+ * của tour ấy chết ở Postgres `22001` — 500 cho khách, admin không thấy gì.
+ */
+export const TOUR_TITLE_MAX = 160;
 export const TOUR_SUMMARY_MAX = 500;
 export const TOUR_FACT_NOTE_MAX = 280;
 export const TOUR_MEETING_POINT_MAX = 300;
@@ -149,8 +155,12 @@ export const AdminTourDetailSchema = z.object({
   ),
   /** Mọi chuyến, kể cả đã huỷ — số ngày khoá khi con số này lớn hơn 0. */
   departureCount: z.int().nonnegative(),
-  /** Số ghế lớn nhất của chuyến chưa về và chưa huỷ; `null` khi không có. */
-  liveSeatsMax: z.int().positive().nullable(),
+  /**
+   * Số ghế lớn nhất của chuyến chưa về và chưa huỷ; `null` khi không có. Nhận 0
+   * vì DB chỉ canh `seats_total >= 0` (vòng review F17) — một chuyến 0 ghế sửa
+   * tay không được làm `get` chết ở kiểm output.
+   */
+  liveSeatsMax: z.int().nonnegative().nullable(),
   /** Mọi booking, mọi trạng thái — nút Delete chỉ hiện khi bằng 0. */
   bookingCount: z.int().nonnegative(),
   readiness: TourReadinessSchema,

@@ -34,19 +34,28 @@ import { DeparturePhaseFilterSchema, DeparturePhaseSchema } from './departure-ph
 export const DEPARTURE_SEATS_MAX = 500;
 
 /**
- * Trần cho giá — gương của cột `Decimal(14, 2)`, tức 12 chữ số phần nguyên.
+ * Trần của MỌI ô tiền admin gõ tay — giá riêng của chuyến, giá gốc tour, dòng
+ * chi phí: 999,999.99, đúng trần một lần thu USD của Stripe.
  *
- * Phải có, và đây là lý do: không trần thì một lần gõ nhầm 13 chữ số đi lọt cả
- * ba tầng rồi mới chết ở Postgres bằng `22003 numeric field overflow`.
+ * Phải có trần, và đây là lý do: không trần thì một lần gõ nhầm đi lọt cả ba
+ * tầng rồi mới chết ở Postgres bằng `22003 numeric field overflow`.
  * `mapError` không nhận ra lỗi Prisma nên nó thành 500 trần, phía admin phân
  * loại ra `GENERIC`, mà `GENERIC` nằm trong nhóm "kết cục KHÔNG RÕ" — kit sẽ
  * ĐÓNG dialog, toast rồi refresh. Người dùng mất sạch bốn ô vừa điền kèm một
  * câu nói lệnh có thể đã đi qua. Chặn ở schema thì lỗi hiện ngay dưới ô giá.
+ *
+ * Vì sao không phải trần cột `Decimal(14, 2)` như bản đầu (vòng review F17):
+ * con số còn đi tiếp qua phép nhân và phép cộng. Giá × số ghế thành
+ * `bookings.total_amount`, tổng các dòng chi phí thành `tours.cost_price` và
+ * `tour_departures.fixed_cost_amount` — từng số hạng vừa cột mà kết quả tràn.
+ * Với trần này, giá × 198 ghế (trần sanity của booking) và tổng 30 dòng chi phí
+ * đều cách trần cột hàng nghìn lần, nên MỘT luật đóng cả hai đường tràn.
  */
-export const DEPARTURE_PRICE_MAX = 999_999_999_999.99;
+export const DEPARTURE_PRICE_MAX = 999_999.99;
 
 /**
- * Giá một chuyến: chuỗi thập phân TỐI ĐA 2 chữ số lẻ và không vượt trần cột.
+ * Giá một chuyến: chuỗi thập phân TỐI ĐA 2 chữ số lẻ và không vượt
+ * `DEPARTURE_PRICE_MAX`. Mọi ô tiền của admin dùng chung khuôn này.
  *
  * Hai chữ số lẻ là ràng buộc thật chứ không phải khó tính: `DecimalStringSchema`
  * cho phép số lẻ tuỳ ý, nên `'129.999'` đi qua rồi bị cột làm tròn thành

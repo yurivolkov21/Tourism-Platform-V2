@@ -225,9 +225,33 @@ describe('AdminDepartureCreateInputSchema', () => {
       AdminDepartureCreateInputSchema.safeParse({
         ...BASE,
         seatsTotal: 12,
-        priceOverride: '999999999999.99',
+        priceOverride: '999999.99',
       }).success,
     ).toBe(true);
+  });
+
+  it('trần là 999,999.99 chứ không phải trần cột — giá × số ghế cũng phải vừa cột', () => {
+    // Vòng review F17: trần cũ bằng trần cột Decimal(14,2), nên từng giá lọt
+    // nhưng `total_amount` = giá × ghế của booking tràn cột và khách nhận 500.
+    for (const priceOverride of ['1000000', '1000000.00', '999999999999.99']) {
+      expect(
+        AdminDepartureCreateInputSchema.safeParse({ ...BASE, seatsTotal: 12, priceOverride })
+          .success,
+      ).toBe(false);
+    }
+    const update = {
+      id: '4f1b1f2e-0000-4000-8000-000000000001',
+      startDate: '2026-12-01',
+      endDate: '2026-12-03',
+      seatsTotal: 18,
+      version: '2026-09-20T08:00:00.000Z',
+    };
+    expect(
+      AdminDepartureUpdateInputSchema.safeParse({ ...update, priceOverride: '999999.99' }).success,
+    ).toBe(true);
+    expect(
+      AdminDepartureUpdateInputSchema.safeParse({ ...update, priceOverride: '1000000' }).success,
+    ).toBe(false);
   });
 
   it('ngày ngoài dải 1900–2099 bị chặn ngay ở biên', () => {

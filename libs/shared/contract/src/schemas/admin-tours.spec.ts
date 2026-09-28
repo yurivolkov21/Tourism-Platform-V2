@@ -64,13 +64,19 @@ const DETAILS = {
 type Case = [string, Record<string, unknown>, boolean];
 
 const detailsCases: Case[] = [
-  ['tên 200', { title: text(200) }, true],
-  ['tên 201', { title: text(201) }, false],
+  // Trần tên là cột snapshot HẸP hơn `bookings.tour_title` VARCHAR(160), không
+  // phải `tours.title` (vòng review F17): tên dài hơn làm mọi lượt đặt chỗ 500.
+  ['tên 160', { title: text(160) }, true],
+  ['tên 161', { title: text(161) }, false],
   ['tên toàn khoảng trắng', { title: '   ' }, false],
   ['tóm tắt 500', { summary: text(500) }, true],
   ['tóm tắt 501', { summary: text(501) }, false],
-  ['ghi chú dữ kiện 280', { factGoodForNote: text(280) }, true],
-  ['ghi chú dữ kiện 281', { factGoodForNote: text(281) }, false],
+  ...(
+    ['factDurationNote', 'factGroupSizeNote', 'factDifficultyNote', 'factGoodForNote'] as const
+  ).flatMap((field): Case[] => [
+    [`${field} 280`, { [field]: text(280) }, true],
+    [`${field} 281`, { [field]: text(281) }, false],
+  ]),
   ['điểm hẹn 300', { meetingPoint: text(300) }, true],
   ['điểm hẹn 301', { meetingPoint: text(301) }, false],
   ['số ngày 30', { durationDays: 30 }, true],
@@ -82,10 +88,16 @@ const detailsCases: Case[] = [
   ['giá 0.01', { basePrice: '0.01' }, true],
   ['giá 0.00', { basePrice: '0.00' }, false],
   ['giá 3 chữ số lẻ', { basePrice: '1.234' }, false],
-  ['điểm nổi bật 15 dòng', { highlights: many(15, () => 'a') }, true],
-  ['điểm nổi bật 16 dòng', { highlights: many(16, () => 'a') }, false],
-  ['một dòng 200', { included: [text(200)] }, true],
-  ['một dòng 201', { included: [text(201)] }, false],
+  // Trần mọi ô tiền admin gõ tay (vòng review F17) — trần một lần thu của Stripe.
+  ['giá 999999.99', { basePrice: '999999.99' }, true],
+  ['giá 1000000', { basePrice: '1000000' }, false],
+  ['giá 1000000.00', { basePrice: '1000000.00' }, false],
+  ...(['highlights', 'included', 'excluded'] as const).flatMap((field): Case[] => [
+    [`${field} 15 dòng`, { [field]: many(15, () => 'a') }, true],
+    [`${field} 16 dòng`, { [field]: many(16, () => 'a') }, false],
+    [`${field} một dòng 200`, { [field]: [text(200)] }, true],
+    [`${field} một dòng 201`, { [field]: [text(201)] }, false],
+  ]),
   ['một dòng trắng', { excluded: ['   '] }, false],
   ['khách trùng', { suitableFor: ['FAMILY', 'FAMILY'] }, false],
   ['huy hiệu trùng', { badges: ['NEW', 'NEW'] }, false],
@@ -161,6 +173,8 @@ describe('AdminTourDetailsInputSchema', () => {
 });
 
 const createCases: Case[] = [
+  ['tên 160', { title: text(160) }, true],
+  ['tên 161', { title: text(161) }, false],
   ['slug 120', { slug: text(120) }, true],
   ['slug 121', { slug: text(121) }, false],
   ['slug có khoảng trắng và chữ hoa', { slug: 'Ha Long' }, false],
@@ -169,6 +183,8 @@ const createCases: Case[] = [
   ['giá 0.01', { basePrice: '0.01' }, true],
   ['giá 0', { basePrice: '0' }, false],
   ['giá 0.00', { basePrice: '0.00' }, false],
+  ['giá 999999.99', { basePrice: '999999.99' }, true],
+  ['giá 1000000', { basePrice: '1000000' }, false],
   ['số ngày 1', { durationDays: 1 }, true],
   ['số ngày 30', { durationDays: 30 }, true],
   ['số ngày 0', { durationDays: 0 }, false],
@@ -272,6 +288,10 @@ const costsCases: Case[] = [
   ['số tiền 0.00', { items: [cost({ amount: '0.00' })] }, true],
   ['số tiền âm', { items: [cost({ amount: '-1' })] }, false],
   ['số tiền 3 chữ số lẻ', { items: [cost({ amount: '1.234' })] }, false],
+  // Trần từng dòng giữ luôn TỔNG 30 dòng cách xa trần cột Decimal(14,2) của
+  // `cost_price` và `fixed_cost_amount` (vòng review F17).
+  ['số tiền 999999.99', { items: [cost({ amount: '999999.99' })] }, true],
+  ['số tiền 1000000', { items: [cost({ amount: '1000000' })] }, false],
   ['hạng mục lạ', { items: [cost({ category: 'FOOD' })] }, false],
 ];
 
@@ -303,6 +323,12 @@ describe('AdminTourDetailSchema', () => {
   it('một tour đủ field parse qua, liveSeatsMax null hay số đều được', () => {
     expect(AdminTourDetailSchema.safeParse(DETAIL).success).toBe(true);
     expect(AdminTourDetailSchema.safeParse({ ...DETAIL, liveSeatsMax: 12 }).success).toBe(true);
+  });
+
+  it('liveSeatsMax 0 vẫn đọc được — DB chỉ canh seats_total >= 0 (vòng review F17)', () => {
+    // Một chuyến 0 ghế (UPDATE tay) mà schema đòi số dương thì oRPC chặn ở
+    // output: `get` 500 và cả khu làm việc sập, kể cả tab Departures dùng để sửa nó.
+    expect(AdminTourDetailSchema.safeParse({ ...DETAIL, liveSeatsMax: 0 }).success).toBe(true);
   });
 });
 
