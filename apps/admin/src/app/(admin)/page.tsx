@@ -1,22 +1,21 @@
 // Vòng redesign shell 20/08: TÁI HIỆN 100% block `dashboard-01` của shadcn
 // (user chốt — cài qua CLI kèm data mẫu) ngay trên admin thật, nằm TRONG
 // cổng gác (admin)/layout. P4d (ADR-0036) chỉ ĐỔ SỐ THẬT vào ba khối, giữ
-// nguyên dáng đã chốt 1:1.
+// nguyên dáng đã chốt 1:1. Khung (sidebar + topbar) là `AdminShell` dùng chung với
+// mọi trang vùng từ 28/09 — cấu trúc vốn trùng 1:1 với bản tự dựng ở đây, gộp lại
+// để trạng thái sidebar chỉ đọc ở MỘT chỗ.
 
 import { messages } from '@tourism/i18n';
-import { SidebarInset, SidebarProvider } from '@tourism/ui/components/sidebar';
 import { cookies } from 'next/headers';
-import { AppSidebar } from '@/components/app-sidebar';
+import { AdminShell } from '@/components/admin-shell';
 import { RecentBookingsTable } from '@/components/bookings/recent-bookings-table';
 import { ChartAreaInteractive } from '@/components/chart-area-interactive';
 import { SectionError } from '@/components/kit/section-error';
 import { StatCardRow } from '@/components/kit/stat-card';
-import { SiteHeader } from '@/components/site-header';
 import { fetchRecentAdminBookings } from '@/lib/api/bookings';
 import { getServerSession } from '@/lib/api/session';
 import { fetchAdminBookingsStats, fetchAdminDashboardSeries } from '@/lib/api/stats';
 import { toBookingRow } from '@/lib/bookings-view';
-import { readSidebarOpen } from '@/lib/sidebar-state';
 import { statsPeriodLabel, toBookingsStatCards } from '@/lib/stats-view';
 
 const t = messages.admin.dashboard;
@@ -63,56 +62,33 @@ export default async function Page() {
   const series = settled(seriesResult, 'chart');
   const recent = settled(recentResult, 'recent');
   return (
-    <SidebarProvider
-      // Cùng trạng thái sidebar với mọi trang vùng (`AdminShell`) — thu gọn ở đâu
-      // thì Dashboard cũng thu gọn (góp ý giao diện 28/09).
-      defaultOpen={await readSidebarOpen()}
-      style={
-        {
-          '--sidebar-width': 'calc(var(--spacing) * 72)',
-          '--header-height': 'calc(var(--spacing) * 12)',
-        } as React.CSSProperties
-      }
-    >
-      <AppSidebar variant="inset" user={session} />
-      <SidebarInset>
-        <SiteHeader />
-        <div className="flex flex-1 flex-col">
-          <div className="@container/main flex flex-1 flex-col gap-2">
-            <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
-              {stats ? (
-                // `period` như mọi vùng khác: hôm nay cửa sổ trượt nên nhãn
-                // undefined (ADR-0028 §4), nhưng ngày dashboard có kỳ chọn thì
-                // dòng Showing mọc — không phải sửa trang.
-                <StatCardRow
-                  cards={toBookingsStatCards(stats)}
-                  period={statsPeriodLabel(stats.period)}
-                />
-              ) : (
-                <div className="px-4 lg:px-6">
-                  <SectionError message={t.loadError(t.blocks.cards)} />
-                </div>
-              )}
-              <div className="px-4 lg:px-6">
-                {series ? (
-                  <ChartAreaInteractive series={series} />
-                ) : (
-                  <SectionError message={t.loadError(t.blocks.chart)} />
-                )}
-              </div>
-              {recent ? (
-                // Không query: bảng này không mang bộ lọc nào, `href` là đường
-                // trần `/bookings/<code>` (cùng thứ `BookingLink` dựng).
-                <RecentBookingsTable rows={recent.map((booking) => toBookingRow(booking))} />
-              ) : (
-                <div className="px-4 lg:px-6">
-                  <SectionError message={t.loadError(t.blocks.recent)} />
-                </div>
-              )}
-            </div>
-          </div>
+    <AdminShell user={session}>
+      {stats ? (
+        // `period` như mọi vùng khác: hôm nay cửa sổ trượt nên nhãn
+        // undefined (ADR-0028 §4), nhưng ngày dashboard có kỳ chọn thì
+        // dòng Showing mọc — không phải sửa trang.
+        <StatCardRow cards={toBookingsStatCards(stats)} period={statsPeriodLabel(stats.period)} />
+      ) : (
+        <div className="px-4 lg:px-6">
+          <SectionError message={t.loadError(t.blocks.cards)} />
         </div>
-      </SidebarInset>
-    </SidebarProvider>
+      )}
+      <div className="px-4 lg:px-6">
+        {series ? (
+          <ChartAreaInteractive series={series} />
+        ) : (
+          <SectionError message={t.loadError(t.blocks.chart)} />
+        )}
+      </div>
+      {recent ? (
+        // Không query: bảng này không mang bộ lọc nào, `href` là đường
+        // trần `/bookings/<code>` (cùng thứ `BookingLink` dựng).
+        <RecentBookingsTable rows={recent.map((booking) => toBookingRow(booking))} />
+      ) : (
+        <div className="px-4 lg:px-6">
+          <SectionError message={t.loadError(t.blocks.recent)} />
+        </div>
+      )}
+    </AdminShell>
   );
 }
