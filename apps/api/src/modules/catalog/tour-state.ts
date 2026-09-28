@@ -1,5 +1,6 @@
 import { type TourReadiness, tourReadiness } from '@tourism/contract';
 import type { Prisma } from '../../generated/prisma/client.js';
+import { MediaOwnerType, MediaRole } from '../../generated/prisma/enums.js';
 import { AdminTourNotFoundError, StaleTourError } from './admin-tour-errors.js';
 import { nextTourVersion } from './tour-editor-rules.js';
 
@@ -39,6 +40,18 @@ export async function claimTour(
 }
 
 /**
+ * Tour có ảnh bìa không — dòng `media_assets` role `hero` của tour (ADR-0048 §1).
+ * Nhận client lẫn transaction: `get` hỏi ngoài transaction, `readTourReadiness`
+ * hỏi trong transaction đang giữ khoá hàng tour.
+ */
+export async function hasTourCover(db: Prisma.TransactionClient, id: string): Promise<boolean> {
+  const count = await db.mediaAsset.count({
+    where: { ownerType: MediaOwnerType.TOUR, ownerId: id, role: MediaRole.hero },
+  });
+  return count > 0;
+}
+
+/**
  * Độ đủ để bán đọc từ DB, trong transaction đang giữ khoá hàng tour — gọi SAU
  * khi ghi, TRƯỚC commit (spec §4.4), để không lệnh nào chen vào giữa.
  */
@@ -60,5 +73,6 @@ export async function readTourReadiness(
     destinations: row.destinations,
     durationDays: row.durationDays,
     itineraryDays: row.itinerary.map((day) => day.dayNumber),
+    hasCover: await hasTourCover(tx, id),
   });
 }

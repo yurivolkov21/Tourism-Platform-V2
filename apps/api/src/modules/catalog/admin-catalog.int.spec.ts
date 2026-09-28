@@ -245,6 +245,18 @@ describe('admin catalog integration (F11 — tours list + publish toggle)', () =
     await prisma.tourItineraryDay.create({
       data: { tourId: ALPHA, dayNumber: 1, title: 'The day' },
     });
+    // ALPHA đủ để bán từ F18 phải có ảnh bìa (ADR-0048 §8).
+    await prisma.mediaAsset.create({
+      data: {
+        ownerType: 'TOUR',
+        ownerId: ALPHA,
+        publicId: 'tourism/catalog/tour/f11-alpha',
+        type: 'IMAGE',
+        role: 'hero',
+        sortOrder: 0,
+        alt: 'Alpha cover',
+      },
+    });
   });
 
   afterAll(async () => {
@@ -383,7 +395,8 @@ describe('admin catalog integration (F11 — tours list + publish toggle)', () =
     expect(rowOf(paged, BETA).heroUrl).toBe(
       'https://res.cloudinary.com/demo/image/upload/f_auto,q_auto/tours/f11-beta',
     );
-    expect(rowOf(paged, ALPHA).heroUrl).toBeNull();
+    // GAMMA: tour nháp không có ảnh nào — ALPHA từ F18 có ảnh bìa ở beforeEach.
+    expect(rowOf(paged, GAMMA).heroUrl).toBeNull();
   });
 
   it('tên danh mục và tiền đi qua dây đúng hình dạng contract', async () => {
@@ -479,7 +492,8 @@ describe('admin catalog integration (F11 — tours list + publish toggle)', () =
     expect(res.statusCode).toBe(409);
     expect(res.json()).toMatchObject({
       code: 'TOUR_NOT_READY',
-      message: 'This tour is missing: a summary, one primary destination, itinerary for day 1.',
+      message:
+        'This tour is missing: a summary, one primary destination, itinerary for day 1, a cover photo.',
     });
     const row = await prisma.tour.findUniqueOrThrow({ where: { id: GAMMA } });
     expect(row.isPublished).toBe(false);
@@ -501,6 +515,11 @@ describe('admin catalog integration (F11 — tours list + publish toggle)', () =
       'chỉ thiếu lịch trình ngày 1',
       () => prisma.tourItineraryDay.deleteMany({ where: { tourId: ALPHA } }),
       'itinerary for day 1',
+    ],
+    [
+      'chỉ thiếu ảnh bìa',
+      () => prisma.mediaAsset.deleteMany({ where: { ownerId: ALPHA } }),
+      'a cover photo',
     ],
   ])(
     'bật bán tour %s → TOUR_NOT_READY — mỗi điều kiện tự chặn được',

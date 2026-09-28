@@ -28,7 +28,7 @@ import {
 } from './admin-tour-errors.js';
 import { costItemsOf } from './tour-cost-items.js';
 import { liveSeatsMax } from './tour-editor-rules.js';
-import { claimTour, readTourReadiness } from './tour-state.js';
+import { claimTour, hasTourCover, readTourReadiness } from './tour-state.js';
 
 /**
  * Khu làm việc của MỘT tour phía admin (spec F17, ADR-0047): đọc, tạo, xoá, và
@@ -100,7 +100,7 @@ const TOUR_DETAIL_SELECT = {
 
 type TourDetailRow = Prisma.TourGetPayload<{ select: typeof TOUR_DETAIL_SELECT }>;
 
-function toDetail(row: TourDetailRow, now: Date): AdminTourDetail {
+function toDetail(row: TourDetailRow, now: Date, hasCover: boolean): AdminTourDetail {
   return {
     id: row.id,
     slug: row.slug,
@@ -141,6 +141,7 @@ function toDetail(row: TourDetailRow, now: Date): AdminTourDetail {
       destinations: row.destinations,
       durationDays: row.durationDays,
       itineraryDays: row.itinerary.map((day) => day.dayNumber),
+      hasCover,
     }),
   };
 }
@@ -191,7 +192,7 @@ export class AdminToursService {
   async get(slug: string): Promise<AdminTourDetail> {
     const row = await prisma.tour.findUnique({ where: { slug }, select: TOUR_DETAIL_SELECT });
     if (!row) throw new AdminTourNotFoundError(slug);
-    return toDetail(row, new Date());
+    return toDetail(row, new Date(), await hasTourCover(prisma, row.id));
   }
 
   /**

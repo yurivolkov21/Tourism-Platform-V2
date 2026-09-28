@@ -56,6 +56,7 @@ function missingParts(readiness: TourReadiness): string[] {
     ...(readiness.missingDays.length > 0
       ? [`itinerary for day ${readiness.missingDays.join(', ')}`]
       : []),
+    ...(readiness.cover ? [] : ['a cover photo']),
   ];
 }
 

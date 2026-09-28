@@ -32,6 +32,18 @@ export const MediaItemSchema = z.object({
 export type MediaItem = z.output<typeof MediaItemSchema>;
 
 /**
+ * Cổng ký tự cho MỌI publicId client gửi lên (ADR-0035 AMEND 2e, ADR-0048): chữ,
+ * số, `_`, `-`, nối bằng `.` hoặc `/`; không đoạn rỗng, không `..`. Từ ADR-0035
+ * một chuỗi lạ ở đây không còn chỉ là ảnh vỡ — nó là đối số của một lệnh destroy
+ * bảy ngày sau. Trần 300 gương cột `public_id`.
+ */
+export const MediaPublicIdSchema = z
+  .string()
+  .min(1)
+  .max(300)
+  .regex(/^[A-Za-z0-9_-]+(?:[./][A-Za-z0-9_-]+)*$/, 'Invalid photo reference');
+
+/**
  * ── Bề mặt GHI media (ADR-0021) ──
  * Đuôi ảnh được phép ký upload — để dạng enum trong contract nên request
  * sai đuôi chết ngay tầng validate, server không cần luật riêng.

@@ -1,4 +1,5 @@
-import { MediaItemSchema, SignUploadInputSchema } from './media.js';
+import { MediaItemSchema, MediaPublicIdSchema, SignUploadInputSchema } from './media.js';
+import { ReviewPhotoPublicIdSchema } from './reviews.js';
 
 const validItem = {
   publicId: 'tourism/seed/destinations/ha-long/commons-ha-long-01',
@@ -53,6 +54,32 @@ describe('MediaItemSchema — ghi công (ADR-0020)', () => {
     for (const lic of ['CC BY-SA 4.0', 'CC BY 2.0', 'Public domain', 'CC0']) {
       expect(MediaItemSchema.parse({ ...validItem, license: lic }).license).toBe(lic);
     }
+  });
+});
+
+describe('MediaPublicIdSchema — cổng ký tự cho publicId client gửi (ADR-0035 AMEND 2e)', () => {
+  it('nhận publicId thật: thư mục lồng, uuid, gạch ngang, gạch dưới, dấu chấm', () => {
+    for (const id of [
+      'tourism/tours/7a1b2c3d-0000-4000-8000-000000000001/0f9e8d7c-aaaa-4bbb-8ccc-123456789abc',
+      'tourism/catalog/destination/hoi-an/lantern_street.v2',
+    ]) {
+      expect(MediaPublicIdSchema.safeParse(id).success).toBe(true);
+    }
+  });
+
+  it('chặn đoạn rỗng, `..`, khoảng trắng, dấu gạch chéo đầu/cuối, ký tự lạ', () => {
+    for (const id of ['', '..', 'a/../b', 'a//b', '/a', 'a/', 'a b', 'a?b', 'ảnh']) {
+      expect(MediaPublicIdSchema.safeParse(id).success).toBe(false);
+    }
+  });
+
+  it('trần 300 ký tự — gương cột `public_id` VARCHAR(300)', () => {
+    expect(MediaPublicIdSchema.safeParse('a'.repeat(300)).success).toBe(true);
+    expect(MediaPublicIdSchema.safeParse('a'.repeat(301)).success).toBe(false);
+  });
+
+  it('ảnh review dùng CHÍNH cổng này — một cổng cho mọi publicId', () => {
+    expect(ReviewPhotoPublicIdSchema).toBe(MediaPublicIdSchema);
   });
 });
 

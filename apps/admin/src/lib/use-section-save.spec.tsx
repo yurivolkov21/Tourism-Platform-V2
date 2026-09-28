@@ -41,6 +41,7 @@ const PROJECTED = tourReadiness({
   destinations: [{ isPrimary: true }],
   durationDays: 2,
   itineraryDays: [1],
+  hasCover: true,
 });
 
 function setup(onFieldError?: (code: DetailsContractCode) => boolean) {

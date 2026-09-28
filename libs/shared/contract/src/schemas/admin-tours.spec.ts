@@ -317,7 +317,13 @@ describe('AdminTourDetailSchema', () => {
     departureCount: 0,
     liveSeatsMax: null,
     bookingCount: 0,
-    readiness: { summary: true, primaryDestination: true, missingDays: [], ready: true },
+    readiness: {
+      summary: true,
+      primaryDestination: true,
+      missingDays: [],
+      cover: true,
+      ready: true,
+    },
   };
 
   it('một tour đủ field parse qua, liveSeatsMax null hay số đều được', () => {

@@ -151,6 +151,8 @@ export function projectedReadiness(
     destinations?: readonly { isPrimary: boolean }[];
     durationDays?: number;
     itineraryDays?: readonly number[];
+    /** Số ảnh của danh sách đang soạn ở tab Photos — ảnh đầu là ảnh bìa. */
+    photoCount?: number;
   },
 ): TourReadiness {
   const durationDays = patch.durationDays ?? detail.durationDays;
@@ -160,6 +162,7 @@ export function projectedReadiness(
     destinations: patch.destinations ?? detail.destinations,
     durationDays,
     itineraryDays: days.filter((day) => day <= durationDays),
+    hasCover: patch.photoCount === undefined ? detail.readiness.cover : patch.photoCount > 0,
   });
 }
 

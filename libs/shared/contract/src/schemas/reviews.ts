@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { BookingCodeSchema, CalendarDateSchema, PageQuerySchema } from './common.js';
-import { MediaItemSchema, REVIEW_PHOTOS_MAX } from './media.js';
+import { MediaItemSchema, MediaPublicIdSchema, REVIEW_PHOTOS_MAX } from './media.js';
 
 export const RatingSchema = z.int().min(1).max(5);
 
@@ -50,11 +50,7 @@ export const PublicReviewSchema = z.object({
  * `_ - . /`, không segment `..` (vòng vá review 05/09). `.max(300)` khớp
  * varchar(300) của MediaAsset.publicId.
  */
-export const ReviewPhotoPublicIdSchema = z
-  .string()
-  .min(1)
-  .max(300)
-  .regex(/^[A-Za-z0-9_-]+(?:[./][A-Za-z0-9_-]+)*$/, 'Invalid photo reference');
+export const ReviewPhotoPublicIdSchema = MediaPublicIdSchema;
 
 export const CreateReviewInputSchema = z.object({
   // Tái dùng BookingCodeSchema (common.ts) thay vì lặp regex tại chỗ — nhất

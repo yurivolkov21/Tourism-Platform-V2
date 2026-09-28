@@ -71,6 +71,7 @@ export function detailFixture(patch: Partial<AdminTourDetail> = {}): AdminTourDe
       destinations: merged.destinations,
       durationDays: merged.durationDays,
       itineraryDays: merged.itinerary.map((day) => day.dayNumber),
+      hasCover: true,
     });
   return AdminTourDetailSchema.parse({ ...merged, readiness });
 }

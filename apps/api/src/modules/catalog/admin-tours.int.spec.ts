@@ -117,6 +117,11 @@ describe('admin tours integration (F17)', () => {
     await prisma.booking.deleteMany();
     await prisma.enquiry.deleteMany();
     await prisma.post.deleteMany();
+    // media_assets là bảng đa chủ, KHÔNG có khoá ngoại tới `tours` (ADR-0048) —
+    // xoá tour không kéo dòng ảnh theo, nên id tour dùng lại giữa các ca sẽ nhặt
+    // nhầm ảnh của ca trước.
+    await prisma.mediaAsset.deleteMany();
+    await prisma.mediaGarbage.deleteMany();
     await prisma.tour.deleteMany();
     await prisma.destination.deleteMany();
     await prisma.tourCategory.deleteMany();
@@ -145,9 +150,9 @@ describe('admin tours integration (F17)', () => {
     await app?.close();
   });
 
-  /** Một tour ĐỦ để bán, 2 ngày, đang bán — ca nào cần khác thì đè bằng `patch`. */
-  const makeTour = (n: number, patch: Partial<Prisma.TourUncheckedCreateInput> = {}) =>
-    prisma.tour.create({
+  /** Một tour ĐỦ để bán, 2 ngày, đang bán, có ảnh bìa — ca nào cần khác thì đè bằng `patch`. */
+  const makeTour = async (n: number, patch: Partial<Prisma.TourUncheckedCreateInput> = {}) => {
+    const tour = await prisma.tour.create({
       data: {
         id: tourId(n),
         slug: `f17-tour-${n}`,
@@ -168,6 +173,20 @@ describe('admin tours integration (F17)', () => {
         ...patch,
       },
     });
+    await prisma.mediaAsset.create({
+      data: {
+        ownerType: 'TOUR',
+        ownerId: tour.id,
+        publicId: `tourism/catalog/tour/f17-${n}`,
+        type: 'IMAGE',
+        role: 'hero',
+        sortOrder: 0,
+        alt: `Cover of tour ${n}`,
+        version: '1700000000',
+      },
+    });
+    return tour;
+  };
 
   const makeDeparture = (
     tour: string,
@@ -340,6 +359,7 @@ describe('admin tours integration (F17)', () => {
         summary: true,
         primaryDestination: true,
         missingDays: [2],
+        cover: true,
         ready: false,
       });
     });
@@ -371,6 +391,16 @@ describe('admin tours integration (F17)', () => {
       const res = await get('no-such-tour');
       expect(res.statusCode).toBe(404);
       expect(res.json()).toMatchObject({ code: 'NOT_FOUND', message: 'Tour not found' });
+    });
+
+    it('tour chưa có ảnh bìa thì readiness.cover = false và không ready (F18)', async () => {
+      await makeTour(1);
+      await prisma.mediaAsset.deleteMany({ where: { ownerId: tourId(1) } });
+
+      const detail = await detailOf('f17-tour-1');
+
+      expect(detail.readiness.cover).toBe(false);
+      expect(detail.readiness.ready).toBe(false);
     });
   });
 
@@ -875,6 +905,7 @@ describe('admin tours integration (F17)', () => {
         summary: false,
         primaryDestination: true,
         missingDays: [3],
+        cover: true,
         ready: false,
       });
     });
@@ -933,6 +964,24 @@ describe('admin tours integration (F17)', () => {
       expect(res.statusCode).toBe(409);
       expect(res.json()).toMatchObject({ code: 'TOUR_NOT_READY' });
       expect((await detailOf('f17-tour-1')).itinerary).toHaveLength(2);
+    });
+
+    it('tour đang bán mà đã mất ảnh bìa thì lệnh sửa bị TOUR_NOT_READY, nói đúng chỗ thiếu', async () => {
+      await makeTour(1);
+      await prisma.mediaAsset.deleteMany({ where: { ownerId: tourId(1) } });
+      const before = await detailOf('f17-tour-1');
+
+      const res = await itinerary(before.id, {
+        id: before.id,
+        version: before.version,
+        days: before.itinerary,
+      });
+
+      expect(res.statusCode).toBe(409);
+      expect(res.json()).toMatchObject({
+        code: 'TOUR_NOT_READY',
+        message: 'This tour is missing: a cover photo.',
+      });
     });
 
     it('version cũ thì 409 STALE_TOUR', async () => {

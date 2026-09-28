@@ -7,15 +7,27 @@ const READY: TourReadinessInput = {
   destinations: [{ isPrimary: true }, { isPrimary: false }],
   durationDays: 3,
   itineraryDays: [1, 2, 3],
+  hasCover: true,
 };
 
 describe('tourReadiness (ADR-0047 §4)', () => {
-  it('đủ cả ba thì ready, không thiếu ngày nào', () => {
+  it('đủ cả bốn thì ready, không thiếu ngày nào', () => {
     expect(tourReadiness(READY)).toEqual({
       summary: true,
       primaryDestination: true,
       missingDays: [],
+      cover: true,
       ready: true,
+    });
+  });
+
+  it('không có ảnh bìa thì thiếu — ba điều kiện kia vẫn đủ (F18, ADR-0048 §8)', () => {
+    expect(tourReadiness({ ...READY, hasCover: false })).toEqual({
+      summary: true,
+      primaryDestination: true,
+      missingDays: [],
+      cover: false,
+      ready: false,
     });
   });
 

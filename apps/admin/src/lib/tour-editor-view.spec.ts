@@ -46,6 +46,7 @@ describe('readinessIssues', () => {
       destinations: [{ isPrimary: true }],
       durationDays: 1,
       itineraryDays: [1],
+      hasCover: true,
     });
     expect(readinessIssues(ready, 'ha-long')).toEqual([]);
 
@@ -54,6 +55,7 @@ describe('readinessIssues', () => {
       destinations: [],
       durationDays: 4,
       itineraryDays: [1],
+      hasCover: true,
     });
     expect(readinessIssues(missing, 'ha-long')).toEqual([
       { key: 'summary', label: 'A summary', href: '/tours/ha-long#tour-summary' },
@@ -72,6 +74,7 @@ describe('readinessIssues', () => {
       destinations: [{ isPrimary: true }],
       durationDays: 2,
       itineraryDays: [1],
+      hasCover: true,
     });
     expect(readinessIssues(one, 'ha-long')[0]?.label).toBe('An itinerary for day 2');
   });
@@ -126,6 +129,14 @@ describe('projectedReadiness', () => {
     expect(projectedReadiness(detail, { durationDays: 5 }).missingDays).toEqual([4, 5]);
     expect(projectedReadiness(detail, { summary: '  ' }).summary).toBe(false);
     expect(projectedReadiness(detail, { itineraryDays: [1] }).missingDays).toEqual([2, 3]);
+  });
+
+  it('số ảnh đang soạn quyết ảnh bìa; vắng thì giữ ảnh bìa của server', () => {
+    const detail = detailFixture();
+    expect(projectedReadiness(detail, {}).cover).toBe(true);
+    expect(projectedReadiness(detail, { photoCount: 0 }).cover).toBe(false);
+    expect(projectedReadiness(detail, { photoCount: 0 }).ready).toBe(false);
+    expect(projectedReadiness(detail, { photoCount: 2 }).cover).toBe(true);
   });
 });
 

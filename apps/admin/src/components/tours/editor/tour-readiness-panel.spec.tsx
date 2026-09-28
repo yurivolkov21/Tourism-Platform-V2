@@ -14,6 +14,7 @@ describe('TourReadinessPanel', () => {
       destinations: [{ isPrimary: true }],
       durationDays: 1,
       itineraryDays: [1],
+      hasCover: true,
     });
     render(<TourReadinessPanel readiness={ready} slug="ha-long" />);
 
@@ -30,6 +31,7 @@ describe('TourReadinessPanel', () => {
       destinations: [{ isPrimary: true }],
       durationDays: 3,
       itineraryDays: [1],
+      hasCover: true,
     });
     render(<TourReadinessPanel readiness={missing} slug="ha-long" />);
 
