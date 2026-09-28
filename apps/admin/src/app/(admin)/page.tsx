@@ -16,6 +16,7 @@ import { fetchRecentAdminBookings } from '@/lib/api/bookings';
 import { getServerSession } from '@/lib/api/session';
 import { fetchAdminBookingsStats, fetchAdminDashboardSeries } from '@/lib/api/stats';
 import { toBookingRow } from '@/lib/bookings-view';
+import { readSidebarOpen } from '@/lib/sidebar-state';
 import { statsPeriodLabel, toBookingsStatCards } from '@/lib/stats-view';
 
 const t = messages.admin.dashboard;
@@ -63,6 +64,9 @@ export default async function Page() {
   const recent = settled(recentResult, 'recent');
   return (
     <SidebarProvider
+      // Cùng trạng thái sidebar với mọi trang vùng (`AdminShell`) — thu gọn ở đâu
+      // thì Dashboard cũng thu gọn (góp ý giao diện 28/09).
+      defaultOpen={await readSidebarOpen()}
       style={
         {
           '--sidebar-width': 'calc(var(--spacing) * 72)',

@@ -3,6 +3,7 @@ import type * as React from 'react';
 import { AppSidebar } from '@/components/app-sidebar';
 import { SiteHeader } from '@/components/site-header';
 import type { SessionUser } from '@/lib/api/session';
+import { readSidebarOpen } from '@/lib/sidebar-state';
 
 /**
  * Khung shell cho các trang VÙNG (spec P4b) — sidebar + topbar + vùng nội
@@ -12,10 +13,21 @@ import type { SessionUser } from '@/lib/api/session';
  * mang shell của block (vòng gọt 21/08 cố ý bỏ AppShell của P4a, layout chỉ
  * còn là CỔNG GÁC session). Đặt shell vào layout sẽ bọc dashboard hai lần —
  * nên vùng mới dùng chung component này, trang `/` giữ nguyên không đụng tới.
+ *
+ * Đọc cookie trạng thái sidebar lúc dựng ở server (góp ý giao diện 28/09): mỗi
+ * trang vùng dựng lại shell này, nên không đọc thì thu gọn rồi chuyển trang là
+ * sidebar lại bung ra.
  */
-export function AdminShell({ user, children }: { user: SessionUser; children: React.ReactNode }) {
+export async function AdminShell({
+  user,
+  children,
+}: {
+  user: SessionUser;
+  children: React.ReactNode;
+}) {
   return (
     <SidebarProvider
+      defaultOpen={await readSidebarOpen()}
       style={
         {
           '--sidebar-width': 'calc(var(--spacing) * 72)',

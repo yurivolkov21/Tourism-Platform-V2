@@ -2807,6 +2807,13 @@ export const messages = {
         system: 'System',
       },
       soon: 'Soon',
+      /**
+       * Tooltip của mục chưa mở khi sidebar thu gọn thành cột icon — nhãn "Soon"
+       * bị ẩn ở cột ấy, nên tooltip phải tự nói vì sao mục này không bấm được.
+       */
+      soonItem: (label: string) => `${label} · Soon`,
+      /** Tooltip của logo khi sidebar thu gọn — logo là link về Dashboard. */
+      logoTooltip: 'Nexora — Dashboard',
       dashboard: 'Dashboard',
       bookings: 'Bookings',
       reviews: 'Reviews',

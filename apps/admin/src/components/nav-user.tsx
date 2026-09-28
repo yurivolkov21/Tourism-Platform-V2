@@ -17,6 +17,7 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from '@tourism/ui/components/sidebar';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@tourism/ui/components/tooltip';
 import { EllipsisVerticalIcon, ExternalLinkIcon, LogOutIcon } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import type { SessionUser } from '@/lib/api/session';
@@ -29,9 +30,15 @@ const SITE_URL = 'https://www.nexora-travel.agency';
  * dashboard-01, ruột thay bằng session user + menu View site / Sign out
  * (hành vi của shell P4a). Account/Billing/Notifications mẫu đã bỏ — admin
  * chưa có các trang đó (quản hồ sơ là việc của www).
+ *
+ * Cột icon khi thu gọn (góp ý giao diện 28/09): nút chỉ còn avatar, nên tooltip nói
+ * tên người đang đăng nhập. Nút là trigger của CẢ menu lẫn tooltip — ghép qua
+ * `render` lồng nhau thay vì prop `tooltip` của `SidebarMenuButton`: prop ấy bọc nút
+ * trong gốc Tooltip (không phải phần tử DOM), và trigger của menu không gắn được
+ * sự kiện lên một gốc như thế.
  */
 export function NavUser({ user }: { user: SessionUser }) {
-  const { isMobile } = useSidebar();
+  const { isMobile, state } = useSidebar();
   const router = useRouter();
   const t = messages.admin.shell;
   const initial = (user.name || user.email).slice(0, 1).toUpperCase();
@@ -39,19 +46,30 @@ export function NavUser({ user }: { user: SessionUser }) {
     <SidebarMenu>
       <SidebarMenuItem>
         <DropdownMenu>
-          <DropdownMenuTrigger
-            render={<SidebarMenuButton size="lg" className="aria-expanded:bg-sidebar-accent" />}
-          >
-            <Avatar className="size-8">
-              {user.image ? <AvatarImage src={user.image} alt={user.name} /> : null}
-              <AvatarFallback>{initial}</AvatarFallback>
-            </Avatar>
-            <div className="grid flex-1 text-left text-sm leading-tight">
-              <span className="truncate font-medium">{user.name}</span>
-              <span className="truncate text-xs text-sidebar-foreground/70">{user.email}</span>
-            </div>
-            <EllipsisVerticalIcon className="ml-auto size-4" />
-          </DropdownMenuTrigger>
+          <Tooltip>
+            <DropdownMenuTrigger
+              render={
+                <TooltipTrigger
+                  render={
+                    <SidebarMenuButton size="lg" className="aria-expanded:bg-sidebar-accent" />
+                  }
+                />
+              }
+            >
+              <Avatar className="size-8">
+                {user.image ? <AvatarImage src={user.image} alt={user.name} /> : null}
+                <AvatarFallback>{initial}</AvatarFallback>
+              </Avatar>
+              <div className="grid flex-1 text-left text-sm leading-tight">
+                <span className="truncate font-medium">{user.name}</span>
+                <span className="truncate text-xs text-sidebar-foreground/70">{user.email}</span>
+              </div>
+              <EllipsisVerticalIcon className="ml-auto size-4" />
+            </DropdownMenuTrigger>
+            <TooltipContent side="right" hidden={state !== 'collapsed' || isMobile}>
+              {user.name}
+            </TooltipContent>
+          </Tooltip>
           <DropdownMenuContent
             className="min-w-56"
             side={isMobile ? 'bottom' : 'right'}

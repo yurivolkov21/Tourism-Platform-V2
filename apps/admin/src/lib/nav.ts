@@ -153,3 +153,24 @@ export const NAV_GROUPS: NavGroup[] = [
     ],
   },
 ];
+
+/**
+ * Tooltip của một mục khi sidebar thu gọn thành cột icon (góp ý giao diện 28/09):
+ * cột ấy không còn chữ, nên tooltip là nhãn DUY NHẤT của icon. Mục chưa mở mất
+ * luôn nhãn "Soon" ở cột ấy, nên tooltip của nó phải tự nói "Soon".
+ */
+export function navTooltip(item: NavItem): string {
+  return item.enabled ? item.label : t.soonItem(item.label);
+}
+
+/**
+ * Mục nào ứng với trang đang mở — ô sáng là dấu duy nhất của trang hiện tại ở cột
+ * icon. Bỏ query của href (`/reviews?status=pending`); Dashboard (`/`) chỉ sáng ở
+ * đúng `/`, mục khác sáng ở trang của nó và mọi trang con (`/tours/<slug>/…`), so
+ * theo đoạn đường có `/` chốt để `/tours-archive` không khớp `/tours`.
+ */
+export function isActiveNav(href: string, pathname: string): boolean {
+  const path = href.split('?')[0] ?? href;
+  if (path === '/') return pathname === '/';
+  return pathname === path || pathname.startsWith(`${path}/`);
+}
