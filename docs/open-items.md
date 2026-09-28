@@ -1,6 +1,6 @@
 # Việc còn treo
 
-> Bản tóm tắt để điều hướng, cập nhật 25/09/2026. **Không phải nguồn sự thật** —
+> Bản tóm tắt để điều hướng, cập nhật 28/09/2026. **Không phải nguồn sự thật** —
 > chi tiết của từng mục sống ở [CHANGELOG](CHANGELOG.md) (mục "CÒN TREO" của
 > entry tương ứng) và ở [sổ nợ kỹ thuật](analysis/2026-08-06-backlog-no-ky-thuat.md).
 > Trả xong một mục thì gạch ở đây và ghi vào CHANGELOG.
@@ -10,7 +10,7 @@
 | Ngày | Việc |
 | --- | --- |
 | **15/10/2026** | **Freeze**: ngừng nâng cấp thư viện, ngừng đổi nơi deploy |
-| ~03/11/2026 | Seed lại dữ liệu prod lượt 2 (ADR-0041 Phụ lục B Bước 8) |
+| ~03/11/2026 | Seed lại dữ liệu prod lượt 2 (ADR-0041 Phụ lục B Bước 8) — xem [việc phải xong trước lượt này](#trước-lượt-seed-lại-0311) |
 | ~11/11/2026 | Bảo vệ đồ án |
 
 ## Phần chưa xây
@@ -22,6 +22,27 @@
 | **P5b-2…5** | Bốn cụm màn mobile: xem tour · đặt tour · tài khoản · đánh giá | **Đã có bản vẽ và tài liệu bàn giao đầy đủ**; thành viên khác dựng màn — xem [`handoff/`](handoff/README.md) |
 | **P6** | Trợ lý AI tư vấn tour | Bảng dữ liệu đã có sẵn (`chat_conversations`, `chat_messages`) |
 | **P7** | Đợt trau chuốt giao diện cuối | |
+
+## Trước lượt seed lại 03/11
+
+Vòng review F17 (28/09) tìm ra một lỗi mức Cao chỉ nổ ở lượt seed lại, nên tách
+thành nhánh riêng làm ngay sau khi F17 lên `main`:
+
+- **Seed chạy lại nhân đôi bảng con của tour đã sửa.** Khu làm việc F17 thay
+  nguyên FAQ, chính sách và dòng chi phí bằng hàng id mới, còn seed upsert theo
+  id fixture tĩnh — sửa một tour seed rồi seed lại là trang tour in FAQ và
+  chính sách hai lần, dòng chi phí nhân đôi nên giá vốn chụp vào booking và
+  chuyến mới gần gấp đôi, và tour có thể mang hai điểm chính (tab Details trả
+  400). Seed vẫn xanh, `seed:verify` không bắt. Vá: seed xoá rồi chèn lại năm
+  bảng con của 29 tour fixture trong một transaction, tính lại `cost_price` vô
+  điều kiện, thêm truy vấn canh vào `verify-seed`, và sửa spec 2026-09-24 §8
+  (câu "tour tạo tay sẽ mất" sai — bước reset GIỮ bảng `tours`, tour tạo tay còn
+  sống, chỉ mất chuyến, booking, đánh giá).
+- **Chặn tạm tới khi nhánh ấy vào `main`:** thử tay F17 trên prod chỉ dùng tour
+  mới tạo; không lưu tab Details (phần điểm đến), FAQ & policies hay Costs của
+  29 tour seed.
+- **Ngay trước khi chạy seed:** gỡ bán hoặc xoá các tour thử tạo bằng F17 —
+  `seed:verify` bắt "tour đang bán không có rating".
 
 ## Đang chờ chủ dự án quyết
 
@@ -97,4 +118,7 @@ deploy) nằm ở [sổ nợ kỹ thuật](analysis/2026-08-06-backlog-no-ky-thu
 | G3 | Rút chung ở F15, còn thiếu một bản: `toContractError` (`apps/api/src/lib/contract-error.ts`) và `hasFormErrors` (`apps/admin/src/lib/form-errors.ts`) nay nuôi danh mục lẫn điểm đến, nhưng `admin-departures.controller.ts` và `departures-write.ts` vẫn giữ bản riêng — code departures của F16 nằm ngoài phạm vi F15. Vòng review F15 đã cho `mapError` của chuyến dùng `declaredError` chung (Proxy của oRPC); đổi hai bản ấy sang hẳn là đóng G3 |
 | G6 | Nút mở hộp thoại còn khoá bằng `disabled` thật khi bảng làm mới ở: hàng chuyến (`departure-row-actions.tsx`), `bookings/refund-panel.tsx`, `outbox/retry-action.tsx`, `reviews/moderate-actions.tsx`, `subscribers/unsubscribe-action.tsx`. Hộp đóng đúng lúc làm mới thì Base UI không trả focus về nút `disabled` được, và focus bàn phím rơi về `<body>`. Vòng review F15 vá danh mục, điểm đến và nút Add của màn chuyến bằng `focusableWhenDisabled`; áp cùng khuôn cho năm chỗ này là đóng |
 | G7 | Khu làm việc tour (F17): nút Back của trình duyệt không hỏi lại khi form còn thay đổi chưa lưu — chỉ link trong app và `beforeunload` được canh |
-| G8 | Tạo chuyến và hạ số khách tối đa của tour chạy cùng lúc có thể để lại một chuyến nhiều ghế hơn số khách tối đa: lệnh tạo chuyến của F12 không khoá hàng tour. Một admin thì không gặp (ghi ở F17) |
+| ~~G8~~ | ~~Tạo chuyến và hạ số khách tối đa của tour chạy cùng lúc có thể để lại một chuyến nhiều ghế hơn số khách tối đa.~~ Đã vá ở vòng review F17 (28/09): tạo và sửa chuyến giữ hàng tour bằng `FOR SHARE` |
+| G9 | Sửa hay xoá tour chỉ bust `tours` và `tour:<slug>`, không bust `post:<slug>` của bài viết nhúng thẻ tour (có từ F11, F17 mở thêm đường sửa và xoá): thẻ tour trong bài viết cũ hoặc trỏ 404 tới hết 300 giây ISR |
+| G10 | Web lấy danh sách tour bằng MỘT trang `limit: 50` (`apps/web/src/lib/api/tours.ts`) — F17 cho tạo tour, quá 50 tour đang bán thì tour cũ nhất biến khỏi web. Hiện 29 |
+| G11 | Validator tab Details và Itinerary viết tay luật "tour đang bán thì luôn đủ" (tóm tắt, thêm ngày, tiêu đề ngày) thay vì suy từ `projectedReadiness`. F18 thêm ảnh bìa vào readiness thì phải sửa cả hai chỗ — làm cùng F18 |
