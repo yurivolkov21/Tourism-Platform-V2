@@ -1563,8 +1563,9 @@ export const messages = {
     // ── Itinerary ──
     itinerary: {
       dayLabel: (n: number) => `Day ${n}`,
+      /** Mốc đầu trùng mốc cuối (ngày một điểm dừng) thì in một giờ — "09:00–09:00" là khoảng rỗng. */
       stopsSummary: (day: number, stops: number, from: string, to: string) =>
-        `Day ${day} · ${stops} stop${stops === 1 ? '' : 's'} · ${from}–${to}`,
+        `Day ${day} · ${stops} stop${stops === 1 ? '' : 's'} · ${from === to ? from : `${from}–${to}`}`,
       today: 'Today',
       done: 'Done',
       /** Dòng meta dưới điểm hẹn: ngày khởi hành + độ dài chuyến, rồi một mệnh

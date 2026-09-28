@@ -10,6 +10,19 @@ describe('messages: tourDetail', () => {
   });
 });
 
+describe('messages: tourDetail.itinerary.stopsSummary', () => {
+  const summary = messages.tourDetail.itinerary.stopsSummary;
+
+  it('mốc đầu khác mốc cuối: in khoảng giờ đầu–cuối', () => {
+    expect(summary(1, 3, '07:30', '18:30')).toBe('Day 1 · 3 stops · 07:30–18:30');
+  });
+
+  it('mốc đầu trùng mốc cuối (vd ngày chỉ một điểm dừng): in MỘT giờ, không "09:00–09:00"', () => {
+    // Thử tay F17 trên prod (28/09): ngày có đúng một mốc hiện "09:00–09:00".
+    expect(summary(2, 1, '09:00', '09:00')).toBe('Day 2 · 1 stop · 09:00');
+  });
+});
+
 describe('messages: mobile.appShell (P5a — vỏ điều hướng)', () => {
   const shell = messages.mobile.appShell;
 
