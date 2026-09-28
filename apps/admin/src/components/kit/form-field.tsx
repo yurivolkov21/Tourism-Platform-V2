@@ -35,7 +35,10 @@ export function FormField({
     .filter((value): value is string => value !== null)
     .join(' ');
   return (
-    <div className="grid gap-1.5">
+    // `content-start` (thử tay F17): trong hàng nhiều cột, ô cạnh ô có gợi ý hay
+    // lỗi bị kéo cao bằng; thiếu nó thì lưới chia phần dư cho các dòng của ô và
+    // nhãn cùng ô nhập tụt xuống, lệch khỏi ô bên cạnh.
+    <div className="grid content-start gap-1.5">
       <Label htmlFor={id}>{label}</Label>
       {children(describedBy === '' ? undefined : describedBy)}
       {hint ? (
