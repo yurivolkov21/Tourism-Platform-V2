@@ -279,8 +279,15 @@ export class AdminToursService {
             'This tour has departures, so its number of days is locked.',
           );
         }
+        // Sàn chỉ chặn khi HẠ (spec §2b.2 "tăng thì luôn được", vòng review F17):
+        // dữ liệu đã lệch sẵn — chuyến 20 ghế trên tour 12 khách — thì giữ
+        // nguyên hay nâng lên vẫn phải lưu được, không thì tab Details khoá cứng.
         const floor = liveSeatsMax(current.departures, now);
-        if (floor !== null && input.maxGroupSize < floor) {
+        if (
+          floor !== null &&
+          input.maxGroupSize < floor &&
+          input.maxGroupSize < current.maxGroupSize
+        ) {
           throw new TourRuleError(
             'GROUP_SIZE_BELOW_SEATS',
             `A departure of this tour has ${floor} seats, so the group size cannot go below ${floor}.`,

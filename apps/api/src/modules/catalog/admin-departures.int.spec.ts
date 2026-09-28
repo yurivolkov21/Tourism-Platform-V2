@@ -947,4 +947,79 @@ describe('admin departures integration (F12)', () => {
       expect(lui.json().code).toBe('START_IN_PAST');
     });
   });
+
+  describe('khoá hàng tour khi tạo và sửa chuyến (vòng review F17)', () => {
+    /**
+     * Một lệnh hạ số khách tối đa đang CHẠY ở transaction khác — y như
+     * `updateDetails` của F17: câu UPDATE giữ khoá hàng tour tới lúc commit.
+     * Trả hàm nhả khoá; nhả là commit số khách mới.
+     */
+    async function lowerGroupSizeInFlight(maxGroupSize: number) {
+      let release!: () => void;
+      const released = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      let taken!: () => void;
+      const lockTaken = new Promise<void>((resolve) => {
+        taken = resolve;
+      });
+      const committed = prisma.$transaction(
+        async (tx) => {
+          await tx.tour.update({ where: { id: tour.id }, data: { maxGroupSize } });
+          taken();
+          await released;
+        },
+        { timeout: 10_000 },
+      );
+      await lockTaken;
+      return async () => {
+        release();
+        await committed;
+      };
+    }
+
+    /** Cho lệnh kia đủ thời gian chạy hết nếu nó KHÔNG chờ khoá. */
+    const settle = () => new Promise((resolve) => setTimeout(resolve, 300));
+
+    afterEach(async () => {
+      await prisma.tour.update({
+        where: { id: tour.id },
+        data: { maxGroupSize: tour.maxGroupSize },
+      });
+    });
+
+    it('tạo chuyến chờ lệnh đang hạ số khách, rồi đọc con số MỚI — không lọt chuyến quá trần', async () => {
+      // Không khoá: câu INSERT chỉ lấy KEY SHARE cho khoá ngoại, không đụng khoá
+      // của câu UPDATE kia, nên chuyến 10 ghế commit trong lúc tour đang về 8.
+      const release = await lowerGroupSizeInFlight(8);
+      const pending = create(
+        { slug: PUBLISHED_SLUG, startDate: dateAt(140), endDate: dateAt(141), seatsTotal: 10 },
+        adminCookie,
+      );
+      await settle();
+      await release();
+
+      const res = await pending;
+      expect(res.statusCode).toBe(422);
+      expect(res.json().code).toBe('SEATS_ABOVE_TOUR_MAX');
+      expect(await prisma.tourDeparture.count({ where: { startDate: dayAt(140) } })).toBe(0);
+    });
+
+    it('sửa ghế cũng chờ lệnh đang hạ số khách, rồi đọc con số MỚI', async () => {
+      const before = await rowById(FREE);
+      const release = await lowerGroupSizeInFlight(before.seatsTotal);
+      const pending = update(
+        FREE,
+        { ...editable(before), seatsTotal: before.seatsTotal + 2 },
+        adminCookie,
+      );
+      await settle();
+      await release();
+
+      const res = await pending;
+      expect(res.statusCode).toBe(422);
+      expect(res.json().code).toBe('SEATS_ABOVE_TOUR_MAX');
+      expect((await rowById(FREE)).seatsTotal).toBe(before.seatsTotal);
+    });
+  });
 });

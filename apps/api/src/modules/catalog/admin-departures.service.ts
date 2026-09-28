@@ -180,10 +180,14 @@ export class AdminDeparturesService {
   /**
    * Thêm một chuyến vào lịch của tour.
    *
-   * KHÔNG transaction: đúng MỘT câu ghi, và không có bất biến nào cần canh
-   * giữa lúc đọc tour và lúc chèn — tour biến mất giữa chừng thì khoá ngoại
-   * nổ P2003, một chuyến mồ côi là thứ không thể ghi được (cùng tinh thần
-   * "single-statement atomic claim" của ADR-0009).
+   * Transaction mở bằng `SELECT … FOR SHARE` hàng tour (vòng review F17): từ
+   * khi admin sửa được tour (F17), giữa lúc đọc tour và lúc chèn CÓ bất biến
+   * cần canh — số ghế không vượt số khách tối đa, và tour đã có chuyến thì số
+   * ngày khoá. Câu INSERT chỉ lấy KEY SHARE cho khoá ngoại, không đụng khoá
+   * FOR NO KEY UPDATE của lệnh sửa tour đang chạy, nên không có khoá này thì
+   * một chuyến 10 ghế commit đúng lúc tour đang hạ về 8. FOR SHARE xung đột
+   * với khoá ấy: lệnh nào đến sau chờ lệnh kia commit rồi đọc con số mới. Nó
+   * cũng chặn lệnh xoá tour chen vào giữa (thay cho P2003 không ai map).
    *
    * `fixedCostAmount` đóng băng từ các dòng giá vốn `PER_DEPARTURE` của tour
    * (ADR-0033 §3) — đúng việc mà seed đang làm hộ. Bỏ trống thì mọi chuyến
@@ -191,28 +195,36 @@ export class AdminDeparturesService {
    * lợi nhuận đẹp hơn sự thật mà không ai thấy sai ở đâu.
    */
   async create(input: AdminDepartureCreateInput): Promise<AdminDepartureRow> {
-    const tour = await prisma.tour.findUnique({
-      where: { slug: input.slug },
-      select: { ...TOUR_SELECT, costItems: { select: { amount: true, basis: true } } },
-    });
-    if (!tour) throw new TourNotFoundError(input.slug);
-
     const now = new Date();
     assertDateRange(input.startDate, input.endDate);
     assertNotInPast(input.startDate, now);
-    assertSeatsWithinTourMax(input.seatsTotal, tour.maxGroupSize);
 
-    const created = await prisma.tourDeparture.create({
-      data: {
-        tourId: tour.id,
-        startDate: startOfDayUtc(input.startDate),
-        endDate: startOfDayUtc(input.endDate),
-        seatsTotal: input.seatsTotal,
-        priceOverride: toDecimal(input.priceOverride),
-        fixedCostAmount:
-          tour.costItems.length > 0 ? perDepartureTotal(costItemsOf(tour.costItems)) : null,
-      },
-      select: DEPARTURE_SELECT,
+    const { tour, created } = await prisma.$transaction(async (tx) => {
+      const [locked] = await tx.$queryRaw<{ id: string }[]>(Prisma.sql`
+        SELECT id FROM tours WHERE slug = ${input.slug} FOR SHARE
+      `);
+      if (!locked) throw new TourNotFoundError(input.slug);
+      // Câu đọc SAU khoá là một statement mới: thấy đúng thứ lệnh sửa tour vừa
+      // commit, nếu câu khoá phải chờ nó.
+      const tour = await tx.tour.findUniqueOrThrow({
+        where: { id: locked.id },
+        select: { ...TOUR_SELECT, costItems: { select: { amount: true, basis: true } } },
+      });
+      assertSeatsWithinTourMax(input.seatsTotal, tour.maxGroupSize);
+
+      const created = await tx.tourDeparture.create({
+        data: {
+          tourId: tour.id,
+          startDate: startOfDayUtc(input.startDate),
+          endDate: startOfDayUtc(input.endDate),
+          seatsTotal: input.seatsTotal,
+          priceOverride: toDecimal(input.priceOverride),
+          fixedCostAmount:
+            tour.costItems.length > 0 ? perDepartureTotal(costItemsOf(tour.costItems)) : null,
+        },
+        select: DEPARTURE_SELECT,
+      });
+      return { tour, created };
     });
     this.logger.log(
       `[admin] departure created ${JSON.stringify({
@@ -315,7 +327,12 @@ export class AdminDeparturesService {
       if (seatsBlocked) throw new DepartureRuleError('SEATS_BELOW_BOOKED', seatsBlocked);
 
       // Đọc tour TRƯỚC phép ghi: trần ghế theo cỡ nhóm tour công bố là một chốt
-      // chặn, nên nó phải đứng trước `update`, không phải sau.
+      // chặn, nên nó phải đứng trước `update`, không phải sau. Khoá hàng tour
+      // FOR SHARE trước khi đọc — cùng lý do với `create` (vòng review F17):
+      // lệnh hạ số khách đang chạy thì chờ nó commit rồi mới so ghế.
+      await tx.$queryRaw(Prisma.sql`
+        SELECT id FROM tours WHERE id = ${locked.tour_id}::uuid FOR SHARE
+      `);
       const tourRow = await tx.tour.findUniqueOrThrow({
         where: { id: locked.tour_id },
         select: TOUR_SELECT,

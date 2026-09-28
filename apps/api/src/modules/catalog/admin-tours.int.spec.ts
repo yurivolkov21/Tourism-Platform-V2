@@ -734,6 +734,41 @@ describe('admin tours integration (F17)', () => {
       expect(atFloor.statusCode).toBe(200);
     });
 
+    it('dữ liệu đã lệch (chuyến nhiều ghế hơn số khách) vẫn lưu được — sàn chỉ chặn khi HẠ', async () => {
+      // Spec §2b.2 "tăng thì luôn được" (vòng review F17): chặn cả khi giữ
+      // nguyên thì một chuyến 20 ghế trên tour 12 khách khoá cứng tab Details,
+      // kể cả lúc chỉ sửa tên hay nâng số khách lên cho khớp.
+      await makeTour(1, { maxGroupSize: 12 });
+      await makeDeparture(tourId(1), { startDate: day(30), endDate: day(31), seatsTotal: 20 });
+      const before = await detailOf('f17-tour-1');
+
+      const kept = await details(tourId(1), detailsPayload(before, { title: 'Renamed' }));
+      expect(kept.statusCode).toBe(200);
+      const raised = await details(
+        tourId(1),
+        detailsPayload(AdminTourDetailSchema.parse(kept.json()), { maxGroupSize: 15 }),
+      );
+      expect(raised.statusCode).toBe(200);
+      const lowered = await details(
+        tourId(1),
+        detailsPayload(AdminTourDetailSchema.parse(raised.json()), { maxGroupSize: 14 }),
+      );
+      expect(lowered.statusCode).toBe(409);
+      expect(lowered.json()).toMatchObject({ code: 'GROUP_SIZE_BELOW_SEATS' });
+    });
+
+    it('GIẢM số ngày khi đã có chuyến cũng bị khoá, không chỉ tăng', async () => {
+      await makeTour(1);
+      await makeDeparture(tourId(1), { startDate: day(30), endDate: day(31) });
+      const before = await detailOf('f17-tour-1');
+
+      const shorter = await details(tourId(1), detailsPayload(before, { durationDays: 1 }));
+
+      expect(shorter.statusCode).toBe(409);
+      expect(shorter.json()).toMatchObject({ code: 'DURATION_LOCKED' });
+      expect((await detailOf('f17-tour-1')).itinerary).toHaveLength(2);
+    });
+
     it('đổi số khách thì tính lại giá vốn; giữ nguyên số khách thì không đụng', async () => {
       await makeTour(1, {
         maxGroupSize: 20,
