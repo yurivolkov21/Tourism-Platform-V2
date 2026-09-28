@@ -141,6 +141,22 @@ describe('TourDetailsForm', () => {
     expect(save).not.toHaveBeenCalled();
   });
 
+  it('sàn số khách: chưa lỗi thì gợi ý xám; có lỗi thì câu ấy chỉ hiện MỘT lần, bằng lỗi', async () => {
+    // Thử tay F17 trên prod (28/09): gợi ý sàn và lỗi sàn cùng chữ, nên dưới sàn
+    // câu "At least 12 — …" hiện hai lần liền nhau (xám rồi đỏ).
+    const { user } = renderForm(detailFixture({ liveSeatsMax: 12, maxGroupSize: 20 }), vi.fn());
+    const floor = e.form.errors.groupFloor(12);
+    expect(screen.getByText(floor)).not.toHaveAttribute('role', 'alert');
+
+    await user.clear(field(t.maxGroupSize));
+    await user.type(field(t.maxGroupSize), '11');
+    await user.click(saveButton());
+
+    const shown = screen.getAllByText(floor);
+    expect(shown).toHaveLength(1);
+    expect(shown[0]).toHaveAttribute('role', 'alert');
+  });
+
   it('tour ĐANG bán mà xoá tóm tắt: lỗi dưới ô, không gửi; tắt bán thì lưu được', async () => {
     const save = vi.fn();
     const { user } = renderForm(detailFixture(), save);

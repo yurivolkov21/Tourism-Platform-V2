@@ -300,7 +300,14 @@ export function TourDetailsForm({
             <FormField
               id="tour-group"
               label={t.maxGroupSize}
-              hint={detail.liveSeatsMax !== null ? fe.groupFloor(detail.liveSeatsMax) : undefined}
+              // Có lỗi thì lỗi nói một mình (thử tay F17): lỗi sàn cùng chữ với gợi
+              // ý nên hai câu trùng nhau liền nhau; lỗi server có thể mang sàn mới
+              // hơn con số trong gợi ý đang cầm.
+              hint={
+                groupError === undefined && detail.liveSeatsMax !== null
+                  ? fe.groupFloor(detail.liveSeatsMax)
+                  : undefined
+              }
               error={groupError}
             >
               {(describedBy) => (
