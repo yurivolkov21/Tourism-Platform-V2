@@ -264,6 +264,7 @@ export function TourDetailsForm({
           <CheckboxRow
             id="tour-featured"
             label={t.featured}
+            description={t.featuredHint}
             checked={values.isFeatured}
             disabled={pending}
             onChange={(isFeatured) => patch({ isFeatured })}
@@ -364,6 +365,7 @@ export function TourDetailsForm({
             onChange={setDestinations}
             max={TOUR_DESTINATIONS_MAX}
             reorderable={false}
+            labelledRows
             newItem={() => ({
               key: newItemKey(),
               destinationId: '',
@@ -421,6 +423,7 @@ export function TourDetailsForm({
           <CheckboxGroup
             id="tour-suitable-for"
             label={t.suitableFor}
+            hint={t.suitableForHint}
             options={TravellerTypeSchema.options.map((type) => ({
               value: type,
               label: messages.travellerTypes[type],
@@ -432,9 +435,11 @@ export function TourDetailsForm({
           <CheckboxGroup
             id="tour-badges"
             label={t.badges}
+            hint={t.badgesHint}
             options={TourBadgeSchema.options.map((badge) => ({
               value: badge,
               label: messages.tourDetail.badges[badge],
+              description: t.badgeHints[badge],
             }))}
             selected={values.badges}
             disabled={pending}
@@ -532,26 +537,41 @@ export function TourDetailsForm({
 function CheckboxRow({
   id,
   label,
+  description,
   checked,
   disabled,
   onChange,
 }: {
   id: string;
   label: string;
+  /** Câu nhỏ dưới nhãn nói ô ấy nghĩa là gì — trình đọc màn hình đọc cùng ô tích. */
+  description?: string;
   checked: boolean;
   disabled: boolean;
   onChange: (checked: boolean) => void;
 }) {
-  return (
+  const descriptionId = description ? `${id}-description` : undefined;
+  const row = (
     <span className="flex w-fit items-center gap-2 text-sm">
       <Checkbox
         id={id}
         checked={checked}
         disabled={disabled}
+        aria-describedby={descriptionId}
         onCheckedChange={(value) => onChange(value === true)}
       />
       <label htmlFor={id}>{label}</label>
     </span>
+  );
+  if (!description) return row;
+  return (
+    <div className="grid gap-1">
+      {row}
+      {/* `pl-6` = ô tích 16px cộng khoảng `gap-2` 8px: câu chú thích thẳng hàng với chữ của nhãn. */}
+      <p id={descriptionId} className="pl-6 text-xs text-muted-foreground">
+        {description}
+      </p>
+    </div>
   );
 }
 
@@ -559,6 +579,7 @@ function CheckboxRow({
 function CheckboxGroup<Value extends string>({
   id,
   label,
+  hint,
   options,
   selected,
   disabled,
@@ -566,22 +587,35 @@ function CheckboxGroup<Value extends string>({
 }: {
   id: string;
   label: string;
-  options: readonly { value: Value; label: string }[];
+  /** Câu dưới cả nhóm nói nhóm ấy hiện ở đâu trên web (thử tay F17). */
+  hint?: string;
+  options: readonly { value: Value; label: string; description?: string }[];
   selected: readonly Value[];
   disabled: boolean;
   onChange: (next: Value[]) => void;
 }) {
+  const hintId = hint ? `${id}-hint` : undefined;
+  // Ô có chú thích riêng thì cao hai dòng — xếp lưới cho các cột thẳng nhau;
+  // ô chỉ có nhãn thì giữ một hàng chảy như cũ.
+  const described = options.some((option) => option.description !== undefined);
   return (
     // `fieldset` + `legend` là nhóm có tên sẵn của HTML — không cần `role="group"`.
     // `min-w-0`: fieldset mặc định `min-width: min-content`, làm hàng ô tích tràn ngang.
-    <fieldset className="min-w-0">
+    <fieldset className="min-w-0" aria-describedby={hintId}>
       <legend className="mb-2 text-sm font-medium">{label}</legend>
-      <div className="flex flex-wrap gap-x-5 gap-y-2">
+      <div
+        className={
+          described
+            ? 'grid gap-x-5 gap-y-3 sm:grid-cols-2 lg:grid-cols-3'
+            : 'flex flex-wrap gap-x-5 gap-y-2'
+        }
+      >
         {options.map((option) => (
           <CheckboxRow
             key={option.value}
             id={`${id}-${option.value}`}
             label={option.label}
+            description={option.description}
             checked={selected.includes(option.value)}
             disabled={disabled}
             onChange={(checked) =>
@@ -597,6 +631,11 @@ function CheckboxGroup<Value extends string>({
           />
         ))}
       </div>
+      {hint ? (
+        <p id={hintId} className="mt-2 text-xs text-muted-foreground">
+          {hint}
+        </p>
+      ) : null}
     </fieldset>
   );
 }

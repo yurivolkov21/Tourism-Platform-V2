@@ -4145,6 +4145,12 @@ export const messages = {
           difficulty: 'Difficulty',
           difficultyNotSet: 'Not set',
           featured: 'Featured',
+          /**
+           * Đo: web chỉ đọc `isFeatured` ở trang /tours — chip "Featured" trên card khi
+           * card không có chip giảm giá (`tour-list-card.tsx`) và bộ lọc "Featured trips".
+           */
+          featuredHint:
+            'Adds a Featured label to the tour’s card on the Tours page (unless the card shows a discount) and lists it under the Featured trips filter.',
           durationDays: 'Days',
           /** Đo: `updateDetails` xoá các ngày vượt số ngày mới trong cùng lệnh. */
           daysRemoved: (list: string, count: number) =>
@@ -4171,7 +4177,25 @@ export const messages = {
           addDestination: 'Add destination',
           destinationName: (n: number) => `destination ${n}`,
           suitableFor: 'Good for',
+          /** Đo: web chỉ đọc `suitableFor` ở thẻ "Good for" tab Overview; mảng rỗng thì thẻ ẩn. */
+          suitableForHint:
+            'Shown on the tour page as the Good for card. Tick none and the card is hidden.',
           badges: 'Badges',
+          /** Đo: `tour-hero.tsx` giữ tối đa 2 chip cạnh giá; chip giảm giá chiếm một suất, phần dư gộp "+N". */
+          badgesHint:
+            'Shown next to the price at the top of the tour page. Two fit, one when that price is discounted; the rest show as “+N”.',
+          /**
+           * Nghĩa của từng huy hiệu là quy ước biên tập — hệ thống không tự tính — nên
+           * câu dưới mỗi ô là hướng dẫn dùng. Limited offer bám luật giá gạch 15/09:
+           * chỉ nói "ưu đãi" khi có giảm giá thật.
+           */
+          badgeHints: {
+            BEST_VALUE: 'A lot included for the price.',
+            LIMITED_OFFER: 'Only while a date has a real discount.',
+            EXCLUSIVE: 'A trip only we sell.',
+            NEW: 'Recently added to the catalogue.',
+            POPULAR: 'One of our most booked tours.',
+          },
           highlights: 'Highlights',
           addHighlight: 'Add highlight',
           highlightName: (n: number) => `highlight ${n}`,

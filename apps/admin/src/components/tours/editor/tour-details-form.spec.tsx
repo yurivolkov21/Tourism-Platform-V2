@@ -1,6 +1,6 @@
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import type { AdminTourDetail } from '@tourism/contract';
+import { type AdminTourDetail, TourBadgeSchema, TravellerTypeSchema } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { TourEditorOptions } from '@/lib/api/tours';
@@ -447,6 +447,47 @@ describe('TourDetailsForm', () => {
 
     expect(save.mock.calls[0]?.[0].version).toBe(VERSION);
     expect(save.mock.calls[1]?.[0].version).toBe(NEXT_VERSION);
+  });
+
+  it('dòng điểm đến có nhãn: thùng rác canh ngang ô chọn; dòng highlight không nhãn giữ mép trên', () => {
+    // Thử tay F17: thùng rác của dòng điểm đến nằm ngang nhãn "Destination", lệch
+    // lên trên so với ô chọn và nút Primary.
+    renderForm(detailFixture(), vi.fn());
+    const actionsOf = (name: string) =>
+      screen
+        .getByRole('button', { name: messages.admin.listEditor.remove(name) })
+        .closest('[data-slot="row-actions"]');
+
+    expect(actionsOf(t.destinationName(1))).toHaveAttribute('data-align', 'field');
+    expect(actionsOf(t.highlightName(1))).not.toHaveAttribute('data-align');
+  });
+
+  it('Good for, Badges và Featured có chú thích nói ô ấy tác động gì trên web', () => {
+    // Thử tay F17: người dùng tích mà không biết ô ấy hiện ở đâu, làm gì.
+    renderForm(detailFixture(), vi.fn());
+
+    expect(screen.getByRole('group', { name: t.suitableFor })).toHaveAccessibleDescription(
+      t.suitableForHint,
+    );
+    expect(screen.getByRole('group', { name: t.badges })).toHaveAccessibleDescription(t.badgesHint);
+    expect(screen.getByRole('checkbox', { name: t.featured })).toHaveAccessibleDescription(
+      t.featuredHint,
+    );
+  });
+
+  it('mỗi ô huy hiệu có chú thích nghĩa riêng; ô Good for thì không (tên ô đã tự nói)', () => {
+    renderForm(detailFixture(), vi.fn());
+
+    for (const badge of TourBadgeSchema.options) {
+      expect(
+        screen.getByRole('checkbox', { name: messages.tourDetail.badges[badge] }),
+      ).toHaveAccessibleDescription(t.badgeHints[badge]);
+    }
+    for (const type of TravellerTypeSchema.options) {
+      expect(
+        screen.getByRole('checkbox', { name: messages.travellerTypes[type] }),
+      ).not.toHaveAccessibleDescription();
+    }
   });
 });
 
