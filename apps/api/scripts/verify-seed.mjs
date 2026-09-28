@@ -150,6 +150,47 @@ const BAT_BIEN = [
     `select count(*)::int as n from tours where is_published and rating_avg is null`,
     false,
   ],
+  // ── Bảng con của tour sau khi admin sửa bằng khu làm việc F17 (vòng review F17) ──
+  // Khu làm việc thay nguyên FAQ, chính sách, dòng chi phí bằng hàng id MỚI; seed chèn
+  // lại theo id fixture thì bản fixture nằm CẠNH bản admin — bốn truy vấn dưới bắt đúng
+  // dấu vết ấy, vì trước đó seed vẫn chạy xanh.
+  [
+    'tour có số điểm chính khác 1',
+    `select count(*)::int as n from tours t
+     where (select count(*) from tour_destinations d where d.tour_id = t.id and d.is_primary) <> 1`,
+    false,
+  ],
+  [
+    'FAQ trùng câu hỏi trong một tour',
+    `select count(*)::int as n from (select tour_id, question from tour_faqs group by 1, 2 having count(*) > 1) x`,
+    false,
+  ],
+  [
+    'chính sách trùng loại và tiêu đề trong một tour',
+    `select count(*)::int as n from (select tour_id, kind, title from tour_policies group by 1, 2, 3 having count(*) > 1) x`,
+    false,
+  ],
+  [
+    'dòng chi phí trùng nhãn trong một tour',
+    `select count(*)::int as n from (select tour_id, label, basis from tour_cost_items group by 1, 2, 3 having count(*) > 1) x`,
+    false,
+  ],
+  // Cùng công thức `derivedCostPrice` (contract): vế theo khách cộng vế theo chuyến chia
+  // số khách tối đa, làm tròn nửa lên ở cent — `round` của Postgres là nửa xa số 0.
+  [
+    'cost_price lệch công thức dẫn xuất từ dòng chi phí',
+    `select count(*)::int as n from tours t
+     left join (
+       select tour_id,
+              coalesce(sum(amount) filter (where basis = 'PER_PERSON'), 0) as theo_khach,
+              coalesce(sum(amount) filter (where basis = 'PER_DEPARTURE'), 0) as theo_chuyen
+       from tour_cost_items group by tour_id
+     ) c on c.tour_id = t.id
+     where t.cost_price is distinct from
+       case when c.tour_id is null then null
+            else round(c.theo_khach + c.theo_chuyen / t.max_group_size, 2) end`,
+    false,
+  ],
   // Cùng công thức bước 6b của seed.ts: đếm và trung bình review đã duyệt, không lọc `source`.
   [
     'rating tour lệch review đã duyệt',

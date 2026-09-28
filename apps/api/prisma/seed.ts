@@ -8,7 +8,8 @@
  *
  * Seed những gì:
  *   1. Catalog (`./fixtures/catalog/index.ts`): tour category, destination, tour
- *      (+ M:N destination, itinerary, FAQ, policy), lịch khởi hành sinh theo H, giá vốn.
+ *      (upsert), năm bảng con của tour — điểm đến, lịch trình, FAQ, chính sách, dòng
+ *      chi phí — xoá rồi chèn lại theo fixture, lịch khởi hành sinh theo H.
  *   2. Site media slot.
  *   3. Một ADMIN (entry đầu của `ADMIN_EMAILS`) + 120 KHÁCH GIẢ đăng nhập được
  *      (`fixtures/people/customers.ts`), mật khẩu chung băm bằng chính hàm của Better Auth.
@@ -19,7 +20,7 @@
  *   6b. tính lại `ratingAvg`/`ratingCount` cho mọi tour.
  *   7. Enquiries + ghi chú + lịch sử trạng thái (`fixtures/operations/enquiries.ts`).
  *   8. Subscribers (`fixtures/operations/subscribers.ts`).
- *   9. Hai con số dẫn xuất của mô hình giá vốn.
+ *   9. Hai con số dẫn xuất của mô hình giá vốn (`costPrice` tính lại mọi lượt).
  *
  * KHÔNG seed: outbox (worker gửi mail thật cho mọi dòng PENDING), wishlist, chat,
  * media asset.
@@ -159,17 +160,17 @@ const connectionString =
 // `db:seed` nạp `.env.local`, mà từ 14/09/2026 file đó trỏ Postgres Docker. Muốn
 // nhắm Supabase phải ghi đè DATABASE_URL bằng chuỗi của `.env.production` — biến môi
 // trường thắng `--env-file` — và thêm cờ tường minh bên dưới. Seed ghi đè nội dung
-// biên tập của 29 tour, 58 policy và toàn bộ FAQ (upsert), đồng thời XOÁ mọi policy
-// loại CANCELLATION còn lại, nên prod không bao giờ được là đích
-// mặc định.
+// biên tập của 29 tour (upsert) và THAY NGUYÊN năm bảng con của chúng — điểm đến,
+// lịch trình, FAQ, chính sách, dòng chi phí — theo fixture, nên prod không bao giờ
+// được là đích mặc định.
 const LA_PROD = /supabase\.(com|co)$/i.test(new URL(connectionString).hostname);
 if (LA_PROD && !process.argv.includes('--toi-biet-day-la-production')) {
   console.error(`
 ✖ TỪ CHỐI: ${new URL(connectionString).hostname} là Supabase production.
 
-  Seed sẽ GHI ĐÈ nội dung biên tập của 29 tour, 58 policy và toàn bộ FAQ (cả ba
-  dùng upsert), XOÁ mọi policy loại CANCELLATION (ADR-0041), và chèn toàn bộ
-  tầng vận hành. Muốn chạy thật thì cần CẢ cờ lẫn mốc
+  Seed sẽ GHI ĐÈ nội dung biên tập của 29 tour (upsert), THAY NGUYÊN điểm đến,
+  lịch trình, FAQ, chính sách và dòng chi phí của chúng theo fixture, và chèn
+  toàn bộ tầng vận hành. Muốn chạy thật thì cần CẢ cờ lẫn mốc
   ngày chạy (thiếu SEED_HOM_NAY thì chốt chặn mốc H bên dưới từ chối tiếp):
 
       SEED_HOM_NAY=YYYY-MM-DD pnpm --filter @tourism/api db:seed -- --toi-biet-day-la-production
@@ -246,14 +247,18 @@ async function insertCatalog(): Promise<number> {
       // cả hai DB sau khi seed báo thành công.
       //
       // Chỉ cập nhật phần NỘI DUNG; `createdAt` và các khoá giữ nguyên.
+      // `updatedAt` của fixture chỉ dùng khi TẠO: ghi nó vào hàng có sẵn là kéo
+      // phiên bản của khu làm việc F17 lùi về mốc 31/07 (ADR-0047 §3) — cập nhật
+      // thì để Prisma tự đặt `now()` (vòng review F17).
       async () => {
         for (const t of catalog.tours) {
-          const { id, categoryId, createdAt, ...content } = t;
+          const { id, categoryId, createdAt, updatedAt, ...content } = t;
           await prisma.tour.upsert({
             where: { id },
             create: {
               id,
               createdAt,
+              updatedAt,
               category: { connect: { id: categoryId } },
               ...content,
             } as unknown as Prisma.TourCreateInput,
@@ -264,69 +269,41 @@ async function insertCatalog(): Promise<number> {
       },
     ],
     [
-      'tourDestinations',
-      () =>
-        prisma.tourDestination.createMany({
-          data: catalog.tourDestinations,
-          skipDuplicates: true,
-        }),
-    ],
-    [
-      'tourItineraryDays',
-      () =>
-        prisma.tourItineraryDay.createMany({
-          data: catalog.tourItineraryDays,
-          skipDuplicates: true,
-        }),
-    ],
-    [
-      'tourFaqs',
-      // UPSERT cùng lý do với `tourPolicies` (ADR-0023 §3): câu hỏi và câu trả lời là NỘI
-      // DUNG BIÊN TẬP. ADR-0041 sửa sáu câu còn hứa mốc huỷ riêng hoặc đổi ngày miễn phí;
-      // giữ `createMany({ skipDuplicates })` thì DB đang chạy KHÔNG BAO GIỜ thấy bản sửa —
-      // đúng cái bẫy đã dính ngày 14/08 với năm cột mới của tour.
+      'tourChildren',
+      // XOÁ RỒI CHÈN LẠI năm bảng con của 29 tour fixture — điểm đến, lịch trình,
+      // FAQ, chính sách, dòng chi phí — trong MỘT transaction (vòng review F17).
+      //
+      // Vì sao không upsert hay `createMany({ skipDuplicates })` như trước: từ F17
+      // admin sửa được các bảng này, và khu làm việc thay nguyên từng danh sách
+      // bằng hàng id MỚI. Upsert theo id fixture thì bản fixture được chèn lại
+      // CẠNH bản admin — FAQ và chính sách in hai lần trên trang tour, dòng chi
+      // phí nhân đôi (giá vốn chụp vào booking mới gần gấp đôi), và bỏ hẳn điểm
+      // chính fixture là tour mang hai điểm chính. Seed vẫn báo thành công.
+      //
+      // An toàn vì: chỉ xoá theo id tour FIXTURE, nên tour tạo tay không bị
+      // đụng; không bảng nào có khoá ngoại trỏ VÀO năm bảng này. Mảng transaction
+      // (không phải callback) để không vướng trần 5 giây của transaction tương
+      // tác. Xoá theo tour cũng dọn luôn chính sách loại CANCELLATION cũ của tour
+      // fixture (ADR-0041) — bước xoá riêng trước đây nay thừa.
       async () => {
-        for (const f of catalog.tourFaqs) {
-          const data = { question: f.question, answer: f.answer, order: f.order };
-          await prisma.tourFaq.upsert({
-            where: { id: f.id },
-            create: { id: f.id, tour: { connect: { id: f.tourId } }, ...data },
-            update: data,
-          });
-        }
-        return { count: catalog.tourFaqs.length };
+        const where = { tourId: { in: catalog.tours.map((tour) => tour.id) } };
+        const results = await prisma.$transaction([
+          prisma.tourDestination.deleteMany({ where }),
+          prisma.tourItineraryDay.deleteMany({ where }),
+          prisma.tourFaq.deleteMany({ where }),
+          prisma.tourPolicy.deleteMany({ where }),
+          prisma.tourCostItem.deleteMany({ where }),
+          prisma.tourDestination.createMany({ data: catalog.tourDestinations }),
+          prisma.tourItineraryDay.createMany({ data: catalog.tourItineraryDays }),
+          prisma.tourFaq.createMany({ data: catalog.tourFaqs }),
+          prisma.tourPolicy.createMany({ data: catalog.tourPolicies }),
+          prisma.tourCostItem.createMany({
+            data: catalog.tourCostItems as unknown as Prisma.TourCostItemCreateManyInput[],
+          }),
+        ]);
+        // Năm câu đầu là câu xoá — đếm số hàng CHÈN.
+        return { count: results.slice(5).reduce((sum, result) => sum + result.count, 0) };
       },
-    ],
-    [
-      'tourPolicies',
-      // UPSERT chứ không `createMany({ skipDuplicates })` như các bảng cấu trúc
-      // khác (ADR-0023 §3): tiêu đề và nội dung chính sách là NỘI DUNG BIÊN
-      // TẬP, còn sửa nhiều lần. `skipDuplicates` bỏ qua row đã tồn tại, nên
-      // sửa fixture mà giữ cơ chế đó thì DB đang chạy KHÔNG BAO GIỜ nhận nội
-      // dung mới — người sửa tưởng đã sửa, trang thì vẫn hiện chữ cũ. Cùng
-      // cách `siteMediaSlot`/`posts`/`users` đang làm.
-      async () => {
-        for (const p of catalog.tourPolicies) {
-          const data = { kind: p.kind, order: p.order, title: p.title, body: p.body };
-          await prisma.tourPolicy.upsert({
-            where: { id: p.id },
-            // `connect` thay vì `tourId` trần: `…CreateInput` (dạng upsert dùng)
-            // khai quan hệ chứ không khai khoá ngoại, khác `…CreateManyInput`.
-            create: { id: p.id, tour: { connect: { id: p.tourId } }, ...data },
-            update: data,
-          });
-        }
-        return { count: catalog.tourPolicies.length };
-      },
-    ],
-    [
-      'tourPoliciesHuyCu',
-      // Fixture không còn policy loại CANCELLATION (ADR-0041): nội dung huỷ nay sinh từ luật
-      // chung ở `@tourism/contract`. Upsert ở trên chỉ ghi đè dòng CÓ trong fixture, nên 29
-      // dòng cũ trên DB đang chạy sẽ ở lại vĩnh viễn và trang tour in hai chính sách đá nhau.
-      // Xoá theo `kind` nên chạy bao nhiêu lần cũng ra cùng kết quả; giá trị enum vẫn còn
-      // trong `PolicyKind` của DB, chỉ fixture thôi không dùng.
-      () => prisma.tourPolicy.deleteMany({ where: { kind: 'CANCELLATION' } }),
     ],
     [
       'tourDepartures',
@@ -338,14 +315,6 @@ async function insertCatalog(): Promise<number> {
             startDate: toDate(d.startDate),
             endDate: toDate(d.endDate),
           })) as unknown as Prisma.TourDepartureCreateManyInput[],
-          skipDuplicates: true,
-        }),
-    ],
-    [
-      'tourCostItems',
-      () =>
-        prisma.tourCostItem.createMany({
-          data: catalog.tourCostItems as unknown as Prisma.TourCostItemCreateManyInput[],
           skipDuplicates: true,
         }),
     ],
@@ -807,24 +776,29 @@ async function main(): Promise<void> {
     const items = catalog.tourCostItems
       .filter((item) => item.tourId === tour.id)
       .map((item) => ({ amount: item.amount, basis: item.basis }));
+    // `costPrice` tính lại VÔ ĐIỀU KIỆN (vòng review F17): năm bảng con vừa thay
+    // nguyên theo fixture, nên giá vốn phải khớp đúng các dòng ấy — giữ con số
+    // cũ là giữ giá vốn tính từ dòng chi phí của admin mà bảng không còn nữa. Từ
+    // F17 `costPrice` không có ô sửa tay, nó luôn dẫn xuất từ dòng chi phí.
+    await prisma.tour.update({
+      where: { id: tour.id },
+      data: {
+        costPrice: items.length > 0 ? derivedCostPrice(items, tour.maxGroupSize) : null,
+      },
+    });
     if (items.length === 0) continue;
 
-    // CHỈ điền chỗ còn trống. Hai cột này là SNAPSHOT (ADR-0033 §3: đóng
-    // băng lúc tạo chuyến, admin sửa đè được) — seed chạy lại trên DB dùng
-    // chung mà ghi đè `where: { tourId }` trần là viết lại giá vốn của chuyến
-    // đã lên báo cáo tháng trước và xoá giá admin đã đè tay (vòng vá review
-    // 05/09).
-    await prisma.tour.updateMany({
-      where: { id: tour.id, costPrice: null },
-      data: { costPrice: derivedCostPrice(items, tour.maxGroupSize) },
-    });
+    // `fixedCostAmount` vẫn CHỈ điền chỗ còn trống: nó là SNAPSHOT của chuyến
+    // (ADR-0033 §3, đóng băng lúc tạo) — seed chạy lại mà ghi đè `where: { tourId }`
+    // trần là viết lại giá vốn của chuyến đã lên báo cáo tháng trước (vòng vá
+    // review 05/09).
     await prisma.tourDeparture.updateMany({
       where: { tourId: tour.id, fixedCostAmount: null },
       data: { fixedCostAmount: perDepartureTotal(items) },
     });
   }
   console.log(
-    `[seed] derived costPrice + departure fixedCost (chỉ chỗ còn null) for ${catalog.tours.length} tours.`,
+    `[seed] derived costPrice (mọi tour) + departure fixedCost (chỉ chỗ còn null) for ${catalog.tours.length} tours.`,
   );
 
   console.log('[seed] done.');
