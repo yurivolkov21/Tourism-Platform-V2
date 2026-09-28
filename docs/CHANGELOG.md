@@ -8,6 +8,89 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-09-28 — F18 ảnh tour (nhánh `feat/p4e-3b-tour-photos`)
+
+Tab Photos trong khu làm việc tour: tải ảnh lên thẳng Cloudinary (ký theo lô),
+lấy ảnh từ kho ảnh địa danh kèm ghi công, sắp thứ tự, chọn ảnh bìa (ảnh đầu), sửa
+alt. Quyết định ở ADR-0048: một danh sách có thứ tự trong `media_assets`, một lệnh
+`setPhotos` thay trọn và khoá phiên bản, chỉ ảnh tự tải lên mới vào lại hàng dọn.
+Readiness thêm điều kiện ảnh bìa; luật "tour đang bán thì luôn đủ" phía admin suy
+từ `projectedReadiness` (đóng G11). Xoá tour dọn luôn dòng ảnh. Không migration,
+không sửa web.
+
+**Tab Photos** (`/tours/[slug]/photos`, ngay sau Details). Mỗi dòng: thumbnail
+`f_auto,q_auto,w_320` không cắt cúp (khung 3:2 do CSS), ô Alt text bắt buộc, dòng
+nguồn "Uploaded" hoặc "From the library · Photo: tác giả, giấy phép". Dòng đầu mang
+nhãn Cover; dòng khác có Make cover — ảnh lên đầu, tiêu điểm vào ô alt của nó. Gỡ
+dòng cuối trả tiêu điểm về nút Upload photos. Kit `ListEditor` cho phép không có nút
+thêm và nhận `emptyFocus`; `EditorFormFrame` nhận `blockedNote`.
+
+**Tải lên.** Nút Upload photos hoặc kéo thả vào vùng danh sách. File sai đuôi, quá
+10 MB hay vượt sức chứa 30 ảnh bị loại kèm lý do; phần còn lại ký MỘT lần cho cả lô
+(`admin.tours.signPhotoUploads`, một request dưới trần 20/60s của ADR-0037), tải song
+song tối đa ba file bằng XHR có tiến độ. Ảnh tải xong nối vào cuối, alt để trống;
+hỏng thì Retry ký lại một chữ ký mới, hoặc Remove. Save khoá khi còn file đang tải
+("Waiting for N uploads to finish."). URL xem trước thu hồi khi dòng tải xong hay bị
+gỡ. CSP admin mở `connect-src https://api.cloudinary.com` — AMEND 5 của ADR-0038, viết
+trong nhánh này theo lựa chọn của user (luật của ADR-0038: origin mới phải qua AMEND).
+
+**Hộp Add from library.** Kho ảnh địa danh tải một lần (`admin.tours.photoLibrary`,
+route riêng `/api/admin/tour-photo-library`), mặc định bày ảnh các địa danh tour đi
+qua, ô chọn đổi sang từng địa danh kể cả địa danh đang ẩn. Ảnh đã có hiện "Added" và
+khoá; không tích quá sức chứa; ảnh nằm ở hai địa danh chỉ bày và gửi một lần. Alt
+chép từ ảnh gốc, sửa được.
+
+**API.** `setPhotos` trong một transaction: giành hàng tour → phân loại từng ảnh vào
+một trong ba nguồn (dòng đang có của tour giữ nguyên metadata và bốn cột ghi công;
+ảnh tải lên trong `<root>/tours/<tourId>/` kèm metadata Cloudinary; dòng
+`DESTINATION` — metadata và ghi công chép ở server) → ngoài ba nguồn là 400
+`PHOTO_NOT_ALLOWED` → thay dòng → requeue ảnh tải lên bị gỡ, cùng transaction → kiểm
+"vẫn đủ để bán". `admin.tours.get` trả `photos` theo thứ tự hiển thị. `delete` thành
+một transaction dọn luôn dòng ảnh và requeue ảnh tải lên. Một cổng ký tự
+`MediaPublicIdSchema` cho mọi publicId client gửi — ảnh review dùng chính nó.
+
+**Readiness và G11.** `TourReadiness.cover`: `setPublished(true)` và mọi lệnh sửa của
+tour đang bán chặn tour mất ảnh bìa ("a cover photo"). Khung readiness có mục "A
+cover photo" trỏ tới tab Photos; câu "Ready to sell", câu hộp New tour và câu hộp xoá
+tour sửa cho nói đúng. `onSaleShortfalls` là nguồn duy nhất của luật "tour đang bán"
+ở Details, Itinerary, Photos, chỉ đếm chỗ do chính lệnh ấy làm hỏng. Hộp xoá tour có
+thêm hàng Photos.
+
+**Khe deploy:** `fetchAdminTour` lùi `photos` về `[]` và `readiness.cover` về `true`
+khi API cũ chưa trả hai field ấy.
+
+**Chỗ lệch plan** (không chạm spec): fixture plan bỏ sót — `DETAIL` trong
+`admin-tours.spec.ts` của contract thêm `cover` và `photos`; ca "heroUrl… chưa có ảnh
+trả null" của `admin-catalog.int.spec.ts` đổi vế null từ ALPHA (nay có ảnh bìa) sang
+GAMMA; `proxy.spec.ts` so chuỗi `connect-src` nguyên văn. Plan gọi
+`validateDetailsForm`, tên thật là `validateTourDetailsForm`. Thêm ca đối chiếu hai
+codec của tab Photos với `errorMap` của contract (khuôn có sẵn ở
+`tour-editor-write.spec.ts`). Hộp thư viện `showCloseButton={false}` như mọi hộp
+thoại admin. JSDoc đầu `security-headers.ts` của admin và JSDoc `delete` sửa cho đúng.
+Bước unit của gate chạy `--concurrency=1` từ Task 8: lượt gate Task 7 đẩy commit trống
+xuống 1,6 GB, sát ngưỡng dừng 1,5 GB của watchdog.
+
+**Giới hạn đã biết:** ảnh bìa catalog của 29 tour không nằm trong kho địa danh — gỡ
+rồi lưu là không chọn lại được từ hộp thư viện (spec §8). `capacity` của tab Photos
+đọc theo lượt render: hai lượt thả file liên tiếp trước khi render lại có thể vượt 30
+ảnh, và lúc lưu server trả lỗi schema.
+
+**Review findings:** chưa review — session gốc review trước merge.
+
+**Việc hạ tầng:** không có — không migration, không env, không đổi thiết lập
+Cloudinary. Thử tay trên production theo spec §5 gồm cả nghiệm thu CSP bằng DevTools
+(ADR-0038, Hệ quả).
+
+Tests after: Vitest **4629** (web 1576, admin 1385, api 1004, contract 559, core 46,
+ui 23, tokens 18, i18n 18), int **698 ở 45 file**, jest mobile 159 và mobile-ui 86.
+Ca mới: contract 12, api 11, admin 48, int 20. Mỗi ca mới thử đột biến; chín đột biến
+sống sót với fixture ban đầu (năm cái plan hứa sẽ đỏ) và đều được giết bằng cách siết
+fixture hoặc thêm ca: bỏ `orderTourPhotos` (ảnh bìa fixture có `sortOrder` 0), đảo
+thứ tự nguồn của `planTourPhotos`, `requeue` ngoài transaction (thêm ca "lệnh hỏng
+sau khi gỡ ảnh tải lên"), bỏ vế `current.cover` của G11, luôn vẽ nút thêm của kit,
+bỏ điều kiện `blockedNote` ở `onSubmit`, ký theo số file chọn thay vì số file nhận,
+Retry dùng chữ ký cũ, bỏ `dedupe` của hộp thư viện.
+
 ## 2026-09-28 — Sidebar admin thu gọn thành cột icon (nhánh `fix/admin-sidebar-icon-rail`)
 
 Góp ý giao diện admin: đóng sidebar là nó trượt mất hẳn, trang không còn nút điều

@@ -17,7 +17,7 @@
 
 | Mã | Việc | Ghi chú |
 | --- | --- | --- |
-| **P4e** | Quản trị catalog: thêm/sửa/xoá tour, điểm đến, danh mục | P4e-1 XONG 22/09 (F11 danh sách tour · F12 lịch chạy · F13 huỷ chuyến có hoàn tiền, đóng nợ ADR-0041 §6). **P4e-2 XONG**: F14 danh mục 22/09 (màn `/categories` cộng chip lọc của web đọc endpoint) và F15 điểm đến 24/09 (màn `/destinations`, ba vùng về contract, web chịu được điểm đến đã ẩn). **P4e-3a** (F17 tạo và sửa tour) XONG: merge 28/09 sau vòng review (24 lỗi thật, vá cả 24 — lỗi seed vá ở nhánh riêng cùng ngày); kế là F18 ảnh tour. Còn P4e-4 bài viết |
+| **P4e** | Quản trị catalog: thêm/sửa/xoá tour, điểm đến, danh mục | P4e-1 XONG 22/09 (F11 danh sách tour · F12 lịch chạy · F13 huỷ chuyến có hoàn tiền, đóng nợ ADR-0041 §6). **P4e-2 XONG**: F14 danh mục 22/09 (màn `/categories` cộng chip lọc của web đọc endpoint) và F15 điểm đến 24/09 (màn `/destinations`, ba vùng về contract, web chịu được điểm đến đã ẩn). **P4e-3a** (F17 tạo và sửa tour) XONG: merge 28/09 sau vòng review (24 lỗi thật, vá cả 24 — lỗi seed vá ở nhánh riêng cùng ngày). **P4e-3b** (F18 ảnh tour) xong trên nhánh `feat/p4e-3b-tour-photos` 28/09, chờ review. Còn P4e-4 bài viết |
 | **P4f** | Quản trị media và người dùng | Gồm màn hạ quyền / thu hồi phiên admin (ADR-0026 AMEND 1) |
 | **P5b-2…5** | Bốn cụm màn mobile: xem tour · đặt tour · tài khoản · đánh giá | **Đã có bản vẽ và tài liệu bàn giao đầy đủ**; thành viên khác dựng màn — xem [`handoff/`](handoff/README.md) |
 | **P6** | Trợ lý AI tư vấn tour | Bảng dữ liệu đã có sẵn (`chat_conversations`, `chat_messages`) |
@@ -79,6 +79,9 @@ ghi chép nội bộ) — trước đó nó hứa nhầm rằng khách sẽ đ�
 - Chuyển `backups/2026-09-18/` từ worktree về bản checkout gốc trước khi gỡ
   worktree.
 - Tắt tự-động-cập-nhật marketplace `claude-plugins-official` trước freeze 15/10.
+- **Không** chạy lại `media:*` và `apply-alt-text.mjs` trên prod sau F18 — chúng
+  ghi `media_assets` theo fixture, đè alt, thứ tự và ảnh bìa admin đã sửa ở tab
+  Photos. Lượt seed lại 03/11 không đụng `media_assets` nên không bị ảnh hưởng.
 - Cân nhắc siết thêm Build Filter của Render: thêm `apps/web/**`,
   `apps/admin/**`, `apps/mobile/**` vào Ignored Paths. **Đừng thêm `libs/**`** —
   máy chủ ăn `@tourism/contract` và `@tourism/core`.
@@ -111,4 +114,4 @@ deploy) nằm ở [sổ nợ kỹ thuật](analysis/2026-08-06-backlog-no-ky-thu
 | ~~G8~~ | ~~Tạo chuyến và hạ số khách tối đa của tour chạy cùng lúc có thể để lại một chuyến nhiều ghế hơn số khách tối đa.~~ Đã vá ở vòng review F17 (28/09): tạo và sửa chuyến giữ hàng tour bằng `FOR SHARE` |
 | G9 | Sửa hay xoá tour chỉ bust `tours` và `tour:<slug>`, không bust `post:<slug>` của bài viết nhúng thẻ tour (có từ F11, F17 mở thêm đường sửa và xoá): thẻ tour trong bài viết cũ hoặc trỏ 404 tới hết 300 giây ISR |
 | G10 | Web lấy danh sách tour bằng MỘT trang `limit: 50` (`apps/web/src/lib/api/tours.ts`) — F17 cho tạo tour, quá 50 tour đang bán thì tour cũ nhất biến khỏi web. Hiện 29 |
-| G11 | Validator tab Details và Itinerary viết tay luật "tour đang bán thì luôn đủ" (tóm tắt, thêm ngày, tiêu đề ngày) thay vì suy từ `projectedReadiness`. F18 thêm ảnh bìa vào readiness thì phải sửa cả hai chỗ — làm cùng F18 |
+| ~~G11~~ | ~~Validator tab Details và Itinerary viết tay luật "tour đang bán thì luôn đủ" (tóm tắt, thêm ngày, tiêu đề ngày) thay vì suy từ `projectedReadiness`.~~ Đóng ở F18 (28/09): ba tab Details, Itinerary, Photos suy từ `onSaleShortfalls` |
