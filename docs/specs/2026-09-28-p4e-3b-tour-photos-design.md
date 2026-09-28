@@ -159,8 +159,9 @@ lên như bấm nút.
 **Danh sách** dùng kit `ListEditor` với `labelledRows`:
 
 - Mỗi dòng: thumbnail 120×80 (`object-fit: cover`), ô **Alt text** (`FormField`,
-  bắt buộc), một dòng nguồn — "Uploaded" hoặc "From Hội An · Photo: J. Nguyen, CC
-  BY-SA 4.0" (ảnh thư viện; phần ghi công chỉ in khi có).
+  bắt buộc), một dòng nguồn — "Uploaded" hoặc "From the library · Photo: J. Nguyen,
+  CC BY-SA 4.0" (phần ghi công chỉ in khi có; không kèm tên địa danh — quyết định 1
+  của plan F18).
 - Dòng đầu mang nhãn **Cover**; các dòng khác có nút **Make cover** (đưa lên đầu,
   ảnh bìa cũ lùi xuống vị trí hai).
 - ↑ ↓ và thùng rác của kit; luật tiêu điểm của kit giữ nguyên.
@@ -243,7 +244,7 @@ client gửi). `tour-readiness.ts`: `hasCover` và `cover`.
 | `TOUR_PHOTOS_MAX` | 30 | Tour nhiều ảnh nhất hôm nay có 18 |
 | `TOUR_PHOTO_ALT_MAX` | 300 | Cột `alt` VARCHAR(300) |
 | `TOUR_PHOTO_MAX_BYTES` | 10 MB | Cùng trần ảnh review; trần cứng Cloudinary gói free cũng 10 MB |
-| `upload.width`, `upload.height` | 1–2400 | Incoming transformation `c_limit,w_2400,h_2400` |
+| `upload.width`, `upload.height`, `upload.bytes` | số nguyên dương | Chỉ canh dạng: trần 2400px và 10 MB do Cloudinary thi hành (quyết định 3 của plan F18) |
 | `upload.version` | chuỗi 1–20 chữ số | Khuôn cột `version` VARCHAR(20) |
 | `upload.format` | chuỗi 1–10 ký tự | Khuôn cột `format` VARCHAR(10) |
 
