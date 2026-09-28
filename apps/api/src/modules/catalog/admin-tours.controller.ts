@@ -113,6 +113,17 @@ export class AdminToursController {
     });
   }
 
+  @Implement(contract.admin.tours.signPhotoUploads)
+  signPhotoUploads() {
+    return implement(contract.admin.tours.signPhotoUploads).handler(async ({ input, errors }) => {
+      try {
+        return await this.adminTours.signPhotoUploads(input);
+      } catch (error) {
+        throw toContractError(error, errors);
+      }
+    });
+  }
+
   @Implement(contract.admin.tours.delete)
   delete() {
     return implement(contract.admin.tours.delete).handler(async ({ input, errors }) => {

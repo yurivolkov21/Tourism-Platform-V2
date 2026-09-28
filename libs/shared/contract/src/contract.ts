@@ -39,6 +39,7 @@ import {
   AdminTourFaqsPoliciesInputSchema,
   AdminTourGetInputSchema,
   AdminTourItineraryInputSchema,
+  AdminTourSignPhotoUploadsInputSchema,
 } from './schemas/admin-tours.js';
 import {
   AdminBookingDetailSchema,
@@ -1157,6 +1158,19 @@ export const contract = {
           NOT_FOUND: { status: 404, message: 'Tour not found' },
         })
         .output(AdminTourDetailSchema),
+      signPhotoUploads: oc
+        .route({
+          method: 'POST',
+          path: '/api/admin/tours/{id}/photo-uploads',
+          summary: 'Sign a batch of direct-to-Cloudinary uploads for one tour (ADR-0048)',
+        })
+        .input(AdminTourSignPhotoUploadsInputSchema)
+        .errors({
+          // 503 chứ không 500: thiếu cặp khoá là trạng thái cấu hình hợp lệ (ADR-0021 §6).
+          MEDIA_UPLOAD_NOT_CONFIGURED: { status: 503, message: 'Uploads are not configured' },
+          NOT_FOUND: { status: 404, message: 'Tour not found' },
+        })
+        .output(z.array(SignedUploadParamsSchema)),
       delete: oc
         .route({
           method: 'POST',

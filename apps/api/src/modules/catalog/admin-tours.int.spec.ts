@@ -5,6 +5,7 @@ import {
   AdminTourDeleteResultSchema,
   type AdminTourDetail,
   AdminTourDetailSchema,
+  SignedUploadParamsSchema,
   vietnamToday,
 } from '@tourism/contract';
 import { AppModule } from '../../app.module.js';
@@ -231,6 +232,8 @@ describe('admin tours integration (F17)', () => {
     post(`/api/admin/tours/${id}/faqs-policies`, payload, cookie);
   const costs = (id: string, payload: Record<string, unknown>, cookie = adminCookie) =>
     post(`/api/admin/tours/${id}/costs`, payload, cookie);
+  const signUploads = (id: string, payload: Record<string, unknown>, cookie = adminCookie) =>
+    post(`/api/admin/tours/${id}/photo-uploads`, payload, cookie);
 
   /** Payload tab Details dựng từ CHÍNH tour đang đọc — ca nào cần khác thì đè. */
   const detailsPayload = (detail: AdminTourDetail, patch: Record<string, unknown> = {}) => ({
@@ -284,6 +287,9 @@ describe('admin tours integration (F17)', () => {
       expect((await itinerary(tourId(1), {}, customerCookie)).statusCode).toBe(403);
       expect((await faqsPolicies(tourId(1), {}, customerCookie)).statusCode).toBe(403);
       expect((await costs(tourId(1), {}, customerCookie)).statusCode).toBe(403);
+      expect(
+        (await signUploads(tourId(1), { id: tourId(1), count: 1 }, customerCookie)).statusCode,
+      ).toBe(403);
     });
 
     it('chưa đăng nhập thì mọi đường đều 401', async () => {
@@ -295,6 +301,7 @@ describe('admin tours integration (F17)', () => {
       expect((await itinerary(tourId(1), {}, '')).statusCode).toBe(401);
       expect((await faqsPolicies(tourId(1), {}, '')).statusCode).toBe(401);
       expect((await costs(tourId(1), {}, '')).statusCode).toBe(401);
+      expect((await signUploads(tourId(1), { id: tourId(1), count: 1 }, '')).statusCode).toBe(401);
     });
   });
 
@@ -1188,6 +1195,39 @@ describe('admin tours integration (F17)', () => {
       expect(after.costPrice).toBe('10.00');
       expect(missing.statusCode).toBe(404);
       expect(missing.json()).toMatchObject({ code: 'NOT_FOUND' });
+    });
+  });
+
+  describe('signPhotoUploads (F18)', () => {
+    it('ký đúng count bộ trong thư mục của tour, publicId khác nhau, cả lô vào hàng dọn', async () => {
+      await makeTour(1);
+
+      const res = await signUploads(tourId(1), { id: tourId(1), count: 3 });
+
+      expect(res.statusCode).toBe(200);
+      const params = SignedUploadParamsSchema.array().parse(res.json());
+      expect(params).toHaveLength(3);
+      expect(new Set(params.map((p) => p.publicId)).size).toBe(3);
+      for (const p of params) {
+        expect(p.folder).toBe(`tourism/tours/${tourId(1)}`);
+        expect(p.overwrite).toBe(false);
+        expect(p.transformation).toBe('c_limit,w_2400,h_2400,fl_force_strip');
+      }
+      // Ký là đăng ký theo dõi (ADR-0035 §3): publicId ĐẦY ĐỦ `<folder>/<basename>`.
+      const queued = await prisma.mediaGarbage.findMany({ select: { publicId: true } });
+      expect(queued.map((q) => q.publicId).sort()).toEqual(
+        params.map((p) => `${p.folder}/${p.publicId}`).sort(),
+      );
+    });
+
+    it('tour không có thì 404 và không ký gì; count ngoài 1..30 thì 400', async () => {
+      const missing = await signUploads(MISSING, { id: MISSING, count: 1 });
+      expect(missing.statusCode).toBe(404);
+      expect(await prisma.mediaGarbage.count()).toBe(0);
+
+      await makeTour(1);
+      expect((await signUploads(tourId(1), { id: tourId(1), count: 31 })).statusCode).toBe(400);
+      expect((await signUploads(tourId(1), { id: tourId(1), count: 0 })).statusCode).toBe(400);
     });
   });
 

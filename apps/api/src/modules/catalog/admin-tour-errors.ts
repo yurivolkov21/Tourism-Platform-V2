@@ -60,6 +60,13 @@ function missingParts(readiness: TourReadiness): string[] {
   ];
 }
 
+/** Thiếu cặp khoá Cloudinary — trạng thái cấu hình hợp lệ (ADR-0021 §6), 503. */
+export class TourPhotoUploadsNotConfiguredError extends ContractError<'MEDIA_UPLOAD_NOT_CONFIGURED'> {
+  constructor() {
+    super('MEDIA_UPLOAD_NOT_CONFIGURED', 'Uploads are not configured', false);
+  }
+}
+
 /** Khoá ngoại `Restrict` của booking chặn lệnh xoá (ADR-0047 §5). */
 export class TourHasBookingsError extends ContractError<'TOUR_HAS_BOOKINGS'> {
   constructor() {

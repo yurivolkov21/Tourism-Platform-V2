@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { Injectable, Logger } from '@nestjs/common';
 import {
   type AdminTourCostsInput,
@@ -9,8 +10,10 @@ import {
   type AdminTourDetailsInput,
   type AdminTourFaqsPoliciesInput,
   type AdminTourItineraryInput,
+  type AdminTourSignPhotoUploadsInput,
   derivedCostPrice,
   type MediaItem,
+  type SignedUploadParams,
   TOUR_CURRENCY,
   tourReadiness,
 } from '@tourism/contract';
@@ -18,7 +21,13 @@ import { prisma } from '../../auth/auth.config.js';
 import { env } from '../../config/env.js';
 import { Prisma } from '../../generated/prisma/client.js';
 import { MediaOwnerType, MediaRole } from '../../generated/prisma/enums.js';
+import {
+  buildSignedUploadParams,
+  resolveUploadConfig,
+  tourPhotoFolder,
+} from '../../lib/upload-signing.js';
 import { MediaService } from '../media/media.service.js';
+import { MediaGarbageService } from '../media/media-garbage.service.js';
 import { tourRevalidationTags } from '../web-revalidation/revalidation-decision.js';
 import { WebRevalidationService } from '../web-revalidation/web-revalidation.service.js';
 import {
@@ -27,6 +36,7 @@ import {
   TourHasBookingsError,
   TourLinkNotFoundError,
   TourNotReadyError,
+  TourPhotoUploadsNotConfiguredError,
   TourRuleError,
   TourSlugTakenError,
 } from './admin-tour-errors.js';
@@ -196,6 +206,7 @@ export class AdminToursService {
   constructor(
     private readonly webRevalidation: WebRevalidationService,
     private readonly media: MediaService,
+    private readonly garbage: MediaGarbageService,
   ) {}
 
   /** Một tour, mọi trạng thái bán — tour tắt bán chính là tour đang được soạn. */
@@ -472,6 +483,34 @@ export class AdminToursService {
     );
     this.bust(slug);
     return this.get(slug);
+  }
+
+  /**
+   * Ký một lô upload thẳng lên Cloudinary cho MỘT tour (ADR-0048 §4). Thư mục và
+   * tên file do server quyết; bộ tham số ký y hệt đường ký của khách (ADR-0021
+   * AMEND 1–2). Mỗi publicId vào hàng dọn NGAY lúc ký (ADR-0035 §3): tải lên rồi
+   * không lưu thì bảy ngày sau tự được dọn.
+   */
+  async signPhotoUploads(input: AdminTourSignPhotoUploadsInput): Promise<SignedUploadParams[]> {
+    const cfg = resolveUploadConfig(env);
+    if (!cfg) throw new TourPhotoUploadsNotConfiguredError();
+    const tour = await prisma.tour.findUnique({ where: { id: input.id }, select: { id: true } });
+    if (!tour) throw new AdminTourNotFoundError(input.id);
+
+    const folder = tourPhotoFolder(cfg.rootFolder, input.id);
+    const timestamp = Math.floor(Date.now() / 1000);
+    const signed = Array.from({ length: input.count }, () =>
+      buildSignedUploadParams(cfg, folder, randomUUID(), timestamp),
+    );
+    // Ghi `${folder}/${basename}` ĐẦY ĐỦ — Cloudinary lưu asset ở dạng ấy và
+    // `destroy` nhận đúng dạng ấy (cùng lời dặn ở `upload-signing.service.ts`).
+    await this.garbage.enqueueQuietly(
+      signed.map((params) => `${params.folder}/${params.publicId}`),
+    );
+    this.logger.log(
+      `[admin] tour photo uploads signed ${JSON.stringify({ id: input.id, count: input.count })}`,
+    );
+    return signed;
   }
 
   /**

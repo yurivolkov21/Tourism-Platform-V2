@@ -58,6 +58,16 @@ export const TOUR_GROUP_MAX = 100;
 export const TOUR_DESTINATIONS_MAX = 10;
 /** Cả 29 tour là USD; F17 không có ô tiền tệ (spec §1). */
 export const TOUR_CURRENCY = 'USD';
+/** Ảnh của MỘT tour (ADR-0048) — tour nhiều ảnh nhất hôm nay có 18. */
+export const TOUR_PHOTOS_MAX = 30;
+/** Gương cột `media_assets.alt` VARCHAR(300). */
+export const TOUR_PHOTO_ALT_MAX = 300;
+/**
+ * Trần một file ảnh — admin canh TRƯỚC khi tải (bytes đi thẳng lên Cloudinary nên
+ * API không cân được file). Cùng trần ảnh review; gói free của Cloudinary cũng chặn
+ * ở 10 MB.
+ */
+export const TOUR_PHOTO_MAX_BYTES = 10 * 1024 * 1024;
 
 export const TourSlugSchema = slugSchema(TOUR_SLUG_MAX);
 
@@ -308,3 +318,15 @@ export const AdminTourCostsInputSchema = z.object({
     .max(TOUR_COST_ITEMS_MAX),
 });
 export type AdminTourCostsInput = z.output<typeof AdminTourCostsInputSchema>;
+
+// ── Ảnh (F18, ADR-0048) ─────────────────────────────────────────────────────
+
+/**
+ * Ký một LÔ upload cho một tour (ADR-0048 §4): một request cho cả lô, dưới trần
+ * 20/60s của ADR-0037 — ký từng file thì lượt tải 30 ảnh bị 429 từ ảnh thứ 21.
+ */
+export const AdminTourSignPhotoUploadsInputSchema = z.object({
+  id: z.uuid(),
+  count: z.int().min(1).max(TOUR_PHOTOS_MAX),
+});
+export type AdminTourSignPhotoUploadsInput = z.output<typeof AdminTourSignPhotoUploadsInputSchema>;

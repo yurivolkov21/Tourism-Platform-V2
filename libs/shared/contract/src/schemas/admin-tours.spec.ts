@@ -8,6 +8,7 @@ import {
   AdminTourFaqsPoliciesInputSchema,
   AdminTourItineraryInputSchema,
   AdminTourPhotoSchema,
+  AdminTourSignPhotoUploadsInputSchema,
 } from './admin-tours.js';
 
 /**
@@ -422,5 +423,16 @@ describe('AdminTourDetailSchema.photos (F18)', () => {
     expect(
       AdminTourPhotoSchema.safeParse({ ...photo, alt: null, author: null, license: null }).success,
     ).toBe(true);
+  });
+});
+
+describe('AdminTourSignPhotoUploadsInputSchema (ADR-0048 §4)', () => {
+  const id = '7a1b2c3d-0000-4000-8000-000000000001';
+  it('count từ 1 tới 30 — trần ảnh của một tour', () => {
+    expect(AdminTourSignPhotoUploadsInputSchema.safeParse({ id, count: 1 }).success).toBe(true);
+    expect(AdminTourSignPhotoUploadsInputSchema.safeParse({ id, count: 30 }).success).toBe(true);
+    expect(AdminTourSignPhotoUploadsInputSchema.safeParse({ id, count: 0 }).success).toBe(false);
+    expect(AdminTourSignPhotoUploadsInputSchema.safeParse({ id, count: 31 }).success).toBe(false);
+    expect(AdminTourSignPhotoUploadsInputSchema.safeParse({ id, count: 1.5 }).success).toBe(false);
   });
 });
