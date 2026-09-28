@@ -8,6 +8,46 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-09-28 — Thử tay F17 trên production (`e19d4ccc`): 8/8 bước đạt
+
+Lượt thử từng bước trên `admin.nexora-travel.agency` và `www.nexora-travel.agency`
+sau khi F17, vòng vá review và bản vá seed cùng lên `main`, bằng một tour thử tạo
+mới ở bước 1 rồi xoá ở bước 8. Mỗi bước đối chiếu DB prod bằng câu đọc; cuối lượt
+DB về đúng trạng thái trước khi thử (29 tour, cả 29 đang bán, không chuyến mồ côi).
+
+1. **New tour:** slug tự điền theo tên; tour sinh ra tắt bán, một điểm chính;
+   khung readiness liệt kê tóm tắt và lịch trình ngày 1–2; câu mới của hộp New tour.
+2. **Details:** nút Save mờ khi chưa sửa; phím mũi tên ở nút xoá và ô chọn của dòng
+   điểm đến không đổi điểm chính; bấm chữ "Primary" và "Featured" chọn được; lưu
+   xong gõ tiếp ngay không mất chữ (chữ ấy vào DB ở lần lưu sau).
+3. **Itinerary rồi bật bán:** lưu rồi bấm ngay sang Details, khung readiness chuyển
+   "Ready to sell" với câu mới và công tắc mở khoá; bật bán; trang web hiện tour với
+   khung ảnh giữ chỗ và "09:00" ở cột giờ riêng.
+4. **FAQ, chính sách, chi phí:** trần 999,999.99 chặn ở dòng chi phí; Totals đúng
+   ($18.50 mỗi khách, biên $30.50); trang web một ô mỗi loại chính sách (hai
+   General và một Booking ra ba ô kể cả ô huỷ), tab Good to know đủ bốn thẻ.
+5. **Dời dòng và rời trang:** dời dòng highlight bằng bàn phím, tiêu điểm đi theo
+   nút ↓ của dòng vừa dời; đổi tab khi chưa lưu hiện "Discard unsaved changes?";
+   F5 hiện hộp "Leave site?" của trình duyệt.
+6. **Hai tab cùng sửa:** lệnh lưu cũ ra dải STALE, chữ đang gõ còn nguyên; Reload
+   nạp bản của tab kia.
+7. **Departures:** trần giá ở form chuyến; số ngày khoá khi có chuyến; hạ số khách
+   dưới số ghế bị chặn bằng câu mới, nâng thì lưu được; giá vốn tính lại $16.83;
+   chuyến tạo tay chụp giá vốn cố định 100.00.
+8. **Xoá tour:** hộp xác nhận kể đủ thứ mất theo (1 chuyến, lịch trình, FAQ…); xoá
+   xong trang tour trên web trả 404.
+
+Ba điều jsdom không canh được — tiêu điểm sau khi dời dòng, hộp `beforeunload`,
+Reload sau `STALE_TOUR` — đều đạt trong trình duyệt thật.
+
+CÒN TREO — ba góp ý giao diện nhỏ, user chọn vá ngay ở một nhánh riêng:
+
+- Web: ngày có đúng một điểm dừng hiện "1 stop · 09:00–09:00" ở dòng tóm tắt.
+- Web: cùng một trang, hàng ô chính sách theo thứ tự admin nhập còn tab Good to
+  know xếp theo loại.
+- Admin: hạ số khách dưới sàn thì câu "At least 10 — …" hiện hai lần (gợi ý xám và
+  lỗi đỏ trùng chữ).
+
 ## 2026-09-28 — Seed thay nguyên bảng con của tour fixture: đóng lỗi mức Cao cuối cùng của vòng review F17 (nhánh `fix/seed-bang-con-f17`)
 
 Lỗi 1 của vòng review F17, tách nhánh vì chỉ nổ ở lượt seed lại 03/11. Khu làm
