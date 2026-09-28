@@ -222,3 +222,94 @@ rơi về chờ duyệt lại.
 | Chỉ dựa vào `moderated_at != null` để loại khỏi hàng đợi | Sai ngay từ dữ liệu đang có: seed tạo 84 testimonial CURATED `is_approved = true` với `moderated_at` null (đã ghi ở `pendingReviewsAt`). Và nó vẫn không phân biệt được gỡ-tạm với bác-bỏ. |
 | Thêm card thứ năm "Rejected" | Hành vi hiếm, card đứng yên ở 0 gần như mọi lúc — cùng lý do đã loại "lượt gỡ duyệt" ở ADR-0028 §AMEND 2 §4. Số liệu vẫn nằm đủ trong audit trail. |
 | Xoá thẳng review bị bác | Mất bằng chứng. Sổ moderation là thứ trả lời "vì sao review này không lên site" khi khách hỏi lại — xoá đi là không trả lời được. Và `booking_id @unique` khiến xoá trở thành một đường lách ngầm cho việc gửi lại, tức quyết định của bước 3 bị lấy mất mà không ai bàn. |
+
+## AMEND 1 — 28/09/2026: lý do bác chọn từ danh sách cố định; dialog và email nói đúng đường sửa
+
+### Bối cảnh
+
+Giáo viên hướng dẫn góp ý (qua user, 28/09): lý do bác gõ tay thì mỗi admin
+một kiểu, và câu gửi cho khách không đồng nhất. §7 bắt buộc CÓ lý do nhưng
+không nói gì về câu chữ của nó.
+
+Rà lúc thiết kế tìm ra thêm ba chỗ nói SAI kể từ khi ADR-0032 (cùng ngày
+05/09) mở đường sửa cho tác giả, mà copy của dialog Reject không theo kịp:
+
+- Câu cảnh báo *"The author cannot rewrite this review — one review per
+  booking, and there is no way to edit it. Unapprove instead if you are
+  unsure."* Lần bác đầu tác giả VẪN sửa được (ADR-0032 §2, §5); và nút tên
+  `Unpublish`, không có nút `Unapprove` nào.
+- *"closes the review for good"* và *"Takes the review out of the moderation
+  queue for good"*: chỉ đúng ở lần bác chung cuộc. Lần đầu, tác giả sửa xong
+  thì review quay lại hàng đợi (ADR-0032 §4).
+- Email `REVIEW_REJECTED` chỉ mời *"reply to this email"*, không nói khách
+  còn sửa được một lần. Trang booking có form sửa (ADR-0032 §7), nhưng khách
+  không có lý do gì để mở lại trang ấy.
+
+### Quyết định
+
+**1. Lý do bác = một câu chuẩn chọn từ danh sách, cộng một câu chi tiết tuỳ
+chọn.** Câu chuẩn KHOÁ: admin không sửa chữ, nên hai admin bác cùng một lỗi
+thì khách đọc cùng một câu. Chi tiết là chỗ cho điều riêng của từng ca (tấm
+ảnh nào, đoạn nào). Mục `Other` bắt buộc có chi tiết, vì câu chuẩn của nó
+không tự nói được gì.
+
+Câu chữ sống ở `@tourism/i18n` (câu gửi khách, luật 7 của repo). Thứ tự danh
+sách và luật "mục nào bắt buộc chi tiết" sống ở admin (`lib/reject-reasons.ts`)
+— đó là hành vi, không phải câu chữ.
+
+**2. Vẫn lưu vào `note`, như §6 và §7.** Chuỗi ghép `câu chuẩn + " " + chi
+tiết`, trần 500 ký tự như contract đang nhận (hằng
+`REVIEW_MODERATION_NOTE_MAX`, xuất ra từ contract để admin tính phần còn lại
+cho ô chi tiết). Không thêm cột mã lý do: chưa có ai đọc thống kê theo mã, và
+một cột mới là migration cộng contract cho một nhu cầu chưa tồn tại. Ngày nào
+cần thống kê thì thêm `reason_code` vào `ReviewModerationEvent` — sổ ấy
+append-only, dòng cũ để `NULL`, không sửa dòng nào.
+
+**3. Câu chuẩn chỉ nói VÌ SAO, không nói "hãy sửa rồi gửi lại".** Ở lần bác
+thứ hai tác giả không còn sửa được (ADR-0032 §5), nên một câu hứa đường sửa sẽ
+nói sai đúng ở lần quan trọng nhất. Phần "làm gì tiếp" thuộc về email (mục 5),
+nơi biết đây là lần bác thứ mấy.
+
+**4. Danh sách KHÔNG có lý do kiểu "đánh giá tiêu cực" hay "chấm sao thấp".**
+Bác một review vì nó chê là giấu ý kiến thật của khách; ở một số thị trường,
+giấu đánh giá tiêu cực là vi phạm luật bảo vệ người tiêu dùng. Danh sách định
+hình thói quen của người duyệt, nên nó không được gợi ý chuyện đó.
+
+**5. Dialog và email nói theo LẦN BÁC, bằng chính `canAuthorEdit` của
+contract** (ADR-0032 §6 — không chép luật sang chỗ thứ ba). Tác giả còn sửa
+được sau lần bác này khi: có tài khoản còn sống (không CURATED, chưa tự xoá)
+VÀ `canAuthorEdit({ moderationState: 'rejected', rejectionCount: số lần bác
+đã có + 1 })`.
+
+- Dialog: còn sửa được thì nói *"tác giả sửa được một lần, sửa xong review
+  quay lại hàng đợi"*; hết đường thì nói rõ là chung cuộc. Lời khuyên
+  *"còn phân vân thì Unpublish"* chỉ hiện với review ĐANG hiện trên site —
+  review đang chờ không có nút Unpublish, phân vân thì cứ để nó trong hàng
+  đợi.
+- Email: payload thêm `canEdit` (service tính bằng số lần bác vừa đếm TRONG
+  transaction — đúng con số đã dùng cho `dedupeKey`) và `bookingCode`. Còn sửa
+  được thì thêm câu và nút tới `/account/bookings/<code>`; hết đường thì nói
+  *"đã xem lại hai lần, không sửa được nữa"*. Payload xếp hàng TRƯỚC lúc deploy
+  không có hai trường này, nên worker in đúng như cũ — không hứa điều nó không
+  biết chắc.
+
+### Hệ quả
+
+| Tầng | Việc |
+| --- | --- |
+| Contract | xuất hằng `REVIEW_MODERATION_NOTE_MAX` (schema dùng lại chính nó) — hình dạng input/output không đổi |
+| Admin | dialog Reject riêng, dựng trên hook `useConfirmWrite` (kit `ConfirmWriteDialog` không đổi — ba lệnh kia vẫn đi qua nó); cột trái là ô tìm và danh sách lý do |
+| i18n | danh sách lý do; copy dialog theo lần bác |
+| API | payload `REVIEW_REJECTED` thêm `canEdit`, `bookingCode`; worker in hai nhánh, payload cũ in như trước |
+
+KHÔNG migration. Web không đổi: trang booking đã hiện lý do và form sửa từ
+ADR-0032.
+
+### Phương án đã cân nhắc rồi loại
+
+| Phương án | Vì sao loại |
+| --- | --- |
+| Bấm lý do là điền vào ô, admin vẫn sửa tự do | Đúng mô tả ban đầu của user, nhưng không trả lời được câu hỏi của giáo viên: admin vẫn gõ đè được toàn bộ câu. |
+| Chỉ chọn, không có ô nào để gõ | Đồng nhất tuyệt đối, nhưng ca đặc biệt không có chỗ nói chi tiết cho khách. |
+| Lưu mã lý do vào DB | Migration cộng contract cho một thống kê chưa ai đọc. Để dành đường thêm cột vào sổ append-only. |
+| Danh sách lý do quản lý trong DB, có trang CRUD | Chín câu ít đổi; một trang quản trị cho chúng là tính năng không ai yêu cầu. Đổi câu là đổi i18n, đi qua review như mọi copy khác. |

@@ -71,7 +71,7 @@ Mỗi ADR tự chứa đầy đủ phần sửa bổ sung (AMEND) của nó; b�
 | [0028](adr/0028-bookings-stats-follow-filter.md) | Thẻ số liệu ăn theo bộ lọc ngày | |
 | [0029](adr/0029-cancellation-approve-partial-refund.md) | Duyệt yêu cầu huỷ với mức hoàn theo chính sách | **đã thay** bởi [0041](adr/0041-single-cancellation-deadline.md) |
 | [0030](adr/0030-refund-policy-tiers.md) | Chính sách hoàn tiền theo bậc | **đã thay** bởi [0041](adr/0041-single-cancellation-deadline.md) |
-| [0031](adr/0031-review-rejection.md) | Từ chối đánh giá là quyết định chung cuộc | |
+| [0031](adr/0031-review-rejection.md) | Từ chối đánh giá là quyết định chung cuộc | AMEND 28/09: lý do chọn từ danh sách |
 | [0032](adr/0032-review-author-edit.md) | Tác giả sửa lại đánh giá bị bác, có trần vòng lặp | |
 | [0033](adr/0033-financial-model.md) | Báo cáo có kết quả kinh doanh, không chỉ dòng tiền | định nghĩa doanh thu sửa ở [0041](adr/0041-single-cancellation-deadline.md) §9 · 3 AMEND (tháng đang chạy chỉ ghi nhận chuyến đã kết thúc) |
 | [0034](adr/0034-excel-report-export.md) | Báo cáo tháng xuất Excel; CSV giữ đúng chỗ | |
