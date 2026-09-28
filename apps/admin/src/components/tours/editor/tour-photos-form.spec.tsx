@@ -9,7 +9,7 @@ import type {
   SetPhotosAction,
   SignPhotoUploadsAction,
 } from '@/lib/tour-photos';
-import { COVER_PHOTO, detailFixture, TOUR_ID, VERSION } from '@/test/tour-detail';
+import { COVER_PHOTO, DEST_A, detailFixture, TOUR_ID, VERSION } from '@/test/tour-detail';
 import { TourPhotosForm } from './tour-photos-form';
 
 /** Tab Photos (spec F18 §2g, ADR-0048). */
@@ -68,11 +68,15 @@ function deferred<T>() {
 
 function renderForm(
   detail = detailFixture({ photos: [COVER_PHOTO, SECOND] }),
-  actions: { save?: SetPhotosAction; sign?: SignPhotoUploadsAction } = {},
+  actions: {
+    save?: SetPhotosAction;
+    sign?: SignPhotoUploadsAction;
+    loadLibrary?: LoadPhotoLibraryAction;
+  } = {},
 ) {
   const save = actions.save ?? vi.fn<SetPhotosAction>();
   const sign = actions.sign ?? vi.fn<SignPhotoUploadsAction>();
-  const loadLibrary = vi.fn<LoadPhotoLibraryAction>();
+  const loadLibrary = actions.loadLibrary ?? vi.fn<LoadPhotoLibraryAction>();
   const user = userEvent.setup({ applyAccept: false });
   render(<TourPhotosForm detail={detail} save={save} sign={sign} loadLibrary={loadLibrary} />);
   return { user, save: save as Mock, sign: sign as Mock };
@@ -250,5 +254,37 @@ describe('TourPhotosForm', () => {
 
     await waitFor(() => expect(success).toHaveBeenCalledWith(e.saved));
     expect(saveButton()).toHaveAttribute('aria-disabled', 'true');
+  });
+
+  it('Add from library: ảnh nối vào cuối, alt chép từ ảnh gốc, dòng nguồn có ghi công', async () => {
+    const loadLibrary = vi.fn<LoadPhotoLibraryAction>().mockResolvedValue({
+      ok: true,
+      library: [
+        {
+          destination: { id: DEST_A, name: 'Hạ Long' },
+          photos: [
+            {
+              publicId: 'lib/cave',
+              url: 'https://res.cloudinary.com/demo/image/upload/f_auto,q_auto/lib/cave',
+              alt: 'Cave lights',
+              width: 2400,
+              height: 1600,
+              author: 'J. Nguyen',
+              license: 'CC BY-SA 4.0',
+            },
+          ],
+        },
+      ],
+    });
+    const { user } = renderForm(undefined, { loadLibrary });
+
+    await user.click(screen.getByRole('button', { name: t.library }));
+    await user.click(await screen.findByRole('checkbox', { name: 'Cave lights' }));
+    await user.click(screen.getByRole('button', { name: t.dialog.add(1) }));
+
+    expect((altInputs()[2] as HTMLInputElement).value).toBe('Cave lights');
+    expect(
+      screen.getByText(`${t.fromLibrary} · ${t.credit('J. Nguyen', 'CC BY-SA 4.0')}`),
+    ).toBeInTheDocument();
   });
 });

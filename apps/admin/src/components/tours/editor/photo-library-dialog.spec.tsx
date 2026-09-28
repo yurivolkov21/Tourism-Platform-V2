@@ -1,0 +1,144 @@
+import { render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import type { AdminLibraryPhoto, AdminPhotoLibrary } from '@tourism/contract';
+import { messages } from '@tourism/i18n';
+import { useState } from 'react';
+import { describe, expect, it, vi } from 'vitest';
+import type { LoadPhotoLibraryAction } from '@/lib/tour-photos';
+import { DEST_A, DEST_B } from '@/test/tour-detail';
+import { PhotoLibraryDialog } from './photo-library-dialog';
+
+/** Hộp Add from library của tab Photos (spec F18 §2g, ADR-0048 §9). */
+const t = messages.admin.tours.editor.photos.dialog;
+
+const photo = (id: string, alt: string): AdminLibraryPhoto => ({
+  publicId: `lib/${id}`,
+  url: `https://res.cloudinary.com/demo/image/upload/f_auto,q_auto/lib/${id}`,
+  alt,
+  width: 2400,
+  height: 1600,
+  author: null,
+  license: null,
+});
+const LIBRARY: AdminPhotoLibrary = [
+  {
+    destination: { id: DEST_A, name: 'Hạ Long' },
+    photos: [photo('a1', 'Bay at dawn'), photo('a2', 'Cave lights')],
+  },
+  { destination: { id: DEST_B, name: 'Hà Nội' }, photos: [photo('b1', 'Old Quarter')] },
+];
+
+function Harness({
+  load,
+  capacity = 30,
+  existing = [],
+  onAdd = vi.fn(),
+  tourDestinationIds = [DEST_A],
+}: {
+  load: LoadPhotoLibraryAction;
+  capacity?: number;
+  existing?: string[];
+  onAdd?: (photos: AdminLibraryPhoto[]) => void;
+  tourDestinationIds?: string[];
+}) {
+  const [library, setLibrary] = useState<AdminPhotoLibrary | null>(null);
+  return (
+    <PhotoLibraryDialog
+      open
+      onOpenChange={vi.fn()}
+      library={library}
+      onLoaded={setLibrary}
+      load={load}
+      tourDestinationIds={tourDestinationIds}
+      existing={new Set(existing)}
+      capacity={capacity}
+      onAdd={onAdd}
+    />
+  );
+}
+
+describe('PhotoLibraryDialog', () => {
+  it('tải thư viện MỘT lần; mặc định bày ảnh các địa danh của tour', async () => {
+    const load = vi.fn<LoadPhotoLibraryAction>().mockResolvedValue({ ok: true, library: LIBRARY });
+    render(<Harness load={load} />);
+
+    expect(screen.getByText(t.loading)).toBeInTheDocument();
+    expect(await screen.findByRole('checkbox', { name: 'Bay at dawn' })).toBeInTheDocument();
+    expect(screen.getByRole('checkbox', { name: 'Cave lights' })).toBeInTheDocument();
+    expect(screen.queryByRole('checkbox', { name: 'Old Quarter' })).not.toBeInTheDocument();
+    expect(load).toHaveBeenCalledTimes(1);
+  });
+
+  it('đổi địa danh ở ô chọn thì bày ảnh của địa danh ấy', async () => {
+    const user = userEvent.setup();
+    const load = vi.fn<LoadPhotoLibraryAction>().mockResolvedValue({ ok: true, library: LIBRARY });
+    render(<Harness load={load} />);
+    await screen.findByRole('checkbox', { name: 'Bay at dawn' });
+
+    await user.click(screen.getByRole('combobox', { name: t.destination }));
+    await user.click(screen.getByRole('option', { name: 'Hà Nội' }));
+
+    expect(screen.getByRole('checkbox', { name: 'Old Quarter' })).toBeInTheDocument();
+    expect(screen.queryByRole('checkbox', { name: 'Bay at dawn' })).not.toBeInTheDocument();
+  });
+
+  it('ảnh đã có trong tour hiện "Added", không tích được', async () => {
+    const load = vi.fn<LoadPhotoLibraryAction>().mockResolvedValue({ ok: true, library: LIBRARY });
+    render(<Harness load={load} existing={['lib/a1']} />);
+
+    const added = await screen.findByRole('checkbox', { name: 'Bay at dawn' });
+    expect(added).toHaveAttribute('aria-disabled', 'true');
+    expect(screen.getByText(`Bay at dawn · ${t.added}`)).toBeInTheDocument();
+  });
+
+  it('không tích quá sức chứa; Add gửi đúng ảnh đã tích theo thứ tự bày', async () => {
+    const user = userEvent.setup();
+    const onAdd = vi.fn();
+    const load = vi.fn<LoadPhotoLibraryAction>().mockResolvedValue({ ok: true, library: LIBRARY });
+    render(<Harness load={load} capacity={1} onAdd={onAdd} />);
+
+    await user.click(await screen.findByRole('checkbox', { name: 'Cave lights' }));
+
+    expect(screen.getByRole('checkbox', { name: 'Bay at dawn' })).toHaveAttribute(
+      'aria-disabled',
+      'true',
+    );
+    await user.click(screen.getByRole('button', { name: t.add(1) }));
+    expect(onAdd).toHaveBeenCalledWith([photo('a2', 'Cave lights')]);
+  });
+
+  it('tải hỏng → câu lỗi và nút thử lại', async () => {
+    const user = userEvent.setup();
+    const load = vi
+      .fn<LoadPhotoLibraryAction>()
+      .mockResolvedValueOnce({ ok: false, code: 'GENERIC' })
+      .mockResolvedValueOnce({ ok: true, library: LIBRARY });
+    render(<Harness load={load} />);
+
+    await user.click(await screen.findByRole('button', { name: t.retry }));
+
+    expect(await screen.findByRole('checkbox', { name: 'Bay at dawn' })).toBeInTheDocument();
+    await waitFor(() => expect(load).toHaveBeenCalledTimes(2));
+  });
+
+  it('ảnh nằm ở HAI địa danh của tour chỉ bày một lần và gửi một lần', async () => {
+    // Gửi trùng publicId là `setPhotos` trả 400 lúc lưu (schema không nhận ảnh lặp).
+    const user = userEvent.setup();
+    const onAdd = vi.fn();
+    const shared = photo('a2', 'Cave lights');
+    const load = vi.fn<LoadPhotoLibraryAction>().mockResolvedValue({
+      ok: true,
+      library: [
+        { destination: { id: DEST_A, name: 'Hạ Long' }, photos: [shared] },
+        { destination: { id: DEST_B, name: 'Hà Nội' }, photos: [shared] },
+      ],
+    });
+    render(<Harness load={load} onAdd={onAdd} tourDestinationIds={[DEST_A, DEST_B]} />);
+
+    await screen.findByRole('checkbox', { name: 'Cave lights' });
+    expect(screen.getAllByRole('checkbox', { name: 'Cave lights' })).toHaveLength(1);
+    await user.click(screen.getByRole('checkbox', { name: 'Cave lights' }));
+    await user.click(screen.getByRole('button', { name: t.add(1) }));
+    expect(onAdd).toHaveBeenCalledWith([shared]);
+  });
+});

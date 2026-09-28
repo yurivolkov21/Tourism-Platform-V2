@@ -1,6 +1,7 @@
 'use client';
 
 import {
+  type AdminPhotoLibrary,
   type AdminTourDetail,
   ALLOWED_IMAGE_EXTENSIONS,
   type SignedUploadParams,
@@ -9,11 +10,12 @@ import {
 import { messages } from '@tourism/i18n';
 import { Button } from '@tourism/ui/components/button';
 import { Input } from '@tourism/ui/components/input';
-import { UploadIcon } from 'lucide-react';
+import { ImagePlusIcon, UploadIcon } from 'lucide-react';
 import * as React from 'react';
 import { FormField } from '@/components/kit/form-field';
 import { ListEditor } from '@/components/kit/list-editor';
 import { EditorFormFrame } from '@/components/tours/editor/editor-form-frame';
+import { PhotoLibraryDialog } from '@/components/tours/editor/photo-library-dialog';
 import { usePublishSavedDetail } from '@/components/tours/editor/tour-detail-context';
 import { newItemKey } from '@/lib/list-editor';
 import { uploadPhoto } from '@/lib/photo-upload';
@@ -22,6 +24,7 @@ import {
   acceptFiles,
   hasPhotoErrors,
   type LoadPhotoLibraryAction,
+  libraryPhotoDraft,
   makeCover,
   type PhotoDraft,
   type PhotosContractCode,
@@ -71,6 +74,7 @@ export function TourPhotosForm({
   detail,
   save: saveAction,
   sign,
+  loadLibrary,
 }: {
   detail: AdminTourDetail;
   save: SetPhotosAction;
@@ -83,6 +87,9 @@ export function TourPhotosForm({
   const [uploads, setUploads] = React.useState<UploadDraft[]>([]);
   const [notices, setNotices] = React.useState<string[]>([]);
   const [focusAlt, setFocusAlt] = React.useState<string | null>(null);
+  const [libraryOpen, setLibraryOpen] = React.useState(false);
+  /** Kho ảnh địa danh — tải ở lần mở hộp đầu, giữ cho các lần sau. */
+  const [library, setLibrary] = React.useState<AdminPhotoLibrary | null>(null);
   const uploadButton = React.useRef<HTMLButtonElement>(null);
   const fileInput = React.useRef<HTMLInputElement>(null);
   /** URL xem trước còn sống — thu hồi hết khi rời tab. */
@@ -234,6 +241,16 @@ export function TourPhotosForm({
                 void startUploads(files);
               }}
             />
+            <Button
+              type="button"
+              variant="outline"
+              focusableWhenDisabled
+              disabled={pending || capacity === 0}
+              onClick={() => setLibraryOpen(true)}
+            >
+              <ImagePlusIcon aria-hidden="true" />
+              {t.library}
+            </Button>
             <p className="text-sm text-muted-foreground" aria-live="polite">
               {t.count(values.photos.length, TOUR_PHOTOS_MAX)}
             </p>
@@ -388,6 +405,22 @@ export function TourPhotosForm({
           </div>
         </section>
       </EditorFormFrame>
+      <PhotoLibraryDialog
+        open={libraryOpen}
+        onOpenChange={setLibraryOpen}
+        library={library}
+        onLoaded={setLibrary}
+        load={loadLibrary}
+        tourDestinationIds={detail.destinations.map((link) => link.destinationId)}
+        existing={new Set(values.photos.map((photo) => photo.publicId))}
+        capacity={capacity}
+        onAdd={(photos) => {
+          form.setValues((current) => ({
+            photos: [...current.photos, ...photos.map(libraryPhotoDraft)],
+          }));
+          setLibraryOpen(false);
+        }}
+      />
     </div>
   );
 }
