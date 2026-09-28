@@ -486,6 +486,43 @@ describe('admin catalog integration (F11 — tours list + publish toggle)', () =
     expect(revalidate).not.toHaveBeenCalled();
   });
 
+  it.each<[string, () => Promise<unknown>, string]>([
+    [
+      'chỉ thiếu điểm chính',
+      () => prisma.tourDestination.deleteMany({ where: { tourId: ALPHA } }),
+      'one primary destination',
+    ],
+    [
+      'chỉ thiếu tóm tắt',
+      () => prisma.tour.update({ where: { id: ALPHA }, data: { summary: null } }),
+      'a summary',
+    ],
+    [
+      'chỉ thiếu lịch trình ngày 1',
+      () => prisma.tourItineraryDay.deleteMany({ where: { tourId: ALPHA } }),
+      'itinerary for day 1',
+    ],
+  ])(
+    'bật bán tour %s → TOUR_NOT_READY — mỗi điều kiện tự chặn được',
+    async (_name, strip, missing) => {
+      // Vòng review F17: ca GAMMA thiếu cả ba cùng lúc, nên cổng chỉ xét MỘT điều
+      // kiện (vd `!readiness.summary`) vẫn xanh.
+      await setPublished(ALPHA, false, adminCookie);
+      await strip();
+
+      const res = await setPublished(ALPHA, true, adminCookie);
+
+      expect(res.statusCode).toBe(409);
+      expect(res.json()).toMatchObject({
+        code: 'TOUR_NOT_READY',
+        message: `This tour is missing: ${missing}.`,
+      });
+      expect((await prisma.tour.findUniqueOrThrow({ where: { id: ALPHA } })).isPublished).toBe(
+        false,
+      );
+    },
+  );
+
   it('gỡ bán KHÔNG BAO GIỜ bị chặn, kể cả tour đang thiếu', async () => {
     // BETA đang bán mà thiếu lịch trình (dữ liệu cũ) — vẫn gỡ được.
     const res = await setPublished(BETA, false, adminCookie);
