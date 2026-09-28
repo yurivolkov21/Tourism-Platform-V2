@@ -115,7 +115,8 @@ describe('proxy (admin)', () => {
       }),
     );
     const csp = response.headers.get('content-security-policy') ?? '';
-    expect(csp).toContain("connect-src 'self' http://localhost:3001;");
+    // api.cloudinary.com đứng SAU origin API: tab Photos POST file lên đó (ADR-0038 AMEND 5).
+    expect(csp).toContain("connect-src 'self' http://localhost:3001 https://api.cloudinary.com;");
     expect(csp).toContain('upgrade-insecure-requests');
     expect(csp).not.toContain("'unsafe-eval'");
   });

@@ -18,10 +18,11 @@ import { messages } from '@tourism/i18n';
  */
 const t = messages.admin.tours.editor;
 
-export type TourEditorTab = 'details' | 'itinerary' | 'content' | 'costs' | 'departures';
+export type TourEditorTab = 'details' | 'photos' | 'itinerary' | 'content' | 'costs' | 'departures';
 
 export const TOUR_EDITOR_TABS: readonly TourEditorTab[] = [
   'details',
+  'photos',
   'itinerary',
   'content',
   'costs',
@@ -61,7 +62,7 @@ export function formatDayList(days: readonly number[]): string {
 }
 
 export interface ReadinessIssue {
-  key: 'summary' | 'primaryDestination' | 'days';
+  key: 'summary' | 'primaryDestination' | 'days' | 'cover';
   label: string;
   /** Tab cần sửa, kèm `#id` của ô (ô tóm tắt, khung điểm đến, thẻ ngày đầu tiên thiếu). */
   href: string;
@@ -87,6 +88,9 @@ export function readinessIssues(readiness: TourReadiness, slug: string): Readine
       label: t.readiness.days(formatDayList(readiness.missingDays), readiness.missingDays.length),
       href: `${tourTabHref(slug, 'itinerary')}#day-${firstMissing}`,
     });
+  }
+  if (!readiness.cover) {
+    issues.push({ key: 'cover', label: t.readiness.cover, href: tourTabHref(slug, 'photos') });
   }
   return issues;
 }
@@ -194,6 +198,25 @@ export function onSaleShortfalls(
     days: projected.missingDays.filter((day) => !current.missingDays.includes(day)),
     cover: current.cover && !projected.cover,
   };
+}
+
+/** Đoạn transform mà `buildCloudinaryUrl` phía API gắn cho ảnh (ADR-0005). */
+const CLOUDINARY_IMAGE_TRANSFORM = '/upload/f_auto,q_auto/';
+
+/**
+ * Thumbnail 320px cho dòng ảnh của tab Photos. `w_` thu nhỏ giữ tỉ lệ; khung 3:2
+ * do CSS `object-fit: cover` lo. KHÔNG `c_fill` như `reviewPhotoThumb`: cắt cúp ảnh
+ * CC BY-SA tạo tác phẩm phái sinh (ADR-0020 §4). URL không theo khuôn trả nguyên.
+ */
+export function tourPhotoThumb(url: string): string {
+  return url.includes(CLOUDINARY_IMAGE_TRANSFORM)
+    ? url.replace(CLOUDINARY_IMAGE_TRANSFORM, '/upload/f_auto,q_auto,w_320/')
+    : url;
+}
+
+/** URL delivery của ảnh VỪA tải lên — đúng khuôn `buildCloudinaryUrl` phía API. */
+export function cloudinaryImageUrl(cloudName: string, publicId: string, version: string): string {
+  return `https://res.cloudinary.com/${cloudName}/image/upload/f_auto,q_auto/v${version}/${publicId}`;
 }
 
 /** Nhãn một mục trong ô chọn danh mục/điểm đến — mục đã ẩn mang dấu "(hidden)". */

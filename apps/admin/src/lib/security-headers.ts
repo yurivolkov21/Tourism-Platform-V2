@@ -6,10 +6,11 @@
  *
  * ⚠️ File này CỐ Ý riêng cho admin, KHÔNG gom chung với
  * `apps/web/src/lib/security-headers.ts` (ADR-0038 §4): allowlist khác nhau
- * về bản chất — admin có nonce + 'strict-dynamic', KHÔNG có bản đồ
- * (OpenFreeMap/worker) và KHÔNG upload thẳng Cloudinary; một gói chung sẽ
- * thành nơi người sau "thêm origin cho cả hai" mà không nghĩ. Thêm origin
- * mới PHẢI qua AMEND ADR-0038 trước.
+ * về bản chất — admin có nonce + 'strict-dynamic' và KHÔNG có bản đồ
+ * (OpenFreeMap/worker); từ F18 admin cũng upload thẳng Cloudinary như web
+ * (tab Photos, ADR-0038 AMEND 5). Một gói chung sẽ thành nơi người sau "thêm
+ * origin cho cả hai" mà không nghĩ. Thêm origin mới PHẢI qua AMEND ADR-0038
+ * trước.
  */
 
 export interface SecurityHeaderInput {
@@ -45,8 +46,10 @@ function buildCsp({ apiOrigin, isDev, nonce, reportUri }: SecurityHeaderInput): 
     // (`user.image`) — ADR-0038 AMEND 1.
     "img-src 'self' data: blob: https://res.cloudinary.com https://lh3.googleusercontent.com",
     "font-src 'self'",
-    // Chỉ API: mọi ghi đi qua server action, browser chỉ còn Better Auth.
-    `connect-src 'self' ${apiOrigin}`,
+    // apiOrigin: Better Auth ở browser — mọi lệnh ghi khác đi qua server action.
+    // api.cloudinary.com: trình duyệt admin POST thẳng file đã ký lên đó (tab Photos,
+    // ADR-0048, ADR-0038 AMEND 5) — thiếu dòng này là mọi lượt tải bị CSP chặn.
+    `connect-src 'self' ${apiOrigin} https://api.cloudinary.com`,
     "frame-src 'none'",
     "frame-ancestors 'none'",
     "object-src 'none'",

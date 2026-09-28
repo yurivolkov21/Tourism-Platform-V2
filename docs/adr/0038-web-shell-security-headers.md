@@ -321,3 +321,31 @@ prerender, và mọi route tĩnh phải khai tường minh.
 Cùng lý do trình duyệt xin favicon khi chưa đăng nhập, hai path này vào
 `PUBLIC_PATHS` của `apps/admin/src/lib/admin-gate.ts` — thiếu nó thì proxy trả
 redirect `/login` cho request ảnh và tab trang login không có icon.
+
+## AMEND 5 — 28/09/2026 (F18 ảnh tour): admin POST file thẳng lên Cloudinary, `connect-src` thêm `https://api.cloudinary.com`
+
+§3 ghi admin "không upload thẳng Cloudinary (mọi ghi đi qua server action)", và §4
+lấy đó làm một khác biệt bản chất giữa hai app. F18 đổi điều ấy: tab Photos của khu
+làm việc tour cho trình duyệt admin POST file đã ký thẳng lên Cloudinary (ADR-0048
+§4, §10) — cùng đường ADR-0021 của web, bytes không đi qua Nest. Chốt:
+
+- **Một origin, một directive:** `connect-src` của admin thêm
+  `https://api.cloudinary.com`. Nguồn là `uploadUrl` do API ký trả về
+  (`admin.tours.signPhotoUploads`, dạng `https://api.cloudinary.com/v1_1/<cloud>/image/upload`),
+  gọi bằng XHR ở `apps/admin/src/lib/photo-upload.ts`. Thiếu dòng này là mọi lượt
+  tải bị CSP chặn, mà jsdom không thấy được.
+- **URL sinh lúc chạy (luật AMEND 1 §a) đã nằm sẵn trong allowlist:** thumbnail của
+  tab Photos và hộp thư viện là `https://res.cloudinary.com/<cloud>/image/upload/f_auto,q_auto,w_320/…`
+  (URL do API dựng, hoặc dựng từ `cloudName` và `version` cho ảnh vừa tải) — `img-src`
+  đã có `https://res.cloudinary.com`; ảnh xem trước lúc đang tải là
+  `URL.createObjectURL` — `img-src` đã có `blob:`. Không mở thêm gì khác.
+- **Không đổi:** `script-src` (nonce và `'strict-dynamic'`), `form-action 'self'`
+  (tải lên đi bằng XHR, không bằng `<form action>`), `frame-src 'none'`.
+- **Ranh giới §4 giữ nguyên:** vẫn hai `security-headers.ts` riêng. Khác biệt còn
+  lại giữa hai allowlist là nonce (admin) và bản đồ OpenFreeMap (web); JSDoc đầu file
+  của admin sửa theo.
+- **Test (AMEND 1 §f):** map directive của admin so bằng `toEqual` ở cả production
+  lẫn dev, nên origin này đi vào hai kỳ vọng `connect-src` của `security-headers.spec.ts`.
+- **Nghiệm thu (Hệ quả của ADR này):** thử tay bằng DevTools trên production thuộc
+  lượt thử tay F18 ở session gốc (spec F18 §5): tải ảnh lên mà console không có vi
+  phạm CSP, và log `csp-report` không có dòng nào cho `api.cloudinary.com`.

@@ -65,6 +65,7 @@ export function DeleteTourZone({
           rows={[
             { label: t.rows.tour, value: detail.title },
             { label: t.rows.departures, value: String(detail.departureCount) },
+            { label: t.rows.photos, value: String(detail.photos.length) },
           ]}
           submitVariant="destructive"
           warningTone="destructive"

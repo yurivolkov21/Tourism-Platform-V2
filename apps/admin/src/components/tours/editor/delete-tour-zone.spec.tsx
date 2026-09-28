@@ -51,6 +51,15 @@ describe('DeleteTourZone', () => {
     expect(within(dialog).getByText(t.dialog.warning)).toBeInTheDocument();
   });
 
+  it('hộp xác nhận kể cả số ảnh mất theo — hàng "Photos" (F18, ADR-0048 §7)', async () => {
+    const { dialog } = await openDialog(vi.fn());
+
+    // `detailFixture()` có đúng một ảnh — ảnh bìa. Hàng là cặp <dt>/<dd> của kit.
+    const label = within(dialog).getByText(t.rows.photos);
+    expect(label.nextElementSibling?.textContent).toBe('1');
+    expect(t.dialog.body(2)).toContain('cost lines, photos, destination links');
+  });
+
   it('xác nhận → gọi remove({ id }), về /tours, toast "Tour deleted"', async () => {
     const remove = vi.fn().mockResolvedValue({ ok: true, deleted: { slug: detail.slug } });
     const { user, dialog } = await openDialog(remove);

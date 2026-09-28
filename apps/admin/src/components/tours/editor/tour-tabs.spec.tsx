@@ -9,15 +9,16 @@ beforeEach(() => {
   pathname = '/tours/ha-long';
 });
 
-/** Thanh tab của khu làm việc (spec F17 §2g): năm link, đúng một tab đang mở. */
+/** Thanh tab của khu làm việc (spec F17 §2g, F18): sáu link, đúng một tab đang mở. */
 describe('TourTabs', () => {
-  it('năm link đúng thứ tự và đúng đường, trong một nav tên "Tour sections"', () => {
+  it('sáu link đúng thứ tự và đúng đường, trong một nav tên "Tour sections"', () => {
     render(<TourTabs slug="ha-long" />);
 
     const nav = screen.getByRole('navigation', { name: 'Tour sections' });
     const links = within(nav).getAllByRole('link');
     expect(links.map((link) => link.textContent)).toEqual([
       'Details',
+      'Photos',
       'Itinerary',
       'FAQ & policies',
       'Costs',
@@ -25,6 +26,7 @@ describe('TourTabs', () => {
     ]);
     expect(links.map((link) => link.getAttribute('href'))).toEqual([
       '/tours/ha-long',
+      '/tours/ha-long/photos',
       '/tours/ha-long/itinerary',
       '/tours/ha-long/content',
       '/tours/ha-long/costs',

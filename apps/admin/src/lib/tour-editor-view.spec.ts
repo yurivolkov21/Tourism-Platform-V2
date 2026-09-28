@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { detailFixture } from '@/test/tour-detail';
 import {
   activeTourTab,
+  cloudinaryImageUrl,
   costBreakdown,
   formatDayList,
   onSaleShortfalls,
@@ -10,6 +11,8 @@ import {
   projectedReadiness,
   readinessIssues,
   removedItineraryDays,
+  TOUR_EDITOR_TABS,
+  tourPhotoThumb,
   tourTabHref,
 } from './tour-editor-view';
 
@@ -185,6 +188,50 @@ describe('onSaleShortfalls (G11)', () => {
       days: [],
       cover: false,
     });
+  });
+});
+
+describe('tab Photos và mục ảnh bìa (F18)', () => {
+  it('Photos đứng ngay sau Details', () => {
+    expect(TOUR_EDITOR_TABS).toEqual([
+      'details',
+      'photos',
+      'itinerary',
+      'content',
+      'costs',
+      'departures',
+    ]);
+    expect(tourTabHref('ha-long', 'photos')).toBe('/tours/ha-long/photos');
+  });
+
+  it('thiếu ảnh bìa là một mục readiness trỏ tới tab Photos', () => {
+    const noCover = tourReadiness({
+      summary: 'x',
+      destinations: [{ isPrimary: true }],
+      durationDays: 1,
+      itineraryDays: [1],
+      hasCover: false,
+    });
+    expect(readinessIssues(noCover, 'ha-long')).toEqual([
+      { key: 'cover', label: 'A cover photo', href: '/tours/ha-long/photos' },
+    ]);
+  });
+});
+
+describe('tourPhotoThumb / cloudinaryImageUrl', () => {
+  const url = 'https://res.cloudinary.com/demo/image/upload/f_auto,q_auto/v17/tourism/x';
+  it('thumbnail chèn w_320, KHÔNG bao giờ c_fill (ADR-0020 §4); URL lạ trả nguyên', () => {
+    expect(tourPhotoThumb(url)).toBe(
+      'https://res.cloudinary.com/demo/image/upload/f_auto,q_auto,w_320/v17/tourism/x',
+    );
+    expect(tourPhotoThumb(url)).not.toContain('c_fill');
+    expect(tourPhotoThumb('https://example.com/a.jpg')).toBe('https://example.com/a.jpg');
+  });
+
+  it('ảnh vừa tải lên dựng đúng khuôn URL của API (buildCloudinaryUrl)', () => {
+    expect(cloudinaryImageUrl('demo', 'tourism/tours/t/abc', '1759000000')).toBe(
+      'https://res.cloudinary.com/demo/image/upload/f_auto,q_auto/v1759000000/tourism/tours/t/abc',
+    );
   });
 });
 

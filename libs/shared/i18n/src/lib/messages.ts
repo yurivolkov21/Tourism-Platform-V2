@@ -4051,6 +4051,7 @@ export const messages = {
         tabsLabel: 'Tour sections',
         tabs: {
           details: 'Details',
+          photos: 'Photos',
           itinerary: 'Itinerary',
           content: 'FAQ & policies',
           costs: 'Costs',
@@ -4063,16 +4064,18 @@ export const messages = {
         readiness: {
           ready: 'Ready to sell',
           /**
-           * Nói ĐÚNG thứ readiness đo (vòng review F17) — ba điều kiện, chưa có
-           * ảnh, FAQ hay giá vốn; "Everything a guest needs" là hứa quá.
+           * Nói ĐÚNG bốn điều kiện `tourReadiness` đo (F18 thêm ảnh bìa) — chưa có
+           * FAQ hay giá vốn; "Everything a guest needs" là hứa quá (vòng review F17).
            */
-          readyBody: 'It has a summary, a primary destination and a plan for every day.',
+          readyBody:
+            'It has a summary, a primary destination, a plan for every day and a cover photo.',
           missingTitle: 'Missing before it can go on sale:',
           summary: 'A summary',
           primaryDestination: 'A primary destination',
           /** `list` từ `formatDayList`: "3", "3–5", "2, 4–6". */
           days: (list: string, count: number) =>
             count === 1 ? `An itinerary for day ${list}` : `An itinerary for days ${list}`,
+          cover: 'A cover photo',
         },
         banners: {
           stale:
@@ -4112,6 +4115,9 @@ export const messages = {
             dayTitleOnSale: 'A tour on sale needs a title for every day.',
             /** Ngày không tiêu đề thì không có hàng (spec §2b.3) — mô tả của nó sẽ mất. */
             descriptionWithoutTitle: 'Add a title for this day, or clear its description.',
+            /** Tour đang bán phải còn ảnh bìa (ADR-0048 §8). */
+            photosOnSale:
+              'A tour on sale needs a cover photo. Take it off sale first to remove every photo.',
           },
         },
         create: {
@@ -4122,8 +4128,8 @@ export const messages = {
           action: 'New tour',
           dialog: {
             title: 'New tour',
-            /** Đúng điều server đòi để bật bán (vòng review F17) — không phải "mọi tab". */
-            body: 'It starts off sale. Add a summary and a plan for every day, then put it on sale.',
+            /** Đúng điều server đòi để bật bán (vòng review F17, F18 thêm ảnh bìa) — không phải "mọi tab". */
+            body: 'It starts off sale. Add a summary, a plan for every day and a cover photo, then put it on sale.',
             submit: 'Create tour',
             submitting: 'Creating…',
             cancel: 'Cancel',
@@ -4302,6 +4308,68 @@ export const messages = {
            */
           note: 'Saved costs apply to departures and bookings created from now on. Existing ones keep the costs they were created with.',
         },
+        /** Tab Photos (F18, ADR-0048). */
+        photos: {
+          errors: {
+            STALE_TOUR: 'Someone else saved this tour while you were editing.',
+            TOUR_NOT_READY: 'This tour is on sale, so it has to stay ready to sell.',
+            /** Đo: `planTourPhotos` từ chối ảnh ngoài ba nguồn — client đúng không bao giờ gửi. */
+            PHOTO_NOT_ALLOWED: 'One of these photos can no longer be used. Reload and try again.',
+            NOT_FOUND: 'This tour no longer exists.',
+          },
+          /** Lỗi của lệnh ký upload (`signPhotoUploads`). */
+          signErrors: {
+            MEDIA_UPLOAD_NOT_CONFIGURED: 'Uploads are not set up on this server.',
+            NOT_FOUND: 'This tour no longer exists.',
+          },
+          signFailed: 'Uploads could not start. Try again in a moment.',
+          upload: 'Upload photos',
+          library: 'Add from library',
+          count: (n: number, max: number) => `${n} of ${max} photos`,
+          /** Đo: web in `hero` trước (`tourGallery`); card lấy `hero` (`TourCardSchema.cover`). */
+          intro:
+            'The first photo is the cover. It shows on tour cards and opens the gallery on the tour page.',
+          formats: 'JPG, PNG, WebP, AVIF or GIF, up to 10 MB each.',
+          empty: 'No photos yet. Upload your own or add some from the library.',
+          photoName: (n: number) => `photo ${n}`,
+          cover: 'Cover',
+          makeCover: 'Make cover',
+          /** Tên đọc-màn-hình chứa nguyên chữ nhìn thấy "Make cover" (WCAG 2.5.3). */
+          makeCoverFor: (name: string) => `Make cover: ${name}`,
+          alt: 'Alt text',
+          altRequired: 'Describe this photo for people who can’t see it.',
+          uploaded: 'Uploaded',
+          fromLibrary: 'From the library',
+          credit: (author: string, license: string | null) =>
+            license === null ? `Photo: ${author}` : `Photo: ${author}, ${license}`,
+          uploading: (name: string, percent: number) => `${name} · Uploading ${percent}%`,
+          uploadingLabel: (name: string) => `Uploading ${name}`,
+          uploadFailed: (name: string) => `${name} didn’t upload.`,
+          retry: 'Retry',
+          remove: 'Remove',
+          waiting: (n: number) =>
+            n === 1 ? 'Waiting for 1 upload to finish.' : `Waiting for ${n} uploads to finish.`,
+          skipped: {
+            type: (name: string) => `${name} isn’t a JPG, PNG, WebP, AVIF or GIF.`,
+            size: (name: string) => `${name} is larger than 10 MB.`,
+            full: (name: string) => `${name} didn’t fit — a tour can have up to 30 photos.`,
+          },
+          dialog: {
+            title: 'Add from library',
+            body: 'Photos from the destination library, with their credits.',
+            destination: 'Destination',
+            thisTour: 'This tour’s destinations',
+            added: 'Added',
+            add: (n: number) => (n === 1 ? 'Add 1 photo' : `Add ${n} photos`),
+            cancel: 'Cancel',
+            loading: 'Loading the library…',
+            empty: 'No photos for these destinations yet.',
+            failed: 'The library could not be loaded.',
+            retry: 'Try again',
+            left: (n: number) =>
+              n === 1 ? 'You can add 1 more photo.' : `You can add ${n} more photos.`,
+          },
+        },
         delete: {
           errors: {
             TOUR_HAS_BOOKINGS:
@@ -4318,15 +4386,17 @@ export const messages = {
              * ngoại `Cascade` kéo theo chuyến, lịch trình, FAQ, chính sách, chi phí,
              * liên kết điểm đến, wishlist, đánh giá gắn tour và liên kết bài viết
              * (bài viết còn nguyên); câu hỏi của khách `SetNull` — còn, mất liên kết.
+             * Dòng ảnh của tour không có khoá ngoại: `delete` xoá chúng trong cùng
+             * transaction (F18, ADR-0048 §7).
              */
             body: (departures: number) =>
-              `This removes the tour for good, together with ${departures === 1 ? '1 departure' : `${departures} departures`}, its itinerary, FAQ, policies, cost lines, destination links, wishlist saves, reviews and blog-post links. Enquiries about it are kept, without the link to the tour.`,
+              `This removes the tour for good, together with ${departures === 1 ? '1 departure' : `${departures} departures`}, its itinerary, FAQ, policies, cost lines, photos, destination links, wishlist saves, reviews and blog-post links. Enquiries about it are kept, without the link to the tour.`,
             warning: 'This cannot be undone.',
             submit: 'Delete tour',
             submitting: 'Deleting…',
             cancel: 'Cancel',
           },
-          rows: { tour: 'Tour', departures: 'Departures' },
+          rows: { tour: 'Tour', departures: 'Departures', photos: 'Photos' },
           toast: {
             title: 'Tour deleted',
             body: (title: string) => `${title} is gone from the catalogue.`,

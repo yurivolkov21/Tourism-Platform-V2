@@ -37,7 +37,8 @@ const PROD_EXPECTED: Record<string, string> = {
   'style-src': "'self' 'unsafe-inline'",
   'img-src': "'self' data: blob: https://res.cloudinary.com https://lh3.googleusercontent.com",
   'font-src': "'self'",
-  'connect-src': "'self' https://api.nexora-travel.agency",
+  // api.cloudinary.com: tab Photos POST file thẳng lên Cloudinary (ADR-0038 AMEND 5).
+  'connect-src': "'self' https://api.nexora-travel.agency https://api.cloudinary.com",
   'frame-src': "'none'",
   'frame-ancestors': "'none'",
   'object-src': "'none'",
@@ -52,7 +53,7 @@ const PROD_EXPECTED: Record<string, string> = {
 };
 
 describe('buildSecurityHeaders (admin)', () => {
-  it('production: đúng bộ directive đã chốt — hẹp hơn web: không map, không upload thẳng, không worker', () => {
+  it('production: đúng bộ directive đã chốt — hẹp hơn web: không map, không worker', () => {
     const prod = parseCsp(PROD);
     expect(prod).toEqual(PROD_EXPECTED);
     expect('worker-src' in prod).toBe(false);
@@ -68,7 +69,7 @@ describe('buildSecurityHeaders (admin)', () => {
     expect(dev).toEqual({
       ...PROD_EXPECTED,
       'script-src': `'self' 'nonce-${NONCE}' 'strict-dynamic' 'unsafe-eval'`,
-      'connect-src': "'self' http://localhost:3001",
+      'connect-src': "'self' http://localhost:3001 https://api.cloudinary.com",
       'report-uri': 'http://localhost:3001/api/webhooks/csp-report',
       'upgrade-insecure-requests': undefined,
     });

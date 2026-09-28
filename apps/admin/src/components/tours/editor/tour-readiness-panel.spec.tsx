@@ -20,7 +20,9 @@ describe('TourReadinessPanel', () => {
 
     expect(screen.getByText('Ready to sell')).toBeInTheDocument();
     expect(
-      screen.getByText('It has a summary, a primary destination and a plan for every day.'),
+      screen.getByText(
+        'It has a summary, a primary destination, a plan for every day and a cover photo.',
+      ),
     ).toBeInTheDocument();
     expect(screen.queryByRole('link')).not.toBeInTheDocument();
   });
