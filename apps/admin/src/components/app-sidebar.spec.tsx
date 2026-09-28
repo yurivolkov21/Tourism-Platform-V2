@@ -1,8 +1,9 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { SidebarProvider } from '@tourism/ui/components/sidebar';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { SessionUser } from '@/lib/api/session';
+import { SIDEBAR_STATE_COOKIE, sidebarOpenFromCookie } from '@/lib/sidebar-state';
 import { AppSidebar } from './app-sidebar';
 
 /**
@@ -35,6 +36,12 @@ function renderSidebar({ open }: { open: boolean }) {
 const visibleText = (text: string) =>
   screen.getAllByText(text).filter((node) => node.closest('[hidden]') === null);
 
+// Cookie của jsdom sống qua các test trong file — xoá để ca sau không đọc nhầm.
+afterEach(() => {
+  // biome-ignore lint/suspicious/noDocumentCookie: SidebarProvider ghi cookie qua document.cookie, xoá bằng đúng đường đó; jsdom không có Cookie Store API.
+  document.cookie = `${SIDEBAR_STATE_COOKIE}=; path=/; max-age=0`;
+});
+
 describe('AppSidebar', () => {
   it('thu gọn thì thành cột icon (collapsible="icon"), không trượt mất', () => {
     renderSidebar({ open: false });
@@ -44,13 +51,16 @@ describe('AppSidebar', () => {
     expect(sidebar).toHaveAttribute('data-collapsible', 'icon');
   });
 
-  it('thu gọn: rê vào logo thì tooltip nói nó dẫn về đâu', async () => {
+  it('thu gọn: rê vào logo thì tooltip nói nó dẫn về đâu — bật ngay, không trễ', async () => {
     const user = userEvent.setup();
     renderSidebar({ open: false });
 
     await user.hover(screen.getByRole('link', { name: 'Nexora' }));
 
-    expect(await screen.findByText('Nexora — Dashboard')).toBeInTheDocument();
+    // `getBy` chứ không `findBy`: ở cột icon tooltip là nhãn duy nhất nên phải bật
+    // NGAY (`TooltipProvider` của sidebar, delay 0). Thiếu provider thì Base UI trễ
+    // 600ms, mà `findBy` chờ tới 1s nên không phân biệt được hai trường hợp.
+    expect(screen.getByText('Nexora — Dashboard')).toBeInTheDocument();
   });
 
   it('thu gọn: rê vào avatar thì tooltip nói tên người đang đăng nhập', async () => {
@@ -62,5 +72,24 @@ describe('AppSidebar', () => {
 
     // Một ở nút (ẩn trong cột icon), một ở tooltip.
     await waitFor(() => expect(visibleText('Admin Nexora')).toHaveLength(2));
+  });
+
+  it('thu gọn (Ctrl+B) thì ghi đúng cookie mà shell đọc lại khi dựng trang kế', async () => {
+    const user = userEvent.setup();
+    renderSidebar({ open: true });
+
+    await user.keyboard('{Control>}b{/Control}');
+
+    expect(document.querySelector('[data-slot="sidebar"]')).toHaveAttribute(
+      'data-state',
+      'collapsed',
+    );
+    // Tên cookie chép tay ở `lib/sidebar-state.ts` vì gói ui không export hằng của
+    // nó — test này canh hai bên khớp nhau.
+    const written = document.cookie
+      .split('; ')
+      .find((pair) => pair.startsWith(`${SIDEBAR_STATE_COOKIE}=`))
+      ?.split('=')[1];
+    expect(sidebarOpenFromCookie(written)).toBe(false);
   });
 });
