@@ -665,6 +665,52 @@ describe('admin tours integration (F17)', () => {
       expect(seen[0]).toEqual({ tags: ['tours', 'tour:f17-tour-1'], exists: false });
     });
 
+    it('xoá tour dọn luôn dòng ảnh; ảnh tải lên vào lại hàng dọn, ảnh thư viện thì không (F18)', async () => {
+      await makeTour(1, { isPublished: false });
+      const mineId = `tourism/tours/${tourId(1)}/mine`;
+      await prisma.mediaAsset.create({
+        data: {
+          ownerType: 'TOUR',
+          ownerId: tourId(1),
+          publicId: mineId,
+          type: 'IMAGE',
+          role: 'gallery',
+          sortOrder: 1,
+          alt: 'Mine',
+        },
+      });
+
+      const res = await remove(tourId(1));
+
+      expect(res.statusCode).toBe(200);
+      expect(await prisma.mediaAsset.count({ where: { ownerId: tourId(1) } })).toBe(0);
+      // Ảnh bìa của `makeTour` là ảnh catalog (thư viện) — không vào hàng dọn.
+      expect((await prisma.mediaGarbage.findMany()).map((q) => q.publicId)).toEqual([mineId]);
+    });
+
+    it('tour có booking → 409, dòng ảnh còn nguyên, hàng dọn không đổi (F18)', async () => {
+      await makeTour(1);
+      const departure = await makeDeparture(tourId(1), { startDate: day(30), endDate: day(31) });
+      await makeBooking(tourId(1), departure.id, 'BK-F18DEL01');
+      await prisma.mediaAsset.create({
+        data: {
+          ownerType: 'TOUR',
+          ownerId: tourId(1),
+          publicId: `tourism/tours/${tourId(1)}/mine`,
+          type: 'IMAGE',
+          role: 'gallery',
+          sortOrder: 1,
+          alt: 'Mine',
+        },
+      });
+
+      const res = await remove(tourId(1));
+
+      expect(res.statusCode).toBe(409);
+      expect(await prisma.mediaAsset.count({ where: { ownerId: tourId(1) } })).toBe(2);
+      expect(await prisma.mediaGarbage.count()).toBe(0);
+    });
+
     it('id không có thì 404', async () => {
       const res = await remove(MISSING);
       expect(res.statusCode).toBe(404);

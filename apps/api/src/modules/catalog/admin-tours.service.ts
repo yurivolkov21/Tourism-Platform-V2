@@ -25,6 +25,7 @@ import { Prisma } from '../../generated/prisma/client.js';
 import { MediaOwnerType, MediaRole } from '../../generated/prisma/enums.js';
 import {
   buildSignedUploadParams,
+  isTourUploadPublicId,
   resolveUploadConfig,
   tourPhotoFolder,
 } from '../../lib/upload-signing.js';
@@ -56,7 +57,8 @@ import { claimTour, readTourReadiness } from './tour-state.js';
 
 /**
  * Khu làm việc của MỘT tour phía admin (spec F17, ADR-0047): đọc, tạo, xoá, và
- * bốn lệnh sửa theo tab.
+ * bốn lệnh sửa theo tab; cộng tab Photos của F18 (ADR-0048): thay trọn danh sách
+ * ảnh, ký một lô upload, đọc kho ảnh địa danh.
  *
  * Mọi lỗi DB bắt NGAY tại câu ghi, không SELECT kiểm trước (bài học 1–2 của
  * vòng review F14): slug trùng → `P2002`, hàng không còn → `P2025`, khoá ngoại →
@@ -288,15 +290,39 @@ export class AdminToursService {
   }
 
   /**
-   * Xoá thẳng; khoá ngoại `Restrict` của booking là trọng tài (ADR-0047 §5) —
-   * không đếm booking trước, vì một booking chen vào giữa câu đếm và câu xoá sẽ
-   * mồ côi (spec §4.6). DB tự xoá theo mọi bảng con khai `Cascade`, kể cả đánh
-   * giá gắn tour (plan F17, quyết định 4); câu hỏi của khách giữ lại, mất liên
-   * kết (`SetNull`). Ảnh của tour không có khoá ngoại — F18 lo.
+   * Xoá tour chưa từng có booking (ADR-0047 §5); khoá ngoại `Restrict` của booking
+   * là trọng tài — không đếm booking trước, vì một booking chen vào giữa câu đếm và
+   * câu xoá sẽ mồ côi (spec F17 §4.6). DB tự xoá theo mọi bảng con khai `Cascade`,
+   * kể cả đánh giá gắn tour (plan F17, quyết định 4); câu hỏi của khách giữ lại,
+   * mất liên kết (`SetNull`).
+   *
+   * Từ F18 là MỘT transaction (ADR-0048 §7): `media_assets` là bảng đa chủ, KHÔNG
+   * có khoá ngoại tới `tours`, nên dòng ảnh phải xoá tay trong cùng lệnh — sót lại
+   * thì ảnh của một tour đã mất vẫn "có người dùng" trong mắt bộ dọn mãi mãi. Ảnh
+   * tải lên của tour vào lại hàng dọn; ảnh thư viện thì không (ADR-0048 §6).
+   * `P2003` rollback cả ba bước.
    */
   async delete(input: AdminTourDeleteInput): Promise<AdminTourDeleteResult> {
-    const deleted = await prisma.tour
-      .delete({ where: { id: input.id }, select: { slug: true } })
+    const deleted = await prisma
+      .$transaction(async (tx) => {
+        const photos = await tx.mediaAsset.findMany({
+          where: { ownerType: MediaOwnerType.TOUR, ownerId: input.id },
+          select: { publicId: true },
+        });
+        const tour = await tx.tour.delete({ where: { id: input.id }, select: { slug: true } });
+        await tx.mediaAsset.deleteMany({
+          where: { ownerType: MediaOwnerType.TOUR, ownerId: input.id },
+        });
+        await this.garbage.requeue(
+          tx,
+          photos
+            .map((photo) => photo.publicId)
+            .filter((publicId) =>
+              isTourUploadPublicId(env.CLOUDINARY_UPLOAD_FOLDER, input.id, publicId),
+            ),
+        );
+        return tour;
+      })
       .catch((error: unknown) => {
         const code = prismaCode(error);
         if (code === 'P2025') throw new AdminTourNotFoundError(input.id);
