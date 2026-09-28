@@ -1,5 +1,6 @@
 import { isDefinedError, safe } from '@orpc/client';
 import type {
+  AdminPhotoLibrary,
   AdminTourCostsInput,
   AdminTourCreateInput,
   AdminTourCreateResult,
@@ -9,10 +10,13 @@ import type {
   AdminTourDetailsInput,
   AdminTourFaqsPoliciesInput,
   AdminTourItineraryInput,
+  AdminTourPhotosInput,
   AdminTourRow,
   AdminTourSetPublishedInput,
   AdminTourSetPublishedResult,
+  AdminTourSignPhotoUploadsInput,
   Paged,
+  SignedUploadParams,
 } from '@tourism/contract';
 import { AdminTourGetInputSchema } from '@tourism/contract';
 import type { ToursQuery } from '@/lib/tours-query';
@@ -216,6 +220,30 @@ export async function setAdminTourCosts(
   input: AdminTourCostsInput,
 ): Promise<AdminTourDetail> {
   return api.admin.tours.setCosts(input, { context: withAdminAuth(cookie) });
+}
+
+/**
+ * Thay trọn danh sách ảnh (tab Photos, ADR-0048). Trả tour server vừa ghi — không
+ * qua `withPhotoFallback`: chỉ API đã có F18 mới trả lời được lệnh này.
+ */
+export async function setAdminTourPhotos(
+  cookie: string,
+  input: AdminTourPhotosInput,
+): Promise<AdminTourDetail> {
+  return api.admin.tours.setPhotos(input, { context: withAdminAuth(cookie) });
+}
+
+/** Ký một lô upload thẳng lên Cloudinary cho một tour (ADR-0048 §4). */
+export async function signAdminTourPhotoUploads(
+  cookie: string,
+  input: AdminTourSignPhotoUploadsInput,
+): Promise<SignedUploadParams[]> {
+  return api.admin.tours.signPhotoUploads(input, { context: withAdminAuth(cookie) });
+}
+
+/** Kho ảnh địa danh cho hộp Add from library — KHÔNG nuốt lỗi: action phân loại. */
+export async function fetchTourPhotoLibrary(cookie: string): Promise<AdminPhotoLibrary> {
+  return api.admin.tours.photoLibrary(undefined, { context: withAdminAuth(cookie) });
 }
 
 /** Xoá một tour chưa từng có booking — khoá ngoại của booking là trọng tài. */

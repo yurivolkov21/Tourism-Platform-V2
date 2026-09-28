@@ -8,6 +8,7 @@ import {
   fetchTourCategories,
   fetchTourDestinationOptions,
   fetchTourEditorOptions,
+  fetchTourPhotoLibrary,
 } from './tours';
 
 /**
@@ -26,7 +27,7 @@ vi.mock('./client', () => ({
     admin: {
       categories: { list: vi.fn() },
       destinations: { list: vi.fn() },
-      tours: { get: vi.fn() },
+      tours: { get: vi.fn(), photoLibrary: vi.fn() },
     },
   },
   withAdminAuth: (cookie: string) => ({ cookie }),
@@ -106,6 +107,17 @@ describe('fetchAdminTour (spec F17 §2g)', () => {
 
     getTourMock.mockRejectedValueOnce(new Error('boom'));
     await expect(fetchAdminTour('cookie=x', 'x')).rejects.toThrow('boom');
+  });
+});
+
+describe('fetchTourPhotoLibrary (F18)', () => {
+  it('gọi thủ tục thư viện KHÔNG input, mang cookie admin; trả nguyên kết quả', async () => {
+    const library = [{ destination: { id: 'd', name: 'Hội An' }, photos: [] }];
+    const libraryMock = api.admin.tours.photoLibrary as unknown as Mock;
+    libraryMock.mockResolvedValue(library);
+
+    await expect(fetchTourPhotoLibrary('cookie=x')).resolves.toBe(library);
+    expect(libraryMock).toHaveBeenCalledWith(undefined, { context: { cookie: 'cookie=x' } });
   });
 });
 
