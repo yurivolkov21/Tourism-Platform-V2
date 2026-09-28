@@ -80,6 +80,15 @@ describe('fetchAdminTour (spec F17 §2g)', () => {
     await expect(fetchAdminTour('cookie=x', 'gone')).resolves.toBeNull();
   });
 
+  it('slug dài quá trần của contract → null, không gọi API (vòng review F17)', async () => {
+    // Không chặn ở đây thì API trả 400 (input hỏng), hàm ném lại và URL rác ra
+    // trang lỗi của app thay vì 404.
+    getTourMock.mockReset();
+
+    await expect(fetchAdminTour('cookie=x', 'x'.repeat(121))).resolves.toBeNull();
+    expect(getTourMock).not.toHaveBeenCalled();
+  });
+
   it('NOT_FOUND KHÔNG khai (route chưa có, khe deploy) và mọi lỗi khác thì ném lại', async () => {
     getTourMock.mockRejectedValueOnce(new ORPCError('NOT_FOUND'));
     await expect(fetchAdminTour('cookie=x', 'x')).rejects.toBeInstanceOf(ORPCError);

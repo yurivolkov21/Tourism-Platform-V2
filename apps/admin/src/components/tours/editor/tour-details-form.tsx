@@ -23,6 +23,7 @@ import { FormSelect } from '@/components/kit/form-select';
 import { ListEditor } from '@/components/kit/list-editor';
 import { DeleteTourZone } from '@/components/tours/editor/delete-tour-zone';
 import { EditorFormFrame } from '@/components/tours/editor/editor-form-frame';
+import { usePublishSavedDetail } from '@/components/tours/editor/tour-detail-context';
 import type { TourEditorOptions } from '@/lib/api/tours';
 import { newItemKey } from '@/lib/list-editor';
 import {
@@ -80,6 +81,7 @@ export function TourDetailsForm({
   save: UpdateDetailsAction;
   remove: DeleteTourAction;
 }) {
+  const publishSaved = usePublishSavedDetail();
   const form = useTourFormState<TourDetailsFormValues>(detail, detailsFormValues);
   const { values, version, dirty, showValidation } = form;
   /**
@@ -110,7 +112,11 @@ export function TourDetailsForm({
         destinations: values.destinations,
         durationDays: days,
       }),
-    onSaved: form.adopt,
+    onSaved: (next) => {
+      form.adopt(next);
+      // Phần đầu (readiness, công tắc) theo kịp ngay, không chờ lượt refresh.
+      publishSaved(next);
+    },
     onFieldError: (code) => {
       if (code === 'DURATION_LOCKED') {
         setFieldError({ field: 'durationDays', message: detailsErrorCopy(code), version });

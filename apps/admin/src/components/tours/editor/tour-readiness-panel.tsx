@@ -5,8 +5,9 @@ import Link from 'next/link';
 import { readinessIssues } from '@/lib/tour-editor-view';
 
 /**
- * Khung "đủ để bán chưa" ở đầu khu làm việc (spec F17 §2c, §2g) — server
- * component, đọc `readiness` mà `admin.tours.get` đã tính bằng `tourReadiness`.
+ * Khung "đủ để bán chưa" ở đầu khu làm việc (spec F17 §2c, §2g) — component
+ * thuần, đọc `readiness` mà `admin.tours.get` đã tính bằng `tourReadiness`; dựng
+ * trong `TourWorkspaceTop` với bản tour mới nhất.
  *
  * Đủ thì một câu yên tâm; thiếu thì mỗi chỗ thiếu một link tới ĐÚNG tab kèm
  * `#id` của ô cần sửa. `role="status"`: thông tin có sẵn lúc mở trang, không

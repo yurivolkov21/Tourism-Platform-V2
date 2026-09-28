@@ -15,7 +15,7 @@ import { Input } from '@tourism/ui/components/input';
 import { cn } from '@tourism/ui/lib/utils';
 import { PlusIcon } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { DIALOG_FRAME } from '@/components/kit/confirm-write-dialog';
 import { FormField } from '@/components/kit/form-field';
 import { FormSelect } from '@/components/kit/form-select';
@@ -87,6 +87,13 @@ function NewTourForm({
   const [slugTouched, setSlugTouched] = useState(false);
   /** Chỉ mắng SAU lần bấm tạo đầu tiên; lỗi là DERIVED nên sửa xong là tự biến. */
   const [showValidation, setShowValidation] = useState(false);
+  /**
+   * Khu làm việc của tour vừa tạo. Điều hướng là việc SAU lệnh (vòng review F17):
+   * `router.push` nằm trong lệnh thì `try` của kit ôm cả nó (luật kit: `try` chỉ
+   * ôm ĐÚNG lời gọi lệnh), và `onSettled` refresh thêm một lượt nữa — trang tour
+   * mới dựng hai lần.
+   */
+  const createdHref = useRef<string | null>(null);
 
   const errors: TourCreateFormErrors = showValidation ? validateTourCreateForm(values) : {};
   const noOptions = options.categories.length === 0 || options.destinations.length === 0;
@@ -96,8 +103,14 @@ function NewTourForm({
       isStale: () => false,
       errorCopy: createTourErrorCopy,
       onClose,
-      // Kết cục không rõ (GENERIC) cũng tới đây: kéo bảng tươi về xem tour đã có chưa.
-      onSettled: () => router.refresh(),
+      // Thành công → mở khu làm việc của tour mới. Kết cục không rõ (GENERIC)
+      // cũng tới đây: kéo bảng tươi về xem tour đã có chưa.
+      onSettled: () => {
+        const href = createdHref.current;
+        createdHref.current = null;
+        if (href) router.push(href);
+        else router.refresh();
+      },
     });
 
   function patch(next: Partial<TourCreateFormValues>) {
@@ -118,7 +131,7 @@ function NewTourForm({
     void run(async () => {
       const result = await create(tourCreatePayload(values));
       if (!result.ok) return { ok: false, code: result.code };
-      router.push(tourTabHref(result.created.slug, 'details'));
+      createdHref.current = tourTabHref(result.created.slug, 'details');
       return { ok: true, toast: { title: t.toast.title, description: t.toast.body } };
     });
   }

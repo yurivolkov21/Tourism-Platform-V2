@@ -11,8 +11,10 @@ import type { SetPublishedAction } from '@/lib/tours-publish';
  * tour, công tắc On sale.
  *
  * Công tắc dùng lại `PublishToggle` của F11 với `blocked` khi tour còn thiếu
- * (ADR-0047 §4) — chỉ khoá CHIỀU BẬT. Không truyền `notReadyHref`: khung
- * readiness đã nằm ngay dưới, không cần nút mở tour trong toast.
+ * (ADR-0047 §4) — chỉ khoá CHIỀU BẬT. `placement="workspace"`: bị chặn ở đây
+ * nghĩa là trang đã cũ (refresh cho khung readiness nói thiếu gì), tour mất thì
+ * về `/tours` (vòng review F17). Không truyền `notReadyHref`: khung readiness đã
+ * nằm ngay dưới, không cần nút mở tour trong toast.
  */
 const t = messages.admin.tours.editor;
 const BLOCKED_NOTE_ID = 'tour-sale-blocked-note';
@@ -50,6 +52,7 @@ export function TourWorkspaceHeader({
               setPublished={setPublished}
               blocked={blocked}
               describedBy={showBlockedNote ? BLOCKED_NOTE_ID : undefined}
+              placement="workspace"
             />
           </div>
           {showBlockedNote ? (

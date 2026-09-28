@@ -291,4 +291,39 @@ describe('PublishToggle', () => {
     // Hoàn nguyên: tour vẫn tắt bán, đúng như server vẫn đang giữ.
     expect(toggle()).not.toBeChecked();
   });
+
+  describe('ở phần đầu khu làm việc tour (vòng review F17)', () => {
+    it('TOUR_NOT_READY nghĩa là trang đã cũ → câu riêng, refresh để khung readiness nói thiếu gì', async () => {
+      // Ở đây khung readiness nằm ngay dưới và công tắc chỉ bấm được khi khung
+      // nói "đủ" — bị chặn tức dữ liệu trang đã cũ (tab hay người khác vừa sửa).
+      const user = userEvent.setup();
+      const setPublished = vi.fn().mockResolvedValue({ ok: false, code: 'TOUR_NOT_READY' });
+      render(
+        <PublishToggle
+          tour={{ ...ROW, isPublished: false }}
+          setPublished={setPublished}
+          placement="workspace"
+        />,
+      );
+
+      await user.click(toggle());
+
+      await waitFor(() => expect(errorToast).toHaveBeenCalledWith(t.workspace.notReady));
+      expect(refresh).toHaveBeenCalledTimes(1);
+      expect(push).not.toHaveBeenCalled();
+      expect(toggle()).not.toBeChecked();
+    });
+
+    it('NOT_FOUND → "tour không còn" rồi về /tours, không refresh ra trang 404 trần', async () => {
+      const user = userEvent.setup();
+      const setPublished = vi.fn().mockResolvedValue({ ok: false, code: 'NOT_FOUND' });
+      render(<PublishToggle tour={ROW} setPublished={setPublished} placement="workspace" />);
+
+      await user.click(toggle());
+
+      await waitFor(() => expect(errorToast).toHaveBeenCalledWith(t.workspace.gone));
+      expect(push).toHaveBeenCalledWith('/tours');
+      expect(refresh).not.toHaveBeenCalled();
+    });
+  });
 });

@@ -3996,6 +3996,19 @@ export const messages = {
         },
         /** Nút trong toast TOUR_NOT_READY ở bảng Tours — mở thẳng khu làm việc của tour. */
         openTour: 'Open tour',
+        /**
+         * Công tắc ở phần đầu khu làm việc tour (vòng review F17): người dùng đang
+         * ĐỨNG trong tour, nên không có "open it" hay "the list below" của bảng Tours.
+         */
+        workspace: {
+          /**
+           * Công tắc chỉ bấm được khi khung readiness nói "đủ", nên bị chặn tức
+           * trang đã cũ — trang tự tải lại và khung bên dưới nói thiếu gì.
+           */
+          notReady:
+            'This tour is missing something it needs to go on sale — the list below now shows what.',
+          gone: 'This tour no longer exists.',
+        },
         toast: {
           /**
            * Hai câu cho hai việc khác nhau. `Tour.isPublished` mặc định `false`,

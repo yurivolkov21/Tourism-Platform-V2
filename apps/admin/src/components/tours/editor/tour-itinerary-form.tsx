@@ -6,6 +6,7 @@ import { Input } from '@tourism/ui/components/input';
 import { Textarea } from '@tourism/ui/components/textarea';
 import { FormField } from '@/components/kit/form-field';
 import { EditorFormFrame } from '@/components/tours/editor/editor-form-frame';
+import { usePublishSavedDetail } from '@/components/tours/editor/tour-detail-context';
 import { projectedReadiness } from '@/lib/tour-editor-view';
 import {
   hasNestedErrors,
@@ -43,6 +44,7 @@ export function TourItineraryForm({
   detail: AdminTourDetail;
   save: SetItineraryAction;
 }) {
+  const publishSaved = usePublishSavedDetail();
   const form = useTourFormState<ItineraryFormValues>(detail, itineraryFormValues);
   const { values, version, dirty, showValidation } = form;
 
@@ -59,7 +61,11 @@ export function TourItineraryForm({
           (day) => day.dayNumber,
         ),
       }),
-    onSaved: form.adopt,
+    onSaved: (next) => {
+      form.adopt(next);
+      // Phần đầu (readiness, công tắc) theo kịp ngay, không chờ lượt refresh.
+      publishSaved(next);
+    },
   });
 
   function patchDay(index: number, next: Partial<ItineraryDayDraft>) {

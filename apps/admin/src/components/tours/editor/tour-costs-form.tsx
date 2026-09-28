@@ -14,6 +14,7 @@ import { FormField } from '@/components/kit/form-field';
 import { FormSelect } from '@/components/kit/form-select';
 import { ListEditor } from '@/components/kit/list-editor';
 import { EditorFormFrame } from '@/components/tours/editor/editor-form-frame';
+import { usePublishSavedDetail } from '@/components/tours/editor/tour-detail-context';
 import { formatAmount } from '@/lib/bookings-view';
 import { newItemKey } from '@/lib/list-editor';
 import { costBreakdown } from '@/lib/tour-editor-view';
@@ -62,6 +63,7 @@ export function TourCostsForm({
   detail: AdminTourDetail;
   save: SetCostsAction;
 }) {
+  const publishSaved = usePublishSavedDetail();
   const form = useTourFormState<CostsFormValues>(detail, costsFormValues);
   const { values, version, dirty, showValidation } = form;
 
@@ -74,7 +76,11 @@ export function TourCostsForm({
     slug: detail.slug,
     version,
     projected: () => detail.readiness,
-    onSaved: form.adopt,
+    onSaved: (next) => {
+      form.adopt(next);
+      // Phần đầu (readiness, công tắc) theo kịp ngay, không chờ lượt refresh.
+      publishSaved(next);
+    },
   });
 
   function patchItem(key: string, next: Partial<CostDraft>) {

@@ -1,10 +1,10 @@
 import { notFound } from 'next/navigation';
 import { AdminShell } from '@/components/admin-shell';
 import { UnsavedChangesProvider } from '@/components/kit/unsaved-changes';
-import { TourReadinessPanel } from '@/components/tours/editor/tour-readiness-panel';
-import { TourTabs } from '@/components/tours/editor/tour-tabs';
-import { TourWorkspaceHeader } from '@/components/tours/editor/tour-workspace-header';
+import { TourDetailProvider } from '@/components/tours/editor/tour-detail-context';
+import { TourWorkspaceTop } from '@/components/tours/editor/tour-workspace-top';
 import { getServerSession } from '@/lib/api/session';
+import { settleWorkspaceTour } from '@/lib/workspace-tour';
 import { setTourPublishedAction } from '../actions';
 import { loadAdminTour } from './load-tour';
 
@@ -17,6 +17,13 @@ import { loadAdminTour } from './load-tour';
  * cả hai chỗ.
  *
  * Slug rác → `notFound()` ngay ở đây, trước khi trang con nào chạy.
+ *
+ * Phần đầu đọc bản tour mới nhất qua `TourDetailProvider`: form đẩy bản vừa lưu
+ * lên đó, vì layout không render lại khi đổi tab (vòng review F17).
+ *
+ * Không đọc được tour (API lỗi, hay khe deploy khi admin lên trước API) thì vẫn
+ * dựng thân tab trong `AdminShell`, bỏ phần đầu: tab Departures tự đọc dữ liệu
+ * và phải sống qua khe ấy (`settleWorkspaceTour`).
  */
 export default async function TourWorkspaceLayout({
   children,
@@ -26,21 +33,23 @@ export default async function TourWorkspaceLayout({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const [session, detail] = await Promise.all([getServerSession(), loadAdminTour(slug)]);
+  const [session, tour] = await Promise.all([
+    getServerSession(),
+    settleWorkspaceTour(loadAdminTour(slug)),
+  ]);
   // Null chỉ xảy ra khi phiên hết hạn ngay giữa hai request — layout của vùng
   // admin xử lý ở lần điều hướng kế (cùng nếp các trang vùng khác).
   if (!session) return null;
-  if (!detail) notFound();
+  if (tour.kind === 'missing') notFound();
+  if (tour.kind === 'unavailable') return <AdminShell user={session}>{children}</AdminShell>;
 
   return (
     <AdminShell user={session}>
       <UnsavedChangesProvider>
-        <div className="flex flex-col gap-4 px-4 lg:px-6">
-          <TourWorkspaceHeader detail={detail} setPublished={setTourPublishedAction} />
-          <TourReadinessPanel readiness={detail.readiness} slug={detail.slug} />
-          <TourTabs slug={detail.slug} />
-        </div>
-        {children}
+        <TourDetailProvider detail={tour.detail}>
+          <TourWorkspaceTop setPublished={setTourPublishedAction} />
+          {children}
+        </TourDetailProvider>
       </UnsavedChangesProvider>
     </AdminShell>
   );

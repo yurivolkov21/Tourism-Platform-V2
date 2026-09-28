@@ -13,6 +13,7 @@ import { FormField } from '@/components/kit/form-field';
 import { FormSelect } from '@/components/kit/form-select';
 import { ListEditor } from '@/components/kit/list-editor';
 import { EditorFormFrame } from '@/components/tours/editor/editor-form-frame';
+import { usePublishSavedDetail } from '@/components/tours/editor/tour-detail-context';
 import { newItemKey } from '@/lib/list-editor';
 import {
   type ContentContractCode,
@@ -55,6 +56,7 @@ export function TourContentForm({
   detail: AdminTourDetail;
   save: SetContentAction;
 }) {
+  const publishSaved = usePublishSavedDetail();
   const form = useTourFormState<ContentFormValues>(detail, contentFormValues);
   const { values, version, dirty, showValidation } = form;
 
@@ -66,7 +68,11 @@ export function TourContentForm({
     slug: detail.slug,
     version,
     projected: () => detail.readiness,
-    onSaved: form.adopt,
+    onSaved: (next) => {
+      form.adopt(next);
+      // Phần đầu (readiness, công tắc) theo kịp ngay, không chờ lượt refresh.
+      publishSaved(next);
+    },
   });
 
   function patch(next: Partial<ContentFormValues>) {

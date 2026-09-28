@@ -153,6 +153,20 @@ describe('NewTourDialog', () => {
       basePrice: '45',
     });
     expect(success).toHaveBeenCalledWith(t.toast.title, { description: t.toast.body });
+    // Điều hướng là việc SAU lệnh (vòng review F17): push trong lệnh cộng
+    // refresh ở onSettled là dựng trang tour mới hai lần.
+    expect(refresh).not.toHaveBeenCalled();
+  });
+
+  it('kết cục không rõ (GENERIC) → refresh bảng để xem tour đã có chưa, không điều hướng', async () => {
+    const create = vi.fn().mockResolvedValue({ ok: false, code: 'GENERIC' });
+    const { user, dialog } = await openDialog(create);
+
+    await fillValid(user, dialog);
+    await user.click(within(dialog).getByRole('button', { name: t.dialog.submit }));
+
+    await waitFor(() => expect(refresh).toHaveBeenCalledTimes(1));
+    expect(push).not.toHaveBeenCalled();
   });
 
   it('danh sách chọn rỗng → câu giải thích và nút tạo khoá', async () => {

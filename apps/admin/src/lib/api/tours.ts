@@ -14,6 +14,7 @@ import type {
   AdminTourSetPublishedResult,
   Paged,
 } from '@tourism/contract';
+import { AdminTourGetInputSchema } from '@tourism/contract';
 import type { ToursQuery } from '@/lib/tours-query';
 import { api, withAdminAuth } from './client';
 
@@ -86,11 +87,18 @@ export async function setAdminTourPublished(
 
 // ── Khu làm việc của một tour (spec F17) ────────────────────────────────────
 
-/** Một tour cho khu làm việc; `null` khi slug không có (trang gọi `notFound()`). */
+/**
+ * Một tour cho khu làm việc; `null` khi slug không có (trang gọi `notFound()`).
+ *
+ * Slug sai hình dạng của contract (vd dài quá trần) cũng là `null`, không gọi
+ * API (vòng review F17): API trả 400 cho input hỏng, hàm này ném lại, và một URL
+ * rác thành trang lỗi của app thay vì 404.
+ */
 export async function fetchAdminTour(
   cookie: string,
   slug: string,
 ): Promise<AdminTourDetail | null> {
+  if (!AdminTourGetInputSchema.safeParse({ slug }).success) return null;
   const [error, data] = await safe(
     api.admin.tours.get({ slug }, { context: withAdminAuth(cookie) }),
   );

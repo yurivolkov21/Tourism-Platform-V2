@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { isUncertainOutcome } from '@/lib/api/write-error';
+import { TOURS_LIST_HREF } from '@/lib/departures-query';
 import {
   isSetPublishedStale,
   type SetPublishedAction,
@@ -16,8 +17,8 @@ import {
 import type { TourRowVM } from '@/lib/tours-view';
 
 /**
- * Công tắc bán / ngừng bán của MỘT hàng trong `/tours` (spec P4e-1 §3-F11) —
- * hành vi ghi duy nhất của vùng.
+ * Công tắc bán / ngừng bán của một tour (spec P4e-1 §3-F11) — ở mỗi hàng của
+ * bảng `/tours` và ở phần đầu khu làm việc tour (F17).
  *
  * KHÔNG đi qua `ConfirmWriteDialog` như ba vùng ghi trước (lý do đầy đủ ở
  * `lib/tours-publish.ts`): thao tác này nhẹ, hoàn tác được bằng đúng cú bấm
@@ -38,6 +39,11 @@ import type { TourRowVM } from '@/lib/tours-view';
  * đăng tour (ADR-0047 §4) chen vào hai điểm: `blocked` khoá CHIỀU BẬT khi tour
  * còn thiếu (chiều gỡ bán không bao giờ khoá), và mã `TOUR_NOT_READY` từ server
  * thành toast kèm nút mở thẳng tour (`notReadyHref`).
+ *
+ * `placement="workspace"` (vòng review F17): ở phần đầu khu làm việc, công tắc
+ * chỉ bấm được khi khung readiness nói "đủ", nên `TOUR_NOT_READY` nghĩa là trang
+ * đã cũ → câu riêng rồi refresh cho khung nói thiếu gì. `NOT_FOUND` thì về
+ * `/tours` như các tab — refresh ở đây là rơi vào trang 404 trần ngoài vỏ admin.
  */
 const t = messages.admin.tours.publish;
 
@@ -49,9 +55,12 @@ export function PublishToggle({
   blocked = false,
   notReadyHref,
   describedBy,
+  placement = 'list',
 }: {
   tour: PublishToggleTour;
   setPublished: SetPublishedAction;
+  /** Công tắc nằm ở đâu — đổi cách xử lý hai mã trạng-thái-cũ (xem JSDoc). */
+  placement?: 'list' | 'workspace';
   /** Tour còn thiếu thứ khách cần — khoá chiều bật; đang bán thì vẫn gỡ được. */
   blocked?: boolean;
   /** Khu làm việc của tour, cho nút "Open tour" trong toast `TOUR_NOT_READY`. */
@@ -112,6 +121,16 @@ export function PublishToggle({
       // Bỏ lạc quan, trả về đúng thứ server đang nói — kể cả khi trong lúc chờ
       // đã có người khác đổi trạng thái tour này.
       setOptimistic(null);
+      if (placement === 'workspace' && result.code === 'TOUR_NOT_READY') {
+        toast.error(t.workspace.notReady);
+        router.refresh();
+        return;
+      }
+      if (placement === 'workspace' && result.code === 'NOT_FOUND') {
+        toast.error(t.workspace.gone);
+        router.push(TOURS_LIST_HREF);
+        return;
+      }
       // Tour còn thiếu (ADR-0047 §4): không phải trạng-thái-cũ nên không refresh;
       // toast kèm nút mở thẳng khu làm việc — nơi khung readiness nói thiếu gì.
       if (result.code === 'TOUR_NOT_READY' && notReadyHref) {
