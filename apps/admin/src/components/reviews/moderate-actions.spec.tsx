@@ -42,6 +42,7 @@ const PENDING: ModerateTarget = {
   tourTitle: 'Ha Long Bay Cruise',
   approved: false,
   state: 'pending',
+  rejectionCount: 0,
 };
 
 const APPROVED: ModerateTarget = { ...PENDING, approved: true, state: 'approved' };

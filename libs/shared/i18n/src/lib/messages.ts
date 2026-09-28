@@ -5036,13 +5036,73 @@ export const messages = {
         notePlaceholder: 'Kept in the moderation history — the author never sees it.',
         /**
          * Ở nhánh REJECT thì hai chuỗi trên nói SAI: note là LÝ DO, và nó đi
-         * thẳng vào email cho khách (ADR-0031 §6). Bắt buộc nhập — một mail
-         * "review của bạn không được đăng" mà không nói vì sao là đúng thứ §6
-         * sinh ra để chặn.
+         * thẳng vào email cho khách (ADR-0031 §6), nên bắt buộc có. Từ AMEND 1
+         * (28/09) lý do KHÔNG còn gõ tự do: admin chọn một câu chuẩn ở danh
+         * sách bên trái (`rejectReasons`) — câu ấy khoá, khách đọc nguyên văn —
+         * rồi thêm một câu chi tiết nếu cần. Gõ tay thì mỗi admin một kiểu
+         * (góp ý của giáo viên hướng dẫn).
          */
         reasonLabel: 'Why it was rejected',
-        reasonPlaceholder: 'The author reads this in the email we send them.',
-        reasonRequired: 'Tell the author why. This goes into the email they receive.',
+        reasonEmpty: 'Choose a reason from the list. The author reads it word for word.',
+        reasonMissing: 'Choose a reason from the list.',
+        detailLabel: 'Add a detail (optional)',
+        /** Mục "Other": câu chuẩn của nó không tự nói được gì, nên chi tiết là bắt buộc. */
+        detailLabelRequired: 'Add a detail',
+        detailPlaceholder: 'Point to the exact part, for example "the second photo".',
+        detailMissing: 'Say what is wrong. The author reads this right after the reason.',
+        reasonPicker: {
+          label: 'Rejection reasons',
+          searchLabel: 'Search reasons',
+          searchPlaceholder: 'Search reasons',
+          noMatch: 'No reason matches your search.',
+        },
+        /**
+         * Danh sách lý do bác (ADR-0031 AMEND 1). `label` là tên admin thấy
+         * trong danh sách; `text` là câu khách đọc NGUYÊN VĂN, trong email và
+         * trên trang booking. Câu chỉ nói VÌ SAO, không hứa đường sửa: lần bác
+         * thứ hai khách không còn sửa được, và phần "làm gì tiếp" là việc của
+         * email. Cố ý KHÔNG có lý do kiểu "đánh giá tiêu cực": bác vì bị chê là
+         * giấu ý kiến thật của khách. Thứ tự và luật "bắt buộc chi tiết" nằm ở
+         * admin `lib/reject-reasons.ts`.
+         */
+        rejectReasons: {
+          personalDetails: {
+            label: 'Personal contact details',
+            text: 'Your review includes personal contact details, such as a phone number, email or home address.',
+          },
+          peopleInPhotos: {
+            label: 'Other people in photos',
+            text: "One or more of your photos clearly shows other travellers who haven't agreed to appear in it.",
+          },
+          unrelatedPhotos: {
+            label: 'Unrelated photos',
+            text: "Some of your photos aren't from this trip.",
+          },
+          offensive: {
+            label: 'Offensive language',
+            text: 'Your review contains language that is offensive, abusive or discriminatory.',
+          },
+          offTopic: {
+            label: 'Not about the trip',
+            text: "Your review isn't about your experience on this trip.",
+          },
+          advertising: {
+            label: 'Advertising or links',
+            text: 'Your review promotes another business or includes links.',
+          },
+          bookingIssue: {
+            label: 'Booking or refund issue',
+            text: 'Your review is mainly about a booking, payment or refund issue, which our support team handles directly rather than on the tour page.',
+          },
+          copied: {
+            label: 'Copied text',
+            text: 'Your review repeats text from another review or from elsewhere online.',
+          },
+          other: {
+            label: 'Other',
+            text: "Your review can't be published as written.",
+          },
+        },
         cancel: 'Cancel',
         approveDialog: {
           title: 'Approve this review?',
@@ -5098,32 +5158,56 @@ export const messages = {
           submit: 'Reopen review',
           submitting: 'Reopening…',
         },
+        /**
+         * Copy của nhánh bác đổi theo LẦN BÁC (ADR-0031 AMEND 1 §5):
+         * `editable` khi tác giả còn sửa được sau lần này (lần đầu, có tài
+         * khoản thật); `final` khi đây là lần chung cuộc hoặc không có ai để
+         * sửa (CURATED, tài khoản đã xoá). Bản trước chỉ có câu chung cuộc —
+         * nói sai từ khi ADR-0032 mở đường sửa, và còn nhắc một nút
+         * "Unapprove" không tồn tại.
+         */
         rejectDialog: {
           title: 'Reject this review?',
-          body: 'Rejecting closes the review for good and runs everything below in one go, straight away.',
+          body: {
+            editable:
+              'Rejecting runs everything below in one go, straight away. The author can edit the review once and send it back.',
+            final:
+              'Rejecting closes the review for good and runs everything below in one go, straight away.',
+          },
           consequences: {
             /** Khác `unpublish` ở đúng chỗ này: RỜI hàng đợi. */
-            queue: 'Takes the review out of the moderation queue for good.',
+            queue: {
+              editable:
+                'Takes the review out of the moderation queue. If the author edits it, it comes back here for another look.',
+              final: 'Takes the review out of the moderation queue for good.',
+            },
             hide: 'Removes the review from the tour page.',
             hideNoTour: 'The review was not shown anywhere on the site.',
+            /** Review CHƯA duyệt vốn không ở trên site — bản trước hứa "gỡ khỏi
+             *  trang tour" cả với nó. */
+            notLive: 'The review is not on the site right now, so nothing comes down.',
             rating: (tour: string) =>
               `Recalculates the star rating of ${tour} without this review — if it was the only approved review, the tour loses its star rating until another one is approved.`,
             noRating: 'No tour rating changes — this review is not attached to a tour.',
             /** Khác `unpublish`: bác bỏ thì khách ĐƯỢC báo (ADR-0031 §6). */
-            email:
-              'Emails the author to tell them their review was not published, with your reason.',
+            email: {
+              editable: 'Emails the author your reason, with a link to edit the review once.',
+              final:
+                'Emails the author your reason, and tells them the review can no longer be edited.',
+            },
             noEmailCurated:
               'No email goes out — a curated review has no customer account behind it.',
             noEmailDeleted: 'No email goes out — the author has deleted their account.',
           },
-          /**
-           * Câu quan trọng nhất của dialog, và nó nói đúng sự thật hôm nay:
-           * `booking_id` là UNIQUE và hệ thống KHÔNG có route sửa hay xoá
-           * review, nên khách không viết lại được cho chuyến đi ấy. Đường quay
-           * lại là bước 3, chưa làm.
-           */
-          warning:
-            'The author cannot rewrite this review — one review per booking, and there is no way to edit it. Unapprove instead if you are unsure.',
+          warning: {
+            editable:
+              'If the author edits the review and it is rejected again, that rejection is final.',
+            final: 'This rejection is final — the review cannot be edited again.',
+            /** Review ĐANG hiện: còn phân vân thì Unpublish (gỡ tạm, ở lại hàng
+             *  đợi). Review đang chờ không có nút ấy — phân vân thì để nó đó. */
+            finalLive:
+              'This rejection is final — the review cannot be edited again. Unpublish instead if you are unsure.',
+          },
           submit: 'Reject review',
           submitting: 'Rejecting…',
         },

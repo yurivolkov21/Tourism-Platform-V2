@@ -7,6 +7,9 @@ import {
   type ModerateTarget,
   moderateConsequences,
   moderateErrorCopy,
+  moderationToast,
+  rejectDialogCopy,
+  rejectLeavesEditOpen,
 } from './reviews-moderate';
 
 /**
@@ -76,6 +79,7 @@ const PENDING: ModerateTarget = {
   tourTitle: 'Ha Long Bay Cruise',
   approved: false,
   state: 'pending',
+  rejectionCount: 0,
 };
 
 describe('moderateConsequences — nhánh approve', () => {
@@ -136,5 +140,107 @@ describe('moderateConsequences — nhánh unapprove', () => {
     expect(moderateConsequences(APPROVED, 'unpublish')).not.toContain(
       t.approveDialog.consequences.email,
     );
+  });
+});
+
+/**
+ * Nhánh bác nói theo LẦN BÁC (ADR-0031 AMEND 1 §5): lần đầu tác giả còn sửa được
+ * một lần, lần thứ hai là chung cuộc. Bản trước chỉ có câu chung cuộc — nói sai
+ * từ khi ADR-0032 mở đường sửa.
+ */
+describe('rejectLeavesEditOpen', () => {
+  it('lần bác ĐẦU, tác giả có tài khoản thật → còn sửa được', () => {
+    expect(rejectLeavesEditOpen(PENDING)).toBe(true);
+  });
+
+  it('đã bị bác một lần → lần này là lần thứ hai, chung cuộc (luật của contract, không chép tay)', () => {
+    expect(rejectLeavesEditOpen({ ...PENDING, rejectionCount: 1 })).toBe(false);
+  });
+
+  it('không có ai để sửa: review CURATED, hoặc tác giả đã xoá tài khoản', () => {
+    expect(rejectLeavesEditOpen({ ...PENDING, source: 'CURATED' })).toBe(false);
+    expect(rejectLeavesEditOpen({ ...PENDING, authorDeleted: true })).toBe(false);
+  });
+});
+
+describe('rejectDialogCopy', () => {
+  const c = t.rejectDialog;
+
+  it('còn đường sửa → câu mở và câu cuối nói điều đó, giọng TRUNG TÍNH (không phải cảnh báo)', () => {
+    expect(rejectDialogCopy(PENDING)).toEqual({
+      body: c.body.editable,
+      warning: c.warning.editable,
+      warningTone: 'neutral',
+    });
+  });
+
+  it('chung cuộc, review đang chờ → cảnh báo đỏ, KHÔNG nhắc Unpublish (hàng ấy không có nút đó)', () => {
+    expect(rejectDialogCopy({ ...PENDING, rejectionCount: 1 })).toEqual({
+      body: c.body.final,
+      warning: c.warning.final,
+      warningTone: 'destructive',
+    });
+  });
+
+  it('chung cuộc, review ĐANG hiện → nhắc Unpublish là đường lùi khi còn phân vân', () => {
+    expect(
+      rejectDialogCopy({ ...PENDING, approved: true, state: 'approved', rejectionCount: 1 }),
+    ).toEqual({ body: c.body.final, warning: c.warning.finalLive, warningTone: 'destructive' });
+  });
+});
+
+describe('moderateConsequences — nhánh reject', () => {
+  const c = t.rejectDialog.consequences;
+  const APPROVED: ModerateTarget = { ...PENDING, approved: true, state: 'approved' };
+
+  it('review đang chờ, lần bác đầu → rời hàng đợi (tác giả sửa thì quay lại) · không gỡ gì · email có đường sửa', () => {
+    // Review chưa duyệt vốn không ở trên site: hứa "gỡ khỏi trang tour" là nói sai
+    // (bản trước nói vậy với MỌI review có tour).
+    expect(moderateConsequences(PENDING, 'reject')).toEqual([
+      c.queue.editable,
+      c.notLive,
+      c.email.editable,
+    ]);
+  });
+
+  it('review đang hiện, lần bác thứ hai → rời hàng đợi hẳn · gỡ khỏi trang tour · tính lại sao · email chung cuộc', () => {
+    expect(moderateConsequences({ ...APPROVED, rejectionCount: 1 }, 'reject')).toEqual([
+      c.queue.final,
+      c.hide,
+      c.rating('Ha Long Bay Cruise'),
+      c.email.final,
+    ]);
+  });
+
+  it('review đang hiện nhưng không gắn tour → không hứa "trang tour", không sao nào đổi', () => {
+    expect(moderateConsequences({ ...APPROVED, tourTitle: null }, 'reject')).toEqual([
+      c.queue.editable,
+      c.hideNoTour,
+      c.noRating,
+      c.email.editable,
+    ]);
+  });
+
+  it('CURATED hay tài khoản đã xoá → chung cuộc và KHÔNG hứa email', () => {
+    expect(moderateConsequences({ ...PENDING, source: 'CURATED' }, 'reject')).toEqual([
+      c.queue.final,
+      c.notLive,
+      c.noEmailCurated,
+    ]);
+    expect(moderateConsequences({ ...PENDING, authorDeleted: true }, 'reject')).toEqual([
+      c.queue.final,
+      c.notLive,
+      c.noEmailDeleted,
+    ]);
+  });
+});
+
+describe('moderationToast', () => {
+  it('kể theo KẾT CỤC server trả, kèm tên tác giả', () => {
+    expect(moderationToast('rejected', 'Ada')).toEqual({
+      title: t.toast.rejectedTitle,
+      description: t.toast.rejectedBody('Ada'),
+    });
+    expect(moderationToast('pending', 'Ada').title).toBe(t.toast.unpublishedTitle);
   });
 });

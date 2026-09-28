@@ -1,11 +1,12 @@
 'use client';
 
-import type { ReviewModerationState } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
 import { useRouter } from 'next/navigation';
 import { useState, useTransition } from 'react';
 import { ConfirmWriteDialog } from '@/components/kit/confirm-write-dialog';
 import { DecisionButton } from '@/components/kit/decision-button';
+import { RejectReviewDialog } from '@/components/reviews/reject-review-dialog';
+import { ReviewModerationContext } from '@/components/reviews/review-moderation-context';
 import {
   isStaleStateCode,
   type ModerateAction,
@@ -14,6 +15,7 @@ import {
   type ModerateTarget,
   moderateConsequences,
   moderateErrorCopy,
+  moderationToast,
   VERDICT_OF,
 } from '@/lib/reviews-moderate';
 import type { ReviewRowVM } from '@/lib/reviews-view';
@@ -109,7 +111,16 @@ export function ModerateActions({
           {BUTTON_LABEL[action]}
         </DecisionButton>
       ))}
-      {frozenAction !== null ? (
+      {/* Bác có dialog riêng (ADR-0031 AMEND 1): lý do chọn từ danh sách chứ
+          không gõ tay. Ba lệnh kia vẫn đi qua kit. */}
+      {frozenAction === 'reject' ? (
+        <RejectReviewDialog
+          review={review}
+          moderate={moderate}
+          onClose={() => setFrozenAction(null)}
+          onSettled={refreshQueue}
+        />
+      ) : frozenAction !== null ? (
         <ModerateDialog
           review={review}
           moderate={moderate}
@@ -122,34 +133,6 @@ export function ModerateActions({
   );
 }
 
-/**
- * Trạng thái server trả về → toast. Tra theo KẾT CỤC chứ không theo nút vừa
- * bấm: một lệnh no-op (hàng đã bị người khác quyết) phải kể đúng thứ đang có.
- */
-const TOAST: Record<
-  ReviewModerationState,
-  (author: string) => { title: string; description: string }
-> = {
-  approved: (author) => ({
-    title: t.toast.approvedTitle,
-    description: t.toast.approvedBody(author),
-  }),
-  pending: (author) => ({
-    title: t.toast.unpublishedTitle,
-    description: t.toast.unpublishedBody(author),
-  }),
-  rejected: (author) => ({
-    title: t.toast.rejectedTitle,
-    description: t.toast.rejectedBody(author),
-  }),
-  // Không nút nào dẫn tới kết cục này, nhưng bảng tra theo KẾT CỤC server trả
-  // — một lệnh đua với chính tác giả (rút ngay giữa dialog) vẫn phải kể đúng.
-  retracted: (author) => ({
-    title: t.toast.retractedTitle,
-    description: t.toast.retractedBody(author),
-  }),
-};
-
 /** Bốn việc bấm được → nhãn nút và bộ copy, tra bảng chứ không ternary lồng nhau. */
 const BUTTON_LABEL: Record<ModerateActionKind, string> = {
   approve: t.approve,
@@ -158,9 +141,11 @@ const BUTTON_LABEL: Record<ModerateActionKind, string> = {
   reopen: t.reopen,
 };
 
+/** Ba lệnh đi qua kit — `reject` có dialog riêng (`RejectReviewDialog`). */
+type KitActionKind = Exclude<ModerateActionKind, 'reject'>;
+
 const DIALOG_COPY = {
   approve: t.approveDialog,
-  reject: t.rejectDialog,
   unpublish: t.unpublishDialog,
   reopen: t.reopenDialog,
 } as const;
@@ -174,17 +159,13 @@ function ModerateDialog({
 }: {
   review: ModerateTarget;
   moderate: ModerateAction;
-  action: ModerateActionKind;
+  action: KitActionKind;
   onClose: () => void;
   /** Gọi sau mọi kết cục đã chạm server — cha refresh + khoá nút. */
   onSettled: () => void;
 }) {
   const copy = DIALOG_COPY[action];
   const consequences = moderateConsequences(review, action);
-  // Bác bỏ thì ghi chú là LÝ DO và đi thẳng vào email cho khách (ADR-0031 §6),
-  // nên nó BẮT BUỘC — và hai chuỗi nhãn/gợi ý của nhánh kia ("the author never
-  // sees it") nói ngược hẳn sự thật ở đây.
-  const rejecting = action === 'reject';
 
   return (
     <ConfirmWriteDialog<ModerateContractCode>
@@ -195,10 +176,9 @@ function ModerateDialog({
         submit: copy.submit,
         submitting: copy.submitting,
         cancel: t.cancel,
-        noteLabel: rejecting ? t.reasonLabel : t.noteLabel,
-        notePlaceholder: rejecting ? t.reasonPlaceholder : t.notePlaceholder,
+        noteLabel: t.noteLabel,
+        notePlaceholder: t.notePlaceholder,
       }}
-      {...(rejecting ? { noteRequired: t.reasonRequired } : {})}
       // Nguồn review (VERIFIED/CURATED) KHÔNG có dòng riêng ở đây: nó đã nói
       // ra qua câu hệ quả email bên dưới ("a curated review has no customer
       // account behind it"), và cột Author của bảng có badge.
@@ -207,47 +187,7 @@ function ModerateDialog({
         { label: t.rating, value: review.ratingLabel },
         { label: t.tour, value: review.tourTitle ?? messages.admin.reviews.list.noTour },
       ]}
-      extra={
-        <>
-          {/* Nguyên văn review — không cắt bằng ellipsis như ở bảng: đây là thứ
-              admin đang quyết có cho lên trang tour hay không. */}
-          <div className="grid gap-2 rounded-md border bg-muted/40 p-3 text-sm">
-            {review.title ? <p className="font-medium">{review.title}</p> : null}
-            <p className="max-h-40 overflow-y-auto whitespace-pre-wrap">{review.body}</p>
-            {review.photos.length > 0 ? (
-              <div className="flex flex-wrap gap-2">
-                {/* Trình đọc màn hình phải BIẾT review kèm ảnh trước khi duyệt
-                    công khai chúng — alt từng ảnh thường rỗng (review F4). */}
-                <span className="sr-only">{review.photosLabel}</span>
-                {review.photos.map((photo) => (
-                  // `<img>` thường chứ không `next/image` — cùng lý do đã ghi ở
-                  // `review-card.tsx` của web: ảnh nhỏ cố định, không cần loader.
-                  // Thêm một lý do riêng cho admin: `next/image` NÉM khi src nằm
-                  // ngoài `remotePatterns` (xem `slot-image.spec.tsx`), và một
-                  // hàng dữ liệu như vậy sẽ giết cả hàng đợi moderation.
-                  // biome-ignore lint/performance/noImgElement: thumbnail 64px, tránh next/image ném khi host lạ
-                  <img
-                    key={photo.thumb}
-                    src={photo.thumb}
-                    alt={photo.alt}
-                    width={64}
-                    height={64}
-                    loading="lazy"
-                    decoding="async"
-                    className="size-16 rounded-sm border border-border object-cover"
-                  />
-                ))}
-              </div>
-            ) : null}
-          </div>
-
-          <ul className="grid list-disc gap-1 pl-5 text-sm">
-            {consequences.map((line) => (
-              <li key={line}>{line}</li>
-            ))}
-          </ul>
-        </>
-      }
+      extra={<ReviewModerationContext review={review} consequences={consequences} />}
       noteId={`moderate-note-${review.id}`}
       // Gỡ duyệt tô destructive dù nó ĐẢO NGƯỢC được: nó lấy đi một thứ đang
       // hiện ngoài site công khai, và làm rating tour tụt ngay lập tức — hệ
@@ -266,7 +206,7 @@ function ModerateDialog({
         if (!result.ok) return { ok: false, code: result.code };
         // Chiều đọc từ RESPONSE của server, không từ nút vừa bấm: trạng thái
         // cuối cùng là chuyện của server, client chỉ kể lại.
-        return { ok: true, toast: TOAST[result.state](review.authorLabel) };
+        return { ok: true, toast: moderationToast(result.state, review.authorLabel) };
       }}
       isStale={isStaleStateCode}
       errorCopy={moderateErrorCopy}

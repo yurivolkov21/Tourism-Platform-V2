@@ -1,4 +1,4 @@
-import type { ReviewModerationState, ReviewVerdict } from '@tourism/contract';
+import { canAuthorEdit, type ReviewModerationState, type ReviewVerdict } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
 import { createWriteErrorCodec, type TransportFailureCode } from './api/write-error';
 import type { ReviewRowVM } from './reviews-view';
@@ -78,7 +78,43 @@ export type ModerateTarget = Pick<
   | 'tourTitle'
   | 'approved'
   | 'state'
+  | 'rejectionCount'
 >;
+
+/**
+ * Sau lần bác NÀY tác giả còn sửa được review không (ADR-0031 AMEND 1 §5) —
+ * dialog nói theo câu trả lời này, và email phía API cũng vậy.
+ *
+ * Dùng CHÍNH `canAuthorEdit` của contract với số lần bác SAU lần này (ADR-0032
+ * §6): chép luật "hai lần là hết" sang chỗ thứ ba là ba chỗ sẽ trôi lệch. Cộng
+ * thêm điều kiện có người để sửa: review CURATED không có tài khoản khách nào,
+ * và tài khoản đã tự xoá thì không ai đăng nhập vào sửa được nữa.
+ */
+export function rejectLeavesEditOpen(target: ModerateTarget): boolean {
+  if (target.source === 'CURATED' || target.authorDeleted) return false;
+  return canAuthorEdit({ moderationState: 'rejected', rejectionCount: target.rejectionCount + 1 });
+}
+
+/**
+ * Câu mở và câu cuối của dialog bác, theo lần bác. Còn đường sửa thì câu cuối là
+ * lời DẶN (giọng trung tính); chung cuộc thì là lời cảnh báo đỏ. Lời khuyên
+ * "Unpublish" chỉ đi với review đang hiện — hàng đang chờ không có nút ấy.
+ */
+export function rejectDialogCopy(target: ModerateTarget): {
+  body: string;
+  warning: string;
+  warningTone: 'neutral' | 'destructive';
+} {
+  const c = t.rejectDialog;
+  if (rejectLeavesEditOpen(target)) {
+    return { body: c.body.editable, warning: c.warning.editable, warningTone: 'neutral' };
+  }
+  return {
+    body: c.body.final,
+    warning: target.approved ? c.warning.finalLive : c.warning.final,
+    warningTone: 'destructive',
+  };
+}
 
 /**
  * Hệ quả THẬT của một lần bấm, theo `ReviewsService.moderate` (flip + audit +
@@ -111,14 +147,28 @@ export function moderateConsequences(target: ModerateTarget, action: ModerateAct
 
   if (action === 'reject') {
     const c = t.rejectDialog.consequences;
+    const outcome = rejectLeavesEditOpen(target) ? 'editable' : 'final';
     // Câu ĐẦU là thứ phân biệt reject với unpublish — nó rời hàng đợi. Đặt
     // trước cả câu gỡ khỏi trang tour vì đó mới là điều người bấm cần cân
-    // nhắc: gỡ thì đảo lại được, rời hàng đợi thì không có ai xem lại nữa.
-    const lines: string[] = [c.queue, target.tourTitle ? c.hide : c.hideNoTour];
-    // Rating chỉ đổi khi review ĐANG hiện — bác một review chưa từng duyệt
-    // không đụng tới sao của tour nào.
-    if (target.approved) lines.push(target.tourTitle ? c.rating(target.tourTitle) : c.noRating);
-    lines.push(emailLine(target, c));
+    // nhắc; và nó nói theo lần bác: lần đầu tác giả sửa xong thì review quay
+    // lại đây, lần chung cuộc thì không ai xem lại nữa (ADR-0031 AMEND 1).
+    const lines: string[] = [c.queue[outcome]];
+    if (target.approved) {
+      lines.push(target.tourTitle ? c.hide : c.hideNoTour);
+      // Rating chỉ đổi khi review ĐANG hiện.
+      lines.push(target.tourTitle ? c.rating(target.tourTitle) : c.noRating);
+    } else {
+      // Review chưa duyệt vốn không ở trên site — bản trước hứa "gỡ khỏi trang
+      // tour" cả với nó (đúng câu trên ảnh user gửi 28/09).
+      lines.push(c.notLive);
+    }
+    lines.push(
+      emailLine(target, {
+        email: c.email[outcome],
+        noEmailCurated: c.noEmailCurated,
+        noEmailDeleted: c.noEmailDeleted,
+      }),
+    );
     return lines;
   }
 
@@ -140,6 +190,42 @@ function emailLine(
 ): string {
   if (target.authorDeleted) return copy.noEmailDeleted;
   return target.source === 'CURATED' ? copy.noEmailCurated : copy.email;
+}
+
+/**
+ * Trạng thái server trả về → toast. Tra theo KẾT CỤC chứ không theo nút vừa
+ * bấm: một lệnh no-op (hàng đã bị người khác quyết) phải kể đúng thứ đang có.
+ * Sống ở lib vì hai dialog cùng dùng: dialog chung của kit và dialog bác riêng.
+ */
+const TOAST: Record<
+  ReviewModerationState,
+  (author: string) => { title: string; description: string }
+> = {
+  approved: (author) => ({
+    title: t.toast.approvedTitle,
+    description: t.toast.approvedBody(author),
+  }),
+  pending: (author) => ({
+    title: t.toast.unpublishedTitle,
+    description: t.toast.unpublishedBody(author),
+  }),
+  rejected: (author) => ({
+    title: t.toast.rejectedTitle,
+    description: t.toast.rejectedBody(author),
+  }),
+  // Không nút nào dẫn tới kết cục này, nhưng bảng tra theo KẾT CỤC server trả
+  // — một lệnh đua với chính tác giả (rút ngay giữa dialog) vẫn phải kể đúng.
+  retracted: (author) => ({
+    title: t.toast.retractedTitle,
+    description: t.toast.retractedBody(author),
+  }),
+};
+
+export function moderationToast(
+  state: ReviewModerationState,
+  author: string,
+): { title: string; description: string } {
+  return TOAST[state](author);
 }
 
 /**
