@@ -8,6 +8,59 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-09-28 — Sidebar admin thu gọn thành cột icon (nhánh `fix/admin-sidebar-icon-rail`)
+
+Góp ý giao diện admin: đóng sidebar là nó trượt mất hẳn, trang không còn nút điều
+hướng nào. Giờ thu gọn thành cột icon theo mẫu application-shell-26 của shadcnstudio
+(user duyệt demo, dặn giữ vạch ngăn giữa các nhóm). Chỉ đổi giao diện admin và thêm
+hai chuỗi i18n; API và contract không đổi.
+
+- **Cột icon thay cho trượt mất** (`d6a567ea`). `collapsible="offcanvas"` đổi thành
+  `"icon"`: thu gọn còn cột rộng 66px (3rem cộng khung inset) giữ logo, icon từng
+  trang và avatar. Điện thoại vẫn là ngăn kéo: component tự đổi sang Sheet dưới
+  768px.
+- **Tooltip là nhãn của icon.** Rê vào icon thì tooltip bên phải nói tên trang, bật
+  ngay không trễ; logo nói "Nexora — Dashboard", avatar nói tên người đang đăng
+  nhập. Sidebar mở thì không có tooltip, vì nhãn đã nằm cạnh icon.
+- **Mục chưa mở nói được vì sao không bấm được.** Nút `disabled` không nhận chuột lẫn
+  tiêu điểm, nên ở cột icon tooltip "Posts · Soon" không bao giờ hiện. Đổi sang
+  `aria-disabled`: rê chuột và Tab tới được, bấm vẫn không làm gì, con trỏ
+  `not-allowed`, vẫn mờ như cũ.
+- **Trang đang mở có ô sáng** và `aria-current="page"`. Trước đây không mục nào sáng;
+  ở cột icon đó là dấu duy nhất cho biết đang ở đâu. `isActiveNav` bỏ query của href
+  (`/reviews?status=pending`), trang con sáng mục cha (`/tours/<slug>/costs` sáng
+  Tours), Dashboard chỉ sáng ở đúng `/`.
+- **Vạch ngăn giữa ba nhóm** khi thu gọn, vì nhãn nhóm ẩn ở cột icon.
+- **Nút Inbox cạnh Quick Create** ẩn hẳn ở cột icon thay vì `opacity-0`: nút trong
+  suốt vẫn nhận Tab.
+- **Giữ trạng thái khi chuyển trang.** Mỗi trang dựng lại `AdminShell` với
+  `SidebarProvider` mặc định mở, nên thu gọn rồi bấm sang trang khác là sidebar bung
+  ra. Shell giờ đọc cookie `sidebar_state` (provider tự ghi mỗi lần đổi) lúc dựng ở
+  server. Trang Dashboard trước đây tự dựng một bản khung trùng 1:1, nay dùng chung
+  `AdminShell` (`7851d236`) để chỉ còn một chỗ đọc cookie.
+
+**Review findings:** không mở vòng review riêng; test viết trước. Rà lại trước khi
+merge thêm hai ca canh (`5c2c5595`): tooltip phải bật NGAY (ca cũ dùng `findBy`, chờ
+tới 1s nên không phân biệt được với trễ 600ms mặc định của Base UI khi thiếu
+`TooltipProvider`), và Ctrl+B ghi đúng cookie mà shell đọc lại — tên cookie chép tay
+vì gói ui không export hằng của nó. 17 đột biến đều làm test đỏ: `offcanvas` thay
+`icon`, bỏ tooltip logo, bỏ `TooltipProvider`, tooltip avatar luôn ẩn, bỏ tooltip mục
+đã mở, mục Soon về `disabled`, bỏ `isActive`, bỏ `aria-current`, Inbox về
+`opacity-0`, vạch ngăn cả nhóm đầu, khớp tiền tố trần (`/tours-archive` sáng Tours),
+giữ query của href, tooltip Soon mất chữ "Soon", giá trị cookie lạ thành thu gọn,
+đổi tên cookie ở admin, đổi tên cookie ở gói ui, shell không đọc cookie. Bố cục jsdom
+không đo được, nên soi bằng CSS của bản build admin (DOM từ jsdom đổ ra trang tĩnh):
+thu gọn rộng 66px, logo hiện đủ, vạch 1px ở nhóm hai và ba, Inbox `display: none`,
+mục Soon mờ 0.5 với `pointer-events: auto` và con trỏ `not-allowed`. Trạng thái mở
+giữ nguyên, chỉ thêm ô sáng ở trang đang mở.
+
+**Không có việc hạ tầng:** không migration, không env; API không đổi code.
+
+Tests after: Vitest **4577** (web 1576, admin 1356, api 993, contract 547, core 46,
+ui 23, tokens 18, i18n 18), jest mobile 159 và mobile-ui 86. Int không chạy ở máy:
+session F18 đang dùng chung `tourism_test`, và nhánh không chạm API — CI chạy sau
+push.
+
 ## 2026-09-28 — Góp ý giao diện của lượt thử tay F17 (nhánh `fix/f17-thu-tay-gop-y`)
 
 Đóng mục CÒN TREO của entry thử tay F17 ngay dưới, cộng các góp ý user gửi thêm sau
