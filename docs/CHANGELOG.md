@@ -8,6 +8,106 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-09-28 — Vòng review F17: 24 lỗi thật, vá 23, lỗi seed tách nhánh riêng (nhánh `feat/p4e-3a-tour-editor`)
+
+Review chạy TRƯỚC merge, ở mức cao nhất: mười một góc tìm độc lập, mười nhóm
+agent kiểm chứng từng ứng viên, cộng một lượt quét sót các vùng chưa ai soi
+(phân quyền, tour chưa có ảnh bật bán, khoá ngoại khi xoá, đổi slug, server
+actions — đều sạch). Kết quả: 24 lỗi thật (2 Cao, 8 Vừa, 14 Thấp), 7 ứng viên
+bị bác, 3 mục ghi sang open-items (G9–G11). Vá 23 lỗi trên nhánh; lỗi còn lại
+(mức Cao, ở seed) chỉ nổ ở lượt seed lại 03/11 nên tách nhánh riêng làm ngay
+sau merge — chi tiết và lệnh chặn tạm ở open-items "Trước lượt seed lại 03/11".
+
+**Hai lỗi mức Cao.**
+
+1. **Seed lại nhân đôi bảng con của tour đã sửa** (CHƯA vá ở nhánh này). Khu
+   làm việc thay nguyên FAQ, chính sách, dòng chi phí bằng hàng id mới, còn
+   seed upsert theo id fixture: seed lại là FAQ và chính sách in hai lần, giá
+   vốn chụp vào booking mới gần gấp đôi, tour có thể mang hai điểm chính.
+2. **Phím mũi tên tự đổi điểm đến chính.** `RadioGroup` của Base UI bọc cả danh
+   sách điểm đến: gốc composite bắt mọi phím mũi tên nổi bọt từ nút xoá hay ô
+   chọn, dời tiêu điểm sang một radio và radio tự bấm. Nay mỗi dòng một radio
+   gốc trong `<label>`, tên đọc-màn-hình mang tên điểm đến ("Primary: Hà Nội").
+
+**Tiền, đặt chỗ và luật tour.**
+
+3. **Tên tour 161–200 ký tự làm mọi booking của tour đó 500** — cột bản chụp
+   `bookings.tour_title` chỉ 160. `TOUR_TITLE_MAX` hạ về 160. Mô tả gửi cổng
+   thanh toán cắt về 127 byte UTF-8 (trần của PayPal), giữ khoảng ngày.
+4. **Trần mọi ô tiền admin gõ tay là 999,999.99** (trần một lần thu của Stripe)
+   thay cho trần cột: giá × ghế của `total_amount`, tổng dòng chi phí của
+   `cost_price` và `fixed_cost_amount` từng tràn `Decimal(14,2)` thành 500. Một
+   luật đóng cả hai đường; admin báo câu riêng khi quá trần.
+5. **Xoá tour đúng lúc khách đặt chỗ** trả `DEPARTURE_NOT_AVAILABLE` thay vì 500
+   (khoá ngoại `P2003` ở câu INSERT booking).
+6. **Tạo và sửa chuyến giữ hàng tour `FOR SHARE`** — câu INSERT chỉ lấy
+   `KEY SHARE`, nên một chuyến quá trần từng commit đúng lúc tour đang hạ số
+   khách. Đóng G8 của open-items, kể cả hai biến thể mà G8 chưa khai.
+7. **Sàn số khách chỉ chặn khi HẠ**: dữ liệu đã lệch thì tab Details từng khoá
+   cứng, kể cả khi chỉ sửa tên.
+8. **Duyệt hay rút review không đẩy `updated_at` của tour** — cột ấy là phiên
+   bản của khu làm việc, form đang mở từng dính `STALE_TOUR` giả. Sort công khai
+   "updatedAt" nay là lần sửa nội dung gần nhất (ghi ở contract).
+
+**Khu làm việc admin.**
+
+9. **Form không bị dựng lại sau mỗi lần lưu.** Bốn trang từng dựng form với
+   `key={detail.version}`: lượt refresh sau lưu gỡ cả form — mất tiêu điểm, mất
+   chữ gõ trong khe, Save lần hai ra STALE giả; công tắc On sale refresh sau khi
+   tab khác lưu cũng xoá bản sửa dở. `useTourFormState` đón bản server mới ngay
+   trong render: form sạch thì nạp, đang sửa thì giữ chữ và hiện dải stale.
+10. **Phần đầu theo kịp lần lưu.** Lưu xong bấm ngay sang tab khác thì Next bỏ
+    lượt refresh, còn layout không render lại khi đổi tab — khung readiness kẹt
+    ở bản cũ. Form nay đẩy bản vừa lưu lên `TourDetailProvider`.
+11. **Công tắc ở phần đầu**: `TOUR_NOT_READY` nghĩa là trang đã cũ (câu riêng
+    rồi refresh); `NOT_FOUND` về `/tours` thay vì rơi vào trang 404 trần.
+12. **Khe deploy**: lượt đọc tour của layout hỏng (admin lên trước API) thì vẫn
+    dựng thân tab — tab Departures của F12 sống qua khe ấy.
+13. `liveSeatsMax` nhận 0 (DB chỉ canh `>= 0`); slug quá trần trên URL ra 404;
+    hộp New tour điều hướng một lần thay vì dựng trang tour mới hai lần.
+14. **Nút khoá trông khoá**: `buttonVariants` thêm `aria-disabled:` — nút
+    `focusableWhenDisabled` (Save khi chưa sửa, lên/xuống ở mép) từng sáng như
+    thường. Lỗi có từ F15, F17 biến nó thành trạng thái thường trực.
+15. Danh sách điểm đến bỏ nút dời (bảng không có cột thứ tự); bấm vào chữ
+    "Primary" hay "Featured" cũng chọn được; dòng dựng từ server mang key tất
+    định (hết lệch id lúc hydrate); Good for và Badges chuẩn hoá thứ tự nên tích
+    rồi bỏ tích không còn là "có thay đổi".
+16. Copy nói đúng điều server đo: "Ready to sell", hộp New tour, sàn số khách,
+    dòng báo tour tắt bán ở tab Departures; JSDoc `tours-publish.ts` lỗi thời.
+
+**Web.**
+
+17. Trang tour chịu được nhiều chính sách cùng loại và câu hỏi trùng nhau: hàng
+    ô tin cậy một ô mỗi loại, key theo vị trí.
+
+**Test xanh giả.** Tám đột biến từng sống qua bộ test, nay đều đỏ: bỏ
+`deleteMany` chính sách, bỏ `deleteMany` dòng chi phí, bỏ một cột khỏi
+`detailsColumns`, tráo hai ghi chú dữ kiện, dời bust vào trong transaction, sàn
+chặn cả khi không hạ, cổng bật bán chỉ xét tóm tắt, và bỏ `useReportUnsaved` khỏi
+khung form. Thêm ca cho `onFieldError` trả false và xoá điểm chính khi còn ba
+dòng, cùng các cặp biên N/N+1 còn thiếu của contract.
+
+**Bảy ứng viên bị bác.** Làm tròn cent từng dòng (mọi đường vào đều ≤ 2 chữ số
+lẻ); bật/tắt bán không đẩy `updatedAt` (cố ý); refresh sau lưu (chi phí có chủ
+đích); tab Departures đọc tour hai lần (song song, rẻ); `NOT_FOUND` hai nghĩa ở
+`updateDetails` (danh mục và điểm đến không xoá được); Enter trong ô một dòng
+lưu cả tab (quy ước form admin); seed lùi phiên bản và ghi đè lịch trình (bước
+6b đặt lại `now()`, lịch trình giữ bản admin).
+
+**Không có việc hạ tầng.** Không migration, không env, không webhook.
+
+CÒN TREO:
+
+- Nhánh vá seed (lỗi 1) trước lượt seed lại 03/11 — open-items.
+- Thử tay F17 trên production bằng tour MỚI tạo, gồm ba điều jsdom không canh
+  được (tiêu điểm sau khi dời một dòng, hộp `beforeunload`, Reload sau
+  `STALE_TOUR`) và hai điều mới: phím mũi tên ở dòng điểm đến không đổi điểm
+  chính; lưu rồi gõ tiếp ngay không mất chữ.
+
+Tests after: Vitest **4546** (web 1575, admin 1328, api 993, contract 547,
+core 46, ui 23, tokens 18, i18n 16), int **678 ở 45 file**, jest mobile 159 và
+mobile-ui 86.
+
 ## 2026-09-25 — F17 tạo và sửa tour (nhánh `feat/p4e-3a-tour-editor`)
 
 Admin tạo được tour mới (đang tắt bán), sửa mọi nội dung chữ và số của tour qua
