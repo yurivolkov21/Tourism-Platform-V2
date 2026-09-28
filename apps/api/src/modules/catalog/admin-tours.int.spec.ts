@@ -1,6 +1,7 @@
 import { FastifyAdapter, type NestFastifyApplication } from '@nestjs/platform-fastify';
 import { Test } from '@nestjs/testing';
 import {
+  AdminPhotoLibrarySchema,
   AdminTourCreateResultSchema,
   AdminTourDeleteResultSchema,
   type AdminTourDetail,
@@ -234,6 +235,8 @@ describe('admin tours integration (F17)', () => {
     post(`/api/admin/tours/${id}/costs`, payload, cookie);
   const signUploads = (id: string, payload: Record<string, unknown>, cookie = adminCookie) =>
     post(`/api/admin/tours/${id}/photo-uploads`, payload, cookie);
+  const library = (cookie = adminCookie) =>
+    app.inject({ method: 'GET', url: '/api/admin/tour-photo-library', headers: { cookie } });
 
   /** Payload tab Details dựng từ CHÍNH tour đang đọc — ca nào cần khác thì đè. */
   const detailsPayload = (detail: AdminTourDetail, patch: Record<string, unknown> = {}) => ({
@@ -290,6 +293,7 @@ describe('admin tours integration (F17)', () => {
       expect(
         (await signUploads(tourId(1), { id: tourId(1), count: 1 }, customerCookie)).statusCode,
       ).toBe(403);
+      expect((await library(customerCookie)).statusCode).toBe(403);
     });
 
     it('chưa đăng nhập thì mọi đường đều 401', async () => {
@@ -302,6 +306,7 @@ describe('admin tours integration (F17)', () => {
       expect((await faqsPolicies(tourId(1), {}, '')).statusCode).toBe(401);
       expect((await costs(tourId(1), {}, '')).statusCode).toBe(401);
       expect((await signUploads(tourId(1), { id: tourId(1), count: 1 }, '')).statusCode).toBe(401);
+      expect((await library('')).statusCode).toBe(401);
     });
   });
 
@@ -1228,6 +1233,55 @@ describe('admin tours integration (F17)', () => {
       await makeTour(1);
       expect((await signUploads(tourId(1), { id: tourId(1), count: 31 })).statusCode).toBe(400);
       expect((await signUploads(tourId(1), { id: tourId(1), count: 0 })).statusCode).toBe(400);
+    });
+  });
+
+  describe('photoLibrary (F18)', () => {
+    it('ảnh của mọi địa danh CÓ ảnh, theo tên; ảnh bìa đầu; địa danh ẩn vẫn có', async () => {
+      const asset = (
+        ownerId: string,
+        publicId: string,
+        patch: Partial<Prisma.MediaAssetUncheckedCreateInput> = {},
+      ) => ({
+        ownerType: 'DESTINATION' as const,
+        ownerId,
+        publicId,
+        type: 'IMAGE' as const,
+        role: 'gallery' as const,
+        alt: publicId,
+        ...patch,
+      });
+      await prisma.mediaAsset.createMany({
+        data: [
+          asset(DEST_1, 'tourism/catalog/destination/hoi-an/2', { sortOrder: 2 }),
+          asset(DEST_1, 'tourism/catalog/destination/hoi-an/1', {
+            sortOrder: 1,
+            author: 'J. Nguyen',
+            license: 'CC BY-SA 4.0',
+          }),
+          asset(DEST_1, 'tourism/catalog/destination/hoi-an/hero', { role: 'hero', sortOrder: 5 }),
+          // An Bàng đang ẩn — ảnh của nó vẫn hợp lệ cho tour.
+          asset(DEST_3, 'tourism/catalog/destination/an-bang/1', { sortOrder: 1 }),
+          // Ảnh của TOUR không thuộc thư viện.
+          {
+            ...asset(tourId(9), 'tourism/catalog/tour/somewhere'),
+            ownerType: 'TOUR' as const,
+          },
+        ],
+      });
+
+      const res = await library();
+
+      expect(res.statusCode).toBe(200);
+      const groups = AdminPhotoLibrarySchema.parse(res.json());
+      // Hà Nội (DEST_2) không có ảnh nên vắng mặt.
+      expect(groups.map((g) => g.destination.name)).toEqual(['An Bàng', 'Hội An']);
+      expect(groups[1]?.photos.map((p) => p.publicId)).toEqual([
+        'tourism/catalog/destination/hoi-an/hero',
+        'tourism/catalog/destination/hoi-an/1',
+        'tourism/catalog/destination/hoi-an/2',
+      ]);
+      expect(groups[1]?.photos[1]).toMatchObject({ author: 'J. Nguyen', license: 'CC BY-SA 4.0' });
     });
   });
 

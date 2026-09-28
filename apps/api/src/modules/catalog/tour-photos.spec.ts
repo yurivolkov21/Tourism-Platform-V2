@@ -1,5 +1,5 @@
 import type { MediaItem } from '@tourism/contract';
-import { orderTourPhotos, toAdminTourPhoto } from './tour-photos.js';
+import { orderTourPhotos, toAdminTourPhoto, toLibraryPhoto } from './tour-photos.js';
 
 const TOUR = '7a1b2c3d-0000-4000-8000-000000000001';
 
@@ -53,6 +53,20 @@ describe('toAdminTourPhoto', () => {
       width: 2400,
       height: 1600,
       source: 'LIBRARY',
+      author: 'J. Nguyen',
+      license: 'CC BY-SA 4.0',
+    });
+  });
+});
+
+describe('toLibraryPhoto', () => {
+  it('chở ảnh cùng ghi công; bỏ những cột thư viện không cần', () => {
+    expect(toLibraryPhoto(item({ author: 'J. Nguyen', license: 'CC BY-SA 4.0' }))).toEqual({
+      publicId: 'tourism/catalog/destination/hoi-an/1',
+      url: 'https://res.cloudinary.com/demo/image/upload/f_auto,q_auto/v1/tourism/x',
+      alt: 'Lanterns',
+      width: 2400,
+      height: 1600,
       author: 'J. Nguyen',
       license: 'CC BY-SA 4.0',
     });

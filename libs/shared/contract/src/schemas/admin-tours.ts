@@ -330,3 +330,24 @@ export const AdminTourSignPhotoUploadsInputSchema = z.object({
   count: z.int().min(1).max(TOUR_PHOTOS_MAX),
 });
 export type AdminTourSignPhotoUploadsInput = z.output<typeof AdminTourSignPhotoUploadsInputSchema>;
+
+/** Một ảnh trong kho địa danh (ADR-0020 §5) — thứ hộp Add from library bày ra. */
+export const AdminLibraryPhotoSchema = z.object({
+  publicId: z.string().min(1),
+  url: z.url(),
+  alt: z.string().nullable(),
+  width: z.int().positive().nullable(),
+  height: z.int().positive().nullable(),
+  author: z.string().nullable(),
+  license: z.string().nullable(),
+});
+export type AdminLibraryPhoto = z.output<typeof AdminLibraryPhotoSchema>;
+
+/** Kho ảnh theo địa danh, sắp theo tên; địa danh không có ảnh thì vắng mặt. */
+export const AdminPhotoLibrarySchema = z.array(
+  z.object({
+    destination: z.object({ id: z.uuid(), name: z.string() }),
+    photos: z.array(AdminLibraryPhotoSchema),
+  }),
+);
+export type AdminPhotoLibrary = z.output<typeof AdminPhotoLibrarySchema>;

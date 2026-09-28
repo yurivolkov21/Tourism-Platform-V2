@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { Injectable, Logger } from '@nestjs/common';
 import {
+  type AdminPhotoLibrary,
   type AdminTourCostsInput,
   type AdminTourCreateInput,
   type AdminTourCreateResult,
@@ -42,7 +43,7 @@ import {
 } from './admin-tour-errors.js';
 import { costItemsOf } from './tour-cost-items.js';
 import { liveSeatsMax } from './tour-editor-rules.js';
-import { orderTourPhotos, toAdminTourPhoto } from './tour-photos.js';
+import { orderTourPhotos, toAdminTourPhoto, toLibraryPhoto } from './tour-photos.js';
 import { claimTour, readTourReadiness } from './tour-state.js';
 
 /**
@@ -511,6 +512,27 @@ export class AdminToursService {
       `[admin] tour photo uploads signed ${JSON.stringify({ id: input.id, count: input.count })}`,
     );
     return signed;
+  }
+
+  /**
+   * Kho ảnh địa danh làm thư viện của tour (ADR-0048 §9, ADR-0020 §5): mọi ảnh
+   * `DESTINATION`, theo tên địa danh, trong MỘT lần gọi (khoảng 155 ảnh). Địa danh
+   * đang ẩn vẫn có mặt — ảnh của nó vẫn dùng được; địa danh không có ảnh thì vắng.
+   */
+  async photoLibrary(): Promise<AdminPhotoLibrary> {
+    const destinations = await prisma.destination.findMany({
+      select: { id: true, name: true },
+      orderBy: { name: 'asc' },
+    });
+    const media = await this.media.resolveForOwners(
+      MediaOwnerType.DESTINATION,
+      destinations.map((destination) => destination.id),
+      [MediaRole.hero, MediaRole.gallery],
+    );
+    return destinations.flatMap((destination) => {
+      const photos = orderTourPhotos(media.get(destination.id) ?? []);
+      return photos.length === 0 ? [] : [{ destination, photos: photos.map(toLibraryPhoto) }];
+    });
   }
 
   /**

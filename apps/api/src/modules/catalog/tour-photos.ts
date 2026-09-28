@@ -1,4 +1,4 @@
-import type { AdminTourPhoto, MediaItem } from '@tourism/contract';
+import type { AdminLibraryPhoto, AdminTourPhoto, MediaItem } from '@tourism/contract';
 import { isTourUploadPublicId } from '../../lib/upload-signing.js';
 
 /**
@@ -33,6 +33,19 @@ export function toAdminTourPhoto(
     width: item.width,
     height: item.height,
     source: isTourUploadPublicId(rootFolder, tourId, item.publicId) ? 'UPLOAD' : 'LIBRARY',
+    author: item.author,
+    license: item.license,
+  };
+}
+
+/** Một asset của kho địa danh → ảnh của hộp Add from library. */
+export function toLibraryPhoto(item: MediaItem): AdminLibraryPhoto {
+  return {
+    publicId: item.publicId,
+    url: item.url,
+    alt: item.alt,
+    width: item.width,
+    height: item.height,
     author: item.author,
     license: item.license,
   };

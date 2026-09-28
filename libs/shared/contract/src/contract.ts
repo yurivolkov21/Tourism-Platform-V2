@@ -29,6 +29,7 @@ import {
   AdminDestinationUpdateInputSchema,
 } from './schemas/admin-destinations.js';
 import {
+  AdminPhotoLibrarySchema,
   AdminTourCostsInputSchema,
   AdminTourCreateInputSchema,
   AdminTourCreateResultSchema,
@@ -1171,6 +1172,15 @@ export const contract = {
           NOT_FOUND: { status: 404, message: 'Tour not found' },
         })
         .output(z.array(SignedUploadParamsSchema)),
+      // Route KHÔNG nằm dưới `/api/admin/tours/…`: `GET /api/admin/tours/{slug}` có
+      // sẵn sẽ nuốt nó, và một tour có slug `photo-library` là hợp lệ.
+      photoLibrary: oc
+        .route({
+          method: 'GET',
+          path: '/api/admin/tour-photo-library',
+          summary: 'Every destination photo a tour can use (ADR-0048 §9)',
+        })
+        .output(AdminPhotoLibrarySchema),
       delete: oc
         .route({
           method: 'POST',

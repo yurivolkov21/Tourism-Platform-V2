@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { contract } from '../contract.js';
 import {
+  AdminPhotoLibrarySchema,
   AdminTourCostsInputSchema,
   AdminTourCreateInputSchema,
   AdminTourDetailSchema,
@@ -434,5 +435,27 @@ describe('AdminTourSignPhotoUploadsInputSchema (ADR-0048 §4)', () => {
     expect(AdminTourSignPhotoUploadsInputSchema.safeParse({ id, count: 0 }).success).toBe(false);
     expect(AdminTourSignPhotoUploadsInputSchema.safeParse({ id, count: 31 }).success).toBe(false);
     expect(AdminTourSignPhotoUploadsInputSchema.safeParse({ id, count: 1.5 }).success).toBe(false);
+  });
+});
+
+describe('AdminPhotoLibrarySchema (ADR-0048 §9)', () => {
+  it('mỗi nhóm một địa danh kèm ảnh; ảnh mang ghi công khi có', () => {
+    const library = [
+      {
+        destination: { id: '7a1b2c3d-0000-4000-8000-0000000000d1', name: 'Hội An' },
+        photos: [
+          {
+            publicId: 'tourism/catalog/destination/hoi-an/1',
+            url: 'https://res.cloudinary.com/demo/image/upload/f_auto,q_auto/v1/x',
+            alt: 'Lanterns',
+            width: 2400,
+            height: 1600,
+            author: 'J. Nguyen',
+            license: 'CC BY-SA 4.0',
+          },
+        ],
+      },
+    ];
+    expect(AdminPhotoLibrarySchema.parse(library)).toEqual(library);
   });
 });

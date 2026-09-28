@@ -124,6 +124,13 @@ export class AdminToursController {
     });
   }
 
+  @Implement(contract.admin.tours.photoLibrary)
+  photoLibrary() {
+    return implement(contract.admin.tours.photoLibrary).handler(() =>
+      this.adminTours.photoLibrary(),
+    );
+  }
+
   @Implement(contract.admin.tours.delete)
   delete() {
     return implement(contract.admin.tours.delete).handler(async ({ input, errors }) => {
