@@ -13,9 +13,10 @@ import {
 } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
 import { createWriteErrorCodec, type TransportFailureCode } from './api/write-error';
+import { cloudinaryImageUrl } from './cloudinary-url';
 import { type Keyed, newItemKey } from './list-editor';
 import { imageExtensionOf, type UploadedPhoto } from './photo-upload';
-import { cloudinaryImageUrl, onSaleShortfalls, projectedReadiness } from './tour-editor-view';
+import { onSaleShortfalls, projectedReadiness } from './tour-editor-view';
 import type { EditorWriteResult } from './tour-editor-write';
 
 /**

@@ -3,7 +3,6 @@ import { describe, expect, it } from 'vitest';
 import { detailFixture } from '@/test/tour-detail';
 import {
   activeTourTab,
-  cloudinaryImageUrl,
   costBreakdown,
   formatDayList,
   onSaleShortfalls,
@@ -218,7 +217,7 @@ describe('tab Photos và mục ảnh bìa (F18)', () => {
   });
 });
 
-describe('tourPhotoThumb / cloudinaryImageUrl', () => {
+describe('tourPhotoThumb', () => {
   const url = 'https://res.cloudinary.com/demo/image/upload/f_auto,q_auto/v17/tourism/x';
   it('thumbnail chèn w_320, KHÔNG bao giờ c_fill (ADR-0020 §4); URL lạ trả nguyên', () => {
     expect(tourPhotoThumb(url)).toBe(
@@ -226,12 +225,6 @@ describe('tourPhotoThumb / cloudinaryImageUrl', () => {
     );
     expect(tourPhotoThumb(url)).not.toContain('c_fill');
     expect(tourPhotoThumb('https://example.com/a.jpg')).toBe('https://example.com/a.jpg');
-  });
-
-  it('ảnh vừa tải lên dựng đúng khuôn URL của API (buildCloudinaryUrl)', () => {
-    expect(cloudinaryImageUrl('demo', 'tourism/tours/t/abc', '1759000000')).toBe(
-      'https://res.cloudinary.com/demo/image/upload/f_auto,q_auto/v1759000000/tourism/tours/t/abc',
-    );
   });
 });
 

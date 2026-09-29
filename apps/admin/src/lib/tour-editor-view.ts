@@ -10,6 +10,7 @@ import {
   tourReadiness,
 } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
+import { withDeliveryTransform } from './cloudinary-url';
 
 /**
  * VM THUẦN của khu làm việc tour (spec F17 §2g–§2i) — mọi phép tính mà component
@@ -200,23 +201,13 @@ export function onSaleShortfalls(
   };
 }
 
-/** Đoạn transform mà `buildCloudinaryUrl` phía API gắn cho ảnh (ADR-0005). */
-const CLOUDINARY_IMAGE_TRANSFORM = '/upload/f_auto,q_auto/';
-
 /**
  * Thumbnail 320px cho dòng ảnh của tab Photos. `w_` thu nhỏ giữ tỉ lệ; khung 3:2
  * do CSS `object-fit: cover` lo. KHÔNG `c_fill` như `reviewPhotoThumb`: cắt cúp ảnh
  * CC BY-SA tạo tác phẩm phái sinh (ADR-0020 §4). URL không theo khuôn trả nguyên.
  */
 export function tourPhotoThumb(url: string): string {
-  return url.includes(CLOUDINARY_IMAGE_TRANSFORM)
-    ? url.replace(CLOUDINARY_IMAGE_TRANSFORM, '/upload/f_auto,q_auto,w_320/')
-    : url;
-}
-
-/** URL delivery của ảnh VỪA tải lên — đúng khuôn `buildCloudinaryUrl` phía API. */
-export function cloudinaryImageUrl(cloudName: string, publicId: string, version: string): string {
-  return `https://res.cloudinary.com/${cloudName}/image/upload/f_auto,q_auto/v${version}/${publicId}`;
+  return withDeliveryTransform(url, 'w_320');
 }
 
 /** Nhãn một mục trong ô chọn danh mục/điểm đến — mục đã ẩn mang dấu "(hidden)". */

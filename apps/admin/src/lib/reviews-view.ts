@@ -1,6 +1,7 @@
 import type { AdminReview, ReviewModerationState } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
 import { formatDateTime } from './bookings-view';
+import { withDeliveryTransform } from './cloudinary-url';
 
 /**
  * Mapper hiển thị hàng đợi moderation (spec P4b §3-F4) — THUẦN, nằm ngoài
@@ -84,12 +85,8 @@ export interface ReviewRowVM {
  * hàng trăm MB chỉ để vẽ ô 32px (review F4 31/08). URL không theo khuôn
  * (host lạ/dữ liệu cũ) thì trả nguyên vẹn — thà nặng còn hơn vỡ ảnh.
  */
-const CLOUDINARY_UPLOAD_MARKER = '/upload/f_auto,q_auto/';
-
 export function reviewPhotoThumb(url: string): string {
-  return url.includes(CLOUDINARY_UPLOAD_MARKER)
-    ? url.replace(CLOUDINARY_UPLOAD_MARKER, '/upload/f_auto,q_auto,w_128,h_128,c_fill/')
-    : url;
+  return withDeliveryTransform(url, 'w_128,h_128,c_fill');
 }
 
 /**
@@ -101,9 +98,7 @@ export function reviewPhotoThumb(url: string): string {
  * giữ nguyên khung hình, và không phóng to ảnh vốn đã nhỏ.
  */
 export function reviewPhotoLarge(url: string): string {
-  return url.includes(CLOUDINARY_UPLOAD_MARKER)
-    ? url.replace(CLOUDINARY_UPLOAD_MARKER, '/upload/f_auto,q_auto,w_800,c_limit/')
-    : url;
+  return withDeliveryTransform(url, 'w_800,c_limit');
 }
 
 /** Review của contract → hàng bảng đã format sẵn (server component gọi). */
