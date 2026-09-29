@@ -4,7 +4,12 @@ import type { JsonifiedClient } from '@orpc/openapi-client';
 import { OpenAPILink } from '@orpc/openapi-client/fetch';
 import { contract } from '@tourism/contract';
 import { apiOrigin } from './env';
-import { BROWSER_TIMEOUT_MS, createRetryingFetch, SERVER_TIMEOUT_MS } from './retry-fetch';
+import {
+  BROWSER_TIMEOUT_MS,
+  createRetryingFetch,
+  retryDelaysFor,
+  SERVER_TIMEOUT_MS,
+} from './retry-fetch';
 
 /** Context per-call: Server Component điều khiển Next Data Cache qua đây. */
 export interface ApiClientContext {
@@ -133,6 +138,11 @@ const isServer = () => typeof window === 'undefined';
 /**
  * `AbortSignal.timeout()` dựng LẠI ở từng lượt: dùng chung một signal thì lượt
  * thử thứ hai nhận ngay signal đã hết hạn và chết tức khắc.
+ *
+ * Lịch chờ chọn MỘT lần lúc nạp module theo `NEXT_PHASE` (ADR-0044 AMEND 1):
+ * worker prerender của `next build` đã có biến này trước khi nạp, nên lấy lịch
+ * dài; lúc chạy thì lấy lịch ngắn. Trình duyệt không thử lại nên lịch nào cũng
+ * vậy — ở đó `process.env.NEXT_PHASE` chỉ là `undefined`.
  */
 const resilientFetch = createRetryingFetch({
   fetch: (request, init) =>
@@ -142,6 +152,10 @@ const resilientFetch = createRetryingFetch({
     }),
   sleep: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
   isServer,
+  delaysMs: retryDelaysFor(process.env.NEXT_PHASE),
+  // Log build và log runtime của Vercel đều giữ stderr — nhìn đó biết lớp thử
+  // lại đã cứu lượt nào.
+  log: (line) => console.warn(`[retry-fetch] ${line}`),
 });
 
 const link = new OpenAPILink<ApiClientContext>(contract, {
