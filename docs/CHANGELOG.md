@@ -8,6 +8,34 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-09-29 — P6: ADR-0050 và spec trợ lý AI, ghim AI SDK trước freeze (nhánh `chore/p6-pin-ai-sdk`)
+
+P6 chỉ lên ý tưởng lúc này (user dặn 29/09: admin xong trước mới thi công). Thiết kế
+chốt qua brainstorm từng câu một, ba phần đều được duyệt:
+
+- `8ecdef7c` (đã lên `main` trước nhánh): ADR-0050, spec
+  `docs/specs/2026-09-29-p6-ai-concierge-design.md`, ADR-0001 AMEND 2 (AI SDK 7 thay 6),
+  bản đồ docs, dòng P6 của open-items. Chat là module của API NestJS, lịch sử giữ ở
+  server, `submitEnquiry` phải được khách bấm duyệt, trần chi phí bốn lớp, lưu hội thoại
+  30 ngày, nút nổi trên web.
+- `25952903`: ADR-0050 §7 và spec §7 ghi đúng bản ghim; web cần khai cả gói `ai` (cho
+  `DefaultChatTransport`), không chỉ `@ai-sdk/react`.
+- `3f646ace`: ghim `ai` 7.0.118 và `@ai-sdk/anthropic` 4.0.65 vào `apps/api`; `ai`
+  7.0.118 và `@ai-sdk/react` 4.0.121 vào `apps/web`. Bản mới nhất ngày 29/09 (7.0.122,
+  4.0.68, 4.0.125) chưa đủ một ngày nên cổng `minimumReleaseAge` của pnpm lấy bản liền
+  trước; `@ai-sdk/react` 4.0.121 là bản kéo đúng `ai` 7.0.118, nên cả repo có một bản
+  `ai`, một bộ `@ai-sdk/provider`, peer zod dùng 4.4.3 sẵn có. Lockfile trỏ cây jest và
+  React Navigation của mobile sang bản trùng đã có sẵn trên `main` (`@types/node`
+  26.6.2, `nanoid` 3.3.19, `react-is` 19.3.0), không thêm gói lạ. `pnpm audit --prod`:
+  không advisory nào ở gói mới. Chưa có code nào import ba gói này.
+
+**Review findings:** user duyệt spec; nhánh chỉ đổi dependency, chưa có vòng review
+riêng.
+
+Tests after (`gate:int` trên đỉnh nhánh, hết 667 giây): unit 4862 — web 1592, admin
+1441, api 1005, contract 560, mobile 159, core 46, ui 23, i18n 18, tokens 18 — và int
+702/702 trên DB riêng.
+
 ## 2026-09-29 — Web lấy đủ mọi trang tour, không dừng ở 50 (nhánh `fix/web-tours-all-pages`, đóng G10)
 
 `fetchTours` từng chỉ đọc trang 1 `limit: 50` của `catalog.tours.list` (contract cho tối
