@@ -1,7 +1,7 @@
 import { type AdminTourDetail, tourReadiness } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
 import { describe, expect, it } from 'vitest';
-import { detailFixture } from '@/test/tour-detail';
+import { COVER_PHOTO, detailFixture } from '@/test/tour-detail';
 import {
   activeTourStep,
   costBreakdown,
@@ -12,6 +12,7 @@ import {
   readinessIssues,
   removedItineraryDays,
   TOUR_EDITOR_STEPS,
+  tourCardPreview,
   tourPhotoThumb,
   tourStepHref,
   tourSteps,
@@ -348,5 +349,58 @@ describe('tourSteps', () => {
     );
     expect(one.content?.summary).toBe('Optional · 1 question · 1 policy');
     expect(one.costs?.summary).toBe('Optional · 1 cost line');
+  });
+});
+
+/**
+ * Thẻ xem trước card /tours ở cột phải bước Details (spec F19 §2d.1): đọc giá trị ĐANG
+ * GÕ, chữ và cách ghép giống card web (`tour-list-card.tsx`).
+ */
+describe('tourCardPreview', () => {
+  const draft = {
+    title: '  Ha Long Bay Cruise ',
+    summary: 'Three days on the bay.',
+    isFeatured: true,
+    days: 3,
+    groupSize: 12,
+    basePrice: '199.00',
+    primaryDestination: 'Hạ Long',
+  };
+
+  it('đọc bản đang gõ: tên cắt khoảng trắng, dữ kiện như card web, giá định dạng tiền', () => {
+    expect(tourCardPreview(detailFixture({ ratingAvg: '4.66', ratingCount: 1280 }), draft)).toEqual(
+      {
+        coverUrl: COVER_PHOTO.url,
+        title: 'Ha Long Bay Cruise',
+        summary: 'Three days on the bay.',
+        featured: true,
+        facts: 'Hạ Long · 3 days · Max 12',
+        rating: { value: '4.7', count: '1,280' },
+        price: '$199.00',
+      },
+    );
+  });
+
+  it('ô gõ dở thì bỏ mẩu ấy; giá chưa hợp lệ in "—"; tên trống là "Untitled tour"; chưa có ảnh', () => {
+    const vm = tourCardPreview(detailFixture({ photos: [] }), {
+      ...draft,
+      title: '  ',
+      days: Number.NaN,
+      groupSize: 0,
+      basePrice: '12.',
+      primaryDestination: null,
+    });
+    expect(vm.title).toBe('Untitled tour');
+    expect(vm.facts).toBe('');
+    expect(vm.price).toBe('—');
+    expect(vm.coverUrl).toBeNull();
+    // Fixture gốc: chưa ai đánh giá (`ratingAvg: null`) — card web in "Not yet reviewed".
+    expect(vm.rating).toBeNull();
+  });
+
+  it('một ngày đọc "1 day"; giá 0 không phải giá gốc hợp lệ', () => {
+    const vm = tourCardPreview(detailFixture(), { ...draft, days: 1, basePrice: '0' });
+    expect(vm.facts).toBe('Hạ Long · 1 day · Max 12');
+    expect(vm.price).toBe('—');
   });
 });

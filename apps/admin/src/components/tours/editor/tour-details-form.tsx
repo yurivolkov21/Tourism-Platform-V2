@@ -12,16 +12,29 @@ import {
   TravellerTypeSchema,
 } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@tourism/ui/components/card';
 import { Checkbox } from '@tourism/ui/components/checkbox';
 import { Input } from '@tourism/ui/components/input';
 import { Textarea } from '@tourism/ui/components/textarea';
+import { cn } from '@tourism/ui/lib/utils';
 import { LockIcon } from 'lucide-react';
 import { useId, useState } from 'react';
 import { FormField } from '@/components/kit/form-field';
 import { FormSelect } from '@/components/kit/form-select';
 import { ListEditor } from '@/components/kit/list-editor';
-import { DeleteTourZone } from '@/components/tours/editor/delete-tour-zone';
 import { EditorFormFrame } from '@/components/tours/editor/editor-form-frame';
+import {
+  type ChecklistItem,
+  StepChecklist,
+  StepTips,
+  TourCardPreview,
+} from '@/components/tours/editor/step-aside';
 import { usePublishSavedDetail } from '@/components/tours/editor/tour-detail-context';
 import type { TourEditorOptions } from '@/lib/api/tours';
 import { newItemKey } from '@/lib/list-editor';
@@ -30,9 +43,10 @@ import {
   optionLabel,
   projectedReadiness,
   removedItineraryDays,
+  tourCardPreview,
+  tourStepHref,
 } from '@/lib/tour-editor-view';
 import {
-  type DeleteTourAction,
   type DestinationDraft,
   type DetailsContractCode,
   detailsErrorCopy,
@@ -49,8 +63,9 @@ import { useSectionSave } from '@/lib/use-section-save';
 import { useTourFormState } from '@/lib/use-tour-form-state';
 
 /**
- * Tab Details (spec F17 §2h): ba khung — Basics, Destinations, Selling points —
- * một nút Save, và vùng xoá ở cuối.
+ * Bước Details (spec F17 §2h, F19 §2d.1): ba card — Basics, Destinations, Selling
+ * points — một nút Save; cột phải là việc cần làm của bước (tính trên giá trị ĐANG
+ * SOẠN), thẻ xem trước card /tours và gợi ý. Vùng xoá tour ở bước Review & publish.
  *
  * `detail` đọc từ PROPS cho mọi luật phụ thuộc trạng thái server (đang bán? có
  * chuyến? sàn ghế?) — sau khi admin bấm On sale ở phần đầu, `router.refresh()`
@@ -62,6 +77,7 @@ import { useTourFormState } from '@/lib/use-tour-form-state';
 const e = messages.admin.tours.editor;
 const t = e.details;
 const fe = e.form.errors;
+const a = e.aside;
 
 /**
  * Giá trị canh của mục "Not set" trong ô độ khó: Base UI coi chuỗi rỗng là CHƯA
@@ -73,12 +89,10 @@ export function TourDetailsForm({
   detail,
   options,
   save: saveAction,
-  remove,
 }: {
   detail: AdminTourDetail;
   options: TourEditorOptions;
   save: UpdateDetailsAction;
-  remove: DeleteTourAction;
 }) {
   const publishSaved = usePublishSavedDetail();
   const form = useTourFormState<TourDetailsFormValues>(detail, detailsFormValues);
@@ -183,6 +197,44 @@ export function TourDetailsForm({
     errors.maxGroupSize ??
     (shownFieldError?.field === 'maxGroupSize' ? shownFieldError.message : undefined);
 
+  // Cột phải đọc giá trị ĐANG SOẠN (ADR-0049 §6) — thanh bước mới đọc bản đã lưu. Dòng
+  // điểm đến chưa chọn không tính: Save sẽ chặn nó bằng "Choose a destination.".
+  const draftReadiness = projectedReadiness(detail, {
+    summary: values.summary,
+    destinations: values.destinations.filter((line) => line.destinationId !== ''),
+  });
+  const checklist: ChecklistItem[] = [
+    {
+      key: 'summary',
+      label: e.readiness.summary,
+      detail: a.required,
+      state: draftReadiness.summary ? 'ok' : 'warn',
+    },
+    {
+      key: 'primaryDestination',
+      label: e.readiness.primaryDestination,
+      detail: a.required,
+      state: draftReadiness.primaryDestination ? 'ok' : 'warn',
+    },
+    {
+      key: 'selling',
+      label: a.details.sellingOptional,
+      detail: a.details.shownWhenFilled,
+      state: 'optional',
+    },
+  ];
+  const primaryId = values.destinations.find((line) => line.isPrimary)?.destinationId;
+  const preview = tourCardPreview(detail, {
+    title: values.title,
+    summary: values.summary,
+    isFeatured: values.isFeatured,
+    days,
+    groupSize: parseWholeNumber(values.maxGroupSize),
+    basePrice: values.basePrice,
+    primaryDestination:
+      options.destinations.find((option) => option.id === primaryId)?.name ?? null,
+  });
+
   return (
     <div className="flex flex-col gap-6 px-4 pb-8 lg:px-6">
       <EditorFormFrame
@@ -193,338 +245,368 @@ export function TourDetailsForm({
         note={t.basePriceNote}
         onSubmit={submit}
         onReload={form.reload}
+        aside={
+          <>
+            <StepChecklist items={checklist} />
+            <TourCardPreview preview={preview} />
+            <StepTips items={a.details.tips} />
+          </>
+        }
+        next={{ href: tourStepHref(detail.slug, 'photos'), label: e.tabs.photos }}
       >
-        <fieldset className="grid gap-4 rounded-lg border p-4">
-          <legend className="px-1 text-sm font-semibold">{t.sections.basics}</legend>
-
-          <FormField id="tour-title" label={t.title} error={errors.title}>
-            {(describedBy) => (
-              <Input
-                id="tour-title"
-                value={values.title}
-                disabled={pending}
-                aria-invalid={errors.title !== undefined}
-                aria-describedby={describedBy}
-                onChange={(event) => patch({ title: event.target.value })}
-              />
-            )}
-          </FormField>
-
-          <FormField
-            id="tour-summary"
-            label={t.summary}
-            hint={t.summaryHint(TOUR_SUMMARY_MAX)}
-            error={errors.summary}
-          >
-            {(describedBy) => (
-              <Textarea
-                id="tour-summary"
-                rows={3}
-                value={values.summary}
-                disabled={pending}
-                aria-invalid={errors.summary !== undefined}
-                aria-describedby={describedBy}
-                onChange={(event) => patch({ summary: event.target.value })}
-              />
-            )}
-          </FormField>
-
-          <div className="grid gap-4 sm:grid-cols-2">
-            <FormField id="tour-category" label={t.category} error={errors.categoryId}>
+        <Card>
+          <CardHeader>
+            <CardTitle>{t.sections.basics}</CardTitle>
+            <CardDescription>{a.details.basicsBody}</CardDescription>
+          </CardHeader>
+          <CardContent className="grid gap-4">
+            <FormField id="tour-title" label={t.title} error={errors.title}>
               {(describedBy) => (
-                <FormSelect
-                  id="tour-category"
-                  value={values.categoryId}
-                  options={categoryOptions}
-                  placeholder={t.categoryPlaceholder}
+                <Input
+                  id="tour-title"
+                  value={values.title}
                   disabled={pending}
-                  invalid={errors.categoryId !== undefined}
-                  describedBy={describedBy}
-                  onValueChange={(categoryId) => patch({ categoryId })}
+                  aria-invalid={errors.title !== undefined}
+                  aria-describedby={describedBy}
+                  onChange={(event) => patch({ title: event.target.value })}
                 />
               )}
             </FormField>
-            <FormField id="tour-difficulty" label={t.difficulty}>
-              {(describedBy) => (
-                <FormSelect
-                  id="tour-difficulty"
-                  value={values.difficulty === '' ? NOT_SET : values.difficulty}
-                  options={difficultyOptions}
-                  placeholder={t.difficultyNotSet}
-                  disabled={pending}
-                  describedBy={describedBy}
-                  onValueChange={(value) =>
-                    patch({ difficulty: value === NOT_SET ? '' : (value as TourDifficulty) })
-                  }
-                />
-              )}
-            </FormField>
-          </div>
 
-          <CheckboxRow
-            id="tour-featured"
-            label={t.featured}
-            description={t.featuredHint}
-            checked={values.isFeatured}
-            disabled={pending}
-            onChange={(isFeatured) => patch({ isFeatured })}
-          />
-
-          <div className="grid gap-4 sm:grid-cols-3">
             <FormField
-              id="tour-duration"
-              label={t.durationDays}
-              hint={locked ? fe.durationLocked : undefined}
-              error={durationError}
+              id="tour-summary"
+              label={t.summary}
+              hint={t.summaryHint(TOUR_SUMMARY_MAX)}
+              error={errors.summary}
             >
               {(describedBy) => (
-                <div className="relative">
-                  <Input
-                    id="tour-duration"
-                    inputMode="numeric"
-                    value={values.durationDays}
-                    // Tour đã có chuyến thì số ngày khoá hẳn (ADR-0047 §6).
-                    disabled={pending || locked}
-                    aria-invalid={durationError !== undefined}
-                    aria-describedby={describedBy}
-                    onChange={(event) => patch({ durationDays: event.target.value })}
+                <Textarea
+                  id="tour-summary"
+                  rows={3}
+                  value={values.summary}
+                  disabled={pending}
+                  aria-invalid={errors.summary !== undefined}
+                  aria-describedby={describedBy}
+                  onChange={(event) => patch({ summary: event.target.value })}
+                />
+              )}
+            </FormField>
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              <FormField id="tour-category" label={t.category} error={errors.categoryId}>
+                {(describedBy) => (
+                  <FormSelect
+                    id="tour-category"
+                    value={values.categoryId}
+                    options={categoryOptions}
+                    placeholder={t.categoryPlaceholder}
+                    disabled={pending}
+                    invalid={errors.categoryId !== undefined}
+                    describedBy={describedBy}
+                    onValueChange={(categoryId) => patch({ categoryId })}
                   />
-                  {locked ? (
-                    <LockIcon
-                      aria-hidden="true"
-                      className="pointer-events-none absolute top-1/2 right-2 size-4 -translate-y-1/2 text-muted-foreground"
+                )}
+              </FormField>
+              <FormField id="tour-difficulty" label={t.difficulty}>
+                {(describedBy) => (
+                  <FormSelect
+                    id="tour-difficulty"
+                    value={values.difficulty === '' ? NOT_SET : values.difficulty}
+                    options={difficultyOptions}
+                    placeholder={t.difficultyNotSet}
+                    disabled={pending}
+                    describedBy={describedBy}
+                    onValueChange={(value) =>
+                      patch({ difficulty: value === NOT_SET ? '' : (value as TourDifficulty) })
+                    }
+                  />
+                )}
+              </FormField>
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-3">
+              <FormField
+                id="tour-duration"
+                label={t.durationDays}
+                hint={locked ? fe.durationLocked : undefined}
+                error={durationError}
+              >
+                {(describedBy) => (
+                  <div className="relative">
+                    <Input
+                      id="tour-duration"
+                      inputMode="numeric"
+                      value={values.durationDays}
+                      // Tour đã có chuyến thì số ngày khoá hẳn (ADR-0047 §6).
+                      disabled={pending || locked}
+                      aria-invalid={durationError !== undefined}
+                      aria-describedby={describedBy}
+                      onChange={(event) => patch({ durationDays: event.target.value })}
                     />
-                  ) : null}
-                </div>
-              )}
-            </FormField>
-            <FormField
-              id="tour-group"
-              label={t.maxGroupSize}
-              // Có lỗi thì lỗi nói một mình (thử tay F17): lỗi sàn cùng chữ với gợi
-              // ý nên hai câu trùng nhau liền nhau; lỗi server có thể mang sàn mới
-              // hơn con số trong gợi ý đang cầm.
-              hint={
-                groupError === undefined && detail.liveSeatsMax !== null
-                  ? fe.groupFloor(detail.liveSeatsMax)
-                  : undefined
-              }
-              error={groupError}
-            >
-              {(describedBy) => (
-                <Input
-                  id="tour-group"
-                  inputMode="numeric"
-                  value={values.maxGroupSize}
-                  disabled={pending}
-                  aria-invalid={groupError !== undefined}
-                  aria-describedby={describedBy}
-                  onChange={(event) => patch({ maxGroupSize: event.target.value })}
-                />
-              )}
-            </FormField>
-            <FormField id="tour-price" label={t.basePrice} error={errors.basePrice}>
-              {(describedBy) => (
-                <Input
-                  id="tour-price"
-                  inputMode="decimal"
-                  value={values.basePrice}
-                  disabled={pending}
-                  aria-invalid={errors.basePrice !== undefined}
-                  aria-describedby={describedBy}
-                  onChange={(event) => patch({ basePrice: event.target.value })}
-                />
-              )}
-            </FormField>
-          </div>
+                    {locked ? (
+                      <LockIcon
+                        aria-hidden="true"
+                        className="pointer-events-none absolute top-1/2 right-2 size-4 -translate-y-1/2 text-muted-foreground"
+                      />
+                    ) : null}
+                  </div>
+                )}
+              </FormField>
+              <FormField
+                id="tour-group"
+                label={t.maxGroupSize}
+                // Có lỗi thì lỗi nói một mình (thử tay F17): lỗi sàn cùng chữ với gợi
+                // ý nên hai câu trùng nhau liền nhau; lỗi server có thể mang sàn mới
+                // hơn con số trong gợi ý đang cầm.
+                hint={
+                  groupError === undefined && detail.liveSeatsMax !== null
+                    ? fe.groupFloor(detail.liveSeatsMax)
+                    : undefined
+                }
+                error={groupError}
+              >
+                {(describedBy) => (
+                  <Input
+                    id="tour-group"
+                    inputMode="numeric"
+                    value={values.maxGroupSize}
+                    disabled={pending}
+                    aria-invalid={groupError !== undefined}
+                    aria-describedby={describedBy}
+                    onChange={(event) => patch({ maxGroupSize: event.target.value })}
+                  />
+                )}
+              </FormField>
+              <FormField id="tour-price" label={t.basePrice} error={errors.basePrice}>
+                {(describedBy) => (
+                  <Input
+                    id="tour-price"
+                    inputMode="decimal"
+                    value={values.basePrice}
+                    disabled={pending}
+                    aria-invalid={errors.basePrice !== undefined}
+                    aria-describedby={describedBy}
+                    onChange={(event) => patch({ basePrice: event.target.value })}
+                  />
+                )}
+              </FormField>
+            </div>
 
-          {removed.length > 0 ? (
-            // Giọng CẢNH BÁO, không phải lỗi: lưu được, chỉ là ngày thừa sẽ mất.
-            <p aria-live="polite" className="text-sm">
-              {t.daysRemoved(formatDayList(removed), removed.length)}
-            </p>
-          ) : null}
-        </fieldset>
+            {removed.length > 0 ? (
+              // Giọng CẢNH BÁO, không phải lỗi: lưu được, chỉ là ngày thừa sẽ mất.
+              <p aria-live="polite" className="text-sm">
+                {t.daysRemoved(formatDayList(removed), removed.length)}
+              </p>
+            ) : null}
 
-        <fieldset id="tour-destinations" className="grid gap-3 rounded-lg border p-4">
-          <legend className="px-1 text-sm font-semibold">{t.sections.destinations}</legend>
-          <p className="text-xs text-muted-foreground">{t.destinationsHint}</p>
-          {errors.destinations ? (
-            <p role="alert" className="text-sm text-destructive-emphasis">
-              {errors.destinations}
-            </p>
-          ) : null}
-          {/* Radio GỐC ở từng dòng, không phải RadioGroup của Base UI bọc cả danh
+            <CheckboxRow
+              id="tour-featured"
+              label={t.featured}
+              description={t.featuredHint}
+              checked={values.isFeatured}
+              disabled={pending}
+              onChange={(isFeatured) => patch({ isFeatured })}
+            />
+          </CardContent>
+        </Card>
+
+        <Card id="tour-destinations">
+          <CardHeader>
+            <CardTitle>{t.sections.destinations}</CardTitle>
+            <CardDescription>{t.destinationsHint}</CardDescription>
+          </CardHeader>
+          <CardContent className="grid gap-3">
+            {errors.destinations ? (
+              <p role="alert" className="text-sm text-destructive-emphasis">
+                {errors.destinations}
+              </p>
+            ) : null}
+            {/* Radio GỐC ở từng dòng, không phải RadioGroup của Base UI bọc cả danh
               sách (vòng review F17): gốc composite của RadioGroup bắt MỌI phím mũi
               tên nổi bọt từ nút xoá hay ô chọn bên trong, dời tiêu điểm sang một
               radio và radio tự bấm khi nhận tiêu điểm — điểm chính đổi mà admin
               không chọn. Radio gốc cùng `name` chỉ nghe mũi tên khi chính nó đang
               được focus. Không có nút dời: bảng không có cột thứ tự. */}
-          <ListEditor<DestinationDraft>
-            items={values.destinations}
-            onChange={setDestinations}
-            max={TOUR_DESTINATIONS_MAX}
-            reorderable={false}
-            labelledRows
-            newItem={() => ({
-              key: newItemKey(),
-              destinationId: '',
-              isPrimary: values.destinations.length === 0,
-            })}
-            addLabel={t.addDestination}
-            itemName={(index) => t.destinationName(index + 1)}
-            disabled={pending}
-            renderItem={(line, index) => (
-              <div className="grid gap-3 sm:grid-cols-[1fr_auto] sm:items-end">
-                <FormField
-                  id={`tour-destination-${line.key}`}
-                  label={t.destination}
-                  error={lineError(line.key)}
-                >
-                  {(describedBy) => (
-                    <FormSelect
-                      id={`tour-destination-${line.key}`}
-                      value={line.destinationId}
-                      options={destinationOptions}
-                      placeholder={t.destinationPlaceholder}
+            <ListEditor<DestinationDraft>
+              items={values.destinations}
+              onChange={setDestinations}
+              max={TOUR_DESTINATIONS_MAX}
+              reorderable={false}
+              labelledRows
+              newItem={() => ({
+                key: newItemKey(),
+                destinationId: '',
+                isPrimary: values.destinations.length === 0,
+              })}
+              addLabel={t.addDestination}
+              itemName={(index) => t.destinationName(index + 1)}
+              disabled={pending}
+              renderItem={(line, index) => (
+                <div className="grid gap-3 sm:grid-cols-[1fr_auto] sm:items-end">
+                  <FormField
+                    id={`tour-destination-${line.key}`}
+                    label={t.destination}
+                    error={lineError(line.key)}
+                  >
+                    {(describedBy) => (
+                      <FormSelect
+                        id={`tour-destination-${line.key}`}
+                        value={line.destinationId}
+                        options={destinationOptions}
+                        placeholder={t.destinationPlaceholder}
+                        disabled={pending}
+                        invalid={lineError(line.key) !== undefined}
+                        describedBy={describedBy}
+                        onValueChange={(destinationId) =>
+                          patch({
+                            destinations: values.destinations.map((item) =>
+                              item.key === line.key ? { ...item, destinationId } : item,
+                            ),
+                          })
+                        }
+                      />
+                    )}
+                  </FormField>
+                  <label className="flex w-fit items-center gap-2 pb-2 text-sm">
+                    <input
+                      type="radio"
+                      name={primaryName}
+                      className="size-4 accent-primary disabled:opacity-50"
+                      checked={line.isPrimary}
                       disabled={pending}
-                      invalid={lineError(line.key) !== undefined}
-                      describedBy={describedBy}
-                      onValueChange={(destinationId) =>
-                        patch({
-                          destinations: values.destinations.map((item) =>
-                            item.key === line.key ? { ...item, destinationId } : item,
-                          ),
-                        })
-                      }
+                      aria-label={t.primaryFor(destinationLabel(line, index))}
+                      onChange={() => setPrimary(line.key)}
                     />
-                  )}
-                </FormField>
-                <label className="flex w-fit items-center gap-2 pb-2 text-sm">
-                  <input
-                    type="radio"
-                    name={primaryName}
-                    className="size-4 accent-primary disabled:opacity-50"
-                    checked={line.isPrimary}
-                    disabled={pending}
-                    aria-label={t.primaryFor(destinationLabel(line, index))}
-                    onChange={() => setPrimary(line.key)}
-                  />
-                  {t.primary}
-                </label>
-              </div>
-            )}
-          />
-        </fieldset>
+                    {t.primary}
+                  </label>
+                </div>
+              )}
+            />
+          </CardContent>
+        </Card>
 
-        <fieldset className="grid gap-5 rounded-lg border p-4">
-          <legend className="px-1 text-sm font-semibold">{t.sections.selling}</legend>
-
-          <CheckboxGroup
-            id="tour-suitable-for"
-            label={t.suitableFor}
-            hint={t.suitableForHint}
-            options={TravellerTypeSchema.options.map((type) => ({
-              value: type,
-              label: messages.travellerTypes[type],
-            }))}
-            selected={values.suitableFor}
-            disabled={pending}
-            onChange={(suitableFor) => patch({ suitableFor })}
-          />
-          <CheckboxGroup
-            id="tour-badges"
-            label={t.badges}
-            hint={t.badgesHint}
-            options={TourBadgeSchema.options.map((badge) => ({
-              value: badge,
-              label: messages.tourDetail.badges[badge],
-              description: t.badgeHints[badge],
-            }))}
-            selected={values.badges}
-            disabled={pending}
-            onChange={(badges) => patch({ badges })}
-          />
-
-          <LineList
-            id="tour-highlights"
-            label={t.highlights}
-            addLabel={t.addHighlight}
-            itemName={t.highlightName}
-            lines={values.highlights}
-            errors={errors.lines}
-            disabled={pending}
-            onChange={(highlights) => patch({ highlights })}
-          />
-          <LineList
-            id="tour-included"
-            label={t.included}
-            addLabel={t.addIncluded}
-            itemName={t.includedName}
-            lines={values.included}
-            errors={errors.lines}
-            disabled={pending}
-            onChange={(included) => patch({ included })}
-          />
-          <LineList
-            id="tour-excluded"
-            label={t.excluded}
-            addLabel={t.addExcluded}
-            itemName={t.excludedName}
-            lines={values.excluded}
-            errors={errors.lines}
-            disabled={pending}
-            onChange={(excluded) => patch({ excluded })}
-          />
-
-          <FormField id="tour-meeting-point" label={t.meetingPoint} error={errors.meetingPoint}>
-            {(describedBy) => (
-              <Input
-                id="tour-meeting-point"
-                value={values.meetingPoint}
+        <Card>
+          <CardHeader>
+            <CardTitle>{t.sections.selling}</CardTitle>
+            <CardDescription>{a.details.sellingBody}</CardDescription>
+          </CardHeader>
+          <CardContent className="grid gap-6">
+            {/* Lưới 2 cột × 2 hàng từ lg (spec F19 §2d.1): hàng trên hai nhóm ô tích, hàng
+              dưới hai câu gợi ý — hai câu luôn cùng một hàng dù hai nhóm cao khác nhau.
+              Thứ tự DOM vẫn là nhóm → câu của nó, nên màn hẹp một cột đọc đúng. */}
+            <div className="grid gap-x-8 gap-y-2 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
+              <CheckboxGroup
+                id="tour-suitable-for"
+                label={t.suitableFor}
+                hint={t.suitableForHint}
+                options={TravellerTypeSchema.options.map((type) => ({
+                  value: type,
+                  label: messages.travellerTypes[type],
+                }))}
+                selected={values.suitableFor}
                 disabled={pending}
-                aria-invalid={errors.meetingPoint !== undefined}
-                aria-describedby={describedBy}
-                onChange={(event) => patch({ meetingPoint: event.target.value })}
+                onChange={(suitableFor) => patch({ suitableFor })}
+                className="lg:col-start-1 lg:row-start-1"
+                hintClassName="mb-4 lg:col-start-1 lg:row-start-2 lg:mb-0"
               />
-            )}
-          </FormField>
-
-          <div className="grid gap-3">
-            <p className="text-sm font-medium">{t.factsTitle}</p>
-            <div className="grid gap-4 sm:grid-cols-2">
-              {(
-                [
-                  ['factDurationNote', messages.tourDetail.facts.duration],
-                  ['factGroupSizeNote', messages.tourDetail.facts.groupSize],
-                  ['factDifficultyNote', messages.tourDetail.facts.difficulty],
-                  ['factGoodForNote', messages.tourDetail.facts.goodFor],
-                ] as const
-              ).map(([name, label]) => (
-                <FormField
-                  key={name}
-                  id={`tour-${name}`}
-                  label={label}
-                  hint={t.factHint(TOUR_FACT_NOTE_MAX)}
-                  error={errors[name]}
-                >
-                  {(describedBy) => (
-                    <Input
-                      id={`tour-${name}`}
-                      value={values[name]}
-                      disabled={pending}
-                      aria-invalid={errors[name] !== undefined}
-                      aria-describedby={describedBy}
-                      onChange={(event) => patch({ [name]: event.target.value })}
-                    />
-                  )}
-                </FormField>
-              ))}
+              <CheckboxGroup
+                id="tour-badges"
+                label={t.badges}
+                hint={t.badgesHint}
+                options={TourBadgeSchema.options.map((badge) => ({
+                  value: badge,
+                  label: messages.tourDetail.badges[badge],
+                  description: t.badgeHints[badge],
+                }))}
+                selected={values.badges}
+                disabled={pending}
+                onChange={(badges) => patch({ badges })}
+                className="lg:col-start-2 lg:row-start-1"
+                hintClassName="lg:col-start-2 lg:row-start-2"
+              />
             </div>
-          </div>
-        </fieldset>
+
+            <LineList
+              id="tour-highlights"
+              label={t.highlights}
+              addLabel={t.addHighlight}
+              itemName={t.highlightName}
+              lines={values.highlights}
+              errors={errors.lines}
+              disabled={pending}
+              onChange={(highlights) => patch({ highlights })}
+            />
+            <div className="grid gap-6 lg:grid-cols-2">
+              <LineList
+                id="tour-included"
+                label={t.included}
+                addLabel={t.addIncluded}
+                itemName={t.includedName}
+                lines={values.included}
+                errors={errors.lines}
+                disabled={pending}
+                onChange={(included) => patch({ included })}
+              />
+              <LineList
+                id="tour-excluded"
+                label={t.excluded}
+                addLabel={t.addExcluded}
+                itemName={t.excludedName}
+                lines={values.excluded}
+                errors={errors.lines}
+                disabled={pending}
+                onChange={(excluded) => patch({ excluded })}
+              />
+            </div>
+
+            <FormField id="tour-meeting-point" label={t.meetingPoint} error={errors.meetingPoint}>
+              {(describedBy) => (
+                <Input
+                  id="tour-meeting-point"
+                  value={values.meetingPoint}
+                  disabled={pending}
+                  aria-invalid={errors.meetingPoint !== undefined}
+                  aria-describedby={describedBy}
+                  onChange={(event) => patch({ meetingPoint: event.target.value })}
+                />
+              )}
+            </FormField>
+
+            <div className="grid gap-3">
+              <p className="text-sm font-medium">{t.factsTitle}</p>
+              <div className="grid gap-4 sm:grid-cols-2">
+                {(
+                  [
+                    ['factDurationNote', messages.tourDetail.facts.duration],
+                    ['factGroupSizeNote', messages.tourDetail.facts.groupSize],
+                    ['factDifficultyNote', messages.tourDetail.facts.difficulty],
+                    ['factGoodForNote', messages.tourDetail.facts.goodFor],
+                  ] as const
+                ).map(([name, label]) => (
+                  <FormField
+                    key={name}
+                    id={`tour-${name}`}
+                    label={label}
+                    hint={t.factHint(TOUR_FACT_NOTE_MAX)}
+                    error={errors[name]}
+                  >
+                    {(describedBy) => (
+                      <Input
+                        id={`tour-${name}`}
+                        value={values[name]}
+                        disabled={pending}
+                        aria-invalid={errors[name] !== undefined}
+                        aria-describedby={describedBy}
+                        onChange={(event) => patch({ [name]: event.target.value })}
+                      />
+                    )}
+                  </FormField>
+                ))}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </EditorFormFrame>
-      {detail.bookingCount === 0 ? <DeleteTourZone detail={detail} remove={remove} /> : null}
     </div>
   );
 }
@@ -584,6 +666,8 @@ function CheckboxGroup<Value extends string>({
   selected,
   disabled,
   onChange,
+  className,
+  hintClassName,
 }: {
   id: string;
   label: string;
@@ -593,50 +677,51 @@ function CheckboxGroup<Value extends string>({
   selected: readonly Value[];
   disabled: boolean;
   onChange: (next: Value[]) => void;
+  /** Chỗ của nhóm và của câu gợi ý trong lưới của nơi dùng (bước Details: lưới 2×2). */
+  className?: string;
+  hintClassName?: string;
 }) {
   const hintId = hint ? `${id}-hint` : undefined;
-  // Ô có chú thích riêng thì cao hai dòng — xếp lưới cho các cột thẳng nhau;
-  // ô chỉ có nhãn thì giữ một hàng chảy như cũ.
+  // Ô có chú thích riêng thì cao hai dòng — hai cột cho các cột thẳng nhau; ô chỉ có
+  // nhãn thì mỗi ô một hàng (spec F19 §2d.1).
   const described = options.some((option) => option.description !== undefined);
   return (
-    // `fieldset` + `legend` là nhóm có tên sẵn của HTML — không cần `role="group"`.
-    // `min-w-0`: fieldset mặc định `min-width: min-content`, làm hàng ô tích tràn ngang.
-    <fieldset className="min-w-0" aria-describedby={hintId}>
-      <legend className="mb-2 text-sm font-medium">{label}</legend>
-      <div
-        className={
-          described
-            ? 'grid gap-x-5 gap-y-3 sm:grid-cols-2 lg:grid-cols-3'
-            : 'flex flex-wrap gap-x-5 gap-y-2'
-        }
-      >
-        {options.map((option) => (
-          <CheckboxRow
-            key={option.value}
-            id={`${id}-${option.value}`}
-            label={option.label}
-            description={option.description}
-            checked={selected.includes(option.value)}
-            disabled={disabled}
-            onChange={(checked) =>
-              onChange(
-                checked
-                  ? // Giữ thứ tự của danh sách chọn, không phải thứ tự bấm.
-                    options
-                      .map((item) => item.value)
-                      .filter((value) => value === option.value || selected.includes(value))
-                  : selected.filter((value) => value !== option.value),
-              )
-            }
-          />
-        ))}
-      </div>
+    <>
+      {/* `fieldset` + `legend` là nhóm có tên sẵn của HTML — không cần `role="group"`.
+          `min-w-0`: fieldset mặc định `min-width: min-content`, làm hàng ô tích tràn ngang. */}
+      <fieldset className={cn('min-w-0', className)} aria-describedby={hintId}>
+        <legend className="mb-2 text-sm font-medium">{label}</legend>
+        <div className={described ? 'grid gap-x-5 gap-y-3 sm:grid-cols-2' : 'grid gap-2'}>
+          {options.map((option) => (
+            <CheckboxRow
+              key={option.value}
+              id={`${id}-${option.value}`}
+              label={option.label}
+              description={option.description}
+              checked={selected.includes(option.value)}
+              disabled={disabled}
+              onChange={(checked) =>
+                onChange(
+                  checked
+                    ? // Giữ thứ tự của danh sách chọn, không phải thứ tự bấm.
+                      options
+                        .map((item) => item.value)
+                        .filter((value) => value === option.value || selected.includes(value))
+                    : selected.filter((value) => value !== option.value),
+                )
+              }
+            />
+          ))}
+        </div>
+      </fieldset>
+      {/* Câu gợi ý đứng NGOÀI fieldset để nơi dùng xếp nó vào hàng riêng của lưới; nó vẫn
+          là mô tả của nhóm qua `aria-describedby`. */}
       {hint ? (
-        <p id={hintId} className="mt-2 text-xs text-muted-foreground">
+        <p id={hintId} className={cn('text-xs text-muted-foreground', hintClassName)}>
           {hint}
         </p>
       ) : null}
-    </fieldset>
+    </>
   );
 }
 

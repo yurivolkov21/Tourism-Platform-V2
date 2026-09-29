@@ -7,9 +7,9 @@ import {
   CardTitle,
 } from '@tourism/ui/components/card';
 import { cn } from '@tourism/ui/lib/utils';
-import { CircleAlertIcon, CircleCheckIcon, LightbulbIcon } from 'lucide-react';
+import { CircleAlertIcon, CircleCheckIcon, LightbulbIcon, StarIcon } from 'lucide-react';
 import type * as React from 'react';
-import { tourPhotoThumb } from '@/lib/tour-editor-view';
+import { type TourCardPreviewVM, tourPhotoThumb } from '@/lib/tour-editor-view';
 
 /**
  * Khối dùng chung của cột phải mỗi bước (ADR-0049 §6). Nơi dùng truyền dữ liệu ĐANG
@@ -142,5 +142,59 @@ export function CoverFrame({ url, children }: { url: string | null; children?: R
       )}
       {children}
     </div>
+  );
+}
+
+/**
+ * Thẻ xem trước card /tours (spec F19 §2d.1) — bám `tour-list-card.tsx` của web, dùng
+ * lại chữ của nó. Hai chỗ khác card thật đều nói ra bằng chữ: giá là giá GỐC (card web
+ * in giá chuyến rẻ nhất sắp tới — admin không có số ấy), và chip Featured nhường chỗ cho
+ * chip giảm giá.
+ */
+export function TourCardPreview({ preview }: { preview: TourCardPreviewVM }) {
+  const tp = messages.toursPage;
+  return (
+    <Card size="sm">
+      <CardHeader>
+        <CardTitle>{a.preview.title}</CardTitle>
+        <CardDescription>{a.preview.body}</CardDescription>
+      </CardHeader>
+      <CardContent className="grid gap-2">
+        <CoverFrame url={preview.coverUrl}>
+          {preview.featured ? (
+            <span className="absolute top-2 left-2 inline-flex h-5 items-center rounded-full bg-primary px-2 text-xs font-semibold text-primary-foreground">
+              {tp.featuredBadge}
+            </span>
+          ) : null}
+        </CoverFrame>
+        {preview.featured ? (
+          <p className="text-xs text-muted-foreground">{a.preview.featuredNote}</p>
+        ) : null}
+        {preview.facts ? (
+          <p className="truncate text-xs font-medium tracking-wide text-muted-foreground uppercase">
+            {preview.facts}
+          </p>
+        ) : null}
+        <p className="truncate font-heading text-base font-medium">{preview.title}</p>
+        {/* Giữ chỗ 2 dòng như card web: tóm tắt rỗng không làm thẻ co lại. */}
+        <p className="line-clamp-2 h-[2lh] text-xs text-muted-foreground">{preview.summary}</p>
+        <p className="flex items-center gap-1.5 text-xs">
+          {preview.rating === null ? (
+            <span className="text-muted-foreground">{tp.notRated}</span>
+          ) : (
+            <>
+              <StarIcon aria-hidden="true" className="size-3.5 fill-rating text-rating" />
+              <span className="font-semibold">{preview.rating.value}</span>
+              <span className="text-muted-foreground">({preview.rating.count})</span>
+            </>
+          )}
+        </p>
+        <div className="flex items-baseline justify-between gap-2 border-t pt-2">
+          <span className="text-xs text-muted-foreground">{a.preview.basePrice}</span>
+          <span className="text-sm font-semibold tabular-nums">{preview.price}</span>
+        </div>
+        <p className="text-xs text-muted-foreground">{a.preview.priceNote}</p>
+      </CardContent>
+    </Card>
   );
 }

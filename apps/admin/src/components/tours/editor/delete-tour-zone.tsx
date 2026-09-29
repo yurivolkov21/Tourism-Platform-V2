@@ -15,7 +15,7 @@ import {
 } from '@/lib/tour-editor-write';
 
 /**
- * Vùng xoá tour ở cuối tab Details (spec F17 §2d) — chỉ render khi tour chưa
+ * Vùng xoá tour ở bước Review & publish (spec F17 §2d, F19 §2d.6) — chỉ render khi tour chưa
  * từng có booking (nơi dùng quyết). Server là trọng tài thật: khoá ngoại
  * `Restrict` của booking chặn thì mã `TOUR_HAS_BOOKINGS` hiện NGAY TRONG hộp.
  *

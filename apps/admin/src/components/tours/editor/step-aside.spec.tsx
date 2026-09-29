@@ -1,7 +1,8 @@
 import { render, screen, within } from '@testing-library/react';
 import { messages } from '@tourism/i18n';
 import { describe, expect, it } from 'vitest';
-import { CoverPreviewCard, StepChecklist, StepTips } from './step-aside';
+import type { TourCardPreviewVM } from '@/lib/tour-editor-view';
+import { CoverPreviewCard, StepChecklist, StepTips, TourCardPreview } from './step-aside';
 
 /**
  * Khối dùng chung của cột phải (ADR-0049 §6): danh sách việc cần làm của bước, gợi ý,
@@ -57,5 +58,39 @@ describe('CoverPreviewCard', () => {
   it('chưa có ảnh: nói ra thay vì để ô trống', () => {
     render(<CoverPreviewCard url={null} />);
     expect(screen.getByText(a.preview.noCover)).toBeInTheDocument();
+  });
+});
+
+describe('TourCardPreview', () => {
+  const tp = messages.toursPage;
+  const PREVIEW: TourCardPreviewVM = {
+    coverUrl: 'https://res.cloudinary.com/demo/image/upload/f_auto,q_auto/v1/x',
+    title: 'Ha Long Bay Cruise',
+    summary: 'Three days on the bay.',
+    featured: true,
+    facts: 'Hạ Long · 3 days · Max 12',
+    rating: { value: '4.7', count: '128' },
+    price: '$199.00',
+  };
+
+  it('Featured: chip trên ảnh kèm câu luật giảm giá; dữ kiện, tên, sao; giá GỐC kèm câu giải thích', () => {
+    render(<TourCardPreview preview={PREVIEW} />);
+    expect(screen.getByText(a.preview.title)).toBeInTheDocument();
+    expect(screen.getByText(tp.featuredBadge)).toBeInTheDocument();
+    expect(screen.getByText(a.preview.featuredNote)).toBeInTheDocument();
+    expect(screen.getByText('Hạ Long · 3 days · Max 12')).toBeInTheDocument();
+    expect(screen.getByText('Ha Long Bay Cruise')).toBeInTheDocument();
+    expect(screen.getByText('4.7')).toBeInTheDocument();
+    expect(screen.getByText('(128)')).toBeInTheDocument();
+    expect(screen.getByText(a.preview.basePrice)).toBeInTheDocument();
+    expect(screen.getByText('$199.00')).toBeInTheDocument();
+    expect(screen.getByText(a.preview.priceNote)).toBeInTheDocument();
+  });
+
+  it('không Featured: không chip, không câu luật; chưa ai đánh giá: "Not yet reviewed"', () => {
+    render(<TourCardPreview preview={{ ...PREVIEW, featured: false, rating: null }} />);
+    expect(screen.queryByText(tp.featuredBadge)).toBeNull();
+    expect(screen.queryByText(a.preview.featuredNote)).toBeNull();
+    expect(screen.getByText(tp.notRated)).toBeInTheDocument();
   });
 });

@@ -4,7 +4,7 @@ import { type AdminTourDetail, TourBadgeSchema, TravellerTypeSchema } from '@tou
 import { messages } from '@tourism/i18n';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { TourEditorOptions } from '@/lib/api/tours';
-import type { DeleteTourAction, UpdateDetailsAction } from '@/lib/tour-editor-write';
+import type { UpdateDetailsAction } from '@/lib/tour-editor-write';
 import {
   CATEGORY_ID,
   DEST_A,
@@ -18,7 +18,7 @@ import {
 import { TourDetailsForm } from './tour-details-form';
 
 /**
- * Tab Details (spec F17 §2h): ba khung, một nút Save, vùng xoá ở cuối.
+ * Bước Details (spec F17 §2h, F19 §2d.1): ba card, một nút Save, cột phải.
  */
 const e = messages.admin.tours.editor;
 const t = e.details;
@@ -62,11 +62,10 @@ const NEXT_VERSION = '2026-09-24T10:11:13.000Z';
 function renderForm(
   detail: AdminTourDetail = detailFixture(),
   save: UpdateDetailsAction = vi.fn(),
-  remove: DeleteTourAction = vi.fn(),
 ) {
   const user = userEvent.setup();
-  render(<TourDetailsForm detail={detail} options={OPTIONS} save={save} remove={remove} />);
-  return { user, save: save as ReturnType<typeof vi.fn>, remove };
+  render(<TourDetailsForm detail={detail} options={OPTIONS} save={save} />);
+  return { user, save: save as ReturnType<typeof vi.fn> };
 }
 
 const saveButton = () => screen.getByRole('button', { name: e.save });
@@ -405,19 +404,8 @@ describe('TourDetailsForm', () => {
     ).toBeInTheDocument();
   });
 
-  it('nút Delete chỉ có khi tour chưa từng có booking', () => {
-    const { unmount } = render(
-      <TourDetailsForm
-        detail={detailFixture({ bookingCount: 0 })}
-        options={OPTIONS}
-        save={vi.fn()}
-        remove={vi.fn()}
-      />,
-    );
-    expect(screen.getByRole('button', { name: e.delete.action })).toBeInTheDocument();
-    unmount();
-
-    renderForm(detailFixture({ bookingCount: 1 }));
+  it('bước Details không còn vùng xoá tour — nó ở bước Review & publish', () => {
+    renderForm(detailFixture({ bookingCount: 0 }));
     expect(screen.queryByRole('button', { name: e.delete.action })).not.toBeInTheDocument();
   });
 
@@ -493,7 +481,7 @@ describe('TourDetailsForm', () => {
 
 describe('TourDetailsForm — không dựng lại form khi phiên bản đổi (vòng review F17)', () => {
   const form = (detail: AdminTourDetail, save: UpdateDetailsAction = vi.fn()) => (
-    <TourDetailsForm detail={detail} options={OPTIONS} save={save} remove={vi.fn()} />
+    <TourDetailsForm detail={detail} options={OPTIONS} save={save} />
   );
 
   it('lưu xong, refresh mang CÙNG phiên bản về → tiêu điểm còn ở Save, chữ gõ tiếp còn nguyên', async () => {
@@ -539,5 +527,56 @@ describe('TourDetailsForm — không dựng lại form khi phiên bản đổi (
 
     expect(field(t.title)).toHaveValue('Theirs');
     expect(screen.queryByText(e.banners.stale)).not.toBeInTheDocument();
+  });
+});
+
+describe('TourDetailsForm — bước Details (F19)', () => {
+  const a = e.aside;
+  const state = e.steps.state;
+  const aside = () => screen.getByRole('complementary');
+
+  it('"This step" tính trên giá trị ĐANG SOẠN: xoá tóm tắt là dòng ấy hết xanh ngay', async () => {
+    const { user } = renderForm(detailFixture({ isPublished: false }));
+    const rows = () => within(aside()).getAllByRole('listitem');
+    expect(rows()[0]).toHaveTextContent(`${state.ok}${e.readiness.summary}${a.required}`);
+    expect(rows()[1]).toHaveTextContent(`${state.ok}${e.readiness.primaryDestination}`);
+    expect(rows()[2]).toHaveTextContent(`${state.optional}${a.details.sellingOptional}`);
+
+    await user.clear(field(t.summary));
+
+    expect(rows()[0]).toHaveTextContent(`${state.warn}${e.readiness.summary}`);
+  });
+
+  it('thẻ xem trước theo ô đang gõ: tên mới; tích Featured là chip hiện kèm câu luật', async () => {
+    const { user } = renderForm();
+    expect(within(aside()).getByText('Hạ Long · 3 days · Max 12')).toBeInTheDocument();
+    expect(within(aside()).queryByText(messages.toursPage.featuredBadge)).toBeNull();
+
+    await user.clear(field(t.title));
+    await user.type(field(t.title), 'Lan Ha Bay Escape');
+    await user.click(screen.getByRole('checkbox', { name: t.featured }));
+
+    expect(within(aside()).getByText('Lan Ha Bay Escape')).toBeInTheDocument();
+    expect(within(aside()).getByText(messages.toursPage.featuredBadge)).toBeInTheDocument();
+    expect(within(aside()).getByText(a.preview.featuredNote)).toBeInTheDocument();
+  });
+
+  it('câu gợi ý của Good for và Badges đứng NGOÀI nhóm (lưới 2×2), sau nhóm của nó', () => {
+    renderForm();
+    const goodFor = screen.getByRole('group', { name: t.suitableFor });
+    const goodForHint = screen.getByText(t.suitableForHint);
+    const badges = screen.getByRole('group', { name: t.badges });
+    expect(goodFor.contains(goodForHint)).toBe(false);
+    expect(goodFor.compareDocumentPosition(goodForHint)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+    expect(goodForHint.compareDocumentPosition(badges)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+    expect(badges.contains(screen.getByText(t.badgesHint))).toBe(false);
+  });
+
+  it('chân form: link Next: Photos', () => {
+    renderForm();
+    expect(screen.getByRole('link', { name: e.next(e.tabs.photos) })).toHaveAttribute(
+      'href',
+      '/tours/ha-long-bay-cruise/photos',
+    );
   });
 });

@@ -5,11 +5,13 @@ import {
   fromCents,
   perDepartureTotal,
   perPersonTotal,
+  TourBasePriceSchema,
   type TourReadiness,
   toCents,
   tourReadiness,
 } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
+import { formatAmount } from './bookings-view';
 import { withDeliveryTransform } from './cloudinary-url';
 
 /**
@@ -294,4 +296,65 @@ export function tourPhotoThumb(url: string): string {
 /** Nhãn một mục trong ô chọn danh mục/điểm đến — mục đã ẩn mang dấu "(hidden)". */
 export function optionLabel(option: { name: string; isActive: boolean }): string {
   return option.isActive ? option.name : messages.admin.tours.list.categoryHidden(option.name);
+}
+
+/** Thẻ xem trước card /tours ở cột phải bước Details (spec F19 §2d.1). */
+export interface TourCardPreviewVM {
+  coverUrl: string | null;
+  title: string;
+  summary: string;
+  featured: boolean;
+  /** "Hạ Long · 3 days · Max 12" — như băng dữ kiện của card web; mẩu đang gõ dở thì bỏ. */
+  facts: string;
+  /** Sao như card web: "4.7" và "(1,280)"; `null` = chưa ai đánh giá (KHÁC 0). */
+  rating: { value: string; count: string } | null;
+  /** Giá gốc ĐANG GÕ, định dạng tiền; chưa thành giá gốc hợp lệ thì "—" (không in NaN). */
+  price: string;
+}
+
+/**
+ * Card /tours của tour với giá trị ĐANG GÕ ở bước Details — chữ lấy từ
+ * `messages.toursPage` như card web. `days`, `groupSize` là số đã parse (`NaN` khi ô
+ * gõ dở); nhận số chứ không nhận chữ vì `parseWholeNumber` nằm ở `tour-editor-write`,
+ * mà file đó đã import file này.
+ */
+export function tourCardPreview(
+  detail: Pick<AdminTourDetail, 'photos' | 'ratingAvg' | 'ratingCount' | 'currency'>,
+  draft: {
+    title: string;
+    summary: string;
+    isFeatured: boolean;
+    days: number;
+    groupSize: number;
+    basePrice: string;
+    primaryDestination: string | null;
+  },
+): TourCardPreviewVM {
+  const tp = messages.toursPage;
+  const title = draft.title.trim();
+  const price = draft.basePrice.trim();
+  return {
+    coverUrl: detail.photos[0]?.url ?? null,
+    title: title === '' ? t.aside.preview.untitled : title,
+    summary: draft.summary.trim(),
+    featured: draft.isFeatured,
+    facts: [
+      draft.primaryDestination,
+      draft.days > 0 ? tp.durationValue(draft.days) : null,
+      draft.groupSize > 0 ? tp.maxGroup(draft.groupSize) : null,
+    ]
+      .filter((part): part is string => part !== null && part !== '')
+      .join(' · '),
+    // `ratingAvg` của contract là chuỗi thập phân ("4.66"), không phải số như ở web.
+    rating:
+      detail.ratingAvg === null
+        ? null
+        : {
+            value: Number(detail.ratingAvg).toFixed(1),
+            count: detail.ratingCount.toLocaleString('en-US'),
+          },
+    price: TourBasePriceSchema.safeParse(price).success
+      ? formatAmount(price, detail.currency)
+      : '—',
+  };
 }
