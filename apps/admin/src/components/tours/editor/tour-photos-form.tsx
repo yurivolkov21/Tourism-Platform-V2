@@ -9,18 +9,32 @@ import {
 } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
 import { Button } from '@tourism/ui/components/button';
+import {
+  Card,
+  CardAction,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@tourism/ui/components/card';
 import { Input } from '@tourism/ui/components/input';
 import { Progress } from '@tourism/ui/components/progress';
-import { ImagePlusIcon, UploadIcon } from 'lucide-react';
+import { ImageIcon, ImagePlusIcon, UploadIcon } from 'lucide-react';
 import * as React from 'react';
 import { FormField } from '@/components/kit/form-field';
 import { ListEditor } from '@/components/kit/list-editor';
 import { EditorFormFrame } from '@/components/tours/editor/editor-form-frame';
 import { PhotoLibraryDialog } from '@/components/tours/editor/photo-library-dialog';
+import {
+  type ChecklistItem,
+  CoverPreviewCard,
+  StepChecklist,
+  StepTips,
+} from '@/components/tours/editor/step-aside';
 import { usePublishSavedDetail } from '@/components/tours/editor/tour-detail-context';
 import { newItemKey } from '@/lib/list-editor';
 import { uploadPhoto } from '@/lib/photo-upload';
-import { projectedReadiness, tourPhotoThumb } from '@/lib/tour-editor-view';
+import { projectedReadiness, tourPhotoThumb, tourStepHref } from '@/lib/tour-editor-view';
 import {
   acceptFiles,
   hasPhotoErrors,
@@ -50,9 +64,9 @@ import { useSectionSave } from '@/lib/use-section-save';
 import { useTourFormState } from '@/lib/use-tour-form-state';
 
 /**
- * Tab Photos (spec F18 §2g, ADR-0048): một danh sách có thứ tự, ảnh đầu là ảnh bìa.
+ * Bước Photos (spec F18 §2g, F19 §2d.2): một danh sách có thứ tự, ảnh đầu là ảnh bìa.
  *
- * - Ảnh vào danh sách bằng hai đường ở thanh trên (tải lên, thư viện) — kit
+ * - Ảnh vào danh sách bằng hai đường ở ô tải lên đầu card (tải lên, thư viện) — kit
  *   `ListEditor` không có nút thêm; gỡ dòng cuối trả tiêu điểm về Upload photos.
  * - Tải lên: ký MỘT lần cho cả lô, tối đa `UPLOAD_CONCURRENCY` file cùng lúc,
  *   thẳng lên Cloudinary. File đang tải hay hỏng nằm ở danh sách riêng dưới các
@@ -70,7 +84,9 @@ import { useTourFormState } from '@/lib/use-tour-form-state';
  *   hẳn thì huỷ lượt đang tải và không khởi động file xếp hàng.
  * - Nút biến mất sau khi bấm (Retry, Remove) thì tiêu điểm được chuyển đi chủ động.
  */
-const t = messages.admin.tours.editor.photos;
+const e = messages.admin.tours.editor;
+const a = e.aside;
+const t = e.photos;
 const ACCEPT = ALLOWED_IMAGE_EXTENSIONS.map((ext) => `.${ext}`).join(',');
 const NO_ERRORS: PhotosFormErrors = { rows: {} };
 const UPLOAD_BUTTON_ID = 'tour-photos-upload';
@@ -276,6 +292,24 @@ export function TourPhotosForm({
     }));
   }
 
+  // Cột phải đọc danh sách ĐANG SOẠN (ADR-0049 §6): ảnh đầu là ảnh bìa, alt bắt buộc
+  // để lưu (`validatePhotosForm`).
+  const altMissing = values.photos.filter((photo) => photo.alt.trim() === '').length;
+  const checklist: ChecklistItem[] = [
+    {
+      key: 'cover',
+      label: e.readiness.cover,
+      detail: a.required,
+      state: values.photos.length > 0 ? 'ok' : 'warn',
+    },
+    {
+      key: 'alt',
+      label: a.photos.altAll,
+      detail: altMissing === 0 ? a.photos.altDone : a.photos.altMissing(altMissing),
+      state: altMissing === 0 ? 'ok' : 'warn',
+    },
+  ];
+
   return (
     <div className="flex flex-col gap-6 px-4 pb-8 lg:px-6">
       <EditorFormFrame
@@ -285,201 +319,222 @@ export function TourPhotosForm({
         serverChanged={form.serverChanged}
         blockedNote={uploadingCount > 0 ? t.waiting(uploadingCount) : undefined}
         busy={uploads.length > 0}
+        note={a.photos.saveNote}
+        aside={
+          <>
+            <StepChecklist items={checklist} />
+            <CoverPreviewCard url={values.photos[0]?.url ?? null} />
+            <StepTips items={a.photos.tips} />
+          </>
+        }
+        next={{ href: tourStepHref(detail.slug, 'itinerary'), label: e.tabs.itinerary }}
         onSubmit={submit}
         onReload={form.reload}
       >
-        <section className="grid gap-4">
-          <div className="flex flex-wrap items-center gap-3">
-            <Button
-              ref={uploadButton}
-              id={UPLOAD_BUTTON_ID}
-              type="button"
-              variant="outline"
-              focusableWhenDisabled
-              disabled={pending || capacity === 0}
-              onClick={() => fileInput.current?.click()}
-            >
-              <UploadIcon aria-hidden="true" />
-              {t.upload}
-            </Button>
-            <input
-              ref={fileInput}
-              type="file"
-              multiple
-              accept={ACCEPT}
-              className="sr-only"
-              tabIndex={-1}
-              aria-hidden="true"
-              onChange={(event) => {
-                const files = [...(event.target.files ?? [])];
-                // Chọn lại đúng file ấy lần nữa vẫn phải bắn `change`.
-                event.target.value = '';
-                void startUploads(files);
+        <Card>
+          <CardHeader>
+            <CardTitle>{e.tabs.photos}</CardTitle>
+            <CardDescription>{t.intro}</CardDescription>
+            <CardAction>
+              <p className="text-sm text-muted-foreground tabular-nums" aria-live="polite">
+                {t.count(values.photos.length, TOUR_PHOTOS_MAX)}
+              </p>
+            </CardAction>
+          </CardHeader>
+          <CardContent>
+            {/* biome-ignore lint/a11y/noStaticElementInteractions: vùng thả file chỉ là đường tắt cho chuột — bàn phím và trình đọc màn hình dùng nút Upload photos */}
+            <div
+              data-testid="photo-drop-zone"
+              className="grid gap-4"
+              onDragOver={(event) => event.preventDefault()}
+              onDrop={(event) => {
+                event.preventDefault();
+                void startUploads([...event.dataTransfer.files]);
               }}
-            />
-            <Button
-              type="button"
-              variant="outline"
-              focusableWhenDisabled
-              disabled={pending || capacity === 0}
-              onClick={() => setLibraryOpen(true)}
             >
-              <ImagePlusIcon aria-hidden="true" />
-              {t.library}
-            </Button>
-            <p className="text-sm text-muted-foreground" aria-live="polite">
-              {t.count(values.photos.length, TOUR_PHOTOS_MAX)}
-            </p>
-          </div>
-          <p className="text-xs text-muted-foreground">
-            {t.intro} {t.formats}
-          </p>
-          {notices.length > 0 ? (
-            <ul role="status" className="grid gap-1 text-sm text-destructive-emphasis">
-              {notices.map((note) => (
-                <li key={note}>{note}</li>
-              ))}
-            </ul>
-          ) : null}
-          {errors.list ? (
-            <p role="alert" className="text-sm text-destructive-emphasis">
-              {errors.list}
-            </p>
-          ) : null}
-
-          {/* biome-ignore lint/a11y/noStaticElementInteractions: vùng thả file chỉ là đường tắt cho chuột — bàn phím và trình đọc màn hình dùng nút Upload photos */}
-          <div
-            data-testid="photo-drop-zone"
-            className="grid gap-3"
-            onDragOver={(event) => event.preventDefault()}
-            onDrop={(event) => {
-              event.preventDefault();
-              void startUploads([...event.dataTransfer.files]);
-            }}
-          >
-            <ListEditor<PhotoDraft>
-              items={values.photos}
-              onChange={(photos) => form.setValues({ photos })}
-              max={TOUR_PHOTOS_MAX}
-              labelledRows
-              emptyFocus={uploadButton}
-              itemName={(index) => t.photoName(index + 1)}
-              disabled={pending}
-              empty={t.empty}
-              renderItem={(photo, index) => {
-                const altId = `photo-${photo.key}-alt`;
-                return (
-                  <div className="grid gap-3 sm:grid-cols-[8rem_1fr]">
-                    <div className="relative">
-                      {/* Ảnh là phần trang trí: ô alt ngay cạnh đã mô tả nó. `<img>` thường
-                          như cả admin — `next/image` NÉM khi host nằm ngoài `remotePatterns`. */}
-                      {/* biome-ignore lint/performance/noImgElement: URL Cloudinary đã tối ưu sẵn (ADR-0005) */}
-                      <img
-                        src={tourPhotoThumb(photo.url)}
-                        alt=""
-                        className="aspect-[3/2] w-32 rounded-md bg-muted object-cover"
-                      />
-                      {index === 0 ? (
-                        <span className="absolute top-1.5 left-1.5 rounded-full bg-primary px-2 py-0.5 text-xs font-medium text-primary-foreground">
-                          {t.cover}
-                        </span>
-                      ) : null}
-                    </div>
-                    <div className="grid gap-1.5">
-                      <FormField id={altId} label={t.alt} error={errors.rows[photo.key]}>
-                        {(describedBy) => (
-                          <Input
-                            id={altId}
-                            value={photo.alt}
-                            disabled={pending}
-                            aria-invalid={errors.rows[photo.key] !== undefined}
-                            aria-describedby={describedBy}
-                            onChange={(event) => patchAlt(photo.key, event.target.value)}
-                          />
-                        )}
-                      </FormField>
-                      <p className="text-xs text-muted-foreground">{photoSourceLine(photo)}</p>
-                      {index > 0 ? (
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          className="w-fit"
-                          focusableWhenDisabled
-                          disabled={pending}
-                          aria-label={t.makeCoverFor(t.photoName(index + 1))}
-                          onClick={() => {
-                            form.setValues((current) => makeCover(current, photo.key));
-                            setFocusId(altInputId(photo.key));
-                          }}
-                        >
-                          {t.makeCover}
-                        </Button>
-                      ) : null}
-                    </div>
-                  </div>
-                );
-              }}
-            />
-
-            {uploads.map((upload) => (
-              <div
-                key={upload.key}
-                className="flex items-center gap-3 rounded-md border border-dashed p-3"
-              >
-                {/* biome-ignore lint/performance/noImgElement: ảnh xem trước là blob: cục bộ, next/image không nhận */}
-                <img
-                  src={upload.preview}
-                  alt=""
-                  className="aspect-[3/2] w-32 rounded-md bg-muted object-cover"
-                />
-                <div className="grid flex-1 gap-1.5">
-                  {upload.status === 'uploading' ? (
-                    <>
-                      <p className="text-sm text-muted-foreground">
-                        {t.uploading(upload.file.name, upload.percent)}
-                      </p>
-                      {/* Progress của kit dùng chung, như ô tải ảnh review của web (G14). */}
-                      <Progress
-                        id={progressId(upload.key)}
-                        // Nhận tiêu điểm khi Retry làm nút vừa bấm biến mất (vòng review F18).
-                        tabIndex={-1}
-                        aria-label={t.uploadingLabel(upload.file.name)}
-                        value={upload.percent}
-                      />
-                    </>
-                  ) : (
-                    <>
-                      <p role="alert" className="text-sm text-destructive-emphasis">
-                        {t.uploadFailed(upload.file.name)}
-                      </p>
-                      <div className="flex gap-2">
-                        <Button
-                          id={retryId(upload.key)}
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() => void retry(upload)}
-                        >
-                          {t.retry}
-                        </Button>
-                        <Button
-                          id={removeId(upload.key)}
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => removeUpload(upload)}
-                        >
-                          {t.remove}
-                        </Button>
-                      </div>
-                    </>
-                  )}
+              {/* Vùng thả file bọc CẢ ô tải lên lẫn danh sách (spec F19 §2d.2): thả vào đâu
+                  trong card cũng tải lên. */}
+              <div className="flex flex-col items-center gap-3 rounded-lg border border-dashed bg-muted/30 px-4 py-6 text-center">
+                <ImageIcon aria-hidden="true" className="size-6 text-muted-foreground" />
+                <div className="flex flex-wrap items-center justify-center gap-2">
+                  <Button
+                    ref={uploadButton}
+                    id={UPLOAD_BUTTON_ID}
+                    type="button"
+                    variant="outline"
+                    focusableWhenDisabled
+                    disabled={pending || capacity === 0}
+                    onClick={() => fileInput.current?.click()}
+                  >
+                    <UploadIcon aria-hidden="true" />
+                    {t.upload}
+                  </Button>
+                  <input
+                    ref={fileInput}
+                    type="file"
+                    multiple
+                    accept={ACCEPT}
+                    className="sr-only"
+                    tabIndex={-1}
+                    aria-hidden="true"
+                    onChange={(event) => {
+                      const files = [...(event.target.files ?? [])];
+                      // Chọn lại đúng file ấy lần nữa vẫn phải bắn `change`.
+                      event.target.value = '';
+                      void startUploads(files);
+                    }}
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    focusableWhenDisabled
+                    disabled={pending || capacity === 0}
+                    onClick={() => setLibraryOpen(true)}
+                  >
+                    <ImagePlusIcon aria-hidden="true" />
+                    {t.library}
+                  </Button>
                 </div>
+                <p className="text-xs text-muted-foreground">
+                  {a.photos.drop} {t.formats}
+                </p>
               </div>
-            ))}
-          </div>
-        </section>
+              {notices.length > 0 ? (
+                <ul role="status" className="grid gap-1 text-sm text-destructive-emphasis">
+                  {notices.map((note) => (
+                    <li key={note}>{note}</li>
+                  ))}
+                </ul>
+              ) : null}
+              {errors.list ? (
+                <p role="alert" className="text-sm text-destructive-emphasis">
+                  {errors.list}
+                </p>
+              ) : null}
+              <ListEditor<PhotoDraft>
+                items={values.photos}
+                onChange={(photos) => form.setValues({ photos })}
+                max={TOUR_PHOTOS_MAX}
+                labelledRows
+                emptyFocus={uploadButton}
+                itemName={(index) => t.photoName(index + 1)}
+                disabled={pending}
+                empty={t.empty}
+                renderItem={(photo, index) => {
+                  const altId = `photo-${photo.key}-alt`;
+                  return (
+                    <div className="grid gap-3 sm:grid-cols-[8rem_1fr]">
+                      <div className="relative">
+                        {/* Ảnh là phần trang trí: ô alt ngay cạnh đã mô tả nó. `<img>` thường
+                            như cả admin — `next/image` NÉM khi host nằm ngoài `remotePatterns`. */}
+                        {/* biome-ignore lint/performance/noImgElement: URL Cloudinary đã tối ưu sẵn (ADR-0005) */}
+                        <img
+                          src={tourPhotoThumb(photo.url)}
+                          alt=""
+                          className="aspect-[3/2] w-32 rounded-md bg-muted object-cover"
+                        />
+                        {index === 0 ? (
+                          <span className="absolute top-1.5 left-1.5 rounded-full bg-primary px-2 py-0.5 text-xs font-medium text-primary-foreground">
+                            {t.cover}
+                          </span>
+                        ) : null}
+                      </div>
+                      <div className="grid gap-1.5">
+                        <FormField id={altId} label={t.alt} error={errors.rows[photo.key]}>
+                          {(describedBy) => (
+                            <Input
+                              id={altId}
+                              value={photo.alt}
+                              disabled={pending}
+                              aria-invalid={errors.rows[photo.key] !== undefined}
+                              aria-describedby={describedBy}
+                              onChange={(event) => patchAlt(photo.key, event.target.value)}
+                            />
+                          )}
+                        </FormField>
+                        <p className="text-xs text-muted-foreground">{photoSourceLine(photo)}</p>
+                        {index > 0 ? (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="w-fit"
+                            focusableWhenDisabled
+                            disabled={pending}
+                            aria-label={t.makeCoverFor(t.photoName(index + 1))}
+                            onClick={() => {
+                              form.setValues((current) => makeCover(current, photo.key));
+                              setFocusId(altInputId(photo.key));
+                            }}
+                          >
+                            {t.makeCover}
+                          </Button>
+                        ) : null}
+                      </div>
+                    </div>
+                  );
+                }}
+              />
+
+              {uploads.map((upload) => (
+                <div
+                  key={upload.key}
+                  className="flex items-center gap-3 rounded-md border border-dashed p-3"
+                >
+                  {/* biome-ignore lint/performance/noImgElement: ảnh xem trước là blob: cục bộ, next/image không nhận */}
+                  <img
+                    src={upload.preview}
+                    alt=""
+                    className="aspect-[3/2] w-32 rounded-md bg-muted object-cover"
+                  />
+                  <div className="grid flex-1 gap-1.5">
+                    {upload.status === 'uploading' ? (
+                      <>
+                        <p className="text-sm text-muted-foreground">
+                          {t.uploading(upload.file.name, upload.percent)}
+                        </p>
+                        {/* Progress của kit dùng chung, như ô tải ảnh review của web (G14). */}
+                        <Progress
+                          id={progressId(upload.key)}
+                          // Nhận tiêu điểm khi Retry làm nút vừa bấm biến mất (vòng review F18).
+                          tabIndex={-1}
+                          aria-label={t.uploadingLabel(upload.file.name)}
+                          value={upload.percent}
+                        />
+                      </>
+                    ) : (
+                      <>
+                        <p role="alert" className="text-sm text-destructive-emphasis">
+                          {t.uploadFailed(upload.file.name)}
+                        </p>
+                        <div className="flex gap-2">
+                          <Button
+                            id={retryId(upload.key)}
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => void retry(upload)}
+                          >
+                            {t.retry}
+                          </Button>
+                          <Button
+                            id={removeId(upload.key)}
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => removeUpload(upload)}
+                          >
+                            {t.remove}
+                          </Button>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
       </EditorFormFrame>
       <PhotoLibraryDialog
         open={libraryOpen}

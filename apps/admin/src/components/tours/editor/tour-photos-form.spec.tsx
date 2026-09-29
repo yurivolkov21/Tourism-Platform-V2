@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { SignedUploadParams } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
@@ -13,7 +13,7 @@ import type {
 import { COVER_PHOTO, DEST_A, detailFixture, TOUR_ID, VERSION } from '@/test/tour-detail';
 import { TourPhotosForm } from './tour-photos-form';
 
-/** Tab Photos (spec F18 §2g, ADR-0048). */
+/** Bước Photos (spec F18 §2g, F19 §2d.2). */
 const e = messages.admin.tours.editor;
 const t = e.photos;
 
@@ -511,5 +511,63 @@ describe('TourPhotosForm — tải lên (vòng review F18)', () => {
     expect(screen.getByRole('button', { name: t.remove })).toHaveFocus();
     await user.click(screen.getByRole('button', { name: t.remove }));
     expect(screen.getByRole('button', { name: t.upload })).toHaveFocus();
+  });
+});
+
+describe('TourPhotosForm — bước Photos (F19)', () => {
+  const a = e.aside;
+  const state = e.steps.state;
+  const aside = () => screen.getByRole('complementary');
+  const THIRD = {
+    ...COVER_PHOTO,
+    publicId: 'tourism/catalog/destination/ha-long/3',
+    url: 'https://res.cloudinary.com/demo/image/upload/f_auto,q_auto/v1700000000/tourism/catalog/destination/ha-long/3',
+    alt: 'A cave lit in blue',
+  };
+
+  it('vùng thả file bọc cả hai nút lẫn danh sách; bộ đếm ở góc card', () => {
+    renderForm();
+    const zone = screen.getByTestId('photo-drop-zone');
+    expect(within(zone).getByRole('button', { name: t.upload })).toBeInTheDocument();
+    expect(within(zone).getByRole('button', { name: t.library })).toBeInTheDocument();
+    expect(within(zone).getAllByRole('textbox', { name: t.alt })).toHaveLength(2);
+    expect(screen.getByText(t.count(2, 30)).closest('[data-slot="card-action"]')).not.toBeNull();
+  });
+
+  it('cột phải theo danh sách ĐANG SOẠN: xoá một alt là dòng alt báo 1 ảnh còn thiếu', async () => {
+    const { user } = renderForm();
+    const rows = () => within(aside()).getAllByRole('listitem');
+    expect(rows()[0]).toHaveTextContent(`${state.ok}${e.readiness.cover}${a.required}`);
+    expect(rows()[1]).toHaveTextContent(`${state.ok}${a.photos.altAll}${a.photos.altDone}`);
+
+    await user.clear(altInputs()[1] as HTMLElement);
+
+    expect(rows()[1]).toHaveTextContent(`${state.warn}${a.photos.altAll}${a.photos.altMissing(1)}`);
+  });
+
+  it('danh sách rỗng: dòng ảnh bìa báo thiếu, khung ảnh bìa nói chưa có ảnh', () => {
+    renderForm(detailFixture({ isPublished: false, photos: [] }));
+    const rows = within(aside()).getAllByRole('listitem');
+    expect(rows[0]).toHaveTextContent(`${state.warn}${e.readiness.cover}${a.required}`);
+    expect(within(aside()).getByText(a.preview.noCover)).toBeInTheDocument();
+  });
+
+  it('Make cover: ảnh bìa ở cột phải đổi theo ngay, trước khi lưu', async () => {
+    const { user } = renderForm(detailFixture({ photos: [COVER_PHOTO, THIRD] }));
+    const cover = () => aside().querySelector('img')?.getAttribute('src');
+    expect(cover()).toContain('/tourism/catalog/tour/ha-long');
+
+    await user.click(screen.getByRole('button', { name: t.makeCoverFor(t.photoName(2)) }));
+
+    expect(cover()).toContain('/destination/ha-long/3');
+  });
+
+  it('chân form: câu hệ quả của lần lưu và link Next: Itinerary', () => {
+    renderForm();
+    expect(screen.getByText(a.photos.saveNote)).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: e.next(e.tabs.itinerary) })).toHaveAttribute(
+      'href',
+      '/tours/ha-long-bay-cruise/itinerary',
+    );
   });
 });
