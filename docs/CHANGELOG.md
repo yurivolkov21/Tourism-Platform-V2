@@ -8,6 +8,71 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-09-29 — Vá fast-uri trên đường request của API, kèm undici và ip-address (nhánh `fix/fast-uri-advisory`)
+
+Workflow "Dependabot Updates" hỏng hai lượt lúc 23:53 UTC ngày 28/09 với
+`security_update_not_possible` cho `fast-uri`: nó báo `latest-resolvable-version`
+3.1.7 và `lowest-non-vulnerable-version` 3.1.8 rồi dừng — đúng giới hạn đã ghi ở
+`audit.yml`, Dependabot không mở được PR cho lock pnpm có override. Workflow `Audit`
+xanh lượt 28/09 02:00 UTC, nhưng lượt 05/10 sẽ đỏ: năm advisory vào DB chung của
+GitHub tối 28/09 (20:43–21:42 UTC).
+
+- **fast-uri 4.1.3 lên 4.2.1, bản này đang chạy ở production.** Hai advisory high:
+  GHSA-qw65-cvwx-89v3 (authority injection qua port không được kiểm trong
+  `serialize`, dính `<4.1.4`) và GHSA-58mr-gqgx-xq4g (host confusion qua ngoặc
+  vuông không đóng, dính ĐÚNG 4.1.3). Đường kéo: `@tourism/api` → fastify 5.12.1 →
+  fast-json-stringify → fast-uri ^4. Bản vá 4.1.4 có từ 02/09 11:07 UTC; đợt vá
+  03/09 dừng ở 4.1.3 chỉ vì commit `7e9fad87` lúc 02:58 UTC, khi 4.1.4 mới khoảng
+  16 giờ tuổi — dưới cửa sổ `minimumReleaseAge` mặc định một ngày của pnpm 11 (đọc
+  mã 11.9.0: `minimum-release-age: 24 * 60`). Override nay là
+  `>=4.0.0 <4.1.5: ^4.1.5`, pnpm chọn bản cao nhất 4.2.1 (18/09). Release notes của
+  4.2.0 và 4.2.1 chỉ sửa IPv6 zone id và chuẩn hoá `mailto`.
+- **fast-uri 3.1.7 lên 3.1.8, vá trước khi audit kịp thấy.** 3.1.7 đã ngoài dải hai
+  advisory 28/09, nhưng fastify công bố ở repo từ 15/09 GHSA-hrr3-gc8f-f4qj (medium,
+  `>=3.0.0 <3.1.8`) mà DB chung chưa có (API trả 404 ngày 29/09), nên audit lẫn
+  Dependabot còn mù. Độ trễ ấy không nhỏ: hai advisory 28/09 có bản vá từ 02/09,
+  tức 26 ngày. Dòng 3.x cũng chạy ở production (fastify → `@fastify/ajv-compiler` →
+  ajv). Cùng lý do, selector dòng 4.x lấy tới `<4.1.5` để trùm GHSA-hrr3 và
+  GHSA-jvvf-x445-j334 (header injection ở `mailto`, `>=4.1.3 <4.1.5`), cũng mới chỉ
+  có ở repo.
+- **ip-address 10.4.0 lên 10.7.2** (GHSA-rpw4-54j3-4h4q, GHSA-2vr4-cq9g-pvrc,
+  moderate; cộng hai advisory repo 15/09 dính `<=10.7.0`). Ba dòng override của đợt
+  03/08 GỘP thành một `ip-address@<=10.7.0: ^10.7.1`: pnpm 11 áp override khi
+  selector giao với spec của gói cha, và nhiều selector cùng khớp thì nó chỉ lấy MỘT
+  (`pickMostSpecificVersionOverride`). Để dòng cũ lại thì spec có thể vẫn là
+  `^10.2.2`, 10.4.0 thoả nên lock không nhúc nhích. Đường kéo dev-tooling: shadcn →
+  `@modelcontextprotocol/sdk` → express-rate-limit.
+- **undici 7.29.0 gộp về 7.29.1 vốn đã có trong lock** (GHSA-3wwx-pv8p-q78v,
+  moderate; repo undici còn chín advisory 04/09 cho dòng 7.x, đều vá ở 7.29.1).
+  Đường kéo dev-tooling: shadcn CLI và `@dotenvx/dotenvx`.
+- `minimumReleaseAgeExclude` không đổi: mọi bản vá đã đủ tuổi, trẻ nhất là 4.2.1 với
+  11 ngày. Lock chỉ đổi ba gói, không gói nào nhảy major. Lệnh
+  `pnpm audit --audit-level=moderate` về 0, chỉ còn GHSA-vcc3-ghjq-m6fr đã ignore có
+  chủ đích từ 21/09. Cảnh báo peer của `pnpm install` giống hệt main (Expo và React
+  Native).
+
+**Bài học:** DB advisory chung của GitHub, nơi `pnpm audit` và Dependabot đọc, trễ so
+với advisory ở repo của chính gói — lượt này 26 ngày. Khi vá một gói, đọc thêm
+`gh api repos/<owner>/<repo>/security-advisories` và release notes của bản vá mới
+nhất, đừng dừng ở dải audit báo.
+
+**Review findings:** chưa có vòng review riêng.
+
+Không migration, không đổi env. Đẩy lên `main` thì Render tự deploy API với fast-uri
+mới — đó là toàn bộ phần "hạ tầng" của lượt này. Việc còn lại: sau khi đẩy, chạy tay
+workflow `Audit` (có `workflow_dispatch`) để thấy xanh ngay thay vì đợi 05/10, và
+xem các alert Dependabot của ba gói có tự đóng không.
+
+Tests after: không đổi so với entry G12/G13 ngay dưới, vì lượt này không đổi file
+nguồn nào. Vitest **4684** (web 1576, admin 1438, api 1005, contract 560, core 46,
+ui 23, tokens 18, i18n 18), int **702 ở 45 file**, jest mobile 159 và mobile-ui 86.
+`gate:int` chạy hai lượt, tách bước có hãm song song và watchdog: lượt đầu trên gốc
+`962d6090` (671 giây), lượt hai sau khi rebase lên `47b8dc64` (624 giây), vì code
+G12/G13 chưa từng chạy chung với lock mới. Int chạy trên DB riêng
+`tourism_test_fasturi` và API cho build web ở cổng 3101, vì một session khác chạy gate
+ở checkout gốc cùng lúc. Mỗi gói có dependency hoặc mã đổi (api, admin, web, ui) đều
+chạy thật các task của nó ở ít nhất một lượt; các gói còn lại replay cache.
+
 ## 2026-09-29 — Vá G12 và phần thư viện của G13 sau F18 (nhánh `fix/tour-photo-int32-image-filter`)
 
 Hai mục nhỏ mà vòng review F18 ghi vào open-items. User chọn vá ngay sau merge F18.

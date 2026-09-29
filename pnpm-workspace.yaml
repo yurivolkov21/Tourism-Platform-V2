@@ -162,12 +162,33 @@ overrides:
   # postcss). Chi tiết: CHANGELOG 03/08.
   # 03/09: `pnpm audit` (DB npm) ghi dòng 3.x dính CÙNG bốn GHSA (<3.1.6) dù
   # Dependabot chỉ liệt kê 4.x — vá cả hai dòng, đừng tin một nguồn.
-  fast-uri@>=3.0.0 <3.1.6: ^3.1.6
+  # 29/09 nới lên <3.1.8. Hai advisory công bố 28/09 ghi dòng 3.x dính tới
+  # <3.1.7 (GHSA-qw65-cvwx-89v3; GHSA-58mr-gqgx-xq4g dính ĐÚNG bản vá cũ
+  # 3.1.6), nên bản 3.1.7 trong lock lúc ấy đã ngoài. Nhưng fastify còn công
+  # bố ở repo từ 15/09 GHSA-hrr3-gc8f-f4qj (medium — chuẩn hoá hoa/thường của
+  # host lệch khi có octet percent-encoded) với dải >=3.0.0 <3.1.8, và nó CHƯA
+  # vào DB chung của GitHub (API trả 404 ngày 29/09) nên audit lẫn Dependabot
+  # chưa thấy.
+  # Độ trễ đó không nhỏ: hai advisory 28/09 có bản vá từ 02/09. Dòng 3.x chạy
+  # ở production (fastify → @fastify/ajv-compiler → ajv → fast-uri), nên vá
+  # theo advisory của repo luôn, đừng đợi DB — cùng bài học 03/09.
+  fast-uri@>=3.0.0 <3.1.8: ^3.1.8
   # 03/09 — bốn alert fast-uri mới (#32–#35, high: host confusion / SSRF qua
   # chuẩn hoá IPv6 và percent-decoding), CVE công bố 02/09 SAU đợt vá cùng
   # ngày; dải dính nới tới <4.1.3. Đường kéo: fastify → fast-json-stringify
   # (^4.0.0). Dòng 3.x giữ nguyên: advisory chỉ ghi >=4.0.0.
-  fast-uri@>=4.0.0 <4.1.3: ^4.1.3
+  # 29/09 — hai advisory high công bố 28/09 (~21:24 UTC): GHSA-qw65-cvwx-89v3
+  # (authority injection qua port không được kiểm trong serialize, dính
+  # <4.1.4) và GHSA-58mr-gqgx-xq4g (host confusion qua ngoặc vuông không đóng
+  # ở authority, dính ĐÚNG 4.1.3). Lock trước 29/09 ở 4.1.3, tức API production
+  # dính cả hai. Bản vá 4.1.4 có từ 02/09 11:07 UTC; đợt 03/09 dừng ở 4.1.3 vì
+  # commit lúc 02:58 UTC, khi 4.1.4 mới ~16 giờ tuổi — dưới cửa sổ
+  # minimumReleaseAge mặc định 1 ngày của pnpm 11. Selector lấy tới <4.1.5
+  # vì 4.1.5 vá thêm hai advisory medium fastify công bố ở repo 15/09, chưa vào
+  # DB chung: GHSA-hrr3-gc8f-f4qj (như dòng 3.x) và GHSA-jvvf-x445-j334
+  # (header injection ở `mailto`, dính >=4.1.3 <4.1.5). Các bản vá đều đủ
+  # tuổi (4.1.5 ra 15/09), không cần exclude.
+  fast-uri@>=4.0.0 <4.1.5: ^4.1.5
   # 03/09 — qs (GHSA-x5fp-wj9c-mxmx, GHSA-4mjr-xmp4-gh2g, moderate) `pnpm audit`
   # thấy trước khi Dependabot kịp mở alert; đường kéo @orpc/nest → express →
   # qs/body-parser. API không dùng express (adapter Fastify) nên qs là code
@@ -180,11 +201,29 @@ overrides:
   # @modelcontextprotocol/sdk, và prisma CLI → @prisma/dev. API là NestJS +
   # Fastify nên hono KHÔNG phục vụ request nào — vá để sạch audit, ở lại 4.x.
   hono@<4.13.5: ^4.13.5
-  ip-address@<=10.3.0: ^10.3.1
-  ip-address@>=10.1.1 <=10.2.0: ^10.2.1
-  ip-address@>=10.1.1 <=10.2.1: ^10.2.2
+  # 29/09 — GỘP ba dòng ip-address của đợt 03/08 (`<=10.3.0`,
+  # `>=10.1.1 <=10.2.0`, `>=10.1.1 <=10.2.1`) thành một. Hai advisory moderate
+  # vào DB chung 28/09: GHSA-rpw4-54j3-4h4q (isLinkLocal() nhận fe80::/64 thay
+  # vì fe80::/10) và GHSA-2vr4-cq9g-pvrc (không nhận dải NAT64
+  # 64:ff9b:1::/48), dính <=10.5.0. Repo còn hai advisory medium công bố 15/09
+  # mà DB chung chưa có — GHSA-j6r3-76f7-8jcv (isInSubnet() so địa chỉ khác họ
+  # như cùng không gian) và GHSA-h3mg-xc3c-68pw (chuỗi dài làm treo parse
+  # Address6), dính <=10.7.0 — nên selector lấy tới <=10.7.0, trùm cả ba dải
+  # cũ. THAY chứ không thêm dòng: pnpm 11 áp override khi selector GIAO với
+  # spec của gói cha, và nhiều selector cùng khớp thì nó chỉ lấy MỘT
+  # (pickMostSpecificVersionOverride, đọc mã 11.9.0). Để dòng cũ lại thì spec
+  # có thể vẫn là ^10.2.2 hay ^10.3.1 — 10.4.0 thoả cả hai nên lock giữ nguyên
+  # bản còn lỗ. Đường kéo vẫn là dev-tooling: shadcn →
+  # @modelcontextprotocol/sdk → express-rate-limit.
+  ip-address@<=10.7.0: ^10.7.1
   postcss@<=8.5.22: ^8.5.23
-  undici@>=7.0.0 <7.29.0: ^7.29.0
+  # 29/09 — nới từ <7.29.0 lên <7.29.1: GHSA-3wwx-pv8p-q78v (moderate, vào DB
+  # chung 28/09 — DoS khi giải nén permessage-deflate của WebSocket). Repo
+  # undici công bố 04/09 thêm chín advisory cho dòng 7.x (hai high) mà DB
+  # chung chưa có (API trả 404 ngày 29/09), đều vá ở 7.29.1 — dòng dưới trùm
+  # luôn. Đường kéo: shadcn CLI → undici và shadcn → @dotenvx/dotenvx →
+  # undici; dev-tooling, không nằm trên đường request.
+  undici@>=7.0.0 <7.29.1: ^7.29.1
   # Đợt vá Dependabot 11/08 (2 alert high) — cả hai là dep bắc cầu, scoped
   # theo dải dính như hai batch trên.
   # nanoid < 3.3.17: kéo về qua postcss@8.5.25 (dùng nanoid sinh source-map
