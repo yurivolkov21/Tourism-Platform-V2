@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { AdminTourDetail } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
@@ -178,5 +178,50 @@ describe('TourContentForm', () => {
 
     expect(rows).toHaveLength(3);
     for (const row of rows) expect(row).toHaveAttribute('data-align', 'field');
+  });
+});
+
+describe('TourContentForm — bước FAQ & policies (F19)', () => {
+  const a = e.aside;
+  const aside = () => within(screen.getByRole('complementary'));
+
+  it('hai card mang id="faq" và id="policies"; cột phải đếm theo danh sách ĐANG SOẠN', async () => {
+    const { user } = renderForm();
+    expect(document.getElementById('faq')).toHaveTextContent(t.faqTitle);
+    expect(document.getElementById('policies')).toHaveTextContent(t.policiesTitle);
+    expect(
+      aside().getByRole('link', { name: `${t.faqTitle} ${a.content.faqCount(0)}` }),
+    ).toHaveAttribute('href', '#faq');
+    expect(
+      aside().getByRole('link', { name: `${t.policiesTitle} ${a.content.policyCount(0)}` }),
+    ).toHaveAttribute('href', '#policies');
+
+    await user.click(screen.getByRole('button', { name: t.addFaq }));
+
+    expect(
+      aside().getByRole('link', { name: `${t.faqTitle} ${a.content.faqCount(1)}` }),
+    ).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: t.addPolicy }));
+
+    expect(
+      aside().getByRole('link', { name: `${t.policiesTitle} ${a.content.policyCount(1)}` }),
+    ).toBeInTheDocument();
+  });
+
+  it('câu chính sách huỷ chỉ còn ở card riêng bên phải — không lặp trong card Policies', () => {
+    renderForm();
+    expect(screen.getAllByText(t.cancellationNote)).toHaveLength(1);
+    expect(aside().getByText(t.cancellationNote)).toBeInTheDocument();
+    expect(aside().getByText(a.content.cancellationTitle)).toBeInTheDocument();
+    expect(aside().getByText(a.optionalStep)).toBeInTheDocument();
+  });
+
+  it('chân form: link Next: Costs', () => {
+    renderForm();
+    expect(screen.getByRole('link', { name: e.next(e.tabs.costs) })).toHaveAttribute(
+      'href',
+      '/tours/ha-long-bay-cruise/costs',
+    );
   });
 });
