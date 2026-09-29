@@ -1,5 +1,11 @@
-import { describe, expect, it } from 'vitest';
-import { buildUploadFormData, imageExtensionOf, parseUploadResponse } from './photo-upload';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import {
+  buildUploadFormData,
+  imageExtensionOf,
+  parseUploadResponse,
+  UPLOAD_TIMEOUT_MS,
+  uploadPhoto,
+} from './photo-upload';
 
 const PARAMS = {
   signature: 'sig',
@@ -67,5 +73,64 @@ describe('parseUploadResponse', () => {
     ]) {
       expect(parseUploadResponse(broken)).toBeNull();
     }
+  });
+});
+
+/** XHR giả tối thiểu: ghi lại listener để test tự bắn sự kiện. */
+class FakeXhr {
+  static last: FakeXhr | null = null;
+  timeout = 0;
+  status = 0;
+  responseText = '';
+  upload = { addEventListener: vi.fn() };
+  listeners = new Map<string, () => void>();
+  open = vi.fn();
+  send = vi.fn();
+  abort = vi.fn(() => this.fire('abort'));
+  constructor() {
+    FakeXhr.last = this;
+  }
+  addEventListener(type: string, listener: () => void) {
+    this.listeners.set(type, listener);
+  }
+  fire(type: string) {
+    this.listeners.get(type)?.();
+  }
+}
+
+describe('uploadPhoto — hạn giờ và huỷ (vòng review F18)', () => {
+  beforeEach(() => {
+    FakeXhr.last = null;
+    vi.stubGlobal('XMLHttpRequest', FakeXhr);
+  });
+  afterEach(() => vi.unstubAllGlobals());
+
+  it('lượt POST có hạn giờ; hết giờ thì reject — dòng tải không treo mãi', async () => {
+    const pending = uploadPhoto(new Blob(['x']), PARAMS);
+    expect(FakeXhr.last?.timeout).toBe(UPLOAD_TIMEOUT_MS);
+
+    FakeXhr.last?.fire('timeout');
+
+    await expect(pending).rejects.toThrow('timeout');
+  });
+
+  it('huỷ qua AbortSignal: gọi xhr.abort() rồi reject', async () => {
+    const controller = new AbortController();
+    const pending = uploadPhoto(new Blob(['x']), PARAMS, undefined, controller.signal);
+
+    controller.abort();
+
+    expect(FakeXhr.last?.abort).toHaveBeenCalledTimes(1);
+    await expect(pending).rejects.toThrow('aborted');
+  });
+
+  it('signal đã huỷ từ trước: reject ngay, không mở request nào', async () => {
+    const controller = new AbortController();
+    controller.abort();
+
+    await expect(
+      uploadPhoto(new Blob(['x']), PARAMS, undefined, controller.signal),
+    ).rejects.toThrow('aborted');
+    expect(FakeXhr.last).toBeNull();
   });
 });

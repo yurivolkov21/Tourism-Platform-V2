@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import type { SignedUploadParams } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
 import { beforeEach, describe, expect, it, type Mock, vi } from 'vitest';
+import { UnsavedChangesProvider } from '@/components/kit/unsaved-changes';
 import { uploadPhoto } from '@/lib/photo-upload';
 import type {
   LoadPhotoLibraryAction,
@@ -286,5 +287,207 @@ describe('TourPhotosForm', () => {
     expect(
       screen.getByText(`${t.fromLibrary} · ${t.credit('J. Nguyen', 'CC BY-SA 4.0')}`),
     ).toBeInTheDocument();
+  });
+});
+
+describe('TourPhotosForm — tải lên (vòng review F18)', () => {
+  type SignResult = Awaited<ReturnType<SignPhotoUploadsAction>>;
+  type SaveResult = Awaited<ReturnType<SetPhotosAction>>;
+  const photoAt = (i: number) => ({
+    ...COVER_PHOTO,
+    publicId: `tourism/catalog/destination/ha-long/${i}`,
+    alt: `Photo ${i}`,
+  });
+
+  it('chọn lần hai lúc lượt đầu còn chờ ký: sức chứa đã trừ lượt đầu — không vượt 30', async () => {
+    const signed = deferred<SignResult>();
+    const sign = vi.fn<SignPhotoUploadsAction>().mockReturnValueOnce(signed.promise);
+    const { user } = renderForm(
+      detailFixture({ photos: Array.from({ length: 28 }, (_, i) => photoAt(i)) }),
+      { sign },
+    );
+
+    await user.upload(fileInput(), [file('a.jpg'), file('b.jpg')]);
+    await user.upload(fileInput(), [file('c.jpg')]);
+
+    expect(sign).toHaveBeenCalledTimes(1);
+    expect(screen.getByText(t.skipped.full('c.jpg'))).toBeInTheDocument();
+  });
+
+  it('lệnh ký NÉM (mạng đứt, redeploy): câu ký hỏng, không dòng nào kẹt, Save không khoá', async () => {
+    const sign = vi.fn<SignPhotoUploadsAction>().mockRejectedValue(new Error('Failed to fetch'));
+    const { user } = renderForm(undefined, { sign });
+
+    await user.upload(fileInput(), [file('a.jpg')]);
+
+    expect(await screen.findByText(t.signFailed)).toBeInTheDocument();
+    expect(screen.queryByRole('progressbar')).toBeNull();
+    expect(screen.queryByText(t.waiting(1))).toBeNull();
+  });
+
+  it('Retry mà lệnh ký NÉM: dòng quay về hỏng kèm câu ký hỏng, Save không bị khoá mãi', async () => {
+    const sign = vi
+      .fn<SignPhotoUploadsAction>()
+      .mockResolvedValueOnce({ ok: true, params: [params(1)] })
+      .mockRejectedValueOnce(new Error('Failed to fetch'));
+    uploadMock.mockRejectedValueOnce(new Error('network'));
+    const { user } = renderForm(undefined, { sign });
+
+    await user.upload(fileInput(), [file('a.jpg')]);
+    await screen.findByText(t.uploadFailed('a.jpg'));
+    await user.click(screen.getByRole('button', { name: t.retry }));
+
+    expect(await screen.findByText(t.signFailed)).toBeInTheDocument();
+    expect(screen.getByText(t.uploadFailed('a.jpg'))).toBeInTheDocument();
+    expect(screen.queryByText(t.waiting(1))).toBeNull();
+  });
+
+  it('đang lưu thì thả file không tải — ảnh tải xong lúc này sẽ bị bản vừa lưu đè mất', async () => {
+    const saving = deferred<SaveResult>();
+    const save = vi.fn<SetPhotosAction>().mockReturnValueOnce(saving.promise);
+    const { user, sign } = renderForm(undefined, { save });
+
+    await user.type(altInputs()[1] as HTMLElement, ' at dawn');
+    await user.click(saveButton());
+    fireEvent.drop(screen.getByTestId('photo-drop-zone'), {
+      dataTransfer: { files: [file('a.jpg')] },
+    });
+
+    expect(await screen.findByText(t.busySaving)).toBeInTheDocument();
+    expect(sign).not.toHaveBeenCalled();
+    saving.resolve({ ok: true, detail: detailFixture({ photos: [COVER_PHOTO, SECOND] }) });
+  });
+
+  it('đang lưu thì Retry cũng không ký lại', async () => {
+    const sign = vi
+      .fn<SignPhotoUploadsAction>()
+      .mockResolvedValue({ ok: true, params: [params(1)] });
+    uploadMock.mockRejectedValueOnce(new Error('network'));
+    const saving = deferred<SaveResult>();
+    const save = vi.fn<SetPhotosAction>().mockReturnValueOnce(saving.promise);
+    const { user } = renderForm(undefined, { sign, save });
+
+    await user.upload(fileInput(), [file('a.jpg')]);
+    await screen.findByText(t.uploadFailed('a.jpg'));
+    await user.type(altInputs()[1] as HTMLElement, ' at dawn');
+    await user.click(saveButton());
+    await user.click(screen.getByRole('button', { name: t.retry }));
+
+    expect(await screen.findByText(t.busySaving)).toBeInTheDocument();
+    expect(sign).toHaveBeenCalledTimes(1);
+    saving.resolve({ ok: true, detail: detailFixture({ photos: [COVER_PHOTO, SECOND] }) });
+  });
+
+  it('đang tải mà form còn sạch: bấm link rời tab bị hỏi lại', async () => {
+    const sign = vi
+      .fn<SignPhotoUploadsAction>()
+      .mockResolvedValue({ ok: true, params: [params(1)] });
+    uploadMock.mockReturnValueOnce(new Promise(() => {}));
+    const user = userEvent.setup({ applyAccept: false });
+    render(
+      <UnsavedChangesProvider>
+        <a href="/tours/ha-long-bay-cruise/itinerary">Itinerary</a>
+        <TourPhotosForm
+          detail={detailFixture({ photos: [COVER_PHOTO, SECOND] })}
+          save={vi.fn()}
+          sign={sign}
+          loadLibrary={vi.fn()}
+        />
+      </UnsavedChangesProvider>,
+    );
+
+    await user.upload(fileInput(), [file('a.jpg')]);
+    await waitFor(() => expect(uploadMock).toHaveBeenCalledTimes(1));
+    await user.click(screen.getByRole('link', { name: 'Itinerary' }));
+
+    expect(
+      screen.getByRole('alertdialog', { name: messages.admin.unsavedChanges.title }),
+    ).toBeInTheDocument();
+  });
+
+  it('rời tab (unmount) lúc đang tải: lượt tải đang chạy bị huỷ', async () => {
+    const sign = vi
+      .fn<SignPhotoUploadsAction>()
+      .mockResolvedValue({ ok: true, params: [params(1)] });
+    uploadMock.mockReturnValueOnce(new Promise(() => {}));
+    const user = userEvent.setup({ applyAccept: false });
+    const view = render(
+      <TourPhotosForm
+        detail={detailFixture({ photos: [COVER_PHOTO, SECOND] })}
+        save={vi.fn()}
+        sign={sign}
+        loadLibrary={vi.fn()}
+      />,
+    );
+
+    await user.upload(fileInput(), [file('a.jpg')]);
+    await waitFor(() => expect(uploadMock).toHaveBeenCalledTimes(1));
+    const signal = uploadMock.mock.calls[0]?.[3] as AbortSignal | undefined;
+    expect(signal?.aborted).toBe(false);
+    view.unmount();
+
+    expect(signal?.aborted).toBe(true);
+  });
+
+  it('Retry: tiêu điểm sang thanh tiến độ của dòng; hỏng lần nữa thì về lại nút Retry', async () => {
+    const sign = vi
+      .fn<SignPhotoUploadsAction>()
+      .mockResolvedValueOnce({ ok: true, params: [params(1)] })
+      .mockResolvedValueOnce({ ok: true, params: [params(2)] });
+    let failAgain: (error: Error) => void = () => {};
+    uploadMock.mockRejectedValueOnce(new Error('network')).mockReturnValueOnce(
+      new Promise((_, reject) => {
+        failAgain = reject;
+      }),
+    );
+    const { user } = renderForm(undefined, { sign });
+
+    await user.upload(fileInput(), [file('a.jpg')]);
+    await screen.findByText(t.uploadFailed('a.jpg'));
+    await user.click(screen.getByRole('button', { name: t.retry }));
+
+    await waitFor(() =>
+      expect(screen.getByRole('progressbar', { name: t.uploadingLabel('a.jpg') })).toHaveFocus(),
+    );
+    failAgain(new Error('network'));
+    await waitFor(() => expect(screen.getByRole('button', { name: t.retry })).toHaveFocus());
+  });
+
+  it('Retry tải xong lúc tiêu điểm ở thanh tiến độ: tiêu điểm vào ô alt của ảnh mới', async () => {
+    const sign = vi
+      .fn<SignPhotoUploadsAction>()
+      .mockResolvedValueOnce({ ok: true, params: [params(1)] })
+      .mockResolvedValueOnce({ ok: true, params: [params(2)] });
+    const again = deferred<ReturnType<typeof uploaded>>();
+    uploadMock.mockRejectedValueOnce(new Error('network')).mockReturnValueOnce(again.promise);
+    const { user } = renderForm(undefined, { sign });
+
+    await user.upload(fileInput(), [file('a.jpg')]);
+    await screen.findByText(t.uploadFailed('a.jpg'));
+    await user.click(screen.getByRole('button', { name: t.retry }));
+    await waitFor(() => expect(screen.getByRole('progressbar')).toHaveFocus());
+    again.resolve(uploaded(2));
+
+    await waitFor(() => expect(altInputs()).toHaveLength(3));
+    await waitFor(() => expect(altInputs()[2]).toHaveFocus());
+  });
+
+  it('Remove dòng hỏng: tiêu điểm sang dòng hỏng kế; hết dòng thì về nút Upload photos', async () => {
+    const sign = vi
+      .fn<SignPhotoUploadsAction>()
+      .mockResolvedValue({ ok: true, params: [params(1), params(2)] });
+    uploadMock
+      .mockRejectedValueOnce(new Error('network'))
+      .mockRejectedValueOnce(new Error('network'));
+    const { user } = renderForm(undefined, { sign });
+
+    await user.upload(fileInput(), [file('a.jpg'), file('b.jpg')]);
+    await screen.findByText(t.uploadFailed('b.jpg'));
+    await screen.findByText(t.uploadFailed('a.jpg'));
+    await user.click(screen.getAllByRole('button', { name: t.remove })[0] as HTMLElement);
+
+    expect(screen.getByRole('button', { name: t.remove })).toHaveFocus();
+    await user.click(screen.getByRole('button', { name: t.remove }));
+    expect(screen.getByRole('button', { name: t.upload })).toHaveFocus();
   });
 });

@@ -4118,6 +4118,9 @@ export const messages = {
             /** Tour đang bán phải còn ảnh bìa (ADR-0048 §8). */
             photosOnSale:
               'A tour on sale needs a cover photo. Take it off sale first to remove every photo.',
+            /** Trần `TOUR_PHOTOS_MAX` của contract — chặn ở form để không bao giờ tới INVALID_INPUT (vòng review F18). */
+            tooManyPhotos: (max: number, extra: number) =>
+              `A tour can have up to ${max} photos. Remove ${extra === 1 ? '1 photo' : `${extra} photos`}.`,
           },
         },
         create: {
@@ -4344,6 +4347,10 @@ export const messages = {
           makeCoverFor: (name: string) => `Make cover: ${name}`,
           alt: 'Alt text',
           altRequired: 'Describe this photo for people who can’t see it.',
+          /** Refine của contract: một publicId chỉ một lần (vòng review F18). */
+          duplicate: 'This photo is already on the list. Remove one of the two.',
+          /** Ảnh tải xong giữa lúc lưu sẽ bị bản server vừa lưu đè mất (vòng review F18). */
+          busySaving: 'Wait for the save to finish, then add more photos.',
           uploaded: 'Uploaded',
           fromLibrary: 'From the library',
           credit: (author: string, license: string | null) =>

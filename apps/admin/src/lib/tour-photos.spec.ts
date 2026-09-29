@@ -73,6 +73,26 @@ describe('validatePhotosForm', () => {
     expect(hasPhotoErrors(errors)).toBe(true);
   });
 
+  it('quá 30 ảnh → lỗi của cả danh sách nói bớt mấy ảnh; đúng 30 thì sạch (vòng review F18)', () => {
+    const photos = (n: number) => Array.from({ length: n }, (_, i) => draft(`p${i}`));
+    const detail = detailFixture({ isPublished: false });
+    expect(validatePhotosForm({ photos: photos(TOUR_PHOTOS_MAX) }, detail).list).toBeUndefined();
+    expect(validatePhotosForm({ photos: photos(TOUR_PHOTOS_MAX + 1) }, detail).list).toBe(
+      fe.tooManyPhotos(TOUR_PHOTOS_MAX, 1),
+    );
+    expect(validatePhotosForm({ photos: photos(TOUR_PHOTOS_MAX + 3) }, detail).list).toBe(
+      fe.tooManyPhotos(TOUR_PHOTOS_MAX, 3),
+    );
+  });
+
+  it('một ảnh có mặt hai lần → lỗi ở dòng SAU, dòng đầu giữ nguyên (vòng review F18)', () => {
+    const errors = validatePhotosForm(
+      { photos: [draft('a'), draft('b'), draft('c', { publicId: 'lib/a' })] },
+      detailFixture(),
+    );
+    expect(errors.rows).toEqual({ c: t.duplicate });
+  });
+
   it('tour đang bán gỡ hết ảnh → lỗi của cả danh sách; tắt bán thì không', () => {
     expect(validatePhotosForm({ photos: [] }, detailFixture()).list).toBe(fe.photosOnSale);
     expect(
@@ -195,5 +215,16 @@ describe('runWithConcurrency', () => {
     await runWithConcurrency(tasks, 3);
     expect(done.sort((a, b) => a - b)).toEqual([0, 1, 2, 3, 4, 5, 6]);
     expect(peak).toBe(3);
+  });
+
+  it('signal huỷ thì thôi khởi động việc mới — rời tab không tải tiếp hàng đợi (vòng review F18)', async () => {
+    const controller = new AbortController();
+    const started: number[] = [];
+    const tasks = Array.from({ length: 5 }, (_, i) => async () => {
+      started.push(i);
+      if (i === 1) controller.abort();
+    });
+    await runWithConcurrency(tasks, 1, controller.signal);
+    expect(started).toEqual([0, 1]);
   });
 });

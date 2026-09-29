@@ -107,6 +107,35 @@ describe('EditorFormFrame', () => {
     expect(push).not.toHaveBeenCalled();
   });
 
+  it('busy (đang tải ảnh) mà form sạch: rời trang vẫn bị hỏi lại, Save vẫn khoá (vòng review F18)', async () => {
+    const user = userEvent.setup();
+    render(
+      <UnsavedChangesProvider>
+        <a href="/tours/ha-long/itinerary">Itinerary</a>
+        <EditorFormFrame
+          dirty={false}
+          busy
+          pending={false}
+          banner={null}
+          onSubmit={vi.fn()}
+          onReload={onReload}
+        >
+          <input aria-label="Name" />
+        </EditorFormFrame>
+      </UnsavedChangesProvider>,
+    );
+
+    // Đang tải không phải "có thay đổi để lưu".
+    expect(saveButton()).toHaveAttribute('aria-disabled', 'true');
+
+    await user.click(screen.getByRole('link', { name: 'Itinerary' }));
+
+    expect(
+      screen.getByRole('alertdialog', { name: messages.admin.unsavedChanges.title }),
+    ).toBeInTheDocument();
+    expect(push).not.toHaveBeenCalled();
+  });
+
   it('dải notReady: câu báo và link của từng chỗ thiếu', () => {
     frame({
       banner: {

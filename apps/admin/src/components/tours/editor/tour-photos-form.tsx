@@ -38,6 +38,7 @@ import {
   runWithConcurrency,
   type SetPhotosAction,
   type SignPhotoUploadsAction,
+  type SignPhotoUploadsResult,
   signUploadsErrorCopy,
   skippedCopy,
   UPLOAD_CONCURRENCY,
@@ -57,10 +58,25 @@ import { useTourFormState } from '@/lib/use-tour-form-state';
  *   dòng ảnh — chúng chưa phải ảnh của tour cho tới khi tải xong.
  * - Save khoá khi còn file đang tải (`blockedNote`). Rời trang lúc chưa lưu thì
  *   hộp hỏi lại của F17 bật lên; ảnh đã tải mà bỏ nằm trong hàng dọn từ lúc ký.
+ *
+ * Vòng review F18:
+ * - Dòng tải vào danh sách NGAY khi file được nhận, trước khi ký — lượt chọn kế đã
+ *   thấy sức chứa trừ chúng, danh sách không vượt 30.
+ * - Lệnh ký có thể NÉM (mạng đứt, redeploy): coi như GENERIC như `useSectionSave`;
+ *   không dòng nào kẹt ở "đang tải".
+ * - Đang lưu thì không nhận file mới: ảnh tải xong lúc ấy bị bản server vừa lưu đè.
+ * - Còn file đang tải (hay tải hỏng chưa gỡ) thì rời trang bị hỏi lại (`busy`); rời
+ *   hẳn thì huỷ lượt đang tải và không khởi động file xếp hàng.
+ * - Nút biến mất sau khi bấm (Retry, Remove) thì tiêu điểm được chuyển đi chủ động.
  */
 const t = messages.admin.tours.editor.photos;
 const ACCEPT = ALLOWED_IMAGE_EXTENSIONS.map((ext) => `.${ext}`).join(',');
 const NO_ERRORS: PhotosFormErrors = { rows: {} };
+const UPLOAD_BUTTON_ID = 'tour-photos-upload';
+const altInputId = (key: string) => `photo-${key}-alt`;
+const progressId = (key: string) => `upload-${key}-progress`;
+const retryId = (key: string) => `upload-${key}-retry`;
+const removeId = (key: string) => `upload-${key}-remove`;
 
 interface UploadDraft {
   key: string;
@@ -86,7 +102,8 @@ export function TourPhotosForm({
   const { values, version, dirty, showValidation } = form;
   const [uploads, setUploads] = React.useState<UploadDraft[]>([]);
   const [notices, setNotices] = React.useState<string[]>([]);
-  const [focusAlt, setFocusAlt] = React.useState<string | null>(null);
+  /** `id` của phần tử nhận tiêu điểm sau lượt render kế — nút vừa bấm có thể đã biến mất. */
+  const [focusId, setFocusId] = React.useState<string | null>(null);
   const [libraryOpen, setLibraryOpen] = React.useState(false);
   /** Kho ảnh địa danh — tải ở lần mở hộp đầu, giữ cho các lần sau. */
   const [library, setLibrary] = React.useState<AdminPhotoLibrary | null>(null);
@@ -94,6 +111,8 @@ export function TourPhotosForm({
   const fileInput = React.useRef<HTMLInputElement>(null);
   /** URL xem trước còn sống — thu hồi hết khi rời tab. */
   const previews = React.useRef(new Set<string>());
+  /** Huỷ mọi lượt tải khi rời tab. Dựng lại trong effect: StrictMode gỡ rồi gắn lại. */
+  const aborter = React.useRef(new AbortController());
 
   const errors = showValidation ? validatePhotosForm(values, detail) : NO_ERRORS;
   const uploadingCount = uploads.filter((upload) => upload.status === 'uploading').length;
@@ -112,18 +131,21 @@ export function TourPhotosForm({
   });
 
   React.useEffect(() => {
+    const controller = new AbortController();
+    aborter.current = controller;
     const live = previews.current;
     return () => {
+      controller.abort();
       for (const url of live) URL.revokeObjectURL(url);
     };
   }, []);
 
-  // "Make cover" làm nút vừa bấm biến mất cùng dòng cũ (quyết định 7 của plan).
+  // Make cover, Retry, Remove làm nút vừa bấm biến mất (quyết định 7 của plan, vòng review F18).
   React.useEffect(() => {
-    if (focusAlt === null) return;
-    document.getElementById(`photo-${focusAlt}-alt`)?.focus();
-    setFocusAlt(null);
-  }, [focusAlt]);
+    if (focusId === null) return;
+    document.getElementById(focusId)?.focus();
+    setFocusId(null);
+  }, [focusId]);
 
   function patchUpload(key: string, next: Partial<UploadDraft>) {
     setUploads((current) =>
@@ -137,57 +159,102 @@ export function TourPhotosForm({
     setUploads((current) => current.filter((upload) => upload.key !== draft.key));
   }
 
-  async function uploadOne(draft: UploadDraft, params: SignedUploadParams) {
+  /** Server action có thể NÉM (mạng đứt, redeploy) — coi như GENERIC, như `useSectionSave`. */
+  async function signSafely(count: number): Promise<SignPhotoUploadsResult> {
     try {
-      const done = await uploadPhoto(draft.file, params, (percent) =>
-        patchUpload(draft.key, { percent }),
-      );
-      dropUpload(draft);
-      form.setValues((current) => ({
-        photos: [...current.photos, uploadedPhotoDraft(done, params.cloudName)],
-      }));
+      return await sign({ id: detail.id, count });
     } catch {
+      return { ok: false, code: 'GENERIC' };
+    }
+  }
+
+  async function uploadOne(draft: UploadDraft, params: SignedUploadParams, signal: AbortSignal) {
+    // Tiêu điểm đang ở thanh tiến độ của dòng (vừa bấm Retry) thì đi theo kết cục của nó.
+    const followsRow = () => document.activeElement?.id === progressId(draft.key);
+    try {
+      const done = await uploadPhoto(
+        draft.file,
+        params,
+        (percent) => patchUpload(draft.key, { percent }),
+        signal,
+      );
+      const photo = uploadedPhotoDraft(done, params.cloudName);
+      const refocus = followsRow();
+      dropUpload(draft);
+      form.setValues((current) => ({ photos: [...current.photos, photo] }));
+      if (refocus) setFocusId(altInputId(photo.key));
+    } catch {
+      if (signal.aborted) return;
+      const refocus = followsRow();
       patchUpload(draft.key, { status: 'failed' });
+      if (refocus) setFocusId(retryId(draft.key));
     }
   }
 
   async function startUploads(files: readonly File[]) {
+    if (pending) {
+      setNotices([t.busySaving]);
+      return;
+    }
     const { accepted, skipped } = acceptFiles(files, capacity);
     const skippedNotes = skipped.map(skippedCopy);
     setNotices(skippedNotes);
     if (accepted.length === 0) return;
 
-    const signed = await sign({ id: detail.id, count: accepted.length });
+    // Giữ chỗ NGAY, trước khi ký: lượt chọn kế đã thấy sức chứa trừ các dòng này.
+    const drafts: UploadDraft[] = accepted.map((file) => {
+      const preview = URL.createObjectURL(file);
+      previews.current.add(preview);
+      return { key: newItemKey(), file, preview, status: 'uploading', percent: 0 };
+    });
+    setUploads((current) => [...current, ...drafts]);
+    const signal = aborter.current.signal;
+    const signed = await signSafely(accepted.length);
+    if (signal.aborted) return;
     if (!signed.ok) {
+      for (const draft of drafts) dropUpload(draft);
       setNotices([...skippedNotes, signUploadsErrorCopy(signed.code)]);
       return;
     }
-    const drafts = accepted.map((file) => {
-      const preview = URL.createObjectURL(file);
-      previews.current.add(preview);
-      return { key: newItemKey(), file, preview, status: 'uploading' as const, percent: 0 };
-    });
-    setUploads((current) => [...current, ...drafts]);
     await runWithConcurrency(
       drafts.flatMap((draft, index) => {
         const params = signed.params[index];
-        return params ? [() => uploadOne(draft, params)] : [];
+        return params ? [() => uploadOne(draft, params, signal)] : [];
       }),
       UPLOAD_CONCURRENCY,
+      signal,
     );
   }
 
   /** Chữ ký cũ có thể đã hết hạn — Retry luôn ký lại MỘT chữ ký mới. */
   async function retry(draft: UploadDraft) {
+    if (pending) {
+      setNotices([t.busySaving]);
+      return;
+    }
     patchUpload(draft.key, { status: 'uploading', percent: 0 });
-    const signed = await sign({ id: detail.id, count: 1 });
+    setFocusId(progressId(draft.key));
+    const signal = aborter.current.signal;
+    const signed = await signSafely(1);
+    if (signal.aborted) return;
     const params = signed.ok ? signed.params[0] : undefined;
     if (params === undefined) {
       patchUpload(draft.key, { status: 'failed' });
-      if (!signed.ok) setNotices([signUploadsErrorCopy(signed.code)]);
+      setFocusId(retryId(draft.key));
+      setNotices([signUploadsErrorCopy(signed.ok ? 'GENERIC' : signed.code)]);
       return;
     }
-    await uploadOne(draft, params);
+    await uploadOne(draft, params, signal);
+  }
+
+  /** Gỡ một dòng tải hỏng; tiêu điểm sang dòng hỏng kế, hết thì về nút Upload photos. */
+  function removeUpload(draft: UploadDraft) {
+    const index = uploads.findIndex((upload) => upload.key === draft.key);
+    const next = [...uploads.slice(index + 1), ...uploads.slice(0, Math.max(0, index))].find(
+      (upload) => upload.status === 'failed',
+    );
+    dropUpload(draft);
+    setFocusId(next ? removeId(next.key) : UPLOAD_BUTTON_ID);
   }
 
   function submit() {
@@ -210,6 +277,7 @@ export function TourPhotosForm({
         banner={banner}
         serverChanged={form.serverChanged}
         blockedNote={uploadingCount > 0 ? t.waiting(uploadingCount) : undefined}
+        busy={uploads.length > 0}
         onSubmit={submit}
         onReload={form.reload}
       >
@@ -217,6 +285,7 @@ export function TourPhotosForm({
           <div className="flex flex-wrap items-center gap-3">
             <Button
               ref={uploadButton}
+              id={UPLOAD_BUTTON_ID}
               type="button"
               variant="outline"
               focusableWhenDisabled
@@ -334,7 +403,7 @@ export function TourPhotosForm({
                           aria-label={t.makeCoverFor(t.photoName(index + 1))}
                           onClick={() => {
                             form.setValues((current) => makeCover(current, photo.key));
-                            setFocusAlt(photo.key);
+                            setFocusId(altInputId(photo.key));
                           }}
                         >
                           {t.makeCover}
@@ -364,6 +433,9 @@ export function TourPhotosForm({
                         {t.uploading(upload.file.name, upload.percent)}
                       </p>
                       <div
+                        id={progressId(upload.key)}
+                        // Nhận tiêu điểm khi Retry làm nút vừa bấm biến mất (vòng review F18).
+                        tabIndex={-1}
                         role="progressbar"
                         aria-label={t.uploadingLabel(upload.file.name)}
                         aria-valuemin={0}
@@ -381,6 +453,7 @@ export function TourPhotosForm({
                       </p>
                       <div className="flex gap-2">
                         <Button
+                          id={retryId(upload.key)}
                           type="button"
                           variant="outline"
                           size="sm"
@@ -389,10 +462,11 @@ export function TourPhotosForm({
                           {t.retry}
                         </Button>
                         <Button
+                          id={removeId(upload.key)}
                           type="button"
                           variant="ghost"
                           size="sm"
-                          onClick={() => dropUpload(upload)}
+                          onClick={() => removeUpload(upload)}
                         >
                           {t.remove}
                         </Button>

@@ -64,15 +64,31 @@ export function parseUploadResponse(body: unknown): UploadedPhoto | null {
   return { publicId, upload: { version: String(version), width, height, format, bytes } };
 }
 
-/** POST file lên Cloudinary, báo tiến độ 0–100. Mọi thất bại đều reject. */
+/**
+ * Hạn giờ của một lượt POST (vòng review F18): 10 MB qua đường lên chừng 0,3 Mbit/s
+ * vẫn kịp; treo lâu hơn là kết nối đã chết. Mặc định của XHR là 0 — không bao giờ hết
+ * giờ — và một dòng tải treo khoá nút Save của cả tab.
+ */
+export const UPLOAD_TIMEOUT_MS = 5 * 60_000;
+
+/**
+ * POST file lên Cloudinary, báo tiến độ 0–100. Mọi thất bại đều reject — kể cả hết
+ * giờ và bị huỷ qua `signal` (tab bị rời giữa lúc tải).
+ */
 export function uploadPhoto(
   file: Blob,
   params: SignedUploadParams,
   onProgress?: (percent: number) => void,
+  signal?: AbortSignal,
 ): Promise<UploadedPhoto> {
   return new Promise((resolve, reject) => {
+    if (signal?.aborted) {
+      reject(new Error('Cloudinary upload aborted'));
+      return;
+    }
     const xhr = new XMLHttpRequest();
     xhr.open('POST', params.uploadUrl);
+    xhr.timeout = UPLOAD_TIMEOUT_MS;
     xhr.upload.addEventListener('progress', (event) => {
       if (event.lengthComputable) onProgress?.(Math.round((event.loaded / event.total) * 100));
     });
@@ -91,6 +107,9 @@ export function uploadPhoto(
       }
     });
     xhr.addEventListener('error', () => reject(new Error('Cloudinary upload failed (network)')));
+    xhr.addEventListener('timeout', () => reject(new Error('Cloudinary upload failed (timeout)')));
+    xhr.addEventListener('abort', () => reject(new Error('Cloudinary upload aborted')));
+    signal?.addEventListener('abort', () => xhr.abort(), { once: true });
     xhr.send(buildUploadFormData(file, params));
   });
 }

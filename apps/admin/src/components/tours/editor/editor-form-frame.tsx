@@ -34,6 +34,7 @@ export function EditorFormFrame({
   serverChanged = false,
   note,
   blockedNote,
+  busy = false,
   onSubmit,
   onReload,
   children,
@@ -51,12 +52,18 @@ export function EditorFormFrame({
    * chẳng có gì đang lưu.
    */
   blockedNote?: string;
+  /**
+   * Việc CHƯA lưu mà không nằm trong giá trị form (tab Photos: file đang tải lên) —
+   * rời trang lúc này bị hỏi lại như có thay đổi, nhưng Save không sáng vì nó
+   * (vòng review F18).
+   */
+  busy?: boolean;
   onSubmit: () => void;
   /** Nút Reload của mọi dải báo — form nạp bản server mới. */
   onReload: () => void;
   children: React.ReactNode;
 }) {
-  useReportUnsaved(dirty);
+  useReportUnsaved(dirty || busy);
   const shown = banner ?? (serverChanged ? STALE : null);
 
   return (

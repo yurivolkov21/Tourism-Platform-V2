@@ -107,13 +107,20 @@ export function validatePhotosForm(
   detail: AdminTourDetail,
 ): PhotosFormErrors {
   const rows: Record<string, string> = {};
+  // Hai luật soi gương contract (vòng review F18): một publicId chỉ một lần, và không
+  // quá `TOUR_PHOTOS_MAX` ảnh — lọt tới server là INVALID_INPUT, admin không biết sửa gì.
+  const seen = new Set<string>();
   for (const photo of values.photos) {
     const alt = photo.alt.trim();
-    if (alt === '') rows[photo.key] = t.altRequired;
+    if (seen.has(photo.publicId)) rows[photo.key] = t.duplicate;
+    else if (alt === '') rows[photo.key] = t.altRequired;
     else if (alt.length > TOUR_PHOTO_ALT_MAX) {
       rows[photo.key] = e.form.errors.tooLong(TOUR_PHOTO_ALT_MAX);
     }
+    seen.add(photo.publicId);
   }
+  const extra = values.photos.length - TOUR_PHOTOS_MAX;
+  if (extra > 0) return { list: e.form.errors.tooManyPhotos(TOUR_PHOTOS_MAX, extra), rows };
   // G11: luật "tour đang bán" suy từ readiness dự tính (ADR-0048 §8).
   const shortfalls = onSaleShortfalls(
     detail,
@@ -217,14 +224,19 @@ export function photoSourceLine(photo: PhotoDraft): string {
     : `${t.fromLibrary} · ${t.credit(photo.author, photo.license)}`;
 }
 
-/** Chạy mọi việc, không quá `limit` việc cùng lúc; lỗi của một việc do chính nó bắt. */
+/**
+ * Chạy mọi việc, không quá `limit` việc cùng lúc; lỗi của một việc do chính nó bắt.
+ * `signal` huỷ thì thôi khởi động việc mới — rời tab lúc đang tải không tải tiếp hàng
+ * đợi (vòng review F18); việc đang chạy do chính nó nghe `signal`.
+ */
 export async function runWithConcurrency(
   tasks: readonly (() => Promise<void>)[],
   limit: number,
+  signal?: AbortSignal,
 ): Promise<void> {
   let next = 0;
   const lane = async () => {
-    while (next < tasks.length) {
+    while (next < tasks.length && !signal?.aborted) {
       const task = tasks[next];
       next += 1;
       if (task) await task();
