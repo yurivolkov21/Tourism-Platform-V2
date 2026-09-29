@@ -93,8 +93,12 @@ thức API trước khi khách gõ tin đầu. Câu trả lời render markdown
 
 ### 7. Thư viện: AI SDK 7, ghim trước freeze
 
-`ai` 7.x và `@ai-sdk/anthropic` 4.x vào `apps/api`, `@ai-sdk/react` 4.x vào `apps/web`
-(đo 29/09: 7.0.122, 4.0.68, 4.0.125; khớp Zod 4.4.3 và React 19.2.4 của repo). Freeze
+`ai` và `@ai-sdk/anthropic` vào `apps/api`; `ai` và `@ai-sdk/react` vào `apps/web` (web
+cần chính `ai` cho `DefaultChatTransport`). Bản ghim 29/09: `ai` 7.0.118,
+`@ai-sdk/anthropic` 4.0.65, `@ai-sdk/react` 4.0.121 — bản mới nhất lúc ấy chưa đủ một
+ngày nên cổng `minimumReleaseAge` của pnpm lấy bản liền trước, và `@ai-sdk/react`
+4.0.121 là bản kéo đúng `ai` 7.0.118 để web chỉ có một bản `ai`. Cả ba khớp Zod 4.4.3
+và React 19.2.4 của repo. Freeze
 15/10 cấm thêm dependency mà admin dự kiến xong sát ngày đó, nên ba gói được **ghim
 bằng một commit riêng ngay sau khi spec duyệt**, code viết sau. Test dùng
 `MockLanguageModelV4` của `ai/test`; CI không bao giờ gọi Anthropic.

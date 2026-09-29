@@ -294,10 +294,10 @@ Thêm đủ vào `apps/api/src/config/env.ts`, `render.yaml` (key), `apps/api/.e
 
 ## 7. Triển khai
 
-1. **Ngay sau khi spec duyệt, trước 15/10:** nhánh riêng ghim `ai` 7.x và
-   `@ai-sdk/anthropic` 4.x vào `apps/api`, `@ai-sdk/react` 4.x vào `apps/web` (bản chính
-   xác lúc cài; đo 29/09: 7.0.122, 4.0.68, 4.0.125), gate đầy đủ, merge. Chưa có code nào
-   import chúng.
+1. **Ngay sau khi spec duyệt, trước 15/10:** nhánh riêng ghim `ai` 7.0.118 và
+   `@ai-sdk/anthropic` 4.0.65 vào `apps/api`; `ai` 7.0.118 và `@ai-sdk/react` 4.0.121 vào
+   `apps/web` (lý do chọn bản ở ADR-0050 §7), gate đầy đủ, merge. Chưa có code nào import
+   chúng.
 2. **Sau khi admin xong:** plan theo khuôn F17/F18 (session gốc viết plan và prompt,
    session khác thi công, gốc review rồi merge).
 3. **Lúc merge (session gốc, luật 15):** deploy migration lên Supabase; thêm key vào
