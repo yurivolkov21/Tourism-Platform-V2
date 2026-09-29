@@ -8,6 +8,56 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-09-29 — Web lấy đủ mọi trang tour, không dừng ở 50 (nhánh `fix/web-tours-all-pages`, đóng G10)
+
+`fetchTours` từng chỉ đọc trang 1 `limit: 50` của `catalog.tours.list` (contract cho tối
+đa 50), nên từ tour thứ 51 thì tour cũ nhất biến khỏi listing, sitemap, prerender và số
+đếm ở trang chủ. F17 cho admin tạo tour nên ngưỡng này chạm được; hiện có 29 tour.
+
+`38a3b25d`: hàm thuần `collectAllPages` (`apps/web/src/lib/api/collect-pages.ts`) đọc
+trang 1 rồi lần lượt tới `totalPages`. Gọi tuần tự để không dồn loạt request vào instance
+free của Render; bỏ tour trùng giữa hai trang (tour mới tạo giữa hai lượt gọi đẩy mọi tour
+lùi một bậc); ném lỗi thay vì trả danh sách thiếu. Trần 20 trang (1000 tour), chạm trần
+thì `console.warn`. Không đổi contract hay API; với 29 tour vẫn là một lượt gọi.
+
+G9 (bust `post:<slug>` khi sửa hay xoá tour) chuyển vào phạm vi P4e-4 thay vì vá bây giờ:
+hôm nay chưa có triệu chứng — web chưa hiện tour gắn trong bài viết, không seed hay màn nào
+tạo `PostTour`, menu Posts của admin còn tắt.
+
+**Review findings:** user duyệt thiết kế trong chat. Năm đột biến tay (bỏ trần, hụt trang
+cuối, không bỏ trùng, báo `totalPages` đã cắt, nuốt lỗi trang sau) đều bị test bắt.
+
+Tests after: xem entry dưới — hai nhánh chạy chung một lượt `gate:int`.
+
+## 2026-09-29 — Lúc build thử lại lâu hơn khi Render dựng lại API (nhánh `fix/web-build-retry`, ADR-0044 AMEND 1)
+
+Bản deploy web của `962d6090` (lượt push merge F18) ERROR dù đã có lớp thử lại: prerender
+`/tours/phu-quoc-honeymoon-4d` nhận `ECONNRESET` cả ba lượt của lịch 400ms/1200ms, trong
+lúc Render dựng lại API cho chính lượt push ấy. Build Filter `docs/**` (bật 21/09) không
+chặn ca này, vì lượt push có sửa `apps/api`.
+
+- `c3a3d5aa`: ADR-0044 AMEND 1 — ràng buộc 4 tách thành hai lịch chờ; bản đồ ADR ghi
+  "1 AMEND".
+- `a8b5aeb3`: `retryDelaysFor(process.env.NEXT_PHASE)` — lúc `next build` sáu lượt, chờ
+  1s, 2s, 4s, 8s, 15s; lúc chạy giữ lịch ngắn. Mỗi lần sắp thử lại ghi một dòng
+  `[retry-fetch] GET <đường dẫn> — lượt n/N lỗi … (ECONNRESET), thử lại sau …ms`, không
+  kèm query, để log build cho biết lớp này đã cứu lượt nào.
+
+Chỗ nối trong `client.ts` được kiểm bằng một test tạm (không commit) chạy qua client oRPC
+thật: có `NEXT_PHASE` của build thì 6 lượt kèm 5 dòng cảnh báo, không có thì 3 lượt. Next
+16.3.4 gán `NEXT_PHASE` trước khi tạo worker prerender, và worker nhận env của tiến trình
+cha (đọc mã `next/dist`).
+
+**Review findings:** user duyệt thiết kế trong chat. Bảy đột biến tay (đảo điều kiện pha,
+gõ sai tên pha, lịch build thiếu lượt, không ghi log khi status tạm thời, bỏ mã nguyên
+nhân, đếm sai tổng lượt, log kèm query) đều bị test bắt; ca tên pha so với hằng của
+`next/constants`. Tự sửa trước khi push: bản AMEND đầu viết lượt push ấy chỉ sửa `docs/`
+và Build Filter chưa bật — sai cả hai.
+
+Tests after (một lượt `gate:int` trên trạng thái gộp hai nhánh; cây trùng `main` trừ file
+ADR): unit 4862 — web 1592 (thêm 16), admin 1441, api 1005, contract 560, mobile 159, core
+46, ui 23, i18n 18, tokens 18 — và int 702/702 trên DB riêng, hết 700 giây.
+
 ## 2026-09-29 — Bật bộ dọn ảnh mồ côi trên production; đính chính entry thử tay F18
 
 **Đính chính.** Entry "Thử tay F18 trên production" bên dưới ghi mười một publicId của
