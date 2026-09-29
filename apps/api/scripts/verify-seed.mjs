@@ -294,6 +294,19 @@ const BAT_BIEN = [
     `select count(*)::int as n from cancellation_requests where decided_by is distinct from user_id`,
     false,
   ],
+  // ── Readiness F18 (vòng review F18): tour đang bán phải có ảnh bìa ──
+  // Seed không ghi media_assets; `upsert` của seed lại bật bán cả 29 tour. Chỉ kiểm khi
+  // DB đã có ảnh tour (prod, hay local sau `media:upload`) — DB trần có cảnh báo riêng
+  // ở cuối thay vì đỏ.
+  [
+    'tour đang bán mà không có ảnh bìa (readiness F18)',
+    `select count(*)::int as n from tours t
+      where t.is_published
+        and exists (select 1 from media_assets m where m.owner_type = 'TOUR')
+        and not exists (select 1 from media_assets m
+                         where m.owner_type = 'TOUR' and m.owner_id = t.id and m.role = 'hero')`,
+    false,
+  ],
   // ── Tác dụng phụ ──
   [
     'outbox còn dòng PENDING (mail sẽ bị gửi thật)',
@@ -437,7 +450,21 @@ for (const { ten, sql, dungMoc, dem } of kiemTra) {
   tongViPham += n;
   console.log(`${n === 0 ? '✓' : '✖'} ${String(n).padStart(5)}  ${ten}`);
 }
+// DB trần (chỉ seed, chưa `media:upload`): mọi tour đang bán đều thiếu ảnh bìa theo readiness
+// F18 — lưu Details/Itinerary ở local sẽ bị 409 TOUR_NOT_READY. Cảnh báo, không tính vi phạm.
+const { rows: anhTour } = await client.query(
+  `select (select count(*) from media_assets where owner_type = 'TOUR')::int as anh,
+          (select count(*) from tours where is_published)::int as dang_ban`,
+);
 await client.end();
+
+if (anhTour[0].anh === 0 && anhTour[0].dang_ban > 0) {
+  console.log(
+    `\n⚠ DB chưa có ảnh tour nào: ${anhTour[0].dang_ban} tour đang bán bị readiness F18 coi là thiếu ảnh bìa.` +
+      '\n  Ở DB này, lưu Details/Itinerary của tour đang bán sẽ bị 409 — chạy `media:upload`' +
+      '\n  hoặc tắt bán tour cần thử.',
+  );
+}
 
 console.log(
   `\n${tongViPham === 0 ? '✓ 0 vi phạm' : `✖ ${tongViPham} vi phạm`} trên ${kiemTra.length} bất biến.`,
