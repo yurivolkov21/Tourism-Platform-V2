@@ -8,6 +8,64 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-09-29 — F19 khu sửa tour dạng thanh bước (nhánh `feat/p4e-3c-tour-workspace-steps`)
+
+Khu sửa tour `/tours/[slug]` bỏ hàng tab chữ: thanh bước chỉ có icon (tên bước và
+trạng thái trong tooltip), mỗi bước là form bên trái và cột phải dính khi cuộn bên phải,
+bước cuối Review & publish gom danh sách kiểm tra, công tắc On sale và vùng xoá tour.
+Quyết định ở ADR-0049; mockup user duyệt (v7) ở `C:\Programming\Devs\Assets\mockups\2026-09-28-tour-workspace-steps\`.
+Không đổi API, contract, DB, web, mobile; luật ghi giữ nguyên.
+
+- **Bước là dữ liệu** (`5380ee10`). `tourSteps(detail)` suy trạng thái sáu bước từ
+  readiness ĐÃ LƯU; thanh bước và bước Review cùng đọc nó nên không thể nói khác nhau.
+  Bộ tên `TourEditorStep`, `TOUR_EDITOR_STEPS`, `tourStepHref`, `activeTourStep` (trả
+  `null` ở Departures).
+- **Khung hai cột** (`4df150d1`). `EditorFormFrame` nhận `lead`, `aside`, `next`;
+  `StepColumns` dựng lưới `minmax(0,1fr) 20rem` từ `xl`, cột phải `sticky`. Khối dùng
+  chung ở `step-aside.tsx`: `StateMark`, `StepChecklist`, `StepTips`, `CoverPreviewCard`.
+- **Bước Review & publish** (`f349079e`). Route mới `/tours/[slug]/review`: năm hàng
+  kiểm tra (nút Fix mở chỗ thiếu đầu tiên), công tắc On sale khoá chiều bật kèm lý do,
+  vùng xoá tour chỉ khi chưa từng có booking.
+- **Thanh bước và phần đầu** (`b2e95572`). Sáu icon có tooltip và chữ `sr-only`; phần
+  đầu chỉ còn trạng thái: chip On sale / Not on sale, lần lưu cuối, View on site (chỉ khi
+  đang bán), Departures (`aria-current="page"` ở trang của nó). Xoá `TourTabs`,
+  `TourReadinessPanel` cùng spec; `SITE_URL` gom về `lib/site.ts` ở cả bốn chỗ; câu
+  `publish.workspace.notReady` nói "the checklist".
+- **Năm bước xếp lại** — Details (`b0d46bec`): ba card, việc cần làm tính trên giá trị
+  đang gõ, thẻ xem trước card /tours, lưới 2×2 cho Good for và Badges. Photos
+  (`05554aa5`): ô tải lên nét đứt trong vùng thả file bọc cả card, ảnh bìa bên phải.
+  Itinerary (`df574aba`): thẻ ngày là Card `role="group"`, danh mục Days bên phải.
+  FAQ & policies (`12ab06ec`): hai card `#faq`, `#policies`, chính sách huỷ chỉ in một
+  lần ở cột phải. Costs (`458be09c`): Totals dời sang cột phải, giữ `role="region"` và
+  `aria-live`. Mỗi bước có link "Next: …" cạnh Save.
+
+Chỗ lệch plan, kèm lý do:
+
+- Task 1 đổi `tabsLabel` thành "Tour steps" làm `tour-tabs.spec.tsx` (gõ cứng "Tour
+  sections") đỏ giữa chừng; sửa chữ trong spec ấy, file bị xoá ở Task 4.
+- Đoạn test thanh bước của plan dùng `forEach` trả giá trị; Biome
+  (`useIterableCallbackReturn`) chặn, nên bọc thân hàm bằng ngoặc nhọn.
+- Lệnh grep ở Task 4 B9 vẫn khớp `detail.readiness.ready`: đó là field của contract,
+  không phải key i18n đã gỡ.
+- Task 6 và Task 8 mỗi task có một đột biến sống sót (dòng ảnh bìa luôn xanh; đếm
+  policies theo bản đã lưu). Thêm một ca "danh sách ảnh rỗng" và một bước "thêm policy"
+  vào ca đếm; cả hai đột biến bị giết sau đó.
+- Task 10: `AdminShell` nay là server component async (đọc cookie sidebar, 28/09), nên
+  spec tạm của plan dựng ra trang rỗng. Spec tạm gọi `await AdminShell(...)` với
+  `next/headers` giả; máy không có Python thật nên máy chủ tĩnh là một script Node tạm.
+
+Soi bố cục bằng CSS build thật (Task 10), sáu trang: ở 1600px hai cột, `topDelta` 0
+(card đầu cột phải ngang card đầu form), `stepperOverflow` 0, không tràn ngang; trang
+Itinerary cuộn hết (775px) thì cột phải dính ở `top` 16px. Ở 390px một cột, cột phải
+nằm dưới form, thanh bước không tràn, không tràn ngang. Không có lỗi bố cục phải sửa.
+
+**Review findings:** chưa review — session gốc review trước merge.
+
+Tests after: Vitest **4743** (web 1576, api 1005, admin 1497, contract 560, core 46, ui 23,
+tokens 18, i18n 18) và jest mobile 159, mobile-ui 86; int **702 ở 45 file**. Admin từ 1441
+lên 1497 (đã trừ các ca của `TourTabs` và `TourReadinessPanel` bị xoá). 68 đột biến ở
+chín task, cả 68 bị giết.
+
 ## 2026-09-29 — P6: ADR-0050 và spec trợ lý AI, ghim AI SDK trước freeze (nhánh `chore/p6-pin-ai-sdk`)
 
 P6 chỉ lên ý tưởng lúc này (user dặn 29/09: admin xong trước mới thi công). Thiết kế
