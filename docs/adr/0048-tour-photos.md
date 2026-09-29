@@ -171,3 +171,17 @@ thì vẫn không gắn lại được — đó là giới hạn đã nhận ở
 thuộc tour) để phân biệt `LIBRARY` với `CATALOG`. Phương án đưa ảnh bìa gốc vào thư viện
 (để gắn lại được) bị loại: nó đổi phạm vi thư viện của §9 khi còn hai tuần tới freeze.
 
+## AMEND 2 — Thư viện là ẢNH của địa danh, không gồm video (29/09, G13)
+
+§3 và AMEND 1 định nghĩa thư viện là "publicId đang có dòng `DESTINATION`", không nói
+tới loại. Vòng review F18 thấy ba chỗ đọc thư viện đều nhận cả dòng `VIDEO`: hộp Add from
+library sẽ bày video như ảnh, `setPhotos` sẽ chép một video thành ảnh tour, và nhãn nguồn
+sẽ gọi nó là `LIBRARY`. Prod đo 29/09 chưa có video nào của địa danh (video duy nhất là
+của `SITE`), nên đây là chặn trước, không phải vá dữ liệu.
+
+Quyết định: thư viện là dòng `DESTINATION` loại `IMAGE`. Một định nghĩa duy nhất
+(`LIBRARY_PHOTO` ở `admin-tours.service.ts`) dùng cho cả ba chỗ: `photoLibrary`, bước tra
+thư viện của `setPhotos`, và `libraryPublicIds` của `get`. Một publicId chỉ trùng một
+video của địa danh thì là `CATALOG` (Cloudinary cho ảnh và video trùng publicId).
+Ngoài phạm vi: ảnh của CHÍNH tour chưa lọc theo loại — hiện không có dòng `VIDEO` nào của
+tour và không đường nào tạo ra; ghi ở open-items G13.

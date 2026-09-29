@@ -8,6 +8,41 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-09-29 — Vá G12 và phần thư viện của G13 sau F18 (nhánh `fix/tour-photo-int32-image-filter`)
+
+Hai mục nhỏ mà vòng review F18 ghi vào open-items. User chọn vá ngay sau merge F18.
+Nhánh chỉ đụng contract và API, không đụng file nào plan F19 sẽ sửa.
+
+- **G12: metadata ảnh tải lên vượt INT4 ra 500** (`a5d39f1a`). `TourPhotoUploadSchema`
+  dùng `z.int()` (tới 2^53) cho `width`, `height`, `bytes`, trong khi ba cột là INT4.
+  Một request tự chế vượt 2^31 lọt schema rồi chết ở DB (P2020, ra 500; transaction
+  rollback trọn nên không hỏng dữ liệu). Nay dùng `z.int32()`, request như vậy là 400
+  `BAD_REQUEST`.
+- **G13: thư viện nhận cả video** (`a5d39f1a`, ADR-0048 AMEND 2). Ba chỗ đọc thư viện
+  (hộp Add from library, bước tra thư viện của `setPhotos`, nhãn nguồn của `get`) nhận
+  mọi dòng `DESTINATION`, kể cả `VIDEO`. Nay cả ba dùng chung một định nghĩa
+  `LIBRARY_PHOTO`: dòng `DESTINATION` loại `IMAGE`. Prod đo 29/09 (chỉ đọc): chưa có video
+  nào của địa danh, nên đây là chặn trước. Phần còn lại của G13 vẫn ở open-items: ảnh
+  của chính tour chưa lọc theo loại, và câu `banners.notReady` để sau F19.
+
+Cùng lượt đẩy: CLAUDE.md ghi quyết định ở lại NestJS 11 tới hết capstone (`df1bec2e`,
+user chốt 29/09).
+
+Test mới: 1 ca contract (N và N+1 cho cả ba cột) và 4 ca int:
+- thư viện bỏ video;
+- `setPhotos` từ chối publicId chỉ có video;
+- nhãn nguồn là `CATALOG` khi publicId chỉ trùng một video;
+- metadata vượt INT4 ra 400.
+
+Ba ca đỏ trước khi vá. Ca nhãn nguồn viết sau, nên kiểm bằng đột biến. Cả 7 đột biến
+đều chết.
+
+**Review findings:** không mở vòng review riêng — hai mục này đã được vòng review F18
+kiểm chứng.
+
+Tests after: Vitest **4684** (web 1576, admin 1438, api 1005, contract 560, core 46,
+ui 23, tokens 18, i18n 18), int **702 ở 45 file**, jest mobile 159 và mobile-ui 86.
+
 ## 2026-09-29 — Merge F18 lên main (`a354c74b`)
 
 Nội dung đã kể ở HAI entry ngay bên dưới — "Vòng review F18" và "F18 ảnh tour".
