@@ -18,8 +18,9 @@ Roadmap: P0 khung xương ✅ → P1 API lõi ✅ → P2 money-path ✅ → P3a 
 → P3b web ✅ → **deploy v1 ✅ 20/08** (site sống tại `www.nexora-travel.agency`,
 ADR-0024 — push main là Vercel/Render tự deploy, sửa gì cũng là sửa đồ ĐANG
 CHẠY) → P4 admin (a–d ✅ sống trên `admin.nexora-travel.agency`; P4e catalog:
-P4e-1 ✅ · P4e-2 ✅ · P4e-3a F17 tạo và sửa tour ✅ 28/09; **F18 ảnh tour, P4e-4
-bài viết, P4f media/users chưa làm**) → P5 mobile (P5a khung ✅ · P5b-1 auth ✅ ·
+P4e-1 ✅ · P4e-2 ✅ · P4e-3a F17 tạo và sửa tour ✅ 28/09 · P4e-3b F18 ảnh tour ✅
+29/09; **P4e-3c F19 khu sửa tour dạng thanh bước (có plan), P4e-4 bài viết, P4f
+media/users chưa làm**) → P5 mobile (P5a khung ✅ · P5b-1 auth ✅ ·
 P5b-2…5 mới có bản vẽ, thành viên khác dựng màn) → P6 AI concierge → P7 polish
 UI → freeze 15/10. Việc còn nợ gom ở [docs/open-items.md](docs/open-items.md).
 

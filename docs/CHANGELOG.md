@@ -8,6 +8,33 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-09-29 — Merge F18 lên main (`a354c74b`)
+
+Nội dung đã kể ở HAI entry ngay bên dưới — "Vòng review F18" và "F18 ảnh tour".
+Entry này chỉ ghi sự kiện merge, vì hai entry kia viết TRƯỚC merge nên chưa mang
+hash.
+
+Nhánh `feat/p4e-3b-tour-photos` rebase lên `fc397c32` rồi fast-forward: 29 commit —
+14 của đợt thi công, 15 của vòng review. Từ lúc tách nhánh, `main` đã nhận nhánh
+sidebar admin (bốn commit, 28/09) và hai commit tài liệu F19 chưa push. Một xung đột ở
+CHANGELOG: entry sidebar và entry F18 cùng chen vào đầu file; gỡ bằng cách đặt entry
+F18 lên trên, cả hai giữ nguyên văn.
+
+Gate chạy lại trên đỉnh mới, vì code sidebar chưa từng chạy chung với F18. Lượt đầu
+đỏ một ca của hộp thư viện: ca ấy tìm option của ô chọn địa danh ĐỒNG BỘ ngay sau khi
+mở, trong khi popup của Select mở bất đồng bộ. Chạy riêng thì xanh 5/5, và mọi spec
+khác trong repo đều chờ bằng `findByRole`. Vá ở `a354c74b`; lượt hai xanh đủ năm bước.
+
+Cùng lượt đẩy có ADR-0049, spec và plan F19 (khu sửa tour dạng thanh bước), chỉ là
+tài liệu. Không migration, không đổi env, nên không có bước hạ tầng nào.
+
+Việc còn lại: thử tay F18 trên production theo spec §5 sau khi Vercel và Render
+deploy xong (mục CÒN TREO của entry vòng review); đưa prompt thi công F19 cho một
+session khác.
+
+Tests after: Vitest **4683** (web 1576, admin 1438, api 1005, contract 559, core 46,
+ui 23, tokens 18, i18n 18), int **698 ở 45 file**, jest mobile 159 và mobile-ui 86.
+
 ## 2026-09-29 — Vòng review F18: 15 phát hiện, vá cả 15 (nhánh `feat/p4e-3b-tour-photos`)
 
 Review chạy TRƯỚC merge, ở mức cao nhất: nhiều góc tìm độc lập, bảy nhóm agent kiểm
