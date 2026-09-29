@@ -76,7 +76,8 @@ describe('PhotoLibraryDialog', () => {
     await screen.findByRole('checkbox', { name: 'Bay at dawn' });
 
     await user.click(screen.getByRole('combobox', { name: t.destination }));
-    await user.click(screen.getByRole('option', { name: 'Hà Nội' }));
+    // Popup của Select mở bất đồng bộ — tìm đồng bộ thì chập chờn khi máy tải nặng.
+    await user.click(await screen.findByRole('option', { name: 'Hà Nội' }));
 
     expect(screen.getByRole('checkbox', { name: 'Old Quarter' })).toBeInTheDocument();
     expect(screen.queryByRole('checkbox', { name: 'Bay at dawn' })).not.toBeInTheDocument();
