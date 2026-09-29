@@ -101,7 +101,8 @@ Sau commit: bust `tours` và `tour:<slug>` (khuôn `this.bust`), trả `get(slug
   `c_limit,w_2400,h_2400,fl_force_strip`, `overwrite:false`).
 - Cả lô publicId đầy đủ (`<folder>/<basename>`) vào hàng dọn bằng
   `enqueueQuietly` ngay lúc ký (ADR-0035 §3) — tải lên rồi bỏ không lưu tự được dọn.
-- Một lượt tải 30 ảnh tốn một request, dưới trần 20/60s của ADR-0037.
+- Một lượt tải 30 ảnh chỉ tốn một trong 60 request mỗi phút mà route admin được
+  phép (`ADMIN_WRITE_THROTTLE`, ADR-0037 AMEND 1).
 
 ### 2d. Thư viện `admin.tours.photoLibrary`
 

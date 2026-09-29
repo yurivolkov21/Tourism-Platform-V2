@@ -328,8 +328,9 @@ export type AdminTourCostsInput = z.output<typeof AdminTourCostsInputSchema>;
 // ── Ảnh (F18, ADR-0048) ─────────────────────────────────────────────────────
 
 /**
- * Ký một LÔ upload cho một tour (ADR-0048 §4): một request cho cả lô, dưới trần
- * 20/60s của ADR-0037 — ký từng file thì lượt tải 30 ảnh bị 429 từ ảnh thứ 21.
+ * Ký một LÔ upload cho một tour (ADR-0048 §4): một request cho cả lô. Route admin được
+ * 60 request mỗi phút (`ADMIN_WRITE_THROTTLE`, ADR-0037 AMEND 1) — ký từng file thì một
+ * lượt tải 30 ảnh đã tiêu nửa trần ấy.
  */
 export const AdminTourSignPhotoUploadsInputSchema = z.object({
   id: z.uuid(),

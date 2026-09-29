@@ -346,6 +346,15 @@ làm việc tour cho trình duyệt admin POST file đã ký thẳng lên Cloudi
   của admin sửa theo.
 - **Test (AMEND 1 §f):** map directive của admin so bằng `toEqual` ở cả production
   lẫn dev, nên origin này đi vào hai kỳ vọng `connect-src` của `security-headers.spec.ts`.
-- **Nghiệm thu (Hệ quả của ADR này):** thử tay bằng DevTools trên production thuộc
-  lượt thử tay F18 ở session gốc (spec F18 §5): tải ảnh lên mà console không có vi
-  phạm CSP, và log `csp-report` không có dòng nào cho `api.cloudinary.com`.
+- **Nghiệm thu (Hệ quả của ADR này: trước merge):** làm ở local ngày 29/09 trong vòng
+  review F18, trên bản `next build` và `next start` của admin ở nhánh F18. Header trả
+  về có `connect-src 'self' http://localhost:3001 https://api.cloudinary.com`. Từ một
+  trang admin, `fetch` POST tới `https://api.cloudinary.com/v1_1/<cloud>/image/upload`
+  tới được Cloudinary (HTTP 400 vì form rỗng, không tạo asset nào); POST tới một
+  origin ngoài danh sách bị chặn kèm đúng một vi phạm `connect-src`; console không có
+  vi phạm nào khác. `connect-src` chi phối XHR y như `fetch`, và `uploadUrl` do API ký
+  luôn mang đúng origin này (`apps/api/src/lib/upload-signing.ts`). Không tải file
+  thật: `.env.local` dùng chung cloud Cloudinary với production, nên một file thử sẽ
+  thành asset mồ côi trên tài khoản sống. Lượt thử tay F18 trên production (spec F18
+  §5) là lớp thứ hai: tải ảnh thật mà console sạch, và log `csp-report` không có dòng
+  nào cho `api.cloudinary.com`.

@@ -70,8 +70,10 @@ Hai phát hiện lúc rà code quyết định hình dạng lời giải:
    để thư mục của tour này không khớp thư mục của tour khác.
 
 4. **Ký upload cho admin là một lệnh riêng theo lô: `admin.tours.signPhotoUploads`.**
-   Nhận tối đa 30 đuôi file, trả chừng ấy bộ tham số ký trong một lần gọi — một
-   lượt tải 30 ảnh chỉ tốn một request dưới trần 20/60s. Tách khỏi
+   Nhận `{ id, count }` với `count` từ 1 tới 30, trả chừng ấy bộ tham số ký trong
+   một lần gọi. Một lượt tải 30 ảnh chỉ tốn một trong 60 request mỗi phút mà route
+   admin được phép (`ADMIN_WRITE_THROTTLE`, ADR-0037 AMEND 1); ký từng file thì một
+   lượt đã tiêu nửa trần ấy. Tách khỏi
    `media.signUpload` còn giữ hai bề mặt riêng: bề mặt khách chỉ cần đăng nhập,
    bề mặt admin nằm sau `@Roles(ADMIN)` của controller admin. Bộ tham số ký giữ
    nguyên ADR-0021 AMEND 1–2, và mỗi publicId vào hàng dọn ngay lúc ký như §3
