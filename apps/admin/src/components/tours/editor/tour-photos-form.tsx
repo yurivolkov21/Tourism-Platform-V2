@@ -10,6 +10,7 @@ import {
 import { messages } from '@tourism/i18n';
 import { Button } from '@tourism/ui/components/button';
 import { Input } from '@tourism/ui/components/input';
+import { Progress } from '@tourism/ui/components/progress';
 import { ImagePlusIcon, UploadIcon } from 'lucide-react';
 import * as React from 'react';
 import { FormField } from '@/components/kit/form-field';
@@ -438,19 +439,14 @@ export function TourPhotosForm({
                       <p className="text-sm text-muted-foreground">
                         {t.uploading(upload.file.name, upload.percent)}
                       </p>
-                      <div
+                      {/* Progress của kit dùng chung, như ô tải ảnh review của web (G14). */}
+                      <Progress
                         id={progressId(upload.key)}
                         // Nhận tiêu điểm khi Retry làm nút vừa bấm biến mất (vòng review F18).
                         tabIndex={-1}
-                        role="progressbar"
                         aria-label={t.uploadingLabel(upload.file.name)}
-                        aria-valuemin={0}
-                        aria-valuemax={100}
-                        aria-valuenow={upload.percent}
-                        className="h-1 overflow-hidden rounded-full bg-muted"
-                      >
-                        <div className="h-1 bg-primary" style={{ width: `${upload.percent}%` }} />
-                      </div>
+                        value={upload.percent}
+                      />
                     </>
                   ) : (
                     <>
