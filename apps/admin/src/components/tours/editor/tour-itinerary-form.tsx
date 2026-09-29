@@ -2,12 +2,23 @@
 
 import type { AdminTourDetail } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
+import { Badge } from '@tourism/ui/components/badge';
+import {
+  Card,
+  CardAction,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@tourism/ui/components/card';
 import { Input } from '@tourism/ui/components/input';
 import { Textarea } from '@tourism/ui/components/textarea';
+import { cn } from '@tourism/ui/lib/utils';
 import { FormField } from '@/components/kit/form-field';
 import { EditorFormFrame } from '@/components/tours/editor/editor-form-frame';
+import { StateMark } from '@/components/tours/editor/step-aside';
 import { usePublishSavedDetail } from '@/components/tours/editor/tour-detail-context';
-import { projectedReadiness } from '@/lib/tour-editor-view';
+import { projectedReadiness, tourStepHref } from '@/lib/tour-editor-view';
 import {
   hasNestedErrors,
   type ItineraryContractCode,
@@ -24,18 +35,20 @@ import { useSectionSave } from '@/lib/use-section-save';
 import { useTourFormState } from '@/lib/use-tour-form-state';
 
 /**
- * Tab Itinerary (spec F17 §2h): đủ N thẻ ngày (Day 1…N), mỗi thẻ một tiêu đề và
+ * Bước Itinerary (spec F17 §2h, F19 §2d.3): đủ N thẻ ngày (Day 1…N), mỗi thẻ một tiêu đề và
  * một mô tả. Cùng khuôn `TourDetailsForm`: `detail` đọc từ PROPS cho luật phụ
  * thuộc trạng thái server (đang bán?), state chỉ giữ giá trị các ô, bản gốc để so
  * "có thay đổi", và `version`.
  *
- * - Mỗi thẻ mang `id="day-N"` — đích của link "An itinerary for day N" trong
- *   khung readiness.
+ * - Mỗi thẻ mang `id="day-N"` — đích của link "An itinerary for day N" ở bước
+ *   Review và danh mục Days.
  * - Ngày chưa có tiêu đề thì không có hàng (spec §2b.3): tour tắt bán lưu dở
  *   được; tour đang bán thì ô tiêu đề nào cũng bắt buộc.
  * - Số thẻ theo `detail.durationDays`; đổi số ngày là việc của tab Details.
  */
-const t = messages.admin.tours.editor.itinerary;
+const e = messages.admin.tours.editor;
+const a = e.aside;
+const t = e.itinerary;
 
 export function TourItineraryForm({
   detail,
@@ -80,6 +93,39 @@ export function TourItineraryForm({
     void save(() => saveAction(itineraryPayload(detail.id, version, values)));
   }
 
+  // Danh mục ngày đọc giá trị ĐANG SOẠN (ADR-0049 §6): ngày không tiêu đề thì không
+  // thành hàng khi lưu (spec F17 §2b.3), nên nó là ngày còn thiếu.
+  const aside = (
+    <Card size="sm">
+      <CardHeader>
+        <CardTitle>{a.itinerary.daysTitle}</CardTitle>
+        <CardDescription>{a.itinerary.daysBody}</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <ul className="grid gap-1">
+          {values.days.map((day, index) => {
+            const n = index + 1;
+            const title = day.title.trim();
+            return (
+              <li key={n}>
+                {/* Link cùng trang (#day-N): hộp hỏi lại không chặn khi chỉ đổi hash. */}
+                <a
+                  href={`#day-${n}`}
+                  className="flex items-center justify-between gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-muted"
+                >
+                  <span className="truncate">
+                    {title === '' ? t.day(n) : `${t.day(n)} · ${title}`}
+                  </span>{' '}
+                  <StateMark state={title === '' ? 'warn' : 'ok'} />
+                </a>
+              </li>
+            );
+          })}
+        </ul>
+      </CardContent>
+    </Card>
+  );
+
   return (
     <div className="flex flex-col gap-6 px-4 pb-8 lg:px-6">
       <EditorFormFrame
@@ -87,50 +133,74 @@ export function TourItineraryForm({
         pending={pending}
         banner={banner}
         serverChanged={form.serverChanged}
+        lead={<p className="text-sm text-muted-foreground">{t.intro(detail.durationDays)}</p>}
+        aside={aside}
+        next={{ href: tourStepHref(detail.slug, 'content'), label: e.tabs.content }}
         onSubmit={submit}
         onReload={form.reload}
       >
-        <p className="text-sm text-muted-foreground">{t.intro(detail.durationDays)}</p>
         {values.days.map((day, index) => {
           const n = index + 1;
           const dayErrors = errors[n];
+          const missing = day.title.trim() === '';
           return (
             // Thẻ ngày cố định theo vị trí (ngày thứ n) — không thêm/xoá/dời, nên
-            // số ngày làm key là đúng.
-            <fieldset key={n} id={`day-${n}`} className="grid gap-4 rounded-lg border p-4">
-              <legend className="px-1 text-sm font-semibold">{t.day(n)}</legend>
-              <FormField id={`day-${n}-title`} label={t.dayTitle} error={dayErrors?.title}>
-                {(describedBy) => (
-                  <Input
-                    id={`day-${n}-title`}
-                    value={day.title}
-                    disabled={pending}
-                    aria-invalid={dayErrors?.title !== undefined}
-                    aria-describedby={describedBy}
-                    onChange={(event) => patchDay(index, { title: event.target.value })}
-                  />
-                )}
-              </FormField>
-              <FormField
-                id={`day-${n}-description`}
-                label={t.description}
-                hint={t.descriptionHint}
-                error={dayErrors?.description}
-              >
-                {(describedBy) => (
-                  <Textarea
-                    id={`day-${n}-description`}
-                    rows={4}
-                    value={day.description}
-                    placeholder={t.descriptionPlaceholder}
-                    disabled={pending}
-                    aria-invalid={dayErrors?.description !== undefined}
-                    aria-describedby={describedBy}
-                    onChange={(event) => patchDay(index, { description: event.target.value })}
-                  />
-                )}
-              </FormField>
-            </fieldset>
+            // số ngày làm key là đúng. `role="group"` + tên "Day N": thẻ gom hai ô của
+            // một ngày (Card của kit là <div>); `id="day-N"` là đích link readiness.
+            <Card
+              key={n}
+              id={`day-${n}`}
+              role="group"
+              aria-labelledby={`day-${n}-heading`}
+              className={cn(missing && 'ring-warning/60')}
+            >
+              <CardHeader>
+                <CardTitle id={`day-${n}-heading`}>{t.day(n)}</CardTitle>
+                {missing ? (
+                  <CardAction>
+                    <Badge
+                      variant="outline"
+                      className="border-warning/60 bg-warning/10 text-foreground"
+                    >
+                      {a.itinerary.needed}
+                    </Badge>
+                  </CardAction>
+                ) : null}
+              </CardHeader>
+              <CardContent className="grid gap-4">
+                <FormField id={`day-${n}-title`} label={t.dayTitle} error={dayErrors?.title}>
+                  {(describedBy) => (
+                    <Input
+                      id={`day-${n}-title`}
+                      value={day.title}
+                      disabled={pending}
+                      aria-invalid={dayErrors?.title !== undefined}
+                      aria-describedby={describedBy}
+                      onChange={(event) => patchDay(index, { title: event.target.value })}
+                    />
+                  )}
+                </FormField>
+                <FormField
+                  id={`day-${n}-description`}
+                  label={t.description}
+                  hint={t.descriptionHint}
+                  error={dayErrors?.description}
+                >
+                  {(describedBy) => (
+                    <Textarea
+                      id={`day-${n}-description`}
+                      rows={4}
+                      value={day.description}
+                      placeholder={t.descriptionPlaceholder}
+                      disabled={pending}
+                      aria-invalid={dayErrors?.description !== undefined}
+                      aria-describedby={describedBy}
+                      onChange={(event) => patchDay(index, { description: event.target.value })}
+                    />
+                  )}
+                </FormField>
+              </CardContent>
+            </Card>
           );
         })}
       </EditorFormFrame>

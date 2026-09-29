@@ -168,3 +168,46 @@ describe('TourItineraryForm', () => {
     expect(save.mock.calls[1]?.[0].version).toBe(NEXT_VERSION);
   });
 });
+
+describe('TourItineraryForm — bước Itinerary (F19)', () => {
+  const a = e.aside;
+  const state = e.steps.state;
+  const days = () => within(screen.getByRole('complementary'));
+
+  it('câu giới thiệu là `lead`: ngoài form, đứng trước form', () => {
+    renderForm();
+    const intro = screen.getByText(t.intro(3));
+    expect(intro.closest('form')).toBeNull();
+    expect(intro.compareDocumentPosition(dayCard(1))).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+  });
+
+  it('ngày chưa có tiêu đề: nhãn trên thẻ và dấu "!" ở danh mục Days; gõ tiêu đề là hết ngay', async () => {
+    const { user } = renderForm(
+      offSale({ itinerary: [{ dayNumber: 1, title: 'Board the boat', description: null }] }),
+    );
+    expect(within(dayCard(2)).getByText(a.itinerary.needed)).toBeInTheDocument();
+    expect(within(dayCard(1)).queryByText(a.itinerary.needed)).toBeNull();
+    expect(
+      days().getByRole('link', { name: `${t.day(1)} · Board the boat ${state.ok}` }),
+    ).toHaveAttribute('href', '#day-1');
+    expect(days().getByRole('link', { name: `${t.day(2)} ${state.warn}` })).toHaveAttribute(
+      'href',
+      '#day-2',
+    );
+
+    await user.type(dayTitle(2), 'Kayak the lagoons');
+
+    expect(within(dayCard(2)).queryByText(a.itinerary.needed)).toBeNull();
+    expect(
+      days().getByRole('link', { name: `${t.day(2)} · Kayak the lagoons ${state.ok}` }),
+    ).toBeInTheDocument();
+  });
+
+  it('chân form: link Next: FAQ & policies', () => {
+    renderForm();
+    expect(screen.getByRole('link', { name: e.next(e.tabs.content) })).toHaveAttribute(
+      'href',
+      '/tours/ha-long-bay-cruise/content',
+    );
+  });
+});
