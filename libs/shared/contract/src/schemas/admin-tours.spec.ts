@@ -524,6 +524,21 @@ describe('AdminTourPhotosInputSchema (ADR-0048 §2–3)', () => {
     ).toBe(false);
   });
 
+  it('width, height, bytes không vượt INT4 của cột — số lớn hơn từng lọt schema rồi 500 ở DB (G12)', () => {
+    const upload = { version: '1759000000', width: 2000, height: 1333, format: 'jpg', bytes: 5230 };
+    const withUpload = (u: object) => ({ ...base, photos: [{ ...photo(1), upload: u }] });
+    for (const field of ['width', 'height', 'bytes'] as const) {
+      expect(
+        AdminTourPhotosInputSchema.safeParse(withUpload({ ...upload, [field]: 2_147_483_647 }))
+          .success,
+      ).toBe(true);
+      expect(
+        AdminTourPhotosInputSchema.safeParse(withUpload({ ...upload, [field]: 2_147_483_648 }))
+          .success,
+      ).toBe(false);
+    }
+  });
+
   it('publicId đi qua cổng ký tự', () => {
     expect(
       AdminTourPhotosInputSchema.safeParse({

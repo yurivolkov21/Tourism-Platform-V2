@@ -498,6 +498,40 @@ describe('admin tours integration (F17)', () => {
       expect(detail.readiness.cover).toBe(true);
     });
 
+    it('publicId chỉ trùng một VIDEO của địa danh thì không phải LIBRARY — hộp thư viện không có nó (G13)', async () => {
+      await makeTour(1);
+      // Cloudinary cho ảnh và video trùng publicId (khác resource type).
+      const clip = 'tourism/catalog/destination/hoi-an/clip';
+      await prisma.mediaAsset.createMany({
+        data: [
+          {
+            ownerType: 'DESTINATION',
+            ownerId: DEST_1,
+            publicId: clip,
+            type: 'VIDEO',
+            role: 'gallery',
+            alt: 'River clip',
+          },
+          {
+            ownerType: 'TOUR',
+            ownerId: tourId(1),
+            publicId: clip,
+            type: 'IMAGE',
+            role: 'gallery',
+            sortOrder: 1,
+            alt: 'River still',
+          },
+        ],
+      });
+
+      const detail = await detailOf('f17-tour-1');
+
+      expect(detail.photos.map((p) => [p.publicId, p.source])).toEqual([
+        ['tourism/catalog/tour/f17-1', 'CATALOG'],
+        [clip, 'CATALOG'],
+      ]);
+    });
+
     it('tour chưa có ảnh bìa thì readiness.cover = false và không ready (F18)', async () => {
       await makeTour(1);
       await prisma.mediaAsset.deleteMany({ where: { ownerId: tourId(1) } });
@@ -1382,6 +1416,47 @@ describe('admin tours integration (F17)', () => {
       ]);
       expect(groups[1]?.photos[1]).toMatchObject({ author: 'J. Nguyen', license: 'CC BY-SA 4.0' });
     });
+
+    it('chỉ bày ẢNH: video của địa danh vắng mặt; địa danh chỉ có video thì vắng cả nhóm (G13)', async () => {
+      await prisma.mediaAsset.createMany({
+        data: [
+          {
+            ownerType: 'DESTINATION',
+            ownerId: DEST_1,
+            publicId: 'tourism/catalog/destination/hoi-an/1',
+            type: 'IMAGE',
+            role: 'gallery',
+            sortOrder: 1,
+            alt: 'Lanterns',
+          },
+          {
+            ownerType: 'DESTINATION',
+            ownerId: DEST_1,
+            publicId: 'tourism/catalog/destination/hoi-an/clip',
+            type: 'VIDEO',
+            role: 'gallery',
+            sortOrder: 2,
+            alt: 'River clip',
+          },
+          {
+            ownerType: 'DESTINATION',
+            ownerId: DEST_3,
+            publicId: 'tourism/catalog/destination/an-bang/clip',
+            type: 'VIDEO',
+            role: 'hero',
+            sortOrder: 0,
+            alt: 'Beach clip',
+          },
+        ],
+      });
+
+      const groups = AdminPhotoLibrarySchema.parse((await library()).json());
+
+      expect(groups.map((g) => g.destination.name)).toEqual(['Hội An']);
+      expect(groups[0]?.photos.map((p) => p.publicId)).toEqual([
+        'tourism/catalog/destination/hoi-an/1',
+      ]);
+    });
   });
 
   describe('setPhotos (F18)', () => {
@@ -1451,6 +1526,53 @@ describe('admin tours integration (F17)', () => {
       const after = await detailOf('f17-tour-1');
       expect(after.version).toBe(before.version);
       expect(after.photos.map((p) => p.publicId)).toEqual(['tourism/catalog/tour/f17-1']);
+    });
+
+    it('publicId chỉ có dòng VIDEO của địa danh → 400 PHOTO_NOT_ALLOWED, không đổi gì (G13)', async () => {
+      await makeTour(1);
+      await prisma.mediaAsset.create({
+        data: {
+          ownerType: 'DESTINATION',
+          ownerId: DEST_1,
+          publicId: 'tourism/catalog/destination/hoi-an/clip',
+          type: 'VIDEO',
+          role: 'gallery',
+          sortOrder: 1,
+          alt: 'River clip',
+        },
+      });
+      const before = await detailOf('f17-tour-1');
+
+      const res = await photosWrite(tourId(1), {
+        id: tourId(1),
+        version: before.version,
+        photos: [
+          { publicId: 'tourism/catalog/tour/f17-1', alt: 'Cover' },
+          { publicId: 'tourism/catalog/destination/hoi-an/clip', alt: 'River clip' },
+        ],
+      });
+
+      expect(res.statusCode).toBe(400);
+      expect(res.json()).toMatchObject({ code: 'PHOTO_NOT_ALLOWED' });
+      expect(await tourPhotoRows(1)).toHaveLength(1);
+    });
+
+    it('metadata vượt INT4 của cột → 400 BAD_REQUEST, không phải 500 của DB (G12)', async () => {
+      await makeTour(1);
+      const before = await detailOf('f17-tour-1');
+
+      const res = await photosWrite(tourId(1), {
+        id: tourId(1),
+        version: before.version,
+        photos: [
+          { publicId: 'tourism/catalog/tour/f17-1', alt: 'Cover' },
+          { publicId: mine(1, 'huge'), alt: 'x', upload: { ...UPLOAD_META, width: 2_147_483_648 } },
+        ],
+      });
+
+      expect(res.statusCode).toBe(400);
+      expect(res.json()).toMatchObject({ code: 'BAD_REQUEST' });
+      expect(await tourPhotoRows(1)).toHaveLength(1);
     });
 
     it('version cũ → 409 STALE_TOUR; id không có → 404', async () => {

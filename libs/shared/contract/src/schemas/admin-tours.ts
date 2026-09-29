@@ -364,13 +364,17 @@ export type AdminPhotoLibrary = z.output<typeof AdminPhotoLibrarySchema>;
  * (ADR-0048 §5). Chỉ canh DẠNG: trần 2400px và 10 MB do Cloudinary thi hành
  * (tham số ký, gói free); đặt lại ở đây chỉ thêm một cách để một ảnh ĐÃ tải lên
  * thành công bị từ chối lúc lưu.
+ *
+ * Nhưng ba cột số là INT4 (G12, sau vòng review F18): `z.int()` nhận tới 2^53, và một
+ * request tự chế vượt 2^31 từng lọt schema rồi thành 500 ở DB. `z.int32()` giữ lỗi ở
+ * tầng dạng (400).
  */
 export const TourPhotoUploadSchema = z.object({
   version: z.string().regex(/^\d{1,20}$/),
-  width: z.int().positive(),
-  height: z.int().positive(),
+  width: z.int32().positive(),
+  height: z.int32().positive(),
   format: z.string().min(1).max(10),
-  bytes: z.int().positive(),
+  bytes: z.int32().positive(),
 });
 export type TourPhotoUpload = z.output<typeof TourPhotoUploadSchema>;
 

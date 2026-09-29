@@ -22,7 +22,7 @@ import {
 import { prisma } from '../../auth/auth.config.js';
 import { env } from '../../config/env.js';
 import { Prisma } from '../../generated/prisma/client.js';
-import { MediaOwnerType, MediaRole } from '../../generated/prisma/enums.js';
+import { MediaOwnerType, MediaRole, MediaType } from '../../generated/prisma/enums.js';
 import {
   buildSignedUploadParams,
   isTourUploadPublicId,
@@ -182,13 +182,23 @@ function toDetail(
 }
 
 /**
- * publicId nào trong số này đang có dòng `DESTINATION` — nguồn `LIBRARY` của tab Photos
+ * "Thư viện" của tab Photos (ADR-0048 §3, AMEND 1): ẢNH của địa danh. Một video của địa
+ * danh không phải ảnh tour — hộp thư viện không bày, `setPhotos` không nhận, nhãn nguồn
+ * không gọi nó là LIBRARY (G13, sau vòng review F18). Một định nghĩa cho cả ba chỗ.
+ */
+const LIBRARY_PHOTO = {
+  ownerType: MediaOwnerType.DESTINATION,
+  type: MediaType.IMAGE,
+} satisfies Prisma.MediaAssetWhereInput;
+
+/**
+ * publicId nào trong số này đang có trong thư viện — nguồn `LIBRARY` của tab Photos
  * (ADR-0048 AMEND 1). Một câu cho cả tour; tour không ảnh thì không hỏi.
  */
 async function libraryPublicIds(publicIds: readonly string[]): Promise<ReadonlySet<string>> {
   if (publicIds.length === 0) return new Set();
   const rows = await prisma.mediaAsset.findMany({
-    where: { ownerType: MediaOwnerType.DESTINATION, publicId: { in: [...publicIds] } },
+    where: { ...LIBRARY_PHOTO, publicId: { in: [...publicIds] } },
     select: { publicId: true },
   });
   return new Set(rows.map((row) => row.publicId));
@@ -590,7 +600,7 @@ export class AdminToursService {
         unknown.length === 0
           ? []
           : await tx.mediaAsset.findMany({
-              where: { ownerType: MediaOwnerType.DESTINATION, publicId: { in: unknown } },
+              where: { ...LIBRARY_PHOTO, publicId: { in: unknown } },
               select: STORED_PHOTO_SELECT,
               orderBy: { createdAt: 'asc' },
             });
@@ -662,6 +672,7 @@ export class AdminToursService {
    * Kho ảnh địa danh làm thư viện của tour (ADR-0048 §9, ADR-0020 §5): mọi ảnh
    * `DESTINATION`, theo tên địa danh, trong MỘT lần gọi (khoảng 155 ảnh). Địa danh
    * đang ẩn vẫn có mặt — ảnh của nó vẫn dùng được; địa danh không có ảnh thì vắng.
+   * Chỉ ẢNH, cùng định nghĩa với `LIBRARY_PHOTO` (G13): video của địa danh vắng mặt.
    */
   async photoLibrary(): Promise<AdminPhotoLibrary> {
     const destinations = await prisma.destination.findMany({
@@ -674,7 +685,10 @@ export class AdminToursService {
       [MediaRole.hero, MediaRole.gallery],
     );
     return destinations.flatMap((destination) => {
-      const photos = orderTourPhotos(media.get(destination.id) ?? []);
+      const images = (media.get(destination.id) ?? []).filter(
+        (item) => item.type === LIBRARY_PHOTO.type,
+      );
+      const photos = orderTourPhotos(images);
       return photos.length === 0 ? [] : [{ destination, photos: photos.map(toLibraryPhoto) }];
     });
   }
