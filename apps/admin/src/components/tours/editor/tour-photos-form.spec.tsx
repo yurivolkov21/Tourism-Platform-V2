@@ -345,7 +345,7 @@ describe('TourPhotosForm — tải lên (vòng review F18)', () => {
     expect(screen.queryByText(t.waiting(1))).toBeNull();
   });
 
-  it('Retry mà lệnh ký NÉM: dòng quay về hỏng kèm câu ký hỏng, Save không bị khoá mãi', async () => {
+  it('Retry mà lệnh ký NÉM: dòng quay về hỏng kèm câu ký hỏng, tiêu điểm về Retry, Save không khoá', async () => {
     const sign = vi
       .fn<SignPhotoUploadsAction>()
       .mockResolvedValueOnce({ ok: true, params: [params(1)] })
@@ -359,6 +359,8 @@ describe('TourPhotosForm — tải lên (vòng review F18)', () => {
 
     expect(await screen.findByText(t.signFailed)).toBeInTheDocument();
     expect(screen.getByText(t.uploadFailed('a.jpg'))).toBeInTheDocument();
+    // Thanh tiến độ vừa giữ tiêu điểm đã biến mất — tiêu điểm không được rơi về <body>.
+    await waitFor(() => expect(screen.getByRole('button', { name: t.retry })).toHaveFocus());
     expect(screen.queryByText(t.waiting(1))).toBeNull();
   });
 
