@@ -8,6 +8,49 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-09-29 — Góp ý thử tay F18, dọn G13 và một phần G14 trước F19 (nhánh `fix/f18-thu-tay-gop-y`)
+
+F19 chưa thi công, nên user cho vá luôn các mục còn treo của vùng tab Photos. Chỉ chọn
+những mục không làm lệch plan F19: plan gọi `tourPhotoThumb` từ `tour-editor-view` và giữ
+nguyên chỗ dùng `ListEditor`.
+
+- **Góp ý #1: chữ "Added" bị cắt mất** (`7ab29b66`). Hộp thư viện nối "alt · Added" rồi
+  cắt còn hai dòng; alt ảnh thư viện thật dài cả câu nên "Added" luôn rơi vào phần bị
+  cắt. Nay "Added" là huy hiệu trên góc ảnh, cùng kiểu nhãn Cover; chú thích chỉ mang
+  alt. Ca test mới dùng alt dài như dữ liệu thật.
+- **Câu dải TOUR_NOT_READY** (`e4a4ae05`, đóng G13). "This change would leave it
+  missing:" đổ lỗi cho lần sửa cả khi chỗ thiếu có từ trước. Nay "Saved like this, it
+  would be missing:" — tả trạng thái của bản sẽ lưu. JSDoc giữ nguyên, vì bước B9 của
+  F19 sửa đúng dòng ấy.
+- **G14, ba mục** (`64d5ccae`, `a761d4f4`, `5890c602`):
+  - `toDetail` dùng `pickCover` thay vì tự so `role === 'hero'`; `hasTourCover` bỏ
+    export thừa, sửa JSDoc nói sai "`get` gọi nó".
+  - Helper URL Cloudinary của admin gom về `lib/cloudinary-url.ts`
+    (`withDeliveryTransform`, `cloudinaryImageUrl`). `reviewPhotoThumb`,
+    `reviewPhotoLarge`, `tourPhotoThumb` dùng chung; `tourPhotoThumb` ở nguyên
+    `tour-editor-view` vì plan F19 import từ đó.
+  - Thanh tiến độ tải ảnh dùng `Progress` của `@tourism/ui`, vẫn mang `id` và
+    `tabIndex={-1}` để giữ tiêu điểm của Retry.
+- **Cố ý để sau F19** (open-items G14): `ListEditor` nhận `add` và `emptyFocus` bằng một
+  union, copy đọc từ hằng, gom fixture test — F19 sửa đúng các file ấy.
+- **Plan F19** (`1e4d88db`) có mục "Cập nhật 29/09 — code thật đã khác plan ở đâu";
+  prompt cuối plan trỏ tới mục đó.
+
+Lưu ý của entry fast-uri đã làm: chạy tay workflow `Audit` (run `36552822991`) — xanh;
+hai alert Dependabot mới của fast-uri (#65, #66) tự đóng lúc push, không còn alert nào
+mở.
+
+**Đột biến:** năm cái, chết cả năm — nối "Added" lại vào chú thích; `get` luôn coi là
+có bìa; bỏ transform khỏi URL Cloudinary; bỏ `id` và bỏ `tabIndex` của `Progress`.
+
+**Review findings:** không mở vòng review riêng — các mục đều đến từ vòng review và lượt
+thử tay F18.
+
+Tests after: Vitest **4687** (web 1576, admin 1441, api 1005, contract 560, core 46,
+ui 23, tokens 18, i18n 18), int **702 ở 45 file**, jest mobile 159 và mobile-ui 86. Ca
+mới ở admin: một ca "Added" với alt dài, ba ca của `cloudinary-url` (một ca dời từ
+`tour-editor-view`).
+
 ## 2026-09-29 — Thử tay F18 trên production (`47b8dc64`): 11/11 bước đạt, một góp ý
 
 User thử từng bước trên admin production; sau mỗi bước session gốc kiểm DB bằng SQL
