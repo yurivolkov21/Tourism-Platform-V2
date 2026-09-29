@@ -186,3 +186,28 @@ describe('TourCostsForm', () => {
     for (const row of rows) expect(row).toHaveAttribute('data-align', 'field');
   });
 });
+
+describe('TourCostsForm — bước Costs (F19)', () => {
+  const a = e.aside;
+
+  it('Totals ở cột phải, ngoài form — vẫn tính ngay khi gõ', async () => {
+    const { user } = renderForm(detailFixture({ costItems: [LUNCH] }));
+    expect(totals().closest('aside')).not.toBeNull();
+    expect(totals().closest('form')).toBeNull();
+
+    await user.clear(amounts()[0] as HTMLElement);
+    await user.type(amounts()[0] as HTMLElement, '10');
+
+    expect(totalPairs()[0]).toEqual([t.totals.perPerson, '$10.00']);
+  });
+
+  it('card Cost lines nói chi phí chỉ nội bộ; card bên phải nói bước tuỳ chọn; Next: Review & publish', () => {
+    renderForm();
+    expect(screen.getByText(a.costs.body)).toBeInTheDocument();
+    expect(within(screen.getByRole('complementary')).getByText(a.optionalStep)).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: e.next(e.tabs.review) })).toHaveAttribute(
+      'href',
+      '/tours/ha-long-bay-cruise/review',
+    );
+  });
+});
