@@ -147,3 +147,25 @@ Hai phát hiện lúc rà code quyết định hình dạng lời giải:
 
 Cắt hoặc xoay ảnh; video; ảnh cho địa danh, bài viết, trang (P4f và P4e-4); màn thư
 viện media riêng và nút xoá ảnh khỏi Cloudinary (P4f); ô ghi công cho ảnh tải lên.
+
+## AMEND 1 — Nhãn nguồn thứ ba "Catalog" cho ảnh bìa gốc (29/09, vòng review F18)
+
+Vòng review F18 đo trên prod: 29 ảnh bìa gốc `tourism/catalog/tour/<slug>/…` chỉ có
+dòng `TOUR`, không có dòng `DESTINATION` nào — nên KHÔNG có trong hộp Add from library.
+Bản thi công lại gắn chúng nhãn `LIBRARY` ("From the library"), khiến admin tưởng gỡ ra
+vẫn chọn lại được; gỡ rồi lưu là mất khỏi tour, và gắn lại thì cả ba nguồn của §3 đều
+trượt (`PHOTO_NOT_ALLOWED`).
+
+Quyết định (user chọn 29/09): phần HIỂN THỊ có ba nguồn thay vì hai —
+
+- `UPLOAD`: publicId trong thư mục tải lên của tour (như §3);
+- `LIBRARY`: publicId đang có dòng `DESTINATION` — đúng định nghĩa thư viện của §3;
+- `CATALOG`: mọi ảnh còn lại. Dòng nguồn của admin nói thẳng "Catalogue photo" kèm câu
+  "can't be added back once removed".
+
+Luật GHI của §3 không đổi: ảnh đang có của tour vẫn được giữ; một ảnh `CATALOG` đã gỡ
+thì vẫn không gắn lại được — đó là giới hạn đã nhận ở spec §8, nay nói ra ngay trên dòng
+ảnh thay vì bị nhãn che đi. `get` tốn thêm một câu đọc (dòng `DESTINATION` có publicId
+thuộc tour) để phân biệt `LIBRARY` với `CATALOG`. Phương án đưa ảnh bìa gốc vào thư viện
+(để gắn lại được) bị loại: nó đổi phạm vi thư viện của §9 khi còn hai tuần tới freeze.
+

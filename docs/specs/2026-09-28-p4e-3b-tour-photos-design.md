@@ -56,8 +56,10 @@ chứng giấy phép.
 - **Nguồn của một ảnh** suy từ publicId, không lưu thành cột:
   - `UPLOAD` nếu publicId bắt đầu bằng `<root>/tours/<tourId>/` (`root` là
     `CLOUDINARY_UPLOAD_FOLDER`, prod là `tourism`);
-  - `LIBRARY` với mọi publicId khác (kho địa danh `tourism/catalog/destination/…`,
-    ảnh bìa catalog `tourism/catalog/tour/…`).
+  - `LIBRARY` nếu publicId đang có dòng `DESTINATION` (kho địa danh
+    `tourism/catalog/destination/…`);
+  - `CATALOG` với mọi publicId khác (ảnh bìa gốc `tourism/catalog/tour/…`) — ADR-0048
+    AMEND 1, vòng review F18.
 - Không migration: bảng đã đủ cột (`alt` VARCHAR(300), `version`, `width`,
   `height`, `format`, `bytes`, `sortOrder`, bốn cột ghi công).
 
@@ -159,9 +161,10 @@ lên như bấm nút.
 **Danh sách** dùng kit `ListEditor` với `labelledRows`:
 
 - Mỗi dòng: thumbnail 120×80 (`object-fit: cover`), ô **Alt text** (`FormField`,
-  bắt buộc), một dòng nguồn — "Uploaded" hoặc "From the library · Photo: J. Nguyen,
-  CC BY-SA 4.0" (phần ghi công chỉ in khi có; không kèm tên địa danh — quyết định 1
-  của plan F18).
+  bắt buộc), một dòng nguồn — "Uploaded", "From the library · Photo: J. Nguyen,
+  CC BY-SA 4.0", hoặc "Catalogue photo · … · Can't be added back once removed." (phần
+  ghi công chỉ in khi có; không kèm tên địa danh — quyết định 1 của plan F18; nguồn
+  Catalog theo ADR-0048 AMEND 1).
 - Dòng đầu mang nhãn **Cover**; các dòng khác có nút **Make cover** (đưa lên đầu,
   ảnh bìa cũ lùi xuống vị trí hai).
 - ↑ ↓ và thùng rác của kit; luật tiêu điểm của kit giữ nguyên.
@@ -342,7 +345,8 @@ TDD trên logic thuần, rồi kiểm đột biến những hàm luật.
 
 - **Ảnh bìa catalog của 29 tour không nằm trong kho địa danh.** Gỡ rồi lưu là không
   chọn lại được từ hộp thư viện (ảnh vẫn còn trên Cloudinary, không bị dọn). Chấp
-  nhận: thư viện là kho địa danh theo lựa chọn 28/09.
+  nhận: thư viện là kho địa danh theo lựa chọn 28/09. Từ vòng review F18 dòng ảnh ấy
+  mang nhãn "Catalogue photo" kèm câu cảnh báo (ADR-0048 AMEND 1).
 - **Bộ script `media:*` và `apply-alt-text.mjs`** ghi `media_assets` theo fixture;
   chạy lại trên prod sau F18 sẽ đè alt, thứ tự, ảnh bìa admin đã sửa. Lượt seed lại
   03/11 KHÔNG đụng `media_assets` nên không bị ảnh hưởng.
