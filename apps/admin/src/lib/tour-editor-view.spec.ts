@@ -1,7 +1,9 @@
-import { tourReadiness } from '@tourism/contract';
+import { type AdminTourDetail, tourReadiness } from '@tourism/contract';
+import { messages } from '@tourism/i18n';
 import { describe, expect, it } from 'vitest';
 import { detailFixture } from '@/test/tour-detail';
 import {
+  activeTourStep,
   activeTourTab,
   costBreakdown,
   formatDayList,
@@ -12,6 +14,8 @@ import {
   removedItineraryDays,
   TOUR_EDITOR_TABS,
   tourPhotoThumb,
+  tourStepHref,
+  tourSteps,
   tourTabHref,
 } from './tour-editor-view';
 
@@ -232,5 +236,136 @@ describe('optionLabel', () => {
   it('mục đang hiện giữ nguyên tên; mục đã ẩn mang "(hidden)"', () => {
     expect(optionLabel({ name: 'Day Tours', isActive: true })).toBe('Day Tours');
     expect(optionLabel({ name: 'Retired', isActive: false })).toBe('Retired (hidden)');
+  });
+});
+
+/**
+ * Bước là DỮ LIỆU (ADR-0049 §1–§2): thứ tự, đường dẫn, và trạng thái suy từ readiness
+ * ĐÃ LƯU — nguồn duy nhất của thanh bước lẫn bước Review.
+ */
+describe('tourStepHref', () => {
+  it('Details là gốc của tour; bước khác nối tên bước; slug được mã hoá', () => {
+    expect(tourStepHref('ha long', 'details')).toBe('/tours/ha%20long');
+    expect(tourStepHref('ha-long', 'review')).toBe('/tours/ha-long/review');
+  });
+});
+
+describe('activeTourStep', () => {
+  it.each([
+    ['/tours/ha-long', 'details'],
+    ['/tours/ha-long/photos', 'photos'],
+    ['/tours/ha-long/costs', 'costs'],
+    ['/tours/ha-long/review', 'review'],
+    ['/tours/ha-long/khong-co', 'details'],
+  ] as const)('%s → %s', (pathname, step) => {
+    expect(activeTourStep(pathname, 'ha-long')).toBe(step);
+  });
+
+  it('Departures không phải bước — không bước nào sáng', () => {
+    expect(activeTourStep('/tours/ha-long/departures', 'ha-long')).toBeNull();
+  });
+});
+
+describe('tourSteps', () => {
+  const s = messages.admin.tours.editor.steps;
+  const byStep = (detail: AdminTourDetail) =>
+    Object.fromEntries(tourSteps(detail).map((step) => [step.step, step]));
+
+  it('đúng thứ tự thanh bước, đường dẫn và tên bước', () => {
+    const steps = tourSteps(detailFixture());
+    expect(steps.map((step) => step.step)).toEqual([
+      'details',
+      'photos',
+      'itinerary',
+      'content',
+      'costs',
+      'review',
+    ]);
+    expect(steps.map((step) => step.href)).toEqual([
+      '/tours/ha-long-bay-cruise',
+      '/tours/ha-long-bay-cruise/photos',
+      '/tours/ha-long-bay-cruise/itinerary',
+      '/tours/ha-long-bay-cruise/content',
+      '/tours/ha-long-bay-cruise/costs',
+      '/tours/ha-long-bay-cruise/review',
+    ]);
+    expect(steps.map((step) => step.title)).toEqual([
+      'Details',
+      'Photos',
+      'Itinerary',
+      'FAQ & policies',
+      'Costs',
+      'Review & publish',
+    ]);
+  });
+
+  it('tour đủ và đang bán: ba bước bắt buộc xanh, hai tuỳ chọn, bước cuối nói "On sale"', () => {
+    const detail = detailFixture();
+    expect(tourSteps(detail).map((step) => step.status)).toEqual([
+      'ok',
+      'ok',
+      'ok',
+      'optional',
+      'optional',
+      'final',
+    ]);
+    const steps = byStep(detail);
+    expect(steps.details?.summary).toBe(s.detailsReady);
+    expect(steps.photos?.summary).toBe('1 photo · cover set');
+    expect(steps.itinerary?.summary).toBe(s.itineraryReady);
+    expect(steps.review?.summary).toBe('On sale');
+    expect(tourSteps(detail).every((step) => step.fixHref === null)).toBe(true);
+  });
+
+  it('thiếu tóm tắt và điểm đến chính: Details vàng, kể cả hai mục, sửa từ ô tóm tắt', () => {
+    const details = byStep(
+      detailFixture({ isPublished: false, summary: null, destinations: [] }),
+    ).details;
+    expect(details?.status).toBe('warn');
+    expect(details?.summary).toBe('Missing: a summary, a primary destination');
+    expect(details?.fixHref).toBe('/tours/ha-long-bay-cruise#tour-summary');
+  });
+
+  it('thiếu ngày: Itinerary vàng kèm dải ngày, sửa từ ngày thiếu đầu tiên', () => {
+    const itinerary = byStep(
+      detailFixture({
+        isPublished: false,
+        itinerary: [{ dayNumber: 1, title: 'Board the boat', description: null }],
+      }),
+    ).itinerary;
+    expect(itinerary?.status).toBe('warn');
+    expect(itinerary?.summary).toBe('Missing: an itinerary for days 2–3');
+    expect(itinerary?.fixHref).toBe('/tours/ha-long-bay-cruise/itinerary#day-2');
+  });
+
+  it('không có ảnh: Photos vàng, sửa ở bước Photos', () => {
+    const photos = byStep(detailFixture({ isPublished: false, photos: [] })).photos;
+    expect(photos?.status).toBe('warn');
+    expect(photos?.summary).toBe('Missing: a cover photo');
+    expect(photos?.fixHref).toBe('/tours/ha-long-bay-cruise/photos');
+  });
+
+  it('bước cuối: tắt bán mà đủ → "Ready to go on sale"; thiếu hai mục → "2 things to fix"', () => {
+    expect(byStep(detailFixture({ isPublished: false })).review?.summary).toBe(
+      'Ready to go on sale',
+    );
+    expect(
+      byStep(detailFixture({ isPublished: false, summary: null, photos: [] })).review?.summary,
+    ).toBe('2 things to fix');
+  });
+
+  it('bước tuỳ chọn đếm đúng số ít, số nhiều và số không', () => {
+    const empty = byStep(detailFixture());
+    expect(empty.content?.summary).toBe('Optional · 0 questions · 0 policies');
+    expect(empty.costs?.summary).toBe('Optional · no cost lines');
+    const one = byStep(
+      detailFixture({
+        faqs: [{ question: 'Q?', answer: 'A.' }],
+        policies: [{ kind: 'GENERAL', title: 'Weather', body: 'We move you.' }],
+        costItems: [{ category: 'MEALS', label: 'Lunch', amount: '9.00', basis: 'PER_PERSON' }],
+      }),
+    );
+    expect(one.content?.summary).toBe('Optional · 1 question · 1 policy');
+    expect(one.costs?.summary).toBe('Optional · 1 cost line');
   });
 });

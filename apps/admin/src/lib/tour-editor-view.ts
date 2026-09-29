@@ -43,6 +43,111 @@ export function activeTourTab(pathname: string, slug: string): TourEditorTab {
     : 'details';
 }
 
+/**
+ * Sáu bước của khu sửa tour, đúng thứ tự thanh bước (ADR-0049 §1). Departures KHÔNG
+ * là bước (§5): nó là việc vận hành chuyến, và readiness không phụ thuộc nó.
+ */
+export type TourEditorStep = 'details' | 'photos' | 'itinerary' | 'content' | 'costs' | 'review';
+
+export const TOUR_EDITOR_STEPS: readonly TourEditorStep[] = [
+  'details',
+  'photos',
+  'itinerary',
+  'content',
+  'costs',
+  'review',
+];
+
+export function tourStepHref(slug: string, step: TourEditorStep): string {
+  const base = `/tours/${encodeURIComponent(slug)}`;
+  return step === 'details' ? base : `${base}/${step}`;
+}
+
+/** Bước đang mở theo pathname; `null` ở Departures (không bước nào sáng). Đoạn lạ → Details. */
+export function activeTourStep(pathname: string, slug: string): TourEditorStep | null {
+  const rest = pathname.slice(tourStepHref(slug, 'details').length).replace(/^\//, '');
+  const segment = rest.split('/')[0] ?? '';
+  if (segment === 'departures') return null;
+  return (TOUR_EDITOR_STEPS as readonly string[]).includes(segment)
+    ? (segment as TourEditorStep)
+    : 'details';
+}
+
+export type TourStepStatus = 'ok' | 'warn' | 'optional' | 'final';
+
+export interface TourStepVM {
+  step: TourEditorStep;
+  href: string;
+  title: string;
+  status: TourStepStatus;
+  /** Dòng trạng thái — tooltip của thanh bước VÀ hàng của bước Review (cùng chữ). */
+  summary: string;
+  /** Đích sửa chỗ thiếu ĐẦU TIÊN của bước; chỉ có khi `warn`. */
+  fixHref: string | null;
+}
+
+/** Mục readiness thuộc về từng bước bắt buộc. */
+const STEP_ISSUES: Record<'details' | 'photos' | 'itinerary', readonly ReadinessIssue['key'][]> = {
+  details: ['summary', 'primaryDestination'],
+  photos: ['cover'],
+  itinerary: ['days'],
+};
+
+/** "A summary" → "a summary": nhãn readiness đứng giữa câu "Missing: …". */
+function lowerFirst(label: string): string {
+  return label.charAt(0).toLowerCase() + label.slice(1);
+}
+
+/**
+ * Trạng thái sáu bước từ readiness ĐÃ LƯU (ADR-0049 §2) — nguồn DUY NHẤT của thanh bước
+ * và danh sách kiểm tra ở bước Review, nên hai chỗ không thể nói khác nhau. Cột phải
+ * của từng bước KHÔNG dùng hàm này: nó đọc giá trị đang soạn qua `projectedReadiness`.
+ */
+export function tourSteps(detail: AdminTourDetail): TourStepVM[] {
+  const s = t.steps;
+  const issues = readinessIssues(detail.readiness, detail.slug);
+  const required = (step: keyof typeof STEP_ISSUES, ready: string): TourStepVM => {
+    const own = issues.filter((issue) => STEP_ISSUES[step].includes(issue.key));
+    const [first] = own;
+    return {
+      step,
+      href: tourStepHref(detail.slug, step),
+      title: t.tabs[step],
+      status: first === undefined ? 'ok' : 'warn',
+      summary:
+        first === undefined
+          ? ready
+          : s.missing(own.map((issue) => lowerFirst(issue.label)).join(', ')),
+      fixHref: first?.href ?? null,
+    };
+  };
+  const plain = (
+    step: 'content' | 'costs' | 'review',
+    status: TourStepStatus,
+    summary: string,
+  ): TourStepVM => ({
+    step,
+    href: tourStepHref(detail.slug, step),
+    title: t.tabs[step],
+    status,
+    summary,
+    fixHref: null,
+  });
+  const review = detail.isPublished
+    ? s.reviewOnSale
+    : issues.length === 0
+      ? s.reviewReady
+      : s.reviewToFix(issues.length);
+  return [
+    required('details', s.detailsReady),
+    required('photos', s.photosReady(detail.photos.length)),
+    required('itinerary', s.itineraryReady),
+    plain('content', 'optional', s.optionalContent(detail.faqs.length, detail.policies.length)),
+    plain('costs', 'optional', s.optionalCosts(detail.costItems.length)),
+    plain('review', 'final', review),
+  ];
+}
+
 /** [2, 4, 5, 6] → "2, 4–6". Đầu vào đã sắp tăng dần (như `missingDays`). */
 export function formatDayList(days: readonly number[]): string {
   const parts: string[] = [];

@@ -4051,7 +4051,7 @@ export const messages = {
         save: 'Save changes',
         saving: 'Saving…',
         back: 'Back to tours',
-        tabsLabel: 'Tour sections',
+        tabsLabel: 'Tour steps',
         tabs: {
           details: 'Details',
           photos: 'Photos',
@@ -4059,11 +4059,132 @@ export const messages = {
           content: 'FAQ & policies',
           costs: 'Costs',
           departures: 'Departures',
+          review: 'Review & publish',
         },
         /** Nhãn nhìn thấy cạnh công tắc — cùng chữ với cột "On sale" của bảng Tours. */
         onSale: 'On sale',
         /** Công tắc khoá chiều bật khi tour còn thiếu (ADR-0047 §4). */
         toggleBlocked: 'Fill in what is missing to put it on sale.',
+        /**
+         * F19 (ADR-0049) — khu sửa tour dạng thanh bước. Dòng trạng thái của thanh
+         * bước và của bước Review là CÙNG chữ: một hàm `tourSteps` nuôi cả hai.
+         */
+        steps: {
+          detailsReady: 'Summary and primary destination set',
+          photosReady: (n: number) => (n === 1 ? '1 photo · cover set' : `${n} photos · cover set`),
+          itineraryReady: 'Every day planned',
+          /** `items`: các mục thiếu đã hạ chữ đầu, nối bằng dấu phẩy. */
+          missing: (items: string) => `Missing: ${items}`,
+          optionalContent: (faqs: number, policies: number) =>
+            `Optional · ${faqs === 1 ? '1 question' : `${faqs} questions`} · ${
+              policies === 1 ? '1 policy' : `${policies} policies`
+            }`,
+          optionalCosts: (lines: number) =>
+            lines === 0
+              ? 'Optional · no cost lines'
+              : `Optional · ${lines === 1 ? '1 cost line' : `${lines} cost lines`}`,
+          reviewOnSale: 'On sale',
+          reviewReady: 'Ready to go on sale',
+          reviewToFix: (n: number) => (n === 1 ? '1 thing to fix' : `${n} things to fix`),
+          /** Tên đọc-màn-hình của một icon trên thanh bước: tên bước kèm dòng trạng thái. */
+          stepLabel: (title: string, summary: string) => `${title}: ${summary}`,
+          /** Chữ cho trình đọc màn hình thay cho dấu trạng thái (icon ẩn). */
+          state: { ok: 'Done', warn: 'Needs attention', optional: 'Optional' },
+        },
+        header: {
+          onSale: 'On sale',
+          /** Không phải "Draft": tour gỡ bán không phải bản nháp (spec §9). */
+          offSale: 'Not on sale',
+          viewOnSite: 'View on site',
+          lastSaved: (when: string) => `Last saved ${when}`,
+        },
+        /** Link đi tiếp ở chân form, cạnh nút Save. */
+        next: (step: string) => `Next: ${step}`,
+        aside: {
+          thisStep: 'This step',
+          thisStepBody: 'What this step needs before the tour can go on sale.',
+          required: 'Required to go on sale',
+          optionalStep: 'Optional — the tour can go on sale without it.',
+          /** Tiêu đề card cột phải của hai bước tuỳ chọn (FAQ & policies, Costs). */
+          onThisStep: 'On this step',
+          tips: 'Tips',
+          details: {
+            basicsBody:
+              'What travellers see first — the card on /tours and the top of the tour page.',
+            sellingBody:
+              'Shown on the tour page: who it suits, badges, highlights, what’s included and practical notes.',
+            sellingOptional: 'Highlights, lists and meeting point',
+            shownWhenFilled: 'Optional — shown on the tour page when filled',
+            tips: [
+              'Lead the summary with the one thing people remember.',
+              'Two or three highlights read better than eight.',
+              '“Limited offer” only while a date has a real discount.',
+            ],
+          },
+          preview: {
+            title: 'Card on /tours',
+            body: 'How the card reads with what you have now.',
+            noCover: 'No cover photo yet',
+            untitled: 'Untitled tour',
+            /** Luật của card web: chip giảm giá thắng nhãn Featured (tour-list-card.tsx). */
+            featuredNote: 'The Featured label shows unless the card shows a discount.',
+            basePrice: 'Base price',
+            /** Card web in giá của chuyến rẻ nhất sắp tới (`cardPrice`), admin không có số ấy. */
+            priceNote: 'The site shows the cheapest upcoming departure.',
+          },
+          photos: {
+            altAll: 'Alt text on every photo',
+            altDone: 'Required to save',
+            altMissing: (n: number) =>
+              n === 1 ? '1 photo still needs it' : `${n} photos still need it`,
+            coverTitle: 'Cover on /tours',
+            coverBody: 'The first photo, cropped the way tour cards show it.',
+            drop: 'Or drop photos here.',
+            saveNote: 'Saving replaces the tour’s photos in this order.',
+            tips: [
+              'Landscape photos crop best on tour cards.',
+              'Describe what is in the photo — skip “photo of”.',
+            ],
+          },
+          itinerary: {
+            daysTitle: 'Days',
+            daysBody: 'Jump to a day. Stays in view while you scroll.',
+            needed: 'Needed before going on sale',
+          },
+          content: {
+            faqBody: 'Questions travellers ask before booking. Shown on the tour page.',
+            policiesBody: 'Booking and general rules shown on the tour page.',
+            faqCount: (n: number) => (n === 1 ? '1 question' : `${n} questions`),
+            policyCount: (n: number) => (n === 1 ? '1 policy' : `${n} policies`),
+            cancellationTitle: 'Cancellation policy',
+          },
+          costs: {
+            title: 'Cost lines',
+            body: 'Internal only — travellers never see these. They make up the tour’s cost price.',
+          },
+        },
+        review: {
+          title: 'Ready to go on sale?',
+          body: 'Every required step has to be green before the tour can go on sale.',
+          fix: 'Fix',
+          visibility: {
+            title: 'Visibility',
+            onSale: 'On sale — travellers can find and book it.',
+            offSale: 'Not on sale — hidden from the site.',
+            always: 'Taking a tour off sale is always allowed.',
+          },
+          after: {
+            title: 'When it goes on sale',
+            items: [
+              'It appears on /tours and on the region pages of its destinations.',
+              'Travellers can book the departures marked Bookable.',
+            ],
+          },
+          deleteBlocked: {
+            title: 'Delete this tour',
+            body: 'Tours that have been booked can’t be deleted. Take it off sale instead.',
+          },
+        },
         readiness: {
           ready: 'Ready to sell',
           /**

@@ -11,10 +11,10 @@ beforeEach(() => {
 
 /** Thanh tab của khu làm việc (spec F17 §2g, F18): sáu link, đúng một tab đang mở. */
 describe('TourTabs', () => {
-  it('sáu link đúng thứ tự và đúng đường, trong một nav tên "Tour sections"', () => {
+  it('sáu link đúng thứ tự và đúng đường, trong một nav tên "Tour steps"', () => {
     render(<TourTabs slug="ha-long" />);
 
-    const nav = screen.getByRole('navigation', { name: 'Tour sections' });
+    const nav = screen.getByRole('navigation', { name: 'Tour steps' });
     const links = within(nav).getAllByRole('link');
     expect(links.map((link) => link.textContent)).toEqual([
       'Details',
