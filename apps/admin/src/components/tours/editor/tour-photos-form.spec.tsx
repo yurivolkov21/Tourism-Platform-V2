@@ -290,6 +290,26 @@ describe('TourPhotosForm', () => {
   });
 });
 
+describe('TourPhotosForm — PHOTO_NOT_ALLOWED (vòng review F18)', () => {
+  it('câu nói gỡ ảnh thư viện vừa thêm; lần mở hộp sau tải lại thư viện (bản cũ đã sai)', async () => {
+    const load = vi.fn<LoadPhotoLibraryAction>().mockResolvedValue({ ok: true, library: [] });
+    const save = vi
+      .fn<SetPhotosAction>()
+      .mockResolvedValue({ ok: false, code: 'PHOTO_NOT_ALLOWED' });
+    const { user } = renderForm(undefined, { save, loadLibrary: load });
+
+    await user.click(screen.getByRole('button', { name: t.library }));
+    await waitFor(() => expect(load).toHaveBeenCalledTimes(1));
+    await user.click(screen.getByRole('button', { name: t.dialog.cancel }));
+    await user.type(altInputs()[1] as HTMLElement, ' at dawn');
+    await user.click(saveButton());
+
+    expect(await screen.findByText(t.errors.PHOTO_NOT_ALLOWED)).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: t.library }));
+    await waitFor(() => expect(load).toHaveBeenCalledTimes(2));
+  });
+});
+
 describe('TourPhotosForm — tải lên (vòng review F18)', () => {
   type SignResult = Awaited<ReturnType<SignPhotoUploadsAction>>;
   type SaveResult = Awaited<ReturnType<SetPhotosAction>>;

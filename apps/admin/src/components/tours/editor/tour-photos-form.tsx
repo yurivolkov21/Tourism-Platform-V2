@@ -123,6 +123,12 @@ export function TourPhotosForm({
     slug: detail.slug,
     version,
     projected: () => projectedReadiness(detail, { photoCount: values.photos.length }),
+    // Một ảnh thư viện vừa thêm đã không còn (vòng review F18): bản kho ảnh đang giữ đã
+    // sai — lần mở hộp sau tải lại. Dải báo vẫn hiện (trả `false`).
+    onFieldError: (code) => {
+      if (code === 'PHOTO_NOT_ALLOWED') setLibrary(null);
+      return false;
+    },
     onSaved: (next) => {
       form.adopt(next);
       // Phần đầu (readiness, công tắc) theo kịp ngay, không chờ lượt refresh.

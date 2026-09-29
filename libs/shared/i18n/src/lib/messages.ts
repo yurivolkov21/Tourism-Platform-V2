@@ -3357,9 +3357,12 @@ export const messages = {
       write: {
         UNAUTHORIZED: 'Your session expired. Sign in again, then retry the action.',
         FORBIDDEN: 'Your account no longer has admin access.',
-        /** Request hỏng từ client — CHƯA từng rời lớp validate, không đụng gì. */
-        INVALID_INPUT:
-          'The request was invalid and never reached the payment provider. Reload the page and try again.',
+        /**
+         * Request hỏng từ client — CHƯA từng rời lớp validate, không đụng gì. Câu CHUNG cho
+         * mọi lệnh ghi admin (vòng review F18): bản cũ nói "never reached the payment
+         * provider" — đúng cho refund, lạc đề ở mọi vùng khác (tab Photos từng hiện nó).
+         */
+        INVALID_INPUT: 'The request was invalid and was never sent. Reload the page and try again.',
         /** Không biết đã đi tới đâu — câu này cố ý mập mờ đúng mức. */
         GENERIC:
           'The action did not confirm. Check the fresh data on this page before trying again — it may or may not have gone through.',
@@ -4316,8 +4319,14 @@ export const messages = {
           errors: {
             STALE_TOUR: 'Someone else saved this tour while you were editing.',
             TOUR_NOT_READY: 'This tour is on sale, so it has to stay ready to sell.',
-            /** Đo: `planTourPhotos` từ chối ảnh ngoài ba nguồn — client đúng không bao giờ gửi. */
-            PHOTO_NOT_ALLOWED: 'One of these photos can no longer be used. Reload and try again.',
+            /**
+             * Đo: `planTourPhotos` từ chối ảnh ngoài ba nguồn. Ca thật duy nhất: một ảnh thư
+             * viện mất dòng địa danh giữa lúc tải kho và lúc lưu. Không hứa "Reload" (vòng
+             * review F18): tải lại cùng phiên bản không bỏ được ảnh hỏng, và F5 làm mất ảnh
+             * vừa tải lên — cách chữa có thật là gỡ ảnh thư viện vừa thêm rồi lưu lại.
+             */
+            PHOTO_NOT_ALLOWED:
+              'A library photo you added is no longer available. Remove the library photos you added since your last save, then save again.',
             NOT_FOUND: 'This tour no longer exists.',
           },
           /** Lỗi của lệnh ký upload (`signPhotoUploads`). */
@@ -4371,11 +4380,14 @@ export const messages = {
           skipped: {
             type: (name: string) => `${name} isn’t a JPG, PNG, WebP, AVIF or GIF.`,
             size: (name: string) => `${name} is larger than 10 MB.`,
-            full: (name: string) => `${name} didn’t fit — a tour can have up to 30 photos.`,
+            /** Sức chứa trừ cả file đang tải hay tải hỏng chưa gỡ (vòng review F18). */
+            full: (name: string) =>
+              `${name} didn’t fit — a tour can have up to 30 photos, and uploads still on the list count too.`,
           },
           dialog: {
             title: 'Add from library',
-            body: 'Photos from the destination library, with their credits.',
+            /** Lưới không in ghi công — nó đi theo ảnh khi thêm (vòng review F18). */
+            body: 'Photos from the destination library. Their credits come with them.',
             destination: 'Destination',
             thisTour: 'This tour’s destinations',
             added: 'Added',

@@ -164,7 +164,7 @@ describe('refundErrorCopy', () => {
   });
 
   it('INVALID_INPUT khẳng định request CHƯA từng rời lớp validate — khác hẳn GENERIC mập mờ', () => {
-    expect(refundErrorCopy('INVALID_INPUT')).toMatch(/never reached/i);
+    expect(refundErrorCopy('INVALID_INPUT')).toMatch(/never sent/i);
     expect(refundErrorCopy('GENERIC')).toMatch(/may or may not/i);
   });
 });
