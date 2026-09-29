@@ -361,13 +361,16 @@ export function validateTourDetailsForm(
   const lines: Record<string, string> = {};
 
   const days = parseWholeNumber(values.durationDays);
+  const daysError = wholeNumberError(values.durationDays, 1, TOUR_DURATION_MAX);
   // G11: luật "tour đang bán" suy từ readiness dự tính, không viết tay từng luật.
+  // Chỉ chiếu với số ngày ĐÃ qua kiểm khoảng (vòng review F18): `tourReadiness` lặp
+  // 1..N ngày, nên một số gõ tay như "1000000000" làm treo cả tab.
   const shortfalls = onSaleShortfalls(
     detail,
     projectedReadiness(detail, {
       summary: orNull(values.summary),
       destinations: values.destinations,
-      durationDays: Number.isInteger(days) ? days : detail.durationDays,
+      durationDays: daysError === undefined ? days : detail.durationDays,
     }),
   );
 
@@ -376,7 +379,6 @@ export function validateTourDetailsForm(
   else setError(errors, 'summary', textError(values.summary, TOUR_SUMMARY_MAX, false));
   if (values.categoryId === '') errors.categoryId = fe.chooseCategory;
 
-  const daysError = wholeNumberError(values.durationDays, 1, TOUR_DURATION_MAX);
   if (daysError !== undefined) errors.durationDays = daysError;
   else if (days !== detail.durationDays && detail.departureCount > 0) {
     errors.durationDays = fe.durationLocked;

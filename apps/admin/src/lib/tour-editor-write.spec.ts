@@ -1,6 +1,6 @@
-import { contract } from '@tourism/contract';
+import { contract, TOUR_DURATION_MAX } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { CATEGORY_ID, DEST_A, DEST_B, detailFixture, TOUR_ID, VERSION } from '@/test/tour-detail';
 import {
   CONTENT_CONTRACT_CODES,
@@ -40,6 +40,24 @@ import {
  */
 const fe = messages.admin.tours.editor.form.errors;
 const text = (length: number) => 'x'.repeat(length);
+
+/**
+ * `tourReadiness` lặp 1..N ngày: một số ngày ngoài trần (gõ tay "1000000000") làm
+ * treo cả tab (vòng review F18). Bọc hàm thật cho nó NÉM ngay khi nhận số ngày ngoài
+ * trần — test đỏ nhanh thay vì treo máy, và mọi ca khác vẫn chạy hàm thật.
+ */
+vi.mock('@tourism/contract', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@tourism/contract')>();
+  return {
+    ...actual,
+    tourReadiness: vi.fn((input: Parameters<typeof actual.tourReadiness>[0]) => {
+      if (input.durationDays > actual.TOUR_DURATION_MAX) {
+        throw new Error(`tourReadiness nhận ${input.durationDays} ngày — ngoài trần`);
+      }
+      return actual.tourReadiness(input);
+    }),
+  };
+});
 
 describe('tập mã lỗi khớp contract (bài học: codec derive từ i18n, không từ contract)', () => {
   it('sáu codec phủ ĐÚNG các mã mà contract khai', () => {
@@ -148,6 +166,16 @@ describe('tab Details', () => {
   const withValues = (patch: Partial<TourDetailsFormValues>): TourDetailsFormValues => ({
     ...detailsFormValues(detail),
     ...patch,
+  });
+
+  it('số ngày ngoài 1–30 chỉ báo lỗi khoảng, KHÔNG đi vào phép chiếu readiness (vòng review F18)', () => {
+    // Cả tour tắt bán cũng từng dính: đối số được tính trước khi `onSaleShortfalls` trả sớm.
+    for (const tour of [detail, detailFixture({ isPublished: false })]) {
+      for (const durationDays of ['31', '1000000000', '99999999999999999999']) {
+        const errors = validateTourDetailsForm({ ...detailsFormValues(tour), durationDays }, tour);
+        expect(errors.durationDays).toBe(fe.wholeNumber(1, TOUR_DURATION_MAX));
+      }
+    }
   });
 
   it('mở ra rồi lưu nguyên: payload tương đương tour, mảng dòng không mang key', () => {
