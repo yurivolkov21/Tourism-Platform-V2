@@ -125,7 +125,10 @@ Ba lớp bảo vệ chống lệch chuẩn (đã dựng, đừng gỡ):
 
 ## Chính sách theo lịch (capstone)
 
-- NestJS v12: chỉ migrate nếu GA trước **30/09/2026**, sau đó ở lại v11.
+- NestJS v12: chỉ migrate nếu GA trước **30/09/2026**, sau đó ở lại v11. v12 GA
+  27/08 nhưng **user chốt 29/09 ở lại v11 tới hết capstone**: bản 12 không thêm gì
+  người dùng thấy, còn rủi ro với oRPC, better-auth, throttler khi chỉ còn 16 ngày
+  tới freeze.
 - **Freeze 15/10/2026**: không nâng cấp dependency, không đổi nơi deploy.
 
 ## Lệnh
