@@ -1589,12 +1589,20 @@ describe('admin tours integration (F17)', () => {
       });
       expect(dup.statusCode).toBe(400);
 
+      // 31 ảnh HỢP LỆ từng cái (ảnh tải lên đúng thư mục của tour, có metadata): chỉ
+      // trần `.max(30)` của schema chặn được — ảnh `lib/…` không nguồn nào nhận cũng ra
+      // 400 (PHOTO_NOT_ALLOWED) nên từng làm ca này xanh giả (vòng review F18).
       const tooMany = await photosWrite(tourId(1), {
         id: tourId(1),
         version: before.version,
-        photos: Array.from({ length: 31 }, (_, i) => ({ publicId: `lib/${i}`, alt: 'x' })),
+        photos: Array.from({ length: 31 }, (_, i) => ({
+          publicId: mine(1, `p${i}`),
+          alt: 'x',
+          upload: UPLOAD_META,
+        })),
       });
       expect(tooMany.statusCode).toBe(400);
+      expect(tooMany.json()).toMatchObject({ code: 'BAD_REQUEST' });
     });
   });
 
