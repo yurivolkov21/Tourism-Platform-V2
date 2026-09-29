@@ -409,7 +409,7 @@ describe('contract.admin.tours (F17)', () => {
 });
 
 describe('AdminTourDetailSchema.photos (F18)', () => {
-  it('nhận ảnh có hoặc không có ghi công; nguồn chỉ là UPLOAD hay LIBRARY', () => {
+  it('nhận ảnh có hoặc không có ghi công; nguồn là UPLOAD, LIBRARY hay CATALOG (AMEND 1)', () => {
     const photo = {
       publicId: 'tourism/catalog/destination/hoi-an/1',
       url: 'https://res.cloudinary.com/demo/image/upload/f_auto,q_auto/v1/tourism/x',
@@ -421,7 +421,8 @@ describe('AdminTourDetailSchema.photos (F18)', () => {
       license: 'CC BY-SA 4.0',
     };
     expect(AdminTourPhotoSchema.parse(photo)).toEqual(photo);
-    expect(AdminTourPhotoSchema.safeParse({ ...photo, source: 'CATALOG' }).success).toBe(false);
+    expect(AdminTourPhotoSchema.safeParse({ ...photo, source: 'CATALOG' }).success).toBe(true);
+    expect(AdminTourPhotoSchema.safeParse({ ...photo, source: 'DESTINATION' }).success).toBe(false);
     expect(
       AdminTourPhotoSchema.safeParse({ ...photo, alt: null, author: null, license: null }).success,
     ).toBe(true);
