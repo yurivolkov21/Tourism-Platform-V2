@@ -84,7 +84,7 @@ Mỗi ADR tự chứa đầy đủ phần sửa bổ sung (AMEND) của nó; b�
 | [0041](adr/0041-single-cancellation-deadline.md) | **Một hạn chót mỗi chuyến** — luật hoàn tiền hiện hành | thay 0029, 0030 |
 | [0042](adr/0042-shared-client-rules-core.md) | `@tourism/core`: luật dùng chung cho mọi client | |
 | [0043](adr/0043-refund-payment-event.md) | Hoàn tiền để lại vết ở sổ `payment_events` | |
-| [0044](adr/0044-prerender-retry-transient-api.md) | Prerender thử lại khi API hắt hơi | |
+| [0044](adr/0044-prerender-retry-transient-api.md) | Prerender thử lại khi API hắt hơi | 1 AMEND |
 | [0045](adr/0045-region-vocabulary-in-contract.md) | Ba vùng miền là từ vựng chung, sống ở contract | |
 | [0046](adr/0046-departure-phase-derived.md) | Giai đoạn chuyến suy từ ngày; `status` chỉ là công tắc bán hàng | |
 | [0047](adr/0047-tour-editor-sections.md) | Sửa tour theo từng khối: thay nguyên danh sách, khoá phiên bản, cổng đăng tour | |

@@ -101,3 +101,52 @@ hành vi đúng, và tắt đi là mời gọi quên deploy.
 - **Chỉ nới timeout, không thử lại.** Không cứu được 502/520 — hai trong ba ca
   đo được trả lỗi NGAY, không phải chờ lâu.
 - **`settle` cho trang chi tiết bài viết.** Xanh giả: xuất bản trang rỗng.
+
+## AMEND 1 — Lúc build chờ lâu hơn, lúc chạy giữ nguyên (29/09)
+
+Bản deploy web của `962d6090` (lượt push merge F18) vẫn ERROR dù đã có lớp thử lại.
+Log build trên Vercel:
+
+- `warm-api.mjs` gọi `/api/health` ba lượt đều `TimeoutError` (5 giây mỗi lượt), tới
+  lượt thứ tư mới được trả lời, sau 24 giây.
+- 27 giây sau, prerender `/tours/phu-quoc-honeymoon-4d` ném `TypeError: fetch failed`
+  với nguyên nhân `ECONNRESET`, sau khi đã dùng hết ba lượt của §1.4 (tổng chờ 1,6
+  giây).
+- Lượt push kế tiếp (`47b8dc64`) READY mà không đổi gì phía web.
+
+Lượt push ấy mang cả các commit sửa `apps/api` của F18, nên API dựng lại đúng luật và
+chạy cùng lúc với build web — đúng loại ca mà Build Filter của §3 (user bật 21/09 với
+`docs/**`) không chặn và không được chặn. Lần thay instance này kéo dài hơn con số ~1,5
+giây mà §1.4 dựa vào.
+
+**Quyết định:** ràng buộc 4 của §1 tách thành hai lịch chờ; ba ràng buộc kia giữ
+nguyên.
+
+- **Lúc build** (`process.env.NEXT_PHASE === 'phase-production-build'`): sáu lượt,
+  chờ 1s, 2s, 4s, 8s, 15s giữa các lượt, tổng 30 giây. Next 16.3.4 gán biến này
+  trong tiến trình `next build` ngay trước khi tạo worker thu thập dữ liệu trang và
+  prerender, và worker nhận nguyên `process.env` của tiến trình cha (đọc trong
+  `next/dist/build/index.js` và `next/dist/lib/worker.js`).
+- **Lúc chạy** (ISR, SSR, route handler): giữ 400ms rồi 1200ms như §1.4.
+- Mỗi lần thử lại ghi một dòng cảnh báo (đường dẫn, lượt thứ mấy, chờ bao lâu, vì
+  sao). Trước đây thử lại im lặng, nên log build không cho biết lớp này đã cứu hay
+  chưa từng chạy.
+
+Chỉ lúc build mới chờ lâu, vì lúc đó không có ai đứng chờ trang, còn build đỏ thì mất
+một bản deploy và phải push lại. Lúc chạy có người đang chờ, nên lỗi thật phải lộ
+nhanh. Sự cố thật vẫn làm build đỏ, chỉ muộn thêm khoảng 30 giây chờ. Mỗi lượt vẫn
+chịu hạn 20 giây của §2, nên ca xấu nhất một lượt gọi mất khoảng hai phút rưỡi trước
+khi build đỏ.
+
+**Đã cân và bỏ:**
+
+- **Chờ API deploy xong rồi mới build** (so commit API đang chạy với commit đang
+  build): API phải lộ commit, mỗi lượt build web chờ thêm đúng thời gian Render dựng
+  image, và sẽ treo tới hết hạn mỗi khi API không dựng lại — tức mọi lượt push mà
+  Build Filter của §3 đã chặn.
+- **Nới chung cho cả lúc chạy:** người xem trang phải chờ tới 30 giây khi API sập
+  thật.
+- **Siết thêm Build Filter của §3:** đã bật cho `docs/**` từ 21/09, và thêm
+  `apps/web/**`, `apps/admin/**`, `apps/mobile/**` vẫn là việc tay để dành. Không
+  mức siết nào cứu được lượt push có sửa `apps/api/**` hay `libs/**`, vốn phải dựng
+  lại API.
