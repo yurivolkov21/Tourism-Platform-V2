@@ -8,6 +8,51 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-09-29 — Thử tay F18 trên production (`47b8dc64`): 11/11 bước đạt, một góp ý
+
+User thử từng bước trên admin production; sau mỗi bước session gốc kiểm DB bằng SQL
+chỉ đọc. Tour thử `f18-photo-test` tạo mới ở bước đầu và xoá ở bước cuối. Từ bước 2
+trở đi chạy trong cửa sổ InPrivate, để extension không lẫn vào Console.
+
+1. Tạo tour thử, điền đủ readiness trừ ảnh bìa. DB: tắt bán, 0 ảnh.
+2. Tải hai ảnh (một bằng nút, một kéo thả), điền alt, lưu. DB: hai dòng trong thư mục
+   tải lên của tour, ảnh đầu là `hero`; hàng dọn có đúng hai publicId đã ký. Console
+   không có vi phạm CSP nào cho Cloudinary — lớp nghiệm thu thứ hai của ADR-0038
+   AMEND 5 đạt.
+3. Rời tab lúc đang tải (mạng giả Slow 4G): hộp "Discard unsaved changes?" hiện khi
+   form còn sạch, tức phát hiện #8 của vòng review đã vá đúng. F5 thì trình duyệt
+   hỏi lại.
+4. Tải hỏng bằng cách chặn `https://api.cloudinary.com/*` trong DevTools (Request
+   conditions): Retry bằng bàn phím giữ tiêu điểm trên dòng — hỏng lại thì về nút
+   Retry, xong thì vào ô alt của ảnh mới; Remove dòng hỏng cuối thì về Upload photos.
+5. Thêm ba ảnh thư viện Hội An: alt chép từ ảnh gốc, ghi công chép đủ (tác giả, giấy
+   phép, source URL); mở lại hộp thì ba ảnh ấy bị khoá.
+6. Alt trống chặn lưu, câu báo nằm dưới đúng ô; lưu 7 ảnh đúng thứ tự trên màn hình.
+7. Bật bán: trang web hiện đúng ảnh bìa và 7 ảnh; sau mỗi lần lưu web theo kịp.
+8. Gỡ ảnh rồi lưu: ảnh tải lên vào lại hàng dọn với đồng hồ mới (đúng lúc lưu), ảnh
+   thư viện không vào hàng.
+9. Tour đang bán gỡ hết ảnh: câu "A tour on sale needs a cover photo…", DB không đổi.
+10. Tour có sẵn: ảnh bìa gốc ghi "Catalogue photo · … · Can’t be added back once
+    removed.", ảnh mượn từ kho địa danh ghi "From the library".
+11. Tắt bán rồi xoá tour thử: web trả 404; DB không còn tour, dòng ảnh, liên kết điểm
+    đến, lịch trình; ảnh tải lên cuối vào hàng dọn; ba dòng thư viện Hội An còn
+    nguyên. Mười một publicId của tour thử trong hàng dọn sẽ tự dọn sau bảy ngày.
+
+**Hai dòng CSP không phải lỗi của site.** `frame-src` chặn `vercel.live`: thanh công cụ
+Vercel khi người thử đang đăng nhập Vercel, ADR-0038 đã ghi. `eval` bị chặn: do một
+extension ở cửa sổ thường — InPrivate không có, và Issues không ghi vị trí nguồn.
+
+**Góp ý #1:** chữ "Added" trong hộp thư viện bị cắt mất. Nhãn nối "alt · Added" rồi
+cắt còn hai dòng (`line-clamp-2`), mà alt ảnh thư viện thật dài cả câu — unit test dùng
+alt ngắn nên không thấy. Vá ở nhánh `fix/f18-thu-tay-gop-y`.
+
+**Lúc merge F18:** bản deploy web của `962d6090` ERROR — Render deploy lại API đúng
+lúc Vercel prerender, lượt gọi API bị `ECONNRESET` (nguyên nhân 1 của ADR-0044). Site
+không sập vì Vercel giữ bản READY cũ, và F18 không đổi gì phía web; lượt `47b8dc64`
+READY.
+
+Tests after: không đổi — lượt này không đổi file nguồn.
+
 ## 2026-09-29 — Vá fast-uri trên đường request của API, kèm undici và ip-address (nhánh `fix/fast-uri-advisory`)
 
 Workflow "Dependabot Updates" hỏng hai lượt lúc 23:53 UTC ngày 28/09 với
