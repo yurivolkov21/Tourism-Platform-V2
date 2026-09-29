@@ -4008,16 +4008,16 @@ export const messages = {
         /** Nút trong toast TOUR_NOT_READY ở bảng Tours — mở thẳng khu làm việc của tour. */
         openTour: 'Open tour',
         /**
-         * Công tắc ở phần đầu khu làm việc tour (vòng review F17): người dùng đang
-         * ĐỨNG trong tour, nên không có "open it" hay "the list below" của bảng Tours.
+         * Công tắc ở bước Review & publish của khu sửa tour (F19, ADR-0049 §3): người dùng
+         * đang ĐỨNG trong tour, nên không có "open it" hay "the list below" của bảng Tours.
          */
         workspace: {
           /**
-           * Công tắc chỉ bấm được khi khung readiness nói "đủ", nên bị chặn tức
-           * trang đã cũ — trang tự tải lại và khung bên dưới nói thiếu gì.
+           * Công tắc chỉ bấm được khi danh sách kiểm tra nói "đủ", nên bị chặn tức trang
+           * đã cũ — trang tự tải lại và danh sách nói thiếu gì.
            */
           notReady:
-            'This tour is missing something it needs to go on sale — the list below now shows what.',
+            'This tour is missing something it needs to go on sale — the checklist now shows what.',
           gone: 'This tour no longer exists.',
         },
         toast: {
@@ -4186,14 +4186,6 @@ export const messages = {
           },
         },
         readiness: {
-          ready: 'Ready to sell',
-          /**
-           * Nói ĐÚNG bốn điều kiện `tourReadiness` đo (F18 thêm ảnh bìa) — chưa có
-           * FAQ hay giá vốn; "Everything a guest needs" là hứa quá (vòng review F17).
-           */
-          readyBody:
-            'It has a summary, a primary destination, a plan for every day and a cover photo.',
-          missingTitle: 'Missing before it can go on sale:',
           summary: 'A summary',
           primaryDestination: 'A primary destination',
           /** `list` từ `formatDayList`: "3", "3–5", "2, 4–6". */
@@ -4205,7 +4197,7 @@ export const messages = {
           stale:
             'Someone else saved this tour while you were editing. Reload to see their version — the changes on this tab will be lost.',
           reload: 'Reload',
-          /** Dải của TOUR_NOT_READY: liệt kê chỗ thiếu như khung readiness. */
+          /** Dải của TOUR_NOT_READY: liệt kê chỗ thiếu như bước Review. */
           notReady:
             'This tour is on sale, so it has to stay ready to sell. Saved like this, it would be missing:',
           /** Server nói thiếu mà bản dự tính ở trình duyệt thấy đủ — một lệnh khác vừa chen vào. */

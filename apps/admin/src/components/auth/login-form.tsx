@@ -9,11 +9,12 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useState } from 'react';
 import { authClient } from '@/lib/auth-client';
 import { safeRedirect } from '@/lib/safe-redirect';
+import { SITE_URL } from '@/lib/site';
 
 const t = messages.admin.login;
 
 /** Quên mật khẩu là flow của www (admin không có reset riêng — ADR-0026 §2). */
-const FORGOT_PASSWORD_URL = 'https://www.nexora-travel.agency/forgot-password';
+const FORGOT_PASSWORD_URL = `${SITE_URL}/forgot-password`;
 
 /** Regex email cùng ngưỡng contract (EmailSchema) — chỉ chặn sớm phía form. */
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;

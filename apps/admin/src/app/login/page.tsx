@@ -5,9 +5,9 @@ import { Suspense } from 'react';
 import { LoginForm } from '@/components/auth/login-form';
 import { LoginWaves } from '@/components/auth/login-waves';
 import { Logo } from '@/components/logo';
+import { SITE_URL } from '@/lib/site';
 
 const t = messages.admin.login;
-const SITE_URL = 'https://www.nexora-travel.agency';
 
 /**
  * Trang login admin — wireframe bám ReUI auth-8 (vòng 2, mockup:

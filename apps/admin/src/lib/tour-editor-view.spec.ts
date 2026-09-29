@@ -4,7 +4,6 @@ import { describe, expect, it } from 'vitest';
 import { detailFixture } from '@/test/tour-detail';
 import {
   activeTourStep,
-  activeTourTab,
   costBreakdown,
   formatDayList,
   onSaleShortfalls,
@@ -12,28 +11,11 @@ import {
   projectedReadiness,
   readinessIssues,
   removedItineraryDays,
-  TOUR_EDITOR_TABS,
+  TOUR_EDITOR_STEPS,
   tourPhotoThumb,
   tourStepHref,
   tourSteps,
-  tourTabHref,
 } from './tour-editor-view';
-
-describe('tab của khu làm việc', () => {
-  it('đường của từng tab; Details là gốc /tours/[slug]', () => {
-    expect(tourTabHref('ha-long', 'details')).toBe('/tours/ha-long');
-    expect(tourTabHref('ha-long', 'itinerary')).toBe('/tours/ha-long/itinerary');
-    expect(tourTabHref('ha-long', 'content')).toBe('/tours/ha-long/content');
-    expect(tourTabHref('ha-long', 'costs')).toBe('/tours/ha-long/costs');
-    expect(tourTabHref('ha-long', 'departures')).toBe('/tours/ha-long/departures');
-  });
-
-  it('tab đang mở đọc từ pathname', () => {
-    expect(activeTourTab('/tours/ha-long', 'ha-long')).toBe('details');
-    expect(activeTourTab('/tours/ha-long/costs', 'ha-long')).toBe('costs');
-    expect(activeTourTab('/tours/ha-long/departures', 'ha-long')).toBe('departures');
-  });
-});
 
 describe('formatDayList', () => {
   it.each<[number[], string]>([
@@ -194,17 +176,16 @@ describe('onSaleShortfalls (G11)', () => {
   });
 });
 
-describe('tab Photos và mục ảnh bìa (F18)', () => {
-  it('Photos đứng ngay sau Details', () => {
-    expect(TOUR_EDITOR_TABS).toEqual([
+describe('bước Photos và mục ảnh bìa (F18)', () => {
+  it('Photos đứng ngay sau Details; Departures không phải bước', () => {
+    expect(TOUR_EDITOR_STEPS).toEqual([
       'details',
       'photos',
       'itinerary',
       'content',
       'costs',
-      'departures',
+      'review',
     ]);
-    expect(tourTabHref('ha-long', 'photos')).toBe('/tours/ha-long/photos');
   });
 
   it('thiếu ảnh bìa là một mục readiness trỏ tới tab Photos', () => {

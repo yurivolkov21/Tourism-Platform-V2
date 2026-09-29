@@ -1,33 +1,33 @@
+'use client';
+
 import type { AdminTourDetail } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
-import { ChevronLeftIcon } from 'lucide-react';
+import { Badge } from '@tourism/ui/components/badge';
+import { buttonVariants } from '@tourism/ui/components/button';
+import { cn } from '@tourism/ui/lib/utils';
+import { CalendarDaysIcon, ChevronLeftIcon, ExternalLinkIcon } from 'lucide-react';
 import Link from 'next/link';
-import { PublishToggle } from '@/components/tours/publish-toggle';
+import { usePathname } from 'next/navigation';
+import { formatDateTime } from '@/lib/bookings-view';
 import { TOURS_LIST_HREF } from '@/lib/departures-query';
-import type { SetPublishedAction } from '@/lib/tours-publish';
+import { tourPageUrl } from '@/lib/site';
+import { activeTourStep } from '@/lib/tour-editor-view';
+import { departuresHref } from '@/lib/tours-query';
 
 /**
- * Phần đầu dùng chung của khu làm việc tour (spec F17 §2g): link về Tours, tên
- * tour, công tắc On sale.
+ * Phần đầu khu sửa tour (ADR-0049 §4): chỉ còn TRẠNG THÁI, không còn điều khiển —
+ * link về Tours, tên tour, đường dẫn và lần lưu cuối, chip On sale / Not on sale,
+ * View on site và Departures.
  *
- * Công tắc dùng lại `PublishToggle` của F11 với `blocked` khi tour còn thiếu
- * (ADR-0047 §4) — chỉ khoá CHIỀU BẬT. `placement="workspace"`: bị chặn ở đây
- * nghĩa là trang đã cũ (refresh cho khung readiness nói thiếu gì), tour mất thì
- * về `/tours` (vòng review F17). Không truyền `notReadyHref`: khung readiness đã
- * nằm ngay dưới, không cần nút mở tour trong toast.
+ * - Công tắc On sale dời xuống bước Review & publish (§3).
+ * - View on site chỉ khi đang bán: tour tắt bán thì trang web 404.
+ * - Departures không phải bước (§5): nút riêng, `aria-current="page"` ở trang của nó —
+ *   đúng chỗ `activeTourStep` trả `null`, nên thanh bước và nút này không thể cùng sáng.
  */
 const t = messages.admin.tours.editor;
-const BLOCKED_NOTE_ID = 'tour-sale-blocked-note';
 
-export function TourWorkspaceHeader({
-  detail,
-  setPublished,
-}: {
-  detail: AdminTourDetail;
-  setPublished: SetPublishedAction;
-}) {
-  const blocked = !detail.readiness.ready;
-  const showBlockedNote = blocked && !detail.isPublished;
+export function TourWorkspaceHeader({ detail }: { detail: AdminTourDetail }) {
+  const onDepartures = activeTourStep(usePathname(), detail.slug) === null;
 
   return (
     <div className="flex flex-col gap-3">
@@ -40,26 +40,42 @@ export function TourWorkspaceHeader({
       </Link>
 
       <div className="flex flex-wrap items-start justify-between gap-3">
-        <h2 className="text-2xl font-semibold tracking-tight">{detail.title}</h2>
-        <div className="grid justify-items-end gap-1">
-          <div className="flex items-center gap-2">
-            {/* Nhãn cho mắt; tên đọc-màn-hình của công tắc đã có "On sale — <tên>". */}
-            <span aria-hidden="true" className="text-sm font-medium">
-              {t.onSale}
-            </span>
-            <PublishToggle
-              tour={detail}
-              setPublished={setPublished}
-              blocked={blocked}
-              describedBy={showBlockedNote ? BLOCKED_NOTE_ID : undefined}
-              placement="workspace"
+        <div className="grid min-w-0 gap-1">
+          <h2 className="text-2xl font-semibold tracking-tight">{detail.title}</h2>
+          <p className="text-sm text-muted-foreground">
+            /tours/{detail.slug} · {t.header.lastSaved(formatDateTime(detail.version))}
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <Badge variant="outline" className="h-7 gap-1.5 px-2.5 text-sm">
+            <span
+              aria-hidden="true"
+              className={cn(
+                'size-2 rounded-full',
+                detail.isPublished ? 'bg-success' : 'bg-muted-foreground',
+              )}
             />
-          </div>
-          {showBlockedNote ? (
-            <p id={BLOCKED_NOTE_ID} className="text-xs text-muted-foreground">
-              {t.toggleBlocked}
-            </p>
+            {detail.isPublished ? t.header.onSale : t.header.offSale}
+          </Badge>
+          {detail.isPublished ? (
+            <a
+              href={tourPageUrl(detail.slug)}
+              target="_blank"
+              rel="noreferrer"
+              className={buttonVariants({ variant: 'outline' })}
+            >
+              <ExternalLinkIcon aria-hidden="true" />
+              {t.header.viewOnSite}
+            </a>
           ) : null}
+          <Link
+            href={departuresHref(detail.slug)}
+            aria-current={onDepartures ? 'page' : undefined}
+            className={buttonVariants({ variant: 'outline' })}
+          >
+            <CalendarDaysIcon aria-hidden="true" />
+            {t.tabs.departures}
+          </Link>
         </div>
       </div>
     </div>

@@ -1,26 +1,24 @@
 'use client';
 
-import type { SetPublishedAction } from '@/lib/tours-publish';
+import { tourSteps } from '@/lib/tour-editor-view';
 import { useWorkspaceDetail } from './tour-detail-context';
-import { TourReadinessPanel } from './tour-readiness-panel';
-import { TourTabs } from './tour-tabs';
+import { TourStepNav } from './tour-step-nav';
 import { TourWorkspaceHeader } from './tour-workspace-header';
 
 /**
- * Phần đầu dùng chung của năm tab (spec F17 §2g): Back to tours · tên tour ·
- * công tắc On sale · khung readiness · thanh tab.
+ * Phần đầu dùng chung của khu sửa tour (ADR-0049 §4): phần đầu trạng thái, rồi thanh
+ * bước.
  *
- * Đọc bản tour MỚI NHẤT từ `TourDetailProvider` chứ không từ props của layout
- * (vòng review F17): layout không render lại khi đổi tab, nên bản của nó có thể
- * là bản trước lần lưu vừa xong. Ba component bên dưới vẫn nhận props thuần.
+ * Đọc bản tour MỚI NHẤT từ `TourDetailProvider` chứ không từ props của layout (vòng
+ * review F17): layout không render lại khi đổi bước, nên bản của nó có thể là bản trước
+ * lần lưu vừa xong — thanh bước vì thế tích xanh ngay sau khi lưu.
  */
-export function TourWorkspaceTop({ setPublished }: { setPublished: SetPublishedAction }) {
+export function TourWorkspaceTop() {
   const detail = useWorkspaceDetail();
   return (
     <div className="flex flex-col gap-4 px-4 lg:px-6">
-      <TourWorkspaceHeader detail={detail} setPublished={setPublished} />
-      <TourReadinessPanel readiness={detail.readiness} slug={detail.slug} />
-      <TourTabs slug={detail.slug} />
+      <TourWorkspaceHeader detail={detail} />
+      <TourStepNav slug={detail.slug} steps={tourSteps(detail)} />
     </div>
   );
 }

@@ -18,7 +18,7 @@ import type { TourRowVM } from '@/lib/tours-view';
 
 /**
  * Công tắc bán / ngừng bán của một tour (spec P4e-1 §3-F11) — ở mỗi hàng của
- * bảng `/tours` và ở phần đầu khu làm việc tour (F17).
+ * bảng `/tours` và ở bước Review & publish của khu sửa tour (F19).
  *
  * KHÔNG đi qua `ConfirmWriteDialog` như ba vùng ghi trước (lý do đầy đủ ở
  * `lib/tours-publish.ts`): thao tác này nhẹ, hoàn tác được bằng đúng cú bấm
@@ -35,14 +35,14 @@ import type { TourRowVM } from '@/lib/tours-view';
  * Component KHÔNG tự import server action: nhận `setPublished` từ nơi dùng — test
  * dựng với hàm giả, không mock `next/headers`.
  *
- * Dùng ở HAI chỗ: hàng của bảng Tours và phần đầu khu làm việc tour (F17). Cổng
+ * Dùng ở HAI chỗ: hàng của bảng Tours và bước Review & publish của khu sửa tour (F19). Cổng
  * đăng tour (ADR-0047 §4) chen vào hai điểm: `blocked` khoá CHIỀU BẬT khi tour
  * còn thiếu (chiều gỡ bán không bao giờ khoá), và mã `TOUR_NOT_READY` từ server
  * thành toast kèm nút mở thẳng tour (`notReadyHref`).
  *
- * `placement="workspace"` (vòng review F17): ở phần đầu khu làm việc, công tắc
- * chỉ bấm được khi khung readiness nói "đủ", nên `TOUR_NOT_READY` nghĩa là trang
- * đã cũ → câu riêng rồi refresh cho khung nói thiếu gì. `NOT_FOUND` thì về
+ * `placement="workspace"` (vòng review F17): ở bước Review, công tắc chỉ bấm được
+ * khi danh sách kiểm tra nói "đủ", nên `TOUR_NOT_READY` nghĩa là trang đã cũ → câu
+ * riêng rồi refresh cho danh sách nói thiếu gì. `NOT_FOUND` thì về
  * `/tours` như các tab — refresh ở đây là rơi vào trang 404 trần ngoài vỏ admin.
  */
 const t = messages.admin.tours.publish;
@@ -132,7 +132,8 @@ export function PublishToggle({
         return;
       }
       // Tour còn thiếu (ADR-0047 §4): không phải trạng-thái-cũ nên không refresh;
-      // toast kèm nút mở thẳng khu làm việc — nơi khung readiness nói thiếu gì.
+      // toast kèm nút mở thẳng khu làm việc — nơi thanh bước và bước Review nói
+      // thiếu gì.
       if (result.code === 'TOUR_NOT_READY' && notReadyHref) {
         const href = notReadyHref;
         toast.error(setPublishedErrorCopy(result.code), {

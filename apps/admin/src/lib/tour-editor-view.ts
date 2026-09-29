@@ -14,34 +14,10 @@ import { withDeliveryTransform } from './cloudinary-url';
 
 /**
  * VM THUẦN của khu làm việc tour (spec F17 §2g–§2i) — mọi phép tính mà component
- * cần mà không phải chuyện hiển thị: đường của tab, danh sách thiếu của khung
- * readiness, ngày lịch trình sẽ bị xoá, tổng chi phí tính ngay khi gõ.
+ * cần mà không phải chuyện hiển thị: đường và trạng thái của bước, danh sách
+ * thiếu, ngày lịch trình sẽ bị xoá, tổng chi phí tính ngay khi gõ.
  */
 const t = messages.admin.tours.editor;
-
-export type TourEditorTab = 'details' | 'photos' | 'itinerary' | 'content' | 'costs' | 'departures';
-
-export const TOUR_EDITOR_TABS: readonly TourEditorTab[] = [
-  'details',
-  'photos',
-  'itinerary',
-  'content',
-  'costs',
-  'departures',
-];
-
-export function tourTabHref(slug: string, tab: TourEditorTab): string {
-  const base = `/tours/${encodeURIComponent(slug)}`;
-  return tab === 'details' ? base : `${base}/${tab}`;
-}
-
-export function activeTourTab(pathname: string, slug: string): TourEditorTab {
-  const rest = pathname.slice(tourTabHref(slug, 'details').length).replace(/^\//, '');
-  const segment = rest.split('/')[0] ?? '';
-  return (TOUR_EDITOR_TABS as readonly string[]).includes(segment)
-    ? (segment as TourEditorTab)
-    : 'details';
-}
 
 /**
  * Sáu bước của khu sửa tour, đúng thứ tự thanh bước (ADR-0049 §1). Departures KHÔNG
@@ -170,12 +146,12 @@ export function formatDayList(days: readonly number[]): string {
 export interface ReadinessIssue {
   key: 'summary' | 'primaryDestination' | 'days' | 'cover';
   label: string;
-  /** Tab cần sửa, kèm `#id` của ô (ô tóm tắt, khung điểm đến, thẻ ngày đầu tiên thiếu). */
+  /** Bước cần sửa, kèm `#id` của ô (ô tóm tắt, khung điểm đến, thẻ ngày đầu tiên thiếu). */
   href: string;
 }
 
 export function readinessIssues(readiness: TourReadiness, slug: string): ReadinessIssue[] {
-  const details = tourTabHref(slug, 'details');
+  const details = tourStepHref(slug, 'details');
   const issues: ReadinessIssue[] = [];
   if (!readiness.summary) {
     issues.push({ key: 'summary', label: t.readiness.summary, href: `${details}#tour-summary` });
@@ -192,11 +168,11 @@ export function readinessIssues(readiness: TourReadiness, slug: string): Readine
     issues.push({
       key: 'days',
       label: t.readiness.days(formatDayList(readiness.missingDays), readiness.missingDays.length),
-      href: `${tourTabHref(slug, 'itinerary')}#day-${firstMissing}`,
+      href: `${tourStepHref(slug, 'itinerary')}#day-${firstMissing}`,
     });
   }
   if (!readiness.cover) {
-    issues.push({ key: 'cover', label: t.readiness.cover, href: tourTabHref(slug, 'photos') });
+    issues.push({ key: 'cover', label: t.readiness.cover, href: tourStepHref(slug, 'photos') });
   }
   return issues;
 }

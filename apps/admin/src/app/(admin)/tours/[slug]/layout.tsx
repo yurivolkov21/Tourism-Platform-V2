@@ -5,15 +5,14 @@ import { TourDetailProvider } from '@/components/tours/editor/tour-detail-contex
 import { TourWorkspaceTop } from '@/components/tours/editor/tour-workspace-top';
 import { getServerSession } from '@/lib/api/session';
 import { settleWorkspaceTour } from '@/lib/workspace-tour';
-import { setTourPublishedAction } from '../actions';
 import { loadAdminTour } from './load-tour';
 
 /**
- * Khu làm việc của MỘT tour (spec F17 §2g): phần đầu dùng chung cho năm tab —
- * Back to tours · tên tour · công tắc On sale · khung readiness · thanh tab.
+ * Khu làm việc của MỘT tour (spec F17 §2g): phần đầu dùng chung cho sáu bước và
+ * Departures — Back to tours · tên tour · trạng thái · thanh bước (ADR-0049).
  *
  * `AdminShell` dời từ từng trang lên đây: các trang con chỉ còn phần thân của
- * tab. `UnsavedChangesProvider` bọc CẢ phần đầu lẫn thân, vì link rời trang nằm ở
+ * bước. `UnsavedChangesProvider` bọc CẢ phần đầu lẫn thân, vì link rời trang nằm ở
  * cả hai chỗ.
  *
  * Slug rác → `notFound()` ngay ở đây, trước khi trang con nào chạy.
@@ -47,7 +46,7 @@ export default async function TourWorkspaceLayout({
     <AdminShell user={session}>
       <UnsavedChangesProvider>
         <TourDetailProvider detail={tour.detail}>
-          <TourWorkspaceTop setPublished={setTourPublishedAction} />
+          <TourWorkspaceTop />
           {children}
         </TourDetailProvider>
       </UnsavedChangesProvider>

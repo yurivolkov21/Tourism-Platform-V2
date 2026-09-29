@@ -22,8 +22,7 @@ import { EllipsisVerticalIcon, ExternalLinkIcon, LogOutIcon } from 'lucide-react
 import { useRouter } from 'next/navigation';
 import type { SessionUser } from '@/lib/api/session';
 import { authClient } from '@/lib/auth-client';
-
-const SITE_URL = 'https://www.nexora-travel.agency';
+import { SITE_URL } from '@/lib/site';
 
 /**
  * Nav-user thật (vòng gọt bước 2, 21/08): khung + style GIỮ NGUYÊN của block

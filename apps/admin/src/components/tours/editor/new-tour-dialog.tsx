@@ -21,7 +21,7 @@ import { FormField } from '@/components/kit/form-field';
 import { FormSelect } from '@/components/kit/form-select';
 import type { TourEditorOptions } from '@/lib/api/tours';
 import { hasFormErrors } from '@/lib/form-errors';
-import { optionLabel, tourTabHref } from '@/lib/tour-editor-view';
+import { optionLabel, tourStepHref } from '@/lib/tour-editor-view';
 import {
   type CreateTourAction,
   type CreateTourContractCode,
@@ -131,7 +131,7 @@ function NewTourForm({
     void run(async () => {
       const result = await create(tourCreatePayload(values));
       if (!result.ok) return { ok: false, code: result.code };
-      createdHref.current = tourTabHref(result.created.slug, 'details');
+      createdHref.current = tourStepHref(result.created.slug, 'details');
       return { ok: true, toast: { title: t.toast.title, description: t.toast.body } };
     });
   }

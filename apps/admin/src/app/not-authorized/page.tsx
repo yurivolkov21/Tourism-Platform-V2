@@ -8,9 +8,9 @@ import {
 } from '@tourism/ui/components/card';
 import { connection } from 'next/server';
 import { SignOutButton } from '@/components/auth/sign-out-button';
+import { SITE_URL } from '@/lib/site';
 
 const t = messages.admin.notAuthorized;
-const SITE_URL = 'https://www.nexora-travel.agency';
 
 /**
  * Màn từ chối quyền (spec P4a §2): tài khoản THẬT nhưng không phải ADMIN —
