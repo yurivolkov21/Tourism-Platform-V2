@@ -70,6 +70,12 @@ ghi chép nội bộ) — trước đó nó hứa nhầm rằng khách sẽ đ�
 
 ## Việc tay trên hạ tầng
 
+- Theo dõi bộ dọn ảnh vừa bật 29/09: lượt 04:00 UTC ngày 30/09 phải ghi "Dọn media: 0
+  xoá khỏi CDN, …" trong log Render. Lượt đầu có xoá thật (khoảng 01/10 ảnh review mồ côi,
+  khoảng 07/10 ảnh tour thử) thì đối chiếu: `destroyed = 0` mà `absent` bằng tất cả là
+  publicId đang ghi sai dạng (lời dặn trong `media-garbage.service.ts`).
+- Tám file của tour thử F18 ở thư mục Cloudinary `tourism/tours/4371eb10-…`: user xoá tay
+  được ngay; không thì bộ dọn xoá khoảng 07/10.
 - Đối chiếu khoản hoàn `re_3UHzrvK1oRTwa7qk1hs4Rxnw` trên dashboard Stripe test
   mode (phiên kết nối đã hết hạn lúc nghiệm thu 21/09; mã do chính Stripe trả về
   nên khoản hoàn chắc chắn đã phát).

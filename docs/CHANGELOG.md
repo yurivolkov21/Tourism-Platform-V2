@@ -8,6 +8,34 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-09-29 — Bật bộ dọn ảnh mồ côi trên production; đính chính entry thử tay F18
+
+**Đính chính.** Entry "Thử tay F18 trên production" bên dưới ghi mười một publicId của
+tour thử "sẽ tự dọn sau bảy ngày". Sai ngay lúc viết: `MEDIA_GC_ENABLED` mặc định
+`false` (ADR-0035 §6) và Render chưa từng đặt biến này, nên bộ dọn chưa chạy ở production.
+Trên Cloudinary lúc ấy còn tám file của tour thử; ba lượt còn lại bị chặn ở bước 4 nên
+không tạo file.
+
+**Bật bộ dọn (user, 29/09).** Render thêm `MEDIA_GC_ENABLED=true` và
+`MEDIA_GC_GRACE_DAYS=7`; lượt deploy lúc 11:15 UTC đăng ký lịch `media-gc` `0 4 * * *`
+(đọc bảng `pgboss.schedule`). Trước khi bật đã chạy thử bằng SQL chỉ đọc: hàng có 17 dòng
+(1 avatar, 5 ảnh review, 11 ảnh tour thử), và lượt đầu không xoá gì — ảnh còn dùng thì
+hoãn, ảnh mồ côi chưa đủ bảy ngày. Ảnh review mồ côi tới hạn khoảng 01/10; tám file của
+tour thử khoảng 07/10, trừ khi user xoá tay trên Cloudinary trước.
+
+**Thuế và phí cổng (user, 29/09).** Render nhập `MARGIN_TAX_RATE=0.1`,
+`PAYMENT_FEE_RATE=0.029`, `PAYMENT_FEE_FIXED=0.30`. Ba biến chỉ dùng ở báo cáo `/reports`
+và file Excel (ADR-0033 §5–§6), không đổi số tiền khách trả.
+
+**`apps/api/.env.production` (không commit) khớp lại Render**, vì từ nay nó là bản gốc để
+import env lên Render. Ba chỗ lệch đã sửa: tên biến thuế từng gõ sai `MARGIN_TAX_RRATE`
+(API bỏ qua biến lạ nên thuế âm thầm về 0), phí cổng đang 0, bộ dọn đang `false`. Hai
+biến file có mà Render chưa đặt đều vô hại khi import: `ENQUIRY_RETENTION_MONTHS=18` trùng
+mặc định; `CORS_ORIGINS` (www và admin) chặt hơn giá trị rơi về `TRUSTED_ORIGINS`, đúng
+thiết kế của ADR-0026 AMEND 1, và tên miền gốc vốn chuyển hướng 308 sang www.
+
+Tests after: không đổi — lượt này không đổi file nguồn.
+
 ## 2026-09-29 — Góp ý thử tay F18, dọn G13 và một phần G14 trước F19 (nhánh `fix/f18-thu-tay-gop-y`)
 
 F19 chưa thi công, nên user cho vá luôn các mục còn treo của vùng tab Photos. Chỉ chọn
