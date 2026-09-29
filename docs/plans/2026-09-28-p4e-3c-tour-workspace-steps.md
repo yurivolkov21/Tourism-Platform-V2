@@ -46,6 +46,42 @@ Plan viết theo F18 ở đỉnh nhánh `9fa7baea`. Vòng review F18 có thể �
 `EditorFormFrame` hay `ListEditor` — gặp chỗ code thật khác đoạn "trước" trong plan,
 giữ nguyên Ý ĐỒ của bước (spec §2d) và ghi chỗ lệch vào báo cáo bàn giao.
 
+### Cập nhật 29/09 — code thật đã khác plan ở đâu
+
+F18 merge sau vòng review (15 phát hiện), rồi thêm hai nhánh nhỏ: G12/G13 và góp ý của
+lượt thử tay (`fix/f18-thu-tay-gop-y`). Các chỗ dưới đây đoạn "trước" của plan KHÔNG còn
+khớp; giữ nguyên hành vi mới, chỉ làm đúng ý đồ của bước:
+
+- **`editor-form-frame.tsx` (Task 2):** đã có prop `busy?: boolean` →
+  `useReportUnsaved(dirty || busy)` (còn file đang tải = có thay đổi chưa lưu). Thêm
+  `lead`/`aside`/`next` mà không làm mất `busy`; ca busy trong spec phải còn xanh.
+- **`tour-photos-form.tsx` (Task 6 — chỉ dời JSX vào Card):** dòng tải giữ chỗ TRƯỚC
+  khi ký; `signSafely` coi lệnh ký ném là GENERIC; AbortController huỷ lượt tải khi
+  unmount; đang lưu thì thả file và Retry bị chặn (`photos.busySaving`); tiêu điểm
+  Retry/Remove/Make cover đi qua `focusId` và id của nút Upload, thanh tiến độ, nút
+  Retry, nút Remove; `busy={uploads.length > 0}` truyền vào `EditorFormFrame`;
+  `onFieldError` đặt lại thư viện khi PHOTO_NOT_ALLOWED. Thanh tiến độ nay là `Progress`
+  của `@tourism/ui` (vẫn mang `id` và `tabIndex={-1}` — hai thứ ấy giữ tiêu điểm Retry).
+  Giữ nguyên mọi id và nhánh; cả 23 ca của spec phải xanh như cũ.
+- **`photos/page.tsx` (Task 6 chỉ sửa JSDoc):** có nhánh khe deploy
+  `if (!hasKnownPhotos(detail)) return <TourPhotosUnavailable />;` — giữ nguyên.
+- **`tour-editor-view.ts`:** `cloudinaryImageUrl` đã dời sang `lib/cloudinary-url.ts`
+  (cùng `withDeliveryTransform`); `tourPhotoThumb` VẪN ở `tour-editor-view` như plan dùng.
+- **`photo-library-dialog.tsx`** (plan không đụng): "Added" là huy hiệu trên ảnh.
+- **`messages.ts`:** khối `admin.tours.editor.photos` thêm `unavailable`, `duplicate`,
+  `busySaving`, `catalogue`, `catalogueWarning`, `dialog.loadErrors` và bỏ
+  `dialog.failed`; `editor.form.errors` thêm `tooManyPhotos`. Chữ của
+  `editor.banners.notReady` đổi thành "…Saved like this, it would be missing:" — B9 chỉ
+  sửa JSDoc của nó, không đụng chữ. Nguồn ảnh có thêm `CATALOG` (ADR-0048 AMEND 1–2).
+- **Gate:** bước unit chạy `--concurrency=1 -- --maxWorkers=4`, không phải 2 như mục
+  "Quy trình gate" ghi — đợt F18 có lượt `--concurrency=2` làm commit memory trống tụt
+  còn 1,6 GB.
+- **Bài học 13:** test mở Select hay Popover rồi tìm option thì CHỜ bằng `findByRole`,
+  không `getByRole` ngay sau cú bấm — ca như vậy của F18 đỏ chập chờn khi máy tải nặng.
+- **Session song song:** trước bước int của gate, xem `git worktree list` và cổng 3001;
+  một session khác đang chạy test:int thì chờ nó xong — int dùng chung DB
+  `tourism_test`. Chỉ tắt tiến trình nghe cổng 3001 của mình.
+
 ## Quyết định của plan
 
 Spec để ngỏ hay nói chưa khớp code ở mười ba chỗ dưới đây; plan chốt như sau. Ở ba chỗ
@@ -3355,8 +3391,9 @@ tra, công tắc On sale và vùng xoá tour. Chỉ admin. Làm Task 1 → 11 đ
 task một commit (Task 10 chỉ commit khi phải sửa lỗi bố cục). Không làm gì ngoài plan;
 thấy plan sai hay mâu thuẫn spec thì DỪNG và hỏi tôi.
 
-TRƯỚC DÒNG CODE ĐẦU TIÊN: đọc "Điều kiện bắt đầu", mục "Quyết định của plan" và 12 bài
-học ở đầu plan. Vòng review F17 tìm ra 24 lỗi thật.
+TRƯỚC DÒNG CODE ĐẦU TIÊN: đọc "Điều kiện bắt đầu" (kể cả mục "Cập nhật 29/09 — code thật
+đã khác plan ở đâu"), mục "Quyết định của plan" và các bài học ở đầu plan. Vòng review
+F17 tìm ra 24 lỗi thật, F18 thêm 15.
 
 MỞ ĐẦU
 - `git status` phải sạch và đang ở `main`. F18 phải đã merge:
