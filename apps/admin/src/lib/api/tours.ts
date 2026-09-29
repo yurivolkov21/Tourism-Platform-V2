@@ -100,18 +100,36 @@ type PreF18TourDetail = Omit<AdminTourDetail, 'photos' | 'readiness'> & {
 };
 
 /**
+ * Tour mà `photos` là BẢN LÙI của khe deploy, không phải danh sách thật. Đánh dấu
+ * theo danh tính object: layout và trang cùng nhận ĐÚNG object này qua `cache()` của
+ * React trong một request (`loadAdminTour`).
+ */
+const PHOTOS_UNKNOWN = new WeakSet<AdminTourDetail>();
+
+/**
  * Khe deploy (bài học 13 của F17): Vercel đưa admin lên trước khi Render đưa API
- * lên, nên trong vài phút `get` của API cũ trả tour thiếu `photos` và
- * `readiness.cover`. Client oRPC của admin KHÔNG kiểm response, nên thiếu là
- * `undefined` và tab Photos sập. Lùi về: không ảnh, và coi như có ảnh bìa — API cũ
- * không chặn bật bán vì ảnh, và cả 29 tour đều có ảnh bìa.
+ * lên, nên trong vài phút API cũ trả tour thiếu `photos` và `readiness.cover`.
+ * Client oRPC của admin KHÔNG kiểm response, nên thiếu là `undefined` và các tab
+ * đọc chúng sập. Lùi về: không ảnh, và coi như có ảnh bìa — API cũ không chặn bật
+ * bán vì ảnh, và cả 29 tour đều có ảnh bìa.
+ *
+ * Danh sách rỗng ấy là BỊA (vòng review F18): `setPhotos` thay trọn, nên một form
+ * Photos dựng từ nó rồi lưu sau khi API lên là xoá sạch ảnh thật. Vì vậy object lùi
+ * mang dấu "chưa biết ảnh" — trang Photos hỏi `hasKnownPhotos` trước khi dựng form.
  */
 export function withPhotoFallback(detail: PreF18TourDetail): AdminTourDetail {
-  return {
+  const result: AdminTourDetail = {
     ...detail,
     photos: detail.photos ?? [],
     readiness: { ...detail.readiness, cover: detail.readiness.cover ?? true },
   };
+  if (detail.photos === undefined) PHOTOS_UNKNOWN.add(result);
+  return result;
+}
+
+/** `false` khi `photos` của tour là bản lùi khe deploy — không dựng form sửa ảnh từ nó. */
+export function hasKnownPhotos(detail: AdminTourDetail): boolean {
+  return !PHOTOS_UNKNOWN.has(detail);
 }
 
 /**
@@ -190,12 +208,18 @@ export async function createAdminTour(
   return api.admin.tours.create(input, { context: withAdminAuth(cookie) });
 }
 
-/** Lưu tab Details; trả NGUYÊN tour server vừa ghi (có `version` mới). */
+/**
+ * Lưu tab Details; trả tour server vừa ghi (có `version` mới). Bốn lệnh ghi F17 và
+ * `setPhotos` đi qua cùng lớp lùi khe deploy của `fetchAdminTour` (vòng review F18):
+ * bản vừa lưu được đẩy thẳng lên phần đầu khu làm việc (`publishSaved`).
+ */
 export async function updateAdminTourDetails(
   cookie: string,
   input: AdminTourDetailsInput,
 ): Promise<AdminTourDetail> {
-  return api.admin.tours.updateDetails(input, { context: withAdminAuth(cookie) });
+  return withPhotoFallback(
+    await api.admin.tours.updateDetails(input, { context: withAdminAuth(cookie) }),
+  );
 }
 
 /** Thay nguyên lịch trình. */
@@ -203,7 +227,9 @@ export async function setAdminTourItinerary(
   cookie: string,
   input: AdminTourItineraryInput,
 ): Promise<AdminTourDetail> {
-  return api.admin.tours.setItinerary(input, { context: withAdminAuth(cookie) });
+  return withPhotoFallback(
+    await api.admin.tours.setItinerary(input, { context: withAdminAuth(cookie) }),
+  );
 }
 
 /** Thay nguyên FAQ và chính sách. */
@@ -211,7 +237,9 @@ export async function setAdminTourFaqsPolicies(
   cookie: string,
   input: AdminTourFaqsPoliciesInput,
 ): Promise<AdminTourDetail> {
-  return api.admin.tours.setFaqsPolicies(input, { context: withAdminAuth(cookie) });
+  return withPhotoFallback(
+    await api.admin.tours.setFaqsPolicies(input, { context: withAdminAuth(cookie) }),
+  );
 }
 
 /** Thay nguyên dòng chi phí; server tính lại giá vốn. */
@@ -219,18 +247,23 @@ export async function setAdminTourCosts(
   cookie: string,
   input: AdminTourCostsInput,
 ): Promise<AdminTourDetail> {
-  return api.admin.tours.setCosts(input, { context: withAdminAuth(cookie) });
+  return withPhotoFallback(
+    await api.admin.tours.setCosts(input, { context: withAdminAuth(cookie) }),
+  );
 }
 
 /**
- * Thay trọn danh sách ảnh (tab Photos, ADR-0048). Trả tour server vừa ghi — không
- * qua `withPhotoFallback`: chỉ API đã có F18 mới trả lời được lệnh này.
+ * Thay trọn danh sách ảnh (tab Photos, ADR-0048). Chỉ API đã có F18 mới trả lời được
+ * lệnh này, nhưng vẫn đi qua lớp lùi cho đồng bộ với bốn lệnh ghi kia (vô hại khi
+ * đủ field).
  */
 export async function setAdminTourPhotos(
   cookie: string,
   input: AdminTourPhotosInput,
 ): Promise<AdminTourDetail> {
-  return api.admin.tours.setPhotos(input, { context: withAdminAuth(cookie) });
+  return withPhotoFallback(
+    await api.admin.tours.setPhotos(input, { context: withAdminAuth(cookie) }),
+  );
 }
 
 /** Ký một lô upload thẳng lên Cloudinary cho một tour (ADR-0048 §4). */

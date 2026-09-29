@@ -9,6 +9,12 @@ import {
   fetchTourDestinationOptions,
   fetchTourEditorOptions,
   fetchTourPhotoLibrary,
+  hasKnownPhotos,
+  setAdminTourCosts,
+  setAdminTourFaqsPolicies,
+  setAdminTourItinerary,
+  setAdminTourPhotos,
+  updateAdminTourDetails,
 } from './tours';
 
 /**
@@ -27,7 +33,15 @@ vi.mock('./client', () => ({
     admin: {
       categories: { list: vi.fn() },
       destinations: { list: vi.fn() },
-      tours: { get: vi.fn(), photoLibrary: vi.fn() },
+      tours: {
+        get: vi.fn(),
+        photoLibrary: vi.fn(),
+        updateDetails: vi.fn(),
+        setItinerary: vi.fn(),
+        setFaqsPolicies: vi.fn(),
+        setCosts: vi.fn(),
+        setPhotos: vi.fn(),
+      },
     },
   },
   withAdminAuth: (cookie: string) => ({ cookie }),
@@ -60,6 +74,13 @@ const row = (over: Partial<AdminCategoryRow>): AdminCategoryRow => ({
   ...over,
 });
 
+/** Tour như API TRƯỚC F18 trả: không `photos`, `readiness` không có `cover`. */
+function preF18Detail() {
+  const { photos: _photos, readiness, ...rest } = detailFixture();
+  const { cover: _cover, ...oldReadiness } = readiness;
+  return { ...rest, readiness: oldReadiness };
+}
+
 beforeEach(() => {
   listMock.mockReset();
   destinationsMock.mockReset();
@@ -75,15 +96,26 @@ describe('fetchAdminTour (spec F17 §2g)', () => {
     expect(getTourMock).toHaveBeenCalledWith({ slug: 'ha-long-bay-cruise' }, expect.anything());
   });
 
-  it('khe deploy: API cũ chưa trả photos và readiness.cover → lùi về [] và true', async () => {
-    const { photos: _photos, readiness, ...rest } = detailFixture();
-    const { cover: _cover, ...oldReadiness } = readiness;
-    getTourMock.mockResolvedValue({ ...rest, readiness: oldReadiness });
+  it('khe deploy: API cũ chưa trả photos và readiness.cover → lùi về [] và true, đánh dấu "chưa biết ảnh"', async () => {
+    getTourMock.mockResolvedValue(preF18Detail());
 
     const detail = await fetchAdminTour('cookie=x', 'ha-long-bay-cruise');
 
     expect(detail?.photos).toEqual([]);
     expect(detail?.readiness.cover).toBe(true);
+    // Danh sách rỗng ở đây là BỊA — tab Photos không được dựng form sửa từ nó
+    // (vòng review F18: Save sẽ thay trọn và xoá ảnh thật).
+    expect(detail && hasKnownPhotos(detail)).toBe(false);
+  });
+
+  it('tour THẬT chưa có ảnh: giữ nguyên photos [] và cover false — ảnh đã biết', async () => {
+    getTourMock.mockResolvedValue(detailFixture({ isPublished: false, photos: [] }));
+
+    const detail = await fetchAdminTour('cookie=x', 'ha-long-bay-cruise');
+
+    expect(detail?.photos).toEqual([]);
+    expect(detail?.readiness.cover).toBe(false);
+    expect(detail && hasKnownPhotos(detail)).toBe(true);
   });
 
   it('NOT_FOUND do contract KHAI thì trả null — trang gọi notFound()', async () => {
@@ -107,6 +139,24 @@ describe('fetchAdminTour (spec F17 §2g)', () => {
 
     getTourMock.mockRejectedValueOnce(new Error('boom'));
     await expect(fetchAdminTour('cookie=x', 'x')).rejects.toThrow('boom');
+  });
+});
+
+describe('lệnh ghi trả AdminTourDetail đi qua CÙNG lớp lùi khe deploy (vòng review F18)', () => {
+  it.each([
+    ['updateDetails', updateAdminTourDetails],
+    ['setItinerary', setAdminTourItinerary],
+    ['setFaqsPolicies', setAdminTourFaqsPolicies],
+    ['setCosts', setAdminTourCosts],
+    ['setPhotos', setAdminTourPhotos],
+  ] as const)('%s: API cũ thiếu photos và cover → [] và true', async (name, write) => {
+    const mock = api.admin.tours[name] as unknown as Mock;
+    mock.mockResolvedValue(preF18Detail());
+
+    const detail = await write('cookie=x', {} as never);
+
+    expect(detail.photos).toEqual([]);
+    expect(detail.readiness.cover).toBe(true);
   });
 });
 

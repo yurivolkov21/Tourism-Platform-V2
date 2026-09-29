@@ -4323,6 +4323,12 @@ export const messages = {
             NOT_FOUND: 'This tour no longer exists.',
           },
           signFailed: 'Uploads could not start. Try again in a moment.',
+          /**
+           * Khe deploy (vòng review F18): API chưa trả danh sách ảnh nên KHÔNG dựng form —
+           * lưu từ một danh sách rỗng bịa là xoá sạch ảnh thật của tour.
+           */
+          unavailable:
+            'This tour’s photos can’t be loaded while the server finishes updating. Reload in a minute.',
           upload: 'Upload photos',
           library: 'Add from library',
           count: (n: number, max: number) => `${n} of ${max} photos`,
