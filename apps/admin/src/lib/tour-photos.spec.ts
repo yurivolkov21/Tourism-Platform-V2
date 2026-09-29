@@ -200,6 +200,17 @@ describe('uploadedPhotoDraft / libraryPhotoDraft / photoSourceLine', () => {
   });
 });
 
+describe('photoSourceLine — ảnh bìa gốc (ADR-0048 AMEND 1)', () => {
+  it('CATALOG: nói rõ là ảnh catalog và gỡ ra không thêm lại được; ghi công in khi có', () => {
+    expect(
+      photoSourceLine(draft('c', { source: 'CATALOG', author: 'Unsplash+', license: null })),
+    ).toBe(`${t.catalogue} · ${t.credit('Unsplash+', null)} · ${t.catalogueWarning}`);
+    expect(photoSourceLine(draft('d', { source: 'CATALOG' }))).toBe(
+      `${t.catalogue} · ${t.catalogueWarning}`,
+    );
+  });
+});
+
 describe('runWithConcurrency', () => {
   it('chạy hết mọi việc, không bao giờ quá `limit` việc cùng lúc', async () => {
     let running = 0;

@@ -458,6 +458,8 @@ describe('admin tours integration (F17)', () => {
 
     it('trả ảnh theo thứ tự hiển thị, mỗi ảnh mang nguồn và ghi công (F18)', async () => {
       await makeTour(1);
+      // LIB_1 có dòng DESTINATION → LIBRARY; ảnh bìa gốc thì không → CATALOG (AMEND 1).
+      await makeLibrary();
       const media = (publicId: string, patch: Partial<Prisma.MediaAssetUncheckedCreateInput>) =>
         prisma.mediaAsset.create({
           data: {
@@ -487,7 +489,7 @@ describe('admin tours integration (F17)', () => {
       const detail = await detailOf('f17-tour-1');
 
       expect(detail.photos.map((p) => [p.publicId, p.source])).toEqual([
-        ['tourism/catalog/tour/f17-1', 'LIBRARY'],
+        ['tourism/catalog/tour/f17-1', 'CATALOG'],
         ['tourism/catalog/destination/hoi-an/1', 'LIBRARY'],
         [`tourism/tours/${tourId(1)}/uploaded`, 'UPLOAD'],
       ]);
@@ -1406,7 +1408,8 @@ describe('admin tours integration (F17)', () => {
       expect(detail.photos.map((p) => [p.publicId, p.source])).toEqual([
         [mine(1, 'new'), 'UPLOAD'],
         [LIB_1, 'LIBRARY'],
-        ['tourism/catalog/tour/f17-1', 'LIBRARY'],
+        // Ảnh bìa gốc giữ lại được, nhưng nhãn nói thật: gỡ ra là không gắn lại được.
+        ['tourism/catalog/tour/f17-1', 'CATALOG'],
       ]);
       const rows = await tourPhotoRows(1);
       expect(rows.map((r) => [r.publicId, r.role, r.sortOrder, r.alt])).toEqual([

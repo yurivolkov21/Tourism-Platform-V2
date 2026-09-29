@@ -108,8 +108,13 @@ const DestinationsSchema = z
 
 // ── Đọc ─────────────────────────────────────────────────────────────────────
 
-/** Nguồn của một ảnh tour — suy từ thư mục của publicId, không lưu thành cột (ADR-0048 §3). */
-export const TourPhotoSourceSchema = z.enum(['UPLOAD', 'LIBRARY']);
+/**
+ * Nguồn của một ảnh tour để HIỂN THỊ — suy ra, không lưu thành cột (ADR-0048 §3,
+ * AMEND 1): `UPLOAD` là thư mục tải lên của tour; `LIBRARY` là publicId có dòng
+ * `DESTINATION` (chọn lại được qua hộp thư viện); `CATALOG` là mọi ảnh còn lại (ảnh bìa
+ * gốc) — gỡ ra thì không gắn lại được.
+ */
+export const TourPhotoSourceSchema = z.enum(['UPLOAD', 'LIBRARY', 'CATALOG']);
 export type TourPhotoSource = z.output<typeof TourPhotoSourceSchema>;
 
 /**

@@ -25,11 +25,16 @@ export function orderTourPhotos<T extends { role: string; sortOrder: number }>(
   return [...hero, ...rest];
 }
 
-/** Một asset đã dựng URL → ảnh như tab Photos cần; nguồn suy từ thư mục. */
+/**
+ * Một asset đã dựng URL → ảnh như tab Photos cần. Nguồn (ADR-0048 AMEND 1): thư mục tải
+ * lên của tour là `UPLOAD`; publicId có trong `libraryIds` (đang có dòng `DESTINATION`)
+ * là `LIBRARY`; còn lại — ảnh bìa gốc — là `CATALOG`.
+ */
 export function toAdminTourPhoto(
   item: MediaItem,
   rootFolder: string,
   tourId: string,
+  libraryIds: ReadonlySet<string>,
 ): AdminTourPhoto {
   return {
     publicId: item.publicId,
@@ -37,7 +42,11 @@ export function toAdminTourPhoto(
     alt: item.alt,
     width: item.width,
     height: item.height,
-    source: isTourUploadPublicId(rootFolder, tourId, item.publicId) ? 'UPLOAD' : 'LIBRARY',
+    source: isTourUploadPublicId(rootFolder, tourId, item.publicId)
+      ? 'UPLOAD'
+      : libraryIds.has(item.publicId)
+        ? 'LIBRARY'
+        : 'CATALOG',
     author: item.author,
     license: item.license,
   };

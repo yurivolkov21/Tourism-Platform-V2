@@ -224,12 +224,15 @@ export function libraryPhotoDraft(photo: AdminLibraryPhoto): PhotoDraft {
   };
 }
 
-/** Dòng nguồn dưới ô alt — quyết định 1 của plan F18: không kèm tên địa danh. */
+/**
+ * Dòng nguồn dưới ô alt — quyết định 1 của plan F18: không kèm tên địa danh. Ảnh bìa
+ * gốc (`CATALOG`) nói thêm rằng gỡ ra thì không thêm lại được (ADR-0048 AMEND 1).
+ */
 export function photoSourceLine(photo: PhotoDraft): string {
   if (photo.source === 'UPLOAD') return t.uploaded;
-  return photo.author === null
-    ? t.fromLibrary
-    : `${t.fromLibrary} · ${t.credit(photo.author, photo.license)}`;
+  const credit = photo.author === null ? [] : [t.credit(photo.author, photo.license)];
+  if (photo.source === 'CATALOG') return [t.catalogue, ...credit, t.catalogueWarning].join(' · ');
+  return [t.fromLibrary, ...credit].join(' · ');
 }
 
 /**

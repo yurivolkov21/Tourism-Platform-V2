@@ -40,16 +40,21 @@ describe('orderTourPhotos', () => {
 });
 
 describe('toAdminTourPhoto', () => {
-  it('ảnh trong thư mục tải lên của tour là UPLOAD; còn lại là LIBRARY, giữ ghi công', () => {
+  /** publicId đang có dòng DESTINATION — định nghĩa "thư viện" của ADR-0048 §3. */
+  const LIBRARY_IDS = new Set(['tourism/catalog/destination/hoi-an/1']);
+
+  it('ảnh trong thư mục tải lên của tour là UPLOAD; có dòng địa danh là LIBRARY, giữ ghi công', () => {
     const upload = toAdminTourPhoto(
       item({ publicId: `tourism/tours/${TOUR}/abc`, author: null }),
       'tourism',
       TOUR,
+      LIBRARY_IDS,
     );
     const library = toAdminTourPhoto(
       item({ author: 'J. Nguyen', license: 'CC BY-SA 4.0' }),
       'tourism',
       TOUR,
+      LIBRARY_IDS,
     );
     expect(upload.source).toBe('UPLOAD');
     expect(library).toEqual({
@@ -62,6 +67,17 @@ describe('toAdminTourPhoto', () => {
       author: 'J. Nguyen',
       license: 'CC BY-SA 4.0',
     });
+  });
+
+  it('ảnh bìa gốc không có dòng địa danh là CATALOG — gỡ ra thì không chọn lại được (AMEND 1)', () => {
+    const cover = toAdminTourPhoto(
+      item({ publicId: 'tourism/catalog/tour/ha-long/hero', author: 'Unsplash+' }),
+      'tourism',
+      TOUR,
+      LIBRARY_IDS,
+    );
+    expect(cover.source).toBe('CATALOG');
+    expect(cover.author).toBe('Unsplash+');
   });
 });
 

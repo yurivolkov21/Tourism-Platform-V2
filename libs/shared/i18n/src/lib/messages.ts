@@ -4353,6 +4353,12 @@ export const messages = {
           busySaving: 'Wait for the save to finish, then add more photos.',
           uploaded: 'Uploaded',
           fromLibrary: 'From the library',
+          /**
+           * Ảnh bìa gốc — không có trong kho địa danh nên hộp thư viện không chọn lại
+           * được (ADR-0048 AMEND 1): nói ra ngay trên dòng ảnh.
+           */
+          catalogue: 'Catalogue photo',
+          catalogueWarning: 'Can’t be added back once removed.',
           credit: (author: string, license: string | null) =>
             license === null ? `Photo: ${author}` : `Photo: ${author}, ${license}`,
           uploading: (name: string, percent: number) => `${name} · Uploading ${percent}%`,

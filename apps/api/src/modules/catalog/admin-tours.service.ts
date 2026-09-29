@@ -126,7 +126,12 @@ const TOUR_DETAIL_SELECT = {
 
 type TourDetailRow = Prisma.TourGetPayload<{ select: typeof TOUR_DETAIL_SELECT }>;
 
-function toDetail(row: TourDetailRow, now: Date, media: readonly MediaItem[]): AdminTourDetail {
+function toDetail(
+  row: TourDetailRow,
+  now: Date,
+  media: readonly MediaItem[],
+  libraryIds: ReadonlySet<string>,
+): AdminTourDetail {
   const ordered = orderTourPhotos(media);
   return {
     id: row.id,
@@ -163,7 +168,9 @@ function toDetail(row: TourDetailRow, now: Date, media: readonly MediaItem[]): A
     departureCount: row.departures.length,
     liveSeatsMax: liveSeatsMax(row.departures, now),
     bookingCount: row._count.bookings,
-    photos: ordered.map((item) => toAdminTourPhoto(item, env.CLOUDINARY_UPLOAD_FOLDER, row.id)),
+    photos: ordered.map((item) =>
+      toAdminTourPhoto(item, env.CLOUDINARY_UPLOAD_FOLDER, row.id, libraryIds),
+    ),
     readiness: tourReadiness({
       summary: row.summary,
       destinations: row.destinations,
@@ -172,6 +179,19 @@ function toDetail(row: TourDetailRow, now: Date, media: readonly MediaItem[]): A
       hasCover: ordered.some((item) => item.role === 'hero'),
     }),
   };
+}
+
+/**
+ * publicId nào trong số này đang có dòng `DESTINATION` — nguồn `LIBRARY` của tab Photos
+ * (ADR-0048 AMEND 1). Một câu cho cả tour; tour không ảnh thì không hỏi.
+ */
+async function libraryPublicIds(publicIds: readonly string[]): Promise<ReadonlySet<string>> {
+  if (publicIds.length === 0) return new Set();
+  const rows = await prisma.mediaAsset.findMany({
+    where: { ownerType: MediaOwnerType.DESTINATION, publicId: { in: [...publicIds] } },
+    select: { publicId: true },
+  });
+  return new Set(rows.map((row) => row.publicId));
 }
 
 /** Các cột của tab Details — KHÔNG có slug, tiền tệ, giá gạch, cờ bán, điểm đánh giá, giá vốn. */
@@ -253,7 +273,9 @@ export class AdminToursService {
       [row.id],
       [MediaRole.hero, MediaRole.gallery],
     );
-    return toDetail(row, new Date(), media.get(row.id) ?? []);
+    const photos = media.get(row.id) ?? [];
+    const libraryIds = await libraryPublicIds(photos.map((item) => item.publicId));
+    return toDetail(row, new Date(), photos, libraryIds);
   }
 
   /**
