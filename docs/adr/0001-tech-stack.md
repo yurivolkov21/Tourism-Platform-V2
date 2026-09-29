@@ -124,3 +124,12 @@ nào.
 Hàng "Test | Vitest (mobile giữ jest-expo)" **không đổi** — ADR-0040 §4 thi
 hành đúng ngoại lệ đã cấp ở đây, kèm ranh giới để nó không lan ra khỏi
 `apps/mobile` và `libs/mobile/ui`.
+
+## AMEND 2 — 29/09/2026 (P6): AI SDK 7 thay 6
+
+Hàng "Media/Email/AI/Obs" của bảng quyết định ghi "AI SDK 6 + claude-haiku-4-5". Lúc
+thiết kế P6 (29/09), bản hiện hành đã là AI SDK **7** (`ai` 7.0.122,
+`@ai-sdk/anthropic` 4.0.68, `@ai-sdk/react` 4.0.125, khớp Zod 4.4.3 và React 19.2.4
+của repo). Dựng mới trên bản 6 là hẹn thêm một lần nâng cấp mà freeze 15/10 không cho
+làm. Model giữ nguyên `claude-haiku-4-5`. Cách dùng và lý lẽ ở
+[ADR-0050](0050-ai-concierge-chat.md); ba gói được ghim trước freeze dù code viết sau.

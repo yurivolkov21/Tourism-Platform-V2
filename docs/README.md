@@ -42,7 +42,7 @@ Mỗi ADR tự chứa đầy đủ phần sửa bổ sung (AMEND) của nó; b�
 
 | # | Quyết định | Lưu ý |
 | --- | --- | --- |
-| [0001](adr/0001-tech-stack.md) | Tech stack cho bản rebuild | |
+| [0001](adr/0001-tech-stack.md) | Tech stack cho bản rebuild | 2 AMEND |
 | [0002](adr/0002-payment-gateway-refund-ledger.md) | `PaymentGateway`, sổ hoàn tiền, atomic claim | |
 | [0003](adr/0003-auth-fail-closed.md) | Auth mặc định đóng, mở từng route bằng `@Public()` | |
 | [0004](adr/0004-post-visibility-helper.md) | Bài blog hiện ra qua đúng một helper | |
@@ -90,6 +90,7 @@ Mỗi ADR tự chứa đầy đủ phần sửa bổ sung (AMEND) của nó; b�
 | [0047](adr/0047-tour-editor-sections.md) | Sửa tour theo từng khối: thay nguyên danh sách, khoá phiên bản, cổng đăng tour | |
 | [0048](adr/0048-tour-photos.md) | Ảnh tour: một danh sách có thứ tự, kho địa danh làm thư viện, chỉ ảnh tự tải lên mới được dọn | |
 | [0049](adr/0049-tour-workspace-steps.md) | Khu sửa tour thành thanh bước: form một bên, cột phải một bên, bước cuối Review & publish | |
+| [0050](adr/0050-ai-concierge-chat.md) | Trợ lý AI: chat trong API, lịch sử ở server, tool ghi phải được khách duyệt, trần chi phí theo token | |
 
 ## Specs — sẽ xây gì
 
@@ -154,6 +155,9 @@ Mỗi spec đi kèm một plan cùng tên ở [`plans/`](plans/), trừ vài đ�
 [**F17 tạo và sửa tour (P4e-3a)**](specs/2026-09-24-p4e-3a-tour-editor-design.md) ·
 [**F18 ảnh tour (P4e-3b)**](specs/2026-09-28-p4e-3b-tour-photos-design.md) ·
 [**F19 khu sửa tour dạng thanh bước (P4e-3c)**](specs/2026-09-28-p4e-3c-tour-workspace-steps-design.md)
+
+**Trợ lý AI (P6, chưa thi công)**
+[P6 trợ lý tư vấn tour](specs/2026-09-29-p6-ai-concierge-design.md)
 
 ## Plans — làm theo bước nào
 
