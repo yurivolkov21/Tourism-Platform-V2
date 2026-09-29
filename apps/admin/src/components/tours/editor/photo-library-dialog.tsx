@@ -192,12 +192,21 @@ export function PhotoLibraryDialog({
                   const name = photo.alt ?? photo.publicId;
                   return (
                     <li key={photo.publicId} className="grid gap-1.5">
-                      {/* biome-ignore lint/performance/noImgElement: URL Cloudinary đã tối ưu sẵn (ADR-0005) */}
-                      <img
-                        src={tourPhotoThumb(photo.url)}
-                        alt=""
-                        className="aspect-[3/2] w-full rounded-md bg-muted object-cover"
-                      />
+                      <div className="relative">
+                        {/* biome-ignore lint/performance/noImgElement: URL Cloudinary đã tối ưu sẵn (ADR-0005) */}
+                        <img
+                          src={tourPhotoThumb(photo.url)}
+                          alt=""
+                          className="aspect-[3/2] w-full rounded-md bg-muted object-cover"
+                        />
+                        {/* Nhãn đứng trên ảnh, ngoài chú thích bị cắt hai dòng: alt thật dài cả
+                            câu từng nuốt mất chữ "Added" (thử tay F18). */}
+                        {added ? (
+                          <span className="absolute top-1.5 left-1.5 rounded-full bg-primary px-2 py-0.5 text-xs font-medium text-primary-foreground">
+                            {t.added}
+                          </span>
+                        ) : null}
+                      </div>
                       <span className="flex items-start gap-2 text-sm">
                         <Checkbox
                           aria-label={name}
@@ -205,9 +214,7 @@ export function PhotoLibraryDialog({
                           disabled={added || full}
                           onCheckedChange={(value) => toggle(photo.publicId, value === true)}
                         />
-                        <span className="line-clamp-2">
-                          {added ? `${name} · ${t.added}` : name}
-                        </span>
+                        <span className="line-clamp-2">{name}</span>
                       </span>
                     </li>
                   );

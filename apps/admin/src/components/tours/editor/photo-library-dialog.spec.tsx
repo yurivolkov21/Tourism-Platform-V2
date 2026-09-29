@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { AdminLibraryPhoto, AdminPhotoLibrary } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
@@ -89,7 +89,27 @@ describe('PhotoLibraryDialog', () => {
 
     const added = await screen.findByRole('checkbox', { name: 'Bay at dawn' });
     expect(added).toHaveAttribute('aria-disabled', 'true');
-    expect(screen.getByText(`Bay at dawn · ${t.added}`)).toBeInTheDocument();
+    const item = added.closest('li') as HTMLElement;
+    expect(within(item).getByText(t.added)).toBeInTheDocument();
+    expect(within(item).getByText('Bay at dawn')).toBeInTheDocument();
+  });
+
+  it('"Added" là nhãn riêng, không nối vào chú thích — alt dài cả câu bị cắt hai dòng sẽ nuốt mất nó (thử tay F18)', async () => {
+    const long =
+      'The Japanese Covered Bridge arching over a narrow canal in Hội An, its tiled roof reflected in the still water below.';
+    const library: AdminPhotoLibrary = [
+      {
+        destination: { id: DEST_A, name: 'Hạ Long' },
+        photos: [{ ...(LIBRARY[0]?.photos[0] as AdminLibraryPhoto), alt: long }],
+      },
+    ];
+    const load = vi.fn<LoadPhotoLibraryAction>().mockResolvedValue({ ok: true, library });
+    render(<Harness load={load} existing={['lib/a1']} />);
+
+    const item = (await screen.findByRole('checkbox', { name: long })).closest('li') as HTMLElement;
+    // Chú thích chỉ mang alt, nhãn "Added" đứng riêng ngoài phần bị cắt.
+    expect(within(item).getByText(long)).toBeInTheDocument();
+    expect(within(item).getByText(t.added)).toBeInTheDocument();
   });
 
   it('không tích quá sức chứa; Add gửi đúng ảnh đã tích theo thứ tự bày', async () => {
