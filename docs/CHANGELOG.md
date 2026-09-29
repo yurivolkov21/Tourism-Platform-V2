@@ -8,6 +8,114 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-09-29 — Vòng review F18: 15 phát hiện, vá cả 15 (nhánh `feat/p4e-3b-tour-photos`)
+
+Review chạy TRƯỚC merge, ở mức cao nhất: nhiều góc tìm độc lập, bảy nhóm agent kiểm
+chứng từng ứng viên, rồi một lượt quét sót. Kết quả: 15 phát hiện đáng vá (1 Cao,
+8 Vừa, 6 Thấp), vá cả 15 trên nhánh; ba ứng viên bị bác; các mục nhỏ còn lại (dọn
+code, hiệu năng, nợ) ghi sang open-items G12–G17, vì user chưa chốt có làm trong nhánh
+này không. Dữ liệu prod đo bằng SQL chỉ đọc (29/09): 29/29 tour đang bán có ảnh bìa,
+nên điều kiện bán mới của F18 không làm tụt tour nào.
+
+**Mức Cao.**
+
+1. **Khe deploy làm mất sạch ảnh thật** (`1d0a2343`). Admin (Vercel) lên trước API
+   (Render) thì `fetchAdminTour` lùi `photos` về `[]` mà vẫn giữ `version`; `setPhotos`
+   thay trọn danh sách, nên thêm ảnh rồi lưu sau khi API lên là xoá hết ảnh cũ, kể cả
+   ảnh bìa gốc không chọn lại được. Object lùi nay mang dấu "chưa biết ảnh"
+   (`hasKnownPhotos`), tab Photos hiện câu mời tải lại thay cho form. Bốn lệnh ghi của
+   F17 và `setPhotos` đi qua cùng lớp lùi, nên khung readiness hết báo sai "A cover
+   photo" giữa hai lượt refresh.
+
+**Mức Vừa.**
+
+2. **Gõ số ngày khổng lồ làm treo tab Details** (`1c9ed1c7`). `tourReadiness` lặp theo
+   số ngày, còn phép chiếu chạy trước kiểm trần 1–30 (cả với tour tắt bán): gõ
+   `1000000000` rồi Save là tab treo hoặc sập, mất chữ chưa lưu. Nay chỉ chiếu với số
+   ngày đã qua kiểm khoảng.
+3. **Thả file hay Retry lúc đang Save làm mất ảnh vừa tải** (`97b0f8cd`): lượt adopt sau
+   khi lưu ghi đè danh sách. Đang lưu thì hai đường ấy báo "Wait for the save to finish,
+   then add more photos."
+4. **Ảnh bìa gốc mang nhãn sai** (`a0fa6810`, `7926d5c9`; ADR-0048 AMEND 1, phương án
+   (a) user chọn). 29 ảnh bìa catalog không có dòng `DESTINATION` nên không nằm trong hộp
+   thư viện, mà vẫn ghi "From the library": admin tưởng gỡ ra còn chọn lại được. Nay là
+   nguồn thứ ba `CATALOG`: dòng nguồn mở đầu bằng "Catalogue photo", kèm ghi công nếu
+   có, và kết bằng "Can’t be added back once removed."; `get` hỏi thêm một câu để phân
+   loại. Luật ghi của `setPhotos` không đổi.
+5. **Chọn file lần hai trong lúc chờ ký vượt trần 30 ảnh** (`97b0f8cd`). Lượt chọn kế
+   thấy sức chứa cũ; lúc lưu server trả lỗi schema kèm câu nhắc "payment provider". Dòng
+   tải nay giữ chỗ trước khi ký, và form tự kiểm trần 30 cùng ảnh trùng trước khi gửi.
+6. **Hộp thư viện giữ lựa chọn qua Cancel, lần mở sau Add vượt trần** (`3dac07e6`). Đóng
+   hộp là xoá lựa chọn; Add chỉ gửi ảnh chưa có trong tour và kẹp theo chỗ trống.
+7. **Rời tab lúc đang tải không hỏi lại, file vẫn tải ngầm** (`97b0f8cd`).
+   `EditorFormFrame` nhận `busy`: còn file đang tải là trang có thay đổi chưa lưu. Rời
+   hẳn thì huỷ lượt tải và hàng đợi (`AbortController`).
+8. **Hai script `media:*` đè ảnh tour admin đã sửa** (`3098334a`). `media:alt` chỉ lấp
+   alt còn trống ở dòng `TOUR`; `media:upload` bỏ qua hẳn tour đã có dòng ảnh và chặn
+   Supabase trừ khi có cờ `--toi-biet-day-la-production`. DB mới dựng vẫn được lấp như
+   cũ vì seed không ghi `media_assets`. Lệnh "không chạy lại" ở open-items gỡ bỏ.
+9. **`seed:verify` không canh tour đang bán thiếu ảnh bìa** (`09b1754c`): thêm bất biến
+   (chỉ kiểm khi DB đã có ảnh tour) và cảnh báo riêng cho DB trần, nơi lưu Details hay
+   Itinerary của tour đang bán bị 409.
+
+**Mức Thấp.**
+
+10. **Lệnh ký ném làm dòng tải kẹt, khoá Save mãi** (`97b0f8cd`). Ném coi như lỗi chung:
+    file vừa chọn rút khỏi danh sách kèm lý do, Retry ký hỏng trả dòng về Failed. XHR
+    có thêm hạn giờ 5 phút.
+11. **Hộp thư viện kẹt "Loading…" khi action ném, và nói một câu cho mọi mã**
+    (`3dac07e6`). Nay ném coi như lỗi chung kèm Try again; hết phiên hay mất quyền nói
+    đúng mã và không mời thử lại.
+12. **Tiêu điểm rơi về `<body>` sau Retry hay Remove** (`97b0f8cd`). Retry chuyển tiêu
+    điểm sang thanh tiến độ, xong thì sang ô alt, hỏng thì về nút Retry; Remove sang dòng
+    hỏng kế, hết thì về nút Upload photos.
+13. **Ba câu copy hứa điều code không làm** (`b3abe0c3`). PHOTO_NOT_ALLOWED thôi hứa
+    Reload (tải lại cùng phiên bản không bỏ được ảnh hỏng) mà bảo gỡ ảnh thư viện vừa
+    thêm, và kho ảnh tải lại ở lần mở hộp sau; câu "không vừa" nói thêm file đang tải
+    hay tải hỏng cũng chiếm chỗ; hộp thư viện thôi hứa in ghi công. Kèm câu
+    `INVALID_INPUT` chung của admin: bỏ "payment provider" lạc đề (có từ F17, F18 làm
+    chạm tới được).
+14. **Nghiệm thu CSP dời ra sau merge, trần ký lô trích sai** (`88c7e51a`). ADR-0038
+    AMEND 5 từng hẹn DevTools trên production. Đã làm ở local trên bản build của admin:
+    `fetch` tới `api.cloudinary.com` đi qua (HTTP 400 vì form rỗng, không tạo asset),
+    origin ngoài danh sách bị chặn kèm đúng một vi phạm `connect-src`. Không tải file thật
+    vì `.env.local` dùng chung cloud với production; lượt thử tay trên prod giữ làm lớp
+    thứ hai. Route admin chịu `ADMIN_WRITE_THROTTLE` 60/60s chứ không phải 20/60s: sửa ở
+    ADR-0048 §4 (kèm input thật `{ id, count }`), JSDoc contract, spec §2c. Câu cũ trong
+    entry F18 ngay dưới giữ nguyên vì entry là bất biến.
+15. **Test xanh giả** (`dd156b30`, `1d0a2343`). Ca int "31 ảnh" dùng publicId không
+    nguồn nào nhận, nên bỏ `.max(30)` vẫn ra 400; nay 31 ảnh tải lên hợp lệ và khẳng
+    định `BAD_REQUEST`. Thêm ca `photos: []` qua `fetchAdminTour` giữ `cover: false`. Gate
+    cuối vòng bắt thêm một ca contract còn khẳng định nguồn chỉ có hai giá trị
+    (`2955e313`).
+
+**Đột biến.** Ghi được 37 đột biến trên các ca mới và chỗ vá, 34 cái chết ngay. Hai cái
+sống lúc đầu, đã giết bằng ca thêm: `.slice(0, capacity)` của hộp thư viện (ca "sức chứa
+co lại giữa lúc hộp mở") và tiêu điểm về Retry khi Retry ký hỏng (`fbf73fbf`). Một cái
+tương đương: bỏ `if (signal.aborted) return` sau khi ký không đổi gì, vì
+`runWithConcurrency` và `uploadPhoto` đã tự dừng khi lượt tải bị huỷ.
+
+**Ba ứng viên bị bác.** Tiêu đề trang admin viết literal (khuôn chung toàn repo); ghi
+công bốn cột bị thiếu khi chép từ thư viện (chép đủ, int test đã chốt); luật "không dọn
+ảnh thư viện" nằm ở nơi gọi (hôm nay không phải lỗi, ghi thành G16).
+
+**Không có việc hạ tầng.** Không migration, không env, không đổi thiết lập Cloudinary.
+
+CÒN TREO:
+
+- Merge F18: rebase lên `main`, gồm hai commit docs F19 đang nằm ở `main` local
+  (`36e88d87`, `fc397c32`) — chờ user xác nhận.
+- Thử tay F18 trên production theo spec §5: tải ảnh thật mà console sạch, log
+  `csp-report` không có dòng nào cho `api.cloudinary.com`; thêm ba điều jsdom không canh
+  được — hộp hỏi lại khi rời tab lúc đang tải, kéo thả file, tiêu điểm sau Retry.
+
+Tests after: Vitest **4664** (web 1576, admin 1419, api 1005, contract 559, core 46,
+ui 23, tokens 18, i18n 18), int **698 ở 45 file**, jest mobile 159 và mobile-ui 86. Ca
+mới: admin 34, api 1; một ca contract và ba ca int sửa lại. Gate đầy đủ chạy tách bước
+có watchdog, 12,2 phút: commit trống thấp nhất 5,47 GB, pagefile đứng yên 2560 MB.
+Commit cuối `fbf73fbf` chỉ thêm một khẳng định vào spec tab Photos, chạy lại riêng file
+ấy (23/23).
+
 ## 2026-09-28 — F18 ảnh tour (nhánh `feat/p4e-3b-tour-photos`)
 
 Tab Photos trong khu làm việc tour: tải ảnh lên thẳng Cloudinary (ký theo lô),

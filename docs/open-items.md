@@ -17,7 +17,7 @@
 
 | Mã | Việc | Ghi chú |
 | --- | --- | --- |
-| **P4e** | Quản trị catalog: thêm/sửa/xoá tour, điểm đến, danh mục | P4e-1 XONG 22/09 (F11 danh sách tour · F12 lịch chạy · F13 huỷ chuyến có hoàn tiền, đóng nợ ADR-0041 §6). **P4e-2 XONG**: F14 danh mục 22/09 (màn `/categories` cộng chip lọc của web đọc endpoint) và F15 điểm đến 24/09 (màn `/destinations`, ba vùng về contract, web chịu được điểm đến đã ẩn). **P4e-3a** (F17 tạo và sửa tour) XONG: merge 28/09 sau vòng review (24 lỗi thật, vá cả 24 — lỗi seed vá ở nhánh riêng cùng ngày). **P4e-3b** (F18 ảnh tour) xong trên nhánh `feat/p4e-3b-tour-photos` 28/09, chờ review. Còn P4e-4 bài viết |
+| **P4e** | Quản trị catalog: thêm/sửa/xoá tour, điểm đến, danh mục | P4e-1 XONG 22/09 (F11 danh sách tour · F12 lịch chạy · F13 huỷ chuyến có hoàn tiền, đóng nợ ADR-0041 §6). **P4e-2 XONG**: F14 danh mục 22/09 (màn `/categories` cộng chip lọc của web đọc endpoint) và F15 điểm đến 24/09 (màn `/destinations`, ba vùng về contract, web chịu được điểm đến đã ẩn). **P4e-3a** (F17 tạo và sửa tour) XONG: merge 28/09 sau vòng review (24 lỗi thật, vá cả 24 — lỗi seed vá ở nhánh riêng cùng ngày). **P4e-3b** (F18 ảnh tour) xong trên nhánh `feat/p4e-3b-tour-photos` 28/09; vòng review 29/09 vá cả 15 phát hiện, chờ merge. Còn P4e-4 bài viết |
 | **P4f** | Quản trị media và người dùng | Gồm màn hạ quyền / thu hồi phiên admin (ADR-0026 AMEND 1) |
 | **P5b-2…5** | Bốn cụm màn mobile: xem tour · đặt tour · tài khoản · đánh giá | **Đã có bản vẽ và tài liệu bàn giao đầy đủ**; thành viên khác dựng màn — xem [`handoff/`](handoff/README.md) |
 | **P6** | Trợ lý AI tư vấn tour | Bảng dữ liệu đã có sẵn (`chat_conversations`, `chat_messages`) |
@@ -79,9 +79,6 @@ ghi chép nội bộ) — trước đó nó hứa nhầm rằng khách sẽ đ�
 - Chuyển `backups/2026-09-18/` từ worktree về bản checkout gốc trước khi gỡ
   worktree.
 - Tắt tự-động-cập-nhật marketplace `claude-plugins-official` trước freeze 15/10.
-- **Không** chạy lại `media:*` và `apply-alt-text.mjs` trên prod sau F18 — chúng
-  ghi `media_assets` theo fixture, đè alt, thứ tự và ảnh bìa admin đã sửa ở tab
-  Photos. Lượt seed lại 03/11 không đụng `media_assets` nên không bị ảnh hưởng.
 - Cân nhắc siết thêm Build Filter của Render: thêm `apps/web/**`,
   `apps/admin/**`, `apps/mobile/**` vào Ignored Paths. **Đừng thêm `libs/**`** —
   máy chủ ăn `@tourism/contract` và `@tourism/core`.
@@ -92,6 +89,11 @@ ghi chép nội bộ) — trước đó nó hứa nhầm rằng khách sẽ đ�
   event hoàn": hai khoản hoàn cũ (trước ADR-0043) cố ý không backfill, vì lượt
   seed 03/11 sẽ xoá sạch.
 - Lint còn đúng **1 warning và 1 info** có từ trước.
+- `seed:verify` ở DB local mới seed (chưa chạy `media:upload`) in cảnh báo "DB chưa
+  có ảnh tour nào": seed không ghi `media_assets`, nên theo readiness của F18 cả 29
+  tour đang bán đều thiếu ảnh bìa. Ở DB ấy, lưu Details hay Itinerary của tour đang
+  bán bị 409 `TOUR_NOT_READY` — chạy `media:upload`, hoặc tắt bán tour cần thử.
+  Prod không dính: đo 29/09, 29/29 tour đang bán có ảnh bìa.
 
 ## Nợ kỹ thuật chi tiết
 
@@ -115,3 +117,9 @@ deploy) nằm ở [sổ nợ kỹ thuật](analysis/2026-08-06-backlog-no-ky-thu
 | G9 | Sửa hay xoá tour chỉ bust `tours` và `tour:<slug>`, không bust `post:<slug>` của bài viết nhúng thẻ tour (có từ F11, F17 mở thêm đường sửa và xoá): thẻ tour trong bài viết cũ hoặc trỏ 404 tới hết 300 giây ISR |
 | G10 | Web lấy danh sách tour bằng MỘT trang `limit: 50` (`apps/web/src/lib/api/tours.ts`) — F17 cho tạo tour, quá 50 tour đang bán thì tour cũ nhất biến khỏi web. Hiện 29 |
 | ~~G11~~ | ~~Validator tab Details và Itinerary viết tay luật "tour đang bán thì luôn đủ" (tóm tắt, thêm ngày, tiêu đề ngày) thay vì suy từ `projectedReadiness`.~~ Đóng ở F18 (28/09): ba tab Details, Itinerary, Photos suy từ `onSaleShortfalls` |
+| G12 | Metadata ảnh vừa tải (`TourPhotoUploadSchema`: `width`, `height`, `bytes`) dùng `z.int()` nên số vượt INT4 lọt qua schema: một request tự chế ra 500 (P2020; transaction rollback trọn, không hỏng dữ liệu). Sửa bằng `z.int32().positive()`. Vòng review F18 để lại |
+| G13 | Ba chỗ đọc ảnh chưa lọc `type = 'IMAGE'`: `photoLibrary`, bước tra thư viện của `setPhotos`, `orderTourPhotos`. Một VIDEO của địa danh (hiện chưa có) sẽ thành ảnh tour. Cùng vùng: câu `banners.notReady` ("This change would leave it missing:") đổ lỗi cho lần sửa cả khi chỗ thiếu có từ trước. Vòng review F18 để lại |
+| G14 | Dọn code F18: thanh tiến độ tự dựng thay vì `Progress` của `@tourism/ui`; helper URL Cloudinary của admin nằm rải nhiều file; `ListEditor` nhận `add` và `emptyFocus` rời nhau thay vì một union; `hasTourCover` export thừa, JSDoc sai, chưa dùng lại `pickCover`; copy chép tay "JPG, PNG…", "10 MB", "30 photos" thay vì đọc hằng; fixture ảnh (`photoRow`, bộ tham số ký) chép ở nhiều spec. Vòng review F18 để lại |
+| G15 | Ký upload và tải lên có hai bản: `signPhotoUploads` chép đoạn ký và enqueue của `UploadSigningService` (không export khỏi `MediaModule`, hai lớp lỗi NotConfigured); `apps/admin/src/lib/photo-upload.ts` chép phần dựng form và khung XHR của `apps/web/src/lib/media-upload.ts`. Gom cần sửa cả `apps/web` |
+| G16 | Hàng dọn media nhận mọi publicId: luật "không dọn ảnh thư viện hay catalog" nằm ở nơi gọi. Nên có một vị từ "publicId nằm trong vùng tải lên" để sweep từ chối destroy ảnh ngoài vùng ấy. Hôm nay chưa đường nào đưa chúng vào hàng; làm cùng P4f hoặc P4e-4 |
+| G17 | Hiệu năng F18, đều nhỏ: mỗi nhịp tiến độ tải lên render lại cả form (vài ms mỗi lần); `setPhotos` requeue từng ảnh một trong transaction đang giữ khoá, và `get` hỏi thêm câu media nối tiếp (cộng lại khoảng 0,1–0,2 giây mỗi lần lưu, dưới timeout 5 giây). Chưa đáng sửa riêng |
