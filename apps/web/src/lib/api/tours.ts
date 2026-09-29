@@ -3,6 +3,7 @@ import type { ContractInputs, ContractOutputs } from '@tourism/contract';
 import { cache } from 'react';
 import { resolveDepartureAnchors } from '@/lib/tour-detail';
 import { api } from './client';
+import { collectAllPages } from './collect-pages';
 import { TAGS, tourTag } from './tags';
 
 /**
@@ -36,17 +37,35 @@ export type ItineraryDayVM = TourDetailVM['itinerary'][number];
 
 const REVALIDATE_SEC = 300; // ADR-0016 §3 — con số Nexora đã vận hành, cùng revalidate cụm blog
 
+/** Cỡ trang lớn nhất `ToursListQuerySchema.limit` cho phép (field là `limit`, KHÔNG phải `pageSize`). */
+const TOURS_PAGE_SIZE = 50;
+
 /**
- * Danh sách tour published. `limit: 50` (KHÔNG phải `pageSize` — field của
- * `ToursListQuerySchema` là `limit`, max 50) đủ cho 30 tour seed trong MỘT
- * call. Gắn `TAGS.TOURS` để revalidate theo taxonomy chung.
+ * Trần số trang `fetchTours` đi qua: 20 × 50 = 1000 tour, xa hơn mọi con số dự
+ * án chạm tới. Chỉ để một `totalPages` hỏng từ API không kéo build đi vô tận.
+ */
+const MAX_TOUR_PAGES = 20;
+
+/**
+ * MỌI tour published (G10). Trước đây chỉ lấy trang 1 `limit: 50`, nên từ tour
+ * thứ 51 thì tour cũ nhất biến khỏi listing, sitemap, prerender và số đếm ở
+ * trang chủ. Giờ đi hết các trang; với 29 tour hiện tại vẫn chỉ một lượt gọi.
+ * Mỗi trang gắn `TAGS.TOURS` để revalidate theo taxonomy chung.
  */
 export async function fetchTours(): Promise<TourCardVM[]> {
-  const page = await api.catalog.tours.list(
-    { page: 1, limit: 50 },
-    { context: { next: { revalidate: REVALIDATE_SEC, tags: [TAGS.TOURS] } } },
+  const { items, totalPages } = await collectAllPages(
+    (page) =>
+      api.catalog.tours.list(
+        { page, limit: TOURS_PAGE_SIZE },
+        { context: { next: { revalidate: REVALIDATE_SEC, tags: [TAGS.TOURS] } } },
+      ),
+    { maxPages: MAX_TOUR_PAGES, key: (tour) => tour.id },
   );
-  return page.items;
+  // Chạm trần thì nói ra, đừng lặng lẽ cắt — lặng lẽ cắt chính là lỗi G10.
+  if (totalPages > MAX_TOUR_PAGES) {
+    console.warn(`[fetchTours] có ${totalPages} trang tour, chỉ lấy ${MAX_TOUR_PAGES} trang đầu`);
+  }
+  return items;
 }
 
 /**
