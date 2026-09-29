@@ -1,9 +1,9 @@
 'use client';
 
 import { messages } from '@tourism/i18n';
-import { Button } from '@tourism/ui/components/button';
+import { Button, buttonVariants } from '@tourism/ui/components/button';
 import { cn } from '@tourism/ui/lib/utils';
-import { CircleAlertIcon } from 'lucide-react';
+import { ChevronRightIcon, CircleAlertIcon } from 'lucide-react';
 import Link from 'next/link';
 import type * as React from 'react';
 import { StableLabel } from '@/components/kit/stable-label';
@@ -21,6 +21,10 @@ import type { SectionBanner } from '@/lib/use-section-save';
  * - Server có bản mới hơn thứ đang sửa (`serverChanged`) → dải stale dù lần lưu
  *   chưa hỏng. Reload đi qua `onReload` của form: form tự nạp bản mới, không
  *   phải gỡ rồi dựng lại (vòng review F17).
+ *
+ * Bước (ADR-0049 §6): `lead` trải hết bề ngang trên hai cột; `aside` là cột phải — do
+ * CHÍNH form dựng nên đọc được giá trị đang soạn; `next` là link đi tiếp cạnh Save. Link
+ * là `<a>` thật nên hộp hỏi lại chặn nó như mọi link khác.
  */
 const t = messages.admin.tours.editor;
 const SAVE_LABELS = [t.save, t.saving] as const;
@@ -35,6 +39,9 @@ export function EditorFormFrame({
   note,
   blockedNote,
   busy = false,
+  lead,
+  aside,
+  next,
   onSubmit,
   onReload,
   children,
@@ -58,6 +65,12 @@ export function EditorFormFrame({
    * (vòng review F18).
    */
   busy?: boolean;
+  /** Dòng trải hết bề ngang TRÊN hai cột (Itinerary: câu giới thiệu). */
+  lead?: React.ReactNode;
+  /** Cột phải của bước — dính khi cuộn từ `xl`. Vắng thì form một cột như F17. */
+  aside?: React.ReactNode;
+  /** Link "Next: <bước>" ở chân form, cạnh nút Save. */
+  next?: { href: string; label: string };
   onSubmit: () => void;
   /** Nút Reload của mọi dải báo — form nạp bản server mới. */
   onReload: () => void;
@@ -66,10 +79,10 @@ export function EditorFormFrame({
   useReportUnsaved(dirty || busy);
   const shown = banner ?? (serverChanged ? STALE : null);
 
-  return (
+  const form = (
     <form
       noValidate
-      className="flex flex-col gap-6"
+      className="flex min-w-0 flex-col gap-6"
       onSubmit={(event) => {
         event.preventDefault();
         if (dirty && !pending && blockedNote === undefined) onSubmit();
@@ -79,7 +92,13 @@ export function EditorFormFrame({
       {children}
       <div className="flex flex-wrap items-center justify-end gap-3 border-t pt-4">
         {(blockedNote ?? note) ? (
-          <p className="text-xs text-muted-foreground">{blockedNote ?? note}</p>
+          <p className="mr-auto text-xs text-muted-foreground">{blockedNote ?? note}</p>
+        ) : null}
+        {next ? (
+          <Link href={next.href} className={buttonVariants({ variant: 'ghost' })}>
+            {t.next(next.label)}
+            <ChevronRightIcon aria-hidden="true" />
+          </Link>
         ) : null}
         <Button
           type="submit"
@@ -90,6 +109,37 @@ export function EditorFormFrame({
         </Button>
       </div>
     </form>
+  );
+
+  return (
+    <>
+      {lead}
+      <StepColumns aside={aside}>{form}</StepColumns>
+    </>
+  );
+}
+
+/**
+ * Lưới hai cột của một bước (ADR-0049 §6): nội dung chính trái, cột phải `20rem` dính
+ * khi cuộn từ `xl`; hẹp hơn thì một cột, cột phải xuống dưới. Không `aside` thì trả
+ * nguyên nội dung — form một cột như F17. Bước Review (không có form) dùng thẳng khung này.
+ */
+export function StepColumns({
+  aside,
+  children,
+}: {
+  aside?: React.ReactNode;
+  children: React.ReactNode;
+}) {
+  if (aside === undefined || aside === null) return <>{children}</>;
+  return (
+    <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_20rem]">
+      {children}
+      {/* `data-slot`: móc cho bước soi bố cục bằng CSS build thật (plan F19, Task 10). */}
+      <aside data-slot="step-aside" className="grid min-w-0 gap-4 xl:sticky xl:top-4">
+        {aside}
+      </aside>
+    </div>
   );
 }
 

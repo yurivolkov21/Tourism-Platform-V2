@@ -223,3 +223,60 @@ describe('EditorFormFrame', () => {
     expect(onSubmit).not.toHaveBeenCalled();
   });
 });
+
+describe('EditorFormFrame — bố cục bước (ADR-0049 §6)', () => {
+  it('có aside: cột phải là <aside> đứng SAU form trong DOM', () => {
+    frame({ aside: <p>Right column</p> });
+    const aside = screen.getByRole('complementary');
+    expect(aside).toHaveTextContent('Right column');
+    const form = screen.getByRole('button', { name: t.save }).closest('form');
+    expect(form?.compareDocumentPosition(aside)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+  });
+
+  it('không aside: không có <aside> nào — form giữ một cột như trước', () => {
+    frame();
+    expect(screen.queryByRole('complementary')).toBeNull();
+  });
+
+  it('lead đứng TRƯỚC form, ngoài form', () => {
+    frame({ lead: <p>Intro line</p> });
+    const lead = screen.getByText('Intro line');
+    expect(lead.closest('form')).toBeNull();
+    const form = screen.getByRole('button', { name: t.save }).closest('form');
+    expect(lead.compareDocumentPosition(form as Node)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+  });
+
+  it('next: link "Next: <bước>" ở chân form, đứng trước nút Save', () => {
+    frame({ next: { href: '/tours/ha-long/photos', label: 'Photos' } });
+    const next = screen.getByRole('link', { name: t.next('Photos') });
+    expect(next).toHaveAttribute('href', '/tours/ha-long/photos');
+    expect(next.compareDocumentPosition(screen.getByRole('button', { name: t.save }))).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING,
+    );
+  });
+
+  it('form có thay đổi: bấm Next bật hộp hỏi lại, không điều hướng (spec §4.4)', async () => {
+    const user = userEvent.setup();
+    render(
+      <UnsavedChangesProvider>
+        <EditorFormFrame
+          dirty
+          pending={false}
+          banner={null}
+          next={{ href: '/tours/ha-long/photos', label: 'Photos' }}
+          onSubmit={vi.fn()}
+          onReload={onReload}
+        >
+          <input aria-label="Name" />
+        </EditorFormFrame>
+      </UnsavedChangesProvider>,
+    );
+
+    await user.click(screen.getByRole('link', { name: t.next('Photos') }));
+
+    expect(
+      screen.getByRole('alertdialog', { name: messages.admin.unsavedChanges.title }),
+    ).toBeInTheDocument();
+    expect(push).not.toHaveBeenCalled();
+  });
+});
