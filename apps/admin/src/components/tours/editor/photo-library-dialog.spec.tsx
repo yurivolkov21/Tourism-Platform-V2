@@ -115,7 +115,8 @@ describe('PhotoLibraryDialog', () => {
       .mockResolvedValueOnce({ ok: true, library: LIBRARY });
     render(<Harness load={load} />);
 
-    await user.click(await screen.findByRole('button', { name: t.retry }));
+    expect(await screen.findByRole('alert')).toHaveTextContent(t.loadErrors.GENERIC);
+    await user.click(screen.getByRole('button', { name: t.retry }));
 
     expect(await screen.findByRole('checkbox', { name: 'Bay at dawn' })).toBeInTheDocument();
     await waitFor(() => expect(load).toHaveBeenCalledTimes(2));
@@ -140,5 +141,120 @@ describe('PhotoLibraryDialog', () => {
     await user.click(screen.getByRole('checkbox', { name: 'Cave lights' }));
     await user.click(screen.getByRole('button', { name: t.add(1) }));
     expect(onAdd).toHaveBeenCalledWith([shared]);
+  });
+});
+
+/** Hộp có thể đóng rồi mở lại — như tab Photos, hộp luôn mount. */
+function Reopenable({
+  load,
+  capacity = 30,
+  existing = [],
+  onAdd = vi.fn(),
+}: {
+  load: LoadPhotoLibraryAction;
+  capacity?: number;
+  existing?: string[];
+  onAdd?: (photos: AdminLibraryPhoto[]) => void;
+}) {
+  const [open, setOpen] = useState(true);
+  const [library, setLibrary] = useState<AdminPhotoLibrary | null>(null);
+  return (
+    <>
+      <button type="button" onClick={() => setOpen(true)}>
+        open library
+      </button>
+      <PhotoLibraryDialog
+        open={open}
+        onOpenChange={setOpen}
+        library={library}
+        onLoaded={setLibrary}
+        load={load}
+        tourDestinationIds={[DEST_A]}
+        existing={new Set(existing)}
+        capacity={capacity}
+        onAdd={onAdd}
+      />
+    </>
+  );
+}
+
+describe('PhotoLibraryDialog — vòng review F18', () => {
+  const loaded = () =>
+    vi.fn<LoadPhotoLibraryAction>().mockResolvedValue({ ok: true, library: LIBRARY });
+
+  it('đóng bằng Cancel rồi mở lại: lựa chọn cũ không còn', async () => {
+    const user = userEvent.setup();
+    render(<Reopenable load={loaded()} />);
+
+    await user.click(await screen.findByRole('checkbox', { name: 'Bay at dawn' }));
+    await user.click(screen.getByRole('button', { name: t.cancel }));
+    await user.click(screen.getByRole('button', { name: 'open library' }));
+
+    expect(await screen.findByRole('checkbox', { name: 'Bay at dawn' })).not.toBeChecked();
+    expect(screen.getByRole('button', { name: t.add(0) })).toBeDisabled();
+  });
+
+  it('đóng bằng Esc rồi mở lại: lựa chọn cũ không còn', async () => {
+    const user = userEvent.setup();
+    render(<Reopenable load={loaded()} />);
+
+    await user.click(await screen.findByRole('checkbox', { name: 'Bay at dawn' }));
+    await user.keyboard('{Escape}');
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    await user.click(screen.getByRole('button', { name: 'open library' }));
+
+    expect(await screen.findByRole('checkbox', { name: 'Bay at dawn' })).not.toBeChecked();
+  });
+
+  it('Add không gửi ảnh đã có trong tour và không vượt sức chứa', async () => {
+    // Form nạp bản server mới GIỮA lúc hộp mở (ảnh a1 vừa được thêm ở tab khác, sức chứa còn 1).
+    const user = userEvent.setup();
+    const onAdd = vi.fn();
+    const view = render(<Harness load={loaded()} onAdd={onAdd} />);
+
+    await user.click(await screen.findByRole('checkbox', { name: 'Bay at dawn' }));
+    await user.click(screen.getByRole('checkbox', { name: 'Cave lights' }));
+    view.rerender(<Harness load={loaded()} onAdd={onAdd} existing={['lib/a1']} capacity={1} />);
+    await user.click(screen.getByRole('button', { name: t.add(1) }));
+
+    expect(onAdd).toHaveBeenCalledWith([photo('a2', 'Cave lights')]);
+  });
+
+  it('sức chứa giảm giữa lúc hộp mở: Add chỉ gửi đủ số chỗ còn trống, theo thứ tự bày', async () => {
+    const user = userEvent.setup();
+    const onAdd = vi.fn();
+    const view = render(<Harness load={loaded()} onAdd={onAdd} capacity={2} />);
+
+    await user.click(await screen.findByRole('checkbox', { name: 'Bay at dawn' }));
+    await user.click(screen.getByRole('checkbox', { name: 'Cave lights' }));
+    view.rerender(<Harness load={loaded()} onAdd={onAdd} capacity={1} />);
+    await user.click(screen.getByRole('button', { name: t.add(1) }));
+
+    expect(onAdd).toHaveBeenCalledWith([photo('a1', 'Bay at dawn')]);
+  });
+
+  it('lệnh tải NÉM (mạng đứt, redeploy): câu lỗi và nút thử lại, không kẹt ở Loading', async () => {
+    const user = userEvent.setup();
+    const load = vi
+      .fn<LoadPhotoLibraryAction>()
+      .mockRejectedValueOnce(new Error('Failed to fetch'))
+      .mockResolvedValueOnce({ ok: true, library: LIBRARY });
+    render(<Harness load={load} />);
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(t.loadErrors.GENERIC);
+    await user.click(screen.getByRole('button', { name: t.retry }));
+
+    expect(await screen.findByRole('checkbox', { name: 'Bay at dawn' })).toBeInTheDocument();
+  });
+
+  it('hết phiên (401) hay mất quyền (403): nói đúng chuyện, không mời thử lại', async () => {
+    for (const code of ['UNAUTHORIZED', 'FORBIDDEN'] as const) {
+      const load = vi.fn<LoadPhotoLibraryAction>().mockResolvedValue({ ok: false, code });
+      const view = render(<Harness load={load} />);
+
+      expect(await screen.findByRole('alert')).toHaveTextContent(t.loadErrors[code]);
+      expect(screen.queryByRole('button', { name: t.retry })).toBeNull();
+      view.unmount();
+    }
   });
 });

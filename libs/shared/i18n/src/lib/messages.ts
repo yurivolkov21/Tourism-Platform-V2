@@ -4377,7 +4377,16 @@ export const messages = {
             cancel: 'Cancel',
             loading: 'Loading the library…',
             empty: 'No photos for these destinations yet.',
-            failed: 'The library could not be loaded.',
+            /**
+             * Tải kho ảnh là lệnh ĐỌC — giọng đọc riêng, không mượn "có thể đã đi qua" của
+             * `errors.write` (khuôn payment events, vòng review F18). Try again chỉ hiện
+             * cho GENERIC: hết phiên hay mất quyền thì thử lại vẫn hỏng.
+             */
+            loadErrors: {
+              UNAUTHORIZED: 'Your session has expired. Sign in again to load the library.',
+              FORBIDDEN: 'Your account no longer has admin access.',
+              GENERIC: 'The library could not be loaded.',
+            },
             retry: 'Try again',
             left: (n: number) =>
               n === 1 ? 'You can add 1 more photo.' : `You can add ${n} more photos.`,

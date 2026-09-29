@@ -17,8 +17,9 @@ import * as React from 'react';
 import { DIALOG_FRAME } from '@/components/kit/confirm-write-dialog';
 import { FormField } from '@/components/kit/form-field';
 import { FormSelect } from '@/components/kit/form-select';
+import type { TransportFailureCode } from '@/lib/api/write-error';
 import { tourPhotoThumb } from '@/lib/tour-editor-view';
-import type { LoadPhotoLibraryAction } from '@/lib/tour-photos';
+import { type LoadPhotoLibraryAction, libraryLoadErrorCopy } from '@/lib/tour-photos';
 
 /**
  * Hộp Add from library (spec F18 §2g, ADR-0048 §9): kho ảnh địa danh.
@@ -27,6 +28,14 @@ import type { LoadPhotoLibraryAction } from '@/lib/tour-photos';
  *   cho các lần mở sau.
  * - Mặc định bày ảnh các địa danh tour đi qua; ô chọn đổi sang từng địa danh.
  * - Ảnh đã có trong tour hiện "Added" và khoá; không cho tích quá sức chứa.
+ *
+ * Vòng review F18:
+ * - Lựa chọn thuộc về MỘT lần mở: hộp luôn mount (form giữ nó) nên đóng bằng Cancel
+ *   hay Esc là xoá lựa chọn — lần mở sau sức chứa có thể đã khác.
+ * - Add chỉ gửi ảnh chưa có trong tour và không vượt sức chứa — form có thể vừa nạp
+ *   bản server mới giữa lúc hộp mở.
+ * - Tải hỏng nói đúng mã (hết phiên, mất quyền, lỗi chung); lệnh tải NÉM coi như lỗi
+ *   chung. Try again chỉ cho lỗi chung — hai mã kia thử lại vẫn hỏng.
  */
 const t = messages.admin.tours.editor.photos.dialog;
 const THIS_TOUR = 'tour';
@@ -52,7 +61,7 @@ export function PhotoLibraryDialog({
   capacity: number;
   onAdd: (photos: AdminLibraryPhoto[]) => void;
 }) {
-  const [failed, setFailed] = React.useState(false);
+  const [failure, setFailure] = React.useState<TransportFailureCode | null>(null);
   const [filter, setFilter] = React.useState(THIS_TOUR);
   const [picked, setPicked] = React.useState<ReadonlySet<string>>(new Set());
   /** Cổng một lượt tải — effect và nút Try again không được bắn hai lượt chồng nhau. */
@@ -61,11 +70,14 @@ export function PhotoLibraryDialog({
   const fetchLibrary = React.useCallback(async () => {
     if (loading.current) return;
     loading.current = true;
-    setFailed(false);
+    setFailure(null);
     try {
       const result = await load();
       if (result.ok) onLoaded(result.library);
-      else setFailed(true);
+      else setFailure(result.code);
+    } catch {
+      // Server action ném (mạng đứt, redeploy) — coi như lỗi chung, như `useSectionSave`.
+      setFailure('GENERIC');
     } finally {
       loading.current = false;
     }
@@ -106,14 +118,27 @@ export function PhotoLibraryDialog({
     });
   }
 
+  /** Ảnh đã tích mà chưa có trong tour — `existing` có thể vừa đổi giữa lúc hộp mở. */
+  const chosen = [...picked].filter((publicId) => !existing.has(publicId));
+  const addCount = Math.min(chosen.length, capacity);
+
+  function changeOpen(next: boolean) {
+    if (!next) setPicked(new Set());
+    onOpenChange(next);
+  }
+
   function add() {
     const all = dedupe((library ?? []).flatMap((group) => group.photos));
-    onAdd(all.filter((photo) => picked.has(photo.publicId)));
+    onAdd(
+      all
+        .filter((photo) => picked.has(photo.publicId) && !existing.has(photo.publicId))
+        .slice(0, capacity),
+    );
     setPicked(new Set());
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={changeOpen}>
       <DialogContent className={cn(DIALOG_FRAME, 'sm:max-w-3xl')} showCloseButton={false}>
         <DialogHeader>
           <DialogTitle>{t.title}</DialogTitle>
@@ -121,19 +146,21 @@ export function PhotoLibraryDialog({
         </DialogHeader>
 
         {library === null ? (
-          failed ? (
+          failure !== null ? (
             <div className="grid gap-3">
               <p role="alert" className="text-sm text-destructive-emphasis">
-                {t.failed}
+                {libraryLoadErrorCopy(failure)}
               </p>
-              <Button
-                type="button"
-                variant="outline"
-                className="w-fit"
-                onClick={() => void fetchLibrary()}
-              >
-                {t.retry}
-              </Button>
+              {failure === 'GENERIC' || failure === 'INVALID_INPUT' ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-fit"
+                  onClick={() => void fetchLibrary()}
+                >
+                  {t.retry}
+                </Button>
+              ) : null}
             </div>
           ) : (
             <p className="text-sm text-muted-foreground" aria-live="polite">
@@ -192,13 +219,13 @@ export function PhotoLibraryDialog({
 
         <DialogFooter className="mt-4 items-center">
           <p className="mr-auto text-xs text-muted-foreground">
-            {t.left(Math.max(0, capacity - picked.size))}
+            {t.left(Math.max(0, capacity - addCount))}
           </p>
-          <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+          <Button type="button" variant="outline" onClick={() => changeOpen(false)}>
             {t.cancel}
           </Button>
-          <Button type="button" disabled={picked.size === 0} onClick={add}>
-            {t.add(picked.size)}
+          <Button type="button" disabled={addCount === 0} onClick={add}>
+            {t.add(addCount)}
           </Button>
         </DialogFooter>
       </DialogContent>
