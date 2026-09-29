@@ -52,7 +52,9 @@ Chỗ lệch plan, kèm lý do:
   vào ca đếm; cả hai đột biến bị giết sau đó.
 - Task 10: `AdminShell` nay là server component async (đọc cookie sidebar, 28/09), nên
   spec tạm của plan dựng ra trang rỗng. Spec tạm gọi `await AdminShell(...)` với
-  `next/headers` giả; máy không có Python thật nên máy chủ tĩnh là một script Node tạm.
+  `next/headers` giả. Máy chủ tĩnh là một script Node tạm thay cho `python -m http.server`
+  — đổi vì tưởng nhầm `python` bị treo (thật ra do một lệnh Git Bash viết hỏng; Python
+  3.14.7 chạy bình thường), hai cách tương đương cho phép đo.
 
 Soi bố cục bằng CSS build thật (Task 10), sáu trang: ở 1600px hai cột, `topDelta` 0
 (card đầu cột phải ngang card đầu form), `stepperOverflow` 0, không tràn ngang; trang
