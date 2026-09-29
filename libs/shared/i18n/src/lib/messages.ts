@@ -4086,7 +4086,7 @@ export const messages = {
           reload: 'Reload',
           /** Dải của TOUR_NOT_READY: liệt kê chỗ thiếu như khung readiness. */
           notReady:
-            'This tour is on sale, so it has to stay ready to sell. This change would leave it missing:',
+            'This tour is on sale, so it has to stay ready to sell. Saved like this, it would be missing:',
           /** Server nói thiếu mà bản dự tính ở trình duyệt thấy đủ — một lệnh khác vừa chen vào. */
           notReadyUnknown:
             'This tour is on sale, so it has to stay ready to sell. Reload to see what changed.',
