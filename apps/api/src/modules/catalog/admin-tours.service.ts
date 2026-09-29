@@ -44,6 +44,7 @@ import {
   TourRuleError,
   TourSlugTakenError,
 } from './admin-tour-errors.js';
+import { pickCover } from './catalog.service.js';
 import { costItemsOf } from './tour-cost-items.js';
 import { liveSeatsMax } from './tour-editor-rules.js';
 import {
@@ -176,7 +177,7 @@ function toDetail(
       destinations: row.destinations,
       durationDays: row.durationDays,
       itineraryDays: row.itinerary.map((day) => day.dayNumber),
-      hasCover: ordered.some((item) => item.role === 'hero'),
+      hasCover: pickCover(ordered) !== null,
     }),
   };
 }

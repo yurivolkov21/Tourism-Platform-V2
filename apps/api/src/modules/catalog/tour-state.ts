@@ -41,10 +41,11 @@ export async function claimTour(
 
 /**
  * Tour có ảnh bìa không — dòng `media_assets` role `hero` của tour (ADR-0048 §1).
- * Nhận client lẫn transaction: `get` hỏi ngoài transaction, `readTourReadiness`
- * hỏi trong transaction đang giữ khoá hàng tour.
+ * Chỉ `readTourReadiness` hỏi, trong transaction đang giữ khoá hàng tour. `get` không
+ * hỏi DB: nó đã đọc danh sách ảnh nên suy bằng `pickCover` — cùng định nghĩa "bìa là
+ * dòng `hero`" (sửa JSDoc sai và bỏ export thừa, G14 sau vòng review F18).
  */
-export async function hasTourCover(db: Prisma.TransactionClient, id: string): Promise<boolean> {
+async function hasTourCover(db: Prisma.TransactionClient, id: string): Promise<boolean> {
   const count = await db.mediaAsset.count({
     where: { ownerType: MediaOwnerType.TOUR, ownerId: id, role: MediaRole.hero },
   });
