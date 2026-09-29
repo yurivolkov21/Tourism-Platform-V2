@@ -1,6 +1,11 @@
 /**
  * Ghi `alt` vào `media_assets` từ fixture `prisma/fixtures/media/alt-text.ts`.
  *
+ * ── Sau F18: dòng ảnh của TOUR là dữ liệu admin sửa (vòng review F18) ──
+ * Tab Photos cho admin sửa alt từng ảnh của tour. Script chỉ LẤP alt còn NULL ở dòng
+ * `TOUR`, không bao giờ đè alt admin đã viết; các chủ khác (địa danh, trang, bài viết)
+ * vẫn áp theo fixture như cũ.
+ *
  *   pnpm --filter @tourism/api media:alt          # chỉ in kế hoạch (mặc định)
  *   pnpm --filter @tourism/api media:alt -- --apply
  *
@@ -93,7 +98,8 @@ const { rows: seDoi } = await client.query(
   `SELECT count(*)::int AS n
      FROM media_assets m
      JOIN unnest($1::text[], $2::text[]) AS f(k, v) ON f.k = m.public_id
-    WHERE m.alt IS DISTINCT FROM f.v`,
+    WHERE m.alt IS DISTINCT FROM f.v
+      AND (m.owner_type <> 'TOUR' OR m.alt IS NULL)`,
   [KEYS, KEYS.map((k) => altText[k])],
 );
 console.log(`[alt] sẽ đổi: ${seDoi[0].n} dòng`);
@@ -109,7 +115,8 @@ const { rowCount } = await client.query(
   `UPDATE media_assets m
       SET alt = f.v
      FROM unnest($1::text[], $2::text[]) AS f(k, v)
-    WHERE m.public_id = f.k AND m.alt IS DISTINCT FROM f.v`,
+    WHERE m.public_id = f.k AND m.alt IS DISTINCT FROM f.v
+      AND (m.owner_type <> 'TOUR' OR m.alt IS NULL)`,
   [KEYS, KEYS.map((k) => altText[k])],
 );
 

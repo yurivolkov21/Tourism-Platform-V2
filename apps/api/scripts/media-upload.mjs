@@ -21,6 +21,12 @@
  * 3. **Ghi DB là upsert theo (ownerType, ownerId, publicId).** Chạy lại không
  *    nhân bản row, và sửa ghi công trong CREDITS.txt rồi chạy lại thì row được
  *    cập nhật.
+ *
+ * ── Sau F18: ảnh của TOUR là dữ liệu admin sửa (vòng review F18) ──
+ * Tab Photos cho admin sắp, đổi bìa, gỡ và sửa alt ảnh tour. Tour ĐÃ có dòng ảnh thì
+ * script bỏ qua hẳn: không upload đè file (`overwrite`), không ghi lại role, thứ tự
+ * hay alt. Tour chưa có dòng nào (DB mới dựng) vẫn được lấp như cũ. Đích là Supabase
+ * thì phải có cờ `--toi-biet-day-la-production` (cùng khuôn `media:alt`).
  */
 
 import { execFile } from 'node:child_process';
@@ -30,7 +36,25 @@ import cloudinary from 'cloudinary';
 import pg from 'pg';
 
 const DRY = process.argv.includes('--dry');
+const CHO_PHEP_PROD = process.argv.includes('--toi-biet-day-la-production');
 const HERE = import.meta.dirname;
+
+const DB_URL = process.env.DATABASE_URL ?? 'postgresql://tourism:tourism@localhost:5432/tourism';
+const DB_HOST = new URL(DB_URL).host;
+const LA_PROD = /supabase\.(com|co)$/i.test(DB_HOST.split(':')[0]);
+
+if (LA_PROD && !DRY && !CHO_PHEP_PROD) {
+  console.error(`
+✗ Đích là Supabase (${DB_HOST}) — hạ tầng SỐNG.
+
+  Script này upload đè file trên Cloudinary rồi ghi media_assets. CLAUDE.md §15:
+  session thi công không tự ghi lên hạ tầng sống. Nếu bạn CHỦ ĐÍCH chạy lên prod,
+  thêm cờ:
+
+      --toi-biet-day-la-production
+`);
+  process.exit(1);
+}
 const run = promisify(execFile);
 
 const {
@@ -59,11 +83,14 @@ if (plan.length === 0) {
   process.exit(0);
 }
 
-const client = new pg.Client({
-  connectionString:
-    process.env.DATABASE_URL ?? 'postgresql://tourism:tourism@localhost:5432/tourism',
-});
+const client = new pg.Client({ connectionString: DB_URL });
 await client.connect();
+
+/** Tour đã có dòng ảnh — admin sở hữu chúng từ F18, script không đụng. */
+const { rows: tourOwnerRows } = await client.query(
+  `SELECT DISTINCT owner_id FROM media_assets WHERE owner_type = 'TOUR'`,
+);
+const adminOwnedTours = new Set(tourOwnerRows.map((r) => r.owner_id));
 
 /** Khe brand-chrome khoá theo `key`; owner của asset là id của chính row slot. */
 const { rows: slotRows } = await client.query('SELECT id, key FROM site_media_slots');
@@ -82,6 +109,7 @@ function publicIdFor(item) {
 let uploaded = 0;
 let reused = 0;
 let rows = 0;
+let skippedTours = 0;
 const failures = [];
 /** file gốc → publicId đã upload, để ảnh mượn không đẩy lên lần hai. */
 const uploadedFiles = new Map();
@@ -93,6 +121,11 @@ for (const item of plan) {
   const ownerId = item.kind === 'site-slot' ? slotId.get(item.key) : item.ownerId;
   if (!ownerId) {
     failures.push(`${item.key ?? item.slug}: không tìm thấy owner trong DB`);
+    continue;
+  }
+  if (item.kind === 'tour' && adminOwnedTours.has(ownerId)) {
+    skippedTours++;
+    if (DRY) console.log(`  [dry] ${String(item.slug).padEnd(20)} → bỏ qua: tour đã có ảnh`);
     continue;
   }
 
@@ -193,6 +226,11 @@ console.log(
     ? `\n[media-upload] --dry: ${plan.length} chỗ gắn, KHÔNG upload gì.\n`
     : `\n[media-upload] upload ${uploaded} file · dùng lại ${reused} · ghi ${rows} row MediaAsset`,
 );
+if (skippedTours > 0) {
+  console.log(
+    `[media-upload] bỏ qua ${skippedTours} chỗ gắn của tour đã có ảnh — admin sửa ở tab Photos.`,
+  );
+}
 if (failures.length) {
   console.log(`[media-upload] ${failures.length} lỗi:`);
   for (const f of failures) console.log(`   ✗ ${f}`);
