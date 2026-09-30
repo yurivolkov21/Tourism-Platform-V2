@@ -89,7 +89,7 @@ Mỗi ADR tự chứa đầy đủ phần sửa bổ sung (AMEND) của nó; b�
 | [0046](adr/0046-departure-phase-derived.md) | Giai đoạn chuyến suy từ ngày; `status` chỉ là công tắc bán hàng | |
 | [0047](adr/0047-tour-editor-sections.md) | Sửa tour theo từng khối: thay nguyên danh sách, khoá phiên bản, cổng đăng tour | |
 | [0048](adr/0048-tour-photos.md) | Ảnh tour: một danh sách có thứ tự, kho địa danh làm thư viện, chỉ ảnh tự tải lên mới được dọn | |
-| [0049](adr/0049-tour-workspace-steps.md) | Khu sửa tour thành thanh bước: form một bên, cột phải một bên, bước cuối Review & publish | |
+| [0049](adr/0049-tour-workspace-steps.md) | Khu sửa tour thành thanh bước: form một bên, cột phải một bên, bước cuối Review & publish | 1 AMEND |
 | [0050](adr/0050-ai-concierge-chat.md) | Trợ lý AI: chat trong API, lịch sử ở server, tool ghi phải được khách duyệt, trần chi phí theo token | |
 
 ## Specs — sẽ xây gì

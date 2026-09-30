@@ -16,27 +16,27 @@ bước cuối Review & publish gom danh sách kiểm tra, công tắc On sale v
 Quyết định ở ADR-0049; mockup user duyệt (v7) ở `C:\Programming\Devs\Assets\mockups\2026-09-28-tour-workspace-steps\`.
 Không đổi API, contract, DB, web, mobile; luật ghi giữ nguyên.
 
-- **Bước là dữ liệu** (`5380ee10`). `tourSteps(detail)` suy trạng thái sáu bước từ
+- **Bước là dữ liệu** (`e12e874b`). `tourSteps(detail)` suy trạng thái sáu bước từ
   readiness ĐÃ LƯU; thanh bước và bước Review cùng đọc nó nên không thể nói khác nhau.
   Bộ tên `TourEditorStep`, `TOUR_EDITOR_STEPS`, `tourStepHref`, `activeTourStep` (trả
   `null` ở Departures).
-- **Khung hai cột** (`4df150d1`). `EditorFormFrame` nhận `lead`, `aside`, `next`;
+- **Khung hai cột** (`522957d3`). `EditorFormFrame` nhận `lead`, `aside`, `next`;
   `StepColumns` dựng lưới `minmax(0,1fr) 20rem` từ `xl`, cột phải `sticky`. Khối dùng
   chung ở `step-aside.tsx`: `StateMark`, `StepChecklist`, `StepTips`, `CoverPreviewCard`.
-- **Bước Review & publish** (`f349079e`). Route mới `/tours/[slug]/review`: năm hàng
+- **Bước Review & publish** (`7e964032`). Route mới `/tours/[slug]/review`: năm hàng
   kiểm tra (nút Fix mở chỗ thiếu đầu tiên), công tắc On sale khoá chiều bật kèm lý do,
   vùng xoá tour chỉ khi chưa từng có booking.
-- **Thanh bước và phần đầu** (`b2e95572`). Sáu icon có tooltip và chữ `sr-only`; phần
+- **Thanh bước và phần đầu** (`5cc8851e`). Sáu icon có tooltip và chữ `sr-only`; phần
   đầu chỉ còn trạng thái: chip On sale / Not on sale, lần lưu cuối, View on site (chỉ khi
   đang bán), Departures (`aria-current="page"` ở trang của nó). Xoá `TourTabs`,
   `TourReadinessPanel` cùng spec; `SITE_URL` gom về `lib/site.ts` ở cả bốn chỗ; câu
   `publish.workspace.notReady` nói "the checklist".
-- **Năm bước xếp lại** — Details (`b0d46bec`): ba card, việc cần làm tính trên giá trị
+- **Năm bước xếp lại** — Details (`519fe270`): ba card, việc cần làm tính trên giá trị
   đang gõ, thẻ xem trước card /tours, lưới 2×2 cho Good for và Badges. Photos
-  (`05554aa5`): ô tải lên nét đứt trong vùng thả file bọc cả card, ảnh bìa bên phải.
-  Itinerary (`df574aba`): thẻ ngày là Card `role="group"`, danh mục Days bên phải.
-  FAQ & policies (`12ab06ec`): hai card `#faq`, `#policies`, chính sách huỷ chỉ in một
-  lần ở cột phải. Costs (`458be09c`): Totals dời sang cột phải, giữ `role="region"` và
+  (`4d767d63`): ô tải lên nét đứt trong vùng thả file bọc cả card, ảnh bìa bên phải.
+  Itinerary (`4ba94a82`): thẻ ngày là Card `role="group"`, danh mục Days bên phải.
+  FAQ & policies (`97ac53fa`): hai card `#faq`, `#policies`, chính sách huỷ chỉ in một
+  lần ở cột phải. Costs (`bcbc947d`): Totals dời sang cột phải, giữ `role="region"` và
   `aria-live`. Mỗi bước có link "Next: …" cạnh Save.
 
 Chỗ lệch plan, kèm lý do:

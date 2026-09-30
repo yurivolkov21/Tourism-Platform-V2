@@ -94,7 +94,8 @@ Từ trên xuống:
    `/tours/<slug> · Last saved 28 Sep 2026, 14:27 UTC` (`formatDateTime(detail.version)`).
    Bên phải cùng hàng:
    - chip trạng thái (`Badge variant="outline"`, chấm tròn `bg-success` / `bg-muted-foreground`):
-     **On sale** hoặc **Not on sale**;
+     **On sale** hoặc **Off sale** (vòng review F19 đổi từ "Not on sale": cùng chữ với tab
+     lọc của bảng Tours, bài học 20 của P4e-2);
    - nút **View on site** (`ExternalLinkIcon`), link `https://www.nexora-travel.agency/tours/<slug>`
      mở tab mới — CHỈ khi đang bán (tắt bán thì trang web 404);
    - nút **Departures** (`CalendarDaysIcon`), link `/tours/<slug>/departures`,
@@ -178,8 +179,8 @@ Mọi khung form thành `Card` (`CardHeader` · `CardTitle` · `CardDescription`
   (`aria-live="polite"` giữ nguyên).
 - Trong card: một ô viền nét đứt (`rounded-lg border border-dashed bg-muted/30`) chứa
   `ImageIcon`, hai nút Upload photos · Add from library, và câu "Or drop photos here.
-  <formats>". Vùng thả file của F18 bọc CẢ ô ấy lẫn danh sách (thả vào đâu trong card
-  cũng tải lên).
+  <formats>". Vùng thả file là CẢ card (thả vào đâu trong card cũng tải lên) — vòng review
+  F19 dời bộ nghe lên `<Card>`, bản đầu chỉ phủ phần thân card.
 - Dưới ô: dòng báo file bị loại, lỗi danh sách, danh sách ảnh, dòng đang tải — giữ
   nguyên logic và tiêu điểm của F18 (`emptyFocus`, Make cover → ô alt).
 - Ghi chú chân form: "Saving replaces the tour’s photos in this order." (khi không có
@@ -197,8 +198,8 @@ Mọi khung form thành `Card` (`CardHeader` · `CardTitle` · `CardDescription`
 - Mỗi ngày một Card `id="day-N"` (giữ đích link), `CardTitle` "Day N"; ngày có tiêu đề
   trống thì `CardAction` là badge viền vàng "Needed before going on sale" và card có
   `ring-warning/60`. Ô Title · Plan for the day giữ nguyên.
-- Cột phải: card **Days** "Jump to a day. Stays in view while you scroll." — mỗi ngày
-  một link `#day-N` "Day N · <tiêu đề>" kèm ✓ (có tiêu đề) hoặc ! (trống), tính trên
+- Cột phải: card **Days** "Jump to a day." — mỗi ngày một link nhảy "Day N · <tiêu đề>"
+  (cuộn và dời tiêu điểm vào thẻ ngày, không đổi `#hash` — vòng review F19) kèm ✓ (có tiêu đề) hoặc ! (trống), tính trên
   giá trị đang soạn.
 - Next: FAQ & policies.
 
@@ -230,9 +231,10 @@ Mọi khung form thành `Card` (`CardHeader` · `CardTitle` · `CardDescription`
   `readinessIssues` đầu tiên của bước ấy). Hàng `optional` dùng vòng nét đứt.
 - Card **Delete this tour** — tour chưa từng có booking: `DeleteTourZone` (nội dung và
   hộp xác nhận giữ nguyên); đã có booking: câu "Tours that have been booked can't be
-  deleted. Take it off sale instead." không có nút.
+  deleted." không có nút, thêm "Take it off sale instead." chỉ khi tour còn bán (vòng review
+  F19: `DeleteTourZone` tự lo nhánh này).
 - Cột phải: card **Visibility** — dòng trạng thái ("On sale — travellers can find and
-  book it." / "Not on sale — hidden from the site."), công tắc `PublishToggle`
+  book it." / "Off sale — hidden from the site."), công tắc `PublishToggle`
   (`placement="workspace"`, `blocked` khi chưa đủ, `describedBy` trỏ câu `toggleBlocked`
   khi bị khoá), câu "Taking a tour off sale is always allowed."; card **When it goes on
   sale**: "It appears on /tours and on the region pages of its destinations." ·
@@ -303,9 +305,13 @@ know của trang tour; chi phí chỉ nội bộ.
 4. **Hộp hỏi lại** phải chặn cả link "Next" và nút Departures — chúng là `<a>` thật nên
    bộ nghe ở pha capture tự bắt; test một ca bằng link Next.
 5. **Tooltip trên thiết bị cảm ứng không hiện** — chữ `sr-only` trong link là tên thật
-   của nó; không dựa vào tooltip để truyền thông tin bắt buộc.
-6. **`xl:sticky`** chỉ dính khi cột phải thấp hơn cửa sổ; cột phải cao hơn thì cuộn
-   theo trang — chấp nhận, không đặt `max-h` + cuộn riêng.
+   của nó; không dựa vào tooltip để truyền thông tin bắt buộc. Vòng review F19 thêm dòng
+   chữ tên và trạng thái bước đang mở dưới thanh bước, chỉ hiện ở máy cảm ứng
+   (`pointer-coarse`).
+6. **`xl:sticky`** — ĐÍNH CHÍNH ở vòng review F19: hộp dính cao hơn cửa sổ KHÔNG cuộn theo
+   trang mà ghim theo mép trên và giấu phần dưới tới hết form (1366×768 mất Tips và dòng
+   giá của thẻ xem trước). Cột phải nay có `xl:max-h-[calc(100svh-2rem)]
+   xl:overflow-y-auto`.
 7. **Form F18** có vùng thả file và `emptyFocus` — xếp lại bố cục KHÔNG được làm mất
    hai thứ ấy.
 
@@ -347,15 +353,16 @@ bước và một chỗ duyệt trước khi bán. Không bỏ gì của Nexora.
 - F18 đang chờ review — review có thể đổi form Photos. Plan viết theo bản trên nhánh
   F18 (`9fa7baea`); thi công đọc lại bản đã merge trước khi xếp lại.
 - Đổi tên `tab` → `step` chạm nhiều file; typecheck bắt được chỗ sót.
-- Mobile: tooltip không hiện khi chạm; chấp nhận vì admin dùng máy tính là chính và tên
-  bước vẫn có ở chữ `sr-only` cùng tiêu đề card đầu của mỗi bước.
+- Mobile: tooltip không hiện khi chạm. Bản đầu dựa vào "tiêu đề card đầu của mỗi bước",
+  nhưng vòng review F19 đo: tiêu đề ấy KHÔNG phải tên bước ở 4/6 bước — nên máy cảm ứng
+  có dòng chữ bước đang mở dưới thanh bước (§4 mục 5).
 
 ## 9. Khác mockup v7, cố ý
 
 | Mockup | Spec | Lý do |
 | --- | --- | --- |
 | Nút "Departures · 6 upcoming" | "Departures" | `AdminTourDetail` chỉ có `departureCount` (kể cả chuyến huỷ); số sắp tới cần field mới ở contract |
-| Chip "Draft" | "Not on sale" | Tour gỡ bán không phải bản nháp; khớp chữ "On sale" của công tắc |
+| Chip "Draft" | "Off sale" | Tour gỡ bán không phải bản nháp; cùng chữ "Off sale" với tab lọc của bảng Tours (vòng review F19 đổi từ "Not on sale") |
 | Thẻ xem trước: badge "Popular" trên ảnh, giá "From $89" | Không badge trên ảnh; "Base price $89" kèm câu giải thích | Card thật không in badge (badge ở cạnh giá trang tour); giá "From" của web là chuyến rẻ nhất sắp tới, admin không có số ấy |
 | Gợi ý "Library photos keep their credit line" | Bỏ | Chưa đo được web hiện dòng ghi công ở đâu |
 | Mô tả card Policies = câu chính sách huỷ | Câu riêng; chính sách huỷ ở card cột phải | Tránh một câu in hai lần trên cùng màn |

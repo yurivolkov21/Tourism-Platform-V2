@@ -107,3 +107,21 @@ Mỗi bước vẫn một lệnh ghi, một nút Save, khoá phiên bản bằng
 | Thanh bước có chữ | Dòng phụ bị cắt ở khổ màn thường gặp (đo được); user chọn icon cộng tooltip. |
 | Departures nằm trong thanh bước | Nói sai rằng xong sáu bước là xong tour; nó là việc vận hành, readiness không phụ thuộc. |
 | Công tắc On sale ở lại phần đầu | Hai chỗ cùng quyết một việc; đặt cạnh danh sách kiểm tra thì lý do bị chặn hiện ngay bên cạnh. Gỡ bán gấp vẫn có công tắc ở bảng `/tours`. |
+
+## AMEND 1 — Vòng review F19 (30/09)
+
+Vòng review max trước merge (15 phát hiện, vá cả trên nhánh) đổi ba chỗ của quyết định
+gốc; sáu bước, thứ tự, luật suy trạng thái và vị trí công tắc giữ nguyên.
+
+- **§4, chip trạng thái:** "Off sale" thay "Not on sale" — cùng chữ với tab lọc của bảng
+  Tours, toast và dòng báo Departures (bài học 20 của P4e-2: một chữ mỗi khái niệm). Lý do
+  gốc (không phải "Draft") vẫn đứng.
+- **§6, cột phải:** hộp `sticky` cao hơn cửa sổ ghim theo mép trên và giấu phần dưới tới
+  hết form, không "cuộn theo trang" như spec §4.6 tưởng — cột phải nay có trần bằng cửa sổ
+  và tự cuộn bên trong. Link nhảy của cột phải không đổi `#hash`: mục lịch sử do trình
+  duyệt tạo mang `state` null, Next 16 bỏ qua popstate của nó, nên Back hỏng và hộp hỏi
+  lại bị lách; link cuộn tới đích và dời tiêu điểm thay vào đó.
+- **§3, bước Review:** đọc bản trang vừa đọc, không đọc bản layout đang giữ — layout không
+  render lại khi chuyển bước phía client, và hộp xoá từng đếm sai số chuyến sẽ mất theo.
+  Bản ấy và kết quả bật/tắt bán được đẩy lên `TourDetailProvider`. Vùng xoá tự lo tour đã
+  có booking.
