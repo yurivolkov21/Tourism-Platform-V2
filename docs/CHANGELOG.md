@@ -8,6 +8,55 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-09-30 — Vòng review F19 và bản vá (nhánh `feat/p4e-3c-tour-workspace-steps`)
+
+Review max (skill `code-review`) trên nhánh đã rebase lên `main` (`8fd51b54`; đụng
+CHANGELOG và open-items, giữ cả hai phía, entry F19 bên dưới mang hash sau rebase): mười
+góc soát, 26 ứng viên, kiểm chứng từng ứng viên, một lượt quét sót ra thêm sáu. Loại năm:
+công tắc On sale "không đẩy vào provider" (Next 16.3.4 xử lý `router.refresh()` đồng bộ,
+điều hướng kế tiếp vẫn nhận dữ liệu mới — chỉ còn chip phần đầu trễ một vòng, vẫn vá), bảo
+dòng ảnh bìa và dấu ngày tự suy luật (trùng hẳn `projectedReadiness`), đếm chính sách
+CANCELLATION (không đường nào tạo được), `activeTourStep` gọi hai lần, và phần "hồi quy" của
+vùng thả ảnh (vùng mới rộng hơn F18). Báo 15, vá cả 15 cùng phần dọn dẹp rẻ trong
+`604aae0b`; docs `5b1b223f` (ADR-0049 AMEND 1, spec F19 đính chính).
+
+Bốn mục nặng nhất:
+
+- **Link nhảy ở cột phải làm hỏng Back.** `<a href="#day-N">` (và `#faq`, `#policies`) tạo
+  mục lịch sử `state` null mà Next 16 bỏ qua popstate (`app-router.js`): bấm Day 5, Next,
+  rồi Back thì URL đổi mà form vẫn ở bước sau; sửa gì rồi bấm icon bước thì hộp hỏi lại bị
+  lách (so pathname với URL hiện tại) và bản sửa mất. `AsideJumpLink` nay cuộn tới đích và
+  dời tiêu điểm, không đổi hash.
+- **Hàng dòng chi phí bị cắt nút ở 1280–1348px** (màn 1920×1080 đặt 150%): lưới bốn cột
+  theo cửa sổ nằm trong cột form hẹp và Card `overflow-hidden`. Nay theo `@container`.
+- **Cột phải dính cao hơn cửa sổ giấu phần dưới** (1366×768 mất Tips và dòng giá của thẻ
+  xem trước; tour 30 ngày mất các ngày sau). Tiền đề spec §4.6 sai; nay trần `100svh` và tự
+  cuộn bên trong.
+- **Bước Review vứt lượt đọc mới**, dựng từ bản cũ của layout: hộp xoá có thể đếm "0
+  departures" khi người khác vừa thêm chuyến (xoá cascade). Nay dùng bản trang, đẩy lên
+  `TourDetailProvider`; ngoài provider vẫn dựng được.
+
+Còn lại: toast `TOUR_NOT_READY` ở `/tours` mở bước Review (`reviewHref`); dòng báo
+Departures chỉ tới bước Review kèm link; "Off sale" thay "Not on sale" (user chốt, cùng chữ
+bộ lọc `/tours`); "this step" thay "this tab" ở banner lệch phiên bản và hộp hỏi lại; dòng
+thiếu ghi "Missing — required to go on sale"; checklist Photos có mô tả riêng và chỉ hiện
+dòng alt khi có ảnh; "Take it off sale instead." chỉ khi tour còn bán (`DeleteTourZone` tự
+lo tour đã có booking); năm card có lại tên nhóm, Totals là heading; link Fix mang tên
+bước; máy cảm ứng có dòng chữ bước đang mở; thanh bước nhỏ lại dưới `sm` để không tràn ở
+320px; giá thẻ xem trước làm tròn đô như card web. Dọn dẹp: `ISSUE_STEP` khoá theo mục
+readiness, `nextTourStep` và thứ tự `tourSteps` lấy từ `TOUR_EDITOR_STEPS`,
+`OptionalStepCard`/`NoteCard` dùng chung, bỏ prop `lead`, `aside` bắt buộc, `ButtonLink` và
+`data-icon`, số câu hỏi và chính sách một bản, comment cũ về khung readiness và thanh tab.
+Ghi open-items, không vá: G18 thứ tự tab ở bước Review, G19 `tourPageUrl` cứng origin prod,
+G20 tương phản icon cảnh báo. Đột biến tay: 22 ca trên các chỗ vá, cả 22 bị giết.
+
+Thử tay trên production sau merge cần soi thêm bố cục: Costs ở 1280px, cột phải ở 1366×768,
+thanh bước ở 320px, và Back sau khi bấm link Day ở cột phải.
+
+Tests after (`gate:int` trên đỉnh đã rebase, hết 677 giây): unit 5024 — web 1592, admin
+1517 (thêm 20), api 1005, contract 560, mobile 159, mobile-ui 86, core 46, ui 23, i18n 18,
+tokens 18 — và int 702/702 trên DB riêng.
+
 ## 2026-09-29 — F19 khu sửa tour dạng thanh bước (nhánh `feat/p4e-3c-tour-workspace-steps`)
 
 Khu sửa tour `/tours/[slug]` bỏ hàng tab chữ: thanh bước chỉ có icon (tên bước và
