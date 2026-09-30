@@ -5,19 +5,18 @@ import * as React from 'react';
 import { isNewerVersion } from '@/lib/use-tour-form-state';
 
 /**
- * Bản tour mà PHẦN ĐẦU khu làm việc (tên, khung readiness, công tắc) đọc — vòng
- * review F17.
+ * Bản tour mới nhất mà PHẦN ĐẦU khu làm việc (tên, chip On sale / Off sale, View on
+ * site), thanh bước và bước Review cùng đọc — vòng review F17, cập nhật F19.
  *
- * Vì sao không đọc thẳng props của layout: lưu xong mà bấm ngay sang tab khác
- * thì Next bỏ lượt `router.refresh()` đang chờ (một lần điều hướng thắng lượt
- * refresh xếp sau), còn layout dùng chung KHÔNG render lại khi đổi tab. Khung
- * readiness và công tắc vì thế kẹt ở bản trước khi lưu — vd vẫn báo thiếu tóm
- * tắt vừa điền. Form đẩy bản server trả về sau mỗi lần lưu vào đây
- * (`usePublishSavedDetail`); lượt refresh chỉ còn là bước thêm.
+ * Vì sao không đọc thẳng props của layout: layout dùng chung KHÔNG render lại khi
+ * chuyển bước phía client, nên props của nó chỉ mới tới lượt `router.refresh()` kế
+ * tiếp. Form đẩy bản server trả về sau mỗi lần lưu vào đây (`usePublishSavedDetail`),
+ * bước Review đẩy bản nó vừa đọc và kết quả bật/tắt bán — phần đầu và thanh bước đổi
+ * ngay; lượt refresh chỉ còn là bước thêm.
  *
  * Luật chọn bản: props server mới nhận trừ khi CŨ hơn bản đang có (refresh về
  * muộn); cùng phiên bản thì nhận — bật/tắt bán giữ nguyên phiên bản (plan F17,
- * quyết định 2) nên đó là đường duy nhất `isPublished` mới đi tới.
+ * quyết định 2), nên bản cùng phiên bản vẫn có thể mang `isPublished` mới.
  */
 const DetailContext = React.createContext<AdminTourDetail | null>(null);
 const PublishContext = React.createContext<((detail: AdminTourDetail) => void) | null>(null);

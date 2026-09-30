@@ -1,6 +1,7 @@
 import { messages } from '@tourism/i18n';
 import { Alert, AlertDescription, AlertTitle } from '@tourism/ui/components/alert';
 import { EyeOffIcon } from 'lucide-react';
+import Link from 'next/link';
 
 const t = messages.admin.departures.list.unpublished;
 
@@ -18,15 +19,31 @@ const t = messages.admin.departures.list.unpublished;
  * Chỉ báo khi server nói RÕ `false`. Trong vài phút giữa hai lần deploy, admin
  * mới có thể đọc API cũ chưa có field này; coi "không biết" là "chưa đăng" thì
  * mọi tour đang bán đều hiện câu báo sai (vòng review F16).
+ *
+ * `reviewHref`: bước Review & publish — nơi đặt công tắc On sale từ F19, không còn ở
+ * phần đầu ngay trên dòng báo này (vòng review F19).
  */
-export function TourUnpublishedNotice({ isPublished }: { isPublished: boolean }) {
+export function TourUnpublishedNotice({
+  isPublished,
+  reviewHref,
+}: {
+  isPublished: boolean;
+  reviewHref?: string;
+}) {
   if (isPublished !== false) return null;
 
   return (
     <Alert role="status">
       <EyeOffIcon aria-hidden="true" />
       <AlertTitle>{t.title}</AlertTitle>
-      <AlertDescription>{t.body}</AlertDescription>
+      <AlertDescription>
+        <p>{t.body}</p>
+        {reviewHref ? (
+          <Link href={reviewHref} className="font-medium underline underline-offset-4">
+            {t.link}
+          </Link>
+        ) : null}
+      </AlertDescription>
     </Alert>
   );
 }

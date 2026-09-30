@@ -10,10 +10,9 @@ import {
 } from './tour-detail-context';
 
 /**
- * Bản tour mà PHẦN ĐẦU khu làm việc đọc (vòng review F17): lưu xong rồi bấm
- * ngay sang tab khác thì Next bỏ lượt `router.refresh()` đang chờ, còn layout
- * không render lại khi đổi tab — khung readiness và công tắc kẹt ở bản trước
- * khi lưu. Form đẩy bản vừa lưu vào đây, không trông vào lượt refresh nữa.
+ * Bản tour mà PHẦN ĐẦU khu làm việc và thanh bước đọc (vòng review F17, F19): layout
+ * không render lại khi chuyển bước phía client, nên props của nó chỉ mới tới lượt
+ * refresh kế tiếp. Form đẩy bản vừa lưu vào đây để phần đầu và thanh bước đổi ngay.
  */
 const V1 = '2026-09-28T01:00:00.000Z';
 const V2 = '2026-09-28T02:00:00.000Z';

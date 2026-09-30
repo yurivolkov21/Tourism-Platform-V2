@@ -34,7 +34,7 @@ import {
 import { usePublishSavedDetail } from '@/components/tours/editor/tour-detail-context';
 import { newItemKey } from '@/lib/list-editor';
 import { uploadPhoto } from '@/lib/photo-upload';
-import { projectedReadiness, tourPhotoThumb, tourStepHref } from '@/lib/tour-editor-view';
+import { nextTourStep, projectedReadiness, tourPhotoThumb } from '@/lib/tour-editor-view';
 import {
   acceptFiles,
   hasPhotoErrors,
@@ -148,7 +148,7 @@ export function TourPhotosForm({
     },
     onSaved: (next) => {
       form.adopt(next);
-      // Phần đầu (readiness, công tắc) theo kịp ngay, không chờ lượt refresh.
+      // Phần đầu và thanh bước theo kịp ngay, không chờ lượt refresh.
       publishSaved(next);
     },
   });
@@ -293,21 +293,27 @@ export function TourPhotosForm({
   }
 
   // Cột phải đọc danh sách ĐANG SOẠN (ADR-0049 §6): ảnh đầu là ảnh bìa, alt bắt buộc
-  // để lưu (`validatePhotosForm`).
+  // để lưu (`validatePhotosForm`). Dòng alt chỉ có khi đã có ảnh — không ảnh nào thì
+  // "alt trên mọi ảnh" đúng rỗng, không đáng một dấu ✓ (vòng review F19).
+  const hasPhotos = values.photos.length > 0;
   const altMissing = values.photos.filter((photo) => photo.alt.trim() === '').length;
   const checklist: ChecklistItem[] = [
     {
       key: 'cover',
       label: e.readiness.cover,
-      detail: a.required,
-      state: values.photos.length > 0 ? 'ok' : 'warn',
+      detail: hasPhotos ? a.required : a.requiredMissing,
+      state: hasPhotos ? 'ok' : 'warn',
     },
-    {
-      key: 'alt',
-      label: a.photos.altAll,
-      detail: altMissing === 0 ? a.photos.altDone : a.photos.altMissing(altMissing),
-      state: altMissing === 0 ? 'ok' : 'warn',
-    },
+    ...(hasPhotos
+      ? [
+          {
+            key: 'alt',
+            label: a.photos.altAll,
+            detail: altMissing === 0 ? a.photos.altDone : a.photos.altMissing(altMissing),
+            state: altMissing === 0 ? ('ok' as const) : ('warn' as const),
+          },
+        ]
+      : []),
   ];
 
   return (
@@ -322,16 +328,26 @@ export function TourPhotosForm({
         note={a.photos.saveNote}
         aside={
           <>
-            <StepChecklist items={checklist} />
+            <StepChecklist items={checklist} description={a.photos.checklistBody} />
             <CoverPreviewCard url={values.photos[0]?.url ?? null} />
             <StepTips items={a.photos.tips} />
           </>
         }
-        next={{ href: tourStepHref(detail.slug, 'itinerary'), label: e.tabs.itinerary }}
+        next={nextTourStep(detail.slug, 'photos')}
         onSubmit={submit}
         onReload={form.reload}
       >
-        <Card>
+        {/* Vùng thả file là CẢ card (spec F19 §2d.2): thả lên phần đầu card mà không ai
+            chặn thì trình duyệt mở ảnh và rời trang. Chỉ là đường tắt cho chuột — bàn phím
+            và trình đọc màn hình dùng nút Upload photos. */}
+        <Card
+          data-testid="photo-drop-zone"
+          onDragOver={(event) => event.preventDefault()}
+          onDrop={(event) => {
+            event.preventDefault();
+            void startUploads([...event.dataTransfer.files]);
+          }}
+        >
           <CardHeader>
             <CardTitle>{e.tabs.photos}</CardTitle>
             <CardDescription>{t.intro}</CardDescription>
@@ -342,18 +358,7 @@ export function TourPhotosForm({
             </CardAction>
           </CardHeader>
           <CardContent>
-            {/* biome-ignore lint/a11y/noStaticElementInteractions: vùng thả file chỉ là đường tắt cho chuột — bàn phím và trình đọc màn hình dùng nút Upload photos */}
-            <div
-              data-testid="photo-drop-zone"
-              className="grid gap-4"
-              onDragOver={(event) => event.preventDefault()}
-              onDrop={(event) => {
-                event.preventDefault();
-                void startUploads([...event.dataTransfer.files]);
-              }}
-            >
-              {/* Vùng thả file bọc CẢ ô tải lên lẫn danh sách (spec F19 §2d.2): thả vào đâu
-                  trong card cũng tải lên. */}
+            <div className="grid gap-4">
               <div className="flex flex-col items-center gap-3 rounded-lg border border-dashed bg-muted/30 px-4 py-6 text-center">
                 <ImageIcon aria-hidden="true" className="size-6 text-muted-foreground" />
                 <div className="flex flex-wrap items-center justify-center gap-2">

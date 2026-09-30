@@ -33,6 +33,7 @@ const row = (patch: Partial<TourRowVM> = {}): TourRowVM => ({
   isFeatured: false,
   heroUrl: null,
   editorHref: '/tours/hoi-an-lantern-evening',
+  reviewHref: '/tours/hoi-an-lantern-evening/review',
   departuresHref: '/tours/hoi-an-lantern-evening/departures',
   departuresLabel: t.manageDepartures('Hoi An Lantern Evening'),
   ...patch,

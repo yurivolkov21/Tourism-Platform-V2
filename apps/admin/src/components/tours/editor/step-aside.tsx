@@ -56,20 +56,21 @@ export function StateMark({ state, className }: { state: ChecklistState; classNa
   );
 }
 
-/** "This step" — việc cần làm của bước, tính trên giá trị đang soạn. */
+/**
+ * "This step" — việc cần làm của bước, tính trên giá trị đang soạn. `description` đổi
+ * được vì bước Photos có một dòng là luật LƯU (alt), không chỉ luật bán.
+ */
 export function StepChecklist({
   items,
-  title = a.thisStep,
   description = a.thisStepBody,
 }: {
   items: readonly ChecklistItem[];
-  title?: string;
   description?: string;
 }) {
   return (
     <Card size="sm">
       <CardHeader>
-        <CardTitle>{title}</CardTitle>
+        <CardTitle>{a.thisStep}</CardTitle>
         <CardDescription>{description}</CardDescription>
       </CardHeader>
       <CardContent>
@@ -89,14 +90,22 @@ export function StepChecklist({
   );
 }
 
-/** "Tips" — gợi ý viết, chữ tĩnh của từng bước. */
-export function StepTips({ items }: { items: readonly string[] }) {
+/** Card gạch đầu dòng chữ tĩnh: "Tips" của mỗi bước, "When it goes on sale" của Review. */
+export function NoteCard({
+  title,
+  icon,
+  items,
+}: {
+  title: string;
+  icon?: React.ReactNode;
+  items: readonly string[];
+}) {
   return (
     <Card size="sm">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <LightbulbIcon aria-hidden="true" className="size-4" />
-          {a.tips}
+          {icon}
+          {title}
         </CardTitle>
       </CardHeader>
       <CardContent>
@@ -107,6 +116,64 @@ export function StepTips({ items }: { items: readonly string[] }) {
         </ul>
       </CardContent>
     </Card>
+  );
+}
+
+/** "Tips" — gợi ý viết, chữ tĩnh của từng bước. */
+export function StepTips({ items }: { items: readonly string[] }) {
+  return (
+    <NoteCard
+      title={a.tips}
+      icon={<LightbulbIcon aria-hidden="true" className="size-4" />}
+      items={items}
+    />
+  );
+}
+
+/** Card "On this step · Optional" của hai bước tuỳ chọn (FAQ & policies, Costs). */
+export function OptionalStepCard({ children }: { children?: React.ReactNode }) {
+  return (
+    <Card size="sm">
+      <CardHeader>
+        <CardTitle>{a.onThisStep}</CardTitle>
+        <CardDescription>{a.optionalStep}</CardDescription>
+      </CardHeader>
+      {children ? <CardContent className="grid gap-1">{children}</CardContent> : null}
+    </Card>
+  );
+}
+
+/**
+ * Link nhảy tới một khối của CHÍNH bước này (danh mục ngày, FAQ, Policies). Không để
+ * trình duyệt đổi `#hash`: mục lịch sử do trình duyệt tạo mang `state` null, Next 16 bỏ
+ * qua popstate của nó (`app-router.js`), nên về sau Back đổi URL mà không đổi trang, và
+ * hộp hỏi lại (so pathname với URL hiện tại) để lọt một lần rời bước — mất bản sửa chưa
+ * lưu (vòng review F19). Thay vào đó cuộn tới đích và dời tiêu điểm vào nó; `href` giữ
+ * cho ngữ nghĩa link. `{' '}` giữa hai phần để tên truy cập không dính chữ ("Day 2 Done").
+ */
+export function AsideJumpLink({
+  targetId,
+  label,
+  meta,
+}: {
+  targetId: string;
+  label: React.ReactNode;
+  meta: React.ReactNode;
+}) {
+  return (
+    <a
+      href={`#${targetId}`}
+      onClick={(event) => {
+        const target = document.getElementById(targetId);
+        if (target === null) return;
+        event.preventDefault();
+        target.scrollIntoView({ block: 'start' });
+        target.focus({ preventScroll: true });
+      }}
+      className="flex items-center justify-between gap-2 rounded-md px-2 py-1.5 text-sm outline-none hover:bg-muted focus-visible:ring-3 focus-visible:ring-ring/50"
+    >
+      {label} {meta}
+    </a>
   );
 }
 
@@ -129,7 +196,7 @@ export function CoverPreviewCard({ url }: { url: string | null }) {
 }
 
 /** Khung ảnh 3:2 dùng chung cho ảnh bìa và thẻ xem trước. */
-export function CoverFrame({ url, children }: { url: string | null; children?: React.ReactNode }) {
+function CoverFrame({ url, children }: { url: string | null; children?: React.ReactNode }) {
   return (
     <div className="relative aspect-[3/2] overflow-hidden rounded-lg bg-muted">
       {url ? (

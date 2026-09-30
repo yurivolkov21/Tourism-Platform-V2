@@ -190,6 +190,11 @@ describe('TourCostsForm', () => {
 describe('TourCostsForm — bước Costs (F19)', () => {
   const a = e.aside;
 
+  it('tiêu đề Totals là heading cấp 3 như <h3> cũ (vòng review F19)', () => {
+    renderForm(detailFixture({ costItems: [LUNCH] }));
+    expect(screen.getByRole('heading', { level: 3, name: t.totals.title })).toBeInTheDocument();
+  });
+
   it('Totals ở cột phải, ngoài form — vẫn tính ngay khi gõ', async () => {
     const { user } = renderForm(detailFixture({ costItems: [LUNCH] }));
     expect(totals().closest('aside')).not.toBeNull();

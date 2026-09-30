@@ -32,7 +32,7 @@ export function leaveTarget(click: LeaveClick): string | null {
   const here = new URL(click.current);
   const next = new URL(anchor.href, here);
   if (next.origin !== here.origin) return null;
-  // Chỉ đổi #hash (link trong khung readiness trỏ tới một ô của CHÍNH trang này).
+  // Chỉ đổi #hash (link tới một ô của CHÍNH trang này) thì không phải rời trang.
   if (next.pathname === here.pathname && next.search === here.search) return null;
   return `${next.pathname}${next.search}${next.hash}`;
 }

@@ -548,8 +548,19 @@ describe('TourPhotosForm — bước Photos (F19)', () => {
   it('danh sách rỗng: dòng ảnh bìa báo thiếu, khung ảnh bìa nói chưa có ảnh', () => {
     renderForm(detailFixture({ isPublished: false, photos: [] }));
     const rows = within(aside()).getAllByRole('listitem');
-    expect(rows[0]).toHaveTextContent(`${state.warn}${e.readiness.cover}${a.required}`);
+    // Dòng thiếu khác CHỮ dòng đủ, không chỉ khác màu icon (vòng review F19).
+    expect(rows[0]).toHaveTextContent(`${state.warn}${e.readiness.cover}${a.requiredMissing}`);
     expect(within(aside()).getByText(a.preview.noCover)).toBeInTheDocument();
+    // Không ảnh nào thì "alt trên mọi ảnh" đúng rỗng — không có dòng ✓ ấy (vòng review F19).
+    expect(within(aside()).queryByText(a.photos.altAll)).toBeNull();
+  });
+
+  it('có ảnh: mô tả nói bước này có luật LƯU lẫn luật bán; dòng alt hiện', () => {
+    renderForm(detailFixture({ photos: [COVER_PHOTO] }));
+    expect(within(aside()).getByText(a.photos.checklistBody)).toBeInTheDocument();
+    expect(within(aside()).queryByText(a.thisStepBody)).toBeNull();
+    expect(within(aside()).getByText(a.photos.altAll)).toBeInTheDocument();
+    expect(within(aside()).getByText(a.required)).toBeInTheDocument();
   });
 
   it('Make cover: ảnh bìa ở cột phải đổi theo ngay, trước khi lưu', async () => {

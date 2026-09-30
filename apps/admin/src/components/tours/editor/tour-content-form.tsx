@@ -20,9 +20,10 @@ import { FormField } from '@/components/kit/form-field';
 import { FormSelect } from '@/components/kit/form-select';
 import { ListEditor } from '@/components/kit/list-editor';
 import { EditorFormFrame } from '@/components/tours/editor/editor-form-frame';
+import { AsideJumpLink, OptionalStepCard } from '@/components/tours/editor/step-aside';
 import { usePublishSavedDetail } from '@/components/tours/editor/tour-detail-context';
 import { newItemKey } from '@/lib/list-editor';
-import { tourStepHref } from '@/lib/tour-editor-view';
+import { nextTourStep } from '@/lib/tour-editor-view';
 import {
   type ContentContractCode,
   type ContentFormErrors,
@@ -80,7 +81,7 @@ export function TourContentForm({
     projected: () => detail.readiness,
     onSaved: (next) => {
       form.adopt(next);
-      // Phần đầu (readiness, công tắc) theo kịp ngay, không chờ lượt refresh.
+      // Phần đầu và thanh bước theo kịp ngay, không chờ lượt refresh.
       publishSaved(next);
     },
   });
@@ -107,36 +108,29 @@ export function TourContentForm({
     void save(() => saveAction(contentPayload(detail.id, version, values)));
   }
 
-  // Đếm theo danh sách ĐANG SOẠN (ADR-0049 §6). Hai link cùng trang (#faq, #policies):
-  // hộp hỏi lại không chặn khi chỉ đổi hash.
+  // Đếm theo danh sách ĐANG SOẠN (ADR-0049 §6); hai link nhảy tới hai card bên trái.
   const aside = (
     <>
-      <Card size="sm">
-        <CardHeader>
-          <CardTitle>{a.onThisStep}</CardTitle>
-          <CardDescription>{a.optionalStep}</CardDescription>
-        </CardHeader>
-        <CardContent className="grid gap-1">
-          <a
-            href="#faq"
-            className="flex items-center justify-between gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-muted"
-          >
-            <span className="font-medium">{t.faqTitle}</span>{' '}
+      <OptionalStepCard>
+        <AsideJumpLink
+          targetId="faq"
+          label={<span className="font-medium">{t.faqTitle}</span>}
+          meta={
             <span className="text-xs text-muted-foreground">
               {a.content.faqCount(values.faqs.length)}
             </span>
-          </a>
-          <a
-            href="#policies"
-            className="flex items-center justify-between gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-muted"
-          >
-            <span className="font-medium">{t.policiesTitle}</span>{' '}
+          }
+        />
+        <AsideJumpLink
+          targetId="policies"
+          label={<span className="font-medium">{t.policiesTitle}</span>}
+          meta={
             <span className="text-xs text-muted-foreground">
               {a.content.policyCount(values.policies.length)}
             </span>
-          </a>
-        </CardContent>
-      </Card>
+          }
+        />
+      </OptionalStepCard>
       {/* Chính sách huỷ sinh từ độ dài chuyến (ADR-0041), không nhập ở đây. */}
       <Card size="sm">
         <CardHeader>
@@ -155,13 +149,15 @@ export function TourContentForm({
         banner={banner}
         serverChanged={form.serverChanged}
         aside={aside}
-        next={{ href: tourStepHref(detail.slug, 'costs'), label: e.tabs.costs }}
+        next={nextTourStep(detail.slug, 'content')}
         onSubmit={submit}
         onReload={form.reload}
       >
-        <Card id="faq">
+        {/* `role="group"` + tên: thay `fieldset/legend` cũ (Card của kit là <div>); đích
+            của link nhảy ở cột phải nên nhận được tiêu điểm (vòng review F19). */}
+        <Card id="faq" tabIndex={-1} role="group" aria-labelledby="faq-heading">
           <CardHeader>
-            <CardTitle>{t.faqTitle}</CardTitle>
+            <CardTitle id="faq-heading">{t.faqTitle}</CardTitle>
             <CardDescription>{a.content.faqBody}</CardDescription>
           </CardHeader>
           <CardContent>
@@ -219,9 +215,9 @@ export function TourContentForm({
           </CardContent>
         </Card>
 
-        <Card id="policies">
+        <Card id="policies" tabIndex={-1} role="group" aria-labelledby="policies-heading">
           <CardHeader>
-            <CardTitle>{t.policiesTitle}</CardTitle>
+            <CardTitle id="policies-heading">{t.policiesTitle}</CardTitle>
             <CardDescription>{a.content.policiesBody}</CardDescription>
           </CardHeader>
           <CardContent className="grid gap-3">

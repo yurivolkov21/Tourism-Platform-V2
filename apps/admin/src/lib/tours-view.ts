@@ -41,8 +41,13 @@ export interface TourRowVM {
   isPublished: boolean;
   isFeatured: boolean;
   heroUrl: string | null;
-  /** Khu làm việc của tour (F17) — đích của tên tour và của nút mở tour trong toast. */
+  /** Khu làm việc của tour (F17) — đích của tên tour. */
   editorHref: string;
+  /**
+   * Bước Review & publish — đích của nút mở tour trong toast TOUR_NOT_READY: toast hứa
+   * "see what's missing" mà chỉ bước Review liệt kê đủ mọi chỗ thiếu (vòng review F19).
+   */
+  reviewHref: string;
   /** Màn chuyến khởi hành của tour này (F12 dựng). */
   departuresHref: string;
   /** Tên đọc-màn-hình của link sang màn chuyến. */
@@ -78,6 +83,7 @@ export function toTourRowVM(row: AdminTourRow): TourRowVM {
     isFeatured: row.isFeatured,
     heroUrl: row.heroUrl,
     editorHref: tourStepHref(row.slug, 'details'),
+    reviewHref: tourStepHref(row.slug, 'review'),
     departuresHref: departuresHref(row.slug),
     departuresLabel: t.manageDepartures(row.title),
   };

@@ -16,10 +16,11 @@ import * as React from 'react';
 import { leaveTarget } from '@/lib/unsaved-changes';
 
 /**
- * Hỏi lại trước khi rời một tab còn thay đổi chưa lưu (spec F17 §2i).
+ * Hỏi lại trước khi rời một bước còn thay đổi chưa lưu (spec F17 §2i).
  *
- * Bọc CẢ khu làm việc (đầu trang, thanh tab, nội dung), không chỉ form: link rời
- * trang nằm ở thanh tab, ở khung readiness, ở nút Back và ở sidebar — nên
+ * Bọc CẢ khu làm việc (đầu trang, thanh bước, nội dung), không chỉ form: link rời
+ * trang nằm ở thanh bước, ở nút Departures, ở link Next và Fix, ở nút Back và ở
+ * sidebar — nên
  * provider nghe cú bấm ở `document`, pha CAPTURE, tức TRƯỚC `onClick` của
  * `next/link` (React gắn listener ở root, nằm dưới `document`). Chặn ở đó là
  * link không điều hướng; "Discard changes" thì tự `router.push` tới đúng đường.

@@ -57,6 +57,11 @@ const SLUG_SHAPE_COPY =
   'Use lowercase letters and numbers, with single hyphens between words — for example day-trips.';
 const SLUG_HINT_COPY = 'Set once. It appears in shared links, so it cannot be changed later.';
 
+// Số câu hỏi và số chính sách của bước FAQ & policies — MỘT bản cho dòng trạng thái của
+// thanh bước lẫn cột phải của bước ấy, để hai chỗ không trôi lệch (vòng review F19).
+const QUESTION_COUNT_COPY = (n: number) => (n === 1 ? '1 question' : `${n} questions`);
+const POLICY_COUNT_COPY = (n: number) => (n === 1 ? '1 policy' : `${n} policies`);
+
 export const messages = {
   // Dọn 19/08 (sổ nợ B1 mở rộng): 21 khối cấp-1 KHÔNG consumer nào trên web —
   // bản nháp static-first/port Nexora đã bị thay bằng copy trong component hoặc
@@ -2941,7 +2946,7 @@ export const messages = {
     /** Hỏi lại khi rời một form có thay đổi chưa lưu (spec F17 §2i). */
     unsavedChanges: {
       title: 'Discard unsaved changes?',
-      body: 'You changed this tab but have not saved it. Leaving now throws those changes away.',
+      body: 'You changed this step but have not saved it. Leaving now throws those changes away.',
       discard: 'Discard changes',
       keep: 'Keep editing',
     },
@@ -4076,9 +4081,7 @@ export const messages = {
           /** `items`: các mục thiếu đã hạ chữ đầu, nối bằng dấu phẩy. */
           missing: (items: string) => `Missing: ${items}`,
           optionalContent: (faqs: number, policies: number) =>
-            `Optional · ${faqs === 1 ? '1 question' : `${faqs} questions`} · ${
-              policies === 1 ? '1 policy' : `${policies} policies`
-            }`,
+            `Optional · ${QUESTION_COUNT_COPY(faqs)} · ${POLICY_COUNT_COPY(policies)}`,
           optionalCosts: (lines: number) =>
             lines === 0
               ? 'Optional · no cost lines'
@@ -4090,11 +4093,17 @@ export const messages = {
           stepLabel: (title: string, summary: string) => `${title}: ${summary}`,
           /** Chữ cho trình đọc màn hình thay cho dấu trạng thái (icon ẩn). */
           state: { ok: 'Done', warn: 'Needs attention', optional: 'Optional' },
+          /** Chữ nhìn thấy của bước đang mở, chỉ hiện ở máy cảm ứng (không có tooltip). */
+          caption: (title: string, summary: string) => `${title} · ${summary}`,
         },
         header: {
           onSale: 'On sale',
-          /** Không phải "Draft": tour gỡ bán không phải bản nháp (spec §9). */
-          offSale: 'Not on sale',
+          /**
+           * Không phải "Draft": tour gỡ bán không phải bản nháp. Cùng chữ "Off sale" với tab
+           * lọc của bảng Tours, toast và dòng báo Departures — một chữ mỗi khái niệm (bài
+           * học 20 của P4e-2; vòng review F19 đổi từ "Not on sale").
+           */
+          offSale: 'Off sale',
           viewOnSite: 'View on site',
           lastSaved: (when: string) => `Last saved ${when}`,
         },
@@ -4104,6 +4113,8 @@ export const messages = {
           thisStep: 'This step',
           thisStepBody: 'What this step needs before the tour can go on sale.',
           required: 'Required to go on sale',
+          /** Dòng đang thiếu phải khác chữ dòng đã đủ, không chỉ khác màu icon (WCAG 1.4.1). */
+          requiredMissing: 'Missing — required to go on sale',
           optionalStep: 'Optional — the tour can go on sale without it.',
           /** Tiêu đề card cột phải của hai bước tuỳ chọn (FAQ & policies, Costs). */
           onThisStep: 'On this step',
@@ -4126,6 +4137,8 @@ export const messages = {
             body: 'How the card reads with what you have now.',
             noCover: 'No cover photo yet',
             untitled: 'Untitled tour',
+            /** Giá gốc đang gõ chưa hợp lệ. */
+            noPrice: '—',
             /** Luật của card web: chip giảm giá thắng nhãn Featured (tour-list-card.tsx). */
             featuredNote: 'The Featured label shows unless the card shows a discount.',
             basePrice: 'Base price',
@@ -4133,6 +4146,8 @@ export const messages = {
             priceNote: 'The site shows the cheapest upcoming departure.',
           },
           photos: {
+            /** Bước Photos có một dòng là luật LƯU (alt), không chỉ luật bán. */
+            checklistBody: 'What this step needs to save, and to go on sale.',
             altAll: 'Alt text on every photo',
             altDone: 'Required to save',
             altMissing: (n: number) =>
@@ -4148,14 +4163,14 @@ export const messages = {
           },
           itinerary: {
             daysTitle: 'Days',
-            daysBody: 'Jump to a day. Stays in view while you scroll.',
+            daysBody: 'Jump to a day.',
             needed: 'Needed before going on sale',
           },
           content: {
             faqBody: 'Questions travellers ask before booking. Shown on the tour page.',
             policiesBody: 'Booking and general rules shown on the tour page.',
-            faqCount: (n: number) => (n === 1 ? '1 question' : `${n} questions`),
-            policyCount: (n: number) => (n === 1 ? '1 policy' : `${n} policies`),
+            faqCount: QUESTION_COUNT_COPY,
+            policyCount: POLICY_COUNT_COPY,
             cancellationTitle: 'Cancellation policy',
           },
           costs: {
@@ -4167,10 +4182,12 @@ export const messages = {
           title: 'Ready to go on sale?',
           body: 'Every required step has to be green before the tour can go on sale.',
           fix: 'Fix',
+          /** Tên truy cập của link Fix: nhiều link cùng chữ "Fix" phải phân biệt được. */
+          fixLabel: (step: string) => `Fix ${step}`,
           visibility: {
             title: 'Visibility',
             onSale: 'On sale — travellers can find and book it.',
-            offSale: 'Not on sale — hidden from the site.',
+            offSale: 'Off sale — hidden from the site.',
             always: 'Taking a tour off sale is always allowed.',
           },
           after: {
@@ -4179,10 +4196,6 @@ export const messages = {
               'It appears on /tours and on the region pages of its destinations.',
               'Travellers can book the departures marked Bookable.',
             ],
-          },
-          deleteBlocked: {
-            title: 'Delete this tour',
-            body: 'Tours that have been booked can’t be deleted. Take it off sale instead.',
           },
         },
         readiness: {
@@ -4195,7 +4208,7 @@ export const messages = {
         },
         banners: {
           stale:
-            'Someone else saved this tour while you were editing. Reload to see their version — the changes on this tab will be lost.',
+            'Someone else saved this tour while you were editing. Reload to see their version — the changes on this step will be lost.',
           reload: 'Reload',
           /** Dải của TOUR_NOT_READY: liệt kê chỗ thiếu như bước Review. */
           notReady:
@@ -4531,6 +4544,9 @@ export const messages = {
           },
           title: 'Delete this tour',
           body: 'Only a tour that has never been booked can be deleted.',
+          /** Tour đã có booking: vùng xoá vẫn hiện, không nút; câu sau chỉ hiện khi còn bán. */
+          blocked: 'Tours that have been booked can’t be deleted.',
+          blockedOnSale: 'Take it off sale instead.',
           action: 'Delete tour',
           dialog: {
             title: 'Delete this tour?',
@@ -5462,11 +5478,13 @@ export const messages = {
          * chỗ người đọc sẽ đi sửa; bản đầu bảo "Publish" trong khi trang ấy
          * không có chữ nào như thế (vòng review F16). Từ F17 công tắc nằm ngay
          * phần đầu khu làm việc, trên dòng báo này — bỏ "in the Tours list"
-         * (vòng review F17).
+         * (vòng review F17). F19 dời công tắc xuống bước Review & publish, nên câu chỉ
+         * tới bước ấy và dòng báo mang link (vòng review F19).
          */
         unpublished: {
           title: 'This tour is off sale',
-          body: 'Travellers cannot see this tour, so none of its departures can be booked, even those marked Bookable. Turn on its On sale switch to start selling.',
+          body: 'Travellers cannot see this tour, so none of its departures can be booked, even those marked Bookable. Put it on sale from the Review & publish step.',
+          link: 'Open Review & publish',
         },
         filterLabel: 'Filter by status',
         all: 'All',

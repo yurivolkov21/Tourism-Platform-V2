@@ -33,6 +33,9 @@ describe('toTourRowVM', () => {
   it('dựng sẵn đường sang màn chuyến và khu làm việc, bảng không ghép chuỗi', () => {
     const vm = toTourRowVM(ROW);
     expect(vm.editorHref).toBe('/tours/hoi-an-lantern-evening');
+    // Toast TOUR_NOT_READY hứa "see what's missing": chỉ bước Review liệt kê đủ mọi chỗ
+    // thiếu kèm nút Fix (vòng review F19) — Details chỉ nói phần của nó.
+    expect(vm.reviewHref).toBe('/tours/hoi-an-lantern-evening/review');
     expect(vm.departuresHref).toBe('/tours/hoi-an-lantern-evening/departures');
     expect(vm.departuresLabel).toBe(t.list.manageDepartures('Hoi An Lantern Evening'));
   });

@@ -21,10 +21,11 @@ import { FormField } from '@/components/kit/form-field';
 import { FormSelect } from '@/components/kit/form-select';
 import { ListEditor } from '@/components/kit/list-editor';
 import { EditorFormFrame } from '@/components/tours/editor/editor-form-frame';
+import { OptionalStepCard } from '@/components/tours/editor/step-aside';
 import { usePublishSavedDetail } from '@/components/tours/editor/tour-detail-context';
 import { formatAmount } from '@/lib/bookings-view';
 import { newItemKey } from '@/lib/list-editor';
-import { costBreakdown, tourStepHref } from '@/lib/tour-editor-view';
+import { costBreakdown, nextTourStep } from '@/lib/tour-editor-view';
 import {
   type CostDraft,
   type CostsContractCode,
@@ -87,7 +88,7 @@ export function TourCostsForm({
     projected: () => detail.readiness,
     onSaved: (next) => {
       form.adopt(next);
-      // Phần đầu (readiness, công tắc) theo kịp ngay, không chờ lượt refresh.
+      // Phần đầu và thanh bước theo kịp ngay, không chờ lượt refresh.
       publishSaved(next);
     },
   });
@@ -111,7 +112,10 @@ export function TourCostsForm({
     <>
       <Card size="sm" role="region" aria-labelledby="tour-cost-totals">
         <CardHeader>
-          <CardTitle id="tour-cost-totals">{t.totals.title}</CardTitle>
+          {/* Tiêu đề Totals là heading như `<h3>` cũ (Card của kit là <div>). */}
+          <CardTitle id="tour-cost-totals" role="heading" aria-level={3}>
+            {t.totals.title}
+          </CardTitle>
         </CardHeader>
         <CardContent aria-live="polite">
           {totals.costPrice === null ? (
@@ -136,12 +140,7 @@ export function TourCostsForm({
           )}
         </CardContent>
       </Card>
-      <Card size="sm">
-        <CardHeader>
-          <CardTitle>{a.onThisStep}</CardTitle>
-          <CardDescription>{a.optionalStep}</CardDescription>
-        </CardHeader>
-      </Card>
+      <OptionalStepCard />
     </>
   );
 
@@ -154,7 +153,7 @@ export function TourCostsForm({
         serverChanged={form.serverChanged}
         note={t.note}
         aside={aside}
-        next={{ href: tourStepHref(detail.slug, 'review'), label: e.tabs.review }}
+        next={nextTourStep(detail.slug, 'costs')}
         onSubmit={submit}
         onReload={form.reload}
       >
@@ -163,7 +162,9 @@ export function TourCostsForm({
             <CardTitle>{a.costs.title}</CardTitle>
             <CardDescription>{a.costs.body}</CardDescription>
           </CardHeader>
-          <CardContent>
+          {/* Lưới hàng theo bề ngang CARD, không theo cửa sổ: từ `xl` form nằm cạnh cột phải
+              nên hẹp đi, lưới bốn cột theo cửa sổ tràn và Card cắt mất nút (vòng review F19). */}
+          <CardContent className="@container">
             <ListEditor<CostDraft>
               items={values.items}
               onChange={(items) => form.setValues({ items })}
@@ -185,7 +186,7 @@ export function TourCostsForm({
                 const itemErrors = errors[item.key];
                 const field = (name: string) => `cost-${item.key}-${name}`;
                 return (
-                  <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-[10rem_1fr_8rem_10rem]">
+                  <div className="grid gap-3 @md:grid-cols-2 @2xl:grid-cols-[10rem_1fr_8rem_10rem]">
                     <FormField id={field('category')} label={t.category}>
                       {(describedBy) => (
                         <FormSelect

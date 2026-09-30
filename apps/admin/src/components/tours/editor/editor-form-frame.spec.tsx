@@ -27,6 +27,7 @@ function frame(props: Partial<React.ComponentProps<typeof EditorFormFrame>> = {}
       dirty={false}
       pending={false}
       banner={null}
+      aside={<p>Right column</p>}
       onSubmit={onSubmit}
       onReload={onReload}
       {...props}
@@ -93,7 +94,14 @@ describe('EditorFormFrame', () => {
     render(
       <UnsavedChangesProvider>
         <a href="/tours/ha-long/itinerary">Itinerary</a>
-        <EditorFormFrame dirty pending={false} banner={null} onSubmit={vi.fn()} onReload={onReload}>
+        <EditorFormFrame
+          dirty
+          pending={false}
+          banner={null}
+          aside={null}
+          onSubmit={vi.fn()}
+          onReload={onReload}
+        >
           <input aria-label="Name" />
         </EditorFormFrame>
       </UnsavedChangesProvider>,
@@ -114,6 +122,7 @@ describe('EditorFormFrame', () => {
         <a href="/tours/ha-long/itinerary">Itinerary</a>
         <EditorFormFrame
           dirty={false}
+          aside={null}
           busy
           pending={false}
           banner={null}
@@ -170,6 +179,7 @@ describe('EditorFormFrame', () => {
     const { unmount } = render(
       <EditorFormFrame
         dirty
+        aside={null}
         pending={false}
         banner={{ kind: 'error', message: 'Something broke', uncertain: true }}
         onSubmit={vi.fn()}
@@ -198,6 +208,7 @@ describe('EditorFormFrame', () => {
     render(
       <EditorFormFrame
         dirty
+        aside={null}
         pending={false}
         banner={null}
         note="Saved costs apply from now on."
@@ -225,25 +236,21 @@ describe('EditorFormFrame', () => {
 });
 
 describe('EditorFormFrame — bố cục bước (ADR-0049 §6)', () => {
-  it('có aside: cột phải là <aside> đứng SAU form trong DOM', () => {
-    frame({ aside: <p>Right column</p> });
+  it('cột phải là <aside> đứng SAU form trong DOM', () => {
+    frame();
     const aside = screen.getByRole('complementary');
     expect(aside).toHaveTextContent('Right column');
     const form = screen.getByRole('button', { name: t.save }).closest('form');
     expect(form?.compareDocumentPosition(aside)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
   });
 
-  it('không aside: không có <aside> nào — form giữ một cột như trước', () => {
+  // Vòng review F19: hộp sticky cao hơn cửa sổ ghim theo mép trên và giấu phần dưới tới
+  // hết form (1366×768 mất Tips và dòng giá của thẻ xem trước) — cột phải phải có trần
+  // bằng cửa sổ và tự cuộn bên trong.
+  it('cột phải dính có trần bằng cửa sổ và tự cuộn bên trong', () => {
     frame();
-    expect(screen.queryByRole('complementary')).toBeNull();
-  });
-
-  it('lead đứng TRƯỚC form, ngoài form', () => {
-    frame({ lead: <p>Intro line</p> });
-    const lead = screen.getByText('Intro line');
-    expect(lead.closest('form')).toBeNull();
-    const form = screen.getByRole('button', { name: t.save }).closest('form');
-    expect(lead.compareDocumentPosition(form as Node)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+    const aside = screen.getByRole('complementary');
+    expect(aside).toHaveClass('xl:sticky', 'xl:max-h-[calc(100svh-2rem)]', 'xl:overflow-y-auto');
   });
 
   it('next: link "Next: <bước>" ở chân form, đứng trước nút Save', () => {
@@ -261,6 +268,7 @@ describe('EditorFormFrame — bố cục bước (ADR-0049 §6)', () => {
       <UnsavedChangesProvider>
         <EditorFormFrame
           dirty
+          aside={null}
           pending={false}
           banner={null}
           next={{ href: '/tours/ha-long/photos', label: 'Photos' }}

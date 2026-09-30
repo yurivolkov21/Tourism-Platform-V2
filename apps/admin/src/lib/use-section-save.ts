@@ -18,7 +18,7 @@ import type { EditorWriteResult } from '@/lib/tour-editor-write';
  *   chỉ để vẽ: hai lần gọi trong CÙNG một lượt render đọc chung một `pending`
  *   cũ, ref thì không.
  * - Thành công: form nhận NGUYÊN tour mới (`version` mới) rồi `router.refresh()`
- *   cho phần đầu (readiness, công tắc) theo kịp.
+ *   cho layout (phần đầu, thanh bước) theo kịp.
  * - `STALE_TOUR`: dải báo kèm Reload, form GIỮ chữ đang gõ.
  * - `TOUR_NOT_READY`: dải liệt kê chỗ thiếu, tính từ bản dự tính của chính lệnh này.
  * - `NOT_FOUND`: tour đã bị xoá — toast rồi về `/tours`.

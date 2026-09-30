@@ -10,6 +10,7 @@ import { formatAmount } from '@/lib/bookings-view';
 import { departuresHref, parseDeparturesSearchParams } from '@/lib/departures-query';
 import { toDepartureRowVM } from '@/lib/departures-view';
 import { orphanPageHref, type RawSearchParams } from '@/lib/table-query';
+import { tourStepHref } from '@/lib/tour-editor-view';
 import {
   cancelDepartureAction,
   createDepartureAction,
@@ -77,7 +78,10 @@ export default async function DeparturesPage({
 
         {/* Tour chưa đăng thì khách không đặt được chuyến nào, kể cả chuyến On
             sale — nói một lần ở đây (spec F16 §2h). */}
-        <TourUnpublishedNotice isPublished={paged.tour.isPublished} />
+        <TourUnpublishedNotice
+          isPublished={paged.tour.isPublished}
+          reviewHref={tourStepHref(slug, 'review')}
+        />
       </div>
 
       <DeparturesTable

@@ -37,7 +37,7 @@ describe('TourWorkspaceHeader', () => {
     expect(screen.queryByRole('switch')).toBeNull();
   });
 
-  it('tắt bán: chip "Not on sale", KHÔNG có View on site (trang web 404)', () => {
+  it('tắt bán: chip "Off sale", KHÔNG có View on site (trang web 404)', () => {
     render(<TourWorkspaceHeader detail={detailFixture({ isPublished: false })} />);
     expect(screen.getByText(t.header.offSale)).toBeInTheDocument();
     expect(screen.queryByRole('link', { name: t.header.viewOnSite })).toBeNull();

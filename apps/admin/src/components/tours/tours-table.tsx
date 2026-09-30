@@ -142,7 +142,7 @@ function buildColumns(setPublished: SetPublishedAction) {
         <PublishToggle
           tour={row.original}
           setPublished={setPublished}
-          notReadyHref={row.original.editorHref}
+          notReadyHref={row.original.reviewHref}
         />
       ),
     }),

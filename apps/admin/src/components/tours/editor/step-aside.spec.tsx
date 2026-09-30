@@ -1,8 +1,16 @@
-import { render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { messages } from '@tourism/i18n';
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { TourCardPreviewVM } from '@/lib/tour-editor-view';
-import { CoverPreviewCard, StepChecklist, StepTips, TourCardPreview } from './step-aside';
+import {
+  AsideJumpLink,
+  CoverPreviewCard,
+  NoteCard,
+  OptionalStepCard,
+  StepChecklist,
+  StepTips,
+  TourCardPreview,
+} from './step-aside';
 
 /**
  * Khối dùng chung của cột phải (ADR-0049 §6): danh sách việc cần làm của bước, gợi ý,
@@ -30,18 +38,79 @@ describe('StepChecklist', () => {
     expect(within(rows[1] as HTMLElement).getByText(a.required)).toBeInTheDocument();
   });
 
-  it('nhận tiêu đề và mô tả riêng', () => {
-    render(<StepChecklist title="On this step" description="Optional." items={[]} />);
-    expect(screen.getByText('On this step')).toBeInTheDocument();
-    expect(screen.getByText('Optional.')).toBeInTheDocument();
+  it('nhận mô tả riêng (bước Photos có dòng là luật lưu); tiêu đề luôn "This step"', () => {
+    render(<StepChecklist description="Needed to save." items={[]} />);
+    expect(screen.getByText(a.thisStep)).toBeInTheDocument();
+    expect(screen.getByText('Needed to save.')).toBeInTheDocument();
   });
 });
 
-describe('StepTips', () => {
+describe('StepTips và NoteCard', () => {
   it('tiêu đề "Tips" và đủ từng gợi ý', () => {
     render(<StepTips items={['One.', 'Two.']} />);
     expect(screen.getByText(a.tips)).toBeInTheDocument();
     expect(screen.getAllByRole('listitem').map((row) => row.textContent)).toEqual(['One.', 'Two.']);
+  });
+
+  it('NoteCard nhận tiêu đề riêng — khối "When it goes on sale" của Review', () => {
+    render(<NoteCard title="When it goes on sale" items={['It appears on /tours.']} />);
+    expect(screen.getByText('When it goes on sale')).toBeInTheDocument();
+    expect(screen.getByRole('listitem')).toHaveTextContent('It appears on /tours.');
+  });
+});
+
+describe('OptionalStepCard', () => {
+  it('tiêu đề "On this step", câu "Optional"; có nội dung thì hiện kèm', () => {
+    render(
+      <OptionalStepCard>
+        <span>2 questions</span>
+      </OptionalStepCard>,
+    );
+    expect(screen.getByText(a.onThisStep)).toBeInTheDocument();
+    expect(screen.getByText(a.optionalStep)).toBeInTheDocument();
+    expect(screen.getByText('2 questions')).toBeInTheDocument();
+  });
+});
+
+/**
+ * Vòng review F19: link nhảy KHÔNG để trình duyệt đổi #hash — mục lịch sử do trình duyệt
+ * tạo có `state` null, Next bỏ qua popstate của nó nên Back hỏng và hộp hỏi lại bị lách.
+ */
+describe('AsideJumpLink', () => {
+  const scrollIntoView = vi.fn();
+  beforeEach(() => {
+    scrollIntoView.mockReset();
+    Element.prototype.scrollIntoView = scrollIntoView;
+  });
+
+  function renderWithTarget() {
+    render(
+      <>
+        <div id="day-2" tabIndex={-1}>
+          Day 2 card
+        </div>
+        <AsideJumpLink targetId="day-2" label={<span>Day 2</span>} meta={<span>Done</span>} />
+      </>,
+    );
+    return screen.getByRole('link', { name: 'Day 2 Done' });
+  }
+
+  it('tên truy cập tách hai phần bằng khoảng trắng; href giữ #id cho ngữ nghĩa link', () => {
+    expect(renderWithTarget()).toHaveAttribute('href', '#day-2');
+  });
+
+  it('bấm: chặn đổi hash, cuộn tới đích và dời tiêu điểm vào nó', () => {
+    const link = renderWithTarget();
+    const clicked = fireEvent.click(link);
+    expect(clicked).toBe(false); // preventDefault → trình duyệt không tạo mục lịch sử
+    expect(scrollIntoView).toHaveBeenCalledTimes(1);
+    expect(screen.getByText('Day 2 card')).toHaveFocus();
+  });
+
+  it('đích không tồn tại: để trình duyệt tự xử lý, không ném lỗi', () => {
+    render(<AsideJumpLink targetId="missing" label="FAQ" meta="0 questions" />);
+    expect(fireEvent.click(screen.getByRole('link'))).toBe(true);
+    expect(scrollIntoView).not.toHaveBeenCalled();
   });
 });
 
@@ -70,7 +139,7 @@ describe('TourCardPreview', () => {
     featured: true,
     facts: 'Hạ Long · 3 days · Max 12',
     rating: { value: '4.7', count: '128' },
-    price: '$199.00',
+    price: '$199',
   };
 
   it('Featured: chip trên ảnh kèm câu luật giảm giá; dữ kiện, tên, sao; giá GỐC kèm câu giải thích', () => {
@@ -83,7 +152,7 @@ describe('TourCardPreview', () => {
     expect(screen.getByText('4.7')).toBeInTheDocument();
     expect(screen.getByText('(128)')).toBeInTheDocument();
     expect(screen.getByText(a.preview.basePrice)).toBeInTheDocument();
-    expect(screen.getByText('$199.00')).toBeInTheDocument();
+    expect(screen.getByText('$199')).toBeInTheDocument();
     expect(screen.getByText(a.preview.priceNote)).toBeInTheDocument();
   });
 

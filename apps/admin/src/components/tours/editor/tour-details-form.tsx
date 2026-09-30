@@ -40,11 +40,11 @@ import type { TourEditorOptions } from '@/lib/api/tours';
 import { newItemKey } from '@/lib/list-editor';
 import {
   formatDayList,
+  nextTourStep,
   optionLabel,
   projectedReadiness,
   removedItineraryDays,
   tourCardPreview,
-  tourStepHref,
 } from '@/lib/tour-editor-view';
 import {
   type DestinationDraft,
@@ -68,7 +68,7 @@ import { useTourFormState } from '@/lib/use-tour-form-state';
  * SOẠN), thẻ xem trước card /tours và gợi ý. Vùng xoá tour ở bước Review & publish.
  *
  * `detail` đọc từ PROPS cho mọi luật phụ thuộc trạng thái server (đang bán? có
- * chuyến? sàn ghế?) — sau khi admin bấm On sale ở phần đầu, `router.refresh()`
+ * chuyến? sàn ghế?) — sau khi admin bật bán ở bước Review hay lưu một bước, `router.refresh()`
  * đưa props mới xuống. Giá trị các ô, bản gốc để so "có thay đổi" và `version`
  * nằm trong `useTourFormState`: form KHÔNG bị dựng lại khi phiên bản đổi (vòng
  * review F17) — bản mới được đón khi form sạch, hoặc báo bằng dải stale khi
@@ -129,7 +129,7 @@ export function TourDetailsForm({
       }),
     onSaved: (next) => {
       form.adopt(next);
-      // Phần đầu (readiness, công tắc) theo kịp ngay, không chờ lượt refresh.
+      // Phần đầu và thanh bước theo kịp ngay, không chờ lượt refresh.
       publishSaved(next);
     },
     onFieldError: (code) => {
@@ -207,13 +207,14 @@ export function TourDetailsForm({
     {
       key: 'summary',
       label: e.readiness.summary,
-      detail: a.required,
+      // Dòng thiếu khác CHỮ dòng đủ, không chỉ khác màu icon (vòng review F19).
+      detail: draftReadiness.summary ? a.required : a.requiredMissing,
       state: draftReadiness.summary ? 'ok' : 'warn',
     },
     {
       key: 'primaryDestination',
       label: e.readiness.primaryDestination,
-      detail: a.required,
+      detail: draftReadiness.primaryDestination ? a.required : a.requiredMissing,
       state: draftReadiness.primaryDestination ? 'ok' : 'warn',
     },
     {
@@ -252,11 +253,12 @@ export function TourDetailsForm({
             <StepTips items={a.details.tips} />
           </>
         }
-        next={{ href: tourStepHref(detail.slug, 'photos'), label: e.tabs.photos }}
+        next={nextTourStep(detail.slug, 'details')}
       >
-        <Card>
+        {/* Ba card là nhóm có tên — thay `fieldset/legend` cũ (Card của kit là <div>). */}
+        <Card role="group" aria-labelledby="tour-basics-heading">
           <CardHeader>
-            <CardTitle>{t.sections.basics}</CardTitle>
+            <CardTitle id="tour-basics-heading">{t.sections.basics}</CardTitle>
             <CardDescription>{a.details.basicsBody}</CardDescription>
           </CardHeader>
           <CardContent className="grid gap-4">
@@ -410,9 +412,9 @@ export function TourDetailsForm({
           </CardContent>
         </Card>
 
-        <Card id="tour-destinations">
+        <Card id="tour-destinations" role="group" aria-labelledby="tour-destinations-heading">
           <CardHeader>
-            <CardTitle>{t.sections.destinations}</CardTitle>
+            <CardTitle id="tour-destinations-heading">{t.sections.destinations}</CardTitle>
             <CardDescription>{t.destinationsHint}</CardDescription>
           </CardHeader>
           <CardContent className="grid gap-3">
@@ -485,9 +487,9 @@ export function TourDetailsForm({
           </CardContent>
         </Card>
 
-        <Card>
+        <Card role="group" aria-labelledby="tour-selling-heading">
           <CardHeader>
-            <CardTitle>{t.sections.selling}</CardTitle>
+            <CardTitle id="tour-selling-heading">{t.sections.selling}</CardTitle>
             <CardDescription>{a.details.sellingBody}</CardDescription>
           </CardHeader>
           <CardContent className="grid gap-6">

@@ -43,6 +43,7 @@ const ROW: TourRowVM = {
   isFeatured: false,
   heroUrl: null,
   editorHref: '/tours/hoi-an-lantern-evening',
+  reviewHref: '/tours/hoi-an-lantern-evening/review',
   departuresHref: '/tours/hoi-an-lantern-evening/departures',
   departuresLabel: messages.admin.tours.list.manageDepartures('Hoi An Lantern Evening'),
 };
@@ -293,9 +294,9 @@ describe('PublishToggle', () => {
   });
 
   describe('ở phần đầu khu làm việc tour (vòng review F17)', () => {
-    it('TOUR_NOT_READY nghĩa là trang đã cũ → câu riêng, refresh để khung readiness nói thiếu gì', async () => {
-      // Ở đây khung readiness nằm ngay dưới và công tắc chỉ bấm được khi khung
-      // nói "đủ" — bị chặn tức dữ liệu trang đã cũ (tab hay người khác vừa sửa).
+    it('TOUR_NOT_READY nghĩa là trang đã cũ → câu riêng, refresh để bước Review nói thiếu gì', async () => {
+      // Ở bước Review danh sách kiểm tra nằm ngay cạnh và công tắc chỉ bấm được khi
+      // danh sách nói "đủ" — bị chặn tức dữ liệu trang đã cũ (bước khác hay người khác vừa sửa).
       const user = userEvent.setup();
       const setPublished = vi.fn().mockResolvedValue({ ok: false, code: 'TOUR_NOT_READY' });
       render(

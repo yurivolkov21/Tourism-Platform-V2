@@ -185,6 +185,16 @@ describe('TourContentForm — bước FAQ & policies (F19)', () => {
   const a = e.aside;
   const aside = () => within(screen.getByRole('complementary'));
 
+  it('FAQ và Policies là nhóm có tên; link ở cột phải dời tiêu điểm vào card, không đổi hash', async () => {
+    Element.prototype.scrollIntoView = vi.fn();
+    const { user } = renderForm();
+    expect(screen.getByRole('group', { name: t.faqTitle })).toBeInTheDocument();
+    const policies = screen.getByRole('group', { name: t.policiesTitle });
+    await user.click(aside().getByRole('link', { name: new RegExp(`^${t.policiesTitle}`) }));
+    expect(policies).toHaveFocus();
+    expect(window.location.hash).toBe('');
+  });
+
   it('hai card mang id="faq" và id="policies"; cột phải đếm theo danh sách ĐANG SOẠN', async () => {
     const { user } = renderForm();
     expect(document.getElementById('faq')).toHaveTextContent(t.faqTitle);

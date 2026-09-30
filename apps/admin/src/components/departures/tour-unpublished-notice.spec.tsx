@@ -19,6 +19,17 @@ describe('TourUnpublishedNotice', () => {
     expect(notice).toHaveTextContent(t.body);
   });
 
+  // Vòng review F19: công tắc On sale dời khỏi phần đầu xuống bước Review & publish —
+  // dòng báo chỉ tới bước ấy bằng link, không bảo "bật công tắc" không ở đâu trên trang.
+  it('có link tới bước Review & publish, nơi đặt công tắc On sale', () => {
+    render(<TourUnpublishedNotice isPublished={false} reviewHref="/tours/ha-long/review" />);
+
+    expect(screen.getByRole('link', { name: t.link })).toHaveAttribute(
+      'href',
+      '/tours/ha-long/review',
+    );
+  });
+
   it('là vùng `status`, không phải `alert` — thông tin tĩnh không được ngắt lời trình đọc màn hình', () => {
     render(<TourUnpublishedNotice isPublished={false} />);
 

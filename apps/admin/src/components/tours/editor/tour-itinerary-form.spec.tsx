@@ -174,7 +174,15 @@ describe('TourItineraryForm — bước Itinerary (F19)', () => {
   const state = e.steps.state;
   const days = () => within(screen.getByRole('complementary'));
 
-  it('câu giới thiệu là `lead`: ngoài form, đứng trước form', () => {
+  it('link ngày ở cột phải dời tiêu điểm vào thẻ ngày, không đổi hash (vòng review F19)', async () => {
+    Element.prototype.scrollIntoView = vi.fn();
+    const { user } = renderForm();
+    await user.click(days().getByRole('link', { name: new RegExp(`^${t.day(2)}`) }));
+    expect(document.getElementById('day-2')).toHaveFocus();
+    expect(window.location.hash).toBe('');
+  });
+
+  it('câu giới thiệu trải trên hai cột: ngoài form, đứng trước form', () => {
     renderForm();
     const intro = screen.getByText(t.intro(3));
     expect(intro.closest('form')).toBeNull();

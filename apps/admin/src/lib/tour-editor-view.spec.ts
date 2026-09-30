@@ -6,6 +6,7 @@ import {
   activeTourStep,
   costBreakdown,
   formatDayList,
+  nextTourStep,
   onSaleShortfalls,
   optionLabel,
   projectedReadiness,
@@ -232,6 +233,33 @@ describe('tourStepHref', () => {
   });
 });
 
+/**
+ * Link "Next:" ở chân form suy từ thứ tự bước (vòng review F19): trước đây mỗi form
+ * tự gõ bước kế, đổi thứ tự bước là năm link đi sai mà test vẫn xanh.
+ */
+describe('nextTourStep', () => {
+  it('bước kế lấy từ TOUR_EDITOR_STEPS: đường dẫn và nhãn đi cùng một bước', () => {
+    expect(nextTourStep('ha-long', 'details')).toEqual({
+      href: '/tours/ha-long/photos',
+      label: 'Photos',
+    });
+    expect(nextTourStep('ha-long', 'costs')).toEqual({
+      href: '/tours/ha-long/review',
+      label: 'Review & publish',
+    });
+  });
+
+  it('mỗi bước trỏ đúng bước liền sau; bước cuối không có bước kế', () => {
+    TOUR_EDITOR_STEPS.forEach((step, index) => {
+      const after = TOUR_EDITOR_STEPS[index + 1];
+      expect(nextTourStep('ha-long', step)?.href).toBe(
+        after === undefined ? undefined : tourStepHref('ha-long', after),
+      );
+    });
+    expect(nextTourStep('ha-long', 'review')).toBeUndefined();
+  });
+});
+
 describe('activeTourStep', () => {
   it.each([
     ['/tours/ha-long', 'details'],
@@ -255,14 +283,8 @@ describe('tourSteps', () => {
 
   it('đúng thứ tự thanh bước, đường dẫn và tên bước', () => {
     const steps = tourSteps(detailFixture());
-    expect(steps.map((step) => step.step)).toEqual([
-      'details',
-      'photos',
-      'itinerary',
-      'content',
-      'costs',
-      'review',
-    ]);
+    // Thứ tự lấy từ CHÍNH hằng TOUR_EDITOR_STEPS — không có bản thứ hai để lệch.
+    expect(steps.map((step) => step.step)).toEqual([...TOUR_EDITOR_STEPS]);
     expect(steps.map((step) => step.href)).toEqual([
       '/tours/ha-long-bay-cruise',
       '/tours/ha-long-bay-cruise/photos',
@@ -376,9 +398,14 @@ describe('tourCardPreview', () => {
         featured: true,
         facts: 'Hạ Long · 3 days · Max 12',
         rating: { value: '4.7', count: '1,280' },
-        price: '$199.00',
+        // Như `formatMoney` của card web: đô tròn, không số lẻ.
+        price: '$199',
       },
     );
+  });
+
+  it('giá có số lẻ làm tròn như card web: 199.50 → "$200"', () => {
+    expect(tourCardPreview(detailFixture(), { ...draft, basePrice: '199.50' }).price).toBe('$200');
   });
 
   it('ô gõ dở thì bỏ mẩu ấy; giá chưa hợp lệ in "—"; tên trống là "Untitled tour"; chưa có ảnh', () => {
@@ -392,7 +419,7 @@ describe('tourCardPreview', () => {
     });
     expect(vm.title).toBe('Untitled tour');
     expect(vm.facts).toBe('');
-    expect(vm.price).toBe('—');
+    expect(vm.price).toBe(messages.admin.tours.editor.aside.preview.noPrice);
     expect(vm.coverUrl).toBeNull();
     // Fixture gốc: chưa ai đánh giá (`ratingAvg: null`) — card web in "Not yet reviewed".
     expect(vm.rating).toBeNull();
@@ -401,6 +428,6 @@ describe('tourCardPreview', () => {
   it('một ngày đọc "1 day"; giá 0 không phải giá gốc hợp lệ', () => {
     const vm = tourCardPreview(detailFixture(), { ...draft, days: 1, basePrice: '0' });
     expect(vm.facts).toBe('Hạ Long · 1 day · Max 12');
-    expect(vm.price).toBe('—');
+    expect(vm.price).toBe(messages.admin.tours.editor.aside.preview.noPrice);
   });
 });

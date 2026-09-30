@@ -39,7 +39,6 @@ export function EditorFormFrame({
   note,
   blockedNote,
   busy = false,
-  lead,
   aside,
   next,
   onSubmit,
@@ -65,10 +64,8 @@ export function EditorFormFrame({
    * (vòng review F18).
    */
   busy?: boolean;
-  /** Dòng trải hết bề ngang TRÊN hai cột (Itinerary: câu giới thiệu). */
-  lead?: React.ReactNode;
-  /** Cột phải của bước — dính khi cuộn từ `xl`. Vắng thì form một cột như F17. */
-  aside?: React.ReactNode;
+  /** Cột phải của bước — dính khi cuộn từ `xl`. Mọi bước đều có. */
+  aside: React.ReactNode;
   /** Link "Next: <bước>" ở chân form, cạnh nút Save. */
   next?: { href: string; label: string };
   onSubmit: () => void;
@@ -97,7 +94,7 @@ export function EditorFormFrame({
         {next ? (
           <Link href={next.href} className={buttonVariants({ variant: 'ghost' })}>
             {t.next(next.label)}
-            <ChevronRightIcon aria-hidden="true" />
+            <ChevronRightIcon data-icon="inline-end" aria-hidden="true" />
           </Link>
         ) : null}
         <Button
@@ -111,32 +108,33 @@ export function EditorFormFrame({
     </form>
   );
 
-  return (
-    <>
-      {lead}
-      <StepColumns aside={aside}>{form}</StepColumns>
-    </>
-  );
+  return <StepColumns aside={aside}>{form}</StepColumns>;
 }
 
 /**
  * Lưới hai cột của một bước (ADR-0049 §6): nội dung chính trái, cột phải `20rem` dính
- * khi cuộn từ `xl`; hẹp hơn thì một cột, cột phải xuống dưới. Không `aside` thì trả
- * nguyên nội dung — form một cột như F17. Bước Review (không có form) dùng thẳng khung này.
+ * khi cuộn từ `xl`; hẹp hơn thì một cột, cột phải xuống dưới. Bước Review (không có
+ * form) dùng thẳng khung này.
+ *
+ * Cột phải có trần bằng cửa sổ và tự cuộn bên trong (vòng review F19): hộp sticky cao
+ * hơn cửa sổ KHÔNG "cuộn theo trang" như spec §4.6 tưởng — nó ghim theo mép trên và
+ * giấu phần dưới tới hết form. `p-px` để viền `ring-1` của card không bị khung cuộn cắt.
  */
 export function StepColumns({
   aside,
   children,
 }: {
-  aside?: React.ReactNode;
+  aside: React.ReactNode;
   children: React.ReactNode;
 }) {
-  if (aside === undefined || aside === null) return <>{children}</>;
   return (
     <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_20rem]">
       {children}
       {/* `data-slot`: móc cho bước soi bố cục bằng CSS build thật (plan F19, Task 10). */}
-      <aside data-slot="step-aside" className="grid min-w-0 gap-4 xl:sticky xl:top-4">
+      <aside
+        data-slot="step-aside"
+        className="grid min-w-0 gap-4 xl:sticky xl:top-4 xl:max-h-[calc(100svh-2rem)] xl:overflow-y-auto xl:p-px"
+      >
         {aside}
       </aside>
     </div>

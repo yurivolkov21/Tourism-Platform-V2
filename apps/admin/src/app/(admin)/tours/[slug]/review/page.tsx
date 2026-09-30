@@ -10,12 +10,20 @@ export const metadata: Metadata = { title: 'Review & publish — Nexora back off
 /**
  * Bước Review & publish (ADR-0049 §3). Phần đầu và `AdminShell` ở layout.
  *
- * Đọc tour chỉ để giữ đúng luật của các bước kia: không đọc được thì ra trang lỗi hay
- * 404 — cùng lượt đọc với layout nhờ React `cache()`, không tốn request. Thân bước đọc
- * bản MỚI NHẤT từ `TourDetailProvider`, đúng bản thanh bước đang đọc.
+ * Đọc tour MỖI lần vào bước và đưa bản ấy cho bước, như mọi bước khác: chuyển bước phía
+ * client thì layout KHÔNG render lại, nên `cache()` chỉ gộp với layout ở lượt tải cả trang
+ * (vòng review F19 — bản trước vứt lượt đọc này và dựng từ bản cũ của layout, hộp xoá đếm
+ * sai số chuyến sẽ mất theo). Không đọc được thì ra trang lỗi hay 404.
  */
 export default async function TourReviewPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  if (!(await loadAdminTour(slug))) notFound();
-  return <TourReviewStep setPublished={setTourPublishedAction} remove={deleteTourAction} />;
+  const detail = await loadAdminTour(slug);
+  if (!detail) notFound();
+  return (
+    <TourReviewStep
+      detail={detail}
+      setPublished={setTourPublishedAction}
+      remove={deleteTourAction}
+    />
+  );
 }

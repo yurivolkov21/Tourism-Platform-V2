@@ -392,7 +392,7 @@ describe('TourDetailsForm', () => {
     expect(field(t.title)).toHaveValue('Mine');
   });
 
-  it('ô tóm tắt và khung điểm đến mang id mà khung readiness trỏ tới', () => {
+  it('ô tóm tắt và khung điểm đến mang id mà link Fix của bước Review trỏ tới', () => {
     renderForm();
 
     expect(field(t.summary)).toHaveAttribute('id', 'tour-summary');
@@ -534,6 +534,19 @@ describe('TourDetailsForm — bước Details (F19)', () => {
   const a = e.aside;
   const state = e.steps.state;
   const aside = () => screen.getByRole('complementary');
+
+  it('ba card là nhóm có tên — thay fieldset/legend cũ (vòng review F19)', () => {
+    renderForm();
+    for (const name of [t.sections.basics, t.sections.destinations, t.sections.selling]) {
+      expect(screen.getByRole('group', { name })).toBeInTheDocument();
+    }
+  });
+
+  it('dòng đang thiếu nói ra bằng chữ, không chỉ đổi màu icon (vòng review F19)', async () => {
+    const { user } = renderForm(detailFixture({ isPublished: false }));
+    await user.clear(field(t.summary));
+    expect(within(aside()).getAllByRole('listitem')[0]).toHaveTextContent(a.requiredMissing);
+  });
 
   it('"This step" tính trên giá trị ĐANG SOẠN: xoá tóm tắt là dòng ấy hết xanh ngay', async () => {
     const { user } = renderForm(detailFixture({ isPublished: false }));

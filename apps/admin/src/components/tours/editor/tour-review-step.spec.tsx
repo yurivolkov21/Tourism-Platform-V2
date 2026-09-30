@@ -1,9 +1,10 @@
-import { render, screen, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import type { AdminTourDetail } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
 import { describe, expect, it, vi } from 'vitest';
+import type { SetPublishedAction } from '@/lib/tours-publish';
 import { detailFixture } from '@/test/tour-detail';
-import { TourDetailProvider } from './tour-detail-context';
+import { TourDetailProvider, useWorkspaceDetail } from './tour-detail-context';
 import { TourReviewStep } from './tour-review-step';
 
 vi.mock('next/navigation', () => ({ useRouter: () => ({ push: vi.fn(), refresh: vi.fn() }) }));
@@ -18,10 +19,31 @@ const e = messages.admin.tours.editor;
 const r = e.review;
 const s = e.steps;
 
-function renderStep(detail: AdminTourDetail) {
+/** Đọc bản mà phần đầu (provider) đang giữ — để thấy bước Review có đẩy bản mới lên không. */
+function HeaderProbe() {
+  const detail = useWorkspaceDetail();
+  return (
+    <p data-testid="header-probe">
+      {`${detail.isPublished ? 'on' : 'off'} · ${detail.departureCount} departures`}
+    </p>
+  );
+}
+
+/**
+ * `detail` là bản TRANG vừa đọc; `layout` là bản cũ hơn mà layout (provider) đang giữ —
+ * layout không render lại khi chuyển bước phía client (vòng review F19).
+ */
+function renderStep(
+  detail: AdminTourDetail,
+  {
+    layout = detail,
+    setPublished = vi.fn<SetPublishedAction>(),
+  }: { layout?: AdminTourDetail; setPublished?: SetPublishedAction } = {},
+) {
   render(
-    <TourDetailProvider detail={detail}>
-      <TourReviewStep setPublished={vi.fn()} remove={vi.fn()} />
+    <TourDetailProvider detail={layout}>
+      <HeaderProbe />
+      <TourReviewStep detail={detail} setPublished={setPublished} remove={vi.fn()} />
     </TourDetailProvider>,
   );
 }
@@ -42,7 +64,7 @@ describe('TourReviewStep — danh sách kiểm tra', () => {
       `${s.state.optional}${e.tabs.content}Optional · 0 questions · 0 policies`,
       `${s.state.optional}${e.tabs.costs}Optional · no cost lines`,
     ]);
-    expect(screen.queryByRole('link', { name: r.fix })).toBeNull();
+    expect(screen.queryAllByRole('link', { name: /^Fix/ })).toHaveLength(0);
   });
 
   it('bước thiếu: CHỈ hàng ấy có nút Fix, trỏ tới chỗ thiếu đầu tiên', () => {
@@ -56,11 +78,11 @@ describe('TourReviewStep — danh sách kiểm tra', () => {
     expect(itinerary).toHaveTextContent(
       `${s.state.warn}${e.tabs.itinerary}Missing: an itinerary for days 2–3`,
     );
-    expect(within(itinerary).getByRole('link', { name: r.fix })).toHaveAttribute(
-      'href',
-      '/tours/ha-long-bay-cruise/itinerary#day-2',
-    );
-    expect(screen.getAllByRole('link', { name: r.fix })).toHaveLength(1);
+    // Tên truy cập kèm tên bước: nhiều link "Fix" phải phân biệt được (vòng review F19).
+    const fix = within(itinerary).getByRole('link', { name: r.fixLabel(e.tabs.itinerary) });
+    expect(fix).toHaveAttribute('href', '/tours/ha-long-bay-cruise/itinerary#day-2');
+    expect(fix).toHaveTextContent(r.fix);
+    expect(screen.getAllByRole('link', { name: /^Fix/ })).toHaveLength(1);
   });
 });
 
@@ -91,14 +113,53 @@ describe('TourReviewStep — xoá tour', () => {
   it('chưa từng có booking: vùng xoá như cũ', () => {
     renderStep(detailFixture());
     expect(screen.getByRole('button', { name: e.delete.action })).toBeInTheDocument();
-    expect(screen.queryByText(r.deleteBlocked.body)).toBeNull();
+    expect(screen.queryByText(e.delete.blocked)).toBeNull();
   });
 
-  it('đã có booking: không có nút xoá, một câu nói vì sao', () => {
+  it('đã có booking và còn bán: không nút xoá; nói vì sao và khuyên gỡ bán', () => {
     renderStep(detailFixture({ bookingCount: 2 }));
     expect(screen.queryByRole('button', { name: e.delete.action })).toBeNull();
-    expect(screen.getByRole('region', { name: r.deleteBlocked.title })).toHaveTextContent(
-      r.deleteBlocked.body,
+    const zone = screen.getByRole('region', { name: e.delete.title });
+    expect(zone).toHaveTextContent(e.delete.blocked);
+    expect(zone).toHaveTextContent(e.delete.blockedOnSale);
+  });
+
+  it('đã có booking mà đã gỡ bán: không khuyên gỡ bán thêm lần nữa (vòng review F19)', () => {
+    renderStep(detailFixture({ bookingCount: 2, isPublished: false }));
+    const zone = screen.getByRole('region', { name: e.delete.title });
+    expect(zone).toHaveTextContent(e.delete.blocked);
+    expect(zone).not.toHaveTextContent(e.delete.blockedOnSale);
+  });
+
+  // Layout giữ bản cũ (0 chuyến) vì không render lại khi chuyển bước; trang vừa đọc 3.
+  it('đọc bản của TRANG: hộp xoá đếm đúng số chuyến sẽ mất theo, và phần đầu theo kịp', () => {
+    renderStep(detailFixture({ departureCount: 3 }), {
+      layout: detailFixture({ departureCount: 0 }),
+    });
+    fireEvent.click(screen.getByRole('button', { name: e.delete.action }));
+    expect(screen.getByRole('dialog', { name: e.delete.dialog.title })).toHaveTextContent(
+      'together with 3 departures',
     );
+    expect(screen.getByTestId('header-probe')).toHaveTextContent('3 departures');
+  });
+
+  it('ngoài provider (layout không đọc được tour) vẫn dựng được', () => {
+    render(<TourReviewStep detail={detailFixture()} setPublished={vi.fn()} remove={vi.fn()} />);
+    expect(screen.getByRole('list', { name: r.title })).toBeInTheDocument();
+  });
+});
+
+describe('TourReviewStep — bật/tắt bán', () => {
+  it('bật bán xong: phần đầu đổi NGAY, không chờ lượt refresh', async () => {
+    const setPublished = vi
+      .fn<SetPublishedAction>()
+      .mockResolvedValue({ ok: true, isPublished: true, changed: true });
+    renderStep(detailFixture({ isPublished: false }), { setPublished });
+    expect(screen.getByTestId('header-probe')).toHaveTextContent('off');
+    await act(async () => {
+      fireEvent.click(toggle());
+    });
+    expect(screen.getByTestId('header-probe')).toHaveTextContent('on');
+    expect(screen.getByText(r.visibility.onSale)).toBeInTheDocument();
   });
 });

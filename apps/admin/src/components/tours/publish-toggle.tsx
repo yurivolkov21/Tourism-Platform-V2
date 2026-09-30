@@ -56,6 +56,7 @@ export function PublishToggle({
   notReadyHref,
   describedBy,
   placement = 'list',
+  onChanged,
 }: {
   tour: PublishToggleTour;
   setPublished: SetPublishedAction;
@@ -67,6 +68,11 @@ export function PublishToggle({
   notReadyHref?: string;
   /** `id` của câu giải thích vì sao công tắc khoá — trình đọc màn hình đọc kèm. */
   describedBy?: string;
+  /**
+   * Lệnh bật/tắt THÀNH CÔNG — bước Review đẩy giá trị mới lên phần đầu khu làm việc
+   * ngay, không chờ lượt `router.refresh()` (vòng review F19).
+   */
+  onChanged?: (isPublished: boolean) => void;
 }) {
   const router = useRouter();
   const [pending, setPending] = useState(false);
@@ -149,6 +155,7 @@ export function PublishToggle({
     }
 
     setOptimistic(result.isPublished);
+    onChanged?.(result.isPublished);
     toast.success(setPublishedToast(tour.title, result));
     // Cột "Open departures" và cả các hàng khác không đổi theo lệnh này, nhưng
     // bảng vẫn phải tươi: bộ lọc "Off sale" co lại đúng sau mỗi lần bấm.

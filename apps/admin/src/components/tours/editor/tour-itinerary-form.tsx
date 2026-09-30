@@ -16,9 +16,9 @@ import { Textarea } from '@tourism/ui/components/textarea';
 import { cn } from '@tourism/ui/lib/utils';
 import { FormField } from '@/components/kit/form-field';
 import { EditorFormFrame } from '@/components/tours/editor/editor-form-frame';
-import { StateMark } from '@/components/tours/editor/step-aside';
+import { AsideJumpLink, StateMark } from '@/components/tours/editor/step-aside';
 import { usePublishSavedDetail } from '@/components/tours/editor/tour-detail-context';
-import { projectedReadiness, tourStepHref } from '@/lib/tour-editor-view';
+import { nextTourStep, projectedReadiness } from '@/lib/tour-editor-view';
 import {
   hasNestedErrors,
   type ItineraryContractCode,
@@ -76,7 +76,7 @@ export function TourItineraryForm({
       }),
     onSaved: (next) => {
       form.adopt(next);
-      // Phần đầu (readiness, công tắc) theo kịp ngay, không chờ lượt refresh.
+      // Phần đầu và thanh bước theo kịp ngay, không chờ lượt refresh.
       publishSaved(next);
     },
   });
@@ -108,16 +108,15 @@ export function TourItineraryForm({
             const title = day.title.trim();
             return (
               <li key={n}>
-                {/* Link cùng trang (#day-N): hộp hỏi lại không chặn khi chỉ đổi hash. */}
-                <a
-                  href={`#day-${n}`}
-                  className="flex items-center justify-between gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-muted"
-                >
-                  <span className="truncate">
-                    {title === '' ? t.day(n) : `${t.day(n)} · ${title}`}
-                  </span>{' '}
-                  <StateMark state={title === '' ? 'warn' : 'ok'} />
-                </a>
+                <AsideJumpLink
+                  targetId={`day-${n}`}
+                  label={
+                    <span className="truncate">
+                      {title === '' ? t.day(n) : `${t.day(n)} · ${title}`}
+                    </span>
+                  }
+                  meta={<StateMark state={title === '' ? 'warn' : 'ok'} />}
+                />
               </li>
             );
           })}
@@ -128,14 +127,15 @@ export function TourItineraryForm({
 
   return (
     <div className="flex flex-col gap-6 px-4 pb-8 lg:px-6">
+      {/* Câu giới thiệu trải hết bề ngang, trên hai cột. */}
+      <p className="text-sm text-muted-foreground">{t.intro(detail.durationDays)}</p>
       <EditorFormFrame
         dirty={dirty}
         pending={pending}
         banner={banner}
         serverChanged={form.serverChanged}
-        lead={<p className="text-sm text-muted-foreground">{t.intro(detail.durationDays)}</p>}
         aside={aside}
-        next={{ href: tourStepHref(detail.slug, 'content'), label: e.tabs.content }}
+        next={nextTourStep(detail.slug, 'itinerary')}
         onSubmit={submit}
         onReload={form.reload}
       >
@@ -146,10 +146,12 @@ export function TourItineraryForm({
           return (
             // Thẻ ngày cố định theo vị trí (ngày thứ n) — không thêm/xoá/dời, nên
             // số ngày làm key là đúng. `role="group"` + tên "Day N": thẻ gom hai ô của
-            // một ngày (Card của kit là <div>); `id="day-N"` là đích link readiness.
+            // một ngày (Card của kit là <div>); `id="day-N"` là đích link readiness và
+            // link nhảy ở cột phải — `tabIndex={-1}` để link ấy dời được tiêu điểm vào.
             <Card
               key={n}
               id={`day-${n}`}
+              tabIndex={-1}
               role="group"
               aria-labelledby={`day-${n}-heading`}
               className={cn(missing && 'ring-warning/60')}

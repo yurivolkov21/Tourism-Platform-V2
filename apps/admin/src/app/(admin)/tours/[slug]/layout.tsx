@@ -18,7 +18,7 @@ import { loadAdminTour } from './load-tour';
  * Slug rác → `notFound()` ngay ở đây, trước khi trang con nào chạy.
  *
  * Phần đầu đọc bản tour mới nhất qua `TourDetailProvider`: form đẩy bản vừa lưu
- * lên đó, vì layout không render lại khi đổi tab (vòng review F17).
+ * lên đó, vì layout không render lại khi chuyển bước (vòng review F17).
  *
  * Không đọc được tour (API lỗi, hay khe deploy khi admin lên trước API) thì vẫn
  * dựng thân tab trong `AdminShell`, bỏ phần đầu: tab Departures tự đọc dữ liệu

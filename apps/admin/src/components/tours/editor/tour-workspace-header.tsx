@@ -4,6 +4,7 @@ import type { AdminTourDetail } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
 import { Badge } from '@tourism/ui/components/badge';
 import { buttonVariants } from '@tourism/ui/components/button';
+import { ButtonLink } from '@tourism/ui/components/button-link';
 import { cn } from '@tourism/ui/lib/utils';
 import { CalendarDaysIcon, ChevronLeftIcon, ExternalLinkIcon } from 'lucide-react';
 import Link from 'next/link';
@@ -16,7 +17,7 @@ import { departuresHref } from '@/lib/tours-query';
 
 /**
  * Phần đầu khu sửa tour (ADR-0049 §4): chỉ còn TRẠNG THÁI, không còn điều khiển —
- * link về Tours, tên tour, đường dẫn và lần lưu cuối, chip On sale / Not on sale,
+ * link về Tours, tên tour, đường dẫn và lần lưu cuối, chip On sale / Off sale,
  * View on site và Departures.
  *
  * - Công tắc On sale dời xuống bước Review & publish (§3).
@@ -58,22 +59,22 @@ export function TourWorkspaceHeader({ detail }: { detail: AdminTourDetail }) {
             {detail.isPublished ? t.header.onSale : t.header.offSale}
           </Badge>
           {detail.isPublished ? (
-            <a
+            <ButtonLink
+              variant="outline"
               href={tourPageUrl(detail.slug)}
               target="_blank"
               rel="noreferrer"
-              className={buttonVariants({ variant: 'outline' })}
             >
-              <ExternalLinkIcon aria-hidden="true" />
+              <ExternalLinkIcon data-icon="inline-start" aria-hidden="true" />
               {t.header.viewOnSite}
-            </a>
+            </ButtonLink>
           ) : null}
           <Link
             href={departuresHref(detail.slug)}
             aria-current={onDepartures ? 'page' : undefined}
             className={buttonVariants({ variant: 'outline' })}
           >
-            <CalendarDaysIcon aria-hidden="true" />
+            <CalendarDaysIcon data-icon="inline-start" aria-hidden="true" />
             {t.tabs.departures}
           </Link>
         </div>

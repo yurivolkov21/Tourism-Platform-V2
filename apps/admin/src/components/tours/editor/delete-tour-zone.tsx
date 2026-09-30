@@ -15,9 +15,11 @@ import {
 } from '@/lib/tour-editor-write';
 
 /**
- * Vùng xoá tour ở bước Review & publish (spec F17 §2d, F19 §2d.6) — chỉ render khi tour chưa
- * từng có booking (nơi dùng quyết). Server là trọng tài thật: khoá ngoại
- * `Restrict` của booking chặn thì mã `TOUR_HAS_BOOKINGS` hiện NGAY TRONG hộp.
+ * Vùng xoá tour ở bước Review & publish (spec F17 §2d, F19 §2d.6). Tour đã có booking thì
+ * vùng vẫn hiện — cùng tiêu đề, không nút — kèm câu vì sao, và chỉ khuyên gỡ bán khi tour
+ * còn đang bán (vòng review F19: trước đây bước Review chép lại khung này ở chỗ khác và
+ * khuyên gỡ bán cả tour đã gỡ). Server là trọng tài thật: khoá ngoại `Restrict` của booking
+ * chặn thì mã `TOUR_HAS_BOOKINGS` hiện NGAY TRONG hộp.
  *
  * Hộp là kit `ConfirmWriteDialog`, giọng đỏ: lệnh lấy đi hẳn thứ đang hiện ra
  * ngoài, và câu thân hộp kể đúng từng thứ mất theo (đo trên `schema.prisma`).
@@ -34,6 +36,19 @@ export function DeleteTourZone({
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
+
+  if (detail.bookingCount > 0) {
+    return (
+      <section aria-labelledby="tour-delete-title" className="grid gap-1 rounded-lg border p-4">
+        <h3 id="tour-delete-title" className="text-base font-semibold">
+          {t.title}
+        </h3>
+        <p className="text-sm text-muted-foreground">
+          {detail.isPublished ? `${t.blocked} ${t.blockedOnSale}` : t.blocked}
+        </p>
+      </section>
+    );
+  }
 
   return (
     <section

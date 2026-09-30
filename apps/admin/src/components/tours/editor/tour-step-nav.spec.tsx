@@ -69,6 +69,22 @@ describe('TourStepNav', () => {
     expect(links.some((link) => link.hasAttribute('aria-current'))).toBe(false);
   });
 
+  // Vòng review F19: máy cảm ứng không có tooltip, và tiêu đề card đầu của đa số bước
+  // KHÔNG phải tên bước — nên bước đang mở có một dòng chữ nhìn thấy, chỉ ở máy cảm ứng.
+  it('máy cảm ứng: dòng chữ tên và trạng thái của bước đang mở (ẩn với trình đọc màn hình)', () => {
+    pathname = '/tours/ha-long-bay-cruise/photos';
+    renderNav();
+    const caption = screen.getByText(e.steps.caption('Photos', 'Missing: a cover photo'));
+    expect(caption).toHaveAttribute('aria-hidden', 'true');
+    expect(caption).toHaveClass('hidden', 'pointer-coarse:block');
+  });
+
+  it('ở Departures không có dòng chữ bước nào', () => {
+    pathname = '/tours/ha-long-bay-cruise/departures';
+    renderNav();
+    expect(document.querySelector('[data-slot="step-caption"]')).toBeNull();
+  });
+
   it('dấu góc: ✓ ở bước đủ, "!" ở bước thiếu, không dấu ở bước tuỳ chọn và bước cuối', () => {
     const links = renderNav();
     const dot = (index: number) => links[index]?.querySelector('[data-slot="step-dot"]');

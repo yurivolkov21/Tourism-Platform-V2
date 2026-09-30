@@ -41,6 +41,21 @@ export function tourStepHref(slug: string, step: TourEditorStep): string {
   return step === 'details' ? base : `${base}/${step}`;
 }
 
+/**
+ * Link "Next:" ở chân form của một bước — bước liền sau trong `TOUR_EDITOR_STEPS`,
+ * đường dẫn và nhãn đi cùng nhau. Bước cuối không có bước kế (vòng review F19: trước
+ * đây năm form tự gõ bước kế, đổi thứ tự bước thì các link này đi sai mà test vẫn xanh).
+ */
+export function nextTourStep(
+  slug: string,
+  step: TourEditorStep,
+): { href: string; label: string } | undefined {
+  const after = TOUR_EDITOR_STEPS[TOUR_EDITOR_STEPS.indexOf(step) + 1];
+  return after === undefined
+    ? undefined
+    : { href: tourStepHref(slug, after), label: t.tabs[after] };
+}
+
 /** Bước đang mở theo pathname; `null` ở Departures (không bước nào sáng). Đoạn lạ → Details. */
 export function activeTourStep(pathname: string, slug: string): TourEditorStep | null {
   const rest = pathname.slice(tourStepHref(slug, 'details').length).replace(/^\//, '');
@@ -64,11 +79,20 @@ export interface TourStepVM {
   fixHref: string | null;
 }
 
-/** Mục readiness thuộc về từng bước bắt buộc. */
-const STEP_ISSUES: Record<'details' | 'photos' | 'itinerary', readonly ReadinessIssue['key'][]> = {
-  details: ['summary', 'primaryDestination'],
-  photos: ['cover'],
-  itinerary: ['days'],
+/** Ba bước mà readiness đòi — hai bước còn lại tuỳ chọn, bước cuối là bước duyệt. */
+type RequiredStep = 'details' | 'photos' | 'itinerary';
+
+/**
+ * Bước SỞ HỮU từng mục readiness — nguồn duy nhất cho cả đường sửa (`readinessIssues`)
+ * lẫn việc chia mục về bước (`tourSteps`). Khoá theo MỤC nên thêm một mục readiness mà
+ * quên gán bước là lỗi typecheck, không phải một hàng Review xanh nằm cạnh công tắc bị
+ * khoá (vòng review F19).
+ */
+const ISSUE_STEP: Record<ReadinessIssue['key'], RequiredStep> = {
+  summary: 'details',
+  primaryDestination: 'details',
+  days: 'itinerary',
+  cover: 'photos',
 };
 
 /** "A summary" → "a summary": nhãn readiness đứng giữa câu "Missing: …". */
@@ -84,46 +108,47 @@ function lowerFirst(label: string): string {
 export function tourSteps(detail: AdminTourDetail): TourStepVM[] {
   const s = t.steps;
   const issues = readinessIssues(detail.readiness, detail.slug);
-  const required = (step: keyof typeof STEP_ISSUES, ready: string): TourStepVM => {
-    const own = issues.filter((issue) => STEP_ISSUES[step].includes(issue.key));
-    const [first] = own;
-    return {
-      step,
-      href: tourStepHref(detail.slug, step),
-      title: t.tabs[step],
-      status: first === undefined ? 'ok' : 'warn',
-      summary:
-        first === undefined
-          ? ready
-          : s.missing(own.map((issue) => lowerFirst(issue.label)).join(', ')),
-      fixHref: first?.href ?? null,
-    };
-  };
-  const plain = (
-    step: 'content' | 'costs' | 'review',
+  const vm = (
+    step: TourEditorStep,
     status: TourStepStatus,
     summary: string,
+    fixHref: string | null = null,
   ): TourStepVM => ({
     step,
     href: tourStepHref(detail.slug, step),
     title: t.tabs[step],
     status,
     summary,
-    fixHref: null,
+    fixHref,
   });
+  const required = (step: RequiredStep, ready: string): TourStepVM => {
+    const own = issues.filter((issue) => ISSUE_STEP[issue.key] === step);
+    const [first] = own;
+    return first === undefined
+      ? vm(step, 'ok', ready)
+      : vm(
+          step,
+          'warn',
+          s.missing(own.map((issue) => lowerFirst(issue.label)).join(', ')),
+          first.href,
+        );
+  };
   const review = detail.isPublished
     ? s.reviewOnSale
     : issues.length === 0
       ? s.reviewReady
       : s.reviewToFix(issues.length);
-  return [
-    required('details', s.detailsReady),
-    required('photos', s.photosReady(detail.photos.length)),
-    required('itinerary', s.itineraryReady),
-    plain('content', 'optional', s.optionalContent(detail.faqs.length, detail.policies.length)),
-    plain('costs', 'optional', s.optionalCosts(detail.costItems.length)),
-    plain('review', 'final', review),
-  ];
+  // Khoá theo bước nên thiếu một bước là lỗi typecheck; thứ tự lấy từ TOUR_EDITOR_STEPS.
+  const byStep: Record<TourEditorStep, () => TourStepVM> = {
+    details: () => required('details', s.detailsReady),
+    photos: () => required('photos', s.photosReady(detail.photos.length)),
+    itinerary: () => required('itinerary', s.itineraryReady),
+    content: () =>
+      vm('content', 'optional', s.optionalContent(detail.faqs.length, detail.policies.length)),
+    costs: () => vm('costs', 'optional', s.optionalCosts(detail.costItems.length)),
+    review: () => vm('review', 'final', review),
+  };
+  return TOUR_EDITOR_STEPS.map((step) => byStep[step]());
 }
 
 /** [2, 4, 5, 6] → "2, 4–6". Đầu vào đã sắp tăng dần (như `missingDays`). */
@@ -153,16 +178,22 @@ export interface ReadinessIssue {
 }
 
 export function readinessIssues(readiness: TourReadiness, slug: string): ReadinessIssue[] {
-  const details = tourStepHref(slug, 'details');
+  // Đường sửa = bước sở hữu mục (ISSUE_STEP) + `#id` của ô cần sửa.
+  const at = (key: ReadinessIssue['key'], hash = '') =>
+    `${tourStepHref(slug, ISSUE_STEP[key])}${hash}`;
   const issues: ReadinessIssue[] = [];
   if (!readiness.summary) {
-    issues.push({ key: 'summary', label: t.readiness.summary, href: `${details}#tour-summary` });
+    issues.push({
+      key: 'summary',
+      label: t.readiness.summary,
+      href: at('summary', '#tour-summary'),
+    });
   }
   if (!readiness.primaryDestination) {
     issues.push({
       key: 'primaryDestination',
       label: t.readiness.primaryDestination,
-      href: `${details}#tour-destinations`,
+      href: at('primaryDestination', '#tour-destinations'),
     });
   }
   const [firstMissing] = readiness.missingDays;
@@ -170,11 +201,11 @@ export function readinessIssues(readiness: TourReadiness, slug: string): Readine
     issues.push({
       key: 'days',
       label: t.readiness.days(formatDayList(readiness.missingDays), readiness.missingDays.length),
-      href: `${tourStepHref(slug, 'itinerary')}#day-${firstMissing}`,
+      href: at('days', `#day-${firstMissing}`),
     });
   }
   if (!readiness.cover) {
-    issues.push({ key: 'cover', label: t.readiness.cover, href: tourStepHref(slug, 'photos') });
+    issues.push({ key: 'cover', label: t.readiness.cover, href: at('cover') });
   }
   return issues;
 }
@@ -354,7 +385,32 @@ export function tourCardPreview(
             count: detail.ratingCount.toLocaleString('en-US'),
           },
     price: TourBasePriceSchema.safeParse(price).success
-      ? formatAmount(price, detail.currency)
-      : '—',
+      ? formatCardPrice(price, detail.currency)
+      : t.aside.preview.noPrice,
   };
+}
+
+const CARD_PRICE_FORMATTERS = new Map<string, Intl.NumberFormat>();
+
+/**
+ * Giá như card web in (`formatMoney` của apps/web: đô tròn, không số lẻ) — thẻ xem
+ * trước phải đọc giống card thật; `formatAmount` hai số lẻ là chữ của sổ sách admin.
+ * Currency lạ thì rơi về `formatAmount` (có sẵn đường lùi của nó), không để RangeError
+ * nổ trong render.
+ */
+function formatCardPrice(amount: string, currency: string): string {
+  let formatter = CARD_PRICE_FORMATTERS.get(currency);
+  if (!formatter) {
+    try {
+      formatter = new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency,
+        maximumFractionDigits: 0,
+      });
+    } catch {
+      return formatAmount(amount, currency);
+    }
+    CARD_PRICE_FORMATTERS.set(currency, formatter);
+  }
+  return formatter.format(Number(amount));
 }
