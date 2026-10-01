@@ -14,7 +14,7 @@ import {
   revenueCurrency,
   reviewApprovals,
 } from './stats-aggregates.js';
-import { grossAmount, monthWindow } from './stats-math.js';
+import { grossAmount, monthWindow, recognitionWindow, recognizedThrough } from './stats-math.js';
 
 /**
  * Báo cáo THÁNG của admin (spec P4b §3-F6) — nguồn của trang `/reports`, nút
@@ -58,13 +58,24 @@ import { grossAmount, monthWindow } from './stats-math.js';
  * ## Cửa sổ
  *
  * `[00:00 ngày 1, 00:00 ngày 1 tháng sau)` UTC, nửa-mở (`monthWindow`) — hai
- * tháng liền kề khít nhau, không row nào bị đếm hai lần. KHÔNG neo vào "bây
- * giờ": tháng 7 là tháng 7 dù đọc lúc nào.
+ * tháng liền kề khít nhau, không row nào bị đếm hai lần. Cột DÒNG TIỀN không
+ * neo vào "bây giờ": tháng 7 là tháng 7 dù đọc lúc nào, và `paid_at` không bao
+ * giờ nằm ở tương lai.
+ *
+ * Cột KẾT QUẢ KINH DOANH thì cắt thêm ở hết hôm nay (`recognitionWindow`,
+ * ADR-0033 AMEND 3): ngày chuyến kết thúc nằm được ở tương lai, mà chuyến chưa
+ * xong thì chưa phải doanh thu. Tháng đã đóng không đổi; tháng đang chạy tăng
+ * dần; `recognizedThrough` nói nó tính tới ngày nào.
+ *
+ * `now` là tham số để int test cắt được giữa một tháng cố định; đường HTTP luôn
+ * dùng đồng hồ thật. `generatedAt` dùng CHÍNH mốc ấy — lúc chốt sổ và cận ghi
+ * nhận không được lệch nhau.
  */
 @Injectable()
 export class ReportsService {
-  async monthly(month: string): Promise<AdminMonthlyReport> {
+  async monthly(month: string, now: Date = new Date()): Promise<AdminMonthlyReport> {
     const { from, to } = monthWindow(month);
+    const recognition = recognitionWindow(month, now);
     const [
       paid,
       created,
@@ -83,8 +94,10 @@ export class ReportsService {
       refundCurrency(from, to),
       cancellationOutcomesSlice(from, to),
       reviewApprovals(from, to),
-      recognizedRevenueSlice(from, to),
-      fixedCostSlice(from, to),
+      // Hai vế của cột kinh doanh đi CÙNG một cửa sổ đã cắt — doanh thu và tiền xe
+      // không được lệch nhau một ngày.
+      recognizedRevenueSlice(recognition.from, recognition.to),
+      fixedCostSlice(recognition.from, recognition.to),
     ]);
 
     // ── Cột KẾT QUẢ KINH DOANH (ADR-0033 §1) ──────────────────────────────
@@ -114,7 +127,7 @@ export class ReportsService {
       month,
       from: from.toISOString(),
       to: to.toISOString(),
-      generatedAt: new Date().toISOString(),
+      generatedAt: now.toISOString(),
       // Nhãn tiền phục vụ CẢ `revenue` LẪN `refundedTotal` (contract), nên
       // hỏi lần lượt hai nguồn: payment của tháng trước, rồi sổ hoàn của
       // tháng (vòng vá review F6 — tháng chỉ có refund cho booking trả tiền
@@ -139,6 +152,7 @@ export class ReportsService {
       cancellationsAfterDeadline: cancellations.afterDeadline,
       reviewsApproved,
 
+      recognizedThrough: recognizedThrough(recognition),
       recognizedRevenue: grossAmount(recognised.revenue),
       cogsVariable: grossAmount(recognised.cogsVariable),
       cogsFixed: grossAmount(fixedCost.total),

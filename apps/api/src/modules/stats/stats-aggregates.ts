@@ -322,7 +322,9 @@ export async function subscribersStats(window: {
 
 /**
  * Cột KẾT QUẢ KINH DOANH của báo cáo (ADR-0033 §1) — neo `departure_end_date`,
- * tức những chuyến KẾT THÚC trong kỳ, chứ không phải tiền vào trong kỳ.
+ * tức những chuyến KẾT THÚC trong kỳ, chứ không phải tiền vào trong kỳ. Kỳ đưa
+ * vào là `recognitionWindow` (AMEND 3), đã cắt ở hết hôm nay: tháng đang chạy
+ * chỉ thấy chuyến đã xong.
  *
  * Hai tập, định nghĩa ở ADR-0041 §9 (sửa ADR-0033 §4):
  * - **Doanh thu**: MỌI booking đã trả tiền (`paid_at IS NOT NULL`), kể cả booking
@@ -411,7 +413,9 @@ export async function recognizedRevenueSlice(from: Date, to: Date) {
 
 /**
  * Giá vốn CỐ ĐỊNH của các chuyến đã chạy trong kỳ (ADR-0033 §4) — cộng MỘT lần
- * cho mỗi chuyến, bất kể bán được bao nhiêu ghế. Xe vẫn chạy.
+ * cho mỗi chuyến, bất kể bán được bao nhiêu ghế. Xe vẫn chạy. Nhận CÙNG cửa sổ
+ * đã cắt với `recognizedRevenueSlice` (AMEND 3), để tiền xe và doanh thu của
+ * một chuyến luôn vào cùng một ngày.
  *
  * "Đã chạy" phải có ĐỦ hai vế: chuyến không bị huỷ, VÀ có ít nhất một khách
  * THỰC ĐI — cùng tập `travelled` của `recognizedRevenueSlice` (đã trả tiền,

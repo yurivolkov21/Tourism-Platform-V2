@@ -12,6 +12,7 @@ import {
   PaymentProvider,
   ReviewSource,
 } from '../../generated/prisma/enums.js';
+import { ReportsService } from './reports.service.js';
 
 /**
  * Integration (Docker PG, db tourism_test) — báo cáo tháng (spec P4b §3-F6).
@@ -814,6 +815,65 @@ describe('admin monthly report integration (F6)', () => {
       expect(june.cogsFixed).toBe('0.00');
       expect(june.departuresRun).toBe(0);
       expect(june.grossMarginPct).toBeNull();
+    });
+
+    /**
+     * ADR-0033 AMEND 3 — chuyến chưa kết thúc chưa phải doanh thu. Gọi thẳng
+     * service với `now` tường minh: HTTP luôn đọc đồng hồ thật, mà tháng 5/2026
+     * của fixture đã đóng từ lâu.
+     */
+    describe('tháng đang chạy chỉ ghi nhận chuyến ĐÃ kết thúc (AMEND 3)', () => {
+      const monthlyAt = async (month: string, nowIso: string) =>
+        AdminMonthlyReportSchema.parse(await app.get(ReportsService).monthly(month, at(nowIso)));
+
+      it('tháng đã đóng: đúng con số của đường HTTP, tính tới ngày cuối tháng', async () => {
+        const closed = await monthlyAt('2026-05', '2026-10-01T11:33:00.000Z');
+        const viaHttp = await report('2026-05');
+
+        expect(closed.recognizedThrough).toBe('2026-05-31');
+        expect(closed.recognizedRevenue).toBe(viaHttp.recognizedRevenue);
+        expect(closed.cogsFixed).toBe(viaHttp.cogsFixed);
+        expect(closed.departuresRun).toBe(viaHttp.departuresRun);
+      });
+
+      it('giữa tháng: chuyến 20/05 đã tính, chuyến 22/05 chưa — cả hai vế giá vốn cùng cận', async () => {
+        const mid = await monthlyAt('2026-05', '2026-05-21T10:00:00.000Z');
+
+        expect(mid.recognizedThrough).toBe('2026-05-21');
+        // Bốn booking của DEP_RAN; booking 15 (DEP_GOODWILL, hoàn đủ) góp 0 dù có tính.
+        expect(mid.recognizedRevenue).toBe('2600.00');
+        // 30 × 3 + 30 × 3 — khách của DEP_GOODWILL chưa đi xong nên chưa có giá vốn.
+        expect(mid.cogsVariable).toBe('180.00');
+        expect(mid.cogsFixed).toBe('400.00');
+        expect(mid.departuresRun).toBe(1);
+      });
+
+      it('chuyến kết thúc ĐÚNG hôm nay đã tính — biên đóng như cổng review', async () => {
+        const sameDay = await monthlyAt('2026-05', '2026-05-20T00:00:00.000Z');
+
+        expect(sameDay.recognizedThrough).toBe('2026-05-20');
+        expect(sameDay.departuresRun).toBe(1);
+        expect(sameDay.recognizedRevenue).toBe('2600.00');
+      });
+
+      it('hôm trước ngày kết thúc: chưa chuyến nào xong, biên gộp NULL', async () => {
+        const before = await monthlyAt('2026-05', '2026-05-19T23:59:59.999Z');
+
+        expect(before.recognizedThrough).toBe('2026-05-19');
+        expect(before.recognizedRevenue).toBe('0.00');
+        expect(before.cogsTotal).toBe('0.00');
+        expect(before.departuresRun).toBe(0);
+        expect(before.grossMarginPct).toBeNull();
+      });
+
+      it('tháng tương lai: cửa sổ rỗng, recognizedThrough null; generatedAt là đúng mốc now', async () => {
+        const future = await monthlyAt('2026-05', '2026-04-15T08:00:00.000Z');
+
+        expect(future.recognizedThrough).toBeNull();
+        expect(future.recognizedRevenue).toBe('0.00');
+        expect(future.departuresRun).toBe(0);
+        expect(future.generatedAt).toBe('2026-04-15T08:00:00.000Z');
+      });
     });
   });
 });

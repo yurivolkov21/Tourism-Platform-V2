@@ -230,6 +230,35 @@ export function monthWindow(month: string): MonthWindow {
   };
 }
 
+/**
+ * Cửa sổ của cột KẾT QUẢ KINH DOANH (ADR-0033 AMEND 3): khung tháng cắt thêm ở
+ * 00:00 UTC NGÀY MAI của `now`, vì chuyến chưa kết thúc thì chưa phải doanh thu.
+ *
+ * - Tháng đã đóng: cận ngày mai nằm sau đầu tháng sau → khung tháng nguyên vẹn,
+ *   số của tháng cũ không đổi.
+ * - Tháng đang chạy: chỉ tới hết hôm nay — chuyến kết thúc ĐÚNG hôm nay đã tính,
+ *   cùng biên đóng với cổng `checkReviewEligibility`.
+ * - Tháng tương lai: kẹp `to` về `from`, cửa sổ rỗng nhưng không bao giờ ngược.
+ *
+ * Ngày UTC chứ không phải ngày Việt Nam, CỐ Ý: cổng review giữ UTC (ADR-0009
+ * AMEND 3), và ADR-0033 §1 dùng chung một mốc "chuyến đã xong" cho cả hai nơi.
+ */
+export function recognitionWindow(month: string, now: Date): MonthWindow {
+  const { from, to } = monthWindow(month);
+  const tomorrow = new Date(startOfDayUtc(calendarDate(now)).getTime() + DAY_MS);
+  const cut = tomorrow < to ? tomorrow : to;
+  return { from, to: cut < from ? from : cut };
+}
+
+/**
+ * Ngày lịch `YYYY-MM-DD` cuối cùng nằm trong một cửa sổ ghi nhận — thứ admin in
+ * thành nhãn kỳ "(to date)". `null` khi cửa sổ rỗng (tháng tương lai).
+ */
+export function recognizedThrough(window: MonthWindow): string | null {
+  if (window.to <= window.from) return null;
+  return calendarDate(new Date(window.to.getTime() - DAY_MS));
+}
+
 // ───────────────────────────────────────────────────
 // Dashboard `/` — chuỗi theo NGÀY (ADR-0036)
 // ───────────────────────────────────────────────────

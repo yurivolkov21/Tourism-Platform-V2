@@ -21,6 +21,7 @@ const validReport = {
   cancellationsAfterDeadline: 3,
   reviewsApproved: 5,
   // Cột kết quả kinh doanh (ADR-0033 §1)
+  recognizedThrough: '2026-09-30',
   recognizedRevenue: '1000.00',
   cogsVariable: '400.00',
   cogsFixed: '200.00',
@@ -167,6 +168,17 @@ describe('AdminMonthlyReportSchema — kết quả kinh doanh', () => {
     );
     const { taxRate: _omitted, ...withoutRate } = validReport;
     expect(AdminMonthlyReportSchema.safeParse(withoutRate).success).toBe(false);
+  });
+
+  it('recognizedThrough là MỘT ngày lịch, null khi cửa sổ rỗng, và luôn có mặt (AMEND 3)', () => {
+    const parse = (recognizedThrough: unknown) =>
+      AdminMonthlyReportSchema.safeParse({ ...validReport, recognizedThrough }).success;
+    expect(parse('2026-10-15')).toBe(true);
+    expect(parse(null)).toBe(true);
+    // Mốc giờ đầy đủ là một câu khác: trường này nói "tính tới hết ngày nào".
+    expect(parse('2026-10-15T00:00:00.000Z')).toBe(false);
+    const { recognizedThrough: _omitted, ...withoutThrough } = validReport;
+    expect(AdminMonthlyReportSchema.safeParse(withoutThrough).success).toBe(false);
   });
 
   it('hai bộ đếm là số nguyên không âm', () => {

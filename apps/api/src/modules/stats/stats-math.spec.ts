@@ -6,6 +6,8 @@ import {
   grossAmount,
   monthWindow,
   ratePercent,
+  recognitionWindow,
+  recognizedThrough,
   statsPeriod,
   statsWindow,
   statsWindowFromRange,
@@ -229,6 +231,51 @@ describe('monthWindow', () => {
 
   it('hai tháng liền kề khít nhau — không row nào bị đếm hai lần', () => {
     expect(monthWindow('2026-09').to).toEqual(monthWindow('2026-10').from);
+  });
+});
+
+/**
+ * Cửa sổ của cột KẾT QUẢ KINH DOANH (ADR-0033 AMEND 3): khung tháng cắt thêm ở
+ * 00:00 UTC ngày mai, vì chuyến chưa kết thúc thì chưa phải doanh thu.
+ */
+describe('recognitionWindow + recognizedThrough', () => {
+  it('tháng đã đóng: giữ nguyên khung tháng, ngày cuối là ngày cuối tháng', () => {
+    const w = recognitionWindow('2026-09', new Date('2026-10-01T11:33:00.000Z'));
+    expect(w).toEqual(monthWindow('2026-09'));
+    expect(recognizedThrough(w)).toBe('2026-09-30');
+  });
+
+  it('tháng đang chạy: cắt ở 00:00 UTC ngày mai — chuyến kết thúc ĐÚNG hôm nay đã tính', () => {
+    const w = recognitionWindow('2026-10', new Date('2026-10-15T10:00:00.000Z'));
+    expect(w.from.toISOString()).toBe('2026-10-01T00:00:00.000Z');
+    expect(w.to.toISOString()).toBe('2026-10-16T00:00:00.000Z');
+    expect(recognizedThrough(w)).toBe('2026-10-15');
+  });
+
+  it('ngày đầu tháng: chỉ còn đúng một ngày được tính', () => {
+    const w = recognitionWindow('2026-10', new Date('2026-10-01T00:00:00.000Z'));
+    expect(w.to.toISOString()).toBe('2026-10-02T00:00:00.000Z');
+    expect(recognizedThrough(w)).toBe('2026-10-01');
+  });
+
+  it('ngày cuối tháng: cận ngày mai trùng đầu tháng sau, không vượt khung tháng', () => {
+    const w = recognitionWindow('2026-10', new Date('2026-10-31T23:59:59.999Z'));
+    expect(w).toEqual(monthWindow('2026-10'));
+    expect(recognizedThrough(w)).toBe('2026-10-31');
+  });
+
+  it('ngày UTC chứ không phải ngày VN — cùng cổng checkReviewEligibility', () => {
+    // 23:30 UTC ngày 15 là 06:30 sáng 16/10 giờ VN, nhưng cổng review còn chặn
+    // chuyến kết thúc ngày 16 tới 07:00 giờ VN; báo cáo phải nói đúng như vậy.
+    const w = recognitionWindow('2026-10', new Date('2026-10-15T23:30:00.000Z'));
+    expect(recognizedThrough(w)).toBe('2026-10-15');
+  });
+
+  it('tháng tương lai: cửa sổ rỗng, không có ngày nào được tính', () => {
+    const w = recognitionWindow('2026-12', new Date('2026-10-01T11:33:00.000Z'));
+    expect(w.from.toISOString()).toBe('2026-12-01T00:00:00.000Z');
+    expect(w.to).toEqual(w.from);
+    expect(recognizedThrough(w)).toBeNull();
   });
 });
 

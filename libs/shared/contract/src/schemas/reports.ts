@@ -116,6 +116,13 @@ export const AdminMonthlyReportSchema = z.object({
   // (neo `paid_at`). Hai cách đọc đứng CẠNH nhau, không thay nhau — đọc §1
   // của ADR trước khi sửa bất cứ field nào.
   /**
+   * Ngày lịch cuối cùng được tính vào mọi field bên dưới (ADR-0033 AMEND 3):
+   * chuyến chỉ thành doanh thu khi đã kết thúc, nên tháng đang chạy dừng ở hôm
+   * nay (ngày UTC) còn tháng đã đóng là ngày cuối tháng. `null` khi chưa có ngày
+   * nào (tháng tương lai). API là nơi DUY NHẤT tính cận này — admin chỉ in nó.
+   */
+  recognizedThrough: z.iso.date().nullable(),
+  /**
    * Σ (`totalAmount` − đã hoàn) của MỌI booking đã trả tiền trên chuyến không
    * bị huỷ, chuyến KẾT THÚC trong kỳ — kể cả booking khách đã huỷ: tiền giữ lại
    * là doanh thu (ADR-0041 §9, sửa ADR-0033).
