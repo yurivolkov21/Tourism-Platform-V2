@@ -8,6 +8,27 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-10-01 — Merge lý do bác review lên main (`14b631a3`)
+
+Nội dung đã kể ở entry ngay bên dưới (28/09). Entry này chỉ ghi sự kiện merge.
+
+User dừng merge hôm 28/09 vì còn định góp ý. 01/10 user xem lại bằng một trang tĩnh dựng
+từ chính component của nhánh (jsdom ghép CSS bản build admin, bốn trạng thái của hộp
+Reject: lần bác đầu, lần chung cuộc với review đang hiện, Other thiếu chi tiết, tìm
+"photo") và duyệt nguyên trạng, không góp ý thêm.
+
+Nhánh rebase lên `bc99671e`, chậm 76 commit. Một xung đột ở CHANGELOG: entry của nhánh và
+các entry mới của `main` cùng chen vào đầu file; gỡ bằng cách đặt entry nhánh lên trên, cả
+hai giữ nguyên văn (nếp merge F18). Năm commit còn lại áp sạch, kể cả `messages.ts`.
+`gate:int` chạy lại trên đỉnh đã rebase: xanh sau 737 giây.
+
+Không migration, không env, không webhook. API đổi (`reviews.service`, mail
+`REVIEW_REJECTED`) nên Render dựng lại API; payload xếp hàng trước lúc deploy không có hai
+trường mới nên mail in như cũ.
+
+Tests after: unit 5077 — web 1592, admin 1558, api 1015, contract 562, mobile 159, mobile-ui
+86, core 46, ui 23, i18n 18, tokens 18 — và int 708/708.
+
 ## 2026-09-28 — Bác review bằng lý do chọn từ danh sách; dialog và email nói đúng đường sửa (nhánh `feat/review-reject-reasons`)
 
 Góp ý của giáo viên hướng dẫn (qua user): lý do bác gõ tay thì mỗi admin một kiểu,
