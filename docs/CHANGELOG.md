@@ -8,6 +8,56 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-10-01 — Thử tay F19 trên production (`aede381d`): 12/12 bước đạt
+
+User bấm từng bước, mình kiểm DB và web sau mỗi bước có ghi. Bước 1–8 trên
+`vietnam-grand-journey-12d` (12 ngày, đang bán, 26 booking), không lưu gì; bước 9–11 trên
+tour nháp `f19-test-tour` tạo rồi xoá; bước 12 ở khổ 320px.
+
+- Thanh bước và phần đầu đúng spec; tooltip icon đầu và cuối không tràn mép; Tab qua icon có
+  vòng tiêu điểm.
+- Hộp hỏi lại bật ở cả icon bước, Next và Departures; Discard không lưu gì (`updated_at` vẫn
+  18/09 03:29).
+- Link Day 9 ở cột phải cuộn tới thẻ mà không thêm `#day-9`; Next rồi Back về đúng Itinerary.
+- Bốn điểm bố cục của vòng review đều đạt: cột phải ở 1366×768 tự cuộn tới Tips và dòng giá;
+  Costs ở 1280 và 1340 không cắt nút, cả khi sidebar thu gọn (bốn ô một hàng) lẫn mở rộng (hai
+  cột); thanh bước 320px vừa một hàng; Back sau link Day như trên. Chế độ Responsive của
+  DevTools báo màn cảm ứng nên dòng chữ dưới thanh bước hiện ở mọi khổ, đúng `pointer-coarse`.
+- Bước Review: tắt bán thì chip thành Off sale ngay, View on site ẩn, vùng xoá bỏ câu "Take it
+  off sale instead."; bật lại thì về như cũ. Tour ẩn khỏi web khoảng một phút; sau đó DB
+  `is_published = true`, trang tour và `/tours` trả 200.
+- Tour nháp: ba bước bắt buộc mang "!", dòng thiếu ghi "Missing — required to go on sale"; gõ
+  tóm tắt thì cột phải xanh ngay còn thanh bước giữ "!" tới khi lưu. Công tắc khoá kèm câu lý
+  do, Fix mở đúng bước; toast `TOUR_NOT_READY` ở `/tours` có Open tour mở bước Review; trang
+  Departures có dòng báo kèm link Open Review & publish. Xoá tour: DB không còn dòng nào của
+  `beb40994-…`, vẫn 29 tour, cả 29 đang bán.
+- Console chỉ có thứ ngoài app: Tracking Prevention của Edge với ảnh Cloudinary, CSP
+  `frame-src 'none'` chặn khung `vercel.live` (trình duyệt đang đăng nhập Vercel), cảnh báo
+  Permissions-Policy không đến từ repo.
+
+Cùng buổi, hai việc ngoài F19:
+
+- **Báo cáo tháng 10 có số dù mới 01/10.** Cột kết quả kinh doanh neo `departure_end_date`
+  (ADR-0033 §1): 79 booking đã trả từ tháng 6–9 cho 28 chuyến KẾT THÚC trong tháng 10 — tiền
+  khách trả $33,779, đã hoàn $483, nên Revenue recognised $33,296.00; dòng tiền tháng 10 bằng 0.
+  Từng dòng khớp tới xu, kể cả thuế trên margin 7,976.28 × 10/110 và phí cổng 2.9% × $33,779
+  cộng $0.30 × 79. Chưa chuyến nào kết thúc nên với tháng đang chạy đây là số dự kiến — ghi
+  G21.
+- **Soát dữ liệu thử tay còn sót (user nhờ).** Sạch: các lượt F14, F15, F16, F17, F18 phía DB,
+  F19. Còn trong DB, đều là giao dịch Stripe test: booking `BK-7WKW9ESB`, `BK-XKEHLSZL`,
+  `BK-PY7IZMD4`, `BK-FLKQBQSS` (đã huỷ, hoàn đủ) cùng refund, payment_events và yêu cầu huỷ của
+  chúng; chuyến 22/10 đã huỷ của lượt F13; booking seed `BK-9L93LTWH` bị đổi sang CANCELLED
+  ngày 18/09; hai tài khoản khách thử; một review thử bị bác trên `BK-5YU9J339` (24/09); năm
+  dòng outbox FAILED (Resend từ chối `@example.com`). User chốt: để lượt seed lại khoảng 03/11
+  xoá (`data:reset` xoá đúng các bảng ấy và mọi user trừ một admin). Tài khoản
+  `anc***@gmail.com` tạo 30/09 không thuộc lượt thử nào — để yên.
+  Cloudinary: tám ảnh của tour thử F18 còn nguyên, bộ dọn tự xoá lúc 04:00 UTC ngày 07/10 (ba
+  publicId còn lại chưa từng tải lên, trả 404); năm ảnh của review thử — một ảnh bộ dọn xoá
+  02/10, bốn ảnh còn được review trỏ tới nên bị hoãn mãi, user xoá tay thư mục
+  `tourism/reviews/BK-5YU9J339`. Kẽ hở khiến bốn ảnh ấy không bao giờ được dọn ghi ở G22.
+
+Không đổi code, không đổi hạ tầng.
+
 ## 2026-10-01 — CI main đỏ vì hai ca test lịch phụ thuộc ngày (nhánh `fix/admin-date-range-spec-clock`)
 
 Lượt CI của `aede381d` (merge F19) đỏ ở bước gate: hai ca của
