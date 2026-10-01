@@ -1,7 +1,7 @@
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { messages } from '@tourism/i18n';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { BookingsQuery } from '@/lib/bookings-query';
 import { BookingsDateRange } from './bookings-toolbar';
 
@@ -82,25 +82,39 @@ describe('BookingsDateRange', () => {
     );
   });
 
-  it('cú bấm THỨ NHẤT chưa điều hướng — khoảng còn dở dang', async () => {
-    const user = userEvent.setup();
-    render(<BookingsDateRange query={BASE} />);
-    const calendar = await openCalendar(user);
+  describe('URL chưa có khoảng ngày — lịch mở ở tháng của HÔM NAY', () => {
+    // Không có `from`/`to` thì lịch mở ở tháng hiện tại, nên ngày bấm phụ thuộc đồng
+    // hồ máy chạy test: không ghim thì hai ca này đỏ từ 01/10/2026 (lịch sang tháng
+    // 10–11, mất tháng 9). Chỉ giả `Date` — popover và userEvent vẫn cần timer thật.
+    beforeEach(() => {
+      vi.useFakeTimers({ toFake: ['Date'] });
+      vi.setSystemTime(new Date('2026-09-15T05:00:00.000Z'));
+    });
 
-    await user.click(calendar.getByRole('button', { name: /September 10th, 2026/i }));
+    afterEach(() => {
+      vi.useRealTimers();
+    });
 
-    expect(push).not.toHaveBeenCalled();
-  });
+    it('cú bấm THỨ NHẤT chưa điều hướng — khoảng còn dở dang', async () => {
+      const user = userEvent.setup();
+      render(<BookingsDateRange query={BASE} />);
+      const calendar = await openCalendar(user);
 
-  it('đủ hai đầu thì điều hướng sang URL mang cả khoảng, dạng ISO', async () => {
-    const user = userEvent.setup();
-    render(<BookingsDateRange query={BASE} />);
-    const calendar = await openCalendar(user);
+      await user.click(calendar.getByRole('button', { name: /September 10th, 2026/i }));
 
-    await user.click(calendar.getByRole('button', { name: /September 10th, 2026/i }));
-    await user.click(calendar.getByRole('button', { name: /September 20th, 2026/i }));
+      expect(push).not.toHaveBeenCalled();
+    });
 
-    expect(push).toHaveBeenCalledWith('/bookings?from=2026-09-10&to=2026-09-20');
+    it('đủ hai đầu thì điều hướng sang URL mang cả khoảng, dạng ISO', async () => {
+      const user = userEvent.setup();
+      render(<BookingsDateRange query={BASE} />);
+      const calendar = await openCalendar(user);
+
+      await user.click(calendar.getByRole('button', { name: /September 10th, 2026/i }));
+      await user.click(calendar.getByRole('button', { name: /September 20th, 2026/i }));
+
+      expect(push).toHaveBeenCalledWith('/bookings?from=2026-09-10&to=2026-09-20');
+    });
   });
 
   it('THU HẸP một khoảng đang lọc: cú bấm đầu mở khoảng MỚI, không nối vào khoảng cũ', async () => {
