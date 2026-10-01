@@ -8,6 +8,24 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-10-01 — CI main đỏ vì hai ca test lịch phụ thuộc ngày (nhánh `fix/admin-date-range-spec-clock`)
+
+Lượt CI của `aede381d` (merge F19) đỏ ở bước gate: hai ca của
+`apps/admin/src/components/bookings/bookings-date-range.spec.tsx` không tìm được nút
+"September 10th, 2026"; bước int không chạy vì bước trước đỏ. Không liên quan F19: URL chưa
+có khoảng ngày thì lịch của `toolbar-date-range.tsx` (`defaultMonth` rỗng) mở ở tháng hiện
+tại, hai tháng một lúc. Hai ca ấy bấm cứng ngày tháng 9 nên xanh suốt tháng 9 và đỏ từ
+01/10, khi lịch sang tháng 10–11; `gate:int` ngày 30/09 xanh vì chạy trước lúc sang tháng.
+CI đỏ không chặn deploy: Vercel vẫn lên admin và web của `aede381d`.
+
+Vá: hai ca vào một nhóm ghim đồng hồ ở 15/09/2026, chỉ giả `Date` (khuôn
+`booking-receipt.spec.tsx` của web) để popover và userEvent vẫn chạy timer thật. Đột biến:
+ghim sang 15/10 thì đúng hai ca ấy đỏ lại. Rà các spec khác có bấm ngày trên lịch: chỉ còn
+`private-trip-form.spec.tsx` của web, vốn chọn ngày theo hôm nay.
+
+Tests after: admin 1517/1517 ở 134 file, typecheck và Biome xanh trên máy. Chỉ đổi một spec
+admin nên không chạy lại `gate:int` ở máy; CI chạy đủ gate và int sau push.
+
 ## 2026-10-01 — Merge F19 lên main (`0eac550e`)
 
 Nội dung đã kể ở HAI entry ngay bên dưới — "Vòng review F19 và bản vá" và "F19 khu sửa
