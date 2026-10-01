@@ -45,6 +45,7 @@ const report: AdminMonthlyReport = {
   // Cột kết quả kinh doanh (ADR-0033) — thêm ở Task 6 để fixture khớp
   // contract. Mapper hiển thị của chúng dựng ở Task 8; tới đó bộ test này
   // mới có gì để nói về từng con số.
+  recognizedThrough: '2026-09-30',
   recognizedRevenue: '2500.00',
   cogsVariable: '210.00',
   cogsFixed: '400.00',
@@ -76,6 +77,39 @@ describe('reportPeriodLabel', () => {
         to: '2024-03-01T00:00:00.000Z',
       }),
     ).toBe('1 Feb 2024 – 29 Feb 2024');
+  });
+
+  // ADR-0033 AMEND 3: nhãn kỳ đọc `recognizedThrough` của server, không tự suy
+  // lại từ `generatedAt` — server là nơi duy nhất quyết cận ghi nhận.
+  const october = {
+    ...report,
+    month: '2026-10',
+    from: '2026-10-01T00:00:00.000Z',
+    to: '2026-11-01T00:00:00.000Z',
+  };
+
+  it('tháng đang chạy: dừng ở ngày server đã tính tới, kèm "(to date)"', () => {
+    expect(reportPeriodLabel({ ...october, recognizedThrough: '2026-10-15' })).toBe(
+      messages.admin.reports.periodToDate('1 Oct 2026', '15 Oct 2026'),
+    );
+  });
+
+  it('ngày đầu tháng vẫn là một kỳ một ngày, không phải kỳ rỗng', () => {
+    expect(reportPeriodLabel({ ...october, recognizedThrough: '2026-10-01' })).toBe(
+      messages.admin.reports.periodToDate('1 Oct 2026', '1 Oct 2026'),
+    );
+  });
+
+  it('đã tính tới ngày cuối tháng thì là kỳ trọn vẹn, không còn "(to date)"', () => {
+    expect(reportPeriodLabel({ ...october, recognizedThrough: '2026-10-31' })).toBe(
+      '1 Oct 2026 – 31 Oct 2026',
+    );
+  });
+
+  it('chưa có ngày nào được tính (tháng tương lai): nói thẳng là chưa bắt đầu', () => {
+    expect(reportPeriodLabel({ ...october, recognizedThrough: null })).toBe(
+      messages.admin.reports.periodNotStarted,
+    );
   });
 });
 

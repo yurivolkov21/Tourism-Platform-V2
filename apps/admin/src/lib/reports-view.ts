@@ -115,9 +115,16 @@ const SUMMARY_METRICS: SummaryMetric[] = [
  * vào), nên in thẳng nó lên tiêu đề là nói với admin rằng báo cáo phủ luôn
  * ngày đầu tháng sau — sai đúng một ngày, và là kiểu sai không ai soi ra khi
  * nhìn một tờ giấy. Lùi 1ms rồi lấy phần ngày.
+ *
+ * Tháng đang chạy (ADR-0033 AMEND 3) dừng ở `recognizedThrough` kèm "(to date)":
+ * cột kinh doanh chỉ tính chuyến đã kết thúc tới ngày ấy. Ngày đó do server tính
+ * — ở đây chỉ so chuỗi `YYYY-MM-DD`, không suy lại từ `generatedAt`.
  */
 export function reportPeriodLabel(report: AdminMonthlyReport): string {
   const { from, to } = reportPeriodDays(report);
+  const through = report.recognizedThrough;
+  if (through === null) return t.periodNotStarted;
+  if (through < to) return t.periodToDate(formatCalendarDate(from), formatCalendarDate(through));
   return t.period(formatCalendarDate(from), formatCalendarDate(to));
 }
 

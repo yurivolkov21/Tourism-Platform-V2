@@ -49,13 +49,19 @@ const MONTH_OPTION_COUNT = 12;
  * quá đắt. Schema là CHÍNH cái contract dùng, không có bản regex thứ hai.
  *
  * Tháng trước `REPORTS_FIRST_MONTH` cũng tính là rác với trang này, nên link cũ
- * hay gõ tay `?month=2025-10` không mở được báo cáo trước mốc dữ liệu. Chuỗi
- * `YYYY-MM` đủ bốn chữ số năm nên so sánh chuỗi đúng thứ tự thời gian.
+ * hay gõ tay `?month=2025-10` không mở được báo cáo trước mốc dữ liệu. Tháng SAU
+ * tháng hiện tại cũng vậy (ADR-0033 AMEND 3): chưa chuyến nào kết thúc, và menu
+ * tháng chưa bao giờ bày nó. Chuỗi `YYYY-MM` đủ bốn chữ số năm nên so sánh chuỗi
+ * đúng thứ tự thời gian.
  */
 export function parseReportsSearchParams(raw: RawSearchParams, now: Date): ReportsQuery {
   const parsed = ReportMonthSchema.safeParse(firstParam(raw.month));
+  const latest = currentMonth(now);
   return {
-    month: parsed.success && parsed.data >= REPORTS_FIRST_MONTH ? parsed.data : currentMonth(now),
+    month:
+      parsed.success && parsed.data >= REPORTS_FIRST_MONTH && parsed.data <= latest
+        ? parsed.data
+        : latest,
   };
 }
 

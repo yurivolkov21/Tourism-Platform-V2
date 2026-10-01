@@ -38,6 +38,7 @@ const report: AdminMonthlyReport = {
   cancellationsWithinDeadline: 1,
   cancellationsAfterDeadline: 3,
   reviewsApproved: 5,
+  recognizedThrough: '2026-09-30',
   recognizedRevenue: '2500.00',
   cogsVariable: '210.00',
   cogsFixed: '400.00',
@@ -143,6 +144,21 @@ describe('buildReportWorkbook', () => {
     const cell = cellFor(sheetNamed(book, 'Summary'), t.xlsx.grossMargin);
 
     expect(cell?.value).toBe(t.pnlTable.marginUnknown);
+  });
+
+  it('dòng Period của tháng đang chạy nói "(to date)" như trên màn hình (ADR-0033 AMEND 3)', async () => {
+    // File in ra đúng con số đã tính tới hôm ấy; thiếu chữ này thì tờ giấy nói
+    // "cả tháng" trong khi cột kinh doanh mới tính được nửa tháng.
+    const book = await open({
+      ...report,
+      month: '2026-10',
+      from: '2026-10-01T00:00:00.000Z',
+      to: '2026-11-01T00:00:00.000Z',
+      recognizedThrough: '2026-10-15',
+    });
+    const cell = cellFor(sheetNamed(book, 'Summary'), t.xlsx.period);
+
+    expect(cell?.value).toBe(t.periodToDate('1 Oct 2026', '15 Oct 2026'));
   });
 
   it('khối đầu khai THUẾ SUẤT — env không có ngày hiệu lực', async () => {

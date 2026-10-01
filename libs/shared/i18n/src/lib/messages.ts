@@ -3174,6 +3174,13 @@ export const messages = {
       print: 'Print',
       /** Dòng phụ đề: kỳ báo cáo, cả hai đầu là ngày TÍNH VÀO. */
       period: (from: string, to: string) => `${from} – ${to}`,
+      /**
+       * Tháng đang chạy (ADR-0033 AMEND 3): cột kinh doanh chỉ tính chuyến đã kết
+       * thúc, nên kỳ dừng ở ngày server đã tính tới chứ không phải cuối tháng.
+       */
+      periodToDate: (from: string, to: string) => `${from} – ${to} (to date)`,
+      /** Tháng chưa tới — chưa ngày nào được tính (admin vốn không bày tháng này). */
+      periodNotStarted: 'Not started yet',
       generatedAt: (at: string) => `Generated ${at}`,
       cards: {
         /**
@@ -3251,7 +3258,7 @@ export const messages = {
         statuses:
           'The status table follows the bookings created this month and shows where each one stands today, so it can change after the month closes.',
         recognised:
-          'Revenue recognised counts trips that finished this month, so it differs from cash collected — money for a December trip is taken today but earned in December. Money kept from a cancelled booking counts as revenue too.',
+          'Revenue recognised counts trips that finished this month, so it differs from cash collected — money for a December trip is taken today but earned in December. Money kept from a cancelled booking counts as revenue too. While a month is still running, only trips that have finished so far count, so these figures keep growing until it ends.',
         costs:
           'Per-traveller costs follow the travellers who went, including anyone given a full goodwill refund; per-departure costs are charged once for each departure that ran with at least one traveller, whether it sold out or not.',
         netProfit:

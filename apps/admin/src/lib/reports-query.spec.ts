@@ -48,6 +48,14 @@ describe('parseReportsSearchParams', () => {
     }
   });
 
+  it('month SAU tháng hiện tại rơi về tháng hiện tại — chưa có gì để báo cáo (ADR-0033 AMEND 3)', () => {
+    for (const month of ['2026-10', '2026-12', '2027-01']) {
+      expect(parseReportsSearchParams({ month }, NOW)).toEqual({ month: '2026-09' });
+    }
+    // Chính tháng hiện tại vẫn mở được — nó là tháng đang chạy, không phải tương lai.
+    expect(parseReportsSearchParams({ month: '2026-09' }, NOW)).toEqual({ month: '2026-09' });
+  });
+
   it('month rác rơi về tháng hiện tại — URL là thứ người gõ', () => {
     // Hai giá trị cuối là bẫy năm của Date.UTC (vòng vá review F6): contract
     // khoá năm 1900–2099 nên ở đây chúng chỉ là "rác" như mọi rác khác.
