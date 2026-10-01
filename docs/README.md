@@ -73,7 +73,7 @@ Mỗi ADR tự chứa đầy đủ phần sửa bổ sung (AMEND) của nó; b�
 | [0030](adr/0030-refund-policy-tiers.md) | Chính sách hoàn tiền theo bậc | **đã thay** bởi [0041](adr/0041-single-cancellation-deadline.md) |
 | [0031](adr/0031-review-rejection.md) | Từ chối đánh giá là quyết định chung cuộc | |
 | [0032](adr/0032-review-author-edit.md) | Tác giả sửa lại đánh giá bị bác, có trần vòng lặp | |
-| [0033](adr/0033-financial-model.md) | Báo cáo có kết quả kinh doanh, không chỉ dòng tiền | định nghĩa doanh thu sửa ở [0041](adr/0041-single-cancellation-deadline.md) §9 |
+| [0033](adr/0033-financial-model.md) | Báo cáo có kết quả kinh doanh, không chỉ dòng tiền | định nghĩa doanh thu sửa ở [0041](adr/0041-single-cancellation-deadline.md) §9 · 3 AMEND (tháng đang chạy chỉ ghi nhận chuyến đã kết thúc) |
 | [0034](adr/0034-excel-report-export.md) | Báo cáo tháng xuất Excel; CSV giữ đúng chỗ | |
 | [0035](adr/0035-media-lifecycle.md) | Ảnh có đường chết, đi qua hàng đợi có độ trễ | |
 | [0036](adr/0036-dashboard-daily-series.md) | Dashboard nối số thật bằng một chuỗi theo ngày | |

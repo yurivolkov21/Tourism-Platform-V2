@@ -326,6 +326,43 @@ bước 6) không còn dòng loại đó trên prod.
 doanh thu của một tháng đã đóng tụt xuống. Chữa thật vẫn cần cột snapshot theo
 kỳ, vẫn là một ADR riêng.
 
+## AMEND 3 01/10 — tháng đang chạy chỉ ghi nhận chuyến ĐÃ kết thúc
+
+**Chỗ sót.** §1 chốt mốc ghi nhận là lúc chuyến KẾT THÚC, nhưng cửa sổ của cột
+kết quả kinh doanh mượn nguyên khung tháng `[ngày 1, ngày 1 tháng sau)` của cột
+dòng tiền — khung "không neo vào bây giờ: tháng 7 là tháng 7 dù đọc lúc nào".
+Luật ấy vô hại ở cột dòng tiền vì `paid_at` không bao giờ nằm ở tương lai;
+`departure_end_date` thì có. Đo ngày 01/10 trên prod: báo cáo tháng 10 ghi
+Revenue recognised $33,296.00 và "28 departures ran this month" khi chưa chuyến
+nào kết thúc — đúng cái lỗi mục 4 của §Bối cảnh chê (gọi tiền của chuyến chưa
+chạy là doanh thu), chỉ thu từ thang tháng xuống thang ngày. §Giới hạn đã biết
+không ghi ca này: đây là chỗ sót, không phải một đánh đổi.
+
+**Quyết định.** Cửa sổ của cột kết quả kinh doanh có thêm cận trên:
+`[đầu tháng, min(đầu tháng sau, 00:00 UTC của ngày mai))`, "ngày mai" tính từ
+lúc chốt sổ. Nói cách khác, chuyến được ghi nhận khi `departure_end_date` ≤ hôm
+nay theo ngày UTC — đúng cổng "chuyến đã xong" của `checkReviewEligibility`
+(ngày UTC theo ADR-0009 AMEND 3; chuyến kết thúc đúng hôm nay là đã xong), nên
+câu "một mốc, hai nơi" của §1 nay đúng tới từng ngày. Cận áp cho CẢ HAI vế cùng
+lúc: doanh thu, giá vốn biến đổi và phí cổng (đọc `bookings.departure_end_date`)
+lẫn giá vốn cố định và `departuresRun` (đọc `tour_departures.end_date`), để hai
+vế không lệch nhau.
+
+- Tháng đã đóng: cận trùng đầu tháng sau, số không đổi một xu.
+- Tháng đang chạy: số tăng dần theo từng chuyến kết thúc. "Hai lần đọc ra cùng
+  một số" nay chỉ còn hứa cho tháng đã đóng — giống cột dòng tiền vốn đã vậy.
+- Tháng tương lai: cửa sổ rỗng.
+
+**Hình dạng câu trả lời.** Thêm `recognizedThrough`: ngày `YYYY-MM-DD` cuối cùng
+được tính vào cột kết quả kinh doanh, `null` khi cửa sổ rỗng. API là nơi DUY
+NHẤT tính cận; admin in nhãn kỳ từ trường này ("1 Oct 2026 – 15 Oct 2026 (to
+date)") chứ không tự suy lại từ `generatedAt` — bài học bản chép tay của
+`reviewSlot` bên web. `generatedAt` và cận dùng cùng một mốc `now`.
+
+**Ngoài ADR, cùng đợt:** trang `/reports` coi `?month=` SAU tháng hiện tại là
+rác, rơi về tháng hiện tại như tháng trước mốc 01/2026 — menu tháng chưa bao giờ
+bày tháng tương lai.
+
 ## Hình dạng câu trả lời
 
 `AdminMonthlyReportSchema` mọc thêm (mọi tiền là `DecimalStringSchema`):
