@@ -1,6 +1,6 @@
 # Spec F19 — Khu sửa tour dạng thanh bước (P4e-3c)
 
-- **Ngày:** 2026-09-28 · **Trạng thái:** user đã duyệt mockup v7; spec chờ user đọc
+- **Ngày:** 2026-09-28 · **Trạng thái:** user đã duyệt mockup v7 và spec; thi công 29/09, merge 01/10
 - **Quyết định kiến trúc:** [ADR-0049](../adr/0049-tour-workspace-steps.md)
 - **Nền:** [ADR-0047](../adr/0047-tour-editor-sections.md) (khu làm việc, luật ghi) ·
   [ADR-0048](../adr/0048-tour-photos.md) (bước Photos)

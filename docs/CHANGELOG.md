@@ -8,6 +8,28 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-10-01 — Merge F19 lên main (`0eac550e`)
+
+Nội dung đã kể ở HAI entry ngay bên dưới — "Vòng review F19 và bản vá" và "F19 khu sửa
+tour dạng thanh bước". Entry này chỉ ghi sự kiện merge.
+
+Nhánh `feat/p4e-3c-tour-workspace-steps` đã rebase lên `8fd51b54` từ 30/09, trước vòng
+vá, và `main` không đi thêm từ đó, nên fast-forward thẳng: 14 commit — 11 của đợt thi
+công, 3 của vòng review. Gate không chạy lại: đỉnh đem merge chính là đỉnh đã chạy
+`gate:int` xanh trong entry vòng review.
+
+Không migration, không đổi env, không đụng API hay web: ngoài `apps/admin` chỉ có
+`libs/shared/i18n` (chữ của admin). Không có bước hạ tầng nào.
+
+Cùng commit: spec F19 thôi ghi "chờ user đọc"; hàng P6 ở open-items ghi thư viện AI đã
+ghim từ 29/09 (`3f646ace`) thay cho dòng nhắc "trước 15/10" đã cũ.
+
+Việc còn lại: thử tay F19 trên production sau khi Vercel deploy admin, gồm bốn điểm bố
+cục mới kiểm bằng test DOM — Costs ở 1280px, cột phải ở 1366×768, thanh bước ở 320px,
+Back sau khi bấm link Day ở cột phải.
+
+Tests after: như entry vòng review bên dưới — unit 5024 (admin 1517), int 702/702.
+
 ## 2026-09-30 — Vòng review F19 và bản vá (nhánh `feat/p4e-3c-tour-workspace-steps`)
 
 Review max (skill `code-review`) trên nhánh đã rebase lên `main` (`8fd51b54`; đụng
