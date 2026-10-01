@@ -8,6 +8,35 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-10-01 — Merge G21 (`7844478c`), deploy API hỏng vì hết kết nối pooler, thử tay 2/2
+
+Nhánh `fix/reports-recognised-to-date` fast-forward thẳng (4 commit, `main` không đi thêm);
+CI xanh, Vercel lên admin và web.
+
+**Render deploy hỏng.** Lượt tự deploy của `7844478c` (14:31–14:34 UTC) kết thúc
+`update_failed`: instance mới chết lúc pg-boss của worker inline khởi động, log
+`EMAXCONNSESSION — max clients reached in session mode, pool_size: 15`. Render chạy instance
+cũ và mới song song, mà đúng lúc ấy build web của Vercel cùng lượt push đang prerender gọi dồn
+vào API cũ — pool của nó sát trần 15 của Session pooler. Render giữ bản cũ (`aede381d`) chạy
+tiếp, nên admin mới đọc báo cáo của API cũ: thiếu `recognizedThrough` thì nhãn kỳ rơi về trọn
+tháng như thiết kế, chỉ số vẫn là số cũ — user chụp thấy và báo. Đo lúc yên: 3 kết nối qua
+Supavisor. Deploy lại tay qua Render MCP (user duyệt) lúc 15:04:59, live 15:06:18. Ghi G23.
+Bài học: dấu `timestamp − uptimeSec` của `/api/health` sau giờ push KHÔNG chứng minh bản mới đã
+lên — gói free tự ngủ rồi thức (lần thức 14:35 trông y như một lần deploy); phải đọc trạng thái
+deploy của Render.
+
+**Thử tay trên production, 2/2 đạt.** Tháng 10 (đọc 15:07 UTC): "1 Oct 2026 – 1 Oct 2026 (to
+date)" ở phụ đề và bốn card, doanh thu ghi nhận $0.00, biên "—", "0 departures ran this
+month", câu mới ở "How to read these numbers"; Cash collected $2.00 là một booking thử trả
+trong ngày (dưới đây). Tháng 9 y nguyên số đo trên prod trước khi vá: $40,635.80 · giá vốn
+theo khách $25,737.54 · theo chuyến $3,952.00 · lãi gộp $10,946.26 (26.9%) · thuế $995.11 ·
+phí cổng $1,199.42 · lãi ròng $8,751.73 · 15 chuyến, không có "(to date)".
+
+**Phát hiện lúc thử:** tour `test-01` tạo 01/10 19:07 giờ VN bằng tài khoản admin, ĐANG BÁN,
+một chuyến giá $2.00, booking `BK-9CSZWSFD` đã trả rồi huỷ trong hạn, hoàn đủ — không thuộc
+lượt thử nào của session này; đã hỏi user. Có booking nên chưa xoá được; ghi vào mục "Trước
+lượt seed lại 03/11" của open-items.
+
 ## 2026-10-01 — Báo cáo tháng chỉ ghi nhận chuyến đã kết thúc (nhánh `fix/reports-recognised-to-date`, đóng G21)
 
 User thấy `/reports` tháng 10 ghi "Revenue recognised $33,296.00" ngay ngày 01/10 và hỏi có

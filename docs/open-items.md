@@ -26,7 +26,10 @@
 ## Trước lượt seed lại 03/11
 
 - **Ngay trước khi chạy seed:** gỡ bán hoặc xoá các tour thử tạo bằng F17 —
-  `seed:verify` bắt "tour đang bán không có rating".
+  `seed:verify` bắt "tour đang bán không có rating". Đo 01/10: còn đúng một tour
+  như vậy, `test-01` (tạo 01/10 bằng tài khoản admin, đang bán, một chuyến giá
+  $2.00, một booking đã huỷ và hoàn đủ). Có booking nên chưa xoá được; `data:reset`
+  giữ bảng `tours`, nên SAU lượt seed tour này hết booking và xoá được qua admin.
 - Lượt ấy ghi đè TRỌN nội dung 29 tour seed về fixture: cột của `tours` và năm
   bảng con (điểm đến, lịch trình, FAQ, chính sách, dòng chi phí), cùng giá vốn.
   Tour tạo tay còn sống, chỉ mất chuyến, booking, đánh giá. Vá 28/09 ở vòng
@@ -134,3 +137,4 @@ deploy) nằm ở [sổ nợ kỹ thuật](analysis/2026-08-06-backlog-no-ky-thu
 | G20 | Icon cảnh báo `text-warning` trên nền card chỉ ~2:1 (dưới 3:1 của WCAG 1.4.11). Vòng review F19 đã cho dòng thiếu khác CHỮ dòng đủ nên màu không còn là tín hiệu duy nhất; đổi màu token là việc riêng của hệ màu |
 | ~~G21~~ | ~~Báo cáo `/reports` với tháng ĐANG chạy ghi doanh thu của chuyến chưa kết thúc.~~ Đóng 01/10 (nhánh `fix/reports-recognised-to-date`, ADR-0033 AMEND 3): user chọn vá cách tính chứ không chỉ đổi chữ — cột kết quả kinh doanh chỉ ghi nhận chuyến đã kết thúc tới hôm nay (ngày UTC), tháng đang chạy in nhãn "(to date)", tháng tương lai rơi về tháng hiện tại |
 | G22 | `data:reset` (`apps/api/scripts/reset-operational-data.mjs`) xoá `reviews` nhưng giữ nguyên `media_assets` (nằm trong `PHAI_CON`), nên dòng ảnh của review thành tham chiếu treo: bộ dọn media coi là còn dùng, hoãn mãi, file Cloudinary không bao giờ bị xoá. Đo 01/10: bốn ảnh như vậy của review thử bị bác trên `BK-5YU9J339`; user chốt xoá tay thư mục ấy trên Cloudinary. Vá trước lượt seed lại khoảng 03/11: xoá dòng `media_assets` của review và đưa publicId vào `media_garbage` |
+| G23 | Render deploy API bằng cách chạy instance cũ và mới SONG SONG, còn Session pooler của Supabase chỉ cho 15 kết nối. 01/10 lượt deploy `7844478c` hỏng (`EMAXCONNSESSION`, lúc pg-boss của instance mới khởi động): build web của Vercel cùng lượt push đang prerender gọi dồn vào API cũ, đẩy pool của nó sát trần. Deploy lại tay lúc yên thì qua (3 kết nối). Hướng vá: hạ kích thước pool (Prisma qua adapter-pg và pg-boss) để hai instance cộng tải prerender vẫn dưới 15, hoặc nâng pool size của Supavisor. Chưa quyết; tới lúc đó, push nào đụng cả API lẫn web thì canh trạng thái deploy Render chứ không chỉ health |
