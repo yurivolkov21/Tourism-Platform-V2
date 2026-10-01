@@ -8,6 +8,41 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-10-01 — Báo cáo tháng chỉ ghi nhận chuyến đã kết thúc (nhánh `fix/reports-recognised-to-date`, đóng G21)
+
+User thấy `/reports` tháng 10 ghi "Revenue recognised $33,296.00" ngay ngày 01/10 và hỏi có
+phải chủ ý. Không phải: ADR-0033 §1 chốt ghi nhận "khi chuyến KẾT THÚC", nhưng cột kết quả
+kinh doanh mượn khung tháng "không neo vào bây giờ" của cột dòng tiền, trong khi
+`departure_end_date` nằm được ở tương lai. Giới hạn đã biết của ADR không nhắc ca này. Ghi
+quyết định trước code ở ADR-0033 AMEND 3 (`8dbcadf4`).
+
+- **API** (`7febc77e`): `recognitionWindow(month, now)` cắt khung tháng ở 00:00 UTC ngày mai;
+  chuyến được tính khi ngày kết thúc ≤ hôm nay theo ngày UTC, cùng biên với cổng
+  `checkReviewEligibility`. Cả hai vế — doanh thu, giá vốn biến đổi, phí cổng lẫn giá vốn cố
+  định và `departuresRun` — đi cùng một cửa sổ. `monthly(month, now)`, `generatedAt` dùng
+  chính mốc `now`. Contract thêm `recognizedThrough` (ngày, `null` khi cửa sổ rỗng).
+- **Admin** (`ef0f4684`): nhãn kỳ đọc `recognizedThrough` — tháng đang chạy in "1 Oct 2026 –
+  15 Oct 2026 (to date)" ở phụ đề, bốn card và dòng Period của file Excel; `?month=` sau tháng
+  hiện tại rơi về tháng hiện tại; "How to read these numbers" thêm một câu. `currentMonth` của
+  admin vốn theo UTC nên đầu tháng giờ VN không lệch với API.
+
+Tháng đã đóng giữ nguyên số: int test so lời gọi có `now` với đường HTTP. Đột biến tay 14 ca
+(cận ngày mai, biên đóng, kẹp tháng tương lai, cửa sổ của từng vế, `generatedAt`,
+`recognizedThrough`, schema nullable, nhãn kỳ, chặn tháng tương lai), cả 14 bị giết.
+
+Gate: int, build, typecheck và unit chạy dưới watchdog; watchdog tắt ngang giữa lượt (không
+ghi `END`), rồi trình chạy `turbo` crash `setRawMode EPIPE` lúc khôi phục stdin SAU khi
+`turbo run test` báo 15/15 tác vụ xanh — lỗi của cửa sổ ẩn, không phải của test. Dừng tay
+bash của gate và API cổng 3001, chạy nốt Biome và kiểm token mobile: xanh.
+
+Còn treo: thử tay trên production sau merge — tháng 10 phải về số tới hôm nay (01/10: $0.00,
+"0 departures ran this month", nhãn "(to date)"), tháng 9 phải y nguyên: doanh thu ghi nhận
+$40,635.80, giá vốn cố định $3,952.00, 15 chuyến đã chạy (đo trên prod trước khi vá).
+
+Tests after: unit 5037 — web 1592, admin 1523 (thêm 6), api 1011 (thêm 6), contract 561
+(thêm 1), mobile 159, mobile-ui 86, core 46, ui 23, i18n 18, tokens 18 — và int 707/707
+(thêm 5).
+
 ## 2026-10-01 — Thử tay F19 trên production (`aede381d`): 12/12 bước đạt
 
 User bấm từng bước, mình kiểm DB và web sau mỗi bước có ghi. Bước 1–8 trên
