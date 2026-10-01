@@ -8,6 +8,8 @@ import {
   RegisterScreen,
   type RegisterScreenProps,
 } from '@/features/auth/register-screen';
+import { orpc, withMobileAuth } from '@/lib/api/client';
+import { consumePendingIntent } from '@/lib/return-to';
 
 /** Cùng khuôn với `login.tsx`; khác ở ô tick Terms và đích sau khi gửi. */
 export default function RegisterRoute() {
@@ -47,6 +49,22 @@ export default function RegisterRoute() {
     }
   };
 
+  // D6 — Đọc từ bộ nhớ bền (SecureStore)
+  const handleSuccess = async () => {
+    const intent = await consumePendingIntent();
+    if (intent) {
+      if (intent.action?.kind === 'wishlist') {
+        void orpc.wishlist.set.call(
+          { tourId: intent.action.tourId, wished: true },
+          { context: withMobileAuth() },
+        );
+      }
+      router.replace(intent.returnTo as '/');
+    } else {
+      router.replace('/');
+    }
+  };
+
   const google = async () => {
     if (pending) return;
     setPending(true);
@@ -55,7 +73,7 @@ export default function RegisterRoute() {
     const outcome = await submitGoogle(actions, 'register');
     setPending(false);
 
-    if (outcome.kind === 'success') router.replace('/');
+    if (outcome.kind === 'success') handleSuccess();
     else setFormMessage({ tone: outcome.tone, text: outcome.text });
   };
 
@@ -71,7 +89,13 @@ export default function RegisterRoute() {
       onSubmit={() => void submit()}
       onGoogle={() => void google()}
       onSignIn={() => router.navigate('/login')}
-      onBack={() => router.back()}
+      onBack={async () => {
+        if (router.canGoBack()) router.back();
+        else {
+          const intent = await consumePendingIntent();
+          router.replace((intent?.returnTo as '/') ?? '/');
+        }
+      }}
     />
   );
 }

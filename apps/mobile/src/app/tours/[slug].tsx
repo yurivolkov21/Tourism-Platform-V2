@@ -39,6 +39,7 @@ import { orpc, withMobileAuth } from '@/lib/api/client';
 import { getAuthClient } from '@/lib/auth-client';
 import { cloudinaryUrl } from '@/lib/cloudinary-url';
 import { formatMoney } from '@/lib/format-money';
+import { setPendingIntent } from '@/lib/return-to';
 
 /**
  * Route chi tiết tour (D1/D7 — ADR-0047 T5). Gọi `catalog.tours.bySlug`,
@@ -356,17 +357,25 @@ export default function TourDetailRoute() {
       authGateBody={messages.mobile.authPrompts.wishlistReason}
       signInLabel={messages.mobile.authPrompts.signIn}
       createAccountLabel={messages.mobile.authPrompts.createAccount}
-      // "Sign in"/"Create account" chưa giữ ý định "quay lại tour này + tự lưu"
-      // sau khi đăng nhập xong (nợ — chưa có hạ tầng return-to chung cho cụm
-      // auth, xem doc comment `TourDetailScreen`). Đóng tấm mời trước khi điều
-      // hướng — quay lại tour vẫn thấy đúng trạng thái, chỉ là tim chưa tự lưu.
+      // D6 — lưu ý định vào bộ nhớ bền (SecureStore) rồi mới rời đi.
+      // Giải quyết dứt điểm lỗi văng về Home khi đăng nhập Google trên Android.
       onSignIn={() => {
         setAuthGateOpen(false);
-        router.navigate('/login');
+        void setPendingIntent({
+          returnTo: `/tours/${slug}`,
+          ...(tourId ? { action: { kind: 'wishlist', tourId } } : {}),
+        }).then(() => {
+          router.navigate('/login');
+        });
       }}
       onCreateAccount={() => {
         setAuthGateOpen(false);
-        router.navigate('/register');
+        void setPendingIntent({
+          returnTo: `/tours/${slug}`,
+          ...(tourId ? { action: { kind: 'wishlist', tourId } } : {}),
+        }).then(() => {
+          router.navigate('/register');
+        });
       }}
       wishlistErrorLabel={wishlistError}
       activeTab={activeTab}

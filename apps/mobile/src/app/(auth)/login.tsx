@@ -8,18 +8,31 @@ import {
   SignInScreen,
   type SignInScreenProps,
 } from '@/features/auth/sign-in-screen';
+import { orpc, withMobileAuth } from '@/lib/api/client';
+import { consumePendingIntent } from '@/lib/return-to';
 
-/**
- * Route giữ TOÀN BỘ state của màn Sign in; `SignInScreen` chỉ vẽ. Nhờ vậy màn
- * test được ở từng trạng thái mà không cần dựng router, còn chỗ nối với hạ tầng
- * (`useAuthActions`) chỉ nằm ở đúng file này.
- */
 export default function LoginRoute() {
   const actions = useAuthActions();
   const [values, setValues] = useState<Record<SignInField, string>>({ email: '', password: '' });
   const [fieldErrors, setFieldErrors] = useState<Partial<Record<SignInField, string>>>({});
   const [formMessage, setFormMessage] = useState<SignInScreenProps['formMessage']>(null);
   const [pending, setPending] = useState(false);
+
+  // Đọc từ bộ nhớ bền (SecureStore)
+  const handleSuccess = async () => {
+    const intent = await consumePendingIntent();
+    if (intent) {
+      if (intent.action?.kind === 'wishlist') {
+        void orpc.wishlist.set.call(
+          { tourId: intent.action.tourId, wished: true },
+          { context: withMobileAuth() },
+        );
+      }
+      router.replace(intent.returnTo as '/');
+    } else {
+      router.replace('/');
+    }
+  };
 
   // Gõ lại vào ô nào thì xoá lỗi của ô đó, và xoá luôn khung lỗi cấp form: câu
   // lỗi cũ nói về lần gửi cũ, giữ lại là nói sai.
@@ -42,7 +55,7 @@ export default function LoginRoute() {
     if (outcome.kind === 'formMessage') {
       setFormMessage({ tone: outcome.tone, text: outcome.text });
     }
-    if (outcome.kind === 'success') router.replace('/');
+    if (outcome.kind === 'success') handleSuccess();
     if (outcome.kind === 'verifyEmail') {
       // `reason: 'blocked'` để màn Verify đổi phụ đề: khách này không vừa đăng
       // ký, mà bị chặn ngay ở cửa đăng nhập.
@@ -61,7 +74,7 @@ export default function LoginRoute() {
     const outcome = await submitGoogle(actions, 'signIn');
     setPending(false);
 
-    if (outcome.kind === 'success') router.replace('/');
+    if (outcome.kind === 'success') handleSuccess();
     else setFormMessage({ tone: outcome.tone, text: outcome.text });
   };
 
@@ -76,7 +89,10 @@ export default function LoginRoute() {
       onGoogle={() => void google()}
       onForgot={() => router.push('/forgot-password')}
       onCreateAccount={() => router.navigate('/register')}
-      onClose={() => router.replace('/')}
+      onClose={async () => {
+        const intent = await consumePendingIntent();
+        router.replace((intent?.returnTo as '/') ?? '/');
+      }}
     />
   );
 }

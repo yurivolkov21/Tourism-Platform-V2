@@ -8,7 +8,12 @@ import type {
   TourDetail,
   ToursListQuery,
 } from '@tourism/contract';
-import { cancellationDeadline, isWithinDeadline, vietnamToday } from '@tourism/contract';
+import {
+  cancellationDeadline,
+  foldAccents,
+  isWithinDeadline,
+  vietnamToday,
+} from '@tourism/contract';
 import { prisma } from '../../auth/auth.config.js';
 import type { Prisma } from '../../generated/prisma/client.js';
 import { DepartureStatus, MediaOwnerType, MediaRole } from '../../generated/prisma/enums.js';
@@ -141,15 +146,30 @@ export class CatalogService {
       ...(destination ? { destinations: { some: { destination: { slug: destination } } } } : {}),
       ...(featured === undefined ? {} : { isFeatured: featured }),
       ...(search
-        ? {
-            // escapeLike (W4 R3, cùng bài học F9 phía admin): Prisma
-            // `contains` không tự escape `%`/`_` — gõ `%` là kéo TOÀN BỘ
-            // bảng trong khi ô tìm nói đang lọc.
-            OR: [
-              { title: { contains: escapeLike(search), mode: 'insensitive' } },
-              { summary: { contains: escapeLike(search), mode: 'insensitive' } },
-            ],
-          }
+        ? (() => {
+            // Bỏ dấu keyword (ví dụ "ha" khớp "Hạ Long", "Hà Nội") — cùng
+            // hàm `foldAccents` mà mobile/web đã dùng ở client (port 22/09).
+            // ILIKE `mode: 'insensitive'` chỉ bỏ hoa/thường, KHÔNG bỏ dấu.
+            const escaped = escapeLike(search);
+            return {
+              OR: [
+                // Nhánh 1: khớp nguyên bản (giữ hành vi cũ cho query có dấu).
+                { title: { contains: escaped, mode: 'insensitive' as const } },
+                { summary: { contains: escaped, mode: 'insensitive' as const } },
+                // Nhánh 2: khớp bỏ dấu — dùng cột `slug` của tour như proxy
+                // đã-fold (slug sinh từ `slugifyVietnamese` = `foldAccents` +
+                // thay khoảng trắng bằng gạch). Đối với title dài hơn slug,
+                // đây là xấp xỉ tốt nhất mà không cần Postgres extension hay
+                // migration thêm cột. Dữ liệu seed ~30 tour, đủ chính xác.
+                {
+                  slug: {
+                    contains: escapeLike(foldAccents(search).replace(/\s+/g, '-')),
+                    mode: 'insensitive' as const,
+                  },
+                },
+              ],
+            };
+          })()
         : {}),
     };
 
