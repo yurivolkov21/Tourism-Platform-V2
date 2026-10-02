@@ -1,7 +1,9 @@
 # Spec P4e-4 — Quản trị bài viết
 
 - **Ngày:** 2026-10-02 · **Trạng thái:** thiết kế duyệt qua bốn phần trong chat cùng ngày;
-  spec chờ user đọc
+  spec user duyệt cùng ngày. Plan thi công
+  [2026-10-02-p4e-4-posts-admin.md](../plans/2026-10-02-p4e-4-posts-admin.md) sửa tám đoạn cho
+  khớp code — mỗi đoạn ghi "plan, quyết định N" ngay tại chỗ đã sửa.
 - **Quyết định kiến trúc:** [ADR-0051](../adr/0051-posts-admin.md)
 - **Nền:** [ADR-0004](../adr/0004-post-visibility-helper.md) (luật "đã đăng") ·
   [ADR-0047](../adr/0047-tour-editor-sections.md) (phiên bản, cổng "đủ mới được bán") ·
@@ -47,6 +49,7 @@ Hằng số mới ở `libs/shared/contract/src/schemas/admin-posts.ts`:
 | `POST_TAGS_MAX` | 5 | bài seed có tối đa 2 tag |
 | `POST_TAG_NAME_MAX` | 60 | cột `post_tags.name/slug VarChar(60)` |
 | `POST_RELATED_TOURS_MAX` | 3 | như Nexora |
+| `POST_COVER_ALT_MAX` | 300 | cột `media_assets.alt VarChar(300)` (thêm ở plan, quyết định 18) |
 
 ### 2.1 Slug
 
@@ -125,7 +128,8 @@ không có (sẵn có).
 | `tags` | `GET /api/admin/post-tags` | mọi tag kèm số bài (cả nháp); route ngoài `/api/admin/posts/…` để `{slug}` không nuốt nó |
 
 Thư viện ảnh dùng lại `GET /api/admin/tour-photo-library` của F18 (ảnh địa danh). Ô chọn tour
-liên quan dùng lại `GET /api/admin/tours?search=`.
+liên quan nạp MỌI tour qua `GET /api/admin/tours` (trang 100 dòng) một lần ở server rồi lọc
+theo tiêu đề ở trình duyệt — danh sách tour của admin không có ô tìm (sửa ở plan, quyết định 1).
 
 ### 3.2 `update`
 
@@ -151,9 +155,13 @@ liên quan dùng lại `GET /api/admin/tours?search=`.
 
 `id, slug, title, excerpt, content, status, publishedAt, displayStatus, readiness,
 tags [{ slug, name }], relatedTours [{ id, slug, title, isPublished }],
-cover { publicId, url, alt, uploaded } | null, author { name } | null, version, createdAt`.
+cover { publicId, url, alt, source } | null, author { name }, version, createdAt`.
 
-`displayStatus` và `readiness` do server tính bằng hai hàm thuần ở §2.
+`displayStatus` và `readiness` do server tính bằng hai hàm thuần ở §2; `readiness` là danh
+sách mục CÒN THIẾU (rỗng là đủ). `source` của ảnh bìa là `UPLOAD` (thư mục của chính bài),
+`LIBRARY` (có dòng thư viện địa danh) hay `CATALOG` (ảnh bìa của bài seed — gỡ ra là không
+chọn lại được, như ảnh tour ở ADR-0048 AMEND 1). `author` luôn có (`author_id` NOT NULL),
+chỉ `name` có thể trống. (Sửa ở plan, quyết định 4, 5, 6.)
 
 ### 3.4 Ký upload và thư mục
 
@@ -178,9 +186,10 @@ Bật mục Posts (`/posts`). Sửa hai test đang dùng Posts làm ví dụ m�
 ### 4.2 Danh sách `/posts`
 
 - Thanh công cụ: `StatusFilterTabs` (All / Published / Scheduled / Drafts), ô tìm, nút New post.
-- Bảng (kit `DataTableFrame`): Post (ảnh bìa nhỏ, tiêu đề, slug) · Status (chip; Scheduled kèm
-  ngày) · Published · Tags · Updated. Bấm hàng mở trang sửa. Phân trang và trạng thái trên URL
-  theo `table-query.ts`.
+- Bảng (kit `DataTableFrame`): Post (ảnh bìa nhỏ, tiêu đề, slug) · Status (chip) · Published
+  (ngày đăng; bài hẹn giờ in ngày hẹn ở đây, chip không lặp lại — plan, quyết định 19) · Tags ·
+  Updated. Tiêu đề là link mở trang sửa, như bảng Tours. Phân trang và trạng thái trên URL theo
+  `table-query.ts`.
 
 ### 4.3 Hộp New post
 
@@ -208,8 +217,9 @@ Cột phải (dính khi cuộn, trần chiều cao như cột phải của F19):
 
 1. **Publish:** chọn Draft / Published; ô ngày giờ (UTC) khi Published; danh sách kiểm tra ba
    mục (dòng thiếu ghi "Missing — required to publish"); nút **Save** duy nhất.
-2. **Cover:** ảnh xem trước; Upload và Choose from library; ô alt tuỳ chọn (trống thì web dùng
-   tiêu đề bài).
+2. **Cover:** ảnh xem trước kèm nguồn (ảnh catalog nói gỡ ra là không chọn lại được); Upload
+   và Choose from library; ô alt tuỳ chọn — trống là ảnh trang trí: web vẽ `alt=""` vì tiêu đề
+   bài in ngay cạnh ảnh (plan, quyết định 3).
 3. **Tags:** ô gõ có gợi ý từ `post-tags`; Enter tạo tag mới; tối đa 5.
 4. **Related tours:** tối đa 3; thêm bằng ô tìm tour; lên/xuống/xoá; câu nhắc tour tắt bán
    không hiện trên web.
@@ -224,16 +234,19 @@ Hành vi chung:
 
 ### 4.5 Ảnh: phần dùng chung tách từ F18
 
-- `lib/photo-upload.ts`: kiểu kết quả tải lên tách khỏi `TourPhotoUpload` (đổi tên thành
-  kiểu chung, tour dùng lại).
-- `PhotoLibraryDialog`: bỏ phụ thuộc tour (`tourDestinationIds`, bộ lọc `THIS_TOUR` thành
-  prop tuỳ chọn; copy chuyển sang khối dùng chung). Khu sửa tour truyền đúng prop cũ nên hành
-  vi không đổi — test F18 hiện có phải xanh nguyên.
+- `lib/photo-upload.ts`: dùng nguyên `uploadPhoto` và `UploadedPhoto` — chúng vốn không phụ
+  thuộc tour, `upload` của ảnh bìa cùng hình `TourPhotoUploadSchema`; chỉ sửa chú thích (plan,
+  quyết định 7).
+- `PhotoLibraryDialog`: dời sang `components/kit/`, bỏ phụ thuộc tour (`tourDestinationIds`
+  và bộ lọc `THIS_TOUR` thành prop tuỳ chọn; copy chuyển sang khối dùng chung
+  `messages.admin.photoLibrary`). Khu sửa tour truyền đúng prop cũ nên hành vi không đổi —
+  test F18 hiện có xanh nguyên, chỉ đổi đường import.
 
 ### 4.6 Hộp xoá
 
 Nói rõ: bài rời web; mất liên kết tag và tour; ảnh bìa tự tải lên vào hàng dọn; ảnh thư viện
-giữ nguyên. Bài là bài seed thì thêm câu: lượt seed lại sẽ tạo lại bài này.
+giữ nguyên. Không có câu riêng cho bài seed: admin không phân biệt được bài nào đến từ seed —
+hệ quả của lượt seed lại ghi ở §9 và ADR-0051 (plan, quyết định 2).
 
 ### 4.7 Copy
 
@@ -251,8 +264,9 @@ câu hiển thị "Missing — required to …" dùng lại hằng có sẵn khi
 3. **G9.** `fetchPostDetail` mang thêm tag `tours` cạnh `post:<slug>`.
 4. **Hết trần 50.** `fetchPosts` đi hết các trang bằng `collectAllPages` (khuôn G10).
 5. Bài mới có slug mới: trang dựng khi có người mở lần đầu (`dynamicParams` mặc định).
-6. Ảnh bìa không có alt thì card và phần đầu bài dùng tiêu đề bài làm alt (kiểm hành vi hiện
-   tại của `SlotImage` ở `post-card.tsx`, `post-hero.tsx`; thiếu thì thêm).
+6. Ảnh bìa không có alt: KHÔNG đổi. Đã kiểm `SlotImage` (`post-card.tsx`, `post-hero.tsx`) —
+   nó cố ý vẽ `alt=""` cho ảnh trang trí, và ở cả hai chỗ tiêu đề bài in ngay cạnh ảnh; lấy
+   tiêu đề làm alt là bắt trình đọc màn hình đọc hai lần (plan, quyết định 3).
 
 ## 6. Đối chiếu Nexora (luật 10)
 

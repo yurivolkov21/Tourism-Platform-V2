@@ -220,7 +220,8 @@ entry CHANGELOG cùng ngày.
 [**F16 giai đoạn chuyến** (kèm prompt thi công)](plans/2026-09-23-departure-phase.md) ·
 [**F17 tạo và sửa tour (P4e-3a)** (kèm prompt thi công)](plans/2026-09-24-p4e-3a-tour-editor.md) ·
 [**F18 ảnh tour (P4e-3b)** (kèm prompt thi công)](plans/2026-09-28-p4e-3b-tour-photos.md) ·
-[**F19 khu sửa tour dạng thanh bước (P4e-3c)** (kèm prompt thi công)](plans/2026-09-28-p4e-3c-tour-workspace-steps.md)
+[**F19 khu sửa tour dạng thanh bước (P4e-3c)** (kèm prompt thi công)](plans/2026-09-28-p4e-3c-tour-workspace-steps.md) ·
+[**P4e-4 quản trị bài viết** (kèm prompt thi công)](plans/2026-10-02-p4e-4-posts-admin.md)
 
 ## Conventions — luật áp dụng mãi
 
