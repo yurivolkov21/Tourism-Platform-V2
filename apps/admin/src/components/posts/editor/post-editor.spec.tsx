@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { UnsavedChangesProvider } from '@/components/kit/unsaved-changes';
 import type { LoadPhotoLibraryAction } from '@/lib/photo-library';
 import type { SignCoverAction, UpdatePostAction } from '@/lib/posts-write';
-import { POST_ID, POST_VERSION, postDetailFixture, TOUR_A } from '@/test/post-detail';
+import { POST_ID, POST_VERSION, postDetailFixture, TOUR_A, TOUR_B } from '@/test/post-detail';
 import { PostEditor, type PostEditorProps } from './post-editor';
 
 /**
@@ -47,6 +47,8 @@ function props(patch: Partial<PostEditorProps> = {}): PostEditorProps {
     update: vi.fn<UpdatePostAction>(),
     signCover: vi.fn<SignCoverAction>(),
     loadLibrary: vi.fn<LoadPhotoLibraryAction>(),
+    tagOptions: [],
+    tourOptions: [TOUR_A, TOUR_B],
     ...patch,
   };
 }
@@ -210,5 +212,36 @@ describe('PostEditor — lưu cả form', () => {
     const cover = document.getElementById('post-cover') as HTMLElement;
     expect(await within(cover).findByText(t.errors.PHOTO_NOT_ALLOWED)).toBeInTheDocument();
     expect(screen.getAllByRole('alert')).toHaveLength(1);
+  });
+
+  it('RELATED_TOUR_NOT_FOUND: câu báo nằm ở card Related tours', async () => {
+    const update = vi
+      .fn<UpdatePostAction>()
+      .mockResolvedValue({ ok: false, code: 'RELATED_TOUR_NOT_FOUND' });
+    const { user } = renderEditor({ update });
+
+    await user.type(screen.getByLabelText(t.fields.title), '!');
+    await user.click(saveButton());
+
+    const card = screen.getByText(t.tours.title).closest('[data-slot="card"]') as HTMLElement;
+    expect(await within(card).findByText(t.errors.RELATED_TOUR_NOT_FOUND)).toBeInTheDocument();
+  });
+
+  it('thêm tag và tour rồi lưu: payload mang đúng thứ tự đã soạn', async () => {
+    const update = vi
+      .fn<UpdatePostAction>()
+      .mockResolvedValue({ ok: true, detail: postDetailFixture() });
+    const { user } = renderEditor({ update });
+
+    await user.type(screen.getByLabelText(t.tags.inputLabel), 'Street food{Enter}');
+    await user.type(screen.getByLabelText(t.tours.searchLabel), 'my son');
+    await user.click(screen.getByRole('button', { name: t.tours.add(TOUR_B.title) }));
+    await user.click(saveButton());
+
+    await waitFor(() => expect(update).toHaveBeenCalled());
+    expect(update.mock.calls[0]?.[0]).toMatchObject({
+      tags: ['Food', 'Street food'],
+      relatedTourIds: [TOUR_A.id, TOUR_B.id],
+    });
   });
 });

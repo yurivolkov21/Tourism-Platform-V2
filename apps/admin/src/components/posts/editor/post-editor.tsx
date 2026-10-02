@@ -1,6 +1,6 @@
 'use client';
 
-import { type AdminPostDetail, POST_EXCERPT_MAX } from '@tourism/contract';
+import { type AdminPostDetail, type AdminPostTag, POST_EXCERPT_MAX } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
 import { Card, CardContent } from '@tourism/ui/components/card';
 import { Input } from '@tourism/ui/components/input';
@@ -17,6 +17,7 @@ import type { LoadPhotoLibraryAction } from '@/lib/photo-library';
 import {
   POST_FORM_ID,
   type PostFormValues,
+  type PostTourOption,
   postFormValues,
   postPayload,
   projectedPostReadiness,
@@ -36,6 +37,8 @@ import { PostBanner, type PostBannerState } from './post-banner';
 import { PostCoverCard } from './post-cover-card';
 import { PostEditorHeader } from './post-editor-header';
 import { PostPublishCard } from './post-publish-card';
+import { PostTagsCard } from './post-tags-card';
+import { PostToursCard } from './post-tours-card';
 
 /**
  * Trang sửa một bài (spec P4e-4 §4.4, ADR-0051 §8) — MỘT form, MỘT nút Save gửi cả form
@@ -58,9 +61,18 @@ export interface PostEditorProps {
   update: UpdatePostAction;
   signCover: SignCoverAction;
   loadLibrary: LoadPhotoLibraryAction;
+  tagOptions: AdminPostTag[];
+  tourOptions: PostTourOption[];
 }
 
-export function PostEditor({ detail, update, signCover, loadLibrary }: PostEditorProps) {
+export function PostEditor({
+  detail,
+  update,
+  signCover,
+  loadLibrary,
+  tagOptions,
+  tourOptions,
+}: PostEditorProps) {
   const router = useRouter();
   const form = useVersionedForm(detail, postFormValues);
   const { values, version } = form;
@@ -77,9 +89,10 @@ export function PostEditor({ detail, update, signCover, loadLibrary }: PostEdito
    * Câu báo của lần lưu vừa rồi nói về MỘT card cụ thể — hiện ngay tại card ấy (spec §4.4),
    * sống cùng phiên bản đã sinh ra nó như dải báo.
    */
-  const [cardError, setCardError] = useState<{ code: 'PHOTO_NOT_ALLOWED'; version: string } | null>(
-    null,
-  );
+  const [cardError, setCardError] = useState<{
+    code: 'PHOTO_NOT_ALLOWED' | 'RELATED_TOUR_NOT_FOUND';
+    version: string;
+  } | null>(null);
 
   useReportUnsaved(form.dirty || uploading);
 
@@ -143,7 +156,7 @@ export function PostEditor({ detail, update, signCover, loadLibrary }: PostEdito
     } else if (code === 'NOT_FOUND') {
       toast.error(updatePostErrorCopy(code));
       router.push(POSTS_LIST_HREF);
-    } else if (code === 'PHOTO_NOT_ALLOWED') {
+    } else if (code === 'PHOTO_NOT_ALLOWED' || code === 'RELATED_TOUR_NOT_FOUND') {
       setCardError({ code, version });
     } else {
       // Mọi mã còn lại hiện ở dải đỏ, kèm Reload khi không rõ lệnh đã đi tới đâu.
@@ -190,6 +203,21 @@ export function PostEditor({ detail, update, signCover, loadLibrary }: PostEdito
               onBusyChange={setUploading}
               sign={signCover}
               loadLibrary={loadLibrary}
+            />
+            <PostTagsCard
+              tags={values.tags}
+              options={tagOptions}
+              onChange={(tags) => patch({ tags })}
+            />
+            <PostToursCard
+              tours={values.relatedTours}
+              options={tourOptions}
+              serverError={
+                shownCardError === 'RELATED_TOUR_NOT_FOUND'
+                  ? updatePostErrorCopy('RELATED_TOUR_NOT_FOUND')
+                  : null
+              }
+              onChange={(relatedTours) => patch({ relatedTours })}
             />
           </>
         }

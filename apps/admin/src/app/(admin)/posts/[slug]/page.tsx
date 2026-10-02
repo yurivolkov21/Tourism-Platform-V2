@@ -4,7 +4,7 @@ import { notFound } from 'next/navigation';
 import { AdminShell } from '@/components/admin-shell';
 import { UnsavedChangesProvider } from '@/components/kit/unsaved-changes';
 import { PostEditor } from '@/components/posts/editor/post-editor';
-import { fetchAdminPost } from '@/lib/api/posts';
+import { fetchAdminPost, fetchPostTagOptions, fetchPostTourOptions } from '@/lib/api/posts';
 import { getServerSession } from '@/lib/api/session';
 import { loadPostCoverLibraryAction, signPostCoverUploadAction, updatePostAction } from './actions';
 
@@ -20,7 +20,12 @@ export const metadata: Metadata = {
 export default async function PostEditorPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   const cookie = (await cookies()).toString();
-  const [session, post] = await Promise.all([getServerSession(), fetchAdminPost(cookie, slug)]);
+  const [session, post, tagOptions, tourOptions] = await Promise.all([
+    getServerSession(),
+    fetchAdminPost(cookie, slug),
+    fetchPostTagOptions(cookie),
+    fetchPostTourOptions(cookie),
+  ]);
   // Null chỉ xảy ra khi phiên hết hạn ngay giữa hai request — layout xử lý ở lần điều hướng kế.
   if (!session) return null;
   if (!post) notFound();
@@ -33,6 +38,8 @@ export default async function PostEditorPage({ params }: { params: Promise<{ slu
           update={updatePostAction}
           signCover={signPostCoverUploadAction}
           loadLibrary={loadPostCoverLibraryAction}
+          tagOptions={tagOptions}
+          tourOptions={tourOptions}
         />
       </UnsavedChangesProvider>
     </AdminShell>
