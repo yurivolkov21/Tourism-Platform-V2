@@ -1,6 +1,5 @@
 import {
   type AdminLibraryPhoto,
-  type AdminPhotoLibrary,
   type AdminTourDetail,
   type AdminTourPhotosInput,
   type AdminTourSignPhotoUploadsInput,
@@ -57,19 +56,6 @@ export type SignPhotoUploadsResult =
 export type SignPhotoUploadsAction = (
   input: AdminTourSignPhotoUploadsInput,
 ) => Promise<SignPhotoUploadsResult>;
-
-export type PhotoLibraryResult =
-  | { ok: true; library: AdminPhotoLibrary }
-  | { ok: false; code: TransportFailureCode };
-export type LoadPhotoLibraryAction = () => Promise<PhotoLibraryResult>;
-
-/**
- * Câu lỗi tải kho ảnh theo mã — giọng ĐỌC (vòng review F18). Thủ tục không có input nên
- * INVALID_INPUT không thể tới; nếu tới thì cũng chỉ là lỗi chung.
- */
-export function libraryLoadErrorCopy(code: TransportFailureCode): string {
-  return t.dialog.loadErrors[code === 'INVALID_INPUT' ? 'GENERIC' : code];
-}
 
 // ── Giá trị form ────────────────────────────────────────────────────────────
 

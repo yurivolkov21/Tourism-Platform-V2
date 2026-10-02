@@ -4,12 +4,9 @@ import type { SignedUploadParams } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
 import { beforeEach, describe, expect, it, type Mock, vi } from 'vitest';
 import { UnsavedChangesProvider } from '@/components/kit/unsaved-changes';
+import type { LoadPhotoLibraryAction } from '@/lib/photo-library';
 import { uploadPhoto } from '@/lib/photo-upload';
-import type {
-  LoadPhotoLibraryAction,
-  SetPhotosAction,
-  SignPhotoUploadsAction,
-} from '@/lib/tour-photos';
+import type { SetPhotosAction, SignPhotoUploadsAction } from '@/lib/tour-photos';
 import { COVER_PHOTO, DEST_A, detailFixture, TOUR_ID, VERSION } from '@/test/tour-detail';
 import { TourPhotosForm } from './tour-photos-form';
 
@@ -281,7 +278,7 @@ describe('TourPhotosForm', () => {
 
     await user.click(screen.getByRole('button', { name: t.library }));
     await user.click(await screen.findByRole('checkbox', { name: 'Cave lights' }));
-    await user.click(screen.getByRole('button', { name: t.dialog.add(1) }));
+    await user.click(screen.getByRole('button', { name: messages.admin.photoLibrary.add(1) }));
 
     expect((altInputs()[2] as HTMLInputElement).value).toBe('Cave lights');
     expect(
@@ -300,7 +297,7 @@ describe('TourPhotosForm — PHOTO_NOT_ALLOWED (vòng review F18)', () => {
 
     await user.click(screen.getByRole('button', { name: t.library }));
     await waitFor(() => expect(load).toHaveBeenCalledTimes(1));
-    await user.click(screen.getByRole('button', { name: t.dialog.cancel }));
+    await user.click(screen.getByRole('button', { name: messages.admin.photoLibrary.cancel }));
     await user.type(altInputs()[1] as HTMLElement, ' at dawn');
     await user.click(saveButton());
 

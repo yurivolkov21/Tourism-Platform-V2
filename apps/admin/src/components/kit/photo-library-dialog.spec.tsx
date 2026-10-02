@@ -4,12 +4,12 @@ import type { AdminLibraryPhoto, AdminPhotoLibrary } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
 import { useState } from 'react';
 import { describe, expect, it, vi } from 'vitest';
-import type { LoadPhotoLibraryAction } from '@/lib/tour-photos';
+import type { LoadPhotoLibraryAction } from '@/lib/photo-library';
 import { DEST_A, DEST_B } from '@/test/tour-detail';
 import { PhotoLibraryDialog } from './photo-library-dialog';
 
 /** Hộp Add from library của tab Photos (spec F18 §2g, ADR-0048 §9). */
-const t = messages.admin.tours.editor.photos.dialog;
+const t = messages.admin.photoLibrary;
 
 const photo = (id: string, alt: string): AdminLibraryPhoto => ({
   publicId: `lib/${id}`,
@@ -162,6 +162,32 @@ describe('PhotoLibraryDialog', () => {
     await user.click(screen.getByRole('checkbox', { name: 'Cave lights' }));
     await user.click(screen.getByRole('button', { name: t.add(1) }));
     expect(onAdd).toHaveBeenCalledWith([shared]);
+  });
+
+  it('không có địa danh ưu tiên (ảnh bìa bài viết): không có mục "của tour", mở ở địa danh đầu', async () => {
+    const user = userEvent.setup();
+    const load = vi.fn<LoadPhotoLibraryAction>().mockResolvedValue({ ok: true, library: LIBRARY });
+    function NoPreferred() {
+      const [library, setLibrary] = useState<AdminPhotoLibrary | null>(null);
+      return (
+        <PhotoLibraryDialog
+          open
+          onOpenChange={vi.fn()}
+          library={library}
+          onLoaded={setLibrary}
+          load={load}
+          existing={new Set()}
+          capacity={1}
+          onAdd={vi.fn()}
+        />
+      );
+    }
+    render(<NoPreferred />);
+
+    expect(await screen.findByRole('checkbox', { name: 'Bay at dawn' })).toBeInTheDocument();
+    await user.click(screen.getByRole('combobox', { name: t.destination }));
+    expect(await screen.findByRole('option', { name: 'Hạ Long' })).toBeInTheDocument();
+    expect(screen.queryByRole('option', { name: t.thisTour })).not.toBeInTheDocument();
   });
 });
 

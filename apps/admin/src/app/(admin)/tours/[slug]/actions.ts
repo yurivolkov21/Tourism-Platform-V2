@@ -32,6 +32,7 @@ import {
   updateAdminTourDetails,
 } from '@/lib/api/tours';
 import { classifyWriteError } from '@/lib/api/write-error';
+import type { PhotoLibraryResult } from '@/lib/photo-library';
 import {
   type ContentContractCode,
   type CostsContractCode,
@@ -48,7 +49,6 @@ import {
 import {
   classifyPhotosError,
   classifySignUploadsError,
-  type PhotoLibraryResult,
   type PhotosContractCode,
   type SignPhotoUploadsResult,
 } from '@/lib/tour-photos';

@@ -2951,6 +2951,35 @@ export const messages = {
       keep: 'Keep editing',
     },
     /**
+     * Hộp chọn ảnh từ kho địa danh (kit `PhotoLibraryDialog`) — ảnh tour (F18) và ảnh bìa
+     * bài viết (P4e-4) dùng chung. Dời nguyên văn từ `tours.editor.photos.dialog`.
+     */
+    photoLibrary: {
+      title: 'Add from library',
+      /** Lưới không in ghi công — nó đi theo ảnh khi thêm (vòng review F18). */
+      body: 'Photos from the destination library. Their credits come with them.',
+      destination: 'Destination',
+      thisTour: 'This tour’s destinations',
+      added: 'Added',
+      add: (n: number) => (n === 1 ? 'Add 1 photo' : `Add ${n} photos`),
+      cancel: 'Cancel',
+      loading: 'Loading the library…',
+      empty: 'No photos for these destinations yet.',
+      /**
+       * Tải kho ảnh là lệnh ĐỌC — giọng đọc riêng, không mượn "có thể đã đi qua" của
+       * `errors.write` (khuôn payment events, vòng review F18). Try again chỉ hiện
+       * cho GENERIC: hết phiên hay mất quyền thì thử lại vẫn hỏng.
+       */
+      loadErrors: {
+        UNAUTHORIZED: 'Your session has expired. Sign in again to load the library.',
+        FORBIDDEN: 'Your account no longer has admin access.',
+        GENERIC: 'The library could not be loaded.',
+      },
+      retry: 'Try again',
+      left: (n: number) =>
+        n === 1 ? 'You can add 1 more photo.' : `You can add ${n} more photos.`,
+    },
+    /**
      * Khối payload trong drawer chi tiết (kit `JsonDrawer` — `/outbox` và
      * `/payment-events` dùng chung). User chốt 03/09: back-office này không
      * phải ai cũng đọc được JSON, nên payload có HAI chế độ xem và chế độ dễ
@@ -4516,31 +4545,6 @@ export const messages = {
             /** Sức chứa trừ cả file đang tải hay tải hỏng chưa gỡ (vòng review F18). */
             full: (name: string) =>
               `${name} didn’t fit — a tour can have up to 30 photos, and uploads still on the list count too.`,
-          },
-          dialog: {
-            title: 'Add from library',
-            /** Lưới không in ghi công — nó đi theo ảnh khi thêm (vòng review F18). */
-            body: 'Photos from the destination library. Their credits come with them.',
-            destination: 'Destination',
-            thisTour: 'This tour’s destinations',
-            added: 'Added',
-            add: (n: number) => (n === 1 ? 'Add 1 photo' : `Add ${n} photos`),
-            cancel: 'Cancel',
-            loading: 'Loading the library…',
-            empty: 'No photos for these destinations yet.',
-            /**
-             * Tải kho ảnh là lệnh ĐỌC — giọng đọc riêng, không mượn "có thể đã đi qua" của
-             * `errors.write` (khuôn payment events, vòng review F18). Try again chỉ hiện
-             * cho GENERIC: hết phiên hay mất quyền thì thử lại vẫn hỏng.
-             */
-            loadErrors: {
-              UNAUTHORIZED: 'Your session has expired. Sign in again to load the library.',
-              FORBIDDEN: 'Your account no longer has admin access.',
-              GENERIC: 'The library could not be loaded.',
-            },
-            retry: 'Try again',
-            left: (n: number) =>
-              n === 1 ? 'You can add 1 more photo.' : `You can add ${n} more photos.`,
           },
         },
         delete: {

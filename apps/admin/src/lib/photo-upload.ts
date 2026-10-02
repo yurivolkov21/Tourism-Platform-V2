@@ -14,7 +14,7 @@ import {
 type AllowedExt = (typeof ALLOWED_IMAGE_EXTENSIONS)[number];
 
 export interface UploadedPhoto {
-  /** publicId ĐẦY ĐỦ `<folder>/<basename>` — đúng chuỗi API nhận lại ở `setPhotos`. */
+  /** publicId ĐẦY ĐỦ `<folder>/<basename>` — đúng chuỗi API nhận lại ở `setPhotos` (tour) và `update` (ảnh bìa bài viết). */
   publicId: string;
   upload: TourPhotoUpload;
 }
@@ -74,6 +74,8 @@ export const UPLOAD_TIMEOUT_MS = 5 * 60_000;
 /**
  * POST file lên Cloudinary, báo tiến độ 0–100. Mọi thất bại đều reject — kể cả hết
  * giờ và bị huỷ qua `signal` (tab bị rời giữa lúc tải).
+ *
+ * Dùng chung cho ảnh tour (F18) và ảnh bìa bài viết (P4e-4) — không phụ thuộc tour.
  */
 export function uploadPhoto(
   file: Blob,

@@ -18,16 +18,18 @@ import { DIALOG_FRAME } from '@/components/kit/confirm-write-dialog';
 import { FormField } from '@/components/kit/form-field';
 import { FormSelect } from '@/components/kit/form-select';
 import type { TransportFailureCode } from '@/lib/api/write-error';
-import { tourPhotoThumb } from '@/lib/tour-editor-view';
-import { type LoadPhotoLibraryAction, libraryLoadErrorCopy } from '@/lib/tour-photos';
+import { withDeliveryTransform } from '@/lib/cloudinary-url';
+import { type LoadPhotoLibraryAction, libraryLoadErrorCopy } from '@/lib/photo-library';
 
 /**
- * Hộp Add from library (spec F18 §2g, ADR-0048 §9): kho ảnh địa danh.
+ * Hộp chọn ảnh từ kho địa danh (ADR-0048 §9) — kit dùng chung: tab Photos của tour (F18)
+ * và card Cover của bài viết (P4e-4, ADR-0051 §8).
  *
- * - Thư viện tải MỘT lần khi hộp mở lần đầu; form giữ nó (`library`/`onLoaded`)
- *   cho các lần mở sau.
- * - Mặc định bày ảnh các địa danh tour đi qua; ô chọn đổi sang từng địa danh.
- * - Ảnh đã có trong tour hiện "Added" và khoá; không cho tích quá sức chứa.
+ * - Thư viện tải MỘT lần khi hộp mở lần đầu; nơi dùng giữ nó (`library`/`onLoaded`) cho
+ *   các lần mở sau.
+ * - `tourDestinationIds` (tuỳ chọn): có thì mặc định bày ảnh các địa danh ấy, kèm mục "This
+ *   tour's destinations"; vắng (ảnh bìa bài viết) thì mở ở địa danh đầu tiên.
+ * - Ảnh đã có hiện "Added" và khoá; không cho tích quá sức chứa.
  *
  * Vòng review F18:
  * - Lựa chọn thuộc về MỘT lần mở: hộp luôn mount (form giữ nó) nên đóng bằng Cancel
@@ -37,7 +39,8 @@ import { type LoadPhotoLibraryAction, libraryLoadErrorCopy } from '@/lib/tour-ph
  * - Tải hỏng nói đúng mã (hết phiên, mất quyền, lỗi chung); lệnh tải NÉM coi như lỗi
  *   chung. Try again chỉ cho lỗi chung — hai mã kia thử lại vẫn hỏng.
  */
-const t = messages.admin.tours.editor.photos.dialog;
+const t = messages.admin.photoLibrary;
+const NO_PREFERRED: readonly string[] = [];
 const THIS_TOUR = 'tour';
 
 export function PhotoLibraryDialog({
@@ -46,7 +49,7 @@ export function PhotoLibraryDialog({
   library,
   onLoaded,
   load,
-  tourDestinationIds,
+  tourDestinationIds = NO_PREFERRED,
   existing,
   capacity,
   onAdd,
@@ -56,7 +59,7 @@ export function PhotoLibraryDialog({
   library: AdminPhotoLibrary | null;
   onLoaded: (library: AdminPhotoLibrary) => void;
   load: LoadPhotoLibraryAction;
-  tourDestinationIds: readonly string[];
+  tourDestinationIds?: readonly string[];
   existing: ReadonlySet<string>;
   capacity: number;
   onAdd: (photos: AdminLibraryPhoto[]) => void;
@@ -195,7 +198,7 @@ export function PhotoLibraryDialog({
                       <div className="relative">
                         {/* biome-ignore lint/performance/noImgElement: URL Cloudinary đã tối ưu sẵn (ADR-0005) */}
                         <img
-                          src={tourPhotoThumb(photo.url)}
+                          src={withDeliveryTransform(photo.url, 'w_320')}
                           alt=""
                           className="aspect-[3/2] w-full rounded-md bg-muted object-cover"
                         />

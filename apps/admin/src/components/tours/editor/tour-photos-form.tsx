@@ -23,8 +23,8 @@ import { ImageIcon, ImagePlusIcon, UploadIcon } from 'lucide-react';
 import * as React from 'react';
 import { FormField } from '@/components/kit/form-field';
 import { ListEditor } from '@/components/kit/list-editor';
+import { PhotoLibraryDialog } from '@/components/kit/photo-library-dialog';
 import { EditorFormFrame } from '@/components/tours/editor/editor-form-frame';
-import { PhotoLibraryDialog } from '@/components/tours/editor/photo-library-dialog';
 import {
   type ChecklistItem,
   CoverPreviewCard,
@@ -33,12 +33,12 @@ import {
 } from '@/components/tours/editor/step-aside';
 import { usePublishSavedDetail } from '@/components/tours/editor/tour-detail-context';
 import { newItemKey } from '@/lib/list-editor';
+import type { LoadPhotoLibraryAction } from '@/lib/photo-library';
 import { uploadPhoto } from '@/lib/photo-upload';
 import { nextTourStep, projectedReadiness, tourPhotoThumb } from '@/lib/tour-editor-view';
 import {
   acceptFiles,
   hasPhotoErrors,
-  type LoadPhotoLibraryAction,
   libraryPhotoDraft,
   makeCover,
   type PhotoDraft,
