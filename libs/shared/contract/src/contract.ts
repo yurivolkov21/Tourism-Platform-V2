@@ -29,6 +29,19 @@ import {
   AdminDestinationUpdateInputSchema,
 } from './schemas/admin-destinations.js';
 import {
+  AdminPostCreateInputSchema,
+  AdminPostCreateResultSchema,
+  AdminPostDeleteInputSchema,
+  AdminPostDeleteResultSchema,
+  AdminPostDetailSchema,
+  AdminPostGetInputSchema,
+  AdminPostRowSchema,
+  AdminPostSignCoverUploadInputSchema,
+  AdminPostsListQuerySchema,
+  AdminPostTagSchema,
+  AdminPostUpdateInputSchema,
+} from './schemas/admin-posts.js';
+import {
   AdminPhotoLibrarySchema,
   AdminTourCostsInputSchema,
   AdminTourCreateInputSchema,
@@ -1508,6 +1521,98 @@ export const contract = {
           },
         })
         .output(AdminDepartureRowSchema),
+    },
+    /**
+     * Bài viết phía admin (spec P4e-4, ADR-0051). Đọc theo slug, ghi theo `id` kèm
+     * `version` (`updatedAt`) — slug đặt một lần lúc tạo. `update` là MỘT lệnh cho cả
+     * form: thay trọn tag, tour liên quan và ảnh bìa.
+     *
+     * Bust cache web (`posts` + `post:<slug>`) SAU commit của `update` và `delete`;
+     * `create` sinh nháp nên web không có gì để bust. Guard `AuthGuard` + `@Roles(ADMIN)`
+     * ở controller như mọi endpoint admin; mọi lệnh ghi là `POST` (CORS chỉ mở GET/POST).
+     */
+    posts: {
+      list: oc
+        .route({
+          method: 'GET',
+          path: '/api/admin/posts',
+          summary: 'List every post (admin, paged, status and title filters)',
+        })
+        .input(AdminPostsListQuerySchema)
+        .output(PagedSchema(AdminPostRowSchema)),
+      get: oc
+        .route({
+          method: 'GET',
+          path: '/api/admin/posts/{slug}',
+          summary: 'One post with everything the editor needs — drafts and scheduled posts too',
+        })
+        .input(AdminPostGetInputSchema)
+        .errors({ NOT_FOUND: { status: 404, message: 'Post not found' } })
+        .output(AdminPostDetailSchema),
+      create: oc
+        .route({
+          method: 'POST',
+          path: '/api/admin/posts',
+          summary: 'Create a post — it starts as a draft',
+        })
+        .input(AdminPostCreateInputSchema)
+        .errors({ SLUG_TAKEN: { status: 409, message: 'Another post already uses this slug' } })
+        .output(AdminPostCreateResultSchema),
+      update: oc
+        .route({
+          method: 'POST',
+          path: '/api/admin/posts/{id}',
+          summary: 'Save the whole post form: text, status, tags, related tours and cover',
+        })
+        .input(AdminPostUpdateInputSchema)
+        .errors({
+          STALE_POST: { status: 409, message: 'This post changed since it was opened' },
+          POST_NOT_READY: {
+            status: 409,
+            message: 'A published post needs content, an excerpt and a cover photo',
+          },
+          PHOTO_NOT_ALLOWED: {
+            status: 400,
+            message: 'The cover is not from this post, its uploads or the destination library',
+          },
+          RELATED_TOUR_NOT_FOUND: { status: 404, message: 'A related tour no longer exists' },
+          NOT_FOUND: { status: 404, message: 'Post not found' },
+        })
+        .output(AdminPostDetailSchema),
+      delete: oc
+        .route({
+          method: 'POST',
+          path: '/api/admin/posts/{id}/delete',
+          summary: 'Delete a post with its tag links, tour links and media rows',
+        })
+        .input(AdminPostDeleteInputSchema)
+        .errors({
+          STALE_POST: { status: 409, message: 'This post changed since it was opened' },
+          NOT_FOUND: { status: 404, message: 'Post not found' },
+        })
+        .output(AdminPostDeleteResultSchema),
+      signCoverUpload: oc
+        .route({
+          method: 'POST',
+          path: '/api/admin/posts/{id}/cover-upload',
+          summary: 'Sign one direct-to-Cloudinary upload for the cover of a post',
+        })
+        .input(AdminPostSignCoverUploadInputSchema)
+        .errors({
+          // 503 chứ không 500: thiếu cặp khoá là trạng thái cấu hình hợp lệ (ADR-0021 §6).
+          MEDIA_UPLOAD_NOT_CONFIGURED: { status: 503, message: 'Uploads are not configured' },
+          NOT_FOUND: { status: 404, message: 'Post not found' },
+        })
+        .output(SignedUploadParamsSchema),
+      // Route KHÔNG nằm dưới `/api/admin/posts/…`: `GET /api/admin/posts/{slug}` sẽ nuốt
+      // nó, và một bài có slug `tags` là hợp lệ.
+      tags: oc
+        .route({
+          method: 'GET',
+          path: '/api/admin/post-tags',
+          summary: 'Every post tag with how many posts use it, drafts included',
+        })
+        .output(z.array(AdminPostTagSchema)),
     },
   },
 };
