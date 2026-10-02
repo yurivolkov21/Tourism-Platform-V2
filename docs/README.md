@@ -165,6 +165,9 @@ Mỗi spec đi kèm một plan cùng tên ở [`plans/`](plans/), trừ vài đ�
 **Trợ lý AI (P6, chưa thi công)**
 [P6 trợ lý tư vấn tour](specs/2026-09-29-p6-ai-concierge-design.md)
 
+**Công cụ máy dev (ngoài repo)**
+[mod `tourism-status`: dải trạng thái, canh CI, docs-freshness](specs/2026-10-02-tourism-status-mod-design.md)
+
 ## Plans — làm theo bước nào
 
 Kế hoạch thi công, **hầu hết đã đóng**; kết quả thật của mỗi kế hoạch nằm ở
