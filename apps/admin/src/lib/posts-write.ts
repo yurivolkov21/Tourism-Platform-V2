@@ -1,6 +1,8 @@
 import {
   type AdminPostCreateInput,
   type AdminPostCreateResult,
+  type AdminPostDetail,
+  type AdminPostUpdateInput,
   POST_SLUG_MAX,
   POST_TITLE_MAX,
   SLUG_PATTERN,
@@ -18,11 +20,17 @@ const fe = t.editor.form.errors;
 // ── Codec ───────────────────────────────────────────────────────────────────
 
 const createCodec = createWriteErrorCodec(t.create.errors);
+const updateCodec = createWriteErrorCodec(t.editor.errors);
 
 export type CreatePostContractCode = keyof typeof t.create.errors;
 export const CREATE_POST_CONTRACT_CODES = createCodec.codes;
 export const classifyCreatePostError = createCodec.classify;
 export const createPostErrorCopy = createCodec.copy;
+
+export type UpdatePostContractCode = keyof typeof t.editor.errors;
+export const UPDATE_POST_CONTRACT_CODES = updateCodec.codes;
+export const classifyUpdatePostError = updateCodec.classify;
+export const updatePostErrorCopy = updateCodec.copy;
 
 // ── Hợp đồng vận chuyển của server action ──────────────────────────────────
 
@@ -31,6 +39,13 @@ export type CreatePostResult =
   | { ok: false; code: CreatePostContractCode | TransportFailureCode };
 
 export type CreatePostAction = (input: AdminPostCreateInput) => Promise<CreatePostResult>;
+
+/** Lệnh lưu trả NGUYÊN bài server vừa ghi — form lấy phiên bản mới từ đây. */
+export type UpdatePostResult =
+  | { ok: true; detail: AdminPostDetail }
+  | { ok: false; code: UpdatePostContractCode | TransportFailureCode };
+
+export type UpdatePostAction = (input: AdminPostUpdateInput) => Promise<UpdatePostResult>;
 
 // ── Hộp New post ────────────────────────────────────────────────────────────
 

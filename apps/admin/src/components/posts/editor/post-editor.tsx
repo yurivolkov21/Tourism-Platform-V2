@@ -1,0 +1,232 @@
+'use client';
+
+import { type AdminPostDetail, POST_EXCERPT_MAX } from '@tourism/contract';
+import { messages } from '@tourism/i18n';
+import { Card, CardContent } from '@tourism/ui/components/card';
+import { Input } from '@tourism/ui/components/input';
+import { Textarea } from '@tourism/ui/components/textarea';
+import { useRouter } from 'next/navigation';
+import { useRef, useState } from 'react';
+import { toast } from 'sonner';
+import { FormField } from '@/components/kit/form-field';
+import { useReportUnsaved } from '@/components/kit/unsaved-changes';
+import { StepColumns } from '@/components/tours/editor/editor-form-frame';
+import { isUncertainOutcome } from '@/lib/api/write-error';
+import { hasFormErrors } from '@/lib/form-errors';
+import {
+  POST_FORM_ID,
+  type PostFormValues,
+  postFormValues,
+  postPayload,
+  projectedPostReadiness,
+  validatePostForm,
+  withStatus,
+} from '@/lib/post-form';
+import { POSTS_LIST_HREF } from '@/lib/posts-view';
+import {
+  type UpdatePostAction,
+  type UpdatePostResult,
+  updatePostErrorCopy,
+} from '@/lib/posts-write';
+import { isNewerVersion, useVersionedForm } from '@/lib/use-versioned-form';
+import { PostBanner, type PostBannerState } from './post-banner';
+import { PostEditorHeader } from './post-editor-header';
+import { PostPublishCard } from './post-publish-card';
+
+/**
+ * Trang sửa một bài (spec P4e-4 §4.4, ADR-0051 §8) — MỘT form, MỘT nút Save gửi cả form
+ * (`admin.posts.update`). Không dùng khung bước của tour (`EditorFormFrame`): một bài viết
+ * không có phần nào nặng tới mức phải lưu riêng; chỉ mượn lưới hai cột `StepColumns`.
+ *
+ * - Giá trị đang soạn, bản gốc, phiên bản: `useVersionedForm` (lõi chung với tour).
+ * - Chọn Published mà còn thiếu thì chặn TRƯỚC khi gửi bằng chính hàm server dùng
+ *   (Quyết định 11); mã `POST_NOT_READY` từ server vẫn được xử, cùng một dải báo.
+ * - Dải báo và câu lỗi của card chỉ sống cùng phiên bản đã sinh ra chúng — Reload nạp bản
+ *   mới là chúng tự tắt.
+ * - Phần đầu đọc bản ĐÃ LƯU, cột phải đọc bản ĐANG SOẠN.
+ */
+const t = messages.admin.posts.editor;
+
+const STALE: PostBannerState = { kind: 'stale' };
+
+export interface PostEditorProps {
+  detail: AdminPostDetail;
+  update: UpdatePostAction;
+}
+
+export function PostEditor({ detail, update }: PostEditorProps) {
+  const router = useRouter();
+  const form = useVersionedForm(detail, postFormValues);
+  const { values, version } = form;
+  /** Bản server mới nhất form biết — lần lưu vừa xong, hay `detail` mới hơn sau Reload. */
+  const [lastSaved, setLastSaved] = useState(detail);
+  const saved = isNewerVersion(detail.version, lastSaved.version) ? detail : lastSaved;
+
+  const inFlight = useRef(false);
+  const [pending, setPending] = useState(false);
+  const [banner, setBanner] = useState<{ state: PostBannerState; version: string } | null>(null);
+
+  useReportUnsaved(form.dirty);
+
+  const errors = form.showValidation ? validatePostForm(values) : {};
+  const missing = projectedPostReadiness(values);
+  const shownBanner =
+    banner !== null && banner.version === version
+      ? banner.state
+      : form.serverChanged
+        ? STALE
+        : null;
+
+  function patch(next: Partial<PostFormValues>) {
+    form.setValues((current) => ({ ...current, ...next }));
+  }
+
+  async function save() {
+    if (inFlight.current) return;
+    form.setShowValidation(true);
+    if (hasFormErrors(validatePostForm(values))) return;
+    if (values.status === 'PUBLISHED' && missing.length > 0) {
+      setBanner({ state: { kind: 'notReady', missing }, version });
+      return;
+    }
+
+    inFlight.current = true;
+    setPending(true);
+    setBanner(null);
+    let result: UpdatePostResult;
+    try {
+      result = await update(postPayload(detail.id, version, values));
+    } catch {
+      // Action ném (mạng đứt, redeploy) ⇒ không biết lệnh đã đi tới đâu — như `useSectionSave`.
+      result = { ok: false, code: 'GENERIC' };
+    }
+    inFlight.current = false;
+    setPending(false);
+
+    if (result.ok) {
+      form.adopt(result.detail);
+      setLastSaved(result.detail);
+      toast.success(t.saved);
+      router.refresh();
+      return;
+    }
+    const { code } = result;
+    if (code === 'STALE_POST') {
+      setBanner({ state: STALE, version });
+    } else if (code === 'POST_NOT_READY') {
+      // Server tính từ chính input nên hai bên luôn khớp; danh sách rỗng chỉ khi có lỗi lạ.
+      setBanner({
+        state:
+          missing.length > 0
+            ? { kind: 'notReady', missing }
+            : { kind: 'error', message: updatePostErrorCopy(code), uncertain: false },
+        version,
+      });
+    } else if (code === 'NOT_FOUND') {
+      toast.error(updatePostErrorCopy(code));
+      router.push(POSTS_LIST_HREF);
+    } else {
+      // Mọi mã còn lại hiện ở dải đỏ, kèm Reload khi không rõ lệnh đã đi tới đâu.
+      setBanner({
+        state: {
+          kind: 'error',
+          message: updatePostErrorCopy(code),
+          uncertain: isUncertainOutcome(code),
+        },
+        version,
+      });
+    }
+  }
+
+  return (
+    <div className="flex flex-col gap-6 px-4 pb-8 lg:px-6">
+      <PostEditorHeader detail={saved} />
+      <StepColumns
+        aside={
+          <PostPublishCard
+            status={values.status}
+            publishAt={values.publishAt}
+            missing={missing}
+            publishAtError={errors.publishAt}
+            pending={pending}
+            dirty={form.dirty}
+            onStatusChange={(status) =>
+              form.setValues((current) => withStatus(current, status, new Date()))
+            }
+            onPublishAtChange={(publishAt) => patch({ publishAt })}
+          />
+        }
+      >
+        <div className="flex min-w-0 flex-col gap-6">
+          <form
+            id={POST_FORM_ID}
+            noValidate
+            className="flex min-w-0 flex-col gap-6"
+            onSubmit={(event) => {
+              event.preventDefault();
+              if (form.dirty && !pending) void save();
+            }}
+          >
+            {shownBanner ? <PostBanner banner={shownBanner} onReload={form.reload} /> : null}
+
+            <Card>
+              <CardContent className="grid gap-4">
+                <FormField id="post-title" label={t.fields.title} error={errors.title}>
+                  {(describedBy) => (
+                    <Input
+                      id="post-title"
+                      value={values.title}
+                      aria-invalid={errors.title !== undefined}
+                      aria-describedby={describedBy}
+                      onChange={(event) => patch({ title: event.target.value })}
+                    />
+                  )}
+                </FormField>
+                <div className="grid gap-1">
+                  <FormField
+                    id="post-excerpt"
+                    label={t.fields.excerpt}
+                    hint={t.fields.excerptHint}
+                    error={errors.excerpt}
+                  >
+                    {(describedBy) => (
+                      <Textarea
+                        id="post-excerpt"
+                        rows={3}
+                        value={values.excerpt}
+                        aria-invalid={errors.excerpt !== undefined}
+                        aria-describedby={describedBy}
+                        onChange={(event) => patch({ excerpt: event.target.value })}
+                      />
+                    )}
+                  </FormField>
+                  <p className="text-right text-xs tabular-nums text-muted-foreground">
+                    {t.fields.count(values.excerpt.length, POST_EXCERPT_MAX)}
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent>
+                <FormField id="post-content" label={t.fields.content} error={errors.content}>
+                  {(describedBy) => (
+                    <Textarea
+                      id="post-content"
+                      rows={18}
+                      className="font-mono text-sm"
+                      value={values.content}
+                      aria-invalid={errors.content !== undefined}
+                      aria-describedby={describedBy}
+                      onChange={(event) => patch({ content: event.target.value })}
+                    />
+                  )}
+                </FormField>
+              </CardContent>
+            </Card>
+          </form>
+        </div>
+      </StepColumns>
+    </div>
+  );
+}

@@ -1,8 +1,12 @@
-import type {
-  AdminPostCreateInput,
-  AdminPostCreateResult,
-  AdminPostRow,
-  Paged,
+import { isDefinedError, safe } from '@orpc/client';
+import {
+  type AdminPostCreateInput,
+  type AdminPostCreateResult,
+  type AdminPostDetail,
+  AdminPostGetInputSchema,
+  type AdminPostRow,
+  type AdminPostUpdateInput,
+  type Paged,
 } from '@tourism/contract';
 import { type PostsQuery, toPostsListInput } from '@/lib/posts-query';
 import { api, withAdminAuth } from './client';
@@ -28,4 +32,31 @@ export async function createAdminPost(
   input: AdminPostCreateInput,
 ): Promise<AdminPostCreateResult> {
   return api.admin.posts.create(input, { context: withAdminAuth(cookie) });
+}
+
+/**
+ * Một bài cho trang sửa; `null` khi slug không có (trang gọi `notFound()`). Slug sai hình
+ * dạng của contract cũng `null`, không gọi API — khuôn `fetchAdminTour` (vòng review F17):
+ * URL rác thành 404 chứ không thành trang lỗi của app.
+ */
+export async function fetchAdminPost(
+  cookie: string,
+  slug: string,
+): Promise<AdminPostDetail | null> {
+  if (!AdminPostGetInputSchema.safeParse({ slug }).success) return null;
+  const [error, data] = await safe(
+    api.admin.posts.get({ slug }, { context: withAdminAuth(cookie) }),
+  );
+  if (error) {
+    if (isDefinedError(error) && error.code === 'NOT_FOUND') return null;
+    throw error;
+  }
+  return data;
+}
+
+export async function updateAdminPost(
+  cookie: string,
+  input: AdminPostUpdateInput,
+): Promise<AdminPostDetail> {
+  return api.admin.posts.update(input, { context: withAdminAuth(cookie) });
 }

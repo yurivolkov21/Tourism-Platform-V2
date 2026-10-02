@@ -2946,7 +2946,8 @@ export const messages = {
     /** Hỏi lại khi rời một form có thay đổi chưa lưu (spec F17 §2i). */
     unsavedChanges: {
       title: 'Discard unsaved changes?',
-      body: 'You changed this step but have not saved it. Leaving now throws those changes away.',
+      /** Chung cho bước của khu sửa tour và trang sửa bài viết (P4e-4) — bản cũ nói "this step". */
+      body: 'You have changes here that you have not saved. Leaving now throws them away.',
       discard: 'Discard changes',
       keep: 'Keep editing',
     },

@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 import {
   CREATE_POST_CONTRACT_CODES,
   postCreatePayload,
+  UPDATE_POST_CONTRACT_CODES,
   validatePostCreateForm,
 } from './posts-write';
 
@@ -14,6 +15,12 @@ describe('tập mã lỗi khớp contract (codec derive từ i18n, không từ c
   it('hộp New post phủ ĐÚNG các mã `admin.posts.create` khai', () => {
     expect([...CREATE_POST_CONTRACT_CODES].sort()).toEqual(
       codes(contract.admin.posts.create['~orpc'].errorMap),
+    );
+  });
+
+  it('lưu bài phủ ĐÚNG các mã `admin.posts.update` khai', () => {
+    expect([...UPDATE_POST_CONTRACT_CODES].sort()).toEqual(
+      codes(contract.admin.posts.update['~orpc'].errorMap),
     );
   });
 });

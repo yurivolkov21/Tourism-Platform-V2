@@ -8,3 +8,8 @@ export const SITE_URL = 'https://www.nexora-travel.agency';
 export function tourPageUrl(slug: string): string {
   return `${SITE_URL}/tours/${encodeURIComponent(slug)}`;
 }
+
+/** Trang bài trên site khách — chỉ mở được khi bài đã đăng (nháp và bài hẹn giờ là 404). */
+export function postPageUrl(slug: string): string {
+  return `${SITE_URL}/blog/${encodeURIComponent(slug)}`;
+}
