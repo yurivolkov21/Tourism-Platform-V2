@@ -5,7 +5,9 @@ import {
   buildSignedUploadParams,
   INCOMING_TRANSFORMATION,
   isOwnAvatarPublicId,
+  isPostUploadPublicId,
   isTourUploadPublicId,
+  postCoverFolder,
   resolveUploadConfig,
   tourPhotoFolder,
   uploadFolderFor,
@@ -107,5 +109,20 @@ describe('tourPhotoFolder / isTourUploadPublicId (ADR-0048 §3)', () => {
     // Thư mục cũ có sẵn trên cloud (ADR-0020 Hệ quả) và ảnh thư viện.
     expect(isTourUploadPublicId('tourism', TOUR, 'tourism/tours/hero/abc')).toBe(false);
     expect(isTourUploadPublicId('tourism', TOUR, 'tourism/catalog/tour/abc')).toBe(false);
+  });
+});
+
+describe('postCoverFolder / isPostUploadPublicId (ADR-0051 §7)', () => {
+  const POST = '0199a000-0000-7000-8000-000000000001';
+
+  it('thư mục ảnh bìa của một bài nằm dưới <root>/posts/<postId>', () => {
+    expect(postCoverFolder('tourism', POST)).toBe(`tourism/posts/${POST}`);
+  });
+
+  it('chỉ ảnh trong ĐÚNG thư mục của bài — so theo tiền tố có `/` chốt đuôi', () => {
+    expect(isPostUploadPublicId('tourism', POST, `tourism/posts/${POST}/abc`)).toBe(true);
+    expect(isPostUploadPublicId('tourism', POST, `tourism/posts/${POST}-evil/abc`)).toBe(false);
+    expect(isPostUploadPublicId('tourism', POST, `tourism/tours/${POST}/abc`)).toBe(false);
+    expect(isPostUploadPublicId('tourism', POST, `tourism/posts/${POST}`)).toBe(false);
   });
 });

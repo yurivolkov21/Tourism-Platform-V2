@@ -63,6 +63,24 @@ export function isTourUploadPublicId(
   return publicId.startsWith(`${tourPhotoFolder(rootFolder, tourId)}/`);
 }
 
+/** Thư mục ảnh bìa admin tải lên cho MỘT bài viết (ADR-0051 §7) — server quyết, client không chọn. */
+export function postCoverFolder(rootFolder: string, postId: string): string {
+  return `${rootFolder}/posts/${postId}`;
+}
+
+/**
+ * publicId có nằm trong thư mục tải lên của ĐÚNG bài này không — so theo tiền tố có `/`
+ * chốt đuôi, cùng nếp `isTourUploadPublicId`. Chỉ ảnh khớp ở đây mới vào lại hàng dọn khi
+ * bị thay hay khi bài bị xoá; ảnh thư viện và ảnh catalog thì không bao giờ.
+ */
+export function isPostUploadPublicId(
+  rootFolder: string,
+  postId: string,
+  publicId: string,
+): boolean {
+  return publicId.startsWith(`${postCoverFolder(rootFolder, postId)}/`);
+}
+
 /**
  * Format Cloudinary được phép LƯU (W4 U1, ADR-0021 AMEND 1) — chuỗi phẩy
  * đúng dạng tham số `allowed_formats`. Chữ ký không phủ endpoint

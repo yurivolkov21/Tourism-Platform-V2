@@ -186,8 +186,9 @@ function toDetail(
  * "Thư viện" của tab Photos (ADR-0048 §3, AMEND 1): ẢNH của địa danh. Một video của địa
  * danh không phải ảnh tour — hộp thư viện không bày, `setPhotos` không nhận, nhãn nguồn
  * không gọi nó là LIBRARY (G13, sau vòng review F18). Một định nghĩa cho cả ba chỗ.
+ * Bài viết (P4e-4) dùng chung định nghĩa này cho ảnh bìa chọn từ thư viện.
  */
-const LIBRARY_PHOTO = {
+export const LIBRARY_PHOTO = {
   ownerType: MediaOwnerType.DESTINATION,
   type: MediaType.IMAGE,
 } satisfies Prisma.MediaAssetWhereInput;
