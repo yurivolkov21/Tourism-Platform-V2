@@ -3,6 +3,8 @@ import { messages } from '@tourism/i18n';
 import { describe, expect, it } from 'vitest';
 import {
   CREATE_POST_CONTRACT_CODES,
+  DELETE_POST_CONTRACT_CODES,
+  isDeletePostStale,
   postCreatePayload,
   SIGN_COVER_CONTRACT_CODES,
   UPDATE_POST_CONTRACT_CODES,
@@ -29,6 +31,18 @@ describe('tập mã lỗi khớp contract (codec derive từ i18n, không từ c
     expect([...SIGN_COVER_CONTRACT_CODES].sort()).toEqual(
       codes(contract.admin.posts.signCoverUpload['~orpc'].errorMap),
     );
+  });
+
+  it('xoá bài phủ ĐÚNG các mã `admin.posts.delete` khai', () => {
+    expect([...DELETE_POST_CONTRACT_CODES].sort()).toEqual(
+      codes(contract.admin.posts.delete['~orpc'].errorMap),
+    );
+  });
+
+  it('xoá: cả hai mã đều là trạng-thái-cũ; lỗi vận chuyển thì không', () => {
+    expect(isDeletePostStale('STALE_POST')).toBe(true);
+    expect(isDeletePostStale('NOT_FOUND')).toBe(true);
+    expect(isDeletePostStale('GENERIC')).toBe(false);
   });
 });
 

@@ -1,6 +1,8 @@
 import {
   type AdminPostCreateInput,
   type AdminPostCreateResult,
+  type AdminPostDeleteInput,
+  type AdminPostDeleteResult,
   type AdminPostDetail,
   type AdminPostSignCoverUploadInput,
   type AdminPostUpdateInput,
@@ -97,3 +99,22 @@ export type SignCoverResult =
   | { ok: false; code: SignCoverContractCode | TransportFailureCode };
 
 export type SignCoverAction = (input: AdminPostSignCoverUploadInput) => Promise<SignCoverResult>;
+
+/**
+ * Xoá đi qua `ConfirmWriteDialog`: cả hai mã là trạng-thái-cũ — thế giới đã đổi dưới chân
+ * hộp (người khác vừa lưu, hay vừa xoá). Kit đóng hộp, toast, rồi để vùng xoá quyết refresh
+ * hay về danh sách.
+ */
+const deleteCodec = createWriteErrorCodec(t.delete.errors, { stale: ['STALE_POST', 'NOT_FOUND'] });
+
+export type DeletePostContractCode = keyof typeof t.delete.errors;
+export const DELETE_POST_CONTRACT_CODES = deleteCodec.codes;
+export const classifyDeletePostError = deleteCodec.classify;
+export const deletePostErrorCopy = deleteCodec.copy;
+export const isDeletePostStale = deleteCodec.isStale;
+
+export type DeletePostResult =
+  | { ok: true; deleted: AdminPostDeleteResult }
+  | { ok: false; code: DeletePostContractCode | TransportFailureCode };
+
+export type DeletePostAction = (input: AdminPostDeleteInput) => Promise<DeletePostResult>;

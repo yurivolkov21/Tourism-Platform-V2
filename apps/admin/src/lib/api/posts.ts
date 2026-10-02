@@ -2,6 +2,8 @@ import { isDefinedError, safe } from '@orpc/client';
 import {
   type AdminPostCreateInput,
   type AdminPostCreateResult,
+  type AdminPostDeleteInput,
+  type AdminPostDeleteResult,
   type AdminPostDetail,
   AdminPostGetInputSchema,
   type AdminPostRow,
@@ -111,4 +113,11 @@ export async function fetchPostTourOptions(cookie: string): Promise<PostTourOpti
     if (page >= result.totalPages) break;
   }
   return [...options.values()];
+}
+
+export async function deleteAdminPost(
+  cookie: string,
+  input: AdminPostDeleteInput,
+): Promise<AdminPostDeleteResult> {
+  return api.admin.posts.delete(input, { context: withAdminAuth(cookie) });
 }

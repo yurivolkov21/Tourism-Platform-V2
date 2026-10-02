@@ -2,6 +2,9 @@
 
 import {
   type AdminPhotoLibrary,
+  type AdminPostDeleteInput,
+  AdminPostDeleteInputSchema,
+  type AdminPostDeleteResult,
   type AdminPostDetail,
   type AdminPostSignCoverUploadInput,
   AdminPostSignCoverUploadInputSchema,
@@ -10,13 +13,15 @@ import {
   type SignedUploadParams,
 } from '@tourism/contract';
 import { cookies } from 'next/headers';
-import { signAdminPostCoverUpload, updateAdminPost } from '@/lib/api/posts';
+import { deleteAdminPost, signAdminPostCoverUpload, updateAdminPost } from '@/lib/api/posts';
 import { fetchTourPhotoLibrary } from '@/lib/api/tours';
 import { classifyWriteError } from '@/lib/api/write-error';
 import type { PhotoLibraryResult } from '@/lib/photo-library';
 import {
+  classifyDeletePostError,
   classifySignCoverError,
   classifyUpdatePostError,
+  type DeletePostResult,
   type SignCoverResult,
   type UpdatePostResult,
 } from '@/lib/posts-write';
@@ -74,4 +79,19 @@ export async function loadPostCoverLibraryAction(): Promise<PhotoLibraryResult> 
     return { ok: false, code: classifyWriteError(error, new Set<never>()) };
   }
   return { ok: true, library };
+}
+
+/** Xoá bài — mang phiên bản form đang cầm (ADR-0051 §2): người khác vừa lưu thì `STALE_POST`. */
+export async function deletePostAction(input: AdminPostDeleteInput): Promise<DeletePostResult> {
+  const parsed = AdminPostDeleteInputSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, code: 'INVALID_INPUT' };
+
+  const cookie = (await cookies()).toString();
+  let deleted: AdminPostDeleteResult;
+  try {
+    deleted = await deleteAdminPost(cookie, parsed.data);
+  } catch (error) {
+    return { ok: false, code: classifyDeletePostError(error) };
+  }
+  return { ok: true, deleted };
 }

@@ -26,12 +26,14 @@ import {
 } from '@/lib/post-form';
 import { POSTS_LIST_HREF } from '@/lib/posts-view';
 import {
+  type DeletePostAction,
   type SignCoverAction,
   type UpdatePostAction,
   type UpdatePostResult,
   updatePostErrorCopy,
 } from '@/lib/posts-write';
 import { isNewerVersion, useVersionedForm } from '@/lib/use-versioned-form';
+import { DeletePostZone } from './delete-post-zone';
 import { MarkdownEditor } from './markdown-editor';
 import { PostBanner, type PostBannerState } from './post-banner';
 import { PostCoverCard } from './post-cover-card';
@@ -63,6 +65,7 @@ export interface PostEditorProps {
   loadLibrary: LoadPhotoLibraryAction;
   tagOptions: AdminPostTag[];
   tourOptions: PostTourOption[];
+  remove: DeletePostAction;
 }
 
 export function PostEditor({
@@ -72,6 +75,7 @@ export function PostEditor({
   loadLibrary,
   tagOptions,
   tourOptions,
+  remove,
 }: PostEditorProps) {
   const router = useRouter();
   const form = useVersionedForm(detail, postFormValues);
@@ -293,6 +297,8 @@ export function PostEditor({
               </CardContent>
             </Card>
           </form>
+          {/* NGOÀI form (Quyết định 14): hộp xác nhận không bao giờ bắn Save của trang. */}
+          <DeletePostZone detail={saved} version={version} remove={remove} />
         </div>
       </StepColumns>
     </div>

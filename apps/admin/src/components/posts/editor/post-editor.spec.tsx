@@ -4,7 +4,7 @@ import { messages } from '@tourism/i18n';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { UnsavedChangesProvider } from '@/components/kit/unsaved-changes';
 import type { LoadPhotoLibraryAction } from '@/lib/photo-library';
-import type { SignCoverAction, UpdatePostAction } from '@/lib/posts-write';
+import type { DeletePostAction, SignCoverAction, UpdatePostAction } from '@/lib/posts-write';
 import { POST_ID, POST_VERSION, postDetailFixture, TOUR_A, TOUR_B } from '@/test/post-detail';
 import { PostEditor, type PostEditorProps } from './post-editor';
 
@@ -49,6 +49,7 @@ function props(patch: Partial<PostEditorProps> = {}): PostEditorProps {
     loadLibrary: vi.fn<LoadPhotoLibraryAction>(),
     tagOptions: [],
     tourOptions: [TOUR_A, TOUR_B],
+    remove: vi.fn<DeletePostAction>(),
     ...patch,
   };
 }
@@ -243,5 +244,12 @@ describe('PostEditor — lưu cả form', () => {
       tags: ['Food', 'Street food'],
       relatedTourIds: [TOUR_A.id, TOUR_B.id],
     });
+  });
+
+  it('vùng xoá nằm NGOÀI form của trang', () => {
+    renderEditor();
+    expect(
+      screen.getByRole('button', { name: messages.admin.posts.delete.action }).closest('form'),
+    ).toBeNull();
   });
 });
