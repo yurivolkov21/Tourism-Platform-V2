@@ -231,7 +231,7 @@ function detailsColumns(input: AdminTourDetailsInput) {
 }
 
 /** Các cột `planTourPhotos` chép khi giữ hay mượn một dòng — khớp `StoredPhoto`. */
-const STORED_PHOTO_SELECT = {
+export const STORED_PHOTO_SELECT = {
   publicId: true,
   type: true,
   posterId: true,

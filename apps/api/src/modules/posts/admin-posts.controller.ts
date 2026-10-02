@@ -48,6 +48,17 @@ export class AdminPostsController {
     });
   }
 
+  @Implement(contract.admin.posts.update)
+  update() {
+    return implement(contract.admin.posts.update).handler(async ({ input, errors }) => {
+      try {
+        return await this.posts.update(input);
+      } catch (error) {
+        throw toContractError(error, errors);
+      }
+    });
+  }
+
   @Implement(contract.admin.posts.tags)
   tags() {
     return implement(contract.admin.posts.tags).handler(() => this.posts.tags());

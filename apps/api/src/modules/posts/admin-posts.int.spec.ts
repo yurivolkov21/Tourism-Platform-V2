@@ -38,6 +38,14 @@ const ROOT = 'tourism';
 const mine = (n: number, name: string) => `${ROOT}/posts/${postId(n)}/${name}`;
 const LIB = `${ROOT}/catalog/destination/hoi-an/1`;
 const CATALOG = `${ROOT}/catalog/post/p4e4-post-1`;
+const MISSING = uuid('f4e400ff', 1);
+const UPLOAD_META = {
+  version: '1759000000',
+  width: 2000,
+  height: 1333,
+  format: 'jpg',
+  bytes: 523000,
+};
 
 function sessionCookie(res: { headers: Record<string, unknown> }): string {
   const raw = res.headers['set-cookie'];
@@ -191,6 +199,28 @@ describe('admin posts integration (P4e-4)', () => {
     post('/api/admin/posts', payload, cookie);
   const tags = (cookie = adminCookie) =>
     app.inject({ method: 'GET', url: '/api/admin/post-tags', headers: { cookie } });
+
+  const save = (n: number, payload: Record<string, unknown>, cookie = adminCookie) =>
+    post(`/api/admin/posts/${postId(n)}`, payload, cookie);
+  const versionOf = async (n: number) =>
+    (await prisma.post.findUniqueOrThrow({ where: { id: postId(n) } })).updatedAt.toISOString();
+  const coverRows = (n: number) =>
+    prisma.mediaAsset.findMany({ where: { ownerType: 'POST', ownerId: postId(n) } });
+
+  /** Lệnh lưu ĐỦ để đăng cho bài `n`, ở phiên bản hiện tại — ca nào cần khác thì đè. */
+  const fullSave = async (n: number, patch: Record<string, unknown> = {}) => ({
+    id: postId(n),
+    version: await versionOf(n),
+    title: `P4e-4 Post ${n} edited`,
+    excerpt: 'A new excerpt.',
+    content: '## Afternoon\n\nTea by the river.',
+    status: 'PUBLISHED',
+    publishedAt: new Date(Date.now() - DAY_MS).toISOString(),
+    tags: [],
+    relatedTourIds: [],
+    cover: { publicId: mine(n, 'new'), alt: null, upload: UPLOAD_META },
+    ...patch,
+  });
 
   describe('quyền', () => {
     it('ẩn danh 401, khách 403 — trên cả đường đọc lẫn đường ghi', async () => {
@@ -370,6 +400,269 @@ describe('admin posts integration (P4e-4)', () => {
         { slug: 'art', name: 'Art', count: 0 },
         { slug: 'food', name: 'Food', count: 1 },
       ]);
+    });
+  });
+
+  describe('update', () => {
+    it('lưu đủ trường: tag mới và tag sẵn có, tour theo thứ tự gửi, ảnh bìa tải lên; bust đúng hai tag', async () => {
+      await makePost(1, { status: 'DRAFT', publishedAt: null });
+      await makeTour(1);
+      await makeTour(2, false);
+      await prisma.postTag.create({ data: { slug: 'food', name: 'Food' } });
+      const revalidate = vi.spyOn(web, 'revalidate').mockResolvedValue(undefined);
+      const payload = await fullSave(1, {
+        tags: ['FOOD', 'Hội An', 'Hoi An'],
+        relatedTourIds: [tourId(2), tourId(1)],
+        cover: { publicId: mine(1, 'new'), alt: '  Lanterns at dusk  ', upload: UPLOAD_META },
+      });
+
+      const res = await save(1, payload);
+
+      expect(res.statusCode).toBe(200);
+      const detail = AdminPostDetailSchema.parse(res.json());
+      expect(detail).toMatchObject({
+        title: 'P4e-4 Post 1 edited',
+        excerpt: 'A new excerpt.',
+        status: 'PUBLISHED',
+        displayStatus: 'published',
+        readiness: [],
+      });
+      expect(detail.version).not.toBe(payload.version);
+      // Tag sẵn có giữ tên cũ dù gửi "FOOD"; "Hội An" và "Hoi An" là một tag.
+      expect(detail.tags).toEqual([
+        { slug: 'food', name: 'Food' },
+        { slug: 'hoi-an', name: 'Hội An' },
+      ]);
+      expect(detail.relatedTours.map((tour) => tour.id)).toEqual([tourId(2), tourId(1)]);
+      expect(detail.cover).toMatchObject({
+        publicId: mine(1, 'new'),
+        alt: 'Lanterns at dusk',
+        source: 'UPLOAD',
+      });
+      const [row] = await coverRows(1);
+      expect(row).toMatchObject({
+        role: 'hero',
+        sortOrder: 0,
+        version: '1759000000',
+        width: 2000,
+        bytes: 523000,
+        format: 'jpg',
+      });
+      expect(revalidate).toHaveBeenCalledWith(['posts', 'post:p4e4-post-1']);
+    });
+
+    it('phiên bản cũ: 409 STALE_POST, không đổi gì, không bust', async () => {
+      await makePost(1);
+      const stale = await fullSave(1);
+      expect((await save(1, await fullSave(1, { title: 'First writer' }))).statusCode).toBe(200);
+      const revalidate = vi.spyOn(web, 'revalidate').mockResolvedValue(undefined);
+
+      const res = await save(1, { ...stale, title: 'Second writer' });
+
+      expect(res.statusCode).toBe(409);
+      expect(res.json()).toMatchObject({ code: 'STALE_POST' });
+      const row = await prisma.post.findUniqueOrThrow({ where: { id: postId(1) } });
+      expect(row.title).toBe('First writer');
+      expect(revalidate).not.toHaveBeenCalled();
+    });
+
+    it('hai lệnh cùng version bắn cùng lúc: đúng MỘT lệnh qua', async () => {
+      await makePost(1);
+      const payload = await fullSave(1);
+
+      const [a, b] = await Promise.all([
+        save(1, { ...payload, title: 'Writer A' }),
+        save(1, { ...payload, title: 'Writer B' }),
+      ]);
+
+      expect([a.statusCode, b.statusCode].sort()).toEqual([200, 409]);
+      const winner = a.statusCode === 200 ? 'Writer A' : 'Writer B';
+      const row = await prisma.post.findUniqueOrThrow({ where: { id: postId(1) } });
+      expect(row.title).toBe(winner);
+    });
+
+    it('bài không có: 404 NOT_FOUND; khách: 403', async () => {
+      const ghost = {
+        id: MISSING,
+        version: new Date().toISOString(),
+        title: 'Ghost',
+        excerpt: null,
+        content: '',
+        status: 'DRAFT',
+        publishedAt: null,
+        tags: [],
+        relatedTourIds: [],
+        cover: null,
+      };
+      const res = await post(`/api/admin/posts/${MISSING}`, ghost);
+      expect(res.statusCode).toBe(404);
+      expect(res.json()).toMatchObject({ code: 'NOT_FOUND' });
+      expect((await post(`/api/admin/posts/${MISSING}`, ghost, customerCookie)).statusCode).toBe(
+        403,
+      );
+    });
+
+    it('đăng mà thiếu: 409 POST_NOT_READY, rollback trọn; nháp thiếu mọi thứ vẫn lưu được', async () => {
+      await makePost(1, { status: 'DRAFT', publishedAt: null, excerpt: null, content: '' });
+      const before = await versionOf(1);
+
+      const res = await save(1, await fullSave(1, { excerpt: null, cover: null }));
+
+      expect(res.statusCode).toBe(409);
+      expect(res.json()).toMatchObject({ code: 'POST_NOT_READY' });
+      expect(await versionOf(1)).toBe(before);
+      const draft = await save(
+        1,
+        await fullSave(1, {
+          status: 'DRAFT',
+          publishedAt: null,
+          excerpt: null,
+          content: '',
+          cover: null,
+        }),
+      );
+      expect(draft.statusCode).toBe(200);
+      expect(AdminPostDetailSchema.parse(draft.json()).readiness).toEqual([
+        'content',
+        'excerpt',
+        'cover',
+      ]);
+    });
+
+    it('bài đang đăng không thể lưu thành thiếu — cùng cổng của tour đang bán', async () => {
+      await makePost(1);
+      await makeCover(1, mine(1, 'old'));
+
+      const res = await save(
+        1,
+        await fullSave(1, { cover: { publicId: mine(1, 'old'), alt: null }, excerpt: '   ' }),
+      );
+
+      expect(res.statusCode).toBe(409);
+      expect(res.json()).toMatchObject({ code: 'POST_NOT_READY' });
+      const row = await prisma.post.findUniqueOrThrow({ where: { id: postId(1) } });
+      expect(row.excerpt).toBe('A short story.');
+    });
+
+    it('hẹn giờ: chip Scheduled, bài chưa lên đường công khai trước giờ đăng', async () => {
+      await makePost(1, { status: 'DRAFT', publishedAt: null });
+
+      const res = await save(
+        1,
+        await fullSave(1, { publishedAt: new Date(Date.now() + DAY_MS).toISOString() }),
+      );
+
+      expect(res.statusCode).toBe(200);
+      expect(AdminPostDetailSchema.parse(res.json()).displayStatus).toBe('scheduled');
+      expect((await app.inject({ method: 'GET', url: '/api/posts/p4e4-post-1' })).statusCode).toBe(
+        404,
+      );
+      const publicList = await app.inject({ method: 'GET', url: '/api/posts' });
+      expect(publicList.json().items.map((item: { slug: string }) => item.slug)).not.toContain(
+        'p4e4-post-1',
+      );
+    });
+
+    it('ảnh tải lên cũ đổi sang ảnh thư viện: dòng cũ đi, chép ghi công, ảnh cũ vào hàng dọn', async () => {
+      await makePost(1);
+      await makeCover(1, mine(1, 'old'));
+      await makeLibrary();
+
+      const res = await save(1, await fullSave(1, { cover: { publicId: LIB, alt: null } }));
+
+      expect(res.statusCode).toBe(200);
+      const rows = await coverRows(1);
+      expect(rows).toHaveLength(1);
+      expect(rows[0]).toMatchObject({
+        publicId: LIB,
+        role: 'hero',
+        alt: null,
+        author: 'Jane Doe',
+        license: 'CC BY-SA 4.0',
+        version: '1700000001',
+      });
+      expect((await prisma.mediaGarbage.findMany()).map((row) => row.publicId)).toEqual([
+        mine(1, 'old'),
+      ]);
+    });
+
+    it('thay ảnh catalog: ảnh catalog KHÔNG vào hàng dọn', async () => {
+      await makePost(1);
+      await makeCover(1, CATALOG);
+
+      expect((await save(1, await fullSave(1))).statusCode).toBe(200);
+
+      expect(await prisma.mediaGarbage.count()).toBe(0);
+    });
+
+    it('giữ ảnh hiện có, đổi alt: dòng giữ version cũ, không gì vào hàng dọn', async () => {
+      await makePost(1);
+      await makeCover(1, mine(1, 'old'));
+
+      const res = await save(
+        1,
+        await fullSave(1, { cover: { publicId: mine(1, 'old'), alt: 'Better alt' } }),
+      );
+
+      expect(res.statusCode).toBe(200);
+      expect((await coverRows(1))[0]).toMatchObject({
+        publicId: mine(1, 'old'),
+        alt: 'Better alt',
+        version: '1700000000',
+      });
+      expect(await prisma.mediaGarbage.count()).toBe(0);
+    });
+
+    it.each([
+      ['ảnh lạ', { publicId: `${ROOT}/catalog/post/unknown`, alt: null }],
+      ['ảnh tải lên thiếu metadata', { publicId: mine(1, 'new'), alt: null }],
+      ['thư mục của bài khác', { publicId: mine(2, 'x'), alt: null, upload: UPLOAD_META }],
+    ])('ảnh bìa %s: 400 PHOTO_NOT_ALLOWED, rollback trọn', async (_, cover) => {
+      await makePost(1);
+      await makeCover(1, mine(1, 'old'));
+      const before = await versionOf(1);
+
+      const res = await save(1, await fullSave(1, { cover }));
+
+      expect(res.statusCode).toBe(400);
+      expect(res.json()).toMatchObject({ code: 'PHOTO_NOT_ALLOWED' });
+      expect(await versionOf(1)).toBe(before);
+      expect((await coverRows(1)).map((row) => row.publicId)).toEqual([mine(1, 'old')]);
+      expect(await prisma.mediaGarbage.count()).toBe(0);
+    });
+
+    it('tour không có: 404 RELATED_TOUR_NOT_FOUND, rollback trọn', async () => {
+      await makePost(1);
+      await makeTour(1);
+      const before = await versionOf(1);
+
+      const res = await save(1, await fullSave(1, { relatedTourIds: [tourId(1), MISSING] }));
+
+      expect(res.statusCode).toBe(404);
+      expect(res.json()).toMatchObject({ code: 'RELATED_TOUR_NOT_FOUND' });
+      expect(await versionOf(1)).toBe(before);
+      expect(await prisma.postTour.count()).toBe(0);
+    });
+
+    it('danh sách rỗng gỡ hết tag và tour; tag không còn bài nào vẫn ở lại', async () => {
+      await makePost(1);
+      await makeTour(1);
+      await save(1, await fullSave(1, { tags: ['Food'], relatedTourIds: [tourId(1)] }));
+
+      const res = await save(1, await fullSave(1, { tags: [], relatedTourIds: [] }));
+
+      expect(res.statusCode).toBe(200);
+      expect(await prisma.postTagLink.count()).toBe(0);
+      expect(await prisma.postTour.count()).toBe(0);
+      expect(await prisma.postTag.count()).toBe(1);
+    });
+
+    it('thân bài có ảnh nhúng: 400 từ contract, chưa chạm DB', async () => {
+      await makePost(1);
+      const before = await versionOf(1);
+      const res = await save(1, await fullSave(1, { content: '![x](https://example.com/x.jpg)' }));
+      expect(res.statusCode).toBe(400);
+      expect(await versionOf(1)).toBe(before);
     });
   });
 });

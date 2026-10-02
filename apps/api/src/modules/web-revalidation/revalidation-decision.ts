@@ -35,3 +35,12 @@ export function moderationRevalidationTags(args: {
   if (args.fromApproved === args.toApproved) return null;
   return tourRevalidationTags(args.tourSlug);
 }
+
+/**
+ * Hai tag của một bài viết (ADR-0051 §6): danh sách `/blog` (kèm khối Journal của trang
+ * chủ) và trang của chính bài. Gọi sau commit của lệnh sửa và lệnh xoá bài. Trang bài
+ * viết còn mang tag `tours` ở phía web (G9) — lệnh ghi tour vốn đã bust nó.
+ */
+export function postRevalidationTags(slug: string): string[] {
+  return ['posts', `post:${slug}`];
+}

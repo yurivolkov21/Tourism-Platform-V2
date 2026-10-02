@@ -1,4 +1,5 @@
 import {
+  type AdminPostCoverInput,
   type AdminPostDetail,
   type AdminPostRow,
   type AdminPostStatusFilter,
@@ -10,6 +11,7 @@ import {
 import type { Prisma } from '../../generated/prisma/client.js';
 import { PostStatus } from '../../generated/prisma/enums.js';
 import { isPostUploadPublicId } from '../../lib/upload-signing.js';
+import type { StoredPhoto } from '../catalog/tour-photos.js';
 import { publishedPostWhere } from './published-post.where.js';
 
 /**
@@ -141,4 +143,74 @@ export function coverSource(
 ): PostCoverSource {
   if (isPostUploadPublicId(args.rootFolder, args.postId, publicId)) return 'UPLOAD';
   return args.inLibrary ? 'LIBRARY' : 'CATALOG';
+}
+
+/** Một dòng ảnh bìa sẽ ghi — cột chép từ nguồn, `alt` theo form (trống là `null`). */
+export interface PlannedCoverRow extends StoredPhoto {
+  alt: string | null;
+}
+
+export type PostCoverPlan =
+  | { ok: true; row: PlannedCoverRow | null; requeue: string[] }
+  | { ok: false; rejected: string };
+
+/**
+ * Ảnh bìa gửi lên → dòng sẽ ghi và ảnh phải vào lại hàng dọn (spec §3.2, ADR-0051 §7).
+ *
+ * Ảnh bìa thuộc đúng MỘT nguồn, xét theo thứ tự: ảnh bìa HIỆN CÓ (giữ, chỉ đổi alt) →
+ * ảnh TẢI LÊN trong thư mục của bài, có metadata (mới) → dòng THƯ VIỆN (mượn, chép ghi
+ * công). Không thuộc nguồn nào là từ chối cả lệnh.
+ *
+ * Ảnh bìa cũ bị thay hay bị gỡ chỉ vào lại hàng dọn khi nó nằm trong thư mục tải lên của
+ * chính bài — ảnh thư viện đã kiểm giấy phép, ảnh catalog thì không chọn lại được.
+ */
+export function planPostCover(args: {
+  postId: string;
+  rootFolder: string;
+  cover: AdminPostCoverInput | null;
+  /** Dòng `hero` hiện có của bài. */
+  current: StoredPhoto | null;
+  /** Dòng `DESTINATION` của publicId gửi lên, nếu có. */
+  library: StoredPhoto | null;
+}): PostCoverPlan {
+  const kept = args.cover?.publicId ?? null;
+  const requeue =
+    args.current !== null &&
+    args.current.publicId !== kept &&
+    isPostUploadPublicId(args.rootFolder, args.postId, args.current.publicId)
+      ? [args.current.publicId]
+      : [];
+  if (args.cover === null) return { ok: true, row: null, requeue };
+
+  const source =
+    (args.current?.publicId === args.cover.publicId ? args.current : null) ??
+    uploadedCover(args.rootFolder, args.postId, args.cover) ??
+    (args.library?.publicId === args.cover.publicId ? args.library : null);
+  if (source === null) return { ok: false, rejected: args.cover.publicId };
+  return { ok: true, row: { ...source, alt: args.cover.alt }, requeue };
+}
+
+/** Ảnh tải lên MỚI: đúng thư mục của bài VÀ có metadata Cloudinary — thiếu một là không nhận. */
+function uploadedCover(
+  rootFolder: string,
+  postId: string,
+  cover: AdminPostCoverInput,
+): StoredPhoto | null {
+  if (cover.upload === undefined) return null;
+  if (!isPostUploadPublicId(rootFolder, postId, cover.publicId)) return null;
+  return {
+    publicId: cover.publicId,
+    type: 'IMAGE',
+    posterId: null,
+    format: cover.upload.format,
+    width: cover.upload.width,
+    height: cover.upload.height,
+    durationSec: null,
+    bytes: cover.upload.bytes,
+    version: cover.upload.version,
+    author: null,
+    license: null,
+    licenseUrl: null,
+    sourceUrl: null,
+  };
 }

@@ -1,4 +1,8 @@
-import { moderationRevalidationTags, tourRevalidationTags } from './revalidation-decision.js';
+import {
+  moderationRevalidationTags,
+  postRevalidationTags,
+  tourRevalidationTags,
+} from './revalidation-decision.js';
 
 // Logic thuần — không đụng DB/HTTP. TDD trước khi có revalidation-decision.ts
 // (spec 03/08 §3: hàm quyết định phải viết TRƯỚC service gọi fetch).
@@ -66,5 +70,14 @@ describe('tourRevalidationTags', () => {
         toApproved: true,
       }),
     ).toEqual(tourRevalidationTags('vung-tau-2n1d'));
+  });
+});
+
+describe('postRevalidationTags', () => {
+  it('luôn là cặp [danh sách, bài đó] — đúng taxonomy của apps/web/src/lib/api/tags.ts', () => {
+    expect(postRevalidationTags('eating-your-way-through-hoi-an')).toEqual([
+      'posts',
+      'post:eating-your-way-through-hoi-an',
+    ]);
   });
 });

@@ -1,12 +1,16 @@
 import { Injectable, Logger } from '@nestjs/common';
-import type {
-  AdminPostCreateInput,
-  AdminPostCreateResult,
-  AdminPostDetail,
-  AdminPostRow,
-  AdminPostsListQuery,
-  AdminPostTag,
-  Paged,
+import {
+  type AdminPostCoverInput,
+  type AdminPostCreateInput,
+  type AdminPostCreateResult,
+  type AdminPostDetail,
+  type AdminPostRow,
+  type AdminPostsListQuery,
+  type AdminPostTag,
+  type AdminPostUpdateInput,
+  normalizePostTags,
+  type Paged,
+  postReadiness,
 } from '@tourism/contract';
 import { prisma } from '../../auth/auth.config.js';
 import { env } from '../../config/env.js';
@@ -14,30 +18,154 @@ import type { Prisma } from '../../generated/prisma/client.js';
 import { MediaOwnerType, MediaRole, PostStatus } from '../../generated/prisma/enums.js';
 import { escapeLike } from '../../lib/like.js';
 import { toPaged } from '../../lib/paged.js';
-import { LIBRARY_PHOTO, prismaCode } from '../catalog/admin-tours.service.js';
+import { LIBRARY_PHOTO, prismaCode, STORED_PHOTO_SELECT } from '../catalog/admin-tours.service.js';
+import { nextTourVersion } from '../catalog/tour-editor-rules.js';
 import { MediaService } from '../media/media.service.js';
-import { AdminPostNotFoundError, PostSlugTakenError } from './admin-post-errors.js';
+import { MediaGarbageService } from '../media/media-garbage.service.js';
+import { postRevalidationTags } from '../web-revalidation/revalidation-decision.js';
+import { WebRevalidationService } from '../web-revalidation/web-revalidation.service.js';
+import {
+  AdminPostNotFoundError,
+  PostNotReadyError,
+  PostPhotoNotAllowedError,
+  PostSlugTakenError,
+  RelatedTourNotFoundError,
+  StalePostError,
+} from './admin-post-errors.js';
 import {
   ADMIN_POST_ROW_SELECT,
   ADMIN_POST_SELECT,
   type AdminPostRecord,
   coverSource,
+  planPostCover,
   postStatusWhere,
   toAdminPostDetail,
   toAdminPostRow,
 } from './admin-post-rules.js';
 
 /**
+ * Câu ĐẦU TIÊN của lệnh sửa và lệnh xoá: so phiên bản và giành hàng bài trong MỘT câu
+ * `UPDATE … WHERE id = ? AND updated_at = ?` — khuôn `claimTour` (ADR-0047 §3). Hai lệnh
+ * cùng phiên bản xếp hàng trên khoá hàng; lệnh đến sau đếm được 0.
+ *
+ * Đếm 0 thì câu thứ hai chỉ để chọn MÃ: hàng còn là phiên bản cũ, mất là bài không còn.
+ * Trả phiên bản mới để câu ghi sau trong transaction đặt đúng giá trị ấy — không truyền
+ * thì Prisma tự đặt `now()` và phiên bản trả về lệch thứ vừa so.
+ */
+async function claimPost(
+  tx: Prisma.TransactionClient,
+  id: string,
+  version: string,
+  now: Date,
+): Promise<Date> {
+  // Cùng luật nhích phiên bản với tour: hai lần lưu trong một mili-giây vẫn ra hai phiên bản.
+  const next = nextTourVersion(version, now);
+  const { count } = await tx.post.updateMany({
+    where: { id, updatedAt: new Date(version) },
+    data: { updatedAt: next },
+  });
+  if (count === 0) {
+    const exists = await tx.post.findUnique({ where: { id }, select: { id: true } });
+    throw exists ? new StalePostError() : new AdminPostNotFoundError(id);
+  }
+  return next;
+}
+
+/** Thay trọn tag (spec §2.5): tag chưa có thì tạo; có rồi thì giữ tên của người tạo đầu tiên. */
+async function replaceTags(
+  tx: Prisma.TransactionClient,
+  postId: string,
+  names: readonly string[],
+): Promise<void> {
+  await tx.postTagLink.deleteMany({ where: { postId } });
+  const tags = normalizePostTags(names);
+  if (tags.length === 0) return;
+  // `skipDuplicates` = ON CONFLICT DO NOTHING: tag đã có không bị đổi tên, hai admin cùng
+  // tạo một tag cũng không đụng nhau.
+  await tx.postTag.createMany({ data: tags, skipDuplicates: true });
+  const rows = await tx.postTag.findMany({
+    where: { slug: { in: tags.map((tag) => tag.slug) } },
+    select: { id: true },
+  });
+  await tx.postTagLink.createMany({ data: rows.map((row) => ({ postId, tagId: row.id })) });
+}
+
+/** Thay trọn tour liên quan; thứ tự là thứ tự gửi lên (`post_tours.order`). */
+async function replaceRelatedTours(
+  tx: Prisma.TransactionClient,
+  postId: string,
+  tourIds: readonly string[],
+): Promise<void> {
+  await tx.postTour.deleteMany({ where: { postId } });
+  if (tourIds.length === 0) return;
+  await tx.postTour
+    .createMany({ data: tourIds.map((tourId, order) => ({ postId, tourId, order })) })
+    .catch((error: unknown) => {
+      // Khoá ngoại bắt tại câu ghi (bài học F14) — không SELECT kiểm trước.
+      if (prismaCode(error) === 'P2003') throw new RelatedTourNotFoundError();
+      throw error;
+    });
+}
+
+/** Thay dòng ảnh bìa (role `hero`); trả các publicId phải vào lại hàng dọn. */
+async function replaceCover(
+  tx: Prisma.TransactionClient,
+  postId: string,
+  cover: AdminPostCoverInput | null,
+): Promise<string[]> {
+  const heroOf = { ownerType: MediaOwnerType.POST, ownerId: postId, role: MediaRole.hero };
+  const current = await tx.mediaAsset.findFirst({
+    where: heroOf,
+    select: STORED_PHOTO_SELECT,
+    orderBy: { createdAt: 'asc' },
+  });
+  const library =
+    cover === null || cover.publicId === current?.publicId
+      ? null
+      : await tx.mediaAsset.findFirst({
+          where: { ...LIBRARY_PHOTO, publicId: cover.publicId },
+          select: STORED_PHOTO_SELECT,
+          orderBy: { createdAt: 'asc' },
+        });
+  const plan = planPostCover({
+    postId,
+    rootFolder: env.CLOUDINARY_UPLOAD_FOLDER,
+    cover,
+    current,
+    library,
+  });
+  if (!plan.ok) throw new PostPhotoNotAllowedError(plan.rejected);
+  await tx.mediaAsset.deleteMany({ where: heroOf });
+  if (plan.row !== null) {
+    await tx.mediaAsset.create({
+      data: {
+        ...plan.row,
+        ownerType: MediaOwnerType.POST,
+        ownerId: postId,
+        role: MediaRole.hero,
+        sortOrder: 0,
+      },
+    });
+  }
+  return plan.requeue;
+}
+
+/**
  * Quản trị bài viết (spec P4e-4, ADR-0051) — các thao tác của `admin.posts.*`.
  *
- * Mọi lỗi DB bắt NGAY tại câu ghi, không SELECT kiểm trước (bài học F14): slug trùng là
- * `P2002`.
+ * Mọi lỗi DB bắt NGAY tại câu ghi, không SELECT kiểm trước (bài học F14): slug trùng →
+ * `P2002`, tour liên quan không có → `P2003`. Bust cache web SAU commit, fire-and-forget;
+ * lệnh ghi hỏng thì không bust.
  */
 @Injectable()
 export class AdminPostsService {
   private readonly logger = new Logger(AdminPostsService.name);
 
-  constructor(private readonly media: MediaService) {}
+  constructor(
+    private readonly media: MediaService,
+    private readonly garbage: MediaGarbageService,
+    private readonly webRevalidation: WebRevalidationService,
+  ) {}
 
   /** Một trang bài, sửa gần nhất trước. Ảnh bìa nhỏ: MỘT câu media cho cả trang. */
   async list(query: AdminPostsListQuery, now: Date = new Date()): Promise<Paged<AdminPostRow>> {
@@ -95,6 +223,48 @@ export class AdminPostsService {
     return created;
   }
 
+  /**
+   * Lưu cả form (spec §3.2). Thứ tự trong transaction: giành hàng bài → cổng "đủ mới được
+   * đăng" (tính từ chính input — mọi thứ nó xét đều do lệnh này thay) → ghi cột → thay
+   * tag → thay tour liên quan → thay ảnh bìa → ảnh tải lên bị thay vào lại hàng dọn.
+   */
+  async update(input: AdminPostUpdateInput): Promise<AdminPostDetail> {
+    const now = new Date();
+    const slug = await prisma.$transaction(async (tx) => {
+      const version = await claimPost(tx, input.id, input.version, now);
+      if (input.status === 'PUBLISHED') {
+        const missing = postReadiness({
+          content: input.content,
+          excerpt: input.excerpt,
+          hasCover: input.cover !== null,
+        });
+        if (missing.length > 0) throw new PostNotReadyError(missing);
+      }
+      const saved = await tx.post.update({
+        where: { id: input.id },
+        data: {
+          title: input.title,
+          excerpt: input.excerpt,
+          content: input.content,
+          status: input.status,
+          publishedAt: input.publishedAt === null ? null : new Date(input.publishedAt),
+          updatedAt: version,
+        },
+        select: { slug: true },
+      });
+      await replaceTags(tx, input.id, input.tags);
+      await replaceRelatedTours(tx, input.id, input.relatedTourIds);
+      const requeue = await replaceCover(tx, input.id, input.cover);
+      // Cùng transaction (ADR-0035 §7): rollback thì hàng dọn không giữ dấu vết nào.
+      await this.garbage.requeue(tx, requeue);
+      return saved.slug;
+    });
+
+    this.logger.log(`[admin] post saved ${JSON.stringify({ id: input.id, status: input.status })}`);
+    this.bust(slug);
+    return this.get(slug, now);
+  }
+
   /** Mọi tag kèm số bài dùng nó, CẢ nháp — tag không còn bài nào vẫn có mặt với số 0. */
   async tags(): Promise<AdminPostTag[]> {
     const rows = await prisma.postTag.findMany({
@@ -121,5 +291,13 @@ export class AdminPostsService {
       inLibrary,
     });
     return toAdminPostDetail(row, { item, source }, now);
+  }
+
+  /**
+   * Bust cache web SAU khi lệnh ghi đã xong (ADR-0016 §3). `void` có chủ đích — đường này
+   * chết thì site chỉ kém tươi, còn lệnh ghi đã ăn rồi.
+   */
+  private bust(slug: string): void {
+    void this.webRevalidation.revalidate(postRevalidationTags(slug));
   }
 }
