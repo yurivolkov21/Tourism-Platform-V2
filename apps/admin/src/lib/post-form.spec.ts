@@ -9,12 +9,15 @@ import { messages } from '@tourism/i18n';
 import { describe, expect, it } from 'vitest';
 import { POST_ID, POST_VERSION, postDetailFixture, TOUR_A } from '@/test/post-detail';
 import {
+  coverFileProblem,
   fromUtcInputValue,
+  libraryCoverDraft,
   nowUtcInputValue,
   postFormValues,
   postPayload,
   projectedPostReadiness,
   toUtcInputValue,
+  uploadedCoverDraft,
   validatePostForm,
   withStatus,
 } from './post-form';
@@ -153,6 +156,44 @@ describe('withStatus', () => {
     expect(withStatus(published, 'DRAFT', NOW)).toMatchObject({
       status: 'DRAFT',
       publishAt: '2026-10-01T08:00',
+    });
+  });
+});
+
+describe('ảnh bìa', () => {
+  it('file nhận được: đuôi ảnh cho phép, tối đa 10 MB — cùng luật tab Photos của tour', () => {
+    expect(coverFileProblem({ name: 'lanterns.JPG', size: 10 * 1024 * 1024 })).toBeNull();
+    expect(coverFileProblem({ name: 'notes.pdf', size: 10 })).toBe('type');
+    expect(coverFileProblem({ name: 'huge.jpg', size: 10 * 1024 * 1024 + 1 })).toBe('size');
+  });
+
+  it('ảnh vừa tải: URL có phiên bản, alt trống, mang metadata để lưu', () => {
+    expect(
+      uploadedCoverDraft({ publicId: `tourism/posts/${POST_ID}/pid-1`, upload: UPLOAD }, 'demo'),
+    ).toEqual({
+      publicId: `tourism/posts/${POST_ID}/pid-1`,
+      url: `https://res.cloudinary.com/demo/image/upload/f_auto,q_auto/v1759000000/tourism/posts/${POST_ID}/pid-1`,
+      alt: '',
+      source: 'UPLOAD',
+      upload: UPLOAD,
+    });
+  });
+
+  it('ảnh thư viện: alt chép từ ảnh gốc (null thành chuỗi rỗng), không metadata', () => {
+    const photo = {
+      publicId: 'lib/a1',
+      url: 'https://res.cloudinary.com/demo/image/upload/f_auto,q_auto/lib/a1',
+      alt: null,
+      width: 2400,
+      height: 1600,
+      author: null,
+      license: null,
+    };
+    expect(libraryCoverDraft(photo)).toEqual({
+      publicId: 'lib/a1',
+      url: photo.url,
+      alt: '',
+      source: 'LIBRARY',
     });
   });
 });

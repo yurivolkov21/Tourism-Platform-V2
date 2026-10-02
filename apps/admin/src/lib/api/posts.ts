@@ -5,8 +5,10 @@ import {
   type AdminPostDetail,
   AdminPostGetInputSchema,
   type AdminPostRow,
+  type AdminPostSignCoverUploadInput,
   type AdminPostUpdateInput,
   type Paged,
+  type SignedUploadParams,
 } from '@tourism/contract';
 import { type PostsQuery, toPostsListInput } from '@/lib/posts-query';
 import { api, withAdminAuth } from './client';
@@ -59,4 +61,12 @@ export async function updateAdminPost(
   input: AdminPostUpdateInput,
 ): Promise<AdminPostDetail> {
   return api.admin.posts.update(input, { context: withAdminAuth(cookie) });
+}
+
+/** Ký một lượt tải ảnh bìa — bộ tham số cho TRÌNH DUYỆT POST thẳng lên Cloudinary. */
+export async function signAdminPostCoverUpload(
+  cookie: string,
+  input: AdminPostSignCoverUploadInput,
+): Promise<SignedUploadParams> {
+  return api.admin.posts.signCoverUpload(input, { context: withAdminAuth(cookie) });
 }

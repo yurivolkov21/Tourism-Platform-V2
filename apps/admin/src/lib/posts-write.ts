@@ -2,9 +2,11 @@ import {
   type AdminPostCreateInput,
   type AdminPostCreateResult,
   type AdminPostDetail,
+  type AdminPostSignCoverUploadInput,
   type AdminPostUpdateInput,
   POST_SLUG_MAX,
   POST_TITLE_MAX,
+  type SignedUploadParams,
   SLUG_PATTERN,
 } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
@@ -76,3 +78,22 @@ export function validatePostCreateForm(values: PostCreateFormValues): PostCreate
 export function postCreatePayload(values: PostCreateFormValues): AdminPostCreateInput {
   return { title: values.title.trim(), slug: values.slug.trim() };
 }
+
+/**
+ * Ký là lệnh chưa đụng gì: kết cục không rõ ở đây không có gì để "lỡ đi qua", nên câu
+ * GENERIC là câu riêng thay vì giọng ghi chung — khuôn `signCodec` của tab Photos.
+ */
+const signCodec = createWriteErrorCodec(t.editor.signErrors, {
+  transportCopy: { GENERIC: t.editor.signFailed },
+});
+
+export type SignCoverContractCode = keyof typeof t.editor.signErrors;
+export const SIGN_COVER_CONTRACT_CODES = signCodec.codes;
+export const classifySignCoverError = signCodec.classify;
+export const signCoverErrorCopy = signCodec.copy;
+
+export type SignCoverResult =
+  | { ok: true; params: SignedUploadParams }
+  | { ok: false; code: SignCoverContractCode | TransportFailureCode };
+
+export type SignCoverAction = (input: AdminPostSignCoverUploadInput) => Promise<SignCoverResult>;

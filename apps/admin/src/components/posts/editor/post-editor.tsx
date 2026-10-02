@@ -13,6 +13,7 @@ import { useReportUnsaved } from '@/components/kit/unsaved-changes';
 import { StepColumns } from '@/components/tours/editor/editor-form-frame';
 import { isUncertainOutcome } from '@/lib/api/write-error';
 import { hasFormErrors } from '@/lib/form-errors';
+import type { LoadPhotoLibraryAction } from '@/lib/photo-library';
 import {
   POST_FORM_ID,
   type PostFormValues,
@@ -24,6 +25,7 @@ import {
 } from '@/lib/post-form';
 import { POSTS_LIST_HREF } from '@/lib/posts-view';
 import {
+  type SignCoverAction,
   type UpdatePostAction,
   type UpdatePostResult,
   updatePostErrorCopy,
@@ -31,6 +33,7 @@ import {
 import { isNewerVersion, useVersionedForm } from '@/lib/use-versioned-form';
 import { MarkdownEditor } from './markdown-editor';
 import { PostBanner, type PostBannerState } from './post-banner';
+import { PostCoverCard } from './post-cover-card';
 import { PostEditorHeader } from './post-editor-header';
 import { PostPublishCard } from './post-publish-card';
 
@@ -53,9 +56,11 @@ const STALE: PostBannerState = { kind: 'stale' };
 export interface PostEditorProps {
   detail: AdminPostDetail;
   update: UpdatePostAction;
+  signCover: SignCoverAction;
+  loadLibrary: LoadPhotoLibraryAction;
 }
 
-export function PostEditor({ detail, update }: PostEditorProps) {
+export function PostEditor({ detail, update, signCover, loadLibrary }: PostEditorProps) {
   const router = useRouter();
   const form = useVersionedForm(detail, postFormValues);
   const { values, version } = form;
@@ -66,8 +71,17 @@ export function PostEditor({ detail, update }: PostEditorProps) {
   const inFlight = useRef(false);
   const [pending, setPending] = useState(false);
   const [banner, setBanner] = useState<{ state: PostBannerState; version: string } | null>(null);
+  /** Ảnh bìa đang tải lên — việc chưa lưu không nằm trong giá trị form (khuôn `busy` của F18). */
+  const [uploading, setUploading] = useState(false);
+  /**
+   * Câu báo của lần lưu vừa rồi nói về MỘT card cụ thể — hiện ngay tại card ấy (spec §4.4),
+   * sống cùng phiên bản đã sinh ra nó như dải báo.
+   */
+  const [cardError, setCardError] = useState<{ code: 'PHOTO_NOT_ALLOWED'; version: string } | null>(
+    null,
+  );
 
-  useReportUnsaved(form.dirty);
+  useReportUnsaved(form.dirty || uploading);
 
   const errors = form.showValidation ? validatePostForm(values) : {};
   const missing = projectedPostReadiness(values);
@@ -77,6 +91,8 @@ export function PostEditor({ detail, update }: PostEditorProps) {
       : form.serverChanged
         ? STALE
         : null;
+  const shownCardError =
+    cardError !== null && cardError.version === version ? cardError.code : null;
 
   function patch(next: Partial<PostFormValues>) {
     form.setValues((current) => ({ ...current, ...next }));
@@ -94,6 +110,7 @@ export function PostEditor({ detail, update }: PostEditorProps) {
     inFlight.current = true;
     setPending(true);
     setBanner(null);
+    setCardError(null);
     let result: UpdatePostResult;
     try {
       result = await update(postPayload(detail.id, version, values));
@@ -126,6 +143,8 @@ export function PostEditor({ detail, update }: PostEditorProps) {
     } else if (code === 'NOT_FOUND') {
       toast.error(updatePostErrorCopy(code));
       router.push(POSTS_LIST_HREF);
+    } else if (code === 'PHOTO_NOT_ALLOWED') {
+      setCardError({ code, version });
     } else {
       // Mọi mã còn lại hiện ở dải đỏ, kèm Reload khi không rõ lệnh đã đi tới đâu.
       setBanner({
@@ -144,18 +163,35 @@ export function PostEditor({ detail, update }: PostEditorProps) {
       <PostEditorHeader detail={saved} />
       <StepColumns
         aside={
-          <PostPublishCard
-            status={values.status}
-            publishAt={values.publishAt}
-            missing={missing}
-            publishAtError={errors.publishAt}
-            pending={pending}
-            dirty={form.dirty}
-            onStatusChange={(status) =>
-              form.setValues((current) => withStatus(current, status, new Date()))
-            }
-            onPublishAtChange={(publishAt) => patch({ publishAt })}
-          />
+          <>
+            <PostPublishCard
+              status={values.status}
+              publishAt={values.publishAt}
+              missing={missing}
+              publishAtError={errors.publishAt}
+              pending={pending}
+              dirty={form.dirty}
+              blockedNote={uploading ? t.busyUploading : undefined}
+              onStatusChange={(status) =>
+                form.setValues((current) => withStatus(current, status, new Date()))
+              }
+              onPublishAtChange={(publishAt) => patch({ publishAt })}
+            />
+            <PostCoverCard
+              postId={detail.id}
+              cover={values.cover}
+              altError={errors.coverAlt}
+              serverError={
+                shownCardError === 'PHOTO_NOT_ALLOWED'
+                  ? updatePostErrorCopy('PHOTO_NOT_ALLOWED')
+                  : null
+              }
+              onChange={(cover) => patch({ cover })}
+              onBusyChange={setUploading}
+              sign={signCover}
+              loadLibrary={loadLibrary}
+            />
+          </>
         }
       >
         <div className="flex min-w-0 flex-col gap-6">

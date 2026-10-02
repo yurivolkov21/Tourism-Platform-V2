@@ -1,4 +1,5 @@
 import {
+  type AdminLibraryPhoto,
   type AdminPostDetail,
   type AdminPostUpdateInput,
   POST_CONTENT_MAX,
@@ -10,10 +11,13 @@ import {
   type PostStatus,
   postContentIssue,
   postReadiness,
+  TOUR_PHOTO_MAX_BYTES,
   type TourPhotoUpload,
 } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
+import { cloudinaryImageUrl } from './cloudinary-url';
 import type { Keyed } from './list-editor';
+import { imageExtensionOf, type UploadedPhoto } from './photo-upload';
 
 /**
  * Logic THUẦN của trang sửa bài (spec P4e-4 §4.4): giá trị form, kiểm trước khi gửi, payload,
@@ -183,4 +187,30 @@ export function postPayload(
             ...(cover.upload ? { upload: cover.upload } : {}),
           },
   };
+}
+
+/**
+ * Lý do một file không được nhận làm ảnh bìa, hoặc `null` — cùng luật tab Photos của tour:
+ * đuôi trong whitelist ký của Cloudinary, tối đa 10 MB (trần gói, `TOUR_PHOTO_MAX_BYTES`).
+ */
+export function coverFileProblem(file: { name: string; size: number }): 'type' | 'size' | null {
+  if (imageExtensionOf(file.name) === null) return 'type';
+  if (file.size > TOUR_PHOTO_MAX_BYTES) return 'size';
+  return null;
+}
+
+/** Ảnh vừa tải → ảnh bìa đang soạn; alt để trống (tuỳ chọn — Quyết định 3). */
+export function uploadedCoverDraft(uploaded: UploadedPhoto, cloudName: string): PostCoverDraft {
+  return {
+    publicId: uploaded.publicId,
+    url: cloudinaryImageUrl(cloudName, uploaded.publicId, uploaded.upload.version),
+    alt: '',
+    source: 'UPLOAD',
+    upload: uploaded.upload,
+  };
+}
+
+/** Ảnh thư viện → ảnh bìa đang soạn; alt chép từ ảnh gốc, sửa được. */
+export function libraryCoverDraft(photo: AdminLibraryPhoto): PostCoverDraft {
+  return { publicId: photo.publicId, url: photo.url, alt: photo.alt ?? '', source: 'LIBRARY' };
 }

@@ -6,7 +6,7 @@ import { UnsavedChangesProvider } from '@/components/kit/unsaved-changes';
 import { PostEditor } from '@/components/posts/editor/post-editor';
 import { fetchAdminPost } from '@/lib/api/posts';
 import { getServerSession } from '@/lib/api/session';
-import { updatePostAction } from './actions';
+import { loadPostCoverLibraryAction, signPostCoverUploadAction, updatePostAction } from './actions';
 
 /**
  * `/posts/[slug]` — trang sửa một bài (spec P4e-4 §4.4). Server component đọc bài kèm cookie
@@ -28,7 +28,12 @@ export default async function PostEditorPage({ params }: { params: Promise<{ slu
   return (
     <AdminShell user={session}>
       <UnsavedChangesProvider>
-        <PostEditor detail={post} update={updatePostAction} />
+        <PostEditor
+          detail={post}
+          update={updatePostAction}
+          signCover={signPostCoverUploadAction}
+          loadLibrary={loadPostCoverLibraryAction}
+        />
       </UnsavedChangesProvider>
     </AdminShell>
   );

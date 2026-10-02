@@ -3,7 +3,8 @@ import userEvent from '@testing-library/user-event';
 import { messages } from '@tourism/i18n';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { UnsavedChangesProvider } from '@/components/kit/unsaved-changes';
-import type { UpdatePostAction } from '@/lib/posts-write';
+import type { LoadPhotoLibraryAction } from '@/lib/photo-library';
+import type { SignCoverAction, UpdatePostAction } from '@/lib/posts-write';
 import { POST_ID, POST_VERSION, postDetailFixture, TOUR_A } from '@/test/post-detail';
 import { PostEditor, type PostEditorProps } from './post-editor';
 
@@ -41,7 +42,13 @@ afterEach(() => {
 
 /** Props tối thiểu của task này; Task 10–12 thêm prop thì sửa ĐÚNG hàm này. */
 function props(patch: Partial<PostEditorProps> = {}): PostEditorProps {
-  return { detail: postDetailFixture(), update: vi.fn<UpdatePostAction>(), ...patch };
+  return {
+    detail: postDetailFixture(),
+    update: vi.fn<UpdatePostAction>(),
+    signCover: vi.fn<SignCoverAction>(),
+    loadLibrary: vi.fn<LoadPhotoLibraryAction>(),
+    ...patch,
+  };
 }
 
 function renderEditor(patch: Partial<PostEditorProps> = {}) {
@@ -189,5 +196,19 @@ describe('PostEditor — lưu cả form', () => {
     expect(
       await screen.findByRole('alertdialog', { name: messages.admin.unsavedChanges.title }),
     ).toBeInTheDocument();
+  });
+
+  it('PHOTO_NOT_ALLOWED: câu báo nằm ở card Cover, không ở dải đầu form', async () => {
+    const update = vi
+      .fn<UpdatePostAction>()
+      .mockResolvedValue({ ok: false, code: 'PHOTO_NOT_ALLOWED' });
+    const { user } = renderEditor({ update });
+
+    await user.type(screen.getByLabelText(t.fields.title), '!');
+    await user.click(saveButton());
+
+    const cover = document.getElementById('post-cover') as HTMLElement;
+    expect(await within(cover).findByText(t.errors.PHOTO_NOT_ALLOWED)).toBeInTheDocument();
+    expect(screen.getAllByRole('alert')).toHaveLength(1);
   });
 });
