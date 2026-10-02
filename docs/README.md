@@ -91,6 +91,7 @@ Mỗi ADR tự chứa đầy đủ phần sửa bổ sung (AMEND) của nó; b�
 | [0048](adr/0048-tour-photos.md) | Ảnh tour: một danh sách có thứ tự, kho địa danh làm thư viện, chỉ ảnh tự tải lên mới được dọn | |
 | [0049](adr/0049-tour-workspace-steps.md) | Khu sửa tour thành thanh bước: form một bên, cột phải một bên, bước cuối Review & publish | 1 AMEND |
 | [0050](adr/0050-ai-concierge-chat.md) | Trợ lý AI: chat trong API, lịch sử ở server, tool ghi phải được khách duyệt, trần chi phí theo token | |
+| [0051](adr/0051-posts-admin.md) | Quản trị bài viết: markdown kèm xem trước, slug đặt một lần, đủ mới được đăng, trang bài viết mang tag `tours` | |
 
 ## Specs — sẽ xây gì
 
@@ -154,7 +155,8 @@ Mỗi spec đi kèm một plan cùng tên ở [`plans/`](plans/), trừ vài đ�
 [**F16 giai đoạn chuyến**](specs/2026-09-23-departure-phase-design.md) ·
 [**F17 tạo và sửa tour (P4e-3a)**](specs/2026-09-24-p4e-3a-tour-editor-design.md) ·
 [**F18 ảnh tour (P4e-3b)**](specs/2026-09-28-p4e-3b-tour-photos-design.md) ·
-[**F19 khu sửa tour dạng thanh bước (P4e-3c)**](specs/2026-09-28-p4e-3c-tour-workspace-steps-design.md)
+[**F19 khu sửa tour dạng thanh bước (P4e-3c)**](specs/2026-09-28-p4e-3c-tour-workspace-steps-design.md) ·
+[**P4e-4 quản trị bài viết**](specs/2026-10-02-p4e-4-posts-admin-design.md)
 
 **Trợ lý AI (P6, chưa thi công)**
 [P6 trợ lý tư vấn tour](specs/2026-09-29-p6-ai-concierge-design.md)
