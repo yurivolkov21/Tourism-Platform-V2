@@ -29,6 +29,7 @@ import {
   updatePostErrorCopy,
 } from '@/lib/posts-write';
 import { isNewerVersion, useVersionedForm } from '@/lib/use-versioned-form';
+import { MarkdownEditor } from './markdown-editor';
 import { PostBanner, type PostBannerState } from './post-banner';
 import { PostEditorHeader } from './post-editor-header';
 import { PostPublishCard } from './post-publish-card';
@@ -209,16 +210,19 @@ export function PostEditor({ detail, update }: PostEditorProps) {
 
             <Card>
               <CardContent>
-                <FormField id="post-content" label={t.fields.content} error={errors.content}>
+                <FormField
+                  id="post-content"
+                  label={t.fields.content}
+                  hint={t.markdown.syntax}
+                  error={errors.content}
+                >
                   {(describedBy) => (
-                    <Textarea
+                    <MarkdownEditor
                       id="post-content"
-                      rows={18}
-                      className="font-mono text-sm"
                       value={values.content}
-                      aria-invalid={errors.content !== undefined}
-                      aria-describedby={describedBy}
-                      onChange={(event) => patch({ content: event.target.value })}
+                      invalid={errors.content !== undefined}
+                      describedBy={describedBy}
+                      onChange={(content) => patch({ content })}
                     />
                   )}
                 </FormField>
