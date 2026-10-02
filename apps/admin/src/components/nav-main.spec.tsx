@@ -52,12 +52,12 @@ describe('NavMain', () => {
   it('mục chưa mở tiêu điểm được (aria-disabled, không disabled), tooltip nói "Soon"', async () => {
     const user = userEvent.setup();
     renderNav({ open: false });
-    const posts = screen.getByRole('button', { name: 'Posts' });
+    const media = screen.getByRole('button', { name: 'Media library' });
 
-    expect(posts).toHaveAttribute('aria-disabled', 'true');
-    expect(posts).not.toBeDisabled();
-    await user.hover(posts);
-    expect(await screen.findByText('Posts · Soon')).toBeInTheDocument();
+    expect(media).toHaveAttribute('aria-disabled', 'true');
+    expect(media).not.toBeDisabled();
+    await user.hover(media);
+    expect(await screen.findByText('Media library · Soon')).toBeInTheDocument();
   });
 
   it('trang đang mở (kể cả trang con) sáng và mang aria-current', () => {

@@ -18,8 +18,8 @@ describe('navTooltip', () => {
   });
 
   it('mục chưa mở: kèm "Soon" — nhãn Soon bị ẩn khi sidebar thu gọn', () => {
-    expect(navTooltip(item('posts'))).toBe(messages.admin.shell.soonItem('Posts'));
-    expect(navTooltip(item('posts'))).toBe('Posts · Soon');
+    expect(navTooltip(item('media'))).toBe(messages.admin.shell.soonItem('Media library'));
+    expect(navTooltip(item('media'))).toBe('Media library · Soon');
   });
 });
 

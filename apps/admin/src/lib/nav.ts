@@ -114,7 +114,9 @@ export const NAV_GROUPS: NavGroup[] = [
         enabled: true,
         icon: MapPin,
       },
-      { key: 'posts', label: t.posts, href: '/posts', enabled: false, icon: FileText },
+      // Vùng thứ tư của P4e (P4e-4) — bài viết. Href TRƠN: không có "việc cần làm"
+      // mặc định, tab All là câu hỏi thường ngày (bài nào sửa gần nhất).
+      { key: 'posts', label: t.posts, href: '/posts', enabled: true, icon: FileText },
       { key: 'media', label: t.media, href: '/media', enabled: false, icon: Image },
       {
         key: 'appearance',

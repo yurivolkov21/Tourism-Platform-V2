@@ -4581,6 +4581,221 @@ export const messages = {
       },
     },
     /**
+     * Vùng bài viết (spec P4e-4, ADR-0051) — bảng `/posts`, hộp New post, trang sửa một
+     * bài, vùng xoá. Mã lỗi dưới `errors`/`signErrors` của từng khối là NGUỒN tập mã phía
+     * admin (`createWriteErrorCodec` derive từ keys) — phải đủ mọi mã contract khai.
+     */
+    posts: {
+      list: {
+        statusLabel: 'Post status',
+        statusAll: 'All',
+        statusPublished: 'Published',
+        statusScheduled: 'Scheduled',
+        statusDraft: 'Drafts',
+        searchLabel: 'Search posts',
+        searchPlaceholder: 'Title',
+        columns: {
+          post: 'Post',
+          status: 'Status',
+          published: 'Published',
+          tags: 'Tags',
+          updated: 'Updated',
+        },
+        empty: 'No posts match these filters.',
+        noImage: 'No cover photo yet',
+        /** Ô trống của cột Tags — cùng dấu gạch với ô trống của mọi bảng admin. */
+        noTags: '—',
+      },
+      /** Ba trạng thái HIỂN THỊ (`postDisplayStatus`) — chip ở bảng và ở phần đầu trang sửa. */
+      status: { draft: 'Draft', scheduled: 'Scheduled', published: 'Published' },
+      create: {
+        errors: {
+          SLUG_TAKEN: 'Another post already uses this slug. Pick a different one.',
+        },
+        action: 'New post',
+        dialog: {
+          title: 'New post',
+          /** Đo: `create` sinh bài DRAFT, thân bài rỗng (`admin-posts.service.ts`). */
+          body: 'It starts as a draft. Write it, add an excerpt and a cover photo, then publish it.',
+          submit: 'Create post',
+          submitting: 'Creating…',
+          cancel: 'Cancel',
+        },
+        title: 'Title',
+        slug: 'Slug',
+        slugHint: SLUG_HINT_COPY,
+        toast: { title: 'Post created', body: 'It stays a draft until you publish it.' },
+      },
+      editor: {
+        back: 'Back to posts',
+        viewOnSite: 'View on site',
+        lastSaved: (when: string) => `Last saved ${when}`,
+        saved: 'Post saved',
+        save: 'Save',
+        saving: 'Saving…',
+        /** Còn ảnh bìa đang tải lên: lưu lúc này là lưu thiếu đúng ảnh ấy. */
+        busyUploading: 'Wait for the cover photo to finish uploading.',
+        fields: {
+          title: 'Title',
+          excerpt: 'Excerpt',
+          /** Đo: card `/blog` in excerpt (`post-card.tsx`); trang bài in nó làm câu mở đầu (`blog/[slug]/page.tsx`). */
+          excerptHint: 'Shows on the post card and as the opening line of the post.',
+          count: (n: number, max: number) => `${n} / ${max}`,
+          content: 'Content',
+        },
+        markdown: {
+          toolbar: 'Formatting',
+          heading: 'Heading',
+          bold: 'Bold',
+          italic: 'Italic',
+          bullet: 'Bulleted list',
+          link: 'Link',
+          write: 'Write',
+          preview: 'Preview',
+          /** Đúng luật của contract (`postContentIssue`): không ảnh, không HTML. */
+          syntax:
+            'Use ## for headings, **bold**, *italic*, - for lists and [text](https://…) for links. Images and HTML are not allowed.',
+          previewEmpty: 'Nothing to preview yet.',
+        },
+        publish: {
+          title: 'Publish',
+          statusLabel: 'Status',
+          draft: 'Draft',
+          published: 'Published',
+          /** Đo: mọi đường công khai lọc `publishedPostWhere` — nháp không lên web. */
+          draftHint: 'Drafts stay off the site.',
+          dateLabel: 'Publish date (UTC)',
+          /** Đo: ISR 300 giây của `/blog` và trang bài (`REVALIDATE_SEC`, `apps/web/src/lib/api/posts.ts`). */
+          dateHint:
+            'Pick a future time to schedule it. A scheduled post appears on the site within about 5 minutes of that time.',
+          checklist: 'Before publishing',
+          missing: 'Missing — required to publish',
+          readiness: { content: 'Content', excerpt: 'An excerpt', cover: 'A cover photo' },
+        },
+        cover: {
+          title: 'Cover photo',
+          /** Đo: card `/blog` (`post-card.tsx`) và phần đầu trang bài (`post-hero.tsx`) cùng vẽ ảnh bìa. */
+          intro: 'Shows on the post card and across the top of the post.',
+          empty: 'No cover photo yet.',
+          upload: 'Upload',
+          library: 'Choose from library',
+          remove: 'Remove',
+          formats: 'JPG, PNG, WebP, AVIF or GIF, up to 10 MB.',
+          alt: 'Alt text',
+          /** Quyết định 3 của plan P4e-4: trống thì web vẽ `alt=""`, tiêu đề in ngay cạnh ảnh. */
+          altHint:
+            'Optional. Describe the photo for people who can’t see it — leave it empty if it only decorates the post.',
+          /** Khoá đúng tên giá trị `PostCoverSource` của contract — `source[cover.source]` gõ kiểu được. */
+          source: {
+            UPLOAD: 'Uploaded',
+            LIBRARY: 'From the library',
+            CATALOG: 'Catalogue photo',
+          },
+          /** ADR-0048 AMEND 1 áp cho bài viết: ảnh catalog không có trong kho thư viện. */
+          catalogueWarning: 'It can’t be chosen again once replaced or removed.',
+          uploading: (percent: number) => `Uploading ${percent}%`,
+          uploadFailed: 'The photo didn’t upload. Try again.',
+          skipped: {
+            type: (name: string) => `${name} isn’t a JPG, PNG, WebP, AVIF or GIF.`,
+            size: (name: string) => `${name} is larger than 10 MB.`,
+          },
+        },
+        tags: {
+          title: 'Tags',
+          inputLabel: 'Add a tag',
+          /** Đo: tag mới tạo lúc lưu (`replaceTags`); trần `POST_TAGS_MAX`. */
+          hint: (max: number) =>
+            `Press Enter to add. New tags are created when you save. Up to ${max}.`,
+          add: 'Add',
+          remove: (name: string) => `Remove tag ${name}`,
+          suggestions: 'Existing tags',
+          useSuggestion: (name: string) => `Add tag ${name}`,
+          full: (max: number) => `A post can have up to ${max} tags.`,
+          duplicate: (name: string) => `${name} is already on this post.`,
+          invalid: 'A tag needs at least one letter or number.',
+          tooLong: (max: number) => `Keep a tag to ${max} characters or fewer.`,
+        },
+        tours: {
+          title: 'Related tours',
+          /** Đo: trang bài in khối "Tours in this story" theo `post_tours.order` (`PostTours`). */
+          intro: 'Shown under the post as “Tours in this story”, in this order.',
+          searchLabel: 'Find a tour',
+          searchPlaceholder: 'Tour title',
+          add: (title: string) => `Add ${title}`,
+          noMatch: 'No tour matches that title.',
+          full: (max: number) => `A post can have up to ${max} related tours.`,
+          empty: 'No related tours yet.',
+          itemName: (n: number) => `tour ${n}`,
+          offSale: 'Off sale',
+          /** Đo: `getPostBySlug` lọc `tour.isPublished`. */
+          offSaleNote:
+            'Tours that are off sale stay hidden on the site until they go back on sale.',
+        },
+        banners: {
+          stale:
+            'Someone else saved this post while you were editing. Reload to see their version — your changes here will be lost.',
+          reload: 'Reload',
+          notReady: 'A published post needs these before it can be saved:',
+        },
+        form: {
+          errors: {
+            required: 'Fill this in.',
+            tooLong: (max: number) => `Keep it to ${max} characters or fewer.`,
+            image: 'Images can’t go inside the post. Use the cover photo instead.',
+            html: 'HTML isn’t allowed. Use the formatting buttons instead.',
+            publishDate: 'Pick a date and time.',
+            slugShape: SLUG_SHAPE_COPY,
+          },
+        },
+        /** Mã CONTRACT của `admin.posts.update`. */
+        errors: {
+          STALE_POST: 'Someone else saved this post while you were editing.',
+          POST_NOT_READY: 'A published post needs content, an excerpt and a cover photo.',
+          /** Ca thật duy nhất: ảnh thư viện mất dòng địa danh giữa lúc chọn và lúc lưu. */
+          PHOTO_NOT_ALLOWED:
+            'This cover photo is no longer available. Choose another one, then save again.',
+          RELATED_TOUR_NOT_FOUND: 'A tour you picked no longer exists. Remove it, then save again.',
+          NOT_FOUND: 'This post no longer exists.',
+        },
+        /** Mã CONTRACT của `admin.posts.signCoverUpload`. */
+        signErrors: {
+          MEDIA_UPLOAD_NOT_CONFIGURED: 'Uploads are not set up on this server.',
+          NOT_FOUND: 'This post no longer exists.',
+        },
+        signFailed: 'The upload could not start. Try again in a moment.',
+      },
+      delete: {
+        /** Cả hai là mã trạng-thái-cũ: đóng hộp, toast, refresh (hoặc về danh sách). */
+        errors: {
+          STALE_POST:
+            'Someone else saved this post while you were editing. Reload, then try again.',
+          NOT_FOUND: 'This post no longer exists.',
+        },
+        title: 'Delete this post',
+        body: 'Removes the post from the site and from the back office.',
+        action: 'Delete post',
+        dialog: {
+          title: 'Delete this post?',
+          /**
+           * Đo trên `admin-posts.service.ts` (`delete`) và `schema.prisma`: Cascade kéo
+           * `post_tag_links`, `post_tours`; dòng media xoá trong cùng transaction; bust ngay
+           * sau commit; ảnh tải lên của bài vào hàng dọn — bộ dọn xoá sau 7 ngày (ADR-0035,
+           * cron 04:00 UTC); tag và ảnh thư viện ở lại.
+           */
+          body: 'This removes the post for good, with its tag and tour links, and its page stops working. A cover photo you uploaded for it is deleted from storage about a week later; library photos and the tags themselves stay.',
+          warning: 'This cannot be undone.',
+          submit: 'Delete post',
+          submitting: 'Deleting…',
+          cancel: 'Cancel',
+        },
+        rows: { post: 'Post', status: 'Status' },
+        toast: {
+          title: 'Post deleted',
+          body: (title: string) => `${title} is gone from the site.`,
+        },
+      },
+    },
+    /**
      * Vùng outbox (spec P4c §3-F7) — hàng đợi email mà worker drain mỗi phút,
      * cộng MỘT hành vi ghi: `admin.outbox.retry` (đưa hàng FAILED về hàng đợi).
      *
