@@ -3,7 +3,9 @@ import type { MediaItem, PostCard, PostDetail, PostTag } from '@tourism/contract
 import { messages } from '@tourism/i18n';
 import { cache } from 'react';
 import { api } from './client';
+import { collectAllPages } from './collect-pages';
 import { postTag, TAGS } from './tags';
+import type { TourCardVM } from './tours';
 
 /**
  * VM listing — GIỮ TÊN FIELD của mock journal cũ (đã khai tử Task 10) để
@@ -30,6 +32,8 @@ export interface JournalPost {
 
 export interface JournalPostDetail extends JournalPost {
   contentMarkdown: string;
+  /** Tour admin gắn với bài, theo thứ tự admin xếp; API đã bỏ tour đang tắt bán (ADR-0051 §5). */
+  relatedTours: TourCardVM[];
 }
 
 /** ~200 từ/phút (chuẩn ngành, Nexora dùng cùng số), làm tròn lên, tối thiểu 1 phút. */
@@ -67,21 +71,40 @@ export function toJournalPostDetail(dto: PostDetail): JournalPostDetail {
     // vì excerpt (mapCommon chỉ có excerpt vì PostCard không có content).
     readMinutes: deriveReadMinutes(dto.content),
     contentMarkdown: dto.content,
+    relatedTours: dto.relatedTours,
   };
 }
 
 const REVALIDATE_SEC = 300; // ADR-0016 §3 — con số Nexora đã vận hành
 
-/** Danh sách bài published, mới nhất trước. Gắn tag TAGS.POSTS để revalidate
-    theo taxonomy chung (ADR-0016 §3). */
+/** Cỡ trang của danh sách bài — trần `PageQuerySchema.pageSize` là 100; 50 như danh sách tour. */
+const POSTS_PAGE_SIZE = 50;
+
+/**
+ * Trần số trang `fetchPosts` đi qua: 20 × 50 = 1000 bài, xa hơn mọi con số dự án chạm tới.
+ * Chỉ để một `totalPages` hỏng từ API không kéo build đi vô tận.
+ */
+const MAX_POST_PAGES = 20;
+
+/**
+ * MỌI bài đã đăng, mới nhất trước — đi hết các trang (khuôn G10 của tour). Trước P4e-4 chỉ
+ * lấy trang 1 với 50 bài: admin đăng bài thứ 51 là bài cũ nhất lặng lẽ rời `/blog`, sitemap
+ * và điều hướng cuối bài. Mỗi trang gắn `TAGS.POSTS` để revalidate theo taxonomy chung.
+ */
 export async function fetchPosts(): Promise<JournalPost[]> {
-  // pageSize 50: đủ cho khối lượng hiện tại (9 bài mock); server-side
-  // pagination là nợ có điều kiện kích hoạt ghi ở spec §2C.
-  const page = await api.posts.list(
-    { page: 1, pageSize: 50, sort: 'publishedAt', order: 'desc' },
-    { context: { next: { revalidate: REVALIDATE_SEC, tags: [TAGS.POSTS] } } },
+  const { items, totalPages } = await collectAllPages(
+    (page) =>
+      api.posts.list(
+        { page, pageSize: POSTS_PAGE_SIZE, sort: 'publishedAt', order: 'desc' },
+        { context: { next: { revalidate: REVALIDATE_SEC, tags: [TAGS.POSTS] } } },
+      ),
+    { maxPages: MAX_POST_PAGES, key: (post) => post.id },
   );
-  return page.items.map(toJournalPost);
+  // Chạm trần thì nói ra, đừng lặng lẽ cắt — lặng lẽ cắt chính là lỗi G10.
+  if (totalPages > MAX_POST_PAGES) {
+    console.warn(`[fetchPosts] có ${totalPages} trang bài, chỉ lấy ${MAX_POST_PAGES} trang đầu`);
+  }
+  return items.map(toJournalPost);
 }
 
 /** Tag toàn cục kèm số bài published — nguồn chip lọc /blog. */
@@ -96,12 +119,16 @@ export async function fetchPostTags(): Promise<PostTag[]> {
  * trang gọi hàm này TRONG CÙNG MỘT REQUEST chỉ tốn một fetch (ADR-0016 §2).
  * Trả `null` CHỈ khi lỗi định danh POST_NOT_FOUND (nhánh 404 hợp lệ, page gọi
  * `notFound()`); mọi lỗi khác ném lại để error boundary xử lý.
+ *
+ * Tag `tours` đóng G9 (ADR-0051 §6): mọi lệnh ghi tour vốn đã bust tag này, nên tắt bán
+ * hay xoá một tour gắn trong bài thì trang bài cũng tươi lại — API không phải tra
+ * `post_tours` trước khi xoá tour.
  */
 export const fetchPostDetail = cache(async (slug: string): Promise<JournalPostDetail | null> => {
   const [error, data] = await safe(
     api.posts.bySlug(
       { slug },
-      { context: { next: { revalidate: REVALIDATE_SEC, tags: [postTag(slug)] } } },
+      { context: { next: { revalidate: REVALIDATE_SEC, tags: [postTag(slug), TAGS.TOURS] } } },
     ),
   );
   if (error) {

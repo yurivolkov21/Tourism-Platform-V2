@@ -1,8 +1,8 @@
 import { Typeset } from '@tourism/ui/components/typeset';
+import { slugify } from '@tourism/ui/lib/slug';
 import { isValidElement, type ReactNode } from 'react';
 import Markdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { slugify } from '@/lib/slug';
 
 /**
  * Đệ quy phẳng hoá children React về text thuần. react-markdown truyền
@@ -33,6 +33,9 @@ function flattenToText(node: ReactNode): string {
  * trong Typeset preset reading (ADR-0012). H2 gắn id = slugify(text thuần đã
  * flatten) để khớp tocFromMarkdown. KHÔNG bật rehype-raw: content là dữ liệu
  * seed của mình nhưng giữ mặc định không-raw-HTML làm lưới (spec §6).
+ *
+ * Ở `@tourism/ui` từ P4e-4 (ADR-0051 §1): web vẽ bài bằng nó, tab Preview của admin cũng
+ * vậy — hai nơi một bản, nên thứ admin xem trước là thứ khách sẽ đọc.
  */
 export function ArticleMarkdown({ markdown }: { markdown: string }) {
   return (

@@ -1,7 +1,6 @@
-/** Slug chữ thường nối gạch ngang — dùng chung cho id section và anchor TOC. */
-export function slugify(value: string): string {
-  return value
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/(^-|-$)/g, '');
-}
+/**
+ * `slugify` sống ở `@tourism/ui` từ P4e-4 — bộ render markdown dùng chung cần nó. Bốn chỗ
+ * của web (mục lục, FAQ, thân bài pháp lý) giữ đường import cũ qua file này, nên id
+ * heading và anchor của mục lục luôn ra từ CÙNG một hàm.
+ */
+export { slugify } from '@tourism/ui/lib/slug';

@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react';
+import { ArticleMarkdown } from '@tourism/ui/components/article-markdown';
 import { describe, expect, it } from 'vitest';
 import { tocFromMarkdown } from '@/lib/toc';
-import { ArticleMarkdown } from './article-markdown';
 
 describe('ArticleMarkdown', () => {
   it('render markdown với H2 gắn id = slugify(text)', () => {

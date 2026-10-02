@@ -1,11 +1,12 @@
+import { ArticleMarkdown } from '@tourism/ui/components/article-markdown';
 import { Typeset } from '@tourism/ui/components/typeset';
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { PostCard } from '@/components/blog/post-card';
 import { PostHero } from '@/components/blog/post-hero';
 import { PostNav } from '@/components/blog/post-nav';
+import { PostTours } from '@/components/blog/post-tours';
 import { ShareRow } from '@/components/blog/share-row';
-import { ArticleMarkdown } from '@/components/content/article-markdown';
 import { OnThisPage } from '@/components/content/on-this-page';
 import { ReadingProgress } from '@/components/content/reading-progress';
 import { fetchPostDetail, fetchPosts } from '@/lib/api/posts';
@@ -141,6 +142,9 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
           </aside>
         </div>
       </div>
+
+      {/* Tour gắn với bài (ADR-0051 §5) — sau thân bài, trước "More from the journal". */}
+      <PostTours tours={post.relatedTours} />
 
       <section className="w-full px-4 pb-24 md:px-16 lg:px-24 xl:px-32">
         <div className="mx-auto max-w-7xl">
