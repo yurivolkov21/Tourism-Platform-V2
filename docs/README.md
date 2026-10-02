@@ -231,6 +231,9 @@ entry CHANGELOG cùng ngày.
 [**P4e-4 quản trị bài viết** (kèm prompt thi công)](plans/2026-10-02-p4e-4-posts-admin.md) ·
 [**P4f vùng Users: Owner và Staff** (kèm prompt thi công)](plans/2026-10-02-p4f-users-staff.md)
 
+**Công cụ máy dev (ngoài repo)**
+[mod `tourism-status` (kèm prompt thi công)](plans/2026-10-02-tourism-status-mod.md)
+
 ## Conventions — luật áp dụng mãi
 
 | Tài liệu | Nội dung |

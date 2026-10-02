@@ -1,7 +1,9 @@
 # Spec — Mod `tourism-status`: dải trạng thái, canh CI, docs-freshness
 
 - **Ngày:** 2026-10-02 · **Trạng thái:** thiết kế duyệt qua bốn phần trong chat cùng ngày;
-  chờ user duyệt spec. Plan thi công chưa viết.
+  spec user duyệt cùng ngày. Plan thi công
+  [2026-10-02-tourism-status-mod.md](../plans/2026-10-02-tourism-status-mod.md) ghi mười ba
+  quyết định bổ sung hoặc sửa spec, ở mục "Quyết định của plan".
 - **Loại việc:** công cụ làm việc trên máy dev, KHÔNG phải code sản phẩm. Mod nằm ngoài repo
   ở `C:\Programming\Devs\claude-mods\tourism-status\` (git cục bộ riêng); repo chỉ giữ spec
   và plan này để chúng có trong bản đồ tài liệu.
