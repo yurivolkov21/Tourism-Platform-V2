@@ -1,7 +1,9 @@
 # Spec P4f — Vùng Users: Owner và Staff
 
 - **Ngày:** 2026-10-02 · **Trạng thái:** thiết kế duyệt qua bốn phần trong chat cùng ngày;
-  chờ user duyệt bản viết.
+  spec user duyệt cùng ngày. Plan thi công
+  [2026-10-02-p4f-users-staff.md](../plans/2026-10-02-p4f-users-staff.md) sửa mười sáu chỗ
+  cho khớp code — mỗi chỗ ghi "plan, quyết định N" ngay tại chỗ đã sửa.
 - **Quyết định kiến trúc:** [ADR-0052](../adr/0052-admin-staff-tier.md)
 - **Nền:** [ADR-0003](../adr/0003-auth-fail-closed.md) (fail-closed) ·
   [ADR-0026](../adr/0026-p4-admin-app.md) AMEND 1 §C §D, AMEND 3 §B ·
@@ -103,18 +105,24 @@ cho từng thủ tục.
 - `decideAdminAccess` và layout `(admin)` cho qua khi `isAdminAppRole(session.role)`; vế ép
   role tường minh của layout (ADR-0026 AMEND 4) giữ, chỉ đổi điều kiện.
 - Layout bọc con bằng `AdminAccessProvider role={session.role}`; component client hỏi bằng
-  `useCanAccess(key)`, trang server gọi `canAccess(session.role, key)`.
-- Trang và route chỉ Owner chặn trước khi gọi API bằng `requireAccess(session, key)` (về
-  `/not-authorized`): `/reports` và `/reports/export` (`reports.monthly`), `/payment-events`
+  `useCanAccess(key)`, trang server gọi `canAccess(session.role, key)`. Vắng provider (chỉ
+  xảy ra trong test) thì `useCanAccess` trả `true` — gác thật ở API (plan, quyết định 3).
+- Trang và route chỉ Owner chặn trước khi gọi API bằng `requirePageAccess(session, key)` (về
+  `/not-authorized`), gọi ngay sau `getServerSession()` và trước mọi fetch (plan, quyết định
+  13): `/reports` và `/reports/export` (`reports.monthly`), `/payment-events`
   (`paymentEvents.list`; khung chi tiết của trang gọi `paymentEvents.byId` qua server action,
   API tự trả 403), `/users`, `/users/[id]` (`users.list`, `users.byId`). Boundary 403
   (`ADMIN_FORBIDDEN`, AMEND 3 §B) vẫn đỡ phía sau.
+- `/not-authorized` nói theo role: Staff thấy khối "Owner only" kèm link về Dashboard, còn lại
+  giữ câu cũ (plan, quyết định 5).
 - Sidebar: `NavItem` thêm `access?: AdminProcedureKey` — Reports `reports.monthly`, Payment
   events `paymentEvents.list`, Users `users.list` (mục này bật `enabled: true`). `NavMain` nhận
   role và **ẩn hẳn** mục không được vào (không hiện "Soon").
-- `nav-user` hiện nhãn Owner hoặc Staff dưới tên.
-- Bốn nút ẩn với Staff: Refund (chi tiết booking), Cancel departure, khung xoá tour, khung xoá
-  bài viết.
+- Nhãn Owner hoặc Staff nằm trong menu tài khoản của `nav-user`, dưới email — nút sidebar chỉ
+  đủ hai dòng (plan, quyết định 6).
+- Bốn chỗ ẩn với Staff: nút Refund (chi tiết booking — thay bằng câu "Only the owner can issue
+  refunds.", sổ hoàn tiền vẫn hiện; plan, quyết định 10), Cancel departure, khung xoá tour,
+  khung xoá bài viết.
 - Dashboard và các trang Staff được vào không đổi: chúng chỉ gọi thủ tục `staff`
   (`stats.paymentEvents` chỉ có ở trang Payment events).
 
@@ -122,11 +130,13 @@ cho từng thủ tục.
 
 ### 3.1 Migration (một file)
 
+`STAFF` nối ĐUÔI enum — `ALTER TYPE … ADD VALUE` không chèn giữa (plan, quyết định 1):
+
 ```prisma
 enum UserRole {
   CUSTOMER
-  STAFF
   ADMIN
+  STAFF
 }
 
 enum UserEventType {
@@ -203,9 +213,10 @@ trong `userActions(target)` thì `STATE_CHANGED` 409.
 | `unlock` | `locked_at = null` | `UNLOCKED` |
 | `revokeSessions` | xoá mọi phiên | `SESSIONS_REVOKED` |
 
-- Mỗi transaction đọc user, kiểm `userActions`, rồi `updateMany` với điều kiện trạng thái
-  trong `where` (ví dụ `lock`: `lockedAt: null, role: { in: [CUSTOMER, STAFF] }`). Đếm 0 dòng
-  (bị người khác đổi giữa chừng) cũng là `STATE_CHANGED`.
+- Mỗi transaction khoá hàng user bằng `SELECT … FOR UPDATE`, hỏi `userActions`, rồi mới ghi
+  — nếp `AdminEnquiriesService.setStatus` (plan, quyết định 2). Hai lệnh trên cùng một người
+  xếp hàng, nên lệnh sau thấy trạng thái lệnh trước vừa ghi; luật hợp lệ chỉ sống ở
+  `userActions`.
 - `actorId` là Owner đang thao tác. `note` chỉ có ở `LOCKED`.
 - `revokeSessions` thành công cả khi không có phiên nào (`revoked: 0`); trang chi tiết tắt nút
   khi số phiên sống là 0.
@@ -219,10 +230,14 @@ trong `userActions(target)` thì `STATE_CHANGED` 409.
     có giá trị thì `throw new APIError('FORBIDDEN', { code: 'ACCOUNT_LOCKED', message:
     'This account is locked' })` (câu khách thấy lấy từ i18n theo mã, không từ `message`).
     Phủ mật khẩu, OTP email, Google, và mọi đường tạo phiên khác của Better Auth.
-- `AuthGuard`: 401 khi `session.user.lockedAt != null`, cùng nhánh với `deletedAt`.
+- `AuthGuard`: 401 khi `session.user.lockedAt != null`, cùng nhánh với `deletedAt`. Tra phiên
+  của web và admin (`lib/api/session.ts`) cũng coi `lockedAt` như `deletedAt` — phiên coi như
+  không có (plan, quyết định 9).
 - `libs/shared/core/src/lib/auth-errors.ts`: `mapAuthError` nhận `ACCOUNT_LOCKED` → khoá
   `accountLocked`; copy ở `messages.authForms.errors.accountLocked` = "This account is locked.
-  Contact us." Form đăng nhập web và admin tự hiện qua đường `mapAuthError` sẵn có.
+  Contact us." Form đăng nhập web hiện qua đường `mapAuthError` sẵn có. Form admin không đi qua
+  `mapAuthError` nên thêm nhánh riêng, câu riêng "This account is locked. Ask the site owner to
+  unlock it." (plan, quyết định 4).
 - **Đường Google:** `login-form.tsx` và `register-form.tsx` của web truyền
   `errorCallbackURL` về `/login` (giữ `redirect` nếu có). Trang `/login` đọc `?error=` và hiện
   qua `mapAuthError`; mã lạ rơi về câu generic.
@@ -265,24 +280,30 @@ trong `userActions(target)` thì `STATE_CHANGED` 409.
 
 ### 7.2 `/users/[id]`
 
-- **Đầu trang:** ảnh, tên, email, chip role, chip status.
-- **Profile:** email đã xác minh hay chưa, ngày tham gia, số điện thoại, cách đăng nhập.
+- **Đầu trang:** ảnh, tên, chip role, chip status, ngày tham gia (plan, quyết định 18).
+- **Profile:** email, đã xác minh hay chưa, số điện thoại, cách đăng nhập.
 - **Activity:** số booking, review, enquiry; link "View bookings" sang
-  `/bookings?search=<email>` (tìm theo email liên hệ của booking).
+  `/bookings?q=<email>&dates=all` (tìm theo email liên hệ của booking; `dates=all` vì URL trần
+  của bảng tự lọc tháng hiện tại — plan, quyết định 7).
 - **Sessions:** số phiên sống, lần hoạt động cuối, nút "Sign out everywhere" (tắt khi 0 phiên)
   kèm hộp xác nhận.
 - **Access:** "Grant staff access" hoặc "Revoke staff access" theo `userActions`. Khách chưa
-  xác minh: nút tắt kèm gợi ý "Email not verified yet". Hộp xác nhận thu hồi nói rõ người đó
-  bị đăng xuất mọi nơi.
-- **Lock:** "Lock account" mở hộp bắt buộc nhập lý do (tối đa 500 ký tự, đếm ký tự); "Unlock
-  account" là hộp xác nhận. Đang khoá thì hiện "Locked since … · {lý do}".
+  xác minh hay đang khoá: KHÔNG có nút, câu của card nói vì sao (plan, quyết định 18). Hộp xác
+  nhận thu hồi nói rõ người đó bị đăng xuất mọi nơi.
+- **Lock:** "Lock account" mở hộp bắt buộc nhập lý do (ô ghi chú của kit `ConfirmWriteDialog`,
+  trần 500, không bộ đếm — plan, quyết định 8); "Unlock account" là hộp xác nhận. Đang khoá thì
+  hiện "Locked since …" và "Reason: …".
 - **History:** dòng thời gian `history`, mỗi dòng "{actor} {hành động} · {thời điểm}", dòng
   khoá kèm lý do.
 - **Owner:** chỉ đầu trang, Profile, Activity, History; thay Access/Lock/Sessions bằng dòng
   "Owner access comes from the server configuration and can't be changed here." (Owner đang
   khoá — ca hiếm — vẫn có nút Unlock.)
-- `STATE_CHANGED` → toast "This account changed. Refresh and try again." rồi tải lại trang.
-- Mọi thao tác là server action, revalidate trang chi tiết và danh sách.
+- `STATE_CHANGED` và `NOT_FOUND` là trạng-thái-cũ: kit đóng hộp, toast "This account changed
+  while you were looking — the page has been refreshed." (hay câu NOT_FOUND tương ứng) rồi
+  `router.refresh()` (plan, quyết định 19).
+- Mọi thao tác là server action; trang chi tiết là server component động, nên làm tươi bằng
+  `router.refresh()` phía client sau khi đã báo xong — không `revalidatePath` (plan, quyết định
+  19).
 
 ### 7.3 Copy
 
@@ -323,8 +344,9 @@ của `lock` và của `setRole → CUSTOMER`; đổi một dòng Owner-only th�
 
 1. Owner cấp Staff cho một tài khoản khách thử; lịch sử có dòng `STAFF_GRANTED`.
 2. Đăng nhập admin bằng tài khoản Staff: sidebar không có Reports, Payment events, Users;
-   chi tiết booking không có Refund; mở thẳng `/reports` về `/not-authorized`; nhãn Staff ở
-   góc dưới.
+   chi tiết booking không có Refund mà có câu "Only the owner can issue refunds."; mở thẳng
+   `/reports` về `/not-authorized` với khối "Owner only"; menu tài khoản ở góc dưới ghi Staff
+   (plan, quyết định 5, 6, 10).
 3. Staff sửa một tour hoặc duyệt một review được bình thường.
 4. Owner thu hồi Staff: tab của Staff bị đẩy về đăng nhập.
 5. Owner khoá tài khoản (có lý do): đăng nhập bằng mật khẩu và bằng Google đều hiện "This
