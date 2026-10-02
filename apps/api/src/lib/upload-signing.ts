@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { ALLOWED_IMAGE_EXTENSIONS, type SignedUploadParams } from '@tourism/contract';
 import { v2 as cloudinary } from 'cloudinary';
 
@@ -155,4 +156,24 @@ export function buildSignedUploadParams(
  */
 export function isOwnAvatarPublicId(rootFolder: string, userId: string, publicId: string): boolean {
   return publicId.startsWith(`${rootFolder}/avatars/${userId}/`);
+}
+
+/**
+ * Ký `count` lượt tải vào `folder`, tên file do server sinh (ADR-0021 §1) — MỘT bản cho ảnh
+ * tour (F18) và ảnh bìa bài viết (P4e-4), một phần G15. Trả kèm publicId ĐẦY ĐỦ
+ * `<folder>/<basename>` để nơi gọi đưa vào hàng dọn NGAY lúc ký (ADR-0035 §3): Cloudinary
+ * lưu asset ở dạng ấy và `destroy` nhận đúng dạng ấy.
+ */
+export function signUploads(
+  cfg: UploadSigningConfig,
+  folder: string,
+  count: number,
+  now: Date,
+  newBasename: () => string = randomUUID,
+): { params: SignedUploadParams[]; publicIds: string[] } {
+  const timestamp = Math.floor(now.getTime() / 1000);
+  const params = Array.from({ length: count }, () =>
+    buildSignedUploadParams(cfg, folder, newBasename(), timestamp),
+  );
+  return { params, publicIds: params.map((signed) => `${signed.folder}/${signed.publicId}`) };
 }

@@ -9,6 +9,7 @@ import {
   isTourUploadPublicId,
   postCoverFolder,
   resolveUploadConfig,
+  signUploads,
   tourPhotoFolder,
   uploadFolderFor,
 } from './upload-signing.js';
@@ -124,5 +125,27 @@ describe('postCoverFolder / isPostUploadPublicId (ADR-0051 §7)', () => {
     expect(isPostUploadPublicId('tourism', POST, `tourism/posts/${POST}-evil/abc`)).toBe(false);
     expect(isPostUploadPublicId('tourism', POST, `tourism/tours/${POST}/abc`)).toBe(false);
     expect(isPostUploadPublicId('tourism', POST, `tourism/posts/${POST}`)).toBe(false);
+  });
+});
+
+describe('signUploads (một phần G15 — một bản cho ảnh tour và ảnh bìa bài viết)', () => {
+  it('ký đúng số lượt, cùng một timestamp, tên file do server sinh; publicId đầy đủ cho hàng dọn', () => {
+    const names = ['a', 'b'];
+    const { params, publicIds } = signUploads(
+      CFG,
+      'tourism/posts/p1',
+      2,
+      new Date('2026-10-02T00:00:10.900Z'),
+      () => names.shift() ?? 'unexpected',
+    );
+
+    expect(params.map((signed) => [signed.folder, signed.publicId, signed.timestamp])).toEqual([
+      ['tourism/posts/p1', 'a', 1790899210],
+      ['tourism/posts/p1', 'b', 1790899210],
+    ]);
+    expect(params[0]?.signature).toBe(
+      buildSignedUploadParams(CFG, 'tourism/posts/p1', 'a', 1790899210).signature,
+    );
+    expect(publicIds).toEqual(['tourism/posts/p1/a', 'tourism/posts/p1/b']);
   });
 });

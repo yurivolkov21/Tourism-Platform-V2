@@ -1,4 +1,3 @@
-import { randomUUID } from 'node:crypto';
 import { Injectable, Logger } from '@nestjs/common';
 import {
   type AdminPhotoLibrary,
@@ -24,9 +23,9 @@ import { env } from '../../config/env.js';
 import { Prisma } from '../../generated/prisma/client.js';
 import { MediaOwnerType, MediaRole, MediaType } from '../../generated/prisma/enums.js';
 import {
-  buildSignedUploadParams,
   isTourUploadPublicId,
   resolveUploadConfig,
+  signUploads,
   tourPhotoFolder,
 } from '../../lib/upload-signing.js';
 import { MediaService } from '../media/media.service.js';
@@ -654,20 +653,17 @@ export class AdminToursService {
     const tour = await prisma.tour.findUnique({ where: { id: input.id }, select: { id: true } });
     if (!tour) throw new AdminTourNotFoundError(input.id);
 
-    const folder = tourPhotoFolder(cfg.rootFolder, input.id);
-    const timestamp = Math.floor(Date.now() / 1000);
-    const signed = Array.from({ length: input.count }, () =>
-      buildSignedUploadParams(cfg, folder, randomUUID(), timestamp),
+    const { params, publicIds } = signUploads(
+      cfg,
+      tourPhotoFolder(cfg.rootFolder, input.id),
+      input.count,
+      new Date(),
     );
-    // Ghi `${folder}/${basename}` ĐẦY ĐỦ — Cloudinary lưu asset ở dạng ấy và
-    // `destroy` nhận đúng dạng ấy (cùng lời dặn ở `upload-signing.service.ts`).
-    await this.garbage.enqueueQuietly(
-      signed.map((params) => `${params.folder}/${params.publicId}`),
-    );
+    await this.garbage.enqueueQuietly(publicIds);
     this.logger.log(
       `[admin] tour photo uploads signed ${JSON.stringify({ id: input.id, count: input.count })}`,
     );
-    return signed;
+    return params;
   }
 
   /**

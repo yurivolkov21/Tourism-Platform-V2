@@ -5,6 +5,7 @@ import {
   AdminPostDetailSchema,
   AdminPostRowSchema,
   AdminPostTagSchema,
+  SignedUploadParamsSchema,
 } from '@tourism/contract';
 import { AppModule } from '../../app.module.js';
 import { prisma } from '../../auth/auth.config.js';
@@ -221,6 +222,11 @@ describe('admin posts integration (P4e-4)', () => {
     cover: { publicId: mine(n, 'new'), alt: null, upload: UPLOAD_META },
     ...patch,
   });
+
+  const remove = (n: number, version: string, cookie = adminCookie) =>
+    post(`/api/admin/posts/${postId(n)}/delete`, { id: postId(n), version }, cookie);
+  const signCover = (n: number, cookie = adminCookie) =>
+    post(`/api/admin/posts/${postId(n)}/cover-upload`, { id: postId(n) }, cookie);
 
   describe('quyền', () => {
     it('ẩn danh 401, khách 403 — trên cả đường đọc lẫn đường ghi', async () => {
@@ -663,6 +669,88 @@ describe('admin posts integration (P4e-4)', () => {
       const res = await save(1, await fullSave(1, { content: '![x](https://example.com/x.jpg)' }));
       expect(res.statusCode).toBe(400);
       expect(await versionOf(1)).toBe(before);
+    });
+  });
+
+  describe('delete', () => {
+    it('xoá bài: liên kết tag và tour đi theo, dòng media đi theo, tag ở lại; ảnh tải lên vào hàng dọn; bust', async () => {
+      await makePost(1);
+      await makeTour(1);
+      await save(1, await fullSave(1, { tags: ['Food'], relatedTourIds: [tourId(1)] }));
+      const revalidate = vi.spyOn(web, 'revalidate').mockResolvedValue(undefined);
+
+      const res = await remove(1, await versionOf(1));
+
+      expect(res.statusCode).toBe(200);
+      expect(res.json()).toEqual({ slug: 'p4e4-post-1' });
+      expect(await prisma.post.findUnique({ where: { id: postId(1) } })).toBeNull();
+      expect(await prisma.postTagLink.count()).toBe(0);
+      expect(await prisma.postTour.count()).toBe(0);
+      expect(await prisma.postTag.count()).toBe(1);
+      expect(await prisma.mediaAsset.count({ where: { ownerType: 'POST' } })).toBe(0);
+      expect((await prisma.mediaGarbage.findMany()).map((row) => row.publicId)).toEqual([
+        mine(1, 'new'),
+      ]);
+      expect(revalidate).toHaveBeenCalledWith(['posts', 'post:p4e4-post-1']);
+    });
+
+    it('ảnh bìa thư viện: dòng của bài đi, dòng thư viện ở lại, không gì vào hàng dọn', async () => {
+      await makePost(1);
+      await makeLibrary();
+      await makeCover(1, LIB);
+
+      expect((await remove(1, await versionOf(1))).statusCode).toBe(200);
+
+      expect(await prisma.mediaGarbage.count()).toBe(0);
+      expect(
+        await prisma.mediaAsset.count({ where: { ownerType: 'DESTINATION', publicId: LIB } }),
+      ).toBe(1);
+    });
+
+    it('phiên bản cũ: 409 STALE_POST, bài còn nguyên, không bust', async () => {
+      await makePost(1);
+      const stale = await versionOf(1);
+      await save(1, await fullSave(1));
+      const revalidate = vi.spyOn(web, 'revalidate').mockResolvedValue(undefined);
+
+      const res = await remove(1, stale);
+
+      expect(res.statusCode).toBe(409);
+      expect(res.json()).toMatchObject({ code: 'STALE_POST' });
+      expect(await prisma.post.count()).toBe(1);
+      expect(revalidate).not.toHaveBeenCalled();
+    });
+
+    it('bài không có: 404 NOT_FOUND; khách: 403', async () => {
+      const ghost = { id: MISSING, version: new Date().toISOString() };
+      const res = await post(`/api/admin/posts/${MISSING}/delete`, ghost);
+      expect(res.statusCode).toBe(404);
+      expect(res.json()).toMatchObject({ code: 'NOT_FOUND' });
+      await makePost(1);
+      expect((await remove(1, await versionOf(1), customerCookie)).statusCode).toBe(403);
+    });
+  });
+
+  describe('signCoverUpload', () => {
+    it('ký một lượt vào thư mục của bài; publicId vào hàng dọn ngay lúc ký', async () => {
+      await makePost(1);
+
+      const res = await signCover(1);
+
+      expect(res.statusCode).toBe(200);
+      const signed = SignedUploadParamsSchema.parse(res.json());
+      expect(signed.folder).toBe(`${ROOT}/posts/${postId(1)}`);
+      expect((await prisma.mediaGarbage.findMany()).map((row) => row.publicId)).toEqual([
+        `${signed.folder}/${signed.publicId}`,
+      ]);
+    });
+
+    it('bài không có: 404 NOT_FOUND; khách: 403', async () => {
+      const res = await post(`/api/admin/posts/${MISSING}/cover-upload`, { id: MISSING });
+      expect(res.statusCode).toBe(404);
+      expect(res.json()).toMatchObject({ code: 'NOT_FOUND' });
+      await makePost(1);
+      expect((await signCover(1, customerCookie)).statusCode).toBe(403);
     });
   });
 });

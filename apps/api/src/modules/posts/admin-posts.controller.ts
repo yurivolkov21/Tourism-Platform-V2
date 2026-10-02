@@ -59,6 +59,28 @@ export class AdminPostsController {
     });
   }
 
+  @Implement(contract.admin.posts.delete)
+  delete() {
+    return implement(contract.admin.posts.delete).handler(async ({ input, errors }) => {
+      try {
+        return await this.posts.delete(input);
+      } catch (error) {
+        throw toContractError(error, errors);
+      }
+    });
+  }
+
+  @Implement(contract.admin.posts.signCoverUpload)
+  signCoverUpload() {
+    return implement(contract.admin.posts.signCoverUpload).handler(async ({ input, errors }) => {
+      try {
+        return await this.posts.signCoverUpload(input);
+      } catch (error) {
+        throw toContractError(error, errors);
+      }
+    });
+  }
+
   @Implement(contract.admin.posts.tags)
   tags() {
     return implement(contract.admin.posts.tags).handler(() => this.posts.tags());

@@ -3,14 +3,18 @@ import {
   type AdminPostCoverInput,
   type AdminPostCreateInput,
   type AdminPostCreateResult,
+  type AdminPostDeleteInput,
+  type AdminPostDeleteResult,
   type AdminPostDetail,
   type AdminPostRow,
+  type AdminPostSignCoverUploadInput,
   type AdminPostsListQuery,
   type AdminPostTag,
   type AdminPostUpdateInput,
   normalizePostTags,
   type Paged,
   postReadiness,
+  type SignedUploadParams,
 } from '@tourism/contract';
 import { prisma } from '../../auth/auth.config.js';
 import { env } from '../../config/env.js';
@@ -18,6 +22,12 @@ import type { Prisma } from '../../generated/prisma/client.js';
 import { MediaOwnerType, MediaRole, PostStatus } from '../../generated/prisma/enums.js';
 import { escapeLike } from '../../lib/like.js';
 import { toPaged } from '../../lib/paged.js';
+import {
+  isPostUploadPublicId,
+  postCoverFolder,
+  resolveUploadConfig,
+  signUploads,
+} from '../../lib/upload-signing.js';
 import { LIBRARY_PHOTO, prismaCode, STORED_PHOTO_SELECT } from '../catalog/admin-tours.service.js';
 import { nextTourVersion } from '../catalog/tour-editor-rules.js';
 import { MediaService } from '../media/media.service.js';
@@ -26,6 +36,7 @@ import { postRevalidationTags } from '../web-revalidation/revalidation-decision.
 import { WebRevalidationService } from '../web-revalidation/web-revalidation.service.js';
 import {
   AdminPostNotFoundError,
+  PostCoverUploadsNotConfiguredError,
   PostNotReadyError,
   PostPhotoNotAllowedError,
   PostSlugTakenError,
@@ -263,6 +274,59 @@ export class AdminPostsService {
     this.logger.log(`[admin] post saved ${JSON.stringify({ id: input.id, status: input.status })}`);
     this.bust(slug);
     return this.get(slug, now);
+  }
+
+  /**
+   * Xoá bài (spec §2.7). Một transaction: giành hàng bài (phiên bản) → đọc dòng media →
+   * xoá bài (Cascade kéo `post_tag_links`, `post_tours`) → xoá dòng media (bảng đa chủ,
+   * không khoá ngoại) → ảnh tải lên của chính bài vào lại hàng dọn. Tag ở lại. Bust sau
+   * commit.
+   */
+  async delete(input: AdminPostDeleteInput): Promise<AdminPostDeleteResult> {
+    const now = new Date();
+    const deleted = await prisma.$transaction(async (tx) => {
+      await claimPost(tx, input.id, input.version, now);
+      const owned = { ownerType: MediaOwnerType.POST, ownerId: input.id };
+      const media = await tx.mediaAsset.findMany({ where: owned, select: { publicId: true } });
+      const removed = await tx.post.delete({ where: { id: input.id }, select: { slug: true } });
+      await tx.mediaAsset.deleteMany({ where: owned });
+      await this.garbage.requeue(
+        tx,
+        media
+          .map((row) => row.publicId)
+          .filter((publicId) =>
+            isPostUploadPublicId(env.CLOUDINARY_UPLOAD_FOLDER, input.id, publicId),
+          ),
+      );
+      return removed;
+    });
+
+    this.logger.log(`[admin] post deleted ${JSON.stringify({ id: input.id, slug: deleted.slug })}`);
+    this.bust(deleted.slug);
+    return { slug: deleted.slug };
+  }
+
+  /**
+   * Ký MỘT lượt tải ảnh bìa vào thư mục của bài (ADR-0051 §7). publicId vào hàng dọn NGAY
+   * lúc ký (ADR-0035 §3): tải lên rồi không lưu thì bảy ngày sau tự được dọn.
+   */
+  async signCoverUpload(input: AdminPostSignCoverUploadInput): Promise<SignedUploadParams> {
+    const cfg = resolveUploadConfig(env);
+    if (!cfg) throw new PostCoverUploadsNotConfiguredError();
+    const exists = await prisma.post.findUnique({ where: { id: input.id }, select: { id: true } });
+    if (!exists) throw new AdminPostNotFoundError(input.id);
+
+    const { params, publicIds } = signUploads(
+      cfg,
+      postCoverFolder(cfg.rootFolder, input.id),
+      1,
+      new Date(),
+    );
+    await this.garbage.enqueueQuietly(publicIds);
+    const [signed] = params;
+    if (signed === undefined) throw new Error('signUploads trả rỗng cho một lượt ký');
+    this.logger.log(`[admin] post cover upload signed ${JSON.stringify({ id: input.id })}`);
+    return signed;
   }
 
   /** Mọi tag kèm số bài dùng nó, CẢ nháp — tag không còn bài nào vẫn có mặt với số 0. */
