@@ -8,6 +8,55 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-10-02 — P4e-4 quản trị bài viết (nhánh `feat/p4e-4-posts-admin`)
+
+Admin quản trị được bài viết: bảng `/posts` (tab Published · Scheduled · Drafts, tìm theo
+tiêu đề), hộp New post, trang sửa một bài với một nút Save — trình soạn markdown có hàng nút
+và tab Preview, card Publish (nháp, đăng, hẹn giờ theo UTC, danh sách ba mục cần để đăng),
+ảnh bìa tải lên hoặc chọn từ thư viện, tag gõ thẳng, tối đa 3 tour liên quan, vùng xoá.
+Quyết định ở ADR-0051, hợp đồng ở spec 02/10. Không migration, không env.
+
+**API.** Bảy route `admin.posts.*` (`list`, `get`, `create`, `update`, `delete`,
+`signCoverUpload`, `tags` ở `/api/admin/post-tags`). Lệnh sửa và lệnh xoá giành hàng bài
+bằng `claimPost` (so phiên bản trong cùng câu `UPDATE`, khuôn `claimTour`), câu ghi bài sau
+đó đặt `updatedAt` bằng phiên bản vừa giành. Cổng "đủ mới được đăng" tính từ chính input
+(`postReadiness` của contract) nên bài đang đăng không thể lưu thành thiếu. Tag thay trọn,
+`createMany skipDuplicates` giữ tên của người tạo đầu tiên; tour liên quan giữ thứ tự gửi,
+khoá ngoại hỏng bắt ngay ở câu ghi (`P2003`). Ảnh bìa thuộc đúng một trong ba nguồn (ảnh hiện
+có, thư mục tải lên của chính bài có metadata, dòng thư viện địa danh); chỉ ảnh trong thư mục
+tải lên của chính bài vào lại hàng dọn khi bị thay hay khi bài bị xoá. Bust `posts` và
+`post:<slug>` sau commit, lệnh hỏng thì không bust. Đường ký của tour và bài viết gom về
+`signUploads` (một phần G15).
+
+**Web.** `ArticleMarkdown` và `slugify` dời sang `@tourism/ui` (web re-export `slugify`, test
+của bộ render ở lại web); trang bài có khối "Tours in this story" sau thân bài; G9 đóng bằng
+tag `tours` trên lượt đọc chi tiết bài; `fetchPosts` đi hết các trang (`collectAllPages`).
+Lockfile chỉ thêm hai mục `react-markdown`, `remark-gfm` vào importer `libs/shared/ui`.
+
+**Phần dùng chung tách từ F17/F18.** `PhotoLibraryDialog` sang `components/kit/` với
+`tourDestinationIds` tuỳ chọn, copy sang `messages.admin.photoLibrary`, kiểu lệnh tải kho
+ảnh sang `lib/photo-library.ts`; lõi `useVersionedForm` tách khỏi `useTourFormState`. Test
+F18 xanh nguyên, admin 1584 thành 1585 ca (đúng một ca mới).
+
+**Lệch plan.** (1) `pnpm install` muốn đổi cả peer `@types/node` của jest trong
+`apps/mobile`; lockfile được khôi phục rồi chỉ thêm hai mục của `libs/shared/ui`,
+`--frozen-lockfile` chấp nhận. (2) Ca "chip trạng thái" của `posts-table.spec.tsx` soi
+trong `table` vì chữ "Scheduled" cũng là nhãn tab lọc. (3) `post-tags-card.tsx` gọi
+`g.useSuggestion` qua tên `suggestionLabel` vì Biome coi mọi lời gọi `use…()` là hook.
+(4) File soi bố cục tạm của Task 13 gọi `await AdminShell(...)` (shell là async server
+component). Phép grep của Task 14 trúng đúng câu JSDoc mà plan bắt viết ở `messages.ts`
+("Dời nguyên văn từ `tours.editor.photos.dialog`").
+
+**Soi bố cục (CSS build thật).** 1600px: không cuộn ngang, hai cột, card Publish ngang card
+tiêu đề (lệch 1px), hàng nút không tràn; bảng `/posts` không cuộn ngang. 390px: một cột, cột
+phải nằm dưới form, không cuộn ngang, hàng nút không tràn; bảng không cuộn ngang. Ghi nhận
+cho review: `Textarea` của `@tourism/ui` có `field-sizing: content` nên `rows={18}` của ô
+Content không có tác dụng — nháp rỗng chỉ cao 64px.
+
+**Review findings:** chưa review — session gốc review trước merge.
+
+Tests after: Vitest 5265 — web 1593, admin 1678, api 1037, contract 603, mobile 159, mobile-ui 86, core 46, ui 27, tokens 18, i18n 18 — và int 742 ở 46 file. Ca mới: contract 41, api 22 (luật thuần, thư mục ảnh bìa, `signUploads`, tag cache), admin 120, web 5 (cộng 4 ca `slugify` dời sang ui), int 34 trong `admin-posts.int.spec.ts`. Đột biến: 105 lượt thử, 98 giết, 7 sống — sáu cái plan đã dự báo là tương đương hay chưa phủ, một cái ngoài plan (bỏ `updatedAt: version` ở câu ghi bài không ca nào bắt vì `update` đọc lại DB).
+
 ## 2026-10-05 — SessionStart hook dựng môi trường cho session cloud (`eafb1eca`, nhánh `claude/nice-rubin-moffft`)
 
 User mở session cloud (claude.ai/code) để review các nhánh mobile của nhóm và hỏi có phải

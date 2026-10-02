@@ -92,6 +92,10 @@ Cụm bài viết: khoá mới gồm "Travel stories", "Search stories", câu r�
    không chữ đậm. Một bộ vẽ ~30 dòng cho ba kiểu ấy là đủ. Nhưng admin CÓ THỂ đăng markdown
    giàu hơn sau này, nên cú pháp lạ phải rơi về đoạn-văn-thường, tuyệt đối không in ký hiệu
    thô kiểu `**đậm**` ra giữa bài.
+   Từ P4e-4 (02/10) điều ấy không còn là "sau này": trình soạn bài của admin có hàng nút
+   chèn `**đậm**`, `*nghiêng*` và link `[chữ](https://…)`. Bộ vẽ mobile phải xử ĐỦ ba cú pháp
+   này — vẽ ra, hoặc ít nhất bóc ký hiệu để còn chữ thường. Ảnh và HTML thì không bao giờ
+   tới: contract từ chối chúng ngay lúc lưu (`postContentIssue`).
 2. **Đừng in `count` của tag.** `PostTagSchema.count` là tổng TOÀN CỤC; sau lần lọc đầu nó
    nói sai ngay — đúng bài học đã ghi ở vòng thiết kế `/blog` của web.
 3. **`cover` và `excerpt` đều nullable.** Thiếu ảnh thì thẻ lớn tụt xuống thành hàng gọn,
