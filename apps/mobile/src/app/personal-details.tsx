@@ -1,4 +1,5 @@
 import { messages } from '@tourism/i18n';
+import { router } from 'expo-router';
 import { useState } from 'react';
 import { DeleteAccountSheet } from '@/features/account/delete-account-sheet';
 import { PersonalDetailsScreen } from '@/features/account/personal-details-screen';
@@ -29,6 +30,8 @@ export default function PersonalDetailsRoute() {
         email={session?.user.email ?? ''}
         nameLabel={personalDetails.nameLabel}
         emailLabel={personalDetails.emailLabel}
+        passwordLabel={messages.mobile.account.menuPassword}
+        onPasswordPress={() => router.push('/change-password')}
         deleteAccountLabel={personalDetails.deleteAccount}
         onDeleteAccountPress={() => setDeleteSheetOpen(true)}
       />

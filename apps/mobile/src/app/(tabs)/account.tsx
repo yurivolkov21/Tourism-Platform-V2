@@ -1,14 +1,15 @@
 import { useMutation } from '@tanstack/react-query';
 import { validateProfileName } from '@tourism/core';
 import { messages } from '@tourism/i18n';
-import { AppText, type FeatherIconName } from '@tourism/mobile-ui';
+import type { FeatherIconName } from '@tourism/mobile-ui';
 import * as ImagePicker from 'expo-image-picker';
-import { Link, router } from 'expo-router';
+import { router } from 'expo-router';
 import { useState } from 'react';
 import { type AccountMenuItem, AccountScreen } from '@/features/account/account-screen';
 import { applyAvatarPick, removeAvatar as removeAvatarFlow } from '@/features/account/avatar-flow';
 import { EditAvatarSheet } from '@/features/account/edit-avatar-sheet';
 import { EditNameSheet } from '@/features/account/edit-name-sheet';
+import { LegalLinksSheet } from '@/features/account/legal-links-sheet';
 import { SignOutSheet } from '@/features/account/sign-out-sheet';
 import { AuthGateScreen } from '@/features/auth/auth-gate-screen';
 import { setPendingReturn } from '@/features/auth/return-to';
@@ -16,7 +17,6 @@ import { reviewAuthorInitials } from '@/features/tour-detail/reviews';
 import { orpc, withMobileAuth } from '@/lib/api/client';
 import { getAuthClient } from '@/lib/auth-client';
 import { cloudinaryUrl } from '@/lib/cloudinary-url';
-import { isDevBuild } from '@/lib/dev-only';
 import { uploadToCloudinary } from '@/lib/media-upload';
 import { openExternalPath } from '@/lib/open-external-path';
 
@@ -59,6 +59,7 @@ export default function AccountRoute() {
   const [avatarSheetOpen, setAvatarSheetOpen] = useState(false);
   const [avatarError, setAvatarError] = useState<string | null>(null);
   const [avatarBusy, setAvatarBusy] = useState(false);
+  const [legalOpen, setLegalOpen] = useState(false);
 
   const { account } = messages.mobile;
 
@@ -71,29 +72,46 @@ export default function AccountRoute() {
 
   // Guard trực tiếp trên `session?.user` (không qua biến `boolean` trung
   // gian) — TS mới thu hẹp được `session` khỏi `null` ở nhánh dưới.
+  const legalRows = externalLinks(account).map((link) => ({
+    key: link.key,
+    icon: link.icon,
+    label: link.label,
+    onPress: () => openExternalPath(link.path),
+  }));
+
   if (session?.user === undefined) {
     return (
-      <AuthGateScreen
-        pageTitle={messages.mobile.appShell.titles.account}
-        icon="user"
-        title={messages.mobile.authPrompts.accountGateTitle}
-        body={messages.mobile.authPrompts.accountGateBody}
-        signInLabel={messages.mobile.authPrompts.signIn}
-        createAccountLabel={messages.mobile.authPrompts.createAccount}
-        onSignIn={() => {
-          setPendingReturn({ path: '/(tabs)/account' });
-          router.navigate('/login');
-        }}
-        onCreateAccount={() => {
-          setPendingReturn({ path: '/(tabs)/account' });
-          router.navigate('/register');
-        }}
-        legalLinks={externalLinks(account).map((link) => ({
-          label: link.label,
-          icon: link.icon,
-          onPress: () => openExternalPath(link.path),
-        }))}
-      />
+      <>
+        <AuthGateScreen
+          pageTitle={messages.mobile.appShell.titles.account}
+          icon="user"
+          title={messages.mobile.authPrompts.accountGateTitle}
+          body={messages.mobile.authPrompts.accountGateBody}
+          signInLabel={messages.mobile.authPrompts.signIn}
+          createAccountLabel={messages.mobile.authPrompts.createAccount}
+          onSignIn={() => {
+            setPendingReturn({ path: '/(tabs)/account' });
+            router.navigate('/login');
+          }}
+          onCreateAccount={() => {
+            setPendingReturn({ path: '/(tabs)/account' });
+            router.navigate('/register');
+          }}
+          legalLinks={[
+            {
+              label: account.menuHelpLegal,
+              icon: 'help-circle',
+              onPress: () => setLegalOpen(true),
+            },
+          ]}
+        />
+        <LegalLinksSheet
+          visible={legalOpen}
+          onClose={() => setLegalOpen(false)}
+          title={account.legalSheetTitle}
+          links={legalRows}
+        />
+      </>
     );
   }
 
@@ -236,7 +254,12 @@ export default function AccountRoute() {
     },
     // My reviews (R4, P5b-5) và Travel stories (G1, mục 6 spec) CHƯA dựng —
     // dòng menu chỉ cần TỒN TẠI ở đợt này (spec §"Không thuộc phạm vi").
-    { key: 'reviews', icon: 'star', label: account.menuMyReviews, onPress: () => {} },
+    {
+      key: 'reviews',
+      icon: 'star',
+      label: account.menuMyReviews,
+      onPress: () => router.push('/reviews/mine'),
+    },
     {
       key: 'stories',
       icon: 'book-open',
@@ -244,18 +267,12 @@ export default function AccountRoute() {
       onPress: () => router.push('/posts'),
     },
     {
-      key: 'password',
-      icon: 'lock',
-      label: account.menuPassword,
-      onPress: () => router.push('/change-password'),
-    },
-    ...externalLinks(account).map((link) => ({
-      key: link.key,
-      icon: link.icon,
-      label: link.label,
+      key: 'helpLegal',
+      icon: 'help-circle',
+      label: account.menuHelpLegal,
       external: true,
-      onPress: () => openExternalPath(link.path),
-    })),
+      onPress: () => setLegalOpen(true),
+    },
   ];
 
   return (
@@ -273,25 +290,6 @@ export default function AccountRoute() {
         signOutLabel={account.signOut}
         onSignOutPress={() => setSignOutOpen(true)}
         transformUrl={cloudinaryUrl}
-        footer={
-          // PHẢI nằm trong `footer` (bên trong ScrollView của AccountScreen) —
-          // `Screen` bên trong đó chiếm `flex:1` toàn màn, đặt sibling ở NGOÀI
-          // `<AccountScreen>` như route.cũ làm sẽ mất tích, không lỗi gì báo.
-          isDevBuild() ? (
-            <>
-              <Link href="/dev/gallery" style={{ alignSelf: 'center' }}>
-                <AppText variant="caption" tone="link">
-                  Gallery (dev)
-                </AppText>
-              </Link>
-              <Link href="/dev/tour-gallery" style={{ alignSelf: 'center' }}>
-                <AppText variant="caption" tone="link">
-                  Tour gallery (dev)
-                </AppText>
-              </Link>
-            </>
-          ) : undefined
-        }
       />
       <EditNameSheet
         visible={editNameOpen}
@@ -324,6 +322,12 @@ export default function AccountRoute() {
         onTakePhoto={() => void pickAvatar('camera')}
         onChooseLibrary={() => void pickAvatar('library')}
         onRemove={() => void handleRemoveAvatar()}
+      />
+      <LegalLinksSheet
+        visible={legalOpen}
+        onClose={() => setLegalOpen(false)}
+        title={account.legalSheetTitle}
+        links={legalRows}
       />
       <SignOutSheet
         visible={signOutOpen}
