@@ -41,6 +41,9 @@ export const MOBILE_COLOR_KEYS = [
   'price-compare',
   'warning',
   'overlay',
+  // P5b-3 (mockup B4/B7/T8): hộp "Free cancellation until…", nhãn PAID, hộp
+  // đã hoàn tiền — mọi chỗ tông xanh-thành-công.
+  'success',
 ] as const;
 
 export type MobileColorKey = (typeof MOBILE_COLOR_KEYS)[number];

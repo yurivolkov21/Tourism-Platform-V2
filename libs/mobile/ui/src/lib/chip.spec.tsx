@@ -9,7 +9,10 @@ describe('Chip', () => {
     await renderWithTheme(<Chip label="Trekking" />);
     const style = StyleSheet.flatten(screen.getByText('Trekking').parent?.props.style);
     expect(style.borderColor).toBe(theme.colors.border);
-    expect(style.backgroundColor).toBe('transparent');
+    // KHÔNG gán 'transparent' tường minh — Android vẽ thiếu cạnh đáy viền khi
+    // backgroundColor là string 'transparent' kết hợp borderRadius + Pressable
+    // (đo được 01/10). Bỏ hẳn property là đúng fix.
+    expect(style.backgroundColor).toBeUndefined();
   });
 
   it('variant "selected": nền/viền primary, chữ primary-foreground', async () => {
