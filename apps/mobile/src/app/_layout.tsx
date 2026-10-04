@@ -101,6 +101,8 @@ function RootStack() {
           tên "dev", và mọi khung trong gallery bị đo trong một khung ngắn hơn
           màn thật. */}
       <Stack.Screen name="dev" options={{ headerShown: false }} />
+      {/* Cụm review tự vẽ header qua Stack riêng (reviews/_layout.tsx) — tắt header của nhóm. */}
+      <Stack.Screen name="reviews" options={{ headerShown: false }} />
       <Stack.Screen name="+not-found" options={{ title: titles.notFound }} />
     </Stack>
   );

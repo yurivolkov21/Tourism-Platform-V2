@@ -1724,6 +1724,13 @@ export const messages = {
       errTooMany: (max: number) => `Maximum ${max} photos allowed.`,
       /** Lỗi upload thật (Task 9, ADR-0021) — sign/POST Cloudinary thất bại. */
       errUpload: 'Upload failed. Please try again.',
+      /** Tấm chọn nguồn ảnh của R2 (mobile dùng chung khuôn sheet với A4). */
+      addPhoto: 'Add a photo',
+      takePhoto: 'Take a photo',
+      chooseLibrary: 'Choose from library',
+      cancel: 'Cancel',
+      retry: 'Try again',
+      errPermission: 'Camera and photo library access is needed to add photos.',
     },
     heading: 'Rate this trip',
     ratingLabel: 'Your rating',
@@ -1746,6 +1753,20 @@ export const messages = {
     tooEarlyBody: 'You’ll be able to rate this trip once it has finished.',
     alreadyReviewedTitle: 'You’ve already reviewed this trip',
     alreadyReviewedBody: 'Thanks again for sharing your experience with other travellers.',
+    backToTrip: 'Back to my trip',
+    pendingReview: 'Pending review',
+    seeMyReviews: 'See my reviews',
+    /** R4 — "Đánh giá của tôi" (mockup mobile-review-screens mục 2). */
+    mine: {
+      title: 'My reviews',
+      empty: 'You haven’t reviewed a trip yet.',
+      publishedLabel: 'Published',
+      pendingLabel: 'Pending review',
+      notPublishedLabel: 'Not published',
+      retractedLabel: 'Retracted',
+      seeWhy: 'See why and rewrite',
+      retractAction: 'Retract my review',
+    },
     // W4 U2 (ADR-0032 AMEND 1): quyền RÚT review đã đăng — chung cuộc.
     retract: {
       button: 'Retract my review',
@@ -1794,8 +1815,13 @@ export const messages = {
     rejectedFinalTitle: 'We’ve looked at this review twice',
     rejectedFinalBody:
       'We can’t publish it, and it can’t be edited again. If you think we got this wrong, get in touch and a person will read it.',
+    /** Nhãn lý do cuối cùng (R6) — khác `rejectedReason` ở R5 vì đây là lần bác thứ hai. */
+    rejectedFinalReason: 'Last reason given',
+    rejectedFinalContact: 'Think this is a mistake? Write to us about it',
     /** Nút gửi ở chế độ SỬA — khác "Submit review" vì việc khác nhau. */
     resubmit: 'Send for review again',
+    /** Còn đúng một lượt sửa — nói trước khi khách gõ (REVIEW_REJECTION_LIMIT trừ rejectionCount). */
+    rewriteLeft: 'One more rewrite left. After that this review can’t be sent back.',
     resubmitting: 'Sending…',
     /** Ảnh cũ hiện sẵn ở chế độ sửa; gỡ được, vì bác vì ảnh là ca có thật. */
     keptPhoto: 'Photo already on this review',
@@ -2359,6 +2385,9 @@ export const messages = {
       menuTravelStories: 'Travel stories',
       menuPassword: 'Password',
       menuHelp: 'Help & FAQ',
+      /** Một dòng gom cả năm link trợ giúp/pháp lý (mở sheet liệt kê). */
+      menuHelpLegal: 'Help & legal',
+      legalSheetTitle: 'Help & legal',
       menuAbout: 'About Nexora',
       menuPrivacy: 'Privacy policy',
       menuTerms: 'Terms of service',

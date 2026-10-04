@@ -26,6 +26,7 @@ import {
 import { createdAtRange } from '../../lib/created-at-range.js';
 import { escapeLike } from '../../lib/like.js';
 import { uploadFolderFor } from '../../lib/upload-signing.js';
+import { resolveTourCover } from '../bookings/bookings.service.js';
 import { MediaService } from '../media/media.service.js';
 import { MediaGarbageService } from '../media/media-garbage.service.js';
 import { moderationRevalidationTags } from '../web-revalidation/revalidation-decision.js';
@@ -119,6 +120,8 @@ export const REVIEW_ADMIN_INCLUDE = {
  */
 export const REVIEW_MINE_INCLUDE = {
   tour: { select: { slug: true, title: true } },
+  // R5: mã booking để khách gửi lại kèm ảnh mới (chữ ký upload cần `bookingCode`).
+  booking: { select: { code: true, tourId: true } },
   moderationEvents: {
     where: { toRejected: true },
     orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
@@ -186,10 +189,12 @@ export function toMyReview(
     rejectedAt: Date | null;
     retractedAt: Date | null;
     tour: { slug: string; title: string } | null;
+    booking?: { code: string } | null;
     moderationEvents?: { note: string | null }[];
     _count?: { moderationEvents: number };
   },
   media: MediaItem[] = [],
+  tourImage: MediaItem | null = null,
 ): MyReview {
   return {
     ...toPublicReview(row, media),
@@ -205,6 +210,8 @@ export function toMyReview(
     tourSlug: row.tour?.slug ?? null,
     tourTitle: row.tour?.title ?? null,
     retractedAt: row.retractedAt?.toISOString() ?? null,
+    bookingCode: row.booking?.code ?? null,
+    tourImage,
   };
 }
 
@@ -1012,8 +1019,26 @@ export class ReviewsService {
       rows.map((r) => r.id),
     );
 
+    // Ảnh bìa tour cho thẻ R5: MỘT lần cho mỗi tour trong trang (không N+1).
+    const tourIds = [
+      ...new Set(rows.map((r) => r.booking?.tourId).filter((id): id is string => id != null)),
+    ];
+    const covers = new Map(
+      await Promise.all(
+        tourIds.map(
+          async (tourId) => [tourId, await resolveTourCover(this.media, tourId)] as const,
+        ),
+      ),
+    );
+
     return {
-      items: rows.map((row) => toMyReview(row, mediaMap.get(row.id) ?? [])),
+      items: rows.map((row) =>
+        toMyReview(
+          row,
+          mediaMap.get(row.id) ?? [],
+          row.booking ? (covers.get(row.booking.tourId) ?? null) : null,
+        ),
+      ),
       page,
       // Output contract dùng `limit` (PagedSchema chung), không phải
       // `pageSize` — cùng gotcha đã ghi ở listByTour()/adminList() bên dưới.

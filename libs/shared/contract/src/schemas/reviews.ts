@@ -139,6 +139,10 @@ export const MyReviewSchema = PublicReviewSchema.extend({
   // nullable — FK tour trên schema là nullable (review curated có thể không tour).
   tourSlug: z.string().nullable(),
   tourTitle: z.string().nullable(),
+  /** Mã booking của review — R5 cần để gửi ảnh mới (chữ ký upload theo booking). `null` với review curated. */
+  bookingCode: BookingCodeSchema.nullable(),
+  /** Ảnh bìa tour cho thẻ R5 (cùng nguồn với `bookings.tourImage`). */
+  tourImage: MediaItemSchema.nullable(),
   /** Mốc tác giả RÚT review (W4 U2) — null khi chưa từng rút. */
   retractedAt: z.iso.datetime().nullable(),
 });

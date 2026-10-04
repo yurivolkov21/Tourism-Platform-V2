@@ -202,7 +202,7 @@ export default function TripTrackerRoute() {
         writeReviewLabel={t.writeReview}
         // P5b-5 (cụm đánh giá) CHƯA dựng — khung UI trước, nối thật ở nhánh
         // riêng (xác nhận với user 02/10, cùng nếp "Delete account" A7).
-        onWriteReviewPress={() => {}}
+        onWriteReviewPress={() => router.push(`/trips/${booking.code}/review`)}
         reviewedLabel={t.reviewed}
         bookingDetailsRow={{
           label: t.bookingDetailsRow,

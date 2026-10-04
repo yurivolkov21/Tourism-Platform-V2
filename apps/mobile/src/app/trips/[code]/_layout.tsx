@@ -25,6 +25,7 @@ export default function TripLayout() {
       <Stack.Screen name="index" options={{ title: titles.yourTrip }} />
       <Stack.Screen name="notes" options={{ title: titles.beforeYouGo }} />
       <Stack.Screen name="itinerary" options={{ title: titles.yourItinerary }} />
+      <Stack.Screen name="review" options={{ title: messages.reviews.heading }} />
     </Stack>
   );
 }
