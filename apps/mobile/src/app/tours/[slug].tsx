@@ -5,6 +5,7 @@ import { messages } from '@tourism/i18n';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { consumePendingReplay, setPendingReturn } from '@/features/auth/return-to';
+import { startBookingDraft } from '@/features/booking/booking-draft';
 import {
   type AskAboutDateErrors,
   type AskAboutDateField,
@@ -46,9 +47,15 @@ import { formatMoney } from '@/lib/format-money';
  * `NOT_FOUND` rơi vào D7 riêng (khác lỗi mạng chung). `TourDetailScreen` chỉ
  * vẽ (khuôn `features/explore`).
  */
+const TOUR_DETAIL_TABS: readonly TourDetailTab[] = ['overview', 'itinerary', 'dates', 'reviews'];
+
 export default function TourDetailRoute() {
-  const { slug } = useLocalSearchParams<{ slug: string }>();
-  const [activeTab, setActiveTab] = useState<TourDetailTab>('overview');
+  const { slug, tab } = useLocalSearchParams<{ slug: string; tab?: string }>();
+  // B9 (P5b-3) — `bookings.create` báo hết ghế/đợt đóng thì "Choose another
+  // date" mở THẲNG tab Dates, không phải Overview mặc định.
+  const [activeTab, setActiveTab] = useState<TourDetailTab>(() =>
+    TOUR_DETAIL_TABS.includes(tab as TourDetailTab) ? (tab as TourDetailTab) : 'overview',
+  );
   // D3 — không đợt nào chọn sẵn (khớp D1: đáy màn mặc định "From … Choose a
   // date", chỉ đổi "Book now" SAU khi khách tự bấm một đợt).
   const [selectedDepartureId, setSelectedDepartureId] = useState<string | null>(null);
@@ -60,8 +67,10 @@ export default function TourDetailRoute() {
   const [reviewItems, setReviewItems] = useState<readonly PublicReview[]>([]);
   const [reviewTotalPages, setReviewTotalPages] = useState(1);
   // D6 — tấm mời đăng nhập khi bấm tim lúc chưa có phiên; `wished` là trạng
-  // thái LẠC QUAN hiển thị ngay, `wishlistError` tự xoá sau vài giây.
+  // thái LẠC QUAN hiển thị ngay, `wishlistError` tự xoá sau vài giây. Cùng
+  // tấm này dùng cho "Book now" (P5b-3) — `authGateReason` chọn tiêu đề/câu.
   const [authGateOpen, setAuthGateOpen] = useState(false);
+  const [authGateReason, setAuthGateReason] = useState<'wishlist' | 'booking'>('wishlist');
   const [wished, setWished] = useState(false);
   const [wishlistError, setWishlistError] = useState<string | null>(null);
   // D3 — tấm form "Ask about this date", mở từ link trên đợt đã đóng.
@@ -181,6 +190,7 @@ export default function TourDetailRoute() {
 
   function handleFavoritePress() {
     if (!signedIn) {
+      setAuthGateReason('wishlist');
       setAuthGateOpen(true);
       return;
     }
@@ -205,9 +215,13 @@ export default function TourDetailRoute() {
   // lặp lại cùng một điều kiện ở hai chỗ. `tourId` có thể chưa sẵn sàng (tour đang
   // tải lúc khách bấm tim rất nhanh) — không set `replay` thì đăng nhập xong đơn
   // giản KHÔNG tự lưu, không phải lỗi, chỉ là không có gì để replay.
+  //
+  // Chỉ gắn replay lúc CHẮC CHẮN là tấm chặn của tim (P5b-3): tấm chặn "Book
+  // now" cũng gọi hàm này, và replay `wishlist` gắn nhầm vào đó sẽ tự lưu tim
+  // dù khách chưa hề bấm tim — `authGateReason` phân biệt hai lượt gọi.
   function recordReturn() {
     setPendingReturn(
-      tourId === undefined
+      tourId === undefined || authGateReason !== 'wishlist'
         ? { path: `/tours/${slug}` }
         : { path: `/tours/${slug}`, replay: { kind: 'wishlist', tourId } },
     );
@@ -243,6 +257,38 @@ export default function TourDetailRoute() {
     setAskAboutDateFormError(null);
     setAskAboutDateSent(false);
     setAskAboutDateOpen(true);
+  }
+
+  /**
+   * "Book now" (P5b-3, B1) — ngày đã chọn từ tab Dates (`selectedDepartureId`)
+   * nên bước đầu của wizard chỉ hỏi số khách, không hỏi lại ngày.
+   */
+  function handleBookPress() {
+    if (!signedIn) {
+      setAuthGateReason('booking');
+      setAuthGateOpen(true);
+      return;
+    }
+    const departure = tour?.departures.find((d) => d.id === selectedDepartureId);
+    if (tour === undefined || departure === undefined) return;
+
+    startBookingDraft(
+      {
+        tourSlug: tour.slug,
+        tourTitle: tour.title,
+        tourImageUrl: tour.cover === null ? null : tour.cover.url,
+        departureId: departure.id,
+        startDate: departure.startDate,
+        endDate: departure.endDate,
+        unitPrice: departure.effectivePrice,
+        currency: tour.currency,
+        maxGroupSize: tour.maxGroupSize,
+        seatsLeft: departure.seatsLeft,
+        bookingDeadline: departure.bookingDeadline,
+      },
+      { name: session?.user?.name ?? '', email: session?.user?.email ?? '' },
+    );
+    router.push('/bookings/new/travellers');
   }
 
   function submitAskAboutDate() {
@@ -402,8 +448,16 @@ export default function TourDetailRoute() {
       onFavoritePress={handleFavoritePress}
       authGateOpen={authGateOpen}
       onCloseAuthGate={() => setAuthGateOpen(false)}
-      authGateTitle={messages.mobile.authPrompts.savedGateTitle}
-      authGateBody={messages.mobile.authPrompts.wishlistReason}
+      authGateTitle={
+        authGateReason === 'booking'
+          ? messages.mobile.authPrompts.bookingGateTitle
+          : messages.mobile.authPrompts.savedGateTitle
+      }
+      authGateBody={
+        authGateReason === 'booking'
+          ? messages.mobile.authPrompts.bookingReason
+          : messages.mobile.authPrompts.wishlistReason
+      }
       signInLabel={messages.mobile.authPrompts.signIn}
       createAccountLabel={messages.mobile.authPrompts.createAccount}
       onSignIn={() => {
@@ -464,8 +518,7 @@ export default function TourDetailRoute() {
       askAboutDateSuccessBody={tourDetail.askAboutDateSheet.successBody}
       askAboutDateCloseLabel={tourDetail.askAboutDateSheet.close}
       bookCtaLabel={messages.mobile.booking.bookCta}
-      // Flow đặt chỗ mobile chưa dựng (P5b-3) — nút chưa làm gì.
-      onBook={() => {}}
+      onBook={handleBookPress}
       reviewBreakdown={reviewBreakdown}
       reviewSort={reviewSort}
       reviewSortLabels={reviewSortLabels}

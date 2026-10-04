@@ -77,6 +77,14 @@ function RootStack() {
         options={{ headerShown: false, title: titles.tourDetail }}
       />
       <Stack.Screen name="bookings/[code]" options={{ title: titles.bookingDetail }} />
+      {/* E1/E2 (W6) — header native bình thường, cùng khuôn A6/Personal details. */}
+      <Stack.Screen name="enquiry" options={{ title: titles.askAboutTrip }} />
+      {/* Cụm đặt tour (P5b-3, B1-B5) — Stack riêng, tự vẽ header từng bước
+          (`bookings/new/_layout.tsx`), cùng khuôn `(auth)`. */}
+      <Stack.Screen name="bookings/new" options={{ headerShown: false }} />
+      {/* Cụm P bám ngày khởi hành (W7/W8) — Stack riêng cùng khuôn
+          `bookings/new`, header do `trips/[code]/_layout.tsx` tự vẽ. */}
+      <Stack.Screen name="trips/[code]" options={{ headerShown: false }} />
       {/* A6 (spec P5b-4 §3) — đã đăng nhập, header native bình thường (khác
           nhóm auth vốn tự vẽ nút X vì là chặng đầu Stack). */}
       <Stack.Screen name="change-password" options={{ title: titles.changePassword }} />

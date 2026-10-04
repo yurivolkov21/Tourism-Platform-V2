@@ -36,8 +36,12 @@ export function Chip({ label, variant = 'default', onPress, onRemove }: ChipProp
     borderRadius: 999,
     borderWidth: 1,
     borderColor: theme.colors[border],
-    backgroundColor: background === null ? 'transparent' : theme.colors[background],
     gap: theme.spacing(1.5),
+    // `backgroundColor: 'transparent'` tường minh (thay vì bỏ hẳn property)
+    // kết hợp borderRadius + Pressable trên Android vẽ THIẾU cạnh đáy viền
+    // (đo được 01/10 — "Upcoming"/"Past" mất hẳn nét dưới, "All" tô đặc thì
+    // không dính vì có fill thật). Chỉ gán property khi thật sự có màu.
+    ...(background === null ? {} : { backgroundColor: theme.colors[background] }),
   };
 
   const labelNode = (

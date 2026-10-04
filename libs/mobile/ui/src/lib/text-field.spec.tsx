@@ -83,6 +83,47 @@ describe('TextField', () => {
     });
   });
 
+  it('tall (B3/E1, .field.tall): icon neo lên đầu, ô cao hơn', async () => {
+    const theme = themeFor('dark');
+    await renderWithTheme(
+      <TextField
+        label="Anything we should know?"
+        icon="message-square"
+        iconVariant="boxed"
+        multiline
+        tall
+        value=""
+        onChangeText={() => {}}
+      />,
+      'dark',
+    );
+    expect(screen.getByTestId('text-field-line').props.style).toMatchObject({
+      alignItems: 'flex-start',
+      minHeight: theme.spacing(24),
+    });
+    expect(screen.getByLabelText('Anything we should know?').props.multiline).toBe(true);
+  });
+
+  it('multiline KHÔNG tall (huỷ booking, .field.ph không .tall): TextInput vẫn nhận multiline, nhưng ô cao/canh y hệt ô một dòng — không tự kéo cao', async () => {
+    const theme = themeFor('dark');
+    await renderWithTheme(
+      <TextField
+        label="Reason (optional)"
+        icon="message-square"
+        iconVariant="boxed"
+        multiline
+        value=""
+        onChangeText={() => {}}
+      />,
+      'dark',
+    );
+    expect(screen.getByTestId('text-field-line').props.style).toMatchObject({
+      alignItems: 'center',
+      minHeight: theme.spacing(15),
+    });
+    expect(screen.getByLabelText('Reason (optional)').props.multiline).toBe(true);
+  });
+
   it('không có lỗi thì gạch chân dùng màu viền bình thường', async () => {
     const theme = themeFor('dark');
     await renderWithTheme(<TextField label="Email" value="" onChangeText={() => {}} />, 'dark');

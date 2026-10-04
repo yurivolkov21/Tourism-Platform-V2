@@ -6,6 +6,7 @@ import {
   screen,
   testRouter,
 } from 'expo-router/testing-library';
+import { consumeReturnPath } from '@/features/auth/return-to';
 import { onboardingStore } from '@/features/onboarding/onboarding-store';
 
 // Spec của cây route đặt NGOÀI `src/app` là bắt buộc: expo-router coi mọi file
@@ -76,14 +77,24 @@ const EXPECTED_ROUTES = [
   '(tabs)/trips',
   '+not-found',
   'bookings/[code]',
+  'bookings/new/checkout',
+  'bookings/new/contact',
+  'bookings/new/review',
+  'bookings/new/success',
+  'bookings/new/travellers',
+  'bookings/new/verify',
   'change-password',
   'dev/gallery',
   'dev/tour-gallery',
+  'enquiry',
   'onboarding',
   'personal-details',
   'posts/[slug]',
   'posts/index',
   'tours/[slug]',
+  'trips/[code]/index',
+  'trips/[code]/itinerary',
+  'trips/[code]/notes',
 ];
 
 describe('kiểm kê cây route', () => {
@@ -128,16 +139,15 @@ describe('vỏ điều hướng', () => {
     }
   });
 
-  it.each([['/trips', shell.titles.trips]])(
-    'tab %s render được và mang đúng tiêu đề',
-    async (url, title) => {
-      const app = await openApp(url);
+  it('tab /trips render được, không còn chỗ giữ chỗ — chưa đăng nhập nên vào thẳng T3', async () => {
+    const app = await openApp('/trips');
 
-      expect(app.pathname()).toBe(url);
-      expect(screen.getAllByText(title).length).toBeGreaterThan(0);
-      expect(screen.getByText(placeholder)).toBeTruthy();
-    },
-  );
+    expect(app.pathname()).toBe('/trips');
+    // Chưa đăng nhập (không mock session) → AuthGateScreen (T3) — cùng khuôn
+    // S3/A2 (Saved/Account), P5b-3.
+    expect(screen.getByText(messages.mobile.authPrompts.tripsGateTitle)).toBeTruthy();
+    expect(screen.queryByText(placeholder)).toBeNull();
+  });
 
   it('tab /account render được, không còn chỗ giữ chỗ — chưa đăng nhập nên vào thẳng A2', async () => {
     const app = await openApp('/account');
@@ -246,11 +256,19 @@ describe('vỏ điều hướng', () => {
     expect(screen.queryByText(placeholder)).toBeNull();
   });
 
-  it('bookings/[code] render được và đọc được mã từ URL', async () => {
+  // W4: màn giờ gác đăng nhập (deep link không độc quyền, xem comment ở
+  // `[code].tsx`) — chưa đăng nhập thì không còn in thẳng mã ra thân màn (đó
+  // là hành vi placeholder cũ), mà hiện cổng Sign in giống tab Trips. Đọc được
+  // mã từ URL kiểm GIÁN TIẾP qua `consumeReturnPath()`: bấm "Sign in" phải nhớ
+  // đúng đường `/bookings/<mã>` để quay lại sau khi có phiên.
+  it('bookings/[code] render được, gác đăng nhập và nhớ đúng mã để quay lại', async () => {
     const app = await openApp('/bookings/NX-2026-0001');
 
     expect(app.pathname()).toBe('/bookings/NX-2026-0001');
-    expect(screen.getByText('NX-2026-0001')).toBeTruthy();
+    expect(screen.getByText(messages.mobile.authPrompts.tripsGateTitle)).toBeTruthy();
+
+    await fireEvent.press(screen.getByText(messages.mobile.authPrompts.signIn));
+    expect(consumeReturnPath()).toBe('/bookings/NX-2026-0001');
   });
 
   // Vào app bằng deep link thì stack chỉ có ĐÚNG màn được trỏ tới nếu root

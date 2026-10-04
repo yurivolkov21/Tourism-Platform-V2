@@ -16,8 +16,12 @@ describe('messages: mobile.appShell (P5a — vỏ điều hướng)', () => {
   // 11 màn của template P5a, cộng ba màn P5b-1 thêm vào cụm auth (verify email,
   // reset password, màn kết quả), cộng đổi mật khẩu (A6, P5b-4), cộng
   // Personal details và Travel stories (P5b-4, phản hồi 27/09).
-  it('có đủ tiêu đề cho 17 màn của cây route', () => {
-    expect(Object.keys(shell.titles)).toHaveLength(17);
+  // P5b-3 (mockup B1-B5) thêm ba route: bookThisTour, reviewAndPay, payment.
+  // P5b-3 (mockup E1, W6) thêm route askAboutTrip.
+  // P5b-3 (mockup P1-P6, W7/W8) thêm ba route: yourTrip, beforeYouGo,
+  // yourItinerary (P5 có tiêu đề động, không khai tĩnh ở đây).
+  it('có đủ tiêu đề cho 24 màn của cây route', () => {
+    expect(Object.keys(shell.titles)).toHaveLength(24);
   });
 
   it('mọi chuỗi trong appShell đều có chữ, không khoá nào rỗng', () => {

@@ -1,6 +1,6 @@
 # Việc còn treo
 
-> Bản tóm tắt để điều hướng, cập nhật 22/09/2026 (lượt hai). **Không phải nguồn sự thật** —
+> Bản tóm tắt để điều hướng, cập nhật 02/10/2026 (lượt ba). **Không phải nguồn sự thật** —
 > chi tiết của từng mục sống ở [CHANGELOG](CHANGELOG.md) (mục "CÒN TREO" của
 > entry tương ứng) và ở [sổ nợ kỹ thuật](analysis/2026-08-06-backlog-no-ky-thuat.md).
 > Trả xong một mục thì gạch ở đây và ghi vào CHANGELOG.
@@ -19,7 +19,7 @@
 | --- | --- | --- |
 | **P4e** | Quản trị catalog: thêm/sửa/xoá tour, điểm đến, danh mục | P4e-1 XONG 22/09 (F11 danh sách tour · F12 lịch chạy · F13 huỷ chuyến có hoàn tiền, đóng nợ ADR-0041 §6). **P4e-2 F14 danh mục XONG 22/09** (màn `/categories` cộng chip lọc của web đọc endpoint). Còn P4e-2 F15 điểm đến, P4e-3 tour CRUD, P4e-4 bài viết |
 | **P4f** | Quản trị media và người dùng | Gồm màn hạ quyền / thu hồi phiên admin (ADR-0026 AMEND 1) |
-| **P5b-2…5** | Bốn cụm màn mobile: xem tour · đặt tour · tài khoản · đánh giá | **Đã có bản vẽ và tài liệu bàn giao đầy đủ**; thành viên khác dựng màn — xem [`handoff/`](handoff/README.md) |
+| **P5b-2…5** | Bốn cụm màn mobile: xem tour · đặt tour · tài khoản · đánh giá | P5b-2 (xem tour) · P5b-4 (tài khoản) đã merge. **P5b-3 (đặt tour, nhánh `feat/mobile-booking-screens`) đã code xong CẢ 25 khung** (W1-W8, cập nhật 02/10) — còn soát pixel B1-B9, test máy thật, rồi mới review/merge; xem `docs/PROGRESS.md` của nhánh đó. **P5b-5 (đánh giá) CHƯA branch nào dựng** — đã có bản vẽ (`mobile-review-screens.src.html`, 7 khung) + handoff (`handoff/mobile-review-handoff.md`), lộ ra khi P5b-3 cần nối nút "Write a review" ở P6 |
 | **P6** | Trợ lý AI tư vấn tour | Bảng dữ liệu đã có sẵn (`chat_conversations`, `chat_messages`) |
 | **P7** | Đợt trau chuốt giao diện cuối | |
 
@@ -56,6 +56,11 @@ ghi chép nội bộ) — trước đó nó hứa nhầm rằng khách sẽ đ�
   `pnpm --filter @tourism/mobile dev` nay là `expo start` thay vì
   `--tunnel`. Chưa ai quét QR thử sau khi đổi — cần một lượt trên điện thoại
   thật cùng mạng Wi-Fi. Không chạy được thì `dev:tunnel` vẫn còn nguyên.
+- **Toàn bộ cụm P5b-3 (đặt tour, 25 khung, nhánh `feat/mobile-booking-screens`)**
+  — chỉ test đơn vị (RNTL), chưa soi bằng mắt trên máy/simulator thật. Đáng
+  chú ý: cụm P mới (P1-P6, bám ngày khởi hành) và bug `TextField`
+  `tall`/`multiline` vừa vá (gạch chân ô "Reason" trôi xa chữ, phát hiện qua
+  ảnh chụp máy user gửi 02/10 — xem `docs/PROGRESS.md` của nhánh đó).
 - **Cơ chế "quay lại đúng chỗ sau đăng nhập" (P5b-4, nhánh
   `feat/mobile-account-screens`, plan
   `docs/plans/2026-09-25-mobile-account-return-to-auth.md`)** — Bấm tim khi

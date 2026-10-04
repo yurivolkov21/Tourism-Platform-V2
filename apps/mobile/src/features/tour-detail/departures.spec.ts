@@ -2,6 +2,7 @@ import {
   formatDepartureDate,
   formatDepartureMonth,
   formatDepartureRange,
+  formatFullDate,
   groupDeparturesByMonth,
 } from './departures';
 
@@ -24,6 +25,16 @@ describe('formatDepartureRange', () => {
 describe('formatDepartureMonth', () => {
   it('"September 2026" — tên tháng đầy đủ + năm', () => {
     expect(formatDepartureMonth('2026-09-23')).toBe('September 2026');
+  });
+});
+
+describe('formatFullDate', () => {
+  it('"21 Sep 2026" — ngày + tháng viết tắt + năm, không thứ', () => {
+    expect(formatFullDate('2026-09-21')).toBe('21 Sep 2026');
+  });
+
+  it('chuỗi ISO datetime — chỉ đọc 10 ký tự đầu', () => {
+    expect(formatFullDate('2026-09-21T10:15:00.000Z')).toBe('21 Sep 2026');
   });
 });
 

@@ -1839,9 +1839,20 @@ export const messages = {
         success: 'All set',
         tourDetail: 'Tour details',
         bookingDetail: 'Your booking',
+        bookThisTour: 'Book this tour',
+        reviewAndPay: 'Review and pay',
+        payment: 'Payment',
         changePassword: 'Password',
         personalDetails: 'Personal details',
         travelStories: 'Travel stories',
+        // E1 (mockup `mobile-booking-screens`) — header của màn hỏi về chuyến.
+        askAboutTrip: 'Ask about this trip',
+        // Cụm P (W7/W8) — P1/P2/P6 dùng chung `yourTrip`; P5 có tiêu đề ĐỘNG
+        // "Day {n} of {total}" nên không khai cố định ở đây, route tự đặt
+        // qua `<Stack.Screen options={{ title }} />` của chính nó.
+        yourTrip: 'Your trip',
+        beforeYouGo: 'Before you go',
+        yourItinerary: 'Your itinerary',
         notFound: 'Page not found',
       },
       /**
@@ -2067,6 +2078,10 @@ export const messages = {
       messagePlaceholder: 'Tell us about your dates, group size and questions…',
       submit: 'Send enquiry',
       success: "Thanks! We'll get back to you within 24 hours.",
+      // E2 — tiêu đề màn thành công (mockup `mobile-booking-screens` E2),
+      // `success` ở trên chỉ là câu thân, không phải tiêu đề.
+      successTitle: 'Message sent',
+      backToTour: 'Back to tour',
       errors: {
         nameRequired: 'Please enter your name.',
         emailInvalid: 'Please enter a valid email address.',
@@ -2099,14 +2114,162 @@ export const messages = {
       listError: "Couldn't load your bookings.",
       detailError: "Couldn't load this booking.",
       retry: 'Try again',
+      // B1/B2 (mockup P5b-3) — bước 1: số khách. `box.adults`/`box.children` ở
+      // trên đã có nhãn "Adults"/"Children", tái dùng — đây chỉ là chữ RIÊNG
+      // của khuôn stepper mobile.
+      travellersHeading: 'Travellers',
+      sameAsAdultPrice: 'Same price as adults',
+      priceEach: (price: string) => `${price} each`,
+      seatsLeftOnDate: (n: number) => `${n} ${n === 1 ? 'seat' : 'seats'} left on this date`,
+      groupCapNote: (n: number) => `Up to ${n} guests on this tour`,
+      groupCapReached: (n: number) =>
+        `That's the most this tour takes — ${n} ${n === 1 ? 'guest' : 'guests'}.`,
+      travellersTotal: (n: number, price: string) =>
+        `${n} ${n === 1 ? 'traveller' : 'travellers'} × ${price}`,
+      // B3 — bước 2: liên hệ.
+      contactHeading: 'Contact details',
+      contactSubtitle: 'We send the confirmation here.',
+      nameLabel: 'Full name',
+      emailLabel: 'Email',
+      phoneLabel: 'Phone (optional)',
+      notesLabel: 'Anything we should know? (optional)',
+      // B4 — bước 3: xem lại và chọn cổng.
+      paymentMethodHeading: 'Payment method',
+      providerStripe: 'Card — Stripe',
+      providerPayPal: 'PayPal',
+      payBrowserNote: "You'll finish payment in your browser, then come back here.",
+      // B5 — rời app sang trình duyệt.
+      checkoutHeading: 'Finish in your browser',
+      finishedPaying: "I've finished paying",
+      // B6 — đang xác nhận thanh toán. `verifying` (tiêu đề) đã có sẵn ở trên.
+      confirmingBody: 'This takes a few seconds. Keep the app open.',
+      // B8 — đặt chỗ xong.
+      successTitle: "You're going!",
+      successSubtitle: (email: string) => `Confirmation is on its way to ${email}`,
+      bookingCodeLabel: 'Booking code',
+      // B9 — không tạo được booking. Đường đi tiếp riêng cho SEATS_UNAVAILABLE/
+      // DEPARTURE_NOT_AVAILABLE — câu lỗi CHÍNH đã có ở `booking.errors` trên
+      // web, mobile đọc lại qua `bookingSubmitErrorCopy`.
+      chooseAnotherDate: 'Choose another date',
+      editTravellers: 'Edit travellers',
+      // T4/T5/T8 (W4, mockup P5b-3 §T) — chi tiết booking. Câu hạn chót huỷ
+      // miễn phí, hộp thoại huỷ và câu lỗi ĐỌC CHUNG với web
+      // (`messages.cancellationDeadline`, `accountBookingDetail.cancelDialog`,
+      // `accountActionErrors` — handoff §5: cùng API thì hai client không được
+      // nói hai kiểu). Chỉ khai ở đây phần khác web: bố cục dòng của THẺ mobile.
+      detail: {
+        travellersLabel: 'Travellers',
+        contactLabel: 'Contact',
+        paidOnLabel: 'Paid on',
+        totalPaidLabel: 'Total paid',
+        totalDueLabel: 'Total due',
+        cancelledOnLabel: 'Cancelled on',
+        paidLabel: 'Paid',
+        // T4 — khối nổi bật dưới câu hạn chót (`cancellationDeadline.short`).
+        cancelByThenNote: (amount: string) => `Cancel by then and you get ${amount} back.`,
+        // T5 — booking PENDING vẫn giữ ghế nhưng chưa phải của khách.
+        paymentNotFinishedTitle: 'Payment not finished',
+        paymentNotFinishedBody: 'Your seats are held until you pay. Finish now to confirm them.',
+        cancelThisBooking: 'Cancel this booking',
+        // T5 — đợt đã đóng trong lúc khách chần chừ (`checkout` trả
+        // DEPARTURE_NOT_AVAILABLE); chỉ còn nút bỏ booking.
+        departureClosedTitle: 'This date is no longer available',
+        departureClosedBody: "Booking for this departure has closed — you can't pay for it now.",
+        // T8 — đã huỷ và hoàn tiền. `date` đã định dạng sẵn (`formatFullDate`).
+        refundedNote: (amount: string, date: string) => `${amount} refunded on ${date}`,
+        refundedTiming: 'Back on your card within 5–10 business days, depending on your bank.',
+        questionsAboutTrip: 'Questions about this trip?',
+        contactLinkLabel: 'Contact us',
+        // T6/T7 — nhãn hàng số tiền trong tấm xác nhận huỷ.
+        refundLabel: 'Refund',
+        // T6 (còn hạn huỷ miễn phí) — câu riêng của mockup mobile
+        // (`mobile-booking-screens.src.html` frame T6), KHÔNG dùng
+        // `accountBookingDetail.cancelDialog.withinBody` của web: hai mockup
+        // viết khác chữ dù cùng ý (phản hồi 01/10, soi lại bản vẽ).
+        cancelWithinBody:
+          "You're inside the free-cancellation window, so you get the full amount back to the card you paid with. This can't be undone.",
+        // T7 (quá hạn) — tiêu đề + câu riêng của mockup mobile, KHÔNG dùng lại
+        // `cancelConfirmTitle`("Cancel this booking?") của T6/PENDING: T7 mở
+        // đầu bằng SỰ KIỆN (hạn đã qua), không phải câu hỏi (soi lại bản vẽ,
+        // phản hồi 01/10).
+        cancelAfterTitle: 'The free-cancellation date has passed',
+        cancelAfterBody: (date: string) =>
+          `It ended on ${date}. You can still cancel, but this booking won't be refunded.`,
+        // T6/T7 — ô lý do của mockup mobile (`.field.ph`): nhãn NGẮN hơn hẳn
+        // câu hỏi đầy đủ của web (`accountBookingDetail.cancelDialog.reasonLabel`),
+        // tách riêng placeholder lúc ô rỗng (phản hồi 01/10).
+        cancelReasonLabel: 'Reason (optional)',
+        cancelReasonPlaceholder: 'Tell us what changed…',
+      },
+    },
+    /**
+     * Cụm P (W7/W8, mockup `mobile-booking-screens` mục 4) — bám ngày khởi
+     * hành sau khi trả tiền xong. Nội dung tour (đồ mang theo, included/
+     * excluded, lịch trình, FAQ) là DỮ LIỆU — khối này chỉ chứa CHỮ KHUNG.
+     */
+    trip: {
+      // P1 — còn nhiều ngày.
+      departingIn: 'Departing in',
+      daysCount: (n: number) => `${n} ${n === 1 ? 'day' : 'days'}`,
+      bookedOn: (date: string) => `Booked ${date}`,
+      departureOn: (date: string) => `Departure ${date}`,
+      milestoneBookingConfirmed: 'Booking confirmed',
+      milestonePaidInFull: 'Paid in full',
+      milestoneDeparture: 'Departure',
+      freeCancellationEnded: 'Free cancellation ended',
+      getReady: 'Get ready',
+      whatToBring: 'What to bring',
+      yourItinerary: 'Your itinerary',
+      whatsIncluded: "What's included",
+      bookingDetailsRow: 'Booking details',
+      // P2 — ≤ 3 ngày, cùng màn với P1 đổi giọng.
+      departing: 'Departing',
+      tomorrow: 'Tomorrow',
+      meetingNoteBody: (code: string) => `Day 1 starts here. Have booking code ${code} ready.`,
+      packingChecklist: 'Packing checklist',
+      ticksLocalOnly: 'Ticks are kept on this phone only.',
+      fullTripNotes: 'Full trip notes',
+      // P3 — "Before you go", bản đầy đủ.
+      includedInYourFare: 'Included in your fare',
+      notIncludedTitle: 'Not included — sort these yourself',
+      showAll: (n: number) => `Show all ${n}`,
+      goodToKnow: 'Good to know',
+      goodToKnowCaption: (n: number) =>
+        `${n} ${n === 1 ? 'question' : 'questions'} other travellers asked`,
+      // P5 — đang trong chuyến.
+      onTourNow: 'On tour now',
+      dayOfTotal: (n: number, total: number) => `Day ${n} of ${total}`,
+      endsOn: (date: string) => `Ends ${date}`,
+      today: 'Today',
+      tomorrowDay: (n: number) => `Tomorrow · Day ${n}`,
+      tripNotesRow: 'Trip notes',
+      tripNotesCaption: "What to bring, what's included",
+      // P6 — chuyến đã kết thúc.
+      welcomeBack: 'Welcome back',
+      finishedSummary: (tourTitle: string, date: string) => `You finished ${tourTitle} on ${date}.`,
+      daysUnit: 'days',
+      dayUnitOne: 'day',
+      placesUnit: 'places',
+      placeUnitOne: 'place',
+      travellersUnit: 'travellers',
+      travellerUnitOne: 'traveller',
+      howWasIt: 'How was it?',
+      reviewHelpsNote: 'Your review helps the next traveller pick this route.',
+      writeReview: 'Write a review',
+      reviewed: 'You reviewed this trip',
+      whereToNext: 'Where to next?',
+      nearPlaces: (names: string) => `Tours near ${names}`,
     },
     authPrompts: {
       wishlistReason: 'Sign in to save tours you love.',
       bookingReason: 'Sign in to book this tour.',
+      bookingGateTitle: 'Sign in to book',
       savedGateTitle: 'Save tours you love',
       savedGateBody: 'Sign in to keep a wishlist of tours and find them here anytime.',
       accountGateTitle: 'Your account',
       accountGateBody: 'Sign in to manage your profile and saved tours.',
+      tripsGateTitle: 'Your trips, in one place',
+      tripsGateBody: 'Sign in to see your bookings, tickets and cancellation dates.',
       signIn: 'Sign in',
       createAccount: 'Create account',
       resetSentHint: 'Open the link on any device — you will set the new password on our website.',
@@ -2266,6 +2429,29 @@ export const messages = {
       // S1 — dòng đếm dưới tiêu đề, mockup: "3 tours". Cùng chữ với
       // `accountSaved.savedCount` (web) nhưng khoá RIÊNG — hai bề mặt độc lập.
       count: (n: number) => (n === 1 ? '1 tour' : `${n} tours`),
+    },
+    /**
+     * Tab Trips — T1 (danh sách) / T2 (rỗng) / T3 (chưa đăng nhập, dùng
+     * `AuthGateScreen` chung với Saved/Account — xem `authPrompts.tripsGate*`).
+     * Nhãn trạng thái RIÊNG khỏi `booking.list.status` (web, "Awaiting
+     * payment") — mockup T1 dùng đúng "Payment due", hai bề mặt độc lập.
+     */
+    trips: {
+      title: 'Your trips',
+      chipAll: 'All',
+      chipUpcoming: 'Upcoming',
+      chipPast: 'Past',
+      travellersCount: (n: number) => (n === 1 ? '1 traveller' : `${n} travellers`),
+      finishPayment: 'Finish payment',
+      emptyTitle: 'No trips yet — your bookings will show up here.',
+      browse: 'Browse tours',
+      status: {
+        PENDING: 'Payment due',
+        PAID: 'Paid',
+        CANCELLED: 'Cancelled',
+        REFUNDED: 'Refunded',
+        PARTIALLY_REFUNDED: 'Partially refunded',
+      } as Record<string, string>,
     },
     /**
      * Travel stories (G1-G4, spec P5b-4 §6) — cụm bài viết công khai, không

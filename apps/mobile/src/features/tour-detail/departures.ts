@@ -66,6 +66,14 @@ export function formatDepartureMonth(date: string): string {
   return `${MONTHS_FULL[p.m - 1]} ${p.y}`;
 }
 
+/** "21 Sep 2026" — ngày đầy đủ kèm năm, không thứ (chi tiết booking T4/T7/T8:
+ *  "Paid on"/"Cancelled on"). Nhận chuỗi ISO datetime hoặc date-only — chỉ
+ *  đọc 10 ký tự đầu. */
+export function formatFullDate(date: string): string {
+  const p = dateParts(date.slice(0, 10));
+  return `${p.d} ${MONTHS_SHORT[p.m - 1]} ${p.y}`;
+}
+
 export interface RawDeparture {
   id: string;
   startDate: string;
