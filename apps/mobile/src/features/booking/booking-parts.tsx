@@ -241,7 +241,7 @@ export function BookingFloatNote({ message, barHeight, action }: BookingFloatNot
         padding: theme.spacing(3.5),
         borderRadius: theme.radius.base * 2,
         backgroundColor: withAlpha(theme.colors.warning, 0.16),
-        shadowColor: '#000',
+        shadowColor: theme.colors.overlay,
         shadowOffset: { width: 0, height: 6 },
         shadowOpacity: 0.25,
         shadowRadius: 12,
