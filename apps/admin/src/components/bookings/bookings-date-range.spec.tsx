@@ -1,7 +1,7 @@
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { messages } from '@tourism/i18n';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { BookingsQuery } from '@/lib/bookings-query';
 import { BookingsDateRange } from './bookings-toolbar';
 
@@ -35,6 +35,14 @@ const BASE: BookingsQuery = { page: 1, limit: 20 };
 
 beforeEach(() => {
   push.mockReset();
+  // Lịch mở ở tháng hiện tại nếu URL không có `from`. Ghim ngày hệ thống về
+  // giữa tháng 9/2026 để các ca bấm "September …" không đổi theo ngày chạy test.
+  vi.useFakeTimers({ toFake: ['Date'] });
+  vi.setSystemTime(new Date('2026-09-15T12:00:00+07:00'));
+});
+
+afterEach(() => {
+  vi.useRealTimers();
 });
 
 /** Mở lịch và trả về chính popover, để `getByRole` không quét cả trang. */
