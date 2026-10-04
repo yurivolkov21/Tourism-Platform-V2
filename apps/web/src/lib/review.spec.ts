@@ -27,6 +27,8 @@ describe('reviewSlot — trang chi tiết booking hiện gì ở chỗ đánh gi
       authorDeleted: false,
       createdAt: '2026-08-02T00:00:00.000Z',
       media: [],
+      bookingCode: null,
+      tourImage: null,
       isApproved: false,
       moderationState: 'pending',
       moderationNote: null,
