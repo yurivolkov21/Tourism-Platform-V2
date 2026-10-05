@@ -100,8 +100,10 @@ const TOUR_OPTION_PAGES_MAX = 10;
 export async function fetchPostTourOptions(cookie: string): Promise<PostTourOption[]> {
   const context = { context: withAdminAuth(cookie) };
   const options = new Map<string, PostTourOption>();
+  let totalPages = 0;
   for (let page = 1; page <= TOUR_OPTION_PAGES_MAX; page += 1) {
     const result = await api.admin.tours.list({ page, limit: TOUR_OPTION_PAGE_SIZE }, context);
+    totalPages = result.totalPages;
     for (const row of result.items) {
       options.set(row.id, {
         id: row.id,
@@ -111,6 +113,13 @@ export async function fetchPostTourOptions(cookie: string): Promise<PostTourOpti
       });
     }
     if (page >= result.totalPages) break;
+  }
+  // Cắt ở trần thì NÓI ra — cùng khuôn `fetchTours` của web (vòng review P4e-4): ô chọn thiếu
+  // tour mà không ai biết vì sao là thứ khó lần ra nhất.
+  if (totalPages > TOUR_OPTION_PAGES_MAX) {
+    console.warn(
+      `[fetchPostTourOptions] có ${totalPages} trang tour, chỉ lấy ${TOUR_OPTION_PAGES_MAX} trang đầu`,
+    );
   }
   return [...options.values()];
 }
