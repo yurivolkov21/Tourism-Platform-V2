@@ -7,15 +7,15 @@ import type { Prisma } from '../../generated/prisma/client.js';
 import { WebRevalidationService } from '../web-revalidation/web-revalidation.service.js';
 
 /**
- * Integration (Docker PG, db `tourism_test`) — bốn thao tác quản trị điểm đến
- * (spec P4e-2 F15).
+ * Integration (Docker PG, db `tourism_test`) — năm thao tác quản trị điểm đến
+ * (spec P4e-2 F15, lệnh xoá theo ADR-0053).
  *
  * Ba ca đắt nhất ở đây:
  *
  *  ① `setActive` KHÔNG đụng liên kết `tour_destinations` — đếm trước và sau
- *    bằng nhau. Đó là chốt của quyết định "chỉ ẩn, không xoá" (spec §2a):
- *    khoá ngoại khai `ON DELETE CASCADE`, nên một lệnh xoá sẽ âm thầm gỡ điểm
- *    đến khỏi mọi tour; ẩn thì không được phép làm thế.
+ *    bằng nhau. Điểm đến còn tour thì ẩn là đường duy nhất (spec §2a,
+ *    ADR-0053): khoá ngoại khai `ON DELETE CASCADE`, nên một lệnh xoá sẽ âm
+ *    thầm gỡ điểm đến khỏi mọi tour; ẩn thì không được phép làm thế.
  *  ② slug trùng ra 409 chứ không phải 500 của `P2002` — kể cả khi HAI lượt tạo
  *    bắn cùng lúc. Bài học 1 của vòng review F14: bắt `P2002` ngay ở lệnh ghi,
  *    không SELECT kiểm trước (READ COMMITTED không serialize hai INSERT).
@@ -97,6 +97,10 @@ describe('admin destinations integration (P4e-2 F15)', () => {
 
   beforeEach(async () => {
     vi.restoreAllMocks();
+    // media_assets là bảng đa chủ, không khoá ngoại (ADR-0048) — dọn để ca này không nhặt
+    // dòng ảnh của ca trước.
+    await prisma.mediaAsset.deleteMany();
+    await prisma.mediaGarbage.deleteMany();
     // Tour trỏ vào danh mục bằng FK RESTRICT — xoá tour TRƯỚC; liên kết
     // `tour_destinations` đi theo tour (CASCADE).
     await prisma.tour.deleteMany();
@@ -134,6 +138,14 @@ describe('admin destinations integration (P4e-2 F15)', () => {
       payload: { isActive },
     });
 
+  const remove = (id: string, cookie: string) =>
+    app.inject({
+      method: 'POST',
+      url: `/api/admin/destinations/${id}/delete`,
+      headers: { cookie },
+      payload: {},
+    });
+
   const listOk = async () => {
     const res = await list(adminCookie);
     expect(res.statusCode).toBe(200);
@@ -166,9 +178,9 @@ describe('admin destinations integration (P4e-2 F15)', () => {
   };
 
   describe('guard', () => {
-    it('khách thường không chạm được endpoint nào — đủ bốn đường', async () => {
+    it('khách thường không chạm được endpoint nào — đủ năm đường', async () => {
       // Bài học 5 của vòng review F14: khối guard từng bỏ sót `update`. Đếm
-      // đủ bốn trên bốn.
+      // đủ năm trên năm.
       expect((await list(customerCookie)).statusCode).toBe(403);
       expect(
         (await create({ name: 'X', slug: 'x', region: 'Central Vietnam' }, customerCookie))
@@ -176,9 +188,10 @@ describe('admin destinations integration (P4e-2 F15)', () => {
       ).toBe(403);
       expect((await update(destId(1), UPDATE, customerCookie)).statusCode).toBe(403);
       expect((await setActive(destId(1), false, customerCookie)).statusCode).toBe(403);
+      expect((await remove(destId(1), customerCookie)).statusCode).toBe(403);
     });
 
-    it('chưa đăng nhập thì cả bốn đường đều 401', async () => {
+    it('chưa đăng nhập thì cả năm đường đều 401', async () => {
       const anon = '';
       expect((await list(anon)).statusCode).toBe(401);
       expect(
@@ -186,6 +199,7 @@ describe('admin destinations integration (P4e-2 F15)', () => {
       ).toBe(401);
       expect((await update(destId(1), UPDATE, anon)).statusCode).toBe(401);
       expect((await setActive(destId(1), false, anon)).statusCode).toBe(401);
+      expect((await remove(destId(1), anon)).statusCode).toBe(401);
     });
   });
 
@@ -216,6 +230,9 @@ describe('admin destinations integration (P4e-2 F15)', () => {
       expect(rows.find((row) => row.slug === 'hoi-an')?.tourCount).toBe(1);
       expect(rows.find((row) => row.slug === 'hanoi')?.tourCount).toBe(1);
       expect(rows.find((row) => row.slug === 'retired')?.tourCount).toBe(0);
+      // ADR-0053 §5: tour nháp vẫn chặn xoá.
+      expect(rows.find((row) => row.slug === 'hoi-an')?.linkedTourCount).toBe(2);
+      expect(rows.find((row) => row.slug === 'retired')?.linkedTourCount).toBe(0);
     });
 
     it('`region` trả nguyên giá trị THÔ trong DB, kể cả dạng kiểu cũ', async () => {
@@ -367,7 +384,7 @@ describe('admin destinations integration (P4e-2 F15)', () => {
 
       expect(hidden.statusCode).toBe(200);
       expect(AdminDestinationRowSchema.parse(hidden.json()).isActive).toBe(false);
-      // Chốt của "chỉ ẩn, không xoá" (spec §2a): tour vẫn gắn điểm đến ấy.
+      // Chốt của đường ẩn (spec §2a, ADR-0053): tour vẫn gắn điểm đến ấy.
       expect(await prisma.tourDestination.count({ where: { destinationId: destId(1) } })).toBe(
         linksBefore,
       );
@@ -409,6 +426,100 @@ describe('admin destinations integration (P4e-2 F15)', () => {
 
       expect(res.statusCode).toBe(404);
       expect(res.json()).toMatchObject({ code: 'NOT_FOUND', message: 'Destination not found' });
+    });
+  });
+
+  describe('delete (ADR-0053)', () => {
+    const PUBLIC_ID = 'tourism/destinations/hoi-an/lanterns';
+
+    it('0 tour → xoá hàng và dòng ảnh thư viện; dòng ảnh tour mượn cùng publicId còn', async () => {
+      const borrower = await tourVisiting('borrower', [destId(2)]);
+      await prisma.mediaAsset.createMany({
+        data: [
+          {
+            ownerType: 'DESTINATION',
+            ownerId: destId(1),
+            publicId: PUBLIC_ID,
+            type: 'IMAGE',
+            role: 'gallery',
+            sortOrder: 1,
+          },
+          {
+            ownerType: 'TOUR',
+            ownerId: borrower.id,
+            publicId: PUBLIC_ID,
+            type: 'IMAGE',
+            role: 'hero',
+            sortOrder: 0,
+          },
+        ],
+      });
+
+      const res = await remove(destId(1), adminCookie);
+
+      expect(res.statusCode).toBe(200);
+      expect(res.json()).toEqual({ slug: 'hoi-an' });
+      expect(await prisma.destination.count({ where: { id: destId(1) } })).toBe(0);
+      expect(
+        await prisma.mediaAsset.count({ where: { ownerType: 'DESTINATION', ownerId: destId(1) } }),
+      ).toBe(0);
+      expect(await prisma.mediaAsset.count({ where: { ownerId: borrower.id } })).toBe(1);
+      // ADR-0053 §4: file Cloudinary KHÔNG vào hàng dọn — tour đang dùng nó.
+      expect(await prisma.mediaGarbage.count()).toBe(0);
+    });
+
+    it('còn liên kết với tour NHÁP → 409 IN_USE, không gì đổi', async () => {
+      await tourVisiting('draft-one', [destId(1)], false);
+
+      const res = await remove(destId(1), adminCookie);
+
+      expect(res.statusCode).toBe(409);
+      expect((res.json() as { code: string }).code).toBe('IN_USE');
+      expect(await prisma.tourDestination.count({ where: { destinationId: destId(1) } })).toBe(1);
+    });
+
+    it('id lạ → 404 NOT_FOUND', async () => {
+      // Khớp cả CÂU của contract: route chưa tồn tại cũng trả 404 kèm `NOT_FOUND`, nên ca chỉ
+      // khớp mã đã xanh ngay lúc chạy đỏ, khi chưa có lệnh xoá nào (đo 05/10).
+      const res = await remove(destId(999), adminCookie);
+      expect(res.statusCode).toBe(404);
+      expect((res.json() as { code: string }).code).toBe('NOT_FOUND');
+      expect(res.json()).toMatchObject({ message: 'Destination not found' });
+    });
+
+    it('đua: lệnh gắn tour giữ khoá trước → lệnh xoá thấy liên kết, trả 409', async () => {
+      // ADR-0053 §3. Thiếu `FOR UPDATE` thì lệnh xoá đếm 0 (liên kết chưa commit), chờ khoá
+      // ở câu DELETE, rồi CASCADE gỡ đúng liên kết vừa commit: 200 và tour mất điểm đến.
+      const tour = await tourVisiting('racing-tour', [destId(2)]);
+      let inserted!: () => void;
+      const didInsert = new Promise<void>((resolve) => {
+        inserted = resolve;
+      });
+      let release!: () => void;
+      const gate = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      const linking = prisma.$transaction(
+        async (tx) => {
+          await tx.tourDestination.create({
+            data: { tourId: tour.id, destinationId: destId(1), isPrimary: false },
+          });
+          inserted();
+          await gate;
+        },
+        { timeout: 15_000 },
+      );
+      await didInsert;
+
+      const deleting = remove(destId(1), adminCookie);
+      // Cho lệnh xoá kịp tới chỗ chờ khoá hàng rồi mới commit lệnh gắn.
+      await new Promise((resolve) => setTimeout(resolve, 300));
+      release();
+      await linking;
+      const res = await deleting;
+
+      expect(res.statusCode).toBe(409);
+      expect(await prisma.tourDestination.count({ where: { destinationId: destId(1) } })).toBe(1);
     });
   });
 
@@ -459,6 +570,20 @@ describe('admin destinations integration (P4e-2 F15)', () => {
       await create({ name: 'Dup', slug: 'hoi-an', region: 'Central Vietnam' }, adminCookie);
       await update(destId(999), UPDATE, adminCookie);
       await setActive(destId(999), false, adminCookie);
+      expect(revalidate).not.toHaveBeenCalled();
+    });
+
+    it('xoá bust `tours` sau commit; xoá hỏng thì không bust', async () => {
+      const revalidate = vi.spyOn(web, 'revalidate').mockResolvedValue(undefined);
+
+      await remove(destId(3), adminCookie);
+      expect(revalidate).toHaveBeenCalledTimes(1);
+      expect(revalidate.mock.calls[0]?.[0]).toEqual(['tours']);
+
+      revalidate.mockClear();
+      await tourVisiting('draft-one', [destId(1)], false);
+      await remove(destId(1), adminCookie);
+      await remove(destId(999), adminCookie);
       expect(revalidate).not.toHaveBeenCalled();
     });
   });

@@ -1,28 +1,29 @@
 import { Injectable, Logger } from '@nestjs/common';
 import type {
   AdminDestinationCreateInput,
+  AdminDestinationDeleteInput,
+  AdminDestinationDeleteResult,
   AdminDestinationRow,
   AdminDestinationSetActiveInput,
   AdminDestinationUpdateInput,
 } from '@tourism/contract';
 import { prisma } from '../../auth/auth.config.js';
 import { Prisma } from '../../generated/prisma/client.js';
+import { MediaOwnerType } from '../../generated/prisma/enums.js';
 import { ContractError } from '../../lib/contract-error.js';
 import { tourRevalidationTags } from '../web-revalidation/revalidation-decision.js';
 import { WebRevalidationService } from '../web-revalidation/web-revalidation.service.js';
 
 /**
- * Bốn thao tác quản trị điểm đến (spec P4e-2 F15).
+ * Năm thao tác quản trị điểm đến (spec P4e-2 F15).
  *
- * KHÔNG có lệnh xoá, và ở bảng này đó là chuyện an toàn dữ liệu chứ không chỉ
- * là chuyện tiện: khoá ngoại `tour_destinations_destination_id_fkey` khai
- * `ON DELETE CASCADE`, nên DB sẽ không chặn một lệnh xoá mà im lặng gỡ điểm
- * đến khỏi mọi tour. Ẩn (`is_active`) thì đảo ngược được, và mọi liên kết tour
- * còn nguyên (spec §2a).
+ * Xoá chỉ khi chưa tour nào dùng (ADR-0053, thay quyết định "chỉ ẩn" của spec P4e-2 §2a).
+ * Khoá ngoại `tour_destinations_destination_id_fkey` khai `ON DELETE CASCADE` nên DB KHÔNG
+ * chặn — `delete` khoá hàng điểm đến rồi đếm liên kết trong cùng transaction.
  *
  * Khác danh mục ở một chỗ đáng kể: bảng này không có cột `order`, nên không có
- * khoá advisory nào. Mỗi lệnh ghi là MỘT câu, và mọi lỗi của nó bắt NGAY tại
- * câu ấy (bài học 1–2 của vòng review F14):
+ * khoá advisory nào. Mỗi lệnh ghi ngoài `delete` là MỘT câu, và mọi lỗi của nó
+ * bắt NGAY tại câu ấy (bài học 1–2 của vòng review F14):
  *
  * - slug trùng → `P2002` từ chỉ mục `@unique`. Không SELECT kiểm trước: ở READ
  *   COMMITTED câu ấy không chặn được hai INSERT song song, và `P2002` lọt ra
@@ -44,17 +45,13 @@ export class DestinationSlugTakenError extends ContractError<'SLUG_TAKEN'> {
   }
 }
 
-/**
- * Cột của một hàng, KÈM số tour đã đăng trong CÙNG câu (bài học 3 của vòng
- * review F14).
- *
- * Đếm ở câu riêng sau lệnh ghi là đọc từ một ảnh chụp KHÁC: một tour publish
- * chen vào giữa thì hàng trả về mang `tourCount` chưa từng khớp trạng thái nào
- * của DB — mà chính con số ấy nuôi câu cảnh báo lúc ẩn điểm đến.
- *
- * Đếm tour ĐÃ ĐĂNG, cùng thước với `catalog.listDestinations`: câu cảnh báo nói
- * về thứ khách đang nhìn thấy, và tour nháp thì không ai thấy.
- */
+/** Còn tour (mọi trạng thái) gắn điểm đến — ẩn thay vì xoá (ADR-0053). */
+export class DestinationInUseError extends ContractError<'IN_USE'> {
+  constructor() {
+    super('IN_USE', 'This destination is still used by tours');
+  }
+}
+
 const DESTINATION_COLUMNS = {
   id: true,
   slug: true,
@@ -65,20 +62,32 @@ const DESTINATION_COLUMNS = {
   isActive: true,
 } satisfies Prisma.DestinationSelect;
 
+/**
+ * Cột của một hàng KÈM cờ `isPublished` của mọi tour gắn nó, trong CÙNG một lần đọc
+ * (bài học 3 của vòng review F14). `tourCount` (tour ĐÃ ĐĂNG, nuôi câu cảnh báo lúc ẩn) và
+ * `linkedTourCount` (mọi trạng thái, quyết nút Delete — ADR-0053 §5) suy từ CÙNG danh sách
+ * nên luôn `tourCount ≤ linkedTourCount`.
+ *
+ * Đếm ở câu riêng sau lệnh ghi là đọc từ một ảnh chụp KHÁC: một tour publish
+ * chen vào giữa thì hàng trả về mang `tourCount` chưa từng khớp trạng thái nào
+ * của DB — mà chính con số ấy nuôi câu cảnh báo lúc ẩn điểm đến.
+ *
+ * `tourCount` đếm tour ĐÃ ĐĂNG, cùng thước với `catalog.listDestinations`: câu cảnh
+ * báo nói về thứ khách đang nhìn thấy, và tour nháp thì không ai thấy.
+ */
 const DESTINATION_SELECT = {
   ...DESTINATION_COLUMNS,
-  _count: { select: { tours: { where: { tour: { isPublished: true } } } } },
+  tours: { select: { tour: { select: { isPublished: true } } } },
 } satisfies Prisma.DestinationSelect;
 
 /**
- * Lệnh sửa và lệnh ẩn/hiện đọc thêm slug của MỌI tour gắn điểm đến, trong cùng
- * câu ghi: trang chi tiết `/tours/<slug>` in tên điểm đến qua tag `tour:<slug>`,
- * nên bust riêng `tours` thì trang ấy giữ tên cũ tới hết 300 giây ISR (nợ G5,
- * đóng ở vòng review F15).
+ * Lệnh sửa và lệnh ẩn/hiện đọc thêm slug của MỌI tour gắn điểm đến, trong cùng câu ghi:
+ * trang chi tiết `/tours/<slug>` in tên điểm đến qua tag `tour:<slug>`, nên bust riêng
+ * `tours` thì trang ấy giữ tên cũ tới hết 300 giây ISR (nợ G5, đóng ở vòng review F15).
  */
 const DESTINATION_WRITE_SELECT = {
-  ...DESTINATION_SELECT,
-  tours: { select: { tour: { select: { slug: true } } } },
+  ...DESTINATION_COLUMNS,
+  tours: { select: { tour: { select: { slug: true, isPublished: true } } } },
 } satisfies Prisma.DestinationSelect;
 
 type DestinationColumns = Prisma.DestinationGetPayload<{ select: typeof DESTINATION_COLUMNS }>;
@@ -94,8 +103,21 @@ const DESTINATION_ORDER_BY = [
   { id: 'asc' },
 ] satisfies Prisma.DestinationOrderByWithRelationInput[];
 
+/** Hai con số tour của một hàng — xem `DESTINATION_SELECT`. */
+interface TourCounts {
+  tourCount: number;
+  linkedTourCount: number;
+}
+
+function countTours(links: ReadonlyArray<{ tour: { isPublished: boolean } }>): TourCounts {
+  return {
+    tourCount: links.filter((link) => link.tour.isPublished).length,
+    linkedTourCount: links.length,
+  };
+}
+
 /** Hàng DB → hàng contract. `region` đi nguyên văn — chuẩn hoá là việc của người đọc. */
-function toRow(row: DestinationColumns, tourCount: number): AdminDestinationRow {
+function toRow(row: DestinationColumns, counts: TourCounts): AdminDestinationRow {
   return {
     id: row.id,
     slug: row.slug,
@@ -104,7 +126,8 @@ function toRow(row: DestinationColumns, tourCount: number): AdminDestinationRow 
     region: row.region,
     description: row.description,
     isActive: row.isActive,
-    tourCount,
+    tourCount: counts.tourCount,
+    linkedTourCount: counts.linkedTourCount,
   };
 }
 
@@ -131,7 +154,7 @@ export class AdminDestinationsService {
       orderBy: DESTINATION_ORDER_BY,
       select: DESTINATION_SELECT,
     });
-    return rows.map((row) => toRow(row, row._count.tours));
+    return rows.map((row) => toRow(row, countTours(row.tours)));
   }
 
   async create(input: AdminDestinationCreateInput): Promise<AdminDestinationRow> {
@@ -156,7 +179,7 @@ export class AdminDestinationsService {
     );
     this.bust(['tours']);
     // Điểm đến vừa tạo chưa thể có tour nào — không đếm (cùng nếp danh mục).
-    return toRow(created, 0);
+    return toRow(created, { tourCount: 0, linkedTourCount: 0 });
   }
 
   async update(input: AdminDestinationUpdateInput): Promise<AdminDestinationRow> {
@@ -180,7 +203,7 @@ export class AdminDestinationsService {
       `[admin] destination updated ${JSON.stringify({ id: input.id, region: input.region })}`,
     );
     this.bust(writtenTags(updated));
-    return toRow(updated, updated._count.tours);
+    return toRow(updated, countTours(updated.tours));
   }
 
   /**
@@ -204,7 +227,47 @@ export class AdminDestinationsService {
       `[admin] destination active ${JSON.stringify({ id: input.id, isActive: input.isActive })}`,
     );
     this.bust(writtenTags(updated));
-    return toRow(updated, updated._count.tours);
+    return toRow(updated, countTours(updated.tours));
+  }
+
+  /**
+   * Xoá một điểm đến chưa tour nào dùng (ADR-0053 §3–4), MỘT transaction:
+   *
+   * 1. `SELECT … FOR UPDATE` hàng điểm đến — câu chèn liên kết tour mới phải giành
+   *    `FOR KEY SHARE` trên chính hàng ấy (phép kiểm khoá ngoại), mà hai khoá này xung đột,
+   *    nên không lệnh gắn nào chen vào giữa lúc đếm và lúc xoá. Lệnh gắn đến SAU lượt xoá
+   *    thì nhận `P2003` — mã "điểm đến không tồn tại" có sẵn của khu sửa tour.
+   * 2. Đếm `tour_destinations` ở statement SAU khoá (snapshot mới, thấy mọi thứ đã commit);
+   *    còn dòng → `IN_USE`.
+   * 3. Xoá dòng `media_assets` chủ `DESTINATION` (bảng đa chủ, không khoá ngoại). KHÔNG
+   *    `requeue` publicId nào: ảnh thư viện là ảnh catalog dùng chung, tour mượn nó bằng
+   *    dòng của riêng tour (ADR-0048 §3, §6).
+   * 4. Xoá điểm đến.
+   */
+  async delete(input: AdminDestinationDeleteInput): Promise<AdminDestinationDeleteResult> {
+    const deleted = await prisma.$transaction(
+      async (tx) => {
+        const [locked] = await tx.$queryRaw<{ slug: string }[]>(Prisma.sql`
+          SELECT slug FROM destinations WHERE id = ${input.id}::uuid FOR UPDATE
+        `);
+        if (!locked) throw new DestinationNotFoundError(input.id);
+        const links = await tx.tourDestination.count({ where: { destinationId: input.id } });
+        if (links > 0) throw new DestinationInUseError();
+        await tx.mediaAsset.deleteMany({
+          where: { ownerType: MediaOwnerType.DESTINATION, ownerId: input.id },
+        });
+        await tx.destination.delete({ where: { id: input.id } });
+        return locked;
+      },
+      { timeout: 10_000, maxWait: 5_000 },
+    );
+
+    this.logger.log(
+      `[admin] destination deleted ${JSON.stringify({ id: input.id, slug: deleted.slug })}`,
+    );
+    // Không tour nào gắn điểm đến này nên không có trang `tour:<slug>` nào phải bust kèm.
+    this.bust(['tours']);
+    return { slug: deleted.slug };
   }
 
   /**

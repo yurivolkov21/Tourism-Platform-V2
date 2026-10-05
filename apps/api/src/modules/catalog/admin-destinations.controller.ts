@@ -56,4 +56,15 @@ export class AdminDestinationsController {
       }
     });
   }
+
+  @Implement(contract.admin.destinations.delete)
+  delete() {
+    return implement(contract.admin.destinations.delete).handler(async ({ input, errors }) => {
+      try {
+        return await this.destinations.delete(input);
+      } catch (error) {
+        throw toContractError(error, errors);
+      }
+    });
+  }
 }
