@@ -271,6 +271,34 @@ describe('PostEditor — lưu cả form', () => {
     expect(await within(card).findByText(t.errors.RELATED_TOUR_NOT_FOUND)).toBeInTheDocument();
   });
 
+  // Vòng review P4e-4: xoá tour không đổi phiên bản bài nên Reload không sửa được danh sách —
+  // trước đây admin phải đoán gỡ tour nào.
+  it('RELATED_TOUR_NOT_FOUND kèm id: gỡ đúng tour đã mất, nói tên nó, lưu lại gửi phần còn lại', async () => {
+    const update = vi.fn<UpdatePostAction>().mockResolvedValueOnce({
+      ok: false,
+      code: 'RELATED_TOUR_NOT_FOUND',
+      missingTourIds: [TOUR_A.id],
+    });
+    const { user } = renderEditor({
+      update,
+      detail: postDetailFixture({ relatedTours: [TOUR_A, TOUR_B] }),
+    });
+
+    await user.type(screen.getByLabelText(t.fields.title), '!');
+    await user.click(saveButton());
+
+    const card = screen.getByText(t.tours.title).closest('[data-slot="card"]') as HTMLElement;
+    expect(await within(card).findByText(t.tours.removedGone([TOUR_A.title]))).toBeInTheDocument();
+    expect(within(card).queryByText(TOUR_A.title)).not.toBeInTheDocument();
+    expect(within(card).getByText(TOUR_B.title)).toBeInTheDocument();
+
+    update.mockResolvedValueOnce({ ok: true, detail: postDetailFixture() });
+    await user.click(saveButton());
+    expect(update).toHaveBeenLastCalledWith(
+      expect.objectContaining({ relatedTourIds: [TOUR_B.id] }),
+    );
+  });
+
   it('thêm tag và tour rồi lưu: payload mang đúng thứ tự đã soạn', async () => {
     const update = vi
       .fn<UpdatePostAction>()

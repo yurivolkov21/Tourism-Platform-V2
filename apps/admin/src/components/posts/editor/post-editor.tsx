@@ -101,6 +101,8 @@ export function PostEditor({
   const [cardError, setCardError] = useState<{
     code: 'PHOTO_NOT_ALLOWED' | 'RELATED_TOUR_NOT_FOUND';
     version: string;
+    /** Câu riêng thay câu chung của mã — tour đã mất đã được gỡ (vòng review P4e-4). */
+    message?: string;
   } | null>(null);
 
   useReportUnsaved(form.dirty || uploading);
@@ -113,8 +115,7 @@ export function PostEditor({
       : form.serverChanged
         ? STALE
         : null;
-  const shownCardError =
-    cardError !== null && cardError.version === version ? cardError.code : null;
+  const shownCardError = cardError !== null && cardError.version === version ? cardError : null;
 
   function patch(next: Partial<PostFormValues>) {
     form.setValues((current) => ({ ...current, ...next }));
@@ -167,6 +168,18 @@ export function PostEditor({
     } else if (code === 'NOT_FOUND') {
       toast.error(updatePostErrorCopy(code));
       router.push(POSTS_LIST_HREF);
+    } else if (code === 'RELATED_TOUR_NOT_FOUND' && (result.missingTourIds ?? []).length > 0) {
+      // Xoá tour không đổi phiên bản bài nên Reload không sửa được danh sách: gỡ ĐÚNG các tour
+      // đã mất khỏi form, nói tên chúng — lần lưu kế gửi phần còn lại.
+      const gone = new Set(result.missingTourIds);
+      const titles = values.relatedTours
+        .filter((tour) => gone.has(tour.id))
+        .map((tour) => tour.title);
+      form.setValues((current) => ({
+        ...current,
+        relatedTours: current.relatedTours.filter((tour) => !gone.has(tour.id)),
+      }));
+      setCardError({ code, version, message: t.tours.removedGone(titles) });
     } else if (code === 'PHOTO_NOT_ALLOWED' || code === 'RELATED_TOUR_NOT_FOUND') {
       setCardError({ code, version });
     } else {
@@ -208,7 +221,7 @@ export function PostEditor({
               cover={values.cover}
               altError={errors.coverAlt}
               serverError={
-                shownCardError === 'PHOTO_NOT_ALLOWED'
+                shownCardError?.code === 'PHOTO_NOT_ALLOWED'
                   ? updatePostErrorCopy('PHOTO_NOT_ALLOWED')
                   : null
               }
@@ -226,8 +239,8 @@ export function PostEditor({
               tours={values.relatedTours}
               options={tourOptions}
               serverError={
-                shownCardError === 'RELATED_TOUR_NOT_FOUND'
-                  ? updatePostErrorCopy('RELATED_TOUR_NOT_FOUND')
+                shownCardError?.code === 'RELATED_TOUR_NOT_FOUND'
+                  ? (shownCardError.message ?? updatePostErrorCopy('RELATED_TOUR_NOT_FOUND'))
                   : null
               }
               onChange={(relatedTours) => patch({ relatedTours })}

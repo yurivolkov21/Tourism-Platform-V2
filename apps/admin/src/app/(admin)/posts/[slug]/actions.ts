@@ -22,6 +22,7 @@ import {
   classifySignCoverError,
   classifyUpdatePostError,
   type DeletePostResult,
+  missingTourIdsOf,
   type SignCoverResult,
   type UpdatePostResult,
 } from '@/lib/posts-write';
@@ -41,7 +42,11 @@ export async function updatePostAction(input: AdminPostUpdateInput): Promise<Upd
   try {
     detail = await updateAdminPost(cookie, parsed.data);
   } catch (error) {
-    return { ok: false, code: classifyUpdatePostError(error) };
+    const code = classifyUpdatePostError(error);
+    if (code === 'RELATED_TOUR_NOT_FOUND') {
+      return { ok: false, code, missingTourIds: missingTourIdsOf(error) };
+    }
+    return { ok: false, code };
   }
   return { ok: true, detail };
 }

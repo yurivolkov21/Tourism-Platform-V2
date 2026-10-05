@@ -4735,6 +4735,16 @@ export const messages = {
           /** Đo: `getPostBySlug` lọc `tour.isPublished`. */
           offSaleNote:
             'Tours that are off sale stay hidden on the site until they go back on sale.',
+          /**
+           * `RELATED_TOUR_NOT_FOUND` chỉ ra tour đã mất (vòng review P4e-4) — form gỡ chúng
+           * khỏi danh sách RỒI mới báo, nên câu nói việc đã xảy ra.
+           */
+          removedGone: (titles: readonly string[]) => {
+            const quoted = titles.map((title) => `“${title}”`);
+            return quoted.length === 1
+              ? `${quoted[0]} no longer exists, so it was taken off this list. Save again.`
+              : `${new Intl.ListFormat('en', { type: 'conjunction' }).format(quoted)} no longer exist, so they were taken off this list. Save again.`;
+          },
         },
         banners: {
           stale:

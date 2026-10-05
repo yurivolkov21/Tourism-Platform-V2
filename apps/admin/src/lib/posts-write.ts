@@ -1,3 +1,4 @@
+import { ORPCError } from '@orpc/client';
 import {
   type AdminPostCreateInput,
   type AdminPostCreateResult,
@@ -44,10 +45,26 @@ export type CreatePostResult =
 
 export type CreatePostAction = (input: AdminPostCreateInput) => Promise<CreatePostResult>;
 
-/** Lệnh lưu trả NGUYÊN bài server vừa ghi — form lấy phiên bản mới từ đây. */
+/**
+ * Lệnh lưu trả NGUYÊN bài server vừa ghi — form lấy phiên bản mới từ đây. Hỏng vì tour liên
+ * quan đã bị xoá thì kèm id các tour ấy, để form gỡ đúng tour (vòng review P4e-4).
+ */
 export type UpdatePostResult =
   | { ok: true; detail: AdminPostDetail }
-  | { ok: false; code: UpdatePostContractCode | TransportFailureCode };
+  | { ok: false; code: UpdatePostContractCode | TransportFailureCode; missingTourIds?: string[] };
+
+/**
+ * Id các tour đã mất mà `RELATED_TOUR_NOT_FOUND` mang theo. Chỉ tin lỗi ĐÃ KHAI (`defined`)
+ * đúng mã ấy; mọi ca khác là rỗng và form rơi về câu chung.
+ */
+export function missingTourIdsOf(error: unknown): string[] {
+  if (!(error instanceof ORPCError) || !error.defined) return [];
+  if (error.code !== 'RELATED_TOUR_NOT_FOUND') return [];
+  const data: unknown = error.data;
+  if (typeof data !== 'object' || data === null || !('tourIds' in data)) return [];
+  const { tourIds } = data;
+  return Array.isArray(tourIds) ? tourIds.filter((id) => typeof id === 'string') : [];
+}
 
 export type UpdatePostAction = (input: AdminPostUpdateInput) => Promise<UpdatePostResult>;
 

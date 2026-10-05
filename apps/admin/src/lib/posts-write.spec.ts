@@ -1,3 +1,4 @@
+import { ORPCError } from '@orpc/client';
 import { contract, POST_SLUG_MAX, POST_TITLE_MAX } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
 import { describe, expect, it } from 'vitest';
@@ -5,6 +6,7 @@ import {
   CREATE_POST_CONTRACT_CODES,
   DELETE_POST_CONTRACT_CODES,
   isDeletePostStale,
+  missingTourIdsOf,
   postCreatePayload,
   SIGN_COVER_CONTRACT_CODES,
   UPDATE_POST_CONTRACT_CODES,
@@ -78,5 +80,35 @@ describe('hộp New post', () => {
       title: 'Tea',
       slug: 'tea',
     });
+  });
+});
+
+describe('missingTourIdsOf (vòng review P4e-4)', () => {
+  const GONE = '7a1b2c3d-0000-4000-8000-0000000000e1';
+
+  it('RELATED_TOUR_NOT_FOUND đã khai, có data: đúng các tour đã mất', () => {
+    const error = new ORPCError('RELATED_TOUR_NOT_FOUND', {
+      status: 404,
+      defined: true,
+      data: { tourIds: [GONE] },
+    });
+    expect(missingTourIdsOf(error)).toEqual([GONE]);
+  });
+
+  it('không có data, mã khác, lỗi chưa khai hay lỗi lạ: rỗng — form rơi về câu chung', () => {
+    expect(
+      missingTourIdsOf(new ORPCError('RELATED_TOUR_NOT_FOUND', { status: 404, defined: true })),
+    ).toEqual([]);
+    expect(
+      missingTourIdsOf(
+        new ORPCError('NOT_FOUND', { status: 404, defined: true, data: { tourIds: [GONE] } }),
+      ),
+    ).toEqual([]);
+    expect(
+      missingTourIdsOf(
+        new ORPCError('RELATED_TOUR_NOT_FOUND', { status: 404, data: { tourIds: [GONE] } }),
+      ),
+    ).toEqual([]);
+    expect(missingTourIdsOf(new Error('boom'))).toEqual([]);
   });
 });
