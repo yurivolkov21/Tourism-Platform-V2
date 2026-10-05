@@ -25,6 +25,17 @@ sáng/tối và hiện vùng an toàn. Tài liệu bàn giao đi kèm ở `docs/
 | `mobile-account-screens.src.html` | P5b-4 Saved · tài khoản · bài viết | 14 | 21/09 · [bàn giao](../../handoff/mobile-account-handoff.md) |
 | `mobile-review-screens.src.html` | P5b-5 đánh giá | 7 | 21/09 · [bàn giao](../../handoff/mobile-review-handoff.md) |
 
+## Chờ thi công — ba trang đơn của khách (P7)
+
+Duyệt qua wireframe trong chat ngày 05/10; rộng 1280px, tự thu cho vừa cửa sổ. Ảnh tour lấy
+thẳng từ Cloudinary nên cần mạng.
+
+| File | Trang | Chốt |
+| --- | --- | --- |
+| `booking-detail.src.html` | `/account/bookings/[code]`: vé boarding pass, thanh hành trình, hai cột theo giai đoạn | 05/10 · [spec](../../specs/2026-10-05-booking-pages-redesign-design.md) §5 |
+| `booking-voucher.src.html` | `/checkout/success`: thẻ chia đôi mảng teal, mảng trái ảnh tour lớn | 05/10 · spec §6 |
+| `booking-list.src.html` | `/account/bookings`: hàng tìm và lọc, phân trang Newer / Older trips | 05/10 · spec §7 |
+
 ## Đã dựng xong — bản ghi thiết kế web và admin
 
 Cột cuối trả lời câu "xoá file này thì mất gì".

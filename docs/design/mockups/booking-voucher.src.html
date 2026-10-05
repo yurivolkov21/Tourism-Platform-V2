@@ -1,0 +1,258 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Voucher — bản vẽ đã duyệt</title>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Literata:opsz,wght@7..72,500;7..72,600;7..72,700&display=swap" rel="stylesheet">
+<style>
+  /* ── trang so sánh (ngoài bản vẽ) ── */
+  :root{color-scheme:light}
+  body{margin:0;background:#f3f4f4;color:#1d1d1f;font:14px/1.55 system-ui,-apple-system,"Segoe UI",sans-serif}
+  .wrap{max-width:1400px;margin:0 auto;padding:28px 24px 64px}
+  h1{font-size:24px;margin:0 0 6px}
+  .lead{color:#6b6b70;margin:0 0 6px}
+  .tag{display:inline-block;font-size:11px;font-weight:700;letter-spacing:.08em;padding:3px 9px;border-radius:6px;margin:26px 0 8px}
+  .tag.old{background:rgba(127,127,127,.2)}
+  .tag.new{background:#0071e3;color:#fff}
+  .chg{margin:10px 0 0 20px;padding:0;font-size:13.5px;line-height:1.55}
+  .chg li{margin:3px 0}
+  .chg code{font-size:12px}
+  .v2wrap{margin:6px 0 4px;border-radius:12px;overflow:hidden}
+  .options{display:flex;flex-direction:column;gap:10px;margin-top:12px}
+  .option{background:#fff;border:2px solid #d1d1d6;border-radius:12px;padding:12px 16px;display:flex;gap:14px;align-items:flex-start;cursor:pointer}
+  .option.selected{border-color:#0071e3;background:#e8f4fd}
+  .option .letter{background:#e5e5e7;min-width:28px;height:28px;padding:0 6px;border-radius:6px;display:grid;place-items:center;font-weight:600;flex:none}
+  .option.selected .letter{background:#0071e3;color:#fff}
+  .option h3{margin:0;font-size:14.5px}
+  .option p{margin:2px 0 0;color:#6b6b70;font-size:13px}
+
+  /* ── bản vẽ ── */
+  .v2{--bg:oklch(0.977 0.003 174.5);--fg:oklch(0.275 0.021 196);--primary:oklch(0.494 0.067 184.3);--pdeep:oklch(0.36 0.055 188);--ink:oklch(0.42 0.06 184);--muted:oklch(0.945 0.008 174);--mfg:oklch(0.5 0.02 190);--border:oklch(0.87 0.012 180);--ok:oklch(0.52 0.11 162);--hero:oklch(0.235 0.02 190);--mint:oklch(0.86 0.08 172);
+    width:1280px;background:var(--bg);color:var(--fg);font:14px/1.45 Archivo,system-ui,sans-serif;border:1px solid var(--border);border-radius:12px;overflow:hidden;text-align:left}
+  .v2 *{box-sizing:border-box;min-width:0}
+  .v2 p{margin:0}
+  .v2 .i{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none;display:inline-block;vertical-align:-3px}
+  .v2 .serif{font-family:Literata,Georgia,serif;font-weight:600}
+  .v2 .mono{font-family:'IBM Plex Mono',ui-monospace,monospace}
+  .v2 .mut{color:var(--mfg)}
+  .v2 .k{font:700 10px/1 Archivo,sans-serif;letter-spacing:.15em;text-transform:uppercase;color:var(--mfg)}
+  .v2 .b-dark{background:var(--fg);color:#fff;border-radius:8px;height:30px;padding:0 11px;display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;white-space:nowrap}
+
+  /* khung site thu gọn — hero tối giữ nguyên quy ước site */
+  .v2 .x-nav{height:56px;background:var(--hero);display:flex;align-items:center;padding:0 40px;color:oklch(0.88 0.01 180);font-size:12.5px}
+  .v2 .x-logo{font:600 17px/1 Literata,serif;color:#fff;display:flex;align-items:center;gap:9px}
+  .v2 .x-logo i{width:14px;height:14px;background:var(--mint);transform:rotate(45deg);border-radius:3px;display:inline-block}
+  .v2 .x-links{display:flex;gap:22px;margin:0 auto}
+  .v2 .x-cta{background:#fff;color:var(--hero);border-radius:999px;padding:7px 16px;font-weight:600}
+  .v2 .x-hero{background:var(--hero);color:oklch(0.93 0.01 180);padding:6px 40px 28px}
+  .v2 .x-crumbrow{display:flex;align-items:center;justify-content:space-between;gap:12px}
+  .v2 .x-crumb{font-size:12px;opacity:.7}
+  .v2 .x-act{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;border:1px solid color-mix(in oklch,white 30%,transparent);border-radius:8px;padding:5px 10px;color:#fff}
+  .v2 .x-title{font:500 34px/1.15 Literata,serif;margin-top:10px}
+  .v2 .x-code{font:500 11px/1 'IBM Plex Mono',monospace;letter-spacing:.14em;opacity:.6;margin-top:10px}
+  .v2 .x-page{padding:28px 40px 40px}
+
+  /* thẻ chia đôi dưới hero */
+  .v2 .vc{display:grid;grid-template-columns:minmax(0,1fr) 440px;border:1px solid var(--border);border-radius:18px;overflow:hidden;background:#fff}
+  .v2 .vc-l{padding:32px 40px 36px;position:relative}
+  .v2 .vc-r{background:var(--pdeep);color:oklch(0.95 0.01 180);padding:30px 32px 34px}
+  .v2 .vs-h{font:600 32px/1.15 Literata,serif}
+  .v2 .vs-sub{color:var(--mfg);margin-top:8px;font-size:14px}
+  .v2 .vs-sec{font-weight:600;font-size:15px;margin-top:28px}
+  .v2 .vs-two{display:grid;grid-template-columns:1fr 1fr;gap:28px;margin-top:24px}
+  .v2 .vs-two b{display:block;font-size:14px;margin-bottom:5px}
+  .v2 .item{display:grid;grid-template-columns:84px minmax(0,1fr) auto;gap:16px;align-items:center;padding:14px 0;border-bottom:1px solid var(--muted)}
+  .v2 .item .th{width:84px;height:62px;border-radius:10px;background:center/cover var(--muted)}
+  .v2 .sec-k{font:700 10.5px/1 Archivo,sans-serif;letter-spacing:.15em;text-transform:uppercase;color:var(--mfg);margin-top:26px}
+
+  /* mảng teal (giữ nguyên phương án 1) */
+  .v2 .cp{background:#fff;color:var(--fg);border-radius:14px;padding:16px 18px}
+  .v2 .cp-box{display:flex;align-items:center;justify-content:space-between;gap:10px;border:1px solid var(--border);background:color-mix(in oklch,var(--muted) 45%,#fff);border-radius:10px;padding:10px 12px}
+  .v2 .cp-box .k{margin-bottom:6px}
+  .v2 .cp-code{font:600 22px/1 'IBM Plex Mono',monospace;letter-spacing:.1em}
+  .v2 .cp-meta{display:flex;gap:16px;font-size:12px;color:var(--mfg);margin-top:10px}
+  .v2 .cp-meta span{display:inline-flex;gap:5px;align-items:center}
+  .v2 .cp-ul{list-style:none;margin:10px 0 0;padding:0;display:grid;gap:7px;font-size:12.5px}
+  .v2 .cp-ul li{display:flex;gap:8px;align-items:flex-start}
+  .v2 .cp-ul .i{color:var(--ok);margin-top:1px}
+  .v2 .bars{height:30px;display:flex;margin-top:12px}
+  .v2 .bars i{display:block;background:var(--fg)}
+  .v2 .kv{display:flex;justify-content:space-between;gap:16px;padding:3px 0;font-size:13.5px}
+  .v2 .kv>span:last-child{text-align:right}
+  .v2 .ov{margin-top:22px}
+  .v2 .ov-h{font-weight:600;font-size:16px;margin-bottom:8px}
+  .v2 .vc-r .kv>span:first-child{color:color-mix(in oklch,white 72%,transparent)}
+  .v2 .vc-r .kv.tot{border-top:1px solid color-mix(in oklch,white 25%,transparent);margin-top:6px;padding-top:8px;font-weight:700;font-size:15px}
+  .v2 .vc-r .kv.tot>span:first-child{color:#fff}
+  .v2 .jn{background:color-mix(in oklch,white 10%,var(--pdeep));border-radius:12px;padding:14px 16px;margin-top:18px}
+  .v2 .jn-h{font-weight:600;margin-bottom:10px}
+  .v2 .jn-it{display:grid;grid-template-columns:20px minmax(0,1fr);gap:10px;position:relative;padding-bottom:12px;font-size:13px}
+  .v2 .jn-it:before{content:"";position:absolute;left:9px;top:20px;bottom:0;width:1.5px;background:color-mix(in oklch,white 35%,transparent)}
+  .v2 .jn-it:last-child{padding-bottom:0}
+  .v2 .jn-it:last-child:before{display:none}
+  .v2 .jn-k{width:20px;height:20px;border-radius:50%;border:1.5px solid var(--mint);display:grid;place-items:center;color:var(--pdeep)}
+  .v2 .jn-k .i{width:12px;height:12px;stroke-width:3}
+  .v2 .jn-it.done .jn-k{background:var(--mint)}
+  .v2 .jn-it small{display:block;opacity:.72;font-size:12px}
+  .v2 .b-white{display:flex;align-items:center;justify-content:center;gap:8px;height:44px;border-radius:10px;background:#fff;color:var(--pdeep);font-weight:700;margin-top:20px}
+  .v2 .lnk{display:flex;justify-content:center;gap:6px;align-items:center;margin-top:12px;text-decoration:underline;font-size:13px}
+
+  /* mộc — sao lại VisaStamp của site (nghiêng 4°, viền trong gạch đứt, mực loang) */
+  .v2 .visa{position:absolute;right:38px;top:34px;transform:rotate(4deg);border:2px solid var(--ok);color:var(--ok);border-radius:12px;padding:9px 15px;font:700 13px/1 Literata,serif;letter-spacing:.14em;opacity:.85;
+    -webkit-mask-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' seed='7'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0.9 0 0 0 0.35'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23g)'/%3E%3C/svg%3E");
+    mask-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' seed='7'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0.9 0 0 0 0.35'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23g)'/%3E%3C/svg%3E");
+    -webkit-mask-size:140px 140px;mask-size:140px 140px;mix-blend-mode:multiply}
+  .v2 .visa:before{content:"";position:absolute;inset:3px;border:1px dashed currentColor;border-radius:8px;opacity:.55}
+
+  /* L1 — thẻ ảnh lớn */
+  .v2 .phc{position:relative;height:290px;border-radius:16px;overflow:hidden;background:center 68%/cover no-repeat var(--muted);margin-top:24px}
+  .v2 .phc:after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,transparent 30%,oklch(0.18 0.02 190/.88) 100%)}
+  .v2 .phc-b{position:absolute;left:24px;right:24px;bottom:20px;z-index:1;color:#fff}
+  .v2 .phc-k{font:700 10.5px/1 Archivo,sans-serif;letter-spacing:.16em;text-transform:uppercase;opacity:.82}
+  .v2 .phc-t{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;margin-top:8px}
+  .v2 .phc-t b{font:600 25px/1.2 Literata,serif}
+  .v2 .phc-t span{font:600 20px/1 'IBM Plex Mono',monospace;white-space:nowrap}
+  .v2 .glass{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+  .v2 .glass span{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;padding:5px 11px;border-radius:999px;background:oklch(1 0 0/.16);border:1px solid oklch(1 0 0/.32);backdrop-filter:blur(6px)}
+  .v2 .icg{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:18px}
+  .v2 .icr{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:22px}
+  .v2 .icc{display:grid;grid-template-columns:38px minmax(0,1fr);gap:12px;align-items:start;border:1px solid var(--border);border-radius:12px;padding:14px 16px}
+  .v2 .icc .ic{width:38px;height:38px;border-radius:10px;background:color-mix(in oklch,var(--primary) 11%,white);color:var(--primary);display:grid;place-items:center}
+  .v2 .icc b{display:block;font-size:13.5px}
+  .v2 .icc p{font-size:12.5px;color:var(--mfg);margin-top:2px}
+
+  /* L2 — dải 4 ô có icon + điểm nổi bật */
+  .v2 .okk{display:inline-flex;align-items:center;gap:8px;font:700 10.5px/1 Archivo,sans-serif;letter-spacing:.15em;text-transform:uppercase;color:var(--ok)}
+  .v2 .okk i{width:24px;height:24px;border-radius:50%;background:color-mix(in oklch,var(--ok) 15%,white);display:grid;place-items:center}
+  .v2 .okk .i{width:13px;height:13px;stroke-width:3}
+  .v2 .fx{display:grid;grid-template-columns:minmax(0,1.35fr) repeat(3,minmax(0,1fr));border:1px solid var(--border);border-radius:14px;margin-top:22px;background:color-mix(in oklch,var(--muted) 35%,white)}
+  .v2 .fx>div{padding:14px 14px;border-right:1px solid var(--border);display:grid;grid-template-columns:34px minmax(0,1fr);gap:8px;align-items:center}
+  .v2 .fx>div:last-child{border-right:0}
+  .v2 .fx .ic{width:34px;height:34px;border-radius:9px;background:#fff;border:1px solid var(--border);display:grid;place-items:center;color:var(--ink)}
+  .v2 .fx b{display:block;font-size:13.5px;margin-top:4px}
+  .v2 .it2{display:grid;grid-template-columns:128px minmax(0,1fr) auto;gap:18px;align-items:start;margin-top:12px}
+  .v2 .it2 .th{width:128px;height:92px;border-radius:12px;background:center/cover var(--muted)}
+  .v2 .it2 p{font-size:13px;color:var(--mfg);margin-top:4px}
+  .v2 .hl{display:grid;grid-template-columns:1fr 1fr;gap:9px 22px;margin-top:12px;font-size:13px}
+  .v2 .hl span{display:flex;gap:9px;align-items:flex-start}
+  .v2 .hl .i{color:var(--primary);margin-top:2px;width:15px;height:15px}
+
+  /* L3 — dải ảnh + xem trước ngày đi */
+  .v2 .strip{position:relative;height:150px;border-radius:14px;overflow:hidden;background:center 38%/cover no-repeat var(--muted);margin-top:22px}
+  .v2 .strip:after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,oklch(0.18 0.02 190/.82) 0%,oklch(0.18 0.02 190/.35) 55%,transparent 100%)}
+  .v2 .strip-b{position:absolute;left:22px;top:0;bottom:0;display:flex;flex-direction:column;justify-content:center;gap:6px;z-index:1;color:#fff}
+  .v2 .day{border:1px solid var(--border);border-radius:14px;padding:16px 18px 14px 24px;position:relative;margin-top:12px}
+  .v2 .day:before{content:"";position:absolute;left:0;top:16px;bottom:16px;width:3px;border-radius:0 3px 3px 0;background:var(--primary)}
+  .v2 .day-t{font-weight:600;font-size:14px}
+  .v2 .day-x{font:12px/1.8 'IBM Plex Mono',monospace;white-space:pre-line;margin-top:6px;display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden}
+  .v2 .day-a{font-size:12.5px;color:var(--primary);font-weight:600;margin-top:8px}
+  .v2 .inc{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}
+  .v2 .inc span{display:inline-flex;align-items:center;gap:6px;font-size:12px;border:1px solid var(--border);border-radius:999px;padding:4px 10px}
+  .v2 .inc .i{color:var(--ok);width:13px;height:13px;stroke-width:2.5}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol>
+    <symbol id="i-copy" viewBox="0 0 24 24"><rect x="8" y="8" width="14" height="14" rx="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></symbol>
+    <symbol id="i-cal" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></symbol>
+    <symbol id="i-users" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></symbol>
+    <symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a6 6 0 0 1 6-6h4a6 6 0 0 1 6 6v1"/></symbol>
+    <symbol id="i-msg" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></symbol>
+    <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></symbol>
+    <symbol id="i-bus" viewBox="0 0 24 24"><path d="M8 6v6M15 6v6M2 12h19.6M18 18h3s.5-1.7.8-2.8c.1-.4.2-.8.2-1.2 0-.4-.1-.8-.2-1.2l-1.4-5C20.1 6.8 19.1 6 18 6H4a2 2 0 0 0-2 2v10h3"/><circle cx="7" cy="18" r="2"/><path d="M9 18h5"/><circle cx="16" cy="18" r="2"/></symbol>
+    <symbol id="i-print" viewBox="0 0 24 24"><path d="M6 9V2h12v7"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></symbol>
+    <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></symbol>
+    <symbol id="i-pin" viewBox="0 0 24 24"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></symbol>
+    <symbol id="i-card" viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></symbol>
+    <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></symbol>
+  </defs>
+</svg>
+
+<main class="wrap">
+<h1>Voucher /checkout/success — bản vẽ đã duyệt (phương án 1, mảng trái A)</h1>
+<p class="lead">Bản ghi nguyên văn của vòng thiết kế user duyệt ngày 05/10/2026 — bất biến như migration.sql; đổi thiết kế thì thêm bản ghi mới. Spec: docs/specs/2026-10-05-booking-pages-redesign-design.md.</p>
+
+<span class="tag new">CÁCH A · ẢNH TOUR LỚN + MỘC + Ô THÔNG TIN CÓ ICON</span>
+<div class="v2wrap"><div class="v2">
+  <div class="x-nav"><span class="x-logo"><i></i>Nexora</span><div class="x-links"><span>Tours</span><span>Destinations</span><span>Travel Blog</span><span>About Us</span><span>Contact</span></div><span class="x-cta">Book a tour</span></div>
+  <div class="x-hero"><div class="x-crumbrow"><span class="x-crumb">Home › Voucher</span><span class="x-act"><svg class="i"><use href="#i-print"/></svg>Print</span></div><div class="x-title">Hanoi Heritage in a Day</div><div class="x-code">BK-B6VCOQNW</div></div>
+  <div class="x-page"><div class="vc">
+    <div class="vc-l">
+      <span class="visa">CONFIRMED</span>
+      <div class="vs-h" style="max-width:500px">Your day in Hà Nội is booked.</div>
+      <div class="vs-sub" style="max-width:500px">We've received booking BK-B6VCOQNW and emailed a copy to erik.lund@example.com.</div>
+      <div class="phc" style="background-image:url('https://res.cloudinary.com/dbkgeehow/image/upload/f_auto,q_auto,w_1200/tourism/catalog/tour/hanoi-heritage-day/hero')">
+        <div class="phc-b">
+          <div class="phc-k">Hà Nội · 1 day</div>
+          <div class="phc-t"><b>Hanoi Heritage in a Day</b><span>$147.00</span></div>
+          <div class="glass"><span><svg class="i"><use href="#i-cal"/></svg>Tue 3 Nov 2026</span><span><svg class="i"><use href="#i-users"/></svg>3 adults × $49.00</span><span><svg class="i"><use href="#i-bus"/></svg>Hotel pickup</span></div>
+        </div>
+      </div>
+      <div class="icg">
+        <div class="icc"><span class="ic"><svg class="i"><use href="#i-pin"/></svg></span><div><b>Meeting point</b><p>Hotel pickup — hotels in Hoàn Kiếm, Ba Đình or Tây Hồ districts, Hà Nội</p></div></div>
+        <div class="icc"><span class="ic"><svg class="i"><use href="#i-card"/></svg></span><div><b>Paid with PayPal</b><p>14 Aug 2026 · sandbox, no money moved</p></div></div>
+        <div class="icc"><span class="ic"><svg class="i"><use href="#i-user"/></svg></span><div><b>Lead traveller</b><p>Erik Lund · erik.lund@example.com</p></div></div>
+        <div class="icc"><span class="ic"><svg class="i"><use href="#i-msg"/></svg></span><div><b>Need help?</b><p>Reply to the confirmation email, or <span style="color:var(--primary);font-weight:600">contact us</span>.</p></div></div>
+      </div>
+    </div>
+    <!--R-->
+  </div></div>
+</div></div>
+<ul class="chg">
+  <li><b>Thêm:</b> ảnh bìa của tour cỡ lớn, chữ đè trên nền mờ dần, ba chip kính mờ; mộc CONFIRMED dùng lại VisaStamp của trang chi tiết đơn; bốn ô thông tin có icon thay cho chữ trơn.</li>
+  <li><b>Dữ liệu:</b> chỉ cần những gì đơn đã trả về (ảnh tour, điểm đến, ngày đi). Không gọi thêm API.</li>
+</ul>
+
+<!-- ═══════════ L2 ═══════════ -->
+</main>
+
+<template id="tpl-r">
+  <div class="vc-r">
+    <div class="cp">
+      <div class="cp-box"><div><div class="k">Booking code</div><div class="cp-code">BK-B6VCOQNW</div></div><span class="b-dark"><svg class="i"><use href="#i-copy"/></svg>Copy</span></div>
+      <div class="cp-meta"><span><svg class="i"><use href="#i-cal"/></svg>Tue 3 Nov 2026</span><span><svg class="i"><use href="#i-users"/></svg>Admit 3</span></div>
+      <ul class="cp-ul"><li><svg class="i"><use href="#i-check"/></svg>Show this code at pickup — printed or on your phone.</li><li><svg class="i"><use href="#i-check"/></svg>Free cancellation until Mon 2 Nov, 11:59 pm Vietnam time.</li><li><svg class="i"><use href="#i-check"/></svg>Price includes taxes and fees.</li></ul>
+      <div class="bars" data-code="BK-B6VCOQNW"></div>
+    </div>
+    <div class="ov"><div class="ov-h">Receipt overview</div><div class="kv"><span>3 adults × $49.00</span><span class="mono">$147.00</span></div><div class="kv tot"><span>Total paid</span><span class="mono">$147.00</span></div></div>
+    <div class="jn"><div class="jn-h">Trip journal</div>
+      <div class="jn-it done"><span class="jn-k"><svg class="i"><use href="#i-check"/></svg></span><div><b>Booked and paid</b><small>14 Aug 2026 · PayPal</small></div></div>
+      <div class="jn-it"><span class="jn-k"></span><div><b>Free cancellation ends</b><small>Mon 2 Nov, 11:59 pm Vietnam time</small></div></div>
+      <div class="jn-it"><span class="jn-k"></span><div><b>Pickup day</b><small>Tue 3 Nov 2026 · Hà Nội</small></div></div>
+    </div>
+    <div class="b-white">View booking<svg class="i"><use href="#i-arrow"/></svg></div>
+    <div class="lnk">Browse more tours</div>
+  </div>
+</template>
+
+<script>
+(function(){
+  // Mảng teal giống hệt nhau ở cả 4 bản vẽ — chèn từ một template
+  var tpl=document.getElementById('tpl-r');
+  document.querySelectorAll('.vc').forEach(function(vc){
+    var walker=document.createTreeWalker(vc,NodeFilter.SHOW_COMMENT),n;
+    while((n=walker.nextNode())){ if(n.nodeValue==='R'){ n.parentNode.replaceChild(tpl.content.cloneNode(true),n); break; } }
+  });
+  // Mã vạch trang trí, sinh tất định từ mã đơn
+  document.querySelectorAll('.v2 .bars[data-code]').forEach(function(el){
+    var s=el.getAttribute('data-code'),h='';
+    for(var i=0;i<s.length;i++){var c=s.charCodeAt(i);
+      for(var k=0;k<4;k++){h+='<i style="width:'+(((c>>k)&1)+1+((c>>(k+2))&1))+'px;margin-right:'+(((c>>(k+1))&1)+1)+'px"></i>';}}
+    el.innerHTML=h;
+  });
+  // Thu bản vẽ 1280px cho vừa bề rộng khung
+  function fit(){
+    document.querySelectorAll('.v2wrap > .v2').forEach(function(c){
+      c.style.zoom=String(Math.min(1,c.parentElement.clientWidth/1282));
+    });
+  }
+  window.addEventListener('resize',fit);
+  if(window.ResizeObserver){var ro=new ResizeObserver(fit);document.querySelectorAll('.v2wrap').forEach(function(w){ro.observe(w);});}
+  fit(); setTimeout(fit,300); setTimeout(fit,1500);
+})();
+</script>
+</body>
+</html>

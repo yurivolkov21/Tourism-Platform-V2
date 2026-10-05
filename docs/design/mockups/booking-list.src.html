@@ -1,0 +1,217 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>My bookings — bản vẽ đã duyệt</title>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Literata:opsz,wght@7..72,500;7..72,600&display=swap" rel="stylesheet">
+<style>
+  /* ── trang so sánh ── */
+  :root{color-scheme:light}
+  body{margin:0;background:#f3f4f4;color:#1d1d1f;font:14px/1.55 system-ui,-apple-system,"Segoe UI",sans-serif}
+  .wrap{max-width:1400px;margin:0 auto;padding:28px 24px 64px}
+  h1{font-size:24px;margin:0 0 6px}
+  h2.sec{font-size:19px;margin:38px 0 4px}
+  .lead{color:#6b6b70;margin:0 0 6px}
+  .refs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin-top:12px}
+  .ref{background:#fff;border:1px solid #dcdcdf;border-radius:12px;overflow:hidden}
+  .ref img{width:100%;height:300px;object-fit:cover;object-position:top center;display:block;border-bottom:1px solid #eee;background:#fafafa}
+  .ref .b{padding:10px 13px 12px}
+  .ref h4{margin:0;font-size:13.5px}
+  .ref .src{font-size:11px;color:#8a8a8e}
+  .ref p{margin:4px 0 0;font-size:12.5px}
+  .tag{display:inline-block;font-size:11px;font-weight:700;letter-spacing:.08em;padding:3px 9px;border-radius:6px;margin:22px 0 8px;background:#0071e3;color:#fff}
+  .tag.old{background:rgba(127,127,127,.2);color:#1d1d1f}
+  .mix{font-size:13px;margin:2px 0 0;color:#3a3a3c}
+  .chg{margin:10px 0 0 20px;padding:0;font-size:13.5px;line-height:1.55}
+  .chg li{margin:3px 0}
+  .chg code{font-size:12px}
+  .v2wrap{margin:6px 0 4px;border-radius:12px;overflow:hidden}
+  .options{display:flex;flex-direction:column;gap:10px;margin-top:12px}
+  .option{background:#fff;border:2px solid #d1d1d6;border-radius:12px;padding:12px 16px;display:flex;gap:14px;align-items:flex-start;cursor:pointer}
+  .option.selected{border-color:#0071e3;background:#e8f4fd}
+  .option .letter{background:#e5e5e7;width:28px;height:28px;border-radius:6px;display:grid;place-items:center;font-weight:600;flex:none}
+  .option.selected .letter{background:#0071e3;color:#fff}
+  .option h3{margin:0;font-size:14.5px}
+  .option p{margin:2px 0 0;color:#6b6b70;font-size:13px}
+
+  /* ── bản vẽ ── */
+  .v2{--bg:oklch(0.977 0.003 174.5);--fg:oklch(0.275 0.021 196);--primary:oklch(0.494 0.067 184.3);--ink:oklch(0.42 0.06 184);--muted:oklch(0.945 0.008 174);--mfg:oklch(0.5 0.02 190);--border:oklch(0.87 0.012 180);--ok:oklch(0.52 0.11 162);--hero:oklch(0.235 0.02 190);--mint:oklch(0.86 0.08 172);
+    width:1280px;background:var(--bg);color:var(--fg);font:14px/1.45 Archivo,system-ui,sans-serif;border:1px solid var(--border);border-radius:12px;overflow:hidden;text-align:left}
+  .v2 *{box-sizing:border-box;min-width:0}
+  .v2 .i{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none;display:inline-block;vertical-align:-3px}
+  .v2 .mono{font-family:'IBM Plex Mono',ui-monospace,monospace}
+  .v2 .mut{color:var(--mfg)}
+  .v2 .k{font:700 10px/1 Archivo,sans-serif;letter-spacing:.15em;text-transform:uppercase;color:var(--mfg)}
+  .v2 .pill{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:600;padding:2px 9px;border-radius:999px;border:1px solid color-mix(in oklch,var(--ok) 40%,transparent);background:color-mix(in oklch,var(--ok) 9%,white);color:var(--ok);white-space:nowrap}
+  .v2 .pill:before{content:"";width:6px;height:6px;border-radius:50%;background:var(--ok)}
+  .v2 .pill.gray{color:var(--mfg);border-color:var(--border);background:#fff}
+  .v2 .pill.gray:before{background:var(--mfg)}
+  .v2 .b{display:inline-flex;align-items:center;justify-content:center;gap:7px;height:32px;padding:0 12px;border-radius:8px;font-size:12.5px;font-weight:600;border:1px solid var(--border);background:#fff;color:var(--fg);white-space:nowrap}
+
+  /* khung site thu gọn */
+  .v2 .x-nav{height:56px;background:var(--hero);display:flex;align-items:center;padding:0 40px;color:oklch(0.88 0.01 180);font-size:12.5px}
+  .v2 .x-logo{font:600 17px/1 Literata,serif;color:#fff;display:flex;align-items:center;gap:9px}
+  .v2 .x-logo i{width:14px;height:14px;background:var(--mint);transform:rotate(45deg);border-radius:3px;display:inline-block}
+  .v2 .x-links{display:flex;gap:22px;margin:0 auto}
+  .v2 .x-cta{background:#fff;color:var(--hero);border-radius:999px;padding:7px 16px;font-weight:600}
+  .v2 .x-hero{background:var(--hero);color:oklch(0.93 0.01 180);padding:6px 128px 28px}
+  .v2 .x-crumbrow{display:flex;align-items:center;gap:12px}
+  .v2 .x-back{width:34px;height:34px;border-radius:50%;border:1px solid color-mix(in oklch,white 30%,transparent);background:color-mix(in oklch,white 7%,transparent);display:grid;place-items:center;color:#fff}
+  .v2 .x-crumb{font-size:12px;opacity:.7}
+  .v2 .x-title{font:500 34px/1.15 Literata,serif;margin-top:10px}
+  .v2 .x-code{font:500 11px/1 'IBM Plex Mono',monospace;letter-spacing:.14em;opacity:.6;margin-top:10px}
+  .v2 .x-page{padding:28px 128px 36px}
+  .v2 .strip{padding:22px 128px 26px}
+
+  /* hàng lọc — mọi nút cao 36px; When và Status cùng bề rộng */
+  .v2 .tb{display:flex;align-items:center;gap:8px;margin-bottom:12px}
+  .v2 .inp{display:flex;align-items:center;gap:8px;height:36px;width:290px;border:1px solid var(--border);border-radius:9px;padding:0 12px;background:#fff;color:var(--mfg);font-size:13px}
+  .v2 .fbtn{display:inline-flex;align-items:center;gap:7px;height:36px;width:176px;padding:0 12px;border:1px dashed var(--mfg);border-radius:9px;background:#fff;font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden}
+  .v2 .fbtn .sep{width:1px;height:16px;background:var(--border)}
+  .v2 .bdg{font-size:11.5px;font-weight:600;background:var(--muted);border-radius:6px;padding:2px 7px}
+  .v2 .ghost{display:inline-flex;align-items:center;gap:6px;height:36px;padding:0 10px;font-size:13px;font-weight:600}
+  .v2 .sortb{display:inline-flex;align-items:center;justify-content:space-between;gap:7px;height:36px;width:176px;padding:0 12px;border:1px solid var(--border);border-radius:9px;background:#fff;font-size:13px;font-weight:600;margin-left:auto}
+  .v2 .res{font-size:12.5px;color:var(--mfg);margin:0 0 10px}
+  .v2 .stlbl{font:700 10px/1 Archivo,sans-serif;letter-spacing:.15em;text-transform:uppercase;color:var(--mfg);margin:2px 0 8px}
+
+  /* hàng thẻ xổ — y dáng hiện tại */
+  .v2 .lr{background:#fff;border:1px solid var(--border);border-radius:12px;margin-bottom:8px}
+  .v2 .lr-top{display:grid;grid-template-columns:42px minmax(0,1fr) auto 22px;gap:14px;align-items:center;padding:12px 16px}
+  .v2 .lr-ic{width:40px;height:40px;border-radius:10px;border:1px solid var(--border);display:grid;place-items:center;color:var(--ink)}
+  .v2 .lr-t{display:flex;align-items:center;gap:8px}
+  .v2 .lr-t b{font:600 15px/1.2 Literata,serif}
+  .v2 .lr-s{font:11.5px/1.4 'IBM Plex Mono',monospace;color:var(--mfg);margin-top:4px}
+  .v2 .lr-p{font:600 14px/1 'IBM Plex Mono',monospace}
+  .v2 .lr-x{margin:0 16px 14px;padding:14px 16px;border:1px solid var(--border);border-radius:10px;background:color-mix(in oklch,var(--muted) 35%,white)}
+  .v2 .lr-g{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+  .v2 .lr-g b{display:block;font:600 13px/1.3 'IBM Plex Mono',monospace;margin-top:6px}
+  .v2 .lr-a{display:flex;gap:12px;margin-top:12px;align-items:center;font-size:12.5px;font-weight:600}
+  .v2 .lr-a .lk{color:var(--primary)}
+  .v2 .lr-more{text-align:center;font-size:12px;color:var(--mfg);border:1px dashed var(--border);border-radius:12px;padding:10px;margin-bottom:8px}
+  .v2 .pg-slot{border:1.5px dashed var(--border);border-radius:12px;padding:16px;text-align:center;color:var(--mfg);font-size:12.5px;margin-top:14px}
+
+  /* phân trang — bản cũ */
+  .v2 .p0{display:flex;justify-content:space-between;align-items:center;margin-top:14px;font-size:13px;color:var(--mfg)}
+  .v2 .p0 .pgs{display:inline-flex;gap:4px}
+  .v2 .p0 .pgs span{min-width:32px;height:32px;display:grid;place-items:center;border:1px solid var(--border);border-radius:8px;background:#fff;color:var(--fg)}
+  .v2 .p0 .pgs span.on{background:var(--fg);color:#fff;border-color:var(--fg)}
+  .v2 .p0 .pgs span.off{color:var(--border)}
+  /* P1 — gạch chân */
+  .v2 .p1{display:flex;justify-content:space-between;align-items:center;margin-top:16px;padding-top:14px;border-top:1px solid var(--border);font-size:13px}
+  .v2 .p1 .meta{color:var(--mfg)}
+  .v2 .p1 nav{display:flex;align-items:center;gap:20px}
+  .v2 .p1 .nv{display:inline-flex;align-items:center;gap:6px;font-weight:600}
+  .v2 .p1 .nv.off{color:var(--border)}
+  .v2 .p1 .num{font:600 13.5px/1 'IBM Plex Mono',monospace;color:var(--mfg);padding:6px 3px;border-bottom:2px solid transparent}
+  .v2 .p1 .num.on{color:var(--fg);border-bottom-color:var(--primary)}
+  /* P2 — viên thuốc nổi */
+  .v2 .p2{display:flex;flex-direction:column;align-items:center;gap:8px;margin-top:18px}
+  .v2 .p2 nav{display:inline-flex;align-items:center;gap:2px;border:1px solid var(--border);border-radius:999px;padding:4px;background:#fff;box-shadow:0 6px 18px oklch(0.2 0.02 190/.08)}
+  .v2 .p2 nav span{height:32px;min-width:32px;padding:0 12px;border-radius:999px;display:inline-flex;align-items:center;justify-content:center;gap:6px;font-size:13px;font-weight:600}
+  .v2 .p2 nav .on{background:var(--primary);color:#fff}
+  .v2 .p2 nav .off{color:var(--border)}
+  .v2 .p2 .meta{font-size:12px;color:var(--mfg)}
+  /* P3 — mới hơn / cũ hơn */
+  .v2 .p3{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;margin-top:16px;padding-top:14px;border-top:1px solid var(--border);font-size:13.5px}
+  .v2 .p3 .l{justify-self:start;display:inline-flex;align-items:center;gap:8px;font-weight:600;color:var(--border)}
+  .v2 .p3 .c{color:var(--mfg);font-size:13px;text-align:center}
+  .v2 .p3 .c b{font:600 13px 'IBM Plex Mono',monospace;color:var(--fg)}
+  .v2 .p3 .r{justify-self:end;display:inline-flex;align-items:center;gap:10px;font-weight:600}
+  .v2 .p3 .r small{display:block;font-weight:400;font-size:11.5px;color:var(--mfg);text-align:right}
+  .v2 .p3 .r .ar{width:34px;height:34px;border-radius:50%;border:1px solid var(--border);display:grid;place-items:center;background:#fff}
+  /* P4 — xem thêm có thanh tiến độ */
+  .v2 .p4{display:flex;flex-direction:column;align-items:center;gap:10px;margin-top:18px}
+  .v2 .p4 .t{font-size:13px;color:var(--mfg)}
+  .v2 .p4 .t b{color:var(--fg)}
+  .v2 .p4 .bar{width:240px;height:4px;border-radius:4px;background:var(--muted);overflow:hidden}
+  .v2 .p4 .bar i{display:block;height:100%;width:56%;background:var(--primary)}
+  .v2 .p4 .more{display:inline-flex;align-items:center;gap:8px;height:38px;padding:0 18px;border:1px solid var(--border);border-radius:999px;background:#fff;font-weight:600;font-size:13px}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="i-left" viewBox="0 0 24 24"><path d="M19 12H5M12 19l-7-7 7-7"/></symbol>
+    <symbol id="i-right" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></symbol>
+    <symbol id="i-chl" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></symbol>
+    <symbol id="i-chr" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></symbol>
+    <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M8 12h8M12 8v8"/></symbol>
+    <symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></symbol>
+    <symbol id="i-down" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+    <symbol id="i-up" viewBox="0 0 24 24"><path d="m18 15-6-6-6 6"/></symbol>
+    <symbol id="i-plane" viewBox="0 0 24 24"><path d="M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.2c.4-.3.6-.7.5-1.2z"/></symbol>
+  </defs>
+</svg>
+
+<main class="wrap">
+<h1>My bookings /account/bookings — bản vẽ đã duyệt (lọc cách 1, phân trang kiểu 3)</h1>
+<p class="lead">Bản ghi nguyên văn của vòng thiết kế user duyệt ngày 05/10/2026 — bất biến như migration.sql; đổi thiết kế thì thêm bản ghi mới. Spec: docs/specs/2026-10-05-booking-pages-redesign-design.md.</p>
+
+<h2 class="sec">1 · Hàng lọc đã chỉnh</h2>
+<ul class="chg">
+  <li>Mọi ô và nút trên hàng cao đều 36px, viền 1px. Hai nút lọc <b>When</b> và <b>Status</b> cùng bề rộng 176px, dù đã chọn giá trị ("When | Upcoming") hay chưa.</li>
+  <li>Bỏ viền đậm ở nút đang mở menu (bản trước làm nút Status trông to hơn); lúc mở menu chỉ đổi nền nhạt.</li>
+</ul>
+<div class="v2wrap"><div class="v2">
+  <div class="strip">
+    <div class="stlbl">Chưa lọc gì</div>
+    <div class="tb">
+      <div class="inp"><svg class="i"><use href="#i-search"/></svg>Search tour or booking code</div>
+      <span class="fbtn"><svg class="i"><use href="#i-plus"/></svg>When</span>
+      <span class="fbtn"><svg class="i"><use href="#i-plus"/></svg>Status</span>
+      <span class="sortb">Sort: Departure date<svg class="i"><use href="#i-down"/></svg></span>
+    </div>
+    <div class="stlbl" style="margin-top:18px">Đã chọn "Upcoming", đang mở menu Status</div>
+    <div class="tb" style="margin-bottom:0">
+      <div class="inp"><svg class="i"><use href="#i-search"/></svg>Search tour or booking code</div>
+      <span class="fbtn"><svg class="i"><use href="#i-plus"/></svg>When<span class="sep"></span><span class="bdg">Upcoming</span></span>
+      <span class="fbtn" style="background:var(--muted)"><svg class="i"><use href="#i-plus"/></svg>Status</span>
+      <span class="ghost">Reset<svg class="i"><use href="#i-x"/></svg></span>
+      <span class="sortb">Sort: Departure date<svg class="i"><use href="#i-down"/></svg></span>
+    </div>
+  </div>
+</div></div>
+
+<span class="tag">TRANG ĐẦY ĐỦ · CHƯA LỌC, TRANG 1/2</span>
+<div class="v2wrap"><div class="v2">
+  <div class="x-nav"><span class="x-logo"><i></i>Nexora</span><div class="x-links"><span>Tours</span><span>Destinations</span><span>Travel Blog</span><span>About Us</span><span>Contact</span></div><span class="x-cta">Book a tour</span></div>
+  <div class="x-hero"><div class="x-crumbrow"><span class="x-back"><svg class="i"><use href="#i-left"/></svg></span><span class="x-crumb">Home › Bookings</span></div><div class="x-title">My bookings</div><div class="x-code">18 TRIPS</div></div>
+  <div class="x-page">
+    <div class="tb">
+      <div class="inp"><svg class="i"><use href="#i-search"/></svg>Search tour or booking code</div>
+      <span class="fbtn"><svg class="i"><use href="#i-plus"/></svg>When</span>
+      <span class="fbtn"><svg class="i"><use href="#i-plus"/></svg>Status</span>
+      <span class="sortb">Sort: Departure date<svg class="i"><use href="#i-down"/></svg></span>
+    </div>
+    <div class="res">18 trips</div>
+    <div class="lr">
+      <div class="lr-top"><span class="lr-ic"><svg class="i"><use href="#i-plane"/></svg></span><div><div class="lr-t"><b>Quy Nhơn Coastal Escape 3D2N</b><span class="pill">Paid</span></div><div class="lr-s">BK-KJZXKJU2 · On tour, day 1 of 3 · 5–7 Oct 2026</div></div><span class="lr-p">$807</span><svg class="i mut"><use href="#i-up"/></svg></div>
+      <div class="lr-x">
+        <div class="lr-g"><div><span class="k">Dates</span><b>5–7 Oct 2026</b></div><div><span class="k">Travellers</span><b style="font-family:Archivo">3 adults</b></div><div><span class="k">Reference</span><b>BK-KJZXKJU2</b></div><div><span class="k">Total paid</span><b>$807</b></div></div>
+        <div class="lr-a"><span class="b">View details</span><span class="lk">View voucher</span></div>
+      </div>
+    </div>
+    <div class="lr"><div class="lr-top"><span class="lr-ic"><svg class="i"><use href="#i-plane"/></svg></span><div><div class="lr-t"><b>Hanoi Heritage in a Day</b><span class="pill">Paid</span></div><div class="lr-s">BK-B6VCOQNW · In 29 days · 3 Nov 2026</div></div><span class="lr-p">$147</span><svg class="i mut"><use href="#i-down"/></svg></div></div>
+    <div class="lr"><div class="lr-top"><span class="lr-ic"><svg class="i"><use href="#i-plane"/></svg></span><div><div class="lr-t"><b>Phong Nha &amp; Paradise Cave Day Trip</b><span class="pill">Paid</span></div><div class="lr-s">BK-L1MEPS8V · In 40 days · 14 Nov 2026</div></div><span class="lr-p">$65</span><svg class="i mut"><use href="#i-down"/></svg></div></div>
+    <div class="lr-more">… 7 đơn nữa trên trang này</div>
+    <div class="p3"><span class="l"><svg class="i"><use href="#i-left"/></svg>Newer trips</span><span class="c">Page <b>1</b> of <b>2</b> · trips 1–10 of 18</span><span class="r"><span>Older trips<small>Trips 11–18</small></span><span class="ar"><svg class="i"><use href="#i-right"/></svg></span></span></div>
+  </div>
+</div></div>
+</main>
+
+<script>
+(function(){
+  function fit(){
+    document.querySelectorAll('.v2wrap > .v2').forEach(function(c){
+      c.style.zoom=String(Math.min(1,c.parentElement.clientWidth/1282));
+    });
+  }
+  window.addEventListener('resize',fit);
+  if(window.ResizeObserver){var ro=new ResizeObserver(fit);document.querySelectorAll('.v2wrap').forEach(function(w){ro.observe(w);});}
+  fit(); setTimeout(fit,300); setTimeout(fit,1500);
+})();
+</script>
+</body>
+</html>

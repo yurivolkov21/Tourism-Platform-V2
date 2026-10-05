@@ -93,6 +93,7 @@ Mỗi ADR tự chứa đầy đủ phần sửa bổ sung (AMEND) của nó; b�
 | [0050](adr/0050-ai-concierge-chat.md) | Trợ lý AI: chat trong API, lịch sử ở server, tool ghi phải được khách duyệt, trần chi phí theo token | |
 | [0051](adr/0051-posts-admin.md) | Quản trị bài viết: markdown kèm xem trước, slug đặt một lần, đủ mới được đăng, trang bài viết mang tag `tours` | |
 | [0052](adr/0052-admin-staff-tier.md) | Nhân sự admin hai bậc: Owner từ `ADMIN_EMAILS`, Staff do Owner cấp; bảng quyền ở contract; khoá tài khoản chặn tạo phiên | |
+| [0054](adr/0054-customer-bookings-list-phase-filters.md) | Đơn của khách: một luật giai đoạn dùng chung; `bookings.mine` lọc, tìm, xếp theo hành trình và phân trang ở server | |
 
 ## Specs — sẽ xây gì
 
@@ -164,6 +165,9 @@ Mỗi spec đi kèm một plan cùng tên ở [`plans/`](plans/), trừ vài đ�
 
 **Trợ lý AI (P6, chưa thi công)**
 [P6 trợ lý tư vấn tour](specs/2026-09-29-p6-ai-concierge-design.md)
+
+**Trang đơn của khách (P7, chưa thi công)**
+[Thiết kế lại chi tiết đơn, voucher, My bookings](specs/2026-10-05-booking-pages-redesign-design.md)
 
 **Công cụ máy dev (ngoài repo)**
 [mod `tourism-status`: dải trạng thái, canh CI, docs-freshness](specs/2026-10-02-tourism-status-mod-design.md)
