@@ -72,8 +72,14 @@ export function postReadiness(post: {
   return missing;
 }
 
-/** Ảnh nhúng `![…](…)` — ngoài phạm vi (spec §2.4): cần CSP, vòng đời media, parser mobile. */
-const EMBEDDED_IMAGE = /!\[[^\]]*\]\([^)]*\)/;
+/**
+ * Ảnh nhúng — ngoài phạm vi (spec §2.4): cần CSP, vòng đời media, parser mobile. Bắt MỌI
+ * `![`: ngoài `![alt](url)` còn ảnh dạng tham chiếu (`![a][r]`), dạng tắt (`![r]`), alt lồng
+ * ngoặc hay có ngoặc thoát — regex cũ chỉ bắt dạng đầu, lại chạy thời gian bình phương trên
+ * chuỗi nhiều `![` (vòng review P4e-4). Giờ là một lượt quét tuyến tính; bắt cả trong khối
+ * code, cùng luật với HTML thô bên dưới.
+ */
+const EMBEDDED_IMAGE = /!\[/;
 /**
  * Thẻ HTML thô: `<tên …>`, `</tên>`, `<tên/>` và chú thích `<!--`. Tên thẻ phải mở đầu
  * bằng chữ cái nên "a < b" và "<3" lọt qua; autolink `<https://…>` cũng lọt, vì sau tên
@@ -93,7 +99,9 @@ export function postContentIssue(content: string): PostContentIssue | null {
 
 export const PostContentSchema = z
   .string()
-  .max(POST_CONTENT_MAX)
+  // `abort`: Zod 4 mặc định vẫn chạy refine sau lỗi `max`, nên chuỗi dán nhầm cả file bị
+  // quét thêm hai lượt cho một lời từ chối đã chắc.
+  .max(POST_CONTENT_MAX, { abort: true })
   .refine((content) => postContentIssue(content) !== 'image', {
     message: 'images inside the post body are not supported',
   })

@@ -44,6 +44,10 @@ export function ArticleMarkdown({ markdown }: { markdown: string }) {
         remarkPlugins={[remarkGfm]}
         components={{
           h2: ({ children }) => <h2 id={slugify(flattenToText(children))}>{children}</h2>,
+          // Thân bài không có ảnh (spec P4e-4 §2.4): contract chặn mọi `![`, đây là lưới thứ
+          // hai cho nội dung sửa thẳng trong DB — không tải ảnh ngoài Cloudinary, in alt tại
+          // chỗ. `alt` vẫn nằm trên props nên `flattenToText` cho heading ra cùng id như cũ.
+          img: ({ alt }) => alt ?? null,
         }}
       >
         {markdown}

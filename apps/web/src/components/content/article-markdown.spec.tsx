@@ -89,6 +89,18 @@ describe('ArticleMarkdown', () => {
     expect(heading.id).toBe('see-alt-text-here');
   });
 
+  // Vòng review P4e-4: contract đã chặn mọi `![`, renderer là lưới thứ hai cho nội dung
+  // sửa thẳng trong DB — không tải ảnh ngoài Cloudinary, giữ chữ alt tại chỗ.
+  it('ảnh trong thân bài không thành <img> — in alt tại chỗ, mọi dạng cú pháp', () => {
+    const md =
+      'Before ![a pixel](https://tracker.example/p.gif) after\n\n![by ref][1]\n\n[1]: https://tracker.example/q.gif';
+    const { container } = render(<ArticleMarkdown markdown={md} />);
+
+    expect(container.querySelector('img')).toBeNull();
+    expect(container).toHaveTextContent('Before a pixel after');
+    expect(container).toHaveTextContent('by ref');
+  });
+
   it('hỗ trợ GFM như strikethrough, table, task list', () => {
     const md = '## Features\n\n~~strikethrough~~\n\n- [x] Done\n- [ ] Todo';
     render(<ArticleMarkdown markdown={md} />);

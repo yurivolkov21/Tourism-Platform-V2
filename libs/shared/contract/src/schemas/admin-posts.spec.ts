@@ -92,6 +92,12 @@ describe('postReadiness (spec §2.3)', () => {
 describe('postContentIssue (spec §2.4)', () => {
   it.each([
     ['ảnh nhúng', 'Look ![Ha Long](https://example.com/bay.jpg) here', 'image'],
+    // Vòng review P4e-4: regex cũ chỉ bắt dạng `![alt](url)` — bốn dạng dưới lọt qua mà
+    // react-markdown vẫn vẽ `<img>`.
+    ['ảnh dạng tham chiếu', '![Ha Long][bay]\n\n[bay]: https://example.com/bay.jpg', 'image'],
+    ['ảnh dạng tắt', '![bay]\n\n[bay]: https://example.com/bay.jpg', 'image'],
+    ['alt lồng ngoặc', '![a [b] c](https://example.com/bay.jpg)', 'image'],
+    ['alt có ngoặc thoát', '![a\\]b](https://example.com/bay.jpg)', 'image'],
     ['thẻ mở và đóng', 'Hello <b>world</b>', 'html'],
     ['thẻ đóng đứng một mình', 'end of line</p>', 'html'],
     ['thẻ tự đóng', 'line<br/>break', 'html'],
@@ -106,6 +112,7 @@ describe('postContentIssue (spec §2.4)', () => {
     ['"<3"', 'we <3 pho'],
     ['autolink', 'see <https://example.com>'],
     ['link markdown', 'see [the map](https://example.com)'],
+    ['dấu chấm than trước link, có cách', 'Wow! [the map](https://example.com)'],
     ['đậm và nghiêng', '**bold** and *italic*'],
   ])('cho qua %s', (_, content) => {
     expect(postContentIssue(content)).toBeNull();
@@ -170,6 +177,16 @@ describe('AdminPostUpdateInputSchema (spec §3.2)', () => {
 
   it('tag chỉ có ký hiệu bị bắt', () => {
     expect(update({ tags: ['!!!'] }).success).toBe(false);
+  });
+
+  it('thân bài quá trần: dừng ở lỗi độ dài, không quét tiếp luật nội dung', () => {
+    // Zod 4 mặc định vẫn chạy refine sau lỗi `max` — chuỗi dán nhầm cả file bị quét thêm
+    // hai lượt. `abort` cắt ở đây nên chỉ còn MỘT lỗi.
+    const content = '![x](y)'.repeat(Math.ceil(POST_CONTENT_MAX / 7) + 1);
+    expect(postContentIssue(content)).toBe('image');
+    const result = update({ content });
+    expect(result.success).toBe(false);
+    expect(result.error?.issues.map((issue) => issue.code)).toEqual(['too_big']);
   });
 
   it('thân bài có ảnh nhúng hay HTML thô bị bắt', () => {
