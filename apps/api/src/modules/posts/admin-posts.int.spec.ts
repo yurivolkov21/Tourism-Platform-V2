@@ -593,6 +593,63 @@ describe('admin posts integration (P4e-4)', () => {
       ]);
     });
 
+    it('bài mang hai dòng hero (dữ liệu script): giữ ảnh trang sửa đang hiện thì lưu được, dòng thừa đi', async () => {
+      await makePost(1);
+      // Dòng thừa CŨ HƠN nhưng đứng sau theo `sortOrder`: đường đọc hiện CAT, còn lối cũ của
+      // replaceCover so với dòng cũ nhất rồi từ chối nhầm (vòng review P4e-4).
+      await prisma.mediaAsset.create({
+        data: {
+          ownerType: 'POST',
+          ownerId: postId(1),
+          publicId: mine(1, 'stray'),
+          type: 'IMAGE',
+          role: 'hero',
+          sortOrder: 1,
+          createdAt: new Date(Date.now() - DAY_MS),
+        },
+      });
+      await makeCover(1, 'catalog/blog/kept-cover');
+      const shown = AdminPostDetailSchema.parse((await get('p4e4-post-1')).json()).cover;
+      expect(shown?.publicId).toBe('catalog/blog/kept-cover');
+
+      const res = await save(
+        1,
+        await fullSave(1, { cover: { publicId: 'catalog/blog/kept-cover', alt: 'Kept' } }),
+      );
+
+      expect(res.statusCode).toBe(200);
+      expect((await coverRows(1)).map((row) => [row.publicId, row.alt])).toEqual([
+        ['catalog/blog/kept-cover', 'Kept'],
+      ]);
+      // Dòng thừa là ảnh tải lên của chính bài — đi theo deleteMany thì phải vào hàng dọn.
+      expect((await prisma.mediaGarbage.findMany()).map((row) => row.publicId)).toEqual([
+        mine(1, 'stray'),
+      ]);
+    });
+
+    it('hai dòng hero: giữ dòng đứng sau vẫn được nhận — so với MỌI dòng hero, không chỉ dòng đầu', async () => {
+      await makePost(1);
+      await makeCover(1, 'catalog/blog/first');
+      await prisma.mediaAsset.create({
+        data: {
+          ownerType: 'POST',
+          ownerId: postId(1),
+          publicId: 'catalog/blog/second',
+          type: 'IMAGE',
+          role: 'hero',
+          sortOrder: 1,
+        },
+      });
+
+      const res = await save(
+        1,
+        await fullSave(1, { cover: { publicId: 'catalog/blog/second', alt: null } }),
+      );
+
+      expect(res.statusCode).toBe(200);
+      expect((await coverRows(1)).map((row) => row.publicId)).toEqual(['catalog/blog/second']);
+    });
+
     it('thay ảnh catalog: ảnh catalog KHÔNG vào hàng dọn', async () => {
       await makePost(1);
       await makeCover(1, CATALOG);

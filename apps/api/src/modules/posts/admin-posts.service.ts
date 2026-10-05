@@ -135,11 +135,15 @@ async function replaceCover(
   cover: AdminPostCoverInput | null,
 ): Promise<string[]> {
   const heroOf = { ownerType: MediaOwnerType.POST, ownerId: postId, role: MediaRole.hero };
-  const current = await tx.mediaAsset.findFirst({
+  // MỌI dòng hero, cùng thứ tự với đường đọc (`resolveForOwners`). Thường chỉ có một; dữ
+  // liệu script có thể để lại hai — khi ấy ảnh admin đang giữ là dòng nào cũng nhận ra,
+  // thay vì so với dòng cũ nhất rồi từ chối nhầm (vòng review P4e-4).
+  const heroes = await tx.mediaAsset.findMany({
     where: heroOf,
     select: STORED_PHOTO_SELECT,
-    orderBy: { createdAt: 'asc' },
+    orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }, { id: 'asc' }],
   });
+  const current = heroes.find((hero) => hero.publicId === cover?.publicId) ?? heroes[0] ?? null;
   const library =
     cover === null || cover.publicId === current?.publicId
       ? null
@@ -156,6 +160,12 @@ async function replaceCover(
     library,
   });
   if (!plan.ok) throw new PostPhotoNotAllowedError(plan.rejected);
+  // Dòng hero thừa cũng đi theo deleteMany — ảnh tải lên của chính bài thì vào hàng dọn
+  // như ảnh bị thay; ảnh đang giữ thì không.
+  const strays = heroes
+    .filter((hero) => hero !== current && hero.publicId !== cover?.publicId)
+    .map((hero) => hero.publicId)
+    .filter((publicId) => isPostUploadPublicId(env.CLOUDINARY_UPLOAD_FOLDER, postId, publicId));
   await tx.mediaAsset.deleteMany({ where: heroOf });
   if (plan.row !== null) {
     await tx.mediaAsset.create({
@@ -168,7 +178,7 @@ async function replaceCover(
       },
     });
   }
-  return plan.requeue;
+  return [...new Set([...plan.requeue, ...strays])];
 }
 
 /**

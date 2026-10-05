@@ -59,7 +59,10 @@ export class MediaService {
         ...(roles && roles.length > 0 ? { role: { in: [...roles] } } : {}),
       },
       select: RESOLVE_SELECT,
-      orderBy: [{ sortOrder: 'asc' }, { role: 'asc' }],
+      // Khoá phụ `createdAt`, `id`: hai dòng cùng `sortOrder` và role (dữ liệu script, hai ảnh
+      // hero) không được đổi chỗ giữa hai lần đọc — đường ghi ảnh bìa bài viết so với đúng
+      // dòng đứng đầu theo thứ tự này (vòng review P4e-4).
+      orderBy: [{ sortOrder: 'asc' }, { role: 'asc' }, { createdAt: 'asc' }, { id: 'asc' }],
     });
 
     const cloudName = env.CLOUDINARY_CLOUD_NAME;
