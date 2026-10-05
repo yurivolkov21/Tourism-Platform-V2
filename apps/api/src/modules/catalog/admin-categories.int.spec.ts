@@ -4,10 +4,11 @@ import { AdminCategoryRowSchema } from '@tourism/contract';
 import { AppModule } from '../../app.module.js';
 import { prisma } from '../../auth/auth.config.js';
 import type { Prisma } from '../../generated/prisma/client.js';
+import { WebRevalidationService } from '../web-revalidation/web-revalidation.service.js';
 
 /**
- * Integration (Docker PG, db `tourism_test`) — năm thao tác quản trị danh mục
- * tour (spec P4e-2 F14).
+ * Integration (Docker PG, db `tourism_test`) — sáu thao tác quản trị danh mục
+ * tour (spec P4e-2 F14, lệnh xoá theo ADR-0053).
  *
  * Ba ca đắt nhất ở đây:
  *
@@ -53,6 +54,7 @@ describe('admin categories integration (P4e-2 F14)', () => {
   let app: NestFastifyApplication;
   let adminCookie: string;
   let customerCookie: string;
+  let web: WebRevalidationService;
 
   beforeAll(async () => {
     await prisma.$executeRawUnsafe('TRUNCATE TABLE tour_categories, users CASCADE');
@@ -63,6 +65,7 @@ describe('admin categories integration (P4e-2 F14)', () => {
     });
     await app.init();
     await app.getHttpAdapter().getInstance().ready();
+    web = moduleRef.get(WebRevalidationService);
 
     for (const email of [ADMIN_EMAIL, CUSTOMER_EMAIL]) {
       await app.inject({
@@ -92,6 +95,7 @@ describe('admin categories integration (P4e-2 F14)', () => {
   });
 
   beforeEach(async () => {
+    vi.restoreAllMocks();
     // Tour trỏ vào danh mục bằng FK RESTRICT — xoá tour TRƯỚC.
     await prisma.tour.deleteMany();
     await prisma.tourCategory.deleteMany();
@@ -132,6 +136,14 @@ describe('admin categories integration (P4e-2 F14)', () => {
       payload: { direction },
     });
 
+  const remove = (id: string, cookie: string) =>
+    app.inject({
+      method: 'POST',
+      url: `/api/admin/categories/${id}/delete`,
+      headers: { cookie },
+      payload: {},
+    });
+
   const listOk = async () => {
     const res = await list(adminCookie);
     expect(res.statusCode).toBe(200);
@@ -145,19 +157,21 @@ describe('admin categories integration (P4e-2 F14)', () => {
       expect((await list(customerCookie)).statusCode).toBe(403);
       expect((await create({ name: 'X', slug: 'x' }, customerCookie)).statusCode).toBe(403);
       // `update` phải có mặt ở đây: nó là lệnh đổi TÊN, thứ hiện thẳng ra chip
-      // công khai. Bỏ sót một đường là khối này đếm bốn trên năm.
+      // công khai. Bỏ sót một đường là khối này đếm năm trên sáu.
       expect((await update(catId(1), { name: 'X' }, customerCookie)).statusCode).toBe(403);
       expect((await setActive(catId(1), false, customerCookie)).statusCode).toBe(403);
       expect((await move(catId(1), 'down', customerCookie)).statusCode).toBe(403);
+      expect((await remove(catId(4), customerCookie)).statusCode).toBe(403);
     });
 
-    it('chưa đăng nhập thì cả năm đường đều 401', async () => {
+    it('chưa đăng nhập thì cả sáu đường đều 401', async () => {
       const anon = '';
       expect((await list(anon)).statusCode).toBe(401);
       expect((await create({ name: 'X', slug: 'x' }, anon)).statusCode).toBe(401);
       expect((await update(catId(1), { name: 'X' }, anon)).statusCode).toBe(401);
       expect((await setActive(catId(1), false, anon)).statusCode).toBe(401);
       expect((await move(catId(1), 'down', anon)).statusCode).toBe(401);
+      expect((await remove(catId(4), anon)).statusCode).toBe(401);
     });
   });
 
@@ -227,6 +241,9 @@ describe('admin categories integration (P4e-2 F14)', () => {
 
       expect(rows.find((row) => row.slug === 'day-trips')?.tourCount).toBe(1);
       expect(rows.find((row) => row.slug === 'packages')?.tourCount).toBe(0);
+      // ADR-0053 §5: số MỌI trạng thái quyết nút Delete — tour nháp vẫn chặn xoá.
+      expect(rows.find((row) => row.slug === 'day-trips')?.linkedTourCount).toBe(2);
+      expect(rows.find((row) => row.slug === 'packages')?.linkedTourCount).toBe(0);
     });
   });
 
@@ -367,6 +384,71 @@ describe('admin categories integration (P4e-2 F14)', () => {
     it('id lạ → 404', async () => {
       const res = await setActive('c1400001-0000-4000-8000-999999999999', false, adminCookie);
       expect(res.statusCode).toBe(404);
+    });
+  });
+
+  describe('delete (ADR-0053)', () => {
+    const draftIn = (categoryId: string) =>
+      prisma.tour.create({
+        data: {
+          slug: 'draft-only',
+          title: 'Draft only',
+          categoryId,
+          durationDays: 1,
+          basePrice: '39.00',
+          currency: 'USD',
+          isPublished: false,
+        } as unknown as Prisma.TourCreateInput,
+      });
+
+    it('0 tour → 200 trả slug, hàng biến khỏi bảng', async () => {
+      const res = await remove(catId(3), adminCookie);
+
+      expect(res.statusCode).toBe(200);
+      expect(res.json()).toEqual({ slug: 'cruises' });
+      expect(await slugsInOrder()).toEqual(['day-trips', 'packages', 'retired']);
+    });
+
+    it('còn tour NHÁP → 409 IN_USE, hàng còn nguyên', async () => {
+      await draftIn(catId(2));
+
+      const res = await remove(catId(2), adminCookie);
+
+      expect(res.statusCode).toBe(409);
+      expect((res.json() as { code: string }).code).toBe('IN_USE');
+      expect(await slugsInOrder()).toContain('packages');
+    });
+
+    it('id lạ → 404 NOT_FOUND', async () => {
+      const res = await remove(catId(999), adminCookie);
+      expect(res.statusCode).toBe(404);
+      expect((res.json() as { code: string }).code).toBe('NOT_FOUND');
+    });
+
+    it('xoá chen với move ở hai hàng kề: không lượt nào 500, `order` không trùng', async () => {
+      const results = await Promise.all([
+        remove(catId(3), adminCookie),
+        move(catId(2), 'down', adminCookie),
+        move(catId(4), 'up', adminCookie),
+      ]);
+
+      for (const res of results) expect(res.statusCode).toBeLessThan(500);
+      const orders = (await listOk()).map((row) => row.order);
+      expect(new Set(orders).size).toBe(orders.length);
+    });
+
+    it('bust `tours` SAU commit; xoá hỏng thì không bust', async () => {
+      const revalidate = vi.spyOn(web, 'revalidate').mockResolvedValue(undefined);
+
+      await remove(catId(3), adminCookie);
+      expect(revalidate).toHaveBeenCalledTimes(1);
+      expect(revalidate.mock.calls[0]?.[0]).toEqual(['tours']);
+
+      revalidate.mockClear();
+      await draftIn(catId(2));
+      await remove(catId(2), adminCookie);
+      await remove(catId(999), adminCookie);
+      expect(revalidate).not.toHaveBeenCalled();
     });
   });
 

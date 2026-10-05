@@ -12,8 +12,8 @@ import { AdminCategoriesService } from './admin-categories.service.js';
  * ẩn danh → 401, không phải admin → 403, cả hai TRƯỚC khi oRPC parse input.
  *
  * Lỗi service → lỗi contract đi qua `toContractError` dùng chung (nợ G3, rút
- * ở F15 khi bản thứ ba sắp ra đời): ba lỗi của vùng mang sẵn mã, nên không còn
- * ba nhánh `instanceof` riêng ở đây.
+ * ở F15 khi bản thứ ba sắp ra đời): các lỗi của vùng mang sẵn mã, nên không còn
+ * nhánh `instanceof` riêng nào ở đây.
  */
 @Controller()
 @Roles(UserRole.ADMIN)
@@ -63,6 +63,17 @@ export class AdminCategoriesController {
     return implement(contract.admin.categories.move).handler(async ({ input, errors }) => {
       try {
         return await this.categories.move(input);
+      } catch (error) {
+        throw toContractError(error, errors);
+      }
+    });
+  }
+
+  @Implement(contract.admin.categories.delete)
+  delete() {
+    return implement(contract.admin.categories.delete).handler(async ({ input, errors }) => {
+      try {
+        return await this.categories.delete(input);
       } catch (error) {
         throw toContractError(error, errors);
       }

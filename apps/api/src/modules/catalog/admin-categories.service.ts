@@ -1,6 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
 import type {
   AdminCategoryCreateInput,
+  AdminCategoryDeleteInput,
+  AdminCategoryDeleteResult,
   AdminCategoryMoveInput,
   AdminCategoryRow,
   AdminCategorySetActiveInput,
@@ -12,20 +14,18 @@ import { ContractError } from '../../lib/contract-error.js';
 import { WebRevalidationService } from '../web-revalidation/web-revalidation.service.js';
 
 /**
- * Năm thao tác quản trị danh mục tour (spec P4e-2 F14).
+ * Sáu thao tác quản trị danh mục tour (spec P4e-2 F14).
  *
- * KHÔNG có lệnh xoá, và đó là quyết định chứ không phải thiếu sót: `is_active`
- * đã có sẵn ở DB và bề mặt công khai đã lọc theo nó, nên tắt là đảo ngược được
- * bằng một cú bấm. Xoá thì không — mà khoá ngoại `tours.category_id` khai
- * `RESTRICT`, nên một lệnh xoá cũng sẽ chết ở DB với câu trả lời dành cho máy.
+ * Xoá chỉ khi chưa tour nào dùng (ADR-0053, thay quyết định "chỉ bật/tắt" của spec P4e-2
+ * §2a). Khoá ngoại `tours.category_id` khai `RESTRICT`, nên chính câu DELETE là phán quyết.
  */
 
 /**
- * Ba lỗi của vùng mang sẵn MÃ contract (`ContractError`), nên controller đổi
+ * Bốn lỗi của vùng mang sẵn MÃ contract (`ContractError`), nên controller đổi
  * chúng bằng `toContractError` dùng chung thay vì một `mapError` riêng (nợ G3,
  * rút ở F15). Câu "không tìm thấy" không gửi ra ngoài — câu mặc định của
- * contract đã đủ, còn câu này mang id để đọc log; hai câu kia thì gửi, vì
- * chúng mang slug và hướng thật.
+ * contract đã đủ, còn câu này mang id để đọc log; ba câu kia thì gửi, vì
+ * chúng mang slug, hướng thật hay lý do không xoá được.
  */
 export class CategoryNotFoundError extends ContractError<'NOT_FOUND'> {
   constructor(id: string) {
@@ -50,6 +50,13 @@ export class CannotMoveError extends ContractError<'CANNOT_MOVE'> {
   }
 }
 
+/** Còn tour (mọi trạng thái) thuộc danh mục — ẩn thay vì xoá (ADR-0053). */
+export class CategoryInUseError extends ContractError<'IN_USE'> {
+  constructor() {
+    super('IN_USE', 'This category is still used by tours');
+  }
+}
+
 const CATEGORY_SELECT = {
   id: true,
   slug: true,
@@ -60,22 +67,34 @@ const CATEGORY_SELECT = {
 } satisfies Prisma.TourCategorySelect;
 
 /**
- * Cùng `CATEGORY_SELECT` nhưng kèm số tour đã đăng, trong CÙNG một câu.
- *
- * Đếm ở câu riêng sau lệnh ghi thì con số đọc từ một ảnh chụp KHÁC: một tour
- * publish chen vào giữa là hàng trả về mang `tourCount` chưa từng khớp với bất
- * kỳ trạng thái nào của DB — mà chính con số ấy nuôi câu cảnh báo lúc tắt
- * danh mục ("bao nhiêu tour vẫn đang bày ra").
+ * Cùng `CATEGORY_SELECT` nhưng kèm cờ `isPublished` của MỌI tour thuộc danh mục, trong CÙNG
+ * một lần đọc với hàng (bài học 3 của vòng review F14). Hai con số suy từ CÙNG một danh
+ * sách nên luôn `tourCount ≤ linkedTourCount`: `tourCount` nuôi câu cảnh báo lúc tắt (đếm
+ * thứ khách đang thấy), `linkedTourCount` quyết nút Delete (ADR-0053 §5). Danh mục vài
+ * hàng, tour vài chục — đọc cờ từng tour rẻ.
  */
-const CATEGORY_SELECT_WITH_COUNT = {
+const CATEGORY_SELECT_WITH_TOURS = {
   ...CATEGORY_SELECT,
-  _count: { select: { tours: { where: { isPublished: true } } } },
+  tours: { select: { isPublished: true } },
 } satisfies Prisma.TourCategorySelect;
 
 type CategoryData = Prisma.TourCategoryGetPayload<{ select: typeof CATEGORY_SELECT }>;
-type CategoryWithCount = Prisma.TourCategoryGetPayload<{
-  select: typeof CATEGORY_SELECT_WITH_COUNT;
+type CategoryWithTours = Prisma.TourCategoryGetPayload<{
+  select: typeof CATEGORY_SELECT_WITH_TOURS;
 }>;
+
+/** Hai con số tour của một hàng — xem `CATEGORY_SELECT_WITH_TOURS`. */
+interface TourCounts {
+  tourCount: number;
+  linkedTourCount: number;
+}
+
+function countTours(tours: ReadonlyArray<{ isPublished: boolean }>): TourCounts {
+  return {
+    tourCount: tours.filter((tour) => tour.isPublished).length,
+    linkedTourCount: tours.length,
+  };
+}
 
 /**
  * Thứ tự đọc danh mục: `order` trước, rồi `id` làm khoá phụ.
@@ -95,9 +114,10 @@ const CATEGORY_ORDER_BY = [
  * Khoá tuần tự hoá MỌI lệnh ghi chạm `order` của bảng danh mục.
  *
  * Một khoá cấp BẢNG chứ không phải theo hàng, và là hằng số chứ không băm từ
- * id: hai thao tác cần loại trừ nhau ở đây (`create` tính `max + 1`, `move`
- * đổi chỗ hai hàng) đều nói về VỊ TRÍ TƯƠNG ĐỐI của cả danh sách, không về một
- * hàng cụ thể. Sáu hàng và vài lệnh ghi mỗi tháng nên tranh chấp là số không.
+ * id: ba thao tác cần loại trừ nhau ở đây (`create` tính `max + 1`, `move`
+ * đổi chỗ hai hàng, `delete` rút một hàng khỏi tập hàng xóm) đều nói về VỊ TRÍ
+ * TƯƠNG ĐỐI của cả danh sách, không về một hàng cụ thể. Sáu hàng và vài lệnh
+ * ghi mỗi tháng nên tranh chấp là số không.
  *
  * Giá trị nó mua: mọi lệnh đọc bên trong `fn` nằm SAU khoá THEO CẤU TRÚC. Bản
  * trước dùng `SELECT … FOR UPDATE` sau khi đã đọc hai hàng, nên khoá xếp hàng
@@ -127,7 +147,7 @@ const CATEGORY_ORDER_LOCK_KEY = 414_002n;
  * này nuôi câu cảnh báo lúc tắt danh mục, nên nó phải đếm đúng thứ khách đang
  * nhìn thấy — đếm cả nháp là nói với admin một con số không ai ngoài kia thấy.
  */
-function toRow(row: CategoryData, tourCount: number): AdminCategoryRow {
+function toRow(row: CategoryData, counts: TourCounts): AdminCategoryRow {
   return {
     id: row.id,
     slug: row.slug,
@@ -135,13 +155,14 @@ function toRow(row: CategoryData, tourCount: number): AdminCategoryRow {
     description: row.description,
     order: row.order,
     isActive: row.isActive,
-    tourCount,
+    tourCount: counts.tourCount,
+    linkedTourCount: counts.linkedTourCount,
   };
 }
 
-/** Hàng đã kèm `_count` — đọc số ngay từ chính câu đã lấy hàng. */
-function toRowWithCount(row: CategoryWithCount): AdminCategoryRow {
-  return toRow(row, row._count.tours);
+/** Hàng đã kèm cờ tour — đếm ngay từ chính lần đọc đã lấy hàng. */
+function toRowWithTours(row: CategoryWithTours): AdminCategoryRow {
+  return toRow(row, countTours(row.tours));
 }
 
 /**
@@ -168,9 +189,9 @@ export class AdminCategoriesService {
   async list(): Promise<AdminCategoryRow[]> {
     const rows = await prisma.tourCategory.findMany({
       orderBy: CATEGORY_ORDER_BY,
-      select: CATEGORY_SELECT_WITH_COUNT,
+      select: CATEGORY_SELECT_WITH_TOURS,
     });
-    return rows.map(toRowWithCount);
+    return rows.map(toRowWithTours);
   }
 
   async create(input: AdminCategoryCreateInput): Promise<AdminCategoryRow> {
@@ -207,7 +228,7 @@ export class AdminCategoriesService {
     );
     this.bust();
     // Danh mục vừa tạo chưa thể có tour nào.
-    return toRow(created, 0);
+    return toRow(created, { tourCount: 0, linkedTourCount: 0 });
   }
 
   async update(input: AdminCategoryUpdateInput): Promise<AdminCategoryRow> {
@@ -215,7 +236,7 @@ export class AdminCategoriesService {
       .update({
         where: { id: input.id },
         data: { name: input.name, description: input.description },
-        select: CATEGORY_SELECT_WITH_COUNT,
+        select: CATEGORY_SELECT_WITH_TOURS,
       })
       .catch((error: unknown) => {
         throw asNotFound(error, input.id);
@@ -225,7 +246,7 @@ export class AdminCategoriesService {
       `[admin] category updated ${JSON.stringify({ id: input.id, name: input.name })}`,
     );
     this.bust();
-    return toRowWithCount(updated);
+    return toRowWithTours(updated);
   }
 
   async setActive(input: AdminCategorySetActiveInput): Promise<AdminCategoryRow> {
@@ -233,7 +254,7 @@ export class AdminCategoriesService {
       .update({
         where: { id: input.id },
         data: { isActive: input.isActive },
-        select: CATEGORY_SELECT_WITH_COUNT,
+        select: CATEGORY_SELECT_WITH_TOURS,
       })
       .catch((error: unknown) => {
         throw asNotFound(error, input.id);
@@ -243,7 +264,7 @@ export class AdminCategoriesService {
       `[admin] category active ${JSON.stringify({ id: input.id, isActive: input.isActive })}`,
     );
     this.bust();
-    return toRowWithCount(updated);
+    return toRowWithTours(updated);
   }
 
   /**
@@ -291,6 +312,32 @@ export class AdminCategoriesService {
     );
     this.bust();
     return this.list();
+  }
+
+  /**
+   * Xoá một danh mục chưa tour nào dùng (ADR-0053 §2). Không SELECT kiểm trước (bài học 1–2
+   * của vòng review F14): khoá ngoại `RESTRICT` nổ `P2003` ngay ở câu DELETE khi còn tour
+   * (kể cả tour nháp) → `IN_USE`; hàng không còn → `P2025` → `NOT_FOUND`.
+   *
+   * Chạy trong `withCategoryOrderLock`: xoá một hàng đổi tập hàng xóm mà `move` đọc, nên nó
+   * cũng là lệnh ghi chạm vị trí tương đối của danh sách.
+   */
+  async delete(input: AdminCategoryDeleteInput): Promise<AdminCategoryDeleteResult> {
+    const deleted = await withCategoryOrderLock((tx) =>
+      tx.tourCategory.delete({ where: { id: input.id }, select: { slug: true } }),
+    ).catch((error: unknown) => {
+      if (error instanceof Prisma.PrismaClientKnownRequestError) {
+        if (error.code === 'P2003') throw new CategoryInUseError();
+        if (error.code === 'P2025') throw new CategoryNotFoundError(input.id);
+      }
+      throw error;
+    });
+
+    this.logger.log(
+      `[admin] category deleted ${JSON.stringify({ id: input.id, slug: deleted.slug })}`,
+    );
+    this.bust();
+    return { slug: deleted.slug };
   }
 
   /**
