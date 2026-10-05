@@ -152,11 +152,21 @@ export function projectedPostReadiness(values: PostFormValues): PostReadinessIte
 
 /**
  * Đổi trạng thái. Sang Published mà ô ngày trống thì tự điền "bây giờ" (spec §2.2); về
- * Draft thì GIỮ ngày — bài về nháp không mất ngày đăng cũ.
+ * Draft thì GIỮ ngày — bài về nháp không mất ngày đăng cũ. Nhưng bài CHƯA TỪNG lưu ngày
+ * (`savedPublishAt` trống) về Draft thì ô ngày trống lại: ô ngày chỉ hiện khi Published, nên
+ * ngày ấy là ngày tự điền hay gõ trong lúc thử đăng — giữ nó là để nó lọt vào nháp rồi bị
+ * dùng lại ở lần đăng sau, bài lên web với ngày cũ (vòng review P4e-4).
  */
-export function withStatus(values: PostFormValues, status: PostStatus, now: Date): PostFormValues {
-  const publishAt =
-    status === 'PUBLISHED' && values.publishAt === '' ? nowUtcInputValue(now) : values.publishAt;
+export function withStatus(
+  values: PostFormValues,
+  status: PostStatus,
+  now: Date,
+  savedPublishAt: string,
+): PostFormValues {
+  if (status === 'DRAFT') {
+    return { ...values, status, publishAt: savedPublishAt === '' ? '' : values.publishAt };
+  }
+  const publishAt = values.publishAt === '' ? nowUtcInputValue(now) : values.publishAt;
   return { ...values, status, publishAt };
 }
 

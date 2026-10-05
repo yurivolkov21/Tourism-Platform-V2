@@ -144,7 +144,7 @@ describe('withStatus', () => {
 
   it('sang Published mà ô ngày trống: tự điền "bây giờ" (spec §2.2)', () => {
     const draft = postFormValues(postDetailFixture({ status: 'DRAFT', publishedAt: null }));
-    expect(withStatus(draft, 'PUBLISHED', NOW)).toMatchObject({
+    expect(withStatus(draft, 'PUBLISHED', NOW, draft.publishAt)).toMatchObject({
       status: 'PUBLISHED',
       publishAt: '2026-10-02T12:34',
     });
@@ -152,10 +152,22 @@ describe('withStatus', () => {
 
   it('đã có ngày thì giữ; về Draft cũng giữ — bài về nháp không mất ngày cũ', () => {
     const published = postFormValues(postDetailFixture());
-    expect(withStatus(published, 'PUBLISHED', NOW).publishAt).toBe('2026-10-01T08:00');
-    expect(withStatus(published, 'DRAFT', NOW)).toMatchObject({
+    const saved = published.publishAt;
+    expect(withStatus(published, 'PUBLISHED', NOW, saved).publishAt).toBe('2026-10-01T08:00');
+    expect(withStatus(published, 'DRAFT', NOW, saved)).toMatchObject({
       status: 'DRAFT',
       publishAt: '2026-10-01T08:00',
+    });
+  });
+
+  // Vòng review P4e-4: ngày tự điền từng lọt vào nháp rồi bị dùng lại ở lần đăng sau — bài lên
+  // web với ngày cũ, tụt xuống dưới danh sách.
+  it('bài chưa từng có ngày: tự điền rồi về Draft thì ô ngày trống lại', () => {
+    const draft = postFormValues(postDetailFixture({ status: 'DRAFT', publishedAt: null }));
+    const toggled = withStatus(draft, 'PUBLISHED', NOW, draft.publishAt);
+    expect(withStatus(toggled, 'DRAFT', NOW, draft.publishAt)).toMatchObject({
+      status: 'DRAFT',
+      publishAt: '',
     });
   });
 });

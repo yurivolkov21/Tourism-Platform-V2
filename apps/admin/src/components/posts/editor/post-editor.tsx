@@ -190,7 +190,9 @@ export function PostEditor({
               dirty={form.dirty}
               blockedNote={uploading ? t.busyUploading : undefined}
               onStatusChange={(status) =>
-                form.setValues((current) => withStatus(current, status, new Date()))
+                form.setValues((current) =>
+                  withStatus(current, status, new Date(), form.base.publishAt),
+                )
               }
               onPublishAtChange={(publishAt) => patch({ publishAt })}
             />
