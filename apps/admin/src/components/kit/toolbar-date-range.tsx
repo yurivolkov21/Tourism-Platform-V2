@@ -6,6 +6,7 @@ import { Calendar } from '@tourism/ui/components/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@tourism/ui/components/popover';
 import { CalendarIcon, ChevronDownIcon } from 'lucide-react';
 import * as React from 'react';
+import { MENU_CHEVRON } from '@/components/kit/menu-style';
 import { TOOLBAR_BUTTON } from '@/components/kit/toolbar-metrics';
 import { formatDateRangeLabel, parseIsoDate, toIsoDate } from '@/lib/date-field';
 
@@ -187,7 +188,7 @@ export function ToolbarDateRange({
       >
         <CalendarIcon data-icon="inline-start" aria-hidden="true" />
         {triggerText}
-        <ChevronDownIcon data-icon="inline-end" aria-hidden="true" className="opacity-50" />
+        <ChevronDownIcon data-icon="inline-end" aria-hidden="true" className={MENU_CHEVRON} />
       </PopoverTrigger>
       <PopoverContent className="w-auto overflow-hidden p-0" align="start" sideOffset={8}>
         <Calendar

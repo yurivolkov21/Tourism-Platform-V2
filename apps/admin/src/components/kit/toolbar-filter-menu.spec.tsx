@@ -160,6 +160,41 @@ describe('ToolbarFilterMenu', () => {
 
     expect(screen.getByRole('button', { name: /Filter by type/ })).toHaveTextContent('2026-99');
   });
+
+  it('mục có hint: tên đọc ra kèm hint, nút cũng hiện hint của mục đang lọc', async () => {
+    const user = userEvent.setup();
+    render(
+      <ToolbarFilterMenu
+        {...PROPS}
+        value="v:retired"
+        groups={[
+          {
+            key: 'categories',
+            items: [
+              { value: 'v:day', label: 'Day Tours' },
+              { value: 'v:retired', label: 'Retired', hint: 'Hidden' },
+            ],
+          },
+        ]}
+      />,
+    );
+
+    const button = screen.getByRole('button', { name: /Filter by type/ });
+    expect(button).toHaveTextContent('Retired');
+    expect(button).toHaveTextContent('Hidden');
+    await user.click(button);
+    expect(
+      await screen.findByRole('menuitemradio', { name: 'Retired Hidden' }),
+    ).toBeInTheDocument();
+  });
+
+  it('mũi tên của nút dùng màu muted chung của mọi dropdown', () => {
+    render(<ToolbarFilterMenu {...PROPS} value={ALL_FILTER_VALUE} />);
+    const chevron = screen
+      .getByRole('button', { name: /Filter by type/ })
+      .querySelector('svg[data-icon="inline-end"]');
+    expect(chevron).toHaveClass('text-muted-foreground');
+  });
 });
 
 /**

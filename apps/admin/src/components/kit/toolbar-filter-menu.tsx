@@ -12,6 +12,7 @@ import {
 } from '@tourism/ui/components/dropdown-menu';
 import { ChevronDownIcon } from 'lucide-react';
 import * as React from 'react';
+import { MENU_CHEVRON, MENU_HINT, MENU_TOOLBAR_POPUP } from '@/components/kit/menu-style';
 import { TOOLBAR_BUTTON } from '@/components/kit/toolbar-metrics';
 
 /**
@@ -54,6 +55,8 @@ export interface ToolbarFilterMenuItem {
    * không biết trước giá trị thì không có icon nào để khai.
    */
   icon?: React.ComponentType<React.SVGProps<SVGSVGElement>>;
+  /** Chữ phụ mờ sau tên (vd "Hidden" cho danh mục đã ẩn) — cùng luật với `Picker`. */
+  hint?: string;
 }
 
 export interface ToolbarFilterMenuGroup {
@@ -133,17 +136,18 @@ export function ToolbarFilterMenu({
           <Button
             variant="outline"
             className={TOOLBAR_BUTTON}
-            aria-label={`${label}: ${shownLabel}`}
+            aria-label={`${label}: ${shownLabel}${shown?.hint ? ` (${shown.hint})` : ''}`}
           />
         }
       >
         {CurrentIcon ? <CurrentIcon data-icon="inline-start" /> : null}
         {shownLabel}
-        <ChevronDownIcon data-icon="inline-end" />
+        {shown?.hint ? <span className={MENU_HINT}>{shown.hint}</span> : null}
+        <ChevronDownIcon data-icon="inline-end" className={MENU_CHEVRON} />
       </DropdownMenuTrigger>
       {/* `w-66` (264px) của dm-10 thay cho `w-fit` của Select cũ: nhãn dài
           vừa một dòng, và menu không co giãn theo mục đang chọn. */}
-      <DropdownMenuContent align="end" className="w-66">
+      <DropdownMenuContent align="end" className={MENU_TOOLBAR_POPUP}>
         {/* `DropdownMenuLabel` render ra `MenuPrimitive.GroupLabel`, cần một
             group thật để gắn nhãn vào — `RadioGroup` CÓ cung cấp context ấy
             (nó bọc `MenuGroupContext.Provider` rồi đọc id lại vào
@@ -184,6 +188,12 @@ function FilterMenuItem({ item }: { item: ToolbarFilterMenuItem }) {
           `[&_svg:not([class*='size-'])]:size-4`, tự nó lo cỡ. */}
       {Icon ? <Icon aria-hidden="true" /> : null}
       {item.label}
+      {item.hint ? (
+        <>
+          {' '}
+          <span className={MENU_HINT}>{item.hint}</span>
+        </>
+      ) : null}
     </DropdownMenuRadioItem>
   );
 }
