@@ -119,6 +119,17 @@ describe('RejectReviewDialog — chọn lý do', () => {
       String(REJECT_DETAIL_MAX),
     );
   });
+
+  it('bố cục: hộp ~1024px, cột lý do ~320px, vùng cuộn chừa làn cho thanh cuộn', async () => {
+    const { dialog } = await openReject(PENDING);
+    expect(dialog).toHaveClass('sm:max-w-5xl');
+    const list = within(dialog).getByRole('radiogroup');
+    expect(list).toHaveClass('pr-3');
+    expect(list).toHaveClass('[scrollbar-gutter:stable]');
+    expect(list.parentElement?.parentElement).toHaveClass(
+      'md:grid-cols-[minmax(0,20rem)_minmax(0,1fr)]',
+    );
+  });
 });
 
 describe('RejectReviewDialog — gửi đi', () => {

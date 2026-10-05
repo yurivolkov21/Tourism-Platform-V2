@@ -104,14 +104,14 @@ export function RejectReviewDialog({
 
   return (
     <Dialog open onOpenChange={onOpenChange}>
-      {/* Rộng hơn mọi dialog moderation khác: cột danh sách lý do nằm bên trái. */}
-      <DialogContent className={cn(DIALOG_FRAME, 'sm:max-w-4xl')} showCloseButton={false}>
+      {/* Rộng hơn mọi dialog moderation khác (~1024px): cột lý do nằm bên trái. */}
+      <DialogContent className={cn(DIALOG_FRAME, 'sm:max-w-5xl')} showCloseButton={false}>
         <DialogHeader>
           <DialogTitle>{t.rejectDialog.title}</DialogTitle>
           <DialogDescription>{copy.body}</DialogDescription>
         </DialogHeader>
 
-        <div className="grid gap-6 md:grid-cols-[minmax(0,17rem)_minmax(0,1fr)]">
+        <div className="grid gap-6 md:grid-cols-[minmax(0,20rem)_minmax(0,1fr)]">
           {/* Cột trái: tìm + chọn MỘT lý do. Màn hẹp thì nó nằm trên. */}
           <div className="grid content-start gap-2">
             <p id={listLabelId} className="text-sm font-medium">
@@ -124,12 +124,15 @@ export function RejectReviewDialog({
               value={query}
               onChange={(event) => setQuery(event.target.value)}
             />
+            {/* `pr-3` + `scrollbar-gutter: stable`: thanh cuộn có làn riêng, không dính sát
+                thẻ lý do, và danh sách lọc còn ngắn không làm các thẻ giật ngang
+                (góp ý user 05/10). */}
             <RadioGroup
               aria-labelledby={listLabelId}
               aria-invalid={reasonMissing}
               value={reasonKey}
               onValueChange={(value) => setReasonKey(value as RejectReasonKey)}
-              className="max-h-80 gap-1.5 overflow-y-auto md:max-h-[26rem]"
+              className="max-h-80 gap-1.5 overflow-y-auto pr-3 [scrollbar-gutter:stable] md:max-h-[26rem]"
             >
               {visible.map((entry) => {
                 const itemId = `${ids}-reason-${entry.key}`;
