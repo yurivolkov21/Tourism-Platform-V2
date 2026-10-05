@@ -63,14 +63,23 @@ describe('toTourRowVM', () => {
     expect(toTourRowVM({ ...ROW, isPublished: false, openDepartureCount: 0 }).countNote).toBeNull();
   });
 
-  it('chuyển thẳng ba cờ và ảnh bìa, kể cả khi chưa có ảnh', () => {
+  it('chuyển thẳng ba cờ; tour chưa có ảnh bìa thì không có URL thumb', () => {
     expect(toTourRowVM(ROW)).toMatchObject({
       category: 'Day Tours',
       isPublished: true,
       isFeatured: true,
-      heroUrl: ROW.heroUrl,
     });
-    expect(toTourRowVM({ ...ROW, heroUrl: null }).heroUrl).toBeNull();
+    expect(toTourRowVM({ ...ROW, heroUrl: null }).thumbUrl).toBeNull();
+  });
+
+  it('ảnh bìa xin bản 160px cho ô 40px — không tải ảnh gốc', () => {
+    const vm = toTourRowVM({
+      ...ROW,
+      heroUrl: 'https://res.cloudinary.com/demo/image/upload/f_auto,q_auto/v17/tourism/x',
+    });
+    expect(vm.thumbUrl).toBe(
+      'https://res.cloudinary.com/demo/image/upload/f_auto,q_auto,w_160/v17/tourism/x',
+    );
   });
 });
 

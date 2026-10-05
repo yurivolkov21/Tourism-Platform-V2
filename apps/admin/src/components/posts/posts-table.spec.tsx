@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { messages } from '@tourism/i18n';
 import { describe, expect, it, vi } from 'vitest';
 import type { PostsQuery } from '@/lib/posts-query';
@@ -73,6 +73,16 @@ describe('PostsTable', () => {
     ]);
     expect(container.querySelector('img')).toHaveAttribute('src', thumbUrl);
     expect(screen.getByText(t.noImage)).toBeInTheDocument();
+  });
+
+  it('ảnh bìa hỏng: ô có tên "Photo unavailable" thay cho một ô trống câm (spec 2026-10-05 §4 #13)', () => {
+    const { container } = renderTable([
+      row({ thumbUrl: 'https://res.cloudinary.com/demo/image/upload/f_auto,q_auto,w_160/gone' }),
+    ]);
+    fireEvent.error(container.querySelector('img') as HTMLImageElement);
+    expect(
+      screen.getByRole('img', { name: messages.admin.table.photoUnavailable }),
+    ).toBeInTheDocument();
   });
 
   it('thanh công cụ có nút New post', () => {

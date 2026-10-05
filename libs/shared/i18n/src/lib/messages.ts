@@ -2968,6 +2968,12 @@ export const messages = {
       /** Mới có một đầu — xảy ra khi URL gõ tay chỉ mang `from` hoặc `to`. */
       dateFrom: (date: string) => `From ${date}`,
       dateUntil: (date: string) => `Until ${date}`,
+      /**
+       * Tên của ô thay cho ảnh HỎNG (kit `SafeImg`, spec 2026-10-05 §4 #13) — ô ảnh bảng
+       * Tours, bảng Posts và ảnh review dùng chung. Khác `noImage` của từng vùng: ở đây có
+       * URL mà ảnh không tải được, chứ không phải chưa gắn ảnh.
+       */
+      photoUnavailable: 'Photo unavailable',
     },
     /**
      * Khung sửa danh sách của kit (spec F17 §2h) — sáu danh sách của khu làm việc

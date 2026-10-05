@@ -1,3 +1,4 @@
+import { SafeImg } from '@/components/kit/safe-img';
 import type { ModerateTarget } from '@/lib/reviews-moderate';
 
 /**
@@ -26,21 +27,18 @@ export function ReviewModerationContext({
                 công khai chúng — alt từng ảnh thường rỗng (review F4). */}
             <span className="sr-only">{review.photosLabel}</span>
             {review.photos.map((photo) => (
-              // `<img>` thường chứ không `next/image` — cùng lý do đã ghi ở
+              // `SafeImg` là `<img>` thường chứ không `next/image` — cùng lý do đã ghi ở
               // `review-card.tsx` của web: ảnh nhỏ cố định, không cần loader.
               // Thêm một lý do riêng cho admin: `next/image` NÉM khi src nằm
               // ngoài `remotePatterns` (xem `slot-image.spec.tsx`), và một
               // hàng dữ liệu như vậy sẽ giết cả hàng đợi moderation.
-              // biome-ignore lint/performance/noImgElement: thumbnail 64px, tránh next/image ném khi host lạ
-              <img
+              <SafeImg
                 key={photo.thumb}
                 src={photo.thumb}
                 alt={photo.alt}
                 width={64}
                 height={64}
-                loading="lazy"
-                decoding="async"
-                className="size-16 rounded-sm border border-border object-cover"
+                className="size-16 rounded-sm border border-border"
               />
             ))}
           </div>

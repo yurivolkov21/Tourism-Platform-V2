@@ -9,6 +9,7 @@ import Link from 'next/link';
 import * as React from 'react';
 import { ColumnVisibilityMenu, DataTableBody } from '@/components/kit/data-table-body';
 import { DataTableFrame } from '@/components/kit/data-table-frame';
+import { SafeImg } from '@/components/kit/safe-img';
 import { serverTableFeatures } from '@/components/kit/table-features';
 import { TablePagination } from '@/components/kit/table-pagination';
 import { NewTourDialog } from '@/components/tours/editor/new-tour-dialog';
@@ -169,12 +170,13 @@ function buildColumns(setPublished: SetPublishedAction) {
  * ô trống câm đọc thành "ảnh hỏng", còn đây là một sự thật bình thường của
  * tour vừa tạo. Thư viện ảnh là P4f, nên ô này chỉ đọc chứ chưa bấm được.
  *
- * `<img>` thuần chứ không `next/image`: URL Cloudinary đã mang sẵn
- * `f_auto,q_auto` (ADR-0005), nên cho Next tối ưu lại một lần nữa là trả tiền
- * băng thông hai lần cho cùng một tấm 40px.
+ * Có hero thì vẽ bằng kit `SafeImg` với URL VM đã thu về `w_160` (spec 2026-10-05
+ * §4 #3) — ô 40px không kéo nguyên ảnh gốc ~2400px. Ảnh hỏng thành ô icon mang tên
+ * "Photo unavailable" chứ không thành ô trống câm (§4 #13). Lý do dùng `<img>`
+ * thường thay cho `next/image` ghi ở `SafeImg`.
  */
 function TourThumb({ row }: { row: TourRowVM }) {
-  if (!row.heroUrl) {
+  if (!row.thumbUrl) {
     return (
       // `aria-hidden` + `title` là hai thứ TRIỆT TIÊU nhau: cái đầu gỡ hẳn nút
       // khỏi cây trợ năng, còn `title` trên một div không tương tác thì vốn
@@ -185,17 +187,7 @@ function TourThumb({ row }: { row: TourRowVM }) {
       </div>
     );
   }
-  return (
-    // biome-ignore lint/performance/noImgElement: URL Cloudinary đã tối ưu sẵn (ADR-0005)
-    <img
-      src={row.heroUrl}
-      alt=""
-      width={40}
-      height={40}
-      loading="lazy"
-      className="size-10 shrink-0 rounded-md object-cover"
-    />
-  );
+  return <SafeImg src={row.thumbUrl} alt="" width={40} height={40} className="size-10" />;
 }
 
 export interface ToursTableProps {

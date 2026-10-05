@@ -8,6 +8,7 @@ import Link from 'next/link';
 import * as React from 'react';
 import { ColumnVisibilityMenu, DataTableBody } from '@/components/kit/data-table-body';
 import { DataTableFrame } from '@/components/kit/data-table-frame';
+import { SafeImg } from '@/components/kit/safe-img';
 import { serverTableFeatures } from '@/components/kit/table-features';
 import { TablePagination } from '@/components/kit/table-pagination';
 import { NewPostDialog } from '@/components/posts/new-post-dialog';
@@ -101,7 +102,8 @@ const COLUMNS = columnHelper.columns([
 
 /**
  * Ô ảnh bìa 40px — cùng khuôn `TourThumb`: chưa có ảnh thì ô giữ chỗ mang chữ `sr-only`
- * (ô câm đọc thành "ảnh hỏng"); `<img>` thuần vì URL Cloudinary đã mang sẵn `f_auto,q_auto`.
+ * (ô câm đọc thành "ảnh hỏng"); có ảnh thì kit `SafeImg` — ảnh hỏng thành ô icon mang tên
+ * "Photo unavailable" (spec 2026-10-05 §4 #13).
  */
 function PostThumb({ row }: { row: PostRowVM }) {
   if (!row.thumbUrl) {
@@ -111,17 +113,7 @@ function PostThumb({ row }: { row: PostRowVM }) {
       </div>
     );
   }
-  return (
-    // biome-ignore lint/performance/noImgElement: URL Cloudinary đã tối ưu sẵn (ADR-0005)
-    <img
-      src={row.thumbUrl}
-      alt=""
-      width={40}
-      height={40}
-      loading="lazy"
-      className="size-10 shrink-0 rounded-md object-cover"
-    />
-  );
+  return <SafeImg src={row.thumbUrl} alt="" width={40} height={40} className="size-10" />;
 }
 
 export interface PostsTableProps {

@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { ReviewVerdict } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
@@ -189,6 +189,17 @@ describe('ModerateActions — confirm nêu hệ quả THẬT (spec §3-F4)', () 
     expect(screen.getByText(messages.admin.reviews.list.ratingLabel(5))).toBeInTheDocument();
     expect(screen.getByText(/kayaking was the highlight/)).toBeInTheDocument();
     expect(screen.getByAltText('Sunrise')).toBeInTheDocument();
+  });
+
+  it('ảnh đính kèm hỏng (nợ G22): dialog in ô "Photo unavailable", không phải ô trống câm', async () => {
+    const user = userEvent.setup();
+    render(<ModerateActions review={PENDING} moderate={vi.fn()} />);
+    await open(user, 'approve');
+
+    fireEvent.error(await screen.findByAltText('Sunrise'));
+    expect(
+      screen.getByRole('img', { name: messages.admin.table.photoUnavailable }),
+    ).toBeInTheDocument();
   });
 });
 

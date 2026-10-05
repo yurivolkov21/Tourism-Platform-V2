@@ -1,6 +1,7 @@
 import type { AdminTourRow } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
 import { formatAmount } from './bookings-view';
+import { withDeliveryTransform } from './cloudinary-url';
 import { tourStepHref } from './tour-editor-view';
 import { departuresHref } from './tours-query';
 
@@ -39,7 +40,8 @@ export interface TourRowVM {
   countNote: string | null;
   isPublished: boolean;
   isFeatured: boolean;
-  heroUrl: string | null;
+  /** Ảnh bìa thu về 160px cho ô 40px — cùng nếp `posts-view`. */
+  thumbUrl: string | null;
   /** Khu làm việc của tour (F17) — đích của tên tour. */
   editorHref: string;
   /**
@@ -80,7 +82,7 @@ export function toTourRowVM(row: AdminTourRow): TourRowVM {
     ...countCopy(row),
     isPublished: row.isPublished,
     isFeatured: row.isFeatured,
-    heroUrl: row.heroUrl,
+    thumbUrl: row.heroUrl === null ? null : withDeliveryTransform(row.heroUrl, 'w_160'),
     editorHref: tourStepHref(row.slug, 'details'),
     reviewHref: tourStepHref(row.slug, 'review'),
     departuresHref: departuresHref(row.slug),

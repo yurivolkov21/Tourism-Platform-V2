@@ -41,7 +41,7 @@ const ROW: TourRowVM = {
   countNote: null,
   isPublished: true,
   isFeatured: false,
-  heroUrl: null,
+  thumbUrl: null,
   editorHref: '/tours/hoi-an-lantern-evening',
   reviewHref: '/tours/hoi-an-lantern-evening/review',
   departuresHref: '/tours/hoi-an-lantern-evening/departures',

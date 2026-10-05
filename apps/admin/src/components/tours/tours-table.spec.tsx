@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { messages } from '@tourism/i18n';
 import { describe, expect, it, vi } from 'vitest';
@@ -31,7 +31,7 @@ const row = (patch: Partial<TourRowVM> = {}): TourRowVM => ({
   countNote: null,
   isPublished: true,
   isFeatured: false,
-  heroUrl: null,
+  thumbUrl: null,
   editorHref: '/tours/hoi-an-lantern-evening',
   reviewHref: '/tours/hoi-an-lantern-evening/review',
   departuresHref: '/tours/hoi-an-lantern-evening/departures',
@@ -137,14 +137,25 @@ describe('ToursTable', () => {
     expect(screen.queryByText(t.featured)).not.toBeInTheDocument();
   });
 
-  it('tour đã có ảnh bìa in đúng URL API trả về', () => {
-    const heroUrl = 'https://res.cloudinary.com/demo/image/upload/f_auto,q_auto/tours/hoi-an';
-    renderTable([row({ heroUrl })]);
+  it('tour đã có ảnh bìa in đúng URL thumb mà VM dựng sẵn', () => {
+    const thumbUrl =
+      'https://res.cloudinary.com/demo/image/upload/f_auto,q_auto,w_160/tours/hoi-an';
+    renderTable([row({ thumbUrl })]);
     // `alt=""` có chủ đích: tên tour nằm ngay cạnh, một alt lặp lại nó là hai
     // lần đọc cùng một chuỗi.
     const img = document.querySelector('img');
-    expect(img).toHaveAttribute('src', heroUrl);
+    expect(img).toHaveAttribute('src', thumbUrl);
     expect(img).toHaveAttribute('alt', '');
+  });
+
+  it('ảnh bìa hỏng: ô có tên "Photo unavailable" thay cho một ô trống câm (spec 2026-10-05 §4 #13)', () => {
+    renderTable([
+      row({ thumbUrl: 'https://res.cloudinary.com/demo/image/upload/f_auto,q_auto,w_160/gone' }),
+    ]);
+    fireEvent.error(document.querySelector('img') as HTMLImageElement);
+    expect(
+      screen.getByRole('img', { name: messages.admin.table.photoUnavailable }),
+    ).toBeInTheDocument();
   });
 
   it('danh sách rỗng nói đúng câu của vùng', () => {
