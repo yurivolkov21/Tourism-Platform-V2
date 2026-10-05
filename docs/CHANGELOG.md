@@ -8,6 +8,41 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-10-05 — SessionStart hook dựng môi trường cho session cloud (`eafb1eca`, nhánh `claude/nice-rubin-moffft`)
+
+User mở session cloud (claude.ai/code) để review các nhánh mobile của nhóm và hỏi có phải
+khai biến môi trường ở cloud không. Đo trên container thật: KHÔNG cần secret nào, cái thiếu
+là toolchain. Image chỉ có Node 20–22 trong khi repo đòi 24, chưa có `node_modules`, không
+Postgres nào chạy, không `.env.local`.
+
+- **`.claude/hooks/session-start.sh`** (đăng ký ở `.claude/settings.json` mới), chỉ chạy khi
+  `CLAUDE_CODE_REMOTE=true` nên máy Windows bỏ qua. Cài Node 24 qua nvm có sẵn trong image
+  và ghi PATH qua `CLAUDE_ENV_FILE`; pnpm đúng `packageManager`; `pnpm install
+  --frozen-lockfile` như CI; chép `.env.example` thành `.env.local` cho từng app (giá trị
+  dev trỏ localhost, luật 15); dựng Postgres 17 bằng `docker compose up -d --wait postgres`,
+  cùng image với CI. Postgres 16 có sẵn trong image cố ý không dùng vì khác major với
+  dev/CI. Phần Postgres hỏng chỉ cảnh báo; phần bắt buộc hỏng thì exit 2 kèm stderr.
+- **CLAUDE.md** thêm một gotcha: hook chỉ chạy trên nhánh CÓ nó, và build web trong `gate`
+  vẫn cần API sống như CI.
+
+Hook làm ở nhánh riêng thay vì `feat/mobile-browse-screens` vì đó là nhánh feature của
+thành viên khác (luật 1). Lúc merge, bốn nhánh `feat/mobile-*` tách từ `80e36099`, chậm
+`main` 167 commit và đã xung đột với `main` ở `apps/api/package.json`, `pnpm-lock.yaml`,
+`docs/CHANGELOG.md`, `docs/README.md` (booking và review thêm `docs/open-items.md`). Mô
+phỏng `git merge-tree` có và không có hook ra cùng một danh sách: hook không thêm xung đột.
+
+**Review findings:** không mở vòng review riêng. Kiểm chứng trên container cloud mô phỏng
+session mới: chạy lạnh 17 giây, chạy lại 2,6 giây và PATH không ghi trùng; pid file dockerd
+sót lại sau `kill -9` được dọn; thiếu nvm thì exit 2; Docker hỏng thì chỉ cảnh báo. Chưa
+thử trong một session cloud mở thật, nên việc `CLAUDE_ENV_FILE` áp PATH mới dựa trên tài
+liệu.
+
+Không cần rebase: `main` đứng ở `ffae9c50` suốt lúc làm. CI của nhánh (run #378) xanh.
+Không migration, không env, không webhook.
+
+Tests after: unit 5077 — web 1592, admin 1558, api 1015, contract 562, mobile 159, mobile-ui
+86, core 46, ui 23, i18n 18, tokens 18 — và int 708/708.
+
 ## 2026-10-01 — Merge lý do bác review lên main (`14b631a3`)
 
 Nội dung đã kể ở entry ngay bên dưới (28/09). Entry này chỉ ghi sự kiện merge.
