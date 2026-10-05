@@ -190,6 +190,28 @@ describe('PostEditor — lưu cả form', () => {
     expect(refresh).toHaveBeenCalled();
   });
 
+  // Vòng review P4e-4: nút Reload nằm TRONG dải báo — dải tắt là tiêu điểm rơi về <body>.
+  it('Reload: bản mới về thì dải báo tắt, tiêu điểm về tiêu đề trang — không rơi về body', async () => {
+    const update = vi.fn<UpdatePostAction>().mockResolvedValue({ ok: false, code: 'STALE_POST' });
+    const user = userEvent.setup();
+    const base = props({ update });
+    const { rerender } = render(<PostEditor {...base} />);
+
+    await user.type(screen.getByLabelText(t.fields.title), '!');
+    await user.click(saveButton());
+    const alert = await screen.findByRole('alert');
+    await user.click(within(alert).getByRole('button', { name: t.banners.reload }));
+    rerender(
+      <PostEditor
+        {...base}
+        detail={postDetailFixture({ title: 'Their version', version: '2026-10-02T11:00:00.000Z' })}
+      />,
+    );
+
+    await waitFor(() => expect(screen.queryByRole('alert')).not.toBeInTheDocument());
+    expect(screen.getByRole('heading', { level: 2, name: 'Their version' })).toHaveFocus();
+  });
+
   it('NOT_FOUND: toast lỗi, về danh sách bài', async () => {
     const update = vi.fn<UpdatePostAction>().mockResolvedValue({ ok: false, code: 'NOT_FOUND' });
     const { user } = renderEditor({ update });

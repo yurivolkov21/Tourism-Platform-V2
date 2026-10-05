@@ -6,6 +6,7 @@ import { Badge } from '@tourism/ui/components/badge';
 import { ButtonLink } from '@tourism/ui/components/button-link';
 import { ChevronLeftIcon, ExternalLinkIcon } from 'lucide-react';
 import Link from 'next/link';
+import type { Ref } from 'react';
 import { formatDateTime } from '@/lib/bookings-view';
 import { POST_STATUS_VARIANT, POSTS_LIST_HREF, postStatusLabel } from '@/lib/posts-view';
 import { postPageUrl } from '@/lib/site';
@@ -19,7 +20,17 @@ import { postPageUrl } from '@/lib/site';
  */
 const t = messages.admin.posts.editor;
 
-export function PostEditorHeader({ detail }: { detail: AdminPostDetail }) {
+export function PostEditorHeader({
+  detail,
+  headingRef,
+}: {
+  detail: AdminPostDetail;
+  /**
+   * Chỗ đáp của tiêu điểm khi dải báo chứa nút Reload tắt đi (vòng review P4e-4) — `tabIndex`
+   * -1 để focus được bằng code mà không thành một điểm dừng Tab.
+   */
+  headingRef?: Ref<HTMLHeadingElement>;
+}) {
   return (
     <div className="flex flex-col gap-3">
       <Link
@@ -32,7 +43,13 @@ export function PostEditorHeader({ detail }: { detail: AdminPostDetail }) {
 
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="grid min-w-0 gap-1">
-          <h2 className="text-2xl font-semibold tracking-tight">{detail.title}</h2>
+          <h2
+            ref={headingRef}
+            tabIndex={-1}
+            className="text-2xl font-semibold tracking-tight focus:outline-none"
+          >
+            {detail.title}
+          </h2>
           <p className="text-sm text-muted-foreground">
             /blog/{detail.slug} · {t.lastSaved(formatDateTime(detail.version))}
           </p>

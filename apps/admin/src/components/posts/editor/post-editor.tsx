@@ -6,7 +6,7 @@ import { Card, CardContent } from '@tourism/ui/components/card';
 import { Input } from '@tourism/ui/components/input';
 import { Textarea } from '@tourism/ui/components/textarea';
 import { useRouter } from 'next/navigation';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { FormField } from '@/components/kit/form-field';
 import { useReportUnsaved } from '@/components/kit/unsaved-changes';
@@ -121,6 +121,21 @@ export function PostEditor({
         : null;
   const shownCardError = cardError !== null && cardError.version === version ? cardError : null;
 
+  // Nút Reload nằm TRONG dải báo: bản mới về là dải tắt và tiêu điểm rơi về <body>. Đáp nó
+  // xuống tiêu đề trang ngay khi dải tắt (vòng review P4e-4).
+  const heading = useRef<HTMLHeadingElement>(null);
+  const refocusAfterReload = useRef(false);
+  useEffect(() => {
+    if (shownBanner !== null || !refocusAfterReload.current) return;
+    refocusAfterReload.current = false;
+    heading.current?.focus();
+  });
+
+  function reload() {
+    refocusAfterReload.current = true;
+    form.reload();
+  }
+
   function patch(next: Partial<PostFormValues>) {
     form.setValues((current) => ({ ...current, ...next }));
   }
@@ -208,7 +223,7 @@ export function PostEditor({
 
   return (
     <div className="flex flex-col gap-6 px-4 pb-8 lg:px-6">
-      <PostEditorHeader detail={saved} />
+      <PostEditorHeader detail={saved} headingRef={heading} />
       <StepColumns
         aside={
           <>
@@ -275,7 +290,7 @@ export function PostEditor({
               if (form.dirty && !pending) void save();
             }}
           >
-            {shownBanner ? <PostBanner banner={shownBanner} onReload={form.reload} /> : null}
+            {shownBanner ? <PostBanner banner={shownBanner} onReload={reload} /> : null}
 
             <Card>
               <CardContent className="grid gap-4">
