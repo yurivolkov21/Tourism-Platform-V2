@@ -138,7 +138,7 @@ function withCategoryOrderLock<T>(fn: (tx: Prisma.TransactionClient) => Promise<
 }
 
 /** Khoá advisory của bảng `tour_categories` — một hằng, không trùng khoá nào khác. */
-const CATEGORY_ORDER_LOCK_KEY = 414_002n;
+export const CATEGORY_ORDER_LOCK_KEY = 414_002n;
 
 /**
  * Hàng DB → hàng contract.

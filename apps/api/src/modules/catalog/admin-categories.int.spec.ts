@@ -5,6 +5,7 @@ import { AppModule } from '../../app.module.js';
 import { prisma } from '../../auth/auth.config.js';
 import type { Prisma } from '../../generated/prisma/client.js';
 import { WebRevalidationService } from '../web-revalidation/web-revalidation.service.js';
+import { CATEGORY_ORDER_LOCK_KEY } from './admin-categories.service.js';
 
 /**
  * Integration (Docker PG, db `tourism_test`) — sáu thao tác quản trị danh mục
@@ -401,6 +402,25 @@ describe('admin categories integration (P4e-2 F14)', () => {
         } as unknown as Prisma.TourCreateInput,
       });
 
+    /**
+     * Số yêu cầu CHƯA được cấp đang xếp hàng sau khoá thứ tự danh mục. `pg_locks` hiện khoá
+     * advisory một số `bigint` thành `classid` (32 bit cao) và `objid` (32 bit thấp) với
+     * `objsubid = 1`. Lọc theo DB vì bảng này nhìn thấy cả cụm Postgres — một session song
+     * song chạy int test trên DB khác cũng có thể đang chờ một khoá cùng số.
+     */
+    const orderLockWaiters = async () => {
+      const [row] = await prisma.$queryRaw<{ waiting: number }[]>`
+        SELECT count(*)::int AS waiting
+        FROM pg_locks
+        WHERE locktype = 'advisory'
+          AND NOT granted
+          AND objsubid = 1
+          AND ((classid::bigint << 32) | objid::bigint) = ${CATEGORY_ORDER_LOCK_KEY}
+          AND database = (SELECT oid FROM pg_database WHERE datname = current_database())
+      `;
+      return row?.waiting ?? 0;
+    };
+
     it('0 tour → 200 trả slug, hàng biến khỏi bảng', async () => {
       const res = await remove(catId(3), adminCookie);
 
@@ -426,6 +446,8 @@ describe('admin categories integration (P4e-2 F14)', () => {
     });
 
     it('xoá chen với move ở hai hàng kề: không lượt nào 500, `order` không trùng', async () => {
+      // Ca khói: gỡ khoá khỏi `delete` thì ca này vẫn xanh (đã đo 5/5) — cửa sổ hỏng của
+      // `move` chỉ dài vài vòng DB, `Promise.all` không ép trúng được. Khoá do ca kế dưới canh.
       const results = await Promise.all([
         remove(catId(3), adminCookie),
         move(catId(2), 'down', adminCookie),
@@ -433,8 +455,53 @@ describe('admin categories integration (P4e-2 F14)', () => {
       ]);
 
       for (const res of results) expect(res.statusCode).toBeLessThan(500);
+      expect(results[0]?.statusCode).toBe(200);
       const orders = (await listOk()).map((row) => row.order);
       expect(new Set(orders).size).toBe(orders.length);
+    });
+
+    it('câu xoá xếp hàng sau khoá thứ tự: đang có người giữ khoá thì hàng còn nguyên', async () => {
+      // ADR-0053 §2: câu xoá chạy trong `withCategoryOrderLock`. Ca này GIỮ chính khoá ấy trong
+      // một transaction của test, nên câu xoá đi qua khoá thì phải đứng chờ — thấy được ở
+      // `pg_locks` là một yêu cầu CHƯA được cấp. Gỡ khoá khỏi `delete` thì câu xoá chạy xong
+      // ngay trong lúc test còn giữ khoá, và ca này đỏ (đã đo).
+      let taken!: () => void;
+      const lockTaken = new Promise<void>((resolve) => {
+        taken = resolve;
+      });
+      let release!: () => void;
+      const released = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      const holding = prisma.$transaction(
+        async (tx) => {
+          await tx.$executeRaw`SELECT pg_advisory_xact_lock(${CATEGORY_ORDER_LOCK_KEY})`;
+          taken();
+          await released;
+        },
+        { timeout: 15_000 },
+      );
+
+      let deleting!: ReturnType<typeof remove>;
+      try {
+        await lockTaken;
+        deleting = remove(catId(3), adminCookie);
+        await vi.waitFor(async () => expect(await orderLockWaiters()).toBe(1), {
+          timeout: 5_000,
+          interval: 50,
+        });
+        expect(await slugsInOrder()).toContain('cruises');
+      } finally {
+        // Nhả khoá ở MỌI kết cục rồi chờ câu xoá chạy hết: ca hỏng giữa chừng không được để
+        // khoá treo, hay một câu xoá còn đang bay, lọt sang ca sau.
+        release();
+        await holding;
+        await deleting;
+      }
+
+      const res = await deleting;
+      expect(res.statusCode).toBe(200);
+      expect(await slugsInOrder()).not.toContain('cruises');
     });
 
     it('bust `tours` SAU commit; xoá hỏng thì không bust', async () => {
