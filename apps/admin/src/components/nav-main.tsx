@@ -2,7 +2,6 @@
 
 import { messages } from '@tourism/i18n';
 import { Badge } from '@tourism/ui/components/badge';
-import { Button } from '@tourism/ui/components/button';
 import {
   SidebarGroup,
   SidebarGroupContent,
@@ -13,16 +12,16 @@ import {
   SidebarMenuItem,
 } from '@tourism/ui/components/sidebar';
 import { cn } from '@tourism/ui/lib/utils';
-import { CirclePlusIcon, MailIcon } from 'lucide-react';
 import { usePathname } from 'next/navigation';
+import { QuickCreateMenu } from '@/components/quick-create-menu';
 import { isActiveNav, NAV_GROUPS, navTooltip } from '@/lib/nav';
 
 /**
- * Nav chính của shell dashboard-01 — vòng gọt 21/08 (bước 1, user chỉ đạo):
- * GIỮ nguyên khối Quick Create + nút mail của block (user: "sau này sẽ cần
- * dùng tới"); phần items mẫu (Lifecycle/Analytics/…) thay bằng 15 mục 3 nhóm
- * THẬT từ `lib/nav.ts` — mục chưa mở gắn badge "Soon" + disabled, KHÔNG link
- * chết (nghiệm thu P4a §0.3, cùng nếp AppShell cũ).
+ * Nav chính của shell dashboard-01. Vòng gọt 21/08 (bước 1, user chỉ đạo): phần
+ * items mẫu (Lifecycle/Analytics/…) thay bằng 15 mục 3 nhóm THẬT từ `lib/nav.ts`
+ * — mục chưa mở gắn badge "Soon" + disabled, KHÔNG link chết (nghiệm thu P4a
+ * §0.3, cùng nếp AppShell cũ). Quick Create là menu tạo nhanh (05/10, user chốt),
+ * nút mail của block đã bỏ.
  *
  * Cột icon khi thu gọn (góp ý giao diện 28/09, demo đã duyệt): mỗi mục có tooltip
  * (`navTooltip`), trang đang mở có ô sáng (`isActiveNav`), nhãn nhóm ẩn nên ba nhóm
@@ -33,34 +32,11 @@ export function NavMain() {
   const pathname = usePathname();
   return (
     <>
-      {/* Khối Quick Create — nguyên văn từ block dashboard-01. */}
+      {/* Quick Create thành menu tạo nhanh (spec 2026-10-05 §2.5). Nút phong bì của block
+          dashboard-01 bỏ hẳn: không có đích, và Enquiries đã có mục riêng ở nhóm Operations. */}
       <SidebarGroup>
-        <SidebarGroupContent className="flex flex-col gap-2">
-          <SidebarMenu>
-            <SidebarMenuItem className="flex items-center gap-2">
-              <SidebarMenuButton
-                tooltip="Quick Create"
-                className="min-w-8 bg-sidebar-cta text-sidebar-cta-foreground duration-200 ease-linear hover:bg-sidebar-primary hover:text-sidebar-primary-foreground active:bg-sidebar-primary active:text-sidebar-primary-foreground"
-              >
-                <CirclePlusIcon />
-                <span>Quick Create</span>
-              </SidebarMenuButton>
-              {/* Cùng bệnh với badge: `outline` mang `bg-background`, tức
-                  một ô vuông TRẮNG trên vỏ tối. Ở đây nền nhạt của sidebar
-                  gánh vai đó, và thứ định danh nút là ICON (đo 11.56) chứ
-                  không phải nét viền — nên viền chỉ còn giữ hình. */}
-              {/* Cột icon: ẩn HẲN (`hidden`), không chỉ trong suốt — `opacity-0` để
-                  lại một nút vô hình vẫn nhận Tab. */}
-              <Button
-                size="icon"
-                className="size-8 border-sidebar-border bg-sidebar-accent text-sidebar-foreground group-data-[collapsible=icon]:hidden hover:bg-sidebar-accent/70 hover:text-sidebar-foreground"
-                variant="outline"
-              >
-                <MailIcon />
-                <span className="sr-only">Inbox</span>
-              </Button>
-            </SidebarMenuItem>
-          </SidebarMenu>
+        <SidebarGroupContent>
+          <QuickCreateMenu />
         </SidebarGroupContent>
       </SidebarGroup>
 

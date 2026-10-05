@@ -46,7 +46,7 @@ const CATEGORIES: TourCategoryOption[] = [
   { id: 'b0000001-0000-4000-8000-000000000004', name: 'Trekking & Adventure', isActive: false },
 ];
 
-function renderTable(rows: TourRowVM[]) {
+function renderTable(rows: TourRowVM[], { openCreate }: { openCreate?: boolean } = {}) {
   return render(
     <ToursTable
       rows={rows}
@@ -58,6 +58,7 @@ function renderTable(rows: TourRowVM[]) {
       setPublished={vi.fn()}
       createOptions={{ categories: CATEGORIES, destinations: [] }}
       create={vi.fn()}
+      openCreate={openCreate}
     />,
   );
 }
@@ -78,6 +79,13 @@ describe('ToursTable', () => {
     renderTable([row()]);
     expect(
       screen.getByRole('button', { name: messages.admin.tours.editor.create.action }),
+    ).toBeInTheDocument();
+  });
+
+  it('`openCreate` (Quick Create) tới được hộp New tour', async () => {
+    renderTable([row()], { openCreate: true });
+    expect(
+      await screen.findByRole('dialog', { name: messages.admin.tours.editor.create.dialog.title }),
     ).toBeInTheDocument();
   });
 

@@ -3,9 +3,12 @@ import type { Metadata } from 'next';
 import { cookies } from 'next/headers';
 import { AdminShell } from '@/components/admin-shell';
 import { DestinationsTable } from '@/components/destinations/destinations-table';
+import { StripCreateParam } from '@/components/kit/strip-create-param';
 import { fetchAdminDestinations } from '@/lib/api/destinations';
 import { getServerSession } from '@/lib/api/session';
+import { wantsCreate } from '@/lib/create-param';
 import { toDestinationRowVM } from '@/lib/destinations-view';
+import type { RawSearchParams } from '@/lib/table-query';
 import {
   createDestinationAction,
   deleteDestinationAction,
@@ -17,8 +20,8 @@ import {
  * `/destinations` — điểm đến (spec P4e-2 F15).
  *
  * Server component đúng nếp `/categories`: fetch oRPC kèm cookie forward, rồi
- * truyền một danh sách đã format xuống bảng client. KHÔNG có `searchParams`:
- * bảng này mười tám hàng, không phân trang, không lọc.
+ * truyền một danh sách đã format xuống bảng client. `searchParams` chỉ đọc
+ * `create=1` của Quick Create — bảng mười tám hàng vẫn không phân trang, không lọc.
  *
  * Fetch hỏng thì page NÉM, và boundary `app/error.tsx` hiện trang báo lỗi kèm
  * nút thử lại — cùng cách `/categories` xử lỗi fetch. Đó cũng là đường của khe
@@ -34,7 +37,13 @@ export const metadata: Metadata = {
   title: 'Destinations — Nexora back office',
 };
 
-export default async function DestinationsPage() {
+export default async function DestinationsPage({
+  searchParams,
+}: {
+  searchParams: Promise<RawSearchParams>;
+}) {
+  const raw = await searchParams;
+  const openCreate = wantsCreate(raw);
   const cookie = (await cookies()).toString();
   const [session, rows] = await Promise.all([getServerSession(), fetchAdminDestinations(cookie)]);
   // Null chỉ xảy ra khi phiên hết hạn ngay giữa hai request — layout xử lý ở
@@ -54,7 +63,9 @@ export default async function DestinationsPage() {
         update={updateDestinationAction}
         setActive={setDestinationActiveAction}
         remove={deleteDestinationAction}
+        openCreate={openCreate}
       />
+      {openCreate ? <StripCreateParam /> : null}
     </AdminShell>
   );
 }

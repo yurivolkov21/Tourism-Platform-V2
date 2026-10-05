@@ -186,4 +186,23 @@ describe('NewTourDialog', () => {
       }),
     ).toBeInTheDocument();
   });
+
+  it('`openCreate` (Quick Create) mở sẵn hộp mà không cần bấm nút', async () => {
+    render(<NewTourDialog options={OPTIONS} create={vi.fn()} openCreate />);
+    expect(await screen.findByRole('dialog')).toBeInTheDocument();
+  });
+
+  it('Quick Create ngay trên trang này: `openCreate` bật sau mount vẫn mở hộp, gỡ tham số thì hộp còn mở', async () => {
+    const create = vi.fn();
+    const { rerender } = render(<NewTourDialog options={OPTIONS} create={create} />);
+    expect(screen.queryByRole('dialog')).toBeNull();
+
+    // Cùng route, chỉ query đổi: React giữ nguyên component, chỉ prop đổi.
+    rerender(<NewTourDialog options={OPTIONS} create={create} openCreate />);
+    expect(await screen.findByRole('dialog')).toBeInTheDocument();
+
+    // `StripCreateParam` gỡ `create` khỏi URL → trang dựng lại với `openCreate` tắt.
+    rerender(<NewTourDialog options={OPTIONS} create={create} />);
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+  });
 });

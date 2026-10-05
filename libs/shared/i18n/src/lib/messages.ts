@@ -2853,6 +2853,9 @@ export const messages = {
       soonItem: (label: string) => `${label} · Soon`,
       /** Tooltip của logo khi sidebar thu gọn — logo là link về Dashboard. */
       logoTooltip: 'Nexora — Dashboard',
+      /** Nút tạo nhanh trên sidebar và nhãn nhóm của menu nó mở (spec 2026-10-05 §2.5). */
+      quickCreate: 'Quick Create',
+      quickCreateMenu: 'Create',
       dashboard: 'Dashboard',
       bookings: 'Bookings',
       reviews: 'Reviews',

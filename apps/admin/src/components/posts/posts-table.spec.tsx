@@ -31,9 +31,16 @@ const row = (patch: Partial<PostRowVM> = {}): PostRowVM => ({
 
 const QUERY: PostsQuery = { page: 1, limit: 20 };
 
-function renderTable(rows: PostRowVM[]) {
+function renderTable(rows: PostRowVM[], { openCreate }: { openCreate?: boolean } = {}) {
   return render(
-    <PostsTable rows={rows} query={QUERY} total={rows.length} totalPages={1} create={vi.fn()} />,
+    <PostsTable
+      rows={rows}
+      query={QUERY}
+      total={rows.length}
+      totalPages={1}
+      create={vi.fn()}
+      openCreate={openCreate}
+    />,
   );
 }
 
@@ -72,6 +79,13 @@ describe('PostsTable', () => {
     renderTable([row()]);
     expect(
       screen.getByRole('button', { name: messages.admin.posts.create.action }),
+    ).toBeInTheDocument();
+  });
+
+  it('`openCreate` (Quick Create) tới được hộp New post', async () => {
+    renderTable([row()], { openCreate: true });
+    expect(
+      await screen.findByRole('dialog', { name: messages.admin.posts.create.dialog.title }),
     ).toBeInTheDocument();
   });
 

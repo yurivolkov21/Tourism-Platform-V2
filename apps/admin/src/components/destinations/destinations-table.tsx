@@ -99,6 +99,8 @@ export interface DestinationsTableProps {
   update: UpdateDestinationAction;
   setActive: SetDestinationActiveAction;
   remove: DeleteDestinationAction;
+  /** Quick Create (`?create=1`) — trang báo mở sẵn hộp Add (spec 2026-10-05 §2.5). */
+  openCreate?: boolean;
 }
 
 export function DestinationsTable({
@@ -107,13 +109,22 @@ export function DestinationsTable({
   update,
   setActive,
   remove,
+  openCreate = false,
 }: DestinationsTableProps) {
   const router = useRouter();
   const [columnVisibility, setColumnVisibility] = React.useState<ColumnVisibilityState>({
     country: false,
   });
   const [isRefreshing, startRefresh] = React.useTransition();
-  const [adding, setAdding] = React.useState(false);
+  // Quick Create (spec 2026-10-05 §2.5) mở hộp Add bằng hai đường. Tới từ trang khác thì
+  // trang dựng mới, hộp mở ngay từ state khởi đầu. Bấm ngay trên trang này thì route giữ
+  // nguyên, chỉ query đổi — bảng không remount, `useState(openCreate)` không chạy lại, nên
+  // effect mở hộp khi prop bật lên. Effect chỉ đặt state, không bấm nút hộ, và không đóng
+  // hộp khi prop tắt (lúc `StripCreateParam` gỡ tham số khỏi URL).
+  const [adding, setAdding] = React.useState(openCreate);
+  React.useEffect(() => {
+    if (openCreate) setAdding(true);
+  }, [openCreate]);
 
   /** Sau MỌI kết cục đã-chạm-server: kéo bảng tươi về, khoá nút tới khi xong. */
   const refreshList = React.useCallback(() => {

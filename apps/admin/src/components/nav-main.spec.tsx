@@ -1,5 +1,6 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { messages } from '@tourism/i18n';
 import { SidebarProvider } from '@tourism/ui/components/sidebar';
 import { TooltipProvider } from '@tourism/ui/components/tooltip';
 import { describe, expect, it, vi } from 'vitest';
@@ -68,12 +69,9 @@ describe('NavMain', () => {
     expect(screen.getByRole('link', { name: 'Bookings' })).not.toHaveAttribute('aria-current');
   });
 
-  it('thu gọn: nút Inbox ẩn hẳn (không chỉ trong suốt mà vẫn nhận Tab); nhóm thứ hai trở đi có vạch ngăn', () => {
+  it('thu gọn: nhóm thứ hai trở đi có vạch ngăn', () => {
     renderNav({ open: false });
 
-    expect(screen.getByRole('button', { name: 'Inbox', hidden: true })).toHaveClass(
-      'group-data-[collapsible=icon]:hidden',
-    );
     const groups = [...document.querySelectorAll('[data-slot="sidebar-group"]')];
     // Khối Quick Create, rồi Operations, Content, System.
     expect(groups).toHaveLength(4);
@@ -81,5 +79,14 @@ describe('NavMain', () => {
       group.classList.contains('group-data-[collapsible=icon]:border-t'),
     );
     expect(divided).toEqual([false, false, true, true]);
+  });
+
+  it('nút phong bì đã bỏ; Quick Create là nút mở menu', () => {
+    renderNav({ open: true });
+    expect(screen.queryByRole('button', { name: 'Inbox' })).toBeNull();
+    expect(screen.getByRole('button', { name: messages.admin.shell.quickCreate })).toHaveAttribute(
+      'aria-haspopup',
+      'menu',
+    );
   });
 });

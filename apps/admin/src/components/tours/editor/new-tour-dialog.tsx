@@ -15,7 +15,7 @@ import { Input } from '@tourism/ui/components/input';
 import { cn } from '@tourism/ui/lib/utils';
 import { PlusIcon } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { DIALOG_FRAME } from '@/components/kit/confirm-write-dialog';
 import { FormField } from '@/components/kit/form-field';
 import { Picker } from '@/components/kit/picker';
@@ -55,11 +55,22 @@ const FORM_ID = 'new-tour';
 export function NewTourDialog({
   options,
   create,
+  openCreate = false,
 }: {
   options: TourEditorOptions;
   create: CreateTourAction;
+  /** Quick Create (`?create=1`) — trang báo mở sẵn hộp (spec 2026-10-05 §2.5). */
+  openCreate?: boolean;
 }) {
-  const [open, setOpen] = useState(false);
+  // Quick Create (spec 2026-10-05 §2.5) mở hộp bằng hai đường. Tới từ trang khác thì trang
+  // dựng mới, hộp mở ngay từ state khởi đầu. Bấm ngay trên trang này thì route giữ nguyên,
+  // chỉ query đổi — component không remount, `useState(openCreate)` không chạy lại, nên
+  // effect mở hộp khi prop bật lên. Effect chỉ đặt state, không bấm nút hộ, và không đóng
+  // hộp khi prop tắt (lúc `StripCreateParam` gỡ tham số khỏi URL).
+  const [open, setOpen] = useState(openCreate);
+  useEffect(() => {
+    if (openCreate) setOpen(true);
+  }, [openCreate]);
 
   return (
     <>

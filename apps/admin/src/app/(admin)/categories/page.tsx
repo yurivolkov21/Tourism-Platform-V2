@@ -3,9 +3,12 @@ import type { Metadata } from 'next';
 import { cookies } from 'next/headers';
 import { AdminShell } from '@/components/admin-shell';
 import { CategoriesTable } from '@/components/categories/categories-table';
+import { StripCreateParam } from '@/components/kit/strip-create-param';
 import { fetchAdminCategories } from '@/lib/api/categories';
 import { getServerSession } from '@/lib/api/session';
 import { toCategoryRowVMs } from '@/lib/categories-view';
+import { wantsCreate } from '@/lib/create-param';
+import type { RawSearchParams } from '@/lib/table-query';
 import {
   createCategoryAction,
   deleteCategoryAction,
@@ -20,9 +23,9 @@ import {
  * Server component đúng nếp `/tours`: fetch oRPC kèm cookie forward, rồi truyền
  * một danh sách đã format xuống bảng client.
  *
- * KHÔNG có `searchParams`: bảng này sáu hàng, không phân trang, không lọc. Thứ
- * tự hàng là `order` do server sắp, và cũng là thứ tự chip lọc trên `/tours`
- * của khách — web đọc thẳng `catalog.categories.list`.
+ * `searchParams` chỉ đọc `create=1` của Quick Create — bảng sáu hàng vẫn không
+ * phân trang, không lọc. Thứ tự hàng là `order` do server sắp, và cũng là thứ tự
+ * chip lọc trên `/tours` của khách — web đọc thẳng `catalog.categories.list`.
  *
  * Trang chở cả năm server action xuống bảng (thay vì để component tự import):
  * bảng và dialog test được với hàm giả, không phải mock `next/headers`.
@@ -33,7 +36,13 @@ export const metadata: Metadata = {
   title: 'Categories — Nexora back office',
 };
 
-export default async function CategoriesPage() {
+export default async function CategoriesPage({
+  searchParams,
+}: {
+  searchParams: Promise<RawSearchParams>;
+}) {
+  const raw = await searchParams;
+  const openCreate = wantsCreate(raw);
   const cookie = (await cookies()).toString();
   const [session, rows] = await Promise.all([getServerSession(), fetchAdminCategories(cookie)]);
   // Null chỉ xảy ra khi phiên hết hạn ngay giữa hai request — layout xử lý ở
@@ -54,7 +63,9 @@ export default async function CategoriesPage() {
         setActive={setCategoryActiveAction}
         move={moveCategoryAction}
         remove={deleteCategoryAction}
+        openCreate={openCreate}
       />
+      {openCreate ? <StripCreateParam /> : null}
     </AdminShell>
   );
 }

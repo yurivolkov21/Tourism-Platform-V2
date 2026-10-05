@@ -212,6 +212,8 @@ export interface ToursTableProps {
   /** Hai danh sách chọn của hộp New tour — hỏng thì rỗng, hộp tự nói vì sao (F17). */
   createOptions: TourEditorOptions;
   create: CreateTourAction;
+  /** Quick Create (`?create=1`) — chuyển thẳng xuống hộp New tour (spec 2026-10-05 §2.5). */
+  openCreate?: boolean;
 }
 
 export function ToursTable({
@@ -224,6 +226,7 @@ export function ToursTable({
   setPublished,
   createOptions,
   create,
+  openCreate,
 }: ToursTableProps) {
   const [columnVisibility, setColumnVisibility] = React.useState<ColumnVisibilityState>({});
   const columns = React.useMemo(() => buildColumns(setPublished), [setPublished]);
@@ -247,7 +250,7 @@ export function ToursTable({
           <ToursMonthMenu query={query} options={monthOptions} />
           <ToursClearFilters query={query} />
           <ColumnVisibilityMenu table={table} labels={COLUMN_LABELS} icons={COLUMN_ICONS} />
-          <NewTourDialog options={createOptions} create={create} />
+          <NewTourDialog options={createOptions} create={create} openCreate={openCreate} />
         </>
       }
       footer={

@@ -2,9 +2,11 @@ import type { Metadata } from 'next';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { AdminShell } from '@/components/admin-shell';
+import { StripCreateParam } from '@/components/kit/strip-create-param';
 import { ToursTable } from '@/components/tours/tours-table';
 import { getServerSession } from '@/lib/api/session';
 import { fetchAdminTours, fetchTourCategories, fetchTourDestinationOptions } from '@/lib/api/tours';
+import { wantsCreate } from '@/lib/create-param';
 import { orphanPageHref, type RawSearchParams } from '@/lib/table-query';
 import { departureMonthOptions, parseToursSearchParams, toursHref } from '@/lib/tours-query';
 import { toTourRowVM } from '@/lib/tours-view';
@@ -17,7 +19,8 @@ import { createTourAction, setTourPublishedAction } from './actions';
  * `searchParams` (page/limit/category/published/month) → input contract →
  * fetch oRPC kèm cookie forward → truyền một trang đã format xuống bảng
  * client. Server action `setTourPublishedAction` và `createTourAction` (hộp New
- * tour, F17) truyền xuống như prop.
+ * tour, F17) truyền xuống như prop. `create=1` của Quick Create không vào contract:
+ * nó chỉ mở sẵn hộp New tour (spec 2026-10-05 §2.5).
  *
  * KHÔNG có hàng stat card: P4e-1 không mở endpoint stats nào cho catalogue, và
  * bốn ô số bịa từ trang hiện tại sẽ nói dối ngay khi sang trang 2.
@@ -31,7 +34,9 @@ export default async function ToursPage({
 }: {
   searchParams: Promise<RawSearchParams>;
 }) {
-  const query = parseToursSearchParams(await searchParams);
+  const raw = await searchParams;
+  const query = parseToursSearchParams(raw);
+  const openCreate = wantsCreate(raw);
   const cookie = (await cookies()).toString();
   const [session, paged, categories, destinations] = await Promise.all([
     getServerSession(),
@@ -63,7 +68,9 @@ export default async function ToursPage({
         setPublished={setTourPublishedAction}
         createOptions={{ categories, destinations }}
         create={createTourAction}
+        openCreate={openCreate}
       />
+      {openCreate ? <StripCreateParam /> : null}
     </AdminShell>
   );
 }
