@@ -16,6 +16,7 @@ import { StarIcon } from 'lucide-react';
 import { useState } from 'react';
 import { DIALOG_FRAME } from '@/components/kit/confirm-write-dialog';
 import { LabelValueRow } from '@/components/kit/label-value-row';
+import { SafeImg } from '@/components/kit/safe-img';
 import { type ReviewRowVM, reviewStateBadgeVariant } from '@/lib/reviews-view';
 
 /**
@@ -109,16 +110,14 @@ export function ReviewDetailsDialog({ row }: { row: ReviewRowVM }) {
                 </h3>
                 <div className="flex flex-wrap gap-2">
                   {row.photos.map((photo) => (
-                    // `<img>` thường, cùng lý do đã ghi ở bảng: `next/image`
+                    // `SafeImg` là `<img>` thường, cùng lý do đã ghi ở bảng: `next/image`
                     // NÉM khi src nằm ngoài `remotePatterns`, và một hàng dữ
-                    // liệu như thế sẽ giết cả dialog.
-                    // biome-ignore lint/performance/noImgElement: host Cloudinary không khai trong remotePatterns
-                    <img
+                    // liệu như thế sẽ giết cả dialog. Không truyền width/height:
+                    // bản `c_limit` giữ nguyên khung hình, cỡ thật chỉ biết khi tải xong.
+                    <SafeImg
                       key={photo.large}
                       src={photo.large}
                       alt={photo.alt}
-                      loading="lazy"
-                      decoding="async"
                       className="max-h-64 rounded-md border border-border object-contain"
                     />
                   ))}

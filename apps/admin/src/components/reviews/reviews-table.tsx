@@ -15,6 +15,7 @@ import {
 import * as React from 'react';
 import { ColumnVisibilityMenu, DataTableBody } from '@/components/kit/data-table-body';
 import { DataTableFrame } from '@/components/kit/data-table-frame';
+import { SafeImg } from '@/components/kit/safe-img';
 import { serverTableFeatures } from '@/components/kit/table-features';
 import { TablePagination } from '@/components/kit/table-pagination';
 import { ModerateActions } from '@/components/reviews/moderate-actions';
@@ -160,19 +161,16 @@ function ReviewCell({ row }: { row: ReviewRowVM }) {
       {row.photos.length > 0 ? (
         <div className="flex items-center gap-1">
           {row.photos.map((photo) => (
-            // `<img>` thường: thumbnail 32px, và `next/image` NÉM khi src nằm
+            // `SafeImg` là `<img>` thường: thumbnail 32px, và `next/image` NÉM khi src nằm
             // ngoài `remotePatterns` (xem `slot-image.spec.tsx` của web) —
             // một hàng dữ liệu như thế sẽ giết cả hàng đợi moderation.
-            // biome-ignore lint/performance/noImgElement: thumbnail 32px, tránh next/image ném khi host lạ
-            <img
+            <SafeImg
               key={photo.thumb}
               src={photo.thumb}
               alt={photo.alt}
               width={32}
               height={32}
-              loading="lazy"
-              decoding="async"
-              className="size-8 rounded-sm border border-border object-cover"
+              className="size-8 rounded-sm border border-border"
             />
           ))}
           <span className="sr-only">{row.photosLabel}</span>

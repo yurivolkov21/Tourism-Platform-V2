@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { messages } from '@tourism/i18n';
 import { describe, expect, it } from 'vitest';
@@ -96,6 +96,15 @@ describe('ReviewDetailsDialog', () => {
     const photo = screen.getByRole('img', { name: 'Sunrise over the bay' });
     expect(photo).toHaveAttribute('src', expect.stringContaining('c_limit'));
     expect(photo.getAttribute('src')).not.toContain('c_fill');
+  });
+
+  it('ảnh hỏng (nợ G22): ô có tên "Photo unavailable" thay cho một ô trống câm', async () => {
+    await openDialog();
+
+    fireEvent.error(screen.getByRole('img', { name: 'Sunrise over the bay' }));
+    expect(
+      screen.getByRole('img', { name: messages.admin.table.photoUnavailable }),
+    ).toBeInTheDocument();
   });
 
   it('review KHÔNG có tiêu đề: nói ra thay vì chừa khoảng trống', async () => {

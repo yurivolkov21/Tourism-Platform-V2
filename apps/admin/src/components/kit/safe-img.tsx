@@ -6,9 +6,9 @@ import { ImageOffIcon } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
 /**
- * Ô ảnh thu nhỏ của admin (spec 2026-10-05 §4 #13). Ảnh hỏng — Cloudinary đã xoá, hay một
- * tham chiếu treo như review của nợ G22 — hiện icon kèm tên "Photo unavailable" thay cho ô
- * xám trống không nói gì.
+ * Ô ảnh của admin — thumbnail các bảng và ảnh review (spec 2026-10-05 §4 #13). Ảnh hỏng —
+ * Cloudinary đã xoá, hay một tham chiếu treo như review của nợ G22 — hiện icon kèm tên
+ * "Photo unavailable" thay cho ô xám trống không nói gì.
  *
  * `<img>` thường chứ không `next/image`: URL Cloudinary đã mang sẵn `f_auto,q_auto`
  * (ADR-0005), và `next/image` ném khi host nằm ngoài `remotePatterns`.
@@ -25,8 +25,13 @@ export function SafeImg({
 }: {
   src: string;
   alt: string;
-  width: number;
-  height: number;
+  /**
+   * Cỡ thật của ô ảnh nhỏ (thuộc tính HTML — trình duyệt giữ chỗ trước khi ảnh về). Bỏ trống
+   * cho ảnh không có cỡ cố định, như bản `c_limit` ở dialog chi tiết review: ô thay thế khi đó
+   * chỉ rộng bằng icon.
+   */
+  width?: number;
+  height?: number;
   /** Cỡ ô (vd `size-10`) — áp cho cả ảnh lẫn ô thay thế để bố cục không giật. */
   className?: string;
 }) {
@@ -55,7 +60,7 @@ export function SafeImg({
     );
   }
   return (
-    // biome-ignore lint/performance/noImgElement: thumbnail cỡ cố định, URL Cloudinary đã tối ưu (ADR-0005)
+    // biome-ignore lint/performance/noImgElement: URL Cloudinary đã tối ưu (ADR-0005), next/image ném khi host lạ
     <img
       ref={ref}
       src={src}
