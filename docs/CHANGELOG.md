@@ -8,6 +8,27 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-10-05 — Merge P4e-4 quản trị bài viết lên main (`fb64ca45`)
+
+Nội dung và vòng review đã kể ở entry nhánh ngay bên dưới (thi công 02/10, review max 02/10,
+vá 05/10). Entry này chỉ ghi sự kiện merge.
+
+Nhánh rebase lên `caefdc79` — main có thêm hai commit SessionStart hook cho session cloud.
+Một xung đột ở CHANGELOG: entry của nhánh và entry mới của main cùng chen vào đầu file; gỡ
+bằng cách đặt entry nhánh lên trên, cả hai giữ nguyên văn (nếp merge F18). Ba mươi sáu commit
+còn lại áp sạch. `gate:int` chạy lại trên đỉnh đã rebase: build, typecheck và unit trúng cache
+turbo (code y hệt lượt vừa xanh), lint xanh, int 747/747.
+
+**Hạ tầng.** Migration `20261005003043_post_tag_links_order` chạy lên Supabase TRƯỚC khi push
+(05/10, user duyệt; `prisma migrate deploy` qua Session pooler cổng 5432). Kiểm lại bằng SQL
+chỉ đọc: cột `order` INTEGER NOT NULL DEFAULT 0, bản ghi migration xong, 17 dòng tag cũ nhận 0
+— chúng sắp theo tên cho tới lần lưu kế hoặc lượt seed lại ~03/11. Không env, không webhook.
+Khe deploy: admin lên Vercel trước API trên Render, nên `/posts` của admin lỗi tới khi API mới
+lên (API cũ chưa có `admin.posts.*`); web không đổi đường gọi API nào.
+
+Tests after: unit 5315 — web 1594, admin 1717, api 1039, contract 611, mobile 159, mobile-ui
+86, core 46, ui 27, tokens 18, i18n 18 — và int 747/747 ở 46 file.
+
 ## 2026-10-02 — P4e-4 quản trị bài viết (nhánh `feat/p4e-4-posts-admin`)
 
 Admin quản trị được bài viết: bảng `/posts` (tab Published · Scheduled · Drafts, tìm theo
