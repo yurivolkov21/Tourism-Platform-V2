@@ -176,10 +176,14 @@ describe('NewTourDialog', () => {
     expect(within(dialog).getByRole('button', { name: t.dialog.submit })).toBeDisabled();
   });
 
-  it('danh mục đã ẩn vẫn chọn được, mang "(hidden)"', async () => {
+  it('danh mục đã ẩn vẫn chọn được, kèm nhãn phụ "Hidden"', async () => {
     const { user } = await openDialog();
 
     await user.click(screen.getByRole('combobox', { name: d.category }));
-    expect(await screen.findByRole('option', { name: 'Retired (hidden)' })).toBeInTheDocument();
+    expect(
+      await screen.findByRole('option', {
+        name: `Retired ${messages.admin.tours.list.hiddenHint}`,
+      }),
+    ).toBeInTheDocument();
   });
 });

@@ -83,6 +83,26 @@ describe('PhotoLibraryDialog', () => {
     expect(screen.queryByRole('checkbox', { name: 'Bay at dawn' })).not.toBeInTheDocument();
   });
 
+  it('ô lọc chia hai nhóm: "This tour" đứng riêng trên vạch ngăn, các địa danh dưới nhãn "Destinations"', async () => {
+    // Spec 2026-10-05 §2.3 — trước đây hai loại mục xếp lẫn trong một danh sách phẳng.
+    const user = userEvent.setup();
+    const load = vi.fn<LoadPhotoLibraryAction>().mockResolvedValue({ ok: true, library: LIBRARY });
+    render(<Harness load={load} />);
+    await screen.findByRole('checkbox', { name: 'Bay at dawn' });
+
+    await user.click(screen.getByRole('combobox', { name: t.destination }));
+    const group = await screen.findByRole('group', { name: t.destinationsGroup });
+
+    // Nhóm có nhãn chỉ chứa địa danh; mục "This tour" vẫn có, nhưng đứng ngoài nhóm ấy.
+    expect(
+      within(group)
+        .getAllByRole('option')
+        .map((option) => option.textContent),
+    ).toEqual(['Hạ Long', 'Hà Nội']);
+    expect(screen.getByRole('option', { name: t.thisTour })).toBeInTheDocument();
+    expect(within(screen.getByRole('listbox')).getAllByRole('separator')).toHaveLength(1);
+  });
+
   it('ảnh đã có trong tour hiện "Added", không tích được', async () => {
     const load = vi.fn<LoadPhotoLibraryAction>().mockResolvedValue({ ok: true, library: LIBRARY });
     render(<Harness load={load} existing={['lib/a1']} />);

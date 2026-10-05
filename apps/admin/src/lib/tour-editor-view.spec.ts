@@ -8,7 +8,6 @@ import {
   formatDayList,
   nextTourStep,
   onSaleShortfalls,
-  optionLabel,
   projectedReadiness,
   readinessIssues,
   removedItineraryDays,
@@ -212,13 +211,6 @@ describe('tourPhotoThumb', () => {
     );
     expect(tourPhotoThumb(url)).not.toContain('c_fill');
     expect(tourPhotoThumb('https://example.com/a.jpg')).toBe('https://example.com/a.jpg');
-  });
-});
-
-describe('optionLabel', () => {
-  it('mục đang hiện giữ nguyên tên; mục đã ẩn mang "(hidden)"', () => {
-    expect(optionLabel({ name: 'Day Tours', isActive: true })).toBe('Day Tours');
-    expect(optionLabel({ name: 'Retired', isActive: false })).toBe('Retired (hidden)');
   });
 });
 

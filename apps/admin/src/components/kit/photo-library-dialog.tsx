@@ -16,7 +16,7 @@ import { cn } from '@tourism/ui/lib/utils';
 import * as React from 'react';
 import { DIALOG_FRAME } from '@/components/kit/confirm-write-dialog';
 import { FormField } from '@/components/kit/form-field';
-import { FormSelect } from '@/components/kit/form-select';
+import { Picker } from '@/components/kit/picker';
 import type { TransportFailureCode } from '@/lib/api/write-error';
 import { withDeliveryTransform } from '@/lib/cloudinary-url';
 import { type LoadPhotoLibraryAction, libraryLoadErrorCopy } from '@/lib/photo-library';
@@ -117,12 +117,18 @@ export function PhotoLibraryDialog({
       )
       .flatMap((group) => group.photos),
   );
-  const options = [
-    ...(hasTourPhotos ? [{ value: THIS_TOUR, label: t.thisTour }] : []),
-    ...(library ?? []).map((group) => ({
-      value: group.destination.id,
-      label: group.destination.name,
-    })),
+  // Hai nhóm (spec 2026-10-05 §2.3): "This tour" đứng riêng trên vạch ngăn, các địa danh
+  // nằm dưới một nhãn nhóm — trước đây hai loại xếp lẫn trong một danh sách phẳng.
+  const groups = [
+    ...(hasTourPhotos ? [{ key: 'tour', options: [{ value: THIS_TOUR, label: t.thisTour }] }] : []),
+    {
+      key: 'destinations',
+      label: t.destinationsGroup,
+      options: (library ?? []).map((group) => ({
+        value: group.destination.id,
+        label: group.destination.name,
+      })),
+    },
   ];
 
   function toggle(publicId: string, checked: boolean) {
@@ -187,10 +193,10 @@ export function PhotoLibraryDialog({
           <div className="grid gap-4">
             <FormField id="photo-library-destination" label={t.destination}>
               {(describedBy) => (
-                <FormSelect
+                <Picker
                   id="photo-library-destination"
                   value={shownFilter}
-                  options={options}
+                  groups={groups}
                   placeholder={t.destination}
                   describedBy={describedBy}
                   onValueChange={setFilter}

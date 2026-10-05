@@ -47,7 +47,7 @@ export async function fetchAdminTours(
 export interface TourCategoryOption {
   id: string;
   name: string;
-  /** Danh mục đã ẩn vẫn có trong menu, nhưng mang dấu — xem `categoryOptionLabel`. */
+  /** Danh mục đã ẩn vẫn có trong menu, kèm nhãn phụ mờ — xem `hiddenHint` (lib/catalog-option). */
   isActive: boolean;
 }
 
@@ -157,7 +157,10 @@ export async function fetchAdminTour(
 export interface TourDestinationOption {
   id: string;
   name: string;
-  /** Điểm đến đã ẩn vẫn chọn được, mang dấu "(hidden)" (spec §2b.4). */
+  /**
+   * Điểm đến đã ẩn vẫn chọn được (spec F17 §2b.4), kèm nhãn phụ mờ — xem `hiddenHint`
+   * (lib/catalog-option).
+   */
   isActive: boolean;
 }
 

@@ -96,7 +96,7 @@ export function ListEditor<Item extends Keyed>(props: ListEditorProps<Item>) {
     else
       rows.current
         .get(focusAfter.key)
-        // Ô chọn của kit (`FormSelect`) là một trigger `role="combobox"`, không
+        // Ô chọn của kit (`Picker`) là một trigger `role="combobox"`, không
         // phải `<select>` — thiếu nó thì dòng điểm đến hay dòng chi phí mới
         // thêm sẽ không nhận tiêu điểm.
         ?.querySelector<HTMLElement>('input, textarea, select, [role="combobox"], button')

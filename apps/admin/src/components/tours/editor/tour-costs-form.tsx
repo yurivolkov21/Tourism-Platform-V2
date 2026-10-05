@@ -18,8 +18,8 @@ import {
 } from '@tourism/ui/components/card';
 import { Input } from '@tourism/ui/components/input';
 import { FormField } from '@/components/kit/form-field';
-import { FormSelect } from '@/components/kit/form-select';
 import { ListEditor } from '@/components/kit/list-editor';
+import { Picker } from '@/components/kit/picker';
 import { EditorFormFrame } from '@/components/tours/editor/editor-form-frame';
 import { OptionalStepCard } from '@/components/tours/editor/step-aside';
 import { usePublishSavedDetail } from '@/components/tours/editor/tour-detail-context';
@@ -189,7 +189,7 @@ export function TourCostsForm({
                   <div className="grid gap-3 @md:grid-cols-2 @2xl:grid-cols-[10rem_1fr_8rem_10rem]">
                     <FormField id={field('category')} label={t.category}>
                       {(describedBy) => (
-                        <FormSelect
+                        <Picker
                           id={field('category')}
                           value={item.category}
                           options={CATEGORY_OPTIONS}
@@ -230,7 +230,7 @@ export function TourCostsForm({
                     </FormField>
                     <FormField id={field('basis')} label={t.basis}>
                       {(describedBy) => (
-                        <FormSelect
+                        <Picker
                           id={field('basis')}
                           value={item.basis}
                           options={BASIS_OPTIONS}

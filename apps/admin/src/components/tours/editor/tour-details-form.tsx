@@ -26,8 +26,8 @@ import { cn } from '@tourism/ui/lib/utils';
 import { LockIcon } from 'lucide-react';
 import { useId, useState } from 'react';
 import { FormField } from '@/components/kit/form-field';
-import { FormSelect } from '@/components/kit/form-select';
 import { ListEditor } from '@/components/kit/list-editor';
+import { Picker } from '@/components/kit/picker';
 import { EditorFormFrame } from '@/components/tours/editor/editor-form-frame';
 import {
   type ChecklistItem,
@@ -37,11 +37,11 @@ import {
 } from '@/components/tours/editor/step-aside';
 import { usePublishSavedDetail } from '@/components/tours/editor/tour-detail-context';
 import type { TourEditorOptions } from '@/lib/api/tours';
+import { catalogOption } from '@/lib/catalog-option';
 import { newItemKey } from '@/lib/list-editor';
 import {
   formatDayList,
   nextTourStep,
-  optionLabel,
   projectedReadiness,
   removedItineraryDays,
   tourCardPreview,
@@ -170,14 +170,8 @@ export function TourDetailsForm({
     });
   }
 
-  const categoryOptions = options.categories.map((option) => ({
-    value: option.id,
-    label: optionLabel(option),
-  }));
-  const destinationOptions = options.destinations.map((option) => ({
-    value: option.id,
-    label: optionLabel(option),
-  }));
+  const categoryOptions = options.categories.map(catalogOption);
+  const destinationOptions = options.destinations.map(catalogOption);
   const difficultyOptions = [
     { value: NOT_SET, label: t.difficultyNotSet },
     ...TourDifficultySchema.options.map((level) => ({
@@ -297,7 +291,7 @@ export function TourDetailsForm({
             <div className="grid gap-4 sm:grid-cols-2">
               <FormField id="tour-category" label={t.category} error={errors.categoryId}>
                 {(describedBy) => (
-                  <FormSelect
+                  <Picker
                     id="tour-category"
                     value={values.categoryId}
                     options={categoryOptions}
@@ -311,7 +305,7 @@ export function TourDetailsForm({
               </FormField>
               <FormField id="tour-difficulty" label={t.difficulty}>
                 {(describedBy) => (
-                  <FormSelect
+                  <Picker
                     id="tour-difficulty"
                     value={values.difficulty === '' ? NOT_SET : values.difficulty}
                     options={difficultyOptions}
@@ -451,7 +445,7 @@ export function TourDetailsForm({
                     error={lineError(line.key)}
                   >
                     {(describedBy) => (
-                      <FormSelect
+                      <Picker
                         id={`tour-destination-${line.key}`}
                         value={line.destinationId}
                         options={destinationOptions}

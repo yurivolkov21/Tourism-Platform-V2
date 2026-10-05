@@ -18,10 +18,11 @@ import { useRouter } from 'next/navigation';
 import { useRef, useState } from 'react';
 import { DIALOG_FRAME } from '@/components/kit/confirm-write-dialog';
 import { FormField } from '@/components/kit/form-field';
-import { FormSelect } from '@/components/kit/form-select';
+import { Picker } from '@/components/kit/picker';
 import type { TourEditorOptions } from '@/lib/api/tours';
+import { catalogOption } from '@/lib/catalog-option';
 import { hasFormErrors } from '@/lib/form-errors';
-import { optionLabel, tourStepHref } from '@/lib/tour-editor-view';
+import { tourStepHref } from '@/lib/tour-editor-view';
 import {
   type CreateTourAction,
   type CreateTourContractCode,
@@ -37,12 +38,13 @@ import { useConfirmWrite } from '@/lib/use-confirm-write';
 /**
  * Hộp New tour ở trang Tours (spec F17 §2a) — cùng khuôn `DestinationFormDialog`:
  * vòng đời lệnh ghi là của kit qua `useConfirmWrite`, mỗi ô là một `FormField`,
- * mọi ô chọn là `FormSelect` (bài học 12).
+ * mọi ô chọn là `Picker` của kit (bài học 12).
  *
  * - Slug chạy theo tên bằng `slugifyVietnamese(title, 120)` tới khi admin chạm
  *   vào ô slug; ô ấy tắt soát chính tả, tự viết hoa, tự sửa chữ.
  * - `SLUG_TAKEN` là lỗi của Ô SLUG: hiện dưới ô ấy, hộp vẫn mở, chữ còn nguyên.
- * - Danh mục và điểm đến đang ẩn vẫn chọn được, mang "(hidden)" (spec §2b.4).
+ * - Danh mục và điểm đến đang ẩn vẫn chọn được (spec §2b.4), kèm nhãn phụ mờ "Hidden"
+ *   (`catalogOption`, spec 2026-10-05 §2.2).
  * - Thành công: mở thẳng tab Details của tour mới — nó sinh ra đang tắt bán.
  */
 const e = messages.admin.tours.editor;
@@ -199,13 +201,10 @@ function NewTourForm({
             <div className="grid gap-4 sm:grid-cols-2">
               <FormField id={field('category')} label={d.category} error={errors.categoryId}>
                 {(describedBy) => (
-                  <FormSelect
+                  <Picker
                     id={field('category')}
                     value={values.categoryId}
-                    options={options.categories.map((option) => ({
-                      value: option.id,
-                      label: optionLabel(option),
-                    }))}
+                    options={options.categories.map(catalogOption)}
                     placeholder={d.categoryPlaceholder}
                     disabled={pending}
                     invalid={errors.categoryId !== undefined}
@@ -220,13 +219,10 @@ function NewTourForm({
                 error={errors.primaryDestinationId}
               >
                 {(describedBy) => (
-                  <FormSelect
+                  <Picker
                     id={field('destination')}
                     value={values.primaryDestinationId}
-                    options={options.destinations.map((option) => ({
-                      value: option.id,
-                      label: optionLabel(option),
-                    }))}
+                    options={options.destinations.map(catalogOption)}
                     placeholder={d.destinationPlaceholder}
                     disabled={pending}
                     invalid={errors.primaryDestinationId !== undefined}

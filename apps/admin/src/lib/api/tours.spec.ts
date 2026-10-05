@@ -24,8 +24,8 @@ import {
  *
  *  ① nguồn là endpoint ADMIN, trả CẢ danh mục đã ẩn — bản đầu đọc đường công
  *    khai, nên ẩn một danh mục là menu mất luôn mục ấy;
- *  ② `isActive` đi TỚI menu thật, không bị gán cứng — nếu không thì dấu
- *    "(hidden)" chẳng bao giờ hiện, mà không test component nào biết (chúng
+ *  ② `isActive` đi TỚI menu thật, không bị gán cứng — nếu không thì nhãn phụ
+ *    "Hidden" chẳng bao giờ hiện, mà không test component nào biết (chúng
  *    dựng menu từ fixture, không qua hàm này).
  */
 vi.mock('./client', () => ({

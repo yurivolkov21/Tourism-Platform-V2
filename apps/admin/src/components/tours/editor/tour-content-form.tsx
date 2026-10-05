@@ -17,8 +17,8 @@ import {
 import { Input } from '@tourism/ui/components/input';
 import { Textarea } from '@tourism/ui/components/textarea';
 import { FormField } from '@/components/kit/form-field';
-import { FormSelect } from '@/components/kit/form-select';
 import { ListEditor } from '@/components/kit/list-editor';
+import { Picker } from '@/components/kit/picker';
 import { EditorFormFrame } from '@/components/tours/editor/editor-form-frame';
 import { AsideJumpLink, OptionalStepCard } from '@/components/tours/editor/step-aside';
 import { usePublishSavedDetail } from '@/components/tours/editor/tour-detail-context';
@@ -248,7 +248,7 @@ export function TourContentForm({
                     <div className="grid gap-3 sm:grid-cols-[12rem_1fr]">
                       <FormField id={`policy-${policy.key}-kind`} label={t.kind}>
                         {(describedBy) => (
-                          <FormSelect
+                          <Picker
                             id={`policy-${policy.key}-kind`}
                             value={policy.kind}
                             options={KIND_OPTIONS}

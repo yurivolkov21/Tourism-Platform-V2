@@ -335,12 +335,12 @@ describe('TourDetailsForm', () => {
     });
   });
 
-  it('danh mục ĐANG ẨN của tour được chọn sẵn, nhãn mang "(hidden)"', () => {
+  it('danh mục ĐANG ẨN của tour được chọn sẵn, ô hiện tên kèm nhãn phụ "Hidden"', () => {
     renderForm(detailFixture({ categoryId: HIDDEN_CATEGORY_ID }));
 
-    expect(screen.getByRole('combobox', { name: t.category })).toHaveTextContent(
-      'Retired (hidden)',
-    );
+    const trigger = screen.getByRole('combobox', { name: t.category });
+    expect(trigger).toHaveTextContent('Retired');
+    expect(trigger).toHaveTextContent(messages.admin.tours.list.hiddenHint);
   });
 
   it('server trả DURATION_LOCKED → câu dưới ô số ngày, không có dải báo', async () => {

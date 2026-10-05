@@ -2995,6 +2995,7 @@ export const messages = {
       body: 'Photos from the destination library. Their credits come with them.',
       destination: 'Destination',
       thisTour: 'This tour’s destinations',
+      destinationsGroup: 'Destinations',
       added: 'Added',
       add: (n: number) => (n === 1 ? 'Add 1 photo' : `Add ${n} photos`),
       cancel: 'Cancel',
@@ -4020,11 +4021,11 @@ export const messages = {
         categoryLabel: 'Filter by category',
         categoryAll: 'All categories',
         /**
-         * Danh mục ĐÃ ẨN trong menu lọc. Menu có đủ danh mục ẩn để admin còn lọc
-         * ra được tour thuộc chúng mà đi sửa (vòng review F14); dấu này cho biết
-         * vì sao nhóm tour ấy không có chip nào trên trang khách.
+         * Nhãn phụ MỜ của danh mục/điểm đến đã ẩn trong mọi ô chọn và menu lọc (spec
+         * 2026-10-05 §2.2) — thay kiểu ghép "(hidden)" vào tên. Menu vẫn có đủ hàng ẩn để
+         * admin lọc ra tour thuộc chúng mà sửa (vòng review F14).
          */
-        categoryHidden: (name: string) => `${name} (hidden)`,
+        hiddenHint: CATALOG_VISIBILITY_COPY.hidden,
         statusLabel: 'Filter by sale status',
         statusAll: 'All tours',
         statusLive: 'On sale',

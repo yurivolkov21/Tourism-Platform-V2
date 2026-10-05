@@ -64,7 +64,7 @@ function renderDialog(
   return { onSubmit, onClose, onSettled };
 }
 
-/** Chọn một vùng ở `FormSelect` của kit: mở trigger rồi bấm mục (Base UI Select). */
+/** Chọn một vùng ở `Picker` của kit: mở trigger rồi bấm mục (Base UI Select). */
 async function chooseRegion(user: ReturnType<typeof userEvent.setup>, name: string) {
   await user.click(screen.getByRole('combobox', { name: t.form.region }));
   await user.click(await screen.findByRole('option', { name }));

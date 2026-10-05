@@ -324,11 +324,6 @@ export function tourPhotoThumb(url: string): string {
   return withDeliveryTransform(url, 'w_320');
 }
 
-/** Nhãn một mục trong ô chọn danh mục/điểm đến — mục đã ẩn mang dấu "(hidden)". */
-export function optionLabel(option: { name: string; isActive: boolean }): string {
-  return option.isActive ? option.name : messages.admin.tours.list.categoryHidden(option.name);
-}
-
 /** Thẻ xem trước card /tours ở cột phải bước Details (spec F19 §2d.1). */
 export interface TourCardPreviewVM {
   coverUrl: string | null;

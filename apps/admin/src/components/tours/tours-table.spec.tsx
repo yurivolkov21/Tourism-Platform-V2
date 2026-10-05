@@ -146,7 +146,7 @@ describe('ToursTable', () => {
 });
 
 describe('ToursTable — menu lọc danh mục', () => {
-  it('danh mục đã ẩn có mặt trong menu, KÈM dấu (hidden)', async () => {
+  it('danh mục đã ẩn có mặt trong menu, KÈM nhãn phụ "Hidden"', async () => {
     // Lượt thử tay F14 (23/09): menu đã có đủ danh mục ẩn (vòng review F14)
     // nhưng in chúng y hệt danh mục đang bật — admin không biết vì sao một nhóm
     // tour đang bán lại không có chip nào trên web.
@@ -157,7 +157,7 @@ describe('ToursTable — menu lọc danh mục', () => {
 
     expect(await screen.findByRole('menuitemradio', { name: 'Day Tours' })).toBeInTheDocument();
     expect(
-      screen.getByRole('menuitemradio', { name: t.categoryHidden('Trekking & Adventure') }),
+      screen.getByRole('menuitemradio', { name: `Trekking & Adventure ${t.hiddenHint}` }),
     ).toBeInTheDocument();
   });
 });

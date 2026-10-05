@@ -22,7 +22,7 @@ import { cn } from '@tourism/ui/lib/utils';
 import { useState } from 'react';
 import { DIALOG_FRAME } from '@/components/kit/confirm-write-dialog';
 import { FormField } from '@/components/kit/form-field';
-import { FormSelect } from '@/components/kit/form-select';
+import { Picker } from '@/components/kit/picker';
 import type { TransportFailureCode } from '@/lib/api/write-error';
 import {
   type DestinationFormErrors,
@@ -45,8 +45,8 @@ import { useConfirmWrite } from '@/lib/use-confirm-write';
  * Ô VÙNG là một danh sách chọn ba mục đọc thẳng từ `REGIONS` của contract,
  * không phải ô chữ (spec §2b, ADR-0045): cột DB là chữ tự do mà web ghép với
  * ba vùng cố định, nên một lần gõ nhầm là điểm đến biến khỏi mọi trang vùng.
- * Từ lượt thử tay F15 (24/09) nó là `FormSelect` của kit — cùng dáng dropdown
- * với mọi ô chọn khác của back office — thay cho `<select>` gốc mà user thấy thô.
+ * Từ lượt thử tay F15 (24/09) nó là ô chọn của kit (nay là `Picker`) — cùng dáng
+ * dropdown với mọi ô chọn khác của back office — thay cho `<select>` gốc mà user thấy thô.
  */
 const t = messages.admin.destinations;
 
@@ -193,7 +193,7 @@ export function DestinationFormDialog<Code extends string>({
                 // Giá trị rỗng (form tạo mới, hoặc chuỗi cũ trong DB không khớp vùng
                 // nào) hiện câu giữ chỗ; danh sách không có mục "chưa có vùng" nên
                 // không ai chọn lại được trạng thái ấy.
-                <FormSelect
+                <Picker
                   id={`${formId}-region`}
                   value={values.region}
                   options={REGION_OPTIONS}
