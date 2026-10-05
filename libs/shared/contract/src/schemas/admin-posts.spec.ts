@@ -9,16 +9,19 @@ import {
   normalizePostTags,
   POST_CONTENT_MAX,
   POST_COVER_ALT_MAX,
-  POST_EXCERPT_MAX,
   POST_RELATED_TOURS_MAX,
-  POST_SLUG_MAX,
-  POST_TAG_NAME_MAX,
   POST_TAGS_MAX,
-  POST_TITLE_MAX,
   postContentIssue,
   postDisplayStatus,
   postReadiness,
 } from './admin-posts.js';
+import {
+  POST_EXCERPT_MAX,
+  POST_SLUG_MAX,
+  POST_TAG_NAME_MAX,
+  POST_TITLE_MAX,
+  PostCardSchema,
+} from './posts.js';
 
 /**
  * Contract quản trị bài viết (spec P4e-4 §2–3, ADR-0051). Mỗi trần có đúng hai ca: N
@@ -223,6 +226,24 @@ describe('AdminPostsListQuerySchema', () => {
 
   it('trạng thái lạ bị bắt', () => {
     expect(AdminPostsListQuerySchema.safeParse({ status: 'archived' }).success).toBe(false);
+  });
+});
+
+describe('PostCardSchema dùng chung trần với form admin (vòng review P4e-4)', () => {
+  // Bài lưu đúng trần của form phải đọc lại được ở đường công khai — oRPC kiểm output, trần
+  // card thấp hơn trần form là 500 cho mọi trang có bài ấy.
+  it('bài dài đúng trần của form vẫn là một card hợp lệ', () => {
+    const card = {
+      id: ID,
+      slug: 'a'.repeat(POST_SLUG_MAX),
+      title: 'T'.repeat(POST_TITLE_MAX),
+      excerpt: 'E'.repeat(POST_EXCERPT_MAX),
+      publishedAt: VERSION,
+      cover: null,
+      tags: [{ slug: 's'.repeat(POST_TAG_NAME_MAX), name: 'N'.repeat(POST_TAG_NAME_MAX) }],
+      author: { name: null, avatarUrl: null },
+    };
+    expect(PostCardSchema.safeParse(card).success).toBe(true);
   });
 });
 

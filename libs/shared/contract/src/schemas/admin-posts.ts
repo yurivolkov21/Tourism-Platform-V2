@@ -2,6 +2,13 @@ import { z } from 'zod';
 import { TourPhotoUploadSchema } from './admin-tours.js';
 import { AdminPageQuerySchema, descriptionSchema } from './common.js';
 import { MediaPublicIdSchema } from './media.js';
+import {
+  POST_EXCERPT_MAX,
+  POST_SLUG_MAX,
+  POST_TAG_NAME_MAX,
+  POST_TITLE_MAX,
+  PostTagRefSchema,
+} from './posts.js';
 import { slugifyVietnamese, slugSchema } from './slug.js';
 
 /**
@@ -10,16 +17,12 @@ import { slugifyVietnamese, slugSchema } from './slug.js';
  * Một bản cho cả hai đầu nên form không thể cho qua thứ server sẽ chặn.
  *
  * Trần của từng field gương cột DB (spec §2). Export để admin đếm ký tự bằng CHÍNH các
- * con số này.
+ * con số này; bốn trần mà card công khai cũng dùng (slug, tiêu đề, tóm tắt, tên tag) sống ở
+ * `posts.ts`.
  */
-export const POST_SLUG_MAX = 80;
-export const POST_TITLE_MAX = 160;
-export const POST_EXCERPT_MAX = 300;
 /** Bài seed dài nhất chưa tới 5000 ký tự; trần chặn dán nhầm cả một file. */
 export const POST_CONTENT_MAX = 20_000;
 export const POST_TAGS_MAX = 5;
-/** Cột `post_tags.name` và `post_tags.slug` đều `VarChar(60)`. */
-export const POST_TAG_NAME_MAX = 60;
 export const POST_RELATED_TOURS_MAX = 3;
 /** Cột `media_assets.alt VarChar(300)` — cùng cột với alt của ảnh tour. */
 export const POST_COVER_ALT_MAX = 300;
@@ -135,8 +138,6 @@ const PostTagNameSchema = z
   .refine((name) => slugifyVietnamese(name, POST_TAG_NAME_MAX) !== '', {
     message: 'a tag needs at least one letter or digit',
   });
-
-const PostTagRefSchema = z.object({ slug: z.string(), name: z.string() });
 
 // ── Đọc ─────────────────────────────────────────────────────────────────────
 
