@@ -75,6 +75,14 @@ describe('hộp New post', () => {
     expect(validatePostCreateForm({ title: 'A', slug: 'Bad Slug' }).slug).toBe(fe.slugShape);
   });
 
+  // Vòng review P4e-4: ba form slug còn lại (tour, địa danh, danh mục) xét hình dạng TRƯỚC độ
+  // dài — cùng một slug sai cả hai thì bốn form phải nói cùng một câu.
+  it('slug vừa dài quá trần vừa sai hình dạng: báo hình dạng trước, như các form slug khác', () => {
+    expect(
+      validatePostCreateForm({ title: 'A', slug: `Bad Slug ${'a'.repeat(POST_SLUG_MAX)}` }).slug,
+    ).toBe(fe.slugShape);
+  });
+
   it('payload cắt khoảng trắng hai ô', () => {
     expect(postCreatePayload({ title: '  Tea  ', slug: ' tea ' })).toEqual({
       title: 'Tea',

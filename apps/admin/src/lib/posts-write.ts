@@ -89,8 +89,9 @@ export function validatePostCreateForm(values: PostCreateFormValues): PostCreate
 
   const slug = values.slug.trim();
   if (slug === '') errors.slug = fe.required;
-  else if (slug.length > POST_SLUG_MAX) errors.slug = fe.tooLong(POST_SLUG_MAX);
+  // Hình dạng TRƯỚC độ dài — cùng thứ tự ba form slug còn lại (vòng review P4e-4).
   else if (!SLUG_PATTERN.test(slug)) errors.slug = fe.slugShape;
+  else if (slug.length > POST_SLUG_MAX) errors.slug = fe.tooLong(POST_SLUG_MAX);
   return errors;
 }
 
