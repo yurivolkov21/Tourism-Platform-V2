@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { applyMarkdownAction } from './markdown-actions';
+import { applyMarkdownAction, replacedRange } from './markdown-actions';
 
 describe('applyMarkdownAction — Bold, Italic', () => {
   it('bọc vùng chọn và giữ chọn đúng chữ cũ', () => {
@@ -100,5 +100,25 @@ describe('applyMarkdownAction — Link', () => {
       text: 'see [](https://)',
       selection: { start: 5, end: 5 },
     });
+  });
+});
+
+// Vòng review P4e-4: hàng nút thay CẢ giá trị ô nên mất Ctrl+Z — giờ chỉ thay đúng đoạn khác
+// nhau qua `execCommand('insertText')`, và đây là hàm tìm đoạn ấy.
+describe('replacedRange', () => {
+  it('chỉ phần khác nhau giữa chữ cũ và chữ mới', () => {
+    expect(replacedRange('eat pho now', 'eat **pho** now')).toEqual({
+      start: 4,
+      end: 7,
+      insert: '**pho**',
+    });
+  });
+
+  it('gỡ tiền tố: phần chèn rỗng', () => {
+    expect(replacedRange('## Morning', 'Morning')).toEqual({ start: 0, end: 3, insert: '' });
+  });
+
+  it('ký tự lặp ở mép: phần đuôi chung không ăn sang phần đầu chung', () => {
+    expect(replacedRange('aa', 'aaa')).toEqual({ start: 2, end: 2, insert: 'a' });
   });
 });

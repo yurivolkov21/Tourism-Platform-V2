@@ -28,6 +28,16 @@ function flattenToText(node: ReactNode): string {
   return '';
 }
 
+/** `href` đọc theo `base`; hỏng (chuỗi không thành URL) thì bỏ hẳn `href` thay vì đoán. */
+function resolveHref(href: string | undefined, base: string): string | undefined {
+  if (href === undefined) return undefined;
+  try {
+    return new URL(href, base).href;
+  } catch {
+    return undefined;
+  }
+}
+
 /**
  * Thân bài markdown từ API (PostDetail.content — ADR-0016/spec §2D), render
  * trong Typeset preset reading (ADR-0012). H2 gắn id = slugify(text thuần đã
@@ -35,19 +45,47 @@ function flattenToText(node: ReactNode): string {
  * seed của mình nhưng giữ mặc định không-raw-HTML làm lưới (spec §6).
  *
  * Ở `@tourism/ui` từ P4e-4 (ADR-0051 §1): web vẽ bài bằng nó, tab Preview của admin cũng
- * vậy — hai nơi một bản, nên thứ admin xem trước là thứ khách sẽ đọc.
+ * vậy — hai nơi một bản, nên thứ admin xem trước là thứ khách sẽ đọc. Hai tuỳ chọn chỉ bản
+ * xem trước dùng (vòng review P4e-4): tiền tố id heading, và gốc để đọc link tương đối.
  */
-export function ArticleMarkdown({ markdown }: { markdown: string }) {
+export function ArticleMarkdown({
+  markdown,
+  headingIdPrefix = '',
+  linkBase,
+}: {
+  markdown: string;
+  /**
+   * Tiền tố id của H2. Bản xem trước của admin cần nó: heading "Post cover" mang id
+   * `post-cover`, trùng id card ảnh bìa mà link của dải báo trỏ tới.
+   */
+  headingIdPrefix?: string;
+  /**
+   * Có thì link tương đối đọc theo gốc này và mở tab mới — bản xem trước của admin: link
+   * `/tours/…` trỏ về site khách, bấm không rời trang sửa đang có chữ chưa lưu.
+   */
+  linkBase?: string;
+}) {
   return (
     <Typeset preset="reading" className="text-muted-foreground">
       <Markdown
         remarkPlugins={[remarkGfm]}
         components={{
-          h2: ({ children }) => <h2 id={slugify(flattenToText(children))}>{children}</h2>,
+          h2: ({ children }) => (
+            <h2 id={`${headingIdPrefix}${slugify(flattenToText(children))}`}>{children}</h2>
+          ),
           // Thân bài không có ảnh (spec P4e-4 §2.4): contract chặn mọi `![`, đây là lưới thứ
           // hai cho nội dung sửa thẳng trong DB — không tải ảnh ngoài Cloudinary, in alt tại
           // chỗ. `alt` vẫn nằm trên props nên `flattenToText` cho heading ra cùng id như cũ.
           img: ({ alt }) => alt ?? null,
+          ...(linkBase === undefined
+            ? {}
+            : {
+                a: ({ href, children }) => (
+                  <a href={resolveHref(href, linkBase)} target="_blank" rel="noreferrer">
+                    {children}
+                  </a>
+                ),
+              }),
         }}
       >
         {markdown}

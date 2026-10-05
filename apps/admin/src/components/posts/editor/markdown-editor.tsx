@@ -13,12 +13,14 @@ import {
   ListIcon,
   type LucideIcon,
 } from 'lucide-react';
-import { useLayoutEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import {
   applyMarkdownAction,
   type MarkdownAction,
+  replacedRange,
   type TextSelection,
 } from '@/lib/markdown-actions';
+import { SITE_URL } from '@/lib/site';
 
 /**
  * Trình soạn thân bài (spec P4e-4 §4.4, ADR-0051 §1): ô markdown, hàng nút CHÈN cú pháp, tab
@@ -27,6 +29,13 @@ import {
  *
  * Nút giữ tiêu điểm ở ô (`onMouseDown` chặn mặc định), rồi đặt lại vùng chọn SAU khi React
  * vẽ chữ mới: ô kiểm soát nhận `value` mới thì trình duyệt đẩy con trỏ về cuối.
+ *
+ * Vòng review P4e-4:
+ * - Nút chèn đúng đoạn đổi qua `execCommand('insertText')` để Ctrl+Z còn dùng được; trình
+ *   duyệt không có lệnh ấy thì rơi về gán cả giá trị như cũ.
+ * - Tab Write luôn mount (ẩn khi đang Preview): nhãn, `aria-describedby` và link "Content"
+ *   của dải báo không trỏ vào khoảng không; theo link ấy khi đang Preview thì quay về Write.
+ * - Preview mang tiền tố id heading và đọc link theo site khách, mở tab mới.
  */
 const t = messages.admin.posts.editor.markdown;
 
@@ -57,6 +66,18 @@ export function MarkdownEditor({
   const pendingSelection = useRef<TextSelection | null>(null);
   const [tab, setTab] = useState<'write' | 'preview'>('write');
 
+  // Link `#<id>` (dải báo "Content") khi đang Preview: ô chữ đang ẩn — quay về Write để link
+  // dẫn tới chỗ gõ được.
+  useEffect(() => {
+    function reveal() {
+      if (window.location.hash !== `#${id}`) return;
+      setTab('write');
+      window.requestAnimationFrame(() => textarea.current?.focus());
+    }
+    window.addEventListener('hashchange', reveal);
+    return () => window.removeEventListener('hashchange', reveal);
+  }, [id]);
+
   useLayoutEffect(() => {
     const next = pendingSelection.current;
     const node = textarea.current;
@@ -75,7 +96,16 @@ export function MarkdownEditor({
       action,
     );
     pendingSelection.current = edit.selection;
-    onChange(edit.text);
+    // Chèn đúng đoạn đổi qua `insertText` để trình duyệt ghi vào lịch sử undo; lệnh ấy bắn
+    // `input` nên `onChange` của ô tự chạy. Không có lệnh (jsdom, trình duyệt cũ) thì gán cả
+    // giá trị như cũ.
+    const change = replacedRange(value, edit.text);
+    node.focus();
+    node.setSelectionRange(change.start, change.end);
+    const inserted =
+      typeof document.execCommand === 'function' &&
+      document.execCommand('insertText', false, change.insert);
+    if (!inserted) onChange(edit.text);
   }
 
   return (
@@ -109,7 +139,7 @@ export function MarkdownEditor({
           </div>
         ) : null}
       </div>
-      <TabsContent value="write">
+      <TabsContent value="write" keepMounted>
         <Textarea
           ref={textarea}
           id={id}
@@ -126,7 +156,7 @@ export function MarkdownEditor({
           {value.trim() === '' ? (
             <p className="text-sm text-muted-foreground">{t.previewEmpty}</p>
           ) : (
-            <ArticleMarkdown markdown={value} />
+            <ArticleMarkdown markdown={value} headingIdPrefix="preview-" linkBase={SITE_URL} />
           )}
         </div>
       </TabsContent>

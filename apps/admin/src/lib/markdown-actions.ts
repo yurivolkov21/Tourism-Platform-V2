@@ -91,3 +91,30 @@ function togglePrefix(text: string, start: number, end: number, prefix: string):
     selection: { start: blockStart, end: blockStart + block.length },
   };
 }
+
+/**
+ * Đoạn khác nhau giữa chữ cũ và chữ mới: `[start, end)` của chữ cũ được thay bằng `insert`.
+ * Hàng nút chèn đúng đoạn này qua `execCommand('insertText')` để trình duyệt ghi vào lịch sử
+ * undo — gán cả `value` mới xoá sạch Ctrl+Z (vòng review P4e-4). Phần đuôi chung không được ăn
+ * sang phần đầu chung (`aa` → `aaa`).
+ */
+export function replacedRange(
+  before: string,
+  after: string,
+): { start: number; end: number; insert: string } {
+  const shorter = Math.min(before.length, after.length);
+  let start = 0;
+  while (start < shorter && before[start] === after[start]) start++;
+  let tail = 0;
+  while (
+    tail < shorter - start &&
+    before[before.length - 1 - tail] === after[after.length - 1 - tail]
+  ) {
+    tail++;
+  }
+  return {
+    start,
+    end: before.length - tail,
+    insert: after.slice(start, after.length - tail),
+  };
+}
