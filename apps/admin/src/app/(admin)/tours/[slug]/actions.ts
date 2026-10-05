@@ -1,7 +1,6 @@
 'use server';
 
 import {
-  type AdminPhotoLibrary,
   type AdminTourCostsInput,
   AdminTourCostsInputSchema,
   type AdminTourDeleteInput,
@@ -23,7 +22,6 @@ import {
 import { cookies } from 'next/headers';
 import {
   deleteAdminTour,
-  fetchTourPhotoLibrary,
   setAdminTourCosts,
   setAdminTourFaqsPolicies,
   setAdminTourItinerary,
@@ -31,8 +29,6 @@ import {
   signAdminTourPhotoUploads,
   updateAdminTourDetails,
 } from '@/lib/api/tours';
-import { classifyWriteError } from '@/lib/api/write-error';
-import type { PhotoLibraryResult } from '@/lib/photo-library';
 import {
   type ContentContractCode,
   type CostsContractCode,
@@ -177,16 +173,4 @@ export async function signTourPhotoUploadsAction(
     return { ok: false, code: classifySignUploadsError(error) };
   }
   return { ok: true, params };
-}
-
-/** Kho ảnh địa danh — thủ tục không khai mã lỗi, nên chỉ còn lỗi vận chuyển. */
-export async function loadTourPhotoLibraryAction(): Promise<PhotoLibraryResult> {
-  const cookie = (await cookies()).toString();
-  let library: AdminPhotoLibrary;
-  try {
-    library = await fetchTourPhotoLibrary(cookie);
-  } catch (error) {
-    return { ok: false, code: classifyWriteError(error, new Set<never>()) };
-  }
-  return { ok: true, library };
 }

@@ -1,7 +1,6 @@
 'use server';
 
 import {
-  type AdminPhotoLibrary,
   type AdminPostDeleteInput,
   AdminPostDeleteInputSchema,
   type AdminPostDeleteResult,
@@ -14,9 +13,6 @@ import {
 } from '@tourism/contract';
 import { cookies } from 'next/headers';
 import { deleteAdminPost, signAdminPostCoverUpload, updateAdminPost } from '@/lib/api/posts';
-import { fetchTourPhotoLibrary } from '@/lib/api/tours';
-import { classifyWriteError } from '@/lib/api/write-error';
-import type { PhotoLibraryResult } from '@/lib/photo-library';
 import {
   classifyDeletePostError,
   classifySignCoverError,
@@ -69,21 +65,6 @@ export async function signPostCoverUploadAction(
     return { ok: false, code: classifySignCoverError(error) };
   }
   return { ok: true, params };
-}
-
-/**
- * Kho ảnh địa danh cho hộp chọn ảnh bìa — CÙNG endpoint thư viện của ảnh tour (spec §3.1).
- * Thủ tục không khai mã lỗi, nên chỉ còn lỗi vận chuyển.
- */
-export async function loadPostCoverLibraryAction(): Promise<PhotoLibraryResult> {
-  const cookie = (await cookies()).toString();
-  let library: AdminPhotoLibrary;
-  try {
-    library = await fetchTourPhotoLibrary(cookie);
-  } catch (error) {
-    return { ok: false, code: classifyWriteError(error, new Set<never>()) };
-  }
-  return { ok: true, library };
 }
 
 /** Xoá bài — mang phiên bản form đang cầm (ADR-0051 §2): người khác vừa lưu thì `STALE_POST`. */

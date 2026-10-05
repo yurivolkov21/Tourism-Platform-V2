@@ -6,12 +6,8 @@ import { UnsavedChangesProvider } from '@/components/kit/unsaved-changes';
 import { PostEditor } from '@/components/posts/editor/post-editor';
 import { fetchAdminPost, fetchPostTagOptions, fetchPostTourOptions } from '@/lib/api/posts';
 import { getServerSession } from '@/lib/api/session';
-import {
-  deletePostAction,
-  loadPostCoverLibraryAction,
-  signPostCoverUploadAction,
-  updatePostAction,
-} from './actions';
+import { loadPhotoLibraryAction } from '../../photo-library-actions';
+import { deletePostAction, signPostCoverUploadAction, updatePostAction } from './actions';
 
 /**
  * `/posts/[slug]` — trang sửa một bài (spec P4e-4 §4.4). Server component đọc bài kèm cookie
@@ -45,7 +41,7 @@ export default async function PostEditorPage({ params }: { params: Promise<{ slu
           serverNow={serverNow}
           update={updatePostAction}
           signCover={signPostCoverUploadAction}
-          loadLibrary={loadPostCoverLibraryAction}
+          loadLibrary={loadPhotoLibraryAction}
           tagOptions={tagOptions}
           tourOptions={tourOptions}
           remove={deletePostAction}

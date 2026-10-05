@@ -3,11 +3,8 @@ import { notFound } from 'next/navigation';
 import { TourPhotosForm } from '@/components/tours/editor/tour-photos-form';
 import { TourPhotosUnavailable } from '@/components/tours/editor/tour-photos-unavailable';
 import { hasKnownPhotos } from '@/lib/api/tours';
-import {
-  loadTourPhotoLibraryAction,
-  setTourPhotosAction,
-  signTourPhotoUploadsAction,
-} from '../actions';
+import { loadPhotoLibraryAction } from '../../../photo-library-actions';
+import { setTourPhotosAction, signTourPhotoUploadsAction } from '../actions';
 import { loadAdminTour } from '../load-tour';
 
 export const metadata: Metadata = { title: 'Tour photos — Nexora back office' };
@@ -24,7 +21,7 @@ export default async function TourPhotosPage({ params }: { params: Promise<{ slu
       detail={detail}
       save={setTourPhotosAction}
       sign={signTourPhotoUploadsAction}
-      loadLibrary={loadTourPhotoLibraryAction}
+      loadLibrary={loadPhotoLibraryAction}
     />
   );
 }
