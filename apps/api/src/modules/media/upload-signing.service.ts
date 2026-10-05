@@ -5,7 +5,7 @@ import { prisma } from '../../auth/auth.config.js';
 import { env } from '../../config/env.js';
 import {
   buildSignedUploadParams,
-  resolveUploadConfig,
+  requireUploadConfig,
   uploadFolderFor,
 } from '../../lib/upload-signing.js';
 import { checkReviewEligibility } from '../reviews/review-eligibility.js';
@@ -17,9 +17,6 @@ import {
 } from '../reviews/reviews.service.js';
 import { MediaGarbageService } from './media-garbage.service.js';
 
-/** Thiếu cặp CLOUDINARY_API_KEY/SECRET — trạng thái hợp lệ (ADR-0021 §6). */
-export class UploadsNotConfiguredError extends Error {}
-
 /**
  * Ký upload trực-tiếp-lên-Cloudinary cho KHÁCH (ADR-0021). Server quyết
  * WHO (AVATAR: chính chủ; REVIEW_PHOTO: cùng luật eligibility với
@@ -30,8 +27,7 @@ export class UploadSigningService {
   constructor(private readonly garbage: MediaGarbageService) {}
 
   async signUpload(callerId: string, input: SignUploadInput): Promise<SignedUploadParams> {
-    const cfg = resolveUploadConfig(env);
-    if (!cfg) throw new UploadsNotConfiguredError();
+    const cfg = requireUploadConfig(env);
 
     if (input.purpose === 'REVIEW_PHOTO') {
       // Soi CÙNG luật với reviews.create — ký được nghĩa là review được;

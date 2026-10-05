@@ -1,5 +1,6 @@
 import { ALLOWED_IMAGE_EXTENSIONS } from '@tourism/contract';
 import { v2 as cloudinary } from 'cloudinary';
+import { ContractError } from './contract-error.js';
 import {
   ALLOWED_UPLOAD_FORMATS,
   buildSignedUploadParams,
@@ -8,9 +9,11 @@ import {
   isPostUploadPublicId,
   isTourUploadPublicId,
   postCoverFolder,
+  requireUploadConfig,
   resolveUploadConfig,
   signUploads,
   tourPhotoFolder,
+  UploadsNotConfiguredError,
   uploadFolderFor,
 } from './upload-signing.js';
 
@@ -32,6 +35,30 @@ describe('resolveUploadConfig', () => {
     ).toEqual({ cloudName: 'demo-cloud', apiKey: 'k', apiSecret: 's', rootFolder: 'tourism' });
     expect(resolveUploadConfig(base)).toBeNull();
     expect(resolveUploadConfig({ ...base, CLOUDINARY_API_KEY: 'k' })).toBeNull();
+  });
+});
+
+describe('requireUploadConfig', () => {
+  const base = { CLOUDINARY_CLOUD_NAME: 'demo-cloud', CLOUDINARY_UPLOAD_FOLDER: 'tourism' };
+
+  it('đủ cặp → config', () => {
+    expect(
+      requireUploadConfig({ ...base, CLOUDINARY_API_KEY: 'k', CLOUDINARY_API_SECRET: 's' }),
+    ).toEqual({ cloudName: 'demo-cloud', apiKey: 'k', apiSecret: 's', rootFolder: 'tourism' });
+  });
+
+  it('thiếu cặp → MỘT lớp lỗi contract cho mọi nơi ký, mã MEDIA_UPLOAD_NOT_CONFIGURED', () => {
+    const error = (() => {
+      try {
+        requireUploadConfig(base);
+      } catch (caught) {
+        return caught;
+      }
+      return null;
+    })();
+    expect(error).toBeInstanceOf(UploadsNotConfiguredError);
+    expect(error).toBeInstanceOf(ContractError);
+    expect(error).toMatchObject({ code: 'MEDIA_UPLOAD_NOT_CONFIGURED', exposeMessage: false });
   });
 });
 

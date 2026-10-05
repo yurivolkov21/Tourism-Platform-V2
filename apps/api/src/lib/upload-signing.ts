@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { ALLOWED_IMAGE_EXTENSIONS, type SignedUploadParams } from '@tourism/contract';
 import { v2 as cloudinary } from 'cloudinary';
+import { ContractError } from './contract-error.js';
 
 /**
  * Lõi THUẦN của bề mặt ghi media (ADR-0021) — mọi thứ tính được không cần
@@ -33,6 +34,26 @@ export function resolveUploadConfig(env: {
     apiSecret: env.CLOUDINARY_API_SECRET,
     rootFolder: env.CLOUDINARY_UPLOAD_FOLDER,
   };
+}
+
+/**
+ * Thiếu cặp CLOUDINARY_API_KEY/SECRET — trạng thái cấu hình hợp lệ (ADR-0021 §6), 503. MỘT
+ * lớp cho cả ba nơi ký (khách, ảnh tour, ảnh bìa bài viết); trước vòng review P4e-4 là ba bản
+ * chép nhau, sửa đường "chưa cấu hình" là phải nhớ sửa đủ ba.
+ */
+export class UploadsNotConfiguredError extends ContractError<'MEDIA_UPLOAD_NOT_CONFIGURED'> {
+  constructor() {
+    super('MEDIA_UPLOAD_NOT_CONFIGURED', 'Uploads are not configured', false);
+  }
+}
+
+/** `resolveUploadConfig` hoặc ném `UploadsNotConfiguredError` — câu đầu của mọi lệnh ký. */
+export function requireUploadConfig(
+  env: Parameters<typeof resolveUploadConfig>[0],
+): UploadSigningConfig {
+  const cfg = resolveUploadConfig(env);
+  if (!cfg) throw new UploadsNotConfiguredError();
+  return cfg;
 }
 
 /** Folder do SERVER quyết theo purpose (ADR-0021 §1) — client không được chọn chỗ đặt file. */

@@ -24,7 +24,7 @@ import { Prisma } from '../../generated/prisma/client.js';
 import { MediaOwnerType, MediaRole, MediaType } from '../../generated/prisma/enums.js';
 import {
   isTourUploadPublicId,
-  resolveUploadConfig,
+  requireUploadConfig,
   signUploads,
   tourPhotoFolder,
 } from '../../lib/upload-signing.js';
@@ -39,7 +39,6 @@ import {
   TourLinkNotFoundError,
   TourNotReadyError,
   TourPhotoNotAllowedError,
-  TourPhotoUploadsNotConfiguredError,
   TourRuleError,
   TourSlugTakenError,
 } from './admin-tour-errors.js';
@@ -648,8 +647,7 @@ export class AdminToursService {
    * không lưu thì bảy ngày sau tự được dọn.
    */
   async signPhotoUploads(input: AdminTourSignPhotoUploadsInput): Promise<SignedUploadParams[]> {
-    const cfg = resolveUploadConfig(env);
-    if (!cfg) throw new TourPhotoUploadsNotConfiguredError();
+    const cfg = requireUploadConfig(env);
     const tour = await prisma.tour.findUnique({ where: { id: input.id }, select: { id: true } });
     if (!tour) throw new AdminTourNotFoundError(input.id);
 

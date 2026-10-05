@@ -3,13 +3,14 @@ import { Implement, implement } from '@orpc/nest';
 import { contract } from '@tourism/contract';
 import type { SessionUser } from '../../auth/auth.config.js';
 import { CurrentUser } from '../../auth/current-user.decorator.js';
+import { UploadsNotConfiguredError } from '../../lib/upload-signing.js';
 import {
   BookingForbiddenError,
   BookingNotFoundError,
   ReviewNotEligibleError,
   ReviewTripNotCompletedError,
 } from '../reviews/reviews.service.js';
-import { UploadSigningService, UploadsNotConfiguredError } from './upload-signing.service.js';
+import { UploadSigningService } from './upload-signing.service.js';
 
 /** Adapter mỏng cho media.signUpload — luật thật nằm trong service. */
 @Controller()

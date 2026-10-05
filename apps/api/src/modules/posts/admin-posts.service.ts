@@ -25,7 +25,7 @@ import { toPaged } from '../../lib/paged.js';
 import {
   isPostUploadPublicId,
   postCoverFolder,
-  resolveUploadConfig,
+  requireUploadConfig,
   signUploads,
 } from '../../lib/upload-signing.js';
 import { LIBRARY_PHOTO, prismaCode, STORED_PHOTO_SELECT } from '../catalog/admin-tours.service.js';
@@ -36,7 +36,6 @@ import { postRevalidationTags } from '../web-revalidation/revalidation-decision.
 import { WebRevalidationService } from '../web-revalidation/web-revalidation.service.js';
 import {
   AdminPostNotFoundError,
-  PostCoverUploadsNotConfiguredError,
   PostNotReadyError,
   PostPhotoNotAllowedError,
   PostSlugTakenError,
@@ -353,8 +352,7 @@ export class AdminPostsService {
    * lúc ký (ADR-0035 §3): tải lên rồi không lưu thì bảy ngày sau tự được dọn.
    */
   async signCoverUpload(input: AdminPostSignCoverUploadInput): Promise<SignedUploadParams> {
-    const cfg = resolveUploadConfig(env);
-    if (!cfg) throw new PostCoverUploadsNotConfiguredError();
+    const cfg = requireUploadConfig(env);
     const exists = await prisma.post.findUnique({ where: { id: input.id }, select: { id: true } });
     if (!exists) throw new AdminPostNotFoundError(input.id);
 

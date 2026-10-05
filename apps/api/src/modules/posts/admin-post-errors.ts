@@ -58,10 +58,3 @@ export class RelatedTourNotFoundError extends ContractError<'RELATED_TOUR_NOT_FO
     super('RELATED_TOUR_NOT_FOUND', 'A related tour no longer exists', false);
   }
 }
-
-/** Thiếu cặp khoá Cloudinary — trạng thái cấu hình hợp lệ (ADR-0021 §6), 503. */
-export class PostCoverUploadsNotConfiguredError extends ContractError<'MEDIA_UPLOAD_NOT_CONFIGURED'> {
-  constructor() {
-    super('MEDIA_UPLOAD_NOT_CONFIGURED', 'Uploads are not configured', false);
-  }
-}

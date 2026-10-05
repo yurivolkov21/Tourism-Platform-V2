@@ -60,13 +60,6 @@ function missingParts(readiness: TourReadiness): string[] {
   ];
 }
 
-/** Thiếu cặp khoá Cloudinary — trạng thái cấu hình hợp lệ (ADR-0021 §6), 503. */
-export class TourPhotoUploadsNotConfiguredError extends ContractError<'MEDIA_UPLOAD_NOT_CONFIGURED'> {
-  constructor() {
-    super('MEDIA_UPLOAD_NOT_CONFIGURED', 'Uploads are not configured', false);
-  }
-}
-
 /**
  * Một ảnh không thuộc nguồn nào trong ba (ADR-0048 §3). 400: client đúng không bao
  * giờ gửi — nhưng chuỗi này là đối số của lệnh destroy sau này, nên từ chối cả lệnh.
