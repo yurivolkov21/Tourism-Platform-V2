@@ -6,6 +6,7 @@ import { Button } from '@tourism/ui/components/button';
 import { useRouter } from 'next/navigation';
 import { useRef, useState } from 'react';
 import { ConfirmWriteDialog } from '@/components/kit/confirm-write-dialog';
+import { isUncertainOutcome } from '@/lib/api/write-error';
 import { POSTS_LIST_HREF, postStatusLabel } from '@/lib/posts-view';
 import {
   type DeletePostAction,
@@ -21,7 +22,7 @@ import {
  *
  * Nằm NGOÀI `<form>` của trang (Quyết định 14). Lệnh mang phiên bản form ĐANG cầm: người
  * khác vừa lưu thì `STALE_POST` — ở lại và làm mới; bài đã rời DB (xoá xong, hay người khác
- * xoá trước) thì về danh sách.
+ * xoá trước) hoặc không rõ lệnh đã đi tới đâu thì về danh sách.
  */
 const t = messages.admin.posts.delete;
 
@@ -76,9 +77,16 @@ export function DeletePostZone({
           isStale={isDeletePostStale}
           errorCopy={deletePostErrorCopy}
           onSubmit={async () => {
+            // Lần bấm trước (lỗi thử-lại-được, hộp vẫn mở) không được quyết thay lần này.
+            leave.current = false;
             const result = await remove({ id: detail.id, version });
             if (!result.ok) {
-              if (result.code === 'NOT_FOUND') leave.current = true;
+              // Bài đã rời DB — hoặc không rõ lệnh đã đi tới đâu (vòng review P4e-4): làm mới
+              // trang này thì 404 nếu bài thật ra đã bị xoá, còn danh sách cho biết bài còn hay
+              // mất. Chỉ `STALE_POST` là chắc bài còn đó.
+              if (result.code === 'NOT_FOUND' || isUncertainOutcome(result.code)) {
+                leave.current = true;
+              }
               return { ok: false, code: result.code };
             }
             leave.current = true;

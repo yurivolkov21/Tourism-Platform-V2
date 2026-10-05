@@ -80,6 +80,18 @@ describe('DeletePostZone', () => {
     expect(errorToast).toHaveBeenCalledWith(d.errors.NOT_FOUND);
   });
 
+  // Vòng review P4e-4: không rõ lệnh đã đi tới đâu mà làm mới trang này thì 404 nếu bài thật ra
+  // đã bị xoá — danh sách mới là nơi cho biết bài còn hay mất.
+  it('kết cục không rõ (GENERIC): đóng hộp, toast, về /posts thay vì làm mới', async () => {
+    const remove = vi.fn<DeletePostAction>().mockResolvedValue({ ok: false, code: 'GENERIC' });
+    const { user, dialog } = await openDialog(remove);
+
+    await user.click(within(dialog).getByRole('button', { name: d.dialog.submit }));
+
+    await waitFor(() => expect(push).toHaveBeenCalledWith('/posts'));
+    expect(refresh).not.toHaveBeenCalled();
+  });
+
   it('Cancel: không gửi lệnh', async () => {
     const remove = vi.fn<DeletePostAction>();
     const { user, dialog } = await openDialog(remove);
