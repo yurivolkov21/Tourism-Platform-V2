@@ -60,10 +60,12 @@ describe('tocFromMarkdown', () => {
     expect(tocFromMarkdown(md).map((i) => i.label)).toEqual(['real one']);
   });
 
-  it('heading có inline markdown (bold/italic) vẫn slugify đúng text thuần', () => {
+  // Nhãn cũng là text thuần (thử tay P4e-4 trên prod): "On this page" in nhãn thành chữ, nên
+  // nhãn thô in nguyên dấu sao — từ khi admin tạo được heading in đậm bằng hàng nút.
+  it('heading có inline markdown (bold/italic): id và nhãn đều là text thuần', () => {
     const md = '## **Bold** and *italic* words\n';
     expect(tocFromMarkdown(md)).toEqual([
-      { id: 'bold-and-italic-words', label: '**Bold** and *italic* words', index: '01' },
+      { id: 'bold-and-italic-words', label: 'Bold and italic words', index: '01' },
     ]);
   });
 });

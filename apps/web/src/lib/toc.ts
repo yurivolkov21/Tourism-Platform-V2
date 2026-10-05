@@ -52,9 +52,12 @@ export function tocFromMarkdown(markdown: string): TocItem[] {
     if (inFence) continue;
     const match = /^##\s+(.+)$/.exec(line);
     if (match?.[1]) {
+      // Nhãn cũng là text thuần như id: "On this page" in nhãn thành chữ, nhãn thô in nguyên
+      // dấu sao của heading in đậm (thử tay P4e-4 trên prod).
+      const plain = headingPlainText(match[1]);
       items.push({
-        id: slugify(headingPlainText(match[1])),
-        label: match[1].trim(),
+        id: slugify(plain),
+        label: plain,
         index: String(items.length + 1).padStart(2, '0'),
       });
     }
