@@ -276,6 +276,34 @@ describe('posts integration (oRPC @Implement over Fastify) — GET /api/posts', 
     expect(detail.relatedTours[0]?.slug).toBe('tour-con-hien');
   });
 
+  it('tag theo thứ tự admin xếp (`post_tag_links.order`), không theo tên — ở card lẫn detail', async () => {
+    await prisma.postTag.createMany({
+      data: [
+        { slug: 'zeta', name: 'Zeta' },
+        { slug: 'alpha', name: 'Alpha' },
+      ],
+    });
+    const [zeta, alpha] = await Promise.all([
+      prisma.postTag.findUniqueOrThrow({ where: { slug: 'zeta' } }),
+      prisma.postTag.findUniqueOrThrow({ where: { slug: 'alpha' } }),
+    ]);
+    // Chèn theo vần mà thứ tự lưu ngược lại: đường đọc nào không sắp theo `order` sẽ lộ.
+    await prisma.postTagLink.createMany({
+      data: [
+        { postId: 'c0000001-0000-4000-8000-000000000001', tagId: alpha.id, order: 1 },
+        { postId: 'c0000001-0000-4000-8000-000000000001', tagId: zeta.id, order: 0 },
+      ],
+    });
+
+    const list = PagedCards.parse((await app.inject({ method: 'GET', url: '/api/posts' })).json());
+    const detail = PostDetailSchema.parse(
+      (await app.inject({ method: 'GET', url: '/api/posts/bai-a' })).json(),
+    );
+
+    expect(list.items[0]?.tags.map((tag) => tag.name)).toEqual(['Zeta', 'Alpha']);
+    expect(detail.tags.map((tag) => tag.name)).toEqual(['Zeta', 'Alpha']);
+  });
+
   it('tour liên quan mang giá "from" của /tours — chuyến rẻ nhất còn nhận đặt, không phải basePrice', async () => {
     const category = await prisma.tourCategory.create({ data: { slug: 'day', name: 'Day Tours' } });
     const tour = await prisma.tour.create({

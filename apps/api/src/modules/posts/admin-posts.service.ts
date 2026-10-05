@@ -82,7 +82,10 @@ async function claimPost(
   return next;
 }
 
-/** Thay trọn tag (spec §2.5): tag chưa có thì tạo; có rồi thì giữ tên của người tạo đầu tiên. */
+/**
+ * Thay trọn tag (spec §2.5): tag chưa có thì tạo; có rồi thì giữ tên của người tạo đầu tiên.
+ * Thứ tự gửi lên thành `order` của dây — tag đầu làm chip danh mục ở web (vòng review P4e-4).
+ */
 async function replaceTags(
   tx: Prisma.TransactionClient,
   postId: string,
@@ -96,9 +99,16 @@ async function replaceTags(
   await tx.postTag.createMany({ data: tags, skipDuplicates: true });
   const rows = await tx.postTag.findMany({
     where: { slug: { in: tags.map((tag) => tag.slug) } },
-    select: { id: true },
+    select: { id: true, slug: true },
   });
-  await tx.postTagLink.createMany({ data: rows.map((row) => ({ postId, tagId: row.id })) });
+  // `findMany` không giữ thứ tự của `in` — ghép lại theo slug rồi đánh số theo input.
+  const idBySlug = new Map(rows.map((row) => [row.slug, row.id]));
+  await tx.postTagLink.createMany({
+    data: tags.flatMap((tag, order) => {
+      const tagId = idBySlug.get(tag.slug);
+      return tagId === undefined ? [] : [{ postId, tagId, order }];
+    }),
+  });
 }
 
 /** Thay trọn tour liên quan; thứ tự là thứ tự gửi lên (`post_tours.order`). */

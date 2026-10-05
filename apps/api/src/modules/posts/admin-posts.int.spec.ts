@@ -264,7 +264,7 @@ describe('admin posts integration (P4e-4)', () => {
       expect(await slugs('draft')).toEqual(['p4e4-post-3', 'p4e4-post-4']);
     });
 
-    it('hàng khớp contract: chip, ảnh bìa nhỏ, tag sắp theo tên; sửa gần nhất trước', async () => {
+    it('hàng khớp contract: chip, ảnh bìa nhỏ, tag theo thứ tự lưu; sửa gần nhất trước', async () => {
       await makePost(1);
       await makePost(2, { publishedAt: new Date(Date.now() + DAY_MS) });
       await makeCover(2, mine(2, 'cover'));
@@ -278,10 +278,11 @@ describe('admin posts integration (P4e-4)', () => {
         prisma.postTag.findUniqueOrThrow({ where: { slug: 'zen' } }),
         prisma.postTag.findUniqueOrThrow({ where: { slug: 'art' } }),
       ]);
+      // Thứ tự lưu NGƯỢC thứ tự tên — bắt đường đọc nào còn sắp theo tên.
       await prisma.postTagLink.createMany({
         data: [
-          { postId: postId(2), tagId: zen.id },
-          { postId: postId(2), tagId: art.id },
+          { postId: postId(2), tagId: art.id, order: 1 },
+          { postId: postId(2), tagId: zen.id, order: 0 },
         ],
       });
 
@@ -293,7 +294,7 @@ describe('admin posts integration (P4e-4)', () => {
       expect(first.slug).toBe('p4e4-post-2');
       expect(first.displayStatus).toBe('scheduled');
       expect(first.coverUrl).toContain(`/v1700000000/${mine(2, 'cover')}`);
-      expect(first.tags.map((tag: { name: string }) => tag.name)).toEqual(['Art', 'Zen']);
+      expect(first.tags.map((tag: { name: string }) => tag.name)).toEqual(['Zen', 'Art']);
       expect(second.coverUrl).toBeNull();
     });
 
@@ -661,6 +662,25 @@ describe('admin posts integration (P4e-4)', () => {
       expect(await prisma.postTagLink.count()).toBe(0);
       expect(await prisma.postTour.count()).toBe(0);
       expect(await prisma.postTag.count()).toBe(1);
+    });
+
+    it('tag giữ thứ tự gửi lên ở cả đường admin lẫn đường công khai; lưu lại theo thứ tự mới thì đổi theo', async () => {
+      await makePost(1);
+      const names = (body: unknown) =>
+        AdminPostDetailSchema.parse(body).tags.map((tag) => tag.name);
+
+      const first = await save(1, await fullSave(1, { tags: ['Zeta', 'Alpha'] }));
+      expect(names(first.json())).toEqual(['Zeta', 'Alpha']);
+
+      const second = await save(1, await fullSave(1, { tags: ['Alpha', 'Zeta'] }));
+      expect(names(second.json())).toEqual(['Alpha', 'Zeta']);
+
+      // Web lấy tag ĐẦU làm chip danh mục của thẻ bài (vòng review P4e-4).
+      const cards = (await app.inject({ method: 'GET', url: '/api/posts' })).json() as {
+        items: { slug: string; tags: { name: string }[] }[];
+      };
+      const card = cards.items.find((item) => item.slug === 'p4e4-post-1');
+      expect(card?.tags.map((tag) => tag.name)).toEqual(['Alpha', 'Zeta']);
     });
 
     it('thân bài có ảnh nhúng: 400 từ contract, chưa chạm DB', async () => {

@@ -600,7 +600,9 @@ async function main(): Promise<void> {
         publishedAt: new Date(post.publishedAt),
         authorId: admin.id,
         tags: {
-          create: post.tags.map((tag) => ({
+          // `order` = thứ tự trong fixture: tag đầu làm chip danh mục ở web.
+          create: post.tags.map((tag, order) => ({
+            order,
             tag: { connectOrCreate: { where: { slug: tag.slug }, create: tag } },
           })),
         },

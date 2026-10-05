@@ -10,6 +10,7 @@ import {
   cardInclude as tourCardInclude,
 } from '../catalog/catalog.service.js';
 import { MediaService } from '../media/media.service.js';
+import { POST_TAG_ORDER } from './post-tag-order.js';
 import { publishedPostWhere } from './published-post.where.js';
 
 const SORT_COLUMN = {
@@ -19,8 +20,13 @@ const SORT_COLUMN = {
   title: 'title',
 } as const satisfies Record<PostsListQuery['sort'], keyof Prisma.PostOrderByWithRelationInput>;
 
+const postTagsInclude = {
+  select: { tag: { select: { slug: true, name: true } } },
+  orderBy: POST_TAG_ORDER,
+} satisfies Prisma.Post$tagsArgs;
+
 const postCardInclude = {
-  tags: { select: { tag: { select: { slug: true, name: true } } } },
+  tags: postTagsInclude,
   author: { select: { name: true, image: true } },
 } satisfies Prisma.PostInclude;
 
@@ -100,7 +106,7 @@ export class PostsService {
     const post = await prisma.post.findFirst({
       where: { slug, ...publishedPostWhere() },
       include: {
-        tags: { select: { tag: { select: { slug: true, name: true } } } },
+        tags: postTagsInclude,
         author: { select: { name: true, image: true } },
         // Related tours: chỉ tour đã published (unpublish → rớt âm thầm),
         // giữ đúng thứ tự pick. tourCardInclude (import từ catalog) đủ field

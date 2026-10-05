@@ -12,6 +12,7 @@ import type { Prisma } from '../../generated/prisma/client.js';
 import { PostStatus } from '../../generated/prisma/enums.js';
 import { isPostUploadPublicId } from '../../lib/upload-signing.js';
 import type { StoredPhoto } from '../catalog/tour-photos.js';
+import { POST_TAG_ORDER } from './post-tag-order.js';
 import { publishedPostWhere } from './published-post.where.js';
 
 /**
@@ -45,10 +46,9 @@ export const ADMIN_POST_ROW_SELECT = {
   status: true,
   publishedAt: true,
   updatedAt: true,
-  // Bảng nối không có cột thứ tự — sắp theo tên để thứ tự đứng yên giữa hai lần đọc.
   tags: {
     select: { tag: { select: { slug: true, name: true } } },
-    orderBy: { tag: { name: 'asc' } },
+    orderBy: POST_TAG_ORDER,
   },
 } satisfies Prisma.PostSelect;
 

@@ -1086,6 +1086,10 @@ model PostTag {
 model PostTagLink {
   postId String @map("post_id") @db.Uuid
   tagId  String @map("tag_id") @db.Uuid
+  /// Thứ tự admin xếp tag, như `post_tours.order`. Tag đứng đầu làm chip danh mục trên thẻ
+  /// bài ở web, nên thiếu cột này thì chip đổi theo thứ tự vật lý của Postgres (vòng review
+  /// P4e-4). Dòng có từ trước cột này đều là 0 — đường đọc sắp tiếp theo tên tag.
+  order  Int    @default(0)
 
   post Post    @relation(fields: [postId], references: [id], onDelete: Cascade)
   tag  PostTag @relation(fields: [tagId], references: [id], onDelete: Cascade)
