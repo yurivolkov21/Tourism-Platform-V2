@@ -1,3 +1,4 @@
+import { ORPCError } from '@orpc/client';
 import { contract } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
 import { describe, expect, it } from 'vitest';
@@ -5,6 +6,7 @@ import {
   CREATE_CONTRACT_CODES,
   categoryCreatePayload,
   categoryUpdatePayload,
+  classifyDeleteError,
   DELETE_CONTRACT_CODES,
   deleteBlockedReason,
   deleteConfirmRows,
@@ -167,6 +169,27 @@ describe('lệnh xoá (ADR-0053)', () => {
     expect([...DELETE_CONTRACT_CODES].sort()).toEqual(
       Object.keys(contract.admin.categories.delete['~orpc'].errorMap).sort(),
     );
+  });
+
+  it('phân loại lỗi: IN_USE và NOT_FOUND do CONTRACT khai → mã contract; trùng tên mà không có con dấu → GENERIC', () => {
+    // `deleteCategoryAction` đổi lỗi thành mã trần tại đây (`ORPCError` không qua được ranh
+    // giới action). Rơi về GENERIC thì hộp vẫn đóng nhưng câu báo mập mờ thay vì "hãy ẩn nó".
+    expect(classifyDeleteError(new ORPCError('IN_USE', { status: 409, defined: true }))).toBe(
+      'IN_USE',
+    );
+    expect(classifyDeleteError(new ORPCError('NOT_FOUND', { status: 404, defined: true }))).toBe(
+      'NOT_FOUND',
+    );
+    // Một ORPCError trùng tên từ tầng khác không được giả làm phán quyết của contract.
+    expect(classifyDeleteError(new ORPCError('IN_USE', { status: 409 }))).toBe('GENERIC');
+  });
+
+  it('phân loại lỗi: 401/403 → hết phiên / mất quyền; lỗi mạng → GENERIC', () => {
+    expect(classifyDeleteError(new ORPCError('UNAUTHORIZED', { status: 401 }))).toBe(
+      'UNAUTHORIZED',
+    );
+    expect(classifyDeleteError(new ORPCError('FORBIDDEN', { status: 403 }))).toBe('FORBIDDEN');
+    expect(classifyDeleteError(new TypeError('fetch failed'))).toBe('GENERIC');
   });
 
   it('IN_USE và NOT_FOUND đều là trạng thái cũ: đóng hộp, làm mới bảng', () => {
