@@ -1456,9 +1456,10 @@ Trong `admin-categories.int.spec.ts`:
   });
 ```
 
-Nếu file chưa lấy `web` (WebRevalidationService) như spec điểm đến, thêm biến
-`let web: WebRevalidationService;` và gán `web = moduleRef.get(WebRevalidationService);` trong
-`beforeAll` (import `WebRevalidationService` từ `../web-revalidation/web-revalidation.service.js`).
+File này chưa lấy `web` (WebRevalidationService) như spec điểm đến: thêm biến
+`let web: WebRevalidationService;`, gán `web = moduleRef.get(WebRevalidationService);` trong
+`beforeAll` (import `WebRevalidationService` từ `../web-revalidation/web-revalidation.service.js`),
+và thêm `vi.restoreAllMocks();` ở đầu `beforeEach` để spy của ca bust không lọt sang ca sau.
 
 Run: `pnpm --filter @tourism/api exec vitest run --config vitest.int.config.ts src/modules/catalog/admin-categories.int.spec.ts`
 Expected: FAIL (route `/delete` chưa có, `linkedTourCount` undefined).
@@ -1964,6 +1965,7 @@ describe('TourCountCell', () => {
 ```tsx
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import type * as React from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import { DeleteRowAction } from './delete-row-action';
 
