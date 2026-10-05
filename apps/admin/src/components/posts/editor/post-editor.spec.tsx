@@ -162,6 +162,32 @@ describe('PostEditor — lưu cả form', () => {
     expect(update).not.toHaveBeenCalled();
   });
 
+  // Thử tay P4e-4 trên prod: dải "còn thiếu" là ảnh chụp lúc bấm Save — quay về Draft hay điền
+  // xong một mục thì nó vẫn đứng nguyên, liệt kê cả thứ đã có.
+  it('dải "còn thiếu" theo bản đang soạn: điền một mục thì mục ấy biến khỏi dải; về Draft thì dải tắt', async () => {
+    const { user } = renderEditor({
+      detail: postDetailFixture({ status: 'DRAFT', publishedAt: null, excerpt: null, cover: null }),
+    });
+
+    await user.click(screen.getByRole('radio', { name: t.publish.published }));
+    await user.click(saveButton());
+    const alert = await screen.findByRole('alert');
+    expect(
+      within(alert).getByRole('link', { name: t.publish.readiness.excerpt }),
+    ).toBeInTheDocument();
+
+    await user.type(screen.getByLabelText(t.fields.excerpt), 'Five stalls before noon.');
+    expect(
+      within(screen.getByRole('alert')).queryByRole('link', { name: t.publish.readiness.excerpt }),
+    ).not.toBeInTheDocument();
+    expect(
+      within(screen.getByRole('alert')).getByRole('link', { name: t.publish.readiness.cover }),
+    ).toBeInTheDocument();
+
+    await user.click(screen.getByRole('radio', { name: t.publish.draft }));
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+
   it('chuyển sang Published khi ô ngày trống: tự điền giờ SERVER theo UTC, không theo đồng hồ máy', async () => {
     // Đồng hồ máy lệch hẳn một tháng (giáo viên hay chỉnh khi bảo vệ — vòng review P4e-4):
     // ngày tự điền vẫn là giờ server lúc trang render cộng thời gian đã trôi.

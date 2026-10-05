@@ -113,12 +113,17 @@ export function PostEditor({
 
   const errors = form.showValidation ? validatePostForm(values) : {};
   const missing = projectedPostReadiness(values);
-  const shownBanner =
-    banner !== null && banner.version === version
-      ? banner.state
-      : form.serverChanged
-        ? STALE
-        : null;
+  // Dải "còn thiếu" tính lại theo bản ĐANG SOẠN mỗi lần vẽ (thử tay P4e-4 trên prod): ảnh chụp
+  // lúc bấm Save từng đứng nguyên khi đã quay về Draft, và vẫn liệt kê mục đã điền.
+  const ownBanner =
+    banner === null || banner.version !== version
+      ? null
+      : banner.state.kind !== 'notReady'
+        ? banner.state
+        : values.status === 'PUBLISHED' && missing.length > 0
+          ? { kind: 'notReady' as const, missing }
+          : null;
+  const shownBanner = ownBanner ?? (form.serverChanged ? STALE : null);
   const shownCardError = cardError !== null && cardError.version === version ? cardError : null;
 
   // Nút Reload nằm TRONG dải báo: bản mới về là dải tắt và tiêu điểm rơi về <body>. Đáp nó
