@@ -22,6 +22,26 @@ describe('applyMarkdownAction — Bold, Italic', () => {
       selection: { start: 5, end: 8 },
     });
   });
+
+  // Vòng review P4e-4: `**pho **` không phải chữ đậm trong CommonMark — trang công khai in
+  // nguyên dấu sao. Double-click trên Windows chọn kèm dấu cách phía sau.
+  it('khoảng trắng ở mép đứng ngoài cặp dấu', () => {
+    expect(applyMarkdownAction('pho bo', { start: 0, end: 4 }, 'bold')).toEqual({
+      text: '**pho** bo',
+      selection: { start: 2, end: 5 },
+    });
+    expect(applyMarkdownAction('a  pho  b', { start: 1, end: 8 }, 'italic')).toEqual({
+      text: 'a  *pho*  b',
+      selection: { start: 4, end: 7 },
+    });
+  });
+
+  it('chọn toàn khoảng trắng: như không chọn gì, cặp dấu đứng sau khoảng trắng', () => {
+    expect(applyMarkdownAction('a   b', { start: 1, end: 4 }, 'bold')).toEqual({
+      text: 'a   ****b',
+      selection: { start: 6, end: 6 },
+    });
+  });
 });
 
 describe('applyMarkdownAction — Heading, Bullet list', () => {

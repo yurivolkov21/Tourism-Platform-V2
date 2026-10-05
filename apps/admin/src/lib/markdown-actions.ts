@@ -39,11 +39,19 @@ export function applyMarkdownAction(
   }
 }
 
-/** Bọc vùng chọn; không chọn gì thì chèn cặp dấu và đặt con trỏ giữa. Vùng chọn mới giữ đúng chữ cũ. */
+/**
+ * Bọc vùng chọn; không chọn gì thì chèn cặp dấu và đặt con trỏ giữa. Vùng chọn mới giữ đúng
+ * chữ cũ. Khoảng trắng ở mép đứng NGOÀI cặp dấu: `**pho **` không phải chữ đậm trong
+ * CommonMark, mà double-click trên Windows chọn kèm dấu cách phía sau (vòng review P4e-4).
+ */
 function wrap(text: string, start: number, end: number, mark: string): MarkdownEdit {
+  const selected = text.slice(start, end);
+  const innerStart = start + (selected.length - selected.trimStart().length);
+  // Chọn toàn khoảng trắng thì hai mép gặp nhau — như không chọn gì, sau khoảng trắng.
+  const innerEnd = Math.max(innerStart, end - (selected.length - selected.trimEnd().length));
   return {
-    text: `${text.slice(0, start)}${mark}${text.slice(start, end)}${mark}${text.slice(end)}`,
-    selection: { start: start + mark.length, end: end + mark.length },
+    text: `${text.slice(0, innerStart)}${mark}${text.slice(innerStart, innerEnd)}${mark}${text.slice(innerEnd)}`,
+    selection: { start: innerStart + mark.length, end: innerEnd + mark.length },
   };
 }
 
