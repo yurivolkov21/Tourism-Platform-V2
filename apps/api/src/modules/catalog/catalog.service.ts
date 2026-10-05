@@ -86,6 +86,40 @@ export function priceFrom(
   return money(min ?? basePrice);
 }
 
+/**
+ * Giá "from" của một lô tour — MỘT query đợt cho cả lô, lọc đúng như detail (OPEN, chưa
+ * khởi hành theo ngày Việt Nam, còn trong hạn đặt). `listTours` và tour liên quan của bài
+ * viết cùng gọi, nên một tour không bao giờ mang hai giá ở hai trang (vòng review P4e-4).
+ * Lấy thêm hai cột ngày vì luật hạn chót N chỉ sống ở Node (spec §4.1), không viết lại
+ * trong SQL.
+ */
+export async function priceFromByTour(
+  tours: readonly { id: string; basePrice: Prisma.Decimal }[],
+  now: Date,
+): Promise<Map<string, string>> {
+  if (tours.length === 0) return new Map();
+  const upcoming = await prisma.tourDeparture.findMany({
+    where: {
+      tourId: { in: tours.map((tour) => tour.id) },
+      status: DepartureStatus.OPEN,
+      startDate: { gte: startOfVietnamToday(now) },
+    },
+    select: { tourId: true, priceOverride: true, startDate: true, endDate: true },
+  });
+  const overridesByTour = new Map<string, (Prisma.Decimal | null)[]>();
+  for (const d of upcoming) {
+    // Chuyến đã qua hạn đặt không bán được nữa → không kéo giá "from" xuống
+    // (ADR-0041 §3) — cùng luật với cờ `bookable` của detail.
+    if (!isWithinDeadline(now, calendarDate(d.startDate), calendarDate(d.endDate))) continue;
+    const list = overridesByTour.get(d.tourId) ?? [];
+    list.push(d.priceOverride);
+    overridesByTour.set(d.tourId, list);
+  }
+  return new Map(
+    tours.map((tour) => [tour.id, priceFrom(tour.basePrice, overridesByTour.get(tour.id) ?? [])]),
+  );
+}
+
 export function toTourCard(
   tour: TourCardRow,
   cover: MediaItem | null = null,
@@ -167,38 +201,16 @@ export class CatalogService {
 
     // MỘT query media cho cả trang (chống N+1) — không gọi trong `map()`.
     const ids = tours.map((t) => t.id);
-    const [coverMap, upcoming] = await Promise.all([
+    const [coverMap, prices] = await Promise.all([
       // Chỉ cần cover cho card — lọc hero ngay ở query (W4 R3).
       this.media.resolveForOwners(MediaOwnerType.TOUR, ids, [MediaRole.hero]),
-      // MỘT query đợt cho cả trang → `priceFrom` (giá "from" thật). Lọc đúng như
-      // detail (OPEN + chưa khởi hành theo ngày Việt Nam); lấy thêm hai cột ngày vì
-      // luật hạn chót N chỉ sống ở Node (spec §4.1), không viết lại trong SQL.
-      prisma.tourDeparture.findMany({
-        where: {
-          tourId: { in: ids },
-          status: DepartureStatus.OPEN,
-          startDate: { gte: startOfVietnamToday(now) },
-        },
-        select: { tourId: true, priceOverride: true, startDate: true, endDate: true },
-      }),
+      // MỘT query đợt cho cả trang → giá "from" thật.
+      priceFromByTour(tours, now),
     ]);
-    const overridesByTour = new Map<string, (Prisma.Decimal | null)[]>();
-    for (const d of upcoming) {
-      // Chuyến đã qua hạn đặt không bán được nữa → không kéo giá "from" xuống
-      // (ADR-0041 §3) — cùng luật với cờ `bookable` của detail.
-      if (!isWithinDeadline(now, calendarDate(d.startDate), calendarDate(d.endDate))) continue;
-      const list = overridesByTour.get(d.tourId) ?? [];
-      list.push(d.priceOverride);
-      overridesByTour.set(d.tourId, list);
-    }
 
     return {
       items: tours.map((tour) =>
-        toTourCard(
-          tour,
-          pickCover(coverMap.get(tour.id)),
-          priceFrom(tour.basePrice, overridesByTour.get(tour.id) ?? []),
-        ),
+        toTourCard(tour, pickCover(coverMap.get(tour.id)), prices.get(tour.id)),
       ),
       page,
       limit,

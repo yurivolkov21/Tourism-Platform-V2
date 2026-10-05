@@ -276,6 +276,60 @@ describe('posts integration (oRPC @Implement over Fastify) — GET /api/posts', 
     expect(detail.relatedTours[0]?.slug).toBe('tour-con-hien');
   });
 
+  it('tour liên quan mang giá "from" của /tours — chuyến rẻ nhất còn nhận đặt, không phải basePrice', async () => {
+    const category = await prisma.tourCategory.create({ data: { slug: 'day', name: 'Day Tours' } });
+    const tour = await prisma.tour.create({
+      data: {
+        slug: 'tour-co-chuyen',
+        title: 'Tour có chuyến',
+        categoryId: category.id,
+        durationDays: 1,
+        basePrice: '100.00',
+        isPublished: true,
+      },
+    });
+    // Ngày thuần (cột `@db.Date`), cách hôm nay đủ xa để còn trong hạn đặt.
+    const day = (offset: number): Date => {
+      const today = new Date();
+      return new Date(
+        Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate() + offset),
+      );
+    };
+    await prisma.tourDeparture.createMany({
+      data: [
+        {
+          tourId: tour.id,
+          startDate: day(120),
+          endDate: day(121),
+          seatsTotal: 10,
+          priceOverride: '80.00',
+        },
+        {
+          tourId: tour.id,
+          startDate: day(150),
+          endDate: day(151),
+          seatsTotal: 10,
+          priceOverride: null,
+        },
+      ],
+    });
+    await prisma.postTour.create({
+      data: { postId: 'c0000001-0000-4000-8000-000000000001', tourId: tour.id, order: 0 },
+    });
+
+    const res = await app.inject({ method: 'GET', url: '/api/posts/bai-a' });
+    const related = PostDetailSchema.parse(res.json()).relatedTours[0];
+    expect(related?.basePrice).toBe('100.00');
+    expect(related?.priceFrom).toBe('80.00');
+
+    // Gương: đúng con số thẻ của chính tour ấy trên `/tours`.
+    const list = await app.inject({ method: 'GET', url: '/api/tours?limit=50' });
+    const card = (list.json() as { items: { slug: string; priceFrom: string }[] }).items.find(
+      (item) => item.slug === 'tour-co-chuyen',
+    );
+    expect(related?.priceFrom).toBe(card?.priceFrom);
+  });
+
   it('GET /api/posts-tags: chỉ tag có ≥1 bài published, count chỉ đếm published, order name asc', async () => {
     // Tên ASCII đảo thứ tự TẠO ('Zeta' trước, 'Alpha' sau) — để order-assert
     // có ≥2 phần tử và bắt được nếu ai gỡ `orderBy: name asc`. ASCII thuần để

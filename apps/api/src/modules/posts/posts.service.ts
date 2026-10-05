@@ -4,7 +4,11 @@ import { prisma } from '../../auth/auth.config.js';
 import type { Prisma } from '../../generated/prisma/client.js';
 import { MediaOwnerType, MediaRole } from '../../generated/prisma/enums.js';
 import { escapeLike } from '../../lib/like.js';
-import { toTourCard, cardInclude as tourCardInclude } from '../catalog/catalog.service.js';
+import {
+  priceFromByTour,
+  toTourCard,
+  cardInclude as tourCardInclude,
+} from '../catalog/catalog.service.js';
 import { MediaService } from '../media/media.service.js';
 import { publishedPostWhere } from './published-post.where.js';
 
@@ -117,12 +121,23 @@ export class PostsService {
     // Map sang TourCard bằng mapper dùng chung. Từ ADR-0020, TourCard CÓ ảnh
     // bìa — nên resolve luôn ở đây, một query cho cả lô related. Không làm thì
     // tour dưới bài viết hiện ô giữ chỗ trong khi `/tours` đã có ảnh thật.
-    const relatedIds = post.relatedTours.map((rt) => rt.tour.id);
-    const tourCovers = await this.media.resolveForOwners(MediaOwnerType.TOUR, relatedIds, [
-      MediaRole.hero,
+    // Giá "from" tính bằng CHÍNH hàm của `/tours` — thiếu nó thẻ rơi về `basePrice` và cùng
+    // một tour mang hai giá ở hai trang (vòng review P4e-4).
+    const relatedRows = post.relatedTours.map((rt) => rt.tour);
+    const [tourCovers, prices] = await Promise.all([
+      this.media.resolveForOwners(
+        MediaOwnerType.TOUR,
+        relatedRows.map((tour) => tour.id),
+        [MediaRole.hero],
+      ),
+      priceFromByTour(relatedRows, new Date()),
     ]);
-    const relatedTours = post.relatedTours.map((rt) =>
-      toTourCard(rt.tour, tourCovers.get(rt.tour.id)?.find((m) => m.role === 'hero') ?? null),
+    const relatedTours = relatedRows.map((tour) =>
+      toTourCard(
+        tour,
+        tourCovers.get(tour.id)?.find((m) => m.role === 'hero') ?? null,
+        prices.get(tour.id),
+      ),
     );
 
     // `where` đã spread publishedPostWhere() (publishedAt: { lte: now }) nên
