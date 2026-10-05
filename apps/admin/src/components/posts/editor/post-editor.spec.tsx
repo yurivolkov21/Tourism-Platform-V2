@@ -299,6 +299,31 @@ describe('PostEditor — lưu cả form', () => {
     );
   });
 
+  // Vòng review P4e-4: chữ còn trong ô Tags mà chưa bấm Add từng bị bỏ im lặng khi lưu.
+  it('chữ còn trong ô Tags: Save thêm luôn tag ấy rồi gửi; ô trống lại', async () => {
+    const update = vi
+      .fn<UpdatePostAction>()
+      .mockResolvedValue({ ok: true, detail: postDetailFixture() });
+    const { user } = renderEditor({ update });
+
+    await user.type(screen.getByLabelText(t.tags.inputLabel), 'Street food');
+    await user.click(saveButton());
+
+    await waitFor(() => expect(update).toHaveBeenCalled());
+    expect(update).toHaveBeenCalledWith(expect.objectContaining({ tags: ['Food', 'Street food'] }));
+  });
+
+  it('chữ còn trong ô Tags mà không thêm được: KHÔNG gửi, câu báo nằm ngay dưới ô', async () => {
+    const update = vi.fn<UpdatePostAction>();
+    const { user } = renderEditor({ update });
+
+    await user.type(screen.getByLabelText(t.tags.inputLabel), 'food');
+    await user.click(saveButton());
+
+    expect(await screen.findByText(t.tags.duplicate('food'))).toBeInTheDocument();
+    expect(update).not.toHaveBeenCalled();
+  });
+
   it('thêm tag và tour rồi lưu: payload mang đúng thứ tự đã soạn', async () => {
     const update = vi
       .fn<UpdatePostAction>()

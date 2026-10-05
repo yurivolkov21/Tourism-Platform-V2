@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { AdminPostTag } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
@@ -11,9 +11,16 @@ const g = messages.admin.posts.editor.tags;
 
 function Harness({ initial, options = [] }: { initial: string[]; options?: AdminPostTag[] }) {
   const [tags, setTags] = useState(initial);
+  const [draft, setDraft] = useState('');
   return (
     <>
-      <PostTagsCard tags={tags} options={options} onChange={setTags} />
+      <PostTagsCard
+        tags={tags}
+        draft={draft}
+        options={options}
+        onChange={setTags}
+        onDraftChange={setDraft}
+      />
       <output data-testid="tags">{tags.join('|')}</output>
     </>
   );
@@ -31,6 +38,20 @@ describe('PostTagsCard', () => {
     expect(screen.getByTestId('tags')).toHaveTextContent('Food|Street food');
     expect(input()).toHaveValue('');
     expect(input()).toHaveFocus();
+  });
+
+  // Vòng review P4e-4: Enter để CHỐT chữ của bộ gõ IME (Telex trên macOS) không được thêm tag
+  // dở — Chrome báo `isComposing`, Safari báo keyCode 229 sau `compositionend`.
+  it('Enter của bộ gõ đang soạn chữ không thêm tag', async () => {
+    const user = userEvent.setup();
+    render(<Harness initial={['Food']} />);
+    await user.type(input(), 'Ho');
+
+    fireEvent.keyDown(input(), { key: 'Enter', isComposing: true });
+    fireEvent.keyDown(input(), { key: 'Enter', keyCode: 229 });
+
+    expect(screen.getByTestId('tags')).toHaveTextContent(/^Food$/);
+    expect(input()).toHaveValue('Ho');
   });
 
   it('gợi ý tag sẵn có chưa gắn bài này; bấm gợi ý thì thêm', async () => {

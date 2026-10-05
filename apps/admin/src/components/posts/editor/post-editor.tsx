@@ -22,6 +22,7 @@ import {
   postPayload,
   projectedPostReadiness,
   validatePostForm,
+  withPendingTag,
   withStatus,
 } from '@/lib/post-form';
 import { POSTS_LIST_HREF } from '@/lib/posts-view';
@@ -40,7 +41,7 @@ import { PostBanner, type PostBannerState } from './post-banner';
 import { PostCoverCard } from './post-cover-card';
 import { PostEditorHeader } from './post-editor-header';
 import { PostPublishCard } from './post-publish-card';
-import { PostTagsCard } from './post-tags-card';
+import { PostTagsCard, tagProblemCopy } from './post-tags-card';
 import { PostToursCard } from './post-tours-card';
 
 /**
@@ -105,6 +106,9 @@ export function PostEditor({
     message?: string;
   } | null>(null);
 
+  /** Save dừng vì chữ còn trong ô Tags không thêm được — câu báo hiện ngay dưới ô. */
+  const [tagProblem, setTagProblem] = useState<string | null>(null);
+
   useReportUnsaved(form.dirty || uploading);
 
   const errors = form.showValidation ? validatePostForm(values) : {};
@@ -125,6 +129,13 @@ export function PostEditor({
     if (inFlight.current) return;
     form.setShowValidation(true);
     if (hasFormErrors(validatePostForm(values))) return;
+    // Chữ còn trong ô Tags mà chưa bấm Add: lưu là thêm luôn (vòng review P4e-4).
+    const pending = withPendingTag(values);
+    if (!pending.ok) {
+      setTagProblem(tagProblemCopy(pending.reason, values.tagDraft));
+      return;
+    }
+    if (pending.values !== values) form.setValues(pending.values);
     if (values.status === 'PUBLISHED' && missing.length > 0) {
       setBanner({ state: { kind: 'notReady', missing }, version });
       return;
@@ -135,7 +146,7 @@ export function PostEditor({
     setBanner(null);
     setCardError(null);
     // Bản đã gửi — lưu xong chỉ thay form bằng bản server khi người dùng chưa gõ thêm.
-    const sent = values;
+    const sent = pending.values;
     let result: UpdatePostResult;
     try {
       result = await update(postPayload(detail.id, version, sent));
@@ -232,8 +243,14 @@ export function PostEditor({
             />
             <PostTagsCard
               tags={values.tags}
+              draft={values.tagDraft}
               options={tagOptions}
+              saveProblem={tagProblem}
               onChange={(tags) => patch({ tags })}
+              onDraftChange={(tagDraft) => {
+                patch({ tagDraft });
+                setTagProblem(null);
+              }}
             />
             <PostToursCard
               tours={values.relatedTours}

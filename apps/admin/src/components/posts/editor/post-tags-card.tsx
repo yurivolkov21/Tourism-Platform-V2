@@ -9,7 +9,7 @@ import { Input } from '@tourism/ui/components/input';
 import { XIcon } from 'lucide-react';
 import { useRef, useState } from 'react';
 import { FormField } from '@/components/kit/form-field';
-import { type AddTagResult, addTag, tagSuggestions } from '@/lib/post-pickers';
+import { type AddTagFailure, addTag, tagSuggestions } from '@/lib/post-pickers';
 
 /**
  * Card Tags (spec P4e-4 §4.4, ADR-0051 §5): tag gõ thẳng, Enter để thêm; tag chưa có được
@@ -17,16 +17,17 @@ import { type AddTagResult, addTag, tagSuggestions } from '@/lib/post-pickers';
  *
  * Ô nhập KHÔNG bao giờ bị khoá, kể cả khi đủ 5 — khoá ô đang có tiêu điểm là đẩy tiêu điểm
  * về `<body>`; thay vào đó lần thêm thứ sáu nói rõ trần (bài học 10).
+ *
+ * Chữ trong ô do form giữ (`draft`): Save thêm luôn chữ còn dở, và lý do không thêm được của
+ * lần Save ấy hiện ngay dưới ô (`saveProblem`) — vòng review P4e-4.
  */
 const g = messages.admin.posts.editor.tags;
 // Biome coi mọi lời gọi `use…(…)` là hook (lint/correctness/useHookAtTopLevel); khoá copy
 // `useSuggestion` chỉ là hàm dựng nhãn, nên gọi qua một tên khác.
 const suggestionLabel = g.useSuggestion;
 
-function problemCopy(
-  reason: Exclude<AddTagResult, { ok: true }>['reason'],
-  name: string,
-): string | null {
+/** Câu báo dưới ô cho một lần thêm hỏng — card và nút Save của trang cùng dùng. */
+export function tagProblemCopy(reason: AddTagFailure, name: string): string | null {
   switch (reason) {
     case 'empty':
       return null;
@@ -43,27 +44,34 @@ function problemCopy(
 
 export function PostTagsCard({
   tags,
+  draft,
   options,
+  saveProblem = null,
   onChange,
+  onDraftChange,
 }: {
   tags: string[];
+  /** Chữ đang gõ ở ô, chưa thêm — form giữ. */
+  draft: string;
   /** Mọi tag sẵn có kèm số bài (`admin.posts.tags`); hỏng thì rỗng. */
   options: readonly AdminPostTag[];
+  /** Lần Save vừa rồi không thêm được chữ còn trong ô — câu báo, hoặc `null`. */
+  saveProblem?: string | null;
   onChange: (tags: string[]) => void;
+  onDraftChange: (draft: string) => void;
 }) {
   const input = useRef<HTMLInputElement>(null);
-  const [draft, setDraft] = useState('');
   const [problem, setProblem] = useState<string | null>(null);
   const suggestions = tags.length >= POST_TAGS_MAX ? [] : tagSuggestions(options, tags, draft);
 
   function add(name: string) {
     const result = addTag(tags, name);
     if (!result.ok) {
-      setProblem(problemCopy(result.reason, name));
+      setProblem(tagProblemCopy(result.reason, name));
       return;
     }
     onChange(result.tags);
-    setDraft('');
+    onDraftChange('');
     setProblem(null);
     input.current?.focus();
   }
@@ -101,7 +109,7 @@ export function PostTagsCard({
           id="post-tag-input"
           label={g.inputLabel}
           hint={g.hint(POST_TAGS_MAX)}
-          error={problem ?? undefined}
+          error={problem ?? saveProblem ?? undefined}
         >
           {(describedBy) => (
             <div className="flex gap-2">
@@ -111,11 +119,15 @@ export function PostTagsCard({
                 value={draft}
                 aria-describedby={describedBy}
                 onChange={(event) => {
-                  setDraft(event.target.value);
+                  onDraftChange(event.target.value);
                   setProblem(null);
                 }}
                 onKeyDown={(event) => {
                   if (event.key !== 'Enter') return;
+                  // Enter CHỐT chữ của bộ gõ IME (Telex trên macOS) không phải Enter thêm tag:
+                  // Chrome báo `isComposing`, Safari bắn keydown SAU `compositionend` với
+                  // keyCode 229 (vòng review P4e-4).
+                  if (event.nativeEvent.isComposing || event.keyCode === 229) return;
                   event.preventDefault();
                   add(draft);
                 }}

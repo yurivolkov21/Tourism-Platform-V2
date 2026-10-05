@@ -19,6 +19,7 @@ import {
   toUtcInputValue,
   uploadedCoverDraft,
   validatePostForm,
+  withPendingTag,
   withStatus,
 } from './post-form';
 
@@ -206,6 +207,30 @@ describe('ảnh bìa', () => {
       url: photo.url,
       alt: '',
       source: 'LIBRARY',
+    });
+  });
+});
+
+// Vòng review P4e-4: chữ còn trong ô Tags mà chưa bấm Add bị bỏ im lặng khi lưu.
+describe('withPendingTag', () => {
+  const base = () => postFormValues(postDetailFixture());
+
+  it('ô Tags trống (hay chỉ có khoảng trắng): giữ nguyên giá trị', () => {
+    const values = { ...base(), tagDraft: '   ' };
+    expect(withPendingTag(values)).toEqual({ ok: true, values });
+  });
+
+  it('chữ còn trong ô: thêm thành tag, ô trống lại', () => {
+    expect(withPendingTag({ ...base(), tagDraft: ' Street food ' })).toEqual({
+      ok: true,
+      values: { ...base(), tags: ['Food', 'Street food'], tagDraft: '' },
+    });
+  });
+
+  it('không thêm được (trùng theo slug): báo lý do, không đổi gì', () => {
+    expect(withPendingTag({ ...base(), tagDraft: 'food' })).toEqual({
+      ok: false,
+      reason: 'duplicate',
     });
   });
 });

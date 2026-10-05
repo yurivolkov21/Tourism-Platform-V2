@@ -15,9 +15,10 @@ import type { PostTourDraft, PostTourOption } from './post-form';
  * `foldAccents` của contract — gõ "hoi an" khớp "Hội An".
  */
 
-export type AddTagResult =
-  | { ok: true; tags: string[] }
-  | { ok: false; reason: 'empty' | 'invalid' | 'tooLong' | 'duplicate' | 'full' };
+/** Lý do một tag không thêm được. */
+export type AddTagFailure = 'empty' | 'invalid' | 'tooLong' | 'duplicate' | 'full';
+
+export type AddTagResult = { ok: true; tags: string[] } | { ok: false; reason: AddTagFailure };
 
 /** Thêm một tag theo luật của contract (spec §2.5): trim, trùng THEO SLUG là trùng, tối đa 5. */
 export function addTag(tags: readonly string[], raw: string): AddTagResult {

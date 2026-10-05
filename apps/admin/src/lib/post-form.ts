@@ -18,6 +18,7 @@ import { messages } from '@tourism/i18n';
 import { cloudinaryImageUrl } from './cloudinary-url';
 import type { Keyed } from './list-editor';
 import { imageExtensionOf, type UploadedPhoto } from './photo-upload';
+import { type AddTagFailure, addTag } from './post-pickers';
 
 /**
  * Logic THUẦN của trang sửa bài (spec P4e-4 §4.4): giá trị form, kiểm trước khi gửi, payload,
@@ -57,6 +58,11 @@ export interface PostFormValues {
   /** `YYYY-MM-DDTHH:mm` đọc như giờ UTC (ô `datetime-local`), hoặc `''`. */
   publishAt: string;
   tags: string[];
+  /**
+   * Chữ đang gõ ở ô Tags, chưa thêm. Nằm trong giá trị form để gõ dở cũng tính là "chưa lưu",
+   * và để Save thêm luôn nó (`withPendingTag`) thay vì bỏ im lặng (vòng review P4e-4).
+   */
+  tagDraft: string;
   relatedTours: PostTourDraft[];
   cover: PostCoverDraft | null;
 }
@@ -100,6 +106,7 @@ export function postFormValues(detail: AdminPostDetail): PostFormValues {
     status: detail.status,
     publishAt: detail.publishedAt === null ? '' : toUtcInputValue(detail.publishedAt),
     tags: detail.tags.map((tag) => tag.name),
+    tagDraft: '',
     relatedTours: detail.relatedTours.map((tour) => ({ key: tour.id, ...tour })),
     cover:
       detail.cover === null
@@ -139,6 +146,20 @@ export function validatePostForm(values: PostFormValues): PostFormErrors {
     errors.coverAlt = fe.tooLong(POST_COVER_ALT_MAX);
   }
   return errors;
+}
+
+/**
+ * Chữ còn trong ô Tags lúc bấm Save → thêm luôn thành tag, ô trống lại. Không thêm được (trùng,
+ * quá trần, chỉ có ký hiệu) thì trả lý do để form dừng và nói ngay dưới ô — bỏ im lặng là mất
+ * tag người dùng tưởng đã có (vòng review P4e-4).
+ */
+export function withPendingTag(
+  values: PostFormValues,
+): { ok: true; values: PostFormValues } | { ok: false; reason: AddTagFailure } {
+  if (values.tagDraft.trim() === '') return { ok: true, values };
+  const added = addTag(values.tags, values.tagDraft);
+  if (!added.ok) return { ok: false, reason: added.reason };
+  return { ok: true, values: { ...values, tags: added.tags, tagDraft: '' } };
 }
 
 /** Mục còn thiếu tính trên bản ĐANG SOẠN — cùng hàm server dùng ở cổng đăng (Quyết định 11). */
