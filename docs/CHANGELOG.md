@@ -8,6 +8,28 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-10-05 — Hook session cloud dọn pid containerd sót lại khi resume (`c0ab2ec2`, nhánh `claude/nice-rubin-moffft`)
+
+Lần resume đầu tiên của một session cloud sau khi hook vào `main`, hook báo "Postgres KHÔNG
+lên được". Log dockerd ghi `containerd is still running pid=540` rồi `timeout waiting for
+containerd to start`: file `/var/run/docker/containerd/containerd.pid` từ trước lúc container
+được khôi phục vẫn còn, pid trong đó đã bị tiến trình khác dùng lại, nên dockerd tưởng
+containerd còn sống. Hook chỉ dọn `docker.pid`.
+
+Sửa: khi không có tiến trình `containerd` nào đang chạy thì xoá luôn `containerd.pid` trước khi
+khởi động dockerd (7 dòng trong `.claude/hooks/session-start.sh`).
+
+**Review findings:** không mở vòng review riêng. Kiểm chứng bằng cách dựng lại đúng tình huống:
+dockerd và containerd tắt, `containerd.pid` trỏ vào một tiến trình `sleep` đang sống. Bản cũ
+trên `main` báo Postgres KHÔNG lên được, bản sửa dựng Postgres 17 thành công. Hai ca hồi quy:
+chạy lại khi Docker đang sống mất 2,6 giây; dockerd bị `kill -9` vẫn dựng lại được. Bản sửa
+cũng chạy được ngay trên trạng thái hỏng thật của lần resume (13,6 giây).
+
+Nhánh rebase lên `cfad94b6` (3 commit P4e-4 mới, không đụng `.claude/`). CI của nhánh xanh
+(run #387). Không migration, không env, không webhook; thay đổi chỉ chạy trong session cloud.
+
+Tests after: không đổi so với entry ngay dưới — hook nằm ngoài phạm vi `gate`.
+
 ## 2026-10-05 — Hai lỗi nhỏ lộ ra ở lượt thử tay P4e-4 (nhánh `fix/post-banner-toc-label`)
 
 Lượt thử tay P4e-4 trên prod (entry ngay dưới) lộ hai lỗi nhỏ ngoài phạm vi vòng review. User
