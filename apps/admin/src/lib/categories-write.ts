@@ -1,5 +1,7 @@
 import type {
   AdminCategoryCreateInput,
+  AdminCategoryDeleteInput,
+  AdminCategoryDeleteResult,
   AdminCategoryMoveInput,
   AdminCategoryRow,
   AdminCategorySetActiveInput,
@@ -15,11 +17,12 @@ import { messages } from '@tourism/i18n';
 import { createWriteErrorCodec, type TransportFailureCode } from './api/write-error';
 
 /**
- * Logic THUẦN của bốn hành vi ghi vùng danh mục (spec P4e-2 F14) — cùng khuôn
- * `departures-write.ts`: codec lỗi derive từ khối i18n, hợp đồng vận chuyển
- * của server action, và validate form để component không tự chế luật.
+ * Logic THUẦN của năm hành vi ghi vùng danh mục (spec P4e-2 F14, lệnh xoá theo
+ * ADR-0053) — cùng khuôn `departures-write.ts`: codec lỗi derive từ khối i18n,
+ * hợp đồng vận chuyển của server action, và validate form để component không tự
+ * chế luật.
  *
- * BỐN codec chứ không một: bốn endpoint có mã trùng tên (`NOT_FOUND`) nhưng
+ * NĂM codec chứ không một: các endpoint có mã trùng tên (`NOT_FOUND`) nhưng
  * câu phải khác nhau — "danh mục biến mất nên không sửa được" và "danh mục
  * biến mất nên không đổi chỗ được" là hai việc khác nhau với người vừa bấm.
  */
@@ -229,4 +232,58 @@ export function setActiveToast(row: AdminCategoryRow) {
   return row.isActive
     ? { title: toast.shownTitle, description: toast.shownBody(row.name) }
     : { title: toast.hiddenTitle, description: toast.hiddenBody(row.name) };
+}
+
+// ── Lệnh xoá (ADR-0053) ─────────────────────────────────────────────────────
+
+/**
+ * `IN_USE` là "trạng thái cũ" như `NOT_FOUND`: bảng nói hàng 0 tour mà DB đã có tour gắn
+ * vào. Đóng hộp và làm mới bảng — sau lượt làm mới, nút Delete khoá kèm tooltip, đúng chỗ
+ * admin cần nhìn (plan 2026-10-05, quyết định 3).
+ */
+const deleteCodec = createWriteErrorCodec(t.delete.errors, { stale: ['IN_USE', 'NOT_FOUND'] });
+
+export const DELETE_CONTRACT_CODES = deleteCodec.codes;
+export type DeleteContractCode = keyof typeof t.delete.errors;
+export const classifyDeleteError = deleteCodec.classify;
+export const deleteErrorCopy = deleteCodec.copy;
+export const isDeleteStale = deleteCodec.isStale;
+
+export type CategoryDeleteResult =
+  | { ok: true; deleted: AdminCategoryDeleteResult }
+  | { ok: false; code: DeleteContractCode | TransportFailureCode };
+
+export type DeleteCategoryAction = (
+  input: AdminCategoryDeleteInput,
+) => Promise<CategoryDeleteResult>;
+
+/** Lý do nút Delete khoá; `null` là xoá được (ADR-0053 §5). */
+export function deleteBlockedReason(row: { linkedTourCount: number }): string | null {
+  return row.linkedTourCount > 0 ? t.delete.inUse(row.linkedTourCount) : null;
+}
+
+export function deleteDialogCopy() {
+  const d = t.delete.dialog;
+  return {
+    title: d.title,
+    body: d.body,
+    warning: d.warning,
+    submit: d.submit,
+    submitting: d.submitting,
+    cancel: t.form.cancel,
+  };
+}
+
+export function deleteConfirmRows(row: {
+  name: string;
+  slug: string;
+}): Array<{ label: string; value: string }> {
+  return [
+    { label: t.delete.rows.category, value: row.name },
+    { label: t.delete.rows.slug, value: row.slug },
+  ];
+}
+
+export function deleteToast(name: string) {
+  return { title: t.delete.toast.title, description: t.delete.toast.body(name) };
 }

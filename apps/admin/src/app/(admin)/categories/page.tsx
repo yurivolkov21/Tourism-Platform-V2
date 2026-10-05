@@ -8,6 +8,7 @@ import { getServerSession } from '@/lib/api/session';
 import { toCategoryRowVMs } from '@/lib/categories-view';
 import {
   createCategoryAction,
+  deleteCategoryAction,
   moveCategoryAction,
   setCategoryActiveAction,
   updateCategoryAction,
@@ -23,7 +24,7 @@ import {
  * tự hàng là `order` do server sắp, và cũng là thứ tự chip lọc trên `/tours`
  * của khách — web đọc thẳng `catalog.categories.list`.
  *
- * Trang chở cả bốn server action xuống bảng (thay vì để component tự import):
+ * Trang chở cả năm server action xuống bảng (thay vì để component tự import):
  * bảng và dialog test được với hàm giả, không phải mock `next/headers`.
  */
 const t = messages.admin.categories;
@@ -52,6 +53,7 @@ export default async function CategoriesPage() {
         update={updateCategoryAction}
         setActive={setCategoryActiveAction}
         move={moveCategoryAction}
+        remove={deleteCategoryAction}
       />
     </AdminShell>
   );

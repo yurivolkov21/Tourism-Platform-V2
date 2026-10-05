@@ -5,7 +5,11 @@ import {
   CREATE_CONTRACT_CODES,
   categoryCreatePayload,
   categoryUpdatePayload,
+  DELETE_CONTRACT_CODES,
+  deleteBlockedReason,
+  deleteConfirmRows,
   isCreateStale,
+  isDeleteStale,
   isSetActiveStale,
   isUpdateStale,
   MOVE_CONTRACT_CODES,
@@ -155,5 +159,31 @@ describe('dialog bật/tắt', () => {
     const rows = setActiveConfirmRows({ name: 'Day trips', tourCount: 7 });
 
     expect(rows.map((row) => row.value)).toEqual(['Day trips', '7']);
+  });
+});
+
+describe('lệnh xoá (ADR-0053)', () => {
+  it('tập mã khớp đúng errorMap của contract', () => {
+    expect([...DELETE_CONTRACT_CODES].sort()).toEqual(
+      Object.keys(contract.admin.categories.delete['~orpc'].errorMap).sort(),
+    );
+  });
+
+  it('IN_USE và NOT_FOUND đều là trạng thái cũ: đóng hộp, làm mới bảng', () => {
+    expect(isDeleteStale('IN_USE')).toBe(true);
+    expect(isDeleteStale('NOT_FOUND')).toBe(true);
+  });
+
+  it('còn tour thì nói lý do, số ít và số nhiều; hết tour thì xoá được', () => {
+    expect(deleteBlockedReason({ linkedTourCount: 1 })).toBe('Used by 1 tour — hide it instead.');
+    expect(deleteBlockedReason({ linkedTourCount: 3 })).toBe('Used by 3 tours — hide it instead.');
+    expect(deleteBlockedReason({ linkedTourCount: 0 })).toBeNull();
+  });
+
+  it('hộp xác nhận kể tên và slug của hàng', () => {
+    expect(deleteConfirmRows({ name: 'Cruises', slug: 'cruises' })).toEqual([
+      { label: 'Category', value: 'Cruises' },
+      { label: 'Slug', value: 'cruises' },
+    ]);
   });
 });

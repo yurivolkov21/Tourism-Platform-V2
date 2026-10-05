@@ -32,7 +32,11 @@ export interface CategoryRowVM {
   isActive: boolean;
   statusLabel: string;
   tourCount: number;
+  /** Tổng tour mọi trạng thái — quyết nút Delete (ADR-0053 §5). */
+  linkedTourCount: number;
   toursLabel: string;
+  /** Dòng mờ "N published" dưới tổng; `null` khi 0 tour. */
+  publishedLabel: string | null;
   /**
    * Hai lá cờ này là bản SOI GƯƠNG của luật server (`CANNOT_MOVE`). Gương chứ
    * không phải nguồn — server vẫn từ chối thật; đây chỉ để nút không mời admin
@@ -58,7 +62,9 @@ export function toCategoryRowVMs(rows: AdminCategoryRow[]): CategoryRowVM[] {
     isActive: row.isActive,
     statusLabel: row.isActive ? t.list.active : t.list.inactive,
     tourCount: row.tourCount,
-    toursLabel: t.list.tours(row.tourCount),
+    linkedTourCount: row.linkedTourCount,
+    toursLabel: row.linkedTourCount === 0 ? t.list.noTours : t.list.tours(row.linkedTourCount),
+    publishedLabel: row.linkedTourCount === 0 ? null : t.list.published(row.tourCount),
     canMoveUp: index > 0,
     canMoveDown: index < rows.length - 1,
   }));

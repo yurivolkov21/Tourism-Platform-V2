@@ -25,6 +25,7 @@ const row = (n: number, over: Partial<AdminCategoryRow> = {}): AdminCategoryRow 
   order: n,
   isActive: true,
   tourCount: 0,
+  linkedTourCount: 0,
   ...over,
 });
 
@@ -67,11 +68,25 @@ describe('toCategoryRowVMs', () => {
     expect(vms[1]?.statusLabel).toBe(t.list.inactive);
   });
 
-  it('số tour thành nhãn đếm được, số 0 vẫn có nhãn', () => {
-    const vms = toCategoryRowVMs([row(1, { tourCount: 1 }), row(2, { tourCount: 0 })]);
+  it('ô Tours: tổng mọi trạng thái là dòng chính, số đang bán là dòng phụ; 0 thì "No tours"', () => {
+    const [busy, empty] = toCategoryRowVMs([
+      row(1, { tourCount: 3, linkedTourCount: 5 }),
+      row(2, { tourCount: 0, linkedTourCount: 0 }),
+    ]);
+    expect(busy?.toursLabel).toBe('5 tours');
+    expect(busy?.publishedLabel).toBe('3 published');
+    expect(busy?.linkedTourCount).toBe(5);
+    expect(empty?.toursLabel).toBe('No tours');
+    expect(empty?.publishedLabel).toBeNull();
+  });
 
-    expect(vms[0]?.toursLabel).toBe(t.list.tours(1));
-    expect(vms[1]?.toursLabel).toBe(t.list.tours(0));
+  it('chỉ có tour nháp vẫn là "1 tour", không phải "No tours"', () => {
+    // Nhãn đếm theo `linkedTourCount` như nút Delete: đếm theo số đang bán thì hàng này in
+    // "No tours" ngay cạnh một nút Delete đang khoá — hai chỗ của một hàng nói ngược nhau.
+    const [draftOnly] = toCategoryRowVMs([row(1, { tourCount: 0, linkedTourCount: 1 })]);
+
+    expect(draftOnly?.toursLabel).toBe(t.list.tours(1));
+    expect(draftOnly?.publishedLabel).toBe(t.list.published(0));
   });
 
   it('không có mô tả thì in một câu, không in ô trống', () => {

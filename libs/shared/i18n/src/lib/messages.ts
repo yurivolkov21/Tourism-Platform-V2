@@ -5537,11 +5537,14 @@ export const messages = {
         columns: {
           name: 'Category',
           slug: 'Slug',
-          tours: 'Published tours',
+          tours: 'Tours',
           status: 'Status',
           actions: 'Actions',
         },
         tours: (count: number) => (count === 1 ? '1 tour' : `${count} tours`),
+        /** Dòng mờ dưới tổng tour: số đang bán (spec 2026-10-05 §3.3). */
+        published: (count: number) => `${count} published`,
+        noTours: 'No tours',
         inherited: 'No description',
         active: CATALOG_VISIBILITY_COPY.visible,
         inactive: CATALOG_VISIBILITY_COPY.hidden,
@@ -5641,6 +5644,30 @@ export const messages = {
           CANNOT_MOVE:
             'Someone else reordered the list while this page was open. The table has been refreshed.',
         },
+      },
+      /** Xoá danh mục chưa tour nào dùng (ADR-0053). */
+      delete: {
+        action: 'Delete',
+        actionLabel: (name: string) => `Delete ${name}`,
+        inUse: (count: number) =>
+          count === 1
+            ? 'Used by 1 tour — hide it instead.'
+            : `Used by ${count} tours — hide it instead.`,
+        rows: { category: 'Category', slug: 'Slug' },
+        dialog: {
+          title: 'Delete this category?',
+          body: 'No tour uses this category, so nothing else changes. Its slug can be used again.',
+          warning: 'This cannot be undone.',
+          submit: 'Delete category',
+          submitting: 'Deleting…',
+        },
+        /** Mã của contract `admin.categories.delete` — `createWriteErrorCodec` derive từ keys. */
+        errors: {
+          IN_USE:
+            'A tour started using this category a moment ago, so it can’t be deleted. Hide it instead.',
+          NOT_FOUND: 'This category no longer exists. The table has been refreshed.',
+        },
+        toast: { title: 'Category deleted', body: (name: string) => `${name} is gone.` },
       },
     },
     /**

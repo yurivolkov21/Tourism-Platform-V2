@@ -1,5 +1,7 @@
 import type {
   AdminCategoryCreateInput,
+  AdminCategoryDeleteInput,
+  AdminCategoryDeleteResult,
   AdminCategoryMoveInput,
   AdminCategoryRow,
   AdminCategorySetActiveInput,
@@ -8,9 +10,10 @@ import type {
 import { api, withAdminAuth } from './client';
 
 /**
- * Năm đường của vùng danh mục (spec P4e-2 F14) — bọc mỏng `admin.categories.*`.
+ * Sáu đường của vùng danh mục (spec P4e-2 F14, lệnh xoá theo ADR-0053) — bọc mỏng
+ * `admin.categories.*`.
  *
- * KHÔNG nuốt lỗi ở bốn lệnh ghi: mã contract phải tới server action nguyên vẹn
+ * KHÔNG nuốt lỗi ở năm lệnh ghi: mã contract phải tới server action nguyên vẹn
  * để nó đổi thành một mã UI. Cùng nếp `api/departures.ts`.
  */
 
@@ -47,4 +50,12 @@ export async function moveAdminCategory(
   input: AdminCategoryMoveInput,
 ): Promise<AdminCategoryRow[]> {
   return api.admin.categories.move(input, { context: withAdminAuth(cookie) });
+}
+
+/** Xoá một danh mục chưa tour nào dùng (ADR-0053) — trả slug của hàng vừa xoá. */
+export async function deleteAdminCategory(
+  cookie: string,
+  input: AdminCategoryDeleteInput,
+): Promise<AdminCategoryDeleteResult> {
+  return api.admin.categories.delete(input, { context: withAdminAuth(cookie) });
 }

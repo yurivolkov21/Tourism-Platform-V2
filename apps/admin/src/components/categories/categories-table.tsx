@@ -13,12 +13,14 @@ import { ColumnVisibilityMenu, DataTableBody } from '@/components/kit/data-table
 import { DataTableFrame } from '@/components/kit/data-table-frame';
 import { NameDescriptionCell } from '@/components/kit/name-description-cell';
 import { serverTableFeatures } from '@/components/kit/table-features';
+import { TourCountCell } from '@/components/kit/tour-count-cell';
 import { type CategoryRowVM, categoryStatusBadgeVariant } from '@/lib/categories-view';
 import {
   type CreateCategoryAction,
   type CreateContractCode,
   categoryCreatePayload,
   createErrorCopy,
+  type DeleteCategoryAction,
   isCreateStale,
   type MoveCategoryAction,
   type SetCategoryActiveAction,
@@ -79,12 +81,14 @@ function ActionsCell({
   update,
   setActive,
   move,
+  remove,
   onSettled,
 }: {
   row: CategoryRowVM;
   update: UpdateCategoryAction;
   setActive: SetCategoryActiveAction;
   move: MoveCategoryAction;
+  remove: DeleteCategoryAction;
   onSettled: () => void;
 }) {
   const { busy, onMoveStart } = React.useContext(BusyContext);
@@ -94,6 +98,7 @@ function ActionsCell({
       update={update}
       setActive={setActive}
       move={move}
+      remove={remove}
       disabled={busy}
       onMoveStart={onMoveStart}
       onSettled={onSettled}
@@ -107,9 +112,17 @@ export interface CategoriesTableProps {
   update: UpdateCategoryAction;
   setActive: SetCategoryActiveAction;
   move: MoveCategoryAction;
+  remove: DeleteCategoryAction;
 }
 
-export function CategoriesTable({ rows, create, update, setActive, move }: CategoriesTableProps) {
+export function CategoriesTable({
+  rows,
+  create,
+  update,
+  setActive,
+  move,
+  remove,
+}: CategoriesTableProps) {
   const router = useRouter();
   const [columnVisibility, setColumnVisibility] = React.useState<ColumnVisibilityState>({});
   const [isRefreshing, startRefresh] = React.useTransition();
@@ -152,7 +165,11 @@ export function CategoriesTable({ rows, create, update, setActive, move }: Categ
         columnHelper.accessor('toursLabel', {
           header: t.list.columns.tours,
           cell: ({ row }) => (
-            <span className="tabular-nums whitespace-nowrap">{row.original.toursLabel}</span>
+            <TourCountCell
+              total={row.original.linkedTourCount}
+              totalLabel={row.original.toursLabel}
+              publishedLabel={row.original.publishedLabel}
+            />
           ),
         }),
         columnHelper.accessor('statusLabel', {
@@ -172,6 +189,7 @@ export function CategoriesTable({ rows, create, update, setActive, move }: Categ
               update={update}
               setActive={setActive}
               move={move}
+              remove={remove}
               onSettled={refreshList}
             />
           ),
@@ -179,7 +197,7 @@ export function CategoriesTable({ rows, create, update, setActive, move }: Categ
         }),
       ]),
     // KHÔNG có cờ bận ở đây — xem `BusyContext`.
-    [update, setActive, move, refreshList],
+    [update, setActive, move, remove, refreshList],
   );
 
   const table = useTable({

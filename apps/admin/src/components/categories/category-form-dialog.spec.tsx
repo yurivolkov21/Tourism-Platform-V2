@@ -32,6 +32,7 @@ const SAVED: AdminCategoryRow = {
   order: 1,
   isActive: true,
   tourCount: 3,
+  linkedTourCount: 3,
 };
 
 function renderDialog(

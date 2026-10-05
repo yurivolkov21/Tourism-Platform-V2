@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { AdminCategoryRow } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
@@ -7,13 +7,16 @@ import { toCategoryRowVMs } from '@/lib/categories-view';
 import { CategoryRowActions } from './category-row-actions';
 
 /**
- * Bốn nút của một hàng bảng danh mục (spec P4e-2 F14). Phần đáng pin là chuyện
- * nút nào ĐƯỢC BẤM, vì đó là nơi luật server hiện ra thành giao diện:
+ * Năm nút của một hàng bảng danh mục (spec P4e-2 F14; nút Delete theo ADR-0053).
+ * Phần đáng pin là chuyện nút nào ĐƯỢC BẤM, vì đó là nơi luật server hiện ra thành
+ * giao diện:
  *
  *  ① hàng đầu không lên được, hàng cuối không xuống được — gương của
  *    `CANNOT_MOVE`, và mời bấm là mời ăn một 409;
  *  ② hộp xác nhận ẨN phải nói đủ BA hệ quả, vì thứ admin hay đoán nhầm nhất
- *    là tưởng ẩn danh mục thì ẩn luôn tour trong đó.
+ *    là tưởng ẩn danh mục thì ẩn luôn tour trong đó;
+ *  ③ nút Delete chỉ bấm được khi hàng 0 tour mọi trạng thái — gương của `IN_USE`,
+ *    và còn tour thì tooltip nói vì sao.
  */
 
 const t = messages.admin.categories;
@@ -35,6 +38,7 @@ const row = (n: number, over: Partial<AdminCategoryRow> = {}): AdminCategoryRow 
   order: n,
   isActive: true,
   tourCount: 0,
+  linkedTourCount: 0,
   ...over,
 });
 
@@ -49,19 +53,25 @@ function renderRow(rows: AdminCategoryRow[], index: number, over: Record<string,
   }));
   const move = vi.fn(async () => ({ ok: true as const, rows }));
   const onMoveStart = vi.fn();
+  const remove = vi.fn(async () => ({
+    ok: true as const,
+    deleted: { slug: rows[index]?.slug ?? '' },
+  }));
+  const onSettled = vi.fn();
   render(
     <CategoryRowActions
       row={vm}
       update={update}
       setActive={setActive}
       move={move}
+      remove={remove}
       disabled={false}
       onMoveStart={onMoveStart}
-      onSettled={vi.fn()}
+      onSettled={onSettled}
       {...over}
     />,
   );
-  return { vm, update, setActive, move, onMoveStart };
+  return { vm, update, setActive, move, onMoveStart, remove, onSettled };
 }
 
 beforeEach(() => {
@@ -233,5 +243,32 @@ describe('CategoryRowActions — form sửa', () => {
     await user.click(screen.getByRole('button', { name: t.edit.actionLabel(vm.name) }));
 
     expect(await screen.findByLabelText(t.form.description)).toHaveValue('');
+  });
+});
+
+describe('CategoryRowActions — nút Delete (ADR-0053)', () => {
+  it('còn tour: nút Delete khoá, rê chuột thấy "Used by N tours"', async () => {
+    const user = userEvent.setup();
+    renderRow([row(1, { tourCount: 1, linkedTourCount: 2 })], 0);
+
+    const button = screen.getByRole('button', { name: t.delete.actionLabel('Category 1') });
+    expect(button).toHaveAttribute('aria-disabled', 'true');
+    await user.hover(button);
+    expect(await screen.findByText(t.delete.inUse(2))).toBeInTheDocument();
+  });
+
+  it('0 tour: xác nhận gửi đúng id, toast tên hàng, rồi làm mới bảng', async () => {
+    const user = userEvent.setup();
+    const { remove, onSettled } = renderRow([row(1)], 0);
+
+    await user.click(screen.getByRole('button', { name: t.delete.actionLabel('Category 1') }));
+    const dialog = await screen.findByRole('dialog', { name: t.delete.dialog.title });
+    await user.click(within(dialog).getByRole('button', { name: t.delete.dialog.submit }));
+
+    await waitFor(() => expect(onSettled).toHaveBeenCalled());
+    expect(remove).toHaveBeenCalledWith({ id: row(1).id });
+    expect(success).toHaveBeenCalledWith(t.delete.toast.title, {
+      description: t.delete.toast.body('Category 1'),
+    });
   });
 });

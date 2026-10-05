@@ -7,10 +7,19 @@ import { useState } from 'react';
 import { toast } from 'sonner';
 import { CategoryFormDialog } from '@/components/categories/category-form-dialog';
 import { ConfirmWriteDialog } from '@/components/kit/confirm-write-dialog';
+import { DeleteRowAction } from '@/components/kit/delete-row-action';
 import { StableLabel } from '@/components/kit/stable-label';
 import type { CategoryRowVM } from '@/lib/categories-view';
 import {
   categoryUpdatePayload,
+  type DeleteCategoryAction,
+  type DeleteContractCode,
+  deleteBlockedReason,
+  deleteConfirmRows,
+  deleteDialogCopy,
+  deleteErrorCopy,
+  deleteToast,
+  isDeleteStale,
   isSetActiveStale,
   isUpdateStale,
   type MoveCategoryAction,
@@ -27,11 +36,13 @@ import {
 } from '@/lib/categories-write';
 
 /**
- * Bốn hành động của MỘT hàng bảng danh mục (spec P4e-2 F14): Sửa · Ẩn/Hiện ·
- * Lên · Xuống.
+ * Năm hành động của MỘT hàng bảng danh mục: Sửa · Ẩn/Hiện · Lên · Xuống (spec
+ * P4e-2 F14) và Xoá (ADR-0053).
  *
- * KHÔNG có nút xoá, và đó là quyết định của cả phase: `is_active` đã có sẵn nên
- * ẩn là đảo ngược được bằng một cú bấm, còn xoá thì không (spec §2a).
+ * Nút Delete chỉ bật khi hàng 0 tour mọi trạng thái (`linkedTourCount`). Còn tour
+ * thì nút khoá và tooltip gợi ý ẩn: ẩn đảo ngược được bằng một cú bấm, còn xoá thì
+ * không (ADR-0053 thay quyết định "chỉ bật/tắt" của spec P4e-2 §2a). Server vẫn là
+ * phán quyết cuối — bảng có thể cũ hơn DB, và `IN_USE` khi ấy đóng hộp rồi làm mới.
  *
  * Hai nút mũi tên tắt ở hai biên theo `canMoveUp`/`canMoveDown` — bản soi
  * gương của `CANNOT_MOVE` phía server. Gương chứ không phải nguồn: server vẫn
@@ -47,6 +58,7 @@ export function CategoryRowActions({
   update,
   setActive,
   move,
+  remove,
   disabled,
   onMoveStart,
   onSettled,
@@ -55,6 +67,8 @@ export function CategoryRowActions({
   update: UpdateCategoryAction;
   setActive: SetCategoryActiveAction;
   move: MoveCategoryAction;
+  /** Lệnh xoá (ADR-0053) — trang chở xuống. */
+  remove: DeleteCategoryAction;
   /**
    * Bảng đang bận — kéo dữ liệu tươi về, HOẶC có một lượt đổi chỗ đang bay ở
    * một hàng BẤT KỲ. Khoá mọi nút cho tới khi xong.
@@ -151,6 +165,26 @@ export function CategoryRowActions({
           reserve={[t.setActive.hide, t.setActive.show]}
         />
       </Button>
+
+      <DeleteRowAction<DeleteContractCode>
+        label={t.delete.action}
+        actionLabel={t.delete.actionLabel(row.name)}
+        blockedReason={deleteBlockedReason(row)}
+        disabled={disabled}
+        dialog={{
+          copy: deleteDialogCopy(),
+          rows: deleteConfirmRows(row),
+          isStale: isDeleteStale,
+          errorCopy: deleteErrorCopy,
+          onSubmit: async () => {
+            const result = await remove({ id: row.id });
+            if (!result.ok) return { ok: false, code: result.code };
+            // Response chỉ chở slug (hàng đã mất), nên tên lấy từ hàng đang hiện.
+            return { ok: true, toast: deleteToast(row.name) };
+          },
+        }}
+        onSettled={onSettled}
+      />
 
       {editing ? (
         <CategoryFormDialog<UpdateContractCode>

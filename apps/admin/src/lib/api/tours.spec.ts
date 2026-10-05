@@ -71,6 +71,7 @@ const row = (over: Partial<AdminCategoryRow>): AdminCategoryRow => ({
   order: 1,
   isActive: true,
   tourCount: 14,
+  linkedTourCount: 14,
   ...over,
 });
 

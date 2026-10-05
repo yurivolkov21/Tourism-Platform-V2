@@ -3,6 +3,9 @@
 import {
   type AdminCategoryCreateInput,
   AdminCategoryCreateInputSchema,
+  type AdminCategoryDeleteInput,
+  AdminCategoryDeleteInputSchema,
+  type AdminCategoryDeleteResult,
   type AdminCategoryMoveInput,
   AdminCategoryMoveInputSchema,
   type AdminCategoryRow,
@@ -14,15 +17,18 @@ import {
 import { cookies } from 'next/headers';
 import {
   createAdminCategory,
+  deleteAdminCategory,
   moveAdminCategory,
   setAdminCategoryActive,
   updateAdminCategory,
 } from '@/lib/api/categories';
 import {
+  type CategoryDeleteResult,
   type CategoryListResult,
   type CategoryWriteResult,
   type CreateContractCode,
   classifyCreateError,
+  classifyDeleteError,
   classifyMoveError,
   classifySetActiveError,
   classifyUpdateError,
@@ -32,8 +38,8 @@ import {
 } from '@/lib/categories-write';
 
 /**
- * BỐN hành vi ghi của vùng danh mục (spec P4e-2 F14) — cùng khuôn đã chốt ở
- * `tours/[slug]/departures/actions.ts`:
+ * NĂM hành vi ghi của vùng danh mục (spec P4e-2 F14, lệnh xoá theo ADR-0053) —
+ * cùng khuôn đã chốt ở `tours/[slug]/departures/actions.ts`:
  *
  * - SERVER ACTION vì client oRPC của admin là đường server-only (đọc cookie
  *   phiên qua `next/headers`), được gọi từ một dialog client.
@@ -112,4 +118,21 @@ export async function moveCategoryAction(
     return { ok: false, code: classifyMoveError(error) };
   }
   return { ok: true, rows };
+}
+
+export async function deleteCategoryAction(
+  input: AdminCategoryDeleteInput,
+): Promise<CategoryDeleteResult> {
+  const parsed = AdminCategoryDeleteInputSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, code: 'INVALID_INPUT' };
+
+  const cookie = (await cookies()).toString();
+  let deleted: AdminCategoryDeleteResult;
+  try {
+    deleted = await deleteAdminCategory(cookie, parsed.data);
+  } catch (error) {
+    // `ORPCError` không sống sót qua ranh giới action — phân loại tại đây.
+    return { ok: false, code: classifyDeleteError(error) };
+  }
+  return { ok: true, deleted };
 }
