@@ -186,15 +186,76 @@ describe('PostCoverCard', () => {
     render(<Harness initial={CURRENT} loadLibrary={loadLibrary} />);
 
     await user.click(screen.getByRole('button', { name: c.library }));
-    const dialog = await screen.findByRole('dialog');
+    // Chọn một ảnh là THAY ảnh bìa — hộp nói đúng thế, không mượn giọng "Add photos" của tab
+    // Photos (vòng review P4e-4).
+    const dialog = await screen.findByRole('dialog', { name: c.libraryDialog.title });
+    expect(within(dialog).getByText(c.libraryDialog.replaces)).toBeInTheDocument();
     await user.click(await within(dialog).findByRole('checkbox', { name: 'Old town at dusk' }));
-    await user.click(
-      within(dialog).getByRole('button', { name: messages.admin.photoLibrary.add(1) }),
-    );
+    await user.click(within(dialog).getByRole('button', { name: c.libraryDialog.use }));
 
     expect(screen.getByTestId('cover')).toHaveTextContent(
       'lib/a1|Old town at dusk|LIBRARY|no-meta',
     );
+  });
+
+  it('chưa có ảnh bìa: hộp thư viện nói chọn một ảnh, không nói "thay"', async () => {
+    const user = userEvent.setup();
+    const loadLibrary = vi
+      .fn<LoadPhotoLibraryAction>()
+      .mockResolvedValue({ ok: true, library: LIBRARY });
+    render(<Harness initial={null} loadLibrary={loadLibrary} />);
+
+    await user.click(screen.getByRole('button', { name: c.library }));
+
+    const dialog = await screen.findByRole('dialog', { name: c.libraryDialog.title });
+    expect(within(dialog).getByText(c.libraryDialog.pickOne)).toBeInTheDocument();
+  });
+
+  // Vòng review P4e-4: ảnh thư viện vừa chọn có thể đã rời kho — kho tải từ trước vẫn bày nó.
+  it('lần lưu bị từ chối ảnh bìa (PHOTO_NOT_ALLOWED): lần mở sau tải lại kho ảnh', async () => {
+    const user = userEvent.setup();
+    const loadLibrary = vi
+      .fn<LoadPhotoLibraryAction>()
+      .mockResolvedValue({ ok: true, library: LIBRARY });
+    const { rerender } = render(<Harness initial={CURRENT} loadLibrary={loadLibrary} />);
+    await user.click(screen.getByRole('button', { name: c.library }));
+    const dialog = await screen.findByRole('dialog');
+    await within(dialog).findByRole('checkbox', { name: 'Old town at dusk' });
+    await user.keyboard('{Escape}');
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+    expect(loadLibrary).toHaveBeenCalledTimes(1);
+
+    rerender(
+      <Harness
+        initial={CURRENT}
+        loadLibrary={loadLibrary}
+        serverError="This cover photo is no longer available."
+      />,
+    );
+    await user.click(screen.getByRole('button', { name: c.library }));
+
+    await waitFor(() => expect(loadLibrary).toHaveBeenCalledTimes(2));
+  });
+
+  // Vòng review P4e-4: bộ huỷ từng chỉ dựng SAU khi ký xong — rời trang lúc đang ký thì lượt
+  // tải vẫn chạy tiếp, ảnh thành mồ côi trên Cloudinary.
+  it('rời trang lúc đang ký: không tải lên nữa', async () => {
+    let finishSign: (result: Awaited<ReturnType<SignCoverAction>>) => void = () => {};
+    const sign = vi.fn<SignCoverAction>().mockReturnValue(
+      new Promise((resolve) => {
+        finishSign = resolve;
+      }),
+    );
+    const user = userEvent.setup({ applyAccept: false });
+    const { unmount } = render(<Harness initial={null} sign={sign} />);
+
+    await user.upload(fileInput(), file('lanterns.jpg'));
+    await waitFor(() => expect(sign).toHaveBeenCalled());
+    unmount();
+    finishSign({ ok: true, params: PARAMS });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(uploadMock).not.toHaveBeenCalled();
   });
 
   it('gỡ ảnh bìa: tiêu điểm về nút Upload, không rơi về body', async () => {

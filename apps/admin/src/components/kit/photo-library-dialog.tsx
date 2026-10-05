@@ -30,6 +30,8 @@ import { type LoadPhotoLibraryAction, libraryLoadErrorCopy } from '@/lib/photo-l
  * - `tourDestinationIds` (tuỳ chọn): có thì mặc định bày ảnh các địa danh ấy, kèm mục "This
  *   tour's destinations"; vắng (ảnh bìa bài viết) thì mở ở địa danh đầu tiên.
  * - Ảnh đã có hiện "Added" và khoá; không cho tích quá sức chứa.
+ * - `copy` (tuỳ chọn) thay vài câu cho nơi mà "thêm" nói sai hệ quả — ảnh bìa bài viết chọn
+ *   một ảnh là THAY ảnh bìa (vòng review P4e-4).
  *
  * Vòng review F18:
  * - Lựa chọn thuộc về MỘT lần mở: hộp luôn mount (form giữ nó) nên đóng bằng Cancel
@@ -43,6 +45,14 @@ const t = messages.admin.photoLibrary;
 const NO_PREFERRED: readonly string[] = [];
 const THIS_TOUR = 'tour';
 
+/** Những câu nơi dùng được thay — phần còn lại giữ giọng của tab Photos. */
+export interface PhotoLibraryCopy {
+  title?: string;
+  added?: string;
+  add?: (count: number) => string;
+  left?: (remaining: number) => string;
+}
+
 export function PhotoLibraryDialog({
   open,
   onOpenChange,
@@ -53,6 +63,7 @@ export function PhotoLibraryDialog({
   existing,
   capacity,
   onAdd,
+  copy,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -63,7 +74,9 @@ export function PhotoLibraryDialog({
   existing: ReadonlySet<string>;
   capacity: number;
   onAdd: (photos: AdminLibraryPhoto[]) => void;
+  copy?: PhotoLibraryCopy;
 }) {
+  const text = { ...t, ...copy };
   const [failure, setFailure] = React.useState<TransportFailureCode | null>(null);
   const [filter, setFilter] = React.useState(THIS_TOUR);
   const [picked, setPicked] = React.useState<ReadonlySet<string>>(new Set());
@@ -144,7 +157,7 @@ export function PhotoLibraryDialog({
     <Dialog open={open} onOpenChange={changeOpen}>
       <DialogContent className={cn(DIALOG_FRAME, 'sm:max-w-3xl')} showCloseButton={false}>
         <DialogHeader>
-          <DialogTitle>{t.title}</DialogTitle>
+          <DialogTitle>{text.title}</DialogTitle>
           <DialogDescription>{t.body}</DialogDescription>
         </DialogHeader>
 
@@ -206,7 +219,7 @@ export function PhotoLibraryDialog({
                             câu từng nuốt mất chữ "Added" (thử tay F18). */}
                         {added ? (
                           <span className="absolute top-1.5 left-1.5 rounded-full bg-primary px-2 py-0.5 text-xs font-medium text-primary-foreground">
-                            {t.added}
+                            {text.added}
                           </span>
                         ) : null}
                       </div>
@@ -229,13 +242,13 @@ export function PhotoLibraryDialog({
 
         <DialogFooter className="mt-4 items-center">
           <p className="mr-auto text-xs text-muted-foreground">
-            {t.left(Math.max(0, capacity - addCount))}
+            {text.left(Math.max(0, capacity - addCount))}
           </p>
           <Button type="button" variant="outline" onClick={() => changeOpen(false)}>
             {t.cancel}
           </Button>
           <Button type="button" disabled={addCount === 0} onClick={add}>
-            {t.add(addCount)}
+            {text.add(addCount)}
           </Button>
         </DialogFooter>
       </DialogContent>

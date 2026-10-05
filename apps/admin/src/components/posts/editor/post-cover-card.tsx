@@ -71,6 +71,14 @@ export function PostCoverCard({
   const [problem, setProblem] = useState<string | null>(null);
   const [libraryOpen, setLibraryOpen] = useState(false);
   const [library, setLibrary] = useState<AdminPhotoLibrary | null>(null);
+  // Lần lưu vừa rồi bị từ chối ảnh bìa (PHOTO_NOT_ALLOWED — câu báo duy nhất về card này):
+  // ảnh thư viện vừa chọn có thể đã rời kho, nên bỏ kho đã tải để lần mở sau tải lại. Chỉnh
+  // ngay trong render, cùng khuôn `useVersionedForm` (vòng review P4e-4).
+  const [seenError, setSeenError] = useState(serverError);
+  if (serverError !== seenError) {
+    setSeenError(serverError);
+    if (serverError) setLibrary(null);
+  }
 
   useEffect(() => () => abort.current?.abort(), []);
 
@@ -87,6 +95,10 @@ export function PostCoverCard({
       return;
     }
     setBusy(0);
+    // Dựng bộ huỷ TRƯỚC khi ký: rời trang lúc đang ký cũng phải chặn được lượt tải sắp tới,
+    // không thì ảnh lên Cloudinary mà không ai lưu (vòng review P4e-4).
+    const controller = new AbortController();
+    abort.current = controller;
     let signed: SignCoverResult;
     try {
       signed = await sign({ id: postId });
@@ -94,13 +106,13 @@ export function PostCoverCard({
       // Lệnh ký ném (mạng đứt, redeploy) — coi như lỗi chung, như tab Photos.
       signed = { ok: false, code: 'GENERIC' };
     }
+    if (controller.signal.aborted) return;
     if (!signed.ok) {
+      abort.current = null;
       setBusy(null);
       setProblem(signCoverErrorCopy(signed.code));
       return;
     }
-    const controller = new AbortController();
-    abort.current = controller;
     try {
       const uploaded = await uploadPhoto(file, signed.params, setProgress, controller.signal);
       onChange(uploadedCoverDraft(uploaded, signed.params.cloudName));
@@ -238,6 +250,12 @@ export function PostCoverCard({
         load={loadLibrary}
         existing={new Set(cover === null ? [] : [cover.publicId])}
         capacity={1}
+        copy={{
+          title: c.libraryDialog.title,
+          added: c.libraryDialog.current,
+          add: () => c.libraryDialog.use,
+          left: () => (cover === null ? c.libraryDialog.pickOne : c.libraryDialog.replaces),
+        }}
         onAdd={(photos) => {
           const [photo] = photos;
           if (photo) onChange(libraryCoverDraft(photo));

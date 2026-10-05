@@ -4698,6 +4698,17 @@ export const messages = {
           },
           /** ADR-0048 AMEND 1 áp cho bài viết: ảnh catalog không có trong kho thư viện. */
           catalogueWarning: 'It can’t be chosen again once replaced or removed.',
+          /**
+           * Hộp thư viện của ảnh bìa: chọn MỘT ảnh là THAY ảnh bìa — giọng "Add photos" của tab
+           * Photos nói sai hệ quả ở đây (vòng review P4e-4).
+           */
+          libraryDialog: {
+            title: 'Choose a cover photo',
+            current: 'Current cover',
+            use: 'Use this photo',
+            replaces: 'The photo you pick replaces the current cover.',
+            pickOne: 'Pick one photo for the cover.',
+          },
           uploading: (percent: number) => `Uploading ${percent}%`,
           uploadFailed: 'The photo didn’t upload. Try again.',
           skipped: {
