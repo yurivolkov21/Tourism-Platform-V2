@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { messages } from '@tourism/i18n';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { TourCardPreviewVM } from '@/lib/tour-editor-view';
 import {
   AsideJumpLink,
@@ -161,5 +161,41 @@ describe('TourCardPreview', () => {
     expect(screen.queryByText(tp.featuredBadge)).toBeNull();
     expect(screen.queryByText(a.preview.featuredNote)).toBeNull();
     expect(screen.getByText(tp.notRated)).toBeInTheDocument();
+  });
+
+  describe('Summary dài hơn hai dòng', () => {
+    afterEach(() => {
+      vi.restoreAllMocks();
+    });
+
+    function fakeLayout(scrollHeight: number) {
+      // jsdom không dựng layout — giả hai thước đo của đoạn bị kẹp hai dòng.
+      vi.spyOn(Element.prototype, 'scrollHeight', 'get').mockReturnValue(scrollHeight);
+      vi.spyOn(Element.prototype, 'clientHeight', 'get').mockReturnValue(32);
+    }
+
+    it('tràn: hiện câu báo card cắt sau hai dòng', async () => {
+      fakeLayout(64);
+      render(<TourCardPreview preview={PREVIEW} />);
+      expect(await screen.findByText(a.preview.summaryCut)).toBeInTheDocument();
+    });
+
+    it('vừa hai dòng: không báo gì', () => {
+      fakeLayout(32);
+      render(<TourCardPreview preview={PREVIEW} />);
+      expect(screen.queryByText(a.preview.summaryCut)).toBeNull();
+    });
+
+    // Spec §4 #1 "đo lại khi chữ đổi": đoạn cao cố định 2lh nên sửa chữ không đổi cỡ hộp,
+    // ResizeObserver không báo — chỉ `text` trong mảng phụ thuộc của effect mới đo lại. Đi
+    // chiều tràn → vừa để bắt cả lỗi quên đo lại lẫn lỗi chỉ bật cờ mà không tắt.
+    it('chữ đổi thì đo lại: rút Summary về vừa hai dòng, câu báo mất', async () => {
+      fakeLayout(64);
+      const { rerender } = render(<TourCardPreview preview={PREVIEW} />);
+      expect(await screen.findByText(a.preview.summaryCut)).toBeInTheDocument();
+      fakeLayout(32);
+      rerender(<TourCardPreview preview={{ ...PREVIEW, summary: 'Three days.' }} />);
+      expect(screen.queryByText(a.preview.summaryCut)).toBeNull();
+    });
   });
 });

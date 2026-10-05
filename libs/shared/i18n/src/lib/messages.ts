@@ -4219,6 +4219,11 @@ export const messages = {
             basePrice: 'Base price',
             /** Card web in giá của chuyến rẻ nhất sắp tới (`cardPrice`), admin không có số ấy. */
             priceNote: 'The site shows the cheapest upcoming departure.',
+            /**
+             * Summary tràn hai dòng của khung (spec 2026-10-05 §4 #1). Khung ~290px chữ 12px
+             * xấp xỉ card web trên điện thoại 360px — màn rộng card in được nhiều hơn.
+             */
+            summaryCut: 'The card cuts this after two lines; the tour page shows all of it.',
           },
           photos: {
             /** Bước Photos có một dòng là luật LƯU (alt), không chỉ luật bán. */

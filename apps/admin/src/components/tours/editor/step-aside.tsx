@@ -9,6 +9,7 @@ import {
 import { cn } from '@tourism/ui/lib/utils';
 import { CircleAlertIcon, CircleCheckIcon, LightbulbIcon, StarIcon } from 'lucide-react';
 import type * as React from 'react';
+import { ClampedSummary } from '@/components/tours/editor/clamped-summary';
 import { type TourCardPreviewVM, tourPhotoThumb } from '@/lib/tour-editor-view';
 
 /**
@@ -243,8 +244,7 @@ export function TourCardPreview({ preview }: { preview: TourCardPreviewVM }) {
           </p>
         ) : null}
         <p className="truncate font-heading text-base font-medium">{preview.title}</p>
-        {/* Giữ chỗ 2 dòng như card web: tóm tắt rỗng không làm thẻ co lại. */}
-        <p className="line-clamp-2 h-[2lh] text-xs text-muted-foreground">{preview.summary}</p>
+        <ClampedSummary text={preview.summary} />
         <p className="flex items-center gap-1.5 text-xs">
           {preview.rating === null ? (
             <span className="text-muted-foreground">{tp.notRated}</span>
