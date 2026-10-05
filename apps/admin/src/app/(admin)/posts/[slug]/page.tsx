@@ -25,6 +25,8 @@ export const metadata: Metadata = {
 export default async function PostEditorPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   const cookie = (await cookies()).toString();
+  // Mốc "bây giờ" của form lấy ở server — đồng hồ máy người dùng có thể lệch (vòng review P4e-4).
+  const serverNow = new Date().toISOString();
   const [session, post, tagOptions, tourOptions] = await Promise.all([
     getServerSession(),
     fetchAdminPost(cookie, slug),
@@ -40,6 +42,7 @@ export default async function PostEditorPage({ params }: { params: Promise<{ slu
       <UnsavedChangesProvider>
         <PostEditor
           detail={post}
+          serverNow={serverNow}
           update={updatePostAction}
           signCover={signPostCoverUploadAction}
           loadLibrary={loadPostCoverLibraryAction}

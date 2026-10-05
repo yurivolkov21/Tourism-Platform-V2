@@ -32,6 +32,7 @@ import {
   type UpdatePostResult,
   updatePostErrorCopy,
 } from '@/lib/posts-write';
+import { useServerClock } from '@/lib/server-clock';
 import { isNewerVersion, useVersionedForm } from '@/lib/use-versioned-form';
 import { DeletePostZone } from './delete-post-zone';
 import { MarkdownEditor } from './markdown-editor';
@@ -60,6 +61,8 @@ const STALE: PostBannerState = { kind: 'stale' };
 
 export interface PostEditorProps {
   detail: AdminPostDetail;
+  /** Giờ server lúc trang render (ISO) — mốc của "bây giờ" khi tự điền ngày đăng. */
+  serverNow: string;
   update: UpdatePostAction;
   signCover: SignCoverAction;
   loadLibrary: LoadPhotoLibraryAction;
@@ -70,6 +73,7 @@ export interface PostEditorProps {
 
 export function PostEditor({
   detail,
+  serverNow,
   update,
   signCover,
   loadLibrary,
@@ -79,6 +83,7 @@ export function PostEditor({
 }: PostEditorProps) {
   const router = useRouter();
   const form = useVersionedForm(detail, postFormValues);
+  const clock = useServerClock(serverNow);
   const { values, version } = form;
   /** Bản server mới nhất form biết — lần lưu vừa xong, hay `detail` mới hơn sau Reload. */
   const [lastSaved, setLastSaved] = useState(detail);
@@ -191,7 +196,7 @@ export function PostEditor({
               blockedNote={uploading ? t.busyUploading : undefined}
               onStatusChange={(status) =>
                 form.setValues((current) =>
-                  withStatus(current, status, new Date(), form.base.publishAt),
+                  withStatus(current, status, clock(), form.base.publishAt),
                 )
               }
               onPublishAtChange={(publishAt) => patch({ publishAt })}

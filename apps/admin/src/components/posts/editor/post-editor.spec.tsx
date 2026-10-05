@@ -40,10 +40,11 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
-/** Props tối thiểu của task này; Task 10–12 thêm prop thì sửa ĐÚNG hàm này. */
+/** Props đủ để dựng trang sửa; ca nào cần khác thì đè bằng `patch`. */
 function props(patch: Partial<PostEditorProps> = {}): PostEditorProps {
   return {
     detail: postDetailFixture(),
+    serverNow: '2026-10-02T10:00:00.000Z',
     update: vi.fn<UpdatePostAction>(),
     signCover: vi.fn<SignCoverAction>(),
     loadLibrary: vi.fn<LoadPhotoLibraryAction>(),
@@ -122,11 +123,14 @@ describe('PostEditor — lưu cả form', () => {
     expect(update).not.toHaveBeenCalled();
   });
 
-  it('chuyển sang Published khi ô ngày trống: tự điền giờ hiện tại theo UTC', async () => {
+  it('chuyển sang Published khi ô ngày trống: tự điền giờ SERVER theo UTC, không theo đồng hồ máy', async () => {
+    // Đồng hồ máy lệch hẳn một tháng (giáo viên hay chỉnh khi bảo vệ — vòng review P4e-4):
+    // ngày tự điền vẫn là giờ server lúc trang render cộng thời gian đã trôi.
     vi.useFakeTimers({ toFake: ['Date'] });
-    vi.setSystemTime(new Date('2026-10-02T12:34:56.000Z'));
+    vi.setSystemTime(new Date('2026-11-15T09:00:00.000Z'));
     const { user } = renderEditor({
       detail: postDetailFixture({ status: 'DRAFT', publishedAt: null }),
+      serverNow: '2026-10-02T12:34:56.000Z',
     });
 
     await user.click(screen.getByRole('radio', { name: t.publish.published }));
