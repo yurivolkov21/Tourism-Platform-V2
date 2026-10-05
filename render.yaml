@@ -56,6 +56,16 @@ services:
         sync: false
       - key: CLOUDINARY_API_SECRET
         sync: false
+      # Thư mục gốc trên Cloudinary (bỏ trống = `tourism`). Dev và prod dùng chung
+      # một cloud — đổi giá trị này là tách ảnh tải lên mới sang thư mục khác.
+      - key: CLOUDINARY_UPLOAD_FOLDER
+        sync: false
+      # Đăng nhập Google: thiếu một trong hai → provider google không đăng ký,
+      # email/password vẫn chạy.
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
       - key: STRIPE_SECRET_KEY
         sync: false
       - key: STRIPE_WEBHOOK_SECRET
@@ -102,4 +112,7 @@ services:
       - key: PAYMENT_FEE_RATE
         sync: false
       - key: PAYMENT_FEE_FIXED
+        sync: false
+      # ADR-0010: lỗi 500 đẩy lên Sentry khi có DSN; bỏ trống = no-op (Logger ra stdout).
+      - key: SENTRY_DSN
         sync: false
