@@ -8,6 +8,47 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-10-05 — Hai lỗi nhỏ lộ ra ở lượt thử tay P4e-4 (nhánh `fix/post-banner-toc-label`)
+
+Lượt thử tay P4e-4 trên prod (entry ngay dưới) lộ hai lỗi nhỏ ngoài phạm vi vòng review. User
+duyệt vá trên một nhánh riêng.
+
+- **Dải "còn thiếu" theo bản đang soạn** (`3b4ecf69`). Dải vàng "A published post needs
+  these…" là ảnh chụp lúc bấm Save: quay về Draft vẫn đứng, và vẫn liệt kê mục đã điền. Giờ
+  dải tính lại mỗi lần vẽ từ bản đang soạn — chỉ hiện khi đang chọn Published và còn thiếu thật.
+- **Mục lục bài viết in nhãn text thuần** (`4c2e61ff`). "On this page" lấy chữ thô của heading,
+  nên heading in đậm hiện nguyên `**…**`. Lỗi có từ 31/07, lộ ra vì admin nay tạo được heading
+  in đậm bằng hàng nút. Nhãn dùng cùng text thuần với id.
+
+**Review findings:** không mở vòng review riêng; test viết trước cho cả hai, đỏ đúng chỗ rồi
+mới vá. Không migration, không env.
+
+Tests after: unit 5316 — web 1594, admin 1718, api 1039, contract 611, mobile 159, mobile-ui
+86, core 46, ui 27, tokens 18, i18n 18 — và int 747/747.
+
+## 2026-10-05 — Thử tay P4e-4 trên production (`2d5b3c76`): 8/8 bước đạt
+
+Theo spec §8, từng bước: user làm và chụp màn hình, session gốc kiểm DB bằng SQL chỉ đọc và
+gọi thẳng API.
+
+1. `/posts`: chín bài seed, tab trạng thái, tìm theo tiêu đề.
+2. Bài nháp `p4e-4-test-post`; chọn Published khi còn thiếu thì dải vàng liệt kê ba mục và không
+   gửi lệnh nào; ngày tự điền đúng giờ server (02:00 UTC).
+3. Hàng nút và tab Preview; `![x](y)` bị chặn ngay ở form; lưu nháp được khi còn thiếu ảnh bìa.
+4. Ảnh bìa tải lên; hộp thư viện nói "Choose a cover photo"; tag theo thứ tự Food → P4e-4 test
+   tag → P4e-4 pending tag (tag gõ dở được thêm khi lưu); hai tour giữ thứ tự. DB khớp cột
+   `order` của cả hai bảng nối.
+5. Hẹn 02:50 UTC → chip Scheduled; API và web trả 404 trước giờ hẹn.
+6. API trả bài lúc 02:50:06 giờ server, web sau khoảng một phút; thẻ `/blog` mang chip Food; giá
+   tour trong bài khớp `/tours` (Bà Nà $69, gạch $79).
+7. Tắt bán Bát Tràng → trang bài bỏ thẻ ấy (G9); bật lại → thẻ về.
+8. Xoá bài → web 404; DB không còn bài, dòng ảnh, liên kết tag hay tour; ảnh tải lên vào hàng
+   dọn và không còn gì trỏ tới nó.
+
+Dọn sau lượt thử: hai tag thử (`P4e-4 test tag`, `P4e-4 pending tag`, 0 bài) user tự xoá bằng
+SQL; kiểm lại còn 14 tag và 17 liên kết tag, đúng như trước lượt thử. Còn treo: ảnh bìa thử
+trên Cloudinary do bộ dọn xoá sau hạn bảy ngày. Hai lỗi nhỏ lộ ra: entry ngay trên.
+
 ## 2026-10-05 — Merge P4e-4 quản trị bài viết lên main (`fb64ca45`)
 
 Nội dung và vòng review đã kể ở entry nhánh ngay bên dưới (thi công 02/10, review max 02/10,
