@@ -103,7 +103,10 @@ tour không đổi.
 2. Không có trang xem trước nháp trên web; Preview của admin là bản vẽ cùng bộ render.
 3. Không dùng `metaTitle`/`metaDescription`; không có ảnh trong thân bài.
 4. Xoá một bài seed thì lượt seed lại ~03/11 tạo lại nó (upsert theo slug) với id mới và
-   không có ảnh bìa cho tới khi chạy lại `media:upload`.
+   không có ảnh bìa. Cách gỡ là đặt lại ảnh bìa ở trang sửa bài (tải lên hoặc chọn từ thư
+   viện), không phải chạy lại `media:upload`: thư mục `media-inbox/` mà script đọc không còn
+   trên máy dev từ lần dựng lại 14/09 (sửa ở vòng review P4e-4). `seed:verify` báo ca này
+   bằng bất biến readiness của bài viết.
 5. Parser mobile chưa hiểu đậm, nghiêng, link mà hàng nút chèn — ghi vào tài liệu bàn giao
    mobile.
 6. Mỗi lần sửa tour làm tươi mọi trang bài viết (tag `tours`) — rẻ ở quy mô vài chục bài,

@@ -2,9 +2,9 @@
  * Ghi `alt` vào `media_assets` từ fixture `prisma/fixtures/media/alt-text.ts`.
  *
  * ── Sau F18: dòng ảnh của TOUR là dữ liệu admin sửa (vòng review F18) ──
- * Tab Photos cho admin sửa alt từng ảnh của tour. Script chỉ LẤP alt còn NULL ở dòng
- * `TOUR`, không bao giờ đè alt admin đã viết; các chủ khác (địa danh, trang, bài viết)
- * vẫn áp theo fixture như cũ.
+ * Tab Photos cho admin sửa alt từng ảnh của tour, trang sửa bài sửa alt ảnh bìa (P4e-4).
+ * Script chỉ LẤP alt còn NULL ở dòng `TOUR` và `POST`, không bao giờ đè alt admin đã viết;
+ * các chủ khác (địa danh, trang) vẫn áp theo fixture như cũ.
  *
  *   pnpm --filter @tourism/api media:alt          # chỉ in kế hoạch (mặc định)
  *   pnpm --filter @tourism/api media:alt -- --apply
@@ -27,13 +27,17 @@
  */
 
 import path from 'node:path';
+import { pathToFileURL } from 'node:url';
 import pg from 'pg';
 
 const APPLY = process.argv.includes('--apply');
 const CHO_PHEP_PROD = process.argv.includes('--toi-biet-day-la-production');
 
+// `pathToFileURL`: trên Windows `import()` từ chối đường dẫn tuyệt đối dạng `C:\…`
+// (ERR_UNSUPPORTED_ESM_URL_SCHEME) — máy dev chạy Windows từ 14/09.
 const { altText } = await import(
-  path.join(import.meta.dirname, '..', 'prisma', 'fixtures', 'media', 'alt-text.ts')
+  pathToFileURL(path.join(import.meta.dirname, '..', 'prisma', 'fixtures', 'media', 'alt-text.ts'))
+    .href
 );
 
 const KEYS = Object.keys(altText);
@@ -99,7 +103,7 @@ const { rows: seDoi } = await client.query(
      FROM media_assets m
      JOIN unnest($1::text[], $2::text[]) AS f(k, v) ON f.k = m.public_id
     WHERE m.alt IS DISTINCT FROM f.v
-      AND (m.owner_type <> 'TOUR' OR m.alt IS NULL)`,
+      AND (m.owner_type NOT IN ('TOUR', 'POST') OR m.alt IS NULL)`,
   [KEYS, KEYS.map((k) => altText[k])],
 );
 console.log(`[alt] sẽ đổi: ${seDoi[0].n} dòng`);
@@ -116,7 +120,7 @@ const { rowCount } = await client.query(
       SET alt = f.v
      FROM unnest($1::text[], $2::text[]) AS f(k, v)
     WHERE m.public_id = f.k AND m.alt IS DISTINCT FROM f.v
-      AND (m.owner_type <> 'TOUR' OR m.alt IS NULL)`,
+      AND (m.owner_type NOT IN ('TOUR', 'POST') OR m.alt IS NULL)`,
   [KEYS, KEYS.map((k) => altText[k])],
 );
 

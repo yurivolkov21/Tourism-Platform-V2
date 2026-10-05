@@ -27,6 +27,10 @@
  * script bỏ qua hẳn: không upload đè file (`overwrite`), không ghi lại role, thứ tự
  * hay alt. Tour chưa có dòng nào (DB mới dựng) vẫn được lấp như cũ. Đích là Supabase
  * thì phải có cờ `--toi-biet-day-la-production` (cùng khuôn `media:alt`).
+ *
+ * ── Sau P4e-4: ảnh bìa BÀI VIẾT cũng vậy (vòng review P4e-4) ──
+ * Trang sửa bài cho admin đổi ảnh bìa và alt. Bài ĐÃ có dòng ảnh thì script bỏ qua y như
+ * tour — không thì chạy lại sẽ đặt lại hero cũ theo manifest, đè ảnh admin vừa chọn.
  */
 
 import { execFile } from 'node:child_process';
@@ -86,11 +90,14 @@ if (plan.length === 0) {
 const client = new pg.Client({ connectionString: DB_URL });
 await client.connect();
 
-/** Tour đã có dòng ảnh — admin sở hữu chúng từ F18, script không đụng. */
-const { rows: tourOwnerRows } = await client.query(
-  `SELECT DISTINCT owner_id FROM media_assets WHERE owner_type = 'TOUR'`,
+/** Tour và bài viết đã có dòng ảnh — admin sở hữu chúng (tour từ F18, bài từ P4e-4). */
+const { rows: ownedRows } = await client.query(
+  `SELECT DISTINCT owner_type::text AS owner_type, owner_id
+     FROM media_assets WHERE owner_type IN ('TOUR', 'POST')`,
 );
-const adminOwnedTours = new Set(tourOwnerRows.map((r) => r.owner_id));
+const adminOwned = new Set(ownedRows.map((r) => `${r.owner_type}:${r.owner_id}`));
+/** Loại chủ mà admin sửa ảnh — chỉ hai loại này được bỏ qua khi đã có dòng. */
+const ADMIN_EDITED = new Set(['tour', 'post']);
 
 /** Khe brand-chrome khoá theo `key`; owner của asset là id của chính row slot. */
 const { rows: slotRows } = await client.query('SELECT id, key FROM site_media_slots');
@@ -109,7 +116,7 @@ function publicIdFor(item) {
 let uploaded = 0;
 let reused = 0;
 let rows = 0;
-let skippedTours = 0;
+let skippedOwned = 0;
 const failures = [];
 /** file gốc → publicId đã upload, để ảnh mượn không đẩy lên lần hai. */
 const uploadedFiles = new Map();
@@ -123,9 +130,10 @@ for (const item of plan) {
     failures.push(`${item.key ?? item.slug}: không tìm thấy owner trong DB`);
     continue;
   }
-  if (item.kind === 'tour' && adminOwnedTours.has(ownerId)) {
-    skippedTours++;
-    if (DRY) console.log(`  [dry] ${String(item.slug).padEnd(20)} → bỏ qua: tour đã có ảnh`);
+  if (ADMIN_EDITED.has(item.kind) && adminOwned.has(`${ownerType}:${ownerId}`)) {
+    skippedOwned++;
+    if (DRY)
+      console.log(`  [dry] ${String(item.slug).padEnd(20)} → bỏ qua: ${item.kind} đã có ảnh`);
     continue;
   }
 
@@ -226,9 +234,9 @@ console.log(
     ? `\n[media-upload] --dry: ${plan.length} chỗ gắn, KHÔNG upload gì.\n`
     : `\n[media-upload] upload ${uploaded} file · dùng lại ${reused} · ghi ${rows} row MediaAsset`,
 );
-if (skippedTours > 0) {
+if (skippedOwned > 0) {
   console.log(
-    `[media-upload] bỏ qua ${skippedTours} chỗ gắn của tour đã có ảnh — admin sửa ở tab Photos.`,
+    `[media-upload] bỏ qua ${skippedOwned} chỗ gắn của tour/bài viết đã có ảnh — admin sửa ở tab Photos và trang sửa bài.`,
   );
 }
 if (failures.length) {

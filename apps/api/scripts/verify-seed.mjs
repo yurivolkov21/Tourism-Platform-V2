@@ -11,7 +11,7 @@
  * hai bản luật là hai chỗ để sai. Vì vậy `seed:verify` cần contract đã build
  * (`pnpm --filter @tourism/contract build`), y như `db:seed`.
  */
-import { isWithinDeadline, refundOnCancel } from '@tourism/contract';
+import { isWithinDeadline, postReadiness, refundOnCancel } from '@tourism/contract';
 import pg from 'pg';
 
 const url = process.env.DATABASE_URL ?? 'postgresql://tourism:tourism@localhost:5432/tourism';
@@ -361,6 +361,23 @@ const BAT_BIEN_LUAT = [
         });
         return Number(r.da_hoan) !== Number(can) || r.so_dong !== (Number(can) > 0 ? 1 : 0);
       }).length,
+  },
+  {
+    // Cùng một hàm với cổng "đủ mới được đăng" của API (ADR-0051 §4). Lọc như bất biến ảnh tour:
+    // DB trần chưa có ảnh bài nào thì bỏ qua thay vì đỏ cả loạt. Bắt ca xoá một bài seed rồi
+    // seed lại: bài về với id mới, đang đăng mà không có ảnh bìa (ADR-0051, giới hạn 4).
+    ten: 'bài đang đăng thiếu thứ card cần (readiness P4e-4: nội dung, tóm tắt, ảnh bìa)',
+    sql: `select p.content, p.excerpt,
+            exists (select 1 from media_assets m
+                     where m.owner_type = 'POST' and m.owner_id = p.id and m.role = 'hero') as co_bia
+          from posts p
+          where p.status = 'PUBLISHED' and p.published_at is not null
+            and exists (select 1 from media_assets m where m.owner_type = 'POST')`,
+    dem: (rows) =>
+      rows.filter(
+        (r) =>
+          postReadiness({ content: r.content, excerpt: r.excerpt, hasCover: r.co_bia }).length > 0,
+      ).length,
   },
   {
     ten: 'thiếu booking đã trả trên chuyến đã qua hạn chót mà chưa khởi hành (demo §11)',
