@@ -2,7 +2,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { messages } from '@tourism/i18n';
 import { useState } from 'react';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import type { PostTourDraft, PostTourOption } from '@/lib/post-form';
 import { TOUR_A, TOUR_B } from '@/test/post-detail';
 import { PostToursCard } from './post-tours-card';
@@ -72,14 +72,32 @@ describe('PostToursCard', () => {
     expect(screen.getByText(r.offSaleNote)).toBeInTheDocument();
   });
 
-  it('đủ 3: ô tìm chỉ còn đọc và nói trần, không gợi ý thêm', async () => {
+  // Vòng review P4e-4: bản cũ gõ vào ô readonly (user-event không gõ được gì) với mọi tour đã
+  // được chọn — bỏ hai chỗ chặn "đủ 3" vẫn xanh. Giờ: đang có chữ tìm và một tour CHƯA chọn
+  // khớp chữ ấy, rồi danh sách đủ 3 (form nạp bản server mới) — gợi ý phải tắt.
+  it('đủ 3: ô tìm chỉ còn đọc và nói trần, gợi ý đang hiện cũng tắt', async () => {
+    const DALAT: PostTourDraft = {
+      key: '7a1b2c3d-0000-4000-8000-0000000000e4',
+      id: '7a1b2c3d-0000-4000-8000-0000000000e4',
+      slug: 'da-lat-pines',
+      title: 'Da Lat Pines',
+      isPublished: true,
+    };
+    const draft = (tour: PostTourOption): PostTourDraft => ({ key: tour.id, ...tour });
     const user = userEvent.setup();
-    render(<Harness initial={[TOUR_A, TOUR_B, HUE]} />);
+    const props = { options: [...OPTIONS, DALAT], serverError: null, onChange: vi.fn() };
+    const { rerender } = render(
+      <PostToursCard tours={[draft(TOUR_A), draft(TOUR_B)]} {...props} />,
+    );
+    await user.type(search(), 'h');
+    expect(screen.getByRole('button', { name: r.add('Hue Citadel') })).toBeInTheDocument();
+
+    rerender(<PostToursCard tours={[draft(TOUR_A), draft(TOUR_B), DALAT]} {...props} />);
 
     expect(search()).toHaveAttribute('readonly');
     expect(screen.getByText(r.full(3))).toBeInTheDocument();
-    await user.type(search(), 'h');
     expect(screen.queryByRole('button', { name: r.add('Hue Citadel') })).not.toBeInTheDocument();
+    expect(screen.queryByText(r.noMatch)).not.toBeInTheDocument();
   });
 
   it('xuống một bậc đổi thứ tự — thứ tự là thứ tự web hiện', async () => {

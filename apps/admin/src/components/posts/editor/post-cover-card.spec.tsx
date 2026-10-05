@@ -270,7 +270,9 @@ describe('PostCoverCard', () => {
 
   it('ảnh catalog: nói ngay trên ảnh rằng gỡ ra là không chọn lại được', () => {
     render(<Harness initial={{ ...CURRENT, source: 'CATALOG' }} />);
-    expect(screen.getByText(c.catalogueWarning, { exact: false })).toBeInTheDocument();
+    // Khớp TRỌN chuỗi ghép — `exact: false` là khớp chuỗi con không phân biệt hoa thường, nên
+    // mất nhãn "Catalogue photo" vẫn xanh (vòng review P4e-4).
+    expect(screen.getByText(`${c.source.CATALOG} · ${c.catalogueWarning}`)).toBeInTheDocument();
   });
 
   it('alt sửa được; lỗi lần lưu trước (PHOTO_NOT_ALLOWED) hiện tại card', async () => {

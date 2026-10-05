@@ -17,8 +17,12 @@ describe('PostEditorHeader', () => {
       'https://www.nexora-travel.agency/blog/eating-your-way-through-hoi-an',
     );
     expect(view).toHaveAttribute('target', '_blank');
+    // Khớp TRỌN dòng — `exact: false` là khớp chuỗi con, nên mất `/blog/<slug>` vẫn xanh
+    // (vòng review P4e-4).
     expect(
-      screen.getByText(t.lastSaved('2 Oct 2026, 10:11 UTC'), { exact: false }),
+      screen.getByText(
+        `/blog/eating-your-way-through-hoi-an · ${t.lastSaved('2 Oct 2026, 10:11 UTC')}`,
+      ),
     ).toBeInTheDocument();
     expect(screen.getByRole('link', { name: t.back })).toHaveAttribute('href', '/posts');
   });
