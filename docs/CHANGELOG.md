@@ -14,7 +14,8 @@ Admin quản trị được bài viết: bảng `/posts` (tab Published · Sched
 tiêu đề), hộp New post, trang sửa một bài với một nút Save — trình soạn markdown có hàng nút
 và tab Preview, card Publish (nháp, đăng, hẹn giờ theo UTC, danh sách ba mục cần để đăng),
 ảnh bìa tải lên hoặc chọn từ thư viện, tag gõ thẳng, tối đa 3 tour liên quan, vùng xoá.
-Quyết định ở ADR-0051, hợp đồng ở spec 02/10. Không migration, không env.
+Quyết định ở ADR-0051, hợp đồng ở spec 02/10. Không env; một migration từ vòng review (cột
+`post_tag_links.order`).
 
 **API.** Bảy route `admin.posts.*` (`list`, `get`, `create`, `update`, `delete`,
 `signCoverUpload`, `tags` ở `/api/admin/post-tags`). Lệnh sửa và lệnh xoá giành hàng bài
@@ -53,9 +54,49 @@ phải nằm dưới form, không cuộn ngang, hàng nút không tràn; bảng 
 cho review: `Textarea` của `@tourism/ui` có `field-sizing: content` nên `rows={18}` của ô
 Content không có tác dụng — nháp rỗng chỉ cao 64px.
 
-**Review findings:** chưa review — session gốc review trước merge.
+**Review findings (review max 02/10, vá 05/10).** 11 góc tìm, 7 nhóm kiểm chứng và một lượt
+quét lỗ hổng cho 15 mục báo cáo (5 mức Vừa) cùng 8 mục nhỏ, không mục nào mức Cao. User chốt
+vá hết trên nhánh, kể cả hai script media nằm ngoài diff. Mỗi mục có test đỏ trước khi vá;
+đột biến tay thêm ở ba chỗ (dòng hero so với mọi dòng, Reload của dải báo, chặn "đủ 3 tour").
 
-Tests after: Vitest 5265 — web 1593, admin 1678, api 1037, contract 603, mobile 159, mobile-ui 86, core 46, ui 27, tokens 18, i18n 18 — và int 742 ở 46 file. Ca mới: contract 41, api 22 (luật thuần, thư mục ảnh bìa, `signUploads`, tag cache), admin 120, web 5 (cộng 4 ca `slugify` dời sang ui), int 34 trong `admin-posts.int.spec.ts`. Đột biến: 105 lượt thử, 98 giết, 7 sống — sáu cái plan đã dự báo là tương đương hay chưa phủ, một cái ngoài plan (bỏ `updatedAt: version` ở câu ghi bài không ca nào bắt vì `update` đọc lại DB).
+- Mức Vừa: (1) chữ gõ trong lúc đang lưu bị `adopt` ghi đè — `useVersionedForm` thêm `settle`,
+  chỉ thay giá trị form khi nó vẫn là thứ đã gửi (`4f1222c3`); (2) tour liên quan hiện
+  `basePrice` thay giá "from" — `priceFromByTour` dùng chung với `listTours` (`c430fd16`);
+  (3) luật cấm ảnh lách được bằng ảnh dạng tham chiếu hay dạng tắt, regex chạy O(n²) (đo
+  80k ký tự 0,9 s) và `max` của Zod 4 không chặn refine — chặn mọi `![` trong một lượt quét,
+  `max` dừng hẳn, `ArticleMarkdown` in alt thay cho ảnh (`12e3624c`); (4) Bold/Italic bọc cả
+  dấu cách mép thành `**pho **` (`3029efe4`); (5) `media-upload` và `apply-alt-text` coi ảnh
+  bìa bài là của seed, chạy lại là ghi đè; `seed:verify` thêm bất biến readiness của bài,
+  ADR-0051 giới hạn 4 sửa cách gỡ vì `media-inbox/` không còn trên máy (`472528ce`);
+  (6) `lib/api/posts.ts` và `post-banner` chưa có spec (`f66a0f7a`, `2122d9e4`).
+- Mức Thấp: Ctrl+Z mất sau nút định dạng — chèn đúng đoạn đổi qua `execCommand('insertText')`;
+  tab Preview gỡ `#post-content`, id heading trùng id card ảnh bìa, link rời trang sửa
+  (`c22d88fd`); đường ghi và đường đọc chọn khác dòng hero (`379b53af`); ngày tự điền lấy
+  đồng hồ máy — `useServerClock` neo giờ server (`a92ae3b6`) — và lọt vào nháp chưa từng có
+  ngày (`1edb2ce8`); lỗi tour đã xoá không chỉ tour nào — lỗi mang `data.tourIds`, form gỡ
+  đúng tour và nói tên (`886fe20c`, `420cae1d`); xoá không rõ kết quả ra 404 (`99af1fed`);
+  thứ tự tag không cố định nên chip danh mục đổi — user chọn cột `order` thay vì sắp theo
+  tên (`dc5e7553`); tag gõ dở bị bỏ khi lưu và Enter của bộ gõ IME (`94fa605b`); card ảnh
+  bìa không huỷ được upload lúc đang ký, giữ kho cũ sau lỗi, copy "Add" (`51be2f62`);
+  Reload làm rơi tiêu điểm (`ac5c2228`); slug xét độ dài trước hình dạng (`ec094752`).
+- Dọn: trần contract và tag ref một nguồn (`81873bc9`), một lớp lỗi upload chưa cấu hình
+  cho ba nơi ký (`09db2546`), một server action kho ảnh (`0800163d`), ba test không thể đỏ
+  (`c9b68dd4`), ô chọn tour cảnh báo khi cắt ở trần 10 trang.
+- Không đổi: "markdown parse lại mỗi phím" — tab Preview vốn không mount khi đang gõ; lượt
+  vá chỉ giữ tab Write luôn mount. Bác ở bước kiểm chứng: refresh thừa sau lưu, định danh
+  tag, đột biến `updatedAt`, export-snapshot thiếu `post_tours`, test tag trùng theo slug,
+  `PostThumb`, map copy hộp xoá, `PostTourOption`, `fetchPosts` của web.
+
+**CÒN TREO cho lúc merge (session gốc):** migration `20261005003043_post_tag_links_order`
+mới chạy ở Postgres local — chạy lên Supabase TRƯỚC khi push main (hỏi user), không thì API
+mới đọc cột chưa có.
+
+Tests after (sau lượt vá 05/10, `gate:int` xanh trên đỉnh nhánh): unit 5315 — web 1594, admin
+1717, api 1039, contract 611, mobile 159, mobile-ui 86, core 46, ui 27, tokens 18, i18n 18 —
+và int 747 ở 46 file. Lượt vá thêm 50 ca unit và 5 ca int. Số của lượt thi công 02/10 giữ
+nguyên ngay dưới để đối chiếu.
+
+Tests after (lượt thi công 02/10): Vitest 5265 — web 1593, admin 1678, api 1037, contract 603, mobile 159, mobile-ui 86, core 46, ui 27, tokens 18, i18n 18 — và int 742 ở 46 file. Ca mới: contract 41, api 22 (luật thuần, thư mục ảnh bìa, `signUploads`, tag cache), admin 120, web 5 (cộng 4 ca `slugify` dời sang ui), int 34 trong `admin-posts.int.spec.ts`. Đột biến: 105 lượt thử, 98 giết, 7 sống — sáu cái plan đã dự báo là tương đương hay chưa phủ, một cái ngoài plan (bỏ `updatedAt: version` ở câu ghi bài không ca nào bắt vì `update` đọc lại DB).
 
 ## 2026-10-05 — SessionStart hook dựng môi trường cho session cloud (`eafb1eca`, nhánh `claude/nice-rubin-moffft`)
 
