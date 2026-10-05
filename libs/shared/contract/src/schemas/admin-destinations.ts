@@ -14,9 +14,9 @@ import { slugSchema } from './slug.js';
  *
  * Ba quyết định của spec hiện ra ngay trong hình dạng các schema dưới đây:
  *
- * - **Không có lệnh xoá.** Chỉ có `setActive`. Khoá ngoại `tour_destinations`
- *   khai `ON DELETE CASCADE`, nên một lệnh xoá sẽ âm thầm gỡ điểm đến khỏi mọi
- *   tour — DB không chặn (spec §2a).
+ * - **Xoá chỉ khi chưa tour nào dùng** (ADR-0053). Khoá ngoại `tour_destinations` khai
+ *   `ON DELETE CASCADE` nên DB KHÔNG chặn — server kiểm số liên kết dưới khoá hàng trong
+ *   cùng transaction rồi mới xoá.
  * - **`update` không mang `slug`.** Slug đi vào `/tours?destinations=<slug>`,
  *   mà tham số truy vấn thì KHÔNG chuyển hướng được (spec §2c).
  * - **`region` ghi qua `RegionNameSchema`.** Cột là chữ tự do, còn web ghép nó
@@ -67,6 +67,8 @@ export const AdminDestinationRowSchema = z.object({
   isActive: z.boolean(),
   /** Số tour ĐÃ ĐĂNG gắn vào điểm đến này — nuôi câu cảnh báo lúc ẩn. */
   tourCount: z.int().nonnegative(),
+  /** Số tour MỌI trạng thái gắn điểm đến — bằng 0 thì xoá được (ADR-0053 §5). */
+  linkedTourCount: z.int().nonnegative(),
 });
 export type AdminDestinationRow = z.output<typeof AdminDestinationRowSchema>;
 
@@ -101,3 +103,11 @@ export const AdminDestinationSetActiveInputSchema = z.object({
   isActive: z.boolean(),
 });
 export type AdminDestinationSetActiveInput = z.output<typeof AdminDestinationSetActiveInputSchema>;
+
+/** Xoá một điểm đến chưa tour nào dùng (ADR-0053). */
+export const AdminDestinationDeleteInputSchema = z.object({ id: z.uuid() });
+export type AdminDestinationDeleteInput = z.output<typeof AdminDestinationDeleteInputSchema>;
+
+/** Slug của hàng vừa xoá — cùng khuôn kết quả `admin.tours.delete`. */
+export const AdminDestinationDeleteResultSchema = z.object({ slug: z.string() });
+export type AdminDestinationDeleteResult = z.output<typeof AdminDestinationDeleteResultSchema>;

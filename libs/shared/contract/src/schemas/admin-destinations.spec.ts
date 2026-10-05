@@ -1,6 +1,8 @@
 import { contract } from '../contract.js';
 import {
   AdminDestinationCreateInputSchema,
+  AdminDestinationDeleteInputSchema,
+  AdminDestinationDeleteResultSchema,
   AdminDestinationRowSchema,
   AdminDestinationSetActiveInputSchema,
   AdminDestinationUpdateInputSchema,
@@ -12,9 +14,9 @@ import {
 } from './admin-destinations.js';
 
 /**
- * Contract `admin.destinations` (spec P4e-2 F15) — bốn thao tác của bảng điểm
- * đến: đọc, tạo, sửa, ẩn/hiện. Không xoá (spec §2a), không sắp thứ tự (bảng
- * này không có cột `order`).
+ * Contract `admin.destinations` (spec P4e-2 F15) — năm thao tác của bảng điểm
+ * đến: đọc, tạo, sửa, ẩn/hiện, và xoá khi chưa tour nào dùng (ADR-0053). Không
+ * sắp thứ tự (bảng này không có cột `order`).
  *
  * Hai bất biến đắt nhất của cả phase hiện ra ở đây:
  *
@@ -36,6 +38,7 @@ const ROW = {
   description: 'Lanterns, tailors and the old port.',
   isActive: true,
   tourCount: 4,
+  linkedTourCount: 6,
 };
 
 describe('AdminDestinationRowSchema', () => {
@@ -229,13 +232,35 @@ describe('AdminDestinationSetActiveInputSchema', () => {
   });
 });
 
+describe('AdminDestinationDeleteInputSchema (ADR-0053)', () => {
+  it('chỉ nhận id dạng uuid', () => {
+    expect(AdminDestinationDeleteInputSchema.safeParse({ id: ID }).success).toBe(true);
+    expect(AdminDestinationDeleteInputSchema.safeParse({ id: 'hoi-an' }).success).toBe(false);
+  });
+
+  it('kết quả trả slug của hàng vừa xoá', () => {
+    expect(AdminDestinationDeleteResultSchema.parse({ slug: 'hoi-an' })).toEqual({
+      slug: 'hoi-an',
+    });
+  });
+});
+
+describe('AdminDestinationRowSchema — linkedTourCount', () => {
+  it('đếm tour mọi trạng thái, không âm', () => {
+    expect(AdminDestinationRowSchema.safeParse({ ...ROW, linkedTourCount: -1 }).success).toBe(
+      false,
+    );
+  });
+});
+
 describe('contract admin.destinations', () => {
-  it('bốn thao tác mounted đúng đường', () => {
+  it('năm thao tác mounted đúng đường', () => {
     const routes: Array<[{ '~orpc': { route?: { method?: string; path?: string } } }, string]> = [
       [contract.admin.destinations.list, 'GET /api/admin/destinations'],
       [contract.admin.destinations.create, 'POST /api/admin/destinations'],
       [contract.admin.destinations.update, 'POST /api/admin/destinations/{id}'],
       [contract.admin.destinations.setActive, 'POST /api/admin/destinations/{id}/active'],
+      [contract.admin.destinations.delete, 'POST /api/admin/destinations/{id}/delete'],
     ];
     for (const [procedure, expected] of routes) {
       const route = procedure['~orpc'].route;
@@ -243,12 +268,12 @@ describe('contract admin.destinations', () => {
     }
   });
 
-  it('KHÔNG có lệnh xoá, KHÔNG có lệnh sắp thứ tự', () => {
-    // Xoá: spec §2a — khoá ngoại `tour_destinations` khai `ON DELETE CASCADE`,
-    // tức một lệnh xoá sẽ âm thầm gỡ điểm đến khỏi mọi tour. Sắp: bảng này
-    // không có cột `order`.
+  it('có lệnh xoá (ADR-0053), KHÔNG có lệnh sắp thứ tự', () => {
+    // Sắp: bảng này không có cột `order`. Xoá: chỉ khi chưa tour nào dùng, kiểm dưới
+    // khoá hàng vì khoá ngoại `tour_destinations` khai `ON DELETE CASCADE`.
     expect(Object.keys(contract.admin.destinations).sort()).toEqual([
       'create',
+      'delete',
       'list',
       'setActive',
       'update',
@@ -267,6 +292,7 @@ describe('contract admin.destinations', () => {
     for (const procedure of [
       contract.admin.destinations.update,
       contract.admin.destinations.setActive,
+      contract.admin.destinations.delete,
     ]) {
       const errorMap = procedure['~orpc'].errorMap as Record<string, { status?: number }>;
       expect(errorMap.NOT_FOUND?.status).toBe(404);
@@ -281,5 +307,14 @@ describe('contract admin.destinations', () => {
     expect(codes(contract.admin.destinations.create)).toEqual(['SLUG_TAKEN']);
     expect(codes(contract.admin.destinations.update)).toEqual(['NOT_FOUND']);
     expect(codes(contract.admin.destinations.setActive)).toEqual(['NOT_FOUND']);
+    expect(codes(contract.admin.destinations.delete)).toEqual(['IN_USE', 'NOT_FOUND']);
+  });
+
+  it('`IN_USE` của `delete` là 409 — thế giới đã đổi, không phải input hỏng', () => {
+    const errorMap = contract.admin.destinations.delete['~orpc'].errorMap as Record<
+      string,
+      { status?: number }
+    >;
+    expect(errorMap.IN_USE?.status).toBe(409);
   });
 });

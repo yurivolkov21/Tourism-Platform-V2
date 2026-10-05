@@ -8,6 +8,8 @@ import {
 } from './schemas/admin-catalog.js';
 import {
   AdminCategoryCreateInputSchema,
+  AdminCategoryDeleteInputSchema,
+  AdminCategoryDeleteResultSchema,
   AdminCategoryMoveInputSchema,
   AdminCategoryRowSchema,
   AdminCategorySetActiveInputSchema,
@@ -24,6 +26,8 @@ import {
 } from './schemas/admin-departures.js';
 import {
   AdminDestinationCreateInputSchema,
+  AdminDestinationDeleteInputSchema,
+  AdminDestinationDeleteResultSchema,
   AdminDestinationRowSchema,
   AdminDestinationSetActiveInputSchema,
   AdminDestinationUpdateInputSchema,
@@ -1241,11 +1245,12 @@ export const contract = {
         .output(AdminTourSetPublishedResultSchema),
     },
     /**
-     * Danh mục tour phía admin (spec P4e-2 F14) — năm thao tác, KHÔNG có xoá.
+     * Danh mục tour phía admin (spec P4e-2 F14) — sáu thao tác, xoá chỉ khi
+     * chưa tour nào dùng (ADR-0053).
      *
-     * `is_active` đã có sẵn ở DB và endpoint công khai đã lọc theo nó, nên tắt
-     * một danh mục là nó biến khỏi chip lọc `/tours` mà mọi tour thuộc nó vẫn
-     * hiện nguyên. Đảo ngược bằng một cú bấm. Xoá thì không — nên không có.
+     * Tắt một danh mục là nó biến khỏi chip lọc `/tours` mà mọi tour thuộc nó
+     * vẫn hiện nguyên. Xoá chỉ được khi không còn tour nào (mọi trạng thái):
+     * khoá ngoại `RESTRICT` làm phán quyết.
      *
      * `move` nhận HƯỚNG chứ không nhận số thứ tự: client không cần biết `order`
      * đang là bao nhiêu, và hai admin bấm cùng lúc không thể ghi hai hàng cùng
@@ -1308,14 +1313,26 @@ export const contract = {
           },
         })
         .output(z.array(AdminCategoryRowSchema)),
+      delete: oc
+        .route({
+          method: 'POST',
+          path: '/api/admin/categories/{id}/delete',
+          summary: 'Delete a category that no tour uses',
+        })
+        .input(AdminCategoryDeleteInputSchema)
+        .errors({
+          IN_USE: { status: 409, message: 'This category is still used by tours' },
+          NOT_FOUND: { status: 404, message: 'Category not found' },
+        })
+        .output(AdminCategoryDeleteResultSchema),
     },
     /**
-     * Điểm đến phía admin (spec P4e-2 F15) — bốn thao tác, KHÔNG có xoá và
-     * KHÔNG có sắp thứ tự (bảng này không có cột `order`).
+     * Điểm đến phía admin (spec P4e-2 F15) — năm thao tác, KHÔNG có sắp thứ tự
+     * (bảng không có cột `order`).
      *
-     * Không xoá vì khoá ngoại `tour_destinations` khai `ON DELETE CASCADE`: DB
-     * sẽ không chặn, nó im lặng gỡ điểm đến khỏi mọi tour. Ẩn thì đảo ngược
-     * được bằng một cú bấm, và mọi liên kết tour còn nguyên (spec §2a).
+     * Xoá chỉ khi chưa tour nào dùng (ADR-0053): khoá ngoại `tour_destinations`
+     * khai `ON DELETE CASCADE` nên DB không chặn — server khoá hàng điểm đến,
+     * đếm liên kết, rồi mới xoá trong cùng transaction.
      *
      * `region` ghi qua `RegionNameSchema` — danh sách chọn ba vùng, không phải
      * chữ tự do (spec §2b, ADR-0045). `update` không mang `slug` (spec §2c).
@@ -1360,6 +1377,18 @@ export const contract = {
         .input(AdminDestinationSetActiveInputSchema)
         .errors({ NOT_FOUND: { status: 404, message: 'Destination not found' } })
         .output(AdminDestinationRowSchema),
+      delete: oc
+        .route({
+          method: 'POST',
+          path: '/api/admin/destinations/{id}/delete',
+          summary: 'Delete a destination that no tour visits',
+        })
+        .input(AdminDestinationDeleteInputSchema)
+        .errors({
+          IN_USE: { status: 409, message: 'This destination is still used by tours' },
+          NOT_FOUND: { status: 404, message: 'Destination not found' },
+        })
+        .output(AdminDestinationDeleteResultSchema),
     },
     /**
      * Chuyến khởi hành của MỘT tour (spec P4e-1 F12) — bề mặt GHI đầu tiên

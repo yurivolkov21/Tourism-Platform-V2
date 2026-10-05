@@ -11,8 +11,9 @@ import { slugSchema } from './slug.js';
  *
  * Ba quyết định của spec hiện ra ngay trong hình dạng các schema dưới đây:
  *
- * - **Không có lệnh xoá.** Cả bảng chỉ có `setActive`. `is_active` đã có sẵn ở
- *   DB, tắt thì đảo ngược được bằng một cú bấm — còn xoá thì không.
+ * - **Xoá chỉ khi chưa tour nào dùng** (ADR-0053, thay quyết định "chỉ bật/tắt" của spec
+ *   P4e-2 §2a). Khoá ngoại `tours.category_id` khai `RESTRICT`, nên DB tự chặn câu xoá
+ *   khi còn tour; ẩn (`setActive`) vẫn là đường đảo ngược được cho hàng đang có tour.
  * - **`update` không mang `slug`.** Slug đi vào URL công khai dạng tham số
  *   truy vấn (`/tours?categories=<slug>`), mà tham số truy vấn thì KHÔNG
  *   chuyển hướng được: đổi slug là mọi link đã chia sẻ lọc ra rỗng. Nên slug
@@ -54,6 +55,8 @@ export const AdminCategoryRowSchema = z.object({
   isActive: z.boolean(),
   /** Số tour ĐÃ ĐĂNG thuộc danh mục này — nuôi câu cảnh báo lúc tắt. */
   tourCount: z.int().nonnegative(),
+  /** Số tour MỌI trạng thái thuộc danh mục — bằng 0 thì xoá được (ADR-0053 §5). */
+  linkedTourCount: z.int().nonnegative(),
 });
 export type AdminCategoryRow = z.output<typeof AdminCategoryRowSchema>;
 
@@ -93,3 +96,11 @@ export const AdminCategoryMoveInputSchema = z.object({
   direction: z.enum(['up', 'down']),
 });
 export type AdminCategoryMoveInput = z.output<typeof AdminCategoryMoveInputSchema>;
+
+/** Xoá một danh mục chưa tour nào dùng (ADR-0053). */
+export const AdminCategoryDeleteInputSchema = z.object({ id: z.uuid() });
+export type AdminCategoryDeleteInput = z.output<typeof AdminCategoryDeleteInputSchema>;
+
+/** Slug của hàng vừa xoá — cùng khuôn kết quả `admin.tours.delete`. */
+export const AdminCategoryDeleteResultSchema = z.object({ slug: z.string() });
+export type AdminCategoryDeleteResult = z.output<typeof AdminCategoryDeleteResultSchema>;

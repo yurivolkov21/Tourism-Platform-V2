@@ -1,6 +1,8 @@
 import { contract } from '../contract.js';
 import {
   AdminCategoryCreateInputSchema,
+  AdminCategoryDeleteInputSchema,
+  AdminCategoryDeleteResultSchema,
   AdminCategoryMoveInputSchema,
   AdminCategoryRowSchema,
   AdminCategorySetActiveInputSchema,
@@ -11,7 +13,8 @@ import {
 } from './admin-categories.js';
 
 /**
- * Contract `admin.categories` (spec P4e-2 F14) — năm thao tác của bảng danh mục.
+ * Contract `admin.categories` (spec P4e-2 F14, lệnh xoá theo ADR-0053) — sáu thao tác của
+ * bảng danh mục.
  *
  * Bộ test này canh những ràng buộc mà CHỈ schema quan sát được, và một bất biến
  * của cả phase: `update` KHÔNG mang `slug`. Slug đi vào URL công khai dạng tham
@@ -29,6 +32,7 @@ const ROW = {
   order: 1,
   isActive: true,
   tourCount: 7,
+  linkedTourCount: 9,
 };
 
 describe('AdminCategoryRowSchema', () => {
@@ -179,14 +183,34 @@ describe('AdminCategorySetActiveInputSchema', () => {
   });
 });
 
+describe('AdminCategoryDeleteInputSchema (ADR-0053)', () => {
+  it('chỉ nhận id dạng uuid', () => {
+    expect(AdminCategoryDeleteInputSchema.safeParse({ id: ID }).success).toBe(true);
+    expect(AdminCategoryDeleteInputSchema.safeParse({ id: 'day-trips' }).success).toBe(false);
+  });
+
+  it('kết quả trả slug của hàng vừa xoá', () => {
+    expect(AdminCategoryDeleteResultSchema.parse({ slug: 'day-trips' })).toEqual({
+      slug: 'day-trips',
+    });
+  });
+});
+
+describe('AdminCategoryRowSchema — linkedTourCount', () => {
+  it('đếm tour mọi trạng thái, không âm', () => {
+    expect(AdminCategoryRowSchema.safeParse({ ...ROW, linkedTourCount: -1 }).success).toBe(false);
+  });
+});
+
 describe('contract admin.categories', () => {
-  it('năm thao tác mounted đúng đường', () => {
+  it('sáu thao tác mounted đúng đường', () => {
     const routes: Array<[{ '~orpc': { route?: { method?: string; path?: string } } }, string]> = [
       [contract.admin.categories.list, 'GET /api/admin/categories'],
       [contract.admin.categories.create, 'POST /api/admin/categories'],
       [contract.admin.categories.update, 'POST /api/admin/categories/{id}'],
       [contract.admin.categories.setActive, 'POST /api/admin/categories/{id}/active'],
       [contract.admin.categories.move, 'POST /api/admin/categories/{id}/move'],
+      [contract.admin.categories.delete, 'POST /api/admin/categories/{id}/delete'],
     ];
     for (const [procedure, expected] of routes) {
       const route = procedure['~orpc'].route;
@@ -222,9 +246,19 @@ describe('contract admin.categories', () => {
       contract.admin.categories.update,
       contract.admin.categories.setActive,
       contract.admin.categories.move,
+      contract.admin.categories.delete,
     ]) {
       const errorMap = procedure['~orpc'].errorMap as Record<string, { status?: number }>;
       expect(errorMap.NOT_FOUND?.status).toBe(404);
     }
+  });
+
+  it('`delete` khai IN_USE 409 và NOT_FOUND 404 — không gì khác', () => {
+    const errorMap = contract.admin.categories.delete['~orpc'].errorMap as Record<
+      string,
+      { status?: number }
+    >;
+    expect(Object.keys(errorMap).sort()).toEqual(['IN_USE', 'NOT_FOUND']);
+    expect(errorMap.IN_USE?.status).toBe(409);
   });
 });
