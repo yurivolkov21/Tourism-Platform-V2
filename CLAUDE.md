@@ -162,6 +162,14 @@ pnpm lint:fix                    # biome tự sửa format + lint
   4. **`apps/web/scripts/guard-build.mjs` dò `/proc` nên trên Windows tự bỏ
      qua** — lớp chặn build-khi-đang-serve không còn; tắt `next dev`/`next start`
      trước khi build web.
+- **Session cloud (claude.ai/code) tự dựng môi trường bằng
+  `.claude/hooks/session-start.sh`** (thêm 05/10): image cloud chỉ có Node
+  20–22 nên hook cài Node 24 qua nvm, pnpm đúng `packageManager`, chạy
+  `pnpm install --frozen-lockfile`, chép `.env.example` → `.env.local` và dựng
+  Postgres 17 bằng `docker compose` (đo: `gate` + `test:int` xanh). **Không khai
+  secret ở cài đặt environment cloud** — giá trị dev đủ chạy test (luật 15).
+  Hai bẫy: hook chỉ chạy trên nhánh CÓ nó, nên nhánh tách trước khi hook vào
+  `main` phải rebase; build web trong `gate` vẫn cần API sống như CI.
 - `.gitattributes` ép LF toàn repo — bài học 797-file CRLF churn của Nexora. Git
   for Windows cài sẵn `core.autocrlf=true` ở cấp system nhưng `.gitattributes`
   vẫn thắng (đo 14/09: 0 file CRLF sau clone).
