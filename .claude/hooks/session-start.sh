@@ -89,6 +89,13 @@ start_postgres() {
     # Container cloud không chạy sẵn dockerd. /run không phải tmpfs nên pid file
     # có thể sót lại từ ảnh chụp container và làm dockerd từ chối khởi động.
     rm -f /var/run/docker.pid
+    # containerd do dockerd tự quản cũng để lại pid file. Sau khi session resume,
+    # pid ghi trong đó có thể đã thuộc tiến trình khác, dockerd tưởng containerd
+    # còn sống rồi chờ tới timeout và bỏ cuộc (dính 05/10). Không có containerd
+    # nào đang chạy thì file đó chắc chắn là rác.
+    if ! pgrep -x containerd >/dev/null 2>&1; then
+      rm -f /var/run/docker/containerd/containerd.pid
+    fi
     # setsid và đổi hướng mọi fd: dockerd phải sống tiếp sau khi hook kết thúc
     # và không được giữ stdout của hook (giữ thì hook treo tới timeout).
     setsid dockerd >>"$DOCKERD_LOG" 2>&1 </dev/null &
