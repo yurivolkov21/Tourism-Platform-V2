@@ -3,7 +3,7 @@
 import { ToggleGroup, ToggleGroupItem } from '@tourism/ui/components/toggle-group';
 import { motion, useReducedMotion } from 'motion/react';
 import type * as React from 'react';
-import { ToolbarSelect } from '@/components/kit/toolbar-select';
+import { Picker } from '@/components/kit/picker';
 
 /**
  * Bộ lọc trạng thái của bảng admin (kit P4b — nâng từ cặp bản chép
@@ -74,13 +74,14 @@ export function StatusFilterTabs({
   return (
     <>
       {/* Màn hẹp: select gọn — cùng cặp @4xl/main của block dashboard-01;
-          chính kit `ToolbarSelect` (vòng vá review F7, hết bản chép). */}
-      <ToolbarSelect
+          chính kit `Picker`, giữ icon của mục như dải tab màn rộng. */}
+      <Picker
         id={selectId}
+        variant="toolbar"
         label={label}
         value={value}
-        items={items}
-        onSelect={onSelect}
+        options={items}
+        onValueChange={onSelect}
         className="flex @4xl/main:hidden"
       />
 

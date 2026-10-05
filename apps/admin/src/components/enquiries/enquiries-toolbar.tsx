@@ -35,8 +35,11 @@ const STATUSES = EnquiryStatusSchema.options;
  * Icon theo trạng thái — `Record` trên enum để quên một member là đỏ ở
  * typecheck. Ba trạng thái đang mở kể tiến độ (chưa chạm · đã gọi · đã báo
  * giá), hai trạng thái chung cuộc là tích và gạch chéo.
+ *
+ * Export để ô đổi trạng thái của `/enquiries/[id]` (`status-panel.tsx`) dùng
+ * đúng bộ icon này — một trạng thái, một icon ở mọi chỗ.
  */
-const STATUS_ICONS: Record<(typeof STATUSES)[number], typeof ListIcon> = {
+export const ENQUIRY_STATUS_ICONS: Record<(typeof STATUSES)[number], typeof ListIcon> = {
   NEW: CircleDashedIcon,
   CONTACTED: PhoneCallIcon,
   QUOTED: ReceiptTextIcon,
@@ -49,7 +52,7 @@ const TAB_ITEMS = [
   ...STATUSES.map((status) => ({
     label: t.status[status],
     value: status,
-    icon: STATUS_ICONS[status],
+    icon: ENQUIRY_STATUS_ICONS[status],
   })),
 ];
 

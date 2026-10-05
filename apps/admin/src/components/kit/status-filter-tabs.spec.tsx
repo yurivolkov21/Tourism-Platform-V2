@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type * as React from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -73,7 +73,10 @@ describe('StatusFilterTabs', () => {
     // làm vỡ gì — `/reviews` từng chạy đúng như thế trước 01/09.
     render(<StatusFilterTabs {...PROPS} value={ALL_FILTER_VALUE} />);
 
-    expect(screen.getAllByTestId('stub-icon')).toHaveLength(2);
+    // Đếm TRONG dải tab: ô `Picker` của màn hẹp cũng vẽ icon của mục đang chọn
+    // (ca riêng ở cuối file), mà jsdom không áp CSS nên thấy đủ cả hai nhánh.
+    const strip = screen.getByRole('group', { name: 'Filter by status' });
+    expect(within(strip).getAllByTestId('stub-icon')).toHaveLength(2);
     expect(screen.getByRole('button', { name: 'Paid' })).toBeInTheDocument();
   });
 
@@ -95,5 +98,30 @@ describe('StatusFilterTabs', () => {
     await user.click(await screen.findByRole('option', { name: 'Pending' }));
 
     expect(onSelect).toHaveBeenCalledWith('PENDING');
+  });
+
+  it('nhánh màn hẹp (Picker) giữ icon của mục như dải tab màn rộng', async () => {
+    const user = userEvent.setup();
+    function StubIcon(props: React.SVGProps<SVGSVGElement>) {
+      return <svg data-testid="status-icon" {...props} />;
+    }
+    render(
+      <StatusFilterTabs
+        items={[
+          { label: 'All', value: 'ALL', icon: StubIcon },
+          { label: 'Paid', value: 'PAID', icon: StubIcon },
+        ]}
+        value="ALL"
+        label="Filter by status"
+        selectId="status-mobile"
+        onSelect={vi.fn()}
+      />,
+    );
+
+    const trigger = screen.getByRole('combobox', { name: 'Filter by status' });
+    expect(within(trigger).getByTestId('status-icon')).toBeInTheDocument();
+    await user.click(trigger);
+    const option = await screen.findByRole('option', { name: 'Paid' });
+    expect(within(option).getByTestId('status-icon')).toBeInTheDocument();
   });
 });

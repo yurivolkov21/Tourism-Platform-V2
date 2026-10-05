@@ -5,8 +5,9 @@ import { messages } from '@tourism/i18n';
 import { Button } from '@tourism/ui/components/button';
 import { useRouter } from 'next/navigation';
 import { useState, useTransition } from 'react';
+import { ENQUIRY_STATUS_ICONS } from '@/components/enquiries/enquiries-toolbar';
 import { ConfirmWriteDialog } from '@/components/kit/confirm-write-dialog';
-import { ToolbarSelect } from '@/components/kit/toolbar-select';
+import { Picker } from '@/components/kit/picker';
 import { enquiryStatusLabel } from '@/lib/enquiries-view';
 import {
   isSetStatusStale,
@@ -43,6 +44,7 @@ const t = messages.admin.enquiries.setStatus;
 const STATUS_ITEMS = EnquiryStatusSchema.options.map((status) => ({
   label: enquiryStatusLabel(status),
   value: status,
+  icon: ENQUIRY_STATUS_ICONS[status],
 }));
 
 export function EnquiryStatusPanel({
@@ -78,12 +80,14 @@ export function EnquiryStatusPanel({
 
   return (
     <div className="flex flex-wrap items-end gap-2">
-      <ToolbarSelect
+      <Picker
         id={`enquiry-status-${id}`}
         label={t.label}
         value={target}
-        items={STATUS_ITEMS}
-        onSelect={select}
+        options={STATUS_ITEMS}
+        onValueChange={select}
+        // Cao 32px của biến thể field, bằng nút "Change status" đứng cạnh.
+        className="w-fit"
       />
       <Button type="button" disabled={!changed || isRefreshing} onClick={() => setOpen(true)}>
         {t.action}

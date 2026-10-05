@@ -31,10 +31,12 @@ import { TOOLBAR_BUTTON } from '@/components/kit/toolbar-metrics';
  * (spec P4c §2.6), và vì user chốt 31/08 "muốn đổi dáng thì đổi ở kit để các
  * vùng cùng đổi".
  *
- * KHÔNG thay `ToolbarSelect`: hai nơi còn lại của Select (nhánh mobile của
- * `StatusFilterTabs`, ô đổi trạng thái `/enquiries`) là danh sách phẳng ngắn,
- * và ô `/enquiries` là control GHI chứ không phải lọc. Hai control cùng sống,
- * mỗi cái một việc.
+ * KHÔNG thay `Picker` (kit Select, spec 2026-10-05 §2.2): ô của form cần role
+ * `combobox`, gõ chữ để nhảy và nhãn nối qua `id`; ngoài form nó lo danh sách
+ * phẳng ngắn (nhánh màn hẹp của `StatusFilterTabs`, Rows per page) và control
+ * GHI chứ không phải lọc (ô đổi trạng thái `/enquiries/[id]`). Hai kit cùng
+ * sống, mỗi cái một việc — dáng chung đọc từ `menu-style.ts` nên nhìn vẫn là
+ * một họ.
  *
  * BA CHỖ bản registry không lo hộ, vá ở đây một lần cho mọi vùng:
  *
@@ -45,7 +47,7 @@ import { TOOLBAR_BUTTON } from '@/components/kit/toolbar-metrics';
  *    bấm nhiều lần như menu Columns). Ở đây chọn xong là ĐIỀU HƯỚNG, nên phải
  *    bật tường minh — không thì menu treo lại trên trang vừa mở.
  * 3. Base UI phát `any` cho `onValueChange`, và phát `null` khi item bị gỡ
- *    giữa chừng — cùng cái bẫy `ToolbarSelect` đã chặn.
+ *    giữa chừng — cùng cái bẫy `Picker` cũng chặn.
  *
  * Khe `DropdownMenuShortcut` của dm-10 CỐ Ý bỏ trống: thứ đáng nằm ở đó là số
  * hàng theo từng mục, mà không endpoint stats nào của admin trả về con số ấy —

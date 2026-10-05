@@ -3,14 +3,6 @@
 import { messages } from '@tourism/i18n';
 import { buttonVariants } from '@tourism/ui/components/button';
 import { Label } from '@tourism/ui/components/label';
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@tourism/ui/components/select';
 import { cn } from '@tourism/ui/lib/utils';
 import {
   ChevronLeftIcon,
@@ -20,6 +12,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { Picker } from '@/components/kit/picker';
 
 /**
  * Thanh phân trang cho bảng đọc-từ-server (kit P4b §2.1). Bố cục + class giữ
@@ -32,6 +25,10 @@ import { useRouter } from 'next/navigation';
  * (§2.2) nên nút nhảy trang là `<Link>` — mở tab mới được, và server render
  * lại thay vì table client tự cắt. Biên (không đi tiếp được) render thành
  * `<span>` mờ chứ không phải link chết (nghiệm thu P4a §0.3).
+ *
+ * Ngoại lệ về hình từ 05/10 (spec 2026-10-05 §2.3): ô "Rows per page" là kit
+ * `Picker` chứ không còn `Select` trần `size="sm"` của block — cao 32px bằng các
+ * nút nhảy trang, danh sách mở lên trên và không đè lên ô, như mọi ô chọn của admin.
  */
 const t = messages.admin.table;
 
@@ -111,29 +108,19 @@ export function TablePagination({
           <Label htmlFor="rows-per-page" className="text-sm font-medium">
             {t.rowsPerPage}
           </Label>
-          <Select
+          <Picker
+            id="rows-per-page"
             value={`${pageSize}`}
+            options={pageSizeOptions.map((size) => ({ value: `${size}`, label: `${size}` }))}
+            // Ô nằm sát đáy trang — mở lên trên cho danh sách khỏi bị cắt.
+            side="top"
+            className="w-20"
             onValueChange={(value) => {
-              // Chỉ điều hướng với số hợp lệ — Base UI có thể phát value lạ
-              // (null khi reset), Number(null)=0 sẽ treo `?limit=0` lên URL.
+              // Chỉ điều hướng với số hợp lệ — `Number('')` = 0 sẽ treo `?limit=0` lên URL.
               const size = Number(value);
               if (Number.isInteger(size) && size > 0) router.push(hrefForPageSize(size));
             }}
-            items={pageSizeOptions.map((size) => ({ label: `${size}`, value: `${size}` }))}
-          >
-            <SelectTrigger size="sm" className="w-20" id="rows-per-page">
-              <SelectValue placeholder={`${pageSize}`} />
-            </SelectTrigger>
-            <SelectContent side="top">
-              <SelectGroup>
-                {pageSizeOptions.map((size) => (
-                  <SelectItem key={size} value={`${size}`}>
-                    {size}
-                  </SelectItem>
-                ))}
-              </SelectGroup>
-            </SelectContent>
-          </Select>
+          />
         </div>
         <div className="flex w-fit items-center justify-center text-sm font-medium">
           {t.page(shownPage, lastPage)}
