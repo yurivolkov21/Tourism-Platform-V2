@@ -14,5 +14,10 @@ export const MENU_LABEL = 'font-medium';
 /** Bề rộng popup của dropdown trên hàng điều khiển bảng (khuôn dm-10, 264px). */
 export const MENU_TOOLBAR_POPUP = 'w-66';
 
-/** Màu mũi tên của MỌI trigger dropdown — trước đợt này ba nơi ba màu. */
+/**
+ * Màu mũi tên trên trigger dropdown — trước đợt này ba nơi ba màu. `ToolbarFilterMenu` và
+ * `ToolbarDateRange` đọc hằng này; mũi tên của `Picker` thì do `SelectTrigger` của
+ * `@tourism/ui` (`select.tsx`) tự vẽ, cũng là `text-muted-foreground`. Đổi màu thì đổi CẢ HAI
+ * chỗ cùng lúc.
+ */
 export const MENU_CHEVRON = 'text-muted-foreground';

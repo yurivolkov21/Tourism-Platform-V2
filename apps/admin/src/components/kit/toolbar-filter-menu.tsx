@@ -12,7 +12,12 @@ import {
 } from '@tourism/ui/components/dropdown-menu';
 import { ChevronDownIcon } from 'lucide-react';
 import * as React from 'react';
-import { MENU_CHEVRON, MENU_HINT, MENU_TOOLBAR_POPUP } from '@/components/kit/menu-style';
+import {
+  MENU_CHEVRON,
+  MENU_HINT,
+  MENU_LABEL,
+  MENU_TOOLBAR_POPUP,
+} from '@/components/kit/menu-style';
 import { TOOLBAR_BUTTON } from '@/components/kit/toolbar-metrics';
 
 /**
@@ -153,7 +158,7 @@ export function ToolbarFilterMenu({
             (nó bọc `MenuGroupContext.Provider` rồi đọc id lại vào
             `aria-labelledby`), nên không cần lồng thêm `DropdownMenuGroup`. */}
         <DropdownMenuRadioGroup value={value} onValueChange={handleChange}>
-          <DropdownMenuLabel>{label}</DropdownMenuLabel>
+          <DropdownMenuLabel className={MENU_LABEL}>{label}</DropdownMenuLabel>
           {allItem ? <FilterMenuItem item={allItem} /> : null}
           {groups.map((group, index) => (
             <React.Fragment key={group.key}>

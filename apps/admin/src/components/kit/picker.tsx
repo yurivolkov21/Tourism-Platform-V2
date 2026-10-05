@@ -136,9 +136,13 @@ export function Picker(props: PickerProps) {
           aria-invalid={invalid || undefined}
           aria-describedby={describedBy}
         >
-          {/* Hàm render tự dựng nội dung ô để kèm icon và hint của mục đang chọn. */}
+          {/* Hàm render tự dựng nội dung ô để kèm icon và hint của mục đang chọn.
+              Giá trị KHÔNG khớp mục nào (mục vừa bị gỡ, URL gõ tay) thì in thẳng giá trị,
+              cùng luật "nút in chính value" của `ToolbarFilterMenu`: form vẫn giữ giá trị ấy,
+              nên hiện câu giữ chỗ là nói dối rằng chưa chọn gì, còn ô toolbar (không có câu
+              giữ chỗ) thì trơ mỗi mũi tên. Chỉ `''` mới là chưa chọn. */}
           <SelectValue>
-            {() => (current ? <OptionContent option={current} /> : placeholder)}
+            {() => (current ? <OptionContent option={current} /> : value || placeholder)}
           </SelectValue>
         </SelectTrigger>
         <SelectContent

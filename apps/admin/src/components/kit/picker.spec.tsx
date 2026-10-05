@@ -57,6 +57,15 @@ describe('Picker', () => {
     expect(trigger).not.toHaveTextContent('southern');
   });
 
+  it('value lạ thì ô in chính value, không im lặng', () => {
+    // Cùng luật "nút in chính value" của `ToolbarFilterMenu`: giá trị không khớp mục nào (mục
+    // vừa bị gỡ khỏi danh sách, URL gõ tay) vẫn là giá trị form đang giữ. Hiện câu giữ chỗ là
+    // nói dối rằng chưa chọn gì; chỉ `''` mới là chưa chọn.
+    const { trigger } = renderPicker({ value: 'Western Vietnam' });
+    expect(trigger).toHaveTextContent('Western Vietnam');
+    expect(trigger).not.toHaveTextContent('Choose a region');
+  });
+
   it('mở ra đủ các mục theo thứ tự; chọn một mục thì trả CHUỖI giá trị', async () => {
     const user = userEvent.setup();
     const { onValueChange, trigger } = renderPicker();
