@@ -51,6 +51,20 @@ export function useVersionedForm<Detail extends { version: string }, Values>(
     setReloading(false);
   }
 
+  /**
+   * Lưu xong (vòng review P4e-4): nhận bản gốc và phiên bản server vừa ghi, nhưng giá trị form
+   * chỉ về bản server khi nó VẪN đúng là thứ đã gửi. Người dùng gõ thêm trong lúc chờ thì giữ
+   * chữ đang gõ — form còn "chưa lưu" so với bản gốc mới, lần lưu kế mang phiên bản mới.
+   */
+  function settle(next: Detail, sent: Values) {
+    const fresh = toValues(next);
+    setBase(fresh);
+    setRawValues((current) => (sameValues(current, sent) ? fresh : current));
+    setVersion(next.version);
+    setShowValidation(false);
+    setReloading(false);
+  }
+
   const newer = isNewerVersion(detail.version, version);
   // Chỉnh state NGAY TRONG RENDER thay vì `useEffect`: React chạy lại render
   // trước khi vẽ nên không có khung hình nào hiện bản cũ. Hết vòng vì `adopt`
@@ -78,6 +92,7 @@ export function useVersionedForm<Detail extends { version: string }, Values>(
     showValidation,
     setShowValidation,
     adopt,
+    settle,
     reload,
     /** Server đã có bản mới hơn thứ form đang sửa — khung hiện dải stale. */
     serverChanged: newer && dirty && !reloading,

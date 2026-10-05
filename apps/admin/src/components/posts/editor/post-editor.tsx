@@ -133,9 +133,11 @@ export function PostEditor({
     setPending(true);
     setBanner(null);
     setCardError(null);
+    // Bản đã gửi — lưu xong chỉ thay form bằng bản server khi người dùng chưa gõ thêm.
+    const sent = values;
     let result: UpdatePostResult;
     try {
-      result = await update(postPayload(detail.id, version, values));
+      result = await update(postPayload(detail.id, version, sent));
     } catch {
       // Action ném (mạng đứt, redeploy) ⇒ không biết lệnh đã đi tới đâu — như `useSectionSave`.
       result = { ok: false, code: 'GENERIC' };
@@ -144,7 +146,7 @@ export function PostEditor({
     setPending(false);
 
     if (result.ok) {
-      form.adopt(result.detail);
+      form.settle(result.detail, sent);
       setLastSaved(result.detail);
       toast.success(t.saved);
       router.refresh();

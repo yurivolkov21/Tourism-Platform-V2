@@ -97,6 +97,45 @@ describe('PostEditor — lưu cả form', () => {
     ).toBeInTheDocument();
   });
 
+  // Vòng review P4e-4: lưu xong form nạp lại NGUYÊN bản server, xoá mất chữ gõ trong lúc chờ.
+  it('gõ thêm trong lúc đang lưu: chữ mới còn nguyên, phiên bản mới được nhận, form vẫn chưa lưu', async () => {
+    let finish: (result: Awaited<ReturnType<UpdatePostAction>>) => void = () => {};
+    const update = vi.fn<UpdatePostAction>().mockReturnValue(
+      new Promise((resolve) => {
+        finish = resolve;
+      }),
+    );
+    const { user } = renderEditor({ update });
+    const excerpt = screen.getByLabelText(t.fields.excerpt);
+
+    await user.type(screen.getByLabelText(t.fields.title), ', again');
+    await user.click(saveButton());
+    await user.type(excerpt, ' Then coffee.');
+    finish({
+      ok: true,
+      detail: postDetailFixture({
+        title: 'Eating your way through Hội An, again',
+        version: '2026-10-02T10:20:00.000Z',
+      }),
+    });
+
+    await waitFor(() => expect(success).toHaveBeenCalledWith(t.saved));
+    expect(excerpt).toHaveValue('Five stalls before noon. Then coffee.');
+    expect(screen.getByLabelText(t.fields.title)).toHaveValue(
+      'Eating your way through Hội An, again',
+    );
+    // Còn chữ chưa lưu → Save mở; lần lưu kế mang phiên bản MỚI, không STALE với chính mình.
+    expect(saveButton()).not.toHaveAttribute('aria-disabled', 'true');
+    update.mockResolvedValue({ ok: true, detail: postDetailFixture() });
+    await user.click(saveButton());
+    expect(update).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        version: '2026-10-02T10:20:00.000Z',
+        excerpt: 'Five stalls before noon. Then coffee.',
+      }),
+    );
+  });
+
   it('chọn Published khi còn thiếu: KHÔNG gửi lệnh; dải báo liệt kê mục thiếu, mỗi mục link tới ô', async () => {
     const update = vi.fn<UpdatePostAction>();
     const { user } = renderEditor({
