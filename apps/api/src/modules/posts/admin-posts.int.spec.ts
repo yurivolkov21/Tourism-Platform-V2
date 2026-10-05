@@ -703,7 +703,11 @@ describe('admin posts integration (P4e-4)', () => {
       const res = await save(1, await fullSave(1, { relatedTourIds: [tourId(1), MISSING] }));
 
       expect(res.statusCode).toBe(404);
-      expect(res.json()).toMatchObject({ code: 'RELATED_TOUR_NOT_FOUND' });
+      // Chỉ ra ĐÚNG tour đã mất để form gỡ nó (vòng review P4e-4) — tour còn sống không lẫn vào.
+      expect(res.json()).toMatchObject({
+        code: 'RELATED_TOUR_NOT_FOUND',
+        data: { tourIds: [MISSING] },
+      });
       expect(await versionOf(1)).toBe(before);
       expect(await prisma.postTour.count()).toBe(0);
     });

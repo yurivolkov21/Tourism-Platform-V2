@@ -128,6 +128,16 @@ async function replaceRelatedTours(
     });
 }
 
+/** Tour trong danh sách gửi lên mà không còn trong DB — theo đúng thứ tự gửi. */
+async function missingTours(tourIds: readonly string[]): Promise<string[]> {
+  const found = await prisma.tour.findMany({
+    where: { id: { in: [...tourIds] } },
+    select: { id: true },
+  });
+  const alive = new Set(found.map((tour) => tour.id));
+  return tourIds.filter((id) => !alive.has(id));
+}
+
 /** Thay dòng ảnh bìa (role `hero`); trả các publicId phải vào lại hàng dọn. */
 async function replaceCover(
   tx: Prisma.TransactionClient,
@@ -261,7 +271,23 @@ export class AdminPostsService {
    */
   async update(input: AdminPostUpdateInput): Promise<AdminPostDetail> {
     const now = new Date();
-    const slug = await prisma.$transaction(async (tx) => {
+    const slug = await this.write(input, now).catch(async (error: unknown) => {
+      // Khoá ngoại bắt tại câu ghi (bài học F14); transaction đã rollback nên giờ mới đọc
+      // được. Câu này chỉ để chỉ ra TOUR NÀO — như câu thứ hai của `claimPost` chỉ để chọn mã.
+      if (error instanceof RelatedTourNotFoundError) {
+        throw new RelatedTourNotFoundError(await missingTours(input.relatedTourIds));
+      }
+      throw error;
+    });
+
+    this.logger.log(`[admin] post saved ${JSON.stringify({ id: input.id, status: input.status })}`);
+    this.bust(slug);
+    return this.get(slug, now);
+  }
+
+  /** Transaction của `update`, tách ra để bắt lỗi khoá ngoại SAU rollback. */
+  private write(input: AdminPostUpdateInput, now: Date): Promise<string> {
+    return prisma.$transaction(async (tx) => {
       const version = await claimPost(tx, input.id, input.version, now);
       if (input.status === 'PUBLISHED') {
         const missing = postReadiness({
@@ -290,10 +316,6 @@ export class AdminPostsService {
       await this.garbage.requeue(tx, requeue);
       return saved.slug;
     });
-
-    this.logger.log(`[admin] post saved ${JSON.stringify({ id: input.id, status: input.status })}`);
-    this.bust(slug);
-    return this.get(slug, now);
   }
 
   /**

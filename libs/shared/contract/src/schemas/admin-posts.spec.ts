@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import type { z } from 'zod';
 import { contract } from '../contract.js';
 import {
   AdminPostCreateInputSchema,
@@ -296,6 +297,14 @@ describe('contract.admin.posts (spec §3.1)', () => {
     expect(status(p.update, 'POST_NOT_READY')).toBe(409);
     expect(status(p.update, 'PHOTO_NOT_ALLOWED')).toBe(400);
     expect(status(p.update, 'RELATED_TOUR_NOT_FOUND')).toBe(404);
+  });
+
+  it('RELATED_TOUR_NOT_FOUND mang id các tour đã mất — tuỳ chọn, nên dựng không kèm data vẫn được', () => {
+    const data = (p.update['~orpc'].errorMap as Record<string, { data?: z.ZodType }> | undefined)
+      ?.RELATED_TOUR_NOT_FOUND?.data;
+    expect(data?.safeParse({ tourIds: [ID] }).success).toBe(true);
+    expect(data?.safeParse(undefined).success).toBe(true);
+    expect(data?.safeParse({ tourIds: ['not-a-uuid'] }).success).toBe(false);
     expect(status(p.create, 'SLUG_TAKEN')).toBe(409);
     expect(status(p.signCoverUpload, 'MEDIA_UPLOAD_NOT_CONFIGURED')).toBe(503);
   });

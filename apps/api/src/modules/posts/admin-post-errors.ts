@@ -49,9 +49,12 @@ export class PostPhotoNotAllowedError extends ContractError<'PHOTO_NOT_ALLOWED'>
   }
 }
 
-/** Khoá ngoại `post_tours.tour_id` hỏng ngay ở câu ghi (`P2003`). */
+/**
+ * Khoá ngoại `post_tours.tour_id` hỏng ngay ở câu ghi (`P2003`). `tourIds` là các tour đã
+ * mất — rỗng khi chưa biết (lúc ném từ trong transaction); service điền sau khi rollback.
+ */
 export class RelatedTourNotFoundError extends ContractError<'RELATED_TOUR_NOT_FOUND'> {
-  constructor() {
+  constructor(readonly tourIds: readonly string[] = []) {
     super('RELATED_TOUR_NOT_FOUND', 'A related tour no longer exists', false);
   }
 }

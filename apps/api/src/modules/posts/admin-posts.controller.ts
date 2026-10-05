@@ -6,6 +6,7 @@ import { CurrentUser } from '../../auth/current-user.decorator.js';
 import { Roles } from '../../auth/roles.decorator.js';
 import { UserRole } from '../../generated/prisma/enums.js';
 import { toContractError } from '../../lib/contract-error.js';
+import { RelatedTourNotFoundError } from './admin-post-errors.js';
 import { AdminPostsService } from './admin-posts.service.js';
 
 /**
@@ -54,6 +55,11 @@ export class AdminPostsController {
       try {
         return await this.posts.update(input);
       } catch (error) {
+        // Mã DUY NHẤT mang `data` — tour nào đã mất, để form gỡ đúng tour ấy (vòng review
+        // P4e-4). Các mã còn lại đi cổng chung như mọi controller.
+        if (error instanceof RelatedTourNotFoundError) {
+          throw errors.RELATED_TOUR_NOT_FOUND({ data: { tourIds: [...error.tourIds] } });
+        }
         throw toContractError(error, errors);
       }
     });

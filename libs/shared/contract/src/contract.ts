@@ -1575,7 +1575,14 @@ export const contract = {
             status: 400,
             message: 'The cover is not from this post, its uploads or the destination library',
           },
-          RELATED_TOUR_NOT_FOUND: { status: 404, message: 'A related tour no longer exists' },
+          RELATED_TOUR_NOT_FOUND: {
+            status: 404,
+            message: 'A related tour no longer exists',
+            // Tour nào đã mất, để form gỡ đúng tour ấy (vòng review P4e-4): xoá tour không đổi
+            // phiên bản bài, nên Reload không tự sửa được danh sách. Tuỳ chọn để đường đổi lỗi
+            // chung (`toContractError`) vẫn dựng được mã này không cần `data`.
+            data: z.object({ tourIds: z.array(z.uuid()) }).optional(),
+          },
           NOT_FOUND: { status: 404, message: 'Post not found' },
         })
         .output(AdminPostDetailSchema),
