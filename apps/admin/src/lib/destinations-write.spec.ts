@@ -1,14 +1,20 @@
+import { ORPCError } from '@orpc/client';
 import { contract } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
 import { describe, expect, it } from 'vitest';
 import { toDestinationRowVM } from './destinations-view';
 import {
   CREATE_CONTRACT_CODES,
+  classifyDeleteError,
+  DELETE_CONTRACT_CODES,
+  deleteBlockedReason,
+  deleteConfirmRows,
   destinationCreatePayload,
   destinationEditValues,
   destinationUpdatePayload,
   hideConsequences,
   isCreateStale,
+  isDeleteStale,
   isSetActiveStale,
   isUpdateStale,
   newDestinationFormValues,
@@ -22,7 +28,7 @@ import {
 import { hasFormErrors } from './form-errors';
 
 /**
- * Logic thuần của ba lệnh ghi vùng điểm đến (spec P4e-2 F15).
+ * Logic thuần của bốn lệnh ghi vùng điểm đến (spec P4e-2 F15, lệnh xoá theo ADR-0053).
  *
  * Ca đắt nhất vẫn là phép đối chiếu tập mã với contract (một mã quên viết câu
  * rơi về câu GENERIC mà không có gì đỏ), cộng hai thứ riêng của bảng này: ô vùng
@@ -211,6 +217,7 @@ describe('giá trị đầu của form sửa', () => {
       description: null,
       isActive: true,
       tourCount: 3,
+      linkedTourCount: 3,
     });
 
   it('chọn sẵn tên vùng CHUẨN — kể cả khi DB lưu dạng cũ', () => {
@@ -304,6 +311,7 @@ describe('hộp ẩn/hiện — nói đúng những gì bảng đo §4.6 tìm ra
       description: null,
       isActive: false,
       tourCount: 0,
+      linkedTourCount: 0,
     };
 
     expect(setActiveToast(row)).toEqual({
@@ -334,5 +342,55 @@ describe('hộp ẩn/hiện — nói đúng những gì bảng đo §4.6 tìm ra
     });
 
     expect(rows.map((r) => r.value)).toEqual(['Hội An', 'Central Vietnam', '4']);
+  });
+});
+
+describe('lệnh xoá (ADR-0053)', () => {
+  it('tập mã khớp đúng errorMap của contract', () => {
+    expect([...DELETE_CONTRACT_CODES].sort()).toEqual(
+      Object.keys(contract.admin.destinations.delete['~orpc'].errorMap).sort(),
+    );
+  });
+
+  it('phân loại lỗi: IN_USE và NOT_FOUND do CONTRACT khai → mã contract; trùng tên mà không có con dấu → GENERIC', () => {
+    // `deleteDestinationAction` đổi lỗi thành mã trần tại đây (`ORPCError` không qua được ranh
+    // giới action). Rơi về GENERIC thì hộp vẫn đóng nhưng câu báo mập mờ thay vì "hãy ẩn nó".
+    expect(classifyDeleteError(new ORPCError('IN_USE', { status: 409, defined: true }))).toBe(
+      'IN_USE',
+    );
+    expect(classifyDeleteError(new ORPCError('NOT_FOUND', { status: 404, defined: true }))).toBe(
+      'NOT_FOUND',
+    );
+    // Một ORPCError trùng tên từ tầng khác không được giả làm phán quyết của contract.
+    expect(classifyDeleteError(new ORPCError('IN_USE', { status: 409 }))).toBe('GENERIC');
+  });
+
+  it('phân loại lỗi: 401/403 → hết phiên / mất quyền; lỗi mạng → GENERIC', () => {
+    expect(classifyDeleteError(new ORPCError('UNAUTHORIZED', { status: 401 }))).toBe(
+      'UNAUTHORIZED',
+    );
+    expect(classifyDeleteError(new ORPCError('FORBIDDEN', { status: 403 }))).toBe('FORBIDDEN');
+    expect(classifyDeleteError(new TypeError('fetch failed'))).toBe('GENERIC');
+  });
+
+  it('IN_USE và NOT_FOUND đều là trạng thái cũ: đóng hộp, làm mới bảng', () => {
+    expect(isDeleteStale('IN_USE')).toBe(true);
+    expect(isDeleteStale('NOT_FOUND')).toBe(true);
+  });
+
+  it('còn tour thì nói lý do, số ít và số nhiều; hết tour thì xoá được', () => {
+    expect(deleteBlockedReason({ linkedTourCount: 1 })).toBe('Used by 1 tour — hide it instead.');
+    expect(deleteBlockedReason({ linkedTourCount: 3 })).toBe('Used by 3 tours — hide it instead.');
+    expect(deleteBlockedReason({ linkedTourCount: 0 })).toBeNull();
+  });
+
+  it('hộp xác nhận kể tên, vùng và slug', () => {
+    expect(
+      deleteConfirmRows({ name: 'Hội An', regionLabel: 'Central Vietnam', slug: 'hoi-an' }),
+    ).toEqual([
+      { label: 'Destination', value: 'Hội An' },
+      { label: 'Region', value: 'Central Vietnam' },
+      { label: 'Slug', value: 'hoi-an' },
+    ]);
   });
 });

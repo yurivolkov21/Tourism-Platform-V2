@@ -36,6 +36,7 @@ const SAVED: AdminDestinationRow = {
   description: null,
   isActive: true,
   tourCount: 0,
+  linkedTourCount: 0,
 };
 
 const EMPTY = { name: '', slug: '', country: 'Vietnam', region: '', description: '' };

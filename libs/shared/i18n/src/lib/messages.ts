@@ -5698,11 +5698,14 @@ export const messages = {
           slug: 'Slug',
           region: 'Region',
           country: 'Country',
-          tours: 'Published tours',
+          tours: 'Tours',
           status: 'Status',
           actions: 'Actions',
         },
         tours: (count: number) => (count === 1 ? '1 tour' : `${count} tours`),
+        /** Dòng mờ dưới tổng tour: số đang bán (spec 2026-10-05 §3.3). */
+        published: (count: number) => `${count} published`,
+        noTours: 'No tours',
         inherited: 'No description',
         /**
          * Chuỗi trong DB không khớp vùng nào — `findRegion` trả rỗng. Điểm đến
@@ -5847,6 +5850,30 @@ export const messages = {
               ? `${name} is back on the destination pages and the tour filter.`
               : `${name} is back in the tour filter.`,
         },
+      },
+      /** Xoá điểm đến chưa tour nào dùng (ADR-0053). */
+      delete: {
+        action: 'Delete',
+        actionLabel: (name: string) => `Delete ${name}`,
+        inUse: (count: number) =>
+          count === 1
+            ? 'Used by 1 tour — hide it instead.'
+            : `Used by ${count} tours — hide it instead.`,
+        rows: { destination: 'Destination', region: 'Region', slug: 'Slug' },
+        dialog: {
+          title: 'Delete this destination?',
+          body: 'No tour goes to this destination. Its photos leave the photo library; tours keep any photos they already use.',
+          warning: 'This cannot be undone.',
+          submit: 'Delete destination',
+          submitting: 'Deleting…',
+        },
+        /** Mã của contract `admin.destinations.delete` — `createWriteErrorCodec` derive từ keys. */
+        errors: {
+          IN_USE:
+            'A tour started using this destination a moment ago, so it can’t be deleted. Hide it instead.',
+          NOT_FOUND: 'This destination no longer exists. The table has been refreshed.',
+        },
+        toast: { title: 'Destination deleted', body: (name: string) => `${name} is gone.` },
       },
     },
     /**

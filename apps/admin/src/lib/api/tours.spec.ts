@@ -60,6 +60,7 @@ const destination = (over: Partial<AdminDestinationRow>): AdminDestinationRow =>
   description: null,
   isActive: true,
   tourCount: 5,
+  linkedTourCount: 5,
   ...over,
 });
 

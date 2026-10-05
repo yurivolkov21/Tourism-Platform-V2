@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { AdminDestinationRow } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
@@ -7,10 +7,14 @@ import { toDestinationRowVM } from '@/lib/destinations-view';
 import { DestinationRowActions } from './destination-row-actions';
 
 /**
- * Hai nút của một hàng bảng điểm đến (spec P4e-2 F15). Phần đáng pin là hộp
- * xác nhận ẨN: nó phải in đúng số tour và nói đủ những gì bảng đo spec §4.6
- * tìm ra — thứ admin hay đoán nhầm nhất là tưởng ẩn điểm đến thì ẩn luôn tour
- * đi qua nó, còn thứ không ai đoán ra là hộ chiếu của khách.
+ * Ba nút của một hàng bảng điểm đến (spec P4e-2 F15; nút Delete theo ADR-0053).
+ * Phần đáng pin:
+ *
+ *  ① hộp xác nhận ẨN phải in đúng số tour và nói đủ những gì bảng đo spec §4.6
+ *    tìm ra — thứ admin hay đoán nhầm nhất là tưởng ẩn điểm đến thì ẩn luôn tour
+ *    đi qua nó, còn thứ không ai đoán ra là hộ chiếu của khách;
+ *  ② nút Delete chỉ bấm được khi hàng 0 tour mọi trạng thái — gương của `IN_USE`,
+ *    và còn tour thì tooltip nói vì sao.
  */
 
 const t = messages.admin.destinations;
@@ -33,6 +37,7 @@ const row = (over: Partial<AdminDestinationRow> = {}): AdminDestinationRow => ({
   description: null,
   isActive: true,
   tourCount: 4,
+  linkedTourCount: 4,
   ...over,
 });
 
@@ -43,17 +48,20 @@ function renderRow(data: AdminDestinationRow, over: Record<string, unknown> = {}
     ok: true as const,
     row: { ...data, isActive: !data.isActive },
   }));
+  const remove = vi.fn(async () => ({ ok: true as const, deleted: { slug: data.slug } }));
+  const onSettled = vi.fn();
   render(
     <DestinationRowActions
       row={vm}
       update={update}
       setActive={setActive}
+      remove={remove}
       disabled={false}
-      onSettled={vi.fn()}
+      onSettled={onSettled}
       {...over}
     />,
   );
-  return { vm, update, setActive };
+  return { vm, update, setActive, remove, onSettled };
 }
 
 beforeEach(() => {
@@ -138,6 +146,7 @@ describe('DestinationRowActions — hộp xác nhận ẩn', () => {
         row={vm}
         update={vi.fn()}
         setActive={setActive}
+        remove={vi.fn()}
         disabled={false}
         onSettled={vi.fn()}
       />,
@@ -224,5 +233,46 @@ describe('DestinationRowActions — form sửa', () => {
 
     expect(screen.queryByText(t.edit.dialog.title)).not.toBeInTheDocument();
     expect(screen.queryByText(t.setActive.dialog.hideTitle)).not.toBeInTheDocument();
+  });
+});
+
+describe('DestinationRowActions — nút Delete (ADR-0053)', () => {
+  it('còn tour: nút Delete khoá, rê chuột thấy "Used by N tours"', async () => {
+    const user = userEvent.setup();
+    renderRow(row());
+
+    const button = screen.getByRole('button', { name: t.delete.actionLabel('Hội An') });
+    expect(button).toHaveAttribute('aria-disabled', 'true');
+    await user.hover(button);
+    expect(await screen.findByText(t.delete.inUse(4))).toBeInTheDocument();
+  });
+
+  it('chỉ còn tour nháp (0 đang bán): nút Delete VẪN khoá — đếm tour mọi trạng thái', async () => {
+    // ADR-0053 §1: xoá được khi KHÔNG tour nào dùng, kể cả tour đang tắt bán. Hàng mặc
+    // định có hai số bằng nhau nên ca trên không phân biệt được; nút đọc `tourCount` thì
+    // hàng này mời bấm, và server trả `IN_USE`.
+    const user = userEvent.setup();
+    renderRow(row({ tourCount: 0, linkedTourCount: 1 }));
+
+    const button = screen.getByRole('button', { name: t.delete.actionLabel('Hội An') });
+    expect(button).toHaveAttribute('aria-disabled', 'true');
+    await user.hover(button);
+    expect(await screen.findByText(t.delete.inUse(1))).toBeInTheDocument();
+  });
+
+  it('0 tour: xác nhận gửi đúng id, toast tên hàng, rồi làm mới bảng', async () => {
+    const user = userEvent.setup();
+    const data = row({ tourCount: 0, linkedTourCount: 0 });
+    const { remove, onSettled } = renderRow(data);
+
+    await user.click(screen.getByRole('button', { name: t.delete.actionLabel('Hội An') }));
+    const dialog = await screen.findByRole('dialog', { name: t.delete.dialog.title });
+    await user.click(within(dialog).getByRole('button', { name: t.delete.dialog.submit }));
+
+    await waitFor(() => expect(onSettled).toHaveBeenCalled());
+    expect(remove).toHaveBeenCalledWith({ id: data.id });
+    expect(success).toHaveBeenCalledWith(t.delete.toast.title, {
+      description: t.delete.toast.body('Hội An'),
+    });
   });
 });

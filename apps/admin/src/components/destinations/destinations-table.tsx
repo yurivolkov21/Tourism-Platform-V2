@@ -13,11 +13,13 @@ import { ColumnVisibilityMenu, DataTableBody } from '@/components/kit/data-table
 import { DataTableFrame } from '@/components/kit/data-table-frame';
 import { NameDescriptionCell } from '@/components/kit/name-description-cell';
 import { serverTableFeatures } from '@/components/kit/table-features';
+import { TourCountCell } from '@/components/kit/tour-count-cell';
 import { type DestinationRowVM, destinationStatusBadgeVariant } from '@/lib/destinations-view';
 import {
   type CreateContractCode,
   type CreateDestinationAction,
   createErrorCopy,
+  type DeleteDestinationAction,
   destinationCreatePayload,
   isCreateStale,
   newDestinationFormValues,
@@ -69,11 +71,13 @@ function ActionsCell({
   row,
   update,
   setActive,
+  remove,
   onSettled,
 }: {
   row: DestinationRowVM;
   update: UpdateDestinationAction;
   setActive: SetDestinationActiveAction;
+  remove: DeleteDestinationAction;
   onSettled: () => void;
 }) {
   const busy = React.useContext(BusyContext);
@@ -82,6 +86,7 @@ function ActionsCell({
       row={row}
       update={update}
       setActive={setActive}
+      remove={remove}
       disabled={busy}
       onSettled={onSettled}
     />
@@ -93,9 +98,16 @@ export interface DestinationsTableProps {
   create: CreateDestinationAction;
   update: UpdateDestinationAction;
   setActive: SetDestinationActiveAction;
+  remove: DeleteDestinationAction;
 }
 
-export function DestinationsTable({ rows, create, update, setActive }: DestinationsTableProps) {
+export function DestinationsTable({
+  rows,
+  create,
+  update,
+  setActive,
+  remove,
+}: DestinationsTableProps) {
   const router = useRouter();
   const [columnVisibility, setColumnVisibility] = React.useState<ColumnVisibilityState>({
     country: false,
@@ -145,7 +157,11 @@ export function DestinationsTable({ rows, create, update, setActive }: Destinati
         columnHelper.accessor('toursLabel', {
           header: t.list.columns.tours,
           cell: ({ row }) => (
-            <span className="tabular-nums whitespace-nowrap">{row.original.toursLabel}</span>
+            <TourCountCell
+              total={row.original.linkedTourCount}
+              totalLabel={row.original.toursLabel}
+              publishedLabel={row.original.publishedLabel}
+            />
           ),
         }),
         columnHelper.accessor('statusLabel', {
@@ -167,6 +183,7 @@ export function DestinationsTable({ rows, create, update, setActive }: Destinati
               row={row.original}
               update={update}
               setActive={setActive}
+              remove={remove}
               onSettled={refreshList}
             />
           ),
@@ -174,7 +191,7 @@ export function DestinationsTable({ rows, create, update, setActive }: Destinati
         }),
       ]),
     // KHÔNG có cờ bận ở đây — xem `BusyContext`.
-    [update, setActive, refreshList],
+    [update, setActive, remove, refreshList],
   );
 
   const table = useTable({

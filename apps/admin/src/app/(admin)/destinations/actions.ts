@@ -3,6 +3,9 @@
 import {
   type AdminDestinationCreateInput,
   AdminDestinationCreateInputSchema,
+  type AdminDestinationDeleteInput,
+  AdminDestinationDeleteInputSchema,
+  type AdminDestinationDeleteResult,
   type AdminDestinationRow,
   type AdminDestinationSetActiveInput,
   AdminDestinationSetActiveInputSchema,
@@ -12,22 +15,25 @@ import {
 import { cookies } from 'next/headers';
 import {
   createAdminDestination,
+  deleteAdminDestination,
   setAdminDestinationActive,
   updateAdminDestination,
 } from '@/lib/api/destinations';
 import {
   type CreateContractCode,
   classifyCreateError,
+  classifyDeleteError,
   classifySetActiveError,
   classifyUpdateError,
+  type DestinationDeleteResult,
   type DestinationWriteResult,
   type SetActiveContractCode,
   type UpdateContractCode,
 } from '@/lib/destinations-write';
 
 /**
- * BA hành vi ghi của vùng điểm đến (spec P4e-2 F15) — cùng khuôn đã chốt ở
- * `categories/actions.ts`:
+ * BỐN hành vi ghi của vùng điểm đến (spec P4e-2 F15, lệnh xoá theo ADR-0053) —
+ * cùng khuôn đã chốt ở `categories/actions.ts`:
  *
  * - SERVER ACTION vì client oRPC của admin là đường server-only (đọc cookie
  *   phiên qua `next/headers`), được gọi từ một dialog client.
@@ -88,4 +94,21 @@ export async function setDestinationActiveAction(
   }
   // Trạng thái đọc từ RESPONSE, không từ input đã gửi.
   return { ok: true, row };
+}
+
+export async function deleteDestinationAction(
+  input: AdminDestinationDeleteInput,
+): Promise<DestinationDeleteResult> {
+  const parsed = AdminDestinationDeleteInputSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, code: 'INVALID_INPUT' };
+
+  const cookie = (await cookies()).toString();
+  let deleted: AdminDestinationDeleteResult;
+  try {
+    deleted = await deleteAdminDestination(cookie, parsed.data);
+  } catch (error) {
+    // `ORPCError` không sống sót qua ranh giới action — phân loại tại đây.
+    return { ok: false, code: classifyDeleteError(error) };
+  }
+  return { ok: true, deleted };
 }

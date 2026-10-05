@@ -6,12 +6,21 @@ import { EyeIcon, EyeOffIcon, PencilIcon } from 'lucide-react';
 import { useState } from 'react';
 import { DestinationFormDialog } from '@/components/destinations/destination-form-dialog';
 import { ConfirmWriteDialog } from '@/components/kit/confirm-write-dialog';
+import { DeleteRowAction } from '@/components/kit/delete-row-action';
 import { StableLabel } from '@/components/kit/stable-label';
 import type { DestinationRowVM } from '@/lib/destinations-view';
 import {
+  type DeleteContractCode,
+  type DeleteDestinationAction,
+  deleteBlockedReason,
+  deleteConfirmRows,
+  deleteDialogCopy,
+  deleteErrorCopy,
+  deleteToast,
   destinationEditValues,
   destinationUpdatePayload,
   hideConsequences,
+  isDeleteStale,
   isSetActiveStale,
   isUpdateStale,
   type SetActiveContractCode,
@@ -26,11 +35,15 @@ import {
 } from '@/lib/destinations-write';
 
 /**
- * Hai hành động của MỘT hàng bảng điểm đến (spec P4e-2 F15): Sửa · Ẩn/Hiện.
+ * Ba hành động của MỘT hàng bảng điểm đến: Sửa · Ẩn/Hiện (spec P4e-2 F15) và Xoá
+ * (ADR-0053). KHÔNG có mũi tên: bảng này không có thứ tự nào để sắp.
  *
- * KHÔNG có nút xoá (spec §2a — khoá ngoại `tour_destinations` khai `ON DELETE
- * CASCADE`, một lệnh xoá sẽ âm thầm gỡ điểm đến khỏi mọi tour), và KHÔNG có
- * mũi tên: bảng này không có thứ tự nào để sắp.
+ * Delete bật khi 0 tour — ADR-0053, thay quyết định "không có nút xoá" của spec P4e-2
+ * §2a. Đếm tour MỌI trạng thái (`linkedTourCount`); còn tour thì nút khoá và tooltip
+ * gợi ý ẩn: ẩn đảo ngược được bằng một cú bấm, còn xoá thì không. Server vẫn là phán
+ * quyết cuối — bảng có thể cũ hơn DB, và `IN_USE` khi ấy đóng hộp rồi làm mới. Khoá
+ * ngoại `tour_destinations` vẫn khai `ON DELETE CASCADE`, nên chốt chặn thật là phép
+ * đếm liên kết dưới khoá hàng ở API (ADR-0053 §3), không phải nút này.
  *
  * Hộp xác nhận ẨN nói đủ những gì bảng đo spec §4.6 tìm ra — cả hai hệ quả
  * không hiển nhiên ở trang vùng lẫn hộ chiếu của khách — rồi mới trấn an bằng
@@ -44,12 +57,15 @@ export function DestinationRowActions({
   row,
   update,
   setActive,
+  remove,
   disabled,
   onSettled,
 }: {
   row: DestinationRowVM;
   update: UpdateDestinationAction;
   setActive: SetDestinationActiveAction;
+  /** Lệnh xoá (ADR-0053) — trang chở xuống. */
+  remove: DeleteDestinationAction;
   /** Bảng đang kéo dữ liệu tươi về — khoá mọi nút cho tới khi xong. */
   disabled: boolean;
   onSettled: () => void;
@@ -98,6 +114,26 @@ export function DestinationRowActions({
           reserve={[t.setActive.hide, t.setActive.show]}
         />
       </Button>
+
+      <DeleteRowAction<DeleteContractCode>
+        label={t.delete.action}
+        actionLabel={t.delete.actionLabel(row.name)}
+        blockedReason={deleteBlockedReason(row)}
+        disabled={disabled}
+        dialog={{
+          copy: deleteDialogCopy(),
+          rows: deleteConfirmRows(row),
+          isStale: isDeleteStale,
+          errorCopy: deleteErrorCopy,
+          onSubmit: async () => {
+            const result = await remove({ id: row.id });
+            if (!result.ok) return { ok: false, code: result.code };
+            // Response chỉ chở slug (hàng đã mất), nên tên lấy từ hàng đang hiện.
+            return { ok: true, toast: deleteToast(row.name) };
+          },
+        }}
+        onSettled={onSettled}
+      />
 
       {editing ? (
         <DestinationFormDialog<UpdateContractCode>

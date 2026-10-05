@@ -8,6 +8,7 @@ import { getServerSession } from '@/lib/api/session';
 import { toDestinationRowVM } from '@/lib/destinations-view';
 import {
   createDestinationAction,
+  deleteDestinationAction,
   setDestinationActiveAction,
   updateDestinationAction,
 } from './actions';
@@ -24,7 +25,7 @@ import {
  * deploy (bài học 21): Vercel thường xong trước Render, và trong vài phút ấy
  * màn mới gọi `admin.destinations.*` mà API cũ chưa có.
  *
- * Trang chở cả ba server action xuống bảng (thay vì để component tự import):
+ * Trang chở cả bốn server action xuống bảng (thay vì để component tự import):
  * bảng và dialog test được với hàm giả, không phải mock `next/headers`.
  */
 const t = messages.admin.destinations;
@@ -52,6 +53,7 @@ export default async function DestinationsPage() {
         create={createDestinationAction}
         update={updateDestinationAction}
         setActive={setDestinationActiveAction}
+        remove={deleteDestinationAction}
       />
     </AdminShell>
   );

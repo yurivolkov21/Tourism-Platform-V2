@@ -1,5 +1,7 @@
 import type {
   AdminDestinationCreateInput,
+  AdminDestinationDeleteInput,
+  AdminDestinationDeleteResult,
   AdminDestinationRow,
   AdminDestinationSetActiveInput,
   AdminDestinationUpdateInput,
@@ -7,9 +9,10 @@ import type {
 import { api, withAdminAuth } from './client';
 
 /**
- * Bốn đường của vùng điểm đến (spec P4e-2 F15) — bọc mỏng `admin.destinations.*`.
+ * Năm đường của vùng điểm đến (spec P4e-2 F15, lệnh xoá theo ADR-0053) — bọc mỏng
+ * `admin.destinations.*`.
  *
- * KHÔNG nuốt lỗi ở ba lệnh ghi: mã contract phải tới server action nguyên vẹn
+ * KHÔNG nuốt lỗi ở bốn lệnh ghi: mã contract phải tới server action nguyên vẹn
  * để nó đổi thành một mã UI. Cùng nếp `api/categories.ts`.
  */
 
@@ -38,4 +41,12 @@ export async function setAdminDestinationActive(
   input: AdminDestinationSetActiveInput,
 ): Promise<AdminDestinationRow> {
   return api.admin.destinations.setActive(input, { context: withAdminAuth(cookie) });
+}
+
+/** Xoá một điểm đến chưa tour nào dùng (ADR-0053) — trả slug của hàng vừa xoá. */
+export async function deleteAdminDestination(
+  cookie: string,
+  input: AdminDestinationDeleteInput,
+): Promise<AdminDestinationDeleteResult> {
+  return api.admin.destinations.delete(input, { context: withAdminAuth(cookie) });
 }
