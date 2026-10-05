@@ -11,8 +11,8 @@ import { prisma } from '../../auth/auth.config.js';
 import { Prisma } from '../../generated/prisma/client.js';
 import { MediaOwnerType } from '../../generated/prisma/enums.js';
 import { ContractError } from '../../lib/contract-error.js';
-import { tourRevalidationTags } from '../web-revalidation/revalidation-decision.js';
 import { WebRevalidationService } from '../web-revalidation/web-revalidation.service.js';
+import { countTours, type TourCounts, writtenTags } from './destination-tour-links.js';
 
 /**
  * Năm thao tác quản trị điểm đến (spec P4e-2 F15).
@@ -91,7 +91,6 @@ const DESTINATION_WRITE_SELECT = {
 } satisfies Prisma.DestinationSelect;
 
 type DestinationColumns = Prisma.DestinationGetPayload<{ select: typeof DESTINATION_COLUMNS }>;
-type DestinationWritten = Prisma.DestinationGetPayload<{ select: typeof DESTINATION_WRITE_SELECT }>;
 
 /**
  * Sắp theo tên như bề mặt công khai (`catalog.listDestinations`), cộng `id` làm
@@ -102,19 +101,6 @@ const DESTINATION_ORDER_BY = [
   { name: 'asc' },
   { id: 'asc' },
 ] satisfies Prisma.DestinationOrderByWithRelationInput[];
-
-/** Hai con số tour của một hàng — xem `DESTINATION_SELECT`. */
-interface TourCounts {
-  tourCount: number;
-  linkedTourCount: number;
-}
-
-function countTours(links: ReadonlyArray<{ tour: { isPublished: boolean } }>): TourCounts {
-  return {
-    tourCount: links.filter((link) => link.tour.isPublished).length,
-    linkedTourCount: links.length,
-  };
-}
 
 /** Hàng DB → hàng contract. `region` đi nguyên văn — chuẩn hoá là việc của người đọc. */
 function toRow(row: DestinationColumns, counts: TourCounts): AdminDestinationRow {
@@ -129,13 +115,6 @@ function toRow(row: DestinationColumns, counts: TourCounts): AdminDestinationRow
     tourCount: counts.tourCount,
     linkedTourCount: counts.linkedTourCount,
   };
-}
-
-/** Tag cần bust sau khi sửa hoặc ẩn/hiện một điểm đến — `tours` cộng trang của mọi tour gắn nó. */
-function writtenTags(row: DestinationWritten): string[] {
-  return [
-    ...new Set(['tours', ...row.tours.flatMap((link) => tourRevalidationTags(link.tour.slug))]),
-  ];
 }
 
 function isPrismaCode(error: unknown, code: 'P2002' | 'P2025'): boolean {
@@ -202,7 +181,7 @@ export class AdminDestinationsService {
     this.logger.log(
       `[admin] destination updated ${JSON.stringify({ id: input.id, region: input.region })}`,
     );
-    this.bust(writtenTags(updated));
+    this.bust(writtenTags(updated.tours));
     return toRow(updated, countTours(updated.tours));
   }
 
@@ -226,7 +205,7 @@ export class AdminDestinationsService {
     this.logger.log(
       `[admin] destination active ${JSON.stringify({ id: input.id, isActive: input.isActive })}`,
     );
-    this.bust(writtenTags(updated));
+    this.bust(writtenTags(updated.tours));
     return toRow(updated, countTours(updated.tours));
   }
 
