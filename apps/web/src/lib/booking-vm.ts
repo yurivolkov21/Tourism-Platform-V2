@@ -123,3 +123,18 @@ export function refundSummary(b: Booking): RefundSummary | null {
   if (refunded >= total) return { kind: 'full', amount: b.refundedTotal };
   return { kind: 'partial', amount: b.refundedTotal, total: b.totalAmount };
 }
+
+/**
+ * Tên cổng thanh toán cho khách đọc ("Card (Stripe)", "PayPal") — MỘT nguồn cho biên nhận,
+ * trang chi tiết đơn và voucher. Trước P7 có hai bảng `PROVIDER_LABEL` chép tay (biên nhận và
+ * trang chi tiết đơn); hai bản là hai chỗ sẽ trôi lệch khi thêm cổng. `switch` đủ mọi giá trị:
+ * enum `PaymentProvider` thêm cổng mới thì typecheck đỏ ngay ở đây.
+ */
+export function paymentProviderLabel(provider: Booking['paymentProvider']): string {
+  switch (provider) {
+    case 'STRIPE':
+      return messages.booking.form.stripe;
+    case 'PAYPAL':
+      return messages.booking.form.paypal;
+  }
+}

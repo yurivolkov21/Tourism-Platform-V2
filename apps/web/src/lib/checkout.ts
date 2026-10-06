@@ -1,4 +1,6 @@
 import type { Booking } from '@tourism/contract';
+import { messages } from '@tourism/i18n';
+import { formatMoney } from './tours';
 
 /**
  * Hạn sống của một booking PENDING, tính bằng phút kể từ `createdAt`.
@@ -42,6 +44,34 @@ export function computeBookingTotal(
   children: number,
 ): string {
   return (Number(effectivePrice) * (adults + children)).toFixed(2);
+}
+
+/** Một dòng tiền của đơn: nhãn ("2 adults") và số tiền đã định dạng ("$98"). */
+export interface PriceLine {
+  label: string;
+  amount: string;
+}
+
+/**
+ * Dòng tiền theo người lớn và trẻ em — MỘT nguồn cho biên nhận (`BookingReceipt`), trang chi
+ * tiết đơn và voucher (spec P7 §4.2). Trẻ em cùng đơn giá người lớn (luật của
+ * `computeBookingTotal` ngay trên). Nhãn từ `messages.checkoutSummary`, số tiền là
+ * `formatMoney(đơn giá × số người)` — làm tròn đơn vị đúng như biên nhận trước nay. Không có
+ * trẻ em thì bỏ hẳn dòng ấy.
+ */
+export function bookingPriceLines(
+  booking: Pick<Booking, 'unitPrice' | 'numAdults' | 'numChildren' | 'currency'>,
+): PriceLine[] {
+  const ts = messages.checkoutSummary;
+  const line = (label: string, travellers: number): PriceLine => ({
+    label,
+    amount: formatMoney((Number(booking.unitPrice) * travellers).toFixed(2), booking.currency),
+  });
+  const lines = [line(ts.adultsLine(booking.numAdults), booking.numAdults)];
+  if (booking.numChildren > 0) {
+    lines.push(line(ts.childrenLine(booking.numChildren), booking.numChildren));
+  }
+  return lines;
 }
 
 export function checkoutMood(booking: Booking): CheckoutMood {

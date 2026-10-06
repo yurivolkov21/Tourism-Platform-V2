@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { makeBooking } from '@/test/fixtures/booking';
 import {
+  bookingPriceLines,
   checkoutMood,
   computeBookingTotal,
   PENDING_TTL_MINUTES,
@@ -144,5 +145,38 @@ describe('ticketBarcodeWidths — vạch barcode giả deterministic theo mã đ
 
   it('mã ngắn hơn số vạch vẫn sinh đủ vạch (lặp ký tự theo chu kỳ)', () => {
     expect(ticketBarcodeWidths('BK-1')).toHaveLength(52);
+  });
+});
+
+describe('bookingPriceLines — dòng tiền theo người lớn và trẻ em (spec P7 §4.2)', () => {
+  it('tách người lớn và trẻ em; số tiền = đơn giá × số người', () => {
+    expect(
+      bookingPriceLines({ unitPrice: '49.00', numAdults: 2, numChildren: 1, currency: 'USD' }),
+    ).toEqual([
+      { label: '2 adults', amount: '$98' },
+      { label: '1 child', amount: '$49' },
+    ]);
+  });
+
+  /** Một dòng "0 children" chỉ làm hoá đơn dài ra mà không thêm sự thật nào. */
+  it('không có trẻ em thì chỉ một dòng', () => {
+    expect(
+      bookingPriceLines({ unitPrice: '39.00', numAdults: 1, numChildren: 0, currency: 'USD' }),
+    ).toEqual([{ label: '1 adult', amount: '$39' }]);
+  });
+
+  it('làm tròn đơn vị như biên nhận trước nay (`formatMoney`)', () => {
+    expect(
+      bookingPriceLines({ unitPrice: '19.50', numAdults: 3, numChildren: 2, currency: 'USD' }),
+    ).toEqual([
+      { label: '3 adults', amount: '$59' },
+      { label: '2 children', amount: '$39' },
+    ]);
+  });
+
+  it('nhận thẳng một Booking — đúng cách trang chi tiết và voucher gọi', () => {
+    expect(
+      bookingPriceLines(makeBooking({ unitPrice: '120.00', numAdults: 2, numChildren: 0 })),
+    ).toEqual([{ label: '2 adults', amount: '$240' }]);
   });
 });

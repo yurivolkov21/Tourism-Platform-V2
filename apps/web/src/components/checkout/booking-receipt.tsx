@@ -4,8 +4,9 @@ import { cn } from '@tourism/ui/lib/utils';
 import { CopyCodeButton } from '@/components/checkout/copy-code-button';
 import { RevealItem } from '@/components/motion/reveal-item';
 import { todayDateString } from '@/lib/account-stats';
+import { paymentProviderLabel } from '@/lib/booking-vm';
 import type { CheckoutMood } from '@/lib/checkout';
-import { ticketBarcodeWidths, ticketSerial } from '@/lib/checkout';
+import { bookingPriceLines, ticketBarcodeWidths, ticketSerial } from '@/lib/checkout';
 import { STAGGER } from '@/lib/motion';
 import { formatDate, formatDateRange, formatMoney } from '@/lib/tours';
 
@@ -27,6 +28,9 @@ import { formatDate, formatDateRange, formatMoney } from '@/lib/tours';
  * CỐ Ý không dùng `border: dashed` và không notch bán nguyệt: JSDoc
  * `CheckoutShell` ghi rõ bản trước nó bị bác vì đúng combo đó ("cliché card giả
  * vờ làm vé"). Đường xé ở đây là hàng chấm — cùng công thức `TicketTear`.
+ * Riêng vé của TRANG CHI TIẾT ĐƠN, user duyệt lại đúng combo gạch đứt + vết khuyết ngày
+ * 05/10/2026 (plan P7 quyết định 4, bản vẽ `booking-detail.src.html`); quyết định 19/08 ở đây
+ * vẫn đúng cho biên nhận này và cho voucher.
  *
  * `CheckoutShell` (tấm vé) đã XOÁ hẳn: user chốt 19/08 cho `/checkout/cancel`
  * dùng chung khuôn này, nên nó hết consumer. Hai màn quay-về của cùng một
@@ -43,11 +47,6 @@ const PILL = {
   confirming: 'bg-warning text-warning-foreground',
   settled: 'bg-muted text-muted-foreground',
 } as const satisfies Record<CheckoutMood, string>;
-
-const PROVIDER_LABEL = {
-  STRIPE: messages.booking.form.stripe,
-  PAYPAL: messages.booking.form.paypal,
-} as const;
 
 export function BookingReceipt({
   booking,
@@ -103,15 +102,6 @@ export function BookingReceipt({
   // CHUỖI ngày; đừng đem `new Date(ngày)` so với giờ thật: nó là nửa đêm UTC,
   // lệch bảy tiếng so với lịch Việt Nam.
   const departed = booking.departureStartDate <= todayDateString();
-
-  const adultsAmount = formatMoney(
-    (Number(booking.unitPrice) * booking.numAdults).toFixed(2),
-    booking.currency,
-  );
-  const childrenAmount = formatMoney(
-    (Number(booking.unitPrice) * booking.numChildren).toFixed(2),
-    booking.currency,
-  );
 
   return (
     <div className="mx-auto w-full max-w-3xl px-4">
@@ -189,7 +179,7 @@ export function BookingReceipt({
             </Column>
 
             <Column label={t.paymentLabel}>
-              <p className="font-medium">{PROVIDER_LABEL[booking.paymentProvider]}</p>
+              <p className="font-medium">{paymentProviderLabel(booking.paymentProvider)}</p>
               {/* Sandbox disclosure — dùng LẠI key đã có, không bịa key trùng nghĩa. */}
               <p className="text-muted-foreground">{messages.tourDetail.booking.testMode}</p>
               {booking.paidAt ? (
@@ -242,10 +232,9 @@ export function BookingReceipt({
 
         <RevealItem enter="rise" delay={2 * STAGGER.grid}>
           <dl className="ml-auto w-full max-w-xs px-4 pb-1">
-            <Row k={ts.adultsLine(booking.numAdults)} v={adultsAmount} />
-            {booking.numChildren > 0 ? (
-              <Row k={ts.childrenLine(booking.numChildren)} v={childrenAmount} />
-            ) : null}
+            {bookingPriceLines(booking).map((line) => (
+              <Row key={line.label} k={line.label} v={line.amount} />
+            ))}
             <div className="mt-3 flex items-baseline justify-between border-t pt-3">
               {/* "Total paid" chỉ đúng khi đã trả. Chưa trả thì dùng nhãn trung
                 tính sẵn có của `checkoutSummary` thay vì khai key mới. */}

@@ -5,6 +5,7 @@ import {
   bookingView,
   cancellationDeadlineText,
   legacyCancellationNote,
+  paymentProviderLabel,
   refundSummary,
 } from './booking-vm';
 
@@ -175,5 +176,15 @@ describe('refundSummary', () => {
         makeBooking({ status: 'REFUNDED', totalAmount: '29.00', refundedTotal: '29.01' }),
       ),
     ).toEqual({ kind: 'full', amount: '29.01' });
+  });
+});
+
+describe('paymentProviderLabel — tên cổng thanh toán cho khách đọc', () => {
+  // Chữ ghim nguyên văn `messages.booking.form.stripe|paypal` (messages.ts:289,291).
+  it.each([
+    ['STRIPE', 'Card (Stripe)'],
+    ['PAYPAL', 'PayPal'],
+  ] as const)('%s → %s', (provider, label) => {
+    expect(paymentProviderLabel(provider)).toBe(label);
   });
 });
