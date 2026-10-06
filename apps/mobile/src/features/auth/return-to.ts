@@ -15,11 +15,23 @@ export interface PendingReturn {
   /** Việc dở màn đích tự làm nốt (D6: tự lưu wishlist). Chuỗi định danh + payload
       thay vì closure — closure sống sót qua unmount/remount của chuỗi màn auth là
       giả định không chắc chắn. */
-  replay?: { kind: 'wishlist'; tourId: string };
+  replay?: PendingReplay;
+}
+
+/**
+ * `from`: màn đã đặt replay (D3) — Explore (tab giữ mount) và tour detail có
+ * thể cùng sống và cùng đọc replay ngay khi `signedIn` bật, nên mỗi màn chỉ
+ * nhận replay của chính mình qua điều kiện của `consumePendingReplay`. Bỏ
+ * trống = tour detail (đường gốc D6, trước khi có Explore).
+ */
+export interface PendingReplay {
+  kind: 'wishlist';
+  tourId: string;
+  from?: 'tour-detail' | 'explore';
 }
 
 let pendingPath: string | null = null;
-let pendingReplay: PendingReturn['replay'];
+let pendingReplay: PendingReplay | undefined;
 /** Chặng auth đã đọc `path` (= đăng nhập/đăng ký xong) — từ lúc này `replay`
     thuộc về màn đích, rời nhóm (auth) không được xoá nó nữa. */
 let pathConsumed = false;
@@ -40,11 +52,23 @@ export function consumeReturnPath(): string | null {
   return path;
 }
 
+/** Đọc `path` mà KHÔNG xoá và KHÔNG coi là đăng nhập xong — cho nút X ở Sign
+    in biết khách mở từ đâu để đóng về đúng chỗ (D3). */
+export function peekReturnPath(): string | null {
+  return pendingPath;
+}
+
 /** Gọi Ở MÀN ĐÍCH (effect mount-once, sau khi `signedIn` vừa bật — màn có thể
     vẫn đang mount sẵn dưới modal đăng nhập, không nhất thiết vừa điều hướng
-    tới) — lấy VÀ xoá `replay`. Không đụng `path`: chặng auth có thể chưa đọc. */
-export function consumePendingReplay(): PendingReturn['replay'] {
+    tới) — lấy VÀ xoá `replay`. Không đụng `path`: chặng auth có thể chưa đọc.
+
+    `accept` (D3): màn chỉ nhận replay CỦA MÌNH — không khớp thì để nguyên cho
+    màn khác đang cùng mount, KHÔNG xoá. Bỏ trống = nhận mọi replay. */
+export function consumePendingReplay(
+  accept: (replay: PendingReplay) => boolean = () => true,
+): PendingReplay | undefined {
   const replay = pendingReplay;
+  if (replay === undefined || !accept(replay)) return undefined;
   pendingReplay = undefined;
   return replay;
 }

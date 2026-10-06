@@ -147,8 +147,12 @@ export default function TourDetailRoute() {
   // biome-ignore lint/correctness/useExhaustiveDependencies: xem giải thích trên.
   useEffect(() => {
     if (!signedIn || tourId === undefined) return;
-    const replay = consumePendingReplay();
-    if (replay?.kind !== 'wishlist' || replay.tourId !== tourId) return;
+    // D3: chỉ nhận replay của CHÍNH tour này đặt — replay Explore đặt (tab
+    // Explore mount song song) hoặc của tour khác trong stack thì để nguyên.
+    const replay = consumePendingReplay(
+      (r) => r.kind === 'wishlist' && r.from !== 'explore' && r.tourId === tourId,
+    );
+    if (replay === undefined) return;
     setWished(true);
     setWishlistMutation.mutate(
       { tourId, wished: true },
@@ -209,7 +213,7 @@ export default function TourDetailRoute() {
     setPendingReturn(
       tourId === undefined
         ? { path: `/tours/${slug}` }
-        : { path: `/tours/${slug}`, replay: { kind: 'wishlist', tourId } },
+        : { path: `/tours/${slug}`, replay: { kind: 'wishlist', tourId, from: 'tour-detail' } },
     );
   }
 

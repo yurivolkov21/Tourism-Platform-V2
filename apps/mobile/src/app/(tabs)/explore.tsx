@@ -3,6 +3,7 @@ import { messages } from '@tourism/i18n';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import { AuthGateSheet } from '@/features/auth/auth-gate-sheet';
+import { consumePendingReplay, setPendingReturn } from '@/features/auth/return-to';
 import { matchDestinationsByPrefix } from '@/features/explore/destination-search';
 import { ExploreScreen, type ExploreStatus } from '@/features/explore/explore-screen';
 import { FilterSheet, type SortKey } from '@/features/explore/filter-sheet';
@@ -56,6 +57,8 @@ export default function ExploreRoute() {
   const [sheetOpen, setSheetOpen] = useState(false);
   // E1/E4 — tim trên thẻ tour; cùng khuôn D6 ở `tours/[slug].tsx`.
   const [authGateOpen, setAuthGateOpen] = useState(false);
+  // Tour khách vừa bấm tim khi chưa đăng nhập — để tự lưu sau khi có phiên (D3).
+  const [gatedTourId, setGatedTourId] = useState<string | null>(null);
   const [wishedIds, setWishedIds] = useState<ReadonlySet<string>>(new Set());
   const [wishlistError, setWishlistError] = useState<string | null>(null);
 
@@ -136,13 +139,60 @@ export default function ExploreRoute() {
   const setWishlistMutation = useMutation(
     orpc.wishlist.set.mutationOptions({ context: withMobileAuth() }),
   );
+  // Tab Saved (S1) và tour detail đọc `wishlist.list`/`wishlist.check` RIÊNG —
+  // không tự biết tim vừa đổi ở đây nếu không invalidate cả hai.
+  function invalidateWishlist() {
+    queryClient.invalidateQueries({ queryKey: orpc.wishlist.list.key() });
+    queryClient.invalidateQueries({ queryKey: orpc.wishlist.check.key() });
+  }
+
+  // D3 — cùng khuôn D6 ở tour detail: khách bấm tim khi CHƯA đăng nhập, đăng
+  // nhập xong quay về Explore (tab giữ mount) thì tự lưu đúng tour đó. Chỉ
+  // nhận replay `from: 'explore'` — replay của tour detail (đè lên tab này)
+  // là việc của màn kia. Cố ý chỉ phụ thuộc [signedIn], cùng lý do ở tour detail.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: xem giải thích trên.
+  useEffect(() => {
+    if (!signedIn) return;
+    const replay = consumePendingReplay((r) => r.kind === 'wishlist' && r.from === 'explore');
+    if (replay === undefined) return;
+    const { tourId } = replay;
+    setWishedIds((current) => new Set(current).add(tourId));
+    setWishlistMutation.mutate(
+      { tourId, wished: true },
+      {
+        onError: () => {
+          setWishedIds((current) => {
+            const next = new Set(current);
+            next.delete(tourId);
+            return next;
+          });
+          setWishlistError(messages.wishlist.error);
+        },
+        onSettled: invalidateWishlist,
+      },
+    );
+  }, [signedIn]);
+
+  // Ghi "quay về Explore + tự lưu tour vừa bấm" TRƯỚC khi rời sang Sign in /
+  // Create account. Chưa có id (tour chưa tải xong) thì chỉ nhớ đường về.
+  function recordReturn() {
+    setPendingReturn(
+      gatedTourId === null
+        ? { path: '/explore' }
+        : {
+            path: '/explore',
+            replay: { kind: 'wishlist', tourId: gatedTourId, from: 'explore' },
+          },
+    );
+  }
 
   function handleFavoritePress(slug: string) {
+    const tour = allTours.find((t) => t.slug === slug);
     if (!signedIn) {
+      setGatedTourId(tour?.id ?? null);
       setAuthGateOpen(true);
       return;
     }
-    const tour = allTours.find((t) => t.slug === slug);
     if (tour === undefined) return;
     const next = !wishedIds.has(tour.id);
     // Lạc quan (D6): đổi ngay, hỏng thì trả lại + báo lỗi ngắn.
@@ -154,10 +204,7 @@ export default function ExploreRoute() {
           setWishedIds((current) => toggleWishedId(current, tour.id));
           setWishlistError(messages.wishlist.error);
         },
-        // Tab Saved (S1, P5b-4) mount sẵn song song (expo-router giữ mount qua
-        // các tab) và đọc `wishlist.list` RIÊNG — không tự biết tim vừa đổi ở
-        // đây nếu không invalidate. Cùng khuôn `invalidateWishlist` ở tour-detail.
-        onSettled: () => queryClient.invalidateQueries({ queryKey: orpc.wishlist.list.key() }),
+        onSettled: invalidateWishlist,
       },
     );
   }
@@ -304,14 +351,14 @@ export default function ExploreRoute() {
         body={messages.mobile.authPrompts.wishlistReason}
         signInLabel={messages.mobile.authPrompts.signIn}
         createAccountLabel={messages.mobile.authPrompts.createAccount}
-        // Cùng nợ với D6 ở tour-detail: chưa giữ ý định "quay lại + tự lưu"
-        // sau khi đăng nhập xong.
         onSignIn={() => {
           setAuthGateOpen(false);
+          recordReturn();
           router.navigate('/login');
         }}
         onCreateAccount={() => {
           setAuthGateOpen(false);
+          recordReturn();
           router.navigate('/register');
         }}
       />

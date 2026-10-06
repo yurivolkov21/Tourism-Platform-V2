@@ -3,6 +3,7 @@ import {
   clearPendingReturn,
   consumePendingReplay,
   consumeReturnPath,
+  peekReturnPath,
   setPendingReturn,
 } from './return-to';
 
@@ -72,5 +73,33 @@ describe('return-to', () => {
     setPendingReturn({ path: '/(tabs)/saved' });
     expect(consumeReturnPath()).toBe('/(tabs)/saved');
     expect(consumeReturnPath()).toBeNull();
+  });
+
+  // D3: Explore và tour detail cùng mount (tab giữ mount, tour detail đè lên)
+  // và cùng đọc replay khi `signedIn` bật — màn nào KHÔNG phải chủ thì không
+  // được nuốt mất replay của màn kia.
+  it('consumePendingReplay có điều kiện: không khớp thì KHÔNG xoá, màn đúng vẫn đọc được', () => {
+    setPendingReturn({
+      path: '/explore',
+      replay: { kind: 'wishlist', tourId: 't1', from: 'explore' },
+    });
+
+    expect(consumePendingReplay((r) => r.from === 'tour-detail')).toBeUndefined();
+    expect(consumePendingReplay((r) => r.from === 'explore')).toEqual({
+      kind: 'wishlist',
+      tourId: 't1',
+      from: 'explore',
+    });
+    expect(consumePendingReplay()).toBeUndefined();
+  });
+
+  it('peekReturnPath đọc path mà KHÔNG đánh dấu đã đăng nhập xong', () => {
+    setPendingReturn({ path: '/tours/hoi-an', replay: { kind: 'wishlist', tourId: 't1' } });
+
+    expect(peekReturnPath()).toBe('/tours/hoi-an');
+    expect(peekReturnPath()).toBe('/tours/hoi-an');
+    // Vẫn là "chưa đăng nhập xong" — rời nhóm auth thì dọn cả replay.
+    abandonPendingReturn();
+    expect(consumePendingReplay()).toBeUndefined();
   });
 });

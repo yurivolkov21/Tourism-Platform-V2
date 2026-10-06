@@ -2,7 +2,7 @@ import { router } from 'expo-router';
 import { useState } from 'react';
 import { useAuthActions } from '@/features/auth/auth-actions';
 import { submitGoogle } from '@/features/auth/google-flow';
-import { clearPendingReturn, consumeReturnPath } from '@/features/auth/return-to';
+import { clearPendingReturn, consumeReturnPath, peekReturnPath } from '@/features/auth/return-to';
 import { submitSignIn } from '@/features/auth/sign-in-flow';
 import {
   type SignInField,
@@ -78,8 +78,14 @@ export default function LoginRoute() {
       onForgot={() => router.push('/forgot-password')}
       onCreateAccount={() => router.navigate('/register')}
       onClose={() => {
+        // D3: đóng về ĐÚNG chỗ khách mở Sign in (tour, Saved, Account…) thay
+        // vì luôn văng về Home. `peek` chứ không `consume` — consume là coi
+        // như đăng nhập xong, sẽ giữ lại replay tự-lưu-tim dù khách bỏ dở.
+        // `dismissTo` gỡ modal về màn đang nằm dưới; không thấy trong stack
+        // thì tự `replace` (đúng hành vi cũ).
+        const back = peekReturnPath() ?? '/';
         clearPendingReturn();
-        router.replace('/');
+        router.dismissTo(back);
       }}
     />
   );

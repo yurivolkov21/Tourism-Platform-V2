@@ -1,5 +1,6 @@
 import { act } from '@testing-library/react-native';
 import { messages } from '@tourism/i18n';
+import { router } from 'expo-router';
 import {
   fireEvent,
   getMockConfig,
@@ -283,6 +284,24 @@ describe('vỏ điều hướng', () => {
       expect(app.pathname()).toBe('/');
     },
   );
+
+  // D3: mở Sign in từ một tour (khối chặn tim) rồi đổi ý bấm X — phải về ĐÚNG
+  // tour đó, không văng ra Home. `dismissTo` gỡ modal về màn đang nằm dưới
+  // (không đẩy thêm bản sao tour vào stack).
+  it('bấm X ở Sign in mở từ tour thì về lại đúng tour đó', async () => {
+    const app = await openApp('/tours/ha-giang-loop');
+    setPendingReturn({ path: '/tours/ha-giang-loop' });
+    // `router` thật thay vì `testRouter.navigate` — helper đó tự khẳng định
+    // qua `screen.getPathnameWithParams`, hàm RNTL 14 không còn.
+    await act(() => router.navigate('/login'));
+    expect(app.pathname()).toBe('/login');
+
+    await fireEvent.press(screen.getByLabelText(shell.close));
+
+    expect(app.pathname()).toBe('/tours/ha-giang-loop');
+    // Đã về đúng chỗ thì hộp nhớ phải rỗng — lượt sau không nhặt lại.
+    expect(consumeReturnPath()).toBeNull();
+  });
 
   // F1 (review 06/10): back cứng Android / vuốt đóng modal iOS KHÔNG đi qua
   // nút X — vẫn phải dọn hộp nhớ, không thì lần đăng nhập sau (mở từ chỗ
