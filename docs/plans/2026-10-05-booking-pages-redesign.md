@@ -129,8 +129,10 @@ Spec để ngỏ hay nói chưa khớp mã ở các chỗ dưới đây; plan ch
     `passportBookings.back`; Task 20 (B7) gỡ `passportVisa.back`, `cancelLead`, `fineLine`,
     `requestsLine`; Task 25 (C4) gỡ `booking.success.nextHeading|nextEmail|nextVoucher|nextManage`.
     GIỮ `booking.list.browse` (Phần B dùng).
-21. **Tiền:** dòng tiền và tổng dùng `formatMoney` (không số lẻ) cho khớp `BookingReceipt`; tiền
-    HOÀN luôn `formatMoneyExact` (đối chiếu sao kê).
+21. **Tiền** (sửa sau review Phần A, 06/10): mọi con số của MỘT đơn — đơn giá, dòng tiền, tổng —
+    qua `formatBookingMoney(booking, amount)` (`lib/checkout.ts`): đơn giá chẵn thì không số lẻ như
+    `BookingReceipt` trước nay, đơn giá có xu (giá khuyến mãi) thì đủ hai số lẻ — làm tròn riêng
+    từng dòng thì dòng cộng không ra tổng. Tiền HOÀN luôn `formatMoneyExact` (đối chiếu sao kê).
 22. **Đọc tour hỏng không làm sập trang:** `fetchTourDetail` trả `null` khi tour gỡ; lỗi khác ở
     trang chi tiết và voucher bị bắt về `null` (sau `unstable_rethrow`) kèm `console.warn` — chỉ
     mất các ô lấy từ tour.
@@ -147,6 +149,12 @@ Spec để ngỏ hay nói chưa khớp mã ở các chỗ dưới đây; plan ch
     cả ba phần cùng đụng một dòng. Session thi công chỉ viết entry CHANGELOG của phần mình.
 27. **Mã task** đánh số liên tục 1–26 cho script trích task của skill thi công; tiêu đề mang thêm
     mã phần (A1…C5) để đọc. Bước trong task ghi "Bước N".
+28. **Phần A đã merge kèm vòng vá review (06/10) — Phần B, C dựa trên bản ấy:** `lapsed` tính từ
+    hạn chót của chuyến (`cancellationDeadline`), không từ ngày đi; nhãn ô tổng tiền là
+    `bookingTotalLabel(booking)` (`lib/booking-vm.ts`); tiền qua `formatBookingMoney` (quyết định
+    21); trang chi tiết cũ đã dùng `paymentProviderLabel` và bỏ Pay now cho đơn `lapsed`;
+    `bookings.mine` trả thêm `today` (Phần B, C không dùng). Mã của Phần B, C trong plan đã sửa
+    theo.
 
 
 ## Ràng buộc toàn cục
@@ -230,6 +238,16 @@ session kia có thể bắt đầu gate NGAY GIỮA lúc bên này chuẩn bị 
 một lần rồi mới quyết là không đủ. Vì vậy, **chừng nào session gốc chưa báo đợt kia đã xong,
 mọi lượt gate chạy bản cô lập dưới đây** thay cho bước 1, 2, 5 và lệnh tắt API ở trên; bước 0,
 3, 4 giữ nguyên. KHÔNG BAO GIỜ chạy lệnh tắt API theo cổng 3001.
+
+**Mỗi phần một bộ giá trị riêng** (Phần B và C có thể chạy song song ở hai worktree). Mã dưới
+đây ghi giá trị của Phần A; phần khác thay đúng ba thứ — tên DB (mọi chỗ ghi `tourism_test_p7`,
+kể cả lệnh `DROP`), cổng API, và tên worktree trong bộ lọc chờ lượt nặng:
+
+| Phần | DB int riêng | Cổng API | Worktree (bộ lọc `-notmatch`) |
+| --- | --- | --- | --- |
+| A | `tourism_test_p7` | 3101 | `booking-pages-redesign` |
+| B | `tourism_test_p7b` | 3101 | `booking-pages-redesign` |
+| C | `tourism_test_p7c` | 3102 | `booking-voucher` |
 
 **Chờ lượt nặng của bên kia** — ngay trước bước 1 và bước 5 (PowerShell). Còn dòng nào thì
 chờ rồi soát lại, tới khi 30 giây liền không còn dòng nào; hai gate cùng lúc nhân đôi tải RAM:
@@ -410,7 +428,9 @@ export function tripDayNumbers(
 `bookings.mine` trả `BookingsListResultSchema`.
 
 **Web:** prop `back?: { href: string; label: string }` của `ContentHero`;
-`PriceLine` và `bookingPriceLines(booking)` ở `apps/web/src/lib/checkout.ts`.
+`PriceLine`, `bookingPriceLines(booking)` và `formatBookingMoney(booking, amount)` ở
+`apps/web/src/lib/checkout.ts`; `paymentProviderLabel(provider)` và `bookingTotalLabel(booking)` ở
+`apps/web/src/lib/booking-vm.ts`.
 
 
 ## Bảng mã task
@@ -4603,6 +4623,8 @@ grep -n "export function bookingPhase\|export function tripDayNumbers\|export fu
 grep -n "booking-phase" libs/shared/contract/src/index.ts
 grep -n "export function bookingPriceLines" apps/web/src/lib/checkout.ts
 grep -n "back?: { href: string; label: string }" apps/web/src/components/content/content-hero.tsx
+grep -n "export function formatBookingMoney" apps/web/src/lib/checkout.ts
+grep -n "export function bookingTotalLabel" apps/web/src/lib/booking-vm.ts
 ```
 
 - [ ] **Bước 1. Test chữ trước.** Thêm vào CUỐI `libs/shared/i18n/src/lib/messages.spec.ts`
@@ -5054,14 +5076,15 @@ describe('journeyMilestones — chờ trả tiền', () => {
     });
   });
 
-  it('không có cờ server: qua ngày chót là "Ended" dù tiền chưa trả', () => {
+  /**
+   * Qua hạn chót mà chưa trả là `lapsed` (ADR-0054 §1, sửa sau review Phần A 06/10): cổng trả
+   * tiền của API đóng cùng mốc, nên không còn thanh hành trình "đang chờ trả" nào để vẽ.
+   */
+  it('qua ngày chót mà chưa trả: biến thể lapsed, không chip, không Today', () => {
     const view = journeyMilestones(PENDING, '2026-10-18');
-    expect(rows(view).slice(1, 4)).toEqual([
-      ['paid', 'Paid', 'Awaiting payment', 'now'],
-      ['freeCancellation', 'Free cancellation', 'Ended 17 Oct', 'done'],
-      ['departure', 'Departure', 'Tue 20 Oct', 'next'],
-    ]);
-    expect(view.today).toEqual({ percent: 58.33, before: 3 });
+    expect(view.variant).toBe('lapsed');
+    expect(view.chip).toBeNull();
+    expect(view.today).toBeNull();
   });
 });
 
@@ -5852,7 +5875,7 @@ export function readPrepChecked(raw: string | null, items: readonly string[]): s
 
 Quyết định đã chốt với user: vé của TRANG CHI TIẾT dùng đường gạch đứt cộng hai vết khuyết
 nửa tròn — user duyệt lại ngày 05/10, thay ghi chú 19/08 trong JSDoc của `BookingReceipt`
-(`booking-receipt.tsx:27-29`) vốn bác kiểu này. Ngoại lệ CHỈ cho trang chi tiết; `BookingReceipt`
+(`booking-receipt.tsx:33-35`) vốn bác kiểu này. Ngoại lệ CHỈ cho trang chi tiết; `BookingReceipt`
 không đổi. Vết khuyết che đường viền ngang của vé: tâm hình tròn đặt đúng mép NGOÀI viền, cắt bỏ
 nửa ngoài (bản vẽ đã sửa đúng chỗ này, `booking-detail.src.html:106-109`).
 
@@ -5868,7 +5891,8 @@ nửa ngoài (bản vẽ đã sửa đúng chỗ này, `booking-detail.src.html:
 
 - Consumes: `ACTIVE_BOOKING_STATUSES`, `calendarDaysBetween` (Phần A); `bookingView`,
   `BookingView`, `paymentProviderLabel` (`lib/booking-vm.ts`; hàm cuối do Task A10 tạo); `ticketBarcodeWidths` (`lib/checkout.ts:122`);
-  `calendarDateParts` (B1), `formatDate`, `formatMoney` (`lib/tours.ts`); `VisaStamp`
+  `calendarDateParts` (B1), `formatDate` (`lib/tours.ts`); `formatBookingMoney`, `bookingTotalLabel`
+  (Phần A); `VisaStamp`
   (`components/passport/visa-stamp.tsx`); `RevealItem` (`components/motion/reveal-item.tsx`,
   `enter="stamp"`); chữ `messages.bookingDetail.ticket.*`, `bookingDetail.leadTraveller`,
   `bookingDetail.booked` (B1), `passportVisa.kicker`, `passportVisa.labels.travellers`,
@@ -6079,9 +6103,9 @@ import { BusIcon } from 'lucide-react';
 import Link from 'next/link';
 import { RevealItem } from '@/components/motion/reveal-item';
 import { VisaStamp } from '@/components/passport/visa-stamp';
-import { type BookingView, paymentProviderLabel } from '@/lib/booking-vm';
-import { ticketBarcodeWidths } from '@/lib/checkout';
-import { calendarDateParts, formatDate, formatMoney } from '@/lib/tours';
+import { type BookingView, bookingTotalLabel, paymentProviderLabel } from '@/lib/booking-vm';
+import { formatBookingMoney, ticketBarcodeWidths } from '@/lib/checkout';
+import { calendarDateParts, formatDate } from '@/lib/tours';
 
 /** Nhãn nhỏ in hoa của vé — `.k` của bản vẽ (10px, đậm, giãn chữ 0.15em). */
 const KICKER = 'text-[10px] leading-none font-bold tracking-[0.15em] text-muted-foreground uppercase';
@@ -6225,10 +6249,10 @@ export function BookingTicket({ booking, view }: { booking: BookingDetail; view:
         </div>
         <div className="flex flex-1 flex-col px-[26px] py-[18px]">
           <p className={KICKER}>
-            {paid ? messages.booking.success.totalLabel : messages.checkoutSummary.totalLabel}
+            {bookingTotalLabel(booking)}
           </p>
           <p className="mt-1.5 font-mono text-[28px] leading-[1.1] font-semibold tabular-nums">
-            {formatMoney(booking.totalAmount, booking.currency)}
+            {formatBookingMoney(booking, booking.totalAmount)}
           </p>
           <p className="mt-0.5 text-[12.5px] text-muted-foreground">{t.ticket.taxesIncluded}</p>
           <div className="mt-auto pt-4">
@@ -7125,7 +7149,7 @@ function StepItem({ step, bookingCode }: { step: GetReadyStep; bookingCode: stri
 - Create: `apps/web/src/components/account/awaiting-payment-panel.tsx` (+
   `awaiting-payment-panel.spec.tsx`)
 - Create: `apps/web/src/components/account/review-panel.tsx` (+ `review-panel.spec.tsx`) — dời
-  NGUYÊN VĂN `ReviewSlotNote` và `SlotNote` từ `app/(site)/account/bookings/[code]/page.tsx:414-473`
+  NGUYÊN VĂN `ReviewSlotNote` và `SlotNote` từ `app/(site)/account/bookings/[code]/page.tsx:426-477`
   (trang cũ còn giữ bản của nó tới Task B7 — B7 viết lại trang nên bản cũ tự mất)
 
 **Interfaces:**
@@ -7660,7 +7684,7 @@ import type { BookingDetail } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
 import { BookingActions } from '@/components/account/booking-actions';
 import type { BookingView } from '@/lib/booking-vm';
-import { formatMoney } from '@/lib/tours';
+import { formatBookingMoney } from '@/lib/checkout';
 
 /**
  * Cột phải của đơn chờ trả (spec P7 §2.5): số tiền phải trả và các nút SẴN CÓ của
@@ -7687,7 +7711,7 @@ export function AwaitingPaymentPanel({
         {t.journey.awaitingPayment}
       </h2>
       <p className="mt-1.5 font-mono text-[28px] leading-[1.1] font-semibold tabular-nums">
-        {formatMoney(booking.totalAmount, booking.currency)}
+        {formatBookingMoney(booking, booking.totalAmount)}
       </p>
       <p className="mt-0.5 text-[12.5px] text-muted-foreground">
         {`${messages.checkoutSummary.totalLabel} · ${t.ticket.taxesIncluded}`}
@@ -7850,7 +7874,7 @@ function SlotNote({ title, body }: { title: string; body: string }) {
 - Consumes: `BookingPhase` (Phần A); `bookingPriceLines` (Phần A, `lib/checkout.ts`, trả
   `{ label, amount }[]`); `BookingView`, `cancellationDeadlineText`, `legacyCancellationNote`,
   `paymentProviderLabel` (B3) từ `lib/booking-vm.ts`; `BookingActions`, `CancelDialogBooking`
-  (`booking-actions.tsx:100,272`); `ButtonLink`; `formatDate`, `formatMoney`,
+  (`booking-actions.tsx:100,272`); `ButtonLink`; `formatDate`, `formatBookingMoney` (`lib/checkout.ts`),
   `formatMoneyExact`; chữ `bookingDetail.leadTraveller` · `booked` · `details.*` (B1),
   `booking.success.paymentLabel` · `totalLabel`, `checkoutSummary.totalLabel`,
   `tourDetail.booking.testMode`, `passportVisa.contactUs` · `viewVoucher`.
@@ -8050,12 +8074,13 @@ import type { ReactNode } from 'react';
 import { BookingActions, type CancelDialogBooking } from '@/components/account/booking-actions';
 import {
   type BookingView,
+  bookingTotalLabel,
   cancellationDeadlineText,
   legacyCancellationNote,
   paymentProviderLabel,
 } from '@/lib/booking-vm';
-import { bookingPriceLines } from '@/lib/checkout';
-import { formatDate, formatMoney, formatMoneyExact } from '@/lib/tours';
+import { bookingPriceLines, formatBookingMoney } from '@/lib/checkout';
+import { formatDate, formatMoneyExact } from '@/lib/tours';
 
 /** Giai đoạn có voucher để xem: đơn đã trả và còn hiệu lực (spec §5.3). */
 const VOUCHER_PHASES: ReadonlySet<BookingPhase> = new Set(['upcoming', 'on_tour', 'travelled']);
@@ -8119,8 +8144,8 @@ export function BookingDetailsPanel({
           <Row
             total
             mono
-            label={paid ? messages.booking.success.totalLabel : messages.checkoutSummary.totalLabel}
-            value={formatMoney(booking.totalAmount, booking.currency)}
+            label={bookingTotalLabel(booking)}
+            value={formatBookingMoney(booking, booking.totalAmount)}
           />
           {refunded ? (
             <Row
@@ -9140,6 +9165,7 @@ ca mới theo file và các đột biến đã thử.
   - `grep -n "export function bookingPhase" libs/shared/contract/src/schemas/booking-phase.ts`
     — đúng một dòng;
   - `grep -n "export function bookingPriceLines" apps/web/src/lib/checkout.ts` — đúng một dòng;
+  - `grep -n "export function formatBookingMoney" apps/web/src/lib/checkout.ts` — đúng một dòng;
   - `grep -n "^  voucher: {" libs/shared/i18n/src/lib/messages.ts` — RỖNG (chưa ai thêm khối).
 
   Sai một trong ba thì DỪNG, báo session gốc. Rồi build contract và i18n (lệnh ở Ràng buộc
@@ -9958,8 +9984,8 @@ export function voucherView(booking: BookingDetail, now: Date, today: string): V
 - Consumes: `voucherView`, `VoucherView` và fixture của C1; `CopyCodeButton({ code })`
   (`copy-code-button.tsx:13`); `VisaStamp({ status, tone })` (`passport/visa-stamp.tsx:22`);
   `SlotImage({ image, className, sizes, priority })` (`components/slot-image.tsx:28`);
-  `bookingView(b)` → `tone` (`lib/booking-vm.ts:42`); `formatMoney` (`lib/tours.ts:424`);
-  `messages.accountBookings.travellers` (`messages.ts:2433`),
+  `bookingView(b)` → `tone` (`lib/booking-vm.ts:42`); `formatBookingMoney` (`lib/checkout.ts`);
+  `messages.accountBookings.travellers` (`messages.ts:2435`),
   `messages.tourDetail.booking.testMode` (`:1563`), khối `messages.voucher` (C1).
 - Produces: `VoucherCode({ code, className? })` — `data-slot="voucher-code"`;
   `VoucherCancelledNotice({ text, className? })` — `data-slot="voucher-cancelled"`;
@@ -10190,7 +10216,7 @@ import { VoucherCancelledNotice, VoucherCode } from '@/components/checkout/vouch
 import { VisaStamp } from '@/components/passport/visa-stamp';
 import { SlotImage } from '@/components/slot-image';
 import { bookingView } from '@/lib/booking-vm';
-import { formatMoney } from '@/lib/tours';
+import { formatBookingMoney } from '@/lib/checkout';
 import type { VoucherView } from '@/lib/voucher';
 
 /**
@@ -10261,7 +10287,7 @@ export function VoucherOverview({
           <div className="mt-2 flex items-end justify-between gap-4">
             <p className="font-heading text-2xl leading-tight font-semibold">{booking.tourTitle}</p>
             <p className="shrink-0 font-mono text-xl font-semibold tabular-nums">
-              {formatMoney(booking.totalAmount, booking.currency)}
+              {formatBookingMoney(booking, booking.totalAmount)}
             </p>
           </div>
           <div className="mt-3 flex flex-wrap gap-2">
@@ -10269,7 +10295,7 @@ export function VoucherOverview({
             <GlassChip icon={<UsersIcon aria-hidden="true" />}>
               {t.partyPrice(
                 messages.accountBookings.travellers(booking.numAdults, booking.numChildren),
-                formatMoney(booking.unitPrice, booking.currency),
+                formatBookingMoney(booking, booking.unitPrice),
               )}
             </GlassChip>
           </div>
@@ -10369,7 +10395,7 @@ function InfoCell({
 
 - Consumes: `VoucherView`, `VoucherJournalItem`, `voucherView` và fixture (C1); `VoucherCode`,
   `VoucherCancelledNotice` (C2); `bookingPriceLines(booking): PriceLine[]` (Phần A,
-  `lib/checkout.ts`); `ticketBarcodeWidths(code)` (`lib/checkout.ts:122`); `formatMoney`,
+  `lib/checkout.ts`); `ticketBarcodeWidths(code)` (`lib/checkout.ts:122`); `formatBookingMoney`,
   `formatMoneyExact` (`lib/tours.ts:424`, `:446`); `messages.booking.success.totalLabel`,
   `viewBooking`, `viewTours` (`messages.ts:421`, `:434`, `:432`); khối `messages.voucher`.
 - Produces: `VoucherPass({ booking, view })` — `data-slot="voucher-pass"`; khối mã
@@ -10565,8 +10591,8 @@ import { cn } from '@tourism/ui/lib/utils';
 import { ArrowRightIcon, CalendarIcon, CheckIcon, UsersIcon } from 'lucide-react';
 import Link from 'next/link';
 import { VoucherCancelledNotice, VoucherCode } from '@/components/checkout/voucher-code';
-import { bookingPriceLines, ticketBarcodeWidths } from '@/lib/checkout';
-import { formatMoney, formatMoneyExact } from '@/lib/tours';
+import { bookingPriceLines, formatBookingMoney, ticketBarcodeWidths } from '@/lib/checkout';
+import { formatMoneyExact } from '@/lib/tours';
 import type { VoucherJournalItem, VoucherView } from '@/lib/voucher';
 
 /**
@@ -10642,7 +10668,7 @@ export function VoucherPass({ booking, view }: { booking: BookingDetail; view: V
           <div className="mt-1.5 flex justify-between gap-4 border-t border-primary-foreground/25 pt-2 text-[15px] font-bold">
             <dt>{messages.booking.success.totalLabel}</dt>
             <dd className="font-mono tabular-nums">
-              {formatMoney(booking.totalAmount, booking.currency)}
+              {formatBookingMoney(booking, booking.totalAmount)}
             </dd>
           </div>
           {/* Số tiền THẬT đã về tài khoản khách — đủ hai số lẻ (`formatMoneyExact`), khác giá
@@ -10759,14 +10785,14 @@ function JournalItem({ item }: { item: VoucherJournalItem }) {
 - Modify: `libs/shared/i18n/src/lib/messages.ts` (gỡ bốn khoá mồ côi `booking.success.next*`,
   sửa comment của `stubShowCode` — `messages.ts:474-482`)
 - Modify (chỉ JSDoc): `apps/web/src/components/checkout/success-celebration.tsx:20`,
-  `apps/web/src/components/checkout/booking-receipt.tsx:13`
+  `apps/web/src/components/checkout/booking-receipt.tsx:19`
 
 **Interfaces:**
 
 - Consumes: C1–C3; `SuccessCelebration({ bookingCode })` (`success-celebration.tsx:39`);
   `ContentHero({ breadcrumb, title, meta, action })` (`components/content/content-hero.tsx:15`,
   Phần A thêm `back` — trang này không truyền); `PrintButton()` (`print-button.tsx:18`);
-  `BookingReceipt({ booking, mood })` (`booking-receipt.tsx:52`); `CheckoutAutoRefresh()`
+  `BookingReceipt({ booking, mood })` (`booking-receipt.tsx:56`); `CheckoutAutoRefresh()`
   (`checkout-auto-refresh.tsx:26`); `checkoutMood` (`lib/checkout.ts:47`); `todayDateString()`
   (`lib/account-stats.ts:23`); `fetchBookingByCode` (`lib/api/bookings.ts:34`);
   `fetchTourDetail(slug)` (`lib/api/tours.ts:110`); `requireSession` (`lib/api/session.ts:93`).
@@ -11084,9 +11110,9 @@ export default async function CheckoutSuccessPage({
  *   ăn mừng đơn PENDING hay voucher mở lại là sai.
 ```
 
-  - `booking-receipt.tsx:13`, thay
+  - `booking-receipt.tsx:19`, thay
     `` * Hoá đơn kiêm cuống vé cho `/checkout/success` — thay `CheckoutShell` (tấm vé ``
-    bằng hai dòng (dòng 14 giữ nguyên, câu nối liền):
+    bằng hai dòng (dòng 20 giữ nguyên, câu nối liền):
 
 ```tsx
  * Hoá đơn kiêm cuống vé cho đơn CHƯA TRẢ ở `/checkout/success` và cho `/checkout/cancel`

@@ -97,8 +97,9 @@ contract 40, api 29 và 5 int, web 74, gỡ 16 ca của `account-stats.spec.ts`;
 87 bị giết (sáu cái sống có lý do, gồm vế PAID của `canReview` — đã thêm ca ở vòng vá). Vòng vá
 thêm 24 ca (contract 5, web 18, int 1); mười đột biến, giết cả mười.
 
-CÒN TREO: không có việc hạ tầng (không migration, không env, không webhook). Push hai nhịp:
-contract, API và entry này trước, chờ Render chạy bản mới, rồi mới tới web.
+CÒN TREO: không có việc hạ tầng (không migration, không env, không webhook). Đã push hai nhịp
+ngày 06/10: nhịp 1 `804365d1` (contract, API và entry này — CI xanh, Render live), rồi nhịp 2
+`8b813bfd` (web).
 
 ## 2026-10-05 — Hook session cloud dọn pid containerd sót lại khi resume (`c0ab2ec2`, nhánh `claude/nice-rubin-moffft`)
 
