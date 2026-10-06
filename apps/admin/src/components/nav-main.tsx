@@ -50,7 +50,12 @@ export function NavMain() {
               'group-data-[collapsible=icon]:border-t group-data-[collapsible=icon]:border-sidebar-border',
           )}
         >
-          <SidebarGroupLabel>{group.label}</SidebarGroupLabel>
+          {/* Cột icon: nhãn nhóm chỉ mờ đi (`opacity-0`) và trượt lên `-mt-8`, đè phần dưới
+              mục cuối của nhóm trên — Quick Create, Subscribers, Appearance — mà vẫn nhận chuột,
+              nên bấm giữa icon Quick Create rơi vào nhãn và menu không mở (đo Task 19). */}
+          <SidebarGroupLabel className="group-data-[collapsible=icon]:pointer-events-none">
+            {group.label}
+          </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {group.items.map((item) => (

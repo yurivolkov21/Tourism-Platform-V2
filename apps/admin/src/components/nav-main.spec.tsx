@@ -81,6 +81,20 @@ describe('NavMain', () => {
     expect(divided).toEqual([false, false, true, true]);
   });
 
+  it('thu gọn: nhãn nhóm vô hình không nhận chuột — không che nút phía trên nó', () => {
+    // Ở cột icon nhãn nhóm còn `opacity-0` và `-mt-8`: nó trượt lên đè phần dưới mục cuối
+    // của nhóm trên (Quick Create, Subscribers, Appearance) mà vẫn nhận chuột, nên bấm giữa
+    // icon Quick Create không mở menu (đo trình duyệt Task 19). jsdom không đo bố cục — canh
+    // đúng lớp tắt chuột trên cả ba nhãn.
+    renderNav({ open: false });
+
+    const labels = [...document.querySelectorAll('[data-slot="sidebar-group-label"]')];
+    expect(labels.map((label) => label.textContent)).toEqual(['Operations', 'Content', 'System']);
+    for (const label of labels) {
+      expect(label).toHaveClass('group-data-[collapsible=icon]:pointer-events-none');
+    }
+  });
+
   it('nút phong bì đã bỏ; Quick Create là nút mở menu', () => {
     renderNav({ open: true });
     expect(screen.queryByRole('button', { name: 'Inbox' })).toBeNull();
