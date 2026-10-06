@@ -26,12 +26,9 @@ import {
 export function BookingsListView({
   result,
   params,
-  today,
 }: {
   result: BookingsListResult;
   params: BookingsListParams;
-  /** Ngày lịch Việt Nam do server tính (`todayDateString`). */
-  today: string;
 }) {
   const t = messages.passportBookings;
   const tb = messages.accountBookings;
@@ -71,7 +68,12 @@ export function BookingsListView({
         </div>
       ) : (
         <div className="mt-2.5">
-          <BookingAccordion key={bookingsListHref(params)} bookings={result.items} today={today} />
+          {/* `result.today`: CHÍNH ngày API đã dùng để xếp và lọc trang này. */}
+          <BookingAccordion
+            key={bookingsListHref(params)}
+            bookings={result.items}
+            today={result.today}
+          />
           <TripPager
             params={params}
             totalPages={result.totalPages}

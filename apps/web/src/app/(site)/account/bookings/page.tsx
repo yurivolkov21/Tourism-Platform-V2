@@ -4,15 +4,9 @@ import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { BookingsListView } from '@/components/account/bookings-list-view';
 import { ContentHero } from '@/components/content/content-hero';
-import { todayDateString } from '@/lib/account-stats';
 import { fetchMyBookingsPage } from '@/lib/api/bookings';
 import { requireSession } from '@/lib/api/session';
-import {
-  BOOKINGS_LIST_PATH,
-  bookingsListApiInput,
-  bookingsListHref,
-  bookingsListParams,
-} from '@/lib/bookings-list';
+import { bookingsListApiInput, bookingsListHref, bookingsListParams } from '@/lib/bookings-list';
 import type { RawSearchParam } from '@/lib/search-params';
 
 /**
@@ -30,8 +24,10 @@ export default async function AccountBookingsPage({
   // `string[]` khi một khoá lặp lại trên URL — `bookingsListParams` chuẩn hoá ở biên.
   searchParams: Promise<Record<string, RawSearchParam>>;
 }) {
-  await requireSession(BOOKINGS_LIST_PATH);
   const params = bookingsListParams(await searchParams);
+  // Phiên hết hạn thì đăng nhập xong quay về ĐÚNG URL đang lọc, cùng nếp `/checkout/success`
+  // (review P7 06/10: truyền path trần là mất bộ lọc, từ khoá và số trang).
+  await requireSession(bookingsListHref(params));
   const cookie = (await cookies()).toString();
   const result = await fetchMyBookingsPage(cookie, bookingsListApiInput(params));
 
@@ -51,7 +47,7 @@ export default async function AccountBookingsPage({
         back={{ href: '/account', label: messages.accountBookings.backToPassport }}
       />
       <div className="mx-auto max-w-5xl px-4 pt-10 pb-16 md:px-8 md:pb-20">
-        <BookingsListView result={result} params={params} today={todayDateString()} />
+        <BookingsListView result={result} params={params} />
       </div>
     </div>
   );

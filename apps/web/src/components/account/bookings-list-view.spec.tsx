@@ -50,19 +50,14 @@ function result(patch: Partial<BookingsListResult>): BookingsListResult {
     totalPages: 0,
     facets: FACETS,
     overallTotal: 18,
+    today: TODAY,
     ...patch,
   };
 }
 
 describe('BookingsListView', () => {
   it('khách chưa có đơn nào: giữ trạng thái trống cũ, không bày hàng lọc', () => {
-    render(
-      <BookingsListView
-        result={result({ overallTotal: 0, facets: ZERO })}
-        params={NONE}
-        today={TODAY}
-      />,
-    );
+    render(<BookingsListView result={result({ overallTotal: 0, facets: ZERO })} params={NONE} />);
 
     expect(screen.getByRole('heading', { name: 'No trips booked yet' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Browse tours' })).toHaveAttribute('href', '/tours');
@@ -74,7 +69,6 @@ describe('BookingsListView', () => {
       <BookingsListView
         result={result({ items: [trip(1), trip(2)], total: 12, totalPages: 2 })}
         params={NONE}
-        today={TODAY}
       />,
     );
 
@@ -90,7 +84,6 @@ describe('BookingsListView', () => {
       <BookingsListView
         result={result({ items: [trip(1), trip(2)], total: 2, totalPages: 1 })}
         params={{ ...NONE, when: ['UPCOMING'] }}
-        today={TODAY}
       />,
     );
 
@@ -99,13 +92,7 @@ describe('BookingsListView', () => {
   });
 
   it('lọc ra rỗng: No trips match, câu gợi ý, link Reset về danh sách gốc', () => {
-    render(
-      <BookingsListView
-        result={result({})}
-        params={{ ...NONE, status: ['CANCELLED'] }}
-        today={TODAY}
-      />,
-    );
+    render(<BookingsListView result={result({})} params={{ ...NONE, status: ['CANCELLED'] }} />);
 
     expect(screen.getByText('0 of 18 trips')).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'No trips match' })).toBeInTheDocument();
@@ -123,7 +110,6 @@ describe('BookingsListView', () => {
       <BookingsListView
         result={result({ items: [trip(1), trip(2)], total: 12, totalPages: 2 })}
         params={NONE}
-        today={TODAY}
       />,
     );
     expect(screen.getByRole('link', { name: 'View details' })).toHaveAttribute(
@@ -135,7 +121,6 @@ describe('BookingsListView', () => {
       <BookingsListView
         result={result({ items: [trip(3), trip(4)], page: 2, total: 12, totalPages: 2 })}
         params={{ ...NONE, page: 2 }}
-        today={TODAY}
       />,
     );
     expect(screen.getByRole('link', { name: 'View details' })).toHaveAttribute(
