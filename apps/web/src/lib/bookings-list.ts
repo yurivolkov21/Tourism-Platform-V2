@@ -11,6 +11,9 @@ import { listParam, type RawSearchParam, singleParam } from './search-params';
  */
 export const BOOKINGS_LIST_PATH = '/account/bookings';
 
+/** Id dòng đếm "N trips" ở đầu danh sách — sang trang thì tiêu điểm về đây (`TripPager`). */
+export const BOOKINGS_COUNT_ID = 'bookings-count';
+
 /** 10 đơn mỗi trang (spec §2.7) — khác mặc định 12 của contract; web luôn gửi tường minh. */
 export const BOOKINGS_LIST_LIMIT = 10;
 
@@ -108,14 +111,14 @@ export function bookingsListApiInput(
   };
 }
 
-/** Chữ và link của phân trang "Newer / Older trips" (spec §7.4). */
+/** Chữ và link của phân trang "Previous / Next" (spec §7.4). */
 export interface PagerView {
   /** "Page 1 of 2 · trips 1–10 of 18". */
   summary: string;
-  /** `null` ở trang đầu: nút Newer mờ, không bấm được. */
-  newerHref: string | null;
-  /** `null` ở trang cuối: không có Older. */
-  older: { href: string; range: string } | null;
+  /** `null` ở trang đầu: nút Previous mờ, không bấm được. */
+  previousHref: string | null;
+  /** `null` ở trang cuối: không có Next. */
+  next: { href: string; range: string } | null;
 }
 
 /** `null` khi dưới hai trang — thanh phân trang không hiện. Link giữ nguyên bộ lọc. */
@@ -132,12 +135,12 @@ export function pagerView(
   const to = Math.min(page * limit, total);
   return {
     summary: tb.pageSummary(page, totalPages, from, to, total),
-    newerHref: page > 1 ? bookingsListHref({ ...params, page: page - 1 }) : null,
-    older:
+    previousHref: page > 1 ? bookingsListHref({ ...params, page: page - 1 }) : null,
+    next:
       page < totalPages
         ? {
             href: bookingsListHref({ ...params, page: page + 1 }),
-            range: tb.olderRange(to + 1, Math.min(to + limit, total)),
+            range: tb.nextRange(to + 1, Math.min(to + limit, total)),
           }
         : null,
   };

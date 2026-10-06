@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import type { BookingsListResult } from '@tourism/contract';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
-import type { BookingsListParams } from '@/lib/bookings-list';
+import { BOOKINGS_COUNT_ID, type BookingsListParams } from '@/lib/bookings-list';
 import { makeBooking } from '@/test/fixtures/booking';
 import { BookingsListView } from './bookings-list-view';
 
@@ -102,6 +102,19 @@ describe('BookingsListView', () => {
     expect(screen.getAllByRole('button', { name: 'Reset' })).toHaveLength(2);
     expect(screen.queryByRole('link', { name: 'Reset' })).toBeNull();
     expect(screen.queryByRole('navigation', { name: 'Trip pages' })).toBeNull();
+  });
+
+  /** Review P7 06/10: sang trang thì `TripPager` đưa tiêu điểm về đây — trình đọc nghe trang mới. */
+  it('dòng đếm là đích tiêu điểm khi sang trang, kèm tóm tắt trang cho trình đọc màn hình', () => {
+    render(
+      <BookingsListView
+        result={result({ items: [trip(1)], total: 18, totalPages: 2 })}
+        params={NONE}
+      />,
+    );
+    const count = document.getElementById(BOOKINGS_COUNT_ID);
+    expect(count).toHaveAttribute('tabindex', '-1');
+    expect(count).toHaveTextContent('18 trips. Page 1 of 2 · trips 1–10 of 18');
   });
 
   it('sang trang khác thì hàng ĐẦU của trang mới mở sẵn', () => {

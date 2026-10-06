@@ -144,7 +144,7 @@ describe('bookingsListApiInput — URL sang input của bookings.mine', () => {
   });
 });
 
-describe('pagerView — "Newer / Older trips" (spec §7.4)', () => {
+describe('pagerView — "Previous / Next" (spec §7.4)', () => {
   const FILTERED: BookingsListParams = { q: null, when: ['UPCOMING'], status: [], page: 1 };
 
   it('một trang hay không trang nào thì không có thanh phân trang', () => {
@@ -152,31 +152,31 @@ describe('pagerView — "Newer / Older trips" (spec §7.4)', () => {
     expect(pagerView(FILTERED, 0, 0, 10)).toBeNull();
   });
 
-  it('trang đầu: không có Newer; Older sang trang 2, giữ bộ lọc', () => {
+  it('trang đầu: không có Previous; Next sang trang 2, giữ bộ lọc', () => {
     expect(pagerView(FILTERED, 2, 18, 10)).toEqual({
       summary: 'Page 1 of 2 · trips 1–10 of 18',
-      newerHref: null,
-      older: { href: '/account/bookings?when=upcoming&page=2', range: 'Trips 11–18' },
+      previousHref: null,
+      next: { href: '/account/bookings?when=upcoming&page=2', range: 'Trips 11–18' },
     });
   });
 
-  it('trang giữa: Newer về trang 1 — URL không mang page=1', () => {
+  it('trang giữa: Previous về trang 1 — URL không mang page=1', () => {
     expect(pagerView({ ...FILTERED, page: 2 }, 3, 25, 10)).toEqual({
       summary: 'Page 2 of 3 · trips 11–20 of 25',
-      newerHref: '/account/bookings?when=upcoming',
-      older: { href: '/account/bookings?when=upcoming&page=3', range: 'Trips 21–25' },
+      previousHref: '/account/bookings?when=upcoming',
+      next: { href: '/account/bookings?when=upcoming&page=3', range: 'Trips 21–25' },
     });
   });
 
-  it('trang cuối: không có Older; trang chỉ một đơn thì nói số ít', () => {
+  it('trang cuối: không có Next; trang chỉ một đơn thì nói số ít', () => {
     expect(pagerView({ ...FILTERED, page: 3 }, 3, 21, 10)).toEqual({
       summary: 'Page 3 of 3 · trip 21 of 21',
-      newerHref: '/account/bookings?when=upcoming&page=2',
-      older: null,
+      previousHref: '/account/bookings?when=upcoming&page=2',
+      next: null,
     });
   });
 
   it('trang kế chỉ còn một đơn: "Trip 11"', () => {
-    expect(pagerView(FILTERED, 2, 11, 10)?.older?.range).toBe('Trip 11');
+    expect(pagerView(FILTERED, 2, 11, 10)?.next?.range).toBe('Trip 11');
   });
 });

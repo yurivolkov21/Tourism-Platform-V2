@@ -2440,9 +2440,8 @@ export const messages = {
     /** Dòng giữa của phân trang. Trang chỉ một đơn thì nói số ít ("trip 21 of 21"). */
     pageSummary: (page: number, pages: number, from: number, to: number, total: number) =>
       `Page ${page} of ${pages} · ${from === to ? `trip ${from}` : `trips ${from}–${to}`} of ${total}`,
-    /** Dòng nhỏ dưới "Older trips": các đơn của trang kế. */
-    olderRange: (from: number, to: number) =>
-      from === to ? `Trip ${from}` : `Trips ${from}–${to}`,
+    /** Dòng nhỏ dưới "Next": các đơn của trang kế. */
+    nextRange: (from: number, to: number) => (from === to ? `Trip ${from}` : `Trips ${from}–${to}`),
     /** Ô tìm của hàng lọc — vừa là chữ mờ trong ô, vừa là tên đọc-màn-hình của ô. */
     searchPlaceholder: 'Search tour or booking code',
     clearSearch: 'Clear search',
@@ -2460,10 +2459,14 @@ export const messages = {
     reset: 'Reset',
     /** Tên vùng điều hướng của phân trang. */
     pagerAria: 'Trip pages',
-    newerTrips: 'Newer trips',
-    olderTrips: 'Older trips',
-    /** Tên đọc của link Older — nhãn cộng dải đơn của trang kế. */
-    olderTripsAria: (range: string) => `Older trips, ${range}`,
+    /**
+     * Hai đầu phân trang (user chốt 06/10, thay "Newer / Older trips" của bản vẽ): thứ tự hành
+     * trình xếp chuyến sắp đi từ gần tới xa, nên ở đoạn ấy "Older" từng dẫn tới chuyến đi xa hơn.
+     */
+    previousPage: 'Previous',
+    nextPage: 'Next',
+    /** Tên đọc của link Next — nhãn cộng dải đơn của trang kế. */
+    nextPageAria: (range: string) => `Next, ${range}`,
     /** Nút tròn quay lại ở hero của My bookings (`ContentHero.back`). */
     backToPassport: 'Back to Passport',
     /** Dòng đếm khi đang lọc hay tìm; chưa lọc thì dùng `passportBookings.metaTrips`. */

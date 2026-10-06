@@ -384,8 +384,8 @@ Chỉ hiện khi có từ 2 trang. Một hàng ba phần, kẻ vạch ở trên:
 
 Link giữ nguyên các tham số lọc, là link thường (vào lịch sử trình duyệt). Nhãn "Previous /
 Next" thay "Newer / Older trips" của bản vẽ (user chốt 06/10): thứ tự hành trình xếp chuyến sắp
-đi từ gần tới xa, nên ở đoạn ấy "Older" dẫn tới chuyến đi xa hơn. Sang trang thì tiêu điểm về
-dòng "Page … of …" để trình đọc màn hình đọc trang mới.
+đi từ gần tới xa, nên ở đoạn ấy "Older" dẫn tới chuyến đi xa hơn. Sang trang bằng hai link này
+thì tiêu điểm về dòng đếm ở đầu danh sách mới, kèm câu tóm tắt trang chỉ trình đọc màn hình nghe.
 
 ### 7.5 Gỡ
 

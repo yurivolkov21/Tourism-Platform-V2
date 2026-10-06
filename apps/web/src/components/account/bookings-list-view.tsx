@@ -4,7 +4,13 @@ import { ButtonLink } from '@tourism/ui/components/button-link';
 import { BookingsToolbar, ResetFiltersButton } from '@/components/account/bookings-toolbar';
 import { TripPager } from '@/components/account/trip-pager';
 import { BookingAccordion } from '@/components/passport/booking-accordion';
-import { type BookingsListParams, bookingsListHref, hasListFilters } from '@/lib/bookings-list';
+import {
+  BOOKINGS_COUNT_ID,
+  type BookingsListParams,
+  bookingsListHref,
+  hasListFilters,
+  pagerView,
+} from '@/lib/bookings-list';
 
 /**
  * Thân trang My bookings (spec P7 §7.2–7.4) — tách khỏi `page.tsx` để test được: Vitest của
@@ -27,6 +33,7 @@ export function BookingsListView({
 }) {
   const t = messages.passportBookings;
   const tb = messages.accountBookings;
+  const pager = pagerView(params, result.totalPages, result.total, result.limit);
 
   if (result.overallTotal === 0) {
     return (
@@ -45,11 +52,18 @@ export function BookingsListView({
   return (
     <div>
       <BookingsToolbar params={params} facets={result.facets} />
-      {/* `aria-live`: lọc xong thì trình đọc màn hình đọc lại số đơn mới. */}
-      <p aria-live="polite" className="mt-3 text-[12.5px] text-muted-foreground tabular-nums">
+      {/* `aria-live`: lọc xong thì trình đọc màn hình đọc lại số đơn mới. Sang trang thì tiêu điểm
+          về đây (`TripPager`, `tabIndex={-1}`); câu tóm tắt trang chỉ trình đọc màn hình nghe. */}
+      <p
+        id={BOOKINGS_COUNT_ID}
+        tabIndex={-1}
+        aria-live="polite"
+        className="mt-3 text-[12.5px] text-muted-foreground tabular-nums outline-none"
+      >
         {hasListFilters(params)
           ? tb.tripsOf(result.total, result.overallTotal)
           : t.metaTrips(result.total)}
+        {pager === null ? null : <span className="sr-only">{`. ${pager.summary}`}</span>}
       </p>
       {result.total === 0 ? (
         <div className="mt-10 text-center">
