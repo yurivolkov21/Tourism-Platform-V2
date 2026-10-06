@@ -98,8 +98,8 @@ Trang quản trị nằm ở tên miền riêng `admin.nexora-travel.agency`, v�
 - Hàng đợi email chờ gửi, để biết mail nào kẹt.
 - Bảng số liệu: doanh thu, số đơn, biểu đồ theo ngày, báo cáo tháng.
 - Catalog: bật/tắt đăng tour, lịch chuyến khởi hành của từng tour (kể cả công
-  ty huỷ chuyến có hoàn tiền), danh mục và điểm đến — hai bảng này chỉ ẩn/hiện,
-  không xoá.
+  ty huỷ chuyến có hoàn tiền), danh mục và điểm đến — hai bảng này ẩn/hiện được,
+  và chỉ xoá được khi chưa tour nào dùng.
 
 ## Bốn phần mềm, một máy chủ
 

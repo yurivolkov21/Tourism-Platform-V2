@@ -33,7 +33,7 @@
 | Giai đoạn chuyến (*phase*) | Chuyến | Suy từ công tắc và ngày đi/về theo lịch Việt Nam, không lưu: Bookable / Deadline passed / Closed / Departed / Completed / Cancelled. Màn Departures của admin in cái này, không in công tắc. |
 | `NEW → CONTACTED → QUOTED → WON` / `LOST` | Câu hỏi khách | Vòng đời một lead. |
 | `DRAFT` / `PUBLISHED` | Bài blog | Nháp / đã đăng. |
-| Visible / Hidden (`is_active`) | Danh mục, điểm đến | Ẩn là rời khỏi trang công khai (chip lọc, trang vùng…), KHÔNG xoá: tour thuộc nó vẫn bán và link cũ vẫn lọc được. Hai bảng này không có lệnh xoá. |
+| Visible / Hidden (`is_active`) | Danh mục, điểm đến | Ẩn là rời khỏi trang công khai (chip lọc, trang vùng…), KHÔNG xoá: tour thuộc nó vẫn bán và link cũ vẫn lọc được. Xoá hẳn chỉ được khi chưa tour nào dùng ([ADR-0053](adr/0053-delete-unused-categories-destinations.md)). |
 
 Vì sao đơn đã huỷ lại có nhiều trạng thái khác nhau: [booking-states](conventions/booking-states.md).
 

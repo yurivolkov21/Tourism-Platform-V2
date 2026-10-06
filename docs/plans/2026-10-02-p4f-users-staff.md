@@ -5,12 +5,12 @@
 > cuối file KHÔNG cho dùng subagent.
 
 **Mục tiêu:** admin có hai bậc — Owner (role `ADMIN`, chỉ đến từ `ADMIN_EMAILS`) và Staff
-(role `STAFF` mới, Owner cấp cho khách đã xác minh). Staff vào được admin trừ 14 thủ tục của
+(role `STAFF` mới, Owner cấp cho khách đã xác minh). Staff vào được admin trừ 16 thủ tục của
 riêng Owner. Owner có vùng `/users`: danh sách, chi tiết, cấp/thu Staff, khoá/mở khoá, đăng
 xuất mọi nơi, lịch sử theo từng người. Tài khoản bị khoá không đăng nhập được ở bất kỳ đường
 nào; mọi thứ khác của họ chạy tiếp.
 
-**Kiến trúc (ADR-0052):** contract giữ MỘT bảng quyền gõ kiểu chặt (`ADMIN_ACCESS`, 62 khoá)
+**Kiến trúc (ADR-0052):** contract giữ MỘT bảng quyền gõ kiểu chặt (`ADMIN_ACCESS`, 64 khoá)
 cùng hai hàm thuần `userStatus` và `userActions`. API áp bảng bằng decorator
 `@AdminImplement` (gộp `@Implement` với `@Roles` suy từ bảng); `@Roles(ADMIN)` cấp class giữ
 làm lưới. Khoá = hook `session.create.before` của Better Auth cộng một vế ở `AuthGuard`. App
@@ -39,8 +39,8 @@ Base UI (admin, web) · Tailwind v4 · Vitest + Testing Library.
   `apps/api/src/modules/posts/admin-posts.controller.ts` phải tồn tại — thiếu thì DỪNG và hỏi.
 - `git status` sạch, đang ở `main`. Docker Postgres chạy (`docker ps`; tắt thì mở Docker
   Desktop rồi `docker start tourism-v2-postgres-1`).
-- `grep -r "@Implement(contract.admin" apps/api/src | wc -l` phải ra **56** (49 thủ tục cũ
-  và 7 của bài viết), nằm trong đúng **13** file
+- `grep -r "@Implement(contract.admin" apps/api/src | wc -l` phải ra **58** (51 thủ tục cũ
+  — gồm hai lệnh xoá danh mục/điểm đến của ADR-0053 — và 7 của bài viết), nằm trong đúng **13** file
   (`grep -rl "@Implement(contract.admin" apps/api/src | wc -l`). Khác số đó nghĩa là main
   đã đổi sau khi viết plan — DỪNG và hỏi.
 
@@ -712,7 +712,9 @@ import {
  */
 const OWNER_ONLY: AdminProcedureKey[] = [
   'bookings.refund',
+  'categories.delete',
   'departures.cancel',
+  'destinations.delete',
   'paymentEvents.byId',
   'paymentEvents.list',
   'posts.delete',
@@ -728,7 +730,7 @@ const OWNER_ONLY: AdminProcedureKey[] = [
 ];
 
 describe('ADMIN_ACCESS', () => {
-  it('đúng 14 thủ tục là của riêng Owner', () => {
+  it('đúng 16 thủ tục là của riêng Owner', () => {
     const owner = Object.entries(ADMIN_ACCESS)
       .filter(([, level]) => level === 'owner')
       .map(([key]) => key)
@@ -847,10 +849,12 @@ export const ADMIN_ACCESS = {
   'categories.update': 'staff',
   'categories.setActive': 'staff',
   'categories.move': 'staff',
+  'categories.delete': 'owner',
   'destinations.list': 'staff',
   'destinations.create': 'staff',
   'destinations.update': 'staff',
   'destinations.setActive': 'staff',
+  'destinations.delete': 'owner',
   'departures.list': 'staff',
   'departures.create': 'staff',
   'departures.update': 'staff',
@@ -890,7 +894,7 @@ export function canAccess(role: string, key: AdminProcedureKey): boolean {
   `pnpm --filter @tourism/contract typecheck` — xanh. Thử nhanh lưới kiểu: xoá tạm dòng
   `'posts.tags'` → typecheck phải đỏ ("Property 'posts.tags' is missing"); thêm tạm
   `'posts.ghost': 'staff'` → đỏ; trả lại. Đột biến: đổi `'bookings.refund'` thành `'staff'`
-  (ca 14 thủ tục đỏ); đổi nhánh STAFF thành `return true` (ca Staff đỏ).
+  (ca 16 thủ tục đỏ); đổi nhánh STAFF thành `return true` (ca Staff đỏ).
 
 - [ ] **B7. Test bản liệt kê lúc chạy (đỏ).** Tạo `libs/shared/contract/src/admin-procedures.spec.ts`:
 
@@ -1477,7 +1481,7 @@ sed -i \
   $FILES
 pnpm lint:fix
 grep -rn "@Implement(" $FILES                            # phải rỗng
-grep -rc "@AdminImplement(contract.admin" $FILES         # tổng 56
+grep -rc "@AdminImplement(contract.admin" $FILES         # tổng 58
 ```
 
   Mười ba file đều nằm ở `apps/api/src/modules/<vùng>/`, nên đường `../../auth/` đúng cho
@@ -4527,8 +4531,8 @@ export default async function UsersPage({
         },
         access: {
           heading: 'Staff access',
-          // Đo trên ADMIN_ACCESS: 14 thủ tục chỉ Owner = hoàn tiền, huỷ chuyến, xoá tour,
-          // xoá bài, báo cáo, sổ thanh toán, vùng Users.
+          // Đo trên ADMIN_ACCESS: 16 thủ tục chỉ Owner = hoàn tiền, huỷ chuyến, xoá tour,
+          // xoá bài, xoá danh mục, xoá điểm đến, báo cáo, sổ thanh toán, vùng Users.
           customer:
             'Staff can work on bookings, reviews, enquiries, subscribers, the outbox, tours, departures, categories, destinations and posts. Only the owner can refund, cancel a departure, delete a tour or a post, or open reports, payment events and users.',
           staff: 'This account can use the back office as staff.',
@@ -5169,7 +5173,7 @@ export default async function UserDetailPage({
           action: 'Grant staff access',
           dialog: {
             title: 'Grant staff access?',
-            // Đo trên ADMIN_ACCESS: đúng 14 thủ tục chỉ Owner.
+            // Đo trên ADMIN_ACCESS: đúng 16 thủ tục chỉ Owner.
             body: 'They’ll be able to open the back office and work on everything except refunds, cancelling departures, deleting tours or posts, reports, payment events and users.',
             // Role đọc tươi ở mỗi request (không cookieCache) — không cần đăng nhập lại.
             warning: 'Access starts on their next page load — no new sign-in needed.',
@@ -6312,8 +6316,8 @@ này thành redirect tới `errorCallbackURL?error=ACCOUNT_LOCKED`, nên bản t
 ## 2026-MM-DD — P4f vùng Users: Owner và Staff (nhánh `feat/p4f-users-staff`)
 
 Admin có hai bậc: Owner (role `ADMIN`, chỉ từ `ADMIN_EMAILS`) và Staff (role `STAFF`, Owner
-cấp cho khách đã xác minh). Bảng quyền `ADMIN_ACCESS` ở contract quyết 62 thủ tục admin —
-Staff dùng 48, 14 là của riêng Owner. Owner có `/users`: danh sách, chi tiết, cấp/thu Staff,
+cấp cho khách đã xác minh). Bảng quyền `ADMIN_ACCESS` ở contract quyết 64 thủ tục admin —
+Staff dùng 48, 16 là của riêng Owner. Owner có `/users`: danh sách, chi tiết, cấp/thu Staff,
 khoá/mở khoá, đăng xuất mọi nơi, lịch sử theo người. Quyết định ở ADR-0052, hợp đồng ở spec
 02/10. Một migration chỉ thêm (`STAFF`, `locked_at`, `user_events`); không env.
 

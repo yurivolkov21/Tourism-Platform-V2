@@ -53,6 +53,10 @@ Quyết định này cũng tránh hẳn một cái bẫy đo được: khoá ngo
 `tour_destinations_destination_id_fkey` khai `ON DELETE CASCADE`, nên nếu có
 lệnh xoá thì DB sẽ **không chặn** — nó im lặng gỡ điểm đến khỏi mọi tour.
 
+> **Đã thay 05/10/2026:** [ADR-0053](../adr/0053-delete-unused-categories-destinations.md)
+> cho xoá danh mục và điểm đến khi chưa tour nào dùng (mọi trạng thái). Ẩn vẫn là đường đảo
+> ngược được cho hàng đang có tour.
+
 ### 2b. `region` là danh sách chọn, không phải ô chữ tự do
 
 Web ghép `destinations.region` với ba vùng cố định bằng `regionOf`

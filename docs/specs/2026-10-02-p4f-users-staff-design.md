@@ -58,7 +58,7 @@ này chỉ `import type` từ `contract.ts`.
 
 - `AdminProcedureKey` — kiểu suy từ `typeof contract.admin`, dạng `'bookings.refund'`.
 - `AdminAccessLevel = 'owner' | 'staff'`.
-- `ADMIN_ACCESS` — đủ 62 khoá, `satisfies Record<AdminProcedureKey, AdminAccessLevel>`.
+- `ADMIN_ACCESS` — đủ 64 khoá, `satisfies Record<AdminProcedureKey, AdminAccessLevel>`.
 - `ADMIN_APP_ROLES = ['ADMIN', 'STAFF']`, `isAdminAppRole(role)`.
 - `canAccess(role, key)`: `ADMIN` → luôn `true`; `STAFF` → `ADMIN_ACCESS[key] === 'staff'`;
   role khác (kể cả rỗng, lạ) → `false`.
@@ -68,9 +68,9 @@ Danh sách đầy đủ:
 | Nhóm | Staff và Owner | Chỉ Owner |
 | --- | --- | --- |
 | `bookings` | `list`, `byCode` | `refund` |
-| `categories` | `create`, `list`, `move`, `setActive`, `update` | |
+| `categories` | `create`, `list`, `move`, `setActive`, `update` | `delete` |
 | `departures` | `create`, `list`, `setStatus`, `update` | `cancel` |
-| `destinations` | `create`, `list`, `setActive`, `update` | |
+| `destinations` | `create`, `list`, `setActive`, `update` | `delete` |
 | `enquiries` | `addNote`, `byId`, `list`, `setStatus` | |
 | `outbox` | `list`, `retry` | |
 | `paymentEvents` | | `list`, `byId` |
@@ -82,7 +82,9 @@ Danh sách đầy đủ:
 | `tours` | `create`, `get`, `list`, `photoLibrary`, `setCosts`, `setFaqsPolicies`, `setItinerary`, `setPhotos`, `setPublished`, `signPhotoUploads`, `updateDetails` | `delete` |
 | `users` | | `list`, `byId`, `setRole`, `lock`, `unlock`, `revokeSessions` |
 
-Tổng: 48 thủ tục Staff, 14 thủ tục chỉ Owner.
+Tổng: 48 thủ tục Staff, 16 thủ tục chỉ Owner.
+Hai lệnh xoá danh mục và điểm đến thêm 05/10 (ADR-0053), tầng Owner cùng họ
+`tours.delete`, `posts.delete`.
 
 `libs/shared/contract/src/admin-procedures.ts` (barrel, chỉ API và test dùng):
 `listAdminProcedures()` duyệt `contract.admin` lúc chạy, trả `{ key, procedure, method, path }`
@@ -314,7 +316,7 @@ nhãn sidebar Users đã có sẵn.
 
 ### 8.1 Unit (TDD)
 
-- `canAccess`: ma trận role × khoá; danh sách 14 khoá Owner-only GHIM tường minh trong test.
+- `canAccess`: ma trận role × khoá; danh sách 16 khoá Owner-only GHIM tường minh trong test.
 - `userStatus`, `userActions`: đủ các nhánh của bảng 4.1.
 - `mapAuthError`: `ACCOUNT_LOCKED` → `accountLocked`.
 - `decideAdminAccess`: `STAFF` được qua; `CUSTOMER`, rỗng, lạ vẫn `deny`.
