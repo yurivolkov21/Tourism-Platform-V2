@@ -97,7 +97,10 @@ export function BookingAccordion({ bookings, today }: { bookings: Booking[]; tod
               value={booking.code}
               className="rounded-2xl border border-border bg-card px-4 not-last:border-b md:px-5"
             >
-              <AccordionTrigger className="items-center gap-3 py-3.5 hover:no-underline">
+              {/* `min-w-0`: nút trigger là flex item `flex-1`; thiếu nó thì bề rộng tối thiểu
+                  bằng cả dòng tên tour không ngắt, `truncate` không có tác dụng và tên dài đẩy
+                  trang rộng ra ở khổ điện thoại (soi bằng CSS build thật, P7 Task A11). */}
+              <AccordionTrigger className="min-w-0 items-center gap-3 py-3.5 hover:no-underline">
                 <IconTile variant="frame" size="default" aria-hidden="true">
                   <PlaneIcon />
                 </IconTile>
