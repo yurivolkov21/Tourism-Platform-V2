@@ -1,5 +1,11 @@
 import { isDefinedError, safe } from '@orpc/client';
-import type { Booking, BookingDetail, Paged } from '@tourism/contract';
+import type {
+  Booking,
+  BookingDetail,
+  BookingsListResult,
+  ContractInputs,
+  Paged,
+} from '@tourism/contract';
 import { cache } from 'react';
 import { api, withAuthHeaders } from './client';
 
@@ -19,6 +25,19 @@ export const BOOKINGS_MAX_LIMIT = 50;
  */
 export async function fetchMyBookings(cookie: string, limit: number): Promise<Paged<Booking>> {
   return api.bookings.mine({ page: 1, limit }, { context: withAuthHeaders(cookie) });
+}
+
+/**
+ * Một trang của My bookings (ADR-0054): bộ lọc, từ khoá, thứ tự hành trình và số trang đi
+ * thẳng xuống `bookings.mine`; server trả kèm `facets` và `overallTotal`. Mảng đi trên query
+ * GET theo ký pháp ngoặc có chỉ số của oRPC (`when[0]=UPCOMING`). Dựng input bằng
+ * `bookingsListApiInput` (`@/lib/bookings-list`).
+ */
+export async function fetchMyBookingsPage(
+  cookie: string,
+  input: ContractInputs['bookings']['mine'],
+): Promise<BookingsListResult> {
+  return api.bookings.mine(input, { context: withAuthHeaders(cookie) });
 }
 
 /**

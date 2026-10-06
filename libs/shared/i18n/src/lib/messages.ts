@@ -2434,6 +2434,13 @@ export const messages = {
       children > 0
         ? `${adults} adult${adults > 1 ? 's' : ''}, ${children} child${children > 1 ? 'ren' : ''}`
         : `${adults} adult${adults > 1 ? 's' : ''}`,
+    // ── Danh sách `/account/bookings` (spec P7 §7, ADR-0054) ──
+    /** Dòng giữa của phân trang. Trang chỉ một đơn thì nói số ít ("trip 21 of 21"). */
+    pageSummary: (page: number, pages: number, from: number, to: number, total: number) =>
+      `Page ${page} of ${pages} · ${from === to ? `trip ${from}` : `trips ${from}–${to}`} of ${total}`,
+    /** Dòng nhỏ dưới "Older trips": các đơn của trang kế. */
+    olderRange: (from: number, to: number) =>
+      from === to ? `Trip ${from}` : `Trips ${from}–${to}`,
     // Trang hộ chiếu: nút hiện diện tĩnh cho "Load more" (chunk `?page=`,
     // xem `AccountPassportPage`).
     loadMore: 'Load more',
