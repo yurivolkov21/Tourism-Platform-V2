@@ -69,10 +69,10 @@ export function formatBookingMoney(
 }
 
 /**
- * Dòng tiền theo người lớn và trẻ em cho biên nhận (`BookingReceipt`), danh sách đơn và trang
- * chi tiết (spec P7 §4.2). Trẻ em cùng đơn giá người lớn (luật của `computeBookingTotal` ngay
- * trên). Nhãn từ `messages.checkoutSummary`, số tiền định dạng bằng `formatBookingMoney` để
- * dòng và tổng cùng một độ chính xác. Không có trẻ em thì bỏ hẳn dòng ấy.
+ * Dòng tiền theo người lớn và trẻ em, tách khỏi `BookingReceipt` để các trang đơn dùng chung
+ * (spec P7 §4.2). Trẻ em cùng đơn giá người lớn (luật của `computeBookingTotal` ngay trên).
+ * Nhãn từ `messages.checkoutSummary`, số tiền định dạng bằng `formatBookingMoney` để dòng và
+ * tổng cùng một độ chính xác. Không có trẻ em thì bỏ hẳn dòng ấy.
  */
 export function bookingPriceLines(
   booking: Pick<Booking, 'unitPrice' | 'numAdults' | 'numChildren' | 'currency'>,
