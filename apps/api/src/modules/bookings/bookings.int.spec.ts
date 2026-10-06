@@ -3,6 +3,7 @@ import { Test } from '@nestjs/testing';
 import {
   BookingDetailSchema,
   BookingSchema,
+  BookingsListResultSchema,
   cancellationDeadline,
   PagedSchema,
   vietnamToday,
@@ -757,6 +758,240 @@ describe('bookings integration (create PENDING + FakeGateway)', () => {
       ).json(),
     );
     expect(paid.total).toBe(0);
+  });
+
+  describe('GET /api/bookings — lọc, tìm, thứ tự hành trình (ADR-0054)', () => {
+    /** Một đơn dựng thẳng bằng Prisma: lệnh tạo đơn của API không ra được trạng thái và ngày tuỳ ý. */
+    interface SeedRow {
+      code: string;
+      status: BookingStatus;
+      /** Ngày đi, tính bằng số ngày so với hôm nay giờ Việt Nam (`vnDay`). */
+      start: number;
+      end?: number;
+      /** Tạo cách đây bao nhiêu phút — chọn để thứ tự `journey` khác hẳn `recent`. */
+      minutesAgo: number;
+      tourId?: string;
+      tourTitle?: string;
+    }
+
+    async function seedBookings(email: string, rows: SeedRow[]): Promise<string> {
+      const cookie = await signUpUser(email);
+      const { id: userId } = await prisma.user.findUniqueOrThrow({
+        where: { email },
+        select: { id: true },
+      });
+      const now = Date.now();
+      await prisma.booking.createMany({
+        data: rows.map(
+          (row): Prisma.BookingCreateManyInput => ({
+            code: row.code,
+            userId,
+            tourId: row.tourId ?? dayTour.id,
+            departureId: depOpen.id,
+            numAdults: 1,
+            totalAmount: '39.00',
+            unitPrice: '39.00',
+            currency: 'USD',
+            status: row.status,
+            tourTitle: row.tourTitle ?? dayTour.title,
+            departureStartDate: vnDay(row.start),
+            departureEndDate: vnDay(row.end ?? row.start),
+            contactName: 'Alice Nguyen',
+            contactEmail: email,
+            paymentProvider: 'STRIPE',
+            createdAt: new Date(now - row.minutesAgo * 60_000),
+          }),
+        ),
+      });
+      return cookie;
+    }
+
+    /** Mảng đi theo ký pháp ngoặc của oRPC; `URLSearchParams` mã hoá `[` `]` như trình duyệt. */
+    async function listMine(cookie: string, params: Record<string, string> = {}) {
+      const search = new URLSearchParams(params).toString();
+      const res = await app.inject({
+        method: 'GET',
+        url: search === '' ? '/api/bookings' : `/api/bookings?${search}`,
+        headers: { cookie },
+      });
+      expect(res.statusCode).toBe(200);
+      return BookingsListResultSchema.parse(res.json());
+    }
+
+    const codes = (result: { items: Array<{ code: string }> }) =>
+      result.items.map((item) => item.code);
+
+    /**
+     * Tám đơn quanh hôm nay, đưa vào LỘN XỘN; ngày tạo không đi cùng chiều thứ tự nào. Mép
+     * ngày rộng hơn một ngày ở mọi phía: file chạy vắt qua nửa đêm giờ Việt Nam vẫn đúng.
+     */
+    const JOURNEY_ROWS: SeedRow[] = [
+      { code: 'BK-AWAITPAY', status: BookingStatus.PENDING, start: 20, minutesAgo: 45 },
+      { code: 'BK-TRAVELD1', status: BookingStatus.PAID, start: -30, end: -29, minutesAgo: 40 },
+      { code: 'BK-ONTOUR01', status: BookingStatus.PAID, start: -1, end: 1, minutesAgo: 10 },
+      { code: 'BK-REFUNDED', status: BookingStatus.REFUNDED, start: 15, minutesAgo: 30 },
+      { code: 'BK-UPCOMNG1', status: BookingStatus.PAID, start: 10, end: 11, minutesAgo: 60 },
+      { code: 'BK-LAPSED01', status: BookingStatus.PENDING, start: -5, minutesAgo: 90 },
+      {
+        code: 'BK-PARTREF1',
+        status: BookingStatus.PARTIALLY_REFUNDED,
+        start: -2,
+        end: 2,
+        minutesAgo: 70,
+      },
+      { code: 'BK-UPCOMNG2', status: BookingStatus.PAID, start: 10, end: 11, minutesAgo: 50 },
+    ];
+    const JOURNEY = [
+      'BK-PARTREF1',
+      'BK-ONTOUR01',
+      'BK-UPCOMNG2',
+      'BK-UPCOMNG1',
+      'BK-AWAITPAY',
+      'BK-REFUNDED',
+      'BK-LAPSED01',
+      'BK-TRAVELD1',
+    ];
+    const FULL_FACETS = {
+      when: { ON_TOUR: 2, UPCOMING: 3, PAST: 3 },
+      status: { PENDING: 2, PAID: 4, CANCELLED: 0, REFUNDED: 1, PARTIALLY_REFUNDED: 1 },
+    };
+
+    it('journey liền mạch qua ba trang; facets và overallTotal chỉ đếm đơn của chính mình', async () => {
+      const alice = await seedBookings('journey@example.com', JOURNEY_ROWS);
+      await seedBookings('journey-bob@example.com', [
+        { code: 'BK-BOBTRIP1', status: BookingStatus.PAID, start: 10, minutesAgo: 5 },
+      ]);
+
+      // Tuần tự, không `Promise.all`: ba trang đọc cùng một tập, thứ tự gọi không đổi gì.
+      const pages = [
+        await listMine(alice, { order: 'journey', limit: '3', page: '1' }),
+        await listMine(alice, { order: 'journey', limit: '3', page: '2' }),
+        await listMine(alice, { order: 'journey', limit: '3', page: '3' }),
+      ];
+
+      expect(pages.map(codes)).toEqual([
+        JOURNEY.slice(0, 3),
+        JOURNEY.slice(3, 6),
+        JOURNEY.slice(6),
+      ]);
+      for (const page of pages) {
+        expect(page).toMatchObject({
+          limit: 3,
+          total: 8,
+          totalPages: 3,
+          overallTotal: 8,
+          facets: FULL_FACETS,
+        });
+      }
+    });
+
+    it('lọc when và nhiều status bằng ký pháp mảng; facets bỏ qua bộ lọc; status kiểu cũ vẫn nhận', async () => {
+      const alice = await seedBookings('filters@example.com', JOURNEY_ROWS);
+
+      const soon = await listMine(alice, {
+        order: 'journey',
+        'when[0]': 'ON_TOUR',
+        'when[1]': 'UPCOMING',
+      });
+      expect(codes(soon)).toEqual(JOURNEY.slice(0, 5));
+      expect(soon).toMatchObject({ total: 5, overallTotal: 8, facets: FULL_FACETS });
+
+      const unpaid = await listMine(alice, {
+        order: 'journey',
+        'status[0]': 'PENDING',
+        'status[1]': 'REFUNDED',
+      });
+      expect(codes(unpaid)).toEqual(['BK-AWAITPAY', 'BK-REFUNDED', 'BK-LAPSED01']);
+      expect(unpaid.facets).toEqual(FULL_FACETS);
+
+      const lapsed = await listMine(alice, {
+        order: 'journey',
+        'when[0]': 'PAST',
+        'status[0]': 'PENDING',
+      });
+      expect(codes(lapsed)).toEqual(['BK-LAPSED01']);
+
+      // Cú pháp cũ một giá trị, thứ tự mặc định `recent` (ngày tạo giảm dần).
+      const paid = await listMine(alice, { status: 'PAID' });
+      expect(codes(paid)).toEqual(['BK-ONTOUR01', 'BK-TRAVELD1', 'BK-UPCOMNG2', 'BK-UPCOMNG1']);
+    });
+
+    it('q khớp mã có và không có BK-, tên tour, tên điểm đến khi gõ không dấu', async () => {
+      const alice = await seedBookings('search@example.com', [
+        // Tour Hà Nội, tên snapshot KHÔNG chứa "Hanoi", mã không chứa chữ nào được tìm.
+        {
+          code: 'BK-TRIP0001',
+          status: BookingStatus.PAID,
+          start: 10,
+          minutesAgo: 30,
+          tourId: unpublishedTour.id,
+          tourTitle: 'Old Quarter Food Walk',
+        },
+        {
+          code: 'BK-TRIP0002',
+          status: BookingStatus.PAID,
+          start: 11,
+          minutesAgo: 20,
+          tourTitle: 'Hội An Old Town & Lantern Evening',
+        },
+        // Tour Hội An, tên không có "Hội An": khớp "hoi an" chỉ có thể nhờ tên điểm đến.
+        {
+          code: 'BK-B6VCOQNW',
+          status: BookingStatus.PAID,
+          start: 12,
+          minutesAgo: 10,
+          tourTitle: 'Riverside Supper Cruise',
+        },
+      ]);
+      const search = async (q: string) => codes(await listMine(alice, { order: 'journey', q }));
+
+      for (const q of ['ha noi', 'hanoi', 'Hà Nội']) {
+        expect(await search(q)).toEqual(['BK-TRIP0001']);
+      }
+      expect(await search('lantern')).toEqual(['BK-TRIP0002']);
+      expect(await search('b6vcoqnw')).toEqual(['BK-B6VCOQNW']);
+      expect(await search('BK-B6VC')).toEqual(['BK-B6VCOQNW']);
+      expect(await search('hoi an')).toEqual(['BK-TRIP0002', 'BK-B6VCOQNW']);
+
+      const one = await listMine(alice, { q: 'ha noi' });
+      expect(one).toMatchObject({ total: 1, totalPages: 1, overallTotal: 3 });
+      expect(one.facets.status).toEqual({
+        PENDING: 0,
+        PAID: 3,
+        CANCELLED: 0,
+        REFUNDED: 0,
+        PARTIALLY_REFUNDED: 0,
+      });
+    });
+
+    it('không truyền tham số mới: thứ tự recent, 12 dòng — như trước ADR-0054', async () => {
+      const alice = await seedBookings('defaults@example.com', JOURNEY_ROWS);
+
+      const all = await listMine(alice);
+      expect(all).toMatchObject({ page: 1, limit: 12, total: 8, totalPages: 1, overallTotal: 8 });
+      expect(codes(all)).toEqual([
+        'BK-ONTOUR01',
+        'BK-REFUNDED',
+        'BK-TRAVELD1',
+        'BK-AWAITPAY',
+        'BK-UPCOMNG2',
+        'BK-UPCOMNG1',
+        'BK-PARTREF1',
+        'BK-LAPSED01',
+      ]);
+    });
+
+    it('giá trị lạ của bộ lọc là 400, không lặng lẽ bỏ qua', async () => {
+      const alice = await seedBookings('invalid@example.com', []);
+      for (const query of ['when%5B0%5D=SOMEDAY', 'order=price', 'q=%20%20']) {
+        const res = await app.inject({
+          method: 'GET',
+          url: `/api/bookings?${query}`,
+          headers: { cookie: alice },
+        });
+        expect(res.statusCode).toBe(400);
+      }
+    });
   });
 
   it('GET /api/bookings/{code} is owner-or-404', async () => {

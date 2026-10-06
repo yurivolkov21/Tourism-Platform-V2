@@ -3,6 +3,7 @@ import { isContractProcedure } from '@orpc/contract';
 import { contract } from './contract.js';
 import type { ContractInputs, ContractOutputs } from './index.js';
 import * as contractIndex from './index.js';
+import { type BookingsListResult, BookingsListResultSchema } from './schemas/bookings.js';
 import type {
   Destination,
   Paged,
@@ -60,6 +61,10 @@ describe('contract routes', () => {
     expect(errorMap.DEPARTURE_NOT_AVAILABLE?.status).toBe(400);
     expect(errorMap.SEATS_UNAVAILABLE?.status).toBe(409);
     expect(contract.bookings.byCode['~orpc'].errorMap).toHaveProperty('NOT_FOUND');
+  });
+
+  it('bookings.mine trả BookingsListResult — phân trang cộng facets và overallTotal (ADR-0054)', () => {
+    expect(contract.bookings.mine['~orpc'].outputSchema).toBe(BookingsListResultSchema);
   });
 
   it('reviews.create declares REVIEW_PHOTO_INVALID (ADR-0021)', () => {
@@ -173,5 +178,9 @@ describe('contract type inference', () => {
     expectTypeOf<ContractOutputs['catalog']['categories']['list']>().toEqualTypeOf<
       TourCategory[]
     >();
+  });
+
+  it('bookings.mine output infers as BookingsListResult', () => {
+    expectTypeOf<ContractOutputs['bookings']['mine']>().toEqualTypeOf<BookingsListResult>();
   });
 });

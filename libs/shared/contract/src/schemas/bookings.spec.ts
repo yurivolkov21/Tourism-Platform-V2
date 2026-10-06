@@ -728,3 +728,23 @@ describe('BookingsListFacetsSchema / BookingsListResultSchema (ADR-0054 §2)', (
     expect(BookingsListResultSchema.safeParse(withoutOverall).success).toBe(false);
   });
 });
+
+describe('BookingsListQuerySchema.status — một giá trị hoặc mảng (ADR-0054 §2)', () => {
+  it('một giá trị kiểu cũ vẫn nhận (`?status=PAID`)', () => {
+    expect(BookingsListQuerySchema.parse({ status: 'PAID' }).status).toBe('PAID');
+  });
+
+  it('mảng 1–5 giá trị hợp lệ', () => {
+    expect(BookingsListQuerySchema.parse({ status: ['PAID', 'CANCELLED'] }).status).toEqual([
+      'PAID',
+      'CANCELLED',
+    ]);
+    expect(BookingsListQuerySchema.safeParse({ status: [] }).success).toBe(false);
+    expect(BookingsListQuerySchema.safeParse({ status: ['PAID', 'NOPE'] }).success).toBe(false);
+    expect(
+      BookingsListQuerySchema.safeParse({
+        status: ['PENDING', 'PAID', 'CANCELLED', 'REFUNDED', 'PARTIALLY_REFUNDED', 'PAID'],
+      }).success,
+    ).toBe(false);
+  });
+});

@@ -65,6 +65,7 @@ import {
   BookingDetailSchema,
   BookingSchema,
   BookingsListQuerySchema,
+  BookingsListResultSchema,
   CancelBookingInputSchema,
   CancelBookingResultSchema,
   CreateBookingInputSchema,
@@ -551,10 +552,12 @@ export const contract = {
       .route({
         method: 'GET',
         path: '/api/bookings',
-        summary: 'List own bookings, newest first (authed, paged)',
+        summary:
+          'List own bookings with filters, search, journey order and facet counts (authed, paged)',
       })
       .input(BookingsListQuerySchema)
-      .output(PagedSchema(BookingSchema)),
+      // ADR-0054: `facets` đếm trên MỌI đơn của khách, bỏ qua bộ lọc; `overallTotal` không lọc.
+      .output(BookingsListResultSchema),
     byCode: oc
       .route({
         method: 'GET',

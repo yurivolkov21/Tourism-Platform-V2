@@ -4,6 +4,7 @@ import type {
   Booking,
   BookingDetail,
   BookingsListQuery,
+  BookingsListResult,
   CreateBookingInput,
   MediaItem,
   Paged,
@@ -40,6 +41,7 @@ import {
 import { REVIEW_MINE_INCLUDE, toMyReview } from '../reviews/reviews.service.js';
 import { bookingCancellation } from './booking-cancellation.js';
 import { mintBookingCode } from './booking-code.js';
+import { selectBookingsPage } from './booking-list.js';
 import { checkoutDescription } from './checkout-description.js';
 import { effectiveUnitPrice, totalAmount } from './pricing.js';
 import { withBookingRefundLock } from './refund-lock.js';
@@ -674,43 +676,78 @@ export class BookingsService {
     return toBooking(updated, null, tourImage);
   }
 
-  /** Booking của chính user, mới nhất trước (id làm tiebreak ổn định), status
-   * filter optional. `cancellationStatus` cố ý giữ null (default của
-   * `toBooking`) — list này phục vụ trang danh sách nhiều row, thêm một query
-   * cancellation MỚI NHẤT cho mỗi row (N+1) không đáng giá cho một field chỉ
-   * trang chi tiết (`byCode`) cần (Task 6a, A2). */
-  async mine(userId: string, query: BookingsListQuery): Promise<Paged<Booking>> {
-    const { page, limit, status } = query;
-    const where: Prisma.BookingWhereInput = {
-      userId,
-      ...(status ? { status } : {}),
-    };
+  /**
+   * Đơn của chính user (ADR-0054 §3): đọc tập khoá NHẸ của mọi đơn, để `selectBookingsPage`
+   * gắn giai đoạn, lọc, tìm, đếm, xếp và cắt trang; rồi mới nạp đủ dòng cho đúng các id của
+   * trang — giữ nguyên thứ tự hàm thuần trả về (`IN (…)` không giữ thứ tự nào).
+   *
+   * Giá: mỗi lần gọi đọc mọi đơn của một khách ở dạng nhẹ — nhiều nhất trên prod là 14 đơn
+   * (05/10). `cancellationStatus`, `refundedTotal`, `reviewedAt` vẫn để mặc định của
+   * `toBooking` (Task 6a, A2): danh sách không gánh N query phụ cho trường chỉ trang chi tiết
+   * (`byCode`) cần.
+   */
+  async mine(userId: string, query: BookingsListQuery): Promise<BookingsListResult> {
+    const keyRows = await prisma.booking.findMany({
+      where: { userId },
+      select: {
+        id: true,
+        code: true,
+        status: true,
+        createdAt: true,
+        departureStartDate: true,
+        departureEndDate: true,
+        tourTitle: true,
+        tour: {
+          select: { destinations: { select: { destination: { select: { name: true } } } } },
+        },
+      },
+    });
+    const selection = selectBookingsPage(
+      keyRows.map((row) => ({
+        id: row.id,
+        code: row.code,
+        status: row.status,
+        createdAt: row.createdAt,
+        departureStartDate: calendarDate(row.departureStartDate),
+        departureEndDate: calendarDate(row.departureEndDate),
+        tourTitle: row.tourTitle,
+        destinationNames: row.tour.destinations.map((link) => link.destination.name),
+      })),
+      query,
+      vietnamToday(new Date()),
+    );
 
-    const [total, rows] = await Promise.all([
-      prisma.booking.count({ where }),
-      prisma.booking.findMany({
-        where,
-        include: { tour: bookingTourInclude },
-        orderBy: [{ createdAt: 'desc' }, { id: 'asc' }],
-        skip: (page - 1) * limit,
-        take: limit,
-      }),
-    ]);
+    // Câu thứ hai chỉ cho các id của trang; `userId` lặp lại làm hàng rào thứ hai.
+    const rows =
+      selection.pageIds.length === 0
+        ? []
+        : await prisma.booking.findMany({
+            where: { id: { in: selection.pageIds }, userId },
+            include: { tour: bookingTourInclude },
+          });
+    const byId = new Map(rows.map((row) => [row.id, row]));
+    // Một đơn biến mất giữa hai câu đọc (tài khoản vừa xoá) thì rơi khỏi trang, không ném.
+    const ordered = selection.pageIds.flatMap((id) => {
+      const row = byId.get(id);
+      return row ? [row] : [];
+    });
 
     // MỘT query media cho cả trang (chống N+1, cùng khuôn `catalog.listTours`).
     const coverMap = await this.media.resolveForOwners(
       MediaOwnerType.TOUR,
-      rows.map((row) => row.tourId),
-      // Chỉ cần cover cho hàng bảng (W4 R3).
+      ordered.map((row) => row.tourId),
+      // Chỉ cần cover cho hàng danh sách (W4 R3).
       [MediaRole.hero],
     );
 
     return {
-      items: rows.map((row) => toBooking(row, null, pickCover(coverMap.get(row.tourId)))),
-      page,
-      limit,
-      total,
-      totalPages: Math.ceil(total / limit),
+      items: ordered.map((row) => toBooking(row, null, pickCover(coverMap.get(row.tourId)))),
+      page: query.page,
+      limit: query.limit,
+      total: selection.total,
+      totalPages: Math.ceil(selection.total / query.limit),
+      facets: selection.facets,
+      overallTotal: selection.overallTotal,
     };
   }
 

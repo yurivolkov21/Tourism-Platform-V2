@@ -265,7 +265,11 @@ export const BookingsListQuerySchema = z.object({
   // Postgres đếm qua từng row bị skip — kể cả trên list đã lọc theo user.
   page: z.int().min(1).max(10_000).default(1),
   limit: z.int().min(1).max(50).default(12),
-  status: BookingStatusSchema.optional(),
+  /**
+   * Một giá trị (`status=PAID`, người gọi cũ) hoặc mảng (`status[0]=PAID&status[1]=CANCELLED`);
+   * nhiều giá trị là HOẶC. Trần 5 = số giá trị của `BookingStatusSchema`.
+   */
+  status: z.union([BookingStatusSchema, z.array(BookingStatusSchema).min(1).max(5)]).optional(),
   /** Nhóm thời gian của `bookingWhen`; nhiều giá trị là HOẶC. */
   when: z.array(BookingWhenSchema).min(1).max(3).optional(),
   /**
