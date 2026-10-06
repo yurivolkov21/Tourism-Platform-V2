@@ -184,7 +184,8 @@ Spec để ngỏ hay nói chưa khớp mã ở các chỗ dưới đây; plan ch
 
 `pnpm gate:int` trần chạy song song 10 luồng và từng làm máy phình RAM, nên chạy tách bước,
 hãm song song. Build web prerender gọi API thật, nên phải có API sống. Chạy từ GỐC WORKTREE
-bằng **Git Bash**.
+bằng **Git Bash**. Checkout gốc còn session khác đang thi công thì bước 1, 2, 5 và lệnh tắt API
+đi theo bản cô lập ở mục kế tiếp.
 
 ```powershell
 # 0. (PowerShell) Liếc commit memory trống — dưới 6 GB thì DỪNG, báo session gốc, đừng tự giết tiến trình nào.
@@ -219,33 +220,125 @@ Get-NetTCPConnection -LocalPort 3001 -State Listen -ErrorAction SilentlyContinue
 
 Cả năm bước xanh mới được khai task xong. Máy chậm bất thường thì dừng và báo.
 
-### Chạy song song với đợt sửa admin ở checkout gốc
+### Chạy song song với session khác ở checkout gốc
 
-Checkout gốc (`fix/admin-ui-polish`) có thể đang chạy gate cùng lúc. Int test của mọi session
-dùng CHUNG DB `tourism_test` (hằng `TEST_DATABASE_URL` trong `apps/api/vitest.int.config.ts`),
-và quy trình gate giết tiến trình đang nghe cổng 3001. Chạy đè nhau là hai bên TRUNCATE dữ liệu
-của nhau và giết API của nhau. Vì vậy, **ngay sát lúc chạy bước 1 và bước 5**:
+Checkout gốc (`fix/admin-ui-polish`, đợt sửa admin) chạy gate cùng lúc với worktree này. Int
+test của mọi session dùng CHUNG DB `tourism_test` (hằng `TEST_DATABASE_URL` trong
+`apps/api/vitest.int.config.ts`), còn bản trần ở trên dựng API cổng 3001 rồi giết tiến trình
+đang nghe cổng ấy. Chạy đè nhau là hai bên TRUNCATE dữ liệu của nhau và giết API của nhau; và
+session kia có thể bắt đầu gate NGAY GIỮA lúc bên này chuẩn bị (đã dính 29/09), nên soát cổng
+một lần rồi mới quyết là không đủ. Vì vậy, **chừng nào session gốc chưa báo đợt kia đã xong,
+mọi lượt gate chạy bản cô lập dưới đây** thay cho bước 1, 2, 5 và lệnh tắt API ở trên; bước 0,
+3, 4 giữ nguyên. KHÔNG BAO GIỜ chạy lệnh tắt API theo cổng 3001.
 
-- Soát cổng 3001 và tiến trình `turbo|vitest|next|tsgo|biome` ngoài worktree này. Có lượt nặng
-  đang chạy thì CHỜ nó xong (30 giây liền không còn tiến trình nào khớp) — hai gate cùng lúc
-  nhân đôi tải RAM.
-- Cổng 3001 bị giữ thì chạy API của mình ở cổng 3101:
-  `(cd apps/api && PORT=3101 node --env-file-if-exists=.env.local dist/main.js > /tmp/p7-api.log 2>&1 &)`,
-  và CHỈ lệnh build đặt `API_URL=http://localhost:3101 NEXT_PUBLIC_API_URL=http://localhost:3101`
-  (đừng `export`: bước test kế thừa biến thì `apps/admin/src/proxy.spec.ts` đỏ giả). Tắt đúng
-  PID mình khởi động (lấy từ dòng `[Nest] <pid>` trong log), KHÔNG giết theo cổng.
-- Int test trên DB riêng: ba file tạm trong `apps/api/out/iso-int/` (thư mục `out/` đã
-  gitignore):
-  - `iso-constants.ts`: export `TEST_DATABASE_URL` trỏ `tourism_test_p7`;
-  - `iso-global-setup.ts`: chép globalSetup gốc, `CREATE DATABASE` rồi
-    `pnpm prisma migrate deploy` với `cwd` là `apps/api`;
-  - `vitest.int.iso.config.ts`: `mergeConfig(base, …)` đặt `test.env.DATABASE_URL`, GÁN ĐÈ
-    `globalSetup` sau khi merge (mergeConfig nối mảng chứ không thay), và `resolve.alias` cho
-    chuỗi `../../vitest.int.config.js` trỏ sang `iso-constants.ts` (`check-rls.int.spec` import
-    thẳng hằng đó).
+**Chờ lượt nặng của bên kia** — ngay trước bước 1 và bước 5 (PowerShell). Còn dòng nào thì
+chờ rồi soát lại, tới khi 30 giây liền không còn dòng nào; hai gate cùng lúc nhân đôi tải RAM:
 
-  Chạy từ `apps/api`: `pnpm exec vitest run --config out/iso-int/vitest.int.iso.config.ts`.
-  Xong việc thì `DROP DATABASE tourism_test_p7` và xoá `apps/api/out/`.
+```powershell
+Get-CimInstance Win32_Process -Filter "Name='node.exe'" |
+  Where-Object { $_.CommandLine -match 'turbo|vitest|next|tsgo|biome' -and $_.CommandLine -notmatch 'booking-pages-redesign' } |
+  Select-Object ProcessId, @{ n = 'Cmd'; e = { $_.CommandLine.Substring(0, [Math]::Min(120, $_.CommandLine.Length)) } }
+```
+
+**Bước 1 và 2 cô lập — API của mình ở cổng 3101** (Git Bash, gốc worktree):
+
+```bash
+pnpm turbo run build --filter=@tourism/api --output-logs=errors-only
+(cd apps/api && PORT=3101 node --env-file-if-exists=.env.local dist/main.js > /tmp/p7-api.log 2>&1 &)
+for i in $(seq 1 30); do curl -sf http://localhost:3101/api/health > /dev/null && echo "API sống" && break; sleep 2; done
+grep -m1 -o '\[Nest\] [0-9]*' /tmp/p7-api.log   # PID của node — ghi lại để tắt
+
+API_URL=http://localhost:3101 NEXT_PUBLIC_API_URL=http://localhost:3101 NEXT_PUBLIC_SITE_URL=http://localhost:3000 pnpm turbo run build --concurrency=1 --output-logs=errors-only
+pnpm turbo run typecheck --concurrency=3 --output-logs=errors-only
+```
+
+Biến cổng 3101 chỉ gắn vào lệnh build, đừng `export`: bước test kế thừa biến thì
+`apps/admin/src/proxy.spec.ts` đỏ giả. `PORT=3101` thắng giá trị trong `.env.local`. Kiểm API
+bằng `curl` của Git Bash — `Invoke-WebRequest` của PowerShell thử IPv6 `::1` trước nên báo
+trượt dù API sống.
+
+**Tắt API — đúng PID của mình** (PowerShell, thay `<pid>` bằng số đã ghi):
+
+```powershell
+Get-Process -Id <pid> | Select-Object Id, ProcessName, Path   # phải là node.exe
+Stop-Process -Id <pid> -Force
+```
+
+**Bước 5 cô lập — int test trên DB riêng `tourism_test_p7`.** Tạo một lần ba file tạm dưới đây
+(thư mục `apps/api/out/` đã gitignore; Biome đọc `.gitignore`, tsconfig của api không include
+nó), rồi mỗi lượt gate chạy:
+
+```bash
+pnpm turbo run db:generate --filter=@tourism/api --output-logs=errors-only
+(cd apps/api && pnpm exec vitest run --config out/iso-int/vitest.int.iso.config.ts)
+```
+
+Lệnh vitest gọi thẳng KHÔNG kéo `^build` và `db:generate` như `pnpm test:int` qua turbo: worktree
+mới chưa có Prisma client (`apps/api/src/generated/`, gitignored) thì mọi file int chết vì
+`Cannot find module '../generated/prisma/client.js'`. Trong gate, bước 1–2 đã build đủ; chạy lẻ
+(như Task 4 Bước 6) thì build contract, i18n trước (lệnh ở Ràng buộc toàn cục). Đo 06/10 trong
+worktree này: `check-rls.int.spec` và `bookings.int.spec` xanh 31 ca trên `tourism_test_p7`.
+
+`apps/api/out/iso-int/iso-constants.ts`:
+
+```ts
+// Hằng DB int RIÊNG của session P7 — file tạm, xoá cùng apps/api/out/ khi xong việc.
+export const TEST_DATABASE_URL = 'postgresql://tourism:tourism@localhost:5432/tourism_test_p7';
+```
+
+`apps/api/out/iso-int/iso-global-setup.ts`:
+
+```ts
+import { execSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
+import { Client } from 'pg';
+import { TEST_DATABASE_URL } from './iso-constants';
+
+// Bản chép của vitest.int.global-setup.ts, trỏ DB riêng: tạo DB (idempotent) rồi áp migration.
+export default async function setup(): Promise<void> {
+  const adminUrl = TEST_DATABASE_URL.replace(/\/tourism_test_p7$/, '/postgres');
+  const client = new Client({ connectionString: adminUrl });
+  await client.connect();
+  try {
+    await client.query('CREATE DATABASE tourism_test_p7');
+  } catch (error) {
+    // 42P04 = duplicate_database: DB đã có từ lượt trước.
+    if ((error as { code?: string }).code !== '42P04') throw error;
+  } finally {
+    await client.end();
+  }
+  execSync('pnpm prisma migrate deploy', {
+    stdio: 'inherit',
+    cwd: fileURLToPath(new URL('../..', import.meta.url)),
+    env: { ...process.env, DATABASE_URL: TEST_DATABASE_URL },
+  });
+}
+```
+
+`apps/api/out/iso-int/vitest.int.iso.config.ts`:
+
+```ts
+import { fileURLToPath } from 'node:url';
+import { mergeConfig } from 'vitest/config';
+import base from '../../vitest.int.config';
+import { TEST_DATABASE_URL } from './iso-constants';
+
+const here = (file: string) => fileURLToPath(new URL(file, import.meta.url));
+
+const merged = mergeConfig(base, {
+  test: { env: { DATABASE_URL: TEST_DATABASE_URL } },
+  // check-rls.int.spec import thẳng hằng của config gốc — thiếu alias thì nó đo nhầm tourism_test.
+  resolve: { alias: { '../../vitest.int.config.js': here('./iso-constants.ts') } },
+});
+
+// mergeConfig NỐI mảng globalSetup chứ không thay, nên gán đè sau khi merge.
+export default { ...merged, test: { ...merged.test, globalSetup: [here('./iso-global-setup.ts')] } };
+```
+
+Lượt đầu phải thấy `prisma migrate deploy` áp migration vào `tourism_test_p7` và
+`check-rls.int.spec` xanh; không vậy thì DỪNG, báo session gốc. Hết Phần A (Task 12) thì dọn:
+`docker exec tourism-v2-postgres-1 psql -U tourism -d postgres -c "DROP DATABASE IF EXISTS tourism_test_p7"`
+và xoá `apps/api/out/`.
 
 ## Bài học mang sang — đọc TRƯỚC dòng mã đầu tiên
 
@@ -1726,11 +1819,12 @@ import { type BookingsListResult, BookingsListResultSchema } from './schemas/boo
 
 ```
 
-- [ ] **Bước 6.** `pnpm --filter @tourism/api exec vitest run --config vitest.int.config.ts src/modules/bookings/bookings.int.spec.ts`
+- [ ] **Bước 6.** `(cd apps/api && pnpm exec vitest run --config out/iso-int/vitest.int.iso.config.ts src/modules/bookings/bookings.int.spec.ts)`
   — ĐỎ: route đã khai output mới nên mọi `GET /api/bookings` trả 500 (output thiếu `facets`),
   kể cả ca cũ `GET /api/bookings returns OWN bookings only…` và ca BK-1. Đó là lý do đỏ đúng.
-  Trước lệnh này soát cổng 3001 và tiến trình int của session khác (mục "Chạy song song" của
-  Ràng buộc toàn cục).
+  Lệnh chạy trên DB riêng `tourism_test_p7` (mục "Chạy song song" của Ràng buộc toàn cục — ba
+  file tạm phải có trước); khi session gốc báo không còn ai chạy song song thì thay
+  `out/iso-int/vitest.int.iso.config.ts` bằng `vitest.int.config.ts`.
 
 - [ ] **Bước 7. Cài — service.** Trong `bookings.service.ts`:
   - thêm `BookingsListResult,` vào khối `import type {…} from '@tourism/contract'` (dòng 2–10),
@@ -4347,8 +4441,8 @@ describe('layout-check P7 Phần A', () => {
 - Modify: `docs/CHANGELOG.md`
 - Modify: `docs/handoff/mobile-booking-handoff.md` (hàng `T1` của bảng mục 4)
 
-- [ ] **Bước 1.** `git log --oneline main..HEAD` — sau commit plan và `d0f067ad` (ADR-0054 + spec +
-  bản vẽ) là mười commit của A1–A10 (cộng commit `fix` của A11 nếu có), không commit lạ.
+- [ ] **Bước 1.** `git log --oneline main..HEAD` — sau ba commit docs của session gốc (`d0f067ad`
+  ADR-0054 + spec + bản vẽ, commit plan, commit prompt thi công) là mười commit của A1–A10 (cộng commit `fix` của A11 nếu có), không commit lạ.
   `git diff --stat main..HEAD` không chạm file nào ngoài "Bản đồ file" của Phần A và tài liệu của
   plan.
 
@@ -4417,8 +4511,9 @@ CÒN TREO cho session gốc: không có việc hạ tầng (không migration, kh
   `docs/handoff/mobile-booking-handoff.md`):
   `docs: entry CHANGELOG cho P7 Phần A — My bookings lọc, tìm, phân trang`
 
-- [ ] **Bước 8. Dọn.** Tắt API (lệnh PowerShell ở Quy trình gate; chạy ở cổng 3101 thì tắt đúng PID
-  của mình), xoá `/tmp/p7-api.log`. Không còn tiến trình nào nghe cổng 3001, 3101 hay 8767. Đã
+- [ ] **Bước 8. Dọn.** Tắt API (chạy cô lập thì tắt đúng PID của mình, không bao giờ theo cổng
+  3001), xoá `/tmp/p7-api.log`. Không còn tiến trình nào CỦA MÌNH nghe cổng 3101 hay 8767 (cổng
+  3001 có thể là API của session khác — không đụng). Đã
   dùng DB int riêng thì `DROP DATABASE tourism_test_p7` và xoá `apps/api/out/`. Xoá
   `apps/*/.turbo`, `.turbo` gốc và `apps/*/.next` của worktree; báo dung lượng ổ C trước và sau.
 
