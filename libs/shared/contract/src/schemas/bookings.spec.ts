@@ -1,10 +1,13 @@
 import {
   AdminBookingsListQuerySchema,
   AdminRefundInputSchema,
+  BOOKINGS_SEARCH_MAX,
   BookingCancellationSchema,
   BookingDetailSchema,
   BookingSchema,
+  BookingsListFacetsSchema,
   BookingsListQuerySchema,
+  BookingsListResultSchema,
   CancelBookingInputSchema,
   CancelBookingResultSchema,
   CancellationRequestSchema,
@@ -649,5 +652,79 @@ describe('CancellationRequestSchema — ai quyết (ADR-0041 §4)', () => {
     expect(
       CancellationRequestSchema.safeParse({ ...selfCancel, decidedByCustomer: 'customer' }).success,
     ).toBe(false);
+  });
+});
+
+describe('BookingsListQuerySchema — lọc, tìm, thứ tự (ADR-0054 §2)', () => {
+  it('mặc định: trang 1, 12 dòng, thứ tự recent — không tự thêm bộ lọc nào', () => {
+    expect(BookingsListQuerySchema.parse({})).toEqual({ page: 1, limit: 12, order: 'recent' });
+  });
+
+  it('order nhận recent và journey, từ chối giá trị lạ', () => {
+    expect(BookingsListQuerySchema.parse({ order: 'journey' }).order).toBe('journey');
+    expect(BookingsListQuerySchema.safeParse({ order: 'price' }).success).toBe(false);
+  });
+
+  it('when: mảng 1–3 nhóm viết hoa; chuỗi trần, mảng rỗng, chữ thường đều bị bắt', () => {
+    expect(BookingsListQuerySchema.parse({ when: ['UPCOMING', 'PAST'] }).when).toEqual([
+      'UPCOMING',
+      'PAST',
+    ]);
+    expect(BookingsListQuerySchema.safeParse({ when: [] }).success).toBe(false);
+    expect(BookingsListQuerySchema.safeParse({ when: ['upcoming'] }).success).toBe(false);
+    expect(BookingsListQuerySchema.safeParse({ when: 'UPCOMING' }).success).toBe(false);
+    expect(
+      BookingsListQuerySchema.safeParse({ when: ['PAST', 'PAST', 'PAST', 'PAST'] }).success,
+    ).toBe(false);
+  });
+
+  it('q: cắt khoảng trắng TRƯỚC khi đo trần 80; toàn khoảng trắng bị bắt', () => {
+    const x = (length: number) => 'x'.repeat(length);
+    expect(BOOKINGS_SEARCH_MAX).toBe(80);
+    expect(BookingsListQuerySchema.parse({ q: '  ha noi  ' }).q).toBe('ha noi');
+    expect(BookingsListQuerySchema.parse({ q: `  ${x(80)}  ` }).q).toBe(x(80));
+    expect(BookingsListQuerySchema.safeParse({ q: x(81) }).success).toBe(false);
+    expect(BookingsListQuerySchema.safeParse({ q: '   ' }).success).toBe(false);
+  });
+});
+
+describe('BookingsListFacetsSchema / BookingsListResultSchema (ADR-0054 §2)', () => {
+  const FACETS = {
+    when: { ON_TOUR: 1, UPCOMING: 2, PAST: 3 },
+    status: { PENDING: 0, PAID: 4, CANCELLED: 0, REFUNDED: 1, PARTIALLY_REFUNDED: 1 },
+  };
+  const RESULT = {
+    items: [validBooking],
+    page: 1,
+    limit: 10,
+    total: 1,
+    totalPages: 1,
+    facets: FACETS,
+    overallTotal: 6,
+  };
+
+  it('nhận kết quả đủ facets và overallTotal', () => {
+    expect(BookingsListResultSchema.parse(RESULT)).toEqual(RESULT);
+  });
+
+  it('facets đòi ĐỦ mọi khoá — lựa chọn không có đơn vẫn mang số 0', () => {
+    const { PAST: _past, ...noPast } = FACETS.when;
+    const { CANCELLED: _cancelled, ...noCancelled } = FACETS.status;
+    expect(BookingsListFacetsSchema.safeParse({ ...FACETS, when: noPast }).success).toBe(false);
+    expect(BookingsListFacetsSchema.safeParse({ ...FACETS, status: noCancelled }).success).toBe(
+      false,
+    );
+  });
+
+  it('facets từ chối khoá lạ và số âm', () => {
+    const extra = { ...FACETS, when: { ...FACETS.when, SOMEDAY: 0 } };
+    const negative = { ...FACETS, status: { ...FACETS.status, PAID: -1 } };
+    expect(BookingsListFacetsSchema.safeParse(extra).success).toBe(false);
+    expect(BookingsListFacetsSchema.safeParse(negative).success).toBe(false);
+  });
+
+  it('overallTotal bắt buộc', () => {
+    const { overallTotal: _overall, ...withoutOverall } = RESULT;
+    expect(BookingsListResultSchema.safeParse(withoutOverall).success).toBe(false);
   });
 });

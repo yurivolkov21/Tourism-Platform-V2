@@ -1,5 +1,6 @@
 import { z } from 'zod';
-import { DecimalStringSchema, DestinationLinkSchema } from './catalog.js';
+import { BookingWhenSchema } from './booking-phase.js';
+import { DecimalStringSchema, DestinationLinkSchema, PagedSchema } from './catalog.js';
 import {
   AdminPageQuerySchema,
   BookingCodeSchema,
@@ -241,9 +242,23 @@ export const BookingDetailSchema = BookingSchema.extend({
 
 export type BookingDetail = z.output<typeof BookingDetailSchema>;
 
+/** Trần ô tìm của danh sách đơn — web cắt chuỗi URL và đặt `maxLength` bằng CHÍNH số này. */
+export const BOOKINGS_SEARCH_MAX = 80;
+
+/**
+ * Thứ tự của `bookings.mine` (ADR-0054 §2–3). `recent` (mặc định) giữ đúng `createdAt desc,
+ * id asc` như trước cho trang Passport; `journey` là đang đi → sắp đi → đã qua, dành cho trang
+ * My bookings — hai nhãn "Newer / Older trips" chỉ đúng với thứ tự này.
+ */
+export const BookingsListOrderSchema = z.enum(['recent', 'journey']);
+export type BookingsListOrder = z.output<typeof BookingsListOrderSchema>;
+
 /**
  * Query cho `bookings.mine`. Cùng quy ước pagination như list catalog (field gõ
  * kiểu thuần — ZodSmartCoercionPlugin lo coerce query string ở server).
+ *
+ * ADR-0054 §2 thêm ba trường TUỲ CHỌN, người gọi cũ không phải đổi gì. Mảng đi trên query
+ * GET theo ký pháp ngoặc có chỉ số của oRPC: `when[0]=UPCOMING&when[1]=PAST`.
  */
 export const BookingsListQuerySchema = z.object({
   // Cùng trần với PageQuerySchema (W4 R3, vòng vá review): offset tuỳ ý là
@@ -251,9 +266,42 @@ export const BookingsListQuerySchema = z.object({
   page: z.int().min(1).max(10_000).default(1),
   limit: z.int().min(1).max(50).default(12),
   status: BookingStatusSchema.optional(),
+  /** Nhóm thời gian của `bookingWhen`; nhiều giá trị là HOẶC. */
+  when: z.array(BookingWhenSchema).min(1).max(3).optional(),
+  /**
+   * Tìm theo mã đơn, tên tour, tên điểm đến — server bỏ dấu và hạ chữ thường cả hai phía.
+   * Cắt khoảng trắng TRƯỚC khi đo, nên chuỗi toàn khoảng trắng là 400.
+   */
+  q: z.string().trim().min(1).max(BOOKINGS_SEARCH_MAX).optional(),
+  order: BookingsListOrderSchema.default('recent'),
 });
 
 export type BookingsListQuery = z.output<typeof BookingsListQuerySchema>;
+
+/**
+ * Số đơn theo từng lựa chọn của hai bộ lọc — đếm trên TOÀN BỘ đơn của khách, bỏ qua mọi bộ
+ * lọc và từ khoá (ADR-0054 §2: con số đứng yên khi khách bấm). `z.record` với khoá enum của
+ * Zod 4 đòi ĐỦ mọi khoá và từ chối khoá lạ, nên lựa chọn không có đơn vẫn có mặt với số 0.
+ */
+export const BookingsListFacetsSchema = z.object({
+  when: z.record(BookingWhenSchema, z.int().nonnegative()),
+  status: z.record(BookingStatusSchema, z.int().nonnegative()),
+});
+
+export type BookingsListFacets = z.output<typeof BookingsListFacetsSchema>;
+
+/**
+ * Output của `bookings.mine`: khuôn phân trang chung (`total`/`totalPages` tính SAU khi lọc)
+ * cộng `facets` và `overallTotal` — tổng đơn của khách, không lọc, cho dòng "N trips" ở hero.
+ * Mở rộng cho ĐÚNG route này, cùng lý do `BookingDetailSchema`: không đẩy field vào
+ * `BookingSchema` dùng chung của cả chục route.
+ */
+export const BookingsListResultSchema = PagedSchema(BookingSchema).extend({
+  facets: BookingsListFacetsSchema,
+  overallTotal: z.int().nonnegative(),
+});
+
+export type BookingsListResult = z.output<typeof BookingsListResultSchema>;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Bề mặt admin (spec P2 §3, W3) — refund ledger + list quản trị
