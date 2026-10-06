@@ -60,6 +60,43 @@ describe('FacetFilter — menu', () => {
     expect(screen.getByRole('checkbox', { name: 'Past trips, 12 trips' })).toBeChecked();
   });
 
+  /** Review P7 06/10: Popover của Base UI là role="dialog" — không tên thì hai menu như nhau. */
+  it('menu mở ra là dialog mang tên của nút lọc', async () => {
+    const user = userEvent.setup();
+    renderFilter();
+    await user.click(screen.getByRole('button', { name: 'When' }));
+
+    expect(await screen.findByRole('dialog', { name: 'When' })).toBeInTheDocument();
+  });
+
+  /**
+   * Số đếm là tổng tĩnh, nên lựa chọn 0 đơn mà tích một mình là chắc chắn "No trips match" —
+   * khoá như OptionRow của /tours (review 06/10). Đang chọn thì KHÔNG khoá, kẻo khách tự nhốt mình.
+   */
+  it('lựa chọn 0 đơn chưa chọn thì bị khoá, lựa chọn có đơn thì không', async () => {
+    const user = userEvent.setup();
+    const { onToggle } = renderFilter();
+    await user.click(screen.getByRole('button', { name: 'When' }));
+    // `aria-disabled` chứ không `toBeDisabled()`: Base UI dựng ô tích bằng `<span>` (cùng nếp
+    // `tours-explorer.spec.tsx`).
+    const dead = await screen.findByRole('checkbox', { name: 'On tour now, 0 trips' });
+    expect(dead).toHaveAttribute('aria-disabled', 'true');
+    expect(screen.getByRole('checkbox', { name: 'Upcoming, 1 trip' })).not.toHaveAttribute(
+      'aria-disabled',
+    );
+    await user.click(dead);
+    expect(onToggle).not.toHaveBeenCalled();
+  });
+
+  it('lựa chọn 0 đơn đang chọn (link cũ) vẫn bấm được để bỏ chọn', async () => {
+    const user = userEvent.setup();
+    const { onToggle } = renderFilter(['ON_TOUR']);
+    await user.click(screen.getByRole('button', { name: 'When: On tour now' }));
+    await user.click(await screen.findByRole('checkbox', { name: 'On tour now, 0 trips' }));
+
+    expect(onToggle).toHaveBeenCalledWith('ON_TOUR');
+  });
+
   it('bấm ô tích gọi onToggle với giá trị của dòng, đúng một lần', async () => {
     const user = userEvent.setup();
     const { onToggle } = renderFilter();

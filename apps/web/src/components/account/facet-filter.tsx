@@ -81,19 +81,30 @@ export function FacetFilter<V extends string>({
           </Button>
         }
       />
-      <PopoverContent align="start" className="w-60 gap-0 p-1">
+      {/* Popup của Base UI là role="dialog" — mang tên nút lọc để hai menu không đọc như nhau. */}
+      <PopoverContent aria-label={label} align="start" className="w-60 gap-0 p-1">
         {options.map((option) => {
           // Id ghép từ `useId`: hai nút lọc trên cùng trang không bao giờ trùng id ô tích.
           const id = `${idPrefix}-${option.value}`;
+          const checked = selected.includes(option.value);
+          // Số đếm là tổng tĩnh: tích một lựa chọn 0 đơn là chắc chắn "No trips match" — khoá như
+          // OptionRow của /tours. KHÔNG khoá lựa chọn đang chọn, kẻo khách không bỏ chọn được.
+          const dead = option.count === 0 && !checked;
           return (
             <label
               key={option.value}
               htmlFor={id}
-              className="flex cursor-pointer items-center gap-2.5 rounded-md px-2 py-1.5 text-[13px] hover:bg-muted"
+              className={cn(
+                'flex items-center gap-2.5 rounded-md px-2 py-1.5 text-[13px]',
+                dead
+                  ? 'cursor-not-allowed text-muted-foreground/45'
+                  : 'cursor-pointer hover:bg-muted',
+              )}
             >
               <Checkbox
                 id={id}
-                checked={selected.includes(option.value)}
+                checked={checked}
+                disabled={dead}
                 onCheckedChange={() => onToggle(option.value)}
               />
               <span className="flex-1 truncate">{option.label}</span>
