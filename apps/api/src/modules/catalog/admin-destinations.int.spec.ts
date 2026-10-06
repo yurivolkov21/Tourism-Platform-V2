@@ -432,7 +432,7 @@ describe('admin destinations integration (P4e-2 F15)', () => {
   describe('delete (ADR-0053)', () => {
     const PUBLIC_ID = 'tourism/destinations/hoi-an/lanterns';
 
-    it('0 tour → xoá hàng và dòng ảnh thư viện; dòng ảnh tour mượn cùng publicId còn', async () => {
+    it('0 tour → xoá hàng và dòng ảnh thư viện của nó; ảnh điểm đến khác và ảnh tour mượn còn', async () => {
       const borrower = await tourVisiting('borrower', [destId(2)]);
       await prisma.mediaAsset.createMany({
         data: [
@@ -452,6 +452,16 @@ describe('admin destinations integration (P4e-2 F15)', () => {
             role: 'hero',
             sortOrder: 0,
           },
+          // Ảnh thư viện của một điểm đến KHÁC — chốt duy nhất canh bộ lọc `ownerId` của câu
+          // `deleteMany`: thiếu bộ lọc ấy thì lệnh xoá một điểm đến quét sạch cả thư viện ảnh.
+          {
+            ownerType: 'DESTINATION',
+            ownerId: destId(2),
+            publicId: 'tourism/destinations/hanoi/old-quarter',
+            type: 'IMAGE',
+            role: 'gallery',
+            sortOrder: 1,
+          },
         ],
       });
 
@@ -463,6 +473,9 @@ describe('admin destinations integration (P4e-2 F15)', () => {
       expect(
         await prisma.mediaAsset.count({ where: { ownerType: 'DESTINATION', ownerId: destId(1) } }),
       ).toBe(0);
+      expect(
+        await prisma.mediaAsset.count({ where: { ownerType: 'DESTINATION', ownerId: destId(2) } }),
+      ).toBe(1);
       expect(await prisma.mediaAsset.count({ where: { ownerId: borrower.id } })).toBe(1);
       // ADR-0053 §4: file Cloudinary KHÔNG vào hàng dọn — tour đang dùng nó.
       expect(await prisma.mediaGarbage.count()).toBe(0);
