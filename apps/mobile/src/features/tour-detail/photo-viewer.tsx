@@ -147,83 +147,80 @@ export function PhotoViewer({
     .runOnJS(true);
 
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
-      <Modal visible transparent animationType="fade" statusBarTranslucent onRequestClose={onClose}>
-        <View style={{ flex: 1, backgroundColor: withAlpha(theme.colors.scrim, 1) }}>
-          <View
-            style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              paddingTop: insets.top + theme.spacing(1.5),
-              paddingHorizontal: theme.spacing(3),
-            }}
-          >
-            <IconButton
-              icon="x"
-              accessibilityLabel={closeLabel}
-              variant="glass"
-              onPress={onClose}
-            />
-            <AppText variant="label" tone="media">
-              {counterFor(index + 1, photos.length)}
-            </AppText>
-            {/* Đệm rộng bằng nút X — chữ đếm mới thật sự canh giữa (khuôn bản vẽ). */}
-            <View style={{ width: theme.touchTargetMin }} />
-          </View>
-
-          <GestureDetector gesture={dismissGesture}>
-            <Animated.View style={{ flex: 1, transform: [{ translateY: dismissTranslateY }] }}>
-              <ScrollView
-                testID="photo-viewer-scroll"
-                horizontal
-                pagingEnabled
-                showsHorizontalScrollIndicator={false}
-                contentOffset={{ x: initialIndex * pageWidth, y: 0 }}
-                onMomentumScrollEnd={(e) => {
-                  setIndex(
-                    pageIndexFromOffset(e.nativeEvent.contentOffset.x, pageWidth, photos.length),
-                  );
-                }}
-                style={{ flex: 1 }}
-              >
-                {photos.map((photo) => (
-                  <View
-                    key={photo.url}
-                    style={{ width: pageWidth, flex: 1, justifyContent: 'center' }}
-                  >
-                    <PhotoPage photo={photo} transformUrl={transformUrl} onZoomChange={setZoomed} />
-                  </View>
-                ))}
-              </ScrollView>
-            </Animated.View>
-          </GestureDetector>
-
-          <View
-            style={{
-              paddingHorizontal: theme.spacing(6),
-              paddingBottom: insets.bottom + theme.spacing(6),
-            }}
-          >
-            {photos[index]?.alt === null || photos[index]?.alt === undefined ? null : (
-              <AppText variant="subtitle" tone="media" style={{ opacity: 0.9 }}>
-                {photos[index].alt}
-              </AppText>
-            )}
-            {photos[index]?.creditLine === null ||
-            photos[index]?.creditLine === undefined ? null : (
-              <AppText
-                variant="caption"
-                tone="media"
-                style={{ opacity: 0.6, marginTop: theme.spacing(1) }}
-              >
-                {photos[index].creditLine}
-              </AppText>
-            )}
-          </View>
+    <Modal visible transparent animationType="fade" statusBarTranslucent onRequestClose={onClose}>
+      {/* F2 (review 06/10): root PHẢI là con trực tiếp của `Modal` — bọc ở
+          ngoài thì nó nằm ở cây app chính, Android không nhận pinch/double-tap/
+          vuốt-đóng bên trong. Jest mock không phân biệt được, chỉ máy thật thấy. */}
+      <GestureHandlerRootView
+        style={{ flex: 1, backgroundColor: withAlpha(theme.colors.scrim, 1) }}
+      >
+        <View
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            paddingTop: insets.top + theme.spacing(1.5),
+            paddingHorizontal: theme.spacing(3),
+          }}
+        >
+          <IconButton icon="x" accessibilityLabel={closeLabel} variant="glass" onPress={onClose} />
+          <AppText variant="label" tone="media">
+            {counterFor(index + 1, photos.length)}
+          </AppText>
+          {/* Đệm rộng bằng nút X — chữ đếm mới thật sự canh giữa (khuôn bản vẽ). */}
+          <View style={{ width: theme.touchTargetMin }} />
         </View>
-      </Modal>
-    </GestureHandlerRootView>
+
+        <GestureDetector gesture={dismissGesture}>
+          <Animated.View style={{ flex: 1, transform: [{ translateY: dismissTranslateY }] }}>
+            <ScrollView
+              testID="photo-viewer-scroll"
+              horizontal
+              pagingEnabled
+              showsHorizontalScrollIndicator={false}
+              contentOffset={{ x: initialIndex * pageWidth, y: 0 }}
+              onMomentumScrollEnd={(e) => {
+                setIndex(
+                  pageIndexFromOffset(e.nativeEvent.contentOffset.x, pageWidth, photos.length),
+                );
+              }}
+              style={{ flex: 1 }}
+            >
+              {photos.map((photo) => (
+                <View
+                  key={photo.url}
+                  style={{ width: pageWidth, flex: 1, justifyContent: 'center' }}
+                >
+                  <PhotoPage photo={photo} transformUrl={transformUrl} onZoomChange={setZoomed} />
+                </View>
+              ))}
+            </ScrollView>
+          </Animated.View>
+        </GestureDetector>
+
+        <View
+          style={{
+            paddingHorizontal: theme.spacing(6),
+            paddingBottom: insets.bottom + theme.spacing(6),
+          }}
+        >
+          {photos[index]?.alt === null || photos[index]?.alt === undefined ? null : (
+            <AppText variant="subtitle" tone="media" style={{ opacity: 0.9 }}>
+              {photos[index].alt}
+            </AppText>
+          )}
+          {photos[index]?.creditLine === null || photos[index]?.creditLine === undefined ? null : (
+            <AppText
+              variant="caption"
+              tone="media"
+              style={{ opacity: 0.6, marginTop: theme.spacing(1) }}
+            >
+              {photos[index].creditLine}
+            </AppText>
+          )}
+        </View>
+      </GestureHandlerRootView>
+    </Modal>
   );
 }
 
