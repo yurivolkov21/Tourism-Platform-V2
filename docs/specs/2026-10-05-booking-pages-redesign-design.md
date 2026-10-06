@@ -76,8 +76,10 @@ Năm mốc, theo thứ tự:
 4. **Departure** — ngày đi; qua rồi thì ghi "Departed".
 5. **Trip ends** — ngày về; qua rồi thì ghi "Trip ended".
 
-- **Trạng thái mốc:** mốc có ngày ≤ hôm nay là xong. Mốc chưa xong đầu tiên là "đang tới",
-  các mốc sau là "chưa tới".
+- **Trạng thái mốc:** mốc có ngày ≤ hôm nay là xong, trừ hai mốc: Free cancellation chỉ xong
+  khi đã QUA ngày chót (hạn hết 23:59 giờ Việt Nam), Trip ends chỉ xong ở giai đoạn `travelled`
+  (ngày về khách vẫn đang đi). Mốc chưa xong đầu tiên là "đang tới", các mốc sau là "chưa tới".
+  Mốc Paid của đơn chưa trả giữ nhãn "Paid", dòng phụ "Awaiting payment" (plan, quyết định 10).
 - **Nhãn "Today":** nằm trên vạch nối, giữa mốc xong cuối cùng và mốc kế tiếp, vị trí theo tỷ
   lệ số ngày. Chỉ hiện ở `awaiting_payment`, `upcoming`, `on_tour`.
 - **Chip góc phải:**
@@ -89,10 +91,12 @@ Năm mốc, theo thứ tự:
   | `travelled` | "Completed" |
   | `awaiting_payment` | "Awaiting payment" |
 
-- **Biến thể `cancelled`:** bốn mốc Booked → Paid (nếu có) → Cancelled (ngày
-  `cancellationDecidedAt`, không có thì `cancellationRequestedAt`, không có nữa thì bỏ ngày) →
-  Refund (chữ của `refundSummary`). Chip "Cancelled".
-- **Biến thể `lapsed`:** hai mốc, Booked → "Payment not completed".
+- **Biến thể `cancelled`:** bốn mốc Booked → Paid (nếu có) → Cancelled (ngày `cancelledAt` —
+  mọi đường huỷ đều ghi nó; không có thì `cancellationDecidedAt`, rồi `cancellationRequestedAt`,
+  không có nữa thì bỏ ngày) → Refund (số tiền gọn theo `refundSummary`: "$147.00", "$73.50 of
+  $147.00", "No refund due"). Đơn chưa từng thu tiền thì không có mốc Paid và mốc Refund. Chip
+  "Cancelled" (plan, quyết định 9).
+- **Biến thể `lapsed`:** hai mốc, Booked → "Payment not completed"; không có chip.
 - **Điện thoại:** thanh ngang thành danh sách dọc; "Today" thành một dòng chen giữa hai mốc.
 
 ### 2.3 Đếm ngược và ngày trong chuyến
@@ -153,8 +157,16 @@ Phần còn lại của voucher đổi theo giai đoạn:
 PARTIALLY_REFUNDED là đơn còn hiệu lực: đi theo giai đoạn của nó, mục Receipt overview thêm
 dòng "Refunded −{số tiền}".
 
-Đơn PENDING (đang xác nhận thanh toán) giữ nguyên giao diện chờ hiện tại
-(`CheckoutAutoRefresh`); thiết kế mới chỉ áp cho đơn đã có `paidAt`.
+Thiết kế mới chỉ áp cho đơn đã có `paidAt`. Mọi đơn chưa trả — PENDING đang xác nhận lẫn đơn
+CANCELLED chưa từng trả (giữ chỗ hết hạn) — giữ nguyên hoá đơn hiện tại (`BookingReceipt`,
+`CheckoutAutoRefresh`). Ba chi tiết chốt theo mã (plan, quyết định 11):
+
+- **Sắp đi mà đã quá hạn huỷ:** bỏ dòng điều kiện hạn huỷ (dấu tích cạnh "đã hết hạn" đọc như
+  quyền lợi); mốc nhật ký thành "Free cancellation ended" ✓.
+- **"Write a review" chỉ cho PAID** — cổng `checkReviewEligibility` của API chỉ nhận PAID. Đơn
+  PAID đã viết thì "Reviewed" ✓; PARTIALLY_REFUNDED chưa viết thì nhật ký còn hai mốc.
+- **Dòng phụ lúc vừa trả** là "…and a copy is on its way to {email}." — email xác nhận đi qua
+  outbox nên lúc trang render có thể chưa gửi.
 
 ### 2.7 Danh sách đơn
 
@@ -205,20 +217,24 @@ Bỏ hai link chữ "← Passport" nằm dưới hero.
 | Hàm | Làm gì |
 | --- | --- |
 | `journeyMilestones(booking, today)` | Các mốc, trạng thái từng mốc, vị trí nhãn "Today", chip (mục 2.2) |
-| `getReadySteps(booking, tour)` | Danh sách bước đã bỏ bước thiếu dữ liệu (mục 2.4) |
+| `getReadySteps(booking, tour, today)` | Số ngày còn lại và danh sách bước đã bỏ bước thiếu dữ liệu (mục 2.4) |
+| `paymentProviderLabel(provider)` | Tên cổng thanh toán cho khách đọc, dùng chung cho biên nhận, vé, voucher (`lib/booking-vm.ts`) |
 | `voucherView(booking, now, today)` | Vừa trả hay mở lại, tiêu đề, dòng điều kiện, nhật ký (mục 2.6) |
-| `barcodeBars(code)` | Độ rộng vạch và khoảng hở, tất định theo mã đơn; chỉ để trang trí, `aria-hidden` |
 | `bookingsListParams(searchParams)` / `bookingsListHref(params)` | Đọc và dựng URL danh sách |
-| `pagerView(page, totalPages, total, limit)` | Chữ và link của phân trang (mục 7.4) |
+| `pagerView(params, totalPages, total, limit)` | Chữ và link của phân trang, giữ bộ lọc trên link (mục 7.4; plan, quyết định 17) |
 
-Các dòng tiền (2 người lớn × đơn giá…) đang tính trong `BookingReceipt`: tách ra helper để
-trang chi tiết, voucher và trang huỷ dùng chung.
+Các dòng tiền (2 người lớn × đơn giá…) đang tính trong `BookingReceipt`: tách thành
+`bookingPriceLines` ở `lib/checkout.ts` để trang chi tiết, voucher và trang huỷ dùng chung.
+Mã vạch trang trí dùng lại `ticketBarcodeWidths` có sẵn ở cùng file (plan, quyết định 2–3).
 
 ### 4.3 Mộc và màu
 
 - Mộc dùng lại `VisaStamp` (nghiêng 4°, viền trong gạch đứt, mực loang).
-- Mảng teal của voucher dùng token `bg-primary-emphasis` sẵn có. Không thêm mã màu hex
-  (luật CLAUDE.md #6).
+- Mảng teal của voucher và dải màu trên vé dùng `bg-primary` với `text-primary-foreground`.
+  Token `primary-emphasis` chỉ dành cho chữ (JSDoc `tokens.mjs`: "KHÔNG dùng cho `bg-*`"); ở chế
+  độ tối nó là teal sáng, chữ trắng trên đó chỉ đạt khoảng 1,8:1. Ở chế độ sáng hai token cùng
+  màu nên giao diện không đổi so với bản vẽ. Không thêm mã màu hex (luật CLAUDE.md #6; plan,
+  quyết định 12).
 
 ## 5. Web — trang chi tiết đơn
 
@@ -231,6 +247,9 @@ Bản vẽ: [booking-detail.src.html](../design/mockups/booking-detail.src.html)
 - Từ trên xuống: vé, thanh hành trình, rồi hai cột `minmax(0,1.08fr) minmax(0,1fr)` (trái là
   thông tin đơn, phải là khối theo giai đoạn).
 - Điện thoại: một cột theo thứ tự vé → thanh hành trình → khối theo giai đoạn → thông tin đơn.
+- Mốc màn hình (plan, quyết định 13): lề ngang khớp hero (`xl:px-32`) nên ở khổ 1280 nội dung
+  chỉ còn 1024px — vé nằm ngang từ `xl`, dưới đó xếp dọc như điện thoại; thanh hành trình nằm
+  ngang từ `md`; hai cột từ `lg`.
 
 ### 5.2 Vé kiểu boarding pass
 
@@ -284,8 +303,10 @@ Bản vẽ: [booking-voucher.src.html](../design/mockups/booking-voucher.src.htm
 
 ### 6.2 Cột trái (cách "A")
 
-- Mộc trạng thái góc phải.
-- Tiêu đề và dòng phụ theo mục 2.6.
+- Mộc trạng thái ở góc phải, cùng hàng với tiêu đề (cột trái chỉ còn khoảng 584px ở khổ 1280
+  vì lề khớp hero, đặt mộc nổi sẽ đè chữ — plan, quyết định 13).
+- Tiêu đề và dòng phụ theo mục 2.6. Tiêu đề tab trình duyệt là "Voucher — Nexora" (trang mở
+  lại được cả khi đơn đã huỷ).
 - Thẻ ảnh lớn: ảnh bìa tour, lớp tối mờ dần ở đáy; trên đó là dòng nhỏ "{nơi} · {D} day(s)",
   tên tour, tổng tiền đã trả, và hai chip kính mờ (ngày đi, "{số khách} × {đơn giá}").
 - Bốn ô có icon, lưới 2×2:
@@ -309,8 +330,10 @@ Bản vẽ: [booking-voucher.src.html](../design/mockups/booking-voucher.src.htm
   đón cần thấy mã ngay); mảng teal xuống cuối và giấu ô mã của nó.
 - **Không tìm thấy đơn:** nút "My bookings" trỏ đúng `/account/bookings` (hiện trỏ `/account`).
 - **Bản in:** giấu navbar, hero, footer và mọi nút; thẻ in hết khổ, không ngắt trang giữa thẻ;
-  mảng teal in nền trắng viền teal chữ đậm cho đỡ mực; mã vạch in đen. Quy tắc in cũ của biên
-  nhận giữ cho trang huỷ.
+  mảng teal in nền trắng viền teal, chữ mực tối cho đỡ mực (kể cả khi in từ giao diện tối);
+  mã vạch in đen; cột phải hẹp còn 17rem để khổ A4 (~718px) vẫn giữ hai cột. Giấu phần ngoài
+  thẻ bằng `body:has([data-slot="voucher"])` thay vì gắn `print:hidden` vào linh kiện dùng chung.
+  Quy tắc in cũ của biên nhận giữ cho trang huỷ.
 
 ## 7. Web — My bookings
 

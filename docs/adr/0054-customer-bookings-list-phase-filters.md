@@ -75,9 +75,9 @@ Mỗi lệnh `mine`:
 3. Xếp theo `order`, cắt trang.
 4. Nạp đủ dữ liệu cho đúng các id của trang bằng include và lô ảnh bìa có sẵn.
 
-`q` khớp mã đơn (không phân biệt hoa thường, có hay không có tiền tố `BK-`), tên tour và tên
-điểm đến, sau khi bỏ dấu và hạ chữ thường cả hai phía ("ha noi", "hanoi" và "Hà Nội" đều khớp
-tour Hà Nội).
+`q` khớp mã đơn (không phân biệt hoa thường, có hay không có tiền tố `BK-`), tên tour (snapshot
+`tour_title` của đơn) và tên điểm đến, sau khi cả hai phía qua cùng một khoá: bỏ dấu, hạ chữ
+thường, bỏ mọi ký tự không phải chữ hoặc số ("ha noi", "hanoi" và "Hà Nội" đều thành `hanoi`).
 
 Thứ tự `journey`: `on_tour` theo ngày đi tăng dần, rồi `upcoming` và `awaiting_payment` theo
 ngày đi tăng dần, rồi nhóm `PAST` theo ngày đi giảm dần. Hoà thì xếp `createdAt desc`, rồi

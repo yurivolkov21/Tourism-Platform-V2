@@ -233,7 +233,8 @@ entry CHANGELOG cùng ngày.
 [**F18 ảnh tour (P4e-3b)** (kèm prompt thi công)](plans/2026-09-28-p4e-3b-tour-photos.md) ·
 [**F19 khu sửa tour dạng thanh bước (P4e-3c)** (kèm prompt thi công)](plans/2026-09-28-p4e-3c-tour-workspace-steps.md) ·
 [**P4e-4 quản trị bài viết** (kèm prompt thi công)](plans/2026-10-02-p4e-4-posts-admin.md) ·
-[**P4f vùng Users: Owner và Staff** (kèm prompt thi công)](plans/2026-10-02-p4f-users-staff.md)
+[**P4f vùng Users: Owner và Staff** (kèm prompt thi công)](plans/2026-10-02-p4f-users-staff.md) ·
+[**P7 ba trang đơn của khách** (ba phần A, B, C)](plans/2026-10-05-booking-pages-redesign.md)
 
 **Công cụ máy dev (ngoài repo)**
 [mod `tourism-status` (kèm prompt thi công)](plans/2026-10-02-tourism-status-mod.md)
