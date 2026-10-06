@@ -701,9 +701,10 @@ describe('BookingsListFacetsSchema / BookingsListResultSchema (ADR-0054 §2)', (
     totalPages: 1,
     facets: FACETS,
     overallTotal: 6,
+    today: '2026-10-06',
   };
 
-  it('nhận kết quả đủ facets và overallTotal', () => {
+  it('nhận kết quả đủ facets, overallTotal và today', () => {
     expect(BookingsListResultSchema.parse(RESULT)).toEqual(RESULT);
   });
 
@@ -726,6 +727,14 @@ describe('BookingsListFacetsSchema / BookingsListResultSchema (ADR-0054 §2)', (
   it('overallTotal bắt buộc', () => {
     const { overallTotal: _overall, ...withoutOverall } = RESULT;
     expect(BookingsListResultSchema.safeParse(withoutOverall).success).toBe(false);
+  });
+
+  it('today bắt buộc và là ngày lịch YYYY-MM-DD', () => {
+    const { today: _today, ...withoutToday } = RESULT;
+    expect(BookingsListResultSchema.safeParse(withoutToday).success).toBe(false);
+    expect(
+      BookingsListResultSchema.safeParse({ ...RESULT, today: '2026-10-06T00:00:00Z' }).success,
+    ).toBe(false);
   });
 });
 

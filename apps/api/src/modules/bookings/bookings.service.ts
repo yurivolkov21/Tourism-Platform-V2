@@ -41,7 +41,7 @@ import {
 import { REVIEW_MINE_INCLUDE, toMyReview } from '../reviews/reviews.service.js';
 import { bookingCancellation } from './booking-cancellation.js';
 import { mintBookingCode } from './booking-code.js';
-import { selectBookingsPage } from './booking-list.js';
+import { type BookingListKey, selectBookingsPage } from './booking-list.js';
 import { checkoutDescription } from './checkout-description.js';
 import { effectiveUnitPrice, totalAmount } from './pricing.js';
 import { withBookingRefundLock } from './refund-lock.js';
@@ -687,58 +687,85 @@ export class BookingsService {
    * (`byCode`) cần.
    */
   async mine(userId: string, query: BookingsListQuery): Promise<BookingsListResult> {
-    const keyRows = await prisma.booking.findMany({
-      where: { userId },
-      select: {
-        id: true,
-        code: true,
-        status: true,
-        createdAt: true,
-        departureStartDate: true,
-        departureEndDate: true,
-        tourTitle: true,
-        tour: {
-          select: { destinations: { select: { destination: { select: { name: true } } } } },
-        },
-      },
+    // MỘT mốc "hôm nay" cho cả lượt: xếp, lọc, đếm dùng nó, và nó đi về web trong kết quả.
+    const today = vietnamToday(new Date());
+    // Tên điểm đến chỉ cần cho ô tìm. Prisma đọc mỗi tầng quan hệ bằng một câu SQL riêng nối
+    // đuôi nhau, nên không có từ khoá thì không kéo chuỗi tour → điểm đến (review 06/10: 9 câu
+    // nối đuôi mỗi lượt, kể cả trang Passport không dùng tính năng tìm).
+    const keySelect = {
+      id: true,
+      code: true,
+      status: true,
+      createdAt: true,
+      departureStartDate: true,
+      departureEndDate: true,
+      tourTitle: true,
+      tourId: true,
+    } as const satisfies Prisma.BookingSelect;
+    type KeyRow = Prisma.BookingGetPayload<{ select: typeof keySelect }>;
+    const toKey = (row: KeyRow, destinationNames: readonly string[]): BookingListKey => ({
+      id: row.id,
+      code: row.code,
+      status: row.status,
+      createdAt: row.createdAt,
+      departureStartDate: calendarDate(row.departureStartDate),
+      departureEndDate: calendarDate(row.departureEndDate),
+      tourTitle: row.tourTitle,
+      destinationNames,
     });
+    const keyRows =
+      query.q === undefined
+        ? (await prisma.booking.findMany({ where: { userId }, select: keySelect })).map((row) => ({
+            key: toKey(row, []),
+            tourId: row.tourId,
+          }))
+        : (
+            await prisma.booking.findMany({
+              where: { userId },
+              select: {
+                ...keySelect,
+                tour: {
+                  select: { destinations: { select: { destination: { select: { name: true } } } } },
+                },
+              },
+            })
+          ).map((row) => ({
+            key: toKey(
+              row,
+              row.tour.destinations.map((link) => link.destination.name),
+            ),
+            tourId: row.tourId,
+          }));
     const selection = selectBookingsPage(
-      keyRows.map((row) => ({
-        id: row.id,
-        code: row.code,
-        status: row.status,
-        createdAt: row.createdAt,
-        departureStartDate: calendarDate(row.departureStartDate),
-        departureEndDate: calendarDate(row.departureEndDate),
-        tourTitle: row.tourTitle,
-        destinationNames: row.tour.destinations.map((link) => link.destination.name),
-      })),
+      keyRows.map((row) => row.key),
       query,
-      vietnamToday(new Date()),
+      today,
     );
 
-    // Câu thứ hai chỉ cho các id của trang; `userId` lặp lại làm hàng rào thứ hai.
-    const rows =
+    // `tourId` của trang đã có từ câu khoá, nên lô ảnh bìa chạy SONG SONG câu thứ hai.
+    const tourIdById = new Map(keyRows.map((row) => [row.key.id, row.tourId]));
+    const pageTourIds = selection.pageIds.flatMap((id) => {
+      const tourId = tourIdById.get(id);
+      return tourId === undefined ? [] : [tourId];
+    });
+    const [rows, coverMap] = await Promise.all([
+      // Câu thứ hai chỉ cho các id của trang; `userId` lặp lại làm hàng rào thứ hai.
       selection.pageIds.length === 0
         ? []
-        : await prisma.booking.findMany({
+        : prisma.booking.findMany({
             where: { id: { in: selection.pageIds }, userId },
             include: { tour: bookingTourInclude },
-          });
+          }),
+      // MỘT query media cho cả trang (chống N+1, cùng khuôn `catalog.listTours`); chỉ cần
+      // cover cho hàng danh sách (W4 R3).
+      this.media.resolveForOwners(MediaOwnerType.TOUR, pageTourIds, [MediaRole.hero]),
+    ]);
     const byId = new Map(rows.map((row) => [row.id, row]));
-    // Một đơn biến mất giữa hai câu đọc (tài khoản vừa xoá) thì rơi khỏi trang, không ném.
+    // Giữ đúng thứ tự hàm thuần trả về; id nào không còn ở câu thứ hai thì rơi khỏi trang.
     const ordered = selection.pageIds.flatMap((id) => {
       const row = byId.get(id);
       return row ? [row] : [];
     });
-
-    // MỘT query media cho cả trang (chống N+1, cùng khuôn `catalog.listTours`).
-    const coverMap = await this.media.resolveForOwners(
-      MediaOwnerType.TOUR,
-      ordered.map((row) => row.tourId),
-      // Chỉ cần cover cho hàng danh sách (W4 R3).
-      [MediaRole.hero],
-    );
 
     return {
       items: ordered.map((row) => toBooking(row, null, pickCover(coverMap.get(row.tourId)))),
@@ -748,6 +775,7 @@ export class BookingsService {
       totalPages: Math.ceil(selection.total / query.limit),
       facets: selection.facets,
       overallTotal: selection.overallTotal,
+      today,
     };
   }
 

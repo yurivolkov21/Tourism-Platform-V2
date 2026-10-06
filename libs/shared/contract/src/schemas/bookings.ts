@@ -296,13 +296,21 @@ export type BookingsListFacets = z.output<typeof BookingsListFacetsSchema>;
 
 /**
  * Output của `bookings.mine`: khuôn phân trang chung (`total`/`totalPages` tính SAU khi lọc)
- * cộng `facets` và `overallTotal` — tổng đơn của khách, không lọc, cho dòng "N trips" ở hero.
+ * cộng `facets`, `overallTotal` — tổng đơn của khách, không lọc, cho dòng "N trips" ở hero — và
+ * `today` của lượt đọc.
  * Mở rộng cho ĐÚNG route này, cùng lý do `BookingDetailSchema`: không đẩy field vào
  * `BookingSchema` dùng chung của cả chục route.
  */
 export const BookingsListResultSchema = PagedSchema(BookingSchema).extend({
   facets: BookingsListFacetsSchema,
   overallTotal: z.int().nonnegative(),
+  /**
+   * Ngày lịch Việt Nam mà server dùng để xếp, lọc và đếm lượt này (review Phần A, 06/10). Web
+   * dựng dòng phụ, Pay now, Review theo CHÍNH ngày này thay vì tự đọc đồng hồ lần nữa: sát
+   * 00:00 giờ Việt Nam hai đồng hồ ra hai ngày khác nhau, và một đơn sẽ nằm trong bộ lọc
+   * Upcoming mà hàng lại ghi "Ends …".
+   */
+  today: z.iso.date(),
 });
 
 export type BookingsListResult = z.output<typeof BookingsListResultSchema>;

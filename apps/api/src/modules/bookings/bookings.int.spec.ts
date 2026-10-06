@@ -981,6 +981,34 @@ describe('bookings integration (create PENDING + FakeGateway)', () => {
       ]);
     });
 
+    /**
+     * `today` của kết quả là ngày lịch Việt Nam do server tính (review Phần A, 06/10): web dựng
+     * dòng phụ theo đúng ngày này. Mốc kiểm là 00:00 giờ Việt Nam (17:00 UTC) gần nhất SAU lúc
+     * chạy, để phiên đăng nhập vừa tạo vẫn còn hạn khi giả đồng hồ. Chỉ giả `Date`, không giả
+     * hẹn giờ — Fastify, Prisma và pg vẫn chạy bằng hẹn giờ thật.
+     */
+    it('today đổi đúng 00:00 giờ Việt Nam, không theo ngày UTC', async () => {
+      const alice = await seedBookings('today@example.com', []);
+      const now = new Date();
+      const boundary =
+        Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 17) +
+        (now.getUTCHours() >= 17 ? 86_400_000 : 0);
+      // Ngày UTC của mốc = ngày Việt Nam TRƯỚC nửa đêm; cộng 7 giờ ra ngày Việt Nam SAU nửa đêm.
+      const vnBefore = new Date(boundary).toISOString().slice(0, 10);
+      const vnAfter = new Date(boundary + 7 * 3_600_000).toISOString().slice(0, 10);
+
+      vi.useFakeTimers({ toFake: ['Date'] });
+      try {
+        vi.setSystemTime(boundary - 1);
+        const before = await listMine(alice);
+        vi.setSystemTime(boundary);
+        const after = await listMine(alice);
+        expect([before.today, after.today]).toEqual([vnBefore, vnAfter]);
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
     it('giá trị lạ của bộ lọc là 400, không lặng lẽ bỏ qua', async () => {
       const alice = await seedBookings('invalid@example.com', []);
       for (const query of ['when%5B0%5D=SOMEDAY', 'order=price', 'q=%20%20']) {
