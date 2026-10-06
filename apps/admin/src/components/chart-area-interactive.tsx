@@ -181,9 +181,11 @@ export function ChartAreaInteractive({
                 />
               }
             />
+            {/* `monotone` không vọt quá điểm dữ liệu: `natural` uốn đường xuống dưới 0 ở ngày
+                không có doanh thu, trông như doanh thu âm (spec 2026-10-05 §4 #5). */}
             <Area
               dataKey="revenue"
-              type="natural"
+              type="monotone"
               fill="url(#fillRevenue)"
               stroke="var(--color-revenue)"
             />

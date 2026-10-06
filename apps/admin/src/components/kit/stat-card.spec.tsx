@@ -115,4 +115,22 @@ describe('StatCardRow', () => {
     const { container } = render(<StatCardRow cards={[{ key: 'revenue', ...BASE }]} />);
     expect(container.querySelector('[data-testid="stat-period"]')).toBeNull();
   });
+
+  it('màn hẹp xếp 2 cột; hàng chỉ một thẻ thì 1 cột', () => {
+    const { rerender } = render(
+      <StatCardRow
+        cards={[
+          { key: 'revenue', ...BASE },
+          { key: 'paid', ...BASE, label: 'Paid bookings' },
+          { key: 'pending', ...BASE, label: 'Pending' },
+          { key: 'cancelled', ...BASE, label: 'Cancelled' },
+        ]}
+      />,
+    );
+    const region = screen.getByRole('region', { name: messages.admin.stats.regionLabel });
+    expect(region.querySelector('.grid')).toHaveClass('grid-cols-2');
+
+    rerender(<StatCardRow cards={[{ key: 'revenue', ...BASE }]} />);
+    expect(region.querySelector('.grid')).toHaveClass('grid-cols-1');
+  });
 });

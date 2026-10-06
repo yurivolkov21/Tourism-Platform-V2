@@ -5535,7 +5535,6 @@ export const messages = {
      */
     categories: {
       list: {
-        heading: 'Tour categories',
         /**
          * Nói ngay HAI luật đắt nhất của màn, trước khi ai đó mở form sửa.
          *
@@ -5698,7 +5697,6 @@ export const messages = {
      */
     destinations: {
       list: {
-        heading: 'Destinations',
         /**
          * Nói ngay hai luật đắt nhất: vùng quyết định trang nào liệt kê điểm
          * đến, và slug khoá sau khi tạo. Vế giữa trả lời câu hỏi hay gặp nhất

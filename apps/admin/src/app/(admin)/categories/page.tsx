@@ -51,10 +51,9 @@ export default async function CategoriesPage({
 
   return (
     <AdminShell user={session}>
-      <div className="flex flex-col gap-1 px-4 lg:px-6">
-        <h2 className="text-2xl font-semibold tracking-tight">{t.list.heading}</h2>
-        <p className="text-sm text-muted-foreground">{t.list.subtitle}</p>
-      </div>
+      {/* Không còn tiêu đề lớn: thanh tiêu đề của shell đã gọi tên trang, như mọi vùng khác
+          (spec 2026-10-05 §4 #11). Câu giải thích giữ lại, thành dòng mờ. */}
+      <p className="px-4 text-sm text-muted-foreground lg:px-6">{t.list.subtitle}</p>
 
       <CategoriesTable
         rows={toCategoryRowVMs(rows)}

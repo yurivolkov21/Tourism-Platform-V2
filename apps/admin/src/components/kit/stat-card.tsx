@@ -60,7 +60,10 @@ export function StatCardRow({
   const grid = (
     <div
       className={cn(
-        'grid grid-cols-1 gap-4 *:data-[slot=card]:bg-linear-to-t *:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card *:data-[slot=card]:shadow-xs @xl/main:grid-cols-2',
+        'grid gap-4 *:data-[slot=card]:bg-linear-to-t *:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card *:data-[slot=card]:shadow-xs',
+        // Màn hẹp 2 cột (spec 2026-10-05 §4 #12): bốn thẻ xếp dọc từng chiếm hết màn đầu
+        // tiên. Hàng chỉ một thẻ thì giữ 1 cột — nửa bề rộng trơ trọi.
+        cards.length === 1 ? 'grid-cols-1' : 'grid-cols-2',
         GRID_COLUMNS[cards.length] ?? GRID_COLUMNS[4],
         'dark:*:data-[slot=card]:bg-card',
       )}
