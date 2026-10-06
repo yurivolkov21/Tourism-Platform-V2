@@ -82,6 +82,52 @@ describe('StatCard', () => {
 
     expect(screen.queryByTestId('stat-delta')).not.toBeInTheDocument();
   });
+
+  // Ruling F-a (review cuối nhánh): ở 375px thẻ chỉ rộng 164px, pill bên phải bị đẩy ra ngoài
+  // khung — Card `overflow-hidden` nên trang không tràn, chỉ pill mất một nửa (đo Task 19).
+  // jsdom không chạy container query, nên hai ca dưới canh đúng lớp: dưới 200px phần đầu một
+  // cột và pill xuống dòng riêng, từ 200px trả lại chỗ cũ của `CardAction`.
+  it.each([
+    ['delta', UP, 'stat-delta'],
+    [
+      'callout',
+      { ...BASE, callout: { label: 'Needs attention', tone: 'bad' as const } },
+      'stat-callout',
+    ],
+  ])(
+    'thẻ hẹp dưới 200px: pill %s xuống dòng riêng dưới con số, căn trái',
+    (_kind, props, testId) => {
+      render(<StatCard {...props} />);
+
+      const header = document.querySelector('[data-slot="card-header"]');
+      expect(header).toHaveClass(
+        'has-data-[slot=card-action]:grid-cols-1',
+        '@[200px]/card:has-data-[slot=card-action]:grid-cols-[1fr_auto]',
+      );
+      // Lớp hai cột mặc định của CardHeader phải bị thay, không được đứng song song.
+      expect(header).not.toHaveClass('has-data-[slot=card-action]:grid-cols-[1fr_auto]');
+
+      const action = screen.getByTestId(testId).closest('[data-slot="card-action"]');
+      expect(action).toHaveClass('col-start-1', 'row-span-1', 'justify-self-start');
+      expect(action).toHaveClass(
+        '@[200px]/card:col-start-2',
+        '@[200px]/card:row-span-2',
+        '@[200px]/card:row-start-1',
+        '@[200px]/card:justify-self-end',
+      );
+      // Từng lớp một: `not.toHaveClass(a, b)` chỉ đỏ khi có ĐỦ cả hai.
+      expect(action).not.toHaveClass('col-start-2');
+      expect(action).not.toHaveClass('justify-self-end');
+    },
+  );
+
+  it('con số nhỏ còn text-xl khi thẻ hẹp, lớn dần theo bề rộng thẻ', () => {
+    render(<StatCard {...UP} />);
+
+    const value = screen.getByText('$1,240.50');
+    expect(value).toHaveClass('text-xl', '@[200px]/card:text-2xl', '@[250px]/card:text-3xl');
+    expect(value).not.toHaveClass('text-2xl');
+  });
 });
 
 describe('StatCardRow', () => {
@@ -129,6 +175,8 @@ describe('StatCardRow', () => {
     );
     const region = screen.getByRole('region', { name: messages.admin.stats.regionLabel });
     expect(region.querySelector('.grid')).toHaveClass('grid-cols-2');
+    // Màn rộng (khung `main` từ 64rem) thì bốn thẻ một hàng.
+    expect(region.querySelector('.grid')).toHaveClass('@5xl/main:grid-cols-4');
 
     rerender(<StatCardRow cards={[{ key: 'revenue', ...BASE }]} />);
     expect(region.querySelector('.grid')).toHaveClass('grid-cols-1');

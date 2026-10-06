@@ -18,7 +18,8 @@ import type { StatCardVM } from '@/lib/stats-view';
  *
  * Kiểu dáng bê nguyên khối `section-cards` của block dashboard-01 (gradient
  * `from-primary/5`, container query `@[250px]/card` cho cỡ chữ, `CardFooter`
- * override `border-t-0` vì Card nova có gạch) — cùng lý do đã ghi ở
+ * override `border-t-0` vì Card nova có gạch; thẻ hẹp dưới 200px thì thêm luật
+ * riêng — xem `HEADER_LAYOUT`) — cùng lý do đã ghi ở
  * `DataTableFrame`: ba vùng phải nhìn là MỘT hệ. Từ P4d (ADR-0036 §1) chính
  * component này chạy ở trang `/`; bản demo `section-cards.tsx` đã xoá, đây
  * là nguồn duy nhất của kiểu dáng ấy.
@@ -98,6 +99,25 @@ const TONE_CLASS = {
   neutral: 'text-muted-foreground',
 } as const;
 
+/**
+ * Bố cục phần đầu thẻ theo bề rộng THẺ (container `card`; Ruling F-a của review cuối nhánh).
+ *
+ * Dưới 200px — điện thoại, lưới 2 cột: thẻ rộng 156–183px ở màn 360–414px — phần đầu còn MỘT
+ * cột và pill xuống dòng riêng dưới con số, căn trái. Từ 200px trả lại chỗ mặc định của
+ * `CardAction`: cột phải, chiếm hai dòng đầu. Lưới thẻ vẫn 2 cột (spec 2026-10-05 §4 #12).
+ *
+ * Spec §7 chỉ dặn thu cỡ chữ con số, và đo trình duyệt Task 19 cho thấy chưa đủ: ở 375px thẻ
+ * Revenue vẫn tràn 11px khi con số đã còn 16px, còn Cancellation rate (1px) và Unsubscribed
+ * 28d (19px) tràn vì chữ dài nhất của NHÃN cộng bề rộng pill — cỡ chữ con số không chạm tới
+ * hai thứ ấy. Card `overflow-hidden` nên trang không tràn; mắt chỉ thấy pill mất một nửa.
+ */
+const HEADER_LAYOUT =
+  'has-data-[slot=card-action]:grid-cols-1 @[200px]/card:has-data-[slot=card-action]:grid-cols-[1fr_auto]';
+
+/** Chỗ của pill — xem `HEADER_LAYOUT`. Ghi đè lớp mặc định của `CardAction` qua `cn`. */
+const ACTION_PLACEMENT =
+  'col-start-1 row-span-1 row-start-auto justify-self-start @[200px]/card:col-start-2 @[200px]/card:row-span-2 @[200px]/card:row-start-1 @[200px]/card:justify-self-end';
+
 /** Props = VM trừ `key` — `key` là của React, không phải dữ liệu của card. */
 export type StatCardProps = Omit<StatCardVM, 'key'>;
 
@@ -106,13 +126,13 @@ export function StatCard({ label, value, caption, delta, deltaGood, callout }: S
 
   return (
     <Card className="@container/card">
-      <CardHeader>
+      <CardHeader className={HEADER_LAYOUT}>
         <CardDescription>{label}</CardDescription>
-        <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
+        <CardTitle className="text-xl font-semibold tabular-nums @[200px]/card:text-2xl @[250px]/card:text-3xl">
           {value}
         </CardTitle>
         {delta ? (
-          <CardAction>
+          <CardAction className={ACTION_PLACEMENT}>
             <Badge
               variant="outline"
               // `data-*` là nguồn: test soi chiều/tông ở đây, CSS chỉ ăn theo.
@@ -132,7 +152,7 @@ export function StatCard({ label, value, caption, delta, deltaGood, callout }: S
             </Badge>
           </CardAction>
         ) : callout ? (
-          <CardAction>
+          <CardAction className={ACTION_PLACEMENT}>
             {/* Pill TRẠNG THÁI cho card ảnh chụp (không có kỳ trước) — khác
                 pill delta: không mũi tên, không "vs …", `data-testid` riêng
                 để không ai đọc nhầm nó thành "xu hướng đứng yên" (vòng vá
