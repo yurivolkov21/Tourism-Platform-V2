@@ -156,6 +156,23 @@ describe('Picker', () => {
     expect(await screen.findByRole('option', { name: 'Retired Hidden' })).toBeInTheDocument();
   });
 
+  it('tên dài trên ô: tên cắt "…", hint "Hidden" vẫn nằm trong ô, ô không nở theo chữ', () => {
+    // Đo Task 19 ở hộp New tour: tên danh mục dài không cắt mà chạy ra khỏi ô 232px, đè lên ô
+    // "Primary destination" bên cạnh. Ô (phần tử lưới của `FormField`) phải co được dưới bề
+    // rộng chữ (`min-w-0`) thì `truncate` của tên mới có chỗ cắt; hint không được co theo.
+    // jsdom không đo bố cục — canh đúng ba lớp ấy.
+    const { trigger } = renderPicker({
+      value: 'c4',
+      options: [{ value: 'c4', label: 'An exceptionally long category name', hint: 'Hidden' }],
+    });
+
+    expect(trigger).toHaveClass('min-w-0');
+    expect(within(trigger).getByText('An exceptionally long category name')).toHaveClass(
+      'truncate',
+    );
+    expect(within(trigger).getByText('Hidden')).toHaveClass('shrink-0');
+  });
+
   it('icon: hiện ở mục trong danh sách và trên ô của mục đang chọn', async () => {
     const user = userEvent.setup();
     const { trigger } = renderPicker({

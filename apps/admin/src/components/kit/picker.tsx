@@ -72,8 +72,14 @@ export type PickerProps = PickerSource & {
   className?: string;
 };
 
-/** Ô dáng ô nhập: giữ viền và cao của `SelectTrigger`, thêm phản hồi khi rê và khi mở. */
-const FIELD_TRIGGER = 'w-full hover:bg-muted/50 data-popup-open:bg-muted/50';
+/**
+ * Ô dáng ô nhập: giữ viền và cao của `SelectTrigger`, thêm phản hồi khi rê và khi mở.
+ *
+ * `min-w-0`: ô là phần tử lưới của `FormField`, mà phần tử lưới mặc định không co dưới bề rộng
+ * chữ của nó (`whitespace-nowrap`). Thiếu nó thì tên dài đẩy ô nở ra, đè lên ô bên cạnh (đo
+ * Task 19 ở hộp New tour), còn `truncate` của tên không bao giờ có chỗ để cắt "…".
+ */
+const FIELD_TRIGGER = 'w-full min-w-0 hover:bg-muted/50 data-popup-open:bg-muted/50';
 
 /**
  * Ô dáng nút lọc — chép biến thể `outline` của `Button` lên `SelectTrigger`. `cn` chạy

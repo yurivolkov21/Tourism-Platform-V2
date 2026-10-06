@@ -18,4 +18,16 @@ describe('FormField', () => {
 
     expect(screen.getByText('Base price').parentElement).toHaveClass('content-start');
   });
+
+  it('ô co được hẹp hơn chữ bên trong, không đẩy cột lưới của form rộng ra', () => {
+    // Đo Task 19 ở hộp New tour: một `Picker` mang tên danh mục dài làm ô nở theo chữ và đè
+    // lên ô bên cạnh. Phần tử lưới mặc định không co dưới bề rộng nội dung (`min-width: auto`).
+    render(
+      <FormField id="category" label="Category">
+        {(describedBy) => <input id="category" aria-describedby={describedBy} />}
+      </FormField>,
+    );
+
+    expect(screen.getByText('Category').parentElement).toHaveClass('min-w-0');
+  });
 });

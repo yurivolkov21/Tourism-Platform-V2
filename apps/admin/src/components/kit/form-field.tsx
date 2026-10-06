@@ -38,7 +38,9 @@ export function FormField({
     // `content-start` (thử tay F17): trong hàng nhiều cột, ô cạnh ô có gợi ý hay
     // lỗi bị kéo cao bằng; thiếu nó thì lưới chia phần dư cho các dòng của ô và
     // nhãn cùng ô nhập tụt xuống, lệch khỏi ô bên cạnh.
-    <div className="grid content-start gap-1.5">
+    // `min-w-0` (đo Task 19): chính ô này cũng là phần tử lưới của form; để mặc định
+    // thì nội dung không co (tên dài trong `Picker`) đẩy cột của nó rộng ra.
+    <div className="grid min-w-0 content-start gap-1.5">
       <Label htmlFor={id}>{label}</Label>
       {children(describedBy === '' ? undefined : describedBy)}
       {hint ? (

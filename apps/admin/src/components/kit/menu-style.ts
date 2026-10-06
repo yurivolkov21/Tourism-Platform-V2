@@ -5,8 +5,11 @@
  * vẫn nằm trong `@tourism/ui`.
  */
 
-/** Chữ phụ mờ sau tên mục (vd "Hidden") — đẩy về mép phải, không đậm theo mục. */
-export const MENU_HINT = 'ml-auto pl-3 text-xs font-normal text-muted-foreground';
+/**
+ * Chữ phụ mờ sau tên mục (vd "Hidden") — đẩy về mép phải, không đậm theo mục. `shrink-0`: chỗ
+ * thiếu thì tên (`truncate`) nhường, hint thì không — mất hint là mất điều duy nhất nói mục đã ẩn.
+ */
+export const MENU_HINT = 'ml-auto shrink-0 pl-3 text-xs font-normal text-muted-foreground';
 
 /** Nhãn nhóm: `DropdownMenuLabel` sẵn `font-medium`, `SelectLabel` thì chưa — thêm cho bằng. */
 export const MENU_LABEL = 'font-medium';
