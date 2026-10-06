@@ -1,4 +1,4 @@
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { validateProfileName } from '@tourism/core';
 import { messages } from '@tourism/i18n';
 import { AppText, type FeatherIconName } from '@tourism/mobile-ui';
@@ -12,6 +12,7 @@ import { EditNameSheet } from '@/features/account/edit-name-sheet';
 import { SignOutSheet } from '@/features/account/sign-out-sheet';
 import { AuthGateScreen } from '@/features/auth/auth-gate-screen';
 import { setPendingReturn } from '@/features/auth/return-to';
+import { signOutAndClearCache } from '@/features/auth/sign-out';
 import { reviewAuthorInitials } from '@/features/tour-detail/reviews';
 import { orpc, withMobileAuth } from '@/lib/api/client';
 import { getAuthClient } from '@/lib/auth-client';
@@ -61,6 +62,7 @@ export default function AccountRoute() {
   const [avatarBusy, setAvatarBusy] = useState(false);
 
   const { account } = messages.mobile;
+  const queryClient = useQueryClient();
 
   const signUploadMutation = useMutation(
     orpc.media.signUpload.mutationOptions({ context: withMobileAuth() }),
@@ -173,13 +175,17 @@ export default function AccountRoute() {
   async function pickAvatar(source: 'camera' | 'library') {
     setAvatarError(null);
     try {
-      const permission =
-        source === 'camera'
-          ? await ImagePicker.requestCameraPermissionsAsync()
-          : await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (!permission.granted) {
-        setAvatarError(account.avatar.errPermission);
-        return;
+      // F7 (review 06/10): CHỈ camera cần xin quyền. `launchImageLibraryAsync`
+      // mở trình chọn ảnh của hệ điều hành (PHPicker iOS 14+, Photo Picker
+      // Android 13+) — app chỉ nhận đúng ảnh khách chọn nên không cần quyền
+      // đọc thư viện; xin trước rồi chặn khi bị từ chối là khoá oan khách đã
+      // bấm "Don't allow" (hoặc chọn "Limited") khỏi đổi ảnh.
+      if (source === 'camera') {
+        const permission = await ImagePicker.requestCameraPermissionsAsync();
+        if (!permission.granted) {
+          setAvatarError(account.avatar.errPermission);
+          return;
+        }
       }
       const result =
         source === 'camera'
@@ -211,13 +217,9 @@ export default function AccountRoute() {
 
   async function handleSignOut() {
     setSignOutOpen(false);
-    try {
-      await getAuthClient().signOut();
-    } catch {
-      // Mất mạng lúc đăng xuất: phiên client-side (expo-secure-store) vẫn bị
-      // `signOut()` xoá cục bộ trước khi gọi server — không có gì để báo lại,
-      // khách coi như đã đăng xuất.
-    }
+    // F8: xoá luôn cache query — không thì người đăng nhập sau thấy thoáng
+    // wishlist/booking của người trước (xem sign-out.ts).
+    await signOutAndClearCache(() => getAuthClient().signOut(), queryClient);
     router.replace('/');
   }
 

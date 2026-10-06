@@ -2295,7 +2295,9 @@ export const messages = {
         // AVATAR_MAX_BYTES (contract) = 2MB đúng số — không cần hàm format cỡ
         // tệp riêng cho một hằng số cố định.
         errTooLarge: 'File size must be less than 2MB.',
-        errPermission: 'Camera and photo library access is needed to change your photo.',
+        // Chỉ hiện khi từ chối quyền CAMERA — chọn từ thư viện không cần quyền (F7).
+        errPermission:
+          'Camera access is needed to take a photo. You can still choose one from your library.',
         errUpload: "Couldn't update your photo. Please try again.",
       },
       // Personal details (spec P5b-4 §3, mockup A1 "Personal details" → màn

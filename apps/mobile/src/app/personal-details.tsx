@@ -1,9 +1,11 @@
+import { useQueryClient } from '@tanstack/react-query';
 import { messages } from '@tourism/i18n';
 import { router } from 'expo-router';
 import { useState } from 'react';
 import { submitDeleteAccount } from '@/features/account/delete-account-flow';
 import { DeleteAccountSheet } from '@/features/account/delete-account-sheet';
 import { PersonalDetailsScreen } from '@/features/account/personal-details-screen';
+import { signOutAndClearCache } from '@/features/auth/sign-out';
 import { deleteAccountRequest } from '@/lib/account-api';
 import { getAuthClient } from '@/lib/auth-client';
 import { env } from '@/lib/env';
@@ -27,6 +29,7 @@ export default function PersonalDetailsRoute() {
   const [passwordError, setPasswordError] = useState<string | undefined>(undefined);
   const [formError, setFormError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+  const queryClient = useQueryClient();
 
   function closeSheet() {
     // Đang gọi API thì không cho đóng — đóng giữa chừng là mất kết cục lỗi.
@@ -57,13 +60,10 @@ export default function PersonalDetailsRoute() {
     }
 
     setDeleteSheetOpen(false);
-    try {
-      // Server đã thu hồi mọi phiên khi tombstone — `signOut()` ở đây chủ yếu
-      // để dọn phiên trong expo-secure-store; server trả lỗi cũng kệ.
-      await getAuthClient().signOut();
-    } catch {
-      // Cùng lý do `handleSignOut` ở (tabs)/account.tsx: phần cục bộ đã xoá.
-    }
+    // Server đã thu hồi mọi phiên khi tombstone — `signOut()` ở đây để dọn
+    // phiên trong expo-secure-store, kèm xoá cache query (F8) để không còn
+    // wishlist/booking của tài khoản vừa xoá trong bộ nhớ.
+    await signOutAndClearCache(() => getAuthClient().signOut(), queryClient);
     router.replace('/');
   }
 
