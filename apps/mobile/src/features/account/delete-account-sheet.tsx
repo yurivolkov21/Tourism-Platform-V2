@@ -1,4 +1,4 @@
-import { AppText, BottomSheet, Button, TextField, useTheme } from '@tourism/mobile-ui';
+import { AppText, BottomSheet, Button, FormMessage, TextField, useTheme } from '@tourism/mobile-ui';
 import { View } from 'react-native';
 
 export interface DeleteAccountSheetProps {
@@ -9,20 +9,24 @@ export interface DeleteAccountSheetProps {
   passwordLabel: string;
   password: string;
   passwordError?: string;
+  /** Lỗi cấp form (booking còn mở, phiên hết hạn…) — `null` là không có. */
+  formError: string | null;
+  /** Đang gọi API: khoá nút xác nhận, đổi nhãn sang `deletingLabel`. */
+  pending: boolean;
   revealLabel: string;
   hideLabel: string;
   confirmLabel: string;
+  deletingLabel: string;
   cancelLabel: string;
   onChangePassword: (value: string) => void;
   onConfirm: () => void;
 }
 
 /**
- * A7 (mockup) — UI TRƯỚC, CHƯA nối API thật (chốt 27/09): `deleteUser` không
- * tồn tại ở server (kể cả web), cần một ADR riêng cho luật cascade (booking
- * đã trả tiền giữ lại, review/wishlist xoá thế nào) trước khi `onConfirm` gọi
- * bất cứ thứ gì thật. Route hiện đưa vào một `onConfirm` no-op — sheet CHỈ vẽ
- * đúng khung mockup, không tự phát minh hành vi.
+ * A7 (mockup) — tấm xác nhận xoá tài khoản. Component thuần trình bày: route
+ * `personal-details.tsx` giữ state và gọi `DELETE /api/account` (ADR-0017
+ * §7b) qua `submitDeleteAccount`. Lỗi ô mật khẩu nằm dưới ô, lỗi cấp form
+ * nằm trong `FormMessage` trên hai nút (cùng khuôn `EditNameSheet`).
  */
 export function DeleteAccountSheet({
   visible,
@@ -32,9 +36,12 @@ export function DeleteAccountSheet({
   passwordLabel,
   password,
   passwordError,
+  formError,
+  pending,
   revealLabel,
   hideLabel,
   confirmLabel,
+  deletingLabel,
   cancelLabel,
   onChangePassword,
   onConfirm,
@@ -64,8 +71,19 @@ export function DeleteAccountSheet({
             textContentType="password"
           />
         </View>
+        {formError === null ? null : (
+          <View style={{ marginTop: theme.spacing(3) }}>
+            <FormMessage tone="error">{formError}</FormMessage>
+          </View>
+        )}
         <View style={{ marginTop: theme.spacing(5), gap: theme.spacing(2) }}>
-          <Button shape="pill" variant="destructive" label={confirmLabel} onPress={onConfirm} />
+          <Button
+            shape="pill"
+            variant="destructive"
+            label={pending ? deletingLabel : confirmLabel}
+            disabled={pending}
+            onPress={onConfirm}
+          />
           <Button shape="pill" variant="ghost" label={cancelLabel} onPress={onClose} />
         </View>
       </View>

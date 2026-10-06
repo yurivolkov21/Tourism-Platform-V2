@@ -2306,9 +2306,9 @@ export const messages = {
         nameLabel: 'Name',
         emailLabel: 'Email',
         deleteAccount: 'Delete account',
-        // A7 (mockup, UI trước — API `deleteUser` CHƯA nối, phản hồi 27/09:
-        // cần ADR cascade riêng trước khi wire thật, xem ADR-0021 §Ngoài
-        // phạm vi / plan P5b-4 §5).
+        deleting: 'Deleting…',
+        // A7 — gọi `DELETE /api/account` (ADR-0017 §7b). Copy lỗi dùng LẠI
+        // `accountProfile.danger.errors` của web, không nhân bản ở đây.
         deleteSheetTitle: 'Delete your account?',
         deleteSheetBody:
           'Your profile, saved tours and reviews are removed for good. Bookings you already paid for stay in our records, as the law requires.',

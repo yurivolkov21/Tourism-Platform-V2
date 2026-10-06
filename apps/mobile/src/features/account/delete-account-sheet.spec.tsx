@@ -10,9 +10,12 @@ function baseProps(overrides: Partial<DeleteAccountSheetProps> = {}): DeleteAcco
     body: 'Your profile, saved tours and reviews are removed for good.',
     passwordLabel: 'Current password',
     password: '',
+    formError: null,
+    pending: false,
     revealLabel: 'Show password',
     hideLabel: 'Hide password',
     confirmLabel: 'Delete account',
+    deletingLabel: 'Deleting…',
     cancelLabel: 'Keep my account',
     onChangePassword: jest.fn(),
     onConfirm: jest.fn(),
@@ -50,5 +53,20 @@ describe('DeleteAccountSheet', () => {
       <DeleteAccountSheet {...baseProps({ passwordError: 'Enter your password.' })} />,
     );
     expect(screen.getByText('Enter your password.')).toBeTruthy();
+  });
+
+  it('lỗi cấp form hiện trong khung thông báo', async () => {
+    await renderWithTheme(
+      <DeleteAccountSheet {...baseProps({ formError: 'Your session has expired.' })} />,
+    );
+    expect(screen.getByText('Your session has expired.')).toBeTruthy();
+  });
+
+  it('đang xoá thì đổi nhãn và khoá nút xác nhận', async () => {
+    const onConfirm = jest.fn();
+    await renderWithTheme(<DeleteAccountSheet {...baseProps({ pending: true, onConfirm })} />);
+    expect(screen.queryByText('Delete account')).toBeNull();
+    await fireEvent.press(screen.getByText('Deleting…'));
+    expect(onConfirm).not.toHaveBeenCalled();
   });
 });
