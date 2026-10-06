@@ -14,9 +14,10 @@ import { IconTile } from '@tourism/ui/components/reui/icon-tile';
 import { PlaneIcon } from 'lucide-react';
 import Link from 'next/link';
 import { RevealItem } from '@/components/motion/reveal-item';
-import { bookingView } from '@/lib/booking-vm';
+import { bookingTotalLabel, bookingView } from '@/lib/booking-vm';
+import { formatBookingMoney } from '@/lib/checkout';
 import { STAGGER } from '@/lib/motion';
-import { formatDateRange, formatMoney } from '@/lib/tours';
+import { formatDateRange } from '@/lib/tours';
 
 /**
  * Danh sách booking dạng ACCORDION xổ-inline (vòng 12/08 — user tham khảo
@@ -63,8 +64,9 @@ export function BookingAccordion({ bookings, today }: { bookings: Booking[]; tod
     <Accordion multiple={false} defaultValue={first ? [first] : []} className="gap-3">
       {bookings.map((booking, bookingIndex) => {
         const view = bookingView(booking);
-        // Giai đoạn qua MỘT luật dùng chung với API (ADR-0054 §1): danh sách đã xếp theo chính
-        // luật này, nên dòng phụ và vị trí của hàng không bao giờ nói hai điều khác nhau.
+        // Giai đoạn qua MỘT luật dùng chung với API (ADR-0054 §1), trên CHÍNH ngày API đã dùng để
+        // xếp (`today` của kết quả `bookings.mine`): dòng phụ và vị trí của hàng không nói hai
+        // điều khác nhau, kể cả sát 00:00 giờ Việt Nam.
         const phase = bookingPhase(booking, today);
         const detailHref = `/account/bookings/${booking.code}`;
         const lead =
@@ -73,16 +75,15 @@ export function BookingAccordion({ bookings, today }: { bookings: Booking[]; tod
             : phase === 'upcoming' || phase === 'awaiting_payment'
               ? tb.inDays(tripDayNumbers(booking, today).daysToGo)
               : null;
-        // Tới ngày đi mà chưa trả là `lapsed`: chuyến đã hết nhận đặt (ADR-0041 §3), nên không
-        // mời trả tiền nữa.
+        // Quá hạn chót mà chưa trả là `lapsed`: chuyến đã hết nhận đặt (ADR-0041 §3) và cổng trả
+        // tiền của API đóng cùng mốc, nên không mời trả tiền nữa và nhãn nói thẳng điều ấy.
+        const lapsed = phase === 'lapsed';
         const canPay = phase === 'awaiting_payment' && view.actions.includes('payNow');
+        const badgeTone = lapsed ? 'muted' : view.tone;
         // Hôm sau ngày về theo giờ VN thì ngày UTC ít nhất đã tới ngày về, nên
         // cổng review (UTC) của API chắc chắn đã mở — link không dẫn tới form
         // bị từ chối. Review chỉ dành cho đơn PAID (`reviewSlot`).
         const canReview = phase === 'travelled' && booking.status === 'PAID';
-        // "Total paid" chỉ đúng khi tiền đã về — cùng luật `isVoucher` của `BookingReceipt`.
-        const totalLabel =
-          booking.paidAt === null ? messages.checkoutSummary.totalLabel : tv.labels.total;
 
         return (
           // Từng mục trồi lên bậc thang (nhóm motion 3, 19/08); wrapper ngoài
@@ -111,13 +112,13 @@ export function BookingAccordion({ bookings, today }: { bookings: Booking[]; tod
                     </span>
                     <Badge
                       variant="outline"
-                      className={`gap-1.5 ${BADGE_TONE[view.tone] ?? BADGE_TONE.muted}`}
+                      className={`gap-1.5 ${BADGE_TONE[badgeTone] ?? BADGE_TONE.muted}`}
                     >
                       <span
                         aria-hidden="true"
-                        className={`size-1.5 rounded-full ${DOT_CLASS[view.tone] ?? DOT_CLASS.muted}`}
+                        className={`size-1.5 rounded-full ${DOT_CLASS[badgeTone] ?? DOT_CLASS.muted}`}
                       />
-                      {bl.status[booking.status]}
+                      {lapsed ? tb.lapsedBadge : bl.status[booking.status]}
                     </Badge>
                   </div>
                   <p className="mt-0.5 truncate text-[12.5px] text-muted-foreground">
@@ -128,7 +129,7 @@ export function BookingAccordion({ bookings, today }: { bookings: Booking[]; tod
                   </p>
                 </div>
                 <span className="mr-1 hidden flex-none font-mono text-[13px] font-semibold tabular-nums sm:block">
-                  {formatMoney(booking.totalAmount, booking.currency)}
+                  {formatBookingMoney(booking, booking.totalAmount)}
                 </span>
               </AccordionTrigger>
               <AccordionContent className="pb-4 [&_a]:no-underline">
@@ -160,10 +161,10 @@ export function BookingAccordion({ bookings, today }: { bookings: Booking[]; tod
                     </div>
                     <div>
                       <dt className="text-[9.5px] font-bold tracking-[0.14em] text-muted-foreground uppercase">
-                        {totalLabel}
+                        {bookingTotalLabel(booking)}
                       </dt>
                       <dd className="mt-0.5 font-mono text-[14px] font-semibold tabular-nums">
-                        {formatMoney(booking.totalAmount, booking.currency)}
+                        {formatBookingMoney(booking, booking.totalAmount)}
                       </dd>
                     </div>
                   </dl>

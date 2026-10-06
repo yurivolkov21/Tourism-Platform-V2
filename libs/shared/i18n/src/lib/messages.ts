@@ -2427,6 +2427,8 @@ export const messages = {
     inDays: (n: number) => (n === 0 ? 'Departing today' : n === 1 ? 'In 1 day' : `In ${n} days`),
     /** Dòng phụ của hàng đang đi (`on_tour`) — thay `inDays`. */
     endsOn: (d: string) => `Ends ${d}`,
+    /** Nhãn của đơn chờ trả đã quá hạn chót (`lapsed`) — thay "Awaiting payment": không còn trả được. */
+    lapsedBadge: 'Payment not completed',
     // Một nguồn cho cả trang hộ chiếu VÀ trang chi tiết booking (không tự
     // chế bản thứ hai) — tránh lệch số nhiều/số ít giữa hai nơi cùng hiển
     // thị travellers của MỘT booking.
@@ -2553,7 +2555,6 @@ export const messages = {
       dates: 'Dates',
       travellers: 'Travellers',
       reference: 'Reference',
-      total: 'Total paid',
     },
     /** Chữ trên mộc — MỘT ngôn ngữ dấu cho cả 5 trạng thái, màu mực đi theo
      *  `bookingView.tone` ở component. */

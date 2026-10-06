@@ -4,11 +4,16 @@ import { cn } from '@tourism/ui/lib/utils';
 import { CopyCodeButton } from '@/components/checkout/copy-code-button';
 import { RevealItem } from '@/components/motion/reveal-item';
 import { todayDateString } from '@/lib/account-stats';
-import { paymentProviderLabel } from '@/lib/booking-vm';
+import { bookingTotalLabel, paymentProviderLabel } from '@/lib/booking-vm';
 import type { CheckoutMood } from '@/lib/checkout';
-import { bookingPriceLines, ticketBarcodeWidths, ticketSerial } from '@/lib/checkout';
+import {
+  bookingPriceLines,
+  formatBookingMoney,
+  ticketBarcodeWidths,
+  ticketSerial,
+} from '@/lib/checkout';
 import { STAGGER } from '@/lib/motion';
-import { formatDate, formatDateRange, formatMoney } from '@/lib/tours';
+import { formatDate, formatDateRange } from '@/lib/tours';
 
 /**
  * Hoá đơn kiêm cuống vé cho `/checkout/success` — thay `CheckoutShell` (tấm vé
@@ -222,7 +227,7 @@ export function BookingReceipt({
           </div>
           <div className="shrink-0 text-right">
             <p className="font-semibold tabular-nums">
-              {formatMoney(booking.unitPrice, booking.currency)}
+              {formatBookingMoney(booking, booking.unitPrice)}
             </p>
             <p className="text-xs text-muted-foreground">{t.perTraveller}</p>
           </div>
@@ -236,11 +241,10 @@ export function BookingReceipt({
               <Row key={line.label} k={line.label} v={line.amount} />
             ))}
             <div className="mt-3 flex items-baseline justify-between border-t pt-3">
-              {/* "Total paid" chỉ đúng khi đã trả. Chưa trả thì dùng nhãn trung
-                tính sẵn có của `checkoutSummary` thay vì khai key mới. */}
-              <dt className="font-semibold">{isVoucher ? t.totalLabel : ts.totalLabel}</dt>
+              {/* "Total paid" chỉ đúng khi đã trả — luật chung `bookingTotalLabel`. */}
+              <dt className="font-semibold">{bookingTotalLabel(booking)}</dt>
               <dd className="font-heading text-lg font-semibold tabular-nums">
-                {formatMoney(booking.totalAmount, booking.currency)}
+                {formatBookingMoney(booking, booking.totalAmount)}
               </dd>
             </div>
             <p className="mt-1 text-right text-xs text-muted-foreground">{ts.taxesNote}</p>

@@ -2,6 +2,7 @@ import type { BookingCancellation } from '@tourism/contract';
 import { describe, expect, it } from 'vitest';
 import { makeBooking } from '@/test/fixtures/booking';
 import {
+  bookingTotalLabel,
   bookingView,
   cancellationDeadlineText,
   legacyCancellationNote,
@@ -186,5 +187,18 @@ describe('paymentProviderLabel — tên cổng thanh toán cho khách đọc', (
     ['PAYPAL', 'PayPal'],
   ] as const)('%s → %s', (provider, label) => {
     expect(paymentProviderLabel(provider)).toBe(label);
+  });
+});
+
+describe('bookingTotalLabel — nhãn ô tổng tiền theo tiền đã về hay chưa', () => {
+  it('đã trả (có paidAt) → "Total paid"', () => {
+    expect(bookingTotalLabel(makeBooking({ paidAt: '2026-10-01T03:00:00.000Z' }))).toBe(
+      'Total paid',
+    );
+  });
+
+  /** Đơn chưa từng trả — giữ chỗ đang chờ, hay giỏ bỏ dở đã huỷ — không được ghi "Total paid". */
+  it.each(['PENDING', 'CANCELLED'] as const)('%s chưa từng trả → "Total"', (status) => {
+    expect(bookingTotalLabel(makeBooking({ status, paidAt: null }))).toBe('Total');
   });
 });

@@ -1,6 +1,6 @@
 import type { Booking } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
-import { formatMoney } from './tours';
+import { formatMoney, formatMoneyExact } from './tours';
 
 /**
  * Hạn sống của một booking PENDING, tính bằng phút kể từ `createdAt`.
@@ -53,11 +53,26 @@ export interface PriceLine {
 }
 
 /**
- * Dòng tiền theo người lớn và trẻ em — MỘT nguồn cho biên nhận (`BookingReceipt`), trang chi
- * tiết đơn và voucher (spec P7 §4.2). Trẻ em cùng đơn giá người lớn (luật của
- * `computeBookingTotal` ngay trên). Nhãn từ `messages.checkoutSummary`, số tiền là
- * `formatMoney(đơn giá × số người)` — làm tròn đơn vị đúng như biên nhận trước nay. Không có
- * trẻ em thì bỏ hẳn dòng ấy.
+ * Tiền của MỘT đơn (đơn giá, dòng tiền, tổng), định dạng theo CẢ ĐƠN — spec P7 §4.2, review
+ * 06/10. Đơn giá chẵn thì không số lẻ như trước nay (`formatMoney`); đơn giá có xu (giá khuyến
+ * mãi, vd 49 × 0.85 = 41.65) thì đủ hai số lẻ cho mọi con số của đơn ấy. Làm tròn riêng từng
+ * dòng thì "$90 + $90" lại ra Total "$181", và tổng lệch số cổng thanh toán đã thu ($180.96).
+ * Tiền HOÀN không qua đây: nó luôn `formatMoneyExact` (đối chiếu sao kê).
+ */
+export function formatBookingMoney(
+  booking: Pick<Booking, 'unitPrice' | 'currency'>,
+  amount: string,
+): string {
+  return Number(booking.unitPrice) % 1 === 0
+    ? formatMoney(amount, booking.currency)
+    : formatMoneyExact(amount, booking.currency);
+}
+
+/**
+ * Dòng tiền theo người lớn và trẻ em cho biên nhận (`BookingReceipt`), danh sách đơn và trang
+ * chi tiết (spec P7 §4.2). Trẻ em cùng đơn giá người lớn (luật của `computeBookingTotal` ngay
+ * trên). Nhãn từ `messages.checkoutSummary`, số tiền định dạng bằng `formatBookingMoney` để
+ * dòng và tổng cùng một độ chính xác. Không có trẻ em thì bỏ hẳn dòng ấy.
  */
 export function bookingPriceLines(
   booking: Pick<Booking, 'unitPrice' | 'numAdults' | 'numChildren' | 'currency'>,
@@ -65,7 +80,7 @@ export function bookingPriceLines(
   const ts = messages.checkoutSummary;
   const line = (label: string, travellers: number): PriceLine => ({
     label,
-    amount: formatMoney((Number(booking.unitPrice) * travellers).toFixed(2), booking.currency),
+    amount: formatBookingMoney(booking, (Number(booking.unitPrice) * travellers).toFixed(2)),
   });
   const lines = [line(ts.adultsLine(booking.numAdults), booking.numAdults)];
   if (booking.numChildren > 0) {

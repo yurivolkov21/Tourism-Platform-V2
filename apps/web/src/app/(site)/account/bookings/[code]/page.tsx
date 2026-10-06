@@ -1,4 +1,4 @@
-import { BookingCodeSchema } from '@tourism/contract';
+import { BookingCodeSchema, bookingPhase } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
 import { ButtonLink } from '@tourism/ui/components/button-link';
 import { Frame, FramePanel } from '@tourism/ui/components/reui/frame';
@@ -15,22 +15,20 @@ import { ReviewComposer } from '@/components/account/review-composer';
 import { ContentHero } from '@/components/content/content-hero';
 import { RevealItem } from '@/components/motion/reveal-item';
 import { VisaStamp } from '@/components/passport/visa-stamp';
+import { todayDateString } from '@/lib/account-stats';
 import { fetchBookingByCode } from '@/lib/api/bookings';
 import { requireSession } from '@/lib/api/session';
 import {
+  bookingTotalLabel,
   bookingView,
   cancellationDeadlineText,
   legacyCancellationNote,
+  paymentProviderLabel,
   refundSummary,
 } from '@/lib/booking-vm';
+import { formatBookingMoney } from '@/lib/checkout';
 import { type ReviewSlot, reviewSlot } from '@/lib/review';
-import { formatDate, formatMoney, formatMoneyExact } from '@/lib/tours';
-
-/** Nhãn provider — TÁI DÙNG copy `booking.form` như trước, không key mới. */
-const PROVIDER_LABEL = {
-  STRIPE: messages.booking.form.stripe,
-  PAYPAL: messages.booking.form.paypal,
-} as const;
+import { formatDate, formatMoneyExact } from '@/lib/tours';
 
 /** Dải màu mảnh trên đầu giấy tờ — cùng logic tone với mép cuống vé checkout. */
 const STRIP_CLASS = {
@@ -106,7 +104,13 @@ export default async function AccountBookingDetailPage({
   const slot = reviewSlot(booking);
   // Nút huỷ và câu hạn chót chỉ theo cờ SERVER (`cancellation`, ADR-0041 §7) —
   // trang không tự so ngày chót với giờ máy.
-  const view = bookingView(booking, booking.cancellation);
+  const baseView = bookingView(booking, booking.cancellation);
+  // Đơn chờ trả quá hạn chót (`lapsed`) không còn trả được — cổng trả tiền của API đóng cùng mốc
+  // — nên bỏ Pay now, khớp danh sách My bookings (review P7 06/10).
+  const view =
+    bookingPhase(booking, todayDateString()) === 'lapsed'
+      ? { ...baseView, actions: baseView.actions.filter((action) => action !== 'payNow') }
+      : baseView;
   const terminalNote = t.terminalNote[view.statusKey];
   const refund = refundSummary(booking);
   const canCancel = view.actions.includes('cancelBooking');
@@ -217,10 +221,10 @@ export default async function AccountBookingDetailPage({
                 </div>
                 <div>
                   <dt className="text-[9.5px] font-bold tracking-[0.14em] text-muted-foreground uppercase">
-                    {tv.labels.total}
+                    {bookingTotalLabel(booking)}
                   </dt>
                   <dd className="mt-0.5 font-mono text-[15px] font-semibold tabular-nums">
-                    {formatMoney(booking.totalAmount, booking.currency)}
+                    {formatBookingMoney(booking, booking.totalAmount)}
                   </dd>
                 </div>
               </dl>
@@ -249,7 +253,7 @@ export default async function AccountBookingDetailPage({
                   // calendar date (tách chuỗi, không qua new Date) nên phải cắt
                   // phần ngày trước, không thì ra "NaN AUG" (bug bắt ở nghiệm thu).
                   formatDate(booking.createdAt.slice(0, 10)),
-                  PROVIDER_LABEL[booking.paymentProvider],
+                  paymentProviderLabel(booking.paymentProvider),
                 )}
                 {booking.specialRequests ? (
                   <>

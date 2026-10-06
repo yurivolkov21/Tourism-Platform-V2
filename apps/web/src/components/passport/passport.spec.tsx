@@ -252,6 +252,34 @@ describe('BookingAccordion', () => {
     expect(meta('BK-TESTAAAA · In 12 days · 27–29 Aug 2026')).toBeInTheDocument();
   });
 
+  /**
+   * Chờ trả quá HẠN CHÓT mà chưa tới ngày đi (review P7 06/10): chuyến 17–19/08 ba ngày có N = 3,
+   * hạn chót 14/08, hôm nay 15/08. Cổng trả tiền của API đã đóng, nên không mời trả, không đếm
+   * ngược, và nhãn nói thẳng là không trả kịp.
+   */
+  it('PENDING quá hạn chót, chưa tới ngày đi → "Payment not completed", không Pay now', () => {
+    render(
+      one({ status: 'PENDING', departureStartDate: '2026-08-17', departureEndDate: '2026-08-19' }),
+    );
+    expect(screen.getByText('Payment not completed')).toBeInTheDocument();
+    expect(screen.queryByText('Awaiting payment')).toBeNull();
+    expect(screen.queryByRole('link', { name: 'Pay now' })).not.toBeInTheDocument();
+    expect(meta('BK-TESTAAAA · 17–19 Aug 2026')).toBeInTheDocument();
+  });
+
+  /** Review chỉ cho PAID: `checkReviewEligibility` của API từ chối PARTIALLY_REFUNDED. */
+  it('PARTIALLY_REFUNDED đã đi xong → không mời Review', () => {
+    render(
+      one({
+        status: 'PARTIALLY_REFUNDED',
+        departureStartDate: '2026-07-21',
+        departureEndDate: '2026-07-23',
+      }),
+    );
+    expect(screen.queryByRole('link', { name: 'Review →' })).not.toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'View details' })).toBeInTheDocument();
+  });
+
   it('REFUNDED còn ngày đi tương lai → không đếm ngược (giai đoạn cancelled)', () => {
     render(
       one({ status: 'REFUNDED', departureStartDate: '2026-08-27', departureEndDate: '2026-08-29' }),

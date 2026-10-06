@@ -138,3 +138,14 @@ export function paymentProviderLabel(provider: Booking['paymentProvider']): stri
       return messages.booking.form.paypal;
   }
 }
+
+/**
+ * Nhãn ô tổng tiền của MỘT đơn: "Total paid" chỉ khi tiền đã về (`paidAt`), chưa thì "Total" —
+ * MỘT luật cho biên nhận, danh sách đơn và trang chi tiết (review P7 06/10: danh sách ghi "Total"
+ * mà trang chi tiết vẫn "Total paid" cho cùng một đơn chưa từng trả).
+ */
+export function bookingTotalLabel(booking: Pick<Booking, 'paidAt'>): string {
+  return booking.paidAt === null
+    ? messages.checkoutSummary.totalLabel
+    : messages.booking.success.totalLabel;
+}

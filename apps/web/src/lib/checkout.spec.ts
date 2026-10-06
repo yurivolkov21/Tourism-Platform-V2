@@ -4,6 +4,7 @@ import {
   bookingPriceLines,
   checkoutMood,
   computeBookingTotal,
+  formatBookingMoney,
   PENDING_TTL_MINUTES,
   pendingExpiry,
   ticketBarcodeWidths,
@@ -165,18 +166,35 @@ describe('bookingPriceLines — dòng tiền theo người lớn và trẻ em (s
     ).toEqual([{ label: '1 adult', amount: '$39' }]);
   });
 
-  it('làm tròn đơn vị như biên nhận trước nay (`formatMoney`)', () => {
-    expect(
-      bookingPriceLines({ unitPrice: '19.50', numAdults: 3, numChildren: 2, currency: 'USD' }),
-    ).toEqual([
-      { label: '3 adults', amount: '$59' },
-      { label: '2 children', amount: '$39' },
+  /**
+   * Đơn giá có xu (giá khuyến mãi của seed: 49 × 0.85 = 41.65) thì cả đơn in đủ hai số lẻ —
+   * review P7 06/10: làm tròn riêng từng dòng thì "$90 + $90" lại ra Total "$181", còn Stripe
+   * thu $180.96 (BK-LRYP3PBP của seed).
+   */
+  it('đơn giá có xu: mọi dòng in đủ hai số lẻ, cộng lại đúng bằng tổng', () => {
+    const booking = { unitPrice: '45.24', numAdults: 2, numChildren: 2, currency: 'USD' };
+    expect(bookingPriceLines(booking)).toEqual([
+      { label: '2 adults', amount: '$90.48' },
+      { label: '2 children', amount: '$90.48' },
     ]);
+    expect(formatBookingMoney(booking, '180.96')).toBe('$180.96');
   });
 
   it('nhận thẳng một Booking — đúng cách trang chi tiết và voucher gọi', () => {
     expect(
       bookingPriceLines(makeBooking({ unitPrice: '120.00', numAdults: 2, numChildren: 0 })),
     ).toEqual([{ label: '2 adults', amount: '$240' }]);
+  });
+});
+
+describe('formatBookingMoney — tiền của MỘT đơn định dạng theo cả đơn', () => {
+  it('đơn giá chẵn: không số lẻ, như biên nhận trước nay', () => {
+    expect(formatBookingMoney({ unitPrice: '49.00', currency: 'USD' }, '147.00')).toBe('$147');
+  });
+
+  it('đơn giá có xu: đủ hai số lẻ, kể cả số tròn của chính đơn ấy', () => {
+    const promo = { unitPrice: '41.65', currency: 'USD' };
+    expect(formatBookingMoney(promo, '83.30')).toBe('$83.30');
+    expect(formatBookingMoney(promo, '41.65')).toBe('$41.65');
   });
 });

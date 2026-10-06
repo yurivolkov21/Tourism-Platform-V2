@@ -67,6 +67,24 @@ describe('BookingReceipt — tiền', () => {
     expect(screen.getByText('$147')).toBeInTheDocument();
   });
 
+  /** Đơn giá có xu (giá khuyến mãi) thì đơn giá, dòng và tổng đều đủ hai số lẻ (review P7 06/10). */
+  it('đơn giá có xu: đơn giá, hai dòng và tổng in đủ hai số lẻ', () => {
+    render(
+      <BookingReceipt
+        booking={makeBooking({
+          numAdults: 2,
+          numChildren: 2,
+          unitPrice: '45.24',
+          totalAmount: '180.96',
+        })}
+        mood="confirmed"
+      />,
+    );
+    expect(screen.getByText('$45.24')).toBeInTheDocument();
+    expect(screen.getAllByText('$90.48')).toHaveLength(2);
+    expect(screen.getByText('$180.96')).toBeInTheDocument();
+  });
+
   /** Không có trẻ em thì KHÔNG in dòng "0 children" — một dòng nói về số không
    *  chỉ làm hoá đơn dài ra mà không thêm sự thật nào. */
   it('numChildren = 0 thì bỏ hẳn dòng trẻ em', () => {
