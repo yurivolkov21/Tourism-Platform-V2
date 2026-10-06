@@ -109,7 +109,7 @@ const TONE_CLASS = {
  *
  * Vì sao 220 chứ không 200 (đo 06/10 với thẻ Revenue "$40,849.38" kèm pill): hai cột với con
  * số `text-2xl` cần thẻ rộng chừng 217px; ngưỡng 200 vẫn để pill bị cắt 17px ở màn 448 và
- * 7px ở màn 768 có sidebar — ở đó `main` vẫn xếp 1 cột nên không cắt.
+ * 7px ở màn 768 có sidebar, nơi bản trước nhánh này còn xếp thẻ 1 cột nên chưa từng cắt.
  *
  * Spec §7 chỉ dặn thu cỡ chữ con số, và đo trình duyệt Task 19 cho thấy chưa đủ: ở 375px thẻ
  * Revenue vẫn tràn 11px khi con số đã còn 16px, còn Cancellation rate (1px) và Unsubscribed
