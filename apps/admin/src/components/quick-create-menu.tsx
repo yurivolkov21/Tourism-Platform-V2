@@ -25,8 +25,10 @@ import { createHref } from '@/lib/create-param';
  * nút chép nguyên từ block dashboard-01, không gắn hành động nào. Nhãn mỗi mục là đúng chữ
  * nút tạo của vùng ấy, icon là icon của vùng trên sidebar (`lib/nav.ts`).
  *
- * Khuôn trigger y như `NavUser`: menu mở bên phải khi sidebar thu về cột icon, bên dưới khi
- * mở rộng; tooltip chỉ hiện ở cột icon (nhãn đã nằm cạnh icon khi mở rộng).
+ * Chỉ KHUÔN GHÉP trigger là chung với `NavUser`: nút là trigger của cả menu lẫn tooltip, lồng
+ * qua `render`, và tooltip chỉ hiện ở cột icon (nhãn đã nằm cạnh icon khi mở rộng). Hướng mở
+ * thì riêng: menu này mở bên phải khi sidebar thu về cột icon, bên dưới khi mở rộng hay trên
+ * điện thoại — còn menu của `NavUser` mở bên phải trừ trên điện thoại.
  */
 const ITEMS = [
   {
