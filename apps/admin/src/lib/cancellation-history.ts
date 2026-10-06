@@ -22,7 +22,7 @@ import { formatAmount, formatCalendarDate, formatDateTime } from './bookings-vie
 
 const t = messages.admin.bookings.detail.cancellations;
 
-export type CancellationBadgeVariant = 'default' | 'secondary' | 'outline';
+export type CancellationBadgeVariant = 'default' | 'secondary' | 'destructive' | 'outline';
 
 /** Phần yêu cầu mà một dòng lịch sử cần — `Pick` để fixture không kéo field thừa. */
 export type CancellationHistoryRequest = Pick<
@@ -54,9 +54,10 @@ export interface CancellationHistoryRowVM {
 }
 
 /**
- * Variant Badge — luật màu là DỮ LIỆU. REFUNDED nổi bật (booking đã huỷ),
- * REQUESTED nhạt (dữ liệu cũ đang chờ), DENIED viền trơn: từ chối là kết cục
- * BÌNH THƯỜNG của luồng cũ, tô destructive sẽ đọc thành "có lỗi". Chuyển từ
+ * Variant Badge — luật màu là DỮ LIỆU. REFUNDED cùng màu badge CANCELLED đầu
+ * trang (nhãn của nó là "Cancelled" — spec 2026-10-05 §4 #8), REQUESTED nhạt
+ * (dữ liệu cũ đang chờ), DENIED viền trơn: từ chối là kết cục BÌNH THƯỜNG của
+ * luồng cũ, tô destructive sẽ đọc thành "có lỗi". Chuyển từ
  * `cancellations-view.ts` khi vùng Cancellations bị gỡ.
  */
 export function cancellationStatusBadgeVariant(
@@ -66,7 +67,7 @@ export function cancellationStatusBadgeVariant(
     case 'REQUESTED':
       return 'secondary';
     case 'REFUNDED':
-      return 'default';
+      return 'destructive';
     default:
       return 'outline';
   }

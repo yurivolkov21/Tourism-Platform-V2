@@ -12,13 +12,15 @@ import {
 } from '@tourism/ui/components/table';
 import { ChevronLeftIcon } from 'lucide-react';
 import Link from 'next/link';
+import type * as React from 'react';
+import { EmailText } from '@/components/kit/email-text';
 import { LabelValueRow } from '@/components/kit/label-value-row';
 import { Timeline, TimelineItem } from '@/components/kit/timeline';
 import {
   formatAmount,
-  formatDateRange,
   formatDateTime,
   formatGuests,
+  formatTripDates,
   statusBadgeVariant,
   statusLabel,
 } from '@/lib/bookings-view';
@@ -79,7 +81,10 @@ export function BookingSummaryCards({ booking }: { booking: AdminBookingDetail }
         <CardContent>
           <dl className="grid gap-2 text-sm">
             <DetailRow label={t.customer.name} value={booking.contactName} />
-            <DetailRow label={t.customer.email} value={booking.contactEmail} />
+            <DetailRow
+              label={t.customer.email}
+              value={booking.contactEmail ? <EmailText email={booking.contactEmail} /> : null}
+            />
             <DetailRow label={t.customer.phone} value={booking.contactPhone} />
             <DetailRow label={t.customer.requests} value={booking.specialRequests} />
           </dl>
@@ -95,7 +100,7 @@ export function BookingSummaryCards({ booking }: { booking: AdminBookingDetail }
             <DetailRow label={t.departure.tour} value={booking.tourTitle} />
             <DetailRow
               label={t.departure.dates}
-              value={formatDateRange(booking.departureStartDate, booking.departureEndDate)}
+              value={formatTripDates(booking.departureStartDate, booking.departureEndDate)}
             />
             <DetailRow label={t.departure.guests} value={formatGuests(booking)} />
           </dl>
@@ -108,7 +113,12 @@ export function BookingSummaryCards({ booking }: { booking: AdminBookingDetail }
         </CardHeader>
         <CardContent>
           <dl className="grid gap-2 text-sm">
-            <DetailRow label={t.payment.provider} value={booking.paymentProvider} />
+            <DetailRow
+              label={t.payment.provider}
+              // Nhãn "Stripe"/"PayPal" — dùng lại map của vùng Payment events
+              // (spec 2026-10-05 §4 #9).
+              value={messages.admin.paymentEvents.provider[booking.paymentProvider]}
+            />
             <DetailRow
               label={t.payment.unitPrice}
               value={formatAmount(booking.unitPrice, booking.currency)}
@@ -151,10 +161,19 @@ export function CancellationHistoryCard({ booking }: { booking: AdminBookingDeta
   );
 }
 
-/** Một dòng `<dt>/<dd>`; giá trị trống hiện gạch ngang thay vì ô rỗng khó hiểu. */
-export function DetailRow({ label, value }: { label: string; value: string | null }) {
+/**
+ * Một dòng `<dt>/<dd>`; giá trị trống hiện gạch ngang thay vì ô rỗng khó hiểu. Giá trị
+ * là node chứ không chỉ chuỗi, để dòng email mang được `EmailText`.
+ */
+export function DetailRow({ label, value }: { label: string; value: React.ReactNode }) {
   // Cột nhãn 9rem — nhãn của khối này dài hơn một nhịp so với mặc định kit.
-  return <LabelValueRow label={label} width="md" value={value || t.empty} />;
+  return (
+    <LabelValueRow
+      label={label}
+      width="md"
+      value={value === null || value === '' ? t.empty : value}
+    />
+  );
 }
 
 function CancellationHistoryRow({ row }: { row: CancellationHistoryRowVM }) {

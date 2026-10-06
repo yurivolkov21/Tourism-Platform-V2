@@ -241,4 +241,12 @@ describe('createdToast', () => {
       t.create.toast.bodyNotBookable(DATES),
     );
   });
+
+  it('chuyến một ngày: toast in MỘT ngày (spec 2026-10-05 §4 #10)', () => {
+    const oneDay = makeDepartureRow({ endDate: '2026-10-10' });
+
+    expect(createdToast(serverRow(oneDay, '2026-10-01')).description).toBe(
+      t.create.toast.body('10 Oct 2026'),
+    );
+  });
 });

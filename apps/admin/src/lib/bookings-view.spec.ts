@@ -7,6 +7,7 @@ import {
   formatDateRange,
   formatDateTime,
   formatGuests,
+  formatTripDates,
   guestCount,
   statusBadgeVariant,
   toBookingRow,
@@ -77,6 +78,16 @@ describe('formatDateRange', () => {
   });
 });
 
+describe('formatTripDates', () => {
+  it('chuyến một ngày in MỘT ngày', () => {
+    expect(formatTripDates('2026-12-27', '2026-12-27')).toBe('27 Dec 2026');
+  });
+
+  it('chuyến nhiều ngày in khoảng như formatDateRange', () => {
+    expect(formatTripDates('2026-09-14', '2026-09-20')).toBe('14 Sep 2026 – 20 Sep 2026');
+  });
+});
+
 describe('formatDateTime', () => {
   it('mốc ISO đọc theo UTC kèm nhãn — admin đọc cùng giờ với sổ cái, không theo máy', () => {
     expect(formatDateTime('2026-08-30T09:30:00.000Z')).toBe('30 Aug 2026, 09:30 UTC');
@@ -138,6 +149,16 @@ describe('toBookingRow', () => {
       'Partially refunded',
     );
     expect(toBookingRow(makeBooking({ status: 'PENDING' }), QUERY).statusLabel).toBe('Pending');
+  });
+
+  it('chuyến một ngày: cột Departure in MỘT ngày, không "27 Dec 2026 – 27 Dec 2026"', () => {
+    // Cột này là ngày chuyến, nên theo `formatTripDates` như mọi chỗ in ngày chuyến khác
+    // (plan 2026-10-05, quyết định 4).
+    const booking = makeBooking({
+      departureStartDate: '2026-12-27',
+      departureEndDate: '2026-12-27',
+    });
+    expect(toBookingRow(booking, QUERY).departure).toBe('27 Dec 2026');
   });
 });
 

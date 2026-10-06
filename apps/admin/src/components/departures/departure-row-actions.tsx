@@ -9,7 +9,7 @@ import { useState } from 'react';
 import { DepartureFormDialog } from '@/components/departures/departure-form-dialog';
 import { ConfirmWriteDialog } from '@/components/kit/confirm-write-dialog';
 import { StableLabel } from '@/components/kit/stable-label';
-import { formatDateRange } from '@/lib/bookings-view';
+import { formatTripDates } from '@/lib/bookings-view';
 import type { DepartureRowVM } from '@/lib/departures-view';
 import {
   type CancelContractCode,
@@ -201,7 +201,7 @@ export function DepartureRowActions({
           toast={(saved) => ({
             title: t.edit.toast.title,
             // Ngày đọc từ RESPONSE, không từ form đã gửi.
-            description: t.edit.toast.body(formatDateRange(saved.startDate, saved.endDate)),
+            description: t.edit.toast.body(formatTripDates(saved.startDate, saved.endDate)),
           })}
           onClose={() => setEditingVersion(null)}
           onSettled={onSettled}
@@ -241,7 +241,7 @@ export function DepartureRowActions({
                 title: t.cancel.toast.title,
                 // Ngày đọc từ RESPONSE, không từ hàng đang hiển thị.
                 description: t.cancel.toast.body(
-                  formatDateRange(result.row.startDate, result.row.endDate),
+                  formatTripDates(result.row.startDate, result.row.endDate),
                 ),
               },
             };

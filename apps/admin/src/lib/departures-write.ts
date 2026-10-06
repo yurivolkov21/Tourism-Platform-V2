@@ -8,7 +8,7 @@ import type {
 import { cancellationDeadline, DEPARTURE_PRICE_MAX, DEPARTURE_SEATS_MAX } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
 import { createWriteErrorCodec, type TransportFailureCode } from './api/write-error';
-import { formatDateRange } from './bookings-view';
+import { formatTripDates } from './bookings-view';
 
 /**
  * Logic THUẦN của ba hành vi ghi vùng chuyến (spec P4e-1 F12) — cùng khuôn
@@ -341,7 +341,7 @@ export function setStatusToast(row: AdminDepartureRow, dates: string) {
  * đọc API cũ chưa có `phase` — khi ấy lùi về câu cũ, không báo nhầm là hỏng.
  */
 export function createdToast(row: AdminDepartureRow) {
-  const dates = formatDateRange(row.startDate, row.endDate);
+  const dates = formatTripDates(row.startDate, row.endDate);
   const notBookable = row.phase === 'deadline-passed' || row.phase === 'departed';
   return {
     title: t.create.toast.title,

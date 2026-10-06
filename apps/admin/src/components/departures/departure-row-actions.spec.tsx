@@ -2,6 +2,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { messages } from '@tourism/i18n';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { CancelDepartureAction, UpdateDepartureAction } from '@/lib/departures-write';
 import { type DepartureRowFixture, makeDepartureRow, serverRow, vmAt } from '@/test/departure-row';
 import { DepartureRowActions } from './departure-row-actions';
 
@@ -339,5 +340,68 @@ describe('DepartureRowActions — huỷ chuyến (F13)', () => {
     renderCancellable({ ...ROW, status: 'CANCELLED' });
 
     expect(screen.queryAllByRole('button')).toHaveLength(0);
+  });
+});
+
+describe('DepartureRowActions — toast của chuyến một ngày (spec 2026-10-05 §4 #10)', () => {
+  /** Chuyến một ngày 10/10 → 10/10 (N = 1, hạn chót 09/10). */
+  const ONE_DAY = makeDepartureRow({ endDate: '2026-10-10' });
+  const ONE_DAY_DATES = '10 Oct 2026';
+
+  function renderWith(
+    row: DepartureRowFixture,
+    actions: { update?: UpdateDepartureAction; cancel?: CancelDepartureAction },
+  ) {
+    const vm = vmAt(row, BEFORE_DEADLINE);
+    render(
+      <DepartureRowActions
+        row={vm}
+        basePriceLabel="$129.00"
+        update={actions.update ?? vi.fn()}
+        setStatus={vi.fn()}
+        cancel={actions.cancel ?? vi.fn()}
+        disabled={false}
+        onSettled={vi.fn()}
+      />,
+    );
+    return vm.dates;
+  }
+
+  it('lệnh sửa trả về chuyến một ngày: toast in MỘT ngày, đọc từ RESPONSE', async () => {
+    // Hàng đang hiện là chuyến 5 ngày; server trả về chuyến đã thành một ngày.
+    const user = userEvent.setup();
+    const update = vi.fn(async () => ({
+      ok: true as const,
+      row: serverRow(ONE_DAY, BEFORE_DEADLINE),
+    }));
+    const dates = renderWith(ROW, { update });
+
+    await user.click(screen.getByRole('button', { name: t.edit.actionLabel(dates) }));
+    await user.click(await screen.findByRole('button', { name: t.edit.dialog.submit }));
+
+    await waitFor(() =>
+      expect(success).toHaveBeenCalledWith(t.edit.toast.title, {
+        description: t.edit.toast.body(ONE_DAY_DATES),
+      }),
+    );
+  });
+
+  it('huỷ chuyến một ngày: toast in MỘT ngày', async () => {
+    const user = userEvent.setup();
+    const cancel = vi.fn(async () => ({
+      ok: true as const,
+      row: serverRow({ ...ONE_DAY, status: 'CANCELLED' as const }, BEFORE_DEADLINE),
+    }));
+    const dates = renderWith(ONE_DAY, { cancel });
+
+    await user.click(screen.getByRole('button', { name: t.cancel.actionLabel(dates) }));
+    await user.type(await screen.findByLabelText(t.cancel.dialog.noteLabel), 'Storm warning');
+    await user.click(screen.getByRole('button', { name: t.cancel.dialog.submit }));
+
+    await waitFor(() =>
+      expect(success).toHaveBeenCalledWith(t.cancel.toast.title, {
+        description: t.cancel.toast.body(ONE_DAY_DATES),
+      }),
+    );
   });
 });

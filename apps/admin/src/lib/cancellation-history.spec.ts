@@ -63,7 +63,7 @@ describe('toCancellationHistoryRow — khách tự huỷ', () => {
     expect(row).toEqual({
       id: '22222222-2222-4222-8222-000000000001',
       statusLabel: t.status.REFUNDED,
-      badgeVariant: 'default',
+      badgeVariant: 'destructive',
       actor: t.byCustomer,
       requested: formatDateTime(at),
       decided: formatDateTime(at),
@@ -197,8 +197,10 @@ describe('refundedForRequest', () => {
 });
 
 describe('cancellationStatusBadgeVariant', () => {
-  it('REFUNDED nổi bật, REQUESTED nhạt, DENIED viền trơn', () => {
-    expect(cancellationStatusBadgeVariant('REFUNDED')).toBe('default');
+  it('REFUNDED cùng màu badge "Cancelled" đầu trang; REQUESTED nhạt; DENIED viền trơn', () => {
+    // Nhãn của REFUNDED là "Cancelled" — y chữ badge trạng thái booking CANCELLED ở đầu
+    // trang, nên phải cùng màu (`destructive`), không xanh đậm như trước (spec 2026-10-05 §4 #8).
+    expect(cancellationStatusBadgeVariant('REFUNDED')).toBe('destructive');
     expect(cancellationStatusBadgeVariant('REQUESTED')).toBe('secondary');
     expect(cancellationStatusBadgeVariant('DENIED')).toBe('outline');
   });

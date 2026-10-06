@@ -61,6 +61,15 @@ export function formatDateRange(start: string, end: string): string {
 }
 
 /**
+ * Ngày của MỘT chuyến (spec 2026-10-05 §4 #10): chuyến một ngày in một ngày — "27 Dec 2026 –
+ * 27 Dec 2026" là thừa. Tách khỏi `formatDateRange`, vốn còn nuôi câu "between …" của bộ lọc
+ * ngày (plan 2026-10-05, quyết định 4).
+ */
+export function formatTripDates(start: string, end: string): string {
+  return start === end ? formatCalendarDate(start) : formatDateRange(start, end);
+}
+
+/**
  * Mốc ISO có múi giờ (`paidAt`, `createdAt`…) → "30 Aug 2026, 09:30 UTC".
  * CỐ Ý in theo UTC chứ không theo giờ máy: admin đọc cùng khung giờ với sổ
  * cái/audit trail của API, và server component render trên máy chủ nên "giờ
@@ -161,7 +170,7 @@ export function toBookingRow(booking: Booking, query?: BookingsQuery): BookingRo
     amount: formatAmount(booking.totalAmount, booking.currency),
     customerName: booking.contactName,
     customerEmail: booking.contactEmail,
-    departure: formatDateRange(booking.departureStartDate, booking.departureEndDate),
+    departure: formatTripDates(booking.departureStartDate, booking.departureEndDate),
     // MANG THEO bộ lọc đang xem (user báo 04/09): nút "Back to bookings" ở
     // trang chi tiết dựng đích đến từ chính query này, nên vòng đi–về không
     // nhả filter. Chi tiết luật ở `bookingDetailHref`.

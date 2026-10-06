@@ -6,7 +6,7 @@ import {
   type DeparturePhaseFilter,
 } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
-import { formatAmount, formatCalendarDate, formatDateRange } from './bookings-view';
+import { formatAmount, formatCalendarDate, formatTripDates } from './bookings-view';
 
 /**
  * Mapper hiển thị vùng chuyến khởi hành (spec P4e-1 F12, F16) — THUẦN, nằm
@@ -130,7 +130,7 @@ export function toDepartureRowVM(row: AdminDepartureRow, today: string): Departu
 
   return {
     id: row.id,
-    dates: formatDateRange(row.startDate, row.endDate),
+    dates: formatTripDates(row.startDate, row.endDate),
     startDate: row.startDate,
     endDate: row.endDate,
     price: formatAmount(row.price, row.currency),

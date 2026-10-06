@@ -29,6 +29,12 @@ describe('toDepartureRowVM', () => {
     expect(vm.endDate).toBe('2026-10-14');
   });
 
+  it('chuyến một ngày: ô ngày in MỘT ngày, không "10 Oct 2026 – 10 Oct 2026"', () => {
+    // Spec 2026-10-05 §4 #10. Chuỗi này cũng vào nhãn trợ năng của nút và dòng
+    // ngữ cảnh của hộp xác nhận, nên một chỗ sửa là cả ba cùng gọn.
+    expect(vmAt({ ...ROW, endDate: '2026-10-10' }, BEFORE).dates).toBe('10 Oct 2026');
+  });
+
   it('giá không có override thì kèm dòng phụ nói nó từ tour mà ra', () => {
     const inherited = vmAt(ROW, BEFORE);
     const own = vmAt({ ...ROW, priceOverride: '99.00', price: '99.00' }, BEFORE);
