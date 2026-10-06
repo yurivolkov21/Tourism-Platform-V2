@@ -500,12 +500,34 @@ describe('admin destinations integration (P4e-2 F15)', () => {
       expect(res.json()).toMatchObject({ message: 'Destination not found' });
     });
 
+    /**
+     * Số câu lệnh đang ĐỨNG CHỜ transaction của backend `holderPid` kết thúc. Chờ khoá hàng trong
+     * Postgres là chờ khoá `transactionid` của transaction đang giữ hàng ấy: một dòng `pg_locks`
+     * CHƯA được cấp, cùng `transactionid` với khoá mà chính backend kia đang giữ. Lọc theo pid
+     * của backend ấy (không theo DB: khoá `transactionid` không mang `database`) — session song
+     * song chạy int test trên DB khác không lọt vào số đếm.
+     */
+    const waitersOn = async (holderPid: number) => {
+      const [row] = await prisma.$queryRaw<{ waiting: number }[]>`
+        SELECT count(*)::int AS waiting
+        FROM pg_locks waiter
+        JOIN pg_locks holder
+          ON holder.locktype = 'transactionid'
+         AND holder.transactionid = waiter.transactionid
+         AND holder.granted
+         AND holder.pid = ${holderPid}
+        WHERE waiter.locktype = 'transactionid'
+          AND NOT waiter.granted
+      `;
+      return row?.waiting ?? 0;
+    };
+
     it('đua: lệnh gắn tour giữ khoá trước → lệnh xoá thấy liên kết, trả 409', async () => {
       // ADR-0053 §3. Thiếu `FOR UPDATE` thì lệnh xoá đếm 0 (liên kết chưa commit), chờ khoá
       // ở câu DELETE, rồi CASCADE gỡ đúng liên kết vừa commit: 200 và tour mất điểm đến.
       const tour = await tourVisiting('racing-tour', [destId(2)]);
-      let inserted!: () => void;
-      const didInsert = new Promise<void>((resolve) => {
+      let inserted!: (pid: number) => void;
+      const didInsert = new Promise<number>((resolve) => {
         inserted = resolve;
       });
       let release!: () => void;
@@ -517,18 +539,32 @@ describe('admin destinations integration (P4e-2 F15)', () => {
           await tx.tourDestination.create({
             data: { tourId: tour.id, destinationId: destId(1), isPrimary: false },
           });
-          inserted();
+          const [me] = await tx.$queryRaw<{ pid: number }[]>`SELECT pg_backend_pid() AS pid`;
+          inserted(me?.pid ?? 0);
           await gate;
         },
         { timeout: 15_000 },
       );
-      await didInsert;
+      const linkerPid = await didInsert;
 
       const deleting = remove(destId(1), adminCookie);
-      // Cho lệnh xoá kịp tới chỗ chờ khoá hàng rồi mới commit lệnh gắn.
-      await new Promise((resolve) => setTimeout(resolve, 300));
-      release();
-      await linking;
+      try {
+        // Commit lệnh gắn CHỈ khi lệnh xoá đã đứng chờ sau khoá hàng (thấy ở `pg_locks`; cùng nếp
+        // ca khoá thứ tự danh mục). Bản cũ chờ cứng 300 ms: máy tải nặng thì lệnh gắn có thể
+        // commit TRƯỚC khi lệnh xoá tới nơi, lệnh xoá thấy liên kết rồi trả 409 cả khi thiếu
+        // `FOR UPDATE` — ca xanh oan. Có câu chờ thì cả hai bản cùng đứng ở khoá: bản thiếu
+        // `FOR UPDATE` chờ ở câu DELETE và trả 200 (đỏ), bản đúng chờ ở `SELECT … FOR UPDATE`.
+        await vi.waitFor(async () => expect(await waitersOn(linkerPid)).toBe(1), {
+          timeout: 5_000,
+          interval: 50,
+        });
+      } finally {
+        // Nhả ở MỌI kết cục rồi chờ cả hai chạy hết: ca hỏng giữa chừng không được để transaction
+        // treo, hay một lệnh xoá còn đang bay, lọt sang ca sau.
+        release();
+        await linking;
+        await deleting;
+      }
       const res = await deleting;
 
       expect(res.statusCode).toBe(409);
