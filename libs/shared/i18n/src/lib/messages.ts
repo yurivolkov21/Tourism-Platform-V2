@@ -2456,6 +2456,12 @@ export const messages = {
     optionCount: (n: number) => `, ${n} ${n === 1 ? 'trip' : 'trips'}`,
     clearFilters: 'Clear filters',
     reset: 'Reset',
+    /** Tên vùng điều hướng của phân trang. */
+    pagerAria: 'Trip pages',
+    newerTrips: 'Newer trips',
+    olderTrips: 'Older trips',
+    /** Tên đọc của link Older — nhãn cộng dải đơn của trang kế. */
+    olderTripsAria: (range: string) => `Older trips, ${range}`,
     // Trang hộ chiếu: nút hiện diện tĩnh cho "Load more" (chunk `?page=`,
     // xem `AccountPassportPage`).
     loadMore: 'Load more',
