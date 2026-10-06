@@ -8,6 +8,68 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-10-06 — P7 Phần A: My bookings lọc, tìm và phân trang theo hành trình (nhánh `feat/booking-pages-redesign`)
+
+Trang `/account/bookings` có hàng tìm và lọc (When · Status, chọn nhiều, số đếm tĩnh), 10 đơn
+mỗi trang xếp theo hành trình — đang đi, sắp đi, đã qua — và phân trang "Newer / Older trips";
+hero có nút tròn quay lại Passport. Quyết định ở ADR-0054, hợp đồng ở spec 05/10 (§2.1, §2.7,
+§3, §4, §7). Không migration, không env.
+
+Contract và API: `bookingPhase`, `bookingWhen`, `calendarDaysBetween`, `tripDayNumbers` và
+`ACTIVE_BOOKING_STATUSES` dùng chung cho API và web (`booking-phase.ts`); đơn REFUNDED còn
+ngày đi tương lai thôi lọt vào nhóm sắp đi. `bookings.mine` nhận `when` (mảng), `status` (một
+giá trị hoặc mảng), `q`, `order` (`recent` mặc định, `journey`), trả thêm `facets` (đếm trên
+mọi đơn, bỏ qua bộ lọc) và `overallTotal`. Service đọc tập khoá nhẹ của mọi đơn, lọc, tìm, xếp
+và cắt trang bằng hàm thuần `selectBookingsPage`, rồi mới nạp đủ dòng cho các id của trang
+(rào `userId` ở cả hai câu đọc, giữ thứ tự hàm thuần trả). Tìm bỏ dấu, hạ chữ thường và bỏ mọi
+ký tự không phải chữ hoặc số ở cả hai phía ("ha noi" khớp "Hà Nội"). Int test xác nhận oRPC
+dựng đúng mảng từ ký pháp ngoặc `when[0]=…` trên query GET; `status=PAID` kiểu cũ vẫn nhận.
+
+Web: `ContentHero.back` (nút tròn trước breadcrumb); `lib/bookings-list.ts` đọc và dựng URL
+`?q=…&when=…&status=…&page=…`, dịch sang input API, dựng `pagerView`; `fetchMyBookingsPage`;
+`FacetFilter` và `BookingsToolbar` (debounce 300 ms, Enter áp ngay, `sentQ` không đè chữ đang
+gõ, `useOptimistic`, `router.replace` đưa page về 1, tiêu điểm về ô tìm sau ✕ và Reset);
+`TripPager`; `BookingsListView` (trống, đếm, rỗng do lọc, `key` theo URL để hàng đầu mỗi
+trang mở sẵn); trang chuyển về trang cuối khi `page` vượt số trang. `BookingAccordion` đọc
+`bookingPhase` cho dòng phụ, Pay now và Review — đơn `lapsed` mất Pay now, PARTIALLY_REFUNDED
+có "In N days" và "Ends …", ô tổng ghi "Total" khi chưa trả. `bookingPriceLines` và
+`paymentProviderLabel` thành hàm dùng chung cho Phần B và C (`BookingReceipt` dùng ngay, bỏ
+bảng `PROVIDER_LABEL`). Gỡ "Load more", `groupBookingsByTime`, `daysUntilDeparture`,
+`BOOKINGS_PAGE_SIZE`, `accountBookings.loadMore`, `passportBookings.back`.
+
+Soi bố cục (Task A11, DOM thật cộng CSS build thật, Browser pane): ở 1280px mọi mốc đạt ngay —
+nút quay lại 34×34 thẳng tâm breadcrumb, ô tìm 290×36, hai nút lọc 176×36 cùng hàng kể cả khi
+mang "Upcoming" và "2 selected", Reset cao 36, phân trang ba phần thẳng hàng. Ở 375px lần đầu
+TRƯỢT: trang tràn ngang 391px vì `AccordionTrigger` (flex item `flex-1`) thiếu `min-w-0`, tên
+tour dài vô hiệu hoá `truncate` — lỗi có sẵn của accordion cũ. Sửa bằng `min-w-0` trong
+`BookingAccordion` (commit `fix`), đo lại: không tràn, ô tìm chiếm cả hàng, hai nút lọc chia
+đôi hàng hai, Reset chỉ còn icon (38px), dòng "Page … of …" lên trên hai link. Ở 375px chip giá
+trị trong nút lọc bị cắt ("Up…", "2 s…") — `truncate` đúng thiết kế, tên đọc vẫn đủ.
+
+Lệch plan: (1) chú thích trên `accountBookings` plan ghi chữ `loadMore` làm phép grep kiểm (phải
+rỗng) ra một dòng — đổi thành "Nút "Load more" cũ đã gỡ", vẫn bốn dòng nên `travellers` giữ
+dòng 2433 (user chọn 06/10); (2) bộ lọc "chờ lượt nặng" của gate cô lập loại `next dev` và
+`start-server.js` — đo 13:50: session admin mở `next dev -p 3002` để thử tay, chạy lâu dài, còn
+gate Task A6 từng chờ ~40 phút một tiến trình `apps/admin/node_modules/.bin/…`; (3) plan nói dòng 13 và 27–29 của `booking-receipt.tsx` giữ nguyên số dòng, nhưng chính
+lệnh thêm import `paymentProviderLabel` đẩy chúng xuống một dòng (Task C4 khớp theo chữ nên không
+vỡ; số dòng trích trong prompt B và C cần cập nhật); (4) đột biến `/^\d{1,5}$/` thành `/^\d+$/`
+plan dự báo bị giết nhưng sống — trần `PAGE_MAX` đã chặn 10001 ở bước sau.
+
+**Review findings:** chưa review — session gốc review trước merge.
+
+Tests after: Vitest **5443** (web 1652, api 1068, admin 1718, contract 651, core 46,
+ui 27, tokens 18, i18n 18, mobile 159, mobile-ui 86), int **752 ở 46 file**.
+Ca mới: contract 40, api 29 và 5 int, web 74; gỡ 16 ca của `account-stats.spec.ts` (5
+`daysUntilDeparture`, 11 `groupBookingsByTime`). Đột biến: 93 lần thử, 87 bị giết. Sáu cái sống,
+có lý do: bỏ `aria-label` của nút quay lại (`title` vẫn đặt tên — plan dự báo); regex trang ở
+trên; `filterBy` dùng `current.q` (plan dự báo); bỏ `htmlFor` của dòng lọc (`<label>` bọc sẵn ô
+tích); `canReview` bỏ điều kiện PAID (chỉ khác ở PARTIALLY_REFUNDED đã đi xong, chưa ca nào phủ
+— nên thêm ca này khi review); biên nhận in cứng "PAYPAL" (spec biên nhận có sẵn không kiểm chữ
+cột cổng thanh toán).
+
+CÒN TREO cho session gốc: không có việc hạ tầng (không migration, không env, không webhook).
+Push `main` hai nhịp theo plan: SHA cuối Task A4 là `c574174b`.
+
 ## 2026-10-05 — Hook session cloud dọn pid containerd sót lại khi resume (`c0ab2ec2`, nhánh `claude/nice-rubin-moffft`)
 
 Lần resume đầu tiên của một session cloud sau khi hook vào `main`, hook báo "Postgres KHÔNG

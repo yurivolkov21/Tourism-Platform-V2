@@ -83,7 +83,7 @@ Cụm P chỉ cần THÊM một lượt đọc `catalog.tours.bySlug` (công kha
 | B4 → B5 | `bookings.create` | Trả `Booking` PENDING kèm `checkoutUrl`. Bốn lỗi: `DEPARTURE_NOT_AVAILABLE` 400 · `SEATS_UNAVAILABLE` 409 · `PARTY_TOO_LARGE` 422 · `CHECKOUT_FAILED` 502 |
 | B5, T5 | `bookings.checkout` | CHỈ khi cần link mới. Lỗi `NOT_PENDING` 422 nghĩa là booking đã trả rồi — chuyển thẳng sang B8 |
 | B6–B8 | `bookings.byCode` | Đọc `status`: PAID → B8, PENDING → B7 |
-| T1 | `bookings.mine` | Phân trang, mới nhất trước. Lọc Upcoming/Past làm ở máy — API chưa có tham số đó |
+| T1 | `bookings.mine` | Phân trang. Từ P7 (ADR-0054) API lọc và tìm sẵn: `order: 'journey'` (đang đi → sắp đi → đã qua), `when` (mảng `ON_TOUR`/`UPCOMING`/`PAST`), `status` (một giá trị hoặc mảng), `q`; trả thêm `facets` và `overallTotal`. Không truyền gì thì như cũ — mới nhất trước |
 | T4, T5, T8 | `bookings.byCode` | `BookingDetail` có thêm khối `cancellation` và `review` |
 | T6, T7 | `bookings.cancel` | Lỗi: `NOT_CANCELLABLE` 422 · `REFUND_AMOUNT_CHANGED` · `REFUND_FAILED` 502 (booking GIỮ NGUYÊN PAID — câu lỗi không được nói là đã hoàn) |
 | T5 (bỏ booking chưa trả) | `bookings.cancelPending` | Nhả ghế ngay, không dính luật hoàn tiền |
