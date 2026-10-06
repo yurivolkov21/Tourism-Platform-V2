@@ -180,3 +180,16 @@ nhưng thiếu hai cái phát sinh lúc thi công:
 đúng 7 dependency mới trong `apps/mobile` so với trước T0 (5 gốc +
 `@orpc/contract` + `expo-image`); `libs/mobile/ui` thêm `expo-image` riêng,
 không tính vào con số 7 vì ADR gốc chỉ đếm `apps/mobile`.
+
+## AMEND 2 — 2026-10-06 (gỡ wrapper `AppImage` tầng app)
+
+Câu cuối của AMEND 1 §4 ("màn nào cần ảnh Cloudinary import từ
+`apps/mobile/src/components/app-image.tsx`") chưa từng đúng: đối chiếu code
+06/10, không màn nào import wrapper đó (chỉ spec của chính nó), còn 17 file
+màn đều import `AppImage` thẳng từ `@tourism/mobile-ui` và truyền
+`transformUrl` tường minh. Wrapper bị gỡ (L3, review nhánh account).
+
+Ranh giới ADR-0040 §2 không đổi: `@tourism/mobile-ui` vẫn không import
+`cloudinaryUrl()`; tầng app tiêm vào qua prop `transformUrl` ở từng nơi gọi.
+Cùng đợt, `AppImage` kẹp mật độ xin ảnh ở tối đa 2x (`physicalWidth()`), và
+nơi gọi chỉ truyền bề rộng dp — không tự nhân thêm (L2).

@@ -329,7 +329,8 @@ function PhotoPage({
       <Animated.View style={{ flex: 1, transform: [{ translateX }, { translateY }, { scale }] }}>
         <AppImage
           source={photo.url}
-          width={Math.round(width * 2)}
+          // Truyền dp, không tự nhân 2 — `AppImage` đã nhân mật độ màn hình (L2).
+          width={width}
           alt={photo.alt ?? ''}
           transformUrl={transformUrl}
           fill

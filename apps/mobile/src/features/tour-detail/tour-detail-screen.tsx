@@ -13,7 +13,7 @@ import {
 } from '@tourism/mobile-ui';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AuthGateSheet } from '@/features/auth/auth-gate-sheet';
 import type { AskAboutDateErrors, AskAboutDateField, AskAboutDateState } from './ask-about-date';
@@ -324,6 +324,7 @@ export function TourDetailScreen({
 }: TourDetailScreenProps) {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
+  const { width: windowWidth } = useWindowDimensions();
   // Ảnh bìa đang xem — bấm một ô thumb đổi ảnh này (thuần UI hiển thị, không
   // chạm dữ liệu, cùng tiền lệ `readMoreOpen` của DestinationHeaderBlock).
   const [selectedIndex, setSelectedIndex] = useState(0);
@@ -440,7 +441,10 @@ export function TourDetailScreen({
               <AppImage
                 key={heroImage.url}
                 source={heroImage.url}
-                width={780}
+                // Bề rộng dp thật của khung (tràn ngang màn) — `AppImage` tự nhân
+                // mật độ. Trước đây hard-code 780 (đã là 2x của ~390dp) nên bị
+                // nhân lần nữa thành ảnh 1560px (L2).
+                width={windowWidth}
                 alt={heroImage.alt}
                 transformUrl={transformUrl}
                 fill

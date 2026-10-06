@@ -1,11 +1,12 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { messages } from '@tourism/i18n';
 import { router } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { AuthGateScreen } from '@/features/auth/auth-gate-screen';
 import { setPendingReturn } from '@/features/auth/return-to';
 import { pruneRemovedIds } from '@/features/saved/removed-ids';
 import { SavedScreen, type SavedStatus } from '@/features/saved/saved-screen';
+import { flattenWishlistPages, nextWishlistPage } from '@/features/saved/wishlist-pages';
 import { orpc, withMobileAuth } from '@/lib/api/client';
 import { getAuthClient } from '@/lib/auth-client';
 import { cloudinaryUrl } from '@/lib/cloudinary-url';
@@ -27,25 +28,38 @@ export default function SavedRoute() {
 
   const { saved } = messages.mobile;
 
-  const listQuery = useQuery(
-    orpc.wishlist.list.queryOptions({
-      input: { page: 1, pageSize: 100 },
+  // L5: contract kẹp `pageSize` ở 100 nên phải tải nhiều trang — xin trang 1
+  // rồi effect bên dưới tự kéo nốt, để danh sách và bộ đếm phủ ĐỦ wishlist.
+  const listQuery = useInfiniteQuery(
+    orpc.wishlist.list.infiniteOptions({
+      input: (page: number) => ({ page, pageSize: 100 }),
+      initialPageParam: 1,
+      getNextPageParam: nextWishlistPage,
       context: withMobileAuth(),
       enabled: signedIn,
     }),
   );
+  const { hasNextPage, isFetchingNextPage, isFetchNextPageError, fetchNextPage } = listQuery;
+  // Không lật trang tiếp khi trang trước vừa hỏng — không thì effect gọi lại
+  // ngay, thành vòng lặp request. Khách bấm Retry (refetch) là thử lại.
+  useEffect(() => {
+    if (hasNextPage && !isFetchingNextPage && !isFetchNextPageError) void fetchNextPage();
+  }, [hasNextPage, isFetchingNextPage, isFetchNextPageError, fetchNextPage]);
+  const serverItems = useMemo(() => flattenWishlistPages(listQuery.data?.pages), [listQuery.data]);
   // Đăng xuất giữa chừng: đừng để danh sách cũ đứng nguyên khi quay lại S3.
   useEffect(() => {
     if (!signedIn) setRemovedIds(new Set());
   }, [signedIn]);
   // F4: mỗi lần list mới về, bỏ khỏi tập ẩn những id server đã xác nhận vắng —
   // không thì lưu lại tour đó ở chỗ khác vẫn bị ẩn ở đây.
+  // Chỉ dọn khi đã tải HẾT trang: id nằm ở trang chưa về không có nghĩa là
+  // server đã bỏ nó.
+  const allPagesLoaded = listQuery.data !== undefined && !hasNextPage;
   useEffect(() => {
-    const serverItems = listQuery.data?.items;
-    if (serverItems !== undefined) {
+    if (allPagesLoaded) {
       setRemovedIds((current) => pruneRemovedIds(current, serverItems));
     }
-  }, [listQuery.data]);
+  }, [allPagesLoaded, serverItems]);
   useEffect(() => {
     if (wishlistError === null) return;
     const id = setTimeout(() => setWishlistError(null), 3000);
@@ -92,7 +106,7 @@ export default function SavedRoute() {
         ? 'error'
         : 'content';
 
-  const items = (listQuery.data?.items ?? [])
+  const items = serverItems
     .filter((item) => !removedIds.has(item.tourId))
     .map((item) => ({
       tourId: item.tourId,
