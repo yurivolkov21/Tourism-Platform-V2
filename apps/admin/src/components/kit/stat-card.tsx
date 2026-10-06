@@ -18,7 +18,7 @@ import type { StatCardVM } from '@/lib/stats-view';
  *
  * Kiểu dáng bê nguyên khối `section-cards` của block dashboard-01 (gradient
  * `from-primary/5`, container query `@[250px]/card` cho cỡ chữ, `CardFooter`
- * override `border-t-0` vì Card nova có gạch; thẻ hẹp dưới 200px thì thêm luật
+ * override `border-t-0` vì Card nova có gạch; thẻ hẹp dưới 220px thì thêm luật
  * riêng — xem `HEADER_LAYOUT`) — cùng lý do đã ghi ở
  * `DataTableFrame`: ba vùng phải nhìn là MỘT hệ. Từ P4d (ADR-0036 §1) chính
  * component này chạy ở trang `/`; bản demo `section-cards.tsx` đã xoá, đây
@@ -102,9 +102,14 @@ const TONE_CLASS = {
 /**
  * Bố cục phần đầu thẻ theo bề rộng THẺ (container `card`; Ruling F-a của review cuối nhánh).
  *
- * Dưới 200px — điện thoại, lưới 2 cột: thẻ rộng 156–183px ở màn 360–414px — phần đầu còn MỘT
- * cột và pill xuống dòng riêng dưới con số, căn trái. Từ 200px trả lại chỗ mặc định của
- * `CardAction`: cột phải, chiếm hai dòng đầu. Lưới thẻ vẫn 2 cột (spec 2026-10-05 §4 #12).
+ * Dưới 220px phần đầu còn MỘT cột và pill xuống dòng riêng dưới con số, căn trái; con số còn
+ * `text-xl`. Từ 220px trả lại chỗ mặc định của `CardAction`: cột phải, chiếm hai dòng đầu.
+ * Lưới thẻ vẫn 2 cột (spec 2026-10-05 §4 #12). Thẻ hẹp gặp ở điện thoại 360–414px (thẻ
+ * 156–183px), màn 448–480px (200–216px) và màn 768px có sidebar mở (210px).
+ *
+ * Vì sao 220 chứ không 200 (đo 06/10 với thẻ Revenue "$40,849.38" kèm pill): hai cột với con
+ * số `text-2xl` cần thẻ rộng chừng 217px; ngưỡng 200 vẫn để pill bị cắt 17px ở màn 448 và
+ * 7px ở màn 768 có sidebar — ở đó `main` vẫn xếp 1 cột nên không cắt.
  *
  * Spec §7 chỉ dặn thu cỡ chữ con số, và đo trình duyệt Task 19 cho thấy chưa đủ: ở 375px thẻ
  * Revenue vẫn tràn 11px khi con số đã còn 16px, còn Cancellation rate (1px) và Unsubscribed
@@ -112,11 +117,11 @@ const TONE_CLASS = {
  * hai thứ ấy. Card `overflow-hidden` nên trang không tràn; mắt chỉ thấy pill mất một nửa.
  */
 const HEADER_LAYOUT =
-  'has-data-[slot=card-action]:grid-cols-1 @[200px]/card:has-data-[slot=card-action]:grid-cols-[1fr_auto]';
+  'has-data-[slot=card-action]:grid-cols-1 @[220px]/card:has-data-[slot=card-action]:grid-cols-[1fr_auto]';
 
 /** Chỗ của pill — xem `HEADER_LAYOUT`. Ghi đè lớp mặc định của `CardAction` qua `cn`. */
 const ACTION_PLACEMENT =
-  'col-start-1 row-span-1 row-start-auto justify-self-start @[200px]/card:col-start-2 @[200px]/card:row-span-2 @[200px]/card:row-start-1 @[200px]/card:justify-self-end';
+  'col-start-1 row-span-1 row-start-auto justify-self-start @[220px]/card:col-start-2 @[220px]/card:row-span-2 @[220px]/card:row-start-1 @[220px]/card:justify-self-end';
 
 /** Props = VM trừ `key` — `key` là của React, không phải dữ liệu của card. */
 export type StatCardProps = Omit<StatCardVM, 'key'>;
@@ -128,7 +133,7 @@ export function StatCard({ label, value, caption, delta, deltaGood, callout }: S
     <Card className="@container/card">
       <CardHeader className={HEADER_LAYOUT}>
         <CardDescription>{label}</CardDescription>
-        <CardTitle className="text-xl font-semibold tabular-nums @[200px]/card:text-2xl @[250px]/card:text-3xl">
+        <CardTitle className="text-xl font-semibold tabular-nums @[220px]/card:text-2xl @[250px]/card:text-3xl">
           {value}
         </CardTitle>
         {delta ? (
