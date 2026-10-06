@@ -9,19 +9,14 @@ import type {
 import { cache } from 'react';
 import { api, withAuthHeaders } from './client';
 
-/** `limit` mặc định của `BookingsListQuerySchema` (khớp server) — dùng cho
- *  một "trang" `?page=` trên `/account/bookings`. */
-export const BOOKINGS_PAGE_SIZE = 12;
-
 /** Trần `limit` của `BookingsListQuerySchema` — Zod chặn cứng phía server,
  *  client không được vượt. */
 export const BOOKINGS_MAX_LIMIT = 50;
 
 /**
- * Booking của chính user, mới nhất trước (server đã `orderBy createdAt desc`
- * — KHÔNG cần sort lại phía web như mock cũ). Gọi từ `/account/bookings`
- * (`?page=` quyết định `limit`, đọc cả `.total` để quyết định có hiện
- * "Load more" hay không — xem trang đó).
+ * Booking của chính user, mới nhất trước (thứ tự `recent` mặc định của `bookings.mine`). Chỉ
+ * trang Passport (`/account`) gọi — một lượt `BOOKINGS_MAX_LIMIT` để tính thống kê, tem và bản
+ * đồ. My bookings dùng `fetchMyBookingsPage`.
  */
 export async function fetchMyBookings(cookie: string, limit: number): Promise<Paged<Booking>> {
   return api.bookings.mine({ page: 1, limit }, { context: withAuthHeaders(cookie) });

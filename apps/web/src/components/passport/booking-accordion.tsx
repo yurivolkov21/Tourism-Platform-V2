@@ -1,6 +1,6 @@
 'use client';
 
-import type { Booking } from '@tourism/contract';
+import { type Booking, bookingPhase, tripDayNumbers } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
 import {
   Accordion,
@@ -14,7 +14,6 @@ import { IconTile } from '@tourism/ui/components/reui/icon-tile';
 import { PlaneIcon } from 'lucide-react';
 import Link from 'next/link';
 import { RevealItem } from '@/components/motion/reveal-item';
-import { daysUntilDeparture } from '@/lib/account-stats';
 import { bookingView } from '@/lib/booking-vm';
 import { STAGGER } from '@/lib/motion';
 import { formatDateRange, formatMoney } from '@/lib/tours';
@@ -30,6 +29,9 @@ import { formatDateRange, formatMoney } from '@/lib/tours';
  * Mọi phân nhánh đi qua `bookingView` (một nguồn, không if/else status thô)
  * — kế thừa nguyên luật của JourneyRow mà nó thay thế; flow phức tạp (hủy,
  * review) vẫn ở trang chi tiết, ở đây chỉ có thông tin + lối vào.
+ *
+ * Dòng phụ ("In N days" / "Ends …"), nút Pay now và link Review đọc giai đoạn qua
+ * `bookingPhase` của contract (ADR-0054 §1) — cùng luật API dùng để xếp danh sách.
  *
  * `today` là ngày lịch VIỆT NAM do server truyền xuống (`todayDateString`,
  * chuỗi `YYYY-MM-DD`, so lexicographic) — client KHÔNG tự lấy giờ máy để tránh
@@ -61,21 +63,26 @@ export function BookingAccordion({ bookings, today }: { bookings: Booking[]; tod
     <Accordion multiple={false} defaultValue={first ? [first] : []} className="gap-3">
       {bookings.map((booking, bookingIndex) => {
         const view = bookingView(booking);
-        const started = booking.departureStartDate <= today;
-        const ended = booking.departureEndDate < today;
+        // Giai đoạn qua MỘT luật dùng chung với API (ADR-0054 §1): danh sách đã xếp theo chính
+        // luật này, nên dòng phụ và vị trí của hàng không bao giờ nói hai điều khác nhau.
+        const phase = bookingPhase(booking, today);
         const detailHref = `/account/bookings/${booking.code}`;
-        // Mảnh đầu meta — cùng nguồn đếm ngược/`Ends …` với JourneyRow cũ.
         const lead =
-          view.tone === 'success' && started && !ended
+          phase === 'on_tour'
             ? tb.endsOn(formatDateRange(booking.departureEndDate, booking.departureEndDate))
-            : !started && (view.tone === 'success' || view.tone === 'warning')
-              ? tb.inDays(daysUntilDeparture(booking.departureStartDate, today))
+            : phase === 'upcoming' || phase === 'awaiting_payment'
+              ? tb.inDays(tripDayNumbers(booking, today).daysToGo)
               : null;
-        const canPay = view.actions.includes('payNow') && !ended;
+        // Tới ngày đi mà chưa trả là `lapsed`: chuyến đã hết nhận đặt (ADR-0041 §3), nên không
+        // mời trả tiền nữa.
+        const canPay = phase === 'awaiting_payment' && view.actions.includes('payNow');
         // Hôm sau ngày về theo giờ VN thì ngày UTC ít nhất đã tới ngày về, nên
         // cổng review (UTC) của API chắc chắn đã mở — link không dẫn tới form
-        // bị từ chối.
-        const canReview = view.tone === 'success' && ended;
+        // bị từ chối. Review chỉ dành cho đơn PAID (`reviewSlot`).
+        const canReview = phase === 'travelled' && booking.status === 'PAID';
+        // "Total paid" chỉ đúng khi tiền đã về — cùng luật `isVoucher` của `BookingReceipt`.
+        const totalLabel =
+          booking.paidAt === null ? messages.checkoutSummary.totalLabel : tv.labels.total;
 
         return (
           // Từng mục trồi lên bậc thang (nhóm motion 3, 19/08); wrapper ngoài
@@ -150,7 +157,7 @@ export function BookingAccordion({ bookings, today }: { bookings: Booking[]; tod
                     </div>
                     <div>
                       <dt className="text-[9.5px] font-bold tracking-[0.14em] text-muted-foreground uppercase">
-                        {tv.labels.total}
+                        {totalLabel}
                       </dt>
                       <dd className="mt-0.5 font-mono text-[14px] font-semibold tabular-nums">
                         {formatMoney(booking.totalAmount, booking.currency)}

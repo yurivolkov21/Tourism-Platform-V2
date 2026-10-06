@@ -223,4 +223,75 @@ describe('BookingAccordion', () => {
     expect(screen.queryByRole('link', { name: 'Review →' })).not.toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'View details' })).toBeInTheDocument();
   });
+
+  /** Dòng meta dưới tên tour — so TRỌN chuỗi "mã · dòng phụ · ngày". */
+  const meta = (text: string) =>
+    screen.getByText((_, element) => element?.tagName === 'P' && element.textContent === text);
+
+  // ADR-0054 §1: dòng phụ đọc giai đoạn qua `bookingPhase`. PARTIALLY_REFUNDED là đơn CÒN
+  // hiệu lực — "Ends …" và đếm ngược như PAID (bản cũ chỉ cho PAID).
+  it('PARTIALLY_REFUNDED đang đi → "Ends …"', () => {
+    render(
+      one({
+        status: 'PARTIALLY_REFUNDED',
+        departureStartDate: '2026-08-14',
+        departureEndDate: '2026-08-16',
+      }),
+    );
+    expect(meta('BK-TESTAAAA · Ends 16 Aug 2026 · 14–16 Aug 2026')).toBeInTheDocument();
+  });
+
+  it('PARTIALLY_REFUNDED sắp đi → đếm ngược', () => {
+    render(
+      one({
+        status: 'PARTIALLY_REFUNDED',
+        departureStartDate: '2026-08-27',
+        departureEndDate: '2026-08-29',
+      }),
+    );
+    expect(meta('BK-TESTAAAA · In 12 days · 27–29 Aug 2026')).toBeInTheDocument();
+  });
+
+  it('REFUNDED còn ngày đi tương lai → không đếm ngược (giai đoạn cancelled)', () => {
+    render(
+      one({ status: 'REFUNDED', departureStartDate: '2026-08-27', departureEndDate: '2026-08-29' }),
+    );
+    expect(meta('BK-TESTAAAA · 27–29 Aug 2026')).toBeInTheDocument();
+  });
+
+  it('PENDING chưa tới ngày đi → đếm ngược và mời trả', () => {
+    render(
+      one({
+        status: 'PENDING',
+        paidAt: null,
+        departureStartDate: '2026-08-27',
+        departureEndDate: '2026-08-29',
+      }),
+    );
+    expect(meta('BK-TESTAAAA · In 12 days · 27–29 Aug 2026')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Pay now' })).toBeInTheDocument();
+  });
+
+  it('PENDING tới đúng ngày đi (lapsed) → không Pay now, không đếm ngược', () => {
+    render(
+      one({
+        status: 'PENDING',
+        paidAt: null,
+        departureStartDate: '2026-08-15',
+        departureEndDate: '2026-08-15',
+      }),
+    );
+    expect(meta('BK-TESTAAAA · 15 Aug 2026')).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Pay now' })).not.toBeInTheDocument();
+  });
+
+  it('chưa trả tiền thì ô tổng ghi "Total"; đã trả ghi "Total paid"', () => {
+    const { unmount } = render(one({ status: 'CANCELLED', paidAt: null }));
+    expect(screen.getByText('Total')).toBeInTheDocument();
+    expect(screen.queryByText('Total paid')).not.toBeInTheDocument();
+    unmount();
+
+    render(one({ status: 'REFUNDED', paidAt: '2026-07-01T00:00:00.000Z' }));
+    expect(screen.getByText('Total paid')).toBeInTheDocument();
+  });
 });

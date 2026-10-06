@@ -2417,15 +2417,15 @@ export const messages = {
       body: 'Please try again.',
     },
   },
-  // Chỉ còn phần SỐNG sau khi trang `/account/bookings` (Trips) nhập vào
-  // trang hộ chiếu `/account` (spec 2026-08-11, M1) — namespace này giờ nuôi
-  // `JourneyRow` (trang hộ chiếu) và grid nhãn của trang chi tiết booking.
-  // Dọn key mồ côi ngày 11/08 (fixer cuối, xem docs/CHANGELOG.md).
+  // Trang My bookings `/account/bookings` (spec P7 §7, ADR-0054): dòng phụ của
+  // `BookingAccordion`, hàng tìm và lọc, phân trang, nút quay lại Passport.
+  // `travellers` dùng chung với trang chi tiết đơn và admin (`bookings-view.ts`)
+  // — một booking một câu. Nút "Load more" cũ đã gỡ (P7 Phần A).
   accountBookings: {
-    /** Eyebrow đếm ngược `JourneyRow` (trang hộ chiếu) — biên hai đầu có câu
-     *  riêng, "N days" chỉ dùng từ ngày thứ hai trở đi. */
+    /** Dòng phụ của hàng sắp đi (`upcoming`, `awaiting_payment` — luôn n ≥ 1);
+     *  biên hai đầu có câu riêng, "N days" chỉ dùng từ ngày thứ hai trở đi. */
     inDays: (n: number) => (n === 0 ? 'Departing today' : n === 1 ? 'In 1 day' : `In ${n} days`),
-    /** Eyebrow `JourneyRow` khi chuyến đã bắt đầu — thay `inDays`. */
+    /** Dòng phụ của hàng đang đi (`on_tour`) — thay `inDays`. */
     endsOn: (d: string) => `Ends ${d}`,
     // Một nguồn cho cả trang hộ chiếu VÀ trang chi tiết booking (không tự
     // chế bản thứ hai) — tránh lệch số nhiều/số ít giữa hai nơi cùng hiển
@@ -2462,9 +2462,12 @@ export const messages = {
     olderTrips: 'Older trips',
     /** Tên đọc của link Older — nhãn cộng dải đơn của trang kế. */
     olderTripsAria: (range: string) => `Older trips, ${range}`,
-    // Trang hộ chiếu: nút hiện diện tĩnh cho "Load more" (chunk `?page=`,
-    // xem `AccountPassportPage`).
-    loadMore: 'Load more',
+    /** Nút tròn quay lại ở hero của My bookings (`ContentHero.back`). */
+    backToPassport: 'Back to Passport',
+    /** Dòng đếm khi đang lọc hay tìm; chưa lọc thì dùng `passportBookings.metaTrips`. */
+    tripsOf: (n: number, total: number) => `${n} of ${total} ${total === 1 ? 'trip' : 'trips'}`,
+    noMatchHeading: 'No trips match',
+    noMatchBody: 'Try another search or clear the filters.',
   },
   // Trang `/account/bookings/[code]` — grid thông tin + hành động theo
   // `BookingView` (Task 2 `bookingView`, `@/lib/booking-vm`). Mã lạ/không
@@ -2528,7 +2531,6 @@ export const messages = {
     breadcrumb: 'Bookings',
     title: 'My bookings',
     metaTrips: (n: number) => `${n} trip${n === 1 ? '' : 's'}`,
-    back: '← Passport',
     emptyHeading: 'No trips booked yet',
     emptyBody: 'Book a tour and it will show up here with dates, status, and your voucher.',
     emptyCta: 'Browse tours',
