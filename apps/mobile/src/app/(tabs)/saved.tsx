@@ -4,6 +4,7 @@ import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { AuthGateScreen } from '@/features/auth/auth-gate-screen';
 import { setPendingReturn } from '@/features/auth/return-to';
+import { pruneRemovedIds } from '@/features/saved/removed-ids';
 import { SavedScreen, type SavedStatus } from '@/features/saved/saved-screen';
 import { orpc, withMobileAuth } from '@/lib/api/client';
 import { getAuthClient } from '@/lib/auth-client';
@@ -37,6 +38,14 @@ export default function SavedRoute() {
   useEffect(() => {
     if (!signedIn) setRemovedIds(new Set());
   }, [signedIn]);
+  // F4: mỗi lần list mới về, bỏ khỏi tập ẩn những id server đã xác nhận vắng —
+  // không thì lưu lại tour đó ở chỗ khác vẫn bị ẩn ở đây.
+  useEffect(() => {
+    const serverItems = listQuery.data?.items;
+    if (serverItems !== undefined) {
+      setRemovedIds((current) => pruneRemovedIds(current, serverItems));
+    }
+  }, [listQuery.data]);
   useEffect(() => {
     if (wishlistError === null) return;
     const id = setTimeout(() => setWishlistError(null), 3000);
