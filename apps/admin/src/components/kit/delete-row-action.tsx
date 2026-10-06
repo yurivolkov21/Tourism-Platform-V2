@@ -8,7 +8,7 @@ import {
   TooltipTrigger,
 } from '@tourism/ui/components/tooltip';
 import { Trash2Icon } from 'lucide-react';
-import { useState } from 'react';
+import { useId, useState } from 'react';
 import {
   type ConfirmWriteCopy,
   ConfirmWriteDialog,
@@ -26,6 +26,14 @@ import type { TransportFailureCode } from '@/lib/api/write-error';
  * nhận chuột — thiếu nó thì biến thể `aria-disabled:pointer-events-none` của `Button` nuốt
  * mất cú rê, và tooltip, thứ DUY NHẤT nói vì sao không bấm được, không bao giờ hiện. Server
  * vẫn là phán quyết cuối: bảng có thể cũ hơn DB.
+ *
+ * Ba điều của review cuối nhánh:
+ * - Cây Tooltip luôn dựng, chỉ `disabled` khi xoá được. Đổi kiểu phần tử theo `blocked` thì
+ *   React dựng lại nút, và focus rơi về `body` đúng lúc bảng làm mới sau một lần `IN_USE`.
+ * - Lý do còn nằm trong một span `hidden` mà nút trỏ tới bằng `aria-describedby` (Ruling F-e):
+ *   tooltip chỉ hiện khi rê hay focus, và Base UI không nối popup vào nút.
+ * - Nhận chuột thì cũng ăn `hover:` và `active:` của biến thể outline; nút khoá giữ nền lúc nghỉ
+ *   của từng giao diện và không nhún khi nhấn, như mục chưa mở ở `nav-main.tsx`.
  */
 export function DeleteRowAction<Code extends string>({
   label,
@@ -53,37 +61,40 @@ export function DeleteRowAction<Code extends string>({
   onSettled: () => void;
 }) {
   const [open, setOpen] = useState(false);
+  const reasonId = useId();
   const blocked = blockedReason !== null;
-
-  const button = (
-    <Button
-      type="button"
-      variant="outline"
-      size="sm"
-      aria-label={actionLabel}
-      disabled={disabled || blocked}
-      // Khoá mà vẫn nhận focus — cùng lý do các nút khác của hàng (vòng review F15).
-      focusableWhenDisabled
-      className="text-destructive-emphasis hover:text-destructive-emphasis aria-disabled:pointer-events-auto aria-disabled:cursor-not-allowed"
-      onClick={() => setOpen(true)}
-    >
-      <Trash2Icon data-icon="inline-start" aria-hidden="true" />
-      {label}
-    </Button>
-  );
 
   return (
     <>
+      <TooltipProvider>
+        <Tooltip disabled={!blocked}>
+          <TooltipTrigger
+            render={
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                aria-label={actionLabel}
+                aria-describedby={blocked ? reasonId : undefined}
+                disabled={disabled || blocked}
+                // Khoá mà vẫn nhận focus — cùng lý do các nút khác của hàng (vòng review F15).
+                focusableWhenDisabled
+                className="text-destructive-emphasis hover:text-destructive-emphasis aria-disabled:pointer-events-auto aria-disabled:cursor-not-allowed aria-disabled:hover:bg-background aria-disabled:active:translate-y-0 dark:aria-disabled:hover:bg-input/30"
+                onClick={() => setOpen(true)}
+              >
+                <Trash2Icon data-icon="inline-start" aria-hidden="true" />
+                {label}
+              </Button>
+            }
+          />
+          <TooltipContent>{blockedReason}</TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
       {blocked ? (
-        <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger render={button} />
-            <TooltipContent>{blockedReason}</TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
-      ) : (
-        button
-      )}
+        <span id={reasonId} hidden>
+          {blockedReason}
+        </span>
+      ) : null}
 
       {open ? (
         <ConfirmWriteDialog<Code>

@@ -253,8 +253,12 @@ describe('CategoryRowActions — nút Delete (ADR-0053)', () => {
 
     const button = screen.getByRole('button', { name: t.delete.actionLabel('Category 1') });
     expect(button).toHaveAttribute('aria-disabled', 'true');
+    // Câu ấy còn ở span ẩn cho trình đọc màn hình (Ruling F-e) — tìm trong popup tooltip.
+    expect(button).toHaveAccessibleDescription(t.delete.inUse(2));
     await user.hover(button);
-    expect(await screen.findByText(t.delete.inUse(2))).toBeInTheDocument();
+    expect(
+      await screen.findByText(t.delete.inUse(2), { selector: '[data-slot="tooltip-content"]' }),
+    ).toBeInTheDocument();
   });
 
   it('0 tour: xác nhận gửi đúng id, toast tên hàng, rồi làm mới bảng', async () => {

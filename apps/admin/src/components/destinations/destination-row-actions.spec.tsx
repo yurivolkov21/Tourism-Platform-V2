@@ -243,8 +243,12 @@ describe('DestinationRowActions — nút Delete (ADR-0053)', () => {
 
     const button = screen.getByRole('button', { name: t.delete.actionLabel('Hội An') });
     expect(button).toHaveAttribute('aria-disabled', 'true');
+    // Câu ấy còn ở span ẩn cho trình đọc màn hình (Ruling F-e) — tìm trong popup tooltip.
+    expect(button).toHaveAccessibleDescription(t.delete.inUse(4));
     await user.hover(button);
-    expect(await screen.findByText(t.delete.inUse(4))).toBeInTheDocument();
+    expect(
+      await screen.findByText(t.delete.inUse(4), { selector: '[data-slot="tooltip-content"]' }),
+    ).toBeInTheDocument();
   });
 
   it('chỉ còn tour nháp (0 đang bán): nút Delete VẪN khoá — đếm tour mọi trạng thái', async () => {
@@ -256,8 +260,11 @@ describe('DestinationRowActions — nút Delete (ADR-0053)', () => {
 
     const button = screen.getByRole('button', { name: t.delete.actionLabel('Hội An') });
     expect(button).toHaveAttribute('aria-disabled', 'true');
+    expect(button).toHaveAccessibleDescription(t.delete.inUse(1));
     await user.hover(button);
-    expect(await screen.findByText(t.delete.inUse(1))).toBeInTheDocument();
+    expect(
+      await screen.findByText(t.delete.inUse(1), { selector: '[data-slot="tooltip-content"]' }),
+    ).toBeInTheDocument();
   });
 
   it('0 tour: xác nhận gửi đúng id, toast tên hàng, rồi làm mới bảng', async () => {
