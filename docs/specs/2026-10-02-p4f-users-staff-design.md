@@ -122,9 +122,9 @@ cho từng thủ tục.
   role và **ẩn hẳn** mục không được vào (không hiện "Soon").
 - Nhãn Owner hoặc Staff nằm trong menu tài khoản của `nav-user`, dưới email — nút sidebar chỉ
   đủ hai dòng (plan, quyết định 6).
-- Bốn chỗ ẩn với Staff: nút Refund (chi tiết booking — thay bằng câu "Only the owner can issue
+- Sáu chỗ ẩn với Staff: nút Refund (chi tiết booking — thay bằng câu "Only the owner can issue
   refunds.", sổ hoàn tiền vẫn hiện; plan, quyết định 10), Cancel departure, khung xoá tour,
-  khung xoá bài viết.
+  khung xoá bài viết, nút Delete trên hàng `/categories` và hàng `/destinations` (ADR-0053 §7).
 - Dashboard và các trang Staff được vào không đổi: chúng chỉ gọi thủ tục `staff`
   (`stats.paymentEvents` chỉ có ở trang Payment events).
 
@@ -348,7 +348,7 @@ của `lock` và của `setRole → CUSTOMER`; đổi một dòng Owner-only th�
 2. Đăng nhập admin bằng tài khoản Staff: sidebar không có Reports, Payment events, Users;
    chi tiết booking không có Refund mà có câu "Only the owner can issue refunds."; mở thẳng
    `/reports` về `/not-authorized` với khối "Owner only"; menu tài khoản ở góc dưới ghi Staff
-   (plan, quyết định 5, 6, 10).
+   (plan, quyết định 5, 6, 10); hàng `/categories` và `/destinations` không có nút Delete.
 3. Staff sửa một tour hoặc duyệt một review được bình thường.
 4. Owner thu hồi Staff: tab của Staff bị đẩy về đăng nhập.
 5. Owner khoá tài khoản (có lý do): đăng nhập bằng mật khẩu và bằng Google đều hiện "This

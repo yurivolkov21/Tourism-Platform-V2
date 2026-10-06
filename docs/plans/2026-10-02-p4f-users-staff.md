@@ -254,7 +254,7 @@ P4f chạm vùng nhạy nhất từ trước tới nay: đăng nhập, phiên v�
 | `apps/admin/src/app/(admin)/layout.tsx`, `reports/page.tsx`, `reports/export/route.ts`, `payment-events/page.tsx`, `app/not-authorized/page.tsx` | Cổng, provider, trang chỉ Owner | 7 |
 | `apps/admin/src/lib/api/session.ts` (+ spec), `components/auth/login-form.tsx` (+ spec) | `lockedAt`; câu báo khoá | 7 |
 | `apps/admin/src/lib/role-label.ts` (mới, + spec), `lib/nav.ts` (+ spec), `components/nav-main.tsx` (+ spec), `app-sidebar.tsx` (+ spec), `nav-user.tsx` | Sidebar theo role; nhãn role | 8 |
-| `apps/admin/src/components/bookings/refund-panel.tsx`, `departures/departure-row-actions.tsx`, `tours/editor/delete-tour-zone.tsx`, `posts/editor/delete-post-zone.tsx` (+ spec mỗi file) | Ẩn bốn nút với Staff | 9 |
+| `apps/admin/src/components/bookings/refund-panel.tsx`, `departures/departure-row-actions.tsx`, `tours/editor/delete-tour-zone.tsx`, `posts/editor/delete-post-zone.tsx`, `categories/category-row-actions.tsx`, `destinations/destination-row-actions.tsx` (+ spec mỗi file) | Ẩn sáu nút với Staff | 9 |
 | `apps/admin/src/lib/users-query.ts`, `lib/users-view.ts` (mới, + spec), `lib/api/users.ts` (mới) | URL, VM, bọc API | 10–12 |
 | `apps/admin/src/components/users/users-toolbar.tsx`, `users-table.tsx` (+ spec) (mới), `app/(admin)/users/page.tsx` (mới) | Trang `/users` | 10 |
 | `apps/admin/src/lib/bookings-query.ts` (+ spec) | `bookingsSearchHref` | 11 |
@@ -3576,7 +3576,7 @@ export function navGroupsFor(role: string): NavGroup[] {
 - [ ] **B6.** `pnpm lint:fix`; quy trình gate. Commit:
   `feat(admin): sidebar theo bậc Owner/Staff và nhãn bậc trong menu tài khoản`
 
-## Task 9 — Admin: ẩn bốn nút chỉ Owner với Staff
+## Task 9 — Admin: ẩn sáu nút chỉ Owner với Staff
 
 **Files:**
 
@@ -3584,6 +3584,8 @@ export function navGroupsFor(role: string): NavGroup[] {
 - Modify: `apps/admin/src/components/departures/departure-row-actions.tsx`, `departure-row-actions.spec.tsx`
 - Modify: `apps/admin/src/components/tours/editor/delete-tour-zone.tsx`, `delete-tour-zone.spec.tsx`
 - Modify: `apps/admin/src/components/posts/editor/delete-post-zone.tsx`, `delete-post-zone.spec.tsx`
+- Modify: `apps/admin/src/components/categories/category-row-actions.tsx`, `category-row-actions.spec.tsx`
+- Modify: `apps/admin/src/components/destinations/destination-row-actions.tsx`, `destination-row-actions.spec.tsx`
 - Modify: `libs/shared/i18n/src/lib/messages.ts`
 
 **Interfaces:**
@@ -3593,6 +3595,25 @@ export function navGroupsFor(role: string): NavGroup[] {
 
 Mọi ca cũ của bốn spec giữ nguyên (không provider → hiện đủ như Owner, quyết định 3); chỉ
 thêm ca Staff, bọc bằng `withRole('STAFF')`.
+
+> **Bổ sung 06/10 (ADR-0053 §7): sáu nút, không phải bốn.** Đợt sửa sạn giao diện admin đặt nút
+> Delete (`DeleteRowAction`) vào mỗi hàng `/categories` và `/destinations`; nó gọi
+> `categories.delete` và `destinations.delete`, hai thủ tục chỉ Owner cùng họ `tours.delete`.
+> B1–B3 dưới đây chỉ viết cho bốn chỗ cũ; hai chỗ mới làm thêm theo ghi chú này, cùng luật của
+> task (ca cũ giữ nguyên, ca Staff bọc `withRole('STAFF')`, đỏ trước rồi mới cài):
+>
+> - `category-row-actions.tsx`: `const mayDelete = useCanAccess('categories.delete');` cạnh các
+>   hook sẵn có (import và chỗ gọi như B3), và `<DeleteRowAction … />` chỉ render khi
+>   `mayDelete` — Staff không có nút, cũng không chỗ trống: không hàng nào của Staff có nút ấy
+>   nên cụm nút vẫn thẳng cột. `destination-row-actions.tsx`: y như vậy với
+>   `useCanAccess('destinations.delete')`.
+> - Spec cùng tên của mỗi file (import `withRole` như B1): `renderRow` thêm tham số cuối
+>   `role?: string`, truyền `role ? { wrapper: withRole(role) } : undefined` cho `render` (như
+>   `renderActions` ở B1); một ca Staff: không còn nút `t.delete.actionLabel(…)`, nút Edit và
+>   Hide/Show vẫn còn.
+> - Lệnh chạy của B1 thêm `src/components/categories src/components/destinations`. Đột biến:
+>   đổi khoá ở `category-row-actions.tsx` thành `'categories.list'` → ca Staff đỏ. Commit B4
+>   thêm "xoá danh mục và xoá điểm đến".
 
 - [ ] **B1. Bốn ca Staff (đỏ).**
   - `refund-panel.spec.tsx` (thêm `import { withRole } from '@/test/access';`):
@@ -4534,7 +4555,7 @@ export default async function UsersPage({
           // Đo trên ADMIN_ACCESS: 16 thủ tục chỉ Owner = hoàn tiền, huỷ chuyến, xoá tour,
           // xoá bài, xoá danh mục, xoá điểm đến, báo cáo, sổ thanh toán, vùng Users.
           customer:
-            'Staff can work on bookings, reviews, enquiries, subscribers, the outbox, tours, departures, categories, destinations and posts. Only the owner can refund, cancel a departure, delete a tour or a post, or open reports, payment events and users.',
+            'Staff can work on bookings, reviews, enquiries, subscribers, the outbox, tours, departures, categories, destinations and posts. Only the owner can refund, cancel a departure, delete a tour, a post, a category or a destination, or open reports, payment events and users.',
           staff: 'This account can use the back office as staff.',
           needsVerified: 'Staff access needs a verified email — this account hasn’t verified yet.',
           needsUnlock: 'Unlock the account before granting staff access.',
@@ -5174,7 +5195,7 @@ export default async function UserDetailPage({
           dialog: {
             title: 'Grant staff access?',
             // Đo trên ADMIN_ACCESS: đúng 16 thủ tục chỉ Owner.
-            body: 'They’ll be able to open the back office and work on everything except refunds, cancelling departures, deleting tours or posts, reports, payment events and users.',
+            body: 'They’ll be able to open the back office and work on everything except refunds, cancelling departures, deleting tours, posts, categories or destinations, reports, payment events and users.',
             // Role đọc tươi ở mỗi request (không cookieCache) — không cần đăng nhập lại.
             warning: 'Access starts on their next page load — no new sign-in needed.',
             submit: 'Grant access',
@@ -6322,7 +6343,7 @@ khoá/mở khoá, đăng xuất mọi nơi, lịch sử theo người. Quyết �
 02/10. Một migration chỉ thêm (`STAFF`, `locked_at`, `user_events`); không env.
 
 (Một đoạn cho API: `@AdminImplement`, test quét quyền, hook khoá, sáu route. Một đoạn cho
-web: câu báo khoá, `errorCallbackURL`. Một đoạn cho admin: cổng, provider, sidebar, bốn nút,
+web: câu báo khoá, `errorCallbackURL`. Một đoạn cho admin: cổng, provider, sidebar, sáu nút,
 hai trang. Một đoạn chỗ lệch plan nếu có, kèm lý do; một đoạn số đo Task 13.)
 
 **CÒN TREO cho session gốc:** chạy migration `p4f_users_staff` lên Supabase TRƯỚC khi push
