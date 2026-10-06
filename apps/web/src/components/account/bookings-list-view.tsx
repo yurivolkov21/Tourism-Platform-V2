@@ -1,15 +1,10 @@
 import type { BookingsListResult } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
 import { ButtonLink } from '@tourism/ui/components/button-link';
-import { BookingsToolbar } from '@/components/account/bookings-toolbar';
+import { BookingsToolbar, ResetFiltersButton } from '@/components/account/bookings-toolbar';
 import { TripPager } from '@/components/account/trip-pager';
 import { BookingAccordion } from '@/components/passport/booking-accordion';
-import {
-  BOOKINGS_LIST_PATH,
-  type BookingsListParams,
-  bookingsListHref,
-  hasListFilters,
-} from '@/lib/bookings-list';
+import { type BookingsListParams, bookingsListHref, hasListFilters } from '@/lib/bookings-list';
 
 /**
  * Thân trang My bookings (spec P7 §7.2–7.4) — tách khỏi `page.tsx` để test được: Vitest của
@@ -18,7 +13,7 @@ import {
  *
  * - Khách chưa có đơn nào: trạng thái trống cũ, không bày hàng lọc.
  * - Dòng đếm: "{total} trips"; đang lọc hay tìm thì "{total} of {overallTotal} trips".
- * - Lọc ra rỗng: "No trips match" kèm link Reset về danh sách gốc.
+ * - Lọc ra rỗng: "No trips match" kèm nút Reset về danh sách gốc (`router.replace`, như hàng lọc).
  * - `BookingAccordion` mang `key` theo URL: mỗi trang và mỗi bộ lọc dựng accordion MỚI, nên
  *   hàng đầu của trang mới mở sẵn. `defaultValue` chỉ được đọc lúc dựng — giữ accordion cũ thì
  *   sang trang 2 không hàng nào mở.
@@ -62,9 +57,7 @@ export function BookingsListView({
           <p className="mx-auto mt-2 max-w-md text-pretty text-sm text-muted-foreground">
             {tb.noMatchBody}
           </p>
-          <ButtonLink href={BOOKINGS_LIST_PATH} variant="outline" className="mt-6">
-            {tb.reset}
-          </ButtonLink>
+          <ResetFiltersButton />
         </div>
       ) : (
         <div className="mt-2.5">

@@ -15,6 +15,7 @@ import { SearchIcon, XIcon } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { startTransition, useEffect, useOptimistic, useRef, useState } from 'react';
 import {
+  BOOKINGS_LIST_PATH,
   type BookingsListParams,
   bookingsListHref,
   EMPTY_BOOKINGS_LIST_PARAMS,
@@ -27,6 +28,9 @@ import { FacetFilter, type FacetFilterOption } from './facet-filter';
 /** Gõ xong bao lâu thì áp ô tìm (spec P7 §7.2); Enter áp ngay. */
 export const SEARCH_DEBOUNCE_MS = 300;
 
+/** Id của ô tìm — nút Reset của trạng thái "No trips match" trả tiêu điểm về đây. */
+export const BOOKINGS_SEARCH_ID = 'bookings-search';
+
 /**
  * Hàng tìm và lọc của My bookings (spec P7 §7.2, bản vẽ `booking-list.src.html` phần 1).
  * Trạng thái THẬT nằm trên URL: mọi thay đổi thay URL bằng `router.replace` (không làm dài
@@ -38,9 +42,10 @@ export const SEARCH_DEBOUNCE_MS = 300;
  *    pending feedback" của tài liệu Next 16 (`01-app/02-guides/interactive-apps.md`). Giá trị
  *    lạc quan đứng tới khi lượt điều hướng xong rồi về đúng `params` mới của server.
  * 2. **Ô tìm có state riêng** (chữ đang gõ); chỉ đẩy lên URL sau 300 ms hoặc khi Enter.
- * 3. **URL đổi từ NGOÀI** (nút Back, link Reset của trạng thái trống) thì ô tìm theo URL; còn
- *    lượt tìm của CHÍNH ô này về tới thì không được đè chữ khách đang gõ dở. `sentQ` nhớ từ khoá
- *    vừa gửi để phân biệt hai ca.
+ * 3. **URL đổi từ NGOÀI** (nút Back/Forward, nút Reset của trạng thái "No trips match") thì ô tìm
+ *    theo URL và lượt tìm còn chờ bị HUỶ — nó thuộc về URL cũ, chạy tiếp là router.replace đè lên
+ *    mục lịch sử khách vừa quay về (review 06/10). Còn lượt tìm của CHÍNH ô này về tới thì không
+ *    được đè chữ khách đang gõ dở. `sentQ` nhớ từ khoá vừa gửi để phân biệt hai ca.
  */
 export function BookingsToolbar({
   params,
@@ -60,24 +65,31 @@ export function BookingsToolbar({
 
   useEffect(() => {
     if (params.q !== sentQ.current) {
+      clearPendingTimer(timer);
       sentQ.current = params.q;
       setQuery(params.q ?? '');
     }
   }, [params.q]);
 
-  // Rời trang khi còn lượt tìm đang chờ: huỷ, không điều hướng từ một trang đã đóng.
-  useEffect(
-    () => () => {
-      if (timer.current !== null) clearTimeout(timer.current);
-    },
-    [],
-  );
+  useEffect(() => {
+    // Back/Forward: huỷ lượt tìm còn chờ NGAY và cho ô tìm theo URL vừa khôi phục — lượt khôi
+    // phục phải tải lại thì `params` về muộn hơn 300 ms, hẹn giờ sẽ kịp chạy trước.
+    const onPopState = () => {
+      clearPendingTimer(timer);
+      const q = searchTermOf(new URLSearchParams(window.location.search).get('q') ?? '');
+      sentQ.current = q;
+      setQuery(q ?? '');
+    };
+    window.addEventListener('popstate', onPopState);
+    // Rời trang khi còn lượt tìm đang chờ: huỷ, không điều hướng từ một trang đã đóng.
+    return () => {
+      window.removeEventListener('popstate', onPopState);
+      clearPendingTimer(timer);
+    };
+  }, []);
 
   function cancelPendingSearch() {
-    if (timer.current !== null) {
-      clearTimeout(timer.current);
-      timer.current = null;
-    }
+    clearPendingTimer(timer);
   }
 
   function navigate(next: BookingsListParams) {
@@ -158,6 +170,7 @@ export function BookingsToolbar({
         />
         <Input
           ref={inputRef}
+          id={BOOKINGS_SEARCH_ID}
           type="search"
           value={query}
           maxLength={BOOKINGS_SEARCH_MAX}
@@ -210,5 +223,36 @@ export function BookingsToolbar({
         </Button>
       ) : null}
     </div>
+  );
+}
+
+/** Huỷ lượt tìm đang chờ (nếu có). */
+function clearPendingTimer(timer: { current: ReturnType<typeof setTimeout> | null }) {
+  if (timer.current !== null) {
+    clearTimeout(timer.current);
+    timer.current = null;
+  }
+}
+
+/**
+ * Nút Reset của trạng thái "No trips match" (spec P7 §7.3) — cùng hành vi Reset của hàng lọc:
+ * `router.replace` về danh sách gốc (không thêm mục lịch sử, không tải lại trang) và trả tiêu
+ * điểm cho ô tìm, vì chính nút này biến mất khi danh sách hiện lại. Bản link thường trước đây tải
+ * lại cả trang và thêm một mục lịch sử (review 06/10).
+ */
+export function ResetFiltersButton() {
+  const router = useRouter();
+  return (
+    <Button
+      type="button"
+      variant="outline"
+      className="mt-6"
+      onClick={() => {
+        document.getElementById(BOOKINGS_SEARCH_ID)?.focus();
+        router.replace(BOOKINGS_LIST_PATH, { scroll: false });
+      }}
+    >
+      {messages.accountBookings.reset}
+    </Button>
   );
 }

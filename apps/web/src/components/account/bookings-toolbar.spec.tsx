@@ -3,7 +3,12 @@ import userEvent from '@testing-library/user-event';
 import type { BookingsListFacets } from '@tourism/contract';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { BookingsListParams } from '@/lib/bookings-list';
-import { BookingsToolbar, SEARCH_DEBOUNCE_MS } from './bookings-toolbar';
+import {
+  BOOKINGS_SEARCH_ID,
+  BookingsToolbar,
+  ResetFiltersButton,
+  SEARCH_DEBOUNCE_MS,
+} from './bookings-toolbar';
 
 /**
  * Hàng tìm và lọc của My bookings (spec P7 §7.2): mọi thay đổi thay URL bằng
@@ -139,6 +144,40 @@ describe('BookingsToolbar — ô tìm', () => {
 
     expect(box).toHaveValue('ha noi old');
   });
+  /**
+   * Review P7 06/10: lượt tìm đang chờ thuộc về URL CŨ. Không huỷ thì 300 ms sau nó
+   * router.replace đè lên mục lịch sử khách vừa Back về, với bộ lọc của trang cũ.
+   */
+  it('URL đổi từ ngoài trong lúc lượt tìm còn chờ: huỷ lượt ấy, không đè mục vừa về', async () => {
+    vi.useFakeTimers();
+    const { rerender } = renderToolbar({ q: 'hue' });
+    fireEvent.change(screen.getByRole('searchbox', SEARCH), { target: { value: 'hue x' } });
+    rerender(<BookingsToolbar params={{ ...NONE, q: 'hanoi' }} facets={FACETS} />);
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(SEARCH_DEBOUNCE_MS);
+    });
+
+    expect(replace).not.toHaveBeenCalled();
+    expect(screen.getByRole('searchbox', SEARCH)).toHaveValue('hanoi');
+  });
+
+  /** Lượt khôi phục phải tải lại thì `params` về MUỘN hơn 300 ms — sự kiện popstate tới trước. */
+  it('nút Back (popstate) huỷ lượt tìm đang chờ ngay, ô tìm theo URL vừa khôi phục', async () => {
+    vi.useFakeTimers();
+    renderToolbar({ q: 'hue' });
+    fireEvent.change(screen.getByRole('searchbox', SEARCH), { target: { value: 'hue x' } });
+    window.history.pushState(null, '', '/account/bookings?q=hanoi');
+    act(() => {
+      window.dispatchEvent(new PopStateEvent('popstate'));
+    });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(SEARCH_DEBOUNCE_MS);
+    });
+
+    expect(replace).not.toHaveBeenCalled();
+    expect(screen.getByRole('searchbox', SEARCH)).toHaveValue('hanoi');
+    window.history.replaceState(null, '', '/');
+  });
 });
 
 describe('BookingsToolbar — Reset', () => {
@@ -154,5 +193,27 @@ describe('BookingsToolbar — Reset', () => {
 
     expect(replace).toHaveBeenCalledWith('/account/bookings', SCROLL);
     expect(screen.getByRole('searchbox', SEARCH)).toHaveFocus();
+  });
+});
+
+describe('ResetFiltersButton — Reset của trạng thái "No trips match"', () => {
+  it('ô tìm của hàng lọc mang id mà nút này trả tiêu điểm về', () => {
+    renderToolbar();
+    expect(screen.getByRole('searchbox', SEARCH)).toHaveAttribute('id', BOOKINGS_SEARCH_ID);
+  });
+
+  /** Review P7 06/10: bản link thường tải lại cả trang và thêm một mục lịch sử. */
+  it('replace về danh sách gốc (không thêm lịch sử) và trả tiêu điểm cho ô tìm', async () => {
+    const user = userEvent.setup();
+    render(
+      <>
+        <input id={BOOKINGS_SEARCH_ID} aria-label="Search" />
+        <ResetFiltersButton />
+      </>,
+    );
+    await user.click(screen.getByRole('button', { name: 'Reset' }));
+
+    expect(replace).toHaveBeenCalledWith('/account/bookings', SCROLL);
+    expect(screen.getByRole('textbox', { name: 'Search' })).toHaveFocus();
   });
 });

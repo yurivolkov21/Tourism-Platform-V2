@@ -91,17 +91,16 @@ describe('BookingsListView', () => {
     expect(screen.queryByRole('navigation', { name: 'Trip pages' })).toBeNull();
   });
 
-  it('lọc ra rỗng: No trips match, câu gợi ý, link Reset về danh sách gốc', () => {
+  it('lọc ra rỗng: No trips match, câu gợi ý và nút Reset thứ hai dưới câu gợi ý', () => {
     render(<BookingsListView result={result({})} params={{ ...NONE, status: ['CANCELLED'] }} />);
 
     expect(screen.getByText('0 of 18 trips')).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'No trips match' })).toBeInTheDocument();
     expect(screen.getByText('Try another search or clear the filters.')).toBeInTheDocument();
-    // Hàng lọc cũng có NÚT Reset (role button); ở đây là LINK của trạng thái rỗng.
-    expect(screen.getByRole('link', { name: 'Reset' })).toHaveAttribute(
-      'href',
-      '/account/bookings',
-    );
+    // Một Reset ở hàng lọc, một ở trạng thái rỗng — cả hai là NÚT replace (không phải link tải
+    // lại trang); hành vi của nút thứ hai có ca riêng ở `bookings-toolbar.spec.tsx`.
+    expect(screen.getAllByRole('button', { name: 'Reset' })).toHaveLength(2);
+    expect(screen.queryByRole('link', { name: 'Reset' })).toBeNull();
     expect(screen.queryByRole('navigation', { name: 'Trip pages' })).toBeNull();
   });
 
