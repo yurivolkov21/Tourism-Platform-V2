@@ -70,8 +70,10 @@ const COLUMN_ICONS = {
   processed: CalendarCheckIcon,
 };
 
-// Ba trần bề rộng (Type, Recipient, Last error) chọn để bảng không cuộn ngang ở 1440px
-// (đo ở Task 19 của plan 2026-10-05); chuỗi đầy đủ vẫn ở `title`.
+// Ba trần bề rộng đo ở Task 19 của plan 2026-10-05 trên trang hàng FAILED dài nhất: khung bảng
+// ở 1440px chỉ rộng 1094px, nên Type 176px (nhãn loại email dài nhất vẫn trọn), Recipient 144px,
+// Last error 80px; chuỗi đầy đủ vẫn ở `title`. Nhãn Attempts dài ("Not sent — recipient
+// unsubscribed") không cắt được, hàng mang nhãn ấy vẫn làm bảng cuộn.
 /**
  * Cột nhận `retry` và `onView` qua tham số (không đọc từ module) — client
  * component KHÔNG tự import server action (nếp F2). Gọi trong `useMemo` khoá
@@ -83,7 +85,7 @@ function buildColumns(retry: RetryActionFn, onView: (row: OutboxRowVM) => void) 
       header: t.columns.type,
       // Cột này không ẩn được — nó là danh tính của hàng (type + dedupeKey).
       cell: ({ row }) => (
-        <div className="max-w-52">
+        <div className="max-w-44">
           <div className="flex items-center gap-1.5">
             <MailIcon className="size-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
             <span className="truncate font-medium text-foreground">{row.original.typeLabel}</span>
@@ -102,7 +104,7 @@ function buildColumns(retry: RetryActionFn, onView: (row: OutboxRowVM) => void) 
       header: t.columns.recipient,
       cell: ({ row }) =>
         row.original.recipient ? (
-          <div className="max-w-48 truncate" title={row.original.recipient}>
+          <div className="max-w-36 truncate" title={row.original.recipient}>
             {row.original.recipient}
           </div>
         ) : (
@@ -129,7 +131,7 @@ function buildColumns(retry: RetryActionFn, onView: (row: OutboxRowVM) => void) 
       // `title`; drawer là chỗ đọc đủ.
       cell: ({ row }) =>
         row.original.lastError ? (
-          <div className="max-w-40 truncate font-mono text-xs" title={row.original.lastError}>
+          <div className="max-w-20 truncate font-mono text-xs" title={row.original.lastError}>
             {row.original.lastError}
           </div>
         ) : (
