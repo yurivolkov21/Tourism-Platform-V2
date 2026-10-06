@@ -2,7 +2,7 @@
 
 - **Ngày:** 2026-10-05 · **Trạng thái:** thiết kế duyệt qua wireframe trong chat cùng ngày
   (vòng v2 trang chi tiết; voucher phương án 1 cùng mảng trái "A"; danh sách giữ dáng cũ, lọc
-  "cách 1", phân trang "kiểu 3"). Spec chờ user duyệt.
+  "cách 1", phân trang "kiểu 3"). User duyệt spec 05/10; Phần A thi công và review 06/10.
 - **Quyết định kiến trúc:** [ADR-0054](../adr/0054-customer-bookings-list-phase-filters.md)
 - **Nền:** [ADR-0041](../adr/0041-single-cancellation-deadline.md) (một hạn chót mỗi chuyến,
   `vietnamToday`) · [mobile-booking-handoff.md](../handoff/mobile-booking-handoff.md) (cụm P
@@ -36,8 +36,8 @@
   theo giai đoạn (review, đếm ngược và chuẩn bị, ngày trong chuyến, hoàn tiền).
 - Voucher: thẻ chia đôi, mảng teal; phân biệt vừa trả tiền và mở lại; đổi theo giai đoạn;
   bản in mới.
-- My bookings: giữ dáng thẻ xổ; hàng tìm và lọc; 10 đơn mỗi trang; phân trang "Newer / Older
-  trips".
+- My bookings: giữ dáng thẻ xổ; hàng tìm và lọc; 10 đơn mỗi trang; phân trang "Previous /
+  Next".
 
 ### Ngoài phạm vi, cố ý
 
@@ -63,7 +63,7 @@ Việt Nam do server tính (`vietnamToday`). Không trang nào so ngày bằng �
 | `on_tour` | Đang trong chuyến |
 | `travelled` | Đã đi xong |
 | `cancelled` | Đã huỷ hoặc đã hoàn đủ |
-| `lapsed` | Giữ chỗ không trả kịp, ngày đi đã qua |
+| `lapsed` | Giữ chỗ không trả kịp, đã qua hạn chót (ADR-0054 §1, sửa 06/10) |
 
 ### 2.2 Thanh hành trình
 
@@ -226,6 +226,9 @@ Bỏ hai link chữ "← Passport" nằm dưới hero.
 Các dòng tiền (2 người lớn × đơn giá…) đang tính trong `BookingReceipt`: tách thành
 `bookingPriceLines` ở `lib/checkout.ts` để trang chi tiết, voucher và trang huỷ dùng chung.
 Mã vạch trang trí dùng lại `ticketBarcodeWidths` có sẵn ở cùng file (plan, quyết định 2–3).
+Tiền định dạng theo CẢ ĐƠN (review 06/10): đơn giá chẵn thì đơn giá, các dòng và tổng in không
+số lẻ như cũ; đơn giá có xu (giá khuyến mãi) thì cả ba in đủ hai số lẻ. Làm tròn riêng từng dòng
+thì các dòng cộng không ra tổng, và tổng lệch số cổng thanh toán đã thu.
 
 ### 4.3 Mộc và màu
 
@@ -364,20 +367,25 @@ Hero thêm nút quay lại; meta "{overallTotal} trips". Nội dung giữ `max-w
 
 - Dòng "{total} trips"; đang lọc hoặc tìm thì "{total} of {overallTotal} trips".
 - `BookingAccordion` giữ nguyên; dòng phụ "In N days" và "Ends {ngày}" đọc từ `bookingPhase`.
+  Đơn `lapsed` (chờ trả quá hạn chót) mang nhãn "Payment not completed", tông mờ, không có Pay
+  now (review 06/10).
 - Ô "Total paid" trong phần xổ ghi "Total" khi đơn chưa trả.
 - Lọc ra không có đơn nào: "No trips match" · "Try another search or clear the filters." · nút
   Reset.
 - Khách chưa có đơn nào: giữ trạng thái trống hiện có.
 
-### 7.4 Phân trang "Newer / Older trips"
+### 7.4 Phân trang "Previous / Next"
 
 Chỉ hiện khi có từ 2 trang. Một hàng ba phần, kẻ vạch ở trên:
 
 | Bên trái | Giữa | Bên phải |
 | --- | --- | --- |
-| "← Newer trips" về trang trước; trang 1 thì mờ, không bấm được | "Page {p} of {P} · trips {a}–{b} of {total}" | "Older trips", dòng nhỏ "Trips {c}–{d}", nút tròn mũi tên; trang cuối thì không có |
+| "← Previous" về trang trước; trang 1 thì mờ, không bấm được | "Page {p} of {P} · trips {a}–{b} of {total}" | "Next", dòng nhỏ "Trips {c}–{d}", nút tròn mũi tên; trang cuối thì không có |
 
-Link giữ nguyên các tham số lọc, là link thường (vào lịch sử trình duyệt).
+Link giữ nguyên các tham số lọc, là link thường (vào lịch sử trình duyệt). Nhãn "Previous /
+Next" thay "Newer / Older trips" của bản vẽ (user chốt 06/10): thứ tự hành trình xếp chuyến sắp
+đi từ gần tới xa, nên ở đoạn ấy "Older" dẫn tới chuyến đi xa hơn. Sang trang thì tiêu điểm về
+dòng "Page … of …" để trình đọc màn hình đọc trang mới.
 
 ### 7.5 Gỡ
 
@@ -398,7 +406,7 @@ khoá; nhóm chữ mới:
 | Đang đi | Today's plan · Need help today? Contact us |
 | Thông tin đơn | Lead traveller · Payment · Cancellation · Details · Meeting point · Special requests · None · Questions about this trip? |
 | Voucher | Your day in {place} is booked. · Your trip to {place} is booked. · Your trip voucher · Booked on {date} · a copy went to {email} · Booking code · Show this code at pickup — printed or on your phone. · Receipt overview · Trip journal · Pickup day · Trip started · Travelled · Write a review · Reviewed · Browse more tours · Details are in your confirmation email. · This booking was cancelled — this voucher is no longer valid. |
-| Danh sách | Search tour or booking code · When · Status · On tour now · Upcoming · Past trips · Reset · Clear filters · {n} selected · {n} trips · {n} of {total} trips · No trips match · Try another search or clear the filters. · Newer trips · Older trips · Page {p} of {P} · trips {a}–{b} of {total} · Trips {c}–{d} |
+| Danh sách | Search tour or booking code · When · Status · On tour now · Upcoming · Past trips · Reset · Clear filters · {n} selected · {n} trips · {n} of {total} trips · No trips match · Try another search or clear the filters. · Previous · Next · Page {p} of {P} · trips {a}–{b} of {total} · Trips {c}–{d} |
 | Khác | This booking wasn't paid in time. · Thanks for travelling with us. |
 
 Chữ đã có thì dùng lại: tên trạng thái, hạn huỷ, hoàn tiền, review, chế độ thử.
@@ -442,8 +450,8 @@ TDD trên logic thuần, ≥80% trên logic mới. Xong việc thì chạy `pnpm
 
 Làm từng bước, user báo xong mới sang bước kế.
 
-1. **My bookings, tài khoản có từ 11 đơn:** hai trang; "Older trips" sang trang 2 mà thứ tự
-   không xáo; "Newer trips" quay lại.
+1. **My bookings, tài khoản có từ 11 đơn:** hai trang; "Next" sang trang 2 mà thứ tự không
+   xáo; "Previous" quay lại.
 2. **Lọc:** When = Upcoming; thêm Status; Reset; số đếm đúng; URL giữ khi bấm Back.
 3. **Tìm:** "hanoi", "ha noi", mã đơn có và không có `BK-`.
 4. **Chi tiết một đơn sắp đi:** vé, thanh hành trình có "Today", số ngày, Get ready, tích một

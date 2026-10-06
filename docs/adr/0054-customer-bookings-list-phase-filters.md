@@ -1,6 +1,6 @@
 # ADR-0054 — Đơn của khách: một luật giai đoạn dùng chung; `bookings.mine` lọc, tìm, xếp theo hành trình và phân trang ở server
 
-- **Trạng thái:** Proposed (2026-10-05)
+- **Trạng thái:** Accepted (2026-10-06; đề xuất 2026-10-05)
 - **Bối cảnh thi hành:** đợt thiết kế lại ba trang đơn của khách (P7). Đi trước code theo luật
   CLAUDE.md #5. Thiết kế chốt qua wireframe trong chat ngày 05/10.
 - **Liên quan:** [ADR-0041](0041-single-cancellation-deadline.md) (một hạn chót mỗi chuyến,
@@ -37,12 +37,17 @@ Việt Nam, do server tính.
 
 | Giai đoạn | Điều kiện | Nhóm "When" |
 | --- | --- | --- |
-| `awaiting_payment` | PENDING, ngày đi sau hôm nay | `UPCOMING` |
+| `awaiting_payment` | PENDING, hôm nay ≤ hạn chót của chuyến | `UPCOMING` |
 | `upcoming` | PAID hoặc PARTIALLY_REFUNDED, ngày đi sau hôm nay | `UPCOMING` |
 | `on_tour` | PAID hoặc PARTIALLY_REFUNDED, ngày đi ≤ hôm nay ≤ ngày về | `ON_TOUR` |
 | `travelled` | PAID hoặc PARTIALLY_REFUNDED, ngày về trước hôm nay | `PAST` |
 | `cancelled` | CANCELLED hoặc REFUNDED, mọi ngày | `PAST` |
-| `lapsed` | PENDING, ngày đi ≤ hôm nay | `PAST` |
+| `lapsed` | PENDING, hôm nay sau hạn chót | `PAST` |
+
+Hạn chót là `cancellationDeadline` của ADR-0041 (ngày đi − N) — ngày cuối nhận đặt, và cổng trả
+tiền của API đóng cùng mốc (`isWithinDeadline` ở `assertDepartureBookable`). Mốc ngày đi (bản đầu
+của ADR này) để lọt một khoảng: đơn chờ trả còn sống qua hạn chót được mời trả tiền mà API từ chối
+(review Phần A, 06/10).
 
 Sửa luôn sự thật 3: đơn REFUNDED không còn lọt vào nhóm sắp đi. Ba trang của đợt này đọc
 giai đoạn qua hàm này. Trang Passport giữ helper riêng, chuyển sau (xem Hệ quả).
@@ -86,8 +91,9 @@ ngày đi tăng dần, rồi nhóm `PAST` theo ngày đi giảm dần. Hoà thì
 ### 4. Web: 10 đơn mỗi trang, trạng thái nằm trên URL, không có nút Sort
 
 Trang danh sách gọi `order: 'journey'`, `limit: 10`. Bộ lọc, từ khoá và số trang nằm trên URL
-(`?when=upcoming&status=paid&q=hanoi&page=2`). Nút phân trang ghi "Newer trips / Older
-trips", hai nhãn chỉ đúng khi danh sách xếp theo hành trình, nên trang KHÔNG có nút Sort.
+(`?when=upcoming&status=paid&q=hanoi&page=2`). Nút phân trang ghi "Previous / Next" (user chốt
+06/10, thay "Newer / Older trips" của bản vẽ: thứ tự hành trình xếp chuyến sắp đi từ gần tới xa,
+nên ở đoạn ấy "Older" dẫn tới chuyến đi xa hơn). Trang KHÔNG có nút Sort.
 
 ## Hệ quả
 
@@ -106,7 +112,7 @@ trips", hai nhãn chỉ đúng khi danh sách xếp theo hành trình, nên tran
 - **Viết luật giai đoạn bằng `CASE` trong SQL:** luật nằm hai nơi (TypeScript và SQL), khó
   test, và bỏ dấu tiếng Việt cần extension `unaccent` mà DB chưa bật.
 - **Phân trang con trỏ:** không trả lời được "Page 1 of 2".
-- **Cho khách tự chọn cách xếp:** "Newer / Older trips" sai nghĩa khi xếp theo giá hay ngày
-  đặt.
+- **Cho khách tự chọn cách xếp:** thêm một nút và một trục nữa cho danh sách vài chục đơn;
+  thứ tự hành trình đã đặt việc khách cần lo lên đầu.
 - **Số đếm theo các bộ lọc đang chọn:** con số nhảy theo từng cú bấm; với vài chục đơn mỗi
   khách, tổng tĩnh dễ hiểu hơn.
