@@ -32,9 +32,11 @@ import { PAGE_SIZE_OPTIONS } from '@/lib/table-query';
  * tiết nào để đọc lại nó ở chỗ khác (vùng này không có `/subscribers/[id]` —
  * năm cột đã là toàn bộ sự thật về một hàng).
  *
- * Nút Export sống trong Ô TIÊU ĐỀ của cột `export`, đúng nếp `/bookings`
- * (user chốt 01/09): hàng điều khiển đã mang tab + Select nguồn + ô tìm +
- * menu cột, và nút thứ năm ở đó là giọt nước tràn ly ở màn hẹp.
+ * Nút Export sống trong Ô TIÊU ĐỀ của cột Actions, không ở hàng điều khiển
+ * (user chốt 01/09, theo nếp `/bookings`): hàng ấy đã mang tab + Select
+ * nguồn + ô tìm + menu cột, và nút thứ năm ở đó là giọt nước tràn ly ở màn
+ * hẹp. Từ spec 2026-10-05 §4 #4 nó thôi có cột `export` riêng — lý do ở
+ * JSDoc cột `actions`.
  *
  * Component này KHÔNG tự tính gì: mọi con chữ đã được `toSubscriberRowVM`
  * (thuần, có test) nấu sẵn.
@@ -60,7 +62,7 @@ const COLUMN_ICONS = {
 
 /**
  * Cột nhận `query`/`total` qua tham số (không đọc từ module) vì nút Export
- * sống trong ô tiêu đề của cột `export` — cùng nếp `buildColumns` của
+ * sống trong ô tiêu đề của cột `actions` — cùng nếp `buildColumns` của
  * `/bookings`.
  */
 function buildColumns(query: SubscribersQuery, total: number, unsubscribe: UnsubscribeActionFn) {
@@ -114,29 +116,27 @@ function buildColumns(query: SubscribersQuery, total: number, unsubscribe: Unsub
     }),
     columnHelper.display({
       id: 'actions',
-      header: t.columns.actions,
-      // Chỉ hàng CÒN nhận tin mới có nút: bấm lên hàng đã huỷ chỉ ra 409, và
-      // một nút luôn hỏng là một nút không nên vẽ.
-      cell: ({ row }) =>
-        row.original.isActive ? (
-          <UnsubscribeAction row={row.original} unsubscribe={unsubscribe} />
-        ) : null,
-      enableHiding: false,
-    }),
-    columnHelper.display({
-      id: 'export',
       /**
-       * Ô THÂN để trống có chủ đích: cột tồn tại để nút có chỗ đứng cố định,
-       * không trôi ngang theo độ rộng cột bên trái. `w-0` + `justify-end` ép
-       * nó nằm sát mép phải bảng — cùng hai class mà `/bookings` phải thêm
-       * sau khi user báo nút "nằm lưng chừng" (01/09).
+       * Nút Export sống trong CHÍNH ô tiêu đề cột Actions (spec 2026-10-05 §4 #4). Bản trước
+       * dựng một cột `export` rộng 0 sát mép phải, nút tràn sang trái và đè chữ "Actions"
+       * (còn đọc được "Acti"). Ở đây cột có bề rộng thật, ít nhất bằng nút. Chữ "Actions"
+       * còn cho trình đọc màn hình.
        */
       header: () => (
-        <div className="flex w-0 justify-end">
+        <div className="flex items-center justify-end">
+          <span className="sr-only">{t.columns.actions}</span>
           <SubscribersExportLink query={query} total={total} />
         </div>
       ),
-      cell: () => null,
+      // Chỉ hàng CÒN nhận tin mới có nút: bấm lên hàng đã huỷ chỉ ra 409, và một nút luôn
+      // hỏng là một nút không nên vẽ.
+      cell: ({ row }) =>
+        row.original.isActive ? (
+          <div className="flex justify-end">
+            <UnsubscribeAction row={row.original} unsubscribe={unsubscribe} />
+          </div>
+        ) : null,
+      enableHiding: false,
     }),
   ]);
 }
