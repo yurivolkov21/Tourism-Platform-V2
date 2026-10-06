@@ -2,6 +2,7 @@
 
 import { messages } from '@tourism/i18n';
 import { Badge } from '@tourism/ui/components/badge';
+import { EmailText } from '@/components/kit/email-text';
 import {
   JsonDrawer,
   JsonDrawerField,
@@ -50,7 +51,15 @@ export function OutboxDetailSheet({
             <JsonDrawerField label={t.type} value={row.typeLabel} />
             <JsonDrawerField
               label={t.recipient}
-              value={row.recipient ?? messages.admin.outbox.list.noRecipient}
+              // Người nhận là một email: xuống dòng sau `@`, không bẻ giữa chữ
+              // (spec 2026-10-05 §4 #7).
+              value={
+                row.recipient === null ? (
+                  messages.admin.outbox.list.noRecipient
+                ) : (
+                  <EmailText email={row.recipient} />
+                )
+              }
             />
             <JsonDrawerField
               label={t.status}

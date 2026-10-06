@@ -60,6 +60,22 @@ describe('OutboxDetailSheet', () => {
     expect(payload.getByText('Email')).toBeInTheDocument();
   });
 
+  it('Recipient là một email: có MỘT cơ hội xuống dòng ngay sau @ (spec 2026-10-05 §4 #7)', () => {
+    render(<OutboxDetailSheet row={ROW} onClose={vi.fn()} />);
+
+    expect(screen.getByText(t.detail.recipient).nextElementSibling?.innerHTML).toBe(
+      'ada@<wbr>example.com',
+    );
+  });
+
+  it('không có người nhận: in câu thay thế, không phải ô trống', () => {
+    render(<OutboxDetailSheet row={{ ...ROW, recipient: null }} onClose={vi.fn()} />);
+
+    expect(screen.getByText(t.detail.recipient).nextElementSibling).toHaveTextContent(
+      t.list.noRecipient,
+    );
+  });
+
   it('payload null là GIÁ TRỊ, không phải "đang tải"; lastError null in câu "không lỗi"', () => {
     render(
       <OutboxDetailSheet

@@ -10,6 +10,7 @@ import { notFound } from 'next/navigation';
 import { AdminShell } from '@/components/admin-shell';
 import { EnquiryNoteForm } from '@/components/enquiries/note-form';
 import { EnquiryStatusPanel } from '@/components/enquiries/status-panel';
+import { EmailText } from '@/components/kit/email-text';
 import { LabelValueRow } from '@/components/kit/label-value-row';
 import { Timeline, TimelineItem } from '@/components/kit/timeline';
 import { fetchAdminEnquiry } from '@/lib/api/enquiries';
@@ -111,7 +112,11 @@ export default async function EnquiryDetailPage({
                   bảy sẽ che mất đúng hai dòng có chữ. */}
               <dl className="grid gap-2 text-sm">
                 {vm.leadFields.map((field) => (
-                  <LabelValueRow key={field.label} label={field.label} value={field.value} />
+                  <LabelValueRow
+                    key={field.label}
+                    label={field.label}
+                    value={field.isEmail ? <EmailText email={field.value} /> : field.value}
+                  />
                 ))}
               </dl>
               {vm.interests.length > 0 ? (

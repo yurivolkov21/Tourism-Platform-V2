@@ -113,14 +113,16 @@ describe('toEnquiryDetailVM', () => {
 
   it('thẻ lead liệt kê MỌI field của contract, bỏ đúng những field trống', () => {
     const vm = toEnquiryDetailVM(detail);
+    // `isEmail` chỉ bật ở dòng email: trang in dòng ấy bằng `EmailText` để nó xuống dòng
+    // sau `@` thay vì bị bẻ giữa chữ (spec 2026-10-05 §4 #7).
     expect(vm.leadFields).toEqual([
-      { label: t.detail.lead.email, value: 'ada@example.com' },
-      { label: t.detail.lead.phone, value: '+84 90 000 0000' },
-      { label: t.detail.lead.nationality, value: 'United Kingdom' },
-      { label: t.detail.lead.tour, value: 'Hoi An Lantern Evening' },
-      { label: t.detail.lead.travelDate, value: '24 Dec 2026' },
-      { label: t.detail.lead.groupSize, value: '4 travellers' },
-      { label: t.detail.lead.budgetTier, value: 'luxury' },
+      { label: t.detail.lead.email, value: 'ada@example.com', isEmail: true },
+      { label: t.detail.lead.phone, value: '+84 90 000 0000', isEmail: false },
+      { label: t.detail.lead.nationality, value: 'United Kingdom', isEmail: false },
+      { label: t.detail.lead.tour, value: 'Hoi An Lantern Evening', isEmail: false },
+      { label: t.detail.lead.travelDate, value: '24 Dec 2026', isEmail: false },
+      { label: t.detail.lead.groupSize, value: '4 travellers', isEmail: false },
+      { label: t.detail.lead.budgetTier, value: 'luxury', isEmail: false },
     ]);
     expect(vm.interests).toEqual(['food', 'photography']);
   });
@@ -136,7 +138,9 @@ describe('toEnquiryDetailVM', () => {
       budgetTier: null,
       interests: [],
     });
-    expect(vm.leadFields).toEqual([{ label: t.detail.lead.email, value: 'ada@example.com' }]);
+    expect(vm.leadFields).toEqual([
+      { label: t.detail.lead.email, value: 'ada@example.com', isEmail: true },
+    ]);
     expect(vm.interests).toEqual([]);
   });
 

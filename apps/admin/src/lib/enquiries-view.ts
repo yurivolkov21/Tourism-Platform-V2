@@ -91,6 +91,11 @@ export function toEnquiryRowVM(row: EnquiryRow, listHref: string): EnquiryRowVM 
 export interface LeadField {
   label: string;
   value: string;
+  /**
+   * Dòng email — trang in bằng `EmailText` để nó xuống dòng sau `@` thay vì bị bẻ giữa
+   * chữ (spec 2026-10-05 §4 #7). Cờ nằm ở VM để JSX không phải tự đoán dòng nào là email.
+   */
+  isEmail: boolean;
 }
 
 /** Một note đã format cho timeline. */
@@ -128,8 +133,7 @@ export interface EnquiryDetailVM {
  * service): mapper không sắp lại, nếu không thì thứ tự có hai nguồn.
  */
 export function toEnquiryDetailVM(detail: EnquiryDetail): EnquiryDetailVM {
-  const fields: Array<[string, string | null]> = [
-    [t.detail.lead.email, detail.email],
+  const optionalFields: Array<[string, string | null]> = [
     [t.detail.lead.phone, detail.phone],
     [t.detail.lead.nationality, detail.nationality],
     [t.detail.lead.tour, detail.tourTitle],
@@ -139,9 +143,14 @@ export function toEnquiryDetailVM(detail: EnquiryDetail): EnquiryDetailVM {
   ];
 
   return {
-    leadFields: fields
-      .filter((entry): entry is [string, string] => entry[1] !== null)
-      .map(([label, value]) => ({ label, value })),
+    leadFields: [
+      // Email là field BẮT BUỘC duy nhất của thẻ lead nên luôn có mặt và đứng đầu; cũng là
+      // dòng duy nhất bật `isEmail`.
+      { label: t.detail.lead.email, value: detail.email, isEmail: true },
+      ...optionalFields
+        .filter((entry): entry is [string, string] => entry[1] !== null)
+        .map(([label, value]) => ({ label, value, isEmail: false })),
+    ],
     interests: detail.interests,
     notes: detail.notes.map((note) => ({
       id: note.id,
