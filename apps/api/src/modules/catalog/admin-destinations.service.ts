@@ -63,14 +63,15 @@ const DESTINATION_COLUMNS = {
 } satisfies Prisma.DestinationSelect;
 
 /**
- * Cột của một hàng KÈM cờ `isPublished` của mọi tour gắn nó, trong CÙNG một lần đọc
- * (bài học 3 của vòng review F14). `tourCount` (tour ĐÃ ĐĂNG, nuôi câu cảnh báo lúc ẩn) và
- * `linkedTourCount` (mọi trạng thái, quyết nút Delete — ADR-0053 §5) suy từ CÙNG danh sách
- * nên luôn `tourCount ≤ linkedTourCount`.
+ * Cột của một hàng KÈM cờ `isPublished` của mọi tour gắn nó, đọc trong chính lời gọi Prisma
+ * lấy (hay ghi) hàng — không bằng một câu đếm riêng chạy sau lệnh ghi (bài học 3 của vòng
+ * review F14). Đó KHÔNG phải một ảnh chụp: Prisma 7.8 đọc hàng, liên kết `tour_destinations`
+ * và tour bằng ba câu SQL nối nhau (đo 06/10), nên giữa chúng vẫn có khe — tour bị xoá đúng
+ * lúc ấy về thành `tour: null`, xem `destination-tour-links.ts`.
  *
- * Đếm ở câu riêng sau lệnh ghi là đọc từ một ảnh chụp KHÁC: một tour publish
- * chen vào giữa thì hàng trả về mang `tourCount` chưa từng khớp trạng thái nào
- * của DB — mà chính con số ấy nuôi câu cảnh báo lúc ẩn điểm đến.
+ * `tourCount` (tour ĐÃ ĐĂNG, nuôi câu cảnh báo lúc ẩn) và `linkedTourCount` (mọi trạng thái,
+ * quyết nút Delete — ADR-0053 §5) vẫn luôn `tourCount ≤ linkedTourCount`, vì cả hai đếm trên
+ * CÙNG MỘT mảng liên kết, chứ không nhờ ảnh chụp.
  *
  * `tourCount` đếm tour ĐÃ ĐĂNG, cùng thước với `catalog.listDestinations`: câu cảnh
  * báo nói về thứ khách đang nhìn thấy, và tour nháp thì không ai thấy.
@@ -81,7 +82,7 @@ const DESTINATION_SELECT = {
 } satisfies Prisma.DestinationSelect;
 
 /**
- * Lệnh sửa và lệnh ẩn/hiện đọc thêm slug của MỌI tour gắn điểm đến, trong cùng câu ghi:
+ * Lệnh sửa và lệnh ẩn/hiện đọc thêm slug của MỌI tour gắn điểm đến, trong chính lời gọi ghi:
  * trang chi tiết `/tours/<slug>` in tên điểm đến qua tag `tour:<slug>`, nên bust riêng
  * `tours` thì trang ấy giữ tên cũ tới hết 300 giây ISR (nợ G5, đóng ở vòng review F15).
  */

@@ -67,11 +67,15 @@ const CATEGORY_SELECT = {
 } satisfies Prisma.TourCategorySelect;
 
 /**
- * Cùng `CATEGORY_SELECT` nhưng kèm cờ `isPublished` của MỌI tour thuộc danh mục, trong CÙNG
- * một lần đọc với hàng (bài học 3 của vòng review F14). Hai con số suy từ CÙNG một danh
- * sách nên luôn `tourCount ≤ linkedTourCount`: `tourCount` nuôi câu cảnh báo lúc tắt (đếm
- * thứ khách đang thấy), `linkedTourCount` quyết nút Delete (ADR-0053 §5). Danh mục vài
- * hàng, tour vài chục — đọc cờ từng tour rẻ.
+ * Cùng `CATEGORY_SELECT` nhưng kèm cờ `isPublished` của MỌI tour thuộc danh mục, đọc trong
+ * chính lời gọi Prisma lấy (hay ghi) hàng — không bằng một câu đếm riêng chạy sau (bài học 3
+ * của vòng review F14). Đó KHÔNG phải một ảnh chụp: Prisma 7.8 đọc quan hệ bằng câu SQL thứ
+ * hai sau câu lấy hàng (đo 06/10: hai câu; xem thêm `destination-tour-links.ts`).
+ *
+ * `tourCount ≤ linkedTourCount` vẫn luôn đúng vì hai con số đếm trên CÙNG MỘT mảng cờ, chứ
+ * không nhờ ảnh chụp: `tourCount` nuôi câu cảnh báo lúc tắt (đếm thứ khách đang thấy),
+ * `linkedTourCount` quyết nút Delete (ADR-0053 §5). Danh mục vài hàng, tour vài chục — đọc
+ * cờ từng tour rẻ.
  */
 const CATEGORY_SELECT_WITH_TOURS = {
   ...CATEGORY_SELECT,
@@ -160,7 +164,7 @@ function toRow(row: CategoryData, counts: TourCounts): AdminCategoryRow {
   };
 }
 
-/** Hàng đã kèm cờ tour — đếm ngay từ chính lần đọc đã lấy hàng. */
+/** Hàng đã kèm cờ tour — đếm trên mảng cờ đọc kèm hàng, xem `CATEGORY_SELECT_WITH_TOURS`. */
 function toRowWithTours(row: CategoryWithTours): AdminCategoryRow {
   return toRow(row, countTours(row.tours));
 }
