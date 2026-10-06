@@ -22,7 +22,8 @@ P4e-1 ✅ · P4e-2 ✅ · P4e-3a F17 tạo và sửa tour ✅ 28/09 · P4e-3b F1
 29/09 · P4e-3c F19 khu sửa tour dạng thanh bước ✅ 01/10 · P4e-4 F20 bài viết ✅
 05/10; **P4f users chưa làm** — plan đã push, media chưa có spec) → P5 mobile
 (P5a khung ✅ · P5b-1 auth ✅ · P5b-2…5 mới có bản vẽ, thành viên khác dựng màn) →
-P6 AI concierge → P7 polish UI → freeze 15/10. Việc còn nợ gom ở
+P6 AI concierge → P7 polish UI (ba trang đơn của khách: Phần A My bookings ✅ 06/10; B chi tiết
+đơn, C voucher chưa làm) → freeze 15/10. Việc còn nợ gom ở
 [docs/open-items.md](docs/open-items.md).
 
 ## Quy ước làm việc (bất di bất dịch trừ khi user nói khác)

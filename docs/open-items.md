@@ -21,7 +21,7 @@
 | **P4f** | Quản trị người dùng và media | **Users**: ADR-0052 và spec 02/10 — Owner (chỉ từ `ADMIN_EMAILS`) cấp Staff cho khách đã xác minh, bảng quyền ở contract, khoá tài khoản, đăng xuất mọi nơi, lịch sử theo người dùng; plan 02/10 (14 task, kèm prompt thi công); P4e-4 đã merge 05/10 nên sẵn sàng thi công. Phủ ba bất biến hạ quyền / thu hồi phiên của ADR-0026 AMEND 1 §D. **Media library**, **Appearance** và G16 chưa thuộc spec nào |
 | **P5b-2…5** | Bốn cụm màn mobile: xem tour · đặt tour · tài khoản · đánh giá | **Đã có bản vẽ và tài liệu bàn giao đầy đủ**; thành viên khác dựng màn — xem [`handoff/`](handoff/README.md) |
 | **P6** | Trợ lý AI tư vấn tour | Có ADR-0050 và spec (29/09), chưa thi công — mở sau khi admin xong. Thư viện `ai`, `@ai-sdk/anthropic`, `@ai-sdk/react` đã ghim 29/09 (`3f646ace`, spec §7 bước 1). Bảng dữ liệu đã có sẵn (`chat_conversations`, `chat_messages`) |
-| **P7** | Đợt trau chuốt giao diện cuối | |
+| **P7** | Đợt trau chuốt giao diện cuối | Ba trang đơn của khách (ADR-0054, spec và plan 05/10, 26 task chia ba phần): **Phần A XONG** 06/10 — My bookings lọc, tìm, 10 đơn mỗi trang theo hành trình, phân trang "Previous / Next" (review 15 phát hiện, vá cả 15). Phần B (chi tiết đơn) và C (voucher) chờ thi công |
 
 ## Trước lượt seed lại 03/11
 

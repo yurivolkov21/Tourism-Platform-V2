@@ -166,7 +166,7 @@ Mỗi spec đi kèm một plan cùng tên ở [`plans/`](plans/), trừ vài đ�
 **Trợ lý AI (P6, chưa thi công)**
 [P6 trợ lý tư vấn tour](specs/2026-09-29-p6-ai-concierge-design.md)
 
-**Trang đơn của khách (P7, chưa thi công)**
+**Trang đơn của khách (P7: Phần A My bookings xong 06/10; B chi tiết đơn, C voucher chưa thi công)**
 [Thiết kế lại chi tiết đơn, voucher, My bookings](specs/2026-10-05-booking-pages-redesign-design.md)
 
 **Công cụ máy dev (ngoài repo)**
