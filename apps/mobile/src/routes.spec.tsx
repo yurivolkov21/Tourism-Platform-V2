@@ -1,3 +1,4 @@
+import { act } from '@testing-library/react-native';
 import { messages } from '@tourism/i18n';
 import {
   fireEvent,
@@ -6,6 +7,7 @@ import {
   screen,
   testRouter,
 } from 'expo-router/testing-library';
+import { consumeReturnPath, setPendingReturn } from '@/features/auth/return-to';
 import { onboardingStore } from '@/features/onboarding/onboarding-store';
 
 // Spec của cây route đặt NGOÀI `src/app` là bắt buộc: expo-router coi mọi file
@@ -281,6 +283,19 @@ describe('vỏ điều hướng', () => {
       expect(app.pathname()).toBe('/');
     },
   );
+
+  // F1 (review 06/10): back cứng Android / vuốt đóng modal iOS KHÔNG đi qua
+  // nút X — vẫn phải dọn hộp nhớ, không thì lần đăng nhập sau (mở từ chỗ
+  // không đặt pending) nhảy về tour cũ và tự lưu tim.
+  it('rời nhóm auth bằng back thì dọn hộp nhớ return-to', async () => {
+    const app = await openApp('/login');
+    setPendingReturn({ path: '/tours/hoi-an', replay: { kind: 'wishlist', tourId: 't1' } });
+
+    await act(() => testRouter.back());
+
+    expect(app.pathname()).toBe('/');
+    expect(consumeReturnPath()).toBeNull();
+  });
 
   // Màn ĐI TIẾP dùng mũi tên lùi một bước. Vào thẳng bằng deep link thì bước lùi
   // đó rơi vào neo `(tabs)` — vẫn có đường về.

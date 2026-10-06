@@ -1,6 +1,8 @@
 import { messages } from '@tourism/i18n';
 import { useTheme } from '@tourism/mobile-ui';
 import { Stack } from 'expo-router';
+import { useEffect } from 'react';
+import { abandonPendingReturn } from '@/features/auth/return-to';
 
 /**
  * Nhóm auth — trình bày dạng modal (đặt ở `_layout` gốc), và KHÔNG màn nào có
@@ -14,10 +16,16 @@ import { Stack } from 'expo-router';
  *
  * `title` giữ lại dù header ẩn: OS vẫn đọc nó khi liệt kê màn, và đó là chỗ duy
  * nhất tên màn còn dính với `@tourism/i18n`.
+ *
+ * Cả nhóm unmount là khách đã RỜI chuỗi đăng nhập — bất kể bằng nút X, back
+ * cứng Android hay vuốt đóng modal iOS (F1, review 06/10). Dọn hộp nhớ
+ * return-to ở ĐÂY thay vì ở từng nút, vì back/vuốt không đi qua nút nào.
  */
 export default function AuthLayout() {
   const theme = useTheme();
   const { titles } = messages.mobile.appShell;
+
+  useEffect(() => abandonPendingReturn, []);
 
   return (
     <Stack
