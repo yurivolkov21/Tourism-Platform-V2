@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import type { BookingStatusValue } from './bookings.js';
-import { tripLengthDays } from './refund-policy.js';
+import { cancellationDeadline, tripLengthDays } from './refund-policy.js';
 
 /**
  * Giai đoạn của MỘT đơn của khách (ADR-0054 §1) — SUY từ trạng thái đơn và hai ngày của
@@ -50,8 +50,9 @@ export interface BookingPhaseInput {
  * API, `todayDateString` ở web). Không bao giờ so bằng đồng hồ trình duyệt.
  *
  * So CHUỖI `YYYY-MM-DD`: thứ tự từ điển trùng thứ tự thời gian. Biên đóng hai đầu: ngày đi và
- * ngày về đều là `on_tour`. PENDING tới ngày đi là `lapsed` vì chuyến đã hết nhận đặt — hạn
- * chót luôn trước ngày đi (ADR-0041 §3).
+ * ngày về đều là `on_tour`. PENDING qua HẠN CHÓT là `lapsed`: hạn chót là ngày cuối nhận đặt
+ * (ADR-0041 §3) và cổng trả tiền của API đóng cùng mốc (`isWithinDeadline`), nên quá mốc ấy
+ * không còn gì để mời khách trả.
  */
 export function bookingPhase(booking: BookingPhaseInput, today: string): BookingPhase {
   const { status, departureStartDate, departureEndDate } = booking;
@@ -60,7 +61,9 @@ export function bookingPhase(booking: BookingPhaseInput, today: string): Booking
     case 'REFUNDED':
       return 'cancelled';
     case 'PENDING':
-      return departureStartDate > today ? 'awaiting_payment' : 'lapsed';
+      return today <= cancellationDeadline(departureStartDate, departureEndDate)
+        ? 'awaiting_payment'
+        : 'lapsed';
     case 'PAID':
     case 'PARTIALLY_REFUNDED':
       if (departureEndDate < today) return 'travelled';

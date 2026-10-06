@@ -25,8 +25,8 @@ describe('bookingPhase — năm trạng thái qua năm mốc ngày', () => {
     ['PAID', ['upcoming', 'on_tour', 'on_tour', 'on_tour', 'travelled']],
     // Sự thật 4 của ADR-0054: hoàn một phần mà chuyến vẫn đi — đi đúng đường của PAID.
     ['PARTIALLY_REFUNDED', ['upcoming', 'on_tour', 'on_tour', 'on_tour', 'travelled']],
-    // Tới ngày đi mà chưa trả là hết cơ hội: hạn chót luôn trước ngày đi (ADR-0041 §3).
-    ['PENDING', ['awaiting_payment', 'lapsed', 'lapsed', 'lapsed', 'lapsed']],
+    // Chuyến năm ngày có N = 7, hạn chót 03/10: cả năm mốc đều đã qua hạn chót — hết cơ hội trả.
+    ['PENDING', ['lapsed', 'lapsed', 'lapsed', 'lapsed', 'lapsed']],
     ['CANCELLED', ['cancelled', 'cancelled', 'cancelled', 'cancelled', 'cancelled']],
     // Sự thật 3: đơn REFUNDED còn ngày đi tương lai KHÔNG được vào nhóm sắp đi.
     ['REFUNDED', ['cancelled', 'cancelled', 'cancelled', 'cancelled', 'cancelled']],
@@ -46,8 +46,26 @@ describe('bookingPhase — chuyến MỘT ngày', () => {
     expect(bookingPhase({ status: 'PAID', ...DAY_TRIP }, today)).toBe(expected);
   });
 
-  it('PENDING đúng ngày đi đã là lapsed', () => {
+  it('PENDING: hạn chót là hôm trước ngày đi (N = 1)', () => {
+    expect(bookingPhase({ status: 'PENDING', ...DAY_TRIP }, '2026-10-09')).toBe('awaiting_payment');
     expect(bookingPhase({ status: 'PENDING', ...DAY_TRIP }, '2026-10-10')).toBe('lapsed');
+  });
+});
+
+/**
+ * Đơn chờ trả sống tới HẠN CHÓT, không tới ngày đi (review Phần A, 06/10): hạn chót là ngày cuối
+ * nhận đặt (ADR-0041 §3) và cổng trả tiền của API đóng cùng mốc. Bản đầu lấy mốc ngày đi nên đơn
+ * PayPal tạo lúc 23:30 ngày hạn chót (session sống 3 giờ) được mời trả tiền rồi bị từ chối.
+ */
+describe('bookingPhase — PENDING theo hạn chót của chuyến', () => {
+  // TRIP 10/10 → 14/10: năm ngày, N = 7, hạn chót 03/10.
+  it.each([
+    ['2026-10-02', 'awaiting_payment'],
+    ['2026-10-03', 'awaiting_payment'],
+    ['2026-10-04', 'lapsed'],
+    ['2026-10-09', 'lapsed'],
+  ] as const)('hôm nay %s → %s', (today, expected) => {
+    expect(bookingPhase({ status: 'PENDING', ...TRIP }, today)).toBe(expected);
   });
 });
 
