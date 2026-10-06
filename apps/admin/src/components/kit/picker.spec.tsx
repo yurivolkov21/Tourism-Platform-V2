@@ -1,8 +1,8 @@
-import { render, screen, within } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type * as React from 'react';
 import { describe, expect, it, vi } from 'vitest';
-import { Picker, type PickerProps } from './picker';
+import { Picker, type PickerOption, type PickerProps } from './picker';
 
 /**
  * Ô chọn chung của admin (spec 2026-10-05 §2.2): vẫn là Select của form — role combobox, gõ
@@ -76,6 +76,73 @@ describe('Picker', () => {
     await user.click(screen.getByRole('option', { name: 'Central Vietnam' }));
 
     expect(onValueChange).toHaveBeenCalledWith('Central Vietnam');
+  });
+
+  it('Base UI phát null khi mục đang chọn rời danh sách — không chuyển thành một lựa chọn', async () => {
+    // Base UI 1.6 đặt lại giá trị về `null` khi danh sách đang dựng mất mục đang chọn (vd nguồn
+    // làm mới giữa chừng). Không ai chọn gì cả; chuyển tiếp thì form nhận chuỗi "null".
+    const user = userEvent.setup();
+    const onValueChange = vi.fn();
+    const view = (options: readonly PickerOption[]) => (
+      <>
+        <label htmlFor="region">Region</label>
+        <Picker id="region" value="central" options={options} onValueChange={onValueChange} />
+      </>
+    );
+    const { rerender } = render(
+      view([
+        { value: 'northern', label: 'Northern Vietnam' },
+        { value: 'central', label: 'Central Vietnam' },
+      ]),
+    );
+
+    await user.click(screen.getByRole('combobox', { name: 'Region' }));
+    expect(await screen.findAllByRole('option')).toHaveLength(2);
+    rerender(view([{ value: 'northern', label: 'Northern Vietnam' }]));
+
+    await waitFor(() => expect(screen.getAllByRole('option')).toHaveLength(1));
+    expect(onValueChange).not.toHaveBeenCalled();
+  });
+
+  it('bàn phím: Tab tới ô, mũi tên mở rồi đi xuống, Enter chọn — trả chuỗi giá trị', async () => {
+    const user = userEvent.setup();
+    const { onValueChange, trigger } = renderPicker();
+
+    await user.tab();
+    expect(trigger).toHaveFocus();
+    await user.keyboard('{ArrowDown}');
+    await screen.findAllByRole('option');
+    await user.keyboard('{ArrowDown}{Enter}');
+
+    expect(onValueChange).toHaveBeenCalledTimes(1);
+    expect(onValueChange).toHaveBeenCalledWith('Central Vietnam');
+  });
+
+  it('bàn phím: gõ chữ nhảy theo TÊN mục — chữ phụ "Hidden" không thành chữ để tìm', async () => {
+    // Chữ của mục ẩn là "Day Tours Hidden" (tên cộng hint). Base UI gõ-tìm theo `label` của
+    // `SelectItem` khi có, còn không thì theo toàn bộ chữ của mục — lúc ấy gõ "day tours h"
+    // (định tới "Day Tours Hanoi") lại trúng mục ẩn đứng trước, vì "…Hidden" cũng bắt đầu thế.
+    const user = userEvent.setup();
+    const { onValueChange, trigger } = renderPicker({
+      options: [
+        { value: 'c1', label: 'Day Tours', hint: 'Hidden' },
+        { value: 'c2', label: 'Day Tours Hanoi' },
+        { value: 'c3', label: 'River Cruises' },
+      ],
+    });
+
+    await user.click(trigger);
+    await screen.findAllByRole('option');
+    await user.keyboard('day tours h');
+    await waitFor(() =>
+      expect(screen.getByRole('option', { name: 'Day Tours Hanoi' })).toHaveAttribute(
+        'data-highlighted',
+      ),
+    );
+    await user.keyboard('{Enter}');
+
+    expect(onValueChange).toHaveBeenCalledTimes(1);
+    expect(onValueChange).toHaveBeenCalledWith('c2');
   });
 
   it('danh sách thả xuống dưới ô, không đè lên ô như Select cũ', async () => {
