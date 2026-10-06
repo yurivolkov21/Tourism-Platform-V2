@@ -2441,6 +2441,21 @@ export const messages = {
     /** Dòng nhỏ dưới "Older trips": các đơn của trang kế. */
     olderRange: (from: number, to: number) =>
       from === to ? `Trip ${from}` : `Trips ${from}–${to}`,
+    /** Ô tìm của hàng lọc — vừa là chữ mờ trong ô, vừa là tên đọc-màn-hình của ô. */
+    searchPlaceholder: 'Search tour or booking code',
+    clearSearch: 'Clear search',
+    whenFilter: 'When',
+    statusFilter: 'Status',
+    /** Ba nhóm thời gian — khoá là `BookingWhen` của contract (ADR-0054 §1). */
+    whenOptions: { ON_TOUR: 'On tour now', UPCOMING: 'Upcoming', PAST: 'Past trips' },
+    /** Trên nút lọc khi chọn từ hai giá trị trở lên. */
+    selectedCount: (n: number) => `${n} selected`,
+    /** Tên đọc-màn-hình của nút lọc đang có giá trị: "When: Upcoming". */
+    filterButtonAria: (label: string, value: string) => `${label}: ${value}`,
+    /** Đuôi chỉ trình đọc màn hình nghe, sau nhãn lựa chọn — không thì nhãn và số dính nhau. */
+    optionCount: (n: number) => `, ${n} ${n === 1 ? 'trip' : 'trips'}`,
+    clearFilters: 'Clear filters',
+    reset: 'Reset',
     // Trang hộ chiếu: nút hiện diện tĩnh cho "Load more" (chunk `?page=`,
     // xem `AccountPassportPage`).
     loadMore: 'Load more',
