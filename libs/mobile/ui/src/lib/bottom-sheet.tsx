@@ -1,5 +1,14 @@
 import { type ReactNode, useEffect, useRef, useState } from 'react';
-import { Animated, Modal, PanResponder, Pressable, useWindowDimensions, View } from 'react-native';
+import {
+  Animated,
+  KeyboardAvoidingView,
+  Modal,
+  PanResponder,
+  Platform,
+  Pressable,
+  useWindowDimensions,
+  View,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { withAlpha } from './theme';
 import { useTheme } from './theme-provider';
@@ -29,6 +38,13 @@ export function shouldDismissDrag(dy: number, vy: number): boolean {
  * mình thay vì để `Modal` trượt cả cây bằng transform nguyên sinh của nó. Hai
  * transform lồng nhau (transform của `Modal` + `translateY` JS riêng) là nghi
  * phạm chính gây mảng đen render sai vị trí lúc mở (phản hồi 24/09).
+ *
+ * Bàn phím (F3, review 06/10): `Modal` iOS không tự co khi bàn phím mở (khác
+ * Android `adjustResize`), nên tấm có ô nhập bị che. Bọc `KeyboardAvoidingView`
+ * `padding` (CHỈ iOS — Android đã co sẵn, thêm nữa là đẩy hai lần) và để tấm
+ * nằm trong LUỒNG bố cục dưới backdrop `flex:1` thay vì `position:absolute`:
+ * padding đáy của lớp bọc đẩy tấm lên đúng bằng chiều cao bàn phím, còn phần
+ * tử absolute thì Yoga không bảo đảm đi theo padding của cha.
  */
 export function BottomSheet({ visible, onClose, children }: BottomSheetProps) {
   const theme = useTheme();
@@ -84,62 +100,62 @@ export function BottomSheet({ visible, onClose, children }: BottomSheetProps) {
 
   return (
     <Modal visible={mounted} transparent animationType="none" onRequestClose={onClose}>
-      <Pressable
-        testID="bottom-sheet-backdrop"
-        onPress={onClose}
+      <KeyboardAvoidingView
+        testID="bottom-sheet-keyboard-avoider"
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        // Nền overlay đặt ở lớp bọc (không ở backdrop): góc bo của tấm để lộ
+        // ra lớp bọc, phải cùng màu overlay chứ không được trong suốt.
         style={{ flex: 1, backgroundColor: theme.colors.overlay }}
-      />
-      <Animated.View
-        style={{
-          position: 'absolute',
-          left: 0,
-          right: 0,
-          bottom: 0,
-          backgroundColor: theme.colors.card,
-          borderTopLeftRadius: theme.spacing(7),
-          borderTopRightRadius: theme.spacing(7),
-          // Android: view mang `transform` không tự cắt theo `borderRadius`
-          // khi có elevation/shadow — viền bo tràn ra thành khối vuông tối đè
-          // lên nội dung phía sau (phản hồi 24/09). Ép cắt đúng góc bo.
-          overflow: 'hidden',
-          zIndex: 1,
-          elevation: 8,
-          paddingTop: theme.spacing(4),
-          // Cộng vùng an toàn đáy: thiếu nó nút cuối tấm dính sát/chui dưới
-          // thanh cử chỉ (bản vẽ đặt nút trên `inset-bottom`).
-          paddingBottom: insets.bottom + theme.spacing(8),
-          // Đệm ngang spacing(6)=24dp khớp `.sheet` bản vẽ 18/09 (trước là
-          // spacing(4)=16dp → chip lọc tràn sát mép hơn mẫu).
-          paddingHorizontal: theme.spacing(6),
-          transform: [{ translateY }],
-        }}
       >
-        {/* Vùng kéo: full-width + `alignItems:'center'` để canh tay nắm — KHÔNG
-            dùng `left:'50%'`+`marginLeft` âm (từng lệch tâm khi đổi
-            `paddingHorizontal` của tấm cha, phản hồi 24/09). */}
-        <View
-          {...panResponder.panHandlers}
+        <Pressable testID="bottom-sheet-backdrop" onPress={onClose} style={{ flex: 1 }} />
+        <Animated.View
           style={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            right: 0,
-            height: theme.spacing(8),
-            alignItems: 'center',
-            justifyContent: 'center',
+            backgroundColor: theme.colors.card,
+            borderTopLeftRadius: theme.spacing(7),
+            borderTopRightRadius: theme.spacing(7),
+            // Android: view mang `transform` không tự cắt theo `borderRadius`
+            // khi có elevation/shadow — viền bo tràn ra thành khối vuông tối đè
+            // lên nội dung phía sau (phản hồi 24/09). Ép cắt đúng góc bo.
+            overflow: 'hidden',
+            zIndex: 1,
+            elevation: 8,
+            paddingTop: theme.spacing(4),
+            // Cộng vùng an toàn đáy: thiếu nó nút cuối tấm dính sát/chui dưới
+            // thanh cử chỉ (bản vẽ đặt nút trên `inset-bottom`).
+            paddingBottom: insets.bottom + theme.spacing(8),
+            // Đệm ngang spacing(6)=24dp khớp `.sheet` bản vẽ 18/09 (trước là
+            // spacing(4)=16dp → chip lọc tràn sát mép hơn mẫu).
+            paddingHorizontal: theme.spacing(6),
+            transform: [{ translateY }],
           }}
         >
+          {/* Vùng kéo: full-width + `alignItems:'center'` để canh tay nắm — KHÔNG
+            dùng `left:'50%'`+`marginLeft` âm (từng lệch tâm khi đổi
+            `paddingHorizontal` của tấm cha, phản hồi 24/09). */}
           <View
+            {...panResponder.panHandlers}
             style={{
-              width: 36,
-              height: 4,
-              borderRadius: 999,
-              backgroundColor: withAlpha(theme.colors['muted-foreground'], 0.5),
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              height: theme.spacing(8),
+              alignItems: 'center',
+              justifyContent: 'center',
             }}
-          />
-        </View>
-        {children}
-      </Animated.View>
+          >
+            <View
+              style={{
+                width: 36,
+                height: 4,
+                borderRadius: 999,
+                backgroundColor: withAlpha(theme.colors['muted-foreground'], 0.5),
+              }}
+            />
+          </View>
+          {children}
+        </Animated.View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }

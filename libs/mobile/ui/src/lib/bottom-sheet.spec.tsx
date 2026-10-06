@@ -1,6 +1,6 @@
-import { act, fireEvent, render, screen } from '@testing-library/react-native';
+import { act, fireEvent, render, screen, within } from '@testing-library/react-native';
 import type { ReactElement } from 'react';
-import { Text } from 'react-native';
+import { StyleSheet, Text } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { renderWithTheme } from '../test-utils';
 import { BottomSheet, shouldDismissDrag } from './bottom-sheet';
@@ -95,5 +95,31 @@ describe('BottomSheet', () => {
     });
     expect(screen.queryByText('Filters')).toBeNull();
     jest.useRealTimers();
+  });
+
+  // F3 (review 06/10): tấm có ô nhập (sửa tên, xoá tài khoản, hỏi ngày) bị bàn
+  // phím iOS che — `Modal` iOS không tự co theo bàn phím như Android
+  // `adjustResize`. `behavior` không lộ ra host View nên test canh hai điều
+  // kiện còn lại: nội dung nằm TRONG lớp bọc, và tấm không còn `absolute`
+  // (absolute thì không đi theo padding của lớp bọc). Vị trí thật khi bàn
+  // phím mở chỉ thấy trên máy.
+  it('tấm nằm trong KeyboardAvoidingView, theo luồng bố cục (không absolute)', async () => {
+    await renderWithTheme(
+      <BottomSheet visible onClose={jest.fn()}>
+        <Text testID="sheet-child">Display name</Text>
+      </BottomSheet>,
+    );
+
+    const avoider = screen.getByTestId('bottom-sheet-keyboard-avoider');
+    const child = screen.getByTestId('sheet-child');
+    expect(within(avoider).getByTestId('sheet-child')).toBe(child);
+
+    // Mọi tổ tiên từ nội dung lên tới lớp bọc — không cái nào được absolute.
+    const positions: unknown[] = [];
+    for (let node = child.parent; node !== null && node !== avoider; node = node.parent) {
+      positions.push(StyleSheet.flatten(node.props.style)?.position);
+    }
+    expect(positions.length).toBeGreaterThan(0);
+    expect(positions).not.toContain('absolute');
   });
 });
