@@ -77,5 +77,10 @@ Khoá ngoại đo trên `schema.prisma`:
    vốn đã ra danh sách rỗng vì 0 tour; xoá xong vẫn rỗng.
 2. Xoá không đảo ngược được, và hộp xác nhận nói rõ điều này.
 3. Điểm đến có ảnh thư viện mà 0 tour thì xoá kéo ảnh ra khỏi thư viện: mất dòng ghi công
-   trong DB, file còn trên Cloudinary, tour đang dùng ảnh ấy vẫn giữ dòng của mình. Đo prod
-   05/10: chỉ `abc` ở 0 tour, và nó không có ảnh nào.
+   trong DB, file còn trên Cloudinary, tour đang dùng ảnh ấy vẫn giữ dòng của mình. Tour đã
+   mượn một ảnh như thế sẽ thấy nó mang nhãn "Catalogue photo" (`CATALOG`) thay vì
+   "From the library" (`LIBRARY`) ở tab Photos, vì nguồn suy từ việc publicId còn dòng
+   `DESTINATION` hay không (`toAdminTourPhoto` trong
+   `apps/api/src/modules/catalog/tour-photos.ts`); lưu ảnh vẫn chạy, vì dòng của chính tour
+   được giữ trước mọi nguồn khác (`planTourPhotos`). Đo prod 05/10: chỉ `abc` ở 0 tour, và nó
+   không có ảnh nào.
