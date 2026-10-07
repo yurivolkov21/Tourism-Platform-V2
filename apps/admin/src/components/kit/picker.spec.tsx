@@ -104,6 +104,33 @@ describe('Picker', () => {
     expect(onValueChange).not.toHaveBeenCalled();
   });
 
+  it('mục đang chọn rời danh sách khi ô đóng: Base UI quay về giá trị LÚC MOUNT — không chuyển tiếp', async () => {
+    // Review E3. Base UI 1.6 (`SelectPositioner` → `onMapChange`): số mục đổi mà mục đang chọn
+    // biến mất thì nó phát giá trị lúc mount nếu giá trị ấy còn trong danh sách — chỉ phát `null`
+    // khi không còn. Không ai chọn gì; chuyển tiếp là bản nháp lặng lẽ quay về giá trị cũ.
+    const onValueChange = vi.fn();
+    const NORTHERN = { value: 'northern', label: 'Northern Vietnam' };
+    const CENTRAL = { value: 'central', label: 'Central Vietnam' };
+    const SOUTHERN = { value: 'southern', label: 'Southern Vietnam' };
+    const view = (value: string, options: readonly PickerOption[]) => (
+      <>
+        <label htmlFor="region">Region</label>
+        <Picker id="region" value={value} options={options} onValueChange={onValueChange} />
+      </>
+    );
+    // Mount với `northern`, rồi form giữ `central` (người dùng đã chọn từ trước) — Base UI dựng
+    // sẵn các mục trong cổng ẩn khi giá trị khác lúc mount.
+    const { rerender } = render(view('northern', [NORTHERN, CENTRAL, SOUTHERN]));
+    rerender(view('central', [NORTHERN, CENTRAL, SOUTHERN]));
+    await waitFor(() => expect(screen.getAllByRole('option', { hidden: true })).toHaveLength(3));
+
+    // Nguồn làm mới mất `central` trong khi ô vẫn đóng.
+    rerender(view('central', [NORTHERN, SOUTHERN]));
+    await waitFor(() => expect(screen.getAllByRole('option', { hidden: true })).toHaveLength(2));
+
+    expect(onValueChange).not.toHaveBeenCalled();
+  });
+
   it('bàn phím: Tab tới ô, mũi tên mở rồi đi xuống, Enter chọn — trả chuỗi giá trị', async () => {
     const user = userEvent.setup();
     const { onValueChange, trigger } = renderPicker();
@@ -116,6 +143,21 @@ describe('Picker', () => {
 
     expect(onValueChange).toHaveBeenCalledTimes(1);
     expect(onValueChange).toHaveBeenCalledWith('Central Vietnam');
+  });
+
+  it('bàn phím: gõ chữ trên ô ĐANG ĐÓNG chọn luôn mục khớp — vẫn là lựa chọn của người dùng', async () => {
+    // Như `<select>` gốc. Base UI phát lượt này với reason `none` y như lượt tự quay về giá trị
+    // lúc mount (review E3), nên Picker không được lọc mù theo reason.
+    const user = userEvent.setup();
+    const { onValueChange, trigger } = renderPicker();
+
+    await user.tab();
+    expect(trigger).toHaveFocus();
+    await user.keyboard('s');
+
+    await waitFor(() => expect(onValueChange).toHaveBeenCalledWith('Southern Vietnam'));
+    expect(onValueChange).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole('option')).toBeNull();
   });
 
   it('bàn phím: gõ chữ nhảy theo TÊN mục — chữ phụ "Hidden" không thành chữ để tìm', async () => {

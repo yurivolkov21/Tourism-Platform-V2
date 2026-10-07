@@ -116,6 +116,8 @@ export function Picker(props: PickerProps) {
   const groups = groupsOf(props);
   const all = groups.flatMap((group) => group.options);
   const current = all.find((option) => option.value === value);
+  /** Bật trong đúng lượt bấm phím trên ô — xem `onValueChange` của `Select` bên dưới. */
+  const keyPressRef = React.useRef(false);
 
   return (
     <>
@@ -130,10 +132,20 @@ export function Picker(props: PickerProps) {
         value={value}
         items={all.map((option) => ({ value: option.value, label: option.label }))}
         disabled={disabled}
-        onValueChange={(next) => {
-          // Base UI phát `null` khi mục đang chọn bị gỡ khỏi danh sách giữa chừng —
-          // đó không phải lựa chọn của người dùng.
-          if (next !== null && next !== undefined) onValueChange(String(next));
+        onValueChange={(next, details) => {
+          // Chỉ chuyển tiếp lựa chọn của NGƯỜI DÙNG (review E3). Base UI 1.6 gọi hàm này từ bốn
+          // chỗ (node_modules/@base-ui/react/select): bấm hay Enter trên mục — reason
+          // `item-press`; gõ chữ trên ô đang đóng — reason `none`; trình duyệt tự điền ô ẩn —
+          // `none`; và khi mục đang chọn rời danh sách (nguồn làm mới) nó tự quay về giá trị
+          // LÚC MOUNT, hoặc `null` nếu giá trị ấy cũng không còn — CŨNG `none`
+          // (`SelectPositioner` → `onMapChange`). Lượt cuối không ai chọn gì, mà reason không
+          // tách được nó khỏi lượt gõ chữ, nên `none` chỉ được nhận khi nảy ra ngay trong lượt
+          // bấm phím trên ô. Admin không có ô nào để trình duyệt tự điền, chặn luôn là vô hại.
+          const typed = keyPressRef.current;
+          keyPressRef.current = false;
+          if (next === null || next === undefined) return;
+          if (details.reason !== 'item-press' && !typed) return;
+          onValueChange(String(next));
         }}
       >
         <SelectTrigger
@@ -141,6 +153,16 @@ export function Picker(props: PickerProps) {
           className={cn(variant === 'toolbar' ? TOOLBAR_TRIGGER : FIELD_TRIGGER, className)}
           aria-invalid={invalid || undefined}
           aria-describedby={describedBy}
+          onKeyDown={() => {
+            // Handler của nơi gọi chạy TRƯỚC typeahead của Base UI trong cùng một lượt gọi đồng
+            // bộ (`mergeProps` gọi handler bên phải trước), nên cờ còn bật đúng lúc typeahead
+            // gọi `onValueChange`. Microtask gỡ cờ khi lượt sự kiện xong — phím không khớp mục
+            // nào thì cờ cũng không treo sang lần làm mới sau.
+            keyPressRef.current = true;
+            queueMicrotask(() => {
+              keyPressRef.current = false;
+            });
+          }}
         >
           {/* Hàm render tự dựng nội dung ô để kèm icon và hint của mục đang chọn.
               Giá trị KHÔNG khớp mục nào (mục vừa bị gỡ, URL gõ tay) thì in thẳng giá trị,
