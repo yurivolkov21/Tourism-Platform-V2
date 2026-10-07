@@ -22,6 +22,8 @@ import type { EditorWriteResult } from '@/lib/tour-editor-write';
  * - `STALE_TOUR`: dải báo kèm Reload, form GIỮ chữ đang gõ.
  * - `TOUR_NOT_READY`: dải liệt kê chỗ thiếu, tính từ bản dự tính của chính lệnh này.
  * - `NOT_FOUND`: tour đã bị xoá — toast rồi về `/tours`.
+ * - `LINK_NOT_FOUND`: tour vẫn còn, chỉ danh mục hay điểm đến được chọn vừa bị xoá (review S1) —
+ *   dải lỗi, form GIỮ chữ đang gõ, `router.refresh()` để danh sách chọn bỏ mục đã xoá.
  * - Mã thuộc về một ô (`onFieldError` trả `true`): form tự in dưới ô ấy.
  * - Còn lại: dải lỗi; `GENERIC` là kết cục KHÔNG RÕ nên dải mời Reload thay vì bấm lại.
  *
@@ -83,6 +85,11 @@ export function useSectionSave<Code extends string>(options: {
     if (code === 'NOT_FOUND') {
       toast.error(options.copy(code));
       router.push(TOURS_LIST_HREF);
+      return;
+    }
+    if (code === 'LINK_NOT_FOUND') {
+      setBanner({ kind: 'error', message: options.copy(code), uncertain: false });
+      router.refresh();
       return;
     }
     if (options.onFieldError?.(code as Code)) return;

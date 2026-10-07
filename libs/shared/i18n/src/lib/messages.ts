@@ -4381,7 +4381,9 @@ export const messages = {
         create: {
           errors: {
             SLUG_TAKEN: 'Another tour already uses this slug. Pick a different one.',
-            NOT_FOUND: 'That category or destination no longer exists. Close this and try again.',
+            /** Mục vừa bị xoá ở tab khác (review S1) — hộp làm mới danh sách chọn và ở lại. */
+            LINK_NOT_FOUND:
+              'A category or destination you picked was just deleted. The lists are refreshed — pick again.',
           },
           action: 'New tour',
           dialog: {
@@ -4406,6 +4408,9 @@ export const messages = {
             GROUP_SIZE_BELOW_SEATS: 'A departure has more seats than this group size.',
             TOUR_NOT_READY: 'This tour is on sale, so it has to stay ready to sell.',
             NOT_FOUND: 'This tour no longer exists.',
+            /** Tour vẫn còn, chỉ mục được chọn vừa bị xoá (review S1) — form ở lại, giữ chữ đang gõ. */
+            LINK_NOT_FOUND:
+              'A category or destination you picked was just deleted. The lists are refreshed — pick again, then save.',
           },
           sections: { basics: 'Basics', destinations: 'Destinations', selling: 'Selling points' },
           title: 'Name',

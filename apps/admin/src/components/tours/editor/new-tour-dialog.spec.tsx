@@ -158,6 +158,23 @@ describe('NewTourDialog', () => {
     expect(refresh).not.toHaveBeenCalled();
   });
 
+  it('LINK_NOT_FOUND → câu báo trong hộp, làm mới danh sách chọn; hộp vẫn mở, chữ còn nguyên (review S1)', async () => {
+    // Danh mục hay điểm đến vừa bị xoá ở tab khác. Không làm mới thì Picker còn giữ đúng mục ấy
+    // tới khi F5, và chọn lại nó là lỗi lặp lại.
+    const create = vi.fn().mockResolvedValue({ ok: false, code: 'LINK_NOT_FOUND' });
+    const { user, dialog } = await openDialog(create);
+
+    await fillValid(user, dialog);
+    await user.click(within(dialog).getByRole('button', { name: t.dialog.submit }));
+
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent(t.errors.LINK_NOT_FOUND);
+    expect(refresh).toHaveBeenCalledTimes(1);
+    expect(push).not.toHaveBeenCalled();
+    expect(errorToast).not.toHaveBeenCalled();
+    expect(screen.getByRole('dialog', { name: t.dialog.title })).toBeInTheDocument();
+    expect(within(dialog).getByRole('textbox', { name: d.title })).toHaveValue(TITLE);
+  });
+
   it('kết cục không rõ (GENERIC) → refresh bảng để xem tour đã có chưa, không điều hướng', async () => {
     const create = vi.fn().mockResolvedValue({ ok: false, code: 'GENERIC' });
     const { user, dialog } = await openDialog(create);

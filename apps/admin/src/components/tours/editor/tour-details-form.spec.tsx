@@ -410,6 +410,21 @@ describe('TourDetailsForm', () => {
     expect(field(t.title)).toHaveValue('Mine');
   });
 
+  it('server trả LINK_NOT_FOUND → dải lỗi, làm mới danh sách chọn, ở lại trang, chữ đang gõ còn nguyên (review S1)', async () => {
+    const save = vi.fn().mockResolvedValue({ ok: false, code: 'LINK_NOT_FOUND' });
+    const { user } = renderForm(detailFixture(), save);
+
+    await user.clear(field(t.title));
+    await user.type(field(t.title), 'Mine');
+    await user.click(saveButton());
+
+    expect(await screen.findByText(t.errors.LINK_NOT_FOUND)).toBeInTheDocument();
+    expect(refresh).toHaveBeenCalledTimes(1);
+    expect(push).not.toHaveBeenCalled();
+    expect(errorToast).not.toHaveBeenCalled();
+    expect(field(t.title)).toHaveValue('Mine');
+  });
+
   it('ô tóm tắt và khung điểm đến mang id mà link Fix của bước Review trỏ tới', () => {
     renderForm();
 

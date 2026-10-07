@@ -114,6 +114,23 @@ describe('useSectionSave', () => {
     expect(hook.result.current.banner).toBeNull();
   });
 
+  it('LINK_NOT_FOUND → dải lỗi và làm mới danh sách chọn; không toast, không về /tours (review S1)', async () => {
+    // Danh mục hay điểm đến được chọn vừa bị xoá — tour vẫn còn, nên form ở lại với chữ đang gõ.
+    const { hook, onSaved, save } = setup();
+
+    await save({ ok: false, code: 'LINK_NOT_FOUND' });
+
+    expect(hook.result.current.banner).toEqual({
+      kind: 'error',
+      message: messages.admin.tours.editor.details.errors.LINK_NOT_FOUND,
+      uncertain: false,
+    });
+    expect(refresh).toHaveBeenCalledTimes(1);
+    expect(push).not.toHaveBeenCalled();
+    expect(errorToast).not.toHaveBeenCalled();
+    expect(onSaved).not.toHaveBeenCalled();
+  });
+
   it('mã thuộc về một ô (onFieldError trả true) → không dải, không toast', async () => {
     const onFieldError = vi.fn((code: DetailsContractCode) => code === 'DURATION_LOCKED');
     const { hook, save } = setup(onFieldError);

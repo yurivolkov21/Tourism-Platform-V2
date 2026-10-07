@@ -43,6 +43,8 @@ import { useConfirmWrite } from '@/lib/use-confirm-write';
  * - Slug chạy theo tên bằng `slugifyVietnamese(title, 120)` tới khi admin chạm
  *   vào ô slug; ô ấy tắt soát chính tả, tự viết hoa, tự sửa chữ.
  * - `SLUG_TAKEN` là lỗi của Ô SLUG: hiện dưới ô ấy, hộp vẫn mở, chữ còn nguyên.
+ * - `LINK_NOT_FOUND` (mục được chọn vừa bị xoá ở tab khác, review S1): câu báo ở chân hộp, hộp
+ *   vẫn mở, chữ còn nguyên, và trang làm mới danh sách chọn.
  * - Danh mục và điểm đến đang ẩn vẫn chọn được (spec §2b.4), kèm nhãn phụ mờ "Hidden"
  *   (`catalogOption`, spec 2026-10-05 §2.2).
  * - Thành công: mở thẳng tab Details của tour mới — nó sinh ra đang tắt bán.
@@ -138,15 +140,23 @@ function NewTourForm({
     });
   }
 
-  function submit() {
+  async function submit() {
     setShowValidation(true);
     if (noOptions || hasFormErrors(validateTourCreateForm(values))) return;
-    void run(async () => {
+    /** Danh mục hay điểm đến được chọn vừa bị xoá ở tab khác (review S1). */
+    let linkGone = false;
+    await run(async () => {
       const result = await create(tourCreatePayload(values));
-      if (!result.ok) return { ok: false, code: result.code };
+      if (!result.ok) {
+        linkGone = result.code === 'LINK_NOT_FOUND';
+        return { ok: false, code: result.code };
+      }
       createdHref.current = tourStepHref(result.created.slug, 'details');
       return { ok: true, toast: { title: t.toast.title, description: t.toast.body } };
     });
+    // Hộp ở lại với câu báo và chữ đã gõ; trang kéo danh sách chọn tươi về để Picker bỏ mục đã
+    // xoá. Việc SAU lệnh, ngoài `try` của kit — cùng luật với điều hướng sau khi tạo.
+    if (linkGone) router.refresh();
   }
 
   const slugError = failure === 'SLUG_TAKEN' ? createTourErrorCopy('SLUG_TAKEN') : errors.slug;
@@ -165,7 +175,7 @@ function NewTourForm({
           noValidate
           onSubmit={(event) => {
             event.preventDefault();
-            submit();
+            void submit();
           }}
         >
           <div className="grid gap-4">
