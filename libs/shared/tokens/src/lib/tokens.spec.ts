@@ -25,6 +25,19 @@ describe('nguồn token màu', () => {
   });
 });
 
+// Thang z-index (`rootExtras`, chỉ đọc qua var()). Hộp xác nhận `AlertDialog` mở CHỒNG lên
+// Dialog/Sheet đang mở (hộp "Discard changes?" khi bấm link trong Sheet sidebar admin ở màn
+// hẹp — review AL2), nên tầng của nó phải trên `--z-modal`; nhưng Select/Tooltip/Menu mở BÊN
+// TRONG hộp vẫn phải nổi trên nó, nên dưới `--z-popover`.
+describe('thang z-index', () => {
+  const z = (name: string) => Number(new Map<string, string>(src.rootExtras).get(name));
+
+  it('--z-alert nằm giữa --z-modal và --z-popover', () => {
+    expect(z('--z-alert')).toBeGreaterThan(z('--z-modal'));
+    expect(z('--z-alert')).toBeLessThan(z('--z-popover'));
+  });
+});
+
 // ADR-0015 (Task 5i): ba khối override `[data-region='north'|'central'|'south']`
 // đã XOÁ khỏi tokens.mjs — Task 5h chuyển hết consumer thật (component có tổ
 // tiên `[data-region]`) sang token brand, nên lớp tint theo vùng không còn ai

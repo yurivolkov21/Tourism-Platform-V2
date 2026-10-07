@@ -325,6 +325,9 @@ export const rootExtras = [
   ['--z-sticky', '1100'],
   ['--z-overlay', '1300'],
   ['--z-modal', '1400'],
+  // Hộp xác nhận (AlertDialog) — mở CHỒNG lên Dialog/Sheet đang mở nên phải trên `--z-modal`,
+  // nhưng Select/Tooltip/Menu mở bên trong nó vẫn nổi trên, nên dưới `--z-popover` (review AL2).
+  ['--z-alert', '1450'],
   ['--z-popover', '1500'],
   ['--z-toast', '1700'],
   ['--focus-ring-width', '2px'],

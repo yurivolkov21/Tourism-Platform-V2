@@ -12,6 +12,8 @@ function HoverCardTrigger({ ...props }: PreviewCardPrimitive.Trigger.Props) {
   return <PreviewCardPrimitive.Trigger data-slot="hover-card-trigger" {...props} />;
 }
 
+// z-index theo tầng token `--z-popover`, không phải z-50 của bản vendor: chưa app nào dùng, nhưng
+// đặt trong Dialog/Sheet hay dưới navbar web là chìm (review AL2). Vendor lại thì giữ hai chỗ này.
 function HoverCardContent({
   className,
   side = 'bottom',
@@ -28,12 +30,12 @@ function HoverCardContent({
         alignOffset={alignOffset}
         side={side}
         sideOffset={sideOffset}
-        className="isolate z-50"
+        className="isolate z-(--z-popover)"
       >
         <PreviewCardPrimitive.Popup
           data-slot="hover-card-content"
           className={cn(
-            'z-50 w-64 origin-(--transform-origin) rounded-lg bg-popover p-2.5 text-sm text-popover-foreground shadow-md ring-1 ring-foreground/10 outline-hidden duration-100 data-[side=bottom]:slide-in-from-top-2 data-[side=inline-end]:slide-in-from-left-2 data-[side=inline-start]:slide-in-from-right-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95',
+            'z-(--z-popover) w-64 origin-(--transform-origin) rounded-lg bg-popover p-2.5 text-sm text-popover-foreground shadow-md ring-1 ring-foreground/10 outline-hidden duration-100 data-[side=bottom]:slide-in-from-top-2 data-[side=inline-end]:slide-in-from-left-2 data-[side=inline-start]:slide-in-from-right-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95',
             className,
           )}
           {...props}

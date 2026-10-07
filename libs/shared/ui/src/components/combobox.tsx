@@ -76,6 +76,8 @@ function ComboboxInput({
   );
 }
 
+// z-index theo tầng token `--z-popover`, không phải z-50 của bản vendor: chưa app nào dùng, nhưng
+// đặt trong Dialog/Sheet hay dưới navbar web là chìm (review AL2). Vendor lại thì giữ chỗ này.
 function ComboboxContent({
   className,
   side = 'bottom',
@@ -97,7 +99,7 @@ function ComboboxContent({
         align={align}
         alignOffset={alignOffset}
         anchor={anchor}
-        className="isolate z-50"
+        className="isolate z-(--z-popover)"
       >
         <ComboboxPrimitive.Popup
           data-slot="combobox-content"
