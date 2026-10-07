@@ -47,23 +47,31 @@ dòng menu "My reviews" cố ý chưa làm gì khi bấm.
 | D3 (1, 2) | Explore nhớ đường về sau đăng nhập; nút X về đúng chỗ mở | `3e9ffb3c` |
 | L2 | `AppImage` kẹp mật độ 2x; hero dùng bề rộng màn; viewer bỏ `* 2` | chưa commit |
 | L3 | Gỡ wrapper chết `components/app-image.tsx`; ADR-0047 AMEND 2 | chưa commit |
-| L5 | Saved tải hết các trang (`useInfiniteQuery`), lọc trùng | chưa commit |
+| L5 | Saved tải hết các trang (`useInfiniteQuery`), lọc trùng | `e75c0b2c` |
+| F9 | `readHasSeen()` bắt lỗi SecureStore — lỗi thì vào app, không kẹt splash | `cc6a6612` |
+| F12 | Huỷ cửa sổ Google: hỏi lại `getSession`, không có user thì `cancelled` | `cc6a6612` |
+| L4 | `Chip` nhận `removeLabel`; Explore truyền copy từ `@tourism/i18n` | `70169bce` |
+| Q2 | Thêm 7 doc mới của nhánh vào `docs/README.md` | 07/10 |
+| Q3 | Gỡ `docs/PROGRESS.md` | 07/10 |
 
-Kiểm 06/10 (sau L2/L3/L5): `typecheck` và `test` xanh — mobile **473/473**,
-mobile-ui **132/132**; Biome sạch; tokens-only sạch.
+Hash F9/F12/L4/Q1 trở đi đổi sau đợt rebase lên `main` — tra lại bằng `git log`.
+
+Kiểm 07/10 (sau F9/F12/L4): `typecheck` và `test` xanh — mobile **478/478**,
+mobile-ui **133/133**; Biome sạch; tokens-only sạch.
 
 ## 3. Đang treo — việc của nhánh này
 
-1. **Commit và push L2/L3/L5** (push thường, không cần force).
+1. **Push** các commit từ `cc6a6612` trở đi — user dặn 07/10 chỉ test local,
+   push khi user nói.
 2. **D2** — gán tour liên quan cho bài viết (admin hoặc `seed.ts`) để G4 có dữ liệu.
+   DB local 07/10: bảng `post_tours` trống.
 3. **D3 mục 3** — đăng nhập xong đang `router.replace` về tour đã mount dưới
    modal, có thể đẩy bản sao vào stack. Chỉ đổi sau khi thử máy thật.
-4. **Rebase lên `main`** (chậm 212 commit) — cần force push, phải hỏi trước. Làm luôn:
-   - Q1: gỡ `Co-Authored-By` khỏi 10 commit (trái luật 12).
-   - Q2: thêm doc mới vào `docs/README.md` (2 bản `2026-09-24-*-status`,
-     3 bản `auth-flow-*`, 2 plan `2026-09-25-mobile-account-*`, và bản này).
-   - Q3: gỡ `docs/PROGRESS.md` (doc làm việc tạm).
-5. **Kiểm trước khi xin review:** `pnpm gate:int` (cần Docker), `bundle`,
+4. **Q1 và rebase lên `main`** — gỡ `Co-Authored-By` khỏi 7 commit riêng của
+   nhánh (trái luật 12). Cả hai viết lại lịch sử nên cần force push, phải hỏi trước.
+   Ba commit còn lại mang dòng đó (`9a1db2de`, `c4a2f926`, `5232e4b9`) đã nằm
+   trên `feat/mobile-browse-screens`, phải sửa ở nhánh đó.
+5. **Kiểm trước khi xin review:** `pnpm gate:int` (Postgres local hoặc Docker), `bundle`,
    `expo-doctor`, thử máy thật Android và iOS:
    - F2 cử chỉ zoom (Android), F3 bàn phím (iPhone), F6 với API thật.
    - L2 độ nét ảnh hero/viewer trên máy 3x.
@@ -92,14 +100,11 @@ Kế thừa từ browse-screens, vẫn còn trong code. User chưa quyết sửa
 | Mục | Lỗi |
 | --- | --- |
 | F5 | "See all tours" ở Home mở `/explore` không reset bộ lọc điểm đến |
-| F9 | `onboardingStore.hasSeen()` thiếu `.catch` → SecureStore lỗi là kẹt splash |
 | F10 | Bấm lại chip sort đang chọn → danh sách review rỗng, không tải lại |
 | F11 | `expandedDay` lấy giá trị lúc mount khi tour chưa về → ngày 1 không mở sẵn |
-| F12 | Huỷ đăng nhập Google vẫn trả `ok: true` |
 | L1 | `getCookie()` đọc SecureStore đồng bộ mỗi lần render (`withMobileAuth`) |
-| L4 | Nhãn `Remove ${label}` ở `chip.tsx:66` viết cứng, chưa vào i18n |
 
-F9 và F12 là hai lỗi người dùng dễ gặp nhất trong nhóm này.
+F9, F12 và L4 (cùng nhóm kế thừa) đã sửa ngày 07/10, xem mục 2.
 
 Ngoài mobile, bản 26/09 đã ghi int test `apps/api` flaky
 (`pending-sweep.int.spec.ts` lặp lại "expected 2 to be 1") — không liên quan nhánh.

@@ -242,7 +242,9 @@ entry CHANGELOG cùng ngày.
 [**P7 ba trang đơn của khách** (ba phần A, B, C)](plans/2026-10-05-booking-pages-redesign.md) ·
 [prompt thi công P7](plans/2026-10-05-booking-pages-redesign-prompts.md) ·
 [**sửa sạn giao diện admin**](plans/2026-10-05-admin-ui-polish.md) ·
-[**P5b-2 T0 tầng dữ liệu mobile browse**](plans/2026-09-23-mobile-browse-t0-data-layer.md)
+[**P5b-2 T0 tầng dữ liệu mobile browse**](plans/2026-09-23-mobile-browse-t0-data-layer.md) ·
+[**P5b-4 spec cụm tài khoản mobile**](plans/2026-09-25-mobile-account-screens.md) ·
+[P5b-4 return-to sau đăng nhập và AuthGateScreen](plans/2026-09-25-mobile-account-return-to-auth.md)
 
 **Công cụ máy dev (ngoài repo)**
 [mod `tourism-status` (kèm prompt thi công)](plans/2026-10-02-tourism-status-mod.md)
@@ -279,6 +281,10 @@ liệu, đừng coi là hiện trạng.
 | [**Sổ nợ kỹ thuật**](analysis/2026-08-06-backlog-no-ky-thuat.md) | **Sống.** Đọc TRƯỚC khi mở cụm việc mới, bắt buộc trước đợt thiết kế lại |
 | [**Rà bảo mật web 05/09**](analysis/2026-09-05-web-security-audit.md) | Đọc trước mỗi đợt vá web — 8 cụm nhìn từ kẻ tấn công, ~55 phát hiện |
 | [Rà soát docs 21/09](analysis/2026-09-21-docs-audit.md) | **Sống.** Đợt đại tu tài liệu đang chạy: quy mô, vấn đề, 4 đợt sửa |
+| [Soát nhánh `feat/mobile-browse-screens` 24/09](analysis/2026-09-24-mobile-browse-screens-status.md) | Tiến độ T0–T7 so với handoff và bản vẽ, trước bản tóm tắt 26/09 |
+| [Mobile auth — tình trạng 24/09](analysis/2026-09-24-mobile-auth-status.md) | Auth mobile đã có gì, nối API tới đâu, trước cụm tài khoản |
+| [Luồng auth — sequence diagram](analysis/auth-flow-sequence-diagrams.md) | Bản kỹ thuật: better-auth, cookie session, từng luồng đăng nhập/đăng ký/khôi phục |
+| [Luồng auth — bản đơn giản](analysis/auth-flow-simple.md) · [bản gộp một sơ đồ](analysis/auth-flow-merged.md) | Cho người không rành kỹ thuật; cùng nội dung bản sequence |
 | [Tóm tắt nhánh `feat/mobile-browse-screens` 26/09](analysis/2026-09-26-branch-summary-mobile-browse-screens.md) | Đã làm/chưa làm/còn treo cho người chưa theo dõi nhánh |
 | [Tóm tắt nhánh `feat/mobile-account-screens` 26/09](analysis/2026-09-26-branch-summary-mobile-account-screens.md) | Đã làm/chưa làm/còn treo cho người chưa theo dõi nhánh |
 | [Tóm tắt nhánh `feat/mobile-account-screens` 06/10](analysis/2026-10-06-branch-summary-mobile-account-screens.md) | **Bản hiện hành** — chức năng theo spec, đã sửa sau review, còn treo, lỗi kế thừa |
