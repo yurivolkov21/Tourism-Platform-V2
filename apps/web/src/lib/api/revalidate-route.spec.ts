@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   DEV_REVALIDATE_SECRET,
   handleRevalidatePost,
+  handleRevalidateRequest,
   parseRevalidateBody,
   REVALIDATE_BUDGET_LIMIT,
   RevalidateBudget,
@@ -155,6 +156,61 @@ describe('resolveRevalidateSecret', () => {
     expect(resolveRevalidateSecret({ REVALIDATE_SECRET: '', NODE_ENV: 'test' })).toBe(
       DEV_REVALIDATE_SECRET,
     );
+  });
+
+  // Chuỗi dev nằm công khai trong `.env.example`: chép nguyên file ra production là ai cũng bust
+  // được cache. API production từ chối đúng chuỗi ấy lúc khởi động (`env.ts`), web thì coi như
+  // chưa cấu hình (Ruling F-d).
+  it('production đặt đúng chuỗi dev công khai → throw như khi thiếu (Ruling F-d)', () => {
+    expect(() =>
+      resolveRevalidateSecret({ REVALIDATE_SECRET: DEV_REVALIDATE_SECRET, NODE_ENV: 'production' }),
+    ).toThrow(/REVALIDATE_SECRET/);
+  });
+
+  it('ngoài production đặt tường minh chuỗi dev → dùng nó như cũ (khớp API dev)', () => {
+    expect(
+      resolveRevalidateSecret({
+        REVALIDATE_SECRET: DEV_REVALIDATE_SECRET,
+        NODE_ENV: 'development',
+      }),
+    ).toBe(DEV_REVALIDATE_SECRET);
+  });
+});
+
+// Đường đi thật của route.ts: secret đọc theo môi trường NGAY trong lượt xử lý request (Ruling
+// F-d) — cấu hình sai chỉ làm route từ chối, web production vẫn lên.
+describe('handleRevalidateRequest', () => {
+  const REAL_SECRET = 'a-real-production-secret';
+
+  it('production + secret dev + header khớp → từ chối, không bust tag nào', async () => {
+    const revalidateTag = vi.fn();
+    await expect(
+      handleRevalidateRequest(makeRequest({ tags: ['tours'] }, DEV_REVALIDATE_SECRET), {
+        env: { REVALIDATE_SECRET: DEV_REVALIDATE_SECRET, NODE_ENV: 'production' },
+        revalidateTag,
+      }),
+    ).rejects.toThrow(/REVALIDATE_SECRET/);
+    expect(revalidateTag).not.toHaveBeenCalled();
+  });
+
+  it('production + secret thật + header khớp → 200, bust đúng tag', async () => {
+    const revalidateTag = vi.fn();
+    const res = await handleRevalidateRequest(makeRequest({ tags: ['tours'] }, REAL_SECRET), {
+      env: { REVALIDATE_SECRET: REAL_SECRET, NODE_ENV: 'production' },
+      revalidateTag,
+    });
+    expect(res.status).toBe(200);
+    expect(revalidateTag).toHaveBeenCalledWith('tours');
+  });
+
+  it('dev + secret dev + header khớp → 200 (máy dev chạy cặp API/web bằng chuỗi dev)', async () => {
+    const revalidateTag = vi.fn();
+    const res = await handleRevalidateRequest(
+      makeRequest({ tags: ['tours'] }, DEV_REVALIDATE_SECRET),
+      { env: { REVALIDATE_SECRET: DEV_REVALIDATE_SECRET, NODE_ENV: 'development' }, revalidateTag },
+    );
+    expect(res.status).toBe(200);
+    expect(revalidateTag).toHaveBeenCalledWith('tours');
   });
 });
 

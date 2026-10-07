@@ -1,9 +1,5 @@
 import { revalidateTag as nextRevalidateTag } from 'next/cache';
-import {
-  handleRevalidatePost,
-  RevalidateBudget,
-  resolveRevalidateSecret,
-} from '@/lib/api/revalidate-route';
+import { handleRevalidateRequest, RevalidateBudget } from '@/lib/api/revalidate-route';
 
 // W4 R4 (ADR-0016 AMEND 3): bộ đếm cấp MODULE — sống theo instance
 // serverless, 30 call/phút mỗi instance, 429 + Retry-After khi vượt. Lớp
@@ -14,15 +10,16 @@ const budget = new RevalidateBudget();
  * Bề mặt on-demand revalidation (ADR-0016 §3) — chỉ API NestJS gọi (server-
  * to-server, secret header), browser không bao giờ đụng. Chỉ export POST:
  * method khác Next tự trả 405. Route handler không vào sitemap.
- * Secret theo môi trường: production thiếu là throw (W3-O5), dev fallback
- * DEV_REVALIDATE_SECRET — luật + lý do ở lib/api/revalidate-route.ts.
+ * Secret theo môi trường, đọc ở MỖI request: production thiếu hoặc còn đúng
+ * chuỗi dev là throw (W3-O5, Ruling F-d), dev fallback DEV_REVALIDATE_SECRET —
+ * luật + lý do ở lib/api/revalidate-route.ts.
  */
 export async function POST(request: Request): Promise<Response> {
-  return handleRevalidatePost(request, {
-    expectedSecret: resolveRevalidateSecret({
+  return handleRevalidateRequest(request, {
+    env: {
       REVALIDATE_SECRET: process.env.REVALIDATE_SECRET,
       NODE_ENV: process.env.NODE_ENV,
-    }),
+    },
     // Next 16 đổi signature revalidateTag thành (tag, profile) — thiếu arg 2
     // vẫn chạy nhưng deprecated (xem node_modules/next .../revalidate.js).
     // { expire: 0 } = hard-bust (đường cacheLife.expire === 0 trong revalidate.js

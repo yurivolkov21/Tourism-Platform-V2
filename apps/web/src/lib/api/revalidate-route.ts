@@ -34,18 +34,23 @@ export const DEV_REVALIDATE_SECRET = 'dev-revalidate-secret-change-me';
  * fail-fast của env.ts API): production thiếu/rỗng là lỗi cấu hình phải NỔ,
  * không được âm thầm sống bằng secret dev hard-code (audit cụm 5, mức Cao —
  * ai biết chuỗi này là hard-bust được toàn site). Chuỗi rỗng là "không khai".
+ *
+ * Production đặt ĐÚNG chuỗi dev cũng là "chưa cấu hình", cùng nhánh ném (Ruling F-d): chuỗi ấy
+ * nằm công khai trong `.env.example`, chép nguyên file ra production là ai cũng bust được cache.
+ * Từ chối thì không làm gãy gì: API production không khởi động được với chuỗi này (`env.ts`),
+ * nên web production mang nó vốn đã không khớp API nào.
  */
 export function resolveRevalidateSecret(env: {
   REVALIDATE_SECRET?: string;
   NODE_ENV?: string;
 }): string {
-  if (env.REVALIDATE_SECRET) return env.REVALIDATE_SECRET;
-  if (env.NODE_ENV === 'production') {
+  const secret = env.REVALIDATE_SECRET;
+  if (env.NODE_ENV === 'production' && (!secret || secret === DEV_REVALIDATE_SECRET)) {
     throw new Error(
-      'Missing REVALIDATE_SECRET in production — /api/revalidate refuses dev fallback',
+      'REVALIDATE_SECRET is missing or still the public dev value in production — /api/revalidate refuses every request',
     );
   }
-  return DEV_REVALIDATE_SECRET;
+  return secret || DEV_REVALIDATE_SECRET;
 }
 
 type ParseOk = { ok: true; tags: string[] };
@@ -158,4 +163,28 @@ export async function handleRevalidatePost(
   }
   for (const tag of parsed.tags) deps.revalidateTag(tag);
   return Response.json({ revalidated: parsed.tags.length }, { headers: ROUTE_HEADERS });
+}
+
+/**
+ * Cửa vào của `route.ts`: đọc secret theo môi trường NGAY trong lượt xử lý request rồi giao cho
+ * `handleRevalidatePost` (Ruling F-d). Không đọc ở cấp module: cấu hình sai chỉ làm route từ chối
+ * mọi request, web production vẫn lên.
+ *
+ * Từ chối bằng cách NÉM, như nhánh thiếu secret xưa nay: Next ghi lỗi ném ra từ route handler
+ * bằng `console.error` một lần mỗi request (`onRequestError` của route module) rồi trả 500, nên
+ * lý do đã nằm trong log — ghi thêm ở đây là mỗi request hai dòng cùng một chuyện.
+ */
+export async function handleRevalidateRequest(
+  request: Request,
+  deps: {
+    env: { REVALIDATE_SECRET?: string; NODE_ENV?: string };
+    revalidateTag: (tag: string) => void;
+    budget?: RevalidateBudget;
+  },
+): Promise<Response> {
+  return handleRevalidatePost(request, {
+    expectedSecret: resolveRevalidateSecret(deps.env),
+    revalidateTag: deps.revalidateTag,
+    budget: deps.budget,
+  });
 }
