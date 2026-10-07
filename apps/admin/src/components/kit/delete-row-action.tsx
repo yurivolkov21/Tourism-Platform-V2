@@ -10,6 +10,7 @@ import {
 import { Trash2Icon } from 'lucide-react';
 import type * as React from 'react';
 import { useId, useRef, useState } from 'react';
+import { toast } from 'sonner';
 import {
   type ConfirmWriteCopy,
   ConfirmWriteDialog,
@@ -25,8 +26,12 @@ import type { TransportFailureCode } from '@/lib/api/write-error';
  * Hàng còn tour (`blockedReason` khác `null`) thì nút khoá kiểu `aria-disabled`
  * (`focusableWhenDisabled`): vẫn nhận focus, và `aria-disabled:pointer-events-auto` cho nó
  * nhận chuột — thiếu nó thì biến thể `aria-disabled:pointer-events-none` của `Button` nuốt
- * mất cú rê, và tooltip, thứ DUY NHẤT nói vì sao không bấm được, không bao giờ hiện. Server
- * vẫn là phán quyết cuối: bảng có thể cũ hơn DB.
+ * mất cú rê, và tooltip, thứ nói vì sao không bấm được với chuột và bàn phím, không bao giờ
+ * hiện. Server vẫn là phán quyết cuối: bảng có thể cũ hơn DB.
+ *
+ * Cảm ứng thì tooltip không mở: Base UI chỉ mở nó khi rê chuột hoặc khi focus khớp
+ * `:focus-visible`, còn cú chạm thành click bị `aria-disabled` nuốt. Nên chạm vào nút khoá hiện
+ * lý do bằng toast (review A2-4); chuột và bàn phím giữ tooltip như cũ.
  *
  * Ba điều của review cuối nhánh:
  * - Cây Tooltip luôn dựng, chỉ `disabled` khi xoá được. Đổi kiểu phần tử theo `blocked` thì
@@ -97,6 +102,13 @@ export function DeleteRowAction<Code extends string>({
                 // Khoá mà vẫn nhận focus — cùng lý do các nút khác của hàng (vòng review F15).
                 focusableWhenDisabled
                 className="text-destructive-emphasis hover:text-destructive-emphasis aria-disabled:pointer-events-auto aria-disabled:cursor-not-allowed aria-disabled:hover:bg-background aria-disabled:active:translate-y-0 dark:aria-disabled:hover:bg-input/30"
+                // `pointerup` vẫn tới khi nút khoá (Base UI chỉ chặn click, keydown, mousedown và
+                // pointerdown), và chỉ cú chạm cần câu này: chuột đã có tooltip lúc rê.
+                onPointerUp={(event) => {
+                  if (blockedReason !== null && event.pointerType === 'touch') {
+                    toast.info(blockedReason);
+                  }
+                }}
                 onClick={() => {
                   deleted.current = false;
                   setOpen(true);

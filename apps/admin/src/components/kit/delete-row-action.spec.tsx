@@ -3,10 +3,15 @@ import userEvent from '@testing-library/user-event';
 import { messages } from '@tourism/i18n';
 import type * as React from 'react';
 import { createRef } from 'react';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { DeleteRowAction } from './delete-row-action';
 
-vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
+const toastInfo = vi.hoisted(() => vi.fn());
+vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn(), info: toastInfo } }));
+
+beforeEach(() => {
+  toastInfo.mockReset();
+});
 
 /**
  * Nút Delete của một hàng bảng catalog (spec 2026-10-05 §3.3, ADR-0053 §5): hàng còn tour
@@ -209,5 +214,38 @@ describe('DeleteRowAction — focus khi hộp đóng (review A2-1)', () => {
     await answerDialog(button, COPY.submit);
 
     await waitFor(() => expect(button).toHaveFocus());
+  });
+});
+
+describe('DeleteRowAction — chạm vào nút đang khoá (review A2-4)', () => {
+  it('chạm: hiện lý do bằng toast — tooltip chỉ mở khi rê chuột hay focus bàn phím', async () => {
+    const user = userEvent.setup();
+    const { button } = renderAction({ blockedReason: REASON });
+
+    await user.pointer({ keys: '[TouchA]', target: button });
+
+    expect(toastInfo).toHaveBeenCalledTimes(1);
+    expect(toastInfo).toHaveBeenCalledWith(REASON);
+    expect(screen.queryByRole('dialog')).toBeNull();
+  });
+
+  it('click chuột: không toast (tooltip đã nói lý do lúc rê), không mở hộp', async () => {
+    const user = userEvent.setup();
+    const { button } = renderAction({ blockedReason: REASON });
+
+    await user.click(button);
+
+    expect(toastInfo).not.toHaveBeenCalled();
+    expect(screen.queryByRole('dialog')).toBeNull();
+  });
+
+  it('chạm nút xoá được: mở hộp xác nhận như thường, không toast', async () => {
+    const user = userEvent.setup();
+    const { button } = renderAction();
+
+    await user.pointer({ keys: '[TouchA]', target: button });
+
+    expect(await screen.findByRole('dialog', { name: COPY.title })).toBeInTheDocument();
+    expect(toastInfo).not.toHaveBeenCalled();
   });
 });
