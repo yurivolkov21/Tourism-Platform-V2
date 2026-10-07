@@ -51,6 +51,27 @@ describe('CheckoutSummary — breakdown giá', () => {
     expect(screen.getByText('$3,870')).toBeInTheDocument();
   });
 
+  /**
+   * Đơn giá khuyến mãi có xu (seed giảm 10–20% trên giá chẵn: 52 × 0.87 = 45.24) — dòng và
+   * Total định dạng theo CẢ ĐƠN (`formatBookingMoney`, spec P7 §4.2). Làm tròn riêng từng dòng
+   * thì "$90 + $90" lại ra Total "$181".
+   */
+  it('đơn giá có xu → hai dòng và Total đủ hai số lẻ, các dòng cộng đúng ra Total', () => {
+    render(
+      <CheckoutSummary
+        tour={makeTour()}
+        departure={makeDeparture({ effectivePrice: '45.24' })}
+        numAdults={2}
+        numChildren={2}
+        currency="USD"
+      />,
+    );
+
+    // 2 người lớn và 2 trẻ em cùng đơn giá nên hai dòng cùng một số tiền.
+    expect(screen.getAllByText('$90.48')).toHaveLength(2);
+    expect(screen.getByText('$180.96')).toBeInTheDocument();
+  });
+
   it('numChildren: 0 → không render dòng children', () => {
     render(
       <CheckoutSummary

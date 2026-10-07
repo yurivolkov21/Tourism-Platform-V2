@@ -16,10 +16,10 @@ import {
   canLeaveStep,
   stepErrors,
 } from '@/lib/booking-form';
-import { computeBookingTotal } from '@/lib/checkout';
+import { computeBookingTotal, formatBookingMoney } from '@/lib/checkout';
 import { isCheckoutUrl } from '@/lib/checkout-url';
 import { SPRING } from '@/lib/motion';
-import { formatMoney, isDepartureOpen } from '@/lib/tours';
+import { isDepartureOpen } from '@/lib/tours';
 import { CheckoutSummary, type CheckoutSummaryTour } from './checkout-summary';
 import { StepDates } from './steps/step-dates';
 import { StepPay } from './steps/step-pay';
@@ -84,8 +84,13 @@ export function BookingWizard({
   const [submitError, setSubmitError] = useState<string | null>(null);
 
   const selected = departures.find((d) => d.id === state.departureId) ?? null;
+  // Tổng in trên nút Pay theo CẢ ĐƠN như cột tóm tắt và các trang đơn (`formatBookingMoney`):
+  // đơn giá có xu thì đủ hai số lẻ, đúng bằng số cổng thanh toán thu ($180.96, không "$181").
   const total = selected
-    ? computeBookingTotal(selected.effectivePrice, state.numAdults, state.numChildren)
+    ? formatBookingMoney(
+        { unitPrice: selected.effectivePrice, currency },
+        computeBookingTotal(selected.effectivePrice, state.numAdults, state.numChildren),
+      )
     : null;
   const index = BOOKING_STEPS.indexOf(step);
   const isLast = step === 'pay';
@@ -236,7 +241,7 @@ export function BookingWizard({
                 {isLast
                   ? submitting
                     ? messages.booking.form.submitting
-                    : t.payCta(total !== null ? formatMoney(total, currency) : '')
+                    : t.payCta(total ?? '')
                   : t.continue}
               </Button>
             </div>

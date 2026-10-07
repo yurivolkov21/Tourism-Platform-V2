@@ -183,6 +183,27 @@ describe('BookingWizard — tiền và submit', () => {
     expect(screen.getByRole('button', { name: tw.payCta('$1,290') })).toBeInTheDocument();
   });
 
+  /**
+   * Ca của review P7 (06/10): đơn giá khuyến mãi $45.24, 2 người lớn và 2 trẻ em. Stripe thu
+   * đúng $180.96, nên nút in "$181" là hứa một số khác số cổng thanh toán thu.
+   */
+  it('đơn giá có xu → nút Pay in đúng số cổng thanh toán thu, khớp dòng và Total', async () => {
+    const user = userEvent.setup();
+    renderWizard([makeDeparture({ effectivePrice: '45.24' })]);
+    await clickContinue(user);
+    await user.click(screen.getByRole('button', { name: `${messages.booking.form.adults} +` }));
+    const addChild = screen.getByRole('button', { name: `${messages.booking.form.children} +` });
+    await user.click(addChild);
+    await user.click(addChild);
+    await clickContinue(user);
+    await clickContinue(user);
+
+    expect(screen.getByRole('button', { name: tw.payCta('$180.96') })).toBeInTheDocument();
+    const rail = within(screen.getByRole('complementary'));
+    expect(rail.getAllByText('$90.48')).toHaveLength(2);
+    expect(rail.getByText('$180.96')).toBeInTheDocument();
+  });
+
   it('đi hết 4 bước → gọi create ĐÚNG payload, bỏ hẳn field optional rỗng', async () => {
     const user = userEvent.setup();
     create.mockResolvedValue({ checkoutUrl: 'https://checkout.stripe.test/s/1' });

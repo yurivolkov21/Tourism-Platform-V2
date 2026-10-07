@@ -70,6 +70,26 @@ describe('StepDates', () => {
     await user.click(screen.getAllByRole('button')[1] as HTMLElement);
     expect(set).toHaveBeenCalledWith('departureId', 'dep-two');
   });
+
+  /**
+   * Giá mỗi khách của từng đợt theo luật tiền của đơn (`formatBookingMoney`): đơn giá có xu in
+   * đủ hai số lẻ, vì "$45" cho 45.24 là một giá không ai trả; đơn giá chẵn vẫn không số lẻ.
+   * Giá gạch giữ nguyên `formatMoney` như card và trang chi tiết tour.
+   */
+  it('đơn giá có xu in đủ hai số lẻ; đơn giá chẵn và giá gạch giữ không số lẻ', () => {
+    render(
+      <StepDates
+        {...SHARED}
+        departures={[
+          { ...DEPARTURE, id: 'dep-promo', effectivePrice: '45.24', compareAtPrice: '52.00' },
+          DEPARTURE,
+        ]}
+      />,
+    );
+    expect(screen.getByText('$45.24')).toBeInTheDocument();
+    expect(screen.getByText('$52')).toBeInTheDocument();
+    expect(screen.getByText('$1,290')).toBeInTheDocument();
+  });
 });
 
 describe('StepTravellers', () => {
@@ -107,6 +127,11 @@ describe('StepReview', () => {
   it('không có ô nhập nào — đây là màn đọc lại', () => {
     render(<StepReview {...REVIEW} />);
     expect(screen.queryAllByRole('textbox')).toHaveLength(0);
+  });
+
+  it('giá mỗi khách của đợt có xu in đủ hai số lẻ', () => {
+    render(<StepReview {...REVIEW} selected={{ ...DEPARTURE, effectivePrice: '45.24' }} />);
+    expect(screen.getByText('$45.24')).toBeInTheDocument();
   });
 });
 

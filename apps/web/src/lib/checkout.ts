@@ -26,7 +26,7 @@ export const PENDING_TTL_MINUTES = 65;
 export type CheckoutMood = 'confirmed' | 'confirming' | 'settled';
 
 /**
- * Tổng tiền booking — MỘT nguồn dùng CHUNG cho nhãn nút CTA (`booking-form.tsx`)
+ * Tổng tiền booking — MỘT nguồn dùng CHUNG cho nhãn nút Pay (`booking-wizard.tsx`)
  * VÀ dòng "Total" (`checkout-summary.tsx`) — hai chỗ trước đây tự tính riêng,
  * lệch một chỗ là hai số khác nhau trên cùng một màn hình.
  *
@@ -36,7 +36,7 @@ export type CheckoutMood = 'confirmed' | 'confirming' | 'settled';
  *
  * `Number()` chỉ dùng ở BƯỚC CUỐI để tính, không phải nguồn sự thật —
  * `effectivePrice` (chuỗi thập phân) vẫn là nguồn; kết quả trả về CHUỖI đã
- * `.toFixed(2)`, khớp khuôn `formatMoney` nhận vào.
+ * `.toFixed(2)`, khớp khuôn `formatBookingMoney` nhận vào.
  */
 export function computeBookingTotal(
   effectivePrice: string,
@@ -70,7 +70,9 @@ export function formatBookingMoney(
 
 /**
  * Dòng tiền theo người lớn và trẻ em, tách khỏi `BookingReceipt` để các trang đơn dùng chung
- * (spec P7 §4.2). Trẻ em cùng đơn giá người lớn (luật của `computeBookingTotal` ngay trên).
+ * (spec P7 §4.2). Cột tóm tắt của wizard đặt chỗ (`CheckoutSummary`) cũng dùng nó cho đơn đang
+ * dựng, với đơn giá là `effectivePrice` của đợt đang chọn, nên trước và sau khi trả tiền khách
+ * thấy cùng những con số. Trẻ em cùng đơn giá người lớn (luật của `computeBookingTotal` ngay trên).
  * Nhãn từ `messages.checkoutSummary`, số tiền định dạng bằng `formatBookingMoney` để dòng và
  * tổng cùng một độ chính xác. Không có trẻ em thì bỏ hẳn dòng ấy.
  */

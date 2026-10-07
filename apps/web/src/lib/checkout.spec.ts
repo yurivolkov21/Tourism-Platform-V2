@@ -67,7 +67,7 @@ describe('pendingExpiry — hạn 65 phút tính từ createdAt', () => {
   });
 });
 
-// Final review (NHÓM 5) — MỘT nguồn cho cả nhãn CTA (`booking-form.tsx`) VÀ
+// Final review (NHÓM 5) — MỘT nguồn cho cả nhãn nút Pay (`booking-wizard.tsx`) VÀ
 // dòng Total (`checkout-summary.tsx`): trẻ em CÙNG đơn giá người lớn.
 describe('computeBookingTotal — tổng tiền, trẻ em CÙNG đơn giá', () => {
   it('2 adults 1 child × $1,290 → "3870.00"', () => {

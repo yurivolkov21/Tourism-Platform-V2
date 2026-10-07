@@ -1,6 +1,7 @@
 import { messages } from '@tourism/i18n';
 import type { BookingStep } from '@/lib/booking-form';
-import { formatDateRange, formatMoney } from '@/lib/tours';
+import { formatBookingMoney } from '@/lib/checkout';
+import { formatDateRange } from '@/lib/tours';
 import { CancellationDeadlineLine } from '../checkout-summary';
 import type { StepShared } from './types';
 
@@ -39,9 +40,17 @@ export function StepReview({
           v={selected ? formatDateRange(selected.startDate, selected.endDate) : t.none}
         />
         <Row k={t.duration} v={messages.tourDetail.durationValue(durationDays)} />
+        {/* Cùng luật tiền của đơn với cột tóm tắt và nút Pay: đơn giá có xu in đủ hai số lẻ. */}
         <Row
           k={t.pricePerPerson}
-          v={selected ? formatMoney(selected.effectivePrice, currency) : t.none}
+          v={
+            selected
+              ? formatBookingMoney(
+                  { unitPrice: selected.effectivePrice, currency },
+                  selected.effectivePrice,
+                )
+              : t.none
+          }
         />
       </Group>
 

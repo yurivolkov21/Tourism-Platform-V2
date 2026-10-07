@@ -1,6 +1,7 @@
 import { messages } from '@tourism/i18n';
 import { cn } from '@tourism/ui/lib/utils';
 import type { DepartureVM } from '@/lib/api/tours';
+import { formatBookingMoney } from '@/lib/checkout';
 import { departureStatus, formatDateRange, formatMoney, isDepartureOpen } from '@/lib/tours';
 import { FieldError } from '../form-parts';
 import type { StepShared } from './types';
@@ -79,13 +80,19 @@ export function StepDates({
                   </span>
                 </span>
                 <span className="shrink-0 text-right">
+                  {/* Giá mỗi khách theo luật tiền của đơn (`formatBookingMoney`): đơn giá có xu
+                      in đủ hai số lẻ, khớp Review, cột tóm tắt và nút Pay. Giá gạch giữ
+                      `formatMoney` như card và trang chi tiết tour. */}
                   {d.compareAtPrice ? (
                     <span className="mr-1.5 text-xs text-price-compare line-through tabular-nums">
                       {formatMoney(d.compareAtPrice, currency)}
                     </span>
                   ) : null}
                   <span className="font-heading text-lg font-semibold tabular-nums">
-                    {formatMoney(d.effectivePrice, currency)}
+                    {formatBookingMoney(
+                      { unitPrice: d.effectivePrice, currency },
+                      d.effectivePrice,
+                    )}
                   </span>
                   <span className="block text-xs text-muted-foreground">{tp.perAdult}</span>
                 </span>

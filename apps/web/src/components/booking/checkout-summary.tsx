@@ -7,9 +7,9 @@ import { motion } from 'motion/react';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
 import type { DepartureVM } from '@/lib/api/tours';
-import { computeBookingTotal } from '@/lib/checkout';
+import { bookingPriceLines, computeBookingTotal, formatBookingMoney } from '@/lib/checkout';
 import { SPRING } from '@/lib/motion';
-import { formatChipDate, formatDateRange, formatMoney } from '@/lib/tours';
+import { formatChipDate, formatDateRange } from '@/lib/tours';
 
 /** Dữ liệu tour cần cho card tóm tắt — CHỈ những field card này thật sự vẽ,
     không phải toàn bộ `TourDetailVM` (tránh siết component vào một shape lớn
@@ -82,14 +82,14 @@ export function CheckoutSummary({
 }): ReactNode {
   const t = messages.checkoutSummary;
 
-  // Luật giá của hệ: trẻ em CÙNG đơn giá người lớn — `effectivePrice × n`,
-  // không có mức giá riêng cho trẻ em. Cùng luật đã áp ở `booking-form.tsx`
-  // (API: totalAmount(unitPrice, adults + children)).
-  const unit = departure ? Number(departure.effectivePrice) : null;
-  const adultsAmount = unit === null ? null : (unit * numAdults).toFixed(2);
-  const childrenAmount = unit === null ? null : (unit * numChildren).toFixed(2);
-  // NHÓM 5 (final review): MỘT nguồn cho Total, dùng CHUNG với nhãn CTA của
-  // `booking-form.tsx` — xem `computeBookingTotal`.
+  // Đơn đang dựng mang đơn giá của đợt đang chọn. Dòng tiền và Total đi qua đúng hai hàm của
+  // các trang đơn (`bookingPriceLines`, `formatBookingMoney` — spec P7 §4.2): trẻ em cùng đơn
+  // giá người lớn, và đơn giá có xu thì mọi con số in đủ hai số lẻ để các dòng cộng ra Total.
+  const order = departure
+    ? { unitPrice: departure.effectivePrice, numAdults, numChildren, currency }
+    : null;
+  // NHÓM 5 (final review): MỘT nguồn cho Total, dùng CHUNG với nhãn nút Pay của
+  // `booking-wizard.tsx` — xem `computeBookingTotal`.
   const totalAmount = departure
     ? computeBookingTotal(departure.effectivePrice, numAdults, numChildren)
     : null;
@@ -146,21 +146,17 @@ export function CheckoutSummary({
         </div>
 
         <div className="border-t pt-4">
-          {departure && unit !== null && adultsAmount !== null && totalAmount !== null ? (
+          {departure && order !== null && totalAmount !== null ? (
             <div className="flex flex-col gap-2 text-sm">
               <p className="text-muted-foreground">
                 {formatDateRange(departure.startDate, departure.endDate)}
               </p>
-              <div className="flex items-center justify-between tabular-nums">
-                <span className="text-muted-foreground">{t.adultsLine(numAdults)}</span>
-                <span className="text-foreground">{formatMoney(adultsAmount, currency)}</span>
-              </div>
-              {numChildren > 0 && childrenAmount !== null ? (
-                <div className="flex items-center justify-between tabular-nums">
-                  <span className="text-muted-foreground">{t.childrenLine(numChildren)}</span>
-                  <span className="text-foreground">{formatMoney(childrenAmount, currency)}</span>
+              {bookingPriceLines(order).map((line) => (
+                <div key={line.label} className="flex items-center justify-between tabular-nums">
+                  <span className="text-muted-foreground">{line.label}</span>
+                  <span className="text-foreground">{line.amount}</span>
                 </div>
-              ) : null}
+              ))}
               <div className="flex items-baseline justify-between border-t pt-3 tabular-nums">
                 <span className="text-lg font-semibold text-foreground">{t.totalLabel}</span>
                 {/* `key` theo số tiền: mỗi lần tổng đổi (thêm người, đổi đợt) con số
@@ -173,7 +169,7 @@ export function CheckoutSummary({
                   transition={SPRING}
                   className="inline-block text-lg font-semibold text-foreground"
                 >
-                  {formatMoney(totalAmount, currency)}
+                  {formatBookingMoney(order, totalAmount)}
                 </motion.span>
               </div>
               <p className="text-xs text-muted-foreground">{t.taxesNote}</p>
