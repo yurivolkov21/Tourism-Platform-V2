@@ -12,7 +12,8 @@ import { Prisma } from '../../generated/prisma/client.js';
 import { MediaOwnerType } from '../../generated/prisma/enums.js';
 import { ContractError } from '../../lib/contract-error.js';
 import { WebRevalidationService } from '../web-revalidation/web-revalidation.service.js';
-import { countTours, type TourCounts, writtenTags } from './destination-tour-links.js';
+import { countLinkedTours, type TourLink, writtenTags } from './destination-tour-links.js';
+import { NO_TOURS, type TourCounts } from './tour-counts.js';
 
 /**
  * Năm thao tác quản trị điểm đến (spec P4e-2 F15).
@@ -52,6 +53,11 @@ export class DestinationInUseError extends ContractError<'IN_USE'> {
   }
 }
 
+/**
+ * Cột của một hàng — GỐC CHUNG của mọi select ở đây (review SI3). `list` đọc đúng chừng này rồi
+ * đếm tour bằng một câu riêng (`tourCountsByDestination`); lệnh ghi đọc thêm liên kết tour
+ * (`DESTINATION_WRITE_SELECT`).
+ */
 const DESTINATION_COLUMNS = {
   id: true,
   slug: true,
@@ -63,28 +69,17 @@ const DESTINATION_COLUMNS = {
 } satisfies Prisma.DestinationSelect;
 
 /**
- * Cột của một hàng KÈM cờ `isPublished` của mọi tour gắn nó, đọc trong chính lời gọi Prisma
- * lấy (hay ghi) hàng — không bằng một câu đếm riêng chạy sau lệnh ghi (bài học 3 của vòng
- * review F14). Đó KHÔNG phải một ảnh chụp: Prisma 7.8 đọc hàng, liên kết `tour_destinations`
- * và tour bằng ba câu SQL nối nhau (đo 06/10), nên giữa chúng vẫn có khe — tour bị xoá đúng
- * lúc ấy về thành `tour: null`, xem `destination-tour-links.ts`.
+ * Lệnh sửa và lệnh ẩn/hiện đọc thêm slug và cờ `isPublished` của MỌI tour gắn điểm đến, trong
+ * chính lời gọi ghi — không bằng một câu đếm riêng chạy sau (bài học 3 của vòng review F14):
  *
- * `tourCount` (tour ĐÃ ĐĂNG, nuôi câu cảnh báo lúc ẩn) và `linkedTourCount` (mọi trạng thái,
- * quyết nút Delete — ADR-0053 §5) vẫn luôn `tourCount ≤ linkedTourCount`, vì cả hai đếm trên
- * CÙNG MỘT mảng liên kết, chứ không nhờ ảnh chụp.
+ * - slug nuôi tag bust: trang chi tiết `/tours/<slug>` in tên điểm đến qua tag `tour:<slug>`,
+ *   nên bust riêng `tours` thì trang ấy giữ tên cũ tới hết 300 giây ISR (nợ G5, đóng ở vòng
+ *   review F15);
+ * - cờ nuôi hai con số tour của hàng trả về (`countLinkedTours`).
  *
- * `tourCount` đếm tour ĐÃ ĐĂNG, cùng thước với `catalog.listDestinations`: câu cảnh
- * báo nói về thứ khách đang nhìn thấy, và tour nháp thì không ai thấy.
- */
-const DESTINATION_SELECT = {
-  ...DESTINATION_COLUMNS,
-  tours: { select: { tour: { select: { isPublished: true } } } },
-} satisfies Prisma.DestinationSelect;
-
-/**
- * Lệnh sửa và lệnh ẩn/hiện đọc thêm slug của MỌI tour gắn điểm đến, trong chính lời gọi ghi:
- * trang chi tiết `/tours/<slug>` in tên điểm đến qua tag `tour:<slug>`, nên bust riêng
- * `tours` thì trang ấy giữ tên cũ tới hết 300 giây ISR (nợ G5, đóng ở vòng review F15).
+ * Đó KHÔNG phải một ảnh chụp: Prisma 7.8 đọc hàng, liên kết `tour_destinations` và tour bằng
+ * ba câu SQL nối nhau (đo 06/10 và 07/10), nên giữa chúng vẫn có khe — tour bị xoá đúng lúc ấy
+ * về thành `tour: null`, xem `TourLink`.
  */
 const DESTINATION_WRITE_SELECT = {
   ...DESTINATION_COLUMNS,
@@ -92,6 +87,41 @@ const DESTINATION_WRITE_SELECT = {
 } satisfies Prisma.DestinationSelect;
 
 type DestinationColumns = Prisma.DestinationGetPayload<{ select: typeof DESTINATION_COLUMNS }>;
+
+/**
+ * Hàng mà lệnh ghi trả về, với `tours[].tour` khai lại CÓ THỂ null (review AL6): kiểu Prisma
+ * nói không null, nhưng khe giữa các câu đọc quan hệ trả `tour: null` (xem `TourLink`). Gõ
+ * thẳng `link.tour.slug` trên kiểu này không biên dịch — đọc qua `writtenTags` và
+ * `countLinkedTours`.
+ */
+type DestinationWriteRow = Omit<
+  Prisma.DestinationGetPayload<{ select: typeof DESTINATION_WRITE_SELECT }>,
+  'tours'
+> & { tours: TourLink<{ slug: string; isPublished: boolean }>[] };
+
+/**
+ * Hai con số tour của MỌI điểm đến bằng MỘT câu (review EF2): liên kết `tour_destinations`
+ * JOIN `tours`, gom theo điểm đến — thay cho đọc hàng → liên kết → tour qua ba câu nối đuôi.
+ *
+ * - Cùng luật `countTours`: `tourCount` đếm tour đã đăng, `linkedTourCount` đếm mọi tour; int
+ *   spec so hai cách trên cùng dữ liệu.
+ * - Một câu là một ảnh chụp: `tourCount ≤ linkedTourCount` đúng theo cấu tạo, và khe
+ *   `tour: null` của đọc nhiều câu không có đường vào.
+ * - JOIN chứ không LEFT JOIN: liên kết trỏ tour không còn không được đếm, cùng nghĩa
+ *   `countLinkedTours`.
+ * - Điểm đến chưa có liên kết nào vắng mặt ở kết quả — nơi gọi điền `NO_TOURS`.
+ */
+async function tourCountsByDestination(): Promise<Map<string, TourCounts>> {
+  const rows = await prisma.$queryRaw<Array<TourCounts & { destinationId: string }>>`
+    SELECT td.destination_id AS "destinationId",
+           COUNT(*)::int AS "linkedTourCount",
+           COUNT(*) FILTER (WHERE t.is_published)::int AS "tourCount"
+    FROM tour_destinations td
+    JOIN tours t ON t.id = td.tour_id
+    GROUP BY td.destination_id
+  `;
+  return new Map(rows.map(({ destinationId, ...counts }) => [destinationId, counts]));
+}
 
 /**
  * Sắp theo tên như bề mặt công khai (`catalog.listDestinations`), cộng `id` làm
@@ -128,13 +158,17 @@ export class AdminDestinationsService {
 
   constructor(private readonly webRevalidation: WebRevalidationService) {}
 
-  /** Cả bảng, gồm hàng đã ẩn — khác hẳn bề mặt công khai. */
+  /**
+   * Cả bảng, gồm hàng đã ẩn — khác hẳn bề mặt công khai. Hai câu cố định, không đổi theo số
+   * hàng (review EF2): một câu lấy hàng, một câu đếm tour của mọi hàng.
+   */
   async list(): Promise<AdminDestinationRow[]> {
     const rows = await prisma.destination.findMany({
       orderBy: DESTINATION_ORDER_BY,
-      select: DESTINATION_SELECT,
+      select: DESTINATION_COLUMNS,
     });
-    return rows.map((row) => toRow(row, countTours(row.tours)));
+    const counts = await tourCountsByDestination();
+    return rows.map((row) => toRow(row, counts.get(row.id) ?? NO_TOURS));
   }
 
   async create(input: AdminDestinationCreateInput): Promise<AdminDestinationRow> {
@@ -159,11 +193,11 @@ export class AdminDestinationsService {
     );
     this.bust(['tours']);
     // Điểm đến vừa tạo chưa thể có tour nào — không đếm (cùng nếp danh mục).
-    return toRow(created, { tourCount: 0, linkedTourCount: 0 });
+    return toRow(created, NO_TOURS);
   }
 
   async update(input: AdminDestinationUpdateInput): Promise<AdminDestinationRow> {
-    const updated = await prisma.destination
+    const updated: DestinationWriteRow = await prisma.destination
       .update({
         where: { id: input.id },
         data: {
@@ -183,7 +217,7 @@ export class AdminDestinationsService {
       `[admin] destination updated ${JSON.stringify({ id: input.id, region: input.region })}`,
     );
     this.bust(writtenTags(updated.tours));
-    return toRow(updated, countTours(updated.tours));
+    return toRow(updated, countLinkedTours(updated.tours));
   }
 
   /**
@@ -192,7 +226,7 @@ export class AdminDestinationsService {
    * `/tours?destinations=<slug>` vẫn lọc đúng (int spec canh cả hai điều).
    */
   async setActive(input: AdminDestinationSetActiveInput): Promise<AdminDestinationRow> {
-    const updated = await prisma.destination
+    const updated: DestinationWriteRow = await prisma.destination
       .update({
         where: { id: input.id },
         data: { isActive: input.isActive },
@@ -207,7 +241,7 @@ export class AdminDestinationsService {
       `[admin] destination active ${JSON.stringify({ id: input.id, isActive: input.isActive })}`,
     );
     this.bust(writtenTags(updated.tours));
-    return toRow(updated, countTours(updated.tours));
+    return toRow(updated, countLinkedTours(updated.tours));
   }
 
   /**

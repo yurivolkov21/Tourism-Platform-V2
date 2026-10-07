@@ -12,6 +12,7 @@ import { prisma } from '../../auth/auth.config.js';
 import { Prisma } from '../../generated/prisma/client.js';
 import { ContractError } from '../../lib/contract-error.js';
 import { WebRevalidationService } from '../web-revalidation/web-revalidation.service.js';
+import { countTours, NO_TOURS, type TourCounts } from './tour-counts.js';
 
 /**
  * Sáu thao tác quản trị danh mục tour (spec P4e-2 F14).
@@ -70,12 +71,11 @@ const CATEGORY_SELECT = {
  * Cùng `CATEGORY_SELECT` nhưng kèm cờ `isPublished` của MỌI tour thuộc danh mục, đọc trong
  * chính lời gọi Prisma lấy (hay ghi) hàng — không bằng một câu đếm riêng chạy sau (bài học 3
  * của vòng review F14). Đó KHÔNG phải một ảnh chụp: Prisma 7.8 đọc quan hệ bằng câu SQL thứ
- * hai sau câu lấy hàng (đo 06/10: hai câu; xem thêm `destination-tour-links.ts`).
+ * hai sau câu lấy hàng (đo 06/10 và 07/10: hai câu, kể cả `list` — không đổi theo số hàng).
  *
- * `tourCount ≤ linkedTourCount` vẫn luôn đúng vì hai con số đếm trên CÙNG MỘT mảng cờ, chứ
- * không nhờ ảnh chụp: `tourCount` nuôi câu cảnh báo lúc tắt (đếm thứ khách đang thấy),
- * `linkedTourCount` quyết nút Delete (ADR-0053 §5). Danh mục vài hàng, tour vài chục — đọc
- * cờ từng tour rẻ.
+ * Hai con số đếm bằng `countTours` (`tour-counts.ts`, dùng chung với điểm đến) trên CÙNG MỘT
+ * mảng cờ, nên `tourCount ≤ linkedTourCount` vẫn luôn đúng mà không cần ảnh chụp. Danh mục vài
+ * hàng, tour vài chục — đọc cờ từng tour rẻ.
  */
 const CATEGORY_SELECT_WITH_TOURS = {
   ...CATEGORY_SELECT,
@@ -86,19 +86,6 @@ type CategoryData = Prisma.TourCategoryGetPayload<{ select: typeof CATEGORY_SELE
 type CategoryWithTours = Prisma.TourCategoryGetPayload<{
   select: typeof CATEGORY_SELECT_WITH_TOURS;
 }>;
-
-/** Hai con số tour của một hàng — xem `CATEGORY_SELECT_WITH_TOURS`. */
-interface TourCounts {
-  tourCount: number;
-  linkedTourCount: number;
-}
-
-function countTours(tours: ReadonlyArray<{ isPublished: boolean }>): TourCounts {
-  return {
-    tourCount: tours.filter((tour) => tour.isPublished).length,
-    linkedTourCount: tours.length,
-  };
-}
 
 /**
  * Thứ tự đọc danh mục: `order` trước, rồi `id` làm khoá phụ.
@@ -232,7 +219,7 @@ export class AdminCategoriesService {
     );
     this.bust();
     // Danh mục vừa tạo chưa thể có tour nào.
-    return toRow(created, { tourCount: 0, linkedTourCount: 0 });
+    return toRow(created, NO_TOURS);
   }
 
   async update(input: AdminCategoryUpdateInput): Promise<AdminCategoryRow> {

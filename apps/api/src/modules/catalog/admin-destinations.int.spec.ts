@@ -5,6 +5,7 @@ import { AppModule } from '../../app.module.js';
 import { prisma } from '../../auth/auth.config.js';
 import type { Prisma } from '../../generated/prisma/client.js';
 import { WebRevalidationService } from '../web-revalidation/web-revalidation.service.js';
+import { countLinkedTours } from './destination-tour-links.js';
 
 /**
  * Integration (Docker PG, db `tourism_test`) — năm thao tác quản trị điểm đến
@@ -253,6 +254,49 @@ describe('admin destinations integration (P4e-2 F15)', () => {
       expect(rows.find((row) => row.slug === 'retired')?.linkedTourCount).toBe(0);
     });
 
+    it('đếm bằng MỘT câu SQL ra đúng như cách cũ — tour nháp, tour đã đăng, tour vừa xoá, liên kết mồ côi (review EF2)', async () => {
+      // `list` đếm tour bằng một câu GROUP BY JOIN `tours` thay cho đọc liên kết rồi tour qua hai
+      // câu nối đuôi. Ca này so hai cách trên cùng dữ liệu, kể cả hình AL6: một liên kết trỏ tour
+      // KHÔNG còn — cách cũ thấy `tour: null` rồi bỏ, câu mới phải bỏ bằng JOIN (đếm thẳng
+      // `tour_destinations` thì đếm nhầm nó).
+      await tourVisiting('published-one', [destId(1), destId(2)]);
+      await tourVisiting('draft-one', [destId(1)], false);
+      const gone = await tourVisiting('gone', [destId(1), destId(3)]);
+      await prisma.tour.delete({ where: { id: gone.id } });
+      // Khoá ngoại không cho dựng liên kết mồ côi ở trạng thái đã commit, nên tắt trigger khoá
+      // ngoại trong ĐÚNG một transaction (`SET LOCAL`; user Postgres của docker và CI là
+      // superuser). `beforeEach` dọn nó theo điểm đến (CASCADE).
+      await prisma.$transaction(async (tx) => {
+        await tx.$executeRaw`SET LOCAL session_replication_role = replica`;
+        await tx.$executeRaw`
+          INSERT INTO tour_destinations (tour_id, destination_id, is_primary)
+          VALUES (${gone.id}::uuid, ${destId(2)}::uuid, false)
+        `;
+      });
+
+      const legacy = await prisma.destination.findMany({
+        select: { id: true, tours: { select: { tour: { select: { isPublished: true } } } } },
+      });
+      const expected = Object.fromEntries(
+        legacy.map((row) => [row.id, countLinkedTours(row.tours)]),
+      );
+      const counted = Object.fromEntries(
+        (await listOk()).map((row) => [
+          row.id,
+          { tourCount: row.tourCount, linkedTourCount: row.linkedTourCount },
+        ]),
+      );
+
+      expect(counted).toEqual(expected);
+      // Số cụ thể — để hai cách cùng sai một kiểu cũng không xanh.
+      expect(counted).toEqual({
+        [destId(1)]: { tourCount: 1, linkedTourCount: 2 },
+        [destId(2)]: { tourCount: 1, linkedTourCount: 1 },
+        [destId(3)]: { tourCount: 0, linkedTourCount: 0 },
+      });
+      expect(await prisma.tourDestination.count({ where: { destinationId: destId(2) } })).toBe(2);
+    });
+
     it('`region` trả nguyên giá trị THÔ trong DB, kể cả dạng kiểu cũ', async () => {
       // Output không chặt: một hàng kiểu cũ mà làm cả bảng sập 500 thì admin
       // mất đúng màn cần để sửa nó.
@@ -366,17 +410,21 @@ describe('admin destinations integration (P4e-2 F15)', () => {
       expect(row?.slug).toBe('hoi-an');
     });
 
-    it('trả `tourCount` đếm tour ĐÃ ĐĂNG, không đếm tour nháp', async () => {
+    it('trả `tourCount` đếm tour ĐÃ ĐĂNG và `linkedTourCount` đếm MỌI tour (review SI3)', async () => {
       // Ca này không chứng minh được "đếm trong CÙNG câu với lệnh ghi" (bài học
       // 3 của F14) — muốn thế phải chen một lượt đăng tour vào giữa hai câu, và
-      // cửa sổ ấy không dựng tất định được. Luật ấy do `DESTINATION_SELECT`
-      // giữ; ca này chỉ ghim cái thước đếm (vòng review F15 đổi tên cho đúng).
+      // cửa sổ ấy không dựng tất định được. Luật ấy do `DESTINATION_WRITE_SELECT`
+      // giữ; ca này ghim cái thước đếm của đường ghi — trước review SI3 không ca nào
+      // khoá `linkedTourCount` ở đây.
       await tourVisiting('published-one', [destId(1)]);
       await tourVisiting('draft-one', [destId(1)], false);
 
       const res = await update(destId(1), UPDATE, adminCookie);
 
-      expect(AdminDestinationRowSchema.parse(res.json()).tourCount).toBe(1);
+      expect(AdminDestinationRowSchema.parse(res.json())).toMatchObject({
+        tourCount: 1,
+        linkedTourCount: 2,
+      });
     });
 
     it('id lạ → 404 NOT_FOUND với câu của contract, không lộ câu mang id', async () => {
@@ -401,7 +449,12 @@ describe('admin destinations integration (P4e-2 F15)', () => {
       const hidden = await setActive(destId(1), false, adminCookie);
 
       expect(hidden.statusCode).toBe(200);
-      expect(AdminDestinationRowSchema.parse(hidden.json()).isActive).toBe(false);
+      // Hai con số tour của đường ghi (review SI3): tour nháp tính vào `linkedTourCount`.
+      expect(AdminDestinationRowSchema.parse(hidden.json())).toMatchObject({
+        isActive: false,
+        tourCount: 1,
+        linkedTourCount: 2,
+      });
       // Chốt của đường ẩn (spec §2a, ADR-0053): tour vẫn gắn điểm đến ấy.
       expect(await prisma.tourDestination.count({ where: { destinationId: destId(1) } })).toBe(
         linksBefore,
@@ -413,6 +466,7 @@ describe('admin destinations integration (P4e-2 F15)', () => {
       expect(AdminDestinationRowSchema.parse(shown.json())).toMatchObject({
         isActive: true,
         tourCount: 1,
+        linkedTourCount: 2,
       });
       expect(await prisma.tourDestination.count({ where: { destinationId: destId(1) } })).toBe(
         linksBefore,

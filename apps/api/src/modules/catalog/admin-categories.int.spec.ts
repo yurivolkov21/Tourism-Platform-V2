@@ -365,6 +365,42 @@ describe('admin categories integration (P4e-2 F14)', () => {
       expect((await slugsInOrder())[0]).toBe('day-trips');
     });
 
+    it('sửa và ẩn/hiện trả hai con số tour: tour nháp tính vào `linkedTourCount`, không vào `tourCount` (review SI3)', async () => {
+      // Trước review SI3 không ca nào khoá hai con số ở đường ghi — chỉ `list` có.
+      await prisma.tour.createMany({
+        data: [
+          {
+            slug: 'published-one',
+            title: 'Published one',
+            categoryId: catId(1),
+            durationDays: 1,
+            basePrice: '39.00',
+            currency: 'USD',
+            isPublished: true,
+          },
+          {
+            slug: 'draft-one',
+            title: 'Draft one',
+            categoryId: catId(1),
+            durationDays: 1,
+            basePrice: '39.00',
+            currency: 'USD',
+            isPublished: false,
+          },
+        ] as unknown as Prisma.TourCreateManyInput[],
+      });
+      const counts = { tourCount: 1, linkedTourCount: 2 };
+
+      const updated = await update(catId(1), { name: 'Day tours', description: null }, adminCookie);
+      const hidden = await setActive(catId(1), false, adminCookie);
+
+      expect(AdminCategoryRowSchema.parse(updated.json())).toMatchObject(counts);
+      expect(AdminCategoryRowSchema.parse(hidden.json())).toMatchObject({
+        isActive: false,
+        ...counts,
+      });
+    });
+
     it('id lạ → 404', async () => {
       const res = await update(
         'c1400001-0000-4000-8000-999999999999',
