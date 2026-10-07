@@ -159,8 +159,8 @@ bằng menu.
   - trang đích KHÁC trang hiện tại: Link tới path trần; bảng hay hộp của trang ấy mount thì
     tiêu thụ yêu cầu và mở hộp (`useCreateRequest`);
   - trang đích CHÍNH LÀ trang hiện tại: không điều hướng, hộp mở ngay, query lọc giữ nguyên;
-  - yêu cầu tiêu thụ một lần, nên F5 hay Back không mở lại hộp; Ctrl/Cmd/Shift + bấm (mở tab
-    mới) không ghi yêu cầu;
+  - yêu cầu tiêu thụ một lần, nên F5 hay Back không mở lại hộp; Ctrl/Cmd/Shift/Alt + bấm một
+    mục là link sang trang khác (trình duyệt mở tab mới) không ghi yêu cầu và không đóng Sheet;
   - trên điện thoại bấm mục thì đóng Sheet sidebar; đóng hộp thì focus về nút Add/New của trang.
 - Path và icon mỗi mục tra từ `NAV_GROUPS` theo khoá, không gõ lại.
 - Form đang sửa dở: hộp hỏi rời trang (`kit/unsaved-changes.tsx`) chỉ `preventDefault` click của
@@ -270,8 +270,8 @@ Plan và spec P4f viết trước ADR-0053. Cùng nhánh này sửa doc P4f:
 | # | Chỗ | Sạn (đo 05/10) | Sửa |
 | --- | --- | --- | --- |
 | 1 | Khung "Card on /tours" ở khu sửa tour | Summary cắt sau 2 dòng mà không ai báo. Khung rộng ~290px chữ 12px, tức ~24 em mỗi dòng — gần đúng card web trên điện thoại 360px; màn rộng card in được nhiều hơn | Giữ 2 dòng. Đo tràn (`scrollHeight > clientHeight`, đo lại khi chữ hay bề rộng đổi); tràn thì hiện dòng muted "The card cuts this after two lines; the tour page shows all of it." |
-| 2 | Hộp Reject review | Thanh cuộn dính sát các lựa chọn | Hộp `sm:max-w-5xl` (1024px); cột lý do `minmax(0,20rem)`; vùng cuộn có lề phải và `scrollbar-gutter: stable` |
-| 3 | Bảng Tours | Ô ảnh 40px mà tải ảnh gốc ~2400px, 20 ảnh mỗi trang | VM xin `w_160` như bảng Posts (`withDeliveryTransform`) |
+| 2 | Hộp Reject review | Thanh cuộn dính sát các lựa chọn | Hộp rộng tới 1024px; cột lý do `minmax(0,20rem)`; vùng cuộn có lề phải và `scrollbar-gutter: stable`. Sửa sau review 07/10: `sm:max-w-[min(64rem,calc(100%-2rem))]` thay `sm:max-w-5xl` — bản đầu đè lề `calc(100%-2rem)` nên hộp sát hai mép ở 640–1024px |
+| 3 | Bảng Tours | Ô ảnh 40px mà tải ảnh gốc ~2400px, 20 ảnh mỗi trang | VM xin `w_160` như bảng Posts. Sửa sau review 07/10: một hàm `tableCoverThumb` (`lib/cloudinary-url.ts`) và một kit `TableThumb` cho cả hai bảng |
 | 4 | Bảng Subscribers | Nút Export CSV đè tiêu đề cột "Actions" (còn đọc được "Acti") | Gộp cột `export` vào ô tiêu đề cột Actions: nút canh phải, chữ "Actions" còn cho trình đọc màn hình |
 | 5 | Dashboard | Đường doanh thu cong quá tay, vọt dưới 0 ở ngày không có doanh thu | `Area` `type="monotone"` |
 | 6 | Bảng Outbox | Cuộn ngang ngay ở 1570px; cột Processed bị cắt | Thu hẹp cột Last error và dòng mã dưới cột Type, giữ `title` cho chuỗi đầy đủ. Đích: không cuộn ngang ở 1440px |
@@ -280,8 +280,8 @@ Plan và spec P4f viết trước ADR-0053. Cùng nhánh này sửa doc P4f:
 | 9 | Chi tiết booking | Provider in thô "STRIPE" | Dùng lại map `messages.admin.paymentEvents.provider` (`Record` đủ member, vùng Payment events đang dùng) |
 | 10 | Departures và mọi chỗ dùng `formatDateRange` | Chuyến một ngày in "27 Dec 2026 – 27 Dec 2026" | Ngày đầu trùng ngày cuối thì in một ngày |
 | 11 | `/categories`, `/destinations` | Có tiêu đề lớn trùng thanh tiêu đề, các trang khác thì không | Bỏ tiêu đề lớn; câu giải thích giữ nguyên chỗ, thành dòng muted |
-| 12 | Dashboard, Bookings ở màn hẹp | Bốn thẻ số liệu xếp dọc, chiếm hết màn đầu | Lưới thẻ 2 cột từ màn hẹp nhất; kiểm 375px không tràn |
-| 13 | Ảnh trong admin | Ảnh hỏng thành ô xám trống (review của Emma Lindqvist, nợ G22) | Component ảnh của kit có `onError` → icon `ImageOffIcon` và chữ sr-only "Photo unavailable". Áp cho ảnh review, ô ảnh bảng Tours và bảng Posts |
+| 12 | Dashboard, Bookings ở màn hẹp | Bốn thẻ số liệu xếp dọc, chiếm hết màn đầu | Lưới thẻ 2 cột từ màn hẹp nhất; kiểm 375px không tràn. Sửa sau review 07/10: chỉ hàng 4 thẻ 2 cột từ màn hẹp nhất, hàng 3 thẻ giữ 1 cột ở điện thoại như trước; phần đầu thẻ bố cục theo nội dung (`flex-wrap`, pill tự xuống dòng khi hết chỗ, bỏ ngưỡng px), cỡ con số co theo bề ngang thẻ (`cqi`, trần 30px) để số tiền 6–7 chữ số và pill % lớn không bị cắt |
+| 13 | Ảnh trong admin | Ảnh hỏng thành ô xám trống (review của Emma Lindqvist, nợ G22) | Component ảnh của kit có `onError` → icon `ImageOffIcon` và chữ sr-only "Photo unavailable". Áp cho ảnh review, ô ảnh bảng Tours và bảng Posts; sửa sau review 07/10 thêm bốn chỗ quản lý ảnh (dòng ảnh tab Photos, thư viện ảnh, ảnh bìa bài viết, khung ảnh bìa ở cột phải khu sửa tour) |
 
 ## 5. Kiểm thử
 
