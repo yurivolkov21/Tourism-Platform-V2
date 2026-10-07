@@ -8,6 +8,36 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-10-07 — Wizard đặt tour in tiền theo cả đơn (`1eb3d81d`, nhánh `fix/booking-wizard-money`)
+
+Việc tách ra từ P7 Phần A (entry ngay dưới, dòng "Ngoài phạm vi"): đơn giá khuyến mãi có xu của
+seed (giảm 10–20% trên giá chẵn, vd 52 × 0.87 = 45.24) bị `formatMoney` làm tròn riêng từng chỗ
+trong wizard `/tours/[slug]/book`. Với 2 người lớn và 2 trẻ em, cột tóm tắt in "$90" cho mỗi
+dòng mà Total "$181", nút "Pay $181" trong khi Stripe thu $180.96, giá mỗi khách ở bước Dates
+và Review in "$45".
+
+Sửa: wizard dùng lại `formatBookingMoney` và `bookingPriceLines` của Phần A cho đơn đang dựng
+`{ unitPrice: effectivePrice, currency }`, không đặt luật làm tròn mới. Cột tóm tắt dựng dòng
+tiền bằng `bookingPriceLines` (cùng hàm của biên nhận và các trang đơn), Total, nút Pay và giá
+mỗi khách ở bước Dates, Review đi qua `formatBookingMoney`. Đơn giá chẵn vẫn in không số lẻ;
+đơn giá có xu thì đơn giá, các dòng và tổng đủ hai số lẻ. Giá gạch giữ `formatMoney`. JSDoc ở
+`lib/checkout.ts` thôi nhắc `booking-form.tsx` (gỡ từ 19/08).
+
+Ngoài phạm vi, chờ user quyết: trang chi tiết tour vẫn làm tròn giá của từng đợt
+(`booking-rail.tsx`, `departure-dialog.tsx`, `departures-panel.tsx`), nên cùng một đợt hiện
+"$45" ở trang tour mà "$45.24" trong wizard; dòng "Save" in "$7" cho 6.76.
+
+**Review findings:** session thi công không mở vòng review riêng; 4 test viết trước, đỏ đúng
+chỗ (không thấy `$90.48`, `$180.96`, `$45.24`, nút "Pay $180.96") rồi mới sửa. Session gốc
+review lại sau merge.
+
+Tests after (`gate:int` cô lập: DB `tourism_test_wizard`, API cho build web ở cổng 3111):
+Vitest **5470** (web 1674, api 1068, admin 1718, contract 656, core 46, ui 27, tokens 18,
+i18n 18, mobile 159, mobile-ui 86), int **753 ở 46 file**. Ca mới: web 4.
+
+CÒN TREO cho session gốc: review rồi push. Không có việc hạ tầng (không migration, không env,
+không webhook).
+
 ## 2026-10-08 — Vá 24 alert Dependabot, kèm các lỗ production chỉ thấy ở repo gốc (`3a616f46`, nhánh `fix/dependabot-2026-10-08`)
 
 Ngày 08/10 GitHub báo 24 alert mở trên `main` (5 critical, 16 high, 3 medium), tức 16 GHSA: lỗ ở
