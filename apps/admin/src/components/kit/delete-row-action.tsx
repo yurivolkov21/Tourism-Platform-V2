@@ -111,10 +111,12 @@ export function DeleteRowAction<Code extends string>({
                 focusableWhenDisabled
                 className="text-destructive-emphasis hover:text-destructive-emphasis aria-disabled:pointer-events-auto aria-disabled:cursor-not-allowed aria-disabled:hover:bg-background aria-disabled:active:translate-y-0 dark:aria-disabled:hover:bg-input/30"
                 // `pointerup` vẫn tới khi nút khoá (Base UI chỉ chặn click, keydown, mousedown và
-                // pointerdown), và chỉ cú chạm cần câu này: chuột đã có tooltip lúc rê.
+                // pointerdown), và chỉ cú chạm cần câu này: chuột đã có tooltip lúc rê. `id` cố
+                // định theo nút: chạm thêm thì sonner cập nhật đúng toast đang hiện, không chồng
+                // thêm một toast cùng câu (review G6-F3).
                 onPointerUp={(event) => {
                   if (blockedReason !== null && event.pointerType === 'touch') {
-                    toast.info(blockedReason);
+                    toast.info(blockedReason, { id: reasonId });
                   }
                 }}
                 onClick={() => {

@@ -241,8 +241,21 @@ describe('DeleteRowAction — chạm vào nút đang khoá (review A2-4)', () =>
     await user.pointer({ keys: '[TouchA]', target: button });
 
     expect(toastInfo).toHaveBeenCalledTimes(1);
-    expect(toastInfo).toHaveBeenCalledWith(REASON);
+    expect(toastInfo).toHaveBeenCalledWith(REASON, { id: expect.any(String) });
     expect(screen.queryByRole('dialog')).toBeNull();
+  });
+
+  it('chạm nhiều lần: các toast mang CÙNG id — sonner gộp làm một, không chồng cùng một câu (review G6-F3)', async () => {
+    const user = userEvent.setup();
+    const { button } = renderAction({ blockedReason: REASON });
+
+    await user.pointer({ keys: '[TouchA]', target: button });
+    await user.pointer({ keys: '[TouchA]', target: button });
+
+    expect(toastInfo).toHaveBeenCalledTimes(2);
+    const [first, second] = toastInfo.mock.calls;
+    expect(first?.[1]).toEqual({ id: expect.any(String) });
+    expect(second?.[1]).toEqual(first?.[1]);
   });
 
   it('click chuột: không toast (tooltip đã nói lý do lúc rê), không mở hộp', async () => {
