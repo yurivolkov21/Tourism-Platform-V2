@@ -518,6 +518,37 @@ export function formatDialogDate(date: string): string {
 }
 
 /**
+ * Các mảnh của một ngày lịch `YYYY-MM-DD`: thứ viết tắt, ngày, tháng viết tắt, năm — cho chỗ
+ * cần ghép ngày theo khuôn riêng (cặp "03 NOV" / "Tue · 2026" trên vé của trang chi tiết
+ * đơn). Cùng luật timezone với `formatDialogDate`: tách chuỗi, thứ đọc theo UTC.
+ */
+export function calendarDateParts(date: string): {
+  weekday: string;
+  day: number;
+  month: string;
+  year: number;
+} {
+  const [y, m, d] = date.split('-').map(Number) as [number, number, number];
+  return {
+    weekday: DOW[new Date(Date.UTC(y, m - 1, d)).getUTCDay()] ?? '',
+    day: d,
+    month: MONTHS[m - 1] ?? '',
+    year: y,
+  };
+}
+
+/**
+ * "Tue 3 Nov" — thứ + ngày + tháng viết tắt, khuôn của bản vẽ trang chi tiết đơn (mốc hành
+ * trình, "Pickup on …", "… trip ends on …"). `{ year: true }` thêm năm ("Tue 3 Nov 2026")
+ * cho dòng "Departs …" của khối Get ready, nơi thiếu năm là mơ hồ. Khác `formatDialogDate`
+ * ("Mon, 14 Sep"): không dấu phẩy, ngày không đệm 0.
+ */
+export function formatWeekdayDate(date: string, options: { year?: boolean } = {}): string {
+  const { weekday, day, month, year } = calendarDateParts(date);
+  return options.year ? `${weekday} ${day} ${month} ${year}` : `${weekday} ${day} ${month}`;
+}
+
+/**
  * Ngày trên ô chọn đợt của panel đặt chỗ: `"14 Sep"` — ngày + tháng viết tắt,
  * KHÔNG in hoa, KHÔNG năm. Đây là con chữ bản wireframe đã duyệt dùng.
  *

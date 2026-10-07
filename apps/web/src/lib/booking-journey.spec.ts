@@ -1,0 +1,328 @@
+import type { BookingCancellation } from '@tourism/contract';
+import { describe, expect, it } from 'vitest';
+import { makeBooking } from '@/test/fixtures/booking';
+import { type JourneyView, journeyMilestones } from './booking-journey';
+
+/**
+ * Thanh hành trình (spec P7 §2.2). Ngày lấy từ bản vẽ `booking-detail.src.html`: đơn sắp đi
+ * "Hanoi Heritage in a Day" đi 03/11, hôm nay 05/10 (còn 29 ngày, nhãn TODAY ở `left:43%`
+ * của khung, vạch tô `width:33%`); đơn đã đi "Bà Nà Hills" đi 11/02. Ngày đặt và ngày trả
+ * CỐ Ý khác nhau để bắt cách cài lấy nhầm mốc.
+ */
+const TODAY = '2026-10-05';
+
+function cancellationOf(overrides: Partial<BookingCancellation> = {}): BookingCancellation {
+  return {
+    deadline: '2026-11-02',
+    withinDeadline: true,
+    refundAmount: '147.00',
+    canCancel: true,
+    ...overrides,
+  };
+}
+
+const UPCOMING = makeBooking({
+  status: 'PAID',
+  createdAt: '2026-08-13T10:00:00.000Z',
+  paidAt: '2026-08-14T03:05:00.000Z',
+  departureStartDate: '2026-11-03',
+  departureEndDate: '2026-11-03',
+  cancellationDeadline: '2026-11-02',
+  cancellation: cancellationOf(),
+  totalAmount: '147.00',
+});
+
+/** [khoá, nhãn, dòng phụ, trạng thái] — so cả bốn cùng lúc. */
+const rows = (view: JourneyView) =>
+  view.milestones.map((milestone) => [
+    milestone.key,
+    milestone.label,
+    milestone.detail,
+    milestone.state,
+  ]);
+
+describe('journeyMilestones — đơn sắp đi (bản vẽ, hôm nay 05/10)', () => {
+  it('năm mốc theo thứ tự; mốc chưa xong đầu tiên là "now"', () => {
+    expect(rows(journeyMilestones(UPCOMING, TODAY))).toEqual([
+      ['booked', 'Booked', '13 Aug 2026', 'done'],
+      ['paid', 'Paid', '14 Aug 2026', 'done'],
+      ['freeCancellation', 'Free cancellation', 'Until Mon 2 Nov', 'now'],
+      ['departure', 'Departure', 'Tue 3 Nov', 'next'],
+      ['tripEnds', 'Trip ends', 'Tue 3 Nov', 'next'],
+    ]);
+  });
+
+  it('Today theo tỷ lệ ngày giữa Paid (14/08) và hạn huỷ (02/11): 52/80 của đoạn thứ hai', () => {
+    const view = journeyMilestones(UPCOMING, TODAY);
+    expect(view.variant).toBe('standard');
+    // (1 + 52/80) / 4 đoạn = 41.25% vạch; bản vẽ: 10% + 80% × 41.25% = 43% khung.
+    expect(view.today).toEqual({ percent: 41.25, before: 2 });
+    expect(view.fillPercent).toBe(41.25);
+    expect(view.chip).toEqual({ label: 'Departs in 29 days', tone: 'active' });
+  });
+
+  it('đúng ngày chót vẫn còn hạn (hết 23:59 giờ VN); chip "tomorrow"; Today kẹp ở 80% đoạn', () => {
+    const view = journeyMilestones(UPCOMING, '2026-11-02');
+    expect(view.milestones[2]).toEqual({
+      key: 'freeCancellation',
+      label: 'Free cancellation',
+      detail: 'Until Mon 2 Nov',
+      state: 'now',
+    });
+    expect(view.chip).toEqual({ label: 'Departs tomorrow', tone: 'active' });
+    // Tỷ lệ 80/80 = 1, kẹp về 0.8 để nhãn không đè icon mốc: (1 + 0.8) / 4.
+    expect(view.today).toEqual({ percent: 45, before: 2 });
+  });
+
+  it('đã qua hạn huỷ: mốc ghi "Ended", tính là xong, Today nằm giữa hạn huỷ và ngày đi', () => {
+    const late = makeBooking({
+      status: 'PAID',
+      createdAt: '2026-09-30T02:00:00.000Z',
+      paidAt: '2026-10-01T02:10:00.000Z',
+      departureStartDate: '2026-11-10',
+      departureEndDate: '2026-11-12',
+      cancellationDeadline: '2026-11-07',
+      cancellation: cancellationOf({
+        deadline: '2026-11-07',
+        withinDeadline: false,
+        refundAmount: '0.00',
+      }),
+    });
+    const view = journeyMilestones(late, '2026-11-08');
+    expect(rows(view).slice(2)).toEqual([
+      ['freeCancellation', 'Free cancellation', 'Ended 7 Nov', 'done'],
+      ['departure', 'Departure', 'Tue 10 Nov', 'now'],
+      ['tripEnds', 'Trip ends', 'Thu 12 Nov', 'next'],
+    ]);
+    // (2 + 1/3) / 4 = 58.33%.
+    expect(view.today).toEqual({ percent: 58.33, before: 3 });
+    expect(view.chip).toEqual({ label: 'Departs in 2 days', tone: 'active' });
+  });
+
+  it('PARTIALLY_REFUNDED là đơn còn hiệu lực: vẫn thanh thường, vẫn đếm ngày', () => {
+    const view = journeyMilestones(
+      { ...UPCOMING, status: 'PARTIALLY_REFUNDED', refundedTotal: '20.00' },
+      TODAY,
+    );
+    expect(view.variant).toBe('standard');
+    expect(view.chip).toEqual({ label: 'Departs in 29 days', tone: 'active' });
+  });
+});
+
+describe('journeyMilestones — đang đi (04–06/10)', () => {
+  const ON_TOUR = makeBooking({
+    status: 'PAID',
+    createdAt: '2026-08-31T02:00:00.000Z',
+    paidAt: '2026-09-01T02:10:00.000Z',
+    departureStartDate: '2026-10-04',
+    departureEndDate: '2026-10-06',
+    cancellationDeadline: '2026-10-01',
+    cancellation: cancellationOf({
+      deadline: '2026-10-01',
+      withinDeadline: false,
+      refundAmount: '0.00',
+      canCancel: false,
+    }),
+  });
+
+  it('giữa chuyến: "Departed" đã xong, "Trip ends" là mốc đang tới, chip ngày thứ mấy', () => {
+    const view = journeyMilestones(ON_TOUR, TODAY);
+    expect(rows(view).slice(2)).toEqual([
+      ['freeCancellation', 'Free cancellation', 'Ended 1 Oct', 'done'],
+      ['departure', 'Departed', 'Sun 4 Oct', 'done'],
+      ['tripEnds', 'Trip ends', 'Tue 6 Oct', 'now'],
+    ]);
+    expect(view.today).toEqual({ percent: 87.5, before: 4 });
+    expect(view.chip).toEqual({ label: 'Day 2 of 3', tone: 'active' });
+  });
+
+  it('ngày về: chuyến CHƯA kết thúc — "Trip ends" vẫn là mốc đang tới', () => {
+    const view = journeyMilestones(ON_TOUR, '2026-10-06');
+    expect(view.milestones[4]).toEqual({
+      key: 'tripEnds',
+      label: 'Trip ends',
+      detail: 'Tue 6 Oct',
+      state: 'now',
+    });
+    expect(view.chip).toEqual({ label: 'Day 3 of 3', tone: 'active' });
+    expect(view.today).toEqual({ percent: 95, before: 4 });
+  });
+
+  it('ngày đi: "Departed" ngay từ hôm nay; Today kẹp ở 20% đoạn cuối', () => {
+    const view = journeyMilestones(ON_TOUR, '2026-10-04');
+    expect(view.milestones[3]?.label).toBe('Departed');
+    expect(view.chip).toEqual({ label: 'Day 1 of 3', tone: 'active' });
+    expect(view.today).toEqual({ percent: 80, before: 4 });
+  });
+});
+
+describe('journeyMilestones — đã đi (bản vẽ: Bà Nà Hills 11/02)', () => {
+  it('mọi mốc xong, nhãn sang thì quá khứ, không còn Today', () => {
+    const travelled = makeBooking({
+      status: 'PAID',
+      createdAt: '2026-02-09T08:00:00.000Z',
+      paidAt: '2026-02-10T01:00:00.000Z',
+      departureStartDate: '2026-02-11',
+      departureEndDate: '2026-02-11',
+      cancellationDeadline: '2026-02-10',
+      cancellation: cancellationOf({
+        deadline: '2026-02-10',
+        withinDeadline: false,
+        refundAmount: '0.00',
+        canCancel: false,
+      }),
+    });
+    const view = journeyMilestones(travelled, TODAY);
+    expect(rows(view)).toEqual([
+      ['booked', 'Booked', '9 Feb 2026', 'done'],
+      ['paid', 'Paid', '10 Feb 2026', 'done'],
+      ['freeCancellation', 'Free cancellation', 'Ended 10 Feb', 'done'],
+      ['departure', 'Departed', 'Wed 11 Feb', 'done'],
+      ['tripEnds', 'Trip ended', 'Wed 11 Feb', 'done'],
+    ]);
+    expect(view.today).toBeNull();
+    expect(view.fillPercent).toBe(100);
+    expect(view.chip).toEqual({ label: 'Completed', tone: 'done' });
+  });
+});
+
+describe('journeyMilestones — chờ trả tiền', () => {
+  const PENDING = makeBooking({
+    status: 'PENDING',
+    paidAt: null,
+    createdAt: '2026-10-05T01:00:00.000Z',
+    departureStartDate: '2026-10-20',
+    departureEndDate: '2026-10-22',
+    cancellationDeadline: '2026-10-17',
+    cancellation: null,
+  });
+
+  it('mốc Paid ghi "Awaiting payment" và là mốc đang tới; Today giữa Booked và Paid', () => {
+    const view = journeyMilestones(PENDING, TODAY);
+    expect(rows(view)).toEqual([
+      ['booked', 'Booked', '5 Oct 2026', 'done'],
+      ['paid', 'Paid', 'Awaiting payment', 'now'],
+      ['freeCancellation', 'Free cancellation', 'Until Sat 17 Oct', 'next'],
+      ['departure', 'Departure', 'Tue 20 Oct', 'next'],
+      ['tripEnds', 'Trip ends', 'Thu 22 Oct', 'next'],
+    ]);
+    // Paid chưa có ngày nên không chia theo tỷ lệ được — nhãn đứng giữa đoạn: 0.5 / 4.
+    expect(view.today).toEqual({ percent: 12.5, before: 1 });
+    expect(view.chip).toEqual({ label: 'Awaiting payment', tone: 'warning' });
+  });
+
+  it('không có cờ server: đúng ngày chót vẫn là "Until"', () => {
+    const view = journeyMilestones(PENDING, '2026-10-17');
+    expect(view.milestones[2]).toEqual({
+      key: 'freeCancellation',
+      label: 'Free cancellation',
+      detail: 'Until Sat 17 Oct',
+      state: 'next',
+    });
+  });
+
+  /**
+   * Qua hạn chót mà chưa trả là `lapsed` (ADR-0054 §1, sửa sau review Phần A 06/10): cổng trả
+   * tiền của API đóng cùng mốc, nên không còn thanh hành trình "đang chờ trả" nào để vẽ.
+   */
+  it('qua ngày chót mà chưa trả: biến thể lapsed, không chip, không Today', () => {
+    const view = journeyMilestones(PENDING, '2026-10-18');
+    expect(view.variant).toBe('lapsed');
+    expect(view.chip).toBeNull();
+    expect(view.today).toBeNull();
+  });
+});
+
+describe('journeyMilestones — đã huỷ', () => {
+  const CANCELLED = makeBooking({
+    status: 'CANCELLED',
+    createdAt: '2026-08-14T03:00:00.000Z',
+    paidAt: '2026-08-15T03:05:00.000Z',
+    cancelledAt: '2026-09-21T02:00:00.000Z',
+    cancellationDecidedAt: '2026-09-20T08:00:00.000Z',
+    cancellationRequestedAt: '2026-09-19T08:00:00.000Z',
+    refundedTotal: '147.00',
+    totalAmount: '147.00',
+    // Ngày đi còn ở tương lai: đơn huỷ KHÔNG được thành "sắp đi" (spec P7, mục Đóng).
+    departureStartDate: '2026-11-03',
+    departureEndDate: '2026-11-03',
+    cancellation: null,
+  });
+
+  it('bốn mốc Booked → Paid → Cancelled → Refund; ngày huỷ lấy `cancelledAt`', () => {
+    const view = journeyMilestones(CANCELLED, TODAY);
+    expect(view.variant).toBe('cancelled');
+    expect(rows(view)).toEqual([
+      ['booked', 'Booked', '14 Aug 2026', 'done'],
+      ['paid', 'Paid', '15 Aug 2026', 'done'],
+      ['cancelled', 'Cancelled', '21 Sep 2026', 'done'],
+      ['refund', 'Refund', '$147.00', 'done'],
+    ]);
+    expect(view.today).toBeNull();
+    expect(view.fillPercent).toBe(100);
+    expect(view.chip).toEqual({ label: 'Cancelled', tone: 'muted' });
+  });
+
+  it.each([
+    ['không có `cancelledAt` thì lấy ngày quyết', { cancelledAt: null }, '20 Sep 2026'],
+    [
+      'không có cả ngày quyết thì lấy ngày gửi yêu cầu',
+      { cancelledAt: null, cancellationDecidedAt: null },
+      '19 Sep 2026',
+    ],
+    [
+      'không còn mốc nào thì bỏ ngày',
+      { cancelledAt: null, cancellationDecidedAt: null, cancellationRequestedAt: null },
+      null,
+    ],
+  ] as const)('%s', (_, patch, detail) => {
+    const view = journeyMilestones({ ...CANCELLED, ...patch }, TODAY);
+    expect(view.milestones.find((milestone) => milestone.key === 'cancelled')?.detail).toBe(detail);
+  });
+
+  it.each([
+    ['hoàn một phần: in cả hai số', '73.50', '$73.50 of $147.00'],
+    ['huỷ mà không hoàn đồng nào cũng phải nói ra', '0.00', 'No refund due'],
+  ])('%s', (_, refundedTotal, detail) => {
+    const view = journeyMilestones({ ...CANCELLED, refundedTotal }, TODAY);
+    expect(view.milestones.at(-1)).toEqual({
+      key: 'refund',
+      label: 'Refund',
+      detail,
+      state: 'done',
+    });
+  });
+
+  it('đơn chưa từng thu tiền: không mốc Paid, không mốc Refund', () => {
+    const view = journeyMilestones({ ...CANCELLED, paidAt: null, refundedTotal: '0.00' }, TODAY);
+    expect(view.milestones.map((milestone) => milestone.key)).toEqual(['booked', 'cancelled']);
+  });
+
+  it('REFUNDED còn ngày đi tương lai cũng là biến thể huỷ', () => {
+    const view = journeyMilestones({ ...CANCELLED, status: 'REFUNDED' }, TODAY);
+    expect(view.variant).toBe('cancelled');
+    expect(view.chip).toEqual({ label: 'Cancelled', tone: 'muted' });
+  });
+});
+
+describe('journeyMilestones — giữ chỗ không trả kịp', () => {
+  it('hai mốc Booked → Payment not completed; không chip, không Today', () => {
+    const lapsed = makeBooking({
+      status: 'PENDING',
+      paidAt: null,
+      createdAt: '2026-09-20T01:00:00.000Z',
+      departureStartDate: '2026-10-01',
+      departureEndDate: '2026-10-03',
+      cancellation: null,
+    });
+    const view = journeyMilestones(lapsed, TODAY);
+    expect(view.variant).toBe('lapsed');
+    expect(rows(view)).toEqual([
+      ['booked', 'Booked', '20 Sep 2026', 'done'],
+      ['paymentNotCompleted', 'Payment not completed', null, 'done'],
+    ]);
+    expect(view.chip).toBeNull();
+    expect(view.today).toBeNull();
+    expect(view.fillPercent).toBe(100);
+  });
+});

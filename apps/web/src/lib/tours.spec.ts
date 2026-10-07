@@ -16,6 +16,7 @@ const EMPTY_FILTERS = {
 } as const;
 
 import {
+  calendarDateParts,
   cardPrice,
   countActiveFilters,
   departureStatus,
@@ -30,6 +31,7 @@ import {
   formatMoney,
   formatReviewDate,
   formatTicketDate,
+  formatWeekdayDate,
   isDepartureOpen,
   ownLabel,
   priceBucket,
@@ -698,5 +700,37 @@ describe('formatDialogDate — ngày trên hàng của modal "All dates"', () =>
   it('thứ tính theo UTC, không lệch ở múi giờ âm', () => {
     expect(formatDialogDate('2026-01-01')).toBe('Thu, 01 Jan');
     expect(formatDialogDate('2026-12-31')).toBe('Thu, 31 Dec');
+  });
+});
+
+describe('calendarDateParts — mảnh ngày lịch cho khuôn ghép riêng (vé trang chi tiết đơn)', () => {
+  it('tách thứ, ngày, tháng viết tắt, năm; thứ đọc theo UTC', () => {
+    expect(calendarDateParts('2026-11-03')).toEqual({
+      weekday: 'Tue',
+      day: 3,
+      month: 'Nov',
+      year: 2026,
+    });
+    expect(calendarDateParts('2026-01-01')).toEqual({
+      weekday: 'Thu',
+      day: 1,
+      month: 'Jan',
+      year: 2026,
+    });
+  });
+});
+
+describe('formatWeekdayDate — "Tue 3 Nov" của trang chi tiết đơn', () => {
+  it('thứ + ngày KHÔNG đệm 0 + tháng; không năm, không dấu phẩy', () => {
+    expect(formatWeekdayDate('2026-11-03')).toBe('Tue 3 Nov');
+    expect(formatWeekdayDate('2026-02-11')).toBe('Wed 11 Feb');
+  });
+
+  it('`year: true` thêm năm', () => {
+    expect(formatWeekdayDate('2026-11-03', { year: true })).toBe('Tue 3 Nov 2026');
+  });
+
+  it('biên năm không lệch ở múi giờ âm', () => {
+    expect(formatWeekdayDate('2026-12-31', { year: true })).toBe('Thu 31 Dec 2026');
   });
 });

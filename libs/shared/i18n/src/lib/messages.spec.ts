@@ -170,6 +170,43 @@ describe('messages: passportHome (trang hộ chiếu /account)', () => {
       'Saved tours',
       'Settings',
       'Sign out',
-    ]);
+    ]);  });
+});
+
+describe('messages: bookingDetail (P7 phần B — trang chi tiết đơn)', () => {
+  const d = messages.bookingDetail;
+
+  it('mọi chuỗi trong khối đều có chữ', () => {
+    const walk = (node: unknown): string[] => {
+      if (typeof node === 'string') return [node];
+      if (typeof node === 'function' || node === null) return [];
+      return Object.values(node as object).flatMap(walk);
+    };
+    for (const value of walk(d)) expect(value.trim().length).toBeGreaterThan(0);
+  });
+
+  it('độ dài chuyến: số ít và số nhiều', () => {
+    expect(d.ticket.days(1)).toBe('1 day');
+    expect(d.ticket.days(3)).toBe('3 days');
+  });
+
+  it('chip đơn sắp đi: còn một ngày thì "tomorrow"', () => {
+    expect(d.journey.departsIn(1)).toBe('Departs tomorrow');
+    expect(d.journey.departsIn(2)).toBe('Departs in 2 days');
+    expect(d.journey.departsIn(29)).toBe('Departs in 29 days');
+  });
+
+  it('ngày trong chuyến, số khách, dòng đã hoàn, dòng đã trả, chân khối Get ready', () => {
+    expect(d.journey.dayOf(2, 3)).toBe('Day 2 of 3');
+    expect(d.ticket.admit(3)).toBe('Admit 3');
+    // Dấu trừ là U+2212 (−), không phải gạch nối.
+    expect(d.details.refundedAmount('$20.00')).toBe('−$20.00');
+    expect(d.details.paidInFull('PayPal', '14 Aug 2026')).toBe(
+      'Paid in full by PayPal on 14 Aug 2026',
+    );
+    expect(d.getReady.reviewOpens('Thu 5 Nov')).toBe(
+      'Your review opens after the trip ends on Thu 5 Nov.',
+    );
+    expect(d.journey.refundPartial('$73.50', '$147.00')).toBe('$73.50 of $147.00');
   });
 });

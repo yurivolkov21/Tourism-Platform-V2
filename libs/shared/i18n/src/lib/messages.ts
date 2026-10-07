@@ -2866,6 +2866,93 @@ export const messages = {
       cancelPendingBody: 'Your pending reservation has been released.',
     },
   },
+  /**
+   * Trang chi tiết đơn `/account/bookings/[code]` (spec P7 §2.2–2.5, §5, §8) — vé kiểu
+   * boarding pass, thanh hành trình, cột trái thông tin đơn, cột phải theo giai đoạn.
+   *
+   * CHỈ chữ mới. Chữ đã có thì trang đọc tại chỗ, không chép sang đây: dải vé, mộc, nhãn
+   * "Travellers", hai nút Contact us / View voucher (`passportVisa`); "View tour", chữ hoàn
+   * tiền, câu kết thúc, khu review (`accountBookingDetail`, `reviews`); câu hạn huỷ
+   * (`cancellationDeadline`); "Free cancellation", "Total", dòng người lớn/trẻ em
+   * (`checkoutSummary`); "Total paid", "Payment", "Departs {ngày}", câu mã chưa thành voucher
+   * (`booking.success`); tên cổng (`booking.form`); chế độ thử (`tourDetail.booking.testMode`);
+   * "Day N" (`tourDetail.itinerary.dayLabel`); "Browse tours" (`booking.list.browse`).
+   */
+  bookingDetail: {
+    /** Nút tròn cạnh breadcrumb của hero (`ContentHero.back`) — về danh sách đơn. */
+    back: 'Back to My bookings',
+    /** Ô của vé và khối đầu cột trái — một khái niệm một chữ. */
+    leadTraveller: 'Lead traveller',
+    /** Mốc đầu thanh hành trình, ô của vé và dòng ngày đặt ở khối Details. */
+    booked: 'Booked',
+    ticket: {
+      departs: 'Departs',
+      returns: 'Returns',
+      /** Độ dài chuyến theo ngày lịch, tính cả ngày đi lẫn ngày về. */
+      days: (n: number) => (n === 1 ? '1 day' : `${n} days`),
+      paidWith: 'Paid with',
+      /** Ô "Paid with" của đơn chưa từng thu tiền: chờ trả, huỷ khi chưa trả, lỡ hạn trả. */
+      notPaid: 'Not paid',
+      /** Dải đầu cuống vé — tổng số khách, người lớn cộng trẻ em. */
+      admit: (n: number) => `Admit ${n}`,
+      taxesIncluded: 'Taxes and fees included',
+    },
+    journey: {
+      heading: 'Trip journey',
+      paid: 'Paid',
+      awaitingPayment: 'Awaiting payment',
+      until: (date: string) => `Until ${date}`,
+      ended: (date: string) => `Ended ${date}`,
+      departure: 'Departure',
+      departed: 'Departed',
+      tripEnds: 'Trip ends',
+      tripEnded: 'Trip ended',
+      today: 'Today',
+      /** Chip đơn sắp đi — `n` ≥ 1 vì `upcoming` nghĩa là ngày đi còn ở sau hôm nay. */
+      departsIn: (n: number) => (n === 1 ? 'Departs tomorrow' : `Departs in ${n} days`),
+      dayOf: (day: number, total: number) => `Day ${day} of ${total}`,
+      completed: 'Completed',
+      cancelled: 'Cancelled',
+      refund: 'Refund',
+      /** Nói cả hai số, cùng lý do với `accountBookingDetail.refundLine.partial`. */
+      refundPartial: (amount: string, total: string) => `${amount} of ${total}`,
+      refundNone: 'No refund due',
+      paymentNotCompleted: 'Payment not completed',
+    },
+    getReady: {
+      heading: 'Get ready',
+      /** Đứng sau con số cỡ lớn ("29" · "days to go"); còn đúng một ngày thì thay bằng `tomorrow`. */
+      daysToGo: 'days to go',
+      tomorrow: 'Tomorrow',
+      budget: 'Budget for what’s not included',
+      /** Ô tích chỉ nằm ở `localStorage` của máy này (spec §2.4) — câu này nói đúng điều đó. */
+      budgetNote: 'Tick them off — saved on this device.',
+      pickupOn: (date: string) => `Pickup on ${date}`,
+      fullItinerary: 'Full itinerary',
+      reviewOpens: (date: string) => `Your review opens after the trip ends on ${date}.`,
+    },
+    onTour: {
+      heading: 'Today’s plan',
+      /** Câu dẫn đứng trước link "Contact us" (`passportVisa.contactUs`). */
+      needHelp: 'Need help today?',
+    },
+    details: {
+      cancellation: 'Cancellation',
+      heading: 'Details',
+      meetingPoint: 'Meeting point',
+      specialRequests: 'Special requests',
+      none: 'None',
+      refunded: 'Refunded',
+      /** Dấu trừ U+2212, không phải gạch nối. */
+      refundedAmount: (amount: string) => `−${amount}`,
+      paidInFull: (provider: string, date: string) => `Paid in full by ${provider} on ${date}`,
+      questions: 'Questions about this trip?',
+    },
+    closed: {
+      notPaidInTime: 'This booking wasn’t paid in time.',
+      thanks: 'Thanks for travelling with us.',
+    },
+  },
   // Trang `/account/settings` (spec 09/10, phương án C): thẻ danh tính (ảnh, tên, email,
   // Connected accounts) bên trái; Personal information, Password, Danger zone bên phải.
   // Đổi email vẫn PARK — email read-only kèm chú thích, KHÔNG dựng form ghi.
