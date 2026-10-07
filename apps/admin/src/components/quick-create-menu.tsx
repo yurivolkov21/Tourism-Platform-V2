@@ -16,15 +16,24 @@ import {
   useSidebar,
 } from '@tourism/ui/components/sidebar';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@tourism/ui/components/tooltip';
-import { CirclePlusIcon, Compass, FileText, MapPin, Tags } from 'lucide-react';
+import { CirclePlusIcon } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { NAV_GROUPS, navPath } from '@/lib/nav';
 import { requestCreate } from '@/lib/quick-create';
+
+/** Path trần và icon của vùng `key` trên sidebar. Khoá sai là lỗi lập trình — ném lúc nạp module. */
+function navArea(key: string) {
+  const item = NAV_GROUPS.flatMap((group) => group.items).find((entry) => entry.key === key);
+  if (item === undefined) throw new Error(`Quick Create: no nav item "${key}"`);
+  return { path: navPath(item.href), icon: item.icon };
+}
 
 /**
  * Nút Quick Create của sidebar thành MENU tạo nhanh (spec 2026-10-05 §2.5) — trước đây là
  * nút chép nguyên từ block dashboard-01, không gắn hành động nào. Nhãn mỗi mục là đúng chữ
- * nút tạo của vùng ấy, icon là icon của vùng trên sidebar (`lib/nav.ts`).
+ * nút tạo của vùng ấy; path và icon tra từ mục của vùng trên sidebar (`lib/nav.ts`) theo khoá,
+ * không gõ lại (review RU4).
  *
  * Mỗi mục ghi một yêu cầu mở hộp tạo (`lib/quick-create.ts`) thay cho tham số URL cũ (review
  * A2-3, EF1, RU6):
@@ -38,29 +47,13 @@ import { requestCreate } from '@/lib/quick-create';
  * điện thoại — còn menu của `NavUser` mở bên phải trừ trên điện thoại.
  */
 const ITEMS = [
-  {
-    key: 'tour',
-    path: '/tours',
-    label: messages.admin.tours.editor.create.action,
-    icon: Compass,
-  },
-  {
-    key: 'post',
-    path: '/posts',
-    label: messages.admin.posts.create.action,
-    icon: FileText,
-  },
-  {
-    key: 'category',
-    path: '/categories',
-    label: messages.admin.categories.create.action,
-    icon: Tags,
-  },
+  { key: 'tour', label: messages.admin.tours.editor.create.action, ...navArea('tours') },
+  { key: 'post', label: messages.admin.posts.create.action, ...navArea('posts') },
+  { key: 'category', label: messages.admin.categories.create.action, ...navArea('categories') },
   {
     key: 'destination',
-    path: '/destinations',
     label: messages.admin.destinations.create.action,
-    icon: MapPin,
+    ...navArea('destinations'),
   },
 ] as const;
 

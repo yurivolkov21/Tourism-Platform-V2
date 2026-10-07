@@ -11,6 +11,7 @@ import {
 import { TooltipProvider } from '@tourism/ui/components/tooltip';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { TourEditorOptions } from '@/lib/api/tours';
+import { NAV_GROUPS, navPath } from '@/lib/nav';
 import { QuickCreateMenu } from './quick-create-menu';
 import { NewTourDialog } from './tours/editor/new-tour-dialog';
 
@@ -23,6 +24,27 @@ vi.mock('next/navigation', () => ({
   usePathname: () => location.pathname,
   useRouter: () => ({ push: vi.fn(), refresh: vi.fn() }),
 }));
+/**
+ * Bốn vùng của Quick Create mang icon KHÁC bản thật (href giữ nguyên): mục Quick Create gõ lại
+ * icon thay vì đọc `NAV_GROUPS` thì ca RU4 đỏ, còn khớp bản thật thì không chứng minh được gì.
+ */
+vi.mock('@/lib/nav', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/lib/nav')>();
+  const { Bike, Newspaper, Pin, Tag } = await import('lucide-react');
+  const swapped = new Map([
+    ['tours', Bike],
+    ['posts', Newspaper],
+    ['categories', Tag],
+    ['destinations', Pin],
+  ]);
+  return {
+    ...actual,
+    NAV_GROUPS: actual.NAV_GROUPS.map((group) => ({
+      ...group,
+      items: group.items.map((item) => ({ ...item, icon: swapped.get(item.key) ?? item.icon })),
+    })),
+  };
+});
 
 beforeEach(() => {
   navigate.mockReset();
@@ -66,6 +88,30 @@ describe('QuickCreateMenu', () => {
     ] as const;
     for (const [name, href] of expected) {
       expect(await screen.findByRole('menuitem', { name })).toHaveAttribute('href', href);
+    }
+  });
+
+  it('path và icon mỗi mục là của mục nav cùng vùng — tra theo khoá, không gõ lại (review RU4)', async () => {
+    const user = userEvent.setup();
+    renderMenu({ open: true });
+    await user.click(screen.getByRole('button', { name: t.quickCreate }));
+
+    const navItems = new Map(
+      NAV_GROUPS.flatMap((group) => group.items).map((item) => [item.key, item]),
+    );
+    const areas = [
+      [newTour.action, 'tours'],
+      [messages.admin.posts.create.action, 'posts'],
+      [messages.admin.categories.create.action, 'categories'],
+      [messages.admin.destinations.create.action, 'destinations'],
+    ] as const;
+    for (const [name, key] of areas) {
+      const nav = navItems.get(key);
+      if (nav === undefined) throw new Error(`Không có mục nav ${key}`);
+      const item = await screen.findByRole('menuitem', { name });
+      expect(item).toHaveAttribute('href', navPath(nav.href));
+      const { container } = render(<nav.icon aria-hidden="true" />);
+      expect(item.querySelector('svg')?.outerHTML).toBe(container.querySelector('svg')?.outerHTML);
     }
   });
 

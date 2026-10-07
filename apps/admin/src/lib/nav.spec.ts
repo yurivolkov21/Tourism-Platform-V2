@@ -1,6 +1,6 @@
 import { messages } from '@tourism/i18n';
 import { describe, expect, it } from 'vitest';
-import { isActiveNav, NAV_GROUPS, navTooltip } from './nav';
+import { isActiveNav, NAV_GROUPS, navPath, navTooltip } from './nav';
 
 /**
  * Sidebar thu gọn thành cột icon (góp ý giao diện 28/09): cột ấy không còn chữ, nên
@@ -38,5 +38,12 @@ describe('isActiveNav', () => {
   it('tiền tố gần giống không tính', () => {
     expect(isActiveNav('/tours', '/tours-archive')).toBe(false);
     expect(isActiveNav('/outbox?status=FAILED', '/outboxes')).toBe(false);
+  });
+});
+
+describe('navPath', () => {
+  it('đường của href nav, bỏ query — Quick Create dẫn tới path trần (review RU4)', () => {
+    expect(navPath('/reviews?status=pending')).toBe('/reviews');
+    expect(navPath('/tours')).toBe('/tours');
   });
 });

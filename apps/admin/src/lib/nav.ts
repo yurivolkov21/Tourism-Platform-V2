@@ -172,7 +172,12 @@ export function navTooltip(item: NavItem): string {
  * theo đoạn đường có `/` chốt để `/tours-archive` không khớp `/tours`.
  */
 export function isActiveNav(href: string, pathname: string): boolean {
-  const path = href.split('?')[0] ?? href;
+  const path = navPath(href);
   if (path === '/') return pathname === '/';
   return pathname === path || pathname.startsWith(`${path}/`);
+}
+
+/** Đường của một href nav, bỏ query (`/reviews?status=pending` → `/reviews`). */
+export function navPath(href: string): string {
+  return href.split('?')[0] ?? href;
 }
