@@ -41,7 +41,8 @@ import {
  *
  * Delete bật khi 0 tour — ADR-0053, thay quyết định "không có nút xoá" của spec P4e-2
  * §2a. Đếm tour MỌI trạng thái (`linkedTourCount`); còn tour thì nút khoá và tooltip
- * gợi ý ẩn: ẩn đảo ngược được bằng một cú bấm, còn xoá thì không. Server vẫn là phán
+ * gợi ý ẩn: ẩn đảo ngược được bằng một cú bấm, còn xoá thì không. Hàng đã ẩn thì tooltip
+ * và câu `IN_USE` chỉ nói lý do, không khuyên ẩn (Ruling F-b). Server vẫn là phán
  * quyết cuối — bảng có thể cũ hơn DB, và `IN_USE` khi ấy đóng hộp rồi làm mới. Khoá
  * ngoại `tour_destinations` vẫn khai `ON DELETE CASCADE`, nên chốt chặn thật là phép
  * đếm liên kết dưới khoá hàng ở API (ADR-0053 §3), không phải nút này.
@@ -128,7 +129,8 @@ export function DestinationRowActions({
           copy: deleteDialogCopy(),
           rows: deleteConfirmRows(row),
           isStale: isDeleteStale,
-          errorCopy: deleteErrorCopy,
+          // Câu `IN_USE` theo trạng thái hiện/ẩn của hàng (Ruling F-b).
+          errorCopy: (code) => deleteErrorCopy(code, row),
           onSubmit: async () => {
             const result = await remove({ id: row.id });
             if (!result.ok) return { ok: false, code: result.code };

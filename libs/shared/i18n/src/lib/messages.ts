@@ -58,10 +58,10 @@ const SLUG_SHAPE_COPY =
 const SLUG_HINT_COPY = 'Set once. It appears in shared links, so it cannot be changed later.';
 
 // MỘT bộ chữ cho ô "Tours" và cho nút Delete của hai bảng tra cứu catalog (danh mục, điểm
-// đến). Luật xoá của ADR-0053 — đang có tour thì khoá, gợi ý ẩn — là MỘT luật cho cả hai bảng,
-// nên cùng luật thì cùng câu, như `CATALOG_VISIBILITY_COPY` ở trên. Hai khối từng chép tay y
-// hệt nhau mà không lưới nào bắt được lúc chúng lệch nhau (review RU2). Câu chỉ khác danh từ
-// thì thành hàm nhận danh từ.
+// đến). Luật xoá của ADR-0053 — đang có tour thì khoá, hàng đang hiện thì gợi ý ẩn — là MỘT
+// luật cho cả hai bảng, nên cùng luật thì cùng câu, như `CATALOG_VISIBILITY_COPY` ở trên. Hai
+// khối từng chép tay y hệt nhau mà không lưới nào bắt được lúc chúng lệch nhau (review RU2).
+// Câu chỉ khác danh từ thì thành hàm nhận danh từ.
 const CATALOG_TOUR_COUNT_COPY = {
   tours: (count: number) => (count === 1 ? '1 tour' : `${count} tours`),
   /** Dòng mờ dưới tổng tour: số đang bán (spec 2026-10-05 §3.3). */
@@ -79,6 +79,11 @@ const CATALOG_DELETE_COPY = {
   inUse: (count: number) =>
     count === 1 ? 'Used by 1 tour — hide it instead.' : `Used by ${count} tours — hide it instead.`,
   /**
+   * Cùng lý do khoá ở hàng ĐÃ ẨN: chỉ nói số tour. Nút bật tắt của hàng ấy đang là Show, khuyên
+   * "ẩn đi" là bảo làm một việc đã làm rồi (Ruling F-b).
+   */
+  inUseHidden: (count: number) => (count === 1 ? 'Used by 1 tour.' : `Used by ${count} tours.`),
+  /**
    * Lý do khoá khi hàng không mang số tour (cùng khe deploy với `unknown`): không biết số thì
    * không mở hộp khẳng định "No tour uses…" (review E2).
    */
@@ -86,6 +91,9 @@ const CATALOG_DELETE_COPY = {
   /** Câu của mã `IN_USE`: bảng nói 0 tour mà DB vừa có tour gắn vào. */
   inUseRace: (noun: string) =>
     `A tour started using this ${noun} a moment ago, so it can’t be deleted. Hide it instead.`,
+  /** Câu `IN_USE` ở hàng ĐÃ ẨN — bỏ vế khuyên ẩn, cùng lý do với `inUseHidden` (Ruling F-b). */
+  inUseRaceHidden: (noun: string) =>
+    `A tour started using this ${noun} a moment ago, so it can’t be deleted.`,
   toastBody: (name: string) => `${name} is gone.`,
 } as const;
 
@@ -5708,6 +5716,7 @@ export const messages = {
         action: CATALOG_DELETE_COPY.action,
         actionLabel: CATALOG_DELETE_COPY.actionLabel,
         inUse: CATALOG_DELETE_COPY.inUse,
+        inUseHidden: CATALOG_DELETE_COPY.inUseHidden,
         unavailable: CATALOG_DELETE_COPY.unavailable,
         rows: { category: 'Category', slug: 'Slug' },
         dialog: {
@@ -5722,6 +5731,11 @@ export const messages = {
           IN_USE: CATALOG_DELETE_COPY.inUseRace('category'),
           NOT_FOUND: 'This category no longer exists. The table has been refreshed.',
         },
+        /**
+         * Câu `IN_USE` ở hàng đã ẩn (Ruling F-b). Nằm ngoài `errors`: khối ấy là tập mã của
+         * contract, mỗi mã đúng một câu.
+         */
+        inUseRaceHidden: CATALOG_DELETE_COPY.inUseRaceHidden('category'),
         toast: { title: 'Category deleted', body: CATALOG_DELETE_COPY.toastBody },
       },
     },
@@ -5911,6 +5925,7 @@ export const messages = {
         action: CATALOG_DELETE_COPY.action,
         actionLabel: CATALOG_DELETE_COPY.actionLabel,
         inUse: CATALOG_DELETE_COPY.inUse,
+        inUseHidden: CATALOG_DELETE_COPY.inUseHidden,
         unavailable: CATALOG_DELETE_COPY.unavailable,
         rows: { destination: 'Destination', region: 'Region', slug: 'Slug' },
         dialog: {
@@ -5925,6 +5940,8 @@ export const messages = {
           IN_USE: CATALOG_DELETE_COPY.inUseRace('destination'),
           NOT_FOUND: 'This destination no longer exists. The table has been refreshed.',
         },
+        /** Câu `IN_USE` ở hàng đã ẩn (Ruling F-b) — ngoài `errors` như bản của danh mục. */
+        inUseRaceHidden: CATALOG_DELETE_COPY.inUseRaceHidden('destination'),
         toast: { title: 'Destination deleted', body: CATALOG_DELETE_COPY.toastBody },
       },
     },

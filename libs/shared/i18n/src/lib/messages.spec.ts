@@ -36,6 +36,7 @@ describe('messages: admin catalog — đếm tour và luật xoá của danh m�
     expect(destinations.delete.action).toBe(categories.delete.action);
     expect(destinations.delete.actionLabel).toBe(categories.delete.actionLabel);
     expect(destinations.delete.inUse).toBe(categories.delete.inUse);
+    expect(destinations.delete.inUseHidden).toBe(categories.delete.inUseHidden);
     expect(destinations.delete.toast.body).toBe(categories.delete.toast.body);
   });
 
@@ -66,6 +67,17 @@ describe('messages: admin catalog — đếm tour và luật xoá của danh m�
     );
     expect(destinations.delete.errors.IN_USE).toBe(
       'A tour started using this destination a moment ago, so it can’t be deleted. Hide it instead.',
+    );
+  });
+
+  it('hàng ĐÃ ẨN: lý do khoá và câu IN_USE bỏ vế khuyên ẩn — nút bật tắt ở đó đang là Show (Ruling F-b)', () => {
+    expect(categories.delete.inUseHidden(1)).toBe('Used by 1 tour.');
+    expect(categories.delete.inUseHidden(3)).toBe('Used by 3 tours.');
+    expect(categories.delete.inUseRaceHidden).toBe(
+      'A tour started using this category a moment ago, so it can’t be deleted.',
+    );
+    expect(destinations.delete.inUseRaceHidden).toBe(
+      'A tour started using this destination a moment ago, so it can’t be deleted.',
     );
   });
 });

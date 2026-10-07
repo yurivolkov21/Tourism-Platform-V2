@@ -10,6 +10,7 @@ import {
   DELETE_CONTRACT_CODES,
   deleteBlockedReason,
   deleteConfirmRows,
+  deleteErrorCopy,
   isCreateStale,
   isDeleteStale,
   isSetActiveStale,
@@ -199,16 +200,40 @@ describe('lệnh xoá (ADR-0053)', () => {
 
   it('còn tour thì nói lý do, số ít và số nhiều; hết tour thì xoá được', () => {
     // So với `messages`: chữ ghim ở MỘT nơi là spec i18n (review RU2).
-    expect(deleteBlockedReason({ linkedTourCount: 1 })).toBe(t.delete.inUse(1));
-    expect(deleteBlockedReason({ linkedTourCount: 3 })).toBe(t.delete.inUse(3));
-    expect(deleteBlockedReason({ linkedTourCount: 0 })).toBeNull();
+    expect(deleteBlockedReason({ linkedTourCount: 1, isActive: true })).toBe(t.delete.inUse(1));
+    expect(deleteBlockedReason({ linkedTourCount: 3, isActive: true })).toBe(t.delete.inUse(3));
+    expect(deleteBlockedReason({ linkedTourCount: 0, isActive: true })).toBeNull();
+  });
+
+  it('hàng ĐÃ ẨN còn tour: lý do chỉ nói số tour, không khuyên ẩn — nút bật tắt ở đó đang là Show (Ruling F-b)', () => {
+    expect(deleteBlockedReason({ linkedTourCount: 1, isActive: false })).toBe(
+      t.delete.inUseHidden(1),
+    );
+    expect(deleteBlockedReason({ linkedTourCount: 3, isActive: false })).toBe(
+      t.delete.inUseHidden(3),
+    );
+    expect(deleteBlockedReason({ linkedTourCount: 0, isActive: false })).toBeNull();
   });
 
   it('khe deploy — API cũ chưa trả `linkedTourCount`: nút khoá với lý do chung, chỉ mở khi đúng 0 (review E2)', () => {
     // Trước bản vá: `undefined > 0` là false → nút MỞ ở mọi hàng, và hộp khẳng định
     // "No tour uses this category" cho cả hàng đang có tour.
-    expect(deleteBlockedReason({ linkedTourCount: undefined as unknown as number })).toBe(
-      t.delete.unavailable,
+    for (const isActive of [true, false]) {
+      expect(
+        deleteBlockedReason({ linkedTourCount: undefined as unknown as number, isActive }),
+      ).toBe(t.delete.unavailable);
+    }
+  });
+
+  it('câu lỗi IN_USE theo hàng: hàng đang hiện khuyên ẩn, hàng đã ẩn thì không (Ruling F-b)', () => {
+    expect(deleteErrorCopy('IN_USE', { isActive: true })).toBe(t.delete.errors.IN_USE);
+    expect(deleteErrorCopy('IN_USE', { isActive: false })).toBe(t.delete.inUseRaceHidden);
+  });
+
+  it('mã khác IN_USE đọc câu của codec như cũ, dù hàng đã ẩn', () => {
+    expect(deleteErrorCopy('NOT_FOUND', { isActive: false })).toBe(t.delete.errors.NOT_FOUND);
+    expect(deleteErrorCopy('GENERIC', { isActive: false })).toBe(
+      messages.admin.errors.write.GENERIC,
     );
   });
 

@@ -42,7 +42,8 @@ import {
  *
  * Nút Delete chỉ bật khi hàng 0 tour mọi trạng thái (`linkedTourCount`). Còn tour
  * thì nút khoá và tooltip gợi ý ẩn: ẩn đảo ngược được bằng một cú bấm, còn xoá thì
- * không (ADR-0053 thay quyết định "chỉ bật/tắt" của spec P4e-2 §2a). Server vẫn là
+ * không (ADR-0053 thay quyết định "chỉ bật/tắt" của spec P4e-2 §2a). Hàng đã ẩn thì
+ * tooltip và câu `IN_USE` chỉ nói lý do, không khuyên ẩn (Ruling F-b). Server vẫn là
  * phán quyết cuối — bảng có thể cũ hơn DB, và `IN_USE` khi ấy đóng hộp rồi làm mới.
  *
  * Hai nút mũi tên tắt ở hai biên theo `canMoveUp`/`canMoveDown` — bản soi
@@ -179,7 +180,8 @@ export function CategoryRowActions({
           copy: deleteDialogCopy(),
           rows: deleteConfirmRows(row),
           isStale: isDeleteStale,
-          errorCopy: deleteErrorCopy,
+          // Câu `IN_USE` theo trạng thái hiện/ẩn của hàng (Ruling F-b).
+          errorCopy: (code) => deleteErrorCopy(code, row),
           onSubmit: async () => {
             const result = await remove({ id: row.id });
             if (!result.ok) return { ok: false, code: result.code };

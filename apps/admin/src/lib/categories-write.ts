@@ -246,8 +246,19 @@ const deleteCodec = createWriteErrorCodec(t.delete.errors, { stale: ['IN_USE', '
 export const DELETE_CONTRACT_CODES = deleteCodec.codes;
 export type DeleteContractCode = keyof typeof t.delete.errors;
 export const classifyDeleteError = deleteCodec.classify;
-export const deleteErrorCopy = deleteCodec.copy;
 export const isDeleteStale = deleteCodec.isStale;
+
+/**
+ * Câu cho mã lỗi của lệnh xoá ở MỘT hàng: câu của codec, trừ `IN_USE` ở hàng đã ẩn — câu ấy bỏ vế
+ * "Hide it instead" vì nút bật tắt của hàng đang là Show (Ruling F-b). `errors` của i18n là tập mã
+ * contract, mỗi mã một câu, nên câu theo trạng thái hàng rẽ ở đây.
+ */
+export function deleteErrorCopy(
+  code: DeleteContractCode | TransportFailureCode,
+  row: { isActive: boolean },
+): string {
+  return code === 'IN_USE' && !row.isActive ? t.delete.inUseRaceHidden : deleteCodec.copy(code);
+}
 
 export type CategoryDeleteResult =
   | { ok: true; deleted: AdminCategoryDeleteResult }
@@ -263,10 +274,18 @@ export type DeleteCategoryAction = (
  * Chỉ mở khi đếm ĐÚNG bằng 0. Hàng không mang số tour — admin mới gọi API cũ trong khe giữa hai
  * lần deploy — thì khoá với lý do chung (review E2): mở kiểu "không lớn hơn 0" từng bật nút ở mọi
  * hàng và để hộp khẳng định "No tour uses…" cho cả hàng đang có tour.
+ *
+ * Còn tour thì hàng đang hiện được gợi ý ẩn; hàng đã ẩn chỉ nghe số tour, vì nút bật tắt của nó
+ * đang là Show (Ruling F-b).
  */
-export function deleteBlockedReason(row: { linkedTourCount: number }): string | null {
-  if (row.linkedTourCount === 0) return null;
-  return row.linkedTourCount > 0 ? t.delete.inUse(row.linkedTourCount) : t.delete.unavailable;
+export function deleteBlockedReason(row: {
+  linkedTourCount: number;
+  isActive: boolean;
+}): string | null {
+  const count = row.linkedTourCount;
+  if (count === 0) return null;
+  if (count > 0) return row.isActive ? t.delete.inUse(count) : t.delete.inUseHidden(count);
+  return t.delete.unavailable;
 }
 
 export function deleteDialogCopy() {

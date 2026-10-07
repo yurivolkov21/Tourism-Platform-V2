@@ -285,4 +285,38 @@ describe('DestinationRowActions — nút Delete (ADR-0053)', () => {
       description: t.delete.toast.body('Hội An'),
     });
   });
+
+  it('hàng ĐÃ ẨN còn tour: lý do khoá chỉ nói số tour — nút bật tắt cạnh đó đang là Show (Ruling F-b)', () => {
+    renderRow(row({ isActive: false }));
+
+    expect(
+      screen.getByRole('button', { name: t.delete.actionLabel('Hội An') }),
+    ).toHaveAccessibleDescription(t.delete.inUseHidden(4));
+  });
+
+  /** Bấm Delete ở hàng 0 tour rồi xác nhận, server trả `IN_USE` (một tour vừa gắn vào). */
+  async function deleteHitsInUse(isActive: boolean) {
+    const user = userEvent.setup();
+    const remove = vi.fn(async () => ({ ok: false as const, code: 'IN_USE' as const }));
+    const { onSettled } = renderRow(row({ isActive, tourCount: 0, linkedTourCount: 0 }), {
+      remove,
+    });
+
+    await user.click(screen.getByRole('button', { name: t.delete.actionLabel('Hội An') }));
+    const dialog = await screen.findByRole('dialog', { name: t.delete.dialog.title });
+    await user.click(within(dialog).getByRole('button', { name: t.delete.dialog.submit }));
+    await waitFor(() => expect(onSettled).toHaveBeenCalled());
+  }
+
+  it('hàng đang hiện gặp IN_USE: toast khuyên ẩn như cũ', async () => {
+    await deleteHitsInUse(true);
+
+    expect(errorToast).toHaveBeenCalledWith(t.delete.errors.IN_USE);
+  });
+
+  it('hàng ĐÃ ẨN gặp IN_USE: toast nói lý do, không khuyên ẩn (Ruling F-b)', async () => {
+    await deleteHitsInUse(false);
+
+    expect(errorToast).toHaveBeenCalledWith(t.delete.inUseRaceHidden);
+  });
 });
