@@ -30,7 +30,8 @@ describe('nguồn token màu', () => {
 // hẹp — review AL2), nên tầng của nó phải trên `--z-modal`; nhưng Select/Tooltip/Menu mở BÊN
 // TRONG hộp vẫn phải nổi trên nó, nên dưới `--z-popover`.
 describe('thang z-index', () => {
-  const z = (name: string) => Number(new Map<string, string>(src.rootExtras).get(name));
+  // Nguồn `.mjs` không có kiểu nên mỗi cặp ra `string[]` — tra theo phần tử đầu, thiếu thì NaN.
+  const z = (name: string) => Number(src.rootExtras.find(([key]) => key === name)?.[1]);
 
   it('--z-alert nằm giữa --z-modal và --z-popover', () => {
     expect(z('--z-alert')).toBeGreaterThan(z('--z-modal'));
