@@ -14,6 +14,14 @@ export type AuthFailure = AuthErrorKey | 'emailNotVerified';
 export type AuthResult = { ok: true } | { ok: false; error: AuthFailure };
 
 /**
+ * Kết quả riêng của Google: thêm `cancelled` (khách tự đóng cửa sổ trình
+ * duyệt). Tách khỏi `AuthFailure` vì đó không phải lỗi — không có câu để hiện —
+ * và các luồng khác đưa `AuthFailure` thẳng vào `placeAuthError`, thêm giá trị
+ * này vào đó là bắt mọi luồng phải xử lý một trường hợp chúng không bao giờ gặp.
+ */
+export type GoogleResult = AuthResult | { ok: false; error: 'cancelled' };
+
+/**
  * Hợp đồng DUY NHẤT giữa màn hình và hạ tầng auth (spec P5b-1 §6).
  *
  * Đợt P5b-1 chỉ có bản giả lập. Người làm hạ tầng viết bản thật bằng
@@ -23,7 +31,7 @@ export type AuthResult = { ok: true } | { ok: false; error: AuthFailure };
  */
 export interface AuthActions {
   signInWithEmail(input: { email: string; password: string }): Promise<AuthResult>;
-  signInWithGoogle(): Promise<AuthResult>;
+  signInWithGoogle(): Promise<GoogleResult>;
   signUpWithEmail(input: { name: string; email: string; password: string }): Promise<AuthResult>;
   verifyEmail(input: { email: string; otp: string }): Promise<AuthResult>;
   resendVerificationCode(input: { email: string }): Promise<AuthResult>;

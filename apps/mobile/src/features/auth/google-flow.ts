@@ -4,6 +4,8 @@ import { type AuthScreenName, placeAuthError } from './error-channel';
 
 export type GoogleOutcome =
   | { kind: 'success' }
+  // Khách tự đóng cửa sổ Google: không có gì để báo, màn đứng nguyên (F12).
+  | { kind: 'cancelled' }
   | { kind: 'formMessage'; tone: 'error'; text: string };
 
 /**
@@ -20,6 +22,7 @@ export async function submitGoogle(
 ): Promise<GoogleOutcome> {
   const result = await actions.signInWithGoogle();
   if (result.ok) return { kind: 'success' };
+  if (result.error === 'cancelled') return { kind: 'cancelled' };
 
   // `emailNotVerified` không tới được từ Google (nhà cung cấp đã xác minh email
   // hộ), nhưng kiểu dữ liệu vẫn cho phép — nói một câu chung còn hơn im lặng.

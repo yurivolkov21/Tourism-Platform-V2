@@ -17,7 +17,11 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AuthActionsProvider } from '@/features/auth/auth-actions';
 import { createBetterAuthActions } from '@/features/auth/better-auth-actions';
-import { OnboardingStoreProvider, onboardingStore } from '@/features/onboarding/onboarding-store';
+import {
+  OnboardingStoreProvider,
+  onboardingStore,
+  readHasSeen,
+} from '@/features/onboarding/onboarding-store';
 import { queryClient } from '@/lib/api/query-client';
 import { env } from '@/lib/env';
 
@@ -160,7 +164,7 @@ export default function RootLayout() {
 
     let cancelled = false;
 
-    void onboardingStore.hasSeen().then((seen) => {
+    void readHasSeen(onboardingStore).then((seen) => {
       if (cancelled) return;
       if (!seen) router.replace('/onboarding');
       setOnboardingChecked(true);

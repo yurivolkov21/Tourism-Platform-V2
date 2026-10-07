@@ -7,6 +7,7 @@ import { createBetterAuthActions } from './better-auth-actions';
 jest.mock('@/lib/auth-client', () => ({ getAuthClient: jest.fn() }));
 
 const mockClient = {
+  getSession: jest.fn(),
   signIn: { email: jest.fn(), social: jest.fn() },
   signUp: { email: jest.fn() },
   emailOtp: { verifyEmail: jest.fn(), sendVerificationOtp: jest.fn() },
@@ -68,7 +69,28 @@ describe('bản thật AuthActions — đăng nhập', () => {
     });
 
     mockClient.signIn.social.mockResolvedValue({ data: {}, error: null });
+    mockClient.getSession.mockResolvedValue({ data: { user: { id: 'u1' } }, error: null });
     await expect(actions.signInWithGoogle()).resolves.toEqual({ ok: true });
+  });
+
+  // F12 (review 06/10): huỷ cửa sổ Google thì plugin expoClient chỉ `return`,
+  // `signIn.social` vẫn trả error:null — không hỏi lại session thì app tưởng
+  // đã đăng nhập và đóng màn Sign in.
+  it('Google: huỷ cửa sổ (không có phiên) trả cancelled, không phải ok', async () => {
+    mockClient.signIn.social.mockResolvedValue({ data: { redirect: true }, error: null });
+    mockClient.getSession.mockResolvedValue({ data: null, error: null });
+
+    await expect(actions.signInWithGoogle()).resolves.toEqual({
+      ok: false,
+      error: 'cancelled',
+    });
+  });
+
+  it('Google: hỏi lại phiên hỏng (mạng đứt) thì báo generic', async () => {
+    mockClient.signIn.social.mockResolvedValue({ data: {}, error: null });
+    mockClient.getSession.mockRejectedValue(new Error('network down'));
+
+    await expect(actions.signInWithGoogle()).resolves.toEqual({ ok: false, error: 'generic' });
   });
 });
 

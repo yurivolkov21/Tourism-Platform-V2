@@ -22,6 +22,15 @@ describe('submitGoogle', () => {
     });
   });
 
+  // F12: khách tự đóng cửa sổ Google — không phải lỗi, nên không hiện khung đỏ.
+  it('huỷ cửa sổ Google thì im lặng, không báo lỗi cũng không coi là thành công', async () => {
+    const signInWithGoogle = jest.fn().mockResolvedValue({ ok: false, error: 'cancelled' });
+
+    await expect(submitGoogle({ ...actions, signInWithGoogle }, 'signIn')).resolves.toEqual({
+      kind: 'cancelled',
+    });
+  });
+
   it('lỗi không quy về ô nào vẫn nói ra ở khung cấp form', async () => {
     const signInWithGoogle = jest.fn().mockResolvedValue({ ok: false, error: 'tooManyRequests' });
 

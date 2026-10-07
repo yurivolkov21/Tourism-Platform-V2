@@ -1,6 +1,6 @@
 import { mapAuthError } from '@tourism/core';
 import { getAuthClient } from '@/lib/auth-client';
-import type { AuthActions, AuthResult } from './auth-actions';
+import type { AuthActions, AuthResult, GoogleResult } from './auth-actions';
 
 /**
  * Bản THẬT của `AuthActions` (bàn giao P5b-1 → hạ tầng, ADR-0017 §9) — thay
@@ -31,13 +31,23 @@ export function createBetterAuthActions(): AuthActions {
       }
     },
 
-    async signInWithGoogle(): Promise<AuthResult> {
+    async signInWithGoogle(): Promise<GoogleResult> {
       try {
-        const { error } = await getAuthClient().signIn.social({
+        const client = getAuthClient();
+        const { error } = await client.signIn.social({
           provider: 'google',
           callbackURL: '/',
         });
-        return error ? { ok: false, error: mapAuthError(error) } : { ok: true };
+        if (error) return { ok: false, error: mapAuthError(error) };
+
+        // F12: khách đóng cửa sổ Google thì `expoClient` chỉ `return` lặng lẽ,
+        // `signIn.social` vẫn trả `error: null` — nên "không lỗi" chưa có nghĩa
+        // là đã đăng nhập. Hỏi lại phiên thật: có user mới là thành công, không
+        // thì là khách tự huỷ. `disableCookieCache` để không đọc nhầm phiên cũ.
+        const { data: session } = await client.getSession({
+          query: { disableCookieCache: true },
+        });
+        return session?.user ? { ok: true } : { ok: false, error: 'cancelled' };
       } catch {
         return { ok: false, error: 'generic' };
       }

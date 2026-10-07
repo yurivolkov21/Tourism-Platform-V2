@@ -63,7 +63,10 @@ export default function LoginRoute() {
     setPending(false);
 
     if (outcome.kind === 'success') router.replace(consumeReturnPath() ?? '/');
-    else setFormMessage({ tone: outcome.tone, text: outcome.text });
+    else if (outcome.kind === 'formMessage') {
+      setFormMessage({ tone: outcome.tone, text: outcome.text });
+    }
+    // `cancelled`: khách tự đóng cửa sổ Google — màn đứng nguyên, không báo gì.
   };
 
   return (

@@ -48,6 +48,21 @@ export function createSecureStoreOnboardingStore(): OnboardingStore {
 }
 
 /**
+ * Đọc cờ "đã xem" mà KHÔNG BAO GIỜ reject (F9). `expo-secure-store` có thể ném
+ * (Keychain đang khoá, keystore Android hỏng); `_layout.tsx` chỉ gỡ splash sau
+ * khi đọc xong, nên một lần ném là app kẹt ở splash vĩnh viễn. Lỗi thì coi như
+ * đã xem: bỏ qua onboarding chỉ mất ba trang giới thiệu, còn kẹt splash là mất
+ * cả app.
+ */
+export async function readHasSeen(store: OnboardingStore): Promise<boolean> {
+  try {
+    return await store.hasSeen();
+  } catch {
+    return true;
+  }
+}
+
+/**
  * Bản mà app thật dùng, dựng MỘT lần ở module scope. Để ở đây (không phải trong
  * `_layout.tsx`) vì test cây route cũng cần chạm tới nó: mặc định là "chưa xem",
  * mà phần lớn test lại mô phỏng người đã xem — `jest.setup.js` mock sẵn
