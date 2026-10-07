@@ -4,6 +4,7 @@ import { AdminDestinationRowSchema } from '@tourism/contract';
 import { AppModule } from '../../app.module.js';
 import { prisma } from '../../auth/auth.config.js';
 import type { Prisma } from '../../generated/prisma/client.js';
+import { trackOpenTransactions } from '../../test/open-transactions.js';
 import { WebRevalidationService } from '../web-revalidation/web-revalidation.service.js';
 import { countLinkedTours } from './destination-tour-links.js';
 
@@ -39,24 +40,6 @@ const SEED = [
   // được với một bản lỡ tay sắp theo slug.
   { id: destId(3), slug: 'retired', name: 'An Bàng', region: 'Southern Vietnam', isActive: false },
 ] satisfies Prisma.DestinationCreateManyInput[];
-
-/**
- * Bọc `prisma.$transaction` để đếm transaction đang mở; trả hàm đọc số đếm (review S3). Ca "bust
- * SAU commit" của lệnh xoá đọc nó NGAY lúc bust được gọi: 0 nghĩa là transaction xoá đã commit.
- * Đọc DB trong mock thôi KHÔNG đủ: lượt đọc đi qua một kết nối khác của pool và thường tới
- * Postgres sau câu COMMIT, nên dời bust vào trong transaction vẫn xanh (đo 07/10: 3/3 lượt).
- */
-function trackOpenTransactions(): () => number {
-  let open = 0;
-  const run = prisma.$transaction.bind(prisma) as (...args: unknown[]) => Promise<unknown>;
-  vi.spyOn(prisma, '$transaction').mockImplementation(((...args: unknown[]) => {
-    open += 1;
-    return run(...args).finally(() => {
-      open -= 1;
-    });
-  }) as never);
-  return () => open;
-}
 
 function sessionCookie(res: { headers: Record<string, unknown> }): string {
   const raw = res.headers['set-cookie'];
