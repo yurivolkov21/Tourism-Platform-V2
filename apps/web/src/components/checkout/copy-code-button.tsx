@@ -5,8 +5,8 @@ import { Button } from '@tourism/ui/components/button';
 import { useState } from 'react';
 
 /**
- * Nút chép mã đặt chỗ (booking code) vào clipboard, dùng cạnh khối voucher ở
- * `BookingReceipt`. Nhãn tự đổi `Copy code → Copied` trong 2 giây rồi quay lại
+ * Nút chép mã đặt chỗ (booking code) vào clipboard, dùng ở cuống `BookingReceipt` và ô mã
+ * của voucher (`VoucherCode`). Nhãn tự đổi `Copy code → Copied` trong 2 giây rồi quay lại
  * — cùng pattern với `ShareRow` (blog), nhưng tách riêng vì đây là component
  * dùng lại ở nhiều màn checkout/account, không gắn với ngữ cảnh chia sẻ.
  */
