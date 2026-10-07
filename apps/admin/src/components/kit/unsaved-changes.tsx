@@ -20,10 +20,14 @@ import { leaveTarget } from '@/lib/unsaved-changes';
  *
  * Bọc CẢ khu làm việc (đầu trang, thanh bước, nội dung), không chỉ form: link rời
  * trang nằm ở thanh bước, ở nút Departures, ở link Next và Fix, ở nút Back và ở
- * sidebar — nên
- * provider nghe cú bấm ở `document`, pha CAPTURE, tức TRƯỚC `onClick` của
- * `next/link` (React gắn listener ở root, nằm dưới `document`). Chặn ở đó là
- * link không điều hướng; "Discard changes" thì tự `router.push` tới đúng đường.
+ * sidebar — nên provider nghe cú bấm ở `document`, pha CAPTURE, tức TRƯỚC pha bubble
+ * nơi React chạy mọi `onClick` (gốc React của App Router chính là `document`).
+ *
+ * Ở đó nó CHỈ `preventDefault`: `next/link` thấy `defaultPrevented` thì không điều
+ * hướng (`next/dist/client/app-dir/link.js`), thẻ `<a>` trần thì mất hành vi mặc định.
+ * Đừng `stopPropagation` (review AL5): nó nuốt luôn mọi `onClick` khác của cú bấm, kể
+ * cả lượt đóng menu của mục Quick Create — menu còn mở, nổi trên hộp hỏi và vẫn bấm
+ * được. "Discard changes" thì tự `router.push` tới đúng đường.
  *
  * Rời hẳn trang (đóng tab, gõ địa chỉ, link ra ngoài) là việc của
  * `beforeunload`. Nút Back của trình duyệt không qua đường nào trong hai đường
@@ -66,8 +70,8 @@ export function UnsavedChangesProvider({ children }: { children: React.ReactNode
         current: window.location.href,
       });
       if (href === null) return;
+      // CHỈ `preventDefault`, không `stopPropagation` (review AL5) — lý do ở JSDoc đầu file.
       event.preventDefault();
-      event.stopPropagation();
       setPendingHref(href);
     };
     window.addEventListener('beforeunload', onBeforeUnload);

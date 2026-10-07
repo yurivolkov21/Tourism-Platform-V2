@@ -1,10 +1,19 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { messages } from '@tourism/i18n';
+import { SidebarProvider } from '@tourism/ui/components/sidebar';
+import { TooltipProvider } from '@tourism/ui/components/tooltip';
+import Link from 'next/link';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { QuickCreateMenu } from '@/components/quick-create-menu';
 import { UnsavedChangesProvider, useReportUnsaved } from './unsaved-changes';
 
-const push = vi.fn();
-vi.mock('next/navigation', () => ({ useRouter: () => ({ push, refresh: vi.fn() }) }));
+const { push, navigate } = vi.hoisted(() => ({ push: vi.fn(), navigate: vi.fn() }));
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({ push, refresh: vi.fn() }),
+  usePathname: () => '/tours/ha-long',
+}));
+vi.mock('next/link', async () => (await import('@/test/next-link')).nextLinkMock(navigate));
 
 function Form({ dirty }: { dirty: boolean }) {
   useReportUnsaved(dirty);
@@ -20,7 +29,10 @@ function Page({ dirty, showForm = true }: { dirty: boolean; showForm?: boolean }
   );
 }
 
-beforeEach(() => push.mockReset());
+beforeEach(() => {
+  push.mockReset();
+  navigate.mockReset();
+});
 
 describe('UnsavedChangesProvider', () => {
   it('có thay đổi mà bấm link nội bộ → hỏi, chưa đi đâu cả', async () => {
@@ -35,23 +47,15 @@ describe('UnsavedChangesProvider', () => {
     expect(push).not.toHaveBeenCalled();
   });
 
-  it('link điều hướng trong onClick (như next/link) KHÔNG chạy khi đang hỏi', async () => {
-    // `next/link` điều hướng bằng `router.push` trong `onClick` của React, không
-    // qua hành vi mặc định của thẻ <a>. Provider phải chặn ở pha CAPTURE của
-    // `document` — trước listener gốc của React — nên onClick này không bao giờ chạy.
+  it('`next/link` KHÔNG điều hướng khi đang hỏi — nó thấy `defaultPrevented`', async () => {
+    // `next/link` điều hướng bằng router trong `onClick` của React, không qua hành vi mặc định
+    // của thẻ <a>, và nó bỏ cú bấm đã bị `preventDefault` ở pha CAPTURE của `document`. Bản giả
+    // (`@/test/next-link`) giữ đúng hợp đồng ấy — `onClick` VẪN chạy, chỉ điều hướng thì không
+    // (review AL5: chặn bằng `stopPropagation` nuốt luôn `onClick` của mục menu).
     const user = userEvent.setup();
-    const navigate = vi.fn();
     render(
       <UnsavedChangesProvider>
-        <a
-          href="/tours/ha-long/costs"
-          onClick={(event) => {
-            event.preventDefault();
-            navigate();
-          }}
-        >
-          Costs
-        </a>
+        <Link href="/tours/ha-long/costs">Costs</Link>
         <Form dirty />
       </UnsavedChangesProvider>,
     );
@@ -102,6 +106,35 @@ describe('UnsavedChangesProvider', () => {
     await user.click(screen.getByRole('link', { name: 'Itinerary' }));
 
     expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
+  });
+
+  it('bấm mục Quick Create sang trang khác: hộp hỏi mở, menu ĐÓNG, chưa đi đâu (review AL5)', async () => {
+    // Hộp hỏi chặn điều hướng nhưng không được nuốt `onClick` của mục menu — chính nó đóng menu.
+    // Menu nuốt mất thì vẫn mở, nổi trên hộp hỏi và vẫn bấm được.
+    const user = userEvent.setup();
+    render(
+      <TooltipProvider>
+        <SidebarProvider defaultOpen>
+          <UnsavedChangesProvider>
+            <QuickCreateMenu />
+            <Form dirty />
+          </UnsavedChangesProvider>
+        </SidebarProvider>
+      </TooltipProvider>,
+    );
+
+    await user.click(screen.getByRole('button', { name: messages.admin.shell.quickCreate }));
+    await user.click(
+      await screen.findByRole('menuitem', { name: messages.admin.tours.editor.create.action }),
+    );
+
+    expect(
+      await screen.findByRole('alertdialog', { name: 'Discard unsaved changes?' }),
+    ).toBeInTheDocument();
+    // `hidden: true`: hộp hỏi gắn `aria-hidden` cho mọi thứ ngoài nó, menu còn mở cũng bị giấu.
+    await waitFor(() => expect(screen.queryByRole('menu', { hidden: true })).toBeNull());
+    expect(navigate).not.toHaveBeenCalled();
+    expect(push).not.toHaveBeenCalled();
   });
 
   it('có thay đổi thì beforeunload bị chặn; không có thì không', () => {
