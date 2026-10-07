@@ -1,6 +1,12 @@
 import { act, fireEvent, render, screen, within } from '@testing-library/react-native';
 import type { ReactElement } from 'react';
-import { StyleSheet, Text } from 'react-native';
+import {
+  type GestureResponderEvent,
+  PanResponder,
+  type PanResponderGestureState,
+  StyleSheet,
+  Text,
+} from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { renderWithTheme } from '../test-utils';
 import { BottomSheet, shouldDismissDrag } from './bottom-sheet';
@@ -95,6 +101,38 @@ describe('BottomSheet', () => {
     });
     expect(screen.queryByText('Filters')).toBeNull();
     jest.useRealTimers();
+  });
+
+  // N2 (rà 07/10): RNTL không bắn được gesture responder thật, nên bắt config
+  // mà component đưa cho `PanResponder.create` rồi gọi thẳng `release`.
+  it('kéo tay nắm đóng tấm gọi onClose MỚI NHẤT, không phải bản của lần render đầu', async () => {
+    const createSpy = jest.spyOn(PanResponder, 'create');
+    const first = jest.fn();
+    const latest = jest.fn();
+    const { rerender } = await renderWithProviders(
+      <BottomSheet visible onClose={first}>
+        <Text>Filters</Text>
+      </BottomSheet>,
+    );
+    await act(async () => {
+      rerender(
+        <SafeAreaProvider initialMetrics={METRICS}>
+          <ThemeProvider scheme="light">
+            <BottomSheet visible onClose={latest}>
+              <Text>Filters</Text>
+            </BottomSheet>
+          </ThemeProvider>
+        </SafeAreaProvider>,
+      );
+    });
+
+    const config = createSpy.mock.calls[0]?.[0];
+    const gesture = { dy: 200, vy: 0 } as PanResponderGestureState;
+    config?.onPanResponderRelease?.({} as GestureResponderEvent, gesture);
+
+    expect(first).not.toHaveBeenCalled();
+    expect(latest).toHaveBeenCalledTimes(1);
+    createSpy.mockRestore();
   });
 
   // F3 (review 06/10): tấm có ô nhập (sửa tên, xoá tài khoản, hỏi ngày) bị bàn

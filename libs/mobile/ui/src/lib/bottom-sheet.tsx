@@ -72,6 +72,13 @@ export function BottomSheet({ visible, onClose, children }: BottomSheetProps) {
     // effect là no-op, không lặp animation.
   }, [visible, mounted, windowHeight, translateY]);
 
+  // N2 (rà 07/10): PanResponder dựng MỘT lần (useRef) nên closure của nó đóng
+  // băng `onClose` của lần render đầu — cha có guard kiểu `if (pending) return`
+  // thì kéo tay nắm luôn thấy `pending=false` cũ và đóng tấm giữa chừng. Đọc
+  // qua ref cập nhật mỗi render để kéo tay nắm gọi đúng `onClose` hiện tại.
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
+
   const panResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => false,
@@ -87,7 +94,7 @@ export function BottomSheet({ visible, onClose, children }: BottomSheetProps) {
         if (shouldDismissDrag(gesture.dy, gesture.vy)) {
           // Chỉ báo cha đóng — hiệu ứng trượt tiếp (từ vị trí đang kéo dở, giữ
           // đà ngón tay) do effect ở trên lo, cùng đường với mọi cách đóng khác.
-          onClose();
+          onCloseRef.current();
         } else {
           Animated.spring(translateY, { toValue: 0, useNativeDriver: true, bounciness: 4 }).start();
         }
