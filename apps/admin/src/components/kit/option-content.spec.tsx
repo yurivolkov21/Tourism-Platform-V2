@@ -80,4 +80,26 @@ describe('dòng lựa chọn dùng chung', () => {
     expect(within(item).getByText(LONG_NAME)).toHaveClass('truncate');
     expect(within(item).getByText('Hidden')).toHaveClass('shrink-0');
   });
+
+  it('tên bị cắt "…": phần tên mang `title` là tên đầy đủ, chữ phụ và tên đọc-màn-hình giữ nguyên', async () => {
+    // Menu lọc rộng 264px cắt từ ~28 ký tự: người dùng sáng mắt không có cách nào đọc đuôi tên.
+    const user = userEvent.setup();
+    const long: DropdownOption = { value: 'v:long', label: LONG_NAME, hint: 'Hidden' };
+    const button = renderMenu(DAY.value, [DAY, long]);
+
+    await user.click(button);
+    const item = await screen.findByRole('menuitemradio', { name: `${LONG_NAME} (Hidden)` });
+    expect(within(item).getByText(LONG_NAME)).toHaveAttribute('title', LONG_NAME);
+    expect(within(item).getByText('Hidden')).not.toHaveAttribute('title');
+  });
+
+  it('mục không có chữ phụ: phần tên cũng mang `title`, tên đọc-màn-hình vẫn đúng tên', async () => {
+    const user = userEvent.setup();
+    const long: DropdownOption = { value: 'v:long', label: LONG_NAME };
+    const trigger = renderPicker(DAY.value, [DAY, long]);
+
+    await user.click(trigger);
+    const option = await screen.findByRole('option', { name: LONG_NAME });
+    expect(within(option).getByText(LONG_NAME)).toHaveAttribute('title', LONG_NAME);
+  });
 });

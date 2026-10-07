@@ -35,6 +35,10 @@ export function optionName(option: Pick<DropdownOption, 'label' | 'hint'>): stri
  * nhau; chữ phụ `MENU_HINT` (`shrink-0`) không bao giờ bị cắt — mất nó là mất điều duy nhất nói
  * mục đã ẩn. Có chữ phụ thì phần nhìn thấy rời cây trợ năng, thay bằng MỘT câu `optionName`.
  *
+ * Phần tên mang `title` là tên đầy đủ: menu lọc rộng 264px cắt từ ~28 ký tự, và không có nó
+ * thì người dùng sáng mắt không có cách nào đọc đuôi tên. Chỉ phần tên — tên trợ năng vẫn do nội
+ * dung quyết, `title` của phần tử con không đổi nó.
+ *
  * Icon mang `data-icon="inline-start"`: nút `Button` của menu lọc đọc nó để nới đệm trái; danh
  * sách và ô Select không có luật nào cho thuộc tính này. KHÔNG đắp `size-*`: mục Select/Menu, ô
  * Select và `Button` đều sẵn `[&_svg:not([class*='size-'])]:size-4`, tự chúng lo cỡ.
@@ -46,7 +50,7 @@ export function OptionContent({ option }: { option: DropdownOption }) {
       {Icon ? <Icon aria-hidden="true" data-icon="inline-start" /> : null}
       {option.hint ? (
         <>
-          <span aria-hidden="true" className="truncate">
+          <span aria-hidden="true" className="truncate" title={option.label}>
             {option.label}
           </span>
           <span aria-hidden="true" className={MENU_HINT}>
@@ -55,7 +59,9 @@ export function OptionContent({ option }: { option: DropdownOption }) {
           <span className="sr-only">{optionName(option)}</span>
         </>
       ) : (
-        <span className="truncate">{option.label}</span>
+        <span className="truncate" title={option.label}>
+          {option.label}
+        </span>
       )}
     </>
   );
