@@ -115,3 +115,13 @@ Admin mới có MỘT bậc. Năm sự thật đo được quyết định thi�
    API.
 5. App mobile chỉ hiện câu báo khoá nếu nó dùng `mapAuthError` chung của `@tourism/core`.
 6. Reconcile đưa một Staff lên Owner không để lại dòng lịch sử.
+
+## AMEND 1 — Hai lệnh xoá của ADR-0053 (07/10)
+
+[ADR-0053](0053-delete-unused-categories-destinations.md) thêm `categories.delete` và
+`destinations.delete` (xoá danh mục, điểm đến chưa tour nào dùng). Cùng họ `tours.delete`,
+`posts.delete` — không đảo ngược được — nên xếp **Owner-only**: danh sách Owner-only thành
+**16**, 48 thủ tục Staff dùng được giữ nguyên, tổng 64. Doc P4f (spec và plan) đã đếm theo con
+số này và ẩn hai nút Delete với Staff (`c4c6d6da`, `23d39d7d`). Bảng `ADMIN_ACCESS` chưa có
+trong code vì P4f chưa thi công; lúc thi công, unit test ghim danh sách Owner-only phải có hai
+khoá này.
