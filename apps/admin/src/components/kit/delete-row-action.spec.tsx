@@ -1,5 +1,6 @@
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { messages } from '@tourism/i18n';
 import type * as React from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import { DeleteRowAction } from './delete-row-action';
@@ -19,7 +20,8 @@ const COPY = {
   cancel: 'Cancel',
 };
 
-const REASON = 'Used by 2 tours — hide it instead.';
+/** Lấy từ `messages` chứ không chép chữ: chữ ghim ở MỘT nơi là spec i18n (review RU2). */
+const REASON = messages.admin.categories.delete.inUse(2);
 
 /**
  * Tìm câu lý do trong POPUP tooltip, không theo chữ trần: câu ấy còn nằm trong span `hidden`

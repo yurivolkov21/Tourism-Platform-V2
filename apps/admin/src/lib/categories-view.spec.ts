@@ -73,10 +73,11 @@ describe('toCategoryRowVMs', () => {
       row(1, { tourCount: 3, linkedTourCount: 5 }),
       row(2, { tourCount: 0, linkedTourCount: 0 }),
     ]);
-    expect(busy?.toursLabel).toBe('5 tours');
-    expect(busy?.publishedLabel).toBe('3 published');
+    // So với `messages`: chữ ghim ở MỘT nơi là spec i18n (review RU2).
+    expect(busy?.toursLabel).toBe(t.list.tours(5));
+    expect(busy?.publishedLabel).toBe(t.list.published(3));
     expect(busy?.linkedTourCount).toBe(5);
-    expect(empty?.toursLabel).toBe('No tours');
+    expect(empty?.toursLabel).toBe(t.list.noTours);
     expect(empty?.publishedLabel).toBeNull();
   });
 

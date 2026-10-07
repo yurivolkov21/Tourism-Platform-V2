@@ -67,9 +67,10 @@ describe('toDestinationRowVM — phần còn lại', () => {
   it('ô Tours: tổng mọi trạng thái là dòng chính, số đang bán là dòng phụ; 0 thì "No tours"', () => {
     const busy = toDestinationRowVM(row({ tourCount: 3, linkedTourCount: 5 }));
     const empty = toDestinationRowVM(row({ tourCount: 0, linkedTourCount: 0 }));
-    expect(busy.toursLabel).toBe('5 tours');
-    expect(busy.publishedLabel).toBe('3 published');
-    expect(empty.toursLabel).toBe('No tours');
+    // So với `messages`: chữ ghim ở MỘT nơi là spec i18n (review RU2).
+    expect(busy.toursLabel).toBe(t.list.tours(5));
+    expect(busy.publishedLabel).toBe(t.list.published(3));
+    expect(empty.toursLabel).toBe(t.list.noTours);
     expect(empty.publishedLabel).toBeNull();
   });
 

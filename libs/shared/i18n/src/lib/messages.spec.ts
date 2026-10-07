@@ -23,6 +23,44 @@ describe('messages: tourDetail.itinerary.stopsSummary', () => {
   });
 });
 
+describe('messages: admin catalog — đếm tour và luật xoá của danh mục và điểm đến (review RU2)', () => {
+  const categories = messages.admin.categories;
+  const destinations = messages.admin.destinations;
+
+  it('hai bảng dùng CHÍNH một bộ chữ — sửa một chỗ là đổi cả hai', () => {
+    // So danh tính hàm (`toBe`), không so chữ in ra: hai bản chép tay giống hệt nhau vẫn qua
+    // phép so chữ, mà đó đúng là thứ sẽ trôi lệch khi chỉ một bản được sửa.
+    expect(destinations.list.tours).toBe(categories.list.tours);
+    expect(destinations.list.published).toBe(categories.list.published);
+    expect(destinations.list.noTours).toBe(categories.list.noTours);
+    expect(destinations.delete.action).toBe(categories.delete.action);
+    expect(destinations.delete.actionLabel).toBe(categories.delete.actionLabel);
+    expect(destinations.delete.inUse).toBe(categories.delete.inUse);
+    expect(destinations.delete.toast.body).toBe(categories.delete.toast.body);
+  });
+
+  it('chữ được ghim ở MỘT nơi này — spec của admin so với `messages`, không chép lại', () => {
+    expect(categories.list.tours(1)).toBe('1 tour');
+    expect(categories.list.tours(3)).toBe('3 tours');
+    expect(categories.list.published(2)).toBe('2 published');
+    expect(categories.list.noTours).toBe('No tours');
+    expect(categories.delete.action).toBe('Delete');
+    expect(categories.delete.actionLabel('Cruises')).toBe('Delete Cruises');
+    expect(categories.delete.inUse(1)).toBe('Used by 1 tour — hide it instead.');
+    expect(categories.delete.inUse(3)).toBe('Used by 3 tours — hide it instead.');
+    expect(categories.delete.toast.body('Cruises')).toBe('Cruises is gone.');
+  });
+
+  it('câu IN_USE của hai bảng chỉ khác danh từ', () => {
+    expect(categories.delete.errors.IN_USE).toBe(
+      'A tour started using this category a moment ago, so it can’t be deleted. Hide it instead.',
+    );
+    expect(destinations.delete.errors.IN_USE).toBe(
+      'A tour started using this destination a moment ago, so it can’t be deleted. Hide it instead.',
+    );
+  });
+});
+
 describe('messages: mobile.appShell (P5a — vỏ điều hướng)', () => {
   const shell = messages.mobile.appShell;
 

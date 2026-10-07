@@ -198,8 +198,9 @@ describe('lệnh xoá (ADR-0053)', () => {
   });
 
   it('còn tour thì nói lý do, số ít và số nhiều; hết tour thì xoá được', () => {
-    expect(deleteBlockedReason({ linkedTourCount: 1 })).toBe('Used by 1 tour — hide it instead.');
-    expect(deleteBlockedReason({ linkedTourCount: 3 })).toBe('Used by 3 tours — hide it instead.');
+    // So với `messages`: chữ ghim ở MỘT nơi là spec i18n (review RU2).
+    expect(deleteBlockedReason({ linkedTourCount: 1 })).toBe(t.delete.inUse(1));
+    expect(deleteBlockedReason({ linkedTourCount: 3 })).toBe(t.delete.inUse(3));
     expect(deleteBlockedReason({ linkedTourCount: 0 })).toBeNull();
   });
 

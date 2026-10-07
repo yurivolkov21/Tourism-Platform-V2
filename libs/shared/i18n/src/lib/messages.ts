@@ -57,6 +57,28 @@ const SLUG_SHAPE_COPY =
   'Use lowercase letters and numbers, with single hyphens between words — for example day-trips.';
 const SLUG_HINT_COPY = 'Set once. It appears in shared links, so it cannot be changed later.';
 
+// MỘT bộ chữ cho ô "Tours" và cho nút Delete của hai bảng tra cứu catalog (danh mục, điểm
+// đến). Luật xoá của ADR-0053 — đang có tour thì khoá, gợi ý ẩn — là MỘT luật cho cả hai bảng,
+// nên cùng luật thì cùng câu, như `CATALOG_VISIBILITY_COPY` ở trên. Hai khối từng chép tay y
+// hệt nhau mà không lưới nào bắt được lúc chúng lệch nhau (review RU2). Câu chỉ khác danh từ
+// thì thành hàm nhận danh từ.
+const CATALOG_TOUR_COUNT_COPY = {
+  tours: (count: number) => (count === 1 ? '1 tour' : `${count} tours`),
+  /** Dòng mờ dưới tổng tour: số đang bán (spec 2026-10-05 §3.3). */
+  published: (count: number) => `${count} published`,
+  noTours: 'No tours',
+} as const;
+const CATALOG_DELETE_COPY = {
+  action: 'Delete',
+  actionLabel: (name: string) => `Delete ${name}`,
+  inUse: (count: number) =>
+    count === 1 ? 'Used by 1 tour — hide it instead.' : `Used by ${count} tours — hide it instead.`,
+  /** Câu của mã `IN_USE`: bảng nói 0 tour mà DB vừa có tour gắn vào. */
+  inUseRace: (noun: string) =>
+    `A tour started using this ${noun} a moment ago, so it can’t be deleted. Hide it instead.`,
+  toastBody: (name: string) => `${name} is gone.`,
+} as const;
+
 // Số câu hỏi và số chính sách của bước FAQ & policies — MỘT bản cho dòng trạng thái của
 // thanh bước lẫn cột phải của bước ấy, để hai chỗ không trôi lệch (vòng review F19).
 const QUESTION_COUNT_COPY = (n: number) => (n === 1 ? '1 question' : `${n} questions`);
@@ -5562,10 +5584,9 @@ export const messages = {
           status: 'Status',
           actions: 'Actions',
         },
-        tours: (count: number) => (count === 1 ? '1 tour' : `${count} tours`),
-        /** Dòng mờ dưới tổng tour: số đang bán (spec 2026-10-05 §3.3). */
-        published: (count: number) => `${count} published`,
-        noTours: 'No tours',
+        tours: CATALOG_TOUR_COUNT_COPY.tours,
+        published: CATALOG_TOUR_COUNT_COPY.published,
+        noTours: CATALOG_TOUR_COUNT_COPY.noTours,
         inherited: 'No description',
         active: CATALOG_VISIBILITY_COPY.visible,
         inactive: CATALOG_VISIBILITY_COPY.hidden,
@@ -5668,12 +5689,9 @@ export const messages = {
       },
       /** Xoá danh mục chưa tour nào dùng (ADR-0053). */
       delete: {
-        action: 'Delete',
-        actionLabel: (name: string) => `Delete ${name}`,
-        inUse: (count: number) =>
-          count === 1
-            ? 'Used by 1 tour — hide it instead.'
-            : `Used by ${count} tours — hide it instead.`,
+        action: CATALOG_DELETE_COPY.action,
+        actionLabel: CATALOG_DELETE_COPY.actionLabel,
+        inUse: CATALOG_DELETE_COPY.inUse,
         rows: { category: 'Category', slug: 'Slug' },
         dialog: {
           title: 'Delete this category?',
@@ -5684,11 +5702,10 @@ export const messages = {
         },
         /** Mã của contract `admin.categories.delete` — `createWriteErrorCodec` derive từ keys. */
         errors: {
-          IN_USE:
-            'A tour started using this category a moment ago, so it can’t be deleted. Hide it instead.',
+          IN_USE: CATALOG_DELETE_COPY.inUseRace('category'),
           NOT_FOUND: 'This category no longer exists. The table has been refreshed.',
         },
-        toast: { title: 'Category deleted', body: (name: string) => `${name} is gone.` },
+        toast: { title: 'Category deleted', body: CATALOG_DELETE_COPY.toastBody },
       },
     },
     /**
@@ -5697,7 +5714,8 @@ export const messages = {
      *
      * Chữ của công tắc ẩn/hiện, câu lỗi khuôn slug và câu gợi ý slug là CHÍNH
      * hằng của danh mục (bài học 8 và 20 của plan P4e-2): cùng một luật thì cùng
-     * một câu, hai bảng nói hai chữ là người đọc tưởng hai hành vi.
+     * một câu, hai bảng nói hai chữ là người đọc tưởng hai hành vi. Chữ đếm tour
+     * và chữ của nút Delete cũng vậy (review RU2).
      *
      * Mọi câu nói về hệ quả của nút Hide lấy từ bảng đo spec §4.6 (Task 9a B1),
      * KHÔNG từ danh sách ba mục của bản spec đầu — danh sách ấy thiếu trang chủ,
@@ -5722,10 +5740,9 @@ export const messages = {
           status: 'Status',
           actions: 'Actions',
         },
-        tours: (count: number) => (count === 1 ? '1 tour' : `${count} tours`),
-        /** Dòng mờ dưới tổng tour: số đang bán (spec 2026-10-05 §3.3). */
-        published: (count: number) => `${count} published`,
-        noTours: 'No tours',
+        tours: CATALOG_TOUR_COUNT_COPY.tours,
+        published: CATALOG_TOUR_COUNT_COPY.published,
+        noTours: CATALOG_TOUR_COUNT_COPY.noTours,
         inherited: 'No description',
         /**
          * Chuỗi trong DB không khớp vùng nào — `findRegion` trả rỗng. Điểm đến
@@ -5873,12 +5890,9 @@ export const messages = {
       },
       /** Xoá điểm đến chưa tour nào dùng (ADR-0053). */
       delete: {
-        action: 'Delete',
-        actionLabel: (name: string) => `Delete ${name}`,
-        inUse: (count: number) =>
-          count === 1
-            ? 'Used by 1 tour — hide it instead.'
-            : `Used by ${count} tours — hide it instead.`,
+        action: CATALOG_DELETE_COPY.action,
+        actionLabel: CATALOG_DELETE_COPY.actionLabel,
+        inUse: CATALOG_DELETE_COPY.inUse,
         rows: { destination: 'Destination', region: 'Region', slug: 'Slug' },
         dialog: {
           title: 'Delete this destination?',
@@ -5889,11 +5903,10 @@ export const messages = {
         },
         /** Mã của contract `admin.destinations.delete` — `createWriteErrorCodec` derive từ keys. */
         errors: {
-          IN_USE:
-            'A tour started using this destination a moment ago, so it can’t be deleted. Hide it instead.',
+          IN_USE: CATALOG_DELETE_COPY.inUseRace('destination'),
           NOT_FOUND: 'This destination no longer exists. The table has been refreshed.',
         },
-        toast: { title: 'Destination deleted', body: (name: string) => `${name} is gone.` },
+        toast: { title: 'Destination deleted', body: CATALOG_DELETE_COPY.toastBody },
       },
     },
     /**
