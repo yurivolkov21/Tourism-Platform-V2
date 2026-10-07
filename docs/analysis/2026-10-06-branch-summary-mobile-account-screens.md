@@ -250,14 +250,19 @@ lệnh dưới đây người chạy, mỗi tiến trình một cửa sổ Git B
    blog và khách `…@example.com`, mật khẩu `Nexora!Demo2026` (khi
    `SEED_CUSTOMER_PASSWORD` trống). Lấy email ở bảng `users` bằng pgAdmin (đi
    kèm PostgreSQL 17 trên máy — `psql` không có trên PATH).
-4. **API** (ở `apps/api`): `pnpm dev` → cổng 3001, nghe `0.0.0.0` nên điện thoại
+4. **`apps/api/.env.local` phải có** dòng
+   `TRUSTED_ORIGINS=http://localhost:3000,http://localhost:3002,nexora://,exp://`.
+   Expo Go gửi origin `exp://<IP-LAN>:8081`; thiếu `exp://` thì đăng ký/đăng
+   nhập từ điện thoại bị 403 và chỉ hiện "Something went wrong" (dính 07/10 —
+   `.env.local` chỉ có `DATABASE_URL`, mặc định của `env.ts` không có mobile).
+5. **API** (ở `apps/api`): `pnpm dev` → cổng 3001, nghe `0.0.0.0` nên điện thoại
    gọi được. Kịch bản N1–N6 không cần email. Cần OTP/link reset thì chạy thêm
    `pnpm dev:worker` (cửa sổ khác) — `.env.local` không bật `WORKER_INLINE` nên
    API một mình không drain outbox; thiếu `RESEND_API_KEY` thì worker in mail ra log.
-5. **Mobile** (ở `apps/mobile`): `pnpm dev` (thêm `-- -c` để xoá cache Metro),
+6. **Mobile** (ở `apps/mobile`): `pnpm dev` (thêm `-- -c` để xoá cache Metro),
    quét QR bằng Expo Go. Lần đầu cho Node qua tường lửa Windows (mạng Private).
    Khác mạng thì `pnpm dev:tunnel`.
-6. Web (`apps/web`, cổng 3000) chỉ cần cho bước "Read this on…" và các link pháp lý.
+7. Web (`apps/web`, cổng 3000) chỉ cần cho bước "Read this on…" và các link pháp lý.
 
 Không test được ở local: đổi/xoá avatar (thiếu `CLOUDINARY_API_KEY/SECRET`),
 Google (thiếu `GOOGLE_CLIENT_ID`), email thật (thiếu Resend).
