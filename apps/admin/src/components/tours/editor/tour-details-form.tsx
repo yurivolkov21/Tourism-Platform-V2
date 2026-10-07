@@ -27,6 +27,7 @@ import { LockIcon } from 'lucide-react';
 import { useId, useState } from 'react';
 import { FormField } from '@/components/kit/form-field';
 import { ListEditor } from '@/components/kit/list-editor';
+import { optionName } from '@/components/kit/option-content';
 import { Picker } from '@/components/kit/picker';
 import { EditorFormFrame } from '@/components/tours/editor/editor-form-frame';
 import {
@@ -179,10 +180,15 @@ export function TourDetailsForm({
       label: messages.toursPage.difficultyLabels[level],
     })),
   ];
-  /** Tên điểm đến của một dòng cho radio điểm chính; dòng chưa chọn thì "destination N". */
-  const destinationLabel = (line: DestinationDraft, index: number) =>
-    destinationOptions.find((option) => option.value === line.destinationId)?.label ??
-    t.destinationName(index + 1);
+  /**
+   * Tên điểm đến của một dòng cho radio điểm chính — đọc như ô và menu lọc (`optionName`): điểm
+   * đến đã ẩn kèm "(Hidden)", không thì radio giấu mất điều ô ngay trước nói (review B1). Dòng
+   * chưa chọn thì "destination N".
+   */
+  const destinationLabel = (line: DestinationDraft, index: number) => {
+    const option = destinationOptions.find((item) => item.value === line.destinationId);
+    return option ? optionName(option) : t.destinationName(index + 1);
+  };
   const lineError = (key: string) => errors.lines?.[key];
   const durationError =
     errors.durationDays ??

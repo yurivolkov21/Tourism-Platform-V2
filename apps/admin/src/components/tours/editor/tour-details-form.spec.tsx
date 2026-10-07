@@ -205,6 +205,24 @@ describe('TourDetailsForm', () => {
     ]);
   });
 
+  it('radio điểm chính của điểm đến ĐÃ ẨN đọc kèm "(Hidden)", điểm đến đang hiện thì không', () => {
+    // Review B1: trước nhánh radio đọc "Primary: An Bàng (hidden)"; đổi sang option tách chữ
+    // phụ thì radio chỉ còn "Primary: An Bàng" — người dùng trình đọc màn hình chọn nó làm điểm
+    // chính mà không biết điểm đến đang ẩn. Cách đọc chung với ô và menu lọc (`optionName`).
+    renderForm(
+      detailFixture({
+        destinations: [
+          { destinationId: DEST_A, isPrimary: true },
+          { destinationId: HIDDEN_DEST, isPrimary: false },
+        ],
+      }),
+    );
+    const hidden = messages.admin.option.withHint('An Bàng', messages.admin.tours.list.hiddenHint);
+
+    expect(screen.getByRole('radio', { name: t.primaryFor(hidden) })).not.toBeChecked();
+    expect(screen.getByRole('radio', { name: t.primaryFor('Hạ Long') })).toBeChecked();
+  });
+
   it('xoá dòng đang là điểm chính → dòng đầu còn lại thành điểm chính', async () => {
     const save = vi.fn().mockResolvedValue({ ok: true, detail: detailFixture() });
     const detail = detailFixture({
