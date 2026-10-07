@@ -177,7 +177,6 @@ export function CategoriesTable({
           header: t.list.columns.tours,
           cell: ({ row }) => (
             <TourCountCell
-              total={row.original.linkedTourCount}
               totalLabel={row.original.toursLabel}
               publishedLabel={row.original.publishedLabel}
             />
