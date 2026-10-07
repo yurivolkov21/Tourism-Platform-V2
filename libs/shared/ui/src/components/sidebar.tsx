@@ -375,6 +375,9 @@ function SidebarGroup({ className, ...props }: React.ComponentProps<'div'>) {
   );
 }
 
+// `pointer-events-none` đi cùng điều kiện với `opacity-0`: ở cột icon nhãn chỉ mờ đi và trượt lên
+// `-mt-8`, đè nửa dưới mục cuối của nhóm trên mà vẫn nhận chuột — bấm vào đó không có gì xảy ra
+// (đo Task 19 ở nút Quick Create, review AL7). Nếu vendor lại từ upstream, giữ nguyên chỗ này.
 function SidebarGroupLabel({
   className,
   render,
@@ -385,7 +388,7 @@ function SidebarGroupLabel({
     props: mergeProps<'div'>(
       {
         className: cn(
-          'flex h-8 shrink-0 items-center rounded-md px-2 text-xs font-medium text-sidebar-foreground/70 ring-sidebar-ring outline-hidden transition-[margin,opacity] duration-200 ease-linear group-data-[collapsible=icon]:-mt-8 group-data-[collapsible=icon]:opacity-0 focus-visible:ring-2 [&>svg]:size-4 [&>svg]:shrink-0',
+          'flex h-8 shrink-0 items-center rounded-md px-2 text-xs font-medium text-sidebar-foreground/70 ring-sidebar-ring outline-hidden transition-[margin,opacity] duration-200 ease-linear group-data-[collapsible=icon]:pointer-events-none group-data-[collapsible=icon]:-mt-8 group-data-[collapsible=icon]:opacity-0 focus-visible:ring-2 [&>svg]:size-4 [&>svg]:shrink-0',
           className,
         ),
       },
