@@ -1,4 +1,4 @@
-import { useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useInfiniteQuery } from '@tanstack/react-query';
 import { messages } from '@tourism/i18n';
 import { router } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
@@ -11,6 +11,7 @@ import { orpc, withMobileAuth } from '@/lib/api/client';
 import { getAuthClient } from '@/lib/auth-client';
 import { cloudinaryUrl } from '@/lib/cloudinary-url';
 import { formatMoney } from '@/lib/format-money';
+import { useWishlistSetMutation } from '@/lib/wishlist-mutation';
 
 /**
  * Route Saved (S1–S3, mục 2 spec P5b-4). Chưa đăng nhập → `AuthGateScreen`
@@ -24,7 +25,6 @@ export default function SavedRoute() {
 
   const { data: session } = getAuthClient().useSession();
   const signedIn = Boolean(session?.user);
-  const queryClient = useQueryClient();
 
   const { saved } = messages.mobile;
 
@@ -66,32 +66,22 @@ export default function SavedRoute() {
     return () => clearTimeout(id);
   }, [wishlistError]);
 
-  const setWishlistMutation = useMutation(
-    orpc.wishlist.set.mutationOptions({ context: withMobileAuth() }),
-  );
+  // N1: rollback + invalidate nằm trong hook dùng chung, chạy cho TỪNG lượt —
+  // gỡ A rồi B nhanh mà A hỏng thì A vẫn hiện lại. Hook invalidate cả
+  // `wishlist.check` vì Explore/tour detail mount sẵn song song đọc query riêng.
+  const setWishlistMutation = useWishlistSetMutation(({ tourId }) => {
+    setRemovedIds((current) => {
+      const next = new Set(current);
+      next.delete(tourId);
+      return next;
+    });
+    setWishlistError(messages.wishlist.error);
+  });
 
   function handleRemovePress(tourId: string) {
     // Lạc quan (S1): ẩn khỏi danh sách ngay, hỏng thì hiện lại + báo lỗi ngắn.
     setRemovedIds((current) => new Set(current).add(tourId));
-    setWishlistMutation.mutate(
-      { tourId, wished: false },
-      {
-        onError: () => {
-          setRemovedIds((current) => {
-            const next = new Set(current);
-            next.delete(tourId);
-            return next;
-          });
-          setWishlistError(messages.wishlist.error);
-        },
-        // Explore/tour-detail (E1/E4/D6) mount sẵn song song, đọc `wishlist.check`
-        // RIÊNG — bỏ lưu ở đây mà không invalidate thì tim ở đó vẫn đứng ĐẶC sai.
-        onSettled: () => {
-          queryClient.invalidateQueries({ queryKey: orpc.wishlist.list.key() });
-          queryClient.invalidateQueries({ queryKey: orpc.wishlist.check.key() });
-        },
-      },
-    );
+    setWishlistMutation.mutate({ tourId, wished: false });
   }
 
   function recordReturn() {

@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { messages } from '@tourism/i18n';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
@@ -21,6 +21,7 @@ import { getAuthClient } from '@/lib/auth-client';
 import { cloudinaryUrl } from '@/lib/cloudinary-url';
 import { formatMoney } from '@/lib/format-money';
 import { toggleWishedId } from '@/lib/wishlist';
+import { isWishlistMutating, useWishlistSetMutation } from '@/lib/wishlist-mutation';
 
 /**
  * Sort chạy SERVER (handoff §6.1): đúng 4 kiểu `toursPage.sortOptions` — API
@@ -122,11 +123,14 @@ export default function ExploreRoute() {
       enabled: signedIn && tourIds.length > 0,
     }),
   );
+  // N6: còn lượt `wishlist.set` đang bay thì bỏ qua dữ liệu check — nó mang
+  // trạng thái giữa chừng, ghi vào là tim nháy ngược. Lượt cuối settle sẽ
+  // invalidate nên luôn có một lượt check mới về để chốt.
   useEffect(() => {
-    if (wishlistCheckQuery.data !== undefined) {
+    if (wishlistCheckQuery.data !== undefined && !isWishlistMutating(queryClient)) {
       setWishedIds(new Set(wishlistCheckQuery.data.wishedTourIds));
     }
-  }, [wishlistCheckQuery.data]);
+  }, [wishlistCheckQuery.data, queryClient]);
   useEffect(() => {
     if (!signedIn) setWishedIds(new Set());
   }, [signedIn]);
@@ -136,15 +140,18 @@ export default function ExploreRoute() {
     return () => clearTimeout(id);
   }, [wishlistError]);
 
-  const setWishlistMutation = useMutation(
-    orpc.wishlist.set.mutationOptions({ context: withMobileAuth() }),
-  );
-  // Tab Saved (S1) và tour detail đọc `wishlist.list`/`wishlist.check` RIÊNG —
-  // không tự biết tim vừa đổi ở đây nếu không invalidate cả hai.
-  function invalidateWishlist() {
-    queryClient.invalidateQueries({ queryKey: orpc.wishlist.list.key() });
-    queryClient.invalidateQueries({ queryKey: orpc.wishlist.check.key() });
-  }
+  // N1: rollback nằm trong hook dùng chung, chạy cho TỪNG lượt — kể cả khi
+  // khách bấm tim tour khác ngay sau đó. Hook cũng invalidate `wishlist.list`/
+  // `wishlist.check` cho tab Saved và tour detail (đọc query riêng).
+  const setWishlistMutation = useWishlistSetMutation(({ tourId, wished }) => {
+    setWishedIds((current) => {
+      const next = new Set(current);
+      if (wished) next.delete(tourId);
+      else next.add(tourId);
+      return next;
+    });
+    setWishlistError(messages.wishlist.error);
+  });
 
   // D3 — cùng khuôn D6 ở tour detail: khách bấm tim khi CHƯA đăng nhập, đăng
   // nhập xong quay về Explore (tab giữ mount) thì tự lưu đúng tour đó. Chỉ
@@ -157,20 +164,7 @@ export default function ExploreRoute() {
     if (replay === undefined) return;
     const { tourId } = replay;
     setWishedIds((current) => new Set(current).add(tourId));
-    setWishlistMutation.mutate(
-      { tourId, wished: true },
-      {
-        onError: () => {
-          setWishedIds((current) => {
-            const next = new Set(current);
-            next.delete(tourId);
-            return next;
-          });
-          setWishlistError(messages.wishlist.error);
-        },
-        onSettled: invalidateWishlist,
-      },
-    );
+    setWishlistMutation.mutate({ tourId, wished: true });
   }, [signedIn]);
 
   // Ghi "quay về Explore + tự lưu tour vừa bấm" TRƯỚC khi rời sang Sign in /
@@ -197,16 +191,7 @@ export default function ExploreRoute() {
     const next = !wishedIds.has(tour.id);
     // Lạc quan (D6): đổi ngay, hỏng thì trả lại + báo lỗi ngắn.
     setWishedIds((current) => toggleWishedId(current, tour.id));
-    setWishlistMutation.mutate(
-      { tourId: tour.id, wished: next },
-      {
-        onError: () => {
-          setWishedIds((current) => toggleWishedId(current, tour.id));
-          setWishlistError(messages.wishlist.error);
-        },
-        onSettled: invalidateWishlist,
-      },
-    );
+    setWishlistMutation.mutate({ tourId: tour.id, wished: next });
   }
   // E2: dùng CHUNG `search` đã debounce với tours.list — địa danh và tour
   // xuất hiện cùng lúc thay vì địa danh nhảy sớm hơn tour ~300ms.

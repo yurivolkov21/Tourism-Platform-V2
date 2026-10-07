@@ -40,6 +40,7 @@ import { orpc, withMobileAuth } from '@/lib/api/client';
 import { getAuthClient } from '@/lib/auth-client';
 import { cloudinaryUrl } from '@/lib/cloudinary-url';
 import { formatMoney } from '@/lib/format-money';
+import { isWishlistMutating, useWishlistSetMutation } from '@/lib/wishlist-mutation';
 
 /**
  * Route chi tiết tour (D1/D7 — ADR-0047 T5). Gọi `catalog.tours.bySlug`,
@@ -85,16 +86,6 @@ export default function TourDetailRoute() {
   const { data: session } = getAuthClient().useSession();
   const signedIn = Boolean(session?.user);
   const queryClient = useQueryClient();
-  // D6 fix — sau khi mutation tim (replay HOẶC bấm tay) settle, ép `wishlist.check`
-  // refetch: màn có thể vẫn mount sẵn dưới modal đăng nhập nên GET (enabled khi vừa
-  // `signedIn`) và POST save có thể đua nhau; GET cũ về sau sẽ đè `wished` sai nếu
-  // không invalidate. Kèm `wishlist.list` (S1, P5b-4) — tab Saved mount sẵn song
-  // song (expo-router giữ mount qua các tab) và đọc query RIÊNG, không tự biết tim
-  // vừa đổi ở đây nếu không invalidate luôn cả hai.
-  function invalidateWishlist() {
-    queryClient.invalidateQueries({ queryKey: orpc.wishlist.check.key() });
-    queryClient.invalidateQueries({ queryKey: orpc.wishlist.list.key() });
-  }
 
   const query = useQuery(orpc.catalog.tours.bySlug.queryOptions({ input: { slug } }));
   const reviewsQuery = useQuery(
@@ -127,11 +118,17 @@ export default function TourDetailRoute() {
       enabled: signedIn && tourId !== undefined,
     }),
   );
+  // N6: còn lượt `wishlist.set` đang bay thì bỏ qua dữ liệu check (trạng thái
+  // giữa chừng → tim nháy ngược); lượt cuối settle invalidate để chốt lại.
   useEffect(() => {
-    if (wishlistCheckQuery.data !== undefined && tourId !== undefined) {
+    if (
+      wishlistCheckQuery.data !== undefined &&
+      tourId !== undefined &&
+      !isWishlistMutating(queryClient)
+    ) {
       setWished(wishlistCheckQuery.data.wishedTourIds.includes(tourId));
     }
-  }, [wishlistCheckQuery.data, tourId]);
+  }, [wishlistCheckQuery.data, tourId, queryClient]);
   // Đăng xuất giữa chừng (hoặc đổi tour): đừng để tim đứng nguyên trạng thái
   // của phiên/tour trước.
   useEffect(() => {
@@ -154,16 +151,7 @@ export default function TourDetailRoute() {
     );
     if (replay === undefined) return;
     setWished(true);
-    setWishlistMutation.mutate(
-      { tourId, wished: true },
-      {
-        onError: () => {
-          setWished(false);
-          setWishlistError(messages.wishlist.error);
-        },
-        onSettled: invalidateWishlist,
-      },
-    );
+    setWishlistMutation.mutate({ tourId, wished: true });
   }, [signedIn, tourId]);
 
   // Báo lỗi ngắn (D6) tự biến mất — không cần khách bấm tắt.
@@ -173,9 +161,16 @@ export default function TourDetailRoute() {
     return () => clearTimeout(id);
   }, [wishlistError]);
 
-  const setWishlistMutation = useMutation(
-    orpc.wishlist.set.mutationOptions({ context: withMobileAuth() }),
-  );
+  // D6/N1: rollback + invalidate nằm trong hook dùng chung, chạy cho TỪNG lượt
+  // và cả khi màn đã unmount (bấm tim rồi back ngay vẫn invalidate). Invalidate
+  // ép `wishlist.check` refetch — màn có thể mount sẵn dưới modal đăng nhập nên
+  // GET và POST đua nhau — kèm `wishlist.list` cho tab Saved mount song song.
+  const setWishlistMutation = useWishlistSetMutation(({ tourId: failedId, wished: failed }) => {
+    // Lượt hỏng thuộc tour KHÁC (cùng mutation key) thì không đụng tim ở đây.
+    if (failedId !== tourId) return;
+    setWished(!failed);
+    setWishlistError(messages.wishlist.error);
+  });
   // D3 — `enquiries.create` là @Public (không cần đăng nhập); đính cookie
   // (nếu có) CHỈ để API ghi `enquiries.user_id`, cùng lý do web đính
   // `withBrowserAuth()` ở `PrivateTripForm` (W4 E8).
@@ -192,16 +187,7 @@ export default function TourDetailRoute() {
     const next = !wished;
     // Lạc quan (D6): đổi ngay, hỏng thì trả lại + báo lỗi ngắn.
     setWished(next);
-    setWishlistMutation.mutate(
-      { tourId, wished: next },
-      {
-        onError: () => {
-          setWished(!next);
-          setWishlistError(messages.wishlist.error);
-        },
-        onSettled: invalidateWishlist,
-      },
-    );
+    setWishlistMutation.mutate({ tourId, wished: next });
   }
 
   // Ghi lại "quay về tour này + tự lưu tim" TRƯỚC khi rời màn (D6, mục 1c spec
