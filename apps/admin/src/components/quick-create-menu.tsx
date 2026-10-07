@@ -19,6 +19,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@tourism/ui/components/
 import { CirclePlusIcon } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import type * as React from 'react';
 import { NAV_GROUPS, navPath } from '@/lib/nav';
 import { requestCreate } from '@/lib/quick-create';
 
@@ -27,6 +28,15 @@ function navArea(key: string) {
   const item = NAV_GROUPS.flatMap((group) => group.items).find((entry) => entry.key === key);
   if (item === undefined) throw new Error(`Quick Create: no nav item "${key}"`);
   return { path: navPath(item.href), icon: item.icon };
+}
+
+/**
+ * Cú bấm kèm Ctrl/Cmd/Shift/Alt — trên link, Next Link nhường hẳn nó cho trình duyệt (mở tab hay
+ * cửa sổ mới, Alt thì tải về; `isModifiedEvent` của `next/dist/client/app-dir/link.js`), trang
+ * đang xem không đổi. Bấm chuột giữa không tới đây: nó phát `auxclick`, không phát `click`.
+ */
+function isModifiedClick(event: React.MouseEvent): boolean {
+  return event.ctrlKey || event.metaKey || event.shiftKey || event.altKey;
 }
 
 /**
@@ -92,24 +102,33 @@ export function QuickCreateMenu() {
           >
             <DropdownMenuGroup>
               <DropdownMenuLabel>{t.quickCreateMenu}</DropdownMenuLabel>
-              {ITEMS.map((item) => (
-                <DropdownMenuItem
-                  key={item.key}
-                  // Cùng trang thì mục là mục menu thường: điều hướng tới chính trang này chỉ để
-                  // mở hộp là đẩy thêm một mục lịch sử và vứt query lọc đang xem.
-                  render={pathname === item.path ? undefined : <Link href={item.path} />}
-                  onClick={() => {
-                    // Điện thoại: đóng Sheet sidebar (review B2). Cùng trang thì không có lượt dựng
-                    // trang mới nào gỡ nó, và hộp tạo sẽ mở chồng lên một Sheet còn mở.
-                    setOpenMobile(false);
-                    // Ghi TRƯỚC khi Link điều hướng: trang đích mount là đã có yêu cầu để tiêu thụ.
-                    requestCreate(item.key);
-                  }}
-                >
-                  <item.icon aria-hidden="true" />
-                  {item.label}
-                </DropdownMenuItem>
-              ))}
+              {ITEMS.map((item) => {
+                const samePage = pathname === item.path;
+                return (
+                  <DropdownMenuItem
+                    key={item.key}
+                    // Cùng trang thì mục là mục menu thường: điều hướng tới chính trang này chỉ để
+                    // mở hộp là đẩy thêm một mục lịch sử và vứt query lọc đang xem.
+                    render={samePage ? undefined : <Link href={item.path} />}
+                    onClick={(event) => {
+                      // Link + Ctrl/Cmd/Shift/Alt: trình duyệt mở trang đích ở tab/cửa sổ mới, tab
+                      // này đứng yên. Yêu cầu sống trong bộ nhớ của TAB NÀY nên tab mới không thấy
+                      // nó; ghi ra chỉ để nó treo tới 10 giây và mở hộp bất ngờ khi người dùng ghé
+                      // trang đích ở tab này. Người dùng vẫn ở trang này nên Sheet cũng giữ nguyên.
+                      // Mục cùng trang không phải link — không có gì để nhường, bấm như thường.
+                      if (!samePage && isModifiedClick(event)) return;
+                      // Điện thoại: đóng Sheet sidebar (review B2). Cùng trang thì không có lượt dựng
+                      // trang mới nào gỡ nó, và hộp tạo sẽ mở chồng lên một Sheet còn mở.
+                      setOpenMobile(false);
+                      // Ghi TRƯỚC khi Link điều hướng: trang đích mount là đã có yêu cầu để tiêu thụ.
+                      requestCreate(item.key);
+                    }}
+                  >
+                    <item.icon aria-hidden="true" />
+                    {item.label}
+                  </DropdownMenuItem>
+                );
+              })}
             </DropdownMenuGroup>
           </DropdownMenuContent>
         </DropdownMenu>

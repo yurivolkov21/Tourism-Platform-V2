@@ -9,7 +9,7 @@ import {
   SidebarTrigger,
 } from '@tourism/ui/components/sidebar';
 import { TooltipProvider } from '@tourism/ui/components/tooltip';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, onTestFinished, vi } from 'vitest';
 import type { TourEditorOptions } from '@/lib/api/tours';
 import { NAV_GROUPS, navPath } from '@/lib/nav';
 import { QuickCreateMenu } from './quick-create-menu';
@@ -68,6 +68,18 @@ function renderMenu({ open }: { open: boolean }) {
 /** Tooltip ẩn vẫn nằm trong DOM (mang `hidden`) — chỉ đếm chữ đang hiện. */
 const visibleText = (text: string) =>
   screen.getAllByText(text).filter((node) => node.closest('[hidden]') === null);
+
+/**
+ * Bấm kèm phím trên Link: bản thật (và `@/test/next-link`) để nguyên hành vi mặc định của thẻ cho
+ * trình duyệt mở tab mới. jsdom không mở tab được mà sẽ thử điều hướng chính trang này ("Not
+ * implemented: navigation"), nên chặn hành vi ấy ở `document` — chạy SAU mọi handler của React —
+ * trong lúc test chạy: đứng thay việc tab mới mở ra còn trang đang xem không đổi.
+ */
+function stayOnPageForModifiedClicks() {
+  const stay = (event: MouseEvent) => event.preventDefault();
+  document.addEventListener('click', stay);
+  onTestFinished(() => document.removeEventListener('click', stay));
+}
 
 /**
  * Quick Create (spec 2026-10-05 §2.5): bốn mục, mỗi mục mở hộp tạo của một vùng. Cơ chế là yêu
@@ -155,6 +167,55 @@ describe('QuickCreateMenu', () => {
     expect(navigate).not.toHaveBeenCalled();
   });
 
+  // Bấm kèm phím trên link: trình duyệt mở trang đích ở tab/cửa sổ mới (Alt: tải về), tab này
+  // đứng yên. Tab mới không thấy yêu cầu nằm trong bộ nhớ của tab này, còn ghi ở đây là treo một
+  // yêu cầu tới 10 giây — ghé trang đích trong lúc ấy thì hộp tạo tự mở bất ngờ.
+  it.each([
+    ['Ctrl', '{Control>}', '{/Control}'],
+    ['Cmd', '{Meta>}', '{/Meta}'],
+    ['Shift', '{Shift>}', '{/Shift}'],
+    ['Alt', '{Alt>}', '{/Alt}'],
+  ])(
+    '%s + bấm mục khác trang: nhường cú bấm cho trình duyệt, tab này không treo yêu cầu nào',
+    async (_key, press, release) => {
+      stayOnPageForModifiedClicks();
+      const user = userEvent.setup();
+      const { unmount } = renderMenu({ open: true });
+      await user.click(screen.getByRole('button', { name: t.quickCreate }));
+      const item = await screen.findByRole('menuitem', { name: newTour.action });
+
+      await user.keyboard(press);
+      await user.click(item);
+      await user.keyboard(release);
+
+      // Sau đó người dùng tự vào trang đích ở CHÍNH tab này: hộp tạo không được tự mở.
+      unmount();
+      render(<NewTourDialog options={OPTIONS} create={vi.fn()} />);
+      expect(screen.queryByRole('dialog', { name: newTour.dialog.title })).toBeNull();
+    },
+  );
+
+  it('cùng trang, Ctrl+bấm: mục không phải link nên không có tab mới nào để nhường — hộp vẫn mở', async () => {
+    location.pathname = '/tours';
+    const user = userEvent.setup();
+    render(
+      <TooltipProvider>
+        <SidebarProvider defaultOpen>
+          <QuickCreateMenu />
+          <NewTourDialog options={OPTIONS} create={vi.fn()} />
+        </SidebarProvider>
+      </TooltipProvider>,
+    );
+
+    await user.click(screen.getByRole('button', { name: t.quickCreate }));
+    const item = await screen.findByRole('menuitem', { name: newTour.action });
+    await user.keyboard('{Control>}');
+    await user.click(item);
+    await user.keyboard('{/Control}');
+
+    expect(await screen.findByRole('dialog', { name: newTour.dialog.title })).toBeInTheDocument();
+  });
+
   it('thu gọn thành cột icon: rê vào nút thì tooltip nói tên nút', async () => {
     const user = userEvent.setup();
     renderMenu({ open: false });
@@ -223,5 +284,35 @@ describe('QuickCreateMenu trên điện thoại (review B2)', () => {
     await waitFor(() => expect(mobileSheetOpen()).toBe(false));
     // Sheet đóng trả focus về nút mở nó, nhưng không được giật focus ra khỏi hộp vừa mở.
     await waitFor(() => expect(dialog).toContainElement(document.activeElement as HTMLElement));
+  });
+
+  it('Ctrl+bấm mục khác trang: Sheet KHÔNG đóng — trang đích mở ở tab mới, người dùng còn ở đây', async () => {
+    window.innerWidth = 375;
+    stayOnPageForModifiedClicks();
+    const user = userEvent.setup();
+    render(
+      <TooltipProvider>
+        <SidebarProvider defaultOpen>
+          <Sidebar collapsible="icon">
+            <SidebarContent>
+              <QuickCreateMenu />
+            </SidebarContent>
+          </Sidebar>
+          <SidebarInset>
+            <SidebarTrigger />
+          </SidebarInset>
+        </SidebarProvider>
+      </TooltipProvider>,
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Toggle Sidebar' }));
+    const sheet = await screen.findByRole('dialog', { name: 'Sidebar' });
+    await user.click(within(sheet).getByRole('button', { name: t.quickCreate }));
+    const item = await screen.findByRole('menuitem', { name: newTour.action });
+    await user.keyboard('{Control>}');
+    await user.click(item);
+    await user.keyboard('{/Control}');
+
+    expect(mobileSheetOpen()).toBe(true);
   });
 });
