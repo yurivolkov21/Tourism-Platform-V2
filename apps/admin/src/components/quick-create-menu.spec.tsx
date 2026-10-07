@@ -12,6 +12,7 @@ import { TooltipProvider } from '@tourism/ui/components/tooltip';
 import { afterEach, beforeEach, describe, expect, it, onTestFinished, vi } from 'vitest';
 import type { TourEditorOptions } from '@/lib/api/tours';
 import { NAV_GROUPS, navPath } from '@/lib/nav';
+import { UnsavedChangesProvider, useReportUnsaved } from './kit/unsaved-changes';
 import { QuickCreateMenu } from './quick-create-menu';
 import { NewTourDialog } from './tours/editor/new-tour-dialog';
 
@@ -79,6 +80,26 @@ function stayOnPageForModifiedClicks() {
   const stay = (event: MouseEvent) => event.preventDefault();
   document.addEventListener('click', stay);
   onTestFinished(() => document.removeEventListener('click', stay));
+}
+
+/** Một form đang sửa dở trong khu làm việc tour — hộp hỏi rời trang canh mọi link. */
+function DirtyForm() {
+  useReportUnsaved(true);
+  return null;
+}
+
+/**
+ * Đồng hồ giả CHỈ thay `Date` (bộ hẹn giờ vẫn thật cho user-event và Base UI) tới hết ca; trả mốc
+ * lúc bấm. Đứng yên tới khi ca tự đẩy, nên tuổi của yêu cầu đúng bằng khoảng ca đẩy.
+ */
+function startFakeClock(): number {
+  const now = Date.UTC(2026, 9, 7, 9);
+  vi.useFakeTimers({ toFake: ['Date'] });
+  vi.setSystemTime(now);
+  onTestFinished(() => {
+    vi.useRealTimers();
+  });
+  return now;
 }
 
 /**
@@ -169,7 +190,7 @@ describe('QuickCreateMenu', () => {
 
   // Bấm kèm phím trên link: trình duyệt mở trang đích ở tab/cửa sổ mới (Alt: tải về), tab này
   // đứng yên. Tab mới không thấy yêu cầu nằm trong bộ nhớ của tab này, còn ghi ở đây là treo một
-  // yêu cầu tới 10 giây — ghé trang đích trong lúc ấy thì hộp tạo tự mở bất ngờ.
+  // yêu cầu tới 60 giây — ghé trang đích trong lúc ấy thì hộp tạo tự mở bất ngờ.
   it.each([
     ['Ctrl', '{Control>}', '{/Control}'],
     ['Cmd', '{Meta>}', '{/Meta}'],
@@ -225,6 +246,63 @@ describe('QuickCreateMenu', () => {
 
     // Một ở nhãn (bị cột icon cắt mất), một ở tooltip.
     await waitFor(() => expect(visibleText(t.quickCreate)).toHaveLength(2));
+  });
+
+  it('khác trang, form đang sửa dở chặn cú bấm: không ghi yêu cầu nào — ở lại rồi tự vào trang đích thì hộp tạo không tự mở (review G6-F1)', async () => {
+    location.pathname = '/tours/ha-long';
+    const user = userEvent.setup();
+    const { unmount } = render(
+      <TooltipProvider>
+        <SidebarProvider defaultOpen>
+          <UnsavedChangesProvider>
+            <QuickCreateMenu />
+            <DirtyForm />
+          </UnsavedChangesProvider>
+        </SidebarProvider>
+      </TooltipProvider>,
+    );
+
+    await user.click(screen.getByRole('button', { name: t.quickCreate }));
+    await user.click(await screen.findByRole('menuitem', { name: newTour.action }));
+    await user.click(
+      await screen.findByRole('button', { name: messages.admin.unsavedChanges.keep }),
+    );
+    expect(navigate).not.toHaveBeenCalled();
+
+    // Ngay sau đó người dùng tự vào trang đích (sidebar): không có yêu cầu nào để tiêu thụ.
+    unmount();
+    render(<NewTourDialog options={OPTIONS} create={vi.fn()} />);
+    expect(screen.queryByRole('dialog', { name: newTour.dialog.title })).toBeNull();
+  });
+
+  it('trang đích dựng xong sau 30 giây (API gói free ngủ dậy, Vercel khởi động lạnh): hộp tạo vẫn mở (review G6-F1)', async () => {
+    const clickedAt = startFakeClock();
+    const user = userEvent.setup();
+    const { unmount } = renderMenu({ open: true });
+
+    await user.click(screen.getByRole('button', { name: t.quickCreate }));
+    await user.click(await screen.findByRole('menuitem', { name: newTour.action }));
+    expect(navigate).toHaveBeenCalledWith('/tours');
+
+    vi.setSystemTime(clickedAt + 30_000);
+    unmount();
+    render(<NewTourDialog options={OPTIONS} create={vi.fn()} />);
+    expect(await screen.findByRole('dialog', { name: newTour.dialog.title })).toBeInTheDocument();
+  });
+
+  it('trang đích dựng xong sau hơn 60 giây: yêu cầu đã cũ, hộp tạo không tự mở (review G6-F1)', async () => {
+    const clickedAt = startFakeClock();
+    const user = userEvent.setup();
+    const { unmount } = renderMenu({ open: true });
+
+    await user.click(screen.getByRole('button', { name: t.quickCreate }));
+    await user.click(await screen.findByRole('menuitem', { name: newTour.action }));
+    expect(navigate).toHaveBeenCalledWith('/tours');
+
+    vi.setSystemTime(clickedAt + 60_001);
+    unmount();
+    render(<NewTourDialog options={OPTIONS} create={vi.fn()} />);
+    expect(screen.queryByRole('dialog', { name: newTour.dialog.title })).toBeNull();
   });
 
   it('menu mở bên dưới khi sidebar mở rộng, bên phải khi thu về cột icon', async () => {

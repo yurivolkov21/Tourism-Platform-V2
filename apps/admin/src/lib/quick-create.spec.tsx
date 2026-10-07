@@ -1,11 +1,6 @@
 import { act, renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import {
-  CREATE_REQUEST_TTL_MS,
-  type CreateKey,
-  requestCreate,
-  useCreateRequest,
-} from './quick-create';
+import { type CreateKey, requestCreate, useCreateRequest } from './quick-create';
 
 /**
  * Yêu cầu mở hộp tạo của Quick Create — cơ chế phía client thay tham số URL cũ (review A2-3,
@@ -45,16 +40,16 @@ describe('useCreateRequest', () => {
     expect(mountPage('tour').open).not.toHaveBeenCalled();
   });
 
-  it('yêu cầu tròn 10 giây vẫn còn tươi', () => {
+  it('yêu cầu tròn 60 giây vẫn còn tươi — trang đích dựng chậm (API gói free ngủ dậy, lệnh đọc cắt ở 10 giây, Vercel khởi động lạnh) vẫn mở hộp', () => {
     requestCreate('category');
-    vi.setSystemTime(clock + CREATE_REQUEST_TTL_MS);
+    vi.setSystemTime(clock + 60_000);
 
     expect(mountPage('category').open).toHaveBeenCalledTimes(1);
   });
 
-  it('yêu cầu quá 10 giây thì bỏ — vd bị hộp "Discard changes?" chặn rồi người dùng chọn ở lại, ghé trang đích sau đó không mở hộp bất ngờ', () => {
+  it('yêu cầu quá 60 giây thì bỏ — điều hướng bỏ dở (trang đích lỗi, hay người dùng rẽ sang trang khác) không để lần ghé sau mở hộp bất ngờ', () => {
     requestCreate('category');
-    vi.setSystemTime(clock + CREATE_REQUEST_TTL_MS + 1);
+    vi.setSystemTime(clock + 60_001);
 
     expect(mountPage('category').open).not.toHaveBeenCalled();
   });

@@ -34,6 +34,8 @@ function navArea(key: string) {
  * Cú bấm kèm Ctrl/Cmd/Shift/Alt — trên link, Next Link nhường hẳn nó cho trình duyệt (mở tab hay
  * cửa sổ mới, Alt thì tải về; `isModifiedEvent` của `next/dist/client/app-dir/link.js`), trang
  * đang xem không đổi. Bấm chuột giữa không tới đây: nó phát `auxclick`, không phát `click`.
+ * Chỉ còn quyết chuyện đóng Sheet: yêu cầu tạo của mục là link ghi trong `onNavigate`, mà Next
+ * không gọi `onNavigate` cho cú bấm ấy.
  */
 function isModifiedClick(event: React.MouseEvent): boolean {
   return event.ctrlKey || event.metaKey || event.shiftKey || event.altKey;
@@ -47,7 +49,10 @@ function isModifiedClick(event: React.MouseEvent): boolean {
  *
  * Mỗi mục ghi một yêu cầu mở hộp tạo (`lib/quick-create.ts`) thay cho tham số URL cũ (review
  * A2-3, EF1, RU6):
- * - Trang của mục KHÁC trang đang mở: mục là Link tới path trần; trang đích mount thì mở hộp.
+ * - Trang của mục KHÁC trang đang mở: mục là Link tới path trần, ghi yêu cầu trong `onNavigate` —
+ *   Next chỉ gọi nó khi điều hướng phía client thật sự bắt đầu, nên cú bấm bị hộp hỏi rời trang
+ *   chặn hay cú bấm kèm phím (tab mới) không để lại yêu cầu treo (review G6-F1); trang đích
+ *   mount thì mở hộp.
  * - Trang của mục CHÍNH LÀ trang đang mở: mục không điều hướng, hộp của trang mở ngay — query
  *   lọc giữ nguyên, không thêm mục lịch sử, không lượt render server nào.
  *
@@ -108,20 +113,22 @@ export function QuickCreateMenu() {
                   <DropdownMenuItem
                     key={item.key}
                     // Cùng trang thì mục là mục menu thường: điều hướng tới chính trang này chỉ để
-                    // mở hộp là đẩy thêm một mục lịch sử và vứt query lọc đang xem.
-                    render={samePage ? undefined : <Link href={item.path} />}
+                    // mở hộp là đẩy thêm một mục lịch sử và vứt query lọc đang xem. Khác trang thì
+                    // yêu cầu ghi lúc điều hướng bắt đầu, TRƯỚC khi trang đích mount.
+                    render={
+                      samePage ? undefined : (
+                        <Link href={item.path} onNavigate={() => requestCreate(item.key)} />
+                      )
+                    }
                     onClick={(event) => {
                       // Link + Ctrl/Cmd/Shift/Alt: trình duyệt mở trang đích ở tab/cửa sổ mới, tab
-                      // này đứng yên. Yêu cầu sống trong bộ nhớ của TAB NÀY nên tab mới không thấy
-                      // nó; ghi ra chỉ để nó treo tới 10 giây và mở hộp bất ngờ khi người dùng ghé
-                      // trang đích ở tab này. Người dùng vẫn ở trang này nên Sheet cũng giữ nguyên.
-                      // Mục cùng trang không phải link — không có gì để nhường, bấm như thường.
+                      // này đứng yên — người dùng vẫn ở trang này nên Sheet giữ nguyên. Mục cùng
+                      // trang không phải link — không có gì để nhường, bấm như thường.
                       if (!samePage && isModifiedClick(event)) return;
                       // Điện thoại: đóng Sheet sidebar (review B2). Cùng trang thì không có lượt dựng
                       // trang mới nào gỡ nó, và hộp tạo sẽ mở chồng lên một Sheet còn mở.
                       setOpenMobile(false);
-                      // Ghi TRƯỚC khi Link điều hướng: trang đích mount là đã có yêu cầu để tiêu thụ.
-                      requestCreate(item.key);
+                      if (samePage) requestCreate(item.key);
                     }}
                   >
                     <item.icon aria-hidden="true" />
