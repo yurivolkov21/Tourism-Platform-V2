@@ -56,7 +56,7 @@ Mỗi ADR tự chứa đầy đủ phần sửa bổ sung (AMEND) của nó; b�
 | [0013](adr/0013-wuling-theme-tokens.md) | Theme Wuling + tint theo vùng | tint **đã rút** — xem [0015](adr/0015-retire-region-tint.md) |
 | [0014](adr/0014-web-component-testing.md) | Test tầng component cho web | |
 | [0015](adr/0015-retire-region-tint.md) | Rút tint theo vùng toàn site | |
-| [0016](adr/0016-web-data-layer.md) | Tầng dữ liệu web: oRPC, server-first, ISR + cache-tag | 3 AMEND |
+| [0016](adr/0016-web-data-layer.md) | Tầng dữ liệu web: oRPC, server-first, ISR + cache-tag | 4 AMEND |
 | [0017](adr/0017-web-session-better-auth.md) | Phiên đăng nhập: cookie thẳng trình duyệt ↔ API | 3 AMEND |
 | [0018](adr/0018-web-map-library.md) | Bản đồ `/contact`: maplibre-gl + OpenFreeMap | |
 | [0019](adr/0019-color-token-roles.md) | Tách vai token màu: bề mặt · chữ · ranh giới | |

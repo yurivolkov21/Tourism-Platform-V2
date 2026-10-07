@@ -8,6 +8,45 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-10-07 — Thử tay đợt sửa sạn admin trên production và năm việc chờ quyết (`4956c287`..`89d1b3eb`, nhánh `fix/admin-polish-followups`)
+
+**Thử tay production** sau merge `3b608b3f` (CI xanh sau 9 phút 24 giây, Render live 17:43, không
+dính G23), từng bước theo spec §5, user làm và gửi ảnh: bước 1–7 đạt.
+
+- Ô chọn ở khu sửa tour và hộp New tour, gồm gõ chữ trên ô đang đóng.
+- Các ô lọc: thư viện ảnh, Rows per page, ô trạng thái enquiry.
+- Quick Create: cùng trang, khác trang, "Discard changes", điện thoại.
+- Nút Delete đang khoá: tooltip khi rê và Tab; toast khi chạm trên DevTools mô phỏng iPhone 16 Pro
+  Max (một toast, chạm lại không chồng).
+- Xoá thật một điểm đến tạm `QA delete test`: hộp xác nhận, toast, xoá trùng ở tab cũ báo "This
+  destination no longer exists".
+- Hộp Reject, dòng báo Summary bị cắt, các sạn nhỏ còn lại.
+
+Bước 8 (lượt 375px tổng và hộp xác nhận ở web) chỉ được phủ một phần qua các ảnh 375px. Điểm đến
+thử `abc` đã không còn trên production (đo bằng SQL chỉ đọc), không tour nào bị ghi trong lượt thử.
+
+**Năm việc chờ quyết** — user giao "làm theo hướng tối ưu":
+
+- Bảng Outbox: ô Attempts xuống dòng dưới trần 144px (`89d1b3eb`). Đo bằng Edge headless ở khung
+  1094px (cửa sổ 1440px có sidebar): các kịch bản thật về 0, còn 24px ở ca cực đoan — hàng SKIPPED
+  giữa các hàng FAILED mang chuỗi dài nhất và ngày rộng nhất; trước đó 152px.
+- Hàng đã ẩn thôi khuyên ẩn: tooltip "Used by N tours.", lỗi `IN_USE` dừng ở "…can’t be deleted."
+  (`6fc4f92d`); hàng đang hiện giữ chữ cũ.
+- Ô "Photo unavailable" trong dialog chi tiết review đủ khung một ảnh 4:3, co theo dialog hẹp
+  (`95ac760c`, prop `brokenClassName` của kit `SafeImg`).
+- Route revalidate của web từ chối chuỗi dev công khai ở production (`32098a15`, ADR-0016 AMEND 4) —
+  kiểm lúc xử lý request nên web vẫn lên.
+- ADR-0052 AMEND 1: danh sách Owner-only thêm hai lệnh xoá của ADR-0053, đếm thành 16 (`4956c287`).
+
+**Review findings:** không mở vòng review riêng — mỗi mục có test viết trước, đỏ đúng lý do; kiểm đột
+biến ở chữ hàng ẩn; đo trình duyệt cho Outbox và ô ảnh hỏng.
+
+**CÒN TREO:** nợ G24 (bốn bảng admin còn dựng lại ô sau mỗi lượt làm mới) và G25 (khoá ngoại điểm đến
+`CASCADE`); chạm nút Delete khoá trên máy cảm ứng thật. Không migration, không env, không webhook.
+
+Tests after (`gate:int` trên `89d1b3eb`, 07/10 19:09–19:15): unit 5701 — admin 1911, web 1676, api
+1080, contract 665, mobile 159, mobile-ui 86, core 46, ui 36, i18n 23, tokens 19 — và int 771/771.
+
 ## 2026-10-07 — Sửa sạn giao diện admin: ô chọn chung, Quick Create, xoá danh mục và điểm đến (`b98b1bdf`..`238fdc2f`, nhánh `fix/admin-ui-polish`)
 
 Thay chỗ P4f: 05/10 user hoãn P4f để dọn sạn admin trước freeze 15/10. Đầu vào là bốn sạn user

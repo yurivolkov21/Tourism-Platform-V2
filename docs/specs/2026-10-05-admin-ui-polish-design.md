@@ -226,7 +226,8 @@ Không `requeue` publicId nào vào hàng dọn (ADR-0053 §4).
 - Dáng `outline`, chữ và icon `Trash2Icon` màu destructive.
 - `linkedTourCount > 0`: nút khoá kiểu `aria-disabled` (`focusableWhenDisabled`, như các nút
   hàng khác). Tooltip "Used by 1 tour — hide it instead." / "Used by N tours — hide it
-  instead." phải hiện được cả khi rê chuột lẫn khi focus bằng bàn phím.
+  instead." phải hiện được cả khi rê chuột lẫn khi focus bằng bàn phím. Hàng ĐÃ ẨN thì bỏ vế
+  khuyên ẩn: "Used by 1 tour." / "Used by N tours." (sửa sau thử tay 07/10).
 - Sửa sau review 07/10:
   - nút chỉ mở khi đếm ĐÚNG 0; hàng thiếu `linkedTourCount` (khe deploy, API cũ) thì khoá với
     lý do chung "Delete isn't available right now. Reload the page and try again." và ô Tours
@@ -251,7 +252,8 @@ Không `requeue` publicId nào vào hàng dọn (ADR-0053 §4).
 **Sau lệnh xoá**
 
 - Lỗi `IN_USE`: "A tour started using this category a moment ago, so it can't be deleted.
-  Hide it instead." (bản điểm đến cùng khuôn).
+  Hide it instead." (bản điểm đến cùng khuôn). Hàng đã ẩn thì dừng ở "…can’t be deleted."
+  (sửa sau thử tay 07/10).
 - Lỗi `NOT_FOUND`: "This category no longer exists."
 - Toast thành công: "Category deleted" / "{name} is gone."
 - Mọi kết cục đã chạm server đều làm mới bảng (`onSettled`).

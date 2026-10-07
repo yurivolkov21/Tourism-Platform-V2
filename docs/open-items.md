@@ -44,11 +44,6 @@
 | Cho KHÁCH đọc được lý do công ty huỷ chuyến | 22/09 | Chưa quyết — xem mục ngay dưới |
 | Tự đăng nhập sau khi xác minh OTP | 18/09 | Đã chốt **không làm** (21/09), lý do ghi trong mã nguồn |
 | Gỡ nhánh tinh chỉnh giao diện web + admin gom 18/09 | 18/09 | Chưa mở |
-| Bảng Outbox ở 1440px còn cuộn ngang 51–156px khi trang có hàng mang nhãn Attempts dài (Ruling F-b của đợt sửa sạn admin) | 06/10 | Chưa quyết — hướng sửa: ô Attempts xuống dòng dưới một trần rồi trả bề rộng cho Last error, hoặc in ngày giờ hai dòng |
-| Câu "… — hide it instead." (tooltip nút Delete và lỗi `IN_USE`) đọc lệch ở hàng ĐÃ ẨN, nơi nút bật tắt đang là Show | 06/10 | Chưa quyết |
-| Ô "Photo unavailable" trong dialog chi tiết review chỉ cỡ icon cạnh ảnh cao tới `max-h-64` | 06/10 | Chưa quyết |
-| `apps/web/.env.example` đặt tường minh secret revalidate dev công khai (Ruling F-d) — web không chặn chuỗi ấy ở production như API | 06/10 | Hoãn có chủ đích; user soát env Vercel của web, đảm bảo `REVALIDATE_SECRET` không phải giá trị mẫu |
-| ADR-0052 §2 còn ghi "Owner-only (14)" trong khi doc P4f đếm 16 sau hai lệnh xoá của ADR-0053 | 06/10 | Cần AMEND khi mở P4f |
 
 ## Đề xuất sản phẩm: cho khách biết VÌ SAO chuyến bị huỷ
 
@@ -76,7 +71,8 @@ ghi chép nội bộ) — trước đó nó hứa nhầm rằng khách sẽ đ�
   `--tunnel`. Chưa ai quét QR thử sau khi đổi — cần một lượt trên điện thoại
   thật cùng mạng Wi-Fi. Không chạy được thì `dev:tunnel` vẫn còn nguyên.
 - **Admin trên màn cảm ứng** (vòng vá review đợt sửa sạn admin, 07/10): chạm nút Delete đang
-  khoá phải hiện toast lý do. Test chỉ giả lập `pointerType: touch` trong jsdom.
+  khoá phải hiện toast lý do. Test chỉ giả lập `pointerType: touch` trong jsdom; thử tay 07/10 đạt
+  trên DevTools mô phỏng iPhone 16 Pro Max (một toast, chạm lại không chồng) — còn máy thật.
 
 ## Việc tay trên hạ tầng
 

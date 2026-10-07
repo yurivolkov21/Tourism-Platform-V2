@@ -349,3 +349,13 @@ mỗi instance một bộ đếm — trần thật là `30 × số instance đan
 dụng thô, KHÔNG phải rate-limit thật; rate-limit thật cần store chung
 (Redis/KV) — chưa cần cho một route server-to-server có secret, và không
 đáng đổi hạ tầng sát freeze (cùng lập luận ADR-0037 gốc về store chung).
+
+## AMEND 4 — 07/10/2026 (thử tay đợt sửa sạn admin): chuỗi dev công khai cũng bị từ chối ở production
+
+§3 của AMEND 1 chỉ chặn secret THIẾU hay RỖNG ở production. `apps/web/.env.example` lại điền
+sẵn `DEV_REVALIDATE_SECRET` cho tiện dev, nên chép example ra prod là ai cũng bust được cache.
+Nay `resolveRevalidateSecret` coi đúng chuỗi dev ở production như chưa cấu hình — cùng nhánh
+**throw** (500), từ chối mọi request; kiểm lúc xử lý request (`handleRevalidateRequest`), không
+phải lúc khởi động, nên web prod vẫn lên. An toàn vì API ở production vốn không chạy với chuỗi
+ấy (`apps/api/src/config/env.ts`), nên web prod dùng nó thì vốn đã không khớp API. Hệ quả ở máy:
+chạy bản build (`next start`) mà muốn thử revalidate thì đặt cùng một chuỗi khác ở web và API.
