@@ -2986,6 +2986,14 @@ export const messages = {
       remove: (name: string) => `Remove ${name}`,
       limit: (max: number) => `You can add up to ${max}.`,
     },
+    /**
+     * Một lựa chọn của dropdown admin (kit `option-content`): ô `Picker`, menu lọc
+     * `ToolbarFilterMenu` và radio điểm chính đọc mục mang chữ phụ theo MỘT kiểu — "An Bàng
+     * (Hidden)" (review RU3/SI4, B1). Mắt thấy chữ phụ mờ sau tên, không có ngoặc.
+     */
+    option: {
+      withHint: (label: string, hint: string) => `${label} (${hint})`,
+    },
     /** Hỏi lại khi rời một form có thay đổi chưa lưu (spec F17 §2i). */
     unsavedChanges: {
       title: 'Discard unsaved changes?',

@@ -12,12 +12,8 @@ import {
 } from '@tourism/ui/components/dropdown-menu';
 import { ChevronDownIcon } from 'lucide-react';
 import * as React from 'react';
-import {
-  MENU_CHEVRON,
-  MENU_HINT,
-  MENU_LABEL,
-  MENU_TOOLBAR_POPUP,
-} from '@/components/kit/menu-style';
+import { MENU_CHEVRON, MENU_LABEL, MENU_TOOLBAR_POPUP } from '@/components/kit/menu-style';
+import { type DropdownOption, OptionContent, optionName } from '@/components/kit/option-content';
 import { TOOLBAR_BUTTON } from '@/components/kit/toolbar-metrics';
 
 /**
@@ -52,19 +48,11 @@ import { TOOLBAR_BUTTON } from '@/components/kit/toolbar-metrics';
  * Khe `DropdownMenuShortcut` của dm-10 CỐ Ý bỏ trống: thứ đáng nằm ở đó là số
  * hàng theo từng mục, mà không endpoint stats nào của admin trả về con số ấy —
  * thêm nó là sửa `apps/api` + contract.
+ *
+ * Một mục của menu CÙNG kiểu, cùng cách vẽ và cách đọc với mục của `Picker`
+ * (`option-content.tsx`, review RU3/SI4) — cả ở danh sách lẫn trên nút.
  */
-export interface ToolbarFilterMenuItem {
-  /** Value THÔ đi thẳng vào `onSelect` — kit không giải mã tiền tố hộ vùng. */
-  value: string;
-  label: string;
-  /**
-   * Icon đầu dòng. TUỲ CHỌN vì `/subscribers` lọc theo chuỗi tự do từ DB:
-   * không biết trước giá trị thì không có icon nào để khai.
-   */
-  icon?: React.ComponentType<React.SVGProps<SVGSVGElement>>;
-  /** Chữ phụ mờ sau tên (vd "Hidden" cho danh mục đã ẩn) — cùng luật với `Picker`. */
-  hint?: string;
-}
+export type ToolbarFilterMenuItem = DropdownOption;
 
 export interface ToolbarFilterMenuGroup {
   /** Khoá React của nhóm — tên họ, KHÔNG phải chỉ số mảng. */
@@ -124,12 +112,10 @@ export function ToolbarFilterMenu({
     ...groups.flatMap((group) => group.items),
     ...(unknownItem ? [unknownItem] : []),
   ].find((item) => item.value === value);
-  const shown = current ?? allItem;
-  const CurrentIcon = shown?.icon;
   // Không mục nào khớp VÀ không có mục "tất cả": in thẳng value. Thà hiện
   // `2026-99` còn hơn mượn nhãn của mục khác — nút phải đọc ra được thứ đang
   // nằm trên URL.
-  const shownLabel = shown?.label ?? value;
+  const shown = current ?? allItem ?? { value, label: value };
 
   function handleChange(next: unknown) {
     if (next === null || next === undefined) return;
@@ -143,13 +129,11 @@ export function ToolbarFilterMenu({
           <Button
             variant="outline"
             className={TOOLBAR_BUTTON}
-            aria-label={`${label}: ${shownLabel}${shown?.hint ? ` (${shown.hint})` : ''}`}
+            aria-label={`${label}: ${optionName(shown)}`}
           />
         }
       >
-        {CurrentIcon ? <CurrentIcon data-icon="inline-start" /> : null}
-        {shownLabel}
-        {shown?.hint ? <span className={MENU_HINT}>{shown.hint}</span> : null}
+        <OptionContent option={shown} />
         <ChevronDownIcon data-icon="inline-end" className={MENU_CHEVRON} />
       </DropdownMenuTrigger>
       {/* `w-66` (264px) của dm-10 thay cho `w-fit` của Select cũ: nhãn dài
@@ -187,20 +171,9 @@ export function ToolbarFilterMenu({
 }
 
 function FilterMenuItem({ item }: { item: ToolbarFilterMenuItem }) {
-  const Icon = item.icon;
-
   return (
     <DropdownMenuRadioItem value={item.value} closeOnClick>
-      {/* KHÔNG đắp `size-4`: item đã sẵn
-          `[&_svg:not([class*='size-'])]:size-4`, tự nó lo cỡ. */}
-      {Icon ? <Icon aria-hidden="true" /> : null}
-      {item.label}
-      {item.hint ? (
-        <>
-          {' '}
-          <span className={MENU_HINT}>{item.hint}</span>
-        </>
-      ) : null}
+      <OptionContent option={item} />
     </DropdownMenuRadioItem>
   );
 }

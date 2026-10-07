@@ -161,9 +161,9 @@ describe('Picker', () => {
   });
 
   it('bàn phím: gõ chữ nhảy theo TÊN mục — chữ phụ "Hidden" không thành chữ để tìm', async () => {
-    // Chữ của mục ẩn là "Day Tours Hidden" (tên cộng hint). Base UI gõ-tìm theo `label` của
-    // `SelectItem` khi có, còn không thì theo toàn bộ chữ của mục — lúc ấy gõ "day tours h"
-    // (định tới "Day Tours Hanoi") lại trúng mục ẩn đứng trước, vì "…Hidden" cũng bắt đầu thế.
+    // Chữ của mục ẩn gồm tên, chữ phụ và câu đọc-màn-hình. Base UI gõ-tìm theo `label` của
+    // `SelectItem` khi có, còn không thì theo toàn bộ chữ của mục — chữ phụ khi ấy thành chữ để
+    // tìm (bản chữ "Day Tours Hidden" từng trúng khi gõ "day tours h", định tới "Day Tours Hanoi").
     const user = userEvent.setup();
     const { onValueChange, trigger } = renderPicker({
       options: [
@@ -272,7 +272,8 @@ describe('Picker', () => {
     expect(trigger).toHaveTextContent('Retired');
     expect(trigger).toHaveTextContent('Hidden');
     await user.click(trigger);
-    expect(await screen.findByRole('option', { name: 'Retired Hidden' })).toBeInTheDocument();
+    // Cách đọc chung với menu lọc (review RU3/SI4) — ca đối chiếu ở `option-content.spec.tsx`.
+    expect(await screen.findByRole('option', { name: 'Retired (Hidden)' })).toBeInTheDocument();
   });
 
   it('tên dài trên ô: tên cắt "…", hint "Hidden" vẫn nằm trong ô, ô không nở theo chữ', () => {

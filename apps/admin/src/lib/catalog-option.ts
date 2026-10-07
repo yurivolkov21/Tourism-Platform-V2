@@ -11,14 +11,15 @@ export function hiddenHint(option: { isActive: boolean }): string | undefined {
   return option.isActive ? undefined : messages.admin.tours.list.hiddenHint;
 }
 
-/** Hàng danh mục/điểm đến → option của `Picker` (tên giữ nguyên, hint tách riêng). */
+/**
+ * Hàng danh mục/điểm đến → option của `Picker` (tên giữ nguyên, hint tách riêng). `hint` có thể
+ * là `undefined` — không tsconfig nào bật `exactOptionalPropertyTypes`, nên không cần rẽ nhánh bỏ
+ * khoá (review SI4).
+ */
 export function catalogOption(option: { id: string; name: string; isActive: boolean }): {
   value: string;
   label: string;
   hint?: string;
 } {
-  const hint = hiddenHint(option);
-  return hint === undefined
-    ? { value: option.id, label: option.name }
-    : { value: option.id, label: option.name, hint };
+  return { value: option.id, label: option.name, hint: hiddenHint(option) };
 }

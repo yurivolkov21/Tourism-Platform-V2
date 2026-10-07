@@ -183,8 +183,9 @@ describe('ToolbarFilterMenu', () => {
     expect(button).toHaveTextContent('Retired');
     expect(button).toHaveTextContent('Hidden');
     await user.click(button);
+    // Cách đọc chung với Picker (review RU3/SI4) — ca đối chiếu ở `option-content.spec.tsx`.
     expect(
-      await screen.findByRole('menuitemradio', { name: 'Retired Hidden' }),
+      await screen.findByRole('menuitemradio', { name: 'Retired (Hidden)' }),
     ).toBeInTheDocument();
   });
 

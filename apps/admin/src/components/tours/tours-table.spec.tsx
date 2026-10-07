@@ -176,7 +176,9 @@ describe('ToursTable — menu lọc danh mục', () => {
 
     expect(await screen.findByRole('menuitemradio', { name: 'Day Tours' })).toBeInTheDocument();
     expect(
-      screen.getByRole('menuitemradio', { name: `Trekking & Adventure ${t.hiddenHint}` }),
+      screen.getByRole('menuitemradio', {
+        name: messages.admin.option.withHint('Trekking & Adventure', t.hiddenHint),
+      }),
     ).toBeInTheDocument();
   });
 });

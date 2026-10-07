@@ -182,7 +182,7 @@ describe('NewTourDialog', () => {
     await user.click(screen.getByRole('combobox', { name: d.category }));
     expect(
       await screen.findByRole('option', {
-        name: `Retired ${messages.admin.tours.list.hiddenHint}`,
+        name: messages.admin.option.withHint('Retired', messages.admin.tours.list.hiddenHint),
       }),
     ).toBeInTheDocument();
   });

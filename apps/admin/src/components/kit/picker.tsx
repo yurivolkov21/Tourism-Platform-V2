@@ -13,7 +13,8 @@ import {
 } from '@tourism/ui/components/select';
 import { cn } from '@tourism/ui/lib/utils';
 import * as React from 'react';
-import { MENU_HINT, MENU_LABEL, MENU_TOOLBAR_POPUP } from '@/components/kit/menu-style';
+import { MENU_LABEL, MENU_TOOLBAR_POPUP } from '@/components/kit/menu-style';
+import { type DropdownOption, OptionContent } from '@/components/kit/option-content';
 import { TOOLBAR_SELECT } from '@/components/kit/toolbar-metrics';
 
 /**
@@ -29,16 +30,10 @@ import { TOOLBAR_SELECT } from '@/components/kit/toolbar-metrics';
  * - `field` — dáng ô nhập (viền `border-input`, 32px), thêm nền nhạt khi rê và khi mở;
  * - `toolbar` — dáng nút lọc (viền nút, 36px, chữ đậm vừa).
  *
- * Giá trị luôn là CHUỖI; `''` là chưa chọn và ô hiện `placeholder`.
+ * Giá trị luôn là CHUỖI; `''` là chưa chọn và ô hiện `placeholder`. Một mục của ô CÙNG kiểu,
+ * cùng cách vẽ và cách đọc với mục của menu lọc (`option-content.tsx`, review RU3/SI4).
  */
-export interface PickerOption {
-  value: string;
-  label: string;
-  /** Icon đầu mục; mục đang chọn có icon thì ô cũng hiện nó. */
-  icon?: React.ComponentType<React.SVGProps<SVGSVGElement>>;
-  /** Chữ phụ mờ sau tên (vd "Hidden") — thay cho kiểu ghép "(hidden)" vào tên. */
-  hint?: string;
-}
+export type PickerOption = DropdownOption;
 
 export interface PickerGroup {
   /** Khoá React của nhóm — tên họ, không phải chỉ số mảng. */
@@ -200,25 +195,6 @@ export function Picker(props: PickerProps) {
           ))}
         </SelectContent>
       </Select>
-    </>
-  );
-}
-
-/** Icon, tên và chữ phụ của một mục — dùng chung cho danh sách và ô. */
-function OptionContent({ option }: { option: PickerOption }) {
-  const Icon = option.icon;
-  return (
-    <>
-      {Icon ? <Icon aria-hidden="true" /> : null}
-      <span className="truncate">{option.label}</span>
-      {option.hint ? (
-        <>
-          {/* Khoảng trắng THẬT giữa tên và hint: tên trợ năng đọc "Retired Hidden",
-              không dính thành "RetiredHidden". Flex bỏ qua text node trắng nên mắt
-              không thấy khác. */}{' '}
-          <span className={MENU_HINT}>{option.hint}</span>
-        </>
-      ) : null}
     </>
   );
 }
