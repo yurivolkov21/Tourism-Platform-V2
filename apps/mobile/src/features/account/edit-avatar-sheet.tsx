@@ -65,7 +65,9 @@ export function EditAvatarSheet({
   ];
 
   return (
-    <BottomSheet visible={visible} onClose={onClose}>
+    // N3 (rà 07/10): đang upload thì backdrop/kéo tay nắm/back Android không
+    // đóng được tấm (nút Cancel đã khoá sẵn) — đóng giữa chừng là nuốt mất lỗi.
+    <BottomSheet visible={visible} onClose={pending ? () => {} : onClose}>
       <View style={{ paddingTop: theme.spacing(3) }}>
         <AppText variant="heading">{title}</AppText>
         <View style={{ marginTop: theme.spacing(2) }}>

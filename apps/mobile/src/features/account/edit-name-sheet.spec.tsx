@@ -54,4 +54,19 @@ describe('EditNameSheet', () => {
       disabled: true,
     });
   });
+
+  // N3 (rà 07/10): đóng tấm khi đang lưu là nuốt mất lỗi server.
+  it('đang lưu thì chạm backdrop KHÔNG đóng tấm', async () => {
+    const onClose = jest.fn();
+    await renderWithTheme(<EditNameSheet {...baseProps({ pending: true, onClose })} />);
+    await fireEvent.press(screen.getByTestId('bottom-sheet-backdrop'));
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it('không lưu thì chạm backdrop đóng tấm', async () => {
+    const onClose = jest.fn();
+    await renderWithTheme(<EditNameSheet {...baseProps({ onClose })} />);
+    await fireEvent.press(screen.getByTestId('bottom-sheet-backdrop'));
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
 });

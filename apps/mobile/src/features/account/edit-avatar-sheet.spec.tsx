@@ -68,4 +68,19 @@ describe('EditAvatarSheet', () => {
     await fireEvent.press(screen.getByText('Cancel'));
     expect(onClose).toHaveBeenCalled();
   });
+
+  // N3 (rà 07/10): Cancel đã khoá khi pending, nhưng backdrop/back Android thì chưa.
+  it('đang pending thì chạm backdrop KHÔNG đóng tấm', async () => {
+    const onClose = jest.fn();
+    await renderWithTheme(<EditAvatarSheet {...baseProps({ pending: true, onClose })} />);
+    await fireEvent.press(screen.getByTestId('bottom-sheet-backdrop'));
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it('không pending thì chạm backdrop đóng tấm', async () => {
+    const onClose = jest.fn();
+    await renderWithTheme(<EditAvatarSheet {...baseProps({ onClose })} />);
+    await fireEvent.press(screen.getByTestId('bottom-sheet-backdrop'));
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
 });

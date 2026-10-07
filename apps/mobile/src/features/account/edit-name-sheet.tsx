@@ -41,7 +41,10 @@ export function EditNameSheet({
   const theme = useTheme();
 
   return (
-    <BottomSheet visible={visible} onClose={onClose}>
+    // N3 (rà 07/10): đang lưu thì backdrop/kéo tay nắm/back Android không đóng
+    // được tấm — đóng giữa chừng là lỗi server hiện trên tấm đã đóng, khách
+    // tưởng đã đổi xong.
+    <BottomSheet visible={visible} onClose={pending ? () => {} : onClose}>
       <View style={{ paddingTop: theme.spacing(3) }}>
         <AppText variant="heading">{label}</AppText>
         <AppText variant="subtitle" tone="muted" style={{ marginTop: theme.spacing(1.5) }}>
