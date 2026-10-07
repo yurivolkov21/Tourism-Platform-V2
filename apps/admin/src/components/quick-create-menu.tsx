@@ -65,7 +65,7 @@ const ITEMS = [
 ] as const;
 
 export function QuickCreateMenu() {
-  const { isMobile, state } = useSidebar();
+  const { isMobile, state, setOpenMobile } = useSidebar();
   const pathname = usePathname();
   const t = messages.admin.shell;
   const collapsed = state === 'collapsed' && !isMobile;
@@ -105,8 +105,13 @@ export function QuickCreateMenu() {
                   // Cùng trang thì mục là mục menu thường: điều hướng tới chính trang này chỉ để
                   // mở hộp là đẩy thêm một mục lịch sử và vứt query lọc đang xem.
                   render={pathname === item.path ? undefined : <Link href={item.path} />}
-                  // Ghi TRƯỚC khi Link điều hướng: trang đích mount là đã có yêu cầu để tiêu thụ.
-                  onClick={() => requestCreate(item.key)}
+                  onClick={() => {
+                    // Điện thoại: đóng Sheet sidebar (review B2). Cùng trang thì không có lượt dựng
+                    // trang mới nào gỡ nó, và hộp tạo sẽ mở chồng lên một Sheet còn mở.
+                    setOpenMobile(false);
+                    // Ghi TRƯỚC khi Link điều hướng: trang đích mount là đã có yêu cầu để tiêu thụ.
+                    requestCreate(item.key);
+                  }}
                 >
                   <item.icon aria-hidden="true" />
                   {item.label}

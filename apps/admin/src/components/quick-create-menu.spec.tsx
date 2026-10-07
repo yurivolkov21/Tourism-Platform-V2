@@ -1,9 +1,15 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { messages } from '@tourism/i18n';
-import { SidebarProvider } from '@tourism/ui/components/sidebar';
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarInset,
+  SidebarProvider,
+  SidebarTrigger,
+} from '@tourism/ui/components/sidebar';
 import { TooltipProvider } from '@tourism/ui/components/tooltip';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { TourEditorOptions } from '@/lib/api/tours';
 import { QuickCreateMenu } from './quick-create-menu';
 import { NewTourDialog } from './tours/editor/new-tour-dialog';
@@ -124,5 +130,52 @@ describe('QuickCreateMenu', () => {
     renderMenu({ open: false });
     await user.click(screen.getByRole('button', { name: t.quickCreate }));
     expect(await screen.findByRole('menu')).toHaveAttribute('data-side', 'right');
+  });
+});
+
+/**
+ * Sheet sidebar của điện thoại còn mở không — đọc thẳng DOM: hộp modal khác mở thì Sheet mang
+ * `aria-hidden`, nên truy vấn theo role không thấy nó dù nó vẫn mở.
+ */
+const mobileSheetOpen = () =>
+  document.querySelector('[data-slot="sidebar"][data-mobile="true"]')?.hasAttribute('data-open') ??
+  false;
+
+describe('QuickCreateMenu trên điện thoại (review B2)', () => {
+  afterEach(() => {
+    window.innerWidth = 1024;
+  });
+
+  it('Sheet sidebar đang mở, bấm mục của chính trang: Sheet đóng và hộp tạo mở', async () => {
+    window.innerWidth = 375;
+    location.pathname = '/tours';
+    const user = userEvent.setup();
+    render(
+      <TooltipProvider>
+        <SidebarProvider defaultOpen>
+          <Sidebar collapsible="icon">
+            <SidebarContent>
+              <QuickCreateMenu />
+            </SidebarContent>
+          </Sidebar>
+          <SidebarInset>
+            <SidebarTrigger />
+            <NewTourDialog options={OPTIONS} create={vi.fn()} />
+          </SidebarInset>
+        </SidebarProvider>
+      </TooltipProvider>,
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Toggle Sidebar' }));
+    const sheet = await screen.findByRole('dialog', { name: 'Sidebar' });
+    expect(mobileSheetOpen()).toBe(true);
+
+    await user.click(within(sheet).getByRole('button', { name: t.quickCreate }));
+    await user.click(await screen.findByRole('menuitem', { name: newTour.action }));
+
+    const dialog = await screen.findByRole('dialog', { name: newTour.dialog.title });
+    await waitFor(() => expect(mobileSheetOpen()).toBe(false));
+    // Sheet đóng trả focus về nút mở nó, nhưng không được giật focus ra khỏi hộp vừa mở.
+    await waitFor(() => expect(dialog).toContainElement(document.activeElement as HTMLElement));
   });
 });
