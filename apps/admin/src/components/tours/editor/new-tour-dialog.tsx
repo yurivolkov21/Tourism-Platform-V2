@@ -103,7 +103,7 @@ function NewTourForm({
   onClose: () => void;
 }) {
   const router = useRouter();
-  const [draft, setValues] = useState<TourCreateFormValues>(newTourFormValues);
+  const [draft, setDraft] = useState<TourCreateFormValues>(newTourFormValues);
   /**
    * Giá trị form ĐỌC qua danh sách chọn hiện tại: lượt làm mới sau `LINK_NOT_FOUND` bỏ mục vừa bị
    * xoá thì ô ấy về câu giữ chỗ và báo chọn lại, không in UUID thô (review G6-F4). Câu báo
@@ -141,7 +141,7 @@ function NewTourForm({
     });
 
   function patch(next: Partial<TourCreateFormValues>) {
-    setValues((current) => ({ ...current, ...next }));
+    setDraft((current) => ({ ...current, ...next }));
     clearFailure();
   }
 
