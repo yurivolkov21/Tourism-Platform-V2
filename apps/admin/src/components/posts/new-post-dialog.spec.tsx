@@ -1,8 +1,9 @@
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { messages } from '@tourism/i18n';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { CreatePostAction } from '@/lib/posts-write';
+import { requestCreate } from '@/lib/quick-create';
 import { NewPostDialog } from './new-post-dialog';
 
 /**
@@ -114,22 +115,17 @@ describe('NewPostDialog', () => {
     expect(push).not.toHaveBeenCalled();
   });
 
-  it('`openCreate` (Quick Create) mở sẵn hộp mà không cần bấm nút', async () => {
-    render(<NewPostDialog create={vi.fn()} openCreate />);
-    expect(await screen.findByRole('dialog')).toBeInTheDocument();
+  it('Quick Create từ trang khác: yêu cầu đang chờ lúc mount → hộp mở sẵn mà không cần bấm nút', async () => {
+    requestCreate('post');
+    render(<NewPostDialog create={vi.fn()} />);
+    expect(await screen.findByRole('dialog', { name: t.dialog.title })).toBeInTheDocument();
   });
 
-  it('Quick Create ngay trên trang này: `openCreate` bật sau mount vẫn mở hộp, gỡ tham số thì hộp còn mở', async () => {
-    const create = vi.fn();
-    const { rerender } = render(<NewPostDialog create={create} />);
+  it('Quick Create ngay trên trang này: yêu cầu mới mở hộp ngay, không cần bấm nút', async () => {
+    render(<NewPostDialog create={vi.fn()} />);
     expect(screen.queryByRole('dialog')).toBeNull();
 
-    // Cùng route, chỉ query đổi: React giữ nguyên component, chỉ prop đổi.
-    rerender(<NewPostDialog create={create} openCreate />);
-    expect(await screen.findByRole('dialog')).toBeInTheDocument();
-
-    // `StripCreateParam` gỡ `create` khỏi URL → trang dựng lại với `openCreate` tắt.
-    rerender(<NewPostDialog create={create} />);
-    expect(screen.getByRole('dialog')).toBeInTheDocument();
+    act(() => requestCreate('post'));
+    expect(await screen.findByRole('dialog', { name: t.dialog.title })).toBeInTheDocument();
   });
 });

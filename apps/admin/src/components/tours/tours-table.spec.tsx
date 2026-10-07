@@ -1,8 +1,9 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { messages } from '@tourism/i18n';
 import { describe, expect, it, vi } from 'vitest';
 import type { TourCategoryOption } from '@/lib/api/tours';
+import { requestCreate } from '@/lib/quick-create';
 import type { ToursQuery } from '@/lib/tours-query';
 import type { TourRowVM } from '@/lib/tours-view';
 import { ToursTable } from './tours-table';
@@ -46,7 +47,7 @@ const CATEGORIES: TourCategoryOption[] = [
   { id: 'b0000001-0000-4000-8000-000000000004', name: 'Trekking & Adventure', isActive: false },
 ];
 
-function renderTable(rows: TourRowVM[], { openCreate }: { openCreate?: boolean } = {}) {
+function renderTable(rows: TourRowVM[]) {
   return render(
     <ToursTable
       rows={rows}
@@ -58,7 +59,6 @@ function renderTable(rows: TourRowVM[], { openCreate }: { openCreate?: boolean }
       setPublished={vi.fn()}
       createOptions={{ categories: CATEGORIES, destinations: [] }}
       create={vi.fn()}
-      openCreate={openCreate}
     />,
   );
 }
@@ -82,8 +82,9 @@ describe('ToursTable', () => {
     ).toBeInTheDocument();
   });
 
-  it('`openCreate` (Quick Create) tới được hộp New tour', async () => {
-    renderTable([row()], { openCreate: true });
+  it('Quick Create (yêu cầu tạo tour) tới được hộp New tour', async () => {
+    renderTable([row()]);
+    act(() => requestCreate('tour'));
     expect(
       await screen.findByRole('dialog', { name: messages.admin.tours.editor.create.dialog.title }),
     ).toBeInTheDocument();

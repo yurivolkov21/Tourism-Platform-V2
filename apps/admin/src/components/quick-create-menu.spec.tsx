@@ -3,10 +3,29 @@ import userEvent from '@testing-library/user-event';
 import { messages } from '@tourism/i18n';
 import { SidebarProvider } from '@tourism/ui/components/sidebar';
 import { TooltipProvider } from '@tourism/ui/components/tooltip';
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { TourEditorOptions } from '@/lib/api/tours';
 import { QuickCreateMenu } from './quick-create-menu';
+import { NewTourDialog } from './tours/editor/new-tour-dialog';
+
+const { navigate, location } = vi.hoisted(() => ({
+  navigate: vi.fn(),
+  location: { pathname: '/bookings' },
+}));
+vi.mock('next/link', async () => (await import('@/test/next-link')).nextLinkMock(navigate));
+vi.mock('next/navigation', () => ({
+  usePathname: () => location.pathname,
+  useRouter: () => ({ push: vi.fn(), refresh: vi.fn() }),
+}));
+
+beforeEach(() => {
+  navigate.mockReset();
+  location.pathname = '/bookings';
+});
 
 const t = messages.admin.shell;
+const newTour = messages.admin.tours.editor.create;
+const OPTIONS: TourEditorOptions = { categories: [], destinations: [] };
 
 function renderMenu({ open }: { open: boolean }) {
   return render(
@@ -22,29 +41,66 @@ function renderMenu({ open }: { open: boolean }) {
 const visibleText = (text: string) =>
   screen.getAllByText(text).filter((node) => node.closest('[hidden]') === null);
 
-/** Quick Create (spec 2026-10-05 §2.5): bốn mục, mỗi mục mở trang vùng với hộp tạo bật sẵn. */
+/**
+ * Quick Create (spec 2026-10-05 §2.5): bốn mục, mỗi mục mở hộp tạo của một vùng. Cơ chế là yêu
+ * cầu phía client (`lib/quick-create.ts`), không còn tham số nào trên URL (review A2-3, EF1, RU6).
+ */
 describe('QuickCreateMenu', () => {
-  it('mở ra bốn mục, mỗi mục trỏ `?create=1` của đúng trang', async () => {
+  it('đang ở trang khác: bốn mục là link tới path TRẦN của vùng, không tham số nào', async () => {
+    const user = userEvent.setup();
+    renderMenu({ open: true });
+
+    await user.click(screen.getByRole('button', { name: t.quickCreate }));
+
+    const expected = [
+      [newTour.action, '/tours'],
+      [messages.admin.posts.create.action, '/posts'],
+      [messages.admin.categories.create.action, '/categories'],
+      [messages.admin.destinations.create.action, '/destinations'],
+    ] as const;
+    for (const [name, href] of expected) {
+      expect(await screen.findByRole('menuitem', { name })).toHaveAttribute('href', href);
+    }
+  });
+
+  it('khác trang: bấm mục thì Link đưa sang path trần, trang đích mount thì hộp tạo mở', async () => {
+    const user = userEvent.setup();
+    const { unmount } = renderMenu({ open: true });
+
+    await user.click(screen.getByRole('button', { name: t.quickCreate }));
+    await user.click(await screen.findByRole('menuitem', { name: newTour.action }));
+    expect(navigate).toHaveBeenCalledWith('/tours');
+
+    // Trang đích dựng mới — trang cũ (cả shell của nó) rời đi.
+    unmount();
+    render(<NewTourDialog options={OPTIONS} create={vi.fn()} />);
+    expect(await screen.findByRole('dialog', { name: newTour.dialog.title })).toBeInTheDocument();
+  });
+
+  it('cùng trang: mục của trang đang mở không điều hướng — hộp mở ngay, query lọc và lịch sử giữ nguyên', async () => {
+    location.pathname = '/tours';
     const user = userEvent.setup();
     render(
       <TooltipProvider>
         <SidebarProvider defaultOpen>
           <QuickCreateMenu />
+          <NewTourDialog options={OPTIONS} create={vi.fn()} />
         </SidebarProvider>
       </TooltipProvider>,
     );
 
-    await user.click(screen.getByRole('button', { name: messages.admin.shell.quickCreate }));
+    await user.click(screen.getByRole('button', { name: t.quickCreate }));
+    const item = await screen.findByRole('menuitem', { name: newTour.action });
+    expect(item).not.toHaveAttribute('href');
+    // Ba mục kia vẫn là link sang trang của chúng.
+    expect(
+      screen.getByRole('menuitem', { name: messages.admin.posts.create.action }),
+    ).toHaveAttribute('href', '/posts');
 
-    const expected = [
-      [messages.admin.tours.editor.create.action, '/tours?create=1'],
-      [messages.admin.posts.create.action, '/posts?create=1'],
-      [messages.admin.categories.create.action, '/categories?create=1'],
-      [messages.admin.destinations.create.action, '/destinations?create=1'],
-    ] as const;
-    for (const [name, href] of expected) {
-      expect(await screen.findByRole('menuitem', { name })).toHaveAttribute('href', href);
-    }
+    await user.click(item);
+
+    expect(await screen.findByRole('dialog', { name: newTour.dialog.title })).toBeInTheDocument();
+    expect(navigate).not.toHaveBeenCalled();
   });
 
   it('thu gọn thành cột icon: rê vào nút thì tooltip nói tên nút', async () => {

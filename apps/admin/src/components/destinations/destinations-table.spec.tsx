@@ -1,9 +1,10 @@
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { AdminDestinationRow } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
 import { describe, expect, it, vi } from 'vitest';
 import { toDestinationRowVM } from '@/lib/destinations-view';
+import { requestCreate } from '@/lib/quick-create';
 import { DestinationsTable } from './destinations-table';
 
 /**
@@ -44,25 +45,18 @@ function freshActions() {
 }
 
 describe('DestinationsTable — Quick Create', () => {
-  it('`openCreate` mở sẵn hộp Add destination', async () => {
-    render(
-      <DestinationsTable rows={[toDestinationRowVM(HOI_AN)]} {...freshActions()} openCreate />,
-    );
+  it('tới từ trang khác: yêu cầu đang chờ lúc bảng mount → hộp Add destination mở sẵn', async () => {
+    requestCreate('destination');
+    render(<DestinationsTable rows={[toDestinationRowVM(HOI_AN)]} {...freshActions()} />);
     expect(await screen.findByRole('dialog', { name: t.create.dialog.title })).toBeInTheDocument();
   });
 
-  it('Quick Create ngay trên trang này: `openCreate` bật sau mount vẫn mở hộp, gỡ tham số thì hộp còn mở', async () => {
-    const actions = freshActions();
-    const { rerender } = render(<DestinationsTable rows={[]} {...actions} />);
+  it('ngay trên trang này: bảng đang mở nghe yêu cầu và mở hộp Add destination', async () => {
+    render(<DestinationsTable rows={[]} {...freshActions()} />);
     expect(screen.queryByRole('dialog')).toBeNull();
 
-    // Cùng route, chỉ query đổi: React giữ nguyên bảng, chỉ prop đổi.
-    rerender(<DestinationsTable rows={[]} {...actions} openCreate />);
+    act(() => requestCreate('destination'));
     expect(await screen.findByRole('dialog', { name: t.create.dialog.title })).toBeInTheDocument();
-
-    // `StripCreateParam` gỡ `create` khỏi URL → trang dựng lại với `openCreate` tắt.
-    rerender(<DestinationsTable rows={[]} {...actions} />);
-    expect(screen.getByRole('dialog')).toBeInTheDocument();
   });
 });
 

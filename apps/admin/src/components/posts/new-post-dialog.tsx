@@ -15,7 +15,7 @@ import { Input } from '@tourism/ui/components/input';
 import { cn } from '@tourism/ui/lib/utils';
 import { PlusIcon } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import { DIALOG_FRAME } from '@/components/kit/confirm-write-dialog';
 import { FormField } from '@/components/kit/form-field';
 import { hasFormErrors } from '@/lib/form-errors';
@@ -28,6 +28,7 @@ import {
   postCreatePayload,
   validatePostCreateForm,
 } from '@/lib/posts-write';
+import { useCreateRequest } from '@/lib/quick-create';
 import { useConfirmWrite } from '@/lib/use-confirm-write';
 
 /**
@@ -43,23 +44,11 @@ const t = messages.admin.posts.create;
 const FORM_ID = 'new-post';
 const EMPTY: PostCreateFormValues = { title: '', slug: '' };
 
-export function NewPostDialog({
-  create,
-  openCreate = false,
-}: {
-  create: CreatePostAction;
-  /** Quick Create (`?create=1`) — trang báo mở sẵn hộp (spec 2026-10-05 §2.5). */
-  openCreate?: boolean;
-}) {
-  // Quick Create (spec 2026-10-05 §2.5) mở hộp bằng hai đường. Tới từ trang khác thì trang
-  // dựng mới, hộp mở ngay từ state khởi đầu. Bấm ngay trên trang này thì route giữ nguyên,
-  // chỉ query đổi — component không remount, `useState(openCreate)` không chạy lại, nên
-  // effect mở hộp khi prop bật lên. Effect chỉ đặt state, không bấm nút hộ, và không đóng
-  // hộp khi prop tắt (lúc `StripCreateParam` gỡ tham số khỏi URL).
-  const [open, setOpen] = useState(openCreate);
-  useEffect(() => {
-    if (openCreate) setOpen(true);
-  }, [openCreate]);
+export function NewPostDialog({ create }: { create: CreatePostAction }) {
+  const [open, setOpen] = useState(false);
+  // Quick Create (spec 2026-10-05 §2.5) mở hộp như bấm nút: lúc trang mount nếu menu vừa ghi
+  // yêu cầu từ trang khác, hay ngay khi menu ghi yêu cầu trên chính trang này.
+  useCreateRequest('post', () => setOpen(true));
 
   return (
     <>

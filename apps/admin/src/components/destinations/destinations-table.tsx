@@ -26,6 +26,7 @@ import {
   type SetDestinationActiveAction,
   type UpdateDestinationAction,
 } from '@/lib/destinations-write';
+import { useCreateRequest } from '@/lib/quick-create';
 
 /**
  * Bảng `/destinations` (spec P4e-2 F15) — dựng trọn trên kit, cùng khuôn bảng
@@ -150,8 +151,6 @@ export interface DestinationsTableProps {
   update: UpdateDestinationAction;
   setActive: SetDestinationActiveAction;
   remove: DeleteDestinationAction;
-  /** Quick Create (`?create=1`) — trang báo mở sẵn hộp Add (spec 2026-10-05 §2.5). */
-  openCreate?: boolean;
 }
 
 export function DestinationsTable({
@@ -160,22 +159,16 @@ export function DestinationsTable({
   update,
   setActive,
   remove,
-  openCreate = false,
 }: DestinationsTableProps) {
   const router = useRouter();
   const [columnVisibility, setColumnVisibility] = React.useState<ColumnVisibilityState>({
     country: false,
   });
   const [isRefreshing, startRefresh] = React.useTransition();
-  // Quick Create (spec 2026-10-05 §2.5) mở hộp Add bằng hai đường. Tới từ trang khác thì
-  // trang dựng mới, hộp mở ngay từ state khởi đầu. Bấm ngay trên trang này thì route giữ
-  // nguyên, chỉ query đổi — bảng không remount, `useState(openCreate)` không chạy lại, nên
-  // effect mở hộp khi prop bật lên. Effect chỉ đặt state, không bấm nút hộ, và không đóng
-  // hộp khi prop tắt (lúc `StripCreateParam` gỡ tham số khỏi URL).
-  const [adding, setAdding] = React.useState(openCreate);
-  React.useEffect(() => {
-    if (openCreate) setAdding(true);
-  }, [openCreate]);
+  const [adding, setAdding] = React.useState(false);
+  // Quick Create (spec 2026-10-05 §2.5) mở hộp Add như bấm nút: lúc bảng mount nếu menu vừa ghi
+  // yêu cầu từ trang khác, hay ngay khi menu ghi yêu cầu trên chính trang này.
+  useCreateRequest('destination', () => setAdding(true));
 
   /**
    * Nút Add — luôn có, sống qua mọi lượt làm mới, nên là đích focus khi một hàng vừa bị xoá

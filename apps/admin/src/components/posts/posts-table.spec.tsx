@@ -1,8 +1,9 @@
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { messages } from '@tourism/i18n';
 import { describe, expect, it, vi } from 'vitest';
 import type { PostsQuery } from '@/lib/posts-query';
 import type { PostRowVM } from '@/lib/posts-view';
+import { requestCreate } from '@/lib/quick-create';
 import { PostsTable } from './posts-table';
 
 /**
@@ -31,16 +32,9 @@ const row = (patch: Partial<PostRowVM> = {}): PostRowVM => ({
 
 const QUERY: PostsQuery = { page: 1, limit: 20 };
 
-function renderTable(rows: PostRowVM[], { openCreate }: { openCreate?: boolean } = {}) {
+function renderTable(rows: PostRowVM[]) {
   return render(
-    <PostsTable
-      rows={rows}
-      query={QUERY}
-      total={rows.length}
-      totalPages={1}
-      create={vi.fn()}
-      openCreate={openCreate}
-    />,
+    <PostsTable rows={rows} query={QUERY} total={rows.length} totalPages={1} create={vi.fn()} />,
   );
 }
 
@@ -92,8 +86,9 @@ describe('PostsTable', () => {
     ).toBeInTheDocument();
   });
 
-  it('`openCreate` (Quick Create) tới được hộp New post', async () => {
-    renderTable([row()], { openCreate: true });
+  it('Quick Create (yêu cầu tạo bài) tới được hộp New post', async () => {
+    renderTable([row()]);
+    act(() => requestCreate('post'));
     expect(
       await screen.findByRole('dialog', { name: messages.admin.posts.create.dialog.title }),
     ).toBeInTheDocument();

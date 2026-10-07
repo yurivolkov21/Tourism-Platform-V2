@@ -1,9 +1,10 @@
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { AdminCategoryRow } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
 import { describe, expect, it, vi } from 'vitest';
 import { toCategoryRowVMs } from '@/lib/categories-view';
+import { requestCreate } from '@/lib/quick-create';
 import { CategoriesTable } from './categories-table';
 
 /**
@@ -50,23 +51,18 @@ function freshActions() {
 }
 
 describe('CategoriesTable — Quick Create', () => {
-  it('`openCreate` mở sẵn hộp Add category', async () => {
-    render(<CategoriesTable rows={toCategoryRowVMs([DAY_TRIPS])} {...freshActions()} openCreate />);
+  it('tới từ trang khác: yêu cầu đang chờ lúc bảng mount → hộp Add category mở sẵn', async () => {
+    requestCreate('category');
+    render(<CategoriesTable rows={toCategoryRowVMs([DAY_TRIPS])} {...freshActions()} />);
     expect(await screen.findByRole('dialog', { name: t.create.dialog.title })).toBeInTheDocument();
   });
 
-  it('Quick Create ngay trên trang này: `openCreate` bật sau mount vẫn mở hộp, gỡ tham số thì hộp còn mở', async () => {
-    const actions = freshActions();
-    const { rerender } = render(<CategoriesTable rows={[]} {...actions} />);
+  it('ngay trên trang này: bảng đang mở nghe yêu cầu và mở hộp Add category', async () => {
+    render(<CategoriesTable rows={[]} {...freshActions()} />);
     expect(screen.queryByRole('dialog')).toBeNull();
 
-    // Cùng route, chỉ query đổi: React giữ nguyên bảng, chỉ prop đổi.
-    rerender(<CategoriesTable rows={[]} {...actions} openCreate />);
+    act(() => requestCreate('category'));
     expect(await screen.findByRole('dialog', { name: t.create.dialog.title })).toBeInTheDocument();
-
-    // `StripCreateParam` gỡ `create` khỏi URL → trang dựng lại với `openCreate` tắt.
-    rerender(<CategoriesTable rows={[]} {...actions} />);
-    expect(screen.getByRole('dialog')).toBeInTheDocument();
   });
 });
 

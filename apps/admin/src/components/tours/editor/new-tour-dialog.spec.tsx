@@ -1,8 +1,9 @@
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { messages } from '@tourism/i18n';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { TourEditorOptions } from '@/lib/api/tours';
+import { requestCreate } from '@/lib/quick-create';
 import type { CreateTourAction } from '@/lib/tour-editor-write';
 import { CATEGORY_ID, DEST_A, HIDDEN_CATEGORY_ID, TOUR_ID } from '@/test/tour-detail';
 import { NewTourDialog } from './new-tour-dialog';
@@ -204,22 +205,17 @@ describe('NewTourDialog', () => {
     ).toBeInTheDocument();
   });
 
-  it('`openCreate` (Quick Create) mở sẵn hộp mà không cần bấm nút', async () => {
-    render(<NewTourDialog options={OPTIONS} create={vi.fn()} openCreate />);
-    expect(await screen.findByRole('dialog')).toBeInTheDocument();
+  it('Quick Create từ trang khác: yêu cầu đang chờ lúc mount → hộp mở sẵn mà không cần bấm nút', async () => {
+    requestCreate('tour');
+    render(<NewTourDialog options={OPTIONS} create={vi.fn()} />);
+    expect(await screen.findByRole('dialog', { name: t.dialog.title })).toBeInTheDocument();
   });
 
-  it('Quick Create ngay trên trang này: `openCreate` bật sau mount vẫn mở hộp, gỡ tham số thì hộp còn mở', async () => {
-    const create = vi.fn();
-    const { rerender } = render(<NewTourDialog options={OPTIONS} create={create} />);
+  it('Quick Create ngay trên trang này: yêu cầu mới mở hộp ngay, không cần bấm nút', async () => {
+    render(<NewTourDialog options={OPTIONS} create={vi.fn()} />);
     expect(screen.queryByRole('dialog')).toBeNull();
 
-    // Cùng route, chỉ query đổi: React giữ nguyên component, chỉ prop đổi.
-    rerender(<NewTourDialog options={OPTIONS} create={create} openCreate />);
-    expect(await screen.findByRole('dialog')).toBeInTheDocument();
-
-    // `StripCreateParam` gỡ `create` khỏi URL → trang dựng lại với `openCreate` tắt.
-    rerender(<NewTourDialog options={OPTIONS} create={create} />);
-    expect(screen.getByRole('dialog')).toBeInTheDocument();
+    act(() => requestCreate('tour'));
+    expect(await screen.findByRole('dialog', { name: t.dialog.title })).toBeInTheDocument();
   });
 });

@@ -123,18 +123,9 @@ export interface PostsTableProps {
   total: number;
   totalPages: number;
   create: CreatePostAction;
-  /** Quick Create (`?create=1`) — chuyển thẳng xuống hộp New post (spec 2026-10-05 §2.5). */
-  openCreate?: boolean;
 }
 
-export function PostsTable({
-  rows,
-  query,
-  total,
-  totalPages,
-  create,
-  openCreate,
-}: PostsTableProps) {
+export function PostsTable({ rows, query, total, totalPages, create }: PostsTableProps) {
   const [columnVisibility, setColumnVisibility] = React.useState<ColumnVisibilityState>({});
 
   const table = useTable({
@@ -155,7 +146,7 @@ export function PostsTable({
           <PostsSearch query={query} />
           <PostsClearFilters query={query} />
           <ColumnVisibilityMenu table={table} labels={COLUMN_LABELS} icons={COLUMN_ICONS} />
-          <NewPostDialog create={create} openCreate={openCreate} />
+          <NewPostDialog create={create} />
         </>
       }
       footer={
