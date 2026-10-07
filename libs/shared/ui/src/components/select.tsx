@@ -136,10 +136,15 @@ function SelectItem({ className, children, ...props }: SelectPrimitive.Item.Prop
   );
 }
 
+// `aria-hidden`: separator của Select luôn nằm TRONG listbox, mà ARIA chỉ cho listbox sở hữu
+// option/group — `role="separator"` ở đó là lỗi `aria-required-children`, vài trình đọc màn hình
+// đọc "separator" giữa các mục (review A2-6). Vạch chỉ để nhìn; nhãn nhóm nói ranh giới cho trình
+// đọc màn hình. Nếu vendor lại từ upstream, giữ nguyên chỗ này.
 function SelectSeparator({ className, ...props }: SelectPrimitive.Separator.Props) {
   return (
     <SelectPrimitive.Separator
       data-slot="select-separator"
+      aria-hidden="true"
       className={cn('pointer-events-none -mx-1 my-1 h-px bg-border', className)}
       {...props}
     />

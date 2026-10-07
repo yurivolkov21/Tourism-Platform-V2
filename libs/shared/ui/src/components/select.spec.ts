@@ -19,4 +19,10 @@ describe('Select — mục trong danh sách', () => {
   it('ItemText co được dưới bề rộng chữ (`min-w-0`) để tên dài cắt "…"', () => {
     expect(code()).toMatch(/<SelectPrimitive\.ItemText className="[^"]*\bmin-w-0\b[^"]*"/);
   });
+
+  // Separator của Select luôn nằm TRONG listbox, mà ARIA chỉ cho listbox sở hữu option/group
+  // (review A2-6) — vạch chỉ để nhìn, phải ra khỏi cây trợ năng.
+  it('vạch ngăn mang `aria-hidden`', () => {
+    expect(code()).toMatch(/<SelectPrimitive\.Separator[^>]*\baria-hidden="true"/);
+  });
 });

@@ -100,7 +100,11 @@ describe('PhotoLibraryDialog', () => {
         .map((option) => option.textContent),
     ).toEqual(['Hạ Long', 'Hà Nội']);
     expect(screen.getByRole('option', { name: t.thisTour })).toBeInTheDocument();
-    expect(within(screen.getByRole('listbox')).getAllByRole('separator')).toHaveLength(1);
+    // Vạch ngăn vẽ giữa hai nhóm nhưng nằm ngoài cây trợ năng — listbox chỉ được sở hữu
+    // option/group (review A2-6, ca canh chính ở `picker.spec.tsx`).
+    expect(
+      screen.getByRole('listbox').querySelectorAll('[data-slot="select-separator"]'),
+    ).toHaveLength(1);
   });
 
   it('ảnh đã có trong tour hiện "Added", không tích được', async () => {

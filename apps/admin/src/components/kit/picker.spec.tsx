@@ -221,7 +221,7 @@ describe('Picker', () => {
     await expect(screen.findByRole('option', {}, { timeout: 300 })).rejects.toThrow();
   });
 
-  it('nhóm: nhãn nhóm đặt tên cho nhóm, vạch ngăn giữa hai nhóm', async () => {
+  it('nhóm: nhãn nhóm đặt tên cho nhóm; vạch ngăn chỉ để nhìn — listbox chỉ sở hữu group', async () => {
     const user = userEvent.setup();
     const { trigger } = renderPicker({
       options: undefined,
@@ -246,7 +246,17 @@ describe('Picker', () => {
         .getAllByRole('option')
         .map((o) => o.textContent),
     ).toEqual(['Hội An', 'Hà Nội']);
-    expect(screen.getAllByRole('separator')).toHaveLength(1);
+
+    // Review A2-6: ARIA chỉ cho listbox sở hữu `option`/`group` — `role="separator"` là con
+    // trực tiếp của listbox thì audit báo `aria-required-children`, vài trình đọc màn hình đọc
+    // "separator" giữa các mục. Vạch vẫn vẽ giữa hai nhóm, nhưng nằm ngoài cây trợ năng.
+    const listbox = screen.getByRole('listbox');
+    const owned = [...listbox.children].filter(
+      (child) => child.hasAttribute('role') && child.getAttribute('aria-hidden') !== 'true',
+    );
+    expect(owned.map((child) => child.getAttribute('role'))).toEqual(['group', 'group']);
+    expect(listbox.querySelectorAll('[data-slot="select-separator"]')).toHaveLength(1);
+    expect(screen.queryByRole('separator')).toBeNull();
   });
 
   it('hint: chữ mờ sau tên, có mặt cả trong danh sách lẫn trên ô', async () => {
