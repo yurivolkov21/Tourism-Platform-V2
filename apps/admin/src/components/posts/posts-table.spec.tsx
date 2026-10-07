@@ -58,22 +58,21 @@ describe('PostsTable', () => {
     expect(screen.getByText('2 Oct 2026, 10:11 UTC')).toBeInTheDocument();
   });
 
-  it('ô ảnh: có ảnh thì in đúng URL; chưa có thì ô giữ chỗ CÓ chữ cho trình đọc màn hình', () => {
+  // Hành vi chi tiết của ô ảnh nằm ở spec kit `TableThumb` (review RU5); ở đây chỉ canh bảng
+  // dùng kit ấy với URL của VM và chữ ô trống của vùng Posts.
+  it('ô ảnh bìa là kit TableThumb: đúng URL của VM, ảnh hỏng thành "Photo unavailable", chưa có ảnh thì ô mang chữ của vùng', () => {
     const thumbUrl =
       'https://res.cloudinary.com/demo/image/upload/f_auto,q_auto,w_160/v1/tourism/posts/x/cover';
     const { container } = renderTable([
       row({ thumbUrl }),
       row({ id: 'b2', slug: 'b', title: 'B', editorHref: '/posts/b' }),
     ]);
-    expect(container.querySelector('img')).toHaveAttribute('src', thumbUrl);
-    expect(screen.getByText(t.noImage)).toBeInTheDocument();
-  });
 
-  it('ảnh bìa hỏng: ô có tên "Photo unavailable" thay cho một ô trống câm (spec 2026-10-05 §4 #13)', () => {
-    const { container } = renderTable([
-      row({ thumbUrl: 'https://res.cloudinary.com/demo/image/upload/f_auto,q_auto,w_160/gone' }),
-    ]);
-    fireEvent.error(container.querySelector('img') as HTMLImageElement);
+    const img = container.querySelector('img') as HTMLImageElement;
+    expect(img).toHaveAttribute('src', thumbUrl);
+    expect(screen.getByText(t.noImage)).toHaveClass('sr-only');
+
+    fireEvent.error(img);
     expect(
       screen.getByRole('img', { name: messages.admin.table.photoUnavailable }),
     ).toBeInTheDocument();

@@ -9,9 +9,9 @@ import Link from 'next/link';
 import * as React from 'react';
 import { ColumnVisibilityMenu, DataTableBody } from '@/components/kit/data-table-body';
 import { DataTableFrame } from '@/components/kit/data-table-frame';
-import { SafeImg } from '@/components/kit/safe-img';
 import { serverTableFeatures } from '@/components/kit/table-features';
 import { TablePagination } from '@/components/kit/table-pagination';
+import { TableThumb } from '@/components/kit/table-thumb';
 import { NewTourDialog } from '@/components/tours/editor/new-tour-dialog';
 import { PublishToggle } from '@/components/tours/publish-toggle';
 import {
@@ -73,7 +73,8 @@ function buildColumns(setPublished: SetPublishedAction) {
       header: t.columns.tour,
       cell: ({ row }) => (
         <div className="flex items-center gap-3">
-          <TourThumb row={row.original} />
+          {/* Ảnh bìa 40px — kit dùng chung với bảng Posts; ô chỉ đọc, không bấm được. */}
+          <TableThumb src={row.original.thumbUrl} emptyLabel={t.noImage} />
           <div className="grid min-w-0 gap-0.5">
             <Link
               href={row.original.editorHref}
@@ -163,31 +164,6 @@ function buildColumns(setPublished: SetPublishedAction) {
       enableHiding: false,
     }),
   ]);
-}
-
-/**
- * Ô ảnh bìa 40px. Tour chưa gắn hero thì in một ô giữ chỗ CÓ CHỮ (sr-only) —
- * ô trống câm đọc thành "ảnh hỏng", còn đây là một sự thật bình thường của
- * tour vừa tạo. Thư viện ảnh là P4f, nên ô này chỉ đọc chứ chưa bấm được.
- *
- * Có hero thì vẽ bằng kit `SafeImg` với URL VM đã thu về `w_160` (spec 2026-10-05
- * §4 #3) — ô 40px không kéo nguyên ảnh gốc ~2400px. Ảnh hỏng thành ô icon mang tên
- * "Photo unavailable" chứ không thành ô trống câm (§4 #13). Lý do dùng `<img>`
- * thường thay cho `next/image` ghi ở `SafeImg`.
- */
-function TourThumb({ row }: { row: TourRowVM }) {
-  if (!row.thumbUrl) {
-    return (
-      // `aria-hidden` + `title` là hai thứ TRIỆT TIÊU nhau: cái đầu gỡ hẳn nút
-      // khỏi cây trợ năng, còn `title` trên một div không tương tác thì vốn
-      // không được đọc — cộng lại thành một ô câm, đúng thứ JSDoc trên nói phải
-      // tránh. Một span `sr-only` mới thật sự nói được.
-      <div className="size-10 shrink-0 rounded-md border border-dashed bg-muted">
-        <span className="sr-only">{t.noImage}</span>
-      </div>
-    );
-  }
-  return <SafeImg src={row.thumbUrl} alt="" width={40} height={40} className="size-10" />;
 }
 
 export interface ToursTableProps {

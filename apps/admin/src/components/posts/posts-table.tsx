@@ -8,9 +8,9 @@ import Link from 'next/link';
 import * as React from 'react';
 import { ColumnVisibilityMenu, DataTableBody } from '@/components/kit/data-table-body';
 import { DataTableFrame } from '@/components/kit/data-table-frame';
-import { SafeImg } from '@/components/kit/safe-img';
 import { serverTableFeatures } from '@/components/kit/table-features';
 import { TablePagination } from '@/components/kit/table-pagination';
+import { TableThumb } from '@/components/kit/table-thumb';
 import { NewPostDialog } from '@/components/posts/new-post-dialog';
 import { PostsClearFilters, PostsSearch, PostsStatusTabs } from '@/components/posts/posts-toolbar';
 import { type PostsQuery, postsHref } from '@/lib/posts-query';
@@ -48,7 +48,8 @@ const COLUMNS = columnHelper.columns([
     header: t.columns.post,
     cell: ({ row }) => (
       <div className="flex items-center gap-3">
-        <PostThumb row={row.original} />
+        {/* Ảnh bìa 40px — kit dùng chung với bảng Tours. */}
+        <TableThumb src={row.original.thumbUrl} emptyLabel={t.noImage} />
         <div className="grid min-w-0 gap-0.5">
           <Link
             href={row.original.editorHref}
@@ -99,22 +100,6 @@ const COLUMNS = columnHelper.columns([
     ),
   }),
 ]);
-
-/**
- * Ô ảnh bìa 40px — cùng khuôn `TourThumb`: chưa có ảnh thì ô giữ chỗ mang chữ `sr-only`
- * (ô câm đọc thành "ảnh hỏng"); có ảnh thì kit `SafeImg` — ảnh hỏng thành ô icon mang tên
- * "Photo unavailable" (spec 2026-10-05 §4 #13).
- */
-function PostThumb({ row }: { row: PostRowVM }) {
-  if (!row.thumbUrl) {
-    return (
-      <div className="size-10 shrink-0 rounded-md border border-dashed bg-muted">
-        <span className="sr-only">{t.noImage}</span>
-      </div>
-    );
-  }
-  return <SafeImg src={row.thumbUrl} alt="" width={40} height={40} className="size-10" />;
-}
 
 export interface PostsTableProps {
   rows: PostRowVM[];

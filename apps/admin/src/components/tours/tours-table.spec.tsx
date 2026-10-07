@@ -138,22 +138,25 @@ describe('ToursTable', () => {
     expect(screen.queryByText(t.featured)).not.toBeInTheDocument();
   });
 
-  it('tour đã có ảnh bìa in đúng URL thumb mà VM dựng sẵn', () => {
-    const thumbUrl =
-      'https://res.cloudinary.com/demo/image/upload/f_auto,q_auto,w_160/tours/hoi-an';
-    renderTable([row({ thumbUrl })]);
-    // `alt=""` có chủ đích: tên tour nằm ngay cạnh, một alt lặp lại nó là hai
-    // lần đọc cùng một chuỗi.
-    const img = document.querySelector('img');
-    expect(img).toHaveAttribute('src', thumbUrl);
-    expect(img).toHaveAttribute('alt', '');
-  });
-
-  it('ảnh bìa hỏng: ô có tên "Photo unavailable" thay cho một ô trống câm (spec 2026-10-05 §4 #13)', () => {
-    renderTable([
-      row({ thumbUrl: 'https://res.cloudinary.com/demo/image/upload/f_auto,q_auto,w_160/gone' }),
+  // Hành vi chi tiết của ô ảnh nằm ở spec kit `TableThumb` (review RU5); ở đây chỉ canh bảng
+  // dùng kit ấy với URL của VM và chữ ô trống của vùng Tours.
+  it('ô ảnh bìa là kit TableThumb: đúng URL của VM, ảnh hỏng thành "Photo unavailable", chưa có ảnh thì ô mang chữ của vùng', () => {
+    const thumbUrl = 'https://res.cloudinary.com/demo/image/upload/f_auto,q_auto,w_160/gone';
+    const { container } = renderTable([
+      row({ thumbUrl }),
+      row({
+        id: '7f2a1b3c-0000-4000-8000-000000000002',
+        slug: 'my-son-sunrise',
+        title: 'My Son Sunrise',
+        thumbUrl: null,
+      }),
     ]);
-    fireEvent.error(document.querySelector('img') as HTMLImageElement);
+
+    const img = container.querySelector('img') as HTMLImageElement;
+    expect(img).toHaveAttribute('src', thumbUrl);
+    expect(screen.getByText(t.noImage)).toHaveClass('sr-only');
+
+    fireEvent.error(img);
     expect(
       screen.getByRole('img', { name: messages.admin.table.photoUnavailable }),
     ).toBeInTheDocument();

@@ -1,7 +1,7 @@
 import type { AdminPostRow, PostDisplayStatus } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
 import { formatDateTime } from './bookings-view';
-import { withDeliveryTransform } from './cloudinary-url';
+import { tableCoverThumb } from './cloudinary-url';
 
 /**
  * Mapper hiển thị vùng `/posts` (spec P4e-4 §4.2) — THUẦN, ngoài React nên test được
@@ -58,7 +58,7 @@ export function toPostRowVM(row: AdminPostRow): PostRowVM {
     published: formatDateTime(row.displayStatus === 'draft' ? null : row.publishedAt),
     tags: row.tags.length === 0 ? t.list.noTags : row.tags.map((tag) => tag.name).join(', '),
     updated: formatDateTime(row.updatedAt),
-    // Ô 40px — bản rộng 160px đủ nét cả màn mật độ cao, không tải nguyên ảnh 2400px.
-    thumbUrl: row.coverUrl === null ? null : withDeliveryTransform(row.coverUrl, 'w_160'),
+    // Ô 40px của bảng — cỡ thu nhỏ chung với bảng Tours, lý do ở `tableCoverThumb`.
+    thumbUrl: row.coverUrl === null ? null : tableCoverThumb(row.coverUrl),
   };
 }

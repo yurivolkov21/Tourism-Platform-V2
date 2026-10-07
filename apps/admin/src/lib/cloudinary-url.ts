@@ -17,6 +17,16 @@ export function withDeliveryTransform(url: string, transform: string): string {
   return url.replace(DELIVERY_TRANSFORM, `/upload/f_auto,q_auto,${transform}/`);
 }
 
+/**
+ * Ảnh bìa cho ô 40px của bảng Tours và bảng Posts (kit `TableThumb`, review RU5 — `w_160` từng gõ
+ * riêng ở hai view): bản rộng 160px đủ nét cả màn mật độ cao, không kéo nguyên ảnh gốc ~2400px.
+ * Chỉ `w_` giữ tỉ lệ, khung vuông do CSS `object-cover` lo — không `c_fill`, cùng lý do
+ * `tourPhotoThumb` (cắt cúp ảnh CC BY-SA tạo tác phẩm phái sinh, ADR-0020 §4).
+ */
+export function tableCoverThumb(url: string): string {
+  return withDeliveryTransform(url, 'w_160');
+}
+
 /** URL delivery của ảnh VỪA tải lên — đúng khuôn `buildCloudinaryUrl` phía API. */
 export function cloudinaryImageUrl(cloudName: string, publicId: string, version: string): string {
   return `https://res.cloudinary.com/${cloudName}/image/upload/f_auto,q_auto/v${version}/${publicId}`;
