@@ -48,6 +48,7 @@ import {
   tourCardPreview,
 } from '@/lib/tour-editor-view';
 import {
+  clearDeletedDetailsChoices,
   type DestinationDraft,
   type DetailsContractCode,
   detailsErrorCopy,
@@ -99,7 +100,13 @@ export function TourDetailsForm({
   const form = useTourFormState<TourDetailsFormValues>(detail, detailsFormValues);
   /** `name` chung của các radio điểm chính — duy nhất cho mỗi form trên trang. */
   const primaryName = `${useId()}-primary`;
-  const { values, version, dirty, showValidation } = form;
+  const { version, dirty, showValidation } = form;
+  /**
+   * Giá trị form ĐỌC qua danh sách chọn hiện tại: lượt làm mới sau `LINK_NOT_FOUND` bỏ danh mục
+   * hay điểm đến vừa bị xoá thì ô ấy về câu giữ chỗ và báo chọn lại, không in UUID thô (review
+   * G6-F4). Mọi chỗ dưới đây — ô, kiểm lỗi, payload, cột phải — đọc bản này.
+   */
+  const values = clearDeletedDetailsChoices(form.values, options);
   /**
    * Lỗi server thuộc về một ô (DURATION_LOCKED, GROUP_SIZE_BELOW_SEATS), gắn với
    * phiên bản lúc bấm Save — form nạp bản mới thì lỗi cũ tự tắt.

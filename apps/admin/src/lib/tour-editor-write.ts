@@ -36,6 +36,7 @@ import {
   TravellerTypeSchema,
 } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
+import type { TourEditorOptions } from './api/tours';
 import { createWriteErrorCodec, type TransportFailureCode } from './api/write-error';
 import type { Keyed } from './list-editor';
 import { onSaleShortfalls, projectedReadiness } from './tour-editor-view';
@@ -229,6 +230,38 @@ export function validateTourCreateForm(values: TourCreateFormValues): TourCreate
   setError(errors, 'maxGroupSize', wholeNumberError(values.maxGroupSize, 1, TOUR_GROUP_MAX));
   setError(errors, 'basePrice', basePriceError(values.basePrice));
   return errors;
+}
+
+/**
+ * `id` còn trong danh sách chọn thì giữ, không thì `''` (chưa chọn).
+ *
+ * Danh sách chọn vừa làm mới — `router.refresh()` sau `LINK_NOT_FOUND`, review S1 — đã bỏ danh mục
+ * hay điểm đến bị xoá ở tab khác, mà form còn giữ id của nó. `Picker` in thẳng giá trị không khớp
+ * mục nào (luật E3 của nó: không tự quay về), nên ô hiện UUID thô. Về `''` thì ô hiện câu giữ chỗ
+ * và luật bắt buộc của form báo chọn lại (review G6-F4).
+ *
+ * Form gọi hai hàm dưới MỖI lượt render trên giá trị đang giữ, không ghi kết quả vào state: danh
+ * sách là nguồn sự thật, và một mục đã xoá không bao giờ quay lại danh sách. Ghi vào state thì
+ * phải canh lượt làm mới bằng state riêng, và ở tab Details còn tắt luôn cờ "đang chờ Reload"
+ * của form.
+ */
+function listedId(list: readonly { id: string }[], id: string): string {
+  return list.some((item) => item.id === id) ? id : '';
+}
+
+/**
+ * Hộp New tour: danh mục và điểm đến chính đã rời danh sách chọn về `''` (xem `listedId`). Không
+ * có gì phải bỏ thì trả CHÍNH `values` — lượt render thường không sinh object mới.
+ */
+export function clearDeletedCreateChoices(
+  values: TourCreateFormValues,
+  options: TourEditorOptions,
+): TourCreateFormValues {
+  const categoryId = listedId(options.categories, values.categoryId);
+  const primaryDestinationId = listedId(options.destinations, values.primaryDestinationId);
+  return categoryId === values.categoryId && primaryDestinationId === values.primaryDestinationId
+    ? values
+    : { ...values, categoryId, primaryDestinationId };
 }
 
 /** Bảy ô thô → hình dạng contract của `create`. Gọi SAU khi validate đã sạch. */
@@ -426,6 +459,26 @@ export function validateTourDetailsForm(
 
   if (Object.keys(lines).length > 0) errors.lines = lines;
   return errors;
+}
+
+/**
+ * Tab Details: danh mục và từng dòng điểm đến đã rời danh sách chọn về `''` (xem `listedId`); dòng
+ * giữ nguyên chỗ và cờ điểm chính. Không có gì phải bỏ thì trả CHÍNH `values` — lượt render
+ * thường không sinh object mới.
+ */
+export function clearDeletedDetailsChoices(
+  values: TourDetailsFormValues,
+  options: TourEditorOptions,
+): TourDetailsFormValues {
+  const categoryId = listedId(options.categories, values.categoryId);
+  let changed = categoryId !== values.categoryId;
+  const destinations = values.destinations.map((line) => {
+    const destinationId = listedId(options.destinations, line.destinationId);
+    if (destinationId === line.destinationId) return line;
+    changed = true;
+    return { ...line, destinationId };
+  });
+  return changed ? { ...values, categoryId, destinations } : values;
 }
 
 export function tourDetailsPayload(

@@ -425,6 +425,49 @@ describe('TourDetailsForm', () => {
     expect(field(t.title)).toHaveValue('Mine');
   });
 
+  it('LINK_NOT_FOUND rồi danh sách mới không còn danh mục và điểm đến vừa chọn: hai ô về câu giữ chỗ và báo chọn lại, không in id; dòng còn hợp lệ và chữ đang gõ còn nguyên (review G6-F4)', async () => {
+    const save = vi.fn().mockResolvedValue({ ok: false, code: 'LINK_NOT_FOUND' });
+    const user = userEvent.setup();
+    const view = render(<TourDetailsForm detail={detailFixture()} options={OPTIONS} save={save} />);
+
+    await user.clear(field(t.title));
+    await user.type(field(t.title), 'Mine');
+    await user.click(screen.getByRole('combobox', { name: t.category }));
+    await user.click(
+      await screen.findByRole('option', {
+        name: messages.admin.option.withHint('Retired', messages.admin.tours.list.hiddenHint),
+      }),
+    );
+    await user.click(screen.getByRole('button', { name: t.addDestination }));
+    await user.click(screen.getAllByRole('combobox', { name: t.destination })[1] as HTMLElement);
+    await user.click(await screen.findByRole('option', { name: 'Hà Nội' }));
+    await user.click(saveButton());
+    await screen.findByText(t.errors.LINK_NOT_FOUND);
+
+    // Lượt `router.refresh()` đáp xuống: "Retired" và "Hà Nội" vừa bị xoá ở tab khác.
+    view.rerender(
+      <TourDetailsForm
+        detail={detailFixture()}
+        options={{
+          categories: OPTIONS.categories.filter((option) => option.id !== HIDDEN_CATEGORY_ID),
+          destinations: OPTIONS.destinations.filter((option) => option.id !== DEST_B),
+        }}
+        save={save}
+      />,
+    );
+
+    const category = screen.getByRole('combobox', { name: t.category });
+    expect(category).toHaveTextContent(t.categoryPlaceholder);
+    expect(category).not.toHaveTextContent(HIDDEN_CATEGORY_ID);
+    expect(screen.getByText(e.form.errors.chooseCategory)).toBeInTheDocument();
+    const [kept, cleared] = screen.getAllByRole('combobox', { name: t.destination });
+    expect(kept).toHaveTextContent('Hạ Long');
+    expect(cleared).toHaveTextContent(t.destinationPlaceholder);
+    expect(cleared).not.toHaveTextContent(DEST_B);
+    expect(screen.getByText(e.form.errors.chooseDestination)).toBeInTheDocument();
+    expect(field(t.title)).toHaveValue('Mine');
+  });
+
   it('ô tóm tắt và khung điểm đến mang id mà link Fix của bước Review trỏ tới', () => {
     renderForm();
 

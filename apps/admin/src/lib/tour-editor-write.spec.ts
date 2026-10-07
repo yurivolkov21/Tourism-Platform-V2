@@ -1,11 +1,22 @@
 import { contract, TOUR_DURATION_MAX } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
 import { describe, expect, it, vi } from 'vitest';
-import { CATEGORY_ID, DEST_A, DEST_B, detailFixture, TOUR_ID, VERSION } from '@/test/tour-detail';
+import type { TourEditorOptions } from '@/lib/api/tours';
+import {
+  CATEGORY_ID,
+  DEST_A,
+  DEST_B,
+  detailFixture,
+  HIDDEN_CATEGORY_ID,
+  TOUR_ID,
+  VERSION,
+} from '@/test/tour-detail';
 import {
   CONTENT_CONTRACT_CODES,
   COSTS_CONTRACT_CODES,
   CREATE_TOUR_CONTRACT_CODES,
+  clearDeletedCreateChoices,
+  clearDeletedDetailsChoices,
   contentFormValues,
   contentPayload,
   costDraftItems,
@@ -40,6 +51,15 @@ import {
  */
 const fe = messages.admin.tours.editor.form.errors;
 const text = (length: number) => 'x'.repeat(length);
+
+/**
+ * Danh sách chọn SAU lượt làm mới: danh mục `CATEGORY_ID` và điểm đến `DEST_B` vừa bị xoá ở tab
+ * khác, còn lại một danh mục (đang ẩn — vẫn chọn được) và một điểm đến.
+ */
+const REFRESHED_OPTIONS: TourEditorOptions = {
+  categories: [{ id: HIDDEN_CATEGORY_ID, name: 'Retired', isActive: false }],
+  destinations: [{ id: DEST_A, name: 'Hạ Long', isActive: true }],
+};
 
 /**
  * `tourReadiness` lặp 1..N ngày: một số ngày ngoài trần (gõ tay "1000000000") làm
@@ -158,6 +178,23 @@ describe('hộp New tour', () => {
       maxGroupSize: 12,
       basePrice: '45.50',
     });
+  });
+
+  it('danh sách chọn làm mới sau LINK_NOT_FOUND: id đã rời danh sách về rỗng (ô hiện câu giữ chỗ), id còn thì giữ, chữ khác không đổi (review G6-F4)', () => {
+    expect(clearDeletedCreateChoices(VALID, REFRESHED_OPTIONS)).toEqual({
+      title: 'Hoi An Lantern Walk',
+      slug: 'hoi-an-lantern-walk',
+      categoryId: '',
+      primaryDestinationId: DEST_A,
+      durationDays: '1',
+      maxGroupSize: '10',
+      basePrice: '45.00',
+    });
+  });
+
+  it('danh sách làm mới mà mọi id còn nguyên: trả CHÍNH giá trị cũ — form gọi hàm này mỗi lượt render', () => {
+    const values = { ...VALID, categoryId: HIDDEN_CATEGORY_ID };
+    expect(clearDeletedCreateChoices(values, REFRESHED_OPTIONS)).toBe(values);
   });
 });
 
@@ -403,6 +440,39 @@ describe('tab Details', () => {
     const errors = validateTourDetailsForm(withValues({ title: '', basePrice: '0' }), detail);
     expect(errors.title).toBe(fe.required);
     expect(errors.basePrice).toBe(fe.priceAboveZero);
+  });
+
+  it('danh sách chọn làm mới sau LINK_NOT_FOUND: danh mục và dòng điểm đến đã rời danh sách về rỗng, dòng còn hợp lệ hay chưa chọn giữ nguyên (review G6-F4)', () => {
+    const values = withValues({
+      title: 'Mine',
+      categoryId: CATEGORY_ID,
+      destinations: [
+        { key: 'dest-0', destinationId: DEST_A, isPrimary: true },
+        { key: 'new-1', destinationId: DEST_B, isPrimary: false },
+        { key: 'new-2', destinationId: '', isPrimary: false },
+      ],
+    });
+
+    expect(clearDeletedDetailsChoices(values, REFRESHED_OPTIONS)).toEqual({
+      ...values,
+      categoryId: '',
+      destinations: [
+        { key: 'dest-0', destinationId: DEST_A, isPrimary: true },
+        { key: 'new-1', destinationId: '', isPrimary: false },
+        { key: 'new-2', destinationId: '', isPrimary: false },
+      ],
+    });
+  });
+
+  it('danh sách làm mới mà mọi id còn nguyên: trả CHÍNH giá trị cũ — form gọi hàm này mỗi lượt render', () => {
+    const values = withValues({
+      categoryId: HIDDEN_CATEGORY_ID,
+      destinations: [
+        { key: 'dest-0', destinationId: DEST_A, isPrimary: true },
+        { key: 'new-1', destinationId: '', isPrimary: false },
+      ],
+    });
+    expect(clearDeletedDetailsChoices(values, REFRESHED_OPTIONS)).toBe(values);
   });
 });
 

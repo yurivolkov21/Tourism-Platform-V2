@@ -176,6 +176,39 @@ describe('NewTourDialog', () => {
     expect(within(dialog).getByRole('textbox', { name: d.title })).toHaveValue(TITLE);
   });
 
+  it('LINK_NOT_FOUND rồi danh sách mới không còn danh mục vừa chọn: ô Category về câu giữ chỗ và báo chọn lại, không in id; chữ khác còn nguyên (review G6-F4)', async () => {
+    const create = vi.fn().mockResolvedValue({ ok: false, code: 'LINK_NOT_FOUND' });
+    const user = userEvent.setup();
+    const view = render(<NewTourDialog options={OPTIONS} create={create} />);
+    await user.click(screen.getByRole('button', { name: t.action }));
+    const dialog = await screen.findByRole('dialog', { name: t.dialog.title });
+    await fillValid(user, dialog);
+    await user.click(within(dialog).getByRole('button', { name: t.dialog.submit }));
+    await within(dialog).findByText(t.errors.LINK_NOT_FOUND);
+
+    // Lượt `router.refresh()` đáp xuống: "Day Tours" vừa bị xoá ở tab khác.
+    view.rerender(
+      <NewTourDialog
+        options={{
+          ...OPTIONS,
+          categories: OPTIONS.categories.filter((option) => option.id !== CATEGORY_ID),
+        }}
+        create={create}
+      />,
+    );
+
+    const category = within(dialog).getByRole('combobox', { name: d.category });
+    expect(category).toHaveTextContent(d.categoryPlaceholder);
+    expect(category).not.toHaveTextContent(CATEGORY_ID);
+    expect(within(dialog).getByText(fe.chooseCategory)).toBeInTheDocument();
+    expect(within(dialog).getByRole('combobox', { name: t.primaryDestination })).toHaveTextContent(
+      'Hạ Long',
+    );
+    expect(within(dialog).getByRole('textbox', { name: d.title })).toHaveValue(TITLE);
+    // Câu báo vẫn đứng đó — nó là thứ bảo người dùng chọn lại.
+    expect(within(dialog).getByText(t.errors.LINK_NOT_FOUND)).toBeInTheDocument();
+  });
+
   it('kết cục không rõ (GENERIC) → refresh bảng để xem tour đã có chưa, không điều hướng', async () => {
     const create = vi.fn().mockResolvedValue({ ok: false, code: 'GENERIC' });
     const { user, dialog } = await openDialog(create);

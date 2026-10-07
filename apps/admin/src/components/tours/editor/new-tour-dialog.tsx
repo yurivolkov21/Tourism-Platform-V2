@@ -27,6 +27,7 @@ import { tourStepHref } from '@/lib/tour-editor-view';
 import {
   type CreateTourAction,
   type CreateTourContractCode,
+  clearDeletedCreateChoices,
   createTourErrorCopy,
   newTourFormValues,
   type TourCreateFormErrors,
@@ -102,7 +103,13 @@ function NewTourForm({
   onClose: () => void;
 }) {
   const router = useRouter();
-  const [values, setValues] = useState<TourCreateFormValues>(newTourFormValues);
+  const [draft, setValues] = useState<TourCreateFormValues>(newTourFormValues);
+  /**
+   * Giá trị form ĐỌC qua danh sách chọn hiện tại: lượt làm mới sau `LINK_NOT_FOUND` bỏ mục vừa bị
+   * xoá thì ô ấy về câu giữ chỗ và báo chọn lại, không in UUID thô (review G6-F4). Câu báo
+   * `LINK_NOT_FOUND` ở chân hộp còn nguyên — nó chỉ tắt khi người dùng sửa một ô.
+   */
+  const values = clearDeletedCreateChoices(draft, options);
   /** Admin đã tự gõ ô slug chưa — gõ rồi thì tên thôi ghi đè nó. */
   const [slugTouched, setSlugTouched] = useState(false);
   /** Chỉ mắng SAU lần bấm tạo đầu tiên; lỗi là DERIVED nên sửa xong là tự biến. */
