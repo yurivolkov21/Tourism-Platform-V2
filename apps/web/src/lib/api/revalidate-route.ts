@@ -1,4 +1,5 @@
 import { timingSafeEqual } from 'node:crypto';
+import { POST_SLUG_MAX, TOUR_SLUG_MAX } from '@tourism/contract';
 
 /**
  * Lõi thuần của route POST /api/revalidate (spec 03/08 §2, ADR-0016 §3 khối
@@ -6,13 +7,23 @@ import { timingSafeEqual } from 'node:crypto';
  * vitest của web không include src/app/**. Whitelist PHẢI gương đúng
  * taxonomy lib/api/tags.ts: 'posts' | 'tours' | 'site-media' | post:<slug>
  * | tour:<slug> ('site-media' bổ sung W3-O5 — whitelist từng lệch taxonomy).
- * Gương taxonomy KHÔNG có nghĩa API đã bust đủ: hôm nay chỉ `reviews.moderate`
- * gửi `tours`/`tour:<slug>`; `posts`/`site-media` chưa có producer phía API
- * (CÒN TREO ở CHANGELOG W3 merge).
+ * Gương taxonomy KHÔNG có nghĩa API đã bust đủ: `site-media` chưa có producer
+ * phía API (CÒN TREO ở CHANGELOG W3 merge).
+ *
+ * Trần độ dài slug lấy từ hằng của contract (gương cột DB), không ghi tay: bản
+ * `{1,100}` cũ lệch `TOUR_SLUG_MAX` = 120, và một tour slug 101–120 ký tự làm
+ * route từ chối NGUYÊN lệnh, kể cả `tours` (review A1-2).
  */
-const TAG_RE = /^(posts|tours|site-media|post:[a-z0-9-]{1,100}|tour:[a-z0-9-]{1,100})$/;
+const TAG_RE = new RegExp(
+  `^(posts|tours|site-media|post:[a-z0-9-]{1,${POST_SLUG_MAX}}|tour:[a-z0-9-]{1,${TOUR_SLUG_MAX}})$`,
+);
 
-/** Trần tag mỗi call — đủ cho mọi kịch bản thật (moderate bust 2 tag). */
+/**
+ * Trần tag mỗi call. API chia lô theo `REVALIDATE_TAGS_PER_CALL` (gương con số
+ * này, `apps/api/src/modules/web-revalidation/web-revalidation.service.ts`) vì
+ * sửa một điểm đến bust `tours` cộng trang của MỌI tour gắn nó — có thể quá 20.
+ * Đổi một bên thì phải đổi bên kia.
+ */
 export const MAX_TAGS = 20;
 
 /** Cùng chuỗi với DEV_REVALIDATE_SECRET phía API — hai bên phải khớp. */

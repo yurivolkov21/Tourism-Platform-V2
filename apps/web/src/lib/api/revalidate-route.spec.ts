@@ -1,3 +1,4 @@
+import { POST_SLUG_MAX, TOUR_SLUG_MAX } from '@tourism/contract';
 import { describe, expect, it, vi } from 'vitest';
 import {
   DEV_REVALIDATE_SECRET,
@@ -90,10 +91,27 @@ describe('parseRevalidateBody', () => {
     expect(res).toMatchObject({ ok: false, rejected: ['tour:'] });
   });
 
-  it('slug detail quá 100 ký tự → rejected', () => {
-    const longSlug = `tour:${'a'.repeat(101)}`;
-    const res = parseRevalidateBody({ tags: [longSlug] });
-    expect(res).toMatchObject({ ok: false, rejected: [longSlug] });
+  // Trần độ dài slug lấy từ CHÍNH hằng của contract (hôm nay tour 120, bài viết 80 — gương cột
+  // DB). Bản cũ ghi tay `{1,100}`: một tour slug 101–120 ký tự (hợp lệ ở contract) làm route
+  // từ chối NGUYÊN lệnh bust, kể cả `tours` (review A1-2).
+  it('slug tour dài đúng TOUR_SLUG_MAX được nhận, dài hơn một ký tự → rejected', () => {
+    const longest = `tour:${'a'.repeat(TOUR_SLUG_MAX)}`;
+    const tooLong = `tour:${'a'.repeat(TOUR_SLUG_MAX + 1)}`;
+    expect(parseRevalidateBody({ tags: [longest] })).toEqual({ ok: true, tags: [longest] });
+    expect(parseRevalidateBody({ tags: [tooLong] })).toMatchObject({
+      ok: false,
+      rejected: [tooLong],
+    });
+  });
+
+  it('slug bài viết dài đúng POST_SLUG_MAX được nhận, dài hơn một ký tự → rejected', () => {
+    const longest = `post:${'a'.repeat(POST_SLUG_MAX)}`;
+    const tooLong = `post:${'a'.repeat(POST_SLUG_MAX + 1)}`;
+    expect(parseRevalidateBody({ tags: [longest] })).toEqual({ ok: true, tags: [longest] });
+    expect(parseRevalidateBody({ tags: [tooLong] })).toMatchObject({
+      ok: false,
+      rejected: [tooLong],
+    });
   });
 });
 
