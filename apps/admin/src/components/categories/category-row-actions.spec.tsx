@@ -2,6 +2,7 @@ import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { AdminCategoryRow } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
+import { createRef } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { toCategoryRowVMs } from '@/lib/categories-view';
 import { CategoryRowActions } from './category-row-actions';
@@ -67,6 +68,7 @@ function renderRow(rows: AdminCategoryRow[], index: number, over: Record<string,
       remove={remove}
       disabled={false}
       onMoveStart={onMoveStart}
+      focusAfterDelete={createRef()}
       onSettled={onSettled}
       {...over}
     />,

@@ -28,6 +28,13 @@ const HOI_AN: AdminDestinationRow = {
   linkedTourCount: 0,
 };
 
+const HUE: AdminDestinationRow = {
+  ...HOI_AN,
+  id: 'd1500001-0000-4000-8000-000000000002',
+  slug: 'hue',
+  name: 'Huế',
+};
+
 /**
  * Một bộ lệnh ghi MỚI — mô phỏng lượt `router.refresh()`: Flight client giải mã server action
  * thành một closure mới mỗi lần, nên trang chở xuống bảng những hàm khác danh tính (review D1).
@@ -111,5 +118,30 @@ describe('DestinationsTable — ô hành động sống qua lượt làm mới (
 
     await waitFor(() => expect(latest.remove).toHaveBeenCalledWith({ id: HOI_AN.id }));
     expect(first.remove).not.toHaveBeenCalled();
+  });
+});
+
+describe('DestinationsTable — focus sau khi xoá (review A2-1)', () => {
+  it('xoá thành công rồi lượt làm mới gỡ hàng: focus về nút Add destination, không rơi về body', async () => {
+    const user = userEvent.setup();
+    const actions = freshActions();
+    actions.remove.mockResolvedValue({ ok: true, deleted: { slug: HOI_AN.slug } });
+    const { rerender } = render(
+      <DestinationsTable
+        rows={[toDestinationRowVM(HOI_AN), toDestinationRowVM(HUE)]}
+        {...actions}
+      />,
+    );
+
+    await user.click(screen.getByRole('button', { name: t.delete.actionLabel('Hội An') }));
+    const dialog = await screen.findByRole('dialog', { name: t.delete.dialog.title });
+    await user.click(within(dialog).getByRole('button', { name: t.delete.dialog.submit }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+
+    // Payload mới đáp xuống: hàng vừa xoá rời bảng, kéo theo nút Delete của nó.
+    rerender(<DestinationsTable rows={[toDestinationRowVM(HUE)]} {...freshActions()} />);
+
+    expect(screen.queryByRole('button', { name: t.delete.actionLabel('Hội An') })).toBeNull();
+    expect(screen.getByRole('button', { name: t.create.action })).toHaveFocus();
   });
 });

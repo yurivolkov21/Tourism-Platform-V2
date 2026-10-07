@@ -3,6 +3,7 @@
 import { messages } from '@tourism/i18n';
 import { Button } from '@tourism/ui/components/button';
 import { ArrowDownIcon, ArrowUpIcon, EyeIcon, EyeOffIcon, PencilIcon } from 'lucide-react';
+import type * as React from 'react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { CategoryFormDialog } from '@/components/categories/category-form-dialog';
@@ -61,6 +62,7 @@ export function CategoryRowActions({
   remove,
   disabled,
   onMoveStart,
+  focusAfterDelete,
   onSettled,
 }: {
   row: CategoryRowVM;
@@ -69,6 +71,8 @@ export function CategoryRowActions({
   move: MoveCategoryAction;
   /** Lệnh xoá (ADR-0053) — trang chở xuống. */
   remove: DeleteCategoryAction;
+  /** Đích focus sau khi xoá được hàng này — nút Add của bảng (review A2-1). */
+  focusAfterDelete: React.RefObject<HTMLElement | null>;
   /**
    * Bảng đang bận — kéo dữ liệu tươi về, HOẶC có một lượt đổi chỗ đang bay ở
    * một hàng BẤT KỲ. Khoá mọi nút cho tới khi xong.
@@ -183,6 +187,7 @@ export function CategoryRowActions({
             return { ok: true, toast: deleteToast(row.name) };
           },
         }}
+        focusAfterDelete={focusAfterDelete}
         onSettled={onSettled}
       />
 

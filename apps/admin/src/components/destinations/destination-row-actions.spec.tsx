@@ -2,6 +2,7 @@ import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { AdminDestinationRow } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
+import { createRef } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { toDestinationRowVM } from '@/lib/destinations-view';
 import { DestinationRowActions } from './destination-row-actions';
@@ -57,6 +58,7 @@ function renderRow(data: AdminDestinationRow, over: Record<string, unknown> = {}
       setActive={setActive}
       remove={remove}
       disabled={false}
+      focusAfterDelete={createRef()}
       onSettled={onSettled}
       {...over}
     />,
@@ -148,6 +150,7 @@ describe('DestinationRowActions — hộp xác nhận ẩn', () => {
         setActive={setActive}
         remove={vi.fn()}
         disabled={false}
+        focusAfterDelete={createRef()}
         onSettled={vi.fn()}
       />,
     );

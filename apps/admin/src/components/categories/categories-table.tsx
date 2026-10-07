@@ -83,6 +83,8 @@ const RowActionsContext = React.createContext<{
   setActive: SetCategoryActiveAction;
   move: MoveCategoryAction;
   remove: DeleteCategoryAction;
+  /** Nút Add của bảng — đích focus sau khi xoá được một hàng (review A2-1). */
+  focusAfterDelete: React.RefObject<HTMLElement | null>;
   onSettled: () => void;
 } | null>(null);
 
@@ -170,6 +172,11 @@ export function CategoriesTable({
    * SAU khi request về, nên giữa cú bấm và lúc ấy các hàng khác vẫn bấm được.
    */
   const [isMoving, setIsMoving] = React.useState(false);
+  /**
+   * Nút Add — luôn có, sống qua mọi lượt làm mới, nên là đích focus khi một hàng vừa bị xoá
+   * mang theo nút Delete của nó (review A2-1).
+   */
+  const addButtonRef = React.useRef<HTMLButtonElement>(null);
 
   /** Sau MỌI kết cục đã-chạm-server: kéo bảng tươi về, khoá nút tới khi xong. */
   const refreshList = React.useCallback(() => {
@@ -186,6 +193,7 @@ export function CategoriesTable({
       setActive,
       move,
       remove,
+      focusAfterDelete: addButtonRef,
       onSettled: refreshList,
     }),
     [busy, update, setActive, move, remove, refreshList],
@@ -213,6 +221,7 @@ export function CategoriesTable({
           <>
             <ColumnVisibilityMenu table={table} labels={COLUMN_LABELS} icons={COLUMN_ICONS} />
             <Button
+              ref={addButtonRef}
               type="button"
               size="sm"
               disabled={busy}

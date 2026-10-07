@@ -8,7 +8,8 @@ import {
   TooltipTrigger,
 } from '@tourism/ui/components/tooltip';
 import { Trash2Icon } from 'lucide-react';
-import { useId, useState } from 'react';
+import type * as React from 'react';
+import { useId, useRef, useState } from 'react';
 import {
   type ConfirmWriteCopy,
   ConfirmWriteDialog,
@@ -37,6 +38,10 @@ import type { TransportFailureCode } from '@/lib/api/write-error';
  *   tooltip chỉ hiện khi rê hay focus, và Base UI không nối popup vào nút.
  * - Nhận chuột thì cũng ăn `hover:` và `active:` của biến thể outline; nút khoá giữ nền lúc nghỉ
  *   của từng giao diện và không nhún khi nhấn, như mục chưa mở ở `nav-main.tsx`.
+ *
+ * Xoá THÀNH CÔNG thì hộp trả focus về `focusAfterDelete`, không về nút Delete (review A2-1): hàng
+ * vừa xoá rời bảng ở lượt làm mới ngay sau, kéo theo nút ấy, và focus rơi về `<body>`. Huỷ hay
+ * lỗi thì hàng còn nguyên — focus về nút Delete như mặc định.
  */
 export function DeleteRowAction<Code extends string>({
   label,
@@ -44,6 +49,7 @@ export function DeleteRowAction<Code extends string>({
   blockedReason,
   disabled,
   dialog,
+  focusAfterDelete,
   onSettled,
 }: {
   /** Chữ trên nút ("Delete"). */
@@ -61,9 +67,17 @@ export function DeleteRowAction<Code extends string>({
     errorCopy: (code: Code | TransportFailureCode) => string;
     onSubmit: () => Promise<ConfirmWriteResult<Code>>;
   };
+  /**
+   * Đích focus sau khi xoá thành công — một phần tử sống qua lượt làm mới (bảng truyền nút Add
+   * của nó). BẮT BUỘC: bảng nào quên khai là focus lại rơi về `<body>` sau mỗi lần xoá. Ref còn
+   * rỗng thì Base UI lùi về mặc định.
+   */
+  focusAfterDelete: React.RefObject<HTMLElement | null>;
   onSettled: () => void;
 }) {
   const [open, setOpen] = useState(false);
+  /** Lần mở hộp này đã xoá được chưa — đọc lúc hộp gỡ để chọn đích focus. */
+  const deleted = useRef(false);
   const reasonId = useId();
   const blocked = blockedReason !== null;
 
@@ -83,7 +97,10 @@ export function DeleteRowAction<Code extends string>({
                 // Khoá mà vẫn nhận focus — cùng lý do các nút khác của hàng (vòng review F15).
                 focusableWhenDisabled
                 className="text-destructive-emphasis hover:text-destructive-emphasis aria-disabled:pointer-events-auto aria-disabled:cursor-not-allowed aria-disabled:hover:bg-background aria-disabled:active:translate-y-0 dark:aria-disabled:hover:bg-input/30"
-                onClick={() => setOpen(true)}
+                onClick={() => {
+                  deleted.current = false;
+                  setOpen(true);
+                }}
               >
                 <Trash2Icon data-icon="inline-start" aria-hidden="true" />
                 {label}
@@ -107,7 +124,13 @@ export function DeleteRowAction<Code extends string>({
           warningTone="destructive"
           isStale={dialog.isStale}
           errorCopy={dialog.errorCopy}
-          onSubmit={dialog.onSubmit}
+          onSubmit={async () => {
+            const result = await dialog.onSubmit();
+            deleted.current = result.ok;
+            return result;
+          }}
+          // Base UI gọi hàm này lúc hộp gỡ; `true` là đích mặc định (nút Delete).
+          finalFocus={() => (deleted.current ? focusAfterDelete.current : true)}
           onClose={() => setOpen(false)}
           onSettled={onSettled}
         />

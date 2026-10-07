@@ -27,6 +27,14 @@ const DAY_TRIPS: AdminCategoryRow = {
   linkedTourCount: 0,
 };
 
+const CRUISES: AdminCategoryRow = {
+  ...DAY_TRIPS,
+  id: 'c1400001-0000-4000-8000-000000000002',
+  slug: 'cruises',
+  name: 'Cruises',
+  order: 2,
+};
+
 /**
  * Một bộ lệnh ghi MỚI — mô phỏng lượt `router.refresh()`: Flight client giải mã server action
  * thành một closure mới mỗi lần, nên trang chở xuống bảng những hàm khác danh tính (review D1).
@@ -117,5 +125,27 @@ describe('CategoriesTable — ô hành động sống qua lượt làm mới (re
 
     await waitFor(() => expect(latest.remove).toHaveBeenCalledWith({ id: DAY_TRIPS.id }));
     expect(first.remove).not.toHaveBeenCalled();
+  });
+});
+
+describe('CategoriesTable — focus sau khi xoá (review A2-1)', () => {
+  it('xoá thành công rồi lượt làm mới gỡ hàng: focus về nút Add category, không rơi về body', async () => {
+    const user = userEvent.setup();
+    const actions = freshActions();
+    actions.remove.mockResolvedValue({ ok: true, deleted: { slug: DAY_TRIPS.slug } });
+    const { rerender } = render(
+      <CategoriesTable rows={toCategoryRowVMs([DAY_TRIPS, CRUISES])} {...actions} />,
+    );
+
+    await user.click(screen.getByRole('button', { name: t.delete.actionLabel('Day trips') }));
+    const dialog = await screen.findByRole('dialog', { name: t.delete.dialog.title });
+    await user.click(within(dialog).getByRole('button', { name: t.delete.dialog.submit }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+
+    // Payload mới đáp xuống: hàng vừa xoá rời bảng, kéo theo nút Delete của nó.
+    rerender(<CategoriesTable rows={toCategoryRowVMs([CRUISES])} {...freshActions()} />);
+
+    expect(screen.queryByRole('button', { name: t.delete.actionLabel('Day trips') })).toBeNull();
+    expect(screen.getByRole('button', { name: t.create.action })).toHaveFocus();
   });
 });

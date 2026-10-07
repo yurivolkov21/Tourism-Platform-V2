@@ -76,6 +76,8 @@ const RowActionsContext = React.createContext<{
   update: UpdateDestinationAction;
   setActive: SetDestinationActiveAction;
   remove: DeleteDestinationAction;
+  /** Nút Add của bảng — đích focus sau khi xoá được một hàng (review A2-1). */
+  focusAfterDelete: React.RefObject<HTMLElement | null>;
   onSettled: () => void;
 } | null>(null);
 
@@ -175,13 +177,26 @@ export function DestinationsTable({
     if (openCreate) setAdding(true);
   }, [openCreate]);
 
+  /**
+   * Nút Add — luôn có, sống qua mọi lượt làm mới, nên là đích focus khi một hàng vừa bị xoá
+   * mang theo nút Delete của nó (review A2-1).
+   */
+  const addButtonRef = React.useRef<HTMLButtonElement>(null);
+
   /** Sau MỌI kết cục đã-chạm-server: kéo bảng tươi về, khoá nút tới khi xong. */
   const refreshList = React.useCallback(() => {
     startRefresh(() => router.refresh());
   }, [router]);
 
   const rowActions = React.useMemo(
-    () => ({ busy: isRefreshing, update, setActive, remove, onSettled: refreshList }),
+    () => ({
+      busy: isRefreshing,
+      update,
+      setActive,
+      remove,
+      focusAfterDelete: addButtonRef,
+      onSettled: refreshList,
+    }),
     [isRefreshing, update, setActive, remove, refreshList],
   );
 
@@ -207,6 +222,7 @@ export function DestinationsTable({
             {/* `focusableWhenDisabled`: xem `DestinationRowActions` — hộp Add đóng đúng
                 lúc bảng làm mới, focus phải quay về được nút này. */}
             <Button
+              ref={addButtonRef}
               type="button"
               size="sm"
               disabled={isRefreshing}

@@ -3,6 +3,7 @@
 import { messages } from '@tourism/i18n';
 import { Button } from '@tourism/ui/components/button';
 import { EyeIcon, EyeOffIcon, PencilIcon } from 'lucide-react';
+import type * as React from 'react';
 import { useState } from 'react';
 import { DestinationFormDialog } from '@/components/destinations/destination-form-dialog';
 import { ConfirmWriteDialog } from '@/components/kit/confirm-write-dialog';
@@ -59,6 +60,7 @@ export function DestinationRowActions({
   setActive,
   remove,
   disabled,
+  focusAfterDelete,
   onSettled,
 }: {
   row: DestinationRowVM;
@@ -66,6 +68,8 @@ export function DestinationRowActions({
   setActive: SetDestinationActiveAction;
   /** Lệnh xoá (ADR-0053) — trang chở xuống. */
   remove: DeleteDestinationAction;
+  /** Đích focus sau khi xoá được hàng này — nút Add của bảng (review A2-1). */
+  focusAfterDelete: React.RefObject<HTMLElement | null>;
   /** Bảng đang kéo dữ liệu tươi về — khoá mọi nút cho tới khi xong. */
   disabled: boolean;
   onSettled: () => void;
@@ -132,6 +136,7 @@ export function DestinationRowActions({
             return { ok: true, toast: deleteToast(row.name) };
           },
         }}
+        focusAfterDelete={focusAfterDelete}
         onSettled={onSettled}
       />
 

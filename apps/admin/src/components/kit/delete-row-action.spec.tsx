@@ -2,6 +2,7 @@ import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { messages } from '@tourism/i18n';
 import type * as React from 'react';
+import { createRef } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import { DeleteRowAction } from './delete-row-action';
 
@@ -37,31 +38,49 @@ function renderAction(props: Partial<ActionProps> = {}) {
     toast: { title: 'Category deleted', description: 'Cruises is gone.' },
   });
   const onSettled = vi.fn();
+  /** Đích focus sau khi xoá (nút Add của bảng) — đứng SAU nút Delete để Tab đầu vẫn tới Delete. */
+  const addButton = createRef<HTMLButtonElement>();
   const element = (next: Partial<ActionProps>) => (
-    <DeleteRowAction<'IN_USE' | 'NOT_FOUND'>
-      label="Delete"
-      actionLabel="Delete Cruises"
-      blockedReason={null}
-      disabled={false}
-      dialog={{
-        copy: COPY,
-        rows: [{ label: 'Category', value: 'Cruises' }],
-        isStale: () => false,
-        errorCopy: () => 'error',
-        onSubmit,
-      }}
-      onSettled={onSettled}
-      {...props}
-      {...next}
-    />
+    <>
+      <DeleteRowAction<'IN_USE' | 'NOT_FOUND'>
+        label="Delete"
+        actionLabel="Delete Cruises"
+        blockedReason={null}
+        disabled={false}
+        dialog={{
+          copy: COPY,
+          rows: [{ label: 'Category', value: 'Cruises' }],
+          isStale: () => false,
+          errorCopy: () => 'error',
+          onSubmit,
+        }}
+        focusAfterDelete={addButton}
+        onSettled={onSettled}
+        {...props}
+        {...next}
+      />
+      <button type="button" ref={addButton}>
+        Add category
+      </button>
+    </>
   );
   const { rerender } = render(element({}));
   return {
     onSubmit,
     onSettled,
     button: screen.getByRole('button', { name: 'Delete Cruises' }),
+    addButton: screen.getByRole('button', { name: 'Add category' }),
     rerender: (next: Partial<ActionProps>) => rerender(element(next)),
   };
+}
+
+/** Bấm Delete rồi bấm một nút trong hộp xác nhận, chờ hộp gỡ hẳn. */
+async function answerDialog(button: HTMLElement, choice: string) {
+  const user = userEvent.setup();
+  await user.click(button);
+  const dialog = await screen.findByRole('dialog', { name: COPY.title });
+  await user.click(within(dialog).getByRole('button', { name: choice }));
+  await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
 }
 
 describe('DeleteRowAction', () => {
@@ -156,5 +175,39 @@ describe('DeleteRowAction', () => {
   it('bảng đang làm mới: nút khoá, không tooltip', () => {
     const { button } = renderAction({ disabled: true });
     expect(button).toHaveAttribute('aria-disabled', 'true');
+  });
+});
+
+describe('DeleteRowAction — focus khi hộp đóng (review A2-1)', () => {
+  it('xoá thành công: focus sang `focusAfterDelete` — hàng sắp rời bảng, kéo theo nút Delete', async () => {
+    const { button, addButton } = renderAction();
+
+    await answerDialog(button, COPY.submit);
+
+    await waitFor(() => expect(addButton).toHaveFocus());
+  });
+
+  it('huỷ: hàng còn nguyên, focus về đúng nút Delete đã mở hộp', async () => {
+    const { button } = renderAction();
+
+    await answerDialog(button, COPY.cancel);
+
+    await waitFor(() => expect(button).toHaveFocus());
+  });
+
+  it('lỗi làm hộp đóng (mã trạng-thái-cũ): hàng còn nguyên, focus về nút Delete', async () => {
+    const { button } = renderAction({
+      dialog: {
+        copy: COPY,
+        rows: [{ label: 'Category', value: 'Cruises' }],
+        isStale: () => true,
+        errorCopy: () => 'error',
+        onSubmit: vi.fn().mockResolvedValue({ ok: false, code: 'IN_USE' }),
+      },
+    });
+
+    await answerDialog(button, COPY.submit);
+
+    await waitFor(() => expect(button).toHaveFocus());
   });
 });

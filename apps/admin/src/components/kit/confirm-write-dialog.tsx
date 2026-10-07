@@ -154,6 +154,12 @@ export type ConfirmWriteDialogProps<Code extends string> = ConfirmWriteNoteProps
    * vùng không phải nhớ (xem `DIALOG_FRAME`).
    */
   contentClassName?: string;
+  /**
+   * Đích focus khi hộp đóng — chuyển thẳng cho `finalFocus` của Base UI. Vắng là mặc định: về
+   * phần tử giữ focus lúc mở (nút mở hộp). Vùng cần khai khi lệnh có thể gỡ chính nút ấy khỏi
+   * trang (xoá một hàng — `DeleteRowAction`, review A2-1).
+   */
+  finalFocus?: React.ComponentProps<typeof DialogContent>['finalFocus'];
   /** Mã nào là TRẠNG-THÁI-CŨ (thế giới đã đổi dưới chân dialog) — vùng khai. */
   isStale: (code: Code | TransportFailureCode) => boolean;
   /** Mã → câu cho admin (codec của vùng, xem `createWriteErrorCodec`). */
@@ -171,6 +177,7 @@ export function ConfirmWriteDialog<Code extends string>(props: ConfirmWriteDialo
     submitVariant = 'default',
     warningTone = 'destructive',
     contentClassName = 'sm:max-w-md',
+    finalFocus,
     isStale,
     errorCopy,
     onClose,
@@ -207,7 +214,11 @@ export function ConfirmWriteDialog<Code extends string>(props: ConfirmWriteDialo
       {/* `showCloseButton={false}` (vòng vá review polish 2): nút X của kit UI
           là `absolute` trong chính phần tử cuộn nên trôi khuất khi cuộn; dialog
           này luôn có nút Cancel nên bỏ X thay vì sửa `@tourism/ui` dùng chung. */}
-      <DialogContent className={cn(DIALOG_FRAME, contentClassName)} showCloseButton={false}>
+      <DialogContent
+        className={cn(DIALOG_FRAME, contentClassName)}
+        showCloseButton={false}
+        finalFocus={finalFocus}
+      >
         <DialogHeader>
           <DialogTitle>{copy.title}</DialogTitle>
           <DialogDescription>{copy.body}</DialogDescription>
