@@ -216,7 +216,8 @@ export class AdminDestinationsService {
    * 1. `SELECT … FOR UPDATE` hàng điểm đến — câu chèn liên kết tour mới phải giành
    *    `FOR KEY SHARE` trên chính hàng ấy (phép kiểm khoá ngoại), mà hai khoá này xung đột,
    *    nên không lệnh gắn nào chen vào giữa lúc đếm và lúc xoá. Lệnh gắn đến SAU lượt xoá
-   *    thì nhận `P2003` — mã "điểm đến không tồn tại" có sẵn của khu sửa tour.
+   *    thì nhận `P2003`, khu sửa tour đổi thành `LINK_NOT_FOUND` (`TourLinkNotFoundError`) —
+   *    mã riêng của "danh mục hay điểm đến không còn", không phải `NOT_FOUND` của tour.
    * 2. Đếm `tour_destinations` ở statement SAU khoá (snapshot mới, thấy mọi thứ đã commit);
    *    còn dòng → `IN_USE`.
    * 3. Xoá dòng `media_assets` chủ `DESTINATION` (bảng đa chủ, không khoá ngoại). KHÔNG

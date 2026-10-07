@@ -329,6 +329,25 @@ describe('admin tours integration (F17)', () => {
     basePrice: '45.00',
   };
 
+  /**
+   * Một danh mục và một điểm đến VỪA BỊ XOÁ — kịch bản review S1: danh sách chọn của form nạp
+   * lúc mở vẫn còn chúng, rồi một tab khác xoá đi trước khi form lưu.
+   */
+  const deletedLinks = async () => {
+    const category = await prisma.tourCategory.create({
+      data: { slug: 'gone-category', name: 'Gone category', order: 9 },
+    });
+    const destination = await prisma.destination.create({
+      data: { slug: 'gone-destination', name: 'Gone destination', region: 'Central Vietnam' },
+    });
+    await prisma.tourCategory.delete({ where: { id: category.id } });
+    await prisma.destination.delete({ where: { id: destination.id } });
+    return { categoryId: category.id, destinationId: destination.id };
+  };
+
+  /** Phán quyết "danh mục hay điểm đến không còn" — mã RIÊNG, không trùng "tour không còn". */
+  const LINK_GONE = { code: 'LINK_NOT_FOUND', message: 'Category or destination not found' };
+
   describe('guard', () => {
     it('khách thường thì mọi đường đều 403', async () => {
       await makeTour(1);
@@ -581,24 +600,20 @@ describe('admin tours integration (F17)', () => {
       expect(await prisma.tour.count({ where: { slug: CREATE.slug } })).toBe(1);
     });
 
-    it('danh mục hay điểm đến không tồn tại thì 404 NOT_FOUND, không để lại hàng nào', async () => {
-      const noCategory = await create({ ...CREATE, categoryId: MISSING });
+    it('danh mục hay điểm đến vừa bị xoá thì 404 LINK_NOT_FOUND, không để lại hàng nào (review S1)', async () => {
+      const gone = await deletedLinks();
+
+      const noCategory = await create({ ...CREATE, categoryId: gone.categoryId });
       const noDestination = await create({
         ...CREATE,
         slug: 'other-slug',
-        primaryDestinationId: MISSING,
+        primaryDestinationId: gone.destinationId,
       });
 
-      expect(noCategory.statusCode).toBe(404);
-      expect(noCategory.json()).toMatchObject({
-        code: 'NOT_FOUND',
-        message: 'Category or destination not found',
-      });
-      expect(noDestination.statusCode).toBe(404);
-      expect(noDestination.json()).toMatchObject({
-        code: 'NOT_FOUND',
-        message: 'Category or destination not found',
-      });
+      for (const res of [noCategory, noDestination]) {
+        expect(res.statusCode).toBe(404);
+        expect(res.json()).toMatchObject(LINK_GONE);
+      }
       expect(await prisma.tour.count()).toBe(0);
     });
 
@@ -904,28 +919,48 @@ describe('admin tours integration (F17)', () => {
       expect(res.json()).toMatchObject({ code: 'STALE_TOUR' });
     });
 
-    it('id không có thì 404; danh mục không có thì 404 và rollback trọn', async () => {
+    it('id không có thì 404 NOT_FOUND — mã ấy chỉ còn nghĩa "tour không còn"', async () => {
       await makeTour(1);
       const before = await detailOf('f17-tour-1');
 
-      const noTour = await details(MISSING, detailsPayload(before, { id: MISSING }));
-      const noCategory = await details(
-        tourId(1),
-        detailsPayload(before, { categoryId: MISSING, title: 'X' }),
-      );
+      const res = await details(MISSING, detailsPayload(before, { id: MISSING }));
 
       // Khớp cả mã lẫn câu của contract — 404 trần thì một route chưa tồn tại
       // cũng trả được, ca này sẽ xanh giả.
-      for (const res of [noTour, noCategory]) {
+      expect(res.statusCode).toBe(404);
+      expect(res.json()).toMatchObject({ code: 'NOT_FOUND', message: 'Tour not found' });
+    });
+
+    it('gắn danh mục hay thêm điểm đến vừa bị xoá thì 404 LINK_NOT_FOUND, rollback trọn (review S1)', async () => {
+      // Tour vẫn còn nên mã phải KHÁC `NOT_FOUND`: khu sửa tour coi `NOT_FOUND` là tour đã mất,
+      // đá về /tours và vứt chữ chưa lưu.
+      await makeTour(1);
+      const before = await detailOf('f17-tour-1');
+      const gone = await deletedLinks();
+
+      const noCategory = await details(
+        tourId(1),
+        detailsPayload(before, { categoryId: gone.categoryId, title: 'X' }),
+      );
+      const noDestination = await details(
+        tourId(1),
+        detailsPayload(before, {
+          title: 'Y',
+          destinations: [
+            { destinationId: DEST_1, isPrimary: true },
+            { destinationId: gone.destinationId, isPrimary: false },
+          ],
+        }),
+      );
+
+      for (const res of [noCategory, noDestination]) {
         expect(res.statusCode).toBe(404);
-        expect(res.json()).toMatchObject({
-          code: 'NOT_FOUND',
-          message: 'Tour, category or destination not found',
-        });
+        expect(res.json()).toMatchObject(LINK_GONE);
       }
       const after = await detailOf('f17-tour-1');
       expect(after.title).toBe(before.title);
       expect(after.version).toBe(before.version);
+      expect(after.destinations).toEqual(before.destinations);
     });
 
     it('thay nguyên danh sách điểm đến, điểm chính đứng đầu', async () => {

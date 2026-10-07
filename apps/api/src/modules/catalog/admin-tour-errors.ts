@@ -15,10 +15,14 @@ export class AdminTourNotFoundError extends ContractError<'NOT_FOUND'> {
   }
 }
 
-/** Danh mục hay điểm đến không tồn tại — khoá ngoại `P2003` ở lệnh tạo hoặc sửa. */
-export class TourLinkNotFoundError extends ContractError<'NOT_FOUND'> {
+/**
+ * Danh mục hay điểm đến không tồn tại — khoá ngoại `P2003` ở lệnh tạo hoặc sửa. Mã RIÊNG
+ * `LINK_NOT_FOUND`, không phải `NOT_FOUND` (review S1): tour vẫn còn, chỉ mục được chọn đã bị
+ * xoá ở tab khác; gộp chung mã thì khu sửa tour hiểu thành "tour đã mất" và vứt form đang sửa.
+ */
+export class TourLinkNotFoundError extends ContractError<'LINK_NOT_FOUND'> {
   constructor() {
-    super('NOT_FOUND', 'Category or destination not found', false);
+    super('LINK_NOT_FOUND', 'Category or destination not found', false);
   }
 }
 

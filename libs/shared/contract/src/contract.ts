@@ -1119,7 +1119,9 @@ export const contract = {
         .input(AdminTourCreateInputSchema)
         .errors({
           SLUG_TAKEN: { status: 409, message: 'Another tour already uses this slug' },
-          NOT_FOUND: { status: 404, message: 'Category or destination not found' },
+          // Mã RIÊNG cho khoá ngoại hỏng, không gộp vào `NOT_FOUND` (review S1, xem
+          // `updateDetails`). 404 theo tiền lệ `posts.update` → `RELATED_TOUR_NOT_FOUND`.
+          LINK_NOT_FOUND: { status: 404, message: 'Category or destination not found' },
         })
         .output(AdminTourCreateResultSchema),
       updateDetails: oc
@@ -1140,7 +1142,11 @@ export const contract = {
             message: 'The group size cannot go below the seats of a departure',
           },
           TOUR_NOT_READY: { status: 409, message: 'A tour on sale must stay ready to sell' },
-          NOT_FOUND: { status: 404, message: 'Tour, category or destination not found' },
+          NOT_FOUND: { status: 404, message: 'Tour not found' },
+          // Danh mục hay điểm đến được chọn đã bị xoá (khoá ngoại hỏng) — tour vẫn còn. Tách
+          // khỏi `NOT_FOUND` vì khu sửa tour coi `NOT_FOUND` là tour đã mất: đá về /tours và
+          // vứt chữ chưa lưu (review S1). 404 theo tiền lệ `RELATED_TOUR_NOT_FOUND` của bài viết.
+          LINK_NOT_FOUND: { status: 404, message: 'Category or destination not found' },
         })
         .output(AdminTourDetailSchema),
       setItinerary: oc

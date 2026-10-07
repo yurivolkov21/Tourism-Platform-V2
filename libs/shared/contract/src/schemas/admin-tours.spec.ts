@@ -375,10 +375,12 @@ describe('contract.admin.tours (F17)', () => {
 
   it('mỗi thao tác khai ĐÚNG tập mã của spec §3', () => {
     expect(codes(t.get)).toEqual(['NOT_FOUND']);
-    expect(codes(t.create)).toEqual(['NOT_FOUND', 'SLUG_TAKEN']);
+    // `create` không có tour nào để "không tìm thấy": khoá ngoại hỏng là LINK_NOT_FOUND (review S1).
+    expect(codes(t.create)).toEqual(['LINK_NOT_FOUND', 'SLUG_TAKEN']);
     expect(codes(t.updateDetails)).toEqual([
       'DURATION_LOCKED',
       'GROUP_SIZE_BELOW_SEATS',
+      'LINK_NOT_FOUND',
       'NOT_FOUND',
       'STALE_TOUR',
       'TOUR_NOT_READY',
@@ -405,6 +407,24 @@ describe('contract.admin.tours (F17)', () => {
     expect(
       (t.create['~orpc'].errorMap as Record<string, { status: number }>).SLUG_TAKEN?.status,
     ).toBe(409);
+  });
+
+  it('danh mục hay điểm đến không còn có mã RIÊNG, NOT_FOUND chỉ còn nghĩa tour không tồn tại (review S1)', () => {
+    // Một mã gộp hai nghĩa thì khu sửa tour hiểu mọi NOT_FOUND là "tour đã mất", đá về /tours
+    // và vứt chữ chưa lưu — trong khi tour vẫn còn, chỉ mục được chọn đã bị xoá.
+    // 404 theo tiền lệ `posts.update` → `RELATED_TOUR_NOT_FOUND` ("thực thể được tham chiếu
+    // không còn").
+    type ErrorMap = Record<string, { status: number; message: string }>;
+    for (const procedure of [t.create, t.updateDetails]) {
+      expect((procedure['~orpc'].errorMap as ErrorMap).LINK_NOT_FOUND).toEqual({
+        status: 404,
+        message: 'Category or destination not found',
+      });
+    }
+    expect((t.updateDetails['~orpc'].errorMap as ErrorMap).NOT_FOUND).toEqual({
+      status: 404,
+      message: 'Tour not found',
+    });
   });
 });
 
