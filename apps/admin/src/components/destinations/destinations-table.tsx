@@ -61,37 +61,86 @@ const COLUMN_ICONS = {
 };
 
 /**
- * Bảng đang bận hay không — đi qua CONTEXT chứ không qua deps của `useMemo`
- * dựng cột (bài học 12, vòng hai F12): cờ ấy đổi hai lần mỗi lệnh ghi, và nằm
- * trong deps thì cột dựng lại cả hai lần, kéo theo ô unmount cùng state của nó.
+ * MỌI thứ ô hành động cần từ bảng — đi qua CONTEXT, không qua cột, cùng lý do bảng danh mục.
+ * Cột đổi danh tính thì `FlexRender` gặp một kiểu component mới ở ô, React unmount cả ô cùng
+ * state của nó rồi mount lại. Hai thứ ở đây đổi danh tính:
+ * - Cờ bận đổi hai lần mỗi lệnh ghi (bài học 12, vòng hai F12).
+ * - Server action đổi danh tính sau MỖI `router.refresh()`: Flight client giải mã mỗi lượt thành
+ *   một closure mới, không cache theo id (review D1). Nằm trong deps của cột thì mọi lệnh ghi
+ *   xong đều dựng lại cột đúng lúc payload mới đáp xuống — hộp Edit đang mở biến mất, và focus
+ *   ở nút Delete sau `IN_USE` rơi về `<body>`.
+ * Nhờ vậy cột là hằng của module (`COLUMNS`): không còn gì của component để đổi danh tính.
  */
-const BusyContext = React.createContext(false);
-
-function ActionsCell({
-  row,
-  update,
-  setActive,
-  remove,
-  onSettled,
-}: {
-  row: DestinationRowVM;
+const RowActionsContext = React.createContext<{
+  busy: boolean;
   update: UpdateDestinationAction;
   setActive: SetDestinationActiveAction;
   remove: DeleteDestinationAction;
   onSettled: () => void;
-}) {
-  const busy = React.useContext(BusyContext);
-  return (
-    <DestinationRowActions
-      row={row}
-      update={update}
-      setActive={setActive}
-      remove={remove}
-      disabled={busy}
-      onSettled={onSettled}
-    />
-  );
+} | null>(null);
+
+function ActionsCell({ row }: { row: DestinationRowVM }) {
+  const context = React.useContext(RowActionsContext);
+  if (context === null) throw new Error('ActionsCell must be used inside RowActionsContext');
+  const { busy, ...actions } = context;
+  return <DestinationRowActions row={row} disabled={busy} {...actions} />;
 }
+
+const COLUMNS = columnHelper.columns([
+  columnHelper.accessor('name', {
+    header: t.list.columns.name,
+    // Danh tính của hàng — không ẩn được.
+    cell: ({ row }) => (
+      <NameDescriptionCell name={row.original.name} description={row.original.description} />
+    ),
+    enableHiding: false,
+  }),
+  columnHelper.accessor('slug', {
+    header: t.list.columns.slug,
+    cell: ({ row }) => <code className="text-xs text-muted-foreground">{row.original.slug}</code>,
+  }),
+  columnHelper.accessor('regionLabel', {
+    header: t.list.columns.region,
+    // Chuỗi trong DB không khớp vùng nào thì điểm đến không hiện ở trang
+    // vùng nào — trước F15 không có gì báo điều ấy ở bất cứ đâu.
+    cell: ({ row }) =>
+      row.original.regionName ? (
+        <span className="whitespace-nowrap">{row.original.regionLabel}</span>
+      ) : (
+        <Badge variant="destructive" className="px-1.5">
+          {row.original.regionLabel}
+        </Badge>
+      ),
+  }),
+  columnHelper.accessor('country', {
+    header: t.list.columns.country,
+    cell: ({ row }) => <span className="whitespace-nowrap">{row.original.country}</span>,
+  }),
+  columnHelper.accessor('toursLabel', {
+    header: t.list.columns.tours,
+    cell: ({ row }) => (
+      <TourCountCell
+        totalLabel={row.original.toursLabel}
+        publishedLabel={row.original.publishedLabel}
+      />
+    ),
+  }),
+  columnHelper.accessor('statusLabel', {
+    header: t.list.columns.status,
+    cell: ({ row }) => (
+      <Badge variant={destinationStatusBadgeVariant(row.original.isActive)} className="px-1.5">
+        {row.original.statusLabel}
+      </Badge>
+    ),
+  }),
+  columnHelper.display({
+    id: 'actions',
+    header: () => <span className="sr-only">{t.list.columns.actions}</span>,
+    // Lệnh ghi và cờ bận đọc qua `RowActionsContext`, không đóng vào cột.
+    cell: ({ row }) => <ActionsCell row={row.original} />,
+    enableHiding: false,
+  }),
+]);
 
 export interface DestinationsTableProps {
   rows: DestinationRowVM[];
@@ -131,83 +180,15 @@ export function DestinationsTable({
     startRefresh(() => router.refresh());
   }, [router]);
 
-  const columns = React.useMemo(
-    () =>
-      columnHelper.columns([
-        columnHelper.accessor('name', {
-          header: t.list.columns.name,
-          // Danh tính của hàng — không ẩn được.
-          cell: ({ row }) => (
-            <NameDescriptionCell name={row.original.name} description={row.original.description} />
-          ),
-          enableHiding: false,
-        }),
-        columnHelper.accessor('slug', {
-          header: t.list.columns.slug,
-          cell: ({ row }) => (
-            <code className="text-xs text-muted-foreground">{row.original.slug}</code>
-          ),
-        }),
-        columnHelper.accessor('regionLabel', {
-          header: t.list.columns.region,
-          // Chuỗi trong DB không khớp vùng nào thì điểm đến không hiện ở trang
-          // vùng nào — trước F15 không có gì báo điều ấy ở bất cứ đâu.
-          cell: ({ row }) =>
-            row.original.regionName ? (
-              <span className="whitespace-nowrap">{row.original.regionLabel}</span>
-            ) : (
-              <Badge variant="destructive" className="px-1.5">
-                {row.original.regionLabel}
-              </Badge>
-            ),
-        }),
-        columnHelper.accessor('country', {
-          header: t.list.columns.country,
-          cell: ({ row }) => <span className="whitespace-nowrap">{row.original.country}</span>,
-        }),
-        columnHelper.accessor('toursLabel', {
-          header: t.list.columns.tours,
-          cell: ({ row }) => (
-            <TourCountCell
-              totalLabel={row.original.toursLabel}
-              publishedLabel={row.original.publishedLabel}
-            />
-          ),
-        }),
-        columnHelper.accessor('statusLabel', {
-          header: t.list.columns.status,
-          cell: ({ row }) => (
-            <Badge
-              variant={destinationStatusBadgeVariant(row.original.isActive)}
-              className="px-1.5"
-            >
-              {row.original.statusLabel}
-            </Badge>
-          ),
-        }),
-        columnHelper.display({
-          id: 'actions',
-          header: () => <span className="sr-only">{t.list.columns.actions}</span>,
-          cell: ({ row }) => (
-            <ActionsCell
-              row={row.original}
-              update={update}
-              setActive={setActive}
-              remove={remove}
-              onSettled={refreshList}
-            />
-          ),
-          enableHiding: false,
-        }),
-      ]),
-    // KHÔNG có cờ bận ở đây — xem `BusyContext`.
-    [update, setActive, remove, refreshList],
+  const rowActions = React.useMemo(
+    () => ({ busy: isRefreshing, update, setActive, remove, onSettled: refreshList }),
+    [isRefreshing, update, setActive, remove, refreshList],
   );
 
   const table = useTable({
     features: serverTableFeatures,
     data: rows,
-    columns,
+    columns: COLUMNS,
     state: { columnVisibility },
     getRowId: (row) => row.id,
     onColumnVisibilityChange: setColumnVisibility,
@@ -238,9 +219,9 @@ export function DestinationsTable({
           </>
         }
       >
-        <BusyContext.Provider value={isRefreshing}>
+        <RowActionsContext.Provider value={rowActions}>
           <DataTableBody table={table} empty={t.list.empty} />
-        </BusyContext.Provider>
+        </RowActionsContext.Provider>
       </DataTableFrame>
 
       {adding ? (

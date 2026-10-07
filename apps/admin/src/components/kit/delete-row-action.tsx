@@ -29,7 +29,10 @@ import type { TransportFailureCode } from '@/lib/api/write-error';
  *
  * Ba điều của review cuối nhánh:
  * - Cây Tooltip luôn dựng, chỉ `disabled` khi xoá được. Đổi kiểu phần tử theo `blocked` thì
- *   React dựng lại nút, và focus rơi về `body` đúng lúc bảng làm mới sau một lần `IN_USE`.
+ *   React dựng lại nút, và focus rơi về `body` đúng lúc bảng làm mới sau một lần `IN_USE`. Đó
+ *   mới là nửa của nút; nửa kia thuộc về bảng: ô chứa nút không được dựng lại khi làm mới.
+ *   Server action đổi danh tính sau mỗi `router.refresh()`, nên hai bảng catalog đưa lệnh ghi
+ *   qua context chứ không qua cột (review D1) — một bảng đóng lệnh vào cột là mất focus như cũ.
  * - Lý do còn nằm trong một span `hidden` mà nút trỏ tới bằng `aria-describedby` (Ruling F-e):
  *   tooltip chỉ hiện khi rê hay focus, và Base UI không nối popup vào nút.
  * - Nhận chuột thì cũng ăn `hover:` và `active:` của biến thể outline; nút khoá giữ nền lúc nghỉ

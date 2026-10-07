@@ -62,49 +62,75 @@ const COLUMN_ICONS = {
 };
 
 /**
- * Bảng đang bận hay không, cộng cái cần để bật cờ ấy — đi qua CONTEXT chứ
- * không qua deps của `useMemo` dựng cột (bài học vòng hai F12): cờ ấy đổi hai
- * lần mỗi lệnh ghi, và nằm trong deps thì cột dựng lại cả hai lần, kéo theo ô
- * unmount cùng toàn bộ state của nó.
+ * MỌI thứ ô hành động cần từ bảng — đi qua CONTEXT, không qua cột. Cột đổi danh tính thì
+ * `FlexRender` gặp một kiểu component mới ở ô, React unmount cả ô cùng toàn bộ state của nó
+ * (hộp đang mở, focus Base UI vừa trả về nút) rồi mount lại. Hai thứ ở đây đổi danh tính:
+ * - Cờ bận đổi hai lần mỗi lệnh ghi (bài học vòng hai F12).
+ * - Server action đổi danh tính sau MỖI `router.refresh()`: Flight client giải mã mỗi lượt thành
+ *   một closure mới, không cache theo id (review D1). Nằm trong deps của cột thì mọi lệnh ghi
+ *   xong đều dựng lại cột đúng lúc payload mới đáp xuống — hộp Edit đang mở biến mất, và focus
+ *   ở nút Delete sau `IN_USE` rơi về `<body>`.
+ * Nhờ vậy cột là hằng của module (`COLUMNS`): không còn gì của component để đổi danh tính.
  *
  * "Bận" gộp HAI thứ: đang kéo dữ liệu tươi về, và đang có một lượt đổi chỗ bay
  * ở một hàng bất kỳ. Vế thứ hai là bản vá vòng review F14 — xem JSDoc prop
  * `disabled` của `CategoryRowActions`.
  */
-const BusyContext = React.createContext<{ busy: boolean; onMoveStart: () => void }>({
-  busy: false,
-  onMoveStart: () => {},
-});
-
-function ActionsCell({
-  row,
-  update,
-  setActive,
-  move,
-  remove,
-  onSettled,
-}: {
-  row: CategoryRowVM;
+const RowActionsContext = React.createContext<{
+  busy: boolean;
+  onMoveStart: () => void;
   update: UpdateCategoryAction;
   setActive: SetCategoryActiveAction;
   move: MoveCategoryAction;
   remove: DeleteCategoryAction;
   onSettled: () => void;
-}) {
-  const { busy, onMoveStart } = React.useContext(BusyContext);
-  return (
-    <CategoryRowActions
-      row={row}
-      update={update}
-      setActive={setActive}
-      move={move}
-      remove={remove}
-      disabled={busy}
-      onMoveStart={onMoveStart}
-      onSettled={onSettled}
-    />
-  );
+} | null>(null);
+
+function ActionsCell({ row }: { row: CategoryRowVM }) {
+  const context = React.useContext(RowActionsContext);
+  if (context === null) throw new Error('ActionsCell must be used inside RowActionsContext');
+  const { busy, ...actions } = context;
+  return <CategoryRowActions row={row} disabled={busy} {...actions} />;
 }
+
+const COLUMNS = columnHelper.columns([
+  columnHelper.accessor('name', {
+    header: t.list.columns.name,
+    // Danh tính của hàng — không ẩn được.
+    cell: ({ row }) => (
+      <NameDescriptionCell name={row.original.name} description={row.original.description} />
+    ),
+    enableHiding: false,
+  }),
+  columnHelper.accessor('slug', {
+    header: t.list.columns.slug,
+    cell: ({ row }) => <code className="text-xs text-muted-foreground">{row.original.slug}</code>,
+  }),
+  columnHelper.accessor('toursLabel', {
+    header: t.list.columns.tours,
+    cell: ({ row }) => (
+      <TourCountCell
+        totalLabel={row.original.toursLabel}
+        publishedLabel={row.original.publishedLabel}
+      />
+    ),
+  }),
+  columnHelper.accessor('statusLabel', {
+    header: t.list.columns.status,
+    cell: ({ row }) => (
+      <Badge variant={categoryStatusBadgeVariant(row.original.isActive)} className="px-1.5">
+        {row.original.statusLabel}
+      </Badge>
+    ),
+  }),
+  columnHelper.display({
+    id: 'actions',
+    header: () => <span className="sr-only">{t.list.columns.actions}</span>,
+    // Lệnh ghi và cờ bận đọc qua `RowActionsContext`, không đóng vào cột.
+    cell: ({ row }) => <ActionsCell row={row.original} />,
+    enableHiding: false,
+  }),
+]);
 
 export interface CategoriesTableProps {
   rows: CategoryRowVM[];
@@ -151,69 +177,24 @@ export function CategoriesTable({
     startRefresh(() => router.refresh());
   }, [router]);
 
-  const busyValue = React.useMemo(
-    () => ({ busy: isRefreshing || isMoving, onMoveStart: () => setIsMoving(true) }),
-    [isRefreshing, isMoving],
-  );
-
-  const columns = React.useMemo(
-    () =>
-      columnHelper.columns([
-        columnHelper.accessor('name', {
-          header: t.list.columns.name,
-          // Danh tính của hàng — không ẩn được.
-          cell: ({ row }) => (
-            <NameDescriptionCell name={row.original.name} description={row.original.description} />
-          ),
-          enableHiding: false,
-        }),
-        columnHelper.accessor('slug', {
-          header: t.list.columns.slug,
-          cell: ({ row }) => (
-            <code className="text-xs text-muted-foreground">{row.original.slug}</code>
-          ),
-        }),
-        columnHelper.accessor('toursLabel', {
-          header: t.list.columns.tours,
-          cell: ({ row }) => (
-            <TourCountCell
-              totalLabel={row.original.toursLabel}
-              publishedLabel={row.original.publishedLabel}
-            />
-          ),
-        }),
-        columnHelper.accessor('statusLabel', {
-          header: t.list.columns.status,
-          cell: ({ row }) => (
-            <Badge variant={categoryStatusBadgeVariant(row.original.isActive)} className="px-1.5">
-              {row.original.statusLabel}
-            </Badge>
-          ),
-        }),
-        columnHelper.display({
-          id: 'actions',
-          header: () => <span className="sr-only">{t.list.columns.actions}</span>,
-          cell: ({ row }) => (
-            <ActionsCell
-              row={row.original}
-              update={update}
-              setActive={setActive}
-              move={move}
-              remove={remove}
-              onSettled={refreshList}
-            />
-          ),
-          enableHiding: false,
-        }),
-      ]),
-    // KHÔNG có cờ bận ở đây — xem `BusyContext`.
-    [update, setActive, move, remove, refreshList],
+  const busy = isRefreshing || isMoving;
+  const rowActions = React.useMemo(
+    () => ({
+      busy,
+      onMoveStart: () => setIsMoving(true),
+      update,
+      setActive,
+      move,
+      remove,
+      onSettled: refreshList,
+    }),
+    [busy, update, setActive, move, remove, refreshList],
   );
 
   const table = useTable({
     features: serverTableFeatures,
     data: rows,
-    columns,
+    columns: COLUMNS,
     state: { columnVisibility },
     getRowId: (row) => row.id,
     onColumnVisibilityChange: setColumnVisibility,
@@ -234,7 +215,7 @@ export function CategoriesTable({
             <Button
               type="button"
               size="sm"
-              disabled={busyValue.busy}
+              disabled={busy}
               // Hộp Add đóng đúng lúc bảng làm mới — focus phải quay về được nút này.
               focusableWhenDisabled
               onClick={() => setAdding(true)}
@@ -245,9 +226,9 @@ export function CategoriesTable({
           </>
         }
       >
-        <BusyContext.Provider value={busyValue}>
+        <RowActionsContext.Provider value={rowActions}>
           <DataTableBody table={table} empty={t.list.empty} />
-        </BusyContext.Provider>
+        </RowActionsContext.Provider>
       </DataTableFrame>
 
       {adding ? (

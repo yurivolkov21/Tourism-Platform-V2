@@ -1,59 +1,121 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import type { AdminCategoryRow } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
 import { describe, expect, it, vi } from 'vitest';
 import { toCategoryRowVMs } from '@/lib/categories-view';
 import { CategoriesTable } from './categories-table';
 
-vi.mock('next/navigation', () => ({ useRouter: () => ({ refresh: vi.fn(), push: vi.fn() }) }));
+/**
+ * Router ỔN ĐỊNH qua các lần render, như Next thật (`useRouter` memo theo router). Mock trả
+ * object mới mỗi render thì `refreshList` đổi danh tính ở MỌI render — ca đối chứng của D1 cũng
+ * mất focus, và lỗi thật (server action đổi danh tính sau mỗi `router.refresh()`) bị che đi.
+ */
+const router = vi.hoisted(() => ({ refresh: vi.fn(), push: vi.fn() }));
+vi.mock('next/navigation', () => ({ useRouter: () => router }));
+
+const t = messages.admin.categories;
+
+const DAY_TRIPS: AdminCategoryRow = {
+  id: 'c1400001-0000-4000-8000-000000000001',
+  slug: 'day-trips',
+  name: 'Day trips',
+  description: null,
+  order: 1,
+  isActive: true,
+  tourCount: 0,
+  linkedTourCount: 0,
+};
+
+/**
+ * Một bộ lệnh ghi MỚI — mô phỏng lượt `router.refresh()`: Flight client giải mã server action
+ * thành một closure mới mỗi lần, nên trang chở xuống bảng những hàm khác danh tính (review D1).
+ */
+function freshActions() {
+  return {
+    create: vi.fn(),
+    update: vi.fn(),
+    setActive: vi.fn(),
+    move: vi.fn(),
+    remove: vi.fn(),
+  };
+}
 
 describe('CategoriesTable — Quick Create', () => {
   it('`openCreate` mở sẵn hộp Add category', async () => {
-    render(
-      <CategoriesTable
-        rows={toCategoryRowVMs([
-          {
-            id: 'c1400001-0000-4000-8000-000000000001',
-            slug: 'day-trips',
-            name: 'Day trips',
-            description: null,
-            order: 1,
-            isActive: true,
-            tourCount: 0,
-            linkedTourCount: 0,
-          },
-        ])}
-        create={vi.fn()}
-        update={vi.fn()}
-        setActive={vi.fn()}
-        move={vi.fn()}
-        remove={vi.fn()}
-        openCreate
-      />,
-    );
-    expect(
-      await screen.findByRole('dialog', { name: messages.admin.categories.create.dialog.title }),
-    ).toBeInTheDocument();
+    render(<CategoriesTable rows={toCategoryRowVMs([DAY_TRIPS])} {...freshActions()} openCreate />);
+    expect(await screen.findByRole('dialog', { name: t.create.dialog.title })).toBeInTheDocument();
   });
 
   it('Quick Create ngay trên trang này: `openCreate` bật sau mount vẫn mở hộp, gỡ tham số thì hộp còn mở', async () => {
-    const actions = {
-      create: vi.fn(),
-      update: vi.fn(),
-      setActive: vi.fn(),
-      move: vi.fn(),
-      remove: vi.fn(),
-    };
+    const actions = freshActions();
     const { rerender } = render(<CategoriesTable rows={[]} {...actions} />);
     expect(screen.queryByRole('dialog')).toBeNull();
 
     // Cùng route, chỉ query đổi: React giữ nguyên bảng, chỉ prop đổi.
     rerender(<CategoriesTable rows={[]} {...actions} openCreate />);
-    expect(
-      await screen.findByRole('dialog', { name: messages.admin.categories.create.dialog.title }),
-    ).toBeInTheDocument();
+    expect(await screen.findByRole('dialog', { name: t.create.dialog.title })).toBeInTheDocument();
 
     // `StripCreateParam` gỡ `create` khỏi URL → trang dựng lại với `openCreate` tắt.
     rerender(<CategoriesTable rows={[]} {...actions} />);
     expect(screen.getByRole('dialog')).toBeInTheDocument();
+  });
+});
+
+describe('CategoriesTable — ô hành động sống qua lượt làm mới (review D1)', () => {
+  it('làm mới sau IN_USE: lệnh ghi mới, hàng thành có tour — đúng nút Delete ấy còn giữ focus', () => {
+    const { rerender } = render(
+      <CategoriesTable rows={toCategoryRowVMs([DAY_TRIPS])} {...freshActions()} />,
+    );
+    const button = screen.getByRole('button', { name: t.delete.actionLabel('Day trips') });
+    button.focus();
+    expect(button).toHaveFocus();
+
+    // Payload mới đáp xuống: server action khác danh tính, và hàng giờ có 2 tour.
+    rerender(
+      <CategoriesTable
+        rows={toCategoryRowVMs([{ ...DAY_TRIPS, tourCount: 2, linkedTourCount: 2 }])}
+        {...freshActions()}
+      />,
+    );
+
+    const after = screen.getByRole('button', { name: t.delete.actionLabel('Day trips') });
+    expect(after).toBe(button);
+    expect(after).toHaveFocus();
+    expect(after).toHaveAttribute('aria-disabled', 'true');
+  });
+
+  it('hộp Edit đang mở trong ô không biến mất khi lệnh ghi đổi danh tính', async () => {
+    const user = userEvent.setup();
+    const rows = toCategoryRowVMs([DAY_TRIPS]);
+    const { rerender } = render(<CategoriesTable rows={rows} {...freshActions()} />);
+
+    await user.click(screen.getByRole('button', { name: t.edit.actionLabel('Day trips') }));
+    expect(await screen.findByRole('dialog', { name: t.edit.dialog.title })).toBeInTheDocument();
+
+    rerender(<CategoriesTable rows={rows} {...freshActions()} />);
+    expect(screen.getByRole('dialog', { name: t.edit.dialog.title })).toBeInTheDocument();
+  });
+
+  it('ô gọi lệnh ghi MỚI NHẤT mà bảng nhận, không giữ bản của lượt trước', async () => {
+    // Canh cách vá: cột đứng yên thì ô phải đọc lệnh qua context — một closure chụp lúc dựng
+    // cột sẽ gọi mãi bản đầu tiên.
+    const user = userEvent.setup();
+    const rows = toCategoryRowVMs([DAY_TRIPS]);
+    const first = freshActions();
+    const { rerender } = render(<CategoriesTable rows={rows} {...first} />);
+    const latest = freshActions();
+    latest.remove.mockResolvedValue({
+      ok: true,
+      deleted: { slug: DAY_TRIPS.slug },
+    });
+    rerender(<CategoriesTable rows={rows} {...latest} />);
+
+    await user.click(screen.getByRole('button', { name: t.delete.actionLabel('Day trips') }));
+    const dialog = await screen.findByRole('dialog', { name: t.delete.dialog.title });
+    await user.click(within(dialog).getByRole('button', { name: t.delete.dialog.submit }));
+
+    await waitFor(() => expect(latest.remove).toHaveBeenCalledWith({ id: DAY_TRIPS.id }));
+    expect(first.remove).not.toHaveBeenCalled();
   });
 });
