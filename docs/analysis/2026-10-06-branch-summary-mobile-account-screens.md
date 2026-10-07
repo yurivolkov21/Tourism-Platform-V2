@@ -13,7 +13,7 @@ review 6 ảnh (24 phát hiện: B1–B3, F1–F12, L1–L5, Q1–Q4), và worki
 - **Chức năng: đủ theo spec.** 14 khung S1–S3, A1–A7, G1–G4 đều đã dựng và nối API.
   Thiếu duy nhất là DỮ LIỆU cho G4 (D2), không phải code.
 - **Chưa merge được.** Còn chặn bởi B1–B3 (phía API/ADR), chưa chạy `gate:int`,
-  chưa thử máy thật cho đợt sửa 06/10, và nhánh chậm `main` 212 commit.
+  chưa thử máy thật cho đợt sửa 06/10–07/10, và nhánh chậm `main` 335 commit (đo 07/10).
 
 ## 1. Chức năng theo spec
 
@@ -60,14 +60,13 @@ mobile-ui **133/133**; Biome sạch; tokens-only sạch.
 
 ## 3. Đang treo — việc của nhánh này
 
-1. **Push** — sau Q1 nhánh local lệch remote (ahead 53, behind 50) dù tree ở
-   `c8fa1c6e` trùng khít remote `4c52265e`; push phải dùng
-   `--force-with-lease`, chỉ khi user đồng ý.
+1. ~~**Push** sau Q1~~ — xong 07/10: remote đã nhận bản sau Q1 (`cb0e0217`),
+   đợt N1–N6 push thường (fast-forward), không cần force.
 2. **D2** — gán tour liên quan cho bài viết (admin hoặc `seed.ts`) để G4 có dữ liệu.
    DB local 07/10: bảng `post_tours` trống.
 3. **D3 mục 3** — đăng nhập xong đang `router.replace` về tour đã mount dưới
    modal, có thể đẩy bản sao vào stack. Chỉ đổi sau khi thử máy thật.
-4. **Rebase lên `main`** (chậm 212 commit; `main` có thêm migration
+4. **Rebase lên `main`** (chậm 335 commit ngày 07/10; `main` có thêm migration
    `20261005003043_post_tag_links_order` nên rebase xong chạy `pnpm db:deploy`
    cho DB local). Q1 đã xong 07/10; ba commit còn mang `Co-Authored-By`
    (`9a1db2de`, `c4a2f926`, `5232e4b9`) nằm trên `feat/mobile-browse-screens`,
@@ -240,15 +239,21 @@ lệnh dưới đây người chạy, mỗi tiến trình một cửa sổ Git B
 
    ```bash
    pnpm install
-   pnpm turbo run build --filter=@tourism/api^... --filter=@tourism/mobile^...
+   pnpm turbo run build --filter=@tourism/api --filter=@tourism/mobile^...
    ```
+
+   Phải là `@tourism/api` (không `^...`): task `build` của api kéo theo
+   `db:generate` (Prisma client vào `src/generated/`, gitignore), còn `pnpm dev`
+   của api chỉ chạy swc nên máy sạch thiếu bước này là API chết lúc import.
 
 3. **DB** (ở `apps/api`): `pnpm db:deploy` rồi `pnpm db:seed`. Seed tạo 9 bài
    blog và khách `…@example.com`, mật khẩu `Nexora!Demo2026` (khi
    `SEED_CUSTOMER_PASSWORD` trống). Lấy email ở bảng `users` bằng pgAdmin (đi
    kèm PostgreSQL 17 trên máy — `psql` không có trên PATH).
 4. **API** (ở `apps/api`): `pnpm dev` → cổng 3001, nghe `0.0.0.0` nên điện thoại
-   gọi được. Không có `RESEND_API_KEY` thì OTP/link reset in ở log API.
+   gọi được. Kịch bản N1–N6 không cần email. Cần OTP/link reset thì chạy thêm
+   `pnpm dev:worker` (cửa sổ khác) — `.env.local` không bật `WORKER_INLINE` nên
+   API một mình không drain outbox; thiếu `RESEND_API_KEY` thì worker in mail ra log.
 5. **Mobile** (ở `apps/mobile`): `pnpm dev` (thêm `-- -c` để xoá cache Metro),
    quét QR bằng Expo Go. Lần đầu cho Node qua tường lửa Windows (mạng Private).
    Khác mạng thì `pnpm dev:tunnel`.
@@ -266,24 +271,36 @@ pnpm turbo run bundle --filter=@tourism/mobile
 
 ### Kịch bản thử N1–N6
 
-Mẹo tạo lỗi mạng giữa chừng: tắt API (Ctrl+C cửa sổ `pnpm dev`) — nhanh và chắc
-hơn chế độ máy bay (máy bay làm Expo Go mất luôn kết nối Metro).
+Mẹo tạo request TREO (cần cho N1–N3): **tạm dừng** tiến trình API chứ đừng
+tắt. Tắt API (Ctrl+C) thì máy trả "connection refused" trong vài ms — lỗi về
+ngay, không có khoảng chờ nào để bấm chồng. Tạm dừng thì request treo tới
+timeout 10 giây của client oRPC (`src/lib/api/client.ts`) rồi mới lỗi:
 
-- **N1 — Saved.** Lưu 3 tour. Tắt API. Ở Saved bấm gỡ liên tiếp thật nhanh 2 tour
-  → cả HAI hiện lại, báo lỗi ngắn (~3 giây). Trước sửa: chỉ tour bấm sau hiện lại.
-- **N1 — Explore.** Tắt API, bấm tim 2 tour liên tiếp → cả hai trở về rỗng.
-- **N1 — rời màn.** Tắt API, ở tour detail bấm tim rồi back ngay → mở lại tour
-  (bật API) → tim đúng trạng thái server, không kẹt "đã lưu".
-- **N6.** API bật. Ở Explore bấm tim một tour 4–5 lần thật nhanh → tim không nháy
-  ngược giữa chừng, dừng ở trạng thái lượt bấm cuối; mở Saved khớp. Lặp ở tour detail.
-- **N2.** Đăng nhập user seed phụ. Personal details → Delete account → nhập mật
-  khẩu đúng → bấm xoá rồi kéo tay nắm xuống ngay khi nút hiện "Deleting…" → tấm
-  KHÔNG đóng. Lỗi khó canh vì xoá nhanh; dễ thấy hơn khi tắt API ngay trước bấm
-  (tấm giữ nguyên và hiện lỗi). Test này xoá thật tài khoản nếu API bật.
-- **N3.** Account → bút chì → đổi tên → bấm Save rồi chạm nền tối/nút back
-  Android ngay → tấm KHÔNG đóng khi đang "Saving…". Tắt API trước khi Save để có
-  thời gian: tấm ở lại và hiện "Couldn't update your name…". Tấm Avatar cùng luật
-  nhưng cần Cloudinary để có trạng thái pending — ở local chỉ kiểm được bằng unit test.
+1. Lấy PID của API (PowerShell): `(Get-NetTCPConnection -LocalPort 3001 -State Listen).OwningProcess`.
+2. `resmon` → tab CPU → tick đúng PID đó → chuột phải → **Suspend Process**.
+3. Thử xong: chuột phải → **Resume Process**.
+
+Chế độ máy bay không dùng được — Expo Go mất luôn kết nối Metro.
+
+- **N1 — Saved.** Lưu 3 tour. Suspend API. Ở Saved gỡ liên tiếp 2 tour → cả hai
+  mất ngay; ~10 giây sau cả HAI hiện lại, báo lỗi ngắn (~3 giây). Trước sửa: chỉ
+  tour gỡ sau hiện lại. Resume API.
+- **N1 — Explore.** Suspend API, bấm tim 2 tour liên tiếp → ~10 giây sau cả hai
+  trở về rỗng.
+- **N1 — rời màn.** Suspend API, ở tour detail bấm tim rồi back ngay, chờ ~10
+  giây, Resume, mở lại tour → tim đúng trạng thái server, không kẹt "đã lưu".
+- **N6.** API chạy bình thường. Ở Explore bấm tim một tour 4–5 lần thật nhanh →
+  tim không nháy ngược giữa chừng, dừng ở trạng thái lượt bấm cuối; mở Saved
+  khớp. Lặp ở tour detail.
+- **N2.** Đăng nhập user seed PHỤ. Personal details → Delete account → nhập mật
+  khẩu đúng → Suspend API → bấm "Delete account" (nút đổi "Deleting…") → kéo tay
+  nắm xuống, chạm nền tối → tấm KHÔNG đóng. Sau ~10 giây (timeout của
+  `account-api.ts`) tấm hiện lỗi. Resume API trước khi bấm lại — bấm lại là xoá thật.
+- **N3.** Account → bút chì → đổi tên → Suspend API → bấm Save (nút "Saving…") →
+  chạm nền tối / nút back Android / kéo tay nắm → tấm KHÔNG đóng. Đường này
+  (`authClient.updateUser`) không có timeout nên treo tới khi Resume; Resume xong
+  tên được lưu và tấm tự đóng. Tấm Avatar cùng luật nhưng cần Cloudinary để có
+  trạng thái pending — ở local chỉ có unit test che.
 - **N4.** Seed chỉ có 9 bài, `pageSize` mặc định 20 → **Load more không hiện ở
   local**. Muốn thử tay phải có trên 20 bài PUBLISHED (tạo qua admin, hoặc nhân
   bản bài trong DB local). Khi có: bấm đúp Load more → nút mờ trong lúc tải, danh
