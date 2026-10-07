@@ -325,10 +325,13 @@ export class AdminCategoriesService {
    *
    * Chạy trong `withCategoryOrderLock`: xoá một hàng đổi tập hàng xóm mà `move` đọc, nên nó
    * cũng là lệnh ghi chạm vị trí tương đối của danh sách.
+   *
+   * Chỉ bust khi hàng ĐANG HIỆN (EF4): bề mặt công khai lọc `isActive`, nên một hàng ẩn không
+   * có mặt ở trang nào của web. Cờ đọc từ chính câu DELETE (`RETURNING`), trong khoá.
    */
   async delete(input: AdminCategoryDeleteInput): Promise<AdminCategoryDeleteResult> {
     const deleted = await withCategoryOrderLock((tx) =>
-      tx.tourCategory.delete({ where: { id: input.id }, select: { slug: true } }),
+      tx.tourCategory.delete({ where: { id: input.id }, select: { slug: true, isActive: true } }),
     ).catch((error: unknown) => {
       if (error instanceof Prisma.PrismaClientKnownRequestError) {
         if (error.code === 'P2003') throw new CategoryInUseError();
@@ -340,7 +343,7 @@ export class AdminCategoriesService {
     this.logger.log(
       `[admin] category deleted ${JSON.stringify({ id: input.id, slug: deleted.slug })}`,
     );
-    this.bust();
+    if (deleted.isActive) this.bust();
     return { slug: deleted.slug };
   }
 

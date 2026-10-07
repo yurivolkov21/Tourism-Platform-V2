@@ -224,12 +224,16 @@ export class AdminDestinationsService {
    *    `requeue` publicId nào: ảnh thư viện là ảnh catalog dùng chung, tour mượn nó bằng
    *    dòng của riêng tour (ADR-0048 §3, §6).
    * 4. Xoá điểm đến.
+   *
+   * Chỉ bust khi hàng ĐANG HIỆN (EF4): bề mặt công khai lọc `isActive`, nên một hàng ẩn không
+   * có mặt ở trang nào của web. Cờ đọc ở bước 1, dưới khoá hàng.
    */
   async delete(input: AdminDestinationDeleteInput): Promise<AdminDestinationDeleteResult> {
     const deleted = await prisma.$transaction(
       async (tx) => {
-        const [locked] = await tx.$queryRaw<{ slug: string }[]>(Prisma.sql`
-          SELECT slug FROM destinations WHERE id = ${input.id}::uuid FOR UPDATE
+        const [locked] = await tx.$queryRaw<{ slug: string; isActive: boolean }[]>(Prisma.sql`
+          SELECT slug, is_active AS "isActive" FROM destinations WHERE id = ${input.id}::uuid
+          FOR UPDATE
         `);
         if (!locked) throw new DestinationNotFoundError(input.id);
         const links = await tx.tourDestination.count({ where: { destinationId: input.id } });
@@ -247,7 +251,7 @@ export class AdminDestinationsService {
       `[admin] destination deleted ${JSON.stringify({ id: input.id, slug: deleted.slug })}`,
     );
     // Không tour nào gắn điểm đến này nên không có trang `tour:<slug>` nào phải bust kèm.
-    this.bust(['tours']);
+    if (deleted.isActive) this.bust(['tours']);
     return { slug: deleted.slug };
   }
 

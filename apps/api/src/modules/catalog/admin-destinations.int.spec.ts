@@ -39,6 +39,24 @@ const SEED = [
   { id: destId(3), slug: 'retired', name: 'An Bàng', region: 'Southern Vietnam', isActive: false },
 ] satisfies Prisma.DestinationCreateManyInput[];
 
+/**
+ * Bọc `prisma.$transaction` để đếm transaction đang mở; trả hàm đọc số đếm (review S3). Ca "bust
+ * SAU commit" của lệnh xoá đọc nó NGAY lúc bust được gọi: 0 nghĩa là transaction xoá đã commit.
+ * Đọc DB trong mock thôi KHÔNG đủ: lượt đọc đi qua một kết nối khác của pool và thường tới
+ * Postgres sau câu COMMIT, nên dời bust vào trong transaction vẫn xanh (đo 07/10: 3/3 lượt).
+ */
+function trackOpenTransactions(): () => number {
+  let open = 0;
+  const run = prisma.$transaction.bind(prisma) as (...args: unknown[]) => Promise<unknown>;
+  vi.spyOn(prisma, '$transaction').mockImplementation(((...args: unknown[]) => {
+    open += 1;
+    return run(...args).finally(() => {
+      open -= 1;
+    });
+  }) as never);
+  return () => open;
+}
+
 function sessionCookie(res: { headers: Record<string, unknown> }): string {
   const raw = res.headers['set-cookie'];
   const cookies = (Array.isArray(raw) ? raw : [raw]).filter(
@@ -622,17 +640,42 @@ describe('admin destinations integration (P4e-2 F15)', () => {
       expect(revalidate).not.toHaveBeenCalled();
     });
 
-    it('xoá bust `tours` sau commit; xoá hỏng thì không bust', async () => {
+    it('xoá hàng đang hiện bust `tours` đúng một lần, SAU commit — lúc bust hàng đã mất (review S3)', async () => {
+      // Mock đọc DB như ca đầu khối, NHƯNG với lệnh xoá (một transaction) chứng cứ thứ tự là số
+      // transaction còn mở ngay lúc bust được gọi — xem `trackOpenTransactions`. Chỉ đếm số lần
+      // gọi thì dời bust vào trong transaction xoá vẫn xanh, trong khi web lúc ấy regenerate từ
+      // bản cũ.
+      const openTransactions = trackOpenTransactions();
+      const seen: Array<{ tags: string[]; open: number; remaining: number }> = [];
+      const revalidate = vi.spyOn(web, 'revalidate').mockImplementation(async (tags) => {
+        const open = openTransactions();
+        const remaining = await prisma.destination.count({ where: { id: destId(1) } });
+        seen.push({ tags, open, remaining });
+      });
+
+      expect((await remove(destId(1), adminCookie)).statusCode).toBe(200);
+
+      expect(revalidate).toHaveBeenCalledTimes(1);
+      await vi.waitFor(() => expect(seen).toHaveLength(1));
+      expect(seen[0]).toEqual({ tags: ['tours'], open: 0, remaining: 0 });
+    });
+
+    it('xoá hàng đang ẨN không bust — web không hiện hàng ẩn nên không trang nào đổi (EF4)', async () => {
       const revalidate = vi.spyOn(web, 'revalidate').mockResolvedValue(undefined);
 
-      await remove(destId(3), adminCookie);
-      expect(revalidate).toHaveBeenCalledTimes(1);
-      expect(revalidate.mock.calls[0]?.[0]).toEqual(['tours']);
+      expect((await remove(destId(3), adminCookie)).statusCode).toBe(200);
 
-      revalidate.mockClear();
+      expect(await prisma.destination.count({ where: { id: destId(3) } })).toBe(0);
+      expect(revalidate).not.toHaveBeenCalled();
+    });
+
+    it('xoá hỏng thì không bust', async () => {
+      const revalidate = vi.spyOn(web, 'revalidate').mockResolvedValue(undefined);
+
       await tourVisiting('draft-one', [destId(1)], false);
       await remove(destId(1), adminCookie);
       await remove(destId(999), adminCookie);
+
       expect(revalidate).not.toHaveBeenCalled();
     });
   });

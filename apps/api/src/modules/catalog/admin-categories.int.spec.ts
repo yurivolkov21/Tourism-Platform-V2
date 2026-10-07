@@ -39,6 +39,24 @@ const SEED = [
   { id: catId(4), slug: 'retired', name: 'Retired', order: 4, isActive: false },
 ] satisfies Prisma.TourCategoryCreateManyInput[];
 
+/**
+ * Bọc `prisma.$transaction` để đếm transaction đang mở; trả hàm đọc số đếm (review S3). Ca "bust
+ * SAU commit" đọc nó NGAY lúc bust được gọi: 0 nghĩa là transaction xoá đã commit. Đọc DB trong
+ * mock thôi KHÔNG đủ: lượt đọc đi qua một kết nối khác của pool và thường tới Postgres sau câu
+ * COMMIT, nên dời bust vào trong transaction vẫn xanh (đo 07/10: 3/3 lượt).
+ */
+function trackOpenTransactions(): () => number {
+  let open = 0;
+  const run = prisma.$transaction.bind(prisma) as (...args: unknown[]) => Promise<unknown>;
+  vi.spyOn(prisma, '$transaction').mockImplementation(((...args: unknown[]) => {
+    open += 1;
+    return run(...args).finally(() => {
+      open -= 1;
+    });
+  }) as never);
+  return () => open;
+}
+
 function sessionCookie(res: { headers: Record<string, unknown> }): string {
   const raw = res.headers['set-cookie'];
   const cookies = (Array.isArray(raw) ? raw : [raw]).filter(
@@ -504,17 +522,41 @@ describe('admin categories integration (P4e-2 F14)', () => {
       expect(await slugsInOrder()).not.toContain('cruises');
     });
 
-    it('bust `tours` SAU commit; xoá hỏng thì không bust', async () => {
+    it('xoá hàng đang hiện bust `tours` đúng một lần, SAU commit — lúc bust hàng đã mất (review S3)', async () => {
+      // Bust trong transaction thì web regenerate đọc bản còn danh mục rồi giữ nó 300 giây ISR
+      // (ADR-0016 §3). Mock đọc DB như ca bust của điểm đến, NHƯNG chứng cứ thứ tự là số
+      // transaction còn mở ngay lúc bust được gọi — xem `trackOpenTransactions`.
+      const openTransactions = trackOpenTransactions();
+      const seen: Array<{ tags: string[]; open: number; remaining: number }> = [];
+      const revalidate = vi.spyOn(web, 'revalidate').mockImplementation(async (tags) => {
+        const open = openTransactions();
+        const remaining = await prisma.tourCategory.count({ where: { id: catId(3) } });
+        seen.push({ tags, open, remaining });
+      });
+
+      expect((await remove(catId(3), adminCookie)).statusCode).toBe(200);
+
+      expect(revalidate).toHaveBeenCalledTimes(1);
+      await vi.waitFor(() => expect(seen).toHaveLength(1));
+      expect(seen[0]).toEqual({ tags: ['tours'], open: 0, remaining: 0 });
+    });
+
+    it('xoá hàng đang ẨN không bust — web không hiện hàng ẩn nên không trang nào đổi (EF4)', async () => {
       const revalidate = vi.spyOn(web, 'revalidate').mockResolvedValue(undefined);
 
-      await remove(catId(3), adminCookie);
-      expect(revalidate).toHaveBeenCalledTimes(1);
-      expect(revalidate.mock.calls[0]?.[0]).toEqual(['tours']);
+      expect((await remove(catId(4), adminCookie)).statusCode).toBe(200);
 
-      revalidate.mockClear();
+      expect(await slugsInOrder()).not.toContain('retired');
+      expect(revalidate).not.toHaveBeenCalled();
+    });
+
+    it('xoá hỏng thì không bust', async () => {
+      const revalidate = vi.spyOn(web, 'revalidate').mockResolvedValue(undefined);
+
       await draftIn(catId(2));
       await remove(catId(2), adminCookie);
       await remove(catId(999), adminCookie);
+
       expect(revalidate).not.toHaveBeenCalled();
     });
   });
