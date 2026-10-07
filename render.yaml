@@ -56,8 +56,10 @@ services:
         sync: false
       - key: CLOUDINARY_API_SECRET
         sync: false
-      # Thư mục gốc trên Cloudinary (bỏ trống = `tourism`). Dev và prod dùng chung
-      # một cloud — đổi giá trị này là tách ảnh tải lên mới sang thư mục khác.
+      # Thư mục gốc trên Cloudinary (bỏ trống = `tourism`). Nó còn là TIỀN TỐ SỞ HỮU của
+      # mọi ảnh admin đã tải (ảnh tour, ảnh bìa bài viết — apps/api/src/lib/upload-signing.ts):
+      # chỉ đặt MỘT lần, trước khi có ảnh. Đổi về sau là mồ côi ảnh cũ — chúng hiện thành
+      # "Catalogue photo" và gỡ đi thì không còn vào hàng dọn, file nằm lại trên Cloudinary.
       - key: CLOUDINARY_UPLOAD_FOLDER
         sync: false
       # Đăng nhập Google: thiếu một trong hai → provider google không đăng ký,
@@ -113,6 +115,8 @@ services:
         sync: false
       - key: PAYMENT_FEE_FIXED
         sync: false
-      # ADR-0010: lỗi 500 đẩy lên Sentry khi có DSN; bỏ trống = no-op (Logger ra stdout).
+      # ADR-0010: SEAM CHƯA NỐI — API chưa cài `@sentry/node`, nên đặt DSN KHÔNG gửi gì lên
+      # Sentry: mỗi lỗi 500 chỉ thêm một dòng cảnh báo vào log (apps/api/src/lib/observability.ts).
+      # Bỏ trống cho tới khi nối thật; lỗi 500 vẫn chỉ nằm ở stdout của Render.
       - key: SENTRY_DSN
         sync: false
