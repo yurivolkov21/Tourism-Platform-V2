@@ -84,3 +84,22 @@ Khoá ngoại đo trên `schema.prisma`:
    `apps/api/src/modules/catalog/tour-photos.ts`); lưu ảnh vẫn chạy, vì dòng của chính tour
    được giữ trước mọi nguồn khác (`planTourPhotos`). Đo prod 05/10: chỉ `abc` ở 0 tour, và nó
    không có ảnh nào.
+4. Khoá ngoại `tour_destinations.destination_id` vẫn `ON DELETE CASCADE` (spec §1: đợt này
+   không migration). Luật "đang có tour thì không xoá" chỉ sống ở lệnh xoá của API; xoá điểm
+   đến bằng đường khác (SQL tay, Prisma Studio, script) sẽ lặng lẽ gỡ nó khỏi mọi tour. Đổi
+   sang `RESTRICT` như danh mục cần migration riêng — để sau capstone.
+
+## AMEND 1 — Vòng review trước merge (07/10)
+
+Vòng review max trước merge (15 phát hiện báo cáo, 21 mục nhẹ, user chọn vá gần hết) đổi hai
+chỗ của quyết định gốc; luật xoá, khoá và hộp xác nhận giữ nguyên.
+
+- **§3, lệnh lưu tour đến sau lượt xoá:** câu "nhận `P2003` — mã có sẵn 'điểm đến không tồn
+  tại'" sai: `P2003` được đổi thành `NOT_FOUND`, trùng mã "tour không tồn tại", nên khu sửa tour
+  báo "This tour no longer exists.", đá về `/tours` và làm mất chữ chưa lưu. Nay
+  `adminTours.create` và `adminTours.updateDetails` trả mã riêng `LINK_NOT_FOUND` (409) khi danh
+  mục hoặc điểm đến được chọn không còn; `NOT_FOUND` chỉ còn nghĩa tour không tồn tại. Admin
+  hiện thông báo, làm mới danh sách chọn và giữ nguyên chữ đang gõ. API lên trước admin (deploy
+  hai nhịp): admin cũ gặp mã lạ thì rơi về thông báo lỗi chung, không đá về `/tours`.
+- **§2 và §3, bust cache:** xoá một hàng đang ẩn không bust tag `tours` nữa — hàng ẩn không hiện
+  ở web (danh sách công khai lọc `isActive`), nên bust ấy chỉ làm cả site mất cache vô ích.
