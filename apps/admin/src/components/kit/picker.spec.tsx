@@ -350,4 +350,29 @@ describe('Picker', () => {
     await screen.findAllByRole('option');
     expect(document.querySelector('[data-slot="select-content"]')).toHaveClass('w-66');
   });
+
+  it('toolbar: popup canh mép TRÁI ô — ô lọc trạng thái nằm khe trái của bảng', async () => {
+    // Review A2-2: canh mép phải thì popup 264px tràn sang TRÁI ô 90–140px, đè lên sidebar ở
+    // cửa sổ ~768–1190px (biên va chạm chỉ là viewport). 9/10 nơi dùng nằm khe `views` bên
+    // trái; nơi thứ mười (thẻ biểu đồ, khe phải) để Base UI tự lật canh khi chạm mép viewport.
+    const user = userEvent.setup();
+    render(
+      <Picker
+        id="status"
+        variant="toolbar"
+        label="Filter by status"
+        value="ALL"
+        options={[
+          { value: 'ALL', label: 'All' },
+          { value: 'NEW', label: 'New' },
+        ]}
+        onValueChange={vi.fn()}
+      />,
+    );
+
+    await user.click(screen.getByRole('combobox', { name: 'Filter by status' }));
+    await screen.findAllByRole('option');
+    const positioner = document.querySelector('[data-slot="select-content"]')?.parentElement;
+    expect(positioner).toHaveAttribute('data-align', 'start');
+  });
 });

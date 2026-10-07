@@ -174,10 +174,13 @@ export function Picker(props: PickerProps) {
             {() => (current ? <OptionContent option={current} /> : value || placeholder)}
           </SelectValue>
         </SelectTrigger>
+        {/* Cả hai biến thể canh mép TRÁI ô (review A2-2): ô toolbar nằm khe `views` bên trái ở
+            9/10 nơi dùng, canh phải thì popup 264px tràn sang trái đè lên sidebar. Nơi thứ mười
+            (thẻ biểu đồ, khe phải) chạm mép viewport thì Base UI tự lật canh. */}
         <SelectContent
           alignItemWithTrigger={false}
           side={side}
-          align={variant === 'toolbar' ? 'end' : 'start'}
+          align="start"
           className={variant === 'toolbar' ? MENU_TOOLBAR_POPUP : FIELD_POPUP}
         >
           {groups.map((group, index) => (
