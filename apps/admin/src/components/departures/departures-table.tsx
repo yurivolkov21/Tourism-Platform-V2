@@ -71,49 +71,33 @@ const t = messages.admin.departures;
 const columnHelper = createColumnHelper<typeof serverTableFeatures, DepartureRowVM>();
 
 /**
- * Bảng đang kéo dữ liệu tươi về hay không — đi qua CONTEXT chứ không qua deps
- * của `useMemo` dựng cột (F12 vòng hai).
+ * MỌI thứ ô Actions cần từ bảng — đi qua CONTEXT chứ không qua cột (F12 vòng hai, review D1).
  *
- * Vì sao: `isRefreshing` đổi hai lần mỗi lệnh ghi, và nếu nó nằm trong deps thì
- * MẢNG CỘT được dựng lại cả hai lần — TanStack thấy cột mới nên dựng lại ô,
- * kéo theo `DepartureRowActions` unmount rồi mount lại cùng toàn bộ state nội
- * bộ của nó (dialog đang mở, phiên bản hàng đã chụp, ô lý do đang gõ).
+ * Vì sao: cột đổi danh tính thì TanStack dựng lại ô, kéo theo `DepartureRowActions` unmount
+ * rồi mount lại cùng toàn bộ state nội bộ của nó (dialog đang mở, phiên bản hàng đã chụp, ô lý
+ * do đang gõ) và focus của nút. Hai thứ ở đây đổi danh tính:
+ * - `isRefreshing` đổi hai lần mỗi lệnh ghi.
+ * - Server action đổi danh tính sau MỖI `router.refresh()`: Flight client giải mã mỗi lượt
+ *   thành một closure mới, không cache theo id — nằm trong deps của cột thì mọi lệnh ghi xong
+ *   đều dựng lại cột đúng lúc payload mới đáp xuống.
  *
- * Với context thì cột đứng yên và chỉ những ô THẬT SỰ đọc cờ này mới vẽ lại.
+ * Với context thì cột là hằng của module (`COLUMNS`) và chỉ những ô THẬT SỰ đọc context mới
+ * vẽ lại — vẽ lại, không dựng lại.
  */
-const RefreshingContext = React.createContext(false);
-
-/**
- * Ô Actions — component riêng để nó đọc được context. Cột chỉ giữ một tham
- * chiếu ổn định tới đây, không giữ giá trị của cờ.
- */
-function ActionsCell({
-  row,
-  basePriceLabel,
-  update,
-  setStatus,
-  cancel,
-  onSettled,
-}: {
-  row: DepartureRowVM;
+const RowActionsContext = React.createContext<{
+  disabled: boolean;
   basePriceLabel: string;
   update: UpdateDepartureAction;
   setStatus: SetDepartureStatusAction;
   cancel: CancelDepartureAction;
   onSettled: () => void;
-}) {
-  const disabled = React.useContext(RefreshingContext);
-  return (
-    <DepartureRowActions
-      row={row}
-      basePriceLabel={basePriceLabel}
-      update={update}
-      setStatus={setStatus}
-      cancel={cancel}
-      disabled={disabled}
-      onSettled={onSettled}
-    />
-  );
+} | null>(null);
+
+/** Ô Actions — component riêng để nó đọc được context. Cột chỉ giữ một tham chiếu tới đây. */
+function ActionsCell({ row }: { row: DepartureRowVM }) {
+  const context = React.useContext(RowActionsContext);
+  if (context === null) throw new Error('ActionsCell must be used inside RowActionsContext');
+  return <DepartureRowActions row={row} {...context} />;
 }
 
 /** Nhãn cho menu ẩn/hiện — chỉ cột ẩn ĐƯỢC mới cần entry. */
@@ -168,6 +152,99 @@ const TAB_ITEMS = [
   })),
 ];
 
+const COLUMNS = columnHelper.columns([
+  columnHelper.accessor('dates', {
+    header: t.list.columns.dates,
+    // Danh tính của hàng — không ẩn được.
+    cell: ({ row }) => (
+      <span className="font-medium whitespace-nowrap text-foreground">{row.original.dates}</span>
+    ),
+    enableHiding: false,
+  }),
+  columnHelper.accessor('price', {
+    header: t.list.columns.price,
+    cell: ({ row }) => (
+      <div className="whitespace-nowrap">
+        <div className="tabular-nums">{row.original.price}</div>
+        {/* Dòng phụ chỉ hiện khi chuyến KHÔNG có giá riêng — nếu không,
+            con số trên đã tự nói hết. */}
+        {row.original.priceNote ? (
+          <div className="text-xs text-muted-foreground">{row.original.priceNote}</div>
+        ) : null}
+      </div>
+    ),
+  }),
+  columnHelper.accessor('seats', {
+    header: t.list.columns.seats,
+    cell: ({ row }) => (
+      <span className="tabular-nums" title={row.original.seatsLabel}>
+        {row.original.seats}
+      </span>
+    ),
+  }),
+  columnHelper.accessor('deadline', {
+    header: t.list.columns.deadline,
+    cell: ({ row }) => (
+      <div className="whitespace-nowrap">
+        <div className={row.original.deadlinePassed ? 'text-muted-foreground' : undefined}>
+          {row.original.deadline}
+        </div>
+        {row.original.deadlinePassed ? (
+          <div className="text-xs text-muted-foreground">{t.list.deadlinePassed}</div>
+        ) : null}
+      </div>
+    ),
+  }),
+  columnHelper.accessor('bookingsLabel', {
+    header: t.list.columns.bookings,
+    cell: ({ row }) => (
+      <span className="tabular-nums whitespace-nowrap">{row.original.liveBookingCount}</span>
+    ),
+  }),
+  columnHelper.accessor('refundOutstanding', {
+    header: t.list.columns.refunds,
+    // Chỉ nói khi CÒN người phải chờ. Hàng đã hoàn xong và hàng chưa huỷ
+    // đều để trống — cột Status đã nói chuyến ở đâu rồi.
+    cell: ({ row }) =>
+      row.original.refundOutstanding ? (
+        <div className="whitespace-nowrap">
+          <div className="tabular-nums">{row.original.refundOutstanding}</div>
+          {/* Worker gói free của Render ngủ sau 15 phút: job nằm nguyên
+              trong hàng đợi tới khi nó tỉnh nên không mất gì, nhưng admin
+              nhìn màn hình thì không đoán được điều đó. */}
+          <div className="text-xs text-muted-foreground">{t.list.refundStalled}</div>
+        </div>
+      ) : null,
+  }),
+  columnHelper.accessor('phaseLabel', {
+    header: t.list.columns.status,
+    // Nghĩa nằm ở CHỮ; icon chỉ giúp mắt tách hai cặp chung biến thể
+    // (Deadline passed/Departed, Closed/Completed) — spec F16 §2e.
+    cell: ({ row }) => {
+      const Icon = PHASE_ICONS[row.original.phase];
+      // Hàng thiếu `phase` chỉ có một nguồn: admin mới đọc API cũ trong
+      // vài phút giữa hai lần deploy. Dựng `<undefined />` là React ném
+      // và cả trang thành 500 (vòng review F16) — để trống ô. Không lùi
+      // về huy hiệu mặc định: biến thể mặc định là xanh đặc, màu dành cho
+      // chuyến còn nhận booking.
+      if (!Icon) return null;
+      return (
+        <Badge variant={departurePhaseBadgeVariant(row.original.phase)} className="px-1.5">
+          <Icon data-icon="inline-start" aria-hidden="true" />
+          {row.original.phaseLabel}
+        </Badge>
+      );
+    },
+  }),
+  columnHelper.display({
+    id: 'actions',
+    header: () => <span className="sr-only">{t.list.columns.actions}</span>,
+    // Lệnh ghi, giá gốc và cờ bận đọc qua `RowActionsContext`, không đóng vào cột.
+    cell: ({ row }) => <ActionsCell row={row.original} />,
+    enableHiding: false,
+  }),
+]);
+
 export interface DeparturesTableProps {
   rows: DepartureRowVM[];
   query: DeparturesQuery;
@@ -208,120 +285,23 @@ export function DeparturesTable({
     startRefresh(() => router.refresh());
   }, [router]);
 
-  // Cột dựng trong component vì ô Actions cần ba server action và cờ
-  // `isRefreshing` — `useMemo` giữ chúng ổn định giữa các lần render.
-  const columns = React.useMemo(
-    () =>
-      columnHelper.columns([
-        columnHelper.accessor('dates', {
-          header: t.list.columns.dates,
-          // Danh tính của hàng — không ẩn được.
-          cell: ({ row }) => (
-            <span className="font-medium whitespace-nowrap text-foreground">
-              {row.original.dates}
-            </span>
-          ),
-          enableHiding: false,
-        }),
-        columnHelper.accessor('price', {
-          header: t.list.columns.price,
-          cell: ({ row }) => (
-            <div className="whitespace-nowrap">
-              <div className="tabular-nums">{row.original.price}</div>
-              {/* Dòng phụ chỉ hiện khi chuyến KHÔNG có giá riêng — nếu không,
-                  con số trên đã tự nói hết. */}
-              {row.original.priceNote ? (
-                <div className="text-xs text-muted-foreground">{row.original.priceNote}</div>
-              ) : null}
-            </div>
-          ),
-        }),
-        columnHelper.accessor('seats', {
-          header: t.list.columns.seats,
-          cell: ({ row }) => (
-            <span className="tabular-nums" title={row.original.seatsLabel}>
-              {row.original.seats}
-            </span>
-          ),
-        }),
-        columnHelper.accessor('deadline', {
-          header: t.list.columns.deadline,
-          cell: ({ row }) => (
-            <div className="whitespace-nowrap">
-              <div className={row.original.deadlinePassed ? 'text-muted-foreground' : undefined}>
-                {row.original.deadline}
-              </div>
-              {row.original.deadlinePassed ? (
-                <div className="text-xs text-muted-foreground">{t.list.deadlinePassed}</div>
-              ) : null}
-            </div>
-          ),
-        }),
-        columnHelper.accessor('bookingsLabel', {
-          header: t.list.columns.bookings,
-          cell: ({ row }) => (
-            <span className="tabular-nums whitespace-nowrap">{row.original.liveBookingCount}</span>
-          ),
-        }),
-        columnHelper.accessor('refundOutstanding', {
-          header: t.list.columns.refunds,
-          // Chỉ nói khi CÒN người phải chờ. Hàng đã hoàn xong và hàng chưa huỷ
-          // đều để trống — cột Status đã nói chuyến ở đâu rồi.
-          cell: ({ row }) =>
-            row.original.refundOutstanding ? (
-              <div className="whitespace-nowrap">
-                <div className="tabular-nums">{row.original.refundOutstanding}</div>
-                {/* Worker gói free của Render ngủ sau 15 phút: job nằm nguyên
-                    trong hàng đợi tới khi nó tỉnh nên không mất gì, nhưng admin
-                    nhìn màn hình thì không đoán được điều đó. */}
-                <div className="text-xs text-muted-foreground">{t.list.refundStalled}</div>
-              </div>
-            ) : null,
-        }),
-        columnHelper.accessor('phaseLabel', {
-          header: t.list.columns.status,
-          // Nghĩa nằm ở CHỮ; icon chỉ giúp mắt tách hai cặp chung biến thể
-          // (Deadline passed/Departed, Closed/Completed) — spec F16 §2e.
-          cell: ({ row }) => {
-            const Icon = PHASE_ICONS[row.original.phase];
-            // Hàng thiếu `phase` chỉ có một nguồn: admin mới đọc API cũ trong
-            // vài phút giữa hai lần deploy. Dựng `<undefined />` là React ném
-            // và cả trang thành 500 (vòng review F16) — để trống ô. Không lùi
-            // về huy hiệu mặc định: biến thể mặc định là xanh đặc, màu dành cho
-            // chuyến còn nhận booking.
-            if (!Icon) return null;
-            return (
-              <Badge variant={departurePhaseBadgeVariant(row.original.phase)} className="px-1.5">
-                <Icon data-icon="inline-start" aria-hidden="true" />
-                {row.original.phaseLabel}
-              </Badge>
-            );
-          },
-        }),
-        columnHelper.display({
-          id: 'actions',
-          header: () => <span className="sr-only">{t.list.columns.actions}</span>,
-          cell: ({ row }) => (
-            <ActionsCell
-              row={row.original}
-              basePriceLabel={tour.basePriceLabel}
-              update={update}
-              setStatus={setStatus}
-              cancel={cancel}
-              onSettled={refreshList}
-            />
-          ),
-          enableHiding: false,
-        }),
-      ]),
-    // KHÔNG có `isRefreshing` ở đây — xem `RefreshingContext`.
-    [tour.basePriceLabel, update, setStatus, cancel, refreshList],
+  // Ô Actions đọc mọi thứ của bảng qua context — xem `RowActionsContext`.
+  const rowActions = React.useMemo(
+    () => ({
+      disabled: isRefreshing,
+      basePriceLabel: tour.basePriceLabel,
+      update,
+      setStatus,
+      cancel,
+      onSettled: refreshList,
+    }),
+    [isRefreshing, tour.basePriceLabel, update, setStatus, cancel, refreshList],
   );
 
   const table = useTable({
     features: serverTableFeatures,
     data: rows,
-    columns,
+    columns: COLUMNS,
     // KHÔNG có pagination state ở table: trang/limit sống trên URL.
     state: { columnVisibility },
     getRowId: (row) => row.id,
@@ -376,9 +356,9 @@ export function DeparturesTable({
           />
         }
       >
-        <RefreshingContext.Provider value={isRefreshing}>
+        <RowActionsContext.Provider value={rowActions}>
           <DataTableBody table={table} empty={t.list.empty} />
-        </RefreshingContext.Provider>
+        </RowActionsContext.Provider>
       </DataTableFrame>
 
       {adding ? (

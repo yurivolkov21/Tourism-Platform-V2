@@ -14,10 +14,14 @@ import { DeparturesTable } from './departures-table';
  * công tắc, và bảng không sập khi hàng thiếu `phase` (khe deploy).
  */
 
-const push = vi.fn();
-vi.mock('next/navigation', () => ({
-  useRouter: () => ({ push, refresh: vi.fn() }),
-}));
+/**
+ * Router ỔN ĐỊNH qua các lần render, như Next thật (`useRouter` memo theo router). Mock trả
+ * object mới mỗi render thì `refreshList` đổi danh tính ở MỌI render và che mất lỗi D1 (server
+ * action đổi danh tính sau mỗi `router.refresh()`).
+ */
+const router = vi.hoisted(() => ({ push: vi.fn(), refresh: vi.fn() }));
+vi.mock('next/navigation', () => ({ useRouter: () => router }));
+const { push } = router;
 
 const t = messages.admin.departures;
 
@@ -26,16 +30,26 @@ const QUERY: DeparturesQuery = { slug: 'hoi-an-lantern-evening', page: 1, limit:
 /** Chuyến 5 ngày 10/10 → 14/10, hạn chót 03/10. */
 const ROW = makeDepartureRow();
 
-function renderTable({
+/**
+ * Một bộ lệnh ghi MỚI — mô phỏng lượt `router.refresh()`: Flight client giải mã server action
+ * thành một closure mới mỗi lần, nên trang chở xuống bảng những hàm khác danh tính (review D1).
+ */
+function freshActions() {
+  return { create: vi.fn(), update: vi.fn(), setStatus: vi.fn(), cancel: vi.fn() };
+}
+
+function table({
   query = QUERY,
   today = '2026-10-01',
   rows = [vmAt(ROW, today)],
+  actions = freshActions(),
 }: {
   query?: DeparturesQuery;
   today?: string;
   rows?: DepartureRowVM[];
+  actions?: ReturnType<typeof freshActions>;
 } = {}) {
-  return render(
+  return (
     <DeparturesTable
       rows={rows}
       query={query}
@@ -43,12 +57,13 @@ function renderTable({
       totalPages={1}
       tour={{ slug: QUERY.slug, basePriceLabel: '$129.00' }}
       today={today}
-      create={vi.fn()}
-      update={vi.fn()}
-      setStatus={vi.fn()}
-      cancel={vi.fn()}
-    />,
+      {...actions}
+    />
   );
+}
+
+function renderTable(options: Parameters<typeof table>[0] = {}) {
+  return render(table(options));
 }
 
 /** Hàng dữ liệu duy nhất của bảng (hàng 0 là tiêu đề). */
@@ -141,5 +156,32 @@ describe('DeparturesTable — cột Status in GIAI ĐOẠN, không in công tắ
 
     expect(within(bodyRow()).queryByText(t.phase['on-sale'])).not.toBeInTheDocument();
     expect(bodyRow().querySelector('[data-slot="badge"]')).toBeNull();
+  });
+});
+
+describe('DeparturesTable — ô hành động sống qua lượt làm mới (review D1)', () => {
+  const editLabel = t.edit.actionLabel(vmAt(ROW, '2026-10-01').dates);
+
+  it('lệnh ghi đổi danh tính sau lượt làm mới: nút Edit đang giữ focus vẫn là nút ấy', () => {
+    const { rerender } = renderTable();
+    const edit = within(bodyRow()).getByRole('button', { name: editLabel });
+    edit.focus();
+    expect(edit).toHaveFocus();
+
+    rerender(table());
+
+    expect(within(bodyRow()).getByRole('button', { name: editLabel })).toBe(edit);
+    expect(edit).toHaveFocus();
+  });
+
+  it('hộp Edit đang mở trong ô không biến mất khi lệnh ghi đổi danh tính', async () => {
+    const user = userEvent.setup();
+    const { rerender } = renderTable();
+
+    await user.click(within(bodyRow()).getByRole('button', { name: editLabel }));
+    expect(await screen.findByRole('dialog', { name: t.edit.dialog.title })).toBeInTheDocument();
+
+    rerender(table());
+    expect(screen.getByRole('dialog', { name: t.edit.dialog.title })).toBeInTheDocument();
   });
 });
