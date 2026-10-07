@@ -19,7 +19,7 @@ import {
 import { Input } from '@tourism/ui/components/input';
 import { Textarea } from '@tourism/ui/components/textarea';
 import { cn } from '@tourism/ui/lib/utils';
-import { useState } from 'react';
+import { type ComponentProps, useState } from 'react';
 import { DIALOG_FRAME } from '@/components/kit/confirm-write-dialog';
 import { FormField } from '@/components/kit/form-field';
 import { Picker } from '@/components/kit/picker';
@@ -71,6 +71,12 @@ export interface DestinationFormDialogProps<Code extends string> {
   onClose: () => void;
   /** Gọi sau mọi kết cục đã chạm server — cha refresh + khoá nút. */
   onSettled: () => void;
+  /**
+   * Đích focus khi hộp đóng — chuyển thẳng cho `finalFocus` của Base UI. Vắng là mặc định: về
+   * phần tử giữ focus lúc mở. Hộp Add khai nút Add của bảng (review A2-8): Quick Create mở hộp
+   * mà không bấm nút nào, tới từ trang khác thì lúc mở focus đang ở `<body>`.
+   */
+  finalFocus?: ComponentProps<typeof DialogContent>['finalFocus'];
 }
 
 export function DestinationFormDialog<Code extends string>({
@@ -84,6 +90,7 @@ export function DestinationFormDialog<Code extends string>({
   toast,
   onClose,
   onSettled,
+  finalFocus,
 }: DestinationFormDialogProps<Code>) {
   const [values, setValues] = useState<DestinationFormValues>(initial);
   /** Admin đã tự gõ ô slug chưa — gõ rồi thì tên thôi ghi đè nó. */
@@ -128,7 +135,11 @@ export function DestinationFormDialog<Code extends string>({
 
   return (
     <Dialog open onOpenChange={onOpenChange}>
-      <DialogContent className={cn(DIALOG_FRAME, 'sm:max-w-md')} showCloseButton={false}>
+      <DialogContent
+        className={cn(DIALOG_FRAME, 'sm:max-w-md')}
+        showCloseButton={false}
+        finalFocus={finalFocus}
+      >
         <DialogHeader>
           <DialogTitle>{copy.title}</DialogTitle>
           <DialogDescription>{copy.body}</DialogDescription>

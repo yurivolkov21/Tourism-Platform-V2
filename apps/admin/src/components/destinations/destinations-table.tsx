@@ -172,7 +172,7 @@ export function DestinationsTable({
 
   /**
    * Nút Add — luôn có, sống qua mọi lượt làm mới, nên là đích focus khi một hàng vừa bị xoá
-   * mang theo nút Delete của nó (review A2-1).
+   * mang theo nút Delete của nó (review A2-1), và khi hộp Add đóng (review A2-8).
    */
   const addButtonRef = React.useRef<HTMLButtonElement>(null);
 
@@ -248,6 +248,8 @@ export function DestinationsTable({
           })}
           onClose={() => setAdding(false)}
           onSettled={refreshList}
+          // Mở bằng Quick Create thì không có nút nào được bấm để focus quay về (review A2-8).
+          finalFocus={addButtonRef}
         />
       ) : null}
     </>

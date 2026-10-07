@@ -128,4 +128,16 @@ describe('NewPostDialog', () => {
     act(() => requestCreate('post'));
     expect(await screen.findByRole('dialog', { name: t.dialog.title })).toBeInTheDocument();
   });
+
+  it('hộp mở bằng Quick Create, không qua nút: Esc thì focus về nút New post, không rơi về body (review A2-8)', async () => {
+    const user = userEvent.setup();
+    requestCreate('post');
+    render(<NewPostDialog create={vi.fn()} />);
+    await screen.findByRole('dialog', { name: t.dialog.title });
+
+    await user.keyboard('{Escape}');
+
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    await waitFor(() => expect(screen.getByRole('button', { name: t.action })).toHaveFocus());
+  });
 });

@@ -64,6 +64,21 @@ describe('CategoriesTable — Quick Create', () => {
     act(() => requestCreate('category'));
     expect(await screen.findByRole('dialog', { name: t.create.dialog.title })).toBeInTheDocument();
   });
+
+  it('hộp mở bằng yêu cầu, không qua nút: Esc thì focus về nút Add category, không rơi về body (review A2-8)', async () => {
+    // Tới từ trang khác: lúc hộp mở, focus đang ở `<body>` — không có nút nào được bấm.
+    const user = userEvent.setup();
+    requestCreate('category');
+    render(<CategoriesTable rows={toCategoryRowVMs([DAY_TRIPS])} {...freshActions()} />);
+    await screen.findByRole('dialog', { name: t.create.dialog.title });
+
+    await user.keyboard('{Escape}');
+
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: t.create.action })).toHaveFocus(),
+    );
+  });
 });
 
 describe('CategoriesTable — ô hành động sống qua lượt làm mới (review D1)', () => {

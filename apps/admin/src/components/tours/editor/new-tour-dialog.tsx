@@ -15,7 +15,7 @@ import { Input } from '@tourism/ui/components/input';
 import { cn } from '@tourism/ui/lib/utils';
 import { PlusIcon } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { useRef, useState } from 'react';
+import { type RefObject, useRef, useState } from 'react';
 import { DIALOG_FRAME } from '@/components/kit/confirm-write-dialog';
 import { FormField } from '@/components/kit/form-field';
 import { Picker } from '@/components/kit/picker';
@@ -63,18 +63,28 @@ export function NewTourDialog({
   create: CreateTourAction;
 }) {
   const [open, setOpen] = useState(false);
+  /**
+   * Nút New tour — đích focus khi hộp đóng (review A2-8): Quick Create mở hộp mà không bấm nút
+   * này, tới từ trang khác thì lúc mở focus đang ở `<body>`.
+   */
+  const triggerRef = useRef<HTMLButtonElement>(null);
   // Quick Create (spec 2026-10-05 §2.5) mở hộp như bấm nút: lúc trang mount nếu menu vừa ghi
   // yêu cầu từ trang khác, hay ngay khi menu ghi yêu cầu trên chính trang này.
   useCreateRequest('tour', () => setOpen(true));
 
   return (
     <>
-      <Button type="button" onClick={() => setOpen(true)}>
+      <Button ref={triggerRef} type="button" onClick={() => setOpen(true)}>
         <PlusIcon aria-hidden="true" />
         {t.action}
       </Button>
       {open ? (
-        <NewTourForm options={options} create={create} onClose={() => setOpen(false)} />
+        <NewTourForm
+          options={options}
+          create={create}
+          finalFocus={triggerRef}
+          onClose={() => setOpen(false)}
+        />
       ) : null}
     </>
   );
@@ -83,10 +93,12 @@ export function NewTourDialog({
 function NewTourForm({
   options,
   create,
+  finalFocus,
   onClose,
 }: {
   options: TourEditorOptions;
   create: CreateTourAction;
+  finalFocus: RefObject<HTMLElement | null>;
   onClose: () => void;
 }) {
   const router = useRouter();
@@ -158,7 +170,11 @@ function NewTourForm({
 
   return (
     <Dialog open onOpenChange={onOpenChange}>
-      <DialogContent className={cn(DIALOG_FRAME, 'sm:max-w-lg')} showCloseButton={false}>
+      <DialogContent
+        className={cn(DIALOG_FRAME, 'sm:max-w-lg')}
+        showCloseButton={false}
+        finalFocus={finalFocus}
+      >
         <DialogHeader>
           <DialogTitle>{t.dialog.title}</DialogTitle>
           <DialogDescription>{t.dialog.body}</DialogDescription>

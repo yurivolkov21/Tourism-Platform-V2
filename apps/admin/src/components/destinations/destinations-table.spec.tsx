@@ -58,6 +58,21 @@ describe('DestinationsTable — Quick Create', () => {
     act(() => requestCreate('destination'));
     expect(await screen.findByRole('dialog', { name: t.create.dialog.title })).toBeInTheDocument();
   });
+
+  it('hộp mở bằng yêu cầu, không qua nút: Esc thì focus về nút Add destination, không rơi về body (review A2-8)', async () => {
+    // Tới từ trang khác: lúc hộp mở, focus đang ở `<body>` — không có nút nào được bấm.
+    const user = userEvent.setup();
+    requestCreate('destination');
+    render(<DestinationsTable rows={[toDestinationRowVM(HOI_AN)]} {...freshActions()} />);
+    await screen.findByRole('dialog', { name: t.create.dialog.title });
+
+    await user.keyboard('{Escape}');
+
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: t.create.action })).toHaveFocus(),
+    );
+  });
 });
 
 describe('DestinationsTable — ô hành động sống qua lượt làm mới (review D1)', () => {

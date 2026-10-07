@@ -15,7 +15,7 @@ import { Input } from '@tourism/ui/components/input';
 import { cn } from '@tourism/ui/lib/utils';
 import { PlusIcon } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { useRef, useState } from 'react';
+import { type RefObject, useRef, useState } from 'react';
 import { DIALOG_FRAME } from '@/components/kit/confirm-write-dialog';
 import { FormField } from '@/components/kit/form-field';
 import { hasFormErrors } from '@/lib/form-errors';
@@ -46,22 +46,37 @@ const EMPTY: PostCreateFormValues = { title: '', slug: '' };
 
 export function NewPostDialog({ create }: { create: CreatePostAction }) {
   const [open, setOpen] = useState(false);
+  /**
+   * Nút New post — đích focus khi hộp đóng (review A2-8): Quick Create mở hộp mà không bấm nút
+   * này, tới từ trang khác thì lúc mở focus đang ở `<body>`.
+   */
+  const triggerRef = useRef<HTMLButtonElement>(null);
   // Quick Create (spec 2026-10-05 §2.5) mở hộp như bấm nút: lúc trang mount nếu menu vừa ghi
   // yêu cầu từ trang khác, hay ngay khi menu ghi yêu cầu trên chính trang này.
   useCreateRequest('post', () => setOpen(true));
 
   return (
     <>
-      <Button type="button" onClick={() => setOpen(true)}>
+      <Button ref={triggerRef} type="button" onClick={() => setOpen(true)}>
         <PlusIcon aria-hidden="true" />
         {t.action}
       </Button>
-      {open ? <NewPostForm create={create} onClose={() => setOpen(false)} /> : null}
+      {open ? (
+        <NewPostForm create={create} finalFocus={triggerRef} onClose={() => setOpen(false)} />
+      ) : null}
     </>
   );
 }
 
-function NewPostForm({ create, onClose }: { create: CreatePostAction; onClose: () => void }) {
+function NewPostForm({
+  create,
+  finalFocus,
+  onClose,
+}: {
+  create: CreatePostAction;
+  finalFocus: RefObject<HTMLElement | null>;
+  onClose: () => void;
+}) {
   const router = useRouter();
   const [values, setValues] = useState<PostCreateFormValues>(EMPTY);
   /** Admin đã tự gõ ô slug chưa — gõ rồi thì tiêu đề thôi ghi đè nó. */
@@ -108,7 +123,11 @@ function NewPostForm({ create, onClose }: { create: CreatePostAction; onClose: (
 
   return (
     <Dialog open onOpenChange={onOpenChange}>
-      <DialogContent className={cn(DIALOG_FRAME, 'sm:max-w-lg')} showCloseButton={false}>
+      <DialogContent
+        className={cn(DIALOG_FRAME, 'sm:max-w-lg')}
+        showCloseButton={false}
+        finalFocus={finalFocus}
+      >
         <DialogHeader>
           <DialogTitle>{t.dialog.title}</DialogTitle>
           <DialogDescription>{t.dialog.body}</DialogDescription>
