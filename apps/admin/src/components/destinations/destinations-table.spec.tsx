@@ -153,4 +153,27 @@ describe('DestinationsTable — focus sau khi xoá (review A2-1)', () => {
     expect(screen.queryByRole('button', { name: t.delete.actionLabel('Hội An') })).toBeNull();
     expect(screen.getByRole('button', { name: t.create.action })).toHaveFocus();
   });
+
+  it('người khác xoá trước (NOT_FOUND) rồi lượt làm mới gỡ hàng: focus về nút Add destination, không rơi về body (review G6-F2)', async () => {
+    const user = userEvent.setup();
+    const actions = freshActions();
+    actions.remove.mockResolvedValue({ ok: false, code: 'NOT_FOUND' });
+    const { rerender } = render(
+      <DestinationsTable
+        rows={[toDestinationRowVM(HOI_AN), toDestinationRowVM(HUE)]}
+        {...actions}
+      />,
+    );
+
+    await user.click(screen.getByRole('button', { name: t.delete.actionLabel('Hội An') }));
+    const dialog = await screen.findByRole('dialog', { name: t.delete.dialog.title });
+    await user.click(within(dialog).getByRole('button', { name: t.delete.dialog.submit }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+
+    // Hàng đã mất ở DB nên lượt làm mới gỡ nó, kéo theo nút Delete của nó — như xoá thành công.
+    rerender(<DestinationsTable rows={[toDestinationRowVM(HUE)]} {...freshActions()} />);
+
+    expect(screen.queryByRole('button', { name: t.delete.actionLabel('Hội An') })).toBeNull();
+    expect(screen.getByRole('button', { name: t.create.action })).toHaveFocus();
+  });
 });

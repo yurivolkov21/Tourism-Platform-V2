@@ -200,6 +200,22 @@ describe('DeleteRowAction — focus khi hộp đóng (review A2-1)', () => {
     await waitFor(() => expect(button).toHaveFocus());
   });
 
+  it('người khác xoá trước (`NOT_FOUND`): hàng cũng sắp rời bảng — focus sang `focusAfterDelete` (review G6-F2)', async () => {
+    const { button, addButton } = renderAction({
+      dialog: {
+        copy: COPY,
+        rows: [{ label: 'Category', value: 'Cruises' }],
+        isStale: () => true,
+        errorCopy: () => 'error',
+        onSubmit: vi.fn().mockResolvedValue({ ok: false, code: 'NOT_FOUND' }),
+      },
+    });
+
+    await answerDialog(button, COPY.submit);
+
+    await waitFor(() => expect(addButton).toHaveFocus());
+  });
+
   it('lỗi làm hộp đóng (mã trạng-thái-cũ): hàng còn nguyên, focus về nút Delete', async () => {
     const { button } = renderAction({
       dialog: {

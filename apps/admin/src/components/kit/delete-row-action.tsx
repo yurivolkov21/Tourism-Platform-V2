@@ -20,6 +20,13 @@ import {
 import type { TransportFailureCode } from '@/lib/api/write-error';
 
 /**
+ * Mã của lệnh xoá nghĩa là hàng không còn ở DB — người khác vừa xoá nó. Hai bảng catalog cùng khai
+ * `NOT_FOUND` cho ca này (khối `delete.errors` của i18n, ADR-0053) và cùng xếp nó vào mã
+ * trạng-thái-cũ: hộp đóng, bảng làm mới, hàng rời bảng như khi xoá thành công.
+ */
+const ROW_GONE = 'NOT_FOUND';
+
+/**
  * Nút Delete của một hàng bảng catalog kèm hộp xác nhận giọng đỏ (spec 2026-10-05 §3.3,
  * ADR-0053 §5). Kit vì hai bảng (danh mục, điểm đến) dùng y hệt.
  *
@@ -44,9 +51,10 @@ import type { TransportFailureCode } from '@/lib/api/write-error';
  * - Nhận chuột thì cũng ăn `hover:` và `active:` của biến thể outline; nút khoá giữ nền lúc nghỉ
  *   của từng giao diện và không nhún khi nhấn, như mục chưa mở ở `nav-main.tsx`.
  *
- * Xoá THÀNH CÔNG thì hộp trả focus về `focusAfterDelete`, không về nút Delete (review A2-1): hàng
- * vừa xoá rời bảng ở lượt làm mới ngay sau, kéo theo nút ấy, và focus rơi về `<body>`. Huỷ hay
- * lỗi thì hàng còn nguyên — focus về nút Delete như mặc định.
+ * Hàng ĐÃ MẤT thì hộp trả focus về `focusAfterDelete`, không về nút Delete (review A2-1): hàng rời
+ * bảng ở lượt làm mới ngay sau, kéo theo nút ấy, và focus rơi về `<body>`. Mất là xoá thành công,
+ * hoặc người khác xoá trước — lệnh xoá trả `ROW_GONE` (review G6-F2). Huỷ hay lỗi khác thì hàng
+ * còn nguyên — focus về nút Delete như mặc định.
  */
 export function DeleteRowAction<Code extends string>({
   label,
@@ -81,8 +89,8 @@ export function DeleteRowAction<Code extends string>({
   onSettled: () => void;
 }) {
   const [open, setOpen] = useState(false);
-  /** Lần mở hộp này đã xoá được chưa — đọc lúc hộp gỡ để chọn đích focus. */
-  const deleted = useRef(false);
+  /** Sau lần mở hộp này hàng đã mất chưa — đọc lúc hộp gỡ để chọn đích focus. */
+  const rowGone = useRef(false);
   const reasonId = useId();
   const blocked = blockedReason !== null;
 
@@ -110,7 +118,7 @@ export function DeleteRowAction<Code extends string>({
                   }
                 }}
                 onClick={() => {
-                  deleted.current = false;
+                  rowGone.current = false;
                   setOpen(true);
                 }}
               >
@@ -138,11 +146,11 @@ export function DeleteRowAction<Code extends string>({
           errorCopy={dialog.errorCopy}
           onSubmit={async () => {
             const result = await dialog.onSubmit();
-            deleted.current = result.ok;
+            rowGone.current = result.ok || result.code === ROW_GONE;
             return result;
           }}
           // Base UI gọi hàm này lúc hộp gỡ; `true` là đích mặc định (nút Delete).
-          finalFocus={() => (deleted.current ? focusAfterDelete.current : true)}
+          finalFocus={() => (rowGone.current ? focusAfterDelete.current : true)}
           onClose={() => setOpen(false)}
           onSettled={onSettled}
         />
