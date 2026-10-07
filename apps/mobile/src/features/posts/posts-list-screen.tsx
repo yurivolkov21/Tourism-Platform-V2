@@ -39,6 +39,8 @@ export interface PostsListScreenProps {
   items: readonly PostListItemVM[];
   onPostPress: (slug: string) => void;
   hasMore: boolean;
+  /** Đang tải trang kế — khoá nút Load more (N4: bấm đúp từng nhảy cóc trang). */
+  loadingMore: boolean;
   loadMoreLabel: string;
   onLoadMore: () => void;
   errorTitle: string;
@@ -72,6 +74,7 @@ export function PostsListScreen({
   items,
   onPostPress,
   hasMore,
+  loadingMore,
   loadMoreLabel,
   onLoadMore,
   errorTitle,
@@ -127,7 +130,11 @@ export function PostsListScreen({
           </ScrollView>
         </View>
 
-        {status === 'error' ? (
+        {status === 'loading' ? (
+          // N5 (rà 07/10): khung chờ thay cho bài của bộ lọc cũ — trước đây
+          // không có nhánh này nên đổi tag vẫn thấy bài tag trước.
+          <PostsLoading />
+        ) : status === 'error' ? (
           <View
             style={{
               flex: 1,
@@ -191,13 +198,42 @@ export function PostsListScreen({
             )}
             {hasMore ? (
               <View style={{ alignItems: 'center' }}>
-                <Button shape="pill" variant="ghost" label={loadMoreLabel} onPress={onLoadMore} />
+                <Button
+                  shape="pill"
+                  variant="ghost"
+                  label={loadMoreLabel}
+                  onPress={onLoadMore}
+                  disabled={loadingMore}
+                />
               </View>
             ) : null}
           </ScrollView>
         )}
       </View>
     </Screen>
+  );
+}
+
+/** Khung chờ: một thẻ lớn và hai hàng gọn — cùng khuôn `SavedLoading`. */
+function PostsLoading() {
+  const theme = useTheme();
+  const block = {
+    borderRadius: theme.radius.base * 3,
+    backgroundColor: theme.colors.muted,
+  };
+  return (
+    <View
+      testID="posts-loading"
+      style={{
+        paddingHorizontal: theme.spacing(6),
+        paddingTop: theme.spacing(4),
+        gap: theme.spacing(4),
+      }}
+    >
+      <View style={{ ...block, height: theme.spacing(56) }} />
+      <View style={{ ...block, height: theme.spacing(20) }} />
+      <View style={{ ...block, height: theme.spacing(20) }} />
+    </View>
   );
 }
 

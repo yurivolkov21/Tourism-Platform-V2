@@ -1,7 +1,7 @@
-import { useQuery } from '@tanstack/react-query';
+import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { messages } from '@tourism/i18n';
 import { router } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   type PostListItemVM,
   PostsListScreen,
@@ -11,11 +11,22 @@ import { formatReviewDate } from '@/features/tour-detail/reviews';
 import { orpc } from '@/lib/api/client';
 import { cloudinaryUrl } from '@/lib/cloudinary-url';
 
+/** Trang kế cần tải, `undefined` khi đã hết (quy ước `getNextPageParam`). */
+function nextPostsPage(last: { page: number; totalPages: number }): number | undefined {
+  return last.page < last.totalPages ? last.page + 1 : undefined;
+}
+
 /**
  * Route G1/G2 (spec P5b-4 §6) — "Travel stories", KHÔNG cần đăng nhập.
  * `search`/`tag` đi thẳng qua `posts.list` (API), KHÔNG lọc ở máy — danh sách
  * có phân trang nên lọc ở máy chỉ thấy trang đang tải (đúng bài học đã ghi
  * ở vòng thiết kế `/blog` của web).
+ *
+ * N4/N5 (rà 07/10): trước đây route tự giữ `page` + tự nối `items` qua effect.
+ * Bấm đúp Load more nhảy 1 → 3 (trang 2 về cache nhưng không bao giờ được nối),
+ * và đổi tag/search vẫn hiện bài bộ lọc cũ. `useInfiniteQuery` đưa bộ lọc vào
+ * query key: đổi lọc là sang cache khác (về `isPending` → khung chờ), các trang
+ * luôn thuộc ĐÚNG bộ lọc hiện tại, và `isFetchingNextPage` khoá nút Load more.
  */
 export default function PostsListRoute() {
   const { posts } = messages.mobile;
@@ -23,9 +34,6 @@ export default function PostsListRoute() {
   const [searchInput, setSearchInput] = useState('');
   const [search, setSearch] = useState('');
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
-  const [page, setPage] = useState(1);
-  const [items, setItems] = useState<PostListItemVM[]>([]);
-  const [totalPages, setTotalPages] = useState(1);
 
   // Debounce 300ms sau nhịp gõ cuối (spec §"ô tìm debounce 300ms qua API").
   useEffect(() => {
@@ -33,41 +41,35 @@ export default function PostsListRoute() {
     return () => clearTimeout(id);
   }, [searchInput]);
 
-  // Đổi tag/search → về trang 1, KHÔNG cộng dồn kết quả cũ. Thân effect không
-  // ĐỌC hai biến này — chúng chỉ là TRIGGER (reset-on-change), biome đọc nhầm
-  // thành "dư dependency".
-  // biome-ignore lint/correctness/useExhaustiveDependencies: xem giải thích trên.
-  useEffect(() => {
-    setPage(1);
-  }, [search, selectedTag]);
-
-  const listQuery = useQuery(
-    orpc.posts.list.queryOptions({
-      input: {
+  const listQuery = useInfiniteQuery(
+    orpc.posts.list.infiniteOptions({
+      input: (page: number) => ({
         page,
         sort: 'publishedAt',
         order: 'desc',
         ...(selectedTag === null ? {} : { tag: selectedTag }),
         ...(search === '' ? {} : { search }),
-      },
+      }),
+      initialPageParam: 1,
+      getNextPageParam: nextPostsPage,
     }),
   );
   const tagsQuery = useQuery(orpc.posts.tags.queryOptions());
 
-  useEffect(() => {
-    if (listQuery.data === undefined) return;
-    const data = listQuery.data;
-    const vms: PostListItemVM[] = data.items.map((item) => ({
-      slug: item.slug,
-      title: item.title,
-      excerpt: item.excerpt,
-      coverUrl: item.cover?.url ?? null,
-      dateLabel: formatReviewDate(item.publishedAt),
-      tagLabels: item.tags.slice(0, 2).map((t) => t.name),
-    }));
-    setItems((prev) => (page === 1 ? vms : [...prev, ...vms]));
-    setTotalPages(data.totalPages);
-  }, [listQuery.data, page]);
+  const items = useMemo<PostListItemVM[]>(
+    () =>
+      (listQuery.data?.pages ?? []).flatMap((data) =>
+        data.items.map((item) => ({
+          slug: item.slug,
+          title: item.title,
+          excerpt: item.excerpt,
+          coverUrl: item.cover?.url ?? null,
+          dateLabel: formatReviewDate(item.publishedAt),
+          tagLabels: item.tags.slice(0, 2).map((t) => t.name),
+        })),
+      ),
+    [listQuery.data],
+  );
 
   const status: PostsListStatus = listQuery.isPending
     ? 'loading'
@@ -89,9 +91,14 @@ export default function PostsListRoute() {
       onSelectTag={setSelectedTag}
       items={items}
       onPostPress={(slug) => router.push(`/posts/${slug}`)}
-      hasMore={page < totalPages}
+      hasMore={listQuery.hasNextPage}
+      loadingMore={listQuery.isFetchingNextPage}
       loadMoreLabel={posts.loadMore}
-      onLoadMore={() => setPage((p) => p + 1)}
+      onLoadMore={() => {
+        // Chặn thêm một lớp ngoài nút đã khoá: TanStack mặc định HUỶ lượt đang
+        // tải để bắt đầu lượt mới khi gọi chồng.
+        if (!listQuery.isFetchingNextPage) void listQuery.fetchNextPage();
+      }}
       errorTitle={posts.error}
       retryLabel={posts.retry}
       onRetry={() => void listQuery.refetch()}

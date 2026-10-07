@@ -35,6 +35,7 @@ function baseProps(overrides: Partial<PostsListScreenProps> = {}): PostsListScre
     items: [item()],
     onPostPress: jest.fn(),
     hasMore: false,
+    loadingMore: false,
     loadMoreLabel: 'Load more',
     onLoadMore: jest.fn(),
     errorTitle: "Couldn't load stories.",
@@ -97,6 +98,25 @@ describe('PostsListScreen', () => {
     await renderWithTheme(<PostsListScreen {...baseProps({ hasMore: true, onLoadMore })} />);
     await fireEvent.press(screen.getByText('Load more'));
     expect(onLoadMore).toHaveBeenCalled();
+  });
+
+  // N4 (rà 07/10): bấm đúp khi trang kế đang tải từng nhảy trang 1 → 3.
+  it('đang tải trang kế thì nút Load more bị khoá, bấm không gọi onLoadMore', async () => {
+    const onLoadMore = jest.fn();
+    await renderWithTheme(
+      <PostsListScreen {...baseProps({ hasMore: true, loadingMore: true, onLoadMore })} />,
+    );
+    const button = screen.getByRole('button', { name: 'Load more' });
+    expect(button.props.accessibilityState).toMatchObject({ disabled: true });
+    await fireEvent.press(button);
+    expect(onLoadMore).not.toHaveBeenCalled();
+  });
+
+  // N5 (rà 07/10): đổi tag/search từng giữ nguyên bài của bộ lọc cũ đến khi data về.
+  it('status="loading" vẽ khung chờ, không vẽ bài nào', async () => {
+    await renderWithTheme(<PostsListScreen {...baseProps({ status: 'loading' })} />);
+    expect(screen.getByTestId('posts-loading')).toBeTruthy();
+    expect(screen.queryByText('Eating your way through Hoi An')).toBeNull();
   });
 
   it('bài thứ hai trở đi vẽ hàng gọn (không excerpt lớn)', async () => {
