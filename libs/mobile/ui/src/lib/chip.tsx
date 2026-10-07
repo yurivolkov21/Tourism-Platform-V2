@@ -21,10 +21,17 @@ export interface ChipProps {
   onPress?: () => void;
   /** Chỉ dùng khi `variant="removable"`. */
   onRemove?: () => void;
+  /**
+   * Nhãn đọc màn hình của nút "x" (`variant="removable"`). App truyền vào từ
+   * `@tourism/i18n` — package này không phụ thuộc i18n (cùng lý do
+   * `AppImage.transformUrl`), nên trước đây tự ghép `Remove ${label}` cứng
+   * tiếng Anh, trái luật copy tập trung (L4).
+   */
+  removeLabel?: string;
 }
 
 /** Chip pill (`.chip`/`.chip.on`/`.chip.soft` bản vẽ 18/09 — ADR-0047 T0). */
-export function Chip({ label, variant = 'default', onPress, onRemove }: ChipProps) {
+export function Chip({ label, variant = 'default', onPress, onRemove, removeLabel }: ChipProps) {
   const theme = useTheme();
   const { background, border, foreground } = CHIP_VARIANTS[variant];
 
@@ -63,7 +70,7 @@ export function Chip({ label, variant = 'default', onPress, onRemove }: ChipProp
         {labelNode}
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel={`Remove ${label}`}
+          accessibilityLabel={removeLabel}
           // Icon "x" chỉ 14dp — hitSlop bù thêm ~16dp mỗi cạnh để vùng chạm
           // chạm tới ngưỡng touchTargetMin (44dp), theo đúng quy ước a11y của
           // package này (xem button.tsx, icon-button.tsx).

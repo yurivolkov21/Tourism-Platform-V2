@@ -57,6 +57,8 @@ export interface ExploreScreenProps {
       bằng chip địa danh gỡ được + đầu trang. */
   destinationHeader: ExploreDestinationHeader | null;
   onClearDestination: () => void;
+  /** Nhãn đọc màn hình nút "x" của chip địa danh (L4). */
+  removeDestinationLabel: (name: string) => string;
   /** Đặt lại TOÀN BỘ bộ lọc (danh mục, facet, ô tìm, địa danh) — nút ở trạng
       thái rỗng, khác `onClearDestination` (chỉ gỡ mỗi chip địa danh ở E4). */
   onClearFilters: () => void;
@@ -109,6 +111,7 @@ export function ExploreScreen({
   allCategoriesLabel,
   destinationHeader,
   onClearDestination,
+  removeDestinationLabel,
   onClearFilters,
   destinationsTitle,
   searchDestinations,
@@ -259,6 +262,7 @@ export function ExploreScreen({
                 label={destinationHeader.name}
                 variant="removable"
                 onRemove={onClearDestination}
+                removeLabel={removeDestinationLabel(destinationHeader.name)}
               />
               <AppText
                 variant="label"

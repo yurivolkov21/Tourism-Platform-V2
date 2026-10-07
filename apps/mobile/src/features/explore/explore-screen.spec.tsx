@@ -25,6 +25,7 @@ function baseProps(overrides: Partial<ExploreScreenProps> = {}): ExploreScreenPr
     allCategoriesLabel: 'All',
     destinationHeader: null,
     onClearDestination: jest.fn(),
+    removeDestinationLabel: (name: string) => `Remove filter ${name}`,
     onClearFilters: jest.fn(),
     destinationsTitle: 'Destinations',
     searchDestinations: [],
@@ -161,7 +162,7 @@ describe('ExploreScreen', () => {
       />,
     );
 
-    await fireEvent.press(screen.getByLabelText('Remove Hội An'));
+    await fireEvent.press(screen.getByLabelText('Remove filter Hội An'));
     expect(onClearDestination).toHaveBeenCalled();
   });
 

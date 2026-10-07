@@ -2029,6 +2029,8 @@ export const messages = {
       sortTitle: 'Sort by',
       /** E4 — mở/thu mô tả địa danh dưới đầu trang. */
       readMore: 'Read more',
+      /** Nhãn đọc màn hình của nút "x" trên chip địa danh đang lọc (E4). */
+      removeDestination: (name: string) => `Remove filter ${name}`,
       error: "Couldn't load tours. Check your connection and try again.",
       retry: 'Try again',
       slowServer: 'Waking the server — the first load can take up to a minute…',

@@ -24,12 +24,30 @@ describe('Chip', () => {
   it('variant "removable": nền/viền secondary, có nút x gọi onRemove', async () => {
     const theme = themeFor('light');
     const onRemove = jest.fn();
-    await renderWithTheme(<Chip label="Trekking" variant="removable" onRemove={onRemove} />);
+    await renderWithTheme(
+      <Chip
+        label="Trekking"
+        variant="removable"
+        onRemove={onRemove}
+        removeLabel="Remove filter Trekking"
+      />,
+    );
     const style = StyleSheet.flatten(screen.getByText('Trekking').parent?.props.style);
     expect(style.backgroundColor).toBe(theme.colors.secondary);
 
-    await fireEvent.press(screen.getByRole('button', { name: /remove trekking/i }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Remove filter Trekking' }));
     expect(onRemove).toHaveBeenCalled();
+  });
+
+  // L4 (review nhánh account): nhãn nút x phải do app truyền vào (copy nằm ở
+  // `@tourism/i18n`, luật 7) — package UI không tự ghép chuỗi tiếng Anh.
+  it('nhãn nút x lấy nguyên văn từ prop removeLabel', async () => {
+    await renderWithTheme(
+      <Chip label="Hội An" variant="removable" onRemove={jest.fn()} removeLabel="Xoá Hội An" />,
+    );
+
+    expect(screen.getByRole('button', { name: 'Xoá Hội An' })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: /remove/i })).toBeNull();
   });
 
   it('bấm chip (không phải nút x) gọi onPress', async () => {

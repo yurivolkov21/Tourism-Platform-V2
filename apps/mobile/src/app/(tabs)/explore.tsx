@@ -271,6 +271,7 @@ export default function ExploreRoute() {
               }
         }
         onClearDestination={() => setDestinationSlug(null)}
+        removeDestinationLabel={explore.removeDestination}
         onClearFilters={() => {
           setDestinationSlug(null);
           setSelectedCategory(null);
