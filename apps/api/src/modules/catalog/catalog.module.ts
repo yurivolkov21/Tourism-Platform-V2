@@ -35,7 +35,7 @@ import { DepartureCancelService } from './departure-cancel.service.js';
     DepartureCancelService,
     // F14 (P4e-2): danh mục tour — bề mặt ghi đầu tiên cho bảng này.
     AdminCategoriesService,
-    // F15 (P4e-2): điểm đến — ẩn/hiện, không xoá, không sắp thứ tự.
+    // F15 (P4e-2): điểm đến — ẩn/hiện, xoá khi chưa tour nào dùng (ADR-0053), không sắp thứ tự.
     AdminDestinationsService,
     // F17 (P4e-3a): khu làm việc tour — tạo, sửa theo tab, xoá.
     AdminToursService,
