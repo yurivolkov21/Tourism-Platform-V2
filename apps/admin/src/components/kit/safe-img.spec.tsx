@@ -39,6 +39,30 @@ describe('SafeImg', () => {
     );
   });
 
+  it('ảnh không có cỡ cố định: ô thay thế mang thêm `brokenClassName` để giữ khung, ảnh lành thì không', () => {
+    // Ảnh `c_limit` ở dialog chi tiết review chỉ có trần cao — hỏng mà không có class riêng thì
+    // ô thay thế co về cỡ icon, lệch hẳn khung ảnh (Ruling F-c).
+    const { container } = render(
+      <SafeImg
+        src="https://res.cloudinary.com/demo/gone.jpg"
+        alt=""
+        className="max-h-64"
+        brokenClassName="h-64 aspect-4/3"
+      />,
+    );
+    const img = container.querySelector('img') as HTMLImageElement;
+    expect(img).toHaveClass('max-h-64');
+    expect(img).not.toHaveClass('h-64');
+    expect(img).not.toHaveClass('aspect-4/3');
+
+    fireEvent.error(img);
+    expect(screen.getByRole('img', { name: messages.admin.table.photoUnavailable })).toHaveClass(
+      'max-h-64',
+      'h-64',
+      'aspect-4/3',
+    );
+  });
+
   // jsdom không tải ảnh (`complete` luôn false khi có src), nên hai ca dưới giả hai getter
   // để dựng đúng cảnh trình duyệt thật: ảnh trong HTML server đã xong việc trước khi React
   // hydrate và gắn `onError`.

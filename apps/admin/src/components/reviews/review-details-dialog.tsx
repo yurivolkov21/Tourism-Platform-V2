@@ -114,11 +114,17 @@ export function ReviewDetailsDialog({ row }: { row: ReviewRowVM }) {
                     // NÉM khi src nằm ngoài `remotePatterns`, và một hàng dữ
                     // liệu như thế sẽ giết cả dialog. Không truyền width/height:
                     // bản `c_limit` giữ nguyên khung hình, cỡ thật chỉ biết khi tải xong.
+                    // Ảnh hỏng thì không có khung hình nào để theo, nên ô thay thế lấy khung
+                    // của một ảnh chụp 4:3 chạm trần cao `max-h-64`: rộng tối đa 4/3 × 256px
+                    // (Ruling F-c) — thiếu nó ô co về cỡ icon. Rộng theo phần trăm chứ không
+                    // `h-64` cứng: khung cao cứng giữ bề ngang tối thiểu 341px, và ở dialog
+                    // điện thoại (343px) chính ô hỏng đẩy dialog cuộn ngang 30px (đo trên Edge).
                     <SafeImg
                       key={photo.large}
                       src={photo.large}
                       alt={photo.alt}
                       className="max-h-64 rounded-md border border-border object-contain"
+                      brokenClassName="w-full max-w-[calc(var(--spacing)*64*4/3)] aspect-4/3"
                     />
                   ))}
                 </div>

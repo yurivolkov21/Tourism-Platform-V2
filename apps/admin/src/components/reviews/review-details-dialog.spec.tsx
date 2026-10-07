@@ -107,6 +107,19 @@ describe('ReviewDetailsDialog', () => {
     ).toBeInTheDocument();
   });
 
+  it('ảnh hỏng: ô "Photo unavailable" chiếm khung một tấm ảnh 4:3 chạm trần cao, co theo dialog hẹp (Ruling F-c)', async () => {
+    // Trước bản vá ô chỉ rộng bằng icon (~18px) giữa hàng ảnh cao tới 256px. Đo trên Edge: khung
+    // này ra 341×256 ở dialog 672px — đúng cỡ một ảnh 4:3 thật — và 311×233 ở dialog 343px.
+    await openDialog();
+
+    fireEvent.error(screen.getByRole('img', { name: 'Sunrise over the bay' }));
+    expect(screen.getByRole('img', { name: messages.admin.table.photoUnavailable })).toHaveClass(
+      'w-full',
+      'max-w-[calc(var(--spacing)*64*4/3)]',
+      'aspect-4/3',
+    );
+  });
+
   it('review KHÔNG có tiêu đề: nói ra thay vì chừa khoảng trống', async () => {
     await openDialog({ title: null });
 

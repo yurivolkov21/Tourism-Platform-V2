@@ -22,18 +22,25 @@ export function SafeImg({
   width,
   height,
   className,
+  brokenClassName,
 }: {
   src: string;
   alt: string;
   /**
    * Cỡ thật của ô ảnh nhỏ (thuộc tính HTML — trình duyệt giữ chỗ trước khi ảnh về). Bỏ trống
-   * cho ảnh không có cỡ cố định, như bản `c_limit` ở dialog chi tiết review: ô thay thế khi đó
-   * chỉ rộng bằng icon.
+   * cho ảnh không có cỡ cố định, như bản `c_limit` ở dialog chi tiết review — khi đó ô thay thế
+   * chỉ rộng bằng icon, trừ khi nơi gọi khai `brokenClassName`.
    */
   width?: number;
   height?: number;
   /** Cỡ ô (vd `size-10`) — áp cho cả ảnh lẫn ô thay thế để bố cục không giật. */
   className?: string;
+  /**
+   * Class CHỈ cho ô thay thế, đắp sau `className`. Dành cho ảnh không có cỡ cố định: ảnh tự lấy
+   * cỡ theo khung hình thật, còn ô hỏng không có khung hình nào nên cần một khung đặt tay — thiếu
+   * nó thì ô co về cỡ icon, lệch hẳn chỗ ảnh lẽ ra chiếm (Ruling F-c).
+   */
+  brokenClassName?: string;
 }) {
   const ref = useRef<HTMLImageElement>(null);
   const [broken, setBroken] = useState(false);
@@ -53,6 +60,7 @@ export function SafeImg({
         className={cn(
           'flex shrink-0 items-center justify-center rounded-md border border-dashed bg-muted text-muted-foreground',
           className,
+          brokenClassName,
         )}
       >
         <ImageOffIcon aria-hidden="true" className="size-4" />
