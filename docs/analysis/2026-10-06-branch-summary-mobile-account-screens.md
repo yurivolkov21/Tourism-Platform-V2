@@ -4,7 +4,7 @@ Bản này thay [bản 26/09](2026-09-26-branch-summary-mobile-account-screens.m
 làm nguồn đúng cho tình trạng hiện tại. Bản 26/09 giữ nguyên làm lịch sử; chỗ
 nào nó nói khác bản này thì tin bản này (ví dụ A7 nay đã nối API thật).
 
-Nguồn: `git log main..HEAD` (63 commit tính tới `3e9ffb3c`), spec
+Nguồn: `git log main..HEAD` (bản 06/10 tính tới `9a5f2a85`; 07/10 thêm L2–L5, F9, F12, Q1–Q3), spec
 [`2026-09-25-mobile-account-screens.md`](../plans/2026-09-25-mobile-account-screens.md),
 review 6 ảnh (24 phát hiện: B1–B3, F1–F12, L1–L5, Q1–Q4), và working tree ngày 06/10.
 
@@ -38,39 +38,40 @@ dòng menu "My reviews" cố ý chưa làm gì khi bấm.
 
 | Mục | Nội dung | Commit |
 | --- | --- | --- |
-| F6 | Xoá tài khoản nối API, map đủ mã lỗi server | `868fb82e` |
-| F1 | Rời nhóm auth bằng back/vuốt thì dọn hộp nhớ return-to | `b30f9088` |
-| F2 | Trình xem ảnh: `GestureHandlerRootView` đặt trong `Modal` (Android) | `b9223ef2` |
-| F3 | Tấm trượt né bàn phím iOS | `79324226` |
-| F4 | Saved hiện lại tour đã bỏ lưu rồi lưu lại | `bb5e6c63` |
-| F7, F8 | Chọn ảnh thư viện không xin quyền; đăng xuất xoá cache | `2b148235` |
-| D3 (1, 2) | Explore nhớ đường về sau đăng nhập; nút X về đúng chỗ mở | `3e9ffb3c` |
-| L2 | `AppImage` kẹp mật độ 2x; hero dùng bề rộng màn; viewer bỏ `* 2` | chưa commit |
-| L3 | Gỡ wrapper chết `components/app-image.tsx`; ADR-0047 AMEND 2 | chưa commit |
-| L5 | Saved tải hết các trang (`useInfiniteQuery`), lọc trùng | `e75c0b2c` |
-| F9 | `readHasSeen()` bắt lỗi SecureStore — lỗi thì vào app, không kẹt splash | `cc6a6612` |
-| F12 | Huỷ cửa sổ Google: hỏi lại `getSession`, không có user thì `cancelled` | `cc6a6612` |
-| L4 | `Chip` nhận `removeLabel`; Explore truyền copy từ `@tourism/i18n` | `70169bce` |
-| Q2 | Thêm 7 doc mới của nhánh vào `docs/README.md` | 07/10 |
-| Q3 | Gỡ `docs/PROGRESS.md` | 07/10 |
+| F6 | Xoá tài khoản nối API, map đủ mã lỗi server | `21c0bfa5` |
+| F1 | Rời nhóm auth bằng back/vuốt thì dọn hộp nhớ return-to | `5390a8bc` |
+| F2 | Trình xem ảnh: `GestureHandlerRootView` đặt trong `Modal` (Android) | `4a97c379` |
+| F3 | Tấm trượt né bàn phím iOS | `a709fc1c` |
+| F4 | Saved hiện lại tour đã bỏ lưu rồi lưu lại | `cc462690` |
+| F7, F8 | Chọn ảnh thư viện không xin quyền; đăng xuất xoá cache | `f592cbea` |
+| D3 (1, 2) | Explore nhớ đường về sau đăng nhập; nút X về đúng chỗ mở | `9a5f2a85` |
+| L2, L5 | `AppImage` kẹp mật độ 2x, hero dùng bề rộng màn, viewer bỏ `* 2`; Saved tải hết các trang (`useInfiniteQuery`), lọc trùng | `e3a73ab8` |
+| L3 | Gỡ wrapper chết `components/app-image.tsx`; ADR-0047 AMEND 2 | `c8fa1c6e` |
+| F9, F12 | `readHasSeen()` bắt lỗi SecureStore (lỗi thì vào app, không kẹt splash); huỷ cửa sổ Google thì hỏi lại `getSession`, không có user thì `cancelled` | `ba2a1881` |
+| L4 | `Chip` nhận `removeLabel`; Explore truyền copy từ `@tourism/i18n` | `b6973451` |
+| Q2, Q3 | Thêm 7 doc mới của nhánh vào `docs/README.md`; gỡ `docs/PROGRESS.md` | `56856bdc` |
+| Q1 | Gỡ `Co-Authored-By` khỏi message 55 commit (`filter-branch`, tree không đổi) | 07/10, bản cũ ở `backup/account-truoc-q1` |
 
-Hash F9/F12/L4/Q1 trở đi đổi sau đợt rebase lên `main` — tra lại bằng `git log`.
+Hash trong bảng là hash SAU Q1 (07/10). Hash cũ trước Q1 (`868fb82e`,
+`3e9ffb3c`, `cc6a6612`…) chỉ còn trên nhánh `backup/account-truoc-q1`.
 
 Kiểm 07/10 (sau F9/F12/L4): `typecheck` và `test` xanh — mobile **478/478**,
 mobile-ui **133/133**; Biome sạch; tokens-only sạch.
 
 ## 3. Đang treo — việc của nhánh này
 
-1. **Push** các commit từ `cc6a6612` trở đi — user dặn 07/10 chỉ test local,
-   push khi user nói.
+1. **Push** — sau Q1 nhánh local lệch remote (ahead 53, behind 50) dù tree ở
+   `c8fa1c6e` trùng khít remote `4c52265e`; push phải dùng
+   `--force-with-lease`, chỉ khi user đồng ý.
 2. **D2** — gán tour liên quan cho bài viết (admin hoặc `seed.ts`) để G4 có dữ liệu.
    DB local 07/10: bảng `post_tours` trống.
 3. **D3 mục 3** — đăng nhập xong đang `router.replace` về tour đã mount dưới
    modal, có thể đẩy bản sao vào stack. Chỉ đổi sau khi thử máy thật.
-4. **Q1 và rebase lên `main`** — gỡ `Co-Authored-By` khỏi 7 commit riêng của
-   nhánh (trái luật 12). Cả hai viết lại lịch sử nên cần force push, phải hỏi trước.
-   Ba commit còn lại mang dòng đó (`9a1db2de`, `c4a2f926`, `5232e4b9`) đã nằm
-   trên `feat/mobile-browse-screens`, phải sửa ở nhánh đó.
+4. **Rebase lên `main`** (chậm 212 commit; `main` có thêm migration
+   `20261005003043_post_tag_links_order` nên rebase xong chạy `pnpm db:deploy`
+   cho DB local). Q1 đã xong 07/10; ba commit còn mang `Co-Authored-By`
+   (`9a1db2de`, `c4a2f926`, `5232e4b9`) nằm trên `feat/mobile-browse-screens`,
+   phải sửa ở nhánh đó.
 5. **Kiểm trước khi xin review:** `pnpm gate:int` (Postgres local hoặc Docker), `bundle`,
    `expo-doctor`, thử máy thật Android và iOS:
    - F2 cử chỉ zoom (Android), F3 bàn phím (iPhone), F6 với API thật.
@@ -124,3 +125,88 @@ Ngoài mobile, bản 26/09 đã ghi int test `apps/api` flaky
   "đã bỏ lưu" khi đã có đủ mọi trang.
 - **Đăng xuất và xoá tài khoản đều đi qua `signOutAndClearCache()`** — xoá cache
   query trước và sau, không bao giờ ném lỗi.
+
+## 7. Lỗi mới tìm thấy khi rà 07/10 (chưa sửa)
+
+Rà toàn bộ cụm account/saved/posts sau F9/F12/L4. Mục 1, 2, 4 đã đọc code xác
+nhận; còn lại là kết quả rà, chưa kiểm tay từng mục.
+
+| # | Mức | Lỗi | Chỗ |
+| --- | --- | --- | --- |
+| N1 | cao | Bỏ lưu nhanh liên tiếp mất rollback/báo lỗi — `onError`/`onSettled` truyền vào `mutate()`, TanStack v5 bỏ callback của lần gọi trước | `saved.tsx:76-94`, `explore.tsx:200-209`, `tours/[slug].tsx:157-166, 195-204` |
+| N2 | TB | `PanResponder` tạo một lần trong `useRef`, giữ `onClose` cũ — kéo tay nắm vượt guard `pending` khi đang xoá tài khoản | `bottom-sheet.tsx:75-99` |
+| N3 | TB | Tấm Avatar/Edit name đóng được (backdrop, back Android) khi đang xử lý, lỗi bị nuốt | `account.tsx:300, 316` |
+| N4 | TB | "Load more" bấm đúp nhảy trang 1 → 3, mất trang 2 | `posts/index.tsx:94` |
+| N5 | TB | Đổi tag/search vẫn hiện bài cũ đến khi data mới về; không có skeleton | `posts-list-screen.tsx:130-198` |
+| N6 | TB | Refetch `wishlist.check` đè trạng thái lạc quan — tim nháy khi lưu rồi bỏ nhanh | `explore.tsx:125-129`, `tours/[slug].tsx:130-134` |
+| N7 | thấp | Bấm đúp Take photo/Choose library trước khi picker mở (nghi ngờ) | `account.tsx:175-201` |
+| N8 | thấp | Change password: gõ lại không xoá lỗi form; thành công thì về mà không báo | `change-password.tsx:51-73` |
+| N9 | thấp | Saved trên 100 mục: đếm "100 tours" trước khi các trang sau về | `saved.tsx:101-107` |
+| N10 | thấp | A11y: chip thiếu `selected`, tag ở post detail đọc là "nút", backdrop không nhãn | `chip.tsx`, `post-detail-screen.tsx:145`, `bottom-sheet.tsx:110` |
+
+Đề xuất: sửa N1–N6 trước khi xin review.
+
+## 8. Kịch bản test trên điện thoại
+
+Chuẩn bị:
+
+- `apps/mobile/.env.local`: `EXPO_PUBLIC_API_URL=http://<IP-LAN-máy>:3001`
+  (điện thoại không gọi được `localhost`), cùng Wi-Fi, chạy `npx expo start -c`.
+- Tài khoản: user seed `@example.com`, mật khẩu là `SEED_CUSTOMER_PASSWORD` hoặc
+  mặc định `MAT_KHAU_KHACH_MAC_DINH` (`apps/api/prisma/fixtures/chot-chan-seed.ts`).
+  Test xoá tài khoản bằng một user seed khác.
+
+Khởi động (F9):
+
+1. Cài mới → onboarding → qua hết → vào Home.
+2. Tắt hẳn, mở lại → không hiện onboarding, không kẹt splash.
+
+Return-to khi chưa đăng nhập (D3):
+
+3. Đăng xuất, bấm tim ở Explore → Sign in → đăng nhập → về Explore, tim đã đặc.
+4. Lặp bước 3 ở tour detail → về đúng tour đó.
+5. Ở Sign in bấm X, vuốt back (iOS), nút back (Android) → về màn trước, không kẹt.
+6. Tab Saved khi chưa đăng nhập → lời mời đăng nhập → đăng nhập → về Saved.
+
+Google (F12):
+
+7. "Continue with Google" rồi đóng/huỷ → ở nguyên Sign in, không báo thành công, không lỗi đỏ.
+8. Đăng nhập Google thật (nếu đã cấu hình) → vào app.
+
+Saved (S1–S3):
+
+9. Lưu 3 tour → Saved hiện "3 tours".
+10. Gỡ một tour → mất ngay, bộ đếm giảm; tim ở Explore rỗng.
+11. Lưu lại tour vừa gỡ → hiện lại trong Saved (F4).
+12. Chế độ máy bay rồi gỡ → tour hiện lại, báo lỗi ngắn tự tắt ~3 giây.
+13. Kéo refresh; rỗng thì hiện "Nothing saved yet" và nút Browse tours.
+14. (Tuỳ chọn) Trên 100 mục trong DB local → hiện đủ, không trùng (L5).
+
+Tour detail và ảnh (F2, L2, L4):
+
+15. Ảnh hero nét. Mở trình xem ảnh → pinch zoom, kéo (Android) → vuốt ảnh khác → đóng.
+16. Explore chọn điểm đến → chip có ×, bấm × bỏ lọc.
+
+Account (A1–A7):
+
+17. Tab Account: avatar, tên, email, đủ menu.
+18. Bút chì → Edit name; iOS bàn phím không che ô (F3); lưu tên mới → đổi ngay; tên rỗng bị chặn.
+19. Avatar → Take a photo: từ chối quyền → câu nhắc; cho quyền, chụp → avatar đổi.
+20. Choose from library → avatar đổi; ảnh trên 2MB → báo lỗi; Remove photo → về chữ cái đầu.
+21. Password: sai mật khẩu hiện tại, dưới 8 ký tự, xác nhận lệch → báo lỗi; đúng → lưu, đăng nhập lại bằng mật khẩu mới được.
+22. Personal details → Delete account: "Keep my account" đóng tấm; sai mật khẩu → lỗi; đúng → về trạng thái khách, đăng nhập lại thất bại.
+23. Sign out: "Stay signed in" không đổi; Sign out → Saved/Account về trạng thái khách; đăng nhập tài khoản khác không thấy dữ liệu cũ (F8).
+24. Help, About, Privacy, Terms, Cancellation → mở trình duyệt đúng trang.
+
+Travel stories (G1–G4):
+
+25. Account → Travel stories → danh sách hiện.
+26. Gõ "hue" → lọc sau ~0,3 giây; gõ "zzzz" → "No stories match", Clear search về lại.
+27. Chọn tag → chỉ bài của tag; All → về tất cả.
+28. Load more → nối thêm, không trùng (bấm đúp dính N4).
+29. Mở bài → nội dung, ảnh, tag; "Read this on…" mở web; "Trips in this story" không hiện vì `post_tours` rỗng (D2).
+
+Giao diện:
+
+30. Dark mode → lướt lại các màn: chữ đọc được, không ô trắng lạc.
+31. Tắt mạng mở từng tab → trạng thái lỗi và Try again; bật mạng bấm lại → tải được.
