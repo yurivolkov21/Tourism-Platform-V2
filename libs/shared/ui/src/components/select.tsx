@@ -119,7 +119,10 @@ function SelectItem({ className, children, ...props }: SelectPrimitive.Item.Prop
       )}
       {...props}
     >
-      <SelectPrimitive.ItemText className="flex flex-1 shrink-0 gap-2 whitespace-nowrap">
+      {/* `min-w-0`: ItemText là phần tử flex `shrink-0`, mặc định `min-width: auto` bằng cả chữ
+          nên không bao giờ hẹp hơn nội dung — span `truncate` bên trong không có chỗ cắt "…",
+          tên dài tràn ra mép popup, dấu tích đè chữ (review D2). Vendor lại thì giữ. */}
+      <SelectPrimitive.ItemText className="flex min-w-0 flex-1 shrink-0 gap-2 whitespace-nowrap">
         {children}
       </SelectPrimitive.ItemText>
       <SelectPrimitive.ItemIndicator

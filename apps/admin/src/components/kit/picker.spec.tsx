@@ -240,6 +240,26 @@ describe('Picker', () => {
     expect(within(trigger).getByText('Hidden')).toHaveClass('shrink-0');
   });
 
+  it('tên dài trong DANH SÁCH: khung chữ của mục co được (`min-w-0`), tên cắt "…", hint giữ nguyên', async () => {
+    // Review D2 (đo Edge headless trên CSS build thật, popup 352px): khung chữ của mục
+    // (ItemText) mặc định `min-width: auto` bằng cả tên nên không bao giờ co — tên ≥ 40 ký tự
+    // không ra "…" mà tràn ra mép popup, dấu tích đè chữ, ≥ 51 ký tự mất hẳn "Hidden".
+    // jsdom không đo bố cục — canh đúng ba lớp quyết định chuyện ấy.
+    const user = userEvent.setup();
+    const long = 'Mekong Delta and the Southern Floating Market Tours by Boat';
+    const { trigger } = renderPicker({
+      options: [{ value: 'c4', label: long, hint: 'Hidden' }],
+    });
+
+    await user.click(trigger);
+    const option = await screen.findByRole('option');
+    const name = within(option).getByText(long);
+
+    expect(name).toHaveClass('truncate');
+    expect(name.parentElement).toHaveClass('min-w-0');
+    expect(within(option).getByText('Hidden')).toHaveClass('shrink-0');
+  });
+
   it('icon: hiện ở mục trong danh sách và trên ô của mục đang chọn', async () => {
     const user = userEvent.setup();
     const { trigger } = renderPicker({
