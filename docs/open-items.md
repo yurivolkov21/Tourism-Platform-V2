@@ -44,6 +44,11 @@
 | Cho KHÁCH đọc được lý do công ty huỷ chuyến | 22/09 | Chưa quyết — xem mục ngay dưới |
 | Tự đăng nhập sau khi xác minh OTP | 18/09 | Đã chốt **không làm** (21/09), lý do ghi trong mã nguồn |
 | Gỡ nhánh tinh chỉnh giao diện web + admin gom 18/09 | 18/09 | Chưa mở |
+| Bảng Outbox ở 1440px còn cuộn ngang 51–156px khi trang có hàng mang nhãn Attempts dài (Ruling F-b của đợt sửa sạn admin) | 06/10 | Chưa quyết — hướng sửa: ô Attempts xuống dòng dưới một trần rồi trả bề rộng cho Last error, hoặc in ngày giờ hai dòng |
+| Câu "… — hide it instead." (tooltip nút Delete và lỗi `IN_USE`) đọc lệch ở hàng ĐÃ ẨN, nơi nút bật tắt đang là Show | 06/10 | Chưa quyết |
+| Ô "Photo unavailable" trong dialog chi tiết review chỉ cỡ icon cạnh ảnh cao tới `max-h-64` | 06/10 | Chưa quyết |
+| `apps/web/.env.example` đặt tường minh secret revalidate dev công khai (Ruling F-d) — web không chặn chuỗi ấy ở production như API | 06/10 | Hoãn có chủ đích; user soát env Vercel của web, đảm bảo `REVALIDATE_SECRET` không phải giá trị mẫu |
+| ADR-0052 §2 còn ghi "Owner-only (14)" trong khi doc P4f đếm 16 sau hai lệnh xoá của ADR-0053 | 06/10 | Cần AMEND khi mở P4f |
 
 ## Đề xuất sản phẩm: cho khách biết VÌ SAO chuyến bị huỷ
 
@@ -70,6 +75,8 @@ ghi chép nội bộ) — trước đó nó hứa nhầm rằng khách sẽ đ�
   `pnpm --filter @tourism/mobile dev` nay là `expo start` thay vì
   `--tunnel`. Chưa ai quét QR thử sau khi đổi — cần một lượt trên điện thoại
   thật cùng mạng Wi-Fi. Không chạy được thì `dev:tunnel` vẫn còn nguyên.
+- **Admin trên màn cảm ứng** (vòng vá review đợt sửa sạn admin, 07/10): chạm nút Delete đang
+  khoá phải hiện toast lý do. Test chỉ giả lập `pointerType: touch` trong jsdom.
 
 ## Việc tay trên hạ tầng
 
@@ -136,3 +143,5 @@ deploy) nằm ở [sổ nợ kỹ thuật](analysis/2026-08-06-backlog-no-ky-thu
 | ~~G21~~ | ~~Báo cáo `/reports` với tháng ĐANG chạy ghi doanh thu của chuyến chưa kết thúc.~~ Đóng 01/10 (nhánh `fix/reports-recognised-to-date`, ADR-0033 AMEND 3): user chọn vá cách tính chứ không chỉ đổi chữ — cột kết quả kinh doanh chỉ ghi nhận chuyến đã kết thúc tới hôm nay (ngày UTC), tháng đang chạy in nhãn "(to date)", tháng tương lai rơi về tháng hiện tại |
 | G22 | `data:reset` (`apps/api/scripts/reset-operational-data.mjs`) xoá `reviews` nhưng giữ nguyên `media_assets` (nằm trong `PHAI_CON`), nên dòng ảnh của review thành tham chiếu treo: bộ dọn media coi là còn dùng, hoãn mãi, file Cloudinary không bao giờ bị xoá. Đo 01/10: bốn ảnh như vậy của review thử bị bác trên `BK-5YU9J339`; user chốt xoá tay thư mục ấy trên Cloudinary. Vá trước lượt seed lại khoảng 03/11: xoá dòng `media_assets` của review và đưa publicId vào `media_garbage` |
 | G23 | Render deploy API bằng cách chạy instance cũ và mới SONG SONG, còn Session pooler của Supabase chỉ cho 15 kết nối. 01/10 lượt deploy `7844478c` hỏng (`EMAXCONNSESSION`, lúc pg-boss của instance mới khởi động): build web của Vercel cùng lượt push đang prerender gọi dồn vào API cũ, đẩy pool của nó sát trần. Deploy lại tay lúc yên thì qua (3 kết nối). Hướng vá: hạ kích thước pool (Prisma qua adapter-pg và pg-boss) để hai instance cộng tải prerender vẫn dưới 15, hoặc nâng pool size của Supavisor. Chưa quyết; tới lúc đó, push nào đụng cả API lẫn web thì canh trạng thái deploy Render chứ không chỉ health |
+| G24 | Bốn bảng admin còn để server action trong deps của cột: `tours/tours-table.tsx` (`setPublished`, ô `PublishToggle` có state riêng), `reviews/reviews-table.tsx` (`moderate`), `outbox/outbox-table.tsx` (`retry`), `subscribers/subscribers-table.tsx` (`unsubscribe`). Server action đổi danh tính mỗi lượt `router.refresh()`, cột dựng lại nên ô hành động bị dựng lại: focus rơi về `<body>`, hộp đang mở trong ô biến mất. Vòng vá review đợt sửa sạn admin (07/10) đã vá danh mục, điểm đến và chuyến bằng `RowActionsContext` cộng cột hằng module; áp cùng khuôn cho bốn bảng này là đóng |
+| G25 | Khoá ngoại `tour_destinations.destination_id` vẫn `ON DELETE CASCADE` (ADR-0053, giới hạn 4): luật "đang có tour thì không xoá" chỉ sống ở lệnh xoá của API; xoá điểm đến bằng SQL tay, Prisma Studio hay script sẽ lặng lẽ gỡ nó khỏi mọi tour. Đổi sang `RESTRICT` như danh mục cần một migration — để sau capstone |
