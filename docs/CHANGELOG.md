@@ -8,77 +8,81 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
-## 2026-10-06 — Sửa sạn giao diện admin: ô chọn chung, Quick Create, xoá danh mục và điểm đến (nhánh `fix/admin-ui-polish`)
+## 2026-10-07 — Sửa sạn giao diện admin: ô chọn chung, Quick Create, xoá danh mục và điểm đến (`b98b1bdf`..`238fdc2f`, nhánh `fix/admin-ui-polish`)
 
 Thay chỗ P4f: 05/10 user hoãn P4f để dọn sạn admin trước freeze 15/10. Đầu vào là bốn sạn user
 gửi và mười sạn agent tự rà trên admin production cùng ngày. Quyết định ghi ở ADR-0053 và spec
-`2026-10-05-admin-ui-polish-design` (`aa0f8a22`, viết trước code), plan 19 task (`2b036260`, vá
-sau lượt soát ở `5d9526f4`). Thi công bằng subagent, mỗi task một vòng review, rồi một lượt review
-cuối toàn nhánh và một đợt vá theo nó (Opus 5.5 effort max, user chọn). 44 commit từ `623c3016`
-tới `67aed64f`: 31 commit của 19 task, bản đầu của entry này (`661fc91e`) và 12 commit của đợt
-vá cuối. Không migration, không đổi schema, không env mới.
+`2026-10-05-admin-ui-polish-design` (`2b3a6b92`, viết trước code), plan 19 task (`8c472b61`, vá
+sau lượt soát ở `2329e5f8`). Thi công bằng subagent, mỗi task một vòng review, rồi một lượt review
+cuối toàn nhánh và một đợt vá theo nó (Opus 5.5 effort max, user chọn). 45 commit đầu: 4 commit
+doc và env (`b98b1bdf`..`2329e5f8`), 27 commit của 19 task (`0ed7d48f`..`632228a0`), bản đầu của
+entry này (`b627e111`), 12 commit của đợt vá cuối và bản viết lại entry (`65d07577`). Sau đó
+session gốc review max rồi vá trọn trên chính nhánh — 52 commit nữa, xem mục "Review max trước
+merge" bên dưới. Không migration, không đổi schema, không env mới.
 
 **A. Một kiểu ô chọn và Quick Create.**
 
-- `Picker` (`kit/picker.tsx`; `bab17d19`, `f948c3ed`) vẫn là Base UI Select nhưng khoác dáng menu
+- `Picker` (`kit/picker.tsx`; `0ed7d48f`, `0030263e`) vẫn là Base UI Select nhưng khoác dáng menu
   lọc: danh sách thả xuống dưới ô, nhãn nhóm, vạch ngăn, icon và chữ phụ mờ. Hai biến thể: `field`
   cao 32px như ô nhập, nền nhạt khi rê và khi mở; `toolbar` dáng nút lọc 36px. Giá trị không khớp
   mục nào thì in thẳng ra ô. Hằng style của popup, nhãn nhóm và mục nằm ở `kit/menu-style.ts`,
   `ToolbarFilterMenu` đọc chung. Ô dáng ô nhập co được dưới bề rộng chữ: tên dài cắt "…" và chữ
-  "Hidden" vẫn nằm trong ô thay vì tràn sang ô bên cạnh (`67a568ff`). Spec thêm ca chặn `null` của
-  Base UI và hai ca bàn phím (`35fbdf1c`).
+  "Hidden" vẫn nằm trong ô thay vì tràn sang ô bên cạnh (`6770fb10`). Spec thêm ca chặn `null` của
+  Base UI và hai ca bàn phím (`2bbce358`).
 - Mười ô chọn trong form đổi sang `Picker`; mục đã ẩn mang chữ phụ "Hidden" thay cho "(hidden)"
-  ghép vào tên (`7012e707`). Ô lọc màn hẹp của `StatusFilterTabs`, ô trạng thái `/enquiries` và
-  Rows per page cũng đổi (`cbd94e71`, `99b0ddb4`). `FormSelect` và `ToolbarSelect` bị gỡ.
-- `Popover` và `Tooltip` của `@tourism/ui` đổi `z-50` sang `z-(--z-popover)` (`f8b0144c`): đặt
+  ghép vào tên (`2000748f`). Ô lọc màn hẹp của `StatusFilterTabs`, ô trạng thái `/enquiries` và
+  Rows per page cũng đổi (`eba0f363`, `f8c8d849`). `FormSelect` và `ToolbarSelect` bị gỡ.
+- `Popover` và `Tooltip` của `@tourism/ui` đổi `z-50` sang `z-(--z-popover)` (`034675e4`): đặt
   trong hộp thoại thì nổi trên hộp thoại.
 - Quick Create thành menu bốn mục New tour · New post · Add category · Add destination
-  (`8cb7a54d`). Trang nhận `?create=1` thì mở sẵn hộp tạo rồi gỡ riêng tham số ấy, nên F5 và Back
-  không mở lại. Menu mở bên dưới khi sidebar mở rộng, bên phải ở cột icon. Nút phong bì không có
+  (`1e8bd72e`). Bản đầu mở hộp tạo qua tham số `?create=1`; vòng review thay bằng một yêu cầu tạo
+  phía client (xem dưới), F5 và Back vẫn không mở lại. Menu mở bên dưới khi sidebar mở rộng, bên
+  phải ở cột icon. Nút phong bì không có
   đích bị gỡ. Ở cột icon, nhãn nhóm vô hình hết chặn chuột nên bấm giữa icon mở được menu
-  (`3e99d05e`); JSDoc chỉ còn nhận chung khuôn ghép trigger với `NavUser` (`219f58f1`).
+  (`ebaa4af1`); JSDoc chỉ còn nhận chung khuôn ghép trigger với `NavUser` (`fbd62ce9`).
 
 **B. Xoá danh mục và điểm đến chưa tour nào dùng (ADR-0053).**
 
-- Contract (`81a7534f`): `admin.categories.delete` và `admin.destinations.delete`,
+- Contract (`2195106a`): `admin.categories.delete` và `admin.destinations.delete`,
   `POST …/{id}/delete`, lỗi `IN_USE` 409 và `NOT_FOUND` 404, trả `{ slug }`. Hàng của hai bảng
   thêm `linkedTourCount` — số tour mọi trạng thái; `tourCount` giữ nghĩa tour đang bán.
-- API: xoá danh mục chạy trong khoá thứ tự, `P2003` thành `IN_USE` (`c362cdba`, `7eec158d`). Xoá
+- API: xoá danh mục chạy trong khoá thứ tự, `P2003` thành `IN_USE` (`ccc17db0`, `e7d3ff6b`). Xoá
   điểm đến khoá hàng `FOR UPDATE`, đếm liên kết, gỡ dòng ảnh `DESTINATION` của nó rồi mới xoá
-  (`583a2e5b`). Bust `tours` sau commit. Đếm tour bỏ qua liên kết trỏ tới tour vừa bị xoá giữa hai
-  câu đọc (`c741fac6`). JSDoc của hai select đếm tour sửa cho đúng: không phải một ảnh chụp, bất
-  biến `tourCount ≤ linkedTourCount` đứng nhờ hai số đếm trên cùng một mảng (`be6c0133`). Ca int
-  xoá điểm đến canh thêm ảnh của điểm đến khác (`7f36ba9c`); ca đua chờ lệnh xoá đứng sau khoá
-  hàng ở `pg_locks` thay vì chờ cứng 300ms (`aaa3aa16`).
-- Admin: kit `TourCountCell` và `DeleteRowAction` (`2e49ccaf`). Cột Tours in "N tours" kèm dòng mờ
+  (`c7e55332`). Bust `tours` sau commit. Đếm tour bỏ qua liên kết trỏ tới tour vừa bị xoá giữa hai
+  câu đọc (`833fa4a1`). JSDoc của hai select đếm tour sửa cho đúng: không phải một ảnh chụp, bất
+  biến `tourCount ≤ linkedTourCount` đứng nhờ hai số đếm trên cùng một mảng (`86be546b`). Ca int
+  xoá điểm đến canh thêm ảnh của điểm đến khác (`d5e0783f`); ca đua chờ lệnh xoá đứng sau khoá
+  hàng ở `pg_locks` thay vì chờ cứng 300ms (`169ee44c`).
+- Admin: kit `TourCountCell` và `DeleteRowAction` (`c7ab4bfc`). Cột Tours in "N tours" kèm dòng mờ
   "M published", hoặc "No tours" mờ. Nút Delete là nút thứ ba của hàng; hàng còn tour thì nút khoá
   kiểu `aria-disabled`, tooltip "Used by N tours — hide it instead." hiện cả khi rê lẫn khi Tab tới.
-  Hộp xác nhận giọng đỏ (`e603b605`, `c0293379`, `c5a85cca`). Nút khoá giữ focus khi bảng làm mới
+  Hộp xác nhận giọng đỏ (`7d3dc844`, `96a27f81`, `9676f1ec`). Nút khoá giữ focus khi bảng làm mới
   đổi trạng thái, trình đọc màn hình nghe lý do qua `aria-describedby`, rê hay nhấn không đổi nền
-  (`329df998`).
+  (`824b9974`).
 - ADR-0053 ghi thêm giới hạn: tour mượn ảnh thư viện của điểm đến đã xoá thấy ảnh mang nhãn
-  "Catalogue photo", lưu vẫn chạy (`f540d46b`).
+  "Catalogue photo", lưu vẫn chạy (`9503bcc2`).
 
 **C. Sạn nhỏ.**
 
-- Thẻ "Card on /tours" báo khi Summary bị cắt sau hai dòng (`23e9e6b0`).
-- Hộp Reject rộng `sm:max-w-5xl`, danh sách lý do có làn riêng cho thanh cuộn (`769bbc46`).
+- Thẻ "Card on /tours" báo khi Summary bị cắt sau hai dòng (`21c6bf0b`).
+- Hộp Reject rộng tới 64rem, danh sách lý do có làn riêng cho thanh cuộn (`1a1ebe83`; lề hai bên
+  sửa ở vòng review).
 - Bảng Tours xin ảnh bản 160px. Ảnh hỏng ở bảng Tours, bảng Posts, bảng review, dialog chi tiết và
-  hộp duyệt review hiện ô "Photo unavailable" (`d2fe398b`, `5e5abe12`).
+  hộp duyệt review hiện ô "Photo unavailable" (`f4f63d51`, `31907a70`).
 - Nút Export của Subscribers nằm trong ô tiêu đề cột Actions; bảng Outbox thu trần ba cột
-  (`f393895c`), rồi hạ tiếp theo số đo của Task 19 (`5169b6b8`, xem dưới).
+  (`da344bb6`), rồi hạ tiếp theo số đo của Task 19 (`632228a0`, xem dưới).
 - Chi tiết booking: email xuống dòng sau `@`, provider in "Stripe"/"PayPal", badge huỷ REFUNDED đỏ
-  như booking CANCELLED, chuyến một ngày in một ngày (`693347d3`). Email ở chi tiết enquiry và
-  drawer outbox cũng xuống dòng sau `@` (`82d6b3b9`).
+  như booking CANCELLED, chuyến một ngày in một ngày (`78744a90`). Email ở chi tiết enquiry và
+  drawer outbox cũng xuống dòng sau `@` (`d2ce5e63`).
 - Đường doanh thu Dashboard đổi sang `monotone`, hết vọt dưới 0; `/categories` và `/destinations`
-  bỏ tiêu đề lớn (`a243628d`).
-- Thẻ số liệu xếp 2 cột từ màn hẹp nhất (`a243628d`). Thẻ hẹp dưới 220px thì pill xuống dòng riêng
-  dưới con số, căn trái, con số còn 20px (`9231ccf0`, `ab87b0d0`) — spec §7 chỉ dặn thu cỡ chữ con
-  số, đo thì thấy chưa đủ (xem dưới).
+  bỏ tiêu đề lớn (`4e80c725`).
+- Thẻ số liệu xếp 2 cột từ màn hẹp nhất (`4e80c725`). Thẻ hẹp dưới 220px thì pill xuống dòng riêng
+  dưới con số, căn trái, con số còn 20px (`c02ff069`, `a1f7a11c`) — spec §7 chỉ dặn thu cỡ chữ con
+  số, đo thì thấy chưa đủ (xem dưới). Vòng review thay ngưỡng 220px bằng bố cục theo nội dung.
 
-**Kèm theo.** `623c3016` khai đủ khoá env ở `render.yaml` và sửa ghi chú hai `.env.example` (mẫu,
+**Kèm theo.** `b98b1bdf` khai đủ khoá env ở `render.yaml` và sửa ghi chú hai `.env.example` (mẫu,
 không đổi giá trị nào trên Render). Doc: spec P4e-2 §2a trỏ ADR-0053; doc P4f cộng hai lệnh xoá vào
-bảng quyền và ẩn hai nút Delete với Staff (`499a6a9e`, `9c3741cf`); bản đồ `docs/README.md` thêm
+bảng quyền và ẩn hai nút Delete với Staff (`c4c6d6da`, `23d39d7d`); bản đồ `docs/README.md` thêm
 spec, plan và ADR-0053.
 
 **Đo trên trình duyệt thật (Task 19).** Edge 154 headless, admin dev và API dev ở máy, DB Docker
@@ -90,14 +94,14 @@ spec, plan và ADR-0053.
   phía dưới hết chỗ, không đè ô); "Hidden" mờ cả trong danh sách lẫn trên ô;
 - popup ô lọc màn hẹp nằm trọn khung ở 375 và 360px;
 - Quick Create mở đúng hộp ở cả bốn vùng; tải thẳng `?create=1` không lỗi hydration; F5 và Back
-  không mở lại;
+  không mở lại (cơ chế tham số này đã thay ở vòng review);
 - tooltip của nút Delete khoá hiện khi rê và khi Tab; một danh mục và một điểm đến tạo thử được xoá
   trọn vòng bằng nút mới;
 - tooltip đặt trong sheet nổi trên sheet (z 1500 so với 1400);
 - hộp Reject, nút Export của Subscribers, dòng báo Summary và chi tiết booking đúng spec.
 
 Bảng Outbox: trang hàng FAILED mang chuỗi dài vẫn cuộn ngang 120–146px ở 1440px, nên trần hạ tiếp
-còn Type 176px, Recipient 144px, Last error 80px (`5169b6b8`, kèm spec ghim trần và `title`). Đo
+còn Type 176px, Recipient 144px, Last error 80px (`632228a0`, kèm spec ghim trần và `title`). Đo
 lại thì vừa khung 1094px. Ảnh hỏng: không thử được, DB local không có dòng `media_assets` nào.
 
 Bốn phát hiện nằm ngoài các sửa Task 19 được phép, chuyển cho review cuối:
@@ -105,19 +109,19 @@ Bốn phát hiện nằm ngoài các sửa Task 19 được phép, chuyển cho 
 - thẻ số liệu ở 375px: pill của thẻ Revenue (`/`, `/bookings`) bị đẩy ra ngoài, phần đầu thẻ tràn
   53px; Cancellation rate tràn 1px, Unsubscribed 28d (`/subscribers`) 19px. Thu cỡ chữ con số không
   đủ: 16px vẫn tràn 11px, còn hai thẻ kia tràn vì chữ dài nhất của nhãn cộng pill. Đã sửa
-  (`9231ccf0`, `ab87b0d0`);
+  (`c02ff069`, `a1f7a11c`);
 - Quick Create ở cột icon: nhãn nhóm "Operations" vô hình (`opacity-0`, `-mt-8`) vẫn nhận chuột và
   che nửa dưới nút, bấm giữa icon không mở menu. Nhãn "Content" và "System" che chừng 35% phía dưới
-  của Subscribers và Appearance theo cùng cách (có từ trước nhánh). Đã sửa (`3e99d05e`);
+  của Subscribers và Appearance theo cùng cách (có từ trước nhánh). Đã sửa (`ebaa4af1`);
 - bảng Outbox vẫn cuộn ở 1440px khi trang có hàng mang nhãn Attempts dài: tab Skipped cuộn
   51–77px, hàng SKIPPED lẫn hàng FAILED cuộn 131–156px, hàng "Sent after a manual retry" 58px. Chờ
   user quyết (CÒN TREO);
 - `Picker` với tên dài: trên ô, chữ không cắt "…" mà tràn sang ô bên cạnh ở hộp New tour (danh mục
-  ẩn có tên rộng hơn 120px đã tràn) — đã sửa (`67a568ff`). Trong danh sách, tên dài bị mép popup
+  ẩn có tên rộng hơn 120px đã tràn) — đã sửa (`6770fb10`). Trong danh sách, tên dài bị mép popup
   cắt ngang và chữ "Hidden" bị đẩy ra ngoài tầm nhìn — hoãn theo Ruling F-c, vì chỗ sửa nằm ở
   `select.tsx` của `@tourism/ui`, dùng chung với web.
 
-**Đo lại sau đợt vá cuối** (06/10, cùng cách đo, trên `ab87b0d0`):
+**Đo lại sau đợt vá cuối** (06/10, cùng cách đo, trên `a1f7a11c`):
 
 - cột icon: giữa nút Quick Create và các điểm 15–85% chiều cao nút đều trúng nút; bấm giữa icon mở
   menu bên phải. Subscribers, Appearance và Media library nhận chuột trọn chiều cao. Sidebar mở
@@ -127,7 +131,7 @@ Bốn phát hiện nằm ngoài các sửa Task 19 được phép, chuyển cho 
   Quét thêm 420–1440px: màn 448–480px và 768px có sidebar (thẻ 200–216px) cũng xếp pill xuống
   dòng, 1440px không thẻ nào xếp dọc. Ngưỡng 200px theo Ruling F-a còn để pill cắt 17px ở màn 448
   và 7px ở màn 768 — nhánh `main` xếp 1 cột ở các bề rộng ấy nên không cắt, tức là vẫn thụt lùi —
-  nên nâng lên 220px (`ab87b0d0`);
+  nên nâng lên 220px (`a1f7a11c`);
 - hộp New tour, danh mục ẩn tên 82 ký tự: ô giữ 232px, tên cắt "…", "Hidden" nằm trong ô, cách ô
   Primary destination 16px; mở lại thì popup rộng 352px (trước là 576px vì ô nở theo chữ);
 - nút Delete khoá: rê và Tab hiện tooltip; cây trợ năng của Edge đọc mô tả "Used by 14 tours — hide
@@ -135,60 +139,114 @@ Bốn phát hiện nằm ngoài các sửa Task 19 được phép, chuyển cho 
   nút của hàng 0 tour vẫn đổi nền và nhún 1px.
 
 **Review findings.** Mỗi task một vòng review spec và chất lượng; không task nào có mục Critical.
-Bốn task phải vá một vòng: T1 (`f948c3ed` — `Picker` in giá trị lạ thay câu giữ chỗ, menu lọc đọc
-chung hằng nhãn nhóm), T3 (`99b0ddb4` — Rows per page còn thiếu spec), T6 (`7eec158d` — ca đua cũ
-không đỏ khi gỡ khoá thứ tự, thêm ca tất định giữ khoá advisory) và T9 (`c0293379` — ca phân loại
+Bốn task phải vá một vòng: T1 (`0030263e` — `Picker` in giá trị lạ thay câu giữ chỗ, menu lọc đọc
+chung hằng nhãn nhóm), T3 (`f8c8d849` — Rows per page còn thiếu spec), T6 (`e7d3ff6b` — ca đua cũ
+không đỏ khi gỡ khoá thứ tự, thêm ca tất định giữ khoá advisory) và T9 (`96a27f81` — ca phân loại
 lỗi của lệnh xoá mà spec §5 bắt buộc). Ba phán quyết vá trước khi review: Prisma trả `tour: null`
-khi tour bị xoá giữa hai câu đọc nên đếm tour bỏ qua liên kết ấy (`c741fac6`); dấu hiệu ảnh hỏng áp
-cho mọi chỗ in ảnh review (`5e5abe12`); doc P4f ẩn cả hai nút Delete với Staff (`9c3741cf`). Các
+khi tour bị xoá giữa hai câu đọc nên đếm tour bỏ qua liên kết ấy (`833fa4a1`); dấu hiệu ảnh hỏng áp
+cho mọi chỗ in ảnh review (`31907a70`); doc P4f ẩn cả hai nút Delete với Staff (`23d39d7d`). Các
 phán quyết khác: hộp tạo mở bằng state khởi đầu, cộng một effect cho trường hợp cùng trang; giữ
-commit email thêm `82d6b3b9`; cột Departure của `/bookings` cũng in một ngày cho chuyến một ngày;
+commit email thêm `d2ce5e63`; cột Departure của `/bookings` cũng in một ngày cho chuyến một ngày;
 payload chế độ Simple không bọc email. Tối 05/10 Device Guard chặn `pnpm.exe` một lúc: Task 12–14
 chạy Vitest, tsc và Biome bằng bin trực tiếp, tới lúc tạm dừng sau Task 14 thì `pnpm` chạy lại.
 
 Review cuối toàn nhánh (`163c348b..661fc91e`): "With fixes" — 0 Critical, 4 Important, đều đã xử
-lý: nhãn nhóm vô hình chặn Quick Create ở cột icon (`3e99d05e`); thẻ số liệu ở 375px cắt pill,
-thụt lùi so với `main` — Ruling F-a: thẻ hẹp đưa pill xuống dòng riêng, vẫn 2 cột (`9231ccf0`,
-ngưỡng nâng lên 220px theo số đo ở `ab87b0d0`, chú thích làm rõ ở `67aed64f`); ô `Picker` tràn
-sang ô bên cạnh (`67a568ff`); entry CHANGELOG phải viết lại trước merge (chính bản này). Các mục
+lý: nhãn nhóm vô hình chặn Quick Create ở cột icon (`ebaa4af1`); thẻ số liệu ở 375px cắt pill,
+thụt lùi so với `main` — Ruling F-a: thẻ hẹp đưa pill xuống dòng riêng, vẫn 2 cột (`c02ff069`,
+ngưỡng nâng lên 220px theo số đo ở `a1f7a11c`, chú thích làm rõ ở `340ab747`); ô `Picker` tràn
+sang ô bên cạnh (`6770fb10`); entry CHANGELOG phải viết lại trước merge (chính bản này). Các mục
 rẻ làm cùng đợt: `DeleteRowAction` dựng lại nút khi lý do khoá đổi nên rơi focus, nút khoá vẫn
 sáng khi rê, và trình đọc màn hình không nghe lý do — Ruling F-e thay phán quyết T8-a cũ: span
-`hidden` cộng `aria-describedby` (`329df998`; chạm trên màn cảm ứng vẫn không hiện tooltip, cột
+`hidden` cộng `aria-describedby` (`824b9974`; chạm trên màn cảm ứng vẫn không hiện tooltip, cột
 Tours đã in số tour); JSDoc nói cờ tour đọc "trong cùng một lần đọc" trong khi Prisma 7.8 đọc quan
-hệ bằng câu SQL riêng — đo hai câu với danh mục, ba câu với điểm đến (`be6c0133`); ca xoá điểm đến
-chưa canh bộ lọc `ownerId` (`7f36ba9c`); ca đua chờ cứng 300ms có thể xanh oan khi máy tải nặng —
-nay chờ `pg_locks`, đỏ 3/3 khi gỡ `FOR UPDATE`, xanh 3/3 khi có (`aaa3aa16`); JSDoc Quick Create
-nói hướng mở giống `NavUser` (`219f58f1`); spec §5 thiếu ca chặn `null` và ca bàn phím của
-`Picker` (`35fbdf1c`); ADR-0053 thiếu giới hạn ảnh mượn (`f540d46b`). Hoãn theo phán quyết: nhãn
+hệ bằng câu SQL riêng — đo hai câu với danh mục, ba câu với điểm đến (`86be546b`); ca xoá điểm đến
+chưa canh bộ lọc `ownerId` (`d5e0783f`); ca đua chờ cứng 300ms có thể xanh oan khi máy tải nặng —
+nay chờ `pg_locks`, đỏ 3/3 khi gỡ `FOR UPDATE`, xanh 3/3 khi có (`169ee44c`); JSDoc Quick Create
+nói hướng mở giống `NavUser` (`fbd62ce9`); spec §5 thiếu ca chặn `null` và ca bàn phím của
+`Picker` (`2bbce358`); ADR-0053 thiếu giới hạn ảnh mượn (`9503bcc2`). Hoãn theo phán quyết: nhãn
 Attempts dài ở Outbox (Ruling F-b), danh sách `Picker` cắt tên dài (Ruling F-c), secret revalidate
 dev trong `.env.example` của web (Ruling F-d); các mục Minor khác của từng task để lại, không chặn
 merge.
 
-**CÒN TREO cho session gốc** (sáu mục đầu chờ user quyết).
+**Review max trước merge (07/10, session gốc).** Nhánh rebase lên `main` `197fe31d` (có P7 Phần A)
+trước khi vá; chỉ hai file doc xung đột. Mười góc tìm, mỗi ứng viên một lượt kiểm chứng, một lượt
+rà sót: 15 phát hiện báo cáo cộng 21 mục nhẹ, tất cả đã kiểm chứng. User chọn vá 34 mục; bỏ hai:
+khoá ngoại `tour_destinations` vẫn `CASCADE` (cần migration, spec §1 chốt không — ghi thành giới
+hạn 4 của ADR-0053, nợ G25) và secret revalidate dev trong `.env.example` của web (đã hoãn theo
+Ruling F-d). Thi công bằng subagent theo năm nhóm, rồi hai reviewer soát lại toàn bộ (18/18 và
+20/20 mục đạt) và một nhóm vá năm việc nhỏ họ nêu. ADR đi trước code: ADR-0053 AMEND 1
+(`c939c239`, sửa mã ở `388f4ce3`).
 
-- Bảng Outbox ở 1440px vẫn cuộn 51–156px khi trang có hàng mang nhãn Attempts dài (Ruling F-b —
-  không phải thụt lùi: trang hàng FAILED và SENT đã vừa khung). Hướng sửa đã nêu: cho ô Attempts
-  xuống dòng dưới một trần rồi trả bề rộng cho Last error, hoặc in ngày giờ thành hai dòng.
-- Câu "… — hide it instead." (tooltip và lỗi `IN_USE`, copy spec bắt buộc) đọc lệch ở hàng đã ẩn,
-  nơi nút bật tắt đang là Show.
-- Hộp Reject: `sm:max-w-5xl` (spec bắt buộc) đè trần `calc(100%-2rem)` dùng chung, nên ở
-  640–1024px hộp sát hai mép màn; cách gợi ý:
-  `sm:max-w-[min(var(--container-5xl),calc(100%-2rem))]`.
-- Ô "Photo unavailable" trong dialog chi tiết review chỉ cỡ icon (chừng 18px) cạnh ảnh cao tới
-  `max-h-64`.
-- `.env.example` của web đặt tường minh secret revalidate dev công khai (`623c3016`, Ruling F-d).
-  Không đổi, vì siết kiểm ở web có thể làm prod không khởi động nếu env sống đang dùng đúng giá trị
-  ấy — user soát env Vercel của web, đảm bảo `REVALIDATE_SECRET` không phải giá trị mẫu.
-- ADR-0052 §2 còn ghi "Owner-only (14)"; doc P4f nay đếm 16 — cần AMEND.
-- Thử tay trên production sau merge, tám bước của spec §5, chờ Render live trước (khe deploy ở spec
-  §7). Bước 5 là xoá điểm đến thử `abc` bằng nút Delete mới.
-- Không migration nào phải chạy lên Supabase; không env, không webhook.
+- **Contract và API** (`c84779a4`–`d401a2af`): lưu tab Details hay tạo tour với danh mục hoặc điểm
+  đến vừa bị xoá từng nhận `NOT_FOUND` — trùng mã "tour không tồn tại", nên khu sửa tour báo "This
+  tour no longer exists.", đá về `/tours` và làm mất chữ chưa lưu; nay là mã riêng `LINK_NOT_FOUND`
+  (404, theo tiền lệ `RELATED_TOUR_NOT_FOUND`). Bust cache chia lô tối đa 20 tag, vì route web từ
+  chối NGUYÊN lệnh khi vượt trần — sửa một điểm đến gắn từ 20 tour trở lên từng không bust được gì;
+  route web lấy trần độ dài slug từ hằng của contract (`5d4871d2`). Xoá hàng đang ẩn không bust
+  `tours`; int test chứng minh bust chạy SAU commit bằng cách đếm transaction đang mở. Một helper
+  đếm tour cho danh mục và điểm đến; list điểm đến từ ba câu SQL xuống hai (một câu `GROUP BY`).
+  Hai ghi chú `render.yaml` nói sai được sửa: `SENTRY_DSN` là seam chưa nối, `CLOUDINARY_UPLOAD_FOLDER`
+  là tiền tố sở hữu của ảnh đã tải (đổi về sau là mồ côi ảnh cũ).
+- **Kit dùng chung `@tourism/ui`** (`524a01cf`–`593193ea`, user đồng ý sửa dù web đang chạy):
+  AlertDialog còn `z-50` nên nằm DƯỚI Sheet và hộp thoại — trên điện thoại hộp "Discard changes?"
+  mở dưới sidebar, focus kẹt trong hộp bị che — và dưới navbar web; nay ở tầng token mới
+  `--z-alert` 1450. Tên dài trong danh sách thả cắt "…" (`min-w-0` cho ItemText), không còn đẩy chữ
+  "Hidden" ra ngoài popup. Nhãn nhóm sidebar thu gọn tắt chuột ngay ở primitive. Vạch ngăn của
+  Select ra khỏi cây trợ năng.
+- **Picker và dòng lựa chọn** (`8d6d45b8`–`5f7d0e0f`, `f6cb4162`): Picker chỉ chuyển tiếp lựa chọn
+  của người dùng — Base UI tự quay về giá trị lúc mount khi mục đang chọn rời danh sách; một dòng
+  lựa chọn dùng chung cho Picker và menu lọc, tên trợ năng đọc "Tên (Hidden)" ở mọi nơi kể cả radio
+  Primary, tên bị cắt mang `title`; biến thể toolbar canh trái, hết đè lên sidebar.
+- **Bảng danh mục, điểm đến, chuyến** (`273b4ee2`–`a0c62946`): server action đổi danh tính mỗi lượt
+  `router.refresh()`, để trong deps của cột thì mọi ô hành động bị dựng lại — focus rơi về `<body>`
+  sau khi bị chặn xoá, hộp Edit đang mở biến mất. Lệnh ghi đi qua `RowActionsContext`, cột là hằng
+  module (bảng chuyến cùng lỗi, vá luôn — user đồng ý). Xoá thành công thì focus sang nút Add. Nút
+  Delete chỉ mở khi đếm đúng 0 — khe deploy (admin mới, API cũ) không còn mở nút ở mọi hàng với câu
+  "No tour uses…" sai. Chạm nút Delete đang khoá trên màn cảm ứng thì toast lý do. Chuỗi xoá và đếm
+  tour gom về hằng chung của i18n.
+- **Quick Create** (`8911014b`–`469fb8d1`, `7af4badc`, `38c19d53`, `238fdc2f`): bỏ tham số
+  `?create=1` — cùng trang thì sinh hai mục lịch sử trùng URL và mất bộ lọc, `router.replace` kéo
+  thêm một lượt render server. Nay một yêu cầu tạo phía client (`lib/quick-create.ts`), sống 60
+  giây: cùng trang mở hộp ngay không điều hướng; khác trang ghi lúc điều hướng bắt đầu
+  (`onNavigate`). Trên điện thoại bấm mục thì đóng Sheet; đóng hộp thì focus về nút Add/New; Ctrl,
+  Cmd, Shift, Alt + bấm (tab mới) không ghi yêu cầu. Hộp hỏi rời trang thôi `stopPropagation` — nó
+  làm menu kẹt mở, nổi trên chính hộp hỏi; "Discard changes" vẫn mở hộp tạo, ở lại thì yêu cầu bị
+  xoá. Khu sửa tour và hộp New tour gặp `LINK_NOT_FOUND` thì báo lỗi, làm mới danh sách chọn, giữ
+  chữ đang gõ, ô của mục vừa bị xoá về câu giữ chỗ (`4197dfd2`).
+- **Sạn nhỏ khác** (`d4e04713`–`9c334602`): thẻ số liệu bố cục theo nội dung — pill tự xuống dòng khi
+  hết chỗ, cỡ con số co theo bề ngang thẻ (`cqi`, trần 30px) nên số tiền 6–7 chữ số và pill % lớn
+  không bị cắt; hàng 3 thẻ về 1 cột ở điện thoại như trước nhánh. Trang chi tiết enquiry thôi kéo
+  `motion` (~47 KB gzip). Hộp Reject giữ trần 64rem nhưng luôn chừa lề. Một kit `TableThumb` cho
+  bảng Tours và Posts. Bốn chỗ quản lý ảnh dùng `SafeImg`.
+- **Năm việc nhỏ sau hai reviewer** (`38c19d53`–`9a236ed5`): yêu cầu Quick Create ghi lúc điều hướng
+  bắt đầu, sống 60 giây (API gói free ngủ dậy chậm); xoá trúng hàng người khác vừa xoá thì focus về
+  nút Add; chạm nhiều lần nút khoá chỉ một toast; ô chọn không in UUID thô sau `LINK_NOT_FOUND`; một
+  helper int `trackOpenTransactions`.
+- **Doc:** spec ghi lại mọi chỗ đổi thiết kế (`72c612a7`, `0bf28d05`, `c3df5d73`);
+  `open-items` thêm năm việc chờ quyết, lượt thử màn cảm ứng, nợ G24 (bốn bảng còn dựng lại ô) và
+  G25 (`64a5cb8c`).
 
-Tests after (`gate:int` trên `ab87b0d0`, 299 giây dưới watchdog, commit trống thấp nhất 10,79 GB,
-pagefile đứng yên 2048 MB): unit 5434 — web 1594, admin 1820, api 1045, contract 619, mobile 159,
-mobile-ui 86, core 46, ui 29, tokens 18, i18n 18 — và int 758/758 ở 46 file. So với `main`: admin
-thêm 102, contract 8, api 6, ui 2; int thêm 11. Sau gate chỉ có `67aed64f`, sửa một câu chú thích
-của `stat-card.tsx`; kiểm lại bằng Biome, tsc của admin và spec thẻ số liệu (13/13).
+**CÒN TREO**
+
+- Năm việc chờ user quyết, chép sang `docs/open-items.md` mục "Đang chờ chủ dự án quyết": bảng Outbox ở
+  1440px còn cuộn khi trang có nhãn Attempts dài (Ruling F-b); câu "… — hide it instead." đọc lệch ở
+  hàng đã ẩn; ô "Photo unavailable" nhỏ trong dialog chi tiết review; secret revalidate dev trong
+  `.env.example` của web (Ruling F-d — user soát env Vercel, đảm bảo `REVALIDATE_SECRET` không phải giá
+  trị mẫu); ADR-0052 §2 còn ghi "Owner-only (14)".
+- Nợ mới: G24 (bốn bảng admin còn dựng lại ô sau mỗi lượt làm mới) và G25 (khoá ngoại điểm đến
+  `CASCADE`).
+- Thử tay trên production sau merge, từng bước theo spec §5, chờ Render live trước. Thêm các điểm
+  review nêu: gõ chữ trên ô Picker đang đóng; thẻ số liệu ở `/` và `/bookings` lúc 1440px (con số
+  còn khoảng 28px thay 30px) và 375px; popup lọc của thẻ biểu đồ (khe phải) tự lật canh; hai tab —
+  xoá điểm đến ở tab này rồi lưu tab Details ở tab kia; form đang sửa dở rồi Quick Create; chạm nút
+  Delete đang khoá trên máy cảm ứng thật. Xoá điểm đến thử `abc` bằng nút Delete mới.
+- Không migration, không env, không webhook. Push đụng cả API lẫn web: canh trạng thái deploy Render
+  (G23), không chỉ health.
+
+Tests after (`gate:int` trên `238fdc2f`, 07/10 14:59–15:04): unit 5680 — admin 1896, web 1671, api
+1080, contract 665, mobile 159, mobile-ui 86, core 46, ui 36, i18n 22, tokens 19 — và int 771/771 ở
+46 file. So với `main` `197fe31d`: admin thêm 178, contract 9, api 12, ui 9, i18n 4, tokens 1, web 1;
+int thêm 18.
 
 ## 2026-10-06 — P7 Phần A: My bookings lọc, tìm và phân trang theo hành trình (merge hai nhịp, nhánh `feat/booking-pages-redesign`)
 

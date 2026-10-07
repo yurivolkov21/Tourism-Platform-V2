@@ -20,7 +20,8 @@ ADR-0024 — push main là Vercel/Render tự deploy, sửa gì cũng là sửa 
 CHẠY) → P4 admin (a–d ✅ sống trên `admin.nexora-travel.agency`; P4e catalog:
 P4e-1 ✅ · P4e-2 ✅ · P4e-3a F17 tạo và sửa tour ✅ 28/09 · P4e-3b F18 ảnh tour ✅
 29/09 · P4e-3c F19 khu sửa tour dạng thanh bước ✅ 01/10 · P4e-4 F20 bài viết ✅
-05/10; **P4f users chưa làm** — plan đã push, media chưa có spec) → P5 mobile
+05/10; đợt sửa sạn admin — ô chọn chung, Quick Create, xoá danh mục và điểm đến ✅ 07/10;
+**P4f users chưa làm** — plan đã push, media chưa có spec) → P5 mobile
 (P5a khung ✅ · P5b-1 auth ✅ · P5b-2…5 mới có bản vẽ, thành viên khác dựng màn) →
 P6 AI concierge → P7 polish UI (ba trang đơn của khách: Phần A My bookings ✅ 06/10; B chi tiết
 đơn, C voucher chưa làm) → freeze 15/10. Việc còn nợ gom ở
