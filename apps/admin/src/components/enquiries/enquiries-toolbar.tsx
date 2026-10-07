@@ -4,16 +4,9 @@ import { EnquiryStatusSchema } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
 import { Badge } from '@tourism/ui/components/badge';
 import { Button } from '@tourism/ui/components/button';
-import {
-  CircleCheckIcon,
-  CircleDashedIcon,
-  CircleSlashIcon,
-  ListIcon,
-  PhoneCallIcon,
-  ReceiptTextIcon,
-  XIcon,
-} from 'lucide-react';
+import { ListIcon, XIcon } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { ENQUIRY_STATUS_ICONS } from '@/components/enquiries/status-icons';
 import { ALL_FILTER_VALUE as ALL, StatusFilterTabs } from '@/components/kit/status-filter-tabs';
 import { TableSearchForm } from '@/components/kit/table-search-form';
 import { clearFiltersHref, ToolbarClearFilters } from '@/components/kit/toolbar-clear-filters';
@@ -30,22 +23,6 @@ const t = messages.admin.enquiries;
 
 /** Nguồn danh sách = enum contract, không chép tay lần hai. */
 const STATUSES = EnquiryStatusSchema.options;
-
-/**
- * Icon theo trạng thái — `Record` trên enum để quên một member là đỏ ở
- * typecheck. Ba trạng thái đang mở kể tiến độ (chưa chạm · đã gọi · đã báo
- * giá), hai trạng thái chung cuộc là tích và gạch chéo.
- *
- * Export để ô đổi trạng thái của `/enquiries/[id]` (`status-panel.tsx`) dùng
- * đúng bộ icon này — một trạng thái, một icon ở mọi chỗ.
- */
-export const ENQUIRY_STATUS_ICONS: Record<(typeof STATUSES)[number], typeof ListIcon> = {
-  NEW: CircleDashedIcon,
-  CONTACTED: PhoneCallIcon,
-  QUOTED: ReceiptTextIcon,
-  WON: CircleCheckIcon,
-  LOST: CircleSlashIcon,
-};
 
 const TAB_ITEMS = [
   { label: t.list.all, value: ALL, icon: ListIcon },

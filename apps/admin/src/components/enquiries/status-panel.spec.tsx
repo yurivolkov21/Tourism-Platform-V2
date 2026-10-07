@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { messages } from '@tourism/i18n';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { EnquiryStatusPanel } from './status-panel';
 
 /**
@@ -180,5 +180,30 @@ describe('EnquiryStatusPanel', () => {
     expect(await screen.findByText(t.dialog.title)).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: t.dialog.submit }));
     expect(setStatus).toHaveBeenCalledWith({ id: ID, status: 'NEW' });
+  });
+});
+
+/**
+ * Review EF3: ô này sống ở `/enquiries/[id]`, trang không có dải tab lọc nào. Bảng icon từng
+ * lấy từ file toolbar của `/enquiries`, kéo theo `status-filter-tabs` → `motion/react` và
+ * ToggleGroup (~47 KB gzip) vào trang chỉ để tra năm icon. Hai module ấy được thay bằng bản
+ * ném lỗi rồi nạp lại ô từ đầu: chạm tới một trong hai là đỏ.
+ */
+describe('EnquiryStatusPanel — gói JS của trang chi tiết (review EF3)', () => {
+  afterEach(() => {
+    vi.doUnmock('motion/react');
+    vi.doUnmock('@tourism/ui/components/toggle-group');
+  });
+
+  it('nạp ô đổi trạng thái KHÔNG kéo motion/react hay ToggleGroup', async () => {
+    vi.resetModules();
+    vi.doMock('motion/react', () => {
+      throw new Error('status-panel kéo motion/react');
+    });
+    vi.doMock('@tourism/ui/components/toggle-group', () => {
+      throw new Error('status-panel kéo ToggleGroup');
+    });
+
+    await expect(import('./status-panel')).resolves.toHaveProperty('EnquiryStatusPanel');
   });
 });

@@ -5,7 +5,7 @@ import { messages } from '@tourism/i18n';
 import { Button } from '@tourism/ui/components/button';
 import { useRouter } from 'next/navigation';
 import { useState, useTransition } from 'react';
-import { ENQUIRY_STATUS_ICONS } from '@/components/enquiries/enquiries-toolbar';
+import { ENQUIRY_STATUS_ICONS } from '@/components/enquiries/status-icons';
 import { ConfirmWriteDialog } from '@/components/kit/confirm-write-dialog';
 import { Picker } from '@/components/kit/picker';
 import { enquiryStatusLabel } from '@/lib/enquiries-view';
