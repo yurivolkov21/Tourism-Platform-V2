@@ -105,8 +105,9 @@ export const NAV_GROUPS: NavGroup[] = [
       // là thứ tự chip lọc trên `/tours` của khách, vì web đọc thẳng
       // `catalog.categories.list`.
       { key: 'categories', label: t.categories, href: '/categories', enabled: true, icon: Tags },
-      // Vùng thứ ba của P4e (F15) — mười tám hàng, ẩn/hiện chứ không xoá. Vùng
-      // của từng điểm đến quyết định trang vùng nào của web liệt kê nó.
+      // Vùng thứ ba của P4e (F15) — ẩn/hiện, và xoá được khi chưa tour nào dùng
+      // (ADR-0053). Vùng của từng điểm đến quyết định trang vùng nào của web liệt
+      // kê nó.
       {
         key: 'destinations',
         label: t.destinations,
