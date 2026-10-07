@@ -104,8 +104,13 @@ export function RejectReviewDialog({
 
   return (
     <Dialog open onOpenChange={onOpenChange}>
-      {/* Rộng hơn mọi dialog moderation khác (~1024px): cột lý do nằm bên trái. */}
-      <DialogContent className={cn(DIALOG_FRAME, 'sm:max-w-5xl')} showCloseButton={false}>
+      {/* Rộng hơn mọi dialog moderation khác (trần 64rem ~1024px): cột lý do nằm bên trái.
+          `min(…)` giữ lề 1rem mỗi bên như mọi Dialog (review A2-7): `sm:max-w-5xl` trần thắng
+          `max-w-[calc(100%-2rem)]` của Dialog từ 640px, hộp sát hai mép ở cửa sổ 640–1024px. */}
+      <DialogContent
+        className={cn(DIALOG_FRAME, 'sm:max-w-[min(64rem,calc(100%-2rem))]')}
+        showCloseButton={false}
+      >
         <DialogHeader>
           <DialogTitle>{t.rejectDialog.title}</DialogTitle>
           <DialogDescription>{copy.body}</DialogDescription>

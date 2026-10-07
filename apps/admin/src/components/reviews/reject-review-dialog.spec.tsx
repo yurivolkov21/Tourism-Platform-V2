@@ -122,7 +122,12 @@ describe('RejectReviewDialog — chọn lý do', () => {
 
   it('bố cục: hộp ~1024px, cột lý do ~320px, vùng cuộn chừa làn cho thanh cuộn', async () => {
     const { dialog } = await openReject(PENDING);
-    expect(dialog).toHaveClass('sm:max-w-5xl');
+    // Trần 64rem nhưng LUÔN chừa lề 1rem mỗi bên (review A2-7): `sm:max-w-5xl` trần thắng lề
+    // an toàn `max-w-[calc(100%-2rem)]` của Dialog từ 640px, hộp sát hai mép ở 640–1024px.
+    expect(dialog).toHaveClass('max-w-[calc(100%-2rem)]', 'sm:max-w-[min(64rem,calc(100%-2rem))]');
+    expect(dialog).not.toHaveClass('sm:max-w-5xl');
+    // Trần mặc định của Dialog phải bị thay hẳn, không đứng song song mà tranh nhau.
+    expect(dialog).not.toHaveClass('sm:max-w-sm');
     const list = within(dialog).getByRole('radiogroup');
     expect(list).toHaveClass('pr-3');
     expect(list).toHaveClass('[scrollbar-gutter:stable]');
