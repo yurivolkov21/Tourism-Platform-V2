@@ -51,6 +51,15 @@ describe('messages: admin catalog — đếm tour và luật xoá của danh m�
     expect(categories.delete.toast.body('Cruises')).toBe('Cruises is gone.');
   });
 
+  it('khe deploy — hàng không mang số tour: ô Tours in dấu trống, nút Delete nói lý do chung (review E2)', () => {
+    expect(categories.list.toursUnknown).toBe('—');
+    expect(destinations.list.toursUnknown).toBe(categories.list.toursUnknown);
+    expect(categories.delete.unavailable).toBe(
+      "Delete isn't available right now. Reload the page and try again.",
+    );
+    expect(destinations.delete.unavailable).toBe(categories.delete.unavailable);
+  });
+
   it('câu IN_USE của hai bảng chỉ khác danh từ', () => {
     expect(categories.delete.errors.IN_USE).toBe(
       'A tour started using this category a moment ago, so it can’t be deleted. Hide it instead.',

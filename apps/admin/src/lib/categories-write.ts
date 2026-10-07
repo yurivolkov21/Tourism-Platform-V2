@@ -257,9 +257,16 @@ export type DeleteCategoryAction = (
   input: AdminCategoryDeleteInput,
 ) => Promise<CategoryDeleteResult>;
 
-/** Lý do nút Delete khoá; `null` là xoá được (ADR-0053 §5). */
+/**
+ * Lý do nút Delete khoá; `null` là xoá được (ADR-0053 §5).
+ *
+ * Chỉ mở khi đếm ĐÚNG bằng 0. Hàng không mang số tour — admin mới gọi API cũ trong khe giữa hai
+ * lần deploy — thì khoá với lý do chung (review E2): mở kiểu "không lớn hơn 0" từng bật nút ở mọi
+ * hàng và để hộp khẳng định "No tour uses…" cho cả hàng đang có tour.
+ */
 export function deleteBlockedReason(row: { linkedTourCount: number }): string | null {
-  return row.linkedTourCount > 0 ? t.delete.inUse(row.linkedTourCount) : null;
+  if (row.linkedTourCount === 0) return null;
+  return row.linkedTourCount > 0 ? t.delete.inUse(row.linkedTourCount) : t.delete.unavailable;
 }
 
 export function deleteDialogCopy() {

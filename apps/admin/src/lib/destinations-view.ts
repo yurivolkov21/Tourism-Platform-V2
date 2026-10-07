@@ -76,8 +76,24 @@ export function toDestinationRowVM(row: AdminDestinationRow): DestinationRowVM {
     statusLabel: row.isActive ? t.list.active : t.list.inactive,
     tourCount: row.tourCount,
     linkedTourCount: row.linkedTourCount,
-    toursLabel: row.linkedTourCount === 0 ? t.list.noTours : t.list.tours(row.linkedTourCount),
-    publishedLabel: row.linkedTourCount === 0 ? null : t.list.published(row.tourCount),
+    ...tourCountLabels(row),
+  };
+}
+
+/**
+ * Hai nhãn của ô Tours. Hàng không mang số tour — admin mới gọi API cũ trong khe giữa hai lần
+ * deploy (review E2) — in dấu trống thay vì "undefined tours", và không có dòng đang bán.
+ */
+function tourCountLabels(
+  row: AdminDestinationRow,
+): Pick<DestinationRowVM, 'toursLabel' | 'publishedLabel'> {
+  if (typeof row.linkedTourCount !== 'number') {
+    return { toursLabel: t.list.toursUnknown, publishedLabel: null };
+  }
+  if (row.linkedTourCount === 0) return { toursLabel: t.list.noTours, publishedLabel: null };
+  return {
+    toursLabel: t.list.tours(row.linkedTourCount),
+    publishedLabel: t.list.published(row.tourCount),
   };
 }
 

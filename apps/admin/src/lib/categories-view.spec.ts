@@ -81,6 +81,16 @@ describe('toCategoryRowVMs', () => {
     expect(empty?.publishedLabel).toBeNull();
   });
 
+  it('khe deploy — hàng từ API cũ thiếu `linkedTourCount`: ô Tours in dấu trống, một dòng (review E2)', () => {
+    // Trước bản vá ô in "undefined tours" trên "3 published".
+    const [stale] = toCategoryRowVMs([
+      row(1, { tourCount: 3, linkedTourCount: undefined as unknown as number }),
+    ]);
+
+    expect(stale?.toursLabel).toBe(t.list.toursUnknown);
+    expect(stale?.publishedLabel).toBeNull();
+  });
+
   it('chỉ có tour nháp vẫn là "1 tour", không phải "No tours"', () => {
     // Nhãn đếm theo `linkedTourCount` như nút Delete: đếm theo số đang bán thì hàng này in
     // "No tours" ngay cạnh một nút Delete đang khoá — hai chỗ của một hàng nói ngược nhau.

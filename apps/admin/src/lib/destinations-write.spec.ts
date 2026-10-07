@@ -385,6 +385,14 @@ describe('lệnh xoá (ADR-0053)', () => {
     expect(deleteBlockedReason({ linkedTourCount: 0 })).toBeNull();
   });
 
+  it('khe deploy — API cũ chưa trả `linkedTourCount`: nút khoá với lý do chung, chỉ mở khi đúng 0 (review E2)', () => {
+    // Trước bản vá: `undefined > 0` là false → nút MỞ ở mọi hàng, và hộp khẳng định
+    // "No tour goes to this destination" cho cả hàng đang có tour.
+    expect(deleteBlockedReason({ linkedTourCount: undefined as unknown as number })).toBe(
+      t.delete.unavailable,
+    );
+  });
+
   it('hộp xác nhận kể tên, vùng và slug', () => {
     expect(
       deleteConfirmRows({ name: 'Hội An', regionLabel: 'Central Vietnam', slug: 'hoi-an' }),

@@ -63,11 +63,27 @@ export function toCategoryRowVMs(rows: AdminCategoryRow[]): CategoryRowVM[] {
     statusLabel: row.isActive ? t.list.active : t.list.inactive,
     tourCount: row.tourCount,
     linkedTourCount: row.linkedTourCount,
-    toursLabel: row.linkedTourCount === 0 ? t.list.noTours : t.list.tours(row.linkedTourCount),
-    publishedLabel: row.linkedTourCount === 0 ? null : t.list.published(row.tourCount),
+    ...tourCountLabels(row),
     canMoveUp: index > 0,
     canMoveDown: index < rows.length - 1,
   }));
+}
+
+/**
+ * Hai nhãn của ô Tours. Hàng không mang số tour — admin mới gọi API cũ trong khe giữa hai lần
+ * deploy (review E2) — in dấu trống thay vì "undefined tours", và không có dòng đang bán.
+ */
+function tourCountLabels(
+  row: AdminCategoryRow,
+): Pick<CategoryRowVM, 'toursLabel' | 'publishedLabel'> {
+  if (typeof row.linkedTourCount !== 'number') {
+    return { toursLabel: t.list.toursUnknown, publishedLabel: null };
+  }
+  if (row.linkedTourCount === 0) return { toursLabel: t.list.noTours, publishedLabel: null };
+  return {
+    toursLabel: t.list.tours(row.linkedTourCount),
+    publishedLabel: t.list.published(row.tourCount),
+  };
 }
 
 /** Badge theo trạng thái — cùng bảng tone với các vùng khác của back office. */

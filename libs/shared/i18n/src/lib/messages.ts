@@ -67,12 +67,22 @@ const CATALOG_TOUR_COUNT_COPY = {
   /** Dòng mờ dưới tổng tour: số đang bán (spec 2026-10-05 §3.3). */
   published: (count: number) => `${count} published`,
   noTours: 'No tours',
+  /**
+   * Hàng không mang số tour — admin mới gọi API cũ trong khe giữa hai lần deploy (review E2).
+   * Không đoán số; cùng dấu gạch với ô trống của mọi bảng admin.
+   */
+  unknown: '—',
 } as const;
 const CATALOG_DELETE_COPY = {
   action: 'Delete',
   actionLabel: (name: string) => `Delete ${name}`,
   inUse: (count: number) =>
     count === 1 ? 'Used by 1 tour — hide it instead.' : `Used by ${count} tours — hide it instead.`,
+  /**
+   * Lý do khoá khi hàng không mang số tour (cùng khe deploy với `unknown`): không biết số thì
+   * không mở hộp khẳng định "No tour uses…" (review E2).
+   */
+  unavailable: "Delete isn't available right now. Reload the page and try again.",
   /** Câu của mã `IN_USE`: bảng nói 0 tour mà DB vừa có tour gắn vào. */
   inUseRace: (noun: string) =>
     `A tour started using this ${noun} a moment ago, so it can’t be deleted. Hide it instead.`,
@@ -5587,6 +5597,7 @@ export const messages = {
         tours: CATALOG_TOUR_COUNT_COPY.tours,
         published: CATALOG_TOUR_COUNT_COPY.published,
         noTours: CATALOG_TOUR_COUNT_COPY.noTours,
+        toursUnknown: CATALOG_TOUR_COUNT_COPY.unknown,
         inherited: 'No description',
         active: CATALOG_VISIBILITY_COPY.visible,
         inactive: CATALOG_VISIBILITY_COPY.hidden,
@@ -5692,6 +5703,7 @@ export const messages = {
         action: CATALOG_DELETE_COPY.action,
         actionLabel: CATALOG_DELETE_COPY.actionLabel,
         inUse: CATALOG_DELETE_COPY.inUse,
+        unavailable: CATALOG_DELETE_COPY.unavailable,
         rows: { category: 'Category', slug: 'Slug' },
         dialog: {
           title: 'Delete this category?',
@@ -5743,6 +5755,7 @@ export const messages = {
         tours: CATALOG_TOUR_COUNT_COPY.tours,
         published: CATALOG_TOUR_COUNT_COPY.published,
         noTours: CATALOG_TOUR_COUNT_COPY.noTours,
+        toursUnknown: CATALOG_TOUR_COUNT_COPY.unknown,
         inherited: 'No description',
         /**
          * Chuỗi trong DB không khớp vùng nào — `findRegion` trả rỗng. Điểm đến
@@ -5893,6 +5906,7 @@ export const messages = {
         action: CATALOG_DELETE_COPY.action,
         actionLabel: CATALOG_DELETE_COPY.actionLabel,
         inUse: CATALOG_DELETE_COPY.inUse,
+        unavailable: CATALOG_DELETE_COPY.unavailable,
         rows: { destination: 'Destination', region: 'Region', slug: 'Slug' },
         dialog: {
           title: 'Delete this destination?',
