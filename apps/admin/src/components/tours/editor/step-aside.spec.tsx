@@ -128,6 +128,19 @@ describe('CoverPreviewCard', () => {
     render(<CoverPreviewCard url={null} />);
     expect(screen.getByText(a.preview.noCover)).toBeInTheDocument();
   });
+
+  // Review AL4: `<img>` trần hỏng chỉ để lại khung xám câm — ngay chỗ admin soát ảnh bìa.
+  it('ảnh tải hỏng: khung 3:2 hiện ô có tên "Photo unavailable", lấp đầy khung', () => {
+    const { container } = render(
+      <CoverPreviewCard url="https://res.cloudinary.com/demo/image/upload/f_auto,q_auto/v1/gone" />,
+    );
+
+    fireEvent.error(container.querySelector('img') as HTMLImageElement);
+
+    expect(screen.getByRole('img', { name: messages.admin.table.photoUnavailable })).toHaveClass(
+      'size-full',
+    );
+  });
 });
 
 describe('TourCardPreview', () => {

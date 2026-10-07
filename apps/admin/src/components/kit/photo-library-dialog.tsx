@@ -17,6 +17,7 @@ import * as React from 'react';
 import { DIALOG_FRAME } from '@/components/kit/confirm-write-dialog';
 import { FormField } from '@/components/kit/form-field';
 import { Picker } from '@/components/kit/picker';
+import { SafeImg } from '@/components/kit/safe-img';
 import type { TransportFailureCode } from '@/lib/api/write-error';
 import { withDeliveryTransform } from '@/lib/cloudinary-url';
 import { type LoadPhotoLibraryAction, libraryLoadErrorCopy } from '@/lib/photo-library';
@@ -215,11 +216,12 @@ export function PhotoLibraryDialog({
                   return (
                     <li key={photo.publicId} className="grid gap-1.5">
                       <div className="relative">
-                        {/* biome-ignore lint/performance/noImgElement: URL Cloudinary đã tối ưu sẵn (ADR-0005) */}
-                        <img
+                        {/* Kit `SafeImg` (review AL4): ảnh hỏng thành ô cùng khung mang tên
+                            "Photo unavailable", không thành ô xám câm giữa lúc đang chọn ảnh. */}
+                        <SafeImg
                           src={withDeliveryTransform(photo.url, 'w_320')}
                           alt=""
-                          className="aspect-[3/2] w-full rounded-md bg-muted object-cover"
+                          className="aspect-[3/2] w-full bg-muted"
                         />
                         {/* Nhãn đứng trên ảnh, ngoài chú thích bị cắt hai dòng: alt thật dài cả
                             câu từng nuốt mất chữ "Added" (thử tay F18). */}

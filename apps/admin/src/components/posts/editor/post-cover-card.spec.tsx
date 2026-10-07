@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { AdminPhotoLibrary, SignedUploadParams } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
@@ -266,6 +266,18 @@ describe('PostCoverCard', () => {
 
     expect(screen.getByTestId('cover')).toHaveTextContent('none');
     expect(screen.getByRole('button', { name: c.upload })).toHaveFocus();
+  });
+
+  it('ảnh bìa tải hỏng: khung 3:2 hiện ô có tên "Photo unavailable", vẫn gỡ được (review AL4)', () => {
+    render(<Harness initial={CURRENT} />);
+    const figure = screen.getByRole('figure');
+
+    fireEvent.error(figure.querySelector('img') as HTMLImageElement);
+
+    expect(
+      within(figure).getByRole('img', { name: messages.admin.table.photoUnavailable }),
+    ).toHaveClass('aspect-[3/2]', 'w-full');
+    expect(screen.getByRole('button', { name: c.remove })).toBeInTheDocument();
   });
 
   it('ảnh catalog: nói ngay trên ảnh rằng gỡ ra là không chọn lại được', () => {

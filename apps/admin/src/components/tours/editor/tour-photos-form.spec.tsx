@@ -287,6 +287,22 @@ describe('TourPhotosForm', () => {
   });
 });
 
+describe('TourPhotosForm — ảnh hỏng (review AL4)', () => {
+  it('ảnh của một dòng tải hỏng: ô cùng khung mang tên "Photo unavailable", dòng còn nguyên', () => {
+    renderForm();
+    const zone = screen.getByTestId('photo-drop-zone');
+
+    fireEvent.error(zone.querySelector('img') as HTMLImageElement);
+
+    // Chỗ quản lý ảnh là nơi admin cần nhận ra ảnh hỏng nhất — không phải một ô xám câm.
+    expect(
+      within(zone).getByRole('img', { name: messages.admin.table.photoUnavailable }),
+    ).toHaveClass('aspect-[3/2]', 'w-32');
+    expect(within(zone).getAllByRole('textbox', { name: t.alt })).toHaveLength(2);
+    expect(within(zone).getByText(t.cover)).toBeInTheDocument();
+  });
+});
+
 describe('TourPhotosForm — PHOTO_NOT_ALLOWED (vòng review F18)', () => {
   it('câu nói gỡ ảnh thư viện vừa thêm; lần mở hộp sau tải lại thư viện (bản cũ đã sai)', async () => {
     const load = vi.fn<LoadPhotoLibraryAction>().mockResolvedValue({ ok: true, library: [] });

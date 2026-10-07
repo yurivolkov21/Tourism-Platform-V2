@@ -24,6 +24,7 @@ import * as React from 'react';
 import { FormField } from '@/components/kit/form-field';
 import { ListEditor } from '@/components/kit/list-editor';
 import { PhotoLibraryDialog } from '@/components/kit/photo-library-dialog';
+import { SafeImg } from '@/components/kit/safe-img';
 import { EditorFormFrame } from '@/components/tours/editor/editor-form-frame';
 import {
   type ChecklistItem,
@@ -430,13 +431,13 @@ export function TourPhotosForm({
                   return (
                     <div className="grid gap-3 sm:grid-cols-[8rem_1fr]">
                       <div className="relative">
-                        {/* Ảnh là phần trang trí: ô alt ngay cạnh đã mô tả nó. `<img>` thường
-                            như cả admin — `next/image` NÉM khi host nằm ngoài `remotePatterns`. */}
-                        {/* biome-ignore lint/performance/noImgElement: URL Cloudinary đã tối ưu sẵn (ADR-0005) */}
-                        <img
+                        {/* Ảnh là phần trang trí: ô alt ngay cạnh đã mô tả nó. Kit `SafeImg`
+                            (review AL4): ảnh hỏng thành ô cùng khung mang tên "Photo
+                            unavailable" — chỗ quản lý ảnh là nơi cần nhận ra ảnh hỏng nhất. */}
+                        <SafeImg
                           src={tourPhotoThumb(photo.url)}
                           alt=""
-                          className="aspect-[3/2] w-32 rounded-md bg-muted object-cover"
+                          className="aspect-[3/2] w-32 bg-muted"
                         />
                         {index === 0 ? (
                           <span className="absolute top-1.5 left-1.5 rounded-full bg-primary px-2 py-0.5 text-xs font-medium text-primary-foreground">

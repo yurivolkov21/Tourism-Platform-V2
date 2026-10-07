@@ -9,6 +9,7 @@ import {
 import { cn } from '@tourism/ui/lib/utils';
 import { CircleAlertIcon, CircleCheckIcon, LightbulbIcon, StarIcon } from 'lucide-react';
 import type * as React from 'react';
+import { SafeImg } from '@/components/kit/safe-img';
 import { ClampedSummary } from '@/components/tours/editor/clamped-summary';
 import { type TourCardPreviewVM, tourPhotoThumb } from '@/lib/tour-editor-view';
 
@@ -201,8 +202,9 @@ function CoverFrame({ url, children }: { url: string | null; children?: React.Re
   return (
     <div className="relative aspect-[3/2] overflow-hidden rounded-lg bg-muted">
       {url ? (
-        // biome-ignore lint/performance/noImgElement: URL Cloudinary đã tối ưu sẵn (ADR-0005), như cả admin
-        <img src={tourPhotoThumb(url)} alt="" className="size-full object-cover" />
+        // Kit `SafeImg` (review AL4): ảnh hỏng thành ô lấp khung mang tên "Photo unavailable".
+        // `rounded-[inherit]`: góc theo khung, viền đứt của ô hỏng không bị góc khung xén.
+        <SafeImg src={tourPhotoThumb(url)} alt="" className="size-full rounded-[inherit]" />
       ) : (
         <span className="flex size-full items-center justify-center text-xs text-muted-foreground">
           {a.preview.noCover}

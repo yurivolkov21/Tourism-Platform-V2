@@ -16,6 +16,7 @@ import { ImagesIcon, UploadIcon } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { FormField } from '@/components/kit/form-field';
 import { PhotoLibraryDialog } from '@/components/kit/photo-library-dialog';
+import { SafeImg } from '@/components/kit/safe-img';
 import { withDeliveryTransform } from '@/lib/cloudinary-url';
 import type { LoadPhotoLibraryAction } from '@/lib/photo-library';
 import { uploadPhoto } from '@/lib/photo-upload';
@@ -140,11 +141,12 @@ export function PostCoverCard({
           </div>
         ) : (
           <figure className="grid gap-1.5">
-            {/* biome-ignore lint/performance/noImgElement: URL Cloudinary đã tối ưu sẵn (ADR-0005) */}
-            <img
+            {/* Kit `SafeImg` (review AL4): ảnh bìa hỏng thành ô cùng khung mang tên "Photo
+                unavailable" — admin thấy ngay cần thay ảnh, không phải một ô xám câm. */}
+            <SafeImg
               src={withDeliveryTransform(cover.url, 'w_640')}
               alt=""
-              className="aspect-[3/2] w-full rounded-md bg-muted object-cover"
+              className="aspect-[3/2] w-full bg-muted"
             />
             <figcaption className="text-xs text-muted-foreground">
               {cover.source === 'CATALOG'

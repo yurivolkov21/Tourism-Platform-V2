@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { AdminLibraryPhoto, AdminPhotoLibrary } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
@@ -105,6 +105,21 @@ describe('PhotoLibraryDialog', () => {
     expect(
       screen.getByRole('listbox').querySelectorAll('[data-slot="select-separator"]'),
     ).toHaveLength(1);
+  });
+
+  it('ảnh thư viện tải hỏng: ô cùng khung mang tên "Photo unavailable", ô tích vẫn còn (review AL4)', async () => {
+    const load = vi.fn<LoadPhotoLibraryAction>().mockResolvedValue({ ok: true, library: LIBRARY });
+    render(<Harness load={load} />);
+    const item = (await screen.findByRole('checkbox', { name: 'Bay at dawn' })).closest(
+      'li',
+    ) as HTMLElement;
+
+    fireEvent.error(item.querySelector('img') as HTMLImageElement);
+
+    expect(
+      within(item).getByRole('img', { name: messages.admin.table.photoUnavailable }),
+    ).toHaveClass('aspect-[3/2]', 'w-full');
+    expect(within(item).getByRole('checkbox', { name: 'Bay at dawn' })).toBeInTheDocument();
   });
 
   it('ảnh đã có trong tour hiện "Added", không tích được', async () => {
