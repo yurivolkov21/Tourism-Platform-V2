@@ -155,7 +155,11 @@ bằng menu.
   bắt ba lỗi (cùng trang thì sinh hai mục lịch sử trùng URL và mất bộ lọc; `router.replace`
   kéo thêm một lượt render server). Nay MỘT cơ chế phía client, không tham số URL
   (`lib/quick-create.ts`):
-  - bấm mục ghi một yêu cầu tạo trong bộ nhớ tab (`requestCreate`), sống 10 giây;
+  - bấm mục ghi một yêu cầu tạo trong bộ nhớ tab (`requestCreate`), sống 60 giây (API gói free
+    ngủ sau 15 phút, lệnh đọc của admin cắt ở 10 giây — lượt điều hướng có thể chậm). Mục sang
+    trang khác ghi lúc điều hướng thật sự bắt đầu (`onNavigate` của Link); cú bấm bị hộp hỏi rời
+    trang chặn thì ghi ngay, để "Discard changes" (đi tiếp bằng `router.push`) vẫn mở hộp — chọn
+    ở lại thì hộp hỏi xoá yêu cầu;
   - trang đích KHÁC trang hiện tại: Link tới path trần; bảng hay hộp của trang ấy mount thì
     tiêu thụ yêu cầu và mở hộp (`useCreateRequest`);
   - trang đích CHÍNH LÀ trang hiện tại: không điều hướng, hộp mở ngay, query lọc giữ nguyên;
@@ -295,7 +299,7 @@ Plan và spec P4f viết trước ADR-0053. Cùng nhánh này sửa doc P4f:
 - Hook đo tràn Summary (giả `scrollHeight`/`clientHeight`).
 - Hàm thuần của khối C: `formatDateRange`, variant badge, nhãn provider, URL thumb, tách email.
 - Quick Create: cùng trang không điều hướng (giữ query), khác trang tới path trần rồi mở hộp;
-  yêu cầu tạo tiêu thụ một lần, hết hạn sau 10 giây; Sheet điện thoại đóng; đóng hộp thì
+  yêu cầu tạo tiêu thụ một lần, hết hạn sau 60 giây; "Discard changes" vẫn mở hộp, ở lại thì không; Sheet điện thoại đóng; đóng hộp thì
   focus về nút Add/New.
 
 **Integration**
