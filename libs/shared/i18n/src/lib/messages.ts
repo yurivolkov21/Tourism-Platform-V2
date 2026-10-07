@@ -610,6 +610,73 @@ export const messages = {
       `Free cancellation until ${days} ${days === 1 ? 'day' : 'days'} before departure`,
     ruleAfter: 'After that, bookings close and cancellations aren’t refunded.',
   },
+  /**
+   * Voucher `/checkout/success?code=` của đơn ĐÃ TRẢ (spec P7 §2.6, §6, §8) — thẻ chia đôi,
+   * mảng teal. Chỉ khai chữ MỚI; nhãn đã có thì chỗ gọi dùng lại: "Total paid", "View
+   * booking", "Browse more tours" (`booking.success`), "Includes all taxes and fees."
+   * (`checkoutSummary.taxesNote`), câu hạn huỷ (`cancellationDeadline.full`), câu hoàn tiền
+   * (`accountBookingDetail.refundLine`), chế độ thử (`tourDetail.booking.testMode`), chữ trên
+   * mộc (`passportVisa.stampByStatus`).
+   */
+  voucher: {
+    /** Vừa trả (≤ 30 phút sau `paidAt`), chuyến một ngày. `place`: điểm đến đầu tiên, không có thì tên tour. */
+    freshDayTitle: (place: string) => `Your day in ${place} is booked.`,
+    /** Vừa trả, chuyến nhiều ngày. */
+    freshTripTitle: (place: string) => `Your trip to ${place} is booked.`,
+    /**
+     * Dòng phụ lúc vừa trả. "on its way" chứ không "emailed" như bản vẽ: email xác nhận đi qua
+     * outbox (enqueue cùng transaction với PAID, worker gửi sau), lúc trang render có thể chưa đi.
+     */
+    freshSub: (code: string, email: string) =>
+      `We’ve received booking ${code} and a copy is on its way to ${email}.`,
+    /** Mở lại về sau — không chúc mừng, không hứa email "đang tới". */
+    reopenedTitle: 'Your trip voucher',
+    reopenedSub: (date: string, email: string) => `Booked on ${date} · a copy went to ${email}`,
+    /** Dòng nhỏ trên ảnh bìa. */
+    photoKicker: (place: string, days: number) =>
+      `${place} · ${days} ${days === 1 ? 'day' : 'days'}`,
+    /** Chip kính mờ: "2 adults, 1 child × $49" — `party` từ `accountBookings.travellers`. */
+    partyPrice: (party: string, price: string) => `${party} × ${price}`,
+    meetingPoint: 'Meeting point',
+    /** Tour đã gỡ (hoặc chưa ghi điểm hẹn): email xác nhận đã mang chi tiết. */
+    meetingPointFallback: 'Details are in your confirmation email.',
+    paidWith: (provider: string) => `Paid with ${provider}`,
+    leadTraveller: 'Lead traveller',
+    needHelp: 'Need help?',
+    /** Câu trước link — chỗ gọi nối `contactUs` (link `/contact`) và dấu chấm. */
+    needHelpBody: 'Reply to the confirmation email, or',
+    contactUs: 'contact us',
+    codeLabel: 'Booking code',
+    /** Tổng số khách (người lớn và trẻ em) — kiểu vé vào cổng. */
+    admit: (n: number) => `Admit ${n}`,
+    showCode: 'Show this code at pickup — printed or on your phone.',
+    /** Dải thay ô mã khi đơn đã huỷ: không còn mã nào để chìa ra. */
+    cancelledNotice: 'This booking was cancelled — this voucher is no longer valid.',
+    receiptHeading: 'Receipt overview',
+    refunded: 'Refunded',
+    /** Số tiền đã định dạng (`formatMoneyExact`); dấu trừ là U+2212. */
+    refundedAmount: (amount: string) => `−${amount}`,
+    journal: {
+      heading: 'Trip journal',
+      /** Nhãn cho trình đọc màn hình của dấu tích trên mốc đã xong. */
+      done: 'Done',
+      booked: 'Booked',
+      bookedAndPaid: 'Booked and paid',
+      freeCancellationEnds: 'Free cancellation ends',
+      /** Sắp đi mà đã quá hạn chót — mốc đã qua, không còn là "ends". */
+      freeCancellationEnded: 'Free cancellation ended',
+      /** `date` từ `formatChipDate` — cùng giờ chốt với `cancellationDeadline.full`. */
+      deadlineAt: (date: string) => `${date}, 11:59 pm Vietnam time`,
+      pickupDay: 'Pickup day',
+      tripStarted: 'Trip started',
+      tripEnds: 'Trip ends',
+      travelled: 'Travelled',
+      writeReview: 'Write a review',
+      reviewed: 'Reviewed',
+      cancelled: 'Cancelled',
+      refund: 'Refund',
+    },
+  },
   common: {
     home: 'Home',
     onThisPage: 'On this page',
