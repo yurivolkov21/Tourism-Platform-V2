@@ -111,9 +111,10 @@ const EnvSchema = z
       .regex(/^whsec_[A-Za-z0-9+/=]+$/, 'must look like whsec_<base64>')
       .optional(),
     EMAIL_FROM: z.string().min(1).default('Nexora <noreply@tourism.test>'),
-    // Observability (ADR-0010) — SENTRY_DSN set → captureException đẩy lỗi 500
-    // lên Sentry; không set → no-op (interim: Logger.error → platform stdout).
-    // Optional mọi env: capstone chưa provision DSN. Cài @sentry/node là follow-up.
+    // Observability (ADR-0010) — SEAM CHƯA NỐI: chưa cài @sentry/node, nên đặt SENTRY_DSN
+    // chỉ làm captureException ghi thêm một dòng cảnh báo vào log, KHÔNG gửi gì lên Sentry;
+    // không set → no-op (lỗi 500 vẫn qua Logger.error ra stdout của platform). Optional mọi
+    // env; nối thật (cài @sentry/node, Sentry.init lúc boot) là follow-up.
     SENTRY_DSN: z.string().min(1).optional(),
     // Newsletter unsubscribe (P3a spec §4.4) — ký/verify token HMAC tự xác
     // thực, KHÔNG dùng chung BETTER_AUTH_SECRET (xem comment ở

@@ -97,8 +97,9 @@ chỗ của quyết định gốc; luật xoá, khoá và hộp xác nhận gi�
 - **§3, lệnh lưu tour đến sau lượt xoá:** câu "nhận `P2003` — mã có sẵn 'điểm đến không tồn
   tại'" sai: `P2003` được đổi thành `NOT_FOUND`, trùng mã "tour không tồn tại", nên khu sửa tour
   báo "This tour no longer exists.", đá về `/tours` và làm mất chữ chưa lưu. Nay
-  `adminTours.create` và `adminTours.updateDetails` trả mã riêng `LINK_NOT_FOUND` (409) khi danh
-  mục hoặc điểm đến được chọn không còn; `NOT_FOUND` chỉ còn nghĩa tour không tồn tại. Admin
+  `adminTours.create` và `adminTours.updateDetails` trả mã riêng `LINK_NOT_FOUND` (404, theo
+  tiền lệ `RELATED_TOUR_NOT_FOUND` của bài viết) khi danh mục hoặc điểm đến được chọn không
+  còn; `NOT_FOUND` chỉ còn nghĩa tour không tồn tại. Admin
   hiện thông báo, làm mới danh sách chọn và giữ nguyên chữ đang gõ. API lên trước admin (deploy
   hai nhịp): admin cũ gặp mã lạ thì rơi về thông báo lỗi chung, không đá về `/tours`.
 - **§2 và §3, bust cache:** xoá một hàng đang ẩn không bust tag `tours` nữa — hàng ẩn không hiện
