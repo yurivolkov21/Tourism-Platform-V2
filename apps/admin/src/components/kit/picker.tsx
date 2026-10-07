@@ -130,7 +130,8 @@ export function Picker(props: PickerProps) {
         // Chuỗi rỗng đi thẳng xuống: Base UI 1.6 coi `''` là "chưa chọn" nên
         // `data-placeholder` tự gắn lên trigger (cùng nếp `FormSelect` cũ).
         value={value}
-        items={all.map((option) => ({ value: option.value, label: option.label }))}
+        // KHÔNG truyền `items` (review SI5): Base UI 1.6 chỉ đọc nó ở `SelectValue` khi không có
+        // hàm render — nhãn ô đã do hàm render bên dưới lo, gõ-tìm đọc `label` của `SelectItem`.
         disabled={disabled}
         onValueChange={(next, details) => {
           // Chỉ chuyển tiếp lựa chọn của NGƯỜI DÙNG (review E3). Base UI 1.6 gọi hàm này từ bốn
