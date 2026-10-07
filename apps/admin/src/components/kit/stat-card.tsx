@@ -17,10 +17,10 @@ import type { StatCardVM } from '@/lib/stats-view';
  * lớn · pill delta ↑/↓ · caption "vs X prior 28 days").
  *
  * Kiểu dáng bê nguyên khối `section-cards` của block dashboard-01 (gradient
- * `from-primary/5`, container query `@[250px]/card` cho cỡ chữ, `CardFooter`
- * override `border-t-0` vì Card nova có gạch; thẻ hẹp dưới 220px thì thêm luật
- * riêng — xem `HEADER_LAYOUT`) — cùng lý do đã ghi ở
- * `DataTableFrame`: ba vùng phải nhìn là MỘT hệ. Từ P4d (ADR-0036 §1) chính
+ * `from-primary/5`, `CardFooter` override `border-t-0` vì Card nova có gạch) —
+ * cùng lý do đã ghi ở `DataTableFrame`: ba vùng phải nhìn là MỘT hệ. Riêng phần
+ * đầu thẻ (nhãn · số · pill) bố cục theo nội dung thay cho các ngưỡng bề rộng
+ * của block — xem `HEADER_LAYOUT` và `VALUE_TEXT`. Từ P4d (ADR-0036 §1) chính
  * component này chạy ở trang `/`; bản demo `section-cards.tsx` đã xoá, đây
  * là nguồn duy nhất của kiểu dáng ấy.
  *
@@ -30,13 +30,29 @@ import type { StatCardVM } from '@/lib/stats-view';
 
 const t = messages.admin.stats;
 
-/** Số card → số cột ở màn rộng. Class phải TĨNH để Tailwind quét thấy. */
+/** Số card → số cột ở màn rộng (khung `main` từ 64rem). Class phải TĨNH để Tailwind quét thấy. */
 const GRID_COLUMNS: Record<number, string> = {
   1: '@5xl/main:grid-cols-1',
   2: '@5xl/main:grid-cols-2',
   3: '@5xl/main:grid-cols-3',
   4: '@5xl/main:grid-cols-4',
 };
+
+/**
+ * Số cột DƯỚI `@5xl/main` theo số card (review A2-5). Class phải TĨNH để Tailwind quét thấy.
+ *
+ * - 4 card (Dashboard, Bookings, Reviews, Reports): 2 cột từ màn hẹp nhất — bốn card xếp dọc
+ *   từng chiếm hết màn đầu tiên trên điện thoại (spec 2026-10-05 §4 #12).
+ * - 1 card: 1 cột — nửa bề rộng trơ trọi.
+ * - Số card khác (hàng 3 card của Outbox, Payment events, Enquiries, Subscribers): như trước đợt
+ *   sửa sạn — 1 cột trên điện thoại, 2 cột từ `@xl/main`. Lưới 2 cột từ màn hẹp nhất từng để
+ *   card thứ ba mồ côi ở 375px.
+ */
+function narrowGridColumns(count: number): string {
+  if (count === 4) return 'grid-cols-2';
+  if (count === 1) return 'grid-cols-1';
+  return 'grid-cols-1 @xl/main:grid-cols-2';
+}
 
 /**
  * Hàng card đứng TRÊN bảng của một trang vùng. `<section>` có tên (không phải
@@ -62,9 +78,7 @@ export function StatCardRow({
     <div
       className={cn(
         'grid gap-4 *:data-[slot=card]:bg-linear-to-t *:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card *:data-[slot=card]:shadow-xs',
-        // Màn hẹp 2 cột (spec 2026-10-05 §4 #12): bốn thẻ xếp dọc từng chiếm hết màn đầu
-        // tiên. Hàng chỉ một thẻ thì giữ 1 cột — nửa bề rộng trơ trọi.
-        cards.length === 1 ? 'grid-cols-1' : 'grid-cols-2',
+        narrowGridColumns(cards.length),
         GRID_COLUMNS[cards.length] ?? GRID_COLUMNS[4],
         'dark:*:data-[slot=card]:bg-card',
       )}
@@ -100,28 +114,32 @@ const TONE_CLASS = {
 } as const;
 
 /**
- * Bố cục phần đầu thẻ theo bề rộng THẺ (container `card`; Ruling F-a của review cuối nhánh).
+ * Phần đầu thẻ bố cục THEO NỘI DUNG (review AL3): một hàng `flex-wrap` gồm hai mục — khối nhãn +
+ * con số, và pill. Đủ chỗ thì pill đứng góc phải ngang hàng nhãn (chỗ của `CardAction` trong
+ * block dashboard-01); hết chỗ thì tự xuống dòng dưới con số, căn trái. Các lớp đặt chỗ theo
+ * lưới của `CardAction` không còn tác dụng trong hàng flex.
  *
- * Dưới 220px phần đầu còn MỘT cột và pill xuống dòng riêng dưới con số, căn trái; con số còn
- * `text-xl`. Từ 220px trả lại chỗ mặc định của `CardAction`: cột phải, chiếm hai dòng đầu.
- * Lưới thẻ vẫn 2 cột (spec 2026-10-05 §4 #12). Thẻ hẹp gặp ở điện thoại 360–414px (thẻ
- * 156–183px), màn 448–480px (200–216px) và màn 768px có sidebar mở (210px).
- *
- * Vì sao 220 chứ không 200 (đo 06/10 với thẻ Revenue "$40,849.38" kèm pill): hai cột với con
- * số `text-2xl` cần thẻ rộng chừng 217px; ngưỡng 200 vẫn để pill bị cắt 17px ở màn 448 và
- * 7px ở màn 768 có sidebar, nơi bản trước nhánh này còn xếp thẻ 1 cột nên chưa từng cắt.
- *
- * Spec §7 chỉ dặn thu cỡ chữ con số, và đo trình duyệt Task 19 cho thấy chưa đủ: ở 375px thẻ
- * Revenue vẫn tràn 11px khi con số đã còn 16px, còn Cancellation rate (1px) và Unsubscribed
- * 28d (19px) tràn vì chữ dài nhất của NHÃN cộng bề rộng pill — cỡ chữ con số không chạm tới
- * hai thứ ấy. Card `overflow-hidden` nên trang không tràn; mắt chỉ thấy pill mất một nửa.
+ * Thay cho ngưỡng `@[220px]/card` cũ — ngưỡng ấy hiệu chỉnh theo MỘT mẫu ("$40,849.38" kèm
+ * "13.5%" cần thẻ 216,8px): doanh thu 6 chữ số bị cắt 11–16px, 7 chữ số 44px (mất chữ %), pill
+ * "1942.5%"/"20324.7%" cắt 10–28px. Badge `whitespace-nowrap` và Card `overflow-hidden` nên phần
+ * bị cắt không ai thấy, trang cũng không tràn.
  */
-const HEADER_LAYOUT =
-  'has-data-[slot=card-action]:grid-cols-1 @[220px]/card:has-data-[slot=card-action]:grid-cols-[1fr_auto]';
+const HEADER_LAYOUT = 'flex flex-wrap items-start justify-between';
 
-/** Chỗ của pill — xem `HEADER_LAYOUT`. Ghi đè lớp mặc định của `CardAction` qua `cn`. */
-const ACTION_PLACEMENT =
-  'col-start-1 row-span-1 row-start-auto justify-self-start @[220px]/card:col-start-2 @[220px]/card:row-span-2 @[220px]/card:row-start-1 @[220px]/card:justify-self-end';
+/**
+ * Cỡ chữ con số co giãn theo bề ngang PHẦN ĐẦU THẺ (`100cqi` = khung `@container/card-header`
+ * của `CardHeader`, tức bề ngang thẻ trừ lề trong) — không theo bậc ngưỡng px:
+ * - `100cqi/8.5`, trần 30px (`text-3xl` cũ): thẻ cỡ trung (4 card một hàng ở màn 1320–1440px,
+ *   thẻ 232–262px) giữ chỗ cho pill đứng cạnh "$40,849.38".
+ * - Sàn `min(20px, 100cqi/7.2)`: thẻ hẹp (điện thoại, pill đã xuống dòng) được chữ to hơn
+ *   công thức trên — tới 20px như `text-xl` cũ — nhưng không bao giờ vượt bề ngang: chuỗi 14 ký
+ *   tự ("-$1,234,567.89") vừa khít ở thẻ 150px.
+ * - `wrap-anywhere` là lưới cuối: con số dài hơn nữa xuống dòng chứ không bị Card cắt, không
+ *   thành "…" (đo Edge: "$12,345,678.90" ở thẻ 150–179px thành hai dòng).
+ * - `leading-tight` khai tường minh: cỡ chữ tuỳ biến không mang sẵn line-height như `text-*`.
+ */
+const VALUE_TEXT =
+  'text-[length:clamp(min(1.25rem,100cqi/7.2),100cqi/8.5,1.875rem)] leading-tight font-semibold tabular-nums wrap-anywhere';
 
 /** Props = VM trừ `key` — `key` là của React, không phải dữ liệu của card. */
 export type StatCardProps = Omit<StatCardVM, 'key'>;
@@ -130,14 +148,15 @@ export function StatCard({ label, value, caption, delta, deltaGood, callout }: S
   const tone = deltaGood === undefined ? 'neutral' : deltaGood ? 'good' : 'bad';
 
   return (
-    <Card className="@container/card">
+    <Card>
       <CardHeader className={HEADER_LAYOUT}>
-        <CardDescription>{label}</CardDescription>
-        <CardTitle className="text-xl font-semibold tabular-nums @[220px]/card:text-2xl @[250px]/card:text-3xl">
-          {value}
-        </CardTitle>
+        {/* `min-w-0`: khối được co theo bề ngang thẻ — nhãn dài xuống dòng trong khối. */}
+        <div className="grid min-w-0 gap-1">
+          <CardDescription>{label}</CardDescription>
+          <CardTitle className={VALUE_TEXT}>{value}</CardTitle>
+        </div>
         {delta ? (
-          <CardAction className={ACTION_PLACEMENT}>
+          <CardAction>
             <Badge
               variant="outline"
               // `data-*` là nguồn: test soi chiều/tông ở đây, CSS chỉ ăn theo.
@@ -157,7 +176,7 @@ export function StatCard({ label, value, caption, delta, deltaGood, callout }: S
             </Badge>
           </CardAction>
         ) : callout ? (
-          <CardAction className={ACTION_PLACEMENT}>
+          <CardAction>
             {/* Pill TRẠNG THÁI cho card ảnh chụp (không có kỳ trước) — khác
                 pill delta: không mũi tên, không "vs …", `data-testid` riêng
                 để không ai đọc nhầm nó thành "xu hướng đứng yên" (vòng vá

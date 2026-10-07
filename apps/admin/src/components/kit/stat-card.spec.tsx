@@ -83,10 +83,10 @@ describe('StatCard', () => {
     expect(screen.queryByTestId('stat-delta')).not.toBeInTheDocument();
   });
 
-  // Ruling F-a (review cuối nhánh): ở 375px thẻ chỉ rộng 164px, pill bên phải bị đẩy ra ngoài
-  // khung — Card `overflow-hidden` nên trang không tràn, chỉ pill mất một nửa (đo Task 19).
-  // jsdom không chạy container query, nên hai ca dưới canh đúng lớp: dưới 220px phần đầu một
-  // cột và pill xuống dòng riêng, từ 220px trả lại chỗ cũ của `CardAction`.
+  // Review AL3: ngưỡng `@[220px]` từng hiệu chỉnh theo MỘT mẫu ("$40,849.38" kèm "13.5%") —
+  // doanh thu 6–7 chữ số hay pill % lớn vẫn bị Card `overflow-hidden` cắt mất 10–44px. jsdom
+  // không dựng bố cục, nên các ca dưới canh đúng cấu trúc và lớp; số đo thật (Edge headless, CSS
+  // Tailwind biên dịch từ globals.css của admin, thẻ rộng 150–340px) ghi ở báo cáo của đợt vá.
   it.each([
     ['delta', UP, 'stat-delta'],
     [
@@ -95,38 +95,37 @@ describe('StatCard', () => {
       'stat-callout',
     ],
   ])(
-    'thẻ hẹp dưới 220px: pill %s xuống dòng riêng dưới con số, căn trái',
+    'phần đầu bố cục theo nội dung: pill %s nằm cạnh khối nhãn + số, hết chỗ thì tự xuống dòng — không ngưỡng px nào',
     (_kind, props, testId) => {
       render(<StatCard {...props} />);
 
-      const header = document.querySelector('[data-slot="card-header"]');
-      expect(header).toHaveClass(
-        'has-data-[slot=card-action]:grid-cols-1',
-        '@[220px]/card:has-data-[slot=card-action]:grid-cols-[1fr_auto]',
-      );
-      // Lớp hai cột mặc định của CardHeader phải bị thay, không được đứng song song.
-      expect(header).not.toHaveClass('has-data-[slot=card-action]:grid-cols-[1fr_auto]');
+      const header = document.querySelector('[data-slot="card-header"]') as HTMLElement;
+      expect(header).toHaveClass('flex', 'flex-wrap', 'justify-between');
 
+      // Hai mục của hàng: khối nhãn + con số, và pill. Nhãn với số đi chung một khối để pill
+      // còn chỗ thì đứng góc phải ngang hàng nhãn, hết chỗ thì xuống dưới con số, căn trái.
       const action = screen.getByTestId(testId).closest('[data-slot="card-action"]');
-      expect(action).toHaveClass('col-start-1', 'row-span-1', 'justify-self-start');
-      expect(action).toHaveClass(
-        '@[220px]/card:col-start-2',
-        '@[220px]/card:row-span-2',
-        '@[220px]/card:row-start-1',
-        '@[220px]/card:justify-self-end',
-      );
-      // Từng lớp một: `not.toHaveClass(a, b)` chỉ đỏ khi có ĐỦ cả hai.
-      expect(action).not.toHaveClass('col-start-2');
-      expect(action).not.toHaveClass('justify-self-end');
+      expect(action?.parentElement).toBe(header);
+      const block = screen.getByText(props.value).parentElement;
+      expect(block?.parentElement).toBe(header);
+      expect(block).toContainElement(screen.getByText(props.label));
+
+      // Không còn ngưỡng bề rộng cố định nào quyết chỗ của pill.
+      for (const element of [header, action]) {
+        expect(element?.className).not.toMatch(/@\[\d+px\]/);
+      }
     },
   );
 
-  it('con số nhỏ còn text-xl khi thẻ hẹp, lớn dần theo bề rộng thẻ', () => {
+  it('con số không bao giờ bị cắt: cỡ chữ co theo bề ngang phần đầu thẻ, hết chỗ thì xuống dòng chứ không bị cắt hay thành "…"', () => {
     render(<StatCard {...UP} />);
 
     const value = screen.getByText('$1,240.50');
-    expect(value).toHaveClass('text-xl', '@[220px]/card:text-2xl', '@[250px]/card:text-3xl');
-    expect(value).not.toHaveClass('text-2xl');
+    // Cỡ chữ là hàm của bề ngang khung (đơn vị `cqi`), không phải bậc theo ngưỡng px.
+    expect(value.className).toMatch(/text-\[length:[^\]]*cqi/);
+    expect(value.className).not.toMatch(/@\[\d+px\]/);
+    expect(value).toHaveClass('wrap-anywhere');
+    expect(value).not.toHaveClass('truncate');
   });
 });
 
@@ -162,8 +161,8 @@ describe('StatCardRow', () => {
     expect(container.querySelector('[data-testid="stat-period"]')).toBeNull();
   });
 
-  it('màn hẹp xếp 2 cột; hàng chỉ một thẻ thì 1 cột', () => {
-    const { rerender } = render(
+  it('hàng 4 thẻ: 2 cột từ màn hẹp nhất (spec 2026-10-05 §4 #12), một hàng bốn thẻ ở màn rộng', () => {
+    render(
       <StatCardRow
         cards={[
           { key: 'revenue', ...BASE },
@@ -173,12 +172,39 @@ describe('StatCardRow', () => {
         ]}
       />,
     );
-    const region = screen.getByRole('region', { name: messages.admin.stats.regionLabel });
-    expect(region.querySelector('.grid')).toHaveClass('grid-cols-2');
-    // Màn rộng (khung `main` từ 64rem) thì bốn thẻ một hàng.
-    expect(region.querySelector('.grid')).toHaveClass('@5xl/main:grid-cols-4');
+    const grid = screen
+      .getByRole('region', { name: messages.admin.stats.regionLabel })
+      .querySelector('.grid');
+    expect(grid).toHaveClass('grid-cols-2', '@5xl/main:grid-cols-4');
+  });
 
-    rerender(<StatCardRow cards={[{ key: 'revenue', ...BASE }]} />);
-    expect(region.querySelector('.grid')).toHaveClass('grid-cols-1');
+  // Review A2-5: lưới 2 cột từ màn hẹp nhất từng áp cho MỌI hàng, nên bốn trang 3 thẻ (Outbox,
+  // Payment events, Enquiries, Subscribers) ra dáng 2+1 ở 375px — thẻ thứ ba mồ côi. Hàng 3 thẻ
+  // về như trước: 1 cột trên điện thoại, 2 cột từ `@xl/main`, 3 cột ở màn rộng.
+  it('hàng 3 thẻ: 1 cột trên điện thoại — không thẻ mồ côi; các bậc rộng hơn giữ nguyên', () => {
+    render(
+      <StatCardRow
+        cards={[
+          { key: 'created', ...BASE, label: 'Created 28d' },
+          { key: 'won', ...BASE, label: 'Won 28d' },
+          { key: 'open', ...BASE, label: 'Open now' },
+        ]}
+      />,
+    );
+    const grid = screen
+      .getByRole('region', { name: messages.admin.stats.regionLabel })
+      .querySelector('.grid');
+    expect(grid).toHaveClass('grid-cols-1', '@xl/main:grid-cols-2', '@5xl/main:grid-cols-3');
+    expect(grid).not.toHaveClass('grid-cols-2');
+  });
+
+  it('hàng một thẻ: 1 cột ở mọi bề rộng — nửa bề rộng trơ trọi', () => {
+    render(<StatCardRow cards={[{ key: 'revenue', ...BASE }]} />);
+    const grid = screen
+      .getByRole('region', { name: messages.admin.stats.regionLabel })
+      .querySelector('.grid');
+    expect(grid).toHaveClass('grid-cols-1');
+    expect(grid).not.toHaveClass('grid-cols-2');
+    expect(grid).not.toHaveClass('@xl/main:grid-cols-2');
   });
 });
