@@ -33,11 +33,21 @@ const listeners = new Set<(key: CreateKey) => void>();
 
 /**
  * Ghi yêu cầu mở hộp tạo của `key` rồi báo các trang đang nghe. Gọi trong `onNavigate` của Link
- * (khác trang) hay trong handler bấm (cùng trang).
+ * (khác trang), trong handler bấm (cùng trang), hoặc khi cú bấm khác trang bị hộp hỏi rời trang
+ * chặn ("Discard changes" đi tiếp bằng `router.push` — xem `clearCreateRequest`).
  */
 export function requestCreate(key: CreateKey): void {
   pending = { key, at: Date.now() };
   for (const listener of listeners) listener(key);
+}
+
+/**
+ * Bỏ yêu cầu đang chờ (nếu có) — hộp hỏi rời trang gọi khi người dùng chọn ở lại: cú bấm Quick
+ * Create bị hộp ấy chặn đã ghi yêu cầu để "Discard changes" vẫn mở được hộp tạo (review G6-F6), ở
+ * lại thì yêu cầu ấy không được sống tiếp mà mở hộp bất ngờ lần sau vào trang đích.
+ */
+export function clearCreateRequest(): void {
+  pending = null;
 }
 
 /** Yêu cầu đang chờ khớp `key` thì xoá nó (tươi hay đã quá hạn); trả `true` khi nó còn tươi. */

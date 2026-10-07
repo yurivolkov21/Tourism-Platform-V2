@@ -248,7 +248,7 @@ describe('QuickCreateMenu', () => {
     await waitFor(() => expect(visibleText(t.quickCreate)).toHaveLength(2));
   });
 
-  it('khác trang, form đang sửa dở chặn cú bấm: không ghi yêu cầu nào — ở lại rồi tự vào trang đích thì hộp tạo không tự mở (review G6-F1)', async () => {
+  it('khác trang, form đang sửa dở chặn cú bấm rồi chọn ở lại: yêu cầu bị xoá — tự vào trang đích sau đó thì hộp tạo không tự mở (review G6-F1, G6-F6)', async () => {
     location.pathname = '/tours/ha-long';
     const user = userEvent.setup();
     const { unmount } = render(
@@ -269,10 +269,37 @@ describe('QuickCreateMenu', () => {
     );
     expect(navigate).not.toHaveBeenCalled();
 
-    // Ngay sau đó người dùng tự vào trang đích (sidebar): không có yêu cầu nào để tiêu thụ.
+    // Ngay sau đó người dùng tự vào trang đích (sidebar): "Keep editing" đã xoá yêu cầu.
     unmount();
     render(<NewTourDialog options={OPTIONS} create={vi.fn()} />);
     expect(screen.queryByRole('dialog', { name: newTour.dialog.title })).toBeNull();
+  });
+
+  it('khác trang, form đang sửa dở: chọn "Discard changes" thì sang trang đích và hộp tạo vẫn mở (review G6-F6)', async () => {
+    location.pathname = '/tours/ha-long';
+    const user = userEvent.setup();
+    const { unmount } = render(
+      <TooltipProvider>
+        <SidebarProvider defaultOpen>
+          <UnsavedChangesProvider>
+            <QuickCreateMenu />
+            <DirtyForm />
+          </UnsavedChangesProvider>
+        </SidebarProvider>
+      </TooltipProvider>,
+    );
+
+    await user.click(screen.getByRole('button', { name: t.quickCreate }));
+    await user.click(await screen.findByRole('menuitem', { name: newTour.action }));
+    await user.click(
+      await screen.findByRole('button', { name: messages.admin.unsavedChanges.discard }),
+    );
+
+    // Hộp hỏi đi tiếp bằng `router.push`, không qua Link nên `onNavigate` không chạy: yêu cầu
+    // phải được ghi ngay lúc cú bấm bị hộp hỏi chặn.
+    unmount();
+    render(<NewTourDialog options={OPTIONS} create={vi.fn()} />);
+    expect(await screen.findByRole('dialog', { name: newTour.dialog.title })).toBeInTheDocument();
   });
 
   it('trang đích dựng xong sau 30 giây (API gói free ngủ dậy, Vercel khởi động lạnh): hộp tạo vẫn mở (review G6-F1)', async () => {

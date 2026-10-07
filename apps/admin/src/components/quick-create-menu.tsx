@@ -50,9 +50,10 @@ function isModifiedClick(event: React.MouseEvent): boolean {
  * Mỗi mục ghi một yêu cầu mở hộp tạo (`lib/quick-create.ts`) thay cho tham số URL cũ (review
  * A2-3, EF1, RU6):
  * - Trang của mục KHÁC trang đang mở: mục là Link tới path trần, ghi yêu cầu trong `onNavigate` —
- *   Next chỉ gọi nó khi điều hướng phía client thật sự bắt đầu, nên cú bấm bị hộp hỏi rời trang
- *   chặn hay cú bấm kèm phím (tab mới) không để lại yêu cầu treo (review G6-F1); trang đích
- *   mount thì mở hộp.
+ *   Next chỉ gọi nó khi điều hướng phía client thật sự bắt đầu, nên cú bấm kèm phím (tab mới)
+ *   không để lại yêu cầu treo (review G6-F1); trang đích mount thì mở hộp. Cú bấm bị hộp hỏi rời
+ *   trang chặn thì ghi ngay trong `onClick`, vì "Discard changes" đi tiếp bằng `router.push`
+ *   chứ không qua Link; chọn ở lại thì hộp hỏi xoá yêu cầu ấy (review G6-F6).
  * - Trang của mục CHÍNH LÀ trang đang mở: mục không điều hướng, hộp của trang mở ngay — query
  *   lọc giữ nguyên, không thêm mục lịch sử, không lượt render server nào.
  *
@@ -128,7 +129,11 @@ export function QuickCreateMenu() {
                       // Điện thoại: đóng Sheet sidebar (review B2). Cùng trang thì không có lượt dựng
                       // trang mới nào gỡ nó, và hộp tạo sẽ mở chồng lên một Sheet còn mở.
                       setOpenMobile(false);
-                      if (samePage) requestCreate(item.key);
+                      // Cùng trang: không điều hướng, mở luôn. Khác trang mà cú bấm đã bị chặn
+                      // (`defaultPrevented` — hộp hỏi rời trang chặn ở pha capture, review G6-F6):
+                      // Link không điều hướng nên `onNavigate` không chạy, mà "Discard changes" đi
+                      // tiếp bằng `router.push` — ghi yêu cầu ngay; chọn ở lại thì hộp hỏi xoá nó.
+                      if (samePage || event.defaultPrevented) requestCreate(item.key);
                     }}
                   >
                     <item.icon aria-hidden="true" />

@@ -13,6 +13,7 @@ import {
 } from '@tourism/ui/components/alert-dialog';
 import { useRouter } from 'next/navigation';
 import * as React from 'react';
+import { clearCreateRequest } from '@/lib/quick-create';
 import { leaveTarget } from '@/lib/unsaved-changes';
 
 /**
@@ -97,7 +98,12 @@ export function UnsavedChangesProvider({ children }: { children: React.ReactNode
       <AlertDialog
         open={pendingHref !== null}
         onOpenChange={(open) => {
-          if (!open) setPendingHref(null);
+          // Đóng mà không qua "Discard changes" (nút đó là Button thường, đóng hộp bằng prop chứ
+          // không qua đây) là ở lại: bỏ luôn yêu cầu tạo của cú bấm Quick Create vừa bị chặn.
+          if (!open) {
+            setPendingHref(null);
+            clearCreateRequest();
+          }
         }}
       >
         <AlertDialogContent>
