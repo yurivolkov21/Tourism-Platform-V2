@@ -73,7 +73,8 @@ const COLUMN_ICONS = {
 // Ba trần bề rộng đo ở Task 19 của plan 2026-10-05 trên trang hàng FAILED dài nhất: khung bảng
 // ở 1440px chỉ rộng 1094px, nên Type 176px (nhãn loại email dài nhất vẫn trọn), Recipient 144px,
 // Last error 80px; chuỗi đầy đủ vẫn ở `title`. Nhãn Attempts dài ("Not sent — recipient
-// unsubscribed") không cắt được, hàng mang nhãn ấy vẫn làm bảng cuộn.
+// unsubscribed") không cắt mà xuống dòng (Ruling F-a): đo lại 07/10, các trang đo đều hết cuộn,
+// trừ ca cực đoan — hàng SKIPPED giữa các hàng FAILED dài nhất, ngày rộng nhất — còn 24px.
 /**
  * Cột nhận `retry` và `onView` qua tham số (không đọc từ module) — client
  * component KHÔNG tự import server action (nếp F2). Gọi trong `useMemo` khoá
@@ -121,8 +122,13 @@ function buildColumns(retry: RetryActionFn, onView: (row: OutboxRowVM) => void) 
     }),
     columnHelper.accessor('attemptsLabel', {
       header: t.columns.attempts,
+      // Nhãn dài xuống dòng dưới trần 144px, các dòng cân nhau (Ruling F-a); nhãn ngắn hơn trần
+      // vẫn một dòng khi bảng đủ chỗ. Ô xuống dòng được thì bảng thiếu chỗ còn co nó tới chữ dài
+      // nhất ("unsubscribed") thay vì đẩy cả bảng cuộn ngang.
       cell: ({ row }) => (
-        <span className="whitespace-nowrap tabular-nums">{row.original.attemptsLabel}</span>
+        <div className="max-w-36 whitespace-normal text-balance tabular-nums">
+          {row.original.attemptsLabel}
+        </div>
       ),
     }),
     columnHelper.accessor('lastError', {

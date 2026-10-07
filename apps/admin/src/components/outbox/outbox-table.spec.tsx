@@ -69,3 +69,38 @@ describe('OutboxTable — ba ô bị cắt', () => {
     expect(error).toHaveClass('max-w-20', 'truncate');
   });
 });
+
+describe('OutboxTable — ô Attempts', () => {
+  it('nhãn dài xuống dòng dưới trần thay vì kéo bảng cuộn ngang, chữ giữ nguyên (Ruling F-a)', () => {
+    // Đo ở 1440px trước bản vá: trang có hàng SKIPPED giữa các hàng FAILED cuộn 125–152px vì ô
+    // này `whitespace-nowrap` — chữ "Not sent — recipient unsubscribed" rộng 213px.
+    const skippedRow: OutboxRowVM = {
+      ...ROW,
+      id: '4f2a1b3c-0000-4000-8000-000000000020',
+      status: 'SKIPPED',
+      statusLabel: t.status.SKIPPED,
+      attempts: 0,
+      attemptsLabel: t.list.skipped,
+      lastError: null,
+      dedupeKey: 'newsletter-welcome:0a1b2c3d',
+      retried: false,
+      canRetry: false,
+    };
+    render(
+      <OutboxTable
+        rows={[ROW, skippedRow]}
+        query={parseOutboxSearchParams({})}
+        total={2}
+        totalPages={1}
+        retry={vi.fn()}
+      />,
+    );
+
+    const label = screen.getByText(t.list.skipped);
+    expect(label).toHaveClass('max-w-36', 'whitespace-normal', 'text-balance');
+    expect(label).not.toHaveClass('whitespace-nowrap');
+    // Nhãn ngắn dùng chung ô ấy — ngắn hơn trần nên vẫn một dòng (đo trên Edge; jsdom không dàn
+    // trang nên ở đây chỉ canh class).
+    expect(screen.getByText('5/5')).toHaveClass('max-w-36', 'whitespace-normal');
+  });
+});
