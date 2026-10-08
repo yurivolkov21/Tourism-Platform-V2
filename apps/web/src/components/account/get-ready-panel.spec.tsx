@@ -1,27 +1,20 @@
 import { render, screen } from '@testing-library/react';
-import type { BookingCancellation } from '@tourism/contract';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { type BookingTourData, getReadySteps } from '@/lib/get-ready';
-import { makeBooking } from '@/test/fixtures/booking';
+import { getReadySteps } from '@/lib/get-ready';
+import { makeBooking, makeCancellation, makeTourData } from '@/test/fixtures/booking';
 import { GetReadyPanel } from './get-ready-panel';
 
 const TODAY = '2026-10-05';
-const CANCELLATION: BookingCancellation = {
-  deadline: '2026-10-31',
-  withinDeadline: true,
-  refundAmount: '147.00',
-  canCancel: true,
-};
 
-const BOOKING = makeBooking({
+const TRIP = makeBooking({
   code: 'BK-B6VCOQNW',
   tourSlug: 'hanoi-heritage-day',
   tourDestinations: [{ slug: 'ha-noi', name: 'Hà Nội', isPrimary: true }],
   departureStartDate: '2026-11-03',
   departureEndDate: '2026-11-05',
   cancellationDeadline: '2026-10-31',
-  cancellation: CANCELLATION,
 });
+const BOOKING = { ...TRIP, cancellation: makeCancellation(TRIP) };
 
 const DAY_ONE = [
   '08:00 — Hotel pickup',
@@ -29,11 +22,9 @@ const DAY_ONE = [
   '09:15 — One Pillar Pagoda',
 ].join('\n');
 
-const TOUR: BookingTourData = {
-  excluded: ['Lunch (own arrangement)', 'Tips'],
-  meetingPoint: 'Hotel pickup — Hoàn Kiếm, Ba Đình or Tây Hồ',
+const TOUR = makeTourData({
   itinerary: [{ dayNumber: 1, title: 'Ba Đình to the Old Quarter', description: DAY_ONE }],
-};
+});
 
 function renderPanel(today = TODAY) {
   return render(

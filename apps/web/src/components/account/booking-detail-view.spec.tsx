@@ -1,9 +1,9 @@
 import { render, screen } from '@testing-library/react';
-import type { BookingCancellation, BookingDetail } from '@tourism/contract';
+import type { BookingDetail } from '@tourism/contract';
 import { describe, expect, it, vi } from 'vitest';
 import type { JourneyView } from '@/lib/booking-journey';
 import type { GetReadyView } from '@/lib/get-ready';
-import { makeBooking } from '@/test/fixtures/booking';
+import { makeBooking, makeCancellation, makeTourData } from '@/test/fixtures/booking';
 import { BookingDetailView } from './booking-detail-view';
 
 // Mọi khối con đã có spec riêng — ở đây chỉ soi khung: thứ tự, khối nào theo giai đoạn nào.
@@ -49,18 +49,15 @@ vi.mock('@/components/account/awaiting-payment-panel', () => ({
 }));
 
 const TODAY = '2026-10-05';
-const OPEN: BookingCancellation = {
-  deadline: '2026-11-02',
-  withinDeadline: true,
-  refundAmount: '147.00',
-  canCancel: true,
-};
-const TOUR = {
-  excluded: ['Tips'],
-  meetingPoint: 'Hotel pickup',
-  itinerary: [{ dayNumber: 1, title: 'Old Quarter', description: null }],
-};
+const TOUR = makeTourData({ meetingPoint: 'Hotel pickup' });
 const at = (patch: Partial<BookingDetail>) => makeBooking({ code: 'BK-B6VCOQNW', ...patch });
+/** Đơn sắp đi 03/11 (hạn chót 02/11) kèm cờ huỷ server còn trong hạn. */
+const UPCOMING_TRIP = at({
+  departureStartDate: '2026-11-03',
+  departureEndDate: '2026-11-03',
+  cancellationDeadline: '2026-11-02',
+});
+const UPCOMING = { ...UPCOMING_TRIP, cancellation: makeCancellation(UPCOMING_TRIP) };
 
 describe('BookingDetailView — khối cột phải theo giai đoạn (spec §2.5)', () => {
   it.each([
@@ -74,11 +71,7 @@ describe('BookingDetailView — khối cột phải theo giai đoạn (spec §2.
       }),
       'awaiting-payment',
     ],
-    [
-      'upcoming',
-      at({ departureStartDate: '2026-11-03', departureEndDate: '2026-11-03', cancellation: OPEN }),
-      'get-ready|BK-B6VCOQNW|4',
-    ],
+    ['upcoming', UPCOMING, 'get-ready|BK-B6VCOQNW|4'],
     [
       'on_tour',
       at({ departureStartDate: '2026-10-04', departureEndDate: '2026-10-06' }),
@@ -110,29 +103,13 @@ describe('BookingDetailView — khối cột phải theo giai đoạn (spec §2.
   });
 
   it('tour đã gỡ: Get ready chỉ còn một bước, cột trái không có điểm hẹn', () => {
-    render(
-      <BookingDetailView
-        booking={at({
-          departureStartDate: '2026-11-03',
-          departureEndDate: '2026-11-03',
-          cancellation: OPEN,
-        })}
-        tour={null}
-        today={TODAY}
-      />,
-    );
+    render(<BookingDetailView booking={UPCOMING} tour={null} today={TODAY} />);
     expect(screen.getByTestId('panel')).toHaveTextContent('get-ready|BK-B6VCOQNW|1');
     expect(screen.getByTestId('details')).toHaveTextContent('upcoming|none');
   });
 });
 
 describe('BookingDetailView — khung (spec §5.1)', () => {
-  const UPCOMING = at({
-    departureStartDate: '2026-11-03',
-    departureEndDate: '2026-11-03',
-    cancellation: OPEN,
-  });
-
   it('vé → hành trình → hai cột; cột trái nhận giai đoạn và điểm hẹn của tour', () => {
     render(<BookingDetailView booking={UPCOMING} tour={TOUR} today={TODAY} />);
     const ticket = screen.getByTestId('ticket');

@@ -1,6 +1,6 @@
-import type { BookingCancellation } from '@tourism/contract';
+import type { BookingDetail } from '@tourism/contract';
 import { describe, expect, it } from 'vitest';
-import { makeBooking } from '@/test/fixtures/booking';
+import { makeBooking, makeCancellation, makeTourData } from '@/test/fixtures/booking';
 import {
   type BookingTourData,
   getReadySteps,
@@ -15,25 +15,15 @@ import {
  */
 const TODAY = '2026-10-05';
 
-function cancellationOf(overrides: Partial<BookingCancellation> = {}): BookingCancellation {
-  return {
-    deadline: '2026-10-31',
-    withinDeadline: true,
-    refundAmount: '147.00',
-    canCancel: true,
-    ...overrides,
-  };
-}
-
-const BOOKING = makeBooking({
+const TRIP = makeBooking({
   code: 'BK-B6VCOQNW',
   tourSlug: 'hanoi-heritage-day',
   tourDestinations: [{ slug: 'ha-noi', name: 'Hà Nội', isPrimary: true }],
   departureStartDate: '2026-11-03',
   departureEndDate: '2026-11-05',
   cancellationDeadline: '2026-10-31',
-  cancellation: cancellationOf(),
 });
+const BOOKING: BookingDetail = { ...TRIP, cancellation: makeCancellation(TRIP) };
 
 const DAY_ONE = [
   '08:00 — Hotel pickup, drive to Ba Đình Square',
@@ -42,11 +32,11 @@ const DAY_ONE = [
 const DAY_TWO = { dayNumber: 2, title: 'Ninh Bình by boat', description: '07:00 — Depart' };
 
 /** Ngày 2 đứng TRƯỚC ngày 1 trong mảng: bước "Day 1" phải tìm theo `dayNumber`. */
-const TOUR: BookingTourData = {
+const TOUR: BookingTourData = makeTourData({
   excluded: ['Lunch (own arrangement)', 'Tips', 'Personal expenses'],
   meetingPoint: 'Hotel pickup — hotels in Hoàn Kiếm, Ba Đình or Tây Hồ districts, Hà Nội',
   itinerary: [DAY_TWO, { dayNumber: 1, title: 'Ba Đình to the Old Quarter', description: DAY_ONE }],
-};
+});
 
 const steps = (tour: BookingTourData | null, booking = BOOKING) =>
   getReadySteps(booking, tour, TODAY).steps.map((step) => `${step.number} ${step.key}`);
@@ -131,7 +121,7 @@ describe('getReadySteps — các bước (spec §2.4)', () => {
 
   it('đã qua hạn huỷ: câu "đã qua" và bước không còn nổi', () => {
     const view = getReadySteps(
-      { ...BOOKING, cancellation: cancellationOf({ withinDeadline: false, refundAmount: '0.00' }) },
+      { ...BOOKING, cancellation: makeCancellation(BOOKING, { withinDeadline: false }) },
       TOUR,
       TODAY,
     );

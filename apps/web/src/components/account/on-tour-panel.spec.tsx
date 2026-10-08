@@ -1,20 +1,18 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
-import type { BookingTourData } from '@/lib/get-ready';
-import { makeBooking } from '@/test/fixtures/booking';
+import { makeBooking, makeTourData } from '@/test/fixtures/booking';
 import { OnTourPanel } from './on-tour-panel';
 
 /** Chuyến 04–06/10, hôm nay 05/10 là ngày 2. Ba ngày lịch trình khác chữ để bắt chọn nhầm ngày. */
 const BOOKING = makeBooking({ departureStartDate: '2026-10-04', departureEndDate: '2026-10-06' });
-const TOUR: BookingTourData = {
-  excluded: [],
+const TOUR = makeTourData({
   meetingPoint: 'Hội An Ancient Town gate, Trần Phú street',
   itinerary: [
     { dayNumber: 1, title: 'Đà Nẵng arrival', description: '14:00 — Check in' },
     { dayNumber: 2, title: 'Hội An old town', description: '08:00 — Walk\n12:00 — Cao lầu lunch' },
     { dayNumber: 3, title: 'Mỹ Sơn sanctuary', description: '06:00 — Sunrise visit' },
   ],
-};
+});
 
 describe('OnTourPanel', () => {
   it('h2 "Today’s plan" và "Day 2 of 3"', () => {

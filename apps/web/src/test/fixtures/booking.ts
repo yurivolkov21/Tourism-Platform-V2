@@ -1,4 +1,10 @@
-import type { BookingDetail } from '@tourism/contract';
+import {
+  type BookingCancellation,
+  type BookingDetail,
+  cancellationDeadline,
+  remainingRefundable,
+} from '@tourism/contract';
+import type { BookingTourData } from '@/lib/get-ready';
 
 /**
  * Fixture `BookingDetail` dùng chung cho test tầng web.
@@ -57,6 +63,50 @@ export function makeBooking(overrides: Partial<BookingDetail> = {}): BookingDeta
     // ADR-0041: trạng thái huỷ theo hạn chót (byCode). Mặc định null — test cần
     // hộp xác nhận huỷ thì đè overrides.
     cancellation: null,
+    ...overrides,
+  };
+}
+
+/**
+ * Cờ huỷ `bookings.byCode.cancellation` của MỘT đơn — mặc định còn trong hạn và còn nút huỷ.
+ *
+ * Hạn chót và số hoàn SUY từ chính đơn bằng đúng các hàm server dùng (`cancellationDeadline`,
+ * `remainingRefundable` của contract), nên cờ khớp `cancellationDeadline` của cùng chuyến thay
+ * vì mỗi spec tự gõ một ngày (review P7 B19: năm spec chép tay một literal, có bản lệch ngày).
+ * Quá hạn thì server hoàn 0. Ca cần cờ nói KHÁC ngày của đơn (cờ server thắng — ADR-0041 §7)
+ * thì đè `deadline` hay `withinDeadline` tường minh.
+ */
+export function makeCancellation(
+  booking: Pick<
+    BookingDetail,
+    'departureStartDate' | 'departureEndDate' | 'totalAmount' | 'refundedTotal'
+  > = makeBooking(),
+  overrides: Partial<BookingCancellation> = {},
+): BookingCancellation {
+  const withinDeadline = overrides.withinDeadline ?? true;
+  return {
+    deadline: cancellationDeadline(booking.departureStartDate, booking.departureEndDate),
+    withinDeadline,
+    refundAmount: withinDeadline
+      ? remainingRefundable(booking.totalAmount, booking.refundedTotal)
+      : '0.00',
+    canCancel: true,
+    ...overrides,
+  };
+}
+
+/**
+ * Phần dữ liệu tour mà trang chi tiết đơn đọc (`BookingTourData`: mục không gồm, điểm hẹn, lịch
+ * trình) — đủ cả ba nên khối Get ready có đủ bốn bước. Spec cần thiếu một phần thì đè; một chỗ
+ * dựng nên `BookingTourData` thêm trường là chỉ sửa ở đây.
+ */
+export function makeTourData(overrides: Partial<BookingTourData> = {}): BookingTourData {
+  return {
+    excluded: ['Lunch (own arrangement)', 'Tips'],
+    meetingPoint: 'Hotel pickup — Hoàn Kiếm, Ba Đình or Tây Hồ',
+    itinerary: [
+      { dayNumber: 1, title: 'Ba Đình to the Old Quarter', description: '08:00 — Hotel pickup' },
+    ],
     ...overrides,
   };
 }

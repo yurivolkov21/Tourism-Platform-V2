@@ -1,8 +1,8 @@
 import { render, screen } from '@testing-library/react';
-import type { BookingCancellation, BookingDetail, BookingPhase } from '@tourism/contract';
+import type { BookingDetail, BookingPhase } from '@tourism/contract';
 import { describe, expect, it, vi } from 'vitest';
 import { bookingView } from '@/lib/booking-vm';
-import { makeBooking } from '@/test/fixtures/booking';
+import { makeBooking, makeCancellation } from '@/test/fixtures/booking';
 import { BookingDetailsPanel } from './booking-details-panel';
 
 // `BookingActions` (nút huỷ ở hàng đáy) dùng router và client oRPC.
@@ -13,15 +13,8 @@ vi.mock('@/lib/api/client', () => ({
 }));
 vi.mock('sonner', () => ({ toast: { success: vi.fn() } }));
 
-const CANCELLATION: BookingCancellation = {
-  deadline: '2026-11-02',
-  withinDeadline: true,
-  refundAmount: '147.00',
-  canCancel: true,
-};
-
 /** Ngày đặt 13/08 khác ngày trả 14/08 — bắt chỗ đọc nhầm mốc. */
-const PAID = makeBooking({
+const PAID_TRIP = makeBooking({
   code: 'BK-B6VCOQNW',
   contactName: 'Erik Lund',
   contactEmail: 'erik.lund@example.com',
@@ -34,8 +27,14 @@ const PAID = makeBooking({
   createdAt: '2026-08-13T10:00:00.000Z',
   paidAt: '2026-08-14T03:05:00.000Z',
   specialRequests: null,
-  cancellation: CANCELLATION,
 });
+
+/**
+ * Cờ server CỐ Ý nói hạn chót (02/11) khác `cancellationDeadline` của đơn (29/08, mặc định của
+ * fixture): khối Cancellation phải in ngày của CỜ — đọc nhầm nguồn là chữ ra "29 Aug", ca đỏ.
+ */
+const CANCELLATION = makeCancellation(PAID_TRIP, { deadline: '2026-11-02' });
+const PAID = { ...PAID_TRIP, cancellation: CANCELLATION };
 
 function renderPanel(
   booking: BookingDetail = PAID,

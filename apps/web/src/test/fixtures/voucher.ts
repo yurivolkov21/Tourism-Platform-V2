@@ -1,5 +1,5 @@
-import type { BookingCancellation, BookingDetail } from '@tourism/contract';
-import { makeBooking } from './booking';
+import { type BookingDetail, cancellationDeadline } from '@tourism/contract';
+import { makeBooking, makeCancellation } from './booking';
 
 /**
  * Fixture dùng chung cho các spec voucher `/checkout/success` (plan P7, phần C).
@@ -17,19 +17,40 @@ export function minutesBeforeNow(minutes: number): string {
   return new Date(VOUCHER_NOW.getTime() - minutes * 60_000).toISOString();
 }
 
-/** Cờ `cancellation` server trả cho đơn còn trong hạn huỷ miễn phí. */
-export function openCancellation(deadline: string): BookingCancellation {
-  return { deadline, withinDeadline: true, refundAmount: '147.00', canCancel: true };
-}
+/**
+ * Chuyến ba ngày 3–5/11 (N = 3 nên hạn chót 31/10 — hôm nay 20/10 còn trong hạn): ngày đi khác
+ * ngày về để ca khoảng ngày bắt được chỗ lấy nhầm mốc. Hạn chót và cờ huỷ do `voucherBooking`
+ * suy từ hai ngày này.
+ */
+export const THREE_DAY_TRIP = {
+  departureStartDate: '2026-11-03',
+  departureEndDate: '2026-11-05',
+} as const;
+
+/**
+ * Đơn đã trả rồi bị huỷ (khách huỷ, có `cancelledAt`) — voucher hết hiệu lực. Một bản cho mọi
+ * spec voucher thay vì mỗi spec tự dựng một bộ ngày huỷ.
+ */
+export const CANCELLED_AFTER_PAYING = {
+  status: 'CANCELLED',
+  cancellation: null,
+  cancelledAt: '2026-10-19T08:00:00.000Z',
+} as const satisfies Partial<BookingDetail>;
 
 /**
  * Đơn của bản vẽ `booking-voucher.src.html`: Hà Nội một ngày 3/11, 3 người lớn × $49, trả
  * bằng PayPal hai ngày trước `VOUCHER_NOW` — mặc định là voucher MỞ LẠI của chuyến sắp đi.
  *
  * Hai điểm đến để ca `{nơi}` phân biệt "điểm đến đầu tiên" với "điểm đến nào cũng được".
+ *
+ * `cancellationDeadline` và cờ huỷ của server SUY từ ngày đi, ngày về sau khi đè (cùng hàm
+ * server dùng — `cancellationDeadline`, `makeCancellation`): spec đổi ngày chuyến thì hạn chót
+ * và cờ đổi theo. Spec cần cờ khác (quá hạn, không cờ) thì truyền `cancellation` tường minh.
  */
 export function voucherBooking(overrides: Partial<BookingDetail> = {}): BookingDetail {
-  return makeBooking({
+  const departureStartDate = overrides.departureStartDate ?? '2026-11-03';
+  const departureEndDate = overrides.departureEndDate ?? '2026-11-03';
+  const booking = makeBooking({
     code: 'BK-B6VCOQNW',
     status: 'PAID',
     tourTitle: 'Hanoi Heritage in a Day',
@@ -38,9 +59,9 @@ export function voucherBooking(overrides: Partial<BookingDetail> = {}): BookingD
       { slug: 'ha-noi', name: 'Hà Nội', isPrimary: true },
       { slug: 'ninh-binh', name: 'Ninh Bình', isPrimary: false },
     ],
-    departureStartDate: '2026-11-03',
-    departureEndDate: '2026-11-03',
-    cancellationDeadline: '2026-11-02',
+    departureStartDate,
+    departureEndDate,
+    cancellationDeadline: cancellationDeadline(departureStartDate, departureEndDate),
     unitPrice: '49.00',
     totalAmount: '147.00',
     currency: 'USD',
@@ -51,7 +72,9 @@ export function voucherBooking(overrides: Partial<BookingDetail> = {}): BookingD
     paymentProvider: 'PAYPAL',
     createdAt: '2026-10-18T02:00:00.000Z',
     paidAt: '2026-10-18T02:20:00.000Z',
-    cancellation: openCancellation('2026-11-02'),
     ...overrides,
   });
+  return 'cancellation' in overrides
+    ? booking
+    : { ...booking, cancellation: makeCancellation(booking) };
 }

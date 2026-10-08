@@ -1,6 +1,5 @@
-import type { BookingCancellation } from '@tourism/contract';
 import { describe, expect, it } from 'vitest';
-import { makeBooking } from '@/test/fixtures/booking';
+import { makeBooking, makeCancellation } from '@/test/fixtures/booking';
 import { type JourneyView, journeyMilestones } from './booking-journey';
 
 /**
@@ -11,26 +10,16 @@ import { type JourneyView, journeyMilestones } from './booking-journey';
  */
 const TODAY = '2026-10-05';
 
-function cancellationOf(overrides: Partial<BookingCancellation> = {}): BookingCancellation {
-  return {
-    deadline: '2026-11-02',
-    withinDeadline: true,
-    refundAmount: '147.00',
-    canCancel: true,
-    ...overrides,
-  };
-}
-
-const UPCOMING = makeBooking({
+const UPCOMING_TRIP = makeBooking({
   status: 'PAID',
   createdAt: '2026-08-13T10:00:00.000Z',
   paidAt: '2026-08-14T03:05:00.000Z',
   departureStartDate: '2026-11-03',
   departureEndDate: '2026-11-03',
   cancellationDeadline: '2026-11-02',
-  cancellation: cancellationOf(),
   totalAmount: '147.00',
 });
+const UPCOMING = { ...UPCOMING_TRIP, cancellation: makeCancellation(UPCOMING_TRIP) };
 
 /** [khoá, nhãn, dòng phụ, trạng thái] — so cả bốn cùng lúc. */
 const rows = (view: JourneyView) =>
@@ -75,19 +64,18 @@ describe('journeyMilestones — đơn sắp đi (bản vẽ, hôm nay 05/10)', (
   });
 
   it('đã qua hạn huỷ: mốc ghi "Ended", tính là xong, Today nằm giữa hạn huỷ và ngày đi', () => {
-    const late = makeBooking({
+    const lateTrip = makeBooking({
       status: 'PAID',
       createdAt: '2026-09-30T02:00:00.000Z',
       paidAt: '2026-10-01T02:10:00.000Z',
       departureStartDate: '2026-11-10',
       departureEndDate: '2026-11-12',
       cancellationDeadline: '2026-11-07',
-      cancellation: cancellationOf({
-        deadline: '2026-11-07',
-        withinDeadline: false,
-        refundAmount: '0.00',
-      }),
     });
+    const late = {
+      ...lateTrip,
+      cancellation: makeCancellation(lateTrip, { withinDeadline: false }),
+    };
     const view = journeyMilestones(late, '2026-11-08');
     expect(rows(view).slice(2)).toEqual([
       ['freeCancellation', 'Free cancellation', 'Ended 7 Nov', 'done'],
@@ -110,20 +98,18 @@ describe('journeyMilestones — đơn sắp đi (bản vẽ, hôm nay 05/10)', (
 });
 
 describe('journeyMilestones — đang đi (04–06/10)', () => {
-  const ON_TOUR = makeBooking({
+  const ON_TOUR_TRIP = makeBooking({
     status: 'PAID',
     createdAt: '2026-08-31T02:00:00.000Z',
     paidAt: '2026-09-01T02:10:00.000Z',
     departureStartDate: '2026-10-04',
     departureEndDate: '2026-10-06',
     cancellationDeadline: '2026-10-01',
-    cancellation: cancellationOf({
-      deadline: '2026-10-01',
-      withinDeadline: false,
-      refundAmount: '0.00',
-      canCancel: false,
-    }),
   });
+  const ON_TOUR = {
+    ...ON_TOUR_TRIP,
+    cancellation: makeCancellation(ON_TOUR_TRIP, { withinDeadline: false, canCancel: false }),
+  };
 
   it('giữa chuyến: "Departed" đã xong, "Trip ends" là mốc đang tới, chip ngày thứ mấy', () => {
     const view = journeyMilestones(ON_TOUR, TODAY);
@@ -158,20 +144,18 @@ describe('journeyMilestones — đang đi (04–06/10)', () => {
 
 describe('journeyMilestones — đã đi (bản vẽ: Bà Nà Hills 11/02)', () => {
   it('mọi mốc xong, nhãn sang thì quá khứ, không còn Today', () => {
-    const travelled = makeBooking({
+    const travelledTrip = makeBooking({
       status: 'PAID',
       createdAt: '2026-02-09T08:00:00.000Z',
       paidAt: '2026-02-10T01:00:00.000Z',
       departureStartDate: '2026-02-11',
       departureEndDate: '2026-02-11',
       cancellationDeadline: '2026-02-10',
-      cancellation: cancellationOf({
-        deadline: '2026-02-10',
-        withinDeadline: false,
-        refundAmount: '0.00',
-        canCancel: false,
-      }),
     });
+    const travelled = {
+      ...travelledTrip,
+      cancellation: makeCancellation(travelledTrip, { withinDeadline: false, canCancel: false }),
+    };
     const view = journeyMilestones(travelled, TODAY);
     expect(rows(view)).toEqual([
       ['booked', 'Booked', '9 Feb 2026', 'done'],

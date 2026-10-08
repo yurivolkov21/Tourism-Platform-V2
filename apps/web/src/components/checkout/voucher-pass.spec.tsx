@@ -1,10 +1,17 @@
 import { render, screen, within } from '@testing-library/react';
-import type { BookingCancellation, BookingDetail } from '@tourism/contract';
+import type { BookingDetail } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
 import { describe, expect, it } from 'vitest';
 import { ticketBarcodeWidths } from '@/lib/checkout';
 import { voucherView } from '@/lib/voucher';
-import { VOUCHER_NOW, VOUCHER_TODAY, voucherBooking } from '@/test/fixtures/voucher';
+import { makeCancellation } from '@/test/fixtures/booking';
+import {
+  CANCELLED_AFTER_PAYING,
+  THREE_DAY_TRIP,
+  VOUCHER_NOW,
+  VOUCHER_TODAY,
+  voucherBooking,
+} from '@/test/fixtures/voucher';
 import { VoucherPass } from './voucher-pass';
 
 const CODE = 'BK-B6VCOQNW';
@@ -12,18 +19,13 @@ const CODE = 'BK-B6VCOQNW';
 /** 2 người lớn + 1 trẻ em: "Admit 3" khác hẳn số người lớn, và có hai dòng tiền. */
 const FAMILY = { numAdults: 2, numChildren: 1 };
 
-/** Chuyến ba ngày 3–5/11 đã qua hạn huỷ — dùng cho ca đã đi. */
-const PASSED: BookingCancellation = {
-  deadline: '2026-10-31',
-  withinDeadline: false,
-  refundAmount: '0.00',
-  canCancel: false,
-};
+/** Chuyến ba ngày 3–5/11 đã qua hạn huỷ và đã tới ngày đi (hết nút huỷ) — dùng cho ca đã đi. */
 const THREE_DAYS_PASSED = {
-  departureStartDate: '2026-11-03',
-  departureEndDate: '2026-11-05',
-  cancellationDeadline: '2026-10-31',
-  cancellation: PASSED,
+  ...THREE_DAY_TRIP,
+  cancellation: makeCancellation(voucherBooking(THREE_DAY_TRIP), {
+    withinDeadline: false,
+    canCancel: false,
+  }),
 };
 
 function renderPass(overrides: Partial<BookingDetail> = {}, today = VOUCHER_TODAY) {
@@ -97,11 +99,7 @@ describe('VoucherPass — theo giai đoạn', () => {
   });
 
   it('đã huỷ: không mã, không Admit, không mã vạch — dải hết hiệu lực; khối giấu khi thẻ một cột', () => {
-    const { container } = renderPass({
-      status: 'CANCELLED',
-      cancellation: null,
-      cancelledAt: '2026-10-19T08:00:00.000Z',
-    });
+    const { container } = renderPass(CANCELLED_AFTER_PAYING);
     expect(screen.queryByText(CODE)).toBeNull();
     expect(screen.queryByText('Admit 3')).toBeNull();
     expect(container.querySelector('[data-slot="barcode"]')).toBeNull();

@@ -4,7 +4,8 @@ import { messages } from '@tourism/i18n';
 import { describe, expect, it } from 'vitest';
 import { voucherView } from '@/lib/voucher';
 import {
-  openCancellation,
+  CANCELLED_AFTER_PAYING,
+  THREE_DAY_TRIP,
   VOUCHER_NOW,
   VOUCHER_TODAY,
   voucherBooking,
@@ -15,21 +16,7 @@ import { VoucherOverview } from './voucher-overview';
 const MEETING = 'Hotel pickup — hotels in Hoàn Kiếm, Ba Đình or Tây Hồ districts, Hà Nội';
 
 /** Chuyến ba ngày, 2 người lớn và 1 trẻ em — chip khách (đơn giá $49) khác hẳn tổng ($147). */
-const FAMILY_TRIP = {
-  departureStartDate: '2026-11-03',
-  departureEndDate: '2026-11-05',
-  cancellationDeadline: '2026-10-31',
-  cancellation: openCancellation('2026-10-31'),
-  numAdults: 2,
-  numChildren: 1,
-};
-
-/** Đơn đã trả rồi bị huỷ — voucher hết hiệu lực. */
-const CANCELLED = {
-  status: 'CANCELLED',
-  cancellation: null,
-  cancelledAt: '2026-10-19T08:00:00.000Z',
-} as const;
+const FAMILY_TRIP = { ...THREE_DAY_TRIP, numAdults: 2, numChildren: 1 };
 
 function renderOverview(
   overrides: Partial<BookingDetail> = {},
@@ -64,7 +51,7 @@ describe('VoucherOverview — tiêu đề và mộc', () => {
     expect(screen.getByText(messages.passportVisa.stampByStatus.PAID)).toBeInTheDocument();
     unmount();
 
-    renderOverview(CANCELLED);
+    renderOverview(CANCELLED_AFTER_PAYING);
     expect(screen.getByText(messages.passportVisa.stampByStatus.CANCELLED)).toBeInTheDocument();
     expect(screen.queryByText(messages.passportVisa.stampByStatus.PAID)).toBeNull();
   });
@@ -181,7 +168,7 @@ describe('VoucherOverview — ô mã gọn khi thẻ một cột (spec §6.4)', 
   });
 
   it('đơn đã huỷ: không có mã nào, dải hết hiệu lực thay chỗ (cũng chỉ khi thẻ một cột)', () => {
-    const { container } = renderOverview(CANCELLED);
+    const { container } = renderOverview(CANCELLED_AFTER_PAYING);
     expect(screen.queryByText('BK-B6VCOQNW')).toBeNull();
     const notice = slot(container, 'voucher-cancelled');
     expect(notice.textContent).toBe(
