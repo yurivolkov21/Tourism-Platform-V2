@@ -8,6 +8,33 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-10-08 — Merge bản vá tiền theo cả đơn ở wizard đặt tour lên main (`710653c6`)
+
+Nội dung đã kể ở entry ngay bên dưới (07/10). Entry này chỉ ghi sự kiện merge.
+
+Từ 07/10 bản vá chỉ nằm trên nhánh cục bộ `claude/priceless-heisenberg-d71023` (entry dưới gọi là
+`fix/booking-wizard-money`), chưa push; 08/10 user duyệt merge. Session gốc review trước khi merge,
+không có phát hiện: `formatBookingMoney` và `bookingPriceLines` trên nền mới y nguyên lúc thi công;
+mọi số tiền của wizard (đơn giá ở bước Dates và Review, các dòng, Total, nút Pay) nay đi qua hai hàm
+ấy; Total vẫn từ `computeBookingTotal` nên đơn giá có xu in đúng số API tính để thu; giá gạch giữ
+`formatMoney`.
+
+Nhánh rebase lên `e4462cf4`, chậm 112 commit. Một xung đột ở CHANGELOG: entry nhánh và các entry
+mới của `main` cùng chen vào đầu file; gỡ bằng cách đặt entry nhánh lên trên, cả hai giữ nguyên văn
+(nếp merge F18). Commit code áp sạch: từ nền cũ tới `main` không commit nào đụng `lib/checkout.ts`
+hay `components/booking`. `gate:int` chạy lại trên đỉnh đã rebase (`ccef2eac`, DB riêng
+`tourism_test_wizardmerge`, API cho build web ở cổng 3401): xanh, 13:57–14:02.
+
+Vẫn ngoài phạm vi như entry dưới ghi: trang chi tiết tour làm tròn giá từng đợt (`booking-rail.tsx`,
+`departure-dialog.tsx`, `departures-panel.tsx`), nên cùng một đợt hiện "$1,569" ở trang tour mà
+"$1,568.70" trong wizard; chờ user quyết. Thử tay trên production cần đăng nhập nên để user làm (ca
+gợi ý: `hanoi-heritage-day` ngày 17/12, đơn giá $39.69, 2 người lớn và 2 trẻ em ra $158.76).
+
+Không migration, không env, không webhook; push chỉ đụng `apps/web` và `docs`.
+
+Tests after: unit 5737 — web 1707, admin 1911, api 1085, contract 665, mobile 159, mobile-ui 86,
+core 46, ui 36, i18n 23, tokens 19 — và int 775/775.
+
 ## 2026-10-07 — Wizard đặt tour in tiền theo cả đơn (`1eb3d81d`, nhánh `fix/booking-wizard-money`)
 
 Việc tách ra từ P7 Phần A (entry ngay dưới, dòng "Ngoài phạm vi"): đơn giá khuyến mãi có xu của
