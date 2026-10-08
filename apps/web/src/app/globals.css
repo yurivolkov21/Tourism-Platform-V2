@@ -287,7 +287,9 @@ html:not(.dark) .stamp-ink {
 }
 
 /* ─────────────────────────────────────────────────────────────────────────────
- * IN ẤN — chỉ phục vụ hoá đơn `/checkout/success` (19/08).
+ * IN ẤN — hoá đơn `BookingReceipt`: đơn chưa trả ở `/checkout/success` và trang
+ * `/checkout/cancel` (19/08). Voucher của đơn đã trả có khối riêng ở cuối file (P7); quy tắc
+ * `[data-slot="barcode"]` dưới đây phục vụ luôn mã vạch của voucher.
  *
  * Mặc định của trình duyệt là KHÔNG in background, và hậu quả nặng nhất KHÔNG
  * phải thẩm mỹ: vạch mã vạch trong cuống vé vẽ bằng `background`, nên tắt
@@ -321,5 +323,59 @@ html:not(.dark) .stamp-ink {
     border-left: 1px solid var(--border);
     border-right: 1px solid var(--border);
     border-top: 1px dashed var(--border);
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+ * IN ẤN VOUCHER `/checkout/success` của đơn đã trả (spec P7 §6.4) — chỉ in THẺ.
+ *
+ * Mọi quy tắc neo vào `[data-slot="voucher"]`, nên hoá đơn chờ và trang `/checkout/cancel`
+ * vẫn in theo khối ở trên, không đổi gì.
+ *
+ * - Chrome của site (top bar, navbar, footer, nút cuộn, toast) là anh em của `<main>` ngay
+ *   dưới `<body>` (`SiteChrome`): giấu cả loạt bằng `:has()` thay vì gắn `print:hidden` vào
+ *   từng linh kiện dùng chung — trang khác in vẫn như cũ. Hero và các nút giấu bằng
+ *   `print:hidden` ở chính trang.
+ * - Mực luôn tối, kể cả khi khách đang ở giao diện tối: đổi các biến chữ sang `--hero` (mảng
+ *   tối nhất, tối ở CẢ hai theme) ngay trên thẻ. Utility của Tailwind đọc biến qua
+ *   `@theme inline`, nên đổi biến là đổi màu chữ mà không đụng class nào.
+ * - Mảng teal in nền trắng viền teal cho đỡ mực; mọi chữ và viền trong đó theo mực của mảng.
+ * - Mã vạch vẽ bằng `bg-current`: ăn mực `--hero` (đen), và nhờ quy tắc `[data-slot="barcode"]`
+ *   ở khối trên mà vẫn in khi trình duyệt tắt "in nền".
+ * - Ảnh bìa ép in nền để lớp tối mờ dần vẫn còn — thiếu nó chữ sáng nằm trơ trên ảnh.
+ * - Nền các khối bỏ hẳn: khách bật "in nền" ở giao diện tối thì thẻ không thành mảng tối.
+ * ───────────────────────────────────────────────────────────────────────────── */
+@media print {
+  body:has([data-slot="voucher"]) > :not(main) {
+    display: none;
+  }
+
+  [data-slot="voucher"] {
+    --foreground: var(--hero);
+    --card-foreground: var(--hero);
+    --muted-foreground: var(--hero);
+    --primary-emphasis: var(--primary);
+    background: none;
+    break-inside: avoid;
+  }
+
+  [data-slot="voucher-photo"] {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  [data-slot="voucher-pass"] {
+    background: none;
+    color: var(--hero);
+    border: 2px solid var(--primary);
+  }
+
+  [data-slot="voucher-pass"] * {
+    color: inherit;
+    border-color: var(--primary);
+  }
+
+  [data-slot="voucher-ticket"] {
+    background: none;
   }
 }
