@@ -42,7 +42,6 @@ export function BookingDetailsPanel({
   meetingPoint: string | null;
 }) {
   const t = messages.bookingDetail;
-  const paid = booking.paidAt !== null;
   const refunded = Number(booking.refundedTotal) > 0;
   const deadlineText = cancellationDeadlineText(booking.cancellation);
   const legacyNote = legacyCancellationNote(booking);
