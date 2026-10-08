@@ -8,6 +8,24 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-10-08 — Thử tay dải 5 tab trang tour trên điện thoại thật (`48c71074`)
+
+**Thử tay production** sau merge `48c71074` (Vercel web success; run CI riêng của commit này bị huỷ vì
+`cancel-in-progress` khi bản vá Dependabot đẩy lên ngay sau, còn `gate` trên `e4462cf4` chứa nó thì
+xanh). User làm trên điện thoại thật, từng bước một: bước 1–5 đạt.
+
+- Trang không trôi ngang. Dải bắt đầu bằng Overview sát lề trái, mép phải mờ, đường kẻ đáy chạy nét
+  tới hết lề.
+- Vuốt dải: chỉ dải trượt, thân trang đứng yên; giữa dải mờ cả hai mép, tới cuối thì Good to know
+  hiện trọn và mép phải hết mờ.
+- Chạm Reviews đang bị che một nửa: dải trượt cho Reviews hiện trọn, nội dung đổi, URL thêm `#reviews`.
+- Mở thẳng `…#good-to-know` trong tab mới: dải đã cuộn tới cuối, Good to know hiện trọn sát lề phải.
+- Xoay ngang (từ 640px trở lên): 5 tab chia đều, không mờ mép; xoay dọc lại vẫn giữ Good to know
+  hiện trọn.
+
+Trước lượt tay, đo production bằng Edge headless (chỉ đọc trang): khớp số của bản build local ở 320,
+360, 375 và 1280px, kể cả khi mở tab Departures.
+
 ## 2026-10-08 — Merge bản vá tiền theo cả đơn ở wizard đặt tour lên main (`710653c6`)
 
 Nội dung đã kể ở entry ngay bên dưới (07/10). Entry này chỉ ghi sự kiện merge.
