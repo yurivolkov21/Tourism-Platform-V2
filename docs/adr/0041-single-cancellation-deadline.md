@@ -2,6 +2,8 @@
 
 - **Trạng thái:** Accepted (2026-09-15, phiên brainstorming; ADR đi trước code,
   CHƯA thi hành)
+- **Sửa đổi:** AMEND 1 (2026-10-08, cuối file) — chuyến đã bị công ty huỷ thì
+  khách không tự huỷ được nữa; §6 thắng §4.
 - **Bối cảnh:** [spec 15/09](../specs/2026-09-15-refund-deadline-design.md). Đóng
   mục CÒN TREO "chốt chặn đặt chỗ 3 ngày" (CHANGELOG 04/09).
 - **Liên quan:** [ADR-0030](0030-refund-policy-tiers.md) (thay bảng bậc, ân hạn,
@@ -158,3 +160,71 @@ Báo cáo tháng đổi cặp approved/denied thành huỷ trong hạn và huỷ
 | Chặn cả lúc claim thanh toán sau hạn | Thu tiền rồi tự hoàn, email lý do sai, cho một khoảng trễ vài phút tới vài giờ |
 
 Danh sách đầy đủ ở spec §13.
+
+## AMEND 1 08/10 — chuyến đã bị công ty huỷ thì khách không tự huỷ được nữa
+
+Lỗ hổng phát hiện ở vòng review P7 phần C (08/10), xác minh bằng đọc mã. §4 hỏi
+trạng thái booking, capture và ngày khởi hành; nó KHÔNG hỏi "chuyến còn là chuyến
+sẽ chạy không".
+
+Đường đi của lỗi:
+
+1. Admin huỷ chuyến (F13). Giao dịch huỷ chuyển chuyến sang `CANCELLED` và huỷ
+   ngay booking `PENDING`; booking `PAID`/`PARTIALLY_REFUNDED` giữ nguyên tới
+   khi job `departure-refund` chạy. Khoảng chờ có thật: worker gói free ngủ
+   khoảng 15 phút, lưới quét chạy 10 phút một lần, cổng lỗi thì retry giãn luỹ
+   thừa.
+2. Trong khoảng chờ, `bookings.byCode` vẫn in nút huỷ và `bookings.cancel` vẫn
+   nhận lệnh. Qua hạn chót thì khách được hoàn 0 và nhận email "không hoàn vì
+   quá hạn chót".
+3. Job tới sau thấy booking đã `CANCELLED`, coi là việc đã xong (`null`), và
+   lưới quét chỉ tìm `PAID`/`PARTIALLY_REFUNDED` nên cũng không vớt. Khách mất
+   khoản hoàn 100% mà §6 hứa, không có gì báo lại.
+
+Soát prod 08/10 (chỉ đọc): chưa đơn nào dính — đơn duy nhất trên chuyến huỷ từ
+F13 là đơn thử tay 22/09, do chính job hoàn trọn.
+
+**Đổi:**
+
+- **Thứ tự ưu tiên.** Từ lúc chuyến `CANCELLED`, §6 thắng §4: đường khách tự
+  huỷ đóng lại cho mọi booking của chuyến ấy, tiền chỉ đi MỘT đường — job của
+  công ty, trọn phần chưa hoàn. `bookings.cancel` trả 422 `NOT_CANCELLABLE`;
+  `bookings.byCode.cancellation` trả `null`, vì luật huỷ của khách không còn
+  áp dụng và số `refundAmount` theo hạn chót sẽ là một con số sai.
+- **Trạng thái chuyến đọc SỐNG, ngày vẫn đọc bản sao.** Ngày là lời hứa lúc đặt
+  (sửa chuyến không đổi hạn chót đã hứa); huỷ chuyến là một sự kiện xảy ra SAU
+  lúc đặt, đọc bản sao là không bao giờ thấy nó.
+- **Phép kiểm nằm trong bộ hàm luật thuần** (`cancellationBlocker`), cùng chỗ
+  với ba chốt cũ, để `byCode` và lệnh huỷ không bao giờ nói ngược nhau. Đường
+  khách BẮT BUỘC mang trạng thái chuyến (không có mặc định); đường công ty thì
+  không, vì chuyến `CANCELLED` là tiền đề của nó.
+- **Khoá thứ tự với lượt huỷ chuyến.** Trong advisory lock của booking, lõi huỷ
+  khoá hàng chuyến bằng `SELECT status … FOR KEY SHARE` rồi mới quyết, TRƯỚC khi
+  gọi cổng. Lượt huỷ chuyến khoá cùng hàng bằng `FOR UPDATE`, nên hai bên xếp
+  hàng nhau:
+  - admin tới trước → khách chờ, đọc thấy `CANCELLED`, bị từ chối;
+  - khách tới trước → admin chờ khách commit, và danh sách cần hoàn chụp sau đó
+    không còn booking ấy. Khách quyết huỷ lúc chuyến còn chạy nên luật của
+    khách áp dụng — nhất quán với thứ tự thật.
+
+  Kiểm không khoá là chưa đủ: khe giữa lúc kiểm và lúc ghi dài bằng một lần gọi
+  cổng (`docs/conventions/read-then-write-races.md`). `KEY SHARE` chứ không
+  `SHARE`: lõi huỷ còn `UPDATE seats_booked` trên chính hàng ấy, và hai khách
+  cùng chuyến cầm `SHARE` rồi cùng nâng lên khoá ghi là deadlock — xảy ra SAU
+  khi tiền đã đi. `KEY SHARE` chỉ xung đột với `FOR UPDATE`, nên phép khoá này
+  đứng được là nhờ lượt huỷ chuyến khoá bằng `FOR UPDATE` tường minh; hạ nó
+  xuống một câu `UPDATE` trần là mở lại khe.
+- **Giao dịch huỷ chuyến nâng timeout lên 20 giây**, bằng khoá hoàn tiền: nó có
+  thể phải chờ một lệnh hoàn của khách đang gọi cổng (trần 15 giây).
+
+**Cái giá:** các lệnh sửa chuyến khác của admin (`FOR UPDATE`, timeout mặc định
+5 giây) cũng phải chờ một lượt khách huỷ đang gọi cổng. Quá 5 giây thì lệnh sửa
+lỗi và admin bấm lại, không ghi gì. Chấp nhận vì hiếm (phải trùng đúng lúc) và
+an toàn.
+
+**KHÔNG đổi:** số tiền của hai đường (§4, §6), cơ chế idempotent của job (`null`
+khi booking đã đóng), lưới quét, chốt ngày khởi hành của từng đường.
+
+**Để sau:** web chưa biết chuyến đã bị huỷ — trong khoảng chờ voucher và hoá
+đơn vẫn hiện như thường. Cần một trường mới ở `BookingDetail` và một khối báo
+trên trang; ghi ở `docs/open-items.md`, làm sau khi nhánh P7 B và C merge.
