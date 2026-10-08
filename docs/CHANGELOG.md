@@ -8,6 +8,61 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-10-08 — P7 phần B: trang chi tiết đơn (nhánh `feat/booking-pages-redesign`)
+
+Trang `/account/bookings/[code]` dựng lại theo bản vẽ duyệt 05/10: vé kiểu boarding pass (ảnh
+tour, thân vé có mộc, cuống có mã vạch khi đơn còn hiệu lực và đã trả; đường xé gạch đứt với
+hai vết khuyết che viền vé — ngoại lệ user duyệt riêng cho trang này), thanh hành trình năm mốc
+có nhãn Today và chip theo giai đoạn (biến thể huỷ và lỡ hạn trả), hai cột: trái là thông tin
+đơn bốn khối với hàng nút đáy, phải đổi theo `bookingPhase` — Get ready (đếm ngược, bước chuẩn
+bị, ô tích nhớ trên máy), ngày trong chuyến, khu review (giữ nguyên linh kiện), đơn đã huỷ hay
+lỡ hạn, đơn chờ trả. Hero có nút quay lại My bookings; trang còn đúng một `h1`; bỏ link chữ
+"← Passport". Không đổi API, không migration, không env.
+
+Chỗ lệch plan. Soi bố cục B8 tìm ba lỗi, sửa ở `5636ca66`: khung "Day 1" lộ nửa dòng thứ năm
+(`overflow: hidden` của `line-clamp` cắt ở mép vùng đệm — đệm và nền chuyển ra lớp bọc); hàng
+nút đáy xuống dòng vì link chính sách của `BookingActions` làm cụm Contact us / View voucher
+dạt sang trái (thêm `ml-auto`, spec §5.3 đặt cụm này bên phải); khu review tràn ngang 31px ở
+375px vì `ReviewComposer` rộng tối thiểu khoảng 339px mà thẻ bọc có viền và `px-6` chỉ chừa
+293px — dưới `sm` khu review để trần như trang cũ, từ `sm` mới là thẻ (linh kiện giữ nguyên,
+spec §5.4). Hai ca test được siết để giết đột biến plan dự kiến chết (chỉ sửa test):
+`get-ready-panel` kiểm các bước khác không mang `data-open`, `booking-details-panel` cho đơn huỷ
+mang yêu cầu huỷ của luồng cũ. `8bd11a4f` gỡ biến `paid` thừa trong mã plan cấp cho cột thông
+tin đơn (Biome cảnh báo). Plan ghi `todayPct` của trang đang đi ở 1280px là 74, nhưng phép tính
+của chính plan (87,5% vạch) ra 80 — số đo thật là 80, khớp ca 87,5 của Task 13. Kiểm tay trên
+dev (Task 20 Bước 8) với năm đơn seed của một khách (sắp đi, đang đi, đã đi, đã huỷ chưa trả,
+đã hoàn): mỗi trang một `h1`, có nút quay lại, khối cột phải đúng giai đoạn, không lỗi console,
+ô tích Budget còn nguyên sau khi tải lại.
+
+Số đo B8 bằng CSS build thật. 1280px (đơn sắp đi): không tràn ngang, một `h1`, mép vé thẳng
+tiêu đề hero (lệch 0), ảnh 210px, cuống 262px, dải 38px, ba phần ngang; vết khuyết `::before`
+top và left −12px, clip `inset(50% 0px 0px)`, `::after` bottom và left −12px, clip
+`inset(0px 0px 50%)`, cả hai mang màu nền trang, phóng to thấy viền ngang của vé đứt đúng chỗ
+khuyết; thanh hành trình một hàng, Today ở 43% khung (khớp `left:43%` của bản vẽ); hai cột, đỉnh
+lệch 0. 375px: không tràn, một `h1`, lệch mép 0, vé xếp dọc ảnh → thân → cuống; `::before` top
+và left −12px, clip `inset(0px 0px 0px 50%)`, `::after` top và right −12px, clip
+`inset(0px 50% 0px 0px)`, viền dọc đứt đúng chỗ khuyết; mốc xếp dọc, Today chen giữa Paid và Free
+cancellation; khối giai đoạn nằm trên thông tin đơn; hàng DEPARTS → RETURNS không tràn. Ba trang
+còn lại: đang đi không tràn ở hai khổ, Today 80%; đã huỷ không ảnh không tràn ở hai khổ, dải đầu
+vé bo góc trái trên và lưới ô bo góc trái dưới 15px, hai vết khuyết đúng; đã đi không tràn ở 1280
+và 1024 (cột phải 481px và 388px), ở 375 tràn 31px trước bản sửa, 0 sau.
+
+Bốn khoá i18n mồ côi của `passportVisa` đã gỡ (`back`, `cancelLead`, `fineLine`,
+`requestsLine` — người dùng duy nhất là trang cũ), JSDoc khối ấy viết lại; chữ mới của trang nằm
+trong khối `bookingDetail`.
+
+**Review findings:** chưa review — session gốc review trước merge.
+
+Tests after: Vitest **5347** (web 1792, admin 1718, api 1068, contract 656, core 46, ui 27, i18n 22 và tokens 18), jest mobile 159 và mobile-ui 86, int **753 ở 46 file** (DB riêng `tourism_test_p7b`). Ca mới 126: web 122 (`booking-journey` 21, `booking-ticket` 18, `get-ready` 17, `booking-details-panel` 14, `booking-detail-view` 10, `trip-journey` 7, `get-ready-panel` 7, `trip-closed-panel` 7, `review-panel` 7, `prep-checklist` 5, `tours` 4, `on-tour-panel` 4, `awaiting-payment-panel` 1) và i18n 4.
+Đột biến: 54 lượt, 47 giết. Bảy cái sống, kèm lý do: bỏ nhánh cờ server ở mốc hạn huỷ (cờ và
+ngày trùng nhau theo thiết kế); `calendarDateParts` đọc thứ theo giờ máy (máy +7 và CI UTC đều
+không lộ); bỏ `paid &&` ở điều kiện mã vạch (PENDING vốn không thuộc `ACTIVE_BOOKING_STATUSES`,
+PAID thiếu `paidAt` không xảy ra); bỏ `round2` ở vị trí Today (fixture ra số chẵn); `PrepChecklist`
+đọc storage trong `useState` (jsdom không có hydrate); hàng đáy truyền nguyên `view` (đột biến
+tương đương — `BookingActions` ở đáy chỉ hiện khi `actions` có `cancelBooking`, mà luật
+`bookingView` chỉ cho nó đứng một mình); `tour?.meetingPoint` thô thay `tourMeetingPoint` (ca ô
+trống có ở B2). Hai đột biến khác lúc đầu sống, đã giết sau khi siết test như trên.
+
 ## 2026-10-09 — Thử tay Saved và Settings trên production, 8/8 bước; nút Settings của hộ chiếu bỏ "⚙" (`1b27c8d4`, nhánh `fix/passport-settings-label`)
 
 **Thử tay production** sau merge `a0102b9c` (CI `gate` xanh 13 phút, Vercel web và admin READY; Render không
