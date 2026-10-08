@@ -16,7 +16,7 @@ màn gọi thẳng `orpc.<resource>.queryOptions()` qua `useQuery`. Tri-state
 `@tanstack/react-query` (ghim `1.14.8` cho bộ `@orpc/*`) · `expo-image` · React Native ·
 Expo Router · jest-expo + RNTL 14.
 
-**Spec:** [docs/adr/0047-mobile-data-layer.md](../adr/0047-mobile-data-layer.md) ·
+**Spec:** [docs/adr/0055-mobile-data-layer.md](../adr/0055-mobile-data-layer.md) ·
 [docs/handoff/mobile-browse-handoff.md](../handoff/mobile-browse-handoff.md)
 
 ## Global Constraints
@@ -30,7 +30,7 @@ Expo Router · jest-expo + RNTL 14.
 - **`OpenAPILink`, không `RPCLink`** — API mount contract theo path REST.
 - **Không auto-retry mutation** — giữ default TanStack Query (mutation không tự retry).
 - **Không sửa `apps/web/src/lib/cloudinary-loader.ts`** — mobile có bản pure function
-  riêng, cùng thuật toán, khác chữ ký gọi (xem ADR-0047 §4 "Đã cân nhắc và loại").
+  riêng, cùng thuật toán, khác chữ ký gọi (xem ADR-0055 §4 "Đã cân nhắc và loại").
 - **Cổng trước khi báo xong toàn bộ plan:** `pnpm gate:int` · `pnpm turbo run bundle --filter=@tourism/mobile`
   · `node scripts/check-mobile-tokens-only.mjs` · `pnpm --filter @tourism/mobile exec expo-doctor`.
 
@@ -70,7 +70,7 @@ import { contract } from '@tourism/contract';
 import { env } from '@/lib/env';
 
 /**
- * Link OpenAPI (KHÔNG phải RPCLink, ADR-0016 §1 / ADR-0047 §1): API mount
+ * Link OpenAPI (KHÔNG phải RPCLink, ADR-0016 §1 / ADR-0055 §1): API mount
  * contract theo path REST qua @orpc/nest.
  *
  * `url` LƯỜI (hàm, không giá trị) — `env()` ném lỗi khi thiếu biến; gọi ở
@@ -81,7 +81,7 @@ const link = new OpenAPILink(contract, {
   fetch: (request, init) =>
     globalThis.fetch(request, { ...init, signal: AbortSignal.timeout(10_000) }),
   // Chỗ móc session cho wishlist (D6) — nối thật khi hạ tầng @better-auth/expo
-  // xong (ADR-0047 §1, ngoài phạm vi T0). Chưa có consumer nào cần header ở đây.
+  // xong (ADR-0055 §1, ngoài phạm vi T0). Chưa có consumer nào cần header ở đây.
 });
 
 export const orpc: JsonifiedClient<ContractRouterClient<typeof contract>> =
@@ -97,7 +97,7 @@ Expected: PASS, không lỗi ở `client.ts`.
 
 ```bash
 git add apps/mobile/package.json pnpm-lock.yaml apps/mobile/src/lib/api/client.ts
-git commit -m "feat(mobile): dựng client oRPC OpenAPILink (ADR-0047 T0)"
+git commit -m "feat(mobile): dựng client oRPC OpenAPILink (ADR-0055 T0)"
 ```
 
 ---
@@ -171,7 +171,7 @@ bài kiểm tra chỉ xác nhận cây render KHÔNG vỡ vì provider mới.
 
 ```bash
 git add apps/mobile/src/lib/api/query-client.ts apps/mobile/src/app/_layout.tsx
-git commit -m "feat(mobile): mount QueryClientProvider ở root layout (ADR-0047 T0)"
+git commit -m "feat(mobile): mount QueryClientProvider ở root layout (ADR-0055 T0)"
 ```
 
 ---
@@ -223,7 +223,7 @@ Expected: FAIL — `Cannot find module './resilience'`.
 ```typescript
 // apps/mobile/src/lib/api/resilience.ts
 /**
- * Tri-state của mọi section dữ liệu API (ADR-0047 §3, port từ
+ * Tri-state của mọi section dữ liệu API (ADR-0055 §3, port từ
  * `apps/web/src/lib/api/resilience.ts` — ADR-0016 §4): lỗi ≠ rỗng ≠ có nội dung.
  */
 export type Settled<T> = { ok: true; data: T } | { ok: false; data: null };
@@ -255,7 +255,7 @@ Expected: PASS — 4/4 test xanh.
 
 ```bash
 git add apps/mobile/src/lib/api/resilience.ts apps/mobile/src/lib/api/resilience.spec.ts
-git commit -m "feat(mobile): port settle()/contentState() từ web (ADR-0047 T0)"
+git commit -m "feat(mobile): port settle()/contentState() từ web (ADR-0055 T0)"
 ```
 
 ---
@@ -361,7 +361,7 @@ Expected: FAIL — `Cannot find module './cloudinary-url'`.
 ```typescript
 // apps/mobile/src/lib/cloudinary-url.ts
 /**
- * Build URL transform Cloudinary cho RN (ADR-0047 §4, port thuật toán từ
+ * Build URL transform Cloudinary cho RN (ADR-0055 §4, port thuật toán từ
  * `apps/web/src/lib/cloudinary-loader.ts` — ADR-0020 §Hệ quả). Chữ ký khác
  * loader Next (`{src,width,quality}`) vì RN không có hợp đồng `next/image`.
  *
@@ -406,7 +406,7 @@ Expected: PASS — 8/8 test xanh.
 
 ```bash
 git add apps/mobile/src/lib/cloudinary-url.ts apps/mobile/src/lib/cloudinary-url.spec.ts
-git commit -m "feat(mobile): cloudinaryUrl() thuần, port thuật toán loader web (ADR-0047 T0)"
+git commit -m "feat(mobile): cloudinaryUrl() thuần, port thuật toán loader web (ADR-0055 T0)"
 ```
 
 ---
@@ -466,7 +466,7 @@ export const MOBILE_COLOR_KEYS = [
   'on-media',
   'primary-emphasis',
   'scrim',
-  // P5b-2 (ADR-0047): sao đánh giá, giá gạch, cảnh báo, scrim ảnh gallery.
+  // P5b-2 (ADR-0055): sao đánh giá, giá gạch, cảnh báo, scrim ảnh gallery.
   'rating',
   'rating-muted',
   'price-compare',
@@ -485,14 +485,14 @@ trị trong cầu token...')` vốn lặp qua `MOBILE_COLOR_KEYS` — tự độ
 
 ```bash
 git add libs/mobile/ui/src/lib/theme.ts libs/mobile/ui/src/lib/theme.spec.ts
-git commit -m "feat(mobile-ui): mở 5 token màu cho cụm browse (ADR-0047 T0)"
+git commit -m "feat(mobile-ui): mở 5 token màu cho cụm browse (ADR-0055 T0)"
 ```
 
 ---
 
 ## Task 6: `LoadErrorState` — mở rộng `EmptyState` có sẵn thêm khe icon
 
-**Quyết định thi công (không cần sửa ADR):** ADR-0047 gọi khối "icon vuông + câu + nút"
+**Quyết định thi công (không cần sửa ADR):** ADR-0055 gọi khối "icon vuông + câu + nút"
 là "component `LoadErrorState`". `EmptyState` đã có sẵn (title/body/children) và đã
 được `ErrorBoundary` ở `_layout.tsx` dùng cho đúng việc này (title lỗi + `Button` retry
 trong `children`). Thay vì dựng component song song trùng layout, mở rộng `EmptyState`
@@ -550,7 +550,7 @@ import { Card } from './card';
 import { useTheme } from './theme-provider';
 
 export interface EmptyStateProps extends ViewProps {
-  /** Icon vuông phía trên câu chính — dùng chung cho tri-state lỗi/rỗng (ADR-0047 §3). */
+  /** Icon vuông phía trên câu chính — dùng chung cho tri-state lỗi/rỗng (ADR-0055 §3). */
   icon?: ReactNode;
   /** Câu chính — tiếng Anh, lấy từ `@tourism/i18n` (luật 7). */
   title: string;
@@ -590,7 +590,7 @@ Expected: PASS — test cũ vẫn xanh (hợp đồng không đổi) + test icon
 
 ```bash
 git add libs/mobile/ui/src/lib/empty-state.tsx libs/mobile/ui/src/lib/empty-state.spec.tsx
-git commit -m "feat(mobile-ui): EmptyState thêm khe icon, dùng chung cho tri-state lỗi (ADR-0047 T0)"
+git commit -m "feat(mobile-ui): EmptyState thêm khe icon, dùng chung cho tri-state lỗi (ADR-0055 T0)"
 ```
 
 ---
@@ -683,7 +683,7 @@ export interface AppImageProps extends Omit<ImageProps, 'source' | 'style' | 'ac
   transformUrl?: (source: string, width: number) => string;
 }
 
-/** Ảnh chuẩn của app — cache đĩa + placeholder nền `muted` lúc tải (ADR-0047 §4). */
+/** Ảnh chuẩn của app — cache đĩa + placeholder nền `muted` lúc tải (ADR-0055 §4). */
 export function AppImage({
   source,
   width,
@@ -727,7 +727,7 @@ export { AppImage } from './lib/app-image';
 git add libs/mobile/ui/package.json apps/mobile/package.json pnpm-lock.yaml \
   libs/mobile/ui/src/lib/app-image.tsx libs/mobile/ui/src/lib/app-image.spec.tsx \
   libs/mobile/ui/src/index.ts
-git commit -m "feat(mobile-ui): AppImage bọc expo-image, nhận transformUrl (ADR-0047 T0)"
+git commit -m "feat(mobile-ui): AppImage bọc expo-image, nhận transformUrl (ADR-0055 T0)"
 ```
 
 ---
@@ -821,7 +821,7 @@ export interface SearchFieldProps
   clearLabel?: string;
 }
 
-/** Ô tìm pill (bản vẽ 18/09, `.search` — ADR-0047 T3). */
+/** Ô tìm pill (bản vẽ 18/09, `.search` — ADR-0055 T3). */
 export function SearchField({
   value,
   onChangeText,
@@ -895,7 +895,7 @@ export { SearchField } from './lib/search-field';
 
 ```bash
 git add libs/mobile/ui/src/lib/search-field.tsx libs/mobile/ui/src/lib/search-field.spec.tsx libs/mobile/ui/src/index.ts
-git commit -m "feat(mobile-ui): primitive SearchField (ADR-0047 T0)"
+git commit -m "feat(mobile-ui): primitive SearchField (ADR-0055 T0)"
 ```
 
 ---
@@ -1000,7 +1000,7 @@ export interface ChipProps {
   onRemove?: () => void;
 }
 
-/** Chip pill (`.chip`/`.chip.on`/`.chip.soft` bản vẽ 18/09 — ADR-0047 T0). */
+/** Chip pill (`.chip`/`.chip.on`/`.chip.soft` bản vẽ 18/09 — ADR-0055 T0). */
 export function Chip({ label, variant = 'default', onPress, onRemove }: ChipProps) {
   const theme = useTheme();
   const { background, border, foreground } = CHIP_VARIANTS[variant];
@@ -1061,7 +1061,7 @@ export { Chip } from './lib/chip';
 
 ```bash
 git add libs/mobile/ui/src/lib/chip.tsx libs/mobile/ui/src/lib/chip.spec.tsx libs/mobile/ui/src/index.ts
-git commit -m "feat(mobile-ui): primitive Chip (default/selected/removable) (ADR-0047 T0)"
+git commit -m "feat(mobile-ui): primitive Chip (default/selected/removable) (ADR-0055 T0)"
 ```
 
 ---
@@ -1145,7 +1145,7 @@ export interface BottomSheetProps {
   children: ReactNode;
 }
 
-/** Tấm trượt từ đáy (`.sheet` bản vẽ 18/09 — ADR-0047 T0). Không gesture kéo-thả. */
+/** Tấm trượt từ đáy (`.sheet` bản vẽ 18/09 — ADR-0055 T0). Không gesture kéo-thả. */
 export function BottomSheet({ visible, onClose, children }: BottomSheetProps) {
   const theme = useTheme();
 
@@ -1205,7 +1205,7 @@ export { BottomSheet } from './lib/bottom-sheet';
 
 ```bash
 git add libs/mobile/ui/src/lib/bottom-sheet.tsx libs/mobile/ui/src/lib/bottom-sheet.spec.tsx libs/mobile/ui/src/index.ts
-git commit -m "feat(mobile-ui): primitive BottomSheet (ADR-0047 T0)"
+git commit -m "feat(mobile-ui): primitive BottomSheet (ADR-0055 T0)"
 ```
 
 ---
@@ -1365,7 +1365,7 @@ Expected: PASS — kiểm kê route không đổi (chỉ thêm icon, không đ�
 ```bash
 git add libs/mobile/ui/src/lib/tab-bar-icon.tsx libs/mobile/ui/src/lib/tab-bar-icon.spec.tsx \
   libs/mobile/ui/src/index.ts apps/mobile/src/app/\(tabs\)/_layout.tsx
-git commit -m "feat(mobile): gắn icon Feather cho 5 tab, viên nền primary khi chọn (ADR-0047 T0)"
+git commit -m "feat(mobile): gắn icon Feather cho 5 tab, viên nền primary khi chọn (ADR-0055 T0)"
 ```
 
 ---

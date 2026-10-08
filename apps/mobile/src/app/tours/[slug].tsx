@@ -43,7 +43,7 @@ import { formatMoney } from '@/lib/format-money';
 import { isWishlistMutating, useWishlistSetMutation } from '@/lib/wishlist-mutation';
 
 /**
- * Route chi tiết tour (D1/D7 — ADR-0047 T5). Gọi `catalog.tours.bySlug`,
+ * Route chi tiết tour (D1/D7 — ADR-0055 T5). Gọi `catalog.tours.bySlug`,
  * `NOT_FOUND` rơi vào D7 riêng (khác lỗi mạng chung). `TourDetailScreen` chỉ
  * vẽ (khuôn `features/explore`).
  */

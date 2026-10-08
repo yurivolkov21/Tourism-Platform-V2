@@ -13,7 +13,7 @@ process.env.EXPO_PUBLIC_WEB_URL ??= 'http://localhost:3000';
 
 // Jest chạy trên Node nên `globalThis.fetch` là fetch THẬT của Node (18+),
 // không phải chưa polyfill — thiếu chặn này, mọi test dựng `orpc.*.queryOptions()`
-// (ADR-0047 §2, tiêu thụ đầu tiên ở P5b-2 T1) bắn request THẬT ra
+// (ADR-0055 §2, tiêu thụ đầu tiên ở P5b-2 T1) bắn request THẬT ra
 // `EXPO_PUBLIC_API_URL`, ăn bất kỳ thứ gì đang nghe ở đó trên máy dev — đo
 // được: một tiến trình khác chiếm cổng 3001 trả response không phải JSON,
 // oRPC parse ra `undefined` và TanStack Query la làng "Query data cannot be

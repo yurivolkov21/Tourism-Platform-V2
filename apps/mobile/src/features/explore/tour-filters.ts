@@ -1,7 +1,7 @@
 import { type Destination, foldAccents, type TourCard } from '@tourism/contract';
 
 /**
- * Bộ lọc client-side của Explore (ADR-0047 T2, handoff §5/§6): API `tours.list`
+ * Bộ lọc client-side của Explore (ADR-0055 T2, handoff §5/§6): API `tours.list`
  * lọc được category/destination/sort — bốn facet dưới đây thì KHÔNG (contract
  * chưa có tham số tương ứng), nên lọc trên tập tour đã tải, đúng cách
  * `apps/web/src/lib/tours.ts` (`filterTours`) đang làm. `search` CŨNG lọc ở

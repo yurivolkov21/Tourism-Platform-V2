@@ -14,7 +14,7 @@ Entry này khép cụm T0 của P5b-2 (xem tour trên mobile) — tầng dữ li
 `OpenAPILink` và TanStack Query cho `apps/mobile`, cộng sáu primitive dùng
 chung mới ở `@tourism/mobile-ui` (`SearchField`, `Chip`, `BottomSheet`,
 `AppImage`, khả năng "load lỗi" gộp vào `EmptyState`, tab bar có icon). Quyết
-định kiến trúc ở [ADR-0047](adr/0047-mobile-data-layer.md), kế hoạch thi công
+định kiến trúc ở [ADR-0055](adr/0055-mobile-data-layer.md), kế hoạch thi công
 ở [plan T0](plans/2026-09-23-mobile-browse-t0-data-layer.md). **T1–T7 (các
 màn xem tour thật) vẫn CÒN TREO** — T0 chỉ là hạ tầng, chưa màn nào nối dữ
 liệu thật.
@@ -34,7 +34,7 @@ Vòng review cuối cụm tìm sáu phát hiện, vá cả sáu trong lượt n�
    nằm ở `request.signal` (không phải `init.signal` như phỏng đoán ban đầu
    của review — `init` ở đây luôn là hằng `{ redirect: 'manual' }`). Chốt
    ghép hai signal bằng `AbortSignal.any`.
-4. ADR-0047 lệch code thật ba chỗ (tên component `LoadErrorState` chưa từng
+4. ADR-0055 lệch code thật ba chỗ (tên component `LoadErrorState` chưa từng
    tồn tại riêng, cơ chế `transformUrl` của `AppImage`, số dependency thêm
    vào `apps/mobile`). Vá bằng AMEND 1 trong chính ADR, không sửa quyết định
    gốc.
@@ -42,7 +42,7 @@ Vòng review cuối cụm tìm sáu phát hiện, vá cả sáu trong lượt n�
    nơi ghép thật với `cloudinaryUrl()` ở tầng app. Thêm module ghép ở
    `apps/mobile/src/components/app-image.tsx`, kèm một test xác nhận
    `source.uri` có đúng segment transform Cloudinary.
-6. Sweep docs sau merge còn thiếu (luật 13): entry này, dòng ADR-0047 vào
+6. Sweep docs sau merge còn thiếu (luật 13): entry này, dòng ADR-0055 vào
    bảng ADR ở `docs/README.md`, và thêm plan T0 vào mục Plans cùng file.
 
 **Review findings:** 6/6 đã vá trong lượt này — chi tiết ở trên, không phát

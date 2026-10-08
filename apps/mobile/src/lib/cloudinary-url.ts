@@ -1,5 +1,5 @@
 /**
- * Build URL transform Cloudinary cho RN (ADR-0047 §4, port thuật toán từ
+ * Build URL transform Cloudinary cho RN (ADR-0055 §4, port thuật toán từ
  * `apps/web/src/lib/cloudinary-loader.ts` — ADR-0020 §Hệ quả). Chữ ký khác
  * loader Next (`{src,width,quality}`) vì RN không có hợp đồng `next/image`.
  *

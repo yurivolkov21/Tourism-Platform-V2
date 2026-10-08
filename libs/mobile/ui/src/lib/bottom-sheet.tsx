@@ -29,7 +29,7 @@ export function shouldDismissDrag(dy: number, vy: number): boolean {
 }
 
 /**
- * Tấm trượt từ đáy (`.sheet` bản vẽ 18/09 — ADR-0047 T0). Trượt lên khi mở,
+ * Tấm trượt từ đáy (`.sheet` bản vẽ 18/09 — ADR-0055 T0). Trượt lên khi mở,
  * trượt xuống khi đóng — dù đóng bằng cách nào (nút bên trong `children`,
  * backdrop, kéo tay nắm, hay phím back) đều tự trượt như nhau, vì component
  * theo dõi CHÍNH prop `visible`, không phải từng đường gọi `onClose` riêng lẻ.

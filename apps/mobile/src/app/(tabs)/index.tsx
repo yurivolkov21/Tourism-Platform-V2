@@ -13,7 +13,7 @@ import { cloudinaryUrl } from '@/lib/cloudinary-url';
 
 /**
  * Route Home: gọi `catalog.destinations.list`, giữ vùng đang chọn, suy trạng
- * thái tải/lỗi/rỗng — `HomeScreen` chỉ nhận props mà vẽ (ADR-0047 §2).
+ * thái tải/lỗi/rỗng — `HomeScreen` chỉ nhận props mà vẽ (ADR-0055 §2).
  */
 export default function HomeRoute() {
   const [selectedRegion, setSelectedRegion] = useState<string>(HOME_REGIONS[0]);

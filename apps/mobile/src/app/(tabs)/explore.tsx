@@ -45,7 +45,7 @@ const DIFFICULTY_KEYS = ['EASY', 'MODERATE', 'CHALLENGING'] as const;
  * Route Explore: gọi `catalog.tours.list` (category/destination/search/sort lọc
  * SERVER) rồi lọc thêm client-side bốn facet chưa có tham số (region/duration/
  * price/difficulty — `tour-filters.ts`). `ExploreScreen`/`FilterSheet` chỉ vẽ
- * (ADR-0047 §2, khuôn `features/home`).
+ * (ADR-0055 §2, khuôn `features/home`).
  */
 export default function ExploreRoute() {
   const params = useLocalSearchParams<{ destination?: string }>();

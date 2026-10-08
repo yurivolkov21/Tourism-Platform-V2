@@ -281,7 +281,7 @@ function AuthGateSheetPreview() {
 }
 
 /**
- * Khung cụm xem tour (P5b-2 T5, ADR-0047 — D1/D2/D3/D4/D5/D6/D7 bản vẽ 18/09 +
+ * Khung cụm xem tour (P5b-2 T5, ADR-0055 — D1/D2/D3/D4/D5/D6/D7 bản vẽ 18/09 +
  * 24/09), cùng khuôn `GALLERY_ENTRIES` của cụm auth: props cứng, không router,
  * không gọi API thật.
  */

@@ -30,7 +30,7 @@ export interface ChipProps {
   removeLabel?: string;
 }
 
-/** Chip pill (`.chip`/`.chip.on`/`.chip.soft` bản vẽ 18/09 — ADR-0047 T0). */
+/** Chip pill (`.chip`/`.chip.on`/`.chip.soft` bản vẽ 18/09 — ADR-0055 T0). */
 export function Chip({ label, variant = 'default', onPress, onRemove, removeLabel }: ChipProps) {
   const theme = useTheme();
   const { background, border, foreground } = CHIP_VARIANTS[variant];

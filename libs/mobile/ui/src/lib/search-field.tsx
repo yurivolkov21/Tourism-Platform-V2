@@ -11,7 +11,7 @@ export interface SearchFieldProps extends Omit<TextInputProps, 'style' | 'onFocu
   clearLabel?: string;
 }
 
-/** Ô tìm pill (bản vẽ 18/09, `.search` — ADR-0047 T3). */
+/** Ô tìm pill (bản vẽ 18/09, `.search` — ADR-0055 T3). */
 export function SearchField({
   value,
   onChangeText,

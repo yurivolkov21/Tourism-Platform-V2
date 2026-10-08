@@ -29,7 +29,7 @@ export function withMobileAuth(): ApiClientContext {
 }
 
 /**
- * Link OpenAPI (KHÔNG phải RPCLink, ADR-0016 §1 / ADR-0047 §1): API mount
+ * Link OpenAPI (KHÔNG phải RPCLink, ADR-0016 §1 / ADR-0055 §1): API mount
  * contract theo path REST qua @orpc/nest.
  *
  * `url` LƯỜI (hàm, không giá trị) — `env()` ném lỗi khi thiếu biến; gọi ở
@@ -73,7 +73,7 @@ type ApiClient = JsonifiedClient<ContractRouterClient<typeof contract, ApiClient
 const apiClient: ApiClient = createORPCClient(link);
 
 /**
- * Bọc qua `@orpc/tanstack-query` (ADR-0047 §2) — màn gọi thẳng
+ * Bọc qua `@orpc/tanstack-query` (ADR-0055 §2) — màn gọi thẳng
  * `orpc.<resource>.<method>.queryOptions(...)` qua `useQuery`, không tự viết
  * tay tri-state fetch cho từng màn.
  */

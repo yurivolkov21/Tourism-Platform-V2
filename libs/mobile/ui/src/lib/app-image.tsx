@@ -36,7 +36,7 @@ export function physicalWidth(width: number, density: number): number {
   return Math.round(width * Math.min(density, MAX_IMAGE_DENSITY));
 }
 
-/** Ảnh chuẩn của app — cache đĩa + placeholder nền `muted` lúc tải (ADR-0047 §4). */
+/** Ảnh chuẩn của app — cache đĩa + placeholder nền `muted` lúc tải (ADR-0055 §4). */
 export function AppImage({
   source,
   width,

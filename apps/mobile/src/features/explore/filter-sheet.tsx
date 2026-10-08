@@ -41,7 +41,7 @@ export interface FilterSheetProps {
 }
 
 /**
- * Tấm lọc Explore (`.sheet` bản vẽ 18/09, E3 — ADR-0047 T2). Bốn facet
+ * Tấm lọc Explore (`.sheet` bản vẽ 18/09, E3 — ADR-0055 T2). Bốn facet
  * region/duration/price/difficulty là chip ĐƠN CHỌN (bấm lại chip đang chọn
  * thì gỡ về "không lọc") — khác sidebar checkbox đa chọn của web, vì bản vẽ
  * chỉ hiện MỘT chip "on" mỗi hàng. Sort luôn đúng một lựa chọn, không gỡ được.

@@ -206,7 +206,7 @@ export function chunkPairs<T>(items: readonly T[]): T[][] {
 }
 
 /**
- * Chi tiết tour — bố cục bê từ bản vẽ 18/09 (D1/D2/D7 — ADR-0047 T5). Màn
+ * Chi tiết tour — bố cục bê từ bản vẽ 18/09 (D1/D2/D7 — ADR-0055 T5). Màn
  * STACK, không thanh tab. Ảnh bìa + tiêu đề + hàng tab, dưới là nội dung tab
  * đang chọn, đáy là thanh giá + CTA.
  *

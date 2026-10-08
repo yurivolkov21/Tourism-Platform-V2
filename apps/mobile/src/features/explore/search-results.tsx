@@ -29,7 +29,7 @@ export interface SearchResultsProps {
 
 /**
  * Kết quả ô tìm chung (`.mini-dest`/`.result-row` bản vẽ 18/09, E2 —
- * ADR-0047 T3): nhóm Destinations cuộn ngang trước, nhóm Tours danh sách dọc
+ * ADR-0055 T3): nhóm Destinations cuộn ngang trước, nhóm Tours danh sách dọc
  * sau. Nhóm nào rỗng thì ẩn hẳn tiêu đề của nhóm đó — route đã đảm bảo không
  * bao giờ CẢ HAI cùng rỗng (rơi về E5 thay vì tới đây).
  */

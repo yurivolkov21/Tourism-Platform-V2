@@ -46,7 +46,7 @@ export interface HomeScreenProps {
  * TOÀN BỘ chỗ còn lại giữa đường kẻ và thanh tab.
  *
  * MÀN CHỈ VẼ — mọi state (fetch, vùng đang chọn) nằm ở route
- * `app/(tabs)/index.tsx` (ADR-0047 §2, khuôn `features/auth`).
+ * `app/(tabs)/index.tsx` (ADR-0055 §2, khuôn `features/auth`).
  */
 export function HomeScreen({
   status,
@@ -274,7 +274,7 @@ function HomeLoading({ metrics }: { metrics: HomeMetrics }) {
   const theme = useTheme();
   const [slow, setSlow] = useState(false);
 
-  // ADR-0047 §3: hẹn giờ bằng setTimeout TRONG hook màn — đây là logic UI theo
+  // ADR-0055 §3: hẹn giờ bằng setTimeout TRONG hook màn — đây là logic UI theo
   // thời gian, khác tri-state thuần của resilience.ts.
   useEffect(() => {
     const id = setTimeout(() => setSlow(true), 3000);

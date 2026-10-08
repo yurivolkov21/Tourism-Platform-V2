@@ -5,7 +5,7 @@ import { Card } from './card';
 import { useTheme } from './theme-provider';
 
 export interface EmptyStateProps extends ViewProps {
-  /** Icon vuông phía trên câu chính — dùng chung cho tri-state lỗi/rỗng (ADR-0047 §3). */
+  /** Icon vuông phía trên câu chính — dùng chung cho tri-state lỗi/rỗng (ADR-0055 §3). */
   icon?: ReactNode;
   /** Câu chính — tiếng Anh, lấy từ `@tourism/i18n` (luật 7). */
   title: string;

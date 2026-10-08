@@ -31,7 +31,7 @@ export interface TourListCardProps {
 }
 
 /**
- * Thẻ tour ngang của Explore (`.list-card` bản vẽ 18/09 — ADR-0047 T2): ảnh
+ * Thẻ tour ngang của Explore (`.list-card` bản vẽ 18/09 — ADR-0055 T2): ảnh
  * phủ kín cao `spacing(42)`, chip sao góc trên-trái, nút tim kính mờ góc
  * trên-phải, tiêu đề + vị trí góc dưới-trái, giá góc dưới-phải.
  */

@@ -1,6 +1,9 @@
-# ADR-0047 — Tầng dữ liệu mobile: oRPC `OpenAPILink` + TanStack Query · client-first
+# ADR-0055 — Tầng dữ liệu mobile: oRPC `OpenAPILink` + TanStack Query · client-first
 
 - **Trạng thái:** Accepted (2026-09-23)
+- **Đánh số lại:** 08/10/2026 từ 0047 → 0055 — `main` đã cấp 0047 cho
+  `tour-editor-sections` và đi tới 0054 (review nhánh `feat/mobile-account-screens`,
+  mục B3). Message của các commit cũ trước ngày này vẫn ghi "ADR-0047".
 - **Bối cảnh:** T0 của cụm xem tour mobile (P5b-2), theo
   [docs/handoff/mobile-browse-handoff.md](../handoff/mobile-browse-handoff.md). Nối tiếp
   [ADR-0040](0040-mobile-app-expo.md) (nền tảng Expo), [ADR-0016](0016-web-data-layer.md)

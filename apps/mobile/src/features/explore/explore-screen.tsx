@@ -85,12 +85,12 @@ export interface ExploreScreenProps {
 }
 
 /**
- * Explore — bố cục bê từ bản vẽ 18/09 (E1/E3/E4 — ADR-0047 T2): tiêu đề + ô
+ * Explore — bố cục bê từ bản vẽ 18/09 (E1/E3/E4 — ADR-0055 T2): tiêu đề + ô
  * tìm + nút lọc trên cùng, hàng chip (danh mục HOẶC địa danh đang lọc), đầu
  * trang địa danh khi có (E4), rồi danh sách thẻ tour dọc.
  *
  * MÀN CHỈ VẼ — mọi state (fetch, bộ lọc, ô tìm) nằm ở route
- * `app/(tabs)/explore.tsx` (ADR-0047 §2, khuôn `features/home`). Ngoại lệ duy
+ * `app/(tabs)/explore.tsx` (ADR-0055 §2, khuôn `features/home`). Ngoại lệ duy
  * nhất: mở/thu mô tả địa danh (`readMoreOpen`) — thuần UI hiển thị, không
  * chạm dữ liệu, cùng tiền lệ `HomeLoading`'s `slow` timer.
  */
