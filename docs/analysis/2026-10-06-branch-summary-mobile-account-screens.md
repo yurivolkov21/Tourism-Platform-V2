@@ -1,19 +1,22 @@
-# Tóm tắt nhánh `feat/mobile-account-screens` (P5b-4) — cập nhật 2026-10-06
+# Tóm tắt nhánh `feat/mobile-account-screens` (P5b-4) — cập nhật 2026-10-08
 
 Bản này thay [bản 26/09](2026-09-26-branch-summary-mobile-account-screens.md)
 làm nguồn đúng cho tình trạng hiện tại. Bản 26/09 giữ nguyên làm lịch sử; chỗ
-nào nó nói khác bản này thì tin bản này (ví dụ A7 nay đã nối API thật).
+nào nó nói khác bản này thì tin bản này (ví dụ A7 nay đã nối API thật). Tên
+file giữ ngày 06/10 vì `docs/README.md` đã trỏ vào đây; nội dung viết lại 08/10.
 
-Nguồn: `git log main..HEAD` (bản 06/10 tính tới `9a5f2a85`; 07/10 thêm L2–L5, F9, F12, Q1–Q3, N1–N6), spec
+Nguồn: `git log main..HEAD` tới `0bd1609b` (08/10), spec
 [`2026-09-25-mobile-account-screens.md`](../plans/2026-09-25-mobile-account-screens.md),
-review 6 ảnh (24 phát hiện: B1–B3, F1–F12, L1–L5, Q1–Q4), và working tree ngày 06/10.
+review 05/10 (24 phát hiện: B1–B3, F1–F12, L1–L5, Q1–Q4) và đợt rà 07/10 (N1–N10).
 
 ## Kết luận nhanh
 
 - **Chức năng: đủ theo spec.** 14 khung S1–S3, A1–A7, G1–G4 đều đã dựng và nối API.
   Thiếu duy nhất là DỮ LIỆU cho G4 (D2), không phải code.
-- **Chưa merge được.** Còn chặn bởi B1–B3 (phía API/ADR), chưa chạy `gate:int`,
-  chưa thử máy thật cho đợt sửa 06/10–07/10, và nhánh chậm `main` 335 commit (đo 07/10).
+- **Ba lỗi chặn merge B1–B3 đã sửa 08/10** (mục 4).
+- **Còn mở:** 4 lỗi kế thừa F5, F10, F11, L1 (mục 5); N7–N10 mức thấp (mục 7);
+  3 commit kế thừa còn `Co-Authored-By`; nhánh chậm `main` **359 commit**
+  (đo 08/10, chưa rebase); chưa thử máy thật cho đợt sửa 06/10–08/10.
 
 ## 1. Chức năng theo spec
 
@@ -34,10 +37,13 @@ review 6 ảnh (24 phát hiện: B1–B3, F1–F12, L1–L5, Q1–Q4), và worki
 Ngoài phạm vi theo spec: tab Trips (P5b-3) và màn "My reviews" (R4, P5b-5) —
 dòng menu "My reviews" cố ý chưa làm gì khi bấm.
 
-## 2. Đã sửa sau review (đợt 01–06/10)
+## 2. Đã sửa sau review 05/10
 
 | Mục | Nội dung | Commit |
 | --- | --- | --- |
+| B1 | `nexora://` được đứng trong `TRUSTED_ORIGINS` ở production (mục 4) | `98420206` |
+| B2 | Khoá `expo-authorization-proxy`, hết open redirect (mục 4) | `f8b37239` |
+| B3 | Đổi số ADR tầng dữ liệu mobile 0047 → 0055 (mục 4) | `0bd1609b` |
 | F6 | Xoá tài khoản nối API, map đủ mã lỗi server | `21c0bfa5` |
 | F1 | Rời nhóm auth bằng back/vuốt thì dọn hộp nhớ return-to | `5390a8bc` |
 | F2 | Trình xem ảnh: `GestureHandlerRootView` đặt trong `Modal` (Android) | `4a97c379` |
@@ -46,65 +52,91 @@ dòng menu "My reviews" cố ý chưa làm gì khi bấm.
 | F7, F8 | Chọn ảnh thư viện không xin quyền; đăng xuất xoá cache | `f592cbea` |
 | D3 (1, 2) | Explore nhớ đường về sau đăng nhập; nút X về đúng chỗ mở | `9a5f2a85` |
 | L2, L5 | `AppImage` kẹp mật độ 2x, hero dùng bề rộng màn, viewer bỏ `* 2`; Saved tải hết các trang (`useInfiniteQuery`), lọc trùng | `e3a73ab8` |
-| L3 | Gỡ wrapper chết `components/app-image.tsx`; ADR-0047 AMEND 2 | `c8fa1c6e` |
+| L3 | Gỡ wrapper chết `components/app-image.tsx`; ADR-0055 AMEND 2 | `c8fa1c6e` |
 | F9, F12 | `readHasSeen()` bắt lỗi SecureStore (lỗi thì vào app, không kẹt splash); huỷ cửa sổ Google thì hỏi lại `getSession`, không có user thì `cancelled` | `ba2a1881` |
 | L4 | `Chip` nhận `removeLabel`; Explore truyền copy từ `@tourism/i18n` | `b6973451` |
 | Q2, Q3 | Thêm 7 doc mới của nhánh vào `docs/README.md`; gỡ `docs/PROGRESS.md` | `56856bdc` |
-| Q1 | Gỡ `Co-Authored-By` khỏi message 55 commit (`filter-branch`, tree không đổi) | 07/10, bản cũ ở `backup/account-truoc-q1` |
+| Q1 | Gỡ `Co-Authored-By` khỏi message 55 commit (`filter-branch`, tree không đổi) — trừ 3 commit kế thừa, xem mục 3 | 07/10, bản cũ ở `backup/account-truoc-q1` |
+| Q4 | Đi theo B3: ADR nay là 0055. Việc ADR có sau 9 commit code là nợ lịch sử, không sửa được | — |
+| N1–N6 | Lỗi mới tìm khi rà 07/10 (mục 7, 9) | `5a883871` · `bbfe667e` · `10730a35` · `a5a827ff` |
 
-Hash trong bảng là hash SAU Q1 (07/10). Hash cũ trước Q1 (`868fb82e`,
-`3e9ffb3c`, `cc6a6612`…) chỉ còn trên nhánh `backup/account-truoc-q1`.
+Hash là hash SAU Q1 (07/10). Hash cũ trước Q1 (`868fb82e`, `3e9ffb3c`,
+`cc6a6612`…) chỉ còn trên nhánh `backup/account-truoc-q1`.
 
-Kiểm 07/10 (sau F9/F12/L4): `typecheck` và `test` xanh — mobile **478/478**,
-mobile-ui **133/133**; Biome sạch; tokens-only sạch.
+Kiểm 08/10 sau B1–B3 (máy Windows, Postgres service local, Docker tắt):
+`pnpm gate` — test xanh hết (api **987/987**, mobile **487/487**, mobile-ui
+**134/134**, contract 353, tokens 18), typecheck và Biome sạch; build `web`
+đỏ vì SSG cần API đang chạy (`ECONNREFUSED`), build `admin` cần
+`NEXT_PUBLIC_API_URL` — cả hai là thiếu môi trường local, CI có đủ.
+`pnpm test:int` **594/599**: 5 đỏ ngoài phạm vi nhánh — `check-rls` (2) gọi
+container Docker `tourism-v2-postgres-1` không chạy; `pending-sweep` (3)
+"expected 2 to be 1", lỗi đã ghi từ 26/09 (mục 5). Spec auth đụng tới
+(`auth-hardening`, `env`) xanh. Cần CI xác nhận lại sau push.
 
 ## 3. Đang treo — việc của nhánh này
 
-1. ~~**Push** sau Q1~~ — xong 07/10: remote đã nhận bản sau Q1 (`cb0e0217`),
-   đợt N1–N6 push thường (fast-forward), không cần force.
-2. **D2** — gán tour liên quan cho bài viết (admin hoặc `seed.ts`) để G4 có dữ liệu.
+1. **D2** — gán tour liên quan cho bài viết (admin hoặc `seed.ts`) để G4 có dữ liệu.
    DB local 07/10: bảng `post_tours` trống.
-3. **D3 mục 3** — đăng nhập xong đang `router.replace` về tour đã mount dưới
+2. **D3 mục 3** — đăng nhập xong đang `router.replace` về tour đã mount dưới
    modal, có thể đẩy bản sao vào stack. Chỉ đổi sau khi thử máy thật.
-4. **Rebase lên `main`** (chậm 335 commit ngày 07/10; `main` có thêm migration
-   `20261005003043_post_tag_links_order` nên rebase xong chạy `pnpm db:deploy`
-   cho DB local). Q1 đã xong 07/10; ba commit còn mang `Co-Authored-By`
-   (`9a1db2de`, `c4a2f926`, `5232e4b9`) nằm trên `feat/mobile-browse-screens`,
-   phải sửa ở nhánh đó.
-5. **Kiểm trước khi xin review:** `pnpm gate:int` (Postgres local hoặc Docker), `bundle`,
-   `expo-doctor`, thử máy thật Android và iOS:
+3. **Rebase lên `main`** — chậm 359 commit (đo 08/10 sau `git fetch`). `main`
+   có migration mới (`20261005003043_post_tag_links_order` trở đi) nên rebase
+   xong chạy `pnpm db:deploy` cho DB local. Lúc rebase: bảng ADR ở
+   `docs/README.md` giữ cả các dòng 0047–0054 của `main` lẫn dòng 0055 của
+   nhánh; entry CHANGELOG của nhánh đặt lên trên. Rebase viết lại lịch sử nên
+   push sau đó cần `--force-with-lease` — hỏi user trước.
+4. **Ba commit còn `Co-Authored-By`** (`9a1db2de`, `c4a2f926`, `5232e4b9`) nằm
+   trên `feat/mobile-browse-screens` — sửa ở nhánh đó.
+5. **Kiểm trước khi xin review:** `bundle`, `expo-doctor`, thử máy thật Android và iOS:
    - F2 cử chỉ zoom (Android), F3 bàn phím (iPhone), F6 với API thật.
    - L2 độ nét ảnh hero/viewer trên máy 3x.
    - D3: tự lưu tim từ Explore, nút X, đường về sau đăng nhập.
+   - Đăng nhập Google từ app (đi qua proxy đã khoá ở B2) — cần `GOOGLE_CLIENT_ID`.
    - Nền sáng/tối các màn mới.
 6. **Doc tổng hợp cuối và `docs/open-items.md`** — user chốt để sau; `open-items`
-   mục 1–2 (D3) vẫn ghi đang mở dù đã sửa.
+   mục 1–2 (D3) vẫn ghi đang mở dù đã sửa. Khi merge, thêm vào đó rủi ro login
+   CSRF còn lại của B2 (ADR-0017 §11).
+7. **Việc hạ tầng cho session gốc, làm SAU review** (luật 15 — nhánh thi công
+   không tự làm): thêm `nexora://` vào `TRUSTED_ORIGINS` trên Render khi deploy
+   bản có B1. Nhánh này không có migration mới.
 
-## 4. Chặn merge nhưng không phải lỗi riêng của nhánh
+## 4. Ba lỗi chặn merge — đã sửa 08/10
 
-Ba mục này nằm trong 35 commit kế thừa từ `feat/mobile-browse-screens`. Cần
-chốt với nhóm sửa ở nhánh nào để khỏi trùng công.
+Cả ba nằm ở phần chung với `feat/mobile-browse-screens`. Các nhánh mobile khác
+(`browse`, `booking`, `review`) vẫn mang ADR số 0047 và B1/B2 cũ — nhánh nào
+merge sau phải lấy bản sửa ở đây (đổi số y hệt sang 0055).
 
-- **B1** — [`env.ts:251`](../../apps/api/src/config/env.ts) bắt mọi
-  `TRUSTED_ORIGINS` là `https`, nên thêm `nexora://` thì API không khởi động.
-  Luật cũ của API, xung đột với nhu cầu mobile. Cần AMEND ADR-0017 §9 trước.
-- **B2** — [`auth.config.ts:195`](../../apps/api/src/auth/auth.config.ts) plugin
-  `expo()` bật cả production → lỗ open redirect. Do commit mobile `242838b1` thêm vào.
-- **B3** — hai ADR cùng số 0047 (`mobile-data-layer` và `tour-editor-sections`).
-  Nhánh merge sau đổi số; đề xuất mobile đổi sang 0053.
+- **B1** (`98420206`) — ADR-0017 AMEND §10. `env.ts` miễn luật https cho
+  đúng chuỗi `nexora://` (hằng `MOBILE_APP_ORIGIN`); `exp://`, `nexora://evil`,
+  `other://` vẫn chặn ở production; `CORS_ORIGINS` không phải chứa nó. Test ở
+  `env.spec.ts`.
+- **B2** (`f8b37239`) — ADR-0017 AMEND §11. Không tắt được `expo()` ở
+  production vì app bản build đăng nhập Google qua đúng endpoint proxy. Thay
+  vào đó before-hook trong `auth.config.ts` chặn `/expo-authorization-proxy`
+  TRƯỚC handler (không redirect, không đặt cookie), chỉ cho qua khi
+  `isAllowedExpoAuthorizationUrl` (`auth/expo-proxy-guard.ts`) đúng cả ba:
+  endpoint `https://accounts.google.com/o/oauth2/v2/auth`, `client_id` của
+  mình, `redirect_uri` về `<baseURL>/callback/google`. Google chưa cấu hình thì
+  chặn hết. Test: `expo-proxy-guard.spec.ts` (8 unit) và
+  `auth-hardening.int.spec.ts` mục 3 (URL lạ → 400, không `location`, không
+  `set-cookie`). Còn lại: login CSRF do `state` của plugin — ghi ở ADR, chưa xử lý.
+- **B3** (`0bd1609b`) — `main` đã có 0047 `tour-editor-sections` và đi tới
+  0054 (không phải 0052 như lúc review), nên đổi sang **0055** chứ không phải
+  0053. Đổi tên file, sửa mọi chỗ viện dẫn (code mobile, mobile-ui,
+  `jest.setup.js`, plan T0, `docs/README.md`, entry CHANGELOG chưa merge của
+  nhánh), ghi dòng "Đánh số lại" ở đầu ADR. Message commit cũ vẫn ghi
+  "ADR-0047" — không sửa lịch sử.
 
-## 5. Lỗi có sẵn, không do nhánh này gây ra
+## 5. Lỗi kế thừa còn mở
 
-Kế thừa từ browse-screens, vẫn còn trong code. User chưa quyết sửa ở đâu.
+Kế thừa từ browse-screens; đọc code 08/10 xác nhận vẫn còn. User chưa quyết sửa ở đâu.
 
-| Mục | Lỗi |
-| --- | --- |
-| F5 | "See all tours" ở Home mở `/explore` không reset bộ lọc điểm đến |
-| F10 | Bấm lại chip sort đang chọn → danh sách review rỗng, không tải lại |
-| F11 | `expandedDay` lấy giá trị lúc mount khi tour chưa về → ngày 1 không mở sẵn |
-| L1 | `getCookie()` đọc SecureStore đồng bộ mỗi lần render (`withMobileAuth`) |
-
-F9, F12 và L4 (cùng nhóm kế thừa) đã sửa ngày 07/10, xem mục 2.
+| Mục | Lỗi | Chỗ |
+| --- | --- | --- |
+| F5 | "See all tours" ở Home mở `/explore` không param nên bộ lọc điểm đến cũ còn nguyên; bấm lại đúng điểm đến cũ thì param không đổi, effect không chạy | `(tabs)/index.tsx:48`, `(tabs)/explore.tsx:74` |
+| F10 | Bấm lại chip sort đang chọn: `setReviewItems([])` mà query key không đổi → danh sách review rỗng, không tải lại | `tours/[slug].tsx:462` |
+| F11 | `expandedDay` lấy giá trị lúc mount khi tour chưa về → ngày 1 không mở sẵn | `tour-detail-screen.tsx:333` |
+| L1 | `withMobileAuth()` gọi `getCookie()` đọc SecureStore đồng bộ mỗi lần | `lib/api/client.ts:28` |
 
 Ngoài mobile, bản 26/09 đã ghi int test `apps/api` flaky
 (`pending-sweep.int.spec.ts` lặp lại "expected 2 to be 1") — không liên quan nhánh.
@@ -119,7 +151,7 @@ Ngoài mobile, bản 26/09 đã ghi int test `apps/api` flaky
 - **`AppImage` nhận dp, tự nhân mật độ, kẹp ở 2x** (`physicalWidth()`). Nơi gọi
   không được tự nhân thêm. Thay quyết định 27/09 "nhân `PixelRatio.get()`".
 - **Màn import `AppImage` thẳng từ `@tourism/mobile-ui`** và truyền
-  `transformUrl={cloudinaryUrl}` (ADR-0047 AMEND 2).
+  `transformUrl={cloudinaryUrl}` (ADR-0055 AMEND 2 — số cũ 0047, đổi 08/10).
 - **Saved tải hết các trang** vì contract kẹp `pageSize ≤ 100`; chỉ dọn tập
   "đã bỏ lưu" khi đã có đủ mọi trang.
 - **Đăng xuất và xoá tài khoản đều đi qua `signOutAndClearCache()`** — xoá cache
@@ -225,7 +257,7 @@ Giao diện:
 
 Kiểm 07/10 sau N1–N6: `typecheck` + `test` xanh — mobile **487/487**,
 mobile-ui **134/134**; `biome check .` sạch. Chưa chạy `gate:int`, chưa thử máy thật.
-Bốn commit chỉ ở local, chưa push.
+Bốn commit này đã push 07/10.
 
 ## 10. Chạy local để test
 
