@@ -147,7 +147,9 @@ export function BookingDetailsPanel({
         ) : (
           <p className="text-[12.5px] text-muted-foreground">{t.details.questions}</p>
         )}
-        <div className="flex flex-wrap gap-2">
+        {/* `ml-auto`: nút huỷ kèm link chính sách của `BookingActions` dài hơn nửa cột, hàng
+            xuống dòng — cụm nút vẫn bám mép PHẢI như spec §5.3 thay vì dạt về trái. */}
+        <div className="ml-auto flex flex-wrap gap-2">
           <ButtonLink href="/contact" variant="outline" size="sm">
             <MessageSquareIcon aria-hidden="true" />
             {messages.passportVisa.contactUs}

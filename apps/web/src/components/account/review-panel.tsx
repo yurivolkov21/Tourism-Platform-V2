@@ -34,10 +34,13 @@ export function ReviewPanel({ booking }: { booking: BookingDetail }) {
 
   const sec = messages.accountBookingDetail.sections;
   return (
+    // Khung thẻ chỉ từ `sm`: `ReviewComposer` tự là một thẻ, rộng tối thiểu ~339px (hàng chấm
+    // sao, nút gửi), nên ở 375px viền cộng `px-6` làm cột tràn ngang 31px (đo bằng CSS build
+    // thật, Task B8). Dưới `sm` khu review trần như trang cũ — linh kiện giữ nguyên (spec §5.4).
     <section
       id="review"
       aria-labelledby="review-heading"
-      className="rounded-2xl border border-border bg-card px-6 py-5"
+      className="sm:rounded-2xl sm:border sm:border-border sm:bg-card sm:px-6 sm:py-5"
     >
       <h2 id="review-heading" className="font-heading text-[19px] leading-tight font-semibold">
         {sec.reviewHeading}

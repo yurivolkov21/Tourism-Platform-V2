@@ -85,12 +85,17 @@ function StepItem({ step, bookingCode }: { step: GetReadyStep; bookingCode: stri
         {step.key === 'dayOne' ? (
           <>
             {step.text ? (
-              <p
-                data-slot="day-text"
-                className="mt-2 line-clamp-4 rounded-lg bg-muted/55 px-[11px] py-2 font-mono text-[11.5px] leading-[1.65] whitespace-pre-line"
-              >
-                {step.text}
-              </p>
+              // Đệm và nền nằm ở lớp bọc, không ở thẻ `line-clamp`: `overflow: hidden` cắt ở mép
+              // VÙNG ĐỆM, nên đệm đặt chung chỗ với `line-clamp` thì nửa trên dòng thứ năm lộ ra
+              // trong đệm dưới (đo bằng CSS build thật, Task B8).
+              <div className="mt-2 rounded-lg bg-muted/55 px-[11px] py-2">
+                <p
+                  data-slot="day-text"
+                  className="line-clamp-4 font-mono text-[11.5px] leading-[1.65] whitespace-pre-line"
+                >
+                  {step.text}
+                </p>
+              </div>
             ) : null}
             <Link
               href={step.href}
