@@ -282,6 +282,36 @@ Vì sao không mất gì: luật https có để chặn origin localhost/http l�
 do ô env Render bỏ trống. `nexora://` là hằng điền tay có chủ đích, không thể
 đến từ default; bảo vệ CSRF của Better Auth vẫn đối chiếu origin như cũ.
 
+### 11. AMEND 08/10/2026 — khoá `GET /api/auth/expo-authorization-proxy` của plugin `expo()`
+
+Plugin `@better-auth/expo` (1.6.23) mount endpoint proxy cho đăng nhập social
+từ app: nó chỉ đòi `authorizationURL` là `https` và khác origin của API, rồi
+302 tới đó — tức **open redirect** trên domain API thật, kèm đặt cookie
+`state` do người gọi chọn (review nhánh `feat/mobile-account-screens`, mục B2).
+
+Không tắt plugin ở production được: sau §10, app bản build chạy trên API thật
+và đăng nhập Google từ app đi qua đúng endpoint này.
+
+**Chốt:** before-hook toàn cục trong `auth.config.ts` chặn path
+`/expo-authorization-proxy` TRƯỚC handler của plugin (nên cookie cũng không
+được đặt), chỉ cho qua khi `isAllowedExpoAuthorizationUrl`
+(`auth/expo-proxy-guard.ts`) đúng cả ba:
+
+- `origin + pathname` đúng `https://accounts.google.com/o/oauth2/v2/auth`
+  (không nhận path khác của Google — có trang mang `continue=` chuyển tiếp);
+- `client_id` đúng `GOOGLE_CLIENT_ID` của mình;
+- `redirect_uri` đúng `<baseURL BA>/callback/google`.
+
+Google chưa cấu hình (thiếu cặp env) → chặn hết. Sai → 400
+`Invalid authorizationURL`, cùng thông điệp với lỗi gốc của plugin.
+
+**Rủi ro còn lại (ghi nhận, chưa xử lý):** URL hợp lệ vẫn mang `state` do
+người gọi chọn — đó là thiết kế của plugin (app không giữ được cookie trình
+duyệt). Kẻ tấn công dụ nạn nhân mở link proxy mang `state` của luồng mình bắt
+đầu thì callback chạy theo dữ liệu `state` của kẻ đó (login CSRF). Đóng hẳn
+cần đổi cơ chế state của plugin — để sau v1, ghi ở `docs/open-items.md` khi
+merge. Nâng `@better-auth/expo` thì đọc lại endpoint này trước.
+
 ## Hệ quả
 
 - `apps/web` thêm dep `better-auth` (client-only import) — bám version API

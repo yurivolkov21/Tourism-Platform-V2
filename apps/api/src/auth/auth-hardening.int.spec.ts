@@ -142,4 +142,17 @@ describe('auth hardening: enumeration + trần riêng (W2 mục 3)', () => {
     });
     expect(spoofed.statusCode).toBe(429);
   });
+
+  it('3. expo-authorization-proxy KHÔNG còn là open redirect (B2, ADR-0017 §11): URL lạ → 400, không redirect, không đặt cookie state', async () => {
+    // Trước B2: plugin chỉ đòi https + khác origin API → 302 tới bất kỳ đâu.
+    const res = await app.inject({
+      method: 'GET',
+      url: `/api/auth/expo-authorization-proxy?authorizationURL=${encodeURIComponent(
+        'https://evil.example/phish?state=abc',
+      )}&oauthState=abc`,
+    });
+    expect(res.statusCode).toBe(400);
+    expect(res.headers.location).toBeUndefined();
+    expect(res.headers['set-cookie']).toBeUndefined();
+  });
 });
