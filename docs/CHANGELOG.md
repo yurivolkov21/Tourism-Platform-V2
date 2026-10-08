@@ -8,6 +8,75 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-10-08 — P7 phần C: voucher `/checkout/success` thiết kế lại (nhánh `feat/booking-voucher`)
+
+Đơn đã trả mở `/checkout/success?code=` thấy voucher mới theo bản vẽ
+`booking-voucher.src.html`: một thẻ `max-w-7xl` chia đôi. Cột trái có mộc trạng thái, tiêu
+đề, thẻ ảnh bìa với dòng "{nơi} · {D} days", tổng đã trả và hai chip kính mờ, bốn ô có icon
+(Meeting point lấy từ tour, Paid with, Lead traveller, Need help?). Cột phải 440px mảng teal
+có ô mã đơn, ngày đi và "Admit n", dòng điều kiện, mã vạch, Receipt overview và Trip journal.
+Spec P7 §2.6 và §6; luật giai đoạn ở ADR-0054. Không đổi API, không migration, không env.
+
+`voucherView` (hàm thuần ở `apps/web/src/lib/voucher.ts`) phân biệt **vừa trả** (PAID và
+`paidAt` cách lúc render không quá 30 phút: "Your day in … is booked." hoặc "Your trip to …
+is booked.", pháo giấy một lần mỗi tab) với **mở lại** ("Your trip voucher", không pháo
+giấy), và đổi ô mã, mã vạch, dòng điều kiện, nhật ký theo `bookingPhase`. Đơn chưa có
+`paidAt` giữ hoá đơn chờ `BookingReceipt` cùng `CheckoutAutoRefresh` như cũ. Dưới `xl`
+(điện thoại, máy tính bảng) thẻ một cột: ô mã gọn ngay dưới tiêu đề, mảng teal xuống cuối.
+Bản in chỉ in thẻ: giấu navbar, hero,
+footer và nút; mảng teal nền trắng viền teal; mã vạch mực đen; mực tối cả khi đang ở giao
+diện tối. Trang không tìm thấy đơn trỏ "My bookings" về `/account/bookings`. Mảng teal dùng
+`bg-primary` thay `bg-primary-emphasis` của spec (token vai chữ, dark mode sáng lên).
+
+Chỗ lệch plan: `.catch` của `fetchTourDetail` ở trang gọi thêm `unstable_rethrow` như quyết
+định 22 dặn (mã mẫu của plan bỏ sót); một ca của `voucher-pass.spec.tsx` destructure có kiểm
+thay `items[0]!` vì Biome cảnh báo `noNonNullAssertion`; hai phép grep "phải rỗng" của Bước 12
+(`bg-primary-emphasis`, `next*`) mỗi cái còn khớp đúng một dòng comment do chính plan viết sẵn
+(JSDoc `VoucherPass`, comment `stubShowCode`), không mã nào dùng. Gate chạy cô lập trên DB
+`tourism_test_p7c` với API cổng 3102 ở mọi lượt (kể cả build web của Task C5) vì Phần B chạy
+song song ở worktree khác; máy chủ tĩnh của Task C5 mở bằng Git Bash.
+
+Đợt vá sau C5 (cùng ngày, user duyệt làm ngay trên nhánh): soi thêm khổ máy tính bảng và chữ
+trên ảnh thì lộ ba lỗi nằm ngay trong mã mẫu của plan, vá cả ba ở `f1042646`.
+
+1. **Hai cột từ `md` vỡ ở 768–1279px.** Cột phải cố định 440px nên ở 768px cột trái còn 194px,
+   cột chữ của bốn ô thông tin rộng 0px (chữ xếp dọc từng ký tự, mỗi ô cao 1141px), ở 1024px
+   còn 63px. Nay hai cột từ `xl` (1280px: cột trái ~580px, đúng khổ bản vẽ, cùng mốc vé của
+   trang chi tiết), dưới đó một cột; ô mã gọn và ô mã của mảng teal đổi chỗ theo cùng mốc,
+   `sizes` của ảnh bìa sửa theo. Đo lại: cột chữ 187px ở 768px, 283px ở 1024px.
+2. **Chữ trên ảnh không đọc được trên ảnh sáng.** Lớp phủ cũ trong suốt tới 30% chiều cao
+   ảnh: ở 375px dòng "{nơi} · {D} days" và tên tour nằm trên ảnh trần (1,04:1 và 1,0:1 trên
+   ảnh trắng), ở 1280px dòng ấy chỉ có ~0,4 alpha. Nay MỘT gradient gắn vào khối chữ (khuôn
+   caption của `journey-moments.tsx`): 90% ở đáy, 70% đúng mép trên chữ, mờ dần qua phần đệm
+   4rem; dòng nhỏ bỏ `opacity-80`. Mọi dòng chữ trên ảnh ≥ 5,45:1 kể cả trên ảnh trắng tinh, ở
+   cả bốn khổ đo.
+3. **Tên tour dài bị cắt trên điện thoại.** Ảnh cao cố định 224px, khối chữ neo đáy: tên tour
+   dài nhất của seed ("Northern Highlights: Hanoi–Hạ Long–Ninh Bình 5D4N") đẩy dòng nhỏ quá mép
+   trên ảnh và bị cắt. Nay ảnh chỉ có chiều cao tối thiểu, khối chữ nằm trong luồng ở đáy: tên
+   ấy làm ảnh cao 330px, không mất chữ nào. Hệ quả: ở 375px ảnh của đơn mẫu cao 240px thay vì
+   224px như plan ghi.
+
+Số đo C5 trên CSS build thật, đo lại sau đợt vá. 1280px: không tràn ngang, mép thẻ thẳng tiêu
+đề hero, hai cột, mảng teal 440px, chỉ ô mã của mảng teal hiện, ảnh 288px, mã vạch không tràn;
+bản đã hoàn đủ không ô mã nào, dải "no longer valid" hiện trong mảng teal. 768px và 1024px: một
+cột, ô mã gọn hiện, ô mã của mảng teal giấu, không tràn ngang. 375px: một cột, mảng teal xuống
+dưới, ô mã gọn nằm giữa tiêu đề và ảnh, ảnh 240px, không tràn ngang; bản đã hoàn đủ chỉ dải
+cột trái hiện, khối mã của mảng teal giấu (lần đo đầu ở lượt C5 chạy khi CSS chưa nạp xong nên
+ra hai dải cùng hiện, đo lại sau `load` thì đạt). Bản in giả lập 718px, cả sáng lẫn tối, không
+đổi sau đợt vá: chrome, hero và mọi nút giấu, thẻ hết khổ cao 758px (đã hoàn đủ 613px), mảng
+teal 272px nền trong viền `solid 2px`, `break-inside: avoid`, tiêu đề, dòng phụ, mảng teal và
+vạch mã đều mực `--hero`; hoá đơn chờ in như cũ (chrome còn, cuống `dashed 1px`).
+
+**Review findings:** chưa review — session gốc review trước merge.
+
+Tests after: Vitest **5519** (web 1723, api 1068, admin 1718, contract 656, core 46, ui 27,
+tokens 18, i18n 18, mobile 159, mobile-ui 86) và int **753 ở 46 file**. Ca mới ở web:
+voucher.spec 25, voucher-overview.spec 13, voucher-pass.spec 11, voucher-card.spec 4. Đột biến
+đã thử: 50, giết cả 50 (C1 14, C2 7, C3 9, C4 3, đợt vá 17); nhánh `awaiting_payment`/`lapsed`
+của `voucherView` không test nào giết được — gỡ nó thì typecheck đỏ vì `switch` hết vét cạn.
+
+CÒN TREO: không có việc hạ tầng (không migration, không env, không webhook, không đổi API).
+
 ## 2026-10-08 — P7 phần B: trang chi tiết đơn (nhánh `feat/booking-pages-redesign`)
 
 Trang `/account/bookings/[code]` dựng lại theo bản vẽ duyệt 05/10: vé kiểu boarding pass (ảnh
