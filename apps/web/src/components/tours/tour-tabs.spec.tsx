@@ -163,6 +163,16 @@ describe('TourTabs — dải cuộn ngang khi năm tab không vừa khung', () =
     window.history.replaceState(null, '', '/tours/x');
   });
 
+  it('dải cuộn căn tab từ mép trái — căn giữa đẩy tab đầu tràn sang trái, chỗ không cuộn tới được', () => {
+    // Đo 08/10 bằng Chromium ở 375: lớp gốc của TabsList có `justify-center`.
+    // Trong vùng cuộn, nội dung 430px căn giữa khung 279px tràn đều HAI phía:
+    // Overview nằm ở x=−75 mà `scrollLeft` không âm được, nên tab đầu mất hẳn
+    // (`scrollWidth` chỉ 354). jsdom không có layout nên canh bằng chính lớp
+    // CSS; số đo trước/sau ghi ở CHANGELOG.
+    render(<TourTabs panels={panels} />);
+    expect(screen.getByRole('tablist')).toHaveClass('max-sm:justify-start');
+  });
+
   it('đang ở đầu dải → chỉ mép phải mờ, vì bên phải còn tab bị che', () => {
     render(<TourTabs panels={panels} />);
     const list = mockStripLayout(PHONE);

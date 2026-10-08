@@ -168,6 +168,11 @@ export function TourTabs({ panels }: { panels: Record<TabKey, ReactNode> }) {
               • `overflow-x-auto` + `scrollbar-none`: cuộn native, thanh cuộn
                 ẩn. Tab giữ `flex-1` nên khung đủ rộng thì vẫn chia đều, thiếu
                 chỗ thì co về đúng bề rộng chữ và dải cuộn.
+              • `justify-start`: lớp gốc có `justify-center`, mà nội dung căn
+                giữa trong vùng cuộn tràn đều HAI phía. Phần tràn bên trái nằm
+                ở toạ độ âm, `scrollLeft` không với tới: đo 08/10 ở 375,
+                Overview nằm ở x=−75 và mất hẳn. Khung đủ rộng thì tab `flex-1`
+                đã lấp kín hàng, nên căn trái không đổi gì.
               • `border-b-0` + cao 39px: kẻ đáy dời ra vỏ ngoài (39 + 1 = 40,
                 vẫn đúng chiều cao `.tablist`). Cao khai qua cùng tiền tố biến
                 thể với `h-10`, cùng lý do như trên.
@@ -188,7 +193,7 @@ export function TourTabs({ panels }: { panels: Record<TabKey, ReactNode> }) {
           data-overflow-start={edges.start ? '' : undefined}
           data-overflow-end={edges.end ? '' : undefined}
           data-lenis-prevent={overflowing ? '' : undefined}
-          className="w-full gap-6 rounded-none border-b border-border bg-transparent p-0 group-data-horizontal/tabs:h-10 max-sm:items-start max-sm:overflow-x-auto max-sm:scrollbar-none max-sm:border-b-0 max-sm:group-data-horizontal/tabs:h-[39px] max-sm:motion-safe:scroll-smooth max-sm:data-[overflow-start]:mask-l-from-[calc(100%-2rem)] max-sm:data-[overflow-end]:mask-r-from-[calc(100%-2rem)]"
+          className="w-full gap-6 rounded-none border-b border-border bg-transparent p-0 group-data-horizontal/tabs:h-10 max-sm:items-start max-sm:justify-start max-sm:overflow-x-auto max-sm:scrollbar-none max-sm:border-b-0 max-sm:group-data-horizontal/tabs:h-[39px] max-sm:motion-safe:scroll-smooth max-sm:data-[overflow-start]:mask-l-from-[calc(100%-2rem)] max-sm:data-[overflow-end]:mask-r-from-[calc(100%-2rem)]"
         >
           {TAB_ORDER.map((key) => (
             <TabsTrigger
