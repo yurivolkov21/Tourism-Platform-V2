@@ -2747,12 +2747,12 @@ export const messages = {
     body: 'Book your first tour and we’ll ink this page — dates, places, and a stamp to prove you were there.',
     cta: 'Browse tours',
   },
-  /** Trang visa (M2) — chi tiết booking dựng như giấy tờ dán trong hộ chiếu:
-   *  mộc trạng thái đóng nghiêng, lưới nhãn IATA, fine print mono. Cùng vũ trụ
-   *  ấn phẩm với tấm vé checkout ("View voucher" mở đúng tấm vé đó). */
+  /** Nhãn dùng chung của khu đơn: breadcrumb và mộc trạng thái (`VisaStamp`) của trang chi tiết
+   *  đơn, dải vé "Entry · Tour booking", lưới nhãn của `BookingAccordion`, hai nút Contact us /
+   *  View voucher. Tên khối giữ từ thời trang "visa" (M2); trang chi tiết đơn nay là vé kiểu
+   *  boarding pass (spec P7 §5.2), chữ riêng của nó ở `bookingDetail`. */
   passportVisa: {
     heroBreadcrumb: 'Booking',
-    back: '← Passport',
     kicker: 'Entry · Tour booking',
     labels: {
       dates: 'Dates',
@@ -2770,11 +2770,6 @@ export const messages = {
     },
     viewVoucher: 'View voucher',
     contactUs: 'Contact us',
-    cancelLead: 'Need to change plans?',
-    /** Fine print đáy giấy tờ — thay section Contact cũ, gọn một dòng mono. */
-    fineLine: (name: string, email: string, booked: string, provider: string) =>
-      `Lead traveler: ${name} · ${email} · Booked ${booked} · ${provider}`.toUpperCase(),
-    requestsLine: (requests: string) => `Special requests: ${requests}`.toUpperCase(),
   },
   accountBookingDetail: {
     /**
@@ -2793,7 +2788,7 @@ export const messages = {
       // Nhãn link khi không hoàn đồng nào: dùng `cancellationDeadline.policyLink`
       // (khoá `schedule` cũ nói "refund schedule" theo bậc — đã gỡ).
     },
-    // Task 7 (redesign hướng A): link cạnh H1 sang trang tour công khai
+    // Task 7 (redesign hướng A): link dưới tên tour trên vé (spec P7 §5.2) sang trang tour công khai
     // (`/tours/{tourSlug}`) — riêng cho namespace này, KHÔNG tái dùng
     // `view`/`viewTour` của namespace khác (đã có tiền lệ mỗi trang giữ bản
     // copy riêng dù cùng chữ, xem `accountBookings.list.viewTour`).
