@@ -8,6 +8,53 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-10-08 — Dải 5 tab trang tour cuộn ngang dưới 640px (`854b3767`..`c88f0469`, nhánh `fix/tour-tabs-mobile-scroll`)
+
+**Lỗi** (G27, đo 07–08/10 trên prod lẫn bản build local, `/tours/vietnam-grand-journey-12d`): ở 375px
+năm tab cộng bốn khe 24px cần 430px trong khung 279px, mà `TabsList` không có lớp cuộn nào. Tab cuối
+tràn tới x=402 và cả trang cuộn ngang được (`scrollWidth` 402 so với 375). Lúc đo lại bằng Chromium
+mới lộ nửa thứ hai: lớp gốc `justify-center` căn giữa cả phần tràn, nên Overview nằm ở x=−27, chỗ
+không cuộn tới được.
+
+User duyệt thiết kế 08/10, chọn "cuộn ngang và mờ mép". Ba hướng bị loại: thu khe và chữ (bỏ hết khe
+vẫn 334px, chữ 12px còn khoảng 286px, đều quá 279), để lộ thanh cuộn 4px (iPhone chỉ hiện nó lúc đang
+vuốt), và ô chọn (mất cái nhìn tổng quan 5 phần). Mã ở `tour-tabs.tsx`:
+
+- Dưới 640px (`max-sm:`) dải là vùng cuộn native, thanh cuộn ẩn, tab căn từ mép trái. Tab giữ
+  `flex-1` nên khung đủ rộng thì vẫn chia đều.
+- Mép nào còn tab bị che thì mờ 2rem. Hook đặt `data-overflow-start` và `data-overflow-end` theo vị
+  trí cuộn, nghe `scroll` cùng ResizeObserver trên dải lẫn từng tab (font nạp xong làm tab rộng ra
+  mà dải không đổi kích thước). Đường kẻ đáy dời ra vỏ ngoài để mask không làm mờ nó.
+- Tab đang mở (từ hash lúc vào trang, `hashchange` hay cú bấm) được cuộn ra khỏi vùng mờ, chỉ chạm
+  trục ngang, trượt mượt trừ khi máy bật giảm chuyển động. Hai phép tính thuần tách ra
+  `lib/scroll-strip.ts`.
+- `data-lenis-prevent` chỉ gắn khi dải tràn. Từ 640px trở lên không lớp nào đổi.
+
+**Đo trên bản build** (`next start` cổng 3310, API dev cổng 3301). Browser pane đang ẩn nên đo bằng
+Edge headless qua CDP, profile tạm:
+
+- 320, 360 và 375px: `scrollWidth` của trang bằng `clientWidth`, kể cả khi mở tab Departures. Dải
+  rộng 429px, cuộn tối đa 205, 165 và 150px; Overview nằm ở x=0.
+- 375px: ở đầu dải chỉ mép phải mờ, giữa dải mờ cả hai mép. Bấm Reviews khi nó đang lộ 19px thì dải
+  cuộn đúng 69px. Vào bằng `#good-to-know` thì dải cuộn hết 150px và tab ấy lộ trọn. Gạch chân nằm ở
+  37–39px, chạm đường kẻ của vỏ ở 39–40px.
+- 768 và 1280px: tab rộng 114,4px (khung 668 vì thanh cuộn dọc 4px) và 192px, cao 40px, gạch chân
+  ở 37,5–39,5px như trước khi sửa. Không mờ mép, không `data-lenis-prevent`.
+
+**Review findings:** không mở vòng review riêng. Test viết trước, đỏ đúng lý do: 12 ca cho hai hàm
+thuần và 8 ca component (mép mờ, giữ wheel, ResizeObserver, cuộn tab đang mở ra ở ba đường). jsdom
+không có layout nên lỗi `justify-center` chỉ lộ khi đo trên bản build; ca canh nó là test hợp đồng
+trên lớp CSS. Vòng focus bàn phím dưới 640px: viền 1px vẫn đủ bốn cạnh, nhưng quầng 3px phía trên
+(và bên trái của tab đầu) bị vùng cuộn cắt; desktop giữ nguyên.
+
+**CÒN TREO:** G26 (lề 48px ở mọi khổ) và G28, ghi ở `open-items`. Không migration, không env, không
+webhook.
+
+Tests after (`gate:int` trên `c88f0469`, 08/10 13:33–13:38, int trên DB riêng `tourism_test_tabs`):
+unit 5732 — admin 1911, web 1703, api 1084, contract 665, mobile 159, mobile-ui 86, core 46, ui 36,
+i18n 23, tokens 19 — và int 774/774. Web thêm đúng 20 ca của nhánh này; api và int nhiều hơn entry
+ngay dưới là phần của bản vá huỷ chuyến đã lên `main` trước.
+
 ## 2026-10-08 — Bảng đợt khởi hành dưới lg thành thẻ xếp dọc (`ec039b0d`, nhánh `fix/web-departures-mobile`)
 
 Lỗi có từ trước, không do bản vá giá có xu: tab Departures của trang chi tiết tour vỡ ở khổ điện
