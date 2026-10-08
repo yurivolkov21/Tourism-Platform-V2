@@ -280,9 +280,16 @@ describe('BookingAccordion', () => {
     expect(screen.getByRole('link', { name: 'View details' })).toBeInTheDocument();
   });
 
-  it('REFUNDED còn ngày đi tương lai → không đếm ngược (giai đoạn cancelled)', () => {
+  // ADR-0054 AMEND 1: REFUNDED chỉ là huỷ khi có mốc huỷ thật — không mốc là hoàn thiện chí trọn,
+  // khách vẫn đi.
+  it('REFUNDED huỷ thật (có cancelledAt) còn ngày đi tương lai → không đếm ngược (giai đoạn cancelled)', () => {
     render(
-      one({ status: 'REFUNDED', departureStartDate: '2026-08-27', departureEndDate: '2026-08-29' }),
+      one({
+        status: 'REFUNDED',
+        cancelledAt: '2026-08-10T03:00:00.000Z',
+        departureStartDate: '2026-08-27',
+        departureEndDate: '2026-08-29',
+      }),
     );
     expect(meta('BK-TESTAAAA · 27–29 Aug 2026')).toBeInTheDocument();
   });

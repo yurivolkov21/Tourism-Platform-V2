@@ -17,7 +17,7 @@ import {
   refundOnCancelForBooking,
   refundOnOperatorCancelForBooking,
 } from './booking-cancellation.js';
-import { bookingTourInclude, resolveTourCover, toBooking } from './bookings.service.js';
+import { bookingInclude, resolveTourCover, toBooking } from './bookings.service.js';
 import { withBookingRefundLock } from './refund-lock.js';
 import { BookingNotFoundError, RefundsService } from './refunds.service.js';
 
@@ -214,7 +214,7 @@ export class CancellationsService {
     const [row, refunded] = await Promise.all([
       prisma.booking.findUniqueOrThrow({
         where: { id: probe.id },
-        include: { tour: bookingTourInclude },
+        include: bookingInclude,
       }),
       prisma.refund.aggregate({ where: { bookingId: probe.id }, _sum: { amount: true } }),
     ]);

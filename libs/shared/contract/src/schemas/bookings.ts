@@ -114,6 +114,14 @@ export const BookingSchema = z.object({
    * route trả booking — một ngày lịch, không tốn query nào.
    */
   cancellationDeadline: z.iso.date(),
+  /**
+   * Chuyến của đơn đã bị CÔNG TY huỷ (ADR-0054 AMEND 1) — server đọc SỐNG `departure.status`
+   * là CANCELLED ở mọi route trả booking. Theo trạng thái chuyến chứ không theo mốc
+   * `cancelled_at` của chuyến, vì chuyến của seed lượt 1 không có mốc ấy. Trong khoảng chờ job
+   * `departure-refund` (ADR-0041 AMEND 1) đơn vẫn PAID mà chuyến không chạy; cờ này cho
+   * `bookingPhase` xếp đơn vào `cancelled` ngay.
+   */
+  departureCancelled: z.boolean(),
   unitPrice: DecimalStringSchema,
   totalAmount: DecimalStringSchema,
   currency: z.string().length(3),

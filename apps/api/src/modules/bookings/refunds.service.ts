@@ -6,7 +6,7 @@ import { BookingStatus, EmailType, type PaymentProvider } from '../../generated/
 import { MediaService } from '../media/media.service.js';
 import { PAYMENT_GATEWAYS, type PaymentGateway, resolveGateway } from '../payments/gateway.js';
 import { buildRefundEventRow } from '../payments/refund-event.js';
-import { bookingTourInclude, resolveTourCover, toBooking } from './bookings.service.js';
+import { bookingInclude, resolveTourCover, toBooking } from './bookings.service.js';
 import { withBookingRefundLock } from './refund-lock.js';
 import {
   classifyRefundAmount,
@@ -200,7 +200,7 @@ export class RefundsService {
       const row = await tx.booking.update({
         where: { id: booking.id },
         data: { status: nextStatus },
-        include: { tour: bookingTourInclude },
+        include: bookingInclude,
       });
       await tx.outbox.create({
         data: {

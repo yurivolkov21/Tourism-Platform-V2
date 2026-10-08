@@ -29,6 +29,8 @@ export function makeBooking(overrides: Partial<BookingDetail> = {}): BookingDeta
     departureEndDate: '2026-09-02',
     // ADR-0041: ngày chót do server tính — chuyến 2 ngày nên N = 3.
     cancellationDeadline: '2026-08-29',
+    // ADR-0054 AMEND 1: chuyến còn chạy. Test cần chuyến bị công ty huỷ thì đè overrides.
+    departureCancelled: false,
     unitPrice: '10.00',
     totalAmount: '10.00',
     currency: 'USD',

@@ -211,6 +211,7 @@ describe('BookingSchema', () => {
       departureStartDate: '2026-09-18',
       departureEndDate: '2026-09-18',
       cancellationDeadline: '2026-09-17',
+      departureCancelled: false,
       unitPrice: '39.00',
       totalAmount: '117.00',
       currency: 'USD',
@@ -266,6 +267,7 @@ describe('BookingSchema', () => {
       departureStartDate: '2026-09-18',
       departureEndDate: '2026-09-18',
       cancellationDeadline: '2026-09-17',
+      departureCancelled: false,
       unitPrice: '39.00',
       totalAmount: '117.00',
       currency: 'USD',
@@ -309,6 +311,7 @@ describe('BookingSchema', () => {
       departureStartDate: '2026-09-12',
       departureEndDate: '2026-09-23',
       cancellationDeadline: '2026-09-05',
+      departureCancelled: false,
       unitPrice: '1290.00',
       totalAmount: '3870.00',
       currency: 'USD',
@@ -356,6 +359,7 @@ describe('BookingSchema', () => {
       departureStartDate: '2026-09-12',
       departureEndDate: '2026-09-23',
       cancellationDeadline: '2026-09-05',
+      departureCancelled: false,
       unitPrice: '1290.00',
       totalAmount: '3870.00',
       currency: 'USD',
@@ -406,6 +410,7 @@ const validBooking = {
   departureStartDate: '2026-09-18',
   departureEndDate: '2026-09-18',
   cancellationDeadline: '2026-09-17',
+  departureCancelled: false,
   unitPrice: '39.00',
   totalAmount: '117.00',
   currency: 'USD',
@@ -588,6 +593,32 @@ describe('BookingSchema.cancellationDeadline — ADR-0041', () => {
         .success,
     ).toBe(false);
     const { cancellationDeadline: _drop, ...missing } = validBooking;
+    expect(BookingSchema.safeParse(missing).success).toBe(false);
+  });
+});
+
+/**
+ * ADR-0054 AMEND 1 — chuyến của đơn bị CÔNG TY huỷ, server đọc từ trạng thái chuyến. Bắt buộc
+ * có mặt: vắng mà coi như `false` thì đơn trên chuyến đã huỷ hiện như chuyến còn chạy.
+ */
+describe('BookingSchema.departureCancelled — ADR-0054 AMEND 1', () => {
+  it('nhận true và false', () => {
+    expect(BookingSchema.parse(validBooking).departureCancelled).toBe(false);
+    expect(
+      BookingSchema.parse({ ...validBooking, departureCancelled: true }).departureCancelled,
+    ).toBe(true);
+  });
+
+  it('chỉ nhận boolean — chuỗi, số, null đều bị bắt', () => {
+    for (const value of ['true', 1, null]) {
+      expect(BookingSchema.safeParse({ ...validBooking, departureCancelled: value }).success).toBe(
+        false,
+      );
+    }
+  });
+
+  it('khoá BẮT BUỘC có mặt', () => {
+    const { departureCancelled: _drop, ...missing } = validBooking;
     expect(BookingSchema.safeParse(missing).success).toBe(false);
   });
 });

@@ -14,7 +14,13 @@ import {
 const TODAY = '2026-10-05';
 const NOW = Date.parse('2026-10-05T03:00:00.000Z');
 
-/** Một khoá; `id` trùng `code` để kết quả đọc được bằng mắt. */
+/** Mốc của một lần huỷ thật — mọi đường huỷ thật đều ghi `cancelled_at` (ADR-0054 AMEND 1). */
+const CANCELLED_AT = '2026-09-28T02:00:00.000Z';
+
+/**
+ * Một khoá; `id` trùng `code` để kết quả đọc được bằng mắt. Mặc định là đơn chưa huỷ thật trên
+ * chuyến còn chạy.
+ */
 function key(
   code: string,
   patch: Partial<Omit<BookingListKey, 'createdAt'>> & { minutesAgo: number },
@@ -27,6 +33,8 @@ function key(
     createdAt: new Date(NOW - minutesAgo * 60_000),
     departureStartDate: '2026-11-01',
     departureEndDate: '2026-11-01',
+    cancelledAt: null,
+    departureCancelled: false,
     tourTitle: 'Test Tour',
     destinationNames: [],
     ...rest,
@@ -51,9 +59,10 @@ const KEYS: BookingListKey[] = [
     departureEndDate: '2026-10-06',
     minutesAgo: 10,
   }),
-  // Hoàn đủ mà ngày đi còn ở tương lai: thuộc nhóm ĐÃ QUA (sự thật 3 của ADR-0054).
+  // Huỷ thật có hoàn đủ mà ngày đi còn ở tương lai: thuộc nhóm ĐÃ QUA (sự thật 3 của ADR-0054).
   key('BK-REFUNDED', {
     status: 'REFUNDED',
+    cancelledAt: CANCELLED_AT,
     departureStartDate: '2026-10-20',
     departureEndDate: '2026-10-20',
     minutesAgo: 30,
@@ -221,6 +230,80 @@ describe('selectBookingsPage — đếm', () => {
         status: { PENDING: 0, PAID: 0, CANCELLED: 0, REFUNDED: 0, PARTIALLY_REFUNDED: 0 },
       },
       overallTotal: 0,
+    });
+  });
+});
+
+/**
+ * ADR-0054 AMEND 1: khoá mang mốc huỷ thật và cờ chuyến bị công ty huỷ, nên REFUNDED không còn
+ * mặc nhiên là "đã qua" — đơn hoàn thiện chí trọn đi theo ngày như PAID — còn đơn trên chuyến
+ * công ty huỷ là "đã qua" ngay cả khi vẫn PAID (job hoàn tiền chưa chạy).
+ */
+describe('selectBookingsPage — huỷ thật, hoàn thiện chí, chuyến công ty huỷ (AMEND 1)', () => {
+  const AMEND_KEYS: BookingListKey[] = [
+    key('BK-COCANCL1', {
+      departureCancelled: true,
+      departureStartDate: '2026-10-08',
+      departureEndDate: '2026-10-09',
+      minutesAgo: 10,
+    }),
+    // Không có cờ thì đơn này đang đi hôm nay.
+    key('BK-COCANCL2', {
+      status: 'PARTIALLY_REFUNDED',
+      departureCancelled: true,
+      departureStartDate: '2026-10-04',
+      departureEndDate: '2026-10-06',
+      minutesAgo: 20,
+    }),
+    key('BK-GOODWIL1', {
+      status: 'REFUNDED',
+      departureStartDate: '2026-10-12',
+      departureEndDate: '2026-10-13',
+      minutesAgo: 30,
+    }),
+    key('BK-CXLREFND', {
+      status: 'REFUNDED',
+      cancelledAt: CANCELLED_AT,
+      departureStartDate: '2026-10-10',
+      departureEndDate: '2026-10-10',
+      minutesAgo: 40,
+    }),
+    key('BK-UPCOMNG1', {
+      departureStartDate: '2026-10-15',
+      departureEndDate: '2026-10-16',
+      minutesAgo: 50,
+    }),
+    key('BK-GOODWIL2', {
+      status: 'REFUNDED',
+      departureStartDate: '2026-10-20',
+      departureEndDate: '2026-10-22',
+      minutesAgo: 60,
+    }),
+  ];
+  const amendIds = (patch: Partial<BookingListFilter> = {}) =>
+    selectBookingsPage(AMEND_KEYS, filter(patch), TODAY).pageIds;
+
+  it('journey: hoàn thiện chí đi theo ngày như PAID; huỷ thật và chuyến công ty huỷ vào nhóm đã qua', () => {
+    expect(amendIds()).toEqual([
+      'BK-GOODWIL1',
+      'BK-UPCOMNG1',
+      'BK-GOODWIL2',
+      'BK-CXLREFND',
+      'BK-COCANCL1',
+      'BK-COCANCL2',
+    ]);
+  });
+
+  it('when=UPCOMING có đơn hoàn thiện chí; when=PAST có đơn trên chuyến công ty huỷ dù còn PAID', () => {
+    expect(amendIds({ when: ['UPCOMING'] })).toEqual(['BK-GOODWIL1', 'BK-UPCOMNG1', 'BK-GOODWIL2']);
+    expect(amendIds({ when: ['PAST'] })).toEqual(['BK-CXLREFND', 'BK-COCANCL1', 'BK-COCANCL2']);
+    expect(amendIds({ when: ['ON_TOUR'] })).toEqual([]);
+  });
+
+  it('facets.when đếm theo giai đoạn mới; facets.status vẫn đếm theo trạng thái đơn', () => {
+    expect(selectBookingsPage(AMEND_KEYS, filter(), TODAY).facets).toEqual({
+      when: { ON_TOUR: 0, UPCOMING: 3, PAST: 3 },
+      status: { PENDING: 0, PAID: 2, CANCELLED: 0, REFUNDED: 3, PARTIALLY_REFUNDED: 1 },
     });
   });
 });

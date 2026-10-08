@@ -25,6 +25,10 @@ export interface BookingListKey {
   /** Ngày lịch `YYYY-MM-DD` (snapshot lúc đặt). */
   departureStartDate: string;
   departureEndDate: string;
+  /** Mốc huỷ thật dạng ISO, null khi chưa từng huỷ thật — `bookingPhase` cần (ADR-0054 AMEND 1). */
+  cancelledAt: string | null;
+  /** Chuyến bị công ty huỷ, đọc sống từ trạng thái chuyến (ADR-0054 AMEND 1). */
+  departureCancelled: boolean;
   /** Snapshot tên tour lúc đặt — đúng chữ khách thấy trên dòng của mình. */
   tourTitle: string;
   /** Tên các điểm đến của tour, đọc sống như `tourDestinations` của `toBooking`. */

@@ -24,6 +24,7 @@ function makeDetail(overrides: Partial<AdminBookingDetail> = {}): AdminBookingDe
     departureStartDate: '2026-09-14',
     departureEndDate: '2026-09-20',
     cancellationDeadline: '2026-09-07',
+    departureCancelled: false,
     unitPrice: '499.00',
     totalAmount: '1497.00',
     currency: 'USD',

@@ -229,6 +229,8 @@ describe('bookings integration (create PENDING + FakeGateway)', () => {
       paymentProvider: 'STRIPE',
       paidAt: null,
       cancelledAt: null,
+      // ADR-0054 AMEND 1: cờ dựng từ chuyến đọc ở đầu `create`, không qua `bookingInclude`.
+      departureCancelled: false,
     });
     // Task 1 (khu Trips T6/T7): tourImage = cover role hero đã seed cho dayTour.
     expect(body.tourImage?.role).toBe('hero');
@@ -772,6 +774,10 @@ describe('bookings integration (create PENDING + FakeGateway)', () => {
       minutesAgo: number;
       tourId?: string;
       tourTitle?: string;
+      /** Mặc định `depOpen` — chuyến còn chạy. */
+      departureId?: string;
+      /** Mốc huỷ thật; vắng là đơn chưa từng bị huỷ thật (ADR-0054 AMEND 1). */
+      cancelledAt?: Date;
     }
 
     async function seedBookings(email: string, rows: SeedRow[]): Promise<string> {
@@ -787,7 +793,7 @@ describe('bookings integration (create PENDING + FakeGateway)', () => {
             code: row.code,
             userId,
             tourId: row.tourId ?? dayTour.id,
-            departureId: depOpen.id,
+            departureId: row.departureId ?? depOpen.id,
             numAdults: 1,
             totalAmount: '39.00',
             unitPrice: '39.00',
@@ -800,6 +806,7 @@ describe('bookings integration (create PENDING + FakeGateway)', () => {
             contactEmail: email,
             paymentProvider: 'STRIPE',
             createdAt: new Date(now - row.minutesAgo * 60_000),
+            cancelledAt: row.cancelledAt ?? null,
           }),
         ),
       });
@@ -829,7 +836,14 @@ describe('bookings integration (create PENDING + FakeGateway)', () => {
       { code: 'BK-AWAITPAY', status: BookingStatus.PENDING, start: 20, minutesAgo: 45 },
       { code: 'BK-TRAVELD1', status: BookingStatus.PAID, start: -30, end: -29, minutesAgo: 40 },
       { code: 'BK-ONTOUR01', status: BookingStatus.PAID, start: -1, end: 1, minutesAgo: 10 },
-      { code: 'BK-REFUNDED', status: BookingStatus.REFUNDED, start: 15, minutesAgo: 30 },
+      // Huỷ thật có hoàn đủ (có mốc huỷ): đã qua dù ngày đi còn ở tương lai.
+      {
+        code: 'BK-REFUNDED',
+        status: BookingStatus.REFUNDED,
+        start: 15,
+        minutesAgo: 30,
+        cancelledAt: new Date(),
+      },
       { code: 'BK-UPCOMNG1', status: BookingStatus.PAID, start: 10, end: 11, minutesAgo: 60 },
       { code: 'BK-LAPSED01', status: BookingStatus.PENDING, start: -5, minutesAgo: 90 },
       {
@@ -1018,6 +1032,64 @@ describe('bookings integration (create PENDING + FakeGateway)', () => {
           headers: { cookie: alice },
         });
         expect(res.statusCode).toBe(400);
+      }
+    });
+
+    /**
+     * ADR-0054 AMEND 1: `departureCancelled` đọc SỐNG trạng thái chuyến, và khoá lọc mang cả mốc
+     * huỷ thật lẫn cờ ấy. Đơn hoàn thiện chí trọn (REFUNDED, không mốc huỷ) sắp đi nằm ở
+     * UPCOMING; đơn còn PAID trên chuyến công ty huỷ (job hoàn tiền chưa chạy) nằm ở PAST.
+     * Chuyến chỉ đổi trạng thái, không ghi `cancelled_at` — đúng như chuyến của seed lượt 1.
+     */
+    it('AMEND 1: departureCancelled theo trạng thái chuyến; hoàn thiện chí ở UPCOMING, chuyến công ty huỷ ở PAST', async () => {
+      await prisma.tourDeparture.update({
+        where: { id: depOverride.id },
+        data: { status: DepartureStatus.CANCELLED },
+      });
+      const alice = await seedBookings('amend1@example.com', [
+        { code: 'BK-GOODWIL1', status: BookingStatus.REFUNDED, start: 10, minutesAgo: 30 },
+        {
+          code: 'BK-CXLREFND',
+          status: BookingStatus.REFUNDED,
+          start: 12,
+          minutesAgo: 20,
+          cancelledAt: new Date(),
+        },
+        {
+          code: 'BK-COCANCL1',
+          status: BookingStatus.PAID,
+          start: 14,
+          minutesAgo: 10,
+          departureId: depOverride.id,
+        },
+      ]);
+      const flags = (result: { items: Array<{ code: string; departureCancelled: boolean }> }) =>
+        result.items.map((item) => [item.code, item.departureCancelled]);
+
+      const journey = await listMine(alice, { order: 'journey' });
+      expect(flags(journey)).toEqual([
+        ['BK-GOODWIL1', false],
+        ['BK-COCANCL1', true],
+        ['BK-CXLREFND', false],
+      ]);
+      expect(journey.facets.when).toEqual({ ON_TOUR: 0, UPCOMING: 1, PAST: 2 });
+      expect(codes(await listMine(alice, { order: 'journey', 'when[0]': 'UPCOMING' }))).toEqual([
+        'BK-GOODWIL1',
+      ]);
+      // Nhánh có từ khoá đọc khoá bằng câu khác — cờ vẫn phải tới hàng của trang.
+      expect(flags(await listMine(alice, { q: 'cocancl1' }))).toEqual([['BK-COCANCL1', true]]);
+
+      for (const [code, cancelled] of [
+        ['BK-COCANCL1', true],
+        ['BK-GOODWIL1', false],
+      ] as const) {
+        const res = await app.inject({
+          method: 'GET',
+          url: `/api/bookings/${code}`,
+          headers: { cookie: alice },
+        });
+        expect(res.statusCode).toBe(200);
+        expect(BookingDetailSchema.parse(res.json()).departureCancelled).toBe(cancelled);
       }
     });
   });

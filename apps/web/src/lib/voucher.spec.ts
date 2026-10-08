@@ -308,10 +308,13 @@ describe('voucherView — đã huỷ (cancelled)', () => {
     ]);
   });
 
-  it('REFUNDED đủ: Refund ✓ in đủ hai số lẻ; thiếu cancelledAt thì lấy ngày quyết huỷ', () => {
+  // ADR-0054 AMEND 1: REFUNDED không mốc huỷ chỉ là `cancelled` khi chuyến bị công ty huỷ —
+  // thiếu cờ ấy thì đó là hoàn thiện chí trọn, khách vẫn đi.
+  it('REFUNDED đủ trên chuyến công ty huỷ: Refund ✓ in đủ hai số lẻ; thiếu cancelledAt thì lấy ngày quyết huỷ', () => {
     const v = view(
       voucherBooking({
         status: 'REFUNDED',
+        departureCancelled: true,
         cancellation: null,
         refundedTotal: '147.00',
         cancelledAt: null,

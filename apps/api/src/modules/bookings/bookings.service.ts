@@ -146,6 +146,28 @@ export type BookingTourJoin = {
 };
 
 /**
+ * Trạng thái SỐNG của chuyến (ADR-0054 AMEND 1): `toBooking` đọc nó ra cờ
+ * `departureCancelled`, và `byCode` đọc nó cho luật huỷ của ADR-0041 AMEND 1. Đọc
+ * trạng thái chứ không đọc mốc `cancelled_at` của chuyến — chuyến của seed lượt 1
+ * không có mốc ấy.
+ */
+export const bookingDepartureInclude = {
+  select: { status: true },
+} satisfies Prisma.TourDepartureDefaultArgs;
+
+/** Shape row `departure` sau join `bookingDepartureInclude` — nguồn kiểu cho `toBooking`. */
+export type BookingDepartureJoin = { status: DepartureStatus };
+
+/**
+ * Hai quan hệ mà `toBooking` cần, gói một chỗ cho mọi câu đọc booking ra contract. Riêng
+ * `mine` không dùng: trạng thái chuyến của trang đã có từ câu khoá, câu thứ hai không đọc lại.
+ */
+export const bookingInclude = {
+  tour: bookingTourInclude,
+  departure: bookingDepartureInclude,
+} satisfies Prisma.BookingInclude;
+
+/**
  * Phần ĐỌC KÈM của một booking: dữ liệu không nằm trên chính row `Booking` mà
  * phải truy thêm bảng khác (đơn xin hủy, sổ refund).
  *
@@ -189,9 +211,11 @@ export async function resolveTourCover(
  * `row.tour.slug` là intersection type BẮT BUỘC (không optional) — ép mọi call
  * site phải join quan hệ `tour` trong câu Prisma select của nó, biên dịch fail
  * nếu quên (Task 1: tourSlug/tourImage giờ là field bắt buộc trên contract,
- * không có sentinel "chưa đọc" hợp lệ như refundedTotal/reviewedAt). */
+ * không có sentinel "chưa đọc" hợp lệ như refundedTotal/reviewedAt). `row.departure`
+ * cùng luật (ADR-0054 AMEND 1): `departureCancelled` không có giá trị "chưa đọc" nào
+ * đúng — `false` mặc định là nói một chuyến đã huỷ vẫn chạy. */
 export function toBooking(
-  row: BookingRow & { tour: BookingTourJoin },
+  row: BookingRow & { tour: BookingTourJoin; departure: BookingDepartureJoin },
   checkoutUrl: string | null,
   tourImage: MediaItem | null,
   extras: BookingReadExtras = {},
@@ -218,6 +242,7 @@ export function toBooking(
       calendarDate(row.departureStartDate),
       calendarDate(row.departureEndDate),
     ),
+    departureCancelled: row.departure.status === DepartureStatus.CANCELLED,
     unitPrice: money(row.unitPrice),
     totalAmount: money(row.totalAmount),
     currency: row.currency,
@@ -494,6 +519,8 @@ export class BookingsService {
           slug: departure.tour.slug,
           destinations: departure.tour.destinations,
         },
+        // Chuyến vừa đọc ở đầu hàm — không tốn thêm câu nào.
+        departure: { status: departure.status },
       },
       session.checkoutUrl,
       tourImage,
@@ -529,7 +556,7 @@ export class BookingsService {
     const { row, checkoutUrl } = await withBookingRefundLock(probe.id, async (tx) => {
       const booking = await tx.booking.findUniqueOrThrow({
         where: { id: probe.id },
-        include: { tour: bookingTourInclude },
+        include: bookingInclude,
       });
       if (booking.status !== BookingStatus.PENDING) throw new BookingNotPendingError();
 
@@ -608,7 +635,7 @@ export class BookingsService {
       }
       const updated = await tx.booking.findUniqueOrThrow({
         where: { id: booking.id },
-        include: { tour: bookingTourInclude },
+        include: bookingInclude,
       });
       return { row: updated, checkoutUrl: session.checkoutUrl };
     });
@@ -669,7 +696,7 @@ export class BookingsService {
     }
     const updated = await prisma.booking.findUniqueOrThrow({
       where: { id: booking.id },
-      include: { tour: bookingTourInclude },
+      include: bookingInclude,
     });
     this.logger.log(`Booking ${booking.code} self-cancelled by owner (PENDING → CANCELLED, BK-2)`);
     const tourImage = await resolveTourCover(this.media, booking.tourId);
@@ -699,6 +726,10 @@ export class BookingsService {
       createdAt: true,
       departureStartDate: true,
       departureEndDate: true,
+      // ADR-0054 AMEND 1: luật giai đoạn đọc thêm mốc huỷ thật và trạng thái chuyến. Chuyến là
+      // một câu SQL nối sau câu khoá; câu thứ hai lấy lại trạng thái ấy từ đây, không đọc lại.
+      cancelledAt: true,
+      departure: bookingDepartureInclude,
       tourTitle: true,
       tourId: true,
     } as const satisfies Prisma.BookingSelect;
@@ -710,6 +741,8 @@ export class BookingsService {
       createdAt: row.createdAt,
       departureStartDate: calendarDate(row.departureStartDate),
       departureEndDate: calendarDate(row.departureEndDate),
+      cancelledAt: row.cancelledAt ? row.cancelledAt.toISOString() : null,
+      departureCancelled: row.departure.status === DepartureStatus.CANCELLED,
       tourTitle: row.tourTitle,
       destinationNames,
     });
@@ -718,6 +751,7 @@ export class BookingsService {
         ? (await prisma.booking.findMany({ where: { userId }, select: keySelect })).map((row) => ({
             key: toKey(row, []),
             tourId: row.tourId,
+            departure: row.departure,
           }))
         : (
             await prisma.booking.findMany({
@@ -735,6 +769,7 @@ export class BookingsService {
               row.tour.destinations.map((link) => link.destination.name),
             ),
             tourId: row.tourId,
+            departure: row.departure,
           }));
     const selection = selectBookingsPage(
       keyRows.map((row) => row.key),
@@ -742,11 +777,12 @@ export class BookingsService {
       today,
     );
 
-    // `tourId` của trang đã có từ câu khoá, nên lô ảnh bìa chạy SONG SONG câu thứ hai.
-    const tourIdById = new Map(keyRows.map((row) => [row.key.id, row.tourId]));
+    // `tourId` và trạng thái chuyến của trang đã có từ câu khoá: lô ảnh bìa chạy SONG SONG câu
+    // thứ hai, và câu thứ hai không đọc lại chuyến — cờ của hàng khớp đúng giai đoạn vừa xếp.
+    const keyRowById = new Map(keyRows.map((row) => [row.key.id, row]));
     const pageTourIds = selection.pageIds.flatMap((id) => {
-      const tourId = tourIdById.get(id);
-      return tourId === undefined ? [] : [tourId];
+      const keyRow = keyRowById.get(id);
+      return keyRow === undefined ? [] : [keyRow.tourId];
     });
     const [rows, coverMap] = await Promise.all([
       // Câu thứ hai chỉ cho các id của trang; `userId` lặp lại làm hàng rào thứ hai.
@@ -764,7 +800,8 @@ export class BookingsService {
     // Giữ đúng thứ tự hàm thuần trả về; id nào không còn ở câu thứ hai thì rơi khỏi trang.
     const ordered = selection.pageIds.flatMap((id) => {
       const row = byId.get(id);
-      return row ? [row] : [];
+      const keyRow = keyRowById.get(id);
+      return row && keyRow ? [{ ...row, departure: keyRow.departure }] : [];
     });
 
     return {
@@ -794,8 +831,9 @@ export class BookingsService {
     const booking = await prisma.booking.findUnique({
       where: { code },
       // Trạng thái chuyến đọc SỐNG (ADR-0041 AMEND 1): chuyến bị công ty huỷ thì
-      // luật huỷ của khách thôi áp dụng — xem `bookingCancellation`.
-      include: { tour: bookingTourInclude, departure: { select: { status: true } } },
+      // luật huỷ của khách thôi áp dụng — xem `bookingCancellation`. Cùng trạng thái
+      // ấy ra cờ `departureCancelled` (ADR-0054 AMEND 1).
+      include: bookingInclude,
     });
     if (!booking || booking.userId !== userId) return null;
     const latestCancellation = await prisma.cancellationRequest.findFirst({
@@ -879,7 +917,7 @@ export class BookingsService {
       prisma.booking.count({ where }),
       prisma.booking.findMany({
         where,
-        include: { tour: bookingTourInclude },
+        include: bookingInclude,
         orderBy: [{ createdAt: 'desc' }, { id: 'asc' }],
         skip: (page - 1) * limit,
         take: limit,
@@ -909,7 +947,7 @@ export class BookingsService {
   async adminByCode(code: string): Promise<Booking | null> {
     const booking = await prisma.booking.findUnique({
       where: { code },
-      include: { tour: bookingTourInclude },
+      include: bookingInclude,
     });
     if (!booking) return null;
     // `refundedTotal` THẬT (review F2 31/08 — trước đây để '0.00' mặc định):

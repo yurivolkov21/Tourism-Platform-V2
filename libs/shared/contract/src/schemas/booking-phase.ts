@@ -3,10 +3,10 @@ import type { BookingStatusValue } from './bookings.js';
 import { cancellationDeadline, tripLengthDays } from './refund-policy.js';
 
 /**
- * Giai đoạn của MỘT đơn của khách (ADR-0054 §1) — SUY từ trạng thái đơn và hai ngày của
- * chuyến, không lưu ở đâu cả. Một luật cho API (lọc, xếp, đếm của `bookings.mine`) và cho
- * ba trang đơn của web. Trước ADR-0054 luật này rải ở sáu chỗ trên web, và
- * `groupBookingsByTime` xếp đơn REFUNDED còn ngày đi tương lai vào nhóm "sắp đi".
+ * Giai đoạn của MỘT đơn của khách (ADR-0054 §1, AMEND 1) — SUY từ trạng thái đơn, mốc huỷ thật,
+ * cờ chuyến bị công ty huỷ và hai ngày của chuyến, không lưu ở đâu cả. Một luật cho API (lọc,
+ * xếp, đếm của `bookings.mine`) và cho ba trang đơn của web. Trước ADR-0054 luật này rải ở sáu
+ * chỗ trên web, và `groupBookingsByTime` xếp đơn REFUNDED còn ngày đi tương lai vào nhóm "sắp đi".
  *
  * Viết thường, nối gạch dưới — giá trị SUY RA, không phải enum của DB (viết hoa).
  */
@@ -28,8 +28,10 @@ export const BookingWhenSchema = z.enum(['ON_TOUR', 'UPCOMING', 'PAST']);
 export type BookingWhen = z.output<typeof BookingWhenSchema>;
 
 /**
- * PAID và PARTIALLY_REFUNDED: đơn còn hiệu lực, chuyến vẫn đi — đúng hai trạng thái
- * `isCancellableStatus` của API nhận (`apps/api/src/modules/bookings/booking-cancellation.ts`).
+ * PAID và PARTIALLY_REFUNDED: đơn còn hiệu lực — đúng hai trạng thái `isCancellableStatus` của
+ * API nhận (`apps/api/src/modules/bookings/booking-cancellation.ts`). Không đồng nghĩa "chuyến
+ * còn đi": đơn hoàn thiện chí trọn là REFUNDED mà khách vẫn đi (ADR-0054 AMEND 1) — chuyến có
+ * đi hay không thì đọc `bookingPhase`.
  */
 export const ACTIVE_BOOKING_STATUSES: readonly BookingStatusValue[] = [
   'PAID',
@@ -43,32 +45,55 @@ export interface BookingPhaseInput {
   departureStartDate: string;
   /** Ngày lịch `YYYY-MM-DD` (snapshot lúc đặt). */
   departureEndDate: string;
+  /**
+   * Mốc huỷ thật (ISO) hoặc null — mọi đường huỷ thật đều ghi cột này (ADR-0054 AMEND 1). Chỉ
+   * đổi kết quả của REFUNDED: có mốc là huỷ có hoàn, không mốc là hoàn thiện chí trọn.
+   */
+  cancelledAt: string | null;
+  /** Chuyến bị CÔNG TY huỷ (`departure.status` là CANCELLED) — thắng mọi trạng thái đơn. */
+  departureCancelled: boolean;
 }
 
 /**
  * Giai đoạn của đơn vào ngày `today` — ngày lịch Việt Nam do SERVER tính (`vietnamToday` ở
  * API, `todayDateString` ở web). Không bao giờ so bằng đồng hồ trình duyệt.
  *
+ * Xét từ trên xuống (ADR-0054 AMEND 1): chuyến bị công ty huỷ là `cancelled` với mọi trạng thái
+ * đơn — kể cả khi job hoàn tiền chưa chạy và đơn còn PAID; CANCELLED, và REFUNDED có
+ * `cancelledAt`, là `cancelled`; REFUNDED không `cancelledAt` là hoàn thiện chí trọn — khách vẫn
+ * đi, nên đi theo ngày như PAID.
+ *
  * So CHUỖI `YYYY-MM-DD`: thứ tự từ điển trùng thứ tự thời gian. Biên đóng hai đầu: ngày đi và
  * ngày về đều là `on_tour`. PENDING qua HẠN CHÓT là `lapsed`: hạn chót là ngày cuối nhận đặt
- * (ADR-0041 §3) và cổng trả tiền của API đóng cùng mốc (`isWithinDeadline`), nên quá mốc ấy
- * không còn gì để mời khách trả.
+ * (ADR-0041 §3), và quá mốc ấy API không mở phiên thanh toán nào nữa — mint lẫn re-mint đều
+ * đóng (`isWithinDeadline`). `lapsed` chưa phải kết cục chắc chắn: claim của webhook vẫn nhận
+ * phiên đã mở TRƯỚC hạn (Stripe tới 60 phút, PayPal tới 3 giờ — ADR-0041 §3), trả xong thì đơn
+ * tự sang PAID.
  */
 export function bookingPhase(booking: BookingPhaseInput, today: string): BookingPhase {
-  const { status, departureStartDate, departureEndDate } = booking;
-  switch (status) {
+  if (booking.departureCancelled) return 'cancelled';
+  switch (booking.status) {
     case 'CANCELLED':
-    case 'REFUNDED':
       return 'cancelled';
+    case 'REFUNDED':
+      return booking.cancelledAt === null ? tripPhase(booking, today) : 'cancelled';
     case 'PENDING':
-      return today <= cancellationDeadline(departureStartDate, departureEndDate)
+      return today <= cancellationDeadline(booking.departureStartDate, booking.departureEndDate)
         ? 'awaiting_payment'
         : 'lapsed';
     case 'PAID':
     case 'PARTIALLY_REFUNDED':
-      if (departureEndDate < today) return 'travelled';
-      return departureStartDate <= today ? 'on_tour' : 'upcoming';
+      return tripPhase(booking, today);
   }
+}
+
+/**
+ * Đơn còn đi theo ngày: trước ngày đi là `upcoming`, từ ngày đi tới ngày về là `on_tour`, sau
+ * ngày về là `travelled`.
+ */
+function tripPhase(booking: BookingPhaseInput, today: string): BookingPhase {
+  if (booking.departureEndDate < today) return 'travelled';
+  return booking.departureStartDate <= today ? 'on_tour' : 'upcoming';
 }
 
 /** Giai đoạn → nhóm của bộ lọc "When". Đơn chờ trả vẫn là "sắp đi": khách còn trả được. */
