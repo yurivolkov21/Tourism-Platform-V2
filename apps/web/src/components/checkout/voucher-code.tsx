@@ -4,8 +4,8 @@ import { CopyCodeButton } from '@/components/checkout/copy-code-button';
 
 /**
  * Ô mã đơn của voucher (spec P7 §6.3–6.4) — MỘT linh kiện cho hai chỗ: ô gọn ngay dưới tiêu
- * đề trên điện thoại (`VoucherOverview`) và ô đầu mảng teal trên màn rộng (`VoucherPass`).
- * Chỗ gọi chọn bản nào hiện bằng class responsive truyền qua `className`.
+ * đề khi thẻ một cột (`VoucherOverview`) và ô đầu mảng teal khi thẻ hai cột (`VoucherPass`).
+ * Chỗ gọi chọn bản nào hiện bằng class responsive truyền qua `className` (mốc `xl`).
  *
  * Nút chép giấu khi in: bấm vào giấy thì không được (spec §6.4).
  */

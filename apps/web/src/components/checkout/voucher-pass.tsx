@@ -28,22 +28,23 @@ export function VoucherPass({ booking, view }: { booking: BookingDetail; view: V
       data-slot="voucher-pass"
       className="bg-primary px-6 py-7 text-primary-foreground md:px-8 md:pt-7.5 md:pb-8.5"
     >
-      {/* Đơn còn hiệu lực: khối luôn hiện (ngày, điều kiện, mã vạch), chỉ ô mã giấu trên điện
-          thoại vì cột trái đã có ô gọn. Đơn đã huỷ: khối chỉ còn dải hết hiệu lực mà cột trái
-          đã nói trên điện thoại, nên giấu cả khối ở đó; khi in thì hiện lại. */}
+      {/* Đơn còn hiệu lực: khối luôn hiện (ngày, điều kiện, mã vạch), chỉ ô mã giấu khi thẻ một
+          cột (dưới `xl`, cùng mốc chia cột của `VoucherCard`) vì cột trái đã có ô gọn. Đơn đã
+          huỷ: khối chỉ còn dải hết hiệu lực mà cột trái đã nói khi thẻ một cột, nên giấu cả
+          khối ở đó; khi in thì hiện lại. */}
       <div
         data-slot="voucher-ticket"
         className={cn(
           'rounded-2xl bg-card px-4.5 py-4 text-card-foreground',
-          !view.showCode && 'max-md:hidden print:block',
+          !view.showCode && 'max-xl:hidden print:block',
         )}
       >
         {view.showCode ? (
           <>
-            <VoucherCode code={booking.code} className="max-md:hidden print:flex" />
+            <VoucherCode code={booking.code} className="max-xl:hidden print:flex" />
             <div
               data-slot="voucher-meta"
-              className="mt-2.5 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground max-md:mt-0 print:mt-2.5"
+              className="mt-2.5 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground max-xl:mt-0 print:mt-2.5"
             >
               <span className="inline-flex items-center gap-1.5">
                 <CalendarIcon aria-hidden="true" className="size-3.5" />

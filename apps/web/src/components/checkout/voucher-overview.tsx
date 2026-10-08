@@ -23,8 +23,9 @@ import type { VoucherView } from '@/lib/voucher';
  *
  * Tiêu đề là `h2` — `h1` duy nhất của trang là tên tour ở hero (cùng lý do `BookingReceipt`).
  *
- * Trên điện thoại ô mã bản gọn đứng ngay dưới tiêu đề: khách mở voucher ở điểm đón cần thấy mã
- * trước tiên, còn mảng teal (mang ô mã của màn rộng) nằm cuối trang (spec §6.4).
+ * Khi thẻ một cột (dưới `xl` — điện thoại, máy tính bảng) ô mã bản gọn đứng ngay dưới tiêu đề:
+ * khách mở voucher ở điểm đón cần thấy mã trước tiên, còn mảng teal (mang ô mã của thẻ hai cột)
+ * nằm cuối trang (spec §6.4). Mốc `xl` cùng mốc chia cột của `VoucherCard`.
  */
 export function VoucherOverview({
   booking,
@@ -55,31 +56,44 @@ export function VoucherOverview({
       </div>
 
       {view.showCode ? (
-        <VoucherCode code={booking.code} className="mt-5 md:hidden print:hidden" />
+        <VoucherCode code={booking.code} className="mt-5 xl:hidden print:hidden" />
       ) : view.cancelledNotice ? (
         <VoucherCancelledNotice
           text={view.cancelledNotice}
-          className="mt-5 md:hidden print:hidden"
+          className="mt-5 xl:hidden print:hidden"
         />
       ) : null}
 
+      {/* Chiều cao TỐI THIỂU, không cố định: khối chữ nằm trong luồng và xếp ở đáy (flex
+          `justify-end`), nên chữ nhiều thì đẩy ảnh cao lên. Bản cũ cao cố định 224px còn khối
+          chữ neo đáy, nên ở 375px tên tour thật dài nhất của seed ("Northern Highlights: Hanoi–
+          Hạ Long–Ninh Bình 5D4N") tràn qua mép trên và bị `overflow-hidden` cắt mất dòng đầu. */}
       <div
         data-slot="voucher-photo"
-        className="relative mt-6 h-56 overflow-hidden rounded-3xl bg-muted md:h-72 print:h-44"
+        className="relative mt-6 flex min-h-56 flex-col justify-end overflow-hidden rounded-3xl bg-muted md:min-h-72 print:min-h-44"
       >
+        {/* Ảnh rộng gần hết thẻ khi thẻ một cột; từ `xl` cột trái còn ~45% màn. */}
         <SlotImage
           image={booking.tourImage}
           className="absolute inset-0"
-          sizes="(min-width: 768px) 60vw, 100vw"
+          sizes="(min-width: 1280px) 45vw, 100vw"
           priority
         />
-        {/* Lớp tối mờ dần ở đáy để chữ sáng đọc được trên mọi ảnh. */}
+        {/* Lớp tối GẮN VÀO khối chữ (khuôn caption của `journey-moments.tsx`, `home/gallery.tsx`)
+            thay vì phủ cố định theo chiều cao ảnh: tiêu đề xuống dòng hay chip rớt hàng thì lớp
+            tối cao theo. Lớp cũ (trong suốt tới 30% chiều cao ảnh) để ở 375px dòng nhỏ đầu khối
+            và dòng tên tour nằm trên ảnh trần — 1,0–1,3:1 trên ảnh sáng.
+
+            MỘT gradient: 90% ở đáy, 70% đúng mép trên chữ (`via` đặt cách đỉnh 4rem = `pt-16`),
+            trong suốt ở đỉnh phần đệm — dải mờ dần nằm trong phần đệm nên không có đường nối
+            giữa hai lớp. Đo trên CSS build thật: mọi dòng chữ ≥ 5,4:1 kể cả trên ảnh trắng tinh.
+            Dòng nhỏ đầu khối thôi `opacity-80`: chữ 10.5px không chịu thêm một lớp làm mờ.
+            `relative` để khối (trong luồng) vẽ đè lên ảnh `absolute` đứng trước nó. */}
         <div
-          aria-hidden="true"
-          className="absolute inset-0 bg-linear-to-b from-transparent from-30% to-hero/90"
-        />
-        <div className="absolute inset-x-6 bottom-5 text-on-media">
-          <p className="text-[10.5px] font-bold tracking-[0.16em] uppercase opacity-80">
+          data-slot="voucher-photo-caption"
+          className="relative bg-linear-to-t from-hero/90 via-hero/70 via-[calc(100%-4rem)] to-transparent px-6 pt-16 pb-5 text-on-media"
+        >
+          <p className="text-[10.5px] font-bold tracking-[0.16em] uppercase">
             {t.photoKicker(view.place, view.tripDays)}
           </p>
           <div className="mt-2 flex items-end justify-between gap-4">

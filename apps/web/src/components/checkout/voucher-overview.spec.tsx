@@ -88,6 +88,50 @@ describe('VoucherOverview — thẻ ảnh', () => {
       within(slot(container, 'voucher-photo')).getByText('Hà Nội · 1 day'),
     ).toBeInTheDocument();
   });
+
+  it('lớp tối gắn vào chính khối chữ — cao theo nội dung, không phủ cố định theo chiều cao ảnh', () => {
+    const { container } = renderOverview(FAMILY_TRIP);
+    const photo = slot(container, 'voucher-photo');
+    const caption = slot(container, 'voucher-photo-caption');
+    // Mọi chữ trên ảnh nằm TRONG khối mang lớp tối: tiêu đề xuống dòng hay chip rớt hàng thì lớp
+    // tối cao theo. Lớp phủ cũ trong suốt tới 30% chiều cao ảnh, nên ở 375px dòng trên cùng
+    // nằm trên ảnh trần (đo 1,04:1 trên ảnh trắng).
+    for (const text of [
+      'Hà Nội · 3 days',
+      'Hanoi Heritage in a Day',
+      '$147',
+      '3–5 Nov 2026',
+      '2 adults, 1 child × $49',
+    ]) {
+      expect(caption).toContainElement(within(photo).getByText(text));
+    }
+    // 90% ở đáy, 70% đúng mép trên chữ (đỉnh phần đệm 4rem), trong suốt ở đỉnh phần đệm.
+    for (const cls of ['from-hero/90', 'via-hero/70', 'via-[calc(100%-4rem)]', 'pt-16']) {
+      expect(caption.classList.contains(cls)).toBe(true);
+    }
+    // Không còn lớp phủ cố định thứ hai trải hết ảnh.
+    expect(photo.querySelectorAll(':scope > [aria-hidden="true"]')).toHaveLength(0);
+    // Dòng nhỏ 10.5px không bị làm mờ thêm.
+    expect(within(caption).getByText('Hà Nội · 3 days').className).not.toMatch(/opacity-/);
+  });
+
+  it('ảnh cao theo khối chữ — tên tour dài ở màn hẹp không bị cắt mất ở mép trên ảnh', () => {
+    // Tên tour thật dài nhất của seed: ở 375px khối chữ cao ~266px, vượt ảnh cố định 224px.
+    const { container } = renderOverview({
+      tourTitle: 'Northern Highlights: Hanoi–Hạ Long–Ninh Bình 5D4N',
+    });
+    const photo = slot(container, 'voucher-photo');
+    // Chiều cao TỐI THIỂU (không cố định) và khối chữ nằm trong luồng, xếp ở đáy: chữ nhiều
+    // thì đẩy ảnh cao lên thay vì tràn qua mép trên rồi bị `overflow-hidden` cắt.
+    for (const cls of ['min-h-56', 'md:min-h-72', 'print:min-h-44', 'flex', 'justify-end']) {
+      expect(photo.classList.contains(cls)).toBe(true);
+    }
+    expect(photo.className).not.toMatch(/(^|\s)(md:|print:)?h-\d+/);
+    const caption = slot(container, 'voucher-photo-caption');
+    expect(caption.classList.contains('absolute')).toBe(false);
+    // Trong luồng mà không `relative` thì khối chữ bị vẽ DƯỚI ảnh `absolute` đứng trước nó.
+    expect(caption.classList.contains('relative')).toBe(true);
+  });
 });
 
 describe('VoucherOverview — bốn ô có icon', () => {
@@ -123,8 +167,8 @@ describe('VoucherOverview — bốn ô có icon', () => {
   });
 });
 
-describe('VoucherOverview — ô mã gọn cho điện thoại (spec §6.4)', () => {
-  it('có nhãn, mã và nút chép; giấu ở màn rộng và khi in (mảng teal mang ô mã ở đó)', () => {
+describe('VoucherOverview — ô mã gọn khi thẻ một cột (spec §6.4)', () => {
+  it('có nhãn, mã và nút chép; giấu từ xl (thẻ hai cột) và khi in — mảng teal mang ô mã ở đó', () => {
     const { container } = renderOverview();
     const code = slot(container, 'voucher-code');
     expect(within(code).getByText('Booking code')).toBeInTheDocument();
@@ -132,17 +176,17 @@ describe('VoucherOverview — ô mã gọn cho điện thoại (spec §6.4)', ()
     expect(
       within(code).getByRole('button', { name: messages.booking.success.copyCode }),
     ).toBeInTheDocument();
-    expect(code.classList.contains('md:hidden')).toBe(true);
+    expect(code.classList.contains('xl:hidden')).toBe(true);
     expect(code.classList.contains('print:hidden')).toBe(true);
   });
 
-  it('đơn đã huỷ: không có mã nào, dải hết hiệu lực thay chỗ (cũng chỉ trên điện thoại)', () => {
+  it('đơn đã huỷ: không có mã nào, dải hết hiệu lực thay chỗ (cũng chỉ khi thẻ một cột)', () => {
     const { container } = renderOverview(CANCELLED);
     expect(screen.queryByText('BK-B6VCOQNW')).toBeNull();
     const notice = slot(container, 'voucher-cancelled');
     expect(notice.textContent).toBe(
       'This booking was cancelled — this voucher is no longer valid.',
     );
-    expect(notice.classList.contains('md:hidden')).toBe(true);
+    expect(notice.classList.contains('xl:hidden')).toBe(true);
   });
 });
