@@ -18,7 +18,8 @@ import {
  * lo mọi thứ khách thấy dưới hero.
  *
  * - Khách chưa có đơn nào: trạng thái trống cũ, không bày hàng lọc.
- * - Dòng đếm: "{total} trips"; đang lọc hay tìm thì "{total} of {overallTotal} trips".
+ * - Dòng đếm: đang lọc hay tìm thì hiện "{total} of {overallTotal} trips"; chưa lọc thì
+ *   "{total} trips" chỉ cho trình đọc màn hình, vì hero đã in đúng số ấy.
  * - Lọc ra rỗng: "No trips match" kèm nút Reset về danh sách gốc (`router.replace`, như hàng lọc).
  * - `BookingAccordion` mang `key` theo URL: mỗi trang và mỗi bộ lọc dựng accordion MỚI, nên
  *   hàng đầu của trang mới mở sẵn. `defaultValue` chỉ được đọc lúc dựng — giữ accordion cũ thì
@@ -34,6 +35,7 @@ export function BookingsListView({
   const t = messages.passportBookings;
   const tb = messages.accountBookings;
   const pager = pagerView(params, result.totalPages, result.total, result.limit);
+  const filtered = hasListFilters(params);
 
   if (result.overallTotal === 0) {
     return (
@@ -53,16 +55,20 @@ export function BookingsListView({
     <div>
       <BookingsToolbar params={params} facets={result.facets} />
       {/* `aria-live`: lọc xong thì trình đọc màn hình đọc lại số đơn mới. Sang trang thì tiêu điểm
-          về đây (`TripPager`, `tabIndex={-1}`); câu tóm tắt trang chỉ trình đọc màn hình nghe. */}
+          về đây (`TripPager`, `tabIndex={-1}`); câu tóm tắt trang chỉ trình đọc màn hình nghe.
+          Chưa lọc thì số đơn trùng số hero đã in (`metaTrips` ở `page.tsx`), nên dòng chỉ còn cho
+          trình đọc màn hình (user chốt 08/10); đang lọc thì "n of tổng" là điều hero không nói. */}
       <p
         id={BOOKINGS_COUNT_ID}
         tabIndex={-1}
         aria-live="polite"
-        className="mt-3 text-[12.5px] text-muted-foreground tabular-nums outline-none"
+        className={
+          filtered
+            ? 'mt-3 text-[12.5px] text-muted-foreground tabular-nums outline-none'
+            : 'sr-only'
+        }
       >
-        {hasListFilters(params)
-          ? tb.tripsOf(result.total, result.overallTotal)
-          : t.metaTrips(result.total)}
+        {filtered ? tb.tripsOf(result.total, result.overallTotal) : t.metaTrips(result.total)}
         {pager === null ? null : <span className="sr-only">{`. ${pager.summary}`}</span>}
       </p>
       {result.total === 0 ? (
@@ -74,7 +80,7 @@ export function BookingsListView({
           <ResetFiltersButton />
         </div>
       ) : (
-        <div className="mt-2.5">
+        <div className={filtered ? 'mt-2.5' : 'mt-4'}>
           {/* `result.today`: CHÍNH ngày API đã dùng để xếp và lọc trang này. */}
           <BookingAccordion
             key={bookingsListHref(params)}

@@ -64,7 +64,8 @@ describe('BookingsListView', () => {
     expect(screen.queryByRole('searchbox')).toBeNull();
   });
 
-  it('chưa lọc: dòng "{total} trips", hàng lọc, danh sách và phân trang', () => {
+  /** 08/10 user bỏ dòng "{total} trips" khỏi mắt: hero đã in đúng số ấy. Trình đọc màn hình vẫn nghe. */
+  it('chưa lọc: dòng đếm chỉ còn cho trình đọc màn hình, hàng lọc, danh sách và phân trang', () => {
     render(
       <BookingsListView
         result={result({ items: [trip(1), trip(2)], total: 12, totalPages: 2 })}
@@ -72,7 +73,9 @@ describe('BookingsListView', () => {
       />,
     );
 
-    expect(screen.getByText('12 trips')).toBeInTheDocument();
+    const count = document.getElementById(BOOKINGS_COUNT_ID);
+    expect(count).toHaveClass('sr-only');
+    expect(count).toHaveTextContent('12 trips');
     expect(
       screen.getByRole('searchbox', { name: 'Search tour or booking code' }),
     ).toBeInTheDocument();
@@ -87,7 +90,8 @@ describe('BookingsListView', () => {
       />,
     );
 
-    expect(screen.getByText('2 of 18 trips')).toBeInTheDocument();
+    // Đang lọc thì dòng đếm nói điều hero không nói (bao nhiêu trên tổng) nên vẫn hiện.
+    expect(screen.getByText('2 of 18 trips')).not.toHaveClass('sr-only');
     expect(screen.queryByRole('navigation', { name: 'Trip pages' })).toBeNull();
   });
 
