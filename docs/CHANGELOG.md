@@ -8,6 +8,23 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-10-08 — Thử tay lề trang chi tiết tour trên điện thoại thật (`aa3f2a5a`)
+
+**Thử tay production** sau merge `aa3f2a5a` (CI `gate` xanh, Vercel web và admin success; HTML trang
+tour trên production mang lớp `px-4 md:px-8 lg:px-12`). User làm trên iPhone 16 Pro Max (dọc 440px,
+nội dung 408px), từng bước một, ở `/tours/vietnam-grand-journey-12d`: bước 1–5 đạt.
+
+- Trang không trôi ngang. Khối ảnh, tên tour, giá và các ô ngày thẳng mép chữ của hero, lề hai bên
+  khoảng 16px.
+- Panel đặt chỗ: ngày và "N seats left" gọn trong ô, hai nút trải hết bề ngang, hàng ô chính sách
+  không chạm viền.
+- Tab Departures: dòng phụ của tháng, cặp ngày đi và về, dòng hạn huỷ mỗi thứ nằm trên một dòng; thanh
+  ghế và nút Select nằm trong thẻ.
+- Itinerary, Reviews và Good to know (mở FAQ): không chữ hay khung nào chạm hoặc lòi khỏi mép.
+- "You might also like" thẳng mép các khối phía trên, thanh đặt chỗ dính đáy không che card cuối. Xoay
+  ngang (khổ `md`): lề nới ra khoảng 32px, 5 tab chia đều, Departures vẫn ở dạng thẻ; xoay dọc lại vẫn
+  đúng.
+
 ## 2026-10-08 — Lề trang chi tiết tour dưới lg theo khuôn book và enquire (`e11c5e54`, nhánh `fix/web-tour-detail-gutter`)
 
 **Lỗi** (G26, đo 08/10 trên bản build local, `/tours/vietnam-grand-journey-12d`): khung thân trang và
