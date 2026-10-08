@@ -8,6 +8,43 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-10-08 — P5b-4 màn tài khoản mobile: Saved, Account, Travel stories, vá review 05/10 (nhánh `feat/mobile-account-screens`, CHƯA merge)
+
+Nhánh dựng đủ 14 khung theo [spec P5b-4](plans/2026-09-25-mobile-account-screens.md):
+Saved S1–S3, Account A1–A7 (sửa tên, ảnh đại diện, đổi mật khẩu, xoá tài
+khoản nối `DELETE /api/account`), Travel stories G1–G4, cùng hạ tầng
+return-to sau đăng nhập. Tình trạng chi tiết, hash từng bản sửa và kịch bản
+thử máy thật ở [tóm tắt nhánh](analysis/2026-10-06-branch-summary-mobile-account-screens.md).
+Hash entry này ghi khi merge — nhánh đã rebase 08/10 nên hash trước đó không
+còn dùng được.
+
+Phía API (hai AMEND ở [ADR-0017](adr/0017-web-session-better-auth.md)):
+§10 cho `nexora://` đứng trong `TRUSTED_ORIGINS` ở production (B1); §11 khoá
+`/api/auth/expo-authorization-proxy` chỉ nhận URL đăng nhập Google của chính
+mình, hết open redirect (B2). ADR tầng dữ liệu mobile đổi số 0047 → 0055 vì
+`main` đã dùng 0047 (B3).
+
+**Review findings:** review 05/10 có 24 phát hiện (B1–B3, F1–F12, L1–L5,
+Q1–Q4) — sửa hết trừ Q4 (ADR ra sau code, nợ lịch sử không sửa được). Đợt
+rà 07/10 thêm N1–N10: N1–N6 đã sửa, N7–N10 mức thấp còn mở.
+
+Tests after (08/10, sau rebase): api 1094, admin 1911, web 1707, mobile 501,
+mobile-ui 134, contract 665 — xanh hết; typecheck và Biome sạch;
+`test:int` 773/778, 5 đỏ là môi trường máy (`check-rls` cần Docker,
+`pending-sweep` lỗi cũ từ 26/09).
+
+**CÒN TREO cho session gốc (luật 15 — làm SAU review, nhánh thi công không tự làm):**
+
+- [ ] Render: thêm `nexora://` vào `TRUSTED_ORIGINS` khi deploy bản có B1.
+  Không thêm `exp://` (chỉ dùng cho Expo Go ở máy dev).
+- [ ] Đăng nhập Google từ app (qua proxy đã khoá ở B2) cần `GOOGLE_CLIENT_ID`
+  và `GOOGLE_CLIENT_SECRET` trên Render — thiếu thì proxy chặn hết; kiểm sau deploy.
+- Không migration mới, không webhook, không đổi Cloudinary.
+
+Việc của nhánh chưa xong: thử máy thật Android và iOS; D2 (gán tour cho bài
+viết để G4 có dữ liệu); cập nhật `open-items` mục return-to (đã sửa) và thêm
+rủi ro login CSRF còn lại của B2.
+
 ## 2026-09-23 — T0 mobile browse: tầng dữ liệu + primitive dùng chung, vá 6 phát hiện review cuối cụm (nhánh `feat/mobile-browse-screens`)
 
 Entry này khép cụm T0 của P5b-2 (xem tour trên mobile) — tầng dữ liệu oRPC

@@ -57,7 +57,7 @@ Mỗi ADR tự chứa đầy đủ phần sửa bổ sung (AMEND) của nó; b�
 | [0014](adr/0014-web-component-testing.md) | Test tầng component cho web | |
 | [0015](adr/0015-retire-region-tint.md) | Rút tint theo vùng toàn site | |
 | [0016](adr/0016-web-data-layer.md) | Tầng dữ liệu web: oRPC, server-first, ISR + cache-tag | 4 AMEND |
-| [0017](adr/0017-web-session-better-auth.md) | Phiên đăng nhập: cookie thẳng trình duyệt ↔ API | 3 AMEND |
+| [0017](adr/0017-web-session-better-auth.md) | Phiên đăng nhập: cookie thẳng trình duyệt ↔ API | 6 AMEND |
 | [0018](adr/0018-web-map-library.md) | Bản đồ `/contact`: maplibre-gl + OpenFreeMap | |
 | [0019](adr/0019-color-token-roles.md) | Tách vai token màu: bề mặt · chữ · ranh giới | |
 | [0020](adr/0020-real-images-sourcing.md) | Ảnh thật: nguồn, ghi công, đường vào catalog | mục 1 đã sửa — lô ảnh đầu bị loại toàn bộ |
@@ -95,7 +95,7 @@ Mỗi ADR tự chứa đầy đủ phần sửa bổ sung (AMEND) của nó; b�
 | [0052](adr/0052-admin-staff-tier.md) | Nhân sự admin hai bậc: Owner từ `ADMIN_EMAILS`, Staff do Owner cấp; bảng quyền ở contract; khoá tài khoản chặn tạo phiên | 1 AMEND |
 | [0053](adr/0053-delete-unused-categories-destinations.md) | Xoá danh mục và điểm đến khi chưa tour nào dùng | 1 AMEND |
 | [0054](adr/0054-customer-bookings-list-phase-filters.md) | Đơn của khách: một luật giai đoạn dùng chung; `bookings.mine` lọc, tìm, xếp theo hành trình và phân trang ở server | |
-| [0055](adr/0055-mobile-data-layer.md) | Tầng dữ liệu mobile: oRPC `OpenAPILink` + TanStack Query, client-first | 1 AMEND |
+| [0055](adr/0055-mobile-data-layer.md) | Tầng dữ liệu mobile: oRPC `OpenAPILink` + TanStack Query, client-first | 2 AMEND |
 
 ## Specs — sẽ xây gì
 

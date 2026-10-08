@@ -15,7 +15,7 @@ review 05/10 (24 phát hiện: B1–B3, F1–F12, L1–L5, Q1–Q4) và đợt r
   Thiếu duy nhất là DỮ LIỆU cho G4 (D2), không phải code.
 - **Ba lỗi chặn merge B1–B3 đã sửa 08/10** (mục 4).
 - **Bốn lỗi kế thừa F5, F10, F11, L1 đã sửa 08/10** (mục 5).
-- **Đã rebase lên `main` 08/10:** nhánh đi trước `main` 83 commit (kể cả commit doc này), chậm 0.
+- **Đã rebase lên `main` 08/10:** nhánh chậm `main` 0 commit (đo 08/10 sau `git fetch`).
   Không còn commit nào mang trailer `Co-Authored-By` (Q1 xong hẳn).
 - **Còn mở:** N7–N10 mức thấp (mục 7); D2 thiếu dữ liệu; chưa thử máy thật
   cho đợt sửa 06/10–08/10; việc hạ tầng B1 cho session gốc (mục 3).
@@ -113,7 +113,8 @@ tokens 19; `biome check .` sạch (một dòng info `recommended` deprecated ở
    CSRF còn lại của B2 (ADR-0017 §11).
 7. **Việc hạ tầng cho session gốc, làm SAU review** (luật 15 — nhánh thi công
    không tự làm): thêm `nexora://` vào `TRUSTED_ORIGINS` trên Render khi deploy
-   bản có B1. Nhánh này không có migration mới.
+   bản có B1. Nhánh này không có migration mới. Checklist này đã ghi vào mục
+   CÒN TREO của entry 08/10 trong `docs/CHANGELOG.md`.
 
 ## 4. Ba lỗi chặn merge — đã sửa 08/10
 
