@@ -8,6 +8,41 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-10-08 — Chuyến bị công ty huỷ thì khách hết tự huỷ: vá khoảng chờ job hoàn tiền (`c7f86e2a`..`cf6a0824`, nhánh `claude/vigilant-jones-c95f34`)
+
+**Lỗi** (phát hiện ở review P7 phần C, xác minh bằng đọc mã): admin huỷ chuyến thì booking `PAID`
+nằm chờ job `departure-refund` — worker gói free ngủ khoảng 15 phút, lưới quét 10 phút một lần, cổng
+lỗi thì retry giãn luỹ thừa. Trong khoảng chờ, trang đơn vẫn in nút huỷ và `bookings.cancel` vẫn
+nhận lệnh; quá hạn chót thì khách được hoàn 0. Job tới sau thấy booking `CANCELLED` nên coi như
+xong, lưới quét chỉ tìm `PAID`/`PARTIALLY_REFUNDED` nên cũng không vớt — khách mất khoản 100% mà
+ADR-0041 §6 hứa. Soát prod 08/10 (SQL chỉ đọc): chưa đơn nào dính; đơn duy nhất trên chuyến huỷ từ
+F13 là đơn thử tay 22/09, do chính job hoàn trọn.
+
+**Sửa** theo ADR-0041 AMEND 1, viết trước code (`c7f86e2a`); mã ở `cf6a0824`:
+
+- `cancellationBlocker` nhận đường đi tường minh (`CancelPath`, bỏ mặc định `'customer'`). Đường
+  khách bắt buộc mang trạng thái SỐNG của chuyến; chuyến `CANCELLED` thì chặn, 422
+  `NOT_CANCELLABLE`. `bookings.byCode.cancellation` trả `null` — luật huỷ của khách thôi áp dụng.
+- Lõi huỷ khoá hàng chuyến `FOR KEY SHARE` trước khi đọc trạng thái, xếp hàng với `FOR UPDATE` của
+  lượt huỷ chuyến. `KEY SHARE` chứ không `SHARE`: hai khách cùng chuyến không deadlock ở câu trả ghế,
+  lúc tiền đã đi.
+- Giao dịch huỷ chuyến nâng timeout lên 20 giây: nó có thể phải chờ một lượt khách đang gọi cổng.
+- Docs: `booking-states.md` thêm hàng "Công ty huỷ chuyến" (thiếu từ F13) và luật mới, sửa đoạn "Một
+  lõi cho hai người gọi" đã cũ; mô tả trường `cancellation` ở contract và chú thích web theo.
+
+**Review findings:** không mở vòng review riêng. Test viết trước, đỏ đúng lý do: 6 ca đơn vị và 3
+ca int — đơn huỷ được (200) trong khoảng chờ; `byCode` còn nút huỷ; ca đua (giao dịch giữ khoá
+chuyến như admin) để lệnh khách chờ ở câu CTE rồi lọt qua. Kiểm đột biến: bỏ `FOR KEY SHARE` thì ca
+đua đỏ lại (200).
+
+**CÒN TREO:** phần web — khối báo "chuyến đã bị huỷ, tiền đang hoàn", voucher và hoá đơn trong khoảng
+chờ — làm sau khi P7 B và C merge (`docs/open-items.md`). Không migration, không env, không webhook:
+deploy chỉ là push.
+
+Tests after (`gate:int` trên `cf6a0824`, 08/10 12:45–12:53, int chạy trên DB riêng): unit 5705 —
+admin 1911, web 1676, api 1084, contract 665, mobile 159, mobile-ui 86, core 46, ui 36, i18n 23,
+tokens 19 — và int 774/774.
+
 ## 2026-10-07 — Thử tay đợt sửa sạn admin trên production và năm việc chờ quyết (`4956c287`..`89d1b3eb`, nhánh `fix/admin-polish-followups`)
 
 **Thử tay production** sau merge `3b608b3f` (CI xanh sau 9 phút 24 giây, Render live 17:43, không

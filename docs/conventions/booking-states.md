@@ -16,11 +16,12 @@ với một booking được trả tiền nhưng vẫn đi tour. Vì vậy lõi 
 trong `cancellations.service.ts`) đặt `CANCELLED` **tường minh**, không đi qua
 `deriveStatusAfterRefund`.
 
-## Năm ngữ nghĩa terminal
+## Sáu ngữ nghĩa terminal
 
 | Flow | Status cuối | Ledger | Ghế | Vì sao |
 | --- | --- | --- | --- | --- |
-| **Khách tự huỷ** (ADR-0041: khách bấm Cancel trên booking `PAID` hoặc `PARTIALLY_REFUNDED`, ngày hôm nay theo giờ Việt Nam còn trước ngày khởi hành) | `CANCELLED` + `cancelledAt` | 0..1 row — **1 row bằng trọn phần còn lại** khi huỷ TRONG hạn chót của chuyến; **0 row** ở hai ca: huỷ SAU hạn chót (hoàn `0.00`, không gọi cổng thanh toán), hoặc sổ đã settle từ trước. Sổ append-only chỉ kể tiền thật sự đi | **Trả lại** (`seats_booked -= party`) — BẤT KỂ hoàn bao nhiêu | Khách chủ động thôi đi tour — chuyến đi kết thúc. Tiền đã trả nằm trọn trong ledger; status kể chuyện ghế/chuyến đi, không kể chuyện tiền. `CancellationRequest` sinh ra ở trạng thái `REFUNDED` NGAY (không qua `REQUESTED`), `decided_by` = chính chủ booking — contract phơi ra thành `decidedByCustomer: true` để admin đọc được "ai huỷ" mà không cần join |
+| **Công ty huỷ chuyến** (F13, ADR-0041 §6: admin huỷ cả chuyến; job `departure-refund` huỷ từng booking `PAID`/`PARTIALLY_REFUNDED`, lưới quét `booking-sweep` vớt job sót) | `CANCELLED` + `cancelledAt` | 1 row — **trọn phần còn lại**, KHÔNG xét hạn chót, kể cả khi job chạy sau ngày khởi hành | **Trả lại** | Khách không đổi ý gì cả, nên luật hạn chót không áp. `CancellationRequest` `REFUNDED`, `decided_by` = admin đã huỷ chuyến, lý do là câu admin gõ lúc huỷ (cũng nằm ở `tour_departures.cancel_reason`); email mang `initiator: 'operator'`. Booking `PENDING` của chuyến thì huỷ NGAY trong giao dịch huỷ chuyến, không qua job |
+| **Khách tự huỷ** (ADR-0041: khách bấm Cancel trên booking `PAID` hoặc `PARTIALLY_REFUNDED`, ngày hôm nay theo giờ Việt Nam còn trước ngày khởi hành, và chuyến **chưa bị công ty huỷ** — AMEND 1) | `CANCELLED` + `cancelledAt` | 0..1 row — **1 row bằng trọn phần còn lại** khi huỷ TRONG hạn chót của chuyến; **0 row** ở hai ca: huỷ SAU hạn chót (hoàn `0.00`, không gọi cổng thanh toán), hoặc sổ đã settle từ trước. Sổ append-only chỉ kể tiền thật sự đi | **Trả lại** (`seats_booked -= party`) — BẤT KỂ hoàn bao nhiêu | Khách chủ động thôi đi tour — chuyến đi kết thúc. Tiền đã trả nằm trọn trong ledger; status kể chuyện ghế/chuyến đi, không kể chuyện tiền. `CancellationRequest` sinh ra ở trạng thái `REFUNDED` NGAY (không qua `REQUESTED`), `decided_by` = chính chủ booking — contract phơi ra thành `decidedByCustomer: true` để admin đọc được "ai huỷ" mà không cần join |
 | **Overbooked claim** (W2: thanh toán xong nhưng thua cuộc đua ghế) | `CANCELLED` + `cancelledAt` | 1 row full (adminId NULL = tự động) | Không đụng (chưa từng giữ) | Booking chưa bao giờ rời PENDING thành doanh thu, chưa bao giờ giữ ghế — hủy + hoàn là trạng thái đúng. |
 | **Orphaned capture** (W2/W3: capture đến SAU khi booking đã CANCELLED) | `REFUNDED` (derive từ ledger) | 1 row full (adminId NULL) | Không đụng (CANCELLED chưa giữ ghế) | Tiền thật đã vào trên một booking đã chết → câu chuyện còn lại thuần về tiền; ledger derive ra terminal `REFUNDED` trung thực. |
 | **Admin goodwill refund full** (W3: `admin.bookings.refund` không qua cancellation) | `REFUNDED` (derive từ ledger) | 1..n rows cộng dồn đến total | **KHÔNG trả ghế** | Khách VẪN đi tour — refund thiện chí không hủy chuyến. Trả ghế là đặc quyền của flow cancellation (W4). |
@@ -58,7 +59,14 @@ một booking đã huỷ là ghi đè travel story bằng money story — khách
 - **Ngày so bằng giờ Việt Nam.** "Chuyến đã đi chưa" và "còn trong hạn chót
   không" đều đo bằng `vietnamToday(now)` ở Node, `vietnamDateSql` ở SQL
   (ADR-0009 AMEND 3). Không dùng UTC, không dùng đồng hồ trình duyệt.
-- **Một lõi cho hai người gọi.** `cancelInLock` hôm nay chỉ có đầu vào
-  `initiator: 'customer'`; nút "Cancel departure" của P4e-1 sẽ thêm
-  `'operator'` vào chính lõi ấy chứ không viết đường thứ hai — đó là lý do lõi
-  nhận `decidedById` và `refundAmount` làm tham số thay vì tự đi tìm.
+- **Một lõi cho hai người gọi.** `cancelInLock` nhận `initiator: 'customer'`
+  (`cancelByCustomer`) và `'operator'` (`cancelByOperator`, job của F13) — cùng
+  một lõi, không có đường thứ hai; đó là lý do lõi nhận `decidedById` và
+  `refundAmount` làm tham số thay vì tự đi tìm.
+- **Chuyến đã `CANCELLED` thì chỉ còn đường công ty** (ADR-0041 AMEND 1). Từ lúc
+  admin huỷ chuyến tới lúc job chạy, booking `PAID` vẫn nằm đó — nhưng khách
+  không tự huỷ được nữa (422) và `bookings.byCode.cancellation` là `null`. Để
+  khách tự huỷ trong khoảng chờ là để luật hạn chót trả 0, rồi job thấy booking
+  đã `CANCELLED` và coi như xong. Trạng thái chuyến đọc SỐNG (khác ngày, đọc bản
+  sao); lõi khoá hàng chuyến `FOR KEY SHARE` trước khi đọc, để xếp hàng với
+  `FOR UPDATE` của lượt huỷ chuyến.

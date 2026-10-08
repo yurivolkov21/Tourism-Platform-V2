@@ -64,6 +64,23 @@ hoặc ô nhập phải đổi giọng thành câu-cho-khách-đọc, hoặc c�
 Trong lúc chưa quyết, câu nhắc ở màn admin đã sửa cho nói đúng sự thật (nó là
 ghi chép nội bộ) — trước đó nó hứa nhầm rằng khách sẽ đọc được.
 
+## Web: trang đơn chưa biết chuyến đã bị công ty huỷ
+
+Nêu 08/10 cùng bản vá ADR-0041 AMEND 1. API đã đóng đường khách tự huỷ khi chuyến
+`CANCELLED` (`bookings.byCode.cancellation` là `null`, lệnh huỷ trả 422), nhưng
+trong khoảng chờ job `departure-refund` (thường dưới 15 phút, lâu hơn nếu cổng
+thanh toán lỗi) booking vẫn `PAID`. Trang chi tiết đơn và voucher vì vậy hiện như
+một chuyến còn chạy — voucher, hoá đơn, đếm ngược — không chữ nào nói chuyến đã bị
+huỷ và tiền đang hoàn.
+
+Làm: thêm một trường vào `BookingDetail` (chuyến đã bị công ty huỷ, kèm mốc), rồi
+một khối báo trên trang chi tiết và trang voucher, ẩn hoặc đánh dấu voucher. Đụng
+thẳng file của nhánh P7 B (`feat/booking-pages-redesign`) và P7 C
+(`feat/booking-voucher`), nên làm SAU khi hai nhánh ấy merge; gộp được với đề xuất
+"cho khách biết vì sao" ở trên, cùng một khối báo. Lưu ý cho P7 B:
+`booking-journey.ts` tự so ngày khi `cancellation` là `null`, nên đơn `PAID` trên
+chuyến đã huỷ sẽ có bước "Free cancellation" tính theo ngày.
+
 ## Cần thử lại bằng máy thật
 
 - **Lệnh chạy app điện thoại đổi sang LAN** (21/09, ADR-0040 AMEND 2):
