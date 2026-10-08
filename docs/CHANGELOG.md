@@ -8,6 +8,59 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-10-08 — Bảng đợt khởi hành dưới lg thành thẻ xếp dọc (`ec039b0d`, nhánh `fix/web-departures-mobile`)
+
+Lỗi có từ trước, không do bản vá giá có xu: tab Departures của trang chi tiết tour vỡ ở khổ điện
+thoại. Đo prod 07/10 (`/tours/vietnam-grand-journey-12d`, viewport 375): khung bảng 277px mà bốn cột
+ghim cứng đã 400px, nên cột ngày và cột ghế bị bóp về 0, chữ đè nhau, nút Select bị `overflow-hidden`
+cắt mất. Ở 768px cột ngày cũng chỉ còn khoảng 70px; bảng đọc ổn từ khoảng 820px.
+
+User duyệt thiết kế 08/10, chọn "thẻ xếp dọc" thay vì "cuộn ngang có chỉ báo" (`departures-panel.tsx`):
+
+- Dưới `lg`, chính `<table>` đó đổi `display` bằng CSS, không dựng bản sao DOM cho mobile: `thead` và
+  `colgroup` rời bố cục, mỗi `tr` là một khối flex-wrap.
+- Hàng tháng: mũi xổ, tên tháng, giá; số ghế và huy hiệu mỗi thứ một dòng. Hàng đợt: khối ngày cạnh
+  giá, thanh ghế trải ngang, huy hiệu cùng nút Select hoặc "Ask about this trip".
+- Mốc chuyển là `lg`, trùng mốc thanh đặt chỗ dính đáy. Lớp chỉ dành cho bảng mang tiền tố `lg:` thay
+  vì để trần rồi đè bằng `max-lg:`, vì `[&>td:first-child]:pl-…` nặng độ ưu tiên hơn mọi lớp đè.
+- Flex-wrap chứ không dùng lưới: lưới hai cột thì giá và nút "Ask about this trip" chung cột phải,
+  cột ấy nở theo nút và bóp khối ngày.
+
+Phát sinh khi đo trên bản build, vá trong cùng nhánh (test viết trước, đỏ đúng lý do):
+
+- Cụm ngày bị chẻ ("until 15" / "Nov", "1–22" / "Nov"): ngày đi và ngày về thành hai cụm `nowrap`;
+  hạn huỷ và dòng phụ của tháng nối cụm ngày bằng NBSP, chèn WORD JOINER (U+2060) sau gạch "–".
+- Ở 320px tên tháng bị bóp còn 56px và cụm ngày tràn ô 2px: khối ngày giữ sàn 112px (cụm rộng nhất
+  đo được 97,6px), tên tháng giữ sàn 96px; thiếu chỗ thì giá xuống dòng, `ml-auto` giữ nó sát phải.
+- Thanh ghế 16 đốt có bề rộng tối thiểu 252px nên lấn lề thẻ ở 375px, còn tour 22 chỗ tràn khỏi
+  khung ở 320px: ô ghế `min-w-0` để đốt co đều.
+
+**Đo trên bản build** (`next start` cổng 3210, API dev cổng 3101), ba tour: `phu-quoc-island-hopping-day`
+(16 chỗ, có đợt đã đóng, đợt hết chỗ, giá gạch), `vietnam-grand-journey-12d` (ngày dài, giá gạch),
+`halong-bay-overnight-cruise` (22 chỗ):
+
+- 320, 375 và 768px: khung không cuộn ngang, không ô nào tràn hay đè nhau, mọi nút lọt khung, không
+  cụm ngày nào bị chẻ.
+- 1024 và 1280px: bề rộng cột, chiều cao hàng và vị trí ô khớp số đo chụp trước khi sửa ở cả 6 lượt;
+  đệm và viền ô tính ra như cũ.
+- Tương tác ở 375px: tháng đóng ẩn hàng (`[hidden]` của preflight Tailwind thắng `max-lg:flex`), nút
+  Select đổi đợt đang chọn.
+
+**Review findings:** không mở vòng review riêng. jsdom không tính layout nên 7 test mới là test hợp
+đồng trên lớp CSS và ký tự nối; bằng chứng bố cục là lượt đo ở trên. Hàng "See all N … dates" chỉ có
+test hợp đồng, vì dữ liệu dev không có tháng nào quá 6 đợt.
+
+**CÒN TREO:** G26 (lề trang 48px ở mọi khổ), G27 (dải 5 tab tràn ngang ở 375px, cả trang cuộn ngang
+được), G28 (thanh ghế quá 24 chỗ tràn thẻ ở 320px), ghi ở `open-items`. Bản vá giá có xu (`1eb3d81d`,
+`2e62229b`) vẫn chỉ nằm ở nhánh cục bộ `claude/priceless-heisenberg-d71023`, chưa lên `main`. Không
+migration, không env, không webhook.
+
+Tests after (`gate:int` trên `05534a94`, bản trước khi rebase, 08/10 13:02–13:09, int trên DB riêng
+`tourism_test_depmobile`): unit 5708 — admin 1911, web 1683, api 1080, contract 665, mobile 159,
+mobile-ui 86, core 46, ui 36, i18n 23, tokens 19 — và int 771/771. Rebase lên `f6d53151` chỉ thêm
+code API và contract của bản vá huỷ chuyến ngay dưới (đã qua gate ở nhánh của nó); sau rebase chạy lại
+typecheck và test của web, CI chạy cả gate trên `main`.
+
 ## 2026-10-08 — Chuyến bị công ty huỷ thì khách hết tự huỷ: vá khoảng chờ job hoàn tiền (`c7f86e2a`..`cf6a0824`, nhánh `claude/vigilant-jones-c95f34`)
 
 **Lỗi** (phát hiện ở review P7 phần C, xác minh bằng đọc mã): admin huỷ chuyến thì booking `PAID`
