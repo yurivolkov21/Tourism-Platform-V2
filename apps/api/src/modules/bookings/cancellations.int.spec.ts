@@ -17,6 +17,7 @@ import {
   FAKE_VALID_SIGNATURE,
   FakeGateway,
 } from '../payments/fake.gateway.js';
+import { CancellationsService } from './cancellations.service.js';
 
 /**
  * Integration (Docker PG, db tourism_test) — money-path huỷ booking.
@@ -582,6 +583,176 @@ describe('cancellations integration (W4, D1-B append-only)', () => {
         BookingStatus.REFUNDED,
       );
       expect(await seatsBooked()).toBe(3);
+    });
+  });
+
+  /**
+   * ADR-0041 AMEND 1 — công ty đã huỷ chuyến thì đường khách đóng lại. Lỗ hổng gốc
+   * (review P7 phần C, 08/10): trong khoảng chờ job `departure-refund`, khách tự huỷ
+   * quá hạn được hoàn 0, rồi `cancelByOperator` thấy CANCELLED nên coi như việc đã
+   * xong — khách mất khoản 100% của §6.
+   *
+   * Chuyến bị huỷ dựng thẳng bằng Prisma, ghi đúng ba cột sổ mà
+   * `DepartureCancelService` ghi; hàng đợi được đóng vai bằng `cancelByOperator`,
+   * đúng hàm mà job gọi.
+   */
+  describe('ADR-0041 AMEND 1 — chuyến đã bị công ty huỷ', () => {
+    const REASON = 'The guide is unavailable, so this departure is called off.';
+
+    async function seedOperatorId(): Promise<string> {
+      const row = await prisma.user.create({
+        data: { email: 'operator@example.com', name: 'Operator', role: 'ADMIN' },
+      });
+      return row.id;
+    }
+
+    /** Ba cột sổ cấp CHUYẾN mà giao dịch huỷ chuyến ghi, cùng trạng thái mới. */
+    function cancelledDeparture(adminId: string) {
+      return {
+        status: DepartureStatus.CANCELLED,
+        cancelledAt: new Date(),
+        cancelledBy: adminId,
+        cancelReason: REASON,
+      } satisfies Prisma.TourDepartureUpdateInput;
+    }
+
+    /**
+     * Dời SNAPSHOT ngày cho QUÁ hạn chót nhưng chưa tới ngày khởi hành — ca đắt
+     * nhất của lỗ hổng, vì luật của khách lúc ấy hoàn 0 (cùng cách ca quá hạn ở trên).
+     */
+    async function moveSnapshotPastDeadline(bookingId: string): Promise<void> {
+      const start = isoPlusDays(vietnamToday(new Date()), 2);
+      const end = isoPlusDays(start, 3);
+      await prisma.booking.update({
+        where: { id: bookingId },
+        data: { departureStartDate: startOfDayUtc(start), departureEndDate: startOfDayUtc(end) },
+      });
+    }
+
+    /** Chờ tới khi một kết nối khác của DB này đứng chờ khoá — lệnh của khách đã vào hàng. */
+    async function waitForLockWait(): Promise<void> {
+      for (let attempt = 0; attempt < 100; attempt += 1) {
+        const [row] = await prisma.$queryRaw<{ waiting: number }[]>`
+          SELECT count(*)::int AS waiting FROM pg_stat_activity
+          WHERE datname = current_database()
+            AND wait_event_type = 'Lock'
+            AND pid <> pg_backend_pid()
+        `;
+        if ((row?.waiting ?? 0) > 0) return;
+        await new Promise((resolve) => setTimeout(resolve, 50));
+      }
+      throw new Error('Lệnh huỷ của khách không đứng chờ khoá nào sau 5 giây');
+    }
+
+    it('khách huỷ trong khoảng chờ job → 422, không gọi cổng; job của công ty sau đó hoàn trọn', async () => {
+      const adminId = await seedOperatorId();
+      const alice = await signUpUser('gap-cancel@example.com', 'Alice');
+      const booking = await createPaidBooking(alice); // 117.00, 3 ghế
+      await moveSnapshotPastDeadline(booking.id);
+      // Trang khách mở TRƯỚC lúc chuyến bị huỷ: hộp xác nhận in "hoàn 0" vì quá hạn.
+      expect(await shownRefundAmount(alice, booking.code)).toBe('0.00');
+      await prisma.tourDeparture.update({
+        where: { id: dep.id },
+        data: cancelledDeparture(adminId),
+      });
+
+      const res = await postCancel(alice, booking.code, { expectedRefundAmount: '0.00' });
+      expect(res.statusCode).toBe(422);
+      expect(res.json()).toMatchObject({ code: 'NOT_CANCELLABLE' });
+
+      // Không ghi gì: tiền của chuyến bị huỷ chỉ đi đường công ty.
+      expect(fake.refunds).toHaveLength(0);
+      expect((await prisma.booking.findUniqueOrThrow({ where: { id: booking.id } })).status).toBe(
+        BookingStatus.PAID,
+      );
+      expect(await prisma.cancellationRequest.count()).toBe(0);
+      expect(await prisma.outbox.count({ where: { type: EmailType.BOOKING_CANCELLED } })).toBe(0);
+
+      // Job tới sau: hoàn TRỌN dù đã quá hạn chót, người quyết là admin đã huỷ chuyến.
+      const refunded = await app
+        .get(CancellationsService)
+        .cancelByOperator(booking.id, adminId, REASON);
+      expect(refunded).toBe('117.00');
+      expect(fake.refunds.map((r) => r.amount)).toEqual(['117.00']);
+      const request = await prisma.cancellationRequest.findFirstOrThrow({
+        where: { bookingId: booking.id },
+      });
+      expect(request.decidedById).toBe(adminId);
+      const outbox = await prisma.outbox.findFirstOrThrow({
+        where: { type: EmailType.BOOKING_CANCELLED },
+      });
+      expect(outbox.payload).toMatchObject({
+        amount: '117.00',
+        refunded: true,
+        initiator: 'operator',
+      });
+    });
+
+    it('byCode: chuyến đã bị công ty huỷ → cancellation null, không còn nút huỷ hay hạn chót để in', async () => {
+      const adminId = await seedOperatorId();
+      const alice = await signUpUser('gap-read@example.com', 'Alice');
+      const booking = await createPaidBooking(alice);
+      await prisma.tourDeparture.update({
+        where: { id: dep.id },
+        data: cancelledDeparture(adminId),
+      });
+
+      const res = await app.inject({
+        method: 'GET',
+        url: `/api/bookings/${booking.code}`,
+        headers: { cookie: alice },
+      });
+      expect(res.statusCode).toBe(200);
+      const body = res.json() as { status: string; cancellation: unknown };
+      // Booking vẫn PAID tới lúc job chạy — chỉ luật huỷ của KHÁCH là thôi áp dụng.
+      expect(body.status).toBe('PAID');
+      expect(body.cancellation).toBeNull();
+    });
+
+    it('admin đang giữ khoá chuyến lúc khách bấm huỷ → lệnh khách CHỜ, rồi thấy chuyến đã huỷ: 422, không gọi cổng', async () => {
+      // Khe đua mà phép kiểm KHÔNG khoá để lọt: admin commit giữa lúc kiểm và lúc
+      // ghi. Giao dịch dưới đây khoá hàng chuyến y như `DepartureCancelService`
+      // (`FOR UPDATE` rồi đổi trạng thái) và giữ khoá tới khi lệnh của khách chắc
+      // chắn đang đứng chờ.
+      const adminId = await seedOperatorId();
+      const alice = await signUpUser('gap-race@example.com', 'Alice');
+      const booking = await createPaidBooking(alice);
+      await moveSnapshotPastDeadline(booking.id);
+
+      let release: () => void = () => {};
+      const gate = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      let markLocked: () => void = () => {};
+      const locked = new Promise<void>((resolve) => {
+        markLocked = resolve;
+      });
+      const adminTx = prisma.$transaction(
+        async (tx) => {
+          await tx.$queryRaw`SELECT id FROM tour_departures WHERE id = ${dep.id}::uuid FOR UPDATE`;
+          await tx.tourDeparture.update({
+            where: { id: dep.id },
+            data: cancelledDeparture(adminId),
+          });
+          markLocked();
+          await gate;
+        },
+        { timeout: 20_000 },
+      );
+      await locked;
+
+      const cancelling = postCancel(alice, booking.code, { expectedRefundAmount: '0.00' });
+      await waitForLockWait();
+      release();
+      await adminTx;
+      const res = await cancelling;
+
+      expect(res.statusCode).toBe(422);
+      expect(res.json()).toMatchObject({ code: 'NOT_CANCELLABLE' });
+      expect(fake.refunds).toHaveLength(0);
+      expect((await prisma.booking.findUniqueOrThrow({ where: { id: booking.id } })).status).toBe(
+        BookingStatus.PAID,
+      );
     });
   });
 });

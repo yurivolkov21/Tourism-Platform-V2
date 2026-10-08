@@ -61,7 +61,7 @@ export function bookingView(
 /**
  * Câu hạn chót huỷ miễn phí cho trang booking và trang thanh toán thành công —
  * `null` khi server không gửi `cancellation` (booking không ở PAID hoặc
- * PARTIALLY_REFUNDED).
+ * PARTIALLY_REFUNDED, hoặc chuyến đã bị công ty huỷ — ADR-0041 AMEND 1).
  *
  * Chỉ IN cờ `withinDeadline` và ngày `deadline` server tính: trang không so
  * ngày chót với giờ trình duyệt, nên chỉnh đồng hồ máy không đổi được câu này

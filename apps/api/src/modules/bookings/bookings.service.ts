@@ -793,7 +793,9 @@ export class BookingsService {
   async byCode(userId: string, code: string): Promise<BookingDetail | null> {
     const booking = await prisma.booking.findUnique({
       where: { code },
-      include: { tour: bookingTourInclude },
+      // Trạng thái chuyến đọc SỐNG (ADR-0041 AMEND 1): chuyến bị công ty huỷ thì
+      // luật huỷ của khách thôi áp dụng — xem `bookingCancellation`.
+      include: { tour: bookingTourInclude, departure: { select: { status: true } } },
     });
     if (!booking || booking.userId !== userId) return null;
     const latestCancellation = await prisma.cancellationRequest.findFirst({
@@ -835,7 +837,12 @@ export class BookingsService {
       review: review ? toMyReview(review, reviewMedia) : null,
       // ADR-0041: trạng thái huỷ theo hạn chót, cùng hàm luật với lõi huỷ — con
       // số khách thấy là con số server hoàn. Web chỉ in (Q7).
-      cancellation: bookingCancellation(booking, refunded._sum.amount, new Date()),
+      cancellation: bookingCancellation(
+        booking,
+        refunded._sum.amount,
+        new Date(),
+        booking.departure.status,
+      ),
     };
   }
 

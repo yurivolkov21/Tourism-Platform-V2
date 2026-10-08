@@ -1,8 +1,9 @@
 import { Prisma } from '../../generated/prisma/client.js';
-import { BookingStatus } from '../../generated/prisma/enums.js';
+import { BookingStatus, DepartureStatus } from '../../generated/prisma/enums.js';
 import {
   bookingCancellation,
   type CancellableBooking,
+  type CancelPath,
   cancellationBlocker,
   isCancellableStatus,
   refundOnCancelForBooking,
@@ -29,6 +30,10 @@ function makeBooking(overrides: Partial<CancellableBooking> = {}): CancellableBo
 /** 10:00 ngày 10/10 giờ Việt Nam — còn xa ngày chót. */
 const EARLY = new Date('2026-10-10T03:00:00.000Z');
 
+/** Đường khách trên một chuyến còn chạy — ca thường của mọi test luật hạn chót. */
+const CUSTOMER: CancelPath = { initiator: 'customer', departureStatus: DepartureStatus.OPEN };
+const OPERATOR: CancelPath = { initiator: 'operator' };
+
 describe('isCancellableStatus', () => {
   it('chỉ PAID và PARTIALLY_REFUNDED — REFUNDED thì khách liên hệ (spec §3.3)', () => {
     expect(isCancellableStatus(BookingStatus.PAID)).toBe(true);
@@ -41,38 +46,78 @@ describe('isCancellableStatus', () => {
 
 describe('cancellationBlocker', () => {
   it('PAID còn capture, trước ngày khởi hành → null (huỷ được)', () => {
-    expect(cancellationBlocker(makeBooking(), EARLY)).toBeNull();
+    expect(cancellationBlocker(makeBooking(), EARLY, CUSTOMER)).toBeNull();
   });
 
   it('trạng thái ngoài PAID/PARTIALLY_REFUNDED → nêu trạng thái', () => {
-    expect(cancellationBlocker(makeBooking({ status: BookingStatus.REFUNDED }), EARLY)).toMatch(
-      /REFUNDED/,
-    );
-    expect(cancellationBlocker(makeBooking({ status: BookingStatus.PENDING }), EARLY)).toMatch(
-      /PENDING/,
-    );
+    expect(
+      cancellationBlocker(makeBooking({ status: BookingStatus.REFUNDED }), EARLY, CUSTOMER),
+    ).toMatch(/REFUNDED/);
+    expect(
+      cancellationBlocker(makeBooking({ status: BookingStatus.PENDING }), EARLY, CUSTOMER),
+    ).toMatch(/PENDING/);
   });
 
   it('không có capture → không có chỗ hoàn vào', () => {
-    expect(cancellationBlocker(makeBooking({ providerPaymentId: null }), EARLY)).toMatch(
+    expect(cancellationBlocker(makeBooking({ providerPaymentId: null }), EARLY, CUSTOMER)).toMatch(
       /captured payment/,
     );
   });
 
   it('23:59:59 giờ VN hôm trước ngày khởi hành → vẫn huỷ được', () => {
-    expect(cancellationBlocker(makeBooking(), new Date('2026-10-19T16:59:59.999Z'))).toBeNull();
+    expect(
+      cancellationBlocker(makeBooking(), new Date('2026-10-19T16:59:59.999Z'), CUSTOMER),
+    ).toBeNull();
   });
 
   it('00:00 giờ VN ngày khởi hành → hết huỷ online', () => {
-    expect(cancellationBlocker(makeBooking(), new Date('2026-10-19T17:00:00.000Z'))).toMatch(
-      /departure date/,
-    );
+    expect(
+      cancellationBlocker(makeBooking(), new Date('2026-10-19T17:00:00.000Z'), CUSTOMER),
+    ).toMatch(/departure date/);
   });
 
   it('06:30 giờ VN ngày khởi hành, UTC còn là hôm trước → vẫn chặn (thước UTC cũ để lọt)', () => {
-    expect(cancellationBlocker(makeBooking(), new Date('2026-10-19T23:30:00.000Z'))).toMatch(
-      /departure date/,
+    expect(
+      cancellationBlocker(makeBooking(), new Date('2026-10-19T23:30:00.000Z'), CUSTOMER),
+    ).toMatch(/departure date/);
+  });
+});
+
+describe('cancellationBlocker — chuyến đã bị công ty huỷ (ADR-0041 AMEND 1)', () => {
+  const ON_CANCELLED: CancelPath = {
+    initiator: 'customer',
+    departureStatus: DepartureStatus.CANCELLED,
+  };
+
+  it('đường KHÁCH đóng lại: tiền của chuyến bị huỷ chỉ đi đường công ty (§6 thắng §4)', () => {
+    // Lỗ hổng gốc: trong khoảng chờ job hoàn tiền, khách tự huỷ quá hạn được
+    // hoàn 0, rồi job thấy booking đã CANCELLED nên coi như xong — khách mất
+    // khoản 100% mà §6 hứa. Chốt này phải đóng cửa TRƯỚC cổng thanh toán.
+    expect(cancellationBlocker(makeBooking(), EARLY, ON_CANCELLED)).toMatch(
+      /cancelled this departure/,
     );
+  });
+
+  it('chuyến bị huỷ VÀ đã tới ngày khởi hành → nói lý do chuyến bị huỷ, đúng hơn lý do ngày', () => {
+    const onDepartureDay = new Date('2026-10-20T03:00:00.000Z');
+    expect(cancellationBlocker(makeBooking(), onDepartureDay, ON_CANCELLED)).toMatch(
+      /cancelled this departure/,
+    );
+  });
+
+  it('chuyến CLOSED (ngừng bán) vẫn để khách tự huỷ — chỉ CANCELLED mới đổi người quyết', () => {
+    expect(
+      cancellationBlocker(makeBooking(), EARLY, {
+        initiator: 'customer',
+        departureStatus: DepartureStatus.CLOSED,
+      }),
+    ).toBeNull();
+  });
+
+  it('chốt trạng thái booking vẫn nói trước: booking đã đóng thì lý do là chính nó', () => {
+    expect(
+      cancellationBlocker(makeBooking({ status: BookingStatus.CANCELLED }), EARLY, ON_CANCELLED),
+    ).toMatch(/booking is CANCELLED/);
   });
 });
 
@@ -99,7 +144,7 @@ describe('refundOnCancelForBooking', () => {
 
 describe('bookingCancellation', () => {
   it('PAID trong hạn → ngày chót, trong hạn, hoàn đủ, huỷ được', () => {
-    expect(bookingCancellation(makeBooking(), null, EARLY)).toEqual({
+    expect(bookingCancellation(makeBooking(), null, EARLY, DepartureStatus.OPEN)).toEqual({
       deadline: '2026-10-17',
       withinDeadline: true,
       refundAmount: '117.00',
@@ -113,6 +158,7 @@ describe('bookingCancellation', () => {
         makeBooking({ status: BookingStatus.PARTIALLY_REFUNDED }),
         new Prisma.Decimal('17.00'),
         new Date('2026-10-18T03:00:00.000Z'),
+        DepartureStatus.OPEN,
       ),
     ).toEqual({
       deadline: '2026-10-17',
@@ -123,7 +169,14 @@ describe('bookingCancellation', () => {
   });
 
   it('không có capture → canCancel false, vẫn in ngày chót và số tiền theo luật', () => {
-    expect(bookingCancellation(makeBooking({ providerPaymentId: null }), null, EARLY)).toEqual({
+    expect(
+      bookingCancellation(
+        makeBooking({ providerPaymentId: null }),
+        null,
+        EARLY,
+        DepartureStatus.OPEN,
+      ),
+    ).toEqual({
       deadline: '2026-10-17',
       withinDeadline: true,
       refundAmount: '117.00',
@@ -134,13 +187,23 @@ describe('bookingCancellation', () => {
   it.each([BookingStatus.PENDING, BookingStatus.CANCELLED, BookingStatus.REFUNDED])(
     'trạng thái %s → null',
     (status) => {
-      expect(bookingCancellation(makeBooking({ status }), null, EARLY)).toBeNull();
+      expect(
+        bookingCancellation(makeBooking({ status }), null, EARLY, DepartureStatus.OPEN),
+      ).toBeNull();
     },
   );
 
   it('chuyến 4 ngày → N = 7, ngày chót sớm hơn', () => {
     const long = makeBooking({ departureEndDate: new Date('2026-10-23T00:00:00.000Z') });
-    expect(bookingCancellation(long, null, EARLY)?.deadline).toBe('2026-10-13');
+    expect(bookingCancellation(long, null, EARLY, DepartureStatus.OPEN)?.deadline).toBe(
+      '2026-10-13',
+    );
+  });
+
+  it('chuyến đã bị công ty huỷ → null, kể cả booking PAID còn trong hạn (ADR-0041 AMEND 1)', () => {
+    // Luật huỷ của khách không còn áp dụng: in hạn chót hay số `refundAmount`
+    // theo hạn chót lúc này là nói sai — công ty sẽ hoàn trọn qua job.
+    expect(bookingCancellation(makeBooking(), null, EARLY, DepartureStatus.CANCELLED)).toBeNull();
   });
 });
 
@@ -186,24 +249,20 @@ describe('cancellationBlocker — đường OPERATOR không chịu chốt ngày 
     // hành" thôi là một sự thật về lịch, không còn là lý do giữ tiền
     // (ADR-0041 §6). Job hoàn tiền có thể chạy muộn vì worker ngủ hoặc vì cổng
     // thanh toán vừa hờn; nó không được phép im lặng bỏ cuộc.
-    expect(cancellationBlocker(makeBooking(), ON_DEPARTURE_DAY)).toMatch(/departure date/);
-    expect(cancellationBlocker(makeBooking(), ON_DEPARTURE_DAY, 'operator')).toBeNull();
+    expect(cancellationBlocker(makeBooking(), ON_DEPARTURE_DAY, CUSTOMER)).toMatch(
+      /departure date/,
+    );
+    expect(cancellationBlocker(makeBooking(), ON_DEPARTURE_DAY, OPERATOR)).toBeNull();
   });
 
   it('hai chốt còn lại vẫn áp cho CẢ HAI đường', () => {
     // Trạng thái sai và thiếu capture là chuyện của chính booking, không phải
     // chuyện của ai bấm nút.
     expect(
-      cancellationBlocker(makeBooking({ status: BookingStatus.CANCELLED }), EARLY, 'operator'),
+      cancellationBlocker(makeBooking({ status: BookingStatus.CANCELLED }), EARLY, OPERATOR),
     ).toMatch(/CANCELLED/);
-    expect(
-      cancellationBlocker(makeBooking({ providerPaymentId: null }), EARLY, 'operator'),
-    ).toMatch(/captured payment/);
-  });
-
-  it('bỏ trống tham số thì vẫn là luật của KHÁCH — mọi chỗ gọi cũ không đổi nghĩa', () => {
-    expect(cancellationBlocker(makeBooking(), ON_DEPARTURE_DAY)).toBe(
-      cancellationBlocker(makeBooking(), ON_DEPARTURE_DAY, 'customer'),
+    expect(cancellationBlocker(makeBooking({ providerPaymentId: null }), EARLY, OPERATOR)).toMatch(
+      /captured payment/,
     );
   });
 });

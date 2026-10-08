@@ -6,10 +6,12 @@ import type {
 import { cancellationDeadline } from '@tourism/contract';
 import { prisma } from '../../auth/auth.config.js';
 import { Prisma } from '../../generated/prisma/client.js';
+import type { DepartureStatus } from '../../generated/prisma/enums.js';
 import { calendarDate } from '../../lib/calendar-date.js';
 import { MediaService } from '../media/media.service.js';
 import { buildRefundEventRow } from '../payments/refund-event.js';
 import {
+  type CancelPath,
   cancellationBlocker,
   isCancellableStatus,
   refundOnCancelForBooking,
@@ -65,8 +67,10 @@ export interface CustomerCancelInput {
  * biết mình là đường nào. Ở đây `initiator` chỉ còn hai việc: vào payload email
  * (câu chữ hai đường khác nhau) và làm tài liệu cho người đọc kế tiếp.
  *
- * {@link cancellationBlocker} áp dụng cho CẢ HAI đường, không nới: chuyến đã
- * tới ngày khởi hành thì không còn là huỷ, mà là chuyện sau chuyến đi.
+ * {@link cancellationBlocker} chạy cho CẢ HAI đường, nhưng hai chốt chỉ áp cho
+ * khách: ngày khởi hành, và chuyến đã bị công ty huỷ (ADR-0041 AMEND 1 — tiền
+ * của chuyến ấy chỉ đi đường `'operator'`). Lõi tự khoá và đọc trạng thái chuyến
+ * cho đường khách, người gọi không phải đưa vào.
  */
 export interface CancelInLockInput {
   /** Người quyết: chính khách với 'customer', admin bấm nút với 'operator'. */
@@ -105,6 +109,37 @@ function toCancellationRequest(row: CancellationRow, bookingCode: string): Cance
 }
 
 /**
+ * Khoá hàng chuyến của booking rồi trả trạng thái SỐNG của nó (ADR-0041 AMEND 1).
+ * Chạy trong giao dịch của advisory lock, TRƯỚC khi gọi cổng thanh toán.
+ *
+ * Vì sao phải khoá chứ không đọc trần: lượt admin huỷ chuyến
+ * (`DepartureCancelService`) khoá cùng hàng bằng `FOR UPDATE`. Đọc trần thì admin
+ * vẫn commit được giữa lúc kiểm và lúc ghi — khe ấy dài bằng một lần gọi cổng —
+ * và khách được luật hạn chót hoàn 0 trên một chuyến vừa bị huỷ
+ * (`docs/conventions/read-then-write-races.md`). Có khoá thì hai bên xếp hàng:
+ * admin tới trước thì câu này chờ rồi trả về `CANCELLED` (khoá dòng ở Read
+ * Committed đọc lại bản mới của chính hàng bị khoá); khách tới trước thì admin
+ * chờ khách commit, và danh sách cần hoàn của admin chụp sau đó.
+ *
+ * `KEY SHARE` chứ không `SHARE`: lõi huỷ còn `UPDATE seats_booked` trên chính hàng
+ * này. Hai khách cùng chuyến cầm `SHARE` rồi cùng nâng lên khoá ghi là deadlock,
+ * mà deadlock lúc ấy xảy ra SAU khi tiền đã đi. `KEY SHARE` chỉ xung đột với
+ * `FOR UPDATE` — nên phép khoá này đứng được là nhờ lượt huỷ chuyến dùng
+ * `FOR UPDATE` tường minh.
+ */
+async function lockDepartureStatus(
+  tx: Prisma.TransactionClient,
+  departureId: string,
+): Promise<DepartureStatus> {
+  const [row] = await tx.$queryRaw<{ status: DepartureStatus }[]>(Prisma.sql`
+    SELECT status FROM tour_departures WHERE id = ${departureId}::uuid FOR KEY SHARE
+  `);
+  // FK `bookings.departure_id` không cho thiếu hàng; tới đây là dữ liệu hỏng thật.
+  if (!row) throw new Error(`Departure ${departureId} of a booking being cancelled is missing`);
+  return row.status;
+}
+
+/**
  * Huỷ booking (ADR-0041 §4): khách tự huỷ qua lõi huỷ dùng chung, chạy trong
  * advisory lock của booking — gọi cổng thanh toán trước, một CTE ghi sau. Mỗi
  * lần huỷ để lại đúng MỘT dòng `cancellation_requests` REFUNDED (append-only,
@@ -130,8 +165,9 @@ export class CancellationsService {
    * ghi một yêu cầu REFUNDED do chính khách quyết và xếp email `BOOKING_CANCELLED`.
    *
    * Ném BookingNotFoundError (không phải chủ hoặc không tồn tại — 404, không lộ sự
-   * tồn tại), BookingNotCancellableError (trạng thái sai, không có capture, hoặc
-   * đã tới ngày khởi hành), RefundAmountChangedError (số hoàn đã khác số khách xác
+   * tồn tại), BookingNotCancellableError (trạng thái sai, không có capture, đã tới
+   * ngày khởi hành, hoặc chuyến đã bị công ty huỷ — ADR-0041 AMEND 1, tiền đi
+   * đường job của công ty), RefundAmountChangedError (số hoàn đã khác số khách xác
    * nhận — không ghi gì), ProviderRefundFailedError (cổng lỗi — không ghi gì,
    * khách thử lại được).
    *
@@ -230,7 +266,7 @@ export class CancellationsService {
       //
       // Chốt ngày khởi hành KHÔNG nằm trong cả hai: xem `cancellationBlocker`.
       if (!isCancellableStatus(booking.status)) return null;
-      const blocked = cancellationBlocker(booking, now, 'operator');
+      const blocked = cancellationBlocker(booking, now, { initiator: 'operator' });
       if (blocked !== null) throw new BookingNotCancellableError(blocked);
 
       const ledger = await tx.refund.aggregate({
@@ -262,10 +298,14 @@ export class CancellationsService {
    * Lõi huỷ dùng chung (ADR-0041 §4, plan 15/09 Hợp đồng C) — CHẠY TRONG
    * `withBookingRefundLock` mà người gọi đang giữ; `tx` là giao dịch của khoá ấy.
    *
+   *  0. Đường khách: khoá hàng chuyến `FOR KEY SHARE` và đọc trạng thái SỐNG của
+   *     nó (ADR-0041 AMEND 1, xem {@link lockDepartureStatus}) — từ đây tới lúc
+   *     commit, admin không huỷ chuyến chen ngang được.
    *  1. Kiểm lại booking vừa đọc trong khoá: trạng thái PAID/PARTIALLY_REFUNDED,
-   *     có capture, chưa tới ngày khởi hành (giờ Việt Nam). Lệnh huỷ thứ hai chờ
-   *     khoá rồi thấy CANCELLED → BookingNotCancellableError. Rồi số tiền sắp hoàn
-   *     phải đúng số người gọi đã xác nhận → không thì RefundAmountChangedError.
+   *     có capture; với khách thêm chuyến chưa bị công ty huỷ và chưa tới ngày
+   *     khởi hành (giờ Việt Nam). Lệnh huỷ thứ hai chờ khoá rồi thấy CANCELLED →
+   *     BookingNotCancellableError. Rồi số tiền sắp hoàn phải đúng số người gọi
+   *     đã xác nhận → không thì RefundAmountChangedError.
    *  2. Tiền > 0 thì gọi cổng thanh toán TRƯỚC (ADR-0009: không ghi sổ thứ chưa
    *     xảy ra), khoá chống trùng `cancel:<bookingId>:<tổng đã hoàn>` — cùng khuôn
    *     `refund:<bookingId>:<tổng đã hoàn>` của hoàn thiện chí. Số tiền lần thử là
@@ -295,9 +335,16 @@ export class CancellationsService {
     booking: Prisma.BookingModel,
     input: CancelInLockInput,
   ): Promise<void> {
-    // Chốt áp THEO ĐƯỜNG: chốt ngày khởi hành là luật của khách, không phải
-    // của lượt hoàn tiền chạy muộn sau khi công ty đã bỏ chuyến.
-    const blocker = cancellationBlocker(booking, input.now, input.initiator);
+    // Chốt áp THEO ĐƯỜNG: chốt ngày khởi hành và chốt chuyến-đã-huỷ là luật của
+    // khách, không phải của lượt hoàn tiền chạy muộn sau khi công ty đã bỏ chuyến.
+    const path: CancelPath =
+      input.initiator === 'customer'
+        ? {
+            initiator: 'customer',
+            departureStatus: await lockDepartureStatus(tx, booking.departureId),
+          }
+        : { initiator: 'operator' };
+    const blocker = cancellationBlocker(booking, input.now, path);
     if (blocker) throw new BookingNotCancellableError(blocker);
 
     const amount = input.refundAmount;

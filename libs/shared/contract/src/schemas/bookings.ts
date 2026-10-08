@@ -235,7 +235,9 @@ export const BookingDetailSchema = BookingSchema.extend({
   review: MyReviewSchema.nullable(),
   /**
    * ADR-0041: trạng thái huỷ theo hạn chót — `null` khi booking không ở PAID
-   * hoặc PARTIALLY_REFUNDED. Web chỉ IN các con số này, không tự tính lại.
+   * hoặc PARTIALLY_REFUNDED, hoặc khi chuyến đã bị công ty huỷ (AMEND 1: luật huỷ
+   * của khách thôi áp dụng, công ty hoàn trọn qua job; booking vẫn PAID tới lúc
+   * job chạy). Web chỉ IN các con số này, không tự tính lại.
    */
   cancellation: BookingCancellationSchema.nullable(),
 });

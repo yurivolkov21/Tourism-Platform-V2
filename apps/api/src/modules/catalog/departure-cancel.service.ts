@@ -15,6 +15,14 @@ import {
 import { departureCancelBlocker } from './departure-rules.js';
 
 /**
+ * Timeout của giao dịch huỷ chuyến — bằng khoá hoàn tiền (`refund-lock.ts`).
+ * `FOR UPDATE` của nó có thể phải chờ một lượt khách tự huỷ đang gọi cổng thanh
+ * toán (trần 15 giây, ADR-0041 AMEND 1); với 5 giây mặc định của Prisma, admin
+ * sẽ thấy lỗi dù không có gì sai.
+ */
+const CANCEL_TX_OPTIONS = { timeout: 20_000 };
+
+/**
  * CÔNG TY huỷ chuyến (F13, ADR-0041 §6) — lệnh ghi duy nhất của vùng catalog
  * tiêu tiền thật, nên nó ở file RIÊNG thay vì nối thêm vào
  * `AdminDeparturesService`.
@@ -45,6 +53,12 @@ import { departureCancelBlocker } from './departure-rules.js';
  * Đường này KHÔNG gọi `refundOnCancelForBooking` (luật của khách): số tiền do
  * `cancelByOperator` chọn bằng `refundOnOperatorCancelForBooking` — trọn phần
  * chưa hoàn, không xét hạn chót.
+ *
+ * Khoá `FOR UPDATE` trên hàng chuyến là thứ lượt khách tự huỷ xếp hàng theo
+ * (ADR-0041 AMEND 1): lõi huỷ của khách khoá cùng hàng bằng `FOR KEY SHARE`,
+ * mà `KEY SHARE` chỉ xung đột với `FOR UPDATE`. Hạ nó xuống một câu UPDATE trần
+ * là khách lại đọc được trạng thái cũ và tự huỷ — hoàn theo hạn chót — trên
+ * chính chuyến vừa bị huỷ.
  */
 @Injectable()
 export class DepartureCancelService {
@@ -58,6 +72,7 @@ export class DepartureCancelService {
   async cancel(input: AdminDepartureCancelInput, adminId: string): Promise<AdminDepartureRow> {
     const now = new Date();
     const { tourSlug, toRefund, cancelledPending } = await prisma.$transaction(async (tx) => {
+      // `FOR UPDATE` tường minh, đừng hạ xuống — xem "Chỗ dễ sai đã canh" ở trên.
       const [locked] = await tx.$queryRaw<
         {
           id: string;
@@ -140,7 +155,7 @@ export class DepartureCancelService {
               }) satisfies DepartureRefundJob,
           ),
       };
-    });
+    }, CANCEL_TX_OPTIONS);
 
     // Xếp hàng SAU commit: một job trỏ vào một booking chưa CANCELLED là một
     // job chạy sớm hơn sự thật.
