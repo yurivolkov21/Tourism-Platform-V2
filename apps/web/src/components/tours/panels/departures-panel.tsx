@@ -84,6 +84,17 @@ export function seatsColumnWidth(capacity: number): number {
   return Math.min(capacity * 16 + 32, 400);
 }
 
+/**
+ * Nối cứng một cụm ngày ("13 Aug", "20–28 Aug") để thẻ hẹp xuống dòng TRƯỚC cả
+ * cụm thay vì chẻ ngày khỏi tháng: khoảng trắng → NBSP, và chèn WORD JOINER
+ * (U+2060) sau gạch "–", vì gạch nối khoảng là chỗ trình duyệt được phép ngắt
+ * (ra "20–" / "28 Aug"). Không sửa thẳng `formatChipDate` hay `monthDateSpan`:
+ * hai hàm ấy còn nuôi chỗ khác chưa ai đo, còn ở đây đã đo thấy chẻ ở 375px.
+ */
+function keepDateTogether(text: string): string {
+  return text.replaceAll(' ', '\u00A0').replaceAll('–', '–\u2060');
+}
+
 const BADGE_BASE =
   'inline-flex h-[22px] items-center gap-1.5 whitespace-nowrap rounded-full border px-[9px] text-[11px] leading-none font-medium';
 
@@ -177,6 +188,19 @@ function MonthBadge({ items }: { items: readonly DepartureVM[] }) {
  * trúc miễn phí. Mỗi tháng một `<tbody>`, hàng đợt nằm cùng `<tbody>` đó; đây
  * đúng cơ chế hàng expand của Data Grid, chỉ là không kéo `@tanstack/react-table`
  * vào cho 4–6 dòng trên một trang SSG.
+ *
+ * **Dưới `lg`, mỗi hàng thành một thẻ** (sửa 08/10) — vẫn CHÍNH bảng đó, chỉ đổi
+ * `display` bằng CSS. Không dựng bản sao DOM cho mobile: bản sao in mỗi ngày khởi
+ * hành hai lần vào HTML tĩnh và nhân đôi mọi nút Select. Đo prod 07/10 ở viewport
+ * 375: khung còn 277px mà bốn cột ghim cứng đã 400px, nên cột ngày và cột ghế bị
+ * bóp về 0, chữ đè nhau và nút Select bị `overflow-hidden` cắt mất. Ở 768 cột ngày
+ * cũng chỉ còn ~70px — bảng chỉ đọc ổn từ ~820px — nên mốc chuyển là `lg`, trùng
+ * mốc thanh đặt chỗ dính đáy và lưới bốn ô thống kê.
+ *
+ * Mọi lớp CHỈ dành cho bảng (đệm ô, viền ô, hover theo ô) mang tiền tố `lg:` thay
+ * vì để trần rồi đè bằng `max-lg:`: `[&>td:first-child]:pl-…` nặng độ ưu tiên hơn
+ * mọi lớp `max-lg:[&>td]:…`, nên đè là thua và thẻ lệch đệm. Từ `lg` trở lên,
+ * style tính ra y như trước bản sửa (đã đo lại ở 1024 và 1280).
  */
 export function DeparturesPanel({ tour }: { tour: TourDetailVM }) {
   const t = messages.tourDetail.departuresTab;
@@ -278,7 +302,11 @@ export function DeparturesPanel({ tour }: { tour: TourDetailVM }) {
           hover là hình chữ nhật đặc, không cắt theo bán kính thì bốn góc khung
           lòi ra bốn mẩu vuông — đúng lỗi "hai cái tai" đã dính ở modal All dates. */}
       <div className="overflow-hidden rounded-md border border-border bg-card">
-        <table className="w-full table-fixed border-collapse [--row-pad:20px]">
+        {/* `max-lg:block` cùng `tbody` block: thẻ (`tr` flex) phải nằm trong
+            khối thường — để `tbody` là row-group thì trình duyệt bọc thêm hộp bảng
+            ẩn danh quanh mỗi hàng. `table-fixed` và `border-collapse` tự hết tác
+            dụng khi bảng không còn `display: table`. */}
+        <table className="w-full table-fixed border-collapse [--row-pad:20px] max-lg:block">
           {/* Phần dư dồn vào cột NGÀY vì đó là ô dài nhất ("Thu, 20 Aug →
               Sun, 23 Aug"); các cột còn lại ghim cứng. Để phần dư ở cột ghế
               (bản trước) thì thanh 10 đốt trôi lạc giữa 406px trống.
@@ -289,7 +317,7 @@ export function DeparturesPanel({ tour }: { tour: TourDetailVM }) {
               dưới xl kẹp 30% bảng (bằng ~200px cũ ở 820) và đốt tự co đều (xem
               `SeatMeter`). Cột Status 124 → 112: huy hiệu dài nhất "Almost
               full" ~90px, phần dư trả cho cột ngày. */}
-          <colgroup>
+          <colgroup className="max-lg:hidden">
             <col className="w-10" />
             <col />
             {/* Bề rộng cột ghế đặt trên <th> (bên dưới) qua biến CSS, không phải
@@ -301,7 +329,9 @@ export function DeparturesPanel({ tour }: { tour: TourDetailVM }) {
             <col className="w-32" />
             <col className="w-[120px]" />
           </colgroup>
-          <thead>
+          {/* Thẻ không có cột để canh nên nhãn cột rời bố cục — mỗi ô trong thẻ
+              tự nói nghĩa ("7 of 16 seats left", "Open", "$59"). */}
+          <thead className="max-lg:hidden">
             <tr className="[&>th:first-child]:pl-(--row-pad) [&>th:last-child]:pr-(--row-pad) [&>th]:border-b [&>th]:border-border [&>th]:bg-muted/45 [&>th]:py-3 [&>th]:pr-3 [&>th]:text-left [&>th]:font-mono [&>th]:text-[10px] [&>th]:leading-4 [&>th]:font-normal [&>th]:tracking-[0.12em] [&>th]:text-muted-foreground [&>th]:uppercase">
               <th />
               <th>{t.colMonthDate}</th>
@@ -327,16 +357,24 @@ export function DeparturesPanel({ tour }: { tour: TourDetailVM }) {
               <tbody
                 key={group.month}
                 id={`${tableId}-${group.month}`}
-                className="border-t border-border first:border-t-0"
+                className="border-t border-border first:border-t-0 max-lg:block"
               >
                 {/* Cả hàng bấm được, nhưng `aria-expanded` nằm trên <button>
                     thật trong ô đầu — bấm nút nổi bọt lên hàng nên chỉ có MỘT
-                    handler, mà bàn phím vẫn tới được. */}
+                    handler, mà bàn phím vẫn tới được.
+
+                    Trong thẻ (dưới lg): dòng đầu là mũi xổ · tên tháng · giá —
+                    `order` kéo ô giá lên cạnh tên tháng; số ghế và huy hiệu mỗi
+                    thứ một dòng riêng (`basis-full`), thụt `pl-7` = mũi xổ 16 +
+                    khe 12 để thẳng chữ với tên tháng. Tên tháng giữ sàn 96px:
+                    ở 320px khoảng giá "$1,531–$1,890" từng bóp nó còn 56px
+                    ("November" cần 66), nay thiếu chỗ thì giá xuống dòng, sát
+                    phải nhờ `ml-auto`. */}
                 <tr
                   onClick={() => setOverrides((prev) => ({ ...prev, [group.month]: !open }))}
-                  className="cursor-pointer [&>td:first-child]:pl-(--row-pad) [&>td:last-child]:pr-(--row-pad) [&>td]:py-3.5 [&>td]:pr-3 [&>td]:align-middle hover:[&>td]:bg-muted/40"
+                  className="cursor-pointer [&>td]:align-middle lg:[&>td:first-child]:pl-(--row-pad) lg:[&>td:last-child]:pr-(--row-pad) lg:[&>td]:py-3.5 lg:[&>td]:pr-3 lg:hover:[&>td]:bg-muted/40 max-lg:flex max-lg:flex-wrap max-lg:items-start max-lg:gap-x-3 max-lg:gap-y-1 max-lg:px-4 max-lg:py-3.5 max-lg:hover:bg-muted/40"
                 >
-                  <td className="text-muted-foreground">
+                  <td className="text-muted-foreground max-lg:order-1">
                     <button
                       type="button"
                       aria-expanded={open}
@@ -350,24 +388,27 @@ export function DeparturesPanel({ tour }: { tour: TourDetailVM }) {
                       <span className="sr-only">{t.toggleMonth(label)}</span>
                     </button>
                   </td>
-                  <td>
+                  <td className="max-lg:order-2 max-lg:min-w-24 max-lg:flex-1">
                     <span className="block text-sm leading-5 font-medium text-foreground">
                       {label}
                     </span>
                     <span className="block text-xs leading-4 text-muted-foreground tabular-nums">
                       {t.monthMeta(
                         t.monthDepartures(group.items.length),
-                        monthDateSpan(group.items),
+                        keepDateTogether(monthDateSpan(group.items)),
                       )}
                     </span>
                   </td>
-                  <td className="text-[13px] text-muted-foreground tabular-nums">
+                  <td className="text-[13px] text-muted-foreground tabular-nums max-lg:order-4 max-lg:basis-full max-lg:pl-7">
                     {t.monthSeatsOf(group.seatsLeft, group.items.length * capacity)}
                   </td>
-                  <td>
+                  {/* `empty:hidden`: tháng không có chuyện đáng nói thì huy hiệu
+                      im lặng (xem `monthNotice`), và ô rỗng không được để lại một
+                      dòng trống cộng khe trong thẻ. */}
+                  <td className="max-lg:order-5 max-lg:basis-full max-lg:pl-7 max-lg:empty:hidden">
                     <MonthBadge items={group.items} />
                   </td>
-                  <td className="text-right text-sm leading-5 font-medium tabular-nums">
+                  <td className="text-right text-sm leading-5 font-medium tabular-nums max-lg:order-3 max-lg:ml-auto max-lg:shrink-0">
                     {group.minPrice === group.maxPrice
                       ? formatMoney(String(group.minPrice), tour.currency)
                       : `${formatMoney(String(group.minPrice), tour.currency)}–${formatMoney(String(group.maxPrice), tour.currency)}`}
@@ -377,7 +418,7 @@ export function DeparturesPanel({ tour }: { tour: TourDetailVM }) {
                       </span>
                     ) : null}
                   </td>
-                  <td />
+                  <td className="max-lg:hidden" />
                 </tr>
 
                 {/* Hàng con render SẴN rồi ẩn bằng CSS, không render có điều
@@ -400,8 +441,8 @@ export function DeparturesPanel({ tour }: { tour: TourDetailVM }) {
                 ))}
 
                 {group.items.length > shown.length ? (
-                  <tr hidden={!open} className="bg-muted/25">
-                    <td />
+                  <tr hidden={!open} className="bg-muted/25 max-lg:flex max-lg:px-4">
+                    <td className="max-lg:hidden" />
                     <td colSpan={5} className="pt-2 pb-3.5">
                       <button
                         type="button"
@@ -511,6 +552,19 @@ function StatCard({
  * Một hàng đợt. Nền chìm hơn hàng tháng một tầng (`bg-muted/25`) — không phải
  * trang trí: khi xổ sáu dòng ra, cha và con chỉ khác nhau một sợi kẻ tóc thì
  * mắt đọc thành một khối phẳng và ranh giới nhóm biến mất.
+ *
+ * Trong thẻ (dưới lg) có ba dòng: khối ngày cạnh giá (`order` kéo ô giá lên) ·
+ * thanh ghế trải ngang (`basis-full`) · huy hiệu cùng nút, nút sát phải nhờ
+ * `ml-auto`. Thẻ dùng flex-wrap chứ không dùng lưới: lưới hai cột thì giá và nút
+ * "Ask about this trip" (~135px) chung cột phải, cột ấy nở theo nút và bóp khối
+ * ngày; flex-wrap để mỗi dòng tự co, thiếu chỗ thì nút xuống dòng riêng. `order`
+ * chỉ đổi thứ tự NHÌN — trình đọc màn hình vẫn đọc theo cột bảng (ngày → ghế →
+ * trạng thái → giá → nút), cũng là một thứ tự có nghĩa.
+ *
+ * Khối ngày giữ sàn 112px, vừa cụm `nowrap` rộng nhất (đo 08/10: "Wed, 30 May →"
+ * 97.6px trong 84 tổ hợp thứ × tháng):
+ * ở 320px cạnh giá gạch nó từng bị bóp còn 92px và cụm ngày tràn ô. Nay thiếu
+ * chỗ thì giá xuống dòng riêng, `ml-auto` giữ nó sát phải.
  */
 function DepartureRow({
   departure,
@@ -554,20 +608,26 @@ function DepartureRow({
       // vô hình cho tới lượt mình (nhóm motion 1, 19/08).
       style={{ '--card-index': rowIndex } as CSSProperties}
       className={cn(
-        'animate-tour-card-in bg-muted/25 data-selected:bg-primary/10 [&>td:first-child]:pl-(--row-pad) [&>td:last-child]:pr-(--row-pad) [&>td]:border-t [&>td]:border-border/55 [&>td]:py-2.5 [&>td]:pr-3 [&>td]:align-middle',
+        'animate-tour-card-in bg-muted/25 data-selected:bg-primary/10 [&>td]:align-middle lg:[&>td:first-child]:pl-(--row-pad) lg:[&>td:last-child]:pr-(--row-pad) lg:[&>td]:border-t lg:[&>td]:border-border/55 lg:[&>td]:py-2.5 lg:[&>td]:pr-3 max-lg:flex max-lg:flex-wrap max-lg:items-start max-lg:gap-x-3 max-lg:gap-y-2.5 max-lg:border-t max-lg:border-border/55 max-lg:px-4 max-lg:py-3',
         !selected && 'hover:bg-muted/45',
       )}
     >
-      <td />
-      <td>
+      <td className="max-lg:hidden" />
+      <td className="max-lg:order-1 max-lg:min-w-28 max-lg:flex-1">
         <span
           className={cn(
             'block text-sm leading-5 font-medium tabular-nums',
             soldOut || closed ? 'text-muted-foreground line-through' : 'text-foreground',
           )}
         >
-          {formatDialogDate(departure.startDate)} <span className="text-muted-foreground">→</span>{' '}
-          {formatDialogDate(departure.endDate)}
+          {/* Hai cụm `nowrap`, mũi tên dính cụm đầu: thẻ hẹp chỉ được xuống dòng
+              GIỮA hai ngày ("Thu, 20 Aug →" / "Sun, 23 Aug", đúng cách modal All
+              dates tách dòng). Để trình duyệt tự ngắt thì ở ~130px ra
+              "… → Sun," / "23 Aug". Ở bảng desktop cột ngày ≥245px nên vẫn một dòng. */}
+          <span className="whitespace-nowrap">
+            {formatDialogDate(departure.startDate)} <span className="text-muted-foreground">→</span>
+          </span>{' '}
+          <span className="whitespace-nowrap">{formatDialogDate(departure.endDate)}</span>
         </span>
         <span className="block text-xs leading-4 text-muted-foreground">
           {t.departureMeta(durationDays)}
@@ -576,24 +636,29 @@ function DepartureRow({
             không tự trừ N ngày bằng giờ trình duyệt (spec §2 Q7). */}
         {departure.bookable ? (
           <span className="block text-xs leading-4 text-muted-foreground">
-            {messages.cancellationDeadline.short(formatChipDate(departure.bookingDeadline))}
+            {messages.cancellationDeadline.short(
+              keepDateTogether(formatChipDate(departure.bookingDeadline)),
+            )}
           </span>
         ) : null}
       </td>
-      <td>
+      {/* `min-w-0`: ô flex mặc định `min-width: auto` = bề rộng nội dung, mà
+          thanh 16 đốt đã 252px (22 đốt 348px) — không có nó thì thanh lấn lề
+          thẻ ở 375px và tràn khỏi khung ở 320px thay vì để đốt co đều. */}
+      <td className="max-lg:order-3 max-lg:min-w-0 max-lg:basis-full">
         <SeatMeter seatsLeft={departure.seatsLeft} capacity={capacity} />
         <span className="mt-1.5 block text-xs leading-4 text-muted-foreground tabular-nums">
           {soldOut ? t.noSeatsLeft : t.seatsOfCapacity(departure.seatsLeft, capacity)}
         </span>
       </td>
-      <td>
+      <td className="max-lg:order-4 max-lg:self-center">
         <SeatBadge
           seatsLeft={departure.seatsLeft}
           capacity={capacity}
           bookable={departure.bookable}
         />
       </td>
-      <td className="text-right tabular-nums">
+      <td className="text-right tabular-nums max-lg:order-2 max-lg:ml-auto max-lg:shrink-0">
         <span className="text-sm leading-5 font-medium text-foreground">
           {formatMoney(departure.effectivePrice, currency)}
         </span>
@@ -608,7 +673,7 @@ function DepartureRow({
           </span>
         ) : null}
       </td>
-      <td className="text-right">
+      <td className="text-right max-lg:order-5 max-lg:ml-auto max-lg:self-center">
         {closed ? (
           // Nhãn dài trong cột ghim 120px: cho XUỐNG DÒNG thay vì nới cột —
           // nới cột thì cột ngày ("Thu, 20 Aug → Sun, 23 Aug") bị bóp ở bề

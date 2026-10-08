@@ -320,6 +320,112 @@ describe('DeparturesPanel', () => {
   });
 });
 
+/**
+ * Dưới `lg` mỗi hàng thành một thẻ (sửa 08/10). Đo trên prod 07/10 ở viewport 375:
+ * khung bảng chỉ còn 277px mà bốn cột ghim cứng đã 400px, nên cột ngày và cột ghế
+ * bị bóp về 0, chữ đè lên nhau và nút Select bị cắt.
+ *
+ * jsdom không tính layout, nên các test dưới đây là HỢP ĐỒNG trên lớp CSS: chúng bắt
+ * việc lỡ tay gỡ chế độ thẻ (bảng vỡ lại ở 375px) và việc dựng bản sao DOM riêng cho
+ * mobile. Bằng chứng bố cục thật là lượt đo trên bản build ở 375/768/1024/1280px.
+ */
+describe('DeparturesPanel — dưới lg mỗi hàng là một thẻ', () => {
+  it('đổi bố cục trên chính bảng đó: không bản sao DOM, hàng tiêu đề cột rời bố cục', () => {
+    render(wrap());
+    const tables = screen.getAllByRole('table');
+    expect(tables).toHaveLength(1);
+    const table = tables[0] as HTMLElement;
+    expect(table).toHaveClass('max-lg:block');
+    // Thẻ không có cột để canh, nên nhãn cột không còn chỗ đứng: mỗi ô tự nói
+    // nghĩa của nó ("2 of 10 seats left", "Almost full", "$329").
+    expect(table.querySelector('thead')).toHaveClass('max-lg:hidden');
+    for (const body of table.querySelectorAll('tbody')) {
+      expect(body).toHaveClass('max-lg:block');
+    }
+  });
+
+  it('hàng tháng và hàng đợt thành khối xuống dòng được, ô chỉ để canh cột rời bố cục', () => {
+    render(wrap());
+    const monthRow = screen.getByText('August 2026').closest('tr');
+    expect(monthRow).toHaveClass('max-lg:flex', 'max-lg:flex-wrap');
+    // Ô rỗng cuối hàng tháng chỉ giữ chỗ cho cột nút Select của bảng.
+    expect(monthRow?.lastElementChild).toHaveClass('max-lg:hidden');
+    const row = rowFor('Thu, 20 Aug');
+    expect(row).toHaveClass('max-lg:flex', 'max-lg:flex-wrap');
+    // Ô đầu hàng đợt chỉ để ngày thẳng cột với tên tháng; trong thẻ nó là lề trống.
+    expect(row.firstElementChild).toHaveClass('max-lg:hidden');
+  });
+
+  it('ngày đi và ngày về là hai cụm không ngắt, thẻ hẹp chỉ xuống dòng ở giữa hai ngày', () => {
+    render(wrap());
+    const row = rowFor('Thu, 20 Aug');
+    // Để trình duyệt tự ngắt thì ở bề ngang ~130px chuỗi ra "Thu, 20 Aug → Sun,"
+    // rồi "23 Aug": ngày về bị chẻ đôi.
+    expect(within(row).getByText('Thu, 20 Aug', { exact: false })).toHaveClass('whitespace-nowrap');
+    expect(within(row).getByText('Sun, 23 Aug')).toHaveClass('whitespace-nowrap');
+  });
+
+  it('ngày trong dòng hạn huỷ và dòng phụ của tháng không bị chẻ khi thẻ hẹp', () => {
+    // Đo ở 375px (tour có giá gạch): "Free cancellation until 15" / "Nov" và
+    // "2 departures · 1–22" / "Nov". NBSP giữa ngày và tháng, WORD JOINER
+    // (U+2060) sau gạch "–" (vốn là chỗ được ngắt), nên cả cụm xuống dòng cùng nhau.
+    const lateAug = {
+      ...DEPARTURES[0],
+      id: 'aug-late',
+      startDate: '2026-08-28',
+      endDate: '2026-08-31',
+      bookingDeadline: '2026-08-21',
+    } as DepartureVM;
+    render(wrap([DEPARTURES[0] as DepartureVM, lateAug]));
+    const row = rowFor('Thu, 20 Aug');
+    expect(within(row).getByText(/^Free cancellation until/).textContent).toBe(
+      'Free cancellation until 13\u00A0Aug',
+    );
+    const monthRow = screen.getByText('August 2026').closest('tr');
+    if (!monthRow) throw new Error('không tìm thấy hàng tháng 8');
+    expect(within(monthRow).getByText(/^2 departures/).textContent).toBe(
+      '2 departures · 20–\u206028\u00A0Aug',
+    );
+  });
+
+  it('thanh ghế co theo bề ngang thẻ thay vì tràn ra ngoài', () => {
+    // Ô flex mặc định `min-width: auto` = bề rộng nội dung; thanh 16 đốt rộng
+    // 16×12 + 15×4 = 252px, nên ở 375px (thẻ 245px) nó lấn lề, tour 22 chỗ thì
+    // tràn hẳn khỏi khung và bị cắt.
+    render(wrap());
+    const seats = within(rowFor('Thu, 20 Aug')).getByText('2 of 10 seats left').closest('td');
+    expect(seats).toHaveClass('max-lg:min-w-0');
+  });
+
+  it('khối ngày và tên tháng giữ một sàn bề rộng, thiếu chỗ thì giá xuống dòng sát phải', () => {
+    // Đo ở 320px: tên tháng bị bóp còn 56px ("November" cần 66), cụm ngày
+    // "Sun, 22 Nov →" (94px) tràn ô ngày còn 92px cạnh giá gạch.
+    render(wrap());
+    const row = rowFor('Thu, 20 Aug');
+    expect(within(row).getByText('Thu, 20 Aug', { exact: false }).closest('td')).toHaveClass(
+      'max-lg:min-w-28',
+    );
+    expect(within(row).getByText('$329').closest('td')).toHaveClass('max-lg:ml-auto');
+    const monthRow = screen.getByText('August 2026').closest('tr');
+    if (!monthRow) throw new Error('không tìm thấy hàng tháng 8');
+    expect(within(monthRow).getByText('August 2026').closest('td')).toHaveClass('max-lg:min-w-24');
+    expect(within(monthRow).getByText('$329').closest('td')).toHaveClass('max-lg:ml-auto');
+  });
+
+  it('hàng "See all N … dates" cũng thành khối, bỏ ô đệm canh cột', () => {
+    const many = Array.from({ length: 7 }, (_, i) => ({
+      ...DEPARTURES[0],
+      id: `d${i}`,
+      startDate: `2026-08-${String(i + 1).padStart(2, '0')}`,
+      endDate: `2026-08-${String(i + 4).padStart(2, '0')}`,
+    })) as DepartureVM[];
+    render(wrap(many));
+    const moreRow = screen.getByRole('button', { name: /See all 7 August dates/i }).closest('tr');
+    expect(moreRow).toHaveClass('max-lg:flex');
+    expect(moreRow?.firstElementChild).toHaveClass('max-lg:hidden');
+  });
+});
+
 describe('seatsColumnWidth — cột ghế theo sức chứa', () => {
   it('16·n + 32: 10 chỗ = 192, 16 = 288, 22 = 384', () => {
     expect(seatsColumnWidth(10)).toBe(192);
