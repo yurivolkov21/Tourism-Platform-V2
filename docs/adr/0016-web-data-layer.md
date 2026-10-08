@@ -65,7 +65,8 @@ Ràng buộc đã đo:
 ### 1. Client: oRPC `OpenAPILink` từ contract — không `fetch` trần, không codegen
 
 Cài vào `apps/web`: `@tourism/contract` (workspace) + `@orpc/client` +
-`@orpc/openapi-client`, **ghim `1.14.8`** khớp bộ `@orpc/*` của API/contract.
+`@orpc/openapi-client`, **ghim `1.14.8`** khớp bộ `@orpc/*` của API/contract
+(08/10/2026 cả bộ lên `1.14.15` cùng lúc để vá advisory — vẫn một bản chung).
 
 - Link là **`OpenAPILink`** (không phải `RPCLink`): server nói chuyện bằng các
   path REST của contract, `RPCLink` là sai giao thức. Kiểu client:

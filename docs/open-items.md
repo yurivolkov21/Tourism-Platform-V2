@@ -122,6 +122,24 @@ chuyến đã huỷ sẽ có bước "Free cancellation" tính theo ngày.
   bán bị 409 `TOUR_NOT_READY` — chạy `media:upload`, hoặc tắt bán tour cần thử.
   Prod không dính: đo 29/09, 29/29 tour đang bán có ảnh bìa.
 
+## Advisory sẽ thành alert, đã soát là không với tới
+
+Soát 08/10 ở repo gốc của từng gói (đợt vá Dependabot, CHANGELOG cùng ngày). Các
+advisory dưới đây chưa vào DB chung của GitHub nên Dependabot và `pnpm audit` chưa
+thấy. Lúc chúng vào DB thì có thể đã qua freeze 15/10: đọc lý do ở đây, dismiss alert
+`tolerable_risk`, thêm GHSA vào `auditConfig.ignoreGhsas` của `pnpm-workspace.yaml`.
+
+- **better-auth 1.6.23**, bản vá chỉ có ở dòng 1.7: GHSA-965c-763c-88jm (critical, cần
+  plugin Magic Link), GHSA-r4xp-prcw-77qf (high, cần plugin OAuth Proxy),
+  GHSA-q84f-53jg-9ppm (high, cần plugin `deviceAuthorization`) và GHSA-44jh-23m7-hpcf
+  (low, cần adapter Drizzle hoặc Kysely với rate limit lưu trong DB). API chỉ bật
+  `emailOTP` và Google, rate limit của Better Auth lưu trong RAM.
+- **@orpc/client, @orpc/server 1.14.15**: GHSA-4p2c-m292-ghmh (high, vá ở 1.15.2) chỉ dính
+  `RPCHandler`; API phục vụ bằng OpenAPI qua `@orpc/nest`, web và admin dùng
+  `OpenAPILink`.
+- **@nestjs/microservices**: GHSA-m8vh-jmq9-5rjg và GHSA-96h4-vgxj-gvm2 — gói không có
+  trong cây.
+
 ## Nợ kỹ thuật chi tiết
 
 Sáu nhóm (giao diện · dữ liệu · kiểm thử · thư viện bên thứ ba · nợ cũ · nợ sau

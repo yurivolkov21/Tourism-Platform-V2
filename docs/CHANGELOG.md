@@ -8,6 +8,97 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-10-08 — Vá 24 alert Dependabot, kèm các lỗ production chỉ thấy ở repo gốc (`3a616f46`, nhánh `fix/dependabot-2026-10-08`)
+
+Ngày 08/10 GitHub báo 24 alert mở trên `main` (5 critical, 16 high, 3 medium), tức 16 GHSA: lỗ ở
+gói trực tiếp bị đếm riêng cho lock và cho từng `package.json`. Soát thêm `pnpm audit` và advisory ở
+repo gốc của 60 dependency production thấy những lỗ Dependabot chưa biết, trong đó hai lỗ với tới
+được từ request của khách vô danh. User chọn phương án A: vá cả 24 alert lẫn các lỗ ngoài danh sách,
+không nhảy major nào, không nâng better-auth và oRPC 1.15.
+
+**Đường request thật (API trên Render, web và admin trên Vercel):**
+
+- **next 16.3.4 lên 16.3.8** (web, admin). GHSA-vcvr-r3jv-pc5j (critical, alert #69 #76 #81: RCE ở
+  `ImageResponse` bản Node của `next/og` khi nhận giá trị do kẻ tấn công điều khiển) vá ở 16.3.6.
+  Icon của hai app dùng `ImageResponse` nhưng chỉ với prop tĩnh, nên không với tới. Bảy advisory
+  công bố 30/09 (SSRF ở Image Optimization mức high, cache poisoning SSG/ISR, rò Draft Mode…) chỉ vá
+  ở 16.3.8, mà PR Dependabot #5 dừng ở 16.3.6.
+- **fastify 5.12.1 lên 5.12.5**, override `fastify@>=5.0.0 <5.12.1: 5.12.1` được THAY bằng
+  `<5.12.5: 5.12.5` (alert #71–#75, #82–#86; năm GHSA vá ở 5.12.2 và 5.12.5). Phần lớn không với tới
+  (API không dùng schema của Fastify, không bật HTTP/2), nhưng gói nằm trên đường HTTP.
+- **`@nestjs/common`, `core`, `platform-fastify`, `testing` 11.1.28 lên 11.2.7**, vẫn ở v11.
+  GHSA-9c5c-9qcx-q35q (alert #70 #80, bỏ qua middleware Nest theo path) vá ở 11.2.4; API không có
+  `forRoutes` nên không với tới. Nâng cả bốn cùng nhịp phát hành: 11.2 thêm tính năng chung cho
+  core, common và platform-fastify (method QUERY). Platform-fastify 11.2 kéo thêm `@fastify/middie`
+  9.3.4, đúng bản vá GHSA-hx87-8wv7-pjv8.
+- **Cả họ `@orpc` 1.14.8 lên 1.14.15** (api, web, admin, contract; vẫn một bản chung theo ADR-0016).
+  GHSA-gcgf-fh7c-8gf2 (`@orpc/zod`) và GHSA-4h5r-cv8j-4456 (`@orpc/json-schema`, chưa vào DB chung):
+  smart coercion tra schema con bằng `shape[key]`. **Với tới thật**: API bật
+  `experimental_ZodSmartCoercionPlugin`, nên `GET /api/tours?constructor=1` trả 500 cho khách vô
+  danh. Kèm GHSA-58r7-2f58-x3f6 (`@orpc/nest`, guard cấp method bị bỏ qua khi `@Implement` nhận cả
+  router), không với tới: 90/90 `@Implement` là procedure đơn, auth là `APP_GUARD`.
+- **`@nestjs/throttler` 6.5.0 lên 6.7.1**. GHSA-5wh8-6fqf-738g (high, mới chỉ ở repo): tracker mặc
+  định lấy `req.ip` nguyên văn, nên xoay địa chỉ trong một /64 IPv6 là né được trần. **Với tới**:
+  `DefaultThrottlerGuard` gọi `super.getTracker` cho route công khai, `WriteOnlyThrottlerGuard` của
+  `/api/auth` dùng tracker mặc định. Từ 6.7.0 địa chỉ IPv6 gom về /64. Nửa "phình bộ nhớ" của advisory
+  thì `KeyedThrottlerStorage` đã chặn từ trước (trần 50.000 bucket).
+- **sharp 0.35.4 lên 0.35.5** qua override `^0.35.5` (GHSA-wq5f-xc86-pv6w, librsvg). next 16.3.8 vẫn
+  khai `^0.35.4`, nên lần này chỉ override kéo được sharp lên.
+
+**brace-expansion tách override theo major, vá luôn một lỗi ngầm trên `main`.** Dòng chung
+`brace-expansion: '^5.0.9'` (27/07, khi dòng 2.x chưa có backport) ép 5.x vào minimatch 3, 5 và 9.
+Ba bản này `require()` theo API 1.x/2.x (export là một hàm), còn 5.x export `{ expand }`, nên glob
+nào có `{a,b}` cũng ném "expand is not a function" — chạy thử cả ba đều ném. Chưa nổ chỉ vì chưa chỗ
+nào gọi glob có ngoặc nhọn. Từ 14/09 maintainer vá ngược mọi dòng (alert #77–#79 vá ở 1.1.21, 2.1.7,
+3.0.9, 5.0.12), nên dòng chung thay bằng bốn dòng theo major: minimatch@3 nhận 1.1.21, minimatch@5 và
+@9 nhận 2.1.7, minimatch@10 nhận 5.0.12. Chạy lại: cả bốn bản khớp `a{b,c}d` đúng.
+
+**Dep bắc cầu, override giới hạn theo dải lỗ:** piscina 4.9.4 (#87) và `@xhmikosr/decompress`
+11.1.4 (#67), cả hai qua `@swc/cli` lúc build API. engine.io 6.6.11 (#68) nằm trong `dependencies`
+của API qua react-email, nhưng chỉ CLI `email dev` dùng: đo `import('react-email')` nạp 106 module,
+không có socket.io. Thêm năm gói `pnpm audit` thấy trước Dependabot, đều là dev tool: shell-quote
+(critical), compression, source-map-js, postcss-selector-parser và `@modelcontextprotocol/sdk`. Riêng
+selector của MCP SDK lấy tới 1.32.0 theo ba advisory 02–05/10 mới chỉ có ở repo SDK.
+
+**Bốn lỗ chưa có bản vá trên npm** vào `auditConfig.ignoreGhsas`, lý do ghi ở `pnpm-workspace.yaml`:
+braces (#89), node-forge (#88), http-cache-semantics (#90) và sprintf-js. Riêng http-cache-semantics:
+bản 4.3.0 ra 04/10 không vá — diff 4.2.0→4.3.0 chỉ sửa Vary, nhánh `max-stale` giữ nguyên — nên dòng
+"vá ở >=4.2.1" của `pnpm audit` là sai.
+
+**Không nâng, ghi ở `open-items`:** better-auth 1.7.7 (ba lỗ critical/high mới chỉ ở repo, đều cần
+plugin mà API không bật: Magic Link, OAuth Proxy, `deviceAuthorization`; nâng minor thư viện đăng
+nhập một tuần trước freeze) và oRPC 1.15.2 (GHSA-4p2c-m292-ghmh chỉ dính `RPCHandler`, API dùng
+OpenAPI).
+
+**PR Dependabot #5 không merge:** nó dừng next ở 16.3.6, nâng platform-fastify mà để core và common ở
+11.1.28, và không đụng override fastify cũ. Platform-fastify ghim fastify 5.11.3, override cũ kéo bản
+ấy về 5.12.1, nên lock của PR có hai fastify và adapter Nest — đường HTTP thật — vẫn chạy 5.12.1.
+
+Lock đổi +46/−48 gói, đúng các gói trên; cây không thêm gói nào khác ngoài phụ thuộc của bản mới
+(`@fastify/middie`, `@xhmikosr/decompress-tar`, `balanced-match` và `concat-map` của brace-expansion
+1.x). `minimumReleaseAgeExclude` không đổi: bản trẻ nhất là MCP SDK 1.32.1, gần ba ngày tuổi.
+`pnpm audit --audit-level=moderate` thoát 0. Cảnh báo peer của `pnpm install` giống `main` (Expo và
+React Native). API mới khởi động được với `.env.local` dev: health 200, `?constructor=1` trả 200.
+
+**Review findings:** không mở vòng review riêng. Hai test hồi quy viết trước, chạy trên lock cũ đỏ
+đúng lý do: `throttle.e2e.spec` — địa chỉ IPv6 thứ 6 cùng /64 vẫn nhận 201 thay vì 429 trên throttler
+6.5.0; `catalog.int.spec` — `?constructor=1` nhận 500 trên `@orpc/zod` 1.14.8. Trên lock mới cả hai
+xanh.
+
+**Việc sau push** (push chờ user duyệt): dismiss ba alert #88 #89 #90 (`tolerable_risk`, lý do
+như trên); chạy tay workflow `Audit`; xem 21 alert còn lại tự chuyển `fixed`; đóng PR #5 và xoá nhánh
+của nó. Không migration, không env, không webhook. Push lên `main` là Render deploy API mới và Vercel
+build lại web, admin — canh G23 ở cả Render lẫn status `Vercel – web`.
+
+Tests after (`gate:int` trên `3a19022d`, bản trước khi rebase, tách bước có hãm song song và watchdog,
+08/10 13:34–13:47, int trên DB riêng `tourism_test_depfix`): unit 5713 — admin 1911, web 1683, api
+1085, contract 665, mobile 159, mobile-ui 86, core 46, ui 36, i18n 23, tokens 19 — và int 775/775 ở
+46 file; build web 75/75 trang tĩnh với API dev cổng 3401. Cây của `3a19022d` chỉ khác lượt unit và
+int ở một đoạn comment, đã chạy lại build, typecheck và Biome. Commit trống thấp nhất 2,09 GB, lúc
+Next sinh trang tĩnh bằng 15 worker; pagefile đứng yên 2048 MB. Rebase lên `48c71074` chỉ thêm code
+dải tab của web (đã qua gate ở nhánh của nó); sau rebase chạy lại typecheck, test và build của web:
+1703 test, 75/75 trang tĩnh. CI chạy cả gate trên `main`.
+
 ## 2026-10-08 — Dải 5 tab trang tour cuộn ngang dưới 640px (`854b3767`..`c88f0469`, nhánh `fix/tour-tabs-mobile-scroll`)
 
 **Lỗi** (G27, đo 07–08/10 trên prod lẫn bản build local, `/tours/vietnam-grand-journey-12d`): ở 375px
