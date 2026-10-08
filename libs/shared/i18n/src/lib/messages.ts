@@ -511,15 +511,11 @@ export const messages = {
       // Nút chép mã (CopyCodeButton) — nhãn đổi trong 2 giây sau khi bấm.
       copyCode: 'Copy code',
       copied: 'Copied',
-      // Dòng nhỏ dưới mã trong cuống vé (`CheckoutShell`) — khác `nextVoucher`
-      // (câu đầy đủ trong list "What happens next"): đây là chú thích NGẮN,
-      // ngay cạnh chính mã đó, không cần lặp lại "your booking code is…".
+      // Dòng nhỏ dưới mã trong cuống hoá đơn (`BookingReceipt`) — chú thích NGẮN ngay
+      // cạnh chính mã đó. Voucher của đơn đã trả có câu riêng `voucher.showCode`. Khối
+      // "What happens next" (`nextHeading`…`nextManage`) gỡ ở P7: voucher kể những việc
+      // ấy bằng dòng điều kiện và Trip journal.
       stubShowCode: 'Show this code at the meeting point.',
-      // Section "What happens next" — chỉ hiện ở mood confirmed.
-      nextHeading: 'What happens next',
-      nextEmail: 'A confirmation email is on its way to your inbox.',
-      nextVoucher: 'Your booking code is your voucher — show it at the meeting point.',
-      nextManage: 'View or cancel this trip in Trips.',
       // Nhãn lặp lại HAI lần trên vé (`CheckoutShell`): dải header ngang +
       // cuống vé xoay dọc (`writing-mode: vertical-rl`) — cùng một chữ, hai tư
       // thế, đúng kiểu ấn phẩm vé thật lặp thông tin ở cuống.

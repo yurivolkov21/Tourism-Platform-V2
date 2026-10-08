@@ -3,18 +3,23 @@ import { messages } from '@tourism/i18n';
 import { ButtonLink } from '@tourism/ui/components/button-link';
 import type { Metadata } from 'next';
 import { cookies } from 'next/headers';
+import { unstable_rethrow } from 'next/navigation';
 import { BookingReceipt } from '@/components/checkout/booking-receipt';
 import { CheckoutAutoRefresh } from '@/components/checkout/checkout-auto-refresh';
 import { PrintButton } from '@/components/checkout/print-button';
-import { SuccessCelebration } from '@/components/checkout/success-celebration';
+import { VoucherCard } from '@/components/checkout/voucher-card';
 import { ContentHero } from '@/components/content/content-hero';
+import { todayDateString } from '@/lib/account-stats';
 import { fetchBookingByCode } from '@/lib/api/bookings';
 import { requireSession } from '@/lib/api/session';
-import { cancellationDeadlineText } from '@/lib/booking-vm';
+import { fetchTourDetail } from '@/lib/api/tours';
 import { checkoutMood } from '@/lib/checkout';
+import { voucherView } from '@/lib/voucher';
 
 export const metadata: Metadata = {
-  title: `${messages.booking.success.confirmedTitle} — Nexora`,
+  // "Voucher" chứ không "Booking confirmed": trang này mở lại được bất cứ lúc nào, kể cả với
+  // đơn đã huỷ — tiêu đề tab nói "đã xác nhận" là đúng lớp lỗi spec P7 §1 sửa ở thân trang.
+  title: `${messages.booking.success.heroBreadcrumb} — Nexora`,
   // Trang per-user sau thanh toán: không có gì để index, và `robots.ts` cũng đã
   // disallow `/checkout/`. Khai ở đây thêm một lớp cho chắc.
   robots: { index: false, follow: false },
@@ -24,6 +29,11 @@ export const metadata: Metadata = {
  * Khách quay về từ cổng thanh toán. Cổng dựng URL này ở API
  * (`bookings.service.ts` — `successUrl: ${FRONTEND_URL}/checkout/success?code=…`),
  * nên `code` LUÔN tới qua query string, không phải qua route param.
+ *
+ * Hai nhánh (spec P7 §2.6): đơn ĐÃ TRẢ (có `paidAt`) mở voucher `VoucherCard` — vừa trả thì
+ * chào "… is booked." kèm pháo giấy, mở lại thì "Your trip voucher"; đơn CHƯA TRẢ giữ hoá đơn
+ * chờ `BookingReceipt` (PENDING tự làm tươi bằng `CheckoutAutoRefresh`, webhook về là chính
+ * cây server đổi sang voucher).
  *
  * ⚠️ TRANG NÀY CẦN SESSION: `bookings.byCode` là procedure authed (không có
  * đường tra công khai theo mã). Cookie sống sót qua redirect top-level GET từ
@@ -49,17 +59,13 @@ export default async function CheckoutSuccessPage({
     : null;
 
   if (!booking) {
-    // Hero gánh luôn phần tiêu đề "không tìm thấy" (12/08 — trang voucher có
-    // hero chuẩn); thân chỉ còn hai lối thoát, khỏi lặp title trong card.
     return (
       <div>
         <ContentHero breadcrumb={t.heroBreadcrumb} title={t.notFound} />
         <div className="mx-auto flex w-full max-w-2xl flex-wrap gap-2.5 px-4 pt-10 pb-16 md:pb-20">
-          {/* Fix cuối 11/08: `/account/bookings` (trang Trips cũ) không còn
-              là cửa vào bookings — hộ chiếu `/account` đã thay thế (spec
-              2026-08-11, M1). Nhãn giữ nguyên `booking.list.menuLink`
-              ("My bookings") — vẫn đúng ý dù đích đổi. */}
-          <ButtonLink href="/account">{messages.booking.list.menuLink}</ButtonLink>
+          {/* "My bookings" trỏ đúng danh sách đơn (spec P7 §6.4) — bản cũ trỏ `/account` từ
+              hồi danh sách đơn còn nằm trong trang hộ chiếu. */}
+          <ButtonLink href="/account/bookings">{messages.booking.list.menuLink}</ButtonLink>
           <ButtonLink variant="outline" href="/tours">
             {t.viewTours}
           </ButtonLink>
@@ -68,59 +74,28 @@ export default async function CheckoutSuccessPage({
     );
   }
 
-  // `mood` là thứ DUY NHẤT trang còn tự tính; tiêu đề, câu mô tả và tổng số
-  // khách đã chuyển hẳn vào `BookingReceipt` (nó cần cả ba để dựng pill, h1 và
-  // dòng khách) — giữ lại ở đây là hai nguồn cho cùng một sự thật.
-  const mood = checkoutMood(booking);
-  // Thay lời hứa "cancel anytime" bằng ngày chót thật (spec §5.2) — cờ và ngày
-  // do SERVER tính, trang chỉ in.
-  const deadlineText = cancellationDeadlineText(booking.cancellation);
+  // "Hôm nay" là ngày lịch Việt Nam do server tính (spec P7 §2.1); `new Date()` chỉ để đo
+  // 30 phút "vừa trả".
+  const view = voucherView(booking, new Date(), todayDateString());
 
-  return (
-    <div>
-      {/* GIỮ `ContentHero` — nó không chỉ là trang trí: `/checkout/success` nằm
-          trong `HERO_LESS_EXCEPTIONS` của `site-header.tsx`, tức navbar ở đây
-          giả định có mảng tối phía sau. Gỡ hero đi là navbar tàng hình ở light
-          mode, đúng lỗi `/enquire` đã dính 19/08.
-
-          Nhưng BỎ `meta`: nó vốn in mã đặt chỗ, mà receipt bên dưới đã in mã ở
-          bảng meta VÀ ở cuống — giữ nữa là ba lần trên một màn.
-
-          Nút Print đi vào slot `action` sẵn có của hero thay vì đẻ thêm một
-          hàng nút riêng. */}
-      <ContentHero
-        breadcrumb={t.heroBreadcrumb}
-        title={booking.tourTitle}
-        action={<PrintButton />}
-      />
-
-      <div className="py-10 md:py-14">
-        {/* Pháo giấy CHỈ ở mood confirmed (PAID) — confirming là đơn chưa
-            thanh toán xong, settled là chuyện đã cũ (spec confetti 20/08). */}
-        {mood === 'confirmed' ? <SuccessCelebration bookingCode={booking.code} /> : null}
-        <BookingReceipt booking={booking} mood={mood} />
-
-        <div className="mx-auto mt-8 flex w-full max-w-3xl flex-col gap-6 px-4">
-          {/* "What happens next" — chỉ hiện ở mood confirmed: đây là ba việc SẼ
-              xảy ra sau một lần thanh toán thành công, không có nghĩa ở hai mood
-              còn lại (confirming chưa có gì để hứa; settled đã kết thúc). Khối
-              này KHÔNG có trong wireframe receipt, nhưng nó là nội dung có thật
-              và wireframe không phủ nhận nó — giữ. */}
-          {mood === 'confirmed' ? (
-            <div className="rounded-xl border p-5 print:hidden">
-              <h2 className="font-heading text-sm font-semibold text-foreground">
-                {t.nextHeading}
-              </h2>
-              <ul className="mt-3 flex flex-col gap-2">
-                <NextStep text={t.nextEmail} />
-                <NextStep text={t.nextVoucher} />
-                {deadlineText ? <NextStep text={deadlineText} /> : null}
-                <NextStep text={t.nextManage} />
-              </ul>
-            </div>
-          ) : null}
-
-          <div className="flex flex-wrap items-center gap-2.5 print:hidden">
+  if (!view) {
+    // Đơn chưa có `paidAt` — PENDING đang chờ webhook, hay giữ chỗ hết hạn/bị huỷ khi chưa
+    // trả: giữ NGUYÊN hoá đơn chờ. Mã của những đơn này chưa bao giờ là voucher.
+    const mood = checkoutMood(booking);
+    return (
+      <div>
+        {/* GIỮ `ContentHero`: `/checkout/success` nằm trong `HERO_LESS_EXCEPTIONS` của
+            `site-header.tsx`, navbar ở đây giả định có mảng tối phía sau — gỡ hero là navbar
+            tàng hình ở light mode (lỗi `/enquire` 19/08). Không `meta`: hoá đơn đã in mã ở
+            bảng meta và ở cuống. */}
+        <ContentHero
+          breadcrumb={t.heroBreadcrumb}
+          title={booking.tourTitle}
+          action={<PrintButton />}
+        />
+        <div className="py-10 md:py-14">
+          <BookingReceipt booking={booking} mood={mood} />
+          <div className="mx-auto mt-8 flex w-full max-w-3xl flex-wrap items-center gap-2.5 px-4 print:hidden">
             <ButtonLink href={`/account/bookings/${booking.code}`}>{t.viewBooking}</ButtonLink>
             {mood === 'confirming' ? (
               <CheckoutAutoRefresh />
@@ -132,15 +107,35 @@ export default async function CheckoutSuccessPage({
           </div>
         </div>
       </div>
-    </div>
-  );
-}
+    );
+  }
 
-function NextStep({ text }: { text: string }) {
+  // Điểm hẹn lấy từ tour (cache 300 giây, tag `tour:<slug>`); tour đã gỡ trả null. Lỗi gọi API
+  // khác cũng rơi về null — voucher của đơn ĐÃ TRẢ không được sập vì một ô phụ. Lỗi nội bộ của
+  // Next (redirect, notFound, request-time API) thì ném lại (plan P7, quyết định 22).
+  const tour = await fetchTourDetail(booking.tourSlug).catch((error: unknown) => {
+    unstable_rethrow(error);
+    console.warn(`[checkout/success] không đọc được tour ${booking.tourSlug}`, error);
+    return null;
+  });
+
   return (
-    <li className="flex items-start gap-2.5 text-sm text-muted-foreground">
-      <span aria-hidden="true" className="mt-1.5 size-1.5 shrink-0 rounded-full bg-primary" />
-      <span>{text}</span>
-    </li>
+    <div>
+      {/* Hero GIỮ (lý do ở nhánh trên) và thêm meta mã đơn (spec §6.1). Bản in chỉ in thẻ
+          voucher, nên hero — cả nút Print trong đó — giấu khi in (spec §6.4). */}
+      <div className="print:hidden">
+        <ContentHero
+          breadcrumb={t.heroBreadcrumb}
+          title={booking.tourTitle}
+          meta={booking.code}
+          action={<PrintButton />}
+        />
+      </div>
+      {/* Lề ngang CHÉP của hero (`px-4 md:px-16 lg:px-24 xl:px-32`, khung `max-w-7xl` trong
+          thẻ) để mép thẻ thẳng hàng tiêu đề. */}
+      <div className="px-4 py-10 md:px-16 md:py-14 lg:px-24 xl:px-32 print:p-0">
+        <VoucherCard booking={booking} view={view} meetingPoint={tour?.meetingPoint ?? null} />
+      </div>
+    </div>
   );
 }

@@ -16,7 +16,8 @@ import { STAGGER } from '@/lib/motion';
 import { formatDate, formatDateRange } from '@/lib/tours';
 
 /**
- * Hoá đơn kiêm cuống vé cho `/checkout/success` — thay `CheckoutShell` (tấm vé
+ * Hoá đơn kiêm cuống vé cho đơn CHƯA TRẢ ở `/checkout/success` và cho `/checkout/cancel`
+ * (đơn đã trả mở voucher `VoucherCard` từ P7, spec 05/10 §6) — thay `CheckoutShell` (tấm vé
  * boarding-pass) từ 19/08. Dựng theo wireframe user duyệt qua bốn bước, xem
  * `docs/design/mockups/receipt-ticket.src.html`.
  *

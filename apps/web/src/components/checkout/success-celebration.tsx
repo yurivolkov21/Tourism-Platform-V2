@@ -17,7 +17,8 @@ import { useEffect } from 'react';
  * lời gọi thẳng vào thư viện.
  *
  * Ba chốt an toàn (phân tích 20/08):
- * - CHỈ render ở mood `confirmed` (cha quyết) — ăn mừng đơn PENDING là sai.
+ * - CHỈ render khi voucher VỪA TRẢ (`VoucherCard` quyết theo `voucherView`, spec P7 §2.6) —
+ *   ăn mừng đơn PENDING hay voucher mở lại là sai.
  * - Guard sessionStorage theo mã booking, ghi Ở KHUNG BẮN ĐẦU chứ không phải
  *   lúc effect chạy: StrictMode (dev) mount đôi hủy rAF trước khung đầu —
  *   ghi sớm là mount#2 thấy guard rồi bỏ qua, pháo không bao giờ nổ (đo
