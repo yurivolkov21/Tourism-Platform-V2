@@ -31,6 +31,10 @@ import { revealScrollLeft, scrollEdges } from '@/lib/scroll-strip';
  * ~286px). Nên dưới 640px dải thành vùng cuộn native, thanh cuộn ẩn, mép nào
  * còn tab bị che thì mép đó mờ dần, và tab đang mở luôn được cuộn ra khỏi vùng
  * mờ. Từ 640px trở lên không lớp nào đổi: 5 tab chia đều, 192px ở khung 1056.
+ *
+ * Các số đo trên là lúc thân trang còn đệm `px-12` ở mọi khổ. Từ G26 đệm 48 chỉ
+ * áp từ `lg`, dưới `md` là `px-4`, nên khung ở 375 rộng 343px (đo lại 08/10):
+ * dải 429px vẫn thiếu 86px, vẫn phải cuộn.
  */
 const TAB_ORDER = ['overview', 'itinerary', 'departures', 'reviews', 'goodToKnow'] as const;
 

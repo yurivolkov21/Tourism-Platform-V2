@@ -106,6 +106,9 @@ describe('TourTabs', () => {
 // jsdom không có layout nên mọi số đo phải giả lập. Số dưới đây là số ĐO THẬT
 // ở viewport 375 (07–08/10): khung 279px, mép trái khung ở x=48 vì thân trang
 // đệm `px-12`; năm tab rộng 61 · 54 · 73 · 56 · 90, khe 24 → nội dung 430px.
+// Sau G26 (thân trang dưới `md` đệm `px-4`) khung ở 375 là 343px, mép trái
+// x=16. Dải vẫn tràn nên kịch bản giữ nguyên giá trị: phép tính cuộn chỉ cần
+// một dải tràn, không phụ thuộc bề rộng khung cụ thể.
 const LIST_LEFT = 48;
 const GAP = 24;
 const PHONE = { clientWidth: 279, widths: [61, 54, 73, 56, 90] };

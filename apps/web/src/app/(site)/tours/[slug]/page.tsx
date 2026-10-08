@@ -167,12 +167,19 @@ export default async function TourDetailPage({ params }: { params: Promise<{ slu
           1056 chia tiếp ra 573 | 40 | 443 — cột phải vẫn GHIM 443px (không dùng
           `1.4fr/1fr`, tỉ lệ đó cho số lẻ và làm mọi đường 1px lệch nửa pixel),
           ảnh vuông ra 573−64−16 = 493 chẵn, và dải 5 tab ra (1056−4×24)/5 = 192
-          chẵn. Mọi con số đều nguyên. */}
+          chẵn. Mọi con số đều nguyên.
+
+          Đệm 48 CHỈ từ `lg` (G26, 08/10). Wireframe chỉ vẽ desktop, và giữ 48 ở
+          mọi khổ thì viewport 375 chỉ còn 279px nội dung: thẻ đợt khởi hành phải
+          ngắt ngày và hạn huỷ xuống hai dòng. Dưới `lg` đệm theo khuôn trang book
+          và enquire cùng route (`px-4 md:px-8`): viewport 375 còn 343px nội dung.
+          Hero ngay trên cũng đệm 16 ở điện thoại nên hai mép thẳng hàng. Từ `lg`
+          trở lên không lớp nào đổi, các con số ở trên giữ nguyên. */}
       {/* ── CHỖ DỰNG LẠI PHẦN THÂN ──
-          Khung 1152 + đệm ngang 48 → nội dung ĐÚNG 1056px, và `--radius:1rem`
-          là base bo góc của wireframe (site dùng 0.375rem). Hai con số này đã đo
-          khớp bản duyệt nên giữ lại làm khung cho phần dựng mới. */}
-      <div className="mx-auto w-full max-w-6xl px-12 py-14 [--radius:1rem]">
+          Khung 1152 + đệm ngang 48 (từ `lg`) → nội dung ĐÚNG 1056px, và
+          `--radius:1rem` là base bo góc của wireframe (site dùng 0.375rem). Hai
+          con số này đã đo khớp bản duyệt nên giữ lại làm khung cho phần dựng mới. */}
+      <div className="mx-auto w-full max-w-6xl px-4 py-14 md:px-8 lg:px-12 [--radius:1rem]">
         <TourMediaPanel tour={tour} />
 
         {/* MỘT instance duy nhất cho cả trang: ô "All N dates" ở panel và nút
@@ -207,7 +214,9 @@ export default async function TourDetailPage({ params }: { params: Promise<{ slu
         // KHÔNG đè `--radius` ở khu này: `TourCard` dùng chung với trang
         // listing, đè base bo góc ở đây là cùng một card hiện hai kiểu ở hai
         // trang. Base 1rem của wireframe chỉ áp cho phần thân trang tour.
-        className="mx-auto w-full max-w-6xl px-12 pb-24"
+        // Đệm ngang theo đúng khung thân trang ở trên (G26): mép card thẳng
+        // hàng với mép khối ảnh và dải tab ở mọi khổ.
+        className="mx-auto w-full max-w-6xl px-4 pb-24 md:px-8 lg:px-12"
       >
         <h2 id="related-heading" className="mb-8 font-heading text-2xl font-medium text-foreground">
           {t.sections.related}
