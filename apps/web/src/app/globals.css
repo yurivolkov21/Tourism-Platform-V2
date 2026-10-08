@@ -233,6 +233,59 @@ html:not(.dark) .stamp-ink {
   mix-blend-mode: multiply;
 }
 
+/* ── Vé của trang chi tiết đơn: hai vết khuyết ở đường xé (spec P7 §5.2) ──
+ * Đường xé là viền gạch đứt 2px của cuống (class Tailwind trên `[data-slot="ticket-stub"]`).
+ * Mỗi vết khuyết là một hình tròn 22px màu NỀN TRANG, tâm đặt đúng mép NGOÀI viền 1px của vé
+ * và cắt bỏ nửa nằm ngoài vé — nên nó che luôn đoạn viền ngang của vé tại chỗ xé (bản vẽ
+ * booking-detail.src.html đã sửa đúng chỗ này). Đặt ở -12px thì tâm ở -12 + 11 = -1px: cuống
+ * nằm trong viền 1px của vé, mép ngoài viền cách hộp cuống đúng 1px; theo trục của đường xé,
+ * -1px là giữa viền gạch đứt 2px.
+ *
+ * Điện thoại: cuống nằm DƯỚI thân vé — vết khuyết ở mép trái và mép phải của đường xé ngang.
+ * Từ 80rem (`xl`, cùng mốc vé chuyển sang ba phần ngang): cuống nằm bên PHẢI — vết khuyết ở
+ * mép trên và mép dưới của đường xé dọc.
+ *
+ * Ngoại lệ có chủ đích với JSDoc của `BookingReceipt` (19/08 bác "dashed + notch bán
+ * nguyệt"): user duyệt lại kiểu này cho RIÊNG trang chi tiết đơn ngày 05/10/2026.
+ */
+[data-slot="ticket-stub"]::before,
+[data-slot="ticket-stub"]::after {
+  content: "";
+  position: absolute;
+  z-index: 2;
+  top: -12px;
+  width: 22px;
+  height: 22px;
+  box-sizing: border-box;
+  border: 1px solid var(--border);
+  border-radius: 9999px;
+  background: var(--background);
+}
+
+[data-slot="ticket-stub"]::before {
+  left: -12px;
+  clip-path: inset(0 0 0 50%);
+}
+
+[data-slot="ticket-stub"]::after {
+  right: -12px;
+  clip-path: inset(0 50% 0 0);
+}
+
+@media (min-width: 80rem) {
+  [data-slot="ticket-stub"]::before {
+    clip-path: inset(50% 0 0 0);
+  }
+
+  [data-slot="ticket-stub"]::after {
+    top: auto;
+    right: auto;
+    bottom: -12px;
+    left: -12px;
+    clip-path: inset(0 0 50% 0);
+  }
+}
+
 /* ─────────────────────────────────────────────────────────────────────────────
  * IN ẤN — chỉ phục vụ hoá đơn `/checkout/success` (19/08).
  *
