@@ -1,0 +1,76 @@
+import { type BookingDetail, tripDayNumbers } from '@tourism/contract';
+import { messages } from '@tourism/i18n';
+import { LifeBuoyIcon, MapPinIcon } from 'lucide-react';
+import Link from 'next/link';
+import { type BookingTourData, tourMeetingPoint } from '@/lib/get-ready';
+
+/**
+ * Cột phải của đơn đang đi (spec P7 §2.3, §2.5): "Day d of D", lịch trình ĐÚNG ngày đó in
+ * nguyên văn (không tách giờ — luật catalog), điểm hẹn, lối "Need help today? Contact us".
+ * `today` là ngày lịch Việt Nam do server tính — một mốc với chip của thanh hành trình.
+ */
+export function OnTourPanel({
+  booking,
+  tour,
+  today,
+}: {
+  booking: BookingDetail;
+  tour: BookingTourData | null;
+  today: string;
+}) {
+  const t = messages.bookingDetail;
+  const { dayOfTrip, tripLength } = tripDayNumbers(booking, today);
+  const day = tour?.itinerary.find((entry) => entry.dayNumber === dayOfTrip) ?? null;
+  const meetingPoint = tourMeetingPoint(tour);
+
+  return (
+    <section
+      aria-labelledby="on-tour-heading"
+      className="rounded-2xl border border-border bg-card px-6 py-5 sm:px-[26px]"
+    >
+      <h2
+        id="on-tour-heading"
+        className="text-[10px] leading-none font-bold tracking-[0.15em] text-muted-foreground uppercase"
+      >
+        {t.onTour.heading}
+      </h2>
+      <p className="mt-1.5 font-heading text-[34px] leading-tight font-semibold">
+        {t.journey.dayOf(dayOfTrip, tripLength)}
+      </p>
+      {day ? (
+        <div className="mt-4">
+          <p className="text-sm font-semibold">
+            {messages.tourDetail.itinerary.dayLabel(day.dayNumber)} · {day.title}
+          </p>
+          {day.description ? (
+            <p
+              data-slot="day-text"
+              className="mt-2 rounded-lg bg-muted/55 px-[11px] py-2 font-mono text-[11.5px] leading-[1.65] whitespace-pre-line"
+            >
+              {day.description}
+            </p>
+          ) : null}
+        </div>
+      ) : null}
+      {meetingPoint ? (
+        <div className="mt-4 flex items-start gap-2 text-[13px]">
+          <MapPinIcon aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-primary-emphasis" />
+          <div>
+            <p className="font-semibold">{t.details.meetingPoint}</p>
+            <p className="text-muted-foreground">{meetingPoint}</p>
+          </div>
+        </div>
+      ) : null}
+      <p className="mt-4 flex flex-wrap items-center gap-x-1.5 gap-y-1 border-t border-muted pt-3 text-[13px] text-muted-foreground">
+        <LifeBuoyIcon aria-hidden="true" className="size-4 shrink-0" />
+        <span>{t.onTour.needHelp}</span>
+        <Link
+          href="/contact"
+          className="font-semibold text-primary-emphasis underline-offset-4 hover:underline"
+        >
+          {messages.passportVisa.contactUs}
+        </Link>
+      </p>
+    </section>
+  );
+}
