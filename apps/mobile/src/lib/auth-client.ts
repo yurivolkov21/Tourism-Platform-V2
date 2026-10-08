@@ -2,6 +2,7 @@ import { expoClient } from '@better-auth/expo/client';
 import { emailOTPClient, inferAdditionalFields } from 'better-auth/client/plugins';
 import { createAuthClient } from 'better-auth/react';
 import * as SecureStore from 'expo-secure-store';
+import { createCachedStorage } from '@/lib/cached-storage';
 import { env } from '@/lib/env';
 
 /**
@@ -21,7 +22,8 @@ function buildAuthClient() {
       expoClient({
         scheme: 'nexora',
         storagePrefix: 'nexora',
-        storage: SecureStore,
+        // L1 — cache bộ nhớ ghi-xuyên trước SecureStore (`cached-storage.ts`).
+        storage: createCachedStorage(SecureStore),
       }),
       emailOTPClient(),
       inferAdditionalFields({

@@ -330,9 +330,11 @@ export function TourDetailScreen({
   const [selectedIndex, setSelectedIndex] = useState(0);
   const heroImage = galleryImages[selectedIndex] ?? galleryImages[0] ?? null;
   // Ngày đầu mở sẵn (D2) — `null` gấp lại HẾT (bấm ngày đang mở để thu gọn).
-  const [expandedDay, setExpandedDay] = useState<number | null>(
-    itineraryDays[0]?.dayNumber ?? null,
-  );
+  // `undefined` = người dùng CHƯA bấm gì: suy ra ngày đầu ở mỗi lần render thay
+  // vì chụp một lần lúc mount — lịch trình về sau lần render đầu (cache rỗng,
+  // refetch) vẫn mở sẵn ngày đầu (F11). Đã bấm thì giữ lựa chọn, kể cả `null`.
+  const [pickedDay, setExpandedDay] = useState<number | null | undefined>(undefined);
+  const expandedDay = pickedDay === undefined ? (itineraryDays[0]?.dayNumber ?? null) : pickedDay;
   // Header gọn (D2 bản vẽ 24/09): hiện khi ảnh bìa đã cuộn qua khỏi màn hình —
   // NGƯỠNG cố định thay vì đo layout thật (`onLayout`), vì hero có chiều cao
   // CỐ ĐỊNH `HERO_HEIGHT`, không phụ thuộc nội dung. Bật/tắt bằng state thay vì

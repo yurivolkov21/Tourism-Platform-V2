@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { AuthGateSheet } from '@/features/auth/auth-gate-sheet';
 import { consumePendingReplay, setPendingReturn } from '@/features/auth/return-to';
 import { matchDestinationsByPrefix } from '@/features/explore/destination-search';
+import { destinationFromEntryParams } from '@/features/explore/explore-entry';
 import { ExploreScreen, type ExploreStatus } from '@/features/explore/explore-screen';
 import { FilterSheet, type SortKey } from '@/features/explore/filter-sheet';
 import {
@@ -48,8 +49,10 @@ const DIFFICULTY_KEYS = ['EASY', 'MODERATE', 'CHALLENGING'] as const;
  * (ADR-0055 §2, khuôn `features/home`).
  */
 export default function ExploreRoute() {
-  const params = useLocalSearchParams<{ destination?: string }>();
-  const [destinationSlug, setDestinationSlug] = useState<string | null>(params.destination ?? null);
+  const params = useLocalSearchParams<{ destination?: string; nav?: string }>();
+  const [destinationSlug, setDestinationSlug] = useState<string | null>(
+    destinationFromEntryParams(params) ?? null,
+  );
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [searchInput, setSearchInput] = useState('');
   const [search, setSearch] = useState('');
@@ -70,10 +73,13 @@ export default function ExploreRoute() {
   // Tab (tabs) KHÔNG bị gỡ khi chuyển tab (expo-router giữ mount) — bấm thẻ
   // địa danh ở Home rồi nhảy `/explore?destination=x` khi Explore ĐÃ mount sẵn
   // từ trước thì state chỉ đọc param một lần lúc mount là kẹt nguyên giá trị
-  // cũ, không tự vào E4. Đồng bộ lại mỗi khi param thật sự đổi.
+  // cũ, không tự vào E4. Đồng bộ lại mỗi khi param đổi — kể cả chỉ đổi nonce
+  // `nav` (F5: bấm lại đúng điểm đến cũ, hoặc "See all tours" bỏ lọc).
+  // biome-ignore lint/correctness/useExhaustiveDependencies: `nav` là nonce cố ý làm effect chạy lại dù `destination` y hệt
   useEffect(() => {
-    if (params.destination !== undefined) setDestinationSlug(params.destination);
-  }, [params.destination]);
+    const next = destinationFromEntryParams({ destination: params.destination });
+    if (next !== undefined) setDestinationSlug(next);
+  }, [params.destination, params.nav]);
 
   // Chờ ~300ms sau phím cuối mới gọi API (handoff §1) — gõ liên tục không bắn
   // một request mỗi phím.

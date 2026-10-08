@@ -44,3 +44,13 @@ export function reviewAuthorInitials(authorName: string | null): string {
 export function reviewBreakdownPercent(count: number, total: number): number {
   return total <= 0 ? 0 : (count / total) * 100;
 }
+
+/**
+ * Bấm một mục sort có thật sự ĐỔI sort không (F10). Chọn lại đúng sort đang
+ * chọn phải là no-op: route reset `reviewItems` về rỗng khi đổi sort, mà query
+ * key giữ nguyên thì `reviewsQuery.data` không đổi tham chiếu → effect nối
+ * trang không chạy lại → danh sách trống tới khi rời màn.
+ */
+export function isReviewSortChange<T extends string>(current: T, next: T): boolean {
+  return current !== next;
+}

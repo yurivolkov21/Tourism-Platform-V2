@@ -24,7 +24,11 @@ import {
   photoDisplayUrl,
   type TourDetailPhoto,
 } from '@/features/tour-detail/photo-viewer';
-import { formatReviewDate, reviewAuthorInitials } from '@/features/tour-detail/reviews';
+import {
+  formatReviewDate,
+  isReviewSortChange,
+  reviewAuthorInitials,
+} from '@/features/tour-detail/reviews';
 import {
   type TourDetailDepartureGroup,
   type TourDetailFact,
@@ -460,6 +464,8 @@ export default function TourDetailRoute() {
       reviewSort={reviewSort}
       reviewSortLabels={reviewSortLabels}
       onChangeReviewSort={(sort) => {
+        // F10 — chọn lại sort đang chọn là no-op, không xoá danh sách đã tải.
+        if (!isReviewSortChange(reviewSort, sort)) return;
         setReviewSort(sort);
         setReviewPage(1);
         setReviewItems([]);

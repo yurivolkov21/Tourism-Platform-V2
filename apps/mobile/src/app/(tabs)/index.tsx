@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { messages } from '@tourism/i18n';
 import { router } from 'expo-router';
 import { useState } from 'react';
+import { exploreEntryParams } from '@/features/explore/explore-entry';
 import {
   groupDestinationsByRegion,
   HOME_REGIONS,
@@ -42,10 +43,20 @@ export default function HomeRoute() {
       onRetry={() => void query.refetch()}
       onSearchPress={() => router.navigate('/explore')}
       onAvatarPress={() => router.navigate('/account')}
+      // F5 — luôn gửi `destination` tường minh kèm nonce `nav` mới: "See all"
+      // phải bỏ lọc cũ, bấm lại cùng điểm đến phải áp lại (`explore-entry.ts`).
       onDestinationPress={(slug) =>
-        router.navigate({ pathname: '/explore', params: { destination: slug } })
+        router.navigate({
+          pathname: '/explore',
+          params: exploreEntryParams(slug, String(Date.now())),
+        })
       }
-      onSeeAllTours={() => router.navigate('/explore')}
+      onSeeAllTours={() =>
+        router.navigate({
+          pathname: '/explore',
+          params: exploreEntryParams(null, String(Date.now())),
+        })
+      }
       userName={session?.user.name ?? guestName}
       avatarUrl={session?.user.image ?? null}
       transformUrl={cloudinaryUrl}

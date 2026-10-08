@@ -1,4 +1,9 @@
-import { formatReviewDate, reviewAuthorInitials, reviewBreakdownPercent } from './reviews';
+import {
+  formatReviewDate,
+  isReviewSortChange,
+  reviewAuthorInitials,
+  reviewBreakdownPercent,
+} from './reviews';
 
 describe('formatReviewDate', () => {
   it('"5 Jul 2026" — ngày (không đệm 0) + tháng viết tắt + năm', () => {
@@ -33,5 +38,15 @@ describe('reviewBreakdownPercent', () => {
 
   it('chưa ai đánh giá (total 0): 0, không chia cho 0', () => {
     expect(reviewBreakdownPercent(0, 0)).toBe(0);
+  });
+});
+
+describe('isReviewSortChange (F10)', () => {
+  it('chọn lại đúng sort đang chọn: KHÔNG phải đổi sort (không reset danh sách)', () => {
+    expect(isReviewSortChange('newest', 'newest')).toBe(false);
+  });
+
+  it('chọn sort khác: là đổi sort', () => {
+    expect(isReviewSortChange('newest', 'highest')).toBe(true);
   });
 });

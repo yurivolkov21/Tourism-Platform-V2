@@ -663,6 +663,35 @@ describe('TourDetailScreen', () => {
       expect(screen.getByText('Free evening')).toBeTruthy();
     });
 
+    it('F11: lịch trình về SAU lần render đầu vẫn mở sẵn ngày đầu', async () => {
+      const { rerender } = await renderWithTheme(
+        <TourDetailScreen {...baseProps({ activeTab: 'itinerary', itineraryDays: [] })} />,
+      );
+
+      await rerender(
+        <TourDetailScreen
+          {...baseProps({ activeTab: 'itinerary', itineraryDays: ITINERARY_DAYS })}
+        />,
+      );
+      expect(screen.getByText('Airport pickup')).toBeTruthy();
+    });
+
+    it('F11: đã thu gọn hết thì refetch không tự mở lại ngày đầu', async () => {
+      const { rerender } = await renderWithTheme(
+        <TourDetailScreen
+          {...baseProps({ activeTab: 'itinerary', itineraryDays: ITINERARY_DAYS })}
+        />,
+      );
+      await fireEvent.press(screen.getByText('Arrival in Đà Nẵng'));
+
+      await rerender(
+        <TourDetailScreen
+          {...baseProps({ activeTab: 'itinerary', itineraryDays: [...ITINERARY_DAYS] })}
+        />,
+      );
+      expect(screen.queryByText('Airport pickup')).toBeNull();
+    });
+
     it('bấm ngày đang thu gọn để mở, bấm ngày đang mở để thu lại', async () => {
       await renderWithTheme(
         <TourDetailScreen
