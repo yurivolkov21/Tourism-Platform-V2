@@ -1,6 +1,8 @@
 # ADR-0054 — Đơn của khách: một luật giai đoạn dùng chung; `bookings.mine` lọc, tìm, xếp theo hành trình và phân trang ở server
 
 - **Trạng thái:** Accepted (2026-10-06; đề xuất 2026-10-05)
+- **Sửa đổi:** AMEND 1 (2026-10-08, cuối file) — giai đoạn đọc thêm `cancelledAt` và cờ chuyến
+  bị công ty huỷ; REFUNDED do hoàn thiện chí đi theo ngày; `lapsed` không phải kết cục.
 - **Bối cảnh thi hành:** đợt thiết kế lại ba trang đơn của khách (P7). Đi trước code theo luật
   CLAUDE.md #5. Thiết kế chốt qua wireframe trong chat ngày 05/10.
 - **Liên quan:** [ADR-0041](0041-single-cancellation-deadline.md) (một hạn chót mỗi chuyến,
@@ -116,3 +118,52 @@ nên ở đoạn ấy "Older" dẫn tới chuyến đi xa hơn). Trang KHÔNG c�
   thứ tự hành trình đã đặt việc khách cần lo lên đầu.
 - **Số đếm theo các bộ lọc đang chọn:** con số nhảy theo từng cú bấm; với vài chục đơn mỗi
   khách, tổng tĩnh dễ hiểu hơn.
+
+## AMEND 1 08/10 — giai đoạn đọc thêm "đơn đã huỷ thật" và "chuyến bị công ty huỷ"
+
+Phát hiện ở vòng review max P7 phần B và C (08/10), xác minh bằng đọc mã và test tạm.
+
+**Bối cảnh.** Bảng §1 suy giai đoạn chỉ từ trạng thái đơn và hai ngày của chuyến. Ba chỗ lệch:
+
+- REFUNDED không chỉ là kết cục huỷ. Admin hoàn thiện chí TRỌN (`refundByAdmin`) đặt REFUNDED
+  mà không ghi `cancelledAt`, không nhả ghế: khách vẫn đi (`docs/conventions/booking-states.md`).
+  Bảng §1 xếp mọi REFUNDED vào `cancelled`, nên cả ba trang gọi một chuyến còn đi là "Cancelled",
+  giấu đếm ngược, voucher, và trang chi tiết mất luôn khu review (sửa, rút).
+- Chuyến bị công ty huỷ (ADR-0041 AMEND 1): trong khoảng chờ job `departure-refund`, đơn vẫn PAID
+  mà chuyến không chạy, nên trang chi tiết và voucher hiện như chuyến còn chạy (`open-items`, mục
+  web của AMEND 1). Dữ liệu seed lượt 1 lại mô hình chuyến công ty huỷ bằng REFUNDED,
+  `cancelledAt` null, chuyến CANCELLED, và chuyến seed không có `cancelled_at`.
+- `lapsed` không phải kết cục chắc chắn. Mint và re-mint phiên thanh toán đóng ở hạn chót, nhưng
+  claim của webhook vẫn nhận phiên mở TRƯỚC hạn (Stripe tới 60 phút, PayPal tới 3 giờ — ADR-0041
+  §3). Câu "cổng trả tiền của API đóng cùng mốc" ở §1 chỉ đúng cho mint.
+
+**Quyết định.**
+
+1. `Booking` của contract thêm `departureCancelled: boolean`, API đọc từ `departure.status ===
+   'CANCELLED'` — theo trạng thái chuyến, không theo mốc, vì chuyến seed không có `cancelled_at`.
+2. `BookingPhaseInput` thêm `cancelledAt` (ISO hoặc null; mọi đường huỷ thật ghi cột này) và
+   `departureCancelled`. Bảng §1 đổi hai dòng, thứ tự xét từ trên xuống:
+
+   | Giai đoạn | Điều kiện |
+   | --- | --- |
+   | `cancelled` | chuyến bị công ty huỷ (mọi trạng thái đơn); hoặc CANCELLED; hoặc REFUNDED có `cancelledAt` |
+   | `upcoming` · `on_tour` · `travelled` | PAID, PARTIALLY_REFUNDED, hoặc REFUNDED không `cancelledAt` (hoàn thiện chí), theo ngày như cũ |
+
+   Hai dòng `awaiting_payment` và `lapsed` giữ nguyên mốc hạn chót.
+3. `bookings.mine` đọc thêm hai trường vào khoá lọc (`BookingListKey`); luật vẫn một bản ở contract.
+4. `lapsed` giữ mốc, nhưng chữ của web nói có điều kiện: ai đã mở trang thanh toán trước hạn thì
+   hoàn tất ở đó, trả xong đơn tự sang PAID. Không khẳng định "đã lỡ".
+5. Những thứ đi theo giai đoạn ở web — voucher, mã vạch, mộc trên vé — đọc qua MỘT hàm thuần cạnh
+   `bookingPhase` (web), không vị từ riêng trong JSX của từng trang. Khu review đi theo
+   `reviewSlot` (cổng của API), không theo giai đoạn.
+
+**Hệ quả.** Đơn hoàn thiện chí sắp đi có lại đếm ngược, Get ready, voucher và mã vạch; đơn đã đi
+giữ khu review. Đơn trên chuyến công ty huỷ thành `cancelled` ngay cả khi job hoàn tiền chưa chạy,
+web in câu "công ty huỷ chuyến, tiền đang hoàn" — đóng mục web của ADR-0041 AMEND 1 trong
+`open-items`. Seed lượt 1 hiển thị đúng mà không cần seed lại. Mobile chưa gọi `bookingPhase`;
+trường mới chỉ thêm vào, không phá người đọc cũ.
+
+**Phương án đã loại.** Chỉ dựa `cancelledAt`: chuyến seed lượt 1 bị huỷ thành `travelled` tới
+lượt seed lại (~03/11). Sửa bộ sinh seed rồi seed lại ngay: đụng dữ liệu prod trước bảo vệ, và
+vẫn không phủ khoảng chờ job của ADR-0041 AMEND 1. Cột mốc `departureCancelledAt`: chuyến seed
+không có `cancelled_at`.
