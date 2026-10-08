@@ -11,10 +11,11 @@ import { ADMIN_WRITE_THROTTLE, AUTHED_WRITE_THROTTLE, PUBLIC_READ_THROTTLE } fro
 
 /**
  * Khoá metadata của `@Throttle({ default: … })` — @nestjs/throttler 6.5.0
- * không re-export `throttler.constants`, nên chép đúng chuỗi (`THROTTLER:LIMIT`
- * + tên throttler). Đọc metadata là cách duy nhất biết route "có khai gì
- * không"; bản đầu đoán bằng so SỐ (`limit === 5 && ttl === 60000`), tức một
- * route cố ý ghim đúng 5/60s cho cả người đã đăng nhập sẽ bị nâng nhầm.
+ * không re-export `throttler.constants` (6.7.1 cũng vậy, chuỗi giữ nguyên — đo
+ * 08/10), nên chép đúng chuỗi (`THROTTLER:LIMIT` + tên throttler). Đọc
+ * metadata là cách duy nhất biết route "có khai gì không"; bản đầu đoán bằng
+ * so SỐ (`limit === 5 && ttl === 60000`), tức một route cố ý ghim đúng 5/60s
+ * cho cả người đã đăng nhập sẽ bị nâng nhầm.
  */
 const THROTTLE_LIMIT_METADATA = 'THROTTLER:LIMITdefault';
 
@@ -78,7 +79,12 @@ interface ThrottledRequest {
  */
 @Injectable()
 export class DefaultThrottlerGuard extends WriteOnlyThrottlerGuard {
-  private readonly logger = new Logger(DefaultThrottlerGuard.name);
+  /**
+   * KHÔNG đặt tên `logger`: từ @nestjs/throttler 6.7 lớp cha có `protected
+   * logger` riêng (cảnh báo lúc boot khi không có throttler nào) — trùng tên là
+   * đè mất logger của thư viện.
+   */
+  private readonly readLimitLogger = new Logger(DefaultThrottlerGuard.name);
   /** Đã warn cho tracker nào trong cửa sổ hiện tại (chế độ log) — chống bão log. */
   private readonly warned = new Map<string, number>();
 
@@ -197,7 +203,7 @@ export class DefaultThrottlerGuard extends WriteOnlyThrottlerGuard {
     if (last !== undefined && now - last < PUBLIC_READ_THROTTLE.ttl) return;
     if (this.warned.size > 10_000) this.warned.clear();
     this.warned.set(tracker, now);
-    this.logger.warn(
+    this.readLimitLogger.warn(
       `public-read-throttle would block ${JSON.stringify({ tracker, limit: PUBLIC_READ_THROTTLE.limit, mode: 'log' })}`,
     );
   }

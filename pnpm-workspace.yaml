@@ -73,9 +73,39 @@ minimumReleaseAgeExclude:
 # `decode-uri-component: ^0.5.0`, tức chính dòng ĐÃ VÁ (đo 21/09: query-string 9.0
 # vẫn khai ^0.4.1 nên chưa đủ, phải 9.5.1 trở lên). Hoặc khi npm có một bản 0.4.x
 # mang bản vá.
+#
+# 08/10 — thêm bốn lỗ CHƯA CÓ BẢN VÁ trên npm (đo `npm view` cùng ngày). Cả bốn
+# nằm ở dev tool, không request nào với tới. Ba alert Dependabot tương ứng (#88
+# #89 #90) dismiss `tolerable_risk` với cùng lý do; sprintf-js chưa thành alert.
+#
+# GHSA-vfj7-8cjw-p6xm (high — braces <=3.0.3, tràn stack với mẫu lồng sâu):
+# micromatch@4 ← metro/jest/expo (apps/mobile) và shadcn CLI. 3.0.3 (2024) là bản
+# cuối trên npm. Mẫu glob ở đây do chính config của mình viết.
+#
+# GHSA-86w9-cpqp-85rv (high — node-forge <=1.4.0, kiểm chữ ký RSA PKCS#1 v1.5
+# nhận DigestAlgorithm lồng thừa): @expo/cli dùng cho chứng chỉ ký code và HTTPS
+# của dev server. 1.4.0 là bản cuối; `pnpm audit` ghi "vá ở >=1.4.1" nhưng bản đó
+# không tồn tại.
+#
+# GHSA-ch52-4w7c-c8xp (high — http-cache-semantics <=4.2.0, `max-stale` trả lại
+# response đã bị zero của người dùng khác trong cache DÙNG CHUNG): @swc/cli →
+# bin-wrapper → got → cacheable-request, tức cache của một CLI chứ không phải
+# proxy nhiều người dùng. Bản 4.3.0 (04/10) KHÔNG vá: diff 4.2.0→4.3.0 chỉ sửa
+# Vary, nhánh `max-stale` giữ nguyên, nên dòng ">=4.2.1" của `pnpm audit` là sai.
+#
+# GHSA-hp3w-g68c-fv3c (moderate — sprintf-js <=1.1.3, DoS với precision không
+# giới hạn): argparse@1 → js-yaml@3 trong jest/istanbul của mobile. 1.1.3 là bản
+# cuối.
+#
+# GỠ TỪNG DÒNG KHI: npm có bản vá của gói tương ứng (`npm view <gói> version`),
+# rồi vá bằng override scoped như các đợt bên dưới.
 auditConfig:
   ignoreGhsas:
     - GHSA-vcc3-ghjq-m6fr
+    - GHSA-vfj7-8cjw-p6xm
+    - GHSA-86w9-cpqp-85rv
+    - GHSA-ch52-4w7c-c8xp
+    - GHSA-hp3w-g68c-fv3c
 
 # Vá lỗ hổng bảo mật ở dependency bắc cầu (medium: middleware bypass qua
 # serveStatic). Đường đi: prisma CLI (devDep) → @prisma/dev → @hono/node-server.
@@ -123,7 +153,11 @@ overrides:
   # ^0.35.4). Nên tổ hợp next 16.3.4 + sharp 0.35.3 là AVIF chạy trên libheif
   # còn lỗ — TỆ HƠN đứng yên ở 16.3.0, và nó xảy ra không một tiếng động.
   # Đổi số next mà quên dòng này là tự tạo ra đúng tổ hợp đó.
-  sharp: '^0.35.4'
+  #
+  # 08/10 siết tiếp lên '^0.35.5' (GHSA-wq5f-xc86-pv6w, high — lỗ ở librsvg khi
+  # decode SVG). next@16.3.8 vẫn khai ^0.35.4, nên lần này CHỈ dòng này kéo sharp
+  # lên bản vá.
+  sharp: '^0.35.5'
   # Alert #5 (medium, XSS qua </style> trong stringify): Next pin CỨNG postcss
   # 8.4.31 nội bộ cho styled-jsx — override kéo mọi bản 8.x về dòng đã vá.
   postcss: '>=8.5.10'
@@ -144,17 +178,30 @@ overrides:
   # 1.2.0) → phải override. Dự án không dùng valibot (validate bằng zod), đây
   # thuần dev-tooling. Ghim trong dòng 1.x cho khỏi nhảy major.
   valibot: '^1.4.2'
-  # Alert #10 (high, CVSS 7.5, GHSA-mh99-v99m-4gvg — DoS: chuỗi brace nở vô
-  # hạn làm hết RAM): advisory ghi affected `<= 5.0.7`, tức CẢ dòng 2.x cũng
-  # dính mà KHÔNG có backport — bản vá duy nhất là 5.0.8. Hai đường đi:
-  #   minimatch@10 (shadcn/ts-morph + style-dictionary) — tự lên 5.0.8 được;
-  #   minimatch@9  (@swc/cli — trình biên dịch build của apps/api) khai ^2.0.1.
-  # Override này ÉP QUA major 2→5. An toàn được vì brace-expansion 5.x vẫn
-  # xuất bản CJS ở `exports.require`; đã chứng minh bằng cách chạy build API
-  # thật (gate:int) chứ không suy đoán. Nếu ngày nào build gãy vì dòng này:
-  # gỡ nó ra và chấp nhận alert — mẫu brace ở đây do CHÍNH package.json của
-  # mình viết, không phải input từ ngoài, nên không ai khai thác được.
-  brace-expansion: '^5.0.9'
+  # brace-expansion: MỖI dòng major một override, theo đúng dải dính của
+  # advisory (08/10/2026 thay dòng chung `brace-expansion: '^5.0.9'`).
+  #
+  # Lịch sử: 27/07 (alert #10, GHSA-mh99-v99m-4gvg) dòng 2.x chưa có backport,
+  # nên dòng chung ép MỌI minimatch lên 5.x. Cái giá đo được 08/10: minimatch
+  # 3/5/9 gọi `require('brace-expansion')` theo API 1.x/2.x (export là một hàm),
+  # còn 5.x export `{ expand }`, nên glob nào có `{a,b}` cũng ném "expand is not
+  # a function" (chạy thử cả ba bản đều ném). Chưa nổ chỉ vì chưa chỗ nào gọi
+  # glob có ngoặc nhọn — build API dùng `--ignore '**/*.spec.ts'`.
+  #
+  # Từ 14/09 maintainer vá ngược cho mọi dòng: GHSA-6j4f-fj2g-mc7p,
+  # GHSA-qhr7-859c-m2p7 và GHSA-q2hr-2g5m-vwhr (alert #77–#79) vá ở 1.1.21 ·
+  # 2.1.7 · 3.0.9 · 5.0.12; các advisory cũ hơn (GHSA-mh99, GHSA-rgw5-rvv9-x895…)
+  # cũng đã có bản vá trên từng dòng. Nên mỗi minimatch giữ đúng major nó khai:
+  #   minimatch@3  (glob@7, test-exclude: exceljs của admin, jest)  → 1.x
+  #   minimatch@5  (readdir-glob ← exceljs) · minimatch@9 (@swc/cli) → 2.x
+  #   minimatch@10 (react-email, shadcn/ts-morph, @expo/fingerprint) → 5.x
+  # Dòng 3.x hiện không ai kéo; giữ selector để lần làm mới lock sau không lọt
+  # bản còn lỗ. Bốn dải KHÔNG giao nhau, và đừng thêm lại dòng chung: pnpm 11
+  # chỉ áp MỘT override mỗi dependency (pickMostSpecificVersionOverride).
+  brace-expansion@<1.1.21: ^1.1.21
+  brace-expansion@>=2.0.0 <2.1.7: ^2.1.7
+  brace-expansion@>=3.0.0 <3.0.9: ^3.0.9
+  brace-expansion@>=4.0.0 <5.0.12: ^5.0.12
   # Đợt vá Dependabot 03/08 (13 alert + 1 pnpm audit thấy thêm) — sinh bởi
   # `pnpm audit --fix=override`, scoped theo đúng dải dính lỗ hổng nên không
   # ghim vĩnh viễn các bản sau. Toàn bộ là dep bắc cầu (fastify→fast-uri ·
@@ -266,7 +313,13 @@ overrides:
   # GHIM CỨNG fastify (11.1.28 → 5.10.0, 11.2.3 mới nhất → 5.11.3, vẫn
   # dính), nên nâng `apps/api` lên 5.12.1 mà không override là HAI fastify
   # trong store — adapter Nest chạy bản cũ. Scoped: bản sau 5.12.1 tự do.
-  fastify@>=5.0.0 <5.12.1: 5.12.1
+  #
+  # 08/10 nới lên <5.12.5 (alert #71–#75, #82–#86): GHSA-9q9j-q6p8-xq58,
+  # GHSA-hwr6-493r-vm6h, GHSA-p68q-wchp-6fh7 và GHSA-667r-xxjv-c9mm vá ở 5.12.2;
+  # GHSA-4mh8-r7rc-xpvc vá ở 5.12.5. THAY dòng cũ chứ không thêm: platform-fastify
+  # 11.2.7 vẫn ghim 5.11.3, và dòng cũ mà còn thì nó kéo adapter về 5.12.1 — đúng
+  # cái PR Dependabot #5 mắc (lock của nó có hai fastify, adapter chạy 5.12.1).
+  fastify@>=5.0.0 <5.12.5: 5.12.5
   # 02/09 — ba alert mới (#27 #28 #29, đều high), đều là dependency bắc cầu
   # KHÔNG nằm trên đường phục vụ request; vá theo cùng nếp scoped override
   # (chỉ áp trong dải dính lỗ hổng, không ghim chết bản sau).
@@ -291,3 +344,36 @@ overrides:
   # khác trong lock kéo uuid, nên nâng thẳng thay vì đợi exceljs (4.4.0 phát
   # hành 2023, không có bản mới). Bản 4.4.0 ghim cứng ở apps/admin.
   uuid@<11.1.1: ^11.1.1
+  # Đợt vá Dependabot 08/10 — dep bắc cầu, scoped theo dải dính như các đợt trên.
+  # Không gói nào dưới đây nằm trên đường phục vụ request; vá để sạch alert và
+  # để workflow Audit xanh.
+  #
+  # @swc/cli (build apps/api): piscina (alert #87, GHSA-67c8-pqhq-4rmx, critical —
+  # prototype pollution trong options của ThreadPool dẫn tới RCE) và
+  # @xhmikosr/decompress (alert #67, GHSA-hrh2-vp3x-79xf, critical — path
+  # traversal qua chuỗi symlink khi giải nén; chỉ chạy khi bin-wrapper tải binary
+  # `swcx`, lệnh build không dùng).
+  piscina@<4.9.4: ^4.9.4
+  '@xhmikosr/decompress@>=11.0.0 <11.1.4': ^11.1.4
+  # engine.io (alert #68, GHSA-2gc4-cqfq-p2gv, high — DoS khi lệch revision giao
+  # thức): api → react-email → socket.io. Nằm trong `dependencies` của API nhưng
+  # chỉ CLI `email dev` dùng; đo 08/10: `import('react-email')` nạp 106 module,
+  # không có socket.io hay engine.io.
+  engine.io@>=6.6.0 <6.6.10: ^6.6.10
+  # Dev tool, `pnpm audit` thấy trước Dependabot: shell-quote (GHSA-pqg4-j6r4-53mv,
+  # critical — chèn lệnh qua `quote()`; react-devtools-core của mobile),
+  # compression (GHSA-vc2v-76pw-4v95, high — rò bộ nhớ; dev server của @expo/cli),
+  # source-map-js (GHSA-68fv-2mgg-jv7q, high — DoS khi đọc source map có section;
+  # postcss, css-tree, @tailwindcss/node) và postcss-selector-parser
+  # (GHSA-rj75-hqrm-r3gf, moderate — CPU bậc hai; shadcn CLI). Dòng cuối chỉ
+  # scoped 7.x: advisory ghi mọi bản dưới 7.1.6 đều dính, không backport 6.x, và
+  # hiện không ai kéo 6.x — đừng ép major.
+  shell-quote@>=1.8.4 <1.11.0: ^1.11.0
+  compression@<1.8.2: ^1.8.2
+  source-map-js@>=1.0.0 <1.2.2: ^1.2.2
+  postcss-selector-parser@>=7.0.0 <7.1.6: ^7.1.6
+  # MCP SDK (shadcn CLI, lệnh `shadcn mcp`): GHSA-6qxp-vccf-f47h (high) vá ở
+  # 1.31.0, nhưng repo SDK còn ba advisory 02–05/10 CHƯA vào DB chung
+  # (GHSA-22jm-h49p-29qw high, GHSA-6prh-2h8m-c8cw, GHSA-rvq5-wwqv-78pq) vá ở
+  # 1.32.0 — selector lấy theo repo, cùng bài học fast-uri 29/09.
+  '@modelcontextprotocol/sdk@<1.32.0': ^1.32.0

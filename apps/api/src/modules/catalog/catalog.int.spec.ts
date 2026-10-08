@@ -318,6 +318,18 @@ describe('catalog integration (oRPC @Implement over Fastify)', () => {
     expect(outOfRange.statusCode).toBe(400); // input validation from the contract
   });
 
+  it('khoá query trùng tên thành viên của Object.prototype không làm request 500 (GHSA-gcgf-fh7c-8gf2)', async () => {
+    // @orpc/zod < 1.14.10: ZodSmartCoercionPlugin tra schema con bằng
+    // `shape[key]`, nên `constructor` trả về hàm Object rồi bị dùng như một
+    // schema Zod → TypeError không ai bắt → 500, khách vô danh gây được.
+    // Bản vá chỉ đọc thuộc tính RIÊNG của shape: khoá lạ đi qua validate như
+    // mọi khoá thừa khác.
+    for (const key of ['constructor', 'toString', 'hasOwnProperty']) {
+      const res = await app.inject({ method: 'GET', url: `/api/tours?${key}=1` });
+      expect(res.statusCode, `?${key}=1`).toBe(200);
+    }
+  });
+
   it('GET /api/tours/{slug} returns detail with upcoming OPEN departures only', async () => {
     const res = await app.inject({
       method: 'GET',

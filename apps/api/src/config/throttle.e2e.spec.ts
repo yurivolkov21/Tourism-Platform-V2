@@ -97,4 +97,26 @@ describe('rate limiting endpoint ghi công khai', () => {
     const blocked = await spoof(6);
     expect(blocked.statusCode, 'request thứ 6 phải bị 429 dù XFF trái nhất luôn đổi').toBe(429);
   });
+
+  it('không né được trần bằng cách xoay địa chỉ IPv6 trong cùng một /64 (GHSA-5wh8-6fqf-738g)', async () => {
+    // Một máy chủ thuê thường được cấp nguyên một /64, tức 2^64 địa chỉ. Tracker
+    // mặc định của @nestjs/throttler < 6.7.0 lấy `req.ip` nguyên văn, nên mỗi
+    // địa chỉ là một khoá riêng và trần không bao giờ chạm. Từ 6.7.0 tracker
+    // gom IPv6 về /64; DefaultThrottlerGuard gọi `super.getTracker` cho route
+    // công khai nên hưởng luôn. Dải 2001:db8::/32 là dải dành cho tài liệu.
+    const rotate = (host: number) =>
+      app.inject({
+        method: 'POST',
+        url: '/test-throttled',
+        payload: {},
+        headers: { 'x-forwarded-for': `2001:db8:abcd:12::${host}` },
+      });
+
+    for (let i = 1; i <= 5; i++) {
+      const res = await rotate(i);
+      expect(res.statusCode, `request IPv6 thứ ${i} phải qua`).toBe(201);
+    }
+    const blocked = await rotate(6);
+    expect(blocked.statusCode, 'địa chỉ thứ 6 cùng /64 phải bị 429').toBe(429);
+  });
 });
