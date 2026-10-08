@@ -8,6 +8,23 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-10-08 — My bookings thôi in dòng đếm trùng hero (`87ca93f9`, nhánh `fix/bookings-list-count`)
+
+**Góp ý của user** (08/10, ảnh `/account/bookings` trên production): dòng "2 trips" ngay dưới hàng lọc
+nhắc lại đúng số "2 TRIPS" mà hero đã in.
+
+`BookingsListView`: chưa lọc thì dòng đếm thành `sr-only`. Trình đọc màn hình vẫn nghe số đơn, vùng
+`aria-live` và đích tiêu điểm khi sang trang của `TripPager` giữ nguyên. Đang lọc hay tìm thì vẫn hiện
+"{n} of {tổng} trips", vì hero chỉ in tổng. Khi dòng đếm ẩn, danh sách cách hàng lọc `mt-4` (trước đó là
+12px, một dòng chữ rồi 10px). Thay đổi nhỏ theo yêu cầu thẳng của user, không chạy vòng review max.
+
+**CÒN TREO:** không. Không migration, không env, không webhook.
+
+Tests after (`gate:int` trên `87ca93f9`, 08/10 18:33–18:38): unit 5737 — admin 1911, web 1707, api 1085,
+contract 665, mobile 159, mobile-ui 86, core 46, ui 36, i18n 23, tokens 19 — và int 775/46. Không ca
+mới: `bookings-list-view.spec.tsx` sửa hai ca (chưa lọc thì dòng đếm mang `sr-only` mà vẫn có "12
+trips"; đang lọc thì "2 of 18 trips" không mang `sr-only`), đã thấy đỏ trước khi sửa component.
+
 ## 2026-10-08 — Thử tay lề trang chi tiết tour trên điện thoại thật (`aa3f2a5a`)
 
 **Thử tay production** sau merge `aa3f2a5a` (CI `gate` xanh, Vercel web và admin success; HTML trang
