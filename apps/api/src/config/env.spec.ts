@@ -521,6 +521,27 @@ describe('superRefine production — nhóm env deploy (ADR-0024 AMEND 2)', () =>
     expect(() => parseEnv({ ...base, TRUSTED_ORIGINS: 'not a url' })).toThrow(/TRUSTED_ORIGINS/);
   });
 
+  it('TRUSTED_ORIGINS: scheme app `nexora://` là ngoại lệ duy nhất (ADR-0017 §10); scheme khác vẫn chặn', () => {
+    const withApp = `${base.TRUSTED_ORIGINS},nexora://`;
+    expect(parseEnv({ ...base, TRUSTED_ORIGINS: withApp }).TRUSTED_ORIGINS).toBe(withApp);
+    // `exp://` là origin của Expo Go — chỉ dev, prod không được nhận.
+    expect(() => parseEnv({ ...base, TRUSTED_ORIGINS: `${base.TRUSTED_ORIGINS},exp://` })).toThrow(
+      /TRUSTED_ORIGINS/,
+    );
+    expect(() =>
+      parseEnv({ ...base, TRUSTED_ORIGINS: `${base.TRUSTED_ORIGINS},other://` }),
+    ).toThrow(/TRUSTED_ORIGINS/);
+    // Khớp nguyên chuỗi: biến thể có đuôi không lọt qua ngoại lệ.
+    expect(() =>
+      parseEnv({ ...base, TRUSTED_ORIGINS: `${base.TRUSTED_ORIGINS},nexora://evil` }),
+    ).toThrow(/TRUSTED_ORIGINS/);
+    // CORS_ORIGINS không phải chứa `nexora://` (app không đi qua CORS).
+    const cors = `${new URL(base.FRONTEND_URL).origin},${base.TRUSTED_ORIGINS}`;
+    expect(parseEnv({ ...base, TRUSTED_ORIGINS: withApp, CORS_ORIGINS: cors }).CORS_ORIGINS).toBe(
+      cors,
+    );
+  });
+
   it('CORS_ORIGINS: optional (không set → undefined, bootstrap rơi về TRUSTED_ORIGINS); set ở prod thì từng entry cùng luật https', () => {
     expect(parseEnv({}).CORS_ORIGINS).toBeUndefined();
     expect(parseEnv(base).CORS_ORIGINS).toBeUndefined();

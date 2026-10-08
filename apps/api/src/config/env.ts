@@ -30,6 +30,13 @@ const DEV_REVALIDATE_SECRET = 'dev-revalidate-secret-change-me';
  */
 const LOCAL_COMPOSE_DATABASE_URL = 'postgresql://tourism:tourism@localhost:5432/tourism';
 
+/**
+ * Origin của app mobile bản build (scheme `nexora` trong `apps/mobile/app.json`).
+ * Entry không-https duy nhất được đứng trong TRUSTED_ORIGINS ở production
+ * (ADR-0017 §10).
+ */
+const MOBILE_APP_ORIGIN = 'nexora://';
+
 const EnvSchema = z
   .object({
     NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
@@ -249,7 +256,11 @@ const EnvSchema = z
     };
     requireRealHttpsUrl('BETTER_AUTH_URL', cfg.BETTER_AUTH_URL);
     requireRealHttpsUrl('FRONTEND_URL', cfg.FRONTEND_URL);
+    // Ngoại lệ DUY NHẤT (ADR-0017 §10): scheme app mobile `nexora://` — app gửi
+    // nó làm origin (bản build; Expo Go gửi `exp://` nên chỉ dev mới cần, prod
+    // vẫn chặn). Khớp nguyên chuỗi, không nhận scheme lạ khác.
     for (const origin of parseCommaList(cfg.TRUSTED_ORIGINS)) {
+      if (origin === MOBILE_APP_ORIGIN) continue;
       requireRealHttpsUrl('TRUSTED_ORIGINS', origin);
     }
     if (cfg.CORS_ORIGINS) {
@@ -264,7 +275,11 @@ const EnvSchema = z
       // chỉ hiện ở console browser).
       const must = new Set([
         originOf(cfg.FRONTEND_URL),
-        ...parseCommaList(cfg.TRUSTED_ORIGINS).map(originOf),
+        // Scheme app không qua CORS (RN fetch không có preflight) — và
+        // `new URL('nexora://').origin` là chuỗi "null", đòi nó là sai.
+        ...parseCommaList(cfg.TRUSTED_ORIGINS)
+          .filter((origin) => origin !== MOBILE_APP_ORIGIN)
+          .map(originOf),
       ]);
       const have = new Set(cors.map(originOf));
       for (const origin of must) {

@@ -258,6 +258,30 @@ là luật **cho mọi client**. Client mobile quên gửi cờ thì BA vẫn xo
 hook nằm ở API — nhưng test canh cứng của §7a mới chỉ chạy qua đường web; nhánh
 auth mobile phải mở rộng nó, đừng cho rằng "API lo rồi" là đã đo.
 
+### 10. AMEND 08/10/2026 — `nexora://` là ngoại lệ duy nhất của luật https cho `TRUSTED_ORIGINS` ở production
+
+§9 việc 2 đòi `nexora://` nằm trong `trustedOrigins`, nhưng luật deploy W2
+(ADR-0024 AMEND 2) bắt **mọi** entry `TRUSTED_ORIGINS` là `https://` trên host
+thật khi `NODE_ENV=production`. Hai luật đá nhau: thêm scheme app là API không
+boot, bỏ đi là mọi lệnh auth từ app bản build bị 403 (review nhánh
+`feat/mobile-account-screens`, mục B1).
+
+**Chốt:** `env.ts` miễn luật https cho **đúng chuỗi** `nexora://` (hằng
+`MOBILE_APP_ORIGIN`), không gì khác:
+
+- Khớp nguyên chuỗi — `nexora://evil`, `other://` vẫn chặn. Scheme app không có
+  host nên không có "host thật" để kiểm; nới theo mẫu là mở cửa cho entry rác.
+- `exp://` (origin của Expo Go, `Linking.createURL`) **không** được miễn: Expo Go
+  chỉ là vòng dev, prod không có lý do nhận nó. Dev vẫn thêm thoải mái vì luật
+  chỉ chạy ở production.
+- `CORS_ORIGINS` không phải chứa `nexora://`: RN `fetch` không có preflight,
+  và `new URL('nexora://').origin` là `"null"` — đòi nó là đòi một chuỗi vô
+  nghĩa.
+
+Vì sao không mất gì: luật https có để chặn origin localhost/http lọt vào prod
+do ô env Render bỏ trống. `nexora://` là hằng điền tay có chủ đích, không thể
+đến từ default; bảo vệ CSRF của Better Auth vẫn đối chiếu origin như cũ.
+
 ## Hệ quả
 
 - `apps/web` thêm dep `better-auth` (client-only import) — bám version API
