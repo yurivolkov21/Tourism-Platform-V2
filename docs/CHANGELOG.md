@@ -8,6 +8,50 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-10-08 — Lề trang chi tiết tour dưới lg theo khuôn book và enquire (`e11c5e54`, nhánh `fix/web-tour-detail-gutter`)
+
+**Lỗi** (G26, đo 08/10 trên bản build local, `/tours/vietnam-grand-journey-12d`): khung thân trang và
+khu "You might also like" đệm `px-12` ở mọi khổ, nên ở 375px nội dung chỉ còn 279px. Thẻ đợt khởi hành
+còn 189px cho khối ngày cạnh giá: dòng phụ của tháng, ngày đi và hạn huỷ đều phải xuống dòng.
+
+User duyệt thiết kế 08/10. `page.tsx` đổi `px-12` thành `px-4 md:px-8 lg:px-12` ở hai chỗ, đúng khuôn
+của trang book và enquire cùng route. Không canh theo chữ của hero (`md:px-16`): ngay ở desktop đã
+duyệt, hai khối vốn không thẳng hàng (ở 1280 hero bắt đầu ở x=128, thân trang ở x=112). Từ `lg` trở
+lên không lớp nào đổi.
+
+Thiết kế được duyệt gồm cả dải 5 tab, nhưng trong lúc đo thì nhánh `fix/tour-tabs-mobile-scroll` đã
+sửa xong phần đó theo cùng hướng (G27, `854b3767`..`c88f0469`), nên nhánh này bỏ phần tab. JSDoc và chú thích
+test của `tour-tabs` ghi lại khung ở 375 sau G26: 343px, dải 429px vẫn thiếu 86px nên vẫn cuộn.
+
+**Đo trên bản build** (`next start` cổng 3210, API dev cổng 3201; ba tour `vietnam-grand-journey-12d`,
+`bana-hills-golden-bridge-day`, `northern-highlights-5d`). Đo bằng JS, mở lần lượt 5 tab, xổ hết tháng
+và accordion. Browser pane ẩn nên cuộn mượt không chạy; lượt kiểm dải tab tắt cuộn mượt khi đo.
+
+- 320 và 375px: trang rộng đúng viewport, nội dung 288 và 343px; hero, thân trang, related và thanh
+  đáy cùng mép 16px. Không phần tử nào lọt khỏi khung khối của nó ở cả 5 tab.
+- 375px, thẻ đợt khởi hành: khung 279 lên 343px, khối ngày 189 lên 253px; dòng phụ tháng, ngày đi và
+  hạn huỷ từ hai dòng về một. Ở 320px còn hai dòng xuống dòng, ngắt nguyên cụm như nhánh thẻ đã định.
+- 768px (viewport giả lập trừ thanh cuộn 4px): nội dung 668 lên 700px, 5 tab vừa khung, mỗi tab 120,8px.
+- 1024 và 1280px: như trước khi sửa. Nội dung 924 và 1056px, hai cột 573 và 443px, ảnh chính 493px,
+  tab 165,6 và 192px, cột ngày của bảng 245,4px, card related 292 và 336px.
+- Dải tab ở 375px: cuộn tối đa 86px; vào `#good-to-know` thì cuộn hết, `#itinerary` lùi về 53px.
+
+**Review findings:** không mở vòng review riêng. Thay đổi chỉ là lớp CSS nên không có test mới; bằng
+chứng là lượt đo trên. Lúc đo lộ thêm một việc ngoài phạm vi, ghi `open-items` G29: cột 7 ảnh nhỏ cao
+496px, ảnh chính hẹp hơn thì cạnh nó có khoảng trống (233px ở 375). G28 tính lại theo khung mới:
+thanh ghế 254px ở 320 và 309px ở 375, mốc tràn thành 32 và 39 chỗ. Đã soát và bỏ một nghi vấn: ba ô
+chính sách trỏ `#good-to-know` không cuộn trang, nhưng dải tab nằm ngay dưới hàng ô (cách 48px) nên
+khách vẫn thấy tab đổi.
+
+**CÒN TREO:** G28 và G29 ở `open-items`. Không migration, không env, không webhook.
+
+Tests after (`gate:int` trên `1e57be98`, bản trước khi rebase, 08/10 14:02–14:08, int trên DB riêng
+`tourism_test_gutter`): unit 5732 — admin 1911, web 1703, api 1084, contract 665, mobile 159,
+mobile-ui 86, core 46, ui 36, i18n 23, tokens 19 — và int 774/774. Không ca mới, số khớp entry G27.
+Rebase lên `5731fbf8` mang thêm bản vá Dependabot và bản vá wizard đặt tour (đã qua gate ở nhánh của
+chúng); sau rebase cài lại dependency, typecheck và test của web xanh (web 1707, thêm 4 ca của bản vá
+wizard), CI chạy cả gate trên `main`.
+
 ## 2026-10-08 — Thử tay dải 5 tab trang tour trên điện thoại thật (`48c71074`)
 
 **Thử tay production** sau merge `48c71074` (Vercel web success; run CI riêng của commit này bị huỷ vì
