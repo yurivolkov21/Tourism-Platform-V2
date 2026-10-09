@@ -42,6 +42,8 @@ export interface ExploreScreenProps {
   title: string;
   searchValue: string;
   searchPlaceholder: string;
+  /** Nhãn đọc màn hình nút "x" trong ô tìm (L4). */
+  clearSearchLabel: string;
   onChangeSearch: (value: string) => void;
   onRetry: () => void;
   activeFilterCount: number;
@@ -99,6 +101,7 @@ export function ExploreScreen({
   title,
   searchValue,
   searchPlaceholder,
+  clearSearchLabel,
   onChangeSearch,
   onRetry,
   activeFilterCount,
@@ -170,6 +173,7 @@ export function ExploreScreen({
                 value={searchValue}
                 onChangeText={onChangeSearch}
                 placeholder={searchPlaceholder}
+                clearLabel={clearSearchLabel}
               />
             </View>
             <Pressable

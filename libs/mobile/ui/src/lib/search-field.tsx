@@ -7,8 +7,12 @@ export interface SearchFieldProps extends Omit<TextInputProps, 'style' | 'onFocu
   value: string;
   onChangeText: (text: string) => void;
   placeholder: string;
-  /** Nhãn a11y cho nút xoá — mặc định "Clear search". */
-  clearLabel?: string;
+  /**
+   * Nhãn a11y cho nút xoá — BẮT BUỘC, nơi gọi lấy từ `@tourism/i18n` (luật 7).
+   * Trước đây mặc định là chuỗi tiếng Anh viết cứng nên Explore quên truyền
+   * mà vẫn chạy, đọc chữ không qua i18n (L4, review 05/10).
+   */
+  clearLabel: string;
 }
 
 /** Ô tìm pill (bản vẽ 18/09, `.search` — ADR-0055 T3). */
@@ -16,7 +20,7 @@ export function SearchField({
   value,
   onChangeText,
   placeholder,
-  clearLabel = 'Clear search',
+  clearLabel,
   ...rest
 }: SearchFieldProps) {
   const theme = useTheme();

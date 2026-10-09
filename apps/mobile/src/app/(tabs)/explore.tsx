@@ -241,6 +241,7 @@ export default function ExploreRoute() {
         title={explore.title}
         searchValue={searchInput}
         searchPlaceholder={explore.searchPlaceholder}
+        clearSearchLabel={explore.clearSearch}
         onChangeSearch={setSearchInput}
         onRetry={() => void toursQuery.refetch()}
         activeFilterCount={countActiveFilters(filters)}

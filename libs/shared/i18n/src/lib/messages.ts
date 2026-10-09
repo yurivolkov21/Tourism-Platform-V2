@@ -2013,6 +2013,8 @@ export const messages = {
     explore: {
       title: 'Explore tours',
       searchPlaceholder: 'Search tours or destinations',
+      /** Nhãn đọc màn hình của nút "x" trong ô tìm (L4, review 05/10). */
+      clearSearch: 'Clear search',
       destinationsTitle: 'Destinations',
       /** Chip "All" — dùng chung cho hàng danh mục (E1) và facet Region (E3). */
       allOption: 'All',

@@ -13,6 +13,7 @@ function baseProps(overrides: Partial<ExploreScreenProps> = {}): ExploreScreenPr
     title: 'Explore tours',
     searchValue: '',
     searchPlaceholder: 'Search tours or destinations',
+    clearSearchLabel: 'Clear search',
     onChangeSearch: jest.fn(),
     onRetry: jest.fn(),
     activeFilterCount: 0,
@@ -183,6 +184,22 @@ describe('ExploreScreen', () => {
 
     await fireEvent.changeText(screen.getByPlaceholderText('Search tours or destinations'), 'ha');
     expect(onChangeSearch).toHaveBeenCalledWith('ha');
+  });
+
+  it('nút xoá ô tìm đọc đúng nhãn route truyền vào, không rơi về chữ viết cứng của SearchField (L4, luật 7)', async () => {
+    const onChangeSearch = jest.fn();
+    await renderWithTheme(
+      <ExploreScreen
+        {...baseProps({
+          searchValue: 'ha',
+          clearSearchLabel: 'Clear the search box',
+          onChangeSearch,
+        })}
+      />,
+    );
+
+    await fireEvent.press(screen.getByRole('button', { name: 'Clear the search box' }));
+    expect(onChangeSearch).toHaveBeenCalledWith('');
   });
 
   it('E2 — ô tìm không rỗng: vẽ kết quả gộp Destinations/Tours, ẨN hàng chip danh mục', async () => {
