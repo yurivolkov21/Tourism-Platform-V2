@@ -1,4 +1,5 @@
 import { render, screen } from '@testing-library/react';
+import type { BookingDetail } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { formatDateRange } from '@/lib/tours';
@@ -21,9 +22,17 @@ beforeAll(() => {
 
 const t = messages.booking.success;
 
+/**
+ * Đơn mà hoá đơn thật sự nhận: CHƯA TRẢ (`paidAt` null) — đơn đã trả mở voucher ở
+ * `/checkout/success` và được `/checkout/cancel` chuyển sang đó (`cancelPageRedirect`). Mặc định
+ * là đơn PENDING khách về trước webhook (tâm trạng `confirming`).
+ */
+const unpaid = (overrides: Partial<BookingDetail> = {}) =>
+  makeBooking({ status: 'PENDING', paidAt: null, ...overrides });
+
 describe('BookingReceipt — ba cột dữ liệu', () => {
   it('render đủ TRAVELLERS · TRIP · PAYMENT', () => {
-    render(<BookingReceipt booking={makeBooking()} mood="confirmed" />);
+    render(<BookingReceipt booking={unpaid()} mood="confirming" />);
     for (const label of [t.travellersLabel, t.tripLabel, t.paymentLabel]) {
       expect(screen.getByText(label)).toBeInTheDocument();
     }
@@ -31,7 +40,7 @@ describe('BookingReceipt — ba cột dữ liệu', () => {
 
   it('điện thoại và ghi chú là optional — null thì KHÔNG render dòng rỗng', () => {
     const { container } = render(
-      <BookingReceipt booking={makeBooking({ contactPhone: null })} mood="confirmed" />,
+      <BookingReceipt booking={unpaid({ contactPhone: null })} mood="confirming" />,
     );
     // Nhắm vào DÒNG CHỮ, không phải mọi `div` rỗng: component cố ý render div
     // rỗng cho đường kẻ và ô giữ chỗ ảnh, nên bắt tất là bắt nhầm chủ đích.
@@ -42,9 +51,7 @@ describe('BookingReceipt — ba cột dữ liệu', () => {
   });
 
   it('có điện thoại thì in ra', () => {
-    render(
-      <BookingReceipt booking={makeBooking({ contactPhone: '+84901234567' })} mood="confirmed" />,
-    );
+    render(<BookingReceipt booking={unpaid({ contactPhone: '+84901234567' })} mood="confirming" />);
     expect(screen.getByText('+84901234567')).toBeInTheDocument();
   });
 });
@@ -53,13 +60,13 @@ describe('BookingReceipt — tiền', () => {
   it('tách dòng người lớn và trẻ em, cộng đúng tổng', () => {
     render(
       <BookingReceipt
-        booking={makeBooking({
+        booking={unpaid({
           numAdults: 2,
           numChildren: 1,
           unitPrice: '49.00',
           totalAmount: '147.00',
         })}
-        mood="confirmed"
+        mood="confirming"
       />,
     );
     expect(screen.getByText(messages.checkoutSummary.adultsLine(2))).toBeInTheDocument();
@@ -71,13 +78,13 @@ describe('BookingReceipt — tiền', () => {
   it('đơn giá có xu: đơn giá, hai dòng và tổng in đủ hai số lẻ', () => {
     render(
       <BookingReceipt
-        booking={makeBooking({
+        booking={unpaid({
           numAdults: 2,
           numChildren: 2,
           unitPrice: '45.24',
           totalAmount: '180.96',
         })}
-        mood="confirmed"
+        mood="confirming"
       />,
     );
     expect(screen.getByText('$45.24')).toBeInTheDocument();
@@ -88,24 +95,18 @@ describe('BookingReceipt — tiền', () => {
   /** Không có trẻ em thì KHÔNG in dòng "0 children" — một dòng nói về số không
    *  chỉ làm hoá đơn dài ra mà không thêm sự thật nào. */
   it('numChildren = 0 thì bỏ hẳn dòng trẻ em', () => {
-    render(<BookingReceipt booking={makeBooking({ numChildren: 0 })} mood="confirmed" />);
+    render(<BookingReceipt booking={unpaid({ numChildren: 0 })} mood="confirming" />);
     expect(screen.queryByText(messages.checkoutSummary.childrenLine(0))).toBeNull();
   });
 });
 
 describe('BookingReceipt — cuống vé', () => {
   /** Mã in ở HAI chỗ là CHỦ ĐÍCH, không phải lặp thừa: dòng nhỏ ở bảng meta để
-   *  chép vào email, mã cỡ lớn ở cuống để chìa ra cho người soát. Vé máy bay
+   *  chép vào email, mã cỡ lớn ở cuống để khách trả tiếp hay hỏi đơn. Vé máy bay
    *  thật cũng lặp lại y vậy. Test khoá chủ đích đó lại. */
   it('mã đặt chỗ xuất hiện ở CẢ bảng meta lẫn cuống', () => {
-    render(<BookingReceipt booking={makeBooking({ code: 'BK-TESTAAAA' })} mood="confirmed" />);
+    render(<BookingReceipt booking={unpaid({ code: 'BK-TESTAAAA' })} mood="confirming" />);
     expect(screen.getAllByText('BK-TESTAAAA')).toHaveLength(2);
-  });
-
-  it('cuống mang barcode và serial', () => {
-    const { container } = render(<BookingReceipt booking={makeBooking()} mood="confirmed" />);
-    expect(container.querySelectorAll('[data-slot="barcode"] span').length).toBeGreaterThan(40);
-    expect(screen.getByText(/^NO\. \d{10}$/)).toBeInTheDocument();
   });
 });
 
@@ -116,7 +117,7 @@ describe('BookingReceipt — cuống vé', () => {
  * nhiều ngày voucher vẫn ghi "Departs", rồi đổi chữ lúc 07:00 giờ VN ngày về.
  */
 describe('BookingReceipt — cuống nói "Departs" hay "Departed"', () => {
-  const trip = makeBooking({ departureStartDate: '2026-09-01', departureEndDate: '2026-09-05' });
+  const trip = unpaid({ departureStartDate: '2026-09-01', departureEndDate: '2026-09-05' });
   const dates = formatDateRange('2026-09-01', '2026-09-05');
 
   // Chỉ giả `Date`: hoá đơn có motion, không cần đụng tới timer của nó.
@@ -130,67 +131,45 @@ describe('BookingReceipt — cuống nói "Departs" hay "Departed"', () => {
 
   it('giây cuối của hôm trước ngày đi (23:59:59.999 giờ VN) vẫn là "Departs"', () => {
     vi.setSystemTime(new Date('2026-08-31T16:59:59.999Z'));
-    render(<BookingReceipt booking={trip} mood="confirmed" />);
+    render(<BookingReceipt booking={trip} mood="confirming" />);
     expect(screen.getByText(t.departsOn(dates))).toBeInTheDocument();
   });
 
   it('00:00 giờ VN của ngày đi (17:00Z hôm trước) → "Departed", dù chuyến còn bốn ngày', () => {
     vi.setSystemTime(new Date('2026-08-31T17:00:00.000Z'));
-    render(<BookingReceipt booking={trip} mood="confirmed" />);
+    render(<BookingReceipt booking={trip} mood="confirming" />);
     expect(screen.getByText(t.departedOn(dates))).toBeInTheDocument();
   });
 });
 
-describe('BookingReceipt — ba mood', () => {
+describe('BookingReceipt — hai tâm trạng', () => {
   it.each([
-    ['confirmed', t.statusPaid],
     ['confirming', t.statusConfirming],
     ['settled', t.statusSettled],
   ] as const)('mood %s → pill %s', (mood, label) => {
-    render(<BookingReceipt booking={makeBooking()} mood={mood} />);
+    render(<BookingReceipt booking={unpaid()} mood={mood} />);
     expect(screen.getByText(label)).toBeInTheDocument();
   });
 
-  /** Băng màu trạng thái phải ĐỔI theo mood, không phải luôn xanh. Đây là thứ
-   *  duy nhất trên trang phân biệt "đã xong" với "đang chờ" khi nhìn lướt. */
+  /** Băng màu trạng thái phải ĐỔI theo mood. Đây là thứ duy nhất trên trang
+   *  phân biệt "đang chờ" với "đã ở kết cục khác" khi nhìn lướt. */
   it('băng tone đổi theo mood', () => {
-    const tone = (mood: 'confirmed' | 'confirming' | 'settled') => {
-      const { container, unmount } = render(<BookingReceipt booking={makeBooking()} mood={mood} />);
+    const tone = (mood: 'confirming' | 'settled') => {
+      const { container, unmount } = render(<BookingReceipt booking={unpaid()} mood={mood} />);
       const cls = container.querySelector('[data-slot="stub"]')?.className ?? '';
       unmount();
       return cls;
     };
-    const [ok, wait, done] = [tone('confirmed'), tone('confirming'), tone('settled')];
-    expect(ok).not.toBe(wait);
-    expect(wait).not.toBe(done);
-    expect(ok).not.toBe(done);
+    expect(tone('confirming')).not.toBe(tone('settled'));
   });
 });
 
 /** Ngày của hoá đơn là ngày lịch Việt Nam — cắt chuỗi UTC lệch một ngày cho mốc 00:00–06:59 giờ VN. */
 describe('BookingReceipt — ngày theo lịch Việt Nam', () => {
-  it('trả lúc 03:05 giờ VN 14/08 (20:05Z ngày 13/08): ô ngày và dòng "Paid …" in 14 Aug', () => {
+  it('ô ngày là ngày ĐẶT theo lịch Việt Nam: đặt lúc 02:50 giờ VN 14/08 (19:50Z ngày 13/08)', () => {
     render(
       <BookingReceipt
-        booking={makeBooking({
-          createdAt: '2026-08-13T19:50:00.000Z',
-          paidAt: '2026-08-13T20:05:00.000Z',
-        })}
-        mood="confirmed"
-      />,
-    );
-    expect(screen.getByText('14 Aug 2026')).toBeInTheDocument();
-    expect(screen.getByText(t.paidAtLine('14 Aug 2026'))).toBeInTheDocument();
-  });
-
-  it('chưa trả: ô ngày là ngày ĐẶT theo lịch Việt Nam', () => {
-    render(
-      <BookingReceipt
-        booking={makeBooking({
-          status: 'PENDING',
-          paidAt: null,
-          createdAt: '2026-08-13T19:50:00.000Z',
-        })}
+        booking={unpaid({ createdAt: '2026-08-13T19:50:00.000Z' })}
         mood="confirming"
       />,
     );
@@ -201,13 +180,13 @@ describe('BookingReceipt — ngày theo lịch Việt Nam', () => {
 describe('BookingReceipt — ảnh bìa tour', () => {
   it('tourImage null thì KHÔNG render <img> vỡ', () => {
     const { container } = render(
-      <BookingReceipt booking={makeBooking({ tourImage: null })} mood="confirmed" />,
+      <BookingReceipt booking={unpaid({ tourImage: null })} mood="confirming" />,
     );
     expect(container.querySelectorAll('img')).toHaveLength(0);
   });
 
   it('có tourImage thì render <img> với alt', () => {
-    const booking = makeBooking({
+    const booking = unpaid({
       // Shape đầy đủ của `MediaItemSchema` — mượn khuôn `slot-image.spec.tsx`.
       tourImage: {
         publicId: 'tourism/catalog/tour/test-tour/hero',
@@ -225,52 +204,45 @@ describe('BookingReceipt — ảnh bìa tour', () => {
         sourceUrl: null,
       },
     });
-    const { container } = render(<BookingReceipt booking={booking} mood="confirmed" />);
+    const { container } = render(<BookingReceipt booking={booking} mood="confirming" />);
     expect(container.querySelectorAll('img')).toHaveLength(1);
   });
 });
 
 /**
- * Kế thừa từ `checkout-shell.spec.tsx` (xoá 19/08 cùng `CheckoutShell`). Ba
- * `it()` của file đó chuyển thành: cuống có/không voucher, và title/body/children
- * vẫn render. Ca "không có code" không còn thuộc component — booking null giờ
- * do TRANG xử lý bằng một nhánh sớm, vì không có booking thì không có hoá đơn
- * nào để dựng.
+ * Kế thừa từ `checkout-shell.spec.tsx` (xoá 19/08 cùng `CheckoutShell`). Ca "không có code" không
+ * còn thuộc component — booking null giờ do TRANG xử lý bằng một nhánh sớm, vì không có booking thì
+ * không có hoá đơn nào để dựng.
  */
-describe('BookingReceipt — mã đã là voucher hay chưa', () => {
+describe('BookingReceipt — mã chưa phải voucher', () => {
   /** Đây là bất biến CHỐNG NÓI DỐI, không phải chuyện thẩm mỹ. Booking PENDING
    *  KHÔNG giữ ghế nào (invariant #1 của API), nên in barcode — thứ nghĩa là
    *  "quét tôi ở cổng" — cho một booking chưa trả tiền là hứa một cái chưa có.
    *  Repo đã bị đúng lớp lỗi này: câu "Your reservation is held" bị bác ở final
    *  review cụm C vì ngụ ý giữ chỗ. */
-  it('CHƯA trả tiền → không barcode, không serial, và đổi dòng hint', () => {
-    const { container } = render(
-      <BookingReceipt
-        booking={makeBooking({ status: 'PENDING', paidAt: null })}
-        mood="confirming"
-      />,
-    );
+  it('CHƯA trả tiền → không barcode, không serial, và dòng hint nói mã chưa là voucher', () => {
+    const { container } = render(<BookingReceipt booking={unpaid()} mood="confirming" />);
     expect(container.querySelector('[data-slot="barcode"]')).toBeNull();
     expect(screen.queryByText(/^NO\. \d{10}$/)).toBeNull();
     expect(screen.getByText(t.stubNotYetVoucher)).toBeInTheDocument();
-    expect(screen.queryByText(t.stubShowCode)).toBeNull();
+    expect(screen.queryByText(/Show this code/)).toBeNull();
   });
 
-  it('ĐÃ trả tiền → có barcode, serial và dòng chìa-mã-ở-điểm-hẹn', () => {
-    const { container } = render(<BookingReceipt booking={makeBooking()} mood="confirmed" />);
-    expect(container.querySelector('[data-slot="barcode"]')).not.toBeNull();
-    expect(screen.getByText(/^NO\. \d{10}$/)).toBeInTheDocument();
-    expect(screen.getByText(t.stubShowCode)).toBeInTheDocument();
+  /**
+   * Hoá đơn không còn chế độ "đã là voucher" (review cuối P7, M3): đơn đã trả mở voucher, nơi mã
+   * vạch theo giai đoạn (`bookingPass`). Nhánh mã vạch, serial và "Show this code" của hoá đơn đã
+   * không còn đường tới mà spec vẫn canh — người đọc tưởng hoá đơn còn in mã vạch cho đơn đã trả.
+   */
+  it('không bao giờ in mã vạch, serial hay "Show this code" — kể cả khi lỡ nhận đơn đã trả', () => {
+    const { container } = render(<BookingReceipt booking={makeBooking()} mood="settled" />);
+    expect(container.querySelector('[data-slot="barcode"]')).toBeNull();
+    expect(screen.queryByText(/^NO\. \d{10}$/)).toBeNull();
+    expect(screen.queryByText(/Show this code/)).toBeNull();
   });
 
   /** Chưa trả mà in "Total paid" là nói dối bằng nhãn. */
   it('chưa trả tiền thì nhãn tổng KHÔNG phải "Total paid"', () => {
-    render(
-      <BookingReceipt
-        booking={makeBooking({ status: 'PENDING', paidAt: null })}
-        mood="confirming"
-      />,
-    );
+    render(<BookingReceipt booking={unpaid()} mood="confirming" />);
     expect(screen.getByText(messages.checkoutSummary.totalLabel)).toBeInTheDocument();
     expect(screen.queryByText(t.totalLabel)).toBeNull();
   });
@@ -283,12 +255,7 @@ describe('BookingReceipt — mã đã là voucher hay chưa', () => {
  */
 describe('BookingReceipt — câu dưới tiêu đề khi trang không truyền body', () => {
   it('chờ webhook: nói đang xác nhận, KHÔNG "was sent to"', () => {
-    render(
-      <BookingReceipt
-        booking={makeBooking({ status: 'PENDING', paidAt: null })}
-        mood="confirming"
-      />,
-    );
+    render(<BookingReceipt booking={unpaid()} mood="confirming" />);
     expect(screen.getByText(t.pendingBody)).toBeInTheDocument();
     expect(screen.queryByText(/was sent to/)).toBeNull();
   });
@@ -296,9 +263,8 @@ describe('BookingReceipt — câu dưới tiêu đề khi trang không truyền 
   it('thua đua ghế (thu rồi hoàn tự động, paidAt null): kể khoản hoàn', () => {
     render(
       <BookingReceipt
-        booking={makeBooking({
+        booking={unpaid({
           status: 'CANCELLED',
-          paidAt: null,
           totalAmount: '147.00',
           refundedTotal: '147.00',
         })}
@@ -318,7 +284,7 @@ describe('BookingReceipt — đè tiêu đề và chèn nội dung riêng của 
   it('title/body đè giá trị suy từ mood', () => {
     render(
       <BookingReceipt
-        booking={makeBooking({ status: 'PENDING', paidAt: null })}
+        booking={unpaid()}
         mood="confirming"
         title="Payment cancelled"
         body="No charge was made."
@@ -334,7 +300,7 @@ describe('BookingReceipt — đè tiêu đề và chèn nội dung riêng của 
 
   it('children render bên trong hoá đơn', () => {
     render(
-      <BookingReceipt booking={makeBooking()} mood="confirmed">
+      <BookingReceipt booking={unpaid()} mood="confirming">
         <p>Released in about 42 minutes.</p>
       </BookingReceipt>,
     );
@@ -346,7 +312,7 @@ describe('BookingReceipt — đè tiêu đề và chèn nội dung riêng của 
  *  khoá lại: tiêu đề của hoá đơn là h2, `h1` thuộc về hero của trang. */
 describe('BookingReceipt — thứ bậc tiêu đề', () => {
   it('tiêu đề hoá đơn là h2, KHÔNG phải h1', () => {
-    const { container } = render(<BookingReceipt booking={makeBooking()} mood="confirmed" />);
+    const { container } = render(<BookingReceipt booking={unpaid()} mood="confirming" />);
     expect(container.querySelectorAll('h1')).toHaveLength(0);
     expect(container.querySelectorAll('h2')).toHaveLength(1);
   });

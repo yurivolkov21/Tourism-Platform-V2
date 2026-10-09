@@ -2,12 +2,11 @@ import type { Booking } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
 import { cn } from '@tourism/ui/lib/utils';
 import { CopyCodeButton } from '@/components/checkout/copy-code-button';
-import { TicketBarcode } from '@/components/checkout/ticket-barcode';
 import { RevealItem } from '@/components/motion/reveal-item';
 import { todayDateString } from '@/lib/account-stats';
 import { bookingTotalLabel, paymentProviderLabel, vietnamDay } from '@/lib/booking-vm';
 import type { CheckoutMood } from '@/lib/checkout';
-import { bookingPriceLines, formatBookingMoney, receiptNote, ticketSerial } from '@/lib/checkout';
+import { bookingPriceLines, formatBookingMoney, receiptNote } from '@/lib/checkout';
 import { STAGGER } from '@/lib/motion';
 import { formatDate, formatDateRange } from '@/lib/tours';
 
@@ -26,6 +25,11 @@ import { formatDate, formatDateRange } from '@/lib/tours';
  * Vì sao mọi thứ khác của tấm vé không mang sang: chúng TRÙNG với receipt —
  * pill trùng băng màu, cột TRAVELLERS trùng cuống cũ, hàng thương hiệu trùng
  * dải header. Chỉ ba thứ là receipt thiếu thật: mã cỡ lớn, barcode, serial.
+ * Barcode và serial gỡ ở review cuối P7 (M3) cùng tâm trạng "đã xác nhận" và
+ * dòng "Paid …": hoá đơn chỉ còn dựng cho đơn chưa trả (`paidAt` null), mà mã
+ * của đơn chưa trả chưa phải giấy vào cổng — mã vạch nay ở vé của trang chi
+ * tiết đơn và voucher (`bookingPass`). Các nhánh ấy hết đường tới mà spec vẫn
+ * canh, người đọc tưởng hoá đơn còn in mã vạch cho đơn đã trả.
  *
  * CỐ Ý không dùng `border: dashed` và không notch bán nguyệt: JSDoc
  * `CheckoutShell` ghi rõ bản trước nó bị bác vì đúng combo đó ("cliché card giả
@@ -39,13 +43,11 @@ import { formatDate, formatDateRange } from '@/lib/tours';
  * luồng mà dùng hai ngôn ngữ thị giác thì màn huỷ trông lạc lõng.
  */
 const TONE = {
-  confirmed: 'border-b-success',
   confirming: 'border-b-warning',
   settled: 'border-b-muted-foreground',
 } as const satisfies Record<CheckoutMood, string>;
 
 const PILL = {
-  confirmed: 'bg-success text-success-foreground',
   confirming: 'bg-warning text-warning-foreground',
   settled: 'bg-muted text-muted-foreground',
 } as const satisfies Record<CheckoutMood, string>;
@@ -70,23 +72,7 @@ export function BookingReceipt({
   const t = messages.booking.success;
   const ts = messages.checkoutSummary;
 
-  const statusLabel =
-    mood === 'confirmed'
-      ? t.statusPaid
-      : mood === 'confirming'
-        ? t.statusConfirming
-        : t.statusSettled;
-
-  /**
-   * Mã ĐÃ là voucher hay chưa — SUY từ dữ liệu, không nhận qua prop.
-   *
-   * Đây là chỗ dễ nói dối nhất trên trang: chưa trả tiền thì mã chỉ để trả
-   * tiếp, KHÔNG phải giấy vào cổng, và booking PENDING KHÔNG giữ ghế nào
-   * (invariant #1 của API). Nên khi chưa trả: bỏ barcode (barcode nghĩa là
-   * "quét tôi ở cổng") và đổi dòng hint. Suy từ `paidAt` thay vì cho caller
-   * truyền vào để không ai đặt sai giá trị.
-   */
-  const isVoucher = booking.paidAt !== null;
+  const statusLabel = mood === 'confirming' ? t.statusConfirming : t.statusSettled;
 
   // `formatDate` ("5 Sep 2026") chứ KHÔNG `formatTicketDate` ("5 SEP"): hàm kia
   // cố ý bỏ năm vì nó dành cho khoảnh khắc primary CỠ LỚN trên tấm vé, nơi năm
@@ -131,12 +117,7 @@ export function BookingReceipt({
                 màn hình báo hai tiêu đề cấp một cho một tài liệu. Cỡ chữ giữ
                 nguyên; đây là sửa NGỮ NGHĨA, không phải thị giác. */}
               <h2 className="font-heading text-2xl font-medium tracking-tight text-balance md:text-3xl">
-                {title ??
-                  (mood === 'confirmed'
-                    ? t.confirmedTitle
-                    : mood === 'confirming'
-                      ? t.pendingTitle
-                      : t.settledTitle)}
+                {title ?? (mood === 'confirming' ? t.pendingTitle : t.settledTitle)}
               </h2>
               <p className="text-sm text-muted-foreground">{body ?? receiptNote(booking, mood)}</p>
             </div>
@@ -145,8 +126,9 @@ export function BookingReceipt({
               <dt className="font-medium">{t.bookingMetaLabel}</dt>
               <dd className="font-mono text-muted-foreground">{booking.code}</dd>
               <dt className="font-medium">{t.dateMetaLabel}</dt>
+              {/* Ngày ĐẶT: hoá đơn chỉ dựng cho đơn chưa trả, không có ngày trả nào để in. */}
               <dd className="font-mono text-muted-foreground">
-                {formatDate(vietnamDay(booking.paidAt ?? booking.createdAt))}
+                {formatDate(vietnamDay(booking.createdAt))}
               </dd>
             </dl>
           </div>
@@ -183,11 +165,6 @@ export function BookingReceipt({
               <p className="font-medium">{paymentProviderLabel(booking.paymentProvider)}</p>
               {/* Sandbox disclosure — dùng LẠI key đã có, không bịa key trùng nghĩa. */}
               <p className="text-muted-foreground">{messages.tourDetail.booking.testMode}</p>
-              {booking.paidAt ? (
-                <p className="pt-1 text-muted-foreground">
-                  {t.paidAtLine(formatDate(vietnamDay(booking.paidAt)))}
-                </p>
-              ) : null}
             </Column>
           </div>
         </RevealItem>
@@ -250,13 +227,7 @@ export function BookingReceipt({
         {children ? <div className="px-4 pb-1">{children}</div> : null}
 
         <RevealItem enter="rise" delay={3 * STAGGER.grid}>
-          <Stub
-            booking={booking}
-            mood={mood}
-            departed={departed}
-            departure={departure}
-            isVoucher={isVoucher}
-          />
+          <Stub booking={booking} mood={mood} departed={departed} departure={departure} />
         </RevealItem>
       </div>
 
@@ -295,19 +266,23 @@ function Row({ k, v }: { k: string; v: string }) {
  * Băng trạng thái là `border-b`, bám mép NGOÀI của cuống. Ở tấm vé cũ cuống nằm
  * bên phải nên băng bám mép phải; cuống ở đây nằm dưới đáy nên băng bám mép
  * dưới — cùng luật "băng thuộc về cuống", chỉ khác trục.
+ *
+ * Mã ở cuống CHƯA là voucher — đây là chỗ dễ nói dối nhất của hoá đơn: chưa trả
+ * tiền thì mã chỉ để trả tiếp hay tra đơn, KHÔNG phải giấy vào cổng, và booking
+ * PENDING KHÔNG giữ ghế nào (invariant #1 của API). Nên không mã vạch (mã vạch
+ * nghĩa là "quét tôi ở cổng"), không serial, và dòng hint nói mã sẽ thành
+ * voucher khi trả xong.
  */
 function Stub({
   booking,
   mood,
   departed,
   departure,
-  isVoucher,
 }: {
   booking: Booking;
   mood: CheckoutMood;
   departed: boolean;
   departure: string;
-  isVoucher: boolean;
 }) {
   const t = messages.booking.success;
 
@@ -324,9 +299,7 @@ function Stub({
     >
       <div>
         <p className="font-medium">{departed ? t.departedOn(departure) : t.departsOn(departure)}</p>
-        <p className="text-xs text-muted-foreground">
-          {isVoucher ? t.stubShowCode : t.stubNotYetVoucher}
-        </p>
+        <p className="text-xs text-muted-foreground">{t.stubNotYetVoucher}</p>
       </div>
 
       <div className="flex flex-col items-start gap-1.5 sm:items-end">
@@ -340,18 +313,6 @@ function Stub({
           </p>
           <CopyCodeButton code={booking.code} />
         </div>
-        {/* Barcode CHỈ khi mã đã là voucher: một mã vạch nói "quét tôi ở cổng",
-            in nó cho booking chưa trả tiền là hứa một thứ chưa có.
-            Quiet zone `bg-card` (màu giấy của thân), không phải trắng cứng —
-            giữ tokens-only mà vẫn tương phản cao ở cả hai theme. */}
-        {isVoucher ? (
-          <TicketBarcode code={booking.code} className="h-10 bg-card px-2.5 py-1.5" />
-        ) : null}
-        {isVoucher ? (
-          <p className="font-mono text-[9px] tracking-widest text-muted-foreground">
-            NO. {ticketSerial(booking.code)}
-          </p>
-        ) : null}
       </div>
     </div>
   );

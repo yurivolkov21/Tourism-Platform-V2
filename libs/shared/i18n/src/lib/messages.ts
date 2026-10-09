@@ -458,8 +458,6 @@ export const messages = {
       /** Hero chuẩn site cho trang voucher (góp ý user 12/08 — navbar về
        *  đồng bộ, hết kiểu hero-less riêng). */
       heroBreadcrumb: 'Voucher',
-      confirmedTitle: 'Booking confirmed',
-      confirmedBody: 'Thank you — your payment went through and your trip is booked.',
       pendingTitle: 'Confirming your payment…',
       pendingBody:
         'Your payment is being confirmed — this usually takes a few seconds. This page updates automatically; you can also refresh.',
@@ -489,11 +487,14 @@ export const messages = {
       settledBody: 'There’s nothing left to pay here. Open the booking to see where it stands.',
       // ── Receipt thay tấm vé ở /checkout/success (19/08) ──
       // CỐ Ý chỉ khai thứ MỚI. Dùng lại nguyên: travellersLabel · paymentLabel ·
-      // totalLabel ('Total paid') · refLabel · stubShowCode · copyCode ở ngay
-      // cụm này, và checkoutSummary.adultsLine/childrenLine/taxesNote cho bảng
-      // tiền — khai trùng một câu ở hai khoá là cách chắc chắn để sau này sửa
-      // một chỗ rồi quên chỗ kia.
-      receiptSentTo: (email: string) => `A copy of this receipt was sent to ${email}.`,
+      // totalLabel ('Total paid') · refLabel · copyCode ở ngay cụm này, và
+      // checkoutSummary.adultsLine/childrenLine/taxesNote cho bảng tiền — khai
+      // trùng một câu ở hai khoá là cách chắc chắn để sau này sửa một chỗ rồi
+      // quên chỗ kia. Từ review cuối P7 (M3) hoá đơn chỉ còn cho đơn CHƯA trả:
+      // chữ của tâm trạng "đã xác nhận" (tiêu đề, pill "Paid", "receipt was sent
+      // to", dòng "Paid …", "Show this code…") đã gỡ cùng nhánh ấy. Khối "What
+      // happens next" (`nextHeading`…`nextManage`) gỡ trước đó ở P7: voucher kể
+      // những việc ấy bằng dòng điều kiện và Trip journal.
       // Hai nhãn của bảng meta góc phải. 'Booking' đứng cạnh mã, khác
       // `refLabel` ('Booking reference') vốn là nhãn của mã CỠ LỚN trong cuống.
       bookingMetaLabel: 'Booking',
@@ -501,31 +502,25 @@ export const messages = {
       // Nhãn cột giữa. Khác `departureLabel` ('Departure'): cột này gộp cả ngày
       // đi, thời lượng và điểm đến, không chỉ mỗi đợt khởi hành.
       tripLabel: 'Trip',
-      paidAtLine: (when: string) => `Paid ${when}`,
       perTraveller: 'per traveller',
       departsOn: (date: string) => `Departs ${date}`,
       departedOn: (date: string) => `Departed ${date}`,
       print: 'Print',
       needHelp: 'Need help with this booking?',
-      // Dòng cuống khi booking CHƯA trả tiền (trang /checkout/cancel dùng chung
-      // khuôn receipt từ 19/08). KHÔNG được dùng `stubShowCode` ở đây: câu đó
-      // bảo khách chìa mã ra ở điểm hẹn, tức ngụ ý mã đã là voucher và ghế đã
-      // được giữ — sai thẳng invariant #1 (booking PENDING KHÔNG giữ seat nào).
+      // Dòng nhỏ dưới mã ở cuống hoá đơn — hoá đơn chỉ dựng cho booking CHƯA trả
+      // tiền (`paidAt` null, ở `/checkout/success` lẫn `/checkout/cancel`); khối chờ
+      // trả của trang chi tiết đơn dùng lại. KHÔNG được thay bằng câu chìa-mã-ở-điểm-hẹn
+      // (`voucher.showCode` của đơn đã trả): câu đó ngụ ý mã đã là voucher và ghế
+      // đã được giữ — sai thẳng invariant #1 (booking PENDING KHÔNG giữ seat nào).
       // Repo đã bị đúng lớp lỗi này một lần: câu "Your reservation is held" bị
       // bác ở final review cụm C vì ngụ ý giữ chỗ.
       stubNotYetVoucher: 'This code becomes your voucher once payment is complete.',
       // Nhãn pill trạng thái — NGẮN, vì nó đứng cạnh tiêu đề vốn đã nói đủ câu.
-      statusPaid: 'Paid',
       statusConfirming: 'Confirming',
       statusSettled: 'Settled',
       // Nút chép mã (CopyCodeButton) — nhãn đổi trong 2 giây sau khi bấm.
       copyCode: 'Copy code',
       copied: 'Copied',
-      // Dòng nhỏ dưới mã trong cuống hoá đơn (`BookingReceipt`) — chú thích NGẮN ngay
-      // cạnh chính mã đó. Voucher của đơn đã trả có câu riêng `voucher.showCode`. Khối
-      // "What happens next" (`nextHeading`…`nextManage`) gỡ ở P7: voucher kể những việc
-      // ấy bằng dòng điều kiện và Trip journal.
-      stubShowCode: 'Show this code at the meeting point.',
       // Nhãn lặp lại HAI lần trên vé (`CheckoutShell`): dải header ngang +
       // cuống vé xoay dọc (`writing-mode: vertical-rl`) — cùng một chữ, hai tư
       // thế, đúng kiểu ấn phẩm vé thật lặp thông tin ở cuống.

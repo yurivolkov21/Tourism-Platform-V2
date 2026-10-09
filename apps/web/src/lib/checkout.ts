@@ -17,14 +17,18 @@ import { formatMoney, formatMoneyExact } from './tours';
 export const PENDING_TTL_MINUTES = 65;
 
 /**
- * Ba tâm trạng của màn quay-về sau thanh toán.
+ * Hai tâm trạng của hoá đơn chờ (`BookingReceipt`) ở màn quay-về sau thanh toán.
  *
- * - `confirmed`  — tiền đã về, webhook đã xử lý xong.
  * - `confirming` — khách về trước webhook. Trạng thái TẠM, trang tự làm mới.
  * - `settled`    — booking đã ở một kết cục khác rồi (hết hạn giữa chừng, đã
  *                  huỷ, đã hoàn tiền). KHÔNG tự làm mới: không có gì để đợi.
+ *
+ * Không còn `confirmed` (tiền đã về): từ P7 đơn đã trả mở voucher ở `/checkout/success`, và
+ * `/checkout/cancel` chuyển nó sang đó (`cancelPageRedirect`) — hoá đơn chỉ còn dựng cho đơn
+ * `paidAt` null, mà PAID luôn có `paidAt` (API ghi hai cột cùng lúc, `claimSeatsForPaid`). Nhánh
+ * ấy hết đường tới mà spec vẫn canh (review cuối P7, M3).
  */
-export type CheckoutMood = 'confirmed' | 'confirming' | 'settled';
+export type CheckoutMood = 'confirming' | 'settled';
 
 /**
  * Tổng tiền booking — MỘT nguồn dùng CHUNG cho nhãn nút Pay (`booking-wizard.tsx`)
@@ -92,10 +96,9 @@ export function bookingPriceLines(
   return lines;
 }
 
-export function checkoutMood(booking: Booking): CheckoutMood {
-  if (booking.status === 'PAID') return 'confirmed';
-  if (booking.status === 'PENDING') return 'confirming';
-  return 'settled';
+/** PENDING là đang chờ webhook; mọi trạng thái khác là kết cục đã rồi (xem `CheckoutMood`). */
+export function checkoutMood(booking: Pick<Booking, 'status'>): CheckoutMood {
+  return booking.status === 'PENDING' ? 'confirming' : 'settled';
 }
 
 /**
@@ -114,12 +117,11 @@ export function cancelPageRedirect(booking: Pick<Booking, 'code' | 'paidAt'>): s
 
 /**
  * Câu dưới tiêu đề của hoá đơn (`BookingReceipt`) khi trang không truyền câu riêng — theo tâm
- * trạng. Từ P7 hoá đơn ở `/checkout/success` chỉ còn cho đơn CHƯA trả (đơn đã trả mở voucher,
- * spec §2.6), nên câu mặc định cũ cho mọi đơn — "A copy of this receipt was sent to {email}." —
- * nói sai: chưa trả thì không email nào đi, và đơn bị thu rồi hoàn tự động không được nhắc tới
- * khoản hoàn (review P7C#5).
+ * trạng. Từ P7 hoá đơn chỉ còn cho đơn CHƯA trả (đơn đã trả mở voucher, spec §2.6), nên câu mặc
+ * định cũ cho mọi đơn — "A copy of this receipt was sent to {email}." — nói sai: chưa trả thì
+ * không email nào đi, và đơn bị thu rồi hoàn tự động không được nhắc tới khoản hoàn (review
+ * P7C#5).
  *
- * - `confirmed` — đã trả: bản sao hoá đơn đã tới email khách.
  * - `confirming` — khách về trước webhook: thanh toán đang được xác nhận, trang tự làm tươi.
  * - `settled` — đơn đã ở kết cục khác. Từng bị thu (thua đua ghế, chuyến đóng lúc capture về —
  *   `paidAt` vẫn null, `wasCharged`) thì kể khoản hoàn bằng câu chung `refundSentence`, kèm thời
@@ -128,8 +130,6 @@ export function cancelPageRedirect(booking: Pick<Booking, 'code' | 'paidAt'>): s
 export function receiptNote(booking: Booking, mood: CheckoutMood): string {
   const t = messages.booking.success;
   switch (mood) {
-    case 'confirmed':
-      return t.receiptSentTo(booking.contactEmail);
     case 'confirming':
       return t.pendingBody;
     case 'settled': {
@@ -166,21 +166,6 @@ export function pendingExpiry(createdAt: string, at: Date = new Date()): Pending
 }
 
 /**
- * Số serial 10 chữ số cho dòng "NO. …" ở cuống hoá đơn (`BookingReceipt`)
- * — mô phỏng số serial một ấn phẩm vé giấy thật, DETERMINISTIC theo mã đặt
- * chỗ (KHÔNG random: random đổi hình mỗi lần render, SSR/CSR lệch nhau, và
- * trông giả hơn cả dashed-border cliché vừa gỡ). Không phải một định danh
- * thật — `code` đã là định danh; đây thuần là trang trí ấn phẩm.
- */
-export function ticketSerial(code: string): string {
-  let hash = 0;
-  for (let i = 0; i < code.length; i++) {
-    hash = (hash * 31 + code.charCodeAt(i)) >>> 0;
-  }
-  return String(hash).padStart(10, '0').slice(-10);
-}
-
-/**
  * Số PHẦN TỬ của barcode giả — ĐỘC LẬP với độ dài `code`. Mã đặt chỗ (~10-11 ký
  * tự) một-ký-tự-một-vạch từng ra barcode cụt ~5 vạch nhìn như lỗi.
  *
@@ -206,11 +191,12 @@ const TICKET_BARCODE_BAR_COUNT = 52;
 
 /**
  * Bề rộng (px, 1–4) của từng vạch barcode giả — DETERMINISTIC theo mã đặt
- * chỗ, cùng lý do với `ticketSerial`. Mã ngắn hơn số vạch thì LẶP ký tự theo
- * chu kỳ (`i % code.length`); trộn thêm chỉ số `i` vào hash để các vòng lặp
- * lại không tạo cùng một vạch y hệt liên tiếp. Không phải barcode quét được
- * thật (không cần máy quét ở capstone này), chỉ mô phỏng đúng "hình" vạch
- * dày-mỏng không đều của barcode ấn phẩm thật.
+ * chỗ (KHÔNG random: random đổi hình mỗi lần render, SSR/CSR lệch nhau, và
+ * trông giả hơn cả dashed-border cliché đã gỡ). Mã ngắn hơn số vạch thì LẶP
+ * ký tự theo chu kỳ (`i % code.length`); trộn thêm chỉ số `i` vào hash để các
+ * vòng lặp lại không tạo cùng một vạch y hệt liên tiếp. Không phải barcode
+ * quét được thật (không cần máy quét ở capstone này), chỉ mô phỏng đúng "hình"
+ * vạch dày-mỏng không đều của barcode ấn phẩm thật.
  */
 export function ticketBarcodeWidths(code: string): number[] {
   return Array.from({ length: TICKET_BARCODE_BAR_COUNT }, (_, i) => {

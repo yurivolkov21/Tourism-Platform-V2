@@ -10,25 +10,21 @@ import {
   pendingExpiry,
   receiptNote,
   ticketBarcodeWidths,
-  ticketSerial,
 } from './checkout';
 
-describe('checkoutMood — tâm trạng màn /checkout/success đọc từ status', () => {
-  it('PAID → confirmed', () => {
-    expect(checkoutMood(makeBooking({ status: 'PAID' }))).toBe('confirmed');
-  });
-
+describe('checkoutMood — tâm trạng của hoá đơn chờ đọc từ status', () => {
   it('PENDING → confirming (webhook chưa về)', () => {
     expect(checkoutMood(makeBooking({ status: 'PENDING' }))).toBe('confirming');
   });
 
   /**
-   * Ba status còn lại KHÔNG phải "đang chờ webhook" — chúng là kết cục đã rồi.
+   * Các status còn lại KHÔNG phải "đang chờ webhook" — chúng là kết cục đã rồi.
    * Nếu khách quay về từ cổng mà booking đã CANCELLED (hết hạn giữa chừng) thì
    * hiện mood confirming là nói dối: trang sẽ tự làm mới mãi mãi cho một thứ
-   * không bao giờ đổi.
+   * không bao giờ đổi. PAID không tới hoá đơn (đơn đã trả mở voucher), nên hoá đơn
+   * không còn tâm trạng "đã xác nhận" riêng (review cuối P7, M3).
    */
-  it.each(['CANCELLED', 'REFUNDED', 'PARTIALLY_REFUNDED'] as const)(
+  it.each(['PAID', 'CANCELLED', 'REFUNDED', 'PARTIALLY_REFUNDED'] as const)(
     '%s → settled, KHÔNG tự làm mới',
     (status) => {
       expect(checkoutMood(makeBooking({ status }))).toBe('settled');
@@ -69,12 +65,6 @@ describe('cancelPageRedirect — đơn đã trả về /checkout/cancel thì san
  * sai với đơn chưa trả (không email nào đi), và im về khoản hoàn của đơn bị thu rồi hoàn tự động.
  */
 describe('receiptNote — câu dưới tiêu đề hoá đơn theo tâm trạng', () => {
-  it('đã trả → bản sao hoá đơn đã đi tới email khách', () => {
-    expect(receiptNote(makeBooking(), 'confirmed')).toBe(
-      'A copy of this receipt was sent to test@example.com.',
-    );
-  });
-
   it('chờ webhook → thanh toán đang được xác nhận, KHÔNG "was sent to"', () => {
     const pending = makeBooking({ status: 'PENDING', paidAt: null });
     expect(receiptNote(pending, 'confirming')).toBe(
@@ -151,24 +141,11 @@ describe('computeBookingTotal — tổng tiền, trẻ em CÙNG đơn giá', () 
   });
 });
 
-// Vé success dựng theo giải phẫu boarding-pass thật (docs/adr redesign) — cả
-// serial lẫn barcode là "trang trí ấn phẩm" sinh từ CHÍNH mã đặt chỗ, KHÔNG
-// random: random sẽ đổi hình mỗi lần render (SSR/CSR lệch nhau) và trông giả
-// hơn cả dashed-border cliché mà bản trước vừa gỡ.
-describe('ticketSerial — số serial 10 chữ số deterministic từ mã đặt chỗ', () => {
-  it('cùng mã → luôn cùng serial', () => {
-    expect(ticketSerial('TRV-ABC123')).toBe(ticketSerial('TRV-ABC123'));
-  });
-
-  it('khác mã → khác serial', () => {
-    expect(ticketSerial('TRV-ABC123')).not.toBe(ticketSerial('TRV-XYZ999'));
-  });
-
-  it('luôn đúng 10 chữ số (đệm 0 bên trái nếu ngắn)', () => {
-    expect(ticketSerial('BK-TESTAAAA')).toMatch(/^\d{10}$/);
-  });
-});
-
+// Vé success dựng theo giải phẫu boarding-pass thật (docs/adr redesign) — barcode
+// là "trang trí ấn phẩm" sinh từ CHÍNH mã đặt chỗ, KHÔNG random: random sẽ đổi
+// hình mỗi lần render (SSR/CSR lệch nhau) và trông giả hơn cả dashed-border
+// cliché mà bản trước vừa gỡ. (Serial "NO. …" của cuống hoá đơn gỡ ở review cuối
+// P7 cùng nhánh "đã là voucher" của hoá đơn.)
 describe('ticketBarcodeWidths — vạch barcode giả deterministic theo mã đặt chỗ', () => {
   it('cùng mã → cùng mảng bề rộng', () => {
     expect(ticketBarcodeWidths('TRV-ABC123')).toEqual(ticketBarcodeWidths('TRV-ABC123'));
@@ -193,9 +170,10 @@ describe('ticketBarcodeWidths — vạch barcode giả deterministic theo mã đ
    * "dày hơn nữa" và làm tràn.
    *
    * Trần 160px đến từ cuống vé DỌC của `CheckoutShell` — component đó đã xoá
-   * 19/08, nhưng trần được GIỮ LẠI có chủ đích: cuống ngang của `BookingReceipt`
-   * rộng rãi hơn nhiều, nên một trần chật hơn là biên an toàn miễn phí, và bỏ
-   * nó đi thì chẳng còn gì canh khi có người nâng số vạch.
+   * 19/08, nhưng trần được GIỮ LẠI có chủ đích: bỏ nó đi thì chẳng còn gì canh
+   * khi có người nâng số vạch. (Cuống ngang của `BookingReceipt` từng là chỗ vẽ
+   * rộng rãi nhất; hoá đơn thôi in mã vạch từ review cuối P7 — mã vạch nay ở vé
+   * của trang chi tiết đơn và voucher, qua `TicketBarcode`.)
    *
    * Chỉ canh trên mã HỢP LỆ (`BK-` + 8 ký tự, theo `BookingCodeSchema`). Mã
    * ngắn hơn như `BK-1` cho tổng lớn hơn hẳn vì chu kỳ lặp ngắn rơi vào toàn
