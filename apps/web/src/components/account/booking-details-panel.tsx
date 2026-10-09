@@ -240,7 +240,7 @@ function Row({
       <dt className={cn('shrink-0', total ? null : 'text-muted-foreground')}>{label}</dt>
       {/* Ô chữ (không phải số tiền) bẻ dòng ở bất kỳ đâu khi một chữ dài hơn cả ô: yêu cầu đặc biệt
           khách gõ, điểm hẹn admin dán có thể là email, link bản đồ, danh sách viết liền — trước đó
-          một chuỗi như thế đẩy cả trang cuộn ngang 28–47px ở 375px (review P7 S2). */}
+          một chuỗi như thế đẩy cả trang cuộn ngang 13–47px ở 375px (review P7 S2). */}
       <dd
         className={cn(
           'text-right',
