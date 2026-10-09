@@ -106,13 +106,17 @@ export function BookingDetailsPanel({
         <Block title={t.details.cancellation}>
           {deadlineText ? (
             <p className="flex items-start gap-2 text-[13.5px]">
+              {/* Quá hạn: tông cảnh báo đứng thẳng trên card. Không token "mực cảnh báo" nào đạt
+                  3:1 ở cả hai theme: `warning-foreground` (chữ cho nền `bg-warning` đặc) 14,96:1
+                  sáng nhưng 1,39:1 tối — gần như biến mất; `warning` 7,39:1 tối nhưng 2,01:1 sáng.
+                  Nên mỗi theme một token (review P7 B24). */}
               <CalendarClockIcon
                 aria-hidden="true"
                 className={cn(
                   'mt-0.5 size-4 shrink-0',
                   booking.cancellation?.withinDeadline
                     ? 'text-primary-emphasis'
-                    : 'text-warning-foreground',
+                    : 'text-warning-foreground dark:text-warning',
                 )}
               />
               <span>{deadlineText}</span>

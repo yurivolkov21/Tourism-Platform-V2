@@ -50,10 +50,15 @@ const ICON_TONE: Record<MilestoneState, string> = {
   next: 'bg-muted text-muted-foreground',
 };
 
+/**
+ * `warning` là cặp của huy hiệu "Almost full" ở bảng đợt khởi hành (chữ `accent-foreground` trên nền
+ * `warning` pha 20%): 7,38:1 theme sáng, 4,98:1 theme tối. `warning-foreground` chỉ dành cho nền
+ * `bg-warning` ĐẶC — trên nền pha ở theme tối nó còn 2,14:1, chữ 12px trượt AA (review P7 B24).
+ */
 const CHIP_TONE: Record<JourneyChipTone, string> = {
   active: 'bg-foreground text-background',
   done: 'border border-success/40 bg-success/10 text-success',
-  warning: 'border border-warning/60 bg-warning/20 text-warning-foreground',
+  warning: 'border border-warning/60 bg-warning/20 text-accent-foreground',
   muted: 'bg-muted text-muted-foreground',
 };
 
