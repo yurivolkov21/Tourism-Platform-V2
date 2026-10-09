@@ -171,7 +171,8 @@ describe('messages: passportHome (trang hộ chiếu /account)', () => {
       'Saved tours',
       'Settings',
       'Sign out',
-    ]);  });
+    ]);
+  });
 });
 
 describe('messages: bookingDetail (P7 phần B — trang chi tiết đơn)', () => {
