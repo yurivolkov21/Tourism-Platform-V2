@@ -54,7 +54,10 @@ export function VoucherOverview({
           <p className="mt-2 text-sm text-muted-foreground">{view.subtitle}</p>
         </div>
         <div className="shrink-0 self-start sm:pt-1">
-          <VisaStamp status={booking.status} tone={bookingView(booking).tone} />
+          <VisaStamp
+            label={messages.passportVisa.stampByStatus[booking.status]}
+            tone={bookingView(booking).tone}
+          />
         </div>
       </div>
 

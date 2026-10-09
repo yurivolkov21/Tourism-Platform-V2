@@ -14,7 +14,11 @@ import {
 /**
  * Cột phải của đơn đã kết thúc mà không đi (spec P7 §2.5): đã huỷ hay đã hoàn đủ
  * (`cancelled` — câu kết thúc của `bookingView`, chữ hoàn tiền của `refundSummary`) và giữ chỗ
- * không trả kịp (`lapsed`). Cả hai mở lối "Browse tours".
+ * qua hạn chót mà chưa trả (`lapsed`). Cả hai mở lối "Browse tours".
+ *
+ * `lapsed` nói có điều kiện, không khẳng định "đã lỡ": claim của API vẫn nhận phiên thanh toán mở
+ * TRƯỚC hạn (Stripe tới 60 phút, PayPal tới 3 giờ), trả xong đơn tự sang PAID (ADR-0054 AMEND 1
+ * §4). Câu cũ "wasn't paid in time" dễ khiến khách bỏ một tab thanh toán còn trả được (review P7 S1).
  */
 export function TripClosedPanel({
   booking,
@@ -29,7 +33,8 @@ export function TripClosedPanel({
   if (kind === 'lapsed') {
     return (
       <ClosedFrame title={t.journey.paymentNotCompleted}>
-        <p className="mt-2 text-[15px] font-semibold">{t.closed.notPaidInTime}</p>
+        <p className="mt-2 text-[15px] font-semibold">{t.closed.notPaidByDeadline}</p>
+        <p className="mt-1 text-sm text-muted-foreground">{t.closed.finishOpenPayment}</p>
       </ClosedFrame>
     );
   }

@@ -89,8 +89,13 @@ describe('TripClosedPanel — đã huỷ', () => {
   });
 });
 
-describe('TripClosedPanel — giữ chỗ không trả kịp', () => {
-  it('h2 "Payment not completed", câu giải thích, Browse tours', () => {
+/**
+ * Qua hạn chót mà chưa trả (`lapsed`) chưa phải kết cục chắc chắn: claim của API vẫn nhận phiên
+ * thanh toán mở TRƯỚC hạn (Stripe tới 60 phút, PayPal tới 3 giờ — ADR-0054 AMEND 1 §4). Chữ nói có
+ * điều kiện, không khẳng định "đã lỡ" (review P7 S1).
+ */
+describe('TripClosedPanel — giữ chỗ qua hạn chót mà chưa trả', () => {
+  it('h2 "Payment not completed", câu sự việc rồi câu điều kiện, Browse tours', () => {
     renderClosed(
       makeBooking({ status: 'PENDING', paidAt: null, departureStartDate: '2026-10-01' }),
       'lapsed',
@@ -98,7 +103,13 @@ describe('TripClosedPanel — giữ chỗ không trả kịp', () => {
     expect(
       screen.getByRole('heading', { level: 2, name: 'Payment not completed' }),
     ).toBeInTheDocument();
-    expect(screen.getByText('This booking wasn’t paid in time.')).toBeInTheDocument();
+    expect(screen.getByText('This booking wasn’t paid by the deadline.')).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        'If you started paying before then, finish in that payment window — the booking confirms itself once it goes through.',
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByText('This booking wasn’t paid in time.')).toBeNull();
     expect(screen.getByRole('link', { name: 'Browse tours' })).toHaveAttribute('href', '/tours');
   });
 });

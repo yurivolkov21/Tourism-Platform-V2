@@ -6,13 +6,7 @@ import Link from 'next/link';
 import { TicketBarcode } from '@/components/checkout/ticket-barcode';
 import { RevealItem } from '@/components/motion/reveal-item';
 import { VisaStamp } from '@/components/passport/visa-stamp';
-import {
-  type BookingView,
-  bookingPass,
-  bookingTotalLabel,
-  paymentProviderLabel,
-  vietnamDay,
-} from '@/lib/booking-vm';
+import { bookingPass, bookingTotalLabel, paymentProviderLabel, vietnamDay } from '@/lib/booking-vm';
 import { formatBookingMoney } from '@/lib/checkout';
 import { calendarDateParts, formatDate } from '@/lib/tours';
 
@@ -33,26 +27,20 @@ const KICKER =
  * `data-slot="ticket-stub"`) đè lên viền, nằm ngoài hộp đệm của vé. Vì thế từng mảng màu sát
  * góc (ảnh, hai dải `bg-primary`, lưới ô) tự bo góc 15px = 16px của vé trừ viền 1px.
  *
- * Mã vạch theo `bookingPass` — cùng luật với voucher (sắp đi, đang đi, đã trả): mã vạch nói
- * "quét tôi ở điểm đón", in nó cho đơn chưa trả, đã huỷ hay chuyến đã xong là hứa một thứ không
- * có (cùng bất biến chống nói dối của `BookingReceipt`).
+ * Mã vạch và mộc theo `bookingPass` — cùng luật với voucher. Mã vạch (sắp đi, đang đi, đã trả)
+ * nói "quét tôi ở điểm đón", in nó cho đơn chưa trả, đã huỷ hay chuyến đã xong là hứa một thứ
+ * không có (cùng bất biến chống nói dối của `BookingReceipt`). Mộc theo giai đoạn, không theo
+ * trạng thái đơn: đơn qua hạn chót mà chưa trả không còn "AWAITING PAYMENT", đơn trên chuyến công
+ * ty huỷ không còn "CONFIRMED".
  */
-export function BookingTicket({
-  booking,
-  view,
-  phase,
-}: {
-  booking: BookingDetail;
-  view: BookingView;
-  phase: BookingPhase;
-}) {
+export function BookingTicket({ booking, phase }: { booking: BookingDetail; phase: BookingPhase }) {
   const t = messages.bookingDetail;
   const photo = booking.tourImage;
   const paid = booking.paidAt !== null;
   const days = calendarDaysBetween(booking.departureStartDate, booking.departureEndDate) + 1;
   const place = booking.tourDestinations[0]?.name;
   const route = place ? `${t.ticket.days(days)} · ${place}` : t.ticket.days(days);
-  const showBarcode = bookingPass(booking, phase).barcode;
+  const pass = bookingPass(booking, phase);
   const facts = [
     { label: t.leadTraveller, value: booking.contactName },
     {
@@ -117,7 +105,7 @@ export function BookingTicket({
             </div>
             {/* Con dấu "đóng xuống" (nhóm motion 3, 19/08) — giữ nguyên như trang cũ. */}
             <RevealItem enter="stamp" delay={0.15} className="shrink-0 self-end sm:self-auto">
-              <VisaStamp status={booking.status} tone={view.tone} />
+              <VisaStamp label={pass.stamp.label} tone={pass.stamp.tone} />
             </RevealItem>
           </div>
 
@@ -170,7 +158,7 @@ export function BookingTicket({
           </p>
           <p className="mt-0.5 text-[12.5px] text-muted-foreground">{t.ticket.taxesIncluded}</p>
           <div className="mt-auto pt-4">
-            {showBarcode ? (
+            {pass.barcode ? (
               <TicketBarcode code={booking.code} className="h-11 justify-center" />
             ) : null}
             <p className="mt-2 text-center font-mono text-xs font-semibold tracking-[0.16em]">

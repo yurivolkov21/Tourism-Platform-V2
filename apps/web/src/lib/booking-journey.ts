@@ -274,6 +274,11 @@ function refundDetail(refund: RefundSummary, currency: string): string {
   }
 }
 
+/**
+ * Đơn chờ trả qua hạn chót: Booked → Payment not completed. Mốc sau là mốc ĐANG ĐỨNG (`now`),
+ * không tô như đã xong: claim của API vẫn nhận phiên thanh toán mở trước hạn, trả xong thì đơn tự
+ * sang PAID (ADR-0054 AMEND 1 §4) — đây chưa phải kết cục (review P7 S1).
+ */
 function lapsedJourney(booking: BookingDetail): JourneyView {
   const t = messages.bookingDetail.journey;
   return {
@@ -285,7 +290,7 @@ function lapsedJourney(booking: BookingDetail): JourneyView {
         detail: formatDate(vietnamDay(booking.createdAt)),
         state: 'done',
       },
-      { key: 'paymentNotCompleted', label: t.paymentNotCompleted, detail: null, state: 'done' },
+      { key: 'paymentNotCompleted', label: t.paymentNotCompleted, detail: null, state: 'now' },
     ],
     today: null,
     fillPercent: 100,

@@ -1,7 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import { type BookingDetail, bookingPhase } from '@tourism/contract';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
-import { bookingView } from '@/lib/booking-vm';
 import { makeBooking } from '@/test/fixtures/booking';
 import { BookingTicket } from './booking-ticket';
 
@@ -57,13 +56,7 @@ const PAID = makeBooking({
 const TODAY = '2026-10-05';
 
 function renderTicket(booking: BookingDetail = PAID, today = TODAY) {
-  return render(
-    <BookingTicket
-      booking={booking}
-      view={bookingView(booking, booking.cancellation)}
-      phase={bookingPhase(booking, today)}
-    />,
-  );
+  return render(<BookingTicket booking={booking} phase={bookingPhase(booking, today)} />);
 }
 
 describe('BookingTicket — thân vé', () => {
@@ -129,6 +122,27 @@ describe('BookingTicket — thân vé', () => {
   it('mộc trạng thái là `VisaStamp` có sẵn', () => {
     renderTicket();
     expect(screen.getByText('CONFIRMED')).toBeInTheDocument();
+  });
+
+  // Mộc theo giai đoạn (`bookingPass(…).stamp`, ADR-0054 AMEND 1 §5) — chuyến 03–05/11 có hạn
+  // chót 31/10.
+  it('chờ trả còn trong hạn: mộc "AWAITING PAYMENT" tông cảnh báo', () => {
+    renderTicket({ ...PAID, status: 'PENDING', paidAt: null });
+    expect(screen.getByText('AWAITING PAYMENT').className).toContain('text-warning');
+  });
+
+  it('chờ trả qua hạn chót: mộc "NOT PAID" mực xám — chưa chắc đã lỡ, nhưng không còn mời trả', () => {
+    // Claim của API còn nhận phiên mở trước hạn (ADR-0054 AMEND 1 §4): "đã lỡ" là chưa chắc,
+    // "AWAITING PAYMENT" cam là mời trả một khoản không mở lại được (review P7 B9, S1).
+    renderTicket({ ...PAID, status: 'PENDING', paidAt: null }, '2026-11-01');
+    expect(screen.getByText('NOT PAID').className).toContain('text-muted-foreground');
+    expect(screen.queryByText('AWAITING PAYMENT')).toBeNull();
+  });
+
+  it('chuyến công ty huỷ, đơn còn PAID chờ job hoàn tiền: mộc CANCELLED, không CONFIRMED', () => {
+    renderTicket({ ...PAID, departureCancelled: true });
+    expect(screen.getByText('CANCELLED')).toBeInTheDocument();
+    expect(screen.queryByText('CONFIRMED')).toBeNull();
   });
 
   it('có ảnh bìa thì có cột ảnh với alt', () => {

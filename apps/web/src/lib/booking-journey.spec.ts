@@ -356,8 +356,12 @@ describe('journeyMilestones — đã huỷ', () => {
   });
 });
 
-describe('journeyMilestones — giữ chỗ không trả kịp', () => {
-  it('hai mốc Booked → Payment not completed; không chip, không Today', () => {
+describe('journeyMilestones — giữ chỗ qua hạn chót mà chưa trả', () => {
+  /**
+   * Mốc "Payment not completed" là mốc ĐANG ĐỨNG (`now`), không tô như đã xong: claim của API vẫn
+   * nhận phiên mở trước hạn, trả xong đơn tự sang PAID (ADR-0054 AMEND 1 §4, review P7 S1).
+   */
+  it('hai mốc Booked → Payment not completed (mốc đang đứng); không chip, không Today', () => {
     const lapsed = makeBooking({
       status: 'PENDING',
       paidAt: null,
@@ -370,7 +374,7 @@ describe('journeyMilestones — giữ chỗ không trả kịp', () => {
     expect(view.variant).toBe('lapsed');
     expect(rows(view)).toEqual([
       ['booked', 'Booked', '20 Sep 2026', 'done'],
-      ['paymentNotCompleted', 'Payment not completed', null, 'done'],
+      ['paymentNotCompleted', 'Payment not completed', null, 'now'],
     ]);
     expect(view.chip).toBeNull();
     expect(view.today).toBeNull();

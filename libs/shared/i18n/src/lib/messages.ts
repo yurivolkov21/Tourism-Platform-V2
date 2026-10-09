@@ -2834,6 +2834,12 @@ export const messages = {
       REFUNDED: 'REFUNDED',
       PARTIALLY_REFUNDED: 'PARTLY REFUNDED',
     },
+    /**
+     * Mộc của đơn chờ trả đã qua hạn chót (`lapsed`) — thay "AWAITING PAYMENT": không mở lại phiên
+     * trả được nữa, nhưng phiên mở trước hạn vẫn có thể trả xong (ADR-0054 AMEND 1 §4). Chữ trung
+     * tính nói đúng sự thật lúc này, không khẳng định "đã lỡ".
+     */
+    stampLapsed: 'NOT PAID',
     viewVoucher: 'View voucher',
     contactUs: 'Contact us',
   },
@@ -3014,7 +3020,14 @@ export const messages = {
       questions: 'Questions about this trip?',
     },
     closed: {
-      notPaidInTime: 'This booking wasn’t paid in time.',
+      /**
+       * Đơn chờ trả qua hạn chót (`lapsed`): câu sự việc, rồi câu điều kiện — claim của API vẫn
+       * nhận phiên thanh toán mở TRƯỚC hạn, trả xong đơn tự sang PAID (ADR-0054 AMEND 1 §4). Không
+       * khẳng định "đã lỡ".
+       */
+      notPaidByDeadline: 'This booking wasn’t paid by the deadline.',
+      finishOpenPayment:
+        'If you started paying before then, finish in that payment window — the booking confirms itself once it goes through.',
       thanks: 'Thanks for travelling with us.',
     },
   },

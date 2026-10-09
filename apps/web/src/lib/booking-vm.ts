@@ -60,7 +60,7 @@ export interface BookingView {
  * có nút huỷ, còn tone giữ nguyên nên `passport.ts` không bị ảnh hưởng.
  */
 export function bookingView(
-  b: Booking,
+  b: Pick<Booking, 'status'>,
   cancellation: BookingCancellation | null = null,
 ): BookingView {
   const cancel: BookingAction[] = cancellation?.canCancel ? ['cancelBooking'] : [];
@@ -78,38 +78,79 @@ export function bookingView(
   }
 }
 
-/** Những thứ khách chìa ra được cho MỘT đơn — kết quả của `bookingPass`. */
+/** Mộc trạng thái: chữ in trên mộc và tông mực — `VisaStamp` chỉ vẽ. */
+export interface BookingStamp {
+  label: string;
+  tone: BookingViewTone;
+}
+
+/** Những gì tấm vé của MỘT đơn mang theo giai đoạn — kết quả của `bookingPass`. */
 export interface BookingPass {
   /** Có voucher để xem: trang `/checkout/success` dựng voucher, có nút hay link "View voucher". */
   voucher: boolean;
   /** Có mã vạch trên vé và voucher. */
   barcode: boolean;
+  /** Mộc trên vé của trang chi tiết đơn. */
+  stamp: BookingStamp;
 }
 
 /**
- * Voucher và mã vạch của MỘT đơn theo giai đoạn (`bookingPhase`) — MỘT luật cho vé và nút "View
- * voucher" của trang chi tiết đơn, voucher `/checkout/success` và accordion My bookings (ADR-0054
- * AMEND 1 §5). Trước đó bốn chỗ bốn vị từ: vé theo trạng thái đơn — in mã vạch cho chuyến đã đi
- * trong khi voucher của cùng đơn giấu nó, và giấu mã vạch của đơn hoàn thiện chí vẫn đi; khối
- * Details và voucher theo giai đoạn, mỗi bên một bản; accordion chỉ PAID (review P7 B11).
+ * Voucher, mã vạch và mộc của MỘT đơn theo giai đoạn (`bookingPhase`) — MỘT luật cho vé và nút
+ * "View voucher" của trang chi tiết đơn, voucher `/checkout/success` và accordion My bookings
+ * (ADR-0054 AMEND 1 §5). Trước đó bốn chỗ bốn vị từ: vé theo trạng thái đơn — in mã vạch cho
+ * chuyến đã đi trong khi voucher của cùng đơn giấu nó, và giấu mã vạch của đơn hoàn thiện chí vẫn
+ * đi; khối Details và voucher theo giai đoạn, mỗi bên một bản; accordion chỉ PAID (review P7 B11).
  *
  * Voucher: đơn đã trả ở ba giai đoạn của chuyến còn đi hay đã đi. Mã vạch nói "quét tôi ở điểm
  * đón" — chỉ sắp đi và đang đi; chuyến đã xong không còn cổng nào để quét. Chưa có `paidAt` thì
  * không có gì: in mã vạch cho đơn chưa trả là hứa một thứ không có (cùng bất biến của
- * `BookingReceipt`).
+ * `BookingReceipt`). Mộc: xem `passStamp`.
  */
-export function bookingPass(booking: Pick<Booking, 'paidAt'>, phase: BookingPhase): BookingPass {
+export function bookingPass(
+  booking: Pick<Booking, 'paidAt' | 'status'>,
+  phase: BookingPhase,
+): BookingPass {
   const paid = booking.paidAt !== null;
+  const stamp = passStamp(booking, phase);
   switch (phase) {
     case 'upcoming':
     case 'on_tour':
-      return { voucher: paid, barcode: paid };
+      return { voucher: paid, barcode: paid, stamp };
     case 'travelled':
-      return { voucher: paid, barcode: false };
+      return { voucher: paid, barcode: false, stamp };
     case 'awaiting_payment':
     case 'cancelled':
     case 'lapsed':
-      return { voucher: false, barcode: false };
+      return { voucher: false, barcode: false, stamp };
+  }
+}
+
+/**
+ * Mộc của vé: chữ của trạng thái đơn (`passportVisa.stampByStatus`), mực theo tông của
+ * `bookingView` — trừ hai giai đoạn mà trạng thái đơn nói sai:
+ *
+ * - `lapsed` — PENDING qua hạn chót. "AWAITING PAYMENT" cam là mời trả một khoản không mở lại
+ *   được, mà "đã lỡ" thì chưa chắc: claim của API còn nhận phiên mở trước hạn (ADR-0054 AMEND 1
+ *   §4). Chữ trung tính "NOT PAID", mực xám (review P7 B9, S1).
+ * - `cancelled` — chuyến công ty huỷ thắng mọi trạng thái đơn (AMEND 1 §2): đơn còn PAID hay hoàn
+ *   một phần chờ job hoàn tiền không được đóng mộc "CONFIRMED". Mộc nói "CANCELLED"; đơn đã hoàn
+ *   trọn giữ "REFUNDED" — sự thật về tiền vẫn đúng.
+ */
+function passStamp(booking: Pick<Booking, 'status'>, phase: BookingPhase): BookingStamp {
+  const labels = messages.passportVisa.stampByStatus;
+  switch (phase) {
+    case 'lapsed':
+      return { label: messages.passportVisa.stampLapsed, tone: 'muted' };
+    case 'cancelled':
+      return {
+        label: booking.status === 'REFUNDED' ? labels.REFUNDED : labels.CANCELLED,
+        tone: 'muted',
+      };
+    case 'awaiting_payment':
+    case 'upcoming':
+    case 'on_tour':
+    case 'travelled':
+      return { label: labels[booking.status], tone: bookingView(booking).tone };
   }
 }
 

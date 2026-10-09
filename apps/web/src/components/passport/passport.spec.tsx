@@ -118,21 +118,16 @@ describe('StampPages', () => {
 });
 
 describe('VisaStamp', () => {
-  it('mỗi status đúng chữ mộc, màu mực theo tone (success/warning/muted)', () => {
+  // Mộc chỉ VẼ: chữ và tông do nơi gọi đưa (vé đọc `bookingPass(…).stamp` — luật ở spec của nó).
+  it('in đúng chữ được đưa, màu mực theo tone (success/warning/muted)', () => {
     const CASES = [
-      { status: 'PAID', tone: 'success', text: 'CONFIRMED', cls: 'text-success' },
-      { status: 'PENDING', tone: 'warning', text: 'AWAITING PAYMENT', cls: 'text-warning' },
-      { status: 'CANCELLED', tone: 'muted', text: 'CANCELLED', cls: 'text-muted-foreground' },
-      { status: 'REFUNDED', tone: 'destructive', text: 'REFUNDED', cls: 'text-muted-foreground' },
-      {
-        status: 'PARTIALLY_REFUNDED',
-        tone: 'destructive',
-        text: 'PARTLY REFUNDED',
-        cls: 'text-muted-foreground',
-      },
+      { tone: 'success', text: 'CONFIRMED', cls: 'text-success' },
+      { tone: 'warning', text: 'AWAITING PAYMENT', cls: 'text-warning' },
+      { tone: 'muted', text: 'NOT PAID', cls: 'text-muted-foreground' },
+      { tone: 'destructive', text: 'PARTLY REFUNDED', cls: 'text-muted-foreground' },
     ] as const;
     for (const c of CASES) {
-      const { unmount } = render(<VisaStamp status={c.status} tone={c.tone} />);
+      const { unmount } = render(<VisaStamp label={c.text} tone={c.tone} />);
       const el = screen.getByText(c.text);
       expect(el.className).toContain(c.cls);
       unmount();

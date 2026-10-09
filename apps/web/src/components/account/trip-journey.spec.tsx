@@ -121,7 +121,7 @@ describe('TripJourney', () => {
               key: 'paymentNotCompleted',
               label: 'Payment not completed',
               detail: null,
-              state: 'done',
+              state: 'now',
             },
           ],
           today: null,

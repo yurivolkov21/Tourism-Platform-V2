@@ -100,14 +100,59 @@ describe('bookingPass', () => {
     ['cancelled', { voucher: false, barcode: false }],
     ['lapsed', { voucher: false, barcode: false }],
   ] as const)('đơn đã trả, giai đoạn %s → %o', (phase, pass) => {
-    expect(bookingPass(PAID, phase)).toEqual(pass);
+    expect(bookingPass(PAID, phase)).toMatchObject(pass);
   });
 
   it('chưa có paidAt thì không voucher, không mã vạch ở giai đoạn nào', () => {
     const unpaid = makeBooking({ paidAt: null });
     for (const phase of BookingPhaseSchema.options) {
-      expect(bookingPass(unpaid, phase)).toEqual({ voucher: false, barcode: false });
+      expect(bookingPass(unpaid, phase)).toMatchObject({ voucher: false, barcode: false });
     }
+  });
+
+  /**
+   * Mộc trên vé: chữ của trạng thái đơn, mực theo tông của `bookingView` — trừ hai giai đoạn mà
+   * trạng thái đơn nói sai (ADR-0054 AMEND 1 §4, §5; review P7 B9, S1).
+   */
+  it.each([
+    ['PAID sắp đi', 'PAID', 'upcoming', { label: 'CONFIRMED', tone: 'success' }],
+    [
+      'hoàn một phần đã đi',
+      'PARTIALLY_REFUNDED',
+      'travelled',
+      { label: 'PARTLY REFUNDED', tone: 'destructive' },
+    ],
+    [
+      'hoàn thiện chí trọn còn sắp đi',
+      'REFUNDED',
+      'upcoming',
+      { label: 'REFUNDED', tone: 'destructive' },
+    ],
+    [
+      'chờ trả còn trong hạn',
+      'PENDING',
+      'awaiting_payment',
+      { label: 'AWAITING PAYMENT', tone: 'warning' },
+    ],
+    // Qua hạn chót: không mở lại phiên trả được, nhưng chưa chắc đã lỡ — chữ trung tính, mực xám.
+    ['chờ trả qua hạn chót', 'PENDING', 'lapsed', { label: 'NOT PAID', tone: 'muted' }],
+    ['đã huỷ', 'CANCELLED', 'cancelled', { label: 'CANCELLED', tone: 'muted' }],
+    ['huỷ có hoàn', 'REFUNDED', 'cancelled', { label: 'REFUNDED', tone: 'muted' }],
+    // Chuyến công ty huỷ, job hoàn tiền chưa chạy: đơn còn PAID nhưng chuyến không chạy.
+    [
+      'chuyến công ty huỷ, đơn còn PAID',
+      'PAID',
+      'cancelled',
+      { label: 'CANCELLED', tone: 'muted' },
+    ],
+    [
+      'chuyến công ty huỷ, đơn hoàn một phần',
+      'PARTIALLY_REFUNDED',
+      'cancelled',
+      { label: 'CANCELLED', tone: 'muted' },
+    ],
+  ] as const)('mộc — %s → %o', (_, status, phase, stamp) => {
+    expect(bookingPass(makeBooking({ status }), phase).stamp).toEqual(stamp);
   });
 });
 
