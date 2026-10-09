@@ -2,6 +2,7 @@ import { router } from 'expo-router';
 import { useState } from 'react';
 import { useAuthActions } from '@/features/auth/auth-actions';
 import { submitGoogle } from '@/features/auth/google-flow';
+import { leaveAuthTo } from '@/features/auth/leave-auth';
 import { clearPendingReturn, consumeReturnPath, peekReturnPath } from '@/features/auth/return-to';
 import { submitSignIn } from '@/features/auth/sign-in-flow';
 import {
@@ -14,6 +15,9 @@ import {
  * Route giữ TOÀN BỘ state của màn Sign in; `SignInScreen` chỉ vẽ. Nhờ vậy màn
  * test được ở từng trạng thái mà không cần dựng router, còn chỗ nối với hạ tầng
  * (`useAuthActions`) chỉ nằm ở đúng file này.
+ *
+ * Đăng nhập xong thì về đúng chỗ đã ghi ở return-to (D6); việc tự lưu tim là
+ * của màn đích (đọc `consumePendingReplay` khi `signedIn` bật), không phải ở đây.
  */
 export default function LoginRoute() {
   const actions = useAuthActions();
@@ -43,7 +47,7 @@ export default function LoginRoute() {
     if (outcome.kind === 'formMessage') {
       setFormMessage({ tone: outcome.tone, text: outcome.text });
     }
-    if (outcome.kind === 'success') router.replace(consumeReturnPath() ?? '/');
+    if (outcome.kind === 'success') leaveAuthTo(router, consumeReturnPath());
     if (outcome.kind === 'verifyEmail') {
       // `reason: 'blocked'` để màn Verify đổi phụ đề: khách này không vừa đăng
       // ký, mà bị chặn ngay ở cửa đăng nhập.
@@ -62,7 +66,7 @@ export default function LoginRoute() {
     const outcome = await submitGoogle(actions, 'signIn');
     setPending(false);
 
-    if (outcome.kind === 'success') router.replace(consumeReturnPath() ?? '/');
+    if (outcome.kind === 'success') leaveAuthTo(router, consumeReturnPath());
     else if (outcome.kind === 'formMessage') {
       setFormMessage({ tone: outcome.tone, text: outcome.text });
     }
@@ -84,11 +88,10 @@ export default function LoginRoute() {
         // D3: đóng về ĐÚNG chỗ khách mở Sign in (tour, Saved, Account…) thay
         // vì luôn văng về Home. `peek` chứ không `consume` — consume là coi
         // như đăng nhập xong, sẽ giữ lại replay tự-lưu-tim dù khách bỏ dở.
-        // `dismissTo` gỡ modal về màn đang nằm dưới; không thấy trong stack
-        // thì tự `replace` (đúng hành vi cũ).
-        const back = peekReturnPath() ?? '/';
+        // `leaveAuthTo` gỡ modal về màn đang nằm dưới.
+        const back = peekReturnPath();
         clearPendingReturn();
-        router.dismissTo(back);
+        leaveAuthTo(router, back);
       }}
     />
   );
