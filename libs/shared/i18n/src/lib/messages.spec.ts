@@ -160,3 +160,16 @@ describe('messages: accountSaved (trang /account/saved, spec 09/10)', () => {
     expect(messages.accountSaved.savedOn('3 Oct')).toBe('Saved 3 Oct');
   });
 });
+
+describe('messages: passportHome (trang hộ chiếu /account)', () => {
+  /** User duyệt bằng mắt 09/10: bốn nút lối vào trong khung hộ chiếu chỉ có chữ — "Settings" từng mang "⚙". */
+  it('bốn nút lối vào của khung hộ chiếu chỉ có chữ, không ký tự icon', () => {
+    const t = messages.passportHome;
+    expect([t.bookingsLink, t.savedLink, t.settingsLink, t.signOutLink]).toEqual([
+      'My bookings',
+      'Saved tours',
+      'Settings',
+      'Sign out',
+    ]);
+  });
+});

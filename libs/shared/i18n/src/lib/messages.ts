@@ -2696,7 +2696,8 @@ export const messages = {
     fieldPhone: 'Phone',
     fieldSince: 'Traveler since',
     fieldNo: 'Passport no.',
-    settingsLink: 'Settings ⚙',
+    /** Chỉ chữ như ba nút lối vào cạnh nó — "⚙" cũ bị user bỏ khi duyệt bằng mắt 09/10. */
+    settingsLink: 'Settings',
     /** Nút lối vào bookings trong khung hộ chiếu (góp ý 11/08 — đứng cạnh
      *  Settings ở góc phải trên của khung). */
     bookingsLink: 'My bookings',
