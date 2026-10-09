@@ -20,6 +20,24 @@ import { revealScrollLeft, scrollEdges } from '@/lib/scroll-strip';
  *    Chuyển sang tab là gãy hết anchor đó nếu không đồng bộ, và mất luôn khả
  *    năng gửi link tới đúng phần.
  *
+ * **Hash còn là MỐC CUỘN THẬT, không chỉ là công tắc chọn tab** (review P7 B10):
+ * mỗi nút tab mang `id` đúng bằng hash của nó (`TAB_HASH`), nên link tới
+ * `/tours/{slug}#itinerary` (khối Get ready của trang chi tiết đơn) dừng ở dải
+ * tab với Itinerary đã mở. Không tự viết lệnh cuộn: ba bên có sẵn đều cuộn tới
+ * `getElementById(hash)` — Next.js khi điều hướng mềm, trình duyệt khi tải cứng
+ * và khi bấm link `#…` trong trang, Lenis (`anchors`) cũng khi bấm link trong
+ * trang. Mốc đặt ở NÚT TAB chứ không ở panel: panel đóng mang `hidden`, không
+ * có hộp nào để cuộn tới, còn id của panel là thứ Base UI nối vào
+ * `aria-controls`. Cuộn mượt chỉ có qua Lenis, mà Lenis không bật khi máy giảm
+ * chuyển động, nên `prefers-reduced-motion` được tôn trọng sẵn.
+ *
+ * Một lệnh cuộn riêng lúc mount thì không phân biệt được "vừa tới bằng link" với
+ * "tải lại trang" — mà hash nằm lại trên URL sau mỗi lần bấm tab, nên nó sẽ kéo
+ * khách vừa tải lại khỏi chỗ trình duyệt vừa trả về (đo 09/10: tải lại vẫn giữ
+ * vị trí). Cái giá của mốc thật, đo cùng lượt: bấm Back về một URL tour mang hash
+ * của tab thì Chromium cuộn tới mốc — dải tab, đúng tab đang mở — thay vì trả
+ * đúng vị trí cũ như hồi hash chưa trỏ tới đâu.
+ *
  * Ghi hash bằng `replaceState`, KHÔNG gán `location.hash`: gán trực tiếp đẩy một
  * mục vào lịch sử mỗi lần đổi tab, người dùng xem hết 5 tab rồi bấm Back sẽ phải
  * bấm 5 lần mới rời được trang.
@@ -142,7 +160,9 @@ export function TourTabs({ panels }: { panels: Record<TabKey, ReactNode> }) {
     // Nghe `hashchange` chứ không chỉ đọc một lần lúc mount: link trong trang
     // trỏ `#itinerary`, `#good-to-know` (thẻ policy ở panel đặt chỗ, link trong
     // card dữ kiện) phải mở được đúng tab. Không có listener này thì URL đổi mà
-    // tab đứng yên — người dùng bấm rồi thấy không có gì xảy ra.
+    // tab đứng yên — người dùng bấm rồi thấy không có gì xảy ra. Phần đưa dải
+    // tab vào khung thì trình duyệt và Lenis đã lo nhờ `id` trên nút tab (JSDoc
+    // đầu file).
     window.addEventListener('hashchange', syncFromHash);
     return () => window.removeEventListener('hashchange', syncFromHash);
   }, []);
@@ -203,6 +223,9 @@ export function TourTabs({ panels }: { panels: Record<TabKey, ReactNode> }) {
             <TabsTrigger
               key={key}
               value={key}
+              // Mốc của hash (JSDoc đầu file). Base UI nhận id truyền vào làm id
+              // của tab và nối nó vào `aria-labelledby` của panel như id tự sinh.
+              id={TAB_HASH[key]}
               // Effect cuộn tab đang mở ra cần đo đúng phần tử của tab ấy.
               ref={(element: HTMLElement | null) => {
                 tabRefs.current[key] = element;
@@ -223,7 +246,13 @@ export function TourTabs({ panels }: { panels: Record<TabKey, ReactNode> }) {
               // của thư viện vẫn thắng — cùng lớp lỗi với chiều cao của `TabsList`.
               // Không cần tự bật/tắt: thư viện đã lo bằng
               // `…data-active:after:opacity-100`.
-              className="relative h-[38px] flex-1 gap-0 rounded-none px-0 pt-0.5 pb-3 text-sm leading-[20px] font-medium text-muted-foreground after:bg-primary data-selected:bg-transparent data-selected:text-foreground data-selected:shadow-none group-data-horizontal/tabs:after:bottom-[-1px]"
+              //
+              // `scroll-mt-*`: cuộn tới mốc của hash thì dải dừng DƯỚI viên navbar
+              // dính chứ không chui dưới nó. Đáy viên ở 88px dưới 640px, ở 124px từ
+              // 640px vì có thêm top-bar 36px (`--banner-offset`) — 112px và 144px
+              // chừa khe 24px và 20px. Chỉ trục dọc: không đụng phép cuộn ngang
+              // của dải dưới 640px.
+              className="relative h-[38px] flex-1 scroll-mt-28 gap-0 rounded-none px-0 pt-0.5 pb-3 text-sm leading-[20px] font-medium text-muted-foreground after:bg-primary data-selected:bg-transparent data-selected:text-foreground data-selected:shadow-none sm:scroll-mt-36 group-data-horizontal/tabs:after:bottom-[-1px]"
             >
               {t[key]}
             </TabsTrigger>

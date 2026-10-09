@@ -100,9 +100,9 @@ export async function generateMetadata({
  *
  * Trang KHÔNG có mục lục `OnThisPage` — dải năm tab thay vai nó (giữ cả hai là
  * dựng hai bộ điều hướng cho cùng một tập nội dung). `OnThisPage` vẫn sống ở
- * `/blog`, không xoá component. Anchor cũ (`#itinerary`, `#departures`,
- * `#reviews`, `#good-to-know`) tạm chưa trỏ tới đâu cho tới khi dải tab dựng
- * lại xong — xem ADR-0022.
+ * `/blog`, không xoá component. Anchor cũ (`#overview`, `#itinerary`,
+ * `#departures`, `#reviews`, `#good-to-know`) nay là id của chính các nút tab:
+ * hash vừa mở đúng tab vừa đưa dải tab vào khung — xem `TourTabs` và ADR-0022.
  */
 export default async function TourDetailPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;

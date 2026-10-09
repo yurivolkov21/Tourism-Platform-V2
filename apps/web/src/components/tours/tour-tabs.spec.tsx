@@ -102,6 +102,69 @@ describe('TourTabs', () => {
   });
 });
 
+// ── Hash là mốc cuộn THẬT, không chỉ là công tắc chọn tab (review P7 B10) ────
+// Link "Full itinerary →" của trang chi tiết đơn trỏ `/tours/{slug}#itinerary`.
+// Next.js (điều hướng mềm — `getHashFragmentDomNode` của layout-router) và trình
+// duyệt (tải cứng, link `#…` trong trang) đều tìm mốc bằng `getElementById(hash)`
+// rồi cuộn phần tử ấy vào khung. Trước đây không phần tử nào mang id ấy: tab đổi
+// nhưng khung hình đứng nguyên chỗ cũ, dải tab nằm đâu đó dưới hero.
+const TAB_NAMES = messages.tourDetail.tabs;
+
+describe('TourTabs — hash trên URL trỏ tới dải tab', () => {
+  beforeEach(() => {
+    window.history.replaceState(null, '', '/tours/x');
+  });
+  afterEach(() => {
+    window.history.replaceState(null, '', '/tours/x');
+  });
+
+  it('vào trang với #itinerary → tab Itinerary được chọn, và mốc của hash là CHÍNH nút tab ấy, luôn hiện', () => {
+    window.history.replaceState(null, '', '/tours/x#itinerary');
+    render(<TourTabs panels={panels} />);
+    const tab = screen.getByRole('tab', { name: TAB_NAMES.itinerary });
+    expect(tab).toHaveAttribute('aria-selected', 'true');
+    // Đúng phép tra mà Next.js và trình duyệt dùng để cuộn tới mốc.
+    expect(document.getElementById('itinerary')).toBe(tab);
+    // Panel ẩn (`hidden`) không có hộp nào để cuộn tới — mốc phải nằm ở dải tab.
+    expect(tab.closest('[hidden]')).toBeNull();
+  });
+
+  it.each([
+    ['overview', TAB_NAMES.overview],
+    ['itinerary', TAB_NAMES.itinerary],
+    ['departures', TAB_NAMES.departures],
+    ['reviews', TAB_NAMES.reviews],
+    ['good-to-know', TAB_NAMES.goodToKnow],
+  ])('#%s trỏ tới nút tab "%s"', (hash, name) => {
+    render(<TourTabs panels={panels} />);
+    expect(document.getElementById(hash)).toBe(screen.getByRole('tab', { name }));
+  });
+
+  it('mốc chừa chỗ cho navbar dính: cuộn tới thì dải tab dừng DƯỚI viên navbar', () => {
+    // jsdom không có layout nên canh bằng chính lớp CSS (cùng cách ca `justify-start`
+    // ở trên). Viên navbar khi đã cuộn đáy ở 88px dưới 640px, ở 124px từ 640px
+    // (thêm top-bar 36px) — đo 09/10 bằng Edge trên trang thật: dải dừng ở 112px
+    // và 144px, khe 24px và 20px.
+    render(<TourTabs panels={panels} />);
+    for (const tab of screen.getAllByRole('tab')) {
+      expect(tab).toHaveClass('scroll-mt-28', 'sm:scroll-mt-36');
+    }
+  });
+
+  it('tab mang id riêng mà panel vẫn được đặt tên theo tab, tab vẫn trỏ đúng panel', () => {
+    // Base UI nối `aria-labelledby` của panel với id của tab, `aria-controls` của
+    // tab với id của panel — truyền id riêng cho tab không được làm đứt hai dây đó.
+    window.history.replaceState(null, '', '/tours/x#itinerary');
+    render(<TourTabs panels={panels} />);
+    const panel = screen.getByRole('tabpanel', { name: TAB_NAMES.itinerary });
+    expect(panel).toHaveTextContent('ITINERARY_BODY');
+    const controls = screen
+      .getByRole('tab', { name: TAB_NAMES.itinerary })
+      .getAttribute('aria-controls');
+    expect(controls && document.getElementById(controls)).toBe(panel);
+  });
+});
+
 // ── Dải cuộn ngang khi năm tab không vừa khung (điện thoại) ──────────────────
 // jsdom không có layout nên mọi số đo phải giả lập. Số dưới đây là số ĐO THẬT
 // ở viewport 375 (07–08/10): khung 279px, mép trái khung ở x=48 vì thân trang
