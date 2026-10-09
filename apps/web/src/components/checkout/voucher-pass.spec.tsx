@@ -126,12 +126,25 @@ describe('VoucherPass — Receipt overview', () => {
     expect(texts(receipt.querySelectorAll('dd'))).toEqual(['$98', '$49', '$147']);
   });
 
-  it('PARTIALLY_REFUNDED: thêm "Refunded −{số tiền}" giữ đủ hai số lẻ', () => {
+  /**
+   * Tiền hoàn luôn đủ hai số lẻ (đối chiếu sao kê), nên có dòng Refunded thì cả khối theo nó: đơn giá
+   * chẵn in "$147" trên "−$73.50" là hai độ chính xác trong cùng một cột (thử tay prod 09/10).
+   */
+  it('PARTIALLY_REFUNDED: thêm "Refunded −{số tiền}", cả khối đủ hai số lẻ cho thẳng cột', () => {
     const { container } = renderPass({ status: 'PARTIALLY_REFUNDED', refundedTotal: '73.50' });
     const receipt = slot(container, 'voucher-receipt');
     expect(texts(receipt.querySelectorAll('dt'))).toEqual(['3 adults', 'Total paid', 'Refunded']);
     // Dấu trừ U+2212, không phải gạch nối.
-    expect(texts(receipt.querySelectorAll('dd'))).toEqual(['$147', '$147', '−$73.50']);
+    expect(texts(receipt.querySelectorAll('dd'))).toEqual(['$147.00', '$147.00', '−$73.50']);
+  });
+
+  it('REFUNDED trọn trên đơn giá chẵn: tổng và tiền hoàn cùng hai số lẻ', () => {
+    const { container } = renderPass({ status: 'REFUNDED', refundedTotal: '147.00' });
+    expect(texts(slot(container, 'voucher-receipt').querySelectorAll('dd'))).toEqual([
+      '$147.00',
+      '$147.00',
+      '−$147.00',
+    ]);
   });
 
   it('chưa hoàn đồng nào (refundedTotal 0.00) thì không có dòng Refunded', () => {

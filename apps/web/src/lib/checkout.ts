@@ -63,14 +63,23 @@ export interface PriceLine {
  * mãi, vd 49 × 0.85 = 41.65) thì đủ hai số lẻ cho mọi con số của đơn ấy. Làm tròn riêng từng
  * dòng thì "$90 + $90" lại ra Total "$181", và tổng lệch số cổng thanh toán đã thu ($180.96).
  * Tiền HOÀN không qua đây: nó luôn `formatMoneyExact` (đối chiếu sao kê).
+ *
+ * `exact`: đủ hai số lẻ dù đơn giá chẵn — cho khối tiền mà tiền hoàn đứng CÙNG CỘT với tổng (receipt
+ * của voucher): "$867" trên "−$867.00" là hai độ chính xác trong một cột (thử tay prod 09/10).
  */
 export function formatBookingMoney(
   booking: Pick<Booking, 'unitPrice' | 'currency'>,
   amount: string,
+  { exact = false }: MoneyOptions = {},
 ): string {
-  return Number(booking.unitPrice) % 1 === 0
-    ? formatMoney(amount, booking.currency)
-    : formatMoneyExact(amount, booking.currency);
+  return exact || Number(booking.unitPrice) % 1 !== 0
+    ? formatMoneyExact(amount, booking.currency)
+    : formatMoney(amount, booking.currency);
+}
+
+/** Tuỳ chọn định dạng tiền của một đơn — xem `formatBookingMoney`. */
+export interface MoneyOptions {
+  exact?: boolean;
 }
 
 /**
@@ -79,15 +88,20 @@ export function formatBookingMoney(
  * dựng, với đơn giá là `effectivePrice` của đợt đang chọn, nên trước và sau khi trả tiền khách
  * thấy cùng những con số. Trẻ em cùng đơn giá người lớn (luật của `computeBookingTotal` ngay trên).
  * Nhãn từ `messages.checkoutSummary`, số tiền định dạng bằng `formatBookingMoney` để dòng và
- * tổng cùng một độ chính xác. Không có trẻ em thì bỏ hẳn dòng ấy.
+ * tổng cùng một độ chính xác (`options` cũng đi qua đó). Không có trẻ em thì bỏ hẳn dòng ấy.
  */
 export function bookingPriceLines(
   booking: Pick<Booking, 'unitPrice' | 'numAdults' | 'numChildren' | 'currency'>,
+  options: MoneyOptions = {},
 ): PriceLine[] {
   const ts = messages.checkoutSummary;
   const line = (label: string, travellers: number): PriceLine => ({
     label,
-    amount: formatBookingMoney(booking, (Number(booking.unitPrice) * travellers).toFixed(2)),
+    amount: formatBookingMoney(
+      booking,
+      (Number(booking.unitPrice) * travellers).toFixed(2),
+      options,
+    ),
   });
   const lines = [line(ts.adultsLine(booking.numAdults), booking.numAdults)];
   if (booking.numChildren > 0) {

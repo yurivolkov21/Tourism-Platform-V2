@@ -231,6 +231,18 @@ describe('bookingPriceLines — dòng tiền theo người lớn và trẻ em (s
       bookingPriceLines(makeBooking({ unitPrice: '120.00', numAdults: 2, numChildren: 0 })),
     ).toEqual([{ label: '2 adults', amount: '$240' }]);
   });
+
+  it('exact: mọi dòng đủ hai số lẻ dù đơn giá chẵn — khối tiền có dòng hoàn đứng cùng cột', () => {
+    expect(
+      bookingPriceLines(
+        { unitPrice: '49.00', numAdults: 2, numChildren: 1, currency: 'USD' },
+        { exact: true },
+      ),
+    ).toEqual([
+      { label: '2 adults', amount: '$98.00' },
+      { label: '1 child', amount: '$49.00' },
+    ]);
+  });
 });
 
 describe('formatBookingMoney — tiền của MỘT đơn định dạng theo cả đơn', () => {
@@ -242,5 +254,11 @@ describe('formatBookingMoney — tiền của MỘT đơn định dạng theo c�
     const promo = { unitPrice: '41.65', currency: 'USD' };
     expect(formatBookingMoney(promo, '83.30')).toBe('$83.30');
     expect(formatBookingMoney(promo, '41.65')).toBe('$41.65');
+  });
+
+  it('exact: đủ hai số lẻ dù đơn giá chẵn', () => {
+    expect(
+      formatBookingMoney({ unitPrice: '49.00', currency: 'USD' }, '147.00', { exact: true }),
+    ).toBe('$147.00');
   });
 });

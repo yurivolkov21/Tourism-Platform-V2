@@ -25,6 +25,9 @@ import type { VoucherJournalItem, VoucherView } from '@/lib/voucher';
 export function VoucherPass({ booking, view }: { booking: BookingDetail; view: VoucherView }) {
   const t = messages.voucher;
   const refunded = Number(booking.refundedTotal) > 0;
+  // Có dòng Refunded thì CẢ khối receipt đủ hai số lẻ: tiền hoàn luôn đủ (đối chiếu sao kê), nên tổng
+  // đơn giá chẵn in "$867" trên "−$867.00" là hai độ chính xác trong một cột (thử tay prod 09/10).
+  const money = { exact: refunded };
   return (
     <div
       data-slot="voucher-pass"
@@ -76,7 +79,7 @@ export function VoucherPass({ booking, view }: { booking: BookingDetail; view: V
       <section data-slot="voucher-receipt" className="mt-5.5">
         <h3 className="mb-2 text-base font-semibold">{t.receiptHeading}</h3>
         <dl className="text-[13.5px]">
-          {bookingPriceLines(booking).map((line) => (
+          {bookingPriceLines(booking, money).map((line) => (
             <div key={line.label} className="flex justify-between gap-4 py-0.5">
               <dt className="text-primary-foreground/90">{line.label}</dt>
               <dd className="font-mono tabular-nums">{line.amount}</dd>
@@ -85,11 +88,11 @@ export function VoucherPass({ booking, view }: { booking: BookingDetail; view: V
           <div className="mt-1.5 flex justify-between gap-4 border-t border-primary-foreground/25 pt-2 text-[15px] font-bold">
             <dt>{messages.booking.success.totalLabel}</dt>
             <dd className="font-mono tabular-nums">
-              {formatBookingMoney(booking, booking.totalAmount)}
+              {formatBookingMoney(booking, booking.totalAmount, money)}
             </dd>
           </div>
-          {/* Số tiền THẬT đã về tài khoản khách — đủ hai số lẻ (`formatMoneyExact`), khác giá
-              tour làm tròn ở các dòng trên. */}
+          {/* Số tiền THẬT đã về tài khoản khách — đủ hai số lẻ (`formatMoneyExact`); các dòng trên
+              theo nó (`money`). */}
           {refunded ? (
             <div className="flex justify-between gap-4 py-0.5">
               <dt className="text-primary-foreground/90">{t.refunded}</dt>
