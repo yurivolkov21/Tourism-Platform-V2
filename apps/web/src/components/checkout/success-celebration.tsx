@@ -1,7 +1,6 @@
 'use client';
 
 import { theme } from '@tourism/tokens/theme';
-import confetti from 'canvas-confetti';
 import { useEffect } from 'react';
 
 /**
@@ -25,6 +24,12 @@ import { useEffect } from 'react';
  *   20/08, tốn nguyên một phiên truy vết). `CheckoutAutoRefresh` remount
  *   island — không guard là nổ lại mỗi nhịp làm tươi.
  * - `prefers-reduced-motion` → không bắn.
+ *
+ * canvas-confetti tải ĐỘNG ngay trước khung bắn đầu (review P7C mục 18): import tĩnh kéo thư viện
+ * (~4,3 KB gz theo đo của review) vào chunk của trang voucher cho MỌI lần mở — voucher mở lại, đơn
+ * đã huỷ, khách bật giảm chuyển động — trong khi chỉ khoảnh khắc vừa trả mới bắn. Gỡ component
+ * trong lúc thư viện còn đang tải (StrictMode mount đôi, khách rời trang) thì bỏ bắn và KHÔNG ghi
+ * khoá đã-bắn.
  */
 const CANNON_MS = 3000;
 
@@ -47,33 +52,46 @@ export function SuccessCelebration({ bookingCode }: { bookingCode: string }) {
       // nổ lại nếu trang refresh.
     }
 
-    const end = Date.now() + CANNON_MS;
+    let cancelled = false;
     let raf = 0;
-    const frame = () => {
-      try {
-        sessionStorage.setItem(firedKey(bookingCode), '1');
-      } catch {}
-      // Mẫu "Side Cannons" của MagicUI: mỗi khung vài hạt từ hai mép.
-      confetti({
-        particleCount: 2,
-        angle: 60,
-        spread: 55,
-        startVelocity: 60,
-        origin: { x: 0, y: 0.5 },
-        colors: FESTIVE_COLORS,
+    import('canvas-confetti')
+      .then(({ default: confetti }) => {
+        // Đã gỡ trong lúc tải: bỏ bắn, chưa ghi khoá — lần mount sau còn bắn được.
+        if (cancelled) return;
+        const end = Date.now() + CANNON_MS;
+        const frame = () => {
+          try {
+            sessionStorage.setItem(firedKey(bookingCode), '1');
+          } catch {}
+          // Mẫu "Side Cannons" của MagicUI: mỗi khung vài hạt từ hai mép.
+          confetti({
+            particleCount: 2,
+            angle: 60,
+            spread: 55,
+            startVelocity: 60,
+            origin: { x: 0, y: 0.5 },
+            colors: FESTIVE_COLORS,
+          });
+          confetti({
+            particleCount: 2,
+            angle: 120,
+            spread: 55,
+            startVelocity: 60,
+            origin: { x: 1, y: 0.5 },
+            colors: FESTIVE_COLORS,
+          });
+          if (Date.now() < end) raf = requestAnimationFrame(frame);
+        };
+        raf = requestAnimationFrame(frame);
+      })
+      .catch(() => {
+        // Tải chunk hỏng (mất mạng giữa chừng): pháo giấy chỉ là trang trí — im lặng, voucher
+        // vẫn đủ.
       });
-      confetti({
-        particleCount: 2,
-        angle: 120,
-        spread: 55,
-        startVelocity: 60,
-        origin: { x: 1, y: 0.5 },
-        colors: FESTIVE_COLORS,
-      });
-      if (Date.now() < end) raf = requestAnimationFrame(frame);
+    return () => {
+      cancelled = true;
+      cancelAnimationFrame(raf);
     };
-    raf = requestAnimationFrame(frame);
-    return () => cancelAnimationFrame(raf);
   }, [bookingCode]);
 
   // Không render gì — canvas do canvas-confetti tự quản khi bắn.

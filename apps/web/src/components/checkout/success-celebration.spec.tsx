@@ -49,39 +49,63 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
+/**
+ * canvas-confetti tải ĐỘNG khi bắn (spec `success-celebration-lazy.spec.tsx`): khung bắn đầu chạy
+ * sau khi `import()` xong, nên mỗi ca render rồi chờ mọi import động lắng xuống mới đếm phát bắn.
+ */
+async function renderSettled(bookingCode: string) {
+  const result = render(<SuccessCelebration bookingCode={bookingCode} />);
+  await vi.dynamicImportSettled();
+  return result;
+}
+
 describe('SuccessCelebration', () => {
-  it('bắn side cannons từ HAI mép (origin x=0 và x=1) khi được phép', () => {
+  it('bắn side cannons từ HAI mép (origin x=0 và x=1) khi được phép', async () => {
     mockMatchMedia(false);
-    render(<SuccessCelebration bookingCode="BK-1" />);
+    await renderSettled('BK-1');
     const origins = fire.mock.calls.map(([opts]) => opts.origin.x);
     expect(origins).toContain(0);
     expect(origins).toContain(1);
   });
 
-  it('chỉ bắn MỘT lần mỗi booking — remount (CheckoutAutoRefresh) không nổ lại', () => {
+  it('chỉ bắn MỘT lần mỗi booking — remount (CheckoutAutoRefresh) không nổ lại', async () => {
     mockMatchMedia(false);
-    const first = render(<SuccessCelebration bookingCode="BK-1" />);
+    const first = await renderSettled('BK-1');
     const callsAfterFirst = fire.mock.calls.length;
     expect(callsAfterFirst).toBeGreaterThan(0);
     first.unmount();
     allowFrames(1); // có khung sẵn sàng — vẫn không được bắn vì guard theo mã
-    render(<SuccessCelebration bookingCode="BK-1" />);
+    await renderSettled('BK-1');
     expect(fire.mock.calls.length).toBe(callsAfterFirst);
   });
 
-  it('booking KHÁC vẫn được bắn (guard theo mã, không phải toàn cục)', () => {
+  it('booking KHÁC vẫn được bắn (guard theo mã, không phải toàn cục)', async () => {
     mockMatchMedia(false);
-    const first = render(<SuccessCelebration bookingCode="BK-1" />);
+    const first = await renderSettled('BK-1');
     first.unmount();
     const before = fire.mock.calls.length;
     allowFrames(1);
-    render(<SuccessCelebration bookingCode="BK-2" />);
+    await renderSettled('BK-2');
     expect(fire.mock.calls.length).toBeGreaterThan(before);
   });
 
-  it('prefers-reduced-motion → KHÔNG bắn và KHÔNG ghi khoá đã-bắn', () => {
+  /**
+   * Gỡ trong lúc thư viện còn đang tải (StrictMode mount đôi ở dev, khách rời trang ngay): không
+   * bắn và KHÔNG ghi khoá đã-bắn — ghi khoá sớm là lần mount sau thấy khoá rồi bỏ qua, pháo không
+   * bao giờ nổ (bài học 20/08 ở JSDoc của component).
+   */
+  it('gỡ trước khi canvas-confetti tải xong → không bắn, không ghi khoá', async () => {
+    mockMatchMedia(false);
+    const { unmount } = render(<SuccessCelebration bookingCode="BK-1" />);
+    unmount();
+    await vi.dynamicImportSettled();
+    expect(fire).not.toHaveBeenCalled();
+    expect(sessionStorage.getItem('confetti:BK-1')).toBeNull();
+  });
+
+  it('prefers-reduced-motion → KHÔNG bắn và KHÔNG ghi khoá đã-bắn', async () => {
     mockMatchMedia(true);
-    render(<SuccessCelebration bookingCode="BK-1" />);
+    await renderSettled('BK-1');
     expect(fire).not.toHaveBeenCalled();
     expect(sessionStorage.getItem('confetti:BK-1')).toBeNull();
   });
