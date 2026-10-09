@@ -42,10 +42,12 @@ export function OnTourPanel({
           <p className="text-sm font-semibold">
             {messages.tourDetail.itinerary.dayLabel(day.dayNumber)} · {day.title}
           </p>
+          {/* Lịch trình và điểm hẹn là chữ admin in nguyên văn — một link hay chuỗi liền dài bẻ ở
+              bất kỳ đâu, không đẩy trang cuộn ngang (review P7 S2). */}
           {day.description ? (
             <p
               data-slot="day-text"
-              className="mt-2 rounded-lg bg-muted/55 px-[11px] py-2 font-mono text-[11.5px] leading-[1.65] whitespace-pre-line"
+              className="mt-2 rounded-lg bg-muted/55 px-[11px] py-2 font-mono text-[11.5px] leading-[1.65] whitespace-pre-line [overflow-wrap:anywhere]"
             >
               {day.description}
             </p>
@@ -55,9 +57,9 @@ export function OnTourPanel({
       {meetingPoint ? (
         <div className="mt-4 flex items-start gap-2 text-[13px]">
           <MapPinIcon aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-primary-emphasis" />
-          <div>
+          <div className="min-w-0">
             <p className="font-semibold">{t.details.meetingPoint}</p>
-            <p className="text-muted-foreground">{meetingPoint}</p>
+            <p className="text-muted-foreground [overflow-wrap:anywhere]">{meetingPoint}</p>
           </div>
         </div>
       ) : null}

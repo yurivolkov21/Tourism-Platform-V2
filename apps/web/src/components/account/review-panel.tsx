@@ -98,13 +98,16 @@ function ReviewSlotNote({ slot, reason }: { slot: ReviewAreaSlot; reason: string
         body={final ? rv.rejectedFinalBody : rv.rejectedBody}
       />
       {/* Nguyên văn lý do người duyệt viết — ĐÚNG câu khách đã nhận qua mail,
-          nên hai nguồn không thể nói khác nhau. */}
+          nên hai nguồn không thể nói khác nhau. Chữ tự do: link dán liền bẻ ở bất kỳ đâu, không
+          đẩy trang cuộn ngang (cùng lỗi review P7 S2). */}
       {reason ? (
         <figure className="rounded-md border border-border/60 bg-muted/40 p-3">
           <figcaption className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
             {rv.rejectedReason}
           </figcaption>
-          <blockquote className="mt-1 text-sm whitespace-pre-wrap">{reason}</blockquote>
+          <blockquote className="mt-1 text-sm whitespace-pre-wrap [overflow-wrap:anywhere]">
+            {reason}
+          </blockquote>
         </figure>
       ) : null}
       {final ? (

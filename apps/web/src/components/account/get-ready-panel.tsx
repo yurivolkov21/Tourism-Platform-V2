@@ -76,8 +76,12 @@ function StepItem({ step, bookingCode }: { step: GetReadyStep; bookingCode: stri
       </span>
       <div className="min-w-0">
         <p className="mt-[3px] text-sm font-semibold">{step.title}</p>
+        {/* Điểm hẹn in nguyên văn chữ admin — có thể là một link dán liền: bẻ ở bất kỳ đâu thay vì
+            đẩy trang cuộn ngang (review P7 S2). */}
         {step.key === 'freeCancellation' || step.key === 'pickup' ? (
-          <p className="mt-0.5 text-[12.5px] text-muted-foreground">{step.text}</p>
+          <p className="mt-0.5 text-[12.5px] text-muted-foreground [overflow-wrap:anywhere]">
+            {step.text}
+          </p>
         ) : null}
         {step.key === 'budget' ? (
           <>
@@ -94,7 +98,7 @@ function StepItem({ step, bookingCode }: { step: GetReadyStep; bookingCode: stri
               <div className="mt-2 rounded-lg bg-muted/55 px-[11px] py-2">
                 <p
                   data-slot="day-text"
-                  className="line-clamp-4 font-mono text-[11.5px] leading-[1.65] whitespace-pre-line"
+                  className="line-clamp-4 font-mono text-[11.5px] leading-[1.65] whitespace-pre-line [overflow-wrap:anywhere]"
                 >
                   {step.text}
                 </p>
