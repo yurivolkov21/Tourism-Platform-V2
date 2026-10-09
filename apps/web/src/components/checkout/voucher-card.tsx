@@ -16,6 +16,10 @@ import type { VoucherView } from '@/lib/voucher';
  * Từ 1280px cột trái được ~580px — đúng khổ bản vẽ đã duyệt. Cùng mốc với vé của trang chi
  * tiết đơn (plan P7, quyết định 13).
  *
+ * Thẻ một cột cũng khai cột tường minh (`grid-cols-1` = `minmax(0, 1fr)`): cột ngầm `auto` nở
+ * theo chuỗi dài nhất không ngắt được — email 44 ký tự của dòng phụ đẩy cột lên 350px ở màn
+ * 320px, rồi `overflow-hidden` của thẻ cắt mất mép phải cả hai cột (nút "Copy code", tổng tiền).
+ *
  * Pháo giấy gắn Ở ĐÂY chứ không ở trang: luật "chỉ khi vừa trả" nhờ vậy có test (Vitest không
  * quét `app/**`). `SuccessCelebration` vẫn tự giữ "một lần mỗi tab".
  */
@@ -33,7 +37,7 @@ export function VoucherCard({
       {view.justPaid ? <SuccessCelebration bookingCode={booking.code} /> : null}
       <article
         data-slot="voucher"
-        className="mx-auto grid w-full max-w-7xl overflow-hidden rounded-4xl border bg-card text-card-foreground xl:grid-cols-[minmax(0,1fr)_440px] print:grid-cols-[minmax(0,1fr)_17rem]"
+        className="mx-auto grid w-full max-w-7xl grid-cols-1 overflow-hidden rounded-4xl border bg-card text-card-foreground xl:grid-cols-[minmax(0,1fr)_440px] print:grid-cols-[minmax(0,1fr)_17rem]"
       >
         <VoucherOverview booking={booking} view={view} meetingPoint={meetingPoint} />
         <VoucherPass booking={booking} view={view} />

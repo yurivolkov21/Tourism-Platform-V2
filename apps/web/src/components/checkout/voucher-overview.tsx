@@ -50,7 +50,8 @@ export function VoucherOverview({
           <h2 className="font-heading text-2xl leading-tight font-semibold text-balance md:text-3xl">
             {view.title}
           </h2>
-          <p className="mt-2 text-sm text-muted-foreground">{view.subtitle}</p>
+          {/* Email của khách nằm trong dòng phụ: chuỗi liền dài phải bẻ được ở bất kỳ đâu. */}
+          <p className="mt-2 text-sm text-muted-foreground wrap-anywhere">{view.subtitle}</p>
         </div>
         <div className="shrink-0 self-start sm:pt-1">
           {/* Mộc theo giai đoạn (`bookingPass(…).stamp`), cùng luật với vé của trang chi tiết đơn. */}
