@@ -33,6 +33,11 @@ const SECOND = makeWishlistItem({
   slug: 'ha-giang-loop-4d',
   title: 'Hà Giang Loop by Easyrider 4D3N',
 });
+const THIRD = makeWishlistItem({
+  tourId: '3c1e8a52-6f0b-4d7e-9a14-2b5f7c9d1e03',
+  slug: 'hoi-an-lantern-walk',
+  title: 'Hoi An Lantern Walk & Cooking Class',
+});
 
 describe('SavedView', () => {
   beforeEach(() => {
@@ -74,5 +79,43 @@ describe('SavedView', () => {
     expect(screen.getByText('1 tour')).toBeInTheDocument();
     expect(screen.getByText(SECOND.title)).toBeInTheDocument();
     expect(screen.queryByText(FIRST.title)).not.toBeInTheDocument();
+  });
+
+  it('lưới GIỮ state qua lần làm mới: thẻ đang treo không sống lại khi server trả danh sách chưa kịp bỏ nó', async () => {
+    // Ca hai thẻ ở trên không phân biệt được "lưới giữ state" với "lưới đồng bộ theo props" (cả hai
+    // đều ra [SECOND]). Ba thẻ thì khác: SECOND treo nên server vẫn còn nó trong danh sách mới.
+    let finishSecond: () => void = () => {};
+    const secondPending = new Promise<{ tourId: string; wished: boolean }>((resolve) => {
+      finishSecond = () => resolve({ tourId: SECOND.tourId, wished: false });
+    });
+    set.mockImplementation(({ tourId }: { tourId: string }) =>
+      tourId === SECOND.tourId ? secondPending : Promise.resolve({ tourId, wished: false }),
+    );
+    const user = userEvent.setup();
+    const { rerender } = render(<SavedView items={[FIRST, SECOND, THIRD]} today={TODAY} />);
+
+    await user.click(
+      screen.getByRole('button', { name: `Remove ${FIRST.title} from saved tours` }),
+    );
+    await waitFor(() => expect(refresh).toHaveBeenCalledTimes(1));
+    await user.click(
+      screen.getByRole('button', { name: `Remove ${SECOND.title} from saved tours` }),
+    );
+    expect(screen.queryByText(SECOND.title)).not.toBeInTheDocument();
+    expect(refresh).toHaveBeenCalledTimes(1);
+
+    // Lượt làm mới đầu về: server đã bỏ FIRST nhưng SECOND còn (yêu cầu của nó chưa trả).
+    rerender(<SavedView items={[SECOND, THIRD]} today={TODAY} />);
+    expect(screen.queryByText(SECOND.title)).not.toBeInTheDocument();
+    expect(screen.getByText(THIRD.title)).toBeInTheDocument();
+    expect(screen.queryByText(FIRST.title)).not.toBeInTheDocument();
+    // Hero đếm theo server nên tạm còn 2; số đúng sau lượt làm mới cuối.
+    expect(screen.getByText('2 tours')).toBeInTheDocument();
+
+    finishSecond();
+    await waitFor(() => expect(refresh).toHaveBeenCalledTimes(2));
+    rerender(<SavedView items={[THIRD]} today={TODAY} />);
+    expect(screen.getByText('1 tour')).toBeInTheDocument();
+    expect(screen.getByText(THIRD.title)).toBeInTheDocument();
   });
 });

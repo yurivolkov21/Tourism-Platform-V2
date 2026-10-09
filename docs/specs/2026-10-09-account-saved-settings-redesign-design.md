@@ -47,7 +47,9 @@ Password có thể cùng mở một dòng mỗi thẻ (mỗi thẻ giữ trạng
 - **Lưới:** 1 cột dưới `sm`, 2 cột từ `sm`, 3 cột từ `lg`; khung rộng tối đa 1152px; khe ngang 24px, dọc 32px.
 - **Thẻ (không viền, cùng dáng thẻ tour ở `/tours`):** ảnh bìa 4:3 bo góc (`SlotImage`, `sizes` theo số cột); nút tim
   36px ở góc phải trên ảnh, LUÔN hiện ở mọi khổ — nền trắng mờ có `backdrop-blur` và bóng nhẹ, tim đặc màu chủ đạo,
-  `aria-pressed="true"`, tên đọc "Remove {tour} from saved tours" (khoá có sẵn), thay nút X hiện tại. Dưới ảnh:
+  là nút hành động thuần, KHÔNG `aria-pressed` (thẻ rời lưới ngay khi bấm nên không bao giờ có trạng thái "chưa bấm";
+  `aria-pressed="true"` cộng nhãn "Remove …" thì trình đọc màn hình đọc "toggle button, pressed" — tự mâu thuẫn), tên
+  đọc "Remove {tour} from saved tours" (khoá có sẵn), thay nút X hiện tại. Dưới ảnh:
   dòng nhỏ "Saved {ngày}" (từ `addedAt`, ngày lịch Việt Nam, dạng `3 Oct`; khác năm hiện tại thì thêm năm) → tên
   tour chữ serif (tối đa 2 dòng) → số ngày kèm điểm sao và số lượt (ẩn phần sao khi tour chưa có đánh giá) → giá
   như thẻ hiện tại. Cả thẻ là một vùng bấm tới trang tour; nút tim nằm trên vùng bấm.
@@ -55,6 +57,9 @@ Password có thể cùng mở một dòng mỗi thẻ (mỗi thẻ giữ trạng
   không giá, thẻ không bấm được; tim vẫn bỏ lưu được.
 - **Bỏ lưu:** giữ hành vi hiện có — thẻ rời lưới ngay; lỗi thì thẻ quay về đúng chỗ cũ kèm toast. Thêm: số tour ở
   hero cập nhật sau khi bỏ thành công (hiện giờ đứng yên tới khi tải lại trang).
+- **Focus khi bỏ lưu bằng bàn phím:** nếu tim của thẻ vừa bỏ đang giữ focus thì focus dời sang tim của thẻ kế (thẻ
+  trước nếu đó là thẻ cuối; lưới trống thì sang nút "Browse tours"), không để rơi về `body` rồi bắt người dùng Tab
+  lại từ đầu trang. Focus đang ở chỗ khác thì giữ nguyên.
 - **Trạng thái trống:** khối giữa trang — icon tim trong vòng tròn nền muted, "Nothing saved yet", câu hướng dẫn có
   sẵn, nút chính "Browse tours".
 
@@ -67,9 +72,10 @@ Password có thể cùng mở một dòng mỗi thẻ (mỗi thẻ giữ trạng
 
 ## 5. Kiểm thử
 
-- Unit (Vitest): thẻ đã lưu (ngày lưu, ẩn sao khi chưa đánh giá, nhánh unavailable, tim có `aria-pressed` và tên
-  đọc), lưới bỏ lưu (rời ngay, quay lại khi lỗi, số đếm hero cập nhật), trang settings xếp đúng thẻ và đủ dòng, thẻ
-  Password mở form, nút quay lại trong hero của hai trang.
+- Unit (Vitest): thẻ đã lưu (ngày lưu, ẩn sao khi chưa đánh giá, nhánh unavailable, tim là nút hành động không
+  `aria-pressed` với tên đọc), lưới bỏ lưu (rời ngay, quay lại khi lỗi, số đếm hero cập nhật, focus dời sang thẻ kế khi
+  bỏ bằng bàn phím), trang settings xếp đúng thẻ và đủ dòng, thẻ Password mở form, nút quay lại trong hero của hai
+  trang.
 - Đo bố cục ở 320/375/768/1024/1280 (cả theme tối): không cuộn ngang, chữ không đè, thẻ danh tính dính đúng ở `lg`.
 - Thử tay trên production sau deploy, từng bước (đăng nhập do user làm).
 

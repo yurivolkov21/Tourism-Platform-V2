@@ -1,5 +1,5 @@
 import { createORPCErrorFromJson } from '@orpc/client';
-import { render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { makeWishlistItem } from '@/test/fixtures/wishlist';
@@ -52,6 +52,27 @@ const HOI_AN = makeWishlistItem({
 /** Nút tim của một thẻ — tên đọc là khoá có sẵn `accountSaved.removeAria`. */
 const heartOf = (title: string) =>
   screen.getByRole('button', { name: `Remove ${title} from saved tours` });
+
+/**
+ * Hứng lỗi bất đồng bộ không ai bắt. Vitest gắn sẵn một trình nghe `unhandledRejection` và coi mỗi
+ * lần như thế là lỗi của CẢ lượt chạy (thoát mã 1 dù mọi ca xanh); ca `router.refresh()` ném lỗi cố ý
+ * để lỗi lọt ra khỏi `handleRemove`, nên phải gỡ tạm trình nghe ấy rồi trả lại ở `restore()`.
+ */
+function captureUnhandledRejections() {
+  const original = process.listeners('unhandledRejection');
+  process.removeAllListeners('unhandledRejection');
+  const seen: unknown[] = [];
+  process.on('unhandledRejection', (reason) => {
+    seen.push(reason);
+  });
+  return {
+    seen,
+    restore() {
+      process.removeAllListeners('unhandledRejection');
+      for (const listener of original) process.on('unhandledRejection', listener);
+    },
+  };
+}
 
 describe('SavedGrid', () => {
   beforeEach(() => {
@@ -151,6 +172,27 @@ describe('SavedGrid', () => {
     await waitFor(() => expect(refresh).toHaveBeenCalledTimes(1));
   });
 
+  it('chính `router.refresh()` ném lỗi → thẻ vừa bỏ THẬT vẫn rời lưới, không toast "không bỏ được"', async () => {
+    refresh.mockImplementationOnce(() => {
+      throw new Error('refresh failed');
+    });
+    const unhandled = captureUnhandledRejections();
+    try {
+      const user = userEvent.setup();
+      render(<SavedGrid initialItems={[NINH_BINH, HA_GIANG]} today={TODAY} />);
+      await user.click(heartOf(NINH_BINH.title));
+      await waitFor(() => expect(refresh).toHaveBeenCalledTimes(1));
+      // Server đã bỏ tour (wishlist.set trả về thành công): `catch` của lời gọi API không được hứng
+      // lỗi của bước làm mới rồi lật thẻ về và báo sai là bỏ lưu hỏng.
+      expect(screen.queryByText(NINH_BINH.title)).not.toBeInTheDocument();
+      expect(toastError).not.toHaveBeenCalled();
+      // Lỗi lập trình thật thì không bị nuốt: nó lọt ra ngoài để trình duyệt ghi vào console.
+      await waitFor(() => expect(unhandled.seen).toHaveLength(1));
+    } finally {
+      unhandled.restore();
+    }
+  });
+
   it('bỏ lưu LỖI → KHÔNG làm mới: hero giữ số cũ, thẻ đã quay lại', async () => {
     set.mockRejectedValueOnce(new Error('network down'));
     const user = userEvent.setup();
@@ -200,5 +242,76 @@ describe('SavedGrid — session hết hạn', () => {
 
     await waitFor(() => expect(toastError).toHaveBeenCalled());
     expect(screen.queryByText('Your session has expired.')).not.toBeInTheDocument();
+  });
+});
+
+describe('SavedGrid — focus sau khi bỏ lưu bằng bàn phím (spec 09/10 §3)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    set.mockResolvedValue({ tourId: NINH_BINH.tourId, wished: false });
+  });
+
+  /** Đặt focus bàn phím lên tim của một thẻ — chỗ người dùng Tab tới trước khi bấm Enter. */
+  const focusHeart = (title: string) => {
+    act(() => heartOf(title).focus());
+  };
+
+  it('Tab tới tim đầu tiên rồi Enter: thẻ rời lưới, focus sang tim của thẻ KẾ, không rơi về <body>', async () => {
+    const user = userEvent.setup();
+    render(<SavedGrid initialItems={[NINH_BINH, HA_GIANG, HOI_AN]} today={TODAY} />);
+    await user.tab();
+    expect(heartOf(NINH_BINH.title)).toHaveFocus();
+
+    await user.keyboard('{Enter}');
+
+    expect(screen.queryByText(NINH_BINH.title)).not.toBeInTheDocument();
+    expect(heartOf(HA_GIANG.title)).toHaveFocus();
+  });
+
+  it('bỏ thẻ ở GIỮA: focus sang thẻ kế (sau), không lùi về thẻ trước', async () => {
+    const user = userEvent.setup();
+    render(<SavedGrid initialItems={[NINH_BINH, HA_GIANG, HOI_AN]} today={TODAY} />);
+    focusHeart(HA_GIANG.title);
+    await user.keyboard('{Enter}');
+    expect(heartOf(HOI_AN.title)).toHaveFocus();
+  });
+
+  it('bỏ thẻ CUỐI: focus lùi về tim của thẻ trước', async () => {
+    const user = userEvent.setup();
+    render(<SavedGrid initialItems={[NINH_BINH, HA_GIANG, HOI_AN]} today={TODAY} />);
+    focusHeart(HOI_AN.title);
+    await user.keyboard('{Enter}');
+    expect(screen.queryByText(HOI_AN.title)).not.toBeInTheDocument();
+    expect(heartOf(HA_GIANG.title)).toHaveFocus();
+  });
+
+  it('bỏ thẻ DUY NHẤT: focus sang nút "Browse tours" của trạng thái trống', async () => {
+    const user = userEvent.setup();
+    render(<SavedGrid initialItems={[NINH_BINH]} today={TODAY} />);
+    focusHeart(NINH_BINH.title);
+    await user.keyboard('{Enter}');
+    expect(screen.getByRole('link', { name: 'Browse tours' })).toHaveFocus();
+  });
+
+  it('Enter liền tay: focus đi theo từng thẻ còn lại rồi tới "Browse tours"', async () => {
+    const user = userEvent.setup();
+    render(<SavedGrid initialItems={[NINH_BINH, HA_GIANG, HOI_AN]} today={TODAY} />);
+    focusHeart(NINH_BINH.title);
+    await user.keyboard('{Enter}');
+    expect(heartOf(HA_GIANG.title)).toHaveFocus();
+    await user.keyboard('{Enter}');
+    expect(heartOf(HOI_AN.title)).toHaveFocus();
+    await user.keyboard('{Enter}');
+    expect(screen.getByRole('link', { name: 'Browse tours' })).toHaveFocus();
+  });
+
+  it('focus đang ở chỗ khác khi thẻ rời lưới: giữ nguyên, không bị cướp', () => {
+    render(<SavedGrid initialItems={[NINH_BINH, HA_GIANG, HOI_AN]} today={TODAY} />);
+    focusHeart(HOI_AN.title);
+    // `fireEvent.click` không đổi focus (khác `user.click` vốn focus nút trước khi bấm): giống một
+    // lần bỏ lưu mà focus đang nằm ở thẻ khác hoặc ngoài lưới.
+    fireEvent.click(heartOf(NINH_BINH.title));
+    expect(screen.queryByText(NINH_BINH.title)).not.toBeInTheDocument();
+    expect(heartOf(HOI_AN.title)).toHaveFocus();
   });
 });

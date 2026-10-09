@@ -6,13 +6,16 @@ import { messages } from '@tourism/i18n';
 import { ButtonLink } from '@tourism/ui/components/button-link';
 import { HeartIcon } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { AccountActionError } from '@/components/account/account-action-error';
-import { SavedTourCard } from '@/components/account/saved-tour-card';
+import { SavedTourCard, savedHeartId } from '@/components/account/saved-tour-card';
 import { RevealItem } from '@/components/motion/reveal-item';
 import { api, withBrowserAuth } from '@/lib/api/client';
 import { STAGGER } from '@/lib/motion';
+
+/** `id` của nút "Browse tours" ở trạng thái trống — đích dời focus khi tour cuối cùng bị bỏ. */
+const BROWSE_TOURS_ID = 'saved-browse-tours';
 
 /**
  * Trạng thái trống (spec 09/10 §3): khối giữa trang — icon tim trong vòng tròn nền muted, câu
@@ -36,7 +39,7 @@ function EmptyState() {
         {t.heading}
       </h2>
       <p className="mt-1.5 text-sm text-pretty text-muted-foreground">{t.body}</p>
-      <ButtonLink href="/tours" className="mt-4">
+      <ButtonLink id={BROWSE_TOURS_ID} href="/tours" className="mt-4">
         {t.cta}
       </ButtonLink>
     </div>
@@ -55,6 +58,11 @@ function EmptyState() {
  * mới là hero đếm lại theo đúng dữ liệu server. Next 16 gộp payload mới mà GIỮ `useState` của
  * lưới, nên thẻ vừa bỏ không quay lại và thứ tự không xáo. Lỗi hay 401 thì không làm mới.
  *
+ * Focus bàn phím: bỏ bằng Enter/Space thì focus đang nằm ngay trên tim của thẻ sắp biến mất; để
+ * yên thì nó rơi về `<body>` và người dùng phải Tab lại từ đầu trang. Nên khi tim của thẻ vừa bỏ
+ * đang giữ focus, dời focus sang tim của thẻ kế (thẻ trước nếu đó là thẻ cuối), lưới trống thì
+ * sang nút "Browse tours". Focus đang ở chỗ khác thì giữ nguyên — không cướp.
+ *
  * 401 giữa chừng có thông báo RIÊNG kèm link đăng nhập lại: toast biến mất sau vài giây, còn tin
  * "phải đăng nhập lại" phải nằm lại trên trang. 429 có câu "chờ một phút" riêng.
  *
@@ -69,18 +77,30 @@ export function SavedGrid({
 }) {
   const [items, setItems] = useState(initialItems);
   const [expired, setExpired] = useState(false);
+  // Yêu cầu dời focus tới phần tử có `id` này. Mỗi lần là một object MỚI để effect chạy lại dù
+  // đích trùng lần trước; làm trong effect vì đích (nút của trạng thái trống) chỉ có sau khi lưới
+  // vẽ lại.
+  const [focusRequest, setFocusRequest] = useState<{ id: string } | null>(null);
   const router = useRouter();
   const t = messages.accountSaved;
+
+  useEffect(() => {
+    if (focusRequest) document.getElementById(focusRequest.id)?.focus();
+  }, [focusRequest]);
 
   async function handleRemove(tourId: string) {
     const index = items.findIndex((item) => item.tourId === tourId);
     if (index === -1) return;
     const removed = items[index] as WishlistItem;
+    // Tim của thẻ sắp rời lưới đang giữ focus (bỏ bằng bàn phím): xin dời focus sang thẻ kế, kẻo
+    // thẻ biến mất là focus rơi về <body>.
+    if (document.activeElement?.id === savedHeartId(tourId)) {
+      const neighbor = items[index + 1] ?? items[index - 1];
+      setFocusRequest({ id: neighbor ? savedHeartId(neighbor.tourId) : BROWSE_TOURS_ID });
+    }
     setItems((current) => current.filter((item) => item.tourId !== tourId));
     try {
       await api.wishlist.set({ tourId, wished: false }, { context: withBrowserAuth() });
-      // Hero đếm lại SAU khi bỏ thành công (spec 09/10 §3) — xem JSDoc ở trên.
-      router.refresh();
     } catch (error) {
       // Rollback ĐÚNG vị trí cũ (splice), không phải push cuối mảng — tránh
       // thứ tự "mới nhất trước" (server) nhảy lộn xộn chỉ vì một request lỗi.
@@ -100,7 +120,13 @@ export function SavedGrid({
         return;
       }
       toast.error(t.removeErrorToast.title, { description: t.removeErrorToast.body });
+      // Mọi nhánh của `catch` đều dừng ở đây: dưới này chỉ chạy khi `set` đã thành công.
+      return;
     }
+    // Hero đếm lại SAU khi bỏ thành công (spec 09/10 §3) — xem JSDoc ở trên. Đặt NGOÀI `try`: lỗi
+    // của chính bước làm mới mà bị `catch` ở trên hứng thì sẽ lật thẻ về lưới và báo sai là bỏ lưu
+    // hỏng, trong khi server đã bỏ tour thật.
+    router.refresh();
   }
 
   if (items.length === 0) {

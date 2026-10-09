@@ -14,14 +14,26 @@ import { formatSavedDate } from '@/lib/wishlist';
 const COVER_SIZES = '(min-width: 1024px) 368px, (min-width: 640px) 50vw, 100vw';
 
 /**
+ * `id` của nút tim một thẻ. `SavedGrid` dùng nó để biết focus có đang ở tim của thẻ sắp rời lưới
+ * hay không, và để dời focus sang tim của thẻ kế (cùng nếp `BOOKINGS_COUNT_ID` của My bookings:
+ * tìm đích bằng `id`, không giữ ref xuyên component).
+ */
+export function savedHeartId(tourId: string): string {
+  return `saved-heart-${tourId}`;
+}
+
+/**
  * Thẻ MỘT tour đã lưu (spec 09/10 §3, phương án A) — không viền, ảnh trên chữ dưới như thẻ tour
  * của site.
  *
  * - Ảnh bìa 4:3 bo góc; nút tim 36px LUÔN hiện ở góc phải trên ảnh (cả điện thoại, nơi không có
- *   hover), tim đặc màu chủ đạo, `aria-pressed="true"`, tên đọc "Remove {tour} from saved tours".
- *   Nút là ANH EM của ảnh và mang `z-10`: lớp phủ bấm-cả-thẻ (`after:` của link tiêu đề) nằm sau
- *   trong DOM nên mặc định vẽ đè lên nó; còn ảnh xám mang `filter` (tạo stacking context), nên
- *   nút và nhãn không được nằm TRONG khung ảnh.
+ *   hover), tim đặc màu chủ đạo, tên đọc "Remove {tour} from saved tours". Đây là nút HÀNH ĐỘNG
+ *   thuần, không `aria-pressed`: thẻ rời lưới ngay khi bấm nên không bao giờ có trạng thái "chưa
+ *   bấm" để bật lại, còn `aria-pressed="true"` cộng nhãn "Remove …" thì trình đọc màn hình đọc
+ *   "Remove …, toggle button, pressed" — tự mâu thuẫn (nút bật/tắt thật là `WishlistHeart`, đổi
+ *   trạng thái tại chỗ). Nút là ANH EM của ảnh và mang `z-10`: lớp phủ bấm-cả-thẻ (`after:` của
+ *   link tiêu đề) nằm sau trong DOM nên mặc định vẽ đè lên nó; còn ảnh xám mang `filter` (tạo
+ *   stacking context), nên nút và nhãn không được nằm TRONG khung ảnh.
  * - Dưới ảnh: "Saved {ngày}" (ngày lịch Việt Nam của `addedAt`) → tên tour (tối đa 2 dòng, giữ
  *   chỗ 2 dòng để hàng thẻ thẳng nhau) → số ngày kèm sao và số lượt (chưa ai đánh giá thì bỏ hẳn
  *   phần sao, không in nhãn thay) → giá.
@@ -62,10 +74,10 @@ export function SavedTourCard({
           </span>
         ) : null}
         <Button
+          id={savedHeartId(item.tourId)}
           type="button"
           variant="ghost"
           size="icon-lg"
-          aria-pressed="true"
           aria-label={t.removeAria(item.title)}
           onClick={onRemove}
           className="absolute top-2.5 right-2.5 z-10 rounded-full bg-background/80 text-primary-emphasis shadow-(--shadow-card) backdrop-blur-sm hover:bg-background hover:text-primary-emphasis dark:hover:bg-background"

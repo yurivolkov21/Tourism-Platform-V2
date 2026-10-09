@@ -59,17 +59,25 @@ describe('SavedTourCard — tour còn bán', () => {
     expect(screen.getByText('$79')).toBeInTheDocument();
   });
 
+  it('điểm tròn số vẫn in MỘT chữ số thập phân: 5 → "5.0" (4.8 không phân biệt được với `String`)', () => {
+    renderCard({ ratingAvg: 5, ratingCount: 3 });
+    expect(screen.getByText('5.0')).toBeInTheDocument();
+    expect(screen.queryByText('5')).not.toBeInTheDocument();
+  });
+
   it('chưa ai đánh giá: bỏ hẳn phần sao — không "Not yet reviewed", không "★ null"', () => {
     renderCard({ ratingAvg: null, ratingCount: 0 });
     expect(screen.getByText('1 day').closest('p')?.textContent).toBe('1 day');
     expect(screen.queryByText('Not yet reviewed')).not.toBeInTheDocument();
   });
 
-  it('tim là nút bật/tắt đang BẬT, tên đọc có tên tour, nằm NGOÀI link; bấm thì gọi onRemove', async () => {
+  it('tim là nút hành động thuần (KHÔNG aria-pressed), tên đọc có tên tour, nằm NGOÀI link; bấm thì gọi onRemove', async () => {
     const user = userEvent.setup();
     const { onRemove } = renderCard();
     const heart = screen.getByRole('button', { name: `Remove ${TITLE} from saved tours` });
-    expect(heart).toHaveAttribute('aria-pressed', 'true');
+    // Thẻ rời lưới ngay khi bấm nên không có trạng thái "chưa bấm": `aria-pressed="true"` cộng với
+    // nhãn "Remove …" thì trình đọc màn hình đọc "Remove …, toggle button, pressed" — tự mâu thuẫn.
+    expect(heart).not.toHaveAttribute('aria-pressed');
     expect(screen.getByRole('link')).not.toContainElement(heart);
     await user.click(heart);
     expect(onRemove).toHaveBeenCalledTimes(1);
