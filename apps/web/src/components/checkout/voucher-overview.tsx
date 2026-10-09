@@ -13,7 +13,6 @@ import type { ReactNode } from 'react';
 import { VoucherCancelledNotice, VoucherCode } from '@/components/checkout/voucher-code';
 import { VisaStamp } from '@/components/passport/visa-stamp';
 import { SlotImage } from '@/components/slot-image';
-import { bookingView } from '@/lib/booking-vm';
 import { formatBookingMoney } from '@/lib/checkout';
 import type { VoucherView } from '@/lib/voucher';
 
@@ -54,21 +53,19 @@ export function VoucherOverview({
           <p className="mt-2 text-sm text-muted-foreground">{view.subtitle}</p>
         </div>
         <div className="shrink-0 self-start sm:pt-1">
-          <VisaStamp
-            label={messages.passportVisa.stampByStatus[booking.status]}
-            tone={bookingView(booking).tone}
-          />
+          {/* Mộc theo giai đoạn (`bookingPass(…).stamp`), cùng luật với vé của trang chi tiết đơn. */}
+          <VisaStamp {...view.stamp} />
         </div>
       </div>
 
-      {view.showCode ? (
+      {view.cancelledNotice === null ? (
         <VoucherCode code={booking.code} className="mt-5 xl:hidden print:hidden" />
-      ) : view.cancelledNotice ? (
+      ) : (
         <VoucherCancelledNotice
           text={view.cancelledNotice}
           className="mt-5 xl:hidden print:hidden"
         />
-      ) : null}
+      )}
 
       {/* Chiều cao TỐI THIỂU, không cố định: khối chữ nằm trong luồng và xếp ở đáy (flex
           `justify-end`), nên chữ nhiều thì đẩy ảnh cao lên. Bản cũ cao cố định 224px còn khối

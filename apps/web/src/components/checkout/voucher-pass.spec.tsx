@@ -9,8 +9,8 @@ import {
   CANCELLED_AFTER_PAYING,
   THREE_DAY_TRIP,
   VOUCHER_NOW,
-  VOUCHER_TODAY,
   voucherBooking,
+  voucherNowOn,
 } from '@/test/fixtures/voucher';
 import { VoucherPass } from './voucher-pass';
 
@@ -28,9 +28,9 @@ const THREE_DAYS_PASSED = {
   }),
 };
 
-function renderPass(overrides: Partial<BookingDetail> = {}, today = VOUCHER_TODAY) {
+function renderPass(overrides: Partial<BookingDetail> = {}, now = VOUCHER_NOW) {
   const booking = voucherBooking(overrides);
-  const view = voucherView(booking, VOUCHER_NOW, today);
+  const view = voucherView(booking, now);
   if (view === null) throw new Error('fixture phải là đơn đã trả');
   return render(<VoucherPass booking={booking} view={view} />);
 }
@@ -90,7 +90,7 @@ describe('VoucherPass — khối mã (sắp đi)', () => {
 
 describe('VoucherPass — theo giai đoạn', () => {
   it('đã đi: còn mã, KHÔNG mã vạch, chỉ còn dòng giá đã gồm thuế phí', () => {
-    const { container } = renderPass(THREE_DAYS_PASSED, '2026-11-10');
+    const { container } = renderPass(THREE_DAYS_PASSED, voucherNowOn('2026-11-10'));
     expect(screen.getByText(CODE)).toBeInTheDocument();
     expect(container.querySelector('[data-slot="barcode"]')).toBeNull();
     expect(texts(slot(container, 'voucher-conditions').querySelectorAll('li'))).toEqual([

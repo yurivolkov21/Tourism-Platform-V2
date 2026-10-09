@@ -2,12 +2,7 @@ import { render, screen } from '@testing-library/react';
 import type { BookingDetail } from '@tourism/contract';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { voucherView } from '@/lib/voucher';
-import {
-  minutesBeforeNow,
-  VOUCHER_NOW,
-  VOUCHER_TODAY,
-  voucherBooking,
-} from '@/test/fixtures/voucher';
+import { minutesBeforeNow, VOUCHER_NOW, voucherBooking } from '@/test/fixtures/voucher';
 import { VoucherCard } from './voucher-card';
 
 // Pháo giấy có spec riêng (một lần mỗi tab, tôn trọng reduced-motion). Ở đây chỉ hỏi thẻ CÓ
@@ -29,7 +24,7 @@ const CANCELLED_NOTICE = 'This booking was cancelled — this voucher is no long
 
 function renderCard(overrides: Partial<BookingDetail> = {}) {
   const booking = voucherBooking(overrides);
-  const view = voucherView(booking, VOUCHER_NOW, VOUCHER_TODAY);
+  const view = voucherView(booking, VOUCHER_NOW);
   if (view === null) throw new Error('fixture phải là đơn đã trả');
   return render(<VoucherCard booking={booking} view={view} meetingPoint={null} />);
 }

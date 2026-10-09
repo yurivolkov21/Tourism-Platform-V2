@@ -5,9 +5,9 @@ import { describe, expect, it } from 'vitest';
 import { voucherView } from '@/lib/voucher';
 import {
   CANCELLED_AFTER_PAYING,
+  OPERATOR_CANCELLED_PENDING,
   THREE_DAY_TRIP,
   VOUCHER_NOW,
-  VOUCHER_TODAY,
   voucherBooking,
 } from '@/test/fixtures/voucher';
 import { VoucherOverview } from './voucher-overview';
@@ -23,7 +23,7 @@ function renderOverview(
   meetingPoint: string | null = MEETING,
 ) {
   const booking = voucherBooking(overrides);
-  const view = voucherView(booking, VOUCHER_NOW, VOUCHER_TODAY);
+  const view = voucherView(booking, VOUCHER_NOW);
   if (view === null) throw new Error('fixture phải là đơn đã trả');
   return render(<VoucherOverview booking={booking} view={view} meetingPoint={meetingPoint} />);
 }
@@ -46,12 +46,18 @@ describe('VoucherOverview — tiêu đề và mộc', () => {
     ).toBeInTheDocument();
   });
 
-  it('mộc theo trạng thái: CONFIRMED khi PAID, CANCELLED khi đã huỷ', () => {
+  it('mộc theo giai đoạn: CONFIRMED khi PAID sắp đi, CANCELLED khi đã huỷ', () => {
     const { unmount } = renderOverview();
     expect(screen.getByText(messages.passportVisa.stampByStatus.PAID)).toBeInTheDocument();
     unmount();
 
     renderOverview(CANCELLED_AFTER_PAYING);
+    expect(screen.getByText(messages.passportVisa.stampByStatus.CANCELLED)).toBeInTheDocument();
+    expect(screen.queryByText(messages.passportVisa.stampByStatus.PAID)).toBeNull();
+  });
+
+  it('chuyến công ty huỷ, đơn còn PAID chờ job hoàn tiền: mộc CANCELLED, không CONFIRMED', () => {
+    renderOverview(OPERATOR_CANCELLED_PENDING);
     expect(screen.getByText(messages.passportVisa.stampByStatus.CANCELLED)).toBeInTheDocument();
     expect(screen.queryByText(messages.passportVisa.stampByStatus.PAID)).toBeNull();
   });

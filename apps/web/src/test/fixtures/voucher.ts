@@ -9,8 +9,14 @@ import { makeBooking, makeCancellation } from './booking';
  */
 export const VOUCHER_NOW = new Date('2026-10-20T03:00:00.000Z');
 
-/** Ngày lịch Việt Nam của `VOUCHER_NOW`. */
-export const VOUCHER_TODAY = '2026-10-20';
+/**
+ * Cùng 10:00 giờ Việt Nam như `VOUCHER_NOW` nhưng ở ngày lịch VN `day` (`YYYY-MM-DD`).
+ * `voucherView` suy hôm nay từ chính `now` (một đồng hồ), nên spec cần giai đoạn đang đi hay đã
+ * đi truyền mốc này thay vì một chuỗi ngày riêng.
+ */
+export function voucherNowOn(day: string): Date {
+  return new Date(`${day}T03:00:00.000Z`);
+}
 
 /** Mốc ISO cách `VOUCHER_NOW` `minutes` phút về trước (số âm là về sau). */
 export function minutesBeforeNow(minutes: number): string {
@@ -35,6 +41,15 @@ export const CANCELLED_AFTER_PAYING = {
   status: 'CANCELLED',
   cancellation: null,
   cancelledAt: '2026-10-19T08:00:00.000Z',
+} as const satisfies Partial<BookingDetail>;
+
+/**
+ * Chuyến bị CÔNG TY huỷ khi job hoàn tiền (`departure-refund`) chưa chạy: đơn vẫn PAID, chưa hoàn
+ * đồng nào, chưa có mốc huỷ, server không gửi cờ huỷ (ADR-0041 AMEND 1, ADR-0054 AMEND 1).
+ */
+export const OPERATOR_CANCELLED_PENDING = {
+  departureCancelled: true,
+  cancellation: null,
 } as const satisfies Partial<BookingDetail>;
 
 /**

@@ -1,11 +1,13 @@
+import type { BookingDetail } from '@tourism/contract';
 import { describe, expect, it } from 'vitest';
 import { makeCancellation } from '@/test/fixtures/booking';
 import {
   minutesBeforeNow,
+  OPERATOR_CANCELLED_PENDING,
   THREE_DAY_TRIP,
   VOUCHER_NOW,
-  VOUCHER_TODAY,
   voucherBooking,
+  voucherNowOn,
 } from '@/test/fixtures/voucher';
 import { VOUCHER_FRESH_MINUTES, type VoucherView, voucherView } from './voucher';
 
@@ -14,8 +16,8 @@ import { VOUCHER_FRESH_MINUTES, type VoucherView, voucherView } from './voucher'
  * câu mới của khối `messages.voucher` lẫn câu dùng lại (thuế phí, hạn huỷ, hoàn tiền) đều
  * được ghim ở đây: đổi chữ là phải đổi test, có chủ ý.
  */
-function view(...args: Parameters<typeof voucherView>): VoucherView {
-  const result = voucherView(...args);
+function view(booking: BookingDetail, now: Date = VOUCHER_NOW): VoucherView {
+  const result = voucherView(booking, now);
   if (result === null) throw new Error('fixture phải là đơn đã trả');
   return result;
 }
@@ -43,18 +45,18 @@ const TAXES = 'Includes all taxes and fees.';
 describe('voucherView — đơn nào dùng thiết kế voucher (spec §2.6)', () => {
   it('đơn chưa có paidAt (PENDING chờ webhook) → null: trang giữ hoá đơn chờ', () => {
     const pending = voucherBooking({ status: 'PENDING', paidAt: null, cancellation: null });
-    expect(voucherView(pending, VOUCHER_NOW, VOUCHER_TODAY)).toBeNull();
+    expect(voucherView(pending, VOUCHER_NOW)).toBeNull();
   });
 
   it('giữ chỗ hết hạn rồi bị huỷ, chưa từng trả → null, dù giai đoạn là cancelled', () => {
     const lapsed = voucherBooking({ ...CANCELLED, paidAt: null });
-    expect(voucherView(lapsed, VOUCHER_NOW, VOUCHER_TODAY)).toBeNull();
+    expect(voucherView(lapsed, VOUCHER_NOW)).toBeNull();
   });
 });
 
 describe('voucherView — vừa trả hay mở lại', () => {
   it('PAID 15 phút trước, chuyến một ngày → "Your day in {nơi} is booked."', () => {
-    const v = view(voucherBooking({ paidAt: minutesBeforeNow(15) }), VOUCHER_NOW, VOUCHER_TODAY);
+    const v = view(voucherBooking({ paidAt: minutesBeforeNow(15) }));
     expect(v.justPaid).toBe(true);
     expect(v.title).toBe('Your day in Hà Nội is booked.');
     expect(v.subtitle).toBe(
@@ -63,22 +65,14 @@ describe('voucherView — vừa trả hay mở lại', () => {
   });
 
   it('chuyến nhiều ngày → "Your trip to {nơi} is booked."', () => {
-    const v = view(
-      voucherBooking({ ...THREE_DAY_TRIP, paidAt: minutesBeforeNow(15) }),
-      VOUCHER_NOW,
-      VOUCHER_TODAY,
-    );
+    const v = view(voucherBooking({ ...THREE_DAY_TRIP, paidAt: minutesBeforeNow(15) }));
     expect(v.title).toBe('Your trip to Hà Nội is booked.');
   });
 
   it('{nơi} là điểm đến ĐẦU TIÊN; tour không có điểm đến thì dùng tên tour', () => {
     // Fixture có hai điểm đến (Hà Nội, Ninh Bình): lấy nhầm điểm cuối là ca này đỏ.
-    expect(view(voucherBooking(), VOUCHER_NOW, VOUCHER_TODAY).place).toBe('Hà Nội');
-    const bare = view(
-      voucherBooking({ tourDestinations: [], paidAt: minutesBeforeNow(1) }),
-      VOUCHER_NOW,
-      VOUCHER_TODAY,
-    );
+    expect(view(voucherBooking()).place).toBe('Hà Nội');
+    const bare = view(voucherBooking({ tourDestinations: [], paidAt: minutesBeforeNow(1) }));
     expect(bare.place).toBe('Hanoi Heritage in a Day');
     expect(bare.title).toBe('Your day in Hanoi Heritage in a Day is booked.');
   });
@@ -86,13 +80,9 @@ describe('voucherView — vừa trả hay mở lại', () => {
   it(`đúng ${VOUCHER_FRESH_MINUTES} phút vẫn là vừa trả; lẻ thêm 1 ms là mở lại`, () => {
     const edge = VOUCHER_NOW.getTime() - VOUCHER_FRESH_MINUTES * 60_000;
     const atEdge = voucherBooking({ paidAt: new Date(edge).toISOString() });
-    expect(view(atEdge, VOUCHER_NOW, VOUCHER_TODAY).justPaid).toBe(true);
+    expect(view(atEdge).justPaid).toBe(true);
 
-    const late = view(
-      voucherBooking({ paidAt: new Date(edge - 1).toISOString() }),
-      VOUCHER_NOW,
-      VOUCHER_TODAY,
-    );
+    const late = view(voucherBooking({ paidAt: new Date(edge - 1).toISOString() }));
     expect(late.justPaid).toBe(false);
     expect(late.title).toBe('Your trip voucher');
     // "Booked on" là ngày ĐẶT (18/10), không phải ngày trả (20/10).
@@ -101,7 +91,7 @@ describe('voucherView — vừa trả hay mở lại', () => {
 
   it('paidAt nhanh hơn đồng hồ web vài giây vẫn là vừa trả', () => {
     const ahead = voucherBooking({ paidAt: minutesBeforeNow(-0.1) });
-    expect(view(ahead, VOUCHER_NOW, VOUCHER_TODAY).justPaid).toBe(true);
+    expect(view(ahead).justPaid).toBe(true);
   });
 
   it('chỉ PAID mới là vừa trả — PARTIALLY_REFUNDED trả 10 phút trước vẫn là mở lại', () => {
@@ -110,13 +100,71 @@ describe('voucherView — vừa trả hay mở lại', () => {
       refundedTotal: '49.00',
       paidAt: minutesBeforeNow(10),
     });
-    expect(view(partly, VOUCHER_NOW, VOUCHER_TODAY).justPaid).toBe(false);
+    expect(view(partly).justPaid).toBe(false);
+  });
+
+  it('chuyến bị công ty huỷ ngay trong 30 phút sau khi trả (đơn còn PAID): không "vừa trả", không pháo giấy', () => {
+    const v = view(voucherBooking({ ...OPERATOR_CANCELLED_PENDING, paidAt: minutesBeforeNow(10) }));
+    expect(v.justPaid).toBe(false);
+    expect(v.title).toBe('Your trip voucher');
+  });
+});
+
+/**
+ * MỘT đồng hồ (review P7C mục 17): trang đọc giờ một lần, `voucherView` suy cả "vừa trả" (30 phút
+ * từ `paidAt`) lẫn hôm nay (ngày lịch Việt Nam, spec P7 §2.1) từ chính `now`.
+ */
+describe('voucherView — hôm nay suy từ `now`', () => {
+  it('06:30 giờ VN ngày đi 03/11 (23:30Z ngày 02/11) đã là đang đi — ngày VN, không phải ngày UTC', () => {
+    const v = view(
+      voucherBooking({ ...THREE_DAY_TRIP, cancellation: PASSED }),
+      new Date('2026-11-02T23:30:00.000Z'),
+    );
+    expect(v.journal.map((item) => item.label)).toEqual([
+      'Booked and paid',
+      'Trip started',
+      'Trip ends',
+    ]);
+  });
+
+  it('23:59 giờ VN 02/11 (16:59Z) vẫn là sắp đi', () => {
+    const v = view(
+      voucherBooking({ ...THREE_DAY_TRIP, cancellation: PASSED }),
+      new Date('2026-11-02T16:59:00.000Z'),
+    );
+    expect(v.journal.map((item) => item.label)).toEqual([
+      'Booked and paid',
+      'Free cancellation ended',
+      'Pickup day',
+    ]);
+  });
+});
+
+/**
+ * Mộc của cột trái theo giai đoạn — `bookingPass(…).stamp`, cùng luật với vé của trang chi tiết
+ * đơn (ADR-0054 AMEND 1 §5). Bản trước đọc thẳng trạng thái đơn: đơn PAID trên chuyến công ty huỷ
+ * vẫn đóng mộc "CONFIRMED".
+ */
+describe('voucherView — mộc theo giai đoạn', () => {
+  it('sắp đi, PAID: CONFIRMED mực xanh', () => {
+    expect(view(voucherBooking()).stamp).toEqual({ label: 'CONFIRMED', tone: 'success' });
+  });
+
+  it('khách huỷ sau khi trả: CANCELLED mực xám', () => {
+    expect(view(voucherBooking(CANCELLED)).stamp).toEqual({ label: 'CANCELLED', tone: 'muted' });
+  });
+
+  it('chuyến công ty huỷ, đơn còn PAID chờ job hoàn tiền: CANCELLED, không CONFIRMED', () => {
+    expect(view(voucherBooking(OPERATOR_CANCELLED_PENDING)).stamp).toEqual({
+      label: 'CANCELLED',
+      tone: 'muted',
+    });
   });
 });
 
 describe('voucherView — trường dùng chung của hai cột', () => {
   it('chuyến một ngày: ngày đi một mốc, 1 ngày, cổng PayPal, ngày trả', () => {
-    const v = view(voucherBooking(), VOUCHER_NOW, VOUCHER_TODAY);
+    const v = view(voucherBooking());
     expect([v.departure, v.tripDays, v.provider, v.paidOn]).toEqual([
       '3 Nov 2026',
       1,
@@ -129,8 +177,6 @@ describe('voucherView — trường dùng chung của hai cột', () => {
     // Đặt 02:00 giờ VN 18/10 (19:00Z ngày 17/10), trả 01:30 giờ VN 19/10 (18:30Z ngày 18/10).
     const v = view(
       voucherBooking({ createdAt: '2026-10-17T19:00:00.000Z', paidAt: '2026-10-18T18:30:00.000Z' }),
-      VOUCHER_NOW,
-      VOUCHER_TODAY,
     );
     expect(v.paidOn).toBe('19 Oct 2026');
     expect(v.journal[0]).toEqual({
@@ -149,8 +195,6 @@ describe('voucherView — trường dùng chung của hai cột', () => {
         paymentProvider: 'STRIPE',
         paidAt: '2026-10-19T03:00:00.000Z',
       }),
-      VOUCHER_NOW,
-      VOUCHER_TODAY,
     );
     expect([v.departure, v.tripDays, v.provider, v.paidOn]).toEqual([
       '3–5 Nov 2026',
@@ -163,9 +207,8 @@ describe('voucherView — trường dùng chung của hai cột', () => {
 
 describe('voucherView — sắp đi (upcoming)', () => {
   it('ô mã, mã vạch và ba dòng điều kiện đúng thứ tự bảng §2.6', () => {
-    const v = view(voucherBooking(), VOUCHER_NOW, VOUCHER_TODAY);
-    expect(v.phase).toBe('upcoming');
-    expect([v.showCode, v.showBarcode, v.cancelledNotice]).toEqual([true, true, null]);
+    const v = view(voucherBooking());
+    expect([v.cancelledNotice, v.showBarcode]).toEqual([null, true]);
     expect(v.conditions).toEqual([
       SHOW_CODE,
       'Free cancellation until 2 Nov, 11:59 pm Vietnam time. No refund after that.',
@@ -174,7 +217,7 @@ describe('voucherView — sắp đi (upcoming)', () => {
   });
 
   it('nhật ký: Booked and paid ✓ · Free cancellation ends · Pickup day', () => {
-    expect(view(voucherBooking(), VOUCHER_NOW, VOUCHER_TODAY).journal).toEqual([
+    expect(view(voucherBooking()).journal).toEqual([
       { label: 'Booked and paid', detail: '18 Oct 2026 · PayPal', done: true },
       { label: 'Free cancellation ends', detail: '2 Nov, 11:59 pm Vietnam time', done: false },
       { label: 'Pickup day', detail: '3 Nov 2026 · Hà Nội', done: false },
@@ -189,10 +232,7 @@ describe('voucherView — sắp đi (upcoming)', () => {
         ...trip,
         cancellation: makeCancellation(voucherBooking(trip), { withinDeadline: false }),
       }),
-      VOUCHER_NOW,
-      VOUCHER_TODAY,
     );
-    expect(v.phase).toBe('upcoming');
     expect(v.conditions).toEqual([SHOW_CODE, TAXES]);
     expect(v.journal[1]).toEqual({
       label: 'Free cancellation ended',
@@ -209,10 +249,9 @@ describe('voucherView — sắp đi (upcoming)', () => {
   it('vắng cờ server (hoàn thiện chí trọn) thì KHÔNG còn hạn huỷ — không tự so ngày chót', () => {
     const v = view(
       voucherBooking({ status: 'REFUNDED', refundedTotal: '147.00', cancellation: null }),
-      VOUCHER_NOW,
-      VOUCHER_TODAY,
     );
-    expect(v.phase).toBe('upcoming');
+    // Vẫn là voucher còn hiệu lực, có mã vạch: khách vẫn đi.
+    expect([v.cancelledNotice, v.showBarcode]).toEqual([null, true]);
     expect(v.conditions).toEqual([SHOW_CODE, TAXES]);
     expect(v.journal[1]).toEqual({
       label: 'Free cancellation ended',
@@ -224,14 +263,11 @@ describe('voucherView — sắp đi (upcoming)', () => {
 
 describe('voucherView — đang đi (on_tour)', () => {
   it('còn mã và mã vạch; điều kiện bỏ hạn huỷ; nhật ký Trip started ✓ · Trip ends', () => {
-    // `now` vẫn là 20/10 — chỉ dùng để đo "vừa trả"; giai đoạn đọc theo `today`.
     const v = view(
       voucherBooking({ ...THREE_DAY_TRIP, cancellation: PASSED }),
-      VOUCHER_NOW,
-      '2026-11-04',
+      voucherNowOn('2026-11-04'),
     );
-    expect(v.phase).toBe('on_tour');
-    expect([v.showCode, v.showBarcode]).toEqual([true, true]);
+    expect([v.cancelledNotice, v.showBarcode]).toEqual([null, true]);
     expect(v.conditions).toEqual([SHOW_CODE, TAXES]);
     expect(v.journal).toEqual([
       { label: 'Booked and paid', detail: '18 Oct 2026 · PayPal', done: true },
@@ -242,17 +278,16 @@ describe('voucherView — đang đi (on_tour)', () => {
 });
 
 describe('voucherView — đã đi (travelled)', () => {
-  const AFTER = '2026-11-10';
+  const AFTER = voucherNowOn('2026-11-10');
 
   it('còn ô mã nhưng KHÔNG mã vạch; chỉ còn dòng giá đã gồm thuế phí', () => {
-    const v = view(voucherBooking({ ...THREE_DAY_TRIP, cancellation: PASSED }), VOUCHER_NOW, AFTER);
-    expect(v.phase).toBe('travelled');
-    expect([v.showCode, v.showBarcode]).toEqual([true, false]);
+    const v = view(voucherBooking({ ...THREE_DAY_TRIP, cancellation: PASSED }), AFTER);
+    expect([v.cancelledNotice, v.showBarcode]).toEqual([null, false]);
     expect(v.conditions).toEqual([TAXES]);
   });
 
   it('chưa viết review → mục cuối "Write a review" mời viết', () => {
-    const v = view(voucherBooking({ ...THREE_DAY_TRIP, cancellation: PASSED }), VOUCHER_NOW, AFTER);
+    const v = view(voucherBooking({ ...THREE_DAY_TRIP, cancellation: PASSED }), AFTER);
     expect(v.journal).toEqual([
       { label: 'Booked and paid', detail: '18 Oct 2026 · PayPal', done: true },
       { label: 'Travelled', detail: '3–5 Nov 2026', done: true },
@@ -267,7 +302,6 @@ describe('voucherView — đã đi (travelled)', () => {
         cancellation: PASSED,
         reviewedAt: '2026-11-07T08:00:00.000Z',
       }),
-      VOUCHER_NOW,
       AFTER,
     );
     expect(v.journal[2]).toEqual({ label: 'Reviewed', detail: '7 Nov 2026', done: true });
@@ -280,7 +314,6 @@ describe('voucherView — đã đi (travelled)', () => {
         cancellation: PASSED,
         reviewedAt: '2026-11-06T20:00:00.000Z',
       }),
-      VOUCHER_NOW,
       AFTER,
     );
     expect(v.journal[2]).toEqual({ label: 'Reviewed', detail: '7 Nov 2026', done: true });
@@ -294,7 +327,6 @@ describe('voucherView — đã đi (travelled)', () => {
         status: 'PARTIALLY_REFUNDED',
         refundedTotal: '49.00',
       }),
-      VOUCHER_NOW,
       AFTER,
     );
     expect(v.journal.map((item) => item.label)).toEqual(['Booked and paid', 'Travelled']);
@@ -303,14 +335,13 @@ describe('voucherView — đã đi (travelled)', () => {
 
 describe('voucherView — đã huỷ (cancelled)', () => {
   it('không ô mã, không mã vạch, không điều kiện — dải "no longer valid" thay chỗ', () => {
-    const v = view(voucherBooking(CANCELLED), VOUCHER_NOW, VOUCHER_TODAY);
-    expect(v.phase).toBe('cancelled');
-    expect([v.showCode, v.showBarcode, v.conditions]).toEqual([false, false, []]);
+    const v = view(voucherBooking(CANCELLED));
+    expect([v.showBarcode, v.conditions]).toEqual([false, []]);
     expect(v.cancelledNotice).toBe('This booking was cancelled — this voucher is no longer valid.');
   });
 
   it('nhật ký: Booked ✓ · Cancelled ✓ (ngày cancelledAt) · Refund chưa có đồng nào', () => {
-    expect(view(voucherBooking(CANCELLED), VOUCHER_NOW, VOUCHER_TODAY).journal).toEqual([
+    expect(view(voucherBooking(CANCELLED)).journal).toEqual([
       { label: 'Booked', detail: '18 Oct 2026', done: true },
       { label: 'Cancelled', detail: '1 Nov 2026', done: true },
       { label: 'Refund', detail: 'No refund was due on this booking.', done: false },
@@ -331,8 +362,6 @@ describe('voucherView — đã huỷ (cancelled)', () => {
         cancellationStatus: 'REFUNDED',
         cancellationDecidedAt: '2026-10-25T02:00:00.000Z',
       }),
-      VOUCHER_NOW,
-      VOUCHER_TODAY,
     );
     expect(v.journal.slice(1)).toEqual([
       { label: 'Cancelled', detail: '25 Oct 2026', done: true },
@@ -357,8 +386,6 @@ describe('voucherView — đã huỷ (cancelled)', () => {
           cancellationStatus: status,
           cancellationRequestedAt: '2026-10-24T02:00:00.000Z',
         }),
-        VOUCHER_NOW,
-        VOUCHER_TODAY,
       );
       expect(v.journal[1]).toEqual({ label: 'Cancelled', detail: null, done: true });
     },
@@ -372,18 +399,12 @@ describe('voucherView — đã huỷ (cancelled)', () => {
         cancellationDecidedAt: null,
         cancellationRequestedAt: null,
       }),
-      VOUCHER_NOW,
-      VOUCHER_TODAY,
     );
     expect(v.journal[1]).toEqual({ label: 'Cancelled', detail: null, done: true });
   });
 
   it('huỷ lúc 06:30 giờ VN ngày 01/11 (23:30Z ngày 31/10): mục Cancelled ghi ngày VN', () => {
-    const v = view(
-      voucherBooking({ ...CANCELLED, cancelledAt: '2026-10-31T23:30:00.000Z' }),
-      VOUCHER_NOW,
-      VOUCHER_TODAY,
-    );
+    const v = view(voucherBooking({ ...CANCELLED, cancelledAt: '2026-10-31T23:30:00.000Z' }));
     expect(v.journal[1]).toEqual({ label: 'Cancelled', detail: '1 Nov 2026', done: true });
   });
 
@@ -394,8 +415,6 @@ describe('voucherView — đã huỷ (cancelled)', () => {
         paidAt: minutesBeforeNow(10),
         cancelledAt: minutesBeforeNow(2),
       }),
-      VOUCHER_NOW,
-      VOUCHER_TODAY,
     );
     expect(v.justPaid).toBe(false);
     expect(v.title).toBe('Your trip voucher');

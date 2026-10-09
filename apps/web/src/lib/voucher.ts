@@ -1,11 +1,7 @@
-import {
-  type BookingDetail,
-  type BookingPhase,
-  bookingPhase,
-  tripLengthDays,
-} from '@tourism/contract';
+import { type BookingDetail, bookingPhase, tripLengthDays, vietnamToday } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
 import {
+  type BookingStamp,
   bookingPass,
   cancelledOn,
   freeCancellationOpen,
@@ -25,12 +21,6 @@ import { formatChipDate, formatDate, formatDateRange } from './tours';
  */
 export const VOUCHER_FRESH_MINUTES = 30;
 
-/** Đơn đã có `paidAt` chỉ rơi vào bốn giai đoạn này (`awaiting_payment`, `lapsed` là của PENDING). */
-export type VoucherPhase = Extract<
-  BookingPhase,
-  'upcoming' | 'on_tour' | 'travelled' | 'cancelled'
->;
-
 /** Một mốc của "Trip journal" ở mảng teal. */
 export interface VoucherJournalItem {
   label: string;
@@ -40,13 +30,23 @@ export interface VoucherJournalItem {
   done: boolean;
 }
 
-/** Mọi thứ hai cột của voucher cần, tính sẵn một lần ở server (spec P7 §2.6, §6). */
+/**
+ * Mọi thứ hai cột của voucher cần, tính sẵn một lần ở server (spec P7 §2.6, §6).
+ *
+ * Không mang giai đoạn: component không đọc nó — mọi thứ đi theo giai đoạn đã tính sẵn ở đây (mộc,
+ * dải huỷ, mã vạch, điều kiện, nhật ký). Bản trước có cả `phase` lẫn `showCode` nói lại đúng điều
+ * `cancelledNotice` đã nói (review P7C mục 15).
+ */
 export interface VoucherView {
-  phase: VoucherPhase;
   /** Vừa trả tiền: tiêu đề "… is booked." và pháo giấy. */
   justPaid: boolean;
   title: string;
   subtitle: string;
+  /**
+   * Mộc trạng thái ở cột trái — `bookingPass(…).stamp`, cùng luật với vé của trang chi tiết đơn:
+   * đơn PAID trên chuyến công ty huỷ đóng mộc "CANCELLED", không "CONFIRMED".
+   */
+  stamp: BookingStamp;
   /** Điểm đến đầu tiên của tour; tour không có điểm đến thì là tên tour. */
   place: string;
   /** Số ngày của chuyến, tính cả ngày đi lẫn ngày về. */
@@ -58,20 +58,18 @@ export interface VoucherView {
   /** Ngày trả tiền đã định dạng. */
   paidOn: string;
   /**
-   * Có ô mã đơn (kèm ngày đi, "Admit n", dòng điều kiện) — `bookingPass(…).voucher`: đơn đã huỷ
-   * thì không.
+   * Dải thay ô mã khi voucher hết hiệu lực (giai đoạn `cancelled`, `bookingPass(…).voucher` sai).
+   * `null` là voucher còn hiệu lực: có ô mã kèm ngày đi, "Admit n" và các dòng điều kiện.
    */
-  showCode: boolean;
+  cancelledNotice: string | null;
   /**
    * Có mã vạch — `bookingPass(…).barcode`: chỉ khi mã còn để chìa ra ở điểm đón (sắp đi, đang đi).
    */
   showBarcode: boolean;
-  /** Các dòng điều kiện có dấu tích dưới ô mã, đúng thứ tự bảng §2.6. */
+  /** Các dòng điều kiện có dấu tích dưới ô mã, đúng thứ tự bảng §2.6; rỗng khi đã huỷ. */
   conditions: string[];
   /** Ba mốc nhật ký (hai khi mốc cuối không có gì thật để nói). */
   journal: VoucherJournalItem[];
-  /** Dải thay ô mã khi đơn đã huỷ; `null` ở các giai đoạn còn hiệu lực. */
-  cancelledNotice: string | null;
 }
 
 /**
@@ -81,36 +79,39 @@ export interface VoucherView {
  * bị huỷ khi chưa trả. Những đơn ấy giữ nguyên hoá đơn chờ (`BookingReceipt`) — mã của chúng
  * chưa bao giờ là voucher.
  *
- * `today` là ngày lịch Việt Nam do server tính (`todayDateString`); giai đoạn đọc qua
- * `bookingPhase` của contract như mọi trang đơn của đợt P7. `now` chỉ để đo 30 phút "vừa trả".
+ * `now` là đồng hồ server web, trang đọc MỘT lần: vừa đo 30 phút "vừa trả" vừa suy hôm nay —
+ * ngày lịch Việt Nam (`vietnamToday`, spec P7 §2.1) mà giai đoạn đọc qua `bookingPhase` của
+ * contract như mọi trang đơn của đợt P7. Bản trước nhận thêm `today` đọc riêng từ đồng hồ thứ hai
+ * (review P7C mục 17).
  */
-export function voucherView(booking: BookingDetail, now: Date, today: string): VoucherView | null {
+export function voucherView(booking: BookingDetail, now: Date): VoucherView | null {
   const paidAt = booking.paidAt;
   if (paidAt === null) return null;
-  const phase = bookingPhase(booking, today);
+  const phase = bookingPhase(booking, vietnamToday(now));
   // Không xảy ra với đơn đã có `paidAt`; nhánh này thu hẹp kiểu cho `switch` bên dưới.
   if (phase === 'awaiting_payment' || phase === 'lapsed') return null;
 
   const t = messages.voucher;
   const place = booking.tourDestinations[0]?.name ?? booking.tourTitle;
   const isDayTrip = booking.departureStartDate === booking.departureEndDate;
-  const departure = isDayTrip
-    ? formatDate(booking.departureStartDate)
-    : formatDateRange(booking.departureStartDate, booking.departureEndDate);
+  // `formatDateRange` tự in MỘT ngày khi ngày đi trùng ngày về ("3 Nov 2026").
+  const departure = formatDateRange(booking.departureStartDate, booking.departureEndDate);
   const paidOn = formatDate(vietnamDay(paidAt));
   const provider = paymentProviderLabel(booking.paymentProvider);
-  // Chỉ PAID: đơn đã huỷ hay đã hoàn một phần trong 30 phút đầu không có gì để chúc mừng.
-  // Hiệu âm (đồng hồ API nhanh hơn web vài giây) vẫn là vừa trả.
+  // Ô mã khi voucher còn hiệu lực, mã vạch chỉ khi còn cổng để quét (sắp đi, đang đi), mộc theo
+  // giai đoạn — luật chung với vé và nút "View voucher" của trang chi tiết đơn.
+  const pass = bookingPass(booking, phase);
+  // Chỉ đơn PAID còn voucher: đơn đã huỷ (kể cả chuyến công ty huỷ khi đơn còn PAID) hay đã hoàn
+  // một phần trong 30 phút đầu không có gì để chúc mừng. Hiệu âm (đồng hồ API nhanh hơn web vài
+  // giây) vẫn là vừa trả.
   const justPaid =
+    pass.voucher &&
     booking.status === 'PAID' &&
     now.getTime() - Date.parse(paidAt) <= VOUCHER_FRESH_MINUTES * 60_000;
 
-  // Ô mã khi đơn còn voucher (mọi giai đoạn trừ huỷ), mã vạch chỉ khi còn cổng để quét (sắp đi,
-  // đang đi) — luật chung với vé và nút "View voucher" của trang chi tiết đơn.
-  const pass = bookingPass(booking, phase);
   const common = {
     justPaid,
-    showCode: pass.voucher,
+    stamp: pass.stamp,
     showBarcode: pass.barcode,
     title: justPaid
       ? isDayTrip
@@ -141,7 +142,6 @@ export function voucherView(booking: BookingDetail, now: Date, today: string): V
       const deadline = formatChipDate(booking.cancellationDeadline);
       return {
         ...common,
-        phase,
         // Quá hạn thì BỎ dòng hạn huỷ: một dấu tích cạnh "đã hết hạn" đọc như một quyền lợi.
         conditions: withinDeadline
           ? [t.showCode, messages.cancellationDeadline.full(deadline), taxes]
@@ -167,7 +167,6 @@ export function voucherView(booking: BookingDetail, now: Date, today: string): V
     case 'on_tour':
       return {
         ...common,
-        phase,
         conditions: [t.showCode, taxes],
         journal: [
           bookedAndPaid,
@@ -203,7 +202,6 @@ export function voucherView(booking: BookingDetail, now: Date, today: string): V
             : [];
       return {
         ...common,
-        phase,
         conditions: [taxes],
         journal: [
           bookedAndPaid,
@@ -219,7 +217,6 @@ export function voucherView(booking: BookingDetail, now: Date, today: string): V
       const refund = refundSummary(booking);
       return {
         ...common,
-        phase,
         conditions: [],
         journal: [
           {

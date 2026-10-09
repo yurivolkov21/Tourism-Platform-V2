@@ -37,10 +37,10 @@ export function VoucherPass({ booking, view }: { booking: BookingDetail; view: V
         data-slot="voucher-ticket"
         className={cn(
           'rounded-2xl bg-card px-4.5 py-4 text-card-foreground',
-          !view.showCode && 'max-xl:hidden print:block',
+          view.cancelledNotice !== null && 'max-xl:hidden print:block',
         )}
       >
-        {view.showCode ? (
+        {view.cancelledNotice === null ? (
           <>
             <VoucherCode code={booking.code} className="max-xl:hidden print:flex" />
             <div
@@ -66,9 +66,9 @@ export function VoucherPass({ booking, view }: { booking: BookingDetail; view: V
             </ul>
             {view.showBarcode ? <TicketBarcode code={booking.code} className="mt-3 h-7.5" /> : null}
           </>
-        ) : view.cancelledNotice ? (
+        ) : (
           <VoucherCancelledNotice text={view.cancelledNotice} />
-        ) : null}
+        )}
       </div>
 
       <section data-slot="voucher-receipt" className="mt-5.5">

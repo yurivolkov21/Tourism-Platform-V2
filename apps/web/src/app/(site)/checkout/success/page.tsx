@@ -8,7 +8,6 @@ import { CheckoutAutoRefresh } from '@/components/checkout/checkout-auto-refresh
 import { PrintButton } from '@/components/checkout/print-button';
 import { VoucherCard } from '@/components/checkout/voucher-card';
 import { ContentHero } from '@/components/content/content-hero';
-import { todayDateString } from '@/lib/account-stats';
 import { fetchBookingByCode } from '@/lib/api/bookings';
 import { requireSession } from '@/lib/api/session';
 import { fetchTourDetailOrNull } from '@/lib/api/tours';
@@ -73,9 +72,9 @@ export default async function CheckoutSuccessPage({
     );
   }
 
-  // "Hôm nay" là ngày lịch Việt Nam do server tính (spec P7 §2.1); `new Date()` chỉ để đo
-  // 30 phút "vừa trả".
-  const view = voucherView(booking, new Date(), todayDateString());
+  // Đồng hồ server đọc MỘT lần: `voucherView` đo 30 phút "vừa trả" và suy hôm nay (ngày lịch
+  // Việt Nam, spec P7 §2.1) từ cùng mốc này.
+  const view = voucherView(booking, new Date());
 
   if (!view) {
     // Đơn chưa có `paidAt` — PENDING đang chờ webhook, hay giữ chỗ hết hạn/bị huỷ khi chưa
