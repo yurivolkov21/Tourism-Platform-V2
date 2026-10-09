@@ -1,7 +1,7 @@
 import { type MyReview, REVIEW_REJECTION_LIMIT } from '@tourism/contract';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { makeBooking } from '@/test/fixtures/booking';
-import { reviewSlot } from './review';
+import { hasReviewArea, reviewSlot } from './review';
 
 const TODAY = '2026-08-04';
 
@@ -146,5 +146,25 @@ describe('reviewSlot — trang chi tiết booking hiện gì ở chỗ đánh gi
     expect(reviewSlot(makeBooking({ status: 'PENDING', departureEndDate: '2026-12-01' }))).toBe(
       'hidden',
     );
+  });
+});
+
+/**
+ * Trang chi tiết đơn dựng khu review theo cổng `reviewSlot`, không theo giai đoạn (ADR-0054
+ * AMEND 1 §5): mọi slot có gì để vẽ đều có khu review, ở bất kỳ giai đoạn nào.
+ */
+describe('hasReviewArea — trang chi tiết đơn có khu review không', () => {
+  it.each([
+    ['form', true],
+    ['pending', true],
+    ['rejected', true],
+    ['rejectedFinal', true],
+    ['approved', true],
+    ['retracted', true],
+    // Đã trả, chuyến chưa về: chân khối Get ready nói ngày mở, không dựng khu review.
+    ['tooEarly', false],
+    ['hidden', false],
+  ] as const)('%s → %s', (slot, shown) => {
+    expect(hasReviewArea(slot)).toBe(shown);
   });
 });

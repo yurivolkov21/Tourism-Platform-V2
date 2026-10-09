@@ -30,7 +30,8 @@ export interface GetReadyView {
   countdown: { count: number | null; label: string };
   departs: string;
   steps: GetReadyStep[];
-  footer: string;
+  /** Chân khối: ngày mở review — `null` khi đơn không viết review được (không phải PAID). */
+  footer: string | null;
 }
 
 /** Điểm hẹn của tour, `null` khi tour đã gỡ hay ô để trống. In nguyên văn, không cắt sửa. */
@@ -96,7 +97,12 @@ export function getReadySteps(
       daysToGo === 1 ? { count: null, label: t.tomorrow } : { count: daysToGo, label: t.daysToGo },
     departs: place ? `${departs} · ${place}` : departs,
     steps: bodies.map((body, index) => ({ ...body, number: String(index + 1).padStart(2, '0') })),
-    footer: t.reviewOpens(formatWeekdayDate(booking.departureEndDate)),
+    // Cổng review của API chỉ nhận đơn PAID (`NOT_PAID`) — ở giai đoạn sắp đi, PAID đúng là slot
+    // `tooEarly` của `reviewSlot`. Đơn hoàn một phần hay hoàn thiện chí vẫn đi nhưng không viết
+    // review được: hứa với họ là hứa sai (review P7 B5). Ngày mở là ngày VỀ — cổng nhận từ 07:00
+    // giờ VN của chính ngày ấy, và trang dựng khu review theo cổng (`hasReviewArea`).
+    footer:
+      booking.status === 'PAID' ? t.reviewOpens(formatWeekdayDate(booking.departureEndDate)) : null,
   };
 }
 

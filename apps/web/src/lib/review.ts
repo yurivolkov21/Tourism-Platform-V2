@@ -8,9 +8,10 @@ import { type BookingDetail, canAuthorEdit, isEditLimitReached } from '@tourism/
  * - `rejected`      — bị bác, còn lượt viết lại: hiện LÝ DO + form sửa.
  * - `rejectedFinal` — bị bác và hết lượt: hiện lý do + lối liên hệ.
  * - `approved`      — đã lên site, hiện lời cảm ơn.
- * - `tooEarly`      — đã trả tiền nhưng chuyến chưa xong; nói rõ "chưa tới
- *                     lúc" thay vì ẩn hẳn, không thì khách tưởng site không có
- *                     tính năng đánh giá.
+ * - `tooEarly`      — đã trả tiền nhưng chuyến chưa xong (cổng API chưa mở). Trang
+ *                     chi tiết đơn KHÔNG dựng khu review cho slot này
+ *                     (`hasReviewArea`): chân khối Get ready đã nói ngày mở, nên
+ *                     khách không tưởng site thiếu tính năng đánh giá.
  * - `hidden`        — không có gì để nói ở đây (chưa trả tiền, đã huỷ, đã hoàn).
  *
  * ## Vì sao đọc `booking.review` chứ không `booking.reviewedAt`
@@ -65,4 +66,23 @@ export function reviewSlot(booking: BookingDetail): ReviewSlot {
   // Ngày UTC, cố ý — xem JSDoc của `ReviewSlot`.
   const today = new Date().toISOString().slice(0, 10);
   return booking.departureEndDate > today ? 'tooEarly' : 'form';
+}
+
+/**
+ * Slot có khu review để vẽ — mọi giá trị của `reviewSlot` trừ hai tín hiệu "không vẽ gì":
+ * `hidden` và `tooEarly`.
+ */
+export type ReviewAreaSlot = Exclude<ReviewSlot, 'hidden' | 'tooEarly'>;
+
+/**
+ * Trang chi tiết đơn có khu review không — theo CỔNG của API (`reviewSlot`), không theo giai
+ * đoạn (ADR-0054 AMEND 1 §5), ở MỌI giai đoạn.
+ *
+ * Bản trước chỉ dựng khu review ở `travelled` (ngày VN) trong khi cổng mở từ 07:00 giờ VN của
+ * chính ngày về: ~17 giờ mỗi chuyến không có form (review P7 B6). Và đơn đã có review rồi bị hoàn
+ * hay huỷ mất luôn đường sửa, rút — API vẫn cho cả hai (B2). Đây cũng là luật của trang cũ
+ * (`slot !== 'hidden'`), trừ `tooEarly`: câu "chưa tới lúc" nay do chân khối Get ready nói.
+ */
+export function hasReviewArea(slot: ReviewSlot): slot is ReviewAreaSlot {
+  return slot !== 'hidden' && slot !== 'tooEarly';
 }

@@ -7,8 +7,9 @@ import { type GetReadyStep, type GetReadyView, prepStorageKey } from '@/lib/get-
 
 /**
  * Cột phải của đơn sắp đi (spec P7 §2.4, §2.5, bản vẽ `.gr`): số ngày còn lại cỡ lớn, dòng
- * Departs, các bước đánh số kiểu timeline, chân khối nói khi nào mở review. Mọi luật (bỏ bước
- * thiếu dữ liệu, đánh số lại) ở `getReadySteps`; component chỉ vẽ.
+ * Departs, các bước đánh số kiểu timeline, chân khối nói ngày mở review (chỉ đơn PAID — không có
+ * chân thì không vẽ). Mọi luật (bỏ bước thiếu dữ liệu, đánh số lại) ở `getReadySteps`; component
+ * chỉ vẽ.
  */
 export function GetReadyPanel({ view, bookingCode }: { view: GetReadyView; bookingCode: string }) {
   const t = messages.bookingDetail.getReady;
@@ -45,10 +46,12 @@ export function GetReadyPanel({ view, bookingCode }: { view: GetReadyView; booki
           ))}
         </ol>
       </div>
-      <p className="flex items-center gap-2 border-t border-muted px-6 py-3 text-[12.5px] text-muted-foreground sm:px-[26px]">
-        <StarIcon aria-hidden="true" className="size-4 shrink-0" />
-        {view.footer}
-      </p>
+      {view.footer ? (
+        <p className="flex items-center gap-2 border-t border-muted px-6 py-3 text-[12.5px] text-muted-foreground sm:px-[26px]">
+          <StarIcon aria-hidden="true" className="size-4 shrink-0" />
+          {view.footer}
+        </p>
+      ) : null}
     </section>
   );
 }

@@ -2,6 +2,7 @@ import {
   type BookingCancellation,
   type BookingDetail,
   cancellationDeadline,
+  type MyReview,
   remainingRefundable,
 } from '@tourism/contract';
 import type { BookingTourData } from '@/lib/get-ready';
@@ -91,6 +92,31 @@ export function makeCancellation(
       ? remainingRefundable(booking.totalAmount, booking.refundedTotal)
       : '0.00',
     canCancel: true,
+    ...overrides,
+  };
+}
+
+/**
+ * Review của chính khách gắn trên đơn (`booking.review`) — mặc định đang chờ duyệt, chưa bị bác
+ * lần nào. Ca cần đã duyệt, bị bác hay đã rút thì đè (`moderationState` kèm các trường đi cùng).
+ */
+export function makeReview(overrides: Partial<MyReview> = {}): MyReview {
+  return {
+    id: '11111111-1111-4111-8111-111111111111',
+    rating: 5,
+    title: null,
+    body: 'Chuyến đi rất đáng nhớ và hướng dẫn viên nhiệt tình',
+    authorName: 'Test Traveller',
+    authorDeleted: false,
+    createdAt: '2026-02-12T00:00:00.000Z',
+    media: [],
+    isApproved: false,
+    moderationState: 'pending',
+    moderationNote: null,
+    rejectionCount: 0,
+    tourSlug: 'test-tour',
+    tourTitle: 'Test Tour',
+    retractedAt: null,
     ...overrides,
   };
 }

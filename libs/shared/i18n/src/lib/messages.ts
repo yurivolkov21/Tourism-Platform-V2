@@ -1869,6 +1869,9 @@ export const messages = {
     submitting: 'Submitting…',
     successTitle: 'Thanks for your review',
     successBody: 'Your review is awaiting moderation — thank you for sharing your trip.',
+    // Trang chi tiết đơn của web không in hai câu này nữa: chưa tới lúc thì không dựng khu review,
+    // chân khối Get ready nói ngày mở (`bookingDetail.getReady.reviewOpens`). GIỮ khoá — màn viết
+    // review của app mobile (đang dựng ở nhánh thành viên) đọc chúng.
     tooEarlyTitle: 'Review this trip when you’re back',
     tooEarlyBody: 'You’ll be able to rate this trip once it has finished.',
     alreadyReviewedTitle: 'You’ve already reviewed this trip',
@@ -2987,7 +2990,11 @@ export const messages = {
       budgetNote: 'Tick them off — saved on this device.',
       pickupOn: (date: string) => `Pickup on ${date}`,
       fullItinerary: 'Full itinerary',
-      reviewOpens: (date: string) => `Your review opens after the trip ends on ${date}.`,
+      /**
+       * Chân khối, chỉ đơn PAID. `date` là ngày VỀ: cổng review của API mở từ 07:00 giờ VN của
+       * chính ngày ấy, không phải "sau khi chuyến xong".
+       */
+      reviewOpens: (date: string) => `Your review opens on ${date}.`,
     },
     onTour: {
       heading: 'Today’s plan',

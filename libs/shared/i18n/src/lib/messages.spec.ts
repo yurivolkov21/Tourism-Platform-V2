@@ -204,9 +204,7 @@ describe('messages: bookingDetail (P7 phần B — trang chi tiết đơn)', () 
     expect(d.details.paidInFull('PayPal', '14 Aug 2026')).toBe(
       'Paid in full by PayPal on 14 Aug 2026',
     );
-    expect(d.getReady.reviewOpens('Thu 5 Nov')).toBe(
-      'Your review opens after the trip ends on Thu 5 Nov.',
-    );
+    expect(d.getReady.reviewOpens('Thu 5 Nov')).toBe('Your review opens on Thu 5 Nov.');
     expect(d.journey.refundPartial('$73.50', '$147.00')).toBe('$73.50 of $147.00');
   });
 });

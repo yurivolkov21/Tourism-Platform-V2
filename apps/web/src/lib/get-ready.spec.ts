@@ -146,11 +146,21 @@ describe('getReadySteps — các bước (spec §2.4)', () => {
 });
 
 describe('getReadySteps — đầu và chân khối', () => {
-  it('số ngày cỡ lớn, dòng "Departs" có năm và điểm đến, chân nói ngày VỀ', () => {
+  it('số ngày cỡ lớn, dòng "Departs" có năm và điểm đến, chân nói ngày VỀ là ngày mở review', () => {
     const view = getReadySteps(BOOKING, TOUR, TODAY);
     expect(view.countdown).toEqual({ count: 29, label: 'days to go' });
     expect(view.departs).toBe('Departs Tue 3 Nov 2026 · Hà Nội');
-    expect(view.footer).toBe('Your review opens after the trip ends on Thu 5 Nov.');
+    // Cổng review của API mở từ 07:00 giờ VN của CHÍNH ngày về — không phải "sau khi chuyến xong".
+    expect(view.footer).toBe('Your review opens on Thu 5 Nov.');
+  });
+
+  // Cổng review của API chỉ nhận đơn PAID (`NOT_PAID`): hứa với đơn hoàn một phần hay hoàn thiện
+  // chí — vẫn đi nhưng không viết review được — là hứa sai (review P7 B5).
+  it.each([
+    ['hoàn một phần', { status: 'PARTIALLY_REFUNDED', refundedTotal: '20.00' }],
+    ['hoàn thiện chí trọn', { status: 'REFUNDED', refundedTotal: '147.00' }],
+  ] as const)('%s: không viết review được — không có chân khối', (_, patch) => {
+    expect(getReadySteps({ ...BOOKING, ...patch }, TOUR, TODAY).footer).toBeNull();
   });
 
   it('còn đúng một ngày: "Tomorrow" thay cho con số', () => {

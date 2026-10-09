@@ -101,10 +101,15 @@ describe('GetReadyPanel', () => {
     );
   });
 
-  it('chân khối nói khi nào mở review', () => {
+  it('chân khối nói ngày mở review', () => {
     renderPanel();
-    expect(
-      screen.getByText('Your review opens after the trip ends on Thu 5 Nov.'),
-    ).toBeInTheDocument();
+    expect(screen.getByText('Your review opens on Thu 5 Nov.')).toBeInTheDocument();
+  });
+
+  it('đơn không viết review được (hoàn một phần): không có chân khối', () => {
+    const partial = { ...BOOKING, status: 'PARTIALLY_REFUNDED' as const, refundedTotal: '20.00' };
+    render(<GetReadyPanel view={getReadySteps(partial, TOUR, TODAY)} bookingCode={partial.code} />);
+    expect(screen.getByRole('heading', { level: 2, name: 'Get ready' })).toBeInTheDocument();
+    expect(screen.queryByText(/Your review opens/)).toBeNull();
   });
 });
