@@ -343,11 +343,17 @@ html:not(.dark) .stamp-ink {
  * - Mã vạch vẽ bằng `bg-current`: ăn mực `--hero` (đen), và nhờ quy tắc `[data-slot="barcode"]`
  *   ở khối trên mà vẫn in khi trình duyệt tắt "in nền".
  * - Ảnh bìa ép in nền để lớp tối mờ dần vẫn còn — thiếu nó chữ sáng nằm trơ trên ảnh.
- * - Nền các khối bỏ hẳn: khách bật "in nền" ở giao diện tối thì thẻ không thành mảng tối.
+ * - Nền bỏ hẳn — của trang (body), thẻ, mảng teal, khối mã, ô mã và dải huỷ: khách bật "in nền"
+ *   ở giao diện tối thì `bg-background` của body và `bg-muted` của hai ô in thành mảng tối dưới
+ *   chữ mực `--hero` cũng tối, ~1,3:1 (review P7C#7). Viền của các ô vẫn in, giữ ranh giới.
  * ───────────────────────────────────────────────────────────────────────────── */
 @media print {
   body:has([data-slot="voucher"]) > :not(main) {
     display: none;
+  }
+
+  body:has([data-slot="voucher"]) {
+    background: none;
   }
 
   [data-slot="voucher"] {
@@ -379,7 +385,9 @@ html:not(.dark) .stamp-ink {
     border-color: var(--primary);
   }
 
-  [data-slot="voucher-ticket"] {
+  [data-slot="voucher-ticket"],
+  [data-slot="voucher-code"],
+  [data-slot="voucher-cancelled"] {
     background: none;
   }
 }
