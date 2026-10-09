@@ -2,6 +2,7 @@ import { router } from 'expo-router';
 import { useState } from 'react';
 import { useAuthActions } from '@/features/auth/auth-actions';
 import { submitGoogle } from '@/features/auth/google-flow';
+import { leaveAuthTo } from '@/features/auth/leave-auth';
 import { submitRegister } from '@/features/auth/register-flow';
 import {
   type RegisterField,
@@ -56,7 +57,7 @@ export default function RegisterRoute() {
     const outcome = await submitGoogle(actions, 'register');
     setPending(false);
 
-    if (outcome.kind === 'success') router.replace(consumeReturnPath() ?? '/');
+    if (outcome.kind === 'success') leaveAuthTo(router, consumeReturnPath());
     else if (outcome.kind === 'formMessage') {
       setFormMessage({ tone: outcome.tone, text: outcome.text });
     }
