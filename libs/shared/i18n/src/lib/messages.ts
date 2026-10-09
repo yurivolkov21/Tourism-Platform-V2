@@ -2602,6 +2602,8 @@ export const messages = {
     listHeading: 'Your list',
     blurb: 'Ready whenever you are.',
     savedCount: (n: number) => (n === 1 ? '1 tour' : `${n} tours`),
+    /** Dòng nhỏ trên thẻ đã lưu, trước tên tour: "Saved 3 Oct" (ngày từ `formatSavedDate`). */
+    savedOn: (date: string) => `Saved ${date}`,
     removeAria: (title: string) => `Remove ${title} from saved tours`,
     unavailable: 'No longer available',
     // Task 9 (hướng A): copy dạy hành vi — không chỉ nói "chưa có gì", còn

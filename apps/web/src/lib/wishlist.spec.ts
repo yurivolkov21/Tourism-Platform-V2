@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { signInHref, toggleWished } from './wishlist';
+import { formatSavedDate, signInHref, toggleWished } from './wishlist';
 
 describe('signInHref — khách chưa đăng nhập bấm tim', () => {
   it('đưa về /login kèm đường quay lại', () => {
@@ -50,5 +50,30 @@ describe('toggleWished', () => {
     const after = toggleWished(new Set([other]), ID);
     expect(after.has(other)).toBe(true);
     expect(after.has(ID)).toBe(true);
+  });
+});
+
+describe('formatSavedDate — dòng "Saved …" trên thẻ đã lưu (spec 09/10 §3)', () => {
+  /** "Hôm nay" theo lịch Việt Nam, do trang server tính (`todayDateString`). */
+  const TODAY = '2026-10-09';
+
+  it('cùng năm với hôm nay: ngày + tháng viết tắt, không năm', () => {
+    expect(formatSavedDate('2026-10-03T05:00:00.000Z', TODAY)).toBe('3 Oct');
+  });
+
+  it('khác năm: thêm năm', () => {
+    expect(formatSavedDate('2025-12-20T03:00:00.000Z', TODAY)).toBe('20 Dec 2025');
+  });
+
+  it('cắt ngày theo lịch VIỆT NAM: 18:30Z là 01:30 sáng hôm sau ở Việt Nam', () => {
+    expect(formatSavedDate('2026-10-02T18:30:00.000Z', TODAY)).toBe('3 Oct');
+  });
+
+  it('năm cũng theo lịch Việt Nam: 31/12 lúc 18:00Z đã là 1/1 ở Việt Nam, cùng năm với hôm nay', () => {
+    expect(formatSavedDate('2025-12-31T18:00:00.000Z', TODAY)).toBe('1 Jan');
+  });
+
+  it('so năm với `today` truyền vào, không đọc đồng hồ máy', () => {
+    expect(formatSavedDate('2026-10-03T05:00:00.000Z', '2027-01-02')).toBe('3 Oct 2026');
   });
 });

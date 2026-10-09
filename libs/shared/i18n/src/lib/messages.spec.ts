@@ -154,3 +154,9 @@ describe('messages: mobile.auth (P5b-1 — cụm màn auth)', () => {
     expect(messages.formErrors.email.invalid).toBeTruthy();
   });
 });
+
+describe('messages: accountSaved (trang /account/saved, spec 09/10)', () => {
+  it('savedOn ghép đúng chữ của bản vẽ: "Saved 3 Oct"', () => {
+    expect(messages.accountSaved.savedOn('3 Oct')).toBe('Saved 3 Oct');
+  });
+});

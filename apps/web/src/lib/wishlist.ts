@@ -1,9 +1,11 @@
 /**
- * Logic thuần cho nút tim wishlist (cụm B, nửa 1).
+ * Logic thuần cho wishlist: nút tim (cụm B, nửa 1) và thẻ đã lưu ở `/account/saved`.
  *
- * Tách khỏi component để test được mà không cần dựng DOM: hai hàm ở đây quyết
- * định (a) khách chưa đăng nhập bị đưa đi đâu và (b) trạng thái tim đổi ra sao.
+ * Tách khỏi component để test được mà không cần dựng DOM: các hàm ở đây quyết định (a) khách
+ * chưa đăng nhập bị đưa đi đâu, (b) trạng thái tim đổi ra sao và (c) ngày lưu in thế nào.
  */
+import { vietnamToday } from '@tourism/contract';
+import { formatChipDate, formatDate } from './tours';
 
 /**
  * Đường tới trang đăng nhập, mang theo chỗ đang đứng để quay lại.
@@ -34,4 +36,21 @@ export function toggleWished(current: ReadonlySet<string>, tourId: string): Set<
   if (next.has(tourId)) next.delete(tourId);
   else next.add(tourId);
   return next;
+}
+
+/**
+ * Ngày lưu trên thẻ `/account/saved` (spec 09/10 §3): "3 Oct"; khác năm với hôm nay thì
+ * "3 Oct 2025".
+ *
+ * `addedAt` là mốc giờ ISO (`…Z`), nên đổi sang NGÀY LỊCH VIỆT NAM trước (`vietnamToday`) rồi
+ * mới in — lưu lúc 01:30 sáng giờ Việt Nam là ngày hôm ấy, dù theo UTC vẫn là hôm trước; năm
+ * cũng so theo chính ngày ấy.
+ *
+ * `today` là ngày lịch Việt Nam do trang server tính (`todayDateString`), KHÔNG đọc đồng hồ ở
+ * đây: thẻ là Client Component, đọc đồng hồ thì HTML của server và lần hydrate có thể in khác
+ * nhau ngay đêm giao thừa, và máy khách để sai giờ là in sai năm.
+ */
+export function formatSavedDate(addedAt: string, today: string): string {
+  const day = vietnamToday(new Date(addedAt));
+  return day.slice(0, 4) === today.slice(0, 4) ? formatChipDate(day) : formatDate(day);
 }
