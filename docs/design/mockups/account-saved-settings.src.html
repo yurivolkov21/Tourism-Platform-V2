@@ -1,0 +1,397 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Saved và Settings — wireframe</title>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&family=Literata:opsz,wght@7..72,500;7..72,600&display=swap" rel="stylesheet">
+<style>
+  :root{color-scheme:light}
+  body{margin:0;background:#f3f4f4;color:#1d1d1f;font:14px/1.55 system-ui,-apple-system,"Segoe UI",sans-serif}
+  .wrap{max-width:1440px;margin:0 auto;padding:28px 24px 64px}
+  h1{font-size:24px;margin:0 0 6px}
+  h2.sec{font-size:21px;margin:44px 0 4px;padding-top:18px;border-top:2px solid #d9d9de}
+  .lead{color:#55555a;margin:0 0 6px;max-width:980px}
+  .tag{display:inline-block;font-size:12px;font-weight:700;letter-spacing:.06em;padding:4px 10px;border-radius:6px;margin:30px 0 6px;background:#0071e3;color:#fff}
+  .tag.rec{background:#1a7f5a}
+  .opt-h{font-size:17px;margin:0 0 2px}
+  .src{font-size:12px;color:#6b6b70;margin:0 0 4px}
+  .src a{color:#0062c4}
+  .why{margin:6px 0 12px 20px;padding:0;font-size:13.5px;max-width:1100px}
+  .why li{margin:2px 0}
+  .row2{display:flex;gap:22px;align-items:flex-start;overflow-x:auto;padding-bottom:6px}
+  .cap{font-size:11.5px;color:#6b6b70;margin:4px 0 0}
+  /* thu nhỏ bản vẽ theo khổ khung xem */
+  .zd{zoom:.62}.zm{zoom:.62}
+  @media (min-width:1500px){.zd{zoom:.8}.zm{zoom:.8}}
+  @media (max-width:1100px){.zd{zoom:.5}.zm{zoom:.5}}
+  @media (max-width:820px){.zd{zoom:.38}.zm{zoom:.45}}
+
+  /* ── bản vẽ (token gần đúng của site) ── */
+  .v2{--bg:oklch(0.977 0.003 174.5);--card:#fff;--fg:oklch(0.275 0.021 196);--primary:oklch(0.494 0.067 184.3);--ink:oklch(0.42 0.06 184);--muted:oklch(0.945 0.008 174);--mfg:oklch(0.5 0.02 190);--border:oklch(0.87 0.012 180);--hero:oklch(0.235 0.02 190);--mint:oklch(0.86 0.08 172);--danger:oklch(0.55 0.19 27);--star:oklch(0.72 0.15 75);
+    background:var(--bg);color:var(--fg);font:14px/1.45 Archivo,system-ui,sans-serif;border:1px solid var(--border);border-radius:12px;overflow:hidden;text-align:left;flex:none}
+  .v2.d{width:1280px}.v2.m{width:375px}
+  .v2 *{box-sizing:border-box;min-width:0}
+  .v2 svg.i{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none;vertical-align:-3px}
+  .v2 .serif{font-family:Literata,Georgia,serif}
+  .v2 .mono{font-family:'IBM Plex Mono',ui-monospace,monospace}
+  .v2 .mut{color:var(--mfg)}
+  .v2 .k{font:700 10px/1 Archivo,sans-serif;letter-spacing:.15em;text-transform:uppercase;color:var(--mfg)}
+  .v2 .btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;height:34px;padding:0 13px;border-radius:9px;font-size:13px;font-weight:600;border:1px solid var(--border);background:#fff;color:var(--fg);white-space:nowrap}
+  .v2 .btn.ghost{border-color:transparent;background:transparent;color:var(--ink)}
+  .v2 .btn.pri{background:var(--primary);border-color:var(--primary);color:#fff}
+  .v2 .btn.sm{height:30px;padding:0 11px;font-size:12.5px}
+  .v2 .btn.dng{color:var(--danger);border-color:color-mix(in oklch,var(--danger) 35%,white);background:color-mix(in oklch,var(--danger) 6%,white)}
+  /* khung site thu gọn */
+  .v2 .x-nav{height:56px;background:var(--hero);display:flex;align-items:center;padding:0 40px;color:oklch(0.88 0.01 180);font-size:12.5px}
+  .v2.m .x-nav{padding:0 16px}
+  .v2 .x-logo{font:600 17px/1 Literata,serif;color:#fff;display:flex;align-items:center;gap:9px}
+  .v2 .x-logo i{width:14px;height:14px;background:var(--mint);transform:rotate(45deg);border-radius:3px;display:inline-block}
+  .v2 .x-links{display:flex;gap:22px;margin:0 auto}
+  .v2 .x-cta{background:#fff;color:var(--hero);border-radius:999px;padding:7px 16px;font-weight:600}
+  .v2 .x-burger{margin-left:auto;width:22px;height:14px;border-top:2px solid #fff;border-bottom:2px solid #fff;position:relative}
+  .v2 .x-burger:after{content:"";position:absolute;left:0;right:0;top:4px;border-top:2px solid #fff}
+  .v2 .x-hero{background:var(--hero);color:oklch(0.93 0.01 180);padding:10px 128px 34px}
+  .v2.m .x-hero{padding:8px 16px 24px}
+  .v2 .x-crumbrow{display:flex;align-items:center;gap:12px;font-size:13px}
+  .v2 .x-back{width:34px;height:34px;border-radius:50%;border:1px solid color-mix(in oklch,white 30%,transparent);background:color-mix(in oklch,white 7%,transparent);display:grid;place-items:center;color:#fff}
+  .v2 .x-crumb{color:oklch(0.75 0.02 180)}.v2 .x-crumb b{color:#fff;font-weight:500}
+  .v2 .x-title{font:600 44px/1.1 Literata,serif;color:#fff;margin:22px 0 6px}
+  .v2.m .x-title{font-size:32px;margin-top:16px}
+  .v2 .x-sub{color:oklch(0.82 0.02 180);font-size:14.5px}
+  .v2 .x-meta{font:500 11.5px/1 'IBM Plex Mono',monospace;letter-spacing:.12em;color:var(--mint);margin-top:14px}
+  .v2 .body{padding:36px 128px 48px}
+  .v2.m .body{padding:20px 16px 28px}
+  .v2 .narrow{max-width:880px;margin:0 auto}
+  /* thẻ và dòng của settings */
+  .v2 .card{background:var(--card);border:1px solid var(--border);border-radius:16px}
+  .v2 .card + .card{margin-top:20px}
+  .v2 .ch{padding:18px 24px 14px;border-bottom:1px solid var(--border)}
+  .v2 .ch h3{font:600 19px/1.25 Literata,serif;margin:0}
+  .v2 .ch p{margin:3px 0 0;color:var(--mfg);font-size:13px}
+  .v2 .rw{display:grid;grid-template-columns:220px minmax(0,1fr) auto;gap:18px;align-items:center;padding:14px 24px;border-top:1px solid var(--border)}
+  .v2 .ch + .rw,.v2 .idrow + .rw{border-top:0}
+  .v2 .rw .l{font-weight:600;font-size:13.5px}
+  .v2 .rw .l small{display:block;font-weight:400;color:var(--mfg);font-size:12px;margin-top:2px}
+  .v2 .rw .v{font-size:13.5px}
+  .v2.m .rw{grid-template-columns:minmax(0,1fr) auto;gap:4px 12px;padding:12px 16px}
+  .v2.m .rw .v{grid-column:1 / -1;grid-row:2}
+  .v2.m .ch{padding:14px 16px 12px}
+  .v2 .rw.open{background:color-mix(in oklch,var(--primary) 4%,white)}
+  .v2 .inp{height:36px;border:1px solid var(--border);border-radius:9px;background:#fff;padding:0 11px;display:flex;align-items:center;font-size:13.5px}
+  .v2 .inp.focus{border-color:var(--primary);box-shadow:0 0 0 3px color-mix(in oklch,var(--primary) 18%,transparent)}
+  .v2 .lock{display:inline-flex;align-items:center;gap:5px;font-size:12px;color:var(--mfg)}
+  .v2 .idrow{display:flex;align-items:center;gap:16px;padding:18px 24px;border-bottom:1px solid var(--border)}
+  .v2.m .idrow{padding:14px 16px;flex-wrap:wrap}
+  .v2 .av{width:64px;height:64px;border-radius:50%;background:color-mix(in oklch,var(--primary) 16%,white);color:var(--ink);display:grid;place-items:center;font:600 24px/1 Literata,serif;flex:none;border:2px solid #fff;box-shadow:0 0 0 1px var(--border)}
+  .v2 .av.lg{width:96px;height:96px;font-size:36px}
+  .v2 .acct{display:flex;align-items:center;gap:14px}
+  .v2 .ic{width:38px;height:38px;border-radius:50%;background:var(--muted);display:grid;place-items:center;color:var(--ink);flex:none}
+  .v2 .danger{border:1px solid color-mix(in oklch,var(--danger) 30%,white);border-radius:16px;overflow:hidden;background:#fff}
+  .v2 .danger .dh{padding:16px 24px 12px}
+  .v2 .danger .dh h3{font:600 19px/1.25 Literata,serif;margin:0;color:var(--danger)}
+  .v2 .danger .dh p{margin:3px 0 0;color:var(--mfg);font-size:13px}
+  .v2 .danger .dr{display:flex;align-items:center;justify-content:space-between;gap:18px;padding:14px 24px;background:color-mix(in oklch,var(--danger) 5%,white);border-top:1px solid color-mix(in oklch,var(--danger) 20%,white)}
+  .v2.m .danger .dr{flex-direction:column;align-items:flex-start;padding:12px 16px}
+  .v2 .danger .dr b{color:var(--danger)}
+  .v2 .note{font-size:12px;color:var(--mfg)}
+  /* phương án B: mục lục neo */
+  .v2 .split{display:grid;grid-template-columns:200px minmax(0,672px);gap:64px;max-width:936px;margin:0 auto}
+  .v2 .toc{position:sticky;top:20px;display:flex;flex-direction:column;gap:2px;font-size:13.5px}
+  .v2 .toc a{padding:8px 12px;border-radius:9px;color:var(--mfg);text-decoration:none}
+  .v2 .toc a.on{background:var(--muted);color:var(--fg);font-weight:600}
+  .v2 .sec2 h3{font:600 20px/1.25 Literata,serif;margin:0}
+  .v2 .sec2 > p{margin:3px 0 10px;color:var(--mfg);font-size:13px}
+  .v2 .sec2 + .sec2{margin-top:30px;padding-top:28px;border-top:1px solid var(--border)}
+  .v2 .frow{display:grid;grid-template-columns:200px minmax(0,1fr) auto;gap:16px;align-items:center;padding:12px 0;border-top:1px solid color-mix(in oklch,var(--border) 70%,transparent)}
+  .v2 .frow:first-of-type{border-top:0}
+  .v2.m .frow{grid-template-columns:minmax(0,1fr) auto;gap:4px 12px}
+  .v2.m .frow .v{grid-column:1 / -1;grid-row:2}
+  .v2 .chips{display:flex;gap:8px;overflow:hidden;margin-bottom:18px}
+  .v2 .chips span{white-space:nowrap;font-size:12.5px;padding:6px 11px;border-radius:999px;border:1px solid var(--border);background:#fff}
+  .v2 .chips span.on{background:var(--fg);color:#fff;border-color:var(--fg)}
+  /* phương án C: thẻ danh tính trái */
+  .v2 .two{display:grid;grid-template-columns:320px minmax(0,1fr);gap:24px;max-width:1024px;margin:0 auto;align-items:start}
+  .v2 .idcard{padding:26px 24px;text-align:center}
+  .v2 .idcard .av{margin:0 auto 12px}
+  .v2 .idcard h4{font:600 20px/1.2 Literata,serif;margin:0}
+  .v2 .idcard .sub{color:var(--mfg);font-size:13px;margin-top:2px}
+  .v2 .idcard hr{border:0;border-top:1px solid var(--border);margin:18px 0 14px}
+  .v2 .idcard .meta{display:flex;align-items:center;gap:10px;text-align:left;font-size:13px}
+  /* saved */
+  .v2 .grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:32px 24px;max-width:1152px;margin:0 auto}
+  .v2.m .grid3{grid-template-columns:1fr;gap:24px}
+  .v2 .ph{position:relative;border-radius:14px;overflow:hidden;aspect-ratio:4/3;background:linear-gradient(170deg,#c9ddd6 0%,#7fa69e 45%,#3f6a63 75%,#27443f 100%)}
+  .v2 .ph:before{content:"";position:absolute;inset:auto -10% 18% -10%;height:42%;background:radial-gradient(60% 100% at 30% 100%,#2f554f 0 60%,transparent 61%),radial-gradient(55% 90% at 75% 100%,#365f58 0 60%,transparent 61%)}
+  .v2 .ph.p2{background:linear-gradient(170deg,#f1dcc0 0%,#d9a877 45%,#8e5b3a 80%,#4a2f22 100%)}
+  .v2 .ph.p3{background:linear-gradient(170deg,#cfe2ee 0%,#86b4cf 45%,#3f7290 78%,#24435a 100%)}
+  .v2 .ph.p4{background:linear-gradient(170deg,#d8e6c8 0%,#9dbd7b 45%,#5a7e3e 78%,#33492a 100%)}
+  .v2 .ph.p5{background:linear-gradient(170deg,#ead5df 0%,#c58fa6 45%,#7f4d64 78%,#46283a 100%)}
+  .v2 .ph.tall{aspect-ratio:3/4}
+  .v2 .ph.gray{filter:grayscale(1);opacity:.75}
+  .v2 .heart{position:absolute;top:10px;right:10px;width:36px;height:36px;border-radius:50%;background:color-mix(in oklch,white 82%,transparent);backdrop-filter:blur(4px);display:grid;place-items:center;color:var(--primary);box-shadow:0 1px 4px rgb(0 0 0/.18)}
+  .v2 .heart svg.i{fill:var(--primary);stroke:var(--primary)}
+  .v2 .badge{position:absolute;top:10px;left:10px;font-size:11px;font-weight:600;padding:3px 9px;border-radius:999px;background:#fff;color:var(--fg)}
+  .v2 .tc{padding-top:12px}
+  .v2 .tc .k{margin-bottom:6px}
+  .v2 .tc h4{font:600 17px/1.3 Literata,serif;margin:0}
+  .v2 .tc .meta{display:flex;gap:10px;align-items:center;color:var(--mfg);font-size:13px;margin-top:5px}
+  .v2 .tc .meta .st{color:var(--star)}
+  .v2 .tc .pr{margin-top:6px;font-size:14px}.v2 .tc .pr b{font-size:16px}
+  .v2 .tc.off h4,.v2 .tc.off .pr{color:var(--mfg)}
+  /* saved B: bảng nổi */
+  .v2 .float{position:relative}
+  .v2 .float .panel{position:absolute;left:12px;right:12px;bottom:12px;background:#fff;border-radius:12px;padding:12px 14px;box-shadow:0 6px 20px rgb(0 0 0/.16)}
+  .v2 .float .panel h4{font:600 16px/1.3 Literata,serif;margin:0}
+  .v2 .float .panel .meta{display:flex;gap:10px;color:var(--mfg);font-size:12.5px;margin-top:4px}
+  .v2 .float .panel .bot{display:flex;justify-content:space-between;align-items:center;margin-top:9px;font-size:13px}
+  .v2 .float .panel .bot a{color:var(--ink);font-weight:600;text-decoration:none}
+  /* saved C: danh sách dòng */
+  .v2 .list{max-width:880px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
+  .v2 .li{display:grid;grid-template-columns:168px minmax(0,1fr) auto;gap:18px;align-items:center;background:#fff;border:1px solid var(--border);border-radius:16px;padding:12px}
+  .v2 .li .ph{aspect-ratio:3/2;border-radius:10px}
+  .v2 .li h4{font:600 17px/1.3 Literata,serif;margin:0}
+  .v2 .li .meta{color:var(--mfg);font-size:13px;margin-top:4px}
+  .v2 .li .pr{margin-top:6px}
+  .v2 .li .rm{display:flex;flex-direction:column;align-items:flex-end;gap:8px}
+  .v2.m .li{grid-template-columns:96px minmax(0,1fr) auto;gap:12px;padding:10px}
+  .v2 .hbtn{width:36px;height:36px;border-radius:50%;border:1px solid var(--border);display:grid;place-items:center;color:var(--primary);background:#fff}
+  .v2 .hbtn svg.i{fill:var(--primary)}
+  /* trống */
+  .v2 .empty{max-width:520px;margin:10px auto;text-align:center;padding:36px 20px;border:1px dashed var(--border);border-radius:16px;background:#fff}
+  .v2 .empty .ic{margin:0 auto 12px;width:48px;height:48px}
+  .v2 .empty h4{font:600 20px/1.2 Literata,serif;margin:0}
+  .v2 .empty p{color:var(--mfg);margin:6px 0 16px}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute">
+  <symbol id="arrow-left" viewBox="0 0 24 24"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></symbol>
+  <symbol id="heart" viewBox="0 0 24 24"><path d="M19 14c1.5-1.5 3-3.2 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.8 0-3 .5-4.5 2-1.5-1.5-2.7-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4 3 5.5l7 7Z"/></symbol>
+  <symbol id="mail" viewBox="0 0 24 24"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></symbol>
+  <symbol id="lock" viewBox="0 0 24 24"><rect width="18" height="11" x="3" y="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></symbol>
+  <symbol id="upload" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m17 8-5-5-5 5"/><path d="M12 3v12"/></symbol>
+  <symbol id="star" viewBox="0 0 24 24"><path d="m12 2 3.1 6.3 6.9 1-5 4.9 1.2 6.8L12 17.8 5.8 21l1.2-6.8-5-4.9 6.9-1Z"/></symbol>
+  <symbol id="clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></symbol>
+</svg>
+
+<div class="wrap">
+  <h1>Saved và Settings — wireframe, chọn một phương án cho mỗi trang</h1>
+  <p class="lead">Chỉ đổi giao diện (user chọn (a)): giữ nguyên chức năng và API. Cả hai trang thay link chữ "← Passport" bằng nút tròn quay lại trong hero, giống My bookings. Mỗi phương án có khung máy bàn 1280px và khung điện thoại 375px; chữ trong bản vẽ là chữ thật của site (hoặc chữ mẫu cho dữ liệu). Mẫu nguồn ghi dưới tên phương án, có link mở bản gốc.</p>
+
+  <h2 class="sec">1 · Settings (`/account/settings`)</h2>
+  <p class="lead">Nội dung giữ nguyên: ảnh đại diện (tải lên), Full name và Phone sửa ngay tại dòng, Email chưa đổi được, Password (bấm Edit mở form ba ô ngay tại dòng), Connected accounts (Email &amp; password), Delete account qua hộp xác nhận.</p>
+
+  <!-- ===================== SETTINGS A ===================== -->
+  <span class="tag rec">A · ĐỀ XUẤT</span>
+  <h3 class="opt-h">Một cột, mỗi nhóm một thẻ, dòng "nhãn trái — giá trị phải"</h3>
+  <p class="src">Mượn: <a href="https://reui.io/" target="_blank">ReUI Settings 7</a> (thẻ chứa các dòng có vạch ngăn) · <a href="https://ui.shadcn.com/" target="_blank">shadcn Field responsive</a> (dòng xếp dọc trên điện thoại) · <a href="https://shadcnuikit.com/" target="_blank">Shadcn UI Kit Form Layout 19</a> (vùng nguy hiểm chỉ tô đỏ nhạt dòng Delete)</p>
+  <ul class="why"><li>Gần bố cục hiện tại nhất nên ít rủi ro sát freeze; trang ngắn, không cần điều hướng con.</li><li>Dòng đang sửa tô nền nhạt, ô nhập và hai nút Save/Cancel nằm ngay trong dòng (hành vi sửa tại chỗ giữ nguyên).</li></ul>
+  <div class="row2">
+    <div class="zd"><div class="v2 d">
+      <div class="x-nav"><span class="x-logo"><i></i>Nexora</span><span class="x-links"><span>Tours</span><span>Destinations</span><span>Travel Blog</span><span>About Us</span><span>Contact</span></span><span class="x-cta">Book a tour</span></div>
+      <div class="x-hero"><div class="x-crumbrow"><span class="x-back"><svg class="i"><use href="#arrow-left"/></svg></span><span class="x-crumb">Home › <b>Settings</b></span></div><div class="x-title">Traveler details</div><div class="x-sub">The information printed in your passport.</div></div>
+      <div class="body"><div class="narrow">
+        <div class="card">
+          <div class="ch"><h3>Personal information</h3><p>Your name, contact details, and password.</p></div>
+          <div class="idrow"><span class="av">L</span><div style="flex:1"><div style="font-weight:600">Linh Tran</div><div class="mut" style="font-size:13px">linh.tran@example.com</div></div><span class="btn sm"><svg class="i"><use href="#upload"/></svg>Upload avatar</span></div>
+          <div class="rw"><div class="l">Full name</div><div class="v">Linh Tran</div><span class="btn ghost sm">Edit</span></div>
+          <div class="rw open"><div class="l">Phone<small>So the guide can reach you on the day.</small></div><div class="v" style="display:flex;gap:8px"><span class="inp focus" style="flex:1">+84 90 123 4567</span><span class="btn pri sm">Save phone</span><span class="btn sm">Cancel</span></div><span></span></div>
+          <div class="rw"><div class="l">Email</div><div class="v">linh.tran@example.com</div><span class="lock"><svg class="i"><use href="#lock"/></svg>Can’t be changed yet</span></div>
+          <div class="rw"><div class="l">Password</div><div class="v mono">••••••••••</div><span class="btn ghost sm">Edit</span></div>
+        </div>
+        <div class="card">
+          <div class="ch"><h3>Connected accounts</h3><p>Sign-in methods linked to your account.</p></div>
+          <div class="rw" style="grid-template-columns:minmax(0,1fr) auto"><div class="acct"><span class="ic"><svg class="i"><use href="#mail"/></svg></span><div><div style="font-weight:600;font-size:13.5px">Email &amp; password</div><div class="mut" style="font-size:12.5px">linh.tran@example.com</div></div></div><span></span></div>
+        </div>
+        <div class="danger" style="margin-top:20px">
+          <div class="dh"><h3>Danger zone</h3><p>Irreversible account actions.</p></div>
+          <div class="dr"><div><b>Delete account</b><div class="note">This permanently removes your account and all your data.</div></div><span class="btn dng sm">Delete account</span></div>
+        </div>
+      </div></div>
+    </div></div>
+    <div class="zm"><div class="v2 m">
+      <div class="x-nav"><span class="x-logo"><i></i>Nexora</span><span class="x-burger"></span></div>
+      <div class="x-hero"><div class="x-crumbrow"><span class="x-back"><svg class="i"><use href="#arrow-left"/></svg></span><span class="x-crumb">Home › <b>Settings</b></span></div><div class="x-title">Traveler details</div><div class="x-sub">The information printed in your passport.</div></div>
+      <div class="body">
+        <div class="card">
+          <div class="ch"><h3>Personal information</h3><p>Your name, contact details, and password.</p></div>
+          <div class="idrow"><span class="av">L</span><div style="flex:1"><div style="font-weight:600">Linh Tran</div><div class="mut" style="font-size:12.5px">linh.tran@example.com</div></div><span class="btn sm" style="width:100%"><svg class="i"><use href="#upload"/></svg>Upload avatar</span></div>
+          <div class="rw"><div class="l">Full name</div><span class="btn ghost sm">Edit</span><div class="v">Linh Tran</div></div>
+          <div class="rw"><div class="l">Phone</div><span class="btn ghost sm">Edit</span><div class="v">+84 90 123 4567</div></div>
+          <div class="rw"><div class="l">Email</div><span class="lock"><svg class="i"><use href="#lock"/></svg></span><div class="v">linh.tran@example.com</div></div>
+          <div class="rw"><div class="l">Password</div><span class="btn ghost sm">Edit</span><div class="v mono">••••••••••</div></div>
+        </div>
+        <div class="card"><div class="ch"><h3>Connected accounts</h3></div><div class="rw" style="grid-template-columns:1fr"><div class="acct"><span class="ic"><svg class="i"><use href="#mail"/></svg></span><div><div style="font-weight:600;font-size:13.5px">Email &amp; password</div><div class="mut" style="font-size:12.5px">linh.tran@example.com</div></div></div></div></div>
+        <div class="danger" style="margin-top:20px"><div class="dh"><h3>Danger zone</h3></div><div class="dr"><div><b>Delete account</b><div class="note">This permanently removes your account and all your data.</div></div><span class="btn dng sm">Delete account</span></div></div>
+      </div>
+    </div></div>
+  </div>
+
+  <!-- ===================== SETTINGS B ===================== -->
+  <span class="tag">B</span>
+  <h3 class="opt-h">Mục lục neo bên trái, nội dung một cột không thẻ, nhóm ngăn bằng vạch</h3>
+  <p class="src">Mượn: <a href="https://ui.shadcn.com/" target="_blank">ui.shadcn.com Forms example</a> (nav trái + cột nội dung 672px) · <a href="https://shadcnstudio.com/" target="_blank">shadcn/studio Account Settings 01</a> (thứ tự nhóm trùng trang mình)</p>
+  <ul class="why"><li>Trông "ứng dụng" hơn; mục lục chỉ là neo cuộn (không có màn con), dính khi cuộn ở máy bàn.</li><li>Điện thoại: mục lục thành dải chip cuộn ngang trên đầu. Trang của mình chỉ 4 nhóm ngắn nên mục lục hơi thừa.</li></ul>
+  <div class="row2">
+    <div class="zd"><div class="v2 d">
+      <div class="x-nav"><span class="x-logo"><i></i>Nexora</span><span class="x-links"><span>Tours</span><span>Destinations</span><span>Travel Blog</span><span>About Us</span><span>Contact</span></span><span class="x-cta">Book a tour</span></div>
+      <div class="x-hero"><div class="x-crumbrow"><span class="x-back"><svg class="i"><use href="#arrow-left"/></svg></span><span class="x-crumb">Home › <b>Settings</b></span></div><div class="x-title">Traveler details</div><div class="x-sub">The information printed in your passport.</div></div>
+      <div class="body"><div class="split">
+        <nav class="toc"><a class="on">Personal information</a><a>Password</a><a>Connected accounts</a><a>Danger zone</a></nav>
+        <div>
+          <div class="sec2"><h3>Personal information</h3><p>Your name, contact details, and password.</p>
+            <div class="frow"><div class="l" style="font-weight:600">Avatar</div><div class="v acct"><span class="av" style="width:48px;height:48px;font-size:18px">L</span><span class="note">PNG, JPG up to 5 MB.</span></div><span class="btn sm"><svg class="i"><use href="#upload"/></svg>Upload</span></div>
+            <div class="frow"><div style="font-weight:600">Full name</div><div class="v">Linh Tran</div><span class="btn ghost sm">Edit</span></div>
+            <div class="frow"><div style="font-weight:600">Phone</div><div class="v">+84 90 123 4567</div><span class="btn ghost sm">Edit</span></div>
+            <div class="frow"><div style="font-weight:600">Email</div><div class="v">linh.tran@example.com</div><span class="lock"><svg class="i"><use href="#lock"/></svg>Can’t be changed yet</span></div>
+          </div>
+          <div class="sec2"><h3>Password</h3><p>Change the password you sign in with.</p>
+            <div class="frow"><div style="font-weight:600">Password</div><div class="v mono">••••••••••</div><span class="btn ghost sm">Edit</span></div>
+          </div>
+          <div class="sec2"><h3>Connected accounts</h3><p>Sign-in methods linked to your account.</p>
+            <div class="frow" style="grid-template-columns:minmax(0,1fr)"><div class="acct"><span class="ic"><svg class="i"><use href="#mail"/></svg></span><div><div style="font-weight:600">Email &amp; password</div><div class="mut" style="font-size:12.5px">linh.tran@example.com</div></div></div></div>
+          </div>
+          <div class="sec2"><div class="danger"><div class="dh"><h3>Danger zone</h3><p>Irreversible account actions.</p></div><div class="dr"><div><b>Delete account</b><div class="note">This permanently removes your account and all your data.</div></div><span class="btn dng sm">Delete account</span></div></div></div>
+        </div>
+      </div></div>
+    </div></div>
+    <div class="zm"><div class="v2 m">
+      <div class="x-nav"><span class="x-logo"><i></i>Nexora</span><span class="x-burger"></span></div>
+      <div class="x-hero"><div class="x-crumbrow"><span class="x-back"><svg class="i"><use href="#arrow-left"/></svg></span><span class="x-crumb">Home › <b>Settings</b></span></div><div class="x-title">Traveler details</div></div>
+      <div class="body">
+        <div class="chips"><span class="on">Personal information</span><span>Password</span><span>Connected</span><span>Danger zone</span></div>
+        <div class="sec2"><h3>Personal information</h3><p>Your name, contact details, and password.</p>
+          <div class="frow"><div style="font-weight:600">Full name</div><span class="btn ghost sm">Edit</span><div class="v">Linh Tran</div></div>
+          <div class="frow"><div style="font-weight:600">Phone</div><span class="btn ghost sm">Edit</span><div class="v">+84 90 123 4567</div></div>
+          <div class="frow"><div style="font-weight:600">Email</div><span class="lock"><svg class="i"><use href="#lock"/></svg></span><div class="v">linh.tran@example.com</div></div>
+        </div>
+        <div class="sec2"><h3>Password</h3><div class="frow"><div style="font-weight:600">Password</div><span class="btn ghost sm">Edit</span><div class="v mono">••••••••••</div></div></div>
+      </div>
+    </div></div>
+  </div>
+
+  <!-- ===================== SETTINGS C ===================== -->
+  <span class="tag">C</span>
+  <h3 class="opt-h">Thẻ danh tính bên trái (ảnh lớn), các thẻ thông tin bên phải</h3>
+  <p class="src">Mượn: <a href="https://shadcnspace.com/" target="_blank">shadcnspace User Profile 02 "Profile Management"</a> (thẻ danh tính + thẻ form) · <a href="https://shadcnstudio.com/" target="_blank">shadcn/studio Account Settings 09</a> (thẻ-dòng tài khoản liên kết)</p>
+  <ul class="why"><li>Có chất "hộ chiếu" nhất: ảnh đại diện lớn, tên, cách đăng nhập gom vào thẻ trái.</li><li>Điện thoại: thẻ danh tính lên đầu rồi tới các thẻ phải. Máy bàn dùng nhiều chiều ngang hơn A.</li></ul>
+  <div class="row2">
+    <div class="zd"><div class="v2 d">
+      <div class="x-nav"><span class="x-logo"><i></i>Nexora</span><span class="x-links"><span>Tours</span><span>Destinations</span><span>Travel Blog</span><span>About Us</span><span>Contact</span></span><span class="x-cta">Book a tour</span></div>
+      <div class="x-hero"><div class="x-crumbrow"><span class="x-back"><svg class="i"><use href="#arrow-left"/></svg></span><span class="x-crumb">Home › <b>Settings</b></span></div><div class="x-title">Traveler details</div><div class="x-sub">The information printed in your passport.</div></div>
+      <div class="body"><div class="two">
+        <div class="card idcard"><span class="av lg">L</span><h4>Linh Tran</h4><div class="sub">linh.tran@example.com</div><div style="margin-top:14px"><span class="btn sm"><svg class="i"><use href="#upload"/></svg>Upload avatar</span></div><div class="note" style="margin-top:6px">PNG, JPG up to 5 MB.</div><hr><div class="k" style="text-align:left;margin-bottom:10px">Connected accounts</div><div class="meta"><span class="ic"><svg class="i"><use href="#mail"/></svg></span><div><div style="font-weight:600">Email &amp; password</div><div class="mut" style="font-size:12.5px">Sign-in method</div></div></div></div>
+        <div>
+          <div class="card"><div class="ch"><h3>Personal information</h3><p>Your name and contact details.</p></div>
+            <div class="rw" style="grid-template-columns:160px minmax(0,1fr) auto"><div class="l">Full name</div><div class="v">Linh Tran</div><span class="btn ghost sm">Edit</span></div>
+            <div class="rw" style="grid-template-columns:160px minmax(0,1fr) auto"><div class="l">Phone</div><div class="v">+84 90 123 4567</div><span class="btn ghost sm">Edit</span></div>
+            <div class="rw" style="grid-template-columns:160px minmax(0,1fr) auto"><div class="l">Email</div><div class="v">linh.tran@example.com</div><span class="lock"><svg class="i"><use href="#lock"/></svg>Can’t be changed yet</span></div>
+          </div>
+          <div class="card"><div class="ch"><h3>Password</h3><p>Change the password you sign in with.</p></div>
+            <div class="rw open" style="grid-template-columns:160px minmax(0,1fr)"><div class="l">Change password</div><div class="v" style="display:grid;gap:8px;max-width:360px"><span class="inp">Current password</span><span class="inp focus">New password</span><span class="inp">Confirm new password</span><div style="display:flex;gap:8px"><span class="btn pri sm">Update password</span><span class="btn sm">Cancel</span></div></div></div>
+          </div>
+          <div class="danger" style="margin-top:20px"><div class="dh"><h3>Danger zone</h3><p>Irreversible account actions.</p></div><div class="dr"><div><b>Delete account</b><div class="note">This permanently removes your account and all your data.</div></div><span class="btn dng sm">Delete account</span></div></div>
+        </div>
+      </div></div>
+    </div></div>
+    <div class="zm"><div class="v2 m">
+      <div class="x-nav"><span class="x-logo"><i></i>Nexora</span><span class="x-burger"></span></div>
+      <div class="x-hero"><div class="x-crumbrow"><span class="x-back"><svg class="i"><use href="#arrow-left"/></svg></span><span class="x-crumb">Home › <b>Settings</b></span></div><div class="x-title">Traveler details</div></div>
+      <div class="body">
+        <div class="card idcard"><span class="av lg">L</span><h4>Linh Tran</h4><div class="sub">linh.tran@example.com</div><div style="margin-top:12px"><span class="btn sm"><svg class="i"><use href="#upload"/></svg>Upload avatar</span></div></div>
+        <div class="card"><div class="ch"><h3>Personal information</h3></div>
+          <div class="rw"><div class="l">Full name</div><span class="btn ghost sm">Edit</span><div class="v">Linh Tran</div></div>
+          <div class="rw"><div class="l">Phone</div><span class="btn ghost sm">Edit</span><div class="v">+84 90 123 4567</div></div>
+        </div>
+      </div>
+    </div></div>
+  </div>
+
+  <h2 class="sec">2 · Saved (`/account/saved`)</h2>
+  <p class="lead">Dữ liệu có sẵn mỗi tour: ảnh bìa, tên, số ngày, giá, điểm đánh giá và số lượt, NGÀY LƯU (API đã trả — được dùng), cờ không còn bán. Bỏ lưu: tim đặc màu chủ đạo, bấm là thẻ rời ngay, số đếm ở hero giảm theo; lỗi thì thẻ quay lại. Tour không còn bán: ảnh xám, nhãn "No longer available", vẫn bỏ lưu được.</p>
+
+  <!-- ===================== SAVED A ===================== -->
+  <span class="tag rec">A · ĐỀ XUẤT</span>
+  <h3 class="opt-h">Lưới thẻ ảnh, tim nổi trên ảnh (luôn hiện), chữ dưới ảnh</h3>
+  <p class="src">Mượn: <a href="https://reui.io/" target="_blank">ReUI Wishlist 3</a> (lưới không viền, nút bỏ luôn hiện trên điện thoại) · <a href="https://reui.io/" target="_blank">ReUI Product Card 1</a> (tim bật/tắt chuẩn trợ năng) · <a href="https://reui.io/" target="_blank">ReUI Wishlist 2</a> (mục không bán: ảnh xám + nhãn)</p>
+  <ul class="why"><li>Cùng dáng thẻ tour ở trang /tours nên khách thấy quen; 3 cột máy bàn, 2 cột tablet, 1 cột điện thoại.</li><li>Dòng phụ "Saved 3 Oct" lấy từ ngày lưu có sẵn.</li></ul>
+  <div class="row2">
+    <div class="zd"><div class="v2 d">
+      <div class="x-nav"><span class="x-logo"><i></i>Nexora</span><span class="x-links"><span>Tours</span><span>Destinations</span><span>Travel Blog</span><span>About Us</span><span>Contact</span></span><span class="x-cta">Book a tour</span></div>
+      <div class="x-hero"><div class="x-crumbrow"><span class="x-back"><svg class="i"><use href="#arrow-left"/></svg></span><span class="x-crumb">Home › <b>Saved</b></span></div><div class="x-title">Tucked inside</div><div class="x-sub">Tours you’ve bookmarked to plan later.</div><div class="x-meta">5 TOURS</div></div>
+      <div class="body"><div class="grid3">
+        <div><div class="ph"><span class="heart"><svg class="i"><use href="#heart"/></svg></span></div><div class="tc"><div class="k">Saved 3 Oct</div><h4>Ha Long Bay Overnight Cruise</h4><div class="meta"><span><svg class="i" style="width:14px;height:14px"><use href="#clock"/></svg> 2 days</span><span class="st">★ 4.8</span><span>(126)</span></div><div class="pr">from <b>$289</b></div></div></div>
+        <div><div class="ph p2"><span class="heart"><svg class="i"><use href="#heart"/></svg></span></div><div class="tc"><div class="k">Saved 28 Sep</div><h4>Hoi An Lantern Walk &amp; Cooking Class</h4><div class="meta"><span><svg class="i" style="width:14px;height:14px"><use href="#clock"/></svg> 3 days</span><span class="st">★ 4.9</span><span>(88)</span></div><div class="pr">from <b>$345</b></div></div></div>
+        <div><div class="ph p3"><span class="heart"><svg class="i"><use href="#heart"/></svg></span></div><div class="tc"><div class="k">Saved 21 Sep</div><h4>Mekong Delta Boats — two days on the river</h4><div class="meta"><span><svg class="i" style="width:14px;height:14px"><use href="#clock"/></svg> 2 days</span><span class="st">★ 4.7</span><span>(54)</span></div><div class="pr">from <b>$198</b></div></div></div>
+        <div><div class="ph p4"><span class="heart"><svg class="i"><use href="#heart"/></svg></span></div><div class="tc"><div class="k">Saved 14 Sep</div><h4>Sapa Rice Terraces Trek</h4><div class="meta"><span><svg class="i" style="width:14px;height:14px"><use href="#clock"/></svg> 4 days</span><span class="st">★ 4.8</span><span>(201)</span></div><div class="pr">from <b>$410</b></div></div></div>
+        <div><div class="ph p5 gray"><span class="badge">No longer available</span><span class="heart"><svg class="i"><use href="#heart"/></svg></span></div><div class="tc off"><div class="k">Saved 2 Sep</div><h4>Hue Imperial City Day Tour</h4><div class="meta"><span>1 day</span></div><div class="pr">Not on sale</div></div></div>
+      </div></div>
+    </div></div>
+    <div class="zm"><div class="v2 m">
+      <div class="x-nav"><span class="x-logo"><i></i>Nexora</span><span class="x-burger"></span></div>
+      <div class="x-hero"><div class="x-crumbrow"><span class="x-back"><svg class="i"><use href="#arrow-left"/></svg></span><span class="x-crumb">Home › <b>Saved</b></span></div><div class="x-title">Tucked inside</div><div class="x-meta">5 TOURS</div></div>
+      <div class="body"><div class="grid3">
+        <div><div class="ph"><span class="heart"><svg class="i"><use href="#heart"/></svg></span></div><div class="tc"><div class="k">Saved 3 Oct</div><h4>Ha Long Bay Overnight Cruise</h4><div class="meta"><span>2 days</span><span class="st">★ 4.8</span><span>(126)</span></div><div class="pr">from <b>$289</b></div></div></div>
+        <div><div class="ph p5 gray"><span class="badge">No longer available</span><span class="heart"><svg class="i"><use href="#heart"/></svg></span></div><div class="tc off"><div class="k">Saved 2 Sep</div><h4>Hue Imperial City Day Tour</h4></div></div>
+      </div></div>
+    </div></div>
+  </div>
+
+  <!-- ===================== SAVED B ===================== -->
+  <span class="tag">B</span>
+  <h3 class="opt-h">Ảnh dọc lớn, bảng thông tin nổi đè đáy ảnh</h3>
+  <p class="src">Mượn: <a href="https://shadcnuikit.com/" target="_blank">Shadcn UI Kit Product Card 9</a> (ảnh + bảng thông tin nổi, chất "du lịch") · <a href="https://shadcnstudio.com/" target="_blank">shadcn/studio Product List 09</a> (tim trên ảnh trong khung)</p>
+  <ul class="why"><li>Ảnh chiếm chỗ nhiều nhất, hợp tour du lịch; bảng nổi gom tên, số ngày, sao, giá và "View tour →".</li><li>Tên tour dài (56 ký tự trong seed) làm bảng nổi cao lên, che nhiều ảnh hơn.</li></ul>
+  <div class="row2">
+    <div class="zd"><div class="v2 d">
+      <div class="x-nav"><span class="x-logo"><i></i>Nexora</span><span class="x-links"><span>Tours</span><span>Destinations</span><span>Travel Blog</span><span>About Us</span><span>Contact</span></span><span class="x-cta">Book a tour</span></div>
+      <div class="x-hero"><div class="x-crumbrow"><span class="x-back"><svg class="i"><use href="#arrow-left"/></svg></span><span class="x-crumb">Home › <b>Saved</b></span></div><div class="x-title">Tucked inside</div><div class="x-sub">Tours you’ve bookmarked to plan later.</div><div class="x-meta">5 TOURS</div></div>
+      <div class="body"><div class="grid3">
+        <div class="float"><div class="ph tall"><span class="heart"><svg class="i"><use href="#heart"/></svg></span></div><div class="panel"><h4>Ha Long Bay Overnight Cruise</h4><div class="meta"><span>2 days</span><span>★ 4.8 (126)</span><span>Saved 3 Oct</span></div><div class="bot"><span>from <b>$289</b></span><a>View tour →</a></div></div></div>
+        <div class="float"><div class="ph tall p2"><span class="heart"><svg class="i"><use href="#heart"/></svg></span></div><div class="panel"><h4>Hoi An Lantern Walk &amp; Cooking Class</h4><div class="meta"><span>3 days</span><span>★ 4.9 (88)</span><span>Saved 28 Sep</span></div><div class="bot"><span>from <b>$345</b></span><a>View tour →</a></div></div></div>
+        <div class="float"><div class="ph tall p5 gray"><span class="badge">No longer available</span><span class="heart"><svg class="i"><use href="#heart"/></svg></span></div><div class="panel"><h4 class="mut">Hue Imperial City Day Tour</h4><div class="meta"><span>1 day</span><span>Saved 2 Sep</span></div><div class="bot"><span class="mut">Not on sale</span></div></div></div>
+      </div></div>
+    </div></div>
+    <div class="zm"><div class="v2 m">
+      <div class="x-nav"><span class="x-logo"><i></i>Nexora</span><span class="x-burger"></span></div>
+      <div class="x-hero"><div class="x-crumbrow"><span class="x-back"><svg class="i"><use href="#arrow-left"/></svg></span><span class="x-crumb">Home › <b>Saved</b></span></div><div class="x-title">Tucked inside</div><div class="x-meta">5 TOURS</div></div>
+      <div class="body"><div class="grid3">
+        <div class="float"><div class="ph tall"><span class="heart"><svg class="i"><use href="#heart"/></svg></span></div><div class="panel"><h4>Ha Long Bay Overnight Cruise</h4><div class="meta"><span>2 days</span><span>★ 4.8 (126)</span></div><div class="bot"><span>from <b>$289</b></span><a>View tour →</a></div></div></div>
+      </div></div>
+    </div></div>
+  </div>
+
+  <!-- ===================== SAVED C ===================== -->
+  <span class="tag">C</span>
+  <h3 class="opt-h">Danh sách dòng ngang: ảnh nhỏ, chữ giữa, nút tim bên phải</h3>
+  <p class="src">Mượn: <a href="https://reui.io/" target="_blank">ReUI Wishlist 1</a> (dạng danh sách và cách gập trên điện thoại)</p>
+  <ul class="why"><li>Gọn, đọc nhanh khi đã lưu nhiều tour; trên điện thoại một màn thấy được 4–5 tour.</li><li>Ảnh nhỏ nên kém "mời gọi" hơn A và B; khác dáng thẻ tour ở /tours.</li></ul>
+  <div class="row2">
+    <div class="zd"><div class="v2 d">
+      <div class="x-nav"><span class="x-logo"><i></i>Nexora</span><span class="x-links"><span>Tours</span><span>Destinations</span><span>Travel Blog</span><span>About Us</span><span>Contact</span></span><span class="x-cta">Book a tour</span></div>
+      <div class="x-hero"><div class="x-crumbrow"><span class="x-back"><svg class="i"><use href="#arrow-left"/></svg></span><span class="x-crumb">Home › <b>Saved</b></span></div><div class="x-title">Tucked inside</div><div class="x-sub">Tours you’ve bookmarked to plan later.</div><div class="x-meta">5 TOURS</div></div>
+      <div class="body"><div class="list">
+        <div class="li"><div class="ph"></div><div><h4>Ha Long Bay Overnight Cruise</h4><div class="meta">2 days · ★ 4.8 (126) · Saved 3 Oct</div><div class="pr">from <b>$289</b></div></div><div class="rm"><span class="hbtn"><svg class="i"><use href="#heart"/></svg></span></div></div>
+        <div class="li"><div class="ph p2"></div><div><h4>Hoi An Lantern Walk &amp; Cooking Class</h4><div class="meta">3 days · ★ 4.9 (88) · Saved 28 Sep</div><div class="pr">from <b>$345</b></div></div><div class="rm"><span class="hbtn"><svg class="i"><use href="#heart"/></svg></span></div></div>
+        <div class="li"><div class="ph p3"></div><div><h4>Mekong Delta Boats — two days on the river</h4><div class="meta">2 days · ★ 4.7 (54) · Saved 21 Sep</div><div class="pr">from <b>$198</b></div></div><div class="rm"><span class="hbtn"><svg class="i"><use href="#heart"/></svg></span></div></div>
+        <div class="li"><div class="ph p5 gray"></div><div><h4 class="mut">Hue Imperial City Day Tour</h4><div class="meta">No longer available · Saved 2 Sep</div></div><div class="rm"><span class="hbtn"><svg class="i"><use href="#heart"/></svg></span></div></div>
+      </div></div>
+    </div></div>
+    <div class="zm"><div class="v2 m">
+      <div class="x-nav"><span class="x-logo"><i></i>Nexora</span><span class="x-burger"></span></div>
+      <div class="x-hero"><div class="x-crumbrow"><span class="x-back"><svg class="i"><use href="#arrow-left"/></svg></span><span class="x-crumb">Home › <b>Saved</b></span></div><div class="x-title">Tucked inside</div><div class="x-meta">5 TOURS</div></div>
+      <div class="body"><div class="list">
+        <div class="li"><div class="ph"></div><div><h4 style="font-size:15px">Ha Long Bay Overnight Cruise</h4><div class="meta" style="font-size:12px">2 days · ★ 4.8</div><div class="pr">from <b>$289</b></div></div><span class="hbtn"><svg class="i"><use href="#heart"/></svg></span></div>
+        <div class="li"><div class="ph p2"></div><div><h4 style="font-size:15px">Hoi An Lantern Walk &amp; Cooking Class</h4><div class="meta" style="font-size:12px">3 days · ★ 4.9</div><div class="pr">from <b>$345</b></div></div><span class="hbtn"><svg class="i"><use href="#heart"/></svg></span></div>
+        <div class="li"><div class="ph p5 gray"></div><div><h4 class="mut" style="font-size:15px">Hue Imperial City Day Tour</h4><div class="meta" style="font-size:12px">No longer available</div></div><span class="hbtn"><svg class="i"><use href="#heart"/></svg></span></div>
+      </div></div>
+    </div></div>
+  </div>
+
+  <span class="tag" style="background:#6b6b70">CHUNG CHO MỌI PHƯƠNG ÁN SAVED</span>
+  <h3 class="opt-h">Trạng thái trống</h3>
+  <div class="row2"><div class="zm"><div class="v2 m"><div class="body"><div class="empty"><span class="ic"><svg class="i"><use href="#heart"/></svg></span><h4>Nothing saved yet</h4><p>Tap the heart on any tour to keep it here for later.</p><span class="btn pri">Browse tours</span></div></div></div></div></div>
+</div>
+</body>
+</html>

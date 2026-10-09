@@ -53,6 +53,7 @@ Cột cuối trả lời câu "xoá file này thì mất gì".
 | Luồng đặt tour bản đầu | `booking-flow.src.html` | 04/08 | [spec](../../specs/2026-08-07-booking-checkout-design.md) · cũng là **mockup mặc định của `build.mjs`** |
 | Polish UI admin sau P4c | `outbox-type-menu` · `details-drawer` · `payload-labels` | 04/09 | **KHÔNG có spec — ba file này là bản ghi** · [CHANGELOG 04/09](../../CHANGELOG.md) · code trích: `toolbar-filter-menu.tsx`, `json-drawer.tsx` |
 | Chốt cỡ thanh lọc admin 44→36px | `admin-toolbar-sizing.src.html` | 05/09 | [CHANGELOG 05/09](../../CHANGELOG.md) · code trích: 4 file kit toolbar + `bookings-date-range.spec.tsx` |
+| Saved và Settings của khách: ba phương án mỗi trang, user chọn Settings C và Saved A | `account-saved-settings.src.html` | 09/10 | [spec](../../specs/2026-10-09-account-saved-settings-redesign-design.md) |
 
 ## Công cụ
 
