@@ -176,7 +176,7 @@ Mỗi spec đi kèm một plan cùng tên ở [`plans/`](plans/), trừ vài đ�
 **Trang đơn của khách (P7: Phần A My bookings xong 06/10; B chi tiết đơn, C voucher chưa thi công)**
 [Thiết kế lại chi tiết đơn, voucher, My bookings](specs/2026-10-05-booking-pages-redesign-design.md)
 
-**Trang account Saved và Settings (chỉ đổi giao diện, chưa thi công)**
+**Trang account Saved và Settings (chỉ đổi giao diện, xong 09/10)**
 [Thiết kế lại Saved và Settings](specs/2026-10-09-account-saved-settings-redesign-design.md)
 
 **Công cụ máy dev (ngoài repo)**

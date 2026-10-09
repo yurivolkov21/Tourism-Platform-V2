@@ -8,6 +8,38 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-10-09 — Saved và Settings của khách thiết kế lại (nhánh `feat/account-saved-settings`)
+
+**Bối cảnh:** user nhắc hai trang `/account/saved` và `/account/settings` còn link chữ "← Passport" và bố cục
+cũ (09/10). Chỉ đổi giao diện, giữ nguyên chức năng và API. Wireframe ba phương án mỗi trang, lấy mẫu từ ReUI,
+shadcn/studio, Shadcn UI Kit, shadcnspace và ui.shadcn.com; user chọn **Settings C** và **Saved A**. Spec cùng bản
+ghi wireframe `f9ac258e`, plan 7 task `76bc9e99`.
+
+- **Saved:** lưới thẻ ảnh 1/2/3 cột. Tim nổi trên ảnh, luôn hiện, là nút hành động "Remove {tour} from saved
+  tours". Dòng "Saved {ngày}" theo lịch Việt Nam, ẩn sao khi tour chưa có đánh giá. Tour không còn bán: ảnh xám,
+  nhãn "No longer available", không giá. Bỏ lưu xong thì số ở hero cập nhật (`router.refresh()`), bỏ bằng bàn
+  phím thì focus sang tim kế tiếp. Trạng thái trống mới, nút tròn quay lại trong hero.
+- **Settings:** từ `lg` hai cột. Bên trái là thẻ danh tính dính khi cuộn: ảnh 96px, tên, email, nút "Upload
+  avatar" chỉ chữ, Connected accounts. Bên phải là thẻ Personal information, thẻ Password và khối Danger zone.
+  Dưới `lg` một cột, thẻ danh tính lên đầu. Nút tròn quay lại trong hero; gỡ các khoá chữ mồ côi.
+
+**Review:** hai lượt gộp (Saved; Settings). Saved có 5 mục nhỏ: tim vừa `aria-pressed` vừa nhãn hành động,
+focus rơi về `body` khi bỏ bằng bàn phím, hai test chưa phân biệt, `refresh` nằm trong `try`. Settings có 1 mục
+quan trọng (email dài làm trang 320px cuộn ngang 74px) và 3 mục nhỏ (hai điểm dừng "Upload avatar", test nút xoá
+chưa đủ, tiêu đề rỗng khi tên trống). Vá hết ở `ea5bf637` và `8b543f90`. Phát hiện thêm: câu lỗi tải ảnh mang
+tên tệp dài làm tràn 240px, vá `0fba5fd4`.
+
+**Duyệt bằng mắt:** session gốc dựng hai trang thật trên dev, chụp 375 và 1280 cả sáng lẫn tối, đặt cạnh
+wireframe; user xác nhận 09/10 và bỏ icon ở nút "Upload avatar" (`b58da161`). Thi công bằng agent sonnet theo
+plan có mã đầy đủ đã chạy thử trước.
+
+**CÒN TREO:** thử tay production từng bước sau deploy. Không migration, không env, không webhook.
+
+Tests after (`gate:int` trên `7edf43d0`, bản trước khi rebase; rebase chỉ mang thêm hai commit docs, 09/10
+14:27–14:35): unit 6195 — admin 1911, web 1764, api 1094, contract 665, mobile 502, mobile-ui 134, core 46,
+ui 36, i18n 24, tokens 19 — và int 778/46.
+
+
 ## 2026-10-09 — Đính chính rủi ro proxy Google sau merge P5b-4; duyệt ADR-0056 đăng nhập Google native
 
 **Đính chính entry merge ngay bên dưới.** Câu "Production hiện thiếu cặp env Google nên proxy
