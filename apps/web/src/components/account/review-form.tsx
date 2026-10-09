@@ -66,7 +66,8 @@ function RatingPicker({ value, onChange }: { value: number; onChange: (n: number
  * Form viết đánh giá cho một booking đã đi xong (cụm B, nửa 2; THAY DA
  * 12/08 theo mẫu InputGroup composite user chọn — mảnh 2 cụm review-ảnh):
  * MỘT khung nhập liệu thống nhất — icon addon trái, title (input không
- * viền) chồng textarea nội dung, addon phải là 5 sao + nút Submit. LOGIC
+ * viền) chồng textarea nội dung, addon cuối là 5 sao + nút Submit (từ P7 B
+ * là một hàng riêng dưới ô chữ, xuống dòng được khi hẹp). LOGIC
  * GIỮ NGUYÊN từ bản cũ: state/validate theo contract, submit oRPC + map mã
  * lỗi, `router.refresh()` để server tự đổi sang lời cảm ơn.
  *
@@ -154,7 +155,8 @@ export function ReviewForm({
       <h3 className="text-sm font-semibold text-foreground">{t.heading}</h3>
 
       <Field>
-        <InputGroup className="h-auto flex-wrap items-start bg-background p-3 pl-4">
+        {/* `@container`: vạch ngăn của hàng sao đọc bề rộng của chính khung ô (xem addon cuối). */}
+        <InputGroup className="@container h-auto flex-wrap items-start bg-background p-3 pl-4">
           <InputGroupAddon className="mt-1.5 inline-flex size-8 items-center justify-center rounded-md border border-border bg-muted p-0">
             <PenLineIcon className="size-4 text-muted-foreground" />
           </InputGroupAddon>
@@ -196,9 +198,23 @@ export function ReviewForm({
             </span>
           </div>
 
-          <InputGroupAddon align="inline-end" className="gap-2 border-none">
+          {/* Hàng sao + nút gửi luôn là một hàng riêng dưới ô chữ (`basis-full`): đứng cạnh ô chữ
+              thì ở cột phải trang chi tiết đơn (388–480px) ô chữ bị ép còn 14–60px, mỗi dòng một
+              hai chữ. Khung ô hẹp hơn hai cụm cộng đệm (~272px với "Submit review", ~318px với
+              "Send for review again" — đo bằng CSS build thật) thì nút xuống dòng dưới hàng sao
+              (`flex-wrap`), cả hai dạt phải; trước đó hàng không co được nên cả trang cuộn ngang ở
+              điện thoại và nút bị cắt ở 1024px (review P7 B12). Vạch ngăn khi ấy thành vạch lẻ cuối
+              hàng sao nên ẩn đi khi khung ô dưới 21rem (336px — trên ngưỡng của nhãn dài hơn, chừa
+              chỗ cho chênh lệch phông). */}
+          <InputGroupAddon
+            align="inline-end"
+            className="basis-full flex-wrap justify-end gap-2 border-none"
+          >
             <RatingPicker value={rating} onChange={setRating} />
-            <div aria-hidden="true" className="mx-1 h-4 w-px self-center bg-border" />
+            <div
+              aria-hidden="true"
+              className="mx-1 h-4 w-px self-center bg-border @max-[21rem]:hidden"
+            />
             <InputGroupButton
               type="submit"
               variant="default"

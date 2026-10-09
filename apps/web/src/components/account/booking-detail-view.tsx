@@ -52,7 +52,10 @@ export function BookingDetailView({
       <div className="mx-auto flex max-w-7xl flex-col gap-4">
         <BookingTicket booking={booking} phase={phase} />
         <TripJourney journey={journeyMilestones(booking, today)} />
-        <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,1.08fr)_minmax(0,1fr)]">
+        {/* `grid-cols-1` (= `minmax(0,1fr)`) dưới `lg`: lưới không khai cột thì cột ngầm `auto`
+            phình theo min-content của thẻ con — email dài không bao giờ `truncate`, và một hàng
+            không co được kéo cả trang cuộn ngang (review P7 B12b). */}
+        <div className="grid grid-cols-1 items-start gap-5 lg:grid-cols-[minmax(0,1.08fr)_minmax(0,1fr)]">
           <BookingDetailsPanel
             booking={booking}
             view={view}
