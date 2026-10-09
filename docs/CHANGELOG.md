@@ -8,6 +8,72 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-10-09 — Thử tay P7 phần B và C trên production; năm bản vá (nhánh `fix/p7-journey-itinerary`)
+
+**Thử tay** (sau deploy `072df39c`; tài khoản seed nora.dahl, user bấm, session gốc soát DB chỉ
+đọc; 09/10 khoảng 17:00–18:40): bước 4–14 của spec P7 §11 (bước 1–3 là phần A, thử 06/10) và
+badge accordion My bookings (I1). Bảy bước đạt nguyên trạng: 6 đơn đã huỷ cả hai kiểu (khách huỷ
+sau hạn chót BK-QQ2P3HBC "No refund due"; chuyến công ty huỷ BK-7D1FHRQG ở bước 11 "Departure
+cancelled", không form review), 7 voucher vừa trả (đặt BK-EET0JBTH bằng thẻ thử Stripe: "Your day
+in Hội An is booked.", pháo giấy), 8 voucher mở lại sau 30 phút, 10 bốn trang ở 375px, 11, 13
+`/checkout/cancel` của đơn đã trả sang voucher, 14 voucher đã đi và đã huỷ không ô Meeting point.
+Thấy lỗi, vá ở nhánh này:
+
+- Bước 4 (đơn sắp đi): nhãn TODAY lệch xuống dưới vạch nối; "Full itinerary →" thừa mũi tên.
+- Bước 12 (link "Full itinerary"): lần đầu mở đúng tab Itinerary nhưng "thanh cuộn có lúc kẹt";
+  Back rồi bấm lại thì user thấy tab không mở.
+- Bước 5 (đơn đã đi): gửi review thành công mà không có thông báo nào, user tưởng nút không chạy.
+  Thụt lùi từ 05/09 (`15cde0be`, ADR-0032): form ở lại để còn sửa tới lúc duyệt, nên dấu hiệu duy
+  nhất là dòng "Your review is with our team" đầu khung và chữ nút đổi thành "Send for review
+  again"; trước đó lời cảm ơn thay chỗ form. Đợt B dời khu review sang cột phải nên càng khó thấy.
+- Bước 11 (voucher BK-7D1FHRQG): receipt in "$867" ngay trên "−$867.00" — hai độ chính xác trong
+  một cột.
+
+Bước 9 (bản in voucher) chạy được — chỉ in thẻ, hai cột, gọn một trang A4 — nhưng user chê "như
+làm đại" và muốn thiết kế lại cùng bản in và file xuất của admin: ghi G40, đợt riêng.
+
+**Vá** (5 commit; ba việc đầu agent Opus thi công, session gốc soát diff; hai việc sau session gốc
+làm, TDD):
+
+- `22281513` bỏ "→" sau link "Full itinerary" (các link "View tour →" giữ).
+- `c65dbffc` TODAY: từ `md` dòng đổi sang `block` nên viên thành phần tử inline — hộp nền cao theo
+  font (21px thay vì 17,5px) và ngồi trên đường cơ sở, tâm lệch 3,5px dưới vạch ở mọi khổ máy bàn.
+  Nay đặt tâm bằng `top-5` và `-translate-y-1/2`: lệch 0 ở 768, 1024, 1280, 1440, 1920; 375 không
+  đổi.
+- `f79df8c8` Lenis (G33 vá một phần): `naiveDimensions` — Lenis nhớ đáy trang lúc khởi tạo, mà
+  `<html>` mang `h-full` nên trang dài ra (điều hướng mềm, đổi tab) không báo gì, lăn chuột bị kẹp
+  ở đáy cũ (1378 thay vì 2812); `stopInertiaOnNavigate` — bấm link trong khoảng 1,2 giây sau cú lăn
+  thì quán tính kéo trang mới về đích cũ (1080 thay vì 1167). Hai ca test chạy Lenis thật. Phần
+  "Back rồi bấm lại không mở tab" không tái hiện được ở sáu biến thể (`next dev`, next build, 1280,
+  375, site thật chỉ đọc): tab luôn mở, chỉ chỗ dừng sai vì hai cơ chế trên — chờ user thử lại.
+- `1296df8a` toast "Thanks for your review" sau khi gửi, cả lần đầu lẫn gửi lại — dùng lại
+  `successTitle`, `successBody` mà màn đã gửi của app mobile (nhánh `feat/mobile-review-screens`)
+  đọc; thêm test cho nhánh sửa (`reviews.update`) vốn chưa có test nào.
+- `b564954f` receipt của voucher có dòng tiền hoàn thì mọi số đủ hai số lẻ: `formatBookingMoney`
+  và `bookingPriceLines` nhận tuỳ chọn `exact`. Chỉ receipt của voucher, chỗ duy nhất tiền hoàn
+  đứng cùng cột với tổng; nơi khác kể tiền hoàn bằng câu.
+
+**Review findings:** nhánh nhỏ, không chạy review riêng: session gốc soát diff của agent (đọc mã
+nguồn Lenis 1.3.25 xác nhận hai tuỳ chọn có thật, `naiveDimensions` chỉ đổi getter `limit`), mỗi
+bản vá có test hay số đo trước và sau.
+
+**CÒN TREO cho session gốc:**
+
+- [ ] Push đụng web và i18n: canh đủ ba đèn — Actions, Render (API tự deploy theo push, G23),
+  Vercel.
+- [ ] User thử lại trên prod: TODAY; "Full itinerary" lần đầu, rồi Back và bấm lại; gửi lại review
+  thử trên BK-J9AUYIYB thấy toast; receipt voucher BK-7D1FHRQG in "$867.00" trên "−$867.00".
+- Dữ liệu thử còn trên prod, để lượt seed lại ~03/11 dọn: review "Test review" chờ duyệt trên
+  BK-J9AUYIYB; đơn BK-EET0JBTH (Stripe test, $39, đi 29/10).
+- Dọn ở máy sau merge: worktree `booking-pages-redesign` và `booking-voucher`, các nhánh
+  `feat/booking-pages-redesign`, `feat/booking-voucher`, `fix/p7-journey-itinerary` và ba nhánh
+  `backup/p7*`.
+- Không migration, không env, không webhook, không đổi Cloudinary.
+
+Tests after (`gate:int` trên `1296df8a`, 09/10 18:48–18:55): unit 6589 — web 2138, admin 1911, api 1097,
+contract 675, mobile 502, mobile-ui 134, core 46, ui 36, i18n 31, tokens 19 — và int 779/46. Web
+2130 → 2138: Lenis 2 ca, toast 3 ca, receipt 3 ca.
+
 ## 2026-10-09 — P7 phần B và C: đợt vá gộp sau review max (nhánh `feat/booking-pages-redesign`)
 
 **Bối cảnh.** Review max 08/10 của hai phần P7 chưa merge (hai entry ngay dưới): Phần C

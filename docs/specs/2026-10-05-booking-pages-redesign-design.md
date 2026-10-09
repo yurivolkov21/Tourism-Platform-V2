@@ -646,6 +646,8 @@ Làm từng bước, user báo xong mới sang bước kế.
   có hash không đổi.
 - **Quán tính Lenis** giành lại vị trí cuộn khi điều hướng mềm trong ~1,2 giây sau một cú lăn
   chuột — lỗi có sẵn toàn site, link "Full itinerary" cũng dính trong khe ấy (open-items G33).
+  Thử tay prod 09/10 thấy đúng chỗ này: vá ở `f79df8c8` (bấm link buông quán tính, Lenis đo đáy
+  trang theo trang hiện tại); còn `router.push` trong mã.
 - **Lịch trình:** mobile (P5) tô sáng theo giờ trong mô tả; web in nguyên văn, không tách giờ.
 - **Ô tích "Budget for…"** chỉ nhớ trên một máy.
 - **Ngưỡng 30 phút:** khách mở lại trong 30 phút sau khi trả vẫn thấy tiêu đề "is booked" —
