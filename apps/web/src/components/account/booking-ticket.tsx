@@ -3,6 +3,7 @@ import { messages } from '@tourism/i18n';
 import { cn } from '@tourism/ui/lib/utils';
 import { BusIcon } from 'lucide-react';
 import Link from 'next/link';
+import { TicketBarcode } from '@/components/checkout/ticket-barcode';
 import { RevealItem } from '@/components/motion/reveal-item';
 import { VisaStamp } from '@/components/passport/visa-stamp';
 import {
@@ -12,7 +13,7 @@ import {
   paymentProviderLabel,
   vietnamDay,
 } from '@/lib/booking-vm';
-import { formatBookingMoney, ticketBarcodeWidths } from '@/lib/checkout';
+import { formatBookingMoney } from '@/lib/checkout';
 import { calendarDateParts, formatDate } from '@/lib/tours';
 
 /** Nhãn nhỏ in hoa của vé — `.k` của bản vẽ (10px, đậm, giãn chữ 0.15em). */
@@ -170,16 +171,7 @@ export function BookingTicket({
           <p className="mt-0.5 text-[12.5px] text-muted-foreground">{t.ticket.taxesIncluded}</p>
           <div className="mt-auto pt-4">
             {showBarcode ? (
-              <div data-slot="barcode" aria-hidden="true" className="flex h-11 justify-center">
-                {ticketBarcodeWidths(booking.code).map((width, index) => (
-                  <span
-                    // biome-ignore lint/suspicious/noArrayIndexKey: mảng tất định từ `code`, không đổi thứ tự
-                    key={`${booking.code}-${index}`}
-                    className={index % 2 === 0 ? 'bg-foreground' : 'bg-transparent'}
-                    style={{ width: `${width}px` }}
-                  />
-                ))}
-              </div>
+              <TicketBarcode code={booking.code} className="h-11 justify-center" />
             ) : null}
             <p className="mt-2 text-center font-mono text-xs font-semibold tracking-[0.16em]">
               {booking.code}

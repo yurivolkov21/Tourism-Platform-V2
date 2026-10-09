@@ -3,8 +3,9 @@ import { messages } from '@tourism/i18n';
 import { cn } from '@tourism/ui/lib/utils';
 import { ArrowRightIcon, CalendarIcon, CheckIcon, UsersIcon } from 'lucide-react';
 import Link from 'next/link';
+import { TicketBarcode } from '@/components/checkout/ticket-barcode';
 import { VoucherCancelledNotice, VoucherCode } from '@/components/checkout/voucher-code';
-import { bookingPriceLines, formatBookingMoney, ticketBarcodeWidths } from '@/lib/checkout';
+import { bookingPriceLines, formatBookingMoney } from '@/lib/checkout';
 import { formatMoneyExact } from '@/lib/tours';
 import type { VoucherJournalItem, VoucherView } from '@/lib/voucher';
 
@@ -63,7 +64,7 @@ export function VoucherPass({ booking, view }: { booking: BookingDetail; view: V
                 </li>
               ))}
             </ul>
-            {view.showBarcode ? <Barcode code={booking.code} /> : null}
+            {view.showBarcode ? <TicketBarcode code={booking.code} className="mt-3 h-7.5" /> : null}
           </>
         ) : view.cancelledNotice ? (
           <VoucherCancelledNotice text={view.cancelledNotice} />
@@ -123,31 +124,6 @@ export function VoucherPass({ booking, view }: { booking: BookingDetail; view: V
       >
         {messages.booking.success.viewTours}
       </Link>
-    </div>
-  );
-}
-
-/**
- * Mã vạch trang trí, tất định theo mã đơn (`ticketBarcodeWidths`, cùng nguồn với cuống hoá
- * đơn). `data-slot="barcode"` ăn quy tắc in `print-color-adjust: exact` có sẵn ở `globals.css`
- * — vạch vẽ bằng nền, tắt "in nền" là mất vạch. Vạch `bg-current` để bản in tô chúng bằng màu
- * mực của mảng teal (đen), không bằng màu chữ của theme.
- */
-function Barcode({ code }: { code: string }) {
-  return (
-    <div
-      data-slot="barcode"
-      aria-hidden="true"
-      className="mt-3 flex h-7.5 max-w-full items-stretch overflow-hidden text-foreground"
-    >
-      {ticketBarcodeWidths(code).map((width, i) => (
-        <span
-          // biome-ignore lint/suspicious/noArrayIndexKey: mảng tất định từ `code`, không đổi thứ tự
-          key={`${code}-${i}`}
-          className={i % 2 === 0 ? 'bg-current' : 'bg-transparent'}
-          style={{ width: `${width}px` }}
-        />
-      ))}
     </div>
   );
 }

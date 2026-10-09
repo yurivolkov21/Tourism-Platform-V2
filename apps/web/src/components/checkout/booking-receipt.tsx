@@ -2,16 +2,12 @@ import type { Booking } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
 import { cn } from '@tourism/ui/lib/utils';
 import { CopyCodeButton } from '@/components/checkout/copy-code-button';
+import { TicketBarcode } from '@/components/checkout/ticket-barcode';
 import { RevealItem } from '@/components/motion/reveal-item';
 import { todayDateString } from '@/lib/account-stats';
 import { bookingTotalLabel, paymentProviderLabel, vietnamDay } from '@/lib/booking-vm';
 import type { CheckoutMood } from '@/lib/checkout';
-import {
-  bookingPriceLines,
-  formatBookingMoney,
-  ticketBarcodeWidths,
-  ticketSerial,
-} from '@/lib/checkout';
+import { bookingPriceLines, formatBookingMoney, ticketSerial } from '@/lib/checkout';
 import { STAGGER } from '@/lib/motion';
 import { formatDate, formatDateRange } from '@/lib/tours';
 
@@ -315,7 +311,6 @@ function Stub({
   isVoucher: boolean;
 }) {
   const t = messages.booking.success;
-  const widths = ticketBarcodeWidths(booking.code);
 
   return (
     <div
@@ -351,20 +346,7 @@ function Stub({
             Quiet zone `bg-card` (màu giấy của thân), không phải trắng cứng —
             giữ tokens-only mà vẫn tương phản cao ở cả hai theme. */}
         {isVoucher ? (
-          <div
-            data-slot="barcode"
-            aria-hidden="true"
-            className="flex h-10 max-w-full items-stretch overflow-hidden bg-card px-2.5 py-1.5"
-          >
-            {widths.map((w, i) => (
-              <span
-                // biome-ignore lint/suspicious/noArrayIndexKey: mảng deterministic từ `code`, không reorder
-                key={`${booking.code}-${i}`}
-                className={i % 2 === 0 ? 'bg-foreground' : 'bg-transparent'}
-                style={{ width: `${w}px` }}
-              />
-            ))}
-          </div>
+          <TicketBarcode code={booking.code} className="h-10 bg-card px-2.5 py-1.5" />
         ) : null}
         {isVoucher ? (
           <p className="font-mono text-[9px] tracking-widest text-muted-foreground">
