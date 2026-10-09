@@ -10,6 +10,7 @@ import {
   refundSummary,
   vietnamDay,
 } from './booking-vm';
+import { reviewSlot } from './review';
 import { formatChipDate, formatDate, formatDateRange } from './tours';
 
 /**
@@ -136,25 +137,32 @@ export function voucherView(booking: BookingDetail, now: Date): VoucherView | nu
 
   switch (phase) {
     case 'upcoming': {
-      // Chỉ cờ SERVER (`bookings.byCode.cancellation`, ADR-0041 §7): vắng cờ — đơn hoàn thiện chí
-      // trọn — là hết quyền huỷ miễn phí, không tự so ngày chót (`freeCancellationOpen`).
-      const withinDeadline = freeCancellationOpen(booking);
-      const deadline = formatChipDate(booking.cancellationDeadline);
+      // Hạn huỷ chỉ theo thông tin huỷ của SERVER (`bookings.byCode.cancellation`, ADR-0041 §7):
+      // còn hạn là cờ `withinDeadline` (`freeCancellationOpen`), ngày chót là ngày server tính —
+      // không tự so ngày chót với hôm nay. Vắng thông tin ấy (đơn hoàn thiện chí trọn: không còn gì
+      // để huỷ hay hoàn) thì không có gì thật để nói về hạn huỷ — không dòng điều kiện, không mốc
+      // nhật ký: "ended" cho một ngày chưa tới là nói sai. Cùng luật mốc Free cancellation của thanh
+      // hành trình trang chi tiết đơn.
+      const deadline =
+        booking.cancellation === null ? null : formatChipDate(booking.cancellation.deadline);
+      const open = deadline !== null && freeCancellationOpen(booking);
       return {
         ...common,
         // Quá hạn thì BỎ dòng hạn huỷ: một dấu tích cạnh "đã hết hạn" đọc như một quyền lợi.
-        conditions: withinDeadline
+        conditions: open
           ? [t.showCode, messages.cancellationDeadline.full(deadline), taxes]
           : [t.showCode, taxes],
         journal: [
           bookedAndPaid,
-          {
-            label: withinDeadline
-              ? t.journal.freeCancellationEnds
-              : t.journal.freeCancellationEnded,
-            detail: t.journal.deadlineAt(deadline),
-            done: !withinDeadline,
-          },
+          ...(deadline === null
+            ? []
+            : [
+                {
+                  label: open ? t.journal.freeCancellationEnds : t.journal.freeCancellationEnded,
+                  detail: t.journal.deadlineAt(deadline),
+                  done: !open,
+                },
+              ]),
           {
             label: t.journal.pickupDay,
             detail: `${formatDate(booking.departureStartDate)} · ${place}`,
@@ -179,38 +187,17 @@ export function voucherView(booking: BookingDetail, now: Date): VoucherView | nu
         ],
         cancelledNotice: null,
       };
-    case 'travelled': {
-      // "Write a review" chỉ cho PAID — cổng `checkReviewEligibility` của API nhận đúng PAID.
-      // Đơn đã hoàn một phần chưa viết gì thì không có mốc thứ ba nào nói thật được.
-      const review: VoucherJournalItem[] =
-        booking.reviewedAt !== null
-          ? [
-              {
-                label: t.journal.reviewed,
-                detail: formatDate(vietnamDay(booking.reviewedAt)),
-                done: true,
-              },
-            ]
-          : booking.status === 'PAID'
-            ? [
-                {
-                  label: t.journal.writeReview,
-                  detail: messages.accountBookingDetail.sections.reviewBlurb,
-                  done: false,
-                },
-              ]
-            : [];
+    case 'travelled':
       return {
         ...common,
         conditions: [taxes],
         journal: [
           bookedAndPaid,
           { label: t.journal.travelled, detail: departure, done: true },
-          ...review,
+          ...reviewJournal(booking, now),
         ],
         cancelledNotice: null,
       };
-    }
     case 'cancelled': {
       // Cùng luật ngày huỷ với thanh hành trình của trang chi tiết đơn (`cancelledOn`).
       const cancelledDay = cancelledOn(booking);
@@ -244,5 +231,47 @@ export function voucherView(booking: BookingDetail, now: Date): VoucherView | nu
         cancelledNotice: t.cancelledNotice,
       };
     }
+  }
+}
+
+/**
+ * Mốc thứ ba của chuyến đã đi — theo PHÁN QUYẾT của review qua `reviewSlot` (cổng của API, cùng
+ * luật khu review của trang chi tiết đơn), không theo mốc `reviewedAt`: `bookings.byCode` đặt
+ * `reviewedAt` là ngày viết cho MỌI review, nên bản trước vẫn đánh ✓ "Reviewed" cho bài bị bác
+ * hay đã rút (review P7C#2).
+ *
+ * - Đã duyệt, đang chờ duyệt: khách ĐÃ viết — "Reviewed" ✓ kèm ngày viết (spec §2.6).
+ * - Chưa viết mà đủ điều kiện (`form` — cổng `checkReviewEligibility` chỉ nhận PAID), hay bị bác
+ *   mà còn lượt viết lại: mời viết.
+ * - Bị bác hết lượt, đã rút, hay không đủ điều kiện (đơn hoàn một phần chưa viết gì): không có
+ *   mốc thứ ba nào nói thật được.
+ *
+ * `now` là đồng hồ của `voucherView` — một lần render chỉ có một "bây giờ".
+ */
+function reviewJournal(booking: BookingDetail, now: Date): VoucherJournalItem[] {
+  const t = messages.voucher.journal;
+  switch (reviewSlot(booking, now)) {
+    case 'approved':
+    case 'pending': {
+      // Hai slot này chỉ có khi đơn mang review (`reviewSlot` đọc `booking.review` trước tiên).
+      const writtenAt = booking.review?.createdAt;
+      return writtenAt === undefined
+        ? []
+        : [{ label: t.reviewed, detail: formatDate(vietnamDay(writtenAt)), done: true }];
+    }
+    case 'form':
+    case 'rejected':
+      return [
+        {
+          label: t.writeReview,
+          detail: messages.accountBookingDetail.sections.reviewBlurb,
+          done: false,
+        },
+      ];
+    case 'rejectedFinal':
+    case 'retracted':
+    case 'tooEarly':
+    case 'hidden':
+      return [];
   }
 }

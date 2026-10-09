@@ -121,6 +121,15 @@ describe('reviewSlot — trang chi tiết booking hiện gì ở chỗ đánh gi
     expect(reviewSlot(endsOn5th)).toBe('form');
   });
 
+  it('nhận `now` của nơi gọi — voucher truyền đồng hồ nó đã đọc một lần, không đọc lại máy', () => {
+    const endsOn5th = makeBooking({ status: 'PAID', departureEndDate: '2026-08-05' });
+    // Đồng hồ máy (giả) đang là 04/08: còn đọc nó thì ca này ra "tooEarly".
+    expect(reviewSlot(endsOn5th, new Date('2026-08-05T00:00:00.000Z'))).toBe('form');
+    // Và ngược lại: máy đã sang 06/08 mà `now` của nơi gọi còn là 04/08.
+    vi.setSystemTime(new Date('2026-08-06T00:00:00.000Z'));
+    expect(reviewSlot(endsOn5th, new Date('2026-08-04T23:59:59.999Z'))).toBe('tooEarly');
+  });
+
   it('chuyến CHƯA kết thúc → "tooEarly", không phải ẩn hẳn', () => {
     // Ẩn hẳn thì khách tưởng site không có tính năng đánh giá.
     expect(reviewSlot(makeBooking({ status: 'PAID', departureEndDate: '2026-12-01' }))).toBe(

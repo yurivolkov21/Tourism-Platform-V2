@@ -48,7 +48,11 @@ export type ReviewSlot =
   | 'tooEarly'
   | 'hidden';
 
-export function reviewSlot(booking: BookingDetail): ReviewSlot {
+/**
+ * `now` mặc định là đồng hồ máy (trang chi tiết đơn). Voucher truyền đồng hồ nó đã đọc MỘT lần
+ * cho cả giai đoạn lẫn "vừa trả" (`voucherView`), để một lần render chỉ có một "bây giờ".
+ */
+export function reviewSlot(booking: BookingDetail, now: Date = new Date()): ReviewSlot {
   const review = booking.review;
   if (review) {
     // W4 U2 (ADR-0032 AMEND 1): tác giả đã RÚT — kết cục đóng, đứng TRƯỚC
@@ -64,7 +68,7 @@ export function reviewSlot(booking: BookingDetail): ReviewSlot {
   }
   if (booking.status !== 'PAID') return 'hidden';
   // Ngày UTC, cố ý — xem JSDoc của `ReviewSlot`.
-  const today = new Date().toISOString().slice(0, 10);
+  const today = now.toISOString().slice(0, 10);
   return booking.departureEndDate > today ? 'tooEarly' : 'form';
 }
 

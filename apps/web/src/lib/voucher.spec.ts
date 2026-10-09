@@ -1,6 +1,6 @@
-import type { BookingDetail } from '@tourism/contract';
+import { type BookingDetail, type MyReview, REVIEW_REJECTION_LIMIT } from '@tourism/contract';
 import { describe, expect, it } from 'vitest';
-import { makeCancellation } from '@/test/fixtures/booking';
+import { makeCancellation, makeReview } from '@/test/fixtures/booking';
 import {
   minutesBeforeNow,
   OPERATOR_CANCELLED_PENDING,
@@ -245,19 +245,21 @@ describe('voucherView — sắp đi (upcoming)', () => {
    * REFUNDED không `cancelledAt` là hoàn thiện chí trọn — khách vẫn đi (ADR-0054 AMEND 1), nhưng
    * server không gửi cờ huỷ: không còn gì để hoàn, không huỷ online được. Hạn chót 2/11 còn ở sau
    * hôm nay 20/10 mà voucher vẫn không được hứa huỷ miễn phí (review P7 B15, C mục 16).
+   *
+   * Nhật ký bỏ HẲN mốc hạn huỷ — cùng luật thanh hành trình của trang chi tiết đơn: "Free
+   * cancellation ended · 2 Nov" cho một ngày chưa tới là nói sai (mối lo T2, chuyển từ T3).
    */
-  it('vắng cờ server (hoàn thiện chí trọn) thì KHÔNG còn hạn huỷ — không tự so ngày chót', () => {
+  it('vắng cờ server (hoàn thiện chí trọn): KHÔNG còn hạn huỷ, nhật ký không có mốc hạn huỷ', () => {
     const v = view(
       voucherBooking({ status: 'REFUNDED', refundedTotal: '147.00', cancellation: null }),
     );
     // Vẫn là voucher còn hiệu lực, có mã vạch: khách vẫn đi.
     expect([v.cancelledNotice, v.showBarcode]).toEqual([null, true]);
     expect(v.conditions).toEqual([SHOW_CODE, TAXES]);
-    expect(v.journal[1]).toEqual({
-      label: 'Free cancellation ended',
-      detail: '2 Nov, 11:59 pm Vietnam time',
-      done: true,
-    });
+    expect(v.journal).toEqual([
+      { label: 'Booked and paid', detail: '18 Oct 2026 · PayPal', done: true },
+      { label: 'Pickup day', detail: '3 Nov 2026 · Hà Nội', done: false },
+    ]);
   });
 });
 
@@ -295,28 +297,63 @@ describe('voucherView — đã đi (travelled)', () => {
     ]);
   });
 
-  it('đã viết review → "Reviewed" ✓ kèm ngày viết', () => {
+  /** Đơn đã đi mang review của khách — `reviewedAt` là ngày viết, như `bookings.byCode` trả. */
+  function reviewedTrip(review: Partial<MyReview>, over: Partial<BookingDetail> = {}) {
+    const written = makeReview({ createdAt: '2026-11-07T08:00:00.000Z', ...review });
+    return voucherBooking({
+      ...THREE_DAY_TRIP,
+      cancellation: PASSED,
+      review: written,
+      reviewedAt: written.createdAt,
+      ...over,
+    });
+  }
+
+  it('review đã duyệt → "Reviewed" ✓ kèm ngày viết', () => {
+    const v = view(reviewedTrip({ moderationState: 'approved', isApproved: true }), AFTER);
+    expect(v.journal[2]).toEqual({ label: 'Reviewed', detail: '7 Nov 2026', done: true });
+  });
+
+  it('ngày viết review là ngày lịch Việt Nam: 03:00 giờ VN 07/11 (20:00Z ngày 06/11)', () => {
     const v = view(
-      voucherBooking({
-        ...THREE_DAY_TRIP,
-        cancellation: PASSED,
-        reviewedAt: '2026-11-07T08:00:00.000Z',
+      reviewedTrip({
+        moderationState: 'approved',
+        isApproved: true,
+        createdAt: '2026-11-06T20:00:00.000Z',
       }),
       AFTER,
     );
     expect(v.journal[2]).toEqual({ label: 'Reviewed', detail: '7 Nov 2026', done: true });
   });
 
-  it('ngày viết review là ngày lịch Việt Nam: 03:00 giờ VN 07/11 (20:00Z ngày 06/11)', () => {
-    const v = view(
-      voucherBooking({
-        ...THREE_DAY_TRIP,
-        cancellation: PASSED,
-        reviewedAt: '2026-11-06T20:00:00.000Z',
-      }),
-      AFTER,
-    );
-    expect(v.journal[2]).toEqual({ label: 'Reviewed', detail: '7 Nov 2026', done: true });
+  /**
+   * Mốc thứ ba theo PHÁN QUYẾT của review (`reviewSlot` — cổng của API, như khu review của trang chi
+   * tiết đơn), không theo mốc `reviewedAt`: `bookings.byCode` đặt `reviewedAt` = ngày viết cho MỌI
+   * review, nên bản trước vẫn đánh ✓ "Reviewed" cho bài bị bác hay đã rút (review P7C#2).
+   */
+  it.each([
+    [
+      'đang chờ duyệt: khách đã viết → "Reviewed" ✓',
+      { moderationState: 'pending' },
+      { label: 'Reviewed', detail: '7 Nov 2026', done: true },
+    ],
+    [
+      'bị bác, còn lượt viết lại → mời viết',
+      { moderationState: 'rejected', rejectionCount: 1 },
+      { label: 'Write a review', detail: 'Tell other travellers how it went.', done: false },
+    ],
+  ] as const)('review %s', (_, review, item) => {
+    expect(view(reviewedTrip(review), AFTER).journal[2]).toEqual(item);
+  });
+
+  it.each([
+    ['bị bác hết lượt', { moderationState: 'rejected', rejectionCount: REVIEW_REJECTION_LIMIT }],
+    ['đã rút', { moderationState: 'retracted', retractedAt: '2026-11-08T00:00:00.000Z' }],
+  ] as const)('review %s → không mốc thứ ba: không ✓ "Reviewed", không mời viết', (_, review) => {
+    expect(view(reviewedTrip(review), AFTER).journal.map((item) => item.label)).toEqual([
+      'Booked and paid',
+      'Travelled',
+    ]);
   });
 
   it('PARTIALLY_REFUNDED chưa review → không mời viết (API chỉ nhận review của đơn PAID)', () => {
