@@ -1,18 +1,15 @@
 import { messages } from '@tourism/i18n';
 import type { Metadata } from 'next';
 import { cookies } from 'next/headers';
-import Link from 'next/link';
-import { SavedGrid } from '@/components/account/saved-grid';
-import { ContentHero } from '@/components/content/content-hero';
+import { SavedView } from '@/components/account/saved-view';
 import { todayDateString } from '@/lib/account-stats';
 import { requireSession } from '@/lib/api/session';
 import { fetchMyWishlist } from '@/lib/api/wishlist';
 
 /**
- * `/account/saved` — "ngăn kẹp trong hộ chiếu" (spec 2026-08-11; dựng lại MỘT
- * CỘT theo góp ý user 11/08: bỏ lưới hai-cột `AccountSection`, heading đứng
- * trên, lưới in thẳng lên giấy). `SavedGrid` giữ nguyên logic; nền giấy +
- * texture nằm ở layout khu.
+ * `/account/saved` — tour đã lưu (spec 09/10 §3, phương án A). Trang chỉ gác phiên và đọc
+ * wishlist; hero và lưới nằm ở `SavedView`. `today` (ngày lịch Việt Nam) tính ở server để thẻ in
+ * "Saved {ngày}" không phụ thuộc đồng hồ trình duyệt.
  */
 export const metadata: Metadata = {
   title: `${messages.accountSaved.title} — Nexora`,
@@ -24,29 +21,5 @@ export default async function AccountSavedPage() {
   await requireSession('/account/saved');
   const cookie = (await cookies()).toString();
   const wishlist = await fetchMyWishlist(cookie);
-
-  const t = messages.accountSaved;
-  return (
-    <div>
-      {/* Hero chuẩn site (vòng góp ý 11/08) — title/subtitle ở hero, meta là
-          số tour đã lưu; thân trang không lặp heading. */}
-      <ContentHero
-        breadcrumb={t.heroBreadcrumb}
-        title={t.title}
-        subtitle={t.subtitle}
-        meta={t.savedCount(wishlist.length)}
-      />
-      <div className="mx-auto max-w-5xl px-4 pt-10 pb-16 md:px-8 md:pb-20">
-        <Link
-          href="/account"
-          className="text-[13.5px] text-muted-foreground transition-colors hover:text-foreground"
-        >
-          {t.back}
-        </Link>
-        <div className="mt-6">
-          <SavedGrid initialItems={wishlist} today={todayDateString()} />
-        </div>
-      </div>
-    </div>
-  );
+  return <SavedView items={wishlist} today={todayDateString()} />;
 }

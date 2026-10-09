@@ -4,6 +4,8 @@ import { ORPCError } from '@orpc/client';
 import type { WishlistItem } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
 import { ButtonLink } from '@tourism/ui/components/button-link';
+import { HeartIcon } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { AccountActionError } from '@/components/account/account-action-error';
@@ -13,19 +15,28 @@ import { api, withBrowserAuth } from '@/lib/api/client';
 import { STAGGER } from '@/lib/motion';
 
 /**
- * Hướng A: bỏ khung hộp (`border`/`bg-card`) — trước đây nhốt copy dạy-hành-vi
- * trong một hộp trông như thông báo lỗi. Giờ chỉ căn giữa, khoảng trắng rộng
- * tự làm việc, cùng nhịp "không hộp" với empty-state Trips.
+ * Trạng thái trống (spec 09/10 §3): khối giữa trang — icon tim trong vòng tròn nền muted, câu
+ * dạy hành vi bấm tim, nút chính "Browse tours".
+ *
+ * Khung viền ĐỨT, nền thẻ, rộng tối đa 520px theo bản vẽ 09/10 (phần chung của mọi phương án
+ * Saved). Khác hộp viền liền đã gỡ ngày 11/08 vì trông như thông báo lỗi: viền đứt đọc ra là ô
+ * còn trống chờ lấp, và icon tim nói luôn phải bấm vào đâu.
  */
 function EmptyState() {
   const t = messages.accountSaved.emptyState;
   return (
-    <div className="py-16 text-center">
-      <h2 className="font-heading text-2xl font-medium text-balance text-foreground">
+    <div
+      data-slot="saved-empty"
+      className="mx-auto max-w-130 rounded-2xl border border-dashed bg-card px-5 py-9 text-center"
+    >
+      <span className="mx-auto mb-3 grid size-12 place-items-center rounded-full bg-muted text-ink">
+        <HeartIcon aria-hidden="true" className="size-5" />
+      </span>
+      <h2 className="font-heading text-xl font-semibold text-balance text-foreground">
         {t.heading}
       </h2>
-      <p className="mt-3 text-pretty text-muted-foreground">{t.body}</p>
-      <ButtonLink href="/tours" className="mt-6">
+      <p className="mt-1.5 text-sm text-pretty text-muted-foreground">{t.body}</p>
+      <ButtonLink href="/tours" className="mt-4">
         {t.cta}
       </ButtonLink>
     </div>
@@ -39,6 +50,10 @@ function EmptyState() {
  * Bấm tim → xoá OPTIMISTIC khỏi mảng rồi mới gọi `wishlist.set({ tourId, wished: false })`
  * (idempotent, cùng route nút tim ở `/tours` dùng để lưu). Lỗi → chèn lại ĐÚNG vị trí cũ (không
  * đẩy xuống cuối) + toast lỗi; KHÔNG toast khi thành công — thẻ rời lưới đã là xác nhận đủ.
+ *
+ * Bỏ THÀNH CÔNG thì `router.refresh()`: số tour ở hero do server in (trang → `SavedView`), làm
+ * mới là hero đếm lại theo đúng dữ liệu server. Next 16 gộp payload mới mà GIỮ `useState` của
+ * lưới, nên thẻ vừa bỏ không quay lại và thứ tự không xáo. Lỗi hay 401 thì không làm mới.
  *
  * 401 giữa chừng có thông báo RIÊNG kèm link đăng nhập lại: toast biến mất sau vài giây, còn tin
  * "phải đăng nhập lại" phải nằm lại trên trang. 429 có câu "chờ một phút" riêng.
@@ -54,6 +69,7 @@ export function SavedGrid({
 }) {
   const [items, setItems] = useState(initialItems);
   const [expired, setExpired] = useState(false);
+  const router = useRouter();
   const t = messages.accountSaved;
 
   async function handleRemove(tourId: string) {
@@ -63,6 +79,8 @@ export function SavedGrid({
     setItems((current) => current.filter((item) => item.tourId !== tourId));
     try {
       await api.wishlist.set({ tourId, wished: false }, { context: withBrowserAuth() });
+      // Hero đếm lại SAU khi bỏ thành công (spec 09/10 §3) — xem JSDoc ở trên.
+      router.refresh();
     } catch (error) {
       // Rollback ĐÚNG vị trí cũ (splice), không phải push cuối mảng — tránh
       // thứ tự "mới nhất trước" (server) nhảy lộn xộn chỉ vì một request lỗi.

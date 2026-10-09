@@ -2588,19 +2588,14 @@ export const messages = {
   // `accountDashboard` (hub `/account` + 4 ô số + thẻ "chuyến kế tiếp") GỠ
   // theo spec 2026-08-10 AMENDED — trang `/account` giờ chỉ redirect, không
   // còn UI riêng nào đọc khối này. Xoá hẳn thay vì giữ mã chết.
-  // Trang `/account/saved` — grid tour đã lưu (wishlist), nút ✕ bỏ lưu (A1:
-  // state cục bộ optimistic trên mock, A2 nối `wishlist.set`).
+  // Trang `/account/saved` — lưới thẻ tour đã lưu (spec 09/10 §3): tim nổi trên ảnh bỏ lưu
+  // optimistic qua `wishlist.set`; hero đếm lại sau khi bỏ thành công.
   accountSaved: {
     heroBreadcrumb: 'Saved',
     // "Tucked inside" (M1/M8 hộ chiếu): trang saved là NGĂN KẸP trong hộ chiếu
     // — đổi giọng title theo thế giới quan mới, subtitle giữ.
     title: 'Tucked inside',
     subtitle: 'Tours you’ve bookmarked to plan later.',
-    back: '← Passport',
-    /** Tiêu đề MỤC ở cột trái — cố ý KHÁC `title` của trang. Đặt trùng thì cột
-     *  trái và H1 thành hai dòng chữ y hệt nhau cách nhau vài chục px. */
-    listHeading: 'Your list',
-    blurb: 'Ready whenever you are.',
     savedCount: (n: number) => (n === 1 ? '1 tour' : `${n} tours`),
     /** Dòng nhỏ trên thẻ đã lưu, trước tên tour: "Saved 3 Oct" (ngày từ `formatSavedDate`). */
     savedOn: (date: string) => `Saved ${date}`,
@@ -2671,7 +2666,7 @@ export const messages = {
     nextPage: 'Next',
     /** Tên đọc của link Next — nhãn cộng dải đơn của trang kế. */
     nextPageAria: (range: string) => `Next, ${range}`,
-    /** Nút tròn quay lại ở hero của My bookings (`ContentHero.back`). */
+    /** Nút tròn quay lại Passport ở hero (`ContentHero.back`) — một khoá cho My bookings và Saved. */
     backToPassport: 'Back to Passport',
     /** Dòng đếm khi đang lọc hay tìm; chưa lọc thì dùng `passportBookings.metaTrips`. */
     tripsOf: (n: number, total: number) => `${n} of ${total} ${total === 1 ? 'trip' : 'trips'}`,

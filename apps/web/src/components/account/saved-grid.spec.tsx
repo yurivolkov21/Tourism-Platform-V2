@@ -30,6 +30,10 @@ vi.mock('@/lib/api/client', () => ({
 const { toastError } = vi.hoisted(() => ({ toastError: vi.fn() }));
 vi.mock('sonner', () => ({ toast: { error: toastError } }));
 
+// Bỏ lưu thành công thì lưới làm mới trang để hero (server in) đếm lại — spec 09/10 §3.
+const { refresh } = vi.hoisted(() => ({ refresh: vi.fn() }));
+vi.mock('next/navigation', () => ({ useRouter: () => ({ refresh }) }));
+
 /** Ngày lịch Việt Nam do trang server tính. */
 const TODAY = '2026-10-09';
 const NINH_BINH = makeWishlistItem();
@@ -61,12 +65,18 @@ describe('SavedGrid', () => {
     expect(screen.queryByRole('article')).not.toBeInTheDocument();
   });
 
-  it('rỗng → câu dạy hành vi bấm tim', () => {
-    render(<SavedGrid initialItems={[]} today={TODAY} />);
-    expect(screen.getByText('Nothing saved yet')).toBeInTheDocument();
+  it('rỗng → khối trống giữa trang: icon tim trong vòng tròn, tiêu đề, câu dạy bấm tim, nút chính', () => {
+    const { container } = render(<SavedGrid initialItems={[]} today={TODAY} />);
+    const empty = container.querySelector('[data-slot="saved-empty"]');
+    expect(empty).toHaveClass('mx-auto', 'max-w-130', 'border-dashed', 'text-center');
+    expect(empty?.querySelector('svg')).not.toBeNull();
+    expect(
+      screen.getByRole('heading', { level: 2, name: 'Nothing saved yet' }),
+    ).toBeInTheDocument();
     expect(
       screen.getByText('Tap the heart on any tour to keep it here for later.'),
     ).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Browse tours' })).toHaveClass('bg-primary');
   });
 
   it('dựng đủ N thẻ (tên + giá), thẻ nào cũng có dòng ngày lưu', () => {
@@ -133,6 +143,22 @@ describe('SavedGrid', () => {
     ]);
     expect(toastError).toHaveBeenCalledTimes(1);
   });
+
+  it('bỏ lưu THÀNH CÔNG → làm mới trang đúng một lần để hero đếm lại', async () => {
+    const user = userEvent.setup();
+    render(<SavedGrid initialItems={[NINH_BINH, HA_GIANG]} today={TODAY} />);
+    await user.click(heartOf(NINH_BINH.title));
+    await waitFor(() => expect(refresh).toHaveBeenCalledTimes(1));
+  });
+
+  it('bỏ lưu LỖI → KHÔNG làm mới: hero giữ số cũ, thẻ đã quay lại', async () => {
+    set.mockRejectedValueOnce(new Error('network down'));
+    const user = userEvent.setup();
+    render(<SavedGrid initialItems={[NINH_BINH]} today={TODAY} />);
+    await user.click(heartOf(NINH_BINH.title));
+    expect(await screen.findByText(NINH_BINH.title)).toBeInTheDocument();
+    expect(refresh).not.toHaveBeenCalled();
+  });
 });
 
 describe('SavedGrid — session hết hạn', () => {
@@ -163,6 +189,7 @@ describe('SavedGrid — session hết hạn', () => {
       '/login?redirect=/account/saved',
     );
     expect(toastError).not.toHaveBeenCalled();
+    expect(refresh).not.toHaveBeenCalled();
   });
 
   it('lỗi KHÔNG phải 401 vẫn dùng toast như cũ', async () => {
