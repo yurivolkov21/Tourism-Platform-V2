@@ -30,11 +30,14 @@ const PASSED = makeCancellation(voucherBooking(THREE_DAY_TRIP), {
 
 /**
  * Đơn đã trả rồi huỷ quá hạn: không hoàn đồng nào. Hai mốc huỷ lệch ngày nhau CHỈ để ca
- * nhật ký phân biệt được `cancelledAt` với mốc quyết của yêu cầu huỷ cũ (`cancelledOn`).
+ * nhật ký phân biệt được `cancelledAt` với mốc quyết của yêu cầu huỷ cũ (`cancelledOn`); trả
+ * ngày 19/10, một ngày sau khi đặt (18/10), CHỈ để mốc Booked phân biệt ngày ĐẶT với ngày trả —
+ * fixture mặc định đặt và trả cùng ngày, lấy nhầm `paidAt` vẫn ra đúng chữ (review P7C#8).
  */
 const CANCELLED = {
   status: 'CANCELLED',
   cancellation: null,
+  paidAt: '2026-10-19T03:00:00.000Z',
   cancelledAt: '2026-11-01T10:00:00.000Z',
   cancellationDecidedAt: '2026-10-31T09:00:00.000Z',
 } as const;
@@ -218,9 +221,11 @@ describe('voucherView — sắp đi (upcoming)', () => {
   });
 
   it('nhật ký: Booked and paid ✓ · Free cancellation ends · Pickup day', () => {
-    expect(view(voucherBooking()).journal).toEqual([
+    // Chuyến ba ngày 3–5/11: mốc đón là NGÀY ĐI, không phải ngày về — chuyến một ngày của fixture
+    // mặc định có hai ngày trùng nhau, lấy nhầm ngày về vẫn ra đúng chữ (review P7C#8).
+    expect(view(voucherBooking(THREE_DAY_TRIP)).journal).toEqual([
       { label: 'Booked and paid', detail: '18 Oct 2026 · PayPal', done: true },
-      { label: 'Free cancellation ends', detail: '2 Nov, 11:59 pm Vietnam time', done: false },
+      { label: 'Free cancellation ends', detail: '31 Oct, 11:59 pm Vietnam time', done: false },
       { label: 'Pickup day', detail: '3 Nov 2026 · Hà Nội', done: false },
     ]);
   });
@@ -238,6 +243,26 @@ describe('voucherView — sắp đi (upcoming)', () => {
     expect(v.journal[1]).toEqual({
       label: 'Free cancellation ended',
       detail: '19 Oct, 11:59 pm Vietnam time',
+      done: true,
+    });
+  });
+
+  /**
+   * Cờ server THẮNG đồng hồ web (ADR-0041 §7): 23:59 giờ VN ngày chót 2/11 trên đồng hồ web, mà
+   * server — đọc giờ trước đó vài mili giây, đồng hồ nhanh hơn — đã khoá hạn. Ca trên có ngày chót
+   * đã qua theo CẢ hai đồng hồ, nên tự so ngày chót với hôm nay vẫn ra đúng chữ (review P7C#8).
+   */
+  it('server đã khoá hạn khi đồng hồ web còn ở ngày chót: theo cờ server — "Free cancellation ended" ✓', () => {
+    const v = view(
+      voucherBooking({
+        cancellation: makeCancellation(voucherBooking(), { withinDeadline: false }),
+      }),
+      new Date('2026-11-02T16:59:00.000Z'),
+    );
+    expect(v.conditions).toEqual([SHOW_CODE, TAXES]);
+    expect(v.journal[1]).toEqual({
+      label: 'Free cancellation ended',
+      detail: '2 Nov, 11:59 pm Vietnam time',
       done: true,
     });
   });
@@ -378,12 +403,24 @@ describe('voucherView — đã huỷ (cancelled)', () => {
     expect(v.cancelledNotice).toBe('This booking was cancelled — this voucher is no longer valid.');
   });
 
-  it('nhật ký: Booked ✓ · Cancelled ✓ (ngày cancelledAt) · Refund chưa có đồng nào', () => {
+  it('nhật ký: Booked ✓ (ngày ĐẶT) · Cancelled ✓ (ngày cancelledAt) · Refund chưa có đồng nào', () => {
     expect(view(voucherBooking(CANCELLED)).journal).toEqual([
       { label: 'Booked', detail: '18 Oct 2026', done: true },
       { label: 'Cancelled', detail: '1 Nov 2026', done: true },
       { label: 'Refund', detail: 'No refund was due on this booking.', done: false },
     ]);
+  });
+
+  /**
+   * Huỷ quá hạn sau một khoản hoàn thiện chí: câu kể CẢ hai số — số đã hoàn và tổng đơn. Số đã hoàn
+   * ($49) khác tổng ($147) để ca bắt được chỗ đảo hai số (review P7C#8).
+   */
+  it('đã hoàn một phần trước khi huỷ: Refund ✓ "$49.00 of $147.00 …"', () => {
+    expect(view(voucherBooking({ ...CANCELLED, refundedTotal: '49.00' })).journal[2]).toEqual({
+      label: 'Refund',
+      detail: '$49.00 of $147.00 has been refunded to your original payment method.',
+      done: true,
+    });
   });
 
   // ADR-0054 AMEND 1: REFUNDED không mốc huỷ chỉ là `cancelled` khi chuyến bị công ty huỷ —
