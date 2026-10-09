@@ -9,7 +9,12 @@ import { BusIcon } from 'lucide-react';
 import Link from 'next/link';
 import { RevealItem } from '@/components/motion/reveal-item';
 import { VisaStamp } from '@/components/passport/visa-stamp';
-import { type BookingView, bookingTotalLabel, paymentProviderLabel } from '@/lib/booking-vm';
+import {
+  type BookingView,
+  bookingTotalLabel,
+  paymentProviderLabel,
+  vietnamDay,
+} from '@/lib/booking-vm';
 import { formatBookingMoney, ticketBarcodeWidths } from '@/lib/checkout';
 import { calendarDateParts, formatDate } from '@/lib/tours';
 
@@ -48,8 +53,8 @@ export function BookingTicket({ booking, view }: { booking: BookingDetail; view:
       label: messages.passportVisa.labels.travellers,
       value: messages.accountBookings.travellers(booking.numAdults, booking.numChildren),
     },
-    // `createdAt` là ISO đầy đủ — `formatDate` chỉ nhận ngày lịch nên cắt phần ngày trước.
-    { label: t.booked, value: formatDate(booking.createdAt.slice(0, 10)) },
+    // `createdAt` là ISO đầy đủ — `formatDate` chỉ nhận ngày lịch: đổi sang ngày lịch VN trước.
+    { label: t.booked, value: formatDate(vietnamDay(booking.createdAt)) },
     {
       label: t.ticket.paidWith,
       value: paid ? paymentProviderLabel(booking.paymentProvider) : t.ticket.notPaid,

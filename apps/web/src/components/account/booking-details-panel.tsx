@@ -11,6 +11,7 @@ import {
   cancellationDeadlineText,
   legacyCancellationNote,
   paymentProviderLabel,
+  vietnamDay,
 } from '@/lib/booking-vm';
 import { bookingPriceLines, formatBookingMoney } from '@/lib/checkout';
 import { formatDate, formatMoneyExact } from '@/lib/tours';
@@ -94,7 +95,7 @@ export function BookingDetailsPanel({
           <p className="mt-1.5 text-[12.5px] text-muted-foreground">
             {t.details.paidInFull(
               paymentProviderLabel(booking.paymentProvider),
-              formatDate(booking.paidAt.slice(0, 10)),
+              formatDate(vietnamDay(booking.paidAt)),
             )}
             {' · '}
             {messages.tourDetail.booking.testMode}
@@ -132,7 +133,7 @@ export function BookingDetailsPanel({
             value={booking.specialRequests ?? t.details.none}
             muted={booking.specialRequests === null}
           />
-          <Row label={t.booked} value={formatDate(booking.createdAt.slice(0, 10))} />
+          <Row label={t.booked} value={formatDate(vietnamDay(booking.createdAt))} />
         </dl>
       </Block>
 

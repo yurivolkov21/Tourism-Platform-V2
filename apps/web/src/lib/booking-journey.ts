@@ -6,7 +6,7 @@ import {
   tripDayNumbers,
 } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
-import { type RefundSummary, refundSummary } from './booking-vm';
+import { type RefundSummary, refundSummary, vietnamDay } from './booking-vm';
 import { formatChipDate, formatDate, formatMoneyExact, formatWeekdayDate } from './tours';
 
 /**
@@ -84,9 +84,6 @@ interface DraftMilestone {
 
 type StandardPhase = Exclude<BookingPhase, 'cancelled' | 'lapsed'>;
 
-/** Phần ngày của một mốc ISO đầy đủ — cùng cách cắt với các dòng "Booked …" có sẵn của repo. */
-const isoDay = (iso: string): string => iso.slice(0, 10);
-
 export function journeyMilestones(booking: BookingDetail, today: string): JourneyView {
   const phase = bookingPhase(booking, today);
   if (phase === 'cancelled') return cancelledJourney(booking);
@@ -96,8 +93,9 @@ export function journeyMilestones(booking: BookingDetail, today: string): Journe
 
 function standardJourney(booking: BookingDetail, phase: StandardPhase, today: string): JourneyView {
   const t = messages.bookingDetail.journey;
-  const bookedOn = isoDay(booking.createdAt);
-  const paidOn = booking.paidAt ? isoDay(booking.paidAt) : null;
+  // Ngày lịch VN của hai mốc — cũng là mốc đặt nhãn Today, cùng thang với `today`.
+  const bookedOn = vietnamDay(booking.createdAt);
+  const paidOn = booking.paidAt ? vietnamDay(booking.paidAt) : null;
   const deadline = booking.cancellation?.deadline ?? booking.cancellationDeadline;
   // Hạn chót hết lúc 23:59 giờ VN của ngày chót: đúng ngày chót vẫn còn hạn. Có cờ server thì
   // in cờ server (ADR-0041 §7); đơn chưa trả không có `cancellation` nên so ngày lịch VN.
@@ -215,7 +213,7 @@ function cancelledJourney(booking: BookingDetail): JourneyView {
     {
       key: 'booked',
       label: messages.bookingDetail.booked,
-      detail: formatDate(isoDay(booking.createdAt)),
+      detail: formatDate(vietnamDay(booking.createdAt)),
       state: 'done',
     },
   ];
@@ -223,14 +221,14 @@ function cancelledJourney(booking: BookingDetail): JourneyView {
     milestones.push({
       key: 'paid',
       label: t.paid,
-      detail: formatDate(isoDay(booking.paidAt)),
+      detail: formatDate(vietnamDay(booking.paidAt)),
       state: 'done',
     });
   }
   milestones.push({
     key: 'cancelled',
     label: t.cancelled,
-    detail: cancelledOn ? formatDate(isoDay(cancelledOn)) : null,
+    detail: cancelledOn ? formatDate(vietnamDay(cancelledOn)) : null,
     state: 'done',
   });
   // Đơn chưa từng thu tiền thì không có chuyện hoàn: `refundSummary` trả null, bỏ mốc Refund.
@@ -272,7 +270,7 @@ function lapsedJourney(booking: BookingDetail): JourneyView {
       {
         key: 'booked',
         label: messages.bookingDetail.booked,
-        detail: formatDate(isoDay(booking.createdAt)),
+        detail: formatDate(vietnamDay(booking.createdAt)),
         state: 'done',
       },
       { key: 'paymentNotCompleted', label: t.paymentNotCompleted, detail: null, state: 'done' },

@@ -85,6 +85,18 @@ describe('BookingDetailsPanel — bốn khối (spec §5.3)', () => {
     ).toBeInTheDocument();
   });
 
+  it('ngày trả và ngày đặt là ngày lịch Việt Nam: 03:00 giờ VN (20:00Z hôm trước)', () => {
+    renderPanel({
+      ...PAID,
+      createdAt: '2026-08-12T20:00:00.000Z',
+      paidAt: '2026-08-13T20:05:00.000Z',
+    });
+    expect(
+      screen.getByText('Paid in full by PayPal on 14 Aug 2026 · Test mode — no card is charged.'),
+    ).toBeInTheDocument();
+    expect(screen.getByText('13 Aug 2026')).toBeInTheDocument();
+  });
+
   it('có hoàn: thêm dòng "Refunded −…" với số tiền đủ hai số lẻ', () => {
     renderPanel({ ...PAID, status: 'PARTIALLY_REFUNDED', refundedTotal: '73.50' });
     expect(screen.getByText('Refunded')).toBeInTheDocument();

@@ -167,6 +167,37 @@ describe('BookingReceipt — ba mood', () => {
   });
 });
 
+/** Ngày của hoá đơn là ngày lịch Việt Nam — cắt chuỗi UTC lệch một ngày cho mốc 00:00–06:59 giờ VN. */
+describe('BookingReceipt — ngày theo lịch Việt Nam', () => {
+  it('trả lúc 03:05 giờ VN 14/08 (20:05Z ngày 13/08): ô ngày và dòng "Paid …" in 14 Aug', () => {
+    render(
+      <BookingReceipt
+        booking={makeBooking({
+          createdAt: '2026-08-13T19:50:00.000Z',
+          paidAt: '2026-08-13T20:05:00.000Z',
+        })}
+        mood="confirmed"
+      />,
+    );
+    expect(screen.getByText('14 Aug 2026')).toBeInTheDocument();
+    expect(screen.getByText(t.paidAtLine('14 Aug 2026'))).toBeInTheDocument();
+  });
+
+  it('chưa trả: ô ngày là ngày ĐẶT theo lịch Việt Nam', () => {
+    render(
+      <BookingReceipt
+        booking={makeBooking({
+          status: 'PENDING',
+          paidAt: null,
+          createdAt: '2026-08-13T19:50:00.000Z',
+        })}
+        mood="confirming"
+      />,
+    );
+    expect(screen.getByText('14 Aug 2026')).toBeInTheDocument();
+  });
+});
+
 describe('BookingReceipt — ảnh bìa tour', () => {
   it('tourImage null thì KHÔNG render <img> vỡ', () => {
     const { container } = render(

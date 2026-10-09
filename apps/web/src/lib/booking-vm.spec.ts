@@ -8,6 +8,7 @@ import {
   legacyCancellationNote,
   paymentProviderLabel,
   refundSummary,
+  vietnamDay,
 } from './booking-vm';
 
 /** Cờ huỷ SERVER trả ở `bookings.byCode` — mặc định: còn trong hạn, huỷ được. */
@@ -117,6 +118,14 @@ describe('legacyCancellationNote', () => {
     expect(legacyCancellationNote(b)).toBe('Your cancellation request of 3 Sep 2026 was declined.');
   });
 
+  it('ngày gửi là ngày lịch Việt Nam: gửi lúc 03:15 giờ VN (20:15Z hôm trước)', () => {
+    const b = makeBooking({
+      cancellationStatus: 'REQUESTED',
+      cancellationRequestedAt: '2026-09-02T20:15:00.000Z',
+    });
+    expect(legacyCancellationNote(b)).toBe('You sent a cancellation request on 3 Sep 2026.');
+  });
+
   it('REFUNDED (kết cục thường của mọi lần huỷ) → null', () => {
     const b = makeBooking({
       status: 'CANCELLED',
@@ -177,6 +186,26 @@ describe('refundSummary', () => {
         makeBooking({ status: 'REFUNDED', totalAmount: '29.00', refundedTotal: '29.01' }),
       ),
     ).toEqual({ kind: 'full', amount: '29.01' });
+  });
+});
+
+/**
+ * Mọi luật ngày của hệ chạy theo lịch Việt Nam (hạn chót hết 23:59 giờ VN, giai đoạn so ngày VN);
+ * cắt `slice(0, 10)` là lấy ngày UTC — sự kiện 00:00–06:59 giờ VN rơi về hôm trước (review P7 B4,
+ * C#3: huỷ 06:30 ngày 01/11 sau hạn 31/10 từng in "Cancelled · 31 Oct").
+ */
+describe('vietnamDay — ngày lịch Việt Nam của một mốc của đơn', () => {
+  it.each([
+    ['00:00 giờ VN đã là ngày mới (17:00Z hôm trước)', '2026-10-31T17:00:00.000Z', '2026-11-01'],
+    ['06:30 giờ VN — cắt chuỗi UTC sẽ ra hôm trước', '2026-10-31T23:30:00.000Z', '2026-11-01'],
+    ['23:59 giờ VN vẫn là ngày cũ', '2026-10-31T16:59:59.999Z', '2026-10-31'],
+    ['giữa ngày: ngày UTC và ngày VN trùng nhau', '2026-08-14T03:05:00.000Z', '2026-08-14'],
+  ])('%s', (_, iso, day) => {
+    expect(vietnamDay(iso)).toBe(day);
+  });
+
+  it('mốc hỏng ném RangeError chứ không in một ngày bịa', () => {
+    expect(() => vietnamDay('not-a-date')).toThrow(RangeError);
   });
 });
 

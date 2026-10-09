@@ -87,6 +87,19 @@ describe('journeyMilestones — đơn sắp đi (bản vẽ, hôm nay 05/10)', (
     expect(view.chip).toEqual({ label: 'Departs in 2 days', tone: 'active' });
   });
 
+  it('đặt và trả lúc 03:00 giờ VN (20:00Z hôm trước): Booked, Paid và nhãn Today theo ngày VN', () => {
+    const view = journeyMilestones(
+      { ...UPCOMING, createdAt: '2026-08-12T20:00:00.000Z', paidAt: '2026-08-13T20:05:00.000Z' },
+      TODAY,
+    );
+    expect(rows(view).slice(0, 2)).toEqual([
+      ['booked', 'Booked', '13 Aug 2026', 'done'],
+      ['paid', 'Paid', '14 Aug 2026', 'done'],
+    ]);
+    // Cùng ngày trả 14/08 (giờ VN) với đơn mẫu nên cùng tỷ lệ 52/80; lấy ngày UTC 13/08 là 53/81.
+    expect(view.today).toEqual({ percent: 41.25, before: 2 });
+  });
+
   it('PARTIALLY_REFUNDED là đơn còn hiệu lực: vẫn thanh thường, vẫn đếm ngày', () => {
     const view = journeyMilestones(
       { ...UPCOMING, status: 'PARTIALLY_REFUNDED', refundedTotal: '20.00' },
@@ -262,6 +275,16 @@ describe('journeyMilestones — đã huỷ', () => {
   ] as const)('%s', (_, patch, detail) => {
     const view = journeyMilestones({ ...CANCELLED, ...patch }, TODAY);
     expect(view.milestones.find((milestone) => milestone.key === 'cancelled')?.detail).toBe(detail);
+  });
+
+  it('huỷ lúc 06:30 giờ VN ngày 01/11 (23:30Z ngày 31/10): mốc Cancelled ghi ngày VN', () => {
+    const view = journeyMilestones(
+      { ...CANCELLED, cancelledAt: '2026-10-31T23:30:00.000Z' },
+      TODAY,
+    );
+    expect(view.milestones.find((milestone) => milestone.key === 'cancelled')?.detail).toBe(
+      '1 Nov 2026',
+    );
   });
 
   it.each([

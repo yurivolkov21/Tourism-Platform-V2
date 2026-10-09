@@ -5,7 +5,7 @@ import {
   tripLengthDays,
 } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
-import { paymentProviderLabel, type RefundSummary, refundSummary } from './booking-vm';
+import { paymentProviderLabel, type RefundSummary, refundSummary, vietnamDay } from './booking-vm';
 import { formatChipDate, formatDate, formatDateRange, formatMoneyExact } from './tours';
 
 /**
@@ -61,14 +61,6 @@ export interface VoucherView {
   cancelledNotice: string | null;
 }
 
-/**
- * Ngày lịch của một mốc ISO — cùng quy ước `formatDate(x.slice(0, 10))` của trang chi tiết đơn
- * và hoá đơn, để một đơn không hiện hai ngày đặt khác nhau ở hai trang.
- */
-function calendarDay(iso: string): string {
-  return iso.slice(0, 10);
-}
-
 /** Câu hoàn tiền: dùng lại nguyên văn khối `refundLine` của trang chi tiết đơn. */
 function refundDetail(refund: RefundSummary, currency: string): string {
   const t = messages.accountBookingDetail.refundLine;
@@ -108,7 +100,7 @@ export function voucherView(booking: BookingDetail, now: Date, today: string): V
   const departure = isDayTrip
     ? formatDate(booking.departureStartDate)
     : formatDateRange(booking.departureStartDate, booking.departureEndDate);
-  const paidOn = formatDate(calendarDay(paidAt));
+  const paidOn = formatDate(vietnamDay(paidAt));
   const provider = paymentProviderLabel(booking.paymentProvider);
   // Chỉ PAID: đơn đã huỷ hay đã hoàn một phần trong 30 phút đầu không có gì để chúc mừng.
   // Hiệu âm (đồng hồ API nhanh hơn web vài giây) vẫn là vừa trả.
@@ -125,7 +117,7 @@ export function voucherView(booking: BookingDetail, now: Date, today: string): V
       : t.reopenedTitle,
     subtitle: justPaid
       ? t.freshSub(booking.code, booking.contactEmail)
-      : t.reopenedSub(formatDate(calendarDay(booking.createdAt)), booking.contactEmail),
+      : t.reopenedSub(formatDate(vietnamDay(booking.createdAt)), booking.contactEmail),
     place,
     tripDays: tripLengthDays(booking.departureStartDate, booking.departureEndDate),
     departure,
@@ -199,7 +191,7 @@ export function voucherView(booking: BookingDetail, now: Date, today: string): V
           ? [
               {
                 label: t.journal.reviewed,
-                detail: formatDate(calendarDay(booking.reviewedAt)),
+                detail: formatDate(vietnamDay(booking.reviewedAt)),
                 done: true,
               },
             ]
@@ -243,12 +235,12 @@ export function voucherView(booking: BookingDetail, now: Date, today: string): V
         journal: [
           {
             label: t.journal.booked,
-            detail: formatDate(calendarDay(booking.createdAt)),
+            detail: formatDate(vietnamDay(booking.createdAt)),
             done: true,
           },
           {
             label: t.journal.cancelled,
-            detail: cancelledOn === null ? null : formatDate(calendarDay(cancelledOn)),
+            detail: cancelledOn === null ? null : formatDate(vietnamDay(cancelledOn)),
             done: true,
           },
           ...(refund === null

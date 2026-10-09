@@ -4,7 +4,7 @@ import { cn } from '@tourism/ui/lib/utils';
 import { CopyCodeButton } from '@/components/checkout/copy-code-button';
 import { RevealItem } from '@/components/motion/reveal-item';
 import { todayDateString } from '@/lib/account-stats';
-import { bookingTotalLabel, paymentProviderLabel } from '@/lib/booking-vm';
+import { bookingTotalLabel, paymentProviderLabel, vietnamDay } from '@/lib/booking-vm';
 import type { CheckoutMood } from '@/lib/checkout';
 import {
   bookingPriceLines,
@@ -151,7 +151,7 @@ export function BookingReceipt({
               <dd className="font-mono text-muted-foreground">{booking.code}</dd>
               <dt className="font-medium">{t.dateMetaLabel}</dt>
               <dd className="font-mono text-muted-foreground">
-                {formatDate((booking.paidAt ?? booking.createdAt).slice(0, 10))}
+                {formatDate(vietnamDay(booking.paidAt ?? booking.createdAt))}
               </dd>
             </dl>
           </div>
@@ -190,7 +190,7 @@ export function BookingReceipt({
               <p className="text-muted-foreground">{messages.tourDetail.booking.testMode}</p>
               {booking.paidAt ? (
                 <p className="pt-1 text-muted-foreground">
-                  {t.paidAtLine(formatDate(booking.paidAt.slice(0, 10)))}
+                  {t.paidAtLine(formatDate(vietnamDay(booking.paidAt)))}
                 </p>
               ) : null}
             </Column>

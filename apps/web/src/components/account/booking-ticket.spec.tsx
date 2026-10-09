@@ -106,6 +106,11 @@ describe('BookingTicket — thân vé', () => {
     expect(screen.getByText('PayPal')).toBeInTheDocument();
   });
 
+  it('ô "Booked" là ngày lịch Việt Nam: đặt lúc 03:00 giờ VN 13/08 (20:00Z ngày 12/08)', () => {
+    renderTicket({ ...PAID, createdAt: '2026-08-12T20:00:00.000Z' });
+    expect(screen.getByText('13 Aug 2026')).toBeInTheDocument();
+  });
+
   it('link "View tour" về trang tour', () => {
     renderTicket();
     expect(screen.getByRole('link', { name: 'View tour →' })).toHaveAttribute(

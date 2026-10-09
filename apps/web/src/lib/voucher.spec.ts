@@ -126,6 +126,22 @@ describe('voucherView — trường dùng chung của hai cột', () => {
     ]);
   });
 
+  it('ngày trả và ngày đặt là ngày lịch Việt Nam, không phải ngày UTC', () => {
+    // Đặt 02:00 giờ VN 18/10 (19:00Z ngày 17/10), trả 01:30 giờ VN 19/10 (18:30Z ngày 18/10).
+    const v = view(
+      voucherBooking({ createdAt: '2026-10-17T19:00:00.000Z', paidAt: '2026-10-18T18:30:00.000Z' }),
+      VOUCHER_NOW,
+      VOUCHER_TODAY,
+    );
+    expect(v.paidOn).toBe('19 Oct 2026');
+    expect(v.journal[0]).toEqual({
+      label: 'Booked and paid',
+      detail: '19 Oct 2026 · PayPal',
+      done: true,
+    });
+    expect(v.subtitle).toBe('Booked on 18 Oct 2026 · a copy went to erik.lund@example.com');
+  });
+
   it('chuyến ba ngày trả bằng thẻ: khoảng ngày, 3 ngày, "Card (Stripe)", ngày TRẢ', () => {
     // paidAt 19/10 khác createdAt 18/10 CHỈ để phân biệt hai mốc.
     const v = view(
@@ -259,6 +275,19 @@ describe('voucherView — đã đi (travelled)', () => {
     expect(v.journal[2]).toEqual({ label: 'Reviewed', detail: '7 Nov 2026', done: true });
   });
 
+  it('ngày viết review là ngày lịch Việt Nam: 03:00 giờ VN 07/11 (20:00Z ngày 06/11)', () => {
+    const v = view(
+      voucherBooking({
+        ...THREE_DAY_TRIP,
+        cancellation: PASSED,
+        reviewedAt: '2026-11-06T20:00:00.000Z',
+      }),
+      VOUCHER_NOW,
+      AFTER,
+    );
+    expect(v.journal[2]).toEqual({ label: 'Reviewed', detail: '7 Nov 2026', done: true });
+  });
+
   it('PARTIALLY_REFUNDED chưa review → không mời viết (API chỉ nhận review của đơn PAID)', () => {
     const v = view(
       voucherBooking({
@@ -341,6 +370,15 @@ describe('voucherView — đã huỷ (cancelled)', () => {
       VOUCHER_TODAY,
     );
     expect(v.journal[1]).toEqual({ label: 'Cancelled', detail: null, done: true });
+  });
+
+  it('huỷ lúc 06:30 giờ VN ngày 01/11 (23:30Z ngày 31/10): mục Cancelled ghi ngày VN', () => {
+    const v = view(
+      voucherBooking({ ...CANCELLED, cancelledAt: '2026-10-31T23:30:00.000Z' }),
+      VOUCHER_NOW,
+      VOUCHER_TODAY,
+    );
+    expect(v.journal[1]).toEqual({ label: 'Cancelled', detail: '1 Nov 2026', done: true });
   });
 
   it('huỷ ngay trong 30 phút sau khi trả: không phải "vừa trả", không pháo giấy', () => {

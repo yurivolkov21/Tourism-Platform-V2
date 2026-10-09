@@ -1,6 +1,20 @@
-import type { Booking, BookingCancellation } from '@tourism/contract';
+import { type Booking, type BookingCancellation, vietnamToday } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
 import { formatChipDate, formatDate } from './tours';
+
+/**
+ * Ngày lịch Việt Nam (`YYYY-MM-DD`) của một mốc thời gian ISO của đơn — đặt, trả, huỷ, gửi yêu
+ * cầu huỷ, viết review. MỘT cách đổi cho cả trang chi tiết đơn, voucher và hoá đơn.
+ *
+ * Mọi luật ngày của hệ chạy theo lịch Việt Nam (hạn chót hết 23:59 giờ VN, giai đoạn so ngày
+ * VN), nên ngày in ra cũng phải là ngày VN. Cắt `iso.slice(0, 10)` là lấy ngày UTC: sự kiện
+ * 00:00–06:59 giờ VN (17:00–23:59Z hôm trước) lệch về hôm trước — khách huỷ 06:30 ngày 01/11,
+ * sau hạn chót 31/10, từng đọc thấy "Cancelled · 31 Oct" cạnh "No refund" (review P7 B4, C#3).
+ * Mốc hỏng ném `RangeError` (từ `vietnamToday`) thay vì in một ngày bịa.
+ */
+export function vietnamDay(iso: string): string {
+  return vietnamToday(new Date(iso));
+}
 
 /** Tông màu badge — token-only (spec §3), map 1-1 theo nhóm status. */
 export type BookingViewTone = 'success' | 'warning' | 'muted' | 'destructive';
@@ -82,9 +96,7 @@ export function cancellationDeadlineText(cancellation: BookingCancellation | nul
 export function legacyCancellationNote(b: Booking): string | null {
   if (b.cancellationRequestedAt === null) return null;
   const t = messages.accountBookingDetail.legacyRequest;
-  // Mốc ISO đầy đủ: cắt phần ngày trước khi đưa `formatDate` (hàm đó chỉ nhận
-  // `YYYY-MM-DD`, cùng lý do ở dòng "Booked …" của trang chi tiết).
-  const sentOn = formatDate(b.cancellationRequestedAt.slice(0, 10));
+  const sentOn = formatDate(vietnamDay(b.cancellationRequestedAt));
   if (b.cancellationStatus === 'REQUESTED') return t.requested(sentOn);
   if (b.cancellationStatus === 'DENIED') return t.denied(sentOn);
   return null;
