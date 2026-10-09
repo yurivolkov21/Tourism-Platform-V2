@@ -103,7 +103,7 @@ describe('TourTabs', () => {
 });
 
 // ── Hash là mốc cuộn THẬT, không chỉ là công tắc chọn tab (review P7 B10) ────
-// Link "Full itinerary →" của trang chi tiết đơn trỏ `/tours/{slug}#itinerary`.
+// Link "Full itinerary" của trang chi tiết đơn trỏ `/tours/{slug}#itinerary`.
 // Next.js (điều hướng mềm — `getHashFragmentDomNode` của layout-router) và trình
 // duyệt (tải cứng, link `#…` trong trang) đều tìm mốc bằng `getElementById(hash)`
 // rồi cuộn phần tử ấy vào khung. Trước đây không phần tử nào mang id ấy: tab đổi

@@ -113,7 +113,9 @@ describe('GetReadyPanel', () => {
     const text = container.querySelector('[data-step="dayOne"] [data-slot="day-text"]');
     expect(text?.textContent).toBe(DAY_ONE);
     expect(text).toHaveClass('whitespace-pre-line', 'line-clamp-4');
-    expect(screen.getByRole('link', { name: 'Full itinerary →' })).toHaveAttribute(
+    // Tên link đúng bằng chữ i18n, không mũi tên "→" đi kèm (user góp ý sau khi thử prod 09/10).
+    // So khớp nguyên chuỗi: một ký tự thừa sau chữ là trượt.
+    expect(screen.getByRole('link', { name: 'Full itinerary' })).toHaveAttribute(
       'href',
       '/tours/hanoi-heritage-day#itinerary',
     );

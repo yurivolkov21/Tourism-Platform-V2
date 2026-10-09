@@ -95,11 +95,13 @@ function StepItem({ step, bookingCode }: { step: GetReadyStep; bookingCode: stri
         {step.key === 'dayOne' ? (
           <>
             {step.text ? <DayText text={step.text} clamp className="mt-2" /> : null}
+            {/* Chỉ chữ, không mũi tên "→" (user góp ý sau khi thử prod 09/10) — các link
+                "View tour →" khác của trang giữ mũi tên. */}
             <Link
               href={step.href}
               className="mt-1.5 inline-block text-[12.5px] font-semibold text-primary-emphasis underline-offset-4 hover:underline"
             >
-              {step.linkLabel} →
+              {step.linkLabel}
             </Link>
           </>
         ) : null}
