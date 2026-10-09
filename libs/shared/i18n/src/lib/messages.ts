@@ -3009,6 +3009,11 @@ export const messages = {
       /** Nói cả hai số, cùng lý do với `accountBookingDetail.refundLine.partial`. */
       refundPartial: (amount: string, total: string) => `${amount} of ${total}`,
       refundNone: 'No refund due',
+      /**
+       * Bản ngắn của `closed.refundOnItsWay`: chuyến bị công ty huỷ mà job hoàn tiền chưa chạy —
+       * tiền đang về, sổ chưa ghi khoản hoàn nên chưa có số để in dưới mốc Refund.
+       */
+      refundOnItsWay: 'On its way',
       paymentNotCompleted: 'Payment not completed',
     },
     getReady: {

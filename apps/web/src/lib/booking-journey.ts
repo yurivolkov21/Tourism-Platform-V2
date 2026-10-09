@@ -9,6 +9,7 @@ import { messages } from '@tourism/i18n';
 import {
   cancelledOn,
   freeCancellationOpen,
+  operatorRefundPending,
   type RefundSummary,
   refundSummary,
   vietnamDay,
@@ -220,7 +221,6 @@ function cancelledJourney(booking: BookingDetail): JourneyView {
   const t = messages.bookingDetail.journey;
   // Không mốc nào nói thật được thì bỏ ngày, không bịa (`cancelledOn`).
   const cancelledDay = cancelledOn(booking);
-  const refund = refundSummary(booking);
   const milestones: JourneyMilestone[] = [
     {
       key: 'booked',
@@ -237,27 +237,50 @@ function cancelledJourney(booking: BookingDetail): JourneyView {
       state: 'done',
     });
   }
-  milestones.push({
-    key: 'cancelled',
-    label: t.cancelled,
-    detail: cancelledDay ? formatDate(cancelledDay) : null,
-    state: 'done',
-  });
-  // Đơn chưa từng thu tiền thì không có chuyện hoàn: `refundSummary` trả null, bỏ mốc Refund.
-  if (refund) {
-    milestones.push({
-      key: 'refund',
-      label: t.refund,
-      detail: refundDetail(refund, booking.currency),
+  milestones.push(
+    {
+      key: 'cancelled',
+      label: t.cancelled,
+      detail: cancelledDay ? formatDate(cancelledDay) : null,
       state: 'done',
-    });
-  }
+    },
+    ...refundStep(booking),
+  );
   return {
     variant: 'cancelled',
     milestones,
     today: null,
     chip: { label: t.cancelled, tone: 'muted' },
   };
+}
+
+/**
+ * Mốc Refund của đơn đã huỷ — cùng chuyện tiền với cột phải (`TripClosedPanel`) và nhật ký voucher
+ * (`refundJournal`), xét cùng thứ tự với hai nơi ấy.
+ *
+ * Chuyến công ty huỷ mà job hoàn tiền chưa chạy (`operatorRefundPending`, đơn còn PAID hay hoàn một
+ * phần): tiền đang về, sổ chưa ghi khoản hoàn của lần huỷ chuyến — mốc ĐANG ĐỨNG (`now`), không số.
+ * Đọc `refundSummary` lúc ấy là bỏ mất mốc của đơn PAID và tô số của lần hoàn CŨ như đã xong
+ * ("$20.00 of $147.00" cạnh "Your full refund is on its way." cùng trang — review cuối M2).
+ *
+ * Còn lại là bản ngắn của khoản đã hoàn (`refundDetail`); đơn chưa từng thu tiền thì không có
+ * chuyện hoàn (`refundSummary` là null) — bỏ mốc.
+ */
+function refundStep(booking: BookingDetail): JourneyMilestone[] {
+  const t = messages.bookingDetail.journey;
+  if (operatorRefundPending(booking)) {
+    return [{ key: 'refund', label: t.refund, detail: t.refundOnItsWay, state: 'now' }];
+  }
+  const refund = refundSummary(booking);
+  if (refund === null) return [];
+  return [
+    {
+      key: 'refund',
+      label: t.refund,
+      detail: refundDetail(refund, booking.currency),
+      state: 'done',
+    },
+  ];
 }
 
 /**

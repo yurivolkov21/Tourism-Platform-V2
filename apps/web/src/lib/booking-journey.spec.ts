@@ -387,6 +387,67 @@ describe('journeyMilestones — đã huỷ', () => {
   });
 });
 
+/**
+ * Chuyến bị CÔNG TY huỷ mà job hoàn tiền (`departure-refund`) chưa chạy (ADR-0041 AMEND 1): tiền
+ * đang về, sổ chưa ghi khoản hoàn của lần huỷ chuyến — cùng chuyện tiền với cột phải
+ * (`TripClosedPanel`) và nhật ký voucher. Bản trước chỉ đọc `refundSummary`: đơn PAID mất hẳn mốc
+ * Refund, đơn từng hoàn một phần tô số của lần hoàn CŨ như đã xong (review cuối M2).
+ */
+describe('journeyMilestones — chuyến công ty huỷ, job hoàn tiền chưa chạy', () => {
+  const ON_CANCELLED_DEPARTURE = makeBooking({
+    status: 'PAID',
+    departureCancelled: true,
+    createdAt: '2026-08-14T03:00:00.000Z',
+    paidAt: '2026-08-15T03:05:00.000Z',
+    totalAmount: '147.00',
+    departureStartDate: '2026-11-03',
+    departureEndDate: '2026-11-03',
+    cancellation: null,
+  });
+
+  it('đơn còn PAID: mốc Refund đang đứng, "On its way" — chưa có số để kể', () => {
+    const view = journeyMilestones(ON_CANCELLED_DEPARTURE, TODAY);
+    expect(view.variant).toBe('cancelled');
+    expect(rows(view)).toEqual([
+      ['booked', 'Booked', '14 Aug 2026', 'done'],
+      ['paid', 'Paid', '15 Aug 2026', 'done'],
+      ['cancelled', 'Cancelled', null, 'done'],
+      ['refund', 'Refund', 'On its way', 'now'],
+    ]);
+  });
+
+  it('từng hoàn một phần ($20 / $147): vẫn "On its way", không tô số của lần hoàn cũ như đã xong', () => {
+    const view = journeyMilestones(
+      { ...ON_CANCELLED_DEPARTURE, status: 'PARTIALLY_REFUNDED', refundedTotal: '20.00' },
+      TODAY,
+    );
+    expect(view.milestones.at(-1)).toEqual({
+      key: 'refund',
+      label: 'Refund',
+      detail: 'On its way',
+      state: 'now',
+    });
+  });
+
+  it('job đã chạy (đơn sang CANCELLED, hoàn trọn): mốc Refund kể số đã hoàn, đã xong', () => {
+    const view = journeyMilestones(
+      {
+        ...ON_CANCELLED_DEPARTURE,
+        status: 'CANCELLED',
+        cancelledAt: '2026-10-02T02:00:00.000Z',
+        refundedTotal: '147.00',
+      },
+      TODAY,
+    );
+    expect(view.milestones.at(-1)).toEqual({
+      key: 'refund',
+      label: 'Refund',
+      detail: '$147.00',
+      state: 'done',
+    });
+  });
+});
+
 describe('journeyMilestones — giữ chỗ qua hạn chót mà chưa trả', () => {
   /**
    * Mốc "Payment not completed" là mốc ĐANG ĐỨNG (`now`), không tô như đã xong: claim của API vẫn
