@@ -119,9 +119,14 @@ export function BookingTicket({ booking, phase }: { booking: BookingDetail; phas
             </RevealItem>
           </div>
 
-          <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 py-4 sm:gap-6">
+          {/* Điện thoại: hai ngày một hàng (dạt hai mép), nhãn tuyến một hàng riêng trọn bề ngang
+              bên dưới (`row-start-2` khoá hàng, hai ngày tự xếp vào hàng đầu). Kẹp giữa hai ngày
+              "03 NOV" 26px thì cột giữa chỉ còn 75px ở 360px, 35px ở 320px: nhãn bọc 4–6 dòng
+              tràn hộp cao cố định và đè lên chữ ngày (review P7 B22). Từ `sm` ba cột như bản vẽ;
+              hộp chỉ đặt chiều cao TỐI THIỂU nên nhãn dài xuống dòng thì hộp cao theo. */}
+          <div className="grid grid-cols-[auto_auto] items-center justify-between gap-3 py-4 sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:gap-6">
             <TicketDate label={t.ticket.departs} date={booking.departureStartDate} />
-            <div className="relative flex h-[30px] items-center justify-center">
+            <div className="relative col-span-2 row-start-2 flex min-h-[30px] items-center justify-center sm:col-span-1 sm:row-start-auto">
               <span
                 aria-hidden="true"
                 className="absolute inset-x-0 top-1/2 border-t-2 border-dashed border-border"
