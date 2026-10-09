@@ -9,6 +9,7 @@ import {
   THREE_DAY_TRIP,
   VOUCHER_NOW,
   voucherBooking,
+  voucherNowOn,
 } from '@/test/fixtures/voucher';
 import { VoucherOverview } from './voucher-overview';
 
@@ -38,9 +39,10 @@ const PHOTO: NonNullable<BookingDetail['tourImage']> = {
 function renderOverview(
   overrides: Partial<BookingDetail> = {},
   meetingPoint: string | null = MEETING,
+  now: Date = VOUCHER_NOW,
 ) {
   const booking = voucherBooking(overrides);
-  const view = voucherView(booking, VOUCHER_NOW);
+  const view = voucherView(booking, now);
   if (view === null) throw new Error('fixture phải là đơn đã trả');
   return render(<VoucherOverview booking={booking} view={view} meetingPoint={meetingPoint} />);
 }
@@ -180,6 +182,23 @@ describe('VoucherOverview — bốn ô có icon', () => {
       'href',
       '/contact',
     );
+  });
+
+  /**
+   * Điểm hẹn chỉ còn việc ở voucher sắp đi, đang đi (`showMeetingPoint`, cùng luật trang chi tiết
+   * đơn — review P7C#6): voucher đã đi hay đã huỷ không có ô này, cũng không mời liên hệ hỏi điểm
+   * hẹn cho một chuyến đã xong hay đã huỷ.
+   */
+  it.each([
+    ['đã đi', THREE_DAY_TRIP, voucherNowOn('2026-11-10')],
+    ['đã huỷ', CANCELLED_AFTER_PAYING, VOUCHER_NOW],
+  ] as const)('voucher %s: không có ô Meeting point, ba ô còn lại giữ nguyên', (_, over, now) => {
+    renderOverview(over, null, now);
+    expect(screen.queryByText('Meeting point')).toBeNull();
+    expect(screen.queryByRole('link', { name: 'Contact us' })).toBeNull();
+    for (const title of ['Paid with PayPal', 'Lead traveller', 'Need help?']) {
+      expect(screen.getByText(title)).toBeInTheDocument();
+    }
   });
 
   it('Paid with {cổng}: ngày trả · ghi chú chế độ thử', () => {

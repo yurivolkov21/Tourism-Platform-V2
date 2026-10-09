@@ -1,5 +1,6 @@
 import type { BookingDetail } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
+import { cn } from '@tourism/ui/lib/utils';
 import {
   CalendarIcon,
   CreditCardIcon,
@@ -18,7 +19,8 @@ import type { VoucherView } from '@/lib/voucher';
 
 /**
  * Cột trái của voucher (spec P7 §6.2, cách "A" của bản vẽ `booking-voucher.src.html`): mộc
- * trạng thái, tiêu đề và dòng phụ theo `voucherView`, thẻ ảnh bìa lớn, lưới bốn ô có icon.
+ * trạng thái, tiêu đề và dòng phụ theo `voucherView`, thẻ ảnh bìa lớn, lưới bốn ô có icon (ba ô
+ * khi voucher đã đi hay đã huỷ: không còn ô Meeting point).
  *
  * Tiêu đề là `h2` — `h1` duy nhất của trang là tên tour ở hero (cùng lý do `BookingReceipt`).
  *
@@ -35,8 +37,9 @@ export function VoucherOverview({
   booking: BookingDetail;
   view: VoucherView;
   /**
-   * Điểm hẹn của tour (`fetchTourDetailOrNull`); `null` khi tour đã gỡ, API catalog lỗi hoặc tour
-   * chưa ghi điểm hẹn.
+   * Điểm hẹn của tour (`voucherMeetingPoint`); `null` khi tour đã gỡ, API catalog lỗi, tour chưa ghi
+   * điểm hẹn — hay voucher không có ô Meeting point (`view.showMeetingPoint` sai, trang không đọc
+   * tour).
    */
   meetingPoint: string | null;
 }) {
@@ -122,22 +125,31 @@ export function VoucherOverview({
       </div>
 
       <div className="mt-4.5 grid gap-3 sm:grid-cols-2">
-        <InfoCell icon={<MapPinIcon aria-hidden="true" />} title={t.meetingPoint}>
-          {/* Không có điểm hẹn để in thì mời liên hệ — email xác nhận không mang điểm hẹn, nên
-              không được hứa "Details are in your confirmation email." (review P7C#4, D4). */}
-          {meetingPoint ?? (
-            <>
-              <ContactLink>{t.meetingPointContact}</ContactLink> {t.meetingPointFallback}
-            </>
-          )}
-        </InfoCell>
+        {/* Ô Meeting point chỉ khi điểm hẹn còn việc — sắp đi, đang đi (`showMeetingPoint`, review
+            P7C#6): voucher đã đi hay đã huỷ không mời ai hỏi điểm hẹn của một chuyến đã xong. */}
+        {view.showMeetingPoint ? (
+          <InfoCell icon={<MapPinIcon aria-hidden="true" />} title={t.meetingPoint}>
+            {/* Không có điểm hẹn để in thì mời liên hệ — email xác nhận không mang điểm hẹn, nên
+                không được hứa "Details are in your confirmation email." (review P7C#4, D4). */}
+            {meetingPoint ?? (
+              <>
+                <ContactLink>{t.meetingPointContact}</ContactLink> {t.meetingPointFallback}
+              </>
+            )}
+          </InfoCell>
+        ) : null}
         <InfoCell icon={<CreditCardIcon aria-hidden="true" />} title={t.paidWith(view.provider)}>
           {`${view.paidOn} · ${messages.tourDetail.booking.testMode}`}
         </InfoCell>
         <InfoCell icon={<UserIcon aria-hidden="true" />} title={t.leadTraveller}>
           {`${booking.contactName} · ${booking.contactEmail}`}
         </InfoCell>
-        <InfoCell icon={<MessageSquareIcon aria-hidden="true" />} title={t.needHelp}>
+        <InfoCell
+          icon={<MessageSquareIcon aria-hidden="true" />}
+          title={t.needHelp}
+          // Thiếu ô Meeting point thì còn ba ô: ô cuối trải trọn hàng thay vì để lưới 2×2 hở một góc.
+          className={view.showMeetingPoint ? undefined : 'sm:col-span-2'}
+        >
           {t.needHelpBody} <ContactLink>{t.contactUs}</ContactLink>.
         </InfoCell>
       </div>
@@ -171,14 +183,22 @@ function GlassChip({ icon, children }: { icon: ReactNode; children: ReactNode })
 function InfoCell({
   icon,
   title,
+  className,
   children,
 }: {
   icon: ReactNode;
   title: string;
+  /** Lớp thêm cho ô — chỉ để đổi chỗ đứng trong lưới (vd trải trọn hàng). */
+  className?: string;
   children: ReactNode;
 }) {
   return (
-    <div className="grid grid-cols-[2.375rem_minmax(0,1fr)] items-start gap-3 rounded-2xl border px-4 py-3.5">
+    <div
+      className={cn(
+        'grid grid-cols-[2.375rem_minmax(0,1fr)] items-start gap-3 rounded-2xl border px-4 py-3.5',
+        className,
+      )}
+    >
       <span className="grid size-9.5 place-items-center rounded-xl bg-primary/10 text-primary-emphasis [&_svg]:size-4">
         {icon}
       </span>

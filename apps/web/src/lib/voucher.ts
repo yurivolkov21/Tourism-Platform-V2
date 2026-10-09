@@ -12,6 +12,7 @@ import {
   refundSummary,
   vietnamDay,
 } from './booking-vm';
+import { type BookingTourData, needsTourData, tourMeetingPoint } from './get-ready';
 import { reviewSlot } from './review';
 import { formatChipDate, formatDate, formatDateRange } from './tours';
 
@@ -37,8 +38,8 @@ export interface VoucherJournalItem {
  * Mọi thứ hai cột của voucher cần, tính sẵn một lần ở server (spec P7 §2.6, §6).
  *
  * Không mang giai đoạn: component không đọc nó — mọi thứ đi theo giai đoạn đã tính sẵn ở đây (mộc,
- * dải huỷ, mã vạch, điều kiện, nhật ký). Bản trước có cả `phase` lẫn `showCode` nói lại đúng điều
- * `cancelledNotice` đã nói (review P7C mục 15).
+ * dải huỷ, mã vạch, ô Meeting point, điều kiện, nhật ký). Bản trước có cả `phase` lẫn `showCode` nói
+ * lại đúng điều `cancelledNotice` đã nói (review P7C mục 15).
  */
 export interface VoucherView {
   /** Vừa trả tiền: tiêu đề "… is booked." và pháo giấy. */
@@ -69,6 +70,12 @@ export interface VoucherView {
    * Có mã vạch — `bookingPass(…).barcode`: chỉ khi mã còn để chìa ra ở điểm đón (sắp đi, đang đi).
    */
   showBarcode: boolean;
+  /**
+   * Có ô Meeting point — chỉ khi điểm hẹn còn việc: sắp đi, đang đi (`needsTourData`, cùng luật dòng
+   * Meeting point của trang chi tiết đơn). Voucher đã đi hay đã huỷ không có ô này, và trang cũng
+   * không đọc tour cho nó (`voucherMeetingPoint`, review P7C#6).
+   */
+  showMeetingPoint: boolean;
   /** Các dòng điều kiện có dấu tích dưới ô mã, đúng thứ tự bảng §2.6; rỗng khi đã huỷ. */
   conditions: string[];
   /** Ba mốc nhật ký (hai khi mốc cuối không có gì thật để nói). */
@@ -116,6 +123,7 @@ export function voucherView(booking: BookingDetail, now: Date): VoucherView | nu
     justPaid,
     stamp: pass.stamp,
     showBarcode: pass.barcode,
+    showMeetingPoint: needsTourData(phase),
     title: justPaid
       ? isDayTrip
         ? t.freshDayTitle(place)
@@ -227,6 +235,23 @@ export function voucherView(booking: BookingDetail, now: Date): VoucherView | nu
       };
     }
   }
+}
+
+/**
+ * Điểm hẹn cho ô Meeting point — đọc tour CHỈ khi voucher có ô ấy (`showMeetingPoint`), như trang
+ * chi tiết đơn chỉ gọi API catalog ở hai giai đoạn cần (review P7C#6). Bản trước đọc tour ở MỌI
+ * giai đoạn: thêm một vòng API khi cache nguội, và trần chờ ~62 giây khi API catalog treo, cho một
+ * ô mà voucher đã đi hay đã huỷ không in.
+ *
+ * `loadTour` là lượt đọc tour của trang (`fetchTourDetailOrNull`), truyền vào chứ không import: file
+ * thuần này khỏi nạp lớp gọi API, và test đếm được lượt gọi. Tour đã gỡ, API catalog lỗi hay điểm
+ * hẹn để trống đều ra `null` — ô rơi về câu mời liên hệ.
+ */
+export async function voucherMeetingPoint(
+  view: Pick<VoucherView, 'showMeetingPoint'>,
+  loadTour: () => Promise<BookingTourData | null>,
+): Promise<string | null> {
+  return view.showMeetingPoint ? tourMeetingPoint(await loadTour()) : null;
 }
 
 /**

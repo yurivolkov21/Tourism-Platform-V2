@@ -1,6 +1,6 @@
 import { type BookingDetail, type MyReview, REVIEW_REJECTION_LIMIT } from '@tourism/contract';
-import { describe, expect, it } from 'vitest';
-import { makeCancellation, makeReview } from '@/test/fixtures/booking';
+import { describe, expect, it, vi } from 'vitest';
+import { makeCancellation, makeReview, makeTourData } from '@/test/fixtures/booking';
 import {
   minutesBeforeNow,
   OPERATOR_CANCELLED_PENDING,
@@ -9,7 +9,12 @@ import {
   voucherBooking,
   voucherNowOn,
 } from '@/test/fixtures/voucher';
-import { VOUCHER_FRESH_MINUTES, type VoucherView, voucherView } from './voucher';
+import {
+  VOUCHER_FRESH_MINUTES,
+  type VoucherView,
+  voucherMeetingPoint,
+  voucherView,
+} from './voucher';
 
 /**
  * Bảng quyết định của voucher `/checkout/success` (spec P7 §2.6). Chữ khớp NGUYÊN VĂN —
@@ -546,5 +551,68 @@ describe('voucherView — đã huỷ (cancelled)', () => {
     );
     expect(v.justPaid).toBe(false);
     expect(v.title).toBe('Your trip voucher');
+  });
+});
+
+/**
+ * Ô Meeting point và lượt đọc tour của nó (review P7C#6): điểm hẹn chỉ còn việc khi khách sắp tới
+ * hay đang ở điểm đón — cùng luật dòng Meeting point của trang chi tiết đơn (`needsTourData`).
+ * Bản trước đọc tour ở MỌI giai đoạn, kể cả voucher đã huỷ, đã đi.
+ */
+describe('voucherView — ô Meeting point theo giai đoạn', () => {
+  it.each([
+    ['sắp đi', true, voucherBooking(), VOUCHER_NOW],
+    [
+      'đang đi',
+      true,
+      voucherBooking({ ...THREE_DAY_TRIP, cancellation: PASSED }),
+      voucherNowOn('2026-11-04'),
+    ],
+    [
+      'đã đi',
+      false,
+      voucherBooking({ ...THREE_DAY_TRIP, cancellation: PASSED }),
+      voucherNowOn('2026-11-10'),
+    ],
+    ['khách đã huỷ', false, voucherBooking(CANCELLED), VOUCHER_NOW],
+    [
+      'chuyến công ty huỷ, chờ job hoàn tiền',
+      false,
+      voucherBooking(OPERATOR_CANCELLED_PENDING),
+      VOUCHER_NOW,
+    ],
+  ] as const)('%s → showMeetingPoint %s', (_, shown, booking, now) => {
+    expect(view(booking, now).showMeetingPoint).toBe(shown);
+  });
+});
+
+describe('voucherMeetingPoint — chỉ đọc tour khi voucher có ô Meeting point', () => {
+  const MEETING = 'Hotel pickup — Hoàn Kiếm, Ba Đình or Tây Hồ';
+
+  it.each([
+    [
+      'đã đi',
+      voucherBooking({ ...THREE_DAY_TRIP, cancellation: PASSED }),
+      voucherNowOn('2026-11-10'),
+    ],
+    ['đã huỷ', voucherBooking(CANCELLED), VOUCHER_NOW],
+  ] as const)('voucher %s: KHÔNG gọi API catalog, không có điểm hẹn', async (_, booking, now) => {
+    const loadTour = vi.fn(async () => makeTourData({ meetingPoint: MEETING }));
+    expect(await voucherMeetingPoint(view(booking, now), loadTour)).toBeNull();
+    expect(loadTour).not.toHaveBeenCalled();
+  });
+
+  it('voucher sắp đi: đọc tour MỘT lần, in nguyên văn điểm hẹn', async () => {
+    const loadTour = vi.fn(async () => makeTourData({ meetingPoint: MEETING }));
+    expect(await voucherMeetingPoint(view(voucherBooking()), loadTour)).toBe(MEETING);
+    expect(loadTour).toHaveBeenCalledTimes(1);
+  });
+
+  it.each([
+    ['tour đã gỡ hay API catalog lỗi (null)', null],
+    ['tour chưa ghi điểm hẹn', makeTourData({ meetingPoint: null })],
+    ['điểm hẹn chỉ có khoảng trắng', makeTourData({ meetingPoint: '   ' })],
+  ] as const)('%s → null: ô rơi về câu mời liên hệ', async (_, tour) => {
+    expect(await voucherMeetingPoint(view(voucherBooking()), async () => tour)).toBeNull();
   });
 });

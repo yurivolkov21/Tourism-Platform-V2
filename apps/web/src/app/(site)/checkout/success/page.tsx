@@ -12,7 +12,7 @@ import { fetchBookingByCode } from '@/lib/api/bookings';
 import { requireSession } from '@/lib/api/session';
 import { fetchTourDetailOrNull } from '@/lib/api/tours';
 import { checkoutMood } from '@/lib/checkout';
-import { voucherView } from '@/lib/voucher';
+import { voucherMeetingPoint, voucherView } from '@/lib/voucher';
 
 export const metadata: Metadata = {
   // "Voucher" chứ không "Booking confirmed": trang này mở lại được bất cứ lúc nào, kể cả với
@@ -108,9 +108,13 @@ export default async function CheckoutSuccessPage({
     );
   }
 
-  // Điểm hẹn lấy từ tour (cache 300 giây, tag `tour:<slug>`); tour đã gỡ hay lỗi gọi API catalog
-  // đều rơi về null — voucher của đơn ĐÃ TRẢ không được sập vì một ô phụ.
-  const tour = await fetchTourDetailOrNull(booking.tourSlug);
+  // Điểm hẹn lấy từ tour (cache 300 giây, tag `tour:<slug>`), và CHỈ khi voucher có ô Meeting point
+  // — sắp đi, đang đi (`voucherMeetingPoint`, cùng luật trang chi tiết đơn): voucher đã đi hay đã
+  // huỷ không gọi API catalog. Tour đã gỡ hay lỗi gọi API catalog đều rơi về null — voucher của đơn
+  // ĐÃ TRẢ không được sập vì một ô phụ.
+  const meetingPoint = await voucherMeetingPoint(view, () =>
+    fetchTourDetailOrNull(booking.tourSlug),
+  );
 
   return (
     <div>
@@ -128,7 +132,7 @@ export default async function CheckoutSuccessPage({
       {/* Lề ngang CHÉP của hero (`px-4 md:px-16 lg:px-24 xl:px-32`, khung `max-w-7xl` trong
           thẻ) để mép thẻ thẳng hàng tiêu đề. */}
       <div className="px-4 py-10 md:px-16 md:py-14 lg:px-24 xl:px-32 print:p-0">
-        <VoucherCard booking={booking} view={view} meetingPoint={tour?.meetingPoint ?? null} />
+        <VoucherCard booking={booking} view={view} meetingPoint={meetingPoint} />
       </div>
     </div>
   );

@@ -19,7 +19,8 @@ export type BookingTourData = Pick<TourDetailVM, 'excluded' | 'meetingPoint' | '
 /**
  * Giai đoạn nào trang chi tiết đơn cần dữ liệu tour: chỉ sắp đi (Get ready — mục không gồm, điểm
  * hẹn, ngày 1) và đang đi (Today's plan — lịch trình của ngày, điểm hẹn). Dòng Meeting point của
- * khối Details đi theo cùng luật.
+ * khối Details đi theo cùng luật, và ô Meeting point của voucher `/checkout/success` cũng vậy
+ * (`VoucherView.showMeetingPoint`).
  *
  * Bản trước đọc tour ở MỌI giai đoạn, nối đuôi sau lượt đọc đơn: thêm một vòng API khi cache nguội,
  * và trần chờ ~62 giây khi API catalog treo — cho bốn giai đoạn chỉ dùng tour vào đúng một dòng
