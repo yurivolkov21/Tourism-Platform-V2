@@ -162,7 +162,8 @@ Ca mới của đợt vá, đo ở từng nhóm trước khi rebase lên `main` 
 2060 (T2 thêm 56, T3 thêm 59, T4 thêm 10, T5 thêm 32, T6 thêm 21); i18n 29 sau T5; sau T1:
 contract 675, api 1088, int 776/46. Đột biến của voucher (C#8): 5/5 chết.
 
-Tests after: `<điền sau gate>`
+Tests after (`gate:int` trên `b08f2fb4`, 09/10 16:44–16:51, sau rebase lên `c070db87`): unit 6581 — web 2130,
+admin 1911, api 1097, contract 675, mobile 502, mobile-ui 134, core 46, ui 36, i18n 31, tokens 19 — và int 779/46.
 
 ## 2026-10-08 — P7 phần C: voucher `/checkout/success` thiết kế lại (nhánh `feat/booking-voucher`)
 
