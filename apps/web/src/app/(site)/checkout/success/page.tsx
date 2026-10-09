@@ -3,7 +3,6 @@ import { messages } from '@tourism/i18n';
 import { ButtonLink } from '@tourism/ui/components/button-link';
 import type { Metadata } from 'next';
 import { cookies } from 'next/headers';
-import { unstable_rethrow } from 'next/navigation';
 import { BookingReceipt } from '@/components/checkout/booking-receipt';
 import { CheckoutAutoRefresh } from '@/components/checkout/checkout-auto-refresh';
 import { PrintButton } from '@/components/checkout/print-button';
@@ -12,7 +11,7 @@ import { ContentHero } from '@/components/content/content-hero';
 import { todayDateString } from '@/lib/account-stats';
 import { fetchBookingByCode } from '@/lib/api/bookings';
 import { requireSession } from '@/lib/api/session';
-import { fetchTourDetail } from '@/lib/api/tours';
+import { fetchTourDetailOrNull } from '@/lib/api/tours';
 import { checkoutMood } from '@/lib/checkout';
 import { voucherView } from '@/lib/voucher';
 
@@ -110,14 +109,9 @@ export default async function CheckoutSuccessPage({
     );
   }
 
-  // Điểm hẹn lấy từ tour (cache 300 giây, tag `tour:<slug>`); tour đã gỡ trả null. Lỗi gọi API
-  // khác cũng rơi về null — voucher của đơn ĐÃ TRẢ không được sập vì một ô phụ. Lỗi nội bộ của
-  // Next (redirect, notFound, request-time API) thì ném lại (plan P7, quyết định 22).
-  const tour = await fetchTourDetail(booking.tourSlug).catch((error: unknown) => {
-    unstable_rethrow(error);
-    console.warn(`[checkout/success] không đọc được tour ${booking.tourSlug}`, error);
-    return null;
-  });
+  // Điểm hẹn lấy từ tour (cache 300 giây, tag `tour:<slug>`); tour đã gỡ hay lỗi gọi API catalog
+  // đều rơi về null — voucher của đơn ĐÃ TRẢ không được sập vì một ô phụ.
+  const tour = await fetchTourDetailOrNull(booking.tourSlug);
 
   return (
     <div>

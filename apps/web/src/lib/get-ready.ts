@@ -8,7 +8,8 @@ import { formatWeekdayDate } from './tours';
  * Khối "Get ready" của đơn sắp đi (spec P7 §2.4) — hàm thuần, component chỉ vẽ.
  *
  * Bốn bước, bước nào thiếu dữ liệu thì bỏ và các bước sau đánh số lại. Dữ liệu tour đến từ
- * `fetchTourDetail` (cache 300 giây); tour đã gỡ thì `tour` là `null` và chỉ còn bước hạn huỷ.
+ * `fetchTourDetailOrNull` (cache 300 giây); tour đã gỡ hay API catalog lỗi thì `tour` là `null`
+ * và chỉ còn bước hạn huỷ.
  * Mô tả ngày 1 và điểm hẹn in NGUYÊN VĂN — không tách giờ ra thành dữ liệu (luật catalog).
  */
 

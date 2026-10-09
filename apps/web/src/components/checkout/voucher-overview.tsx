@@ -34,7 +34,10 @@ export function VoucherOverview({
 }: {
   booking: BookingDetail;
   view: VoucherView;
-  /** Điểm hẹn của tour (`fetchTourDetail`); `null` khi tour đã gỡ hoặc chưa ghi điểm hẹn. */
+  /**
+   * Điểm hẹn của tour (`fetchTourDetailOrNull`); `null` khi tour đã gỡ, API catalog lỗi hoặc tour
+   * chưa ghi điểm hẹn.
+   */
   meetingPoint: string | null;
 }) {
   const t = messages.voucher;

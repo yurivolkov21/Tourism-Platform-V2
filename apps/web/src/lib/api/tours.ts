@@ -1,5 +1,6 @@
 import { isDefinedError, safe } from '@orpc/client';
 import type { ContractInputs, ContractOutputs } from '@tourism/contract';
+import { unstable_rethrow } from 'next/navigation';
 import { cache } from 'react';
 import { resolveDepartureAnchors } from '@/lib/tour-detail';
 import { api } from './client';
@@ -124,6 +125,29 @@ export const fetchTourDetail = cache(async (slug: string): Promise<TourDetailVM 
   // cùng đọc một con số; lý do đầy đủ ở `resolveDepartureAnchors`.
   return resolveDepartureAnchors(data);
 });
+
+/**
+ * `fetchTourDetail` cho trang chỉ dùng tour để LÀM GIÀU — trang chi tiết đơn và voucher đọc điểm
+ * hẹn, mục không gồm, lịch trình. Tour đã gỡ trả `null` như cũ; lỗi gọi API catalog cũng rơi về
+ * `null` kèm cảnh báo trong log: trang đơn của khách vẫn đủ vé, tiền và hạn huỷ, không sập vì
+ * một ô phụ. `unstable_rethrow` trả lại cho Next mọi lỗi nội bộ của nó (notFound, redirect,
+ * bail-out động) trước khi nuốt lỗi (plan P7, quyết định 22).
+ *
+ * Một bản thay hai bản chép — `loadTour` của trang chi tiết đơn và `.catch` của voucher, khác
+ * nhau cả chữ log (review P7 B16, C#6).
+ */
+export async function fetchTourDetailOrNull(slug: string): Promise<TourDetailVM | null> {
+  try {
+    return await fetchTourDetail(slug);
+  } catch (error) {
+    unstable_rethrow(error);
+    console.warn(
+      `[fetchTourDetailOrNull] không đọc được tour "${slug}" — trang chạy tiếp không có dữ liệu tour`,
+      error,
+    );
+    return null;
+  }
+}
 
 /**
  * Review đã duyệt của một tour, phân trang. Input `ReviewsByTourQuerySchema`
