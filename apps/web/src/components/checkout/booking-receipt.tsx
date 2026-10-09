@@ -12,10 +12,10 @@ import { STAGGER } from '@/lib/motion';
 import { formatDate, formatDateRange } from '@/lib/tours';
 
 /**
- * Hoá đơn kiêm cuống vé cho đơn CHƯA TRẢ ở `/checkout/success` và cho `/checkout/cancel`
- * (đơn đã trả mở voucher `VoucherCard` từ P7, spec 05/10 §6) — thay `CheckoutShell` (tấm vé
- * boarding-pass) từ 19/08. Dựng theo wireframe user duyệt qua bốn bước, xem
- * `docs/design/mockups/receipt-ticket.src.html`.
+ * Hoá đơn kiêm cuống vé cho đơn CHƯA TRẢ ở `/checkout/success` và `/checkout/cancel` (đơn đã trả
+ * mở voucher `VoucherCard` từ P7, spec 05/10 §6; trang huỷ chuyển đơn đã trả sang đó qua
+ * `cancelPageRedirect`) — thay `CheckoutShell` (tấm vé boarding-pass) từ 19/08. Dựng theo
+ * wireframe user duyệt qua bốn bước, xem `docs/design/mockups/receipt-ticket.src.html`.
  *
  * **Ý tưởng hợp nhất, gói trong một câu:** giữ receipt làm TÀI LIỆU và biến dải
  * chân của nó thành CUỐNG VÉ. Dải chân vốn đã tràn hết bề rộng card, có nền

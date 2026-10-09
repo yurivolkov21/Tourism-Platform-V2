@@ -3,11 +3,12 @@ import { messages } from '@tourism/i18n';
 import { ButtonLink } from '@tourism/ui/components/button-link';
 import type { Metadata } from 'next';
 import { cookies } from 'next/headers';
+import { redirect } from 'next/navigation';
 import { BookingReceipt } from '@/components/checkout/booking-receipt';
 import { ContentHero } from '@/components/content/content-hero';
 import { fetchBookingByCode } from '@/lib/api/bookings';
 import { requireSession } from '@/lib/api/session';
-import { checkoutMood, pendingExpiry } from '@/lib/checkout';
+import { cancelPageRedirect, checkoutMood, pendingExpiry } from '@/lib/checkout';
 
 export const metadata: Metadata = {
   title: `${messages.booking.cancel.title} — Nexora`,
@@ -16,7 +17,8 @@ export const metadata: Metadata = {
 
 /**
  * Khách bấm huỷ ở trang cổng thanh toán. KHÔNG có gì mất: booking vẫn tồn tại
- * ở PENDING và trả tiếp được từ trang chi tiết.
+ * ở PENDING và trả tiếp được từ trang chi tiết. Đơn đã trả (ở tab khác) không
+ * dựng trang này mà sang voucher `/checkout/success` (`cancelPageRedirect`).
  *
  * ⚠️ Câu chữ ở đây tuyệt đối không được ngụ ý đang giữ ghế cho khách —
  * invariant #1 của API: một booking PENDING KHÔNG giữ seat nào (ghế chỉ được
@@ -38,8 +40,9 @@ export default async function CheckoutCancelPage({
     : null;
 
   // Hạn còn lại chỉ có nghĩa khi booking THẬT SỰ còn PENDING. Booking đã sang
-  // trạng thái khác (hết hạn ngay trong lúc khách phân vân, hoặc đã trả tiền ở
-  // tab khác) thì không in số phút — in số cho một thứ đã kết thúc là nói dối.
+  // trạng thái khác (hết hạn ngay trong lúc khách phân vân) thì không in số
+  // phút — in số cho một thứ đã kết thúc là nói dối. Đơn đã trả ở tab khác thì
+  // sang voucher (bên dưới), không tới được hoá đơn này.
   const expiry = booking && booking.status === 'PENDING' ? pendingExpiry(booking.createdAt) : null;
 
   // Không tra được booking (thiếu mã, mã sai shape, hoặc không phải của khách
@@ -58,6 +61,11 @@ export default async function CheckoutCancelPage({
       </div>
     );
   }
+
+  // Đơn ĐÃ TRẢ (trả ở tab khác rồi bấm huỷ ở cổng): trang này kể chuyện của đơn chưa trả, nên
+  // sang voucher — nơi đơn đã trả được kể đúng giai đoạn, kể cả đã huỷ (`cancelPageRedirect`).
+  const voucherPath = cancelPageRedirect(booking);
+  if (voucherPath) redirect(voucherPath);
 
   return (
     <div>

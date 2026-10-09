@@ -99,6 +99,20 @@ export function checkoutMood(booking: Booking): CheckoutMood {
 }
 
 /**
+ * Đường sang voucher khi khách về `/checkout/cancel` với một đơn ĐÃ TRẢ (trả ở tab khác rồi bấm
+ * huỷ ở cổng); `null` khi đơn chưa trả — trang huỷ giữ hoá đơn chờ.
+ *
+ * Trang huỷ kể chuyện của đơn chưa trả: "Payment cancelled", "No charge was made…", nút "Pay now or
+ * manage booking". Dựng nó cho đơn đã trả là pill "Paid" và mã vạch ngay dưới "Payment cancelled",
+ * còn đơn đã trả rồi huỷ vẫn mang mã vạch — đúng lớp lỗi P7 đã sửa ở `/checkout/success` (review
+ * P7C, "Ngoài diff"). Cùng luật "đã có `paidAt` thì là voucher" của `voucherView`: voucher kể đơn
+ * đã trả theo giai đoạn của nó, kể cả khi đã huỷ.
+ */
+export function cancelPageRedirect(booking: Pick<Booking, 'code' | 'paidAt'>): string | null {
+  return booking.paidAt === null ? null : `/checkout/success?code=${booking.code}`;
+}
+
+/**
  * Câu dưới tiêu đề của hoá đơn (`BookingReceipt`) khi trang không truyền câu riêng — theo tâm
  * trạng. Từ P7 hoá đơn ở `/checkout/success` chỉ còn cho đơn CHƯA trả (đơn đã trả mở voucher,
  * spec §2.6), nên câu mặc định cũ cho mọi đơn — "A copy of this receipt was sent to {email}." —

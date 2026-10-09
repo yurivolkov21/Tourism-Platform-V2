@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { makeBooking } from '@/test/fixtures/booking';
 import {
   bookingPriceLines,
+  cancelPageRedirect,
   checkoutMood,
   computeBookingTotal,
   formatBookingMoney,
@@ -33,6 +34,33 @@ describe('checkoutMood — tâm trạng màn /checkout/success đọc từ statu
       expect(checkoutMood(makeBooking({ status }))).toBe('settled');
     },
   );
+});
+
+/**
+ * `/checkout/cancel` kể chuyện của đơn CHƯA trả ("Payment cancelled", "No charge was made…").
+ * Đơn đã trả (trả ở tab khác rồi bấm huỷ ở cổng) từng rơi vào nhánh hoá đơn cũ: pill "Paid" và mã
+ * vạch ngay dưới "Payment cancelled", cả đơn đã trả rồi huỷ cũng có mã vạch (review P7C, "Ngoài
+ * diff"). Đơn đã trả sang voucher, nơi nó được kể theo đúng giai đoạn.
+ */
+describe('cancelPageRedirect — đơn đã trả về /checkout/cancel thì sang voucher', () => {
+  it('đã trả → voucher của chính đơn ấy', () => {
+    expect(cancelPageRedirect(makeBooking({ code: 'BK-B6VCOQNW' }))).toBe(
+      '/checkout/success?code=BK-B6VCOQNW',
+    );
+  });
+
+  it('đã trả rồi huỷ → vẫn sang voucher (voucher nói hết hiệu lực, không mã vạch)', () => {
+    const cancelled = makeBooking({
+      code: 'BK-B6VCOQNW',
+      status: 'CANCELLED',
+      cancelledAt: '2026-07-02T00:00:00.000Z',
+    });
+    expect(cancelPageRedirect(cancelled)).toBe('/checkout/success?code=BK-B6VCOQNW');
+  });
+
+  it('chưa trả → null: trang huỷ giữ hoá đơn chờ', () => {
+    expect(cancelPageRedirect(makeBooking({ status: 'PENDING', paidAt: null }))).toBeNull();
+  });
 });
 
 /**
