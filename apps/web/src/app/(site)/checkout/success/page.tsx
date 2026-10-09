@@ -114,13 +114,14 @@ export default async function CheckoutSuccessPage({
 
   return (
     <div>
-      {/* Hero GIỮ (lý do ở nhánh trên) và thêm meta mã đơn (spec §6.1). Bản in chỉ in thẻ
-          voucher, nên hero — cả nút Print trong đó — giấu khi in (spec §6.4). */}
+      {/* Hero GIỮ (lý do ở nhánh trên), KHÔNG `meta` mã đơn (user chốt 08/10, D5): mã đã ở ô mã
+          của thẻ; voucher đã huỷ cố ý giấu mã mà hero vẫn in ra, voucher vừa trả thì hiện mã ba
+          lần trên một màn (review P7C#10). Bản in chỉ in thẻ voucher, nên hero — cả nút Print
+          trong đó — giấu khi in (spec §6.4). */}
       <div className="print:hidden">
         <ContentHero
           breadcrumb={t.heroBreadcrumb}
           title={booking.tourTitle}
-          meta={booking.code}
           action={<PrintButton />}
         />
       </div>
