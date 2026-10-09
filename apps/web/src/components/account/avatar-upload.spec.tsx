@@ -155,6 +155,8 @@ describe('AvatarUpload — dựng dọc cho thẻ danh tính (spec 09/10 §2)', 
     expect(uploadButton.compareDocumentPosition(hint)).toBe(FOLLOWING);
     // Chữ "Upload avatar" chỉ còn là nút viền — dòng nhãn phụ cũ (`<p>`) đã gỡ.
     expect(screen.getAllByText('Upload avatar')).toHaveLength(1);
+    // User duyệt bằng mắt 09/10: nút chỉ có chữ như các nút khác của trang (Edit, Delete account).
+    expect(uploadButton.querySelector('svg')).toBeNull();
   });
 
   it('có ảnh: không in dòng "Avatar selected"', () => {

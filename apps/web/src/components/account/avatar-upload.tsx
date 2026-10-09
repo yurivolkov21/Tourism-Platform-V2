@@ -4,7 +4,7 @@ import { ORPCError } from '@orpc/client';
 import { messages } from '@tourism/i18n';
 import { Alert, AlertDescription, AlertTitle } from '@tourism/ui/components/alert';
 import { Button } from '@tourism/ui/components/button';
-import { CircleAlertIcon, UploadIcon, XIcon } from 'lucide-react';
+import { CircleAlertIcon, XIcon } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { type ReactNode, useEffect, useRef, useState } from 'react';
 import { api, withBrowserAuth } from '@/lib/api/client';
@@ -239,7 +239,7 @@ export function AvatarUpload({
         onClick={openPicker}
         className="mt-3.5"
       >
-        <UploadIcon aria-hidden="true" data-icon="inline-start" />
+        {/* Chỉ chữ, không icon — cùng giọng các nút khác của trang (user duyệt 09/10). */}
         {t.upload}
       </Button>
 
