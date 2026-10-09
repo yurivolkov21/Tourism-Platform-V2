@@ -111,21 +111,39 @@ describe('journeyMilestones — đơn sắp đi (bản vẽ, hôm nay 05/10)', (
 
   /**
    * REFUNDED không `cancelledAt` là hoàn thiện chí trọn — khách vẫn đi (ADR-0054 AMEND 1), nhưng
-   * server không gửi cờ huỷ: không còn gì để hoàn, không huỷ online được. So ngày chót với hôm nay
-   * là hứa "Until Mon 2 Nov" sai (review P7 B2, B15).
+   * server không gửi thông tin huỷ: không còn gì để hoàn, không huỷ online được. So ngày chót với
+   * hôm nay là hứa "Until Mon 2 Nov" sai (review P7 B2, B15); in "Ended 2 Nov" cho một ngày chưa
+   * tới cũng sai — BỎ hẳn mốc, Today đứng giữa Paid và ngày đi.
    */
-  it('hoàn thiện chí trọn còn sắp đi, server không gửi cờ: mốc Free cancellation không mở', () => {
+  it('hoàn thiện chí trọn còn sắp đi, server không gửi thông tin huỷ: không có mốc Free cancellation', () => {
     const view = journeyMilestones(
       { ...UPCOMING, status: 'REFUNDED', refundedTotal: '147.00', cancellation: null },
       TODAY,
     );
     expect(view.variant).toBe('standard');
-    expect(view.milestones[2]).toEqual({
-      key: 'freeCancellation',
-      label: 'Free cancellation',
-      detail: 'Ended 2 Nov',
-      state: 'done',
-    });
+    expect(rows(view)).toEqual([
+      ['booked', 'Booked', '13 Aug 2026', 'done'],
+      ['paid', 'Paid', '14 Aug 2026', 'done'],
+      ['departure', 'Departure', 'Tue 3 Nov', 'now'],
+      ['tripEnds', 'Trip ends', 'Tue 3 Nov', 'next'],
+    ]);
+    // Paid 14/08 → ngày đi 03/11 là 81 ngày, hôm nay 05/10 là ngày thứ 52: (1 + 52/81) / 3 đoạn.
+    expect(view.today).toEqual({ percent: 54.73, before: 2 });
+    expect(view.chip).toEqual({ label: 'Departs in 29 days', tone: 'active' });
+  });
+
+  it('hoàn thiện chí trọn, chuyến đã đi: bốn mốc đều xong, không mốc hạn huỷ', () => {
+    const view = journeyMilestones(
+      { ...UPCOMING, status: 'REFUNDED', refundedTotal: '147.00', cancellation: null },
+      '2026-11-10',
+    );
+    expect(view.milestones.map((milestone) => [milestone.key, milestone.state])).toEqual([
+      ['booked', 'done'],
+      ['paid', 'done'],
+      ['departure', 'done'],
+      ['tripEnds', 'done'],
+    ]);
+    expect(view.chip).toEqual({ label: 'Completed', tone: 'done' });
   });
 });
 

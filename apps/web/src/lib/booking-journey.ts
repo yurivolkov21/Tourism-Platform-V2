@@ -20,7 +20,8 @@ import { formatChipDate, formatDate, formatMoneyExact, formatWeekdayDate } from 
  *
  * Ba biến thể theo giai đoạn (`bookingPhase`, ADR-0054 §1):
  * - `standard` — chờ trả, sắp đi, đang đi, đã đi: Booked → Paid → Free cancellation →
- *   Departure → Trip ends, có nhãn Today ở ba giai đoạn đầu;
+ *   Departure → Trip ends, có nhãn Today ở ba giai đoạn đầu (mốc Free cancellation chỉ khi có
+ *   điều thật để nói — `freeCancellationStep`);
  * - `cancelled` — Booked → Paid (nếu đã trả) → Cancelled → Refund (nếu từng thu tiền);
  * - `lapsed` — Booked → Payment not completed.
  *
@@ -102,12 +103,6 @@ function standardJourney(booking: BookingDetail, phase: StandardPhase, today: st
   // Ngày lịch VN của hai mốc — cũng là mốc đặt nhãn Today, cùng thang với `today`.
   const bookedOn = vietnamDay(booking.createdAt);
   const paidOn = booking.paidAt ? vietnamDay(booking.paidAt) : null;
-  const deadline = booking.cancellation?.deadline ?? booking.cancellationDeadline;
-  // Còn hạn huỷ chỉ theo cờ server (`freeCancellationOpen`, ADR-0041 §7). Đơn chờ trả chưa có cờ,
-  // nhưng giai đoạn `awaiting_payment` CHÍNH là "chưa qua hạn chót" theo luật giai đoạn chung —
-  // mốc vẫn mở mà web không tự so ngày. Giai đoạn khác mà vắng cờ (đơn hoàn thiện chí trọn) là
-  // không còn quyền huỷ online.
-  const cancellationOpen = phase === 'awaiting_payment' || freeCancellationOpen(booking);
   const departed = booking.departureStartDate <= today;
   // Ngày về khách VẪN đang đi (chip "Day D of D"): chỉ "Trip ended" khi chuyến đã qua.
   const ended = phase === 'travelled';
@@ -127,15 +122,7 @@ function standardJourney(booking: BookingDetail, phase: StandardPhase, today: st
       done: paidOn !== null,
       date: paidOn,
     },
-    {
-      key: 'freeCancellation',
-      label: messages.checkoutSummary.freeCancellation,
-      detail: cancellationOpen
-        ? t.until(formatWeekdayDate(deadline))
-        : t.ended(formatChipDate(deadline)),
-      done: !cancellationOpen,
-      date: deadline,
-    },
+    ...freeCancellationStep(booking, phase),
     {
       key: 'departure',
       label: departed ? t.departed : t.departure,
@@ -160,6 +147,32 @@ function standardJourney(booking: BookingDetail, phase: StandardPhase, today: st
     fillPercent: mark ? mark.percent : 100,
     chip: standardChip(booking, phase, today),
   };
+}
+
+/**
+ * Mốc Free cancellation — chỉ khi có điều thật để nói. Còn hạn huỷ chỉ theo cờ server
+ * (`freeCancellationOpen`, ADR-0041 §7), ngày chót là ngày server tính.
+ *
+ * Hai nguồn: thông tin huỷ của server (`cancellation` — đơn PAID hay hoàn một phần trên chuyến còn
+ * chạy), hay đơn chờ trả — giai đoạn `awaiting_payment` CHÍNH là "chưa qua hạn chót" theo luật
+ * giai đoạn chung, nên mốc vẫn mở mà web không tự so ngày. Vắng cả hai (đơn hoàn thiện chí trọn:
+ * không còn gì để huỷ hay hoàn) thì BỎ mốc: "Until …" là hứa một quyền huỷ không còn, "Ended {ngày}"
+ * cho một ngày chưa tới là nói sai.
+ */
+function freeCancellationStep(booking: BookingDetail, phase: StandardPhase): DraftMilestone[] {
+  if (booking.cancellation === null && phase !== 'awaiting_payment') return [];
+  const t = messages.bookingDetail.journey;
+  const deadline = booking.cancellation?.deadline ?? booking.cancellationDeadline;
+  const open = phase === 'awaiting_payment' || freeCancellationOpen(booking);
+  return [
+    {
+      key: 'freeCancellation',
+      label: messages.checkoutSummary.freeCancellation,
+      detail: open ? t.until(formatWeekdayDate(deadline)) : t.ended(formatChipDate(deadline)),
+      done: !open,
+      date: deadline,
+    },
+  ];
 }
 
 /** Mốc chưa xong ĐẦU TIÊN là "now", các mốc chưa xong còn lại là "next" (spec §2.2). */
