@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { AvatarUpload } from './avatar-upload';
@@ -46,6 +46,21 @@ beforeEach(() => {
 function pngFile(name = 'me.png') {
   return new File(['x'], name, { type: 'image/png' });
 }
+
+describe('AvatarUpload — lỗi kèm tên tệp', () => {
+  /** Review 09/10: lỗi in kèm tên tệp; tên dài liền một chuỗi từng làm trang 320px cuộn ngang 240px. */
+  it('tên tệp dài liền một chuỗi trong câu lỗi xuống dòng được, không đẩy trang tràn ngang', () => {
+    const { container } = render(<AvatarUpload initial="A" image={null} />);
+    const input = container.querySelector('input[type="file"]') as HTMLInputElement;
+    const longName = `${'a'.repeat(80)}.txt`;
+
+    fireEvent.change(input, {
+      target: { files: [new File(['x'], longName, { type: 'text/plain' })] },
+    });
+
+    expect(screen.getByText((text) => text.startsWith(longName))).toHaveClass('wrap-anywhere');
+  });
+});
 
 describe('AvatarUpload — chọn file hợp lệ → sign → upload → setAvatar → refresh', () => {
   it('chọn png hợp lệ chạy trọn luồng ký-tải-lưu', async () => {

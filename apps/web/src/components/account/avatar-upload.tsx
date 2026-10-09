@@ -252,8 +252,10 @@ export function AvatarUpload({
           <CircleAlertIcon />
           <AlertTitle>{t.errorsTitle}</AlertTitle>
           <AlertDescription>
+            {/* `wrap-anywhere`: câu lỗi mang tên tệp — tên dài liền một chuỗi từng đẩy trang 320px
+                tràn ngang 240px (review 09/10). */}
             {errors.map((error) => (
-              <p key={error} className="last:mb-0">
+              <p key={error} className="last:mb-0 wrap-anywhere">
                 {error}
               </p>
             ))}
