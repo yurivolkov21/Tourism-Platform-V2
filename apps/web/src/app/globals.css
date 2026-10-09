@@ -364,10 +364,14 @@ html:not(.dark) .stamp-ink {
     print-color-adjust: exact;
   }
 
+  /* Đệm ngang cố định 1.5rem ở mọi khổ giấy: cột in chỉ 17rem, mà đệm `md:px-8` của màn hình
+     (cột 440px) bật lên từ khổ in 768px CSS (lề tối thiểu, khổ ngang) và để ô mã còn 142px cho
+     mã 154px — mã tràn khỏi ô (review P7C#9). Với 1.5rem ô mã còn 158px ở mọi khổ in. */
   [data-slot="voucher-pass"] {
     background: none;
     color: var(--hero);
     border: 2px solid var(--primary);
+    padding-inline: 1.5rem;
   }
 
   [data-slot="voucher-pass"] * {

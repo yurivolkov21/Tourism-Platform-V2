@@ -8,13 +8,18 @@ import { CopyCodeButton } from '@/components/checkout/copy-code-button';
  * Chỗ gọi chọn bản nào hiện bằng class responsive truyền qua `className` (mốc `xl`).
  *
  * Nút chép giấu khi in: bấm vào giấy thì không được (spec §6.4).
+ *
+ * Mã KHÔNG bẻ dòng: gạch nối của "BK-" là chỗ ngắt dòng hợp lệ, nên ô hẹp từng gãy mã thành
+ * "BK-" / "B6VCOQNW" — ô gọn ở 320px, ô của mảng teal trên bản in khổ ≥ 768px CSS (review P7C#9).
+ * Mã khách đọc cho người đón phải liền một mạch. Không đủ chỗ cho cả mã lẫn nút chép trên một hàng
+ * thì nút xuống hàng (`flex-wrap`) thay vì mã.
  */
 export function VoucherCode({ code, className }: { code: string; className?: string }) {
   return (
     <div
       data-slot="voucher-code"
       className={cn(
-        'flex items-center justify-between gap-3 rounded-xl border bg-muted/40 px-3 py-2.5',
+        'flex flex-wrap items-center justify-between gap-x-3 gap-y-2 rounded-xl border bg-muted/40 px-3 py-2.5',
         className,
       )}
     >
@@ -22,7 +27,9 @@ export function VoucherCode({ code, className }: { code: string; className?: str
         <p className="text-[10px] font-bold tracking-[0.15em] text-muted-foreground uppercase">
           {messages.voucher.codeLabel}
         </p>
-        <p className="mt-1.5 font-mono text-xl font-semibold tracking-[0.1em]">{code}</p>
+        <p className="mt-1.5 font-mono text-xl font-semibold tracking-[0.1em] whitespace-nowrap">
+          {code}
+        </p>
       </div>
       <div className="shrink-0 print:hidden">
         <CopyCodeButton code={code} />
