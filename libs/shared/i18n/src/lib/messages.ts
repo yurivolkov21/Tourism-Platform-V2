@@ -640,8 +640,13 @@ export const messages = {
     /** Chip kính mờ: "2 adults, 1 child × $49" — `party` từ `accountBookings.travellers`. */
     partyPrice: (party: string, price: string) => `${party} × ${price}`,
     meetingPoint: 'Meeting point',
-    /** Tour đã gỡ (hoặc chưa ghi điểm hẹn): email xác nhận đã mang chi tiết. */
-    meetingPointFallback: 'Details are in your confirmation email.',
+    /**
+     * Không có điểm hẹn để in (tour đã gỡ, chưa ghi điểm hẹn, API catalog lỗi): chỗ gọi nối link
+     * `meetingPointContact` (`/contact`) trước câu `meetingPointFallback` (user chốt 08/10, D4).
+     * KHÔNG hứa "in your confirmation email": email xác nhận không mang điểm hẹn (review P7C#4).
+     */
+    meetingPointContact: 'Contact us',
+    meetingPointFallback: 'for the meeting point — we reply within a day.',
     paidWith: (provider: string) => `Paid with ${provider}`,
     leadTraveller: 'Lead traveller',
     needHelp: 'Need help?',

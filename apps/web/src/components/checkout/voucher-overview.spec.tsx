@@ -134,9 +134,20 @@ describe('VoucherOverview — bốn ô có icon', () => {
     expect(screen.getByText(MEETING)).toBeInTheDocument();
   });
 
-  it('tour đã gỡ (không có điểm hẹn) → chỉ sang email xác nhận', () => {
+  /**
+   * Không có điểm hẹn (tour đã gỡ, chưa ghi điểm hẹn, API catalog lỗi): mời liên hệ, KHÔNG hứa
+   * "Details are in your confirmation email." — email xác nhận không mang điểm hẹn (review P7C#4,
+   * câu user chốt D4).
+   */
+  it('không có điểm hẹn → "Contact us" (link /contact) "for the meeting point — we reply within a day."', () => {
     renderOverview({}, null);
-    expect(screen.getByText('Details are in your confirmation email.')).toBeInTheDocument();
+    const body = screen.getByText('Meeting point').nextElementSibling;
+    if (!(body instanceof HTMLElement)) throw new Error('ô Meeting point phải có dòng chữ phụ');
+    expect(body.textContent).toBe('Contact us for the meeting point — we reply within a day.');
+    expect(within(body).getByRole('link', { name: 'Contact us' })).toHaveAttribute(
+      'href',
+      '/contact',
+    );
   });
 
   it('Paid with {cổng}: ngày trả · ghi chú chế độ thử', () => {
@@ -155,7 +166,9 @@ describe('VoucherOverview — bốn ô có icon', () => {
 
   it('Need help? — link "contact us" tới /contact', () => {
     renderOverview();
-    expect(screen.getByText('Need help?')).toBeInTheDocument();
+    expect(screen.getByText('Need help?').nextElementSibling?.textContent).toBe(
+      'Reply to the confirmation email, or contact us.',
+    );
     expect(screen.getByRole('link', { name: 'contact us' })).toHaveAttribute('href', '/contact');
   });
 });

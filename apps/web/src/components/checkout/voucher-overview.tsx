@@ -119,7 +119,13 @@ export function VoucherOverview({
 
       <div className="mt-4.5 grid gap-3 sm:grid-cols-2">
         <InfoCell icon={<MapPinIcon aria-hidden="true" />} title={t.meetingPoint}>
-          {meetingPoint ?? t.meetingPointFallback}
+          {/* Không có điểm hẹn để in thì mời liên hệ — email xác nhận không mang điểm hẹn, nên
+              không được hứa "Details are in your confirmation email." (review P7C#4, D4). */}
+          {meetingPoint ?? (
+            <>
+              <ContactLink>{t.meetingPointContact}</ContactLink> {t.meetingPointFallback}
+            </>
+          )}
         </InfoCell>
         <InfoCell icon={<CreditCardIcon aria-hidden="true" />} title={t.paidWith(view.provider)}>
           {`${view.paidOn} · ${messages.tourDetail.booking.testMode}`}
@@ -128,17 +134,22 @@ export function VoucherOverview({
           {`${booking.contactName} · ${booking.contactEmail}`}
         </InfoCell>
         <InfoCell icon={<MessageSquareIcon aria-hidden="true" />} title={t.needHelp}>
-          {t.needHelpBody}{' '}
-          <Link
-            href="/contact"
-            className="font-semibold text-primary-emphasis underline-offset-4 hover:underline"
-          >
-            {t.contactUs}
-          </Link>
-          .
+          {t.needHelpBody} <ContactLink>{t.contactUs}</ContactLink>.
         </InfoCell>
       </div>
     </div>
+  );
+}
+
+/** Link `/contact` nằm giữa dòng chữ phụ của một ô (Meeting point dự phòng, Need help?). */
+function ContactLink({ children }: { children: ReactNode }) {
+  return (
+    <Link
+      href="/contact"
+      className="font-semibold text-primary-emphasis underline-offset-4 hover:underline"
+    >
+      {children}
+    </Link>
   );
 }
 
