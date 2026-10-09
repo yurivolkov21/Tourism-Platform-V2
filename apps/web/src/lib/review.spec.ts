@@ -156,6 +156,35 @@ describe('reviewSlot — trang chi tiết booking hiện gì ở chỗ đánh gi
       'hidden',
     );
   });
+
+  /**
+   * Chuyến bị CÔNG TY huỷ không chạy (ADR-0041 AMEND 1): không mời viết review, kể cả khi đơn còn
+   * PAID vì job hoàn tiền chưa chạy (hay đang retry) mà ngày về đã qua — form từng đứng dưới khối
+   * "Departure cancelled" và gửi được thật (review cuối M1).
+   */
+  it('chuyến bị công ty huỷ, chưa có review: "hidden" dù đơn còn PAID và ngày về đã qua', () => {
+    expect(reviewSlot(makeBooking({ ...done, departureCancelled: true }))).toBe('hidden');
+  });
+
+  it('chuyến bị công ty huỷ, ngày về chưa tới: "hidden", không "tooEarly"', () => {
+    const booking = makeBooking({
+      status: 'PAID',
+      departureEndDate: '2026-12-01',
+      departureCancelled: true,
+    });
+    expect(reviewSlot(booking)).toBe('hidden');
+  });
+
+  it('chuyến bị công ty huỷ mà đơn đã có review: vẫn theo phán quyết của review (còn sửa, rút)', () => {
+    const review = ownReview();
+    const booking = makeBooking({
+      ...done,
+      departureCancelled: true,
+      reviewedAt: review.createdAt,
+      review,
+    });
+    expect(reviewSlot(booking)).toBe('pending');
+  });
 });
 
 /**

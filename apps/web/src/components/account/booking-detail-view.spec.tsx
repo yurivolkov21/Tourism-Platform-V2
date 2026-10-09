@@ -212,6 +212,19 @@ describe('BookingDetailView — khu review theo cổng `reviewSlot`, ở mọi g
     render(<BookingDetailView booking={UPCOMING} tour={TOUR} today={TODAY} />);
     expect(screen.queryByTestId('review')).toBeNull();
   });
+
+  // Chuyến 20–21/09 bị công ty huỷ, job hoàn tiền kẹt qua ngày về (cổng thanh toán từ chối mọi lượt
+  // retry) nên đơn còn PAID: khu review từng mời viết review cho một chuyến không chạy (review cuối
+  // M1).
+  it('chuyến bị công ty huỷ, đơn còn PAID chưa review, ngày về đã qua: chỉ khối đóng, không form', () => {
+    const booking = at({
+      departureStartDate: '2026-09-20',
+      departureEndDate: '2026-09-21',
+      departureCancelled: true,
+    });
+    const { container } = render(<BookingDetailView booking={booking} tour={TOUR} today={TODAY} />);
+    expect(column(container)).toEqual(['closed|cancelled']);
+  });
 });
 
 describe('BookingDetailView — khung (spec §5.1)', () => {
