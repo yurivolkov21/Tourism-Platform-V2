@@ -3,7 +3,10 @@ import { describe, expect, it } from 'vitest';
 import type { JourneyView } from '@/lib/booking-journey';
 import { TripJourney } from './trip-journey';
 
-/** Đơn sắp đi của bản vẽ: Today ở 41.25% vạch → `left:43%` khung, vạch tô `width:33%`. */
+/**
+ * Đơn sắp đi của bản vẽ: Today ở 41.25% vạch → 43% khung, giữa tâm mốc Paid (30%) và Free
+ * cancellation (50%); vạch tô từ tâm mốc đầu (10%) tới đúng chỗ nhãn.
+ */
 const UPCOMING: JourneyView = {
   variant: 'standard',
   milestones: [
@@ -19,7 +22,6 @@ const UPCOMING: JourneyView = {
     { key: 'tripEnds', label: 'Trip ends', detail: 'Tue 3 Nov', state: 'next' },
   ],
   today: { percent: 41.25, before: 2 },
-  fillPercent: 41.25,
   chip: { label: 'Departs in 29 days', tone: 'active' },
 };
 
@@ -27,7 +29,6 @@ const TRAVELLED: JourneyView = {
   ...UPCOMING,
   milestones: UPCOMING.milestones.map((milestone) => ({ ...milestone, state: 'done' })),
   today: null,
-  fillPercent: 100,
   chip: { label: 'Completed', tone: 'done' },
 };
 
@@ -40,7 +41,6 @@ const CANCELLED: JourneyView = {
     { key: 'refund', label: 'Refund', detail: '$147.00', state: 'done' },
   ],
   today: null,
-  fillPercent: 100,
   chip: { label: 'Cancelled', tone: 'muted' },
 };
 
@@ -84,21 +84,40 @@ describe('TripJourney', () => {
     );
   });
 
-  it('vị trí khớp bản vẽ: Today ở 43% khung, vạch tô từ 10% rộng 33%', () => {
+  /**
+   * Tâm nhãn ở 43% khung theo tỷ lệ ngày, nhưng kẹp cách tâm hai mốc bao quanh (30% và 50%) ít nhất
+   * 48px — nửa icon 20px + nửa nhãn ~25px + khe thở. Kẹp theo px chứ không theo % đoạn: 20% đoạn
+   * chỉ còn 23px ở 768px, nhãn đè icon 22px (review P7 B21). Vạch tô dừng ĐÚNG chỗ nhãn đứng.
+   */
+  it('Today ở 43% khung, kẹp ±48px quanh tâm hai mốc bao quanh; vạch tô từ 10% tới đúng nhãn', () => {
     const { container } = render(<TripJourney journey={UPCOMING} />);
     const today = container.querySelector<HTMLElement>('[data-slot="journey-today"]');
     const fill = container.querySelector<HTMLElement>('[data-slot="journey-fill"]');
-    expect(today?.style.left).toBe('43%');
+    const at = 'clamp(calc(30% + 48px), 43%, calc(50% - 48px))';
+    expect(today?.style.getPropertyValue('--today-x')).toBe(at);
     expect(fill?.style.left).toBe('10%');
-    expect(fill?.style.width).toBe('33%');
+    expect(fill?.style.getPropertyValue('--fill-w')).toBe(`calc(${at} - 10%)`);
+  });
+
+  it('Today ở đoạn cuối (ngày về): kẹp quanh tâm Departure (70%) và Trip ends (90%)', () => {
+    const { container } = render(
+      <TripJourney journey={{ ...UPCOMING, today: { percent: 100, before: 4 } }} />,
+    );
+    expect(
+      container
+        .querySelector<HTMLElement>('[data-slot="journey-today"]')
+        ?.style.getPropertyValue('--today-x'),
+    ).toBe('clamp(calc(70% + 48px), 90%, calc(90% - 48px))');
   });
 
   it('chuyến đã đi: không Today, vạch tô trọn (80% khung), chip tông "done"', () => {
     const { container } = render(<TripJourney journey={TRAVELLED} />);
     expect(container.querySelector('[data-slot="journey-today"]')).toBeNull();
-    expect(container.querySelector<HTMLElement>('[data-slot="journey-fill"]')?.style.width).toBe(
-      '80%',
-    );
+    expect(
+      container
+        .querySelector<HTMLElement>('[data-slot="journey-fill"]')
+        ?.style.getPropertyValue('--fill-w'),
+    ).toBe('80%');
     expect(screen.getByText('Completed')).toHaveAttribute('data-tone', 'done');
   });
 
@@ -107,7 +126,7 @@ describe('TripJourney', () => {
     expect(container.querySelector('ol')).toHaveClass('md:grid-cols-4');
     const fill = container.querySelector<HTMLElement>('[data-slot="journey-fill"]');
     expect(fill?.style.left).toBe('12.5%');
-    expect(fill?.style.width).toBe('75%');
+    expect(fill?.style.getPropertyValue('--fill-w')).toBe('75%');
   });
 
   it('không có chip (giữ chỗ lỡ hạn) thì không vẽ chip', () => {
@@ -125,7 +144,6 @@ describe('TripJourney', () => {
             },
           ],
           today: null,
-          fillPercent: 100,
           chip: null,
         }}
       />,

@@ -63,22 +63,15 @@ export interface JourneyView {
   variant: JourneyVariant;
   milestones: JourneyMilestone[];
   /**
-   * Nhãn Today. `percent` là vị trí trên vạch nối (0 = tâm mốc đầu, 100 = tâm mốc cuối);
-   * `before` là chỉ số mốc mà dòng Today chen TRƯỚC ở danh sách dọc của điện thoại.
-   * `null` ngoài ba giai đoạn chờ trả, sắp đi, đang đi.
+   * Nhãn Today. `percent` là vị trí ĐÚNG tỷ lệ ngày trên vạch nối (0 = tâm mốc đầu, 100 = tâm mốc
+   * cuối) — chưa né icon: nhãn đặt sát mốc thì đè icon, và khoảng né tính bằng px nên chỉ component
+   * làm được (`TripJourney`). `before` là chỉ số mốc mà dòng Today chen TRƯỚC ở danh sách dọc của
+   * điện thoại — cũng là mốc ngay sau nhãn trên vạch ngang. `null` ngoài ba giai đoạn chờ trả, sắp
+   * đi, đang đi; khi ấy vạch tô trọn.
    */
   today: { percent: number; before: number } | null;
-  /** Phần vạch đã tô, cùng thang với `today.percent`. */
-  fillPercent: number;
   chip: JourneyChip | null;
 }
-
-/**
- * Nhãn Today không sát mốc hơn 20% một đoạn: icon mốc rộng 40px, nhãn rộng ~50px — đặt đúng
- * tỷ lệ ở biên là nhãn đè lên icon. Lệch tối đa 20% đoạn, đổi lấy chữ đọc được.
- */
-const TODAY_MIN = 0.2;
-const TODAY_MAX = 0.8;
 
 /** Mốc trước khi gắn trạng thái; `date` là ngày lịch dùng đặt nhãn Today (`null`: chưa có ngày). */
 interface DraftMilestone {
@@ -139,12 +132,10 @@ function standardJourney(booking: BookingDetail, phase: StandardPhase, today: st
     },
   ];
 
-  const mark = phase === 'travelled' ? null : todayMark(drafts, today);
   return {
     variant: 'standard',
     milestones: withStates(drafts),
-    today: mark,
-    fillPercent: mark ? mark.percent : 100,
+    today: phase === 'travelled' ? null : todayMark(drafts, today),
     chip: standardChip(booking, phase, today),
   };
 }
@@ -188,7 +179,9 @@ function withStates(drafts: readonly DraftMilestone[]): JourneyMilestone[] {
 
 /**
  * Today nằm trên vạch giữa mốc xong CUỐI CÙNG và mốc kế tiếp, theo tỷ lệ số ngày (spec §2.2).
- * Mốc kế tiếp chưa có ngày (Paid của đơn chưa trả) thì đứng giữa đoạn.
+ * Mốc kế tiếp chưa có ngày (Paid của đơn chưa trả) thì đứng giữa đoạn. Tỷ lệ chỉ kẹp trong đoạn
+ * ([0, 1] — cờ huỷ của server và ngày lịch có thể lệch nhau một chút); né icon mốc là việc của
+ * component, theo px (review P7 B21: kẹp 20% đoạn ở đây vẫn đè icon tới 22px ở 768px).
  */
 function todayMark(
   drafts: readonly DraftMilestone[],
@@ -200,7 +193,7 @@ function todayMark(
   if (!from || !to) return null;
   const span = from.date && to.date ? calendarDaysBetween(from.date, to.date) : 0;
   const ratio = span > 0 && from.date ? calendarDaysBetween(from.date, today) / span : 0.5;
-  const clamped = Math.min(TODAY_MAX, Math.max(TODAY_MIN, ratio));
+  const clamped = Math.min(1, Math.max(0, ratio));
   const percent = ((lastDone + clamped) * 100) / (drafts.length - 1);
   // Làm tròn hai chữ số: phép chia số thực cho ra 41.250000000000007.
   return { percent: Math.round(percent * 100) / 100, before: lastDone + 1 };
@@ -261,7 +254,6 @@ function cancelledJourney(booking: BookingDetail): JourneyView {
     variant: 'cancelled',
     milestones,
     today: null,
-    fillPercent: 100,
     chip: { label: t.cancelled, tone: 'muted' },
   };
 }
@@ -306,7 +298,6 @@ function lapsedJourney(booking: BookingDetail): JourneyView {
       { key: 'paymentNotCompleted', label: t.paymentNotCompleted, detail: null, state: 'now' },
     ],
     today: null,
-    fillPercent: 100,
     chip: null,
   };
 }

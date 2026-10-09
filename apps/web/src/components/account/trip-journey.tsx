@@ -11,6 +11,7 @@ import {
   RotateCcwIcon,
   TicketIcon,
 } from 'lucide-react';
+import type { CSSProperties } from 'react';
 import type {
   JourneyChip,
   JourneyChipTone,
@@ -22,15 +23,15 @@ import type {
 
 /**
  * Thanh hành trình (spec P7 §2.2, bản vẽ `.jr`) — chỉ VẼ `JourneyView` của
- * `journeyMilestones`; mọi luật nằm ở đó.
+ * `journeyMilestones`; mọi luật nằm ở đó, riêng phép né icon của nhãn Today (tính bằng px) ở đây.
  *
  * MỘT danh sách cho cả hai khổ. Điện thoại: danh sách dọc, dòng Today chen giữa hai mốc đúng
  * chỗ của nó trong DOM (trình đọc màn hình nghe theo cùng thứ tự). Từ `md`: lưới ngang, dòng
- * Today rời khỏi luồng (`absolute`) và đứng trên vạch nối ở `left` tính từ `today.percent`.
- * `left` viết inline vô hại ở điện thoại vì khi ấy phần tử còn `position: static`.
+ * Today rời khỏi luồng (`absolute`) và đứng trên vạch nối ở vị trí của `todayPosition`.
  *
  * Vạch nối chạy từ tâm cột đầu tới tâm cột cuối: mỗi cột rộng `100 / n`%, tâm cột đầu cách mép
- * `50 / n`% — năm mốc là 10%…90%, đúng `.jr-line` của bản vẽ.
+ * `50 / n`% — năm mốc là 10%…90%, đúng `.jr-line` của bản vẽ. Phần vạch đã tô dừng đúng chỗ nhãn
+ * Today đứng; không có Today thì tô trọn.
  */
 const ICON: Record<MilestoneKey, LucideIcon> = {
   booked: TicketIcon,
@@ -67,20 +68,42 @@ const COLUMNS: Record<number, string> = {
 /** Làm tròn hai chữ số: phép nhân số thực cho ra `42.99999…%`. */
 const round2 = (value: number) => Math.round(value * 100) / 100;
 
+/**
+ * Khoảng tối thiểu (px) từ TÂM nhãn TODAY tới TÂM icon hai mốc bao quanh, từ `md` (nhãn đứng trên
+ * vạch, cùng dải dọc với icon): nửa icon (`size-10` → 20px) + nửa nhãn ("TODAY" Plex Mono 9.5px giãn
+ * 0.12em, `px-2` → 50.2px → 25.1px) + ~3px thở. Kẹp theo PX chứ không theo % đoạn: % đoạn co theo
+ * bề rộng vạch — 20% đoạn chỉ còn 23px ở 768px, nhãn đè icon 22px (review P7 B21). Đoạn hẹp nhất
+ * ở `md` (năm mốc, vạch 578px) dài 115px, đủ cho 2 × 48px.
+ */
+const TODAY_CLEARANCE_PX = 48;
+
+/** Tâm mốc thứ `index` trên vạch, % bề rộng khung — năm mốc là 10%, 30%, 50%, 70%, 90%. */
+function centre(index: number, count: number): number {
+  const inset = 50 / count;
+  return round2(inset + ((100 - 2 * inset) * index) / (count - 1));
+}
+
+/**
+ * Chỗ nhãn TODAY đứng trên vạch, dạng biểu thức CSS: tâm theo tỷ lệ ngày (`today.percent` trên khúc
+ * giữa tâm mốc đầu và mốc cuối), kẹp cách tâm hai mốc bao quanh (`before − 1` và `before`) ít nhất
+ * `TODAY_CLEARANCE_PX`. Phải là `clamp()` của CSS vì bề rộng vạch chỉ có lúc dàn trang.
+ */
+function todayPosition(today: NonNullable<JourneyView['today']>, count: number): string {
+  const inset = 50 / count;
+  const at = round2(inset + ((100 - 2 * inset) * today.percent) / 100);
+  const from = centre(today.before - 1, count);
+  const to = centre(today.before, count);
+  return `clamp(calc(${from}% + ${TODAY_CLEARANCE_PX}px), ${at}%, calc(${to}% - ${TODAY_CLEARANCE_PX}px))`;
+}
+
 export function TripJourney({ journey }: { journey: JourneyView }) {
   const count = journey.milestones.length;
   const inset = 50 / count;
   const span = 100 - 2 * inset;
+  const today = journey.today;
+  const todayX = today ? todayPosition(today, count) : null;
   const items = journey.milestones.flatMap((milestone, index) => {
-    const mark =
-      journey.today && journey.today.before === index
-        ? [
-            <TodayMark
-              key="today"
-              left={`${round2(inset + (span * journey.today.percent) / 100)}%`}
-            />,
-          ]
-        : [];
+    const mark = todayX && today?.before === index ? [<TodayMark key="today" x={todayX} />] : [];
     return [...mark, <MilestoneItem key={milestone.key} milestone={milestone} />];
   });
 
@@ -101,11 +124,17 @@ export function TripJourney({ journey }: { journey: JourneyView }) {
           className="absolute top-[19px] hidden h-0.5 bg-muted md:block"
           style={{ left: `${inset}%`, right: `${inset}%` }}
         />
+        {/* Bề rộng qua biến CSS: `clamp()` viết thẳng vào `width` inline thì jsdom bỏ đi. */}
         <span
           aria-hidden="true"
           data-slot="journey-fill"
-          className="absolute top-[19px] hidden h-0.5 bg-primary md:block"
-          style={{ left: `${inset}%`, width: `${round2((span * journey.fillPercent) / 100)}%` }}
+          className="absolute top-[19px] hidden h-0.5 w-(--fill-w) bg-primary md:block"
+          style={
+            {
+              left: `${inset}%`,
+              '--fill-w': todayX ? `calc(${todayX} - ${inset}%)` : `${span}%`,
+            } as CSSProperties
+          }
         />
         <ol
           className={cn(
@@ -147,13 +176,17 @@ function MilestoneItem({ milestone }: { milestone: JourneyMilestone }) {
   );
 }
 
-/** Nhãn TODAY (bản vẽ `.jr-today`): điện thoại là một dòng, từ `md` nằm đè lên vạch nối. */
-function TodayMark({ left }: { left: string }) {
+/**
+ * Nhãn TODAY (bản vẽ `.jr-today`): điện thoại là một dòng của danh sách, từ `md` nằm đè lên vạch nối
+ * ở `x` (`todayPosition`). `x` đi qua biến CSS và chỉ áp từ `md` (`md:left-(--today-x)`) — ở điện
+ * thoại phần tử còn `position: static`.
+ */
+function TodayMark({ x }: { x: string }) {
   return (
     <li
       data-slot="journey-today"
-      style={{ left }}
-      className="flex pl-[52px] md:absolute md:top-2.5 md:z-20 md:block md:-translate-x-1/2 md:pl-0"
+      style={{ '--today-x': x } as CSSProperties}
+      className="flex pl-[52px] md:absolute md:top-2.5 md:left-(--today-x) md:z-20 md:block md:-translate-x-1/2 md:pl-0"
     >
       <span className="rounded-full bg-foreground px-2 py-1 font-mono text-[9.5px] leading-none font-bold tracking-[0.12em] whitespace-nowrap text-background uppercase">
         {messages.bookingDetail.journey.today}

@@ -46,11 +46,14 @@ describe('journeyMilestones — đơn sắp đi (bản vẽ, hôm nay 05/10)', (
     expect(view.variant).toBe('standard');
     // (1 + 52/80) / 4 đoạn = 41.25% vạch; bản vẽ: 10% + 80% × 41.25% = 43% khung.
     expect(view.today).toEqual({ percent: 41.25, before: 2 });
-    expect(view.fillPercent).toBe(41.25);
     expect(view.chip).toEqual({ label: 'Departs in 29 days', tone: 'active' });
   });
 
-  it('đúng ngày chót vẫn còn hạn (hết 23:59 giờ VN); chip "tomorrow"; Today kẹp ở 80% đoạn', () => {
+  /**
+   * Today đứng ĐÚNG tỷ lệ ngày, kể cả sát mốc: kẹp để nhãn không đè icon là việc của component, theo
+   * px (`TripJourney`). Kẹp theo % đoạn ở đây từng đè icon 22px ở 768px (review P7 B21).
+   */
+  it('đúng ngày chót vẫn còn hạn (hết 23:59 giờ VN); chip "tomorrow"; Today đúng mốc hạn huỷ', () => {
     const view = journeyMilestones(UPCOMING, '2026-11-02');
     expect(view.milestones[2]).toEqual({
       key: 'freeCancellation',
@@ -59,8 +62,17 @@ describe('journeyMilestones — đơn sắp đi (bản vẽ, hôm nay 05/10)', (
       state: 'now',
     });
     expect(view.chip).toEqual({ label: 'Departs tomorrow', tone: 'active' });
-    // Tỷ lệ 80/80 = 1, kẹp về 0.8 để nhãn không đè icon mốc: (1 + 0.8) / 4.
-    expect(view.today).toEqual({ percent: 45, before: 2 });
+    // Tỷ lệ 80/80 = 1: (1 + 1) / 4.
+    expect(view.today).toEqual({ percent: 50, before: 2 });
+  });
+
+  it('trả ngay hôm nay (tỷ lệ 0): Today đúng mốc Paid, không lệch vào giữa đoạn', () => {
+    const view = journeyMilestones(
+      { ...UPCOMING, createdAt: '2026-10-05T01:00:00.000Z', paidAt: '2026-10-05T01:05:00.000Z' },
+      TODAY,
+    );
+    // (1 + 0) / 4.
+    expect(view.today).toEqual({ percent: 25, before: 2 });
   });
 
   it('đã qua hạn huỷ: mốc ghi "Ended", tính là xong, Today nằm giữa hạn huỷ và ngày đi', () => {
@@ -181,14 +193,16 @@ describe('journeyMilestones — đang đi (04–06/10)', () => {
       state: 'now',
     });
     expect(view.chip).toEqual({ label: 'Day 3 of 3', tone: 'active' });
-    expect(view.today).toEqual({ percent: 95, before: 4 });
+    // Tỷ lệ 2/2 = 1: (3 + 1) / 4 — đúng mốc Trip ends.
+    expect(view.today).toEqual({ percent: 100, before: 4 });
   });
 
-  it('ngày đi: "Departed" ngay từ hôm nay; Today kẹp ở 20% đoạn cuối', () => {
+  it('ngày đi: "Departed" ngay từ hôm nay; Today đúng mốc Departure', () => {
     const view = journeyMilestones(ON_TOUR, '2026-10-04');
     expect(view.milestones[3]?.label).toBe('Departed');
     expect(view.chip).toEqual({ label: 'Day 1 of 3', tone: 'active' });
-    expect(view.today).toEqual({ percent: 80, before: 4 });
+    // Tỷ lệ 0: (3 + 0) / 4.
+    expect(view.today).toEqual({ percent: 75, before: 4 });
   });
 });
 
@@ -215,7 +229,6 @@ describe('journeyMilestones — đã đi (bản vẽ: Bà Nà Hills 11/02)', () 
       ['tripEnds', 'Trip ended', 'Wed 11 Feb', 'done'],
     ]);
     expect(view.today).toBeNull();
-    expect(view.fillPercent).toBe(100);
     expect(view.chip).toEqual({ label: 'Completed', tone: 'done' });
   });
 });
@@ -295,7 +308,6 @@ describe('journeyMilestones — đã huỷ', () => {
       ['refund', 'Refund', '$147.00', 'done'],
     ]);
     expect(view.today).toBeNull();
-    expect(view.fillPercent).toBe(100);
     expect(view.chip).toEqual({ label: 'Cancelled', tone: 'muted' });
   });
 
@@ -396,6 +408,5 @@ describe('journeyMilestones — giữ chỗ qua hạn chót mà chưa trả', ()
     ]);
     expect(view.chip).toBeNull();
     expect(view.today).toBeNull();
-    expect(view.fillPercent).toBe(100);
   });
 });
