@@ -305,6 +305,17 @@ describe('journeyMilestones — đã huỷ', () => {
     expect(view.milestones.map((milestone) => milestone.key)).toEqual(['booked', 'cancelled']);
   });
 
+  it('bị thu rồi hoàn tự động trước khi sang PAID (paidAt null): không mốc Paid, vẫn mốc Refund', () => {
+    // Thua đua ghế hay chuyến đóng lúc capture về: không có ngày trả để in, nhưng khoản hoàn là
+    // thật — khối Payment cùng trang in "Refunded −$147.00" (review P7 B1).
+    const view = journeyMilestones({ ...CANCELLED, paidAt: null }, TODAY);
+    expect(view.milestones.map(({ key, detail }) => [key, detail])).toEqual([
+      ['booked', '14 Aug 2026'],
+      ['cancelled', '21 Sep 2026'],
+      ['refund', '$147.00'],
+    ]);
+  });
+
   it('REFUNDED còn ngày đi tương lai cũng là biến thể huỷ', () => {
     const view = journeyMilestones({ ...CANCELLED, status: 'REFUNDED' }, TODAY);
     expect(view.variant).toBe('cancelled');

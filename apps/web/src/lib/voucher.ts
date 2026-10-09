@@ -5,8 +5,8 @@ import {
   tripLengthDays,
 } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
-import { paymentProviderLabel, type RefundSummary, refundSummary, vietnamDay } from './booking-vm';
-import { formatChipDate, formatDate, formatDateRange, formatMoneyExact } from './tours';
+import { paymentProviderLabel, refundSentence, refundSummary, vietnamDay } from './booking-vm';
+import { formatChipDate, formatDate, formatDateRange } from './tours';
 
 /**
  * Voucher còn "vừa trả tiền" trong bao nhiêu phút kể từ `paidAt` (spec P7 §2.6).
@@ -59,22 +59,6 @@ export interface VoucherView {
   journal: VoucherJournalItem[];
   /** Dải thay ô mã khi đơn đã huỷ; `null` ở các giai đoạn còn hiệu lực. */
   cancelledNotice: string | null;
-}
-
-/** Câu hoàn tiền: dùng lại nguyên văn khối `refundLine` của trang chi tiết đơn. */
-function refundDetail(refund: RefundSummary, currency: string): string {
-  const t = messages.accountBookingDetail.refundLine;
-  switch (refund.kind) {
-    case 'full':
-      return t.full(formatMoneyExact(refund.amount, currency));
-    case 'partial':
-      return t.partial(
-        formatMoneyExact(refund.amount, currency),
-        formatMoneyExact(refund.total, currency),
-      );
-    case 'none':
-      return t.none;
-  }
 }
 
 /**
@@ -248,7 +232,8 @@ export function voucherView(booking: BookingDetail, now: Date, today: string): V
             : [
                 {
                   label: t.journal.refund,
-                  detail: refundDetail(refund, booking.currency),
+                  // Cùng câu với cột phải của trang chi tiết đơn đã huỷ.
+                  detail: refundSentence(refund, booking.currency),
                   // Không hoàn đồng nào thì chưa có gì "xảy ra" để đánh dấu.
                   done: refund.kind !== 'none',
                 },

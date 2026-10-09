@@ -7,9 +7,9 @@ import {
   type BookingView,
   legacyCancellationNote,
   type RefundSummary,
+  refundSentence,
   refundSummary,
 } from '@/lib/booking-vm';
-import { formatMoneyExact } from '@/lib/tours';
 
 /**
  * Cột phải của đơn đã kết thúc mà không đi (spec P7 §2.5): đã huỷ hay đã hoàn đủ
@@ -66,31 +66,21 @@ function ClosedFrame({ title, children }: { title: string; children: ReactNode }
 }
 
 /**
- * Chữ hoàn tiền — dời từ `RefundLine` của trang cũ, giữ nguyên luật: `formatMoneyExact` vì đây
- * là số tiền THẬT khách đối chiếu với sao kê; không hoàn đồng nào thì câu tiếp theo là chỗ tra
- * lý do (link chính sách), không phải lời hứa về thời gian chờ.
+ * Chữ hoàn tiền — dời từ `RefundLine` của trang cũ: câu kể khoản hoàn là `refundSentence` dùng
+ * chung với voucher; không hoàn đồng nào thì câu tiếp theo là chỗ tra lý do (link chính sách),
+ * không phải lời hứa về thời gian chờ.
  */
 function RefundText({ refund, currency }: { refund: RefundSummary; currency: string }) {
-  const t = messages.accountBookingDetail.refundLine;
-  const sentence =
-    refund.kind === 'full'
-      ? t.full(formatMoneyExact(refund.amount, currency))
-      : refund.kind === 'partial'
-        ? t.partial(
-            formatMoneyExact(refund.amount, currency),
-            formatMoneyExact(refund.total, currency),
-          )
-        : t.none;
   return (
     <div className="mt-3 text-[13.5px]">
-      <p>{sentence}</p>
+      <p>{refundSentence(refund, currency)}</p>
       <p className="mt-0.5 text-muted-foreground">
         {refund.kind === 'none' ? (
           <Link href="/cancellation-policy" className="underline-offset-4 hover:underline">
             {messages.cancellationDeadline.policyLink}
           </Link>
         ) : (
-          t.timing
+          messages.accountBookingDetail.refundLine.timing
         )}
       </p>
     </div>

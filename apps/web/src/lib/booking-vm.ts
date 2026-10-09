@@ -1,6 +1,6 @@
 import { type Booking, type BookingCancellation, vietnamToday } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
-import { formatChipDate, formatDate } from './tours';
+import { formatChipDate, formatDate, formatMoneyExact } from './tours';
 
 /**
  * Ngày lịch Việt Nam (`YYYY-MM-DD`) của một mốc thời gian ISO của đơn — đặt, trả, huỷ, gửi yêu
@@ -118,15 +118,27 @@ export type RefundSummary =
   | { kind: 'none' };
 
 /**
+ * Đơn đã từng thu tiền của khách: có `paidAt`, HOẶC sổ đã có khoản hoàn.
+ *
+ * `paidAt` một mình không đủ: đơn bị thu rồi hoàn tự động trước khi kịp sang PAID (thua đua
+ * ghế, chuyến đóng hay dời lúc capture về, capture mồ côi) bị API đặt CANCELLED hay REFUNDED mà
+ * không ghi `paid_at` — tiền vẫn đã đi một vòng. Coi nó là "chưa thu" thì cùng một trang vừa in
+ * "Refunded −$147.00" ở khối Payment vừa im về khoản hoàn ở thanh hành trình (review P7 B1).
+ *
+ * So bằng `Number`: '0' và '0.00' là cùng một số tiền, và cả hai đều xuất hiện thật (API trả
+ * '0.00', sổ rỗng trả '0').
+ */
+export function wasCharged(b: Pick<Booking, 'paidAt' | 'refundedTotal'>): boolean {
+  return b.paidAt !== null || Number(b.refundedTotal) > 0;
+}
+
+/**
  * Booking chưa từng thu tiền thì KHÔNG kể gì: PENDING hết hạn hay khách tự
  * huỷ trước khi trả là "chưa bao giờ có giao dịch", không phải "hoàn 0 đồng".
- * Đó là lý do cổng đầu tiên là `paidAt`, không phải status.
- *
- * So sánh bằng `Number` chứ không bằng chuỗi: '0' và '0.00' là cùng một số
- * tiền, và cả hai đều xuất hiện thật (API trả '0.00', sổ rỗng trả '0').
+ * Đó là lý do cổng đầu tiên là `wasCharged`, không phải status.
  */
 export function refundSummary(b: Booking): RefundSummary | null {
-  if (b.paidAt === null) return null;
+  if (!wasCharged(b)) return null;
   const refunded = Number(b.refundedTotal);
   const total = Number(b.totalAmount);
   if (refunded <= 0) return b.status === 'CANCELLED' ? { kind: 'none' } : null;
@@ -134,6 +146,29 @@ export function refundSummary(b: Booking): RefundSummary | null {
   // ca làm tròn lẻ cent không được biến "đã hoàn đủ" thành "hoàn một phần".
   if (refunded >= total) return { kind: 'full', amount: b.refundedTotal };
   return { kind: 'partial', amount: b.refundedTotal, total: b.totalAmount };
+}
+
+/**
+ * Câu kể khoản hoàn cho khách đọc (`accountBookingDetail.refundLine`) — MỘT bản cho cột phải của
+ * đơn đã huỷ (`TripClosedPanel`) và nhật ký voucher. Số tiền THẬT khách đối chiếu với sao kê nên
+ * `formatMoneyExact`, đủ hai số lẻ.
+ *
+ * `switch` đủ ba biến thể: `RefundSummary` thêm biến thể là typecheck đỏ ở đây. Bản ternary cũ
+ * của trang chi tiết đơn rơi về câu "không hoàn" cho mọi biến thể lạ (review P7 B14, C#14).
+ */
+export function refundSentence(refund: RefundSummary, currency: string): string {
+  const t = messages.accountBookingDetail.refundLine;
+  switch (refund.kind) {
+    case 'full':
+      return t.full(formatMoneyExact(refund.amount, currency));
+    case 'partial':
+      return t.partial(
+        formatMoneyExact(refund.amount, currency),
+        formatMoneyExact(refund.total, currency),
+      );
+    case 'none':
+      return t.none;
+  }
 }
 
 /**

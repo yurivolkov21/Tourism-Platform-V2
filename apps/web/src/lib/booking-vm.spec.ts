@@ -7,8 +7,10 @@ import {
   cancellationDeadlineText,
   legacyCancellationNote,
   paymentProviderLabel,
+  refundSentence,
   refundSummary,
   vietnamDay,
+  wasCharged,
 } from './booking-vm';
 
 /** Cờ huỷ SERVER trả ở `bookings.byCode` — mặc định: còn trong hạn, huỷ được. */
@@ -148,6 +150,21 @@ describe('refundSummary', () => {
     expect(refundSummary(makeBooking({ status: 'CANCELLED', paidAt: null }))).toBeNull();
   });
 
+  it('bị thu rồi hoàn tự động trước khi kịp sang PAID (paidAt null): vẫn kể khoản hoàn', () => {
+    // Thua đua ghế hay chuyến đóng lúc capture về: API hoàn trọn, đặt CANCELLED mà không ghi
+    // `paid_at` — tiền ĐÃ đi một vòng, khối Payment cùng trang in "Refunded −$147.00" (B1).
+    expect(
+      refundSummary(
+        makeBooking({
+          status: 'CANCELLED',
+          paidAt: null,
+          totalAmount: '147.00',
+          refundedTotal: '147.00',
+        }),
+      ),
+    ).toEqual({ kind: 'full', amount: '147.00' });
+  });
+
   it('đã trả tiền, chưa hoàn gì, chưa huỷ → KHÔNG kể gì', () => {
     expect(refundSummary(makeBooking({ status: 'PAID', refundedTotal: '0.00' }))).toBeNull();
   });
@@ -186,6 +203,52 @@ describe('refundSummary', () => {
         makeBooking({ status: 'REFUNDED', totalAmount: '29.00', refundedTotal: '29.01' }),
       ),
     ).toEqual({ kind: 'full', amount: '29.01' });
+  });
+});
+
+/**
+ * "Đã từng thu tiền" — cổng của `refundSummary` và của mọi chỗ in tên cổng thanh toán. `paidAt`
+ * một mình không đủ: đơn bị thu rồi hoàn tự động trước khi sang PAID không có `paidAt` (review
+ * P7 B1).
+ */
+describe('wasCharged', () => {
+  it.each([
+    [
+      'đã trả (có paidAt) → đã thu',
+      { paidAt: '2026-08-14T03:05:00.000Z', refundedTotal: '0.00' },
+      true,
+    ],
+    ['chưa trả, chưa hoàn đồng nào → chưa thu', { paidAt: null, refundedTotal: '0.00' }, false],
+    ["sổ rỗng trả '0' → vẫn là chưa thu", { paidAt: null, refundedTotal: '0' }, false],
+    [
+      'không paidAt mà đã hoàn (thu rồi hoàn tự động) → đã thu',
+      { paidAt: null, refundedTotal: '147.00' },
+      true,
+    ],
+  ] as const)('%s', (_, patch, expected) => {
+    expect(wasCharged(makeBooking(patch))).toBe(expected);
+  });
+});
+
+/**
+ * Câu kể khoản hoàn cho khách — MỘT bản cho cột phải của đơn đã huỷ và nhật ký voucher (review P7
+ * B14, C#14). Số tiền THẬT nên đủ hai số lẻ.
+ */
+describe('refundSentence', () => {
+  it.each([
+    [
+      'hoàn đủ',
+      { kind: 'full', amount: '147' },
+      '$147.00 has been refunded to your original payment method.',
+    ],
+    [
+      'hoàn một phần: nói cả hai số',
+      { kind: 'partial', amount: '73.5', total: '147.00' },
+      '$73.50 of $147.00 has been refunded to your original payment method.',
+    ],
+    ['không hoàn đồng nào cũng nói ra', { kind: 'none' }, 'No refund was due on this booking.'],
+  ] as const)('%s', (_, refund, sentence) => {
+    expect(refundSentence(refund, 'USD')).toBe(sentence);
   });
 });
 

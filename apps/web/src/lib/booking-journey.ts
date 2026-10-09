@@ -249,17 +249,25 @@ function cancelledJourney(booking: BookingDetail): JourneyView {
   };
 }
 
-/** Dòng phụ của mốc Refund — số tiền thật nên `formatMoneyExact`, như mọi chỗ in tiền hoàn. */
+/**
+ * Dòng phụ của mốc Refund — bản NGẮN của `refundSentence` (chỉ số tiền, vừa một dòng dưới
+ * mốc); số tiền thật nên `formatMoneyExact`, như mọi chỗ in tiền hoàn. `switch` đủ biến thể như
+ * `refundSentence`: biến thể mới của `RefundSummary` là typecheck đỏ, không lặng lẽ thành
+ * "No refund due" (review P7 B14).
+ */
 function refundDetail(refund: RefundSummary, currency: string): string {
   const t = messages.bookingDetail.journey;
-  if (refund.kind === 'full') return formatMoneyExact(refund.amount, currency);
-  if (refund.kind === 'partial') {
-    return t.refundPartial(
-      formatMoneyExact(refund.amount, currency),
-      formatMoneyExact(refund.total, currency),
-    );
+  switch (refund.kind) {
+    case 'full':
+      return formatMoneyExact(refund.amount, currency);
+    case 'partial':
+      return t.refundPartial(
+        formatMoneyExact(refund.amount, currency),
+        formatMoneyExact(refund.total, currency),
+      );
+    case 'none':
+      return t.refundNone;
   }
-  return t.refundNone;
 }
 
 function lapsedJourney(booking: BookingDetail): JourneyView {

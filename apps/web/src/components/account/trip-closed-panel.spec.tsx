@@ -61,6 +61,17 @@ describe('TripClosedPanel — đã huỷ', () => {
     ).toBeNull();
   });
 
+  it('bị thu rồi hoàn tự động trước khi sang PAID (paidAt null): vẫn kể khoản hoàn', () => {
+    // Thua đua ghế hay chuyến đóng lúc capture về — API không ghi `paid_at` (review P7 B1).
+    renderClosed({ ...CANCELLED, paidAt: null });
+    expect(
+      screen.getByText('$147.00 has been refunded to your original payment method.'),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText('It can take 5–10 business days to appear on your statement.'),
+    ).toBeInTheDocument();
+  });
+
   it('REFUNDED: câu kết thúc của trạng thái ấy', () => {
     renderClosed({ ...CANCELLED, status: 'REFUNDED' });
     expect(screen.getByText('This booking was refunded.')).toBeInTheDocument();
