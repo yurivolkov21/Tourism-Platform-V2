@@ -105,8 +105,8 @@ export function VoucherPass({ booking, view }: { booking: BookingDetail; view: V
       >
         <h3 className="mb-2.5 font-semibold">{t.journal.heading}</h3>
         <ol>
-          {view.journal.map((item) => (
-            <JournalItem key={item.label} item={item} />
+          {view.journal.map((item, index) => (
+            <JournalItem key={item.label} item={item} last={index === view.journal.length - 1} />
           ))}
         </ol>
       </section>
@@ -128,10 +128,24 @@ export function VoucherPass({ booking, view }: { booking: BookingDetail; view: V
   );
 }
 
-/** Một mốc của Trip journal: vòng tròn (tích khi đã xong), nhãn, dòng phụ; vạch nối tới mốc sau. */
-function JournalItem({ item }: { item: VoucherJournalItem }) {
+/**
+ * Một mốc của Trip journal: vòng tròn (tích khi đã xong), nhãn, dòng phụ; vạch nối tới mốc sau
+ * (mốc cuối không có).
+ *
+ * Vạch là VIỀN của một phần tử thật, không phải nền của `::before`: trình duyệt mặc định không in
+ * nền, còn quy tắc in của mảng teal (`[data-slot="voucher-pass"] *` — viền theo mực teal) không
+ * khớp giả phần tử, nên bản in từng mất cả đường thời gian (review P7C#11). Viền luôn in.
+ */
+function JournalItem({ item, last }: { item: VoucherJournalItem; last: boolean }) {
   return (
-    <li className="relative grid grid-cols-[1.25rem_minmax(0,1fr)] gap-2.5 pb-3 text-[13px] before:absolute before:top-5 before:bottom-0 before:left-[9.5px] before:w-px before:bg-primary-foreground/35 last:pb-0 last:before:hidden">
+    <li className="relative grid grid-cols-[1.25rem_minmax(0,1fr)] gap-2.5 pb-3 text-[13px] last:pb-0">
+      {last ? null : (
+        <span
+          aria-hidden="true"
+          data-slot="journal-line"
+          className="absolute top-5 bottom-0 left-[9.5px] border-l border-primary-foreground/35"
+        />
+      )}
       {item.done ? (
         <span
           role="img"

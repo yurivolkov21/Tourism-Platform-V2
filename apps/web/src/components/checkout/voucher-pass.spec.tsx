@@ -158,6 +158,20 @@ describe('VoucherPass — Trip journal', () => {
     expect(within(cancelEnds).queryByRole('img', { name: 'Done' })).toBeNull();
     expect(within(pickup).queryByRole('img', { name: 'Done' })).toBeNull();
   });
+
+  /**
+   * Vạch nối giữa hai mốc phải IN được (review P7C#11): bản cũ vẽ bằng nền của `::before` — trình
+   * duyệt mặc định không in nền, và quy tắc in của mảng teal (`[data-slot="voucher-pass"] *`) không
+   * khớp giả phần tử — nên giấy mất cả đường thời gian. Vạch là một phần tử thật, ẩn với trình đọc
+   * màn hình; mốc cuối không có vạch.
+   */
+  it('vạch nối giữa hai mốc là phần tử thật (in được), mốc cuối không có', () => {
+    const { container } = renderPass();
+    const items = [...slot(container, 'voucher-journal').querySelectorAll('li')];
+    const lines = items.map((li) => li.querySelector('[data-slot="journal-line"]'));
+    expect(lines.map((line) => line !== null)).toEqual([true, true, false]);
+    for (const line of lines) if (line) expect(line).toHaveAttribute('aria-hidden', 'true');
+  });
 });
 
 describe('VoucherPass — lối đi tiếp', () => {
