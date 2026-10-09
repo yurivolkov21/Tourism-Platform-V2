@@ -7,6 +7,7 @@ import type { ReactNode } from 'react';
 import { BookingActions, type CancelDialogBooking } from '@/components/account/booking-actions';
 import {
   type BookingView,
+  bookingPass,
   bookingTotalLabel,
   cancellationDeadlineText,
   legacyCancellationNote,
@@ -16,17 +17,15 @@ import {
 import { bookingPriceLines, formatBookingMoney } from '@/lib/checkout';
 import { formatDate, formatMoneyExact } from '@/lib/tours';
 
-/** Giai đoạn có voucher để xem: đơn đã trả và còn hiệu lực (spec §5.3). */
-const VOUCHER_PHASES: ReadonlySet<BookingPhase> = new Set(['upcoming', 'on_tour', 'travelled']);
-
 /**
  * Cột trái trang chi tiết đơn (spec P7 §5.3, bản vẽ `.pn`): bốn khối Lead traveller · Payment ·
  * Cancellation · Details, rồi hàng nút đáy.
  *
  * Hàng đáy: trái là "Cancel booking" khi `bookingView` cho phép — mở ĐÚNG hộp huỷ sẵn có của
  * `BookingActions`, hộp in và gửi kèm số tiền server tính (`bookings.byCode.cancellation`);
- * không huỷ được thì câu "Questions about this trip?". Phải là "Contact us" và, ở ba giai đoạn
- * đã trả còn hiệu lực, "View voucher". Đơn chờ trả không lặp nút trả tiền ở đây — nó ở cột phải.
+ * không huỷ được thì câu "Questions about this trip?". Phải là "Contact us" và, khi đơn có voucher
+ * (`bookingPass` — cùng luật với vé, voucher và accordion), "View voucher". Đơn chờ trả không lặp
+ * nút trả tiền ở đây — nó ở cột phải.
  *
  * Khối Cancellation giữ icon lịch và tông cảnh báo khi đã qua hạn: hạn chót là thông tin TIỀN,
  * bản dòng xám cỡ nhỏ từng bị khách bỏ qua (góp ý user 17/09).
@@ -155,7 +154,7 @@ export function BookingDetailsPanel({
             <MessageSquareIcon aria-hidden="true" />
             {messages.passportVisa.contactUs}
           </ButtonLink>
-          {VOUCHER_PHASES.has(phase) ? (
+          {bookingPass(booking, phase).voucher ? (
             <ButtonLink href={`/checkout/success?code=${booking.code}`} size="sm">
               <TicketIcon aria-hidden="true" />
               {messages.passportVisa.viewVoucher}

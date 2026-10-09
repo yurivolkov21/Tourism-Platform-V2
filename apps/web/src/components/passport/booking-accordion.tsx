@@ -14,7 +14,7 @@ import { IconTile } from '@tourism/ui/components/reui/icon-tile';
 import { PlaneIcon } from 'lucide-react';
 import Link from 'next/link';
 import { RevealItem } from '@/components/motion/reveal-item';
-import { bookingTotalLabel, bookingView } from '@/lib/booking-vm';
+import { bookingPass, bookingTotalLabel, bookingView } from '@/lib/booking-vm';
 import { formatBookingMoney } from '@/lib/checkout';
 import { STAGGER } from '@/lib/motion';
 import { formatDateRange } from '@/lib/tours';
@@ -84,6 +84,9 @@ export function BookingAccordion({ bookings, today }: { bookings: Booking[]; tod
         // cổng review (UTC) của API chắc chắn đã mở — link không dẫn tới form
         // bị từ chối. Review chỉ dành cho đơn PAID (`reviewSlot`).
         const canReview = phase === 'travelled' && booking.status === 'PAID';
+        // Cùng luật voucher với trang chi tiết đơn và chính trang voucher (ADR-0054 AMEND 1 §5):
+        // theo giai đoạn, không chỉ PAID — đơn hoàn một phần hay hoàn thiện chí vẫn đi.
+        const hasVoucher = bookingPass(booking, phase).voucher;
 
         return (
           // Từng mục trồi lên bậc thang (nhóm motion 3, 19/08); wrapper ngoài
@@ -177,7 +180,7 @@ export function BookingAccordion({ bookings, today }: { bookings: Booking[]; tod
                     <ButtonLink variant="outline" size="sm" href={detailHref}>
                       {bl.viewDetails}
                     </ButtonLink>
-                    {view.tone === 'success' ? (
+                    {hasVoucher ? (
                       <Link
                         href={`/checkout/success?code=${booking.code}`}
                         className="text-[13px] font-semibold text-primary-emphasis hover:underline"

@@ -1,8 +1,4 @@
-import {
-  ACTIVE_BOOKING_STATUSES,
-  type BookingDetail,
-  calendarDaysBetween,
-} from '@tourism/contract';
+import { type BookingDetail, type BookingPhase, calendarDaysBetween } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
 import { cn } from '@tourism/ui/lib/utils';
 import { BusIcon } from 'lucide-react';
@@ -11,6 +7,7 @@ import { RevealItem } from '@/components/motion/reveal-item';
 import { VisaStamp } from '@/components/passport/visa-stamp';
 import {
   type BookingView,
+  bookingPass,
   bookingTotalLabel,
   paymentProviderLabel,
   vietnamDay,
@@ -35,18 +32,26 @@ const KICKER =
  * `data-slot="ticket-stub"`) đè lên viền, nằm ngoài hộp đệm của vé. Vì thế từng mảng màu sát
  * góc (ảnh, hai dải `bg-primary`, lưới ô) tự bo góc 15px = 16px của vé trừ viền 1px.
  *
- * Mã vạch chỉ in cho đơn CÒN HIỆU LỰC (`ACTIVE_BOOKING_STATUSES`) VÀ đã thu tiền: mã vạch nói
- * "quét tôi ở điểm đón", in nó cho đơn chưa trả hay đã huỷ là hứa một thứ không có (cùng bất
- * biến chống nói dối của `BookingReceipt`).
+ * Mã vạch theo `bookingPass` — cùng luật với voucher (sắp đi, đang đi, đã trả): mã vạch nói
+ * "quét tôi ở điểm đón", in nó cho đơn chưa trả, đã huỷ hay chuyến đã xong là hứa một thứ không
+ * có (cùng bất biến chống nói dối của `BookingReceipt`).
  */
-export function BookingTicket({ booking, view }: { booking: BookingDetail; view: BookingView }) {
+export function BookingTicket({
+  booking,
+  view,
+  phase,
+}: {
+  booking: BookingDetail;
+  view: BookingView;
+  phase: BookingPhase;
+}) {
   const t = messages.bookingDetail;
   const photo = booking.tourImage;
   const paid = booking.paidAt !== null;
   const days = calendarDaysBetween(booking.departureStartDate, booking.departureEndDate) + 1;
   const place = booking.tourDestinations[0]?.name;
   const route = place ? `${t.ticket.days(days)} · ${place}` : t.ticket.days(days);
-  const showBarcode = paid && ACTIVE_BOOKING_STATUSES.includes(booking.status);
+  const showBarcode = bookingPass(booking, phase).barcode;
   const facts = [
     { label: t.leadTraveller, value: booking.contactName },
     {

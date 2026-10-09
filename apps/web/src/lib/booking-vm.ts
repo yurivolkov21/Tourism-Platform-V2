@@ -2,6 +2,7 @@ import {
   type Booking,
   type BookingCancellation,
   type BookingDetail,
+  type BookingPhase,
   vietnamToday,
 } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
@@ -74,6 +75,41 @@ export function bookingView(
       return { tone: 'destructive', statusKey: b.status, actions: [] };
     case 'PARTIALLY_REFUNDED':
       return { tone: 'destructive', statusKey: b.status, actions: cancel };
+  }
+}
+
+/** Những thứ khách chìa ra được cho MỘT đơn — kết quả của `bookingPass`. */
+export interface BookingPass {
+  /** Có voucher để xem: trang `/checkout/success` dựng voucher, có nút hay link "View voucher". */
+  voucher: boolean;
+  /** Có mã vạch trên vé và voucher. */
+  barcode: boolean;
+}
+
+/**
+ * Voucher và mã vạch của MỘT đơn theo giai đoạn (`bookingPhase`) — MỘT luật cho vé và nút "View
+ * voucher" của trang chi tiết đơn, voucher `/checkout/success` và accordion My bookings (ADR-0054
+ * AMEND 1 §5). Trước đó bốn chỗ bốn vị từ trong JSX: vé theo trạng thái (in mã vạch cho chuyến đã
+ * đi, giấu cho đơn hoàn thiện chí còn đi), voucher theo giai đoạn (giấu), khối Details theo giai
+ * đoạn, accordion chỉ PAID (review P7 B11).
+ *
+ * Voucher: đơn đã trả ở ba giai đoạn của chuyến còn đi hay đã đi. Mã vạch nói "quét tôi ở điểm
+ * đón" — chỉ sắp đi và đang đi; chuyến đã xong không còn cổng nào để quét. Chưa có `paidAt` thì
+ * không có gì: in mã vạch cho đơn chưa trả là hứa một thứ không có (cùng bất biến của
+ * `BookingReceipt`).
+ */
+export function bookingPass(booking: Pick<Booking, 'paidAt'>, phase: BookingPhase): BookingPass {
+  const paid = booking.paidAt !== null;
+  switch (phase) {
+    case 'upcoming':
+    case 'on_tour':
+      return { voucher: paid, barcode: paid };
+    case 'travelled':
+      return { voucher: paid, barcode: false };
+    case 'awaiting_payment':
+    case 'cancelled':
+    case 'lapsed':
+      return { voucher: false, barcode: false };
   }
 }
 

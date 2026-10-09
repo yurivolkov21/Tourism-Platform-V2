@@ -38,7 +38,7 @@ export function BookingDetailView({
   return (
     <div className="w-full px-4 pt-7 pb-16 md:px-16 md:pb-20 lg:px-24 xl:px-32">
       <div className="mx-auto flex max-w-7xl flex-col gap-4">
-        <BookingTicket booking={booking} view={view} />
+        <BookingTicket booking={booking} view={view} phase={phase} />
         <TripJourney journey={journeyMilestones(booking, today)} />
         <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,1.08fr)_minmax(0,1fr)]">
           <BookingDetailsPanel

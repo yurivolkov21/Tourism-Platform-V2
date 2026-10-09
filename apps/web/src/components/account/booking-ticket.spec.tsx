@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react';
-import type { BookingDetail } from '@tourism/contract';
+import { type BookingDetail, bookingPhase } from '@tourism/contract';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 import { bookingView } from '@/lib/booking-vm';
 import { makeBooking } from '@/test/fixtures/booking';
@@ -53,9 +53,16 @@ const PAID = makeBooking({
   paymentProvider: 'PAYPAL',
 });
 
-function renderTicket(booking: BookingDetail = PAID) {
+/** "Hôm nay" mặc định: chuyến mẫu 03–05/11 còn sắp đi. Giai đoạn vé nhận do luật chung tính. */
+const TODAY = '2026-10-05';
+
+function renderTicket(booking: BookingDetail = PAID, today = TODAY) {
   return render(
-    <BookingTicket booking={booking} view={bookingView(booking, booking.cancellation)} />,
+    <BookingTicket
+      booking={booking}
+      view={bookingView(booking, booking.cancellation)}
+      phase={bookingPhase(booking, today)}
+    />,
   );
 }
 
@@ -167,10 +174,26 @@ describe('BookingTicket — cuống vé', () => {
   it.each([
     ['chưa trả', { status: 'PENDING', paidAt: null }],
     ['đã trả rồi huỷ', { status: 'CANCELLED', cancelledAt: '2026-09-21T02:00:00.000Z' }],
-    ['đã hoàn đủ', { status: 'REFUNDED', refundedTotal: '147.00' }],
+    [
+      'huỷ có hoàn đủ',
+      { status: 'REFUNDED', refundedTotal: '147.00', cancelledAt: '2026-09-21T02:00:00.000Z' },
+    ],
+    ['chuyến bị công ty huỷ, đơn còn PAID chờ job hoàn tiền', { departureCancelled: true }],
   ] as const)('%s: không mã vạch', (_, patch) => {
     const { container } = renderTicket({ ...PAID, ...patch });
     expect(container.querySelector('[data-slot="barcode"]')).toBeNull();
+  });
+
+  // Mã vạch theo giai đoạn (`bookingPass`, ADR-0054 AMEND 1 §5) — cùng luật với voucher, nút
+  // "View voucher" bấm sang đó không còn thấy mã vạch biến mất (review P7 B11).
+  it('chuyến đã đi: không mã vạch — không còn cổng nào để quét', () => {
+    const { container } = renderTicket(PAID, '2026-11-10');
+    expect(container.querySelector('[data-slot="barcode"]')).toBeNull();
+  });
+
+  it('hoàn thiện chí trọn còn sắp đi (REFUNDED, không cancelledAt): vẫn có mã vạch — khách vẫn đi', () => {
+    const { container } = renderTicket({ ...PAID, status: 'REFUNDED', refundedTotal: '147.00' });
+    expect(container.querySelector('[data-slot="barcode"]')).not.toBeNull();
   });
 
   it('chưa trả: nhãn "Total" và ô cổng ghi "Not paid"', () => {

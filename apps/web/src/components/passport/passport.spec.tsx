@@ -212,6 +212,36 @@ describe('BookingAccordion', () => {
     expect(screen.queryByRole('link', { name: 'View voucher' })).not.toBeInTheDocument();
   });
 
+  // ADR-0054 AMEND 1 §5: "View voucher" theo `bookingPass` (giai đoạn) như trang chi tiết đơn và
+  // voucher, không theo tông PAID (review P7 B8, B11).
+  it.each([
+    [
+      'PARTIALLY_REFUNDED sắp đi (đơn còn hiệu lực)',
+      { status: 'PARTIALLY_REFUNDED', refundedTotal: '2.00' },
+    ],
+    [
+      'REFUNDED hoàn thiện chí trọn sắp đi (khách vẫn đi)',
+      { status: 'REFUNDED', refundedTotal: '10.00' },
+    ],
+  ] as const)('%s → có View voucher', (_, patch) => {
+    render(one({ ...patch, departureStartDate: '2026-08-27', departureEndDate: '2026-08-29' }));
+    expect(screen.getByRole('link', { name: 'View voucher' })).toHaveAttribute(
+      'href',
+      '/checkout/success?code=BK-TESTAAAA',
+    );
+  });
+
+  it('PAID trên chuyến bị công ty huỷ → không View voucher', () => {
+    render(
+      one({
+        departureCancelled: true,
+        departureStartDate: '2026-08-27',
+        departureEndDate: '2026-08-29',
+      }),
+    );
+    expect(screen.queryByRole('link', { name: 'View voucher' })).not.toBeInTheDocument();
+  });
+
   it('REFUNDED đã qua ngày → không mời Review', () => {
     render(
       one({

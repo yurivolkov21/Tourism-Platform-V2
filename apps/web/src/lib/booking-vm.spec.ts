@@ -1,7 +1,8 @@
-import type { BookingCancellation } from '@tourism/contract';
+import { type BookingCancellation, BookingPhaseSchema } from '@tourism/contract';
 import { describe, expect, it } from 'vitest';
 import { makeBooking } from '@/test/fixtures/booking';
 import {
+  bookingPass,
   bookingTotalLabel,
   bookingView,
   cancellationDeadlineText,
@@ -80,6 +81,33 @@ describe('bookingView', () => {
   it('CANCELLED → muted + [] kể cả khi cờ nói huỷ được', () => {
     const view = bookingView(makeBooking({ status: 'CANCELLED' }), cancellationOf());
     expect(view).toEqual({ tone: 'muted', statusKey: 'CANCELLED', actions: [] });
+  });
+});
+
+/**
+ * Voucher và mã vạch theo giai đoạn — MỘT luật cho vé và nút "View voucher" của trang chi tiết
+ * đơn, voucher `/checkout/success` và accordion My bookings (ADR-0054 AMEND 1 §5, review P7 B11).
+ */
+describe('bookingPass', () => {
+  const PAID = makeBooking({ paidAt: '2026-08-14T03:05:00.000Z' });
+
+  it.each([
+    ['upcoming', { voucher: true, barcode: true }],
+    ['on_tour', { voucher: true, barcode: true }],
+    // Chuyến đã xong: voucher còn để xem lại, mã vạch không còn cổng nào để quét.
+    ['travelled', { voucher: true, barcode: false }],
+    ['awaiting_payment', { voucher: false, barcode: false }],
+    ['cancelled', { voucher: false, barcode: false }],
+    ['lapsed', { voucher: false, barcode: false }],
+  ] as const)('đơn đã trả, giai đoạn %s → %o', (phase, pass) => {
+    expect(bookingPass(PAID, phase)).toEqual(pass);
+  });
+
+  it('chưa có paidAt thì không voucher, không mã vạch ở giai đoạn nào', () => {
+    const unpaid = makeBooking({ paidAt: null });
+    for (const phase of BookingPhaseSchema.options) {
+      expect(bookingPass(unpaid, phase)).toEqual({ voucher: false, barcode: false });
+    }
   });
 });
 

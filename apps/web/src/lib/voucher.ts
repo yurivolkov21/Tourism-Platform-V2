@@ -6,6 +6,7 @@ import {
 } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
 import {
+  bookingPass,
   cancelledOn,
   freeCancellationOpen,
   paymentProviderLabel,
@@ -56,9 +57,14 @@ export interface VoucherView {
   provider: string;
   /** Ngày trả tiền đã định dạng. */
   paidOn: string;
-  /** Có ô mã đơn (kèm ngày đi, "Admit n", dòng điều kiện) — đơn đã huỷ thì không. */
+  /**
+   * Có ô mã đơn (kèm ngày đi, "Admit n", dòng điều kiện) — `bookingPass(…).voucher`: đơn đã huỷ
+   * thì không.
+   */
   showCode: boolean;
-  /** Có mã vạch — chỉ khi mã còn để chìa ra ở điểm đón (sắp đi, đang đi). */
+  /**
+   * Có mã vạch — `bookingPass(…).barcode`: chỉ khi mã còn để chìa ra ở điểm đón (sắp đi, đang đi).
+   */
   showBarcode: boolean;
   /** Các dòng điều kiện có dấu tích dưới ô mã, đúng thứ tự bảng §2.6. */
   conditions: string[];
@@ -99,8 +105,13 @@ export function voucherView(booking: BookingDetail, now: Date, today: string): V
     booking.status === 'PAID' &&
     now.getTime() - Date.parse(paidAt) <= VOUCHER_FRESH_MINUTES * 60_000;
 
+  // Ô mã khi đơn còn voucher (mọi giai đoạn trừ huỷ), mã vạch chỉ khi còn cổng để quét (sắp đi,
+  // đang đi) — luật chung với vé và nút "View voucher" của trang chi tiết đơn.
+  const pass = bookingPass(booking, phase);
   const common = {
     justPaid,
+    showCode: pass.voucher,
+    showBarcode: pass.barcode,
     title: justPaid
       ? isDayTrip
         ? t.freshDayTitle(place)
@@ -131,8 +142,6 @@ export function voucherView(booking: BookingDetail, now: Date, today: string): V
       return {
         ...common,
         phase,
-        showCode: true,
-        showBarcode: true,
         // Quá hạn thì BỎ dòng hạn huỷ: một dấu tích cạnh "đã hết hạn" đọc như một quyền lợi.
         conditions: withinDeadline
           ? [t.showCode, messages.cancellationDeadline.full(deadline), taxes]
@@ -159,8 +168,6 @@ export function voucherView(booking: BookingDetail, now: Date, today: string): V
       return {
         ...common,
         phase,
-        showCode: true,
-        showBarcode: true,
         conditions: [t.showCode, taxes],
         journal: [
           bookedAndPaid,
@@ -197,9 +204,6 @@ export function voucherView(booking: BookingDetail, now: Date, today: string): V
       return {
         ...common,
         phase,
-        showCode: true,
-        // Chuyến đã xong: mã không còn để quét ở cổng nào.
-        showBarcode: false,
         conditions: [taxes],
         journal: [
           bookedAndPaid,
@@ -216,8 +220,6 @@ export function voucherView(booking: BookingDetail, now: Date, today: string): V
       return {
         ...common,
         phase,
-        showCode: false,
-        showBarcode: false,
         conditions: [],
         journal: [
           {
