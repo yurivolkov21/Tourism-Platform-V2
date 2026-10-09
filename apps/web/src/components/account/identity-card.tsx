@@ -13,6 +13,11 @@ import type { SessionUser } from '@/lib/api/session';
  *
  * Dính khi cuộn chỉ từ `lg` — trang truyền `className` (`lg:sticky lg:top-28`), thẻ không tự quyết
  * vị trí của mình.
+ *
+ * Tên và email có thể dài và không dấu cách (email 47 ký tự), nên cả hai mang `wrap-anywhere`
+ * (`overflow-wrap: anywhere`, nếp `EmailText` của admin). `break-words` KHÔNG đủ: nó không hạ
+ * min-content của ô flex, nên thẻ phình theo email — đẩy cả trang cuộn ngang ở 320px, và từ `lg`
+ * (cột trái cố định 320px) email thò ra khỏi viền thẻ.
  */
 export function IdentityCard({ profile, className }: { profile: SessionUser; className?: string }) {
   const t = messages.accountProfile;
@@ -22,10 +27,21 @@ export function IdentityCard({ profile, className }: { profile: SessionUser; cla
       className={cn('rounded-2xl border bg-card px-6 py-6.5 text-center', className)}
     >
       <AvatarUpload initial={(profile.name || profile.email).charAt(0)} image={profile.image}>
-        <h2 className="mt-3 font-heading text-xl leading-tight font-semibold text-foreground">
-          {profile.name}
-        </h2>
-        <p className="mt-0.5 text-sm break-words text-muted-foreground">{profile.email}</p>
+        {/* Tài khoản không khai tên thì không dựng h2 trống: trình đọc màn hình đọc ra một đề mục rỗng. */}
+        {profile.name ? (
+          <h2 className="mt-3 font-heading text-xl leading-tight font-semibold wrap-anywhere text-foreground">
+            {profile.name}
+          </h2>
+        ) : null}
+        <p
+          className={cn(
+            'text-sm wrap-anywhere text-muted-foreground',
+            // Có tên thì email đứng sát dưới tên; không có thì email nhận luôn khoảng cách của tên.
+            profile.name ? 'mt-0.5' : 'mt-3',
+          )}
+        >
+          {profile.email}
+        </p>
       </AvatarUpload>
       <Separator className="my-4.5" />
       <div className="text-left">

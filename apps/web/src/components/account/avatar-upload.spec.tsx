@@ -117,18 +117,20 @@ describe('AvatarUpload — upload thất bại', () => {
 describe('AvatarUpload — dựng dọc cho thẻ danh tính (spec 09/10 §2)', () => {
   const FOLLOWING = Node.DOCUMENT_POSITION_FOLLOWING;
 
-  // Hai nút cùng mở ô chọn file và cùng tên đọc "Upload avatar": nút ảnh tròn mang tên bằng
-  // `aria-label` (nội dung là chữ cái đầu hay ảnh), nút viền mang tên bằng chữ nhìn thấy được.
-  const photoButton = () => screen.getByLabelText('Upload avatar');
-  const labelledButton = () => screen.getByText('Upload avatar', { selector: 'button' });
+  // Hai nút cùng mở ô chọn file, nhưng chỉ nút viền là điểm dừng "Upload avatar" của bàn phím và
+  // trình đọc màn hình. Ảnh tròn vẫn bấm và thả được bằng chuột mà ẩn khỏi cây trợ năng
+  // (`aria-hidden`) nên không tìm được bằng role hay tên — tìm bằng thuộc tính.
+  const labelledButton = () => screen.getByRole('button', { name: 'Upload avatar' });
+  const photoOf = (container: HTMLElement) =>
+    container.querySelector('button[aria-hidden="true"]') as HTMLButtonElement;
 
   it('ảnh 96px; `children` nằm GIỮA ảnh và nút "Upload avatar"; dòng gợi ý ngay dưới nút', () => {
-    render(
+    const { container } = render(
       <AvatarUpload initial="A" image={null}>
         <p>Minh Anh</p>
       </AvatarUpload>,
     );
-    const avatar = photoButton();
+    const avatar = photoOf(container);
     const name = screen.getByText('Minh Anh');
     const uploadButton = labelledButton();
     const hint = screen.getByText('PNG, JPG up to 2 MB. Click or drop a photo.');
@@ -157,8 +159,42 @@ describe('AvatarUpload — dựng dọc cho thẻ danh tính (spec 09/10 §2)', 
     expect(openPicker).toHaveBeenCalledTimes(1);
 
     // Ảnh tròn vẫn bấm được như trước, và vẫn là ô chọn file ấy.
-    await user.click(photoButton());
+    await user.click(photoOf(container));
     expect(openPicker).toHaveBeenCalledTimes(2);
+  });
+
+  it('chỉ MỘT điểm dừng "Upload avatar": ảnh tròn và ô file ẩn khỏi trình đọc màn hình và khỏi thứ tự Tab', () => {
+    const { container } = render(<AvatarUpload initial="A" image={null} />);
+    expect(screen.getAllByRole('button', { name: 'Upload avatar' })).toHaveLength(1);
+
+    const photo = photoOf(container);
+    expect(photo).toHaveAttribute('aria-hidden', 'true');
+    expect(photo).toHaveAttribute('tabindex', '-1');
+    // Không còn tên riêng: hai nút trùng tên "Upload avatar" làm trình đọc màn hình đọc đôi.
+    expect(photo).not.toHaveAttribute('aria-label');
+
+    // Ô file `sr-only` vẫn focus được nếu không tắt: sẽ thành điểm Tab thứ ba, không tên.
+    const input = container.querySelector('input[type="file"]');
+    expect(input).toHaveAttribute('aria-hidden', 'true');
+    expect(input).toHaveAttribute('tabindex', '-1');
+  });
+
+  it('Tab đi qua đúng nút viền rồi ra khỏi khối; có ảnh thì nút gỡ ảnh đứng trước nó', async () => {
+    const user = userEvent.setup();
+    const { unmount } = render(<AvatarUpload initial="A" image={null} />);
+    await user.tab();
+    expect(labelledButton()).toHaveFocus();
+    await user.tab();
+    expect(document.body).toHaveFocus();
+    unmount();
+
+    render(<AvatarUpload initial="A" image="https://res.cloudinary.com/demo/avatars/user-1.png" />);
+    await user.tab();
+    expect(screen.getByRole('button', { name: 'Remove avatar' })).toHaveFocus();
+    await user.tab();
+    expect(labelledButton()).toHaveFocus();
+    await user.tab();
+    expect(document.body).toHaveFocus();
   });
 
   it('đang tải thì nút viền khoá cùng cờ `busy` với ảnh tròn; tải xong thì mở lại', async () => {
@@ -176,9 +212,9 @@ describe('AvatarUpload — dựng dọc cho thẻ danh tính (spec 09/10 §2)', 
     await user.upload(container.querySelector('input[type="file"]') as HTMLInputElement, pngFile());
 
     await waitFor(() => expect(button).toBeDisabled());
-    expect(photoButton()).toBeDisabled();
+    expect(photoOf(container)).toBeDisabled();
     finish(UPLOADED_PUBLIC_ID);
     await waitFor(() => expect(button).toBeEnabled());
-    expect(photoButton()).toBeEnabled();
+    expect(photoOf(container)).toBeEnabled();
   });
 });

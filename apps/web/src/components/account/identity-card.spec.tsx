@@ -14,16 +14,18 @@ vi.mock('@/lib/api/client', () => ({
 /** Thẻ danh tính — cột trái của Settings (spec 09/10 §2, phương án C). */
 const FOLLOWING = Node.DOCUMENT_POSITION_FOLLOWING;
 
-// Nút ảnh tròn mang tên "Upload avatar" bằng `aria-label`; nút viền cùng tên bằng chữ nhìn thấy được.
-const photoButton = () => screen.getByLabelText('Upload avatar');
+// Ảnh tròn chỉ để chuột bấm hoặc thả ảnh vào, ẩn khỏi trình đọc màn hình (`aria-hidden`) nên tìm
+// bằng thuộc tính; nút có tên "Upload avatar" là nút viền bên dưới tên và email.
+const photoButton = (container: HTMLElement) =>
+  container.querySelector('button[aria-hidden="true"]') as HTMLButtonElement;
 
 describe('IdentityCard', () => {
   it('ảnh 96px → tên (h2) → email → nút Upload avatar → dòng gợi ý cỡ ảnh, đúng thứ tự', () => {
-    render(<IdentityCard profile={makeSessionUser()} />);
-    const avatar = photoButton();
+    const { container } = render(<IdentityCard profile={makeSessionUser()} />);
+    const avatar = photoButton(container);
     const name = screen.getByRole('heading', { level: 2, name: 'Minh Anh' });
     const email = screen.getByText('minh.anh@example.com');
-    const uploadButton = screen.getByText('Upload avatar', { selector: 'button' });
+    const uploadButton = screen.getByRole('button', { name: 'Upload avatar' });
     const hint = screen.getByText(messages.accountProfile.avatar.hint('2 MB'));
     expect(avatar).toHaveClass('size-24');
     expect(name).toHaveClass('font-heading');
@@ -34,11 +36,20 @@ describe('IdentityCard', () => {
   });
 
   it('chưa có ảnh: chữ cái đầu của tên; tên trống thì chữ cái đầu của email', () => {
-    const { unmount } = render(<IdentityCard profile={makeSessionUser()} />);
-    expect(photoButton()).toHaveTextContent('M');
-    unmount();
+    const first = render(<IdentityCard profile={makeSessionUser()} />);
+    expect(photoButton(first.container)).toHaveTextContent('M');
+    first.unmount();
+    const second = render(
+      <IdentityCard profile={makeSessionUser({ name: '', email: 'linh@example.com' })} />,
+    );
+    expect(photoButton(second.container)).toHaveTextContent('L');
+  });
+
+  it('tên rỗng: KHÔNG dựng h2 rỗng (trình đọc màn hình đọc ra một đề mục trống); email vẫn hiện', () => {
     render(<IdentityCard profile={makeSessionUser({ name: '', email: 'linh@example.com' })} />);
-    expect(photoButton()).toHaveTextContent('L');
+    expect(screen.queryByRole('heading', { level: 2 })).not.toBeInTheDocument();
+    // Email nhận luôn khoảng cách mà tên chiếm (mt-3 dưới ảnh), kẻo dính sát ảnh.
+    expect(screen.getByText('linh@example.com')).toHaveClass('mt-3');
   });
 
   it('có ảnh: hiện ảnh đã lưu và nút gỡ ảnh', () => {
@@ -54,6 +65,18 @@ describe('IdentityCard', () => {
     const label = screen.getByRole('heading', { level: 3, name: 'Connected accounts' });
     expect(separator.compareDocumentPosition(label)).toBe(FOLLOWING);
     expect(screen.getByText('Email & password')).toBeInTheDocument();
+  });
+
+  it('email dài và tên một từ dài bẻ dòng TRONG thẻ: `wrap-anywhere` trên email và h2', () => {
+    // jsdom không có bố cục nên ca này chỉ khoá class; số đo thật (trang 320px không cuộn ngang, email
+    // nằm trong viền thẻ ở 1024px) đo bằng trình duyệt thật. `break-words` KHÔNG đủ: nó không hạ
+    // min-content của ô flex nên thẻ phình theo email, đẩy cả trang cuộn ngang (320px) hay thò ra
+    // khỏi viền thẻ (cột trái 320px từ lg); `overflow-wrap: anywhere` mới hạ min-content.
+    const email = 'nguyen.thi.minh.anh.phuong.traveller@example.com';
+    const name = 'Nguyễnthịminhanhphươngnguyễnthịminh';
+    render(<IdentityCard profile={makeSessionUser({ name, email })} />);
+    expect(screen.getByText(email)).toHaveClass('wrap-anywhere');
+    expect(screen.getByRole('heading', { level: 2, name })).toHaveClass('wrap-anywhere');
   });
 
   it('nhận className của trang (dính ở lg) và mang móc data-slot cho bố cục', () => {

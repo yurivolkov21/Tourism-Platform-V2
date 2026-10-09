@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { messages } from '@tourism/i18n';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -205,10 +205,17 @@ describe('DeleteAccount — khối Danger zone kiểu mới (spec 09/10 §2)', (
     expect(screen.getByText('Irreversible account actions.')).toBeInTheDocument();
   });
 
-  it('CHỈ dòng Delete account tô nền đỏ rất nhạt: câu giải thích và nút mở hộp nằm trong dòng ấy', () => {
+  it('CHỈ dòng Delete account tô nền đỏ rất nhạt: nhãn, câu giải thích và nút mở hộp nằm trong dòng ấy', () => {
     render(<DeleteAccount />);
     const row = screen.getByRole('button', { name: 'Delete account' }).parentElement;
     expect(row).toHaveClass('bg-destructive/5');
+    // Chữ "Delete account" có đúng hai chỗ trong dòng: nhãn `<p>` (nhãn của dòng) rồi nút mở hộp.
+    // Chỉ dựa vào nút thì bỏ nhãn đi test vẫn xanh.
+    expect(
+      within(row as HTMLElement)
+        .getAllByText('Delete account')
+        .map((el) => el.tagName),
+    ).toEqual(['P', 'BUTTON']);
     expect(row).toHaveTextContent(messages.accountProfile.danger.dialogBody);
     expect(
       screen.getByRole('heading', { level: 2, name: 'Danger zone' }).parentElement,

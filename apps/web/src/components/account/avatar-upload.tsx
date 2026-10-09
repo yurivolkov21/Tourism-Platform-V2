@@ -21,8 +21,11 @@ import { formatBytes } from '@/lib/review-photos';
  *   vào; có ảnh → preview phủ tròn + nút X gỡ; chưa có → chữ cái đầu (đồng bộ
  *   ngôn ngữ initial của khung hộ chiếu). Nút viền mở CÙNG ô chọn file với ảnh
  *   (bản vẽ C user duyệt có nút này, và điện thoại không có hover để lộ rằng
- *   ảnh bấm được); ảnh vẫn bấm và thả được. Không còn dòng chữ "Upload avatar /
- *   Avatar selected" làm nhãn phụ.
+ *   ảnh bấm được); ảnh vẫn bấm và thả được bằng chuột. Không còn dòng chữ
+ *   "Upload avatar / Avatar selected" làm nhãn phụ.
+ * - Nút viền là điểm dừng "Upload avatar" DUY NHẤT cho bàn phím và trình đọc
+ *   màn hình (review 09/10): ảnh tròn và ô file `sr-only` đều `aria-hidden` +
+ *   `tabIndex={-1}`; nút gỡ ảnh (khi có ảnh) vẫn là điểm dừng riêng.
  * - Validate qua `lib/avatar` (thuần, TDD): đúng loại → trần 2MB; lỗi vào
  *   Alert.
  *
@@ -155,9 +158,13 @@ export function AvatarUpload({
   return (
     <div className="flex flex-col items-center">
       <div className="relative">
+        {/* Ảnh tròn chỉ để chuột bấm hoặc thả ảnh vào: nút viền "Upload avatar" bên dưới là điểm dừng
+            DUY NHẤT của bàn phím và trình đọc màn hình, nên nó ẩn khỏi cây trợ năng và khỏi thứ tự
+            Tab — hai nút trùng tên thì trình đọc màn hình đọc đôi, Tab dừng hai lần. */}
         <button
           type="button"
-          aria-label={t.upload}
+          aria-hidden="true"
+          tabIndex={-1}
           disabled={busy}
           onClick={openPicker}
           onDragEnter={(e) => {
@@ -205,10 +212,14 @@ export function AvatarUpload({
             <XIcon className="size-3.5" />
           </Button>
         ) : null}
+        {/* Ô file chỉ là ô được mở hộ bằng `openPicker`: `sr-only` vẫn focus được nên phải tắt khỏi
+            cây trợ năng và thứ tự Tab, kẻo thành điểm dừng thứ ba không tên. */}
         <input
           ref={inputRef}
           type="file"
           accept="image/*"
+          aria-hidden="true"
+          tabIndex={-1}
           disabled={busy}
           className="sr-only"
           onChange={(e) => {

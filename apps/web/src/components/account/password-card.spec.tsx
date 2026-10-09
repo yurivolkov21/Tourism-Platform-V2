@@ -41,6 +41,10 @@ describe('PasswordCard', () => {
     expect(item).toContainElement(screen.getByLabelText('New password'));
     expect(item).toContainElement(screen.getByLabelText('Confirm new password'));
     expect(screen.queryByText('••••••••••')).not.toBeInTheDocument();
+    // Ba ô xếp dọc rộng tối đa 360px như bản vẽ C — trải hết cột giá trị thì ô dài lê thê.
+    expect(screen.getByLabelText('Current password').closest('form')?.parentElement).toHaveClass(
+      'max-w-90',
+    );
   });
 
   it('đổi mật khẩu xong thì ĐÓNG dòng lại — để mở với ba ô rỗng trông như chưa lưu', async () => {
