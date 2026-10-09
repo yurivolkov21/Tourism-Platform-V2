@@ -171,6 +171,10 @@ Chỗ spec để ngỏ, hoặc gợi ý chia task phải chỉnh theo mã thật
     cũ. Bố cục trang cũ giữa Task 4 và Task 7 có thể lệch (tiêu đề lặp) — chấp nhận, nhánh không
     deploy giữa chừng; Task 7 dựng lại trọn trang.
 
+> **Sau review 09/10:** nút tim bỏ `aria-pressed` (nút hành động thuần "Remove {tour} from saved tours"),
+> bỏ lưu bằng bàn phím dời focus sang tim kế tiếp — spec §3 đã sửa; các khối code Task 2–3 bên dưới là bản lúc
+> thi công, mã thật ở commit `213006e8`.
+
 ## Bản đồ file
 
 | File | Trách nhiệm | Task |
@@ -3290,7 +3294,7 @@ production. Mỗi bước xanh mới sang bước sau.
 
 - [ ] Review nhánh (nếp F14–F19, P4e-4: tìm, vá TRỌN trên chính nhánh). Đọc kỹ: `formatSavedDate`
   (ngày và năm theo lịch Việt Nam, không đọc đồng hồ), `router.refresh()` chỉ sau khi `set`
-  thành công, rollback đúng vị trí, tim `aria-pressed` và lớp phủ link (`z-10`), `SettingsRow`
+  thành công, rollback đúng vị trí, tim là nút hành động "Remove…" (không `aria-pressed`, review 09/10) và lớp phủ link (`z-10`), `SettingsRow`
   đặt chỗ đúng hai khổ, `AvatarUpload` không đổi hành vi, `DeleteAccount` không đổi logic, các
   khoá i18n đã gỡ.
 - [ ] Rebase lên `origin/main` mới nhất. Nếu P7 B hoặc C đã vào trước: `messages.ts` dễ đụng — khối
@@ -3504,7 +3508,7 @@ describe('layout-check Saved và Settings', () => {
     cards: cells.map((cell) => {
       const card = cell.querySelector('article');
       const img = card.querySelector('[class*="aspect-4/3"]');
-      const heart = card.querySelector('button[aria-pressed="true"]');
+      const heart = card.querySelector('button[id^="saved-heart-"]');
       const [kicker, h3, meta, price] = [
         card.querySelector('p'),
         card.querySelector('h3'),
@@ -3599,7 +3603,7 @@ dành ~15px cho thanh cuộn dọc — không có thanh cuộn thì ở 375 ra 3
 ```markdown
 ## 2026-MM-DD — Saved và Settings của khách thiết kế lại (nhánh `feat/account-saved-settings`)
 
-Trang `/account/saved` thành lưới thẻ ảnh 4:3 có tim nổi trên ảnh (luôn hiện, `aria-pressed`),
+Trang `/account/saved` thành lưới thẻ ảnh 4:3 có tim nổi trên ảnh (luôn hiện, nút hành động "Remove…"),
 dòng "Saved {ngày}" theo lịch Việt Nam, số tour ở hero cập nhật sau khi bỏ lưu thành công
 (`router.refresh()`), trạng thái trống mới. Trang `/account/settings` theo phương án C: thẻ danh
 tính bên trái (dính từ lg) gom ảnh, tên, email và Connected accounts; bên phải thẻ Personal
