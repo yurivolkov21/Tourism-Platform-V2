@@ -1,5 +1,6 @@
 import type { Booking } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
+import { refundSentence, refundSummary } from './booking-vm';
 import { formatMoney, formatMoneyExact } from './tours';
 
 /**
@@ -95,6 +96,37 @@ export function checkoutMood(booking: Booking): CheckoutMood {
   if (booking.status === 'PAID') return 'confirmed';
   if (booking.status === 'PENDING') return 'confirming';
   return 'settled';
+}
+
+/**
+ * Câu dưới tiêu đề của hoá đơn (`BookingReceipt`) khi trang không truyền câu riêng — theo tâm
+ * trạng. Từ P7 hoá đơn ở `/checkout/success` chỉ còn cho đơn CHƯA trả (đơn đã trả mở voucher,
+ * spec §2.6), nên câu mặc định cũ cho mọi đơn — "A copy of this receipt was sent to {email}." —
+ * nói sai: chưa trả thì không email nào đi, và đơn bị thu rồi hoàn tự động không được nhắc tới
+ * khoản hoàn (review P7C#5).
+ *
+ * - `confirmed` — đã trả: bản sao hoá đơn đã tới email khách.
+ * - `confirming` — khách về trước webhook: thanh toán đang được xác nhận, trang tự làm tươi.
+ * - `settled` — đơn đã ở kết cục khác. Từng bị thu (thua đua ghế, chuyến đóng lúc capture về —
+ *   `paidAt` vẫn null, `wasCharged`) thì kể khoản hoàn bằng câu chung `refundSentence`, kèm thời
+ *   gian tiền về khi có hoàn; chưa từng thu thì "không còn gì để trả".
+ */
+export function receiptNote(booking: Booking, mood: CheckoutMood): string {
+  const t = messages.booking.success;
+  switch (mood) {
+    case 'confirmed':
+      return t.receiptSentTo(booking.contactEmail);
+    case 'confirming':
+      return t.pendingBody;
+    case 'settled': {
+      const refund = refundSummary(booking);
+      if (refund === null) return t.settledBody;
+      const sentence = refundSentence(refund, booking.currency);
+      return refund.kind === 'none'
+        ? sentence
+        : `${sentence} ${messages.accountBookingDetail.refundLine.timing}`;
+    }
+  }
 }
 
 export interface PendingExpiry {

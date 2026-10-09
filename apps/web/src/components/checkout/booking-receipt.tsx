@@ -7,7 +7,7 @@ import { RevealItem } from '@/components/motion/reveal-item';
 import { todayDateString } from '@/lib/account-stats';
 import { bookingTotalLabel, paymentProviderLabel, vietnamDay } from '@/lib/booking-vm';
 import type { CheckoutMood } from '@/lib/checkout';
-import { bookingPriceLines, formatBookingMoney, ticketSerial } from '@/lib/checkout';
+import { bookingPriceLines, formatBookingMoney, receiptNote, ticketSerial } from '@/lib/checkout';
 import { STAGGER } from '@/lib/motion';
 import { formatDate, formatDateRange } from '@/lib/tours';
 
@@ -62,6 +62,7 @@ export function BookingReceipt({
   /** Đè tiêu đề suy từ `mood`. `/checkout/cancel` cần vì ở đó booking là
    *  PENDING nhưng câu đúng là "Payment cancelled", không phải "Confirming…". */
   title?: string;
+  /** Đè câu dưới tiêu đề; không truyền thì câu theo tâm trạng (`receiptNote`). */
   body?: string;
   /** Nội dung riêng của trang, chèn TRƯỚC cuống (vd dòng hạn của trang huỷ). */
   children?: React.ReactNode;
@@ -137,9 +138,7 @@ export function BookingReceipt({
                       ? t.pendingTitle
                       : t.settledTitle)}
               </h2>
-              <p className="text-sm text-muted-foreground">
-                {body ?? t.receiptSentTo(booking.contactEmail)}
-              </p>
+              <p className="text-sm text-muted-foreground">{body ?? receiptNote(booking, mood)}</p>
             </div>
 
             <dl className="grid shrink-0 grid-cols-[auto_auto] items-baseline gap-x-4 gap-y-1.5 text-xs sm:text-right">

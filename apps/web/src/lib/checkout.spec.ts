@@ -7,6 +7,7 @@ import {
   formatBookingMoney,
   PENDING_TTL_MINUTES,
   pendingExpiry,
+  receiptNote,
   ticketBarcodeWidths,
   ticketSerial,
 } from './checkout';
@@ -32,6 +33,45 @@ describe('checkoutMood — tâm trạng màn /checkout/success đọc từ statu
       expect(checkoutMood(makeBooking({ status }))).toBe('settled');
     },
   );
+});
+
+/**
+ * Câu dưới tiêu đề hoá đơn khi trang không truyền câu riêng (review P7C#5). Hoá đơn ở
+ * `/checkout/success` nay chỉ còn cho đơn CHƯA trả: câu cũ "A copy of this receipt was sent to …"
+ * sai với đơn chưa trả (không email nào đi), và im về khoản hoàn của đơn bị thu rồi hoàn tự động.
+ */
+describe('receiptNote — câu dưới tiêu đề hoá đơn theo tâm trạng', () => {
+  it('đã trả → bản sao hoá đơn đã đi tới email khách', () => {
+    expect(receiptNote(makeBooking(), 'confirmed')).toBe(
+      'A copy of this receipt was sent to test@example.com.',
+    );
+  });
+
+  it('chờ webhook → thanh toán đang được xác nhận, KHÔNG "was sent to"', () => {
+    const pending = makeBooking({ status: 'PENDING', paidAt: null });
+    expect(receiptNote(pending, 'confirming')).toBe(
+      'Your payment is being confirmed — this usually takes a few seconds. This page updates automatically; you can also refresh.',
+    );
+  });
+
+  it('giữ chỗ hết hạn, chưa từng thu → không còn gì để trả', () => {
+    const lapsed = makeBooking({ status: 'CANCELLED', paidAt: null });
+    expect(receiptNote(lapsed, 'settled')).toBe(
+      'There’s nothing left to pay here. Open the booking to see where it stands.',
+    );
+  });
+
+  it('bị thu rồi hoàn tự động (thua đua ghế — paidAt vẫn null) → kể khoản hoàn và thời gian về', () => {
+    const lostRace = makeBooking({
+      status: 'CANCELLED',
+      paidAt: null,
+      totalAmount: '147.00',
+      refundedTotal: '147.00',
+    });
+    expect(receiptNote(lostRace, 'settled')).toBe(
+      '$147.00 has been refunded to your original payment method. It can take 5–10 business days to appear on your statement.',
+    );
+  });
 });
 
 describe('pendingExpiry — hạn 65 phút tính từ createdAt', () => {

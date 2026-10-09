@@ -276,6 +276,44 @@ describe('BookingReceipt — mã đã là voucher hay chưa', () => {
   });
 });
 
+/**
+ * Trang không truyền câu riêng thì câu dưới tiêu đề theo tâm trạng (`receiptNote`, review P7C#5):
+ * nhánh hoá đơn chờ của `/checkout/success` từng in "A copy of this receipt was sent to …" cho
+ * đơn chưa trả, và im về khoản hoàn của đơn bị thu rồi hoàn tự động.
+ */
+describe('BookingReceipt — câu dưới tiêu đề khi trang không truyền body', () => {
+  it('chờ webhook: nói đang xác nhận, KHÔNG "was sent to"', () => {
+    render(
+      <BookingReceipt
+        booking={makeBooking({ status: 'PENDING', paidAt: null })}
+        mood="confirming"
+      />,
+    );
+    expect(screen.getByText(t.pendingBody)).toBeInTheDocument();
+    expect(screen.queryByText(/was sent to/)).toBeNull();
+  });
+
+  it('thua đua ghế (thu rồi hoàn tự động, paidAt null): kể khoản hoàn', () => {
+    render(
+      <BookingReceipt
+        booking={makeBooking({
+          status: 'CANCELLED',
+          paidAt: null,
+          totalAmount: '147.00',
+          refundedTotal: '147.00',
+        })}
+        mood="settled"
+      />,
+    );
+    expect(
+      screen.getByText(
+        '$147.00 has been refunded to your original payment method. It can take 5–10 business days to appear on your statement.',
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/was sent to/)).toBeNull();
+  });
+});
+
 describe('BookingReceipt — đè tiêu đề và chèn nội dung riêng của trang', () => {
   it('title/body đè giá trị suy từ mood', () => {
     render(
