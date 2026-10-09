@@ -2891,9 +2891,10 @@ export const messages = {
     },
     details: {
       heading: 'Personal information',
-      /** Mô tả cột trái (redesign 11/08). Mọi mục trong khu account đều có một
-       *  dòng như thế này — mục im lặng cạnh mục đang nói đọc như lỗi tải. */
-      blurb: 'Your name, contact details, and password.',
+      /** Dòng mô tả dưới tiêu đề thẻ Personal information (spec 09/10 §2) — mật khẩu đã sang
+       *  thẻ riêng nên câu không nhắc nó nữa. Mọi thẻ trong khu account đều có một dòng như
+       *  thế này: thẻ im lặng cạnh thẻ đang nói đọc như lỗi tải. */
+      blurb: 'Your name and contact details.',
       nameLabel: 'Full name',
       phoneLabel: 'Phone',
       emailLabel: 'Email',
@@ -2923,7 +2924,8 @@ export const messages = {
       editAria: (field: string) => `Edit ${field}`,
     },
     password: {
-      heading: 'Change password',
+      /** Dòng mô tả dưới tiêu đề thẻ Password (spec 09/10 §2). */
+      blurb: 'Change the password you sign in with.',
       // Better Auth `changePassword` BẮT BUỘC `currentPassword` (đối chiếu
       // `.d.mts`/nguồn `update-user.mjs` của gói pin — không phải suy đoán)
       // — markup A1 thiếu field này, Task 7 (A2) thêm tối thiểu để form CHẠY

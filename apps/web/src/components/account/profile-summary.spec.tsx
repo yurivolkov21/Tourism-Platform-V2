@@ -2,14 +2,11 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { messages } from '@tourism/i18n';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { SessionUser } from '@/lib/api/session';
+import { makeSessionUser } from '@/test/fixtures/account';
 import { ProfileSummary } from './profile-summary';
 
-const { updateUser, changePassword } = vi.hoisted(() => ({
-  updateUser: vi.fn(),
-  changePassword: vi.fn(),
-}));
-vi.mock('@/lib/auth-client', () => ({ authClient: { updateUser, changePassword } }));
+const { updateUser } = vi.hoisted(() => ({ updateUser: vi.fn() }));
+vi.mock('@/lib/auth-client', () => ({ authClient: { updateUser } }));
 
 const { refresh } = vi.hoisted(() => ({ refresh: vi.fn() }));
 vi.mock('next/navigation', () => ({ useRouter: () => ({ refresh }) }));
@@ -17,22 +14,26 @@ vi.mock('next/navigation', () => ({ useRouter: () => ({ refresh }) }));
 const { toastSuccess } = vi.hoisted(() => ({ toastSuccess: vi.fn() }));
 vi.mock('sonner', () => ({ toast: { success: toastSuccess } }));
 
-const PROFILE: SessionUser = {
-  id: 'user-1',
-  name: 'Minh Anh',
-  email: 'minh.anh@example.com',
-  role: 'CUSTOMER',
-  phone: '0901234567',
-  image: null,
-};
+const PROFILE = makeSessionUser();
 
 beforeEach(() => {
   vi.clearAllMocks();
   updateUser.mockResolvedValue({ error: null });
-  changePassword.mockResolvedValue({ error: null });
 });
 
-describe('ProfileSummary — đọc trước, sửa sau', () => {
+describe('ProfileSummary — thẻ Personal information (spec 09/10 §2)', () => {
+  it('tiêu đề h2, mô tả, đúng ba dòng Full name · Phone · Email — mật khẩu đã sang thẻ riêng', () => {
+    render(<ProfileSummary profile={PROFILE} />);
+    expect(
+      screen.getByRole('heading', { level: 2, name: 'Personal information' }),
+    ).toBeInTheDocument();
+    expect(screen.getByText('Your name and contact details.')).toBeInTheDocument();
+    expect(
+      screen.getAllByRole('listitem').map((item) => item.querySelector('p')?.textContent),
+    ).toEqual(['Full name', 'Phone', 'Email']);
+    expect(screen.queryByText('••••••••••')).not.toBeInTheDocument();
+  });
+
   it('mặc định KHÔNG có ô nhập nào — trang này để XEM là chính', () => {
     render(<ProfileSummary profile={PROFILE} />);
     expect(screen.getByText('Minh Anh')).toBeInTheDocument();
@@ -41,16 +42,15 @@ describe('ProfileSummary — đọc trước, sửa sau', () => {
     expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
   });
 
-  it('email KHÔNG có nút đổi — nói thẳng "chưa đổi được" thay vì dựng nút rồi báo lỗi', () => {
+  it('gợi ý của Phone hiện ngay cả khi chưa sửa', () => {
     render(<ProfileSummary profile={PROFILE} />);
-    expect(screen.getByText('Can’t be changed yet')).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /change email/i })).not.toBeInTheDocument();
+    expect(screen.getByText('So the guide can reach you on the day.')).toBeInTheDocument();
   });
 
-  it('mật khẩu hiện chấm tròn CỐ ĐỊNH, không theo độ dài thật', () => {
-    // Hiện đúng số ký tự là rò rỉ một mẩu thông tin về mật khẩu.
+  it('email KHÔNG có nút sửa — nói thẳng "chưa đổi được"', () => {
     render(<ProfileSummary profile={PROFILE} />);
-    expect(screen.getByText('••••••••••')).toBeInTheDocument();
+    expect(screen.getByText('Can’t be changed yet')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Edit Email' })).not.toBeInTheDocument();
   });
 
   it('phone rỗng → "Not set", không phải ô trống trơn', () => {
@@ -91,7 +91,17 @@ describe('ProfileSummary — sửa từng dòng', () => {
     expect(screen.getAllByRole('textbox')).toHaveLength(1);
   });
 
-  it('mở dòng khác thì dòng đang mở ĐÓNG lại — mỗi lúc chỉ một', async () => {
+  it('dòng đang sửa tô nền nhạt; ô nhập và Save/Cancel nằm TRONG dòng đó', async () => {
+    const user = userEvent.setup();
+    render(<ProfileSummary profile={PROFILE} />);
+    await user.click(screen.getByRole('button', { name: 'Edit Phone' }));
+    const item = screen.getByRole('textbox', { name: 'Phone' }).closest('li');
+    expect(item).toHaveClass('bg-primary/5');
+    expect(item).toContainElement(screen.getByRole('button', { name: 'Save phone' }));
+    expect(item).toContainElement(screen.getByRole('button', { name: 'Cancel' }));
+  });
+
+  it('mở dòng khác thì dòng đang mở ĐÓNG lại — trong thẻ mỗi lúc chỉ một', async () => {
     // Mở nhiều dòng cùng lúc thì không rõ nút Save nào thuộc về đâu.
     const user = userEvent.setup();
     render(<ProfileSummary profile={PROFILE} />);
@@ -140,47 +150,5 @@ describe('ProfileSummary — sửa từng dòng', () => {
       '/login?redirect=/account/profile',
     );
     expect(refresh).not.toHaveBeenCalled();
-  });
-});
-
-describe('ProfileSummary — dòng mật khẩu', () => {
-  it('GIỮ field "Current password" — bắt buộc của Better Auth', async () => {
-    // Gộp hoặc bỏ field này là mutation chết.
-    const user = userEvent.setup();
-    render(<ProfileSummary profile={PROFILE} />);
-    await user.click(screen.getByRole('button', { name: 'Edit Password' }));
-    expect(screen.getByLabelText(/current password/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/^new password/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/confirm/i)).toBeInTheDocument();
-  });
-
-  it('đổi mật khẩu xong thì ĐÓNG dòng lại', async () => {
-    const user = userEvent.setup();
-    render(<ProfileSummary profile={PROFILE} />);
-    await user.click(screen.getByRole('button', { name: 'Edit Password' }));
-    await user.type(screen.getByLabelText(/current password/i), 'OldPass!2026');
-    await user.type(screen.getByLabelText(/^new password/i), 'NewPass!2026');
-    await user.type(screen.getByLabelText(/confirm/i), 'NewPass!2026');
-    await user.click(screen.getByRole('button', { name: /update password|save/i }));
-
-    await waitFor(() => expect(changePassword).toHaveBeenCalled());
-    // Để mở với ba ô rỗng trông như chưa lưu.
-    await waitFor(() =>
-      expect(screen.queryByLabelText(/current password/i)).not.toBeInTheDocument(),
-    );
-  });
-
-  it('Cancel dòng mật khẩu → về tĩnh, KHÔNG gọi changePassword', async () => {
-    // Đồng bộ hành vi Cancel với dòng tên/phone — nở ra rồi phải đóng lại
-    // được mà không cần lưu.
-    const user = userEvent.setup();
-    render(<ProfileSummary profile={PROFILE} />);
-    await user.click(screen.getByRole('button', { name: 'Edit Password' }));
-    await user.type(screen.getByLabelText(/current password/i), 'OldPass!2026');
-    await user.click(screen.getByRole('button', { name: 'Cancel' }));
-
-    expect(screen.queryByLabelText(/current password/i)).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Edit Password' })).toBeInTheDocument();
-    expect(changePassword).not.toHaveBeenCalled();
   });
 });

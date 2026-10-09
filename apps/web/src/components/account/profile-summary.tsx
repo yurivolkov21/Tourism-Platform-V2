@@ -10,79 +10,30 @@ import { messages } from '@tourism/i18n';
 import { Button } from '@tourism/ui/components/button';
 import { Input } from '@tourism/ui/components/input';
 import { Label } from '@tourism/ui/components/label';
+import { LockIcon } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { type FormEvent, type ReactNode, useState } from 'react';
+import { type FormEvent, useState } from 'react';
 import { toast } from 'sonner';
 import { AccountActionError } from '@/components/account/account-action-error';
-import { ChangePasswordForm } from '@/components/account/change-password-form';
+import { EditButton, SettingsCard, SettingsRow } from '@/components/account/settings-card';
 import { FieldError, invalidProps } from '@/components/auth/field-error';
 import type { SessionUser } from '@/lib/api/session';
 import { authClient } from '@/lib/auth-client';
 
-type EditableField = 'name' | 'phone' | 'password';
+type EditableField = 'name' | 'phone';
 type ProfileErrorKind = 'sessionExpired' | AuthErrorKey;
 
 /**
- * Một dòng của danh sách tóm tắt: nhãn · giá trị · hành động.
+ * Thẻ Personal information của Settings (spec 09/10 §2, phương án C): Full name, Phone, Email
+ * dạng đọc-trước (kiểu GOV.UK, redesign 10/08) — đa số lần vào trang này người ta chỉ muốn XEM
+ * lại thông tin; mở sẵn ô nhập là bắt họ đọc form thay vì đọc dữ liệu.
  *
- * `action` là ReactNode chứ không phải chuỗi vì ba dòng có ba loại hành động
- * khác nhau — nút mở, chữ giải thích vì sao không đổi được, và không gì cả.
- */
-function SummaryRow({
-  label,
-  value,
-  action,
-  editing,
-  children,
-}: {
-  label: string;
-  value: ReactNode;
-  action: ReactNode;
-  editing?: boolean;
-  /** Phần THAY THẾ giá trị khi đang sửa dòng này. */
-  children?: ReactNode;
-}) {
-  return (
-    <li className="py-4">
-      {/* Đang sửa thì form THAY THẾ giá trị, không xếp chồng dưới nó. Bản đầu
-          tiên xếp chồng và nhìn ảnh thật mới thấy: nhãn trường hiện hai lần, và
-          có hai nút Cancel cạnh nhau — người dùng không biết cái nào là cái nào. */}
-      {editing ? (
-        <>
-          <div className="text-sm font-medium text-foreground">{label}</div>
-          {children}
-        </>
-      ) : (
-        // Khuôn Airbnb "Personal info": nhãn ĐẬM trên, giá trị mờ dưới, hành
-        // động bám mép phải. Bản trước cho nhãn một cột cứng `w-24` rồi thả
-        // giá trị `flex-1` — nên ở cột rộng, hành động bị đẩy cách giá trị tới
-        // ~790px trống, và người đọc không nối được hai thứ với nhau.
-        <div className="flex items-baseline justify-between gap-6">
-          <div className="min-w-0">
-            <div className="text-sm font-medium text-foreground">{label}</div>
-            <div className="mt-0.5 text-sm text-muted-foreground">{value}</div>
-          </div>
-          <div className="shrink-0">{action}</div>
-        </div>
-      )}
-    </li>
-  );
-}
-
-/**
- * Trang hồ sơ dạng danh sách tóm tắt đọc-trước (kiểu GOV.UK), thay hai form
- * luôn mở của bản dựng tạm.
+ * Mật khẩu đã tách sang thẻ riêng (`PasswordCard`): mỗi thẻ giữ trạng thái mở của riêng nó, nên
+ * một dòng ở đây và dòng mật khẩu mở cùng lúc được. TRONG thẻ này mỗi lần chỉ MỘT dòng mở — mở
+ * nhiều dòng thì không rõ nút "Save" nào thuộc về đâu, và người dùng dễ tưởng một nút lưu tất cả.
  *
- * Vì sao đổi: đa số lần vào trang này người ta chỉ muốn XEM lại thông tin của
- * mình. Mở sẵn sáu ô nhập bắt họ đọc một cái form thay vì đọc dữ liệu, và
- * cũng làm mọi thứ trông như đang chờ được sửa.
- *
- * Mỗi lần chỉ MỘT dòng mở: mở nhiều dòng cùng lúc thì không rõ nút "Save"
- * nào thuộc về đâu, và người dùng dễ tưởng một nút lưu tất cả.
- *
- * Email không có nút đổi — đó là email đăng nhập, tính năng đổi chưa làm
- * (PARK ở spec §4). Nói thẳng "chưa đổi được" tử tế hơn là dựng một nút rồi
- * báo lỗi khi bấm.
+ * Email không có nút sửa — đó là email đăng nhập, tính năng đổi chưa làm (PARK). Nói thẳng "chưa
+ * đổi được" kèm icon khoá tử tế hơn là dựng một nút rồi báo lỗi khi bấm.
  */
 export function ProfileSummary({ profile }: { profile: SessionUser }) {
   const t = messages.accountProfile;
@@ -97,6 +48,11 @@ export function ProfileSummary({ profile }: { profile: SessionUser }) {
   // Sweep 19/08: lỗi của ô đang mở (tên trống/quá dài, phone 6–30) — kiểm ở
   // client trước khi gọi `updateUser`; mỗi lần chỉ MỘT dòng mở nên một slot đủ.
   const [fieldError, setFieldError] = useState<string | undefined>();
+
+  function startEdit(field: EditableField) {
+    setFieldError(undefined);
+    setOpen(field);
+  }
 
   function close() {
     setOpen(null);
@@ -138,25 +94,6 @@ export function ProfileSummary({ profile }: { profile: SessionUser }) {
     }
   }
 
-  const editButton = (field: EditableField, label: string) => (
-    <Button
-      type="button"
-      variant="link"
-      size="sm"
-      // `px-0`: variant link vẫn mang padding ngang của size, và 10px đó đẩy
-      // chữ lệch khỏi mép phải container — mất đúng toạ độ thứ ba của lưới.
-      className="h-auto px-0"
-      aria-expanded={open === field}
-      aria-label={s.editAria(label)}
-      onClick={() => {
-        setFieldError(undefined);
-        setOpen(field);
-      }}
-    >
-      {s.edit}
-    </Button>
-  );
-
   const errorNode = errorKind ? (
     <AccountActionError
       expired={errorKind === 'sessionExpired'}
@@ -169,12 +106,12 @@ export function ProfileSummary({ profile }: { profile: SessionUser }) {
   ) : null;
 
   return (
-    <ul className="divide-y">
-      <SummaryRow
+    <SettingsCard title={t.details.heading} description={t.details.blurb}>
+      <SettingsRow
         label={t.details.nameLabel}
         value={profile.name}
         editing={open === 'name'}
-        action={editButton('name', t.details.nameLabel)}
+        action={<EditButton field={t.details.nameLabel} onClick={() => startEdit('name')} />}
       >
         {open === 'name' ? (
           /* `noValidate`: nếu sau này thêm `required`/`type=email` mà quên cái
@@ -182,7 +119,7 @@ export function ProfileSummary({ profile }: { profile: SessionUser }) {
              `onSubmit` kịp chạy — đúng bug đã dính ở form đặt chỗ (4959455). */
           <form
             noValidate
-            className="mt-3 flex flex-col gap-3"
+            className="flex flex-col gap-3"
             onSubmit={(e) => save(e, { name: name.trim() })}
           >
             <div className="flex flex-col gap-1.5">
@@ -215,10 +152,11 @@ export function ProfileSummary({ profile }: { profile: SessionUser }) {
             </div>
           </form>
         ) : null}
-      </SummaryRow>
+      </SettingsRow>
 
-      <SummaryRow
+      <SettingsRow
         label={t.details.phoneLabel}
+        hint={s.phoneHint}
         value={
           profile.phone ? (
             <span className="tabular-nums">{profile.phone}</span>
@@ -227,12 +165,12 @@ export function ProfileSummary({ profile }: { profile: SessionUser }) {
           )
         }
         editing={open === 'phone'}
-        action={editButton('phone', t.details.phoneLabel)}
+        action={<EditButton field={t.details.phoneLabel} onClick={() => startEdit('phone')} />}
       >
         {open === 'phone' ? (
           <form
             noValidate
-            className="mt-3 flex flex-col gap-3"
+            className="flex flex-col gap-3"
             onSubmit={(e) => save(e, { phone: phone.trim() })}
           >
             <div className="flex flex-col gap-1.5">
@@ -252,7 +190,6 @@ export function ProfileSummary({ profile }: { profile: SessionUser }) {
                 {...invalidProps('profile-phone-error', fieldError)}
               />
               <FieldError id="profile-phone-error">{fieldError}</FieldError>
-              <p className="text-sm text-muted-foreground">{s.phoneHint}</p>
             </div>
             {errorNode}
             <div className="flex items-center gap-2">
@@ -265,28 +202,18 @@ export function ProfileSummary({ profile }: { profile: SessionUser }) {
             </div>
           </form>
         ) : null}
-      </SummaryRow>
+      </SettingsRow>
 
-      <SummaryRow
+      <SettingsRow
         label={t.details.emailLabel}
         value={profile.email}
-        action={<span className="text-sm text-muted-foreground">{s.emailLocked}</span>}
+        action={
+          <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+            <LockIcon aria-hidden="true" className="size-3.5" />
+            {s.emailLocked}
+          </span>
+        }
       />
-
-      <SummaryRow
-        label={s.passwordLabel}
-        // Chấm tròn cố định, KHÔNG theo độ dài thật — hiện đúng số ký tự là
-        // rò rỉ một mẩu thông tin về mật khẩu.
-        value={<span className="font-mono text-muted-foreground">{s.passwordMask}</span>}
-        editing={open === 'password'}
-        action={editButton('password', s.passwordLabel)}
-      >
-        {open === 'password' ? (
-          <div className="mt-3">
-            <ChangePasswordForm onDone={close} />
-          </div>
-        ) : null}
-      </SummaryRow>
-    </ul>
+    </SettingsCard>
   );
 }

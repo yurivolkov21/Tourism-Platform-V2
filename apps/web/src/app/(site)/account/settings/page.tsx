@@ -5,6 +5,7 @@ import { cookies } from 'next/headers';
 import Link from 'next/link';
 import { AvatarUpload } from '@/components/account/avatar-upload';
 import { DeleteAccount } from '@/components/account/delete-account';
+import { PasswordCard } from '@/components/account/password-card';
 import { ProfileSummary } from '@/components/account/profile-summary';
 import { ContentHero } from '@/components/content/content-hero';
 import { fetchAccountMe } from '@/lib/api/account';
@@ -61,6 +62,8 @@ export default async function AccountSettingsPage() {
               image={profile.image}
             />
             <ProfileSummary profile={profile} />
+            {/* Mật khẩu là thẻ riêng (`PasswordCard`), không còn là một dòng của `ProfileSummary`. */}
+            <PasswordCard />
           </div>
         </section>
 
