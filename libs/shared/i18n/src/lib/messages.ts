@@ -102,6 +102,11 @@ const CATALOG_DELETE_COPY = {
 const QUESTION_COUNT_COPY = (n: number) => (n === 1 ? '1 question' : `${n} questions`);
 const POLICY_COUNT_COPY = (n: number) => (n === 1 ? '1 policy' : `${n} policies`);
 
+// MỘT câu cho chuyến bị CÔNG TY huỷ (ADR-0041 AMEND 1) ở cột phải của trang chi tiết đơn
+// (`bookingDetail.closed.weCancelled`) lẫn dải hết hiệu lực của voucher
+// (`voucher.departureCancelledNotice`) — hai bản chép tay là hai bản sẽ trôi lệch.
+const WE_CANCELLED_COPY = 'We had to cancel this departure';
+
 export const messages = {
   // Dọn 19/08 (sổ nợ B1 mở rộng): 21 khối cấp-1 KHÔNG consumer nào trên web —
   // bản nháp static-first/port Nexora đã bị thay bằng copy trong component hoặc
@@ -611,8 +616,9 @@ export const messages = {
    * mảng teal. Chỉ khai chữ MỚI; nhãn đã có thì chỗ gọi dùng lại: "Total paid", "View
    * booking", "Browse more tours" (`booking.success`), "Includes all taxes and fees."
    * (`checkoutSummary.taxesNote`), câu hạn huỷ (`cancellationDeadline.full`), câu hoàn tiền
-   * (`accountBookingDetail.refundLine`), chế độ thử (`tourDetail.booking.testMode`), chữ trên
-   * mộc (`passportVisa.stampByStatus`).
+   * (`accountBookingDetail.refundLine`), tiền đang về của chuyến công ty huỷ
+   * (`bookingDetail.closed.refundOnItsWay`), chế độ thử (`tourDetail.booking.testMode`), chữ trên
+   * mộc (`passportVisa.stampByStatus` qua `bookingPass`).
    */
   voucher: {
     /** Vừa trả (≤ 30 phút sau `paidAt`), chuyến một ngày. `place`: điểm đến đầu tiên, không có thì tên tour. */
@@ -648,6 +654,11 @@ export const messages = {
     showCode: 'Show this code at pickup — printed or on your phone.',
     /** Dải thay ô mã khi đơn đã huỷ: không còn mã nào để chìa ra. */
     cancelledNotice: 'This booking was cancelled — this voucher is no longer valid.',
+    /**
+     * Dải ấy khi chuyến bị CÔNG TY huỷ (`cancelledByOperator`, ADR-0041 AMEND 1): nói đúng ai huỷ,
+     * cùng câu với cột phải của trang chi tiết đơn (`bookingDetail.closed.weCancelled`).
+     */
+    departureCancelledNotice: `${WE_CANCELLED_COPY} — this voucher is no longer valid.`,
     receiptHeading: 'Receipt overview',
     refunded: 'Refunded',
     /** Số tiền đã định dạng (`formatMoneyExact`); dấu trừ là U+2212. */
@@ -3038,7 +3049,7 @@ export const messages = {
        * booking was cancelled." của đơn khách tự huỷ.
        */
       departureCancelled: 'Departure cancelled',
-      weCancelled: 'We had to cancel this departure.',
+      weCancelled: `${WE_CANCELLED_COPY}.`,
       /** Job hoàn tiền của chuyến huỷ chưa chạy (đơn còn PAID): tiền đang về, sổ chưa có số để kể. */
       refundOnItsWay: 'Your full refund is on its way.',
     },

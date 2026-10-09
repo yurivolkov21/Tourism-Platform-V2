@@ -41,6 +41,7 @@ const CANCELLED = {
 
 const SHOW_CODE = 'Show this code at pickup — printed or on your phone.';
 const TAXES = 'Includes all taxes and fees.';
+const OPERATOR_NOTICE = 'We had to cancel this departure — this voucher is no longer valid.';
 
 describe('voucherView — đơn nào dùng thiết kế voucher (spec §2.6)', () => {
   it('đơn chưa có paidAt (PENDING chờ webhook) → null: trang giữ hoá đơn chờ', () => {
@@ -400,6 +401,7 @@ describe('voucherView — đã huỷ (cancelled)', () => {
         cancellationDecidedAt: '2026-10-25T02:00:00.000Z',
       }),
     );
+    expect(v.cancelledNotice).toBe(OPERATOR_NOTICE);
     expect(v.journal.slice(1)).toEqual([
       { label: 'Cancelled', detail: '25 Oct 2026', done: true },
       {
@@ -408,6 +410,58 @@ describe('voucherView — đã huỷ (cancelled)', () => {
         done: true,
       },
     ]);
+  });
+
+  /**
+   * Chuyến bị CÔNG TY huỷ (ADR-0041 AMEND 1): dải hết hiệu lực nói đúng ai huỷ — cùng câu "We had
+   * to cancel this departure" của trang chi tiết đơn (`cancelledByOperator`) — và nhật ký kể tiền:
+   * đang về khi job hoàn tiền chưa chạy (`operatorRefundPending`), số đã hoàn khi job xong.
+   */
+  it.each([
+    ['còn PAID', {}],
+    ['đã hoàn một phần trước đó', { status: 'PARTIALLY_REFUNDED', refundedTotal: '49.00' }],
+  ] as const)(
+    'chuyến công ty huỷ, job hoàn tiền chưa chạy (đơn %s): dải "We had to cancel", tiền đang về',
+    (_, over) => {
+      const v = view(voucherBooking({ ...OPERATOR_CANCELLED_PENDING, ...over }));
+      expect(v.cancelledNotice).toBe(OPERATOR_NOTICE);
+      expect(v.journal).toEqual([
+        { label: 'Booked', detail: '18 Oct 2026', done: true },
+        { label: 'Cancelled', detail: null, done: true },
+        { label: 'Refund', detail: 'Your full refund is on its way.', done: false },
+      ]);
+    },
+  );
+
+  it('chuyến công ty huỷ, job đã hoàn trọn (CANCELLED): dải "We had to cancel", Refund ✓ số đã hoàn', () => {
+    const v = view(
+      voucherBooking({
+        ...OPERATOR_CANCELLED_PENDING,
+        status: 'CANCELLED',
+        cancelledAt: '2026-10-25T02:00:00.000Z',
+        refundedTotal: '147.00',
+      }),
+    );
+    expect(v.cancelledNotice).toBe(OPERATOR_NOTICE);
+    expect(v.journal.slice(1)).toEqual([
+      { label: 'Cancelled', detail: '25 Oct 2026', done: true },
+      {
+        label: 'Refund',
+        detail: '$147.00 has been refunded to your original payment method.',
+        done: true,
+      },
+    ]);
+  });
+
+  it('khách tự huỷ sau hạn chót TRƯỚC khi công ty huỷ chuyến: câu chuyện vẫn là của khách', () => {
+    // Lõi huỷ của công ty bỏ qua đơn đã đóng: đơn mang cờ chuyến huỷ mà không hoàn đồng nào.
+    const v = view(voucherBooking({ ...CANCELLED, departureCancelled: true }));
+    expect(v.cancelledNotice).toBe('This booking was cancelled — this voucher is no longer valid.');
+    expect(v.journal[2]).toEqual({
+      label: 'Refund',
+      detail: 'No refund was due on this booking.',
+      done: false,
+    });
   });
 
   it.each([

@@ -208,3 +208,16 @@ describe('messages: bookingDetail (P7 phần B — trang chi tiết đơn)', () 
     expect(d.journey.refundPartial('$73.50', '$147.00')).toBe('$73.50 of $147.00');
   });
 });
+
+describe('messages: voucher (P7 phần C — voucher của đơn đã trả)', () => {
+  /**
+   * Chuyến bị CÔNG TY huỷ (ADR-0041 AMEND 1): dải hết hiệu lực của voucher và cột phải của trang chi
+   * tiết đơn nói CÙNG một câu về ai huỷ — một khái niệm một chữ, sửa một chỗ là đổi cả hai.
+   */
+  it('chuyến công ty huỷ: dải voucher và trang chi tiết đơn cùng câu "We had to cancel this departure"', () => {
+    expect(messages.bookingDetail.closed.weCancelled).toBe('We had to cancel this departure.');
+    expect(messages.voucher.departureCancelledNotice).toBe(
+      'We had to cancel this departure — this voucher is no longer valid.',
+    );
+  });
+});

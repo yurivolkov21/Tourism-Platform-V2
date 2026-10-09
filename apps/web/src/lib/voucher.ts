@@ -3,8 +3,10 @@ import { messages } from '@tourism/i18n';
 import {
   type BookingStamp,
   bookingPass,
+  cancelledByOperator,
   cancelledOn,
   freeCancellationOpen,
+  operatorRefundPending,
   paymentProviderLabel,
   refundSentence,
   refundSummary,
@@ -201,7 +203,6 @@ export function voucherView(booking: BookingDetail, now: Date): VoucherView | nu
     case 'cancelled': {
       // Cùng luật ngày huỷ với thanh hành trình của trang chi tiết đơn (`cancelledOn`).
       const cancelledDay = cancelledOn(booking);
-      const refund = refundSummary(booking);
       return {
         ...common,
         conditions: [],
@@ -216,22 +217,40 @@ export function voucherView(booking: BookingDetail, now: Date): VoucherView | nu
             detail: cancelledDay === null ? null : formatDate(cancelledDay),
             done: true,
           },
-          ...(refund === null
-            ? []
-            : [
-                {
-                  label: t.journal.refund,
-                  // Cùng câu với cột phải của trang chi tiết đơn đã huỷ.
-                  detail: refundSentence(refund, booking.currency),
-                  // Không hoàn đồng nào thì chưa có gì "xảy ra" để đánh dấu.
-                  done: refund.kind !== 'none',
-                },
-              ]),
+          ...refundJournal(booking),
         ],
-        cancelledNotice: t.cancelledNotice,
+        // Chuyến bị CÔNG TY huỷ nói đúng ai huỷ — cùng luật (`cancelledByOperator`) và cùng câu với
+        // cột phải của trang chi tiết đơn (ADR-0041 AMEND 1).
+        cancelledNotice: cancelledByOperator(booking)
+          ? t.departureCancelledNotice
+          : t.cancelledNotice,
       };
     }
   }
+}
+
+/**
+ * Mốc Refund của voucher đã huỷ — cùng chuyện tiền với cột phải của trang chi tiết đơn
+ * (`TripClosedPanel`). Chuyến công ty huỷ mà job hoàn tiền chưa chạy (`operatorRefundPending`, đơn
+ * còn PAID hay hoàn một phần): tiền đang về, sổ chưa ghi khoản hoàn nên chưa có số để kể. Còn lại
+ * là câu `refundSentence` của khoản đã hoàn hay "không hoàn đồng nào"; đơn chưa từng thu thì không
+ * có mốc này (`refundSummary` là `null`).
+ */
+function refundJournal(booking: BookingDetail): VoucherJournalItem[] {
+  const t = messages.voucher.journal;
+  if (operatorRefundPending(booking)) {
+    return [{ label: t.refund, detail: messages.bookingDetail.closed.refundOnItsWay, done: false }];
+  }
+  const refund = refundSummary(booking);
+  if (refund === null) return [];
+  return [
+    {
+      label: t.refund,
+      detail: refundSentence(refund, booking.currency),
+      // Không hoàn đồng nào thì chưa có gì "xảy ra" để đánh dấu.
+      done: refund.kind !== 'none',
+    },
+  ];
 }
 
 /**
