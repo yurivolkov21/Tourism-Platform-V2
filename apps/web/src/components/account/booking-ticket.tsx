@@ -3,6 +3,7 @@ import { messages } from '@tourism/i18n';
 import { cn } from '@tourism/ui/lib/utils';
 import { BusIcon } from 'lucide-react';
 import Link from 'next/link';
+import { KICKER } from '@/components/account/panel-card';
 import { TicketBarcode } from '@/components/checkout/ticket-barcode';
 import { RevealItem } from '@/components/motion/reveal-item';
 import { VisaStamp } from '@/components/passport/visa-stamp';
@@ -16,10 +17,6 @@ import {
 } from '@/lib/booking-vm';
 import { formatBookingMoney } from '@/lib/checkout';
 import { calendarDateParts, formatDate } from '@/lib/tours';
-
-/** Nhãn nhỏ in hoa của vé — `.k` của bản vẽ (10px, đậm, giãn chữ 0.15em). */
-const KICKER =
-  'text-[10px] leading-none font-bold tracking-[0.15em] text-muted-foreground uppercase';
 
 /**
  * Vé kiểu boarding pass đầu trang chi tiết đơn (spec P7 §5.2, bản vẽ `.tk`): ảnh tour · thân

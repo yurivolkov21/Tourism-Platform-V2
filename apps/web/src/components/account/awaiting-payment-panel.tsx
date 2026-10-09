@@ -1,6 +1,7 @@
 import type { BookingDetail } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
 import { BookingActions } from '@/components/account/booking-actions';
+import { PanelCard, PanelKicker } from '@/components/account/panel-card';
 import type { BookingView } from '@/lib/booking-vm';
 import { formatBookingMoney } from '@/lib/checkout';
 
@@ -18,16 +19,8 @@ export function AwaitingPaymentPanel({
 }) {
   const t = messages.bookingDetail;
   return (
-    <section
-      aria-labelledby="awaiting-payment-heading"
-      className="rounded-2xl border border-border bg-card px-6 py-5 sm:px-[26px]"
-    >
-      <h2
-        id="awaiting-payment-heading"
-        className="text-[10px] leading-none font-bold tracking-[0.15em] text-muted-foreground uppercase"
-      >
-        {t.journey.awaitingPayment}
-      </h2>
+    <PanelCard aria-labelledby="awaiting-payment-heading">
+      <PanelKicker id="awaiting-payment-heading">{t.journey.awaitingPayment}</PanelKicker>
       <p className="mt-1.5 font-mono text-[28px] leading-[1.1] font-semibold tabular-nums">
         {formatBookingMoney(booking, booking.totalAmount)}
       </p>
@@ -38,6 +31,6 @@ export function AwaitingPaymentPanel({
       <div className="mt-4">
         <BookingActions view={view} code={booking.code} />
       </div>
-    </section>
+    </PanelCard>
   );
 }

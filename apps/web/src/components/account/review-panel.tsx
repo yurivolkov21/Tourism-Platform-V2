@@ -2,6 +2,7 @@ import type { BookingDetail } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
 import { ButtonLink } from '@tourism/ui/components/button-link';
 import Link from 'next/link';
+import { PanelCard } from '@/components/account/panel-card';
 import { RetractReviewButton } from '@/components/account/retract-review-button';
 import { ReviewComposer } from '@/components/account/review-composer';
 import type { ReviewAreaSlot } from '@/lib/review';
@@ -21,11 +22,7 @@ export function ReviewPanel({ booking, slot }: { booking: BookingDetail; slot: R
     // Khung thẻ ở MỌI khổ như các khối anh em: hàng sao + nút gửi của `ReviewForm` xuống dòng được
     // nên composer vừa cột 320px trong khung (review P7 B12 — bản trước bỏ khung dưới `sm` vì hàng
     // ấy không co được, mà slot pending vẫn làm cả trang cuộn ngang 26px ở 375px).
-    <section
-      id="review"
-      aria-labelledby="review-heading"
-      className="rounded-2xl border border-border bg-card px-6 py-5 sm:px-[26px]"
-    >
+    <PanelCard id="review" aria-labelledby="review-heading">
       <h2 id="review-heading" className="font-heading text-[19px] leading-tight font-semibold">
         {sec.reviewHeading}
       </h2>
@@ -43,7 +40,7 @@ export function ReviewPanel({ booking, slot }: { booking: BookingDetail; slot: R
           <ReviewComposer bookingCode={booking.code} review={booking.review ?? undefined} />
         ) : null}
       </div>
-    </section>
+    </PanelCard>
   );
 }
 
@@ -53,17 +50,14 @@ export function ReviewPanel({ booking, slot }: { booking: BookingDetail; slot: R
  */
 export function TripThanksPanel() {
   return (
-    <section
-      aria-labelledby="trip-thanks-heading"
-      className="rounded-2xl border border-border bg-card px-6 py-5"
-    >
+    <PanelCard aria-labelledby="trip-thanks-heading">
       <h2 id="trip-thanks-heading" className="font-heading text-[19px] leading-tight font-semibold">
         {messages.bookingDetail.closed.thanks}
       </h2>
       <ButtonLink href="/tours" variant="outline" className="mt-4">
         {messages.booking.list.browse}
       </ButtonLink>
-    </section>
+    </PanelCard>
   );
 }
 

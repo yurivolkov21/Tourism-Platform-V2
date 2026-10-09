@@ -5,6 +5,7 @@ import { cn } from '@tourism/ui/lib/utils';
 import { CalendarClockIcon, MessageSquareIcon, TicketIcon } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { BookingActions, type CancelDialogBooking } from '@/components/account/booking-actions';
+import { KICKER, PANEL_INSET_X } from '@/components/account/panel-card';
 import {
   type BookingView,
   bookingPass,
@@ -140,7 +141,12 @@ export function BookingDetailsPanel({
         </dl>
       </Block>
 
-      <div className="flex flex-wrap items-center justify-between gap-2.5 rounded-b-[15px] bg-muted/55 px-6 py-3 sm:px-[26px]">
+      <div
+        className={cn(
+          'flex flex-wrap items-center justify-between gap-2.5 rounded-b-[15px] bg-muted/55 py-3',
+          PANEL_INSET_X,
+        )}
+      >
         {canCancel ? (
           <BookingActions
             // Hàng đáy chỉ mang nút huỷ đơn đã trả; các hành động khác ở cột phải.
@@ -206,10 +212,8 @@ function Block({
   children: ReactNode;
 }) {
   return (
-    <section className={cn('px-6 py-4 sm:px-[26px]', last ? null : 'border-b border-muted')}>
-      <h2 className="mb-2.5 text-[10px] leading-none font-bold tracking-[0.15em] text-muted-foreground uppercase">
-        {title}
-      </h2>
+    <section className={cn(PANEL_INSET_X, 'py-4', last ? null : 'border-b border-muted')}>
+      <h2 className={cn(KICKER, 'mb-2.5')}>{title}</h2>
       {children}
     </section>
   );

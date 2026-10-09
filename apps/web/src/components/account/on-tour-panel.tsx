@@ -2,6 +2,8 @@ import { type BookingDetail, tripDayNumbers } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
 import { LifeBuoyIcon, MapPinIcon } from 'lucide-react';
 import Link from 'next/link';
+import { DayText } from '@/components/account/day-text';
+import { PanelCard, PanelKicker } from '@/components/account/panel-card';
 import { type BookingTourData, tourMeetingPoint } from '@/lib/get-ready';
 
 /**
@@ -24,16 +26,8 @@ export function OnTourPanel({
   const meetingPoint = tourMeetingPoint(tour);
 
   return (
-    <section
-      aria-labelledby="on-tour-heading"
-      className="rounded-2xl border border-border bg-card px-6 py-5 sm:px-[26px]"
-    >
-      <h2
-        id="on-tour-heading"
-        className="text-[10px] leading-none font-bold tracking-[0.15em] text-muted-foreground uppercase"
-      >
-        {t.onTour.heading}
-      </h2>
+    <PanelCard aria-labelledby="on-tour-heading">
+      <PanelKicker id="on-tour-heading">{t.onTour.heading}</PanelKicker>
       <p className="mt-1.5 font-heading text-[34px] leading-tight font-semibold">
         {t.journey.dayOf(dayOfTrip, tripLength)}
       </p>
@@ -42,21 +36,14 @@ export function OnTourPanel({
           <p className="text-sm font-semibold">
             {messages.tourDetail.itinerary.dayLabel(day.dayNumber)} · {day.title}
           </p>
-          {/* Lịch trình và điểm hẹn là chữ admin in nguyên văn — một link hay chuỗi liền dài bẻ ở
-              bất kỳ đâu, không đẩy trang cuộn ngang (review P7 S2). */}
-          {day.description ? (
-            <p
-              data-slot="day-text"
-              className="mt-2 rounded-lg bg-muted/55 px-[11px] py-2 font-mono text-[11.5px] leading-[1.65] whitespace-pre-line [overflow-wrap:anywhere]"
-            >
-              {day.description}
-            </p>
-          ) : null}
+          {day.description ? <DayText text={day.description} className="mt-2" /> : null}
         </div>
       ) : null}
       {meetingPoint ? (
         <div className="mt-4 flex items-start gap-2 text-[13px]">
           <MapPinIcon aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-primary-emphasis" />
+          {/* Điểm hẹn là chữ admin in nguyên văn — một link dán liền bẻ ở bất kỳ đâu, không đẩy
+              trang cuộn ngang (review P7 S2). */}
           <div className="min-w-0">
             <p className="font-semibold">{t.details.meetingPoint}</p>
             <p className="text-muted-foreground [overflow-wrap:anywhere]">{meetingPoint}</p>
@@ -73,6 +60,6 @@ export function OnTourPanel({
           {messages.passportVisa.contactUs}
         </Link>
       </p>
-    </section>
+    </PanelCard>
   );
 }

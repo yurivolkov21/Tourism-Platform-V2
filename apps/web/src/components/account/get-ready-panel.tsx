@@ -2,6 +2,8 @@ import { messages } from '@tourism/i18n';
 import { cn } from '@tourism/ui/lib/utils';
 import { StarIcon } from 'lucide-react';
 import Link from 'next/link';
+import { DayText } from '@/components/account/day-text';
+import { PANEL_INSET_X, PanelCard, PanelKicker } from '@/components/account/panel-card';
 import { PrepChecklist } from '@/components/account/prep-checklist';
 import { type GetReadyStep, type GetReadyView, prepStorageKey } from '@/lib/get-ready';
 
@@ -10,21 +12,17 @@ import { type GetReadyStep, type GetReadyView, prepStorageKey } from '@/lib/get-
  * Departs, các bước đánh số kiểu timeline, chân khối nói ngày mở review (chỉ đơn PAID — không có
  * chân thì không vẽ). Mọi luật (bỏ bước thiếu dữ liệu, đánh số lại) ở `getReadySteps`; component
  * chỉ vẽ.
+ *
+ * Thẻ tự đệm từng phần (`flush`): chân khối kẻ ngang trọn bề rộng thẻ. Đệm đáy của thân là 4px vì
+ * bước cuối đã mang `pb-4` (chỗ của vạch nối giữa các bước) — cộng lại 20px như `py-5` của các khối
+ * anh em, có chân hay không (bản trước 22px).
  */
 export function GetReadyPanel({ view, bookingCode }: { view: GetReadyView; bookingCode: string }) {
   const t = messages.bookingDetail.getReady;
   return (
-    <section
-      aria-labelledby="get-ready-heading"
-      className="rounded-2xl border border-border bg-card"
-    >
-      <div className="px-6 pt-5 pb-1.5 sm:px-[26px]">
-        <h2
-          id="get-ready-heading"
-          className="text-[10px] leading-none font-bold tracking-[0.15em] text-muted-foreground uppercase"
-        >
-          {t.heading}
-        </h2>
+    <PanelCard flush aria-labelledby="get-ready-heading">
+      <div className={cn(PANEL_INSET_X, 'pt-5 pb-1')}>
+        <PanelKicker id="get-ready-heading">{t.heading}</PanelKicker>
         <p className="mt-1.5 flex items-baseline gap-2.5">
           {view.countdown.count === null ? (
             <span className="font-heading text-[46px] leading-none font-semibold">
@@ -47,12 +45,17 @@ export function GetReadyPanel({ view, bookingCode }: { view: GetReadyView; booki
         </ol>
       </div>
       {view.footer ? (
-        <p className="flex items-center gap-2 border-t border-muted px-6 py-3 text-[12.5px] text-muted-foreground sm:px-[26px]">
+        <p
+          className={cn(
+            'flex items-center gap-2 border-t border-muted py-3 text-[12.5px] text-muted-foreground',
+            PANEL_INSET_X,
+          )}
+        >
           <StarIcon aria-hidden="true" className="size-4 shrink-0" />
           {view.footer}
         </p>
       ) : null}
-    </section>
+    </PanelCard>
   );
 }
 
@@ -91,19 +94,7 @@ function StepItem({ step, bookingCode }: { step: GetReadyStep; bookingCode: stri
         ) : null}
         {step.key === 'dayOne' ? (
           <>
-            {step.text ? (
-              // Đệm và nền nằm ở lớp bọc, không ở thẻ `line-clamp`: `overflow: hidden` cắt ở mép
-              // VÙNG ĐỆM, nên đệm đặt chung chỗ với `line-clamp` thì nửa trên dòng thứ năm lộ ra
-              // trong đệm dưới (đo bằng CSS build thật, Task B8).
-              <div className="mt-2 rounded-lg bg-muted/55 px-[11px] py-2">
-                <p
-                  data-slot="day-text"
-                  className="line-clamp-4 font-mono text-[11.5px] leading-[1.65] whitespace-pre-line [overflow-wrap:anywhere]"
-                >
-                  {step.text}
-                </p>
-              </div>
-            ) : null}
+            {step.text ? <DayText text={step.text} clamp className="mt-2" /> : null}
             <Link
               href={step.href}
               className="mt-1.5 inline-block text-[12.5px] font-semibold text-primary-emphasis underline-offset-4 hover:underline"

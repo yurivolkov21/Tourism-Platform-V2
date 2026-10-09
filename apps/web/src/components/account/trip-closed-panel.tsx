@@ -3,6 +3,7 @@ import { messages } from '@tourism/i18n';
 import { ButtonLink } from '@tourism/ui/components/button-link';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
+import { PanelCard, PanelKicker } from '@/components/account/panel-card';
 import {
   type BookingView,
   cancelledByOperator,
@@ -73,21 +74,13 @@ export function TripClosedPanel({
 
 function ClosedFrame({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <section
-      aria-labelledby="trip-closed-heading"
-      className="rounded-2xl border border-border bg-card px-6 py-5 sm:px-[26px]"
-    >
-      <h2
-        id="trip-closed-heading"
-        className="text-[10px] leading-none font-bold tracking-[0.15em] text-muted-foreground uppercase"
-      >
-        {title}
-      </h2>
+    <PanelCard aria-labelledby="trip-closed-heading">
+      <PanelKicker id="trip-closed-heading">{title}</PanelKicker>
       {children}
       <ButtonLink href="/tours" variant="outline" className="mt-4">
         {messages.booking.list.browse}
       </ButtonLink>
-    </section>
+    </PanelCard>
   );
 }
 
