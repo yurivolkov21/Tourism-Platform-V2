@@ -191,3 +191,34 @@ describe('DeleteAccount — xoá tài khoản thật (Task 7/A2)', () => {
     expect(push).not.toHaveBeenCalled();
   });
 });
+
+describe('DeleteAccount — khối Danger zone kiểu mới (spec 09/10 §2)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('khung viền đỏ nhạt; tiêu đề h2 serif màu đỏ kèm dòng mô tả', () => {
+    render(<DeleteAccount />);
+    const heading = screen.getByRole('heading', { level: 2, name: 'Danger zone' });
+    expect(heading).toHaveClass('font-heading', 'text-destructive-emphasis');
+    expect(heading.closest('section')).toHaveClass('rounded-2xl', 'border-destructive/30');
+    expect(screen.getByText('Irreversible account actions.')).toBeInTheDocument();
+  });
+
+  it('CHỈ dòng Delete account tô nền đỏ rất nhạt: câu giải thích và nút mở hộp nằm trong dòng ấy', () => {
+    render(<DeleteAccount />);
+    const row = screen.getByRole('button', { name: 'Delete account' }).parentElement;
+    expect(row).toHaveClass('bg-destructive/5');
+    expect(row).toHaveTextContent(messages.accountProfile.danger.dialogBody);
+    expect(
+      screen.getByRole('heading', { level: 2, name: 'Danger zone' }).parentElement,
+    ).not.toHaveClass('bg-destructive/5');
+  });
+
+  it('nút mở hộp là nút đỏ nhỏ (variant destructive), không còn kiểu chữ link', () => {
+    render(<DeleteAccount />);
+    const trigger = screen.getByRole('button', { name: 'Delete account' });
+    expect(trigger).toHaveClass('bg-destructive/10', 'text-destructive-emphasis');
+    expect(trigger).not.toHaveClass('underline-offset-4');
+  });
+});

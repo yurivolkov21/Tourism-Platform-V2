@@ -60,18 +60,15 @@ function kindOfDeleteError(error: unknown): DeleteAccountErrorKind {
 }
 
 /**
- * Xoá tài khoản — Task 8: không còn là một MỤC riêng (`AccountSection`
- * "Danger zone" với title/description do page.tsx cấp), mà là khối CUỐI
- * TRANG, đứng NGOÀI mọi section, ngăn với nội dung phía trên bằng một
- * `border-t`. Component nay TỰ mang heading nhỏ + một câu mô tả (trước đây
- * page.tsx truyền vào qua `AccountSection`) vì không còn khung section nào
- * cấp hộ nữa.
+ * Xoá tài khoản — khối Danger zone cuối cột phải của Settings (spec 09/10 §2,
+ * phương án C): viền đỏ nhạt, tiêu đề serif màu đỏ kèm một dòng mô tả, chỉ
+ * dòng "Delete account" tô nền đỏ rất nhạt. Component TỰ mang khung và tiêu đề
+ * — trang chỉ xếp nó vào cột.
  *
- * Nút mở dialog hạ cấp từ `Button variant="destructive" size="lg"` xuống
- * text-link (`variant="link"` + `text-destructive-emphasis`, cùng khuôn
- * `booking-actions.tsx` dùng cho "Cancel booking") — sức nặng cảnh báo do
- * CHỮ mang (dialog xác nhận gõ-để-chắc), không do một nút to màu đỏ nằm lẻ
- * cuối trang.
+ * Nút mở dialog là nút đỏ NHỎ (`variant="destructive" size="sm"`) nằm trong
+ * dòng ấy, thay text-link của bản 11/08: dòng đã có khung đỏ riêng nên nút
+ * không còn "nằm lẻ cuối trang" như lý do hạ cấp hồi đó. Sức nặng cảnh báo vẫn
+ * do dialog gõ-để-chắc mang.
  *
  * Dialog xác nhận gõ đúng `CONFIRM_WORD` GIỮ NGUYÊN từ `danger-zone.tsx`
  * (đổi tên file, không đổi logic): gõ sai/để trống → nút khoá; input reset
@@ -113,11 +110,21 @@ export function DeleteAccount() {
   }
 
   return (
-    <div className="mt-10 border-t pt-8">
-      <h2 className="text-sm font-medium text-foreground">{t.heading}</h2>
-      <p className="mt-1 text-sm text-muted-foreground">{t.subtitle}</p>
+    <section className="overflow-hidden rounded-2xl border border-destructive/30 bg-card">
+      <div className="px-4 pt-4 pb-3 sm:px-6 sm:pt-4.5 sm:pb-3.5">
+        <h2 className="font-heading text-lg leading-tight font-semibold text-destructive-emphasis">
+          {t.heading}
+        </h2>
+        <p className="mt-1 text-[13px] text-muted-foreground">{t.subtitle}</p>
+      </div>
 
-      <div className="mt-3">
+      {/* Dòng DUY NHẤT tô nền đỏ: nhãn và câu giải thích trái, nút mở hộp phải; dưới `sm` nút
+          xuống hàng dưới. */}
+      <div className="flex flex-col items-start gap-3 border-t border-destructive/20 bg-destructive/5 px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between sm:gap-4.5 sm:px-6">
+        <div className="min-w-0">
+          <p className="text-sm font-semibold text-destructive-emphasis">{t.deleteCta}</p>
+          <p className="mt-0.5 text-xs text-muted-foreground">{t.dialogBody}</p>
+        </div>
         <AlertDialog
           onOpenChange={(open) => {
             if (!open) {
@@ -131,8 +138,9 @@ export function DeleteAccount() {
             render={
               <Button
                 type="button"
-                variant="link"
-                className="h-auto px-0 text-destructive-emphasis"
+                variant="destructive"
+                size="sm"
+                className="shrink-0 border-destructive/30"
               >
                 {t.deleteCta}
               </Button>
@@ -190,6 +198,6 @@ export function DeleteAccount() {
           </AlertDialogContent>
         </AlertDialog>
       </div>
-    </div>
+    </section>
   );
 }
