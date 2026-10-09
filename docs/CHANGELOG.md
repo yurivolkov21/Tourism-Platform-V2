@@ -8,6 +8,33 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-10-09 — Thử tay Saved và Settings trên production, 8/8 bước; nút Settings của hộ chiếu bỏ "⚙" (`1b27c8d4`, nhánh `fix/passport-settings-label`)
+
+**Thử tay production** sau merge `a0102b9c` (CI `gate` xanh 13 phút, Vercel web và admin READY; Render không
+deploy vì lượt push chỉ đổi web và docs). User làm trên Edge máy bàn và DevTools 375px, tài khoản admin, từng
+bước một: bước 1–8 đạt.
+
+- Saved máy bàn: ảnh thật, lưới 3 cột, tim ở góc phải trên ảnh, "SAVED 9 OCT", "4 TOURS", nút tròn quay lại.
+- Saved 375px: một cột, tim luôn hiện, trang không cuộn ngang.
+- Bỏ lưu: thẻ rời ngay, số ở hero giảm theo; về "0 TOURS" thì hiện trạng thái trống khung viền đứt.
+- Bỏ lưu khi DevTools đặt Offline: thẻ quay về đúng chỗ cũ, toast "Couldn't remove this tour", hero giữ "2 TOURS".
+- Settings máy bàn: hai cột, thẻ danh tính dính khi cuộn, Connected accounts nằm trong thẻ, nút "Upload avatar"
+  chỉ chữ.
+- Sửa tại dòng: Phone lưu được; Phone và Password mở cùng lúc, mỗi thẻ một dòng.
+- Danger zone: hộp xác nhận đủ chữ và hai ô, nút xoá khoá; bấm Cancel, không xoá.
+- Settings 375px: một cột, thẻ danh tính lên đầu, mỗi dòng hai hàng, không cuộn ngang.
+
+**Góp ý khi thử:** nút "Settings" trong khung hộ chiếu (`/account`) còn ký tự "⚙" viết thẳng trong chuỗi
+`passportHome.settingsLink`, lệch ba nút chỉ chữ cạnh nó — bỏ ở `1b27c8d4`, kèm ca test khoá bốn nhãn. Lượt góp ý
+trước session gốc hiểu nhầm đó là icon của nút "Upload avatar" và đã bỏ icon ở nút này (`b58da161`); user vẫn giữ
+thay đổi ấy. Thêm vào `open-items`: G30 (số điện thoại chỉ lưu, không xác minh OTP — giới hạn đã biết) và G31
+(trình quản lý mật khẩu của Edge điền email vào ô gõ DELETE của hộp xoá tài khoản, có từ trước).
+
+**CÒN TREO:** không. Không migration, không env, không webhook.
+
+Tests after (`gate:int` trên `1b27c8d4`, 09/10 15:27–15:34): unit 6196 — admin 1911, web 1764, api 1094,
+contract 665, mobile 502, mobile-ui 134, core 46, ui 36, i18n 25, tokens 19 — và int 778/46.
+
 ## 2026-10-09 — Saved và Settings của khách thiết kế lại (nhánh `feat/account-saved-settings`)
 
 **Bối cảnh:** user nhắc hai trang `/account/saved` và `/account/settings` còn link chữ "← Passport" và bố cục
