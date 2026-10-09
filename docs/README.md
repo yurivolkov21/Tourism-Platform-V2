@@ -247,6 +247,7 @@ entry CHANGELOG cùng ngày.
 [**P7 ba trang đơn của khách** (ba phần A, B, C)](plans/2026-10-05-booking-pages-redesign.md) ·
 [prompt thi công P7](plans/2026-10-05-booking-pages-redesign-prompts.md) ·
 [**sửa sạn giao diện admin**](plans/2026-10-05-admin-ui-polish.md) ·
+[**Saved và Settings của khách**](plans/2026-10-09-account-saved-settings.md) ·
 [**P5b-2 T0 tầng dữ liệu mobile browse**](plans/2026-09-23-mobile-browse-t0-data-layer.md) ·
 [**P5b-4 spec cụm tài khoản mobile**](plans/2026-09-25-mobile-account-screens.md) ·
 [P5b-4 return-to sau đăng nhập và AuthGateScreen](plans/2026-09-25-mobile-account-return-to-auth.md)
