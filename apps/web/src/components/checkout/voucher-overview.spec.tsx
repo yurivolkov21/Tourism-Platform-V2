@@ -18,6 +18,23 @@ const MEETING = 'Hotel pickup — hotels in Hoàn Kiếm, Ba Đình or Tây Hồ
 /** Chuyến ba ngày, 2 người lớn và 1 trẻ em — chip khách (đơn giá $49) khác hẳn tổng ($147). */
 const FAMILY_TRIP = { ...THREE_DAY_TRIP, numAdults: 2, numChildren: 1 };
 
+/** Ảnh bìa trên Cloudinary — `SlotImage` dựng `next/image` có srcset qua loader. */
+const PHOTO: NonNullable<BookingDetail['tourImage']> = {
+  publicId: 'tourism/catalog/tour/hanoi-heritage-day/hero',
+  url: 'https://res.cloudinary.com/demo/image/upload/v1/tourism/catalog/tour/hanoi-heritage-day/hero',
+  type: 'IMAGE',
+  role: 'hero',
+  posterUrl: null,
+  width: 2400,
+  height: 1600,
+  alt: 'Temple of Literature',
+  sortOrder: 0,
+  author: null,
+  license: null,
+  licenseUrl: null,
+  sourceUrl: null,
+};
+
 function renderOverview(
   overrides: Partial<BookingDetail> = {},
   meetingPoint: string | null = MEETING,
@@ -106,6 +123,21 @@ describe('VoucherOverview — thẻ ảnh', () => {
     expect(photo.querySelectorAll(':scope > [aria-hidden="true"]')).toHaveLength(0);
     // Dòng nhỏ 10.5px không bị làm mờ thêm.
     expect(within(caption).getByText('Hà Nội · 3 days').className).not.toMatch(/opacity-/);
+  });
+
+  /**
+   * `sizes` theo ĐÚNG bề rộng cột ảnh ở từng khổ (review P7C#12): bản cũ "(min-width: 1280px) 45vw,
+   * 100vw" xin ảnh rộng hơn ô 30–40% dưới `xl` và hụt ở 1536px. Ảnh nằm dưới mép gập ở điện thoại
+   * (dưới hero, tiêu đề, ô mã) nên nạp lười, không `priority`.
+   */
+  it('ảnh bìa xin đúng bề rộng cột ảnh ở từng khổ và nạp lười', () => {
+    renderOverview({ tourImage: PHOTO });
+    const img = screen.getByRole('img', { name: 'Temple of Literature' });
+    expect(img).toHaveAttribute(
+      'sizes',
+      '(min-width: 1536px) 758px, (min-width: 1280px) calc(100vw - 778px), (min-width: 1024px) calc(100vw - 274px), (min-width: 768px) calc(100vw - 210px), calc(100vw - 82px)',
+    );
+    expect(img).toHaveAttribute('loading', 'lazy');
   });
 
   it('ảnh cao theo khối chữ — tên tour dài ở màn hẹp không bị cắt mất ở mép trên ảnh', () => {

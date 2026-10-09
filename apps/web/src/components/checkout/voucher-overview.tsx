@@ -76,12 +76,17 @@ export function VoucherOverview({
         data-slot="voucher-photo"
         className="relative mt-6 flex min-h-56 flex-col justify-end overflow-hidden rounded-3xl bg-muted md:min-h-72 print:min-h-44"
       >
-        {/* Ảnh rộng gần hết thẻ khi thẻ một cột; từ `xl` cột trái còn ~45% màn. */}
+        {/* `sizes` theo đúng bề rộng ô ảnh (review P7C#12) = màn − lề ngang của trang
+            `/checkout/success` (2×16 · 2×64 từ md · 2×96 từ lg · 2×128 từ xl) − viền thẻ (2) − đệm
+            ngang cột này (2×24 · 2×40 từ md); từ `xl` trừ thêm mảng teal 440px, thẻ chặn ở
+            `max-w-7xl` nên từ 1536px ô ảnh đứng yên 758px. Mốc 1280px là `xl` — mốc chia đôi của
+            thẻ (`sizes` không đọc được biến thể CSS). Không `priority`: ở điện thoại ảnh nằm dưới
+            mép gập (dưới hero, tiêu đề, ô mã), nạp sớm chỉ giành băng thông của thứ khách thấy
+            trước. */}
         <SlotImage
           image={booking.tourImage}
           className="absolute inset-0"
-          sizes="(min-width: 1280px) 45vw, 100vw"
-          priority
+          sizes="(min-width: 1536px) 758px, (min-width: 1280px) calc(100vw - 778px), (min-width: 1024px) calc(100vw - 274px), (min-width: 768px) calc(100vw - 210px), calc(100vw - 82px)"
         />
         {/* Lớp tối GẮN VÀO khối chữ (khuôn caption của `journey-moments.tsx`, `home/gallery.tsx`)
             thay vì phủ cố định theo chiều cao ảnh: tiêu đề xuống dòng hay chip rớt hàng thì lớp
