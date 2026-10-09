@@ -19,7 +19,7 @@
 | --- | --- | --- |
 | **P4e** | Quản trị catalog: thêm/sửa/xoá tour, điểm đến, danh mục | P4e-1 XONG 22/09 (F11 danh sách tour · F12 lịch chạy · F13 huỷ chuyến có hoàn tiền, đóng nợ ADR-0041 §6). **P4e-2 XONG**: F14 danh mục 22/09 (màn `/categories` cộng chip lọc của web đọc endpoint) và F15 điểm đến 24/09 (màn `/destinations`, ba vùng về contract, web chịu được điểm đến đã ẩn). **P4e-3a** (F17 tạo và sửa tour) XONG: merge 28/09 sau vòng review (24 lỗi thật, vá cả 24 — lỗi seed vá ở nhánh riêng cùng ngày). **P4e-3b** (F18 ảnh tour) XONG: merge 29/09 sau vòng review (15 phát hiện, vá cả 15). **P4e-3c** (F19 khu sửa tour dạng thanh bước) XONG: merge 01/10 sau vòng review (15 phát hiện, vá cả 15). **P4e-4** (F20 bài viết) XONG: merge 05/10 sau vòng review (15 phát hiện cộng 8 mục nhỏ, vá cả 23; thêm cột `post_tag_links.order`). Còn **P4f** (media, users) |
 | **P4f** | Quản trị người dùng và media | **Users**: ADR-0052 và spec 02/10 — Owner (chỉ từ `ADMIN_EMAILS`) cấp Staff cho khách đã xác minh, bảng quyền ở contract, khoá tài khoản, đăng xuất mọi nơi, lịch sử theo người dùng; plan 02/10 (14 task, kèm prompt thi công); P4e-4 đã merge 05/10 nên sẵn sàng thi công. Phủ ba bất biến hạ quyền / thu hồi phiên của ADR-0026 AMEND 1 §D. **Media library**, **Appearance** và G16 chưa thuộc spec nào |
-| **P5b-2…5** | Bốn cụm màn mobile: xem tour · đặt tour · tài khoản · đánh giá | **Đã có bản vẽ và tài liệu bàn giao đầy đủ**; thành viên khác dựng màn — xem [`handoff/`](handoff/README.md) |
+| **P5b-2…5** | Bốn cụm màn mobile: xem tour · đặt tour · tài khoản · đánh giá | **P5b-2 xem tour và P5b-4 tài khoản XONG**: merge 09/10 qua nhánh `feat/mobile-account-screens` (review 05/10 có 24 phát hiện, vá 23, Q4 là nợ lịch sử; review cuối 09/10). Ba commit riêng của nhánh `feat/mobile-browse-screens` (tìm không dấu, D6 return-to, một commit thử) chưa vào main — nhóm quyết port hay bỏ. **P5b-3 đặt tour** và **P5b-5 đánh giá** đang review trên nhánh riêng, xếp chồng lên account nên phải rebase lên main. Bản vẽ và tài liệu bàn giao ở [`handoff/`](handoff/README.md) |
 | **P6** | Trợ lý AI tư vấn tour | Có ADR-0050 và spec (29/09), chưa thi công — mở sau khi admin xong. Thư viện `ai`, `@ai-sdk/anthropic`, `@ai-sdk/react` đã ghim 29/09 (`3f646ace`, spec §7 bước 1). Bảng dữ liệu đã có sẵn (`chat_conversations`, `chat_messages`) |
 | **P7** | Đợt trau chuốt giao diện cuối | Ba trang đơn của khách (ADR-0054, spec và plan 05/10, 26 task chia ba phần): **Phần A XONG** 06/10 — My bookings lọc, tìm, 10 đơn mỗi trang theo hành trình, phân trang "Previous / Next" (review 15 phát hiện, vá cả 15). Phần B (chi tiết đơn) và C (voucher) chờ thi công |
 
@@ -90,17 +90,22 @@ chuyến đã huỷ sẽ có bước "Free cancellation" tính theo ngày.
 - **Admin trên màn cảm ứng** (vòng vá review đợt sửa sạn admin, 07/10): chạm nút Delete đang
   khoá phải hiện toast lý do. Test chỉ giả lập `pointerType: touch` trong jsdom; thử tay 07/10 đạt
   trên DevTools mô phỏng iPhone 16 Pro Max (một toast, chạm lại không chồng) — còn máy thật.
-- **Cơ chế "quay lại đúng chỗ sau đăng nhập" (P5b-4, nhánh
-  `feat/mobile-account-screens`, plan
-  `docs/plans/2026-09-25-mobile-account-return-to-auth.md`)** — Bấm tim khi
-  chưa đăng nhập ở tour detail → Sign in → đăng nhập xong → kiểm PHẢI quay
-  đúng tour VÀ tim đã tự đặc sẵn (không cần bấm lại). Thử cả hai chiều: (a)
-  đăng nhập xong xuôi, (b) bấm X đóng màn Sign in nửa chừng RỒI đăng nhập lại
-  từ chỗ khác (Account/Explore) — PHẢI không bị "dạt" về tour cũ. Máy AI
-  không có thiết bị thật, chưa từng chạy tay bước này (Step 6 của plan).
+- **Màn tài khoản mobile (P5b-4, merge 09/10)** — kịch bản từng bước ở mục 8
+  của [tóm tắt nhánh](analysis/2026-10-06-branch-summary-mobile-account-screens.md).
+  Ưu tiên ba bản vá chỉ kiểm được trên máy: F2 (Android: pinch, chạm đúp, vuốt
+  đóng trình xem ảnh), F3 (iOS: bàn phím không che ô nhập trong tấm sửa tên, xoá
+  tài khoản, hỏi ngày), F7 (iOS và Android ≤ 12: từ chối quyền ảnh vẫn mở được
+  thư viện). Cơ chế quay lại sau đăng nhập: bấm tim khi chưa đăng nhập ở tour
+  detail hoặc Explore, đăng nhập xong PHẢI về đúng chỗ và tim đã đặc; đóng Sign
+  in bằng X, back cứng Android hay vuốt iOS rồi đăng nhập từ chỗ khác thì KHÔNG
+  được dạt về tour cũ. Máy AI không có thiết bị thật.
 
 ## Việc tay trên hạ tầng
 
+- **Render: thêm `nexora://` vào `TRUSTED_ORIGINS`** (P5b-4 merge 09/10, ADR-0017
+  §10) — chờ user duyệt. Không thêm `exp://`: đó là origin của Expo Go ở máy dev,
+  production chặn nó ở `parseEnv`. Chưa thêm thì app bản build bị 403 khi gọi
+  auth; web không ảnh hưởng.
 - Theo dõi bộ dọn ảnh vừa bật 29/09: lượt 04:00 UTC ngày 30/09 phải ghi "Dọn media: 0
   xoá khỏi CDN, …" trong log Render. Lượt đầu có xoá thật (khoảng 01/10 ảnh review mồ côi,
   khoảng 07/10 ảnh tour thử) thì đối chiếu: `destroyed = 0` mà `absent` bằng tất cả là
@@ -188,11 +193,11 @@ Phát hiện 25/09 ở final review của plan return-to-auth (SDD, xem
 [ledger](../.superpowers/sdd/2026-09-25-mobile-account-return-to-auth/progress.md)
 nếu còn — file này bị xoá sau khi merge). Không chặn merge, ghi lại để không quên:
 
-1. **Explore-tab wishlist gate chưa gọi `setPendingReturn`** — chỉ tour-detail
+1. **Đã sửa (`bd4ae138`, merge 09/10).** **Explore-tab wishlist gate chưa gọi `setPendingReturn`** — chỉ tour-detail
    (`[slug].tsx`) và các khối chặn tab tương lai (Saved/Account, V1 spec P5b-4)
    mới nhớ đường quay lại; bấm tim ở thẻ tour trên Explore rồi đăng nhập xong
    thì về Home, không về đúng Explore. Spec §1b bỏ sót nơi này.
-2. **`login.tsx`'s `onClose` (nút X) luôn về Home** — kể cả khi mở từ một tour
+2. **Đã sửa (`bd4ae138`, merge 09/10).** **`login.tsx`'s `onClose` (nút X) luôn về Home** — kể cả khi mở từ một tour
    cụ thể. Giờ đã có hạ tầng return-to (P5b-4), sửa để về đúng tour là việc
    nhỏ nhưng chưa làm (ngoài phạm vi plan return-to-auth, plan đó chỉ gọi
    `clearPendingReturn()` ở đây, không đổi đích).
@@ -202,7 +207,18 @@ nếu còn — file này bị xoá sau khi merge). Không chặn merge, ghi lạ
    màn đang có sẵn. Đổi sang `router.back()`/dismiss khi đích trùng màn đã mở
    là sửa đúng hơn nhưng cần test tay trên máy thật (xem mục "Cần thử lại
    bằng máy thật" phía trên) trước khi đổi — rủi ro đổi sai điều hướng cao
-   hơn lợi ích nếu không kiểm chứng được trên thiết bị thật.
+   hơn lợi ích nếu không kiểm chứng được trên thiết bị thật. Còn mở 09/10: nút X
+   đã dùng `dismissTo`, nhưng nhánh đăng nhập/đăng ký thành công vẫn `replace`.
+4. **Rủi ro còn lại của proxy đăng nhập Google (ADR-0017 §11)** — URL hợp lệ vẫn
+   mang `state` do người gọi chọn, và sau callback OAuth plugin `expo()` gắn cookie
+   phiên vào deep link `nexora://` (`@better-auth/expo` 1.6.23, `dist/index.js:81`).
+   Một app khác giành scheme `nexora` trên máy nạn nhân có thể nhận phiên. Production
+   thiếu cặp env Google nên proxy chặn hết: **giữ Google tắt trên Render** tới khi
+   đổi cơ chế state (sau v1). Nâng `@better-auth/expo` thì đọc lại endpoint và hook
+   này trước.
+5. **N7–N10 mức thấp còn mở** — bảng ở mục 7 của tóm tắt nhánh: bấm đúp nút chọn
+   ảnh, lỗi form đổi mật khẩu không tự xoá, Saved đếm "100 tours" trước khi tải đủ
+   trang, ba chỗ a11y.
 
 ## Nợ kỹ thuật chi tiết
 

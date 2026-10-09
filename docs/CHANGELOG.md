@@ -8,7 +8,50 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
-## 2026-10-08 — P5b-4 màn tài khoản mobile: Saved, Account, Travel stories, vá review 05/10 (nhánh `feat/mobile-account-screens`, CHƯA merge)
+## 2026-10-09 — Merge P5b-4 màn tài khoản mobile lên main (`3ec947d6`)
+
+Nội dung và các vòng review của nhánh đã kể ở entry ngay bên dưới; entry này ghi sự kiện merge
+và lượt review cuối 09/10 chạy trên session cloud. Nhánh mang theo phần chung với
+`feat/mobile-browse-screens` (T0, nối auth thật, T1–T7 của P5b-2), nên màn xem tour vào main
+cùng lượt này. Ba commit riêng của nhánh browse (tìm không dấu, D6 return-to, một commit thử)
+không đi theo — ghi ở open-items.
+
+Nhánh rebase lên `7a6e36b1` (main có thêm bản vá dòng đếm My bookings). Một xung đột ở
+CHANGELOG: entry T0 của nhánh và entry mới của main cùng chen vào đầu file; gỡ theo nếp F18,
+entry nhánh lên trên, cả hai giữ nguyên văn. 83 commit còn lại áp sạch. Hash trong
+[tóm tắt nhánh](analysis/2026-10-06-branch-summary-mobile-account-screens.md) là hash trước
+lần rebase này; ba bản sửa B1–B3 trên main là `cbbb7ea8`, `a7e8dbaf`, `169090ba`.
+
+**Review cuối 09/10.** B1–B3 sửa đúng: B1 miễn đúng chuỗi `nexora://`, `exp://` vẫn bị chặn ở
+production; B2 chỉ cho proxy chuyển tới URL Google đúng `client_id` và callback của mình;
+ADR-0055 không trùng số. Của 24 phát hiện review 05/10, L4 mới sửa nửa (nút gỡ của Chip); phần
+nút xoá ô tìm ở Explore vá lúc merge (`3ec947d6`): `clearLabel` của SearchField thành bắt buộc,
+nhãn lấy từ `messages.mobile.explore.clearSearch`, kèm test đỏ trước khi sửa. Sau commit đó câu
+"sửa hết trừ Q4" ở entry nhánh mới đúng. Còn mở: N7–N10 mức thấp, và chưa thử máy thật (F2
+trên Android; F3, F7 trên iOS).
+
+**Rủi ro còn lại của B2 rộng hơn login CSRF ghi ở ADR-0017 §11.** Sau callback OAuth, plugin
+`expo()` (`@better-auth/expo` 1.6.23, `dist/index.js:81`) gắn cookie phiên vào deep link
+`nexora://` khi đích là origin tin cậy không phải http. Cộng với `state` do người gọi chọn, một
+app khác đăng ký scheme `nexora` trên máy nạn nhân có thể nhận phiên của nạn nhân. Production
+hiện thiếu cặp env Google nên proxy chặn hết; giữ nguyên như vậy tới khi đổi cơ chế state.
+
+**CÒN TREO cho session gốc (luật 15):**
+
+- [ ] Render: thêm `nexora://` vào `TRUSTED_ORIGINS` — chưa làm, chờ user duyệt. Không thêm
+  `exp://`. Chưa thêm thì app bản build bị 403 khi gọi auth; web không ảnh hưởng.
+- [ ] KHÔNG đặt `GOOGLE_CLIENT_ID` và `GOOGLE_CLIENT_SECRET` trên Render chỉ để app đăng nhập
+  Google (thay mục tương ứng ở entry nhánh) — xem rủi ro ngay trên.
+- [ ] Nhánh `feat/mobile-booking-screens` và `feat/mobile-review-screens` xếp chồng lên nhánh
+  này: chủ nhánh rebase lên main trước vòng review tiếp.
+
+Tests after: unit 6137 — admin 1911, web 1707, api 1094, contract 665, mobile 502, mobile-ui 134,
+core 46, ui 36, i18n 23, tokens 19 — và int 778/778 ở 46 file trên Postgres giờ UTC (ở máy thi
+công 5 test đỏ là `check-rls` cần Docker và `pending-sweep` dính bug múi giờ đã ghi ở
+open-items). Cây đã rebase chạy lại đủ các bước của CI: RLS, build web với API sống, bundle
+mobile, admin prerender, lint, tokens-only, docs-freshness.
+
+## 2026-10-08 — P5b-4 màn tài khoản mobile: Saved, Account, Travel stories, vá review 05/10 (nhánh `feat/mobile-account-screens`)
 
 Nhánh dựng đủ 14 khung theo [spec P5b-4](plans/2026-09-25-mobile-account-screens.md):
 Saved S1–S3, Account A1–A7 (sửa tên, ảnh đại diện, đổi mật khẩu, xoá tài
