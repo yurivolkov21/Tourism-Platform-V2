@@ -108,6 +108,25 @@ describe('journeyMilestones — đơn sắp đi (bản vẽ, hôm nay 05/10)', (
     expect(view.variant).toBe('standard');
     expect(view.chip).toEqual({ label: 'Departs in 29 days', tone: 'active' });
   });
+
+  /**
+   * REFUNDED không `cancelledAt` là hoàn thiện chí trọn — khách vẫn đi (ADR-0054 AMEND 1), nhưng
+   * server không gửi cờ huỷ: không còn gì để hoàn, không huỷ online được. So ngày chót với hôm nay
+   * là hứa "Until Mon 2 Nov" sai (review P7 B2, B15).
+   */
+  it('hoàn thiện chí trọn còn sắp đi, server không gửi cờ: mốc Free cancellation không mở', () => {
+    const view = journeyMilestones(
+      { ...UPCOMING, status: 'REFUNDED', refundedTotal: '147.00', cancellation: null },
+      TODAY,
+    );
+    expect(view.variant).toBe('standard');
+    expect(view.milestones[2]).toEqual({
+      key: 'freeCancellation',
+      label: 'Free cancellation',
+      detail: 'Ended 2 Nov',
+      state: 'done',
+    });
+  });
 });
 
 describe('journeyMilestones — đang đi (04–06/10)', () => {
@@ -208,7 +227,9 @@ describe('journeyMilestones — chờ trả tiền', () => {
     expect(view.chip).toEqual({ label: 'Awaiting payment', tone: 'warning' });
   });
 
-  it('không có cờ server: đúng ngày chót vẫn là "Until"', () => {
+  // Server chỉ gửi cờ huỷ cho đơn đã trả; `awaiting_payment` CHÍNH là "chưa qua hạn chót" theo
+  // luật giai đoạn chung, nên mốc vẫn mở mà web không tự so ngày.
+  it('chờ trả (server chưa gửi cờ): đúng ngày chót vẫn là "Until"', () => {
     const view = journeyMilestones(PENDING, '2026-10-17');
     expect(view.milestones[2]).toEqual({
       key: 'freeCancellation',
@@ -260,12 +281,24 @@ describe('journeyMilestones — đã huỷ', () => {
     expect(view.chip).toEqual({ label: 'Cancelled', tone: 'muted' });
   });
 
+  // Dữ liệu của luồng duyệt cũ có thể thiếu `cancelledAt`: chỉ yêu cầu huỷ ĐƯỢC DUYỆT mới cho
+  // ngày huỷ. Ngày của yêu cầu bị từ chối hay còn treo in cạnh câu "đã bị từ chối" là nói ngược
+  // (review P7 B3).
   it.each([
-    ['không có `cancelledAt` thì lấy ngày quyết', { cancelledAt: null }, '20 Sep 2026'],
     [
-      'không có cả ngày quyết thì lấy ngày gửi yêu cầu',
-      { cancelledAt: null, cancellationDecidedAt: null },
-      '19 Sep 2026',
+      'thiếu `cancelledAt`, yêu cầu huỷ được duyệt: lấy ngày quyết',
+      { cancelledAt: null, cancellationStatus: 'REFUNDED' },
+      '20 Sep 2026',
+    ],
+    [
+      'thiếu `cancelledAt`, yêu cầu huỷ bị từ chối: không lấy ngày quyết',
+      { cancelledAt: null, cancellationStatus: 'DENIED' },
+      null,
+    ],
+    [
+      'thiếu `cancelledAt`, yêu cầu còn treo: ngày gửi không phải ngày huỷ',
+      { cancelledAt: null, cancellationStatus: 'REQUESTED', cancellationDecidedAt: null },
+      null,
     ],
     [
       'không còn mốc nào thì bỏ ngày',

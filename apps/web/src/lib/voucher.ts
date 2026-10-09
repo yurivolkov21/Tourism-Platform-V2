@@ -5,7 +5,14 @@ import {
   tripLengthDays,
 } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
-import { paymentProviderLabel, refundSentence, refundSummary, vietnamDay } from './booking-vm';
+import {
+  cancelledOn,
+  freeCancellationOpen,
+  paymentProviderLabel,
+  refundSentence,
+  refundSummary,
+  vietnamDay,
+} from './booking-vm';
 import { formatChipDate, formatDate, formatDateRange } from './tours';
 
 /**
@@ -117,10 +124,9 @@ export function voucherView(booking: BookingDetail, now: Date, today: string): V
 
   switch (phase) {
     case 'upcoming': {
-      // Cờ SERVER trước (`bookings.byCode.cancellation`, ADR-0041 §7); vắng thì so ngày chót
-      // với hôm nay của server — cùng luật `isWithinDeadline` (ngày chót tính cả ngày).
-      const withinDeadline =
-        booking.cancellation?.withinDeadline ?? today <= booking.cancellationDeadline;
+      // Chỉ cờ SERVER (`bookings.byCode.cancellation`, ADR-0041 §7): vắng cờ — đơn hoàn thiện chí
+      // trọn — là hết quyền huỷ miễn phí, không tự so ngày chót (`freeCancellationOpen`).
+      const withinDeadline = freeCancellationOpen(booking);
       const deadline = formatChipDate(booking.cancellationDeadline);
       return {
         ...common,
@@ -204,11 +210,8 @@ export function voucherView(booking: BookingDetail, now: Date, today: string): V
       };
     }
     case 'cancelled': {
-      // `cancelledAt` có ở MỌI đường huỷ (khách huỷ, công ty huỷ chuyến, quét giữ chỗ);
-      // `cancellationDecidedAt` rồi `cancellationRequestedAt` chỉ có khi đi qua yêu cầu huỷ —
-      // dùng làm dự phòng, cùng thứ tự với thanh hành trình của trang chi tiết.
-      const cancelledOn =
-        booking.cancelledAt ?? booking.cancellationDecidedAt ?? booking.cancellationRequestedAt;
+      // Cùng luật ngày huỷ với thanh hành trình của trang chi tiết đơn (`cancelledOn`).
+      const cancelledDay = cancelledOn(booking);
       const refund = refundSummary(booking);
       return {
         ...common,
@@ -224,7 +227,7 @@ export function voucherView(booking: BookingDetail, now: Date, today: string): V
           },
           {
             label: t.journal.cancelled,
-            detail: cancelledOn === null ? null : formatDate(vietnamDay(cancelledOn)),
+            detail: cancelledDay === null ? null : formatDate(cancelledDay),
             done: true,
           },
           ...(refund === null

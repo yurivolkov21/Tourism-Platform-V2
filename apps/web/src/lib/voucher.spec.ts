@@ -28,8 +28,7 @@ const PASSED = makeCancellation(voucherBooking(THREE_DAY_TRIP), {
 
 /**
  * Đơn đã trả rồi huỷ quá hạn: không hoàn đồng nào. Hai mốc huỷ lệch ngày nhau CHỈ để ca
- * nhật ký phân biệt được thứ tự ưu tiên `cancelledAt` → `cancellationDecidedAt` →
- * `cancellationRequestedAt`.
+ * nhật ký phân biệt được `cancelledAt` với mốc quyết của yêu cầu huỷ cũ (`cancelledOn`).
  */
 const CANCELLED = {
   status: 'CANCELLED',
@@ -202,25 +201,24 @@ describe('voucherView — sắp đi (upcoming)', () => {
     });
   });
 
-  it('vắng cờ server thì so ngày chót với hôm nay của server — đúng ngày chót vẫn còn hạn', () => {
-    const passed = voucherBooking({
-      departureStartDate: '2026-10-22',
-      departureEndDate: '2026-10-24',
-      cancellation: null,
-    });
-    expect(view(passed, VOUCHER_NOW, VOUCHER_TODAY).journal[1]?.label).toBe(
-      'Free cancellation ended',
+  /**
+   * REFUNDED không `cancelledAt` là hoàn thiện chí trọn — khách vẫn đi (ADR-0054 AMEND 1), nhưng
+   * server không gửi cờ huỷ: không còn gì để hoàn, không huỷ online được. Hạn chót 2/11 còn ở sau
+   * hôm nay 20/10 mà voucher vẫn không được hứa huỷ miễn phí (review P7 B15, C mục 16).
+   */
+  it('vắng cờ server (hoàn thiện chí trọn) thì KHÔNG còn hạn huỷ — không tự so ngày chót', () => {
+    const v = view(
+      voucherBooking({ status: 'REFUNDED', refundedTotal: '147.00', cancellation: null }),
+      VOUCHER_NOW,
+      VOUCHER_TODAY,
     );
-
-    // Chuyến 23–25/10 → hạn chót 20/10 = hôm nay: hạn hết lúc 23:59 nên vẫn còn.
-    const lastDay = voucherBooking({
-      departureStartDate: '2026-10-23',
-      departureEndDate: '2026-10-25',
-      cancellation: null,
+    expect(v.phase).toBe('upcoming');
+    expect(v.conditions).toEqual([SHOW_CODE, TAXES]);
+    expect(v.journal[1]).toEqual({
+      label: 'Free cancellation ended',
+      detail: '2 Nov, 11:59 pm Vietnam time',
+      done: true,
     });
-    expect(view(lastDay, VOUCHER_NOW, VOUCHER_TODAY).journal[1]?.label).toBe(
-      'Free cancellation ends',
-    );
   });
 });
 
@@ -320,8 +318,9 @@ describe('voucherView — đã huỷ (cancelled)', () => {
   });
 
   // ADR-0054 AMEND 1: REFUNDED không mốc huỷ chỉ là `cancelled` khi chuyến bị công ty huỷ —
-  // thiếu cờ ấy thì đó là hoàn thiện chí trọn, khách vẫn đi.
-  it('REFUNDED đủ trên chuyến công ty huỷ: Refund ✓ in đủ hai số lẻ; thiếu cancelledAt thì lấy ngày quyết huỷ', () => {
+  // thiếu cờ ấy thì đó là hoàn thiện chí trọn, khách vẫn đi. Mốc quyết của yêu cầu huỷ cũ chỉ là
+  // ngày huỷ khi yêu cầu ấy ĐƯỢC DUYỆT (`cancelledOn`, review P7 B3).
+  it('REFUNDED đủ trên chuyến công ty huỷ: Refund ✓ in đủ hai số lẻ; thiếu cancelledAt thì lấy ngày quyết của yêu cầu huỷ được duyệt', () => {
     const v = view(
       voucherBooking({
         status: 'REFUNDED',
@@ -329,6 +328,7 @@ describe('voucherView — đã huỷ (cancelled)', () => {
         cancellation: null,
         refundedTotal: '147.00',
         cancelledAt: null,
+        cancellationStatus: 'REFUNDED',
         cancellationDecidedAt: '2026-10-25T02:00:00.000Z',
       }),
       VOUCHER_NOW,
@@ -344,19 +344,25 @@ describe('voucherView — đã huỷ (cancelled)', () => {
     ]);
   });
 
-  it('chỉ còn ngày gửi yêu cầu huỷ thì mục Cancelled lấy ngày đó', () => {
-    const v = view(
-      voucherBooking({
-        ...CANCELLED,
-        cancelledAt: null,
-        cancellationDecidedAt: null,
-        cancellationRequestedAt: '2026-10-24T02:00:00.000Z',
-      }),
-      VOUCHER_NOW,
-      VOUCHER_TODAY,
-    );
-    expect(v.journal[1]).toEqual({ label: 'Cancelled', detail: '24 Oct 2026', done: true });
-  });
+  it.each([
+    ['bị từ chối', 'DENIED'],
+    ['còn treo', 'REQUESTED'],
+  ] as const)(
+    'yêu cầu huỷ cũ %s không phải ngày huỷ: mục Cancelled không có dòng ngày',
+    (_, status) => {
+      const v = view(
+        voucherBooking({
+          ...CANCELLED,
+          cancelledAt: null,
+          cancellationStatus: status,
+          cancellationRequestedAt: '2026-10-24T02:00:00.000Z',
+        }),
+        VOUCHER_NOW,
+        VOUCHER_TODAY,
+      );
+      expect(v.journal[1]).toEqual({ label: 'Cancelled', detail: null, done: true });
+    },
+  );
 
   it('không mốc huỷ nào thì mục Cancelled không có dòng ngày', () => {
     const v = view(

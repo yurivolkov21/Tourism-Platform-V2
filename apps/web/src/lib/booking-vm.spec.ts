@@ -5,6 +5,8 @@ import {
   bookingTotalLabel,
   bookingView,
   cancellationDeadlineText,
+  cancelledOn,
+  freeCancellationOpen,
   legacyCancellationNote,
   paymentProviderLabel,
   refundSentence,
@@ -78,6 +80,65 @@ describe('bookingView', () => {
   it('CANCELLED → muted + [] kể cả khi cờ nói huỷ được', () => {
     const view = bookingView(makeBooking({ status: 'CANCELLED' }), cancellationOf());
     expect(view).toEqual({ tone: 'muted', statusKey: 'CANCELLED', actions: [] });
+  });
+});
+
+/**
+ * "Còn huỷ miễn phí không" — CHỈ cờ server (ADR-0041 §7). Vắng cờ là không mở: server không gửi
+ * cờ cho đơn hoàn thiện chí trọn hay chuyến công ty huỷ, nên tự so ngày chót là hứa một quyền huỷ
+ * không còn (review P7 B2, B15, C mục 16).
+ */
+describe('freeCancellationOpen', () => {
+  it('cờ server còn trong hạn → mở', () => {
+    expect(freeCancellationOpen(makeBooking({ cancellation: cancellationOf() }))).toBe(true);
+  });
+
+  it('cờ server đã quá hạn → đóng', () => {
+    const b = makeBooking({ cancellation: cancellationOf({ withinDeadline: false }) });
+    expect(freeCancellationOpen(b)).toBe(false);
+  });
+
+  it('vắng cờ → đóng, kể cả khi ngày chót còn rất xa', () => {
+    const b = makeBooking({ cancellation: null, cancellationDeadline: '2099-12-31' });
+    expect(freeCancellationOpen(b)).toBe(false);
+  });
+});
+
+/**
+ * Ngày huỷ của MỘT đơn cho thanh hành trình và nhật ký voucher (review P7 B3, B15): `cancelledAt`
+ * trước; dữ liệu của luồng duyệt cũ thiếu nó thì chỉ mốc quyết của yêu cầu huỷ ĐƯỢC DUYỆT.
+ */
+describe('cancelledOn', () => {
+  /** Yêu cầu huỷ của luồng cũ: gửi 19/09, quyết 20/09 — trạng thái do từng ca đặt. */
+  const REQUEST = {
+    cancellationRequestedAt: '2026-09-19T08:00:00.000Z',
+    cancellationDecidedAt: '2026-09-20T08:00:00.000Z',
+  } as const;
+
+  it('có cancelledAt → ngày lịch VN của nó (06:30 giờ VN 22/09), bỏ qua mốc của yêu cầu', () => {
+    const b = makeBooking({
+      ...REQUEST,
+      cancellationStatus: 'REFUNDED',
+      cancelledAt: '2026-09-21T23:30:00.000Z',
+    });
+    expect(cancelledOn(b)).toBe('2026-09-22');
+  });
+
+  it('thiếu cancelledAt, yêu cầu được duyệt (REFUNDED) → ngày QUYẾT', () => {
+    expect(cancelledOn(makeBooking({ ...REQUEST, cancellationStatus: 'REFUNDED' }))).toBe(
+      '2026-09-20',
+    );
+  });
+
+  it.each(['DENIED', 'REQUESTED'] as const)(
+    'thiếu cancelledAt, yêu cầu %s → null: yêu cầu không thành thì không có ngày huỷ',
+    (cancellationStatus) => {
+      expect(cancelledOn(makeBooking({ ...REQUEST, cancellationStatus }))).toBeNull();
+    },
+  );
+
+  it('không mốc nào → null, không bịa ngày', () => {
+    expect(cancelledOn(makeBooking({ status: 'CANCELLED', cancelledAt: null }))).toBeNull();
   });
 });
 

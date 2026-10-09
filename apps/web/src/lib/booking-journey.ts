@@ -6,7 +6,13 @@ import {
   tripDayNumbers,
 } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
-import { type RefundSummary, refundSummary, vietnamDay } from './booking-vm';
+import {
+  cancelledOn,
+  freeCancellationOpen,
+  type RefundSummary,
+  refundSummary,
+  vietnamDay,
+} from './booking-vm';
 import { formatChipDate, formatDate, formatMoneyExact, formatWeekdayDate } from './tours';
 
 /**
@@ -97,11 +103,11 @@ function standardJourney(booking: BookingDetail, phase: StandardPhase, today: st
   const bookedOn = vietnamDay(booking.createdAt);
   const paidOn = booking.paidAt ? vietnamDay(booking.paidAt) : null;
   const deadline = booking.cancellation?.deadline ?? booking.cancellationDeadline;
-  // Hạn chót hết lúc 23:59 giờ VN của ngày chót: đúng ngày chót vẫn còn hạn. Có cờ server thì
-  // in cờ server (ADR-0041 §7); đơn chưa trả không có `cancellation` nên so ngày lịch VN.
-  const cancellationOpen = booking.cancellation
-    ? booking.cancellation.withinDeadline
-    : today <= deadline;
+  // Còn hạn huỷ chỉ theo cờ server (`freeCancellationOpen`, ADR-0041 §7). Đơn chờ trả chưa có cờ,
+  // nhưng giai đoạn `awaiting_payment` CHÍNH là "chưa qua hạn chót" theo luật giai đoạn chung —
+  // mốc vẫn mở mà web không tự so ngày. Giai đoạn khác mà vắng cờ (đơn hoàn thiện chí trọn) là
+  // không còn quyền huỷ online.
+  const cancellationOpen = phase === 'awaiting_payment' || freeCancellationOpen(booking);
   const departed = booking.departureStartDate <= today;
   // Ngày về khách VẪN đang đi (chip "Day D of D"): chỉ "Trip ended" khi chuyến đã qua.
   const ended = phase === 'travelled';
@@ -204,10 +210,8 @@ function standardChip(booking: BookingDetail, phase: StandardPhase, today: strin
 
 function cancelledJourney(booking: BookingDetail): JourneyView {
   const t = messages.bookingDetail.journey;
-  // `cancelledAt` có ở MỌI đường huỷ (khách huỷ, quét giữ chỗ, huỷ chuyến); hai mốc của đơn
-  // xin huỷ chỉ có khi khách tự huỷ đơn đã trả. Không còn mốc nào thì bỏ ngày, không bịa.
-  const cancelledOn =
-    booking.cancelledAt ?? booking.cancellationDecidedAt ?? booking.cancellationRequestedAt;
+  // Không mốc nào nói thật được thì bỏ ngày, không bịa (`cancelledOn`).
+  const cancelledDay = cancelledOn(booking);
   const refund = refundSummary(booking);
   const milestones: JourneyMilestone[] = [
     {
@@ -228,7 +232,7 @@ function cancelledJourney(booking: BookingDetail): JourneyView {
   milestones.push({
     key: 'cancelled',
     label: t.cancelled,
-    detail: cancelledOn ? formatDate(vietnamDay(cancelledOn)) : null,
+    detail: cancelledDay ? formatDate(cancelledDay) : null,
     state: 'done',
   });
   // Đơn chưa từng thu tiền thì không có chuyện hoàn: `refundSummary` trả null, bỏ mốc Refund.

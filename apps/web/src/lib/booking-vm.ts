@@ -1,4 +1,9 @@
-import { type Booking, type BookingCancellation, vietnamToday } from '@tourism/contract';
+import {
+  type Booking,
+  type BookingCancellation,
+  type BookingDetail,
+  vietnamToday,
+} from '@tourism/contract';
 import { messages } from '@tourism/i18n';
 import { formatChipDate, formatDate, formatMoneyExact } from './tours';
 
@@ -73,6 +78,20 @@ export function bookingView(
 }
 
 /**
+ * Đơn còn huỷ miễn phí không — CHỈ đọc cờ server `cancellation.withinDeadline` (ADR-0041 §7). MỘT
+ * luật cho thanh hành trình của trang chi tiết đơn và voucher.
+ *
+ * Vắng cờ thì KHÔNG mở: server chỉ gửi cờ khi luật huỷ của khách còn áp dụng (đơn PAID hay
+ * PARTIALLY_REFUNDED trên chuyến còn chạy). Đơn hoàn thiện chí trọn (REFUNDED, khách vẫn đi —
+ * ADR-0054 AMEND 1) và chuyến công ty huỷ (ADR-0041 AMEND 1) không có cờ; hai bản cũ của trang
+ * đơn và voucher khi ấy tự so ngày chót với hôm nay, tức hứa một quyền huỷ không còn (review P7
+ * B2, B15, C mục 16).
+ */
+export function freeCancellationOpen(booking: Pick<BookingDetail, 'cancellation'>): boolean {
+  return booking.cancellation?.withinDeadline === true;
+}
+
+/**
  * Câu hạn chót huỷ miễn phí cho trang booking và trang thanh toán thành công —
  * `null` khi server không gửi `cancellation` (booking không ở PAID hoặc
  * PARTIALLY_REFUNDED, hoặc chuyến đã bị công ty huỷ — ADR-0041 AMEND 1).
@@ -99,6 +118,26 @@ export function legacyCancellationNote(b: Booking): string | null {
   const sentOn = formatDate(vietnamDay(b.cancellationRequestedAt));
   if (b.cancellationStatus === 'REQUESTED') return t.requested(sentOn);
   if (b.cancellationStatus === 'DENIED') return t.denied(sentOn);
+  return null;
+}
+
+/**
+ * Ngày lịch VN đơn bị huỷ (`YYYY-MM-DD`), `null` khi không có mốc nào nói thật được — MỘT luật cho
+ * mốc Cancelled của thanh hành trình và nhật ký voucher.
+ *
+ * `cancelledAt` có ở mọi đường huỷ thật (khách huỷ, quét giữ chỗ, công ty huỷ chuyến). Dữ liệu của
+ * luồng duyệt cũ (trước ADR-0041) có thể thiếu nó: khi ấy chỉ mốc QUYẾT của một yêu cầu huỷ ĐƯỢC
+ * DUYỆT (`cancellationStatus` REFUNDED) là ngày huỷ. Yêu cầu bị từ chối (DENIED) hay còn treo
+ * (REQUESTED) không huỷ gì cả — chuỗi dự phòng cũ lấy cả ngày của chúng, in ngày một yêu cầu bị
+ * từ chối cạnh câu "was declined" cùng trang (review P7 B3).
+ */
+export function cancelledOn(
+  b: Pick<Booking, 'cancelledAt' | 'cancellationStatus' | 'cancellationDecidedAt'>,
+): string | null {
+  if (b.cancelledAt !== null) return vietnamDay(b.cancelledAt);
+  if (b.cancellationStatus === 'REFUNDED' && b.cancellationDecidedAt !== null) {
+    return vietnamDay(b.cancellationDecidedAt);
+  }
   return null;
 }
 
