@@ -16,6 +16,20 @@ export function LenisScroll() {
       smoothWheel: true,
       syncTouch: false,
       anchors: true,
+      // Đo giới hạn cuộn TẠI CHỖ mỗi lần cần (`scrollHeight − clientHeight` của <html>) thay vì nhớ
+      // số đo cũ. Lenis chỉ đo lại khi cửa sổ đổi cỡ hoặc khi ResizeObserver trên <html> báo, mà
+      // <html> mang `h-full` (layout.tsx) nên hộp của nó luôn cao bằng khung nhìn: trang dài ra
+      // (điều hướng mềm, đổi tab) thì Lenis vẫn tin đáy cũ và kẹp lăn chuột ở đó. Đo 09/10 trên
+      // next build: tải cứng trang chi tiết đơn (đáy 1378) rồi bấm "Full itinerary" → trang tour
+      // (tab Itinerary, đáy thật 2812) lăn chuột dừng ở 1378; tải cứng trang tour rồi bấm tab
+      // Itinerary (cao hơn Overview) thì dừng ở 2100, đáy của Overview.
+      naiveDimensions: true,
+      // Bấm link sang trang khác (cùng host, khác pathname) thì Lenis buông quán tính của cú lăn
+      // chuột vừa rồi. Không có nó, trong ~1,2 giây (`duration`) sau cú lăn Lenis còn ghi vị trí mỗi
+      // khung hình và kéo trang mới về đích cũ: "Full itinerary" dừng ở 1080 thay vì mốc 1167, link
+      // không hash dừng ở 120 thay vì đầu trang (open-items G33, đo lại 09/10). Link cùng trang có
+      // hash vẫn do `anchors` lo như trước.
+      stopInertiaOnNavigate: true,
     });
 
     // Đăng ký để mọi cuộn lập trình (phân trang, nút lên đầu) đi QUA Lenis —
