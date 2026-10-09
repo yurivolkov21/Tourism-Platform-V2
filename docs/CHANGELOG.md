@@ -8,6 +8,150 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-10-09 — P7 phần B và C: đợt vá gộp sau review max (nhánh `feat/booking-pages-redesign`)
+
+**Bối cảnh.** Review max 08/10 của hai phần P7 chưa merge (hai entry ngay dưới): Phần C
+(voucher) 15 phát hiện C#1–C#15 cộng các mục nhỏ ngoài trần (mục 15–19, 22 và "Ngoài diff"),
+Phần B (trang chi tiết đơn) 15 phát hiện cộng bảy mục dọn mã ngoài trần (B13–B16, B18–B20); B8
+bị bác. Nhiều phát hiện chung gốc giữa hai trang — luật giai đoạn bỏ sót đơn hoàn thiện chí và
+chuyến công ty huỷ, ngày cắt theo UTC, câu hoàn tiền và mã vạch mỗi trang một bản — nên vá gộp
+trên một nhánh: `feat/booking-pages-redesign` mang cả 11 commit của B lẫn 7 commit của C (nhánh
+`feat/booking-voucher`), hai phần merge cùng một lượt. User chốt 08/10 ("theo đề xuất", "cứ làm
+theo hướng tối ưu"): D1 luật giai đoạn theo ADR-0054 AMEND 1; D2 khu review giữ khung thẻ ở mọi
+khổ, hàng sao và nút gửi xuống dòng khi hẹp, lưới một cột dưới `lg`; D3 đơn `lapsed` nói có điều
+kiện, không khẳng định đã lỡ; D4 điểm hẹn dự phòng mời liên hệ; D5 bỏ mã đơn ở hero voucher; D6
+khu review theo `reviewSlot` ở mọi giai đoạn, chân Get ready chỉ cho PAID. User bỏ: C mục 20
+(phần fixture gộp vào T2), mục 21 (test ghim class Tailwind) và đề xuất đổi lớp phủ ảnh. Sáu nhóm
+T1–T6 thi công bằng agent, tuần tự trên một worktree; sau T6 nhánh rebase lên `main` có Saved và
+Settings (`f157517a` chỉnh chỗ xuống dòng ở `messages.spec.ts` sau lần rebase ấy).
+
+**ADR-0054 AMEND 1** (`054fb044`, đi trước code): `Booking` của contract thêm `departureCancelled`
+(API đọc `departure.status`, vì chuyến seed không có `cancelled_at`). Giai đoạn xét từ trên
+xuống: chuyến công ty huỷ là `cancelled` với mọi trạng thái đơn; CANCELLED và REFUNDED có
+`cancelledAt` là `cancelled`; REFUNDED không `cancelledAt` (hoàn thiện chí trọn, khách vẫn đi) đi
+theo ngày như PAID. `lapsed` không phải kết cục: claim của webhook còn nhận phiên mở trước hạn.
+Voucher, mã vạch, mộc đọc qua một hàm thuần; khu review theo `reviewSlot`.
+
+**Nội dung theo nhóm.**
+
+- **T1 contract và API** (`c8c81db7`): cờ `departureCancelled` trên mọi đường đọc đơn
+  (`bookingInclude` dùng chung, `create` dựng từ chuyến có sẵn); `BookingPhaseInput` thêm
+  `cancelledAt`, `departureCancelled`; `bookingPhase` theo AMEND 1; khoá lọc của `bookings.mine`
+  mang hai trường để lọc, xếp, đếm theo luật mới. Giá: `adminList` và mỗi lần đọc đơn lẻ (trừ
+  `byCode`, `create`) thêm một câu SQL nhỏ; câu khoá của `mine` thêm một câu nối đuôi, câu trang
+  lấy chuyến từ câu khoá. Hai spec web mã hoá luật cũ (REFUNDED không mốc là huỷ) đổi dữ liệu,
+  giữ nguyên assertion.
+- **T2 helper chung** (`8771f485`..`dd26f54e`, 8 commit): `vietnamDay` thay mọi phép cắt
+  `slice(0, 10)` trên mốc của đơn (B4, C#3 — khách huỷ 06:30 giờ VN ngày 01/11 từng đọc
+  "Cancelled · 31 Oct" cạnh "No refund"); `wasCharged` cho `refundSummary` kể khoản hoàn của đơn
+  bị thu rồi hoàn tự động (B1, C#5 nửa sau); `refundSentence` một câu hoàn tiền, `switch` đủ biến
+  thể (B14, C#14); `cancelledOn` chỉ lấy mốc huỷ thật hay yêu cầu được duyệt (B3, B15);
+  `freeCancellationOpen` chỉ đọc cờ server, web hết tự so ngày chót (B2, B15, C mục 16);
+  `bookingPass` một luật voucher và mã vạch cho vé, nút "View voucher", voucher và accordion
+  (B11); `TicketBarcode` thay ba bản vẽ mã vạch (B13, C#15); `fetchTourDetailOrNull` thay hai cách
+  bọc lỗi đọc tour (B16, C#6 phần gom); fixture `makeCancellation`, `makeTourData` (B19).
+- **T3 trang chi tiết đơn, luật và chữ** (`b460fb17`..`ad953687`, 7 commit): khu review theo
+  `reviewSlot` ở mọi giai đoạn, đứng dưới khối của giai đoạn (D6: B6 — ngày về từ 07:00 giờ VN có
+  form; B2 — đơn có review rồi bị hoàn, huỷ vẫn sửa, rút được; B7); chân Get ready chỉ PAID, "Your
+  review opens on {date}." (B5); `lapsed` nói có điều kiện, mốc "Payment not completed" là `now`,
+  mộc "NOT PAID" (D3, B9, S1); chuyến công ty huỷ: "Departure cancelled · We had to cancel this
+  departure." kèm "Your full refund is on its way." khi job hoàn tiền chưa chạy; thanh hành trình
+  bỏ mốc Free cancellation khi server không gửi thông tin huỷ; vé: "Paid with" theo `wasCharged`
+  (B1), ảnh qua `SlotImage` (B17); chỉ đọc tour ở `upcoming`, `on_tour` (`needsTourData`, B16).
+- **T4 trang chi tiết đơn, bố cục và dọn** (`1a2436fd`..`e36156b4`, 10 commit): khu review có
+  khung ở mọi khổ, hàng sao và nút gửi thành hàng riêng dưới ô chữ, lưới `grid-cols-1` dưới `lg`
+  (D2: B12, B12b); nhãn TODAY kẹp theo px quanh tâm mốc, vạch tô dừng tại nhãn (B21); nhãn tuyến
+  của vé thành hàng riêng dưới `sm` (B22); ô chữ tự do bẻ dòng ở bất kỳ đâu (S2); chip "Awaiting
+  payment" và icon hạn huỷ đã qua đạt tương phản ở hai theme (B24); ca qua hạn huỷ của Get ready
+  (B23) và cây tiêu đề trên render thật (S3); `PanelCard`, `PanelKicker`, `DayText` gom vỏ thẻ,
+  nhãn nhỏ, hộp lịch trình ngày (B18); bỏ prop và phép tính suy ra được (B20); comment về
+  `lapsed` sửa theo AMEND 1.
+- **T5 voucher** (`50a52e81`..`30648aac`, 17 commit): một đồng hồ cho cả "vừa trả" lẫn hôm nay
+  (mục 17), mộc theo `bookingPass`, bỏ `phase`, `showCode` dư (mục 15) và nhánh chết (mục 16);
+  chuyến công ty huỷ không còn "vừa trả", có dải "We had to cancel this departure — this voucher
+  is no longer valid.", mốc Refund "Your full refund is on its way." khi job chưa chạy; nhật ký:
+  mốc hạn huỷ chỉ khi server gửi thông tin huỷ, "Reviewed" theo phán quyết review (C#2); điểm hẹn
+  dự phòng "Contact us for the meeting point — we reply within a day." (C#4, D4); hoá đơn chờ: câu
+  dưới tiêu đề theo tâm trạng, hết "sent to" cho đơn chưa trả (`receiptNote`, C#5);
+  `/checkout/cancel` đưa đơn đã trả sang voucher ("Ngoài diff"); hero bỏ mã đơn (C#10, D5);
+  fixture phân biệt ngày đi với ngày về, ngày đặt với ngày trả, số hoàn với tổng (C#8); mã đơn
+  không gãy dòng (C#9); bản in từ giao diện tối gỡ nền trang, ô mã, dải huỷ (C#7); vạch nối
+  journal in được (C#11); `sizes` đúng ô ảnh và nạp lười (C#12); biến thể `voucher-split:`,
+  `voucher-stack:` thay năm cặp `max-xl:` / `print:` (C#13); pháo giấy tải `canvas-confetti`
+  động (mục 18); hằng `DEADLINE_CUTOFF_COPY` một nguồn cho giờ chốt (mục 19); "View booking" là
+  `ButtonLink` (mục 22).
+- **T6 trang tour và voucher** (`d9cce00a`, `bacacb2b`): mỗi nút tab của trang tour mang `id`
+  bằng hash của nó cùng `scroll-mt`, nên `/tours/{slug}#itinerary` dừng ở dải tab với Itinerary
+  mở — Next.js, trình duyệt và Lenis tự cuộn tới mốc, không thêm lệnh cuộn nào (B10); voucher chỉ
+  đọc tour khi có ô Meeting point (sắp đi, đang đi), đã đi hay đã huỷ còn ba ô (C#6 phần còn).
+
+**Phát hiện thêm trong lúc vá.**
+
+- Sau khi `freeCancellationOpen` chỉ đọc cờ, đơn hoàn thiện chí trọn còn sắp đi in "Free
+  cancellation · Ended {ngày chưa tới}" ở thanh hành trình và nhật ký voucher: server không gửi
+  thông tin huỷ cho đơn ấy thì nay bỏ hẳn mốc (`a5acd7e3`, `c38fbedb`).
+- Khu review ở cột phải từ khoảng 1100px: hàng sao vừa một dòng cạnh ô chữ nên ép ô còn 51,7px
+  (1200px), 14px (1280px, slot pending). Vì vậy hàng sao và nút xuống dưới ô chữ ở MỌI khổ —
+  rộng hơn chữ của D2; nếu user muốn giữ một hàng ở khổ rộng thì thay bằng `basis-48` cho ô chữ.
+- Lý do bị bác của review (chữ admin gõ) có link dán liền làm trang 375px cuộn ngang 60px — vá
+  chung với S2.
+- Thẻ voucher một cột có cột ngầm `auto`: email 44 ký tự đẩy cột thành 349,8px trong thẻ 288px,
+  `overflow-hidden` cắt 10 dòng ở mép phải ở 320px (`e3c9e86e`).
+- Bản in voucher từ khổ 768px CSS bật `md:px-8` của màn hình, ô mã còn 142px cho mã 154px: đệm
+  in cố định 1.5rem (trong `9f66b837`).
+- Trang tour không có phần tử nào mang id `itinerary` (lẫn bốn hash còn lại): điều hướng mềm giữ
+  vị trí cũ, tải cứng đứng đầu trang. Sửa xong thì link `#good-to-know` trong trang cũng tới dải
+  tab. Cái giá đã đo: bấm Back về URL tour mang hash tab thì Chromium đưa về dải tab thay vì vị
+  trí cũ.
+- Lỗi có sẵn toàn site: quán tính Lenis giành vị trí cuộn khi điều hướng mềm trong khoảng 1,2
+  giây sau cú lăn chuột (open-items G33).
+- Đột biến của C#8: biểu thức M3 viết lại theo mã mới; trước đợt vá 4/5 đột biến sống, sau 0.
+
+**Số đo bố cục** (markup thật, CSS build thật, font thật, Edge headless).
+
+- **Trang chi tiết đơn (T4)**, 15 ca × 320/360/375/768/1024/1280 = 90 lượt: trang cuộn ngang 23
+  ca → 0 (nặng nhất 115px ở 320px, slot rejected); nút bị cắt 2 → 0 ("Send for review again" lố
+  14,1px ở 1024px); nhãn TODAY đè icon 16 ca → 0, khe nhỏ nhất −22px → 2,9px; nhãn tuyến tràn
+  hay đè 45 ca → 0 ("2 days · TP. Hồ Chí Minh" ở 320px: 6 dòng, lố 41,3px → một dòng); ô chữ của
+  form review ở 1280px (slot pending) 14px → 322,8px; email 44 ký tự `truncate` được dưới `lg`.
+  Tương phản theme tối tính từ token: chip 2,14 → 4,98:1, icon quá hạn 1,39 → 7,39:1.
+- **Voucher (T5)**, 6 ca × sáng/tối × 7 khổ màn hình (320–1536) và 3 khổ in (718, 777, 1047) =
+  120 lượt: 120/120 không cuộn ngang, không chữ bị cắt hay đè; mã đơn một dòng ở mọi khổ (trước:
+  hai dòng ở 320px và bản in 777, 1047); `sizes` so với ô ảnh 0,9–1,4 → 1,0; bản in từ giao diện
+  tối có bật "in nền": tương phản nhỏ nhất 1,3:1 (24–33 dòng trượt ngưỡng) → 5,1:1 ở hai ca đã
+  huỷ, bốn ca còn lại còn đúng một dòng 2,2:1 là mộc CONFIRMED (có từ trước, G32); vạch journal
+  khi tắt "in nền": mất → viền 5,9:1 sáng, 5,1:1 tối.
+- **Trang tour (T6)**, `next dev` và API dev: tải cứng `/tours/x#itinerary` ở 1280px dải tab từ
+  1310px (ngoài khung) → 143px, dưới navbar 124px; ở 375px từ 2022px → 112px, dưới navbar 88px;
+  điều hướng mềm từ trang đang cuộn 1400px: dải từ −90px (khuất phía trên) → 143px; bấm tab hay
+  tải lại trang giữ nguyên vị trí như trước; giảm chuyển động thì tới thẳng. Voucher sau việc 2:
+  60 lượt sạch.
+
+**Tự chốt trong lúc thi công, chờ user nhìn qua:** hàng sao luôn dưới ô chữ (ở trên); icon quá
+hạn dùng `dark:text-warning` tạm tới khi có token (G32); nút "Copy code" xuống hàng dưới mã ở ô
+hẹp; "View booking" thành `ButtonLink` — `<a>` thường, mất prefetch như mọi CTA điều hướng của
+web, chữ 16px thành 14px, thêm viền 1px của hệ; trang tour không thêm lệnh cuộn lúc mount, và
+Back về URL có hash tab thì về dải tab (user không nhận thì ghi thêm một mục open-items).
+
+**Review findings:** xem Bối cảnh — 30 phát hiện, vá hết, cùng các mục ngoài trần user chọn
+làm. Review cuối của diff đợt vá: `<điền sau review cuối>`.
+
+**CÒN TREO cho session gốc:**
+
+- [ ] Thử tay production từng bước sau merge: spec P7 §11, bước 1–14 (11–14 thêm cho đợt vá).
+- [ ] Push đụng cả API (contract, `bookings.service.ts`) lẫn web: canh đủ ba đèn — Actions,
+  Render, Vercel (G23). Web không kiểm response bằng Zod, nên khoảng lệch web lên trước API chỉ
+  khiến cờ vắng (coi như chuyến còn chạy), không vỡ trang.
+- [ ] Dọn ở máy sau merge: worktree và nhánh `feat/booking-voucher`, ba nhánh `backup/p7*`.
+- Không migration (cờ `departureCancelled` đọc `departure.status` có sẵn qua include), không
+  env, không webhook, không đổi Cloudinary.
+
+Ca mới của đợt vá, đo ở từng nhóm trước khi rebase lên `main` có Saved và Settings: web 1882 →
+2060 (T2 thêm 56, T3 thêm 59, T4 thêm 10, T5 thêm 32, T6 thêm 21); i18n 29 sau T5; sau T1:
+contract 675, api 1088, int 776/46. Đột biến của voucher (C#8): 5/5 chết.
+
+Tests after: `<điền sau gate>`
+
 ## 2026-10-08 — P7 phần C: voucher `/checkout/success` thiết kế lại (nhánh `feat/booking-voucher`)
 
 Đơn đã trả mở `/checkout/success?code=` thấy voucher mới theo bản vẽ

@@ -21,7 +21,7 @@
 | **P4f** | Quản trị người dùng và media | **Users**: ADR-0052 và spec 02/10 — Owner (chỉ từ `ADMIN_EMAILS`) cấp Staff cho khách đã xác minh, bảng quyền ở contract, khoá tài khoản, đăng xuất mọi nơi, lịch sử theo người dùng; plan 02/10 (14 task, kèm prompt thi công); P4e-4 đã merge 05/10 nên sẵn sàng thi công. Phủ ba bất biến hạ quyền / thu hồi phiên của ADR-0026 AMEND 1 §D. **Media library**, **Appearance** và G16 chưa thuộc spec nào |
 | **P5b-2…5** | Bốn cụm màn mobile: xem tour · đặt tour · tài khoản · đánh giá | **P5b-2 xem tour và P5b-4 tài khoản XONG**: merge 09/10 qua nhánh `feat/mobile-account-screens` (review 05/10 có 24 phát hiện, vá 23, Q4 là nợ lịch sử; review cuối 09/10). Ba commit riêng của nhánh `feat/mobile-browse-screens` (tìm không dấu, D6 return-to, một commit thử) chưa vào main — nhóm quyết port hay bỏ. **P5b-3 đặt tour** và **P5b-5 đánh giá** đang review trên nhánh riêng, xếp chồng lên account nên phải rebase lên main. **Đăng nhập Google native** ([ADR-0056](adr/0056-mobile-google-native-signin.md), duyệt 09/10, demo bằng APK Android) chưa thi công, nhắm merge trước 15/10. Bản vẽ và tài liệu bàn giao ở [`handoff/`](handoff/README.md) |
 | **P6** | Trợ lý AI tư vấn tour | Có ADR-0050 và spec (29/09), chưa thi công — mở sau khi admin xong. Thư viện `ai`, `@ai-sdk/anthropic`, `@ai-sdk/react` đã ghim 29/09 (`3f646ace`, spec §7 bước 1). Bảng dữ liệu đã có sẵn (`chat_conversations`, `chat_messages`) |
-| **P7** | Đợt trau chuốt giao diện cuối | Ba trang đơn của khách (ADR-0054, spec và plan 05/10, 26 task chia ba phần): **Phần A XONG** 06/10 — My bookings lọc, tìm, 10 đơn mỗi trang theo hành trình, phân trang "Previous / Next" (review 15 phát hiện, vá cả 15). Phần B (chi tiết đơn) và C (voucher) chờ thi công |
+| **P7** | Đợt trau chuốt giao diện cuối | Ba trang đơn của khách (ADR-0054, spec và plan 05/10, 26 task chia ba phần): **Phần A XONG** 06/10 — My bookings lọc, tìm, 10 đơn mỗi trang theo hành trình, phân trang "Previous / Next" (review 15 phát hiện, vá cả 15). **Phần B** (chi tiết đơn) và **Phần C** (voucher) **XONG** 09/10: thi công 07–08/10, review max 08/10 (C 15, B 15 phát hiện), vá gộp trên một nhánh kèm ADR-0054 AMEND 1 — đóng luôn mục web của ADR-0041 AMEND 1 bên dưới |
 
 ## Trước lượt seed lại 03/11
 
@@ -64,22 +64,34 @@ hoặc ô nhập phải đổi giọng thành câu-cho-khách-đọc, hoặc c�
 Trong lúc chưa quyết, câu nhắc ở màn admin đã sửa cho nói đúng sự thật (nó là
 ghi chép nội bộ) — trước đó nó hứa nhầm rằng khách sẽ đọc được.
 
-## Web: trang đơn chưa biết chuyến đã bị công ty huỷ
+## ~~Web: trang đơn chưa biết chuyến đã bị công ty huỷ~~ — đóng 09/10
 
-Nêu 08/10 cùng bản vá ADR-0041 AMEND 1. API đã đóng đường khách tự huỷ khi chuyến
+**Đóng bởi đợt vá gộp P7 B và C** (nhánh `feat/booking-pages-redesign`,
+[ADR-0054 AMEND 1](adr/0054-customer-bookings-list-phase-filters.md), CHANGELOG 09/10).
+`Booking` của contract có cờ `departureCancelled` (API đọc `departure.status`, không
+migration), và `bookingPhase` xếp đơn trên chuyến công ty huỷ vào `cancelled` với mọi
+trạng thái đơn, kể cả khi job hoàn tiền chưa chạy. Trang chi tiết đơn: khối "Departure
+cancelled" với câu "We had to cancel this departure." kèm "Your full refund is on its
+way." khi job chưa chạy (đơn còn PAID hay hoàn một phần) hoặc số đã hoàn khi job xong;
+mộc "CANCELLED" (đơn đã hoàn trọn giữ "REFUNDED"), không mã vạch, không còn bước "Free
+cancellation". Voucher: dải "We had to cancel this departure — this voucher is no longer
+valid.", không ô mã, mốc Refund nói tiền đang về. Khối báo ấy là chỗ đặt lý do huỷ nếu
+đề xuất "cho khách biết vì sao" ở trên được duyệt.
+
+~~Nêu 08/10 cùng bản vá ADR-0041 AMEND 1. API đã đóng đường khách tự huỷ khi chuyến
 `CANCELLED` (`bookings.byCode.cancellation` là `null`, lệnh huỷ trả 422), nhưng
 trong khoảng chờ job `departure-refund` (thường dưới 15 phút, lâu hơn nếu cổng
 thanh toán lỗi) booking vẫn `PAID`. Trang chi tiết đơn và voucher vì vậy hiện như
 một chuyến còn chạy — voucher, hoá đơn, đếm ngược — không chữ nào nói chuyến đã bị
-huỷ và tiền đang hoàn.
+huỷ và tiền đang hoàn.~~
 
-Làm: thêm một trường vào `BookingDetail` (chuyến đã bị công ty huỷ, kèm mốc), rồi
+~~Làm: thêm một trường vào `BookingDetail` (chuyến đã bị công ty huỷ, kèm mốc), rồi
 một khối báo trên trang chi tiết và trang voucher, ẩn hoặc đánh dấu voucher. Đụng
 thẳng file của nhánh P7 B (`feat/booking-pages-redesign`) và P7 C
 (`feat/booking-voucher`), nên làm SAU khi hai nhánh ấy merge; gộp được với đề xuất
 "cho khách biết vì sao" ở trên, cùng một khối báo. Lưu ý cho P7 B:
 `booking-journey.ts` tự so ngày khi `cancellation` là `null`, nên đơn `PAID` trên
-chuyến đã huỷ sẽ có bước "Free cancellation" tính theo ngày.
+chuyến đã huỷ sẽ có bước "Free cancellation" tính theo ngày.~~
 
 ## Cần thử lại bằng máy thật
 
@@ -267,3 +279,7 @@ deploy) nằm ở [sổ nợ kỹ thuật](analysis/2026-08-06-backlog-no-ky-thu
 | G29 | Khối ảnh trang chi tiết tour (`apps/web/src/components/tours/tour-media-panel.tsx`): cột 7 ảnh nhỏ cao cố định 496px (7 × 64 cộng 6 khe 8), còn ảnh chính vuông theo bề ngang cột. Khi ảnh chính hẹp hơn 496px thì cạnh cột ảnh nhỏ là một khoảng trống. Đo 08/10 trên bản build: ảnh chính 208px ở 320, 263px ở 375 (trống 233px), 361px ở 1024 (trống 135px); 768 không lộ (ảnh 620px), 1280 khớp bản duyệt (493 so với 496). Không tràn khung; cần một quyết định thiết kế, ví dụ dưới `lg` đưa ảnh nhỏ thành hàng ngang dưới ảnh chính |
 | G30 | Số điện thoại ở `/account/settings` chỉ được lưu để liên hệ (gợi ý dưới nhãn: "So the guide can reach you on the day."), không xác minh bằng OTP như nhiều site. Thêm OTP cần nhà cung cấp SMS (dịch vụ ngoài, có chi phí), luồng gửi lại mã và chống spam. User nêu khi thử tay 09/10; để sau capstone, nhắc trong báo cáo như hướng phát triển |
 | G31 | Hộp xoá tài khoản (`apps/web/src/components/account/delete-account.tsx`): trình quản lý mật khẩu của Edge điền email vào ô "Type DELETE to confirm" dù ô có `autoComplete="off"` (Chromium bỏ qua thuộc tính này khi đoán ô tên đăng nhập đứng trước ô mật khẩu). Không nguy hiểm vì nút xoá chỉ mở khi gõ đúng DELETE, nhưng khách phải xoá chữ thừa. Hướng thử: đặt ô mật khẩu lên trước ô gõ DELETE rồi kiểm với trình quản lý mật khẩu thật. Thấy khi thử tay 09/10, có từ trước đợt Saved và Settings |
+| G32 | Chưa có token mực cảnh báo và mực thành công đạt tương phản ở cả hai theme (đo ở đợt vá P7 B và C, 09/10 — tính từ token và đo trên CSS build thật). `text-warning` trên nền card theme sáng chỉ 2,01:1 (dưới 3:1 cho icon, 4,5:1 cho chữ) mà còn dùng cho CHỮ ở: mộc `VisaStamp` tông warning ("AWAITING PAYMENT" trên vé trang chi tiết đơn và ở hộ chiếu), huy hiệu warning của accordion My bookings, chữ "limited" của `booking-rail.tsx` và `tour-media-panel.tsx`, bộ đếm chữ 90% của form review. Mộc CONFIRMED (`text-success` cùng `opacity-85`) 2,8:1 trên nền sáng (màn hình và bản in) và 2,2:1 trên bản in voucher từ giao diện tối. Icon hạn huỷ đã qua ở khối Cancellation của trang chi tiết đơn đang dùng tạm `text-warning-foreground dark:text-warning` (14,96:1 sáng, 7,39:1 tối) vì không token nào đạt ở cả hai theme. Chữa gốc theo ADR-0019: thêm token vai mực `warning-emphasis` và `success-emphasis` như `primary-emphasis`, thay các chỗ trên, gỡ `dark:`. Cùng gốc G20 (admin) — làm chung một đợt của hệ màu |
+| G33 | Quán tính Lenis giành lại vị trí cuộn khi điều hướng mềm: trong khoảng 1,2 giây (`duration` ở `components/lenis-scroll.tsx`) sau một cú lăn chuột, `next/link` hay `router.push` sang trang khác thì Lenis kéo trang mới về vị trí nó đang lái tới. Đo 09/10 lúc vá link "Full itinerary" (B10, Edge headless): trễ 100–1000 ms giữa cú lăn cuối và `router.push('/tours/x#itinerary')` thì trang dừng ở 1700 thay vì 1167, dải tab khuất phía trên; từ 1300 ms thì đúng. Không hash cũng dính (về 1700 thay vì 0). Chỉ link điều hướng mềm (23 component dùng `next/link`); `<a>` thường là tải cứng nên không dính; cuộn chạm trên điện thoại chắc không dính vì `syncTouch: false` (suy từ cấu hình, chưa đo máy thật). Lỗi có sẵn toàn site. Đề xuất, CHƯA đo: `stopInertiaOnNavigate: true` (Lenis 1.3.25 gọi `reset()` khi bấm link cùng host khác pathname) — làm thành việc riêng, đo lại các link `next/link` |
+| G34 | Email của API (`apps/api/src/worker/emails/render-email.tsx:193`) còn gõ tay `{freeUntil}, 11:59 pm Vietnam time`. Đợt vá P7 B và C (09/10) gom giờ chốt về hằng `DEADLINE_CUTOFF_COPY` của `@tourism/i18n` — câu hạn huỷ, mốc nhật ký voucher, FAQ, chính sách huỷ, điều khoản — nhưng không đụng API. API đã phụ thuộc `@tourism/i18n` nên đổi là một dòng; `resend.deliverer.spec.ts` ghim chữ in ra, giữ nguyên |
+| G35 | Ba điều nhỏ có sẵn, thấy khi đo đợt vá P7 B và C (09/10): ô thả ảnh của form review (`review-photo-upload.tsx`) dùng `h3` cho câu hướng dẫn "Choose a file or drag & drop here." — cây tiêu đề trang chi tiết đơn có một mục không phải tiêu đề; vé (`booking-ticket.tsx`) tính số ngày bằng `calendarDaysBetween(…) + 1`, bản chép công thức `tripLengthDays` của contract (cùng kết quả — review bác phần "lỗi" của B4); `sizes` ảnh bìa voucher (`voucher-overview.tsx`) chép lề trang `/checkout/success` (công thức ghi ở comment), đổi lề trang thì phải đổi theo |

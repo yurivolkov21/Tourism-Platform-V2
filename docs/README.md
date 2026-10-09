@@ -94,7 +94,7 @@ Mỗi ADR tự chứa đầy đủ phần sửa bổ sung (AMEND) của nó; b�
 | [0051](adr/0051-posts-admin.md) | Quản trị bài viết: markdown kèm xem trước, slug đặt một lần, đủ mới được đăng, trang bài viết mang tag `tours` | |
 | [0052](adr/0052-admin-staff-tier.md) | Nhân sự admin hai bậc: Owner từ `ADMIN_EMAILS`, Staff do Owner cấp; bảng quyền ở contract; khoá tài khoản chặn tạo phiên | 1 AMEND |
 | [0053](adr/0053-delete-unused-categories-destinations.md) | Xoá danh mục và điểm đến khi chưa tour nào dùng | 1 AMEND |
-| [0054](adr/0054-customer-bookings-list-phase-filters.md) | Đơn của khách: một luật giai đoạn dùng chung; `bookings.mine` lọc, tìm, xếp theo hành trình và phân trang ở server | |
+| [0054](adr/0054-customer-bookings-list-phase-filters.md) | Đơn của khách: một luật giai đoạn dùng chung; `bookings.mine` lọc, tìm, xếp theo hành trình và phân trang ở server | 1 AMEND |
 | [0055](adr/0055-mobile-data-layer.md) | Tầng dữ liệu mobile: oRPC `OpenAPILink` + TanStack Query, client-first | 2 AMEND |
 | [0056](adr/0056-mobile-google-native-signin.md) | Đăng nhập Google trên app bằng SDK gốc và ID token; đóng proxy Expo | |
 
@@ -173,7 +173,7 @@ Mỗi spec đi kèm một plan cùng tên ở [`plans/`](plans/), trừ vài đ�
 **Trợ lý AI (P6, chưa thi công)**
 [P6 trợ lý tư vấn tour](specs/2026-09-29-p6-ai-concierge-design.md)
 
-**Trang đơn của khách (P7: Phần A My bookings xong 06/10; B chi tiết đơn, C voucher chưa thi công)**
+**Trang đơn của khách (P7: Phần A My bookings xong 06/10; B chi tiết đơn và C voucher xong 09/10)**
 [Thiết kế lại chi tiết đơn, voucher, My bookings](specs/2026-10-05-booking-pages-redesign-design.md)
 
 **Trang account Saved và Settings (chỉ đổi giao diện, xong 09/10)**
