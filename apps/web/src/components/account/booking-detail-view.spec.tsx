@@ -239,10 +239,6 @@ describe('BookingDetailView — khung (spec §5.1)', () => {
     ).toBeTruthy();
   });
 
-  it('không có h1 — hero của trang giữ h1 duy nhất', () => {
-    const { container } = render(
-      <BookingDetailView booking={UPCOMING} tour={TOUR} today={TODAY} />,
-    );
-    expect(container.querySelectorAll('h1')).toHaveLength(0);
-  });
+  // "Không có h1 — hero giữ h1 duy nhất" kiểm trên render THẬT ở
+  // `booking-detail-view-headings.spec.tsx`: ở đây mọi khối con là `<div>` mock nên không thể đỏ.
 });

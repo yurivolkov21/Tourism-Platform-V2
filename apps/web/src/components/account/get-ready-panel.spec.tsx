@@ -76,6 +76,24 @@ describe('GetReadyPanel', () => {
     ).toBeInTheDocument();
   });
 
+  /**
+   * Cờ server nói đã qua hạn huỷ (`withinDeadline: false` — đơn sắp đi nằm giữa hạn chót và ngày
+   * đi, trạng thái thường gặp): bước hạn huỷ KHÔNG được làm nổi — việc ấy khách không còn làm được.
+   * Ca này giết đột biến bỏ `&& step.open` mà fixture còn hạn duy nhất ở trên để sống (review P7 B23).
+   */
+  it('đã qua hạn huỷ: bước hạn huỷ vẫn có nhưng không được làm nổi', () => {
+    const late = { ...TRIP, cancellation: makeCancellation(TRIP, { withinDeadline: false }) };
+    const { container } = render(
+      <GetReadyPanel view={getReadySteps(late, TOUR, '2026-11-01')} bookingCode={late.code} />,
+    );
+    const step = container.querySelector('li[data-step="freeCancellation"]');
+    expect(step).not.toBeNull();
+    expect(step).not.toHaveAttribute('data-open');
+    expect(
+      screen.getByText('The free-cancellation deadline (31 Oct) has passed.'),
+    ).toBeInTheDocument();
+  });
+
   it('bước Budget: một ô tích cho từng mục, kèm câu "saved on this device"', () => {
     renderPanel();
     expect(screen.getByText('Budget for what’s not included')).toBeInTheDocument();
