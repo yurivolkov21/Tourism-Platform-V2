@@ -1883,6 +1883,7 @@ export const messages = {
     ratingRequired: 'Pick a rating from 1 to 5 stars.',
     submit: 'Submit review',
     submitting: 'Submitting…',
+    /** Gửi xong (lần đầu hay gửi lại): toast của web (`ReviewForm`) và màn "đã gửi" của app mobile. */
     successTitle: 'Thanks for your review',
     successBody: 'Your review is awaiting moderation — thank you for sharing your trip.',
     // Trang chi tiết đơn của web không in hai câu này nữa: chưa tới lúc thì không dựng khu review,

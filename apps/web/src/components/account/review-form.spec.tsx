@@ -1,23 +1,33 @@
 import { createORPCErrorFromJson } from '@orpc/client';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { messages } from '@tourism/i18n';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { makeReview } from '@/test/fixtures/booking';
 import { ReviewForm } from './review-form';
 
-const { create } = vi.hoisted(() => ({ create: vi.fn() }));
+const { create, update } = vi.hoisted(() => ({ create: vi.fn(), update: vi.fn() }));
 vi.mock('@/lib/api/client', () => ({
-  api: { reviews: { create } },
+  api: { reviews: { create, update } },
   withBrowserAuth: () => ({ auth: { credentials: 'include' } }),
 }));
 
 const { refresh } = vi.hoisted(() => ({ refresh: vi.fn() }));
 vi.mock('next/navigation', () => ({ useRouter: () => ({ refresh }) }));
 
+const { success, error, warning } = vi.hoisted(() => ({
+  success: vi.fn(),
+  error: vi.fn(),
+  warning: vi.fn(),
+}));
+vi.mock('sonner', () => ({ toast: { success, error, warning } }));
+
 const CODE = 'BK-REVIEW01';
 
 beforeEach(() => {
   vi.clearAllMocks();
   create.mockResolvedValue({});
+  update.mockResolvedValue({});
 });
 
 describe('ReviewForm — chặn ở client theo đúng ràng buộc contract', () => {
@@ -167,5 +177,54 @@ describe('ReviewForm — gửi', () => {
     await user.click(screen.getByRole('button', { name: /submit review/i }));
 
     expect(await screen.findByText('Something went wrong. Please try again.')).toBeInTheDocument();
+  });
+});
+
+/**
+ * Form ở lại sau khi gửi (ADR-0032: còn sửa được tới lúc duyệt), nên tự nó không nói "đã gửi" — dấu
+ * hiệu duy nhất là dòng trạng thái đầu khung và chữ trên nút; thử tay prod 09/10 tưởng nút không chạy.
+ * Toast nói thay, cùng câu với màn "đã gửi" của app mobile (`successTitle`/`successBody`).
+ */
+describe('ReviewForm — gửi xong thì báo bằng toast', () => {
+  const t = messages.reviews;
+
+  it('gửi lần đầu thành công → toast cảm ơn', async () => {
+    const user = userEvent.setup();
+    render(<ReviewForm bookingCode={CODE} />);
+    await user.click(screen.getByRole('radio', { name: '5 stars' }));
+    await user.type(screen.getByLabelText(/your review/i), 'Guides were excellent throughout.');
+    await user.click(screen.getByRole('button', { name: /submit review/i }));
+
+    await waitFor(() =>
+      expect(success).toHaveBeenCalledWith(t.successTitle, { description: t.successBody }),
+    );
+  });
+
+  it('gửi lại bài đang chờ duyệt → reviews.update theo id, cùng toast, không tạo bài mới', async () => {
+    const review = makeReview({ rating: 4, body: 'A lovely trip with great guides.' });
+    const user = userEvent.setup();
+    render(<ReviewForm bookingCode={CODE} review={review} />);
+    await user.click(screen.getByRole('button', { name: t.resubmit }));
+
+    await waitFor(() =>
+      expect(update).toHaveBeenCalledWith(
+        { id: review.id, rating: 4, body: 'A lovely trip with great guides.' },
+        expect.anything(),
+      ),
+    );
+    expect(success).toHaveBeenCalledWith(t.successTitle, { description: t.successBody });
+    expect(create).not.toHaveBeenCalled();
+  });
+
+  it('API báo lỗi → không toast cảm ơn, chỉ câu lỗi trong form', async () => {
+    create.mockRejectedValueOnce(new Error('network down'));
+    const user = userEvent.setup();
+    render(<ReviewForm bookingCode={CODE} />);
+    await user.click(screen.getByRole('radio', { name: '5 stars' }));
+    await user.type(screen.getByLabelText(/your review/i), 'Network will fail on this one.');
+    await user.click(screen.getByRole('button', { name: /submit review/i }));
+
+    expect(await screen.findByText(t.errors.generic)).toBeInTheDocument();
+    expect(success).not.toHaveBeenCalled();
   });
 });

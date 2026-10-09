@@ -15,6 +15,7 @@ import { PenLineIcon, StarIcon } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { type FormEvent, useState } from 'react';
 import { api, withBrowserAuth } from '@/lib/api/client';
+import { submitToast } from '@/lib/api/submit';
 
 /** Trần của contract: `title` max 120, `body` 10–2000. */
 const BODY_MIN = 10;
@@ -69,7 +70,9 @@ function RatingPicker({ value, onChange }: { value: number; onChange: (n: number
  * viền) chồng textarea nội dung, addon cuối là 5 sao + nút Submit (từ P7 B
  * là một hàng riêng dưới ô chữ, xuống dòng được khi hẹp). LOGIC
  * GIỮ NGUYÊN từ bản cũ: state/validate theo contract, submit oRPC + map mã
- * lỗi, `router.refresh()` để server tự đổi sang lời cảm ơn.
+ * lỗi, `router.refresh()` để server đổi trạng thái khung. Gửi xong có toast
+ * cảm ơn (thử tay prod 09/10): từ ADR-0032 form ở lại để còn sửa, không còn
+ * lời cảm ơn thay chỗ form như bản đầu.
  *
  * Title/body mất Label nhìn thấy (khung tự giải thích bằng placeholder) →
  * `aria-label` gánh phần đọc máy; spec cũ truy vấn qua label vẫn sống.
@@ -135,8 +138,12 @@ export function ReviewForm({
       } else {
         await api.reviews.create({ bookingCode, ...content }, { context: withBrowserAuth() });
       }
-      // Trang server đọc lại `reviewedAt` và tự đổi sang lời cảm ơn — không
-      // giữ state "đã gửi" ở client, vì như vậy tải lại trang là mất.
+      // Form ở lại sau khi gửi (ADR-0032: còn sửa được tới lúc duyệt), nên tự nó không nói "đã
+      // gửi" — dấu hiệu duy nhất là dòng trạng thái đầu khung và chữ trên nút; thử tay prod 09/10
+      // tưởng nút không chạy. Toast nói thay, cùng câu với màn "đã gửi" của app mobile.
+      submitToast('success', { title: t.successTitle, description: t.successBody });
+      // Trang server đọc lại review và đổi trạng thái khung (đang chờ duyệt) — không giữ state
+      // "đã gửi" ở client, vì như vậy tải lại trang là mất.
       router.refresh();
     } catch (err) {
       if (err instanceof ORPCError && err.status === 429) {
