@@ -237,6 +237,34 @@ describe('BookingAccordion', () => {
     expect(screen.queryByRole('link', { name: 'View voucher' })).not.toBeInTheDocument();
   });
 
+  /**
+   * Chuyến công ty huỷ thắng mọi trạng thái đơn (ADR-0054 AMEND 1 §2): badge theo giai đoạn như mộc
+   * của trang chi tiết đơn và voucher (`bookingPass`). Khi job hoàn tiền chưa chạy, bản trước hiện
+   * trạng thái đơn bằng tông của nó — "Paid" xanh cạnh một chuyến không chạy (review cuối I1).
+   */
+  it.each([
+    ['PAID chờ job hoàn tiền', { status: 'PAID' }, 'Paid'],
+    [
+      'hoàn một phần chờ job hoàn tiền',
+      { status: 'PARTIALLY_REFUNDED', refundedTotal: '2.00' },
+      'Partially refunded',
+    ],
+    ['giữ chỗ chưa trả', { status: 'PENDING', paidAt: null }, 'Awaiting payment'],
+  ] as const)('%s trên chuyến bị công ty huỷ → badge "Cancelled" xám', (_, patch, statusLabel) => {
+    render(
+      one({
+        ...patch,
+        departureCancelled: true,
+        departureStartDate: '2026-08-27',
+        departureEndDate: '2026-08-29',
+      }),
+    );
+    const badge = screen.getByText('Cancelled');
+    expect(badge).toHaveClass('text-muted-foreground');
+    expect(badge).not.toHaveClass('text-success');
+    expect(screen.queryByText(statusLabel)).toBeNull();
+  });
+
   it('REFUNDED đã qua ngày → không mời Review', () => {
     render(
       one({

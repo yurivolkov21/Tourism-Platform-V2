@@ -32,8 +32,9 @@ import { formatDateRange } from '@/lib/tours';
  * review) vẫn ở trang chi tiết, ở đây chỉ có thông tin + lối vào.
  *
  * Dòng phụ ("In N days" / "Ends …"), nút Pay now và link Review đọc giai đoạn qua
- * `bookingPhase` của contract (ADR-0054 §1) — cùng luật API dùng để xếp danh sách; link View
- * voucher theo `bookingPass` của giai đoạn ấy, cùng luật với trang chi tiết đơn và voucher.
+ * `bookingPhase` của contract (ADR-0054 §1) — cùng luật API dùng để xếp danh sách; badge và link
+ * View voucher theo `bookingPass` của giai đoạn ấy, cùng luật với mộc và nút "View voucher" của
+ * trang chi tiết đơn và voucher.
  *
  * `today` là ngày lịch VIỆT NAM do server truyền xuống (`todayDateString`,
  * chuỗi `YYYY-MM-DD`, so lexicographic) — client KHÔNG tự lấy giờ máy để tránh
@@ -78,18 +79,18 @@ export function BookingAccordion({ bookings, today }: { bookings: Booking[]; tod
               : null;
         // Quá hạn chót mà chưa trả là `lapsed`: chuyến đã hết nhận đặt (ADR-0041 §3) và API thôi mở
         // phiên thanh toán mới từ mốc ấy (mint, re-mint), nên không mời trả tiền nữa. Phiên mở TRƯỚC
-        // hạn vẫn được claim nhận, trả xong đơn tự sang PAID (ADR-0054 AMEND 1 §4) — nên nhãn chỉ
-        // nói "chưa trả xong", không khẳng định đã lỡ.
-        const lapsed = phase === 'lapsed';
+        // hạn vẫn được claim nhận, trả xong đơn tự sang PAID (ADR-0054 AMEND 1 §4) — nên badge chỉ
+        // nói "chưa trả xong" (`bookingPass`), không khẳng định đã lỡ.
         const canPay = phase === 'awaiting_payment' && view.actions.includes('payNow');
-        const badgeTone = lapsed ? 'muted' : view.tone;
         // Hôm sau ngày về theo giờ VN thì ngày UTC ít nhất đã tới ngày về, nên
         // cổng review (UTC) của API chắc chắn đã mở — link không dẫn tới form
         // bị từ chối. Review chỉ dành cho đơn PAID (`reviewSlot`).
         const canReview = phase === 'travelled' && booking.status === 'PAID';
-        // Cùng luật voucher với trang chi tiết đơn và chính trang voucher (ADR-0054 AMEND 1 §5):
-        // theo giai đoạn, không chỉ PAID — đơn hoàn một phần hay hoàn thiện chí vẫn đi.
-        const hasVoucher = bookingPass(booking, phase).voucher;
+        // Badge và voucher cùng luật với mộc và nút "View voucher" của trang chi tiết đơn và chính
+        // trang voucher (ADR-0054 AMEND 1 §5): theo giai đoạn, không theo trạng thái đơn — chuyến
+        // công ty huỷ là "Cancelled" xám dù đơn còn PAID chờ job hoàn tiền (review cuối I1); đơn
+        // hoàn một phần hay hoàn thiện chí mà vẫn đi thì vẫn có voucher.
+        const pass = bookingPass(booking, phase);
 
         return (
           // Từng mục trồi lên bậc thang (nhóm motion 3, 19/08); wrapper ngoài
@@ -118,13 +119,13 @@ export function BookingAccordion({ bookings, today }: { bookings: Booking[]; tod
                     </span>
                     <Badge
                       variant="outline"
-                      className={`gap-1.5 ${BADGE_TONE[badgeTone] ?? BADGE_TONE.muted}`}
+                      className={`gap-1.5 ${BADGE_TONE[pass.badge.tone] ?? BADGE_TONE.muted}`}
                     >
                       <span
                         aria-hidden="true"
-                        className={`size-1.5 rounded-full ${DOT_CLASS[badgeTone] ?? DOT_CLASS.muted}`}
+                        className={`size-1.5 rounded-full ${DOT_CLASS[pass.badge.tone] ?? DOT_CLASS.muted}`}
                       />
-                      {lapsed ? tb.lapsedBadge : bl.status[booking.status]}
+                      {pass.badge.label}
                     </Badge>
                   </div>
                   <p className="mt-0.5 truncate text-[12.5px] text-muted-foreground">
@@ -183,7 +184,7 @@ export function BookingAccordion({ bookings, today }: { bookings: Booking[]; tod
                     <ButtonLink variant="outline" size="sm" href={detailHref}>
                       {bl.viewDetails}
                     </ButtonLink>
-                    {hasVoucher ? (
+                    {pass.voucher ? (
                       <Link
                         href={`/checkout/success?code=${booking.code}`}
                         className="text-[13px] font-semibold text-primary-emphasis hover:underline"

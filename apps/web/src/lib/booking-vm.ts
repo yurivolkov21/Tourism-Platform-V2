@@ -79,7 +79,10 @@ export function bookingView(
   }
 }
 
-/** Mộc trạng thái: chữ in trên mộc và tông mực — `VisaStamp` chỉ vẽ. */
+/**
+ * Nhãn trạng thái của một đơn: chữ và tông — mộc (`VisaStamp` chỉ vẽ) của vé và voucher, và badge
+ * của accordion My bookings (tra bảng class theo tông) cùng dạng này.
+ */
 export interface BookingStamp {
   label: string;
   tone: BookingViewTone;
@@ -91,13 +94,34 @@ export interface BookingPass {
   voucher: boolean;
   /** Có mã vạch trên vé và voucher. */
   barcode: boolean;
-  /** Mộc trạng thái trên vé (trang chi tiết đơn). */
+  /** Mộc trạng thái trên vé (trang chi tiết đơn) và voucher. */
   stamp: BookingStamp;
+  /** Badge trạng thái của hàng accordion My bookings — cùng luật với mộc, chữ của danh sách đơn. */
+  badge: BookingStamp;
 }
 
+/** Bộ chữ của một loại nhãn trạng thái: chữ theo trạng thái đơn, và chữ riêng của `lapsed`. */
+interface StatusWords {
+  /** Khoá `string` chứ không năm trạng thái: i18n khai bảng chữ của danh sách đơn là `Record<string, string>`. */
+  byStatus: Readonly<Record<string, string>>;
+  lapsed: string;
+}
+
+/** Mộc: chữ in hoa của vé và voucher ("CONFIRMED", "NOT PAID"). */
+const STAMP_WORDS: StatusWords = {
+  byStatus: messages.passportVisa.stampByStatus,
+  lapsed: messages.passportVisa.stampLapsed,
+};
+
+/** Badge của accordion: chữ của danh sách đơn ("Paid", "Payment not completed"). */
+const BADGE_WORDS: StatusWords = {
+  byStatus: messages.booking.list.status,
+  lapsed: messages.accountBookings.lapsedBadge,
+};
+
 /**
- * Voucher, mã vạch và mộc của MỘT đơn theo giai đoạn (`bookingPhase`) — MỘT luật cho vé và nút
- * "View voucher" của trang chi tiết đơn, voucher `/checkout/success` và accordion My bookings
+ * Voucher, mã vạch, mộc và badge của MỘT đơn theo giai đoạn (`bookingPhase`) — MỘT luật cho vé và
+ * nút "View voucher" của trang chi tiết đơn, voucher `/checkout/success` và accordion My bookings
  * (ADR-0054 AMEND 1 §5). Trước đó bốn chỗ bốn vị từ: vé theo trạng thái đơn — in mã vạch cho
  * chuyến đã đi trong khi voucher của cùng đơn giấu nó, và giấu mã vạch của đơn hoàn thiện chí vẫn
  * đi; khối Details và voucher theo giai đoạn, mỗi bên một bản; accordion chỉ PAID (review P7 B11).
@@ -105,53 +129,60 @@ export interface BookingPass {
  * Voucher: đơn đã trả ở ba giai đoạn của chuyến còn đi hay đã đi. Mã vạch nói "quét tôi ở điểm
  * đón" — chỉ sắp đi và đang đi; chuyến đã xong không còn cổng nào để quét. Chưa có `paidAt` thì
  * không có gì: in mã vạch cho đơn chưa trả là hứa một thứ không có (cùng bất biến của
- * `BookingReceipt`). Mộc: xem `passStamp`.
+ * `BookingReceipt`). Mộc và badge: xem `phaseLabel`.
  */
 export function bookingPass(
   booking: Pick<Booking, 'paidAt' | 'status'>,
   phase: BookingPhase,
 ): BookingPass {
   const paid = booking.paidAt !== null;
-  const stamp = passStamp(booking, phase);
+  const stamp = phaseLabel(booking, phase, STAMP_WORDS);
+  const badge = phaseLabel(booking, phase, BADGE_WORDS);
   switch (phase) {
     case 'upcoming':
     case 'on_tour':
-      return { voucher: paid, barcode: paid, stamp };
+      return { voucher: paid, barcode: paid, stamp, badge };
     case 'travelled':
-      return { voucher: paid, barcode: false, stamp };
+      return { voucher: paid, barcode: false, stamp, badge };
     case 'awaiting_payment':
     case 'cancelled':
     case 'lapsed':
-      return { voucher: false, barcode: false, stamp };
+      return { voucher: false, barcode: false, stamp, badge };
   }
 }
 
 /**
- * Mộc của vé: chữ của trạng thái đơn (`passportVisa.stampByStatus`), mực theo tông của
- * `bookingView` — trừ hai giai đoạn mà trạng thái đơn nói sai:
+ * Nhãn trạng thái theo giai đoạn — MỘT luật cho mộc (vé, voucher) và badge (accordion My
+ * bookings), mỗi nơi một bộ chữ (`words`). Chữ của trạng thái đơn, tông của `bookingView` — trừ
+ * hai giai đoạn mà trạng thái đơn nói sai:
  *
- * - `lapsed` — PENDING qua hạn chót. "AWAITING PAYMENT" cam là mời trả một khoản không mở lại
+ * - `lapsed` — PENDING qua hạn chót. "Awaiting payment" cam là mời trả một khoản không mở lại
  *   được, mà "đã lỡ" thì chưa chắc: claim của API còn nhận phiên mở trước hạn (ADR-0054 AMEND 1
- *   §4). Chữ trung tính "NOT PAID", mực xám (review P7 B9, S1).
+ *   §4). Chữ trung tính ("NOT PAID", "Payment not completed"), tông xám (review P7 B9, S1).
  * - `cancelled` — chuyến công ty huỷ thắng mọi trạng thái đơn (AMEND 1 §2): đơn còn PAID hay hoàn
- *   một phần chờ job hoàn tiền không được đóng mộc "CONFIRMED". Mộc nói "CANCELLED"; đơn đã hoàn
- *   trọn giữ "REFUNDED" — sự thật về tiền vẫn đúng.
+ *   một phần chờ job hoàn tiền không được mang "CONFIRMED" hay "Paid" xanh. Nhãn nói "Cancelled";
+ *   đơn đã hoàn trọn giữ "Refunded" — sự thật về tiền vẫn đúng. Badge từng chỉ đè `lapsed`, nên
+ *   accordion nói "Paid" cho đơn mà trang chi tiết đơn và voucher nói chuyến bị huỷ (review cuối
+ *   I1).
  */
-function passStamp(booking: Pick<Booking, 'status'>, phase: BookingPhase): BookingStamp {
-  const labels = messages.passportVisa.stampByStatus;
+function phaseLabel(
+  booking: Pick<Booking, 'status'>,
+  phase: BookingPhase,
+  words: StatusWords,
+): BookingStamp {
   switch (phase) {
     case 'lapsed':
-      return { label: messages.passportVisa.stampLapsed, tone: 'muted' };
+      return { label: words.lapsed, tone: 'muted' };
     case 'cancelled':
       return {
-        label: booking.status === 'REFUNDED' ? labels.REFUNDED : labels.CANCELLED,
+        label: words.byStatus[booking.status === 'REFUNDED' ? 'REFUNDED' : 'CANCELLED'],
         tone: 'muted',
       };
     case 'awaiting_payment':
     case 'upcoming':
     case 'on_tour':
     case 'travelled':
-      return { label: labels[booking.status], tone: bookingView(booking).tone };
+      return { label: words.byStatus[booking.status], tone: bookingView(booking).tone };
   }
 }
 

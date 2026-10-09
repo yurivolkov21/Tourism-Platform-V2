@@ -156,6 +156,63 @@ describe('bookingPass', () => {
   ] as const)('mộc — %s → %o', (_, status, phase, stamp) => {
     expect(bookingPass(makeBooking({ status }), phase).stamp).toEqual(stamp);
   });
+
+  /**
+   * Badge của hàng accordion My bookings: CÙNG luật giai đoạn với mộc, chỉ khác bộ chữ (chữ của
+   * danh sách đơn). Bản trước của accordion chỉ đè giai đoạn `lapsed`: đơn PAID trên chuyến công ty
+   * huỷ chờ job hoàn tiền vẫn hiện "Paid" xanh trong khi mộc của trang chi tiết đơn và voucher nói
+   * "CANCELLED" (review cuối I1).
+   */
+  it.each([
+    ['PAID sắp đi', 'PAID', 'upcoming', { label: 'Paid', tone: 'success' }],
+    [
+      'hoàn một phần đã đi',
+      'PARTIALLY_REFUNDED',
+      'travelled',
+      { label: 'Partially refunded', tone: 'destructive' },
+    ],
+    [
+      'hoàn thiện chí trọn còn sắp đi',
+      'REFUNDED',
+      'upcoming',
+      { label: 'Refunded', tone: 'destructive' },
+    ],
+    [
+      'chờ trả còn trong hạn',
+      'PENDING',
+      'awaiting_payment',
+      { label: 'Awaiting payment', tone: 'warning' },
+    ],
+    [
+      'chờ trả qua hạn chót',
+      'PENDING',
+      'lapsed',
+      { label: 'Payment not completed', tone: 'muted' },
+    ],
+    ['đã huỷ', 'CANCELLED', 'cancelled', { label: 'Cancelled', tone: 'muted' }],
+    ['huỷ có hoàn', 'REFUNDED', 'cancelled', { label: 'Refunded', tone: 'muted' }],
+    [
+      'chuyến công ty huỷ, đơn còn PAID',
+      'PAID',
+      'cancelled',
+      { label: 'Cancelled', tone: 'muted' },
+    ],
+    [
+      'chuyến công ty huỷ, đơn hoàn một phần',
+      'PARTIALLY_REFUNDED',
+      'cancelled',
+      { label: 'Cancelled', tone: 'muted' },
+    ],
+    // Lõi huỷ chuyến huỷ luôn giữ chỗ chưa trả — trạng thái chớp nhoáng, vẫn không mời trả tiền.
+    [
+      'chuyến công ty huỷ, giữ chỗ chưa trả',
+      'PENDING',
+      'cancelled',
+      { label: 'Cancelled', tone: 'muted' },
+    ],
+  ] as const)('badge — %s → %o', (_, status, phase, badge) => {
+    expect(bookingPass(makeBooking({ status }), phase).badge).toEqual(badge);
+  });
 });
 
 /**
