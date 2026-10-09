@@ -78,13 +78,16 @@ describe('VoucherPass — khối mã (sắp đi)', () => {
     expect(bars.map((bar) => bar.style.width)).toEqual(widths.map((w) => `${w}px`));
   });
 
-  it('ô mã giấu khi thẻ một cột (dưới xl — cột trái có ô gọn) nhưng hiện lại khi in', () => {
+  // `voucher-stack:` (globals.css) là thẻ một cột — màn hình dưới xl, KHÔNG bao giờ khi in; bản cũ
+  // tự ghép cặp `max-xl:hidden print:flex` ở nơi gọi (review P7C#13).
+  it('ô mã giấu khi thẻ một cột (dưới xl — cột trái có ô gọn), bản in vẫn có', () => {
     const { container } = renderPass();
     const code = slot(container, 'voucher-code');
-    expect(code.classList.contains('max-xl:hidden')).toBe(true);
-    expect(code.classList.contains('print:flex')).toBe(true);
+    expect(code.classList.contains('voucher-stack:hidden')).toBe(true);
     // Ngày, điều kiện và mã vạch vẫn cần khi thẻ một cột: khối KHÔNG giấu.
-    expect(slot(container, 'voucher-ticket').classList.contains('max-xl:hidden')).toBe(false);
+    expect(slot(container, 'voucher-ticket').classList.contains('voucher-stack:hidden')).toBe(
+      false,
+    );
   });
 });
 
@@ -107,9 +110,8 @@ describe('VoucherPass — theo giai đoạn', () => {
     expect(ticket.textContent).toBe(
       'This booking was cancelled — this voucher is no longer valid.',
     );
-    // Cột trái đã nói điều này khi thẻ một cột; khi in thì hiện lại.
-    expect(ticket.classList.contains('max-xl:hidden')).toBe(true);
-    expect(ticket.classList.contains('print:block')).toBe(true);
+    // Cột trái đã nói điều này khi thẻ một cột; thẻ chia đôi và bản in thì có.
+    expect(ticket.classList.contains('voucher-stack:hidden')).toBe(true);
   });
 });
 

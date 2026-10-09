@@ -8,9 +8,10 @@ import type { VoucherView } from '@/lib/voucher';
  * Voucher của đơn đã trả ở `/checkout/success` (spec P7 §6, bản vẽ `booking-voucher.src.html`):
  * MỘT thẻ bo góc `max-w-7xl` chia đôi — cột trái co giãn (`VoucherOverview`), cột phải 440px
  * mảng teal (`VoucherPass`). Khi in, cột phải hẹp còn 17rem để cả thẻ nằm gọn một trang A4 (số
- * đo ở plan P7, Task C5).
+ * đo ở plan P7, Task C5) — khai ở khối in của `globals.css`.
  *
- * Hai cột chỉ từ `xl`; dưới đó một cột, mảng teal xuống cuối theo thứ tự DOM. Cột phải cố định
+ * Hai cột chỉ khi thẻ chia đôi — biến thể `voucher-split:` của `globals.css`: màn hình từ `xl`, và
+ * mọi bản in; dưới đó một cột, mảng teal xuống cuối theo thứ tự DOM. Cột phải cố định
  * 440px còn lề trang khớp hero, nên với mốc `md` của plan cột trái ở 768px chỉ còn 194px và cột
  * chữ của bốn ô thông tin còn 0px, ở 1024px còn 63px (đo trên CSS build thật, đợt vá sau C5).
  * Từ 1280px cột trái được ~580px — đúng khổ bản vẽ đã duyệt. Cùng mốc với vé của trang chi
@@ -37,7 +38,7 @@ export function VoucherCard({
       {view.justPaid ? <SuccessCelebration bookingCode={booking.code} /> : null}
       <article
         data-slot="voucher"
-        className="mx-auto grid w-full max-w-7xl grid-cols-1 overflow-hidden rounded-4xl border bg-card text-card-foreground xl:grid-cols-[minmax(0,1fr)_440px] print:grid-cols-[minmax(0,1fr)_17rem]"
+        className="mx-auto grid w-full max-w-7xl grid-cols-1 overflow-hidden rounded-4xl border bg-card text-card-foreground voucher-split:grid-cols-[minmax(0,1fr)_440px]"
       >
         <VoucherOverview booking={booking} view={view} meetingPoint={meetingPoint} />
         <VoucherPass booking={booking} view={view} />

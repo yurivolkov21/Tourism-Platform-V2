@@ -30,22 +30,23 @@ export function VoucherPass({ booking, view }: { booking: BookingDetail; view: V
       className="bg-primary px-6 py-7 text-primary-foreground md:px-8 md:pt-7.5 md:pb-8.5"
     >
       {/* Đơn còn hiệu lực: khối luôn hiện (ngày, điều kiện, mã vạch), chỉ ô mã giấu khi thẻ một
-          cột (dưới `xl`, cùng mốc chia cột của `VoucherCard`) vì cột trái đã có ô gọn. Đơn đã
-          huỷ: khối chỉ còn dải hết hiệu lực mà cột trái đã nói khi thẻ một cột, nên giấu cả
-          khối ở đó; khi in thì hiện lại. */}
+          cột (`voucher-stack:` của `globals.css` — màn hình dưới `xl`, không bao giờ khi in) vì cột
+          trái đã có ô gọn. Khoảng cách ô mã – dòng ngày nằm ở ô mã (`mb-2.5`) nên đi cùng nó. Đơn
+          đã huỷ: khối chỉ còn dải hết hiệu lực mà cột trái đã nói khi thẻ một cột, nên giấu cả
+          khối ở đó; thẻ chia đôi và bản in thì có. */}
       <div
         data-slot="voucher-ticket"
         className={cn(
           'rounded-2xl bg-card px-4.5 py-4 text-card-foreground',
-          view.cancelledNotice !== null && 'max-xl:hidden print:block',
+          view.cancelledNotice !== null && 'voucher-stack:hidden',
         )}
       >
         {view.cancelledNotice === null ? (
           <>
-            <VoucherCode code={booking.code} className="max-xl:hidden print:flex" />
+            <VoucherCode code={booking.code} className="mb-2.5 voucher-stack:hidden" />
             <div
               data-slot="voucher-meta"
-              className="mt-2.5 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground max-xl:mt-0 print:mt-2.5"
+              className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground"
             >
               <span className="inline-flex items-center gap-1.5">
                 <CalendarIcon aria-hidden="true" className="size-3.5" />

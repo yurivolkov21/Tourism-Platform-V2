@@ -24,7 +24,8 @@ import type { VoucherView } from '@/lib/voucher';
  *
  * Khi thẻ một cột (dưới `xl` — điện thoại, máy tính bảng) ô mã bản gọn đứng ngay dưới tiêu đề:
  * khách mở voucher ở điểm đón cần thấy mã trước tiên, còn mảng teal (mang ô mã của thẻ hai cột)
- * nằm cuối trang (spec §6.4). Mốc `xl` cùng mốc chia cột của `VoucherCard`.
+ * nằm cuối trang (spec §6.4). Thẻ chia đôi — từ `xl`, và khi in — thì ô gọn giấu: biến thể
+ * `voucher-split:` của `globals.css`, cùng ngưỡng chia cột của `VoucherCard`.
  */
 export function VoucherOverview({
   booking,
@@ -60,12 +61,9 @@ export function VoucherOverview({
       </div>
 
       {view.cancelledNotice === null ? (
-        <VoucherCode code={booking.code} className="mt-5 xl:hidden print:hidden" />
+        <VoucherCode code={booking.code} className="mt-5 voucher-split:hidden" />
       ) : (
-        <VoucherCancelledNotice
-          text={view.cancelledNotice}
-          className="mt-5 xl:hidden print:hidden"
-        />
+        <VoucherCancelledNotice text={view.cancelledNotice} className="mt-5 voucher-split:hidden" />
       )}
 
       {/* Chiều cao TỐI THIỂU, không cố định: khối chữ nằm trong luồng và xếp ở đáy (flex

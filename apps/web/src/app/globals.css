@@ -327,6 +327,31 @@ html:not(.dark) .stamp-ink {
 }
 
 /* ─────────────────────────────────────────────────────────────────────────────
+ * THẺ VOUCHER MỘT CỘT hay CHIA ĐÔI (`/checkout/success`, spec P7 §6.4).
+ *
+ * Thẻ chia đôi từ `xl` trên màn hình và LUÔN khi in: khổ in A4 chỉ ~718px CSS — dưới `xl` — mà
+ * bản in vẫn dựng hai cột. Mọi thứ đổi theo ngưỡng này (lưới hai cột, ô mã gọn của cột trái, ô mã
+ * và khối mã của mảng teal) dùng MỘT trong hai biến thể bù nhau dưới đây thay vì tự ghép cặp
+ * `max-xl:` / `print:` ở nơi gọi — thiếu vế `print:` là bản in mất ô mã (review P7C#13):
+ *
+ * - `voucher-stack:` — thẻ một cột: màn hình dưới `xl` (không bao giờ khi in).
+ * - `voucher-split:` — thẻ chia đôi: màn hình từ `xl`, và mọi bản in.
+ *
+ * Tailwind xếp biến thể tự khai SAU `print:`, nên chỗ nào bản in cần giá trị KHÁC màn hình (cột in
+ * 17rem của lưới) khai ở khối in bên dưới — CSS ngoài layer thắng utility — chứ không bằng cặp
+ * `voucher-split:` / `print:` trên cùng một phần tử.
+ * ───────────────────────────────────────────────────────────────────────────── */
+@custom-variant voucher-stack (@media screen and (width < --theme(--breakpoint-xl)));
+@custom-variant voucher-split {
+  @media (width >= --theme(--breakpoint-xl)) {
+    @slot;
+  }
+  @media print {
+    @slot;
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
  * IN ẤN VOUCHER `/checkout/success` của đơn đã trả (spec P7 §6.4) — chỉ in THẺ.
  *
  * Mọi quy tắc neo vào `[data-slot="voucher"]`, nên hoá đơn chờ và trang `/checkout/cancel`
@@ -356,11 +381,13 @@ html:not(.dark) .stamp-ink {
     background: none;
   }
 
+  /* Cột phải hẹp còn 17rem (440px trên màn hình) để cả thẻ nằm gọn một trang A4. */
   [data-slot="voucher"] {
     --foreground: var(--hero);
     --card-foreground: var(--hero);
     --muted-foreground: var(--hero);
     --primary-emphasis: var(--primary);
+    grid-template-columns: minmax(0, 1fr) 17rem;
     background: none;
     break-inside: avoid;
   }

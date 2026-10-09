@@ -206,7 +206,9 @@ describe('VoucherOverview — bốn ô có icon', () => {
 });
 
 describe('VoucherOverview — ô mã gọn khi thẻ một cột (spec §6.4)', () => {
-  it('có nhãn, mã và nút chép; giấu từ xl (thẻ hai cột) và khi in — mảng teal mang ô mã ở đó', () => {
+  // `voucher-split:` (globals.css) gói cả hai điều kiện thẻ chia đôi — từ xl và khi in — vào MỘT
+  // biến thể; bản cũ tự ghép cặp `xl:hidden print:hidden` ở nơi gọi (review P7C#13).
+  it('có nhãn, mã và nút chép; giấu khi thẻ chia đôi (từ xl, và khi in) — mảng teal mang ô mã ở đó', () => {
     const { container } = renderOverview();
     const code = slot(container, 'voucher-code');
     expect(within(code).getByText('Booking code')).toBeInTheDocument();
@@ -214,8 +216,7 @@ describe('VoucherOverview — ô mã gọn khi thẻ một cột (spec §6.4)', 
     expect(
       within(code).getByRole('button', { name: messages.booking.success.copyCode }),
     ).toBeInTheDocument();
-    expect(code.classList.contains('xl:hidden')).toBe(true);
-    expect(code.classList.contains('print:hidden')).toBe(true);
+    expect(code.classList.contains('voucher-split:hidden')).toBe(true);
   });
 
   it('đơn đã huỷ: không có mã nào, dải hết hiệu lực thay chỗ (cũng chỉ khi thẻ một cột)', () => {
@@ -225,6 +226,6 @@ describe('VoucherOverview — ô mã gọn khi thẻ một cột (spec §6.4)', 
     expect(notice.textContent).toBe(
       'This booking was cancelled — this voucher is no longer valid.',
     );
-    expect(notice.classList.contains('xl:hidden')).toBe(true);
+    expect(notice.classList.contains('voucher-split:hidden')).toBe(true);
   });
 });
