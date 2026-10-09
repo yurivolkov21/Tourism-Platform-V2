@@ -1,4 +1,4 @@
-import { BookingCodeSchema } from '@tourism/contract';
+import { BookingCodeSchema, bookingPhase } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
 import type { Metadata } from 'next';
 import { cookies } from 'next/headers';
@@ -9,6 +9,7 @@ import { todayDateString } from '@/lib/account-stats';
 import { fetchBookingByCode } from '@/lib/api/bookings';
 import { requireSession } from '@/lib/api/session';
 import { fetchTourDetailOrNull } from '@/lib/api/tours';
+import { needsTourData } from '@/lib/get-ready';
 
 /** Mã sai shape → null ngay (link cũ/bot), cùng nhánh notFound với mã lạ. */
 async function findBooking(cookie: string, code: string) {
@@ -54,9 +55,14 @@ export default async function AccountBookingDetailPage({
   const cookie = (await cookies()).toString();
   const booking = await findBooking(cookie, code);
   if (!booking) notFound();
-  // Tour chỉ làm giàu trang (điểm hẹn, mục không gồm, lịch trình — spec §2.4): tour đã gỡ hay API
-  // catalog hỏng đều rơi về `null`, trang vẫn đủ vé, hành trình, tiền và hạn huỷ.
-  const tour = await fetchTourDetailOrNull(booking.tourSlug);
+  // MỘT mốc "hôm nay" cho cả quyết định đọc tour lẫn mọi khối của trang.
+  const today = todayDateString();
+  // Tour chỉ làm giàu hai giai đoạn (`needsTourData`: Get ready và Today's plan — spec §2.4); giai
+  // đoạn khác không gọi API catalog. Tour đã gỡ hay API catalog hỏng đều rơi về `null`, trang vẫn
+  // đủ vé, hành trình, tiền và hạn huỷ.
+  const tour = needsTourData(bookingPhase(booking, today))
+    ? await fetchTourDetailOrNull(booking.tourSlug)
+    : null;
 
   return (
     <div>
@@ -66,7 +72,7 @@ export default async function AccountBookingDetailPage({
         meta={booking.code}
         back={{ href: '/account/bookings', label: messages.bookingDetail.back }}
       />
-      <BookingDetailView booking={booking} tour={tour} today={todayDateString()} />
+      <BookingDetailView booking={booking} tour={tour} today={today} />
     </div>
   );
 }

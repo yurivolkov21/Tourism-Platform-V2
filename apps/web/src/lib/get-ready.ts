@@ -1,4 +1,4 @@
-import { type BookingDetail, tripDayNumbers } from '@tourism/contract';
+import { type BookingDetail, type BookingPhase, tripDayNumbers } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
 import type { TourDetailVM } from '@/lib/api/tours';
 import { cancellationDeadlineText } from './booking-vm';
@@ -15,6 +15,19 @@ import { formatWeekdayDate } from './tours';
 
 /** Phần dữ liệu tour mà cột phải và khối Details của trang chi tiết đơn đọc. */
 export type BookingTourData = Pick<TourDetailVM, 'excluded' | 'meetingPoint' | 'itinerary'>;
+
+/**
+ * Giai đoạn nào trang chi tiết đơn cần dữ liệu tour: chỉ sắp đi (Get ready — mục không gồm, điểm
+ * hẹn, ngày 1) và đang đi (Today's plan — lịch trình của ngày, điểm hẹn). Dòng Meeting point của
+ * khối Details đi theo cùng luật.
+ *
+ * Bản trước đọc tour ở MỌI giai đoạn, nối đuôi sau lượt đọc đơn: thêm một vòng API khi cache nguội,
+ * và trần chờ ~62 giây khi API catalog treo — cho bốn giai đoạn chỉ dùng tour vào đúng một dòng
+ * điểm hẹn (review P7 B16).
+ */
+export function needsTourData(phase: BookingPhase): boolean {
+  return phase === 'upcoming' || phase === 'on_tour';
+}
 
 export type GetReadyStepBody =
   | { key: 'freeCancellation'; title: string; text: string; open: boolean }

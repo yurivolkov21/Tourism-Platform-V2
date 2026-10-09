@@ -4,6 +4,7 @@ import { makeBooking, makeCancellation, makeTourData } from '@/test/fixtures/boo
 import {
   type BookingTourData,
   getReadySteps,
+  needsTourData,
   prepStorageKey,
   readPrepChecked,
   tourMeetingPoint,
@@ -174,6 +175,23 @@ describe('getReadySteps — đầu và chân khối', () => {
     expect(getReadySteps({ ...BOOKING, tourDestinations: [] }, TOUR, TODAY).departs).toBe(
       'Departs Tue 3 Nov 2026',
     );
+  });
+});
+
+/**
+ * Chỉ hai giai đoạn đọc dữ liệu tour — Get ready (sắp đi) và Today's plan (đang đi). Giai đoạn
+ * khác không gọi API catalog nữa, dòng Meeting point của khối Details đi theo (review P7 B16).
+ */
+describe('needsTourData — giai đoạn nào trang chi tiết đơn cần dữ liệu tour', () => {
+  it.each([
+    ['upcoming', true],
+    ['on_tour', true],
+    ['awaiting_payment', false],
+    ['travelled', false],
+    ['cancelled', false],
+    ['lapsed', false],
+  ] as const)('%s → %s', (phase, needed) => {
+    expect(needsTourData(phase)).toBe(needed);
   });
 });
 

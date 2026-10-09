@@ -9,7 +9,12 @@ import { TripClosedPanel } from '@/components/account/trip-closed-panel';
 import { TripJourney } from '@/components/account/trip-journey';
 import { journeyMilestones } from '@/lib/booking-journey';
 import { type BookingView, bookingView } from '@/lib/booking-vm';
-import { type BookingTourData, getReadySteps, tourMeetingPoint } from '@/lib/get-ready';
+import {
+  type BookingTourData,
+  getReadySteps,
+  needsTourData,
+  tourMeetingPoint,
+} from '@/lib/get-ready';
 import { hasReviewArea, type ReviewSlot, reviewSlot } from '@/lib/review';
 
 /**
@@ -52,7 +57,9 @@ export function BookingDetailView({
             booking={booking}
             view={view}
             phase={phase}
-            meetingPoint={tourMeetingPoint(tour)}
+            // Điểm hẹn chỉ ở hai giai đoạn đọc dữ liệu tour (`needsTourData`) — cùng luật trang dùng
+            // để quyết có gọi API catalog không.
+            meetingPoint={needsTourData(phase) ? tourMeetingPoint(tour) : null}
           />
           <div data-slot="phase-panel" className="order-first flex flex-col gap-5 lg:order-none">
             <PhasePanel

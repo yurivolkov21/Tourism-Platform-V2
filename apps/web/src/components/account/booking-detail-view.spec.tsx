@@ -125,6 +125,30 @@ describe('BookingDetailView — khối cột phải theo giai đoạn (spec §2.
     expect(screen.getByTestId('panel')).toHaveTextContent('get-ready|BK-B6VCOQNW|1');
     expect(screen.getByTestId('details')).toHaveTextContent('upcoming|none');
   });
+
+  it('đang đi: cột trái có điểm hẹn của tour', () => {
+    const booking = at({ departureStartDate: '2026-10-04', departureEndDate: '2026-10-06' });
+    render(<BookingDetailView booking={booking} tour={TOUR} today={TODAY} />);
+    expect(screen.getByTestId('details')).toHaveTextContent('on_tour|Hotel pickup');
+  });
+
+  // Dòng Meeting point chỉ ở hai giai đoạn đọc dữ liệu tour (`needsTourData`, review P7 B16).
+  it.each([
+    ['travelled', at(FEB_TRIP)],
+    ['cancelled', at({ status: 'CANCELLED', departureStartDate: '2026-11-03' })],
+    [
+      'awaiting_payment',
+      at({
+        status: 'PENDING',
+        paidAt: null,
+        departureStartDate: '2026-10-20',
+        departureEndDate: '2026-10-22',
+      }),
+    ],
+  ])('%s: cột trái không có điểm hẹn dù có dữ liệu tour', (phase, booking) => {
+    render(<BookingDetailView booking={booking} tour={TOUR} today={TODAY} />);
+    expect(screen.getByTestId('details')).toHaveTextContent(`${phase}|none`);
+  });
 });
 
 /**
