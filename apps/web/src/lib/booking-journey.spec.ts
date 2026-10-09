@@ -271,8 +271,9 @@ describe('journeyMilestones — chờ trả tiền', () => {
   });
 
   /**
-   * Qua hạn chót mà chưa trả là `lapsed` (ADR-0054 §1, sửa sau review Phần A 06/10): cổng trả
-   * tiền của API đóng cùng mốc, nên không còn thanh hành trình "đang chờ trả" nào để vẽ.
+   * Qua hạn chót mà chưa trả là `lapsed` (ADR-0054 §1, sửa sau review Phần A 06/10): API thôi mở
+   * phiên thanh toán mới từ mốc ấy, nên không còn thanh "đang chờ trả" mời trả tiền. Phiên mở trước
+   * hạn vẫn được claim nhận (ADR-0054 AMEND 1 §4) — biến thể lapsed không nói là đã lỡ.
    */
   it('qua ngày chót mà chưa trả: biến thể lapsed, không chip, không Today', () => {
     const view = journeyMilestones(PENDING, '2026-10-18');

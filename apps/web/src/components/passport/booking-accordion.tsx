@@ -76,8 +76,10 @@ export function BookingAccordion({ bookings, today }: { bookings: Booking[]; tod
             : phase === 'upcoming' || phase === 'awaiting_payment'
               ? tb.inDays(tripDayNumbers(booking, today).daysToGo)
               : null;
-        // Quá hạn chót mà chưa trả là `lapsed`: chuyến đã hết nhận đặt (ADR-0041 §3) và cổng trả
-        // tiền của API đóng cùng mốc, nên không mời trả tiền nữa và nhãn nói thẳng điều ấy.
+        // Quá hạn chót mà chưa trả là `lapsed`: chuyến đã hết nhận đặt (ADR-0041 §3) và API thôi mở
+        // phiên thanh toán mới từ mốc ấy (mint, re-mint), nên không mời trả tiền nữa. Phiên mở TRƯỚC
+        // hạn vẫn được claim nhận, trả xong đơn tự sang PAID (ADR-0054 AMEND 1 §4) — nên nhãn chỉ
+        // nói "chưa trả xong", không khẳng định đã lỡ.
         const lapsed = phase === 'lapsed';
         const canPay = phase === 'awaiting_payment' && view.actions.includes('payNow');
         const badgeTone = lapsed ? 'muted' : view.tone;

@@ -2692,7 +2692,11 @@ export const messages = {
     inDays: (n: number) => (n === 0 ? 'Departing today' : n === 1 ? 'In 1 day' : `In ${n} days`),
     /** Dòng phụ của hàng đang đi (`on_tour`) — thay `inDays`. */
     endsOn: (d: string) => `Ends ${d}`,
-    /** Nhãn của đơn chờ trả đã quá hạn chót (`lapsed`) — thay "Awaiting payment": không còn trả được. */
+    /**
+     * Nhãn của đơn chờ trả đã quá hạn chót (`lapsed`) — thay "Awaiting payment": không mở phiên trả
+     * mới được nữa, nhưng phiên mở trước hạn vẫn có thể trả xong (ADR-0054 AMEND 1 §4), nên chữ
+     * trung tính "chưa trả xong", không nói đã lỡ.
+     */
     lapsedBadge: 'Payment not completed',
     // Một nguồn cho cả trang hộ chiếu VÀ trang chi tiết booking (không tự
     // chế bản thứ hai) — tránh lệch số nhiều/số ít giữa hai nơi cùng hiển
