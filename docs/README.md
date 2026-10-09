@@ -80,7 +80,7 @@ Mỗi ADR tự chứa đầy đủ phần sửa bổ sung (AMEND) của nó; b�
 | [0037](adr/0037-default-write-throttle.md) | Mọi route ghi sinh ra đã có trần | |
 | [0038](adr/0038-web-shell-security-headers.md) | Security header + CSP cho web và admin | |
 | [0039](adr/0039-inbound-channels-outbound-email.md) | Kênh vào và email đi ra: ack, consent, suppression | |
-| [0040](adr/0040-mobile-app-expo.md) | App mobile Expo trong monorepo | 6 AMEND (AMEND 6 đề xuất) |
+| [0040](adr/0040-mobile-app-expo.md) | App mobile Expo trong monorepo | 6 AMEND |
 | [0041](adr/0041-single-cancellation-deadline.md) | **Một hạn chót mỗi chuyến** — luật hoàn tiền hiện hành | thay 0029, 0030 · 1 AMEND (chuyến bị công ty huỷ thì khách hết tự huỷ) |
 | [0042](adr/0042-shared-client-rules-core.md) | `@tourism/core`: luật dùng chung cho mọi client | |
 | [0043](adr/0043-refund-payment-event.md) | Hoàn tiền để lại vết ở sổ `payment_events` | |
@@ -96,7 +96,7 @@ Mỗi ADR tự chứa đầy đủ phần sửa bổ sung (AMEND) của nó; b�
 | [0053](adr/0053-delete-unused-categories-destinations.md) | Xoá danh mục và điểm đến khi chưa tour nào dùng | 1 AMEND |
 | [0054](adr/0054-customer-bookings-list-phase-filters.md) | Đơn của khách: một luật giai đoạn dùng chung; `bookings.mine` lọc, tìm, xếp theo hành trình và phân trang ở server | |
 | [0055](adr/0055-mobile-data-layer.md) | Tầng dữ liệu mobile: oRPC `OpenAPILink` + TanStack Query, client-first | 2 AMEND |
-| [0056](adr/0056-mobile-google-native-signin.md) | Đăng nhập Google trên app bằng SDK gốc và ID token; đóng proxy Expo | Proposed 09/10 |
+| [0056](adr/0056-mobile-google-native-signin.md) | Đăng nhập Google trên app bằng SDK gốc và ID token; đóng proxy Expo | |
 
 ## Specs — sẽ xây gì
 
@@ -153,7 +153,7 @@ Mỗi spec đi kèm một plan cùng tên ở [`plans/`](plans/), trừ vài đ�
 [seed trọn năm 2026](specs/2026-09-14-seed-khung-2026-design.md) ·
 [**một hạn chót**](specs/2026-09-15-refund-deadline-design.md) ·
 [P5b-1 auth mobile](specs/2026-09-16-p5b-auth-wireframe-design.md) ·
-[**đăng nhập Google native, đề xuất 09/10**](specs/2026-10-09-mobile-google-native-signin-design.md)
+[**đăng nhập Google native, chưa thi công**](specs/2026-10-09-mobile-google-native-signin-design.md)
 
 **Admin catalog (P4e, đang mở)**
 [**P4e-1 chuyến + trạng thái đăng**](specs/2026-09-21-p4e-1-departures-design.md) ·

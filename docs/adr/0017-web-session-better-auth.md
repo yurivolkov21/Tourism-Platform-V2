@@ -316,7 +316,7 @@ merge. Nâng `@better-auth/expo` thì đọc lại endpoint này trước.
 trên Render) và `nexora://` đã vào `TRUSTED_ORIGINS` theo §10. Rủi ro còn lại vì thế
 rộng hơn login CSRF: sau callback, plugin gắn cookie phiên của nạn nhân vào deep link
 `nexora://`, nên một app khác giành scheme `nexora` có thể chiếm phiên. Cơ chế thay
-thế đề xuất ở [ADR-0056](0056-mobile-google-native-signin.md) (Proposed 09/10): app
+thế ở [ADR-0056](0056-mobile-google-native-signin.md) (Accepted 09/10): app
 đăng nhập Google bằng SDK gốc và ID token, proxy đóng ở mọi môi trường.
 
 ## Hệ quả

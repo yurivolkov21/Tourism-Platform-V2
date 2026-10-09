@@ -1,7 +1,7 @@
 # Spec — Đăng nhập Google native trên app mobile (ID token)
 
-- **Ngày:** 2026-10-09 · **Trạng thái:** bản nháp, chờ user duyệt cùng ADR-0056. Plan thi
-  công viết sau khi duyệt.
+- **Ngày:** 2026-10-09 · **Trạng thái:** user duyệt 09/10 cùng ADR-0056, chốt demo bằng APK
+  `preview` Android. Plan thi công viết sau.
 - **Quyết định kiến trúc:** [ADR-0056](../adr/0056-mobile-google-native-signin.md)
 - **Nền:** [ADR-0017](../adr/0017-web-session-better-auth.md) §9–§11 ·
   [ADR-0040](../adr/0040-mobile-app-expo.md) §1, §9, AMEND 6 ·
@@ -207,7 +207,7 @@ Gỡ chặn proxy thì int test proxy phải đỏ. Gỡ chặn `nexora://` thì
 - Expo Go không còn nút Google: ghi vào `conventions/mobile-dev-loop.md` để không ai tưởng
   là lỗi.
 
-## 9. Câu hỏi mở — trùng ADR-0056
+## 9. Câu hỏi khi duyệt (09/10) — trùng ADR-0056
 
-1. Nhóm có tài khoản Apple Developer không?
-2. Buổi bảo vệ demo bằng APK `preview` Android hay Expo Go?
+1. Tài khoản Apple Developer: chưa trả lời. Mặc định iOS không có Google trong v1.
+2. Demo buổi bảo vệ: APK `preview` Android (user chốt 09/10).

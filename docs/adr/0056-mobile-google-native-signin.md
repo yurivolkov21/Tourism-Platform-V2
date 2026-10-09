@@ -1,8 +1,9 @@
 # ADR-0056 — Đăng nhập Google trên app mobile bằng SDK gốc và ID token; đóng proxy `expo-authorization-proxy`
 
-- **Trạng thái:** Proposed (2026-10-09) — chờ user duyệt, hai câu hỏi mở ở cuối. Khi Accept,
-  ADR này thay cơ chế của [ADR-0017](0017-web-session-better-auth.md) §11 và đảo một phần
-  [ADR-0040](0040-mobile-app-expo.md) §1 (thêm dev build cho Android).
+- **Trạng thái:** Accepted (2026-10-09) — user duyệt cùng ngày, chốt demo bằng APK `preview`
+  Android. ADR này thay cơ chế của [ADR-0017](0017-web-session-better-auth.md) §11 và đảo một
+  phần [ADR-0040](0040-mobile-app-expo.md) §1 (thêm dev build cho Android). Câu tài khoản
+  Apple Developer chưa trả lời; tới khi có, iOS không có Google trong v1.
 - **Bối cảnh:** review cuối nhánh `feat/mobile-account-screens` và merge P5b-4 (09/10, entry
   CHANGELOG cùng ngày). Spec thi công:
   [2026-10-09-mobile-google-native-signin-design.md](../specs/2026-10-09-mobile-google-native-signin-design.md).
@@ -148,7 +149,8 @@ vào trước 15/10.
 | Universal Sign In (bản trả phí, Credential Manager) | Hiện đại hơn nhưng tốn license cho một capstone. |
 | App Links hoặc Universal Links thay custom scheme | Plugin `expo()` chỉ gắn cookie cho deep link không phải http(s), nên không khớp; còn phải host `assetlinks.json` và AASA. |
 
-## Câu hỏi mở — user chốt trước khi Accept
+## Câu hỏi khi duyệt (09/10)
 
-1. Nhóm có tài khoản Apple Developer không? Không có thì iOS không có Google trong v1.
-2. Buổi bảo vệ demo bằng APK `preview` Android (có Google) hay Expo Go (không có Google)?
+1. Tài khoản Apple Developer: **chưa trả lời**. Mặc định iOS không có Google trong v1, email
+   và mật khẩu vẫn chạy. Có tài khoản thì bật theo spec, không phải viết lại code.
+2. Demo buổi bảo vệ: **APK `preview` Android**, có Google (user chốt 09/10).
