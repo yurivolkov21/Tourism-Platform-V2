@@ -185,13 +185,20 @@ function MilestoneItem({ milestone }: { milestone: JourneyMilestone }) {
  * Nhãn TODAY (bản vẽ `.jr-today`): điện thoại là một dòng của danh sách, từ `md` nằm đè lên vạch nối
  * ở `x` (`todayPosition`). `x` đi qua biến CSS và chỉ áp từ `md` (`md:left-(--today-x)`) — ở điện
  * thoại phần tử còn `position: static`.
+ *
+ * Từ `md`, TÂM viên trùng tâm vạch: `top-5` (20px — tâm vạch `top-[19px]` dày 2px, cũng là tâm icon
+ * `size-10`) rồi lùi nửa chiều cao của chính nó (`-translate-y-1/2`), nên không phụ thuộc cỡ chữ hay
+ * font. Dòng giữ `flex` ở mọi khổ: viên là phần tử flex nên là hộp khối, cao đúng 9.5px chữ + 8px đệm
+ * như bản vẽ. Bản trước đổi dòng sang `block` từ `md`, viên thành phần tử inline — hộp nền cao theo
+ * font (21px thay vì 17.5px) và ngồi trên đường cơ sở của dòng, tâm lệch 3.5px dưới vạch ở mọi khổ
+ * máy bàn (đo 09/10 sau khi user gửi ảnh thử prod).
  */
 function TodayMark({ x }: { x: string }) {
   return (
     <li
       data-slot="journey-today"
       style={{ '--today-x': x } as CSSProperties}
-      className="flex pl-[52px] md:absolute md:top-2.5 md:left-(--today-x) md:z-20 md:block md:-translate-x-1/2 md:pl-0"
+      className="flex pl-[52px] md:absolute md:top-5 md:left-(--today-x) md:z-20 md:-translate-x-1/2 md:-translate-y-1/2 md:pl-0"
     >
       <span className="rounded-full bg-foreground px-2 py-1 font-mono text-[9.5px] leading-none font-bold tracking-[0.12em] whitespace-nowrap text-background uppercase">
         {messages.bookingDetail.journey.today}
