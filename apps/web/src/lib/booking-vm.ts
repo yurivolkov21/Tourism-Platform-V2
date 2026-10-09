@@ -91,7 +91,7 @@ export interface BookingPass {
   voucher: boolean;
   /** Có mã vạch trên vé và voucher. */
   barcode: boolean;
-  /** Mộc trên vé của trang chi tiết đơn. */
+  /** Mộc trạng thái trên vé (trang chi tiết đơn). */
   stamp: BookingStamp;
 }
 
@@ -283,8 +283,9 @@ export function cancelledByOperator(b: Booking): boolean {
 
 /**
  * Tiền của đơn trên chuyến công ty huỷ còn đang về: job hoàn tiền (`departure-refund`) chưa chạy
- * nên đơn còn PAID hay hoàn một phần — sổ chưa có khoản hoàn nào để kể bằng số (ADR-0041 AMEND 1).
- * Job chạy xong thì đơn sang CANCELLED, `refundSummary` kể số thật.
+ * nên đơn còn PAID hay hoàn một phần — sổ chưa ghi khoản hoàn của lần huỷ chuyến, nên chưa có số
+ * để kể (ADR-0041 AMEND 1). Job hoàn trọn phần còn lại rồi đặt đơn CANCELLED; từ đó
+ * `refundSummary` kể số thật.
  */
 export function operatorRefundPending(b: Pick<Booking, 'departureCancelled' | 'status'>): boolean {
   return b.departureCancelled && ACTIVE_BOOKING_STATUSES.includes(b.status);
