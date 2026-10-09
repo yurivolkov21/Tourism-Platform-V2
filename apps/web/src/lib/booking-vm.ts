@@ -89,9 +89,9 @@ export interface BookingPass {
 /**
  * Voucher và mã vạch của MỘT đơn theo giai đoạn (`bookingPhase`) — MỘT luật cho vé và nút "View
  * voucher" của trang chi tiết đơn, voucher `/checkout/success` và accordion My bookings (ADR-0054
- * AMEND 1 §5). Trước đó bốn chỗ bốn vị từ trong JSX: vé theo trạng thái (in mã vạch cho chuyến đã
- * đi, giấu cho đơn hoàn thiện chí còn đi), voucher theo giai đoạn (giấu), khối Details theo giai
- * đoạn, accordion chỉ PAID (review P7 B11).
+ * AMEND 1 §5). Trước đó bốn chỗ bốn vị từ: vé theo trạng thái đơn — in mã vạch cho chuyến đã đi
+ * trong khi voucher của cùng đơn giấu nó, và giấu mã vạch của đơn hoàn thiện chí vẫn đi; khối
+ * Details và voucher theo giai đoạn, mỗi bên một bản; accordion chỉ PAID (review P7 B11).
  *
  * Voucher: đơn đã trả ở ba giai đoạn của chuyến còn đi hay đã đi. Mã vạch nói "quét tôi ở điểm
  * đón" — chỉ sắp đi và đang đi; chuyến đã xong không còn cổng nào để quét. Chưa có `paidAt` thì
@@ -161,9 +161,11 @@ export function legacyCancellationNote(b: Booking): string | null {
  * Ngày lịch VN đơn bị huỷ (`YYYY-MM-DD`), `null` khi không có mốc nào nói thật được — MỘT luật cho
  * mốc Cancelled của thanh hành trình và nhật ký voucher.
  *
- * `cancelledAt` có ở mọi đường huỷ thật (khách huỷ, quét giữ chỗ, công ty huỷ chuyến). Dữ liệu của
- * luồng duyệt cũ (trước ADR-0041) có thể thiếu nó: khi ấy chỉ mốc QUYẾT của một yêu cầu huỷ ĐƯỢC
- * DUYỆT (`cancellationStatus` REFUNDED) là ngày huỷ. Yêu cầu bị từ chối (DENIED) hay còn treo
+ * `cancelledAt` có ở mọi đường huỷ thật của code: khách huỷ, quét giữ chỗ, công ty huỷ chuyến
+ * (đơn chờ trả huỷ ngay lúc ấy, đơn đã trả qua job hoàn tiền). Dữ liệu có thể thiếu nó: luồng duyệt
+ * huỷ cũ (trước ADR-0041) — khi ấy chỉ mốc QUYẾT của một yêu cầu huỷ ĐƯỢC DUYỆT
+ * (`cancellationStatus` REFUNDED) là ngày huỷ; đơn đã trả trên chuyến công ty huỷ mà job chưa chạy,
+ * hay của seed lượt 1 (REFUNDED, không mốc) — không ngày. Yêu cầu bị từ chối (DENIED) hay còn treo
  * (REQUESTED) không huỷ gì cả — chuỗi dự phòng cũ lấy cả ngày của chúng, in ngày một yêu cầu bị
  * từ chối cạnh câu "was declined" cùng trang (review P7 B3).
  */

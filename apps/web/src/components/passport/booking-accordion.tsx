@@ -32,7 +32,8 @@ import { formatDateRange } from '@/lib/tours';
  * review) vẫn ở trang chi tiết, ở đây chỉ có thông tin + lối vào.
  *
  * Dòng phụ ("In N days" / "Ends …"), nút Pay now và link Review đọc giai đoạn qua
- * `bookingPhase` của contract (ADR-0054 §1) — cùng luật API dùng để xếp danh sách.
+ * `bookingPhase` của contract (ADR-0054 §1) — cùng luật API dùng để xếp danh sách; link View
+ * voucher theo `bookingPass` của giai đoạn ấy, cùng luật với trang chi tiết đơn và voucher.
  *
  * `today` là ngày lịch VIỆT NAM do server truyền xuống (`todayDateString`,
  * chuỗi `YYYY-MM-DD`, so lexicographic) — client KHÔNG tự lấy giờ máy để tránh
