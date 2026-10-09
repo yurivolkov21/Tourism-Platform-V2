@@ -148,12 +148,10 @@ export function BookingDetailsPanel({
         )}
       >
         {canCancel ? (
-          <BookingActions
-            // Hàng đáy chỉ mang nút huỷ đơn đã trả; các hành động khác ở cột phải.
-            view={{ ...view, actions: ['cancelBooking'] }}
-            code={booking.code}
-            booking={cancelDialogBooking(booking)}
-          />
+          // Hàng đáy chỉ mang nút huỷ đơn đã trả: `bookingView` cho `cancelBooking` đứng MỘT MÌNH
+          // (PAID, PARTIALLY_REFUNDED có cờ server) — nên `canCancel` đúng là `view` chỉ còn nút ấy,
+          // truyền thẳng. Các hành động khác (trả tiền, huỷ giữ chỗ) ở cột phải.
+          <BookingActions view={view} code={booking.code} booking={cancelDialogBooking(booking)} />
         ) : (
           <p className="text-[12.5px] text-muted-foreground">{t.details.questions}</p>
         )}

@@ -1,7 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import type { BookingDetail } from '@tourism/contract';
 import { describe, expect, it } from 'vitest';
-import { bookingView } from '@/lib/booking-vm';
 import { makeBooking } from '@/test/fixtures/booking';
 import { TripClosedPanel } from './trip-closed-panel';
 
@@ -14,13 +13,7 @@ const CANCELLED = makeBooking({
 });
 
 function renderClosed(booking: BookingDetail, kind: 'cancelled' | 'lapsed' = 'cancelled') {
-  return render(
-    <TripClosedPanel
-      booking={booking}
-      view={bookingView(booking, booking.cancellation)}
-      kind={kind}
-    />,
-  );
+  return render(<TripClosedPanel booking={booking} kind={kind} />);
 }
 
 describe('TripClosedPanel — đã huỷ', () => {

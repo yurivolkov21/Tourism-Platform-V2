@@ -112,8 +112,8 @@ function PhasePanel({
       // thì ngày UTC cũng đã tới ngày về (review P7 B7).
       return slot === 'hidden' ? <TripThanksPanel /> : null;
     case 'cancelled':
-      return <TripClosedPanel booking={booking} view={view} kind="cancelled" />;
+      return <TripClosedPanel booking={booking} kind="cancelled" />;
     case 'lapsed':
-      return <TripClosedPanel booking={booking} view={view} kind="lapsed" />;
+      return <TripClosedPanel booking={booking} kind="lapsed" />;
   }
 }

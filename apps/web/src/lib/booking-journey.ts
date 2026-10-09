@@ -96,8 +96,10 @@ function standardJourney(booking: BookingDetail, phase: StandardPhase, today: st
   // Ngày lịch VN của hai mốc — cũng là mốc đặt nhãn Today, cùng thang với `today`.
   const bookedOn = vietnamDay(booking.createdAt);
   const paidOn = booking.paidAt ? vietnamDay(booking.paidAt) : null;
-  const departed = booking.departureStartDate <= today;
-  // Ngày về khách VẪN đang đi (chip "Day D of D"): chỉ "Trip ended" khi chuyến đã qua.
+  // Hai mốc chuyến đi suy từ giai đoạn — MỘT biên với `bookingPhase` (từ ngày đi là `on_tour`),
+  // không so ngày lại lần nữa. Ngày về khách VẪN đang đi (chip "Day D of D"): chỉ "Trip ended" khi
+  // chuyến đã qua.
+  const departed = phase === 'on_tour' || phase === 'travelled';
   const ended = phase === 'travelled';
 
   const drafts: DraftMilestone[] = [

@@ -5,7 +5,6 @@ import Link from 'next/link';
 import type { ReactNode } from 'react';
 import { PanelCard, PanelKicker } from '@/components/account/panel-card';
 import {
-  type BookingView,
   cancelledByOperator,
   legacyCancellationNote,
   operatorRefundPending,
@@ -16,7 +15,7 @@ import {
 
 /**
  * Cột phải của đơn đã kết thúc mà không đi (spec P7 §2.5): đã huỷ hay đã hoàn đủ
- * (`cancelled` — câu kết thúc của `bookingView`, chữ hoàn tiền của `refundSummary`) và giữ chỗ
+ * (`cancelled` — câu kết thúc theo trạng thái đơn, chữ hoàn tiền của `refundSummary`) và giữ chỗ
  * qua hạn chót mà chưa trả (`lapsed`). Cả hai mở lối "Browse tours".
  *
  * `lapsed` nói có điều kiện, không khẳng định "đã lỡ": claim của API vẫn nhận phiên thanh toán mở
@@ -29,11 +28,9 @@ import {
  */
 export function TripClosedPanel({
   booking,
-  view,
   kind,
 }: {
   booking: BookingDetail;
-  view: BookingView;
   kind: 'cancelled' | 'lapsed';
 }) {
   const t = messages.bookingDetail;
@@ -61,7 +58,7 @@ export function TripClosedPanel({
       </ClosedFrame>
     );
   }
-  const terminalNote = messages.accountBookingDetail.terminalNote[view.statusKey];
+  const terminalNote = messages.accountBookingDetail.terminalNote[booking.status];
   const legacyNote = legacyCancellationNote(booking);
   return (
     <ClosedFrame title={t.journey.cancelled}>
