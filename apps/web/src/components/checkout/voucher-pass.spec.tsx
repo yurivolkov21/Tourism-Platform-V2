@@ -186,4 +186,12 @@ describe('VoucherPass — lối đi tiếp', () => {
     expect(viewBooking.classList.contains('print:hidden')).toBe(true);
     expect(browse.classList.contains('print:hidden')).toBe(true);
   });
+
+  // Nút của hệ (`ButtonLink` — `data-slot="button"`, cùng vòng focus, cỡ chữ, khoá chọn chữ như
+  // mọi CTA điều hướng), không phải một `Link` tự dựng lại kiểu nút (review P7C mục 22).
+  it('"View booking" là ButtonLink của hệ — link thật, kiểu nút', () => {
+    renderPass();
+    const viewBooking = screen.getByRole('link', { name: messages.booking.success.viewBooking });
+    expect(viewBooking).toHaveAttribute('data-slot', 'button');
+  });
 });

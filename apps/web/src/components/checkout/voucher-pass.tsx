@@ -1,5 +1,6 @@
 import type { BookingDetail } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
+import { ButtonLink } from '@tourism/ui/components/button-link';
 import { cn } from '@tourism/ui/lib/utils';
 import { ArrowRightIcon, CalendarIcon, CheckIcon, UsersIcon } from 'lucide-react';
 import Link from 'next/link';
@@ -112,13 +113,15 @@ export function VoucherPass({ booking, view }: { booking: BookingDetail; view: V
         </ol>
       </section>
 
-      <Link
+      {/* Nút trắng của bản vẽ trên nền teal: `ButtonLink` của hệ (review P7C mục 22) — chỉ đổi
+          màu nền, chữ và vòng focus (vòng `ring` mặc định là teal, chìm hẳn trên mảng teal). */}
+      <ButtonLink
         href={`/account/bookings/${booking.code}`}
-        className="mt-5 flex h-11 items-center justify-center gap-2 rounded-xl bg-card font-bold text-primary-emphasis outline-none transition-colors hover:bg-card/90 focus-visible:ring-3 focus-visible:ring-primary-foreground/60 print:hidden"
+        className="mt-5 h-11 w-full gap-2 rounded-xl bg-card font-bold text-primary-emphasis hover:bg-card/90 focus-visible:ring-primary-foreground/60 print:hidden"
       >
         {messages.booking.success.viewBooking}
-        <ArrowRightIcon aria-hidden="true" className="size-4" />
-      </Link>
+        <ArrowRightIcon aria-hidden="true" />
+      </ButtonLink>
       <Link
         href="/tours"
         className="mx-auto mt-3 block w-fit rounded-sm text-[13px] underline underline-offset-4 outline-none focus-visible:ring-2 focus-visible:ring-primary-foreground/60 print:hidden"
