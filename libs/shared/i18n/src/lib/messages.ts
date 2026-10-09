@@ -2666,7 +2666,7 @@ export const messages = {
     nextPage: 'Next',
     /** Tên đọc của link Next — nhãn cộng dải đơn của trang kế. */
     nextPageAria: (range: string) => `Next, ${range}`,
-    /** Nút tròn quay lại Passport ở hero (`ContentHero.back`) — một khoá cho My bookings và Saved. */
+    /** Nút tròn quay lại Passport ở hero (`ContentHero.back`) — một khoá cho My bookings, Saved và Settings. */
     backToPassport: 'Back to Passport',
     /** Dòng đếm khi đang lọc hay tìm; chưa lọc thì dùng `passportBookings.metaTrips`. */
     tripsOf: (n: number, total: number) => `${n} of ${total} ${total === 1 ? 'trip' : 'trips'}`,
@@ -2865,14 +2865,13 @@ export const messages = {
       cancelPendingBody: 'Your pending reservation has been released.',
     },
   },
-  // Trang `/account/profile` hợp nhất (spec §3): tên/phone + đổi mật khẩu +
-  // connected accounts + xoá tài khoản. Avatar/đổi email PARK (spec §4) —
-  // avatar chữ-cái tĩnh, email read-only kèm chú thích, KHÔNG dựng form ghi.
+  // Trang `/account/settings` (spec 09/10, phương án C): thẻ danh tính (ảnh, tên, email,
+  // Connected accounts) bên trái; Personal information, Password, Danger zone bên phải.
+  // Đổi email vẫn PARK — email read-only kèm chú thích, KHÔNG dựng form ghi.
   /** Tầng sau của hộ chiếu (M3) — form KHÔNG được lên mặt tiền: nằm sau link
    *  ⚙, khoác giấy, tái dùng nguyên logic nở-inline/password/delete. */
   passportSettings: {
     heroBreadcrumb: 'Settings',
-    back: '← Passport',
     title: 'Traveler details',
     subtitle: 'The information printed in your passport.',
   },
@@ -2898,8 +2897,6 @@ export const messages = {
       nameLabel: 'Full name',
       phoneLabel: 'Phone',
       emailLabel: 'Email',
-      emailHint: 'Your sign-in email — changing it isn’t available yet.',
-      save: 'Save changes',
     },
     /** Redesign 10/08: danh sách tóm tắt đọc-trước (kiểu GOV.UK) thay hai form
      *  luôn mở. Đa số lần vào trang này người ta chỉ muốn XEM lại thông tin,
@@ -2939,7 +2936,6 @@ export const messages = {
     },
     connected: {
       heading: 'Connected accounts',
-      subtitle: 'Sign-in methods linked to your account.',
       emailPassword: 'Email & password',
     },
     danger: {
