@@ -22,9 +22,12 @@ giữ nguyên.
 
 **Từ `lg` (1024px):** hai cột, cột trái 320px, khe 24px, khung rộng tối đa 1024px giữa trang.
 
-- **Thẻ danh tính (cột trái, dính khi cuộn):** ảnh đại diện 96px dùng lại `AvatarUpload` (bấm hoặc kéo thả,
-  thanh tiến độ, lỗi, nút gỡ ảnh — hành vi không đổi), tên (chữ serif), email (muted), dòng gợi ý cỡ ảnh. Dưới một vạch ngăn:
-  nhãn nhỏ "Connected accounts" và dòng "Email & password" có icon thư — mục Connected accounts cũ gộp vào đây.
+- **Thẻ danh tính (cột trái, dính khi cuộn):** ảnh đại diện 96px dùng lại `AvatarUpload` (bấm hoặc kéo thả bằng
+  chuột, thanh tiến độ, lỗi, nút gỡ ảnh — hành vi không đổi), tên (chữ serif), email (muted), nút viền "Upload avatar",
+  dòng gợi ý cỡ ảnh. Nút viền là điểm dừng "Upload avatar" DUY NHẤT của bàn phím và trình đọc màn hình — ảnh tròn và ô
+  chọn file ẩn khỏi cả hai, để Tab không dừng hai lần cùng một tên. Tên và email dài không dấu cách (email 47 ký tự) bẻ
+  dòng trong thẻ chứ không làm thẻ phình; tài khoản không khai tên thì bỏ dòng tên. Dưới một vạch ngăn: nhãn nhỏ
+  "Connected accounts" và dòng "Email & password" có icon thư — mục Connected accounts cũ gộp vào đây.
 - **Cột phải, ba khối xếp dọc:**
   1. Thẻ **Personal information**: dòng Full name, Phone (kèm gợi ý "So the guide can reach you on the day."),
      Email (kèm "Can't be changed yet", không có nút sửa). Sửa ngay tại dòng như hiện tại: dòng đang mở tô nền
@@ -37,7 +40,8 @@ giữ nguyên.
   bằng vạch mảnh.
 
 **Dưới `lg`:** một cột; thẻ danh tính lên đầu (không dính), rồi ba khối như trên. Trong thẻ, mỗi dòng xếp hai hàng:
-nhãn và nút Edit trên một hàng, giá trị ở hàng dưới. Gutter 16px, không cuộn ngang ở 320px.
+nhãn và nút Edit trên một hàng, giá trị ở hàng dưới. Gutter 16px, không cuộn ngang ở 320px (kể cả khi email hay tên
+rất dài).
 
 **Không đổi:** dữ liệu (`fetchAccountMe`), các form và toast, luồng xoá tài khoản. Hai thẻ Personal information và
 Password có thể cùng mở một dòng mỗi thẻ (mỗi thẻ giữ trạng thái mở của riêng nó).
