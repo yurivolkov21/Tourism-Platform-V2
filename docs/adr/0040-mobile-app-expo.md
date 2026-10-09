@@ -516,3 +516,12 @@ CLAUDE.md, chỉ đảo ở đây).
 - Task đầu của A4 khi code: `npx expo install expo-image-picker`, thêm plugin
   config trên vào `app.json`, chạy `expo-doctor`, restart Metro (`expo start
   -c`) để nạp native module mới — cùng runbook AMEND 3 §Hệ quả.
+
+## AMEND 6 — 09/10/2026 (đề xuất, hiệu lực khi ADR-0056 được Accept): dev build EAS cho Android
+
+[ADR-0056](0056-mobile-google-native-signin.md) §2 đề xuất đảo một phần §1: đăng nhập
+Google bằng SDK gốc là native module, Expo Go không nạp được. Thêm `expo-dev-client` và
+`eas.json` (profile `development` và `preview`), build Android trên EAS; Expo Go vẫn là
+vòng dev hằng ngày và ẩn nút Google. Hàng `eas.json` ở bảng đối chiếu Nexora đổi từ
+"cố ý bỏ" sang "thêm lại khi cần native module" — đúng đường lên dev build mà §Hệ quả
+đã để mở.

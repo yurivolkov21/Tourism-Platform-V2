@@ -8,6 +8,29 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-10-09 — Đính chính rủi ro proxy Google sau merge P5b-4; ADR-0056 đề xuất đăng nhập Google native
+
+**Đính chính entry merge ngay bên dưới.** Câu "Production hiện thiếu cặp env Google nên proxy
+chặn hết" sai: user xác nhận 09/10 Render có `GOOGLE_CLIENT_ID` và `GOOGLE_CLIENT_SECRET`, và
+cùng ngày đã thêm `nexora://` vào `TRUSTED_ORIGINS`. Hai điều kiện cùng có nên chuỗi chiếm phiên
+qua proxy và deep link đang khai thác được (cần link lừa và app độc mang scheme `nexora`). Mục
+CÒN TREO "thêm `nexora://`" của entry đó đã xong.
+
+**Hướng vá, chưa thi công:** [ADR-0056](adr/0056-mobile-google-native-signin.md) (Proposed) và
+[spec](specs/2026-10-09-mobile-google-native-signin-design.md). App lấy ID token bằng
+`@react-native-google-signin/google-signin` rồi đổi lấy phiên ở `POST /sign-in/social`;
+proxy đóng ở mọi môi trường; thêm dev build EAS cho Android vì Expo Go không nạp được module
+native. Ghi chú vào ADR-0017 §11 và AMEND 6 (đề xuất) của ADR-0040. Hai câu hỏi mở chờ user:
+tài khoản Apple Developer, và demo bằng APK Android hay Expo Go.
+
+**Deploy web 09/10.** Bản production của `39967db0` đỏ: prerender
+`/blog/two-days-among-the-karsts` nhận HTTP 500 từ API sáu lượt. Bản preview cùng commit lúc
+02:39 UTC, trước khi push main, cũng nhận 500 ở review của năm tour, nên lỗi không do code merge.
+Redeploy lúc 03:06 UTC xanh và đã gắn `www.nexora-travel.agency`. Nguyên nhân 500 chưa xác nhận,
+ghi ở open-items.
+
+Chỉ đổi docs, không có test mới.
+
 ## 2026-10-09 — Merge P5b-4 màn tài khoản mobile lên main (`3ec947d6`)
 
 Nội dung và các vòng review của nhánh đã kể ở entry ngay bên dưới; entry này ghi sự kiện merge

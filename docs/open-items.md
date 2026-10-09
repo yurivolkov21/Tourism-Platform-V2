@@ -102,10 +102,12 @@ chuyến đã huỷ sẽ có bước "Free cancellation" tính theo ngày.
 
 ## Việc tay trên hạ tầng
 
-- **Render: thêm `nexora://` vào `TRUSTED_ORIGINS`** (P5b-4 merge 09/10, ADR-0017
-  §10) — chờ user duyệt. Không thêm `exp://`: đó là origin của Expo Go ở máy dev,
-  production chặn nó ở `parseEnv`. Chưa thêm thì app bản build bị 403 khi gọi
-  auth; web không ảnh hưởng.
+- ~~**Render: thêm `nexora://` vào `TRUSTED_ORIGINS`**~~ — user đã thêm 09/10. Đừng thêm
+  `exp://`: đó là origin của Expo Go ở máy dev, production chặn nó ở `parseEnv`.
+- **Build web trên Vercel đỏ 09/10 vì API trả 500 lúc prerender** (`/blog/two-days-among-the-karsts`,
+  6 lượt thử). Bản preview cùng commit lúc 02:39 UTC cũng nhận 500 ở review của 5 tour, trước
+  khi push main. Redeploy 03:06 UTC xanh, không còn 500. Nghi API đang khởi động lại
+  (deploy hoặc đổi env trên Render) — chưa đọc log Render quanh 02:39 và 02:48 UTC để xác nhận.
 - Theo dõi bộ dọn ảnh vừa bật 29/09: lượt 04:00 UTC ngày 30/09 phải ghi "Dọn media: 0
   xoá khỏi CDN, …" trong log Render. Lượt đầu có xoá thật (khoảng 01/10 ảnh review mồ côi,
   khoảng 07/10 ảnh tour thử) thì đối chiếu: `destroyed = 0` mà `absent` bằng tất cả là
@@ -212,10 +214,13 @@ nếu còn — file này bị xoá sau khi merge). Không chặn merge, ghi lạ
 4. **Rủi ro còn lại của proxy đăng nhập Google (ADR-0017 §11)** — URL hợp lệ vẫn
    mang `state` do người gọi chọn, và sau callback OAuth plugin `expo()` gắn cookie
    phiên vào deep link `nexora://` (`@better-auth/expo` 1.6.23, `dist/index.js:81`).
-   Một app khác giành scheme `nexora` trên máy nạn nhân có thể nhận phiên. Production
-   thiếu cặp env Google nên proxy chặn hết: **giữ Google tắt trên Render** tới khi
-   đổi cơ chế state (sau v1). Nâng `@better-auth/expo` thì đọc lại endpoint và hook
-   này trước.
+   Một app khác giành scheme `nexora` trên máy nạn nhân có thể nhận phiên. **Đính chính
+   09/10:** production CÓ cặp env Google và đã tin cậy `nexora://`, nên chuỗi này đang
+   khai thác được (cần link lừa và app độc mang cùng scheme). Hướng vá:
+   [ADR-0056](adr/0056-mobile-google-native-signin.md) (Proposed) — app đăng nhập Google
+   bằng SDK gốc và ID token, proxy đóng ở mọi môi trường; nhắm merge trước freeze 15/10.
+   Sau v1: SDK miễn phí dùng Google Sign-In cũ trên Android (deprecated), chuyển sang
+   Credential Manager.
 5. **N7–N10 mức thấp còn mở** — bảng ở mục 7 của tóm tắt nhánh: bấm đúp nút chọn
    ảnh, lỗi form đổi mật khẩu không tự xoá, Saved đếm "100 tours" trước khi tải đủ
    trang, ba chỗ a11y.
