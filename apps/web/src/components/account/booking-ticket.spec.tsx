@@ -150,6 +150,15 @@ describe('BookingTicket — thân vé', () => {
     expect(screen.getByRole('img', { name: 'Temple of Literature' })).toBeInTheDocument();
   });
 
+  it('ảnh bìa xin đúng cỡ của cột ảnh (`sizes`, srcset qua loader) thay vì tải ảnh gốc', () => {
+    // Dưới `xl` ảnh trải trọn bề ngang vé, từ `xl` là cột 210px (review P7 B17).
+    renderTicket({ ...PAID, tourImage: PHOTO });
+    const img = screen.getByRole('img', { name: 'Temple of Literature' });
+    expect(img).toHaveAttribute('sizes', '(min-width: 1280px) 210px, 100vw');
+    expect(img.getAttribute('srcset')).toBeTruthy();
+    expect(img.getAttribute('src')).not.toBe(PHOTO.url);
+  });
+
   it('không có ảnh bìa thì bỏ cột ảnh', () => {
     const { container } = renderTicket({ ...PAID, tourImage: null });
     expect(container.querySelector('[data-slot="ticket-photo"]')).toBeNull();
@@ -215,5 +224,19 @@ describe('BookingTicket — cuống vé', () => {
     expect(screen.getByText('Total')).toBeInTheDocument();
     expect(screen.queryByText('Total paid')).toBeNull();
     expect(screen.getByText('Not paid')).toBeInTheDocument();
+  });
+
+  it('bị thu rồi hoàn tự động trước khi sang PAID (paidAt null): ô cổng in tên cổng, không "Not paid"', () => {
+    // Thua đua ghế hay chuyến đóng lúc capture về — API không ghi `paid_at` nhưng tiền đã đi một
+    // vòng; khối Payment cùng trang in "Refunded −$147.00" (review P7 B1).
+    renderTicket({
+      ...PAID,
+      status: 'CANCELLED',
+      paidAt: null,
+      cancelledAt: '2026-08-14T03:06:00.000Z',
+      refundedTotal: '147.00',
+    });
+    expect(screen.getByText('PayPal')).toBeInTheDocument();
+    expect(screen.queryByText('Not paid')).toBeNull();
   });
 });

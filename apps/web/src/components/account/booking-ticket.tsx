@@ -6,7 +6,14 @@ import Link from 'next/link';
 import { TicketBarcode } from '@/components/checkout/ticket-barcode';
 import { RevealItem } from '@/components/motion/reveal-item';
 import { VisaStamp } from '@/components/passport/visa-stamp';
-import { bookingPass, bookingTotalLabel, paymentProviderLabel, vietnamDay } from '@/lib/booking-vm';
+import { SlotImage } from '@/components/slot-image';
+import {
+  bookingPass,
+  bookingTotalLabel,
+  paymentProviderLabel,
+  vietnamDay,
+  wasCharged,
+} from '@/lib/booking-vm';
 import { formatBookingMoney } from '@/lib/checkout';
 import { calendarDateParts, formatDate } from '@/lib/tours';
 
@@ -36,7 +43,6 @@ const KICKER =
 export function BookingTicket({ booking, phase }: { booking: BookingDetail; phase: BookingPhase }) {
   const t = messages.bookingDetail;
   const photo = booking.tourImage;
-  const paid = booking.paidAt !== null;
   const days = calendarDaysBetween(booking.departureStartDate, booking.departureEndDate) + 1;
   const place = booking.tourDestinations[0]?.name;
   const route = place ? `${t.ticket.days(days)} · ${place}` : t.ticket.days(days);
@@ -51,7 +57,10 @@ export function BookingTicket({ booking, phase }: { booking: BookingDetail; phas
     { label: t.booked, value: formatDate(vietnamDay(booking.createdAt)) },
     {
       label: t.ticket.paidWith,
-      value: paid ? paymentProviderLabel(booking.paymentProvider) : t.ticket.notPaid,
+      // Tên cổng khi tiền đã đi một vòng (`wasCharged`) — kể cả đơn bị thu rồi hoàn tự động trước
+      // khi kịp sang PAID (`paidAt` null): "Not paid" cạnh "Refunded −$147.00" của khối Payment
+      // cùng trang là nói ngược (review P7 B1).
+      value: wasCharged(booking) ? paymentProviderLabel(booking.paymentProvider) : t.ticket.notPaid,
     },
   ];
 
@@ -68,11 +77,12 @@ export function BookingTicket({ booking, phase }: { booking: BookingDetail; phas
           data-slot="ticket-photo"
           className="relative aspect-video overflow-hidden rounded-t-[15px] bg-muted xl:aspect-auto xl:rounded-tr-none xl:rounded-bl-[15px]"
         >
-          {/* biome-ignore lint/performance/noImgElement: repo không dùng next/image (chưa khai remotePatterns — tiền lệ BookingReceipt). */}
-          <img
-            src={photo.url}
-            alt={photo.alt ?? ''}
-            className="absolute inset-0 size-full object-cover"
+          {/* `SlotImage` (next/image + loader Cloudinary) xin đúng cỡ qua `w_` thay vì tải ảnh
+              gốc: dưới `xl` ảnh trải trọn bề ngang vé, từ `xl` là cột 210px (review P7 B17). */}
+          <SlotImage
+            image={photo}
+            className="absolute inset-0"
+            sizes="(min-width: 1280px) 210px, 100vw"
           />
         </div>
       ) : null}
