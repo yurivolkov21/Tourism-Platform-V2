@@ -1,3 +1,4 @@
+import { DEADLINE_CUTOFF_COPY } from './legal/cancellation.js';
 import { messages } from './messages.js';
 
 describe('messages: tourDetail', () => {
@@ -219,5 +220,23 @@ describe('messages: voucher (P7 phần C — voucher của đơn đã trả)', (
     expect(messages.voucher.departureCancelledNotice).toBe(
       'We had to cancel this departure — this voucher is no longer valid.',
     );
+  });
+
+  /**
+   * Giờ chốt của hạn huỷ miễn phí có MỘT nguồn (`DEADLINE_CUTOFF_COPY`, review P7C mục 19): mốc nhật
+   * ký voucher từng chép tay "11:59 pm Vietnam time" của câu hạn huỷ. Chữ in ra không đổi.
+   */
+  it('giờ chốt hạn huỷ một nguồn: câu hạn huỷ, mốc nhật ký voucher và FAQ cùng một chữ', () => {
+    expect(DEADLINE_CUTOFF_COPY).toBe('11:59 pm Vietnam time');
+    expect(messages.cancellationDeadline.full('2 Nov')).toBe(
+      'Free cancellation until 2 Nov, 11:59 pm Vietnam time. No refund after that.',
+    );
+    expect(messages.voucher.journal.deadlineAt('2 Nov')).toBe('2 Nov, 11:59 pm Vietnam time');
+    const faq = messages.faqPage.categories.flatMap(
+      (category): readonly { question: string; answer: string }[] => category.items,
+    );
+    expect(
+      faq.find((item) => item.question === 'What is your cancellation policy?')?.answer,
+    ).toContain('Cancel on or before that deadline — 11:59 pm Vietnam time — and every dollar');
   });
 });

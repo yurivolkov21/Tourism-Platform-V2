@@ -1,4 +1,4 @@
-import { cancellationWindowSentence } from './cancellation.js';
+import { cancellationWindowSentence, DEADLINE_CUTOFF_COPY } from './cancellation.js';
 import type { LegalDoc } from './legal-page.js';
 
 /**
@@ -50,7 +50,7 @@ export const termsDoc: LegalDoc = {
       heading: 'Cancellations and refunds by you',
       paragraphs: [
         'If you need to cancel, open the booking under “My bookings” in your account and choose “Cancel booking”. The booking is cancelled at once and any refund is returned to the payment method you used at checkout.',
-        `${cancellationWindowSentence()} The deadline falls at 11:59 pm Vietnam time on the day shown with your booking. Cancel on or before it and you are refunded in full; cancel after it, or fail to travel, and no refund is due. A departure also stops accepting bookings once its deadline has passed. The full details are in our Cancellation & Refund Policy.`,
+        `${cancellationWindowSentence()} The deadline falls at ${DEADLINE_CUTOFF_COPY} on the day shown with your booking. Cancel on or before it and you are refunded in full; cancel after it, or fail to travel, and no refund is due. A departure also stops accepting bookings once its deadline has passed. The full details are in our Cancellation & Refund Policy.`,
       ],
     },
     {

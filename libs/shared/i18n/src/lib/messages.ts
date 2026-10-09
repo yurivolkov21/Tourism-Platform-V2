@@ -1,6 +1,6 @@
 // Kho copy user-facing tập trung (chỉ tiếng Anh, luật #7). Mọi bề mặt đọc từ
 // đây — không rải chuỗi inline.
-import { cancellationWindowSentence } from './legal/cancellation.js';
+import { cancellationWindowSentence, DEADLINE_CUTOFF_COPY } from './legal/cancellation.js';
 import { resilience } from './resilience.js';
 
 // MỘT câu cho luật "refund phải > 0" dù bị chặn ở client (validation.zero) hay
@@ -106,6 +106,11 @@ const POLICY_COUNT_COPY = (n: number) => (n === 1 ? '1 policy' : `${n} policies`
 // (`bookingDetail.closed.weCancelled`) lẫn dải hết hiệu lực của voucher
 // (`voucher.departureCancelledNotice`) — hai bản chép tay là hai bản sẽ trôi lệch.
 const WE_CANCELLED_COPY = 'We had to cancel this departure';
+
+// Ngày chót kèm giờ chốt — "2 Nov, 11:59 pm Vietnam time" — MỘT bản cho câu hạn huỷ
+// (`cancellationDeadline.full`) lẫn mốc nhật ký voucher (`voucher.journal.deadlineAt`); bản chép
+// tay của mốc nhật ký là bản sẽ trôi lệch (review P7C mục 19). `date` từ `formatChipDate`.
+const DEADLINE_AT_COPY = (date: string) => `${date}, ${DEADLINE_CUTOFF_COPY}`;
 
 export const messages = {
   // Dọn 19/08 (sổ nợ B1 mở rộng): 21 khối cấp-1 KHÔNG consumer nào trên web —
@@ -600,7 +605,7 @@ export const messages = {
    */
   cancellationDeadline: {
     full: (date: string) =>
-      `Free cancellation until ${date}, 11:59 pm Vietnam time. No refund after that.`,
+      `Free cancellation until ${DEADLINE_AT_COPY(date)}. No refund after that.`,
     passed: (date: string) => `The free-cancellation deadline (${date}) has passed.`,
     /** Nhãn link sang `/cancellation-policy` đứng cạnh các câu hạn chót — không còn "refund schedule" theo bậc. */
     policyLink: 'Read the cancellation policy',
@@ -677,8 +682,8 @@ export const messages = {
       freeCancellationEnds: 'Free cancellation ends',
       /** Sắp đi mà đã quá hạn chót — mốc đã qua, không còn là "ends". */
       freeCancellationEnded: 'Free cancellation ended',
-      /** `date` từ `formatChipDate` — cùng giờ chốt với `cancellationDeadline.full`. */
-      deadlineAt: (date: string) => `${date}, 11:59 pm Vietnam time`,
+      /** `date` từ `formatChipDate` — CÙNG hàm với giờ chốt của `cancellationDeadline.full`. */
+      deadlineAt: DEADLINE_AT_COPY,
       pickupDay: 'Pickup day',
       tripStarted: 'Trip started',
       tripEnds: 'Trip ends',
@@ -1200,7 +1205,7 @@ export const messages = {
         items: [
           {
             question: 'What is your cancellation policy?',
-            answer: `${cancellationWindowSentence()} Cancel on or before that deadline — 11:59 pm Vietnam time — and every dollar comes back; cancel after it and no refund is due. The exact date is shown on the tour page, at checkout, and on your booking.`,
+            answer: `${cancellationWindowSentence()} Cancel on or before that deadline — ${DEADLINE_CUTOFF_COPY} — and every dollar comes back; cancel after it and no refund is due. The exact date is shown on the tour page, at checkout, and on your booking.`,
           },
           {
             question: 'Can I change my travel dates?',

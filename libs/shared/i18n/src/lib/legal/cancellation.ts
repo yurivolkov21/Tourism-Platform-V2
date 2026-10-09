@@ -24,6 +24,14 @@ function capitalise(text: string): string {
 }
 
 /**
+ * Giờ chốt của hạn huỷ miễn phí — hạn hết 23:59 giờ Việt Nam của ngày chót (ADR-0041). MỘT nguồn
+ * cho mọi câu in giờ ấy: chính sách huỷ, điều khoản, FAQ, câu hạn huỷ (`cancellationDeadline.full`)
+ * và mốc nhật ký voucher (`voucher.journal.deadlineAt`) — mốc nhật ký từng chép tay chuỗi này của
+ * câu hạn huỷ (review P7C mục 19). Đặt ở đây vì `messages.ts` đã đọc luật huỷ từ module này.
+ */
+export const DEADLINE_CUTOFF_COPY = '11:59 pm Vietnam time';
+
+/**
  * Ba gạch đầu dòng của bảng hạn chót, sinh từ CHÍNH hằng contract.
  *
  * Không gõ tay, cùng lý do đã khai tử bản bậc cũ: hai văn bản từng chép tay một
@@ -85,7 +93,7 @@ export const cancellationDoc: LegalDoc = {
       heading: 'Your free-cancellation deadline',
       paragraphs: [
         'Every departure has one deadline, and how long the trip runs is the only thing that sets it. Longer trips need more notice because more is committed further ahead — rooms, boats, guides who turned other work down.',
-        'The deadline falls at 11:59 pm Vietnam time (GMT+7) on the day shown. That clock is the only one we use: your own time zone does not move the deadline, and neither does changing the time on your device.',
+        `The deadline falls at ${DEADLINE_CUTOFF_COPY} (GMT+7) on the day shown. That clock is the only one we use: your own time zone does not move the deadline, and neither does changing the time on your device.`,
         'You never have to work the date out yourself. We print it on the tour page, at checkout, in your confirmation email, and on the booking itself.',
       ],
       bullets: cancellationWindowBullets(),
