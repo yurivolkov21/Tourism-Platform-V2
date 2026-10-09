@@ -59,7 +59,7 @@ describe('SavedTourCard — tour còn bán', () => {
     expect(screen.getByText('$79')).toBeInTheDocument();
   });
 
-  it('điểm tròn số vẫn in MỘT chữ số thập phân: 5 → "5.0" (4.8 không phân biệt được với `String`)', () => {
+  it('điểm tròn số vẫn in MỘT chữ số thập phân: 5 → "5.0" (ca 4.8 in ra giống `String`, không bắt được thiếu `.toFixed(1)`)', () => {
     renderCard({ ratingAvg: 5, ratingCount: 3 });
     expect(screen.getByText('5.0')).toBeInTheDocument();
     expect(screen.queryByText('5')).not.toBeInTheDocument();

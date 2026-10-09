@@ -15,9 +15,9 @@ import type { SessionUser } from '@/lib/api/session';
  * vị trí của mình.
  *
  * Tên và email có thể dài và không dấu cách (email 47 ký tự), nên cả hai mang `wrap-anywhere`
- * (`overflow-wrap: anywhere`, nếp `EmailText` của admin). `break-words` KHÔNG đủ: nó không hạ
- * min-content của ô flex, nên thẻ phình theo email — đẩy cả trang cuộn ngang ở 320px, và từ `lg`
- * (cột trái cố định 320px) email thò ra khỏi viền thẻ.
+ * (`overflow-wrap: anywhere`, cùng nếp `LabelValueRow` và `EmailText` của admin). `break-words`
+ * KHÔNG đủ: nó không hạ min-content của ô flex, nên thẻ phình theo email — đẩy cả trang cuộn ngang
+ * ở 320px, và từ `lg` (cột trái cố định 320px) email thò ra khỏi viền thẻ.
  */
 export function IdentityCard({ profile, className }: { profile: SessionUser; className?: string }) {
   const t = messages.accountProfile;

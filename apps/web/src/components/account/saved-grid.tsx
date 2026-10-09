@@ -61,7 +61,10 @@ function EmptyState() {
  * Focus bàn phím: bỏ bằng Enter/Space thì focus đang nằm ngay trên tim của thẻ sắp biến mất; để
  * yên thì nó rơi về `<body>` và người dùng phải Tab lại từ đầu trang. Nên khi tim của thẻ vừa bỏ
  * đang giữ focus, dời focus sang tim của thẻ kế (thẻ trước nếu đó là thẻ cuối), lưới trống thì
- * sang nút "Browse tours". Focus đang ở chỗ khác thì giữ nguyên — không cướp.
+ * sang nút "Browse tours". Focus đang ở chỗ khác thì giữ nguyên — không cướp. Bỏ lỗi thì thẻ quay
+ * lại chỗ cũ còn focus ở lại thẻ kế, không kéo ngược: người dùng có thể đã Tab đi chỗ khác trong
+ * lúc chờ. Chuột thì không thấy gì lạ — focus do mã đặt sau cú bấm chuột không hiện vòng focus
+ * (`:focus-visible`), chỉ bàn phím mới thấy.
  *
  * 401 giữa chừng có thông báo RIÊNG kèm link đăng nhập lại: toast biến mất sau vài giây, còn tin
  * "phải đăng nhập lại" phải nằm lại trên trang. 429 có câu "chờ một phút" riêng.
