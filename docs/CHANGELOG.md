@@ -134,7 +134,19 @@ web, chữ 16px thành 14px, thêm viền 1px của hệ; trang tour không thê
 Back về URL có hash tab thì về dải tab (user không nhận thì ghi thêm một mục open-items).
 
 **Review findings:** xem Bối cảnh — 30 phát hiện, vá hết, cùng các mục ngoài trần user chọn
-làm. Review cuối của diff đợt vá: `<điền sau review cuối>`.
+làm. Review cuối của diff đợt vá (`453691cd..f157517a`): 0 Critical, 1 Important, 3 Minor — I1
+badge accordion My bookings hiện "Paid" xanh cho đơn còn PAID trên chuyến công ty huỷ trong khi
+trang chi tiết đơn và voucher nói chuyến bị huỷ; M1 mời viết review cho chuyến công ty huỷ khi job
+hoàn tiền kẹt qua ngày về; M2 thanh hành trình không kể tiền đang về (đơn PAID mất mốc Refund) và
+kể số của lần hoàn cũ như đã xong; M3 nhánh "đã là voucher" của hoá đơn chờ thành mã chết. Vá hết
+ở `ce041d01`..`b08f2fb4`, mỗi mục một commit, TDD (web 2117 → 2130: thêm 20 ca, gỡ 7 ca canh nhánh
+chết): badge theo `bookingPass` cùng luật với mộc; `reviewSlot` trả `hidden` cho chuyến công ty
+huỷ chưa có review; mốc Refund đang đứng "On its way" với khoá mới
+`bookingDetail.journey.refundOnItsWay`; gỡ nhánh chết của hoá đơn cùng `ticketSerial` và sáu khoá
+i18n mồ côi (`confirmedTitle`, `confirmedBody`, `receiptSentTo`, `paidAtLine`, `statusPaid`,
+`stubShowCode`). Ngoài phạm vi, vào open-items: G36 cổng review của API chưa chặn chuyến công ty
+huỷ; G37 chữ cuống hoá đơn của đơn chưa trả đã đóng, chờ user chốt; G38 năm khoá i18n mồ côi từ
+thời `CheckoutShell` và JSDoc `TICKET_BARCODE_BAR_COUNT`; G39 `passport.ts` chưa theo AMEND 1.
 
 **CÒN TREO cho session gốc:**
 

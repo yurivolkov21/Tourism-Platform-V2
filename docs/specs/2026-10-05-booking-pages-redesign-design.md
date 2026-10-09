@@ -3,8 +3,9 @@
 - **Ngày:** 2026-10-05 · **Trạng thái:** thiết kế duyệt qua wireframe trong chat cùng ngày
   (vòng v2 trang chi tiết; voucher phương án 1 cùng mảng trái "A"; danh sách giữ dáng cũ, lọc
   "cách 1", phân trang "kiểu 3"). User duyệt spec 05/10; Phần A thi công và review 06/10.
-  Phần B và C thi công 07–08/10, review max 08/10, đợt vá gộp 09/10: các mục dưới đây đã sửa
-  theo mã sau đợt vá (luật giai đoạn theo ADR-0054 AMEND 1).
+  Phần B và C thi công 07–08/10, review max 08/10, đợt vá gộp 09/10 và lượt vá theo review cuối
+  cùng ngày: các mục dưới đây đã sửa theo mã sau hai lượt ấy (luật giai đoạn theo ADR-0054
+  AMEND 1).
 - **Quyết định kiến trúc:** [ADR-0054](../adr/0054-customer-bookings-list-phase-filters.md)
   (AMEND 1 08/10: giai đoạn đọc thêm `cancelledAt` và cờ chuyến bị công ty huỷ)
 - **Nền:** [ADR-0041](../adr/0041-single-cancellation-deadline.md) (một hạn chót mỗi chuyến,
@@ -76,9 +77,12 @@ chạy; CANCELLED và REFUNDED có `cancelledAt` là `cancelled`; REFUNDED khôn
 thiện chí trọn, khách vẫn đi) đi theo ngày như PAID. `lapsed`: API thôi mở phiên thanh toán mới
 từ hạn chót, nhưng claim của webhook vẫn nhận phiên mở trước hạn, trả xong thì đơn tự sang PAID.
 
-Voucher, mã vạch và mộc trên vé đi theo giai đoạn qua MỘT hàm `bookingPass(booking, phase)`
-(`lib/booking-vm.ts`) cho vé, nút "View voucher", voucher và accordion My bookings. Khu review
-không theo giai đoạn mà theo `reviewSlot` (mục 2.5).
+Voucher, mã vạch, mộc trên vé và badge trạng thái của accordion My bookings đi theo giai đoạn qua
+MỘT hàm `bookingPass(booking, phase)` (`lib/booking-vm.ts`) cho vé, nút "View voucher", voucher
+và accordion. Mộc và badge chung một luật (`phaseLabel`), mỗi nơi một bộ chữ: mộc in hoa của vé
+và voucher ("CONFIRMED", "NOT PAID"), badge lấy chữ của danh sách đơn ("Paid", "Payment not
+completed"); bảng dưới ghi chữ của mộc, badge xem mục 7.3. Khu review không theo giai đoạn mà
+theo `reviewSlot` (mục 2.5).
 
 | Giai đoạn | Voucher | Mã vạch | Mộc |
 | --- | --- | --- | --- |
@@ -129,7 +133,12 @@ Năm mốc, theo thứ tự:
   "No refund due"). Đơn chưa từng thu tiền (`wasCharged`: không `paidAt` và chưa hoàn đồng nào)
   thì không có mốc Refund; đơn bị thu rồi hoàn tự động trước khi sang PAID vẫn có. Chip
   "Cancelled" (plan, quyết định 9). Chuyến bị công ty huỷ dùng biến thể này, nên không còn mốc
-  Free cancellation; job hoàn tiền chưa chạy thì chưa có mốc Refund (cột phải nói tiền đang về).
+  Free cancellation. Job hoàn tiền của chuyến ấy chưa chạy (`operatorRefundPending`: đơn còn PAID
+  hay hoàn một phần) thì mốc Refund là mốc đang đứng (`now`), dòng phụ "On its way", không số —
+  kể cả đơn từng hoàn một phần: không kể số của lần hoàn cũ. Mốc này xét `operatorRefundPending`
+  TRƯỚC `refundSummary`, cùng thứ tự với cột phải và nhật ký voucher (review cuối 09/10, M2:
+  trước đó đơn PAID mất hẳn mốc Refund, còn đơn từng hoàn một phần tô "$20.00 of $147.00" như đã
+  xong, cạnh câu "Your full refund is on its way." của cột phải).
 - **Biến thể `lapsed`:** hai mốc, Booked → "Payment not completed"; mốc sau là mốc đang đứng
   (`now`), không tô như đã xong; không có chip.
 - **Điện thoại:** thanh ngang thành danh sách dọc; "Today" thành một dòng chen giữa hai mốc.
@@ -184,6 +193,13 @@ khu review — chân Get ready đã nói ngày mở. Thẻ cảm ơn chỉ cho `
 Trước đợt vá 09/10 khu review chỉ có ở `travelled` (ngày Việt Nam): mất form ~17 giờ mỗi chuyến,
 và đơn có review rồi bị hoàn mất đường sửa, rút.
 
+Chuyến bị công ty huỷ mà đơn chưa có review thì slot `hidden` (`reviewSlot` xét
+`departureCancelled` ngay sau nhánh đã có review): không mời viết cho một chuyến không chạy, kể cả
+khi đơn còn PAID vì job hoàn tiền chưa chạy hay kẹt retry qua ngày về — form từng đứng ngay dưới
+khối "Departure cancelled" và gửi được thật (review cuối 09/10, M1). Đơn đã có review vẫn theo
+phán quyết của review, còn sửa, rút được. Ở chỗ này web chặt hơn cổng API:
+`checkReviewEligibility` chưa xét chuyến huỷ (open-items G36).
+
 ### 2.6 Voucher: vừa trả tiền và mở lại
 
 - **Vừa trả tiền:** đơn PAID, voucher còn hiệu lực (`bookingPass(…).voucher` — đơn trên chuyến
@@ -218,7 +234,15 @@ CANCELLED chưa từng trả (giữ chỗ hết hạn) — giữ nguyên hoá đ
 `CheckoutAutoRefresh`). Câu dưới tiêu đề hoá đơn theo tâm trạng (`receiptNote`, đợt vá 09/10):
 đang xác nhận thì câu chờ; kết cục khác thì kể khoản hoàn nếu đơn từng bị thu (thua đua ghế,
 `paidAt` vẫn null), chưa thu thì "There’s nothing left to pay here…" — không còn "A copy of this
-receipt was sent to {email}." cho đơn chưa trả. Ba chi tiết chốt theo mã (plan, quyết định 11):
+receipt was sent to {email}." cho đơn chưa trả. Hoá đơn chỉ còn hai tâm trạng (`CheckoutMood`):
+`confirming` (PENDING, tự làm tươi) và `settled` (mọi trạng thái khác). Tâm trạng "đã xác nhận"
+(pill "Paid", tiêu đề "Booking confirmed", dòng "Paid {ngày}") cùng mã vạch, serial "NO. …" và
+câu "Show this code at the meeting point." ở cuống đã gỡ (review cuối 09/10, M3): sau đợt vá cả
+hai nơi dựng hoá đơn chỉ còn đưa vào đơn `paidAt` null, mà PAID luôn có `paidAt`. Cuống còn ngày
+đi, mã đơn, nút chép mã và câu "This code becomes your voucher once payment is complete." — in cả
+cho đơn đã đóng, chờ user chốt chữ (open-items G37).
+
+Ba chi tiết của voucher chốt theo mã (plan, quyết định 11):
 
 - **Sắp đi mà đã quá hạn huỷ:** bỏ dòng điều kiện hạn huỷ (dấu tích cạnh "đã hết hạn" đọc như
   quyền lợi); mốc nhật ký thành "Free cancellation ended" ✓. Còn hạn hay không chỉ theo cờ
@@ -293,8 +317,8 @@ hoặc đã hoàn), `refundSentence` (một câu hoàn tiền cho cột phải v
 `freeCancellationOpen`, `bookingPass`, `cancelledByOperator`, `operatorRefundPending`;
 `needsTourData` (`lib/get-ready.ts`), `hasReviewArea` (`lib/review.ts`), `voucherMeetingPoint`
 (`lib/voucher.ts`), `receiptNote` và `cancelPageRedirect` (`lib/checkout.ts`),
-`fetchTourDetailOrNull` (`lib/api/tours.ts`); linh kiện `TicketBarcode` vẽ mã vạch cho hoá đơn,
-vé và voucher.
+`fetchTourDetailOrNull` (`lib/api/tours.ts`); linh kiện `TicketBarcode` vẽ mã vạch cho vé và
+voucher (cuống hoá đơn thôi in mã vạch từ review cuối 09/10, M3 — mục 2.6).
 
 Các dòng tiền (2 người lớn × đơn giá…) đang tính trong `BookingReceipt`: tách thành
 `bookingPriceLines` ở `lib/checkout.ts` để trang chi tiết, voucher và trang huỷ dùng chung.
@@ -483,9 +507,14 @@ Hero thêm nút quay lại; meta "{overallTotal} trips". Nội dung giữ `max-w
 - Dòng "{total} trips"; đang lọc hoặc tìm thì "{total} of {overallTotal} trips". Chưa lọc thì
   dòng ấy chỉ còn cho trình đọc màn hình — hero đã in tổng (`87ca93f9`, 08/10).
 - `BookingAccordion` giữ nguyên; dòng phụ "In N days" và "Ends {ngày}" đọc từ `bookingPhase`.
-  Đơn `lapsed` (chờ trả quá hạn chót) mang nhãn "Payment not completed", tông mờ, không có Pay
-  now (review 06/10). Link "View voucher" theo `bookingPass(…).voucher` như trang chi tiết đơn
-  (đợt vá 09/10; trước đó chỉ đơn PAID).
+  Badge trạng thái theo `bookingPass(…).badge` (mục 2.1), cùng luật với mộc của vé và voucher:
+  đơn `lapsed` (chờ trả quá hạn chót) mang nhãn "Payment not completed", tông mờ, không có Pay
+  now (review 06/10); giai đoạn `cancelled` mang "Cancelled" (đơn REFUNDED giữ "Refunded"), tông
+  mờ — kể cả đơn còn PAID, hoàn một phần hay giữ chỗ trên chuyến công ty huỷ chờ job hoàn tiền
+  (review cuối 09/10, I1: trước đó badge đọc trạng thái đơn và chỉ đè `lapsed`, nên hiện "Paid"
+  xanh cạnh mộc "CANCELLED" của trang chi tiết đơn và voucher); giai đoạn khác in tên trạng thái
+  đơn với tông của `bookingView`. Link "View voucher" theo `bookingPass(…).voucher` như trang chi
+  tiết đơn (đợt vá 09/10; trước đó chỉ đơn PAID).
 - Ô "Total paid" trong phần xổ ghi "Total" khi đơn chưa trả.
 - Lọc ra không có đơn nào: "No trips match" · "Try another search or clear the filters." · nút
   Reset.
@@ -518,7 +547,7 @@ khoá; nhóm chữ mới:
 | --- | --- |
 | Quay lại | Back to My bookings · Back to Passport |
 | Vé | Entry · Tour booking · Departs · Returns · {n} day / {n} days · Admit {n} · Total paid · Total · Taxes and fees included |
-| Hành trình | Trip journey · Booked · Paid · Awaiting payment · Free cancellation · Until {date} · Ended {date} · Departure · Departed · Trip ends · Trip ended · Today · Departs in {n} days · Departs tomorrow · Day {d} of {D} · Completed · Cancelled · Payment not completed |
+| Hành trình | Trip journey · Booked · Paid · Awaiting payment · Free cancellation · Until {date} · Ended {date} · Departure · Departed · Trip ends · Trip ended · Today · Departs in {n} days · Departs tomorrow · Day {d} of {D} · Completed · Cancelled · On its way · Payment not completed |
 | Get ready | Get ready · {n} days to go · Tomorrow · Budget for what's not included · Tick them off — saved on this device. · Pickup on {date} · Full itinerary · Your review opens on {date}. |
 | Đang đi | Today's plan · Need help today? Contact us |
 | Thông tin đơn | Lead traveller · Payment · Cancellation · Details · Meeting point · Special requests · None · Questions about this trip? |
@@ -607,7 +636,7 @@ Làm từng bước, user báo xong mới sang bước kế.
   sẽ hết hạn trước khi merge.
 - **Trang Passport** vẫn tự phân loại đơn (`passport.ts`) và đọc 50 đơn theo `recent`; chuyển
   sang `bookingPhase` để sau. Vì vậy nó chưa theo ADR-0054 AMEND 1: đơn còn PAID trên chuyến
-  công ty huỷ vẫn là tem sắp đi ở đó trong khoảng chờ job hoàn tiền.
+  công ty huỷ vẫn là tem sắp đi ở đó trong khoảng chờ job hoàn tiền (open-items G39).
 - **Ở `upcoming`, `on_tour`** trang chi tiết đơn và voucher vẫn đọc tour nối đuôi lượt đọc đơn:
   API catalog treo thì trang chờ tới ~62 giây (timeout 20 giây × 3 lượt). Chưa chặn (tour có
   cache 300 giây); cần thì đẩy phần dùng tour vào `<Suspense>` hay chặn bằng `Promise.race`.
