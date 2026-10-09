@@ -1,14 +1,13 @@
 import { createORPCErrorFromJson } from '@orpc/client';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import type { WishlistItem } from '@tourism/contract';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { makeWishlistItem } from '@/test/fixtures/wishlist';
 import { SavedGrid } from './saved-grid';
 
-// jsdom không có IntersectionObserver — component nay bọc `RevealItem` (motion
-// `whileInView`, nhóm motion 3 — 19/08). Stub CỤC BỘ theo quy ước đã ghi ở
-// `reveal-item.spec.tsx`/`gallery.spec.tsx`: dời lên vitest.setup.ts là gãy
-// test ở file khác.
+// jsdom không có IntersectionObserver — lưới bọc từng thẻ trong `RevealItem` (motion
+// `whileInView`). Stub CỤC BỘ theo quy ước ở `reveal-item.spec.tsx`: dời lên vitest.setup.ts là
+// gãy test ở file khác.
 beforeAll(() => {
   vi.stubGlobal(
     'IntersectionObserver',
@@ -20,189 +19,131 @@ beforeAll(() => {
   );
 });
 
-// Mock client oRPC — spec chỉ kiểm gọi ĐÚNG payload `wishlist.set`, không gọi
-// API thật (cùng khuôn `newsletter-form.spec.tsx`/`booking-actions.spec.tsx`).
+// Mock client oRPC — chỉ kiểm gọi ĐÚNG payload `wishlist.set`, không gọi API thật.
 const { set } = vi.hoisted(() => ({ set: vi.fn() }));
 vi.mock('@/lib/api/client', () => ({
   api: { wishlist: { set } },
   withBrowserAuth: () => ({ auth: { credentials: 'include' } }),
 }));
 
-// Mock sonner — Task 7/A2: saved-grid CHỈ toast khi LỖI (rollback) — thành
-// công đã tự hiện qua card biến mất, khác các form khác trong khu account.
+// Lưới CHỈ toast khi LỖI (rollback) — thành công đã tự hiện qua thẻ rời lưới.
 const { toastError } = vi.hoisted(() => ({ toastError: vi.fn() }));
 vi.mock('sonner', () => ({ toast: { error: toastError } }));
 
-function makeItem(overrides: Partial<WishlistItem> = {}): WishlistItem {
-  return {
-    tourId: '604041ef-3601-43cb-8a46-cf91f2c9b53a',
-    slug: 'ninh-binh-trang-an-day',
-    title: 'Ninh Bình: Tràng An, Múa Cave & Rice Fields',
-    basePrice: '79.00',
-    currency: 'USD',
-    durationDays: 1,
-    destinationName: 'Ninh Bình',
-    ratingAvg: 4.8,
-    ratingCount: 132,
-    // Mặc định KHÔNG ảnh: nhánh ô giữ chỗ là nhánh dễ vỡ hơn, nên để test
-    // chạy qua nó theo mặc định; ca có ảnh truyền `cover` qua `overrides`.
-    cover: null,
-    addedAt: '2026-07-28T14:00:00.000Z',
-    unavailable: false,
-    ...overrides,
-  };
-}
+/** Ngày lịch Việt Nam do trang server tính. */
+const TODAY = '2026-10-09';
+const NINH_BINH = makeWishlistItem();
+const HA_GIANG = makeWishlistItem({
+  tourId: 'ded599f0-df12-43a3-9b3d-bbe5d26764dc',
+  slug: 'ha-giang-loop-4d',
+  title: 'Hà Giang Loop by Easyrider 4D3N',
+  basePrice: '189.00',
+});
+const HOI_AN = makeWishlistItem({
+  tourId: '3c1e8a52-6f0b-4d7e-9a14-2b5f7c9d1e03',
+  slug: 'hoi-an-lantern-walk',
+  title: 'Hoi An Lantern Walk & Cooking Class',
+});
+
+/** Nút tim của một thẻ — tên đọc là khoá có sẵn `accountSaved.removeAria`. */
+const heartOf = (title: string) =>
+  screen.getByRole('button', { name: `Remove ${title} from saved tours` });
 
 describe('SavedGrid', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    set.mockResolvedValue({ tourId: '604041ef-3601-43cb-8a46-cf91f2c9b53a', wished: false });
+    set.mockResolvedValue({ tourId: NINH_BINH.tourId, wished: false });
   });
 
-  it('rỗng ngay từ đầu → empty-state với CTA /tours, không render grid', () => {
-    render(<SavedGrid initialItems={[]} />);
-    expect(screen.getByRole('link', { name: /browse tours/i })).toHaveAttribute('href', '/tours');
+  it('rỗng ngay từ đầu → trạng thái trống với nút Browse tours, không thẻ nào', () => {
+    render(<SavedGrid initialItems={[]} today={TODAY} />);
+    expect(screen.getByRole('link', { name: 'Browse tours' })).toHaveAttribute('href', '/tours');
     expect(screen.queryByRole('article')).not.toBeInTheDocument();
   });
 
-  it('rỗng ngay từ đầu → copy dạy hành vi (bấm tim để lưu), không phải copy chung chung cũ', () => {
-    // Task 9: copy empty state đổi để DẠY hành vi bấm tim — trước đây chỉ nói
-    // "chưa có tour đã lưu", không nói khách phải làm gì để có.
-    render(<SavedGrid initialItems={[]} />);
+  it('rỗng → câu dạy hành vi bấm tim', () => {
+    render(<SavedGrid initialItems={[]} today={TODAY} />);
     expect(screen.getByText('Nothing saved yet')).toBeInTheDocument();
     expect(
       screen.getByText('Tap the heart on any tour to keep it here for later.'),
     ).toBeInTheDocument();
   });
 
-  it('render đủ N tour đã lưu (title + giá)', () => {
-    render(
-      <SavedGrid
-        initialItems={[
-          makeItem(),
-          makeItem({
-            tourId: 'ded599f0-df12-43a3-9b3d-bbe5d26764dc',
-            slug: 'ha-giang-loop-4d',
-            title: 'Hà Giang Loop by Easyrider 4D3N',
-            basePrice: '189.00',
-          }),
-        ]}
-      />,
-    );
-    expect(screen.getByText('Ninh Bình: Tràng An, Múa Cave & Rice Fields')).toBeInTheDocument();
-    expect(screen.getByText('Hà Giang Loop by Easyrider 4D3N')).toBeInTheDocument();
+  it('dựng đủ N thẻ (tên + giá), thẻ nào cũng có dòng ngày lưu', () => {
+    render(<SavedGrid initialItems={[NINH_BINH, HA_GIANG]} today={TODAY} />);
+    expect(screen.getAllByRole('article')).toHaveLength(2);
     expect(screen.getByText('$79')).toBeInTheDocument();
     expect(screen.getByText('$189')).toBeInTheDocument();
+    expect(screen.getAllByText('Saved 3 Oct')).toHaveLength(2);
   });
 
-  it('item unavailable → nhãn "No longer available", KHÔNG có link tới tour (tour đã unpublish)', () => {
-    render(<SavedGrid initialItems={[makeItem({ unavailable: true })]} />);
-    expect(screen.getByText('No longer available')).toBeInTheDocument();
-    expect(screen.queryByRole('link', { name: /ninh bình/i })).not.toBeInTheDocument();
-    // Vẫn còn nút bỏ lưu cho item unavailable.
-    expect(screen.getByRole('button', { name: /remove/i })).toBeInTheDocument();
-  });
-
-  it('bấm ✕ trên MỘT card → card đó biến mất NGAY (optimistic), card còn lại vẫn còn', async () => {
-    const user = userEvent.setup();
-    const keep = makeItem({
-      tourId: 'ded599f0-df12-43a3-9b3d-bbe5d26764dc',
-      slug: 'ha-giang-loop-4d',
-      title: 'Hà Giang Loop by Easyrider 4D3N',
-    });
-    render(<SavedGrid initialItems={[makeItem(), keep]} />);
-
-    await user.click(
-      screen.getByRole('button', {
-        name: /remove ninh bình: tràng an, múa cave & rice fields from saved tours/i,
-      }),
+  it('lưới: 1 cột dưới sm, 2 cột từ sm, 3 cột từ lg; khe ngang 24px, dọc 32px', () => {
+    const { container } = render(<SavedGrid initialItems={[NINH_BINH, HA_GIANG]} today={TODAY} />);
+    expect(container.querySelector('[data-slot="saved-grid"]')).toHaveClass(
+      'grid',
+      'grid-cols-1',
+      'sm:grid-cols-2',
+      'lg:grid-cols-3',
+      'gap-x-6',
+      'gap-y-8',
     );
-
-    expect(
-      screen.queryByText('Ninh Bình: Tràng An, Múa Cave & Rice Fields'),
-    ).not.toBeInTheDocument();
-    expect(screen.getByText('Hà Giang Loop by Easyrider 4D3N')).toBeInTheDocument();
   });
 
-  it('bỏ lưu đến hết → chuyển sang empty-state', async () => {
+  it('bấm tim trên MỘT thẻ → thẻ đó rời lưới NGAY, thẻ còn lại vẫn còn', async () => {
     const user = userEvent.setup();
-    render(<SavedGrid initialItems={[makeItem()]} />);
-
-    await user.click(screen.getByRole('button', { name: /remove/i }));
-
-    expect(screen.getByRole('link', { name: /browse tours/i })).toHaveAttribute('href', '/tours');
+    render(<SavedGrid initialItems={[NINH_BINH, HA_GIANG]} today={TODAY} />);
+    await user.click(heartOf(NINH_BINH.title));
+    expect(screen.queryByText(NINH_BINH.title)).not.toBeInTheDocument();
+    expect(screen.getByText(HA_GIANG.title)).toBeInTheDocument();
   });
 
-  it('bấm ✕ → gọi wishlist.set({tourId, wished:false}) đúng payload', async () => {
+  it('bỏ lưu đến hết → chuyển sang trạng thái trống', async () => {
     const user = userEvent.setup();
-    render(<SavedGrid initialItems={[makeItem()]} />);
+    render(<SavedGrid initialItems={[NINH_BINH]} today={TODAY} />);
+    await user.click(heartOf(NINH_BINH.title));
+    expect(screen.getByRole('link', { name: 'Browse tours' })).toHaveAttribute('href', '/tours');
+  });
 
-    await user.click(screen.getByRole('button', { name: /remove/i }));
-
+  it('bấm tim → gọi wishlist.set({ tourId, wished: false }) đúng payload', async () => {
+    const user = userEvent.setup();
+    render(<SavedGrid initialItems={[NINH_BINH]} today={TODAY} />);
+    await user.click(heartOf(NINH_BINH.title));
     await waitFor(() =>
       expect(set).toHaveBeenCalledWith(
-        { tourId: '604041ef-3601-43cb-8a46-cf91f2c9b53a', wished: false },
+        { tourId: NINH_BINH.tourId, wished: false },
         expect.anything(),
       ),
     );
   });
 
-  it('wishlist.set lỗi → rollback (card quay lại) + toast lỗi', async () => {
+  it('wishlist.set lỗi → thẻ quay lại ĐÚNG chỗ cũ (không xuống cuối) + toast lỗi', async () => {
     set.mockRejectedValueOnce(new Error('network down'));
     const user = userEvent.setup();
-    render(<SavedGrid initialItems={[makeItem()]} />);
+    render(<SavedGrid initialItems={[NINH_BINH, HA_GIANG, HOI_AN]} today={TODAY} />);
 
-    await user.click(screen.getByRole('button', { name: /remove/i }));
+    await user.click(heartOf(HA_GIANG.title));
 
-    // Rollback sau khi promise reject: card quay lại + toast lỗi. (Biến mất
-    // NGAY lúc click đã được phủ ở test optimistic riêng phía trên — reject
-    // ở đây có thể xử lý xong trước khi `user.click` trả điều khiển, nên
-    // không assert lại state "giữa chừng" ở đây, tránh test ăn may theo
-    // microtask timing.)
-    expect(
-      await screen.findByText('Ninh Bình: Tràng An, Múa Cave & Rice Fields'),
-    ).toBeInTheDocument();
+    // Biến mất NGAY lúc bấm đã có ca riêng ở trên; reject có thể xử lý xong trước khi
+    // `user.click` trả điều khiển, nên không đo trạng thái "giữa chừng" ở đây.
+    expect(await screen.findByText(HA_GIANG.title)).toBeInTheDocument();
+    expect(screen.getAllByRole('heading', { level: 3 }).map((h) => h.textContent)).toEqual([
+      NINH_BINH.title,
+      HA_GIANG.title,
+      HOI_AN.title,
+    ]);
     expect(toastError).toHaveBeenCalledTimes(1);
   });
 });
 
-describe('SavedGrid — card riêng, không mượn TourCard', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
-  it('render đúng thứ wishlist CÓ: tiêu đề, giá, số ngày, rating', () => {
-    render(<SavedGrid initialItems={[makeItem()]} />);
-    expect(screen.getByText('Ninh Bình: Tràng An, Múa Cave & Rice Fields')).toBeInTheDocument();
-    expect(screen.getByText('$79')).toBeInTheDocument();
-    expect(screen.getByText('1 day')).toBeInTheDocument();
-  });
-
-  it('KHÔNG render chip category rỗng — nguồn bịa đã bị gỡ', () => {
-    // `wishlistToTourCardVM` cũ điền `category: {slug:'', name:''}`. TourCard
-    // tình cờ không render field đó nên chưa ai thấy, nhưng nó là mìn hẹn giờ.
-    const { container } = render(<SavedGrid initialItems={[makeItem()]} />);
-    expect(container.querySelectorAll('[class*="chip"]')).toHaveLength(0);
-  });
-
-  it('chưa ai đánh giá → nhãn riêng, không phải "★ null"', () => {
-    render(<SavedGrid initialItems={[makeItem({ ratingAvg: null, ratingCount: 0 })]} />);
-    expect(screen.getByText('Not yet reviewed')).toBeInTheDocument();
-  });
-});
-
 describe('SavedGrid — session hết hạn', () => {
-  // `beforeEach` của describe đầu file nằm TRONG khối đó, không áp cho đây —
-  // thiếu dòng này thì mock cộng dồn call từ test trước và assertion
-  // `not.toHaveBeenCalled` đọc sai.
+  // `beforeEach` của describe trên nằm TRONG khối đó, không áp cho đây — thiếu thì mock cộng dồn
+  // lượt gọi từ test trước và `not.toHaveBeenCalled` đọc sai.
   beforeEach(() => {
     vi.clearAllMocks();
-    set.mockResolvedValue({ tourId: '604041ef-3601-43cb-8a46-cf91f2c9b53a', wished: false });
+    set.mockResolvedValue({ tourId: NINH_BINH.tourId, wished: false });
   });
 
-  it('401 → thông báo RIÊNG kèm link đăng nhập lại, KHÔNG phải toast lỗi chung', async () => {
-    // Toast biến mất sau vài giây; tin "bạn cần đăng nhập lại" phải nằm lại
-    // trên trang. Trước đây mọi lỗi đều rơi vào cùng một toast.
+  it('401 → thông báo RIÊNG kèm link đăng nhập lại, KHÔNG toast lỗi chung', async () => {
     set.mockRejectedValueOnce(
       createORPCErrorFromJson({
         defined: false,
@@ -213,8 +154,8 @@ describe('SavedGrid — session hết hạn', () => {
       }),
     );
     const user = userEvent.setup();
-    render(<SavedGrid initialItems={[makeItem()]} />);
-    await user.click(screen.getByRole('button', { name: /remove/i }));
+    render(<SavedGrid initialItems={[NINH_BINH]} today={TODAY} />);
+    await user.click(heartOf(NINH_BINH.title));
 
     expect(await screen.findByText('Your session has expired.')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Log in again' })).toHaveAttribute(
@@ -227,8 +168,8 @@ describe('SavedGrid — session hết hạn', () => {
   it('lỗi KHÔNG phải 401 vẫn dùng toast như cũ', async () => {
     set.mockRejectedValueOnce(new Error('network down'));
     const user = userEvent.setup();
-    render(<SavedGrid initialItems={[makeItem()]} />);
-    await user.click(screen.getByRole('button', { name: /remove/i }));
+    render(<SavedGrid initialItems={[NINH_BINH]} today={TODAY} />);
+    await user.click(heartOf(NINH_BINH.title));
 
     await waitFor(() => expect(toastError).toHaveBeenCalled());
     expect(screen.queryByText('Your session has expired.')).not.toBeInTheDocument();

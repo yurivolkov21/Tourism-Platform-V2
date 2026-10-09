@@ -4,6 +4,7 @@ import { cookies } from 'next/headers';
 import Link from 'next/link';
 import { SavedGrid } from '@/components/account/saved-grid';
 import { ContentHero } from '@/components/content/content-hero';
+import { todayDateString } from '@/lib/account-stats';
 import { requireSession } from '@/lib/api/session';
 import { fetchMyWishlist } from '@/lib/api/wishlist';
 
@@ -43,7 +44,7 @@ export default async function AccountSavedPage() {
           {t.back}
         </Link>
         <div className="mt-6">
-          <SavedGrid initialItems={wishlist} />
+          <SavedGrid initialItems={wishlist} today={todayDateString()} />
         </div>
       </div>
     </div>
