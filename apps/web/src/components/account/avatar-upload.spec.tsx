@@ -113,3 +113,72 @@ describe('AvatarUpload — upload thất bại', () => {
     expect(setAvatar).not.toHaveBeenCalled();
   });
 });
+
+describe('AvatarUpload — dựng dọc cho thẻ danh tính (spec 09/10 §2)', () => {
+  const FOLLOWING = Node.DOCUMENT_POSITION_FOLLOWING;
+
+  // Hai nút cùng mở ô chọn file và cùng tên đọc "Upload avatar": nút ảnh tròn mang tên bằng
+  // `aria-label` (nội dung là chữ cái đầu hay ảnh), nút viền mang tên bằng chữ nhìn thấy được.
+  const photoButton = () => screen.getByLabelText('Upload avatar');
+  const labelledButton = () => screen.getByText('Upload avatar', { selector: 'button' });
+
+  it('ảnh 96px; `children` nằm GIỮA ảnh và nút "Upload avatar"; dòng gợi ý ngay dưới nút', () => {
+    render(
+      <AvatarUpload initial="A" image={null}>
+        <p>Minh Anh</p>
+      </AvatarUpload>,
+    );
+    const avatar = photoButton();
+    const name = screen.getByText('Minh Anh');
+    const uploadButton = labelledButton();
+    const hint = screen.getByText('PNG, JPG up to 2 MB. Click or drop a photo.');
+    expect(avatar).toHaveClass('size-24');
+    expect(avatar.compareDocumentPosition(name)).toBe(FOLLOWING);
+    expect(name.compareDocumentPosition(uploadButton)).toBe(FOLLOWING);
+    expect(uploadButton.compareDocumentPosition(hint)).toBe(FOLLOWING);
+    // Chữ "Upload avatar" chỉ còn là nút viền — dòng nhãn phụ cũ (`<p>`) đã gỡ.
+    expect(screen.getAllByText('Upload avatar')).toHaveLength(1);
+  });
+
+  it('có ảnh: không in dòng "Avatar selected"', () => {
+    render(<AvatarUpload initial="A" image="https://res.cloudinary.com/demo/avatars/user-1.png" />);
+    expect(screen.queryByText('Avatar selected')).not.toBeInTheDocument();
+  });
+
+  it('nút viền "Upload avatar" nhìn thấy được; bấm thì mở CÙNG ô chọn file với ảnh tròn', async () => {
+    const user = userEvent.setup();
+    const { container } = render(<AvatarUpload initial="A" image={null} />);
+    const input = container.querySelector('input[type="file"]') as HTMLInputElement;
+    const openPicker = vi.spyOn(input, 'click');
+
+    const button = labelledButton();
+    expect(button).toBeVisible();
+    await user.click(button);
+    expect(openPicker).toHaveBeenCalledTimes(1);
+
+    // Ảnh tròn vẫn bấm được như trước, và vẫn là ô chọn file ấy.
+    await user.click(photoButton());
+    expect(openPicker).toHaveBeenCalledTimes(2);
+  });
+
+  it('đang tải thì nút viền khoá cùng cờ `busy` với ảnh tròn; tải xong thì mở lại', async () => {
+    let finish: (publicId: string) => void = () => {};
+    upload.mockReturnValue(
+      new Promise<string>((resolve) => {
+        finish = resolve;
+      }),
+    );
+    const user = userEvent.setup();
+    const { container } = render(<AvatarUpload initial="A" image={null} />);
+    const button = labelledButton();
+    expect(button).toBeEnabled();
+
+    await user.upload(container.querySelector('input[type="file"]') as HTMLInputElement, pngFile());
+
+    await waitFor(() => expect(button).toBeDisabled());
+    expect(photoButton()).toBeDisabled();
+    finish(UPLOADED_PUBLIC_ID);
+    await waitFor(() => expect(button).toBeEnabled());
+    expect(photoButton()).toBeEnabled();
+  });
+});

@@ -2881,7 +2881,6 @@ export const messages = {
      *  upload Cloudinary + `account.setAvatar`, ADR-0021). */
     avatar: {
       upload: 'Upload avatar',
-      selected: 'Avatar selected',
       hint: (size: string) => `PNG, JPG up to ${size}. Click or drop a photo.`,
       remove: 'Remove avatar',
       errorsTitle: 'Avatar upload error(s)',

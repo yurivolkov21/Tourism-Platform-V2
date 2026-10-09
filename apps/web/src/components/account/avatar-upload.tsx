@@ -4,9 +4,9 @@ import { ORPCError } from '@orpc/client';
 import { messages } from '@tourism/i18n';
 import { Alert, AlertDescription, AlertTitle } from '@tourism/ui/components/alert';
 import { Button } from '@tourism/ui/components/button';
-import { CircleAlertIcon, XIcon } from 'lucide-react';
+import { CircleAlertIcon, UploadIcon, XIcon } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { useEffect, useRef, useState } from 'react';
+import { type ReactNode, useEffect, useRef, useState } from 'react';
 import { api, withBrowserAuth } from '@/lib/api/client';
 import { MAX_AVATAR_BYTES, validateAvatar } from '@/lib/avatar';
 import { imageExtensionOf, uploadToCloudinary } from '@/lib/media-upload';
@@ -15,9 +15,14 @@ import { formatBytes } from '@/lib/review-photos';
 /**
  * KHỐI UPLOAD AVATAR trong Settings (mảnh 12/08, nối thật 12/08 — ADR-0021):
  *
- * - Vòng tròn avatar viền đứt: bấm hoặc kéo-thả ảnh vào; có ảnh → preview
- *   phủ tròn + nút X gỡ; chưa có → chữ cái đầu (đồng bộ ngôn ngữ initial
- *   của khung hộ chiếu, thay UserIcon của mẫu).
+ * - Vòng tròn avatar 96px viền đứt, dựng DỌC và căn giữa (thẻ danh tính, spec
+ *   09/10 §2): ảnh → `children` (tên, email do thẻ truyền vào) → nút viền
+ *   "Upload avatar" → dòng gợi ý hay tiến độ → khối lỗi. Bấm hoặc kéo-thả ảnh
+ *   vào; có ảnh → preview phủ tròn + nút X gỡ; chưa có → chữ cái đầu (đồng bộ
+ *   ngôn ngữ initial của khung hộ chiếu). Nút viền mở CÙNG ô chọn file với ảnh
+ *   (bản vẽ C user duyệt có nút này, và điện thoại không có hover để lộ rằng
+ *   ảnh bấm được); ảnh vẫn bấm và thả được. Không còn dòng chữ "Upload avatar /
+ *   Avatar selected" làm nhãn phụ.
  * - Validate qua `lib/avatar` (thuần, TDD): đúng loại → trần 2MB; lỗi vào
  *   Alert.
  *
@@ -36,10 +41,13 @@ import { formatBytes } from '@/lib/review-photos';
 export function AvatarUpload({
   initial,
   image,
+  children,
 }: {
   initial: string;
   /** Avatar đã lưu (URL Cloudinary) — `null` = chưa có, tạm hiện chữ cái đầu. */
   image: string | null;
+  /** Nội dung chèn GIỮA ảnh và nút "Upload avatar" — thẻ danh tính đặt tên và email ở đây. */
+  children?: ReactNode;
 }) {
   const t = messages.accountProfile.avatar;
   const router = useRouter();
@@ -139,14 +147,19 @@ export function AvatarUpload({
     });
   }
 
+  /** Cả ảnh tròn lẫn nút viền mở chung MỘT ô chọn file. */
+  function openPicker() {
+    inputRef.current?.click();
+  }
+
   return (
-    <div className="flex items-center gap-4 py-4">
+    <div className="flex flex-col items-center">
       <div className="relative">
         <button
           type="button"
           aria-label={t.upload}
           disabled={busy}
-          onClick={() => inputRef.current?.click()}
+          onClick={openPicker}
           onDragEnter={(e) => {
             e.preventDefault();
             setIsDragging(true);
@@ -161,7 +174,7 @@ export function AvatarUpload({
             setIsDragging(false);
             onPick(e.dataTransfer.files);
           }}
-          className={`group/avatar relative size-20 cursor-pointer overflow-hidden rounded-full border transition-colors disabled:cursor-not-allowed disabled:opacity-70 ${
+          className={`group/avatar relative size-24 cursor-pointer overflow-hidden rounded-full border transition-colors disabled:cursor-not-allowed disabled:opacity-70 ${
             displaySrc
               ? 'border-solid border-border'
               : isDragging
@@ -173,7 +186,7 @@ export function AvatarUpload({
             // biome-ignore lint/performance/noImgElement: preview là Object URL cục bộ hoặc URL Cloudinary ngoài — next/image chưa khai remotePatterns (nợ ADR-0020).
             <img src={displaySrc} alt="" className="size-full object-cover" />
           ) : (
-            <span className="flex size-full items-center justify-center font-heading text-3xl font-semibold text-ink/70">
+            <span className="flex size-full items-center justify-center font-heading text-4xl font-semibold text-ink/70">
               {initial.toUpperCase()}
             </span>
           )}
@@ -186,7 +199,8 @@ export function AvatarUpload({
             onClick={removeAvatar}
             disabled={busy}
             aria-label={t.remove}
-            className="absolute -top-0.5 -right-0.5 z-10 size-6 rounded-full shadow-sm"
+            // Vòng 96px: tâm nút gỡ ở 2px trong góc hộp thì nằm đúng trên mép tròn.
+            className="absolute top-0.5 right-0.5 z-10 size-6 rounded-full shadow-sm"
           >
             <XIcon className="size-3.5" />
           </Button>
@@ -204,25 +218,37 @@ export function AvatarUpload({
         />
       </div>
 
-      <div className="min-w-0">
-        <p className="text-sm font-medium text-foreground">{displaySrc ? t.selected : t.upload}</p>
-        <p className="text-xs text-muted-foreground">
-          {busy ? t.uploading(pct) : t.hint(formatBytes(MAX_AVATAR_BYTES))}
-        </p>
-        {errors.length > 0 ? (
-          <Alert variant="destructive" className="mt-3">
-            <CircleAlertIcon />
-            <AlertTitle>{t.errorsTitle}</AlertTitle>
-            <AlertDescription>
-              {errors.map((error) => (
-                <p key={error} className="last:mb-0">
-                  {error}
-                </p>
-              ))}
-            </AlertDescription>
-          </Alert>
-        ) : null}
-      </div>
+      {children}
+
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        disabled={busy}
+        onClick={openPicker}
+        className="mt-3.5"
+      >
+        <UploadIcon aria-hidden="true" data-icon="inline-start" />
+        {t.upload}
+      </Button>
+
+      {/* Gợi ý cỡ ảnh, hay tiến độ lúc đang tải — cùng một dòng như trước. */}
+      <p className="mt-1.5 text-xs text-muted-foreground">
+        {busy ? t.uploading(pct) : t.hint(formatBytes(MAX_AVATAR_BYTES))}
+      </p>
+      {errors.length > 0 ? (
+        <Alert variant="destructive" className="mt-3 text-left">
+          <CircleAlertIcon />
+          <AlertTitle>{t.errorsTitle}</AlertTitle>
+          <AlertDescription>
+            {errors.map((error) => (
+              <p key={error} className="last:mb-0">
+                {error}
+              </p>
+            ))}
+          </AlertDescription>
+        </Alert>
+      ) : null}
     </div>
   );
 }
