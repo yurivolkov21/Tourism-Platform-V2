@@ -1,4 +1,5 @@
 import {
+  ACTIVE_BOOKING_STATUSES,
   type Booking,
   type BookingCancellation,
   type BookingDetail,
@@ -264,6 +265,29 @@ export function refundSummary(b: Booking): RefundSummary | null {
   // ca làm tròn lẻ cent không được biến "đã hoàn đủ" thành "hoàn một phần".
   if (refunded >= total) return { kind: 'full', amount: b.refundedTotal };
   return { kind: 'partial', amount: b.refundedTotal, total: b.totalAmount };
+}
+
+/**
+ * Đơn đóng vì CÔNG TY huỷ chuyến — trang kể "chúng tôi huỷ chuyến" thay cho "đơn đã huỷ"
+ * (ADR-0041 AMEND 1, ADR-0054 AMEND 1).
+ *
+ * Cờ `departureCancelled` một mình chưa đủ: lõi huỷ của công ty (`cancelByOperator`) bỏ qua đơn
+ * đã đóng, nên đơn khách tự huỷ TRƯỚC khi chuyến bị huỷ vẫn mang cờ. Công ty huỷ chuyến thì hoàn
+ * trọn phần còn lại, đơn chưa trả thì không có chuyện tiền (`refundSummary` là `null`) — vậy đơn
+ * đã thu mà không hoàn đồng nào (`none`) chỉ có thể là khách tự huỷ sau hạn chót. Kể "chúng tôi
+ * huỷ chuyến" cạnh "No refund was due" cho đơn ấy là nói sai: câu chuyện vẫn là của khách.
+ */
+export function cancelledByOperator(b: Booking): boolean {
+  return b.departureCancelled && refundSummary(b)?.kind !== 'none';
+}
+
+/**
+ * Tiền của đơn trên chuyến công ty huỷ còn đang về: job hoàn tiền (`departure-refund`) chưa chạy
+ * nên đơn còn PAID hay hoàn một phần — sổ chưa có khoản hoàn nào để kể bằng số (ADR-0041 AMEND 1).
+ * Job chạy xong thì đơn sang CANCELLED, `refundSummary` kể số thật.
+ */
+export function operatorRefundPending(b: Pick<Booking, 'departureCancelled' | 'status'>): boolean {
+  return b.departureCancelled && ACTIVE_BOOKING_STATUSES.includes(b.status);
 }
 
 /**

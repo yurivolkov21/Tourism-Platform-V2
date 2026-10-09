@@ -90,6 +90,86 @@ describe('TripClosedPanel — đã huỷ', () => {
 });
 
 /**
+ * Chuyến bị CÔNG TY huỷ (ADR-0041 AMEND 1, ADR-0054 AMEND 1): cột phải kể "chúng tôi huỷ chuyến"
+ * kèm chuyện tiền — đang về khi job hoàn tiền chưa chạy (đơn còn PAID), số đã hoàn khi job xong.
+ */
+describe('TripClosedPanel — chuyến công ty huỷ', () => {
+  const ON_CANCELLED_DEPARTURE = makeBooking({
+    status: 'PAID',
+    departureCancelled: true,
+    paidAt: '2026-08-15T03:05:00.000Z',
+    totalAmount: '147.00',
+  });
+
+  it('job hoàn tiền chưa chạy (đơn còn PAID): h2 "Departure cancelled", câu của công ty, tiền đang về', () => {
+    renderClosed(ON_CANCELLED_DEPARTURE);
+    expect(
+      screen.getByRole('heading', { level: 2, name: 'Departure cancelled' }),
+    ).toBeInTheDocument();
+    expect(screen.getByText('We had to cancel this departure.')).toBeInTheDocument();
+    expect(screen.getByText('Your full refund is on its way.')).toBeInTheDocument();
+    expect(
+      screen.getByText('It can take 5–10 business days to appear on your statement.'),
+    ).toBeInTheDocument();
+    expect(screen.queryByText('This booking was cancelled.')).toBeNull();
+    expect(screen.getByRole('link', { name: 'Browse tours' })).toHaveAttribute('href', '/tours');
+  });
+
+  it('đã hoàn một phần trước đó, job chưa chạy: vẫn "đang về", không kể số của lần hoàn cũ', () => {
+    renderClosed({
+      ...ON_CANCELLED_DEPARTURE,
+      status: 'PARTIALLY_REFUNDED',
+      refundedTotal: '20.00',
+    });
+    expect(screen.getByText('Your full refund is on its way.')).toBeInTheDocument();
+    expect(screen.queryByText(/has been refunded/)).toBeNull();
+  });
+
+  it.each([
+    [
+      'job đã chạy (CANCELLED, hoàn trọn)',
+      { status: 'CANCELLED', cancelledAt: '2026-10-02T02:00:00.000Z', refundedTotal: '147.00' },
+    ],
+    ['seed lượt 1 (REFUNDED, không cancelledAt)', { status: 'REFUNDED', refundedTotal: '147.00' }],
+  ] as const)('%s: câu của công ty và số đã hoàn', (_, patch) => {
+    renderClosed({ ...ON_CANCELLED_DEPARTURE, ...patch });
+    expect(
+      screen.getByRole('heading', { level: 2, name: 'Departure cancelled' }),
+    ).toBeInTheDocument();
+    expect(screen.getByText('We had to cancel this departure.')).toBeInTheDocument();
+    expect(
+      screen.getByText('$147.00 has been refunded to your original payment method.'),
+    ).toBeInTheDocument();
+    expect(screen.queryByText('Your full refund is on its way.')).toBeNull();
+  });
+
+  it('giữ chỗ chưa trả bị huỷ theo chuyến: câu của công ty, không chuyện tiền', () => {
+    renderClosed({
+      ...ON_CANCELLED_DEPARTURE,
+      status: 'CANCELLED',
+      paidAt: null,
+      cancelledAt: '2026-10-02T02:00:00.000Z',
+    });
+    expect(screen.getByText('We had to cancel this departure.')).toBeInTheDocument();
+    expect(screen.queryByText('Your full refund is on its way.')).toBeNull();
+    expect(screen.queryByText('No refund was due on this booking.')).toBeNull();
+  });
+
+  it('khách đã tự huỷ sau hạn chót TRƯỚC khi công ty huỷ chuyến: câu chuyện của khách', () => {
+    renderClosed({
+      ...ON_CANCELLED_DEPARTURE,
+      status: 'CANCELLED',
+      cancelledAt: '2026-09-21T02:00:00.000Z',
+      refundedTotal: '0.00',
+    });
+    expect(screen.getByRole('heading', { level: 2, name: 'Cancelled' })).toBeInTheDocument();
+    expect(screen.getByText('This booking was cancelled.')).toBeInTheDocument();
+    expect(screen.getByText('No refund was due on this booking.')).toBeInTheDocument();
+    expect(screen.queryByText('We had to cancel this departure.')).toBeNull();
+  });
+});
+
+/**
  * Qua hạn chót mà chưa trả (`lapsed`) chưa phải kết cục chắc chắn: claim của API vẫn nhận phiên
  * thanh toán mở TRƯỚC hạn (Stripe tới 60 phút, PayPal tới 3 giờ — ADR-0054 AMEND 1 §4). Chữ nói có
  * điều kiện, không khẳng định "đã lỡ" (review P7 S1).

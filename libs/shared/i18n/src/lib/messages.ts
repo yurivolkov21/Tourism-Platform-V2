@@ -3029,6 +3029,14 @@ export const messages = {
       finishOpenPayment:
         'If you started paying before then, finish in that payment window — the booking confirms itself once it goes through.',
       thanks: 'Thanks for travelling with us.',
+      /**
+       * Chuyến bị CÔNG TY huỷ (ADR-0041 AMEND 1): tiêu đề và câu thay cho "Cancelled · This
+       * booking was cancelled." của đơn khách tự huỷ.
+       */
+      departureCancelled: 'Departure cancelled',
+      weCancelled: 'We had to cancel this departure.',
+      /** Job hoàn tiền của chuyến huỷ chưa chạy (đơn còn PAID): tiền đang về, sổ chưa có số để kể. */
+      refundOnItsWay: 'Your full refund is on its way.',
     },
   },
   // Trang `/account/settings` (spec 09/10, phương án C): thẻ danh tính (ảnh, tên, email,

@@ -6,9 +6,11 @@ import {
   bookingTotalLabel,
   bookingView,
   cancellationDeadlineText,
+  cancelledByOperator,
   cancelledOn,
   freeCancellationOpen,
   legacyCancellationNote,
+  operatorRefundPending,
   paymentProviderLabel,
   refundSentence,
   refundSummary,
@@ -383,6 +385,58 @@ describe('refundSentence', () => {
     ['không hoàn đồng nào cũng nói ra', { kind: 'none' }, 'No refund was due on this booking.'],
   ] as const)('%s', (_, refund, sentence) => {
     expect(refundSentence(refund, 'USD')).toBe(sentence);
+  });
+});
+
+/**
+ * Chuyến bị CÔNG TY huỷ (ADR-0041 AMEND 1): trang kể "chúng tôi huỷ chuyến" thay cho "đơn đã
+ * huỷ". Lõi huỷ của công ty bỏ qua đơn đã đóng, nên đơn khách tự huỷ TRƯỚC đó mang cờ chuyến huỷ
+ * mà câu chuyện vẫn là của khách.
+ */
+describe('cancelledByOperator — đơn đóng vì công ty huỷ chuyến', () => {
+  it.each([
+    ['chuyến vẫn chạy, khách tự huỷ', { status: 'CANCELLED', refundedTotal: '10.00' }, false],
+    ['công ty huỷ, job hoàn tiền chưa chạy (đơn còn PAID)', { departureCancelled: true }, true],
+    [
+      'công ty huỷ, job đã hoàn trọn',
+      { departureCancelled: true, status: 'CANCELLED', refundedTotal: '10.00' },
+      true,
+    ],
+    [
+      'công ty huỷ, giữ chỗ chưa trả bị huỷ theo',
+      { departureCancelled: true, status: 'CANCELLED', paidAt: null },
+      true,
+    ],
+    [
+      'seed lượt 1: REFUNDED trên chuyến huỷ',
+      { departureCancelled: true, status: 'REFUNDED', refundedTotal: '10.00' },
+      true,
+    ],
+    // Công ty huỷ chuyến thì hoàn trọn phần còn lại; không hoàn đồng nào nghĩa là khách đã tự huỷ
+    // sau hạn chót trước khi chuyến bị huỷ — "chúng tôi huỷ chuyến" cạnh "No refund" là nói sai.
+    [
+      'khách tự huỷ sau hạn chót, trước khi công ty huỷ chuyến',
+      { departureCancelled: true, status: 'CANCELLED', refundedTotal: '0.00' },
+      false,
+    ],
+  ] as const)('%s → %s', (_, patch, expected) => {
+    expect(cancelledByOperator(makeBooking(patch))).toBe(expected);
+  });
+});
+
+describe('operatorRefundPending — tiền của đơn trên chuyến công ty huỷ còn đang về', () => {
+  it.each([
+    ['PAID, job chưa chạy', { departureCancelled: true, status: 'PAID' }, true],
+    [
+      'hoàn một phần, job chưa chạy',
+      { departureCancelled: true, status: 'PARTIALLY_REFUNDED' },
+      true,
+    ],
+    ['job đã chạy (CANCELLED)', { departureCancelled: true, status: 'CANCELLED' }, false],
+    ['seed lượt 1 (REFUNDED)', { departureCancelled: true, status: 'REFUNDED' }, false],
+    ['chuyến vẫn chạy', { departureCancelled: false, status: 'PAID' }, false],
+  ] as const)('%s → %s', (_, patch, expected) => {
+    expect(operatorRefundPending(makeBooking(patch))).toBe(expected);
   });
 });
 
