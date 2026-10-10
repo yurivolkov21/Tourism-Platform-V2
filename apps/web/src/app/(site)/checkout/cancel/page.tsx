@@ -6,9 +6,11 @@ import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { BookingReceipt } from '@/components/checkout/booking-receipt';
 import { ContentHero } from '@/components/content/content-hero';
+import { ReceiptPrint } from '@/components/print/receipt-print';
 import { fetchBookingByCode } from '@/lib/api/bookings';
 import { requireSession } from '@/lib/api/session';
 import { cancelPageRedirect, checkoutMood, pendingExpiry } from '@/lib/checkout';
+import { receiptPrintView } from '@/lib/print/receipt-print';
 
 export const metadata: Metadata = {
   title: `${messages.booking.cancel.title} — Nexora`,
@@ -38,12 +40,15 @@ export default async function CheckoutCancelPage({
   const booking = parsed?.success
     ? await fetchBookingByCode((await cookies()).toString(), parsed.data)
     : null;
+  // Đồng hồ server đọc MỘT lần: câu số phút còn lại và hoá đơn chờ in (G40) cùng một mốc.
+  const now = new Date();
 
   // Hạn còn lại chỉ có nghĩa khi booking THẬT SỰ còn PENDING. Booking đã sang
   // trạng thái khác (hết hạn ngay trong lúc khách phân vân) thì không in số
   // phút — in số cho một thứ đã kết thúc là nói dối. Đơn đã trả ở tab khác thì
   // sang voucher (bên dưới), không tới được hoá đơn này.
-  const expiry = booking && booking.status === 'PENDING' ? pendingExpiry(booking.createdAt) : null;
+  const expiry =
+    booking && booking.status === 'PENDING' ? pendingExpiry(booking.createdAt, now) : null;
 
   // Không tra được booking (thiếu mã, mã sai shape, hoặc không phải của khách
   // này) → không có gì để dựng hoá đơn. Vẫn KHÔNG `notFound()`: khách vừa rời
@@ -69,37 +74,44 @@ export default async function CheckoutCancelPage({
 
   return (
     <div>
-      {/* Cùng khuôn `/checkout/success` từ 19/08 (user chốt): hai màn quay-về
-          của cùng một luồng mà dùng hai ngôn ngữ thị giác thì màn huỷ trông lạc
-          lõng. `ContentHero` cũng là thứ cho navbar mảng tối — `/checkout` nằm
-          trong `HERO_LESS_PREFIXES`, nhưng `/checkout/cancel` KHÔNG nằm trong
-          `HERO_LESS_EXCEPTIONS`, nên navbar ở đây vẫn dùng kiểu đã-cuộn (nền
-          đặc) và hero không làm hỏng gì. */}
-      <ContentHero breadcrumb={messages.booking.success.heroBreadcrumb} title={booking.tourTitle} />
+      <div className="print:hidden">
+        {/* Cùng khuôn `/checkout/success` từ 19/08 (user chốt): hai màn quay-về
+            của cùng một luồng mà dùng hai ngôn ngữ thị giác thì màn huỷ trông lạc
+            lõng. `ContentHero` cũng là thứ cho navbar mảng tối — `/checkout` nằm
+            trong `HERO_LESS_PREFIXES`, nhưng `/checkout/cancel` KHÔNG nằm trong
+            `HERO_LESS_EXCEPTIONS`, nên navbar ở đây vẫn dùng kiểu đã-cuộn (nền
+            đặc) và hero không làm hỏng gì. */}
+        <ContentHero
+          breadcrumb={messages.booking.success.heroBreadcrumb}
+          title={booking.tourTitle}
+        />
 
-      <div className="py-10 md:py-14">
-        <BookingReceipt
-          booking={booking}
-          mood={checkoutMood(booking)}
-          title={t.title}
-          body={t.heldNote}
-        >
-          {expiry && !expiry.expired ? (
-            <p className="text-sm text-muted-foreground">
-              {/* Một câu, không đếm ngược — thiết kế đã chốt là KHÔNG có đồng hồ
-                  chạy lùi trên bất kỳ màn nào của luồng này. */}
-              {t.expiresIn(expiry.minutesLeft)}
-            </p>
-          ) : null}
-        </BookingReceipt>
+        <div className="py-10 md:py-14">
+          <BookingReceipt
+            booking={booking}
+            mood={checkoutMood(booking)}
+            title={t.title}
+            body={t.heldNote}
+          >
+            {expiry && !expiry.expired ? (
+              <p className="text-sm text-muted-foreground">
+                {/* Một câu, không đếm ngược — thiết kế đã chốt là KHÔNG có đồng hồ
+                    chạy lùi trên bất kỳ màn nào của luồng này. */}
+                {t.expiresIn(expiry.minutesLeft)}
+              </p>
+            ) : null}
+          </BookingReceipt>
 
-        <div className="mx-auto mt-8 flex w-full max-w-3xl flex-wrap items-center gap-2.5 px-4 print:hidden">
-          <ButtonLink href={`/account/bookings/${booking.code}`}>{t.manage}</ButtonLink>
-          <ButtonLink variant="outline" href="/tours">
-            {t.backToTours}
-          </ButtonLink>
+          <div className="mx-auto mt-8 flex w-full max-w-3xl flex-wrap items-center gap-2.5 px-4">
+            <ButtonLink href={`/account/bookings/${booking.code}`}>{t.manage}</ButtonLink>
+            <ButtonLink variant="outline" href="/tours">
+              {t.backToTours}
+            </ButtonLink>
+          </div>
         </div>
       </div>
+      {/* Trang huỷ không có nút Print (spec §4.1) — Ctrl+P in hoá đơn chờ B1 (G40, ADR-0057). */}
+      <ReceiptPrint view={receiptPrintView(booking, now)} />
     </div>
   );
 }

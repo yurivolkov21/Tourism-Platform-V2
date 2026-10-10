@@ -102,7 +102,7 @@ export function BookingReceipt({
       >
         {/* Hoá đơn "in ra" từng khối (nhóm motion 4, 19/08): đầu phiếu → ba cột →
             tổng → cuống, mỗi khối trồi lên cách nhau một nhịp STAGGER. Transform-
-            only nên bản in (`print`) và JS-tắt đều thấy đủ chữ. */}
+            only nên khi tắt JS vẫn thấy đủ chữ. */}
         <RevealItem enter="rise">
           <div className="flex flex-col gap-4 px-4 pb-1 sm:flex-row sm:justify-between">
             <div className="flex flex-col items-start gap-2">
@@ -271,7 +271,7 @@ function Row({ k, v }: { k: string; v: string }) {
  * tiền thì mã chỉ để trả tiếp hay tra đơn, KHÔNG phải giấy vào cổng, và booking
  * PENDING KHÔNG giữ ghế nào (invariant #1 của API). Nên không mã vạch (mã vạch
  * nghĩa là "quét tôi ở cổng"), không serial, và dòng hint nói mã sẽ thành
- * voucher khi trả xong.
+ * voucher khi trả xong; đơn đã đóng thì một câu nói thẳng đã đóng.
  */
 function Stub({
   booking,
@@ -298,8 +298,18 @@ function Stub({
       )}
     >
       <div>
-        <p className="font-medium">{departed ? t.departedOn(departure) : t.departsOn(departure)}</p>
-        <p className="text-xs text-muted-foreground">{t.stubNotYetVoucher}</p>
+        {/* Đơn đã đóng (tâm trạng `settled`: huỷ, lỡ hạn, bị thu rồi hoàn): một câu nói thẳng — không
+            ngày đi, không hứa mã sẽ thành voucher cho một đơn không còn trả được (G37). */}
+        {mood === 'settled' ? (
+          <p className="font-medium">{t.stubClosed}</p>
+        ) : (
+          <>
+            <p className="font-medium">
+              {departed ? t.departedOn(departure) : t.departsOn(departure)}
+            </p>
+            <p className="text-xs text-muted-foreground">{t.stubNotYetVoucher}</p>
+          </>
+        )}
       </div>
 
       <div className="flex flex-col items-start gap-1.5 sm:items-end">

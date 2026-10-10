@@ -246,6 +246,13 @@ describe('BookingReceipt — mã chưa phải voucher', () => {
     expect(screen.getByText(messages.checkoutSummary.totalLabel)).toBeInTheDocument();
     expect(screen.queryByText(t.totalLabel)).toBeNull();
   });
+
+  it('đơn chưa trả đã đóng: cuống nói thẳng đã đóng — không "Departs", không hứa thành voucher (G37)', () => {
+    render(<BookingReceipt booking={unpaid({ status: 'CANCELLED' })} mood="settled" />);
+    expect(screen.getByText(t.stubClosed)).toBeInTheDocument();
+    expect(screen.queryByText(t.stubNotYetVoucher)).toBeNull();
+    expect(screen.queryByText(/^Departs /)).toBeNull();
+  });
 });
 
 /**
