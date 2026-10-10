@@ -231,6 +231,8 @@ Năm cụm màn app điện thoại (P5b), mục lục và ranh giới ở
 [tài khoản](handoff/mobile-account-handoff.md) ·
 [đánh giá](handoff/mobile-review-handoff.md)
 
+Review nhánh đặt tour (mobile): [review `feat/mobile-booking-screens`](review-feat-mobile-booking-screens.md) · [hướng dẫn test các lỗi đã sửa](testing-guide-booking-fixes.md).
+
 ## Analysis — đo đạc và rà soát
 
 Trừ hai file đánh dấu **sống**, tất cả là ảnh chụp một thời điểm: đọc để lấy dữ
