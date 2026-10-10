@@ -72,9 +72,17 @@ describe('PrintTicket', () => {
 
   it('vé hết hiệu lực: dải thông báo thay thân vé', () => {
     const notice = 'This booking was cancelled — this voucher is no longer valid.';
-    render(<PrintTicket view={{ ...ACTIVE, tone: 'closed', notice }} />);
+    render(
+      <PrintTicket
+        view={{ ...ACTIVE, tone: 'closed', notice, stamp: { label: 'REFUNDED', tone: 'muted' } }}
+      />,
+    );
     expect(screen.getByText(notice)).toBeInTheDocument();
     expect(screen.queryByText('Nora Dahl')).toBeNull();
     expect(screen.queryByText(messages.bookingDetail.ticket.departs)).toBeNull();
+    // Bảng spec §3.3 hàng `cancelled`: mộc CANCELLED / REFUNDED vẫn đóng cạnh tên tour — chỉ thân vé
+    // (ngày, đường nối, bốn ô) thay bằng dải.
+    expect(screen.getByText('Hội An Old Town & Lantern Evening')).toBeInTheDocument();
+    expect(screen.getByText('REFUNDED')).toBeInTheDocument();
   });
 });

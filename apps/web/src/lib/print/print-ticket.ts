@@ -59,8 +59,9 @@ export interface PrintColumn {
   reference: boolean;
 }
 
-export interface PrintList {
-  items: string[];
+/** Danh sách đã cắt cho vừa một trang: các mục giữ lại và dòng "more" (nếu cắt). */
+export interface PrintList<T = string> {
+  items: T[];
   more: string | null;
 }
 
@@ -70,9 +71,7 @@ export interface PrintPhoto {
 }
 
 /** Bề rộng ảnh bìa xin Cloudinary: đủ nét cho 180 mm in, không nặng hơn cần (spec §12). */
-export const PRINT_PHOTO_WIDTH = 1400;
-/** Số dòng tối đa của một cột Included / Not included (spec §3.4). */
-export const MAX_LIST_ITEMS = 6;
+const PRINT_PHOTO_WIDTH = 1400;
 
 /** Tông mộc in (quyết định 5 của plan): xanh lá `success` đổi sang teal — G32. */
 export function stampTone(tone: BookingViewTone): DocStampTone {
@@ -118,11 +117,19 @@ export function printPhoto(image: Booking['tourImage']): PrintPhoto | null {
   };
 }
 
-/** Tối đa 6 dòng một cột; hơn thì 5 mục và "+n more" để giữ một trang. Rỗng thì bỏ cột. */
-export function capList(items: string[], more: (n: number) => string): PrintList | null {
+/**
+ * Luật cắt chung của bản in (spec §3.4): tối đa `max` dòng; hơn thì `max − 1` mục và một dòng
+ * "more" — tổng số dòng không bao giờ vượt `max`. Rỗng thì `null`: bỏ cả khối, không in tiêu đề
+ * trên một danh sách trống.
+ */
+export function capList<T>(
+  items: T[],
+  max: number,
+  more: (n: number) => string,
+): PrintList<T> | null {
   if (items.length === 0) return null;
-  if (items.length <= MAX_LIST_ITEMS) return { items, more: null };
-  const keep = MAX_LIST_ITEMS - 1;
+  if (items.length <= max) return { items, more: null };
+  const keep = max - 1;
   return { items: items.slice(0, keep), more: more(items.length - keep) };
 }
 

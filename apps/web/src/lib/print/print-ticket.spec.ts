@@ -57,14 +57,14 @@ describe('ticketCells — bốn ô của vé', () => {
 describe('capList — tối đa 6 dòng mỗi cột', () => {
   const more = (n: number) => `+${n} more`;
   it('rỗng thì null — bỏ cột', () => {
-    expect(capList([], more)).toBeNull();
+    expect(capList([], 6, more)).toBeNull();
   });
   it('6 mục giữ nguyên', () => {
     const items = ['a', 'b', 'c', 'd', 'e', 'f'];
-    expect(capList(items, more)).toEqual({ items, more: null });
+    expect(capList(items, 6, more)).toEqual({ items, more: null });
   });
   it('7 mục thì 5 mục và "+2 more"', () => {
-    expect(capList(['a', 'b', 'c', 'd', 'e', 'f', 'g'], more)).toEqual({
+    expect(capList(['a', 'b', 'c', 'd', 'e', 'f', 'g'], 6, more)).toEqual({
       items: ['a', 'b', 'c', 'd', 'e'],
       more: '+2 more',
     });
