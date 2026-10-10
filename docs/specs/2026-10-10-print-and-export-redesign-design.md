@@ -78,7 +78,7 @@ trang tour), trang Passport.
 ### 2.4 Màu & mực
 
 - Token mới: `chart-gain`, `chart-cost`, `pending`, `pending-soft` (giá trị ở ADR-0057 §5). Mọi
-  màu khác dùng token sẵn có (`primary`, `primary-emphasis`, `hero`, `paper-tint`, `ink`,
+  màu khác dùng token sẵn có (`primary`, `primary-emphasis`, `hero`, `paper`, `ink`,
   `muted-foreground`…).
 - `print-color-adjust: exact` cho: ảnh bìa và lớp phủ, dải teal của vé, cuống gạch chéo, các dải
   nền nhạt, mã vạch, thanh biểu đồ.
@@ -117,7 +117,7 @@ trang tour), trang Passport.
 3. **Dòng xé** "Show the ticket at pickup — printed or on your phone" (chỉ khi có mã vạch).
 4. **"Your day · {tiêu đề ngày}"**: dòng thời gian hai cột, chấm teal, giờ mono.
 5. **Included / Not included**: hai cột, dấu ✓ và –.
-6. **Dải ba cột** nền `paper-tint`: Where to meet · Cancellation · Payment.
+6. **Dải ba cột** nền `paper`: Where to meet · Cancellation · Payment.
 7. Chân trang khách.
 
 ### 3.2 Nguồn dữ liệu

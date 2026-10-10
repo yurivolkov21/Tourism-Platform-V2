@@ -39,7 +39,7 @@ màn hình là vỡ bản in (review P7C#7, #13).
 - Áp cho `/checkout/success` (voucher của đơn đã trả · hoá đơn chờ của đơn chưa trả),
   `/checkout/cancel` (hoá đơn chờ) và admin `/reports` (báo cáo tháng).
 - Nội dung màn hình bọc `print:hidden`; tài liệu in render cùng request, ẩn trên màn hình
-  (`hidden print:block`), đánh dấu `data-print-doc`.
+  (`hidden print:flex` — cột dọc để chân trang dính đáy), đánh dấu `data-print-doc`.
 - Tài liệu in dùng CHUNG view-model với màn hình (`voucherView`, `bookingPass`,
   `refundSentence`, `reports-view`…) — hai bộ markup, một nguồn sự thật. Không gọi API thêm
   ngoài dữ liệu trang đã có, trừ ngoại lệ ở §4.
@@ -96,6 +96,13 @@ Màu mới của bản in vào `@tourism/tokens` (luật 6, không hex trong cod
 Cặp `chart-gain` / `chart-cost` đã qua bộ kiểm bảng màu của skill dataviz (độ sáng, chroma, tách
 màu khi mù màu, tương phản) ở chế độ sáng. Teal `chart-1` sẵn có trượt ngưỡng chroma (đọc ra xám)
 nên không dùng cho biểu đồ in.
+
+**Giấy luôn sáng** (bổ sung 10/10 khi viết plan Phần 1, trước code): class `dark` trên `<html>`
+còn nguyên lúc in, nên khách in từ giao diện tối sẽ ra giấy tối. Bộ build token sinh thêm phạm
+vi `.light { … }` — giá trị sáng của mọi màu, đứng sau `.dark` — và tài liệu in mang class
+`light`. Bốn token trên có giá trị tối bằng giá trị sáng (cùng lối `on-media`). Ngược lại, đầu
+trang nằm trên ảnh bìa dùng scope `dark` sẵn có của repo (như hero trang About): ở đó
+`primary-emphasis` là teal nhạt, đúng màu viên sau của logo trên bìa mà không thêm token.
 
 ### 6. Không thư viện mới
 
