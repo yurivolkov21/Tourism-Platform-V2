@@ -53,7 +53,7 @@ describe('receiptPrintView — đơn đang chờ trả', () => {
       amount: '$39',
       note: r.totalNote,
       barcode: null,
-      footer: { label: r.payBy, value: '19:04 · 9 Oct' },
+      footer: { label: r.payBy, value: '18:59 · 9 Oct' },
     });
     expect(v.tear).toBe(messages.booking.success.stubNotYetVoucher);
   });
@@ -85,7 +85,7 @@ describe('receiptPrintView — đơn đang chờ trả', () => {
       {
         heading: r.ifUnpaid,
         strong: null,
-        text: r.releasedAt('19:04, 9 Oct 2026'),
+        text: r.releasedAt('18:59, 9 Oct 2026'),
         reference: false,
       },
       {
@@ -97,10 +97,10 @@ describe('receiptPrintView — đơn đang chờ trả', () => {
     ]);
   });
 
-  it('quá 65 phút mà cron chưa quét: vẫn đang chờ (API còn nhận trả — quyết định 18)', () => {
+  it('quá mốc mà cron chưa quét: vẫn đang chờ (API còn nhận trả — quyết định 18)', () => {
     const late = receiptPrintView(pending(), new Date('2026-10-09T15:00:00.000Z'));
     expect(late.ticket.tone).toBe('pending');
-    expect(late.ticket.stub.footer).toEqual({ label: r.payBy, value: '19:04 · 9 Oct' });
+    expect(late.ticket.stub.footer).toEqual({ label: r.payBy, value: '18:59 · 9 Oct' });
   });
 });
 

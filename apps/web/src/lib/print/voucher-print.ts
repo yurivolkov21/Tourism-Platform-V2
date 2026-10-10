@@ -76,6 +76,7 @@ export function voucherPrintView(
   // Giờ hẹn là của NGÀY 1: đang đi từ ngày 2 thì dải cuối không nói "meet your guide at 08:00" cạnh
   // lịch hôm nay có giờ khác (review G40). Dòng ngày đi vẫn giữ — nó gắn với ngày đi.
   const bandMeetTime = dayOfTrip === null || dayOfTrip === 1 ? meetTime : null;
+  const refunded = Number(booking.refundedTotal) > 0;
 
   return {
     photo: printPhoto(booking.tourImage),
@@ -104,10 +105,19 @@ export function voucherPrintView(
         band: messages.bookingDetail.ticket.admit(booking.numAdults + booking.numChildren),
         tag: null,
         amountLabel: bookingTotalLabel(booking),
-        amount: formatBookingMoney(booking, booking.totalAmount),
+        // Cùng hình voucher màn hình (`VoucherPass`): có khoản hoàn thì kể "Refunded −$X" và tổng đủ
+        // hai số lẻ — tiền hoàn luôn đủ hai số lẻ (đối chiếu sao kê), hai độ chính xác cạnh nhau là lạ.
+        amount: formatBookingMoney(booking, booking.totalAmount, { exact: refunded }),
         note: messages.bookingDetail.ticket.taxesIncluded,
         barcode: view.showBarcode ? booking.code : null,
-        footer: null,
+        footer: refunded
+          ? {
+              label: messages.voucher.refunded,
+              value: messages.voucher.refundedAmount(
+                formatMoneyExact(booking.refundedTotal, booking.currency),
+              ),
+            }
+          : null,
       },
       notice: view.cancelledNotice,
     },
