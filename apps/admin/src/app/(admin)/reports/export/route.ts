@@ -119,6 +119,10 @@ export async function GET(request: NextRequest) {
   });
   return xlsxExportResponse(
     `nexora-report-${report.month}`,
-    await buildReportWorkbook(report, rows, detailNote),
+    await buildReportWorkbook(report, rows, {
+      detailNote,
+      // Hyperlink mã đơn trỏ về CHÍNH admin đang chạy (dev hay prod) — builder không đoán domain.
+      adminOrigin: request.nextUrl.origin,
+    }),
   );
 }
