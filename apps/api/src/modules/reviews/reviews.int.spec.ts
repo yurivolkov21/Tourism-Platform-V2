@@ -1457,6 +1457,31 @@ describe('reviews (int)', () => {
     const patch = (cookie: string, id: string, payload: Record<string, unknown>) =>
       app.inject({ method: 'PATCH', url: `/api/reviews/${id}`, headers: { cookie }, payload });
 
+    it('update trả `tourImage` (ảnh bìa tour) như `mine`, không null (V6)', async () => {
+      const { cookie, reviewId } = await seedOwnReview('edit-cover@example.com');
+      const booking = await prisma.booking.findUniqueOrThrow({ where: { code: 'BK-TESTREV1' } });
+      await prisma.mediaAsset.create({
+        data: {
+          publicId: 'tours/review-cover-hero',
+          type: 'IMAGE',
+          ownerType: 'TOUR',
+          ownerId: booking.tourId,
+          role: 'hero',
+          sortOrder: 0,
+        },
+      });
+
+      const res = await patch(cookie, reviewId, {
+        id: reviewId,
+        rating: 5,
+        body: 'Bài viết đã sửa lại cho rõ ràng hơn',
+      });
+
+      expect(res.statusCode).toBe(200);
+      expect(res.json().tourImage?.role).toBe('hero');
+      expect(res.json().tourImage?.url).toContain('tours/review-cover-hero');
+    });
+
     it('sửa review ĐANG CHỜ: nội dung thay, vẫn ở hàng đợi', async () => {
       const { cookie, reviewId } = await seedOwnReview('edit-pending@example.com');
 

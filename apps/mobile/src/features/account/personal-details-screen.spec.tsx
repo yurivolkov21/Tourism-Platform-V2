@@ -10,8 +10,6 @@ function baseProps(
     email: 'lan.nguyen@example.com',
     nameLabel: 'Name',
     emailLabel: 'Email',
-    passwordLabel: 'Password',
-    onPasswordPress: jest.fn(),
     deleteAccountLabel: 'Delete account',
     onDeleteAccountPress: jest.fn(),
     ...overrides,

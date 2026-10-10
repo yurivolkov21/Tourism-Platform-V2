@@ -1,10 +1,12 @@
 import { ORPCError } from '@orpc/client';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { messages } from '@tourism/i18n';
 import { router } from 'expo-router';
 import { useState } from 'react';
 import { type MyReviewCardVM, MyReviewsScreen } from '@/features/reviews/my-reviews-screen';
 import { RetractSheet } from '@/features/reviews/retract-sheet';
+import { ReviewLoadState } from '@/features/reviews/review-load-state';
+import { useMyReviews } from '@/features/reviews/use-my-reviews';
 import { orpc, withMobileAuth } from '@/lib/api/client';
 
 /** R4 + R7 — "Đánh giá của tôi" và tấm xác nhận rút bài. Route trả CẢ bài chưa duyệt. */
@@ -15,12 +17,7 @@ export default function MyReviewsRoute() {
   const [retractId, setRetractId] = useState<string | null>(null);
   const [retractError, setRetractError] = useState<string | null>(null);
 
-  const query = useQuery(
-    orpc.reviews.mine.queryOptions({
-      input: { page: 1, limit: 50 },
-      context: withMobileAuth(),
-    }),
-  );
+  const query = useMyReviews();
 
   const retractMutation = useMutation(
     orpc.reviews.retract.mutationOptions({ context: withMobileAuth() }),
@@ -60,6 +57,18 @@ export default function MyReviewsRoute() {
           setRetractError(retractCopy.toast.error.body);
         },
       },
+    );
+  }
+
+  // Đang tải / lỗi KHÔNG được rơi vào "chưa có đánh giá nào" (V1).
+  if (query.isPending || query.isError) {
+    return (
+      <ReviewLoadState
+        state={query.isPending ? 'loading' : 'error'}
+        errorText={messages.reviews.loadError}
+        retryLabel={messages.reviews.loadErrorRetry}
+        onRetry={() => void query.refetch()}
+      />
     );
   }
 

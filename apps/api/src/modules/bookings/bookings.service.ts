@@ -744,7 +744,7 @@ export class BookingsService {
         refundedTotal: refunded._sum.amount,
         reviewedAt: review?.createdAt ?? null,
       }),
-      review: review ? toMyReview(review, reviewMedia) : null,
+      review: review ? toMyReview(review, reviewMedia, tourImage) : null,
       // ADR-0041: trạng thái huỷ theo hạn chót, cùng hàm luật với lõi huỷ — con
       // số khách thấy là con số server hoàn. Web chỉ in (Q7).
       cancellation: bookingCancellation(booking, refunded._sum.amount, new Date()),

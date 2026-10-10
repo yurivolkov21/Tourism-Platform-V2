@@ -161,11 +161,10 @@ describe('vỏ điều hướng', () => {
     // S3 của Saved — tiêu đề khác "Account" (chữ tab, chỉ còn đọc qua a11y).
     expect(screen.getByText(messages.mobile.authPrompts.accountGateTitle)).toBeTruthy();
     expect(screen.queryByText(placeholder)).toBeNull();
-    // Năm link trợ giúp/pháp lý gom thành một dòng "Help & legal" mở sheet
-    // (commit 8e9b79f5); Help & FAQ/About nằm trong sheet, không còn trên gate.
-    // Không bấm mở sheet ở đây: bấm làm rò trạng thái router sang test sau.
-    expect(screen.getByText(messages.mobile.account.menuHelpLegal)).toBeTruthy();
-    expect(screen.queryByText(messages.mobile.account.menuHelp)).toBeNull();
+    // NĂM dòng mở trình duyệt ngoài, không chỉ ba dòng pháp lý (phản hồi
+    // 26/09, đối chiếu mockup — Help & FAQ/About từng bị thiếu ở A2).
+    expect(screen.getByText(messages.mobile.account.menuHelp)).toBeTruthy();
+    expect(screen.getByText(messages.mobile.account.menuAbout)).toBeTruthy();
   });
 
   it('tab /explore render được, không còn chỗ giữ chỗ', async () => {

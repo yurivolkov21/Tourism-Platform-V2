@@ -1754,6 +1754,11 @@ export const messages = {
     alreadyReviewedTitle: 'You’ve already reviewed this trip',
     alreadyReviewedBody: 'Thanks again for sharing your experience with other travellers.',
     backToTrip: 'Back to my trip',
+    /** R4/R5/R6 — danh sách review không tải được (khác với "chưa có review nào"). */
+    loadError: 'Couldn’t load your reviews.',
+    loadErrorRetry: 'Try again',
+    /** R6 không gắn được booking (review curated) — quay về danh sách thay vì chuyến. */
+    backToReviews: 'Back to my reviews',
     pendingReview: 'Pending review',
     seeMyReviews: 'See my reviews',
     /** R4 — "Đánh giá của tôi" (mockup mobile-review-screens mục 2). */
@@ -1818,6 +1823,8 @@ export const messages = {
     /** Nhãn lý do cuối cùng (R6) — khác `rejectedReason` ở R5 vì đây là lần bác thứ hai. */
     rejectedFinalReason: 'Last reason given',
     rejectedFinalContact: 'Think this is a mistake? Write to us about it',
+    /** Dòng trấn an bắt buộc của R6 (handoff §7.3): bị bác hai lần dễ tưởng mình bị phạt. */
+    rejectedFinalReassure: 'Your trip and booking are not affected.',
     /** Nút gửi ở chế độ SỬA — khác "Submit review" vì việc khác nhau. */
     resubmit: 'Send for review again',
     /** Còn đúng một lượt sửa — nói trước khi khách gõ (REVIEW_REJECTION_LIMIT trừ rejectionCount). */
@@ -2385,9 +2392,6 @@ export const messages = {
       menuTravelStories: 'Travel stories',
       menuPassword: 'Password',
       menuHelp: 'Help & FAQ',
-      /** Một dòng gom cả năm link trợ giúp/pháp lý (mở sheet liệt kê). */
-      menuHelpLegal: 'Help & legal',
-      legalSheetTitle: 'Help & legal',
       menuAbout: 'About Nexora',
       menuPrivacy: 'Privacy policy',
       menuTerms: 'Terms of service',

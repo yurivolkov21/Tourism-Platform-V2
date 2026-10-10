@@ -26,7 +26,7 @@ import {
 import { createdAtRange } from '../../lib/created-at-range.js';
 import { escapeLike } from '../../lib/like.js';
 import { uploadFolderFor } from '../../lib/upload-signing.js';
-import { resolveTourCover } from '../bookings/bookings.service.js';
+import { pickCover } from '../catalog/catalog.service.js';
 import { MediaService } from '../media/media.service.js';
 import { MediaGarbageService } from '../media/media-garbage.service.js';
 import { moderationRevalidationTags } from '../web-revalidation/revalidation-decision.js';
@@ -460,7 +460,7 @@ export class ReviewsService {
     });
 
     const media = (await this.media.resolveForOwners(MediaOwnerType.REVIEW, [row.id])).get(row.id);
-    return toMyReview(row, media ?? []);
+    return toMyReview(row, media ?? [], await this.tourCover(row.booking?.tourId));
   }
 
   /**
@@ -554,7 +554,7 @@ export class ReviewsService {
     });
 
     const media = (await this.media.resolveForOwners(MediaOwnerType.REVIEW, [row.id])).get(row.id);
-    const review = toMyReview(row, media ?? []);
+    const review = toMyReview(row, media ?? [], await this.tourCover(row.booking?.tourId));
 
     // Bust cache SAU commit (cùng lý do moderate()): review vừa rời site,
     // trang tour phải thôi hiện nó. Luôn là chiều approved → không-đăng nên
@@ -972,6 +972,13 @@ export class ReviewsService {
     };
   }
 
+  /** Ảnh bìa của MỘT tour (đường đọc đơn lẻ: update/retract) — `mine()` tự gom cả trang. */
+  private async tourCover(tourId: string | undefined): Promise<MediaItem | null> {
+    if (tourId === undefined) return null;
+    const map = await this.media.resolveForOwners(MediaOwnerType.TOUR, [tourId], [MediaRole.hero]);
+    return pickCover(map.get(tourId));
+  }
+
   /**
    * Review của CHÍNH user gọi API — khác `listByTour` ở chỗ KHÔNG lọc
    * `isApproved`: đây là review của chính họ nên họ có quyền thấy cả review
@@ -1019,24 +1026,21 @@ export class ReviewsService {
       rows.map((r) => r.id),
     );
 
-    // Ảnh bìa tour cho thẻ R5: MỘT lần cho mỗi tour trong trang (không N+1).
+    // Ảnh bìa tour cho thẻ R5: MỘT query media cho cả trang (không N+1) — trước đây
+    // mỗi tour một query riêng qua `resolveTourCover`.
     const tourIds = [
       ...new Set(rows.map((r) => r.booking?.tourId).filter((id): id is string => id != null)),
     ];
-    const covers = new Map(
-      await Promise.all(
-        tourIds.map(
-          async (tourId) => [tourId, await resolveTourCover(this.media, tourId)] as const,
-        ),
-      ),
-    );
+    const coverMap = await this.media.resolveForOwners(MediaOwnerType.TOUR, tourIds, [
+      MediaRole.hero,
+    ]);
 
     return {
       items: rows.map((row) =>
         toMyReview(
           row,
           mediaMap.get(row.id) ?? [],
-          row.booking ? (covers.get(row.booking.tourId) ?? null) : null,
+          row.booking ? pickCover(coverMap.get(row.booking.tourId)) : null,
         ),
       ),
       page,

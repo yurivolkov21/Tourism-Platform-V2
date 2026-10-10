@@ -1,9 +1,9 @@
-import { useQuery } from '@tanstack/react-query';
 import { messages } from '@tourism/i18n';
 import { AppText, Button, Screen, useTheme } from '@tourism/mobile-ui';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Pressable, ScrollView, View } from 'react-native';
-import { orpc, withMobileAuth } from '@/lib/api/client';
+import { ReviewLoadState } from '@/features/reviews/review-load-state';
+import { useMyReviews } from '@/features/reviews/use-my-reviews';
 
 /**
  * R6 — "Hết lượt viết lại" (mockup `mobile-review-screens` mục 2). Bị bác hai lần:
@@ -15,11 +15,34 @@ export default function ExhaustedReviewRoute() {
   const theme = useTheme();
   const copy = messages.reviews;
 
-  const listQuery = useQuery(
-    orpc.reviews.mine.queryOptions({ input: { page: 1, limit: 50 }, context: withMobileAuth() }),
-  );
+  const listQuery = useMyReviews();
   const review = listQuery.data?.items.find((item) => item.id === id);
-  if (review === undefined) return null;
+
+  if (listQuery.isPending || listQuery.isError || review === undefined) {
+    return (
+      <ReviewLoadState
+        state={listQuery.isPending ? 'loading' : 'error'}
+        errorText={
+          listQuery.isError ? copy.loadError : (copy.errors.REVIEW_NOT_FOUND ?? copy.loadError)
+        }
+        retryLabel={copy.loadErrorRetry}
+        onRetry={() => void listQuery.refetch()}
+      />
+    );
+  }
+
+  // "Write to us" mang theo tour của bài (nếu có) để người đọc enquiry biết nói về chuyến nào (V8).
+  function contactUs() {
+    if (review === undefined) return;
+    router.push({
+      pathname: '/enquiry',
+      params: {
+        ...(review.tourSlug ? { tourSlug: review.tourSlug } : {}),
+        ...(review.tourTitle ? { tripTitle: review.tourTitle } : {}),
+        ...(review.tourImage ? { tripImageUrl: review.tourImage.url } : {}),
+      },
+    });
+  }
 
   return (
     <Screen edges={[]} padded={false} scrollable={false}>
@@ -50,6 +73,9 @@ export default function ExhaustedReviewRoute() {
         <AppText variant="subtitle" tone="muted" style={{ textAlign: 'center' }}>
           {copy.rejectedFinalBody}
         </AppText>
+        <AppText variant="caption" tone="muted" style={{ textAlign: 'center' }}>
+          {copy.rejectedFinalReassure}
+        </AppText>
         <View
           style={{
             alignSelf: 'stretch',
@@ -72,13 +98,20 @@ export default function ExhaustedReviewRoute() {
         <View style={{ width: '75%' }}>
           <Button
             label={messages.mobile.booking.detail.contactLinkLabel}
-            onPress={() => router.push('/enquiry')}
+            onPress={contactUs}
             shape="pill"
           />
         </View>
-        <Pressable accessibilityRole="button" onPress={() => router.back()}>
+        <Pressable
+          accessibilityRole="button"
+          onPress={() =>
+            review.bookingCode === null
+              ? router.back()
+              : router.push(`/trips/${review.bookingCode}`)
+          }
+        >
           <AppText variant="caption" style={{ color: theme.colors['primary-emphasis'] }}>
-            {copy.backToTrip}
+            {review.bookingCode === null ? copy.backToReviews : copy.backToTrip}
           </AppText>
         </Pressable>
       </ScrollView>

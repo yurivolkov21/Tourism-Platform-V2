@@ -7,8 +7,6 @@ export interface PersonalDetailsScreenProps {
   email: string;
   nameLabel: string;
   emailLabel: string;
-  passwordLabel: string;
-  onPasswordPress: () => void;
   deleteAccountLabel: string;
   onDeleteAccountPress: () => void;
 }
@@ -26,8 +24,6 @@ export function PersonalDetailsScreen({
   email,
   nameLabel,
   emailLabel,
-  passwordLabel,
-  onPasswordPress,
   deleteAccountLabel,
   onDeleteAccountPress,
 }: PersonalDetailsScreenProps) {
@@ -74,24 +70,6 @@ export function PersonalDetailsScreen({
           </AppText>
           <AppText variant="label">{email}</AppText>
         </View>
-
-        <Pressable
-          accessibilityRole="button"
-          onPress={onPasswordPress}
-          style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            gap: theme.spacing(3),
-            paddingVertical: theme.spacing(2.5),
-            borderBottomWidth: 1,
-            borderBottomColor: theme.colors.border,
-          }}
-        >
-          <AppText variant="subtitle" tone="muted" style={{ flex: 1 }}>
-            {passwordLabel}
-          </AppText>
-          <Feather name="chevron-right" size={18} color={theme.colors['muted-foreground']} />
-        </Pressable>
 
         <Pressable
           accessibilityRole="button"

@@ -26,3 +26,10 @@ export function myReviewTone(
   if (state === 'rejected') return 'destructive';
   return 'muted';
 }
+
+/**
+ * Tham số `reviews.mine` cho mọi màn cụm review. Tên khoá PHẢI khớp `PageQuerySchema`
+ * (`pageSize`, không phải `limit`): Zod bỏ khoá lạ nên `limit` trước đây không có
+ * tác dụng, server trả mặc định 20 bài và bài cũ hơn không sửa/rút được từ app.
+ */
+export const MY_REVIEWS_INPUT = { page: 1, pageSize: 100 } as const;
