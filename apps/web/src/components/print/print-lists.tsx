@@ -1,6 +1,6 @@
 import { messages } from '@tourism/i18n';
+import { PRINT_SECTION } from '@tourism/ui/lib/print-styles';
 import type { PrintList } from '@/lib/print/print-ticket';
-import { PRINT_SECTION } from './print-styles';
 
 /** Hai cột Included / Not included của voucher 5b: ✓ teal và – xám. Hai cột trống thì không vẽ. */
 export function PrintLists({

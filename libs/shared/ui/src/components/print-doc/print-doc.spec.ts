@@ -17,6 +17,15 @@ describe('DocPage', () => {
       expect(classes).toContain(cls);
     }
   });
+
+  // Tờ phủ kín A4 lề 0 và ép in màu: nền phải là màu gần trắng nhất (`card`), không phải
+  // `background` ám xám — cả tờ in một lớp nền, tốn mực, dải `paper` chìm vào (review G40).
+  it('nền giấy là card, không phải background', () => {
+    const html = renderToStaticMarkup(createElement(DocPage, null, 'x'));
+    const classes = html.match(/class="([^"]*)"/)?.[1]?.split(' ') ?? [];
+    expect(classes).toContain('bg-card');
+    expect(classes).not.toContain('bg-background');
+  });
 });
 
 describe('DocLetterhead', () => {

@@ -4,17 +4,29 @@
  * Tên tháng lấy từ en-US: luôn "Sep". en-GB của ICU mới in "Sept", lệch mọi ngày khác của site
  * (`formatDate` của web in "Sep"). Ghép từ `formatToParts` để thứ tự cố định "ngày tháng năm" thay vì
  * thứ tự Mỹ; `hourCycle: 'h23'` để nửa đêm là "00", không phải "24".
+ *
+ * Chỉ giữ thứ khung chung cần: giờ đóng dấu của `PrintedAt`, mốc đầu trang, giờ của một mốc. NGÀY
+ * trong thân tài liệu đi qua bộ định dạng của app (`formatDate`, `formatChipDate` của web) để một tờ
+ * không có hai nguồn tên tháng (review G40).
  */
+
+/** Bộ định dạng theo múi giờ, tạo LƯỜI ở lần gọi đầu rồi dùng lại — dựng mới tốn ~10 lần. */
+const formatters = new Map<string, Intl.DateTimeFormat>();
+
 function parts(at: Date, timeZone: string): Record<string, string> {
-  const formatter = new Intl.DateTimeFormat('en-US', {
-    timeZone,
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-    hourCycle: 'h23',
-  });
+  let formatter = formatters.get(timeZone);
+  if (formatter === undefined) {
+    formatter = new Intl.DateTimeFormat('en-US', {
+      timeZone,
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      hourCycle: 'h23',
+    });
+    formatters.set(timeZone, formatter);
+  }
   const out: Record<string, string> = {};
   for (const part of formatter.formatToParts(at)) out[part.type] = part.value;
   return out;
@@ -26,20 +38,8 @@ export function formatPrintDateTime(at: Date, timeZone: string): string {
   return `${p.day} ${p.month} ${p.year}, ${p.hour}:${p.minute}`;
 }
 
-/** "9 Oct 2026". */
-export function formatPrintDate(at: Date, timeZone: string): string {
-  const p = parts(at, timeZone);
-  return `${p.day} ${p.month} ${p.year}`;
-}
-
 /** "19:04". */
 export function formatPrintTime(at: Date, timeZone: string): string {
   const p = parts(at, timeZone);
   return `${p.hour}:${p.minute}`;
-}
-
-/** "9 Oct" — ngày của dòng "Pay by". */
-export function formatPrintDayMonth(at: Date, timeZone: string): string {
-  const p = parts(at, timeZone);
-  return `${p.day} ${p.month}`;
 }

@@ -80,4 +80,27 @@
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
   }
+
+  /* Cô lập tài liệu khi in (ADR-0057 §1): trang có `[data-print-doc]` thì giấy chỉ còn tài liệu.
+   * KHÔNG bám cấu trúc DOM của app nào — web là `body > main`, admin là vỏ sidebar nhiều tầng flex
+   * có đệm (một tầng đệm 6 mm đủ đẩy tờ 297 mm sang trang 2). Ba vế:
+   * - `body` thành khối thường, không đệm, không nền (giao diện tối không lọt ra giấy): trang in tên
+   *   `doc` chắc ăn nhất khi tài liệu nằm trong luồng khối thường.
+   * - Mọi tổ tiên của tài liệu mất hộp (`display: contents`): đệm, gap, flex, nền của vỏ biến mất.
+   * - Mọi thứ khác (chrome, nội dung màn hình, toast) bị giấu ở mọi tầng.
+   * Nội dung màn hình vẫn bọc `print:hidden` ở trang — luật này là lưới, không phải chỗ thay thế. */
+  body:has([data-print-doc]) {
+    display: block;
+    margin: 0;
+    padding: 0;
+    background: none;
+  }
+
+  body :has([data-print-doc]) {
+    display: contents;
+  }
+
+  body:has([data-print-doc]) :not(:has([data-print-doc]), [data-print-doc], [data-print-doc] *) {
+    display: none;
+  }
 }

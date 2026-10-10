@@ -35,6 +35,15 @@ const blocks = (container: HTMLElement) => {
 };
 
 describe('VoucherPrint', () => {
+  // Giấy luôn sáng (ADR-0057 §5): `.light` chỉ đặt lại biến màu, còn biến thể `dark:` vẫn khớp mọi
+  // con của `<html class="dark">`. Linh kiện mang `dark:` lọt vào tài liệu in là in nền tối lên giấy
+  // sáng khi khách in từ giao diện tối — chặn ở đây, mọi tài liệu in dùng lại luật này.
+  it('không class `dark:` nào trong tài liệu in', () => {
+    const { container } = renderPrint();
+    const classes = [...container.querySelectorAll('[class]')].flatMap((el) => [...el.classList]);
+    expect(classes.filter((cls) => cls.startsWith('dark:'))).toEqual([]);
+  });
+
   it('là tài liệu in: data-print-doc, ẩn trên màn hình, hiện khi in', () => {
     const { container } = renderPrint();
     const doc = container.querySelector('[data-print-doc]');
