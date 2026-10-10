@@ -3660,6 +3660,14 @@ export const messages = {
       /** Tháng chưa tới — chưa ngày nào được tính (admin vốn không bày tháng này). */
       periodNotStarted: 'Not started yet',
       generatedAt: (at: string) => `Generated ${at}`,
+      /**
+       * Tiêu đề, dòng kỳ và tên khối của báo cáo dạng dashboard (G40: file Excel D1, bản in C2 dùng
+       * chung — spec 2026-10-10 §5.1, §6.2). `month` là "September 2026" (`formatMonthLabel`).
+       */
+      reportTitle: (month: string) => `Monthly report — ${month}`,
+      periodLine: (period: string, currency: string, rate: string) =>
+        `${period} · all amounts in ${currency} · tax on margin ${rate}`,
+      waterfallHeading: 'From revenue to net profit',
       cards: {
         /**
          * Cùng con số như trước (neo `paid_at`), tên đúng hơn từ 05/09: khi
@@ -3672,6 +3680,10 @@ export const messages = {
         netProfit: 'Net profit',
         /** Caption của card lợi nhuận gộp — biên % nói nhiều hơn kỳ báo cáo. */
         marginCaption: (pct: string) => `Gross margin ${pct}`,
+        /** Dòng phụ của ba ô số còn lại trên dashboard (bản thảo D1). */
+        recognizedCaption: 'Trips that finished this month',
+        netCaption: 'After tax and payment fees',
+        paidCaption: (count: string) => `${count} paid ${count === '1' ? 'booking' : 'bookings'}`,
       },
       /**
        * Bảng P&L (ADR-0033 §1) — khối số liệu neo NGÀY CHUYẾN CHẠY, đứng cạnh
@@ -3752,6 +3764,13 @@ export const messages = {
        * năm sheet chứ không phải hai cột, và tên sheet là thứ chỉ nó mới cần.
        */
       xlsx: {
+        /** Metadata của workbook và phần giữa đầu trang khi in (spec §6.1). */
+        docTitle: (month: string) => `Nexora — monthly report ${month}`,
+        subject: (month: string) => `Monthly report, ${month}`,
+        headerCenter: (month: string) => `Monthly report · ${month}`,
+        shareOfRevenue: 'Share of revenue',
+        share: 'Share',
+        seeDefinitions: 'How to read these numbers: see the Definitions sheet.',
         title: 'Nexora — monthly report',
         period: 'Period',
         generatedAt: 'Generated',
@@ -3797,6 +3816,19 @@ export const messages = {
             `Note: ${rows} rows here, but the Bookings sheet counts ${expected} — the list changed between the two reads. Export again for a consistent snapshot.`,
         },
       },
+    },
+    /**
+     * Khung chung của mọi file Excel admin xuất (G40, spec §6.1, §7): metadata của workbook, đầu và
+     * chân trang khi in, chú thích của ô mã đơn. `pageOf` mang mã của Excel (`&P` số trang, `&N` tổng
+     * trang) — giữ nguyên hai mã ấy khi sửa chữ.
+     */
+    exportFile: {
+      backOffice: 'Nexora back office',
+      company: 'Nexora Travel',
+      internal: 'Internal — not for distribution',
+      generated: (at: string) => `Generated ${at}`,
+      pageOf: 'Page &P of &N',
+      openBooking: 'Open in back office',
     },
     /**
      * Copy cho hai tấm lưới đỡ lỗi của admin (`app/error.tsx` +
@@ -3903,6 +3935,8 @@ export const messages = {
         /** Nút lịch nằm trong ô — không có chữ, chỉ máy đọc màn hình nghe. */
         /** Xuất ĐÚNG tập đang lọc, không phải trang đang xem. */
         exportCsv: 'Export CSV',
+        /** Xuất ĐÚNG tập đang lọc — file Excel từ G40 (ADR-0034 AMEND 3). */
+        exportExcel: 'Export Excel',
         /**
          * Nhãn nút khi ĐANG có hàng được tích (01/09). Nói rõ số hàng vì người
          * bấm phải biết mình sắp tải về cái gì TRƯỚC cú bấm — để nguyên
@@ -3955,6 +3989,41 @@ export const messages = {
         createdAt: 'Booked at (UTC)',
         paidAt: 'Paid at (UTC)',
         cancelledAt: 'Cancelled at (UTC)',
+      },
+      /**
+       * File Excel của `/bookings/export` (G40, ADR-0034 AMEND 3 — thay CSV). Ô mang KIỂU thật: tiền là
+       * số, ngày là ngày, mốc thời gian là ngày-giờ theo giờ Việt Nam (tiêu đề cột nói rõ).
+       */
+      xlsx: {
+        sheet: 'Bookings',
+        docTitle: 'Nexora — bookings',
+        headerCenter: (summary: string) => `Bookings · ${summary}`,
+        allBookings: 'All bookings',
+        dateFrom: (date: string) => `from ${date}`,
+        dateUntil: (date: string) => `until ${date}`,
+        search: (query: string) => `search “${query}”`,
+        selected: (n: number) => `${n} selected ${n === 1 ? 'row' : 'rows'}`,
+        total: 'Total',
+        columns: {
+          code: 'Booking code',
+          status: 'Status',
+          tour: 'Tour',
+          departureStart: 'Departure start',
+          departureEnd: 'Departure end',
+          adults: 'Adults',
+          children: 'Children',
+          guests: 'Guests',
+          unitPrice: 'Price per person',
+          total: 'Total',
+          refunded: 'Refunded',
+          currency: 'Currency',
+          customer: 'Customer',
+          email: 'Email',
+          phone: 'Phone',
+          bookedAt: 'Booked at (Vietnam time)',
+          paidAt: 'Paid at (Vietnam time)',
+          cancelledAt: 'Cancelled at (Vietnam time)',
+        },
       },
       status: {
         PENDING: 'Pending',
@@ -4334,6 +4403,7 @@ export const messages = {
          * cùng lời hứa với nút Export của `/bookings`.
          */
         exportCsv: 'Export CSV',
+        exportExcel: 'Export Excel',
         /**
          * BODY của một response 413 — người bấm nút thấy nó thay cho file,
          * nên nó phải nói được việc cần làm tiếp theo mà không cần ngữ cảnh
@@ -4354,6 +4424,25 @@ export const messages = {
         subscribedAt: 'Subscribed at (UTC)',
         confirmedAt: 'Confirmed at (UTC)',
         unsubscribedAt: 'Unsubscribed at (UTC)',
+      },
+      /**
+       * File Excel của `/subscribers/export` (G40, ADR-0034 AMEND 3). Trạng thái dùng nhãn của bảng
+       * (`list.active`, `list.awaitingConfirmation`, `list.unsubscribed`); nguồn ghi nguyên văn.
+       */
+      xlsx: {
+        sheet: 'Subscribers',
+        docTitle: 'Nexora — newsletter subscribers',
+        headerCenter: (summary: string) => `Subscribers · ${summary}`,
+        source: (source: string) => `source “${source}”`,
+        search: (query: string) => `search “${query}”`,
+        columns: {
+          email: 'Email',
+          source: 'Source',
+          status: 'Status',
+          subscribedAt: 'Subscribed at (Vietnam time)',
+          confirmedAt: 'Confirmed at (Vietnam time)',
+          unsubscribedAt: 'Unsubscribed at (Vietnam time)',
+        },
       },
       unsubscribe: {
         action: 'Unsubscribe',

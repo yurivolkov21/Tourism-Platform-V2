@@ -241,3 +241,53 @@ describe('messages: voucher (P7 phần C — voucher của đơn đã trả)', (
     ).toContain('Cancel on or before that deadline — 11:59 pm Vietnam time — and every dollar');
   });
 });
+
+describe('messages: file Excel của admin (G40 Phần 3)', () => {
+  const a = messages.admin;
+  const walk = (node: unknown): string[] => {
+    if (typeof node === 'string') return [node];
+    if (typeof node === 'function' || node === null) return [];
+    return Object.values(node as object).flatMap(walk);
+  };
+
+  it('mọi chuỗi của ba khối mới đều có chữ', () => {
+    for (const value of [
+      ...walk(a.exportFile),
+      ...walk(a.bookings.xlsx),
+      ...walk(a.subscribers.xlsx),
+    ]) {
+      expect(value.trim().length).toBeGreaterThan(0);
+    }
+  });
+
+  it('chân trang giữ nguyên mã số trang của Excel', () => {
+    expect(a.exportFile.pageOf).toBe('Page &P of &N');
+    expect(a.exportFile.generated('30 Sep 2026, 12:00 UTC')).toBe(
+      'Generated 30 Sep 2026, 12:00 UTC',
+    );
+  });
+
+  it('tiêu đề, dòng kỳ và chú thích ô số của báo cáo', () => {
+    const r = a.reports;
+    expect(r.reportTitle('September 2026')).toBe('Monthly report — September 2026');
+    expect(r.periodLine('1 Sep 2026 – 30 Sep 2026', 'USD', '10.0%')).toBe(
+      '1 Sep 2026 – 30 Sep 2026 · all amounts in USD · tax on margin 10.0%',
+    );
+    expect(r.cards.paidCaption('1')).toBe('1 paid booking');
+    expect(r.cards.paidCaption('70')).toBe('70 paid bookings');
+    expect(r.xlsx.headerCenter('September 2026')).toBe('Monthly report · September 2026');
+    expect(r.xlsx.docTitle('2026-09')).toBe('Nexora — monthly report 2026-09');
+  });
+
+  it('cột thời gian của hai danh sách nói rõ giờ Việt Nam', () => {
+    expect(a.bookings.xlsx.columns.bookedAt).toBe('Booked at (Vietnam time)');
+    expect(a.subscribers.xlsx.columns.unsubscribedAt).toBe('Unsubscribed at (Vietnam time)');
+    expect(a.bookings.xlsx.selected(1)).toBe('1 selected row');
+    expect(a.bookings.xlsx.selected(3)).toBe('3 selected rows');
+  });
+
+  it('nút xuất ghi Excel', () => {
+    expect(a.bookings.list.exportExcel).toBe('Export Excel');
+    expect(a.subscribers.list.exportExcel).toBe('Export Excel');
+  });
+});
