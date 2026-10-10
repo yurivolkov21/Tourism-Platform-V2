@@ -78,9 +78,9 @@ describe('VoucherPass — khối mã (sắp đi)', () => {
     expect(bars.map((bar) => bar.style.width)).toEqual(widths.map((w) => `${w}px`));
   });
 
-  // `voucher-stack:` (globals.css) là thẻ một cột — màn hình dưới xl, KHÔNG bao giờ khi in; bản cũ
+  // `voucher-stack:` (globals.css) là thẻ một cột — màn hình dưới xl; bản cũ
   // tự ghép cặp `max-xl:hidden print:flex` ở nơi gọi (review P7C#13).
-  it('ô mã giấu khi thẻ một cột (dưới xl — cột trái có ô gọn), bản in vẫn có', () => {
+  it('ô mã giấu khi thẻ một cột (dưới xl — cột trái có ô gọn)', () => {
     const { container } = renderPass();
     const code = slot(container, 'voucher-code');
     expect(code.classList.contains('voucher-stack:hidden')).toBe(true);
@@ -110,7 +110,7 @@ describe('VoucherPass — theo giai đoạn', () => {
     expect(ticket.textContent).toBe(
       'This booking was cancelled — this voucher is no longer valid.',
     );
-    // Cột trái đã nói điều này khi thẻ một cột; thẻ chia đôi và bản in thì có.
+    // Cột trái đã nói điều này khi thẻ một cột; thẻ chia đôi thì có.
     expect(ticket.classList.contains('voucher-stack:hidden')).toBe(true);
   });
 });
@@ -190,14 +190,12 @@ describe('VoucherPass — Trip journal', () => {
 });
 
 describe('VoucherPass — lối đi tiếp', () => {
-  it('"View booking" tới trang chi tiết đơn, "Browse more tours" tới /tours; cả hai giấu khi in', () => {
+  it('"View booking" tới trang chi tiết đơn, "Browse more tours" tới /tours', () => {
     renderPass();
     const viewBooking = screen.getByRole('link', { name: messages.booking.success.viewBooking });
     expect(viewBooking).toHaveAttribute('href', `/account/bookings/${CODE}`);
     const browse = screen.getByRole('link', { name: messages.booking.success.viewTours });
     expect(browse).toHaveAttribute('href', '/tours');
-    expect(viewBooking.classList.contains('print:hidden')).toBe(true);
-    expect(browse.classList.contains('print:hidden')).toBe(true);
   });
 
   // Nút của hệ (`ButtonLink` — `data-slot="button"`, cùng vòng focus, cỡ chữ, khoá chọn chữ như

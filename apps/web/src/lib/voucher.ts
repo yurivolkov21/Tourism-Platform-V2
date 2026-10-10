@@ -12,7 +12,7 @@ import {
   refundSummary,
   vietnamDay,
 } from './booking-vm';
-import { type BookingTourData, needsTourData, tourMeetingPoint } from './get-ready';
+import { type BookingTourData, needsTourData } from './get-ready';
 import { reviewSlot } from './review';
 import { formatChipDate, formatDate, formatDateRange } from './tours';
 
@@ -73,7 +73,7 @@ export interface VoucherView {
   /**
    * Có ô Meeting point — chỉ khi điểm hẹn còn việc: sắp đi, đang đi (`needsTourData`, cùng luật dòng
    * Meeting point của trang chi tiết đơn). Voucher đã đi hay đã huỷ không có ô này, và trang cũng
-   * không đọc tour cho nó (`voucherMeetingPoint`, review P7C#6).
+   * không đọc tour cho nó (`voucherTourData`, review P7C#6).
    */
   showMeetingPoint: boolean;
   /** Các dòng điều kiện có dấu tích dưới ô mã, đúng thứ tự bảng §2.6; rỗng khi đã huỷ. */
@@ -238,20 +238,19 @@ export function voucherView(booking: BookingDetail, now: Date): VoucherView | nu
 }
 
 /**
- * Điểm hẹn cho ô Meeting point — đọc tour CHỈ khi voucher có ô ấy (`showMeetingPoint`), như trang
- * chi tiết đơn chỉ gọi API catalog ở hai giai đoạn cần (review P7C#6). Bản trước đọc tour ở MỌI
- * giai đoạn: thêm một vòng API khi cache nguội, và trần chờ ~62 giây khi API catalog treo, cho một
- * ô mà voucher đã đi hay đã huỷ không in.
+ * Dữ liệu tour của voucher — đọc CHỈ khi voucher có ô Meeting point (`showMeetingPoint`: sắp đi,
+ * đang đi), như trang chi tiết đơn chỉ gọi API catalog ở hai giai đoạn cần (review P7C#6). Ô Meeting
+ * point lấy điểm hẹn bằng `tourMeetingPoint`; bản in (G40) lấy thêm lịch trình và mục gồm — cùng một
+ * lượt đọc, không thêm vòng API.
  *
  * `loadTour` là lượt đọc tour của trang (`fetchTourDetailOrNull`), truyền vào chứ không import: file
- * thuần này khỏi nạp lớp gọi API, và test đếm được lượt gọi. Tour đã gỡ, API catalog lỗi hay điểm
- * hẹn để trống đều ra `null` — ô rơi về câu mời liên hệ.
+ * thuần này khỏi nạp lớp gọi API, và test đếm được lượt gọi. Tour đã gỡ hay API catalog lỗi ra `null`.
  */
-export async function voucherMeetingPoint(
+export async function voucherTourData(
   view: Pick<VoucherView, 'showMeetingPoint'>,
   loadTour: () => Promise<BookingTourData | null>,
-): Promise<string | null> {
-  return view.showMeetingPoint ? tourMeetingPoint(await loadTour()) : null;
+): Promise<BookingTourData | null> {
+  return view.showMeetingPoint ? loadTour() : null;
 }
 
 /**

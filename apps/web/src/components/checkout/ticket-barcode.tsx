@@ -11,10 +11,9 @@ import { ticketBarcodeWidths } from '@/lib/checkout';
  * Có hiện mã vạch hay không là việc của nơi gọi (`bookingPass`) — linh kiện này chỉ vẽ.
  * `className` của nơi gọi mang chiều cao, căn lề, khoảng cách, nền quiet zone.
  *
- * `data-slot="barcode"` là móc của quy tắc in `print-color-adjust: exact` ở `globals.css`: vạch vẽ
- * bằng NỀN, trình duyệt tắt "in nền" thì mất vạch nếu thiếu móc. Vạch `bg-current` trên chữ
- * `text-foreground`: trên màn hình là màu chữ của theme; khi in voucher, quy tắc in của mảng teal
- * cho mọi con kế thừa màu mực của mảng (đen), nên vạch in đen mà không cần class riêng.
+ * `data-slot="barcode"` là móc của luật in `print-color-adjust: exact` ở `globals.css` (vé trang chi
+ * tiết đơn khi in); tài liệu in G40 tự ép qua `[data-print-doc]`. Vạch `bg-current` trên chữ
+ * `text-foreground` — trong tài liệu in là mực tối của phạm vi `.light`.
  */
 export function TicketBarcode({ code, className }: { code: string; className?: string }) {
   return (

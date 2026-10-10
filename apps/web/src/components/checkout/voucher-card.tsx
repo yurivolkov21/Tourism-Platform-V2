@@ -7,11 +7,10 @@ import type { VoucherView } from '@/lib/voucher';
 /**
  * Voucher của đơn đã trả ở `/checkout/success` (spec P7 §6, bản vẽ `booking-voucher.src.html`):
  * MỘT thẻ bo góc `max-w-7xl` chia đôi — cột trái co giãn (`VoucherOverview`), cột phải 440px
- * mảng teal (`VoucherPass`). Khi in, cột phải hẹp còn 17rem để cả thẻ nằm gọn một trang A4 (số
- * đo ở plan P7, Task C5) — khai ở khối in của `globals.css`.
+ * mảng teal (`VoucherPass`).
  *
- * Hai cột chỉ khi thẻ chia đôi — biến thể `voucher-split:` của `globals.css`: màn hình từ `xl`, và
- * mọi bản in; dưới đó một cột, mảng teal xuống cuối theo thứ tự DOM. Cột phải cố định
+ * Hai cột chỉ khi thẻ chia đôi — biến thể `voucher-split:` của `globals.css`: từ `xl`; dưới đó
+ * một cột, mảng teal xuống cuối theo thứ tự DOM. Cột phải cố định
  * 440px còn lề trang khớp hero, nên với mốc `md` của plan cột trái ở 768px chỉ còn 194px và cột
  * chữ của bốn ô thông tin còn 0px, ở 1024px còn 63px (đo trên CSS build thật, đợt vá sau C5).
  * Từ 1280px cột trái được ~580px — đúng khổ bản vẽ đã duyệt. Cùng mốc với vé của trang chi

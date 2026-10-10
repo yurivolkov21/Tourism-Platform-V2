@@ -150,10 +150,10 @@ describe('VoucherOverview — thẻ ảnh', () => {
     const photo = slot(container, 'voucher-photo');
     // Chiều cao TỐI THIỂU (không cố định) và khối chữ nằm trong luồng, xếp ở đáy: chữ nhiều
     // thì đẩy ảnh cao lên thay vì tràn qua mép trên rồi bị `overflow-hidden` cắt.
-    for (const cls of ['min-h-56', 'md:min-h-72', 'print:min-h-44', 'flex', 'justify-end']) {
+    for (const cls of ['min-h-56', 'md:min-h-72', 'flex', 'justify-end']) {
       expect(photo.classList.contains(cls)).toBe(true);
     }
-    expect(photo.className).not.toMatch(/(^|\s)(md:|print:)?h-\d+/);
+    expect(photo.className).not.toMatch(/(^|\s)(md:)?h-\d+/);
     const caption = slot(container, 'voucher-photo-caption');
     expect(caption.classList.contains('absolute')).toBe(false);
     // Trong luồng mà không `relative` thì khối chữ bị vẽ DƯỚI ảnh `absolute` đứng trước nó.
@@ -225,9 +225,9 @@ describe('VoucherOverview — bốn ô có icon', () => {
 });
 
 describe('VoucherOverview — ô mã gọn khi thẻ một cột (spec §6.4)', () => {
-  // `voucher-split:` (globals.css) gói cả hai điều kiện thẻ chia đôi — từ xl và khi in — vào MỘT
-  // biến thể; bản cũ tự ghép cặp `xl:hidden print:hidden` ở nơi gọi (review P7C#13).
-  it('có nhãn, mã và nút chép; giấu khi thẻ chia đôi (từ xl, và khi in) — mảng teal mang ô mã ở đó', () => {
+  // `voucher-split:` (globals.css) gói điều kiện thẻ chia đôi (từ xl) vào MỘT biến thể; bản cũ tự
+  // ghép cặp `xl:hidden print:hidden` ở nơi gọi (review P7C#13).
+  it('có nhãn, mã và nút chép; giấu khi thẻ chia đôi (từ xl) — mảng teal mang ô mã ở đó', () => {
     const { container } = renderOverview();
     const code = slot(container, 'voucher-code');
     expect(within(code).getByText('Booking code')).toBeInTheDocument();

@@ -6,9 +6,7 @@ import { CopyCodeButton } from '@/components/checkout/copy-code-button';
  * Ô mã đơn của voucher (spec P7 §6.3–6.4) — MỘT linh kiện cho hai chỗ: ô gọn ngay dưới tiêu
  * đề khi thẻ một cột (`VoucherOverview`) và ô đầu mảng teal khi thẻ hai cột (`VoucherPass`).
  * Chỗ gọi chọn bản nào hiện bằng biến thể `voucher-split:` / `voucher-stack:` của `globals.css`
- * truyền qua `className` — ngưỡng chia đôi (từ `xl`, và mọi bản in) nằm một chỗ ở đó.
- *
- * Nút chép giấu khi in: bấm vào giấy thì không được (spec §6.4).
+ * truyền qua `className` — ngưỡng chia đôi (từ `xl`) nằm một chỗ ở đó.
  *
  * Mã KHÔNG bẻ dòng: gạch nối của "BK-" là chỗ ngắt dòng hợp lệ, nên ô hẹp từng gãy mã thành
  * "BK-" / "B6VCOQNW" — ô gọn ở 320px, ô của mảng teal trên bản in khổ ≥ 768px CSS (review P7C#9).
@@ -32,7 +30,7 @@ export function VoucherCode({ code, className }: { code: string; className?: str
           {code}
         </p>
       </div>
-      <div className="shrink-0 print:hidden">
+      <div className="shrink-0">
         <CopyCodeButton code={code} />
       </div>
     </div>

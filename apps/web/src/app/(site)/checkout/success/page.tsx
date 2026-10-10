@@ -8,11 +8,14 @@ import { CheckoutAutoRefresh } from '@/components/checkout/checkout-auto-refresh
 import { PrintButton } from '@/components/checkout/print-button';
 import { VoucherCard } from '@/components/checkout/voucher-card';
 import { ContentHero } from '@/components/content/content-hero';
+import { VoucherPrint } from '@/components/print/voucher-print';
 import { fetchBookingByCode } from '@/lib/api/bookings';
 import { requireSession } from '@/lib/api/session';
 import { fetchTourDetailOrNull } from '@/lib/api/tours';
 import { checkoutMood } from '@/lib/checkout';
-import { voucherMeetingPoint, voucherView } from '@/lib/voucher';
+import { tourMeetingPoint } from '@/lib/get-ready';
+import { voucherPrintView } from '@/lib/print/voucher-print';
+import { voucherTourData, voucherView } from '@/lib/voucher';
 
 export const metadata: Metadata = {
   // "Voucher" chứ không "Booking confirmed": trang này mở lại được bất cứ lúc nào, kể cả với
@@ -73,8 +76,9 @@ export default async function CheckoutSuccessPage({
   }
 
   // Đồng hồ server đọc MỘT lần: `voucherView` đo 30 phút "vừa trả" và suy hôm nay (ngày lịch
-  // Việt Nam, spec P7 §2.1) từ cùng mốc này.
-  const view = voucherView(booking, new Date());
+  // Việt Nam, spec P7 §2.1) từ cùng mốc này; bản in (G40) đọc cùng mốc.
+  const now = new Date();
+  const view = voucherView(booking, now);
 
   if (!view) {
     // Đơn chưa có `paidAt` — PENDING đang chờ webhook, hay giữ chỗ hết hạn/bị huỷ khi chưa
@@ -108,32 +112,31 @@ export default async function CheckoutSuccessPage({
     );
   }
 
-  // Điểm hẹn lấy từ tour (cache 300 giây, tag `tour:<slug>`), và CHỈ khi voucher có ô Meeting point
-  // — sắp đi, đang đi (`voucherMeetingPoint`, cùng luật trang chi tiết đơn): voucher đã đi hay đã
-  // huỷ không gọi API catalog. Tour đã gỡ hay lỗi gọi API catalog đều rơi về null — voucher của đơn
-  // ĐÃ TRẢ không được sập vì một ô phụ.
-  const meetingPoint = await voucherMeetingPoint(view, () =>
-    fetchTourDetailOrNull(booking.tourSlug),
-  );
+  // Dữ liệu tour (cache 300 giây, tag `tour:<slug>`) CHỈ khi voucher có ô Meeting point — sắp đi, đang
+  // đi (`voucherTourData`, cùng luật trang chi tiết đơn): voucher đã đi hay đã huỷ không gọi API
+  // catalog. Ô Meeting point lấy điểm hẹn, bản in lấy thêm lịch trình và mục gồm. Tour đã gỡ hay lỗi
+  // gọi API catalog đều rơi về null — voucher của đơn ĐÃ TRẢ không được sập vì một ô phụ.
+  const tour = await voucherTourData(view, () => fetchTourDetailOrNull(booking.tourSlug));
 
   return (
     <div>
-      {/* Hero GIỮ (lý do ở nhánh trên), KHÔNG `meta` mã đơn (user chốt 08/10, D5): mã đã ở ô mã
-          của thẻ; voucher đã huỷ cố ý giấu mã mà hero vẫn in ra, voucher vừa trả thì hiện mã ba
-          lần trên một màn (review P7C#10). Bản in chỉ in thẻ voucher, nên hero — cả nút Print
-          trong đó — giấu khi in (spec §6.4). */}
+      {/* Màn hình bọc `print:hidden`: lúc in chỉ còn tờ `VoucherPrint` (ADR-0057 §1). Hero GIỮ (lý
+          do ở nhánh trên), KHÔNG `meta` mã đơn (user chốt 08/10, D5): mã đã ở ô mã của thẻ; voucher
+          đã huỷ cố ý giấu mã mà hero vẫn in ra, voucher vừa trả thì hiện mã ba lần trên một màn
+          (review P7C#10). */}
       <div className="print:hidden">
         <ContentHero
           breadcrumb={t.heroBreadcrumb}
           title={booking.tourTitle}
           action={<PrintButton />}
         />
+        {/* Lề ngang CHÉP của hero (`px-4 md:px-16 lg:px-24 xl:px-32`, khung `max-w-7xl` trong
+            thẻ) để mép thẻ thẳng hàng tiêu đề. */}
+        <div className="px-4 py-10 md:px-16 md:py-14 lg:px-24 xl:px-32">
+          <VoucherCard booking={booking} view={view} meetingPoint={tourMeetingPoint(tour)} />
+        </div>
       </div>
-      {/* Lề ngang CHÉP của hero (`px-4 md:px-16 lg:px-24 xl:px-32`, khung `max-w-7xl` trong
-          thẻ) để mép thẻ thẳng hàng tiêu đề. */}
-      <div className="px-4 py-10 md:px-16 md:py-14 lg:px-24 xl:px-32 print:p-0">
-        <VoucherCard booking={booking} view={view} meetingPoint={meetingPoint} />
-      </div>
+      <VoucherPrint view={voucherPrintView(booking, view, tour, now)} />
     </div>
   );
 }
