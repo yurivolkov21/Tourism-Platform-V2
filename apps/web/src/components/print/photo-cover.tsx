@@ -40,6 +40,9 @@ export function PhotoCover({
           src={photo.url}
           alt={photo.alt}
           loading="eager"
+          // Vẫn tải ngay khi tài liệu đang ẩn, nhưng không thành preload ưu tiên cao của React giành
+          // băng thông với ảnh màn hình ở mọi lượt xem — ảnh này chỉ dùng khi in.
+          fetchPriority="low"
           className="absolute inset-0 size-full object-cover"
         />
       ) : null}
@@ -58,8 +61,10 @@ export function PhotoCover({
         <p className={cn(PRINT_LABEL, 'text-on-media/85')}>{kicker}</p>
         <h2
           className={cn(
-            'mt-[2mm] line-clamp-2 font-heading leading-[1.1] font-semibold tracking-[-0.01em]',
+            'mt-[2mm] line-clamp-2 font-heading font-semibold tracking-[-0.01em]',
             titleClass,
+            // SAU cỡ chữ: tailwind-merge coi cỡ chữ và dãn dòng là một nhóm xung đột, đứng trước là bị xoá.
+            'leading-[1.1]',
           )}
         >
           {title}

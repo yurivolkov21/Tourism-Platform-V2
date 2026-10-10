@@ -45,6 +45,8 @@ describe('PrintTicket', () => {
     expect(screen.getByText('Nora Dahl')).toBeInTheDocument();
     expect(screen.getByText('CONFIRMED')).toBeInTheDocument();
     expect(container.querySelector('[data-slot="barcode"]')).not.toBeNull();
+    // 52 vạch rộng cố định (~35 mm) trong cuống ~42 mm: canh giữa cho thẳng mã chữ bên dưới.
+    expect(container.querySelector('[data-slot="barcode"]')?.className).toContain('justify-center');
     expect(screen.getAllByText('BK-EET0JBTH')).toHaveLength(2); // dải và dưới mã vạch
   });
 
