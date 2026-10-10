@@ -9,12 +9,7 @@ import {
   voucherBooking,
   voucherNowOn,
 } from '@/test/fixtures/voucher';
-import {
-  VOUCHER_FRESH_MINUTES,
-  type VoucherView,
-  voucherMeetingPoint,
-  voucherView,
-} from './voucher';
+import { VOUCHER_FRESH_MINUTES, type VoucherView, voucherTourData, voucherView } from './voucher';
 
 /**
  * Bảng quyết định của voucher `/checkout/success` (spec P7 §2.6). Chữ khớp NGUYÊN VĂN —
@@ -586,7 +581,7 @@ describe('voucherView — ô Meeting point theo giai đoạn', () => {
   });
 });
 
-describe('voucherMeetingPoint — chỉ đọc tour khi voucher có ô Meeting point', () => {
+describe('voucherTourData — chỉ đọc tour khi voucher có ô Meeting point', () => {
   const MEETING = 'Hotel pickup — Hoàn Kiếm, Ba Đình or Tây Hồ';
 
   it.each([
@@ -596,23 +591,23 @@ describe('voucherMeetingPoint — chỉ đọc tour khi voucher có ô Meeting p
       voucherNowOn('2026-11-10'),
     ],
     ['đã huỷ', voucherBooking(CANCELLED), VOUCHER_NOW],
-  ] as const)('voucher %s: KHÔNG gọi API catalog, không có điểm hẹn', async (_, booking, now) => {
-    const loadTour = vi.fn(async () => makeTourData({ meetingPoint: MEETING }));
-    expect(await voucherMeetingPoint(view(booking, now), loadTour)).toBeNull();
-    expect(loadTour).not.toHaveBeenCalled();
-  });
+  ] as const)(
+    'voucher %s: KHÔNG gọi API catalog, không có dữ liệu tour',
+    async (_, booking, now) => {
+      const loadTour = vi.fn(async () => makeTourData({ meetingPoint: MEETING }));
+      expect(await voucherTourData(view(booking, now), loadTour)).toBeNull();
+      expect(loadTour).not.toHaveBeenCalled();
+    },
+  );
 
-  it('voucher sắp đi: đọc tour MỘT lần, in nguyên văn điểm hẹn', async () => {
-    const loadTour = vi.fn(async () => makeTourData({ meetingPoint: MEETING }));
-    expect(await voucherMeetingPoint(view(voucherBooking()), loadTour)).toBe(MEETING);
+  it('voucher sắp đi: đọc tour MỘT lần, trả nguyên dữ liệu tour cho ô Meeting point và bản in', async () => {
+    const tour = makeTourData({ meetingPoint: MEETING });
+    const loadTour = vi.fn(async () => tour);
+    expect(await voucherTourData(view(voucherBooking()), loadTour)).toBe(tour);
     expect(loadTour).toHaveBeenCalledTimes(1);
   });
 
-  it.each([
-    ['tour đã gỡ hay API catalog lỗi (null)', null],
-    ['tour chưa ghi điểm hẹn', makeTourData({ meetingPoint: null })],
-    ['điểm hẹn chỉ có khoảng trắng', makeTourData({ meetingPoint: '   ' })],
-  ] as const)('%s → null: ô rơi về câu mời liên hệ', async (_, tour) => {
-    expect(await voucherMeetingPoint(view(voucherBooking()), async () => tour)).toBeNull();
+  it('tour đã gỡ hay API catalog lỗi → null', async () => {
+    expect(await voucherTourData(view(voucherBooking()), async () => null)).toBeNull();
   });
 });

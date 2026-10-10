@@ -34,10 +34,10 @@ export function VoucherPass({ booking, view }: { booking: BookingDetail; view: V
       className="bg-primary px-6 py-7 text-primary-foreground md:px-8 md:pt-7.5 md:pb-8.5"
     >
       {/* Đơn còn hiệu lực: khối luôn hiện (ngày, điều kiện, mã vạch), chỉ ô mã giấu khi thẻ một
-          cột (`voucher-stack:` của `globals.css` — màn hình dưới `xl`, không bao giờ khi in) vì cột
+          cột (`voucher-stack:` của `globals.css` — màn hình dưới `xl`) vì cột
           trái đã có ô gọn. Khoảng cách ô mã – dòng ngày nằm ở ô mã (`mb-2.5`) nên đi cùng nó. Đơn
           đã huỷ: khối chỉ còn dải hết hiệu lực mà cột trái đã nói khi thẻ một cột, nên giấu cả
-          khối ở đó; thẻ chia đôi và bản in thì có. */}
+          khối ở đó; thẻ chia đôi thì có. */}
       <div
         data-slot="voucher-ticket"
         className={cn(
@@ -120,14 +120,14 @@ export function VoucherPass({ booking, view }: { booking: BookingDetail; view: V
           màu nền, chữ và vòng focus (vòng `ring` mặc định là teal, chìm hẳn trên mảng teal). */}
       <ButtonLink
         href={`/account/bookings/${booking.code}`}
-        className="mt-5 h-11 w-full gap-2 rounded-xl bg-card font-bold text-primary-emphasis hover:bg-card/90 focus-visible:ring-primary-foreground/60 print:hidden"
+        className="mt-5 h-11 w-full gap-2 rounded-xl bg-card font-bold text-primary-emphasis hover:bg-card/90 focus-visible:ring-primary-foreground/60"
       >
         {messages.booking.success.viewBooking}
         <ArrowRightIcon aria-hidden="true" />
       </ButtonLink>
       <Link
         href="/tours"
-        className="mx-auto mt-3 block w-fit rounded-sm text-[13px] underline underline-offset-4 outline-none focus-visible:ring-2 focus-visible:ring-primary-foreground/60 print:hidden"
+        className="mx-auto mt-3 block w-fit rounded-sm text-[13px] underline underline-offset-4 outline-none focus-visible:ring-2 focus-visible:ring-primary-foreground/60"
       >
         {messages.booking.success.viewTours}
       </Link>

@@ -26,7 +26,7 @@ import type { VoucherView } from '@/lib/voucher';
  *
  * Khi thẻ một cột (dưới `xl` — điện thoại, máy tính bảng) ô mã bản gọn đứng ngay dưới tiêu đề:
  * khách mở voucher ở điểm đón cần thấy mã trước tiên, còn mảng teal (mang ô mã của thẻ hai cột)
- * nằm cuối trang (spec §6.4). Thẻ chia đôi — từ `xl`, và khi in — thì ô gọn giấu: biến thể
+ * nằm cuối trang (spec §6.4). Thẻ chia đôi (từ `xl`) thì ô gọn giấu: biến thể
  * `voucher-split:` của `globals.css`, cùng ngưỡng chia cột của `VoucherCard`.
  */
 export function VoucherOverview({
@@ -37,9 +37,9 @@ export function VoucherOverview({
   booking: BookingDetail;
   view: VoucherView;
   /**
-   * Điểm hẹn của tour (`voucherMeetingPoint`); `null` khi tour đã gỡ, API catalog lỗi, tour chưa ghi
-   * điểm hẹn — hay voucher không có ô Meeting point (`view.showMeetingPoint` sai, trang không đọc
-   * tour).
+   * Điểm hẹn của tour (`tourMeetingPoint` của dữ liệu `voucherTourData`); `null` khi tour đã gỡ,
+   * API catalog lỗi, tour chưa ghi điểm hẹn — hay voucher không có ô Meeting point
+   * (`view.showMeetingPoint` sai, trang không đọc tour).
    */
   meetingPoint: string | null;
 }) {
@@ -75,7 +75,7 @@ export function VoucherOverview({
           Hạ Long–Ninh Bình 5D4N") tràn qua mép trên và bị `overflow-hidden` cắt mất dòng đầu. */}
       <div
         data-slot="voucher-photo"
-        className="relative mt-6 flex min-h-56 flex-col justify-end overflow-hidden rounded-3xl bg-muted md:min-h-72 print:min-h-44"
+        className="relative mt-6 flex min-h-56 flex-col justify-end overflow-hidden rounded-3xl bg-muted md:min-h-72"
       >
         {/* `sizes` theo đúng bề rộng ô ảnh (review P7C#12) = màn − lề ngang của trang
             `/checkout/success` (2×16 · 2×64 từ md · 2×96 từ lg · 2×128 từ xl) − viền thẻ (2) − đệm

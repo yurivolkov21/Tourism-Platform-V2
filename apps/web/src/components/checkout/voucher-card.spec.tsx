@@ -56,7 +56,7 @@ describe('VoucherCard — ba khoảnh khắc của spec §2.6', () => {
     expect(celebrate).not.toHaveBeenCalled();
     expect(screen.queryByText('BK-B6VCOQNW')).toBeNull();
     expect(container.querySelector('[data-slot="barcode"]')).toBeNull();
-    // Một ở chỗ ô mã gọn (thẻ một cột), một trong mảng teal (thẻ hai cột, bản in).
+    // Một ở chỗ ô mã gọn (thẻ một cột), một trong mảng teal (thẻ hai cột).
     expect(screen.getAllByText(CANCELLED_NOTICE)).toHaveLength(2);
   });
 
@@ -65,7 +65,7 @@ describe('VoucherCard — ba khoảnh khắc của spec §2.6', () => {
     const card = container.querySelector('[data-slot="voucher"]');
     expect(card?.querySelector('[data-slot="voucher-overview"]')).not.toBeNull();
     expect(card?.querySelector('[data-slot="voucher-pass"]')).not.toBeNull();
-    // Hai cột chỉ khi thẻ chia đôi (`voucher-split:` — từ xl, và khi in): cột phải cố định 440px
+    // Hai cột chỉ khi thẻ chia đôi (`voucher-split:` — từ xl): cột phải cố định 440px
     // nên ở 768px cột trái chỉ còn 194px và cột chữ của bốn ô thông tin còn 0px (đo trên CSS
     // build thật, đợt vá sau C5).
     expect(card?.classList.contains('voucher-split:grid-cols-[minmax(0,1fr)_440px]')).toBe(true);
