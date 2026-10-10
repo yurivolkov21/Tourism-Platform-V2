@@ -251,7 +251,10 @@ describe('BookingReceipt — mã chưa phải voucher', () => {
     render(<BookingReceipt booking={unpaid({ status: 'CANCELLED' })} mood="settled" />);
     expect(screen.getByText(t.stubClosed)).toBeInTheDocument();
     expect(screen.queryByText(t.stubNotYetVoucher)).toBeNull();
-    expect(screen.queryByText(/^Departs /)).toBeNull();
+    // Ngày mặc định của fixture: chuyến 1–2/9.
+    const departure = formatDateRange('2026-09-01', '2026-09-02');
+    expect(screen.queryByText(t.departsOn(departure))).toBeNull();
+    expect(screen.queryByText(t.departedOn(departure))).toBeNull();
   });
 });
 
@@ -284,6 +287,11 @@ describe('BookingReceipt — câu dưới tiêu đề khi trang không truyền 
       ),
     ).toBeInTheDocument();
     expect(screen.queryByText(/was sent to/)).toBeNull();
+    // Cuống không nói "no payment was taken" cạnh khoản vừa kể là đã hoàn (`wasCharged`, G37).
+    expect(
+      screen.getByText(messages.accountBookingDetail.terminalNote.CANCELLED),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(t.stubClosed)).toBeNull();
   });
 });
 

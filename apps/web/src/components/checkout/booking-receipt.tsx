@@ -6,7 +6,12 @@ import { RevealItem } from '@/components/motion/reveal-item';
 import { todayDateString } from '@/lib/account-stats';
 import { bookingTotalLabel, paymentProviderLabel, vietnamDay } from '@/lib/booking-vm';
 import type { CheckoutMood } from '@/lib/checkout';
-import { bookingPriceLines, formatBookingMoney, receiptNote } from '@/lib/checkout';
+import {
+  bookingPriceLines,
+  closedStubSentence,
+  formatBookingMoney,
+  receiptNote,
+} from '@/lib/checkout';
 import { STAGGER } from '@/lib/motion';
 import { formatDate, formatDateRange } from '@/lib/tours';
 
@@ -299,9 +304,10 @@ function Stub({
     >
       <div>
         {/* Đơn đã đóng (tâm trạng `settled`: huỷ, lỡ hạn, bị thu rồi hoàn): một câu nói thẳng — không
-            ngày đi, không hứa mã sẽ thành voucher cho một đơn không còn trả được (G37). */}
+            ngày đi, không hứa mã sẽ thành voucher cho một đơn không còn trả được (G37); cùng câu với
+            bản in (`closedStubSentence`). */}
         {mood === 'settled' ? (
-          <p className="font-medium">{t.stubClosed}</p>
+          <p className="font-medium">{closedStubSentence(booking)}</p>
         ) : (
           <>
             <p className="font-medium">

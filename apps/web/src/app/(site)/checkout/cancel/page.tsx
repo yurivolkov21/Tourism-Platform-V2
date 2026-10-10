@@ -47,8 +47,7 @@ export default async function CheckoutCancelPage({
   // trạng thái khác (hết hạn ngay trong lúc khách phân vân) thì không in số
   // phút — in số cho một thứ đã kết thúc là nói dối. Đơn đã trả ở tab khác thì
   // sang voucher (bên dưới), không tới được hoá đơn này.
-  const expiry =
-    booking && booking.status === 'PENDING' ? pendingExpiry(booking.createdAt, now) : null;
+  const expiry = booking && booking.status === 'PENDING' ? pendingExpiry(booking, now) : null;
 
   // Không tra được booking (thiếu mã, mã sai shape, hoặc không phải của khách
   // này) → không có gì để dựng hoá đơn. Vẫn KHÔNG `notFound()`: khách vừa rời

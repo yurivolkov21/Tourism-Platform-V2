@@ -4,14 +4,7 @@ import { ButtonLink } from '@tourism/ui/components/button-link';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
 import { PanelCard, PanelKicker } from '@/components/account/panel-card';
-import {
-  cancelledByOperator,
-  legacyCancellationNote,
-  operatorRefundPending,
-  type RefundSummary,
-  refundSentence,
-  refundSummary,
-} from '@/lib/booking-vm';
+import { closedNarrative, type RefundSummary, refundSentence, refundState } from '@/lib/booking-vm';
 
 /**
  * Cột phải của đơn đã kết thúc mà không đi (spec P7 §2.5): đã huỷ hay đã hoàn đủ
@@ -33,38 +26,22 @@ export function TripClosedPanel({
   booking: BookingDetail;
   kind: 'cancelled' | 'lapsed';
 }) {
-  const t = messages.bookingDetail;
-  if (kind === 'lapsed') {
-    return (
-      <ClosedFrame title={t.journey.paymentNotCompleted}>
-        <p className="mt-2 text-[15px] font-semibold">{t.closed.notPaidByDeadline}</p>
-        <p className="mt-1 text-sm text-muted-foreground">{t.closed.finishOpenPayment}</p>
-      </ClosedFrame>
-    );
-  }
-  const refund = refundSummary(booking);
-  if (cancelledByOperator(booking)) {
-    return (
-      <ClosedFrame title={t.closed.departureCancelled}>
-        <p className="mt-2 text-[15px] font-semibold">{t.closed.weCancelled}</p>
-        {operatorRefundPending(booking) ? (
-          <MoneyLines
-            sentence={t.closed.refundOnItsWay}
-            note={messages.accountBookingDetail.refundLine.timing}
-          />
-        ) : refund ? (
-          <RefundText refund={refund} currency={booking.currency} />
-        ) : null}
-      </ClosedFrame>
-    );
-  }
-  const terminalNote = messages.accountBookingDetail.terminalNote[booking.status];
-  const legacyNote = legacyCancellationNote(booking);
+  // Câu kể (`closedNarrative`) và chuyện tiền (`refundState`) dùng chung với hoá đơn in (G40):
+  // đơn quá hạn không có chuyện tiền.
+  const story = closedNarrative(booking, kind);
+  const refund = kind === 'lapsed' ? null : refundState(booking);
   return (
-    <ClosedFrame title={t.journey.cancelled}>
-      {terminalNote ? <p className="mt-2 text-[15px] font-semibold">{terminalNote}</p> : null}
-      {legacyNote ? <p className="mt-1 text-sm text-muted-foreground">{legacyNote}</p> : null}
-      {refund ? <RefundText refund={refund} currency={booking.currency} /> : null}
+    <ClosedFrame title={story.title}>
+      {story.headline ? <p className="mt-2 text-[15px] font-semibold">{story.headline}</p> : null}
+      {story.note ? <p className="mt-1 text-sm text-muted-foreground">{story.note}</p> : null}
+      {refund === null ? null : refund.kind === 'onItsWay' ? (
+        <MoneyLines
+          sentence={messages.bookingDetail.closed.refundOnItsWay}
+          note={messages.accountBookingDetail.refundLine.timing}
+        />
+      ) : (
+        <RefundText refund={refund} currency={booking.currency} />
+      )}
     </ClosedFrame>
   );
 }

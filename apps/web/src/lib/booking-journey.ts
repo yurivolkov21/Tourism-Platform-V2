@@ -9,9 +9,8 @@ import { messages } from '@tourism/i18n';
 import {
   cancelledOn,
   freeCancellationOpen,
-  operatorRefundPending,
   type RefundSummary,
-  refundSummary,
+  refundState,
   vietnamDay,
 } from './booking-vm';
 import { formatChipDate, formatDate, formatMoneyExact, formatWeekdayDate } from './tours';
@@ -268,11 +267,11 @@ function cancelledJourney(booking: BookingDetail): JourneyView {
  */
 function refundStep(booking: BookingDetail): JourneyMilestone[] {
   const t = messages.bookingDetail.journey;
-  if (operatorRefundPending(booking)) {
+  const refund = refundState(booking);
+  if (refund === null) return [];
+  if (refund.kind === 'onItsWay') {
     return [{ key: 'refund', label: t.refund, detail: t.refundOnItsWay, state: 'now' }];
   }
-  const refund = refundSummary(booking);
-  if (refund === null) return [];
   return [
     {
       key: 'refund',
