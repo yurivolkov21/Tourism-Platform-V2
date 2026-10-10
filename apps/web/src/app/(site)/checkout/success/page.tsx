@@ -8,12 +8,14 @@ import { CheckoutAutoRefresh } from '@/components/checkout/checkout-auto-refresh
 import { PrintButton } from '@/components/checkout/print-button';
 import { VoucherCard } from '@/components/checkout/voucher-card';
 import { ContentHero } from '@/components/content/content-hero';
+import { ReceiptPrint } from '@/components/print/receipt-print';
 import { VoucherPrint } from '@/components/print/voucher-print';
 import { fetchBookingByCode } from '@/lib/api/bookings';
 import { requireSession } from '@/lib/api/session';
 import { fetchTourDetailOrNull } from '@/lib/api/tours';
 import { checkoutMood } from '@/lib/checkout';
 import { tourMeetingPoint } from '@/lib/get-ready';
+import { receiptPrintView } from '@/lib/print/receipt-print';
 import { voucherPrintView } from '@/lib/print/voucher-print';
 import { voucherTourData, voucherView } from '@/lib/voucher';
 
@@ -86,28 +88,32 @@ export default async function CheckoutSuccessPage({
     const mood = checkoutMood(booking);
     return (
       <div>
-        {/* GIỮ `ContentHero`: `/checkout/success` nằm trong `HERO_LESS_EXCEPTIONS` của
-            `site-header.tsx`, navbar ở đây giả định có mảng tối phía sau — gỡ hero là navbar
-            tàng hình ở light mode (lỗi `/enquire` 19/08). Không `meta`: hoá đơn đã in mã ở
-            bảng meta và ở cuống. */}
-        <ContentHero
-          breadcrumb={t.heroBreadcrumb}
-          title={booking.tourTitle}
-          action={<PrintButton />}
-        />
-        <div className="py-10 md:py-14">
-          <BookingReceipt booking={booking} mood={mood} />
-          <div className="mx-auto mt-8 flex w-full max-w-3xl flex-wrap items-center gap-2.5 px-4 print:hidden">
-            <ButtonLink href={`/account/bookings/${booking.code}`}>{t.viewBooking}</ButtonLink>
-            {mood === 'confirming' ? (
-              <CheckoutAutoRefresh />
-            ) : (
-              <ButtonLink variant="outline" href="/tours">
-                {t.viewTours}
-              </ButtonLink>
-            )}
+        {/* Màn hình bọc `print:hidden`; lúc in là hoá đơn chờ B1 (G40, ADR-0057), cùng mốc `now`. */}
+        <div className="print:hidden">
+          {/* GIỮ `ContentHero`: `/checkout/success` nằm trong `HERO_LESS_EXCEPTIONS` của
+              `site-header.tsx`, navbar ở đây giả định có mảng tối phía sau — gỡ hero là navbar
+              tàng hình ở light mode (lỗi `/enquire` 19/08). Không `meta`: hoá đơn đã in mã ở
+              bảng meta và ở cuống. */}
+          <ContentHero
+            breadcrumb={t.heroBreadcrumb}
+            title={booking.tourTitle}
+            action={<PrintButton />}
+          />
+          <div className="py-10 md:py-14">
+            <BookingReceipt booking={booking} mood={mood} />
+            <div className="mx-auto mt-8 flex w-full max-w-3xl flex-wrap items-center gap-2.5 px-4">
+              <ButtonLink href={`/account/bookings/${booking.code}`}>{t.viewBooking}</ButtonLink>
+              {mood === 'confirming' ? (
+                <CheckoutAutoRefresh />
+              ) : (
+                <ButtonLink variant="outline" href="/tours">
+                  {t.viewTours}
+                </ButtonLink>
+              )}
+            </div>
           </div>
         </div>
+        <ReceiptPrint view={receiptPrintView(booking, now)} />
       </div>
     );
   }
