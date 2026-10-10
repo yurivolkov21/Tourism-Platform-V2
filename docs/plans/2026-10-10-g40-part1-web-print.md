@@ -67,8 +67,9 @@ file ấy.
 
 ## Điều kiện bắt đầu
 
-1. Worktree mới từ `origin/main` (từ commit của plan này trở đi), nhánh `feat/print-web`:
-   `git worktree add .claude/worktrees/print-web -b feat/print-web origin/main`.
+1. Worktree `.claude/worktrees/print-web`, nhánh `feat/print-web` — session gốc tạo sẵn từ `main`
+   (ở commit [prompt thi công](2026-10-10-g40-part1-web-print-prompt.md)); session thi công mở
+   ngay tại đó, không tạo worktree mới.
 2. Chép `apps/web/.env.local` và `apps/api/.env.local` từ checkout gốc vào worktree (memory
    "Worktree agent thiếu .env.local"); không đọc `.env.production`.
 3. `pnpm install --frozen-lockfile`, rồi build các gói web đọc từ dist:
