@@ -1,17 +1,11 @@
 import { Linking } from 'react-native';
+import { env } from '@/lib/env';
 
 /**
- * Gốc production của trang công khai (ADR-0024). Các trang pháp lý/biên tập luôn
- * mở trên production, KHÔNG theo `EXPO_PUBLIC_WEB_URL` (đó là origin dev/LAN để
- * checkout và API, không phải nơi lưu trang pháp lý).
- */
-export const PUBLIC_SITE_ORIGIN = 'https://www.nexora-travel.agency';
-
-/**
- * Mở một đường dẫn pháp lý/biên tập trên WEB production bằng trình duyệt ngoài —
- * app không dựng lại các trang đó (Register §legal, Account §menu pháp lý, bài
- * blog "đọc trên web").
+ * Mở một đường dẫn pháp lý/biên tập trên WEB bằng trình duyệt ngoài — app
+ * không dựng lại các trang đó (Register §legal, Account §menu pháp lý). Rút
+ * chung 24/09 khi Account thêm 5 dòng gọi cùng khuôn (Register có 2).
  */
 export function openExternalPath(path: string): void {
-  void Linking.openURL(`${PUBLIC_SITE_ORIGIN}${path}`);
+  void Linking.openURL(`${env().webUrl}${path}`);
 }

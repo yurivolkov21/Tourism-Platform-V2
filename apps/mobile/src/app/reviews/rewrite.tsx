@@ -1,10 +1,11 @@
-import { ORPCError } from '@orpc/client';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { REVIEW_REJECTION_LIMIT } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { canSubmitReview } from '@/features/reviews/review-form';
+import { canSubmitReview, reviewSubmitErrorMessage } from '@/features/reviews/review-form';
+import { ReviewLoadState } from '@/features/reviews/review-load-state';
+import { useMyReviews } from '@/features/reviews/use-my-reviews';
 import { useReviewPhotos } from '@/features/reviews/use-review-photos';
 import { type ReviewPhase, WriteReviewScreen } from '@/features/reviews/write-review-screen';
 import { formatFullDate } from '@/features/tour-detail/departures';
@@ -23,9 +24,7 @@ export default function RewriteReviewRoute() {
   const copy = messages.reviews;
   const queryClient = useQueryClient();
 
-  const listQuery = useQuery(
-    orpc.reviews.mine.queryOptions({ input: { page: 1, limit: 50 }, context: withMobileAuth() }),
-  );
+  const listQuery = useMyReviews();
   const updateMutation = useMutation(
     orpc.reviews.update.mutationOptions({ context: withMobileAuth() }),
   );
@@ -51,7 +50,8 @@ export default function RewriteReviewRoute() {
     photoState.setPhotos(
       review.media.map((media) => ({
         key: media.publicId,
-        uri: media.url,
+        // Ô thumbnail 72pt (~216px ở 3x): không tải ảnh nguyên cỡ (V9).
+        uri: cloudinaryUrl(media.url, 216),
         ext: 'jpg',
         status: 'done',
         publicId: media.publicId,
@@ -59,7 +59,28 @@ export default function RewriteReviewRoute() {
     );
   }, [review, photoState]);
 
-  if (review === undefined) return null;
+  if (listQuery.isPending) {
+    return (
+      <ReviewLoadState
+        state="loading"
+        errorText={copy.loadError}
+        retryLabel={copy.loadErrorRetry}
+        onRetry={() => void listQuery.refetch()}
+      />
+    );
+  }
+  if (listQuery.isError || review === undefined) {
+    return (
+      <ReviewLoadState
+        state="error"
+        errorText={
+          listQuery.isError ? copy.loadError : (copy.errors.REVIEW_NOT_FOUND ?? copy.loadError)
+        }
+        retryLabel={copy.loadErrorRetry}
+        onRetry={() => void listQuery.refetch()}
+      />
+    );
+  }
 
   const draft = { rating, title, body };
   const { photoIds } = photoState;
@@ -84,13 +105,7 @@ export default function RewriteReviewRoute() {
           void queryClient.invalidateQueries({ queryKey: orpc.reviews.mine.key() });
           setPhase('submitted');
         },
-        onError: (error) => {
-          const known = error instanceof ORPCError ? error.code : null;
-          const errors: Record<string, string | undefined> = copy.errors;
-          setErrorMessage(
-            (known === null ? undefined : errors[known]) ?? messages.accountActionErrors.generic,
-          );
-        },
+        onError: (error) => setErrorMessage(reviewSubmitErrorMessage(error)),
       },
     );
   }

@@ -1,3 +1,6 @@
+import { ORPCError } from '@orpc/client';
+import { messages } from '@tourism/i18n';
+
 /**
  * Logic thuần của form viết đánh giá (R1, mockup `mobile-review-screens` mục 1).
  * Chỉ hai luật chặn ở máy: có sao và body đủ sàn. Trần 2000 và các luật còn
@@ -27,4 +30,18 @@ export function buildReviewInput(bookingCode: string, draft: ReviewDraft) {
     body: draft.body.trim(),
     ...(title === '' ? {} : { title }),
   };
+}
+
+/**
+ * Câu lỗi khi gửi/sửa review: 429 → câu chờ; mã có trong bảng `messages.reviews.errors`
+ * → câu riêng của mã đó; còn lại → câu chung. Trước đây R1 chỉ xử lý hai mã.
+ */
+export function reviewSubmitErrorMessage(error: unknown): string {
+  if (error instanceof ORPCError) {
+    if (error.status === 429) return messages.accountActionErrors.throttle;
+    const known: Record<string, string | undefined> = messages.reviews.errors;
+    const text = known[error.code];
+    if (text !== undefined) return text;
+  }
+  return messages.accountActionErrors.generic;
 }

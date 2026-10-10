@@ -3,7 +3,12 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { messages } from '@tourism/i18n';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
-import { buildReviewInput, canSubmitReview } from '@/features/reviews/review-form';
+import {
+  buildReviewInput,
+  canSubmitReview,
+  reviewSubmitErrorMessage,
+} from '@/features/reviews/review-form';
+import { ReviewLoadState } from '@/features/reviews/review-load-state';
 import { useReviewPhotos } from '@/features/reviews/use-review-photos';
 import { type ReviewPhase, WriteReviewScreen } from '@/features/reviews/write-review-screen';
 import { formatDepartureRange } from '@/features/tour-detail/departures';
@@ -40,7 +45,16 @@ export default function ReviewRoute() {
   );
 
   const booking = detailQuery.data;
-  if (booking === undefined) return null;
+  if (booking === undefined) {
+    return (
+      <ReviewLoadState
+        state={detailQuery.isError ? 'error' : 'loading'}
+        errorText={messages.mobile.booking.detailError}
+        retryLabel={messages.mobile.booking.retry}
+        onRetry={() => void detailQuery.refetch()}
+      />
+    );
+  }
 
   const draft = { rating, title, body };
   const { photoIds } = photoState;
@@ -62,7 +76,7 @@ export default function ReviewRoute() {
         } else if (error instanceof ORPCError && error.code === 'REVIEW_ALREADY_EXISTS') {
           setPhase('alreadyReviewed');
         } else {
-          setErrorMessage(messages.accountActionErrors.generic);
+          setErrorMessage(reviewSubmitErrorMessage(error));
         }
       },
     });
