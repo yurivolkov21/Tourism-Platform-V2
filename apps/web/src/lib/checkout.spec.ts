@@ -7,6 +7,7 @@ import {
   computeBookingTotal,
   formatBookingMoney,
   PENDING_TTL_MINUTES,
+  pendingDeadline,
   pendingExpiry,
   receiptNote,
   ticketBarcodeWidths,
@@ -122,6 +123,14 @@ describe('pendingExpiry — hạn 65 phút tính từ createdAt', () => {
 
   it('hằng số khớp PENDING_TTL_MINUTES của API', () => {
     expect(PENDING_TTL_MINUTES).toBe(65);
+  });
+});
+
+describe('pendingDeadline — mốc đơn chờ bị nhả', () => {
+  it('là createdAt cộng PENDING_TTL_MINUTES', () => {
+    expect(pendingDeadline('2026-10-09T10:59:36.812Z').toISOString()).toBe(
+      '2026-10-09T12:04:36.812Z',
+    );
   });
 });
 
