@@ -1,6 +1,6 @@
-// Style Dictionary build for @tourism/tokens.
-// Emits generated/tokens.css (Tailwind v4 @theme inline + :root + .dark + .light).
-// Run: node libs/shared/tokens/style-dictionary/build.mjs (wired as the Nx `tokens` target).
+// Bộ build Style Dictionary của @tourism/tokens.
+// Sinh generated/tokens.css (Tailwind v4 @theme inline + :root + .dark + .light).
+// Chạy: node libs/shared/tokens/style-dictionary/build.mjs (gắn làm target `tokens`).
 
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';

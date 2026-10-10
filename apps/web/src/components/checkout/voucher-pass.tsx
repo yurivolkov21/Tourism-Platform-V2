@@ -139,9 +139,9 @@ export function VoucherPass({ booking, view }: { booking: BookingDetail; view: V
  * Một mốc của Trip journal: vòng tròn (tích khi đã xong), nhãn, dòng phụ; vạch nối tới mốc sau
  * (mốc cuối không có).
  *
- * Vạch là VIỀN của một phần tử thật, không phải nền của `::before`: trình duyệt mặc định không in
- * nền, còn quy tắc in của mảng teal (`[data-slot="voucher-pass"] *` — viền theo mực teal) không
- * khớp giả phần tử, nên bản in từng mất cả đường thời gian (review P7C#11). Viền luôn in.
+ * Vạch là VIỀN của một phần tử thật, không phải nền của `::before` — đặt từ thời thẻ này còn là bản
+ * in (review P7C#11: giấy mất cả đường thời gian). Từ G40 thẻ không in nữa (tài liệu in riêng
+ * `VoucherPrint`, ADR-0057); giữ phần tử thật vì nó vẫn là cách vẽ đúng, không phụ thuộc giả phần tử.
  */
 function JournalItem({ item, last }: { item: VoucherJournalItem; last: boolean }) {
   return (

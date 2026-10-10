@@ -175,12 +175,10 @@ describe('VoucherPass — Trip journal', () => {
   });
 
   /**
-   * Vạch nối giữa hai mốc phải IN được (review P7C#11): bản cũ vẽ bằng nền của `::before` — trình
-   * duyệt mặc định không in nền, và quy tắc in của mảng teal (`[data-slot="voucher-pass"] *`) không
-   * khớp giả phần tử — nên giấy mất cả đường thời gian. Vạch là một phần tử thật, ẩn với trình đọc
-   * màn hình; mốc cuối không có vạch.
+   * Vạch nối giữa hai mốc là phần tử thật (review P7C#11 — đặt từ thời thẻ còn là bản in; từ G40 bản
+   * in là tài liệu riêng `VoucherPrint`), ẩn với trình đọc màn hình; mốc cuối không có vạch.
    */
-  it('vạch nối giữa hai mốc là phần tử thật (in được), mốc cuối không có', () => {
+  it('vạch nối giữa hai mốc là phần tử thật, mốc cuối không có', () => {
     const { container } = renderPass();
     const items = [...slot(container, 'voucher-journal').querySelectorAll('li')];
     const lines = items.map((li) => li.querySelector('[data-slot="journal-line"]'));
