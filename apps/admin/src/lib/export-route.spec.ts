@@ -1,6 +1,12 @@
 import { messages } from '@tourism/i18n';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { guardExportAccess } from './export-route';
+import {
+  exportFilename,
+  guardExportAccess,
+  isoDay,
+  XLSX_CONTENT_TYPE,
+  xlsxExportResponse,
+} from './export-route';
 
 /**
  * W2 mục 9 (audit cụm 8 — Vừa): `guardExportAccess` là LỚP GÁC DUY NHẤT của
@@ -53,5 +59,35 @@ describe('guardExportAccess', () => {
     lookupServerSession.mockResolvedValueOnce({ kind: 'ok', user });
     const gate = await guardExportAccess('/subscribers/export');
     expect(gate).toEqual({ ok: true, session: user });
+  });
+});
+
+describe('isoDay', () => {
+  it('ngày UTC của một mốc — cùng thước với ngày mà API lọc', () => {
+    expect(isoDay(new Date('2026-09-01T23:30:00.000Z'))).toBe('2026-09-01');
+    expect(isoDay(new Date('2026-12-31T00:00:00.000Z'))).toBe('2026-12-31');
+  });
+});
+
+describe('exportFilename', () => {
+  it('tên + ngày xuất + đuôi; làm sạch tên vì nó đi vào header HTTP', () => {
+    expect(exportFilename('nexora-bookings', '2026-09-01', 'xlsx')).toBe(
+      'nexora-bookings-2026-09-01.xlsx',
+    );
+    expect(exportFilename('book"ings\r\n', '2026-09-01', 'xlsx')).toBe('book-ings-2026-09-01.xlsx');
+    expect(exportFilename('Nexora Bookings', '2026-09-01', 'xlsx')).toBe(
+      'nexora-bookings-2026-09-01.xlsx',
+    );
+  });
+});
+
+describe('xlsxExportResponse', () => {
+  it('ép tải về đúng tên .xlsx, đúng content-type, cấm cache', () => {
+    const response = xlsxExportResponse('nexora-bookings', new ArrayBuffer(0));
+    expect(response.headers.get('content-type')).toBe(XLSX_CONTENT_TYPE);
+    expect(response.headers.get('content-disposition')).toMatch(
+      /^attachment; filename="nexora-bookings-\d{4}-\d{2}-\d{2}\.xlsx"$/,
+    );
+    expect(response.headers.get('cache-control')).toBe('no-store');
   });
 });

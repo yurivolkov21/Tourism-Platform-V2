@@ -3,19 +3,19 @@ import { messages } from '@tourism/i18n';
 import { cookies } from 'next/headers';
 import type { NextRequest } from 'next/server';
 import { fetchAdminBookings, fetchAllAdminBookings } from '@/lib/api/bookings';
-import { bookingsCsvRows } from '@/lib/bookings-csv';
 import { EXPORT_SELECTION_PARAM, parseBookingsSearchParams } from '@/lib/bookings-query';
+import { buildBookingsWorkbook } from '@/lib/bookings-xlsx';
 import { EXPORT_TIME_BUDGET_MS, type PagedExport } from '@/lib/export-pages';
 import {
-  csvExportResponse,
   exportFailedResponse,
   guardExportAccess,
   logExportAudit,
+  xlsxExportResponse,
 } from '@/lib/export-route';
 import { rawSearchParamsFrom } from '@/lib/table-query';
 
 /**
- * `GET /bookings/export` — tải CSV của ĐÚNG tập đang lọc (spec P4b §3-F6).
+ * `GET /bookings/export` — tải Excel của ĐÚNG tập đang lọc (spec P4b §3-F6).
  *
  * Đọc cùng một `searchParams` với trang `/bookings` qua CÙNG hàm
  * `parseBookingsSearchParams`, nên "cái đang thấy" và "cái tải về" không thể
@@ -23,7 +23,7 @@ import { rawSearchParamsFrom } from '@/lib/table-query';
  * nhất là bỏ phân trang (`bookingsExportHref` không mang page/limit — file là
  * CẢ tập, không phải trang đang xem).
  *
- * Gác quyền, audit và headers CSV là phần chung của mọi route export —
+ * Gác quyền, audit và headers tải file là phần chung của mọi route export —
  * `lib/export-route.ts` (vòng vá review F10; lý do route phải tự gác: layout
  * không bọc route handler, proxy chỉ kiểm cookie tồn tại).
  */
@@ -48,6 +48,7 @@ export async function GET(request: NextRequest) {
     new Date(),
   );
   const cookie = (await cookies()).toString();
+  const generatedAt = new Date().toISOString();
   const filters = {
     status: query.status ?? null,
     search: query.search ? '<set>' : null,
@@ -115,7 +116,15 @@ export async function GET(request: NextRequest) {
       mode: 'selection',
       filters,
     });
-    return csvExportResponse('nexora-bookings', bookingsCsvRows(rows));
+    return xlsxExportResponse(
+      'nexora-bookings',
+      await buildBookingsWorkbook(rows, {
+        query,
+        selected: rows.length,
+        adminOrigin: request.nextUrl.origin,
+        generatedAt,
+      }),
+    );
   }
 
   // API sập/timeout giữa vòng lặp gom trang: KHÔNG để lỗi ném ra khỏi handler.
@@ -146,5 +155,13 @@ export async function GET(request: NextRequest) {
   }
 
   logExportAudit('bookings', { adminId, outcome: 'ok', rows: result.items.length, filters });
-  return csvExportResponse('nexora-bookings', bookingsCsvRows(result.items));
+  return xlsxExportResponse(
+    'nexora-bookings',
+    await buildBookingsWorkbook(result.items, {
+      query,
+      selected: 0,
+      adminOrigin: request.nextUrl.origin,
+      generatedAt,
+    }),
+  );
 }
