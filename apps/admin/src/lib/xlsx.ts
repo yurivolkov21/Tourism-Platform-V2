@@ -1,24 +1,26 @@
 import type { AdminMonthlyReport, Booking, BookingStatusValue } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
 import ExcelJS from 'exceljs';
-import { statusLabel } from './bookings-view';
+import { guestCount, statusLabel } from './bookings-view';
 import { formatMonthLabel } from './month-options';
 import { costWarning, formatMarginPct, reportPeriodLabel } from './reports-view';
 import { formatCount } from './stats-view';
 import {
   addSheet,
-  BAND,
   BRAND,
-  BRAND_SOFT,
   bodyFont,
+  bookingLink,
   COST,
   COUNT_FMT,
+  calendarDate,
   count,
   DATE_FMT,
   DIM,
   fill,
+  freezeHeader,
   GAIN,
   HEAD_FONT,
+  headerRow,
   INK,
   MONEY_FMT,
   MONO_FONT,
@@ -28,8 +30,10 @@ import {
   printFrame,
   RULE,
   stampWorkbook,
+  stripe,
+  subtotalRow,
+  sumMoney,
   thin,
-  WHITE,
 } from './xlsx-style';
 
 /**
@@ -37,13 +41,7 @@ import {
  * `Buffer`. Không đọc cookie, không fetch, không đụng Next — nên mọi ô test
  * được bằng cách mở lại chính buffer vừa dựng.
  *
- * ## Vì sao Excel chứ không CSV
- *
- * Lý do KHÔNG phải cái đuôi file. Ô CSV chỉ mang được văn bản, nên
- * `reportCsvRows` phải **hy sinh cách trình bày để cứu tính toán** — JSDoc của
- * chính nó thú nhận: *"Excel đọc '$1,240.50' thành text và mọi phép SUM chết"*,
- * nên file cũ xuất `1240.50` trần. Ở đây số ghi xuống là `number` kèm
- * `numFmt`, nên file vừa ĐỌC như tiền vừa SUM được. Không phải chọn một.
+ * File theo bản thảo D1 (ADR-0034 AMEND 3, spec G40 §6); đồ nghề chung ở `xlsx-style.ts`.
  *
  * ## Năm sheet, mỗi sheet một câu hỏi
  *
@@ -58,56 +56,6 @@ import {
 
 const t = messages.admin.reports;
 const x = t.xlsx;
-
-/** Viền mảnh bốn cạnh — mỗi ô dữ liệu là một ô, không phải chữ trôi trên nền. */
-const CELL_BORDER: Partial<ExcelJS.Borders> = {
-  top: { style: 'thin' as const, color: { argb: RULE } },
-  left: { style: 'thin' as const, color: { argb: RULE } },
-  bottom: { style: 'thin' as const, color: { argb: RULE } },
-  right: { style: 'thin' as const, color: { argb: RULE } },
-};
-
-/** Viền trên ĐẬM — dấu hiệu "dòng này là tổng của mấy dòng trên". */
-const TOP_RULE: Partial<ExcelJS.Borders> = {
-  ...CELL_BORDER,
-  top: { style: 'medium', color: { argb: BRAND } },
-};
-
-/** Kẻ viền + canh lề cho một dải ô của một dòng. */
-function dressRow(
-  row: ExcelJS.Row,
-  columns: number,
-  // `Partial<Borders>` của ExcelJS chứ không `typeof CELL_BORDER`: kiểu suy ra
-  // từ hằng ấy khoá cứng `style: 'thin'`, nên `TOP_RULE` (dùng `'medium'` ở
-  // cạnh trên) không lọt qua.
-  opts: { border?: Partial<ExcelJS.Borders>; band?: string } = {},
-): void {
-  for (let column = 1; column <= columns; column += 1) {
-    const cell = row.getCell(column);
-    cell.border = opts.border ?? CELL_BORDER;
-    if (opts.band) cell.fill = fill(opts.band);
-    // Nhãn canh trái, số canh phải — quy ước bảng tài chính, và cũng là thứ
-    // giúp mắt dò cột số mà không cần kẻ dọc đậm.
-    cell.alignment = {
-      ...cell.alignment,
-      horizontal: column === 1 ? 'left' : 'right',
-      vertical: 'middle',
-    };
-  }
-  row.height = 18;
-}
-
-/** Hàng tiêu đề bảng: nền thương hiệu, chữ trắng, đóng băng ở nơi dùng. */
-function dressHeader(row: ExcelJS.Row, columns: number): void {
-  for (let column = 1; column <= columns; column += 1) {
-    const cell = row.getCell(column);
-    cell.fill = fill(BRAND);
-    cell.font = { bold: true, color: { argb: WHITE } };
-    cell.border = CELL_BORDER;
-    cell.alignment = { horizontal: column === 1 ? 'left' : 'right', vertical: 'middle' };
-  }
-  row.height = 22;
-}
 
 /** Cột A là lề; nội dung B:I (bản thảo D1). */
 const SUMMARY_WIDTHS = [2, 14, 14, 13, 14, 13, 13, 13, 14];
@@ -418,177 +366,185 @@ function buildSummary(
   sheet.pageSetup.printArea = `A1:${LAST}${footnote}`;
 }
 
-function buildBookings(book: ExcelJS.Workbook, report: AdminMonthlyReport): void {
-  const sheet = book.addWorksheet(x.sheets.bookings);
-  sheet.columns = [
-    { header: t.bookingsTable.status, key: 'status', width: 26 },
-    { header: t.bookingsTable.count, key: 'count', width: 14 },
-  ];
-  dressHeader(sheet.getRow(1), 2);
+const DATA_TAB = DIM;
 
-  report.bookingsByStatus.forEach((row, index) => {
-    const added = sheet.addRow([statusLabel(row.status)]);
-    // Dải xen kẽ: mắt dò ngang một bảng nhiều hàng mà không lạc dòng.
-    dressRow(added, 2, index % 2 === 1 ? { band: BAND } : {});
-    count(added.getCell(2), row.count);
+function buildBookings(
+  book: ExcelJS.Workbook,
+  report: AdminMonthlyReport,
+  frame: Partial<ExcelJS.HeaderFooter>,
+): void {
+  const sheet = addSheet(book, x.sheets.bookings, { tab: DATA_TAB, grid: true, frame });
+  sheet.columns = [24, 14, 12].map((width) => ({ width }));
+  headerRow(sheet, [t.bookingsTable.status, t.bookingsTable.count, x.share]);
+
+  const first = 2;
+  const total = first + report.bookingsByStatus.length;
+  report.bookingsByStatus.forEach(({ status, count: bookings }, index) => {
+    const row = sheet.getRow(first + index);
+    put(row.getCell(1), statusLabel(status), { size: 10 });
+    count(row.getCell(2), bookings);
+    row.getCell(2).font = bodyFont({ name: MONO_FONT, size: 10 });
+    row.getCell(3).value = {
+      formula: `IF($B$${total}=0,0,B${first + index}/$B$${total})`,
+      result: report.newBookings === 0 ? 0 : bookings / report.newBookings,
+    };
+    row.getCell(3).numFmt = PCT_FMT;
+    row.getCell(3).font = bodyFont({ name: MONO_FONT, size: 10 });
+    stripe(row, 3, index);
   });
+  const totalRow = sheet.getRow(total);
+  put(totalRow.getCell(1), t.bookingsTable.total, { size: 10, bold: true });
+  totalRow.getCell(2).value = {
+    formula: `SUM(B${first}:B${total - 1})`,
+    result: report.newBookings,
+  };
+  totalRow.getCell(2).numFmt = COUNT_FMT;
+  totalRow.getCell(2).font = bodyFont({ name: MONO_FONT, size: 10, bold: true });
+  for (let column = 1; column <= 3; column += 1) {
+    totalRow.getCell(column).border = { top: thin(INK) };
+  }
 
-  const total = sheet.addRow([t.bookingsTable.total]);
-  dressRow(total, 2, { border: TOP_RULE, band: BRAND_SOFT });
-  total.getCell(1).font = { bold: true, color: { argb: INK } };
-  count(total.getCell(2), report.newBookings);
-  total.getCell(2).font = { bold: true, color: { argb: INK } };
-
-  sheet.views = [{ state: 'frozen', ySplit: 1 }];
-  sheet.pageSetup = { fitToPage: true, fitToWidth: 1, fitToHeight: 0, printTitlesRow: '1:1' };
+  freezeHeader(sheet, true);
+  sheet.pageSetup.printTitlesRow = '1:1';
 }
 
-function buildOperations(book: ExcelJS.Workbook, report: AdminMonthlyReport): void {
-  const sheet = book.addWorksheet(x.sheets.operations);
-  sheet.columns = [
-    { header: t.operationsTable.metric, key: 'metric', width: 34 },
-    { header: t.operationsTable.value, key: 'value', width: 18 },
-  ];
-  dressHeader(sheet.getRow(1), 2);
-
-  const o = t.operationsTable;
-  const rows: Array<[string, (cell: ExcelJS.Cell) => void]> = [
-    [o.refundedTotal, (cell) => money(cell, report.refundedTotal)],
-    [o.refunds, (cell) => count(cell, report.refunds)],
-    [o.paidBookings, (cell) => count(cell, report.paidBookings)],
-    [o.newBookings, (cell) => count(cell, report.newBookings)],
-    [o.cancellationsWithinDeadline, (cell) => count(cell, report.cancellationsWithinDeadline)],
-    [o.cancellationsAfterDeadline, (cell) => count(cell, report.cancellationsAfterDeadline)],
-    [o.reviewsApproved, (cell) => count(cell, report.reviewsApproved)],
-  ];
-  rows.forEach(([label, write], index) => {
-    const row = sheet.addRow([label]);
-    dressRow(row, 2, index % 2 === 1 ? { band: BAND } : {});
+function buildOperations(
+  book: ExcelJS.Workbook,
+  report: AdminMonthlyReport,
+  frame: Partial<ExcelJS.HeaderFooter>,
+): void {
+  const sheet = addSheet(book, x.sheets.operations, { tab: DATA_TAB, grid: true, frame });
+  sheet.columns = [34, 16].map((width) => ({ width }));
+  headerRow(sheet, [t.operationsTable.metric, t.operationsTable.value]);
+  operationsMetrics(report).forEach(([label, write], index) => {
+    const row = sheet.getRow(2 + index);
+    put(row.getCell(1), label, { size: 10 });
     write(row.getCell(2));
+    row.getCell(2).font = bodyFont({ name: MONO_FONT, size: 10 });
+    stripe(row, 2, index);
   });
-
-  sheet.views = [{ state: 'frozen', ySplit: 1 }];
-  sheet.pageSetup = { fitToPage: true, fitToWidth: 1, fitToHeight: 0, printTitlesRow: '1:1' };
+  freezeHeader(sheet, true);
+  sheet.pageSetup.printTitlesRow = '1:1';
 }
 
 /**
- * Từng booking một — thứ khiến báo cáo KIỂM CHÉO được thay vì phải tin.
+ * Từng booking TẠO trong tháng (ADR-0034 AMEND 1a) — thứ khiến báo cáo kiểm chéo được. Tập này KHÔNG
+ * phải tập của khối lãi lỗ (neo ngày chuyến kết thúc); tên sheet nói thẳng điều đó.
  *
- * ⚠️ Tập này là booking **TẠO trong tháng**, cùng tập với sheet *Bookings* ở
- * trên (`admin.bookings.list` lọc theo `created_at` — ADR-0028 chốt giữ cột
- * ấy). Nó **KHÔNG** phải tập của khối P&L, vốn neo ngày chuyến KẾT THÚC. Hai
- * tập khác nhau, và tiêu đề sheet nói thẳng điều đó — người đọc thử cộng cột
- * `Total` để ra `Revenue recognised` sẽ không bao giờ khớp, nên phải chặn hiểu
- * nhầm ấy ngay trên file.
+ * Dòng ghi chú (AMEND 2b) nằm DƯỚI hàng Total (quyết định 8 của plan): ô merge trong vùng lọc làm
+ * Excel từ chối sắp xếp. Bảng trống thì nó là hàng 2, ngay dưới tiêu đề.
  */
 function buildDetail(
   book: ExcelJS.Workbook,
   bookings: readonly Booking[],
-  note: string | undefined,
+  {
+    note,
+    adminOrigin,
+    frame,
+  }: { note?: string; adminOrigin: string; frame: Partial<ExcelJS.HeaderFooter> },
 ): void {
-  const sheet = book.addWorksheet(x.sheets.detail);
-  sheet.columns = [
-    { header: x.detail.code, key: 'code', width: 16 },
-    { header: x.detail.tour, key: 'tour', width: 38 },
-    { header: x.detail.departureEnds, key: 'ends', width: 16 },
-    { header: x.detail.travellers, key: 'pax', width: 12 },
-    { header: x.detail.total, key: 'total', width: 14 },
-    { header: x.detail.refunded, key: 'refunded', width: 14 },
-    { header: x.detail.status, key: 'status', width: 20 },
-  ];
-  // `columnCount` là GETTER duyệt mọi hàng của sheet — gọi nó trong vòng lặp
-  // là O(n²) trên 2000 hàng (vòng vá review 05/09). Số cột là hằng do
-  // `sheet.columns` khai, đọc một lần.
-  const columns = sheet.columnCount;
-  dressHeader(sheet.getRow(1), columns);
+  const sheet = addSheet(book, x.sheets.detail, {
+    tab: DATA_TAB,
+    grid: true,
+    landscape: true,
+    frame,
+  });
+  sheet.columns = [16, 46, 19, 14, 15, 15, 14].map((width) => ({ width }));
+  const d = x.detail;
+  headerRow(sheet, [d.code, d.tour, d.departureEnds, d.travellers, d.total, d.refunded, d.status]);
+  const columns = 7;
 
-  // Lý do sheet thiếu hàng (hoặc lệch số) in NGAY DƯỚI tiêu đề, trong file —
-  // vết audit phía server là thứ người tải không bao giờ thấy.
-  if (note) {
-    const row = sheet.addRow([note]);
-    sheet.mergeCells(row.number, 1, row.number, columns);
-    row.getCell(1).font = { italic: true, color: { argb: DIM } };
-    row.getCell(1).alignment = { wrapText: true, vertical: 'middle' };
-    row.height = 30;
-  }
-
+  const first = 2;
   bookings.forEach((booking, index) => {
-    const row = sheet.addRow([booking.code, booking.tourTitle]);
-    dressRow(row, columns, index % 2 === 1 ? { band: BAND } : {});
-    // Hai cột chữ canh trái; `dressRow` mặc định canh phải từ cột 2 trở đi.
-    row.getCell(2).alignment = { horizontal: 'left', vertical: 'middle' };
-    row.getCell(7).alignment = { horizontal: 'left', vertical: 'middle' };
+    const row = sheet.getRow(first + index);
+    bookingLink(row.getCell(1), booking.code, adminOrigin);
+    put(row.getCell(2), booking.tourTitle, { size: 10 });
     const ends = row.getCell(3);
-    // Ô NGÀY thật, không phải chuỗi: người đọc lọc và sắp xếp được theo nó.
-    ends.value = new Date(booking.departureEndDate);
+    ends.value = calendarDate(booking.departureEndDate);
     ends.numFmt = DATE_FMT;
-    count(row.getCell(4), booking.numAdults + booking.numChildren);
+    ends.font = bodyFont({ size: 10 });
+    count(row.getCell(4), guestCount(booking));
     money(row.getCell(5), booking.totalAmount);
     money(row.getCell(6), booking.refundedTotal);
-    row.getCell(7).value = statusLabel(booking.status);
+    for (const column of [4, 5, 6]) {
+      row.getCell(column).font = bodyFont({ name: MONO_FONT, size: 10 });
+    }
+    put(row.getCell(7), statusLabel(booking.status), {
+      size: 10,
+      color: { argb: booking.status === 'CANCELLED' ? COST : INK },
+    });
+    stripe(row, columns, index);
   });
 
-  sheet.views = [{ state: 'frozen', ySplit: 1 }];
-  // Bộ lọc trên hàng tiêu đề — thứ biến sheet này thành công cụ kiểm chéo
-  // thay vì một danh sách để nhìn. Vùng lọc phủ TỚI hàng cuối: `ref` chỉ có
-  // hàng 1 thì Excel desktop tự nới nhưng LibreOffice/Google Sheets tôn trọng
-  // `ref` và lọc trên đúng một hàng (vòng vá review 05/09).
-  sheet.autoFilter = { from: 'A1', to: { row: Math.max(1, sheet.rowCount), column: columns } };
-  sheet.pageSetup = {
-    fitToPage: true,
-    fitToWidth: 1,
-    fitToHeight: 0,
-    orientation: 'landscape',
-    printTitlesRow: '1:1',
-  };
-}
+  const last = first + bookings.length - 1;
+  subtotalRow(sheet, t.bookingsTable.total, { first, last }, columns, [
+    {
+      column: 4,
+      result: bookings.reduce((sum, booking) => sum + guestCount(booking), 0),
+      numFmt: COUNT_FMT,
+    },
+    {
+      column: 5,
+      result: sumMoney(bookings.map((booking) => booking.totalAmount)),
+      numFmt: MONEY_FMT,
+    },
+    {
+      column: 6,
+      result: sumMoney(bookings.map((booking) => booking.refundedTotal)),
+      numFmt: MONEY_FMT,
+    },
+  ]);
 
-/**
- * Khối "cách đọc mấy con số này" — đi kèm MỌI bản xuất.
- *
- * Cùng lý do nó đi kèm mọi bản in (`page.tsx`): khi báo cáo rời khỏi màn hình
- * thì không còn tooltip nào để hỏi. File Excel rời đi xa hơn giấy — nó được
- * gửi qua email, mở trên máy người khác, đọc lại sau sáu tháng.
- */
-function buildDefinitions(book: ExcelJS.Workbook): void {
-  const sheet = book.addWorksheet(x.sheets.definitions);
-  sheet.getColumn(1).width = 110;
-
-  const heading = sheet.addRow([t.definitions.heading]);
-  heading.getCell(1).font = { bold: true, size: 13, color: { argb: WHITE } };
-  heading.getCell(1).fill = fill(BRAND);
-  heading.getCell(1).alignment = { horizontal: 'left', vertical: 'middle', indent: 1 };
-  heading.height = 26;
-  sheet.addRow([]);
-
-  for (const line of [
-    t.definitions.revenue,
-    t.definitions.recognised,
-    t.definitions.costs,
-    t.definitions.netProfit,
-    t.definitions.refunds,
-    t.definitions.statuses,
-    t.definitions.cancellations,
-  ]) {
-    const row = sheet.addRow([line]);
-    const cell = row.getCell(1);
-    cell.alignment = { wrapText: true, vertical: 'top', indent: 1 };
-    cell.font = { color: { argb: INK } };
-    cell.border = { bottom: { style: 'hair', color: { argb: RULE } } };
-    row.height = 32;
+  if (note) {
+    const noteRow = bookings.length === 0 ? 2 : last + 3;
+    sheet.mergeCells(noteRow, 1, noteRow, columns);
+    const cell = put(sheet.getCell(noteRow, 1), note, {
+      size: 10,
+      italic: true,
+      color: { argb: DIM },
+    });
+    cell.alignment = { wrapText: true, vertical: 'middle' };
+    sheet.getRow(noteRow).height = 30;
   }
+
+  freezeHeader(sheet, true);
+  // Vùng lọc tới hàng DỮ LIỆU cuối (AMEND 2c), không gồm hàng Total (quyết định 9).
+  sheet.autoFilter = { from: 'A1', to: { row: Math.max(1, last), column: columns } };
+  sheet.pageSetup.printTitlesRow = '1:1';
+}
+
+/** Khối "How to read these numbers" — đi kèm MỌI bản xuất: file rời màn hình thì không còn tooltip. */
+function buildDefinitions(book: ExcelJS.Workbook, frame: Partial<ExcelJS.HeaderFooter>): void {
+  const sheet = addSheet(book, x.sheets.definitions, { tab: RULE, grid: false, frame });
+  sheet.columns = [2, 5, 100].map((width) => ({ width }));
+  put(sheet.getCell('B2'), t.definitions.heading, { name: HEAD_FONT, size: 15, bold: true });
+  sheet.getRow(2).height = 28;
+  const d = t.definitions;
+  [d.revenue, d.recognised, d.costs, d.netProfit, d.refunds, d.statuses, d.cancellations].forEach(
+    (line, index) => {
+      const row = 4 + index;
+      put(sheet.getCell(`B${row}`), index + 1, {
+        name: MONO_FONT,
+        size: 10,
+        bold: true,
+        color: { argb: BRAND },
+      }).alignment = { vertical: 'top' };
+      put(sheet.getCell(`C${row}`), line).alignment = { wrapText: true, vertical: 'top' };
+      // Excel không tự giãn hàng khi mở file: ước ~95 ký tự một dòng ở cột rộng 100.
+      sheet.getRow(row).height = Math.max(30, Math.ceil(line.length / 95) * 15 + 4);
+    },
+  );
 }
 
 /**
- * Toàn bộ workbook. `bookings` là tập cho sheet *Detail*; truyền mảng rỗng thì
- * sheet vẫn có mặt với đúng hàng tiêu đề — một sheet BIẾN MẤT khi tháng vắng
- * sẽ làm hai file cùng tháng trông khác cấu trúc.
+ * Toàn bộ workbook. `bookings` là tập của sheet Detail; mảng rỗng thì sheet vẫn có mặt với hàng tiêu
+ * đề — một sheet BIẾN MẤT khi tháng vắng làm hai file cùng tháng khác cấu trúc. `adminOrigin` dựng
+ * hyperlink mã đơn (quyết định 11 của plan).
  */
 export async function buildReportWorkbook(
   report: AdminMonthlyReport,
   bookings: readonly Booking[],
-  /** Câu ghi trong sheet Detail khi nó thiếu hàng hoặc lệch số với Summary. */
-  detailNote?: string,
+  { detailNote, adminOrigin }: { detailNote?: string; adminOrigin: string },
 ): Promise<ArrayBuffer> {
   const book = new ExcelJS.Workbook();
   const monthLabel = formatMonthLabel(report.month);
@@ -600,14 +556,12 @@ export async function buildReportWorkbook(
   const frame = printFrame(x.headerCenter(monthLabel), report.generatedAt);
 
   buildSummary(book, report, frame);
-  buildBookings(book, report);
-  buildOperations(book, report);
-  buildDetail(book, bookings, detailNote);
-  buildDefinitions(book);
+  buildBookings(book, report, frame);
+  buildOperations(book, report, frame);
+  buildDetail(book, bookings, { note: detailNote, adminOrigin, frame });
+  buildDefinitions(book, frame);
 
-  // ExcelJS khai kiểu trả về là `Buffer` của RIÊNG nó
-  // (`interface Buffer extends ArrayBuffer {}`), không phải `Buffer` của Node —
-  // ép sang kiểu Node là typecheck đỏ. `ArrayBuffer` là thứ nó thật sự trả, và
-  // cũng là thứ `Response` nhận thẳng làm body.
+  // ExcelJS khai kiểu trả về là `Buffer` của RIÊNG nó, không phải `Buffer` của Node — ép sang kiểu
+  // Node là typecheck đỏ. `ArrayBuffer` là thứ nó thật sự trả, và `Response` nhận thẳng làm body.
   return (await book.xlsx.writeBuffer()) as unknown as ArrayBuffer;
 }

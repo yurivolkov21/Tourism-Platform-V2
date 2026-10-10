@@ -51,7 +51,9 @@ const report: AdminMonthlyReport = {
 
 async function open(report_: AdminMonthlyReport): Promise<ExcelJS.Workbook> {
   const book = new ExcelJS.Workbook();
-  await book.xlsx.load(await buildReportWorkbook(report_, []));
+  await book.xlsx.load(
+    await buildReportWorkbook(report_, [], { adminOrigin: 'https://admin.example.com' }),
+  );
   return book;
 }
 

@@ -3771,21 +3771,6 @@ export const messages = {
         shareOfRevenue: 'Share of revenue',
         share: 'Share',
         seeDefinitions: 'How to read these numbers: see the Definitions sheet.',
-        title: 'Nexora — monthly report',
-        period: 'Period',
-        generatedAt: 'Generated',
-        currency: 'Currency',
-        /**
-         * In thuế suất lên chính file: env không có ngày hiệu lực, nên hai
-         * file tải cùng một tháng ở hai thời điểm có thể mang hai số thuế khác
-         * nhau (ADR-0033 §5). Không in suất thì không ai đối chiếu được.
-         */
-        taxRate: 'Tax rate on margin',
-        cashHeading: 'Cash flow',
-        grossMargin: 'Gross margin',
-        departuresRun: 'Departures that ran',
-        costDataMissing: 'Bookings with no cost data',
-        departuresCostMissing: 'Departures with no fixed-cost data',
         sheets: {
           summary: 'Summary',
           bookings: 'Bookings',
