@@ -1,3 +1,4 @@
+import { PRINT_LABEL } from '@tourism/ui/lib/print-styles';
 import { cn } from '@tourism/ui/lib/utils';
 import type { PrintColumn } from '@/lib/print/print-ticket';
 
@@ -28,9 +29,7 @@ export function PrintBand({
     >
       {columns.map((column) => (
         <div key={column.heading}>
-          <h3 className="mb-[1mm] font-mono text-[6.8pt] font-medium tracking-[0.14em] text-primary-emphasis uppercase">
-            {column.heading}
-          </h3>
+          <h3 className={cn(PRINT_LABEL, 'mb-[1mm] text-primary-emphasis')}>{column.heading}</h3>
           {column.reference ? (
             <>
               <p className="font-mono font-medium">{column.strong}</p>

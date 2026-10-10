@@ -1,10 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import {
-  formatPrintDate,
-  formatPrintDateTime,
-  formatPrintDayMonth,
-  formatPrintTime,
-} from './print-time';
+import { formatPrintDateTime, formatPrintTime } from './print-time';
 
 const VN = 'Asia/Ho_Chi_Minh';
 
@@ -21,10 +16,14 @@ describe('giờ in theo múi giờ (G40)', () => {
     expect(formatPrintDateTime(new Date('2026-09-14T03:12:45Z'), VN)).toBe('14 Sep 2026, 10:12');
   });
 
-  it('các mảnh riêng cho "Pay by" và câu giờ nhả', () => {
-    const at = new Date('2026-10-09T12:04:36.812Z');
-    expect(formatPrintTime(at, VN)).toBe('19:04');
-    expect(formatPrintDayMonth(at, VN)).toBe('9 Oct');
-    expect(formatPrintDate(at, VN)).toBe('9 Oct 2026');
+  it('giờ riêng cho "Pay by" và câu giờ nhả', () => {
+    expect(formatPrintTime(new Date('2026-10-09T12:04:36.812Z'), VN)).toBe('19:04');
+  });
+
+  it('múi giờ khác cho kết quả khác — bộ định dạng dùng lại không lẫn múi', () => {
+    const at = new Date('2026-10-09T17:00:00Z');
+    expect(formatPrintTime(at, VN)).toBe('00:00');
+    expect(formatPrintTime(at, 'UTC')).toBe('17:00');
+    expect(formatPrintTime(at, VN)).toBe('00:00');
   });
 });

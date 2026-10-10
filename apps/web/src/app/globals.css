@@ -313,24 +313,3 @@ html:not(.dark) .stamp-ink {
  * ───────────────────────────────────────────────────────────────────────────── */
 @custom-variant voucher-stack (@media (width < --theme(--breakpoint-xl)));
 @custom-variant voucher-split (@media (width >= --theme(--breakpoint-xl)));
-
-/* ─────────────────────────────────────────────────────────────────────────────
- * IN ẤN — tài liệu in (G40, ADR-0057 §1). Trang có `[data-print-doc]` thì lúc in chỉ còn `<main>`:
- * chrome của site (top bar, navbar, footer, nút cuộn, toast) là anh em của `<main>` ngay dưới
- * `<body>` (`SiteChrome`), còn nội dung màn hình trong `<main>` bọc `print:hidden` — giấy chỉ còn
- * tài liệu.
- *
- * `display: block`: `body` là cột flex (footer dính đáy màn hình); trang in tên `doc` chắc ăn nhất
- * khi tài liệu nằm trong luồng khối thường — đừng gỡ. Nền body bỏ để giao diện tối không lọt ra
- * giấy.
- * ───────────────────────────────────────────────────────────────────────────── */
-@media print {
-  body:has([data-print-doc]) {
-    display: block;
-    background: none;
-  }
-
-  body:has([data-print-doc]) > :not(main) {
-    display: none;
-  }
-}

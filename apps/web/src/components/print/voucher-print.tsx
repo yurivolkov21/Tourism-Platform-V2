@@ -3,12 +3,12 @@ import { messages } from '@tourism/i18n';
 import { DocFooter } from '@tourism/ui/components/print-doc/doc-footer';
 import { DocPage } from '@tourism/ui/components/print-doc/doc-page';
 import { PrintedAt } from '@tourism/ui/components/print-doc/printed-at';
+import { PRINT_SECTION } from '@tourism/ui/lib/print-styles';
 import type { VoucherPrintView } from '@/lib/print/voucher-print';
 import { EMAIL } from '@/lib/site';
 import { PhotoCover } from './photo-cover';
 import { PrintBand } from './print-band';
 import { PrintLists } from './print-lists';
-import { PRINT_SECTION } from './print-styles';
 import { PrintTear } from './print-tear';
 import { PrintTicket } from './print-ticket';
 

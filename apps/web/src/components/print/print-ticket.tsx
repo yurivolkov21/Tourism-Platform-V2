@@ -1,5 +1,6 @@
 import { messages } from '@tourism/i18n';
 import { DocStamp } from '@tourism/ui/components/print-doc/doc-stamp';
+import { PRINT_LABEL } from '@tourism/ui/lib/print-styles';
 import { cn } from '@tourism/ui/lib/utils';
 import { TicketBarcode } from '@/components/checkout/ticket-barcode';
 import type {
@@ -8,7 +9,6 @@ import type {
   PrintTicketTone,
   PrintTicketView,
 } from '@/lib/print/print-ticket';
-import { PRINT_LABEL } from './print-styles';
 
 /** Cuống gạch chéo của vé chờ, vé hết hiệu lực (B1): hai tông nền sáng của token. */
 const STRIPES =
@@ -54,7 +54,7 @@ export function PrintTicket({ view }: { view: PrintTicketView }) {
       data-slot="print-ticket"
       data-tone={view.tone}
       className={cn(
-        'relative grid grid-cols-[1fr_52mm] overflow-hidden rounded-[3.5mm] border-[0.9pt] bg-background',
+        'relative grid grid-cols-[1fr_52mm] overflow-hidden rounded-[3.5mm] border-[0.9pt] bg-card',
         tone.frame,
       )}
     >
@@ -79,7 +79,7 @@ export function PrintTicket({ view }: { view: PrintTicketView }) {
               <div className="my-[3mm] grid grid-cols-[auto_1fr_auto] items-center gap-[4mm]">
                 <TicketDate label={messages.bookingDetail.ticket.departs} date={view.departs} />
                 <p className="relative text-center text-[7.8pt] font-semibold text-primary-emphasis before:absolute before:inset-x-0 before:top-1/2 before:border-t-[0.8pt] before:border-dashed before:border-primary/40">
-                  <span className="relative bg-background px-[2.5mm]">{view.routeLine}</span>
+                  <span className="relative bg-card px-[2.5mm]">{view.routeLine}</span>
                 </p>
                 <TicketDate label={messages.bookingDetail.ticket.returns} date={view.returns} end />
               </div>
@@ -103,14 +103,14 @@ export function PrintTicket({ view }: { view: PrintTicketView }) {
         <span
           aria-hidden="true"
           className={cn(
-            'absolute -top-[2.6mm] -right-[2.6mm] z-10 size-[4.6mm] rounded-full border-[0.9pt] bg-background',
+            'absolute -top-[2.6mm] -right-[2.6mm] z-10 size-[4.6mm] rounded-full border-[0.9pt] bg-card',
             tone.line,
           )}
         />
         <span
           aria-hidden="true"
           className={cn(
-            'absolute -right-[2.6mm] -bottom-[2.6mm] z-10 size-[4.6mm] rounded-full border-[0.9pt] bg-background',
+            'absolute -right-[2.6mm] -bottom-[2.6mm] z-10 size-[4.6mm] rounded-full border-[0.9pt] bg-card',
             tone.line,
           )}
         />
@@ -154,7 +154,7 @@ function Stub({
       <p className={cn('text-center', BAND, band)}>{stub.band}</p>
       <div className="flex flex-1 flex-col px-[5mm] py-[4mm]">
         {stub.tag ? (
-          <span className="self-start rounded-[1mm] border-[0.7pt] border-pending bg-background px-[1.8mm] py-[0.6mm] font-mono text-[7.5pt] font-medium tracking-[0.16em] text-pending uppercase">
+          <span className="self-start rounded-[1mm] border-[0.7pt] border-pending bg-card px-[1.8mm] py-[0.6mm] font-mono text-[7.5pt] font-medium tracking-[0.16em] text-pending uppercase">
             {stub.tag}
           </span>
         ) : null}
@@ -167,7 +167,7 @@ function Stub({
         >
           {stub.amount}
         </p>
-        <p className="bg-background text-[7.3pt] text-muted-foreground">{stub.note}</p>
+        <p className="bg-card text-[7.3pt] text-muted-foreground">{stub.note}</p>
         {stub.barcode ? (
           <>
             <TicketBarcode code={stub.barcode} className="mt-auto h-[12mm] w-full" />
@@ -177,7 +177,7 @@ function Stub({
           </>
         ) : null}
         {stub.footer ? (
-          <p className="mt-auto rounded-[1mm] bg-background px-[2mm] py-[1.5mm] text-[7.8pt]">
+          <p className="mt-auto rounded-[1mm] bg-card px-[2mm] py-[1.5mm] text-[7.8pt]">
             {stub.footer.label}
             {stub.footer.value ? (
               <b className="block font-mono text-[9pt] font-medium">{stub.footer.value}</b>

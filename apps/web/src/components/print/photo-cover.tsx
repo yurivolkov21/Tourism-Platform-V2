@@ -1,4 +1,5 @@
 import { DocLetterhead } from '@tourism/ui/components/print-doc/doc-letterhead';
+import { PRINT_LABEL } from '@tourism/ui/lib/print-styles';
 import { cn } from '@tourism/ui/lib/utils';
 import type { PrintPhoto } from '@/lib/print/print-ticket';
 import { PrintBrand } from './print-brand';
@@ -54,9 +55,7 @@ export function PhotoCover({
         meta={meta}
       />
       <div className="relative mt-auto">
-        <p className="font-mono text-[6.8pt] font-medium tracking-[0.14em] text-on-media/85 uppercase">
-          {kicker}
-        </p>
+        <p className={cn(PRINT_LABEL, 'text-on-media/85')}>{kicker}</p>
         <h2
           className={cn(
             'mt-[2mm] line-clamp-2 font-heading leading-[1.1] font-semibold tracking-[-0.01em]',
