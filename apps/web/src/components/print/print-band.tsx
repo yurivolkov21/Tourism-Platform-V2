@@ -58,8 +58,10 @@ export function PrintBand({
               ) : null}
             </>
           ) : (
-            // Điểm hẹn admin nhập dài tới 300 ký tự: kẹp bốn dòng để tờ giữ một trang.
-            <p className="line-clamp-4">
+            // Chỉ phần đậm (điểm hẹn) là chữ admin nhập — tới 300 ký tự, cột ~60 mm là tám dòng — nên cột có
+            // phần đậm kẹp bốn dòng để tờ giữ một trang. Các cột còn lại là câu cố định, không kẹp: câu
+            // quá hạn có điều kiện của hoá đơn dài năm dòng và phải đọc trọn.
+            <p className={column.strong ? 'line-clamp-4' : undefined}>
               {column.strong ? <b className="font-semibold">{column.strong}</b> : null}
               {column.strong && column.text ? ' · ' : null}
               {column.text}

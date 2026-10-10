@@ -34,9 +34,10 @@ describe('PrintBand', () => {
   });
 
   // Điểm hẹn admin nhập dài tới 300 ký tự: cột ~60 mm thì tám dòng, đủ đẩy tờ quá một trang.
-  it('chữ của cột kẹp bốn dòng', () => {
-    render(<PrintBand columns={[MEET]} />);
+  it('cột có điểm hẹn kẹp bốn dòng; cột câu cố định đọc trọn', () => {
+    render(<PrintBand columns={[MEET, POLICY]} />);
     expect(screen.getByText('Ticket booth').parentElement?.className).toContain('line-clamp-4');
+    expect(screen.getByText('Free until 28 Oct.').className).not.toContain('line-clamp');
   });
 
   it('cột mã đơn: mã mono ở dòng riêng, dòng phụ bên dưới', () => {
