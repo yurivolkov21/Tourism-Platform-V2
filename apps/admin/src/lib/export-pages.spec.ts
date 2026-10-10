@@ -8,7 +8,7 @@ import {
 } from './export-pages';
 
 /**
- * Vòng gom trang DÙNG CHUNG của các nút Export CSV (nâng lên kit ở F10 —
+ * Vòng gom trang DÙNG CHUNG của các nút Export Excel (nâng lên kit ở F10 —
  * consumer thứ hai: bookings F6 và subscribers F10 cùng cần "cả tập đang lọc"
  * từ một endpoint chỉ trả tối đa 100 dòng một lượt).
  *

@@ -6,7 +6,7 @@ import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import * as React from 'react';
 
 /**
- * Nút Export CSV của back-office (kit từ vòng vá review F10 — consumer thứ
+ * Nút Export Excel của back-office (kit từ vòng vá review F10 — consumer thứ
  * hai là `/subscribers`), dựng theo `button-27` ("Encrypt") của Shadcn
  * Space — user chốt 01/09. Registry khai ở `components.json`
  * (`@shadcn-space`), kéo lại bản gốc bằng
@@ -26,7 +26,7 @@ import * as React from 'react';
  *    nhiêu — user báo nó "chiếm quá nhiều không gian". Lần một hạ còn `h-8`;
  *    18/09 user thấy vẫn to (rộng 192px lấn sang cột cạnh) nên hạ tiếp còn
  *    `h-7`, chữ 10px giãn `wider`, rộng tối thiểu 144px. Vẫn ghim `min-w` để
- *    nhãn đổi từ "Export CSV" sang "Export 12 rows" không làm nút co giãn giật
+ *    nhãn đổi từ "Export Excel" sang "Export 12 rows" không làm nút co giãn giật
  *    theo mỗi ô checkbox được tích.
  * 3. **Icon Download thay bộ Lock/Terminal/Unlock.** Ổ khoá nói về mã hoá;
  *    việc ở đây là tải file.

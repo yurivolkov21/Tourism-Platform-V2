@@ -10,7 +10,7 @@ import { columnVisibilityFeature, rowSelectionFeature, tableFeatures } from '@ta
  * - `serverTableFeatures` — chỉ `columnVisibilityFeature` (menu ẩn/hiện cột,
  *   thuần client, giữ từ kit dashboard-01). Cho `/cancellations`, `/reviews`.
  * - `selectableTableFeatures` — cộng `rowSelectionFeature` cho bảng có cột
- *   checkbox (`/bookings`, 01/09: xuất CSV đúng các hàng đã tích). Cột đọc
+ *   checkbox (`/bookings`, 01/09: xuất Excel đúng các hàng đã tích). Cột đọc
  *   thật `getIsAllRowsSelected`, `getSelectedRowModel`, `toggleAllRowsSelected`
  *   và `toggleSelected` — bộ `…AllRows…` chứ KHÔNG phải `…AllPageRows…` (bộ
  *   "page" đọc row model PHÂN TRANG, mà ở đây không đăng ký

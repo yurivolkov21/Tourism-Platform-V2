@@ -14,7 +14,7 @@ import {
 
 /**
  * Mapper hiển thị báo cáo tháng (spec P4b §3-F6) — THUẦN, ngoài React, nên
- * mọi con chữ trên bản in và mọi ô trong file CSV đều test được.
+ * mọi con chữ trên bản in và mọi ô trong file Excel đều test được.
  *
  * Ranh giới giữ chặt như F5: server đã cộng xong, client chỉ ĐỊNH DẠNG. Không
  * có phép cộng/chia nào ở tầng này ngoài tổng cột trạng thái — và chính con

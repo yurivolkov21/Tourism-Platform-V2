@@ -51,7 +51,7 @@ export async function fetchRecentAdminBookings(cookie: string): Promise<Booking[
 
 /**
  * TOÀN BỘ tập đang lọc, gom bằng cách lặp trang trên chính `admin.bookings.list`
- * (spec P4b §3-F6 — nguồn của nút Export CSV).
+ * (spec P4b §3-F6 — nguồn của nút Export Excel).
  *
  * Vòng lặp, ba chốt ngân sách (đợt song song · một mốc thời gian chung · trần
  * dòng) và luật dedupe nằm ở `lib/export-pages.ts` — nâng lên dùng chung ở

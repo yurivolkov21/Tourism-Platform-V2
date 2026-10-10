@@ -1,7 +1,7 @@
 import type { Paged } from '@tourism/contract';
 
 /**
- * Vòng gom trang DÙNG CHUNG của các nút Export CSV — nâng lên đây ở F10 khi
+ * Vòng gom trang DÙNG CHUNG của các nút Export Excel — nâng lên đây ở F10 khi
  * subscribers thành consumer THỨ HAI của đúng cái vòng lặp mà bookings (F6)
  * đã trả giá hai vòng review để viết đúng (§2.6: kit mọc từ consumer thứ hai).
  * Phần RIÊNG của mỗi vùng — gọi endpoint nào, khoá dedupe là cột gì — ở lại

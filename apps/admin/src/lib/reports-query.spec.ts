@@ -90,7 +90,7 @@ describe('reportsHref', () => {
 });
 
 describe('reportsExportHref', () => {
-  it('trỏ route handler CSV của đúng tháng đang xem', () => {
+  it('trỏ route handler Excel của đúng tháng đang xem', () => {
     expect(reportsExportHref('2026-09')).toBe('/reports/export?month=2026-09');
   });
 });

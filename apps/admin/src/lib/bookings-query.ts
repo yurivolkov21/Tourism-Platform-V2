@@ -258,7 +258,7 @@ const LIST_PARAMS = ['status', 'q', 'from', 'to', 'dates', 'page', 'limit'] as c
 export const EXPORT_SELECTION_PARAM = 'sel';
 
 /**
- * Link tải CSV (spec P4b §3-F6) — trỏ tới route handler `/bookings/export`.
+ * Link tải Excel (spec P4b §3-F6) — trỏ tới route handler `/bookings/export`.
  *
  * KHÔNG chọn hàng nào: cố ý bỏ `page`/`limit`, vì file là CẢ TẬP đang lọc chứ
  * không phải trang đang xem. Xuất "trang 3, 20 dòng" thì con số trong file

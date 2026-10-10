@@ -36,6 +36,6 @@ describe('SubscribersTable — nút Export', () => {
     );
 
     const header = screen.getByRole('columnheader', { name: new RegExp(t.columns.actions) });
-    expect(within(header).getByRole('link', { name: t.exportCsv })).toBeInTheDocument();
+    expect(within(header).getByRole('link', { name: t.exportExcel })).toBeInTheDocument();
   });
 });

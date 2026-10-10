@@ -52,7 +52,7 @@ describe('BookingsTable — chọn hàng để export', () => {
   it('chưa tích gì: nút xuất CẢ TẬP đang lọc, URL không mang page/limit', () => {
     view();
 
-    expect(exportLink(t.exportCsv)).toHaveAttribute('href', '/bookings/export');
+    expect(exportLink(t.exportExcel)).toHaveAttribute('href', '/bookings/export');
   });
 
   it('tích một hàng: nhãn đếm đúng và URL mang sel + phạm vi trang', async () => {
@@ -76,7 +76,7 @@ describe('BookingsTable — chọn hàng để export', () => {
     expect(exportLink(t.exportSelected(2))).toBeInTheDocument();
 
     await user.click(all);
-    expect(exportLink(t.exportCsv)).toBeInTheDocument();
+    expect(exportLink(t.exportExcel)).toBeInTheDocument();
   });
 
   it('tích lẻ: checkbox tiêu đề ở trạng thái MỘT PHẦN, không phải đã-chọn', async () => {
@@ -111,7 +111,7 @@ describe('BookingsTable — chọn hàng để export', () => {
       <BookingsTable rows={PAGE_2} query={{ page: 2, limit: 20 }} total={4} totalPages={2} />,
     );
 
-    expect(exportLink(t.exportCsv)).toHaveAttribute('href', '/bookings/export');
+    expect(exportLink(t.exportExcel)).toHaveAttribute('href', '/bookings/export');
     expect(screen.getByRole('checkbox', { name: t.selectAllRows })).toHaveAttribute(
       'aria-checked',
       'false',
@@ -130,7 +130,7 @@ describe('BookingsTable — chọn hàng để export', () => {
     // là chặn một việc hoàn toàn làm được.
     const user = userEvent.setup();
     view(5000);
-    expect(screen.queryByRole('link', { name: new RegExp(t.exportCsv) })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: new RegExp(t.exportExcel) })).not.toBeInTheDocument();
 
     await user.click(screen.getByRole('checkbox', { name: t.selectRow('BK-A') }));
 
