@@ -1,17 +1,16 @@
 import { messages } from '@tourism/i18n';
 import { decideAdminAccess } from '@/lib/admin-gate';
 import { lookupServerSession, type SessionUser } from '@/lib/api/session';
-import { csvAttachmentHeaders, csvDocument, csvFilename, exportFilename, isoDay } from '@/lib/csv';
 
 /**
- * Phần CHUNG của mọi route export CSV — nâng lên ở vòng vá review F10 khi
+ * Phần CHUNG của mọi route export — nâng lên ở vòng vá review F10 khi
  * `/subscribers/export` là bản chép thứ BA của khối gác quyền + audit +
  * headers mà `/bookings/export` và `/reports/export` đang giữ riêng (reports
  * đã trôi: không có dòng audit nào). Đây là khối AN NINH: route handler
  * KHÔNG chạy qua `(admin)/layout.tsx`, nên quên gác ở route thứ tư là mọi
  * user đăng nhập tải được cả danh sách email. Một nơi khai, mọi route gọi.
  *
- * Ba việc, ba hàm — vùng chỉ còn parse query, fetch và mapper CSV.
+ * Ba việc, ba hàm — vùng chỉ còn parse query, fetch và dựng file.
  */
 
 /** Kết quả gác quyền: có phiên admin, hoặc một `Response` để trả ngay. */
@@ -22,7 +21,7 @@ export type ExportGate = { ok: true; session: SessionUser } | { ok: false; respo
  * đi QUA API nên API sập phải nói thật là API sập (502) TRƯỚC khi bảo "chưa
  * đăng nhập" (401) hay "không đủ quyền" (403). Trả text chứ không redirect:
  * đây là một cú tải file, redirect sang `/login` chỉ làm trình duyệt lưu một
- * file HTML tên .csv.
+ * file HTML mang đuôi `.xlsx`.
  */
 export async function guardExportAccess(path: string): Promise<ExportGate> {
   const lookup = await lookupServerSession();
@@ -73,24 +72,41 @@ export function logExportAudit(
   console.info(`[admin] ${area} export`, JSON.stringify(entry));
 }
 
-/** Response CSV đính kèm — tên file `<prefix>-<ngày xuất>.csv`. */
-export function csvExportResponse(prefix: string, rows: readonly (readonly string[])[]): Response {
-  return new Response(csvDocument(rows), {
-    headers: csvAttachmentHeaders(csvFilename(prefix, isoDay(new Date()))),
-  });
+/**
+ * Ngày UTC `YYYY-MM-DD` của một mốc — cùng thước với ngày mà API lọc
+ * (`bookings-date-range.ts`), nên tên file nói cùng một ngày với dữ liệu bên
+ * trong dù người xuất ngồi ở múi giờ nào.
+ */
+export function isoDay(now: Date): string {
+  return now.toISOString().slice(0, 10);
+}
+
+/**
+ * Tên file tải về `<name>-<ngày xuất>.<đuôi>`. Phần `name` được LÀM SẠCH về
+ * `[a-z0-9-]`: nó đi thẳng vào header `Content-Disposition`, nơi một dấu nháy
+ * hay xuống dòng lọt vào là một lỗ header injection — không phải chỉ là tên xấu.
+ *
+ * MỘT hàm làm sạch cho mọi route export chứ không mỗi route một bản: hai nơi
+ * tự escape là hai luật chống header injection phải giữ đồng bộ bằng tay.
+ */
+export function exportFilename(name: string, day: string, extension: string): string {
+  const safe = name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+  return `${safe}-${day}.${extension}`;
 }
 
 /**
  * Content-Type chuẩn của `.xlsx`. Thiếu nó thì trình duyệt phải đoán và Excel
- * từ chối mở file — cùng loại hợp đồng với trình duyệt mà `csvAttachmentHeaders`
- * đã ghi.
+ * từ chối mở file — hợp đồng với trình duyệt, không phải trang trí.
  */
 export const XLSX_CONTENT_TYPE =
   'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
 
 /**
- * Response tải file Excel — ba dòng header y hệt đường CSV, chỉ khác kiểu nội
- * dung: `content-disposition` để trình duyệt TẢI thay vì mở trong tab, và
+ * Response tải file Excel — ba dòng header là hợp đồng với trình duyệt:
+ * `content-disposition` để trình duyệt TẢI thay vì mở trong tab, và
  * `no-store` để proxy không phát lại một ảnh chụp cũ cho lần bấm sau (mỗi lần
  * bấm là một ảnh chụp KHÁC của dữ liệu back-office).
  */

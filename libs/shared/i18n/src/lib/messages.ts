@@ -3946,36 +3946,6 @@ export const messages = {
           `This filter matches ${total} bookings and the export is capped at ${max}. Narrow the date range or the status filter, then export again.`,
       },
       /**
-       * Nhãn cột của file CSV (spec P4b §3-F6) — English như mọi copy
-       * user-facing (luật 7), và tách khỏi `list.columns` vì file mang NHIỀU
-       * cột hơn bảng: bảng gộp "2 adults, 1 child" cho mắt người, file tách
-       * từng số cho công thức của Excel.
-       *
-       * Giá trị trong file là DỮ LIỆU chứ không phải chữ hiển thị: tiền là
-       * '117.00' (không phải '$117.00' — Excel đọc ký hiệu tiền thành text),
-       * ngày giờ là ISO UTC, trạng thái là chính member enum. Ai mở file cũng
-       * lọc/tính được ngay.
-       */
-      csv: {
-        code: 'Booking code',
-        status: 'Status',
-        tour: 'Tour',
-        departureStart: 'Departure start',
-        departureEnd: 'Departure end',
-        adults: 'Adults',
-        children: 'Children',
-        guests: 'Guests',
-        unitPrice: 'Price per person',
-        totalAmount: 'Total amount',
-        currency: 'Currency',
-        customer: 'Customer',
-        email: 'Email',
-        phone: 'Phone',
-        createdAt: 'Booked at (UTC)',
-        paidAt: 'Paid at (UTC)',
-        cancelledAt: 'Cancelled at (UTC)',
-      },
-      /**
        * File Excel của `/bookings/export` (G40, ADR-0034 AMEND 3 — thay CSV). Ô mang KIỂU thật: tiền là
        * số, ngày là ngày, mốc thời gian là ngày-giờ theo giờ Việt Nam (tiêu đề cột nói rõ).
        */
@@ -4396,19 +4366,6 @@ export const messages = {
          */
         exportTooLarge: (total: number, max: number) =>
           `This filter matches ${total} subscribers and the export is capped at ${max}. Narrow it with the status tabs, the source filter or the email search, then export again.`,
-      },
-      /**
-       * Nhãn cột của file CSV. Giá trị trong file là DỮ LIỆU chứ không phải
-       * chữ hiển thị: mốc thời gian là ISO UTC, và ô trống là ô TRỐNG (không
-       * phải "Direct sign-up"/"Still subscribed" — hai câu đó nấu cho mắt
-       * người và sẽ phá lọc/pivot của người mở file).
-       */
-      csv: {
-        email: 'Email',
-        source: 'Source',
-        subscribedAt: 'Subscribed at (UTC)',
-        confirmedAt: 'Confirmed at (UTC)',
-        unsubscribedAt: 'Unsubscribed at (UTC)',
       },
       /**
        * File Excel của `/subscribers/export` (G40, ADR-0034 AMEND 3). Trạng thái dùng nhãn của bảng

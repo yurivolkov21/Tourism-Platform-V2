@@ -5,17 +5,17 @@ import type { NextRequest } from 'next/server';
 import { fetchAllAdminSubscribers } from '@/lib/api/subscribers';
 import type { PagedExport } from '@/lib/export-pages';
 import {
-  csvExportResponse,
   exportFailedResponse,
   guardExportAccess,
   logExportAudit,
+  xlsxExportResponse,
 } from '@/lib/export-route';
-import { subscribersCsvRows } from '@/lib/subscribers-csv';
 import { parseSubscribersSearchParams } from '@/lib/subscribers-query';
+import { buildSubscribersWorkbook } from '@/lib/subscribers-xlsx';
 import { rawSearchParamsFrom } from '@/lib/table-query';
 
 /**
- * `GET /subscribers/export` — tải CSV của ĐÚNG tập đang lọc (spec P4c §3-F10).
+ * `GET /subscribers/export` — tải Excel của ĐÚNG tập đang lọc (spec P4c §3-F10).
  *
  * Đọc cùng một `searchParams` với trang `/subscribers` qua CÙNG hàm
  * `parseSubscribersSearchParams`, nên "cái đang thấy" và "cái tải về" không
@@ -25,7 +25,7 @@ import { rawSearchParamsFrom } from '@/lib/table-query';
  * consent). Khác duy nhất là bỏ phân trang (`subscribersExportHref` không
  * mang page/limit — file là CẢ tập, không phải trang đang xem).
  *
- * Gác quyền, audit và headers CSV là phần chung của mọi route export —
+ * Gác quyền, audit và headers tải file là phần chung của mọi route export —
  * `lib/export-route.ts` (lý do route phải tự gác: layout không bọc route
  * handler, proxy chỉ kiểm cookie tồn tại).
  */
@@ -78,5 +78,8 @@ export async function GET(request: NextRequest) {
   }
 
   logExportAudit('subscribers', { adminId, outcome: 'ok', rows: result.items.length, filters });
-  return csvExportResponse('nexora-subscribers', subscribersCsvRows(result.items));
+  return xlsxExportResponse(
+    'nexora-subscribers',
+    await buildSubscribersWorkbook(result.items, { query, generatedAt: new Date().toISOString() }),
+  );
 }
