@@ -164,6 +164,14 @@ export interface PendingExpiry {
 }
 
 /**
+ * Mốc đơn chờ bị nhả: `createdAt` cộng `PENDING_TTL_MINUTES`. MỘT nguồn cho `pendingExpiry` (câu
+ * "released in about n minutes" của trang huỷ) và dòng "Pay by" của hoá đơn chờ in (G40).
+ */
+export function pendingDeadline(createdAt: string): Date {
+  return new Date(new Date(createdAt).getTime() + PENDING_TTL_MINUTES * 60_000);
+}
+
+/**
  * Còn bao lâu nữa booking PENDING này bị cron quét.
  *
  * Làm tròn XUỐNG có chủ ý: thà nói "còn 52 phút" khi thực tế còn 52 phút 20
@@ -173,7 +181,7 @@ export interface PendingExpiry {
  * `at` truyền vào được để test không phụ thuộc đồng hồ thật.
  */
 export function pendingExpiry(createdAt: string, at: Date = new Date()): PendingExpiry {
-  const deadline = new Date(createdAt).getTime() + PENDING_TTL_MINUTES * 60_000;
+  const deadline = pendingDeadline(createdAt).getTime();
   const msLeft = deadline - at.getTime();
   if (msLeft <= 0) return { minutesLeft: 0, expired: true };
   return { minutesLeft: Math.floor(msLeft / 60_000), expired: false };
