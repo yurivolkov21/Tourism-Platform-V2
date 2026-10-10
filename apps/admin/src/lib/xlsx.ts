@@ -1,8 +1,36 @@
-import type { AdminMonthlyReport, Booking } from '@tourism/contract';
+import type { AdminMonthlyReport, Booking, BookingStatusValue } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
 import ExcelJS from 'exceljs';
-import { formatDateTime, statusLabel } from './bookings-view';
-import { formatMarginPct, reportPeriodLabel } from './reports-view';
+import { statusLabel } from './bookings-view';
+import { formatMonthLabel } from './month-options';
+import { costWarning, formatMarginPct, reportPeriodLabel } from './reports-view';
+import { formatCount } from './stats-view';
+import {
+  addSheet,
+  BAND,
+  BRAND,
+  BRAND_SOFT,
+  bodyFont,
+  COST,
+  COUNT_FMT,
+  count,
+  DATE_FMT,
+  DIM,
+  fill,
+  GAIN,
+  HEAD_FONT,
+  INK,
+  MONEY_FMT,
+  MONO_FONT,
+  money,
+  PAPER,
+  PCT_FMT,
+  printFrame,
+  RULE,
+  stampWorkbook,
+  thin,
+  WHITE,
+} from './xlsx-style';
 
 /**
  * Dựng file Excel của báo cáo tháng (ADR-0034) — THUẦN: nhận dữ liệu, trả
@@ -28,39 +56,8 @@ import { formatMarginPct, reportPeriodLabel } from './reports-view';
  * | Definitions | Cách đọc mấy con số trên — file đi xa hơn giấy |
  */
 
-/**
- * Âm trong NGOẶC và tô ĐỎ — quy ước báo cáo tài chính. Dấu ngoặc là cách kế
- * toán viết số âm; màu đỏ là để mắt bắt được một tháng lỗ mà không phải đọc
- * từng ô.
- */
-const MONEY_FMT = '#,##0.00;[Red](#,##0.00)';
-const PCT_FMT = '0.0%';
-const COUNT_FMT = '#,##0';
-const DATE_FMT = 'dd mmm yyyy';
-
 const t = messages.admin.reports;
 const x = t.xlsx;
-
-/**
- * Bảng màu — quy đổi từ CHÍNH token của dự án (`oklch` → ARGB hex), không bịa
- * màu mới.
- *
- * NGOẠI LỆ CÓ CHỦ ĐÍCH với luật tokens-only (CLAUDE.md #6), cùng họ với khối
- * `@media print` và lớp bề mặt admin ở `globals.css`: một file `.xlsx` không
- * có CSS custom property nào để mà tham chiếu — ExcelJS đòi hex tuyệt đối.
- * Nên đây là nơi TIÊU THỤ token dưới dạng đã quy đổi, và bảng dưới ghi kèm
- * `oklch` gốc để đối chiếu được khi token đổi.
- */
-const INK = 'FF1F252B'; // oklch(0.262 0.014 250) — --foreground của admin
-const DIM = 'FF5F646B'; // oklch(0.502 0.012 250) — --muted-foreground
-const RULE = 'FFDCDFE2'; // oklch(0.902 0.005 250) — --border
-const BAND = 'FFF0F3F5'; // oklch(0.962 0.004 250) — --muted
-const BRAND = 'FF2E6E66'; // oklch(0.494 0.067 184.3) — --primary
-// DẪN XUẤT, không phải token: `--primary` pha 15% trên nền trắng (sRGB blend,
-// ADR-0034 AMEND 2) — bảng token không có teal nhạt, và bịa một hex rời là
-// thứ AMEND 1b cấm. Đổi `--primary` thì tính lại từ công thức này.
-const BRAND_SOFT = 'FFDFE9E8'; // 0.85·#FFFFFF + 0.15·#2E6E66 — nền dải tiêu đề khối
-const PAPER = 'FFFFFFFF';
 
 /** Viền mảnh bốn cạnh — mỗi ô dữ liệu là một ô, không phải chữ trôi trên nền. */
 const CELL_BORDER: Partial<ExcelJS.Borders> = {
@@ -75,8 +72,6 @@ const TOP_RULE: Partial<ExcelJS.Borders> = {
   ...CELL_BORDER,
   top: { style: 'medium', color: { argb: BRAND } },
 };
-
-const fill = (argb: string) => ({ type: 'pattern', pattern: 'solid', fgColor: { argb } }) as const;
 
 /** Kẻ viền + canh lề cho một dải ô của một dòng. */
 function dressRow(
@@ -107,145 +102,320 @@ function dressHeader(row: ExcelJS.Row, columns: number): void {
   for (let column = 1; column <= columns; column += 1) {
     const cell = row.getCell(column);
     cell.fill = fill(BRAND);
-    cell.font = { bold: true, color: { argb: PAPER } };
+    cell.font = { bold: true, color: { argb: WHITE } };
     cell.border = CELL_BORDER;
     cell.alignment = { horizontal: column === 1 ? 'left' : 'right', vertical: 'middle' };
   }
   row.height = 22;
 }
 
-/**
- * Chỗ `Number()` DUY NHẤT được phép cho tiền trong dự án (CLAUDE.md: tiền
- * không bao giờ đi qua float).
- *
- * Excel không có kiểu decimal — giá trị PHẢI xuống `number` để `numFmt` và
- * phép SUM hoạt động. Chỗ này nằm SAU mọi phép cộng: server đã cộng bằng
- * `Prisma.Decimal` và gửi xuống dạng chuỗi, tầng này chỉ ghi ra ô.
- */
-function money(cell: ExcelJS.Cell, decimalString: string): void {
-  cell.value = Number(decimalString);
-  cell.numFmt = MONEY_FMT;
-}
+/** Cột A là lề; nội dung B:I (bản thảo D1). */
+const SUMMARY_WIDTHS = [2, 14, 14, 13, 14, 13, 13, 13, 14];
+const LAST = 'I';
+/** Thanh dài nhất của thác nước (bằng doanh thu ghi nhận) là 30 ký tự — spec §6.2. */
+const BAR_UNITS = 30;
+/** Thanh tỉ trọng trạng thái: 100% là 40 ký tự (bản thảo D1). */
+const SHARE_UNITS = 40;
+const BLOCK = '█';
 
-function count(cell: ExcelJS.Cell, value: number): void {
+type LineKind = 'total' | 'cost' | 'subtotal' | 'net';
+
+function put(
+  cell: ExcelJS.Cell,
+  value: ExcelJS.CellValue,
+  font: Partial<ExcelJS.Font> = {},
+): ExcelJS.Cell {
   cell.value = value;
-  cell.numFmt = COUNT_FMT;
+  cell.font = bodyFont(font);
+  return cell;
 }
 
-/** Một dòng nhãn · giá trị; `indent` cho dòng là THÀNH PHẦN của phép trừ trên nó. */
-function labelRow(
+/** Nhãn nhỏ mono viết hoa: tiêu đề cột và nhãn ô số của dashboard. */
+function smallLabel(cell: ExcelJS.Cell, text: string): void {
+  put(cell, text.toUpperCase(), { name: MONO_FONT, size: 8, color: { argb: DIM } });
+}
+
+function section(sheet: ExcelJS.Worksheet, row: number, text: string): void {
+  put(sheet.getCell(`B${row}`), text, { name: HEAD_FONT, size: 12.5, bold: true });
+  sheet.getRow(row).height = 24;
+}
+
+/** Chuỗi █ làm giá trị đệm của ô REPT — đúng con số công thức sẽ tính khi Excel mở file. */
+function bar(ratio: number, units: number): string {
+  return BLOCK.repeat(Math.max(1, Math.round(ratio * units)));
+}
+
+/** Ô số đầu có ký hiệu khi là USD — đơn vị duy nhất của dự án (ADR-0034 giới hạn 3). */
+function tileMoneyFmt(currency: string): string {
+  return currency === 'USD' ? '"$"#,##0.00;("$"#,##0.00)' : MONEY_FMT;
+}
+
+/**
+ * Tám chỉ số "Money and operations" — MỘT danh sách cho khối của Summary và sheet Operations, cùng
+ * thứ tự với bảng trên màn hình (`toReportSummaryRows`).
+ */
+function operationsMetrics(
+  report: AdminMonthlyReport,
+): Array<[label: string, write: (cell: ExcelJS.Cell) => void]> {
+  const o = t.operationsTable;
+  return [
+    [o.revenue, (cell) => money(cell, report.revenue)],
+    [o.paidBookings, (cell) => count(cell, report.paidBookings)],
+    [o.newBookings, (cell) => count(cell, report.newBookings)],
+    [o.refundedTotal, (cell) => money(cell, report.refundedTotal)],
+    [o.refunds, (cell) => count(cell, report.refunds)],
+    [o.cancellationsWithinDeadline, (cell) => count(cell, report.cancellationsWithinDeadline)],
+    [o.cancellationsAfterDeadline, (cell) => count(cell, report.cancellationsAfterDeadline)],
+    [o.reviewsApproved, (cell) => count(cell, report.reviewsApproved)],
+  ];
+}
+
+/** Màu thanh trạng thái: đã trả là phần "được", đã huỷ là phần mất, còn lại mực mờ. */
+function statusColor(status: BookingStatusValue): string {
+  if (status === 'PAID') return GAIN;
+  return status === 'CANCELLED' ? COST : DIM;
+}
+
+function writeTiles(sheet: ExcelJS.Worksheet, report: AdminMonthlyReport): void {
+  const c = t.cards;
+  const tiles = [
+    {
+      from: 'B',
+      to: 'C',
+      label: c.recognizedRevenue,
+      amount: report.recognizedRevenue,
+      caption: c.recognizedCaption,
+      tint: true,
+    },
+    {
+      from: 'D',
+      to: 'E',
+      label: c.grossProfit,
+      amount: report.grossProfit,
+      caption: c.marginCaption(formatMarginPct(report.grossMarginPct)),
+      tint: false,
+    },
+    {
+      from: 'F',
+      to: 'G',
+      label: c.netProfit,
+      amount: report.netProfit,
+      caption: c.netCaption,
+      tint: false,
+    },
+    {
+      from: 'H',
+      to: 'I',
+      label: c.revenue,
+      amount: report.revenue,
+      caption: c.paidCaption(formatCount(report.paidBookings)),
+      tint: false,
+    },
+  ];
+  for (const tile of tiles) {
+    for (const row of [5, 6, 7]) sheet.mergeCells(`${tile.from}${row}:${tile.to}${row}`);
+    smallLabel(sheet.getCell(`${tile.from}5`), tile.label);
+    const value = sheet.getCell(`${tile.from}6`);
+    money(value, tile.amount);
+    value.numFmt = tileMoneyFmt(report.currency);
+    value.font = bodyFont({ size: 17, bold: true });
+    put(sheet.getCell(`${tile.from}7`), tile.caption, { size: 9, color: { argb: DIM } });
+    for (const row of [5, 6, 7]) {
+      const cell = sheet.getCell(`${tile.from}${row}`);
+      if (tile.tint) cell.fill = fill(PAPER);
+      cell.alignment = { vertical: 'middle', indent: 1 };
+      cell.border = {
+        left: thin(),
+        right: thin(),
+        ...(row === 5 ? { top: thin() } : {}),
+        ...(row === 7 ? { bottom: thin() } : {}),
+      };
+    }
+  }
+  sheet.getRow(5).height = 20;
+  sheet.getRow(6).height = 28;
+  sheet.getRow(7).height = 18;
+}
+
+/** "From revenue to net profit" từ hàng `start`; trả hàng cuối đã dùng (ghi chú, cảnh báo). */
+function writeWaterfall(
   sheet: ExcelJS.Worksheet,
-  label: string,
-  opts: { indent?: boolean; total?: boolean } = {},
-): ExcelJS.Row {
-  const row = sheet.addRow([label]);
-  dressRow(row, 2, opts.total ? { border: TOP_RULE, band: BAND } : {});
-
-  if (opts.indent) {
-    // Thụt một cấp: dòng này là THÀNH PHẦN của phép trừ ngay trên nó, không
-    // phải một con số ngang hàng.
-    row.getCell(1).alignment = { horizontal: 'left', vertical: 'middle', indent: 2 };
-    row.getCell(1).font = { color: { argb: DIM } };
-  }
-  if (opts.total) {
-    row.getCell(1).font = { bold: true, color: { argb: INK } };
-    row.getCell(2).font = { bold: true, color: { argb: INK } };
-  }
-  return row;
-}
-
-/**
- * Khối đầu Summary: file rời khỏi màn hình rồi vẫn phải tự nói nó là báo cáo
- * tháng nào, chốt lúc nào, và — quan trọng nhất — tính bằng THUẾ SUẤT nào.
- *
- * Thuế suất ở đây không phải trang trí: env không có ngày hiệu lực, nên hai
- * file tải cùng một tháng ở hai thời điểm có thể mang hai số thuế khác nhau
- * (ADR-0033 §5). Không in suất thì không ai đối chiếu được.
- */
-function writeHeader(sheet: ExcelJS.Worksheet, report: AdminMonthlyReport): void {
-  // Dải tiêu đề chiếm trọn bề ngang bảng — thứ đầu tiên mắt chạm khi mở file.
-  sheet.mergeCells('A1:B1');
-  const title = sheet.getCell('A1');
-  title.value = x.title;
-  title.font = { size: 15, bold: true, color: { argb: PAPER } };
-  title.fill = fill(BRAND);
-  title.alignment = { horizontal: 'left', vertical: 'middle', indent: 1 };
-  sheet.getRow(1).height = 30;
-
-  for (const [label, value, fmt] of [
-    [x.period, reportPeriodLabel(report)],
-    [x.generatedAt, formatDateTime(report.generatedAt)],
-    [x.currency, report.currency],
-    [x.taxRate, report.taxRate, PCT_FMT],
-  ] as Array<[string, string | number, string?]>) {
-    const row = sheet.addRow([label, value]);
-    dressRow(row, 2, { band: BAND });
-    row.getCell(1).font = { bold: true, color: { argb: DIM } };
-    if (fmt) row.getCell(2).numFmt = fmt;
-  }
-  sheet.addRow([]);
-}
-
-/**
- * Tiêu đề một khối trong Summary — dải teal nhạt chạy trọn bề ngang.
- *
- * Đây là thứ chia hai cách đọc tiền ra làm hai khối nhìn thấy được: người mở
- * file phải biết ngay chỗ nào là dòng tiền, chỗ nào là kết quả kinh doanh, vì
- * hai khối ấy KHÔNG cộng vào nhau được.
- */
-function sectionRow(sheet: ExcelJS.Worksheet, label: string): void {
-  const row = sheet.addRow([label]);
-  dressRow(row, 2, { band: BRAND_SOFT });
-  row.getCell(1).font = { bold: true, size: 12, color: { argb: BRAND } };
-  row.height = 24;
-}
-
-function buildSummary(book: ExcelJS.Workbook, report: AdminMonthlyReport): void {
-  const sheet = book.addWorksheet(x.sheets.summary);
-  sheet.getColumn(1).width = 38;
-  sheet.getColumn(2).width = 18;
-
-  writeHeader(sheet, report);
-
-  // Khối 1 — DÒNG TIỀN (neo ngày trả tiền). Đứng trước vì nó là cách đọc cũ,
-  // và người quen tờ báo cáo trước sẽ tìm nó đầu tiên.
-  sectionRow(sheet, x.cashHeading);
-  money(labelRow(sheet, t.operationsTable.revenue).getCell(2), report.revenue);
-  money(labelRow(sheet, t.operationsTable.refundedTotal).getCell(2), report.refundedTotal);
-  sheet.addRow([]);
-
-  // Khối 2 — KẾT QUẢ KINH DOANH (neo ngày chuyến chạy).
-  sectionRow(sheet, t.pnlTable.heading);
+  report: AdminMonthlyReport,
+  start: number,
+): number {
   const p = t.pnlTable;
-  money(labelRow(sheet, p.recognizedRevenue).getCell(2), report.recognizedRevenue);
-  money(labelRow(sheet, p.cogsVariable, { indent: true }).getCell(2), report.cogsVariable);
-  money(labelRow(sheet, p.cogsFixed, { indent: true }).getCell(2), report.cogsFixed);
-  money(labelRow(sheet, p.cogsTotal, { total: true }).getCell(2), report.cogsTotal);
-  money(labelRow(sheet, p.grossProfit, { total: true }).getCell(2), report.grossProfit);
+  section(sheet, start, t.waterfallHeading);
+  const head = start + 1;
+  sheet.mergeCells(`B${head}:D${head}`);
+  sheet.mergeCells(`F${head}:${LAST}${head}`);
+  smallLabel(sheet.getCell(`B${head}`), p.metric);
+  smallLabel(sheet.getCell(`E${head}`), p.value);
+  sheet.getCell(`E${head}`).alignment = { horizontal: 'right' };
+  smallLabel(sheet.getCell(`F${head}`), x.shareOfRevenue);
+  for (const column of 'BCDEFGHI') sheet.getCell(`${column}${head}`).border = { bottom: thin(INK) };
 
-  // Biên gộp là TỈ LỆ, và `null` phải ra chữ chứ không ra 0 — một tháng không
-  // có chuyến nào chạy có biên KHÔNG XÁC ĐỊNH (ADR-0033 §1).
-  const marginCell = labelRow(sheet, x.grossMargin).getCell(2);
-  if (report.grossMarginPct === null) {
-    marginCell.value = p.marginUnknown;
-  } else {
-    marginCell.value = report.grossMarginPct;
-    marginCell.numFmt = PCT_FMT;
+  const lines: Array<{ label: string; amount: string; kind: LineKind }> = [
+    { label: p.recognizedRevenue, amount: report.recognizedRevenue, kind: 'total' },
+    { label: p.cogsVariable, amount: report.cogsVariable, kind: 'cost' },
+    { label: p.cogsFixed, amount: report.cogsFixed, kind: 'cost' },
+    { label: p.grossProfit, amount: report.grossProfit, kind: 'subtotal' },
+    { label: p.taxAmount(formatMarginPct(report.taxRate)), amount: report.taxAmount, kind: 'cost' },
+    { label: p.paymentFees, amount: report.paymentFees, kind: 'cost' },
+    { label: p.netProfit, amount: report.netProfit, kind: 'net' },
+  ];
+  const revenueRow = head + 1;
+  const revenue = Number(report.recognizedRevenue);
+  lines.forEach((line, index) => {
+    const row = revenueRow + index;
+    const cost = line.kind === 'cost';
+    const value = Number(line.amount);
+    sheet.mergeCells(`B${row}:D${row}`);
+    sheet.mergeCells(`F${row}:${LAST}${row}`);
+    put(sheet.getCell(`B${row}`), line.label, { bold: !cost }).alignment = {
+      vertical: 'middle',
+      indent: cost ? 2 : 0,
+    };
+    const amount = sheet.getCell(`E${row}`);
+    money(amount, line.amount, { negate: cost });
+    amount.font = bodyFont({ name: MONO_FONT, size: 10, bold: !cost });
+    put(
+      sheet.getCell(`F${row}`),
+      {
+        formula: `IF($E$${revenueRow}=0,"",REPT("${BLOCK}",MAX(1,ROUND(ABS(E${row})/$E$${revenueRow}*${BAR_UNITS},0))))`,
+        result: revenue === 0 ? '' : bar(Math.abs(value) / revenue, BAR_UNITS),
+      },
+      { size: 10, color: { argb: cost || value < 0 ? COST : GAIN } },
+    ).alignment = { vertical: 'middle' };
+    sheet.getRow(row).height = 20;
+    if (line.kind === 'subtotal') {
+      for (const column of 'BCDE') sheet.getCell(`${column}${row}`).border = { top: thin(INK) };
+    }
+    if (line.kind === 'net') {
+      for (const column of 'BCDE') {
+        sheet.getCell(`${column}${row}`).border = {
+          top: thin(INK),
+          bottom: { style: 'double', color: { argb: INK } },
+        };
+      }
+    }
+  });
+
+  let last = revenueRow + lines.length;
+  put(sheet.getCell(`B${last}`), p.departuresRun(formatCount(report.departuresRun)), {
+    size: 9,
+    italic: true,
+    color: { argb: DIM },
+  });
+  // Quyết định 5 của plan: thiếu giá vốn thì file phải tự nói, không để "lãi gộp" đứng một mình.
+  const warning = costWarning(report);
+  if (warning !== null) {
+    last += 1;
+    put(sheet.getCell(`B${last}`), warning, { size: 9, italic: true, color: { argb: COST } });
   }
+  return last;
+}
 
-  money(
-    labelRow(sheet, p.taxAmount(formatMarginPct(report.taxRate)), { indent: true }).getCell(2),
-    report.taxAmount,
+/** "Bookings created this month" từ hàng `start`; trả hàng Total. */
+function writeStatusShare(
+  sheet: ExcelJS.Worksheet,
+  report: AdminMonthlyReport,
+  start: number,
+): number {
+  section(sheet, start, t.bookingsTable.heading);
+  const head = start + 1;
+  smallLabel(sheet.getCell(`B${head}`), t.bookingsTable.status);
+  smallLabel(sheet.getCell(`C${head}`), t.bookingsTable.count);
+  smallLabel(sheet.getCell(`D${head}`), x.share);
+  for (const column of 'BCDEFGHI') sheet.getCell(`${column}${head}`).border = { bottom: thin(INK) };
+
+  const first = head + 1;
+  const total = first + report.bookingsByStatus.length;
+  report.bookingsByStatus.forEach(({ status, count: bookings }, index) => {
+    const row = first + index;
+    put(sheet.getCell(`B${row}`), statusLabel(status));
+    const countCell = sheet.getCell(`C${row}`);
+    count(countCell, bookings);
+    countCell.font = bodyFont({ name: MONO_FONT, size: 10 });
+    const share = sheet.getCell(`D${row}`);
+    share.value = {
+      formula: `IF($C$${total}=0,0,C${row}/$C$${total})`,
+      result: report.newBookings === 0 ? 0 : bookings / report.newBookings,
+    };
+    share.numFmt = PCT_FMT;
+    share.font = bodyFont({ name: MONO_FONT, size: 10 });
+    sheet.mergeCells(`E${row}:${LAST}${row}`);
+    put(
+      sheet.getCell(`E${row}`),
+      {
+        formula: `IF(C${row}=0,"",REPT("${BLOCK}",MAX(1,ROUND(D${row}*${SHARE_UNITS},0))))`,
+        result: bookings === 0 ? '' : bar(bookings / report.newBookings, SHARE_UNITS),
+      },
+      { color: { argb: statusColor(status) } },
+    );
+  });
+  put(sheet.getCell(`B${total}`), t.bookingsTable.total, { bold: true });
+  const sum = sheet.getCell(`C${total}`);
+  sum.value = { formula: `SUM(C${first}:C${total - 1})`, result: report.newBookings };
+  sum.numFmt = COUNT_FMT;
+  sum.font = bodyFont({ name: MONO_FONT, size: 10, bold: true });
+  for (const column of 'BCD') sheet.getCell(`${column}${total}`).border = { top: thin(INK) };
+  return total;
+}
+
+/** "Money and operations" hai cột từ hàng `start`; trả hàng của dòng chỉ sang Definitions. */
+function writeOperations(
+  sheet: ExcelJS.Worksheet,
+  report: AdminMonthlyReport,
+  start: number,
+): number {
+  section(sheet, start, t.operationsTable.heading);
+  operationsMetrics(report).forEach(([label, write], index) => {
+    const row = start + 1 + (index % 4);
+    const left = index < 4;
+    sheet.mergeCells(left ? `B${row}:D${row}` : `F${row}:H${row}`);
+    put(sheet.getCell(`${left ? 'B' : 'F'}${row}`), label);
+    const value = sheet.getCell(`${left ? 'E' : 'I'}${row}`);
+    write(value);
+    value.font = bodyFont({ name: MONO_FONT, size: 10, bold: true });
+    for (const column of left ? 'BCDE' : 'FGHI') {
+      sheet.getCell(`${column}${row}`).border = { bottom: thin() };
+    }
+  });
+  return start + 6;
+}
+
+function buildSummary(
+  book: ExcelJS.Workbook,
+  report: AdminMonthlyReport,
+  frame: Partial<ExcelJS.HeaderFooter>,
+): void {
+  const sheet = addSheet(book, x.sheets.summary, { tab: BRAND, grid: false, frame });
+  sheet.columns = SUMMARY_WIDTHS.map((width) => ({ width }));
+
+  sheet.mergeCells(`B2:${LAST}2`);
+  put(sheet.getCell('B2'), t.reportTitle(formatMonthLabel(report.month)), {
+    name: HEAD_FONT,
+    size: 20,
+    bold: true,
+  });
+  sheet.getRow(2).height = 34;
+  sheet.mergeCells(`B3:${LAST}3`);
+  put(
+    sheet.getCell('B3'),
+    t.periodLine(reportPeriodLabel(report), report.currency, formatMarginPct(report.taxRate)),
+    { color: { argb: DIM } },
   );
-  money(labelRow(sheet, p.paymentFees, { indent: true }).getCell(2), report.paymentFees);
-  money(labelRow(sheet, p.netProfit, { total: true }).getCell(2), report.netProfit);
-  sheet.addRow([]);
 
-  count(labelRow(sheet, x.departuresRun).getCell(2), report.departuresRun);
-  count(labelRow(sheet, x.costDataMissing).getCell(2), report.costDataMissing);
-  count(labelRow(sheet, x.departuresCostMissing).getCell(2), report.departuresCostMissing);
-
-  sheet.pageSetup = { fitToPage: true, fitToWidth: 1, fitToHeight: 0 };
+  writeTiles(sheet, report);
+  const waterfallEnd = writeWaterfall(sheet, report, 9);
+  const statusEnd = writeStatusShare(sheet, report, waterfallEnd + 2);
+  const footnote = writeOperations(sheet, report, statusEnd + 2);
+  put(sheet.getCell(`B${footnote}`), x.seeDefinitions, {
+    size: 9,
+    italic: true,
+    color: { argb: DIM },
+  });
+  sheet.pageSetup.printArea = `A1:${LAST}${footnote}`;
 }
 
 function buildBookings(book: ExcelJS.Workbook, report: AdminMonthlyReport): void {
@@ -385,7 +555,7 @@ function buildDefinitions(book: ExcelJS.Workbook): void {
   sheet.getColumn(1).width = 110;
 
   const heading = sheet.addRow([t.definitions.heading]);
-  heading.getCell(1).font = { bold: true, size: 13, color: { argb: PAPER } };
+  heading.getCell(1).font = { bold: true, size: 13, color: { argb: WHITE } };
   heading.getCell(1).fill = fill(BRAND);
   heading.getCell(1).alignment = { horizontal: 'left', vertical: 'middle', indent: 1 };
   heading.height = 26;
@@ -421,9 +591,15 @@ export async function buildReportWorkbook(
   detailNote?: string,
 ): Promise<ArrayBuffer> {
   const book = new ExcelJS.Workbook();
-  book.created = new Date(report.generatedAt);
+  const monthLabel = formatMonthLabel(report.month);
+  stampWorkbook(book, {
+    title: x.docTitle(report.month),
+    subject: x.subject(monthLabel),
+    created: new Date(report.generatedAt),
+  });
+  const frame = printFrame(x.headerCenter(monthLabel), report.generatedAt);
 
-  buildSummary(book, report);
+  buildSummary(book, report, frame);
   buildBookings(book, report);
   buildOperations(book, report);
   buildDetail(book, bookings, detailNote);
