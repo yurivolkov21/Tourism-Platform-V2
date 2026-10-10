@@ -5,6 +5,7 @@ import {
   bookingDetailKind,
   cancelErrorAction,
   cancelErrorCopy,
+  payErrorAction,
 } from './booking-detail';
 
 function makeBooking(overrides: Partial<BookingDetail>): BookingDetail {
@@ -141,5 +142,22 @@ describe('cancelErrorCopy / cancelErrorAction', () => {
 
   it('lỗi mạng chung -> stay', () => {
     expect(cancelErrorAction(new Error('network'))).toBe('stay');
+  });
+});
+
+describe('payErrorAction', () => {
+  it('DEPARTURE_NOT_AVAILABLE → departureClosed (chỉ còn nút bỏ booking)', () => {
+    expect(payErrorAction(new ORPCError('DEPARTURE_NOT_AVAILABLE', { status: 400 }))).toBe(
+      'departureClosed',
+    );
+  });
+
+  it('NOT_PENDING → refetch (booking đã đổi trạng thái ở nơi khác)', () => {
+    expect(payErrorAction(new ORPCError('NOT_PENDING', { status: 422 }))).toBe('refetch');
+  });
+
+  it('lỗi khác / không phải ORPCError → message', () => {
+    expect(payErrorAction(new ORPCError('CHECKOUT_FAILED', { status: 502 }))).toBe('message');
+    expect(payErrorAction(new Error('network'))).toBe('message');
   });
 });

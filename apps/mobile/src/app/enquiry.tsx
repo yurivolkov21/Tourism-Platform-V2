@@ -50,6 +50,9 @@ export default function EnquiryRoute() {
     }),
   );
 
+  // Chưa tải xong tour thì chưa có `tourId` — gửi lúc này sẽ mất liên kết tour.
+  const tourLoading = tourSlug !== undefined && tourQuery.isPending;
+
   const enquiryMutation = useMutation(
     orpc.enquiries.create.mutationOptions({ context: withMobileAuth() }),
   );
@@ -62,6 +65,7 @@ export default function EnquiryRoute() {
   }
 
   function handleSubmit() {
+    if (tourLoading) return;
     const nextErrors = validateEnquiry(values);
     setErrors(nextErrors);
     if (Object.keys(nextErrors).length > 0) return;
@@ -91,7 +95,7 @@ export default function EnquiryRoute() {
       errors={errors}
       onChange={handleChange}
       submitLabel={copy.submit}
-      submitting={enquiryMutation.isPending}
+      submitting={enquiryMutation.isPending || tourLoading}
       onSubmit={handleSubmit}
       formError={formError}
       sent={sent}

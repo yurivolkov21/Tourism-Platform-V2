@@ -32,6 +32,9 @@ export default function BookingReviewRoute() {
   const createMutation = useMutation(
     orpc.bookings.create.mutationOptions({ context: withMobileAuth() }),
   );
+  const checkoutMutation = useMutation(
+    orpc.bookings.checkout.mutationOptions({ context: withMobileAuth() }),
+  );
 
   useEffect(() => {
     if (draft === null) router.back();
@@ -46,32 +49,42 @@ export default function BookingReviewRoute() {
   function pay() {
     if (draft === null) return;
     setError(null);
-    updateBookingDraft({ paymentProvider });
+    // Đọc draft MỚI sau khi ghi cổng thanh toán: đổi cổng xoá `bookingCode` cũ, còn
+    // `draft` của lượt render này vẫn là bản trước đó (checkout nhầm booking cũ).
+    const current = updateBookingDraft({ paymentProvider }) ?? draft;
+    const handlers = {
+      onSuccess: (result: { checkoutUrl: string | null; code: string }) => {
+        // Booking PENDING mới phải hiện ở Trips ngay, không chờ reload app.
+        void queryClient.invalidateQueries({ queryKey: orpc.bookings.mine.key() });
+        updateBookingDraft({ checkoutUrl: result.checkoutUrl, bookingCode: result.code });
+        router.push('/bookings/new/checkout');
+      },
+      onError: (submitError: unknown) => {
+        setError({
+          message: bookingSubmitErrorCopy(submitError),
+          action: bookingCreateErrorAction(submitError),
+        });
+      },
+    };
+
+    // Draft đã có booking PENDING (quay lại từ B5/B6) → checkout lại đúng booking
+    // đó, KHÔNG tạo booking thứ hai (quy tắc #2 handoff: không trả tiền hai lần).
+    if (current.bookingCode !== null) {
+      checkoutMutation.mutate({ code: current.bookingCode }, handlers);
+      return;
+    }
     createMutation.mutate(
       buildBookingInput({
         departureId: trip.departureId,
-        numAdults: draft.numAdults,
-        numChildren: draft.numChildren,
-        contactName: draft.contactName,
-        contactEmail: draft.contactEmail,
-        contactPhone: draft.contactPhone,
-        specialRequests: draft.specialRequests,
+        numAdults: current.numAdults,
+        numChildren: current.numChildren,
+        contactName: current.contactName,
+        contactEmail: current.contactEmail,
+        contactPhone: current.contactPhone,
+        specialRequests: current.specialRequests,
         paymentProvider,
       }),
-      {
-        onSuccess: (result) => {
-          // Booking PENDING mới phải hiện ở Trips ngay, không chờ reload app.
-          void queryClient.invalidateQueries({ queryKey: orpc.bookings.mine.key() });
-          updateBookingDraft({ checkoutUrl: result.checkoutUrl, bookingCode: result.code });
-          router.push('/bookings/new/checkout');
-        },
-        onError: (submitError) => {
-          setError({
-            message: bookingSubmitErrorCopy(submitError),
-            action: bookingCreateErrorAction(submitError),
-          });
-        },
-      },
+      handlers,
     );
   }
 
@@ -120,15 +133,16 @@ export default function BookingReviewRoute() {
       onSelectProvider={setPaymentProvider}
       browserNote={booking.payBrowserNote}
       totalLabel={messages.checkoutSummary.totalLabel}
-      // B9 CHECKOUT_FAILED (và mọi lỗi "stay" khác): nút đổi thành "Try again"
-      // — booking CHƯA được tạo, bấm lại là thử tạo lại, không phải trả tiếp.
+      // B9 CHECKOUT_FAILED (và mọi lỗi "stay" khác): nút đổi thành "Try again".
+      // Booking có thể ĐÃ tạo ở PENDING (gateway lỗi sau khi tạo) nhưng client không
+      // nhận được mã — bấm lại tạo booking mới, bản cũ để cron TTL dọn.
       payLabel={
         error !== null && error.action === 'stay'
           ? booking.retry
           : messages.booking.wizard.payCta(amount)
       }
       onPay={pay}
-      pending={createMutation.isPending}
+      pending={createMutation.isPending || checkoutMutation.isPending}
       errorMessage={error?.message ?? null}
       errorAction={errorAction}
       transformUrl={cloudinaryUrl}

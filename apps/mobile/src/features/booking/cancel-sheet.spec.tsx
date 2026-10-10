@@ -1,6 +1,10 @@
 import { fireEvent, screen } from '@testing-library/react-native';
 import { renderWithTheme } from '@/test-utils';
-import { CancelBookingSheet, type CancelBookingSheetProps } from './cancel-sheet';
+import {
+  CANCEL_REASON_MAX_LENGTH,
+  CancelBookingSheet,
+  type CancelBookingSheetProps,
+} from './cancel-sheet';
 
 function baseProps(overrides: Partial<CancelBookingSheetProps> = {}): CancelBookingSheetProps {
   return {
@@ -23,6 +27,15 @@ function baseProps(overrides: Partial<CancelBookingSheetProps> = {}): CancelBook
 }
 
 describe('CancelBookingSheet', () => {
+  it('ô lý do giới hạn đúng 1000 ký tự như contract', async () => {
+    await renderWithTheme(
+      <CancelBookingSheet {...baseProps({ reasonPlaceholder: 'Tell us what changed…' })} />,
+    );
+
+    expect(CANCEL_REASON_MAX_LENGTH).toBe(1000);
+    expect(screen.getByDisplayValue('').props.maxLength).toBe(1000);
+  });
+
   it('T6 — vẽ khối hoàn tiền và ô lý do', async () => {
     await renderWithTheme(<CancelBookingSheet {...baseProps()} />);
 

@@ -8,6 +8,7 @@ import {
   partyCap,
   totalPrice,
   validateContactForm,
+  verifyOutcome,
 } from './booking-form';
 
 describe('partyCap — trần số người là cái NHỎ HƠN trong hai ràng buộc', () => {
@@ -181,5 +182,21 @@ describe('bookingCreateErrorAction', () => {
 
   it('lỗi lạ/không phải ORPCError → stay', () => {
     expect(bookingCreateErrorAction(new Error('boom'))).toBe('stay');
+  });
+});
+
+describe('verifyOutcome', () => {
+  it('PAID → paid', () => {
+    expect(verifyOutcome('PAID')).toBe('paid');
+  });
+
+  it('CANCELLED / REFUNDED / PARTIALLY_REFUNDED → ended (không mời trả lại)', () => {
+    expect(verifyOutcome('CANCELLED')).toBe('ended');
+    expect(verifyOutcome('REFUNDED')).toBe('ended');
+    expect(verifyOutcome('PARTIALLY_REFUNDED')).toBe('ended');
+  });
+
+  it('PENDING → pending (tiếp tục chờ webhook)', () => {
+    expect(verifyOutcome('PENDING')).toBe('pending');
   });
 });

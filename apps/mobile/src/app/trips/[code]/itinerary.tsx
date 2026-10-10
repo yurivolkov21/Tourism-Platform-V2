@@ -61,7 +61,7 @@ export default function TripItineraryRoute() {
 
   return (
     <TripItineraryScreen
-      summaryLabel={`${tour.durationDays} ${tour.durationDays === 1 ? 'day' : 'days'} · ${tour.destinations
+      summaryLabel={`${messages.mobile.trip.daysCount(tour.durationDays)} · ${tour.destinations
         .map((d) => d.name)
         .join(' → ')}`}
       days={tour.itinerary.map((day) => ({

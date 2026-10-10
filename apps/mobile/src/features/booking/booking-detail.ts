@@ -87,3 +87,18 @@ export function cancelErrorCopy(error: unknown): string {
   }
   return e.generic;
 }
+
+export type PayErrorAction = 'departureClosed' | 'refetch' | 'message';
+
+/**
+ * Lỗi khi bấm Pay ở T5 (`bookings.checkout`): đợt đã đóng → chỉ còn nút bỏ
+ * booking; `NOT_PENDING` → booking đã đổi trạng thái ở nơi khác, đọc lại để
+ * màn khớp sự thật; còn lại → hiện câu lỗi chung.
+ */
+export function payErrorAction(error: unknown): PayErrorAction {
+  if (error instanceof ORPCError) {
+    if (error.code === 'DEPARTURE_NOT_AVAILABLE') return 'departureClosed';
+    if (error.code === 'NOT_PENDING') return 'refetch';
+  }
+  return 'message';
+}

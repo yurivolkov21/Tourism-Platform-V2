@@ -11,6 +11,7 @@ import { orpc, withMobileAuth } from '@/lib/api/client';
 import { getAuthClient } from '@/lib/auth-client';
 import { cloudinaryUrl } from '@/lib/cloudinary-url';
 import { formatMoney } from '@/lib/format-money';
+import { useServerToday } from '@/lib/use-server-clock';
 
 /**
  * Route Trips (T1-T3, mục 3 spec P5b-3). Chưa đăng nhập → `AuthGateScreen`
@@ -26,6 +27,7 @@ export default function TripsRoute() {
   const { data: session } = getAuthClient().useSession();
   const signedIn = Boolean(session?.user);
   const { trips } = messages.mobile;
+  const today = useServerToday();
 
   const listQuery = useQuery(
     orpc.bookings.mine.queryOptions({
@@ -61,11 +63,6 @@ export default function TripsRoute() {
     : listQuery.isError
       ? 'error'
       : 'content';
-
-  // `today` chỉ dùng để GOM NHÓM hiển thị (chip), không phải luật tiền/hạn
-  // chót (ADR-0041) — đọc đồng hồ máy ở đây vô hại, khác `cancellation.deadline`
-  // vốn luôn phải đọc từ server.
-  const today = new Date().toISOString().slice(0, 10);
 
   const allItems: TripListItemVM[] = (listQuery.data?.items ?? []).map((booking) => ({
     code: booking.code,

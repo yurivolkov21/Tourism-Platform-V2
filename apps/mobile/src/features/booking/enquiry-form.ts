@@ -30,7 +30,7 @@ const EnquiryFieldsSchema = CreateEnquiryInputSchema.pick({
 export function validateEnquiry(state: EnquiryFormState): EnquiryFormErrors {
   const result = EnquiryFieldsSchema.safeParse({
     name: state.name,
-    email: state.email,
+    email: state.email.trim(),
     message: state.message,
     phone: state.phone.trim() === '' ? undefined : state.phone,
   });

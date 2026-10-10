@@ -1,9 +1,9 @@
 import { messages } from '@tourism/i18n';
 import { router } from 'expo-router';
-import * as WebBrowser from 'expo-web-browser';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { getBookingDraft } from '@/features/booking/booking-draft';
 import { BookingStatusScreen } from '@/features/booking/booking-status-screen';
+import { openCheckout } from '@/features/booking/open-checkout';
 
 /**
  * B5 (spec P5b-3) — rời app sang trình duyệt. `checkoutUrl` đã có từ lúc
@@ -14,6 +14,7 @@ export default function BookingCheckoutRoute() {
   const draft = getBookingDraft();
   const { booking } = messages.mobile;
   const checkoutUrl = draft?.checkoutUrl ?? null;
+  const [openFailed, setOpenFailed] = useState(false);
 
   useEffect(() => {
     // Chưa tạo được booking (deep-link thẳng vào đây) — không có link nào để mở.
@@ -27,10 +28,10 @@ export default function BookingCheckoutRoute() {
     <BookingStatusScreen
       icon="external-link"
       heading={booking.checkoutHeading}
-      body={booking.browserHint}
+      body={openFailed ? booking.openBrowserFailed : booking.browserHint}
       primary={{
         label: booking.openCheckout,
-        onPress: () => void WebBrowser.openBrowserAsync(openUrl),
+        onPress: () => void openCheckout(openUrl).then((opened) => setOpenFailed(!opened)),
       }}
       // B6 (đang xác nhận) — hỏi lại server, KHÔNG tự cho là đã trả.
       secondary={{
