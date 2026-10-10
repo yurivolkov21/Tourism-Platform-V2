@@ -515,6 +515,9 @@ export const messages = {
       // Repo đã bị đúng lớp lỗi này một lần: câu "Your reservation is held" bị
       // bác ở final review cụm C vì ngụ ý giữ chỗ.
       stubNotYetVoucher: 'This code becomes your voucher once payment is complete.',
+      // Cuống của đơn chưa trả đã ĐÓNG (huỷ, lỡ hạn — tâm trạng `settled`): nói thẳng, không hứa
+      // mã sẽ thành voucher cho một đơn không còn trả được (G37). Màn hình và bản in dùng chung.
+      stubClosed: 'This booking is closed — no payment was taken.',
       // Nhãn pill trạng thái — NGẮN, vì nó đứng cạnh tiêu đề vốn đã nói đủ câu.
       statusConfirming: 'Confirming',
       statusSettled: 'Settled',
@@ -687,6 +690,75 @@ export const messages = {
       reviewed: 'Reviewed',
       cancelled: 'Cancelled',
       refund: 'Refund',
+    },
+  },
+  /**
+   * Tài liệu in của khách (G40, ADR-0057, spec 2026-10-10 §3–§4): khung chung ở cấp này, chữ riêng
+   * ở `voucher` (bản in 5b) và `receipt` (hoá đơn chờ B1). CỐ Ý chỉ khai thứ MỚI — nhãn tấm vé, tiền,
+   * hạn huỷ, tiêu đề dải trùng nghĩa dùng lại khoá sẵn có (`passportVisa`, `bookingDetail`,
+   * `booking.success`, `voucher`, `cancellationDeadline`, `checkoutSummary` — quyết định 21 của plan).
+   */
+  printDoc: {
+    /** Dòng liên hệ của đầu trang trên ảnh bìa — chỉ còn website (spec §2.2). */
+    website: 'www.nexora-travel.agency',
+    printedPrefix: 'Printed',
+    /** Chân trang voucher: nối sau `voucher.needHelp`, trước email in đậm. */
+    replyOrWriteTo: 'Reply to your confirmation email or write to',
+    /** Chân trang hoá đơn chờ: nối sau `booking.success.needHelp`, trước email in đậm. */
+    writeTo: 'Write to',
+    /** Dòng nhỏ trên ảnh bìa — `days` từ `bookingDetail.ticket.days`, `when` có thứ và năm. */
+    kicker: (place: string, days: string, when: string) => `${place} · ${days} · ${when}`,
+    /** Đường nối giữa Departs và Returns của tấm vé. */
+    routeLine: (days: string, place: string) => `${days} · ${place}`,
+    voucher: {
+      docType: 'Trip voucher',
+      issued: (date: string) => `Issued ${date}`,
+      /** Đuôi dòng phụ dưới ngày đi khi tách được giờ hẹn. */
+      meet: (time: string) => `meet ${time}`,
+      tear: 'Show the ticket at pickup — printed or on your phone',
+      yourDay: (title: string) => `Your day · ${title}`,
+      /** `days` từ `bookingDetail.ticket.days`. */
+      yourTrip: (days: string) => `Your trip · ${days}`,
+      dayLine: (n: number, title: string) => `Day ${n} · ${title}`,
+      moreDays: (n: number, slug: string) =>
+        `+${n} more days — full itinerary at nexora-travel.agency/tours/${slug}`,
+      moreItems: (n: number) => `+${n} more`,
+      included: 'Included',
+      notIncluded: 'Not included',
+      whereToMeet: 'Where to meet',
+      meetGuide: (time: string) => `meet your guide at ${time}.`,
+      /** `amount` đủ hai số lẻ (`formatMoneyExact`): số tiền thật khách đối chiếu với sao kê. */
+      paymentLine: (amount: string, provider: string, date: string) =>
+        `${amount} paid with ${provider} on ${date}.`,
+    },
+    receipt: {
+      docType: 'Booking receipt',
+      booked: (when: string) => `Booked ${when}`,
+      pendingBand: 'Booking · payment pending',
+      closedBand: 'Booking · closed',
+      stampPending: 'Payment pending',
+      stampClosed: 'Closed',
+      unpaid: 'Unpaid',
+      notYetVoucher: 'Not yet a voucher',
+      totalNote: 'Total · includes all taxes and fees',
+      payBy: 'Pay by',
+      noPayment: 'No payment was taken',
+      summary: 'Summary',
+      /** Cột Travellers dùng `passportVisa.labels.travellers`. */
+      columns: { item: 'Item', price: 'Price', amount: 'Amount' },
+      howToPay: 'How to pay',
+      howToPayBody: 'Open My bookings on nexora-travel.agency and choose Pay now.',
+      ifUnpaid: 'If it stays unpaid',
+      /**
+       * Giờ nhả cụ thể ("19:04, 9 Oct 2026"), KHÔNG đếm ngược; đơn chờ không giữ ghế nào
+       * (invariant #1 của API) nên câu nói thẳng điều đó.
+       */
+      releasedAt: (when: string) =>
+        `The booking is released at ${when} (Vietnam time). Seats aren’t held until you pay.`,
+      whatHappened: 'What happened',
+      bookAgain: 'Book again',
+      bookAgainBody: (slug: string) => `Pick a new date at nexora-travel.agency/tours/${slug}.`,
+      bookedBy: (email: string) => `Booked by ${email}`,
     },
   },
   common: {

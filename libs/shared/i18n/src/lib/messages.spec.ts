@@ -241,3 +241,46 @@ describe('messages: voucher (P7 phần C — voucher của đơn đã trả)', (
     ).toContain('Cancel on or before that deadline — 11:59 pm Vietnam time — and every dollar');
   });
 });
+
+describe('messages: printDoc (G40 — tài liệu in của khách)', () => {
+  const p = messages.printDoc;
+
+  it('mọi chuỗi trong khối đều có chữ', () => {
+    const walk = (node: unknown): string[] => {
+      if (typeof node === 'string') return [node];
+      if (typeof node === 'function' || node === null) return [];
+      return Object.values(node as object).flatMap(walk);
+    };
+    for (const value of walk(p)) expect(value.trim().length).toBeGreaterThan(0);
+  });
+
+  it('kicker và đường nối của tấm vé', () => {
+    expect(p.kicker('Hội An', '1 day', 'Thu 29 Oct 2026')).toBe('Hội An · 1 day · Thu 29 Oct 2026');
+    expect(p.routeLine('1 day', 'Hội An')).toBe('1 day · Hội An');
+  });
+
+  it('voucher: lịch trình dài, mục dư, giờ hẹn, dòng thanh toán', () => {
+    expect(p.voucher.moreDays(5, 'vietnam-grand-journey-12d')).toBe(
+      '+5 more days — full itinerary at nexora-travel.agency/tours/vietnam-grand-journey-12d',
+    );
+    expect(p.voucher.moreItems(2)).toBe('+2 more');
+    expect(p.voucher.meetGuide('15:30')).toBe('meet your guide at 15:30.');
+    expect(p.voucher.paymentLine('$39.00', 'Card (Stripe)', '9 Oct 2026')).toBe(
+      '$39.00 paid with Card (Stripe) on 9 Oct 2026.',
+    );
+  });
+
+  it('hoá đơn chờ: nói giờ nhả cụ thể, không hứa giữ chỗ, không đếm ngược', () => {
+    const released = p.receipt.releasedAt('19:04, 9 Oct 2026');
+    expect(released).toBe(
+      'The booking is released at 19:04, 9 Oct 2026 (Vietnam time). Seats aren’t held until you pay.',
+    );
+    expect(released).not.toMatch(/reserved|minutes? left/);
+  });
+
+  it('cuống của đơn chưa trả đã đóng nói thẳng, không hứa thành voucher (G37)', () => {
+    expect(messages.booking.success.stubClosed).toBe(
+      'This booking is closed — no payment was taken.',
+    );
+  });
+});
