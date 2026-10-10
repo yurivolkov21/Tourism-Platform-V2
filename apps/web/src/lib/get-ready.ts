@@ -13,8 +13,14 @@ import { formatWeekdayDate } from './tours';
  * Mô tả ngày 1 và điểm hẹn in NGUYÊN VĂN — không tách giờ ra thành dữ liệu (luật catalog).
  */
 
-/** Phần dữ liệu tour mà cột phải và khối Details của trang chi tiết đơn đọc. */
-export type BookingTourData = Pick<TourDetailVM, 'excluded' | 'meetingPoint' | 'itinerary'>;
+/**
+ * Phần dữ liệu tour mà cột phải và khối Details của trang chi tiết đơn đọc: mục gồm và không gồm,
+ * điểm hẹn, lịch trình — bản in voucher G40 đọc thêm mục gồm.
+ */
+export type BookingTourData = Pick<
+  TourDetailVM,
+  'excluded' | 'included' | 'meetingPoint' | 'itinerary'
+>;
 
 /**
  * Giai đoạn nào trang chi tiết đơn cần dữ liệu tour: chỉ sắp đi (Get ready — mục không gồm, điểm

@@ -128,6 +128,7 @@ export function makeReview(overrides: Partial<MyReview> = {}): MyReview {
  */
 export function makeTourData(overrides: Partial<BookingTourData> = {}): BookingTourData {
   return {
+    included: ['English-speaking guide', 'Entrance tickets'],
     excluded: ['Lunch (own arrangement)', 'Tips'],
     meetingPoint: 'Hotel pickup — Hoàn Kiếm, Ba Đình or Tây Hồ',
     itinerary: [
