@@ -36,7 +36,8 @@ export function ReceiptPrint({ view }: { view: ReceiptPrintView }) {
       <div className="mt-[6mm]">
         <PrintTicket view={view.ticket} />
       </div>
-      <PrintTear text={view.tear} />
+      {/* Đơn quá hạn chót không có dòng xé; giữ khoảng để bảng tiền không dính vào vé. */}
+      {view.tear ? <PrintTear text={view.tear} /> : <div aria-hidden="true" className="h-[6mm]" />}
       <section data-slot="print-summary" className="mt-[7mm]">
         <h3 className={cn('mb-[2mm]', PRINT_SECTION)}>{r.summary}</h3>
         <table className="w-full border-collapse text-[9pt]">

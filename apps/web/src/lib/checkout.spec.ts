@@ -1,9 +1,11 @@
+import { messages } from '@tourism/i18n';
 import { describe, expect, it } from 'vitest';
 import { makeBooking } from '@/test/fixtures/booking';
 import {
   bookingPriceLines,
   cancelPageRedirect,
   checkoutMood,
+  closedStubSentence,
   computeBookingTotal,
   formatBookingMoney,
   PENDING_TTL_MINUTES,
@@ -94,31 +96,32 @@ describe('receiptNote — câu dưới tiêu đề hoá đơn theo tâm trạng'
 });
 
 describe('pendingExpiry — hạn 65 phút tính từ createdAt', () => {
-  const createdAt = '2026-08-07T10:00:00.000Z';
+  // Chuyến 1–2/9: hạn chót đặt chỗ còn xa, mốc nhả chỉ là createdAt + 65 phút.
+  const booking = makeBooking({ createdAt: '2026-08-07T10:00:00.000Z' });
 
   it('còn 65 phút ngay lúc vừa tạo', () => {
     const at = new Date('2026-08-07T10:00:00.000Z');
-    expect(pendingExpiry(createdAt, at).minutesLeft).toBe(65);
-    expect(pendingExpiry(createdAt, at).expired).toBe(false);
+    expect(pendingExpiry(booking, at).minutesLeft).toBe(65);
+    expect(pendingExpiry(booking, at).expired).toBe(false);
   });
 
   it('làm tròn XUỐNG phút — không bao giờ hứa nhiều hơn thực tế', () => {
     // 10:00 + 12 phút 40 giây trôi qua → còn 52 phút 20 giây → in "52", không phải "53".
     const at = new Date('2026-08-07T10:12:40.000Z');
-    expect(pendingExpiry(createdAt, at).minutesLeft).toBe(52);
+    expect(pendingExpiry(booking, at).minutesLeft).toBe(52);
   });
 
   it('đúng mốc 65 phút là ĐÃ hết hạn, không phải còn 0', () => {
     const at = new Date('2026-08-07T11:05:00.000Z');
-    const r = pendingExpiry(createdAt, at);
+    const r = pendingExpiry(booking, at);
     expect(r.expired).toBe(true);
     expect(r.minutesLeft).toBe(0);
   });
 
   it('quá hạn thì kẹp ở 0, không trả số âm', () => {
     const at = new Date('2026-08-07T23:00:00.000Z');
-    expect(pendingExpiry(createdAt, at).minutesLeft).toBe(0);
-    expect(pendingExpiry(createdAt, at).expired).toBe(true);
+    expect(pendingExpiry(booking, at).minutesLeft).toBe(0);
+    expect(pendingExpiry(booking, at).expired).toBe(true);
   });
 
   it('hằng số khớp PENDING_TTL_MINUTES của API', () => {
@@ -128,9 +131,37 @@ describe('pendingExpiry — hạn 65 phút tính từ createdAt', () => {
 
 describe('pendingDeadline — mốc đơn chờ bị nhả', () => {
   it('là createdAt cộng PENDING_TTL_MINUTES', () => {
-    expect(pendingDeadline('2026-10-09T10:59:36.812Z').toISOString()).toBe(
-      '2026-10-09T12:04:36.812Z',
+    const booking = makeBooking({
+      createdAt: '2026-10-09T10:59:36.812Z',
+      departureStartDate: '2026-10-29',
+      departureEndDate: '2026-10-29',
+    });
+    expect(pendingDeadline(booking).toISOString()).toBe('2026-10-09T12:04:36.812Z');
+  });
+
+  // Chuyến một ngày 29/10 có hạn chót 28/10: đặt 23:30 giờ VN ngày 28 thì sau 00:00 API thôi mở
+  // phiên trả mới (`reCheckout` từ chối) — mốc không được hứa tới 00:35 hôm sau.
+  it('kẹp ở hết ngày hạn chót (23:59:59 giờ Việt Nam)', () => {
+    const booking = makeBooking({
+      createdAt: '2026-10-28T16:30:00.000Z',
+      departureStartDate: '2026-10-29',
+      departureEndDate: '2026-10-29',
+    });
+    expect(pendingDeadline(booking).toISOString()).toBe('2026-10-28T16:59:59.999Z');
+  });
+});
+
+describe('closedStubSentence — câu cuống của đơn chưa trả đã đóng (G37, spec §4.3)', () => {
+  it('chưa thu đồng nào: nói thẳng không thu tiền', () => {
+    expect(closedStubSentence(makeBooking({ status: 'CANCELLED', paidAt: null }))).toBe(
+      messages.booking.success.stubClosed,
     );
+  });
+
+  // "Không thu tiền" cạnh khoản đã hoàn là nói ngược (`wasCharged`, review P7 B1).
+  it('bị thu rồi hoàn tự động: câu kết cục theo trạng thái, không "no payment was taken"', () => {
+    const booking = makeBooking({ status: 'REFUNDED', paidAt: null, refundedTotal: '10.00' });
+    expect(closedStubSentence(booking)).toBe(messages.accountBookingDetail.terminalNote.REFUNDED);
   });
 });
 

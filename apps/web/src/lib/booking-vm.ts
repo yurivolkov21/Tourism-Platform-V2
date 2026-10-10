@@ -345,6 +345,63 @@ export function refundSentence(refund: RefundSummary, currency: string): string 
   }
 }
 
+/** Chuyện tiền của đơn đã huỷ: tiền chuyến công ty huỷ còn đang về, hay khoản sổ đã ghi. */
+export type RefundState = { kind: 'onItsWay' } | RefundSummary;
+
+/**
+ * Chuyện tiền của đơn đã huỷ theo MỘT thứ tự cho mọi nơi kể (nhật ký voucher, mốc Refund của thanh
+ * hành trình, cột phải trang chi tiết đơn, bản in — G40): tiền chuyến công ty huỷ còn đang về
+ * (`operatorRefundPending`) đọc TRƯỚC sổ hoàn. Đọc ngược là in "$20.00 of $147.00" cạnh "Your full
+ * refund is on its way." (review cuối M2); trước đó bốn nơi tự viết thứ tự này.
+ */
+export function refundState(b: Booking): RefundState | null {
+  return operatorRefundPending(b) ? { kind: 'onItsWay' } : refundSummary(b);
+}
+
+/** Câu kể chuyện tiền (`refundState`) cho khách đọc; `null` khi đơn chưa từng thu tiền. */
+export function refundStory(b: Booking): string | null {
+  const state = refundState(b);
+  if (state === null) return null;
+  return state.kind === 'onItsWay'
+    ? messages.bookingDetail.closed.refundOnItsWay
+    : refundSentence(state, b.currency);
+}
+
+/** Câu kể kết cục của đơn đã đóng mà không đi; chuyện tiền đi riêng (`refundState`). */
+export interface ClosedNarrative {
+  title: string;
+  /** Câu chính; `null` khi trạng thái không có câu kết riêng. */
+  headline: string | null;
+  /** Câu phụ: điều kiện của đơn quá hạn, hay vết luồng duyệt huỷ cũ. */
+  note: string | null;
+}
+
+/**
+ * Câu kể kết cục — MỘT nguồn cho cột phải trang chi tiết đơn (`TripClosedPanel`) và hoá đơn in
+ * (G40). Quá hạn chót mà chưa trả (`lapsed`) nói có điều kiện, không khẳng định "đã lỡ": claim của
+ * API vẫn nhận phiên mở TRƯỚC hạn (ADR-0054 AMEND 1 §4). Chuyến CÔNG TY huỷ có câu riêng (ADR-0041
+ * AMEND 1). Bản in đầu G40 tự chọn câu nên nói "This booking was cancelled." cho đơn mà trang chi
+ * tiết đơn nói "We had to cancel this departure." (review G40).
+ */
+export function closedNarrative(b: Booking, kind: 'cancelled' | 'lapsed'): ClosedNarrative {
+  const t = messages.bookingDetail;
+  if (kind === 'lapsed') {
+    return {
+      title: t.journey.paymentNotCompleted,
+      headline: t.closed.notPaidByDeadline,
+      note: t.closed.finishOpenPayment,
+    };
+  }
+  if (cancelledByOperator(b)) {
+    return { title: t.closed.departureCancelled, headline: t.closed.weCancelled, note: null };
+  }
+  return {
+    title: t.journey.cancelled,
+    headline: messages.accountBookingDetail.terminalNote[b.status] ?? null,
+    note: legacyCancellationNote(b),
+  };
+}
+
 /**
  * Tên cổng thanh toán cho khách đọc ("Card (Stripe)", "PayPal") — MỘT nguồn cho biên nhận,
  * trang chi tiết đơn và voucher. Trước P7 có hai bảng `PROVIDER_LABEL` chép tay (biên nhận và

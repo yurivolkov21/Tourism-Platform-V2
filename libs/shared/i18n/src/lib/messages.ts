@@ -736,6 +736,12 @@ export const messages = {
       booked: (when: string) => `Booked ${when}`,
       pendingBand: 'Booking · payment pending',
       closedBand: 'Booking · closed',
+      /**
+       * Đơn chờ trả qua hạn chót (`lapsed`) — chưa phải kết cục (claim còn nhận phiên mở trước hạn),
+       * nên dải vé không nói "closed"; cùng chữ với tiêu đề cột phải trang chi tiết đơn
+       * (`bookingDetail.journey.paymentNotCompleted`).
+       */
+      lapsedBand: 'Booking · payment not completed',
       stampPending: 'Payment pending',
       stampClosed: 'Closed',
       unpaid: 'Unpaid',

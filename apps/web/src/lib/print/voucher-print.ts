@@ -6,13 +6,7 @@ import {
   vietnamToday,
 } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
-import {
-  bookingTotalLabel,
-  cancellationDeadlineText,
-  operatorRefundPending,
-  refundSentence,
-  refundSummary,
-} from '@/lib/booking-vm';
+import { bookingTotalLabel, cancellationDeadlineText, refundStory } from '@/lib/booking-vm';
 import { formatBookingMoney } from '@/lib/checkout';
 import { type BookingTourData, tourMeetingPoint } from '@/lib/get-ready';
 import { parseItineraryStops } from '@/lib/tour-detail';
@@ -193,13 +187,8 @@ function bandColumns(
   }
 
   if (phase === 'cancelled') {
-    // Cùng chuyện tiền với mốc Refund của nhật ký voucher (`refundJournal` ở `lib/voucher.ts`).
-    const summary = refundSummary(booking);
-    const refund = operatorRefundPending(booking)
-      ? messages.bookingDetail.closed.refundOnItsWay
-      : summary === null
-        ? null
-        : refundSentence(summary, booking.currency);
+    // Cùng chuyện tiền với mốc Refund của nhật ký voucher (`refundStory`, một thứ tự cho mọi nơi kể).
+    const refund = refundStory(booking);
     return refund === null
       ? [payment]
       : [textColumn(messages.voucher.journal.refund, refund), payment];

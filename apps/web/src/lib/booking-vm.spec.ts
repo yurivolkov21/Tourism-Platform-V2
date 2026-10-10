@@ -1,4 +1,5 @@
 import { type BookingCancellation, BookingPhaseSchema } from '@tourism/contract';
+import { messages } from '@tourism/i18n';
 import { describe, expect, it } from 'vitest';
 import { makeBooking } from '@/test/fixtures/booking';
 import {
@@ -8,11 +9,14 @@ import {
   cancellationDeadlineText,
   cancelledByOperator,
   cancelledOn,
+  closedNarrative,
   freeCancellationOpen,
   legacyCancellationNote,
   operatorRefundPending,
   paymentProviderLabel,
   refundSentence,
+  refundState,
+  refundStory,
   refundSummary,
   vietnamDay,
   wasCharged,
@@ -494,6 +498,77 @@ describe('operatorRefundPending — tiền của đơn trên chuyến công ty h
     ['chuyến vẫn chạy', { departureCancelled: false, status: 'PAID' }, false],
   ] as const)('%s → %s', (_, patch, expected) => {
     expect(operatorRefundPending(makeBooking(patch))).toBe(expected);
+  });
+});
+
+describe('refundState — chuyện tiền của đơn đã huỷ, MỘT thứ tự cho mọi nơi kể (G40)', () => {
+  it('chuyến công ty huỷ mà tiền còn đang về đọc TRƯỚC sổ hoàn (review cuối M2)', () => {
+    const booking = makeBooking({
+      departureCancelled: true,
+      status: 'PARTIALLY_REFUNDED',
+      refundedTotal: '2.00',
+    });
+    expect(refundState(booking)).toEqual({ kind: 'onItsWay' });
+  });
+
+  it('còn lại là đúng `refundSummary`', () => {
+    expect(refundState(makeBooking({ status: 'CANCELLED', refundedTotal: '4.00' }))).toEqual({
+      kind: 'partial',
+      amount: '4.00',
+      total: '10.00',
+    });
+  });
+
+  it('chưa từng thu tiền: không có chuyện tiền nào', () => {
+    expect(refundState(makeBooking({ status: 'CANCELLED', paidAt: null }))).toBeNull();
+  });
+});
+
+describe('refundStory — câu kể chuyện tiền', () => {
+  it('tiền đang về: câu "on its way"', () => {
+    expect(refundStory(makeBooking({ departureCancelled: true, status: 'PAID' }))).toBe(
+      messages.bookingDetail.closed.refundOnItsWay,
+    );
+  });
+
+  it('đã hoàn: `refundSentence` với số tiền thật', () => {
+    expect(refundStory(makeBooking({ status: 'REFUNDED', refundedTotal: '10.00' }))).toBe(
+      refundSentence({ kind: 'full', amount: '10.00' }, 'USD'),
+    );
+  });
+
+  it('chưa từng thu tiền: null', () => {
+    expect(refundStory(makeBooking({ status: 'CANCELLED', paidAt: null }))).toBeNull();
+  });
+});
+
+describe('closedNarrative — câu kể kết cục của đơn đã đóng (cột phải trang chi tiết đơn và hoá đơn in)', () => {
+  const t = messages.bookingDetail;
+
+  it('quá hạn chót mà chưa trả: câu sự việc rồi câu điều kiện — không khẳng định "đã lỡ"', () => {
+    expect(closedNarrative(makeBooking({ status: 'PENDING', paidAt: null }), 'lapsed')).toEqual({
+      title: t.journey.paymentNotCompleted,
+      headline: t.closed.notPaidByDeadline,
+      note: t.closed.finishOpenPayment,
+    });
+  });
+
+  it('công ty huỷ chuyến: "We had to cancel" thay cho câu khách tự huỷ', () => {
+    const booking = makeBooking({ departureCancelled: true, status: 'CANCELLED', paidAt: null });
+    expect(closedNarrative(booking, 'cancelled')).toEqual({
+      title: t.closed.departureCancelled,
+      headline: t.closed.weCancelled,
+      note: null,
+    });
+  });
+
+  it('khách tự huỷ: câu theo trạng thái đơn', () => {
+    const booking = makeBooking({ status: 'CANCELLED', refundedTotal: '4.00' });
+    expect(closedNarrative(booking, 'cancelled')).toEqual({
+      title: t.journey.cancelled,
+      headline: messages.accountBookingDetail.terminalNote.CANCELLED,
+      note: null,
+    });
   });
 });
 

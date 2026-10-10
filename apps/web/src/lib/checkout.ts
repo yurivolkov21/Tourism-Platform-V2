@@ -1,6 +1,6 @@
-import type { Booking } from '@tourism/contract';
+import { type Booking, cancellationDeadline } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
-import { refundSentence, refundSummary } from './booking-vm';
+import { refundSentence, refundSummary, wasCharged } from './booking-vm';
 import { formatMoney, formatMoneyExact } from './tours';
 
 /**
@@ -163,12 +163,29 @@ export interface PendingExpiry {
   expired: boolean;
 }
 
+/** Giờ Việt Nam là UTC+7, không giờ mùa hè. */
+const VIETNAM_OFFSET_MS = 7 * 3_600_000;
+
+/** Mili giây cuối cùng (23:59:59.999 giờ Việt Nam) của ngày lịch `YYYY-MM-DD`. */
+function vietnamDayEnd(day: string): number {
+  return Date.parse(`${day}T00:00:00.000Z`) + 86_400_000 - VIETNAM_OFFSET_MS - 1;
+}
+
 /**
- * Mốc đơn chờ bị nhả: `createdAt` cộng `PENDING_TTL_MINUTES`. MỘT nguồn cho `pendingExpiry` (câu
- * "released in about n minutes" của trang huỷ) và dòng "Pay by" của hoá đơn chờ in (G40).
+ * Mốc đơn chờ bị nhả: `createdAt` cộng `PENDING_TTL_MINUTES`, KẸP ở hết ngày hạn chót của chuyến
+ * (23:59:59 giờ Việt Nam, ADR-0041 §3) — qua mốc ấy API thôi mở phiên trả mới (`reCheckout` từ
+ * chối), nên đơn đặt 23:30 ngày hạn chót không được hứa trả tới 00:35 hôm sau (review G40). MỘT
+ * nguồn cho `pendingExpiry` (câu "released in about n minutes" của trang huỷ) và dòng "Pay by" của
+ * hoá đơn chờ in (G40).
  */
-export function pendingDeadline(createdAt: string): Date {
-  return new Date(new Date(createdAt).getTime() + PENDING_TTL_MINUTES * 60_000);
+export function pendingDeadline(
+  booking: Pick<Booking, 'createdAt' | 'departureStartDate' | 'departureEndDate'>,
+): Date {
+  const ttlEnd = new Date(booking.createdAt).getTime() + PENDING_TTL_MINUTES * 60_000;
+  const deadlineEnd = vietnamDayEnd(
+    cancellationDeadline(booking.departureStartDate, booking.departureEndDate),
+  );
+  return new Date(Math.min(ttlEnd, deadlineEnd));
 }
 
 /**
@@ -180,11 +197,30 @@ export function pendingDeadline(createdAt: string): Date {
  *
  * `at` truyền vào được để test không phụ thuộc đồng hồ thật.
  */
-export function pendingExpiry(createdAt: string, at: Date = new Date()): PendingExpiry {
-  const deadline = pendingDeadline(createdAt).getTime();
+export function pendingExpiry(
+  booking: Pick<Booking, 'createdAt' | 'departureStartDate' | 'departureEndDate'>,
+  at: Date = new Date(),
+): PendingExpiry {
+  const deadline = pendingDeadline(booking).getTime();
   const msLeft = deadline - at.getTime();
   if (msLeft <= 0) return { minutesLeft: 0, expired: true };
   return { minutesLeft: Math.floor(msLeft / 60_000), expired: false };
+}
+
+/**
+ * Câu cuống của đơn chưa trả đã đóng (G37, spec §4.3) — MỘT câu cho màn hình (`BookingReceipt`) và
+ * bản in: chưa thu đồng nào thì nói thẳng không thu tiền; bị thu rồi hoàn tự động (`wasCharged`) thì
+ * câu kết cục theo trạng thái — "no payment was taken" cạnh khoản vừa kể là đã hoàn là nói ngược
+ * (cùng bất biến review P7 B1).
+ */
+export function closedStubSentence(
+  booking: Pick<Booking, 'paidAt' | 'refundedTotal' | 'status'>,
+): string {
+  if (!wasCharged(booking)) return messages.booking.success.stubClosed;
+  return (
+    messages.accountBookingDetail.terminalNote[booking.status] ??
+    messages.booking.success.settledBody
+  );
 }
 
 /**

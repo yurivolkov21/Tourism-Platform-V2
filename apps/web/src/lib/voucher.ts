@@ -6,10 +6,9 @@ import {
   cancelledByOperator,
   cancelledOn,
   freeCancellationOpen,
-  operatorRefundPending,
   paymentProviderLabel,
-  refundSentence,
-  refundSummary,
+  refundState,
+  refundStory,
   vietnamDay,
 } from './booking-vm';
 import { type BookingTourData, needsTourData } from './get-ready';
@@ -83,6 +82,14 @@ export interface VoucherView {
 }
 
 /**
+ * "Nơi" của chuyến trên voucher và bản in (kicker bìa, đường nối của vé): điểm đến đầu tiên, tour
+ * chưa gắn điểm đến (dữ liệu cũ) thì lùi về tên tour. MỘT luật cho voucher và hoá đơn chờ in (G40).
+ */
+export function tripPlace(booking: Pick<BookingDetail, 'tourDestinations' | 'tourTitle'>): string {
+  return booking.tourDestinations[0]?.name ?? booking.tourTitle;
+}
+
+/**
  * Bảng quyết định của voucher `/checkout/success` (spec P7 §2.6) — hàm THUẦN, component chỉ vẽ.
  *
  * Trả `null` khi đơn chưa có `paidAt`: đơn PENDING đang chờ webhook, hay giữ chỗ đã hết hạn rồi
@@ -102,7 +109,7 @@ export function voucherView(booking: BookingDetail, now: Date): VoucherView | nu
   if (phase === 'awaiting_payment' || phase === 'lapsed') return null;
 
   const t = messages.voucher;
-  const place = booking.tourDestinations[0]?.name ?? booking.tourTitle;
+  const place = tripPlace(booking);
   const isDayTrip = booking.departureStartDate === booking.departureEndDate;
   // `formatDateRange` tự in MỘT ngày khi ngày đi trùng ngày về ("3 Nov 2026").
   const departure = formatDateRange(booking.departureStartDate, booking.departureEndDate);
@@ -261,18 +268,15 @@ export async function voucherTourData(
  * có mốc này (`refundSummary` là `null`).
  */
 function refundJournal(booking: BookingDetail): VoucherJournalItem[] {
-  const t = messages.voucher.journal;
-  if (operatorRefundPending(booking)) {
-    return [{ label: t.refund, detail: messages.bookingDetail.closed.refundOnItsWay, done: false }];
-  }
-  const refund = refundSummary(booking);
-  if (refund === null) return [];
+  const state = refundState(booking);
+  const detail = refundStory(booking);
+  if (state === null || detail === null) return [];
   return [
     {
-      label: t.refund,
-      detail: refundSentence(refund, booking.currency),
-      // Không hoàn đồng nào thì chưa có gì "xảy ra" để đánh dấu.
-      done: refund.kind !== 'none',
+      label: messages.voucher.journal.refund,
+      detail,
+      // Tiền còn đang về, hay không hoàn đồng nào, thì chưa có gì "xảy ra" để đánh dấu.
+      done: state.kind === 'full' || state.kind === 'partial',
     },
   ];
 }
