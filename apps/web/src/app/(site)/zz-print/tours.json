@@ -1,0 +1,112 @@
+{
+  "hue": {
+    "slug": "hue-imperial-day",
+    "title": "Huế Imperial City & Royal Tombs",
+    "durationDays": 1,
+    "tourData": {
+      "included": [
+        "English-speaking guide",
+        "Air-conditioned vehicle",
+        "Imperial Citadel entrance ticket",
+        "Khải Định and Tự Đức tomb entrance tickets",
+        "Perfume River boat ride to Thiên Mụ Pagoda",
+        "Lunch: bún bò Huế",
+        "Bottled water"
+      ],
+      "excluded": ["Cơm hến tasting stop (pay as you go)", "Tips", "Personal expenses"],
+      "meetingPoint": "Hotel pickup, Huế city (Perfume River / Đông Ba Market side)",
+      "itinerary": [
+        {
+          "dayNumber": 1,
+          "title": "Citadel, river and royal tombs",
+          "description": "08:00 — Hotel pickup, drive to the Imperial Citadel\n08:30 — Imperial Citadel and the Forbidden Purple City\n10:00 — Boat ride on the Perfume River to Thiên Mụ Pagoda\n10:45 — Thiên Mụ Pagoda, Huế's oldest, built 1601\n12:00 — Lunch: bún bò Huế at a riverside quán\n13:30 — Khải Định royal tomb, European-Vietnamese fusion in concrete\n15:00 — Tự Đức royal tomb, a lakeside retreat in the pines\n16:30 — Cơm hến tasting stop at Vĩ Dạ before drop-off"
+        }
+      ]
+    }
+  },
+  "grand": {
+    "slug": "vietnam-grand-journey-12d",
+    "title": "Vietnam Grand Journey: North to South 12D11N",
+    "durationDays": 12,
+    "tourData": {
+      "included": [
+        "Domestic flights Hà Nội–Huế and Đà Nẵng–Hồ Chí Minh City",
+        "11 nights accommodation (hotels and 1 cruise cabin)",
+        "Daily breakfast and meals as per itinerary",
+        "All ground transfers and a private vehicle per region",
+        "English-speaking guide in each region",
+        "Entrance fees for all listed sites",
+        "Hạ Long cruise and Tràng An/Cái Răng boat rides"
+      ],
+      "excluded": [
+        "International flights and visa fees",
+        "Meals not marked as included",
+        "Travel insurance",
+        "Tips and personal expenses"
+      ],
+      "meetingPoint": "Arrival pickup at Nội Bài International Airport, Hà Nội (day 1)",
+      "itinerary": [
+        {
+          "dayNumber": 1,
+          "title": "Arrival in Hà Nội",
+          "description": "08:00 — Arrival transfer from Nội Bài airport to your Hà Nội hotel\n14:00 — Old Quarter walking orientation, Hoàn Kiếm Lake\n16:00 — Free time, check in and rest\n19:00 — Welcome dinner, bún chả and local specialties"
+        },
+        {
+          "dayNumber": 2,
+          "title": "Hà Nội heritage day",
+          "description": "08:00 — Ba Đình Square, Hồ Chí Minh Mausoleum exterior\n09:30 — Temple of Literature\n11:30 — Lunch near Hoàn Kiếm Lake\n14:00 — Đồng Xuân Market and Old Quarter craft streets\n19:30 — Optional Water Puppet show"
+        },
+        {
+          "dayNumber": 3,
+          "title": "Boarding for Hạ Long Bay",
+          "description": "08:00 — Depart Hà Nội for Hạ Long (~3.5h)\n11:30 — Board the junk, lunch as we cruise\n14:00 — Sung Sốt Cave and kayaking at Luon Cave lagoon\n19:00 — Dinner aboard, overnight at anchor"
+        },
+        {
+          "dayNumber": 4,
+          "title": "Titop Island to Ninh Bình",
+          "description": "06:30 — Sunrise tai chi, breakfast aboard\n08:00 — Titop Island swim or viewpoint climb\n09:30 — Disembark, drive to Ninh Bình (~2.5h)\n14:30 — Bamboo boat through Tràng An's caves\n18:30 — Check in, dinner, free evening in Ninh Bình"
+        },
+        {
+          "dayNumber": 5,
+          "title": "Onward to imperial Huế",
+          "description": "06:30 — Breakfast, drive back to Hà Nội (~2h)\n09:30 — Domestic flight Hà Nội → Huế (~1.5h)\n11:30 — Arrive Huế, transfer to hotel, lunch\n14:00 — Perfume River boat to Thiên Mụ Pagoda\n19:00 — Dinner, own arrangement on the riverside"
+        },
+        {
+          "dayNumber": 6,
+          "title": "Huế's citadel and royal tombs",
+          "description": "08:00 — Imperial Citadel and the Forbidden Purple City\n10:30 — Khải Định royal tomb\n12:30 — Lunch: bún bò Huế\n14:30 — Đồng Khánh tomb or free time\n19:00 — Royal-style dinner with traditional music (optional)"
+        },
+        {
+          "dayNumber": 7,
+          "title": "Over Hải Vân pass to Hội An",
+          "description": "07:30 — Check-out, drive over the Hải Vân pass coastal road\n10:00 — Marble Mountains stop, Đà Nẵng\n12:00 — Lunch in Đà Nẵng, view the Dragon Bridge\n14:30 — Continue to Hội An, hotel check-in\n19:00 — Lantern-lit Old Town evening walk"
+        },
+        {
+          "dayNumber": 8,
+          "title": "A full day in Hội An",
+          "description": "08:00 — Cooking class: shop the market, learn 3 local dishes\n11:30 — Lunch: your own cooked dishes\n14:00 — Basket boat ride through the coconut palm forest\n16:30 — Free time for tailoring or the riverside\n19:00 — Free evening, own arrangement"
+        },
+        {
+          "dayNumber": 9,
+          "title": "South to Sài Gòn",
+          "description": "07:30 — Breakfast, transfer to Đà Nẵng airport\n09:30 — Domestic flight Đà Nẵng → Hồ Chí Minh City (~1.5h)\n11:30 — Arrive Sài Gòn, transfer to hotel, lunch\n14:30 — City tour: Notre-Dame Cathedral, Central Post Office\n19:00 — Rooftop dinner over the Sài Gòn skyline"
+        },
+        {
+          "dayNumber": 10,
+          "title": "Củ Chi and the city",
+          "description": "08:00 — Drive to Củ Chi Tunnels (~1.5h)\n09:30 — Tunnel network and wartime history tour\n12:30 — Lunch, drive back to Sài Gòn\n15:00 — Bến Thành Market, free afternoon\n19:30 — Free evening, own arrangement"
+        },
+        {
+          "dayNumber": 11,
+          "title": "Into the Mekong Delta",
+          "description": "06:30 — Depart Sài Gòn for Cần Thơ (~3h)\n10:00 — Boat ride to Cái Răng floating market\n12:30 — Lunch on the riverbank\n14:30 — Cycle through orchard villages on Cồn Sơn islet\n18:00 — Overnight in Cần Thơ, free evening"
+        },
+        {
+          "dayNumber": 12,
+          "title": "Cần Thơ to departure",
+          "description": "06:00 — Early boat: Cái Răng at its dawn busiest (optional revisit)\n08:00 — Breakfast, drive back to Sài Gòn (~3h)\n11:30 — Farewell lunch\n13:00 — Transfer to Tân Sơn Nhất airport for your onward flight"
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,163 @@
+// Đo bản in G40 Phần 1 bằng Edge headless qua CDP: mỗi biến thể in ra PDF (đếm trang), đo tờ trong
+// media print (tràn, chân trang, chrome ẩn), chụp ảnh tờ. Chạy: node measure.mjs <base-url> <out-dir> [variant...]
+import { spawn } from 'node:child_process';
+import { mkdirSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
+
+const BASE = process.argv[2] ?? 'http://localhost:3410';
+const OUT = process.argv[3] ?? '.';
+const ONLY = process.argv.slice(4);
+const EDGE = 'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe';
+const PORT = 9333;
+const VARIANTS = [
+  'v-upcoming-1d',
+  'v-upcoming-12d',
+  'v-upcoming-nophoto',
+  'v-ontour-3d',
+  'v-travelled',
+  'v-cancelled',
+  'v-cancelled-refunded',
+  'v-longtitle',
+  'v-hue-seed',
+  'v-grand-seed',
+  'v-grand-seed-longtitle',
+  'r-pending',
+  'r-closed',
+  'r-refunded',
+  'r-lapsed',
+  'r-longtitle-email',
+];
+const DARK = new Set(['v-upcoming-1d', 'r-pending']);
+
+mkdirSync(OUT, { recursive: true });
+const profile = join(OUT, 'edge-profile');
+// Edge headless chạy sẵn ở cổng PORT (user-data-dir phải là đường dẫn Windows tuyệt đối).
+const edge = { kill() {} };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+async function targets() {
+  for (let i = 0; i < 150; i++) {
+    try {
+      return await (await fetch(`http://127.0.0.1:${PORT}/json`)).json();
+    } catch {
+      await sleep(200);
+    }
+  }
+  throw new Error('Edge không mở cổng CDP');
+}
+
+await targets();
+const page = await (await fetch(`http://127.0.0.1:${PORT}/json/new?about:blank`, { method: 'PUT' })).json();
+const ws = new WebSocket(page.webSocketDebuggerUrl);
+await new Promise((r) => ws.addEventListener('open', r, { once: true }));
+let id = 0;
+const pending = new Map();
+const waiters = [];
+ws.addEventListener('message', (ev) => {
+  const msg = JSON.parse(ev.data);
+  if (msg.id && pending.has(msg.id)) {
+    const { resolve, reject } = pending.get(msg.id);
+    pending.delete(msg.id);
+    msg.error ? reject(new Error(JSON.stringify(msg.error))) : resolve(msg.result);
+  } else if (msg.method) {
+    for (const w of [...waiters]) if (w.method === msg.method) w.resolve(msg.params);
+  }
+});
+const send = (method, params = {}) =>
+  new Promise((resolve, reject) => {
+    const i = ++id;
+    pending.set(i, { resolve, reject });
+    ws.send(JSON.stringify({ id: i, method, params }));
+  });
+const once = (method, ms = 60000) =>
+  new Promise((resolve, reject) => {
+    const w = { method, resolve: (p) => { waiters.splice(waiters.indexOf(w), 1); resolve(p); } };
+    waiters.push(w);
+    setTimeout(() => reject(new Error(`hết giờ chờ ${method}`)), ms);
+  });
+const evaluate = async (expression) => {
+  const r = await send('Runtime.evaluate', { expression, awaitPromise: true, returnByValue: true });
+  if (r.exceptionDetails) throw new Error(JSON.stringify(r.exceptionDetails).slice(0, 400));
+  return r.result.value;
+};
+
+await send('Page.enable');
+await send('Runtime.enable');
+await send('Emulation.setDeviceMetricsOverride', {
+  width: 1280,
+  height: 1200,
+  deviceScaleFactor: 1,
+  mobile: false,
+});
+
+const MEASURE = `(async () => {
+  await document.fonts.ready;
+  await Promise.all([...document.images].map((img) => img.complete ? null : new Promise((r) => { img.onload = img.onerror = r; })));
+  const doc = document.querySelector('[data-print-doc]');
+  if (!doc) return { error: 'không có tài liệu in' };
+  const px = (v) => +(v * 25.4 / 96).toFixed(1);
+  const r = doc.getBoundingClientRect();
+  const footer = doc.querySelector('[data-slot="doc-footer"]');
+  const f = footer.getBoundingClientRect();
+  const padBottom = parseFloat(getComputedStyle(doc).paddingBottom);
+  const visibleOutside = [...document.body.querySelectorAll('*')].filter((el) => !doc.contains(el) && !el.contains(doc) && el.getClientRects().length > 0 && getComputedStyle(el).display !== 'contents').map((el) => el.tagName + (el.getAttribute('data-slot') ? '[' + el.getAttribute('data-slot') + ']' : '')).slice(0, 8);
+  const title = doc.querySelector('[data-slot="print-cover"] h2');
+  const ts = title ? getComputedStyle(title) : null;
+  return {
+    sheetMm: [px(r.width), px(r.height)],
+    topMm: px(r.top),
+    overflowPx: doc.scrollHeight - doc.clientHeight,
+    footerBottomMm: px(f.bottom - r.top),
+    footerLimitMm: px(r.height - padBottom),
+    footerInside: f.bottom <= r.bottom - padBottom + 0.5,
+    visibleOutside,
+    htmlDark: document.documentElement.classList.contains('dark'),
+    sheetBg: getComputedStyle(doc).backgroundColor,
+    textColor: getComputedStyle(doc).color,
+    titleLines: title ? Math.round(title.getBoundingClientRect().height / parseFloat(ts.lineHeight)) : null,
+    titleLineHeight: ts ? ts.lineHeight + ' / ' + ts.fontSize : null,
+    printedAt: doc.querySelector('[data-slot="printed-at"]')?.textContent ?? null,
+  };
+})()`;
+
+const results = [];
+let n = 0;
+for (const variant of ONLY.length ? ONLY : VARIANTS) {
+  for (const dark of DARK.has(variant) ? [false, true] : [false]) {
+    n++;
+    await send('Emulation.setEmulatedMedia', {
+      media: '',
+      features: [{ name: 'prefers-color-scheme', value: dark ? 'dark' : 'light' }],
+    });
+    const loaded = once('Page.loadEventFired');
+    await send('Page.navigate', { url: `${BASE}/zz-print?v=${variant}&m=${n}` });
+    await loaded;
+    await sleep(400);
+    await send('Emulation.setEmulatedMedia', {
+      media: 'print',
+      features: [{ name: 'prefers-color-scheme', value: dark ? 'dark' : 'light' }],
+    });
+    const m = await evaluate(MEASURE);
+    const pdf = await send('Page.printToPDF', { preferCSSPageSize: true, printBackground: false });
+    const bytes = Buffer.from(pdf.data, 'base64');
+    const pages = (bytes.toString('latin1').match(/\/Type\s*\/Page(?!s)/g) ?? []).length;
+    const name = `${variant}${dark ? '-dark' : ''}`;
+    writeFileSync(join(OUT, `${name}.pdf`), bytes);
+    // Ảnh tờ trong media print, khổ thật (210 × 297 mm ở 96 dpi), ×2 cho nét.
+    const rect = await evaluate(
+      `(() => { const r = document.querySelector('[data-print-doc]').getBoundingClientRect(); return { x: r.left + scrollX, y: r.top + scrollY, w: r.width, h: r.height }; })()`,
+    );
+    const shot = await send('Page.captureScreenshot', {
+      format: 'png',
+      captureBeyondViewport: true,
+      clip: { x: rect.x, y: rect.y, width: rect.w, height: rect.h, scale: 1.5 },
+    });
+    writeFileSync(join(OUT, `${name}.png`), Buffer.from(shot.data, 'base64'));
+    results.push({ name, pages, ...m });
+    console.log(JSON.stringify({ name, pages, ...m }));
+  }
+}
+writeFileSync(join(OUT, 'results.json'), JSON.stringify(results, null, 1));
+ws.close();
+edge.kill();
+process.exit(0);
