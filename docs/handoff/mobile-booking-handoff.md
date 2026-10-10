@@ -67,7 +67,8 @@ Thẻ chuyến ở tab Trips KHÔNG mở thẳng hoá đơn nữa. Chạm thẻ 
 | PAID | trong khoảng đi–về | P5 | ngày đang chạy = `today − start + 1` |
 | PAID | sau `departureEndDate` | P6 | mời viết đánh giá |
 | PENDING | bất kỳ | T5 | trả tiền trước đã |
-| CANCELLED · REFUNDED · PARTIALLY_REFUNDED | bất kỳ | T8 | |
+| CANCELLED · REFUNDED | bất kỳ | T8 | |
+| PARTIALLY_REFUNDED | bất kỳ | T8 | Không phải trạng thái cuối (`booking-states.md`, ADR-0041): khách vẫn đi tour, T8 còn nút huỷ khi `cancellation.canCancel` |
 
 Hoá đơn T4 luôn ở một chạm nữa, sau nút "Booking details". Lý do đảo thứ tự: khách quay lại
 để xem còn mấy ngày và cần mang gì, không phải để đọc lại số tiền.
