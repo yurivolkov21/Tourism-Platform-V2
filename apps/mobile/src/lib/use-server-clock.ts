@@ -13,10 +13,16 @@ import { clockOffsetMs, serverNow } from './server-clock';
  * `offsetMs = 0` khi chưa có dữ liệu (app mới mở) — màn tạm dùng giờ máy, sai
  * số đó biến mất ngay khi `health.check` về.
  */
+// Phải là hàm module-scope (tham chiếu ổn định): `select` viết inline bị React
+// Query gọi lại mỗi lần render, `Date.now()` đổi theo nên offset luôn ≈ 0 và đồng
+// hồ server đứng yên ở mốc `timestamp` đầu tiên.
+const selectOffsetMs = (data: { timestamp: string }): number =>
+  clockOffsetMs(data.timestamp, Date.now());
+
 function useServerClockOffsetMs(): number {
   const query = useQuery({
     ...orpc.health.check.queryOptions({ staleTime: Infinity, gcTime: Infinity }),
-    select: (data) => clockOffsetMs(data.timestamp, Date.now()),
+    select: selectOffsetMs,
   });
   return query.data ?? 0;
 }

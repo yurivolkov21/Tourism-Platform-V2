@@ -2111,6 +2111,9 @@ export const messages = {
       viewBooking: 'View booking',
       browseTours: 'Browse more tours',
       resultError: "Couldn't check your booking. Please try again.",
+      openBrowserFailed: "Couldn't open the payment page. Please try again.",
+      // B6 — booking đã bị huỷ/hoàn trong lúc khách còn ở trình duyệt: không mời trả lại.
+      verifyEndedTitle: 'This booking is no longer active',
       listError: "Couldn't load your bookings.",
       detailError: "Couldn't load this booking.",
       retry: 'Try again',
@@ -2177,6 +2180,8 @@ export const messages = {
         departureClosedBody: "Booking for this departure has closed — you can't pay for it now.",
         // T8 — đã huỷ và hoàn tiền. `date` đã định dạng sẵn (`formatFullDate`).
         refundedNote: (amount: string, date: string) => `${amount} refunded on ${date}`,
+        // Hoàn do admin (không qua đơn xin huỷ) không có mốc ngày nào để in.
+        refundedNoDate: (amount: string) => `${amount} refunded`,
         refundedTiming: 'Back on your card within 5–10 business days, depending on your bank.',
         questionsAboutTrip: 'Questions about this trip?',
         contactLinkLabel: 'Contact us',
@@ -2258,7 +2263,8 @@ export const messages = {
       writeReview: 'Write a review',
       reviewed: 'You reviewed this trip',
       whereToNext: 'Where to next?',
-      nearPlaces: (names: string) => `Tours near ${names}`,
+      nearPlaces: (names: string[]) => `Tours near ${names.join(' and ')}`,
+      paidAmount: (amount: string) => `${amount} paid`,
     },
     authPrompts: {
       wishlistReason: 'Sign in to save tours you love.',

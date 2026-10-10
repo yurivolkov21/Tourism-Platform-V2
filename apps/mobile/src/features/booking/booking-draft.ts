@@ -38,12 +38,30 @@ export interface BookingDraft {
 }
 
 let draft: BookingDraft | null = null;
+/** Bản chụp draft đã PAID — chỉ để B8 hiển thị; draft thật đã xoá nên các
+ *  màn B1–B5 còn nằm trong stack không thể tạo booking mới nữa. `totalAmount` là
+ *  số SERVER xác nhận, không phải số điện thoại tự nhân lại. */
+export type CompletedBooking = BookingDraft & { totalAmount: string };
+let completed: CompletedBooking | null = null;
+
+/** Các trường quyết định nội dung booking đã gửi server — đổi một trong số này
+ *  thì booking PENDING cũ không còn khớp, phải tạo lại thay vì checkout lại. */
+const BOOKING_INPUT_KEYS = [
+  'numAdults',
+  'numChildren',
+  'contactName',
+  'contactEmail',
+  'contactPhone',
+  'specialRequests',
+  'paymentProvider',
+] as const;
 
 /** Gọi lúc bấm "Book now" ở trang tour — mở draft mới, điền sẵn tên/email nếu đã đăng nhập. */
 export function startBookingDraft(
   trip: BookingDraftTrip,
   contact: { name: string; email: string },
 ): BookingDraft {
+  completed = null;
   draft = {
     trip,
     numAdults: 1,
@@ -69,8 +87,29 @@ export function updateBookingDraft(
   patch: Partial<Omit<BookingDraft, 'trip'>>,
 ): BookingDraft | null {
   if (draft === null) return null;
-  draft = { ...draft, ...patch };
+  const current = draft;
+  const changed = BOOKING_INPUT_KEYS.some((key) => key in patch && patch[key] !== current[key]);
+  draft = {
+    ...current,
+    ...patch,
+    ...(changed ? { checkoutUrl: null, bookingCode: null } : {}),
+  };
   return draft;
+}
+
+/** Gọi khi B6 xác nhận PAID — xoá draft ngay, chỉ giữ bản chụp cho B8. */
+export function completeBookingDraft(totalAmount: string): void {
+  if (draft === null || draft.bookingCode === null) return;
+  completed = { ...draft, totalAmount };
+  draft = null;
+}
+
+export function getCompletedBooking(): CompletedBooking | null {
+  return completed;
+}
+
+export function clearCompletedBooking(): void {
+  completed = null;
 }
 
 /** Gọi sau khi `bookings.create` xong (thành hoặc bại-dứt-điểm) — dọn draft để

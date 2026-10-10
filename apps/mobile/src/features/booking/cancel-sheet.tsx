@@ -9,6 +9,9 @@ import {
 } from '@tourism/mobile-ui';
 import { Pressable, View } from 'react-native';
 
+/** Khớp `reason.max(1000)` của `CancelBookingInputSchema` (contract) và web. */
+export const CANCEL_REASON_MAX_LENGTH = 1000;
+
 export interface CancelBookingSheetProps {
   visible: boolean;
   onClose: () => void;
@@ -122,6 +125,7 @@ export function CancelBookingSheet({
             // icon trần (phản hồi 01/10, icon nhìn "lạc lõng" không khung).
             iconVariant="boxed"
             value={reason ?? ''}
+            maxLength={CANCEL_REASON_MAX_LENGTH}
             onChangeText={onChangeReason}
             multiline
           />

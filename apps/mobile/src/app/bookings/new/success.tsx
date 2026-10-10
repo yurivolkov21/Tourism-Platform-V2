@@ -1,8 +1,8 @@
 import { messages } from '@tourism/i18n';
 import { router } from 'expo-router';
 import { useEffect } from 'react';
-import { clearBookingDraft, getBookingDraft } from '@/features/booking/booking-draft';
-import { totalPrice } from '@/features/booking/booking-form';
+import { BackHandler } from 'react-native';
+import { clearCompletedBooking, getCompletedBooking } from '@/features/booking/booking-draft';
 import { BookingSuccessScreen } from '@/features/booking/booking-success-screen';
 import { formatDepartureRange } from '@/features/tour-detail/departures';
 import { cloudinaryUrl } from '@/lib/cloudinary-url';
@@ -13,22 +13,28 @@ import { formatMoney } from '@/lib/format-money';
  * ĐÃ xác nhận PAID — không tự suy đoán từ việc trình duyệt vừa đóng.
  */
 export default function BookingSuccessRoute() {
-  const draft = getBookingDraft();
+  const draft = getCompletedBooking();
   const { booking } = messages.mobile;
 
   useEffect(() => {
     if (draft === null) router.back();
   }, [draft]);
 
+  // B8 là màn cuối: tắt nút back cứng Android (cử chỉ vuốt iOS tắt ở _layout).
+  useEffect(() => {
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => true);
+    return () => sub.remove();
+  }, []);
+
   if (draft === null) return null;
 
   const { trip } = draft;
   const partySize = draft.numAdults + draft.numChildren;
-  const amount = formatMoney(totalPrice(trip.unitPrice, partySize), trip.currency);
+  const amount = formatMoney(draft.totalAmount, trip.currency);
   const bookingCode = draft.bookingCode ?? '';
 
   function done(next: string) {
-    clearBookingDraft();
+    clearCompletedBooking();
     router.replace(next);
   }
 

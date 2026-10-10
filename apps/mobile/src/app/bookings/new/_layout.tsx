@@ -7,7 +7,7 @@ import { Stack } from 'expo-router';
  * khuôn nhóm `(auth)`: mỗi bước là một route push, header NATIVE tự vẽ nút lùi
  * (khác cụm auth — ở đây header SHOWN vì `compact-head` mockup đúng là header
  * native, không phải nút tự vẽ đè ảnh). `success` (B8) là màn CUỐI, không có
- * đường lùi — `headerShown:false`, cùng lý do `tours/[slug]` không có header.
+ * đường lùi — `headerShown:false` + `gestureEnabled:false`, cùng lý do `tours/[slug]` không có header.
  */
 export default function BookingNewLayout() {
   const theme = useTheme();
@@ -27,7 +27,7 @@ export default function BookingNewLayout() {
       <Stack.Screen name="review" options={{ title: titles.reviewAndPay }} />
       <Stack.Screen name="checkout" options={{ title: titles.payment }} />
       <Stack.Screen name="verify" options={{ title: titles.payment }} />
-      <Stack.Screen name="success" options={{ headerShown: false }} />
+      <Stack.Screen name="success" options={{ headerShown: false, gestureEnabled: false }} />
     </Stack>
   );
 }

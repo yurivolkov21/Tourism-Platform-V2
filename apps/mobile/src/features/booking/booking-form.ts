@@ -139,3 +139,18 @@ export function bookingCreateErrorAction(error: unknown): BookingCreateErrorActi
  * có thể tới sau vài giây, không phải tin ngay lần hỏi đầu.
  */
 export const VERIFY_BACKOFF_MS: readonly number[] = [2000, 4000, 8000];
+
+export type VerifyOutcome = 'paid' | 'ended' | 'pending';
+
+/**
+ * B6 hỏi lại `bookings.byCode`: PAID → B8; CANCELLED/REFUNDED/PARTIALLY_REFUNDED
+ * nghĩa là booking đã chết (hết hạn TTL, huỷ tay) — dừng hỏi và KHÔNG mời trả lại;
+ * còn lại (PENDING) mới tiếp tục chờ webhook.
+ */
+export function verifyOutcome(status: string): VerifyOutcome {
+  if (status === 'PAID') return 'paid';
+  if (status === 'CANCELLED' || status === 'REFUNDED' || status === 'PARTIALLY_REFUNDED') {
+    return 'ended';
+  }
+  return 'pending';
+}

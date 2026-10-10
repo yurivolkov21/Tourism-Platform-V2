@@ -6,6 +6,7 @@ import {
   itineraryCalendarDate,
   packingChecklistItems,
   timedStopStates,
+  tripLoadState,
   tripPhase,
   vietnamTimeOfDay,
   visibleIncluded,
@@ -165,5 +166,25 @@ describe('visibleIncluded', () => {
       visible: ['a', 'b', 'c'],
       hiddenCount: 2,
     });
+  });
+});
+
+describe('tripLoadState', () => {
+  const idle = { detailPending: false, detailError: false, tourPending: false, tourError: false };
+
+  it('byCode lỗi lần đầu: query tour tắt nên pending mãi — vẫn phải ra error, không kẹt loading', () => {
+    expect(tripLoadState({ ...idle, detailError: true, tourPending: true })).toBe('error');
+  });
+
+  it('tour lỗi → error', () => {
+    expect(tripLoadState({ ...idle, tourError: true })).toBe('error');
+  });
+
+  it('đang tải → loading', () => {
+    expect(tripLoadState({ ...idle, detailPending: true, tourPending: true })).toBe('loading');
+  });
+
+  it('xong cả hai → ready', () => {
+    expect(tripLoadState(idle)).toBe('ready');
   });
 });

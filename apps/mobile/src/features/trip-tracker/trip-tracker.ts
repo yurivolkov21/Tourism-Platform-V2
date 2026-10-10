@@ -126,3 +126,21 @@ export function timedStopStates(times: readonly string[], nowTime: string): Stop
     index < activeIndex ? 'done' : index === activeIndex ? 'active' : 'upcoming',
   );
 }
+
+export type TripLoadState = 'loading' | 'error' | 'ready';
+
+/**
+ * Lỗi phải thắng "đang tải": query tour chỉ chạy khi đã có booking nên nếu
+ * `byCode` lỗi, query tour tắt và `isPending` mãi mãi — xét pending trước thì
+ * màn kẹt ở khung chờ, không bao giờ tới nút thử lại.
+ */
+export function tripLoadState(q: {
+  detailPending: boolean;
+  detailError: boolean;
+  tourPending: boolean;
+  tourError: boolean;
+}): TripLoadState {
+  if (q.detailError || q.tourError) return 'error';
+  if (q.detailPending || q.tourPending) return 'loading';
+  return 'ready';
+}

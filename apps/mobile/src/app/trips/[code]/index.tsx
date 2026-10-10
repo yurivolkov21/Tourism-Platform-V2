@@ -23,6 +23,7 @@ import {
   itineraryCalendarDate,
   packingChecklistItems,
   timedStopStates,
+  tripLoadState,
   tripPhase,
   vietnamTimeOfDay,
   whatToBringLines,
@@ -105,11 +106,18 @@ export default function TripTrackerRoute() {
     );
   }
 
-  if (detailQuery.isPending || tourQuery.isPending) {
+  const loadState = tripLoadState({
+    detailPending: detailQuery.isPending,
+    detailError: detailQuery.isError,
+    tourPending: tourQuery.isPending,
+    tourError: tourQuery.isError,
+  });
+
+  if (loadState === 'loading') {
     return <PlaceholderScreen edges={SCREEN_EDGES_UNDER_HEADER} detail={code} />;
   }
 
-  if (detailQuery.isError || tourQuery.isError || booking === undefined || tour === undefined) {
+  if (loadState === 'error' || booking === undefined || tour === undefined) {
     return (
       <Screen edges={SCREEN_EDGES_UNDER_HEADER} padded={false}>
         <View style={{ flex: 1, justifyContent: 'center', padding: 24 }}>
@@ -124,7 +132,8 @@ export default function TripTrackerRoute() {
               label={bookingCopy.retry}
               onPress={() => {
                 void detailQuery.refetch();
-                void tourQuery.refetch();
+                // Query tour tắt khi chưa có booking — refetch lúc đó gọi slug rỗng.
+                if (booking !== undefined) void tourQuery.refetch();
               }}
               shape="pill"
             />
@@ -206,12 +215,12 @@ export default function TripTrackerRoute() {
         reviewedLabel={t.reviewed}
         bookingDetailsRow={{
           label: t.bookingDetailsRow,
-          caption: `${booking.code} · ${formatMoney(booking.totalAmount, booking.currency)} paid`,
+          caption: `${booking.code} · ${t.paidAmount(formatMoney(booking.totalAmount, booking.currency))}`,
           onPress: () => router.push(`/bookings/${booking.code}`),
         }}
         whereToNextRow={{
           label: t.whereToNext,
-          caption: t.nearPlaces(booking.tourDestinations.map((d) => d.name).join(' and ')),
+          caption: t.nearPlaces(booking.tourDestinations.map((d) => d.name)),
           onPress: () => router.navigate('/explore'),
         }}
       />

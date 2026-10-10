@@ -8,7 +8,6 @@ import {
   useTheme,
 } from '@tourism/mobile-ui';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
-import * as WebBrowser from 'expo-web-browser';
 import { useState } from 'react';
 import { View } from 'react-native';
 import { PlaceholderScreen } from '@/components/placeholder-screen';
@@ -19,6 +18,7 @@ import {
   bookingDetailKind,
   cancelErrorAction,
   cancelErrorCopy,
+  payErrorAction,
 } from '@/features/booking/booking-detail';
 import {
   type BookingDetailPill,
@@ -26,6 +26,7 @@ import {
   BookingDetailScreen,
 } from '@/features/booking/booking-detail-screen';
 import { CancelBookingSheet } from '@/features/booking/cancel-sheet';
+import { openCheckout } from '@/features/booking/open-checkout';
 import {
   formatDepartureDate,
   formatDepartureRange,
@@ -62,6 +63,10 @@ export default function BookingDetailRoute() {
   const [cancelPendingSheetOpen, setCancelPendingSheetOpen] = useState(false);
   const [reason, setReason] = useState('');
   const [actionError, setActionError] = useState<string | null>(null);
+  // Lỗi bấm Pay hiện NGAY trên màn (T5) — tách khỏi `actionError` chỉ nằm trong tấm huỷ đang ẩn.
+  const [payError, setPayError] = useState<
+    { kind: 'closed' } | { kind: 'message'; text: string } | null
+  >(null);
 
   const detailQuery = useQuery(
     orpc.bookings.byCode.queryOptions({
@@ -164,21 +169,36 @@ export default function BookingDetailRoute() {
     ? formatMoney(booking.cancellation.refundAmount, booking.currency)
     : null;
 
+  // Đọc lại cả chi tiết LẪN danh sách — tab Trips cầm `bookings.mine` riêng, không
+  // làm mới thì còn hiện trạng thái cũ sau khi huỷ/trả tiền.
   function refetch() {
     void queryClient.invalidateQueries({
       queryKey: orpc.bookings.byCode.queryOptions({ input: { code: code ?? '' } }).queryKey,
     });
+    void queryClient.invalidateQueries({ queryKey: orpc.bookings.mine.key() });
   }
 
   function payNow() {
-    setActionError(null);
+    setPayError(null);
     checkoutMutation.mutate(
       { code: code ?? '' },
       {
-        onSuccess: (result) => {
-          if (result.checkoutUrl) void WebBrowser.openBrowserAsync(result.checkoutUrl);
+        onSuccess: async (result) => {
+          if (!result.checkoutUrl) return;
+          const opened = await openCheckout(result.checkoutUrl);
+          if (!opened) {
+            setPayError({ kind: 'message', text: bookingCopy.openBrowserFailed });
+            return;
+          }
+          // Trình duyệt đóng → hỏi lại trạng thái (webhook có thể đã tới).
+          refetch();
         },
-        onError: (error) => setActionError(cancelErrorCopy(error)),
+        onError: (error) => {
+          const action = payErrorAction(error);
+          if (action === 'departureClosed') setPayError({ kind: 'closed' });
+          else if (action === 'refetch') refetch();
+          else setPayError({ kind: 'message', text: cancelErrorCopy(error) });
+        },
       },
     );
   }
@@ -235,12 +255,23 @@ export default function BookingDetailRoute() {
   let contactLine: Parameters<typeof BookingDetailScreen>[0]['contactLine'];
 
   if (kind === 'pending') {
-    note = {
-      tone: 'warning',
-      icon: 'alert-circle',
-      title: t.paymentNotFinishedTitle,
-      body: t.paymentNotFinishedBody,
-    };
+    const closed = payError?.kind === 'closed';
+    note =
+      payError === null
+        ? {
+            tone: 'warning',
+            icon: 'alert-circle',
+            title: t.paymentNotFinishedTitle,
+            body: t.paymentNotFinishedBody,
+          }
+        : payError.kind === 'closed'
+          ? {
+              tone: 'warning',
+              icon: 'alert-circle',
+              title: t.departureClosedTitle,
+              body: t.departureClosedBody,
+            }
+          : { tone: 'warning', icon: 'alert-circle', title: payError.text };
     rows = [
       { label: bookingCopy.bookingCodeLabel, value: booking.code },
       {
@@ -249,11 +280,14 @@ export default function BookingDetailRoute() {
       },
       { label: t.totalDueLabel, value: amount, emphasis: true },
     ];
-    primaryAction = {
-      label: messages.booking.wizard.payCta(amount),
-      onPress: payNow,
-      disabled: checkoutMutation.isPending,
-    };
+    // Đợt đã đóng thì không còn gì để trả — chỉ để lại nút bỏ booking.
+    primaryAction = closed
+      ? null
+      : {
+          label: messages.booking.wizard.payCta(amount),
+          onPress: payNow,
+          disabled: checkoutMutation.isPending,
+        };
     if (actions.includes('cancelPending')) {
       secondaryAction = {
         label: t.cancelThisBooking,
@@ -262,14 +296,22 @@ export default function BookingDetailRoute() {
     }
   } else if (kind === 'paid') {
     if (booking.cancellation) {
-      note = {
-        tone: 'success',
-        icon: 'shield',
-        title: messages.cancellationDeadline.short(
-          formatDepartureDate(booking.cancellation.deadline),
-        ),
-        body: t.cancelByThenNote(refundAmount ?? amount),
-      };
+      note = booking.cancellation.withinDeadline
+        ? {
+            tone: 'success',
+            icon: 'shield',
+            title: messages.cancellationDeadline.short(
+              formatDepartureDate(booking.cancellation.deadline),
+            ),
+            body: t.cancelByThenNote(refundAmount ?? amount),
+          }
+        : // Quá hạn: không được hứa hoàn tiền (quy tắc #5 — chỉ tin `withinDeadline` của server).
+          {
+            tone: 'warning',
+            icon: 'alert-circle',
+            title: messages.mobile.trip.freeCancellationEnded,
+            body: t.cancelAfterBody(formatDepartureDate(booking.cancellation.deadline)),
+          };
     }
     rows = [
       { label: bookingCopy.bookingCodeLabel, value: booking.code },
@@ -304,14 +346,18 @@ export default function BookingDetailRoute() {
     };
   } else {
     const refunded = Number(booking.refundedTotal) > 0;
+    // Không có mốc hoàn thật (hoàn do admin không qua đơn xin huỷ) thì KHÔNG in ngày —
+    // trước đây rơi về ngày đặt chỗ, sai sự thật.
+    const refundedAt = booking.cancellationDecidedAt ?? booking.cancelledAt;
+    const refundedMoney = formatMoney(booking.refundedTotal, booking.currency);
     note = refunded
       ? {
           tone: 'success',
           icon: 'refresh-cw',
-          title: t.refundedNote(
-            formatMoney(booking.refundedTotal, booking.currency),
-            formatFullDate(booking.cancelledAt ?? booking.createdAt),
-          ),
+          title:
+            refundedAt === null
+              ? t.refundedNoDate(refundedMoney)
+              : t.refundedNote(refundedMoney, formatFullDate(refundedAt)),
           body: t.refundedTiming,
         }
       : {
@@ -330,6 +376,14 @@ export default function BookingDetailRoute() {
       label: messages.mobile.trips.browse,
       onPress: () => router.navigate('/explore'),
     };
+    // PARTIALLY_REFUNDED không phải trạng thái cuối (booking-states.md, ADR-0041):
+    // khách vẫn đi tour và còn huỷ được khi server cho phép.
+    if (actions.includes('cancelBooking')) {
+      secondaryAction = {
+        label: messages.accountBookingDetail.actions.cancel,
+        onPress: () => setCancelSheetOpen(true),
+      };
+    }
   }
 
   return (
@@ -386,7 +440,9 @@ export default function BookingDetailRoute() {
               ? undefined
               : {
                   prompt: messages.accountBookingDetail.cancelDialog.afterContact,
-                  onPress: () =>
+                  onPress: () => {
+                    // Đóng tấm trước khi đẩy màn mới — trên iOS Modal còn mở sẽ đè lên form.
+                    setCancelSheetOpen(false);
                     router.push({
                       pathname: '/enquiry',
                       params: {
@@ -395,7 +451,8 @@ export default function BookingDetailRoute() {
                         tripSubtitle: trip.dateRangeLabel,
                         ...(trip.imageUrl ? { tripImageUrl: trip.imageUrl } : {}),
                       },
-                    }),
+                    });
+                  },
                 }
           }
           confirmLabel={

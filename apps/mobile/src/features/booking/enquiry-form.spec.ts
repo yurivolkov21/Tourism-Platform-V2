@@ -13,6 +13,10 @@ describe('validateEnquiry', () => {
     expect(validateEnquiry(VALID_STATE)).toEqual({});
   });
 
+  it('email có khoảng trắng đầu/cuối vẫn hợp lệ (cắt trước khi kiểm, khớp payload)', () => {
+    expect(validateEnquiry({ ...VALID_STATE, email: '  lan.nguyen@example.com  ' })).toEqual({});
+  });
+
   it('tên rỗng hoặc quá ngắn: lỗi nameRequired', () => {
     expect(validateEnquiry({ ...VALID_STATE, name: '' }).name).toBe('Please enter your name.');
     expect(validateEnquiry({ ...VALID_STATE, name: 'A' }).name).toBe('Please enter your name.');
