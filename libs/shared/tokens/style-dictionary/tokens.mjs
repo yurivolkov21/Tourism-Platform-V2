@@ -219,6 +219,13 @@ export default {
     'chart-3': c('oklch(0.731 0.13 73.3)', 'oklch(0.78 0.13 75)'),
     'chart-4': c('oklch(0.516 0.136 27.3)', 'oklch(0.579 0.148 26.7)'),
     'chart-5': c('oklch(0.555 0.053 48.4)', 'oklch(0.661 0.052 51.2)'),
+    // G40 (ADR-0057 §5) — màu của tài liệu in. Giấy luôn sáng nên dark = light (cùng lối `on-media`).
+    // chart-gain / chart-cost đã qua bộ kiểm bảng màu của skill dataviz (sáng): chroma, tách màu khi
+    // mù màu, tương phản; chi phí in kèm vân 45° nên in trắng đen vẫn tách.
+    'chart-gain': c('oklch(0.566 0.101 182.5)', 'oklch(0.566 0.101 182.5)'),
+    'chart-cost': c('oklch(0.667 0.155 44.4)', 'oklch(0.667 0.155 44.4)'),
+    pending: c('oklch(0.531 0.117 63.9)', 'oklch(0.531 0.117 63.9)'),
+    'pending-soft': c('oklch(0.967 0.019 80.1)', 'oklch(0.967 0.019 80.1)'),
     sidebar: c('oklch(0.966 0.006 170.4)', 'oklch(0.29 0.02 178)'),
     'sidebar-foreground': c('oklch(0.275 0.021 196)', 'oklch(0.921 0.014 174.1)'),
     // Vai BỀ MẶT — cõng `sidebar-primary-foreground` gần-trắng, nên đi theo

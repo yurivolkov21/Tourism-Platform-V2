@@ -71,3 +71,28 @@ describe('regionDefaults (:root — bảng màu phụ cho 4 consumer nhóm hai)'
     expect(css).not.toContain('[data-region');
   });
 });
+
+// G40 (ADR-0057 §5): màu của tài liệu in. Giấy luôn sáng nên bốn token có dark = light, và bản
+// build sinh phạm vi `.light` để tài liệu in dưới <html class="dark"> lấy lại màu sáng.
+describe('token của tài liệu in (G40)', () => {
+  it('đủ bốn token, dark = light', () => {
+    for (const name of ['chart-gain', 'chart-cost', 'pending', 'pending-soft']) {
+      const token = tokens.color[name];
+      expect(token, name).toBeDefined();
+      expect(token.darkValue, name).toBe(token.value);
+    }
+  });
+
+  it('generated/tokens.css có khối .light sau .dark, mang giá trị SÁNG của mọi màu', async () => {
+    await import('../../style-dictionary/build.mjs');
+    const cssPath = fileURLToPath(new URL('../../generated/tokens.css', import.meta.url));
+    const css = readFileSync(cssPath, 'utf-8');
+    const start = css.indexOf('.light {');
+    expect(start).toBeGreaterThan(css.indexOf('.dark {'));
+    const block = css.slice(start, css.indexOf('}', start));
+    expect(block).toContain(`--background: ${tokens.color.background.value};`);
+    expect(block).toContain(`--paper: ${tokens.color.paper.value};`);
+    expect(block).toContain(`--pending: ${tokens.color.pending.value};`);
+    expect(block).not.toContain(tokens.color.background.darkValue);
+  });
+});
