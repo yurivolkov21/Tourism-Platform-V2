@@ -44,8 +44,11 @@ màn hình là vỡ bản in (review P7C#7, #13).
   `refundSentence`, `reports-view`…) — hai bộ markup, một nguồn sự thật. Không gọi API thêm
   ngoài dữ liệu trang đã có, trừ ngoại lệ ở §4.
 - Nút Print giữ `window.print()`; Ctrl+P cho cùng kết quả.
-- Chrome của site giấu bằng một luật neo vào tài liệu: `body:has([data-print-doc]) > :not(main)
-  { display: none }` — thay luật đang neo `[data-slot="voucher"]`.
+- Chrome của site giấu bằng một luật neo vào tài liệu, đặt ở CSS chung của `@tourism/ui` và không
+  bám cấu trúc DOM của app nào (sửa sau review G40 Phần 1 — bản đầu `body:has([data-print-doc]) >
+  :not(main)` chỉ hợp với `body > main` của web, vỏ sidebar nhiều tầng có đệm của admin đẩy tờ
+  sang trang 2): lúc in, `body` thành khối thường; mọi tổ tiên của tài liệu `display: contents`;
+  mọi thứ khác `display: none`. Thay luật đang neo `[data-slot="voucher"]`.
 
 ### 2. Trang in tên `doc`: A4, lề 0
 
@@ -71,7 +74,8 @@ màn hình là vỡ bản in (review P7C#7, #13).
 - Linh kiện khung đặt ở `@tourism/ui` (thư mục `print-doc`): trang, đầu trang, chân trang, giờ
   in, mộc. Mỗi app truyền logo và chữ của mình.
 - **Giờ in** đóng dấu ở client lúc `beforeprint`, theo giờ Việt Nam — không render lúc server
-  (lệch hydration, và in ra giờ tải trang thay cho giờ in).
+  (lệch hydration, và in ra giờ tải trang thay cho giờ in). Cập nhật bằng `flushSync`: trình duyệt
+  dựng bản in ngay sau sự kiện, còn React hẹn cập nhật thường sang task sau (sửa sau review).
 
 ### 4. Dữ liệu
 
@@ -103,6 +107,12 @@ vi `.light { … }` — giá trị sáng của mọi màu, đứng sau `.dark` �
 `light`. Bốn token trên có giá trị tối bằng giá trị sáng (cùng lối `on-media`). Ngược lại, đầu
 trang nằm trên ảnh bìa dùng scope `dark` sẵn có của repo (như hero trang About): ở đó
 `primary-emphasis` là teal nhạt, đúng màu viên sau của logo trên bìa mà không thêm token.
+
+Sửa sau review G40 Phần 1: nền tờ là `card` (gần trắng nhất trong bộ token, như `#fff` của bản
+thảo), không `background` — tờ phủ kín A4 lề 0 và ép in màu, nền ám xám làm cả tờ in một lớp nền
+và dải `paper` chìm vào. `.light` chỉ đặt lại biến màu, không chặn biến thể `dark:` (vẫn khớp mọi
+con của `<html class="dark">`), nên test của từng tài liệu in canh: không class `dark:` nào trong
+cây in.
 
 ### 6. Không thư viện mới
 

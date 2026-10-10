@@ -94,8 +94,9 @@ trang tour), trang Passport.
   `lib/print/voucher-print.ts`, `receipt-print.ts`.
 - Admin: `components/reports/report-print.tsx`, `waterfall.tsx` (SVG) cùng
   `lib/report-print.ts`.
-- CSS: gỡ khối in cũ của voucher và hoá đơn ở `apps/web/src/app/globals.css`; luật giấu chrome đổi
-  sang `body:has([data-print-doc]) > :not(main)`.
+- CSS: gỡ khối in cũ của voucher và hoá đơn ở `apps/web/src/app/globals.css`; luật cô lập tài liệu
+  khi in nằm ở CSS chung của `@tourism/ui`, không bám DOM của app (ADR-0057 §1, sửa sau review
+  Phần 1). Lớp chữ in dùng chung (`PRINT_LABEL`, `PRINT_SECTION`) ở `@tourism/ui/lib/print-styles`.
 
 ## 3. Voucher in — 5b
 
@@ -147,7 +148,11 @@ trang tour), trang Passport.
   nexora-travel.agency/tours/{slug}".
 - **Tour một ngày:** tối đa 10 mục; hơn thì 9 mục và "…".
 - **Included / Not included:** tối đa 6 mục mỗi cột; hơn thì "+{n} more".
-- **Tên tour** trên bìa: tối đa hai dòng (cắt bằng dấu …).
+- **Tên tour** trên bìa: tối đa hai dòng (cắt bằng dấu …); trên vé cũng hai dòng.
+- **Kẹp số dòng** (sửa sau review Phần 1 — đo hai tour seed dài thì chân trang tràn tới mép giấy, vì
+  luật cắt đếm mục, không đếm dòng gãy): mỗi mục lịch trình và mục gồm tối đa hai dòng, chữ mỗi cột
+  dải cuối tối đa bốn dòng. Mục gồm bỏ mục trống, mục trùng (cùng luật khối Get ready). Ngày cần in
+  không có mô tả thì bỏ lịch trình. Đang đi từ ngày 2 thì dải cuối không in giờ hẹn của ngày 1.
 - **Thiếu ảnh tour:** nền `hero`, letterhead vẫn đảo màu.
 - **Thiếu dữ liệu tour** (API lỗi): bỏ lịch trình và Included; ô Where to meet dùng câu dự phòng
   sẵn có ("Contact us for the meeting point — we reply within a day.").
@@ -174,7 +179,9 @@ Nút Print chỉ ở `/checkout/success` như hiện nay; trang cancel in bằng
 6. Chân trang khách, thêm số điện thoại.
 
 "Pay by" lấy từ `createdAt + PENDING_TTL_MINUTES` (thêm helper `pendingDeadline`, cùng nguồn với
-`pendingExpiry`). Không đồng hồ đếm ngược, không chữ "held" hay "reserved" (đơn chờ không giữ chỗ).
+`pendingExpiry`), kẹp ở hết ngày hạn chót của chuyến (23:59:59 giờ Việt Nam) — qua mốc ấy API thôi
+mở phiên trả mới (sửa sau review Phần 1). Không đồng hồ đếm ngược, không chữ "held" hay "reserved"
+(đơn chờ không giữ chỗ).
 
 ### 4.3 Đơn chưa trả đã đóng (G37)
 
@@ -182,8 +189,20 @@ Nút Print chỉ ở `/checkout/success` như hiện nay; trang cancel in bằng
 - Dòng xé: "This booking is closed — no payment was taken." — không hứa thành voucher.
 - Dải: What happened (câu lapsed hay cancelled hiện có) · Book again (link `/tours/{slug}`) ·
   Booking reference.
-- Đơn bị thu rồi hoàn tự động (`paidAt` null, đã hoàn): thêm câu `refundSentence`.
+- Đơn bị thu rồi hoàn tự động (`paidAt` null, đã hoàn): thêm câu `refundSentence`; giấy KHÔNG nói
+  "No payment was taken" hay "Unpaid" cạnh khoản đã hoàn — dải cuống là trạng thái đơn, cuống không
+  hộp chân, dòng xé là câu kết cục theo trạng thái (`closedStubSentence`, sửa sau review Phần 1).
+- Chuyến công ty huỷ: What happened là câu "We had to cancel this departure." như trang chi tiết đơn
+  (`closedNarrative`).
 - **Màn hình** `BookingReceipt` sửa cuống theo cùng câu cho đơn đã đóng — đóng phần chữ của G37.
+
+### 4.4 Đơn chờ trả qua hạn chót (`lapsed`)
+
+Sửa sau review Phần 1: `lapsed` chưa phải kết cục — claim của API còn nhận phiên mở trước hạn
+(ADR-0054 AMEND 1 §4), màn hình cùng trang còn nói "Confirming". Giấy kể như trang chi tiết đơn:
+mộc trung tính "Not paid", dải vé "Booking · payment not completed", What happened là câu sự việc
+rồi câu điều kiện (`notPaidByDeadline`, `finishOpenPayment`); không "Closed", không "No payment was
+taken", không hạn trả (API thôi mở phiên mới), không dòng xé.
 
 ## 5. Báo cáo tháng in — C2
 

@@ -117,7 +117,9 @@ Ghi sẵn để người thi công không phải đoán; spec là hợp đồng,
 8. **`DocPage` là `print:flex` cột dọc** (chân trang `mt-auto` dính đáy) — ADR-0057 §1 sửa
    `print:block` thành `print:flex` cùng commit với plan này.
 9. **In thì `body` thành khối thường** (`display: block`): `body` của web là `flex flex-col`, mà trang
-   in tên (`page: doc`) chắc ăn nhất khi tài liệu nằm trong luồng khối — đừng gỡ dòng ấy.
+   in tên (`page: doc`) chắc ăn nhất khi tài liệu nằm trong luồng khối — đừng gỡ dòng ấy. *Sửa sau
+   review:* luật này cùng luật giấu chrome nay ở CSS chung của `@tourism/ui`, không bám `body > main`
+   (ADR-0057 §1).
 10. **`voucherMeetingPoint` đổi thành `voucherTourData`** (trả `BookingTourData`, cùng luật chỉ đọc tour
     khi `showMeetingPoint`): bản in cần lịch trình và mục bao gồm; ô Meeting point của màn hình lấy
     bằng `tourMeetingPoint(tour)`. Không thêm vòng API.
@@ -132,7 +134,8 @@ Ghi sẵn để người thi công không phải đoán; spec là hợp đồng,
 15. **Voucher đã huỷ** dùng tông vé `closed` (viền đứt xám, cuống gạch chéo — cùng hình vé "hết hiệu
     lực" của hoá đơn đã đóng) và thân vé là dải `cancelledNotice`.
 16. **Included / Not included tối đa 6 dòng mỗi cột**: hơn thì 5 mục và "+n more" (cùng lối 7 + 1 của
-    lịch trình). Cột trống thì bỏ cột.
+    lịch trình). Cột trống thì bỏ cột. *Sửa sau review:* mục kẹp hai dòng, bỏ mục trống và trùng
+    (spec §3.4).
 17. **Cột dải cuối chỉ có khi có dữ liệu**: Cancellation bỏ khi `cancellationDeadlineText` là `null`;
     Refund bỏ khi không có câu hoàn. Dải voucher ba cột `1.15fr 1fr 1fr` (5b); dải hoá đơn ba cột đều
     (B1).
@@ -140,7 +143,9 @@ Ghi sẵn để người thi công không phải đoán; spec là hợp đồng,
     65 phút mà cron chưa quét vẫn in "đang chờ" — cùng cách màn hình (`checkoutMood`, câu `expiresIn`
     của trang huỷ) không khai đơn đã đóng khi API còn nhận trả. "What happened": `lapsed` →
     `bookingDetail.closed.notPaidByDeadline`; còn lại → `accountBookingDetail.terminalNote[status]`;
-    bị thu rồi hoàn thì thêm `refundSentence` (spec §4.3).
+    bị thu rồi hoàn thì thêm `refundSentence` (spec §4.3). *Sửa sau review:* `lapsed` là trạng thái
+    riêng, không phải "đã đóng" (spec §4.4); đơn bị thu rồi hoàn không in "No payment was taken"; câu
+    kể đi qua `closedNarrative` (có câu chuyến công ty huỷ).
 19. **Màn hình `BookingReceipt`, tâm trạng `settled`**: cuống thay hai dòng "Departs …" và "This code
     becomes your voucher…" bằng câu `booking.success.stubClosed` (G37, phần chữ). Câu `heldNote` của
     `/checkout/cancel` để nguyên (G37 còn mở phần đó).
