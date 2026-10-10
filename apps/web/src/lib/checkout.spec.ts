@@ -3,12 +3,12 @@ import { describe, expect, it } from 'vitest';
 import { makeBooking } from '@/test/fixtures/booking';
 import {
   bookingPriceLines,
+  CHECKOUT_SESSION_MINUTES,
   cancelPageRedirect,
   checkoutMood,
   closedStubSentence,
   computeBookingTotal,
   formatBookingMoney,
-  PENDING_TTL_MINUTES,
   pendingDeadline,
   pendingExpiry,
   receiptNote,
@@ -95,24 +95,24 @@ describe('receiptNote — câu dưới tiêu đề hoá đơn theo tâm trạng'
   });
 });
 
-describe('pendingExpiry — hạn 65 phút tính từ createdAt', () => {
+describe('pendingExpiry — hạn 60 phút tính từ createdAt', () => {
   // Chuyến 1–2/9: hạn chót đặt chỗ còn xa, mốc nhả chỉ là createdAt + 65 phút.
   const booking = makeBooking({ createdAt: '2026-08-07T10:00:00.000Z' });
 
-  it('còn 65 phút ngay lúc vừa tạo', () => {
+  it('còn 60 phút ngay lúc vừa tạo', () => {
     const at = new Date('2026-08-07T10:00:00.000Z');
-    expect(pendingExpiry(booking, at).minutesLeft).toBe(65);
+    expect(pendingExpiry(booking, at).minutesLeft).toBe(60);
     expect(pendingExpiry(booking, at).expired).toBe(false);
   });
 
   it('làm tròn XUỐNG phút — không bao giờ hứa nhiều hơn thực tế', () => {
-    // 10:00 + 12 phút 40 giây trôi qua → còn 52 phút 20 giây → in "52", không phải "53".
+    // 10:00 + 12 phút 40 giây trôi qua → còn 47 phút 20 giây → in "47", không phải "48".
     const at = new Date('2026-08-07T10:12:40.000Z');
-    expect(pendingExpiry(booking, at).minutesLeft).toBe(52);
+    expect(pendingExpiry(booking, at).minutesLeft).toBe(47);
   });
 
-  it('đúng mốc 65 phút là ĐÃ hết hạn, không phải còn 0', () => {
-    const at = new Date('2026-08-07T11:05:00.000Z');
+  it('đúng mốc 60 phút là ĐÃ hết hạn, không phải còn 0', () => {
+    const at = new Date('2026-08-07T11:00:00.000Z');
     const r = pendingExpiry(booking, at);
     expect(r.expired).toBe(true);
     expect(r.minutesLeft).toBe(0);
@@ -124,23 +124,25 @@ describe('pendingExpiry — hạn 65 phút tính từ createdAt', () => {
     expect(pendingExpiry(booking, at).expired).toBe(true);
   });
 
-  it('hằng số khớp PENDING_TTL_MINUTES của API', () => {
-    expect(PENDING_TTL_MINUTES).toBe(65);
+  // Mốc hứa với khách là phiên ngắn nhất (Stripe 60 phút — webhook hết hạn huỷ đơn ngay lúc ấy), KHÔNG
+  // phải TTL quét 65 phút của API: hứa 65 là hứa dư 5 phút (review G40).
+  it('hằng số khớp SESSION_EXPIRY_SECONDS của cổng Stripe (60 phút)', () => {
+    expect(CHECKOUT_SESSION_MINUTES).toBe(60);
   });
 });
 
 describe('pendingDeadline — mốc đơn chờ bị nhả', () => {
-  it('là createdAt cộng PENDING_TTL_MINUTES', () => {
+  it('là createdAt cộng CHECKOUT_SESSION_MINUTES', () => {
     const booking = makeBooking({
       createdAt: '2026-10-09T10:59:36.812Z',
       departureStartDate: '2026-10-29',
       departureEndDate: '2026-10-29',
     });
-    expect(pendingDeadline(booking).toISOString()).toBe('2026-10-09T12:04:36.812Z');
+    expect(pendingDeadline(booking).toISOString()).toBe('2026-10-09T11:59:36.812Z');
   });
 
   // Chuyến một ngày 29/10 có hạn chót 28/10: đặt 23:30 giờ VN ngày 28 thì sau 00:00 API thôi mở
-  // phiên trả mới (`reCheckout` từ chối) — mốc không được hứa tới 00:35 hôm sau.
+  // phiên trả mới (`reCheckout` từ chối) — mốc không được hứa tới 00:30 hôm sau.
   it('kẹp ở hết ngày hạn chót (23:59:59 giờ Việt Nam)', () => {
     const booking = makeBooking({
       createdAt: '2026-10-28T16:30:00.000Z',

@@ -231,6 +231,19 @@ describe('voucherPrintView — theo giai đoạn', () => {
   });
 });
 
+describe('voucherPrintView — đã hoàn một phần mà chuyến vẫn đi', () => {
+  // Cùng hình voucher màn hình (`VoucherPass`): có khoản hoàn thì cuống kể "Refunded −$50.00" và cả
+  // khối tiền đủ hai số lẻ — giấy từng chỉ in "Total paid $147" (review G40).
+  it('cuống kể khoản đã hoàn, tổng đủ hai số lẻ', () => {
+    const v = printOf({ status: 'PARTIALLY_REFUNDED', refundedTotal: '50.00' }, DAY_ONE);
+    expect(v.ticket.stub.amount).toBe('$147.00');
+    expect(v.ticket.stub.footer).toEqual({
+      label: messages.voucher.refunded,
+      value: messages.voucher.refundedAmount('$50.00'),
+    });
+  });
+});
+
 describe('voucherPrintView — thiếu dữ liệu', () => {
   it('không có tour: bỏ lịch trình và mục gồm, Where to meet dùng câu dự phòng sẵn có', () => {
     const v = printOf({}, null);

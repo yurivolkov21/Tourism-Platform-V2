@@ -178,8 +178,9 @@ Nút Print chỉ ở `/checkout/success` như hiện nay; trang cancel in bằng
    time). Seats aren't held until you pay.") · Booking reference (mã, email người đặt).
 6. Chân trang khách, thêm số điện thoại.
 
-"Pay by" lấy từ `createdAt + PENDING_TTL_MINUTES` (thêm helper `pendingDeadline`, cùng nguồn với
-`pendingExpiry`), kẹp ở hết ngày hạn chót của chuyến (23:59:59 giờ Việt Nam) — qua mốc ấy API thôi
+"Pay by" lấy từ `createdAt + CHECKOUT_SESSION_MINUTES` (60 phút — phiên ngắn nhất, Stripe; TTL quét 65 phút
+của API là lưới khi webhook rớt, hứa theo nó là hứa dư 5 phút — sửa sau review Phần 1) (thêm helper
+`pendingDeadline`, cùng nguồn với `pendingExpiry`), kẹp ở hết ngày hạn chót của chuyến (23:59:59 giờ Việt Nam) — qua mốc ấy API thôi
 mở phiên trả mới (sửa sau review Phần 1). Không đồng hồ đếm ngược, không chữ "held" hay "reserved"
 (đơn chờ không giữ chỗ).
 

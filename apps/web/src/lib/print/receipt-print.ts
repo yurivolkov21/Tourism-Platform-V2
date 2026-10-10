@@ -56,7 +56,7 @@ export interface ReceiptPrintView {
 /**
  * Ba trạng thái của hoá đơn in: đang chờ trả · qua hạn chót mà chưa trả (`lapsed` — CHƯA phải kết
  * cục: claim của API còn nhận phiên mở trước hạn, ADR-0054 AMEND 1 §4) · đã đóng (trạng thái khác
- * PENDING). Đơn quá 65 phút mà cron chưa quét vẫn "đang chờ" — API còn nhận trả, màn hình
+ * PENDING). Đơn quá mốc mà cron chưa quét vẫn "đang chờ" — API còn nhận trả, màn hình
  * (`checkoutMood`) cũng chưa khai đã đóng (quyết định 18 của plan).
  */
 type ReceiptState = 'pending' | 'lapsed' | 'closed';

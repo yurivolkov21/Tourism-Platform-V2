@@ -4,17 +4,17 @@ import { refundSentence, refundSummary, wasCharged } from './booking-vm';
 import { formatMoney, formatMoneyExact } from './tours';
 
 /**
- * Hạn sống của một booking PENDING, tính bằng phút kể từ `createdAt`.
+ * Phút một đơn chờ CHẮC CHẮN còn trả được kể từ lúc tạo: hạn phiên ngắn nhất trong các cổng — Stripe
+ * Checkout 60 phút (`SESSION_EXPIRY_SECONDS` ở `apps/api/src/modules/payments/stripe.gateway.ts`),
+ * webhook hết hạn huỷ đơn ngay lúc ấy. Contract KHÔNG trả `expiresAt`, nên web buộc phải tự tính; đổi
+ * bên kia thì phải đổi ở đây.
  *
- * ⚠️ ĐÂY LÀ BẢN SAO của hằng số phía API — `PENDING_TTL_MINUTES` tại
- * `apps/api/src/worker/pending-sweep.service.ts:15`. Contract KHÔNG trả
- * `expiresAt`, nên web buộc phải tự tính; đổi bên kia thì phải đổi ở đây.
- *
- * Vì sao API chọn 65 chứ không phải một số tròn: nó phải LỚN HƠN hạn session
- * của mọi gateway (Stripe Checkout là 60 phút) — cron quét sớm hơn cổng thì có
- * thể huỷ một booking mà khách vẫn đang trả tiền. 65 = 60 + lề 5 phút.
+ * KHÔNG dùng TTL quét 65 phút của API (`PENDING_TTL_MINUTES` ở `pending-sweep.service.ts` — lề 5 phút
+ * trên hạn Stripe để cron không huỷ đơn đang trả): đó là lưới khi webhook rớt, không phải mốc khách
+ * dựa vào; hứa 65 là hứa dư 5 phút với đơn Stripe (review G40). Đơn PayPal (phiên 3 giờ) hay đơn đã mở
+ * lại phiên còn sống lâu hơn — mốc này hứa ít hơn thực tế, không bao giờ hứa nhiều hơn.
  */
-export const PENDING_TTL_MINUTES = 65;
+export const CHECKOUT_SESSION_MINUTES = 60;
 
 /**
  * Hai tâm trạng của hoá đơn chờ (`BookingReceipt`) ở màn quay-về sau thanh toán.
@@ -172,16 +172,16 @@ function vietnamDayEnd(day: string): number {
 }
 
 /**
- * Mốc đơn chờ bị nhả: `createdAt` cộng `PENDING_TTL_MINUTES`, KẸP ở hết ngày hạn chót của chuyến
+ * Mốc đơn chờ bị nhả: `createdAt` cộng `CHECKOUT_SESSION_MINUTES`, KẸP ở hết ngày hạn chót của chuyến
  * (23:59:59 giờ Việt Nam, ADR-0041 §3) — qua mốc ấy API thôi mở phiên trả mới (`reCheckout` từ
- * chối), nên đơn đặt 23:30 ngày hạn chót không được hứa trả tới 00:35 hôm sau (review G40). MỘT
+ * chối), nên đơn đặt 23:30 ngày hạn chót không được hứa trả tới 00:30 hôm sau (review G40). MỘT
  * nguồn cho `pendingExpiry` (câu "released in about n minutes" của trang huỷ) và dòng "Pay by" của
  * hoá đơn chờ in (G40).
  */
 export function pendingDeadline(
   booking: Pick<Booking, 'createdAt' | 'departureStartDate' | 'departureEndDate'>,
 ): Date {
-  const ttlEnd = new Date(booking.createdAt).getTime() + PENDING_TTL_MINUTES * 60_000;
+  const ttlEnd = new Date(booking.createdAt).getTime() + CHECKOUT_SESSION_MINUTES * 60_000;
   const deadlineEnd = vietnamDayEnd(
     cancellationDeadline(booking.departureStartDate, booking.departureEndDate),
   );
