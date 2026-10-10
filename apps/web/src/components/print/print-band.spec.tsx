@@ -39,6 +39,20 @@ describe('PrintBand', () => {
     expect(screen.getByText('Booked by a@b.co').tagName).toBe('P');
   });
 
+  // Cột ~53 mm chỉ chứa ~31 ký tự: email dài không có chỗ ngắt sẽ tràn khỏi dải. Ngắt có chủ đích
+  // trước "@" thay vì giữa chữ ("nora.dahl@exampl / e.com").
+  it('email dài: có điểm ngắt trước "@", không tràn cột', () => {
+    const { container } = render(
+      <PrintBand
+        columns={[{ ...REF, text: 'Booked by constance.wellington-hart@example-travel.com' }]}
+      />,
+    );
+    const sub = screen.getByText('Booked by constance.wellington-hart@example-travel.com');
+    expect(sub.querySelector('wbr')).not.toBeNull();
+    expect(sub.className).toContain('[overflow-wrap:anywhere]');
+    expect(container.textContent).toContain('constance.wellington-hart@example-travel.com');
+  });
+
   it('ba cột: voucher cột đầu rộng hơn (5b), hoá đơn ba cột đều (B1); hai cột thì hai', () => {
     const { container, rerender } = render(<PrintBand columns={[MEET, POLICY, REF]} wideFirst />);
     expect(band(container)?.className).toContain('grid-cols-[1.15fr_1fr_1fr]');

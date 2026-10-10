@@ -23,6 +23,18 @@ describe('PhotoCover', () => {
     const img = container.querySelector('img');
     expect(img).toHaveAttribute('loading', 'eager');
     expect(img).toHaveAttribute('alt', 'Lanterns');
+    // Ưu tiên thấp: React vẫn tải ngay (eager) nhưng thôi đẩy preload ưu tiên cao vào <head> cho một
+    // ảnh chỉ dùng khi in, giành băng thông với ảnh màn hình ở mọi lượt xem.
+    expect(img).toHaveAttribute('fetchpriority', 'low');
+  });
+
+  // `text-[27pt]` đứng sau `leading-[1.1]` trong `cn` thì tailwind-merge xoá dãn dòng (cỡ chữ và
+  // dãn dòng xung đột) — tên hai dòng dãn 1.45 tràn đáy bìa 46 mm của hoá đơn.
+  it('tên tour giữ dãn dòng 1.1 của bản thảo, cạnh cỡ chữ nơi gọi truyền', () => {
+    render(<PhotoCover {...COVER} photo={null} titleClass="text-[22pt]" />);
+    const title = screen.getByRole('heading', { level: 2 });
+    expect(title.classList).toContain('text-[22pt]');
+    expect(title.classList).toContain('leading-[1.1]');
   });
 
   it('không ảnh: không <img> vỡ, nền hero', () => {

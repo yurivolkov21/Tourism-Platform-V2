@@ -170,7 +170,7 @@ function Stub({
         <p className="bg-card text-[7.3pt] text-muted-foreground">{stub.note}</p>
         {stub.barcode ? (
           <>
-            <TicketBarcode code={stub.barcode} className="mt-auto h-[12mm] w-full" />
+            <TicketBarcode code={stub.barcode} className="mt-auto h-[12mm] w-full justify-center" />
             <p className="mt-[1.5mm] text-center font-mono text-[8.5pt] font-medium tracking-[0.12em]">
               {stub.barcode}
             </p>
