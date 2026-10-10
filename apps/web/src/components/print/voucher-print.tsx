@@ -4,6 +4,7 @@ import { DocFooter } from '@tourism/ui/components/print-doc/doc-footer';
 import { DocPage } from '@tourism/ui/components/print-doc/doc-page';
 import { PrintedAt } from '@tourism/ui/components/print-doc/printed-at';
 import { PRINT_SECTION } from '@tourism/ui/lib/print-styles';
+import { cn } from '@tourism/ui/lib/utils';
 import type { VoucherPrintView } from '@/lib/print/voucher-print';
 import { EMAIL } from '@/lib/site';
 import { PhotoCover } from './photo-cover';
@@ -19,6 +20,8 @@ import { PrintTicket } from './print-ticket';
 export function VoucherPrint({ view }: { view: VoucherPrintView }) {
   const t = messages.printDoc.voucher;
   const stops = view.day?.stops ?? [];
+  // Danh sách ngày của chuyến nhiều ngày không có giờ: bỏ hẳn cột giờ thay vì chừa 12 mm trống.
+  const timed = stops.some((stop) => stop.time !== null);
   return (
     <DocPage className="pt-[11mm]">
       <PhotoCover
@@ -48,20 +51,25 @@ export function VoucherPrint({ view }: { view: VoucherPrintView }) {
               <li
                 // biome-ignore lint/suspicious/noArrayIndexKey: danh sách tĩnh theo đúng thứ tự lịch trình, không bao giờ sắp lại; một ngày có thể có hai dòng cùng chữ nên chữ không làm khoá được.
                 key={row}
-                className="grid grid-cols-[3mm_12mm_1fr] items-start gap-[1.5mm] py-[1.1mm]"
+                className={cn(
+                  'grid items-start gap-[1.5mm] py-[0.8mm]',
+                  timed ? 'grid-cols-[3mm_12mm_1fr]' : 'grid-cols-[3mm_1fr]',
+                )}
               >
                 <span
                   aria-hidden="true"
                   className="mt-[1.4mm] size-[1.8mm] rounded-full bg-primary"
                 />
-                {stop.time ? (
-                  <time className="font-mono text-[8.3pt] font-medium text-primary-emphasis">
-                    {stop.time}
-                  </time>
-                ) : (
-                  <span />
-                )}
-                <span>{stop.text}</span>
+                {timed ? (
+                  stop.time ? (
+                    <time className="font-mono text-[8.3pt] font-medium text-primary-emphasis">
+                      {stop.time}
+                    </time>
+                  ) : (
+                    <span />
+                  )
+                ) : null}
+                <span className="line-clamp-2">{stop.text}</span>
               </li>
             ))}
           </ol>
@@ -71,7 +79,7 @@ export function VoucherPrint({ view }: { view: VoucherPrintView }) {
         </section>
       ) : null}
       <PrintLists included={view.included} excluded={view.excluded} />
-      <PrintBand columns={view.band} wideFirst className="mt-[6mm]" />
+      <PrintBand columns={view.band} wideFirst className="mt-[5mm]" />
       <DocFooter
         start={
           <>
