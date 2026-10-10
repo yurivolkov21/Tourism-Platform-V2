@@ -63,3 +63,21 @@
     scrollbar-color: var(--primary) var(--background);
   }
 }
+
+/* ── Tài liệu in (G40, ADR-0057 §2) — trang in tên `doc`: A4, lề 0. Lề 0 là cách duy nhất tắt đầu
+ * và chân trang tự động của trình duyệt (ngày giờ, tiêu đề tab, URL); tài liệu tự đệm 11–15 mm bên
+ * trong khổ. Chỉ phần tử `[data-print-doc]` dùng trang này — in trang khác vẫn lề mặc định.
+ * `print-color-adjust` (kế thừa xuống con) giữ nền màu, ảnh phủ, mã vạch khi người in tắt
+ * "Background graphics". ── */
+@page doc {
+  size: A4;
+  margin: 0;
+}
+
+@media print {
+  [data-print-doc] {
+    page: doc;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}
