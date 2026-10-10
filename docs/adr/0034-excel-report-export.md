@@ -1,6 +1,7 @@
 # ADR-0034 — Báo cáo tháng xuất Excel; CSV ở lại đúng chỗ của nó
 
-- **Trạng thái:** Accepted (2026-09-05)
+- **Trạng thái:** Accepted (2026-09-05) · AMEND 3 (2026-10-10): danh sách xuất Excel thay CSV,
+  ngày ép tiếng Anh, bản in `/reports` theo [ADR-0057](0057-print-documents.md)
 - **Bối cảnh thi hành:** nhánh `fix/p4c-backend-logic`, đi trước code theo luật
   CLAUDE.md #5
 - **Liên quan:** [ADR-0033](0033-financial-model.md) (những con số file này in
@@ -223,6 +224,51 @@ Kèm một mục nhỏ: key i18n `reports.exportCsv` chết từ khi toolbar dù
 `exportExcel` — xoá. (`lib/xlsx.ts` KHÔNG khai `import 'server-only'`: gói ấy
 không có trong repo và thêm một dependency chỉ để canh một import là quá tay —
 route handler là consumer duy nhất, giữ bằng quy ước.)
+
+## AMEND 3 — 10/10: danh sách xuất Excel thay CSV; ngày ép tiếng Anh; bản in theo ADR-0057
+
+Đợt G40 (spec [2026-10-10-print-and-export-redesign-design.md](../specs/2026-10-10-print-and-export-redesign-design.md),
+user duyệt bản thảo cùng ngày). AMEND này **đảo §6** và **thay §7**.
+
+**Bằng chứng, đo 10/10 trên máy user** (Excel 16, Windows vi-VN: dấu thập phân `,`, nhóm nghìn
+`.`, dấu phân cách danh sách `,`), mở CSV đúng định dạng file đang xuất như bấm đúp
+(`Workbooks.Open(…, Local:=True)`):
+
+| Biến thể | Kết quả |
+| --- | --- |
+| File hiện tại (BOM, phẩy, CRLF) | Cả dòng dồn vào cột A — Excel không tách theo `,` khi `,` là dấu thập phân |
+| Thêm dòng `sep=,` lên đầu | Tách đủ 17 cột, nhưng Excel bỏ qua BOM: "Hội An" thành "Há»™i An"; "117.00" là chữ |
+| Đổi sang `;` | Máy vi-VN tách được, máy en-US lại dồn một cột; tiền vẫn là chữ ở vi-VN |
+
+Không có cách ghi CSV nào mở đúng bằng bấm đúp cho cả máy Việt lẫn máy Anh. `.xlsx` lưu kiểu dữ
+liệu trong ô, nên mở đúng ở mọi nơi.
+
+**Quyết định.**
+
+1. `/bookings/export` và `/subscribers/export` trả `.xlsx`, dựng bằng ExcelJS như
+   `/reports/export`; nút ghi "Export Excel" ("Export n row(s)" khi xuất hàng đã chọn). Ranh giới
+   *báo cáo thì Excel, dữ liệu thì CSV* của §6 **bỏ**: mọi file xuất cho người đọc là Excel. Không
+   còn route CSV nào; `csv.ts`, `bookings-csv.ts`, `subscribers-csv.ts`, `csvExportResponse` cùng
+   test của chúng gỡ. Ai cần CSV thật thì mở file rồi Save As CSV — dự án không có consumer máy nào
+   của CSV.
+2. Hạ tầng export giữ nguyên: gác quyền 502 → 401 → 403, audit, trần 2000 hàng (413, nút tắt
+   kèm tooltip), xuất hàng đã chọn (tối đa 100, 409 khi lệch), `maxDuration = 60`, `no-store`.
+3. Nội dung hai danh sách:
+   - Trạng thái là nhãn như giao diện admin, không phải enum.
+   - Bookings thêm cột Refunded.
+   - Mốc thời gian là ô ngày-giờ thật theo giờ Việt Nam, tiêu đề cột ghi "(Vietnam time)" — Excel
+     không có múi giờ, nên đổi UTC sang giờ Việt Nam trước khi ghi.
+   - Mã đơn là hyperlink tới trang đơn trong admin.
+   - Hàng tổng `SUBTOTAL(109, …)`, tự đổi theo bộ lọc.
+4. Định dạng ngày của MỌI workbook ép mã ngôn ngữ: `[$-409]d mmm yyyy` (và
+   `[$-409]d mmm yyyy hh:mm` cho ngày-giờ). Không ép thì Excel lấy tên tháng theo Windows — đo trên
+   file báo cáo đang xuất: máy vi-VN ra "5 Thg10 2026".
+5. Workbook báo cáo trình bày theo bản thảo D1 (spec G40 §6): Summary dạng dashboard có thanh
+   `REPT` trong ô (ký tự, không phải chart — giới hạn #1 dưới đây vẫn đúng), metadata, đầu và
+   chân trang khi in có `&P` / `&N`, khổ A4, tab màu, Summary ẩn lưới.
+6. **§7 thay bằng [ADR-0057](0057-print-documents.md):** `/reports` in một tài liệu riêng (bản
+   thảo C2: dashboard trên giấy, biểu đồ thác nước SVG). Khối `@media print` chung của admin ở
+   lại cho các trang khác.
 
 ## Phương án đã cân nhắc và bỏ
 

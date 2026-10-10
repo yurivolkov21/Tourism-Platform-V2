@@ -36,6 +36,19 @@ thẳng từ Cloudinary nên cần mạng.
 | `booking-voucher.src.html` | `/checkout/success`: thẻ chia đôi mảng teal, mảng trái ảnh tour lớn | 05/10 · spec §6 |
 | `booking-list.src.html` | `/account/bookings`: hàng tìm và lọc, phân trang Newer / Older trips | 05/10 · spec §7 · **đã dựng 06/10** (P7 Phần A); nhãn phân trang đổi sang "Previous / Next", bản ghi giữ chữ cũ |
 
+## Bản in và file xuất (G40) — chờ thi công
+
+Duyệt bằng mắt trong chat ngày 10/10. Mỗi trang là một tờ A4 thật (210 × 297 mm), có ô thu phóng,
+xem như in trắng đen và nút in thử từng phương án; ảnh tour lấy từ Cloudinary nên cần mạng. Số liệu
+báo cáo là minh hoạ.
+
+| File | Đầu ra | Chốt |
+| --- | --- | --- |
+| `print-voucher.src.html` | Voucher in `/checkout/success`: phương án 1–4, 5a (ghép nguyên văn, tràn khổ) và **5b** | 10/10 · **5b** · [spec](../../specs/2026-10-10-print-and-export-redesign-design.md) §3 |
+| `print-receipt.src.html` | Hoá đơn chờ in: B1 (vé ở trạng thái chờ), B2 (hoá đơn thuần) | 10/10 · **B1** · spec §4 |
+| `print-report.src.html` | Báo cáo tháng in `/reports`: C1 (sổ sách), C2 (dashboard, thác nước) | 10/10 · **C2** · spec §5 |
+| `excel-report-d1.xlsx` | Excel báo cáo tháng D1 — mở bằng Excel; sheet Detail là 71 đơn thật tạo trong tháng 9 | 10/10 · spec §6 |
+
 ## Đã dựng xong — bản ghi thiết kế web và admin
 
 Cột cuối trả lời câu "xoá file này thì mất gì".

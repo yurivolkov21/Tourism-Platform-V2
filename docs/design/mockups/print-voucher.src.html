@@ -1,0 +1,1005 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>G40 · Bản in voucher — các phương án</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Literata:opsz,wght@7..72,400;7..72,500;7..72,600;7..72,700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --primary: #2e6e66;
+    --primary-emphasis: #1f5851;
+    --hero: #1a2422;
+    --paper-tint: #eef5f3;
+    --ink: #1f252b;
+    --dim: #5f646b;
+    --rule: #dcdfe2;
+    --band: #f0f3f5;
+    --stage: #e4e7e9;
+    --serif: 'Literata', Georgia, serif;
+    --sans: 'Archivo', system-ui, sans-serif;
+    --mono: 'IBM Plex Mono', ui-monospace, monospace;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body { background: var(--stage); font-family: var(--sans); color: var(--ink); }
+
+  /* ── Khung xem bản thảo (không in) ───────────────────────────── */
+  .chrome {
+    position: sticky; top: 0; z-index: 10;
+    display: flex; flex-wrap: wrap; gap: 12px 20px; align-items: center;
+    padding: 12px 20px; background: #fff; border-bottom: 1px solid var(--rule);
+    font-size: 13px;
+  }
+  .chrome h1 { font: 600 15px var(--sans); margin: 0 12px 0 0; }
+  .chrome label { display: inline-flex; gap: 6px; align-items: center; cursor: pointer; }
+  .chrome select, .chrome button {
+    font: 500 12.5px var(--sans); padding: 5px 10px; border: 1px solid var(--rule);
+    border-radius: 6px; background: #fff; cursor: pointer;
+  }
+  .chrome .hint { color: var(--dim); font-size: 12px; }
+  .stage {
+    display: flex; gap: 28px; align-items: flex-start; padding: 28px 24px 60px;
+    overflow-x: auto; zoom: var(--z, 0.62);
+  }
+  .opt { flex: none; display: flex; flex-direction: column; gap: 14px; }
+  .opt-head { display: flex; justify-content: space-between; align-items: baseline; gap: 16px; }
+  .opt-head h2 { font: 600 22px var(--sans); margin: 0; }
+  .opt-head button {
+    font: 500 15px var(--sans); padding: 7px 14px; border-radius: 8px; border: 1px solid #b9c0c4;
+    background: #fff; cursor: pointer;
+  }
+  .notes {
+    width: 210mm; font-size: 16px; line-height: 1.5; color: #30363c;
+    background: #fff; border-radius: 10px; padding: 14px 18px; border: 1px solid var(--rule);
+  }
+  .notes b { color: var(--ink); }
+  body.bw .page { filter: grayscale(1); }
+
+  /* ── Trang A4 dùng chung ─────────────────────────────────────── */
+  .page {
+    width: 210mm; height: 297mm; background: #fff; position: relative; overflow: hidden;
+    padding: 14mm 15mm 11mm; display: flex; flex-direction: column;
+    box-shadow: 0 1px 2px rgba(0,0,0,.08), 0 10px 30px rgba(0,0,0,.10);
+    font-size: 9.5pt; line-height: 1.45;
+  }
+  .page h1, .page h2, .page h3, .page p, .page ul, .page ol, .page dl, .page dd { margin: 0; }
+  .page ul, .page ol { padding: 0; list-style: none; }
+
+  /* Letterhead chung (cùng khung, khác giọng) */
+  .lh { display: flex; justify-content: space-between; align-items: flex-start; gap: 10mm; }
+  .brand { display: flex; align-items: center; gap: 3mm; }
+  .mark { width: 11mm; height: auto; flex: none; }
+  .mark .back { fill: var(--primary); }
+  .mark .front { fill: var(--ink); }
+  .word { font: 600 17pt/1 var(--serif); letter-spacing: -0.01em; }
+  .word span { color: var(--primary-emphasis); }
+  .co { font-size: 7.5pt; color: var(--dim); margin-top: 1.2mm; }
+  .doc { text-align: right; }
+  .doc-type { font: 600 7.5pt var(--mono); letter-spacing: .18em; text-transform: uppercase; color: var(--primary-emphasis); }
+  .doc-no { font: 600 13pt var(--mono); letter-spacing: .04em; margin-top: 1mm; }
+  .doc-meta { font-size: 7.5pt; color: var(--dim); margin-top: .5mm; }
+
+  .foot {
+    margin-top: auto; padding-top: 3mm; border-top: 0.6pt solid var(--rule);
+    display: flex; justify-content: space-between; gap: 8mm; font-size: 7.5pt; color: var(--dim);
+  }
+  .foot b { color: var(--ink); font-weight: 600; }
+
+  .lbl { font: 600 6.8pt var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--dim); }
+  .mono { font-family: var(--mono); }
+  .barcode { display: block; color: var(--ink); }
+  .barcode rect { fill: currentColor; }
+
+  /* ════ Phương án 1 — Tài liệu một trang (kiểu Musement / GetYourGuide) ════ */
+  .p1 .brand-rule { height: 1.2mm; background: var(--primary); margin: 5mm 0 7mm; border-radius: 1mm; }
+  .p1 .kicker { display: flex; align-items: center; gap: 3mm; }
+  .p1 .kicker .lbl { color: var(--primary-emphasis); }
+  .badge {
+    font: 600 6.8pt var(--mono); letter-spacing: .14em; text-transform: uppercase;
+    border: 0.8pt solid currentColor; color: var(--primary-emphasis); padding: .6mm 2mm; border-radius: 4mm;
+  }
+  .p1 h1 { font: 600 24pt/1.15 var(--serif); margin-top: 2.5mm; letter-spacing: -0.01em; }
+  .p1 .facts {
+    display: grid; grid-template-columns: 1.3fr .7fr .8fr 1fr; margin-top: 7mm;
+    border-top: 0.6pt solid var(--rule); border-bottom: 0.6pt solid var(--rule);
+  }
+  .p1 .facts > div { padding: 3mm 4mm 3.2mm; }
+  .p1 .facts > div + div { border-left: 0.6pt solid var(--rule); }
+  .p1 .facts dd { font: 600 11pt var(--sans); margin-top: 1mm; }
+  .p1 .main { display: grid; grid-template-columns: 1fr 62mm; gap: 8mm; margin-top: 7mm; }
+  .p1 h2 { font: 600 11pt var(--serif); margin-bottom: 2mm; }
+  .p1 .block + .block { margin-top: 6mm; }
+  .p1 .meet { font-weight: 600; font-size: 10.5pt; }
+  .p1 .dim { color: var(--dim); }
+  .tl li { display: grid; grid-template-columns: 13mm 1fr; gap: 2mm; padding: 1.1mm 0; border-bottom: 0.4pt dotted var(--rule); }
+  .tl li:last-child { border-bottom: 0; }
+  .tl time { font: 500 8.5pt var(--mono); color: var(--primary-emphasis); padding-top: .2mm; }
+  .p1 .scan {
+    border: 0.8pt solid var(--ink); border-radius: 3mm; padding: 5mm 5mm 4.5mm; align-self: start;
+    text-align: center;
+  }
+  .p1 .scan .code { font: 600 15pt var(--mono); letter-spacing: .06em; margin: 2.5mm 0 3mm; }
+  .p1 .scan .barcode { width: 100%; height: 15mm; }
+  .p1 .scan .admit {
+    margin-top: 3.5mm; display: inline-block; font: 600 8pt var(--mono); letter-spacing: .16em;
+    text-transform: uppercase; border-top: 0.6pt solid var(--rule); padding-top: 2.5mm; width: 100%;
+  }
+  .p1 .scan .tiny { font-size: 7.5pt; color: var(--dim); margin-top: 1.5mm; }
+  .p1 .incl { display: grid; grid-template-columns: 1fr 1fr; gap: 8mm; margin-top: 7mm; padding-top: 5mm; border-top: 0.6pt solid var(--rule); }
+  .ticks li, .dashes li { position: relative; padding-left: 4.5mm; margin-top: 1mm; }
+  .ticks li::before { content: '✓'; position: absolute; left: 0; color: var(--primary); font-weight: 700; }
+  .dashes li::before { content: '–'; position: absolute; left: .5mm; color: var(--dim); }
+  .p1 .terms { display: grid; grid-template-columns: 1fr 1fr; gap: 8mm; margin-top: 6mm; padding: 4mm 5mm; background: var(--band); border-radius: 2mm; }
+  .p1 .terms h3 { font: 600 6.8pt var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--dim); margin-bottom: 1mm; }
+
+  /* ════ Phương án 2 — Vé có cuống (kiểu boarding pass, khớp tấm vé trên web) ════ */
+  .p2 .lh { margin-bottom: 7mm; }
+  .ticket {
+    display: grid; grid-template-columns: 1fr 52mm; border: 0.9pt solid var(--primary);
+    border-radius: 3.5mm; overflow: hidden; position: relative;
+  }
+  .t-band {
+    background: var(--primary); color: #fff; display: flex; justify-content: space-between; align-items: center;
+    padding: 2.4mm 5mm; font: 600 7.5pt var(--mono); letter-spacing: .18em; text-transform: uppercase;
+  }
+  .t-band.center { justify-content: center; }
+  .t-main { border-right: 0.9pt dashed var(--primary); position: relative; }
+  .t-main::before, .t-main::after {
+    content: ''; position: absolute; right: -2.6mm; width: 4.6mm; height: 4.6mm; border-radius: 50%;
+    background: #fff; border: 0.9pt solid var(--primary); z-index: 2;
+  }
+  .t-main::before { top: -2.6mm; } .t-main::after { bottom: -2.6mm; }
+  .t-body { padding: 4.5mm 6mm 0; }
+  .t-title-row { display: flex; justify-content: space-between; gap: 5mm; align-items: flex-start; }
+  .p2 h1 { font: 600 17pt/1.2 var(--serif); }
+  .stamp {
+    flex: none; transform: rotate(3deg); border: 1.2pt solid var(--primary); color: var(--primary);
+    font: 600 8pt var(--serif); letter-spacing: .2em; text-transform: uppercase; padding: 1.4mm 3mm; border-radius: 1.2mm;
+    outline: 0.5pt solid var(--primary); outline-offset: .8mm;
+  }
+  .route { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 4mm; margin: 4mm 0 4mm; }
+  .route .big { font: 600 20pt/1 var(--mono); letter-spacing: .02em; margin-top: 1mm; }
+  .route .sub { font-size: 7.5pt; color: var(--dim); margin-top: 1mm; }
+  .route .right { text-align: right; }
+  .route-line { position: relative; text-align: center; font-size: 7.8pt; color: var(--primary-emphasis); font-weight: 600; }
+  .route-line::before { content: ''; position: absolute; left: 0; right: 0; top: 50%; border-top: 0.8pt dashed #9fb5b1; }
+  .route-line span { position: relative; background: #fff; padding: 0 2.5mm; }
+  .t-grid { display: grid; grid-template-columns: repeat(4, 1fr); margin: 0 -6mm; border-top: 0.6pt solid var(--rule); }
+  .t-grid > div { padding: 2.6mm 0 3mm 6mm; }
+  .t-grid > div + div { border-left: 0.6pt solid var(--rule); padding-left: 3.5mm; }
+  .t-grid .v { font-weight: 600; margin-top: .8mm; }
+  .t-stub .stub-body { padding: 4mm 5mm; display: flex; flex-direction: column; height: calc(100% - 9.5mm); }
+  .t-stub .money { font: 600 20pt var(--sans); margin-top: .5mm; }
+  .t-stub .tiny { font-size: 7.3pt; color: var(--dim); }
+  .t-stub .barcode { width: 100%; height: 12mm; margin-top: auto; }
+  .t-stub .code { font: 600 8.5pt var(--mono); letter-spacing: .12em; text-align: center; margin-top: 1.5mm; }
+  .tear { display: flex; align-items: center; gap: 3mm; margin: 4mm 0 6mm; color: var(--dim); font-size: 7.5pt; }
+  .tear::before, .tear::after { content: ''; flex: 1; border-top: 0.8pt dashed #b9c0c4; }
+  .p2 .three { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6mm; }
+  .p2 .card { border: 0.6pt solid var(--rule); border-radius: 2.5mm; padding: 4mm; }
+  .p2 h2 { font: 600 10.5pt var(--serif); margin-bottom: 2mm; }
+  .p2 .card p + p { margin-top: 1.5mm; }
+  .p2 .day { margin-top: 6mm; }
+  .p2 .day-head { display: flex; align-items: baseline; justify-content: space-between; border-bottom: 0.6pt solid var(--rule); padding-bottom: 2mm; margin-bottom: 1.5mm; }
+  .p2 .tl2 { columns: 2; column-gap: 8mm; }
+  .p2 .tl2 li { break-inside: avoid; display: grid; grid-template-columns: 12mm 1fr; gap: 2mm; padding: 1.2mm 0; }
+  .p2 .tl2 time { font: 500 8.5pt var(--mono); color: var(--primary-emphasis); }
+
+  /* ════ Phương án 3 — Tạp chí có ảnh (giọng thương hiệu) ════ */
+  .p3 { padding-top: 11mm; }
+  .mag .hero {
+    position: relative; height: 84mm; border-radius: 3mm; overflow: hidden; color: #fff;
+    background-color: var(--hero); background-position: center; background-size: cover; background-repeat: no-repeat;
+    padding: 6mm 7mm; display: flex; flex-direction: column;
+    -webkit-print-color-adjust: exact; print-color-adjust: exact;
+  }
+  .mag .hero::before {
+    content: ''; position: absolute; inset: 0;
+    background: linear-gradient(180deg, rgba(10,18,16,.55) 0%, rgba(10,18,16,.05) 38%, rgba(10,18,16,.75) 100%);
+  }
+  .mag .hero > * { position: relative; }
+  .mag .hero .mark .front { fill: #fff; }
+  .mag .hero .mark .back { fill: #8fd0c6; }
+  .mag .hero .word span { color: #a9e0d7; }
+  .mag .hero .co, .mag .hero .doc-meta { color: rgba(255,255,255,.8); }
+  .mag .hero .doc-type { color: #a9e0d7; }
+  .mag .hero-title { margin-top: auto; }
+  .mag .hero-title .lbl { color: rgba(255,255,255,.85); }
+  .mag h1 { font: 600 27pt/1.1 var(--serif); margin-top: 2mm; letter-spacing: -0.01em; }
+  .p3 .top { display: grid; grid-template-columns: 1fr 60mm; gap: 8mm; margin-top: 7mm; }
+  .p3 .dl { display: grid; grid-template-columns: 30mm 1fr; row-gap: 2.6mm; column-gap: 4mm; align-content: start; }
+  .p3 .dl dt { padding-top: .6mm; }
+  .p3 .dl dd { font-weight: 500; }
+  .p3 .pass { background: var(--paper-tint); border-radius: 3mm; padding: 9mm 5mm 5mm; text-align: center; position: relative; }
+  .p3 .pass .stamp { position: absolute; top: -3.5mm; right: 4mm; background: #fff; }
+  .p3 .pass .code { font: 600 14pt var(--mono); letter-spacing: .06em; margin: 1.5mm 0 3mm; }
+  .p3 .pass .barcode { width: 100%; height: 13mm; }
+  .p3 .pass .tiny { font-size: 7.3pt; color: var(--dim); margin-top: 2mm; }
+  .p3 h2 { font: 600 11pt var(--serif); margin-bottom: 2.5mm; }
+  .p3 .day { margin-top: 7mm; }
+  .p3 .tl3 { position: relative; display: grid; grid-template-columns: 1fr 1fr; column-gap: 8mm; }
+  .p3 .tl3 li { display: grid; grid-template-columns: 3mm 12mm 1fr; gap: 1.5mm; padding: 1.1mm 0; align-items: start; }
+  .p3 .tl3 li::before { content: ''; width: 1.8mm; height: 1.8mm; border-radius: 50%; background: var(--primary); margin-top: 1.4mm; }
+  .p3 .tl3 time { font: 500 8.3pt var(--mono); color: var(--primary-emphasis); }
+  .p3 .two { display: grid; grid-template-columns: 1fr 1fr; gap: 8mm; margin-top: 6mm; }
+  .p3 .note { margin-top: 6mm; border-left: 1.2mm solid var(--primary); padding: 2mm 0 2mm 4mm; }
+  .p3 .note p + p { margin-top: 1mm; color: var(--dim); }
+
+  .hero-img { background-image: url('https://res.cloudinary.com/dbkgeehow/image/upload/c_fill,w_1400,h_760,q_auto,f_jpg/v1787024520/tourism/catalog/tour/hoi-an-lantern-evening/hero.jpg'); }
+
+  /* ════ Phương án 4 — Tạp chí có ảnh + vé có cuống nằm đè mép ảnh ════ */
+  .p4 { padding-top: 11mm; }
+  .p4 .hero { height: 94mm; padding-bottom: 24mm; }
+  .p4 h1 { font-size: 28pt; line-height: 1.08; max-width: 150mm; }
+  .p4 .hero .stamp {
+    position: absolute; right: 7mm; top: 21mm; color: #fff; border-color: #fff; outline-color: #fff;
+    background: rgba(10,18,16,.25);
+  }
+  .p4 .t-grid { grid-template-columns: 1.3fr 1fr 1fr 1.1fr; }
+  .p4 .t-stub .barcode { height: 10mm; margin-top: 2.5mm; }
+  .p4 .ticket {
+    background: #fff; margin: -18mm 5mm 0; position: relative; z-index: 2;
+    box-shadow: 0 1.5mm 5mm rgba(10,18,16,.18);
+  }
+  .p4 .t-main::before { display: none; }
+  .p4 .t-body { padding: 4mm 6mm 0; }
+  .p4 .route { margin: 0 0 4mm; }
+  .p4 .caption { text-align: center; font-size: 7.5pt; color: var(--dim); margin-top: 2.5mm; }
+  .p4 .body { display: grid; grid-template-columns: 1fr 60mm; gap: 9mm; margin-top: 7mm; }
+  .p4 h2 { font: 600 11pt var(--serif); margin-bottom: 2.5mm; }
+  .p4 .tl4 { position: relative; }
+  .p4 .tl4::before { content: ''; position: absolute; left: .85mm; top: 2.5mm; bottom: 2.5mm; border-left: 0.7pt solid #b9d3cf; }
+  .p4 .tl4 li { position: relative; display: grid; grid-template-columns: 12mm 1fr; gap: 2mm; padding: 1.25mm 0 1.25mm 5.5mm; }
+  .p4 .tl4 li::before {
+    content: ''; position: absolute; left: 0; top: 2.35mm; width: 1.8mm; height: 1.8mm; border-radius: 50%;
+    background: #fff; border: 0.8pt solid var(--primary);
+  }
+  .p4 .tl4 li:first-child::before, .p4 .tl4 li:last-child::before { background: var(--primary); }
+  .p4 .tl4 time { font: 500 8.5pt var(--mono); color: var(--primary-emphasis); }
+  .p4 .side section + section { margin-top: 5mm; }
+  .p4 .side .meet { font-weight: 600; }
+  .p4 .side p + p { margin-top: 1mm; color: var(--dim); }
+  .p4 .band {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 8mm; margin-top: 6mm; padding: 4mm 5mm;
+    background: var(--paper-tint); border-radius: 2.5mm;
+  }
+  .p4 .band h3 { font: 600 6.8pt var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--primary-emphasis); margin-bottom: 1mm; }
+
+  /* ════ Phương án 5 — ghép theo lựa chọn của user: bìa (3) → vé (2) → lịch trình (3) → dải (4) ════ */
+  .p5 { padding-top: 11mm; }
+  .p5 .hero { height: 84mm; }
+  .p5b .hero { height: 62mm; }
+  .p5 .ticket { margin-top: 7mm; }
+  .p5 .t-title { font: 600 17pt/1.2 var(--serif); color: var(--ink); }
+  .p5b .t-title { font-size: 14pt; }
+  .p5b .t-body { padding-top: 3.5mm; }
+  .p5b .route { margin: 3mm 0 3mm; }
+  .p5 .three { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6mm; }
+  .p5 .card { border: 0.6pt solid var(--rule); border-radius: 2.5mm; padding: 4mm; }
+  .p5 .card p + p { margin-top: 1.5mm; }
+  .p5 .sec-title { font: 600 11pt var(--serif); margin-bottom: 2.5mm; }
+  .p5 .day { margin-top: 6mm; }
+  .p5b .day { margin-top: 1mm; }
+  .p5 .tl3 { display: grid; grid-template-columns: 1fr 1fr; column-gap: 8mm; }
+  .p5 .tl3 li { display: grid; grid-template-columns: 3mm 12mm 1fr; gap: 1.5mm; padding: 1.1mm 0; align-items: start; }
+  .p5 .tl3 li::before { content: ''; width: 1.8mm; height: 1.8mm; border-radius: 50%; background: var(--primary); margin-top: 1.4mm; }
+  .p5 .tl3 time { font: 500 8.3pt var(--mono); color: var(--primary-emphasis); }
+  .p5 .two { display: grid; grid-template-columns: 1fr 1fr; gap: 8mm; margin-top: 6mm; }
+  .p5b .two { margin-top: 5mm; }
+  .p5 .band {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 8mm; margin-top: 6mm; padding: 4mm 5mm;
+    background: var(--paper-tint); border-radius: 2.5mm;
+  }
+  .p5b .band { grid-template-columns: 1.15fr 1fr 1fr; gap: 6mm; }
+  .p5 .band h3 { font: 600 6.8pt var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--primary-emphasis); margin-bottom: 1mm; }
+  .p5 .band b { font-weight: 600; }
+  /* 5a: trang không chặn chiều cao để thấy phần tràn; vạch đỏ = hết khổ A4. */
+  .page.auto { height: auto; min-height: 297mm; overflow: visible; }
+  .a4-end {
+    position: absolute; left: -8mm; right: -8mm; top: 297mm; border-top: 0.8mm dashed #d23b3b; z-index: 5;
+  }
+  .a4-end span {
+    position: absolute; right: 8mm; top: -6mm; background: #d23b3b; color: #fff; font: 600 8pt var(--sans);
+    padding: .8mm 2.5mm; border-radius: 1mm;
+  }
+
+  /* ── In thật: bỏ khung xem, khổ A4 không lề để trình duyệt không in ngày giờ/URL ── */
+  @page { size: A4; margin: 0; }
+  @media print {
+    body { background: #fff; }
+    .chrome, .notes, .opt-head { display: none !important; }
+    .stage { zoom: 1 !important; display: block; padding: 0; overflow: visible; }
+    .opt { display: block; }
+    .page { box-shadow: none; break-after: page; }
+    body.print-one .opt:not(.printing) { display: none; }
+    * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  }
+</style>
+</head>
+<body>
+<div class="chrome">
+  <h1>G40 · Bản in voucher — các phương án (BK-EET0JBTH)</h1>
+  <label>Thu phóng
+    <select id="zoom">
+      <option value="0.5">50%</option>
+      <option value="0.62" selected>62%</option>
+      <option value="0.8">80%</option>
+      <option value="1">100% (đúng cỡ A4)</option>
+    </select>
+  </label>
+  <label><input type="checkbox" id="bw"> Xem như in trắng đen</label>
+  <button id="print-all">In thử tất cả</button>
+  <span class="hint">Mỗi trang là A4 thật (210×297 mm). In thử: Ctrl+P sẽ không có ngày giờ và URL của trình duyệt vì trang tự đặt lề 0.</span>
+</div>
+
+<main class="stage" id="stage">
+
+  <!-- ══════════ PHƯƠNG ÁN 1 ══════════ -->
+  <div class="opt" data-opt="1">
+    <div class="opt-head"><h2>1 · Tài liệu một trang</h2><button data-print="1">In thử phương án này</button></div>
+    <section class="page p1">
+      <header class="lh">
+        <div class="brand">
+          <svg class="mark" viewBox="0 0 46 33" aria-hidden="true"><path class="back" d="M30.966 12.968 19.938 1.945a2.75 2.75 0 0 0-3.891 0l-14.1 14.093a2.75 2.75 0 0 0 0 3.89L12.975 30.95a2.75 2.75 0 0 0 3.891 0l14.1-14.094a2.75 2.75 0 0 0 0-3.889"/><path class="front" d="M44.032 12.968 33.004 1.945a2.75 2.75 0 0 0-3.89 0l-14.1 14.093a2.75 2.75 0 0 0 0 3.89L26.041 30.95a2.75 2.75 0 0 0 3.89 0l14.1-14.094a2.75 2.75 0 0 0 0-3.889"/></svg>
+          <div>
+            <div class="word">Nex<span>ora</span></div>
+            <div class="co">www.nexora-travel.agency · tourism.platform.online@gmail.com · +84 24 3826 0126</div>
+          </div>
+        </div>
+        <div class="doc">
+          <div class="doc-type">Trip voucher</div>
+          <div class="doc-no">BK-EET0JBTH</div>
+          <div class="doc-meta">Issued 9 Oct 2026</div>
+        </div>
+      </header>
+      <div class="brand-rule"></div>
+
+      <div class="kicker"><span class="lbl">Hội An · 1 day</span><span class="badge">Confirmed</span></div>
+      <h1>Hội An Old Town &amp; Lantern Evening</h1>
+
+      <dl class="facts">
+        <div><dt class="lbl">Date</dt><dd>Thu, 29 Oct 2026</dd></div>
+        <div><dt class="lbl">Starts</dt><dd>15:30</dd></div>
+        <div><dt class="lbl">Travellers</dt><dd>1 adult</dd></div>
+        <div><dt class="lbl">Lead traveller</dt><dd>Nora Dahl</dd></div>
+      </dl>
+
+      <div class="main">
+        <div>
+          <section class="block">
+            <h2>Where to meet</h2>
+            <p class="meet">Hội An Ancient Town ticket booth, Nguyễn Thái Học street</p>
+            <p class="dim">Meet your guide here at 15:30.</p>
+          </section>
+          <section class="block">
+            <h2>Your day · Ancient houses to a lantern-lit river</h2>
+            <ol class="tl">
+              <li><time>15:30</time><span>Meet at the Hội An Ancient Town ticket booth, Nguyễn Thái Học street</span></li>
+              <li><time>16:00</time><span>Tấn Ký ancient merchant house and the Assembly Hall of Phúc Kiến</span></li>
+              <li><time>16:45</time><span>Japanese Covered Bridge (Chùa Cầu) at golden hour</span></li>
+              <li><time>17:30</time><span>Bánh mì Phượng, the sandwich stop before the lanterns light</span></li>
+              <li><time>18:30</time><span>Central Market wander as lanterns come on along the river</span></li>
+              <li><time>19:00</time><span>Basket-boat ride under the lantern-lit Thu Bồn riverbank</span></li>
+              <li><time>20:00</time><span>Release a floating lantern on the river</span></li>
+              <li><time>20:45</time><span>Free time before drop-off</span></li>
+            </ol>
+          </section>
+        </div>
+        <aside class="scan">
+          <div class="lbl">Show at pickup</div>
+          <div class="code">BK-EET0JBTH</div>
+          <svg class="barcode" data-code="BK-EET0JBTH" preserveAspectRatio="none"></svg>
+          <div class="admit">Admit 1</div>
+          <p class="tiny">Show this code at pickup — printed or on your phone.</p>
+        </aside>
+      </div>
+
+      <div class="incl">
+        <section><h2>Included</h2>
+          <ul class="ticks">
+            <li>English-speaking guide</li>
+            <li>Hội An Ancient Town entrance ticket (5-monument pass)</li>
+            <li>Bánh mì Phượng tasting</li>
+            <li>Basket-boat ride on the Thu Bồn River</li>
+            <li>Floating lantern release</li>
+          </ul>
+        </section>
+        <section><h2>Not included</h2>
+          <ul class="dashes">
+            <li>Extra food/drinks beyond the tasting stop</li>
+            <li>Personal shopping</li>
+            <li>Tips</li>
+          </ul>
+        </section>
+      </div>
+
+      <div class="terms">
+        <div><h3>Payment</h3><p>$39.00 paid by card on 9 Oct 2026.<br>Test mode — no card is charged.</p></div>
+        <div><h3>Cancellation</h3><p>Free cancellation until 28 Oct, 11:59 pm Vietnam time. No refund after that.</p></div>
+      </div>
+
+      <footer class="foot">
+        <span>Need help? Reply to your confirmation email or write to <b>tourism.platform.online@gmail.com</b></span>
+        <span>Printed 10 Oct 2026, 14:05 · Page 1 of 1</span>
+      </footer>
+    </section>
+    <div class="notes">
+      <b>Nguồn tham khảo:</b> voucher của Musement và GetYourGuide — logo trái, mã đơn góc phải, tên hoạt động, khối mã quét, rồi "how to use" và điều kiện.
+      <br><b>Ưu:</b> sạch, tốn ít mực, in trắng đen vẫn rõ; dải thông tin 4 ô đọc nhanh; dễ dựng lại cho hoá đơn chờ.
+      <br><b>Nhược:</b> ít "chất thương hiệu" nhất trong ba; trông giống chứng từ hơn là tấm vé.
+    </div>
+  </div>
+
+  <!-- ══════════ PHƯƠNG ÁN 2 ══════════ -->
+  <div class="opt" data-opt="2">
+    <div class="opt-head"><h2>2 · Vé có cuống (khớp tấm vé trên web)</h2><button data-print="2">In thử phương án này</button></div>
+    <section class="page p2">
+      <header class="lh">
+        <div class="brand">
+          <svg class="mark" viewBox="0 0 46 33" aria-hidden="true"><path class="back" d="M30.966 12.968 19.938 1.945a2.75 2.75 0 0 0-3.891 0l-14.1 14.093a2.75 2.75 0 0 0 0 3.89L12.975 30.95a2.75 2.75 0 0 0 3.891 0l14.1-14.094a2.75 2.75 0 0 0 0-3.889"/><path class="front" d="M44.032 12.968 33.004 1.945a2.75 2.75 0 0 0-3.89 0l-14.1 14.093a2.75 2.75 0 0 0 0 3.89L26.041 30.95a2.75 2.75 0 0 0 3.89 0l14.1-14.094a2.75 2.75 0 0 0 0-3.889"/></svg>
+          <div>
+            <div class="word">Nex<span>ora</span></div>
+            <div class="co">www.nexora-travel.agency · tourism.platform.online@gmail.com · +84 24 3826 0126</div>
+          </div>
+        </div>
+        <div class="doc">
+          <div class="doc-type">E-ticket</div>
+          <div class="doc-no">BK-EET0JBTH</div>
+          <div class="doc-meta">Issued 9 Oct 2026</div>
+        </div>
+      </header>
+
+      <div class="ticket">
+        <div class="t-main">
+          <div class="t-band"><span>Entry · Tour booking</span><span>BK-EET0JBTH</span></div>
+          <div class="t-body">
+            <div class="t-title-row"><h1>Hội An Old Town &amp; Lantern Evening</h1><span class="stamp">Confirmed</span></div>
+            <div class="route">
+              <div><div class="lbl">Departs</div><div class="big">29 OCT</div><div class="sub">Thu · 2026 · meet 15:30</div></div>
+              <div class="route-line"><span>1 day · Hội An</span></div>
+              <div class="right"><div class="lbl">Returns</div><div class="big">29 OCT</div><div class="sub">Thu · 2026</div></div>
+            </div>
+            <div class="t-grid">
+              <div><div class="lbl">Lead traveller</div><div class="v">Nora Dahl</div></div>
+              <div><div class="lbl">Travellers</div><div class="v">1 adult</div></div>
+              <div><div class="lbl">Booked</div><div class="v">9 Oct 2026</div></div>
+              <div><div class="lbl">Paid with</div><div class="v">Card (Stripe)</div></div>
+            </div>
+          </div>
+        </div>
+        <div class="t-stub">
+          <div class="t-band center">Admit 1</div>
+          <div class="stub-body">
+            <div class="lbl">Total paid</div>
+            <div class="money">$39</div>
+            <div class="tiny">Taxes and fees included</div>
+            <svg class="barcode" data-code="BK-EET0JBTH" preserveAspectRatio="none"></svg>
+            <div class="code">BK-EET0JBTH</div>
+          </div>
+        </div>
+      </div>
+      <div class="tear">Show the ticket at pickup — printed or on your phone</div>
+
+      <div class="three">
+        <section class="card">
+          <h2>Where to meet</h2>
+          <p><b>Hội An Ancient Town ticket booth, Nguyễn Thái Học street</b></p>
+          <p>Meet your guide here at 15:30.</p>
+        </section>
+        <section class="card">
+          <h2>What's included</h2>
+          <ul class="ticks">
+            <li>English-speaking guide</li>
+            <li>Ancient Town ticket (5 monuments)</li>
+            <li>Bánh mì Phượng tasting</li>
+            <li>Basket-boat ride</li>
+            <li>Floating lantern release</li>
+          </ul>
+          <p style="margin-top:2mm;color:var(--dim)">Not included: extra food/drinks, personal shopping, tips.</p>
+        </section>
+        <section class="card">
+          <h2>Cancellation</h2>
+          <p>Free cancellation until 28 Oct, 11:59 pm Vietnam time. No refund after that.</p>
+          <p style="color:var(--dim)">$39.00 paid by card on 9 Oct 2026. Test mode — no card is charged.</p>
+        </section>
+      </div>
+
+      <section class="day">
+        <div class="day-head"><h2 style="margin:0">Your day · Ancient houses to a lantern-lit river</h2><span class="lbl">Day 1 of 1</span></div>
+        <ol class="tl2">
+          <li><time>15:30</time><span>Meet at the Hội An Ancient Town ticket booth, Nguyễn Thái Học street</span></li>
+          <li><time>16:00</time><span>Tấn Ký ancient merchant house and the Assembly Hall of Phúc Kiến</span></li>
+          <li><time>16:45</time><span>Japanese Covered Bridge (Chùa Cầu) at golden hour</span></li>
+          <li><time>17:30</time><span>Bánh mì Phượng, the sandwich stop before the lanterns light</span></li>
+          <li><time>18:30</time><span>Central Market wander as lanterns come on along the river</span></li>
+          <li><time>19:00</time><span>Basket-boat ride under the lantern-lit Thu Bồn riverbank</span></li>
+          <li><time>20:00</time><span>Release a floating lantern on the river</span></li>
+          <li><time>20:45</time><span>Free time before drop-off</span></li>
+        </ol>
+      </section>
+
+      <footer class="foot">
+        <span>Need help? Reply to your confirmation email or write to <b>tourism.platform.online@gmail.com</b></span>
+        <span>Printed 10 Oct 2026, 14:05 · Page 1 of 1</span>
+      </footer>
+    </section>
+    <div class="notes">
+      <b>Nguồn tham khảo:</b> boarding pass và vé điện tử in khổ A4 (vé chính + cuống xé có mã vạch), và chính tấm vé đang có ở trang chi tiết đơn của web.
+      <br><b>Ưu:</b> nhìn là biết "vé"; khách quen hình từ trang web nên in ra thấy liền mạch; mã vạch nằm riêng ở cuống.
+      <br><b>Nhược:</b> dải teal và viền tốn mực hơn phương án 1; nhiều khung nên chật hơn khi lịch trình dài (tour 12 ngày phải cắt bớt).
+    </div>
+  </div>
+
+  <!-- ══════════ PHƯƠNG ÁN 3 ══════════ -->
+  <div class="opt" data-opt="3">
+    <div class="opt-head"><h2>3 · Tạp chí có ảnh</h2><button data-print="3">In thử phương án này</button></div>
+    <section class="page p3 mag">
+      <div class="hero hero-img">
+        <header class="lh">
+          <div class="brand">
+            <svg class="mark" viewBox="0 0 46 33" aria-hidden="true"><path class="back" d="M30.966 12.968 19.938 1.945a2.75 2.75 0 0 0-3.891 0l-14.1 14.093a2.75 2.75 0 0 0 0 3.89L12.975 30.95a2.75 2.75 0 0 0 3.891 0l14.1-14.094a2.75 2.75 0 0 0 0-3.889"/><path class="front" d="M44.032 12.968 33.004 1.945a2.75 2.75 0 0 0-3.89 0l-14.1 14.093a2.75 2.75 0 0 0 0 3.89L26.041 30.95a2.75 2.75 0 0 0 3.89 0l14.1-14.094a2.75 2.75 0 0 0 0-3.889"/></svg>
+            <div>
+              <div class="word">Nex<span>ora</span></div>
+              <div class="co">www.nexora-travel.agency</div>
+            </div>
+          </div>
+          <div class="doc">
+            <div class="doc-type">Trip voucher</div>
+            <div class="doc-meta">Issued 9 Oct 2026</div>
+          </div>
+        </header>
+        <div class="hero-title">
+          <div class="lbl">Hội An · 1 day · Thu 29 Oct 2026</div>
+          <h1>Hội An Old Town &amp; Lantern Evening</h1>
+        </div>
+      </div>
+
+      <div class="top">
+        <dl class="dl">
+          <dt class="lbl">Date</dt><dd>Thursday, 29 October 2026</dd>
+          <dt class="lbl">Meet</dt><dd>15:30 · Hội An Ancient Town ticket booth, Nguyễn Thái Học street</dd>
+          <dt class="lbl">Travellers</dt><dd>1 adult</dd>
+          <dt class="lbl">Lead traveller</dt><dd>Nora Dahl · nora.dahl@example.com</dd>
+          <dt class="lbl">Paid</dt><dd>$39.00 by card on 9 Oct 2026 <span style="color:var(--dim)">(test mode — no card is charged)</span></dd>
+        </dl>
+        <aside class="pass">
+          <span class="stamp">Confirmed</span>
+          <div class="lbl">Booking code</div>
+          <div class="code">BK-EET0JBTH</div>
+          <svg class="barcode" data-code="BK-EET0JBTH" preserveAspectRatio="none"></svg>
+          <p class="tiny">Admit 1 · show at pickup, printed or on your phone</p>
+        </aside>
+      </div>
+
+      <section class="day">
+        <h2>Your day · Ancient houses to a lantern-lit river</h2>
+        <ol class="tl3">
+          <li><time>15:30</time><span>Meet at the Ancient Town ticket booth</span></li>
+          <li><time>18:30</time><span>Central Market as the lanterns come on</span></li>
+          <li><time>16:00</time><span>Tấn Ký house and the Phúc Kiến Assembly Hall</span></li>
+          <li><time>19:00</time><span>Basket-boat ride on the Thu Bồn River</span></li>
+          <li><time>16:45</time><span>Japanese Covered Bridge at golden hour</span></li>
+          <li><time>20:00</time><span>Release a floating lantern</span></li>
+          <li><time>17:30</time><span>Bánh mì Phượng tasting</span></li>
+          <li><time>20:45</time><span>Free time before drop-off</span></li>
+        </ol>
+      </section>
+
+      <div class="two">
+        <section><h2>Included</h2>
+          <ul class="ticks">
+            <li>English-speaking guide</li>
+            <li>Ancient Town entrance ticket (5-monument pass)</li>
+            <li>Bánh mì Phượng tasting</li>
+            <li>Basket-boat ride · floating lantern</li>
+          </ul>
+        </section>
+        <section><h2>Not included</h2>
+          <ul class="dashes">
+            <li>Extra food/drinks beyond the tasting stop</li>
+            <li>Personal shopping</li>
+            <li>Tips</li>
+          </ul>
+        </section>
+      </div>
+
+      <div class="note">
+        <p><b>Free cancellation until 28 Oct, 11:59 pm Vietnam time.</b> No refund after that.</p>
+        <p>Need help? Reply to your confirmation email or write to tourism.platform.online@gmail.com · +84 24 3826 0126</p>
+      </div>
+
+      <footer class="foot">
+        <span><b>BK-EET0JBTH</b> · Hội An Old Town &amp; Lantern Evening</span>
+        <span>Printed 10 Oct 2026, 14:05 · Page 1 of 1</span>
+      </footer>
+    </section>
+    <div class="notes">
+      <b>Nguồn tham khảo:</b> voucher và tài liệu chuyến đi kiểu tạp chí du lịch — ảnh bìa lớn, tiêu đề serif, thông tin xếp như danh mục.
+      <br><b>Ưu:</b> đẹp và "ra chất Nexora" nhất, hợp để giáo viên cầm xem; cùng ngôn ngữ với voucher trên màn hình.
+      <br><b>Nhược:</b> ảnh tốn mực, in trắng đen ảnh thành mảng xám; phụ thuộc ảnh tour (tour thiếu ảnh phải có nền thay thế).
+    </div>
+  </div>
+
+  <!-- ══════════ PHƯƠNG ÁN 4 = 3 + 2 ══════════ -->
+  <div class="opt" data-opt="4">
+    <div class="opt-head"><h2>4 · Tạp chí có ảnh + vé có cuống</h2><button data-print="4">In thử phương án này</button></div>
+    <section class="page p4 mag">
+      <div class="hero hero-img">
+        <header class="lh">
+          <div class="brand">
+            <svg class="mark" viewBox="0 0 46 33" aria-hidden="true"><path class="back" d="M30.966 12.968 19.938 1.945a2.75 2.75 0 0 0-3.891 0l-14.1 14.093a2.75 2.75 0 0 0 0 3.89L12.975 30.95a2.75 2.75 0 0 0 3.891 0l14.1-14.094a2.75 2.75 0 0 0 0-3.889"/><path class="front" d="M44.032 12.968 33.004 1.945a2.75 2.75 0 0 0-3.89 0l-14.1 14.093a2.75 2.75 0 0 0 0 3.89L26.041 30.95a2.75 2.75 0 0 0 3.89 0l14.1-14.094a2.75 2.75 0 0 0 0-3.889"/></svg>
+            <div>
+              <div class="word">Nex<span>ora</span></div>
+              <div class="co">www.nexora-travel.agency</div>
+            </div>
+          </div>
+          <div class="doc">
+            <div class="doc-type">Trip voucher</div>
+            <div class="doc-meta">Issued 9 Oct 2026</div>
+          </div>
+        </header>
+        <div class="hero-title">
+          <div class="lbl">Hội An · 1 day</div>
+          <h1>Hội An Old Town &amp; Lantern Evening</h1>
+        </div>
+        <span class="stamp">Confirmed</span>
+      </div>
+
+      <div class="ticket">
+        <div class="t-main">
+          <div class="t-band"><span>Entry · Tour booking</span><span>BK-EET0JBTH</span></div>
+          <div class="t-body">
+            <div class="route">
+              <div><div class="lbl">Departs</div><div class="big">29 OCT</div><div class="sub">Thu · 2026 · meet 15:30</div></div>
+              <div class="route-line"><span>1 day · Hội An</span></div>
+              <div class="right"><div class="lbl">Returns</div><div class="big">29 OCT</div><div class="sub">Thu · 2026</div></div>
+            </div>
+            <div class="t-grid">
+              <div><div class="lbl">Lead traveller</div><div class="v">Nora Dahl</div></div>
+              <div><div class="lbl">Travellers</div><div class="v">1 adult</div></div>
+              <div><div class="lbl">Booked</div><div class="v">9 Oct 2026</div></div>
+              <div><div class="lbl">Paid with</div><div class="v">Card (Stripe)</div></div>
+            </div>
+          </div>
+        </div>
+        <div class="t-stub">
+          <div class="t-band center">Admit 1</div>
+          <div class="stub-body">
+            <div class="lbl">Total paid</div>
+            <div class="money">$39</div>
+            <div class="tiny">Taxes and fees included</div>
+            <svg class="barcode" data-code="BK-EET0JBTH" preserveAspectRatio="none"></svg>
+            <div class="code">BK-EET0JBTH</div>
+          </div>
+        </div>
+      </div>
+      <p class="caption">Show the ticket at pickup — printed or on your phone</p>
+
+      <div class="body">
+        <section>
+          <h2>Your day · Ancient houses to a lantern-lit river</h2>
+          <ol class="tl4">
+            <li><time>15:30</time><span>Meet at the Hội An Ancient Town ticket booth, Nguyễn Thái Học street</span></li>
+            <li><time>16:00</time><span>Tấn Ký ancient merchant house and the Assembly Hall of Phúc Kiến</span></li>
+            <li><time>16:45</time><span>Japanese Covered Bridge (Chùa Cầu) at golden hour</span></li>
+            <li><time>17:30</time><span>Bánh mì Phượng, the sandwich stop before the lanterns light</span></li>
+            <li><time>18:30</time><span>Central Market wander as lanterns come on along the river</span></li>
+            <li><time>19:00</time><span>Basket-boat ride under the lantern-lit Thu Bồn riverbank</span></li>
+            <li><time>20:00</time><span>Release a floating lantern on the river</span></li>
+            <li><time>20:45</time><span>Free time before drop-off</span></li>
+          </ol>
+        </section>
+        <aside class="side">
+          <section>
+            <h2>Where to meet</h2>
+            <p class="meet">Hội An Ancient Town ticket booth, Nguyễn Thái Học street</p>
+            <p>Meet your guide here at 15:30.</p>
+          </section>
+          <section>
+            <h2>Included</h2>
+            <ul class="ticks">
+              <li>English-speaking guide</li>
+              <li>Ancient Town ticket (5 monuments)</li>
+              <li>Bánh mì Phượng tasting</li>
+              <li>Basket-boat ride</li>
+              <li>Floating lantern release</li>
+            </ul>
+          </section>
+          <section>
+            <h2>Not included</h2>
+            <ul class="dashes">
+              <li>Extra food/drinks beyond the tasting stop</li>
+              <li>Personal shopping</li>
+              <li>Tips</li>
+            </ul>
+          </section>
+        </aside>
+      </div>
+
+      <div class="band">
+        <div><h3>Cancellation</h3><p>Free cancellation until 28 Oct, 11:59 pm Vietnam time. No refund after that.</p></div>
+        <div><h3>Payment</h3><p>$39.00 paid by card on 9 Oct 2026. Test mode — no card is charged.</p></div>
+      </div>
+
+      <footer class="foot">
+        <span>Need help? Reply to your confirmation email or write to <b>tourism.platform.online@gmail.com</b></span>
+        <span>Printed 10 Oct 2026, 14:05 · Page 1 of 1</span>
+      </footer>
+    </section>
+    <div class="notes">
+      <b>Ghép từ:</b> bố cục tạp chí của phương án 3 (ảnh bìa lớn, tiêu đề serif trên ảnh) và tấm vé có cuống của phương án 2, đặt đè lên mép dưới ảnh như vé kẹp trên bìa sách.
+      <br><b>Thân trang:</b> lịch trình dạng dòng thời gian ở cột chính, cột phụ là điểm hẹn và bao gồm/không bao gồm; dải dưới là điều kiện huỷ và thanh toán.
+      <br><b>Lưu ý:</b> ảnh và dải teal tốn mực nhất trong bốn; tour không có ảnh thì ảnh bìa thay bằng nền màu thương hiệu.
+    </div>
+  </div>
+
+  <!-- ══════════ PHƯƠNG ÁN 5a = ghép nguyên văn 4 mảnh user chọn ══════════ -->
+  <div class="opt" data-opt="5a">
+    <div class="opt-head"><h2>5a · Ghép nguyên văn 4 mảnh</h2><button data-print="5a">In thử phương án này</button></div>
+    <section class="page p5 mag auto">
+      <div class="hero hero-img">
+        <header class="lh">
+          <div class="brand">
+            <svg class="mark" viewBox="0 0 46 33" aria-hidden="true"><path class="back" d="M30.966 12.968 19.938 1.945a2.75 2.75 0 0 0-3.891 0l-14.1 14.093a2.75 2.75 0 0 0 0 3.89L12.975 30.95a2.75 2.75 0 0 0 3.891 0l14.1-14.094a2.75 2.75 0 0 0 0-3.889"/><path class="front" d="M44.032 12.968 33.004 1.945a2.75 2.75 0 0 0-3.89 0l-14.1 14.093a2.75 2.75 0 0 0 0 3.89L26.041 30.95a2.75 2.75 0 0 0 3.89 0l14.1-14.094a2.75 2.75 0 0 0 0-3.889"/></svg>
+            <div>
+              <div class="word">Nex<span>ora</span></div>
+              <div class="co">www.nexora-travel.agency</div>
+            </div>
+          </div>
+          <div class="doc">
+            <div class="doc-type">Trip voucher</div>
+            <div class="doc-meta">Issued 9 Oct 2026</div>
+          </div>
+        </header>
+        <div class="hero-title">
+          <div class="lbl">Hội An · 1 day · Thu 29 Oct 2026</div>
+          <h1>Hội An Old Town &amp; Lantern Evening</h1>
+        </div>
+      </div>
+      <div class="ticket">
+        <div class="t-main">
+          <div class="t-band"><span>Entry · Tour booking</span><span>BK-EET0JBTH</span></div>
+          <div class="t-body">
+            <div class="t-title-row"><div class="t-title">Hội An Old Town &amp; Lantern Evening</div><span class="stamp">Confirmed</span></div>
+            <div class="route">
+              <div><div class="lbl">Departs</div><div class="big">29 OCT</div><div class="sub">Thu · 2026 · meet 15:30</div></div>
+              <div class="route-line"><span>1 day · Hội An</span></div>
+              <div class="right"><div class="lbl">Returns</div><div class="big">29 OCT</div><div class="sub">Thu · 2026</div></div>
+            </div>
+            <div class="t-grid">
+              <div><div class="lbl">Lead traveller</div><div class="v">Nora Dahl</div></div>
+              <div><div class="lbl">Travellers</div><div class="v">1 adult</div></div>
+              <div><div class="lbl">Booked</div><div class="v">9 Oct 2026</div></div>
+              <div><div class="lbl">Paid with</div><div class="v">Card (Stripe)</div></div>
+            </div>
+          </div>
+        </div>
+        <div class="t-stub">
+          <div class="t-band center">Admit 1</div>
+          <div class="stub-body">
+            <div class="lbl">Total paid</div>
+            <div class="money">$39</div>
+            <div class="tiny">Taxes and fees included</div>
+            <svg class="barcode" data-code="BK-EET0JBTH" preserveAspectRatio="none"></svg>
+            <div class="code">BK-EET0JBTH</div>
+          </div>
+        </div>
+      </div>
+      <div class="tear">Show the ticket at pickup — printed or on your phone</div>
+      <div class="three">
+        <section class="card">
+          <h2 class="sec-title">Where to meet</h2>
+          <p><b>Hội An Ancient Town ticket booth, Nguyễn Thái Học street</b></p>
+          <p>Meet your guide here at 15:30.</p>
+        </section>
+        <section class="card">
+          <h2 class="sec-title">What&#39;s included</h2>
+          <ul class="ticks">
+            <li>English-speaking guide</li>
+            <li>Ancient Town ticket (5 monuments)</li>
+            <li>Bánh mì Phượng tasting</li>
+            <li>Basket-boat ride</li>
+            <li>Floating lantern release</li>
+          </ul>
+          <p style="margin-top:2mm;color:var(--dim)">Not included: extra food/drinks, personal shopping, tips.</p>
+        </section>
+        <section class="card">
+          <h2 class="sec-title">Cancellation</h2>
+          <p>Free cancellation until 28 Oct, 11:59 pm Vietnam time. No refund after that.</p>
+          <p style="color:var(--dim)">$39.00 paid by card on 9 Oct 2026. Test mode — no card is charged.</p>
+        </section>
+      </div>
+      <section class="day">
+        <h2 class="sec-title">Your day · Ancient houses to a lantern-lit river</h2>
+        <ol class="tl3">
+          <li><time>15:30</time><span>Meet at the Ancient Town ticket booth</span></li>
+          <li><time>18:30</time><span>Central Market as the lanterns come on</span></li>
+          <li><time>16:00</time><span>Tấn Ký house and the Phúc Kiến Assembly Hall</span></li>
+          <li><time>19:00</time><span>Basket-boat ride on the Thu Bồn River</span></li>
+          <li><time>16:45</time><span>Japanese Covered Bridge at golden hour</span></li>
+          <li><time>20:00</time><span>Release a floating lantern</span></li>
+          <li><time>17:30</time><span>Bánh mì Phượng tasting</span></li>
+          <li><time>20:45</time><span>Free time before drop-off</span></li>
+        </ol>
+      </section>
+      <div class="two">
+        <section><h2 class="sec-title">Included</h2>
+          <ul class="ticks">
+            <li>English-speaking guide</li>
+            <li>Ancient Town entrance ticket (5-monument pass)</li>
+            <li>Bánh mì Phượng tasting</li>
+            <li>Basket-boat ride · floating lantern</li>
+          </ul>
+        </section>
+        <section><h2 class="sec-title">Not included</h2>
+          <ul class="dashes">
+            <li>Extra food/drinks beyond the tasting stop</li>
+            <li>Personal shopping</li>
+            <li>Tips</li>
+          </ul>
+        </section>
+      </div>
+      <div class="band">
+        <div><h3>Cancellation</h3><p>Free cancellation until 28 Oct, 11:59 pm Vietnam time. No refund after that.</p></div>
+        <div><h3>Payment</h3><p>$39.00 paid by card on 9 Oct 2026. Test mode — no card is charged.</p></div>
+      </div>
+      <footer class="foot">
+        <span>Need help? Reply to your confirmation email or write to <b>tourism.platform.online@gmail.com</b></span>
+        <span>Printed 10 Oct 2026, 14:05 · Page 1 of 1</span>
+      </footer>
+      <div class="a4-end"><span>Hết khổ A4 — phần dưới vạch này sang trang 2</span></div>
+    </section>
+    <div class="notes">
+      <b>Đúng thứ tự user chọn:</b> bìa ảnh (phương án 3) → vé có cuống và hàng ba ô (phương án 2) → lịch trình và bao gồm (phương án 3) → dải huỷ và thanh toán (phương án 4).
+      <br><b>Vấn đề:</b> dài hơn khổ A4 (vạch đỏ), và lặp nội dung — ô "What's included" trùng khối Included/Not included, ô "Cancellation" trùng dải cuối.
+    </div>
+  </div>
+
+  <!-- ══════════ PHƯƠNG ÁN 5b = 4 mảnh, bỏ trùng, vừa một trang ══════════ -->
+  <div class="opt" data-opt="5b">
+    <div class="opt-head"><h2>5b · 4 mảnh, bỏ trùng, vừa một trang</h2><button data-print="5b">In thử phương án này</button></div>
+    <section class="page p5 p5b mag">
+      <div class="hero hero-img">
+        <header class="lh">
+          <div class="brand">
+            <svg class="mark" viewBox="0 0 46 33" aria-hidden="true"><path class="back" d="M30.966 12.968 19.938 1.945a2.75 2.75 0 0 0-3.891 0l-14.1 14.093a2.75 2.75 0 0 0 0 3.89L12.975 30.95a2.75 2.75 0 0 0 3.891 0l14.1-14.094a2.75 2.75 0 0 0 0-3.889"/><path class="front" d="M44.032 12.968 33.004 1.945a2.75 2.75 0 0 0-3.89 0l-14.1 14.093a2.75 2.75 0 0 0 0 3.89L26.041 30.95a2.75 2.75 0 0 0 3.89 0l14.1-14.094a2.75 2.75 0 0 0 0-3.889"/></svg>
+            <div>
+              <div class="word">Nex<span>ora</span></div>
+              <div class="co">www.nexora-travel.agency</div>
+            </div>
+          </div>
+          <div class="doc">
+            <div class="doc-type">Trip voucher</div>
+            <div class="doc-meta">Issued 9 Oct 2026</div>
+          </div>
+        </header>
+        <div class="hero-title">
+          <div class="lbl">Hội An · 1 day · Thu 29 Oct 2026</div>
+          <h1>Hội An Old Town &amp; Lantern Evening</h1>
+        </div>
+      </div>
+      <div class="ticket">
+        <div class="t-main">
+          <div class="t-band"><span>Entry · Tour booking</span><span>BK-EET0JBTH</span></div>
+          <div class="t-body">
+            <div class="t-title-row"><div class="t-title">Hội An Old Town &amp; Lantern Evening</div><span class="stamp">Confirmed</span></div>
+            <div class="route">
+              <div><div class="lbl">Departs</div><div class="big">29 OCT</div><div class="sub">Thu · 2026 · meet 15:30</div></div>
+              <div class="route-line"><span>1 day · Hội An</span></div>
+              <div class="right"><div class="lbl">Returns</div><div class="big">29 OCT</div><div class="sub">Thu · 2026</div></div>
+            </div>
+            <div class="t-grid">
+              <div><div class="lbl">Lead traveller</div><div class="v">Nora Dahl</div></div>
+              <div><div class="lbl">Travellers</div><div class="v">1 adult</div></div>
+              <div><div class="lbl">Booked</div><div class="v">9 Oct 2026</div></div>
+              <div><div class="lbl">Paid with</div><div class="v">Card (Stripe)</div></div>
+            </div>
+          </div>
+        </div>
+        <div class="t-stub">
+          <div class="t-band center">Admit 1</div>
+          <div class="stub-body">
+            <div class="lbl">Total paid</div>
+            <div class="money">$39</div>
+            <div class="tiny">Taxes and fees included</div>
+            <svg class="barcode" data-code="BK-EET0JBTH" preserveAspectRatio="none"></svg>
+            <div class="code">BK-EET0JBTH</div>
+          </div>
+        </div>
+      </div>
+      <div class="tear">Show the ticket at pickup — printed or on your phone</div>
+      <section class="day">
+        <h2 class="sec-title">Your day · Ancient houses to a lantern-lit river</h2>
+        <ol class="tl3">
+          <li><time>15:30</time><span>Meet at the Ancient Town ticket booth</span></li>
+          <li><time>18:30</time><span>Central Market as the lanterns come on</span></li>
+          <li><time>16:00</time><span>Tấn Ký house and the Phúc Kiến Assembly Hall</span></li>
+          <li><time>19:00</time><span>Basket-boat ride on the Thu Bồn River</span></li>
+          <li><time>16:45</time><span>Japanese Covered Bridge at golden hour</span></li>
+          <li><time>20:00</time><span>Release a floating lantern</span></li>
+          <li><time>17:30</time><span>Bánh mì Phượng tasting</span></li>
+          <li><time>20:45</time><span>Free time before drop-off</span></li>
+        </ol>
+      </section>
+      <div class="two">
+        <section><h2 class="sec-title">Included</h2>
+          <ul class="ticks">
+            <li>English-speaking guide</li>
+            <li>Ancient Town entrance ticket (5-monument pass)</li>
+            <li>Bánh mì Phượng tasting</li>
+            <li>Basket-boat ride · floating lantern</li>
+          </ul>
+        </section>
+        <section><h2 class="sec-title">Not included</h2>
+          <ul class="dashes">
+            <li>Extra food/drinks beyond the tasting stop</li>
+            <li>Personal shopping</li>
+            <li>Tips</li>
+          </ul>
+        </section>
+      </div>
+      <div class="band">
+        <div><h3>Where to meet</h3><p><b>Hội An Ancient Town ticket booth, Nguyễn Thái Học street</b> · meet your guide at 15:30.</p></div>
+        <div><h3>Cancellation</h3><p>Free cancellation until 28 Oct, 11:59 pm Vietnam time. No refund after that.</p></div>
+        <div><h3>Payment</h3><p>$39.00 paid by card on 9 Oct 2026. Test mode — no card is charged.</p></div>
+      </div>
+      <footer class="foot">
+        <span>Need help? Reply to your confirmation email or write to <b>tourism.platform.online@gmail.com</b></span>
+        <span>Printed 10 Oct 2026, 14:05 · Page 1 of 1</span>
+      </footer>
+    </section>
+    <div class="notes">
+      <b>Giữ đủ 4 mảnh</b> theo thứ tự: bìa ảnh → vé có cuống → lịch trình và bao gồm → dải cuối.
+      <br><b>Đổi để vừa A4 và hết trùng:</b> bỏ hàng ba ô của phương án 2 (nội dung đã có ở dưới); "Where to meet" vào dải cuối thành cột thứ ba; ảnh bìa thấp hơn (62 mm), tên tour trong vé nhỏ lại.
+    </div>
+  </div>
+</main>
+
+<script>
+  // Mã vạch giả, tất định theo mã đơn — cùng tinh thần với ticketBarcodeWidths của web.
+  function barWidths(code, count) {
+    let seed = 0;
+    for (const ch of code) seed = (seed * 31 + ch.charCodeAt(0)) >>> 0;
+    const widths = [];
+    for (let i = 0; i < count; i++) {
+      seed = (Math.imul(seed, 1103515245) + 12345) >>> 0;
+      widths.push(1 + ((seed >>> 16) % 3));
+    }
+    return widths;
+  }
+  document.querySelectorAll('svg.barcode').forEach((svg) => {
+    const widths = barWidths(svg.dataset.code, 61);
+    let x = 0, rects = '';
+    widths.forEach((w, i) => { if (i % 2 === 0) rects += `<rect x="${x}" y="0" width="${w}" height="40"/>`; x += w; });
+    svg.setAttribute('viewBox', `0 0 ${x} 40`);
+    svg.innerHTML = rects;
+  });
+
+  const stage = document.getElementById('stage');
+  const zoom = document.getElementById('zoom');
+  const params = new URLSearchParams(location.search);
+  if (params.get('z')) zoom.value = params.get('z');
+  if (params.get('only')) {
+    document.querySelectorAll('.opt').forEach((o) => { if (o.dataset.opt !== params.get('only')) o.remove(); });
+  }
+  const applyZoom = () => stage.style.setProperty('--z', zoom.value);
+  zoom.addEventListener('change', applyZoom); applyZoom();
+  document.getElementById('bw').addEventListener('change', (e) => document.body.classList.toggle('bw', e.target.checked));
+
+  document.querySelectorAll('[data-print]').forEach((btn) => btn.addEventListener('click', () => {
+    const n = btn.dataset.print;
+    document.body.classList.add('print-one');
+    document.querySelectorAll('.opt').forEach((o) => o.classList.toggle('printing', o.dataset.opt === n));
+    window.print();
+  }));
+  document.getElementById('print-all').addEventListener('click', () => window.print());
+  window.addEventListener('afterprint', () => {
+    document.body.classList.remove('print-one');
+    document.querySelectorAll('.opt').forEach((o) => o.classList.remove('printing'));
+  });
+</script>
+</body>
+</html>

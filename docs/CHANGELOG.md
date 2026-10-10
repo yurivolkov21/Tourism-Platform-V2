@@ -8,6 +8,59 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-10-10 — Duyệt thiết kế G40 bản in và file xuất (ADR-0057, ADR-0034 AMEND 3, spec); thử lại P7 B và C 3/3; ghi G41
+
+**Thử lại P7 B và C trên production** (đóng CÒN TREO của entry 09/10 ngay dưới): sau push
+`d6555616` ba đèn xanh — Actions 12m26s, Render live, Vercel READY. User thử lại 3/3 đạt: nhãn
+TODAY nằm giữa vạch nối và link "Full itinerary" mở tab Itinerary đúng chỗ, kể cả Back rồi bấm lại
+(cái "không mở tab" của 09/10 là trang dừng sai chỗ do Lenis, không tái hiện được sau bản vá);
+toast "Thanks for your review" khi gửi lại review thử trên BK-J9AUYIYB; receipt voucher BK-7D1FHRQG
+in "$867.00" trên "−$867.00". Đã dọn ở máy: worktree `booking-pages-redesign` và `booking-voucher`,
+sáu nhánh (ba nhánh đã merge, ba nhánh `backup/p7*`), scratchpad 271 MB.
+
+**G40 — thiết kế bản in và file xuất, duyệt bằng mắt trong chat.** Rà sáu đầu ra (voucher in, hoá
+đơn chờ in, báo cáo tháng in, Excel báo cáo, CSV bookings, CSV subscribers): cả ba bản in là trang
+web đem in chứ không phải tờ giấy. Tham khảo voucher của Musement, GetYourGuide và boarding pass in
+khổ A4; bản thảo là trang A4 thật với dữ liệu prod (BK-EET0JBTH, tháng 9/2026). User chốt:
+
+| Đầu ra | Bản chốt |
+| --- | --- |
+| Voucher in | 5b — user tự ghép: bìa ảnh tour, tấm vé có cuống, lịch trình hai cột cùng Included, dải Where to meet · Cancellation · Payment |
+| Hoá đơn chờ in | B1 — cùng họ 5b, tấm vé ở trạng thái chờ, cuống "Not yet a voucher" kèm giờ nhả đơn |
+| Báo cáo tháng in | C2 — dashboard trên giấy, thác nước lãi lỗ SVG |
+| Excel báo cáo | D1 — Summary dashboard có thanh `REPT` trong ô |
+| Xuất danh sách | Excel thay CSV |
+
+Phát hiện khi dựng và đo:
+
+- **CSV không mở được bằng bấm đúp trên Windows tiếng Việt** (đo bằng Excel 16 trên máy user,
+  dấu thập phân `,`): cả dòng dồn vào cột A. Mẹo `sep=,` tách được cột nhưng Excel bỏ BOM, "Hội
+  An" thành "Há»™i An", tiền thành chữ. Từ đó danh sách chuyển sang Excel (ADR-0034 AMEND 3).
+- **Ngày trong Excel đang xuất ra "5 Thg10 2026"** trên máy tiếng Việt: định dạng `d mmm yyyy`
+  lấy tên tháng theo Windows; từ nay ép `[$-409]`.
+- **Teal thương hiệu trượt ngưỡng chroma** của bộ kiểm bảng màu (dataviz) khi dùng cho biểu đồ;
+  cặp `chart-gain` / `chart-cost` mới qua đủ các bài kiểm, chi phí có thêm vân 45° cho bản in
+  trắng đen.
+- Panel xem file của app không tải ảnh từ mạng và không chạy script: bản thảo gửi user kèm ảnh
+  chụp bằng Edge headless (bản HTML nhúng ảnh base64 cùng mã vạch vẽ sẵn).
+
+Bản ghi: [ADR-0057](adr/0057-print-documents.md) (bản in là component chỉ-in, trang in `doc`
+A4 lề 0 để trình duyệt thôi in ngày giờ và URL, khung đầu và chân trang chung, token màu mới),
+ADR-0034 AMEND 3, [spec G40](specs/2026-10-10-print-and-export-redesign-design.md), bốn bản thảo ở
+`docs/design/mockups/` (`print-voucher`, `print-receipt`, `print-report` `.src.html`,
+`excel-report-d1.xlsx`). Spec chia ba phần thi công: web in · admin in · Excel.
+
+**G41 (mới):** bộ dọn ảnh trên production gần như không chạy — `media_garbage` còn 19 mục
+`attempts = 0`, log từ 15/09 chỉ có một lượt (03/10). Gốc: API Render gói free ngủ sau 15 phút mà
+worker chạy chung tiến trình, nên ba job hằng ngày 03:00–04:00 UTC chỉ chạy khi đúng lúc ấy máy
+đang thức. Đề xuất chạy bù khi worker khởi động; chưa duyệt.
+
+**CÒN TREO:**
+
+- [ ] User duyệt spec G40, rồi plan và thi công Phần 1 (web in).
+- [ ] G41: chốt hướng vá, AMEND ADR-0024 trước code, xong trước lượt seed lại ~03/11.
+- Docs và bản thảo, không đổi mã; không migration, không env.
+
 ## 2026-10-09 — Thử tay P7 phần B và C trên production; năm bản vá (nhánh `fix/p7-journey-itinerary`)
 
 **Thử tay** (sau deploy `072df39c`; tài khoản seed nora.dahl, user bấm, session gốc soát DB chỉ

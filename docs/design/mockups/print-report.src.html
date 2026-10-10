@@ -1,0 +1,565 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>G40 · Bản in báo cáo tháng — phương án</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Literata:opsz,wght@7..72,400;7..72,500;7..72,600;7..72,700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --primary: #2e6e66;
+    --primary-emphasis: #1f5851;
+    --hero: #1a2422;
+    --paper-tint: #eef5f3;
+    --ink: #1f252b;
+    --dim: #5f646b;
+    --rule: #dcdfe2;
+    --band: #f0f3f5;
+    --stage: #e4e7e9;
+    --serif: 'Literata', Georgia, serif;
+    --sans: 'Archivo', system-ui, sans-serif;
+    --mono: 'IBM Plex Mono', ui-monospace, monospace;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body { background: var(--stage); font-family: var(--sans); color: var(--ink); }
+
+  /* ── Khung xem bản thảo (không in) ───────────────────────────── */
+  .chrome {
+    position: sticky; top: 0; z-index: 10;
+    display: flex; flex-wrap: wrap; gap: 12px 20px; align-items: center;
+    padding: 12px 20px; background: #fff; border-bottom: 1px solid var(--rule);
+    font-size: 13px;
+  }
+  .chrome h1 { font: 600 15px var(--sans); margin: 0 12px 0 0; }
+  .chrome label { display: inline-flex; gap: 6px; align-items: center; cursor: pointer; }
+  .chrome select, .chrome button {
+    font: 500 12.5px var(--sans); padding: 5px 10px; border: 1px solid var(--rule);
+    border-radius: 6px; background: #fff; cursor: pointer;
+  }
+  .chrome .hint { color: var(--dim); font-size: 12px; }
+  .stage {
+    display: flex; gap: 28px; align-items: flex-start; padding: 28px 24px 60px;
+    overflow-x: auto; zoom: var(--z, 0.62);
+  }
+  .opt { flex: none; display: flex; flex-direction: column; gap: 14px; }
+  .opt-head { display: flex; justify-content: space-between; align-items: baseline; gap: 16px; }
+  .opt-head h2 { font: 600 22px var(--sans); margin: 0; }
+  .opt-head button {
+    font: 500 15px var(--sans); padding: 7px 14px; border-radius: 8px; border: 1px solid #b9c0c4;
+    background: #fff; cursor: pointer;
+  }
+  .notes {
+    width: 210mm; font-size: 16px; line-height: 1.5; color: #30363c;
+    background: #fff; border-radius: 10px; padding: 14px 18px; border: 1px solid var(--rule);
+  }
+  .notes b { color: var(--ink); }
+  body.bw .page { filter: grayscale(1); }
+
+  /* ── Trang A4 dùng chung ─────────────────────────────────────── */
+  .page {
+    width: 210mm; height: 297mm; background: #fff; position: relative; overflow: hidden;
+    padding: 14mm 15mm 11mm; display: flex; flex-direction: column;
+    box-shadow: 0 1px 2px rgba(0,0,0,.08), 0 10px 30px rgba(0,0,0,.10);
+    font-size: 9.5pt; line-height: 1.45;
+  }
+  .page h1, .page h2, .page h3, .page p, .page ul, .page ol, .page dl, .page dd { margin: 0; }
+  .page ul, .page ol { padding: 0; list-style: none; }
+
+  /* Letterhead chung (cùng khung, khác giọng) */
+  .lh { display: flex; justify-content: space-between; align-items: flex-start; gap: 10mm; }
+  .brand { display: flex; align-items: center; gap: 3mm; }
+  .mark { width: 11mm; height: auto; flex: none; }
+  .mark .back { fill: var(--primary); }
+  .mark .front { fill: var(--ink); }
+  .word { font: 600 17pt/1 var(--serif); letter-spacing: -0.01em; }
+  .word span { color: var(--primary-emphasis); }
+  .co { font-size: 7.5pt; color: var(--dim); margin-top: 1.2mm; }
+  .doc { text-align: right; }
+  .doc-type { font: 600 7.5pt var(--mono); letter-spacing: .18em; text-transform: uppercase; color: var(--primary-emphasis); }
+  .doc-no { font: 600 13pt var(--mono); letter-spacing: .04em; margin-top: 1mm; }
+  .doc-meta { font-size: 7.5pt; color: var(--dim); margin-top: .5mm; }
+
+  .foot {
+    margin-top: auto; padding-top: 3mm; border-top: 0.6pt solid var(--rule);
+    display: flex; justify-content: space-between; gap: 8mm; font-size: 7.5pt; color: var(--dim);
+  }
+  .foot b { color: var(--ink); font-weight: 600; }
+
+  .lbl { font: 600 6.8pt var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--dim); }
+  .mono { font-family: var(--mono); }
+  .barcode { display: block; color: var(--ink); }
+  .barcode rect { fill: currentColor; }
+
+  /* ════ Phương án 1 — Tài liệu một trang (kiểu Musement / GetYourGuide) ════ */
+  .p1 .brand-rule { height: 1.2mm; background: var(--primary); margin: 5mm 0 7mm; border-radius: 1mm; }
+  .p1 .kicker { display: flex; align-items: center; gap: 3mm; }
+  .p1 .kicker .lbl { color: var(--primary-emphasis); }
+  .badge {
+    font: 600 6.8pt var(--mono); letter-spacing: .14em; text-transform: uppercase;
+    border: 0.8pt solid currentColor; color: var(--primary-emphasis); padding: .6mm 2mm; border-radius: 4mm;
+  }
+  .p1 h1 { font: 600 24pt/1.15 var(--serif); margin-top: 2.5mm; letter-spacing: -0.01em; }
+  .p1 .facts {
+    display: grid; grid-template-columns: 1.3fr .7fr .8fr 1fr; margin-top: 7mm;
+    border-top: 0.6pt solid var(--rule); border-bottom: 0.6pt solid var(--rule);
+  }
+  .p1 .facts > div { padding: 3mm 4mm 3.2mm; }
+  .p1 .facts > div + div { border-left: 0.6pt solid var(--rule); }
+  .p1 .facts dd { font: 600 11pt var(--sans); margin-top: 1mm; }
+  .p1 .main { display: grid; grid-template-columns: 1fr 62mm; gap: 8mm; margin-top: 7mm; }
+  .p1 h2 { font: 600 11pt var(--serif); margin-bottom: 2mm; }
+  .p1 .block + .block { margin-top: 6mm; }
+  .p1 .meet { font-weight: 600; font-size: 10.5pt; }
+  .p1 .dim { color: var(--dim); }
+  .tl li { display: grid; grid-template-columns: 13mm 1fr; gap: 2mm; padding: 1.1mm 0; border-bottom: 0.4pt dotted var(--rule); }
+  .tl li:last-child { border-bottom: 0; }
+  .tl time { font: 500 8.5pt var(--mono); color: var(--primary-emphasis); padding-top: .2mm; }
+  .p1 .scan {
+    border: 0.8pt solid var(--ink); border-radius: 3mm; padding: 5mm 5mm 4.5mm; align-self: start;
+    text-align: center;
+  }
+  .p1 .scan .code { font: 600 15pt var(--mono); letter-spacing: .06em; margin: 2.5mm 0 3mm; }
+  .p1 .scan .barcode { width: 100%; height: 15mm; }
+  .p1 .scan .admit {
+    margin-top: 3.5mm; display: inline-block; font: 600 8pt var(--mono); letter-spacing: .16em;
+    text-transform: uppercase; border-top: 0.6pt solid var(--rule); padding-top: 2.5mm; width: 100%;
+  }
+  .p1 .scan .tiny { font-size: 7.5pt; color: var(--dim); margin-top: 1.5mm; }
+  .p1 .incl { display: grid; grid-template-columns: 1fr 1fr; gap: 8mm; margin-top: 7mm; padding-top: 5mm; border-top: 0.6pt solid var(--rule); }
+  .ticks li, .dashes li { position: relative; padding-left: 4.5mm; margin-top: 1mm; }
+  .ticks li::before { content: '✓'; position: absolute; left: 0; color: var(--primary); font-weight: 700; }
+  .dashes li::before { content: '–'; position: absolute; left: .5mm; color: var(--dim); }
+  .p1 .terms { display: grid; grid-template-columns: 1fr 1fr; gap: 8mm; margin-top: 6mm; padding: 4mm 5mm; background: var(--band); border-radius: 2mm; }
+  .p1 .terms h3 { font: 600 6.8pt var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--dim); margin-bottom: 1mm; }
+
+  /* ════ Phương án 2 — Vé có cuống (kiểu boarding pass, khớp tấm vé trên web) ════ */
+  .p2 .lh { margin-bottom: 7mm; }
+  .ticket {
+    display: grid; grid-template-columns: 1fr 52mm; border: 0.9pt solid var(--primary);
+    border-radius: 3.5mm; overflow: hidden; position: relative;
+  }
+  .t-band {
+    background: var(--primary); color: #fff; display: flex; justify-content: space-between; align-items: center;
+    padding: 2.4mm 5mm; font: 600 7.5pt var(--mono); letter-spacing: .18em; text-transform: uppercase;
+  }
+  .t-band.center { justify-content: center; }
+  .t-main { border-right: 0.9pt dashed var(--primary); position: relative; }
+  .t-main::before, .t-main::after {
+    content: ''; position: absolute; right: -2.6mm; width: 4.6mm; height: 4.6mm; border-radius: 50%;
+    background: #fff; border: 0.9pt solid var(--primary); z-index: 2;
+  }
+  .t-main::before { top: -2.6mm; } .t-main::after { bottom: -2.6mm; }
+  .t-body { padding: 4.5mm 6mm 0; }
+  .t-title-row { display: flex; justify-content: space-between; gap: 5mm; align-items: flex-start; }
+  .p2 h1 { font: 600 17pt/1.2 var(--serif); }
+  .stamp {
+    flex: none; transform: rotate(3deg); border: 1.2pt solid var(--primary); color: var(--primary);
+    font: 600 8pt var(--serif); letter-spacing: .2em; text-transform: uppercase; padding: 1.4mm 3mm; border-radius: 1.2mm;
+    outline: 0.5pt solid var(--primary); outline-offset: .8mm;
+  }
+  .route { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 4mm; margin: 4mm 0 4mm; }
+  .route .big { font: 600 20pt/1 var(--mono); letter-spacing: .02em; margin-top: 1mm; }
+  .route .sub { font-size: 7.5pt; color: var(--dim); margin-top: 1mm; }
+  .route .right { text-align: right; }
+  .route-line { position: relative; text-align: center; font-size: 7.8pt; color: var(--primary-emphasis); font-weight: 600; }
+  .route-line::before { content: ''; position: absolute; left: 0; right: 0; top: 50%; border-top: 0.8pt dashed #9fb5b1; }
+  .route-line span { position: relative; background: #fff; padding: 0 2.5mm; }
+  .t-grid { display: grid; grid-template-columns: repeat(4, 1fr); margin: 0 -6mm; border-top: 0.6pt solid var(--rule); }
+  .t-grid > div { padding: 2.6mm 0 3mm 6mm; }
+  .t-grid > div + div { border-left: 0.6pt solid var(--rule); padding-left: 3.5mm; }
+  .t-grid .v { font-weight: 600; margin-top: .8mm; }
+  .t-stub .stub-body { padding: 4mm 5mm; display: flex; flex-direction: column; height: calc(100% - 9.5mm); }
+  .t-stub .money { font: 600 20pt var(--sans); margin-top: .5mm; }
+  .t-stub .tiny { font-size: 7.3pt; color: var(--dim); }
+  .t-stub .barcode { width: 100%; height: 12mm; margin-top: auto; }
+  .t-stub .code { font: 600 8.5pt var(--mono); letter-spacing: .12em; text-align: center; margin-top: 1.5mm; }
+  .tear { display: flex; align-items: center; gap: 3mm; margin: 4mm 0 6mm; color: var(--dim); font-size: 7.5pt; }
+  .tear::before, .tear::after { content: ''; flex: 1; border-top: 0.8pt dashed #b9c0c4; }
+  .p2 .three { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6mm; }
+  .p2 .card { border: 0.6pt solid var(--rule); border-radius: 2.5mm; padding: 4mm; }
+  .p2 h2 { font: 600 10.5pt var(--serif); margin-bottom: 2mm; }
+  .p2 .card p + p { margin-top: 1.5mm; }
+  .p2 .day { margin-top: 6mm; }
+  .p2 .day-head { display: flex; align-items: baseline; justify-content: space-between; border-bottom: 0.6pt solid var(--rule); padding-bottom: 2mm; margin-bottom: 1.5mm; }
+  .p2 .tl2 { columns: 2; column-gap: 8mm; }
+  .p2 .tl2 li { break-inside: avoid; display: grid; grid-template-columns: 12mm 1fr; gap: 2mm; padding: 1.2mm 0; }
+  .p2 .tl2 time { font: 500 8.5pt var(--mono); color: var(--primary-emphasis); }
+
+  /* ════ Phương án 3 — Tạp chí có ảnh (giọng thương hiệu) ════ */
+  .p3 { padding-top: 11mm; }
+  .mag .hero {
+    position: relative; height: 84mm; border-radius: 3mm; overflow: hidden; color: #fff;
+    background-color: var(--hero); background-position: center; background-size: cover; background-repeat: no-repeat;
+    padding: 6mm 7mm; display: flex; flex-direction: column;
+    -webkit-print-color-adjust: exact; print-color-adjust: exact;
+  }
+  .mag .hero::before {
+    content: ''; position: absolute; inset: 0;
+    background: linear-gradient(180deg, rgba(10,18,16,.55) 0%, rgba(10,18,16,.05) 38%, rgba(10,18,16,.75) 100%);
+  }
+  .mag .hero > * { position: relative; }
+  .mag .hero .mark .front { fill: #fff; }
+  .mag .hero .mark .back { fill: #8fd0c6; }
+  .mag .hero .word span { color: #a9e0d7; }
+  .mag .hero .co, .mag .hero .doc-meta { color: rgba(255,255,255,.8); }
+  .mag .hero .doc-type { color: #a9e0d7; }
+  .mag .hero-title { margin-top: auto; }
+  .mag .hero-title .lbl { color: rgba(255,255,255,.85); }
+  .mag h1 { font: 600 27pt/1.1 var(--serif); margin-top: 2mm; letter-spacing: -0.01em; }
+  .p3 .top { display: grid; grid-template-columns: 1fr 60mm; gap: 8mm; margin-top: 7mm; }
+  .p3 .dl { display: grid; grid-template-columns: 30mm 1fr; row-gap: 2.6mm; column-gap: 4mm; align-content: start; }
+  .p3 .dl dt { padding-top: .6mm; }
+  .p3 .dl dd { font-weight: 500; }
+  .p3 .pass { background: var(--paper-tint); border-radius: 3mm; padding: 9mm 5mm 5mm; text-align: center; position: relative; }
+  .p3 .pass .stamp { position: absolute; top: -3.5mm; right: 4mm; background: #fff; }
+  .p3 .pass .code { font: 600 14pt var(--mono); letter-spacing: .06em; margin: 1.5mm 0 3mm; }
+  .p3 .pass .barcode { width: 100%; height: 13mm; }
+  .p3 .pass .tiny { font-size: 7.3pt; color: var(--dim); margin-top: 2mm; }
+  .p3 h2 { font: 600 11pt var(--serif); margin-bottom: 2.5mm; }
+  .p3 .day { margin-top: 7mm; }
+  .p3 .tl3 { position: relative; display: grid; grid-template-columns: 1fr 1fr; column-gap: 8mm; }
+  .p3 .tl3 li { display: grid; grid-template-columns: 3mm 12mm 1fr; gap: 1.5mm; padding: 1.1mm 0; align-items: start; }
+  .p3 .tl3 li::before { content: ''; width: 1.8mm; height: 1.8mm; border-radius: 50%; background: var(--primary); margin-top: 1.4mm; }
+  .p3 .tl3 time { font: 500 8.3pt var(--mono); color: var(--primary-emphasis); }
+  .p3 .two { display: grid; grid-template-columns: 1fr 1fr; gap: 8mm; margin-top: 6mm; }
+  .p3 .note { margin-top: 6mm; border-left: 1.2mm solid var(--primary); padding: 2mm 0 2mm 4mm; }
+  .p3 .note p + p { margin-top: 1mm; color: var(--dim); }
+
+  .hero-img { background-image: url('https://res.cloudinary.com/dbkgeehow/image/upload/c_fill,w_1400,h_760,q_auto,f_jpg/v1787024520/tourism/catalog/tour/hoi-an-lantern-evening/hero.jpg'); }
+
+  /* ════ Phương án 4 — Tạp chí có ảnh + vé có cuống nằm đè mép ảnh ════ */
+  .p4 { padding-top: 11mm; }
+  .p4 .hero { height: 94mm; padding-bottom: 24mm; }
+  .p4 h1 { font-size: 28pt; line-height: 1.08; max-width: 150mm; }
+  .p4 .hero .stamp {
+    position: absolute; right: 7mm; top: 21mm; color: #fff; border-color: #fff; outline-color: #fff;
+    background: rgba(10,18,16,.25);
+  }
+  .p4 .t-grid { grid-template-columns: 1.3fr 1fr 1fr 1.1fr; }
+  .p4 .t-stub .barcode { height: 10mm; margin-top: 2.5mm; }
+  .p4 .ticket {
+    background: #fff; margin: -18mm 5mm 0; position: relative; z-index: 2;
+    box-shadow: 0 1.5mm 5mm rgba(10,18,16,.18);
+  }
+  .p4 .t-main::before { display: none; }
+  .p4 .t-body { padding: 4mm 6mm 0; }
+  .p4 .route { margin: 0 0 4mm; }
+  .p4 .caption { text-align: center; font-size: 7.5pt; color: var(--dim); margin-top: 2.5mm; }
+  .p4 .body { display: grid; grid-template-columns: 1fr 60mm; gap: 9mm; margin-top: 7mm; }
+  .p4 h2 { font: 600 11pt var(--serif); margin-bottom: 2.5mm; }
+  .p4 .tl4 { position: relative; }
+  .p4 .tl4::before { content: ''; position: absolute; left: .85mm; top: 2.5mm; bottom: 2.5mm; border-left: 0.7pt solid #b9d3cf; }
+  .p4 .tl4 li { position: relative; display: grid; grid-template-columns: 12mm 1fr; gap: 2mm; padding: 1.25mm 0 1.25mm 5.5mm; }
+  .p4 .tl4 li::before {
+    content: ''; position: absolute; left: 0; top: 2.35mm; width: 1.8mm; height: 1.8mm; border-radius: 50%;
+    background: #fff; border: 0.8pt solid var(--primary);
+  }
+  .p4 .tl4 li:first-child::before, .p4 .tl4 li:last-child::before { background: var(--primary); }
+  .p4 .tl4 time { font: 500 8.5pt var(--mono); color: var(--primary-emphasis); }
+  .p4 .side section + section { margin-top: 5mm; }
+  .p4 .side .meet { font-weight: 600; }
+  .p4 .side p + p { margin-top: 1mm; color: var(--dim); }
+  .p4 .band {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 8mm; margin-top: 6mm; padding: 4mm 5mm;
+    background: var(--paper-tint); border-radius: 2.5mm;
+  }
+  .p4 .band h3 { font: 600 6.8pt var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--primary-emphasis); margin-bottom: 1mm; }
+
+  /* ════ Phương án 5 — ghép theo lựa chọn của user: bìa (3) → vé (2) → lịch trình (3) → dải (4) ════ */
+  .p5 { padding-top: 11mm; }
+  .p5 .hero { height: 84mm; }
+  .p5b .hero { height: 62mm; }
+  .p5 .ticket { margin-top: 7mm; }
+  .p5 .t-title { font: 600 17pt/1.2 var(--serif); color: var(--ink); }
+  .p5b .t-title { font-size: 14pt; }
+  .p5b .t-body { padding-top: 3.5mm; }
+  .p5b .route { margin: 3mm 0 3mm; }
+  .p5 .three { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6mm; }
+  .p5 .card { border: 0.6pt solid var(--rule); border-radius: 2.5mm; padding: 4mm; }
+  .p5 .card p + p { margin-top: 1.5mm; }
+  .p5 .sec-title { font: 600 11pt var(--serif); margin-bottom: 2.5mm; }
+  .p5 .day { margin-top: 6mm; }
+  .p5b .day { margin-top: 1mm; }
+  .p5 .tl3 { display: grid; grid-template-columns: 1fr 1fr; column-gap: 8mm; }
+  .p5 .tl3 li { display: grid; grid-template-columns: 3mm 12mm 1fr; gap: 1.5mm; padding: 1.1mm 0; align-items: start; }
+  .p5 .tl3 li::before { content: ''; width: 1.8mm; height: 1.8mm; border-radius: 50%; background: var(--primary); margin-top: 1.4mm; }
+  .p5 .tl3 time { font: 500 8.3pt var(--mono); color: var(--primary-emphasis); }
+  .p5 .two { display: grid; grid-template-columns: 1fr 1fr; gap: 8mm; margin-top: 6mm; }
+  .p5b .two { margin-top: 5mm; }
+  .p5 .band {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 8mm; margin-top: 6mm; padding: 4mm 5mm;
+    background: var(--paper-tint); border-radius: 2.5mm;
+  }
+  .p5b .band { grid-template-columns: 1.15fr 1fr 1fr; gap: 6mm; }
+  .p5 .band h3 { font: 600 6.8pt var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--primary-emphasis); margin-bottom: 1mm; }
+  .p5 .band b { font-weight: 600; }
+  /* 5a: trang không chặn chiều cao để thấy phần tràn; vạch đỏ = hết khổ A4. */
+  .page.auto { height: auto; min-height: 297mm; overflow: visible; }
+  .a4-end {
+    position: absolute; left: -8mm; right: -8mm; top: 297mm; border-top: 0.8mm dashed #d23b3b; z-index: 5;
+  }
+  .a4-end span {
+    position: absolute; right: 8mm; top: -6mm; background: #d23b3b; color: #fff; font: 600 8pt var(--sans);
+    padding: .8mm 2.5mm; border-radius: 1mm;
+  }
+
+  /* ── In thật: bỏ khung xem, khổ A4 không lề để trình duyệt không in ngày giờ/URL ── */
+  @page { size: A4; margin: 0; }
+  @media print {
+    body { background: #fff; }
+    .chrome, .notes, .opt-head { display: none !important; }
+    .stage { zoom: 1 !important; display: block; padding: 0; overflow: visible; }
+    .opt { display: block; }
+    .page { box-shadow: none; break-after: page; }
+    body.print-one .opt:not(.printing) { display: none; }
+    * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  }
+
+  /* ════ Báo cáo tháng — giọng nội bộ ════ */
+  .rp { font-size: 9pt; }
+  .rp .lh { padding-bottom: 4mm; border-bottom: 0.8pt solid var(--ink); }
+  .rp .co { letter-spacing: .02em; }
+  .rp .internal { font: 600 6.8pt var(--mono); letter-spacing: .16em; text-transform: uppercase; color: var(--dim); margin-top: 1mm; }
+  .rp h1 { font: 600 21pt/1.15 var(--serif); margin-top: 5mm; }
+  .rp .period { color: var(--dim); margin-top: 1.2mm; }
+  .rp .kpis { display: grid; grid-template-columns: repeat(4, 1fr); margin-top: 6mm; border-top: 0.6pt solid var(--rule); border-bottom: 0.6pt solid var(--rule); }
+  .rp .kpis > div { padding: 3mm 3.5mm 3.4mm; }
+  .rp .kpis > div + div { border-left: 0.6pt solid var(--rule); }
+  .rp .kpis .n { font: 600 14pt var(--sans); margin-top: 1mm; }
+  .rp .kpis .c { font-size: 7.5pt; color: var(--dim); margin-top: .4mm; }
+  .rp h2 { font: 600 10.5pt var(--serif); margin: 5mm 0 1.6mm; }
+  .stmt { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+  .stmt td { padding: 1.1mm 0; }
+  .stmt td.num { text-align: right; font-family: var(--mono); font-size: 8.8pt; }
+  .stmt tr.ind td:first-child { padding-left: 6mm; color: #3a4148; }
+  .stmt tr.sub td { border-top: 0.6pt solid var(--ink); font-weight: 600; }
+  .stmt tr.sub td.num { font-weight: 600; }
+  .stmt tr.net td { border-top: 0.6pt solid var(--ink); border-bottom: 2.2pt double var(--ink); font-weight: 700; font-size: 10pt; }
+  .stmt tr.net td.num { font-weight: 700; font-size: 9.6pt; }
+  .stmt tr.note td { color: var(--dim); font-size: 7.8pt; padding-top: 2mm; }
+  .rp .twin { display: grid; grid-template-columns: 1fr 1.25fr; gap: 9mm; }
+  .tbl { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+  .tbl th { text-align: left; font: 600 6.8pt var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--dim); padding-bottom: 1.6mm; border-bottom: 0.8pt solid var(--ink); }
+  .tbl th.num, .tbl td.num { text-align: right; }
+  .tbl td { padding: 1.05mm 0; border-bottom: 0.4pt solid var(--rule); }
+  .tbl td.num { font-family: var(--mono); font-size: 8.6pt; }
+  .tbl tr.tot td { border-top: 0.6pt solid var(--ink); border-bottom: 0; font-weight: 700; }
+  .notes-print { columns: 2; column-gap: 8mm; font-size: 7.2pt; line-height: 1.38; color: #3a4148; counter-reset: n; }
+  .notes-print p { break-inside: avoid; margin: 0 0 1.6mm; padding-left: 4mm; position: relative; }
+  .notes-print p::before { counter-increment: n; content: counter(n); position: absolute; left: 0; font: 600 6.8pt var(--mono); color: var(--primary-emphasis); }
+  .rp .foot { margin-top: auto; }
+  /* C2 — dashboard */
+  .c2 .tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 3mm; margin-top: 6mm; }
+  .c2 .tile { border: 0.6pt solid var(--rule); border-radius: 2mm; padding: 3mm 3.5mm; }
+  .c2 .tile .n { font: 600 15pt var(--sans); margin-top: 1mm; }
+  .c2 .tile .c { font-size: 7.4pt; color: var(--dim); margin-top: .5mm; }
+  .c2 .tile.hero { background: var(--paper-tint); border-color: transparent; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .c2 .chartrow { display: grid; grid-template-columns: 1fr 64mm; gap: 7mm; align-items: start; }
+  .wf { width: 100%; height: auto; display: block; }
+  .wf .grid { stroke: #e3e6e8; stroke-width: 0.8; }
+  .wf .grid.base { stroke: var(--ink); stroke-width: 1; }
+  .wf .axis { font: 500 9px var(--mono); fill: var(--dim); }
+  .wf .connector { stroke: #9aa2a8; stroke-width: 0.8; stroke-dasharray: 2 2; }
+  .wf .val { font: 600 11px var(--sans); fill: var(--ink); }
+  .wf .cat { font: 500 9.5px var(--sans); fill: #3a4148; }
+  .c2 .mini td { padding: 1.1mm 0; font-size: 8pt; }
+  .c2 .mini td.num { font-size: 8pt; }
+  .sb { width: 100%; height: 4.2mm; display: block; margin-top: 1mm; }
+  .legend { display: flex; flex-wrap: wrap; gap: 2mm 6mm; margin-top: 2.4mm; font-size: 8.2pt; }
+  .legend li { display: inline-flex; align-items: center; gap: 1.6mm; }
+  .legend span { color: var(--dim); }
+  .legend .tot { margin-left: auto; color: var(--dim); }
+  .legend .tot b { color: var(--ink); }
+  .sw { width: 3mm; height: 3mm; border-radius: .7mm; display: inline-block; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .sw.paid { background: #00897b; }
+  .sw.cancelled { background: #e0703a repeating-linear-gradient(45deg, rgba(255,255,255,.55) 0 1px, transparent 1px 3.5px); }
+  .c2 .ops { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0; border-top: 0.6pt solid var(--rule); }
+  .c2 .ops > div { padding: 2.6mm 3mm 2.8mm 0; border-bottom: 0.6pt solid var(--rule); }
+  .c2 .ops .n { font: 600 11pt var(--sans); margin-top: .6mm; }
+</style>
+</head>
+<body>
+<div class="chrome">
+  <h1>G40 · Bản in báo cáo tháng — tháng 9/2026 (số minh hoạ, lấy gần đúng từ prod)</h1>
+  <label>Thu phóng
+    <select id="zoom">
+      <option value="0.5">50%</option>
+      <option value="0.62" selected>62%</option>
+      <option value="0.8">80%</option>
+      <option value="1">100% (đúng cỡ A4)</option>
+    </select>
+  </label>
+  <label><input type="checkbox" id="bw"> Xem như in trắng đen</label>
+  <button id="print-all">In thử tất cả</button>
+</div>
+<main class="stage" id="stage">
+
+  <div class="opt" data-opt="C1">
+    <div class="opt-head"><h2>C1 · Báo cáo tài chính</h2><button data-print="C1">In thử phương án này</button></div>
+    <section class="page rp c1">
+      <header class="lh">
+        <div class="brand">
+          <svg class="mark" viewBox="0 0 46 33" aria-hidden="true"><path class="back" d="M30.966 12.968 19.938 1.945a2.75 2.75 0 0 0-3.891 0l-14.1 14.093a2.75 2.75 0 0 0 0 3.89L12.975 30.95a2.75 2.75 0 0 0 3.891 0l14.1-14.094a2.75 2.75 0 0 0 0-3.889"/><path class="front" d="M44.032 12.968 33.004 1.945a2.75 2.75 0 0 0-3.89 0l-14.1 14.093a2.75 2.75 0 0 0 0 3.89L26.041 30.95a2.75 2.75 0 0 0 3.89 0l14.1-14.094a2.75 2.75 0 0 0 0-3.889"/></svg>
+          <div><div class="word">Nex<span>ora</span></div><div class="co">Back office · www.nexora-travel.agency</div></div>
+        </div>
+        <div class="doc"><div class="doc-type">Monthly report</div><div class="doc-no">2026-09</div><div class="doc-meta">Generated 10 Oct 2026, 02:30 UTC</div></div>
+      </header>
+      <h1>Monthly report — September 2026</h1>
+      <p class="period">1 Sep 2026 – 30 Sep 2026 · all amounts in USD · tax on margin 10%</p>
+      <div class="kpis">
+        <div><div class="lbl">Revenue recognised</div><div class="n">$39,607.80</div><div class="c">Trips that finished this month</div></div>
+        <div><div class="lbl">Gross profit</div><div class="n">$9,918.26</div><div class="c">Gross margin 25.0%</div></div>
+        <div><div class="lbl">Net profit</div><div class="n">$7,990.67</div><div class="c">After tax and payment fees</div></div>
+        <div><div class="lbl">Cash collected</div><div class="n">$31,543.39</div><div class="c">70 paid bookings</div></div>
+      </div>
+      <h2>Profit and loss</h2>
+      <table class="stmt">
+          <tr><td>Revenue recognised</td><td class="num">39,607.80</td></tr>
+          <tr class="ind"><td>Cost of sales — per traveller</td><td class="num">(25,737.54)</td></tr>
+          <tr class="ind"><td>Cost of sales — per departure</td><td class="num">(3,952.00)</td></tr>
+          <tr class="sub"><td>Total cost of sales</td><td class="num">(29,689.54)</td></tr>
+          <tr class="sub"><td>Gross profit</td><td class="num">9,918.26</td></tr>
+          <tr class="ind"><td>Tax on margin (10%)</td><td class="num">(991.83)</td></tr>
+          <tr class="ind"><td>Payment processing</td><td class="num">(935.76)</td></tr>
+          <tr class="net"><td>Net profit</td><td class="num">7,990.67</td></tr>
+          <tr class="note"><td colspan="2">15 departures ran this month.</td></tr></table>
+      <div class="twin">
+        <section><h2>Bookings created this month</h2>
+        <table class="tbl">
+          <thead><tr><th>Status</th><th class="num">Bookings</th></tr></thead>
+          <tbody><tr><td>Paid</td><td class="num">65</td></tr><tr><td>Cancelled</td><td class="num">6</td></tr></tbody>
+          <tfoot><tr class="tot"><td>Total</td><td class="num">71</td></tr></tfoot>
+        </table></section>
+        <section><h2>Money and operations</h2>
+          <table class="tbl"><thead><tr><th>Metric</th><th class="num">Value</th></tr></thead>
+          <tbody><tr><td>Revenue (gross)</td><td class="num">$31,543.39</td></tr><tr><td>Paid bookings</td><td class="num">70</td></tr><tr><td>New bookings</td><td class="num">71</td></tr><tr><td>Refunds paid out</td><td class="num">$1,826.00</td></tr><tr><td>Refund payments</td><td class="num">6</td></tr><tr><td>Cancelled within the deadline</td><td class="num">4</td></tr><tr><td>Cancelled after the deadline</td><td class="num">2</td></tr><tr><td>Reviews approved</td><td class="num">10</td></tr></tbody></table>
+        </section>
+      </div>
+      <h2>How to read these numbers</h2>
+      <div class="notes-print">
+        <p>Revenue counts money taken in this month (by payment date) and is gross — refunds are not subtracted from it.</p>
+        <p>Refunds paid out is money that left this month; a refund may belong to a booking paid in an earlier month.</p>
+        <p>The status table follows the bookings created this month and shows where each one stands today, so it can change after the month closes.</p>
+        <p>Revenue recognised counts trips that finished this month, so it differs from cash collected — money for a December trip is taken today but earned in December. Money kept from a cancelled booking counts as revenue too.</p>
+        <p>Per-traveller costs follow the travellers who went, including anyone given a full goodwill refund; per-departure costs are charged once for each departure that ran with at least one traveller.</p>
+        <p>Net profit is after cost of sales, tax and payment fees. It does not include salaries, rent or marketing.</p>
+        <p>Cancellations are counted on the day they were made. Within the deadline means on or before the free-cancellation deadline of the trip (Vietnam time).</p>
+      </div>
+      
+      <footer class="foot">
+        <span><b>Nexora back office</b> · Monthly report 2026-09 · Internal — not for distribution</span>
+        <span>Printed 10 Oct 2026, 09:31 · Page 1 of 1</span>
+      </footer>
+    </section>
+    <div class="notes">
+      <b>Kiểu báo cáo tài chính:</b> đầu trang nội bộ (logo nhỏ, gạch mực, mã kỳ 2026-09), dải 4 số chính, bảng lãi lỗ theo lối kế toán — số âm trong ngoặc, gạch kẻ ở dòng cộng, gạch kép dưới lãi ròng — rồi hai bảng và chú giải đánh số.
+      <br><b>Ưu:</b> đúng "chất" sổ sách, in trắng đen hoàn hảo, gần như không tốn mực màu. <b>Nhược:</b> không có hình — người xem phải đọc số.
+    </div>
+  </div>
+
+  <div class="opt" data-opt="C2">
+    <div class="opt-head"><h2>C2 · Dashboard trên giấy</h2><button data-print="C2">In thử phương án này</button></div>
+    <section class="page rp c2">
+      <header class="lh">
+        <div class="brand">
+          <svg class="mark" viewBox="0 0 46 33" aria-hidden="true"><path class="back" d="M30.966 12.968 19.938 1.945a2.75 2.75 0 0 0-3.891 0l-14.1 14.093a2.75 2.75 0 0 0 0 3.89L12.975 30.95a2.75 2.75 0 0 0 3.891 0l14.1-14.094a2.75 2.75 0 0 0 0-3.889"/><path class="front" d="M44.032 12.968 33.004 1.945a2.75 2.75 0 0 0-3.89 0l-14.1 14.093a2.75 2.75 0 0 0 0 3.89L26.041 30.95a2.75 2.75 0 0 0 3.89 0l14.1-14.094a2.75 2.75 0 0 0 0-3.889"/></svg>
+          <div><div class="word">Nex<span>ora</span></div><div class="co">Back office · www.nexora-travel.agency</div></div>
+        </div>
+        <div class="doc"><div class="doc-type">Monthly report</div><div class="doc-no">2026-09</div><div class="doc-meta">Generated 10 Oct 2026, 02:30 UTC</div></div>
+      </header>
+      <h1>Monthly report — September 2026</h1>
+      <p class="period">1 Sep 2026 – 30 Sep 2026 · all amounts in USD · tax on margin 10%</p>
+      <div class="tiles">
+        <div class="tile hero"><div class="lbl">Revenue recognised</div><div class="n">$39,607.80</div><div class="c">Trips that finished this month</div></div>
+        <div class="tile"><div class="lbl">Gross profit</div><div class="n">$9,918.26</div><div class="c">Gross margin 25.0%</div></div>
+        <div class="tile"><div class="lbl">Net profit</div><div class="n">$7,990.67</div><div class="c">After tax and payment fees</div></div>
+        <div class="tile"><div class="lbl">Cash collected</div><div class="n">$31,543.39</div><div class="c">70 paid bookings</div></div>
+      </div>
+      <h2>From revenue to net profit</h2>
+      <div class="chartrow">
+        <svg class="wf" viewBox="0 0 480 236" role="img" aria-label="Profit and loss waterfall, September 2026"><defs><pattern id="hatch" width="5" height="5" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="5" stroke="#fff" stroke-opacity=".55" stroke-width="1.6"/></pattern></defs><line x1="6" x2="474" y1="194" y2="194" class="grid base"/><text x="474" y="191" class="axis" text-anchor="end">$0</text><line x1="6" x2="474" y1="106.13851817066336" y2="106.13851817066336" class="grid"/><text x="474" y="103.13851817066336" class="axis" text-anchor="end">$20k</text><line x1="6" x2="474" y1="18.27703634132672" y2="18.27703634132672" class="grid"/><text x="474" y="15.27703634132672" class="axis" text-anchor="end">$40k</text><path d="M18.702857142857145,194 L18.702857142857145,24 Q18.702857142857145,20 22.702857142857145,20 L56.15428571428572,20 Q60.15428571428572,20 60.15428571428572,24 L60.15428571428572,194 Z" fill="#00897b"/><line x1="60.15428571428572" x2="85.56" y1="20" y2="20" class="connector"/><text x="39.42857142857143" y="15" class="val" text-anchor="middle">$39.6k</text><text x="39.42857142857143" y="209" class="cat" text-anchor="middle">Revenue</text><text x="39.42857142857143" y="220" class="cat" text-anchor="middle">recognised</text><path d="M85.56,20 L127.01142857142858,20 L127.01142857142858,129.06692015209126 Q127.01142857142858,133.06692015209126 123.01142857142858,133.06692015209126 L89.56,133.06692015209126 Q85.56,133.06692015209126 85.56,129.06692015209126 Z" fill="#e0703a" class="hatch-host"/><path d="M85.56,20 L127.01142857142858,20 L127.01142857142858,129.06692015209126 Q127.01142857142858,133.06692015209126 123.01142857142858,133.06692015209126 L89.56,133.06692015209126 Q85.56,133.06692015209126 85.56,129.06692015209126 Z" fill="url(#hatch)"/><line x1="127.01142857142858" x2="152.4171428571429" y1="133.06692015209126" y2="133.06692015209126" class="connector"/><text x="106.28571428571429" y="144.06692015209126" class="val" text-anchor="middle">−$25.7k</text><text x="106.28571428571429" y="209" class="cat" text-anchor="middle">Cost per</text><text x="106.28571428571429" y="220" class="cat" text-anchor="middle">traveller</text><path d="M152.4171428571429,133.06692015209126 L193.86857142857147,133.06692015209126 L193.86857142857147,146.4283489615682 Q193.86857142857147,150.4283489615682 189.86857142857147,150.4283489615682 L156.4171428571429,150.4283489615682 Q152.4171428571429,150.4283489615682 152.4171428571429,146.4283489615682 Z" fill="#e0703a" class="hatch-host"/><path d="M152.4171428571429,133.06692015209126 L193.86857142857147,133.06692015209126 L193.86857142857147,146.4283489615682 Q193.86857142857147,150.4283489615682 189.86857142857147,150.4283489615682 L156.4171428571429,150.4283489615682 Q152.4171428571429,150.4283489615682 152.4171428571429,146.4283489615682 Z" fill="url(#hatch)"/><line x1="193.86857142857147" x2="219.27428571428572" y1="150.4283489615682" y2="150.4283489615682" class="connector"/><text x="173.14285714285717" y="161.4283489615682" class="val" text-anchor="middle">−$4.0k</text><text x="173.14285714285717" y="209" class="cat" text-anchor="middle">Cost per</text><text x="173.14285714285717" y="220" class="cat" text-anchor="middle">departure</text><path d="M219.27428571428572,194 L219.27428571428572,154.4283489615682 Q219.27428571428572,150.4283489615682 223.27428571428572,150.4283489615682 L256.7257142857143,150.4283489615682 Q260.7257142857143,150.4283489615682 260.7257142857143,154.4283489615682 L260.7257142857143,194 Z" fill="#00897b"/><line x1="260.7257142857143" x2="286.1314285714286" y1="150.4283489615682" y2="150.4283489615682" class="connector"/><text x="240" y="145.4283489615682" class="val" text-anchor="middle">$9.9k</text><text x="240" y="209" class="cat" text-anchor="middle">Gross</text><text x="240" y="220" class="cat" text-anchor="middle">profit</text><path d="M286.1314285714286,150.4283489615682 L327.58285714285716,150.4283489615682 L327.58285714285716,152.60694029963796 Q327.58285714285716,154.78553163770772 325.4042658047874,154.78553163770772 L288.31001990949835,154.78553163770772 Q286.1314285714286,154.78553163770772 286.1314285714286,152.60694029963796 Z" fill="#e0703a" class="hatch-host"/><path d="M286.1314285714286,150.4283489615682 L327.58285714285716,150.4283489615682 L327.58285714285716,152.60694029963796 Q327.58285714285716,154.78553163770772 325.4042658047874,154.78553163770772 L288.31001990949835,154.78553163770772 Q286.1314285714286,154.78553163770772 286.1314285714286,152.60694029963796 Z" fill="url(#hatch)"/><line x1="327.58285714285716" x2="352.9885714285715" y1="154.78553163770772" y2="154.78553163770772" class="connector"/><text x="306.8571428571429" y="165.78553163770772" class="val" text-anchor="middle">−$992</text><text x="306.8571428571429" y="209" class="cat" text-anchor="middle">Tax on</text><text x="306.8571428571429" y="220" class="cat" text-anchor="middle">margin</text><path d="M352.9885714285715,154.78553163770772 L394.44000000000005,154.78553163770772 L394.44000000000005,156.8409631436232 Q394.44000000000005,158.8963946495387 392.38456849408453,158.8963946495387 L355.044002934487,158.8963946495387 Q352.9885714285715,158.8963946495387 352.9885714285715,156.8409631436232 Z" fill="#e0703a" class="hatch-host"/><path d="M352.9885714285715,154.78553163770772 L394.44000000000005,154.78553163770772 L394.44000000000005,156.8409631436232 Q394.44000000000005,158.8963946495387 392.38456849408453,158.8963946495387 L355.044002934487,158.8963946495387 Q352.9885714285715,158.8963946495387 352.9885714285715,156.8409631436232 Z" fill="url(#hatch)"/><line x1="394.44000000000005" x2="419.84571428571434" y1="158.8963946495387" y2="158.8963946495387" class="connector"/><text x="373.7142857142858" y="169.8963946495387" class="val" text-anchor="middle">−$936</text><text x="373.7142857142858" y="209" class="cat" text-anchor="middle">Payment</text><text x="373.7142857142858" y="220" class="cat" text-anchor="middle">fees</text><path d="M419.84571428571434,194 L419.84571428571434,162.89639464953873 Q419.84571428571434,158.89639464953873 423.84571428571434,158.89639464953873 L457.2971428571429,158.89639464953873 Q461.2971428571429,158.89639464953873 461.2971428571429,162.89639464953873 L461.2971428571429,194 Z" fill="#00897b"/><text x="440.5714285714286" y="153.89639464953873" class="val" text-anchor="middle">$8.0k</text><text x="440.5714285714286" y="209" class="cat" text-anchor="middle">Net</text><text x="440.5714285714286" y="220" class="cat" text-anchor="middle">profit</text></svg>
+        <table class="stmt mini">
+          <tr><td>Revenue recognised</td><td class="num">39,607.80</td></tr>
+          <tr class="ind"><td>Cost of sales — per traveller</td><td class="num">(25,737.54)</td></tr>
+          <tr class="ind"><td>Cost of sales — per departure</td><td class="num">(3,952.00)</td></tr>
+          <tr class="sub"><td>Total cost of sales</td><td class="num">(29,689.54)</td></tr>
+          <tr class="sub"><td>Gross profit</td><td class="num">9,918.26</td></tr>
+          <tr class="ind"><td>Tax on margin (10%)</td><td class="num">(991.83)</td></tr>
+          <tr class="ind"><td>Payment processing</td><td class="num">(935.76)</td></tr>
+          <tr class="net"><td>Net profit</td><td class="num">7,990.67</td></tr>
+          <tr class="note"><td colspan="2">15 departures ran this month.</td></tr></table>
+      </div>
+      <h2>Bookings created this month</h2>
+      <svg class="sb" viewBox="0 0 600 16" preserveAspectRatio="none" aria-hidden="true"><defs><pattern id="hatch2" width="5" height="5" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="5" stroke="#fff" stroke-opacity=".55" stroke-width="1.6"/></pattern></defs><rect x="0" y="0" width="547.2957746478874" height="16" rx="3" fill="#00897b"/><rect x="549.2957746478874" y="0" width="50.70422535211267" height="16" rx="3" fill="#e0703a"/><rect x="549.2957746478874" y="0" width="50.70422535211267" height="16" rx="3" fill="url(#hatch2)"/></svg><ul class="legend"><li><i class="sw paid"></i><b>Paid</b> 65 <span>(92%)</span></li><li><i class="sw cancelled"></i><b>Cancelled</b> 6 <span>(8%)</span></li><li class="tot">Total <b>71</b></li></ul>
+      <h2>Money and operations</h2>
+      <div class="ops"><div><div class="lbl">Revenue (gross)</div><div class="n">$31,543.39</div></div><div><div class="lbl">Paid bookings</div><div class="n">70</div></div><div><div class="lbl">New bookings</div><div class="n">71</div></div><div><div class="lbl">Refunds paid out</div><div class="n">$1,826.00</div></div><div><div class="lbl">Refund payments</div><div class="n">6</div></div><div><div class="lbl">Cancelled within the deadline</div><div class="n">4</div></div><div><div class="lbl">Cancelled after the deadline</div><div class="n">2</div></div><div><div class="lbl">Reviews approved</div><div class="n">10</div></div></div>
+      <h2>How to read these numbers</h2>
+      <div class="notes-print">
+        <p>Revenue counts money taken in this month (by payment date) and is gross — refunds are not subtracted from it.</p>
+        <p>Refunds paid out is money that left this month; a refund may belong to a booking paid in an earlier month.</p>
+        <p>The status table follows the bookings created this month and shows where each one stands today, so it can change after the month closes.</p>
+        <p>Revenue recognised counts trips that finished this month, so it differs from cash collected — money for a December trip is taken today but earned in December. Money kept from a cancelled booking counts as revenue too.</p>
+        <p>Per-traveller costs follow the travellers who went, including anyone given a full goodwill refund; per-departure costs are charged once for each departure that ran with at least one traveller.</p>
+        <p>Net profit is after cost of sales, tax and payment fees. It does not include salaries, rent or marketing.</p>
+        <p>Cancellations are counted on the day they were made. Within the deadline means on or before the free-cancellation deadline of the trip (Vietnam time).</p>
+      </div>
+      
+      <footer class="foot">
+        <span><b>Nexora back office</b> · Monthly report 2026-09 · Internal — not for distribution</span>
+        <span>Printed 10 Oct 2026, 09:31 · Page 1 of 1</span>
+      </footer>
+    </section>
+    <div class="notes">
+      <b>Dashboard trên giấy:</b> 4 ô số (ô đầu nền nhạt), biểu đồ thác nước từ doanh thu tới lãi ròng kèm bảng số chính xác bên cạnh, thanh 100% cơ cấu trạng thái đơn, 8 chỉ số vận hành dạng lưới, chú giải.
+      <br><b>Màu biểu đồ</b> đã qua bộ kiểm (teal #00897b tiền vào và lãi, cam #e0703a chi phí); phần chi phí có vân gạch 45° để in trắng đen vẫn phân biệt. <b>Nhược:</b> tốn mực màu hơn C1.
+    </div>
+  </div>
+</main>
+<script>
+  // Mã vạch giả, tất định theo mã đơn — cùng tinh thần với ticketBarcodeWidths của web.
+  function barWidths(code, count) {
+    let seed = 0;
+    for (const ch of code) seed = (seed * 31 + ch.charCodeAt(0)) >>> 0;
+    const widths = [];
+    for (let i = 0; i < count; i++) {
+      seed = (Math.imul(seed, 1103515245) + 12345) >>> 0;
+      widths.push(1 + ((seed >>> 16) % 3));
+    }
+    return widths;
+  }
+  document.querySelectorAll('svg.barcode').forEach((svg) => {
+    const widths = barWidths(svg.dataset.code, 61);
+    let x = 0, rects = '';
+    widths.forEach((w, i) => { if (i % 2 === 0) rects += `<rect x="${x}" y="0" width="${w}" height="40"/>`; x += w; });
+    svg.setAttribute('viewBox', `0 0 ${x} 40`);
+    svg.innerHTML = rects;
+  });
+
+  const stage = document.getElementById('stage');
+  const zoom = document.getElementById('zoom');
+  const params = new URLSearchParams(location.search);
+  if (params.get('z')) zoom.value = params.get('z');
+  if (params.get('only')) {
+    document.querySelectorAll('.opt').forEach((o) => { if (o.dataset.opt !== params.get('only')) o.remove(); });
+  }
+  const applyZoom = () => stage.style.setProperty('--z', zoom.value);
+  zoom.addEventListener('change', applyZoom); applyZoom();
+  document.getElementById('bw').addEventListener('change', (e) => document.body.classList.toggle('bw', e.target.checked));
+
+  document.querySelectorAll('[data-print]').forEach((btn) => btn.addEventListener('click', () => {
+    const n = btn.dataset.print;
+    document.body.classList.add('print-one');
+    document.querySelectorAll('.opt').forEach((o) => o.classList.toggle('printing', o.dataset.opt === n));
+    window.print();
+  }));
+  document.getElementById('print-all').addEventListener('click', () => window.print());
+  window.addEventListener('afterprint', () => {
+    document.body.classList.remove('print-one');
+    document.querySelectorAll('.opt').forEach((o) => o.classList.remove('printing'));
+  });
+</script>
+</body>
+</html>

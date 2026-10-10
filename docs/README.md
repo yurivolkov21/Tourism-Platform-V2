@@ -74,7 +74,7 @@ Mỗi ADR tự chứa đầy đủ phần sửa bổ sung (AMEND) của nó; b�
 | [0031](adr/0031-review-rejection.md) | Từ chối đánh giá là quyết định chung cuộc | AMEND 28/09: lý do chọn từ danh sách |
 | [0032](adr/0032-review-author-edit.md) | Tác giả sửa lại đánh giá bị bác, có trần vòng lặp | |
 | [0033](adr/0033-financial-model.md) | Báo cáo có kết quả kinh doanh, không chỉ dòng tiền | định nghĩa doanh thu sửa ở [0041](adr/0041-single-cancellation-deadline.md) §9 · 3 AMEND (tháng đang chạy chỉ ghi nhận chuyến đã kết thúc) |
-| [0034](adr/0034-excel-report-export.md) | Báo cáo tháng xuất Excel; CSV giữ đúng chỗ | |
+| [0034](adr/0034-excel-report-export.md) | Báo cáo tháng xuất Excel; từ AMEND 3 (10/10) danh sách cũng xuất Excel thay CSV | 3 AMEND |
 | [0035](adr/0035-media-lifecycle.md) | Ảnh có đường chết, đi qua hàng đợi có độ trễ | |
 | [0036](adr/0036-dashboard-daily-series.md) | Dashboard nối số thật bằng một chuỗi theo ngày | |
 | [0037](adr/0037-default-write-throttle.md) | Mọi route ghi sinh ra đã có trần | |
@@ -97,6 +97,7 @@ Mỗi ADR tự chứa đầy đủ phần sửa bổ sung (AMEND) của nó; b�
 | [0054](adr/0054-customer-bookings-list-phase-filters.md) | Đơn của khách: một luật giai đoạn dùng chung; `bookings.mine` lọc, tìm, xếp theo hành trình và phân trang ở server | 1 AMEND |
 | [0055](adr/0055-mobile-data-layer.md) | Tầng dữ liệu mobile: oRPC `OpenAPILink` + TanStack Query, client-first | 2 AMEND |
 | [0056](adr/0056-mobile-google-native-signin.md) | Đăng nhập Google trên app bằng SDK gốc và ID token; đóng proxy Expo | |
+| [0057](adr/0057-print-documents.md) | Bản in là tài liệu riêng: component chỉ-in, trang in `doc` A4 lề 0, khung đầu và chân trang chung | |
 
 ## Specs — sẽ xây gì
 
@@ -178,6 +179,9 @@ Mỗi spec đi kèm một plan cùng tên ở [`plans/`](plans/), trừ vài đ�
 
 **Trang account Saved và Settings (chỉ đổi giao diện, xong 09/10)**
 [Thiết kế lại Saved và Settings](specs/2026-10-09-account-saved-settings-redesign-design.md)
+
+**Bản in và file xuất (G40, duyệt thiết kế 10/10, chờ thi công)**
+[Thiết kế lại bản in voucher, hoá đơn chờ, báo cáo tháng; Excel báo cáo và danh sách](specs/2026-10-10-print-and-export-redesign-design.md)
 
 **Công cụ máy dev (ngoài repo)**
 [mod `tourism-status`: dải trạng thái, canh CI, docs-freshness](specs/2026-10-02-tourism-status-mod-design.md)
