@@ -719,12 +719,10 @@ export const messages = {
       yourDay: (title: string) => `Your day · ${title}`,
       /** `days` từ `bookingDetail.ticket.days`. */
       yourTrip: (days: string) => `Your trip · ${days}`,
-      dayLine: (n: number, title: string) => `Day ${n} · ${title}`,
       moreDays: (n: number, slug: string) =>
         `+${n} more days — full itinerary at nexora-travel.agency/tours/${slug}`,
       moreItems: (n: number) => `+${n} more`,
       included: 'Included',
-      notIncluded: 'Not included',
       whereToMeet: 'Where to meet',
       meetGuide: (time: string) => `meet your guide at ${time}.`,
       /** `amount` đủ hai số lẻ (`formatMoneyExact`): số tiền thật khách đối chiếu với sao kê. */

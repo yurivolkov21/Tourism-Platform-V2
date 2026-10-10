@@ -19,25 +19,25 @@ const STRIPES =
  * đã đóng, voucher đã huỷ) là vé "chưa, hay không còn, hiệu lực" của B1 — viền đứt xám, dải xám,
  * cuống gạch chéo.
  */
-const TONE: Record<PrintTicketTone, { frame: string; band: string; line: string; stub: string }> = {
+type TicketToneClasses = { frame: string; band: string; line: string; stub: string };
+
+/** Vé "chưa, hay không còn, hiệu lực" — MỘT hình cho tông `pending` và `closed` (quyết định 15). */
+const VOID_TONE: TicketToneClasses = {
+  frame: 'border-dashed border-muted-foreground/60',
+  band: 'bg-muted-foreground text-primary-foreground',
+  line: 'border-muted-foreground/60',
+  stub: STRIPES,
+};
+
+const TONE: Record<PrintTicketTone, TicketToneClasses> = {
   active: {
     frame: 'border-solid border-primary',
     band: 'bg-primary text-primary-foreground',
     line: 'border-primary',
     stub: '',
   },
-  pending: {
-    frame: 'border-dashed border-muted-foreground/60',
-    band: 'bg-muted-foreground text-primary-foreground',
-    line: 'border-muted-foreground/60',
-    stub: STRIPES,
-  },
-  closed: {
-    frame: 'border-dashed border-muted-foreground/60',
-    band: 'bg-muted-foreground text-primary-foreground',
-    line: 'border-muted-foreground/60',
-    stub: STRIPES,
-  },
+  pending: VOID_TONE,
+  closed: VOID_TONE,
 };
 
 const BAND = 'px-[5mm] py-[2.4mm] font-mono text-[7.5pt] font-medium tracking-[0.18em] uppercase';
@@ -63,39 +63,43 @@ export function PrintTicket({ view }: { view: PrintTicketView }) {
           <span>{view.bandStart}</span>
           <span>{view.bandEnd}</span>
         </p>
-        {view.notice !== null ? (
-          <p className="m-[5mm] rounded-[2mm] border-[0.8pt] border-dashed border-muted-foreground px-[4mm] py-[3mm] font-medium">
-            {view.notice}
-          </p>
-        ) : (
-          <div className="px-[6mm] pt-[3.5mm]">
-            <div className="flex items-start justify-between gap-[5mm]">
-              <p className="font-heading text-[14pt] leading-[1.2] font-semibold">{view.title}</p>
-              <DocStamp label={view.stamp.label} tone={view.stamp.tone} />
-            </div>
-            <div className="my-[3mm] grid grid-cols-[auto_1fr_auto] items-center gap-[4mm]">
-              <TicketDate label={messages.bookingDetail.ticket.departs} date={view.departs} />
-              <p className="relative text-center text-[7.8pt] font-semibold text-primary-emphasis before:absolute before:inset-x-0 before:top-1/2 before:border-t-[0.8pt] before:border-dashed before:border-primary/40">
-                <span className="relative bg-background px-[2.5mm]">{view.routeLine}</span>
-              </p>
-              <TicketDate label={messages.bookingDetail.ticket.returns} date={view.returns} end />
-            </div>
-            <dl className="-mx-[6mm] grid grid-cols-4 border-t-[0.6pt] border-border">
-              {view.cells.map((cell, index) => (
-                <div
-                  key={cell.label}
-                  className={cn(
-                    'pt-[2.6mm] pb-[3mm]',
-                    index === 0 ? 'pl-[6mm]' : 'border-l-[0.6pt] border-border pl-[3.5mm]',
-                  )}
-                >
-                  <dt className={PRINT_LABEL}>{cell.label}</dt>
-                  <dd className="mt-[0.8mm] font-semibold">{cell.value}</dd>
-                </div>
-              ))}
-            </dl>
+        <div className="px-[6mm] pt-[3.5mm]">
+          {/* Tên và mộc đứng ở mọi tông — vé đã huỷ vẫn đóng mộc CANCELLED / REFUNDED (spec §3.3);
+              chỉ thân vé (ngày, đường nối, bốn ô) thay bằng dải hết hiệu lực. */}
+          <div className="flex items-start justify-between gap-[5mm]">
+            <p className="font-heading text-[14pt] leading-[1.2] font-semibold">{view.title}</p>
+            <DocStamp label={view.stamp.label} tone={view.stamp.tone} />
           </div>
-        )}
+          {view.notice !== null ? (
+            <p className="my-[4mm] rounded-[2mm] border-[0.8pt] border-dashed border-muted-foreground px-[4mm] py-[3mm] font-medium">
+              {view.notice}
+            </p>
+          ) : (
+            <>
+              <div className="my-[3mm] grid grid-cols-[auto_1fr_auto] items-center gap-[4mm]">
+                <TicketDate label={messages.bookingDetail.ticket.departs} date={view.departs} />
+                <p className="relative text-center text-[7.8pt] font-semibold text-primary-emphasis before:absolute before:inset-x-0 before:top-1/2 before:border-t-[0.8pt] before:border-dashed before:border-primary/40">
+                  <span className="relative bg-background px-[2.5mm]">{view.routeLine}</span>
+                </p>
+                <TicketDate label={messages.bookingDetail.ticket.returns} date={view.returns} end />
+              </div>
+              <dl className="-mx-[6mm] grid grid-cols-4 border-t-[0.6pt] border-border">
+                {view.cells.map((cell, index) => (
+                  <div
+                    key={cell.label}
+                    className={cn(
+                      'pt-[2.6mm] pb-[3mm]',
+                      index === 0 ? 'pl-[6mm]' : 'border-l-[0.6pt] border-border pl-[3.5mm]',
+                    )}
+                  >
+                    <dt className={PRINT_LABEL}>{cell.label}</dt>
+                    <dd className="mt-[0.8mm] font-semibold">{cell.value}</dd>
+                  </div>
+                ))}
+              </dl>
+            </>
+          )}
+        </div>
         <span
           aria-hidden="true"
           className={cn(

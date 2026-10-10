@@ -1,14 +1,8 @@
-import {
-  type BookingDetail,
-  type BookingPhase,
-  bookingPhase,
-  tripDayNumbers,
-  vietnamToday,
-} from '@tourism/contract';
+import { type BookingDetail, bookingPhase, tripDayNumbers, vietnamToday } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
 import { bookingTotalLabel, cancellationDeadlineText, refundStory } from '@/lib/booking-vm';
 import { formatBookingMoney } from '@/lib/checkout';
-import { type BookingTourData, tourMeetingPoint } from '@/lib/get-ready';
+import { type BookingTourData, tourMeetingPoint, uniqueItems } from '@/lib/get-ready';
 import { parseItineraryStops } from '@/lib/tour-detail';
 import { formatMoneyExact, formatWeekdayDate } from '@/lib/tours';
 import type { VoucherView } from '@/lib/voucher';
@@ -53,11 +47,13 @@ export interface VoucherPrintView {
 }
 
 /** Một ngày: tối đa 10 mục (spec §3.4). */
-export const MAX_STOPS = 10;
+const MAX_STOPS = 10;
 /** Nhiều ngày: tối đa 8 dòng — hai cột × bốn (spec §3.4). */
-export const MAX_DAY_LINES = 8;
+const MAX_DAY_LINES = 8;
+/** Included / Not included: tối đa 6 dòng mỗi cột (spec §3.4). */
+const MAX_LIST_ITEMS = 6;
 /** Ngưỡng ký tự của tên tour cỡ 27 pt trên hai dòng (quyết định 13 của plan). */
-export const LONG_TITLE_CHARS = 56;
+const LONG_TITLE_CHARS = 56;
 
 export function voucherPrintView(
   booking: BookingDetail,
@@ -68,15 +64,18 @@ export function voucherPrintView(
   const t = messages.printDoc.voucher;
   const today = vietnamToday(now);
   const phase = bookingPhase(booking, today);
-  // Chỉ hai giai đoạn này có ô Meeting point, nên trang chỉ đọc tour ở đó (`voucherTourData`);
-  // chặn lại ở đây để tour truyền nhầm cũng không làm voucher đã đi, đã huỷ in lịch trình.
-  const live = phase === 'upcoming' || phase === 'on_tour';
-  const liveTour = live ? tour : null;
+  // Chỉ voucher có ô Meeting point (sắp đi, đang đi — `showMeetingPoint`, cùng luật đọc tour của
+  // trang) mới in lịch trình, mục gồm và điểm hẹn; tour truyền nhầm cũng không lọt vào voucher đã
+  // đi, đã huỷ.
+  const liveTour = view.showMeetingPoint ? tour : null;
   const days = messages.bookingDetail.ticket.days(view.tripDays);
   const firstDay = liveTour?.itinerary.find((day) => day.dayNumber === 1) ?? null;
   const meetTime =
     firstDay === null ? null : (parseItineraryStops(firstDay.description)[0]?.time ?? null);
   const dayOfTrip = phase === 'on_tour' ? tripDayNumbers(booking, today).dayOfTrip : null;
+  // Giờ hẹn là của NGÀY 1: đang đi từ ngày 2 thì dải cuối không nói "meet your guide at 08:00" cạnh
+  // lịch hôm nay có giờ khác (review G40). Dòng ngày đi vẫn giữ — nó gắn với ngày đi.
+  const bandMeetTime = dayOfTrip === null || dayOfTrip === 1 ? meetTime : null;
 
   return {
     photo: printPhoto(booking.tourImage),
@@ -114,13 +113,23 @@ export function voucherPrintView(
     },
     tear: view.showBarcode ? t.tear : null,
     day: daySection(booking, view, liveTour, dayOfTrip),
-    included: liveTour === null ? null : capList(liveTour.included, t.moreItems),
-    excluded: liveTour === null ? null : capList(liveTour.excluded, t.moreItems),
-    band: bandColumns(booking, view, phase, liveTour, meetTime),
+    included: listOf(liveTour?.included),
+    excluded: listOf(liveTour?.excluded),
+    band: bandColumns(booking, view, liveTour, bandMeetTime),
   };
 }
 
-/** Lịch trình in (spec §3.4): ngày đang đi, ngày 1 của chuyến một ngày, hay danh sách ngày. */
+/** Included / Not included: bỏ mục trống, mục trùng (`uniqueItems`) rồi cắt theo luật chung. */
+function listOf(items: string[] | undefined): PrintList | null {
+  return items === undefined
+    ? null
+    : capList(uniqueItems(items), MAX_LIST_ITEMS, messages.printDoc.voucher.moreItems);
+}
+
+/**
+ * Lịch trình in (spec §3.4): ngày đang đi, ngày 1 của chuyến một ngày, hay danh sách ngày. Ngày cần
+ * in không có mô tả thì bỏ cả khối — không in tiêu đề "Your day" trên một danh sách trống.
+ */
 function daySection(
   booking: BookingDetail,
   view: VoucherView,
@@ -128,35 +137,38 @@ function daySection(
   dayOfTrip: number | null,
 ): VoucherPrintView['day'] {
   const t = messages.printDoc.voucher;
-  if (tour === null || tour.itinerary.length === 0) return null;
+  if (tour === null) return null;
 
   if (dayOfTrip !== null || view.tripDays === 1) {
     const day = tour.itinerary.find((d) => d.dayNumber === (dayOfTrip ?? 1));
     if (!day) return null;
-    const stops = parseItineraryStops(day.description);
-    return stops.length <= MAX_STOPS
-      ? { heading: t.yourDay(day.title), stops, more: null }
-      : { heading: t.yourDay(day.title), stops: stops.slice(0, MAX_STOPS - 1), more: '…' };
+    const stops = capList(parseItineraryStops(day.description), MAX_STOPS, () => '…');
+    return stops === null ? null : { heading: t.yourDay(day.title), ...stopsOf(stops) };
   }
 
-  const heading = t.yourTrip(messages.bookingDetail.ticket.days(view.tripDays));
-  const lines: PrintStop[] = [...tour.itinerary]
-    .sort((a, b) => a.dayNumber - b.dayNumber)
-    .map((d) => ({ time: null, text: t.dayLine(d.dayNumber, d.title) }));
-  if (lines.length <= MAX_DAY_LINES) return { heading, stops: lines, more: null };
-  const keep = MAX_DAY_LINES - 1;
-  return {
-    heading,
-    stops: lines.slice(0, keep),
-    more: t.moreDays(lines.length - keep, booking.tourSlug),
-  };
+  const lines = capList(
+    [...tour.itinerary]
+      .sort((a, b) => a.dayNumber - b.dayNumber)
+      .map((d) => ({
+        time: null,
+        text: `${messages.tourDetail.itinerary.dayLabel(d.dayNumber)} · ${d.title}`,
+      })),
+    MAX_DAY_LINES,
+    (n) => t.moreDays(n, booking.tourSlug),
+  );
+  return lines === null
+    ? null
+    : { heading: t.yourTrip(messages.bookingDetail.ticket.days(view.tripDays)), ...stopsOf(lines) };
+}
+
+function stopsOf(list: PrintList<PrintStop>): { stops: PrintStop[]; more: string | null } {
+  return { stops: list.items, more: list.more };
 }
 
 /** Dải cuối theo giai đoạn (spec §3.3); cột không có dữ liệu thì bỏ (quyết định 17 của plan). */
 function bandColumns(
   booking: BookingDetail,
   view: VoucherView,
-  phase: BookingPhase,
   tour: BookingTourData | null,
   meetTime: string | null,
 ): PrintColumn[] {
@@ -166,7 +178,7 @@ function bandColumns(
     `${t.paymentLine(formatMoneyExact(booking.totalAmount, booking.currency), view.provider, view.paidOn)} ${messages.tourDetail.booking.testMode}`,
   );
 
-  if (phase === 'upcoming' || phase === 'on_tour') {
+  if (view.showMeetingPoint) {
     const point = tourMeetingPoint(tour);
     const meet: PrintColumn =
       point === null
@@ -186,7 +198,7 @@ function bandColumns(
       : [meet, textColumn(messages.bookingDetail.details.cancellation, deadline), payment];
   }
 
-  if (phase === 'cancelled') {
+  if (view.cancelledNotice !== null) {
     // Cùng chuyện tiền với mốc Refund của nhật ký voucher (`refundStory`, một thứ tự cho mọi nơi kể).
     const refund = refundStory(booking);
     return refund === null

@@ -21,7 +21,7 @@ export function PrintLists({
         markClass="font-bold text-primary"
       />
       <ListColumn
-        heading={t.notIncluded}
+        heading={messages.tourDetail.itinerary.excluded}
         list={excluded}
         mark="–"
         markClass="text-muted-foreground"

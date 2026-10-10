@@ -14,6 +14,7 @@ import {
 import { voucherPrintView } from './voucher-print';
 
 const p = messages.printDoc.voucher;
+const { dayLabel } = messages.tourDetail.itinerary;
 
 /** Đơn của `voucherBooking` (Hà Nội một ngày 3/11, 3 người lớn × $49, PayPal 18/10) → bản in. */
 function printOf(
@@ -128,9 +129,9 @@ describe('voucherPrintView — lịch trình dài', () => {
     expect(v.kicker).toBe('Hà Nội · 3 days · Tue 3 Nov 2026');
     expect(v.day?.heading).toBe(p.yourTrip('3 days'));
     expect(v.day?.stops).toEqual([
-      { time: null, text: p.dayLine(1, 'Stop 1') },
-      { time: null, text: p.dayLine(2, 'Stop 2') },
-      { time: null, text: p.dayLine(3, 'Stop 3') },
+      { time: null, text: `${dayLabel(1)} · Stop 1` },
+      { time: null, text: `${dayLabel(2)} · Stop 2` },
+      { time: null, text: `${dayLabel(3)} · Stop 3` },
     ]);
   });
 
@@ -189,6 +190,10 @@ describe('voucherPrintView — theo giai đoạn', () => {
       more: null,
     });
     expect(v.ticket.stub.barcode).toBe('BK-B6VCOQNW');
+    // Giờ hẹn của ngày 1 vẫn ở dòng ngày đi; dải cuối không nói "meet your guide at 09:00" cho hôm
+    // nay (ngày 2) khi lịch hôm nay có giờ khác.
+    expect(v.ticket.departs.sub).toBe('Tue · 2026 · meet 09:00');
+    expect(v.band[0]?.text).toBeNull();
   });
 
   it('đã đi: không mã vạch, dòng xé, lịch trình, mục gồm; dải Payment và Booking reference', () => {
@@ -239,6 +244,23 @@ describe('voucherPrintView — thiếu dữ liệu', () => {
       text: `${messages.voucher.meetingPointContact} ${messages.voucher.meetingPointFallback}`,
       reference: false,
     });
+  });
+
+  it('ngày cần in không có mô tả: bỏ lịch trình, không in tiêu đề "Your day" trơ trọi', () => {
+    const v = printOf(
+      {},
+      makeTourData({ itinerary: [{ dayNumber: 1, title: 'Old town on foot', description: null }] }),
+    );
+    expect(v.day).toBeNull();
+  });
+
+  it('mục gồm trùng hay trắng: in một lần, bỏ dòng trắng — cùng luật khối Get ready', () => {
+    const v = printOf(
+      {},
+      makeTourData({ included: ['Guide', 'Guide', 'Tickets'], excluded: [' ', 'Tips'] }),
+    );
+    expect(v.included).toEqual({ items: ['Guide', 'Tickets'], more: null });
+    expect(v.excluded).toEqual({ items: ['Tips'], more: null });
   });
 
   it('mục đầu ngày 1 không có giờ: không "meet", Where to meet chỉ có điểm hẹn', () => {

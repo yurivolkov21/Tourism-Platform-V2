@@ -54,6 +54,14 @@ export interface GetReadyView {
   footer: string | null;
 }
 
+/**
+ * Danh sách mục của tour (Included, Not included) bỏ mục trống và mục trùng — hai mục cùng chữ là
+ * hai dòng không phân biệt được. MỘT luật cho khối Get ready và bản in (G40).
+ */
+export function uniqueItems(items: string[]): string[] {
+  return [...new Set(items.filter((item) => item.trim() !== ''))];
+}
+
 /** Điểm hẹn của tour, `null` khi tour đã gỡ hay ô để trống. In nguyên văn, không cắt sửa. */
 export function tourMeetingPoint(tour: BookingTourData | null): string | null {
   const point = tour?.meetingPoint ?? null;
@@ -79,8 +87,7 @@ export function getReadySteps(
     });
   }
 
-  // Bỏ mục trống và mục trùng: hai mục cùng chữ là hai ô tích không phân biệt được.
-  const excluded = [...new Set((tour?.excluded ?? []).filter((item) => item.trim() !== ''))];
+  const excluded = uniqueItems(tour?.excluded ?? []);
   if (excluded.length > 0) {
     bodies.push({ key: 'budget', title: t.budget, items: excluded, note: t.budgetNote });
   }

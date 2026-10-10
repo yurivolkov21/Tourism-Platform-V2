@@ -44,9 +44,10 @@ export function VoucherPrint({ view }: { view: VoucherPrintView }) {
             className="grid grid-flow-col grid-cols-2 gap-x-[8mm]"
             style={{ gridTemplateRows: `repeat(${Math.ceil(stops.length / 2)}, auto)` }}
           >
-            {stops.map((stop) => (
+            {stops.map((stop, row) => (
               <li
-                key={`${stop.time ?? ''}${stop.text}`}
+                // biome-ignore lint/suspicious/noArrayIndexKey: danh sách tĩnh theo đúng thứ tự lịch trình, không bao giờ sắp lại; một ngày có thể có hai dòng cùng chữ nên chữ không làm khoá được.
+                key={row}
                 className="grid grid-cols-[3mm_12mm_1fr] items-start gap-[1.5mm] py-[1.1mm]"
               >
                 <span
