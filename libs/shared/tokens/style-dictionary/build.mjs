@@ -1,5 +1,5 @@
 // Style Dictionary build for @tourism/tokens.
-// Emits generated/tokens.css (Tailwind v4 @theme inline + :root + .dark).
+// Emits generated/tokens.css (Tailwind v4 @theme inline + :root + .dark + .light).
 // Run: node libs/shared/tokens/style-dictionary/build.mjs (wired as the Nx `tokens` target).
 
 import { dirname, resolve } from 'node:path';
@@ -47,6 +47,7 @@ StyleDictionary.registerFormat({
       ...Object.entries(regionDefaults).map(([k, v]) => `  --region-${k}: ${v};`),
     ];
     const dark = colors.map((t) => `  ${cssVar(t)}: ${t.original.darkValue};`);
+    const light = colors.map((t) => `  ${cssVar(t)}: ${t.original.value};`);
 
     return [
       HEADER,
@@ -61,6 +62,12 @@ StyleDictionary.registerFormat({
       '',
       '.dark {',
       ...dark,
+      '}',
+      '',
+      // G40 (ADR-0057 §5): phạm vi SÁNG gắn được lên một phần tử. Tài liệu in mang class `light` để
+      // vẫn ra giấy sáng khi trang đang ở giao diện tối — class `dark` trên <html> còn nguyên lúc in.
+      '.light {',
+      ...light,
       '}',
       '',
       // ADR-0015: ba khối override `[data-region='north'|'central'|'south']` đã
