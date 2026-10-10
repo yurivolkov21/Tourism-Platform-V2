@@ -47,6 +47,8 @@ describe('PrintTicket', () => {
     expect(container.querySelector('[data-slot="barcode"]')).not.toBeNull();
     // 52 vạch rộng cố định (~35 mm) trong cuống ~42 mm: canh giữa cho thẳng mã chữ bên dưới.
     expect(container.querySelector('[data-slot="barcode"]')?.className).toContain('justify-center');
+    // Tên đủ đã ở bìa; trên vé kẹp hai dòng để tên dài không đẩy tờ quá một trang.
+    expect(screen.getByText(ACTIVE.title).className).toContain('line-clamp-2');
     expect(screen.getAllByText('BK-EET0JBTH')).toHaveLength(2); // dải và dưới mã vạch
   });
 

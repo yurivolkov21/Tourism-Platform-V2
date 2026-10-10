@@ -67,7 +67,9 @@ export function PrintTicket({ view }: { view: PrintTicketView }) {
           {/* Tên và mộc đứng ở mọi tông — vé đã huỷ vẫn đóng mộc CANCELLED / REFUNDED (spec §3.3);
               chỉ thân vé (ngày, đường nối, bốn ô) thay bằng dải hết hiệu lực. */}
           <div className="flex items-start justify-between gap-[5mm]">
-            <p className="font-heading text-[14pt] leading-[1.2] font-semibold">{view.title}</p>
+            <p className="line-clamp-2 font-heading text-[14pt] leading-[1.2] font-semibold">
+              {view.title}
+            </p>
             <DocStamp label={view.stamp.label} tone={view.stamp.tone} />
           </div>
           {view.notice !== null ? (

@@ -13,7 +13,7 @@ export function PrintLists({
   if (included === null && excluded === null) return null;
   const t = messages.printDoc.voucher;
   return (
-    <div data-slot="print-lists" className="mt-[5mm] grid grid-cols-2 gap-[8mm]">
+    <div data-slot="print-lists" className="mt-[4mm] grid grid-cols-2 gap-[8mm]">
       <ListColumn
         heading={t.included}
         list={included}
@@ -48,15 +48,16 @@ function ListColumn({
       <h3 className={`mb-[2.5mm] ${PRINT_SECTION}`}>{heading}</h3>
       <ul>
         {list.items.map((item) => (
-          <li key={item} className="relative mt-[1mm] pl-[4.5mm]">
+          <li key={item} className="relative mt-[0.7mm] pl-[4.5mm]">
             <span aria-hidden="true" className={`absolute left-0 ${markClass}`}>
               {mark}
             </span>
-            {item}
+            {/* Mục admin nhập dài tới 200 ký tự: kẹp hai dòng để tờ giữ một trang (spec §3.4). */}
+            <span className="line-clamp-2">{item}</span>
           </li>
         ))}
         {list.more ? (
-          <li className="mt-[1mm] pl-[4.5mm] text-muted-foreground">{list.more}</li>
+          <li className="mt-[0.7mm] pl-[4.5mm] text-muted-foreground">{list.more}</li>
         ) : null}
       </ul>
     </section>

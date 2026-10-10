@@ -58,7 +58,8 @@ export function PrintBand({
               ) : null}
             </>
           ) : (
-            <p>
+            // Điểm hẹn admin nhập dài tới 300 ký tự: kẹp bốn dòng để tờ giữ một trang.
+            <p className="line-clamp-4">
               {column.strong ? <b className="font-semibold">{column.strong}</b> : null}
               {column.strong && column.text ? ' · ' : null}
               {column.text}

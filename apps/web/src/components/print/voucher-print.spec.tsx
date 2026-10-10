@@ -35,6 +35,27 @@ const blocks = (container: HTMLElement) => {
 };
 
 describe('VoucherPrint', () => {
+  // Một trang A4 với dữ liệu thật (spec §3.4): luật cắt đếm mục, nên mỗi mục còn bị kẹp số dòng —
+  // đo 10/10 tour seed dài từng đẩy chân trang ra mép giấy (review G40).
+  it('kẹp số dòng: mục lịch trình, mục gồm hai dòng', () => {
+    const { container } = renderPrint();
+    const stops = container.querySelectorAll('[data-slot="print-day"] li');
+    expect(stops.length).toBeGreaterThan(0);
+    for (const li of stops) expect(li.lastElementChild?.className).toContain('line-clamp-2');
+    const items = container.querySelectorAll('[data-slot="print-lists"] li span.line-clamp-2');
+    expect(items.length).toBeGreaterThan(0);
+  });
+
+  it('chuyến nhiều ngày: danh sách ngày không chừa cột giờ trống', () => {
+    const { container } = renderPrint({
+      departureStartDate: '2026-11-03',
+      departureEndDate: '2026-11-05',
+    });
+    const first = container.querySelector('[data-slot="print-day"] li');
+    expect(first?.className).toContain('grid-cols-[3mm_1fr]');
+    expect(first?.querySelector('time')).toBeNull();
+  });
+
   // Giấy luôn sáng (ADR-0057 §5): `.light` chỉ đặt lại biến màu, còn biến thể `dark:` vẫn khớp mọi
   // con của `<html class="dark">`. Linh kiện mang `dark:` lọt vào tài liệu in là in nền tối lên giấy
   // sáng khi khách in từ giao diện tối — chặn ở đây, mọi tài liệu in dùng lại luật này.

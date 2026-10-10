@@ -33,6 +33,12 @@ describe('PrintBand', () => {
     );
   });
 
+  // Điểm hẹn admin nhập dài tới 300 ký tự: cột ~60 mm thì tám dòng, đủ đẩy tờ quá một trang.
+  it('chữ của cột kẹp bốn dòng', () => {
+    render(<PrintBand columns={[MEET]} />);
+    expect(screen.getByText('Ticket booth').parentElement?.className).toContain('line-clamp-4');
+  });
+
   it('cột mã đơn: mã mono ở dòng riêng, dòng phụ bên dưới', () => {
     render(<PrintBand columns={[REF]} />);
     expect(screen.getByText('BK-EET0JBTH').className).toContain('font-mono');
