@@ -76,7 +76,8 @@ describe('regionDefaults (:root — bảng màu phụ cho 4 consumer nhóm hai)'
 // build sinh phạm vi `.light` để tài liệu in dưới <html class="dark"> lấy lại màu sáng.
 describe('token của tài liệu in (G40)', () => {
   it('đủ bốn token, dark = light', () => {
-    for (const name of ['chart-gain', 'chart-cost', 'pending', 'pending-soft']) {
+    // `as const`: `tokens.mjs` có kiểu suy ra qua `allowJs`, không index được bằng `string` trần.
+    for (const name of ['chart-gain', 'chart-cost', 'pending', 'pending-soft'] as const) {
       const token = tokens.color[name];
       expect(token, name).toBeDefined();
       expect(token.darkValue, name).toBe(token.value);
