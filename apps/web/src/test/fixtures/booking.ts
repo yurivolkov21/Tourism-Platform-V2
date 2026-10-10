@@ -122,8 +122,8 @@ export function makeReview(overrides: Partial<MyReview> = {}): MyReview {
 }
 
 /**
- * Phần dữ liệu tour mà trang chi tiết đơn đọc (`BookingTourData`: mục không gồm, điểm hẹn, lịch
- * trình) — đủ cả ba nên khối Get ready có đủ bốn bước. Spec cần thiếu một phần thì đè; một chỗ
+ * Phần dữ liệu tour mà trang chi tiết đơn và voucher đọc (`BookingTourData`: mục gồm và không gồm,
+ * điểm hẹn, lịch trình) — đủ cả nên khối Get ready có đủ bốn bước và bản in có đủ khối. Spec cần thiếu một phần thì đè; một chỗ
  * dựng nên `BookingTourData` thêm trường là chỉ sửa ở đây.
  */
 export function makeTourData(overrides: Partial<BookingTourData> = {}): BookingTourData {
