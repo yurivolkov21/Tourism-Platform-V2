@@ -5,7 +5,7 @@ import { fetchAllAdminBookings } from './bookings';
 import { api } from './client';
 
 /**
- * Phần RIÊNG của vùng bookings trong vòng gom Export CSV (spec P4b §3-F6):
+ * Phần RIÊNG của vùng bookings trong vòng gom Export Excel (spec P4b §3-F6):
  * hình dạng request (limit trần contract, `includeMedia: false`, cookie +
  * một signal chung) và khoá dedupe là `code`. Luật của chính vòng lặp — trần
  * từ-chối, đợt song song, dedupe, tập đổi giữa chừng — pin ở

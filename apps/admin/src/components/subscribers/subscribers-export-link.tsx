@@ -6,7 +6,7 @@ import { EXPORT_MAX_ROWS } from '@/lib/export-pages';
 import { type SubscribersQuery, subscribersExportHref } from '@/lib/subscribers-query';
 
 /**
- * Nút Export CSV của `/subscribers` (spec P4c §3-F10) — kit `ExportButton`
+ * Nút Export Excel của `/subscribers` (spec P4c §3-F10) — kit `ExportButton`
  * (user chốt 01/09: nút sống trong ô tiêu đề bảng, và hai vùng có export thì
  * phải là cùng một nút).
  *
@@ -32,7 +32,7 @@ export function SubscribersExportLink({
 
   return (
     <ExportButton
-      label={t.exportCsv}
+      label={t.exportExcel}
       href={tooLarge ? undefined : subscribersExportHref(query)}
       disabledReason={tooLarge ? t.exportTooLarge(total, EXPORT_MAX_ROWS) : undefined}
     />

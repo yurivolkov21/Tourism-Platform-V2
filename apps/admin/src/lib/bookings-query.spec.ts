@@ -298,7 +298,7 @@ describe('bookingsHref', () => {
 });
 
 /**
- * Link "Export CSV" trỏ tới route handler xuất ĐÚNG tập đang lọc — nên nó
+ * Link "Export Excel" trỏ tới route handler xuất ĐÚNG tập đang lọc — nên nó
  * mang mọi filter và CỐ Ý bỏ phân trang: file là cả tập, không phải trang
  * đang xem.
  */

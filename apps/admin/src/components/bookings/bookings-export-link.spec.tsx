@@ -5,7 +5,7 @@ import { EXPORT_MAX_ROWS } from '@/lib/export-pages';
 import { BookingsExportLink } from './bookings-toolbar';
 
 /**
- * Nút Export CSV tự tắt khi tập vượt trần (vòng vá review F6): trần là thứ
+ * Nút Export Excel tự tắt khi tập vượt trần (vòng vá review F6): trần là thứ
  * biết được TRƯỚC cú click (server đã đếm `total`), và một `<a>` nhận 413 là
  * một cú điều hướng thật đá admin khỏi bảng đang lọc.
  */
@@ -25,7 +25,7 @@ describe('BookingsExportLink', () => {
       />,
     );
 
-    const link = screen.getByRole('link', { name: t.exportCsv });
+    const link = screen.getByRole('link', { name: t.exportExcel });
     expect(link).toHaveAttribute('href', '/bookings/export?status=PAID');
   });
 
@@ -34,7 +34,7 @@ describe('BookingsExportLink', () => {
     render(<BookingsExportLink query={{ page: 1, limit: 20 }} total={total} selected={[]} />);
 
     expect(screen.queryByRole('link')).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: t.exportCsv })).toBeDisabled();
+    expect(screen.getByRole('button', { name: t.exportExcel })).toBeDisabled();
     expect(screen.getByTitle(t.exportTooLarge(total, EXPORT_MAX_ROWS))).toBeInTheDocument();
   });
 });

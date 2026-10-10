@@ -23,7 +23,7 @@ import { EXPORT_MAX_ROWS } from '@/lib/export-pages';
  * Bốn mẩu điều khiển của `/bookings`, lắp vào hai khe của `DataTableFrame`:
  * tab lọc trạng thái (khe trái — cặp Select/Tabs responsive nằm ở kit
  * `StatusFilterTabs`, nâng lên ở review F3 31/08); ô tìm kiếm, khoảng ngày và
- * nút Export CSV (khe phải, hai cái sau thêm ở F6).
+ * nút Export Excel (khe phải, hai cái sau thêm ở F6).
  *
  * Ba mẩu lọc chỉ làm một việc: đổi URL; server component đọc lại
  * `searchParams` rồi fetch (spec P4b §2.2), không có state danh sách nào ở
@@ -119,7 +119,7 @@ export function BookingsDateRange({ query }: { query: BookingsQuery }) {
 }
 
 /**
- * Nút tải CSV — hình dạng ở `ExportButton` (khuôn `button-27`, user chốt
+ * Nút tải Excel — hình dạng ở `ExportButton` (khuôn `button-27`, user chốt
  * 01/09); phần ở đây chỉ quyết ĐỊNH ĐI ĐÂU và NÓI GÌ.
  *
  * Sống trong ô tiêu đề cột `export` của bảng, không còn ở hàng điều khiển —
@@ -150,7 +150,7 @@ export function BookingsExportLink({
   /** Mã các hàng đã tích trên TRANG ĐANG XEM; rỗng nghĩa là xuất cả tập lọc. */
   selected: readonly string[];
 }) {
-  const label = selected.length ? t.exportSelected(selected.length) : t.exportCsv;
+  const label = selected.length ? t.exportSelected(selected.length) : t.exportExcel;
   const tooLarge = selected.length === 0 && total > EXPORT_MAX_ROWS;
 
   return (

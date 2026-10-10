@@ -5,7 +5,7 @@ import { formatCount, type StatCardVM } from './stats-view';
 
 /**
  * Mapper hiển thị báo cáo tháng (spec P4b §3-F6) — THUẦN, ngoài React, nên
- * từng con chữ trên bản in và từng ô trong file CSV đều test được.
+ * từng con chữ trên bản in và từng ô trong file Excel đều test được.
  *
  * Ranh giới giống hệt F5: server đã cộng xong, client chỉ ĐỊNH DẠNG. Không có
  * phép cộng nào ở tầng này — kể cả tổng cột trạng thái, thứ đã có sẵn ở

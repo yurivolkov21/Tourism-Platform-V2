@@ -3843,7 +3843,7 @@ export const messages = {
       /**
        * BODY của response 409 khi `sel` không khớp hàng nào — trang đã đổi
        * dưới chân admin (hàng bị huỷ, bộ lọc khác, dữ liệu mới chen vào). Trả
-       * một CSV chỉ có dòng tiêu đề là NÓI DỐI: người tải tưởng tập rỗng là
+       * một file chỉ có dòng tiêu đề là NÓI DỐI: người tải tưởng tập rỗng là
        * sự thật. Câu này phải nói được việc cần làm tiếp theo.
        */
       exportSelectionStale:
@@ -3918,14 +3918,12 @@ export const messages = {
          */
         dateFilterLabel: 'Filter by booking date',
         /** Nút lịch nằm trong ô — không có chữ, chỉ máy đọc màn hình nghe. */
-        /** Xuất ĐÚNG tập đang lọc, không phải trang đang xem. */
-        exportCsv: 'Export CSV',
         /** Xuất ĐÚNG tập đang lọc — file Excel từ G40 (ADR-0034 AMEND 3). */
         exportExcel: 'Export Excel',
         /**
          * Nhãn nút khi ĐANG có hàng được tích (01/09). Nói rõ số hàng vì người
          * bấm phải biết mình sắp tải về cái gì TRƯỚC cú bấm — để nguyên
-         * "Export CSV" trong lúc tích 3 hàng là một lời hứa mơ hồ về chính thứ
+         * "Export Excel" trong lúc tích 3 hàng là một lời hứa mơ hồ về chính thứ
          * vừa được chọn.
          */
         exportSelected: (n: number) => `Export ${n} ${n === 1 ? 'row' : 'rows'}`,
@@ -4357,7 +4355,6 @@ export const messages = {
          * Xuất ĐÚNG tập đang lọc (cả ba tab), không phải trang đang xem —
          * cùng lời hứa với nút Export của `/bookings`.
          */
-        exportCsv: 'Export CSV',
         exportExcel: 'Export Excel',
         /**
          * BODY của một response 413 — người bấm nút thấy nó thay cho file,

@@ -5,7 +5,7 @@ import { EXPORT_MAX_ROWS } from '@/lib/export-pages';
 import { SubscribersExportLink } from './subscribers-export-link';
 
 /**
- * Nút Export CSV của `/subscribers` tự tắt khi tập vượt trần (cùng luật với
+ * Nút Export Excel của `/subscribers` tự tắt khi tập vượt trần (cùng luật với
  * `/bookings`, spec có từ vòng vá review F10): trần là thứ biết được TRƯỚC cú
  * click, và một `<a>` nhận 413 là một cú điều hướng thật đá admin khỏi bảng.
  */
@@ -23,7 +23,7 @@ describe('SubscribersExportLink', () => {
         total={EXPORT_MAX_ROWS}
       />,
     );
-    expect(screen.getByRole('link', { name: t.exportCsv })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: t.exportExcel })).toHaveAttribute(
       'href',
       '/subscribers/export?q=ada',
     );
@@ -33,7 +33,7 @@ describe('SubscribersExportLink', () => {
     const total = EXPORT_MAX_ROWS + 1;
     render(<SubscribersExportLink query={{ page: 1, limit: 20 }} total={total} />);
     expect(screen.queryByRole('link')).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: t.exportCsv })).toBeDisabled();
+    expect(screen.getByRole('button', { name: t.exportExcel })).toBeDisabled();
     expect(screen.getByTitle(t.exportTooLarge(total, EXPORT_MAX_ROWS))).toBeInTheDocument();
   });
 });

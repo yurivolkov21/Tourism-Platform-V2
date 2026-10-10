@@ -9,7 +9,7 @@ import { ReportsMonthMenu } from '@/components/reports/reports-month-menu';
 import { reportsExportHref } from '@/lib/reports-query';
 
 /**
- * Thanh điều khiển của `/reports` (spec P4b §3-F6): chọn tháng · tải CSV · in.
+ * Thanh điều khiển của `/reports` (spec P4b §3-F6): chọn tháng · tải Excel · in.
  *
  * Cùng nếp URL-state với ba bảng vùng — chọn tháng là ĐIỀU HƯỚNG, server
  * component đọc lại `searchParams` rồi fetch. Không có state báo cáo nào ở

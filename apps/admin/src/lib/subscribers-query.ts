@@ -107,7 +107,7 @@ export function subscribersHref(current: SubscribersQuery, patch: SubscribersHre
 }
 
 /**
- * Link tải CSV — trỏ tới route handler `/subscribers/export`.
+ * Link tải Excel — trỏ tới route handler `/subscribers/export`.
  *
  * Cố ý BỎ `page`/`limit`: file là CẢ TẬP đang lọc chứ không phải trang đang
  * xem (cùng lời hứa với `bookingsExportHref`). Vùng này KHÔNG có xuất
