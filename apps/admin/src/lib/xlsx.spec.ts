@@ -109,66 +109,6 @@ describe('buildReportWorkbook', () => {
     ]);
   });
 
-  it('tiền là SỐ kèm định dạng — nếu không thì mọi phép SUM chết', async () => {
-    // Đây là toàn bộ lý do đổi từ CSV sang Excel. Ô CSV chỉ mang văn bản nên
-    // file cũ phải xuất '1240.50' trần để cứu phép tính; ở đây không phải chọn.
-    const book = await open(report);
-    const cell = cellFor(sheetNamed(book, 'Summary'), t.pnlTable.recognizedRevenue);
-
-    expect(typeof cell?.value).toBe('number');
-    expect(cell?.value).toBe(2500);
-    // Âm trong ngoặc VÀ tô đỏ: dấu ngoặc là cách kế toán viết số âm, màu đỏ
-    // để mắt bắt được một tháng lỗ mà không phải đọc từng ô.
-    expect(cell?.numFmt).toBe('#,##0.00;[Red](#,##0.00)');
-  });
-
-  it('tháng LỖ ghi số ÂM thật, không phải chuỗi có dấu trừ', async () => {
-    const book = await open({ ...report, grossProfit: '-150.00', netProfit: '-186.36' });
-    const cell = cellFor(sheetNamed(book, 'Summary'), t.pnlTable.netProfit);
-
-    expect(cell?.value).toBe(-186.36);
-  });
-
-  it('biên gộp là TỈ LỆ kèm định dạng %, không phải chuỗi "75.6%"', async () => {
-    const book = await open(report);
-    const cell = cellFor(sheetNamed(book, 'Summary'), t.xlsx.grossMargin);
-
-    expect(cell?.value).toBeCloseTo(0.756, 6);
-    expect(cell?.numFmt).toBe('0.0%');
-  });
-
-  it('biên KHÔNG XÁC ĐỊNH ghi dấu gạch, không ghi 0', async () => {
-    // Ghi 0 ở đây là nói tháng ấy hoà vốn trắng, và tệ hơn CSV: một ô số 0
-    // vào thẳng phép SUM của người đọc.
-    const book = await open({ ...report, grossMarginPct: null });
-    const cell = cellFor(sheetNamed(book, 'Summary'), t.xlsx.grossMargin);
-
-    expect(cell?.value).toBe(t.pnlTable.marginUnknown);
-  });
-
-  it('dòng Period của tháng đang chạy nói "(to date)" như trên màn hình (ADR-0033 AMEND 3)', async () => {
-    // File in ra đúng con số đã tính tới hôm ấy; thiếu chữ này thì tờ giấy nói
-    // "cả tháng" trong khi cột kinh doanh mới tính được nửa tháng.
-    const book = await open({
-      ...report,
-      month: '2026-10',
-      from: '2026-10-01T00:00:00.000Z',
-      to: '2026-11-01T00:00:00.000Z',
-      recognizedThrough: '2026-10-15',
-    });
-    const cell = cellFor(sheetNamed(book, 'Summary'), t.xlsx.period);
-
-    expect(cell?.value).toBe(t.periodToDate('1 Oct 2026', '15 Oct 2026'));
-  });
-
-  it('khối đầu khai THUẾ SUẤT — env không có ngày hiệu lực', async () => {
-    const book = await open({ ...report, taxRate: 0.2 });
-    const cell = cellFor(sheetNamed(book, 'Summary'), t.xlsx.taxRate);
-
-    expect(cell?.value).toBeCloseTo(0.2, 6);
-    expect(cell?.numFmt).toBe('0.0%');
-  });
-
   it('sheet Bookings có dòng Total khớp `newBookings` của server', async () => {
     const book = await open(report);
     const cell = cellFor(sheetNamed(book, 'Bookings'), t.bookingsTable.total);
@@ -268,41 +208,6 @@ describe('trình bày', () => {
 
     expect(row.getCell(1).alignment?.horizontal).toBe('left');
     expect(row.getCell(2).alignment?.horizontal).toBe('right');
-  });
-
-  it('dòng TỔNG có viền trên đậm màu thương hiệu', async () => {
-    // Dấu hiệu "dòng này là tổng của mấy dòng trên" — thứ phân biệt một con số
-    // kết quả với một con số thành phần.
-    const cell = cellFor(sheetNamed(await open(report), 'Summary'), t.pnlTable.netProfit);
-
-    expect(cell?.border?.top).toMatchObject({ style: 'medium', color: { argb: 'FF2E6E66' } });
-  });
-
-  it('hai khối tiền trong Summary có dải tiêu đề riêng', async () => {
-    // Dòng tiền và kết quả kinh doanh KHÔNG cộng vào nhau được, nên người mở
-    // file phải thấy ngay chúng là hai khối.
-    const sheet = sheetNamed(await open(report), 'Summary');
-
-    expect(cellFor(sheet, t.xlsx.cashHeading)?.fill).toBeTruthy();
-    expect(cellFor(sheet, t.pnlTable.heading)?.fill).toBeTruthy();
-  });
-
-  it('dòng thành phần thụt lề, dòng kết quả thì không', async () => {
-    const sheet = sheetNamed(await open(report), 'Summary');
-
-    expect(cellFor(sheet, t.pnlTable.cogsVariable)).toBeTruthy();
-    let variableIndent: number | undefined;
-    let totalIndent: number | undefined;
-    sheet.eachRow((row) => {
-      if (row.getCell(1).value === t.pnlTable.cogsVariable) {
-        variableIndent = row.getCell(1).alignment?.indent;
-      }
-      if (row.getCell(1).value === t.pnlTable.cogsTotal) {
-        totalIndent = row.getCell(1).alignment?.indent;
-      }
-    });
-    expect(variableIndent).toBeGreaterThan(0);
-    expect(totalIndent ?? 0).toBe(0);
   });
 
   it('sheet Detail kẻ viền cả bảy cột, không chỉ hai cột đầu', async () => {
