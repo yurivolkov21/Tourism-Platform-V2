@@ -4,9 +4,8 @@ Nguồn: git (branch, log, status) và kiểm tra trên máy. Không dựa vào 
 
 ## Git
 
-- Branch: `feat/mobile-review-screens`, tách từ `feat/mobile-booking-screens` (HEAD `cc02e089`).
-- Chưa có commit riêng của nhánh này. Mọi thay đổi bên dưới đang uncommitted.
-- Chưa push, chưa merge.
+- Branch: `feat/mobile-review-screens`, tách từ `feat/mobile-booking-screens`.
+- Đã có 5 commit riêng (04/10) và đã push; chưa merge. Số liệu bên dưới là ảnh chụp lúc viết (04/10), trước khi nhánh `fix/mobile-review-screens` sửa theo review 05/10.
 
 ## Đã làm (mockup `mobile-review-screens`)
 
@@ -26,19 +25,15 @@ Nguồn: git (branch, log, status) và kiểm tra trên máy. Không dựa vào 
 - Hook dùng chung `useReviewPhotos` (R1 và R5).
 - Mobile: `expo-image-picker` có sẵn, không thêm dependency mới.
 
-## Thay đổi không thuộc review (cùng working tree)
+## Thay đổi không thuộc review (đã hoàn lại)
 
-- Account: sheet "Help & legal" gom 5 link pháp lý, link mở production (`PUBLIC_SITE_ORIGIN`).
-- Account: dòng Password chuyển sang Personal details.
-- Account: gỡ link "Gallery (dev)" và "Tour gallery (dev)".
-- Nên tách thành commit/nhánh riêng khi commit.
+- Commit `8e9b79f5` từng gom 5 link pháp lý vào sheet "Help & legal", mở link trên production và chuyển Password sang Personal details. Review 05/10 quyết định quay về mockup A1/A2: nhánh `fix/mobile-review-screens` đã hoàn lại cả ba (link mở theo `EXPO_PUBLIC_WEB_URL`, năm dòng ở menu Account, Password ở menu Account).
 
 ## Chưa xong
 
 - Test trên máy: chọn ảnh thư viện thật, R5 thêm ảnh mới, R6.
 - Nguồn update lúc 14:54 làm `rejected_at` của một review test về null. Chưa xác định được. Đường code duy nhất đặt `rejectedAt` về null là `reviews.update`. Cần log API.
 - Ảnh bìa tour trong R5 phụ thuộc `tourImage` từ API (đã thêm, chưa test trên máy).
-- Chưa commit.
 
 ## Dữ liệu test
 
@@ -48,6 +43,6 @@ Nguồn: git (branch, log, status) và kiểm tra trên máy. Không dựa vào 
 
 ## Việc tiếp theo
 
-1. Quyết định cách commit: một commit cho review, commit riêng cho Account.
-2. Test trên máy các phần chưa test.
-3. Rebase nhánh review lên nhánh booking sau khi nhánh booking được commit.
+1. Test trên máy các phần chưa test (R5 thêm ảnh mới, R6).
+2. Rebase nhánh review lên main sau khi nhánh account và booking vào main (xem doc review 05/10).
+3. Xoá doc này trước khi merge nếu không còn cần làm nhật ký.

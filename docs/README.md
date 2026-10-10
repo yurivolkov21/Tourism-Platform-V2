@@ -231,6 +231,8 @@ Năm cụm màn app điện thoại (P5b), mục lục và ranh giới ở
 [tài khoản](handoff/mobile-account-handoff.md) ·
 [đánh giá](handoff/mobile-review-handoff.md)
 
+Nhật ký đợt mobile: [tiến độ nhánh review 04/10](progress-review-screens-2026-10-04.md) · [hướng dẫn test app mobile trên máy thật](huong-dan-test-may-that.md).
+
 ## Analysis — đo đạc và rà soát
 
 Trừ hai file đánh dấu **sống**, tất cả là ảnh chụp một thời điểm: đọc để lấy dữ
