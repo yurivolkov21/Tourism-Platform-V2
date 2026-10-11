@@ -55,10 +55,14 @@ export default function RegisterRoute() {
     setFormMessage(null);
 
     const outcome = await submitGoogle(actions, 'register');
+    // R7: xong thì giữ `pending` — xem `login.tsx`.
+    if (outcome.kind === 'success') {
+      leaveAuthTo(router, consumeReturnPath());
+      return;
+    }
     setPending(false);
 
-    if (outcome.kind === 'success') leaveAuthTo(router, consumeReturnPath());
-    else if (outcome.kind === 'formMessage') {
+    if (outcome.kind === 'formMessage') {
       setFormMessage({ tone: outcome.tone, text: outcome.text });
     }
     // `cancelled`: khách tự đóng cửa sổ Google — màn đứng nguyên, không báo gì.

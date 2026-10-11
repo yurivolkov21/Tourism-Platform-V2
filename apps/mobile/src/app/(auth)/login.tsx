@@ -41,13 +41,18 @@ export default function LoginRoute() {
     setFormMessage(null);
 
     const outcome = await submitSignIn(values, actions);
+    // R7: xong thì GIỮ `pending` — màn còn nhận chạm trong lúc modal trượt đi,
+    // lượt bấm thứ hai sẽ đọc return-to đã rỗng và đưa khách về Home.
+    if (outcome.kind === 'success') {
+      leaveAuthTo(router, consumeReturnPath());
+      return;
+    }
     setPending(false);
 
     if (outcome.kind === 'fieldErrors') setFieldErrors(outcome.errors);
     if (outcome.kind === 'formMessage') {
       setFormMessage({ tone: outcome.tone, text: outcome.text });
     }
-    if (outcome.kind === 'success') leaveAuthTo(router, consumeReturnPath());
     if (outcome.kind === 'verifyEmail') {
       // `reason: 'blocked'` để màn Verify đổi phụ đề: khách này không vừa đăng
       // ký, mà bị chặn ngay ở cửa đăng nhập.
@@ -64,10 +69,14 @@ export default function LoginRoute() {
     setFormMessage(null);
 
     const outcome = await submitGoogle(actions, 'signIn');
+    // R7: cùng lý do ở `submit` — xong thì giữ `pending` tới khi màn gỡ hẳn.
+    if (outcome.kind === 'success') {
+      leaveAuthTo(router, consumeReturnPath());
+      return;
+    }
     setPending(false);
 
-    if (outcome.kind === 'success') leaveAuthTo(router, consumeReturnPath());
-    else if (outcome.kind === 'formMessage') {
+    if (outcome.kind === 'formMessage') {
       setFormMessage({ tone: outcome.tone, text: outcome.text });
     }
     // `cancelled`: khách tự đóng cửa sổ Google — màn đứng nguyên, không báo gì.
