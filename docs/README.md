@@ -300,6 +300,7 @@ liệu, đừng coi là hiện trạng.
 | [Luồng auth — sequence diagram](analysis/auth-flow-sequence-diagrams.md) | Bản kỹ thuật: better-auth, cookie session, từng luồng đăng nhập/đăng ký/khôi phục |
 | [Luồng auth — bản đơn giản](analysis/auth-flow-simple.md) · [bản gộp một sơ đồ](analysis/auth-flow-merged.md) | Cho người không rành kỹ thuật; cùng nội dung bản sequence |
 | [Tóm tắt nhánh `feat/mobile-browse-screens` 26/09](analysis/2026-09-26-branch-summary-mobile-browse-screens.md) | Đã làm/chưa làm/còn treo cho người chưa theo dõi nhánh |
+| [Tóm tắt nhánh `feat/mobile-browse-screens` 11/10](analysis/2026-10-11-branch-summary-mobile-browse-screens.md) | **Bản hiện hành** — đối chiếu review 05/10 (R1–R8, Q5–Q8), còn treo, kết quả kiểm, kịch bản test máy thật |
 | [Tóm tắt nhánh `feat/mobile-account-screens` 26/09](analysis/2026-09-26-branch-summary-mobile-account-screens.md) | Đã làm/chưa làm/còn treo cho người chưa theo dõi nhánh |
 | [Tóm tắt nhánh `feat/mobile-account-screens` 06/10](analysis/2026-10-06-branch-summary-mobile-account-screens.md) | **Bản hiện hành** — chức năng theo spec, đã sửa sau review, còn treo, lỗi kế thừa |
 | [Hệ màu — nguồn gốc và số đo](analysis/2026-07-22-color-system-analysis.md) | Màu từ đâu ra, đo thế nào, ba palette vùng đã rút. Luật còn hiệu lực ở [conventions](conventions/color-system.md) |
