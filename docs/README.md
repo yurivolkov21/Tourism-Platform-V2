@@ -254,6 +254,7 @@ entry CHANGELOG cùng ngày.
 [**Saved và Settings của khách**](plans/2026-10-09-account-saved-settings.md) ·
 [**G40 Phần 1: bản in voucher và hoá đơn chờ**](plans/2026-10-10-g40-part1-web-print.md) ·
 [prompt thi công G40 Phần 1](plans/2026-10-10-g40-part1-web-print-prompt.md) ·
+[**G40 Phần 2: bản in báo cáo tháng C2**](plans/2026-10-12-g40-part2-report-print.md) ·
 [**G40 Phần 3: Excel báo cáo D1 và danh sách xuất Excel**](plans/2026-10-10-g40-part3-admin-excel.md) ·
 [prompt thi công G40 Phần 3](plans/2026-10-10-g40-part3-admin-excel-prompt.md) ·
 [**P5b-2 T0 tầng dữ liệu mobile browse**](plans/2026-09-23-mobile-browse-t0-data-layer.md) ·
