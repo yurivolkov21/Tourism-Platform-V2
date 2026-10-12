@@ -46,6 +46,39 @@ describe('VoucherPrint', () => {
     expect(items.length).toBeGreaterThan(0);
   });
 
+  // Thử tay production 12/10: dữ liệu tour thật dài hơn tờ tới 6,5 mm. Bìa là khối duy nhất co được
+  // (62 → 52 mm) để trình duyệt tự gánh phần tràn; các khối khác giữ nguyên chiều cao.
+  it('bìa co giãn: cao 62 mm, co được tới 52 mm', () => {
+    const { container } = renderPrint();
+    const cover = container.querySelector('[data-slot="print-cover"]');
+    expect(cover?.className).toContain('h-[62mm]');
+    expect(cover?.className).toContain('min-h-[52mm]');
+    expect(cover?.className).toMatch(/(^|\s)shrink(\s|$)/);
+    expect(cover?.className).not.toContain('shrink-0');
+  });
+
+  it('ca cực hạn (`oneLine`): mục lịch trình và mục gồm kẹp một dòng', () => {
+    const booking = voucherBooking();
+    const view = voucherView(booking, VOUCHER_NOW);
+    if (view === null) throw new Error('fixture phải là đơn đã trả');
+    const print = {
+      ...voucherPrintView(booking, view, makeTourData(), VOUCHER_NOW),
+      oneLine: true,
+    };
+    const { container } = render(<VoucherPrint view={print} />);
+    for (const li of container.querySelectorAll('[data-slot="print-day"] li')) {
+      expect(li.lastElementChild?.className).toContain('line-clamp-1');
+    }
+    expect(
+      container.querySelectorAll('[data-slot="print-lists"] li span.line-clamp-1').length,
+    ).toBe(container.querySelectorAll('[data-slot="print-lists"] li span:last-child').length);
+    expect(
+      container.querySelector(
+        '[data-slot="print-day"] .line-clamp-2, [data-slot="print-lists"] .line-clamp-2',
+      ),
+    ).toBeNull();
+  });
+
   it('chuyến nhiều ngày: danh sách ngày không chừa cột giờ trống', () => {
     const { container } = renderPrint({
       departureStartDate: '2026-11-03',

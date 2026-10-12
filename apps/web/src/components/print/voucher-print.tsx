@@ -16,6 +16,10 @@ import { PrintTicket } from './print-ticket';
 /**
  * Voucher in — phương án 5b (G40, spec §3.1): bìa ảnh 62 mm → vé có cuống → dòng xé → lịch trình hai
  * cột → Included / Not included → dải ba cột → chân trang. Chỉ hiện khi in (`DocPage`).
+ *
+ * Bìa là khối DUY NHẤT co được: nội dung dài hơn tờ thì bìa thấp lại vừa đủ, tối đa xuống 52 mm (đủ
+ * chỗ đầu trang và tên tour hai dòng) — trình duyệt tự đo nên chính xác với dữ liệu thật. Dài hơn
+ * nữa thì view-model đã kẹp mỗi mục một dòng (`oneLine`).
  */
 export function VoucherPrint({ view }: { view: VoucherPrintView }) {
   const t = messages.printDoc.voucher;
@@ -26,7 +30,7 @@ export function VoucherPrint({ view }: { view: VoucherPrintView }) {
     <DocPage className="pt-[11mm]">
       <PhotoCover
         photo={view.photo}
-        heightClass="h-[62mm]"
+        heightClass="h-[62mm] min-h-[52mm] shrink"
         titleClass={view.longTitle ? 'text-[22pt]' : 'text-[27pt]'}
         docType={t.docType}
         meta={view.issued}
@@ -37,7 +41,11 @@ export function VoucherPrint({ view }: { view: VoucherPrintView }) {
         <PrintTicket view={view.ticket} />
       </div>
       {/* Không mã vạch thì không dòng xé; giữ khoảng để phần dưới không dính vào vé. */}
-      {view.tear ? <PrintTear text={view.tear} /> : <div aria-hidden="true" className="h-[6mm]" />}
+      {view.tear ? (
+        <PrintTear text={view.tear} />
+      ) : (
+        <div aria-hidden="true" className="h-[6mm] shrink-0" />
+      )}
       {view.day ? (
         <section data-slot="print-day" className="mt-[1mm]">
           <h3 className={`mb-[2.5mm] ${PRINT_SECTION}`}>{view.day.heading}</h3>
@@ -69,7 +77,7 @@ export function VoucherPrint({ view }: { view: VoucherPrintView }) {
                     <span />
                   )
                 ) : null}
-                <span className="line-clamp-2">{stop.text}</span>
+                <span className={view.oneLine ? 'line-clamp-1' : 'line-clamp-2'}>{stop.text}</span>
               </li>
             ))}
           </ol>
@@ -78,7 +86,7 @@ export function VoucherPrint({ view }: { view: VoucherPrintView }) {
           ) : null}
         </section>
       ) : null}
-      <PrintLists included={view.included} excluded={view.excluded} />
+      <PrintLists included={view.included} excluded={view.excluded} oneLine={view.oneLine} />
       <PrintBand columns={view.band} wideFirst className="mt-[5mm]" />
       <DocFooter
         start={

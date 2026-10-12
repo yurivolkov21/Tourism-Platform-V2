@@ -11,7 +11,7 @@ import {
   voucherBooking,
   voucherNowOn,
 } from '@/test/fixtures/voucher';
-import { voucherPrintView } from './voucher-print';
+import { flexBudgetMm, flexHeightMm, voucherPrintView } from './voucher-print';
 
 const p = messages.printDoc.voucher;
 const { dayLabel } = messages.tourDetail.itinerary;
@@ -308,5 +308,114 @@ describe('voucherPrintView — thiếu dữ liệu', () => {
       url: expect.stringContaining('w_1400'),
       alt: 'Temple of Literature',
     });
+  });
+});
+
+// Thử tay production 12/10: dữ liệu tour thật dài hơn tờ tới 6,5 mm (12/59 biến thể của 29 tour seed).
+// Bìa co giãn trong CSS gánh phần tràn vừa phải; ca cực hạn mà bìa thấp nhất vẫn không đủ thì mọi mục
+// kẹp một dòng (`oneLine`). Ước lượng dùng số ký tự mỗi dòng, cố ý rơi về phía dư.
+describe('flexHeightMm, oneLine — vừa một trang với dữ liệu thật', () => {
+  const stop = (text: string, time: string | null = '08:00') => ({ time, text });
+  const day = (stops: ReturnType<typeof stop>[], more: string | null = null) => ({
+    heading: 'Your day',
+    stops,
+    more,
+  });
+  const SHORT = 'Hotel pickup';
+  const LONG = 'Meet at the Hội An Ancient Town ticket booth, Nguyễn Thái Học street';
+  const HUGE = 'x'.repeat(200);
+
+  it('hàng của lưới hai cột cao theo mục dài hơn trong hàng; mục kẹp hai dòng không cao thêm', () => {
+    const short = flexHeightMm(day([stop(SHORT), stop(SHORT)]), null, null, 2);
+    const mixed = flexHeightMm(day([stop(SHORT), stop(LONG)]), null, null, 2);
+    expect(mixed).toBeGreaterThan(short);
+    expect(flexHeightMm(day([stop(LONG), stop(LONG)]), null, null, 2)).toBe(mixed);
+    expect(flexHeightMm(day([stop(HUGE), stop(SHORT)]), null, null, 2)).toBe(mixed);
+  });
+
+  it('lưới đổ theo cột: bốn mục là hai hàng, không phải bốn', () => {
+    const two = flexHeightMm(day([stop(SHORT), stop(SHORT)]), null, null, 2);
+    const four = flexHeightMm(
+      day([stop(SHORT), stop(SHORT), stop(SHORT), stop(SHORT)]),
+      null,
+      null,
+      2,
+    );
+    const six = flexHeightMm(day(Array.from({ length: 6 }, () => stop(SHORT))), null, null, 2);
+    expect(six - four).toBeCloseTo(four - two);
+  });
+
+  it('kẹp một dòng: mục dài thấp lại, mục ngắn giữ nguyên', () => {
+    const long = day([stop(LONG), stop(LONG)]);
+    expect(flexHeightMm(long, null, null, 1)).toBeLessThan(flexHeightMm(long, null, null, 2));
+    const short = day([stop(SHORT), stop(SHORT)]);
+    expect(flexHeightMm(short, null, null, 1)).toBe(flexHeightMm(short, null, null, 2));
+  });
+
+  it('hai danh sách cao theo cột dài hơn; dòng "+n more" tính như một mục một dòng', () => {
+    const one = { items: ['Tips'], more: null };
+    const three = { items: ['Tips', 'Lunch', 'Water'], more: null };
+    expect(flexHeightMm(null, three, one, 2)).toBe(flexHeightMm(null, one, three, 2));
+    const twoAndMore = { items: ['Tips', 'Lunch'], more: '+1 more' };
+    expect(flexHeightMm(null, twoAndMore, null, 2)).toBe(flexHeightMm(null, three, null, 2));
+  });
+
+  it('không lịch trình, không danh sách thì 0; dòng "…" của lịch trình cộng thêm', () => {
+    expect(flexHeightMm(null, null, null, 2)).toBe(0);
+    const base = day([stop(SHORT), stop(SHORT)]);
+    expect(flexHeightMm(day(base.stops, '…'), null, null, 2)).toBeGreaterThan(
+      flexHeightMm(base, null, null, 2),
+    );
+  });
+
+  it('dữ liệu mẫu và tour Hội An thật giữ hai dòng; ca cực hạn kẹp một dòng', () => {
+    expect(printOf({}, DAY_ONE).oneLine).toBe(false);
+    const hoiAn = makeTourData({
+      itinerary: [
+        {
+          dayNumber: 1,
+          title: 'Ancient houses to a lantern-lit river',
+          description: [
+            '15:30 — Meet at the Hội An Ancient Town ticket booth, Nguyễn Thái Học street',
+            '16:00 — Tấn Ký ancient merchant house and the Assembly Hall of Phúc Kiến',
+            '16:45 — Japanese Covered Bridge (Chùa Cầu) at golden hour',
+            '17:30 — Bánh mì Phượng, the sandwich stop before the lanterns light',
+            '18:30 — Central Market wander as lanterns come on along the river',
+            '19:00 — Basket-boat ride under the lantern-lit Thu Bồn riverbank',
+            '20:00 — Release a floating lantern on the river',
+            '20:45 — Free time before drop-off',
+          ].join('\n'),
+        },
+      ],
+      included: [
+        'English-speaking guide',
+        'Hội An Ancient Town entrance ticket (5-monument pass)',
+        'Bánh mì Phượng tasting',
+        'Basket-boat ride on the Thu Bồn River',
+        'Floating lantern release',
+      ],
+      excluded: ['Extra food/drinks beyond the tasting stop', 'Personal shopping', 'Tips'],
+      meetingPoint: 'Hội An Ancient Town ticket booth, Nguyễn Thái Học street',
+    });
+    expect(printOf({}, hoiAn).oneLine).toBe(false);
+    const extreme = makeTourData({
+      itinerary: [
+        {
+          dayNumber: 1,
+          title: 'Everything',
+          description: Array.from({ length: 10 }, (_, i) => `${10 + i}:00 — ${HUGE}`).join('\n'),
+        },
+      ],
+      included: Array.from({ length: 6 }, (_, i) => `${i} ${HUGE}`),
+      excluded: Array.from({ length: 6 }, (_, i) => `${i} ${HUGE}`),
+      meetingPoint: HUGE,
+    });
+    expect(printOf({}, extreme).oneLine).toBe(true);
+  });
+
+  it('ca cực hạn kẹp một dòng vẫn vừa ngân sách, kể cả dải cuối bốn dòng', () => {
+    const stops = Array.from({ length: 10 }, () => stop(HUGE));
+    const list = { items: Array.from({ length: 6 }, (_, i) => `${i} ${HUGE}`), more: null };
+    expect(flexHeightMm(day(stops), list, list, 1)).toBeLessThanOrEqual(flexBudgetMm(4));
   });
 });
