@@ -173,9 +173,12 @@ Nút Print chỉ ở `/checkout/success` như hiện nay; trang cancel in bằng
    all taxes and fees", "Pay by {HH:MM · D Mon}".
 3. Dòng xé: "This code becomes your voucher once payment is complete".
 4. **Summary:** bảng Item · Travellers · Price · Amount, dòng Total, "Includes all taxes and fees."
-5. **Dải ba cột:** How to pay ("Open My bookings on nexora-travel.agency and choose Pay now." cùng
-   câu test mode) · If it stays unpaid ("The booking is released at {HH:MM, d Mon yyyy} (Vietnam
-   time). Seats aren't held until you pay.") · Booking reference (mã, email người đặt).
+5. **Dải ba cột:** How to pay ("Open **My bookings** on nexora-travel.agency and choose **Pay now**."
+   cùng câu test mode) · If it stays unpaid ("The booking is released at **{HH:MM, d Mon yyyy}**
+   (Vietnam time). Seats aren't held until you pay.") · Booking reference (mã, email người đặt).
+   Chữ đậm như bản thảo B1: tên menu và tên nút lấy từ khoá i18n thật của web, giờ nhả từ chính
+   mốc ấy. Email là một khối: vừa dòng riêng thì xuống dòng nguyên khối, dài hơn mới gãy trước "@"
+   (sửa sau duyệt bằng mắt 12/10).
 6. Chân trang khách, thêm số điện thoại.
 
 "Pay by" lấy từ `createdAt + CHECKOUT_SESSION_MINUTES` (60 phút — phiên ngắn nhất, Stripe; TTL quét 65 phút
@@ -342,11 +345,11 @@ Email · Source (nguyên văn) · Status (Active · Awaiting confirmation · Uns
 
 ## 11. Chia phần & thi công
 
-| Phần | Nội dung | App |
-| --- | --- | --- |
-| 1 | Khung chung (`@tourism/ui`, token), voucher in, hoá đơn chờ in, G37 màn hình | web |
-| 2 | Báo cáo tháng in, thác nước | admin |
-| 3 | Excel báo cáo D1, hai danh sách Excel, gỡ CSV | admin |
+| Phần | Nội dung | App | Trạng thái |
+| --- | --- | --- | --- |
+| 1 | Khung chung (`@tourism/ui`, token), voucher in, hoá đơn chờ in, G37 màn hình | web | **Xong** 12/10 (CHANGELOG 12/10) |
+| 2 | Báo cáo tháng in, thác nước | admin | Chưa có plan |
+| 3 | Excel báo cáo D1, hai danh sách Excel, gỡ CSV | admin | Thi công xong 10/10, chưa review |
 
 Mỗi phần một nhánh, merge riêng. Không thêm dependency, không migration, không đổi API. Thi công
 bằng agent Opus hoặc session riêng; review max; user duyệt bằng mắt trước merge.

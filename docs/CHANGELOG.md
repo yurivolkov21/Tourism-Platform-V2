@@ -8,6 +8,101 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-10-12 — G40 Phần 1: bản in voucher 5b và hoá đơn chờ B1, cuống đơn đã đóng của G37 (`c97d733c`..`29f79a13`, nhánh `claude/g40-print-web-part1-2ac874`)
+
+Bấm Print ở `/checkout/success` (hay Ctrl+P ở `/checkout/cancel`) nay ra một tờ A4 thiết kế riêng
+thay vì trang web đem in. Đơn đã trả in **voucher 5b**: bìa ảnh tour, tấm vé có cuống (mã vạch,
+"Admit n"), lịch trình hai cột cùng Included và Not included, dải Where to meet · Cancellation ·
+Payment. Đơn chưa trả in **hoá đơn chờ B1**: cùng họ 5b, tấm vé ở trạng thái chờ, cuống "Not yet a
+voucher" kèm giờ nhả đơn, bảng Summary, dải How to pay · If it stays unpaid · Booking reference.
+Spec G40 §2–§4, [ADR-0057](adr/0057-print-documents.md). Không đổi API, không migration, không
+env, không thêm dependency.
+
+- `@tourism/tokens`: bốn màu in `chart-gain`, `chart-cost`, `pending`, `pending-soft` (giấy luôn
+  sáng nên dark bằng light) và phạm vi `.light` để tờ in từ giao diện tối vẫn sáng.
+- `@tourism/ui`, thư mục `print-doc/`: `DocPage` (tờ A4 mang trang in `doc` lề 0, nên trình duyệt
+  thôi in ngày giờ và URL), `DocLetterhead` (biến thể giấy và ảnh), `DocFooter`, `DocStamp`,
+  `PrintedAt` (giờ Việt Nam, đóng dấu lúc `beforeprint`); lớp chữ `PRINT_LABEL`, `PRINT_SECTION`;
+  luật cô lập tài liệu khi in nằm ở CSS chung để admin dùng lại ở Phần 2.
+- Web: view-model thuần ở `lib/print/` (`voucher-print`, `receipt-print`, `print-ticket`), mảnh in
+  ở `components/print/` (bìa ảnh, tấm vé có cuống, dòng xé, dải cuối); gỡ khối CSS in cũ ép lên
+  markup màn hình ở `globals.css`. Voucher đổi theo giai đoạn (sắp đi, đang đi, đã đi, đã huỷ —
+  spec §3.3) và cắt nội dung dài cho vừa một trang (§3.4); hoá đơn có ba trạng thái (đang chờ, quá
+  hạn chót, đã đóng — §4.2 tới §4.4). "Pay by" tính từ phiên 60 phút (`pendingDeadline`), kẹp ở hết
+  ngày hạn chót.
+- G37, phần cuống: đơn chưa trả đã đóng thôi in "Departs …" và "This code becomes your voucher once
+  payment is complete." trên cuống màn hình; một câu `closedStubSentence` thay vào, bản in dùng
+  cùng câu.
+
+Thi công 10/10, tạm dừng tối 10/10 vì máy đem sửa, làm tiếp 12/10 sau khi cài lại máy. Rebase lên
+`5a73b589` (main vừa nhận nhánh mobile browse), không xung đột. Hash trong file bàn giao 10/10
+(nhánh sao lưu `backup/g40-tam-dung-2026-10-10`) là hash trước rebase: đầu nhánh `5b641ebc` nay là
+`f5c72620`.
+
+**Duyệt bằng mắt 12/10.** Session gốc chụp 19 biến thể bằng Edge headless (route đo tạm `zz-print`
+không commit, dữ liệu fixture cùng hai tour seed dài) và ghép cạnh bản thảo, cùng dữ liệu đơn
+BK-EET0JBTH: khớp 5b và B1. User chọn vá ngay hai chỗ lệch bản thảo:
+
+- `21ee130d` email ở cột Booking reference xuống dòng nguyên khối ("Booked by" rồi
+  "nora.dahl@example.com") như B1. Bản vá review `db2dfcba` đặt điểm ngắt trước "@" nên email ngắn
+  cũng gãy ngay cạnh "Booked by"; nay email là khối `inline-block`, chỉ email dài hơn một dòng mới
+  gãy trước "@" trong khối.
+- `29f79a13` dải cuối B1 in đậm "My bookings", "Pay now" và giờ nhả đơn như bản thảo: hàm thuần
+  `emphasize` tách câu i18n theo tên menu và tên nút thật của web; đổi một bên mà quên bên kia thì
+  câu vẫn in trọn, chỉ mất chữ đậm, và một ca test đỏ.
+
+Lệch bản thảo mà để nguyên: bỏ "Page 1 of 1" (spec §2.3); mã vạch canh giữa cuống (review); tên
+"Hội An Old Town & Lantern Evening" trên bìa voucher gãy hai dòng vì Literata của web không có trục
+optical size nên rộng hơn bản thảo 4px (631 so với hộp 627px), spec cho tối đa hai dòng.
+
+Số đo trên code cuối: 19/19 biến thể đúng một trang (bốn giai đoạn voucher, một và 12 ngày, không
+ảnh, tên dài, hai tour seed dài; hoá đơn chờ, đã đóng, bị thu rồi hoàn, quá hạn chót, email dài; in
+từ giao diện tối), tờ ở đỉnh trang, không tràn, chân trang ở 286 mm, nền tờ vẫn sáng khi
+`<html class="dark">`.
+
+**Review findings:** review max 10/10 — 10 góc tìm lỗi, 3 agent kiểm chứng, 1 lượt quét lỗ hổng;
+khoảng 35 ứng viên, 15 mục nặng nhất vá hết cùng khoảng 15 mục dọn dẹp:
+
+- `cfd35da3` hoá đơn in kể đúng kết cục: đơn bị thu rồi hoàn thôi in "No payment was taken" cạnh
+  khoản đã hoàn; đơn quá hạn chót chưa phải kết cục (mộc "Not paid", câu điều kiện như trang chi
+  tiết đơn); chuyến công ty huỷ; hạn trả kẹp ở hết ngày hạn chót.
+- `c43694aa` voucher in: vé đã huỷ giữ mộc CANCELLED hay REFUNDED; ngày không mô tả thì bỏ lịch
+  trình; đang đi từ ngày 2 thì dải cuối không in giờ hẹn của ngày 1; mục gồm bỏ mục trống, mục trùng.
+- `b1d899ae` khung in: `PrintedAt` cập nhật bằng `flushSync` trong `beforeprint` (bản trước in giờ
+  tải trang); nền tờ `card`; luật cô lập lên `@tourism/ui`, thôi bám `body > main`.
+- `db2dfcba` bìa và vé: dãn dòng tên tour, ảnh bìa ưu tiên thấp, mã vạch canh giữa, email dài ngắt
+  trước "@".
+- `47869666` vừa một trang với dữ liệu thật: tour seed `hue-imperial-day` và
+  `vietnam-grand-journey-12d` từng đẩy chân trang tới 290–296 mm (giới hạn 286) — kẹp số dòng, bỏ
+  cột giờ trống.
+- `2fb43159` hạn trả theo phiên ngắn nhất (60 phút, Stripe) thay TTL quét 65 phút của API; voucher
+  in kể "Refunded −$X" như màn hình.
+- `f5c72620` dải cuối chỉ kẹp cột điểm hẹn — câu điều kiện của hoá đơn quá hạn từng bị cắt cụt.
+- `9d1a4da8` và `f2a0dac4`: comment, ADR-0057, spec và plan ghi các sửa.
+
+Bác 6 vì spec hay plan đã chốt: voucher huỷ vẫn in "Admit" và mã; "3 NOV"; `/checkout/success` in
+hoá đơn khi đang Confirming; độ chính xác tiền khi không cùng cột; ảnh bìa 1400 px; brand chỉ tông
+ảnh. Để lại, mức thấp và có từ trước G40: tên file "Save as PDF" lấy tiêu đề tĩnh của trang; hai
+biến thể `voucher-stack`, `voucher-split` nay chỉ là bí danh của `max-xl`, `xl`.
+
+Tests after (`gate:int` trên `29f79a13`, 12/10 09:27–09:30, sau rebase lên `5a73b589`): unit 6700 —
+web 2224, admin 1911, api 1097, contract 675, mobile 509, mobile-ui 134, core 46, ui 47, i18n 36,
+tokens 21 — và int 779/46. So với main: web 2138 → 2224, ui 36 → 47, i18n 31 → 36, tokens 19 → 21;
+hai bản vá sau duyệt thêm 6 ca web (`emphasize` 4, dải cuối 1, hoá đơn in 1).
+
+**CÒN TREO:**
+
+- [ ] Push đụng web, `@tourism/ui`, tokens, i18n: canh ba đèn — Actions, Render, Vercel.
+- [ ] Thử tay prod theo spec §10 bước 1–3: voucher một ngày và nhiều ngày (xem trước sáng, tối,
+  tắt Background graphics); voucher đã đi và chuyến công ty huỷ; đặt rồi huỷ ở cổng, in hoá đơn
+  chờ ở `/checkout/cancel`.
+- [ ] G37: câu `heldNote` của `/checkout/cancel` vẫn mở.
+- [ ] G40 Phần 3 (nhánh `claude/g40-part3-excel-report-a7944d`): review max chưa chạy. Phần 2:
+  viết plan sau khi Phần 3 review xong.
+- Dọn sau merge: nhánh `claude/g40-print-web-part1-2ac874` ở máy và origin. Nhánh sao lưu
+  `backup/g40-tam-dung-2026-10-10` giữ tới khi Phần 2 và 3 xong (công cụ đo, file bàn giao).
+- Không migration, không env, không webhook, không đổi Cloudinary.
+
 ## 2026-10-12 — Merge nhánh `feat/mobile-browse-screens` lên main: R3, R7 của review 05/10 và bản vá Sign in kẹt sau onboarding (`7dc3041b`..`616d782e`)
 
 Nhánh dựng lại từ main 09/10 đúng như review 05/10 đề xuất: chức năng xem tour (P5b-2) đã vào
