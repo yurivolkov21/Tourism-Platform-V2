@@ -4259,6 +4259,11 @@ export const messages = {
         allBookings: 'All bookings',
         dateFrom: (date: string) => `from ${date}`,
         dateUntil: (date: string) => `until ${date}`,
+        /**
+         * Hàng được chọn theo NGÀY UTC như bảng trên màn hình, trong khi ô mốc thời gian ghi giờ Việt
+         * Nam — đầu trang nói rõ để hàng ở mép khoảng không trái với chính nó (review max G40 Phần 3).
+         */
+        utcDates: (dates: string) => `${dates} (UTC)`,
         search: (query: string) => `search “${query}”`,
         selected: (n: number) => `${n} selected ${n === 1 ? 'row' : 'rows'}`,
         total: 'Total',
@@ -4677,6 +4682,11 @@ export const messages = {
         sheet: 'Subscribers',
         docTitle: 'Nexora — newsletter subscribers',
         headerCenter: (summary: string) => `Subscribers · ${summary}`,
+        /**
+         * Tab Active của bảng (chưa rút consent) gồm cả địa chỉ chưa bấm link xác nhận, còn cột
+         * Status chỉ gọi "Active" địa chỉ đã xác nhận — đầu trang nói rõ (review max G40 Phần 3).
+         */
+        activeTab: 'Active and awaiting confirmation',
         source: (source: string) => `source “${source}”`,
         search: (query: string) => `search “${query}”`,
         columns: {

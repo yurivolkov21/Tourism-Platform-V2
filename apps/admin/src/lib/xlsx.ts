@@ -13,6 +13,7 @@ import {
   COST,
   COUNT_FMT,
   calendarDate,
+  cellText,
   count,
   DATE_FMT,
   DIM,
@@ -57,11 +58,17 @@ import {
 const t = messages.admin.reports;
 const x = t.xlsx;
 
-/** Cột A là lề; nội dung B:I (bản thảo D1). */
-const SUMMARY_WIDTHS = [2, 14, 14, 13, 14, 13, 13, 13, 14];
+/** Cột A là lề; nội dung B:I (bản thảo D1). Cột B 17: "Partially refunded" từng cụt ở 14. */
+const SUMMARY_WIDTHS = [2, 17, 14, 13, 14, 13, 13, 13, 14];
 const LAST = 'I';
 /** Thanh dài nhất của thác nước (bằng doanh thu ghi nhận) là 30 ký tự — spec §6.2. */
 const BAR_UNITS = 30;
+/**
+ * Trần của thanh thác nước: 50 ký tự, vừa vùng gộp F:I. Doanh thu ghi nhận đã trừ hoàn còn chi phí thì
+ * không, nên tháng lỗ cho tỉ lệ tuỳ ý — không trần thì thanh quá 65 nghìn ký tự làm Excel không mở cả
+ * file, quá 32.767 thì REPT ra #VALUE!, còn tỉ lệ cực lớn ném RangeError lúc dựng (review max G40 Phần 3).
+ */
+const BAR_MAX = 50;
 /** Thanh tỉ trọng trạng thái: 100% là 40 ký tự (bản thảo D1). */
 const SHARE_UNITS = 40;
 const BLOCK = '█';
@@ -88,9 +95,13 @@ function section(sheet: ExcelJS.Worksheet, row: number, text: string): void {
   sheet.getRow(row).height = 24;
 }
 
-/** Chuỗi █ làm giá trị đệm của ô REPT — đúng con số công thức sẽ tính khi Excel mở file. */
-function bar(ratio: number, units: number): string {
-  return BLOCK.repeat(Math.max(1, Math.round(ratio * units)));
+/**
+ * Chuỗi █ làm giá trị đệm của ô REPT — đúng con số công thức sẽ tính khi Excel mở file: tỉ lệ 0 là ô
+ * trống, còn lại ít nhất một ký tự, nhiều nhất `max`.
+ */
+function bar(ratio: number, units: number, max: number): string {
+  if (ratio === 0) return '';
+  return BLOCK.repeat(Math.min(max, Math.max(1, Math.round(ratio * units))));
 }
 
 /** Ô số đầu có ký hiệu khi là USD — đơn vị duy nhất của dự án (ADR-0034 giới hạn 3). */
@@ -212,7 +223,8 @@ function writeWaterfall(
     { label: p.netProfit, amount: report.netProfit, kind: 'net' },
   ];
   const revenueRow = head + 1;
-  const revenue = Number(report.recognizedRevenue);
+  // Tỉ lệ độ dài thanh chỉ để VẼ, không ra con số tiền nào — `Number` ở đây không trái ADR-0034 §2.
+  const revenue = Math.abs(Number(report.recognizedRevenue));
   lines.forEach((line, index) => {
     const row = revenueRow + index;
     const cost = line.kind === 'cost';
@@ -229,8 +241,8 @@ function writeWaterfall(
     put(
       sheet.getCell(`F${row}`),
       {
-        formula: `IF($E$${revenueRow}=0,"",REPT("${BLOCK}",MAX(1,ROUND(ABS(E${row})/$E$${revenueRow}*${BAR_UNITS},0))))`,
-        result: revenue === 0 ? '' : bar(Math.abs(value) / revenue, BAR_UNITS),
+        formula: `IF(OR($E$${revenueRow}=0,E${row}=0),"",REPT("${BLOCK}",MIN(${BAR_MAX},MAX(1,ROUND(ABS(E${row})/ABS($E$${revenueRow})*${BAR_UNITS},0)))))`,
+        result: revenue === 0 ? '' : bar(Math.abs(value) / revenue, BAR_UNITS, BAR_MAX),
       },
       { size: 10, color: { argb: cost || value < 0 ? COST : GAIN } },
     ).alignment = { vertical: 'middle' };
@@ -258,7 +270,14 @@ function writeWaterfall(
   const warning = costWarning(report);
   if (warning !== null) {
     last += 1;
-    put(sheet.getCell(`B${last}`), warning, { size: 9, italic: true, color: { argb: COST } });
+    // Câu hai vế dài ~164 ký tự: gộp B:I và xuống dòng, không thì phần cuối rơi ra ngoài vùng in A:I.
+    sheet.mergeCells(`B${last}:${LAST}${last}`);
+    put(sheet.getCell(`B${last}`), warning, {
+      size: 9,
+      italic: true,
+      color: { argb: COST },
+    }).alignment = { wrapText: true, vertical: 'top' };
+    sheet.getRow(last).height = 26;
   }
   return last;
 }
@@ -296,7 +315,7 @@ function writeStatusShare(
       sheet.getCell(`E${row}`),
       {
         formula: `IF(C${row}=0,"",REPT("${BLOCK}",MAX(1,ROUND(D${row}*${SHARE_UNITS},0))))`,
-        result: bookings === 0 ? '' : bar(bookings / report.newBookings, SHARE_UNITS),
+        result: bookings === 0 ? '' : bar(bookings / report.newBookings, SHARE_UNITS, SHARE_UNITS),
       },
       { color: { argb: statusColor(status) } },
     );
@@ -458,7 +477,7 @@ function buildDetail(
   bookings.forEach((booking, index) => {
     const row = sheet.getRow(first + index);
     bookingLink(row.getCell(1), booking.code, adminOrigin);
-    put(row.getCell(2), booking.tourTitle, { size: 10 });
+    put(row.getCell(2), cellText(booking.tourTitle), { size: 10 });
     const ends = row.getCell(3);
     ends.value = calendarDate(booking.departureEndDate);
     ends.numFmt = DATE_FMT;

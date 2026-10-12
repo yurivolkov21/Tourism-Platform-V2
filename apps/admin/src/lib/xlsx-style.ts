@@ -1,3 +1,4 @@
+import { fromCents, toCents } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
 import type ExcelJS from 'exceljs';
 import { formatDateTime } from './bookings-view';
@@ -40,8 +41,17 @@ export const DATETIME_FMT = '[$-409]d mmm yyyy hh:mm';
 
 /** Giờ Việt Nam: UTC+7, không có giờ mùa hè. */
 const VIETNAM_OFFSET_MS = 7 * 60 * 60 * 1000;
-/** Phần giữa đầu trang tối đa — Excel giới hạn cả đầu trang 255 ký tự, kể cả mã định dạng. */
+/** Phần giữa đầu trang hiện tối đa 100 ký tự cho gọn tờ in. */
 const HEADER_CENTER_MAX = 100;
+/** Cả đầu trang tối đa 255 ký tự, kể cả mã định dạng, đếm SAU khi nhân đôi `&` — Excel không mở file vượt. */
+const HEADER_MAX = 255;
+
+/** Ký tự XML 1.0 cho phép: tab, LF, CR, U+0020–U+D7FF, U+E000–U+FFFD, U+10000–U+10FFFF. */
+const XML_ILLEGAL = /[^\t\n\r\u0020-\uD7FF\uE000-\uFFFD\u{10000}-\u{10FFFF}]/gu;
+/** Mở đầu khiến Excel đọc CSV thành công thức: = + - @ tab CR. */
+const FORMULA_START = /^[=+\-@\t\r]/;
+/** Số điện thoại hay số thường: chữ số, khoảng trắng, + - ( ) . — không có hàm nào để chạy. */
+const PLAIN_NUMBER = /^[+-]?[\d\s().-]+$/;
 
 export function fill(argb: string): ExcelJS.FillPattern {
   return { type: 'pattern', pattern: 'solid', fgColor: { argb } };
@@ -57,9 +67,9 @@ export function bodyFont(overrides: Partial<ExcelJS.Font> = {}): Partial<ExcelJS
 }
 
 /**
- * Chỗ `Number()` DUY NHẤT được phép cho tiền (CLAUDE.md: tiền không đi qua float) — Excel không có
- * kiểu decimal. Nằm SAU mọi phép cộng của server. `negate` chỉ đổi dấu để dòng chi phí đọc là số âm;
- * số 0 giữ là 0 (không ghi -0).
+ * Ghi tiền vào ô: chỗ đổi chuỗi decimal ra `Number` (ADR-0034 §2: không tính tiền trên `number`) —
+ * Excel không có kiểu decimal. Nằm SAU mọi phép cộng của server. `negate` chỉ đổi dấu để dòng chi phí
+ * đọc là số âm; số 0 giữ là 0 (không ghi -0).
  */
 export function money(cell: ExcelJS.Cell, decimal: string, { negate = false } = {}): void {
   const value = Number(decimal);
@@ -73,11 +83,31 @@ export function count(cell: ExcelJS.Cell, value: number): void {
 }
 
 /**
- * Giá trị đệm (`result`) của ô tổng tiền: cộng theo XU nguyên để không trôi số lẻ của float. Excel
- * tính lại công thức khi mở; giá trị này chỉ cho trình xem không tự tính.
+ * Giá trị đệm (`result`) của ô tổng tiền: cộng theo XU nguyên bằng `toCents`/`fromCents` của contract
+ * — cùng phép làm tròn HALF_UP với server, không bản chép thứ hai. Excel tính lại công thức khi mở;
+ * giá trị này chỉ cho trình xem không tự tính. Chỉ nhận số không âm (tổng tiền, tiền đã hoàn).
  */
 export function sumMoney(values: readonly string[]): number {
-  return values.reduce((cents, value) => cents + Math.round(Number(value) * 100), 0) / 100;
+  return Number(fromCents(values.reduce((cents, value) => cents + toCents(value), 0)));
+}
+
+/** Chữ hợp lệ trong XML của file: bỏ ký tự XML 1.0 cấm — ExcelJS ghi thẳng U+FFFE/U+FFFF ra file hỏng. */
+function xmlText(text: string): string {
+  return text.replace(XML_ILLEGAL, '');
+}
+
+/**
+ * Chữ do người dùng nhập (tên, email, số điện thoại, nguồn đăng ký, tên tour) trước khi vào ô (review
+ * max G40 Phần 3):
+ * - bỏ ký tự XML cấm — một U+FFFF trong ô nguồn của form đăng ký công khai từng làm mọi lần xuất file
+ *   subscribers ra file Excel không mở được;
+ * - chữ mở đầu bằng = + - @ hay tab thì thêm dấu nháy: ô `.xlsx` không bao giờ chạy chuỗi như công
+ *   thức, nhưng Save As CSV rồi mở lại (ADR-0034 AMEND 3 chỉ cách ấy cho ai cần CSV) thì có. Số điện
+ *   thoại và số thường không có hàm nào để chạy nên giữ nguyên.
+ */
+export function cellText(text: string): string {
+  const clean = xmlText(text);
+  return FORMULA_START.test(clean) && !PLAIN_NUMBER.test(clean) ? `'${clean}` : clean;
 }
 
 /** Ngày lịch `YYYY-MM-DD` → ô ngày: nửa đêm UTC (ExcelJS ghi `Date` theo UTC). */
@@ -87,10 +117,19 @@ export function calendarDate(ymd: string): Date {
 
 /**
  * Mốc ISO → ô ngày-giờ theo GIỜ VIỆT NAM (ADR-0034 AMEND 3 mục 3). Excel không có múi giờ và ExcelJS
- * ghi `Date` theo UTC, nên cộng 7 giờ trước khi ghi: ô hiện đúng giờ đồng hồ ở Việt Nam.
+ * ghi `Date` theo UTC, nên cộng 7 giờ trước khi ghi: ô hiện đúng giờ đồng hồ ở Việt Nam. Bỏ phần nghìn
+ * giây: Excel làm tròn tới giây gần nhất rồi mới áp `hh:mm`, nên 23:59:59.999 từng hiện 00:00 ngày hôm
+ * sau trong khi màn admin cắt bỏ (review max G40 Phần 3).
  */
 export function vietnamDateTime(iso: string): Date {
-  return new Date(Date.parse(iso) + VIETNAM_OFFSET_MS);
+  return new Date(Math.floor((Date.parse(iso) + VIETNAM_OFFSET_MS) / 1000) * 1000);
+}
+
+/** Ô ngày-giờ theo giờ Việt Nam, hoặc để TRỐNG khi mốc vắng — ô trống là "không có giá trị". */
+export function dateTime(cell: ExcelJS.Cell, iso: string | null): void {
+  if (iso === null) return;
+  cell.value = vietnamDateTime(iso);
+  cell.numFmt = DATETIME_FMT;
 }
 
 /** `&` trong chữ của đầu, chân trang là mã điều khiển của Excel — chữ thật phải nhân đôi. */
@@ -105,12 +144,27 @@ export function headerText(text: string): string {
  */
 export function printFrame(center: string, generatedAt: string): Partial<ExcelJS.HeaderFooter> {
   const f = messages.admin.exportFile;
-  const middle =
-    center.length > HEADER_CENTER_MAX ? `${center.slice(0, HEADER_CENTER_MAX - 1)}…` : center;
+  const left = `&L&"${BODY_FONT},Bold"${headerText(f.backOffice)}`;
+  const middle = `&C&"${BODY_FONT},Regular"`;
+  const right = `&R&"${BODY_FONT},Regular"${headerText(f.internal)}`;
   return {
-    oddHeader: `&L&"${BODY_FONT},Bold"${headerText(f.backOffice)}&C&"${BODY_FONT},Regular"${headerText(middle)}&R&"${BODY_FONT},Regular"${headerText(f.internal)}`,
+    oddHeader: `${left}${middle}${fitHeader(center, HEADER_MAX - left.length - middle.length - right.length)}${right}`,
     oddFooter: `&L&"${BODY_FONT},Regular"${headerText(f.generated(formatDateTime(generatedAt)))}&R&"${BODY_FONT},Regular"${f.pageOf}`,
   };
+}
+
+/**
+ * Phần giữa đầu trang: tối đa `HEADER_CENTER_MAX` ký tự hiện, rồi cắt tiếp cho tới khi bản ĐÃ nhân đôi
+ * `&` vừa `room` — cắt trước khi nhân đôi từng cho đầu trang 286 ký tự (review max G40 Phần 3). Cắt
+ * theo điểm mã, không xẻ đôi cặp surrogate; dấu `&` nhân đôi trọn cặp nên không lẻ ở chỗ cắt.
+ */
+function fitHeader(text: string, room: number): string {
+  const chars = Array.from(xmlText(text));
+  const take = (n: number) =>
+    n >= chars.length ? headerText(chars.join('')) : `${headerText(chars.slice(0, n).join(''))}…`;
+  let n = chars.length > HEADER_CENTER_MAX ? HEADER_CENTER_MAX - 1 : chars.length;
+  while (n > 0 && take(n).length > room) n -= 1;
+  return take(n);
 }
 
 export interface SheetOptions {
@@ -175,8 +229,9 @@ export function stampWorkbook(
   book.creator = f.backOffice;
   book.lastModifiedBy = f.backOffice;
   book.company = f.company;
-  book.title = title;
-  book.subject = subject;
+  book.title = xmlText(title);
+  // Tóm tắt bộ lọc mang từ khoá admin gõ — cũng đi vào XML của file.
+  book.subject = xmlText(subject);
   book.created = created;
   book.modified = created;
   book.calcProperties.fullCalcOnLoad = true;

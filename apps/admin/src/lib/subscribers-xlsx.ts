@@ -5,14 +5,14 @@ import type { SubscribersQuery } from './subscribers-query';
 import {
   addSheet,
   bodyFont,
-  DATETIME_FMT,
+  cellText,
   DIM,
+  dateTime,
   freezeHeader,
   headerRow,
   printFrame,
   stampWorkbook,
   stripe,
-  vietnamDateTime,
 } from './xlsx-style';
 
 /**
@@ -33,7 +33,11 @@ export const SUBSCRIBERS_XLSX_HEADER: readonly string[] = [
   c.unsubscribedAt,
 ];
 
-const WIDTHS = [34, 18, 22, 22, 22, 22];
+/**
+ * Đủ cho nhãn tiêu đề đậm có thụt lề cộng nút lọc (đo bằng Excel 16): AutoFit chỉ đo chữ, ba cột
+ * "… (Vietnam time)" cần 27–29 cho chữ và thêm một đơn vị cho nút — cùng 31 cho đều.
+ */
+const WIDTHS = [34, 18, 24, 31, 31, 31];
 
 /**
  * Trạng thái của một địa chỉ: đã rút consent thắng mọi thứ; chưa bấm link xác nhận (double opt-in,
@@ -46,20 +50,17 @@ export function subscriberStatus(
   return row.confirmedAt === null ? l.awaitingConfirmation : l.active;
 }
 
-/** Tóm tắt bộ lọc cho đầu trang khi in: tab (Active · Unsubscribed · All) · nguồn · từ khoá. */
+/**
+ * Tóm tắt bộ lọc cho đầu trang khi in: tab · nguồn · từ khoá. Tab Active gọi là "Active and awaiting
+ * confirmation" — cột Status chỉ gọi "Active" địa chỉ đã xác nhận, một file không dùng một chữ cho hai tập.
+ */
 export function subscribersFilterSummary(query: SubscribersQuery): string {
   const parts: string[] = [
-    query.active === undefined ? l.all : query.active ? l.active : l.unsubscribed,
+    query.active === undefined ? l.all : query.active ? x.activeTab : l.unsubscribed,
   ];
   if (query.source) parts.push(x.source(query.source));
   if (query.search) parts.push(x.search(query.search));
   return parts.join(' · ');
-}
-
-function vietnamTime(cell: ExcelJS.Cell, iso: string | null): void {
-  if (iso === null) return;
-  cell.value = vietnamDateTime(iso);
-  cell.numFmt = DATETIME_FMT;
 }
 
 export async function buildSubscribersWorkbook(
@@ -69,9 +70,11 @@ export async function buildSubscribersWorkbook(
   const book = new ExcelJS.Workbook();
   const summary = subscribersFilterSummary(query);
   stampWorkbook(book, { title: x.docTitle, subject: summary, created: new Date(generatedAt) });
+  // Khổ ngang như file bookings (spec §7.2 "cùng kiểu sheet"): khổ dọc thu bảng còn ~70% khi in.
   const sheet = addSheet(book, x.sheet, {
     tab: DIM,
     grid: true,
+    landscape: true,
     frame: printFrame(x.headerCenter(summary), generatedAt),
   });
   sheet.columns = WIDTHS.map((width) => ({ width }));
@@ -80,12 +83,13 @@ export async function buildSubscribersWorkbook(
 
   rows.forEach((subscriber, index) => {
     const row = sheet.getRow(2 + index);
-    row.getCell(1).value = subscriber.email;
-    if (subscriber.source !== null) row.getCell(2).value = subscriber.source;
+    // Email và nguồn là chữ người lạ nhập qua form đăng ký công khai (`cellText`).
+    row.getCell(1).value = cellText(subscriber.email);
+    if (subscriber.source !== null) row.getCell(2).value = cellText(subscriber.source);
     row.getCell(3).value = subscriberStatus(subscriber);
-    vietnamTime(row.getCell(4), subscriber.createdAt);
-    vietnamTime(row.getCell(5), subscriber.confirmedAt);
-    vietnamTime(row.getCell(6), subscriber.unsubscribedAt);
+    dateTime(row.getCell(4), subscriber.createdAt);
+    dateTime(row.getCell(5), subscriber.confirmedAt);
+    dateTime(row.getCell(6), subscriber.unsubscribedAt);
     for (let column = 1; column <= columns; column += 1) {
       row.getCell(column).font = bodyFont({ size: 10 });
     }

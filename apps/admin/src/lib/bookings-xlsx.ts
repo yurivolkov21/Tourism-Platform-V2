@@ -10,10 +10,11 @@ import {
   COST,
   COUNT_FMT,
   calendarDate,
+  cellText,
   count,
   DATE_FMT,
-  DATETIME_FMT,
   DIM,
+  dateTime,
   freezeHeader,
   headerRow,
   INK,
@@ -25,7 +26,6 @@ import {
   stripe,
   subtotalRow,
   sumMoney,
-  vietnamDateTime,
 } from './xlsx-style';
 
 /**
@@ -34,8 +34,9 @@ import {
  * ngày-giờ theo giờ Việt Nam — nên file mở đúng bằng bấm đúp ở mọi máy (CSV dồn một cột trên Windows
  * tiếng Việt, đo 10/10).
  *
- * Không còn khâu chống "CSV injection": ô chữ của `.xlsx` lưu kiểu chuỗi, Excel không bao giờ chạy nó
- * như công thức — chỉ ô `{ formula }` mới là công thức.
+ * Chữ khách nhập đi qua `cellText`: bỏ ký tự XML cấm (một ký tự là hỏng cả file) và thêm dấu nháy cho
+ * chữ mở đầu như công thức — ô `.xlsx` không chạy chuỗi, nhưng Save As CSV rồi mở lại thì có (review
+ * max G40 Phần 3).
  */
 const x = messages.admin.bookings.xlsx;
 const c = x.columns;
@@ -61,29 +62,37 @@ export const BOOKINGS_XLSX_HEADER: readonly string[] = [
   c.cancelledAt,
 ];
 
-/** Độ rộng 18 cột, cùng thứ tự `BOOKINGS_XLSX_HEADER`. */
-const WIDTHS = [16, 18, 36, 14, 14, 9, 9, 9, 14, 13, 13, 10, 22, 30, 18, 20, 20, 20];
+/**
+ * Độ rộng 18 cột, cùng thứ tự `BOOKINGS_XLSX_HEADER` — đo bằng Excel 16 trên file xuất từ dữ liệu seed
+ * (review max G40 Phần 3): AutoFit của nhãn tiêu đề đậm có thụt lề CỘNG một đơn vị cho nút lọc, vì
+ * AutoFit chỉ đo chữ ("Children", "Price per person", "Currency" từng cụt dưới nút). Tour 46 như cột
+ * Tour của sheet Detail báo cáo: tên tour dài nhất của catalogue cần 43. Không dùng 9: đó là độ rộng
+ * mặc định của ExcelJS nên bị bỏ khi ghi, cột về 8,43.
+ */
+const WIDTHS = [16, 18, 46, 18, 18, 11, 13, 11, 19, 13, 14, 13, 22, 30, 18, 27, 24, 28];
+/** Từ khoá trong đầu trang tối đa 40 ký tự — phần sau nó ("n selected rows") phải còn khi in. */
+const SEARCH_MAX = 40;
 
 /**
- * Tóm tắt bộ lọc cho đầu trang khi in (spec §7.1): trạng thái · khoảng ngày · từ khoá · số hàng chọn,
- * hoặc "All bookings". Ngày tách CHUỖI (`formatCalendarDate`), không qua `Date` — không trôi múi giờ.
+ * Tóm tắt bộ lọc cho đầu trang khi in (spec §7.1): trạng thái · khoảng ngày (ngày UTC, như bảng trên
+ * màn hình) · từ khoá (cắt ở `SEARCH_MAX`) · số hàng chọn, hoặc "All bookings". Ngày tách CHUỖI
+ * (`formatCalendarDate`), không qua `Date` — không trôi múi giờ.
  */
 export function bookingsFilterSummary(query: BookingsQuery, selected: number): string {
   const parts: string[] = [];
   if (query.status) parts.push(statusLabel(query.status));
-  if (query.from && query.to) parts.push(formatDateRange(query.from, query.to));
-  else if (query.from) parts.push(x.dateFrom(formatCalendarDate(query.from)));
-  else if (query.to) parts.push(x.dateUntil(formatCalendarDate(query.to)));
-  if (query.search) parts.push(x.search(query.search));
+  if (query.from && query.to) parts.push(x.utcDates(formatDateRange(query.from, query.to)));
+  else if (query.from) parts.push(x.utcDates(x.dateFrom(formatCalendarDate(query.from))));
+  else if (query.to) parts.push(x.utcDates(x.dateUntil(formatCalendarDate(query.to))));
+  if (query.search) parts.push(x.search(clip(query.search, SEARCH_MAX)));
   if (selected > 0) parts.push(x.selected(selected));
   return parts.length === 0 ? x.allBookings : parts.join(' · ');
 }
 
-/** Ô ngày-giờ theo giờ Việt Nam, hoặc để TRỐNG khi mốc vắng — ô trống là "không có giá trị". */
-function vietnamTime(cell: ExcelJS.Cell, iso: string | null): void {
-  if (iso === null) return;
-  cell.value = vietnamDateTime(iso);
-  cell.numFmt = DATETIME_FMT;
+/** Cắt chữ ở `max` điểm mã (kể cả dấu …), không xẻ đôi cặp surrogate. */
+function clip(text: string, max: number): string {
+  const chars = Array.from(text);
+  return chars.length > max ? `${chars.slice(0, max - 1).join('')}…` : text;
 }
 
 export async function buildBookingsWorkbook(
@@ -113,7 +122,7 @@ export async function buildBookingsWorkbook(
     const row = sheet.getRow(first + index);
     bookingLink(row.getCell(1), booking.code, adminOrigin);
     row.getCell(2).value = statusLabel(booking.status);
-    row.getCell(3).value = booking.tourTitle;
+    row.getCell(3).value = cellText(booking.tourTitle);
     row.getCell(4).value = calendarDate(booking.departureStartDate);
     row.getCell(5).value = calendarDate(booking.departureEndDate);
     count(row.getCell(6), booking.numAdults);
@@ -123,12 +132,12 @@ export async function buildBookingsWorkbook(
     money(row.getCell(10), booking.totalAmount);
     money(row.getCell(11), booking.refundedTotal);
     row.getCell(12).value = booking.currency;
-    row.getCell(13).value = booking.contactName;
-    row.getCell(14).value = booking.contactEmail;
-    if (booking.contactPhone !== null) row.getCell(15).value = booking.contactPhone;
-    vietnamTime(row.getCell(16), booking.createdAt);
-    vietnamTime(row.getCell(17), booking.paidAt);
-    vietnamTime(row.getCell(18), booking.cancelledAt);
+    row.getCell(13).value = cellText(booking.contactName);
+    row.getCell(14).value = cellText(booking.contactEmail);
+    if (booking.contactPhone !== null) row.getCell(15).value = cellText(booking.contactPhone);
+    dateTime(row.getCell(16), booking.createdAt);
+    dateTime(row.getCell(17), booking.paidAt);
+    dateTime(row.getCell(18), booking.cancelledAt);
 
     for (let column = 2; column <= columns; column += 1) {
       const numeric = column >= 6 && column <= 11;

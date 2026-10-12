@@ -163,7 +163,9 @@ describe('Summary D1', () => {
   it('thanh REPT tham chiếu dòng doanh thu, có chốt chia 0; màu theo dòng', async () => {
     const sheet = await summaryOf(report);
     const bar = sheet.getCell('F12').value as ExcelJS.CellFormulaValue;
-    expect(bar.formula).toBe('IF($E$11=0,"",REPT("█",MAX(1,ROUND(ABS(E12)/$E$11*30,0))))');
+    expect(bar.formula).toBe(
+      'IF(OR($E$11=0,E12=0),"",REPT("█",MIN(50,MAX(1,ROUND(ABS(E12)/ABS($E$11)*30,0)))))',
+    );
     expect(bar.result).toBe('█'.repeat(3)); // 210 / 2500 × 30 = 2,52 → 3
     expect(sheet.getCell('F11').font?.color?.argb).toBe(GAIN);
     expect(sheet.getCell('F12').font?.color?.argb).toBe(COST);
@@ -173,6 +175,28 @@ describe('Summary D1', () => {
     const sheet = await summaryOf({ ...report, grossProfit: '-150.00', netProfit: '-186.36' });
     expect(sheet.getCell('E17').value).toBe(-186.36);
     expect(sheet.getCell('F17').font?.color?.argb).toBe(COST);
+  });
+
+  // Review max G40 Phần 3: doanh thu ghi nhận đã trừ hoàn còn chi phí thì không — một tháng có đơn
+  // $200 hoàn $199.50 và giá vốn chuyến $1,170 cho tỉ lệ ~2.340 lần, thanh dài quá 65 nghìn ký tự làm
+  // Excel không mở cả file; tỉ lệ cực lớn còn ném RangeError lúc dựng.
+  it('thanh có trần 50 ký tự — tháng chi phí lấn doanh thu vẫn ra file mở được', async () => {
+    const sheet = await summaryOf({
+      ...report,
+      recognizedRevenue: '0.50',
+      cogsFixed: '1170.00',
+      grossProfit: '-1379.50',
+      netProfit: '-1410.70',
+    });
+    expect((sheet.getCell('F13').value as ExcelJS.CellFormulaValue).result).toBe('█'.repeat(50));
+    await expect(
+      summaryOf({ ...report, recognizedRevenue: '0.01', cogsFixed: '250000.00' }),
+    ).resolves.toBeDefined();
+  });
+
+  it('dòng 0.00 không vẽ thanh — không một ô █ giả nói có chi phí', async () => {
+    const sheet = await summaryOf({ ...report, taxAmount: '0.00' });
+    expect((sheet.getCell('F15').value as ExcelJS.CellFormulaValue).result ?? '').toBe('');
   });
 
   it('chưa có doanh thu: thanh để trống chứ không #DIV/0!', async () => {
@@ -187,6 +211,14 @@ describe('Summary D1', () => {
     expect(sheet.getCell('B18').value).toBe(t.pnlTable.departuresRun('1'));
     expect(sheet.getCell('B19').value).toBe(t.pnlTable.costMissing('1'));
     expect(sheet.getCell('B19').font?.color?.argb).toBe(COST);
+  });
+
+  // Câu cảnh báo hai vế dài ~164 ký tự: một ô không gộp, không xuống dòng thì phần cuối rơi ra ngoài
+  // vùng in A:I (review max G40 Phần 3).
+  it('cảnh báo thiếu giá vốn gộp B:I và xuống dòng — in đủ câu', async () => {
+    const sheet = await summaryOf({ ...report, departuresCostMissing: 1 });
+    expect(sheet.getCell('I19').master.address).toBe('B19');
+    expect(sheet.getCell('B19').alignment?.wrapText).toBe(true);
   });
 
   it('trạng thái: số, Share là công thức %, thanh, Total là SUM khớp newBookings', async () => {

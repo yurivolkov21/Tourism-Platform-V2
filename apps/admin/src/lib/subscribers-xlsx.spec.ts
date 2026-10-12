@@ -57,8 +57,10 @@ describe('subscriberStatus', () => {
 });
 
 describe('subscribersFilterSummary', () => {
-  it('tab · nguồn · từ khoá', () => {
-    expect(subscribersFilterSummary({ page: 1, limit: 20, active: true })).toBe(l.active);
+  // Tab Active gồm cả địa chỉ chưa xác nhận, còn cột Status chỉ gọi "Active" địa chỉ đã xác nhận —
+  // đầu trang không được dùng cùng một chữ cho hai tập (review max G40 Phần 3).
+  it('tab · nguồn · từ khoá; tab Active nói rõ gồm cả chưa xác nhận', () => {
+    expect(subscribersFilterSummary({ page: 1, limit: 20, active: true })).toBe(x.activeTab);
     expect(subscribersFilterSummary({ page: 1, limit: 20 })).toBe(l.all);
     expect(
       subscribersFilterSummary({
@@ -85,7 +87,22 @@ describe('buildSubscribersWorkbook', () => {
       c.unsubscribedAt,
     ]);
     expect(sheet.getCell('A1').value).toBe(c.email);
-    expect(sheet.headerFooter.oddHeader).toContain(x.headerCenter(l.active));
+    expect(sheet.headerFooter.oddHeader).toContain(x.headerCenter(x.activeTab));
+  });
+
+  // Spec §7.2: cùng kiểu sheet với bookings — khổ ngang, không thu nhỏ còn ~70% khi in.
+  it('khổ ngang như file bookings', async () => {
+    const sheet = await open();
+    expect(sheet.pageSetup.orientation).toBe('landscape');
+  });
+
+  it('nguồn đăng ký là chữ người lạ nhập: bỏ ký tự XML cấm, chữ mở đầu như công thức có dấu nháy', async () => {
+    const sheet = await open([
+      { ...active, source: `ads${String.fromCharCode(0xffff)}` },
+      { ...left, source: '=1+2' },
+    ]);
+    expect(sheet.getCell('B2').value).toBe('ads');
+    expect(sheet.getCell('B3').value).toBe(`'=1+2`);
   });
 
   it('nguồn nguyên văn (vắng là ô trống), trạng thái là nhãn, mốc là giờ Việt Nam', async () => {

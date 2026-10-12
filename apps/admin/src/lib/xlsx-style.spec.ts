@@ -5,8 +5,10 @@ import {
   addSheet,
   BRAND,
   calendarDate,
+  cellText,
   DATE_FMT,
   DATETIME_FMT,
+  dateTime,
   headerText,
   MONEY_FMT,
   money,
@@ -46,6 +48,46 @@ describe('ngày và giờ', () => {
   it('ngày lịch → nửa đêm UTC, không trôi theo giờ máy', () => {
     expect(calendarDate('2026-11-03').toISOString()).toBe('2026-11-03T00:00:00.000Z');
   });
+
+  // Review max G40 Phần 3: Excel làm tròn tới GIÂY gần nhất rồi mới áp hh:mm, nên phần nghìn giây
+  // đẩy 23:59:59.999 thành 00:00 ngày hôm sau; màn admin cắt bỏ, không làm tròn.
+  it('dateTime ghi giờ Việt Nam bỏ phần nghìn giây; mốc vắng là ô trống', () => {
+    const sheet = new ExcelJS.Workbook().addWorksheet('x');
+    dateTime(sheet.getCell('A1'), '2026-07-18T16:59:59.999Z');
+    dateTime(sheet.getCell('A2'), null);
+    expect((sheet.getCell('A1').value as Date).toISOString()).toBe('2026-07-18T23:59:59.000Z');
+    expect(sheet.getCell('A1').numFmt).toBe(DATETIME_FMT);
+    expect(sheet.getCell('A2').value).toBeNull();
+  });
+});
+
+// Review max G40 Phần 3: chữ khách hay người lạ nhập đi thẳng vào ô.
+describe('cellText — chữ người dùng nhập', () => {
+  it('bỏ ký tự XML cấm (U+FFFE, U+FFFF, surrogate lẻ, điều khiển C0) — một ký tự là hỏng cả file', () => {
+    expect(cellText('Nora\uFFFFDahl\uFFFE')).toBe('NoraDahl');
+    expect(cellText('a\uD800b')).toBe('ab');
+    expect(cellText('a\u0001b\u001Fc')).toBe('abc');
+  });
+
+  it('giữ chữ Việt, emoji và xuống dòng', () => {
+    expect(cellText('Hội An 🏮\nline')).toBe('Hội An 🏮\nline');
+  });
+
+  // Lưu file thành CSV (ADR-0034 AMEND 3 bảo ai cần CSV thì Save As) rồi mở lại là Excel chạy công
+  // thức trong chữ — ô `.xlsx` thì an toàn, chuyến đi vòng qua CSV thì không.
+  it('chữ mở đầu bằng = + - @ hay tab thành chữ có dấu nháy, không thành công thức khi qua CSV', () => {
+    expect(cellText('=1+2')).toBe("'=1+2");
+    expect(cellText('+HYPERLINK("x")')).toBe('\'+HYPERLINK("x")');
+    expect(cellText('-cmd')).toBe("'-cmd");
+    expect(cellText('@SUM(A1)')).toBe("'@SUM(A1)");
+    expect(cellText('\t=1')).toBe("'\t=1");
+  });
+
+  it('số điện thoại và số thường giữ nguyên — không có hàm nào để chạy', () => {
+    expect(cellText('+84 24 3826 0126')).toBe('+84 24 3826 0126');
+    expect(cellText('-5')).toBe('-5');
+    expect(cellText('(024) 3826-0126')).toBe('(024) 3826-0126');
+  });
 });
 
 describe('tiền', () => {
@@ -63,6 +105,10 @@ describe('tiền', () => {
   it('sumMoney cộng theo xu — 0.10 + 0.20 ra đúng 0.3, không 0.30000000000000004', () => {
     expect(sumMoney(['0.10', '0.20'])).toBe(0.3);
     expect(sumMoney([])).toBe(0);
+  });
+
+  it('sumMoney đổi xu bằng toCents của contract — làm tròn HALF_UP như server', () => {
+    expect(sumMoney(['1.005'])).toBe(1.01);
   });
 });
 
@@ -86,6 +132,15 @@ describe('đầu và chân trang khi in (spec §6.1)', () => {
     const header = printFrame('x'.repeat(150), AT).oddHeader ?? '';
     expect(header).toContain(`${'x'.repeat(99)}…`);
     expect(header).not.toContain('x'.repeat(100));
+  });
+
+  // Review max G40 Phần 3: cắt TRƯỚC khi nhân đôi & thì 120 dấu & thành đầu trang 286 ký tự — Excel
+  // không mở file có đầu trang quá 255 ký tự.
+  it('đầu trang luôn ≤ 255 ký tự sau khi nhân đôi &, không để lẻ một dấu & ở chỗ cắt', () => {
+    const header = printFrame('&'.repeat(120), AT).oddHeader ?? '';
+    expect(header.length).toBeLessThanOrEqual(255);
+    const middle = header.split('&C&"Calibri,Regular"')[1]?.split('&R')[0] ?? '';
+    expect(middle.replace('…', '').length % 2).toBe(0);
   });
 });
 

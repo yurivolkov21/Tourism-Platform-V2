@@ -111,15 +111,17 @@ describe('BOOKINGS_XLSX_HEADER', () => {
 });
 
 describe('bookingsFilterSummary — đầu trang khi in', () => {
-  it('URL trần (tháng hiện tại): khoảng ngày', () => {
-    expect(bookingsFilterSummary(QUERY, 0)).toBe('1 Jul 2026 – 31 Jul 2026');
+  // Hàng được chọn theo NGÀY UTC như bảng trên màn hình, còn ô mốc thời gian ghi giờ Việt Nam: khoảng
+  // ngày nói rõ UTC để hàng ở mép khoảng không trái với chính dòng đầu trang (review max G40 Phần 3).
+  it('URL trần (tháng hiện tại): khoảng ngày, nói rõ là ngày UTC', () => {
+    expect(bookingsFilterSummary(QUERY, 0)).toBe(x.utcDates('1 Jul 2026 – 31 Jul 2026'));
   });
 
   it('trạng thái · khoảng ngày · từ khoá · số hàng chọn', () => {
     expect(bookingsFilterSummary({ ...QUERY, status: 'PAID', search: 'hoi an' }, 3)).toBe(
       [
         messages.admin.bookings.status.PAID,
-        '1 Jul 2026 – 31 Jul 2026',
+        x.utcDates('1 Jul 2026 – 31 Jul 2026'),
         x.search('hoi an'),
         x.selected(3),
       ].join(' · '),
@@ -128,12 +130,20 @@ describe('bookingsFilterSummary — đầu trang khi in', () => {
 
   it('một đầu ngày; không lọc gì thì "All bookings"', () => {
     expect(bookingsFilterSummary({ page: 1, limit: 20, from: '2026-07-01' }, 0)).toBe(
-      x.dateFrom('1 Jul 2026'),
+      x.utcDates(x.dateFrom('1 Jul 2026')),
     );
     expect(bookingsFilterSummary({ page: 1, limit: 20, to: '2026-07-31' }, 0)).toBe(
-      x.dateUntil('31 Jul 2026'),
+      x.utcDates(x.dateUntil('31 Jul 2026')),
     );
     expect(bookingsFilterSummary({ page: 1, limit: 20, allDates: true }, 0)).toBe(x.allBookings);
+  });
+
+  // Plan quyết định 17: bản in của hàng được chọn phải nói nó là một phần — từ khoá dài từng đẩy
+  // "n selected rows" ra khỏi đầu trang.
+  it('từ khoá dài bị cắt ở 40 ký tự, "n selected rows" luôn còn', () => {
+    const summary = bookingsFilterSummary({ ...QUERY, search: 'a'.repeat(60) }, 3);
+    expect(summary).toContain(x.search(`${'a'.repeat(39)}…`));
+    expect(summary.endsWith(x.selected(3))).toBe(true);
   });
 });
 
@@ -194,8 +204,18 @@ describe('buildBookingsWorkbook', () => {
     expect(sheet.autoFilter).toBe('A1:R1');
   });
 
-  it('chữ bắt đầu bằng "=" là CHUỖI, không thành công thức (không có CSV injection ở .xlsx)', async () => {
+  // Ô .xlsx không chạy chuỗi như công thức, nhưng Save As CSV rồi mở lại thì có — dấu nháy chặn chuyến
+  // đi vòng ấy (review max G40 Phần 3); số điện thoại giữ nguyên.
+  it('chữ mở đầu bằng "=" thành chuỗi có dấu nháy, không thành công thức kể cả khi lưu ra CSV', async () => {
     const sheet = await open([{ ...booking, contactName: '=HYPERLINK("http://x")' }]);
-    expect(sheet.getCell('M2').value).toBe('=HYPERLINK("http://x")');
+    expect(sheet.getCell('M2').value).toBe(`'=HYPERLINK("http://x")`);
+    expect(sheet.getCell('O2').value).toBe('+84 90 123 4567');
+  });
+
+  // Một ký tự XML cấm trong tên khách từng làm cả file không mở được.
+  it('bỏ ký tự XML cấm trong chữ khách nhập — file vẫn mở lại được', async () => {
+    const name = `Alice${String.fromCharCode(0xffff)}Nguyen`;
+    const sheet = await open([{ ...booking, contactName: name }]);
+    expect(sheet.getCell('M2').value).toBe('AliceNguyen');
   });
 });
