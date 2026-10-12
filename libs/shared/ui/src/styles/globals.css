@@ -75,8 +75,16 @@
 }
 
 @media print {
+  /* Cả trang mang trang in `doc` khi có tài liệu, không riêng tờ: hộp lạ nằm sau tờ không đổi tên
+   * trang nên không bị ép sang một trang mặc định mang lề, ngày giờ, URL của trình duyệt. Thử tay
+   * production 12/10: Edge có tiện ích in voucher ra trang 2 trắng, cửa sổ InPrivate chỉ một trang. */
+  html:has([data-print-doc]),
+  body:has([data-print-doc]),
   [data-print-doc] {
     page: doc;
+  }
+
+  [data-print-doc] {
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
   }
@@ -101,6 +109,13 @@
   }
 
   body:has([data-print-doc]) :not(:has([data-print-doc]), [data-print-doc], [data-print-doc] *) {
-    display: none;
+    /* biome-ignore lint/complexity/noImportantStyles: phải thắng style inline (không `!important`) mà tiện ích trình duyệt gắn vào phần tử chèn vào trang. */
+    display: none !important;
+  }
+
+  /* Phần tử chèn thẳng dưới `<html>`, ngoài `<body>`. */
+  html:has([data-print-doc]) > :not(head, body) {
+    /* biome-ignore lint/complexity/noImportantStyles: cùng lý do luật trên. */
+    display: none !important;
   }
 }
