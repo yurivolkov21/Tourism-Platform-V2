@@ -8,7 +8,6 @@ import { ReviewLoadState } from '@/features/reviews/review-load-state';
 import { useMyReviews } from '@/features/reviews/use-my-reviews';
 import { useReviewPhotos } from '@/features/reviews/use-review-photos';
 import { type ReviewPhase, WriteReviewScreen } from '@/features/reviews/write-review-screen';
-import { formatFullDate } from '@/features/tour-detail/departures';
 import { orpc, withMobileAuth } from '@/lib/api/client';
 import { cloudinaryUrl } from '@/lib/cloudinary-url';
 
@@ -118,7 +117,8 @@ export default function RewriteReviewRoute() {
       tourTitle={review.tourTitle ?? ''}
       imageUrl={review.tourImage?.url ?? null}
       transformUrl={cloudinaryUrl}
-      dateRangeLabel={formatFullDate(review.createdAt.slice(0, 10))}
+      // `MyReviewSchema` không có ngày đi; ngày viết bài đặt ở chỗ R1 in ngày chuyến là nói sai.
+      dateRangeLabel=""
       rating={rating}
       onRatingChange={setRating}
       title={title}

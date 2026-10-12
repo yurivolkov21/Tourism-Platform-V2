@@ -17,7 +17,7 @@ export default function ReviewsLayout() {
       }}
     >
       <Stack.Screen name="mine" options={{ title: messages.reviews.mine.title }} />
-      <Stack.Screen name="rewrite" options={{ title: messages.reviews.heading }} />
+      <Stack.Screen name="rewrite" options={{ title: messages.reviews.rewriteHeading }} />
       <Stack.Screen name="exhausted" options={{ title: messages.reviews.rejectedFinalTitle }} />
     </Stack>
   );

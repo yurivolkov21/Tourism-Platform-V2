@@ -1952,6 +1952,8 @@ export const messages = {
       errPermission: 'Camera and photo library access is needed to add photos.',
     },
     heading: 'Rate this trip',
+    /** Tiêu đề R5 (mockup `mobile-review-screens`): sửa bài bị bác, khác màn viết mới. */
+    rewriteHeading: 'Rewrite your review',
     ratingLabel: 'Your rating',
     ratingValueLabel: (n: number) => `${n} star${n > 1 ? 's' : ''}`,
     titleLabel: 'Title (optional)',
