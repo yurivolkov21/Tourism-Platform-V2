@@ -178,8 +178,13 @@ Lưu ý: không chạm phím Back khi đang nhập, vì có thể thoát màn v�
 
 Nếu còn đúng một lượt viết lại, có dòng "One more rewrite left…".
 
+2. Sửa nội dung rồi chạm **Send for review again**.
+
+**Kết quả mong đợi:** màn "Thanks for your review" với nút **Back to my reviews** (không có link
+**See my reviews**). Chạm nút: về lại My reviews, thẻ đổi sang **Pending review**.
+
 ### C6. Hết lượt viết lại (R6)
-1. Trên thẻ đã bị bác đủ 2 lần, chạm **See why and rewrite**.
+1. Trên thẻ đã bị bác đủ 2 lần, chạm **See why** (thẻ này không có chữ "rewrite").
 
 **Kết quả mong đợi:** màn "We've looked at this review twice", hiện lý do cuối cùng, nút **Contact us** mở form liên hệ, link quay lại.
 
@@ -187,16 +192,19 @@ Nếu còn đúng một lượt viết lại, có dòng "One more rewrite left�
 
 ## 6. Luồng D: Tài khoản
 
-### D1. Help & legal
-1. Tab **Account**, chạm **Help & legal**.
+### D1. Năm dòng trợ giúp và pháp lý
+1. Tab **Account** (đã đăng nhập hay chưa đều được), kéo xuống cuối menu.
 
-**Kết quả mong đợi:** tấm liệt kê 5 mục: Help & FAQ, About Nexora, Cancellation & refund policy, Privacy policy, Terms of service. Chạm một mục: tấm đóng lại và trình duyệt mở trang trên website thật.
+**Kết quả mong đợi:** năm dòng riêng, đúng mockup A1/A2: Help & FAQ, About Nexora, Cancellation & refund policy, Privacy policy, Terms of service. Không có dòng "Help & legal". Chạm một dòng: trình duyệt mở trang đó trên web theo `EXPO_PUBLIC_WEB_URL` (máy dev: địa chỉ LAN của web), không phải website thật.
 
-### D2. Personal details và đổi mật khẩu
-1. Tab **Account**, chạm **Personal details** (nếu có trong menu) hoặc vào từ đầu trang tài khoản.
-2. Chạm dòng **Password** có mũi tên.
+### D2. Đổi mật khẩu và Personal details
+1. Tab **Account**, chạm dòng **Password**.
 
-**Kết quả mong đợi:** mở màn đổi mật khẩu. Dòng Password không còn nằm trong menu chính Account.
+**Kết quả mong đợi:** mở màn đổi mật khẩu.
+
+2. Quay lại, chạm **Personal details**.
+
+**Kết quả mong đợi:** có tên, email và **Delete account**; không có dòng Password.
 
 ---
 
