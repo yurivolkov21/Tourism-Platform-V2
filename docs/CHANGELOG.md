@@ -8,6 +8,62 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-10-12 — Merge nhánh `fix/mobile-booking-screens` lên main: P5b-3 đặt tour, cụm P và tab Trips (`6373ab75`..`7b49291d`)
+
+Cụm màn đặt tour của Nghia (P5b-3, [handoff đặt tour](handoff/mobile-booking-handoff.md)): luồng
+đặt B1–B9 (số khách, liên hệ, xem lại và trả, mở cổng, xác nhận, xong), chi tiết booking T5/T8,
+cụm P bám ngày khởi hành P1–P6 (đếm ngược theo giờ server, lịch trình, ghi chú, ngày đang đi,
+chuyến đã về) và tab Trips có chip Upcoming/Past. Kèm bản vá K1–K15 và Q1 của
+[review 05/10](review-feat-mobile-booking-screens.md) cùng
+[hướng dẫn test](testing-guide-booking-fixes.md); chú thích B9 trong mockup sửa theo mục 5 của
+review đó. Không đổi API, không migration, không env, không thêm dependency.
+
+Rebase lên `8c163cb2` lúc review, rồi lên `b5988b23` trước khi merge (main vừa nhận bản vá sau thử
+tay G40 Phần 1, không xung đột code): 5 commit riêng của Nghia (`cc02e089`, `a1151721`, `c5cc35cb`,
+`9b48fa9a`, `3d6b989c`) nay là `6373ab75`, `0ce5d4a4`, `eae67232`, `015098f9`, `2d65f2a3`; 56 commit
+còn lại của nhánh gốc đã vào main qua nhánh account. Bỏ `4f9def36` (Q2: main ghim ngày cho cùng test admin ở
+`b867596c`). Xung đột: `docs/open-items.md` giữ bản main, `docs/PROGRESS.md` xoá (Q3), import ở
+`routes.spec.tsx` gộp hai bên.
+
+**Review 12/10 trên session cloud.** K1, K3–K15 và Q1–Q3 đúng như hướng dẫn test; chỗ chạm main mới
+(`leaveAuthTo`, G40 Phần 1) sạch. Năm phát hiện mới, vá hết trên nhánh review
+`claude/mobile-booking-review` (Yuri chọn sửa tại chỗ thay vì trả nhánh):
+
+- `7b1a745f` (N1): sau rebase, typecheck mobile đỏ — fixture `makeBooking` thiếu cờ bắt buộc
+  `departureCancelled` mà main thêm 08/10 (ADR-0054 AMEND 1).
+- `6a939e22` (N2): K2 mới sửa một nửa. React Query nhớ kết quả `select` riêng cho từng màn, nên màn
+  mở sau lần gọi `health.check` đầu tính lệch bằng giờ máy lúc mở và đồng hồ bắt đầu lại từ mốc
+  đầu: để app nền qua đêm thì P5 vẫn tưởng là hôm trước. Lệch nay đo bằng `dataUpdatedAt`.
+- `0ce898eb` (N3): tab Trips và luật vào cụm P phân loại theo `status`, lệch `bookingPhase` mà API
+  và web dùng: PARTIALLY_REFUNDED (vẫn đi) mất khỏi cả Upcoming lẫn Past, REFUNDED hoàn thiện chí bị
+  coi là đã kết thúc, PENDING quá hạn chót vẫn mời "Finish payment", đơn PAID trên chuyến bị công ty
+  huỷ hiện "On tour now" và vào cụm P. Nay cùng đọc `bookingPhase`; PARTIALLY_REFUNDED và REFUNDED
+  hoàn thiện chí vào cụm P như PAID (mockup T1 ghi "đã huỷ/hoàn → T8" từ trước AMEND 1). Bảng luật
+  vào màn của handoff sửa theo.
+- `86c8fb4e` (N4): B4 gặp `NOT_PENDING` từ `bookings.checkout` (trả xong mà webhook tới muộn, hoặc
+  cron đã huỷ) thì "Try again" gọi lại mãi; nay sang B6 đọc lại booking.
+- `7b49291d` (N5): B9 "Choose another date" và B8 "Browse more tours" rời cụm bằng `replace`, dựng
+  trang chồng lên trang tour (back hai lần mới ra; từ Home back lại về tour), cùng loại lỗi R3. Nay
+  dùng `dismissTo`; `routes.spec.tsx` thêm hai ca chạy trên cây route thật, ca B8 đỏ trên code cũ.
+
+Tests after (`gate:int` trên `7b49291d`, 12/10 04:28–04:37, chạy trên cloud theo đúng các bước
+của CI): unit 6907 — web 2233, admin 1911, api 1097, mobile 705, contract 675, mobile-ui 136, ui 47,
+core 46, i18n 36, tokens 21 — và int 779/46. So với main: mobile 509 → 705, mobile-ui 134 → 136;
+bản vá review thêm 9 ca mobile (đồng hồ 1, Trips 5, B4 1, route 2). Một ca admin
+(`photo-library-dialog.spec.tsx`, ảnh tải hỏng AL4) đỏ một lần khi cả repo chạy trên máy cloud tải
+nặng; chạy riêng và lượt sau đều xanh, nhánh không đụng admin.
+
+**CÒN TREO:**
+
+- [ ] Thử máy thật các đường của review 12/10: để app nền qua đêm rồi mở chuyến đang đi (P5 đúng
+  ngày); B9 về đúng trang tour, back một lần là ra; B8 mở Explore, back về Home rồi hết; đơn hoàn
+  một phần mở cụm P và còn nút huỷ ở hoá đơn.
+- [ ] Chưa kiểm: iOS (quyết bỏ 09/10), PayPal sandbox thật.
+- [ ] Mobile chưa nói chuyến bị công ty huỷ trong lúc chờ job hoàn tiền: thẻ Trips ghi "Paid", hoá
+  đơn thiếu khối báo như web. Mục mới ở open-items.
+- Dọn sau merge: nhánh `fix/mobile-booking-screens` và `claude/mobile-booking-review` trên origin
+  (session cloud không xoá được nhánh trên GitHub).
+
 ## 2026-10-12 — G40 Phần 1 thử tay production: trang 2 trắng do tiện ích trình duyệt, voucher dài hơn tờ với dữ liệu thật (`402b91b2`, `4a06f528`, nhánh `claude/project-thread-bfjal2`)
 
 **Thử tay bước 1** (spec §10, sau push `3e409626`; user in voucher BK-EET0JBTH ở

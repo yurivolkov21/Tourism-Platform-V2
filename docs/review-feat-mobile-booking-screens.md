@@ -6,6 +6,8 @@ Ngày 2026-10-05 · @Yuri Volkov
 
 Phạm vi: 59 commit `80e36099..4f9def36`, gồm 56 commit của `feat/mobile-account-screens` và 3 commit riêng của Nghia ngày 04/10 (`cc02e089`, `a1151721`, `4f9def36`). Mọi phát hiện đã xác minh qua code, API và mã nguồn thư viện; một lỗi tái hiện bằng chạy thật; chưa thử trên máy thật.
 
+> **Cập nhật 2026-10-12:** rebase lên main và review lần 2 trên session cloud: K2 mới sửa một nửa, thêm bốn lỗi mới, vá cả năm (N1–N5) rồi merge cùng ngày. Chi tiết ở entry CHANGELOG 12/10.
+
 > **Cập nhật 2026-10-09:** K10 test trên điện thoại thật trong khung 00:00-07:00 giờ VN, đạt; K2 và K15 đạt trên máy ảo Android. iOS (K8, nút back từ B8) quyết định không kiểm (xem [testing-guide-booking-fixes.md](testing-guide-booking-fixes.md), mục E).
 
 > **Cập nhật 2026-10-08:** K1–K15 và Q1 đã sửa trên nhánh `fix/mobile-booking-screens` (chưa commit). Còn lại: Q2, Q3, B1–B3 của nhánh account và rebase lên main lúc merge. Hướng dẫn và kết quả test: [testing-guide-booking-fixes.md](testing-guide-booking-fixes.md). Chú thích B9 trong mockup và dòng `PARTIALLY_REFUNDED` trong handoff đã sửa theo mục 5 của thứ tự đề xuất.

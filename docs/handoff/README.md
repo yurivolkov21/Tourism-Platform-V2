@@ -14,7 +14,7 @@ chỗ dễ làm sai.
 | --- | --- | --- |
 | P5b-1 đăng nhập | [mobile-auth-handoff](mobile-auth-handoff.md) | Giao diện **đã dựng xong** (17 khung tĩnh); việc còn lại là nối Better Auth thật |
 | P5b-2 xem tour | [mobile-browse-handoff](mobile-browse-handoff.md) | Mới có bản vẽ — **đọc file này trước ba file dưới**, luật chung nằm ở đây |
-| P5b-3 đặt tour | [mobile-booking-handoff](mobile-booking-handoff.md) | Mới có bản vẽ. Cụm chạm tiền: bốn luật cứng |
+| P5b-3 đặt tour | [mobile-booking-handoff](mobile-booking-handoff.md) | **Đã dựng**, merge 12/10 (nhánh `fix/mobile-booking-screens`). Cụm chạm tiền: bốn luật cứng |
 | P5b-4 tài khoản | [mobile-account-handoff](mobile-account-handoff.md) | Mới có bản vẽ |
 | P5b-5 đánh giá | [mobile-review-handoff](mobile-review-handoff.md) | Mới có bản vẽ |
 
