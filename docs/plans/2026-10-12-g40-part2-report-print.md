@@ -128,8 +128,9 @@ trên với `main` một lần nữa trước khi merge.
    phải 6), cộng ba luật bản thảo chưa có vì nó chỉ vẽ một tháng lãi:
    - Miền `[lo, hi]` = `[min(0, mọi mức), max(0, mọi mức)]` — tháng lỗ có cột dưới trục 0.
    - **Chừa chỗ cho nhãn dưới:** nhãn nằm dưới một điểm (cột trừ, cột tổng âm) phải ở trên hàng
-     nhãn hạng mục. Tỉ lệ `s = min(174 / (hi − lo), 167 / (hi − p))` với `p` là điểm thấp nhất có
-     nhãn bên dưới — đóng dạng, không vòng lặp.
+     nhãn hạng mục. Tỉ lệ `s = min(174 / (hi − lo), 165.5 / (hi − p))` với `p` là điểm thấp nhất có
+     nhãn bên dưới — đóng dạng, không vòng lặp. 165.5 = chân chữ thấp nhất 198 − nhãn dưới 11 − cao
+     tối thiểu 1.5 − lề trên 20.
    - **Lề phải 30 đơn vị cho nhãn trục** (bản thảo đặt nhãn trục ở mép phải, đè lên dải của cột
      cuối khi lãi ròng gần một vạch lưới).
    - Dải `band = (480 − 6 − 6 − 30) / 7`, cột rộng `min(46, band × 0.62)`; cột tổng từ 0, cột trừ
@@ -139,11 +140,13 @@ trên với `main` một lần nữa trước khi merge.
      hoà thì bước nhỏ hơn; vạch nằm trong `[lo × 1.02, hi × 1.02]` (bản thảo: 0, 20k, 40k với đỉnh
      39.6k). Vạch 0 đậm màu mực.
    - Nhãn giá trị: cột tổng dương ở trên (`y − 5`), cột tổng âm và cột trừ ở dưới (`y + 11`). Chữ
-     ngắn: làm tròn đồng trước; dưới 1,000 → `$992`; tới dưới 999,950 → `$39.6k`; từ đó → `$1.2M`;
-     âm thêm `−` (U+2212); 0 → `$0`. Nhãn trục bỏ `.0`: `$0`, `$20k`, `$2.5k`. Ký hiệu tiền lấy từ
-     `Intl` theo `currency`; mã lạ thì in mã.
+     ngắn: `$992`, `$39.6k`, `$1.2M`; đơn vị chọn theo số đã làm tròn ở chính đơn vị đó (999.5 →
+     `$1.0k`, 999,950 → `$1.0M`), số lẻ làm tròn MỘT lần từ giá trị gốc (1,049.62 → `$1.0k`, không
+     `$1.1k` — sửa sau review); âm thêm `−` (U+2212); 0 → `$0`. Nhãn trục bỏ `.0`: `$0`, `$20k`,
+     `$2.5k`. Ký hiệu tiền lấy từ `Intl` theo `currency`; mã lạ thì in mã.
    - Màu: cột tổng dương `chart-gain`; cột trừ và cột tổng âm `chart-cost` kèm vân 45° (mọi fill
-     `chart-cost` mang vân — in trắng đen vẫn tách, spec §2.4).
+     `chart-cost` mang vân — in trắng đen vẫn tách, spec §2.4). Vân là `Hatch` dùng chung với thanh
+     trạng thái (`components/reports/hatch.tsx`), chỉ khác góc.
    - Cả bảy giá trị bằng 0 (tháng chưa bắt đầu hay chưa có chuyến kết thúc) → không vẽ, in
      `noFigures`; bảng lãi lỗ vẫn in số 0 (spec §5.2).
 6. **Thanh trạng thái đủ năm trạng thái**, thứ tự PAID · PARTIALLY_REFUNDED · PENDING · REFUNDED ·
@@ -182,20 +185,23 @@ trên với `main` một lần nữa trước khi merge.
     giải thật dài hơn bản thảo ~7 mm, cảnh báo giá vốn và chú thích năm trạng thái có thể thêm một
     hai dòng. Nếu ma trận đo có ca tràn thì thêm cờ `dense` tính ở view-model (điều kiện và số đo
     chốt khi đo) để siết khoảng cách dọc — không cắt chữ, không hạ cỡ chữ thân.
-    Chốt sau đo (12/10): ca nặng thật (hai cảnh báo cùng năm trạng thái) tràn 2.6 mm, nên có
-    `dense`. View-model cộng phần tờ cao thêm theo số đo: cảnh báo 2 mm lề cộng 4.1 mm mỗi vế,
-    chú thích từ bốn trạng thái 6.2 mm, số tiền từ một triệu 8.2 mm (hai nhãn chi phí xuống dòng).
-    Tổng quá 10 mm (trong 13.8 mm dư) thì tờ chặt: thu lề trên của tiêu đề, ô số, bốn khối và đệm
-    lưới chỉ số, lấy lại 14.2 mm. Tháng thường giữ đúng nhịp bản thảo.
+    Chốt sau đo và review (12/10): ca nặng thật (hai cảnh báo cùng năm trạng thái) tràn 2.6 mm theo
+    nhịp bản thảo, nên khoảng giữa các khối là PHẦN TỬ co giãn trong cột flex của `DocPage`, không
+    phải lề: `basis` là khoảng của bản thảo, `min-h` là mức sàn — trên tiêu đề 5 → 3.5 mm, trên ô số
+    6 → 4.5 mm, trước mỗi khối 5 → 2.5 mm. Tháng cao hơn khung A4 thì trình duyệt co các khoảng ấy
+    đúng bằng phần thiếu; tháng thường giữ đúng nhịp bản thảo, phần dư dồn lên trên chân trang. Co hết
+    cỡ lấy lại 13 mm, cộng 13.8 mm dư của tháng thường. Bản đầu là cờ `dense` ở view-model cộng phần
+    tờ cao thêm theo số đo; review bắt được nó bỏ sót tháng lỗ (ngoặc ở cột số làm nhãn chi phí xuống
+    dòng — lãi ròng −$106k cùng cảnh báo hai vế tràn 0.26 mm), nên bỏ mô hình đoán, để bố cục tự co.
+14. **Trang màn hình:** bọc toàn bộ nội dung màn hình trong `<div className="contents print:hidden">`
+    (luật cô lập của `@tourism/ui` là lưới, ADR-0057 §1); gỡ class in đã chết ở `report-tables.tsx`
+    (`print:grid-cols-2`, `print:col-span-2`); sửa comment "Trang này được thiết kế để IN" của
+    `page.tsx` và đầu khối in của `globals.css` cho đúng hiện trạng.
 15. **Nhịp chữ theo bản thảo** (sửa sau đo 12/10): cỡ nền 9 pt, tên khối 10.5 pt, và
     `leading-[normal]` ở tên khối, nhãn, số của ô và lưới chỉ số, vì bản thảo khai các chữ ấy bằng
     shorthand `font:` (đặt lại dãn dòng). Thiếu ba điều ấy tờ cao hơn bản thảo 8.5 mm. Số đậm của
     bảng lãi lỗ giữ 500: hai app chỉ nạp IBM Plex Mono 400 và 500 (cùng lựa chọn của Phần 1), bản
     thảo nạp thêm 600.
-14. **Trang màn hình:** bọc toàn bộ nội dung màn hình trong `<div className="contents print:hidden">`
-    (luật cô lập của `@tourism/ui` là lưới, ADR-0057 §1); gỡ class in đã chết ở `report-tables.tsx`
-    (`print:grid-cols-2`, `print:col-span-2`); sửa comment "Trang này được thiết kế để IN" của
-    `page.tsx` và đầu khối in của `globals.css` cho đúng hiện trạng.
 
 ## Bản đồ file
 
@@ -208,6 +214,7 @@ trên với `main` một lần nữa trước khi merge.
 | `apps/admin/src/components/reports/report-print-brand.tsx` (mới) | Logo, wordmark, dòng liên hệ nội bộ |
 | `apps/admin/src/components/reports/waterfall.tsx` (mới) | SVG thác nước từ hình học |
 | `apps/admin/src/components/reports/status-bar.tsx` (mới) | SVG thanh 100% và chú thích |
+| `apps/admin/src/components/reports/hatch.tsx` (mới, sau review) | Vân chéo dùng chung của thác nước và thanh trạng thái |
 | `apps/admin/src/components/reports/report-print.tsx` (mới) | Tờ C2 trên `DocPage` |
 | `apps/admin/src/components/reports/report-print.spec.tsx` (mới) | Cấu trúc tờ in |
 | `apps/admin/src/app/(admin)/reports/page.tsx` | Bọc màn hình `print:hidden`, thêm `ReportPrint` |
@@ -227,21 +234,24 @@ export interface WaterfallBar {
   key: WaterfallKey;
   kind: 'total' | 'down';
   tone: 'gain' | 'cost';
+  x: number;  width: number;          // đơn vị viewBox
+  top: number;  bottom: number;       // y đi xuống, đã nới tới cao tối thiểu 1.5
   path: string;                       // `d` của path, đầu dữ liệu bo, chân vuông
   label: { x: number; y: number; text: string };
   category: { x: number; lines: readonly [string, string] };
 }
 export interface WaterfallView {
-  width: 480; height: 236;
+  width: number;  height: number;     // 480 × 236
   bars: readonly WaterfallBar[];
   connectors: readonly { x1: number; x2: number; y: number }[];
   grid: readonly { y: number; label: string; base: boolean }[];
+  gridX: readonly [number, number];   // hai đầu vạch lưới; nhãn trục canh phải ở đầu sau
   categoryY: readonly [number, number];
   label: string;                       // aria-label
 }
 export interface StatusBarView {
-  segments: readonly { status: BookingStatus; x: number; width: number; tone: StatusTone }[];
-  legend: readonly { status: BookingStatus; tone: StatusTone; label: string; count: string; share: string }[];
+  segments: readonly { status: BookingStatusValue; tone: StatusTone; x: number; width: number }[];
+  legend: readonly { status: BookingStatusValue; tone: StatusTone; label: string; count: string; share: string }[];
   total: string;
 }
 export interface ReportPrintView {
@@ -323,7 +333,7 @@ dữ liệu seed; đăng nhập bằng phiên tạo trực tiếp cho admin seed
 
 1. **Dữ liệu thật:** `/reports?month=` mọi tháng seed từ 2026-01 tới tháng hiện tại (gồm tháng đang
    chạy có "(to date)").
-2. **Fixture** qua một route tạm `apps/admin/src/app/zz-print/` (KHÔNG commit, ghi vào
+2. **Fixture** qua một route tạm `apps/admin/src/app/(admin)/zz-print/` (KHÔNG commit, ghi vào
    `.git/info/exclude`): tháng lỗ (lãi gộp và lãi ròng âm); tháng chưa có số; cả hai cảnh báo giá
    vốn cùng năm trạng thái khác 0; số dài (hàng triệu đô) ở mọi ô.
 3. **Phần tử lạ sau tờ** (giả lập tiện ích trình duyệt, bài học thử tay Phần 1): vẫn một trang.
@@ -339,11 +349,26 @@ vào). Ảnh chụp tháng 9, tháng lỗ và ca nặng nhất đặt cạnh b�
 - Mười tháng seed (H = 2026-10-12, từ 2026-01 tới 2026-10): một trang, dư 13.8 mm phía trên chân
   trang (bản thảo dư 13.4 mm), không nhãn SVG nào chồng nhau, chữ phụ và nét kẻ đúng token admin,
   không phần tử nào ngoài tờ hiện ra khi in.
-- Mười ba ca fixture đều một trang. Tờ chặt bật ở bốn ca: đủ hai vế cảnh báo (dư 17.8 mm); một vế
-  cảnh báo cùng bốn trạng thái (21.9 mm); ca nặng thật, hai vế cảnh báo cùng năm trạng thái
-  (11.6 mm); hai ca số hàng triệu (3.4 và 4.8 mm, nhãn chi phí xuống dòng trong ô, không cắt chữ).
-  Một vế cảnh báo một mình còn dư 7.7 mm; năm trạng thái một mình 7.6 mm.
-- Hộp lạ cao 300 mm chèn sau tờ và dưới `<html>`, style inline: vẫn một trang.
+- Đo lại trên bản khoảng co giãn (sau review): mười tháng seed y nguyên số trên, không khoảng nào
+  co. Mười bảy ca fixture đều một trang. "Dự trữ" dưới đây là phần dư cộng phần các khoảng còn co
+  được, tức tờ còn cao thêm được bao nhiêu trước khi chân trang bị cắt:
+  - Một vế cảnh báo dư 7.7 mm; năm trạng thái 7.6 mm; đủ hai vế cảnh báo 3.6 mm — ba ca không co.
+  - Hai vế cảnh báo cùng năm trạng thái: co 2.6 mm, dự trữ 10.4 mm.
+  - Lỗ nặng quy mô seed (chi phí gấp gần 60 lần doanh thu ghi nhận) cùng đủ cảnh báo và năm trạng
+    thái: co 6.7 mm, dự trữ 6.3 mm.
+  - Ca của review, lãi ròng −$106k cùng hai vế cảnh báo và năm trạng thái: co 10.8 mm, dự trữ
+    2.2 mm (bản `dense` tràn 0.26 mm ở đúng ca này).
+  - Hai ca số hàng triệu: co 9.5 và 10.8 mm, dự trữ 3.5 và 2.2 mm; nhãn chi phí xuống dòng trong ô,
+    không cắt chữ.
+  - Giới hạn, ước tính chưa đo: tháng lỗ hàng triệu đô cùng đủ mọi thứ khác còn chừng 2 mm, thêm
+    một nhãn bảng lãi lỗ xuống dòng (khoảng 4 mm) là chân trang bị cắt. Tháng seed chỉ cỡ $20–40k.
+- Tháng lỗ nặng (ý review Phần 3, thanh REPT không chặn trần làm vỡ file Excel): mọi cột, vạch lưới,
+  nhãn đều trong khung (có test); cả tháng một trạng thái, ví dụ huỷ hết: một đoạn phủ kín thanh,
+  chú thích "100%".
+- Số hoàn tiền của lưới chỉ số đọc `refundedTotal` và `refunds` của API báo cáo tháng (sổ cái
+  `refunds` theo `created_at`), không đọc API danh sách đơn, nên lỗi cột Refunded luôn 0.00 của
+  Excel Phần 3 không áp dụng ở đây: tháng 9 seed in $2,383.30 và 10 lượt, khớp DB.
+- Hộp lạ cao 300 mm chèn sau tờ và dưới `<html>`, style inline: vẫn một trang, cả ở ca nặng nhất.
 
 ## Sau khi thi công
 
@@ -351,8 +376,9 @@ vào). Ảnh chụp tháng 9, tháng lỗ và ca nặng nhất đặt cạnh b�
 2. `pnpm gate:int` xanh theo công thức cloud (Postgres docker, API sống cho build web).
 3. Push nhánh `claude/g40-part2-report-print`; báo Yuri: link plan, các mặc định đã chọn, ảnh để
    duyệt; hỏi trước khi merge.
-4. Khi Yuri đồng ý merge: chờ Phần 3 merge trước nếu nó sắp xong (hoặc merge trước, hunk chữ giống
-   hệt nên không xung đột); fetch `main`, rebase, chạy lại test admin và i18n, `git merge --ff-only`;
+4. Khi Yuri đồng ý merge: Phần 3 chạy song song, nhánh nào lên `main` sau thì rebase và đối chiếu
+   tám khoá chữ chung (hunk giống hệt nên không xung đột); fetch `main`, rebase, chạy lại test admin
+   và i18n, `git merge --ff-only`;
    docs sweep cùng đợt: entry CHANGELOG (số test, kết quả đột biến, phát hiện review), spec §11
    Phần 2 "Xong", `docs/open-items.md` mục G40; liếc đèn CI (`gh run list --branch main --limit 1`).
 5. Thử tay production spec §10 bước 4: in `/reports` tháng 9 và tháng hiện tại.
