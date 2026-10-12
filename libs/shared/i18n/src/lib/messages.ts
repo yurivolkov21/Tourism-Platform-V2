@@ -1993,6 +1993,8 @@ export const messages = {
       notPublishedLabel: 'Not published',
       retractedLabel: 'Retracted',
       seeWhy: 'See why and rewrite',
+      /** Bị bác đủ hai lần (R6): chỉ còn đọc lý do — không hứa "rewrite" khi nút sửa đã đóng. */
+      seeWhyFinal: 'See why',
       retractAction: 'Retract my review',
     },
     // W4 U2 (ADR-0032 AMEND 1): quyền RÚT review đã đăng — chung cuộc.

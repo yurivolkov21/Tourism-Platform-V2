@@ -139,6 +139,7 @@ export function MyReviewsScreen({
                   </AppText>
                 </Pressable>
               ) : null}
+              {/* Hết lượt (R6): nút sửa đã đóng nên nhãn không được mời "rewrite" (mockup R6). */}
               {step === 'exhausted' ? (
                 <Pressable
                   accessibilityRole="button"
@@ -146,7 +147,7 @@ export function MyReviewsScreen({
                   style={{ alignSelf: 'flex-start' }}
                 >
                   <AppText variant="caption" style={{ color: theme.colors['primary-emphasis'] }}>
-                    {copy.seeWhy}
+                    {copy.seeWhyFinal}
                   </AppText>
                 </Pressable>
               ) : null}
