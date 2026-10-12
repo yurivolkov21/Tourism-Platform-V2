@@ -24,6 +24,10 @@ const REF: PrintColumn = {
 
 const band = (container: HTMLElement) => container.querySelector('[data-slot="print-band"]');
 
+// Dòng phụ "Booked by {email}" là một <p> mà email nằm trong khối riêng, nên tìm theo chữ của cả dòng.
+const subLine = (text: string) =>
+  screen.getByText((_, el) => el?.tagName === 'P' && el.textContent === text);
+
 describe('PrintBand', () => {
   it('cột thường: phần đậm rồi phần thường nối " · "', () => {
     render(<PrintBand columns={[MEET]} />);
@@ -43,21 +47,26 @@ describe('PrintBand', () => {
   it('cột mã đơn: mã mono ở dòng riêng, dòng phụ bên dưới', () => {
     render(<PrintBand columns={[REF]} />);
     expect(screen.getByText('BK-EET0JBTH').className).toContain('font-mono');
-    expect(screen.getByText('Booked by a@b.co').tagName).toBe('P');
+    expect(subLine('Booked by a@b.co')).toBeInTheDocument();
   });
 
-  // Cột ~53 mm chỉ chứa ~31 ký tự: email dài không có chỗ ngắt sẽ tràn khỏi dải. Ngắt có chủ đích
-  // trước "@" thay vì giữa chữ ("nora.dahl@exampl / e.com").
-  it('email dài: có điểm ngắt trước "@", không tràn cột', () => {
-    const { container } = render(
+  // Cột ~53 mm chỉ chứa ~31 ký tự. Email là một khối: vừa dòng riêng thì xuống dòng nguyên khối
+  // ("Booked by" / "nora.dahl@example.com" như bản thảo B1) chứ không gãy trước "@" ngay cạnh
+  // "Booked by"; dài hơn dòng riêng mới gãy trước "@" trong khối, không bao giờ giữa chữ
+  // ("nora.dahl@exampl / e.com") hay tràn khỏi dải.
+  it('email: khối nguyên xuống dòng, điểm ngắt trước "@" nằm trong khối, không tràn cột', () => {
+    render(
       <PrintBand
         columns={[{ ...REF, text: 'Booked by constance.wellington-hart@example-travel.com' }]}
       />,
     );
-    const sub = screen.getByText('Booked by constance.wellington-hart@example-travel.com');
-    expect(sub.querySelector('wbr')).not.toBeNull();
+    const sub = subLine('Booked by constance.wellington-hart@example-travel.com');
+    const email = sub.querySelector('span');
+    expect(email?.className).toContain('inline-block');
+    expect(email?.className).toContain('max-w-full');
+    expect(email?.textContent).toBe('constance.wellington-hart@example-travel.com');
+    expect(email?.querySelector('wbr')).not.toBeNull();
     expect(sub.className).toContain('[overflow-wrap:anywhere]');
-    expect(container.textContent).toContain('constance.wellington-hart@example-travel.com');
   });
 
   it('ba cột: voucher cột đầu rộng hơn (5b), hoá đơn ba cột đều (B1); hai cột thì hai', () => {

@@ -11,17 +11,24 @@ function gridCols(count: number, wideFirst: boolean): string {
 
 /**
  * Dòng phụ của cột mã đơn ("Booked by {email}"): cột ~53 mm chỉ chứa ~31 ký tự, email dài không có
- * chỗ ngắt thì tràn khỏi dải. Ngắt có chủ đích trước "@" (`<wbr>`); `overflow-wrap: anywhere` chỉ là lưới
- * cuối cho phần trước "@" vẫn quá dài.
+ * chỗ ngắt thì tràn khỏi dải. Email là một khối `inline-block`: vừa một dòng riêng thì xuống dòng
+ * nguyên khối như bản thảo B1 ("Booked by" / "nora.dahl@example.com") chứ không gãy trước "@" ngay
+ * cạnh "Booked by"; dài hơn một dòng thì gãy có chủ đích trước "@" trong khối (`<wbr>`);
+ * `overflow-wrap: anywhere` chỉ là lưới cuối cho phần trước "@" vẫn quá dài.
  */
 function breakBeforeAt(text: string): ReactNode {
   const at = text.lastIndexOf('@');
   if (at <= 0) return text;
+  // Email bắt đầu sau khoảng trắng cuối cùng trước "@" (cả chuỗi khi không có khoảng trắng).
+  const start = text.lastIndexOf(' ', at) + 1;
   return (
     <>
-      {text.slice(0, at)}
-      <wbr />
-      {text.slice(at)}
+      {text.slice(0, start)}
+      <span className="inline-block max-w-full">
+        {text.slice(start, at)}
+        <wbr />
+        {text.slice(at)}
+      </span>
     </>
   );
 }
