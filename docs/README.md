@@ -180,7 +180,7 @@ Mỗi spec đi kèm một plan cùng tên ở [`plans/`](plans/), trừ vài đ�
 **Trang account Saved và Settings (chỉ đổi giao diện, xong 09/10)**
 [Thiết kế lại Saved và Settings](specs/2026-10-09-account-saved-settings-redesign-design.md)
 
-**Bản in và file xuất (G40, duyệt thiết kế 10/10, chờ thi công)**
+**Bản in và file xuất (G40, duyệt thiết kế 10/10, ba phần thi công xong 12/10)**
 [Thiết kế lại bản in voucher, hoá đơn chờ, báo cáo tháng; Excel báo cáo và danh sách](specs/2026-10-10-print-and-export-redesign-design.md)
 
 **Công cụ máy dev (ngoài repo)**
