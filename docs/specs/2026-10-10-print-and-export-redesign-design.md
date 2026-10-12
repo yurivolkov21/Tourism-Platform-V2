@@ -102,10 +102,10 @@ trang tour), trang Passport.
 
 ### 3.1 Cấu trúc, từ trên xuống
 
-1. **Bìa ảnh 62 mm.** `<img loading="eager">` ảnh tour (`booking.tourImage`), lớp phủ gradient
-   tối dần xuống dưới. Letterhead đảo màu: loại "Trip voucher", mốc "Issued {ngày trả}". Đáy bìa:
-   kicker mono "{nơi} · {N} day(s) · {Ddd D Mon YYYY}" và tên tour Literata 27 pt (tối đa hai dòng;
-   dài hơn thì 22 pt).
+1. **Bìa ảnh 62 mm** (co tới 52 mm khi nội dung dài, §3.4). `<img loading="eager">` ảnh tour
+   (`booking.tourImage`), lớp phủ gradient tối dần xuống dưới. Letterhead đảo màu: loại "Trip
+   voucher", mốc "Issued {ngày trả}". Đáy bìa: kicker mono "{nơi} · {N} day(s) · {Ddd D Mon YYYY}"
+   và tên tour Literata 27 pt (tối đa hai dòng; dài hơn thì 22 pt).
 2. **Tấm vé có cuống** — cùng hình tấm vé trang chi tiết đơn:
    - Dải teal "Entry · Tour booking" cùng mã đơn.
    - Tên tour 14 pt và mộc (`bookingPass.stamp`).
@@ -153,6 +153,13 @@ trang tour), trang Passport.
   luật cắt đếm mục, không đếm dòng gãy): mỗi mục lịch trình và mục gồm tối đa hai dòng, chữ mỗi cột
   dải cuối tối đa bốn dòng. Mục gồm bỏ mục trống, mục trùng (cùng luật khối Get ready). Ngày cần in
   không có mô tả thì bỏ lịch trình. Đang đi từ ngày 2 thì dải cuối không in giờ hẹn của ngày 1.
+- **Bìa co giãn, ca cực hạn một dòng** (sửa sau thử tay production 12/10 — đo voucher của cả 29 tour
+  seed thì 12/59 biến thể dài hơn tờ tới 6,5 mm, chân trang dính vào dải cuối; các lần đo trước chỉ
+  dùng dữ liệu mẫu): bìa là khối duy nhất co được, từ 62 mm xuống tối đa 52 mm (đủ chỗ đầu trang và
+  tên tour hai dòng), nên trình duyệt tự gánh phần tràn vừa phải — chữ của mọi tour seed in đủ, bìa
+  thấp nhất đo được 55,6 mm. Khi ước lượng (số ký tự mỗi dòng đo trên mọi mục của tour seed, rơi về
+  phía dư) cho thấy bìa 52 mm vẫn không đủ, mọi mục lịch trình và mục gồm kẹp một dòng (`oneLine`) —
+  ca tối đa của các luật cắt trên vẫn vừa trang.
 - **Thiếu ảnh tour:** nền `hero`, letterhead vẫn đảo màu.
 - **Thiếu dữ liệu tour** (API lỗi): bỏ lịch trình và Included; ô Where to meet dùng câu dự phòng
   sẵn có ("Contact us for the meeting point — we reply within a day.").
@@ -329,7 +336,10 @@ Email · Source (nguyên văn) · Status (Active · Awaiting confirmation · Uns
 - **Đo bố cục** bằng Edge headless in PDF — mỗi tài liệu đúng một trang, chữ Việt đúng, không tràn:
   - voucher: bốn giai đoạn × {một ngày, 12 ngày, không ảnh};
   - hoá đơn chờ: {đang chờ, đã đóng, bị thu rồi hoàn};
-  - báo cáo: {tháng 9, tháng chưa bắt đầu, lãi âm}.
+  - báo cáo: {tháng 9, tháng chưa bắt đầu, lãi âm};
+  - dữ liệu THẬT, không chỉ fixture (bài học thử tay production 12/10): voucher của mọi tour seed ở
+    các giai đoạn có lịch trình (sắp đi; đang đi ngày 1 và ngày cuối), lấy tour từ API local; tài
+    liệu còn đúng một trang khi có phần tử lạ nằm sau tờ (giả lập tiện ích trình duyệt chèn vào).
 - **Excel:** mở bằng Excel thật (COM) chụp Summary và Detail; mở trên máy vi-VN để kiểm ngày.
 - User duyệt bằng mắt từng phần trước khi merge.
 

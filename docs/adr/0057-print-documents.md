@@ -49,11 +49,19 @@ màn hình là vỡ bản in (review P7C#7, #13).
   :not(main)` chỉ hợp với `body > main` của web, vỏ sidebar nhiều tầng có đệm của admin đẩy tờ
   sang trang 2): lúc in, `body` thành khối thường; mọi tổ tiên của tài liệu `display: contents`;
   mọi thứ khác `display: none`. Thay luật đang neo `[data-slot="voucher"]`.
+- Sửa sau thử tay production 12/10: Edge có tiện ích in voucher ra trang 2 trắng mang ngày giờ của
+  trình duyệt, cửa sổ InPrivate chỉ một trang — tiện ích chèn phần tử vào cuối trang. Luật giấu nay
+  `!important` (thắng style inline không `!important`) và giấu cả phần tử chèn thẳng dưới `<html>`;
+  trang có tài liệu thì `html` và `body` cũng mang trang in `doc` (§2), nên hộp lạ còn sót không đổi
+  tên trang và không bị ép sang một trang mặc định. Giả lập bảy kiểu chèn: sáu kiểu về một trang;
+  kiểu còn lại (phần tử có chữ, ép hiện bằng `!important` inline) vẫn sang trang 2 nhưng lề 0, không
+  ngày giờ, URL.
 
 ### 2. Trang in tên `doc`: A4, lề 0
 
-- `@page doc { size: A4; margin: 0 }` và `[data-print-doc] { page: doc }`. Chỉ tài liệu in
-  dùng trang này; in một trang khác của site (bài blog, trang tour) vẫn lề mặc định.
+- `@page doc { size: A4; margin: 0 }` và `[data-print-doc] { page: doc }` (cùng `html`, `body` của
+  trang có tài liệu — §1). Chỉ trang có tài liệu in dùng trang này; in một trang khác của site (bài
+  blog, trang tour) vẫn lề mặc định.
 - Lề 0 là cách DUY NHẤT tắt đầu và chân trang tự động của trình duyệt (ngày giờ, tiêu đề tab,
   URL) mà không bắt người in bỏ tích "Headers and footers". Tài liệu tự đệm 11–15 mm bên trong
   khổ — dư chỗ cho vùng không in được của máy in gia đình (~4 mm).

@@ -8,6 +8,55 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-10-12 — G40 Phần 1 thử tay production: trang 2 trắng do tiện ích trình duyệt, voucher dài hơn tờ với dữ liệu thật (`402b91b2`, `4a06f528`, nhánh `claude/project-thread-bfjal2`)
+
+**Thử tay bước 1** (spec §10, sau push `3e409626`; user in voucher BK-EET0JBTH ở
+`/checkout/success` bằng Edge): trang 1 đúng 5b, nhưng hộp in báo hai trang, trang 2 trắng mang ngày
+giờ và tiêu đề tab của trình duyệt. Cửa sổ InPrivate chỉ một trang, tức một tiện ích của Edge chèn
+phần tử vào trang. Đo Edge headless: chỉ cần một hộp rỗng nằm sau tờ là trình duyệt ép sang một
+trang mặc định có lề (tên trang đổi từ `doc` về mặc định); tờ cao hơn A4 0,3 mm thì sang trang 2
+nhưng vẫn trang `doc`, không ngày giờ. Trang công khai của production chèn tờ giả thì in một trang,
+nên lỗi không nằm ở site.
+
+- `402b91b2` luật in chung của `@tourism/ui`: `html`, `body` của trang có tài liệu cũng mang trang in
+  `doc`; luật giấu mọi thứ ngoài tài liệu dùng `!important`; giấu cả phần tử chèn thẳng dưới
+  `<html>`. Giả lập bảy kiểu chèn (div cuối body có hay không `!important`, phần tử con của
+  `<html>`, custom element cố định, shadow host kiểu Grammarly): sáu kiểu về một trang; phần tử có
+  chữ ép hiện bằng `!important` inline vẫn sang trang 2 nhưng lề 0, không ngày giờ, URL.
+
+**Voucher dài hơn tờ với dữ liệu thật.** Dựng lại cây JSX của `/checkout/success` trên route đo tạm
+với tour thật từ API local: tour Hội An lantern evening dài hơn tờ 5,6 mm, chân trang dính vào dải
+cuối (khớp ảnh user chụp). Đo voucher của cả 29 tour seed, 59 biến thể (sắp đi; đang đi ngày 1 và
+ngày cuối của tour nhiều ngày): 12 biến thể tràn tới 6,5 mm. Các lần đo 10/10 và sáng 12/10 chỉ dùng
+dữ liệu mẫu. User chọn "bìa thấp khi dài" trong ba cách (bìa thấp khi dài, kẹp một dòng khi dài,
+siết khoảng cách chung).
+
+- `4a06f528` bìa là khối duy nhất co được trong cột flex của tờ: 62 mm, co tới 52 mm (đầu trang và tên
+  tour hai dòng cần 49,4 mm), trình duyệt tự đo nên chính xác. Bìa 52 mm vẫn không đủ theo ước lượng
+  (`flexHeightMm`, `flexBudgetMm`) thì mục lịch trình và mục gồm kẹp một dòng (`oneLine`). Số ký tự
+  mỗi dòng lấy từ số đo mọi mục của tour seed: mục lịch trình có giờ ngắn hơn 45 ký tự, mục gồm ngắn
+  hơn 53 ký tự chưa từng gãy dòng.
+- Đo lại 59 biến thể: không biến thể nào tràn hay phải kẹp một dòng, chữ in đủ, bìa thấp nhất 55,6
+  mm; ước lượng chưa ca nào thấp hơn thật quá 0,1 mm. Ca cực hạn giả (12 mục lịch trình dài, 8 và 8
+  mục gồm dài, điểm hẹn dài) kẹp một dòng vẫn vừa một trang. Ảnh sau sửa trong Library của project.
+- Spec §3.1, §3.4 (luật bìa co giãn, ca cực hạn), §9 (đo cả dữ liệu thật và phần tử lạ sau tờ);
+  ADR-0057 §1, §2.
+
+**Review findings:** không chạy review riêng — hai bản vá nhỏ, mỗi bản có số đo trước và sau trên
+Edge headless (ma trận 59 biến thể, giả lập bảy kiểu chèn) và test mới.
+
+Tests after (`gate:int` trên `4a06f528`, 12/10 11:02–11:05): unit 6709 — web 2233, admin 1911, api
+1097, contract 675, mobile 509, mobile-ui 134, core 46, ui 47, i18n 36, tokens 21 — và int 779/46.
+Web 2224 → 2233: ước lượng chiều cao 7 ca, bìa co giãn và kẹp một dòng 2 ca.
+
+**CÒN TREO:**
+
+- [ ] Push: canh ba đèn — Actions, Render, Vercel.
+- [ ] Thử tay lại bước 1 trên Edge thường (có tiện ích): voucher BK-EET0JBTH một trang, bìa thấp
+  hơn chút; rồi bước 2–5: giao diện tối và tắt Background graphics, voucher nhiều ngày, voucher đã
+  đi và chuyến công ty huỷ, hoá đơn chờ ở `/checkout/cancel`.
+- Không migration, không env, không webhook, không đổi Cloudinary.
+
 ## 2026-10-12 — G40 Phần 1: bản in voucher 5b và hoá đơn chờ B1, cuống đơn đã đóng của G37 (`c97d733c`..`29f79a13`, nhánh `claude/g40-print-web-part1-2ac874`)
 
 Bấm Print ở `/checkout/success` (hay Ctrl+P ở `/checkout/cancel`) nay ra một tờ A4 thiết kế riêng
