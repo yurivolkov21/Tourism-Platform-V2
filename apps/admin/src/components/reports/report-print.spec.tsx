@@ -103,8 +103,9 @@ describe('ReportPrint — tờ in báo cáo tháng C2', () => {
   it('thanh trạng thái: chú thích nhãn · số · %, tổng ở cuối; ô màu cùng vân với đoạn', () => {
     const { container } = renderReport({
       ...septemberReport,
+      newBookings: 74,
       bookingsByStatus: [
-        { status: 'PENDING', count: 0 },
+        { status: 'PENDING', count: 3 },
         { status: 'PAID', count: 65 },
         { status: 'CANCELLED', count: 5 },
         { status: 'REFUNDED', count: 1 },
@@ -114,17 +115,27 @@ describe('ReportPrint — tờ in báo cáo tháng C2', () => {
     const block = container.querySelector('[data-slot="status-bar"]') as HTMLElement;
     const items = within(block).getAllByRole('listitem');
     expect(items.map((li) => li.textContent)).toEqual([
-      'Paid 65 (92%)',
+      'Paid 65 (88%)',
+      'Pending 3 (4%)',
       'Refunded 1 (1%)',
       'Cancelled 5 (7%)',
-      'Total 71',
+      'Total 74',
     ]);
-    // Ô màu Refunded mang vân 135°, Cancelled vân 45° — cùng pattern với đoạn trên thanh.
-    const fills = (li: HTMLElement) =>
-      [...li.querySelectorAll('rect[fill]')].map((rect) => rect.getAttribute('fill'));
-    expect(fills(items[1] as HTMLElement)).toEqual(['url(#report-print-status-hatch-135)']);
-    expect(fills(items[2] as HTMLElement)).toEqual(['url(#report-print-status-hatch-45)']);
-    expect(block.querySelector('#report-print-status-hatch-135')).not.toBeNull();
+    // Paid đặc; Pending vân ngang (in xám nó trùng tông Paid), Refunded vân 135°, Cancelled vân 45° —
+    // ô màu dùng đúng pattern của đoạn trên thanh.
+    const fills = (el: Element) =>
+      [...el.querySelectorAll('rect[fill]')].map((rect) => rect.getAttribute('fill'));
+    const hatches = [
+      [],
+      ['url(#report-print-status-hatch-90)'],
+      ['url(#report-print-status-hatch-135)'],
+      ['url(#report-print-status-hatch-45)'],
+    ];
+    expect(items.slice(0, 4).map(fills)).toEqual(hatches);
+    expect([...block.querySelectorAll('svg > g[data-status]')].map(fills)).toEqual(hatches);
+    for (const id of ['45', '90', '135']) {
+      expect(block.querySelector(`#report-print-status-hatch-${id}`)).not.toBeNull();
+    }
   });
 
   it('không booking nào: câu trống thay cho thanh', () => {
@@ -160,5 +171,49 @@ describe('ReportPrint — tờ in báo cáo tháng C2', () => {
       'Nexora back office · Monthly report 2026-09 · Internal — not for distribution',
     );
     expect(footer?.querySelector('[data-slot="printed-at"]')).not.toBeNull();
+  });
+
+  // Bản thảo khai cỡ chữ bằng shorthand `font:` nên các dòng này dãn `normal`, không 1.45 của tờ; và
+  // tailwind-merge xoá `leading-*` đứng trước một lớp cỡ chữ — test canh cả hai cái bẫy.
+  it('nhịp chữ của bản thảo: nền 9pt dãn 1.45; tên khối, nhãn, số dãn normal', () => {
+    const { container } = renderReport();
+    const doc = container.querySelector('[data-print-doc]');
+    expect(doc?.className).toContain('text-[9pt]');
+    expect(doc?.className).toContain('leading-[1.45]');
+    for (const h of screen.getAllByRole('heading', { level: 3 })) {
+      expect(h.className).toContain('text-[10.5pt]');
+      expect(h.className).toContain('leading-[normal]');
+    }
+    const value = screen.getByText('$39,607.80');
+    expect(value.className).toContain('text-[15pt]');
+    expect(value.className).toContain('leading-[normal]');
+    const ops = container.querySelectorAll(
+      '[data-slot="report-ops"] dt, [data-slot="report-ops"] dd',
+    );
+    for (const el of ops) expect(el.className).toContain('leading-[normal]');
+  });
+
+  it('tờ chặt: khoảng cách giữa các khối thu lại, chữ giữ cỡ', () => {
+    const normal = renderReport().container;
+    expect(normal.querySelector('[data-print-doc]')?.hasAttribute('data-dense')).toBe(false);
+    expect(within(normal).getAllByRole('heading', { level: 3 })[0]?.className).toContain(
+      'mt-[5mm]',
+    );
+
+    const dense = renderReport({
+      ...septemberReport,
+      costDataMissing: 3,
+      departuresCostMissing: 2,
+    }).container;
+    expect(dense.querySelector('[data-print-doc]')?.hasAttribute('data-dense')).toBe(true);
+    for (const h of within(dense).getAllByRole('heading', { level: 3 })) {
+      expect(h.className).toContain('mt-[3mm]');
+      expect(h.className).toContain('text-[10.5pt]');
+    }
+    expect(within(dense).getByRole('heading', { level: 2 }).className).toContain('mt-[3.5mm]');
+    expect(dense.querySelector('[data-slot="report-tiles"]')?.className).toContain('mt-[4.5mm]');
+    expect(dense.querySelector('[data-slot="report-ops"] dl > div')?.className).toContain(
+      'pt-[1.8mm]',
+    );
   });
 });

@@ -1,3 +1,4 @@
+import type { AdminMonthlyReport } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
 import { describe, expect, it } from 'vitest';
 import { emptyMonthReport, lossMonthReport, septemberReport } from '@/test/monthly-report';
@@ -392,5 +393,66 @@ describe('reportPrintView — chữ và số của tờ in', () => {
     expect(view.waterfall).toEqual(waterfallView(septemberReport));
     expect(view.statusBar).toEqual(statusBarView(septemberReport));
     expect(reportPrintView(emptyMonthReport).waterfall).toBeNull();
+  });
+});
+
+describe('reportPrintView — tờ chặt khi phần cao thêm vượt ngưỡng', () => {
+  const fourStatuses: Pick<AdminMonthlyReport, 'newBookings' | 'bookingsByStatus'> = {
+    newBookings: 74,
+    bookingsByStatus: [
+      { status: 'PENDING', count: 3 },
+      { status: 'PAID', count: 65 },
+      { status: 'CANCELLED', count: 5 },
+      { status: 'REFUNDED', count: 1 },
+      { status: 'PARTIALLY_REFUNDED', count: 0 },
+    ],
+  };
+  /** Chi phí theo khách đúng một triệu: "(1,000,000.00)". */
+  const millions = {
+    recognizedRevenue: '1500000.00',
+    cogsVariable: '1000000.00',
+    cogsFixed: '200000.00',
+    cogsTotal: '1200000.00',
+    grossProfit: '300000.00',
+    taxAmount: '27272.73',
+    paymentFees: '45000.00',
+    netProfit: '227727.27',
+  } as const;
+  const dense = (patch: Partial<AdminMonthlyReport>) =>
+    reportPrintView({ ...septemberReport, ...patch }).dense;
+
+  it('tháng thường, tháng lỗ, tháng chưa có số: giữ nhịp bản thảo', () => {
+    expect(reportPrintView(septemberReport).dense).toBe(false);
+    expect(reportPrintView(lossMonthReport).dense).toBe(false);
+    expect(reportPrintView(emptyMonthReport).dense).toBe(false);
+  });
+
+  it('một vế cảnh báo, chú thích bốn trạng thái, hay số triệu — mỗi thứ một mình vẫn vừa', () => {
+    expect(dense({ costDataMissing: 3 })).toBe(false);
+    expect(dense({ departuresCostMissing: 2 })).toBe(false);
+    expect(dense(fourStatuses)).toBe(false);
+    expect(dense(millions)).toBe(false);
+  });
+
+  it('cộng lại vượt ngưỡng thì tờ chặt', () => {
+    expect(dense({ costDataMissing: 3, departuresCostMissing: 2 })).toBe(true);
+    expect(dense({ costDataMissing: 3, ...fourStatuses })).toBe(true);
+    expect(dense({ ...millions, ...fourStatuses })).toBe(true);
+    expect(dense({ departuresCostMissing: 2, ...millions })).toBe(true);
+  });
+
+  it('ngưỡng triệu tính từ đúng "1,000,000.00"; dưới đó nhãn bảng lãi lỗ không xuống dòng', () => {
+    const nearMillion = {
+      recognizedRevenue: '999999.99',
+      cogsVariable: '700000.00',
+      cogsFixed: '150000.00',
+      cogsTotal: '850000.00',
+      grossProfit: '149999.99',
+      taxAmount: '13636.36',
+      paymentFees: '30000.00',
+      netProfit: '106363.63',
+    } as const;
+    expect(dense({ ...nearMillion, ...fourStatuses })).toBe(false);
+    expect(dense({ ...nearMillion, recognizedRevenue: '1000000.00', ...fourStatuses })).toBe(true);
   });
 });

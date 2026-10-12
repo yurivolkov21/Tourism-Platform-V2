@@ -1,8 +1,9 @@
 import { messages } from '@tourism/i18n';
 import type { StatusBarView, StatusTone } from '@/lib/report-print';
 
-/** Id của hai vân — một thanh trạng thái mỗi trang, ô màu của chú thích dùng lại. */
+/** Id của ba vân — một thanh trạng thái mỗi trang, ô màu của chú thích dùng lại. */
 const HATCH_45 = 'report-print-status-hatch-45';
+const HATCH_90 = 'report-print-status-hatch-90';
 const HATCH_135 = 'report-print-status-hatch-135';
 
 /** Màu của từng tông (`statusBarView` chốt tông, bộ màu đã qua bộ kiểm dataviz — xem đó). */
@@ -14,8 +15,13 @@ const TONE_FILL: Record<StatusTone, string> = {
   cost: 'fill-chart-cost',
 };
 
-/** Hai trạng thái "tiền ra" mang vân, hai hướng khác nhau — in trắng đen vẫn tách được. */
+/**
+ * Vân cho bản in trắng đen. Hai trạng thái "tiền ra" mang vân chéo hai hướng. Pending mang vân ngang:
+ * độ sáng của nó (OKLCH L 0.531) sát Paid (0.566), in xám hai đoạn đặc trùng màu (đo 12/10). Không
+ * dùng vân dọc: khe trắng giữa các đoạn đã là nét dọc, đoạn vân dọc trông như nhiều đoạn nhỏ.
+ */
 const TONE_HATCH: Partial<Record<StatusTone, string>> = {
+  pending: HATCH_90,
   refunded: HATCH_135,
   cost: HATCH_45,
 };
@@ -68,6 +74,7 @@ export function StatusBar({ view }: { view: StatusBarView }) {
       >
         <defs>
           <Hatch id={HATCH_45} angle={45} />
+          <Hatch id={HATCH_90} angle={90} />
           <Hatch id={HATCH_135} angle={135} />
         </defs>
         {view.segments.map((segment) => {
@@ -95,17 +102,19 @@ export function StatusBar({ view }: { view: StatusBarView }) {
           );
         })}
       </svg>
-      <ul className="mt-[2.4mm] flex flex-wrap gap-x-[6mm] gap-y-[2mm] text-[8.2pt]">
+      {/* Sát thanh, không lề trên: bản thảo khai `.legend { margin-top: 2.4mm }` nhưng `.page ul
+          { margin: 0 }` (0,1,1) thắng nó, nên bản được duyệt đặt chú thích ngay dưới thanh. */}
+      <ul className="flex flex-wrap gap-x-[6mm] gap-y-[2mm] text-[8.2pt]">
         {view.legend.map((item) => (
+          // Nhãn, số, phần trăm là ba ô flex cách 1.6 mm như bản thảo; dấu cách giữa chúng không
+          // hiện (flex bỏ chữ trắng) nhưng giữ cho chữ chép ra từ PDF khỏi dính "Paid65(92%)".
           <li key={item.status} className="inline-flex items-center gap-[1.6mm]">
             <Swatch tone={item.tone} />
-            <span>
-              <b className="font-semibold">{item.label}</b> {item.count}{' '}
-              <span className="text-muted-foreground">({item.share})</span>
-            </span>
+            <b className="font-semibold">{item.label}</b> <span>{item.count}</span>{' '}
+            <span className="text-muted-foreground">({item.share})</span>
           </li>
         ))}
-        <li className="ml-auto text-muted-foreground">
+        <li className="ml-auto inline-flex items-center gap-[1.6mm] text-muted-foreground">
           {messages.admin.reports.bookingsTable.total}{' '}
           <b className="font-semibold text-foreground">{view.total}</b>
         </li>

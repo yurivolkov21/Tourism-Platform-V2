@@ -13,8 +13,35 @@ import { Waterfall } from './waterfall';
 
 const t = messages.admin.reports;
 
-/** Tên khối: chữ tiêu đề in chung, khoảng trên dưới của bản thảo C2. */
-const SECTION = cn(PRINT_SECTION, 'mt-[5mm] mb-[1.6mm]');
+/**
+ * Bản thảo C2 khai cỡ chữ bằng shorthand `font:` — shorthand đặt lại `line-height` về `normal` — nên
+ * tên khối, nhãn, số của ô và lưới chỉ số KHÔNG kế thừa dãn dòng 1.45 của tờ. Đo 12/10: thiếu
+ * `leading-[normal]` ở bốn chỗ ấy cùng cỡ nền 9pt và tên khối 10.5pt, tờ cao hơn bản thảo 8.5 mm và chỉ
+ * còn 2.9 mm dư phía trên chân trang.
+ */
+const NORMAL_LEADING = 'leading-[normal]';
+
+/**
+ * Khoảng cách dọc giữa các khối. `normal` là của bản thảo; `dense` (tờ chặt, `view.dense`) lấy lại
+ * 14 mm cho tháng có quá nhiều thứ làm tờ cao thêm. Chữ giữ nguyên cỡ ở cả hai.
+ */
+const RHYTHM = {
+  normal: {
+    title: 'mt-[5mm]',
+    tiles: 'mt-[6mm]',
+    section: 'mt-[5mm]',
+    opsCell: 'pt-[2.6mm] pb-[2.8mm]',
+  },
+  dense: {
+    title: 'mt-[3.5mm]',
+    tiles: 'mt-[4.5mm]',
+    section: 'mt-[3mm]',
+    opsCell: 'pt-[1.8mm] pb-[2mm]',
+  },
+} as const;
+
+/** Nhãn chữ in hoa của ô số và lưới chỉ số. */
+const LABEL = cn(PRINT_LABEL, NORMAL_LEADING);
 
 /** Một dòng của bảng lãi lỗ kế toán (bản thảo `.stmt.mini`). */
 function PnlRow({ row }: { row: ReportPrintPnlRow }) {
@@ -58,8 +85,17 @@ function PnlRow({ row }: { row: ReportPrintPnlRow }) {
  * Tiêu đề tờ là `h2` (vỏ admin đã có `h1` ở thanh trên), tên khối `h3`.
  */
 export function ReportPrint({ view }: { view: ReportPrintView }) {
+  const rhythm = view.dense ? RHYTHM.dense : RHYTHM.normal;
+  /** Tên khối: chữ tiêu đề in chung ở cỡ 10.5pt của báo cáo. */
+  const section = cn(PRINT_SECTION, rhythm.section, 'mb-[1.6mm] text-[10.5pt]', NORMAL_LEADING);
   return (
-    <DocPage data-slot="report-print">
+    // Cỡ nền 9pt của báo cáo (`.rp` trong bản thảo). Dãn dòng phải nhắc lại: `cn` của `DocPage` gộp
+    // bằng tailwind-merge, mà lớp cỡ chữ đứng sau thì xoá lớp `leading-*` đứng trước nó.
+    <DocPage
+      data-slot="report-print"
+      data-dense={view.dense ? '' : undefined}
+      className="text-[9pt] leading-[1.45]"
+    >
       <DocLetterhead
         brand={<ReportPrintBrand />}
         docType={t.title}
@@ -67,12 +103,12 @@ export function ReportPrint({ view }: { view: ReportPrintView }) {
         meta={view.meta}
         className="border-b-[0.8pt] border-foreground pb-[4mm]"
       />
-      <h2 className="mt-[5mm] font-heading text-[21pt] leading-[1.15] font-semibold">
+      <h2 className={cn(rhythm.title, 'font-heading text-[21pt] leading-[1.15] font-semibold')}>
         {view.title}
       </h2>
       <p className="mt-[1.2mm] text-muted-foreground">{view.periodLine}</p>
 
-      <div data-slot="report-tiles" className="mt-[6mm] grid grid-cols-4 gap-[3mm]">
+      <div data-slot="report-tiles" className={cn(rhythm.tiles, 'grid grid-cols-4 gap-[3mm]')}>
         {view.tiles.map((tile) => (
           <div
             key={tile.key}
@@ -82,11 +118,13 @@ export function ReportPrint({ view }: { view: ReportPrintView }) {
               tile.hero ? 'border-transparent bg-paper' : 'border-border',
             )}
           >
-            <p className={PRINT_LABEL}>{tile.label}</p>
+            <p className={LABEL}>{tile.label}</p>
             <p
               className={cn(
-                'mt-[1mm] leading-tight font-semibold tabular-nums',
+                'mt-[1mm] font-semibold tabular-nums',
                 tile.long ? 'text-[12pt]' : 'text-[15pt]',
+                // Sau lớp cỡ chữ: tailwind-merge xoá `leading-*` đứng trước một lớp cỡ chữ.
+                NORMAL_LEADING,
               )}
             >
               {tile.value}
@@ -97,7 +135,7 @@ export function ReportPrint({ view }: { view: ReportPrintView }) {
       </div>
 
       <section data-slot="report-waterfall">
-        <h3 className={SECTION}>{t.waterfallHeading}</h3>
+        <h3 className={section}>{t.waterfallHeading}</h3>
         <div className="grid grid-cols-[1fr_64mm] items-start gap-[7mm]">
           {view.waterfall ? (
             <Waterfall view={view.waterfall} />
@@ -132,7 +170,7 @@ export function ReportPrint({ view }: { view: ReportPrintView }) {
       </section>
 
       <section data-slot="report-bookings">
-        <h3 className={SECTION}>{t.bookingsTable.heading}</h3>
+        <h3 className={section}>{t.bookingsTable.heading}</h3>
         {view.statusBar ? (
           <StatusBar view={view.statusBar} />
         ) : (
@@ -141,22 +179,26 @@ export function ReportPrint({ view }: { view: ReportPrintView }) {
       </section>
 
       <section data-slot="report-ops">
-        <h3 className={SECTION}>{t.operationsTable.heading}</h3>
+        <h3 className={section}>{t.operationsTable.heading}</h3>
         <dl className="grid grid-cols-4 border-t-[0.6pt] border-border">
           {view.ops.map((row) => (
             <div
               key={row.key}
-              className="border-b-[0.6pt] border-border pt-[2.6mm] pr-[3mm] pb-[2.8mm]"
+              className={cn('border-b-[0.6pt] border-border pr-[3mm]', rhythm.opsCell)}
             >
-              <dt className={PRINT_LABEL}>{row.label}</dt>
-              <dd className="mt-[0.6mm] text-[11pt] font-semibold tabular-nums">{row.value}</dd>
+              <dt className={LABEL}>{row.label}</dt>
+              <dd
+                className={cn('mt-[0.6mm] text-[11pt] font-semibold tabular-nums', NORMAL_LEADING)}
+              >
+                {row.value}
+              </dd>
             </div>
           ))}
         </dl>
       </section>
 
       <section data-slot="report-definitions">
-        <h3 className={SECTION}>{t.definitions.heading}</h3>
+        <h3 className={section}>{t.definitions.heading}</h3>
         <ol className="columns-2 gap-[8mm] text-[7.2pt] leading-[1.38] text-foreground/85">
           {view.definitions.map((text, i) => (
             <li key={text} className="relative mb-[1.6mm] break-inside-avoid pl-[4mm]">
