@@ -8,6 +8,70 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-10-12 — Merge G40 Phần 3 lên main: Excel báo cáo tháng D1, hai danh sách xuất Excel thay CSV (`8fedbb71`..`a7e7b136`)
+
+Phần 3 của [spec bản in và file xuất](specs/2026-10-10-print-and-export-redesign-design.md), theo
+[ADR-0034](adr/0034-excel-report-export.md) AMEND 3, thi công 10/10. Excel báo cáo tháng thành
+dashboard D1: Summary có bốn ô số, thác nước từ doanh thu ghi nhận tới lãi ròng vẽ bằng `REPT`,
+bảng trạng thái và bảng tiền; bốn sheet còn lại (Bookings, Operations, Detail, Definitions) có mã
+đơn bấm được và hàng Total `SUBTOTAL`. `/bookings/export` và `/subscribers/export` xuất Excel thay
+CSV (gỡ `csv.ts`, `bookings-csv.ts`, `subscribers-csv.ts`): ô đúng kiểu, ngày ép tiếng Anh
+`[$-409]`, mốc thời gian theo giờ Việt Nam, khung in A4 có đầu và chân trang, nút ghi "Export
+Excel". Bộ đồ nghề chung ở `apps/admin/src/lib/xlsx-style.ts`. API: `admin.bookings.list` nay điền
+`refundedTotal` thật (shape contract không đổi, thêm một câu gom mỗi trang). Không migration, không
+env, không thêm dependency.
+
+Rebase lên `755fe9f3`: 8 commit thi công (đầu nhánh cũ `2fb4d5d9`: `26af0bf7`, `e7d8c304`,
+`43c89248`, `4dabb116`, `b2d5b7e9`, `8bc2be7a`, `071f837f`, `2fb4d5d9`) nay là `8fedbb71`,
+`ee116ed6`, `33379408`, `2d4b313a`, `33665ce4`, `fc6921ea`, `f0fcf039`, `8f8fcbfd`. Gỡ xung đột
+`messages.spec` (giữ cả hai khối test).
+
+**Review max 12/10.** 15 phát hiện, vá 14 trên nhánh, bỏ một:
+
+- `9ba5e6d7` (#1, nặng): ExcelJS ghi thẳng U+FFFE/U+FFFF vào XML, nên một ký tự như vậy trong nguồn
+  đăng ký (form công khai) hay tên, điện thoại của khách là Excel không mở được cả file. Chữ khách
+  nhập nay đi qua `cellText`: bỏ ký tự XML cấm, và (#6) thêm dấu nháy cho chữ mở đầu như công thức,
+  vì ADR-0034 AMEND 3 dặn Save As CSV mà CSV mở lại thì công thức chạy.
+- `c0f6c145` (#2, nặng): cột Refunded của danh sách đơn và sheet Detail luôn 0.00 vì
+  `adminList` để mặc định của `toBooking`. Nay một câu `refund.groupBy` cho cả trang; int test mới
+  cho cả hai đường (có và không `includeMedia`).
+- `9ba5e6d7` và `56702b39` (#3): thanh thác nước không có trần, nên tháng lỗ cho chuỗi quá 65 nghìn
+  ký tự làm Excel không mở file, quá 32.767 thì `REPT` ra `#VALUE!`, tỉ lệ cực lớn ném `RangeError`
+  sau khi audit đã ghi `ok`. Nay trần 50 ký tự, và ba route ghi audit `ok` chỉ sau khi dựng xong
+  (`xlsxAfterBuild`; dựng lỗi thì ghi `failed`, trả 502 có lời).
+- `9ba5e6d7` (#4): hàng chọn theo ngày UTC mà mốc ghi giờ Việt Nam, hàng ở mép khoảng trái với
+  khoảng in trên đầu trang. Đầu trang nay ghi khoảng ngày kèm "(UTC)".
+- `a7e7b136` (#5): bấm mã đơn trong Excel trên Windows rơi về form đăng nhập dù đang đăng nhập:
+  Office tải URL trước, không mang cookie, proxy trả `/login?redirect=…`. Trang login nay hỏi
+  `loginDestination` (hàm thuần, có test): phiên ADMIN thì chuyển thẳng tới đích qua
+  `safeRedirect`; chỉ hỏi API khi có cookie phiên. Tên cookie phiên gom về `session-cookie.ts`.
+- `9ba5e6d7` (#7): đầu trang cắt 100 ký tự TRƯỚC khi nhân đôi `&` và cắt từ cuối, nên có thể quá
+  255 ký tự (Excel không mở file) và mất phần "n selected rows". Nay cắt theo chỗ còn lại sau khi
+  nhân đôi, từ khoá cắt ở 40 ký tự.
+- `9ba5e6d7` (#8, #12, #13): dòng 0.00 của thác nước vẽ một ô màu chi phí, nay để trống; cảnh báo
+  thiếu giá vốn hai vế rơi ra ngoài vùng in A:I, nay gộp B:I và xuống dòng; subscribers in khổ ngang
+  như bookings.
+- `9ba5e6d7` (#9): đầu trang gọi tab mặc định là "Active" trong khi cột Status chỉ gọi "Active"
+  địa chỉ đã xác nhận. Nay ghi "Active and awaiting confirmation".
+- `9ba5e6d7` (#10): mốc giữ phần nghìn giây, Excel làm tròn lên giây rồi mới cắt phút, nên có ô
+  sang phút sau, có khi sang ngày sau. Nay bỏ phần nghìn giây.
+- `9ba5e6d7` (#11): nhãn tiêu đề bị cắt, cột rộng 9 bị ExcelJS bỏ khi ghi. Đo lại bằng Excel 16;
+  lúc mở file xuất từ dữ liệu seed còn thấy nút lọc che "Children", "Price per person", "Currency"
+  và tên tour dài bị cắt, nên mỗi cột cộng chỗ cho nút lọc, cột Tour 46 như sheet Detail.
+- `9ba5e6d7` (#14): `sumMoney` tự làm phép tính cent, nay dùng `toCents`/`fromCents` của contract;
+  JSDoc của `money()` trích ADR-0034 §2 thay cho một luật CLAUDE.md không có.
+- Bỏ #15: gom phần dựng sheet chép lặp ở năm builder thành một `dataSheet()` — tái cấu trúc rộng,
+  sát freeze. Riêng hàm giờ Việt Nam chép đôi đã gom về `dateTime()` của `xlsx-style.ts`.
+
+Kiểm bằng Excel thật (12/10, Excel 16 trên máy user, định dạng vi-VN): tải sáu file qua route thật
+của admin chạy local với dữ liệu seed (báo cáo tháng 9 và tháng 10, bookings tháng 9 cả tập và bốn
+hàng chọn, lọc Refunded có từ khoá, subscribers). Mọi file mở không lỗi; ngày tiếng Anh; cột Refunded
+khớp DB ở cả 40 đơn có hoàn; vết audit ghi `ok` sau khi dựng. Ảnh và ba file mẫu gửi user duyệt.
+
+Tests after (`gate:int` trên `a7e7b136`, 12/10): unit 6975 — web 2233, admin 1941, api 1097,
+mobile 738, contract 675, mobile-ui 136, ui 47, core 46, i18n 41, tokens 21 — và int 782/46. So với
+main: admin 1911 → 1941, i18n 36 → 41, int 781 → 782 (Refunded của danh sách đơn).
+
 ## 2026-10-12 — Merge nhánh `fix/mobile-review-screens` lên main: P5b-5 đánh giá R1–R7 (`f5244d4c`..`4200735f`)
 
 Cụm màn đánh giá của Nghia (P5b-5, [handoff đánh giá](handoff/mobile-review-handoff.md)): R1 viết

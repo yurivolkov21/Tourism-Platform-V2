@@ -359,7 +359,7 @@ Email · Source (nguyên văn) · Status (Active · Awaiting confirmation · Uns
 | --- | --- | --- | --- |
 | 1 | Khung chung (`@tourism/ui`, token), voucher in, hoá đơn chờ in, G37 màn hình | web | **Xong** 12/10 (CHANGELOG 12/10) |
 | 2 | Báo cáo tháng in, thác nước | admin | Chưa có plan |
-| 3 | Excel báo cáo D1, hai danh sách Excel, gỡ CSV | admin | Thi công xong 10/10, chưa review |
+| 3 | Excel báo cáo D1, hai danh sách Excel, gỡ CSV | admin | **Xong** 12/10 (CHANGELOG 12/10) |
 
 Mỗi phần một nhánh, merge riêng. Không thêm dependency, không migration, không đổi API. Thi công
 bằng agent Opus hoặc session riêng; review max; user duyệt bằng mắt trước merge.

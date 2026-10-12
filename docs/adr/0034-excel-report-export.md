@@ -1,7 +1,8 @@
 # ADR-0034 — Báo cáo tháng xuất Excel; CSV ở lại đúng chỗ của nó
 
 - **Trạng thái:** Accepted (2026-09-05) · AMEND 3 (2026-10-10): danh sách xuất Excel thay CSV,
-  ngày ép tiếng Anh, bản in `/reports` theo [ADR-0057](0057-print-documents.md)
+  ngày ép tiếng Anh, bản in `/reports` theo [ADR-0057](0057-print-documents.md) · phần Excel của
+  AMEND 3 thi công xong 12/10 (G40 Phần 3); bản in `/reports` là G40 Phần 2
 - **Bối cảnh thi hành:** nhánh `fix/p4c-backend-logic`, đi trước code theo luật
   CLAUDE.md #5
 - **Liên quan:** [ADR-0033](0033-financial-model.md) (những con số file này in
