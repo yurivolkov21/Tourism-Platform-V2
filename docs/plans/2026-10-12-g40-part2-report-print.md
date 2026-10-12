@@ -155,6 +155,11 @@ trên với `main` một lần nữa trước khi merge.
    - Chỉ vẽ và chú thích trạng thái có số khác 0 (bảng màn hình vẫn đủ năm hàng); % làm tròn số
      nguyên, khác 0 mà tròn ra 0 thì in `<1%`; cuối hàng chú thích "Total {n}".
    - Không booking nào → câu `bookingsTable.empty` thay cho thanh.
+   - Sửa sau đo (12/10): Pending cũng mang vân, vân ngang. In xám, độ sáng của nó (OKLCH L 0.531)
+     trùng Paid (0.566) nên hai đoạn đặc không tách được. Không dùng vân dọc vì khe giữa hai đoạn đã
+     là nét dọc.
+   - Chú thích sát thanh, nhãn · số · % là ba ô flex cách 1.6 mm: đúng bản được duyệt, vì trong
+     bản thảo `.page ul { margin: 0 }` thắng `.legend { margin-top: 2.4mm }`.
 7. **Bốn ô số theo spec §5.1:** Revenue recognised (nền `paper`, dòng phụ `recognizedCaption`) ·
    Gross profit (`marginCaption`) · Net profit (`netCaption`) · Cash collected (`paidCaption`). Tiền
    qua `formatAmount` như màn hình. Chuỗi dài hơn 12 ký tự (từ `$1,000,000.00`) hạ cỡ 15 pt → 12 pt
@@ -177,6 +182,16 @@ trên với `main` một lần nữa trước khi merge.
     giải thật dài hơn bản thảo ~7 mm, cảnh báo giá vốn và chú thích năm trạng thái có thể thêm một
     hai dòng. Nếu ma trận đo có ca tràn thì thêm cờ `dense` tính ở view-model (điều kiện và số đo
     chốt khi đo) để siết khoảng cách dọc — không cắt chữ, không hạ cỡ chữ thân.
+    Chốt sau đo (12/10): ca nặng thật (hai cảnh báo cùng năm trạng thái) tràn 2.6 mm, nên có
+    `dense`. View-model cộng phần tờ cao thêm theo số đo: cảnh báo 2 mm lề cộng 4.1 mm mỗi vế,
+    chú thích từ bốn trạng thái 6.2 mm, số tiền từ một triệu 8.2 mm (hai nhãn chi phí xuống dòng).
+    Tổng quá 10 mm (trong 13.8 mm dư) thì tờ chặt: thu lề trên của tiêu đề, ô số, bốn khối và đệm
+    lưới chỉ số, lấy lại 14.2 mm. Tháng thường giữ đúng nhịp bản thảo.
+15. **Nhịp chữ theo bản thảo** (sửa sau đo 12/10): cỡ nền 9 pt, tên khối 10.5 pt, và
+    `leading-[normal]` ở tên khối, nhãn, số của ô và lưới chỉ số, vì bản thảo khai các chữ ấy bằng
+    shorthand `font:` (đặt lại dãn dòng). Thiếu ba điều ấy tờ cao hơn bản thảo 8.5 mm. Số đậm của
+    bảng lãi lỗ giữ 500: hai app chỉ nạp IBM Plex Mono 400 và 500 (cùng lựa chọn của Phần 1), bản
+    thảo nạp thêm 600.
 14. **Trang màn hình:** bọc toàn bộ nội dung màn hình trong `<div className="contents print:hidden">`
     (luật cô lập của `@tourism/ui` là lưới, ADR-0057 §1); gỡ class in đã chết ở `report-tables.tsx`
     (`print:grid-cols-2`, `print:col-span-2`); sửa comment "Trang này được thiết kế để IN" của
@@ -318,6 +333,17 @@ trong tờ; không nhãn nào của SVG chồng nhau (hộp `getBBox` của nhã
 mục rời nhau); màu tính được của chữ phụ, nét bảng trong tờ KHÔNG phải đen (khối in chung không lọt
 vào). Ảnh chụp tháng 9, tháng lỗ và ca nặng nhất đặt cạnh bản thảo C2 gửi Yuri duyệt bằng mắt
 (spec §9).
+
+### Kết quả đo (12/10)
+
+- Mười tháng seed (H = 2026-10-12, từ 2026-01 tới 2026-10): một trang, dư 13.8 mm phía trên chân
+  trang (bản thảo dư 13.4 mm), không nhãn SVG nào chồng nhau, chữ phụ và nét kẻ đúng token admin,
+  không phần tử nào ngoài tờ hiện ra khi in.
+- Mười ba ca fixture đều một trang. Tờ chặt bật ở bốn ca: đủ hai vế cảnh báo (dư 17.8 mm); một vế
+  cảnh báo cùng bốn trạng thái (21.9 mm); ca nặng thật, hai vế cảnh báo cùng năm trạng thái
+  (11.6 mm); hai ca số hàng triệu (3.4 và 4.8 mm, nhãn chi phí xuống dòng trong ô, không cắt chữ).
+  Một vế cảnh báo một mình còn dư 7.7 mm; năm trạng thái một mình 7.6 mm.
+- Hộp lạ cao 300 mm chèn sau tờ và dưới `<html>`, style inline: vẫn một trang.
 
 ## Sau khi thi công
 
