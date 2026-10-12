@@ -27,8 +27,9 @@ export function addDays(from: string, n: number): string {
 
 /**
  * Bốn nhánh của luật vào màn (handoff mục 3): trước khởi hành (xa/sát ngày),
- * trong khoảng đi–về, hoặc đã về. Chỉ gọi với booking `PAID` — route lọc
- * trạng thái khác (PENDING/CANCELLED/REFUNDED) TRƯỚC khi tới đây.
+ * trong khoảng đi–về, hoặc đã về. Chỉ gọi với đơn còn đi theo ngày
+ * (`isTravellingPhase`) — route lọc đơn chờ trả, đã huỷ hay chuyến bị công ty
+ * huỷ TRƯỚC khi tới đây.
  */
 export function tripPhase(today: string, startDate: string, endDate: string): TripPhase {
   if (today > endDate) return 'ended';

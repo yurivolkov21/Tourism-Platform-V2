@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
+import { bookingPhase } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
 import { Button, EmptyState, SCREEN_EDGES_UNDER_HEADER, Screen } from '@tourism/mobile-ui';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
@@ -30,6 +31,7 @@ import {
 } from '@/features/trip-tracker/trip-tracker';
 import type { TripMilestone } from '@/features/trip-tracker/trip-upcoming-screen';
 import { TripUpcomingScreen } from '@/features/trip-tracker/trip-upcoming-screen';
+import { isTravellingPhase } from '@/features/trips/trips-list';
 import { orpc, withMobileAuth } from '@/lib/api/client';
 import { getAuthClient } from '@/lib/auth-client';
 import { formatMoney } from '@/lib/format-money';
@@ -37,9 +39,9 @@ import { useServerClock } from '@/lib/use-server-clock';
 
 /**
  * "Your trip" (P1/P2/P6) + "Day {n} of {total}" (P5) — cụm bám ngày khởi
- * hành (W7/W8, mockup `mobile-booking-screens` mục 4). Chạm thẻ PAID ở tab
- * Trips route tới đây; PENDING/CANCELLED/REFUNDED vẫn đi thẳng
- * `/bookings/[code]` (luật vào màn, handoff mục 3).
+ * hành (W7/W8, mockup `mobile-booking-screens` mục 4). Chạm thẻ của đơn còn đi theo
+ * ngày ở tab Trips (`isTravellingPhase`) route tới đây; đơn chờ trả, đã huỷ hay chuyến
+ * bị công ty huỷ vẫn đi thẳng `/bookings/[code]` (luật vào màn, handoff mục 3).
  */
 export default function TripTrackerRoute() {
   const { code: rawCode } = useLocalSearchParams<{ code: string }>();
@@ -74,14 +76,16 @@ export default function TripTrackerRoute() {
     void packingListStore.getChecked(code).then(setPackingChecked);
   }, [code]);
 
-  // Chỉ booking PAID mới có màn ở đây (luật vào màn, handoff mục 3) — vào
-  // thẳng bằng URL cũ hoặc trạng thái đổi giữa chừng (vd vừa bị huỷ) thì đưa
-  // về đúng hoá đơn thay vì vẽ một P1 vô nghĩa.
+  // Chỉ đơn còn đi theo ngày mới có màn ở đây (luật vào màn, handoff mục 3; cùng
+  // `isTravellingPhase` của tab Trips) — vào thẳng bằng URL cũ hoặc trạng thái đổi giữa
+  // chừng (vd vừa bị huỷ, chuyến bị công ty huỷ) thì đưa về đúng hoá đơn thay vì vẽ một
+  // P1 vô nghĩa.
+  const travelling = booking === undefined || isTravellingPhase(bookingPhase(booking, today));
   useEffect(() => {
-    if (booking !== undefined && booking.status !== 'PAID') {
+    if (booking !== undefined && !travelling) {
       router.replace(`/bookings/${booking.code}`);
     }
-  }, [booking]);
+  }, [booking, travelling]);
 
   if (code === undefined) return null;
 
@@ -143,7 +147,7 @@ export default function TripTrackerRoute() {
     );
   }
 
-  if (booking.status !== 'PAID') return null;
+  if (!travelling) return null;
 
   const phase = tripPhase(today, booking.departureStartDate, booking.departureEndDate);
   const generalPolicy = tour.policies.find((p) => p.kind === 'GENERAL');

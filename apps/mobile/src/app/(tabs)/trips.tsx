@@ -1,11 +1,17 @@
 import { useQuery } from '@tanstack/react-query';
+import { bookingPhase } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
 import { router } from 'expo-router';
 import { useState } from 'react';
 import { AuthGateScreen } from '@/features/auth/auth-gate-screen';
 import { setPendingReturn } from '@/features/auth/return-to';
 import { formatDepartureRange } from '@/features/tour-detail/departures';
-import { filterTripsByWindow, type TripWindow, tripPillTone } from '@/features/trips/trips-list';
+import {
+  filterTripsByWindow,
+  isTravellingPhase,
+  type TripWindow,
+  tripPillTone,
+} from '@/features/trips/trips-list';
 import { type TripListItemVM, TripsScreen, type TripsStatus } from '@/features/trips/trips-screen';
 import { orpc, withMobileAuth } from '@/lib/api/client';
 import { getAuthClient } from '@/lib/auth-client';
@@ -18,9 +24,10 @@ import { useServerToday } from '@/lib/use-server-clock';
  * (T3), cùng khuôn Saved/Account — KHÔNG gọi `bookings.mine` (query tắt qua
  * `enabled`). Chip Upcoming/Past lọc Ở MÁY (API chưa có tham số đó).
  *
- * Chạm thẻ (luật vào màn, handoff mục 3): `PAID` → cụm P bám ngày khởi hành
- * (`/trips/[code]`, W7/W8); còn lại (PENDING/CANCELLED/REFUNDED) → thẳng
- * hoá đơn `/bookings/[code]` như cũ — T5/T8 đã tự xử đủ trong đó.
+ * Chạm thẻ (luật vào màn, handoff mục 3): đơn còn đi theo ngày (`isTravellingPhase` —
+ * PAID, PARTIALLY_REFUNDED, REFUNDED hoàn thiện chí) → cụm P bám ngày khởi hành
+ * (`/trips/[code]`, W7/W8); còn lại (chờ trả, đã huỷ, chuyến bị công ty huỷ) → thẳng
+ * hoá đơn `/bookings/[code]` — T5/T8 đã tự xử đủ trong đó.
  */
 export default function TripsRoute() {
   const [window, setWindow] = useState<TripWindow>('all');
@@ -64,26 +71,24 @@ export default function TripsRoute() {
       ? 'error'
       : 'content';
 
-  const allItems: TripListItemVM[] = (listQuery.data?.items ?? []).map((booking) => ({
-    code: booking.code,
-    status: booking.status,
-    pillTone: tripPillTone(booking.status),
-    pillLabel:
-      booking.status === 'PAID' &&
-      booking.departureStartDate <= today &&
-      booking.departureEndDate >= today
-        ? messages.mobile.trip.onTourNow
-        : undefined,
-    imageUrl: booking.tourImage?.url ?? null,
-    title: booking.tourTitle,
-    dateRangeLabel: formatDepartureRange(booking.departureStartDate, booking.departureEndDate),
-    departureStartDate: booking.departureStartDate,
-    departureEndDate: booking.departureEndDate,
-    travellersLabel: trips.travellersCount(booking.numAdults + booking.numChildren),
-    amountLabel: formatMoney(booking.totalAmount, booking.currency),
-  }));
+  const allItems: TripListItemVM[] = (listQuery.data?.items ?? []).map((booking) => {
+    const phase = bookingPhase(booking, today);
+    return {
+      code: booking.code,
+      status: booking.status,
+      phase,
+      // Đang đi thì tô xanh như PAID — kể cả đơn đã hoàn một phần (khách vẫn đi tour).
+      pillTone: phase === 'on_tour' ? 'paid' : tripPillTone(booking.status),
+      pillLabel: phase === 'on_tour' ? messages.mobile.trip.onTourNow : undefined,
+      imageUrl: booking.tourImage?.url ?? null,
+      title: booking.tourTitle,
+      dateRangeLabel: formatDepartureRange(booking.departureStartDate, booking.departureEndDate),
+      travellersLabel: trips.travellersCount(booking.numAdults + booking.numChildren),
+      amountLabel: formatMoney(booking.totalAmount, booking.currency),
+    };
+  });
 
-  const items = filterTripsByWindow(allItems, window, today);
+  const items = filterTripsByWindow(allItems, window);
 
   return (
     <TripsScreen
@@ -99,7 +104,11 @@ export default function TripsRoute() {
       statusLabel={(bookingStatus) => trips.status[bookingStatus] ?? bookingStatus}
       onTripPress={(code) => {
         const item = items.find((i) => i.code === code);
-        router.push(item?.status === 'PAID' ? `/trips/${code}` : `/bookings/${code}`);
+        router.push(
+          item !== undefined && isTravellingPhase(item.phase)
+            ? `/trips/${code}`
+            : `/bookings/${code}`,
+        );
       }}
       finishPaymentLabel={trips.finishPayment}
       errorTitle={messages.mobile.booking.listError}

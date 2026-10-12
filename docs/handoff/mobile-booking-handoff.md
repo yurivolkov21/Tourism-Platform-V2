@@ -59,16 +59,20 @@ W1 và W3 chạy song song được. W7 làm trước W8 vì W8 dùng lại đ�
 
 ### Cụm P bám ngày khởi hành — luật vào màn
 
-Thẻ chuyến ở tab Trips KHÔNG mở thẳng hoá đơn nữa. Chạm thẻ đi đâu tuỳ trạng thái và ngày:
+Thẻ chuyến ở tab Trips KHÔNG mở thẳng hoá đơn nữa. Chạm thẻ đi đâu tuỳ giai đoạn của đơn —
+`bookingPhase` của contract (ADR-0054 AMEND 1), cùng hàm API và web dùng; chip Upcoming/Past
+cũng lọc theo giai đoạn này (review 12/10, N3):
 
-| Trạng thái | Hôm nay so với đợt | Màn | Ghi chú |
+| Giai đoạn | Đơn nào | Màn | Ghi chú |
 | --- | --- | --- | --- |
-| PAID | trước `departureStartDate` | P1 (P2 khi còn ≤ 3 ngày) | màn khách quay lại nhiều nhất |
-| PAID | trong khoảng đi–về | P5 | ngày đang chạy = `today − start + 1` |
-| PAID | sau `departureEndDate` | P6 | mời viết đánh giá |
-| PENDING | bất kỳ | T5 | trả tiền trước đã |
-| CANCELLED · REFUNDED | bất kỳ | T8 | |
-| PARTIALLY_REFUNDED | bất kỳ | T8 | Không phải trạng thái cuối (`booking-states.md`, ADR-0041): khách vẫn đi tour, T8 còn nút huỷ khi `cancellation.canCancel` |
+| `upcoming` | PAID, PARTIALLY_REFUNDED, REFUNDED hoàn thiện chí (không `cancelledAt`) — khách vẫn đi | P1 (P2 khi còn ≤ 3 ngày) | màn khách quay lại nhiều nhất |
+| `on_tour` | như trên, hôm nay trong khoảng đi–về | P5 | ngày đang chạy = `today − start + 1` |
+| `travelled` | như trên, sau `departureEndDate` | P6 | mời viết đánh giá |
+| `awaiting_payment` · `lapsed` | PENDING (quá hạn chót là `lapsed`) | T5 | trả tiền trước đã; thẻ chỉ mời "Finish payment" khi chưa quá hạn |
+| `cancelled` | CANCELLED, REFUNDED có `cancelledAt`, mọi đơn trên chuyến bị công ty huỷ | T8 | |
+
+PARTIALLY_REFUNDED không phải trạng thái cuối (`booking-states.md`, ADR-0041): nút huỷ vẫn ở
+hoá đơn khi `cancellation.canCancel`, một chạm từ cụm P như đơn PAID.
 
 Hoá đơn T4 luôn ở một chạm nữa, sau nút "Booking details". Lý do đảo thứ tự: khách quay lại
 để xem còn mấy ngày và cần mang gì, không phải để đọc lại số tiền.

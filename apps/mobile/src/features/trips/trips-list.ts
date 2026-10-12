@@ -1,31 +1,41 @@
-import type { BookingStatusValue } from '@tourism/contract';
+import type { BookingPhase, BookingStatusValue } from '@tourism/contract';
 
 /**
- * Logic thuần của tab Trips (T1-T3, mockup P5b-3). Chip lọc Upcoming/Past lọc
- * Ở MÁY theo ngày khởi hành — `BookingsListQuerySchema` chưa có tham số đó
- * (mockup T1 caption), nên đây KHÔNG phải luật tiền/hạn chót (ADR-0041) mà chỉ
- * là gom nhóm hiển thị; nhận `today` qua tham số thay vì tự đọc đồng hồ máy để
- * hàm test được xác định.
+ * Logic thuần của tab Trips (T1-T3, mockup P5b-3). Chip Upcoming/Past lọc Ở MÁY theo GIAI
+ * ĐOẠN của đơn — `bookingPhase` của contract (ADR-0054 AMEND 1), cùng hàm API và ba trang
+ * đơn của web dùng để biết đơn nào sắp đi, đang đi, đã đi hay còn trả được. Cách gom chip
+ * vẫn theo mockup T1 (Past chỉ gồm chuyến đã đi), khác bộ lọc "When" của web. Route tính
+ * giai đoạn bằng ngày theo đồng hồ server rồi truyền vào; hàm ở đây không đọc đồng hồ.
  */
 export type TripWindow = 'all' | 'upcoming' | 'past';
 
-/** Booking đã huỷ/hoàn không còn là chuyến sắp tới. */
-const INACTIVE_STATUSES = new Set(['CANCELLED', 'REFUNDED', 'PARTIALLY_REFUNDED']);
+/**
+ * "Upcoming" = còn trả được hoặc còn đi: chờ trả (chưa quá hạn chót), sắp đi, đang đi.
+ * "Past" = chuyến ĐÃ đi. Đơn đã huỷ, chuyến bị công ty huỷ và đơn chờ trả quá hạn chót
+ * (`lapsed`) chưa từng đi nên không vào nhóm nào, chỉ hiện ở "All".
+ */
+export function filterTripsByWindow<T extends { phase: BookingPhase }>(
+  items: readonly T[],
+  window: TripWindow,
+): T[] {
+  if (window === 'all') return [...items];
+  if (window === 'upcoming') {
+    return items.filter(
+      (item) =>
+        item.phase === 'awaiting_payment' || item.phase === 'upcoming' || item.phase === 'on_tour',
+    );
+  }
+  return items.filter((item) => item.phase === 'travelled');
+}
 
 /**
- * "Upcoming" = chưa kết thúc, gồm cả chuyến đang đi (ngày đi đã qua mà ngày về
- * chưa tới), và loại booking đã huỷ/hoàn. Thiếu `departureEndDate` thì coi như
- * một ngày.
+ * Đơn còn đi theo ngày → cụm P (luật vào màn, handoff mục 3); còn lại → hoá đơn. Gồm PAID,
+ * PARTIALLY_REFUNDED và REFUNDED hoàn thiện chí (không `cancelledAt`) — cả ba khách vẫn đi —
+ * trừ chuyến đã bị công ty huỷ (`bookingPhase` xếp nó vào `cancelled` ngay cả khi job hoàn
+ * tiền chưa chạy và đơn còn PAID).
  */
-export function filterTripsByWindow<
-  T extends { departureStartDate: string; departureEndDate?: string; status?: string },
->(items: readonly T[], window: TripWindow, today: string): T[] {
-  if (window === 'all') return [...items];
-  const endOf = (item: T) => item.departureEndDate ?? item.departureStartDate;
-  const active = items.filter((item) => !INACTIVE_STATUSES.has(item.status ?? ''));
-  if (window === 'upcoming') return active.filter((item) => endOf(item) >= today);
-  // Past = chuyến đã đi. Booking đã huỷ/hoàn chưa từng đi nên không vào đây.
-  return active.filter((item) => endOf(item) < today);
+export function isTravellingPhase(phase: BookingPhase): boolean {
+  return phase === 'upcoming' || phase === 'on_tour' || phase === 'travelled';
 }
 
 /** Ba tông nền pill trạng thái (mockup `.pill-status.paid/.pending/.off`). */

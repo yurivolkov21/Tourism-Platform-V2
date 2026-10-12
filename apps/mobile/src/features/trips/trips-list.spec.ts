@@ -1,50 +1,103 @@
-import { filterTripsByWindow, tripPillTone } from './trips-list';
-
-const TODAY = '2026-10-01';
+import { type BookingPhase, type BookingPhaseInput, bookingPhase } from '@tourism/contract';
+import { filterTripsByWindow, isTravellingPhase, tripPillTone } from './trips-list';
 
 describe('filterTripsByWindow', () => {
-  const items = [
-    { departureStartDate: '2026-09-15' }, // past
-    { departureStartDate: '2026-10-01' }, // hôm nay tính là upcoming
-    { departureStartDate: '2026-10-20' }, // upcoming
+  const PHASES: BookingPhase[] = [
+    'awaiting_payment',
+    'upcoming',
+    'on_tour',
+    'travelled',
+    'cancelled',
+    'lapsed',
   ];
+  const items = PHASES.map((phase) => ({ phase }));
+  const phasesIn = (window: 'all' | 'upcoming' | 'past') =>
+    filterTripsByWindow(items, window).map((item) => item.phase);
 
-  it('"all" trả nguyên mảng', () => {
-    expect(filterTripsByWindow(items, 'all', TODAY)).toEqual(items);
+  it('"all" trả nguyên mảng, kể cả đơn đã huỷ và đơn chờ trả quá hạn', () => {
+    expect(filterTripsByWindow(items, 'all')).toEqual(items);
   });
 
-  it('"upcoming" giữ ngày ≥ hôm nay', () => {
-    expect(filterTripsByWindow(items, 'upcoming', TODAY)).toEqual([items[1], items[2]]);
+  it('"upcoming" = còn trả được, sắp đi hoặc đang đi', () => {
+    expect(phasesIn('upcoming')).toEqual(['awaiting_payment', 'upcoming', 'on_tour']);
   });
 
-  it('"past" giữ ngày < hôm nay', () => {
-    expect(filterTripsByWindow(items, 'past', TODAY)).toEqual([items[0]]);
+  it('"past" chỉ gồm chuyến đã đi — đơn huỷ và đơn chờ trả quá hạn chưa từng đi', () => {
+    expect(phasesIn('past')).toEqual(['travelled']);
+  });
+});
+
+describe('isTravellingPhase (luật vào cụm P)', () => {
+  it('sắp đi, đang đi, đã về → cụm P', () => {
+    expect(isTravellingPhase('upcoming')).toBe(true);
+    expect(isTravellingPhase('on_tour')).toBe(true);
+    expect(isTravellingPhase('travelled')).toBe(true);
   });
 
-  it('"upcoming" bỏ booking đã huỷ/hoàn dù ngày đi còn tới', () => {
-    const mixed = [
-      { departureStartDate: '2026-10-20', status: 'PAID' },
-      { departureStartDate: '2026-10-20', status: 'CANCELLED' },
-      { departureStartDate: '2026-10-20', status: 'REFUNDED' },
-      { departureStartDate: '2026-10-20', status: 'PARTIALLY_REFUNDED' },
-    ];
-    expect(filterTripsByWindow(mixed, 'upcoming', TODAY)).toEqual([mixed[0]]);
-    expect(filterTripsByWindow(mixed, 'all', TODAY)).toEqual(mixed);
+  it('chờ trả, quá hạn, đã huỷ → hoá đơn', () => {
+    expect(isTravellingPhase('awaiting_payment')).toBe(false);
+    expect(isTravellingPhase('lapsed')).toBe(false);
+    expect(isTravellingPhase('cancelled')).toBe(false);
+  });
+});
+
+// Các ca tab Trips từng xếp lệch web vì tự phân loại theo `status` (review 12/10, N3).
+describe('đơn thật qua bookingPhase → chip và luật vào màn', () => {
+  const TODAY = '2026-10-12';
+  const phaseOf = (overrides: Partial<BookingPhaseInput>): BookingPhase =>
+    bookingPhase(
+      {
+        status: 'PAID',
+        departureStartDate: '2026-10-20',
+        departureEndDate: '2026-10-22',
+        cancelledAt: null,
+        departureCancelled: false,
+        ...overrides,
+      },
+      TODAY,
+    );
+
+  it('PARTIALLY_REFUNDED vẫn đi: nằm ở Upcoming và vào cụm P', () => {
+    const phase = phaseOf({ status: 'PARTIALLY_REFUNDED' });
+    expect(filterTripsByWindow([{ phase }], 'upcoming')).toHaveLength(1);
+    expect(isTravellingPhase(phase)).toBe(true);
   });
 
-  it('"past" cũng bỏ booking đã huỷ/hoàn (chưa từng đi)', () => {
-    const done = [
-      { departureStartDate: '2026-09-15', status: 'PAID' },
-      { departureStartDate: '2026-09-15', status: 'CANCELLED' },
-      { departureStartDate: '2026-09-15', status: 'REFUNDED' },
-    ];
-    expect(filterTripsByWindow(done, 'past', TODAY)).toEqual([done[0]]);
+  it('REFUNDED hoàn thiện chí (không cancelledAt) đã về: nằm ở Past và vào cụm P', () => {
+    const phase = phaseOf({
+      status: 'REFUNDED',
+      departureStartDate: '2026-10-01',
+      departureEndDate: '2026-10-03',
+    });
+    expect(filterTripsByWindow([{ phase }], 'past')).toHaveLength(1);
+    expect(isTravellingPhase(phase)).toBe(true);
   });
 
-  it('chuyến đang đi (ngày đi đã qua, ngày về chưa tới) nằm ở "upcoming", không ở "past"', () => {
-    const onTour = [{ departureStartDate: '2026-09-30', departureEndDate: '2026-10-03' }];
-    expect(filterTripsByWindow(onTour, 'upcoming', TODAY)).toEqual(onTour);
-    expect(filterTripsByWindow(onTour, 'past', TODAY)).toEqual([]);
+  it('REFUNDED có cancelledAt là huỷ thật: không ở chip nào, đi hoá đơn', () => {
+    const phase = phaseOf({ status: 'REFUNDED', cancelledAt: '2026-10-05T03:00:00.000Z' });
+    expect(filterTripsByWindow([{ phase }], 'upcoming')).toEqual([]);
+    expect(filterTripsByWindow([{ phase }], 'past')).toEqual([]);
+    expect(isTravellingPhase(phase)).toBe(false);
+  });
+
+  it('PENDING của chuyến khởi hành hôm nay đã quá hạn chót: rời Upcoming', () => {
+    const phase = phaseOf({
+      status: 'PENDING',
+      departureStartDate: TODAY,
+      departureEndDate: TODAY,
+    });
+    expect(phase).toBe('lapsed');
+    expect(filterTripsByWindow([{ phase }], 'upcoming')).toEqual([]);
+  });
+
+  it('PAID trên chuyến bị công ty huỷ: không "đang đi", không vào cụm P', () => {
+    const phase = phaseOf({
+      departureStartDate: '2026-10-11',
+      departureEndDate: '2026-10-13',
+      departureCancelled: true,
+    });
+    expect(phase).toBe('cancelled');
+    expect(isTravellingPhase(phase)).toBe(false);
   });
 });
 

@@ -1,5 +1,5 @@
 import Feather from '@expo/vector-icons/Feather';
-import type { BookingStatusValue } from '@tourism/contract';
+import type { BookingPhase, BookingStatusValue } from '@tourism/contract';
 import {
   AppImage,
   AppText,
@@ -23,11 +23,10 @@ export interface TripListItemVM {
   imageUrl: string | null;
   title: string;
   dateRangeLabel: string;
-  /** Chỉ route dùng (lọc `filterTripsByWindow` TRƯỚC khi truyền `items` vào
-   *  đây) — màn không tự đọc trường này. */
-  departureStartDate: string;
-  departureEndDate: string;
-  /** Nhãn thay thế cho chuyến đang đi (PAID, hôm nay nằm trong ngày đi–về). */
+  /** Giai đoạn đơn (`bookingPhase`, ADR-0054 AMEND 1) — route lọc chip bằng trường này
+   *  TRƯỚC khi truyền `items` vào; màn chỉ đọc nó để biết còn mời trả tiền không. */
+  phase: BookingPhase;
+  /** Nhãn thay thế cho chuyến đang đi (giai đoạn `on_tour`). */
   pillLabel?: string;
   travellersLabel: string;
   amountLabel: string;
@@ -174,7 +173,8 @@ function TripCard({
           </AppText>
           <AppText variant="label">{item.amountLabel}</AppText>
         </View>
-        {item.status !== 'PENDING' ? null : (
+        {/* Chỉ đơn còn trả được: PENDING quá hạn chót (`lapsed`) API không mở phiên nào nữa. */}
+        {item.phase !== 'awaiting_payment' ? null : (
           <AppText variant="caption" tone="link" style={{ marginTop: theme.spacing(1.5) }}>
             {finishPaymentLabel}
           </AppText>

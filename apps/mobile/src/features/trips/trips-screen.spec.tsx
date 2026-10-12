@@ -24,8 +24,7 @@ function baseProps(overrides: Partial<TripsScreenProps> = {}): TripsScreenProps 
         imageUrl: null,
         title: 'Central Heritage: Đà Nẵng–Hội An–Huế 4D3N',
         dateRangeLabel: 'Sat 3 – Tue 6 Oct 2026',
-        departureStartDate: '2026-10-03',
-        departureEndDate: '2026-10-06',
+        phase: 'travelled',
         travellersLabel: '3 travellers',
         amountLabel: '$1,377',
       },
@@ -36,8 +35,7 @@ function baseProps(overrides: Partial<TripsScreenProps> = {}): TripsScreenProps 
         imageUrl: null,
         title: 'Hạ Long Bay Overnight Cruise 2D1N',
         dateRangeLabel: 'Sat 17 – Sun 18 Oct 2026',
-        departureStartDate: '2026-10-17',
-        departureEndDate: '2026-10-18',
+        phase: 'awaiting_payment',
         travellersLabel: '2 travellers',
         amountLabel: '$370',
       },
@@ -66,10 +64,19 @@ describe('TripsScreen', () => {
     expect(screen.getByText('BK-9TR2WK5C')).toBeTruthy();
   });
 
-  it('chỉ chuyến PENDING mới có đường "Finish payment"', async () => {
+  it('chỉ đơn còn trả được (chờ trả, chưa quá hạn chót) mới có đường "Finish payment"', async () => {
     await renderWithTheme(<TripsScreen {...baseProps()} />);
 
     expect(screen.getAllByText('Finish payment')).toHaveLength(1);
+  });
+
+  it('đơn chờ trả đã quá hạn chót (lapsed) không còn mời "Finish payment"', async () => {
+    const items = baseProps().items.map((item) =>
+      item.status === 'PENDING' ? { ...item, phase: 'lapsed' as const } : item,
+    );
+    await renderWithTheme(<TripsScreen {...baseProps({ items })} />);
+
+    expect(screen.queryByText('Finish payment')).toBeNull();
   });
 
   it('bấm một thẻ gọi onTripPress đúng mã', async () => {
