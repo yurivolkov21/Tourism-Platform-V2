@@ -4062,6 +4062,34 @@ export const messages = {
         cancellations:
           'Cancellations are counted on the day they were made. Within the deadline means on or before the free-cancellation deadline of the trip (Vietnam time), with the unrefunded balance returned; after the deadline means no automatic refund.',
       },
+      /**
+       * Chữ RIÊNG của bản in báo cáo tháng C2 (G40 Phần 2, spec 2026-10-10 §5). Tên khối là
+       * `printDoc` chứ không phải `print` như spec §8 viết: `print` đã là nhãn nút "Print" ở trên.
+       * Chữ trùng nghĩa dùng lại khoá sẵn có (`title`, `cards`, `pnlTable`, `definitions`…).
+       */
+      printDoc: {
+        /** Dòng liên hệ của tài liệu nội bộ, dưới wordmark (spec §2.2). */
+        contact: (website: string) => `Back office · ${website}`,
+        /** Vế giữa của chân trang; `month` là `YYYY-MM` (spec §2.3). */
+        docRef: (month: string) => `Monthly report ${month}`,
+        /**
+         * Nhãn hạng mục hai dòng dưới trục thác nước, tách sẵn theo bản thảo C2: cột hẹp (chừng
+         * 9 mm trên giấy) không chứa nổi một dòng.
+         */
+        waterfall: {
+          recognizedRevenue: ['Revenue', 'recognised'],
+          cogsVariable: ['Cost per', 'traveller'],
+          cogsFixed: ['Cost per', 'departure'],
+          grossProfit: ['Gross', 'profit'],
+          taxAmount: ['Tax on', 'margin'],
+          paymentFees: ['Payment', 'fees'],
+          netProfit: ['Net', 'profit'],
+        },
+        /** `aria-label` của SVG thác nước; `month` là "September 2026". */
+        waterfallLabel: (month: string) => `Profit and loss waterfall, ${month}`,
+        /** Thay biểu đồ khi cả bảy giá trị bằng 0 — bảng lãi lỗ bên cạnh vẫn in số 0 (spec §5.2). */
+        noFigures: 'No figures for this month yet.',
+      },
       /** Nút tải file — Excel từ 05/09 (ADR-0034), thay nút CSV cũ. */
       exportExcel: 'Export Excel',
       /**

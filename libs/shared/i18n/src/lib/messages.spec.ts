@@ -338,3 +338,21 @@ describe('messages: file Excel của admin (G40 Phần 3)', () => {
     expect(a.subscribers.list.exportExcel).toBe('Export Excel');
   });
 });
+
+describe('messages: admin.reports.printDoc (G40 Phần 2 — bản in báo cáo tháng C2)', () => {
+  const p = messages.admin.reports.printDoc;
+
+  it('bảy nhãn thác nước, nhãn nào cũng đủ hai dòng có chữ', () => {
+    expect(Object.keys(p.waterfall)).toHaveLength(7);
+    for (const lines of Object.values(p.waterfall)) {
+      expect(lines).toHaveLength(2);
+      for (const line of lines) expect(line.trim()).not.toBe('');
+    }
+  });
+
+  it('dòng liên hệ, vế giữa chân trang và nhãn biểu đồ ghép đúng chữ của spec §2.2, §2.3', () => {
+    expect(p.contact(messages.printDoc.website)).toBe('Back office · www.nexora-travel.agency');
+    expect(p.docRef('2026-09')).toBe('Monthly report 2026-09');
+    expect(p.waterfallLabel('September 2026')).toBe('Profit and loss waterfall, September 2026');
+  });
+});
