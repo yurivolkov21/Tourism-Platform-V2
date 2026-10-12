@@ -1,5 +1,6 @@
 import { messages } from '@tourism/i18n';
 import type { StatusBarView, StatusTone } from '@/lib/report-print';
+import { Hatch } from './hatch';
 
 /** Id của ba vân — một thanh trạng thái mỗi trang, ô màu của chú thích dùng lại. */
 const HATCH_45 = 'report-print-status-hatch-45';
@@ -25,28 +26,6 @@ const TONE_HATCH: Partial<Record<StatusTone, string>> = {
   refunded: HATCH_135,
   cost: HATCH_45,
 };
-
-function Hatch({ id, angle }: { id: string; angle: number }) {
-  return (
-    <pattern
-      id={id}
-      width={5}
-      height={5}
-      patternUnits="userSpaceOnUse"
-      patternTransform={`rotate(${angle})`}
-    >
-      <line
-        x1={0}
-        y1={0}
-        x2={0}
-        y2={5}
-        className="stroke-card"
-        strokeOpacity={0.55}
-        strokeWidth={1.6}
-      />
-    </pattern>
-  );
-}
 
 /** Ô màu của chú thích — cùng màu, cùng vân với đoạn trên thanh. */
 function Swatch({ tone }: { tone: StatusTone }) {

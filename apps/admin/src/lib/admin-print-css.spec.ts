@@ -39,19 +39,35 @@ function rulesIn(block: string): [string[], string][] {
 }
 
 const topLevel = rulesIn(css);
-const printBlock = topLevel.find(([selectors]) => selectors[0] === '@media print')?.[1] ?? '';
+
+/**
+ * Thân của MỌI khối media có `print` (`@media print`, `@media screen, print`, …), kể cả khối lồng
+ * trong at-rule khác (`@layer`, `@supports`) — khối in thêm về sau ở đâu cũng phải qua luật canh.
+ */
+function printBlocksIn(rules: [string[], string][]): string[] {
+  return rules.flatMap(([selectors, body]) => {
+    const prelude = selectors.join(',');
+    if (/^@media\b.*\bprint\b/.test(prelude)) return [body];
+    return prelude.startsWith('@') ? printBlocksIn(rulesIn(body)) : [];
+  });
+}
 
 /** Tiền tố khoanh khối in chung: chỉ áp khi trang KHÔNG có tài liệu in. */
 const NO_PRINT_DOC = ':root:not(:has([data-print-doc]))';
 
 describe('globals.css của admin — tờ in báo cáo', () => {
   it('khối @media print chung không chạm trang có tài liệu in (không tô đen chữ phụ, nét bảng của tờ)', () => {
-    const rules = rulesIn(printBlock);
+    const rules = printBlocksIn(topLevel).flatMap(rulesIn);
     expect(rules.length).toBeGreaterThan(0);
     for (const [selectors] of rules) {
-      // Biến mực giấy và `@page` là khai báo, không chọn phần tử nào.
-      if (selectors[0] === ':root' || selectors[0]?.startsWith('@page')) continue;
-      for (const selector of selectors) expect(selector.startsWith(NO_PRINT_DOC)).toBe(true);
+      // `@page` khai báo trang giấy, không chọn phần tử nào.
+      if (selectors[0]?.startsWith('@page')) continue;
+      for (const selector of selectors) {
+        // Biến mực giấy đặt trên ĐÚNG `:root` — khai báo biến, tờ in đặt lại bằng `.light`. Selector
+        // nào khác, kể cả bắt đầu bằng `:root`, phải mang tiền tố khoanh.
+        if (selector === ':root') continue;
+        expect(selector.startsWith(NO_PRINT_DOC)).toBe(true);
+      }
     }
   });
 

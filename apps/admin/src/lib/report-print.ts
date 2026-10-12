@@ -62,17 +62,21 @@ function moneyPrefix(currency: string): string {
 /**
  * Nhãn ngắn ở đầu cột thác nước: "$992", "$39.6k", "−$25.7k", "$1.2M" (spec §5.2).
  *
- * Làm tròn đồng TRƯỚC rồi mới chọn đơn vị (999.5 → "$1.0k", không "$1000"), và làm tròn phần lẻ
- * bằng số nguyên (`Math.round(whole / 100) / 10`): `(1.15).toFixed(1)` của float ra "1.1".
+ * Đơn vị chọn theo số ĐÃ làm tròn ở chính đơn vị đó (999.5 → "$1.0k", không "$1000"; 999,950 →
+ * "$1.0M", không "$1000.0k"), còn số lẻ làm tròn một lần từ giá trị gốc: làm tròn đồng trước rồi mới
+ * làm tròn trăm là làm tròn hai lần — 1,049.62 thành 1,050 rồi "1.1k". Làm tròn bằng số nguyên
+ * (`Math.round(abs / 100) / 10`) chứ không `toFixed(1)` trên float: `(1.15).toFixed(1)` ra "1.1".
  */
 export function shortMoney(value: number, currency: string): string {
-  const whole = Math.round(Math.abs(value));
+  const abs = Math.abs(value);
+  const dollars = Math.round(abs);
+  const tenthsOfK = Math.round(abs / 100);
   let body: string;
-  if (whole < 1000) body = String(whole);
-  else if (whole < 999_950) body = `${(Math.round(whole / 100) / 10).toFixed(1)}k`;
-  else body = `${(Math.round(whole / 100_000) / 10).toFixed(1)}M`;
+  if (dollars < 1000) body = String(dollars);
+  else if (tenthsOfK < 10_000) body = `${(tenthsOfK / 10).toFixed(1)}k`;
+  else body = `${(Math.round(abs / 100_000) / 10).toFixed(1)}M`;
   // Không có "−$0": số tròn ra 0 là 0.
-  const sign = value < 0 && whole > 0 ? MINUS : '';
+  const sign = value < 0 && dollars > 0 ? MINUS : '';
   return `${sign}${moneyPrefix(currency)}${body}`;
 }
 
@@ -475,8 +479,6 @@ export interface ReportPrintView {
   definitions: readonly string[];
   /** Vế giữa chân trang: "Monthly report 2026-09". */
   footerRef: string;
-  /** Tờ chặt: tháng có quá nhiều thứ làm tờ cao thêm, khoảng cách giữa các khối thu lại (xem `isDense`). */
-  dense: boolean;
 }
 
 const PNL_KEYS = [
@@ -514,39 +516,6 @@ const DEFINITION_ORDER = [
   'statuses',
   'cancellations',
 ] as const satisfies readonly (keyof typeof t.definitions)[];
-
-/**
- * Phần tờ cao thêm (mm) so với một tháng thường, đo 12/10 trên Chromium với dữ liệu seed — tháng thường
- * dư 13.8 mm phía trên chân trang. Cảnh báo giá vốn: lề trên cộng một dòng mỗi vế (đủ hai vế là hai
- * dòng). Chú thích từ bốn trạng thái có thể xuống dòng thứ hai. Số tiền từ một triệu đẩy hai nhãn chi
- * phí của bảng lãi lỗ xuống dòng.
- */
-const GROWTH_MM = { warningMargin: 2, warningLine: 4.1, legendLine: 6.2, millions: 8.2 } as const;
-
-/** Ngưỡng của tờ chặt: chừa gần 4 mm trong 13.8 mm dư cho sai số chữ của máy in khác. */
-const GROWTH_BUDGET_MM = 10;
-
-/** Từ "1,000,000.00" (12 ký tự, không kể ngoặc) trở lên: nhãn chi phí của bảng lãi lỗ xuống dòng. */
-const MILLIONS = 12;
-
-/**
- * Quyết định 13 của plan: tờ C2 chỉ có một trang, khung cao cố định, phần tràn bị cắt. Cộng phần cao
- * thêm theo dữ liệu; vượt ngưỡng thì `ReportPrint` thu khoảng cách giữa các khối (lấy lại 14 mm, chữ
- * giữ cỡ). Dưới ngưỡng tờ giữ đúng nhịp bản thảo.
- */
-function isDense(
-  report: AdminMonthlyReport,
-  pnl: readonly ReportPrintPnlRow[],
-  statusBar: StatusBarView | null,
-): boolean {
-  const warningParts =
-    (report.costDataMissing > 0 ? 1 : 0) + (report.departuresCostMissing > 0 ? 1 : 0);
-  const growth =
-    (warningParts > 0 ? GROWTH_MM.warningMargin + warningParts * GROWTH_MM.warningLine : 0) +
-    ((statusBar?.legend.length ?? 0) >= 4 ? GROWTH_MM.legendLine : 0) +
-    (pnl.some((row) => row.value.replace(/[()]/g, '').length >= MILLIONS) ? GROWTH_MM.millions : 0);
-  return growth > GROWTH_BUDGET_MM;
-}
 
 /** Toàn bộ chữ, số và hình của tờ C2 — `ReportPrint` chỉ việc vẽ. */
 export function reportPrintView(report: AdminMonthlyReport): ReportPrintView {
@@ -595,8 +564,6 @@ export function reportPrintView(report: AdminMonthlyReport): ReportPrintView {
     };
   });
 
-  const statusBar = statusBarView(report);
-
   return {
     docNumber: report.month,
     meta: t.generatedAt(formatDateTime(report.generatedAt)),
@@ -611,10 +578,9 @@ export function reportPrintView(report: AdminMonthlyReport): ReportPrintView {
     pnl,
     departuresNote: t.pnlTable.departuresRun(formatCount(report.departuresRun)),
     costWarning: costWarning(report),
-    statusBar,
+    statusBar: statusBarView(report),
     ops: toReportSummaryRows(report),
     definitions: DEFINITION_ORDER.map((key) => t.definitions[key]),
     footerRef: t.printDoc.docRef(report.month),
-    dense: isDense(report, pnl, statusBar),
   };
 }

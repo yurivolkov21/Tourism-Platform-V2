@@ -36,6 +36,15 @@ describe('shortMoney — nhãn ngắn ở đầu cột thác nước', () => {
     expect(shortMoney(1_234_567, 'USD')).toBe('$1.2M');
   });
 
+  it('số lẻ lấy từ giá trị gốc, không từ số đã làm tròn đồng: không làm tròn hai lần', () => {
+    // Làm tròn đồng trước (1,050) rồi mới làm tròn trăm (10.5 → 11) đẩy 1,049.62 lên "1.1k".
+    expect(shortMoney(1049.62, 'USD')).toBe('$1.0k');
+    expect(shortMoney(39_649.5, 'USD')).toBe('$39.6k');
+    expect(shortMoney(-39_649.5, 'USD')).toBe(`${MINUS}$39.6k`);
+    expect(shortMoney(1_049_999.5, 'USD')).toBe('$1.0M');
+    expect(shortMoney(999_949.5, 'USD')).toBe('$999.9k');
+  });
+
   it('không có "−$0": số tròn ra 0 in $0', () => {
     expect(shortMoney(0, 'USD')).toBe('$0');
     expect(shortMoney(-0.4, 'USD')).toBe('$0');
@@ -221,6 +230,46 @@ describe('waterfallView — hình học thác nước', () => {
     expect((recognized?.bottom ?? 0) - (recognized?.top ?? 0)).toBeCloseTo(1.5, 2);
   });
 
+  // Review Phần 3: thanh REPT không chặn trần làm tháng lỗ nặng vỡ file Excel. Ở đây chi phí gấp
+  // gần sáu mươi lần doanh thu ghi nhận — tỉ lệ co theo miền số, mọi thứ vẫn trong khung.
+  it('tháng lỗ nặng: cột, vạch lưới, nhãn đều trong khung; nhãn dưới không chạm nhãn hạng mục', () => {
+    const bigLoss: AdminMonthlyReport = {
+      ...lossMonthReport,
+      recognizedRevenue: '1200.00',
+      cogsVariable: '48000.00',
+      cogsFixed: '22000.00',
+      cogsTotal: '70000.00',
+      grossProfit: '-68800.00',
+      grossMarginPct: -57.3333,
+      taxAmount: '0.00',
+      paymentFees: '36.00',
+      netProfit: '-68836.00',
+    };
+    const v = waterfallView(bigLoss);
+    if (!v) throw new Error('tháng lỗ nặng phải có thác nước');
+    for (const b of v.bars) {
+      expect(b.top).toBeGreaterThanOrEqual(20 - 1e-9);
+      // Đáy thấp nhất chừa đủ chỗ cho nhãn dưới (11) trên hàng nhãn hạng mục (198).
+      expect(b.bottom).toBeLessThanOrEqual(198 - 11 + 1e-9);
+      expect(b.bottom - b.top).toBeGreaterThanOrEqual(1.5 - 1e-9);
+      expect(b.label.y).toBeGreaterThanOrEqual(11);
+      expect(b.label.y).toBeLessThanOrEqual(198 + 1e-9);
+    }
+    for (const g of v.grid) {
+      expect(g.y).toBeGreaterThanOrEqual(20 - 1e-9);
+      expect(g.y).toBeLessThanOrEqual(194 + 1e-9);
+    }
+    expect(v.bars.map((b) => b.label.text)).toEqual([
+      '$1.2k',
+      `${MINUS}$48.0k`,
+      `${MINUS}$22.0k`,
+      `${MINUS}$68.8k`,
+      '$0',
+      `${MINUS}$36`,
+      `${MINUS}$68.8k`,
+    ]);
+  });
+
   it('cả bảy giá trị bằng 0 thì không vẽ', () => {
     expect(waterfallView(emptyMonthReport)).toBeNull();
   });
@@ -286,6 +335,19 @@ describe('statusBarView — thanh 100% trạng thái', () => {
       ],
     });
     expect(bar?.legend.map((l) => l.share)).toEqual(['>99%', '<1%']);
+  });
+
+  it('cả tháng một trạng thái (đơn huỷ hết): một đoạn phủ đúng 600, không khe, 100%', () => {
+    const bar = statusBarView({
+      ...septemberReport,
+      newBookings: 40,
+      bookingsByStatus: septemberReport.bookingsByStatus.map((s) => ({
+        ...s,
+        count: s.status === 'CANCELLED' ? 40 : 0,
+      })),
+    });
+    expect(bar?.segments).toEqual([{ status: 'CANCELLED', tone: 'cost', x: 0, width: 600 }]);
+    expect(bar?.legend.map((item) => item.share)).toEqual(['100%']);
   });
 
   it('không booking nào thì không có thanh', () => {
@@ -393,66 +455,5 @@ describe('reportPrintView — chữ và số của tờ in', () => {
     expect(view.waterfall).toEqual(waterfallView(septemberReport));
     expect(view.statusBar).toEqual(statusBarView(septemberReport));
     expect(reportPrintView(emptyMonthReport).waterfall).toBeNull();
-  });
-});
-
-describe('reportPrintView — tờ chặt khi phần cao thêm vượt ngưỡng', () => {
-  const fourStatuses: Pick<AdminMonthlyReport, 'newBookings' | 'bookingsByStatus'> = {
-    newBookings: 74,
-    bookingsByStatus: [
-      { status: 'PENDING', count: 3 },
-      { status: 'PAID', count: 65 },
-      { status: 'CANCELLED', count: 5 },
-      { status: 'REFUNDED', count: 1 },
-      { status: 'PARTIALLY_REFUNDED', count: 0 },
-    ],
-  };
-  /** Chi phí theo khách đúng một triệu: "(1,000,000.00)". */
-  const millions = {
-    recognizedRevenue: '1500000.00',
-    cogsVariable: '1000000.00',
-    cogsFixed: '200000.00',
-    cogsTotal: '1200000.00',
-    grossProfit: '300000.00',
-    taxAmount: '27272.73',
-    paymentFees: '45000.00',
-    netProfit: '227727.27',
-  } as const;
-  const dense = (patch: Partial<AdminMonthlyReport>) =>
-    reportPrintView({ ...septemberReport, ...patch }).dense;
-
-  it('tháng thường, tháng lỗ, tháng chưa có số: giữ nhịp bản thảo', () => {
-    expect(reportPrintView(septemberReport).dense).toBe(false);
-    expect(reportPrintView(lossMonthReport).dense).toBe(false);
-    expect(reportPrintView(emptyMonthReport).dense).toBe(false);
-  });
-
-  it('một vế cảnh báo, chú thích bốn trạng thái, hay số triệu — mỗi thứ một mình vẫn vừa', () => {
-    expect(dense({ costDataMissing: 3 })).toBe(false);
-    expect(dense({ departuresCostMissing: 2 })).toBe(false);
-    expect(dense(fourStatuses)).toBe(false);
-    expect(dense(millions)).toBe(false);
-  });
-
-  it('cộng lại vượt ngưỡng thì tờ chặt', () => {
-    expect(dense({ costDataMissing: 3, departuresCostMissing: 2 })).toBe(true);
-    expect(dense({ costDataMissing: 3, ...fourStatuses })).toBe(true);
-    expect(dense({ ...millions, ...fourStatuses })).toBe(true);
-    expect(dense({ departuresCostMissing: 2, ...millions })).toBe(true);
-  });
-
-  it('ngưỡng triệu tính từ đúng "1,000,000.00"; dưới đó nhãn bảng lãi lỗ không xuống dòng', () => {
-    const nearMillion = {
-      recognizedRevenue: '999999.99',
-      cogsVariable: '700000.00',
-      cogsFixed: '150000.00',
-      cogsTotal: '850000.00',
-      grossProfit: '149999.99',
-      taxAmount: '13636.36',
-      paymentFees: '30000.00',
-      netProfit: '106363.63',
-    } as const;
-    expect(dense({ ...nearMillion, ...fourStatuses })).toBe(false);
-    expect(dense({ ...nearMillion, recognizedRevenue: '1000000.00', ...fourStatuses })).toBe(true);
   });
 });

@@ -67,7 +67,9 @@ describe('ReportPrint — tờ in báo cáo tháng C2', () => {
     const chart = screen.getByRole('img', { name: 'Profit and loss waterfall, September 2026' });
     const bars = chart.querySelectorAll('[data-slot="waterfall-bar"]');
     expect(bars).toHaveLength(7);
-    const hatchId = container.querySelector('pattern')?.getAttribute('id');
+    const hatch = container.querySelector('pattern');
+    expect(hatch?.getAttribute('patternTransform')).toBe('rotate(45)');
+    const hatchId = hatch?.getAttribute('id');
     for (const bar of bars) {
       const hatched = bar.querySelector(`path[fill="url(#${hatchId})"]`) !== null;
       expect(hatched).toBe(bar.getAttribute('data-tone') === 'cost');
@@ -133,8 +135,9 @@ describe('ReportPrint — tờ in báo cáo tháng C2', () => {
     ];
     expect(items.slice(0, 4).map(fills)).toEqual(hatches);
     expect([...block.querySelectorAll('svg > g[data-status]')].map(fills)).toEqual(hatches);
-    for (const id of ['45', '90', '135']) {
-      expect(block.querySelector(`#report-print-status-hatch-${id}`)).not.toBeNull();
+    for (const angle of ['45', '90', '135']) {
+      const pattern = block.querySelector(`#report-print-status-hatch-${angle}`);
+      expect(pattern?.getAttribute('patternTransform')).toBe(`rotate(${angle})`);
     }
   });
 
@@ -193,27 +196,42 @@ describe('ReportPrint — tờ in báo cáo tháng C2', () => {
     for (const el of ops) expect(el.className).toContain('leading-[normal]');
   });
 
-  it('tờ chặt: khoảng cách giữa các khối thu lại, chữ giữ cỡ', () => {
-    const normal = renderReport().container;
-    expect(normal.querySelector('[data-print-doc]')?.hasAttribute('data-dense')).toBe(false);
-    expect(within(normal).getAllByRole('heading', { level: 3 })[0]?.className).toContain(
-      'mt-[5mm]',
-    );
-
-    const dense = renderReport({
-      ...septemberReport,
-      costDataMissing: 3,
-      departuresCostMissing: 2,
-    }).container;
-    expect(dense.querySelector('[data-print-doc]')?.hasAttribute('data-dense')).toBe(true);
-    for (const h of within(dense).getAllByRole('heading', { level: 3 })) {
-      expect(h.className).toContain('mt-[3mm]');
-      expect(h.className).toContain('text-[10.5pt]');
-    }
-    expect(within(dense).getByRole('heading', { level: 2 }).className).toContain('mt-[3.5mm]');
-    expect(dense.querySelector('[data-slot="report-tiles"]')?.className).toContain('mt-[4.5mm]');
-    expect(dense.querySelector('[data-slot="report-ops"] dl > div')?.className).toContain(
-      'pt-[1.8mm]',
-    );
+  // jsdom không dàn trang; Chromium đo phần co (plan G40 Phần 2, "Kết quả đo"). Test này canh hình
+  // của cột: khoảng là phần tử riêng nằm giữa các khối, và không khối nào còn lề trên chồng lên nó.
+  it('khoảng giữa các khối là phần tử co giãn: dài như bản thảo, co tới mức sàn', () => {
+    const { container } = renderReport();
+    const doc = container.querySelector('[data-print-doc]') as HTMLElement;
+    expect(
+      [...doc.children].map((el) => el.getAttribute('data-slot') ?? el.tagName.toLowerCase()),
+    ).toEqual([
+      'doc-letterhead',
+      'report-gap',
+      'h2',
+      'p',
+      'report-gap',
+      'report-tiles',
+      'report-gap',
+      'report-waterfall',
+      'report-gap',
+      'report-bookings',
+      'report-gap',
+      'report-ops',
+      'report-gap',
+      'report-definitions',
+      'doc-footer',
+    ]);
+    const gaps = doc.querySelectorAll(':scope > [data-slot="report-gap"]');
+    expect([...gaps].map((gap) => gap.className)).toEqual([
+      'shrink basis-[5mm] min-h-[3.5mm]',
+      'shrink basis-[6mm] min-h-[4.5mm]',
+      ...Array(4).fill('shrink basis-[5mm] min-h-[2.5mm]'),
+    ]);
+    for (const gap of gaps) expect(gap.getAttribute('aria-hidden')).toBe('true');
+    const blocks = [
+      screen.getByRole('heading', { level: 2 }),
+      container.querySelector('[data-slot="report-tiles"]'),
+      ...screen.getAllByRole('heading', { level: 3 }),
+    ];
+    for (const block of blocks) expect(block?.className).not.toMatch(/(^|\s)mt-/);
   });
 });

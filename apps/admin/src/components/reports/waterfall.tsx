@@ -1,4 +1,5 @@
 import type { WaterfallView } from '@/lib/report-print';
+import { Hatch } from './hatch';
 
 /** Id của vân 45° — một thác nước mỗi trang (tờ in báo cáo), nên id cố định là đủ. */
 const HATCH_ID = 'report-print-waterfall-hatch';
@@ -26,23 +27,7 @@ export function Waterfall({ view }: { view: WaterfallView }) {
       className="block h-auto w-full"
     >
       <defs>
-        <pattern
-          id={HATCH_ID}
-          width={5}
-          height={5}
-          patternUnits="userSpaceOnUse"
-          patternTransform="rotate(45)"
-        >
-          <line
-            x1={0}
-            y1={0}
-            x2={0}
-            y2={5}
-            className="stroke-card"
-            strokeOpacity={0.55}
-            strokeWidth={1.6}
-          />
-        </pattern>
+        <Hatch id={HATCH_ID} angle={45} />
       </defs>
 
       {view.grid.map((line) => (
