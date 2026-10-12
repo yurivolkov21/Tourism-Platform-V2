@@ -119,3 +119,26 @@ export function xlsxExportResponse(prefix: string, body: ArrayBuffer): Response 
     },
   });
 }
+
+/**
+ * Dựng file RỒI mới ghi audit `ok` và trả file (review max G40 Phần 3): ba route từng ghi `ok` trước
+ * khi dựng, nên dựng lỗi (dữ liệu lạ — thanh REPT tỉ lệ cực lớn từng ném RangeError) thành trang 500
+ * trống trong khi vết audit nói đã xuất xong. Lỗi lúc dựng: audit `failed`, 502 có lời như lỗi gom trang.
+ */
+export async function xlsxAfterBuild(
+  area: string,
+  entry: Omit<Parameters<typeof logExportAudit>[1], 'outcome'>,
+  prefix: string,
+  build: () => Promise<ArrayBuffer>,
+): Promise<Response> {
+  let body: ArrayBuffer;
+  try {
+    body = await build();
+  } catch (error) {
+    console.error(`[admin] ${area} workbook build failed`, error);
+    logExportAudit(area, { ...entry, outcome: 'failed' });
+    return exportFailedResponse();
+  }
+  logExportAudit(area, { ...entry, outcome: 'ok' });
+  return xlsxExportResponse(prefix, body);
+}

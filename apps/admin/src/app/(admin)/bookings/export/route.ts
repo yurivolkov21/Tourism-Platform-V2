@@ -10,7 +10,7 @@ import {
   exportFailedResponse,
   guardExportAccess,
   logExportAudit,
-  xlsxExportResponse,
+  xlsxAfterBuild,
 } from '@/lib/export-route';
 import { rawSearchParamsFrom } from '@/lib/table-query';
 
@@ -109,21 +109,17 @@ export async function GET(request: NextRequest) {
     }
 
     // `mode` để phân biệt hai đường trong vết audit.
-    logExportAudit('bookings', {
-      adminId,
-      outcome: 'ok',
-      rows: rows.length,
-      mode: 'selection',
-      filters,
-    });
-    return xlsxExportResponse(
+    return xlsxAfterBuild(
+      'bookings',
+      { adminId, rows: rows.length, mode: 'selection', filters },
       'nexora-bookings',
-      await buildBookingsWorkbook(rows, {
-        query,
-        selected: rows.length,
-        adminOrigin: request.nextUrl.origin,
-        generatedAt,
-      }),
+      () =>
+        buildBookingsWorkbook(rows, {
+          query,
+          selected: rows.length,
+          adminOrigin: request.nextUrl.origin,
+          generatedAt,
+        }),
     );
   }
 
@@ -154,14 +150,16 @@ export async function GET(request: NextRequest) {
     return new Response(messages.admin.errors.exportListChanged, { status: 409 });
   }
 
-  logExportAudit('bookings', { adminId, outcome: 'ok', rows: result.items.length, filters });
-  return xlsxExportResponse(
+  return xlsxAfterBuild(
+    'bookings',
+    { adminId, rows: result.items.length, filters },
     'nexora-bookings',
-    await buildBookingsWorkbook(result.items, {
-      query,
-      selected: 0,
-      adminOrigin: request.nextUrl.origin,
-      generatedAt,
-    }),
+    () =>
+      buildBookingsWorkbook(result.items, {
+        query,
+        selected: 0,
+        adminOrigin: request.nextUrl.origin,
+        generatedAt,
+      }),
   );
 }

@@ -9,7 +9,7 @@ import {
   exportFailedResponse,
   guardExportAccess,
   logExportAudit,
-  xlsxExportResponse,
+  xlsxAfterBuild,
 } from '@/lib/export-route';
 import { parseReportsSearchParams } from '@/lib/reports-query';
 import { reportPeriodDays } from '@/lib/reports-view';
@@ -111,18 +111,15 @@ export async function GET(request: NextRequest) {
   // Tên file mang CẢ tháng báo cáo lẫn ngày xuất: hai bản tải cùng một tháng ở
   // hai ngày khác nhau là hai ảnh chụp khác nhau (phân rã trạng thái đổi theo
   // thời gian — xem `definitions.statuses`), nên chúng không được trùng tên.
-  logExportAudit('reports', {
-    adminId: gate.session.id,
-    outcome: 'ok',
-    rows: rows.length,
-    filters: { month },
-  });
-  return xlsxExportResponse(
+  return xlsxAfterBuild(
+    'reports',
+    { adminId: gate.session.id, rows: rows.length, filters: { month } },
     `nexora-report-${report.month}`,
-    await buildReportWorkbook(report, rows, {
-      detailNote,
-      // Hyperlink mã đơn trỏ về CHÍNH admin đang chạy (dev hay prod) — builder không đoán domain.
-      adminOrigin: request.nextUrl.origin,
-    }),
+    () =>
+      buildReportWorkbook(report, rows, {
+        detailNote,
+        // Hyperlink mã đơn trỏ về CHÍNH admin đang chạy (dev hay prod) — builder không đoán domain.
+        adminOrigin: request.nextUrl.origin,
+      }),
   );
 }

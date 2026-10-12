@@ -5,6 +5,7 @@ import {
   guardExportAccess,
   isoDay,
   XLSX_CONTENT_TYPE,
+  xlsxAfterBuild,
   xlsxExportResponse,
 } from './export-route';
 
@@ -89,5 +90,48 @@ describe('xlsxExportResponse', () => {
       /^attachment; filename="nexora-bookings-\d{4}-\d{2}-\d{2}\.xlsx"$/,
     );
     expect(response.headers.get('cache-control')).toBe('no-store');
+  });
+});
+
+// Review max G40 Phần 3: route từng ghi audit `ok` rồi mới dựng file — dựng lỗi (thanh REPT tỉ lệ cực
+// lớn ném RangeError) thành 500 trống trong khi vết audit nói đã xuất xong.
+describe('xlsxAfterBuild', () => {
+  const entry = { adminId: 'a1', rows: 3, filters: { month: '2026-09' } };
+
+  it('dựng xong mới ghi audit ok, rồi trả file', async () => {
+    const info = vi.spyOn(console, 'info').mockImplementation(() => {});
+    const response = await xlsxAfterBuild(
+      'reports',
+      entry,
+      'nexora-report-2026-09',
+      async () => new ArrayBuffer(4),
+    );
+    expect(response.status).toBe(200);
+    expect(response.headers.get('content-type')).toBe(XLSX_CONTENT_TYPE);
+    expect(info).toHaveBeenCalledWith(
+      '[admin] reports export',
+      expect.stringContaining('"outcome":"ok"'),
+    );
+    info.mockRestore();
+  });
+
+  it('dựng lỗi: audit ghi failed (không ok), trả 502 có lời', async () => {
+    const info = vi.spyOn(console, 'info').mockImplementation(() => {});
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const response = await xlsxAfterBuild('reports', entry, 'nexora-report-2026-09', async () => {
+      throw new RangeError('Invalid string length');
+    });
+    expect(response.status).toBe(502);
+    expect(await response.text()).toBe(messages.admin.errors.exportFailed);
+    expect(info).toHaveBeenCalledWith(
+      '[admin] reports export',
+      expect.stringContaining('"outcome":"failed"'),
+    );
+    expect(info).not.toHaveBeenCalledWith(
+      '[admin] reports export',
+      expect.stringContaining('"outcome":"ok"'),
+    );
+    info.mockRestore();
+    error.mockRestore();
   });
 });

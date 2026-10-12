@@ -8,7 +8,7 @@ import {
   exportFailedResponse,
   guardExportAccess,
   logExportAudit,
-  xlsxExportResponse,
+  xlsxAfterBuild,
 } from '@/lib/export-route';
 import { parseSubscribersSearchParams } from '@/lib/subscribers-query';
 import { buildSubscribersWorkbook } from '@/lib/subscribers-xlsx';
@@ -77,9 +77,10 @@ export async function GET(request: NextRequest) {
     return new Response(messages.admin.errors.exportListChanged, { status: 409 });
   }
 
-  logExportAudit('subscribers', { adminId, outcome: 'ok', rows: result.items.length, filters });
-  return xlsxExportResponse(
+  return xlsxAfterBuild(
+    'subscribers',
+    { adminId, rows: result.items.length, filters },
     'nexora-subscribers',
-    await buildSubscribersWorkbook(result.items, { query, generatedAt: new Date().toISOString() }),
+    () => buildSubscribersWorkbook(result.items, { query, generatedAt: new Date().toISOString() }),
   );
 }
