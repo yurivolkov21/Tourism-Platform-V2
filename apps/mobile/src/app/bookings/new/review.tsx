@@ -12,6 +12,7 @@ import {
   totalPrice,
 } from '@/features/booking/booking-form';
 import { BookingReviewScreen } from '@/features/booking/booking-review-screen';
+import { backToTourDates } from '@/features/booking/leave-booking';
 import { formatDepartureDate, formatDepartureRange } from '@/features/tour-detail/departures';
 import { orpc, withMobileAuth } from '@/lib/api/client';
 import { cloudinaryUrl } from '@/lib/cloudinary-url';
@@ -98,7 +99,7 @@ export default function BookingReviewRoute() {
       : error.action === 'goToDates'
         ? {
             label: booking.chooseAnotherDate,
-            onPress: () => router.replace(`/tours/${trip.tourSlug}?tab=dates`),
+            onPress: () => backToTourDates(router, trip.tourSlug),
           }
         : error.action === 'goToTravellers'
           ? {

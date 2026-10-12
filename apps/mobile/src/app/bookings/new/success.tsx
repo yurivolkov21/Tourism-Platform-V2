@@ -33,9 +33,9 @@ export default function BookingSuccessRoute() {
   const amount = formatMoney(draft.totalAmount, trip.currency);
   const bookingCode = draft.bookingCode ?? '';
 
-  function done(next: string) {
+  function done(leave: () => void) {
     clearCompletedBooking();
-    router.replace(next);
+    leave();
   }
 
   // Email không có khoảng trắng nên RN có thể ngắt dòng ngay tại "@" hoặc
@@ -57,9 +57,11 @@ export default function BookingSuccessRoute() {
       dateRangeLabel={formatDepartureRange(trip.startDate, trip.endDate)}
       totalAmount={amount}
       viewBookingLabel={booking.viewBooking}
-      onViewBooking={() => done(`/bookings/${bookingCode}`)}
+      onViewBooking={() => done(() => router.replace(`/bookings/${bookingCode}`))}
       browseToursLabel={booking.browseTours}
-      onBrowseTours={() => done('/explore')}
+      // Lùi về bộ tab đang có rồi mở Explore. `replace('/explore')` dựng thêm một bộ tab đè
+      // lên trang tour — từ Home bấm back lại về tour đã đặt.
+      onBrowseTours={() => done(() => router.dismissTo('/explore'))}
       transformUrl={cloudinaryUrl}
     />
   );

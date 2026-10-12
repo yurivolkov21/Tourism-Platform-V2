@@ -9,6 +9,15 @@ import {
   testRouter,
 } from 'expo-router/testing-library';
 import { consumeReturnPath, setPendingReturn } from '@/features/auth/return-to';
+import {
+  type BookingDraftTrip,
+  clearBookingDraft,
+  clearCompletedBooking,
+  completeBookingDraft,
+  startBookingDraft,
+  updateBookingDraft,
+} from '@/features/booking/booking-draft';
+import { backToTourDates } from '@/features/booking/leave-booking';
 import { onboardingStore } from '@/features/onboarding/onboarding-store';
 
 // Spec của cây route đặt NGOÀI `src/app` là bắt buộc: expo-router coi mọi file
@@ -37,7 +46,7 @@ beforeEach(async () => {
 async function openApp(initialUrl: string) {
   const app = renderRouter('src/app', { initialUrl });
   await app;
-  return { pathname: () => app.getPathname() };
+  return { pathname: () => app.getPathname(), searchParams: () => app.getSearchParams() };
 }
 
 /**
@@ -352,5 +361,57 @@ describe('vỏ điều hướng', () => {
     expect(screen.getByText(shell.notFound.title)).toBeTruthy();
     expect(screen.getByText(shell.notFound.body)).toBeTruthy();
     expect(screen.getByText(shell.notFound.back)).toBeTruthy();
+  });
+});
+
+// N5 (review 12/10): `replace` gọi từ trong cụm đặt tour dựng màn đích CHỒNG lên trang tour đã
+// mở cụm — B9 phải back hai lần mới ra khỏi tour, B8 từ Home back lại về tour vừa đặt.
+describe('rời cụm đặt tour', () => {
+  const TRIP: BookingDraftTrip = {
+    tourSlug: 'ha-giang-loop',
+    tourTitle: 'Ha Giang Loop',
+    tourImageUrl: null,
+    departureId: 'd1',
+    startDate: '2026-11-01',
+    endDate: '2026-11-03',
+    unitPrice: '100.00',
+    currency: 'USD',
+    maxGroupSize: 10,
+    seatsLeft: 5,
+    bookingDeadline: '2026-10-30',
+  };
+
+  afterEach(() => {
+    clearBookingDraft();
+    clearCompletedBooking();
+  });
+
+  it('B8 "Browse more tours" mở Explore trên bộ tab đang có, không để trang tour nằm lại dưới', async () => {
+    const app = await openApp('/tours/ha-giang-loop');
+    startBookingDraft(TRIP, { name: 'Lan', email: 'lan@example.com' });
+    updateBookingDraft({ bookingCode: 'BK-TEST0001' });
+    completeBookingDraft('100.00');
+    await act(() => router.push('/bookings/new/success'));
+
+    await fireEvent.press(screen.getByText(messages.mobile.booking.browseTours));
+
+    expect(app.pathname()).toBe('/explore');
+    await act(() => router.back());
+    expect(app.pathname()).toBe('/');
+    expect(router.canGoBack()).toBe(false);
+  });
+
+  it('B9 "Choose another date" về đúng trang tour đã mở cụm, mở lại ở tab Dates', async () => {
+    const app = await openApp('/tours/ha-giang-loop');
+    startBookingDraft(TRIP, { name: 'Lan', email: 'lan@example.com' });
+    await act(() => router.push('/bookings/new/travellers'));
+
+    await act(() => backToTourDates(router, 'ha-giang-loop'));
+
+    expect(app.pathname()).toBe('/tours/ha-giang-loop');
+    expect(app.searchParams()).toMatchObject({ tab: 'dates' });
+    await act(() => router.back());
+    expect(app.pathname()).toBe('/');
+    expect(router.canGoBack()).toBe(false);
   });
 });
