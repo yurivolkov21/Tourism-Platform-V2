@@ -24,6 +24,14 @@ function wrapper({ children }: { children: ReactNode }) {
   return <QueryClientProvider client={client}>{children}</QueryClientProvider>;
 }
 
+/** Hai màn dùng CHUNG một cache — đúng như app, nơi `health.check` chỉ gọi một lần mỗi phiên. */
+function sharedWrapper() {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  return ({ children }: { children: ReactNode }) => (
+    <QueryClientProvider client={client}>{children}</QueryClientProvider>
+  );
+}
+
 beforeEach(() => {
   jest.useFakeTimers({ doNotFake: ['nextTick', 'setImmediate', 'queueMicrotask'] });
   jest.setSystemTime(new Date('2026-10-09T00:00:00.000Z'));
@@ -45,5 +53,19 @@ describe('useServerClock', () => {
 
     // Đã qua 60s giờ máy → giờ server phải nhích đúng 60s.
     expect(result.current.now.toISOString()).toBe('2026-10-10T00:01:00.000Z');
+  });
+
+  it('màn mở SAU lần gọi đầu (đọc cache) vẫn đúng giờ server, không bắt đầu lại từ mốc cũ', async () => {
+    const shared = sharedWrapper();
+    const first = await renderHook(() => useServerClock(), { wrapper: shared });
+    await waitFor(() => expect(first.result.current.now.toISOString()).toBe(SERVER_TIME));
+
+    // Hai giờ sau mới mở màn thứ hai (vd mở tab Trips sáng, mở P5 sau đó).
+    await act(async () => {
+      jest.setSystemTime(new Date('2026-10-09T02:00:00.000Z'));
+    });
+    const second = await renderHook(() => useServerClock(), { wrapper: shared });
+
+    expect(second.result.current.now.toISOString()).toBe('2026-10-10T02:00:00.000Z');
   });
 });

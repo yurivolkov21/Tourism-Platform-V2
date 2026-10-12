@@ -6,25 +6,20 @@ import { clockOffsetMs, serverNow } from './server-clock';
 /**
  * Gọi `health.check` MỘT lần mỗi phiên (`staleTime`/`gcTime` = Infinity —
  * React Query không refetch, không gc, mọi màn dùng chung một lượt gọi).
- * `select` chạy lúc dữ liệu vừa tới nên `Date.now()` bên trong gần đúng thời
- * điểm đo thật; đọc lại cache (không refetch) thì React Query nhớ sẵn kết quả
- * `select`, không gọi lại hàm — lệch không "trôi" theo số lần render.
+ * Lệch đo bằng `dataUpdatedAt` — giờ MÁY lúc phản hồi về, lưu cùng dữ liệu
+ * trong cache — chứ không bằng `Date.now()` lúc đọc. Đọc bằng `Date.now()` (kể
+ * cả trong `select`) là đồng hồ đứng yên ở mốc `timestamp` đầu: `select` viết
+ * inline chạy lại mỗi lần render (K2), còn `select` tách ra ngoài vẫn chạy lại
+ * cho MỖI màn mới mount, vì React Query nhớ kết quả `select` riêng từng màn —
+ * màn mở sau vài giờ (P1–P6, lịch trình) bắt đầu từ đúng giờ gọi đầu tiên.
  *
  * `offsetMs = 0` khi chưa có dữ liệu (app mới mở) — màn tạm dùng giờ máy, sai
  * số đó biến mất ngay khi `health.check` về.
  */
-// Phải là hàm module-scope (tham chiếu ổn định): `select` viết inline bị React
-// Query gọi lại mỗi lần render, `Date.now()` đổi theo nên offset luôn ≈ 0 và đồng
-// hồ server đứng yên ở mốc `timestamp` đầu tiên.
-const selectOffsetMs = (data: { timestamp: string }): number =>
-  clockOffsetMs(data.timestamp, Date.now());
-
 function useServerClockOffsetMs(): number {
-  const query = useQuery({
-    ...orpc.health.check.queryOptions({ staleTime: Infinity, gcTime: Infinity }),
-    select: selectOffsetMs,
-  });
-  return query.data ?? 0;
+  const query = useQuery(orpc.health.check.queryOptions({ staleTime: Infinity, gcTime: Infinity }));
+  if (query.data === undefined) return 0;
+  return clockOffsetMs(query.data.timestamp, query.dataUpdatedAt);
 }
 
 /**
