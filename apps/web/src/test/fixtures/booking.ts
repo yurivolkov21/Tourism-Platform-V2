@@ -116,6 +116,9 @@ export function makeReview(overrides: Partial<MyReview> = {}): MyReview {
     rejectionCount: 0,
     tourSlug: 'test-tour',
     tourTitle: 'Test Tour',
+    // Review gắn trên đơn mang đúng mã của đơn đó — cùng mã với `makeBooking()`.
+    bookingCode: 'BK-TESTAAAA',
+    tourImage: null,
     retractedAt: null,
     ...overrides,
   };
