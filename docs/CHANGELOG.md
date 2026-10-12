@@ -8,6 +8,37 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-10-12 — Thử tay G40 Phần 1 trên production 5/5 bước sau bản vá `b5988b23`; ghi G42
+
+**Thử tay** (spec §10 bước 1–3 chia thành năm bước; sau push `b5988b23` ba đèn xanh — Actions
+14m03s, Vercel web và admin READY, Render live; user in bằng Edge thường có tiện ích, gửi ảnh khung
+xem trước, session gốc đối chiếu):
+
+1. Voucher một ngày BK-EET0JBTH (Hội An lantern evening): một trang, bìa tự thấp, chân trang tách
+   khỏi dải cuối. Trước bản vá chính Edge này in hai trang.
+2. Cùng voucher, giao diện tối, tắt "Background graphics": giấy vẫn sáng; ảnh bìa, dải teal của vé,
+   mã vạch vẫn in.
+3. Voucher nhiều ngày BK-QW3TNK58 (Hà Giang Loop 4D3N, đi 30/10): một trang, "Your trip · 4 days"
+   đủ bốn ngày, bìa giữ 62 mm vì nội dung vừa.
+4. Voucher đã đi BK-J9AUYIYB: không mã vạch, không lịch trình, dải Payment · Booking reference.
+   Chuyến công ty huỷ BK-7D1FHRQG: mộc REFUNDED, dải "no longer valid", cuống "Refunded −$867.00".
+   Mỗi bản một trang.
+5. Đặt BK-DICJ1A7T (Bát Tràng, $45, Stripe test) rồi huỷ ở cổng: hoá đơn chờ in ở `/checkout/cancel`
+   một trang, "Pay by 12:51" đúng 60 phút sau giờ đặt 11:51, chữ đậm và email xuống dòng như B1.
+
+**G42 (mới):** ở bước 5 user để ý màn hình trang huỷ vẫn là hoá đơn `BookingReceipt` từ 19/08 —
+spec P7 cố ý để đơn chưa trả ngoài phạm vi, G40 chỉ làm bản in B1. User chọn ghi thành việc treo vì
+sát freeze 15/10; khi làm thì gộp phần chữ còn mở của G37 (`heldNote` gọi My bookings là "Trips").
+
+**CÒN TREO:**
+
+- [ ] G40 Phần 3 (nhánh `claude/g40-part3-excel-report-a7944d`): review max chưa chạy. Phần 2: viết
+  plan sau khi Phần 3 review xong.
+- [ ] G37 (`heldNote` của `/checkout/cancel`) và G42 (màn hình hoá đơn chờ): sau freeze, chờ user.
+- Dữ liệu thử còn trên prod, để lượt seed lại ~03/11 dọn: đơn BK-DICJ1A7T (chờ trả, tự nhả sau 60
+  phút).
+- Docs, không đổi mã; không migration, không env.
+
 ## 2026-10-12 — Merge nhánh `fix/mobile-booking-screens` lên main: P5b-3 đặt tour, cụm P và tab Trips (`6373ab75`..`7b49291d`)
 
 Cụm màn đặt tour của Nghia (P5b-3, [handoff đặt tour](handoff/mobile-booking-handoff.md)): luồng
