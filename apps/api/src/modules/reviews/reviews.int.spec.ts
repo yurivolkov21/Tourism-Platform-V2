@@ -984,6 +984,44 @@ describe('reviews (int)', () => {
       expect(items[1].isApproved).toBe(false);
     });
 
+    it('mỗi bài kèm `bookingCode` và ảnh bìa của ĐÚNG tour mình (R5 ký upload theo booking)', async () => {
+      const { user, cookie } = await signUpAndSignIn(app, 'mine-cover@example.com');
+      const { tour: withCover } = await seedOwnBooking({
+        userId: user.id,
+        code: 'BK-COVR0001',
+        tourSlug: 'walk-cover-1',
+      });
+      await seedOwnBooking({ userId: user.id, code: 'BK-COVR0002', tourSlug: 'walk-cover-2' });
+      await prisma.mediaAsset.create({
+        data: {
+          publicId: 'tours/mine-cover-hero',
+          type: 'IMAGE',
+          ownerType: 'TOUR',
+          ownerId: withCover.id,
+          role: 'hero',
+          sortOrder: 0,
+        },
+      });
+      await writeReview(cookie, 'BK-COVR0001', 5, 'Tour có ảnh bìa hẳn hoi');
+      await writeReview(cookie, 'BK-COVR0002', 4, 'Tour này chưa có ảnh bìa nào');
+
+      const res = await app.inject({
+        method: 'GET',
+        url: '/api/reviews/mine',
+        headers: { cookie },
+      });
+
+      expect(res.statusCode).toBe(200);
+      const byCode = new Map(
+        (
+          res.json().items as { bookingCode: string | null; tourImage: { url: string } | null }[]
+        ).map((item) => [item.bookingCode, item]),
+      );
+      expect(byCode.get('BK-COVR0001')?.tourImage?.url).toContain('tours/mine-cover-hero');
+      // Ảnh gom MỘT lượt cho cả trang: tour không có bìa phải ra null, không mượn bìa tour khác.
+      expect(byCode.get('BK-COVR0002')?.tourImage).toBeNull();
+    });
+
     it('gọi ẩn danh → 401', async () => {
       const res = await app.inject({ method: 'GET', url: '/api/reviews/mine' });
       expect(res.statusCode).toBe(401);
