@@ -20,6 +20,8 @@ function makeBooking(overrides: Partial<BookingDetail>): BookingDetail {
     departureStartDate: '2026-10-17',
     departureEndDate: '2026-10-17',
     cancellationDeadline: '2026-10-16',
+    // ADR-0054 AMEND 1: chuyến còn chạy. Test cần chuyến bị công ty huỷ thì đè overrides.
+    departureCancelled: false,
     unitPrice: '35.00',
     totalAmount: '35.00',
     currency: 'USD',
