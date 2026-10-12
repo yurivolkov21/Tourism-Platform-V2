@@ -38,7 +38,10 @@ export interface WriteReviewScreenProps {
   errorMessage: string | null;
   onSubmit: () => void;
   onBack: () => void;
-  onSeeReviews: () => void;
+  /** Nhãn nút chính của màn đã gửi (R3). Mặc định "Back to my trip" — đúng khi mở từ chuyến (R1). */
+  backLabel?: string;
+  /** Link "See my reviews" của R3. Bỏ trống thì ẩn link: R5 mở TỪ My reviews, đẩy thêm một bản là chồng màn. */
+  onSeeReviews?: () => void;
   photos: readonly ReviewPhotoItem[];
   maxPhotos: number;
   photoError: string | null;
@@ -61,7 +64,7 @@ export interface WriteReviewScreenProps {
   };
   submitLabel?: string;
   submittingLabel?: string;
-  /** R5 chưa có `bookingCode` trong `reviews.mine` nên chưa thêm ảnh mới được. */
+  /** Tắt ô thêm ảnh khi không có `bookingCode` để ký upload (review curated không gắn booking). */
   allowAddPhoto?: boolean;
 }
 
@@ -90,6 +93,7 @@ export function WriteReviewScreen({
   errorMessage,
   onSubmit,
   onBack,
+  backLabel,
   onSeeReviews,
   photos,
   maxPhotos,
@@ -176,14 +180,16 @@ export function WriteReviewScreen({
           ) : null}
           {/* Mockup: nút `.btn.primary` rộng cố định 220px. */}
           <View style={{ width: theme.spacing(55), marginTop: theme.spacing(2) }}>
-            <Button label={copy.backToTrip} onPress={onBack} shape="pill" />
+            <Button label={backLabel ?? copy.backToTrip} onPress={onBack} shape="pill" />
           </View>
           {/* Link "See my reviews" (mockup R3) → màn R4. */}
-          <Pressable accessibilityRole="link" onPress={onSeeReviews}>
-            <AppText variant="caption" style={{ color: theme.colors['primary-emphasis'] }}>
-              {copy.seeMyReviews}
-            </AppText>
-          </Pressable>
+          {onSeeReviews === undefined ? null : (
+            <Pressable accessibilityRole="link" onPress={onSeeReviews}>
+              <AppText variant="caption" style={{ color: theme.colors['primary-emphasis'] }}>
+                {copy.seeMyReviews}
+              </AppText>
+            </Pressable>
+          )}
         </View>
       </Screen>
     );

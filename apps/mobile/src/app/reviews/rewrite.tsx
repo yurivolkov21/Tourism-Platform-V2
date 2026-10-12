@@ -129,8 +129,10 @@ export default function RewriteReviewRoute() {
       submitting={updateMutation.isPending}
       errorMessage={errorMessage}
       onSubmit={submit}
+      // R5 chỉ mở từ My reviews (R4): gửi xong thì lùi về đúng danh sách ấy. Nhãn "Back to my trip"
+      // của R1 ở đây là nói sai chỗ đến, còn "See my reviews" đẩy thêm một R4 thứ hai lên stack.
+      backLabel={copy.backToReviews}
       onBack={() => router.back()}
-      onSeeReviews={() => router.push('/reviews/mine')}
       photos={photoState.photos}
       maxPhotos={5}
       photoError={photoState.photoError}
