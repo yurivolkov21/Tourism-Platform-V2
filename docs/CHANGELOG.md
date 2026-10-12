@@ -8,6 +8,30 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-10-12 — Thử tay G40 Phần 3 trên production 4/4 bước; đóng G40, ghi G43
+
+**Thử tay** (spec §10 bước 5–6 chia thành bốn bước; sau push `9877e518`: Vercel web và admin READY,
+Render live 11:20 UTC; Actions của `9877e518` bị push Phần 2 huỷ ở bước bundle mobile sau khi int,
+build, typecheck và test đã xanh, run trên `c0dbb6e8` chứa trọn Phần 3 xanh 9m15s; user mở file bằng
+Excel trên máy mình, gửi ảnh, session gốc đối chiếu):
+
+1. Excel báo cáo tháng 9: Summary đúng D1 (thanh `REPT`, ngày tiếng Anh); sheet Detail có Refunded
+   thật (35,00 ở các đơn huỷ); bấm mã đơn trong Excel mở thẳng trang đơn của admin, không qua form
+   đăng nhập.
+2. Bookings lọc Cancelled (tháng 10): nhãn cột đủ, không cột nào bị nút lọc che; Refunded 0,00 cho
+   đơn chưa trả đã huỷ, 2,00 cho đơn đã hoàn; hàng Total 2 khách, 47,00 và 2,00.
+3. Bookings tích ba hàng rồi xuất: file đúng ba hàng đã chọn; hàng Total 3 khách, 86,00 và 2,00.
+4. Subscribers tab mặc định: Status "Active" hoặc "Awaiting confirmation", ba cột giờ Việt Nam đủ
+   nhãn, ngày tiếng Anh.
+
+**G40 đóng:** cả ba phần đã merge và thử tay production đạt (Phần 1 năm bước, Phần 2 bước 4, Phần 3
+bước 5–6). Việc liên quan còn mở có mục riêng: câu `heldNote` của `/checkout/cancel` (G37), màn
+hình hoá đơn chờ (G42) và lọc ngày, chọn hàng ở `/subscribers` (G43, bên dưới).
+
+**G43 (mới):** ở bước 4 user để ý `/subscribers` không có ô tích chọn hàng, không lọc khoảng
+ngày, nên mỗi lần xuất gần như cả danh sách. Thiết kế F10 (P4c, 02/09) chỉ có tab, tìm email, lọc
+nguồn; chọn hàng và khoảng ngày làm cho `/bookings` từ trước, chưa xét lại cho `/subscribers`.
+
 ## 2026-10-12 — Thử tay G40 Phần 2 trên production: in `/reports` tháng 9 và tháng 10 đạt
 
 **Thử tay** (spec §10 bước 4, sau push `c0dbb6e8`: Actions xanh 9m15s, Vercel web và admin deploy
