@@ -6,6 +6,8 @@ Ngày 2026-10-05 · @Yuri Volkov
 
 Phạm vi: 64 commit `80e36099..475042b9`, gồm 59 commit của `feat/mobile-booking-screens` và 5 commit riêng của Nghia ngày 04/10. Tổ hợp với main mới nhất chạy xanh; chưa thử trên máy thật.
 
+> **Cập nhật 2026-10-12:** rebase lên main và review lần 2 trên session cloud: tám phát hiện mới (M1 và M8 chặn merge vì typecheck mobile và web đỏ sau rebase), vá cả tám rồi merge cùng ngày. Chi tiết ở entry CHANGELOG 12/10.
+
 > **Cập nhật 2026-10-08:** V1–V9, Q2, Q3 đã sửa trên nhánh `fix/mobile-review-screens` (worktree `Tourism-Platform-V2-review`, chưa commit). Còn lại: Q1 (viết lại message hai commit đã push), rebase lên main sau khi account và booking vào main, và kiểm trên máy thật (R4, R5, R6, R1).
 
 ## Phần thừa hưởng từ nhánh account và booking

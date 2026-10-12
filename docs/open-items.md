@@ -19,7 +19,7 @@
 | --- | --- | --- |
 | **P4e** | Quản trị catalog: thêm/sửa/xoá tour, điểm đến, danh mục | P4e-1 XONG 22/09 (F11 danh sách tour · F12 lịch chạy · F13 huỷ chuyến có hoàn tiền, đóng nợ ADR-0041 §6). **P4e-2 XONG**: F14 danh mục 22/09 (màn `/categories` cộng chip lọc của web đọc endpoint) và F15 điểm đến 24/09 (màn `/destinations`, ba vùng về contract, web chịu được điểm đến đã ẩn). **P4e-3a** (F17 tạo và sửa tour) XONG: merge 28/09 sau vòng review (24 lỗi thật, vá cả 24 — lỗi seed vá ở nhánh riêng cùng ngày). **P4e-3b** (F18 ảnh tour) XONG: merge 29/09 sau vòng review (15 phát hiện, vá cả 15). **P4e-3c** (F19 khu sửa tour dạng thanh bước) XONG: merge 01/10 sau vòng review (15 phát hiện, vá cả 15). **P4e-4** (F20 bài viết) XONG: merge 05/10 sau vòng review (15 phát hiện cộng 8 mục nhỏ, vá cả 23; thêm cột `post_tag_links.order`). Còn **P4f** (media, users) |
 | **P4f** | Quản trị người dùng và media | **Users**: ADR-0052 và spec 02/10 — Owner (chỉ từ `ADMIN_EMAILS`) cấp Staff cho khách đã xác minh, bảng quyền ở contract, khoá tài khoản, đăng xuất mọi nơi, lịch sử theo người dùng; plan 02/10 (14 task, kèm prompt thi công); P4e-4 đã merge 05/10 nên sẵn sàng thi công. Phủ ba bất biến hạ quyền / thu hồi phiên của ADR-0026 AMEND 1 §D. **Media library**, **Appearance** và G16 chưa thuộc spec nào |
-| **P5b-2…5** | Bốn cụm màn mobile: xem tour · đặt tour · tài khoản · đánh giá | **P5b-2 xem tour và P5b-4 tài khoản XONG**: merge 09/10 qua nhánh `feat/mobile-account-screens` (review 05/10 có 24 phát hiện, vá 23, Q4 là nợ lịch sử; review cuối 09/10). Nhánh `feat/mobile-browse-screens` dựng lại từ main (ba commit cũ bị bỏ) mang R3 và R7 của review 05/10, merge 12/10 kèm bản vá Sign in kẹt sau onboarding (review 12/10). **P5b-3 đặt tour XONG**: merge 12/10 qua nhánh `fix/mobile-booking-screens` (review 05/10 K1–K15; review 12/10 thêm N1–N5, vá tại chỗ). **P5b-5 đánh giá** đang review trên nhánh riêng, xếp chồng lên account nên phải rebase lên main. **Đăng nhập Google native** ([ADR-0056](adr/0056-mobile-google-native-signin.md), duyệt 09/10, demo bằng APK Android) chưa thi công, nhắm merge trước 15/10. Bản vẽ và tài liệu bàn giao ở [`handoff/`](handoff/README.md) |
+| **P5b-2…5** | Bốn cụm màn mobile: xem tour · đặt tour · tài khoản · đánh giá | **P5b-2 xem tour và P5b-4 tài khoản XONG**: merge 09/10 qua nhánh `feat/mobile-account-screens` (review 05/10 có 24 phát hiện, vá 23, Q4 là nợ lịch sử; review cuối 09/10). Nhánh `feat/mobile-browse-screens` dựng lại từ main (ba commit cũ bị bỏ) mang R3 và R7 của review 05/10, merge 12/10 kèm bản vá Sign in kẹt sau onboarding (review 12/10). **P5b-3 đặt tour XONG**: merge 12/10 qua nhánh `fix/mobile-booking-screens` (review 05/10 K1–K15; review 12/10 thêm N1–N5, vá tại chỗ). **P5b-5 đánh giá XONG**: merge 12/10 qua nhánh `fix/mobile-review-screens` (review 05/10 V1–V9; review 12/10 thêm M1–M8, vá tại chỗ). **Đăng nhập Google native** ([ADR-0056](adr/0056-mobile-google-native-signin.md), duyệt 09/10, demo bằng APK Android) chưa thi công, nhắm merge trước 15/10. Bản vẽ và tài liệu bàn giao ở [`handoff/`](handoff/README.md) |
 | **P6** | Trợ lý AI tư vấn tour | Có ADR-0050 và spec (29/09), chưa thi công — mở sau khi admin xong. Thư viện `ai`, `@ai-sdk/anthropic`, `@ai-sdk/react` đã ghim 29/09 (`3f646ace`, spec §7 bước 1). Bảng dữ liệu đã có sẵn (`chat_conversations`, `chat_messages`) |
 | **P7** | Đợt trau chuốt giao diện cuối | Ba trang đơn của khách (ADR-0054, spec và plan 05/10, 26 task chia ba phần): **Phần A XONG** 06/10 — My bookings lọc, tìm, 10 đơn mỗi trang theo hành trình, phân trang "Previous / Next" (review 15 phát hiện, vá cả 15). **Phần B** (chi tiết đơn) và **Phần C** (voucher) **XONG** 09/10: thi công 07–08/10, review max 08/10 (C 15, B 15 phát hiện), vá gộp trên một nhánh kèm ADR-0054 AMEND 1 — đóng luôn mục web của ADR-0041 AMEND 1 bên dưới. Review cuối của đợt vá (09/10): 1 Important, 3 Minor, vá hết; việc ngoài phạm vi ở G36–G39. Thử tay prod 09/10 bước 4–14 của spec §11 (1–3 là phần A, thử 06/10): năm chỗ vá ngay (TODAY lệch, mũi tên và cuộn của "Full itinerary", toast sau khi gửi review, receipt có tiền hoàn), chờ user thử lại sau deploy; bản in voucher để đợt thiết kế lại bản in (G40) |
 
@@ -136,6 +136,12 @@ báo ở `bookings/[code]`, đọc cờ `departureCancelled`.
   trang tour, back một lần là ra; B8 "Browse more tours" mở Explore, back về Home rồi hết (N5); đơn
   hoàn một phần mở cụm P, còn nút huỷ ở hoá đơn (N3). Chưa kiểm: iOS (quyết bỏ 09/10), PayPal
   sandbox thật.
+- **Cụm đánh giá mobile (P5b-5, merge 12/10)** — luồng C1–C6 của
+  [hướng dẫn test máy thật](huong-dan-test-may-that.md) và phần B của
+  [hướng dẫn test](testing-guide-review-fixes.md) (Nghia chạy 10/10 trên nhánh chưa rebase), cộng
+  hai đường của review 12/10: R5 gửi lại xong bấm "Back to my reviews" về đúng danh sách, back thêm
+  một lần là ra Account (M2); thẻ bị bác hai lần ghi "See why" và mở R6 (M4). Mới xác nhận qua code:
+  ảnh bìa tour ở R5 và R6 (V6), thumbnail nhẹ ở R5 (V9).
 
 ## Việc tay trên hạ tầng
 
@@ -261,6 +267,19 @@ nếu còn — file này bị xoá sau khi merge). Không chặn merge, ghi lạ
 5. **N7–N10 mức thấp còn mở** — bảng ở mục 7 của tóm tắt nhánh: bấm đúp nút chọn
    ảnh, lỗi form đổi mật khẩu không tự xoá, Saved đếm "100 tours" trước khi tải đủ
    trang, ba chỗ a11y.
+
+## Nợ nhỏ phát sinh từ P5b-5 (nhánh `fix/mobile-review-screens`)
+
+Nêu 12/10 ở review lần 2 (merge cùng ngày). Không chặn merge:
+
+1. **R1 mới mở được từ P6.** Mockup ghi thêm hai lối: chi tiết booking và dòng My reviews ở
+   Account.
+2. **Rút bài xong không có toast "Review retracted"** như web (chữ `reviews.retract.toast.done`
+   có sẵn). Thẻ đổi sang "You retracted this review" nên khách vẫn thấy kết quả.
+3. **Chữ báo lỗi ảnh ghi cứng "10 MB" và 5** ở `use-review-photos.ts`, cùng số ô còn trống và
+   `maxPhotos={5}` ở hai route, trong khi luật chặn đọc `REVIEW_PHOTO_MAX_BYTES` và
+   `REVIEW_PHOTOS_MAX` của contract: đổi hằng số là chữ lệch.
+4. **Bài đang gõ ở R1, R5 mất khi bấm back cứng Android**, không hỏi lại.
 
 ## Nợ kỹ thuật chi tiết
 

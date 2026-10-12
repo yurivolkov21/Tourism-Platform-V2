@@ -8,6 +8,68 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-10-12 — Merge nhánh `fix/mobile-review-screens` lên main: P5b-5 đánh giá R1–R7 (`f5244d4c`..`4200735f`)
+
+Cụm màn đánh giá của Nghia (P5b-5, [handoff đánh giá](handoff/mobile-review-handoff.md)): R1 viết
+đánh giá từ chuyến đã về (nút ở P6), R2 ảnh ký `media.signUpload` rồi tải thẳng Cloudinary (tối đa
+5), R3 đã gửi, R4 My reviews bốn trạng thái, R5 viết lại bài bị bác, R6 hết lượt viết lại, R7 rút
+bài đã đăng. Kèm bản vá V1–V9, Q2, Q3 của [review 05/10](review-feat-mobile-review-screens.md)
+cùng [hướng dẫn test](testing-guide-review-fixes.md); Account và Personal details về đúng mockup
+A1/A2 (V4). API: `MyReviewSchema` thêm `bookingCode` và `tourImage` (đều nullable), trả ở
+`reviews.mine`, `update`, `retract` và khối review của `bookings.byCode`; ảnh bìa ở `mine` gom một
+lượt cho cả trang (V5). Không migration, không env, không thêm dependency.
+
+Rebase lên `ae727bce`: 8 commit riêng của Nghia (`c11091e9`, `8e9b79f5`, `05888cd3`, `15b4d081`,
+`818f900a`, `ea154d49`, `94e0fdc4`, `525f4c04`) nay là `f5244d4c`, `5eda8e52`, `e54f9ce0`,
+`be899663`, `cccae521`, `477c0c0c`, `6090493f`, `8bbee6ce`. `cc02e089` và `a1151721` đã vào main ở
+merge đặt tour (`6373ab75`, `0ce5d4a4`); bỏ `4f9def36` như lần đó. Xung đột duy nhất là dòng bản đồ
+ở `docs/README.md` (giữ cả hai); `trips/[code]/index.tsx` và `routes.spec.tsx` git tự gộp, đã đối
+chiếu tay với bản vá N3/N5 của main.
+
+**Review 12/10 trên session cloud.** V1–V9, Q2, Q3 đúng như hướng dẫn test; Q1 xong (8 commit
+không còn dòng attribution). Ở màn của main, P6 chỉ nối nút "Write a review", Account chỉ nối dòng
+My reviews. Tám phát hiện mới, vá hết trên nhánh review `claude/mobile-review-screens-review` (vá
+tại chỗ như hai nhánh mobile trước):
+
+- `60877663` (M1, chặn merge): sau rebase, typecheck mobile đỏ. Bản hoàn lại V4 gỡ cả
+  `import { router }` ở Personal details vì gốc nhánh chỉ dòng Password dùng nó, còn main từ 06/10
+  (F6) gọi `router.replace('/')` sau khi xoá tài khoản.
+- `596ac8ce` (M2): R5 dùng lại màn đã gửi của R1, nên nút "Back to my trip" lùi về My reviews
+  (cùng loại lỗi V8) và link "See my reviews" đẩy một R4 thứ hai lên stack. Nay R5 ghi "Back to my
+  reviews" và ẩn link; spec mới cho màn đã gửi.
+- `43f7e094` (M3): R1 gửi xong không làm mới `reviews.mine`; danh sách đã mở trước đó trong phiên
+  hiện bản cũ cho tới khi tự tải lại.
+- `402a876f` (M4): thẻ bị bác đủ hai lần vẫn mời "See why and rewrite" dù nút sửa đã đóng (mockup
+  R6, handoff mục 7.3). Nay ghi "See why" (khoá `reviews.mine.seeWhyFinal`); spec mới cho R4.
+- `ceebdaff` (M5): header R5 ghi "Rate this trip", mockup ghi "Rewrite your review" (khoá
+  `reviews.rewriteHeading`); thẻ chuyến ở R5 in ngày viết bài vào chỗ R1 in ngày đi, nay chỉ giữ
+  mã booking.
+- `95ae6e4a` (M6): `bookingCode` và `tourImage` của `reviews.mine` (R5 cần để ký ảnh mới) chưa có
+  int test; thêm ca hai tour, một có bìa một không.
+- `f73a4d61` (M7): `huong-dan-test-may-that.md` mục D1/D2 còn tả sheet "Help & legal" và Password
+  trong Personal details, tức bản đã hoàn lại ở V4.
+- `4200735f` (M8, chặn merge): sau rebase typecheck web cũng đỏ vì fixture `makeReview` (thêm 09/10
+  ở đợt vá P7 Phần B) thiếu hai trường mới của `MyReviewSchema`. Gate lượt đầu không thấy vì turbo
+  dừng ở typecheck mobile (M1) trước khi typecheck web chạy xong.
+
+Tests after (`gate:int` trên `4200735f`, 12/10 06:03–06:14, chạy trên cloud theo đúng các bước
+của CI): unit 6940 — web 2233, admin 1911, api 1097, mobile 738, contract 675, mobile-ui 136, ui 47,
+core 46, i18n 36, tokens 21 — và int 781/46. So với main: mobile 705 → 738 (nhánh của Nghia 27 ca,
+bản vá review 6 ca: màn đã gửi 2, thẻ R4 4), int 779 → 781 (nhánh 1, M6 1). Hai lượt gate trước đỏ
+ở typecheck (M1 rồi M8), nên lượt cuối chạy turbo với `--continue` để không lỗi nào bị che.
+
+**CÒN TREO:**
+
+- [ ] Thử máy thật cụm đánh giá: luồng C1–C6 của [hướng dẫn test máy thật](huong-dan-test-may-that.md)
+  và hai đường của review 12/10 (R5 gửi lại xong bấm "Back to my reviews" về đúng danh sách, back
+  thêm một lần là ra Account; thẻ bị bác hai lần ghi "See why" và mở R6). Ảnh bìa ở R5, R6 (V6) và
+  thumbnail nhẹ ở R5 (V9) mới xác nhận qua code. Đã ghi ở open-items.
+- [ ] Chưa kiểm: iOS (quyết bỏ 09/10), tải ảnh thật lên Cloudinary từ app.
+- [ ] Bốn nợ nhỏ không chặn merge (R1 chỉ mở từ P6, rút bài không có toast, chữ lỗi ảnh ghi cứng
+  "10 MB" và 5, back cứng mất bài đang gõ): mục mới ở open-items.
+- Dọn sau merge: nhánh `fix/mobile-review-screens` và `claude/mobile-review-screens-review` trên
+  origin (session cloud không xoá được nhánh trên GitHub).
+
 ## 2026-10-12 — Thử tay G40 Phần 1 trên production 5/5 bước sau bản vá `b5988b23`; ghi G42
 
 **Thử tay** (spec §10 bước 1–3 chia thành năm bước; sau push `b5988b23` ba đèn xanh — Actions
