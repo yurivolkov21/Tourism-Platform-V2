@@ -180,6 +180,10 @@ describe('bookingCreateErrorAction', () => {
     );
   });
 
+  it('NOT_PENDING (checkout lại booking đã đổi trạng thái) → verify, không "Try again" mãi', () => {
+    expect(bookingCreateErrorAction(new ORPCError('NOT_PENDING', { status: 422 }))).toBe('verify');
+  });
+
   it('lỗi lạ/không phải ORPCError → stay', () => {
     expect(bookingCreateErrorAction(new Error('boom'))).toBe('stay');
   });

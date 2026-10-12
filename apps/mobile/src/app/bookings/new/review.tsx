@@ -60,10 +60,13 @@ export default function BookingReviewRoute() {
         router.push('/bookings/new/checkout');
       },
       onError: (submitError: unknown) => {
-        setError({
-          message: bookingSubmitErrorCopy(submitError),
-          action: bookingCreateErrorAction(submitError),
-        });
+        const action = bookingCreateErrorAction(submitError);
+        // Booking của draft không còn PENDING — B6 đọc lại rồi dẫn tới B8 hoặc báo hết hiệu lực.
+        if (action === 'verify') {
+          router.push('/bookings/new/verify');
+          return;
+        }
+        setError({ message: bookingSubmitErrorCopy(submitError), action });
       },
     };
 

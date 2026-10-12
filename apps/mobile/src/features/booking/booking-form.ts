@@ -117,11 +117,16 @@ export function bookingSubmitErrorCopy(error: unknown): string {
 }
 
 /**
- * Đường đi tiếp khi `bookings.create` lỗi (B9, mockup): BA trong bốn mã lỗi
- * đưa khách đi chỗ khác — `CHECKOUT_FAILED` (và mọi lỗi khác: 401/429/mạng)
- * rơi vào "giữ nguyên màn" vì màn chưa đổi gì để cần điều hướng đi.
+ * Đường đi tiếp khi Pay ở B4 lỗi (B9, mockup): BA trong bốn mã lỗi của
+ * `bookings.create` đưa khách đi chỗ khác — `CHECKOUT_FAILED` (và mọi lỗi khác:
+ * 401/429/mạng) rơi vào "giữ nguyên màn" vì màn chưa đổi gì để cần điều hướng đi.
+ *
+ * `NOT_PENDING` chỉ đến từ `bookings.checkout` (draft đã có booking, K1): booking
+ * đã đổi trạng thái ở nơi khác — trả xong mà webhook tới muộn, hoặc cron huỷ vì
+ * hết hạn. Gọi lại đúng lệnh đó chỉ lỗi lại mãi, nên sang B6 để đọc lại booking
+ * và dẫn đi đúng chỗ (PAID → B8, đã chết → báo hết hiệu lực).
  */
-export type BookingCreateErrorAction = 'goToDates' | 'goToTravellers' | 'stay';
+export type BookingCreateErrorAction = 'goToDates' | 'goToTravellers' | 'verify' | 'stay';
 
 export function bookingCreateErrorAction(error: unknown): BookingCreateErrorAction {
   if (error instanceof ORPCError) {
@@ -129,6 +134,7 @@ export function bookingCreateErrorAction(error: unknown): BookingCreateErrorActi
       return 'goToDates';
     }
     if (error.code === 'PARTY_TOO_LARGE') return 'goToTravellers';
+    if (error.code === 'NOT_PENDING') return 'verify';
   }
   return 'stay';
 }
