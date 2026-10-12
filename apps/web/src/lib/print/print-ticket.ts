@@ -48,14 +48,18 @@ export interface PrintTicketView {
   notice: string | null;
 }
 
+/** Một đoạn chữ của dải cuối: chữ thường, hay cụm in đậm giữa câu (`emphasize`). */
+export type PrintSegment = string | { strong: string };
+
 /**
- * Một cột của dải cuối. Cột thường: phần đậm (điểm hẹn) rồi phần thường, nối " · ". Cột mã đơn
- * (`reference`): mã mono ở dòng riêng, dòng phụ mờ bên dưới.
+ * Một cột của dải cuối. Cột thường: phần đậm (điểm hẹn) rồi phần thường, nối " · "; phần thường là
+ * dãy đoạn khi câu có cụm in đậm giữa câu. Cột mã đơn (`reference`): mã mono ở dòng riêng, dòng phụ
+ * mờ bên dưới.
  */
 export interface PrintColumn {
   heading: string;
   strong: string | null;
-  text: string | null;
+  text: string | PrintSegment[] | null;
   reference: boolean;
 }
 
@@ -133,8 +137,32 @@ export function capList<T>(
   return { items: items.slice(0, keep), more: more(items.length - keep) };
 }
 
-export function textColumn(heading: string, text: string): PrintColumn {
+export function textColumn(heading: string, text: string | PrintSegment[]): PrintColumn {
   return { heading, strong: null, text, reference: false };
+}
+
+/**
+ * Tách `text` thành đoạn, in đậm lần xuất hiện đầu của từng cụm trong `strong` — bản thảo B1 in đậm
+ * tên chỗ khách bấm (My bookings, Pay now) và giờ nhả đơn. Câu và cụm là hai khoá i18n riêng: cụm
+ * không có trong câu (hay rỗng) thì bỏ qua — câu vẫn in trọn, chỉ mất chữ đậm. Cụm chồng lên cụm
+ * đứng trước nó trong câu cũng bỏ.
+ */
+export function emphasize(text: string, strong: readonly string[]): PrintSegment[] {
+  const marks = strong
+    .filter((phrase) => phrase !== '')
+    .map((phrase) => ({ phrase, at: text.indexOf(phrase) }))
+    .filter((mark) => mark.at >= 0)
+    .sort((a, b) => a.at - b.at);
+  const segments: PrintSegment[] = [];
+  let pos = 0;
+  for (const { phrase, at } of marks) {
+    if (at < pos) continue;
+    if (at > pos) segments.push(text.slice(pos, at));
+    segments.push({ strong: phrase });
+    pos = at + phrase.length;
+  }
+  if (pos < text.length) segments.push(text.slice(pos));
+  return segments;
 }
 
 /** Cột "Booking reference": mã đơn và một dòng phụ tuỳ chọn ("Booked by …"). */

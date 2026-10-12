@@ -37,6 +37,26 @@ describe('PrintBand', () => {
     );
   });
 
+  // Bản thảo B1: tên chỗ khách bấm và giờ nhả in đậm ngay giữa câu (`emphasize`).
+  it('cột có cụm đậm giữa câu: cụm thành <b>, câu đọc liền', () => {
+    render(
+      <PrintBand
+        columns={[
+          {
+            ...POLICY,
+            heading: 'How to pay',
+            text: ['Open ', { strong: 'My bookings' }, ' and choose ', { strong: 'Pay now' }, '.'],
+          },
+        ]}
+      />,
+    );
+    expect(screen.getByText('My bookings').tagName).toBe('B');
+    expect(screen.getByText('Pay now').tagName).toBe('B');
+    expect(screen.getByText('My bookings').parentElement).toHaveTextContent(
+      'Open My bookings and choose Pay now.',
+    );
+  });
+
   // Điểm hẹn admin nhập dài tới 300 ký tự: cột ~60 mm thì tám dòng, đủ đẩy tờ quá một trang.
   it('cột có điểm hẹn kẹp bốn dòng; cột câu cố định đọc trọn', () => {
     render(<PrintBand columns={[MEET, POLICY]} />);

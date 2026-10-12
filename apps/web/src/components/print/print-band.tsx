@@ -1,7 +1,7 @@
 import { PRINT_LABEL } from '@tourism/ui/lib/print-styles';
 import { cn } from '@tourism/ui/lib/utils';
 import type { ReactNode } from 'react';
-import type { PrintColumn } from '@/lib/print/print-ticket';
+import type { PrintColumn, PrintSegment } from '@/lib/print/print-ticket';
 
 /** Lưới cột của dải: voucher 5b cho cột đầu (điểm hẹn) rộng hơn; hoá đơn B1 ba cột đều. */
 function gridCols(count: number, wideFirst: boolean): string {
@@ -33,6 +33,27 @@ function breakBeforeAt(text: string): ReactNode {
   );
 }
 
+/**
+ * Phần thường của một cột: chuỗi in nguyên; dãy đoạn thì cụm `{ strong }` thành chữ đậm giữa câu
+ * (bản thảo B1). Khoá của chữ đậm là vị trí ký tự của nó trong câu — duy nhất, không đổi giữa các lần
+ * render.
+ */
+function segments(text: string | PrintSegment[]): ReactNode {
+  if (typeof text === 'string') return text;
+  let offset = 0;
+  return text.map((part) => {
+    const at = offset;
+    offset += typeof part === 'string' ? part.length : part.strong.length;
+    return typeof part === 'string' ? (
+      part
+    ) : (
+      <b key={at} className="font-semibold">
+        {part.strong}
+      </b>
+    );
+  });
+}
+
 /** Dải cuối nền `paper` (5b, B1). Cột mã đơn in mã mono ở dòng riêng (`PrintColumn.reference`). */
 export function PrintBand({
   columns,
@@ -60,7 +81,9 @@ export function PrintBand({
               <p className="font-mono font-medium">{column.strong}</p>
               {column.text ? (
                 <p className="text-muted-foreground [overflow-wrap:anywhere]">
-                  {breakBeforeAt(column.text)}
+                  {typeof column.text === 'string'
+                    ? breakBeforeAt(column.text)
+                    : segments(column.text)}
                 </p>
               ) : null}
             </>
@@ -71,7 +94,7 @@ export function PrintBand({
             <p className={column.strong ? 'line-clamp-4' : undefined}>
               {column.strong ? <b className="font-semibold">{column.strong}</b> : null}
               {column.strong && column.text ? ' · ' : null}
-              {column.text}
+              {column.text ? segments(column.text) : null}
             </p>
           )}
         </div>

@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { makeBooking } from '@/test/fixtures/booking';
 import {
   capList,
+  emphasize,
   printPhoto,
   referenceColumn,
   stampTone,
@@ -85,6 +86,47 @@ describe('cột của dải cuối', () => {
       text: 'Booked by a@b.co',
       reference: true,
     });
+  });
+});
+
+// Bản thảo B1 in đậm tên chỗ khách bấm và giờ nhả đơn ngay giữa câu.
+describe('emphasize — cụm in đậm giữa câu của dải cuối', () => {
+  it('tách câu thành đoạn thường và đoạn đậm theo thứ tự trong câu, không theo thứ tự truyền vào', () => {
+    expect(
+      emphasize('Open My bookings on the site and choose Pay now.', ['Pay now', 'My bookings']),
+    ).toEqual([
+      'Open ',
+      { strong: 'My bookings' },
+      ' on the site and choose ',
+      { strong: 'Pay now' },
+      '.',
+    ]);
+  });
+
+  it('cụm ở đầu hay cuối câu: không đoạn rỗng', () => {
+    expect(emphasize('18:59, 9 Oct 2026', ['18:59, 9 Oct 2026'])).toEqual([
+      { strong: '18:59, 9 Oct 2026' },
+    ]);
+    expect(emphasize('Released at 18:59', ['18:59'])).toEqual([
+      'Released at ',
+      { strong: '18:59' },
+    ]);
+  });
+
+  // Câu và tên nút là hai khoá i18n riêng: đổi một bên thì câu vẫn in trọn, chỉ mất chữ đậm.
+  it('cụm không có trong câu, cụm rỗng: bỏ qua, câu in trọn', () => {
+    expect(emphasize('Open My bookings.', ['Pay now', ''])).toEqual(['Open My bookings.']);
+  });
+
+  it('chỉ in đậm lần xuất hiện đầu; cụm chồng lên cụm đứng trước thì bỏ', () => {
+    expect(emphasize('Pay now or Pay now later', ['Pay now'])).toEqual([
+      { strong: 'Pay now' },
+      ' or Pay now later',
+    ]);
+    expect(emphasize('Open My bookings', ['My bookings', 'bookings'])).toEqual([
+      'Open ',
+      { strong: 'My bookings' },
+    ]);
   });
 });
 

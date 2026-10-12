@@ -18,6 +18,7 @@ import { closedStubSentence, formatBookingMoney, pendingDeadline } from '@/lib/c
 import { formatChipDate, formatDate, formatWeekdayDate } from '@/lib/tours';
 import { tripPlace } from '@/lib/voucher';
 import {
+  emphasize,
   type PrintColumn,
   type PrintPhoto,
   type PrintTicketView,
@@ -80,6 +81,7 @@ export function receiptPrintView(booking: Booking, now: Date): ReceiptPrintView 
   const when = formatWeekdayDate(booking.departureStartDate, { year: true });
   const amount = formatBookingMoney(booking, booking.totalAmount);
   const reference = referenceColumn(booking.code, r.bookedBy(booking.contactEmail));
+  const releaseAt = `${deadlineTime}, ${formatDate(deadlineDay)}`;
 
   return {
     photo: printPhoto(booking.tourImage),
@@ -139,8 +141,15 @@ export function receiptPrintView(booking: Booking, now: Date): ReceiptPrintView 
     band:
       state === 'pending'
         ? [
-            textColumn(r.howToPay, `${r.howToPayBody} ${messages.tourDetail.booking.testMode}`),
-            textColumn(r.ifUnpaid, r.releasedAt(`${deadlineTime}, ${formatDate(deadlineDay)}`)),
+            // Bản thảo B1 in đậm tên chỗ khách bấm — tên menu và tên nút thật của web — và giờ nhả.
+            textColumn(
+              r.howToPay,
+              emphasize(`${r.howToPayBody} ${messages.tourDetail.booking.testMode}`, [
+                messages.booking.list.menuLink,
+                messages.accountBookingDetail.actions.payNow,
+              ]),
+            ),
+            textColumn(r.ifUnpaid, emphasize(r.releasedAt(releaseAt), [releaseAt])),
             reference,
           ]
         : [

@@ -2,9 +2,22 @@ import type { BookingDetail } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
 import { describe, expect, it } from 'vitest';
 import { makeBooking } from '@/test/fixtures/booking';
+import type { PrintColumn } from './print-ticket';
 import { receiptPrintView } from './receipt-print';
 
 const r = messages.printDoc.receipt;
+
+/** Chữ của cả cột, nối các đoạn — câu đọc được như khách thấy trên giấy. */
+const plain = (text: PrintColumn['text'] | undefined) =>
+  typeof text === 'string'
+    ? text
+    : (text ?? []).map((part) => (typeof part === 'string' ? part : part.strong)).join('');
+
+/** Các cụm in đậm giữa câu của cột. */
+const bold = (text: PrintColumn['text'] | undefined) =>
+  Array.isArray(text)
+    ? text.flatMap((part) => (typeof part === 'string' ? [] : [part.strong]))
+    : [];
 
 /** Đơn của bản thảo B1: đặt 17:59 giờ Việt Nam 9/10, Hội An một ngày 29/10, 1 người lớn × $39. */
 const pending = (overrides: Partial<BookingDetail> = {}) =>
@@ -75,26 +88,31 @@ describe('receiptPrintView — đơn đang chờ trả', () => {
   });
 
   it('dải: How to pay kèm test mode, giờ nhả (giờ trước, ngày sau), mã và người đặt', () => {
-    expect(v.band).toEqual([
-      {
-        heading: r.howToPay,
-        strong: null,
-        text: `${r.howToPayBody} ${messages.tourDetail.booking.testMode}`,
-        reference: false,
-      },
-      {
-        heading: r.ifUnpaid,
-        strong: null,
-        text: r.releasedAt('18:59, 9 Oct 2026'),
-        reference: false,
-      },
-      {
-        heading: messages.booking.success.refLabel,
-        strong: 'BK-EET0JBTH',
-        text: r.bookedBy('nora.dahl@example.com'),
-        reference: true,
-      },
+    expect(v.band.map((c) => c.heading)).toEqual([
+      r.howToPay,
+      r.ifUnpaid,
+      messages.booking.success.refLabel,
     ]);
+    expect(plain(v.band[0]?.text)).toBe(
+      `${r.howToPayBody} ${messages.tourDetail.booking.testMode}`,
+    );
+    expect(plain(v.band[1]?.text)).toBe(r.releasedAt('18:59, 9 Oct 2026'));
+    expect(v.band[2]).toEqual({
+      heading: messages.booking.success.refLabel,
+      strong: 'BK-EET0JBTH',
+      text: r.bookedBy('nora.dahl@example.com'),
+      reference: true,
+    });
+  });
+
+  // Bản thảo B1 in đậm tên chỗ khách bấm và giờ nhả. Câu và tên menu, tên nút là các khoá i18n riêng:
+  // đổi một bên mà quên bên kia thì chữ đậm biến mất — ca này canh điều đó.
+  it('dải: in đậm My bookings, Pay now và giờ nhả như bản thảo B1', () => {
+    expect(bold(v.band[0]?.text)).toEqual([
+      messages.booking.list.menuLink,
+      messages.accountBookingDetail.actions.payNow,
+    ]);
+    expect(bold(v.band[1]?.text)).toEqual(['18:59, 9 Oct 2026']);
   });
 
   it('quá mốc mà cron chưa quét: vẫn đang chờ (API còn nhận trả — quyết định 18)', () => {
@@ -199,6 +217,7 @@ describe('receiptPrintView — hạn trả kẹp theo hạn chót', () => {
       new Date('2026-10-28T16:40:00.000Z'),
     );
     expect(v.ticket.stub.footer).toEqual({ label: r.payBy, value: '23:59 · 28 Oct' });
-    expect(v.band[1]?.text).toBe(r.releasedAt('23:59, 28 Oct 2026'));
+    expect(plain(v.band[1]?.text)).toBe(r.releasedAt('23:59, 28 Oct 2026'));
+    expect(bold(v.band[1]?.text)).toEqual(['23:59, 28 Oct 2026']);
   });
 });
