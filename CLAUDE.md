@@ -147,13 +147,13 @@ pnpm lint:fix                    # biome tự sửa format + lint
 ## Gotchas
 
 - **Máy dev chạy Windows native từ 14/09/2026** (dựng lại sau reset máy; trước
-  đó repo nằm trong WSL ext4 `~/projects/tourism-v2`). Repo ở
-  `C:\Programming\Devs\Projects\Tourism-Platform-V2`, Node **24** LTS ở
-  `C:\Programming\Node.JS` — khớp `node-version: 24` của CI và `node:24-alpine`
+  đó repo nằm trong WSL ext4 `~/projects/tourism-v2`; cài lại Windows 12/10/2026
+  nên đường dẫn đổi). Repo ở `C:\Devs\Projects\Tourism-Platform-V2`, Node **24**
+  LTS ở `C:\Devs\nodejs` — khớp `node-version: 24` của CI và `node:24-alpine`
   của Dockerfile. Quay lại WSL thì luật cũ vẫn giữ: repo trên ext4, không bao
   giờ làm việc qua `/mnt/c`. Bốn bẫy riêng của Windows:
   1. **pnpm phải chạy script bằng Git Bash:**
-     `pnpm config set script-shell "C:\Programming\Git\bin\bash.exe"` — cấu hình
+     `pnpm config set script-shell "C:\Devs\Git\bin\bash.exe"` — cấu hình
      cấp user, KHÔNG đặt trong repo (CI là Linux). Mặc định pnpm dùng cmd.exe:
      không có `sh` trên PATH nên `ci:wait` chết, và cmd không bóc quote đơn nên
      `--ignore '**/*.spec.ts'` ở `build`/`db:seed` của api mất tác dụng.
