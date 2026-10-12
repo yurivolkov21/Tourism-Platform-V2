@@ -1,10 +1,15 @@
 import { messages } from '@tourism/i18n';
 import { ButtonLink } from '@tourism/ui/components/button-link';
+import { cookies } from 'next/headers';
+import { redirect } from 'next/navigation';
 import { connection } from 'next/server';
 import { Suspense } from 'react';
 import { LoginForm } from '@/components/auth/login-form';
 import { LoginWaves } from '@/components/auth/login-waves';
 import { Logo } from '@/components/logo';
+import { loginDestination } from '@/lib/admin-gate';
+import { getServerSession } from '@/lib/api/session';
+import { SESSION_COOKIE_NAMES } from '@/lib/session-cookie';
 import { SITE_URL } from '@/lib/site';
 
 const t = messages.admin.login;
@@ -20,7 +25,11 @@ const t = messages.admin.login;
  * bỏ social login + "Create an account" (admin không có hai flow đó) — pill
  * header + footer card thay bằng đường về site khách.
  */
-export default async function LoginPage() {
+export default async function LoginPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}) {
   // Ép render ĐỘNG (W3-H2, guide CSP của Next §Forcing dynamic rendering):
   // trang này vốn bị prerender TĨNH lúc build — HTML tĩnh không có nonce
   // trong khi CSP admin là nonce + strict-dynamic, tức MỌI script của trang
@@ -28,6 +37,14 @@ export default async function LoginPage() {
   // vì dev luôn render động — đúng lớp "hỏng prod im lặng" spec W3 §6 cảnh
   // báo. Admin không có gì để mất từ SSG.
   await connection();
+  // Đã có phiên ADMIN thì đi thẳng tới đích thay vì bắt điền form — link mã đơn mở từ Excel tới đây
+  // với phiên còn nguyên (review max G40 Phần 3, xem `loginDestination`). Chỉ hỏi API khi CÓ cookie
+  // phiên: người chưa đăng nhập thấy form ngay, không chờ một vòng hỏi API.
+  const jar = await cookies();
+  if (SESSION_COOKIE_NAMES.some((name) => jar.has(name))) {
+    const destination = loginDestination(await getServerSession(), (await searchParams).redirect);
+    if (destination !== null) redirect(destination);
+  }
   return (
     <main className="relative flex min-h-svh w-full flex-col overflow-hidden bg-background">
       {/* Nền GradientWaves (React Bits, WebGL) — màu token, mức BOLD user chấm. */}

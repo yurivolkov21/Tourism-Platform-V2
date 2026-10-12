@@ -1,3 +1,5 @@
+import { safeRedirect } from './safe-redirect';
+
 /**
  * Cổng admin (spec P4a §2, ADR-0026 §2) — hàm THUẦN quyết định cho cả
  * proxy lẫn layout: session × role × path → allow / login / deny.
@@ -30,4 +32,20 @@ export function decideAdminAccess(session: GateSession | null, path: string): Ga
   if (!session) return { kind: 'login', redirectTo: path };
   if (session.role !== 'ADMIN') return { kind: 'deny' };
   return { kind: 'allow' };
+}
+
+/**
+ * Đích của trang login khi người vào ĐÃ có phiên (review max G40 Phần 3): phiên ADMIN thì đi thẳng tới
+ * `?redirect=` (qua `safeRedirect`, cùng luật với form), còn lại `null` = hiện form. Phiên không phải
+ * ADMIN vẫn thấy form — đó là lối đăng nhập lại bằng tài khoản admin.
+ *
+ * Vì sao cần: link mã đơn trong file Excel. Office tự tải URL trước khi mở trình duyệt, KHÔNG mang
+ * cookie của trình duyệt, nên proxy trả về `/login?redirect=…` và trình duyệt mở đúng URL login ấy —
+ * admin đang đăng nhập vẫn bị bắt điền form. Đích là chính trang login thì về trang chủ, không vòng lặp.
+ */
+export function loginDestination(session: GateSession | null, rawRedirect: unknown): string | null {
+  if (session?.role !== 'ADMIN') return null;
+  const target = safeRedirect(rawRedirect);
+  const path = target.split(/[?#]/, 1)[0] ?? target;
+  return path === '/login' || path.startsWith('/login/') ? '/' : target;
 }

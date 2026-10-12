@@ -2,6 +2,7 @@ import { type NextRequest, NextResponse } from 'next/server';
 import { decideAdminAccess } from '@/lib/admin-gate';
 import { browserApiOrigin } from '@/lib/api/env';
 import { buildSecurityHeaders } from '@/lib/security-headers';
+import { SESSION_COOKIE_NAMES } from '@/lib/session-cookie';
 
 /**
  * Chặn sớm TOÀN BỘ admin cho khách chưa đăng nhập (spec P4a §2). Tầng này
@@ -23,11 +24,6 @@ import { buildSecurityHeaders } from '@/lib/security-headers';
  * chính nó lúc SSR — nếp guide "Content Security Policy") LẪN response
  * header (thứ browser thực thi). Thiếu một bên là trắng trang.
  */
-const SESSION_COOKIE_NAMES = [
-  'better-auth.session_token',
-  '__Secure-better-auth.session_token',
-] as const;
-
 export function proxy(request: NextRequest) {
   const path = request.nextUrl.pathname;
   const hasSession = SESSION_COOKIE_NAMES.some((name) => request.cookies.has(name));

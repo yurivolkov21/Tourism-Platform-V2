@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { decideAdminAccess } from './admin-gate';
+import { decideAdminAccess, loginDestination } from './admin-gate';
 
 // Ma trận quyết định cổng admin (spec P4a §2): session × role × path.
 // Hàm THUẦN — proxy/layout chỉ là người thi hành, mọi nhánh quyết ở đây.
@@ -48,5 +48,41 @@ describe('decideAdminAccess', () => {
 
   it('chỉ đúng path icon mới public — path trùng tiền tố như /icons vẫn phải đăng nhập', () => {
     expect(decideAdminAccess(null, '/icons')).toEqual({ kind: 'login', redirectTo: '/icons' });
+  });
+});
+
+// Link mã đơn trong file Excel (review max G40 Phần 3): Office tự tải URL trước, KHÔNG mang cookie
+// của trình duyệt, nên proxy trả `/login?redirect=…` và trình duyệt mở đúng URL login ấy — dù admin
+// đang đăng nhập. Trang login hỏi hàm này: có phiên ADMIN thì đi thẳng tới đích.
+describe('loginDestination', () => {
+  it('phiên ADMIN → đích trong ?redirect=, giữ cả query bộ lọc', () => {
+    expect(loginDestination({ role: 'ADMIN' }, '/bookings/BK-ABCD1234')).toBe(
+      '/bookings/BK-ABCD1234',
+    );
+    expect(loginDestination({ role: 'ADMIN' }, '/bookings?status=PAID&page=2')).toBe(
+      '/bookings?status=PAID&page=2',
+    );
+  });
+
+  it('chưa đăng nhập hoặc không phải ADMIN → null: hiện form để đăng nhập bằng tài khoản admin', () => {
+    expect(loginDestination(null, '/bookings')).toBeNull();
+    expect(loginDestination({ role: 'CUSTOMER' }, '/bookings')).toBeNull();
+    expect(loginDestination({ role: '' }, '/bookings')).toBeNull();
+  });
+
+  it('đích thiếu, lặp hoặc không an toàn → trang chủ, cùng luật safeRedirect với form', () => {
+    expect(loginDestination({ role: 'ADMIN' }, undefined)).toBe('/');
+    expect(loginDestination({ role: 'ADMIN' }, ['/bookings', '/outbox'])).toBe('/');
+    expect(loginDestination({ role: 'ADMIN' }, 'https://evil.example/x')).toBe('/');
+    expect(loginDestination({ role: 'ADMIN' }, '//evil.example/x')).toBe('/');
+  });
+
+  it('đích là chính trang login → trang chủ, không vòng lặp redirect', () => {
+    expect(loginDestination({ role: 'ADMIN' }, '/login')).toBe('/');
+    expect(loginDestination({ role: 'ADMIN' }, '/login?redirect=%2Flogin')).toBe('/');
+    expect(loginDestination({ role: 'ADMIN' }, '/login/')).toBe('/');
+    expect(loginDestination({ role: 'ADMIN' }, '/login#form')).toBe('/');
+    // Chỉ đúng trang login — path trùng tiền tố vẫn là đích hợp lệ.
+    expect(loginDestination({ role: 'ADMIN' }, '/logins')).toBe('/logins');
   });
 });
