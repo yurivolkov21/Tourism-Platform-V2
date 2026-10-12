@@ -8,6 +8,22 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-10-12 — Thử tay G40 Phần 2 trên production: in `/reports` tháng 9 và tháng 10 đạt
+
+**Thử tay** (spec §10 bước 4, sau push `c0dbb6e8`: Actions xanh 9m15s, Vercel web và admin deploy
+xong; Render không xem được từ session cloud, nhánh không đổi API): user in `/reports` trên admin
+production cho tháng 9 và tháng 10, báo kết quả đúng như mong đợi. User đã xoá nhánh
+`claude/g40-part2-report-print` trên origin.
+
+Push `c0dbb6e8` làm run CI của `9877e518` (merge Phần 3) bị huỷ giữa chừng vì `cancel-in-progress`;
+bước build, typecheck, test của run đó đã xanh, và run của `c0dbb6e8` gồm trọn commit Phần 3 cũng
+xanh.
+
+**CÒN TREO:**
+
+- Nhánh sao lưu `backup/g40-tam-dung-2026-10-10`: ba phần G40 đã lên main, user quyết giữ hay xoá.
+- Docs, không đổi mã; không migration, không env.
+
 ## 2026-10-12 — Merge G40 Phần 2 lên main: bản in báo cáo tháng C2 ở `/reports` (`bbb4f3a6`..`e1c3f8c8`)
 
 Bấm Print hay Ctrl+P ở `/reports` nay ra tờ A4 C2 thiết kế riêng thay vì trang màn hình đem in:
