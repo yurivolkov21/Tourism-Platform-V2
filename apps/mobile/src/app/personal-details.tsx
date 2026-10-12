@@ -1,5 +1,6 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { messages } from '@tourism/i18n';
+import { router } from 'expo-router';
 import { useState } from 'react';
 import { submitDeleteAccount } from '@/features/account/delete-account-flow';
 import { DeleteAccountSheet } from '@/features/account/delete-account-sheet';
