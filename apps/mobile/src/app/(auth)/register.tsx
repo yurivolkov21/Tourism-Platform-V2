@@ -2,7 +2,7 @@ import { router } from 'expo-router';
 import { useState } from 'react';
 import { useAuthActions } from '@/features/auth/auth-actions';
 import { submitGoogle } from '@/features/auth/google-flow';
-import { leaveAuthTo } from '@/features/auth/leave-auth';
+import { leaveAuthTo, useStillMounted } from '@/features/auth/leave-auth';
 import { submitRegister } from '@/features/auth/register-flow';
 import {
   type RegisterField,
@@ -23,6 +23,7 @@ export default function RegisterRoute() {
   const [formMessage, setFormMessage] = useState<RegisterScreenProps['formMessage']>(null);
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [pending, setPending] = useState(false);
+  const mounted = useStillMounted();
 
   const change = (field: RegisterField, value: string) => {
     setValues((prev) => ({ ...prev, [field]: value }));
@@ -57,7 +58,7 @@ export default function RegisterRoute() {
     const outcome = await submitGoogle(actions, 'register');
     // R7: xong thì giữ `pending` — xem `login.tsx`.
     if (outcome.kind === 'success') {
-      leaveAuthTo(router, consumeReturnPath());
+      leaveAuthTo(router, consumeReturnPath(), mounted.current);
       return;
     }
     setPending(false);

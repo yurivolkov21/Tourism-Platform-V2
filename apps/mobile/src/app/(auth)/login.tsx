@@ -2,7 +2,7 @@ import { router } from 'expo-router';
 import { useState } from 'react';
 import { useAuthActions } from '@/features/auth/auth-actions';
 import { submitGoogle } from '@/features/auth/google-flow';
-import { leaveAuthTo } from '@/features/auth/leave-auth';
+import { leaveAuthTo, useStillMounted } from '@/features/auth/leave-auth';
 import { clearPendingReturn, consumeReturnPath, peekReturnPath } from '@/features/auth/return-to';
 import { submitSignIn } from '@/features/auth/sign-in-flow';
 import {
@@ -25,6 +25,7 @@ export default function LoginRoute() {
   const [fieldErrors, setFieldErrors] = useState<Partial<Record<SignInField, string>>>({});
   const [formMessage, setFormMessage] = useState<SignInScreenProps['formMessage']>(null);
   const [pending, setPending] = useState(false);
+  const mounted = useStillMounted();
 
   // Gõ lại vào ô nào thì xoá lỗi của ô đó, và xoá luôn khung lỗi cấp form: câu
   // lỗi cũ nói về lần gửi cũ, giữ lại là nói sai.
@@ -44,7 +45,7 @@ export default function LoginRoute() {
     // R7: xong thì GIỮ `pending` — màn còn nhận chạm trong lúc modal trượt đi,
     // lượt bấm thứ hai sẽ đọc return-to đã rỗng và đưa khách về Home.
     if (outcome.kind === 'success') {
-      leaveAuthTo(router, consumeReturnPath());
+      leaveAuthTo(router, consumeReturnPath(), mounted.current);
       return;
     }
     setPending(false);
@@ -71,7 +72,7 @@ export default function LoginRoute() {
     const outcome = await submitGoogle(actions, 'signIn');
     // R7: cùng lý do ở `submit` — xong thì giữ `pending` tới khi màn gỡ hẳn.
     if (outcome.kind === 'success') {
-      leaveAuthTo(router, consumeReturnPath());
+      leaveAuthTo(router, consumeReturnPath(), mounted.current);
       return;
     }
     setPending(false);
@@ -97,10 +98,11 @@ export default function LoginRoute() {
         // D3: đóng về ĐÚNG chỗ khách mở Sign in (tour, Saved, Account…) thay
         // vì luôn văng về Home. `peek` chứ không `consume` — consume là coi
         // như đăng nhập xong, sẽ giữ lại replay tự-lưu-tim dù khách bỏ dở.
-        // `leaveAuthTo` gỡ modal về màn đang nằm dưới.
+        // `leaveAuthTo` gỡ modal về màn đang nằm dưới; bấm được X là màn
+        // còn trên stack.
         const back = peekReturnPath();
         clearPendingReturn();
-        leaveAuthTo(router, back);
+        leaveAuthTo(router, back, true);
       }}
     />
   );
