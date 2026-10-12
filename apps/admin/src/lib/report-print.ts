@@ -27,7 +27,7 @@ import { formatCount } from './stats-view';
 const t = messages.admin.reports;
 
 /** Dấu trừ thật (U+2212) của nhãn ngắn, như bản thảo — gạch nối ASCII trông như dấu gạch. */
-const MINUS = '−';
+const MINUS = '\u2212';
 
 // ── Định dạng tiền ──────────────────────────────────────────────────────────
 
@@ -183,6 +183,8 @@ export interface WaterfallView {
   connectors: readonly { x1: number; x2: number; y: number }[];
   /** Vạch lưới tăng dần theo giá trị; `base` là trục 0 (nét mực). */
   grid: readonly { y: number; label: string; base: boolean }[];
+  /** Hai đầu của vạch lưới; nhãn trục canh phải ở đầu sau. */
+  gridX: readonly [number, number];
   /** Hai chân chữ của nhãn hạng mục dưới trục. */
   categoryY: readonly [number, number];
   /** `aria-label` của SVG. */
@@ -338,6 +340,7 @@ export function waterfallView(report: AdminMonthlyReport): WaterfallView | null 
       label: axisMoney(value, report.currency),
       base: value === 0,
     })),
+    gridX: [WF.left, WF.width - WF.right],
     categoryY: CATEGORY_Y,
     label: t.printDoc.waterfallLabel(formatMonthLabel(report.month)),
   };

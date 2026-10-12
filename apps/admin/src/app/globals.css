@@ -42,10 +42,17 @@
  * duyệt kể từ 2023; trang `login`/`not-authorized` không mang thuộc tính nên
  * `body:has()` không khớp — ngoại lệ vẫn tự động, không cần danh sách.
  *
+ * Selector thứ ba `[data-admin-surface] [data-print-doc]` (G40 Phần 2): tờ in
+ * báo cáo tháng mang class `light` của `DocPage` (giấy luôn sáng, ADR-0057 §5),
+ * mà `.light` đặt lại mọi màu về palette WEB — chữ, chữ phụ, nét kẻ của tờ sẽ
+ * ngả hue 174 trong khi bản thảo C2 và file Excel dùng đúng bộ trung tính admin
+ * dưới đây. Specificity 0,2,0 thắng `.light` 0,1,0.
+ *
  * Mọi con số dưới đây đã đo, bảng đầy đủ ở ADR-0027 §Số đo.
  */
 [data-admin-surface],
-body:has([data-admin-surface]) {
+body:has([data-admin-surface]),
+[data-admin-surface] [data-print-doc] {
   /* Ruột: trung tính lạnh hue 250. Điểm trắng thật nằm ở `--card`. */
   --background: oklch(0.995 0.0015 250);
   --foreground: oklch(0.262 0.014 250);
@@ -122,9 +129,13 @@ body:has([data-admin-surface]) {
 }
 
 /* ── Bản in (spec P4b §3-F6) ────────────────────────────────────────────────
- * "Xuất PDF" của trang /reports chính là Print của trình duyệt — đường
- * 0-dependency user chốt 31/08 (không thêm thư viện PDF nào trước freeze
- * 15/10). Nên bản in phải tự đứng vững, không phải một ảnh chụp màn hình.
+ * Khối in CHUNG cho mọi trang admin in thẳng nội dung màn hình. Trang có tài
+ * liệu in riêng (`[data-print-doc]` — từ G40 Phần 2 là `/reports`, ADR-0057)
+ * không nhận khối này: mọi luật dưới đây (trừ biến mực và `@page`) mang tiền tố
+ * `:root:not(:has([data-print-doc]))`, vì `!important` của chúng sẽ tô đen chữ
+ * phụ, nét bảng và viền ô số của tờ in. Thêm luật mới thì giữ tiền tố — test
+ * `lib/admin-print-css.spec.ts` canh. Tờ in tự cô lập bằng CSS chung của
+ * `@tourism/ui`.
  *
  * NGOẠI LỆ CÓ CHỦ ĐÍCH với luật tokens-only (CLAUDE.md #6), giới hạn TRONG
  * đúng khối này: bản in không có theme. Token màu đi theo theme đang bật trên
@@ -146,28 +157,28 @@ body:has([data-admin-surface]) {
 
   /* Khung điều hướng không đi theo tờ giấy: sidebar, topbar, và mọi thứ tự
    * khai `print:hidden` (thanh chọn tháng + hai nút của /reports). */
-  [data-slot="sidebar"],
-  [data-slot="sidebar-inset"] > header {
+  :root:not(:has([data-print-doc])) [data-slot="sidebar"],
+  :root:not(:has([data-print-doc])) [data-slot="sidebar-inset"] > header {
     display: none !important;
   }
 
   /* Inset của block dashboard-01 mang margin/bo góc/đổ bóng cho màn hình. */
-  [data-slot="sidebar-inset"] {
+  :root:not(:has([data-print-doc])) [data-slot="sidebar-inset"] {
     margin: 0 !important;
     border-radius: 0 !important;
     box-shadow: none !important;
   }
 
-  html,
-  body,
-  [data-slot="sidebar-inset"] {
+  :root:not(:has([data-print-doc])),
+  :root:not(:has([data-print-doc])) body,
+  :root:not(:has([data-print-doc])) [data-slot="sidebar-inset"] {
     background: var(--print-paper) !important;
     color: var(--print-ink) !important;
   }
 
   /* Card của hàng stat: gradient + bóng chỉ có nghĩa trên màn hình; trên giấy
    * cái giữ được ranh giới là một đường viền thật. */
-  [data-slot="card"] {
+  :root:not(:has([data-print-doc])) [data-slot="card"] {
     background: var(--print-paper) !important;
     background-image: none !important;
     box-shadow: none !important;
@@ -176,9 +187,9 @@ body:has([data-admin-surface]) {
 
   /* Nền xám của hàng tiêu đề bảng không in ra (trình duyệt bỏ nền) — đường kẻ
    * mới là thứ giữ cột thẳng hàng trên giấy. */
-  table,
-  th,
-  td {
+  :root:not(:has([data-print-doc])) table,
+  :root:not(:has([data-print-doc])) th,
+  :root:not(:has([data-print-doc])) td {
     background: var(--print-paper) !important;
     color: var(--print-ink) !important;
     border-color: var(--print-ink) !important;
@@ -186,14 +197,14 @@ body:has([data-admin-surface]) {
 
   /* Chữ phụ (`text-muted-foreground`) là màu nhạt có chủ đích trên màn hình;
    * in ra sẽ mờ tới mức không đọc được. Trên giấy nó vẫn là chữ. */
-  .text-muted-foreground {
+  :root:not(:has([data-print-doc])) .text-muted-foreground {
     color: var(--print-ink) !important;
   }
 
   /* Không cắt một card hay một bảng làm đôi qua hai trang giấy. */
-  [data-slot="card"],
-  table,
-  section {
+  :root:not(:has([data-print-doc])) [data-slot="card"],
+  :root:not(:has([data-print-doc])) table,
+  :root:not(:has([data-print-doc])) section {
     break-inside: avoid;
   }
 }

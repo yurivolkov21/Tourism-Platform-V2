@@ -1,6 +1,6 @@
-import type { AdminMonthlyReport } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
 import { describe, expect, it } from 'vitest';
+import { emptyMonthReport, lossMonthReport, septemberReport } from '@/test/monthly-report';
 import {
   accountingAmount,
   axisMoney,
@@ -13,79 +13,10 @@ import {
 
 /**
  * Bản in báo cáo tháng C2 (G40 Phần 2, spec 2026-10-10 §5) — view-model THUẦN: chữ, số và hình học
- * của tờ in đều test ở đây; component chỉ vẽ.
- *
- * Số của tháng 9 lấy theo bản thảo C2 (`print-report.src.html`), thuế tính đúng công thức của API:
- * `max(0, grossProfit) × rate / (1 + rate)`.
+ * của tờ in đều test ở đây; component chỉ vẽ. Báo cáo mẫu ở `@/test/monthly-report`.
  */
-const september: AdminMonthlyReport = {
-  month: '2026-09',
-  from: '2026-09-01T00:00:00.000Z',
-  to: '2026-10-01T00:00:00.000Z',
-  generatedAt: '2026-10-10T02:30:00.000Z',
-  currency: 'USD',
-  revenue: '31543.39',
-  paidBookings: 70,
-  newBookings: 71,
-  bookingsByStatus: [
-    { status: 'PENDING', count: 0 },
-    { status: 'PAID', count: 65 },
-    { status: 'CANCELLED', count: 6 },
-    { status: 'REFUNDED', count: 0 },
-    { status: 'PARTIALLY_REFUNDED', count: 0 },
-  ],
-  refundedTotal: '1826.00',
-  refunds: 6,
-  cancellationsWithinDeadline: 4,
-  cancellationsAfterDeadline: 2,
-  reviewsApproved: 10,
-  recognizedThrough: '2026-09-30',
-  recognizedRevenue: '39607.80',
-  cogsVariable: '25737.54',
-  cogsFixed: '3952.00',
-  cogsTotal: '29689.54',
-  grossProfit: '9918.26',
-  grossMarginPct: 0.2504,
-  taxRate: 0.1,
-  taxAmount: '901.66',
-  paymentFees: '935.76',
-  netProfit: '8080.84',
-  departuresRun: 15,
-  costDataMissing: 0,
-  departuresCostMissing: 0,
-};
-
-/** Tháng lỗ: giá vốn vượt doanh thu ghi nhận — lãi gộp và lãi ròng âm, thuế bằng 0. */
-const lossMonth: AdminMonthlyReport = {
-  ...september,
-  recognizedRevenue: '5000.00',
-  cogsVariable: '4000.00',
-  cogsFixed: '2000.00',
-  cogsTotal: '6000.00',
-  grossProfit: '-1000.00',
-  grossMarginPct: -0.2,
-  taxAmount: '0.00',
-  paymentFees: '150.00',
-  netProfit: '-1150.00',
-};
-
-/** Tháng chưa có chuyến nào kết thúc: bảy giá trị của thác nước đều 0. */
-const emptyMonth: AdminMonthlyReport = {
-  ...september,
-  recognizedThrough: null,
-  recognizedRevenue: '0.00',
-  cogsVariable: '0.00',
-  cogsFixed: '0.00',
-  cogsTotal: '0.00',
-  grossProfit: '0.00',
-  grossMarginPct: null,
-  taxAmount: '0.00',
-  paymentFees: '0.00',
-  netProfit: '0.00',
-  departuresRun: 0,
-};
-
-const MINUS = '−';
+/** Dấu trừ thật U+2212 của nhãn ngắn — không phải gạch nối ASCII. */
+const MINUS = '\u2212';
 
 describe('shortMoney — nhãn ngắn ở đầu cột thác nước', () => {
   it('dưới 1,000 in số tròn; từ 1,000 in nghìn một số lẻ; số âm dùng dấu trừ thật', () => {
@@ -161,7 +92,7 @@ describe('niceTicks — vạch lưới tròn', () => {
 });
 
 describe('waterfallView — hình học thác nước', () => {
-  const view = waterfallView(september);
+  const view = waterfallView(septemberReport);
   if (!view) throw new Error('tháng 9 phải có thác nước');
   const bar = (key: string) => {
     const found = view.bars.find((b) => b.key === key);
@@ -226,6 +157,7 @@ describe('waterfallView — hình học thác nước', () => {
       ['$40k', false],
     ]);
     expect(view.grid[0]?.y).toBeCloseTo(194, 2);
+    expect(view.gridX).toEqual([6, 474]);
     expect(view.grid[2]?.y).toBeCloseTo(y(40000), 2);
   });
 
@@ -244,7 +176,7 @@ describe('waterfallView — hình học thác nước', () => {
   });
 
   it('tháng lỗ: cột tổng âm đi dưới trục 0, tông cost, nhãn dưới có dấu trừ', () => {
-    const loss = waterfallView(lossMonth);
+    const loss = waterfallView(lossMonthReport);
     if (!loss) throw new Error('tháng lỗ phải có thác nước');
     const gross = loss.bars.find((b) => b.key === 'grossProfit');
     const net = loss.bars.find((b) => b.key === 'netProfit');
@@ -258,20 +190,20 @@ describe('waterfallView — hình học thác nước', () => {
   });
 
   it('nhãn dưới không bao giờ chạm hàng nhãn hạng mục (chân chữ ≤ 198)', () => {
-    for (const report of [september, lossMonth]) {
+    for (const report of [septemberReport, lossMonthReport]) {
       const v = waterfallView(report);
       for (const b of v?.bars ?? []) {
         if (b.label.y > b.bottom) expect(b.label.y).toBeLessThanOrEqual(198 + 1e-9);
       }
     }
     // Lãi ròng sát 0: đáy cột phí gần trục, tỉ lệ phải co lại cho nhãn của nó.
-    const thin = waterfallView({ ...september, paymentFees: '9006.60', netProfit: '10.00' });
+    const thin = waterfallView({ ...septemberReport, paymentFees: '9006.60', netProfit: '10.00' });
     const fees = thin?.bars.find((b) => b.key === 'paymentFees');
     expect(fees?.label.y).toBeLessThanOrEqual(198 + 1e-9);
   });
 
   it('cột bằng 0 vẫn thấy được: cao 1.5, nhãn $0, vẫn treo ở mức đang chạy', () => {
-    const loss = waterfallView(lossMonth);
+    const loss = waterfallView(lossMonthReport);
     const gross = loss?.bars.find((b) => b.key === 'grossProfit');
     const tax = loss?.bars.find((b) => b.key === 'taxAmount');
     expect((tax?.bottom ?? 0) - (tax?.top ?? 0)).toBeCloseTo(1.5, 2);
@@ -279,7 +211,7 @@ describe('waterfallView — hình học thác nước', () => {
     expect(tax?.label.text).toBe('$0');
     // Cột tổng bằng 0 nới LÊN: chân vẫn bám trục.
     const flat = waterfallView({
-      ...lossMonth,
+      ...lossMonthReport,
       recognizedRevenue: '0.00',
       cogsVariable: '6000.00',
     });
@@ -289,13 +221,13 @@ describe('waterfallView — hình học thác nước', () => {
   });
 
   it('cả bảy giá trị bằng 0 thì không vẽ', () => {
-    expect(waterfallView(emptyMonth)).toBeNull();
+    expect(waterfallView(emptyMonthReport)).toBeNull();
   });
 });
 
 describe('statusBarView — thanh 100% trạng thái', () => {
   it('chỉ trạng thái khác 0, theo thứ tự Paid trước Cancelled cuối; rộng cộng khe đúng 600', () => {
-    const bar = statusBarView(september);
+    const bar = statusBarView(septemberReport);
     expect(bar?.segments.map((s) => [s.status, s.tone])).toEqual([
       ['PAID', 'gain'],
       ['CANCELLED', 'cost'],
@@ -309,7 +241,7 @@ describe('statusBarView — thanh 100% trạng thái', () => {
 
   it('đủ năm trạng thái: thứ tự và tông cố định, không theo thứ tự của API', () => {
     const bar = statusBarView({
-      ...september,
+      ...septemberReport,
       newBookings: 400,
       bookingsByStatus: [
         { status: 'PENDING', count: 20 },
@@ -337,12 +269,12 @@ describe('statusBarView — thanh 100% trạng thái', () => {
   });
 
   it('chú thích tháng 9: phần trăm làm tròn số nguyên', () => {
-    expect(statusBarView(september)?.legend.map((l) => l.share)).toEqual(['92%', '8%']);
+    expect(statusBarView(septemberReport)?.legend.map((l) => l.share)).toEqual(['92%', '8%']);
   });
 
   it('chưa đủ trăm mà tròn ra 100 thì ">99%" — không để "100%" đứng cạnh một trạng thái khác', () => {
     const bar = statusBarView({
-      ...september,
+      ...septemberReport,
       newBookings: 400,
       bookingsByStatus: [
         { status: 'PENDING', count: 0 },
@@ -358,9 +290,9 @@ describe('statusBarView — thanh 100% trạng thái', () => {
   it('không booking nào thì không có thanh', () => {
     expect(
       statusBarView({
-        ...september,
+        ...septemberReport,
         newBookings: 0,
-        bookingsByStatus: september.bookingsByStatus.map((s) => ({ ...s, count: 0 })),
+        bookingsByStatus: septemberReport.bookingsByStatus.map((s) => ({ ...s, count: 0 })),
       }),
     ).toBeNull();
   });
@@ -368,7 +300,7 @@ describe('statusBarView — thanh 100% trạng thái', () => {
 
 describe('reportPrintView — chữ và số của tờ in', () => {
   const t = messages.admin.reports;
-  const view = reportPrintView(september);
+  const view = reportPrintView(septemberReport);
 
   it('đầu trang, tiêu đề, dòng kỳ', () => {
     expect(view.docNumber).toBe('2026-09');
@@ -381,7 +313,7 @@ describe('reportPrintView — chữ và số của tờ in', () => {
   });
 
   it('tháng chưa bắt đầu: dòng kỳ nói thẳng', () => {
-    expect(reportPrintView(emptyMonth).periodLine).toBe(
+    expect(reportPrintView(emptyMonthReport).periodLine).toBe(
       'Not started yet · all amounts in USD · tax on margin 10.0%',
     );
   });
@@ -397,9 +329,9 @@ describe('reportPrintView — chữ và số của tờ in', () => {
   });
 
   it('số dài hạ cỡ chữ; biên gộp không xác định in gạch', () => {
-    const big = reportPrintView({ ...september, revenue: '1234567.89' });
+    const big = reportPrintView({ ...septemberReport, revenue: '1234567.89' });
     expect(big.tiles.map((tile) => tile.long)).toEqual([false, false, false, true]);
-    expect(reportPrintView(emptyMonth).tiles[1]?.caption).toBe('Gross margin —');
+    expect(reportPrintView(emptyMonthReport).tiles[1]?.caption).toBe('Gross margin —');
   });
 
   it('bảng lãi lỗ kế toán: chi phí trong ngoặc, dòng cộng và lãi ròng có gạch', () => {
@@ -418,14 +350,14 @@ describe('reportPrintView — chữ và số của tờ in', () => {
   });
 
   it('tháng lỗ: lãi âm trong ngoặc, không thành số dương', () => {
-    const loss = reportPrintView(lossMonth);
+    const loss = reportPrintView(lossMonthReport);
     expect(loss.pnl.find((row) => row.key === 'grossProfit')?.value).toBe('(1,000.00)');
     expect(loss.pnl.find((row) => row.key === 'netProfit')?.value).toBe('(1,150.00)');
   });
 
   it('cảnh báo giá vốn chỉ có khi thiếu dữ liệu', () => {
     expect(view.costWarning).toBeNull();
-    expect(reportPrintView({ ...september, costDataMissing: 12 }).costWarning).toBe(
+    expect(reportPrintView({ ...septemberReport, costDataMissing: 12 }).costWarning).toBe(
       t.pnlTable.costMissing('12'),
     );
   });
@@ -457,8 +389,8 @@ describe('reportPrintView — chữ và số của tờ in', () => {
   });
 
   it('thác nước và thanh trạng thái đi theo hai hàm hình học', () => {
-    expect(view.waterfall).toEqual(waterfallView(september));
-    expect(view.statusBar).toEqual(statusBarView(september));
-    expect(reportPrintView(emptyMonth).waterfall).toBeNull();
+    expect(view.waterfall).toEqual(waterfallView(septemberReport));
+    expect(view.statusBar).toEqual(statusBarView(septemberReport));
+    expect(reportPrintView(emptyMonthReport).waterfall).toBeNull();
   });
 });

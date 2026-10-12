@@ -26,8 +26,9 @@ import {
  * (tab lọc · hành động · phân trang) mà báo cáo không có khe nào — nhét vào sẽ
  * là ba khe rỗng. Cái phải giống nhau là VẺ NGOÀI, và nó giống.
  *
- * Mỗi bảng có tiêu đề THẤY ĐƯỢC: bản in không còn sidebar lẫn topbar, nên
- * không có gì khác nói cho người cầm tờ giấy biết cột số này đếm cái gì.
+ * Mỗi bảng có tiêu đề THẤY ĐƯỢC — đặt ra từ F6, khi giấy là chính trang này in
+ * ra. Từ G40 Phần 2 giấy là tờ riêng (`ReportPrint`, ADR-0057), nhưng tiêu đề
+ * vẫn là thứ duy nhất nói cột số bên dưới đếm cái gì.
  */
 const t = messages.admin.reports;
 
@@ -38,12 +39,12 @@ export function ReportTables({ report }: { report: AdminMonthlyReport }) {
   const missingCosts = costWarning(report);
 
   return (
-    <div className="grid gap-4 px-4 lg:px-6 @4xl/main:grid-cols-2 print:grid-cols-2">
+    <div className="grid gap-4 px-4 lg:px-6 @4xl/main:grid-cols-2">
       {/* P&L đứng ĐẦU và chiếm trọn bề ngang: đây là câu trả lời cho câu hỏi
           mà người ta mở một báo cáo tháng ra để hỏi (ADR-0033 §1). Hai bảng
           cũ bên dưới trả lời những câu phụ — bao nhiêu booking, bao nhiêu
           lượt duyệt. */}
-      <section className="flex flex-col gap-2 @4xl/main:col-span-2 print:col-span-2">
+      <section className="flex flex-col gap-2 @4xl/main:col-span-2">
         <h3 className="text-sm font-medium">{t.pnlTable.heading}</h3>
         <div className="overflow-hidden rounded-lg border">
           <Table>
