@@ -8,6 +8,83 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-10-12 — Merge G40 Phần 2 lên main: bản in báo cáo tháng C2 ở `/reports` (`bbb4f3a6`..`e1c3f8c8`)
+
+Bấm Print hay Ctrl+P ở `/reports` nay ra tờ A4 C2 thiết kế riêng thay vì trang màn hình đem in:
+đầu trang nội bộ, tiêu đề và dòng kỳ, bốn ô số (Revenue recognised nền `paper`, Gross profit, Net
+profit, Cash collected), thác nước "From revenue to net profit" cạnh bảng lãi lỗ kiểu kế toán,
+thanh 100% "Bookings created this month" đủ năm trạng thái, lưới tám chỉ số vận hành, bảy chú giải
+đánh số theo thứ tự sheet Definitions của Excel Phần 3, chân trang nội bộ. Spec G40 §5,
+[ADR-0057](adr/0057-print-documents.md), [plan](plans/2026-10-12-g40-part2-report-print.md). Không
+đổi API, không migration, không env, không thêm dependency.
+
+- `@tourism/i18n`: khối `admin.reports.printDoc`. Tám khoá dùng chung với Phần 3 (`reportTitle`,
+  `periodLine`, `waterfallHeading`, ba `cards.*Caption`, namespace `admin.exportFile`) đã lên main
+  cùng Phần 3; nhánh này chép nguyên văn nên rebase gộp sạch, commit i18n chỉ còn `printDoc`.
+- Admin, view-model thuần `lib/report-print.ts`: nhãn tiền ngắn, số kế toán định dạng thẳng trên
+  chuỗi thập phân, vạch lưới "đẹp", hình học thác nước (miền chứa 0 nên tháng lỗ có cột dưới trục,
+  tỉ lệ co để nhãn dưới cột không chạm hàng nhãn hạng mục, lề phải cho nhãn trục), hình học thanh
+  trạng thái, `reportPrintView`. Component ở `components/reports/`: `report-print`, `waterfall`,
+  `status-bar`, `hatch`, `report-print-brand`.
+- Màu: năm trạng thái `chart-gain` · `chart-3` · `pending` · `info` · `chart-cost`, qua bộ kiểm
+  dataviz (mù màu xấu nhất 15.0, mắt thường 20.1, tương phản từ 3:1). Vân cho in trắng đen:
+  Cancelled 45°, Refunded 135°, Pending ngang vì in xám nó trùng độ sáng Paid; cột chi phí của thác
+  nước cũng vân 45°.
+- CSS: khối `@media print` chung của admin chỉ áp khi trang không có tài liệu in
+  (`:root:not(:has([data-print-doc]))`), tờ in nhận bảng màu trung tính của admin; màn hình
+  `/reports` bọc `print:hidden`, gỡ class in đã chết ở `report-tables.tsx`.
+- Bố cục một trang: khoảng giữa các khối là phần tử co giãn trong cột flex của `DocPage` (dài như
+  bản thảo, co tới mức sàn khi tháng nặng); nhịp chữ theo bản thảo (cỡ nền 9 pt, tên khối 10.5 pt,
+  dãn dòng `normal` ở chỗ bản thảo khai bằng shorthand `font:`).
+
+Nhánh `claude/g40-part2-report-print`, rebase hai lần: lên `755fe9f3`, rồi lên `9877e518` khi Phần 3
+vừa lên main. 8 commit (đầu nhánh cũ `cfb88986`: `a1ef73bc`, `a1b7def0`, `536e2073`, `8dfdd3b7`,
+`ea5188b5`, `154eb36a`, `157bdfab`, `cfb88986`) nay là `bbb4f3a6`, `c98bf2e3`, `b7d15f51`,
+`e228a19f`, `1117e4a9`, `dae78113`, `c1871fe4`, `e1c3f8c8`. Xung đột duy nhất là hai khối test
+i18n mới cùng chỗ trong `messages.spec.ts`, giữ cả hai.
+
+**Duyệt bằng mắt 12/10.** Session cloud đo bằng Chromium headless (route đo tạm `zz-print` không
+commit) và ghép ảnh cạnh bản thảo C2; user chọn merge sau khi nhận ảnh. Số đo trên code cuối: mười
+tháng seed (2026-01 tới 2026-10) đúng một trang, dư 13.8 mm trên chân trang (bản thảo 13.4), không
+nhãn SVG nào chồng nhau, chữ phụ và nét kẻ đúng token admin, không phần tử nào ngoài tờ hiện khi in;
+mười bảy ca fixture một trang, ca chật nhất còn 2.2 mm (lãi ròng −$106k cùng cảnh báo giá vốn hai vế
+và năm trạng thái; ca số hàng triệu); hộp lạ cao 300 mm chèn sau tờ vẫn một trang. Giới hạn ước
+tính, chưa đo: tháng lỗ hàng triệu đô cùng đủ mọi thứ khác mà thêm một nhãn bảng lãi lỗ xuống dòng
+thì chân trang bị cắt.
+
+**Review findings:** review max 12/10 (skill code-review) trên `ae727bce..154eb36a` (hash trước
+rebase), sáu phát hiện, vá hết ở `c1871fe4` và `e1c3f8c8`:
+
+- Cờ `dense` cộng phần tờ cao thêm theo số đo bỏ sót tháng lỗ: ngoặc ở cột số đẩy nhãn chi phí
+  xuống dòng, ca lãi ròng −$106k cùng cảnh báo hai vế tràn 0.26 mm. Thay bằng khoảng co giãn để bố
+  cục tự co đúng phần thiếu, như một phát hiện khác của review đề xuất.
+- `shortMoney` làm tròn hai lần: 1,049.62 ra "$1.1k", 39,649.5 ra "$39.7k". Nay làm tròn một lần từ
+  giá trị gốc.
+- Luật canh CSS in chỉ xét khối `@media print` đầu tiên và bỏ qua cả rule có selector đầu `:root`.
+  Nay xét mọi khối media có `print`, kể cả lồng trong `@layer`, và mọi selector.
+- Vân 45° viết hai lần, nay là `Hatch` dùng chung.
+- Plan lệch code: hằng tỉ lệ 165.5, khối interface, số thứ tự quyết định.
+
+Thêm theo lưu ý của review Phần 3: tháng lỗ nặng (chi phí gấp gần 60 lần doanh thu ghi nhận) giữ
+mọi cột, vạch, nhãn trong khung, có test; cả tháng một trạng thái phủ kín thanh, chú thích "100%".
+Số hoàn tiền của lưới chỉ số đọc `refundedTotal` và `refunds` của API báo cáo tháng (sổ cái
+`refunds`), không đọc API danh sách đơn, nên không dính lỗi cột Refunded luôn 0.00 mà Phần 3 vá ở
+`c0f6c145`: tháng 9 seed in $2,383.30 và 10 lượt, khớp DB. Đột biến: 24/24 ở view-model, 14/14 ở vòng vá
+review.
+
+Tests after (`gate:int` trên `e1c3f8c8`, 12/10, sau rebase lên `9877e518`): unit 7034 — web 2233,
+admin 1998, api 1097, mobile 738, contract 675, mobile-ui 136, ui 47, core 46, i18n 43, tokens 21 —
+và int 782/46. So với main: admin 1941 → 1998 (view-model 40, tờ in 15, luật CSS in 2), i18n 41 → 43.
+
+**CÒN TREO:**
+
+- [ ] Push đụng admin và i18n: canh đèn Actions, Vercel admin, Render.
+- [ ] Thử tay prod theo spec §10 bước 4: in `/reports` tháng 9 và tháng hiện tại.
+- Dọn sau merge: nhánh `claude/g40-part2-report-print` ở origin (session cloud không xoá được nhánh,
+  user xoá). Nhánh sao lưu `backup/g40-tam-dung-2026-10-10`: ba phần G40 đã lên main, user quyết
+  giữ hay xoá.
+- Không migration, không env, không webhook, không đổi Cloudinary.
+
 ## 2026-10-12 — Merge G40 Phần 3 lên main: Excel báo cáo tháng D1, hai danh sách xuất Excel thay CSV (`8fedbb71`..`a7e7b136`)
 
 Phần 3 của [spec bản in và file xuất](specs/2026-10-10-print-and-export-redesign-design.md), theo
