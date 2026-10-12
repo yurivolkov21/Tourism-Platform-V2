@@ -68,6 +68,8 @@ export default function ReviewRoute() {
       onSuccess: () => {
         void queryClient.invalidateQueries({ queryKey: orpc.bookings.byCode.key() });
         void queryClient.invalidateQueries({ queryKey: orpc.bookings.mine.key() });
+        // "See my reviews" ngay sau đây: danh sách đã mở trước đó trong phiên phải có bài vừa gửi.
+        void queryClient.invalidateQueries({ queryKey: orpc.reviews.mine.key() });
         setPhase('submitted');
       },
       onError: (error) => {
