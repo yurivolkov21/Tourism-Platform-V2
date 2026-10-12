@@ -8,6 +8,10 @@ Nguồn: `git log origin/main..HEAD` tới `813d7da5` (09/10), bản review nhá
 05/10 (R1–R8, Q5–Q8 và phần chung B1–B3, F, L, Q1–Q4), code trên cây làm việc
 ngày 11/10, kết quả chạy kiểm ngày 11/10 (mục 5).
 
+> **Sau merge 12/10:** R7 đã commit (trên main là `8f3ef57d`). Review 12/10 tìm thêm một lỗi lùi ở
+> đường onboarding và vá lúc merge (`616d782e`); chi tiết ở entry 12/10 của
+> [CHANGELOG](../CHANGELOG.md). Hash bên dưới là hash trước rebase.
+
 ## Kết luận nhanh
 
 - **12 mục riêng của review 05/10 (R1–R8, Q5–Q8): đủ cả 12 trong code.** 11 mục

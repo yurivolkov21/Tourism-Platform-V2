@@ -8,6 +8,48 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-10-12 — Merge nhánh `feat/mobile-browse-screens` lên main: R3, R7 của review 05/10 và bản vá Sign in kẹt sau onboarding (`7dc3041b`..`616d782e`)
+
+Nhánh dựng lại từ main 09/10 đúng như review 05/10 đề xuất: chức năng xem tour (P5b-2) đã vào
+main cùng nhánh account (entry merge P5b-4 bên dưới), nhánh này chỉ mang phần còn giá trị. Ba
+commit của Duy An: `leaveAuthTo` gỡ modal Sign in về đúng màn đang nằm dưới thay cho
+`router.replace` (R3, hết nhân đôi tour; kèm nhánh R2 cho callback Google trên Android), giữ khoá
+nút sau khi đăng nhập thành công (R7), và
+[tóm tắt nhánh 11/10](analysis/2026-10-11-branch-summary-mobile-browse-screens.md). Ba commit
+riêng cũ (sửa rồi hoàn tác `catalog.service.ts`, D6 bằng SecureStore, một commit thử) bị bỏ, đóng
+câu "nhóm quyết port hay bỏ" ở open-items. Không có migration, không cần đổi hạ tầng (luật 15).
+
+Rebase lên `e32c510b`, không xung đột. Hash trong tóm tắt nhánh là hash trước rebase: `813d7da5`
+nay là `7dc3041b`; R7 là `8f3ef57d` (tóm tắt còn ghi "chưa commit" vì viết trước commit này).
+
+**Review 12/10 trên session cloud.** R3 đúng: đo trên cây route thật, main để lại hai bản tour
+trong stack sau khi đăng nhập từ tour, nhánh còn một. Nhánh gây một lỗi lùi, vá lúc merge
+(`616d782e`, Yuri chọn sửa ở đây thay vì trả nhánh): `leaveAuthTo` coi `canDismiss() = false` là
+"callback OAuth đã đưa stack về tabs" nên `navigate` đẩy đích lên trên. Nhưng Sign in mở từ
+onboarding ("I already have an account") là màn gốc duy nhất của stack, `canDismiss()` cũng
+`false`: Home bị đẩy lên trên Sign in, back cứng Android quay về Sign in với nút kẹt "Signing in…"
+(R7 không nhả `pending`), và nút X ở đường này cũng để lại Sign in. Trên main cả hai đường đều
+sạch. Bản vá phân biệt bằng việc màn auth còn mount không (`useStillMounted`): còn thì `dismissTo`
+(đích vắng khỏi stack thì tự thay chỗ), đã bị gỡ trong lúc chờ Google thì `navigate` như R2. Unit
+test của helper dùng router giả nên không thấy lỗi; thêm `leave-auth-routes.spec.tsx` chạy trên
+cây route thật: hai ca onboarding đỏ trên code nhánh, xanh sau vá; ca R3 canh "back một lần là về
+Home". Tóm tắt nhánh ghi repo không có spec cho route, sai: `routes.spec.tsx` có từ trước.
+
+**CÒN TREO:**
+
+- [ ] Thử máy thật theo mục 6 của tóm tắt nhánh, nhất là R2 (bước 14–17: Android, đăng nhập
+  Google từ màn tour, back cứng về Home chứ không thoát app). Kèm đường mới: mở app lần đầu →
+  "I already have an account" → đăng nhập xong → back cứng ở Home không được về lại Sign in.
+- [ ] R2 có một khe chưa đo, suy luận từ code: nếu callback gỡ cả nhóm auth TRƯỚC khi lượt đăng
+  nhập Google trả kết quả, `abandonPendingReturn` đã xoá đường về, khách về Home thay vì tour và
+  tim không tự lưu (app không thoát). ADR-0056 (Google native) sẽ thay luồng này.
+- [ ] Duy An xoá hai nhánh backup ở máy (`backup/browse-before-q678`, `backup/browse-q678-rewrite`).
+
+Tests after: unit 6596 — admin 1911, web 2138, api 1097, contract 675, mobile 509, mobile-ui 134,
+core 46, ui 36, i18n 31, tokens 19 — và int 779/779 ở 46 file. Cây đã rebase chạy đủ các bước của
+CI trên session cloud: RLS, build web với API sống, bundle mobile, admin prerender, lint,
+tokens-only, docs-freshness.
+
 ## 2026-10-10 — Duyệt thiết kế G40 bản in và file xuất (ADR-0057, ADR-0034 AMEND 3, spec); thử lại P7 B và C 3/3; ghi G41
 
 **Thử lại P7 B và C trên production** (đóng CÒN TREO của entry 09/10 ngay dưới): sau push
