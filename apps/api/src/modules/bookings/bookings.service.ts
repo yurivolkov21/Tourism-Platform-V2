@@ -202,11 +202,11 @@ export async function resolveTourCover(
 }
 
 /** Row → contract shape. `checkoutUrl` chỉ non-null ngay sau khi create.
- * Phần đọc-kèm mặc định RỖNG — CHỈ `bookings.byCode` truyền giá trị thật (trang
- * chi tiết là nơi duy nhất cần); mọi call site khác (create/mine/adminList/
- * adminByCode/cancelPending/refunds/cancellations) bỏ qua tham số này để list
- * không phải gánh thêm query cho mỗi row. Export cho admin surface
- * (RefundsService trả về cùng shape).
+ * Phần đọc-kèm mặc định RỖNG — `bookings.byCode` truyền đủ (trang chi tiết là
+ * nơi cần cả bốn); `adminByCode`, `adminList` (MỘT câu gom cho cả trang) và lõi
+ * huỷ chỉ truyền `refundedTotal`; các call site còn lại (create/mine/
+ * cancelPending/refunds) bỏ qua tham số này để không gánh thêm query cho mỗi
+ * row. Export cho admin surface (RefundsService trả về cùng shape).
  *
  * `row.tour.slug` là intersection type BẮT BUỘC (không optional) — ép mọi call
  * site phải join quan hệ `tour` trong câu Prisma select của nó, biên dịch fail
@@ -260,7 +260,7 @@ export function toBooking(
     cancellationStatus: extras.cancellationStatus ?? null,
     cancellationRequestedAt: extras.cancellationRequestedAt?.toISOString() ?? null,
     cancellationDecidedAt: extras.cancellationDecidedAt?.toISOString() ?? null,
-    // Chưa đọc sổ refund (mọi call site trừ byCode) → '0.00', KHÔNG phải null:
+    // Chưa đọc sổ refund (call site không truyền) → '0.00', KHÔNG phải null:
     // contract khai `DecimalStringSchema` không nullable vì "chưa hoàn đồng nào"
     // và "chưa đọc" đối với khách là cùng một câu trả lời.
     refundedTotal: extras.refundedTotal ? money(extras.refundedTotal) : '0.00',
@@ -924,21 +924,39 @@ export class BookingsService {
       }),
     ]);
 
-    // MỘT query media cho cả trang (chống N+1, cùng khuôn `catalog.listTours`)
-    // — và KHÔNG query nào khi caller nói không cần ảnh (`includeMedia=false`,
-    // vòng vá review F6): đường export CSV gom tới 20 trang liên tiếp, mỗi
-    // trang một query media trả cùng một tập ảnh chỉ để bị vứt.
-    const coverMap = includeMedia
-      ? await this.media.resolveForOwners(
-          MediaOwnerType.TOUR,
-          rows.map((row) => row.tourId),
-          // Chỉ cần cover cho hàng bảng (W4 R3).
-          [MediaRole.hero],
-        )
-      : null;
+    const ids = rows.map((row) => row.id);
+    const [coverMap, refundSums] = await Promise.all([
+      // MỘT query media cho cả trang (chống N+1, cùng khuôn `catalog.listTours`)
+      // — và KHÔNG query nào khi caller nói không cần ảnh (`includeMedia=false`,
+      // vòng vá review F6): đường xuất file gom tới 20 trang liên tiếp, mỗi
+      // trang một query media trả cùng một tập ảnh chỉ để bị vứt.
+      includeMedia
+        ? this.media.resolveForOwners(
+            MediaOwnerType.TOUR,
+            rows.map((row) => row.tourId),
+            // Chỉ cần cover cho hàng bảng (W4 R3).
+            [MediaRole.hero],
+          )
+        : null,
+      // Tổng đã hoàn của MỌI đơn trong trang bằng MỘT câu gom (review max G40 Phần 3): cột
+      // Refunded của hai file Excel đọc từ list này, mà list từng để '0.00' mặc định của
+      // `toBooking`. Đơn chưa hoàn đồng nào không có nhóm → `toBooking` trả '0.00'.
+      ids.length === 0
+        ? []
+        : prisma.refund.groupBy({
+            by: ['bookingId'],
+            where: { bookingId: { in: ids } },
+            _sum: { amount: true },
+          }),
+    ]);
+    const refundedById = new Map(refundSums.map((sum) => [sum.bookingId, sum._sum.amount]));
 
     return toPaged(
-      rows.map((row) => toBooking(row, null, pickCover(coverMap?.get(row.tourId)))),
+      rows.map((row) =>
+        toBooking(row, null, pickCover(coverMap?.get(row.tourId)), {
+          refundedTotal: refundedById.get(row.id) ?? null,
+        }),
+      ),
       { page, limit, total },
     );
   }

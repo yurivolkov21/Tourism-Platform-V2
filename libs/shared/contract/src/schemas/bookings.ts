@@ -167,7 +167,10 @@ export const BookingSchema = z.object({
   cancellationDecidedAt: z.iso.datetime().nullable(),
   /**
    * Tổng tiền ĐÃ HOÀN tính tới lúc đọc — `SUM(refunds.amount)` của booking này,
-   * `'0.00'` khi chưa hoàn đồng nào. Cùng luật điền: chỉ `byCode`.
+   * `'0.00'` khi chưa hoàn đồng nào. Luật điền KHÁC hai mốc huỷ ở trên: `byCode`,
+   * `admin.bookings.byCode` (trần validate refund) và `admin.bookings.list` điền
+   * thật — list gom cả trang bằng MỘT câu, vì cột Refunded của hai file Excel đọc
+   * từ đây (review max G40 Phần 3). Chỉ `mine` còn để `'0.00'`.
    *
    * Vì sao là MỘT CON SỐ chứ không phải danh sách refund: trang chi tiết của
    * khách cần trả lời "tiền về bao nhiêu rồi", không cần sổ cái từng lần —

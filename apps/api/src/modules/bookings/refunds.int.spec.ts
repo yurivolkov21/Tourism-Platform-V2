@@ -570,6 +570,32 @@ describe('refunds integration (admin refund ledger)', () => {
     await prisma.mediaAsset.deleteMany({ where: { ownerId: tour.id } });
   });
 
+  it('admin.bookings.list mang refundedTotal THẬT cho từng đơn của trang, cả khi includeMedia=false (review max G40 Phần 3)', async () => {
+    // Cột Refunded của file Excel danh sách đơn đọc từ chính list này. List từng để '0.00' mặc
+    // định của `toBooking`, nên file nói "chưa hoàn đồng nào" cho cả đơn đã hoàn một phần.
+    const admin = await signUpAdmin();
+    const refunded = await createPaidBooking(await signUpUser('list-refund-a@example.com'));
+    const untouched = await createPaidBooking(await signUpUser('list-refund-b@example.com'));
+    await postRefund(admin, refunded.code, { amount: '30.00' });
+    await postRefund(admin, refunded.code, { amount: '20.50' });
+
+    for (const query of ['', '?includeMedia=false']) {
+      const res = await app.inject({
+        method: 'GET',
+        url: `/api/admin/bookings${query}`,
+        headers: { cookie: admin },
+      });
+      expect(res.statusCode).toBe(200);
+      const totals = new Map(
+        PagedSchema(BookingSchema)
+          .parse(res.json())
+          .items.map((b) => [b.code, b.refundedTotal]),
+      );
+      expect(totals.get(refunded.code)).toBe('50.50');
+      expect(totals.get(untouched.code)).toBe('0.00');
+    }
+  });
+
   /**
    * F6 — lọc theo khoảng NGÀY `createdAt` (spec P4b §3-F6). Booking được tạo
    * qua API thật (createdAt = bây giờ) rồi ĐẨY NGƯỢC mốc bằng update: đó là
