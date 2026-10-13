@@ -67,104 +67,116 @@ const COLUMN_ICONS = {
   published: ShoppingBagIcon,
 };
 
-function buildColumns(setPublished: SetPublishedAction) {
-  return columnHelper.columns([
-    columnHelper.accessor('title', {
-      header: t.columns.tour,
-      cell: ({ row }) => (
-        <div className="flex items-center gap-3">
-          {/* Ảnh bìa 40px — kit dùng chung với bảng Posts; ô chỉ đọc, không bấm được. */}
-          <TableThumb src={row.original.thumbUrl} emptyLabel={t.noImage} />
-          <div className="grid min-w-0 gap-0.5">
-            <Link
-              href={row.original.editorHref}
-              className="max-w-72 truncate font-medium text-foreground underline-offset-4 hover:underline"
-              title={row.original.title}
-            >
-              {row.original.title}
-            </Link>
-            {row.original.isFeatured ? (
-              <span>
-                <Badge variant="secondary">{t.featured}</Badge>
-              </span>
-            ) : null}
-          </div>
-        </div>
-      ),
-      enableHiding: false,
-    }),
-    columnHelper.accessor('category', {
-      header: t.columns.category,
-      cell: ({ row }) => (
-        <div className="max-w-48 truncate text-muted-foreground" title={row.original.category}>
-          {row.original.category}
-        </div>
-      ),
-    }),
-    columnHelper.accessor('price', {
-      header: t.columns.price,
-      cell: ({ row }) => (
-        <div className="whitespace-nowrap tabular-nums text-muted-foreground">
-          {row.original.price}
-        </div>
-      ),
-    }),
-    columnHelper.accessor('openDepartureCount', {
-      id: 'departures',
-      header: t.columns.departures,
-      /**
-       * Số 0 in ĐẬM HƠN chứ không mờ đi: "tour này không còn chuyến nào trong
-       * khoảng đang xem" là câu trả lời quan trọng nhất của cột, không phải một
-       * ô thiếu dữ liệu. Câu đầy đủ dành cho trình đọc màn hình — một con số
-       * trần không nói nó là số gì.
-       */
-      cell: ({ row }) => (
-        <div
-          className={`tabular-nums ${
-            row.original.openDepartureCount === 0 ? 'text-foreground' : 'text-muted-foreground'
-          }`}
-        >
-          <span aria-hidden="true">{row.original.openDepartureCount}</span>
-          <span className="sr-only">{row.original.countLabel}</span>
-          {/* Tour tắt bán mà còn chuyến bookable: nói ngay dưới con số rằng
-              khách không thấy chúng — màn chuyến báo đúng điều này (F16).
-              `aria-hidden` vì câu đọc-màn-hình ở trên đã mang đủ ý. */}
-          {row.original.countNote ? (
-            <div aria-hidden="true" className="text-xs whitespace-nowrap text-muted-foreground">
-              {row.original.countNote}
-            </div>
+/**
+ * Thứ duy nhất ô công tắc cần từ bảng, lệnh `setPublished`, đi qua CONTEXT chứ không qua cột
+ * (G24, cùng khuôn `RowActionsContext` của danh mục, điểm đến và chuyến). Server action đổi danh
+ * tính sau MỖI `router.refresh()`: Flight client giải mã mỗi lượt thành một closure mới. Nằm
+ * trong deps của cột thì bật hay tắt bán xong là cột dựng lại, mọi công tắc unmount rồi mount
+ * lại: focus của công tắc vừa bấm rơi về `<body>`, và công tắc nào đang bay mất luôn giá trị lạc
+ * quan của nó. Với context thì cột là hằng của module (`COLUMNS`): ô chỉ vẽ lại, không dựng lại.
+ */
+const RowActionsContext = React.createContext<{ setPublished: SetPublishedAction } | null>(null);
+
+/** Ô On sale — component riêng để nó đọc được context. Cột chỉ giữ một tham chiếu tới đây. */
+function PublishedCell({ row }: { row: TourRowVM }) {
+  const context = React.useContext(RowActionsContext);
+  if (context === null) throw new Error('PublishedCell must be used inside RowActionsContext');
+  return (
+    <PublishToggle tour={row} setPublished={context.setPublished} notReadyHref={row.reviewHref} />
+  );
+}
+
+const COLUMNS = columnHelper.columns([
+  columnHelper.accessor('title', {
+    header: t.columns.tour,
+    cell: ({ row }) => (
+      <div className="flex items-center gap-3">
+        {/* Ảnh bìa 40px — kit dùng chung với bảng Posts; ô chỉ đọc, không bấm được. */}
+        <TableThumb src={row.original.thumbUrl} emptyLabel={t.noImage} />
+        <div className="grid min-w-0 gap-0.5">
+          <Link
+            href={row.original.editorHref}
+            className="max-w-72 truncate font-medium text-foreground underline-offset-4 hover:underline"
+            title={row.original.title}
+          >
+            {row.original.title}
+          </Link>
+          {row.original.isFeatured ? (
+            <span>
+              <Badge variant="secondary">{t.featured}</Badge>
+            </span>
           ) : null}
         </div>
-      ),
-    }),
-    columnHelper.display({
-      id: 'published',
-      header: t.columns.published,
-      cell: ({ row }) => (
-        <PublishToggle
-          tour={row.original}
-          setPublished={setPublished}
-          notReadyHref={row.original.reviewHref}
-        />
-      ),
-    }),
-    columnHelper.display({
-      id: 'actions',
-      header: t.columns.actions,
-      cell: ({ row }) => (
-        <Link
-          href={row.original.departuresHref}
-          aria-label={row.original.departuresLabel}
-          className={buttonVariants({ variant: 'outline', size: 'sm' })}
-        >
-          <CalendarRangeIcon data-icon="inline-start" aria-hidden="true" />
-          {t.departuresAction}
-        </Link>
-      ),
-      enableHiding: false,
-    }),
-  ]);
-}
+      </div>
+    ),
+    enableHiding: false,
+  }),
+  columnHelper.accessor('category', {
+    header: t.columns.category,
+    cell: ({ row }) => (
+      <div className="max-w-48 truncate text-muted-foreground" title={row.original.category}>
+        {row.original.category}
+      </div>
+    ),
+  }),
+  columnHelper.accessor('price', {
+    header: t.columns.price,
+    cell: ({ row }) => (
+      <div className="whitespace-nowrap tabular-nums text-muted-foreground">
+        {row.original.price}
+      </div>
+    ),
+  }),
+  columnHelper.accessor('openDepartureCount', {
+    id: 'departures',
+    header: t.columns.departures,
+    /**
+     * Số 0 in ĐẬM HƠN chứ không mờ đi: "tour này không còn chuyến nào trong
+     * khoảng đang xem" là câu trả lời quan trọng nhất của cột, không phải một
+     * ô thiếu dữ liệu. Câu đầy đủ dành cho trình đọc màn hình — một con số
+     * trần không nói nó là số gì.
+     */
+    cell: ({ row }) => (
+      <div
+        className={`tabular-nums ${
+          row.original.openDepartureCount === 0 ? 'text-foreground' : 'text-muted-foreground'
+        }`}
+      >
+        <span aria-hidden="true">{row.original.openDepartureCount}</span>
+        <span className="sr-only">{row.original.countLabel}</span>
+        {/* Tour tắt bán mà còn chuyến bookable: nói ngay dưới con số rằng
+            khách không thấy chúng — màn chuyến báo đúng điều này (F16).
+            `aria-hidden` vì câu đọc-màn-hình ở trên đã mang đủ ý. */}
+        {row.original.countNote ? (
+          <div aria-hidden="true" className="text-xs whitespace-nowrap text-muted-foreground">
+            {row.original.countNote}
+          </div>
+        ) : null}
+      </div>
+    ),
+  }),
+  columnHelper.display({
+    id: 'published',
+    header: t.columns.published,
+    // Lệnh ghi đọc qua `RowActionsContext`, không đóng vào cột.
+    cell: ({ row }) => <PublishedCell row={row.original} />,
+  }),
+  columnHelper.display({
+    id: 'actions',
+    header: t.columns.actions,
+    cell: ({ row }) => (
+      <Link
+        href={row.original.departuresHref}
+        aria-label={row.original.departuresLabel}
+        className={buttonVariants({ variant: 'outline', size: 'sm' })}
+      >
+        <CalendarRangeIcon data-icon="inline-start" aria-hidden="true" />
+        {t.departuresAction}
+      </Link>
+    ),
+    enableHiding: false,
+  }),
+]);
 
 export interface ToursTableProps {
   rows: TourRowVM[];
@@ -194,12 +206,13 @@ export function ToursTable({
   create,
 }: ToursTableProps) {
   const [columnVisibility, setColumnVisibility] = React.useState<ColumnVisibilityState>({});
-  const columns = React.useMemo(() => buildColumns(setPublished), [setPublished]);
+  // Ô công tắc đọc lệnh ghi qua context — xem `RowActionsContext`.
+  const rowActions = React.useMemo(() => ({ setPublished }), [setPublished]);
 
   const table = useTable({
     features: serverTableFeatures,
     data: rows,
-    columns,
+    columns: COLUMNS,
     // KHÔNG có pagination state ở table: trang/limit sống trên URL.
     state: { columnVisibility },
     getRowId: (row) => row.id,
@@ -230,7 +243,9 @@ export function ToursTable({
         />
       }
     >
-      <DataTableBody table={table} empty={t.empty} />
+      <RowActionsContext.Provider value={rowActions}>
+        <DataTableBody table={table} empty={t.empty} />
+      </RowActionsContext.Provider>
     </DataTableFrame>
   );
 }

@@ -74,122 +74,145 @@ const COLUMN_ICONS = {
 };
 
 /**
- * Cột nhận `query`/`total` qua tham số (không đọc từ module) vì nút Export
- * sống trong ô tiêu đề của cột `actions` — cùng nếp `buildColumns` của
- * `/bookings`.
+ * MỌI thứ cột cần từ bảng đi qua CONTEXT chứ không qua cột (G24, cùng khuôn `RowActionsContext`
+ * của danh mục, điểm đến và chuyến): `query` và `total` cho nút Export ở ô tiêu đề cột Actions,
+ * lệnh `unsubscribe` cho nút của từng hàng.
  *
- * CỐ Ý không nhận danh sách id đã tích (cùng lý do `/bookings`): nó đổi theo
- * mỗi cú click, mà `columns` là đầu vào của row model. Header đọc thẳng lựa
- * chọn từ `table` mà TanStack đưa cho nó.
+ * Bản trước dựng cột bằng `buildColumns(query, total, unsubscribe)` trong `useMemo`, và hai thứ
+ * trong đó đổi sau mỗi lần huỷ: server action đổi danh tính sau MỖI `router.refresh()` (Flight
+ * client giải mã mỗi lượt thành một closure mới), còn ở tab Active thì `total` giảm vì hàng vừa
+ * huỷ rời danh sách. Cột đổi thì mọi ô dựng lại: focus rơi về `<body>`, hộp đang mở ở hàng khác
+ * biến mất. Với context thì cột là hằng của module (`COLUMNS`): ô chỉ vẽ lại, không dựng lại.
+ *
+ * CỐ Ý không chở danh sách id đã tích (cùng lý do `/bookings`): nó đổi theo mỗi cú click. Ô tiêu
+ * đề đọc thẳng lựa chọn từ `table` mà TanStack đưa cho nó.
  */
-function buildColumns(query: SubscribersQuery, total: number, unsubscribe: UnsubscribeActionFn) {
-  return columnHelper.columns([
-    columnHelper.display({
-      id: 'select',
-      /**
-       * Chọn CẢ TRANG, không phải cả tập, và nhãn nói đúng như thế. Bộ
-       * `…AllRows…` chứ không phải `…AllPageRows…`, và "một phần" đếm trên hàng
-       * ĐANG HIỆN — lý do của cả hai ở cột `select` của `BookingsTable`.
-       */
-      header: ({ table }) => (
-        <Checkbox
-          aria-label={t.selectAllRows}
-          checked={table.getIsAllRowsSelected()}
-          indeterminate={
-            !table.getIsAllRowsSelected() && table.getSelectedRowModel().rows.length > 0
-          }
-          onCheckedChange={(value) => table.toggleAllRowsSelected(value === true)}
-        />
-      ),
-      // Nhãn gọi tên địa chỉ: trình đọc màn hình đọc "Select ada@…", không
-      // phải mười lần "Select row" giống hệt nhau.
-      cell: ({ row }) => (
-        <Checkbox
-          aria-label={t.selectRow(row.original.email)}
-          checked={row.getIsSelected()}
-          onCheckedChange={(value) => row.toggleSelected(value === true)}
-        />
-      ),
-    }),
-    columnHelper.accessor('email', {
-      header: t.columns.email,
-      cell: ({ row }) => (
-        <div className="max-w-72 truncate font-medium text-foreground" title={row.original.email}>
-          {row.original.email}
-        </div>
-      ),
-      enableHiding: false,
-    }),
-    columnHelper.accessor('source', {
-      header: t.columns.source,
-      // VM đã rơi về "Direct sign-up" cho hàng không khai nguồn — không rẽ nhánh.
-      cell: ({ row }) => (
-        <div className="max-w-48 truncate text-muted-foreground" title={row.original.source}>
-          {row.original.source}
-        </div>
-      ),
-    }),
-    columnHelper.accessor('subscribed', {
-      header: t.columns.subscribed,
-      cell: ({ row }) => (
-        <div className="whitespace-nowrap text-muted-foreground">{row.original.subscribed}</div>
-      ),
-    }),
-    columnHelper.accessor('confirmed', {
-      header: t.columns.confirmed,
-      // Cột double opt-in (W4 E3): hàng chưa bấm link in "Awaiting
-      // confirmation" (VM lo) — cùng luật "cột luôn có chữ" với unsubscribed.
-      cell: ({ row }) => (
-        <div className="whitespace-nowrap text-muted-foreground">{row.original.confirmed}</div>
-      ),
-    }),
-    columnHelper.accessor('unsubscribed', {
-      header: t.columns.unsubscribed,
-      // Hàng còn nhận tin in "Still subscribed" (VM lo) — không phải một dấu
-      // gạch: ô trống ở cột này đọc thành "thiếu dữ liệu", còn đây là câu trả
-      // lời quan trọng nhất của cả hàng.
-      cell: ({ row }) => (
-        <div
-          className={`whitespace-nowrap ${
-            row.original.isActive ? 'text-muted-foreground' : 'text-foreground'
-          }`}
-        >
-          {row.original.unsubscribed}
-        </div>
-      ),
-    }),
-    columnHelper.display({
-      id: 'actions',
-      /**
-       * Nút Export sống trong CHÍNH ô tiêu đề cột Actions (spec 2026-10-05 §4 #4). Bản trước
-       * dựng một cột `export` rộng 0 sát mép phải, nút tràn sang trái và đè chữ "Actions"
-       * (còn đọc được "Acti"). Ở đây cột có bề rộng thật, ít nhất bằng nút. Chữ "Actions"
-       * còn cho trình đọc màn hình.
-       */
-      header: ({ table }) => (
-        <div className="flex items-center justify-end">
-          <span className="sr-only">{t.columns.actions}</span>
-          <SubscribersExportLink
-            query={query}
-            total={total}
-            // Khoá của row model CHÍNH LÀ `id` (`getRowId` bên dưới) — URL mang
-            // id chứ không mang email (spec G43, quyết định 3).
-            selected={table.getSelectedRowModel().rows.map((row) => row.id)}
-          />
-        </div>
-      ),
-      // Chỉ hàng CÒN nhận tin mới có nút: bấm lên hàng đã huỷ chỉ ra 409, và một nút luôn
-      // hỏng là một nút không nên vẽ.
-      cell: ({ row }) =>
-        row.original.isActive ? (
-          <div className="flex justify-end">
-            <UnsubscribeAction row={row.original} unsubscribe={unsubscribe} />
-          </div>
-        ) : null,
-      enableHiding: false,
-    }),
-  ]);
+const TableContext = React.createContext<{
+  query: SubscribersQuery;
+  total: number;
+  unsubscribe: UnsubscribeActionFn;
+} | null>(null);
+
+function useTableContext() {
+  const context = React.useContext(TableContext);
+  if (context === null) throw new Error('Subscribers table cells must be used inside TableContext');
+  return context;
 }
+
+/**
+ * Nút Export sống trong CHÍNH ô tiêu đề cột Actions (spec 2026-10-05 §4 #4). Bản trước dựng một
+ * cột `export` rộng 0 sát mép phải, nút tràn sang trái và đè chữ "Actions" (còn đọc được "Acti").
+ * Ở đây cột có bề rộng thật, ít nhất bằng nút. Chữ "Actions" còn cho trình đọc màn hình.
+ */
+function ActionsHeader({ selected }: { selected: string[] }) {
+  const { query, total } = useTableContext();
+  return (
+    <div className="flex items-center justify-end">
+      <span className="sr-only">{t.columns.actions}</span>
+      <SubscribersExportLink query={query} total={total} selected={selected} />
+    </div>
+  );
+}
+
+/**
+ * Chỉ hàng CÒN nhận tin mới có nút: bấm lên hàng đã huỷ chỉ ra 409, và một nút luôn hỏng là một
+ * nút không nên vẽ.
+ */
+function ActionsCell({ row }: { row: SubscriberRowVM }) {
+  const { unsubscribe } = useTableContext();
+  if (!row.isActive) return null;
+  return (
+    <div className="flex justify-end">
+      <UnsubscribeAction row={row} unsubscribe={unsubscribe} />
+    </div>
+  );
+}
+
+const COLUMNS = columnHelper.columns([
+  columnHelper.display({
+    id: 'select',
+    /**
+     * Chọn CẢ TRANG, không phải cả tập, và nhãn nói đúng như thế. Bộ
+     * `…AllRows…` chứ không phải `…AllPageRows…`, và "một phần" đếm trên hàng
+     * ĐANG HIỆN — lý do của cả hai ở cột `select` của `BookingsTable`.
+     */
+    header: ({ table }) => (
+      <Checkbox
+        aria-label={t.selectAllRows}
+        checked={table.getIsAllRowsSelected()}
+        indeterminate={!table.getIsAllRowsSelected() && table.getSelectedRowModel().rows.length > 0}
+        onCheckedChange={(value) => table.toggleAllRowsSelected(value === true)}
+      />
+    ),
+    // Nhãn gọi tên địa chỉ: trình đọc màn hình đọc "Select ada@…", không
+    // phải mười lần "Select row" giống hệt nhau.
+    cell: ({ row }) => (
+      <Checkbox
+        aria-label={t.selectRow(row.original.email)}
+        checked={row.getIsSelected()}
+        onCheckedChange={(value) => row.toggleSelected(value === true)}
+      />
+    ),
+  }),
+  columnHelper.accessor('email', {
+    header: t.columns.email,
+    cell: ({ row }) => (
+      <div className="max-w-72 truncate font-medium text-foreground" title={row.original.email}>
+        {row.original.email}
+      </div>
+    ),
+    enableHiding: false,
+  }),
+  columnHelper.accessor('source', {
+    header: t.columns.source,
+    // VM đã rơi về "Direct sign-up" cho hàng không khai nguồn — không rẽ nhánh.
+    cell: ({ row }) => (
+      <div className="max-w-48 truncate text-muted-foreground" title={row.original.source}>
+        {row.original.source}
+      </div>
+    ),
+  }),
+  columnHelper.accessor('subscribed', {
+    header: t.columns.subscribed,
+    cell: ({ row }) => (
+      <div className="whitespace-nowrap text-muted-foreground">{row.original.subscribed}</div>
+    ),
+  }),
+  columnHelper.accessor('confirmed', {
+    header: t.columns.confirmed,
+    // Cột double opt-in (W4 E3): hàng chưa bấm link in "Awaiting
+    // confirmation" (VM lo) — cùng luật "cột luôn có chữ" với unsubscribed.
+    cell: ({ row }) => (
+      <div className="whitespace-nowrap text-muted-foreground">{row.original.confirmed}</div>
+    ),
+  }),
+  columnHelper.accessor('unsubscribed', {
+    header: t.columns.unsubscribed,
+    // Hàng còn nhận tin in "Still subscribed" (VM lo) — không phải một dấu
+    // gạch: ô trống ở cột này đọc thành "thiếu dữ liệu", còn đây là câu trả
+    // lời quan trọng nhất của cả hàng.
+    cell: ({ row }) => (
+      <div
+        className={`whitespace-nowrap ${
+          row.original.isActive ? 'text-muted-foreground' : 'text-foreground'
+        }`}
+      >
+        {row.original.unsubscribed}
+      </div>
+    ),
+  }),
+  columnHelper.display({
+    id: 'actions',
+    // `query`, `total` và lệnh ghi đọc qua `TableContext`, không đóng vào cột. Khoá của row
+    // model CHÍNH LÀ `id` (`getRowId` bên dưới): URL mang id chứ không mang email (spec G43,
+    // quyết định 3).
+    header: ({ table }) => (
+      <ActionsHeader selected={table.getSelectedRowModel().rows.map((row) => row.id)} />
+    ),
+    cell: ({ row }) => <ActionsCell row={row.original} />,
+    enableHiding: false,
+  }),
+]);
 
 export interface SubscribersTableProps {
   rows: SubscriberRowVM[];
@@ -224,19 +247,20 @@ export function SubscribersTable({
     setRowSelection({});
   }
 
-  // Deps là GIÁ TRỊ NGUYÊN THUỶ (vòng vá review F10): `query` là object mới
-  // mỗi lần server render nên memo theo nó không bao giờ trúng.
+  // Ô đọc `query`, `total` và lệnh ghi qua context — xem `TableContext`. Deps là GIÁ TRỊ NGUYÊN
+  // THUỶ (vòng vá review F10): `query` là object mới mỗi lần server render nên memo theo nó
+  // không bao giờ trúng.
   const { page, limit, active, search, source, from, to } = query;
   // biome-ignore lint/correctness/useExhaustiveDependencies: memo theo từng field của `query`, không theo object
-  const columns = React.useMemo(
-    () => buildColumns(query, total, unsubscribe),
+  const tableContext = React.useMemo(
+    () => ({ query, total, unsubscribe }),
     [page, limit, active, search, source, from, to, total, unsubscribe],
   );
 
   const table = useTable({
     features: selectableTableFeatures,
     data: rows,
-    columns,
+    columns: COLUMNS,
     // KHÔNG có pagination state ở table: trang/limit sống trên URL.
     state: { columnVisibility, rowSelection },
     getRowId: (row) => row.id,
@@ -268,7 +292,9 @@ export function SubscribersTable({
         />
       }
     >
-      <DataTableBody table={table} empty={<SubscribersEmpty query={query} />} />
+      <TableContext.Provider value={tableContext}>
+        <DataTableBody table={table} empty={<SubscribersEmpty query={query} />} />
+      </TableContext.Provider>
     </DataTableFrame>
   );
 }

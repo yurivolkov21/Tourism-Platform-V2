@@ -1,4 +1,5 @@
 import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { messages } from '@tourism/i18n';
 import { describe, expect, it, vi } from 'vitest';
 import { parseOutboxSearchParams } from '@/lib/outbox-query';
@@ -67,6 +68,47 @@ describe('OutboxTable — ba ô bị cắt', () => {
     const error = screen.getByText(LONG_ERROR);
     expect(error).toHaveAttribute('title', LONG_ERROR);
     expect(error).toHaveClass('max-w-20', 'truncate');
+  });
+});
+
+describe('OutboxTable — ô Actions sống qua lượt làm mới (G24)', () => {
+  /**
+   * Bảng với một `retry` MỚI — mô phỏng lượt `router.refresh()`: Flight client giải mã server
+   * action thành một closure mới mỗi lần (review D1 của màn chuyến).
+   */
+  function table() {
+    return (
+      <OutboxTable
+        rows={[ROW]}
+        query={parseOutboxSearchParams({})}
+        total={1}
+        totalPages={1}
+        retry={vi.fn()}
+      />
+    );
+  }
+
+  it('retry đổi danh tính: nút Retry đang giữ focus vẫn là nút ấy', () => {
+    const { rerender } = render(table());
+    const retry = screen.getByRole('button', { name: t.retry.actionLabel(LONG_KEY) });
+    retry.focus();
+    expect(retry).toHaveFocus();
+
+    rerender(table());
+
+    expect(screen.getByRole('button', { name: t.retry.actionLabel(LONG_KEY) })).toBe(retry);
+    expect(retry).toHaveFocus();
+  });
+
+  it('hộp Retry đang mở trong ô không biến mất khi retry đổi danh tính', async () => {
+    const user = userEvent.setup();
+    const { rerender } = render(table());
+
+    await user.click(screen.getByRole('button', { name: t.retry.actionLabel(LONG_KEY) }));
+    expect(await screen.findByRole('dialog')).toBeInTheDocument();
+
+    rerender(table());
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
   });
 });
 

@@ -168,6 +168,41 @@ describe('ToursTable', () => {
   });
 });
 
+describe('ToursTable — ô công tắc sống qua lượt làm mới (G24)', () => {
+  /**
+   * Bảng với một `setPublished` MỚI — mô phỏng lượt `router.refresh()`: Flight client giải mã
+   * server action thành một closure mới mỗi lần (review D1 của màn chuyến).
+   */
+  function table(rows: TourRowVM[]) {
+    return (
+      <ToursTable
+        rows={rows}
+        query={QUERY}
+        categories={CATEGORIES}
+        monthOptions={[{ value: '2026-09', label: 'September 2026' }]}
+        total={rows.length}
+        totalPages={1}
+        setPublished={vi.fn()}
+        createOptions={{ categories: CATEGORIES, destinations: [] }}
+        create={vi.fn()}
+      />
+    );
+  }
+
+  it('setPublished đổi danh tính: công tắc đang giữ focus vẫn là công tắc ấy', () => {
+    const name = messages.admin.tours.publish.toggleLabel('Hoi An Lantern Evening');
+    const { rerender } = render(table([row()]));
+    const toggle = screen.getByRole('switch', { name });
+    toggle.focus();
+    expect(toggle).toHaveFocus();
+
+    rerender(table([row()]));
+
+    expect(screen.getByRole('switch', { name })).toBe(toggle);
+    expect(toggle).toHaveFocus();
+  });
+});
+
 describe('ToursTable — menu lọc danh mục', () => {
   it('danh mục đã ẩn có mặt trong menu, KÈM nhãn phụ "Hidden"', async () => {
     // Lượt thử tay F14 (23/09): menu đã có đủ danh mục ẩn (vòng review F14)

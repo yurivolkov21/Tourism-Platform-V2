@@ -159,6 +159,53 @@ describe('SubscribersTable — chọn hàng để export (G43)', () => {
   });
 });
 
+/**
+ * G24: cột là hằng của module, mọi thứ ô cần từ bảng đi qua context. Lượt `router.refresh()` chở
+ * xuống một `unsubscribe` MỚI (Flight giải mã server action thành closure mới mỗi lần), và ở tab
+ * Active thì `total` cũng giảm vì hàng vừa huỷ rời danh sách. Cột còn đổi danh tính theo một
+ * trong hai thứ ấy thì mọi ô bị dựng lại: focus rơi về `<body>`, hộp đang mở ở hàng khác biến mất.
+ */
+describe('SubscribersTable — ô Actions sống qua lượt làm mới (G24)', () => {
+  const tu = messages.admin.subscribers.unsubscribe;
+
+  function table(total: number) {
+    return (
+      <SubscribersTable
+        rows={ROWS}
+        query={ACTIVE}
+        sources={[]}
+        total={total}
+        totalPages={1}
+        unsubscribe={vi.fn()}
+      />
+    );
+  }
+
+  it('unsubscribe đổi danh tính: nút Unsubscribe đang giữ focus vẫn là nút ấy', () => {
+    const { rerender } = render(table(2));
+    const button = screen.getByRole('button', { name: tu.actionLabel('ada@example.com') });
+    button.focus();
+    expect(button).toHaveFocus();
+
+    rerender(table(2));
+
+    expect(screen.getByRole('button', { name: tu.actionLabel('ada@example.com') })).toBe(button);
+    expect(button).toHaveFocus();
+  });
+
+  it('hộp đang mở ở một hàng không biến mất khi lượt làm mới đổi `total` và `unsubscribe`', async () => {
+    const user = userEvent.setup();
+    const { rerender } = render(table(3));
+
+    await user.click(screen.getByRole('button', { name: tu.actionLabel('bo@example.com') }));
+    expect(await screen.findByRole('dialog')).toBeInTheDocument();
+
+    // Hàng thứ ba vừa huỷ ở tab khác: tab Active còn hai hàng.
+    rerender(table(2));
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+  });
+});
+
 describe('SubscribersTable — ô rỗng khi lọc ngày (G43)', () => {
   it('không lọc ngày: câu rỗng cũ, không có nút nào', () => {
     view({ rows: [], total: 0 });

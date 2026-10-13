@@ -72,82 +72,86 @@ const COLUMN_ICONS = {
 };
 
 /**
- * Cột nhận `moderate` qua tham số (không đọc từ module) để cụm nút giữ đúng
- * luật F2: client component KHÔNG tự import server action, nó nhận vào. Gọi
- * trong `useMemo` khoá theo `moderate` — `columns` là đầu vào của row model,
- * đổi tham chiếu mỗi render sẽ khiến table dựng lại model liên tục.
+ * Lệnh `moderate` tới cụm nút qua CONTEXT chứ không qua cột (G24, cùng khuôn `RowActionsContext`
+ * của danh mục, điểm đến và chuyến). Luật F2 vẫn giữ: client component KHÔNG tự import server
+ * action, nó nhận vào từ trang. Nhưng server action đổi danh tính sau MỖI `router.refresh()`:
+ * Flight client giải mã mỗi lượt thành một closure mới. Bản trước để `moderate` trong deps của
+ * cột, nên quyết xong một hàng là cột dựng lại, mọi ô Moderation unmount rồi mount lại: focus rơi
+ * về `<body>`, và hộp duyệt đang mở ở hàng khác biến mất giữa lúc admin đọc nguyên văn review.
+ * Với context thì cột là hằng của module (`COLUMNS`): ô chỉ vẽ lại, không dựng lại.
  */
-function buildColumns(moderate: ModerateAction) {
-  return columnHelper.columns([
-    columnHelper.accessor('authorLabel', {
-      header: t.columns.author,
-      cell: ({ row }) => (
-        <div className="max-w-40">
-          <div className="truncate font-medium text-foreground">{row.original.authorLabel}</div>
-          {/* Nguồn đứng ngay dưới tên: CURATED là nội dung biên tập, không có
-              khách nào sau lưng — biết trước khi bấm thì không ngạc nhiên vì
-              dialog bảo "không email nào được gửi". */}
-          <div className="truncate text-xs text-muted-foreground">{row.original.sourceLabel}</div>
+const RowActionsContext = React.createContext<{ moderate: ModerateAction } | null>(null);
+
+const COLUMNS = columnHelper.columns([
+  columnHelper.accessor('authorLabel', {
+    header: t.columns.author,
+    cell: ({ row }) => (
+      <div className="max-w-40">
+        <div className="truncate font-medium text-foreground">{row.original.authorLabel}</div>
+        {/* Nguồn đứng ngay dưới tên: CURATED là nội dung biên tập, không có
+            khách nào sau lưng — biết trước khi bấm thì không ngạc nhiên vì
+            dialog bảo "không email nào được gửi". */}
+        <div className="truncate text-xs text-muted-foreground">{row.original.sourceLabel}</div>
+      </div>
+    ),
+  }),
+  columnHelper.accessor('rating', {
+    header: t.columns.rating,
+    cell: ({ row }) => (
+      <div className="flex items-center gap-1 whitespace-nowrap">
+        {/* Token `rating` chuyên dụng (vàng) — cùng màu sao với 8 component
+            web (`filledStarClass` của reui/rating.tsx); sao xám từng làm
+            admin và site nhìn như hai hệ (review F4 31/08). */}
+        <StarIcon className="size-3.5 fill-rating text-rating" aria-hidden="true" />
+        <span>{row.original.rating}</span>
+        {/* Con số trần không nói lên thang điểm — trình đọc màn hình nghe
+            trọn câu "5 out of 5" thay vì "5". */}
+        <span className="sr-only">{row.original.ratingLabel}</span>
+      </div>
+    ),
+  }),
+  columnHelper.accessor('body', {
+    header: t.columns.review,
+    // Cột KHÔNG ẩn được: ẩn nội dung review đi thì hàng đợi moderation mất
+    // hết ý nghĩa.
+    enableHiding: false,
+    cell: ({ row }) => <ReviewCell row={row.original} />,
+  }),
+  columnHelper.accessor('tourTitle', {
+    header: t.columns.tour,
+    cell: ({ row }) =>
+      row.original.tourTitle ? (
+        <div className="max-w-48 truncate" title={row.original.tourTitle}>
+          {row.original.tourTitle}
         </div>
+      ) : (
+        // Review CURATED có thể không gắn tour — nói thẳng thay vì ô trống,
+        // vì đó cũng là lý do rating tour sẽ KHÔNG đổi khi duyệt.
+        <span className="text-muted-foreground">{t.noTour}</span>
       ),
-    }),
-    columnHelper.accessor('rating', {
-      header: t.columns.rating,
-      cell: ({ row }) => (
-        <div className="flex items-center gap-1 whitespace-nowrap">
-          {/* Token `rating` chuyên dụng (vàng) — cùng màu sao với 8 component
-              web (`filledStarClass` của reui/rating.tsx); sao xám từng làm
-              admin và site nhìn như hai hệ (review F4 31/08). */}
-          <StarIcon className="size-3.5 fill-rating text-rating" aria-hidden="true" />
-          <span>{row.original.rating}</span>
-          {/* Con số trần không nói lên thang điểm — trình đọc màn hình nghe
-              trọn câu "5 out of 5" thay vì "5". */}
-          <span className="sr-only">{row.original.ratingLabel}</span>
-        </div>
-      ),
-    }),
-    columnHelper.accessor('body', {
-      header: t.columns.review,
-      // Cột KHÔNG ẩn được: ẩn nội dung review đi thì hàng đợi moderation mất
-      // hết ý nghĩa.
-      enableHiding: false,
-      cell: ({ row }) => <ReviewCell row={row.original} />,
-    }),
-    columnHelper.accessor('tourTitle', {
-      header: t.columns.tour,
-      cell: ({ row }) =>
-        row.original.tourTitle ? (
-          <div className="max-w-48 truncate" title={row.original.tourTitle}>
-            {row.original.tourTitle}
-          </div>
-        ) : (
-          // Review CURATED có thể không gắn tour — nói thẳng thay vì ô trống,
-          // vì đó cũng là lý do rating tour sẽ KHÔNG đổi khi duyệt.
-          <span className="text-muted-foreground">{t.noTour}</span>
-        ),
-    }),
-    columnHelper.accessor('stateLabel', {
-      header: t.columns.state,
-      cell: ({ row }) => (
-        <Badge variant={reviewStateBadgeVariant(row.original.state)} className="px-1.5">
-          {row.original.stateLabel}
-        </Badge>
-      ),
-    }),
-    columnHelper.accessor('submitted', {
-      header: t.columns.submitted,
-      cell: ({ row }) => (
-        <div className="whitespace-nowrap text-muted-foreground">{row.original.submitted}</div>
-      ),
-    }),
-    columnHelper.display({
-      id: 'moderation',
-      header: t.columns.moderation,
-      cell: ({ row }) => <ModerationCell row={row.original} moderate={moderate} />,
-      enableHiding: false,
-    }),
-  ]);
-}
+  }),
+  columnHelper.accessor('stateLabel', {
+    header: t.columns.state,
+    cell: ({ row }) => (
+      <Badge variant={reviewStateBadgeVariant(row.original.state)} className="px-1.5">
+        {row.original.stateLabel}
+      </Badge>
+    ),
+  }),
+  columnHelper.accessor('submitted', {
+    header: t.columns.submitted,
+    cell: ({ row }) => (
+      <div className="whitespace-nowrap text-muted-foreground">{row.original.submitted}</div>
+    ),
+  }),
+  columnHelper.display({
+    id: 'moderation',
+    header: t.columns.moderation,
+    // Lệnh ghi đọc qua `RowActionsContext`, không đóng vào cột.
+    cell: ({ row }) => <ModerationCell row={row.original} />,
+    enableHiding: false,
+  }),
+]);
 
 /** Tiêu đề + nội dung cắt gọn (bấm được để mở bản đầy đủ) + thumbnail ảnh. */
 function ReviewCell({ row }: { row: ReviewRowVM }) {
@@ -184,8 +188,12 @@ function ReviewCell({ row }: { row: ReviewRowVM }) {
  * Nút quyết định + dấu vết lần duyệt gần nhất. Cả hai cùng ở đây (khác
  * cancellations, nơi hàng đã quyết chỉ còn dấu vết): moderation đảo chiều
  * được, nên một review đã duyệt vẫn cần nút — và vẫn cần cho thấy ai duyệt.
+ *
+ * Lệnh `moderate` đọc từ `RowActionsContext` (G24) — cột chỉ giữ một tham chiếu tới đây.
  */
-function ModerationCell({ row, moderate }: { row: ReviewRowVM; moderate: ModerateAction }) {
+function ModerationCell({ row }: { row: ReviewRowVM }) {
+  const context = React.useContext(RowActionsContext);
+  if (context === null) throw new Error('ModerationCell must be used inside RowActionsContext');
   return (
     <div className="grid gap-1">
       {/* Dấu vết ĐỨNG TRƯỚC nút (vá 05/09, user báo). Cột này tên "Moderation"
@@ -201,7 +209,7 @@ function ModerationCell({ row, moderate }: { row: ReviewRowVM; moderate: Moderat
           11 field từng chép tay ở đây vừa tạo tham chiếu mới mỗi render (chặn
           memo về sau) vừa phải sửa tay mỗi khi Pick đổi (review F4 31/08).
           "Dialog dựa vào gì" đã do chính kiểu ModerateTarget diễn đạt. */}
-      <ModerateActions review={row} moderate={moderate} />
+      <ModerateActions review={row} moderate={context.moderate} />
     </div>
   );
 }
@@ -218,12 +226,13 @@ export interface ReviewsTableProps {
 
 export function ReviewsTable({ rows, query, total, totalPages, moderate }: ReviewsTableProps) {
   const [columnVisibility, setColumnVisibility] = React.useState<ColumnVisibilityState>({});
-  const columns = React.useMemo(() => buildColumns(moderate), [moderate]);
+  // Cụm nút đọc lệnh ghi qua context — xem `RowActionsContext`.
+  const rowActions = React.useMemo(() => ({ moderate }), [moderate]);
 
   const table = useTable({
     features: serverTableFeatures,
     data: rows,
-    columns,
+    columns: COLUMNS,
     // KHÔNG có pagination state ở table: trang/limit sống trên URL và
     // `TablePagination` nhận thẳng props (nếp hai vùng trước).
     state: { columnVisibility },
@@ -260,7 +269,9 @@ export function ReviewsTable({ rows, query, total, totalPages, moderate }: Revie
         />
       }
     >
-      <DataTableBody table={table} empty={<ReviewsEmpty query={query} />} />
+      <RowActionsContext.Provider value={rowActions}>
+        <DataTableBody table={table} empty={<ReviewsEmpty query={query} />} />
+      </RowActionsContext.Provider>
     </DataTableFrame>
   );
 }

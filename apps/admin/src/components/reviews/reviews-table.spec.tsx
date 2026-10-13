@@ -1,4 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { messages } from '@tourism/i18n';
 import { describe, expect, it, vi } from 'vitest';
 import type { ReviewsQuery } from '@/lib/reviews-query';
@@ -47,6 +48,43 @@ const row = (patch: Partial<ReviewRowVM> = {}): ReviewRowVM => ({
 });
 
 const QUERY: ReviewsQuery = { page: 1, limit: 20 };
+
+/**
+ * Bảng với một `moderate` MỚI — mô phỏng lượt `router.refresh()`: Flight client giải mã server
+ * action thành một closure mới mỗi lần (review D1 của màn chuyến).
+ */
+function table(rows: ReviewRowVM[]) {
+  return (
+    <ReviewsTable rows={rows} query={QUERY} total={rows.length} totalPages={1} moderate={vi.fn()} />
+  );
+}
+
+describe('ReviewsTable — ô Moderation sống qua lượt làm mới (G24)', () => {
+  it('moderate đổi danh tính: nút Approve đang giữ focus vẫn là nút ấy', () => {
+    const { rerender } = render(table([row()]));
+    const approve = screen.getByRole('button', { name: t.moderate.approve });
+    approve.focus();
+    expect(approve).toHaveFocus();
+
+    rerender(table([row()]));
+
+    expect(screen.getByRole('button', { name: t.moderate.approve })).toBe(approve);
+    expect(approve).toHaveFocus();
+  });
+
+  it('hộp duyệt đang mở trong ô không biến mất khi moderate đổi danh tính', async () => {
+    // Hàng khác vừa quyết xong thì lượt làm mới của nó chở xuống `moderate` mới, đúng lúc admin
+    // đang đọc nguyên văn review của hàng này trong hộp.
+    const user = userEvent.setup();
+    const { rerender } = render(table([row()]));
+
+    await user.click(screen.getByRole('button', { name: t.moderate.approve }));
+    expect(await screen.findByRole('dialog')).toBeInTheDocument();
+
+    rerender(table([row()]));
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+  });
+});
 
 describe('ReviewsTable', () => {
   it('ảnh đính kèm hỏng (nợ G22): ô 32px thành ô có tên "Photo unavailable", không thành ô trống câm', () => {
