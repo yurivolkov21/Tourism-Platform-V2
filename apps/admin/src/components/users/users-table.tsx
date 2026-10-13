@@ -50,7 +50,11 @@ const columns = columnHelper.columns([
           {row.original.image ? <AvatarImage src={row.original.image} alt="" /> : null}
           <AvatarFallback>{row.original.initial}</AvatarFallback>
         </Avatar>
-        <div className="grid min-w-0">
+        {/* Sàn 12rem, không phải min-w-0: hai dòng `truncate` không giữ được bề rộng nào trong
+            bảng tự co, nên ở khổ 390px và 768px Chrome bóp cột còn đúng ảnh đại diện, tên (link
+            duy nhất sang trang chi tiết) rộng 0px — đo bằng CSS build thật, plan P4f Task 13.
+            Có sàn thì bảng tự cuộn ngang trong khung của kit, trang không tràn. */}
+        <div className="grid min-w-48">
           <Link
             href={row.original.href}
             aria-label={t.viewLabel(row.original.name)}
