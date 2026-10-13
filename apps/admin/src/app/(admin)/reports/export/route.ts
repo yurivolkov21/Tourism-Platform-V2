@@ -34,7 +34,7 @@ import { buildReportWorkbook } from '@/lib/xlsx';
 export const maxDuration = 60;
 
 export async function GET(request: NextRequest) {
-  const gate = await guardExportAccess('/reports/export');
+  const gate = await guardExportAccess('/reports/export', 'reports.monthly');
   if (!gate.ok) return gate.response;
 
   const { month } = parseReportsSearchParams(

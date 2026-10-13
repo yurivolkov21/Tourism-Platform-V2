@@ -61,6 +61,24 @@ describe('guardExportAccess', () => {
     const gate = await guardExportAccess('/subscribers/export');
     expect(gate).toEqual({ ok: true, session: user });
   });
+
+  it('Staff + route xuất của thủ tục chỉ Owner → 403, không đi tiếp', async () => {
+    lookupServerSession.mockResolvedValueOnce({
+      kind: 'ok',
+      user: { id: 's1', name: 'S', email: 's@example.com', role: 'STAFF', image: null },
+    });
+    const gate = await guardExportAccess('/reports/export', 'reports.monthly');
+    expect(gate.ok).toBe(false);
+    if (gate.ok) throw new Error('unreachable');
+    expect(gate.response.status).toBe(403);
+    expect(await gate.response.text()).toBe(messages.admin.errors.write.FORBIDDEN);
+  });
+
+  it('Staff + route xuất không khai khoá quyền (bookings, subscribers) → ok', async () => {
+    const user = { id: 's1', name: 'S', email: 's@example.com', role: 'STAFF', image: null };
+    lookupServerSession.mockResolvedValueOnce({ kind: 'ok', user });
+    expect(await guardExportAccess('/bookings/export')).toEqual({ ok: true, session: user });
+  });
 });
 
 describe('isoDay', () => {

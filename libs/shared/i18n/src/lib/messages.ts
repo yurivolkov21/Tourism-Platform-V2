@@ -3532,6 +3532,8 @@ export const messages = {
         passwordRequired: 'Enter your password.',
         invalidCredentials: 'Incorrect email or password.',
         emailNotVerified: 'Verify your email on nexora-travel.agency first, then sign in here.',
+        // ADR-0052 §4 — Staff bị khoá: người mở khoá được là Owner.
+        accountLocked: 'This account is locked. Ask the site owner to unlock it.',
         generic: 'Something went wrong. Please try again.',
       },
       backToSite: 'Back to nexora-travel.agency',
@@ -3541,6 +3543,12 @@ export const messages = {
       body: 'This area is for the Nexora team. Your account doesn’t have admin access.',
       signOut: 'Sign out',
       backToSite: 'Go to the main site',
+      // Staff tới đây vì một trang chỉ Owner (plan P4f, quyết định 5).
+      ownerOnly: {
+        title: 'Owner only',
+        body: 'This page is only for the site owner. Your staff account can’t open it.',
+        back: 'Back to the dashboard',
+      },
     },
     shell: {
       // Nhãn sidebar — 18 vùng theo khảo sát 20/08, nhóm 3 cụm.

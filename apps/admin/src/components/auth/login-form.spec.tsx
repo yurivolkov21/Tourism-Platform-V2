@@ -1,5 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { messages } from '@tourism/i18n';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { LoginForm, validateAdminLogin } from './login-form';
 
@@ -96,6 +97,18 @@ describe('LoginForm', () => {
     await userEvent.type(screen.getByLabelText('Password'), 'secret123');
     await userEvent.click(screen.getByRole('button', { name: /sign in/i }));
     expect(await screen.findByRole('alert')).toHaveTextContent(/Verify your email/i);
+    expect(push).not.toHaveBeenCalled();
+  });
+
+  it('tài khoản bị khoá (ACCOUNT_LOCKED) → câu riêng bảo hỏi Owner', async () => {
+    signInEmail.mockResolvedValue({ error: { code: 'ACCOUNT_LOCKED' } });
+    render(<LoginForm />);
+    await userEvent.type(screen.getByLabelText('Email'), 'a@b.co');
+    await userEvent.type(screen.getByLabelText('Password'), 'secret123');
+    await userEvent.click(screen.getByRole('button', { name: 'Sign in' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      messages.admin.login.errors.accountLocked,
+    );
     expect(push).not.toHaveBeenCalled();
   });
 

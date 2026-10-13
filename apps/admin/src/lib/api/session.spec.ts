@@ -69,6 +69,13 @@ describe('lookupServerSession', () => {
     expect(await lookupServerSession()).toEqual({ kind: 'none' });
   });
 
+  it('tài khoản bị khoá (lockedAt, ADR-0052) cũng là none', async () => {
+    fetchMock.mockResolvedValue(
+      okResponse({ session: {}, user: { ...USER, lockedAt: '2026-10-02T03:00:00.000Z' } }),
+    );
+    expect(await lookupServerSession()).toEqual({ kind: 'none' });
+  });
+
   it('mạng đứt (fetch throw) → unreachable, KHÔNG phải none', async () => {
     fetchMock.mockRejectedValue(new TypeError('fetch failed'));
     expect(await lookupServerSession()).toEqual({ kind: 'unreachable' });

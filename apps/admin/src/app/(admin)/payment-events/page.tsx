@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation';
 import { AdminShell } from '@/components/admin-shell';
 import { StatCardRow } from '@/components/kit/stat-card';
 import { PaymentEventsTable } from '@/components/payment-events/payment-events-table';
+import { requirePageAccess } from '@/lib/admin-access';
 import { fetchAdminPaymentEvents } from '@/lib/api/payment-events';
 import { getServerSession } from '@/lib/api/session';
 import { fetchAdminPaymentEventsStats } from '@/lib/api/stats';
@@ -34,15 +35,17 @@ export default async function PaymentEventsPage({
   searchParams: Promise<RawSearchParams>;
 }) {
   const query = parsePaymentEventsSearchParams(await searchParams);
+  const session = await getServerSession();
+  // Null chỉ xảy ra khi phiên hết hạn ngay giữa hai request — layout xử lý ở lần điều
+  // hướng kế (cùng nếp các trang vùng khác).
+  if (!session) return null;
+  // Trang chỉ Owner (ADR-0052): chặn TRƯỚC khi gọi API (plan P4f, quyết định 13).
+  requirePageAccess(session, 'paymentEvents.list');
   const cookie = (await cookies()).toString();
-  const [session, paged, stats] = await Promise.all([
-    getServerSession(),
+  const [paged, stats] = await Promise.all([
     fetchAdminPaymentEvents(cookie, query),
     fetchAdminPaymentEventsStats(cookie),
   ]);
-  // Null chỉ xảy ra khi phiên hết hạn ngay giữa hai request — layout xử lý ở
-  // lần điều hướng kế (cùng nếp các trang vùng khác).
-  if (!session) return null;
 
   // Page mồ côi: tập "Unprocessed only" co lại khi provider retry xong — đưa
   // về trang cuối còn thật thay vì bảng rỗng cạnh thanh phân trang nói ngược.

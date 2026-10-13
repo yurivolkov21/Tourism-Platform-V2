@@ -1,5 +1,7 @@
+import { isAdminAppRole } from '@tourism/contract/admin-access';
 import { headers } from 'next/headers';
 import { redirect } from 'next/navigation';
+import { AdminAccessProvider } from '@/components/admin-access-provider';
 import { decideAdminAccess } from '@/lib/admin-gate';
 import { getServerSession } from '@/lib/api/session';
 
@@ -28,9 +30,9 @@ export default async function AdminLayout({ children }: Readonly<{ children: Rea
   // allow TRƯỚC khi kiểm role, mà `path` ở đây đến từ header do proxy gắn —
   // nếu một ngày proxy thôi ghi đè header, kẻ tấn công tự khai `/login` là
   // qua cổng với role CUSTOMER. Mọi trang trong nhóm (admin) đều cần session
-  // ADMIN thật, bất kể path nói gì.
+  // ADMIN hoặc STAFF thật (ADR-0052), bất kể path nói gì.
   if (!session) redirect('/login');
-  if (session.role !== 'ADMIN') redirect('/not-authorized');
+  if (!isAdminAppRole(session.role)) redirect('/not-authorized');
   // Shell nằm trong từng trang (block dashboard-01 tự mang SidebarProvider) —
   // layout chỉ còn là CỔNG GÁC (AppShell P4a đã xoá ở vòng gọt 21/08).
   //
@@ -51,7 +53,8 @@ export default async function AdminLayout({ children }: Readonly<{ children: Rea
   // ngoài cây của div này — vế `body:has()` kéo chúng vào cùng palette.
   return (
     <div data-admin-surface style={{ display: 'contents' }}>
-      {children}
+      {/* Role cho component client hỏi nút nào hiện (ADR-0052) — gác thật vẫn ở API. */}
+      <AdminAccessProvider role={session.role}>{children}</AdminAccessProvider>
     </div>
   );
 }

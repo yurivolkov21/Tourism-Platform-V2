@@ -71,13 +71,17 @@ export function LoginForm() {
         // code CHÍNH XÁC (bài học prefix INVALID_EMAIL của web).
         // Siết verify 20/08: admin chưa verify → chỉ dẫn về flow OTP của www
         // (admin không có UI nhập OTP riêng — ADR-0026 §2).
+        // ADR-0052 §4: tài khoản bị khoá (hook tạo phiên của API) — form admin không đi qua
+        // `mapAuthError` nên tự nhận mã (plan P4f, quyết định 4).
         setErrors({
           form:
             error.code === 'INVALID_EMAIL_OR_PASSWORD'
               ? t.errors.invalidCredentials
               : error.code === 'EMAIL_NOT_VERIFIED'
                 ? t.errors.emailNotVerified
-                : t.errors.generic,
+                : error.code === 'ACCOUNT_LOCKED'
+                  ? t.errors.accountLocked
+                  : t.errors.generic,
         });
         return;
       }

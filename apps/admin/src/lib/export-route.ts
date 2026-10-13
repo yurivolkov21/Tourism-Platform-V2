@@ -1,3 +1,4 @@
+import { type AdminProcedureKey, canAccess } from '@tourism/contract/admin-access';
 import { messages } from '@tourism/i18n';
 import { decideAdminAccess } from '@/lib/admin-gate';
 import { lookupServerSession, type SessionUser } from '@/lib/api/session';
@@ -23,7 +24,10 @@ export type ExportGate = { ok: true; session: SessionUser } | { ok: false; respo
  * đây là một cú tải file, redirect sang `/login` chỉ làm trình duyệt lưu một
  * file HTML mang đuôi `.xlsx`.
  */
-export async function guardExportAccess(path: string): Promise<ExportGate> {
+export async function guardExportAccess(
+  path: string,
+  access?: AdminProcedureKey,
+): Promise<ExportGate> {
   const lookup = await lookupServerSession();
   if (lookup.kind === 'unreachable') {
     return { ok: false, response: exportFailedResponse() };
@@ -37,6 +41,13 @@ export async function guardExportAccess(path: string): Promise<ExportGate> {
     };
   }
   if (decision.kind === 'deny') {
+    return {
+      ok: false,
+      response: new Response(messages.admin.errors.write.FORBIDDEN, { status: 403 }),
+    };
+  }
+  // Route xuất của thủ tục chỉ Owner (ADR-0052): Staff qua cổng app nhưng không qua đây.
+  if (access && !canAccess(session.role, access)) {
     return {
       ok: false,
       response: new Response(messages.admin.errors.write.FORBIDDEN, { status: 403 }),

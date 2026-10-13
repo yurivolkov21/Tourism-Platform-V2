@@ -69,7 +69,7 @@ describe('route xuất tôn trọng gate (mỗi route một test)', () => {
     const { GET } = await import('@/app/(admin)/reports/export/route');
     const res = await GET(requestFor('/reports/export'));
     expect(res).toBe(denied);
-    expect(guardExportAccess).toHaveBeenCalledWith('/reports/export');
+    expect(guardExportAccess).toHaveBeenCalledWith('/reports/export', 'reports.monthly');
     expect(fetchAdminMonthlyReport).not.toHaveBeenCalled();
     expect(fetchAllAdminBookings).not.toHaveBeenCalled();
   });

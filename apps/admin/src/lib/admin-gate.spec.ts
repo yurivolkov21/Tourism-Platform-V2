@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { decideAdminAccess, loginDestination } from './admin-gate';
+import { decideAdminAccess, loginDestination, notAuthorizedVariant } from './admin-gate';
 
 // Ma trận quyết định cổng admin (spec P4a §2): session × role × path.
 // Hàm THUẦN — proxy/layout chỉ là người thi hành, mọi nhánh quyết ở đây.
@@ -26,6 +26,14 @@ describe('decideAdminAccess', () => {
 
   it('ADMIN → allow', () => {
     expect(decideAdminAccess({ role: 'ADMIN' }, '/outbox')).toEqual({ kind: 'allow' });
+  });
+
+  it('STAFF → allow (ADR-0052: Staff vào app; quyền từng trang do bảng quyền quyết)', () => {
+    expect(decideAdminAccess({ role: 'STAFF' }, '/bookings')).toEqual({ kind: 'allow' });
+  });
+
+  it('role sai hoa thường vẫn deny — so bằng, không hạ chữ', () => {
+    expect(decideAdminAccess({ role: 'staff' }, '/')).toEqual({ kind: 'deny' });
   });
 
   it('path public (/login, /not-authorized) luôn allow kể cả chưa đăng nhập', () => {
@@ -64,10 +72,17 @@ describe('loginDestination', () => {
     );
   });
 
+  it('phiên STAFF cũng đi thẳng (ADR-0052): link Excel của /bookings mở cho Staff như Owner', () => {
+    expect(loginDestination({ role: 'STAFF' }, '/bookings/BK-ABCD1234')).toBe(
+      '/bookings/BK-ABCD1234',
+    );
+  });
+
   it('chưa đăng nhập hoặc không phải ADMIN → null: hiện form để đăng nhập bằng tài khoản admin', () => {
     expect(loginDestination(null, '/bookings')).toBeNull();
     expect(loginDestination({ role: 'CUSTOMER' }, '/bookings')).toBeNull();
     expect(loginDestination({ role: '' }, '/bookings')).toBeNull();
+    expect(loginDestination({ role: 'staff' }, '/bookings')).toBeNull();
   });
 
   it('đích thiếu, lặp hoặc không an toàn → trang chủ, cùng luật safeRedirect với form', () => {
@@ -84,5 +99,17 @@ describe('loginDestination', () => {
     expect(loginDestination({ role: 'ADMIN' }, '/login#form')).toBe('/');
     // Chỉ đúng trang login — path trùng tiền tố vẫn là đích hợp lệ.
     expect(loginDestination({ role: 'ADMIN' }, '/logins')).toBe('/logins');
+  });
+});
+
+describe('notAuthorizedVariant', () => {
+  it('Staff tới /not-authorized vì một trang chỉ Owner', () => {
+    expect(notAuthorizedVariant('STAFF')).toBe('ownerOnly');
+  });
+
+  it('khách, chưa đăng nhập, role lạ: câu "không có quyền admin" như cũ', () => {
+    for (const role of ['CUSTOMER', '', null]) {
+      expect(notAuthorizedVariant(role)).toBe('noAccess');
+    }
   });
 });

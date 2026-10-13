@@ -28,6 +28,8 @@ interface GetSessionApiResponse {
     email: string;
     role?: string | null;
     deletedAt?: string | null;
+    // ADR-0052 §4: tài khoản bị khoá — phiên sót coi như không có, như tombstone.
+    lockedAt?: string | null;
     image?: string | null;
   };
 }
@@ -74,7 +76,7 @@ export const lookupServerSession = cache(async (): Promise<SessionLookup> => {
     if (!response.ok) return { kind: 'unreachable' };
 
     const data = (await response.json()) as GetSessionApiResponse | null;
-    if (!data || data.user.deletedAt != null) return { kind: 'none' };
+    if (!data || data.user.deletedAt != null || data.user.lockedAt != null) return { kind: 'none' };
 
     const { user } = data;
     return {

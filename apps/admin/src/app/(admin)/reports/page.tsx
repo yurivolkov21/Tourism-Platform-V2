@@ -6,6 +6,7 @@ import { StatCardRow } from '@/components/kit/stat-card';
 import { ReportPrint } from '@/components/reports/report-print';
 import { ReportTables } from '@/components/reports/report-tables';
 import { ReportsToolbar } from '@/components/reports/reports-toolbar';
+import { requirePageAccess } from '@/lib/admin-access';
 import { fetchAdminMonthlyReport } from '@/lib/api/reports';
 import { getServerSession } from '@/lib/api/session';
 import { formatDateTime } from '@/lib/bookings-view';
@@ -56,14 +57,14 @@ export default async function ReportsPage({
   // tháng và tháng mặc định có thể rơi hai bên nửa đêm cuối tháng.
   const now = new Date();
   const query = parseReportsSearchParams(await searchParams, now);
-  const cookie = (await cookies()).toString();
-  const [session, report] = await Promise.all([
-    getServerSession(),
-    fetchAdminMonthlyReport(cookie, query.month),
-  ]);
-  // Null chỉ xảy ra khi phiên hết hạn ngay giữa hai request — layout xử lý ở
-  // lần điều hướng kế (cùng nếp ba trang vùng).
+  const session = await getServerSession();
+  // Null chỉ xảy ra khi phiên hết hạn ngay giữa hai request — layout xử lý ở lần điều
+  // hướng kế (cùng nếp ba trang vùng).
   if (!session) return null;
+  // Trang chỉ Owner (ADR-0052): chặn TRƯỚC khi gọi API (plan P4f, quyết định 13).
+  requirePageAccess(session, 'reports.monthly');
+  const cookie = (await cookies()).toString();
+  const report = await fetchAdminMonthlyReport(cookie, query.month);
 
   return (
     <AdminShell user={session}>
