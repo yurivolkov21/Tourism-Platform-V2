@@ -19,22 +19,26 @@ import { useEffect, useState } from 'react';
  *
  * Dừng sau `MAX_ATTEMPTS`: webhook không về sau ~1 phút thì lỗi nằm chỗ khác,
  * và một trang tự gọi lại vô hạn là thứ sẽ chạy quên trong tab bỏ ngỏ.
+ *
+ * `auto={false}`: chỉ nút Refresh, không hẹn giờ. Thẻ chờ (G42) vẽ hành động hai lần (ô gọn dưới
+ * `xl`, cột phải từ `xl`) và CSS chỉ giấu chứ không gỡ bản kia — hai bộ hẹn giờ là hai lượt
+ * `router.refresh()` mỗi nhịp, nên chỉ một bản được tự làm tươi.
  */
 const INTERVAL_MS = 5_000;
 const MAX_ATTEMPTS = 12;
 
-export function CheckoutAutoRefresh() {
+export function CheckoutAutoRefresh({ auto = true }: { auto?: boolean }) {
   const router = useRouter();
   const [attempts, setAttempts] = useState(0);
 
   useEffect(() => {
-    if (attempts >= MAX_ATTEMPTS) return;
+    if (!auto || attempts >= MAX_ATTEMPTS) return;
     const timer = setTimeout(() => {
       setAttempts((n) => n + 1);
       router.refresh();
     }, INTERVAL_MS);
     return () => clearTimeout(timer);
-  }, [attempts, router]);
+  }, [auto, attempts, router]);
 
   return (
     <Button type="button" variant="outline" onClick={() => router.refresh()}>
