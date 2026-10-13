@@ -2,6 +2,7 @@ import { generateKeyPairSync, sign } from 'node:crypto';
 import { FastifyAdapter, type NestFastifyApplication } from '@nestjs/platform-fastify';
 import { Test } from '@nestjs/testing';
 import { AppModule } from '../app.module.js';
+import { EmailType } from '../generated/prisma/enums.js';
 import { prisma } from './auth.config.js';
 
 /**
@@ -277,5 +278,47 @@ describe('đăng nhập Google qua Better Auth thật (ADR-0056)', () => {
     expect(location.searchParams.get('error')).toBe('ACCOUNT_LOCKED');
     expect(cookieHeader(callback.headers['set-cookie'])).not.toMatch(/session_token=[^;]/);
     expect(await prisma.session.count({ where: { userId: user.id } })).toBe(0);
+  });
+
+  it('tài khoản CHỈ có Google: "Forgot password?" tạo được mật khẩu, rồi đăng nhập email được — lối vào admin của Staff (review P4f)', async () => {
+    const email = 'google-only@example.com';
+    const newPassword = 'new-password-456';
+    const signInEmail = () =>
+      app.inject({
+        method: 'POST',
+        url: '/api/auth/sign-in/email',
+        payload: { email, password: newPassword },
+      });
+    const created = await signInWithIdToken(
+      googleIdToken({ sub: 'google-sub-only', email, name: 'Google Only' }),
+    );
+    expect(created.statusCode).toBe(200);
+    // Đối chứng: chưa có mật khẩu thì form email và mật khẩu (form duy nhất của admin) từ chối.
+    expect((await signInEmail()).statusCode).toBe(401);
+
+    const request = await app.inject({
+      method: 'POST',
+      url: '/api/auth/request-password-reset',
+      headers: { 'content-type': 'application/json' },
+      payload: JSON.stringify({ email, redirectTo: '/reset-password' }),
+    });
+    expect(request.statusCode).toBe(200);
+    const row = await prisma.outbox.findFirstOrThrow({ where: { type: EmailType.PASSWORD_RESET } });
+    const token = new URL((row.payload as { url: string }).url).pathname.split('/').at(-1);
+    const reset = await app.inject({
+      method: 'POST',
+      url: '/api/auth/reset-password',
+      headers: { 'content-type': 'application/json' },
+      payload: JSON.stringify({ newPassword, token }),
+    });
+    expect(reset.statusCode).toBe(200);
+
+    const user = await prisma.user.findUniqueOrThrow({ where: { email } });
+    const providers = await prisma.account.findMany({
+      where: { userId: user.id },
+      select: { providerId: true },
+    });
+    expect(providers.map((account) => account.providerId).sort()).toEqual(['credential', 'google']);
+    expect((await signInEmail()).statusCode).toBe(200);
   });
 });

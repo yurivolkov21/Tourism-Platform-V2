@@ -107,7 +107,23 @@ describe('toUserDetailVM', () => {
     expect(note({ lockedAt: '2026-10-02T03:00:00.000Z', status: 'locked' })).toBe(
       messages.admin.users.detail.access.needsUnlock,
     );
+    // Vừa khoá vừa chưa xác minh: mở khoá xong vẫn không cấp được, nên nói thiếu xác minh trước.
+    expect(
+      note({ emailVerified: false, lockedAt: '2026-10-02T03:00:00.000Z', status: 'locked' }),
+    ).toBe(messages.admin.users.detail.access.needsVerified);
+    // Staff đang khoá: role vẫn STAFF nhưng hook tạo phiên chặn họ, không được nói họ vào được.
+    expect(note({ role: 'STAFF', lockedAt: '2026-10-02T03:00:00.000Z', status: 'locked' })).toBe(
+      messages.admin.users.detail.access.staffLocked,
+    );
     expect(note({ role: 'ADMIN' })).toBeNull();
+  });
+
+  it('Staff chưa có mật khẩu: card chỉ đường đặt mật khẩu, vì form admin chỉ nhận email và mật khẩu', () => {
+    const note = (signInMethods: Array<'password' | 'google'>) =>
+      toUserDetailVM(userDetailFixture({ role: 'STAFF', signInMethods })).accessNote;
+    expect(note(['google'])).toBe(messages.admin.users.detail.access.staffNoPassword);
+    expect(note([])).toBe(messages.admin.users.detail.access.staffNoPassword);
+    expect(note(['password', 'google'])).toBe(messages.admin.users.detail.access.staff);
   });
 
   it('đang khoá: từ khi nào (giờ UTC) và vì sao', () => {

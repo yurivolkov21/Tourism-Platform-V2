@@ -5720,6 +5720,13 @@ export const messages = {
           customer:
             'Staff can work on bookings, reviews, enquiries, subscribers, the outbox, tours, departures, categories, destinations and posts. Only the owner can refund, cancel a departure, delete a tour, a post, a category or a destination, or open reports, payment events and users.',
           staff: 'This account can use the back office as staff.',
+          // Đo trên code: khoá xoá mọi phiên, hook tạo phiên chặn phiên mới; role giữ STAFF nên
+          // mở khoá là vào lại được.
+          staffLocked: 'Staff access is on hold while the account is locked.',
+          // Đo bằng google-sign-in.int.spec.ts: "Forgot password?" của form admin dẫn sang trang
+          // quên mật khẩu của www, và Better Auth tạo mật khẩu cho tài khoản chưa có.
+          staffNoPassword:
+            'This account has staff access but no password yet, and the back office only takes email and password. They can set one with “Forgot password?” on the back-office sign-in page.',
           needsVerified: 'Staff access needs a verified email — this account hasn’t verified yet.',
           needsUnlock: 'Unlock the account before granting staff access.',
         },

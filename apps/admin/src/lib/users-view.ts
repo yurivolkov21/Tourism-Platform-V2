@@ -142,9 +142,16 @@ const d = t.detail;
 
 function accessNote(detail: AdminUserDetail, actions: UserAction[]): string | null {
   if (detail.role === 'ADMIN') return null;
-  if (detail.role === 'STAFF') return d.access.staff;
+  if (detail.role === 'STAFF') {
+    // Staff đang khoá vẫn mang role STAFF, nhưng hook tạo phiên và AuthGuard cùng chặn họ.
+    if (detail.lockedAt) return d.access.staffLocked;
+    // Form admin chỉ có email và mật khẩu: Staff chưa có mật khẩu phải đặt một cái trước.
+    return detail.signInMethods.includes('password') ? d.access.staff : d.access.staffNoPassword;
+  }
   if (actions.includes('grantStaff')) return d.access.customer;
-  return detail.lockedAt ? d.access.needsUnlock : d.access.needsVerified;
+  // Chưa xác minh là điều Owner không tự gỡ được, nên nói nó trước; chỉ khi đã xác minh mà
+  // còn khoá thì "mở khoá trước" mới đủ để cấp được.
+  return detail.emailVerified ? d.access.needsUnlock : d.access.needsVerified;
 }
 
 export function toUserDetailVM(detail: AdminUserDetail): UserDetailVM {
