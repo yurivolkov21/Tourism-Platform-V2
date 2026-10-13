@@ -98,6 +98,7 @@ const KE_HOACH = [
   ['subscribers', null, 'seed lại bằng người dùng giả'],
   ['outbox', null, '137 dòng đều SENT — không email nào đang chờ'],
   ['verifications', null, 'token Better Auth, tự sinh lại'],
+  ['user_events', null, 'CASCADE ← users, xoá tường minh cho rõ ý (P4f)'],
   ['sessions', 'user_id <> $1', 'giữ phiên admin để không tự đá mình khỏi trang admin'],
   ['accounts', 'user_id <> $1', 'CASCADE ← users, xoá tường minh cho khớp'],
   ['users', 'id <> $1', 'GIỮ ĐÚNG MỘT admin — xem keep-list.admin_duy_nhat'],

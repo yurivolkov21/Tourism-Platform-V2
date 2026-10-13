@@ -27,6 +27,18 @@ datasource db {
 enum UserRole {
   CUSTOMER
   ADMIN
+  // P4f (ADR-0052): Staff do Owner cấp. Nối ĐUÔI vì `ALTER TYPE … ADD VALUE` không chèn
+  // giữa; Owner vẫn là ADMIN và chỉ đến từ ADMIN_EMAILS (SEC-1).
+  STAFF
+}
+
+/// Năm việc Owner làm được với một tài khoản (ADR-0052 §5) — một dòng `user_events` mỗi lần.
+enum UserEventType {
+  STAFF_GRANTED
+  STAFF_REVOKED
+  LOCKED
+  UNLOCKED
+  SESSIONS_REVOKED
 }
 
 enum DepartureStatus {
@@ -232,6 +244,9 @@ model User {
   phone         String?   @db.VarChar(30)
   role          UserRole  @default(CUSTOMER)
   deletedAt     DateTime? @map("deleted_at")
+  // Khác null = bị khoá: Better Auth không tạo phiên mới, AuthGuard 401 phiên sót
+  // (ADR-0052 §4). Lý do khoá nằm ở `user_events.note` của dòng LOCKED.
+  lockedAt      DateTime? @map("locked_at")
   createdAt     DateTime  @default(now()) @map("created_at")
   updatedAt     DateTime  @updatedAt @map("updated_at")
 
@@ -251,6 +266,8 @@ model User {
   moderationEvents      ReviewModerationEvent[]
   enquiryStatusEvents   EnquiryStatusEvent[]
   enquiries             Enquiry[]
+  userEvents            UserEvent[]             @relation("UserEventTarget")
+  actedUserEvents       UserEvent[]             @relation("UserEventActor")
 
   @@index([role])
   @@map("users")
@@ -270,6 +287,25 @@ model Session {
 
   @@index([userId])
   @@map("sessions")
+}
+
+/// Lịch sử Owner thao tác lên MỘT tài khoản (ADR-0052 §5) — chỉ ghi thêm, ghi trong cùng
+/// transaction với thao tác. Khuôn `enquiry_status_events`.
+model UserEvent {
+  id        String        @id @default(uuid(7)) @db.Uuid
+  userId    String        @map("user_id") @db.Uuid
+  actorId   String?       @map("actor_id") @db.Uuid
+  type      UserEventType
+  // Chỉ dòng LOCKED mang chữ: lý do khoá (contract bắt buộc, trim, tối đa 500).
+  note      String?       @db.VarChar(500)
+  createdAt DateTime      @default(now()) @map("created_at")
+
+  user  User  @relation("UserEventTarget", fields: [userId], references: [id], onDelete: Cascade)
+  actor User? @relation("UserEventActor", fields: [actorId], references: [id], onDelete: SetNull)
+
+  // Dòng thời gian của một tài khoản (trang chi tiết).
+  @@index([userId, createdAt])
+  @@map("user_events")
 }
 
 model Account {

@@ -46,6 +46,7 @@ const RIENG_TU = {
   users: 'select * from users order by 1',
   accounts: 'select * from accounts order by 1',
   sessions: 'select * from sessions order by 1',
+  user_events: 'select * from user_events order by 1',
   verifications: 'select * from verifications order by 1',
   bookings: 'select * from bookings order by 1',
   payment_events: 'select * from payment_events order by 1',
