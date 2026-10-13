@@ -142,6 +142,27 @@ export const auth = betterAuth({
       create: { before: async (data, ctx) => guardAvatarImage(data, ctx?.path) },
       update: { before: async (data) => guardAvatarImage(data) },
     },
+    session: {
+      // ADR-0052 §4: tài khoản bị khoá không được có phiên MỚI. Mọi đường đăng nhập (mật
+      // khẩu, OTP email, Google, cả phiên xoay vòng khi đổi mật khẩu) đều tạo phiên qua
+      // `internalAdapter.createSession`, nên chặn ở đây là chặn hết — đúng cơ chế plugin
+      // `admin` của BA 1.6.23 dùng cho user bị ban (đã đọc mã nguồn). Với Google, BA đổi lỗi
+      // này thành redirect `errorCallbackURL?error=ACCOUNT_LOCKED`.
+      create: {
+        before: async (session) => {
+          const owner = await prisma.user.findUnique({
+            where: { id: session.userId },
+            select: { lockedAt: true },
+          });
+          if (owner?.lockedAt) {
+            throw new APIError('FORBIDDEN', {
+              code: 'ACCOUNT_LOCKED',
+              message: 'This account is locked',
+            });
+          }
+        },
+      },
+    },
   },
   user: {
     additionalFields: {
@@ -152,6 +173,8 @@ export const auth = betterAuth({
       role: { type: 'string', required: false, defaultValue: UserRole.CUSTOMER, input: false },
       // Tombstone marker — expose để guard đọc từ session, không nhận input.
       deletedAt: { type: 'date', required: false, input: false },
+      // ADR-0052 §4: mốc khoá — expose để AuthGuard và hai app đọc từ session, không nhận input.
+      lockedAt: { type: 'date', required: false, input: false },
     },
   },
   // Google OAuth chỉ bật khi có ĐỦ cặp env (dev không cần Google vẫn boot được).
@@ -283,5 +306,5 @@ export function isOwnCloudinaryUrl(value: string): boolean {
   );
 }
 
-/** User trong session Better Auth (kèm additionalFields: phone/role/deletedAt). */
+/** User trong session Better Auth (kèm additionalFields: phone/role/deletedAt/lockedAt). */
 export type SessionUser = typeof auth.$Infer.Session.user;

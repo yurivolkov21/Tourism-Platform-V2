@@ -22,8 +22,9 @@ export interface AuthenticatedRequest extends FastifyRequest {
 
 /**
  * Đọc session Better Auth từ cookie/header (thay JWT Supabase của Nexora).
- * 401: không có session HOẶC user đã tombstone (deletedAt set — defense in
- * depth, tombstone flow vốn đã xoá hết session). 403: thiếu role @Roles yêu cầu.
+ * 401: không có session, user đã tombstone (deletedAt set) HOẶC đang bị khoá
+ * (lockedAt set, ADR-0052) — defense in depth, hai luồng ấy vốn đã xoá hết
+ * session. 403: thiếu role @Roles yêu cầu.
  */
 @Injectable()
 export class AuthGuard implements CanActivate {
@@ -44,7 +45,9 @@ export class AuthGuard implements CanActivate {
     const session = await auth.api.getSession({
       headers: fromNodeHeaders(request.headers),
     });
-    if (!session || session.user.deletedAt != null) {
+    // 401 khi tombstone HOẶC bị khoá (ADR-0052 §4). Lệnh khoá đã xoá mọi phiên và hook chặn
+    // phiên mới; vế `lockedAt` bịt khe hở một phiên được ghi đúng lúc lệnh khoá đang chạy.
+    if (!session || session.user.deletedAt != null || session.user.lockedAt != null) {
       throw new UnauthorizedException();
     }
 
