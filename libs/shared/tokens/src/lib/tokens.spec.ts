@@ -1,12 +1,19 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { oklch, wcagContrast } from 'culori';
+import { converter, oklch, wcagContrast } from 'culori';
 import { describe, expect, it } from 'vitest';
 // Namespace import có chủ đích: cần cả default (tokens) lẫn named export regionDefaults.
 import * as src from '../../style-dictionary/tokens.mjs';
 
 // Bất biến của hệ màu Wuling (ADR-0013) — chặn regression khi chỉnh token.
 const tokens = src.default;
+const toRgb = converter('rgb');
+/** Đổi chuỗi oklch sang rgb; nguồn token sai cú pháp thì hỏng test ngay thay vì ra NaN. */
+const rgb = (color: string) => {
+  const out = toRgb(color);
+  if (!out) throw new Error(`không parse được màu ${color}`);
+  return out;
+};
 
 describe('nguồn token màu', () => {
   it('mọi token màu có value + darkValue parse được (oklch hợp lệ)', () => {
@@ -99,11 +106,12 @@ describe('token của tài liệu in (G40)', () => {
 });
 
 // ADR-0019 AMEND 1 (G32, G20): token vai mực của màu trạng thái đạt 4.5:1 trên ba bề mặt chữ đứng
-// lên, ở cả hai theme — chính điều token bề mặt `warning`/`success` không làm được.
-describe('token vai mực của màu trạng thái (ADR-0019 AMEND 1)', () => {
+// lên, ở cả hai theme — chính điều token bề mặt `warning`/`success` không làm được. AMEND 2 (G46)
+// thêm `destructive-emphasis`: mục 2b chỉ đo nền và card nên bỏ lọt `muted` tối (3.94).
+describe('token vai mực của màu trạng thái (ADR-0019 AMEND 1, AMEND 2)', () => {
   const SURFACES = ['background', 'card', 'muted'] as const;
 
-  for (const ink of ['warning-emphasis', 'success-emphasis'] as const) {
+  for (const ink of ['warning-emphasis', 'success-emphasis', 'destructive-emphasis'] as const) {
     it(`${ink} đạt 4.5:1 trên nền, card và muted ở cả hai theme`, () => {
       const token = tokens.color[ink];
       expect(token, ink).toBeDefined();
@@ -123,5 +131,26 @@ describe('token vai mực của màu trạng thái (ADR-0019 AMEND 1)', () => {
 
   it('warning-emphasis tối giữ y hệt warning — tách token không đổi pixel nào ở theme tối', () => {
     expect(tokens.color['warning-emphasis'].darkValue).toBe(tokens.color.warning.darkValue);
+  });
+
+  // Nút và huy hiệu biến thể destructive của @tourism/ui đặt mực lên lớp tô `bg-destructive/20`
+  // (tối) và `/30` lúc hover. Trộn alpha trong sRGB như trình duyệt vẽ, trên card và nền.
+  it('destructive-emphasis tối đạt 4.5:1 trên lớp tô đỏ 20% và 30% của nút destructive', () => {
+    const ink = tokens.color['destructive-emphasis'].darkValue;
+    const tint = rgb(tokens.color.destructive.darkValue);
+    for (const surface of ['background', 'card'] as const) {
+      const base = rgb(tokens.color[surface].darkValue);
+      for (const alpha of [0.2, 0.3]) {
+        const mixed = {
+          mode: 'rgb' as const,
+          r: tint.r * alpha + base.r * (1 - alpha),
+          g: tint.g * alpha + base.g * (1 - alpha),
+          b: tint.b * alpha + base.b * (1 - alpha),
+        };
+        expect(wcagContrast(ink, mixed), `${surface} + đỏ ${alpha * 100}%`).toBeGreaterThanOrEqual(
+          4.5,
+        );
+      }
+    }
   });
 });

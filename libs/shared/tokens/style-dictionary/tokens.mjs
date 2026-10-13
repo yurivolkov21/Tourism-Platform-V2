@@ -123,7 +123,12 @@ export default {
     //
     // Dùng ở đâu: MỌI `text-destructive`. Bề mặt đặc (badge "−20%" cõng chữ
     // trắng) vẫn là `destructive`.
-    'destructive-emphasis': c('oklch(0.516 0.136 27.3)', 'oklch(0.72 0.148 26.7)'),
+    //
+    // AMEND 2 (13/10, G46): dark 0.72 chỉ đạt 3.94 trên `muted`, và chữ của nút
+    // biến thể destructive (`dark:bg-destructive/20` trên card) chỉ 4.21. Lên
+    // L 0.77: nền 6.75 · card 5.99 · muted 4.77 · nút 5.09 · nút hover (30%)
+    // 4.62. Chroma 0.148 → 0.13 vì 0.148 ở L 0.77 ra ngoài gam sRGB.
+    'destructive-emphasis': c('oklch(0.516 0.136 27.3)', 'oklch(0.77 0.13 26.7)'),
     // ⚠️ `border` và `input` KHÔNG cùng luật, dù giá trị từng giống hệt nhau
     // (ADR-0019 mục 5). `border` là đường phân cách và mép thẻ — TRANG TRÍ,
     // không thuộc WCAG 1.4.11, nâng nó lên 3:1 sẽ biến toàn site thành lưới kẻ
