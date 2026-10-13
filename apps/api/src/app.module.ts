@@ -24,6 +24,7 @@ import { PostsModule } from './modules/posts/posts.module.js';
 import { ReviewsModule } from './modules/reviews/reviews.module.js';
 import { SiteMediaModule } from './modules/site-media/site-media.module.js';
 import { StatsModule } from './modules/stats/stats.module.js';
+import { UsersModule } from './modules/users/users.module.js';
 import { WishlistModule } from './modules/wishlist/wishlist.module.js';
 
 @Module({
@@ -88,6 +89,8 @@ import { WishlistModule } from './modules/wishlist/wishlist.module.js';
     // F7 (spec P4c): vùng outbox admin — list + retry, KHÔNG kéo WorkerModule
     // (retry chỉ đưa hàng về PENDING, worker tự nhặt ở lượt drain kế).
     OutboxModule,
+    // P4f (ADR-0052): vùng Users của admin — danh sách, cấp/thu Staff, khoá, đăng xuất mọi nơi.
+    UsersModule,
     // W4 E6: webhook Resend ghi email_suppressions (bounce cứng/complaint).
     EmailWebhooksModule,
     // W4 C1: POST /api/webhooks/csp-report — kênh báo cáo CSP hai app.
