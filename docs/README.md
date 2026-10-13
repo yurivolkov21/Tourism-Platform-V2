@@ -183,6 +183,9 @@ Mỗi spec đi kèm một plan cùng tên ở [`plans/`](plans/), trừ vài đ�
 **Bản in và file xuất (G40, duyệt thiết kế 10/10, ba phần thi công xong 12/10)**
 [Thiết kế lại bản in voucher, hoá đơn chờ, báo cáo tháng; Excel báo cáo và danh sách](specs/2026-10-10-print-and-export-redesign-design.md)
 
+**Màn hoá đơn chờ cho đơn chưa trả (G42, phương án A, xong 13/10)**
+[Thẻ chờ cùng khung voucher ở `/checkout/cancel` và `/checkout/success`](specs/2026-10-13-g42-pending-receipt-design.md)
+
 **Công cụ máy dev (ngoài repo)**
 [mod `tourism-status`: dải trạng thái, canh CI, docs-freshness](specs/2026-10-02-tourism-status-mod-design.md)
 
@@ -257,6 +260,7 @@ entry CHANGELOG cùng ngày.
 [**G40 Phần 2: bản in báo cáo tháng C2**](plans/2026-10-12-g40-part2-report-print.md) ·
 [**G40 Phần 3: Excel báo cáo D1 và danh sách xuất Excel**](plans/2026-10-10-g40-part3-admin-excel.md) ·
 [prompt thi công G40 Phần 3](plans/2026-10-10-g40-part3-admin-excel-prompt.md) ·
+[**G42 màn hoá đơn chờ**](plans/2026-10-13-g42-pending-receipt.md) ·
 [**P5b-2 T0 tầng dữ liệu mobile browse**](plans/2026-09-23-mobile-browse-t0-data-layer.md) ·
 [**P5b-4 spec cụm tài khoản mobile**](plans/2026-09-25-mobile-account-screens.md) ·
 [P5b-4 return-to sau đăng nhập và AuthGateScreen](plans/2026-09-25-mobile-account-return-to-auth.md)

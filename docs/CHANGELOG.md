@@ -8,6 +8,54 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-10-13 — Merge G42 màn hoá đơn chờ cho đơn chưa trả, phương án A (`2e84458`..`18e5ebd`)
+
+User giao 13/10 07:16 UTC: làm G42 trước freeze 15/10 nếu kịp; chọn phương án A "Voucher chờ" trên
+thẻ quyết định lúc 07:32 UTC (B là bản in B1 đưa lên màn hình). Nhánh `feat/g42-pending-receipt`,
+[PR #9](https://github.com/yurivolkov21/Tourism-Platform-V2/pull/9), thi công trên session cloud.
+Không migration, không env, không dependency mới, không đổi API hay contract. Thư viện dùng chung bị
+sửa: `@tourism/i18n` (thêm khối `pendingReceipt`, gỡ 13 khoá chỉ hoá đơn cũ dùng ở `booking.success`
+và `booking.cancel`).
+
+- Spec, bản vẽ, plan `2e84458`, `1bdd7a6`:
+  [spec](specs/2026-10-13-g42-pending-receipt-design.md), bản ghi nguyên văn
+  `design/mockups/pending-receipt.src.html`, [plan](plans/2026-10-13-g42-pending-receipt.md).
+- Bảng quyết định `bf78b15`: `pendingView(booking, now, page)` ở `lib/pending-receipt.ts` cho bốn
+  trạng thái — `payable` (trang huỷ, còn trả được), `confirming` (trang success, chờ webhook),
+  `notPaid` (quá hạn chót), `closed` (đơn đã đóng, kể "Charged $0" hoặc khoản hoàn).
+- Ảnh bìa dùng chung `23cbe61`: `VoucherPhoto` tách khỏi `VoucherOverview`, `InfoCell` có biến thể
+  cảnh báo cho ô hạn trả.
+- Thẻ chờ `426d833`: `PendingCard` cùng lưới hai cột với voucher, cột phải mảng `muted` có ô mã viền
+  đứt, dải gạch chéo thay mã vạch (mã của đơn chưa trả không phải giấy vào cổng), Receipt overview,
+  Trip journal, hành động chính. Hành động vẽ hai lần (ô gọn dưới `xl`, cột phải từ `xl`) nhưng chỉ
+  một bộ hẹn giờ tự làm tươi.
+- Hai trang `18e5ebd`: `/checkout/cancel` và nhánh chưa trả của `/checkout/success` dựng thẻ chờ;
+  breadcrumb "Checkout". Gỡ `BookingReceipt` cùng `checkoutMood`, `cancelPageNote`, `receiptNote`
+  (thay bằng `closedNote`). Pay now dùng lại `BookingActions` của trang chi tiết đơn.
+
+**Đo trên bản build (Chromium headless của session cloud).** Sáu đơn thử chèn vào DB dev local (còn
+trả được, chờ webhook PayPal, quá hạn chót, quá mốc 60 phút, đã huỷ chưa thu, đã huỷ sau khi bị thu
+và hoàn tự động), đo xong đã xoá. 6 bề rộng (320, 375, 768, 1024, 1280, 1440) nhân sáng và tối: 72/72
+lượt không cuộn ngang, không chữ ra ngoài thẻ, ảnh có `sizes`; tương phản thấp nhất của chữ trong thẻ
+4.62:1 (sáng) và 4.69:1 (tối), kể cả chữ trên dải gạch chéo. Một lượt bị đẩy về `/login` giữa chừng,
+đo lại thì đạt.
+
+**Review.** Không có lượt review độc lập. User xem ảnh tổng hợp ba cặp trạng thái và bảo merge (13/10
+08:20 UTC). Lỗi tự bắt lúc thi công: lớp Tailwind ghép động không được quét (đổi sang chuỗi viết
+sẵn); `pending-card` và `pending-pass` import vòng (tách `pending-action.tsx`); `ButtonLink` nhận
+`data-slot` thì đè slot `button` (bỏ).
+
+Tests after (`gate:int` trên `18e5ebd`, 13/10 xong 08:14 UTC, session cloud theo các bước của CI):
+unit 7245 — web 2269, admin 2083, api 1118, mobile 771, contract 701, mobile-ui 136, i18n 48, core
+48, ui 47, tokens 24 — và int 825. So với main `8af423d`: web thêm 32 ca mới (`pending-receipt` 23,
+`pending-card` 9) và gỡ các ca của `BookingReceipt`, `checkoutMood`, `cancelPageNote`, ròng bớt 1.
+
+**CÒN TREO:**
+
+- [ ] Thử tay production: đặt một tour, bấm huỷ ở trang Stripe để về `/checkout/cancel` (thẻ chờ, Pay
+  now trả tiếp được), và trả xong mà về trước webhook để thấy nhánh "Checking with Stripe…".
+- Dọn sau merge: nhánh `feat/g42-pending-receipt` trên origin nếu GitHub không tự xoá.
+
 ## 2026-10-13 — Merge việc tồn đọng của web, lô 1 và lô 2: 15 mục open-items (`5fd101b`..`d154a26`)
 
 User giao 13/10 04:46 UTC: làm các mục còn mở của web từ dễ tới khó, đóng được càng nhiều càng tốt.

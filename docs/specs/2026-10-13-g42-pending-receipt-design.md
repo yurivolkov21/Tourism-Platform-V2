@@ -1,6 +1,7 @@
 # G42 — Màn hoá đơn chờ cho đơn chưa trả (spec, 13/10/2026)
 
-> **Trạng thái:** user chọn phương án **A "Voucher chờ"** trên thẻ quyết định (13/10 07:32 UTC).
+> **Trạng thái:** user chọn phương án **A "Voucher chờ"** trên thẻ quyết định (13/10 07:32 UTC). Thi
+> công xong, merge 13/10 (`docs/CHANGELOG.md`).
 > Bản vẽ: [Artifact G42](https://claude.ai/artifact/SPpWi4F17Jq3YrixWHTmGR), bản ghi nguyên văn ở
 > [`docs/design/mockups/pending-receipt.src.html`](../design/mockups/pending-receipt.src.html).
 > Chữ chốt lúc thi công lệch bản vẽ ở vài chỗ để dùng lại khoá i18n sẵn có — xem mục 6.
