@@ -6,9 +6,9 @@ import { prisma } from './auth.config.js';
 
 /**
  * Integration (Docker PG, db tourism_test) — khoá tài khoản (ADR-0052 §4): hook
- * `session.create.before` chặn MỌI đường tạo phiên (đo hai đường gọi được trong test: mật
- * khẩu và OTP email; Google đi qua cùng `internalAdapter.createSession`), và AuthGuard trả
- * 401 cho một phiên sót — phiên được ghi đúng lúc lệnh khoá đang chạy.
+ * `session.create.before` chặn MỌI đường tạo phiên (đo ở đây mật khẩu và OTP email; hai
+ * đường Google — ID token của app và callback của web — đo ở `google-sign-in.int.spec.ts`),
+ * và AuthGuard trả 401 cho một phiên sót — phiên được ghi đúng lúc lệnh khoá đang chạy.
  *
  * Fixture khoá bằng cách ghi THẲNG `locked_at`: lệnh khoá thật của Owner (xoá phiên, ghi
  * lịch sử) là việc của `admin-users.int.spec.ts`.

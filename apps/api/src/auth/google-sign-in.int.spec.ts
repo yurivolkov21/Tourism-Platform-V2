@@ -213,4 +213,69 @@ describe('đăng nhập Google qua Better Auth thật (ADR-0056)', () => {
     const user = await prisma.user.findUnique({ where: { email: 'web-google@example.com' } });
     expect(user?.image).toBe(GOOGLE_PHOTO);
   });
+
+  it('app, tài khoản ĐANG KHOÁ (ADR-0052 §4): ID token hợp lệ → 403 ACCOUNT_LOCKED, không phát phiên', async () => {
+    const token = googleIdToken({
+      sub: 'google-sub-locked-app',
+      email: 'locked-app@example.com',
+      name: 'Locked App',
+    });
+    expect((await signInWithIdToken(token)).statusCode).toBe(200);
+    const user = await prisma.user.update({
+      where: { email: 'locked-app@example.com' },
+      data: { lockedAt: new Date() },
+    });
+    await prisma.session.deleteMany({ where: { userId: user.id } });
+
+    const res = await signInWithIdToken(token);
+
+    // Nhánh ID token gọi `createSession` không bọc try: lỗi của hook về thẳng như đăng nhập
+    // email, không có redirect — mobile đọc mã qua `mapAuthError`.
+    expect(res.statusCode).toBe(403);
+    expect(res.json()).toMatchObject({ code: 'ACCOUNT_LOCKED' });
+    expect(cookieHeader(res.headers['set-cookie'])).not.toMatch(/session_token=[^;]/);
+    expect(await prisma.session.count({ where: { userId: user.id } })).toBe(0);
+  });
+
+  it('web, tài khoản ĐANG KHOÁ: callback Google về errorCallbackURL kèm ?error=ACCOUNT_LOCKED, không phát phiên', async () => {
+    const idToken = googleIdToken({
+      sub: 'google-sub-locked-web',
+      email: 'locked-web@example.com',
+      name: 'Locked Web',
+    });
+    expect((await signInWithIdToken(idToken)).statusCode).toBe(200);
+    const user = await prisma.user.update({
+      where: { email: 'locked-web@example.com' },
+      data: { lockedAt: new Date() },
+    });
+    await prisma.session.deleteMany({ where: { userId: user.id } });
+
+    // Đúng hai URL form đăng nhập của web gửi (login-form.tsx).
+    const start = await app.inject({
+      method: 'POST',
+      url: '/api/auth/sign-in/social',
+      headers: { 'content-type': 'application/json', origin: 'http://localhost:3000' },
+      payload: JSON.stringify({
+        provider: 'google',
+        callbackURL: 'http://localhost:3000/account',
+        errorCallbackURL: 'http://localhost:3000/login?redirect=%2F',
+      }),
+    });
+    expect(start.statusCode).toBe(200);
+    const state = new URL((start.json() as { url: string }).url).searchParams.get('state');
+    tokenEndpointIdToken = idToken;
+    const callback = await app.inject({
+      method: 'GET',
+      url: `/api/auth/callback/google?code=int-test-code&state=${encodeURIComponent(state ?? '')}`,
+      headers: { cookie: cookieHeader(start.headers['set-cookie']) },
+    });
+
+    expect(callback.statusCode).toBe(302);
+    const location = new URL(String(callback.headers.location));
+    expect(`${location.origin}${location.pathname}`).toBe('http://localhost:3000/login');
+    expect(location.searchParams.get('redirect')).toBe('/');
+    expect(location.searchParams.get('error')).toBe('ACCOUNT_LOCKED');
+    expect(cookieHeader(callback.headers['set-cookie'])).not.toMatch(/session_token=[^;]/);
+    expect(await prisma.session.count({ where: { userId: user.id } })).toBe(0);
+  });
 });

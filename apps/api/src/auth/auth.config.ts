@@ -146,8 +146,10 @@ export const auth = betterAuth({
       // ADR-0052 §4: tài khoản bị khoá không được có phiên MỚI. Mọi đường đăng nhập (mật
       // khẩu, OTP email, Google, cả phiên xoay vòng khi đổi mật khẩu) đều tạo phiên qua
       // `internalAdapter.createSession`, nên chặn ở đây là chặn hết — đúng cơ chế plugin
-      // `admin` của BA 1.6.23 dùng cho user bị ban (đã đọc mã nguồn). Với Google, BA đổi lỗi
-      // này thành redirect `errorCallbackURL?error=ACCOUNT_LOCKED`.
+      // `admin` của BA 1.6.23 dùng cho user bị ban (đã đọc mã nguồn). Google qua trình duyệt
+      // (web) bị BA đổi lỗi này thành redirect `errorCallbackURL?error=ACCOUNT_LOCKED`; Google
+      // bằng ID token (app, ADR-0056) nhận thẳng 403 như đăng nhập email — hai ca đo ở
+      // `google-sign-in.int.spec.ts`.
       create: {
         before: async (session) => {
           const owner = await prisma.user.findUnique({
