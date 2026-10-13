@@ -193,13 +193,22 @@ const GradientWaves: React.FC<GradientWavesProps> = ({
     const container = containerRef.current;
     if (!container) return;
 
-    const renderer = new Renderer({
-      webgl: 2,
-      alpha: true,
-      premultipliedAlpha: true,
-      antialias: false,
-      dpr: Math.min(window.devicePixelRatio || 1, 2),
-    });
+    // Máy không tạo được context WebGL (GPU bị đưa vào danh sách chặn, tắt tăng tốc phần cứng,
+    // trình duyệt chặn WebGL): `ogl` in lỗi rồi ném TypeError ngay trong constructor. Nền chỉ để
+    // trang trí — bỏ trống thì trang vẫn dùng được; để lỗi lọt ra thì error boundary thay CẢ trang
+    // login admin bằng câu báo lỗi (đo Chromium headless 13/10).
+    let renderer: InstanceType<typeof Renderer>;
+    try {
+      renderer = new Renderer({
+        webgl: 2,
+        alpha: true,
+        premultipliedAlpha: true,
+        antialias: false,
+        dpr: Math.min(window.devicePixelRatio || 1, 2),
+      });
+    } catch {
+      return;
+    }
 
     const gl = renderer.gl;
     gl.clearColor(0, 0, 0, 0);
