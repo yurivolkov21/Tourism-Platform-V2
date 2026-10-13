@@ -1,7 +1,7 @@
 import { ORPCError } from '@orpc/client';
 import { notFound } from 'next/navigation';
 import { afterEach, beforeEach, describe, expect, it, type MockInstance, vi } from 'vitest';
-import { fetchTourDetailOrNull } from './tours';
+import { ENRICHMENT_TOUR_BUDGET_MS, fetchTourDetailOrNull } from './tours';
 
 // Mock client oRPC — chỉ soi kết quả của lượt đọc tour; không gọi API thật.
 const { bySlug } = vi.hoisted(() => ({ bySlug: vi.fn() }));
@@ -56,6 +56,33 @@ describe('fetchTourDetailOrNull', () => {
     bySlug.mockRejectedValueOnce(failure);
     await expect(fetchTourDetailOrNull('hanoi-heritage-day')).resolves.toBeNull();
     expect(warn).toHaveBeenCalledWith(expect.stringContaining('"hanoi-heritage-day"'), failure);
+  });
+
+  it('API catalog treo: quá trần thì null kèm cảnh báo, trang không đứng chờ ~62 giây (W-07)', async () => {
+    vi.useFakeTimers();
+    try {
+      bySlug.mockReturnValueOnce(new Promise(() => {}));
+      const pending = fetchTourDetailOrNull('hanoi-heritage-day');
+      await vi.advanceTimersByTimeAsync(ENRICHMENT_TOUR_BUDGET_MS);
+      await expect(pending).resolves.toBeNull();
+      expect(warn).toHaveBeenCalledWith(expect.stringContaining('"hanoi-heritage-day"'));
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('tour về kịp trước trần: trả dữ liệu, không cảnh báo, không để timer treo', async () => {
+    vi.useFakeTimers();
+    try {
+      bySlug.mockResolvedValueOnce(TOUR);
+      await expect(fetchTourDetailOrNull('hanoi-heritage-day')).resolves.toMatchObject({
+        meetingPoint: 'Hotel pickup — Hoàn Kiếm',
+      });
+      expect(vi.getTimerCount()).toBe(0);
+      expect(warn).not.toHaveBeenCalled();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('lỗi nội bộ của Next (notFound, redirect, bail-out động) thì ném lại, không nuốt', async () => {

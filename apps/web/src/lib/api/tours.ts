@@ -127,18 +127,41 @@ export const fetchTourDetail = cache(async (slug: string): Promise<TourDetailVM 
 });
 
 /**
+ * Trần thời gian của lượt đọc tour để LÀM GIÀU (W-07). Lượt đọc đi sau lượt đọc đơn, mà lớp gọi API
+ * của server chờ 20 giây mỗi lượt và thử lại (`SERVER_TIMEOUT_MS`, ADR-0044): API catalog treo thì
+ * trang chi tiết đơn và voucher đứng tới ~62 giây chỉ vì một ô phụ (spec P7, mục giới hạn). Tour có
+ * cache 300 giây nên lượt đọc thường xong tức thì; 8 giây đủ rộng cho một API vừa thức dậy.
+ */
+export const ENRICHMENT_TOUR_BUDGET_MS = 8_000;
+
+/**
  * `fetchTourDetail` cho trang chỉ dùng tour để LÀM GIÀU — trang chi tiết đơn và voucher đọc điểm
- * hẹn, mục không gồm, lịch trình. Tour đã gỡ trả `null` như cũ; lỗi gọi API catalog cũng rơi về
- * `null` kèm cảnh báo trong log: trang đơn của khách vẫn đủ vé, tiền và hạn huỷ, không sập vì
- * một ô phụ. `unstable_rethrow` trả lại cho Next mọi lỗi nội bộ của nó (notFound, redirect,
- * bail-out động) trước khi nuốt lỗi (plan P7, quyết định 22).
+ * hẹn, mục không gồm, lịch trình. Tour đã gỡ trả `null` như cũ; lỗi gọi API catalog, hay quá
+ * `ENRICHMENT_TOUR_BUDGET_MS`, cũng rơi về `null` kèm cảnh báo trong log: trang đơn của khách vẫn
+ * đủ vé, tiền và hạn huỷ, không sập hay đứng chờ vì một ô phụ. `unstable_rethrow` trả lại cho Next
+ * mọi lỗi nội bộ của nó (notFound, redirect, bail-out động) trước khi nuốt lỗi (plan P7, quyết
+ * định 22).
+ *
+ * Hết trần thì lượt gọi gốc không bị huỷ (nó tự dừng theo timeout của lớp gọi API), chỉ không còn
+ * ai chờ nó; `Promise.race` vẫn giữ handler nên lỗi muộn của nó không thành rejection trôi nổi.
  *
  * Một bản thay hai bản chép — `loadTour` của trang chi tiết đơn và `.catch` của voucher, khác
  * nhau cả chữ log (review P7 B16, C#6).
  */
 export async function fetchTourDetailOrNull(slug: string): Promise<TourDetailVM | null> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const budget = new Promise<'timeout'>((resolve) => {
+    timer = setTimeout(() => resolve('timeout'), ENRICHMENT_TOUR_BUDGET_MS);
+  });
   try {
-    return await fetchTourDetail(slug);
+    const result = await Promise.race([fetchTourDetail(slug), budget]);
+    if (result === 'timeout') {
+      console.warn(
+        `[fetchTourDetailOrNull] tour "${slug}" quá ${ENRICHMENT_TOUR_BUDGET_MS} ms — trang chạy tiếp không có dữ liệu tour`,
+      );
+      return null;
+    }
+    return result;
   } catch (error) {
     unstable_rethrow(error);
     console.warn(
@@ -146,6 +169,8 @@ export async function fetchTourDetailOrNull(slug: string): Promise<TourDetailVM 
       error,
     );
     return null;
+  } finally {
+    clearTimeout(timer);
   }
 }
 
