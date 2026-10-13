@@ -221,3 +221,16 @@ describe('ToursTable — menu lọc danh mục', () => {
     ).toBeInTheDocument();
   });
 });
+
+describe('ToursTable — ô tên tour ở khổ hẹp (G44)', () => {
+  it('lưới tên tour có sàn `min-w-48`, không phải `min-w-0`', () => {
+    // Đo bằng CSS build thật (13/10): với `min-w-0` tên tour, link duy nhất sang khu sửa, rộng 0px
+    // ở 390px và 768px (vài chục px khi trang có chip Featured); có sàn thì 192px ở cả hai khổ,
+    // bảng cuộn ngang trong khung, trang không tràn. jsdom không dàn trang nên chỉ canh class.
+    renderTable([row()]);
+
+    const title = screen.getByRole('link', { name: 'Hoi An Lantern Evening' });
+    expect(title.parentElement).toHaveClass('grid', 'min-w-48');
+    expect(title.parentElement).not.toHaveClass('min-w-0');
+  });
+});

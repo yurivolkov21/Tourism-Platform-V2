@@ -98,3 +98,16 @@ describe('PostsTable', () => {
     expect(screen.getByText(t.empty)).toBeInTheDocument();
   });
 });
+
+describe('PostsTable — ô tiêu đề ở khổ hẹp (G44)', () => {
+  it('lưới tiêu đề có sàn `min-w-48`, không phải `min-w-0`', () => {
+    // Đo bằng CSS build thật (13/10): với `min-w-0` tiêu đề rộng 0px ở 390px và 768px, vì bảng
+    // tự co bóp cột còn đúng ảnh bìa; có sàn thì 192px ở cả hai khổ, bảng cuộn ngang trong khung,
+    // trang không tràn. jsdom không dàn trang nên ở đây chỉ canh class.
+    renderTable([row()]);
+
+    const title = screen.getByRole('link', { name: 'Eating your way through Hội An' });
+    expect(title.parentElement).toHaveClass('grid', 'min-w-48');
+    expect(title.parentElement).not.toHaveClass('min-w-0');
+  });
+});

@@ -50,7 +50,11 @@ const COLUMNS = columnHelper.columns([
       <div className="flex items-center gap-3">
         {/* Ảnh bìa 40px — kit dùng chung với bảng Tours. */}
         <TableThumb src={row.original.thumbUrl} emptyLabel={t.noImage} />
-        <div className="grid min-w-0 gap-0.5">
+        {/* Sàn 12rem, không phải min-w-0 (G44, cùng khuôn bảng Users): hai dòng `truncate` không
+            giữ được bề rộng nào trong bảng tự co, nên ở khổ 390px và 768px Chrome bóp cột còn
+            đúng ảnh bìa, và tiêu đề (link duy nhất sang trang sửa) rộng 0px — đo bằng CSS build
+            thật. Có sàn thì bảng tự cuộn ngang trong khung của kit, trang không tràn. */}
+        <div className="grid min-w-48 gap-0.5">
           <Link
             href={row.original.editorHref}
             className="max-w-80 truncate font-medium text-foreground underline-offset-4 hover:underline"
