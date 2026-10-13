@@ -30,7 +30,7 @@ import {
   orderPolicies,
   visibleDepartureChips,
 } from '@/lib/tour-detail';
-import { discountPercent, formatChipDate, formatMoney, tourGallery } from '@/lib/tours';
+import { bookHref, discountPercent, formatChipDate, formatMoney, tourGallery } from '@/lib/tours';
 
 type PolicyKind = TourDetailVM['policies'][number]['kind'];
 
@@ -306,7 +306,7 @@ export function TourMediaPanel({ tour }: { tour: TourDetailVM }) {
             <div className="grid gap-2">
               <Button
                 className="h-9 w-full rounded-sm"
-                onClick={() => router.push(`/tours/${tour.slug}/book`)}
+                onClick={() => router.push(bookHref(tour.slug, departure.id))}
               >
                 <TicketIcon />
                 {t.mediaPanel.reserve(departure.seatsLeft)}

@@ -151,7 +151,7 @@ describe('CTA điều hướng là LINK, không phải nút', () => {
       />,
     );
     const reserve = screen.getByRole('link', { name: /reserve/i });
-    expect(reserve).toHaveAttribute('href', '/tours/ha-long-bay-cruise/book');
+    expect(reserve).toHaveAttribute('href', '/tours/ha-long-bay-cruise/book?departure=dep-1');
   });
 
   it('BookingRail bar + có đợt — nút Reserve là link trỏ trang book', () => {
@@ -167,6 +167,6 @@ describe('CTA điều hướng là LINK, không phải nút', () => {
       />,
     );
     const reserve = screen.getByRole('link', { name: /reserve/i });
-    expect(reserve).toHaveAttribute('href', '/tours/ha-long-bay-cruise/book');
+    expect(reserve).toHaveAttribute('href', '/tours/ha-long-bay-cruise/book?departure=dep-1');
   });
 });

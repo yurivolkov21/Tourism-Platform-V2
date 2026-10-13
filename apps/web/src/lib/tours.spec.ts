@@ -16,6 +16,7 @@ const EMPTY_FILTERS = {
 } as const;
 
 import {
+  bookHref,
   calendarDateParts,
   cardPrice,
   countActiveFilters,
@@ -32,6 +33,7 @@ import {
   formatReviewDate,
   formatTicketDate,
   formatWeekdayDate,
+  initialDepartureId,
   isDepartureOpen,
   ownLabel,
   priceBucket,
@@ -550,6 +552,56 @@ describe('isDepartureOpen — đợt chọn được để đặt', () => {
 
   it('hết chỗ → không chọn được, dù còn hạn đặt', () => {
     expect(isDepartureOpen({ bookable: true, seatsLeft: 0 })).toBe(false);
+  });
+});
+
+describe('bookHref — Reserve mang theo đợt đang chọn (W-02)', () => {
+  it('có đợt → `?departure=<id>`', () => {
+    expect(bookHref('ha-giang-loop-4d', '11111111-1111-4111-8111-111111111111')).toBe(
+      '/tours/ha-giang-loop-4d/book?departure=11111111-1111-4111-8111-111111111111',
+    );
+  });
+
+  it('không có đợt → `/book` trần', () => {
+    expect(bookHref('ha-giang-loop-4d')).toBe('/tours/ha-giang-loop-4d/book');
+    expect(bookHref('ha-giang-loop-4d', null)).toBe('/tours/ha-giang-loop-4d/book');
+  });
+
+  it('id được mã hoá, không chen được tham số khác vào URL', () => {
+    expect(bookHref('x', 'a&redirect=//evil')).toBe(
+      '/tours/x/book?departure=a%26redirect%3D%2F%2Fevil',
+    );
+  });
+});
+
+describe('initialDepartureId — đợt wizard chọn sẵn (W-02)', () => {
+  const departures = [
+    { id: 'full', bookable: true, seatsLeft: 0 },
+    { id: 'first-open', bookable: true, seatsLeft: 5 },
+    { id: 'closed', bookable: false, seatsLeft: 9 },
+    { id: 'november', bookable: true, seatsLeft: 2 },
+  ];
+
+  it('đợt khách mang theo còn đặt được → chọn đúng đợt ấy, không phải đợt mở đầu tiên', () => {
+    expect(initialDepartureId(departures, 'november')).toBe('november');
+  });
+
+  it('không mang đợt nào → đợt đặt được đầu tiên như trước', () => {
+    expect(initialDepartureId(departures)).toBe('first-open');
+  });
+
+  it('đợt mang theo đã hết chỗ hay qua hạn đặt → rơi về đợt đặt được đầu tiên', () => {
+    // Giữa lúc xem trang tour và lúc bấm Reserve, đợt ấy có thể vừa đóng.
+    expect(initialDepartureId(departures, 'full')).toBe('first-open');
+    expect(initialDepartureId(departures, 'closed')).toBe('first-open');
+  });
+
+  it('id lạ không thuộc tour → rơi về mặc định', () => {
+    expect(initialDepartureId(departures, 'not-a-departure')).toBe('first-open');
+  });
+
+  it('không đợt nào đặt được → null', () => {
+    expect(initialDepartureId([{ id: 'full', bookable: true, seatsLeft: 0 }], 'full')).toBeNull();
   });
 });
 

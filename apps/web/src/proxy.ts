@@ -30,7 +30,11 @@ export function proxy(request: NextRequest) {
   const hasSession = SESSION_COOKIE_NAMES.some((name) => request.cookies.has(name));
   if (!hasSession) {
     const login = new URL('/login', request.url);
-    login.searchParams.set('redirect', request.nextUrl.pathname);
+    // Giữ cả query (W-02): `/tours/x/book?departure=<id>` mất `?departure` thì khách đăng nhập
+    // xong quay về wizard với đợt mở đầu tiên thay vì đợt vừa chọn; `/checkout/success?code=…`
+    // mất `?code` thì không còn biết đơn nào. `requireSession` của từng trang vốn đã giữ query,
+    // chỉ proxy là bỏ. Trang login vẫn lọc đích bằng `safeRedirect`.
+    login.searchParams.set('redirect', request.nextUrl.pathname + request.nextUrl.search);
     return NextResponse.redirect(login);
   }
   return NextResponse.next();

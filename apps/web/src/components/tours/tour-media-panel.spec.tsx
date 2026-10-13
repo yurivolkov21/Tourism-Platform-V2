@@ -174,6 +174,15 @@ describe('TourMediaPanel — panel đặt chỗ', () => {
     expect(screen.getByRole('button', { name: /Reserve — 3 seats left/ })).toBeInTheDocument();
   });
 
+  it('Reserve mang ĐỢT ĐANG CHỌN sang trang book, không phải `/book` trần (W-02)', async () => {
+    // Trước đây wizard luôn chọn sẵn đợt mở đầu tiên: khách chọn 12 Oct sang tới nơi thấy 14 Sep.
+    const user = userEvent.setup();
+    render(<TourMediaPanel tour={tourWith(3)} />, { wrapper });
+    await user.click(screen.getByRole('button', { name: /12 Oct/ }));
+    await user.click(screen.getByRole('button', { name: /Reserve — 3 seats left/ }));
+    expect(push).toHaveBeenCalledWith('/tours/ha-giang-loop-4d/book?departure=d3');
+  });
+
   it('ô ngày: tối đa 4, ngày dạng "14 Sep", ghế ≤3 đổi màu cảnh báo', () => {
     render(<TourMediaPanel tour={tourWith(3)} />, { wrapper });
     expect(screen.getByText('14 Sep')).toBeInTheDocument();

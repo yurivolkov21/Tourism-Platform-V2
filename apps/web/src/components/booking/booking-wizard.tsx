@@ -46,6 +46,7 @@ import { WizardStepper } from './wizard-stepper';
  */
 export function BookingWizard({
   departures,
+  initialDepartureId,
   maxGroupSize,
   currency,
   durationDays,
@@ -54,6 +55,11 @@ export function BookingWizard({
   summaryTour,
 }: {
   departures: DepartureVM[];
+  /**
+   * Đợt chọn sẵn ở bước Dates — trang `/book` tính bằng `initialDepartureId` từ đợt khách mang
+   * theo trên URL (W-02). Vắng thì chọn đợt ĐẶT ĐƯỢC đầu tiên như trước.
+   */
+  initialDepartureId?: string | null;
   maxGroupSize: number;
   currency: string;
   durationDays: number;
@@ -64,11 +70,12 @@ export function BookingWizard({
   const t = messages.booking.wizard;
 
   const [step, setStep] = useState<BookingStep>('dates');
-  // Chọn sẵn đợt ĐẶT ĐƯỢC đầu tiên — còn chỗ VÀ còn hạn đặt — không phải phần
-  // tử [0]: mở trang ra với một đợt không đặt được là dẫn vào ngõ cụt ngay, và
-  // bước Pay sẽ trả `DEPARTURE_NOT_AVAILABLE` sau khi khách gõ xong cả form.
+  // Chọn sẵn đợt khách mang từ trang tour, không có thì đợt ĐẶT ĐƯỢC đầu tiên —
+  // còn chỗ VÀ còn hạn đặt — không phải phần tử [0]: mở trang ra với một đợt
+  // không đặt được là dẫn vào ngõ cụt ngay, và bước Pay sẽ trả
+  // `DEPARTURE_NOT_AVAILABLE` sau khi khách gõ xong cả form.
   const [state, setState] = useState<BookingFormState>({
-    departureId: departures.find(isDepartureOpen)?.id ?? null,
+    departureId: initialDepartureId ?? departures.find(isDepartureOpen)?.id ?? null,
     numAdults: 1,
     numChildren: 0,
     contactName: defaultName,

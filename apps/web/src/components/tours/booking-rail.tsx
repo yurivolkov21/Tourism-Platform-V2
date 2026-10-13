@@ -4,14 +4,20 @@ import { messages } from '@tourism/i18n';
 import { ButtonLink } from '@tourism/ui/components/button-link';
 import { cn } from '@tourism/ui/lib/utils';
 import type { DepartureVM } from '@/lib/api/tours';
-import { departureStatus, discountPercent, formatDateRange, formatMoney } from '@/lib/tours';
+import {
+  bookHref,
+  departureStatus,
+  discountPercent,
+  formatDateRange,
+  formatMoney,
+} from '@/lib/tours';
 
 /**
  * Rail booking — nơi đợt đang chọn được nói lại bằng con số, cộng CTA.
  *
- * `Reserve` điều hướng tới `/tours/{slug}/book` — trang đó nay đã sống. Trước
- * đây nó là <button> cụt vì trang book chưa tồn tại lúc dựng static-first; nợ
- * đó nay đã trả. CTA phụ `Ask about this trip` → `/tours/{slug}/enquire`
+ * `Reserve` điều hướng tới `/tours/{slug}/book?departure={id}` — mang theo đợt
+ * đang chọn để wizard chọn sẵn đúng đợt ấy (`bookHref`, W-02). Trước đây nó là
+ * <button> cụt vì trang book chưa tồn tại lúc dựng static-first; nợ đó nay đã trả. CTA phụ `Ask about this trip` → `/tours/{slug}/enquire`
  * (đổi 19/08, trước là `/contact`): form liên hệ chung không biết khách đang
  * hỏi tour nào, nên đội vận hành phải hỏi lại vòng nữa. Cả BA nhánh render
  * đều đổi — bỏ sót một nhánh thì lỗi chỉ lộ ở đúng tour hết đợt.
@@ -25,7 +31,7 @@ export function BookingRail({
   maxGroupSize,
   variant,
 }: {
-  /** Slug tour — dựng href `/tours/{slug}/book` cho nút Reserve. */
+  /** Slug tour — dựng href trang book cho nút Reserve (`bookHref`). */
   slug: string;
   /** Đợt đang chọn; `undefined` khi tour chưa mở đợt nào. */
   departure: DepartureVM | undefined;
@@ -73,7 +79,7 @@ export function BookingRail({
                 {t.booking.testMode}
               </p>
             </div>
-            <ButtonLink className="shrink-0" href={`/tours/${slug}/book`}>
+            <ButtonLink className="shrink-0" href={bookHref(slug, departure.id)}>
               {t.booking.reserve}
             </ButtonLink>
           </div>
@@ -108,7 +114,7 @@ export function BookingRail({
           <PriceBlock departure={departure} currency={currency} />
           <SeatMeter seatsLeft={departure.seatsLeft} maxGroupSize={maxGroupSize} />
 
-          <ButtonLink className="mt-5 w-full" href={`/tours/${slug}/book`}>
+          <ButtonLink className="mt-5 w-full" href={bookHref(slug, departure.id)}>
             {t.booking.reserve}
           </ButtonLink>
           {/* Câu sandbox NGẮN đặt sát nút — chỗ người dùng thật sự phân vân trước

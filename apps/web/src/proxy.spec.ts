@@ -18,6 +18,19 @@ describe('proxy', () => {
     expect(location.searchParams.get('redirect')).toBe('/account');
   });
 
+  it('giữ nguyên query trong ?redirect= — đợt đã chọn ở trang tour không mất qua lượt đăng nhập (W-02)', () => {
+    const request = new NextRequest(
+      'https://example.com/tours/ha-giang-loop-4d/book?departure=11111111-1111-4111-8111-111111111111',
+    );
+
+    const response = proxy(request);
+
+    const location = new URL(response.headers.get('location') ?? '');
+    expect(location.searchParams.get('redirect')).toBe(
+      '/tours/ha-giang-loop-4d/book?departure=11111111-1111-4111-8111-111111111111',
+    );
+  });
+
   it('cho qua khi có cookie tên trần better-auth.session_token (dev http)', () => {
     const request = new NextRequest('https://example.com/account', {
       headers: { cookie: 'better-auth.session_token=abc' },

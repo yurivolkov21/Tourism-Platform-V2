@@ -1,3 +1,4 @@
+import { TourDepartureSchema } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
 import { ButtonLink } from '@tourism/ui/components/button-link';
 import type { Metadata } from 'next';
@@ -7,7 +8,7 @@ import type { CheckoutSummaryTour } from '@/components/booking/checkout-summary'
 import { TourHeroBoard } from '@/components/tours/tour-hero-board';
 import { requireSession } from '@/lib/api/session';
 import { fetchTourDetail } from '@/lib/api/tours';
-import { isDepartureOpen } from '@/lib/tours';
+import { BOOK_DEPARTURE_PARAM, bookHref, initialDepartureId, isDepartureOpen } from '@/lib/tours';
 
 export const metadata: Metadata = {
   title: `${messages.booking.page.title} — Nexora`,
@@ -20,9 +21,20 @@ export const metadata: Metadata = {
  * (luật soft-404 của repo: Suspense boundary ở đây biến `notFound()` thành
  * soft-404 trả HTTP 200).
  */
-export default async function BookTourPage({ params }: { params: Promise<{ slug: string }> }) {
+export default async function BookTourPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ slug: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   const { slug } = await params;
-  const session = await requireSession(`/tours/${slug}/book`);
+  // Đợt khách đã chọn ở trang tour (W-02). Chỉ nhận một UUID: chuỗi lạ không được chép vào
+  // `?redirect=` của trang login, và đằng nào nó cũng không khớp đợt nào.
+  const requested = (await searchParams)[BOOK_DEPARTURE_PARAM];
+  const departureId = TourDepartureSchema.shape.id.safeParse(requested).data;
+  // Giữ cả đợt đã chọn qua lượt đăng nhập: khách chưa đăng nhập bấm Reserve thì quay về đúng đợt.
+  const session = await requireSession(bookHref(slug, departureId));
   const tour = await fetchTourDetail(slug);
   if (!tour) notFound();
 
@@ -54,6 +66,7 @@ export default async function BookTourPage({ params }: { params: Promise<{ slug:
         {bookable ? (
           <BookingWizard
             departures={tour.departures}
+            initialDepartureId={initialDepartureId(tour.departures, departureId)}
             maxGroupSize={tour.maxGroupSize}
             currency={tour.currency}
             durationDays={tour.durationDays}

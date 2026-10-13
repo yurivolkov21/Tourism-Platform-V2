@@ -485,6 +485,34 @@ export function isDepartureOpen(departure: { bookable: boolean; seatsLeft: numbe
   return departure.bookable && departure.seatsLeft > 0;
 }
 
+/** Tham số query mang đợt khách đã chọn từ trang tour sang `/tours/{slug}/book` (W-02). */
+export const BOOK_DEPARTURE_PARAM = 'departure';
+
+/**
+ * Đường tới trang đặt chỗ, mang theo đợt khách đang chọn ở trang tour (W-02, spec P7 dòng 51).
+ * Trước đây ba nút Reserve (rail, bar đáy, khối ảnh) trỏ `/book` trần, và wizard luôn chọn sẵn
+ * đợt mở ĐẦU TIÊN: khách chọn đợt tháng 11 sang tới nơi thấy đợt sớm nhất, phải chọn lại.
+ */
+export function bookHref(slug: string, departureId?: string | null): string {
+  const base = `/tours/${slug}/book`;
+  return departureId ? `${base}?${BOOK_DEPARTURE_PARAM}=${encodeURIComponent(departureId)}` : base;
+}
+
+/**
+ * Đợt wizard chọn sẵn: đợt khách mang từ trang tour nếu nó có trong tour VÀ còn đặt được, không
+ * thì đợt đặt được đầu tiên như trước (giữa lúc xem và lúc bấm, đợt ấy có thể đã hết chỗ hay qua
+ * hạn đặt — chọn sẵn nó là dẫn vào lỗi `DEPARTURE_NOT_AVAILABLE` ở bước Pay). Id lạ trên URL
+ * không khớp đợt nào nên tự rơi về mặc định.
+ */
+export function initialDepartureId<T extends { id: string; bookable: boolean; seatsLeft: number }>(
+  departures: readonly T[],
+  requestedId?: string | null,
+): string | null {
+  const requested = requestedId ? departures.find((d) => d.id === requestedId) : undefined;
+  if (requested && isDepartureOpen(requested)) return requested.id;
+  return departures.find(isDepartureOpen)?.id ?? null;
+}
+
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
 /** Dải ngày gọn: gộp phần trùng nhau. `startDate`/`endDate` là ngày lịch

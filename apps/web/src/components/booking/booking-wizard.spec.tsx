@@ -99,6 +99,24 @@ describe('BookingWizard — điều hướng bước', () => {
     expect(pressed[0]?.textContent).toContain('2–13 Oct 2026');
   });
 
+  it('chọn sẵn đợt trang /book truyền xuống (đợt khách chọn ở trang tour, W-02)', () => {
+    render(
+      <BookingWizard
+        {...BASE}
+        departures={[
+          makeDeparture({ id: 'dep-open', startDate: '2026-10-02', endDate: '2026-10-13' }),
+          makeDeparture({ id: 'dep-nov', startDate: '2026-11-06', endDate: '2026-11-17' }),
+        ]}
+        initialDepartureId="dep-nov"
+      />,
+    );
+    const pressed = screen
+      .getAllByRole('button')
+      .filter((b) => b.getAttribute('aria-pressed') === 'true');
+    expect(pressed).toHaveLength(1);
+    expect(pressed[0]?.textContent).toContain('6–17 Nov 2026');
+  });
+
   it('chưa chọn đợt thì Continue KHÔNG sang bước 2, và hiện lỗi tại chỗ', async () => {
     const user = userEvent.setup();
     renderWizard([makeDeparture({ seatsLeft: 0 })]);

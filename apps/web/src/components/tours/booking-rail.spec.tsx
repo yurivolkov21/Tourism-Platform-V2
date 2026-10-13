@@ -38,15 +38,15 @@ function hrefOf(name: RegExp): string | null {
 }
 
 describe('BookingRail — đích của hai CTA', () => {
-  it('rail còn đợt: Reserve sang /book, CTA phụ sang /enquire của CHÍNH tour này', () => {
+  it('rail còn đợt: Reserve sang /book MANG THEO đợt đang chọn (W-02), CTA phụ sang /enquire', () => {
     render(<BookingRail {...BASE} departure={DEPARTURE} variant="rail" />);
-    expect(hrefOf(/reserve/i)).toBe('/tours/ha-giang-loop-4d/book');
+    expect(hrefOf(/reserve/i)).toBe('/tours/ha-giang-loop-4d/book?departure=d1');
     expect(hrefOf(/ask about this trip/i)).toBe('/tours/ha-giang-loop-4d/enquire');
   });
 
   it('bar đáy mobile: cùng hai đích đó', () => {
     render(<BookingRail {...BASE} departure={DEPARTURE} variant="bar" />);
-    expect(hrefOf(/reserve/i)).toBe('/tours/ha-giang-loop-4d/book');
+    expect(hrefOf(/reserve/i)).toBe('/tours/ha-giang-loop-4d/book?departure=d1');
   });
 
   it('bar đáy khi CHƯA có đợt nào: chỉ còn CTA hỏi, và nó trỏ /enquire', () => {
