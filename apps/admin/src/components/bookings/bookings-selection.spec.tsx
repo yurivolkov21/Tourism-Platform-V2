@@ -87,10 +87,12 @@ describe('BookingsTable — chọn hàng để export', () => {
 
     await user.click(screen.getByRole('checkbox', { name: t.selectRow('BK-A') }));
 
-    expect(screen.getByRole('checkbox', { name: t.selectAllRows })).toHaveAttribute(
-      'aria-checked',
-      'mixed',
-    );
+    const all = screen.getByRole('checkbox', { name: t.selectAllRows });
+    expect(all).toHaveAttribute('aria-checked', 'mixed');
+    // Mắt cũng phải thấy "một phần": dấu GẠCH, không phải dấu tích. Bản 01/09 vẽ dấu tích
+    // không nền ở trạng thái này, nhìn như đã chọn hết (G43, đo bằng CSS build 13/10).
+    expect(all.querySelector('.lucide-minus')).not.toBeNull();
+    expect(all.querySelector('.lucide-check')).toBeNull();
   });
 
   it('sang trang (query đổi) ĐẶT LẠI tích: checkbox tiêu đề không kẹt "một phần"', async () => {
