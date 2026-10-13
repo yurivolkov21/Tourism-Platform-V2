@@ -50,7 +50,14 @@ export default defineConfig({
           // `src/lib/**/*.spec.tsx`: hook cần DOM (`renderHook`) sống ở `lib/`
           // cạnh logic thuần của nó (F17 `use-section-save`) — thiếu glob này
           // thì spec ấy không bao giờ chạy mà gate vẫn xanh.
-          include: ['src/components/**/*.spec.tsx', 'src/lib/**/*.spec.tsx'],
+          //
+          // `src/app/**/*.spec.tsx`: lưới cho layout và các trang chỉ Owner (review P4f) —
+          // thiếu glob này thì gỡ provider hay một `requirePageAccess` mà gate vẫn xanh.
+          include: [
+            'src/components/**/*.spec.tsx',
+            'src/lib/**/*.spec.tsx',
+            'src/app/**/*.spec.tsx',
+          ],
           setupFiles: ['./vitest.setup.ts'],
         },
       },
