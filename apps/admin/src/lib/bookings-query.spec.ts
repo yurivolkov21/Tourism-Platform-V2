@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import {
   bookingDetailHref,
+  bookingsAccountHref,
   bookingsBackHref,
   bookingsExportHref,
   bookingsHref,
-  bookingsSearchHref,
   parseBookingsSearchParams,
 } from './bookings-query';
 import { rawSearchParamsFrom } from './table-query';
@@ -563,17 +563,91 @@ function searchParamsOf(href: string): Record<string, string> {
   return Object.fromEntries(new URLSearchParams(query));
 }
 
-describe('bookingsSearchHref (P4f, quyết định 7)', () => {
-  it('lọc theo một chuỗi, MỌI ngày — và parse lại ra đúng bộ lọc ấy', () => {
-    const href = bookingsSearchHref('ada@example.com');
-    expect(href).toBe('/bookings?q=ada%40example.com&dates=all');
+describe('lọc theo tài khoản `?user=` (G45)', () => {
+  const USER = '4f2a1b3c-0000-4000-8000-000000000001';
+  const base = { page: 1, limit: 20, allDates: true } as const;
 
-    const url = new URL(href, 'https://admin.example.com');
-    const query = parseBookingsSearchParams(
-      rawSearchParamsFrom(url.searchParams),
-      new Date('2026-10-02T00:00:00.000Z'),
+  it('`user` là uuid thì thành `userId`, đi cùng các bộ lọc khác', () => {
+    expect(parseBookingsSearchParams({ ...ALL, user: USER, status: 'PAID' }, NOW)).toEqual({
+      page: 1,
+      limit: 20,
+      status: 'PAID',
+      userId: USER,
+      ...NO_DATES,
+    });
+  });
+
+  it('`user` rác bị BỎ như status lạ — không ném 400 lên API', () => {
+    for (const user of ['an@example.com', '1234', '', `${USER}x`]) {
+      expect(parseBookingsSearchParams({ ...ALL, user }, NOW)).not.toHaveProperty('userId');
+    }
+  });
+
+  it('đổi bộ lọc khác, đổi trang hay cỡ trang đều GIỮ `user`', () => {
+    const query = { ...base, userId: USER };
+    expect(bookingsHref(query, { status: 'PAID' })).toBe(
+      `/bookings?status=PAID&user=${USER}&dates=all`,
     );
-    expect(query).toMatchObject({ search: 'ada@example.com', allDates: true });
-    expect(query).not.toHaveProperty('from');
+    expect(bookingsHref(query, { search: 'hoi an' })).toBe(
+      `/bookings?q=hoi+an&user=${USER}&dates=all`,
+    );
+    expect(bookingsHref(query, { from: '2026-09-01' })).toBe(
+      `/bookings?user=${USER}&from=2026-09-01`,
+    );
+    expect(bookingsHref(query, { page: 2 })).toBe(`/bookings?user=${USER}&dates=all&page=2`);
+    expect(bookingsHref(query, { limit: 50 })).toBe(`/bookings?user=${USER}&dates=all&limit=50`);
+  });
+
+  it('`userId: null` gỡ đúng bộ lọc ấy, giữ phần còn lại, và đặt lại trang về 1', () => {
+    expect(bookingsHref({ ...base, page: 3, status: 'PAID', userId: USER }, { userId: null })).toBe(
+      '/bookings?status=PAID&dates=all',
+    );
+  });
+
+  it('id rác từ patch bị bỏ thay vì ném lên URL', () => {
+    expect(bookingsHref(base, { userId: 'not-a-uuid' })).toBe('/bookings?dates=all');
+  });
+
+  it('link xuất mang `user` — file khớp đúng bảng đang lọc', () => {
+    expect(bookingsExportHref({ ...base, userId: USER })).toBe(
+      `/bookings/export?user=${USER}&dates=all`,
+    );
+    expect(bookingsExportHref({ ...base, userId: USER }, ['BK-A'])).toBe(
+      `/bookings/export?user=${USER}&dates=all&page=1&limit=20&sel=BK-A`,
+    );
+  });
+
+  it('link chi tiết mang `user`, và nút Back dựng lại đúng danh sách ấy', () => {
+    const query = parseBookingsSearchParams({ user: USER, dates: 'all', page: '2' }, NOW);
+    const detail = bookingDetailHref(query, 'BK-1');
+    expect(searchParamsOf(detail)).toEqual({ user: USER, dates: 'all', page: '2' });
+    expect(searchParamsOf(bookingsBackHref(searchParamsOf(detail), NOW))).toEqual({
+      user: USER,
+      dates: 'all',
+      page: '2',
+    });
+  });
+
+  it('chỉ có `user` trên URL chi tiết vẫn là tới từ bảng — Back giữ bộ lọc tài khoản', () => {
+    expect(searchParamsOf(bookingsBackHref({ user: USER }, NOW))).toEqual({
+      user: USER,
+      from: '2026-09-01',
+      to: '2026-09-30',
+    });
+  });
+
+  describe('bookingsAccountHref — link "View bookings" của /users/[id]', () => {
+    it('lọc theo id tài khoản, MỌI ngày — và parse lại ra đúng bộ lọc ấy', () => {
+      const href = bookingsAccountHref(USER);
+      expect(href).toBe(`/bookings?user=${USER}&dates=all`);
+
+      const url = new URL(href, 'https://admin.example.com');
+      const query = parseBookingsSearchParams(rawSearchParamsFrom(url.searchParams), NOW);
+      expect(query).toEqual({ page: 1, limit: 20, userId: USER, allDates: true });
+    });
+
+    it('không bao giờ tìm theo email nữa — email lẫn tài khoản khác (an@ nằm trong lan@)', () => {
+      expect(bookingsAccountHref(USER)).not.toContain('q=');
+    });
   });
 });

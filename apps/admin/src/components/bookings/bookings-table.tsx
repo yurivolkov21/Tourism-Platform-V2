@@ -22,6 +22,7 @@ import {
   TourCell,
 } from '@/components/bookings/booking-cells';
 import {
+  BookingsAccountChip,
   BookingsClearFilters,
   BookingsDateRange,
   BookingsExportLink,
@@ -181,11 +182,22 @@ export interface BookingsTableProps {
   rows: BookingRowVM[];
   /** Trạng thái URL hiện tại — nguồn để dựng href phân trang/lọc. */
   query: BookingsQuery;
+  /**
+   * Email của tài khoản đang lọc (`?user=`, G45) cho chip; `null` khi không lọc theo tài khoản, khi
+   * phiên không phải Owner hay khi tài khoản không còn — chip khi ấy dùng nhãn chung.
+   */
+  accountEmail: string | null;
   total: number;
   totalPages: number;
 }
 
-export function BookingsTable({ rows, query, total, totalPages }: BookingsTableProps) {
+export function BookingsTable({
+  rows,
+  query,
+  accountEmail,
+  total,
+  totalPages,
+}: BookingsTableProps) {
   const [columnVisibility, setColumnVisibility] = React.useState<ColumnVisibilityState>({});
   // Tích hàng SỐNG TRONG TRANG ĐANG XEM (spec 01/09 §2) — nhưng KHÔNG tự chết
   // khi sang trang như bản đầu giả định: đổi page/filter là soft navigation
@@ -223,6 +235,7 @@ export function BookingsTable({ rows, query, total, totalPages }: BookingsTableP
       views={<BookingsStatusTabs query={query} />}
       actions={
         <>
+          <BookingsAccountChip query={query} email={accountEmail} />
           <BookingsDateRange query={query} />
           <BookingsSearch query={query} />
           {/* Export KHÔNG còn ở đây (01/09): hàng điều khiển tràn sau khi mọi

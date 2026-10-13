@@ -2,6 +2,8 @@
 
 import { BookingStatusSchema } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
+import { buttonVariants } from '@tourism/ui/components/button';
+import { cn } from '@tourism/ui/lib/utils';
 import {
   ChartPieIcon,
   CircleCheckIcon,
@@ -9,13 +11,17 @@ import {
   ClockIcon,
   ListIcon,
   RotateCcwIcon,
+  UserRoundIcon,
+  XIcon,
 } from 'lucide-react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ExportButton } from '@/components/kit/export-button';
 import { ALL_FILTER_VALUE as ALL, StatusFilterTabs } from '@/components/kit/status-filter-tabs';
 import { TableSearchForm } from '@/components/kit/table-search-form';
 import { clearFiltersHref, ToolbarClearFilters } from '@/components/kit/toolbar-clear-filters';
 import { ToolbarDateRange } from '@/components/kit/toolbar-date-range';
+import { TOOLBAR_FIELD } from '@/components/kit/toolbar-metrics';
 import { type BookingsQuery, bookingsExportHref, bookingsHref } from '@/lib/bookings-query';
 import { EXPORT_MAX_ROWS } from '@/lib/export-pages';
 
@@ -163,6 +169,50 @@ export function BookingsExportLink({
 }
 
 /**
+ * Chip của bộ lọc tài khoản (G45) — hiện khi URL mang `user`, tức tới từ link "View bookings" của
+ * trang `/users/[id]`. Không có ô nào trên hàng điều khiển nói về bộ lọc này, nên thiếu chip thì
+ * bảng lặng lẽ chỉ còn booking của một người mà không ai biết vì sao.
+ *
+ * Nút gỡ là một link chỉ bỏ `user`, giữ mọi bộ lọc khác — cùng nếp "đổi bộ lọc là điều hướng"
+ * (spec P4b §2.2). `email` là `null` khi phiên không phải Owner (trang không gọi `users.byId` mà
+ * phiên không có quyền) hay tài khoản không còn: nhãn chung, không đoán.
+ */
+export function BookingsAccountChip({
+  query,
+  email,
+}: {
+  query: BookingsQuery;
+  email: string | null;
+}) {
+  if (!query.userId) return null;
+  const label = email ? t.accountFilter.label(email) : t.accountFilter.unknown;
+
+  return (
+    // Cao bằng ô nhập của hàng (`TOOLBAR_FIELD`) — luật "mọi control trên hàng cùng cỡ" (01/09).
+    <span
+      className={cn(
+        'inline-flex max-w-full min-w-0 items-center gap-1.5 rounded-lg border border-border bg-muted pr-0.5 pl-2.5 text-sm',
+        TOOLBAR_FIELD,
+      )}
+    >
+      <UserRoundIcon aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />
+      {/* Email dài thì cắt và để `title` giữ trọn chuỗi — chip không được đẩy hàng điều khiển
+          tràn khỏi mép ở màn hẹp. */}
+      <span className="min-w-0 truncate" title={label}>
+        {label}
+      </span>
+      <Link
+        href={bookingsHref(query, { userId: null })}
+        aria-label={t.accountFilter.remove}
+        className={buttonVariants({ variant: 'ghost', size: 'icon-sm' })}
+      >
+        <XIcon aria-hidden="true" />
+      </Link>
+    </span>
+  );
+}
+
+/**
  * Nút xoá DUY NHẤT của hàng điều khiển `/bookings` (05/09) — vỏ mỏng quanh kit
  * `ToolbarClearFilters`, xem JSDoc ở đó cho luật chung.
  *
@@ -174,15 +224,15 @@ export function BookingsExportLink({
  */
 export function BookingsClearFilters({ query }: { query: BookingsQuery }) {
   const router = useRouter();
-  // Chỉ còn tháng mặc định (không tìm gì) thì cú bấm này KHÔNG xoá bộ lọc
+  // Chỉ còn tháng mặc định (không tìm gì, không lọc tài khoản) thì cú bấm này KHÔNG xoá bộ lọc
   // nào — nó nới bảng sang mọi ngày. Nhãn phải nói đúng việc ấy.
-  const onlyDefaultDates = !query.search && !query.allDates;
+  const onlyDefaultDates = !query.search && !query.userId && !query.allDates;
 
   return (
     <ToolbarClearFilters
       label={onlyDefaultDates ? t.showAllDates : messages.admin.table.clearFilters}
       href={clearFiltersHref(
-        bookingsHref(query, { search: null, from: null, to: null, page: 1 }),
+        bookingsHref(query, { search: null, userId: null, from: null, to: null, page: 1 }),
         bookingsHref(query, { page: 1 }),
       )}
       onNavigate={router.push}

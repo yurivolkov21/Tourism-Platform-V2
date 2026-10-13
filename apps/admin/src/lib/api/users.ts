@@ -11,6 +11,7 @@ import type {
   AdminUserUnlockResult,
   Paged,
 } from '@tourism/contract';
+import { canAccess } from '@tourism/contract/admin-access';
 import type { UsersQuery } from '@/lib/users-query';
 import { api, withAdminAuth } from './client';
 
@@ -33,6 +34,26 @@ export async function fetchAdminUser(
     throw error;
   }
   return data;
+}
+
+/**
+ * Email của tài khoản cho chip lọc ở `/bookings` và đầu trang file xuất (G45). `null` khi phiên
+ * không gọi được `users.byId` (chỉ Owner; không bắn một thủ tục mà phiên không có quyền), khi tài
+ * khoản không còn, hay khi API lỗi: đây là một cái NHÃN, hỏng thì nhãn chung chứ không làm hỏng cả
+ * trang danh sách.
+ */
+export async function fetchAccountEmail(
+  cookie: string,
+  id: string,
+  role: string,
+): Promise<string | null> {
+  if (!canAccess(role, 'users.byId')) return null;
+  try {
+    return (await fetchAdminUser(cookie, { id }))?.email ?? null;
+  } catch (error) {
+    console.error('[admin] account label lookup failed', error);
+    return null;
+  }
 }
 
 export async function setAdminUserRole(

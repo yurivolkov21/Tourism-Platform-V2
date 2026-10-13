@@ -4385,6 +4385,16 @@ export const messages = {
         emptyTo: (date: string) => `No bookings were created on or before ${date}.`,
         /** Nút thoát ngay trong ô rỗng — một cú bấm về xem toàn bộ. */
         showAllDates: 'Show bookings from all dates',
+        /**
+         * Chip của bộ lọc tài khoản (G45) — đích của link "View bookings" ở trang tài khoản. Email
+         * chỉ có khi phiên là Owner (thủ tục `users.byId` chỉ Owner gọi được); thiếu thì nhãn chung
+         * chứ không đoán.
+         */
+        accountFilter: {
+          label: (email: string) => `Account: ${email}`,
+          unknown: 'One account',
+          remove: 'Remove the account filter',
+        },
         columns: {
           code: 'Code',
           tour: 'Tour',
@@ -4441,6 +4451,9 @@ export const messages = {
          * Nam — đầu trang nói rõ để hàng ở mép khoảng không trái với chính nó (review max G40 Phần 3).
          */
         utcDates: (dates: string) => `${dates} (UTC)`,
+        /** Bộ lọc tài khoản (G45); không đọc được email thì nói chung, như chip trên màn hình. */
+        account: (email: string) => `account ${email}`,
+        oneAccount: 'one account',
         search: (query: string) => `search “${query}”`,
         selected: (n: number) => `${n} selected ${n === 1 ? 'row' : 'rows'}`,
         total: 'Total',

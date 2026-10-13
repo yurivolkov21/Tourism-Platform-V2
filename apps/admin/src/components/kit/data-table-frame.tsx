@@ -44,8 +44,14 @@ export function DataTableFrame({ views, actions, children, footer }: DataTableFr
         <div className="flex flex-wrap items-center gap-2">{views}</div>
         {/* `flex-wrap` từ F6: khe hành động của `/bookings` nay mang thêm hai
             ô ngày và nút export, đủ để tràn ở màn hẹp — xuống dòng còn hơn
-            đẩy ngang cả hàng điều khiển ra khỏi khung. */}
-        <div className="flex flex-wrap items-center justify-end gap-2">{actions}</div>
+            đẩy ngang cả hàng điều khiển ra khỏi khung.
+
+            `min-w-0` từ G45: không có nó thì khe không co dưới bề rộng
+            min-content của con, mà chip lọc tài khoản (chữ `truncate`) có
+            min-content bằng nguyên email — email dài đẩy khe tràn khỏi khung
+            (đo CSS build thật: 322px ở 390, 232px ở 768). Co được thì
+            `max-w-full` của chip mới có mốc và email bị cắt. */}
+        <div className="flex min-w-0 flex-wrap items-center justify-end gap-2">{actions}</div>
       </div>
       <div className="relative flex flex-col gap-4 overflow-auto px-4 lg:px-6">
         <div className="overflow-hidden rounded-lg border">{children}</div>

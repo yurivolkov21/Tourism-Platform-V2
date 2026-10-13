@@ -58,6 +58,26 @@ describe('BookingsClearFilters', () => {
     expect(push).toHaveBeenCalledWith('/bookings?status=PAID&dates=all');
   });
 
+  it('đang lọc theo tài khoản (G45): nút là "Clear filters" và gỡ cả `user`', async () => {
+    // Từ link "View bookings" của /users/[id] — `dates=all`, chỉ có bộ lọc tài khoản. Nhãn
+    // "show all dates" ở đây là nói sai: cú bấm gỡ bộ lọc tài khoản, ngày vốn đã là mọi ngày.
+    const user = userEvent.setup();
+    render(
+      <BookingsClearFilters
+        query={{
+          page: 1,
+          limit: 20,
+          allDates: true,
+          userId: '4f2a1b3c-0000-4000-8000-000000000001',
+        }}
+      />,
+    );
+
+    await user.click(screen.getByRole('button', { name: LABEL }));
+
+    expect(push).toHaveBeenCalledWith('/bookings?dates=all');
+  });
+
   it('đang ở chế độ xem-tất-cả và không lọc gì thì nút TỰ ẨN', () => {
     const { container } = render(
       <BookingsClearFilters query={{ page: 1, limit: 20, allDates: true }} />,

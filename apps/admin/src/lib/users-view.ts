@@ -7,7 +7,7 @@ import {
   userActions,
 } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
-import { bookingsSearchHref } from './bookings-query';
+import { bookingsAccountHref } from './bookings-query';
 import { formatCalendarDate, formatDateTime } from './bookings-view';
 import { roleLabel } from './role-label';
 import { userDetailHref } from './users-query';
@@ -130,7 +130,7 @@ export interface UserDetailVM {
   accessNote: string | null;
   profile: Array<{ label: string; value: string }>;
   activity: Array<{ label: string; value: string }>;
-  /** `/bookings?q=<email>&dates=all` — null khi chưa có booking nào. */
+  /** `/bookings?user=<id>&dates=all` (G45) — null khi chưa có booking nào. */
   bookingsHref: string | null;
   sessions: { count: number; active: string; lastActive: string };
   history: UserHistoryVM[];
@@ -191,7 +191,7 @@ export function toUserDetailVM(detail: AdminUserDetail): UserDetailVM {
       { label: d.activity.reviews, value: String(detail.counts.reviews) },
       { label: d.activity.enquiries, value: String(detail.counts.enquiries) },
     ],
-    bookingsHref: detail.counts.bookings > 0 ? bookingsSearchHref(detail.email) : null,
+    bookingsHref: detail.counts.bookings > 0 ? bookingsAccountHref(detail.id) : null,
     sessions: {
       count: detail.sessions.active,
       active: String(detail.sessions.active),

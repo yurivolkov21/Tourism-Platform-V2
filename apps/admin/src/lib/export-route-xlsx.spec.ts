@@ -26,6 +26,8 @@ const { fetchAdminSubscribers, fetchAllAdminSubscribers } = vi.hoisted(() => ({
   fetchAllAdminSubscribers: vi.fn(),
 }));
 vi.mock('@/lib/api/subscribers', () => ({ fetchAdminSubscribers, fetchAllAdminSubscribers }));
+const { fetchAccountEmail } = vi.hoisted(() => ({ fetchAccountEmail: vi.fn() }));
+vi.mock('@/lib/api/users', () => ({ fetchAccountEmail }));
 vi.mock('next/headers', () => ({ cookies: vi.fn(async () => ({ toString: (): string => '' })) }));
 
 const booking = {
@@ -149,6 +151,64 @@ describe('GET /bookings/export', () => {
     const response = await GET(requestFor('/bookings/export?page=1&limit=20&sel=BK-7Q2M9XKD'));
     expect(response.status).toBe(409);
     expect(await response.text()).toBe(messages.admin.errors.exportSelectionStale);
+  });
+
+  describe('G45: bộ lọc tài khoản', () => {
+    const USER = '4f2a1b3c-0000-4000-8000-000000000001';
+
+    it('`user` đi xuống API, email lên đầu trang file, audit ghi `<set>` chứ không ghi id', async () => {
+      fetchAllAdminBookings.mockResolvedValue({ kind: 'rows', items: [booking] });
+      fetchAccountEmail.mockResolvedValue('ada@example.com');
+      const { GET } = await import('@/app/(admin)/bookings/export/route');
+      const response = await GET(requestFor(`/bookings/export?user=${USER}&dates=all`));
+
+      expect(response.status).toBe(200);
+      expect(fetchAllAdminBookings).toHaveBeenCalledWith(
+        '',
+        expect.objectContaining({ userId: USER, allDates: true }),
+      );
+      // Quyền đọc email theo role của CHÍNH phiên vừa qua cổng.
+      expect(fetchAccountEmail).toHaveBeenCalledWith('', USER, ADMIN.role);
+      const sheet = await sheetOf(response, messages.admin.bookings.xlsx.sheet);
+      expect(sheet.headerFooter.oddHeader).toContain(
+        messages.admin.bookings.xlsx.account('ada@example.com'),
+      );
+      expect(lastAudit()).toMatchObject({ outcome: 'ok', filters: { user: '<set>' } });
+      expect(JSON.stringify(lastAudit())).not.toContain(USER);
+    });
+
+    it('không đọc được email thì đầu trang nói "one account"; cú xuất có chọn cũng mang bộ lọc', async () => {
+      fetchAdminBookings.mockResolvedValue({
+        items: [booking],
+        total: 1,
+        page: 1,
+        limit: 20,
+        totalPages: 1,
+      });
+      fetchAccountEmail.mockResolvedValue(null);
+      const { GET } = await import('@/app/(admin)/bookings/export/route');
+      const response = await GET(
+        requestFor(`/bookings/export?user=${USER}&dates=all&page=1&limit=20&sel=BK-7Q2M9XKD`),
+      );
+
+      expect(response.status).toBe(200);
+      expect(fetchAdminBookings).toHaveBeenCalledWith(
+        '',
+        expect.objectContaining({ userId: USER, includeMedia: false }),
+        expect.any(AbortSignal),
+      );
+      const sheet = await sheetOf(response, messages.admin.bookings.xlsx.sheet);
+      expect(sheet.headerFooter.oddHeader).toContain(messages.admin.bookings.xlsx.oneAccount);
+    });
+
+    it('không lọc tài khoản thì không tra email', async () => {
+      fetchAllAdminBookings.mockResolvedValue({ kind: 'rows', items: [booking] });
+      const { GET } = await import('@/app/(admin)/bookings/export/route');
+      await GET(requestFor('/bookings/export'));
+
+      expect(fetchAccountEmail).not.toHaveBeenCalled();
+      expect(lastAudit()).toMatchObject({ filters: { user: null } });
+    });
   });
 });
 

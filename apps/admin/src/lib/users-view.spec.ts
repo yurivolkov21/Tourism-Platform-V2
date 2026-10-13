@@ -1,7 +1,7 @@
 import type { AdminUserRow } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
 import { describe, expect, it } from 'vitest';
-import { userDetailFixture } from '@/test/user-detail';
+import { USER_ID, userDetailFixture } from '@/test/user-detail';
 import {
   formatDay,
   toUserDetailVM,
@@ -88,9 +88,10 @@ describe('toUserDetailVM', () => {
     expect(vm.joined).toBe('Joined 1 Sep 2026');
   });
 
-  it('có booking → link bookings mọi ngày; không booking → không link', () => {
+  it('có booking → link bookings của ĐÚNG tài khoản, mọi ngày; không booking → không link', () => {
+    // Theo id chứ không tìm theo email (G45): tìm `ada@example.com` cũng khớp `nada@example.com`.
     expect(toUserDetailVM(userDetailFixture()).bookingsHref).toBe(
-      '/bookings?q=ada%40example.com&dates=all',
+      `/bookings?user=${USER_ID}&dates=all`,
     );
     const none = userDetailFixture({ counts: { bookings: 0, reviews: 0, enquiries: 0 } });
     expect(toUserDetailVM(none).bookingsHref).toBeNull();

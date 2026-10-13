@@ -286,8 +286,10 @@ trong `userActions(target)` thì `STATE_CHANGED` 409.
 - **Đầu trang:** ảnh, tên, chip role, chip status, ngày tham gia (plan, quyết định 18).
 - **Profile:** email, đã xác minh hay chưa, số điện thoại, cách đăng nhập.
 - **Activity:** số booking, review, enquiry; link "View bookings" sang
-  `/bookings?q=<email>&dates=all` (tìm theo email liên hệ của booking; `dates=all` vì URL trần
-  của bảng tự lọc tháng hiện tại — plan, quyết định 7).
+  `/bookings?user=<id>&dates=all` (lọc theo tài khoản đặt; `dates=all` vì URL trần của bảng tự
+  lọc tháng hiện tại — plan, quyết định 7). **AMENDED 13/10 (G45):** bản đầu là
+  `/bookings?q=<email>&dates=all`, tìm theo email liên hệ của booking — lệch số hàng, xem §11 và
+  [spec G45](2026-10-13-g45-bookings-account-filter.md).
 - **Sessions:** số phiên sống, lần hoạt động cuối, nút "Sign out everywhere" (tắt khi 0 phiên)
   kèm hộp xác nhận.
 - **Access:** "Grant staff access" hoặc "Revoke staff access" theo `userActions`. Khách chưa
@@ -382,10 +384,11 @@ mới có), CSP và boundary 403 không đổi.
 
 Như ADR-0052 mục "Giới hạn đã biết" (sáu điểm); thêm:
 
-- Link "View bookings" tìm theo email liên hệ bằng `contains`: booking khách nhập email khác sẽ
+- ~~Link "View bookings" tìm theo email liên hệ bằng `contains`: booking khách nhập email khác sẽ
   không hiện, còn booking của người khác có email chứa email này (`lan@example.com` chứa
   `an@example.com`) lại hiện, nên số hàng có thể lệch con số "Bookings" trên card (đếm theo
-  `userId`). Ghi ở open-items G45 (review 13/10).
+  `userId`). Ghi ở open-items G45 (review 13/10).~~ **AMENDED 13/10:** G45 đổi link sang bộ lọc
+  `userId` ([spec G45](2026-10-13-g45-bookings-account-filter.md)), số hàng nay khớp card.
 - Form đăng nhập admin chỉ có email và mật khẩu. Staff chỉ có Google đặt mật khẩu bằng
   “Forgot password?” (int test `google-sign-in.int.spec.ts` đo đường này; card Staff access nói
   với Owner). Đăng nhập Google ở www rồi mở admin có lẽ cũng vào được, vì production bắt buộc

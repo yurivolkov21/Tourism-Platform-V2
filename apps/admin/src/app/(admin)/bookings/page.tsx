@@ -7,6 +7,7 @@ import { StatCardRow } from '@/components/kit/stat-card';
 import { fetchAdminBookings } from '@/lib/api/bookings';
 import { getServerSession } from '@/lib/api/session';
 import { fetchAdminBookingsStats } from '@/lib/api/stats';
+import { fetchAccountEmail } from '@/lib/api/users';
 import { bookingsHref, parseBookingsSearchParams } from '@/lib/bookings-query';
 import { toBookingRow } from '@/lib/bookings-view';
 import { statsPeriodLabel, toBookingsStatCards } from '@/lib/stats-view';
@@ -39,7 +40,7 @@ export default async function BookingsPage({
   // Session (chỉ để đổ vào nav-user — layout đã gác role) và trang dữ liệu
   // là hai request độc lập: chạy song song kẻo TTFB thành 2 RTT nối tiếp
   // trên MỌI click phân trang/lọc (nếp Promise.all như enquire/page.tsx web).
-  const [session, paged, stats] = await Promise.all([
+  const [session, paged, stats, accountEmail] = await Promise.all([
     getServerSession(),
     fetchAdminBookings(cookie, query),
     // F5: hàng stat card fetch CÙNG ĐỢT với list — nối tiếp sẽ thêm nguyên
@@ -49,6 +50,8 @@ export default async function BookingsPage({
     // parse nên nó mang mặc định tháng này, hoặc không mang ngày nào khi admin
     // chọn `?dates=all` — lúc đó server rơi về cửa sổ trượt 28 ngày.
     fetchAdminBookingsStats(cookie, { from: query.from, to: query.to }),
+    // G45: nhãn của chip lọc tài khoản — chỉ khi URL mang `user`, và cùng đợt với list.
+    query.userId ? accountEmailFor(cookie, query.userId) : null,
   ]);
   // Null chỉ xảy ra khi phiên hết hạn ngay giữa hai request — layout xử lý ở
   // lần điều hướng kế (cùng nếp trang dashboard).
@@ -66,9 +69,20 @@ export default async function BookingsPage({
       <BookingsTable
         rows={paged.items.map((booking) => toBookingRow(booking, query))}
         query={query}
+        accountEmail={accountEmail}
         total={paged.total}
         totalPages={paged.totalPages}
       />
     </AdminShell>
   );
+}
+
+/**
+ * Email cho chip lọc tài khoản (G45). Quyền đọc `users.byId` theo role của phiên — `getServerSession`
+ * đi qua `cache()` nên lượt này dùng chung lượt tra phiên của layout và của `Promise.all` trên, không
+ * thêm request nào.
+ */
+async function accountEmailFor(cookie: string, userId: string): Promise<string | null> {
+  const session = await getServerSession();
+  return session ? fetchAccountEmail(cookie, userId, session.role) : null;
 }

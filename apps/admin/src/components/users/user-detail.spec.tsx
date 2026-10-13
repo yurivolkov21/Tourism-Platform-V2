@@ -2,7 +2,7 @@ import { render, screen, within } from '@testing-library/react';
 import { messages } from '@tourism/i18n';
 import { describe, expect, it, vi } from 'vitest';
 import { toUserDetailVM } from '@/lib/users-view';
-import { userDetailFixture } from '@/test/user-detail';
+import { USER_ID, userDetailFixture } from '@/test/user-detail';
 import { UserDetail } from './user-detail';
 
 const t = messages.admin.users;
@@ -47,7 +47,7 @@ describe('UserDetail', () => {
     expect(screen.getByText('Password, Google')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: t.detail.activity.viewBookings })).toHaveAttribute(
       'href',
-      '/bookings?q=ada%40example.com&dates=all',
+      `/bookings?user=${USER_ID}&dates=all`,
     );
   });
 

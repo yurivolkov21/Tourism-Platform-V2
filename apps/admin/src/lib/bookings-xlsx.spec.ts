@@ -65,6 +65,7 @@ const cancelled: Booking = {
 };
 
 const QUERY: BookingsQuery = { page: 1, limit: 20, from: '2026-07-01', to: '2026-07-31' };
+const USER = '4f2a1b3c-0000-4000-8000-000000000001';
 
 async function open(
   rows: readonly Booking[] = [booking, cancelled],
@@ -144,6 +145,41 @@ describe('bookingsFilterSummary — đầu trang khi in', () => {
     const summary = bookingsFilterSummary({ ...QUERY, search: 'a'.repeat(60) }, 3);
     expect(summary).toContain(x.search(`${'a'.repeat(39)}…`));
     expect(summary.endsWith(x.selected(3))).toBe(true);
+  });
+
+  describe('bộ lọc tài khoản (G45)', () => {
+    const ACCOUNT = { page: 1, limit: 20, allDates: true, userId: USER } as const;
+
+    it('nói đúng tài khoản — file mở ra phải biết đây là booking của một người', () => {
+      expect(bookingsFilterSummary(ACCOUNT, 0, 'ada@example.com')).toBe(
+        x.account('ada@example.com'),
+      );
+    });
+
+    it('không đọc được email (Staff, tài khoản không còn) thì nói chung, không bỏ qua', () => {
+      expect(bookingsFilterSummary(ACCOUNT, 0, null)).toBe(x.oneAccount);
+    });
+
+    it('đứng sau khoảng ngày, trước từ khoá và số hàng chọn; email dài bị cắt ở 40', () => {
+      const summary = bookingsFilterSummary(
+        { ...QUERY, userId: USER, status: 'PAID', search: 'hoi an' },
+        2,
+        `${'b'.repeat(50)}@example.com`,
+      );
+      expect(summary).toBe(
+        [
+          messages.admin.bookings.status.PAID,
+          x.utcDates('1 Jul 2026 – 31 Jul 2026'),
+          x.account(`${'b'.repeat(39)}…`),
+          x.search('hoi an'),
+          x.selected(2),
+        ].join(' · '),
+      );
+    });
+
+    it('không lọc tài khoản thì email truyền vào không được in', () => {
+      expect(bookingsFilterSummary(QUERY, 0, 'ada@example.com')).not.toContain('ada@example.com');
+    });
   });
 });
 

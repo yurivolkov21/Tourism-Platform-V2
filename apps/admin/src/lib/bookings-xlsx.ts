@@ -75,15 +75,24 @@ const SEARCH_MAX = 40;
 
 /**
  * Tóm tắt bộ lọc cho đầu trang khi in (spec §7.1): trạng thái · khoảng ngày (ngày UTC, như bảng trên
- * màn hình) · từ khoá (cắt ở `SEARCH_MAX`) · số hàng chọn, hoặc "All bookings". Ngày tách CHUỖI
- * (`formatCalendarDate`), không qua `Date` — không trôi múi giờ.
+ * màn hình) · tài khoản (G45) · từ khoá (cắt ở `SEARCH_MAX`) · số hàng chọn, hoặc "All bookings".
+ * Ngày tách CHUỖI (`formatCalendarDate`), không qua `Date` — không trôi múi giờ.
+ *
+ * `account` là email của tài khoản đang lọc (`query.userId`); `null` khi route không đọc được nó
+ * (phiên Staff, tài khoản không còn) thì in "one account" — file vẫn phải nói đây là booking của MỘT
+ * người. Email cắt ở cùng trần với từ khoá để "n selected rows" còn chỗ trong 100 ký tự đầu trang.
  */
-export function bookingsFilterSummary(query: BookingsQuery, selected: number): string {
+export function bookingsFilterSummary(
+  query: BookingsQuery,
+  selected: number,
+  account: string | null = null,
+): string {
   const parts: string[] = [];
   if (query.status) parts.push(statusLabel(query.status));
   if (query.from && query.to) parts.push(x.utcDates(formatDateRange(query.from, query.to)));
   else if (query.from) parts.push(x.utcDates(x.dateFrom(formatCalendarDate(query.from))));
   else if (query.to) parts.push(x.utcDates(x.dateUntil(formatCalendarDate(query.to))));
+  if (query.userId) parts.push(account ? x.account(clip(account, SEARCH_MAX)) : x.oneAccount);
   if (query.search) parts.push(x.search(clip(query.search, SEARCH_MAX)));
   if (selected > 0) parts.push(x.selected(selected));
   return parts.length === 0 ? x.allBookings : parts.join(' · ');
@@ -100,12 +109,20 @@ export async function buildBookingsWorkbook(
   {
     query,
     selected,
+    account = null,
     adminOrigin,
     generatedAt,
-  }: { query: BookingsQuery; selected: number; adminOrigin: string; generatedAt: string },
+  }: {
+    query: BookingsQuery;
+    selected: number;
+    /** Email của tài khoản đang lọc (G45) — xem `bookingsFilterSummary`. */
+    account?: string | null;
+    adminOrigin: string;
+    generatedAt: string;
+  },
 ): Promise<ArrayBuffer> {
   const book = new ExcelJS.Workbook();
-  const summary = bookingsFilterSummary(query, selected);
+  const summary = bookingsFilterSummary(query, selected, account);
   stampWorkbook(book, { title: x.docTitle, subject: summary, created: new Date(generatedAt) });
   const sheet = addSheet(book, x.sheet, {
     tab: DIM,

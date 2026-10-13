@@ -1,4 +1,5 @@
 import { BookingStatusSchema, type BookingStatusValue } from '@tourism/contract';
+import { z } from 'zod';
 import { EXPORT_SELECTION_PARAM } from './export-selection';
 import {
   appendPaging,
@@ -26,6 +27,18 @@ import {
 /** Trần `search` của contract (`z.string().max(120)`). */
 const SEARCH_MAX_LENGTH = 120;
 
+/**
+ * `userId` là uuid ở contract (G45) — chuỗi khác là 400, nên chặn ngay tại đây. CHÍNH `z.uuid()`
+ * của contract, cùng tiền lệ `enquiries-query.ts` và `tours-query.ts`.
+ */
+const UserIdSchema = z.uuid();
+
+/** Id tài khoản hợp lệ, hoặc `undefined` — rác rơi im lặng như `status` ngoài enum. */
+function validUserId(value: string | undefined): string | undefined {
+  const parsed = UserIdSchema.safeParse(value);
+  return parsed.success ? parsed.data : undefined;
+}
+
 /** Input đã sạch cho `admin.bookings.list` (khớp AdminBookingsListQuerySchema). */
 export interface BookingsQuery {
   page: number;
@@ -36,6 +49,11 @@ export interface BookingsQuery {
   from?: string;
   /** Ngày lịch `YYYY-MM-DD`, cũng TÍNH VÀO — trọn ngày đó. */
   to?: string;
+  /**
+   * Chỉ booking của MỘT tài khoản (`?user=<id>`, G45) — đích của link "View bookings" ở trang
+   * `/users/[id]`. Khớp đúng `bookings.user_id`, không `contains` trên email như `search`.
+   */
+  userId?: string;
   /**
    * `true` khi admin CỐ Ý bỏ lọc ngày (`?dates=all`). Khác hẳn "URL trần":
    * URL trần được độn mặc định tháng này, còn cờ này nói "đừng độn".
@@ -78,12 +96,14 @@ function currentMonthRange(now: Date): { from: string; to: string } {
 export function parseBookingsSearchParams(raw: RawSearchParams, now: Date): BookingsQuery {
   const status = BookingStatusSchema.safeParse(firstParam(raw.status));
   const search = clampSearch(firstParam(raw.q), SEARCH_MAX_LENGTH);
+  const userId = validUserId(firstParam(raw.user));
   const dates = parseDateRange(firstParam(raw.from), firstParam(raw.to));
 
   return {
     ...parsePaging(raw),
     ...(status.success ? { status: status.data } : {}),
     ...(search ? { search } : {}),
+    ...(userId ? { userId } : {}),
     ...resolveDates(dates, firstParam(raw.dates), now),
   };
 }
@@ -118,6 +138,8 @@ export interface BookingsHrefPatch {
   limit?: number;
   status?: BookingStatusValue | null;
   search?: string | null;
+  /** `null` = gỡ bộ lọc tài khoản (nút gỡ của chip, Clear filters). */
+  userId?: string | null;
   /** `null` hoặc chuỗi rỗng (ô date bị xoá trắng) đều là XOÁ đầu đó. */
   from?: string | null;
   to?: string | null;
@@ -130,13 +152,14 @@ export interface BookingsHrefPatch {
  * `limit` mặc định không xuất hiện trên URL — mặc định thì không cần viết ra.
  */
 export function bookingsHref(current: BookingsQuery, patch: BookingsHrefPatch): string {
-  const { status, search, from, to } = resolveFilters(current, patch);
+  const { status, search, userId, from, to } = resolveFilters(current, patch);
 
   // Luật reset-page nằm MỘT chỗ ở kit (`resolvePagePatch`) — vùng chỉ khai
   // filter nào tính là "đổi scope" (review F3 31/08).
   const scopeChanged =
     patch.status !== undefined ||
     patch.search !== undefined ||
+    patch.userId !== undefined ||
     patch.from !== undefined ||
     patch.to !== undefined ||
     patch.limit !== undefined;
@@ -155,6 +178,7 @@ export function bookingsHref(current: BookingsQuery, patch: BookingsHrefPatch): 
   appendFilters(params, {
     status,
     search,
+    userId,
     from,
     to,
     allDates: current.allDates === true || clearedDates,
@@ -171,19 +195,29 @@ function resolveFilters(current: BookingsQuery, patch: BookingsHrefPatch) {
   return {
     status: pickPatch(patch.status, current.status),
     search: clampSearch(pickPatch(patch.search, current.search), SEARCH_MAX_LENGTH),
+    // Id rác từ patch bị vứt như ngày rác: một href sinh ra 400 là một cú click chết.
+    userId: validUserId(pickPatch(patch.userId, current.userId)),
     // Ngày rác từ patch bị vứt ở ĐÂY chứ không ném lên URL: một href sinh ra
     // 400 là một cú click chết, và luật khoan dung phải giống hệt đường đọc.
     ...parseDateRange(pickPatch(patch.from, current.from), pickPatch(patch.to, current.to)),
   };
 }
 
-/** Ghi bốn filter của vùng vào query — thứ tự cố định để href ổn định. */
+/** Ghi năm filter của vùng vào query — thứ tự cố định để href ổn định. */
 function appendFilters(
   params: URLSearchParams,
-  filters: { status?: string; search?: string; from?: string; to?: string; allDates?: boolean },
+  filters: {
+    status?: string;
+    search?: string;
+    userId?: string;
+    from?: string;
+    to?: string;
+    allDates?: boolean;
+  },
 ): void {
   if (filters.status) params.set('status', filters.status);
   if (filters.search) params.set('q', filters.search);
+  if (filters.userId) params.set('user', filters.userId);
   if (filters.from) params.set('from', filters.from);
   if (filters.to) params.set('to', filters.to);
   // Không còn ngày nào thì phải NÓI RA là cố ý. Để URL trần thì lượt parse kế
@@ -249,7 +283,7 @@ export function bookingsBackHref(raw: RawSearchParams, now: Date): string {
  * Các tham số làm nên trạng thái danh sách. Có MỘT trong số này trên URL
  * trang chi tiết nghĩa là người ta tới từ bảng, và bộ lọc ấy phải được giữ.
  */
-const LIST_PARAMS = ['status', 'q', 'from', 'to', 'dates', 'page', 'limit'] as const;
+const LIST_PARAMS = ['status', 'q', 'user', 'from', 'to', 'dates', 'page', 'limit'] as const;
 
 /**
  * Link tải Excel (spec P4b §3-F6) — trỏ tới route handler `/bookings/export`.
@@ -281,12 +315,15 @@ export function bookingsExportHref(query: BookingsQuery, selected?: readonly str
 }
 
 /**
- * Link sang `/bookings` lọc theo MỘT chuỗi tìm, MỌI ngày (P4f, quyết định 7) — dùng ở trang
- * chi tiết người dùng. URL trần của bảng tự lọc tháng hiện tại (`resolveDates`), nên thiếu
- * `dates=all` là giấu mọi booking cũ của người đang xem.
+ * Link "View bookings" của trang `/users/[id]`: booking của ĐÚNG tài khoản ấy, MỌI ngày (G45).
+ *
+ * Thay bản tìm theo email của P4f (quyết định 7): ô tìm khớp `contains` trên email liên hệ, nên
+ * `an@example.com` thấy lẫn booking của `lan@example.com`, còn booking đặt bằng email liên hệ khác
+ * thì mất. `dates=all` giữ lý do cũ — URL trần của bảng tự lọc tháng hiện tại (`resolveDates`),
+ * thiếu nó là giấu mọi booking cũ của người đang xem.
  */
-export function bookingsSearchHref(search: string): string {
+export function bookingsAccountHref(userId: string): string {
   const params = new URLSearchParams();
-  appendFilters(params, { search: clampSearch(search, SEARCH_MAX_LENGTH), allDates: true });
+  appendFilters(params, { userId: validUserId(userId), allDates: true });
   return tableHref('/bookings', params);
 }

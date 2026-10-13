@@ -3,6 +3,7 @@ import { messages } from '@tourism/i18n';
 import { cookies } from 'next/headers';
 import type { NextRequest } from 'next/server';
 import { fetchAdminBookings, fetchAllAdminBookings } from '@/lib/api/bookings';
+import { fetchAccountEmail } from '@/lib/api/users';
 import { parseBookingsSearchParams } from '@/lib/bookings-query';
 import { buildBookingsWorkbook } from '@/lib/bookings-xlsx';
 import { EXPORT_TIME_BUDGET_MS, type PagedExport } from '@/lib/export-pages';
@@ -50,9 +51,16 @@ export async function GET(request: NextRequest) {
   );
   const cookie = (await cookies()).toString();
   const generatedAt = new Date().toISOString();
+  // G45: email cho đầu trang file khi lọc theo tài khoản — quyền đọc theo role của chính phiên vừa
+  // qua cổng (Staff không gọi `users.byId`; file khi ấy ghi "one account").
+  const account = query.userId
+    ? await fetchAccountEmail(cookie, query.userId, gate.session.role)
+    : null;
   const filters = {
     status: query.status ?? null,
     search: query.search ? '<set>' : null,
+    // Như `search`: vết audit nói CÓ lọc, không ghi id hay email.
+    user: query.userId ? '<set>' : null,
     from: query.from ?? null,
     to: query.to ?? null,
     // Cố ý xuất TOÀN BỘ lịch sử khác với URL trần độn tháng — vết phải nói
@@ -111,6 +119,7 @@ export async function GET(request: NextRequest) {
         buildBookingsWorkbook(rows, {
           query,
           selected: rows.length,
+          account,
           adminOrigin: request.nextUrl.origin,
           generatedAt,
         }),
@@ -152,6 +161,7 @@ export async function GET(request: NextRequest) {
       buildBookingsWorkbook(result.items, {
         query,
         selected: 0,
+        account,
         adminOrigin: request.nextUrl.origin,
         generatedAt,
       }),

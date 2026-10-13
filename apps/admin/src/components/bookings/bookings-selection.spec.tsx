@@ -39,7 +39,13 @@ const ROWS = [row('BK-A', 'Ada'), row('BK-B', 'Bob')];
 
 function view(total = 2) {
   return render(
-    <BookingsTable rows={ROWS} query={{ page: 1, limit: 20 }} total={total} totalPages={1} />,
+    <BookingsTable
+      rows={ROWS}
+      query={{ page: 1, limit: 20 }}
+      accountEmail={null}
+      total={total}
+      totalPages={1}
+    />,
   );
 }
 
@@ -103,14 +109,26 @@ describe('BookingsTable — chọn hàng để export', () => {
     // lần cũng không gỡ được.
     const user = userEvent.setup();
     const { rerender } = render(
-      <BookingsTable rows={ROWS} query={{ page: 1, limit: 20 }} total={4} totalPages={2} />,
+      <BookingsTable
+        rows={ROWS}
+        query={{ page: 1, limit: 20 }}
+        accountEmail={null}
+        total={4}
+        totalPages={2}
+      />,
     );
     await user.click(screen.getByRole('checkbox', { name: t.selectRow('BK-A') }));
     expect(exportLink(t.exportSelected(1))).toBeInTheDocument();
 
     const PAGE_2 = [row('BK-C', 'Cy'), row('BK-D', 'Di')];
     rerender(
-      <BookingsTable rows={PAGE_2} query={{ page: 2, limit: 20 }} total={4} totalPages={2} />,
+      <BookingsTable
+        rows={PAGE_2}
+        query={{ page: 2, limit: 20 }}
+        accountEmail={null}
+        total={4}
+        totalPages={2}
+      />,
     );
 
     expect(exportLink(t.exportExcel)).toHaveAttribute('href', '/bookings/export');
@@ -120,7 +138,15 @@ describe('BookingsTable — chọn hàng để export', () => {
     );
 
     // Quay lại trang 1: tích cũ KHÔNG sống lại.
-    rerender(<BookingsTable rows={ROWS} query={{ page: 1, limit: 20 }} total={4} totalPages={2} />);
+    rerender(
+      <BookingsTable
+        rows={ROWS}
+        query={{ page: 1, limit: 20 }}
+        accountEmail={null}
+        total={4}
+        totalPages={2}
+      />,
+    );
     expect(screen.getByRole('checkbox', { name: t.selectRow('BK-A') })).toHaveAttribute(
       'aria-checked',
       'false',
