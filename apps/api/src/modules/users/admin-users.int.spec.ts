@@ -381,15 +381,22 @@ describe('admin users integration (P4f)', () => {
   });
 
   describe('revokeSessions', () => {
-    it('xoá MỌI phiên, trả số phiên, ghi SESSIONS_REVOKED; tài khoản vẫn đăng nhập lại được', async () => {
+    it('xoá MỌI phiên, trả số phiên CÒN HẠN, ghi SESSIONS_REVOKED; tài khoản vẫn đăng nhập lại được', async () => {
       const first = await signIn(ADA);
       const second = await signIn(ADA);
+      // Phiên hết hạn trên một máy cũ: BA chỉ xoá nó khi chính cookie đó quay lại, và repo không
+      // có job dọn phiên. Trang chi tiết không đếm nó, nên toast cũng không được đếm (review P4f).
+      await prisma.session.create({
+        data: { userId: idOf(ADA), token: 'expired-ada-session', expiresAt: at(60) },
+      });
+      expect((await detail(ADA)).sessions.active).toBe(2);
       const res = await post(`/api/admin/users/${idOf(ADA)}/sessions/revoke`, ownerCookie);
       expect(res.statusCode).toBe(200);
       expect(AdminUserRevokeSessionsResultSchema.parse(res.json())).toEqual({
         id: idOf(ADA),
         revoked: 2,
       });
+      expect(await prisma.session.count({ where: { userId: idOf(ADA) } })).toBe(0);
       expect(await alive(first)).toBe(401);
       expect(await alive(second)).toBe(401);
       expect((await eventsOf(ADA)).map((e) => e.type)).toEqual([UserEventType.SESSIONS_REVOKED]);

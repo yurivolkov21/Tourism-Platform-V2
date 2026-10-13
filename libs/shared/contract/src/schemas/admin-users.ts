@@ -157,7 +157,10 @@ export type AdminUserUnlockResult = z.output<typeof AdminUserUnlockResultSchema>
 
 export const AdminUserRevokeSessionsResultSchema = z.object({
   id: z.uuid(),
-  /** Số phiên vừa xoá — 0 vẫn là thành công. */
+  /**
+   * Số phiên CÒN HẠN vừa bị xoá, khớp `sessions.active` của chi tiết; phiên hết hạn cũng bị
+   * xoá nhưng không tính. 0 vẫn là thành công.
+   */
   revoked: z.int().nonnegative(),
 });
 export type AdminUserRevokeSessionsResult = z.output<typeof AdminUserRevokeSessionsResultSchema>;

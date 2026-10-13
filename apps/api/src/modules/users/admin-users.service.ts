@@ -154,7 +154,13 @@ export class AdminUsersService {
   ): Promise<AdminUserRevokeSessionsResult> {
     const revoked = await prisma.$transaction(async (tx) => {
       await this.claim(tx, input.id, 'revokeSessions');
-      const { count } = await tx.session.deleteMany({ where: { userId: input.id } });
+      // Đếm đúng phiên CÒN HẠN, cùng mốc `expires_at > now` mà `byId` đếm: toast "N sessions
+      // ended" phải khớp ô "Active sessions" (review P4f). Hàng hết hạn vẫn bị xoá ở câu sau
+      // nhưng không tính là đăng xuất, vì nó đã chết từ trước.
+      const { count } = await tx.session.deleteMany({
+        where: { userId: input.id, expiresAt: { gt: new Date() } },
+      });
+      await tx.session.deleteMany({ where: { userId: input.id } });
       await tx.userEvent.create({
         data: { userId: input.id, actorId: actor.id, type: UserEventType.SESSIONS_REVOKED },
       });
