@@ -16,9 +16,15 @@ export function LenisScroll() {
   // kéo trang mới về đích cũ (open-items G33, phần còn lại sau `f79df8c8`). Buông quán tính ngay khi
   // pathname đổi: layout effect chạy trong cùng lượt commit của trang mới, TRƯỚC khung hình kế
   // tiếp nơi Lenis sẽ ghi vị trí cũ. `LenisScroll` nằm ở root layout nên sống qua mọi điều hướng.
+  // `reset()` của Lenis 1.3.25 là private; `stop()` rồi `start()` là đường công khai, cả hai đều gọi
+  // nó. Lenis đang dừng vì có modal mở thì chẳng còn quán tính nào để buông, mà `start()` lúc ấy lại
+  // mở khoá cuộn nền dưới modal, nên bỏ qua.
   // biome-ignore lint/correctness/useExhaustiveDependencies: chạy lại theo pathname là chủ đích, thân hàm không đọc nó
   useLayoutEffect(() => {
-    lenisRef.current?.reset();
+    const lenis = lenisRef.current;
+    if (!lenis || lenis.isStopped) return;
+    lenis.stop();
+    lenis.start();
   }, [pathname]);
 
   useEffect(() => {

@@ -133,6 +133,18 @@ describe('LenisScroll', () => {
     expect(lenis.isScrolling).toBe(false);
   });
 
+  it('pathname đổi lúc Lenis đang dừng vì có modal mở → Lenis vẫn dừng, nền dưới modal không cuộn được', () => {
+    setDocument({ height: 3000, viewport: 800 });
+    pathname.current = '/account/bookings';
+    const { rerender } = render(<LenisScroll />);
+    const lenis = mountedLenis();
+    lenis.stop();
+
+    pathname.current = '/account/bookings/BK-DONEAAAA';
+    rerender(<LenisScroll />);
+    expect(lenis.isStopped).toBe(true);
+  });
+
   it('render lại mà pathname giữ nguyên → không đụng tới cú lăn đang chạy', () => {
     setDocument({ height: 3000, viewport: 800 });
     pathname.current = '/tours';
