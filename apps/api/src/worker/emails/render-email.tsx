@@ -1,5 +1,5 @@
 import { cancellationDeadline } from '@tourism/contract';
-import { messages } from '@tourism/i18n';
+import { DEADLINE_CUTOFF_COPY, messages } from '@tourism/i18n';
 import type { ReactNode } from 'react';
 import { render, toPlainText } from 'react-email';
 import { EmailType } from '../../generated/prisma/enums.js';
@@ -190,7 +190,7 @@ function buildEmail(
                   ? ([
                       [
                         'Free cancellation until',
-                        <PlainValue key="v">{freeUntil}, 11:59 pm Vietnam time</PlainValue>,
+                        <PlainValue key="v">{`${freeUntil}, ${DEADLINE_CUTOFF_COPY}`}</PlainValue>,
                       ],
                     ] as Array<[string, ReactNode]>)
                   : []),
