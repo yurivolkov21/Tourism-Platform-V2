@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { ReviewVerdict } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
@@ -360,5 +360,38 @@ describe('ModerateActions — kết quả server', () => {
     await user.click(submit);
 
     expect(moderate).toHaveBeenCalledTimes(1);
+  });
+});
+
+/**
+ * G6: hộp đóng ĐÚNG LÚC hàng đợi đang làm mới, nên nút mở nó đang khoá. Khoá bằng thuộc tính
+ * `disabled` thật thì Base UI không trả focus về nút ấy được, và focus bàn phím rơi về
+ * `<body>`. Khuôn của vòng review F15: kit `DecisionButton` khoá bằng `aria-disabled`.
+ *
+ * jsdom cho focus cả nút mang `disabled` thật (Base UI vẫn gắn `tabindex="0"`, đo 13/10), nên ở
+ * đây cặp thuộc tính mới là thứ phân biệt bản lỗi với bản vá; `toHaveFocus` chỉ canh rằng hộp
+ * không đẩy focus đi chỗ khác.
+ */
+describe('ModerateActions — focus khi hàng đợi đang làm mới (G6)', () => {
+  it('duyệt xong, hộp đóng lúc hàng đợi còn làm mới: focus về nút Approve đang khoá, bấm cũng không mở gì', async () => {
+    // Lượt làm mới treo: transition giữ cụm nút khoá suốt ca.
+    refresh.mockReturnValue(new Promise(() => {}));
+    const user = userEvent.setup();
+    const moderate = vi.fn().mockResolvedValue({ ok: true, state: 'approved' });
+    render(<ModerateActions review={PENDING} moderate={moderate} />);
+    await open(user, 'approve');
+    await user.click(await screen.findByRole('button', { name: t.approveDialog.submit }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+
+    const approve = screen.getByRole('button', { name: t.approve });
+    for (const button of [approve, screen.getByRole('button', { name: t.reject })]) {
+      expect(button).toHaveAttribute('aria-disabled', 'true');
+      expect(button).not.toHaveAttribute('disabled');
+    }
+    await waitFor(() => expect(approve).toHaveFocus());
+
+    // Khẳng định "không mở" chỉ có nghĩa khi ĐÃ bấm (bài học 15).
+    await user.click(approve);
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
 });

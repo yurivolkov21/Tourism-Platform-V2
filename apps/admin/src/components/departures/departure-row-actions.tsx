@@ -108,6 +108,10 @@ export function DepartureRowActions({
         size="sm"
         aria-label={t.edit.actionLabel(row.dates)}
         disabled={disabled}
+        // Khoá mà vẫn nhận focus (`aria-disabled` thay thuộc tính `disabled`): hộp đóng đúng
+        // lúc bảng làm mới, và Base UI trả focus về nút đã mở nó — nút `disabled` thật thì
+        // focus bàn phím rơi về <body> (G6, khuôn của vòng review F15).
+        focusableWhenDisabled
         onClick={() => setEditingVersion(row.version)}
       >
         <PencilIcon data-icon="inline-start" aria-hidden="true" />
@@ -127,6 +131,9 @@ export function DepartureRowActions({
           // Mở lại sau hạn chót là điều server từ chối — nút tắt, và cột "Book/
           // cancel by" ngay bên cạnh đã nói vì sao.
           disabled={disabled || !toggle.enabled}
+          // Khoá TẠM vì bảng làm mới thì vẫn nhận focus, như nút Sửa (G6). Khoá vì luật hạn
+          // chót thì giữ `disabled` thật: không có hộp nào mở từ nó để mà trả focus về.
+          focusableWhenDisabled={toggle.enabled}
           onClick={() => setToggling(toggle.next)}
         >
           {toggle.next === 'CLOSED' ? (
@@ -163,6 +170,8 @@ export function DepartureRowActions({
             size="sm"
             aria-label={t.cancel.actionLabel(row.dates)}
             disabled={disabled}
+            // Như nút Sửa: khoá mà vẫn nhận focus (G6).
+            focusableWhenDisabled
             onClick={() => setCancelling(true)}
           >
             <BanIcon data-icon="inline-start" aria-hidden="true" />

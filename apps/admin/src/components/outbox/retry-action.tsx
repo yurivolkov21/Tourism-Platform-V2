@@ -57,6 +57,10 @@ export function RetryAction({ row, retry }: { row: OutboxRowVM; retry: RetryActi
         size="sm"
         aria-label={t.actionLabel(row.dedupeKey)}
         disabled={isRefreshing}
+        // Khoá mà vẫn nhận focus (`aria-disabled` thay thuộc tính `disabled`): hộp đóng đúng
+        // lúc bảng làm mới, và Base UI trả focus về nút đã mở nó — nút `disabled` thật thì
+        // focus bàn phím rơi về <body> (G6, khuôn của vòng review F15).
+        focusableWhenDisabled
         onClick={() => setOpen(true)}
       >
         <RotateCcwIcon data-icon="inline-start" aria-hidden="true" />

@@ -418,3 +418,81 @@ describe('DepartureRowActions — toast của chuyến một ngày (spec 2026-10
     );
   });
 });
+
+/**
+ * G6: hộp đóng ĐÚNG LÚC bảng đang làm mới — bảng hạ `disabled` xuống mọi nút của hàng trong
+ * lúc ấy. Khoá bằng thuộc tính `disabled` thật thì Base UI không trả focus về nút đã mở hộp
+ * được, và focus bàn phím rơi về `<body>`. Khuôn của vòng review F15: khoá bằng `aria-disabled`
+ * (`focusableWhenDisabled`).
+ *
+ * jsdom cho focus cả nút mang `disabled` thật (Base UI vẫn gắn `tabindex="0"`, đo 13/10), nên ở
+ * đây cặp thuộc tính mới là thứ phân biệt bản lỗi với bản vá; `toHaveFocus` chỉ canh rằng hộp
+ * không đẩy focus đi chỗ khác.
+ */
+describe('DepartureRowActions — focus khi bảng đang làm mới (G6)', () => {
+  const dates = vmAt(ROW, BEFORE_DEADLINE).dates;
+
+  function actions(disabled: boolean) {
+    return (
+      <DepartureRowActions
+        row={vmAt(ROW, BEFORE_DEADLINE)}
+        basePriceLabel="$129.00"
+        update={vi.fn()}
+        setStatus={vi.fn()}
+        cancel={vi.fn()}
+        disabled={disabled}
+        onSettled={vi.fn()}
+      />
+    );
+  }
+
+  it.each([
+    ['Edit', t.edit.actionLabel(dates)],
+    ['Close', t.setStatus.closeLabel(dates)],
+    ['Cancel', t.cancel.actionLabel(dates)],
+  ])(
+    'hộp %s đóng lúc bảng còn làm mới: focus về nút đã mở nó, khoá mà không rơi về body',
+    async (_, label) => {
+      const user = userEvent.setup();
+      const { rerender } = render(actions(false));
+      const button = screen.getByRole('button', { name: label });
+      await user.click(button);
+      expect(await screen.findByRole('dialog')).toBeInTheDocument();
+
+      // Bảng bắt đầu kéo dữ liệu tươi trong lúc hộp còn mở: mọi nút của hàng khoá.
+      rerender(actions(true));
+      await user.keyboard('{Escape}');
+      await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+
+      expect(button).toHaveAttribute('aria-disabled', 'true');
+      expect(button).not.toHaveAttribute('disabled');
+      await waitFor(() => expect(button).toHaveFocus());
+
+      // Khẳng định "không mở" chỉ có nghĩa khi ĐÃ bấm (bài học 15).
+      await user.click(button);
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    },
+  );
+
+  it('nút Reopen quá hạn chót vẫn TẮT thật — nó tắt vì luật, không vì bảng đang bận', () => {
+    // `focusableWhenDisabled` chỉ dành cho nút khoá TẠM; nút server sẽ từ chối thì không có hộp
+    // nào để trả focus về, và ca 'QUÁ HẠN CHÓT' ở trên giữ nó `disabled` thật.
+    render(
+      <DepartureRowActions
+        row={vmAt({ ...ROW, status: 'CLOSED' }, AFTER_DEADLINE)}
+        basePriceLabel="$129.00"
+        update={vi.fn()}
+        setStatus={vi.fn()}
+        cancel={vi.fn()}
+        disabled
+        onSettled={vi.fn()}
+      />,
+    );
+
+    expect(
+      screen.getByRole('button', {
+        name: t.setStatus.reopenLabel(vmAt(ROW, AFTER_DEADLINE).dates),
+      }),
+    ).toBeDisabled();
+  });
+});

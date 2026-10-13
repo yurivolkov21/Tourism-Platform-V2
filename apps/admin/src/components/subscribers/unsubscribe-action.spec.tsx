@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { messages } from '@tourism/i18n';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -142,5 +142,39 @@ describe('UnsubscribeAction — nút và dialog', () => {
     );
     expect(screen.getByText(t.dialog.title)).toBeInTheDocument();
     expect(refresh).not.toHaveBeenCalled();
+  });
+});
+
+/**
+ * G6: hộp đóng ĐÚNG LÚC bảng đang làm mới, nên nút mở nó đang khoá. Khoá bằng thuộc tính
+ * `disabled` thật thì Base UI không trả focus về nút ấy được, và focus bàn phím rơi về
+ * `<body>`. Khuôn của vòng review F15: khoá bằng `aria-disabled` (`focusableWhenDisabled`).
+ *
+ * jsdom cho focus cả nút mang `disabled` thật (Base UI vẫn gắn `tabindex="0"`, đo 13/10), nên ở
+ * đây cặp thuộc tính mới là thứ phân biệt bản lỗi với bản vá; `toHaveFocus` chỉ canh rằng hộp
+ * không đẩy focus đi chỗ khác.
+ */
+describe('UnsubscribeAction — focus khi bảng đang làm mới (G6)', () => {
+  it('huỷ xong, hộp đóng lúc bảng còn làm mới: focus về nút Unsubscribe đang khoá, bấm cũng không mở gì', async () => {
+    // Lượt làm mới treo: transition giữ nút khoá suốt ca.
+    refresh.mockReturnValue(new Promise(() => {}));
+    const user = userEvent.setup();
+    const unsubscribe = vi.fn(async () => ({
+      ok: true as const,
+      unsubscribedAt: UNSUBSCRIBED_AT,
+    }));
+    render(<UnsubscribeAction row={ROW} unsubscribe={unsubscribe} />);
+    await open(user);
+    await user.click(await screen.findByRole('button', { name: t.dialog.submit }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+
+    const button = screen.getByRole('button', { name: t.actionLabel(ROW.email) });
+    expect(button).toHaveAttribute('aria-disabled', 'true');
+    expect(button).not.toHaveAttribute('disabled');
+    await waitFor(() => expect(button).toHaveFocus());
+
+    // Khẳng định "không mở" chỉ có nghĩa khi ĐÃ bấm (bài học 15).
+    await user.click(button);
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
 });

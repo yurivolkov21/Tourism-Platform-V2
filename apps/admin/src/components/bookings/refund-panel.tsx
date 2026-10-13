@@ -225,8 +225,20 @@ function RefundDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
+      {/* `focusableWhenDisabled`: nút khoá khi trang làm mới sau một lần hoàn, đúng lúc hộp
+          vừa đóng, và Base UI trả focus về nút mở hộp — nút `disabled` thật thì focus bàn
+          phím rơi về <body> (G6, khuôn của vòng review F15). Cú bấm lên nút đang khoá vẫn bị
+          chặn: `Button` của Base UI nuốt nó trước khi tới trigger. */}
       <DialogTrigger
-        render={<Button type="button" variant="outline" size="sm" disabled={disabled} />}
+        render={
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            disabled={disabled}
+            focusableWhenDisabled
+          />
+        }
       >
         {t.cta}
       </DialogTrigger>

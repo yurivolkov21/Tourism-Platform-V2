@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { messages } from '@tourism/i18n';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -375,5 +375,41 @@ describe('RefundPanel — Staff (ADR-0052)', () => {
     });
     expect(screen.getByText(t.unavailable)).toBeInTheDocument();
     expect(screen.queryByText(t.ownerOnly)).not.toBeInTheDocument();
+  });
+});
+
+/**
+ * G6: hộp đóng ĐÚNG LÚC trang booking đang làm mới, nên nút mở nó đang khoá. Khoá bằng thuộc
+ * tính `disabled` thật thì Base UI không trả focus về nút ấy được, và focus bàn phím rơi về
+ * `<body>`. Khuôn của vòng review F15: khoá bằng `aria-disabled` (`focusableWhenDisabled`).
+ *
+ * jsdom cho focus cả nút mang `disabled` thật (Base UI vẫn gắn `tabindex="0"`, đo 13/10), nên ở
+ * đây cặp thuộc tính mới là thứ phân biệt bản lỗi với bản vá; `toHaveFocus` chỉ canh rằng hộp
+ * không đẩy focus đi chỗ khác.
+ */
+describe('RefundPanel — focus khi trang đang làm mới (G6)', () => {
+  it('hoàn xong, hộp đóng lúc trang còn làm mới: focus về nút Refund đang khoá, bấm cũng không mở gì', async () => {
+    // Lượt làm mới treo: transition giữ nút khoá suốt ca.
+    refresh.mockReturnValue(new Promise(() => {}));
+    const user = userEvent.setup();
+    const refund = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 'PARTIALLY_REFUNDED',
+      refunds: [REFUND_ROW],
+    });
+    render(<RefundPanel booking={PAID} refund={refund} />);
+    await openConfirmStep(user);
+    await user.click(screen.getByRole('button', { name: t.confirm.submit }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+
+    const button = screen.getByRole('button', { name: t.cta });
+    expect(button).toHaveAttribute('aria-disabled', 'true');
+    expect(button).not.toHaveAttribute('disabled');
+    await waitFor(() => expect(button).toHaveFocus());
+
+    // Khẳng định "không mở" chỉ có nghĩa khi ĐÃ bấm (bài học 15): nút là `DialogTrigger`, mà
+    // `aria-disabled` không tự chặn cú bấm như thuộc tính `disabled`.
+    await user.click(button);
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
 });

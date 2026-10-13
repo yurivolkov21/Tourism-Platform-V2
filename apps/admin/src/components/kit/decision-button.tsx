@@ -90,6 +90,10 @@ export function DecisionButton({ tone, children, disabled, onClick }: DecisionBu
           'bg-success/10 text-success-emphasis hover:bg-success/20 hover:text-success-emphasis focus-visible:border-success/40 focus-visible:ring-success/20',
       )}
       disabled={disabled}
+      // Khoá mà vẫn nhận focus (`aria-disabled` thay thuộc tính `disabled`): nút này khoá khi
+      // hàng đợi làm mới sau một quyết định, đúng lúc hộp vừa đóng, và Base UI trả focus về nút
+      // đã mở hộp — nút `disabled` thật thì focus bàn phím rơi về <body> (G6, khuôn F15).
+      focusableWhenDisabled
       onClick={onClick}
       initial="initial"
       // Tôn trọng `prefers-reduced-motion`: bỏ cả phóng nút lẫn cựa icon.
