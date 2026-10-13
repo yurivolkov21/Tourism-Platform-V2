@@ -12,6 +12,7 @@ import { EmailType, UserRole } from '../generated/prisma/enums.js';
 // không có vòng phụ thuộc.
 import { nudgeOutboxDrain } from '../worker/outbox-nudge.js';
 import { isBootstrapAdmin } from './admin-bootstrap.js';
+import { googleSignInAvatar } from './google-avatar.js';
 import { rejectsMobileAuthRequest } from './mobile-auth-guard.js';
 
 /**
@@ -138,7 +139,10 @@ export const auth = betterAuth({
       // trong khi đường avatar chính danh là account.setAvatar (ký + kiểm chủ
       // quyền publicId — ADR-0021 §3). Bản đầu chỉ gác `update` — kẻ ẩn danh
       // đặt được avatar bất kỳ bằng một request sign-up (vòng vá review W2).
-      create: { before: async (data) => guardAvatarImage(data) },
+      // ADR-0056: lúc TẠO qua đăng nhập Google, ảnh hồ sơ Google được giữ —
+      // thiếu ngoại lệ này thì mọi tài khoản mới tạo bằng Google bị từ chối.
+      // Lúc SỬA không có ngoại lệ (Better Auth không ghi lại ảnh khi đăng nhập).
+      create: { before: async (data, ctx) => guardAvatarImage(data, ctx?.path) },
       update: { before: async (data) => guardAvatarImage(data) },
     },
   },
@@ -250,18 +254,21 @@ export const auth = betterAuth({
  * gấp `..`), không so chuỗi thô: bản đầu `startsWith(prefix)` để lọt
  * `https://res.cloudinary.com/<cloud>/../<cloud-khac>/…` mà browser chuẩn hoá
  * thành ảnh của cloud khác. `null`/`''` = gỡ avatar (lưu null); kiểu lạ → 400.
+ *
+ * `path` chỉ truyền ở nhánh TẠO: trên đường đăng nhập Google, ảnh Google được
+ * giữ còn ảnh lạ bị bỏ thay vì từ chối (`googleSignInAvatar`, ADR-0056).
  */
-function guardAvatarImage<T extends { image?: unknown }>(data: T): { data: T } {
+function guardAvatarImage<T extends { image?: unknown }>(data: T, path?: string): { data: T } {
   const image = data.image;
   if (image === undefined || image === null) return { data };
   if (image === '') return { data: { ...data, image: null } };
-  if (typeof image !== 'string' || !isOwnCloudinaryUrl(image)) {
-    throw new APIError('BAD_REQUEST', {
-      code: 'AVATAR_URL_NOT_ALLOWED',
-      message: 'Avatar image must be served from our media CDN',
-    });
-  }
-  return { data };
+  if (typeof image === 'string' && isOwnCloudinaryUrl(image)) return { data };
+  const fromGoogle = googleSignInAvatar(image, path);
+  if (fromGoogle) return { data: { ...data, image: fromGoogle.image } };
+  throw new APIError('BAD_REQUEST', {
+    code: 'AVATAR_URL_NOT_ALLOWED',
+    message: 'Avatar image must be served from our media CDN',
+  });
 }
 
 /** `https://res.cloudinary.com/<cloud của mình>/…` sau khi URL đã chuẩn hoá. */
