@@ -1,6 +1,6 @@
 import { act, render, screen } from '@testing-library/react';
 import { useRef } from 'react';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { rescueTarget, useRowFocusRescue } from './row-focus-rescue';
 
 /**
@@ -50,6 +50,26 @@ const row = (id: string, ...labels: string[]): Row => ({
   id,
   actions: labels.map((label) => ({ label })),
 });
+
+/**
+ * Giả hành vi của Chromium (đo 13/10): gỡ một nhánh đang chứa phần tử giữ focus thì `blur` và
+ * `focusout` bắn NGAY TRƯỚC khi gỡ, lúc phần tử vẫn còn trong DOM và `relatedTarget` là null.
+ * jsdom thì gỡ êm, không bắn gì — bản đầu của bước cứu chỉ đúng với jsdom.
+ */
+function chromiumBlurOnRemoval() {
+  const original = Node.prototype.removeChild;
+  return vi.spyOn(Node.prototype, 'removeChild').mockImplementation(function <T extends Node>(
+    this: Node,
+    child: T,
+  ): T {
+    const active = document.activeElement;
+    if (active instanceof HTMLElement && child.contains(active)) {
+      active.dispatchEvent(new FocusEvent('blur', { relatedTarget: null }));
+      active.dispatchEvent(new FocusEvent('focusout', { bubbles: true, relatedTarget: null }));
+    }
+    return original.call(this, child) as T;
+  });
+}
 
 describe('useRowFocusRescue — focus không rơi về <body> khi nút rời bảng (G6 phần còn hở)', () => {
   it('hàng rời bảng: focus sang nút cùng cột của hàng thế chỗ', () => {
@@ -140,17 +160,35 @@ describe('useRowFocusRescue — focus không rơi về <body> khi nút rời b�
     expect(screen.getByRole('textbox', { name: 'Search' })).toHaveFocus();
   });
 
-  it('focus ra vùng trống rồi hàng mới đi: không giành về', () => {
+  it('focus ra vùng trống rồi hàng mới đi: không giành về', async () => {
     const { rerender } = render(
       <RescueTable rows={[row('a', 'Unsubscribe a'), row('b', 'Unsubscribe b')]} />,
     );
     act(() => screen.getByRole('button', { name: 'Unsubscribe a' }).focus());
-    // Bấm ra vùng trống: focus về <body> trong khi nút vẫn còn trong DOM.
-    act(() => screen.getByRole('button', { name: 'Unsubscribe a' }).blur());
+    // Bấm ra vùng trống: focus về <body> trong khi nút vẫn còn trong DOM. `async` để hết lượt
+    // chạy của cú bấm như ngoài đời — lượt làm mới luôn tới ở một lượt sau.
+    await act(async () => screen.getByRole('button', { name: 'Unsubscribe a' }).blur());
 
     rerender(<RescueTable rows={[row('b', 'Unsubscribe b')]} />);
 
     expect(document.body).toHaveFocus();
+  });
+
+  it('Chromium bắn focusout ngay trước khi gỡ nút: vẫn cứu', () => {
+    const removeChild = chromiumBlurOnRemoval();
+    try {
+      const { rerender } = render(
+        <RescueTable rows={[row('a', 'Unsubscribe a'), row('b', 'Unsubscribe b')]} />,
+      );
+      act(() => screen.getByRole('button', { name: 'Unsubscribe a' }).focus());
+
+      rerender(<RescueTable rows={[row('b', 'Unsubscribe b')]} />);
+
+      expect(removeChild).toHaveBeenCalled();
+      expect(screen.getByRole('button', { name: 'Unsubscribe b' })).toHaveFocus();
+    } finally {
+      removeChild.mockRestore();
+    }
   });
 
   it('hộp thoại mở từ hàng rồi trả focus về nút: lượt làm mới gỡ nút thì vẫn cứu', () => {

@@ -96,13 +96,23 @@ export function useRowFocusRescue(tableRef: React.RefObject<HTMLTableElement | n
       };
     }
 
-    // Focus tự rời bảng (sang hộp thoại, thanh công cụ, hay bấm ra vùng trống): quên chỗ cũ. Riêng
-    // phần tử bị GỠ khỏi DOM thì giữ chỗ cho bước cứu — trình duyệt có thể bắn `focusout` lúc gỡ.
+    // Focus tự rời bảng sang một chỗ cụ thể (hộp thoại, thanh công cụ): quên chỗ cũ ngay.
     function onFocusOut(event: FocusEvent) {
       const next = event.relatedTarget;
       if (next instanceof Node && table?.contains(next)) return;
-      if (event.target instanceof Node && !event.target.isConnected) return;
-      spot.current = null;
+      if (next !== null) {
+        spot.current = null;
+        return;
+      }
+      // Không có đích (`relatedTarget` null): hoặc người dùng bấm ra vùng trống, hoặc phần tử SẮP
+      // bị gỡ — Chromium bắn `focusout` ngay TRƯỚC khi gỡ, lúc phần tử vẫn còn trong DOM (đo
+      // 13/10), nên lúc này chưa phân biệt được. Hoãn tới hết lượt chạy hiện tại: lượt commit của
+      // React gỡ phần tử rồi chạy bước cứu (layout effect bên dưới) trong CÙNG lượt ấy, nên tới
+      // lúc microtask chạy mà phần tử vẫn còn trong DOM thì người dùng đã thật sự rời đi.
+      const left = spot.current;
+      queueMicrotask(() => {
+        if (spot.current === left && left?.element.isConnected) spot.current = null;
+      });
     }
 
     table.addEventListener('focusin', onFocusIn);
