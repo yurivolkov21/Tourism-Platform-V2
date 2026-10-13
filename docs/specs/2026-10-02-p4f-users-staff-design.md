@@ -278,7 +278,8 @@ trong `userActions(target)` thì `STATE_CHANGED` 409.
   các vùng khác.
 - Cột: User (ảnh, tên, email), Role (chip Owner/Staff/Customer), Status (chip
   Active/Locked/Unverified), Joined (ngày), Last active (ngày, "—" nếu không có).
-- Bấm một hàng mở `/users/[id]`.
+- Bấm tên mở `/users/[id]` — link nằm ở tên như các bảng admin khác (sửa chữ theo code 13/10;
+  bản đầu ghi "bấm một hàng").
 
 ### 7.2 `/users/[id]`
 
@@ -345,7 +346,9 @@ của `lock` và của `setRole → CUSTOMER`; đổi một dòng Owner-only th�
 ### 8.4 Thử tay trên prod sau merge (từng bước, chờ xác nhận)
 
 1. Owner cấp Staff cho một tài khoản khách thử; lịch sử có dòng `STAFF_GRANTED`.
-2. Đăng nhập admin bằng tài khoản Staff: sidebar không có Reports, Payment events, Users;
+2. Đăng nhập admin bằng tài khoản Staff (tài khoản chỉ có Google thì đặt mật khẩu trước bằng
+   “Forgot password?” ở form admin — card Staff access nhắc điều này): sidebar không có Reports,
+   Payment events, Users;
    chi tiết booking không có Refund mà có câu "Only the owner can issue refunds."; mở thẳng
    `/reports` về `/not-authorized` với khối "Owner only"; menu tài khoản ở góc dưới ghi Staff
    (plan, quyết định 5, 6, 10); hàng `/categories` và `/destinations` không có nút Delete.
@@ -377,5 +380,17 @@ mới có), CSP và boundary 403 không đổi.
 
 ## 11. Giới hạn đã biết
 
-Như ADR-0052 mục "Giới hạn đã biết" (sáu điểm); thêm: link "View bookings" tìm theo email liên
-hệ nên booking khách nhập email khác sẽ không hiện.
+Như ADR-0052 mục "Giới hạn đã biết" (sáu điểm); thêm:
+
+- Link "View bookings" tìm theo email liên hệ bằng `contains`: booking khách nhập email khác sẽ
+  không hiện, còn booking của người khác có email chứa email này (`lan@example.com` chứa
+  `an@example.com`) lại hiện, nên số hàng có thể lệch con số "Bookings" trên card (đếm theo
+  `userId`). Ghi ở open-items G45 (review 13/10).
+- Form đăng nhập admin chỉ có email và mật khẩu. Staff chỉ có Google đặt mật khẩu bằng
+  “Forgot password?” (int test `google-sign-in.int.spec.ts` đo đường này; card Staff access nói
+  với Owner). Đăng nhập Google ở www rồi mở admin có lẽ cũng vào được, vì production bắt buộc
+  `COOKIE_DOMAIN` nên cookie phiên dùng chung subdomain (ADR-0052 giới hạn 2); điều này suy từ
+  code, chưa thử.
+- Ô tìm `/outbox` không khớp `dedupeKey` của email auth (OTP, link đặt lại mật khẩu): `contains`
+  trên cột thô là oracle, đo 13/10 Staff dò được OTP đăng nhập của Owner sau 26 lượt tìm rồi
+  đăng nhập thành Owner. Hàng email auth vẫn tìm được theo người nhận.
