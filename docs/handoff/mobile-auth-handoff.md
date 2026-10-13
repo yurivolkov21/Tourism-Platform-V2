@@ -46,6 +46,16 @@ Ba luật bắt buộc khi viết bản thật:
 3. **`emailNotVerified` KHÔNG phải câu để hiện ra** — nó là lệnh chuyển sang màn
    Verify. Giữ nguyên ý đó; đừng gộp nó vào nhánh lỗi chung.
 
+Từ P4f (ADR-0052) có thêm một mã: tài khoản bị Owner khoá thì MỌI đường đăng nhập bị chặn
+kèm `code: 'ACCOUNT_LOCKED'`. Luật 1 đã phủ nó — `mapAuthError` trả khoá `accountLocked`, câu
+ở `messages.authForms.errors.accountLocked`. Đăng nhập Google bằng ID token
+([ADR-0056](../adr/0056-mobile-google-native-signin.md), `signIn.social({ provider: 'google', idToken })`) nhận mã này y như đăng nhập email: một
+response 403, không có redirect. Điều đó đọc từ mã nguồn better-auth 1.6.23 (nhánh `idToken`
+của `signInSocial` gọi `createSession` không bọc try, nên lỗi của hook đi thẳng ra), chưa thử
+trên máy thật. Chỉ luồng qua trình duyệt (`callbackURL`, web còn dùng) mới đổi lỗi này thành
+redirect tới `errorCallbackURL?error=ACCOUNT_LOCKED`; web đã truyền `errorCallbackURL` và
+đọc `?error=`.
+
 ## 3. Việc phía API (ADR-0017 §9)
 
 - Bật plugin `expo()` của Better Auth ở server.
