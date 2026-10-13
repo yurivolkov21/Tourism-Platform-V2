@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import { messages } from '@tourism/i18n';
 import { describe, expect, it, vi } from 'vitest';
 import { toUserDetailVM } from '@/lib/users-view';
@@ -27,6 +27,13 @@ function renderDetail(patch: Parameters<typeof userDetailFixture>[0] = {}) {
       actions={ACTIONS}
     />,
   );
+}
+
+/** Card mang tiêu đề `title` — để soi nút nằm ĐÚNG card, không chỉ có mặt trên trang. */
+function cardOf(title: string): HTMLElement {
+  const card = screen.getByText(title).closest<HTMLElement>('[data-slot="card"]');
+  if (!card) throw new Error(`không thấy card "${title}"`);
+  return card;
 }
 
 describe('UserDetail', () => {
@@ -62,6 +69,12 @@ describe('UserDetail', () => {
   it('Owner đang khoá (ca hiếm): card Lock vẫn hiện để còn đường mở', () => {
     renderDetail({ role: 'ADMIN', status: 'locked', lockedAt: '2026-10-02T03:00:00.000Z' });
     expect(screen.getByText('Locked since 2 Oct 2026, 03:00 UTC')).toBeInTheDocument();
+    // Đường mở là chính nút Unlock trong card ấy — card hiện mà thiếu nút thì vẫn kẹt.
+    expect(
+      within(cardOf(t.detail.lock.heading)).getByRole('button', {
+        name: messages.admin.users.actions.unlock.action,
+      }),
+    ).toBeInTheDocument();
   });
 
   it('đang khoá: card Lock nói từ khi nào và vì sao', () => {
@@ -82,8 +95,14 @@ describe('UserDetail', () => {
   it('khách: ba nút nằm đúng ba card — Grant, Lock, Sign out everywhere', () => {
     renderDetail();
     const a = messages.admin.users.actions;
-    expect(screen.getByRole('button', { name: a.grant.action })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: a.lock.action })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: a.sessions.action })).toBeInTheDocument();
+    expect(
+      within(cardOf(t.detail.access.heading)).getByRole('button', { name: a.grant.action }),
+    ).toBeInTheDocument();
+    expect(
+      within(cardOf(t.detail.lock.heading)).getByRole('button', { name: a.lock.action }),
+    ).toBeInTheDocument();
+    expect(
+      within(cardOf(t.detail.sessions.heading)).getByRole('button', { name: a.sessions.action }),
+    ).toBeInTheDocument();
   });
 });

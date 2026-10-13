@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import { messages } from '@tourism/i18n';
 import { describe, expect, it, vi } from 'vitest';
 import type { UsersQuery } from '@/lib/users-query';
@@ -47,9 +47,14 @@ describe('UsersTable', () => {
     renderTable([
       row({ role: 'STAFF', roleLabel: 'Staff', status: 'locked', statusLabel: 'Locked' }),
     ]);
-    expect(screen.getAllByText('Locked').length).toBeGreaterThan(0);
-    expect(screen.getByText('1 Sep 2026')).toBeInTheDocument();
-    expect(screen.getByText('1 Oct 2026')).toBeInTheDocument();
+    // Soi TRONG hàng dữ liệu: thanh tab phía trên cũng có chữ "Staff" và "Locked", tìm cả trang
+    // thì ca này xanh kể cả khi hai chip biến mất (review P4f).
+    const dataRow = screen.getByRole('link', { name: t.viewLabel('Ada Lovelace') }).closest('tr');
+    if (!dataRow) throw new Error('link tên không nằm trong một hàng của bảng');
+    expect(within(dataRow).getByText('Staff')).toBeInTheDocument();
+    expect(within(dataRow).getByText('Locked')).toBeInTheDocument();
+    expect(within(dataRow).getByText('1 Sep 2026')).toBeInTheDocument();
+    expect(within(dataRow).getByText('1 Oct 2026')).toBeInTheDocument();
   });
 
   it('bảng rỗng nói câu empty, không phải một bảng câm', () => {
