@@ -82,7 +82,12 @@ export type AdminUsersListQuery = z.output<typeof AdminUsersListQuerySchema>;
 export const AdminUserRowSchema = z.object({
   id: z.uuid(),
   name: z.string().max(120).nullable(),
-  email: z.string().min(1).max(320),
+  /**
+   * Không trần, đúng như cột citext: trần nằm ở đường ghi (hook `user.create` của
+   * `auth.config.ts`, 254). Output chặt hơn cột không chặn được gì, chỉ biến một hàng cũ
+   * thành 500 cho cả trang (review P4f).
+   */
+  email: z.string().min(1),
   image: z.string().max(500).nullable(),
   role: UserRoleSchema,
   status: UserStatusSchema,

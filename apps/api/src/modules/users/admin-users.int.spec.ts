@@ -184,6 +184,23 @@ describe('admin users integration (P4f)', () => {
       expect((await list('?search=%25')).total).toBe(0);
     });
 
+    it('hàng cũ mang email dài hơn mọi trần (ghi trước khi có hook chặn) → list và byId vẫn 200', async () => {
+      // Citext không trần nên hàng như vậy có thể đã nằm trong DB. Schema output chặt hơn cột
+      // thì oRPC biến cả trang 1 của /users thành 500 (review P4f).
+      const longEmail = `${'l'.repeat(330)}@example.com`;
+      const legacy = await prisma.user.create({
+        data: { email: longEmail, name: 'Long Email', emailVerified: true },
+      });
+      try {
+        expect((await list('')).items[0]?.email).toBe(longEmail);
+        const res = await get(`/api/admin/users/${legacy.id}`, ownerCookie);
+        expect(res.statusCode).toBe(200);
+        expect(AdminUserDetailSchema.parse(res.json()).email).toBe(longEmail);
+      } finally {
+        await prisma.user.delete({ where: { id: legacy.id } });
+      }
+    });
+
     it('Staff gọi users.list → 403 (vùng chỉ Owner)', async () => {
       const staffCookie = await signIn(STAFF);
       expect((await get('/api/admin/users', staffCookie)).statusCode).toBe(403);

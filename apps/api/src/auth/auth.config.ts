@@ -139,8 +139,12 @@ export const auth = betterAuth({
       // ADR-0056: lúc TẠO qua đăng nhập Google, ảnh hồ sơ Google được giữ —
       // thiếu ngoại lệ này thì mọi tài khoản mới tạo bằng Google bị từ chối.
       // Lúc SỬA không có ngoại lệ (Better Auth không ghi lại ảnh khi đăng nhập).
-      create: { before: async (data, ctx) => guardAvatarImage(data, ctx?.path) },
-      update: { before: async (data) => guardAvatarImage(data) },
+      // Trần email (review P4f): hôm nay chỉ lúc TẠO ghi email vì changeEmail đang tắt; gác
+      // cả lúc SỬA để ngày bật changeEmail không mở lại lỗ.
+      create: {
+        before: async (data, ctx) => guardAvatarImage(guardEmailLength(data), ctx?.path),
+      },
+      update: { before: async (data) => guardAvatarImage(guardEmailLength(data)) },
     },
     session: {
       // ADR-0052 §4: tài khoản bị khoá không được có phiên MỚI. Mọi đường đăng nhập (mật
@@ -291,6 +295,22 @@ function guardAvatarImage<T extends { image?: unknown }>(data: T, path?: string)
     code: 'AVATAR_URL_NOT_ALLOWED',
     message: 'Avatar image must be served from our media CDN',
   });
+}
+
+/**
+ * Trần email của TÀI KHOẢN: 254 ký tự, giới hạn đường dẫn của RFC 5321. `z.email()` của BA và
+ * cột citext đều không trần, nên thiếu chốt này thì một request sign-up ẩn danh ghi được email
+ * vài trăm ký tự (review P4f). Form web và app chặn sớm hơn ở 200 (`EmailSchema`); chốt server
+ * nới hơn để không bao giờ từ chối một địa chỉ hợp lệ, kể cả địa chỉ Google đưa sang.
+ */
+const ACCOUNT_EMAIL_MAX = 254;
+
+/** Ném đúng mã `INVALID_EMAIL` của BA, nên `mapAuthError` đưa lỗi về ô email như email sai. */
+function guardEmailLength<T extends { email?: unknown }>(data: T): T {
+  if (typeof data.email === 'string' && data.email.length > ACCOUNT_EMAIL_MAX) {
+    throw new APIError('BAD_REQUEST', { code: 'INVALID_EMAIL', message: 'Invalid email' });
+  }
+  return data;
 }
 
 /** `https://res.cloudinary.com/<cloud của mình>/…` sau khi URL đã chuẩn hoá. */

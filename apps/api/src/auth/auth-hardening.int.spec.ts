@@ -220,4 +220,27 @@ describe('auth hardening: enumeration + trần riêng (W2 mục 3)', () => {
     // Phần tử ĐẦU của mảng clientId là client web (getPrimaryClientId).
     expect(url.searchParams.get('client_id')).toBe(INT_GOOGLE_CLIENT_ID);
   });
+
+  it('7. email dài hơn 254 ký tự (trần RFC 5321) → 400 INVALID_EMAIL, không tạo user; đúng 254 vẫn đăng ký được', async () => {
+    // `z.email()` của BA không trần, cột citext cũng không: thiếu hook thì một người chưa
+    // đăng nhập ghi được email vài trăm ký tự vào `users` (review P4f).
+    const domain = '@example.com';
+    const atLimit = `${'a'.repeat(254 - domain.length)}${domain}`;
+    const tooLong = `b${atLimit}`;
+    const signUp = (email: string) =>
+      app.inject({
+        method: 'POST',
+        url: '/api/auth/sign-up/email',
+        payload: { email, password: PASSWORD, name: 'Long Email' },
+      });
+
+    const rejected = await signUp(tooLong);
+    expect(rejected.statusCode).toBe(400);
+    // Đúng mã BA dùng cho email sai: form web và app hiện lỗi ngay dưới ô email.
+    expect(rejected.json()).toMatchObject({ code: 'INVALID_EMAIL' });
+    expect(await prisma.user.count({ where: { email: tooLong } })).toBe(0);
+
+    expect((await signUp(atLimit)).statusCode).toBe(200);
+    expect(await prisma.user.count({ where: { email: atLimit } })).toBe(1);
+  });
 });
