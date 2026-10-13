@@ -166,11 +166,12 @@ export const NAV_GROUPS: NavGroup[] = [
         icon: CreditCard,
         access: 'paymentEvents.list',
       },
+      // Vùng Users (P4f, ADR-0052) — chỉ Owner, Staff không thấy mục này.
       {
         key: 'users',
         label: t.users,
         href: '/users',
-        enabled: false,
+        enabled: true,
         icon: Users,
         access: 'users.list',
       },

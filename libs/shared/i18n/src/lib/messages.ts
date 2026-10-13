@@ -5666,6 +5666,24 @@ export const messages = {
     // Vùng Users (P4f, ADR-0052). Enum giữ ADMIN, giao diện gọi là Owner (ADR-0052 §1).
     users: {
       roles: { ADMIN: 'Owner', STAFF: 'Staff', CUSTOMER: 'Customer' },
+      status: { active: 'Active', locked: 'Locked', unverified: 'Unverified' },
+      list: {
+        filterLabel: 'Filter users',
+        all: 'All',
+        staff: 'Staff',
+        locked: 'Locked',
+        searchLabel: 'Search users',
+        searchPlaceholder: 'Name or email',
+        empty: 'No users match this filter.',
+        columns: {
+          user: 'User',
+          role: 'Role',
+          status: 'Status',
+          joined: 'Joined',
+          lastActive: 'Last active',
+        },
+        viewLabel: (name: string) => `Open ${name}`,
+      },
     },
     /**
      * Vùng outbox (spec P4c §3-F7) — hàng đợi email mà worker drain mỗi phút,
