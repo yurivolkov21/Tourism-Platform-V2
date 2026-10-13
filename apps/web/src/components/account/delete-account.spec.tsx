@@ -36,6 +36,8 @@ vi.mock('next/navigation', () => ({ useRouter: () => ({ push }) }));
 const { toastSuccess } = vi.hoisted(() => ({ toastSuccess: vi.fn() }));
 vi.mock('sonner', () => ({ toast: { success: toastSuccess } }));
 
+const EMAIL = 'nora.dahl@example.com';
+
 async function openDialogAndUnlock(user: ReturnType<typeof userEvent.setup>) {
   await user.click(screen.getByRole('button', { name: 'Delete account' }));
   await user.type(screen.getByRole('textbox'), 'DELETE');
@@ -50,7 +52,7 @@ describe('DeleteAccount', () => {
   });
 
   it('tự mang heading + mô tả — trang không còn bọc AccountSection cho khối này', () => {
-    render(<DeleteAccount />);
+    render(<DeleteAccount email={EMAIL} />);
     expect(
       screen.getByRole('heading', { name: messages.accountProfile.danger.heading }),
     ).toBeInTheDocument();
@@ -59,14 +61,14 @@ describe('DeleteAccount', () => {
 
   it('mở dialog → nút xác nhận bị khoá (disabled) khi ô gõ còn rỗng', async () => {
     const user = userEvent.setup();
-    render(<DeleteAccount />);
+    render(<DeleteAccount email={EMAIL} />);
     await user.click(screen.getByRole('button', { name: 'Delete account' }));
     expect(screen.getByRole('button', { name: 'Yes, delete my account' })).toBeDisabled();
   });
 
   it('gõ sai chữ (thường, thiếu ký tự, thừa ký tự) → nút vẫn khoá', async () => {
     const user = userEvent.setup();
-    render(<DeleteAccount />);
+    render(<DeleteAccount email={EMAIL} />);
     await user.click(screen.getByRole('button', { name: 'Delete account' }));
     const input = screen.getByRole('textbox');
     const confirmBtn = screen.getByRole('button', { name: 'Yes, delete my account' });
@@ -85,15 +87,33 @@ describe('DeleteAccount', () => {
 
   it('gõ đúng chữ "DELETE" nhưng CHƯA nhập mật khẩu → nút vẫn khoá', async () => {
     const user = userEvent.setup();
-    render(<DeleteAccount />);
+    render(<DeleteAccount email={EMAIL} />);
     await user.click(screen.getByRole('button', { name: 'Delete account' }));
     await user.type(screen.getByRole('textbox'), 'DELETE');
     expect(screen.getByRole('button', { name: 'Yes, delete my account' })).toBeDisabled();
   });
 
+  it('ô username ẩn mang email đứng trước ô mật khẩu — trình quản lý mật khẩu khỏi điền email vào ô gõ DELETE (G31)', async () => {
+    const user = userEvent.setup();
+    render(<DeleteAccount email={EMAIL} />);
+    await user.click(screen.getByRole('button', { name: 'Delete account' }));
+
+    const dialog = screen.getByRole('alertdialog');
+    const username = dialog.querySelector('input[autocomplete="username"]') as HTMLInputElement;
+    expect(username).not.toBeNull();
+    expect(username.value).toBe(EMAIL);
+    expect(username.hidden).toBe(true);
+    // Ô gõ DELETE vẫn là ô chữ DUY NHẤT người dùng thấy, và ô ẩn đứng ngay trước ô mật khẩu.
+    expect(within(dialog).getAllByRole('textbox')).toHaveLength(1);
+    const password = screen.getByLabelText(messages.accountProfile.danger.passwordLabel);
+    expect(
+      username.compareDocumentPosition(password) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
+
   it('gõ đúng chữ "DELETE" + có mật khẩu → nút xác nhận bật', async () => {
     const user = userEvent.setup();
-    render(<DeleteAccount />);
+    render(<DeleteAccount email={EMAIL} />);
     await openDialogAndUnlock(user);
     expect(screen.getByRole('button', { name: 'Yes, delete my account' })).toBeEnabled();
   });
@@ -108,7 +128,7 @@ describe('DeleteAccount — xoá tài khoản thật (Task 7/A2)', () => {
     deleteAccount.mockResolvedValueOnce(undefined);
     signOut.mockResolvedValueOnce(undefined);
     const user = userEvent.setup();
-    render(<DeleteAccount />);
+    render(<DeleteAccount email={EMAIL} />);
 
     await openDialogAndUnlock(user);
     await user.click(screen.getByRole('button', { name: 'Yes, delete my account' }));
@@ -123,7 +143,7 @@ describe('DeleteAccount — xoá tài khoản thật (Task 7/A2)', () => {
   it('403 INVALID_PASSWORD → copy "Incorrect password.", không signOut', async () => {
     deleteAccount.mockRejectedValueOnce(new AccountDeleteError(403, 'INVALID_PASSWORD'));
     const user = userEvent.setup();
-    render(<DeleteAccount />);
+    render(<DeleteAccount email={EMAIL} />);
 
     await openDialogAndUnlock(user);
     await user.click(screen.getByRole('button', { name: 'Yes, delete my account' }));
@@ -137,7 +157,7 @@ describe('DeleteAccount — xoá tài khoản thật (Task 7/A2)', () => {
   it('409 ACCOUNT_HAS_PAID_BOOKINGS → copy riêng nói khách xử booking trước', async () => {
     deleteAccount.mockRejectedValueOnce(new AccountDeleteError(409, 'ACCOUNT_HAS_PAID_BOOKINGS'));
     const user = userEvent.setup();
-    render(<DeleteAccount />);
+    render(<DeleteAccount email={EMAIL} />);
 
     await openDialogAndUnlock(user);
     await user.click(screen.getByRole('button', { name: 'Yes, delete my account' }));
@@ -152,7 +172,7 @@ describe('DeleteAccount — xoá tài khoản thật (Task 7/A2)', () => {
       new AccountDeleteError(409, 'ACCOUNT_HAS_OPEN_CANCELLATION'),
     );
     const user = userEvent.setup();
-    render(<DeleteAccount />);
+    render(<DeleteAccount email={EMAIL} />);
 
     await openDialogAndUnlock(user);
     await user.click(screen.getByRole('button', { name: 'Yes, delete my account' }));
@@ -167,7 +187,7 @@ describe('DeleteAccount — xoá tài khoản thật (Task 7/A2)', () => {
       new AccountDeleteError(409, 'CREDENTIAL_ACCOUNT_NOT_FOUND'),
     );
     const user = userEvent.setup();
-    render(<DeleteAccount />);
+    render(<DeleteAccount email={EMAIL} />);
 
     await openDialogAndUnlock(user);
     await user.click(screen.getByRole('button', { name: 'Yes, delete my account' }));
@@ -180,7 +200,7 @@ describe('DeleteAccount — xoá tài khoản thật (Task 7/A2)', () => {
   it('deleteAccount lỗi chung → message inline, KHÔNG signOut/push, nút hết pending', async () => {
     deleteAccount.mockRejectedValueOnce(new AccountDeleteError(500));
     const user = userEvent.setup();
-    render(<DeleteAccount />);
+    render(<DeleteAccount email={EMAIL} />);
 
     await openDialogAndUnlock(user);
     await user.click(screen.getByRole('button', { name: 'Yes, delete my account' }));
@@ -194,7 +214,7 @@ describe('DeleteAccount — xoá tài khoản thật (Task 7/A2)', () => {
   it('deleteAccount 401 giữa chừng → message riêng + link /login?redirect=, KHÔNG auto-signout', async () => {
     deleteAccount.mockRejectedValueOnce(new AccountDeleteError(401));
     const user = userEvent.setup();
-    render(<DeleteAccount />);
+    render(<DeleteAccount email={EMAIL} />);
 
     await openDialogAndUnlock(user);
     await user.click(screen.getByRole('button', { name: 'Yes, delete my account' }));
@@ -213,7 +233,7 @@ describe('DeleteAccount — khối Danger zone kiểu mới (spec 09/10 §2)', (
   });
 
   it('khung viền đỏ nhạt; tiêu đề h2 serif màu đỏ kèm dòng mô tả', () => {
-    render(<DeleteAccount />);
+    render(<DeleteAccount email={EMAIL} />);
     const heading = screen.getByRole('heading', { level: 2, name: 'Danger zone' });
     expect(heading).toHaveClass('font-heading', 'text-destructive-emphasis');
     expect(heading.closest('section')).toHaveClass('rounded-2xl', 'border-destructive/30');
@@ -221,7 +241,7 @@ describe('DeleteAccount — khối Danger zone kiểu mới (spec 09/10 §2)', (
   });
 
   it('CHỈ dòng Delete account tô nền đỏ rất nhạt: nhãn, câu giải thích và nút mở hộp nằm trong dòng ấy', () => {
-    render(<DeleteAccount />);
+    render(<DeleteAccount email={EMAIL} />);
     const row = screen.getByRole('button', { name: 'Delete account' }).parentElement;
     expect(row).toHaveClass('bg-destructive/5');
     // Chữ "Delete account" có đúng hai chỗ trong dòng: nhãn `<p>` (nhãn của dòng) rồi nút mở hộp.
@@ -238,7 +258,7 @@ describe('DeleteAccount — khối Danger zone kiểu mới (spec 09/10 §2)', (
   });
 
   it('nút mở hộp là nút đỏ nhỏ (variant destructive), không còn kiểu chữ link', () => {
-    render(<DeleteAccount />);
+    render(<DeleteAccount email={EMAIL} />);
     const trigger = screen.getByRole('button', { name: 'Delete account' });
     expect(trigger).toHaveClass('bg-destructive/10', 'text-destructive-emphasis');
     expect(trigger).not.toHaveClass('underline-offset-4');

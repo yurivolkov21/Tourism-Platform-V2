@@ -38,7 +38,7 @@ export function SettingsView({ profile }: { profile: SessionUser }) {
           <div className="flex min-w-0 flex-col gap-5">
             <ProfileSummary profile={profile} />
             <PasswordCard />
-            <DeleteAccount />
+            <DeleteAccount email={profile.email} />
           </div>
         </div>
       </div>

@@ -80,7 +80,7 @@ function kindOfDeleteError(error: unknown): DeleteAccountErrorKind {
  * `alert-dialog.tsx` — chỉ `AlertDialogCancel` bọc `Close`), nên message lỗi
  * hiện NGAY trong dialog, khách không mất chữ đã gõ.
  */
-export function DeleteAccount() {
+export function DeleteAccount({ email }: { email: string }) {
   const t = messages.accountProfile.danger;
   const router = useRouter();
   const [confirmText, setConfirmText] = useState('');
@@ -161,6 +161,20 @@ export function DeleteAccount() {
                 autoComplete="off"
               />
             </div>
+
+            {/* G31: trình quản lý mật khẩu của Edge (Chromium) đoán ô chữ ĐỨNG TRƯỚC ô mật khẩu là
+                ô tên đăng nhập và điền email vào ô gõ DELETE — nó bỏ qua `autoComplete="off"`.
+                Một ô username ẩn mang email, khai `autoComplete="username"`, là khuôn Chromium
+                hướng dẫn cho form chỉ có mật khẩu: trình quản lý nhận ô này làm tên đăng nhập và
+                để yên ô gõ DELETE. Ô ẩn không vào cây truy cập, không gửi đi đâu. */}
+            <input
+              type="text"
+              name="username"
+              autoComplete="username"
+              value={email}
+              readOnly
+              hidden
+            />
 
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="delete-account-password">{t.passwordLabel}</Label>
