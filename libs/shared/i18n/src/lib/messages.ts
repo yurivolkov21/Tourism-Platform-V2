@@ -603,95 +603,51 @@ export const messages = {
     // /checkout/success.
     success: {
       /** Hero chuẩn site cho trang voucher (góp ý user 12/08 — navbar về
-       *  đồng bộ, hết kiểu hero-less riêng). */
+       *  đồng bộ, hết kiểu hero-less riêng). Đơn chưa trả dùng `pendingReceipt.breadcrumb`. */
       heroBreadcrumb: 'Voucher',
       pendingTitle: 'Confirming your payment…',
       pendingBody:
         'Your payment is being confirmed — this usually takes a few seconds. This page updates automatically; you can also refresh.',
       refresh: 'Refresh',
       refLabel: 'Booking reference',
-      travellersLabel: 'Travellers',
       totalLabel: 'Total paid',
       // Fact mới cho lưới IATA-style (redesign vé) — trước đây provider chỉ
       // hiện ở trang chi tiết booking, giờ thêm ở vé để đủ 4 fact: Tour ·
       // Guests · Total paid · Payment.
       paymentLabel: 'Payment',
-      // Nhãn TRÊN khoảnh khắc primary kiểu boarding-pass ("24 AUG → 26 AUG").
-      // Một nhãn dùng chung cho cả tour một-ngày lẫn nhiều-ngày.
-      dateLabel: 'Tour date',
-      // Dòng mô tả ngắn trong cuống vé, cạnh tên khách — "2 guests".
-      guestsCount: (n: number) => `${n} guest${n > 1 ? 's' : ''}`,
       viewTours: 'Browse more tours',
       notFound: 'We couldn’t find that booking.',
       viewBooking: 'View booking',
-      // Mood thứ ba: khách quay về từ cổng nhưng booking đã ở một kết cục khác
-      // (hết hạn giữa chừng, đã huỷ, đã hoàn tiền). KHÔNG tự làm mới — không có
-      // gì để đợi; câu chữ vì thế không hứa hẹn gì, chỉ chỉ đường.
-      settledTitle: 'This booking is already settled',
+      // Câu của đơn chưa trả đã ở một kết cục khác (hết hạn giữa chừng, đã huỷ) mà chưa từng thu
+      // tiền (`closedNote`). Không hứa hẹn gì, chỉ chỉ đường.
       settledBody: 'There’s nothing left to pay here. Open the booking to see where it stands.',
-      // ── Receipt thay tấm vé ở /checkout/success (19/08) ──
-      // CỐ Ý chỉ khai thứ MỚI. Dùng lại nguyên: travellersLabel · paymentLabel ·
-      // totalLabel ('Total paid') · refLabel · copyCode ở ngay cụm này, và
-      // checkoutSummary.adultsLine/childrenLine/taxesNote cho bảng tiền — khai
-      // trùng một câu ở hai khoá là cách chắc chắn để sau này sửa một chỗ rồi
-      // quên chỗ kia. Từ review cuối P7 (M3) hoá đơn chỉ còn cho đơn CHƯA trả:
-      // chữ của tâm trạng "đã xác nhận" (tiêu đề, pill "Paid", "receipt was sent
-      // to", dòng "Paid …", "Show this code…") đã gỡ cùng nhánh ấy. Khối "What
-      // happens next" (`nextHeading`…`nextManage`) gỡ trước đó ở P7: voucher kể
-      // những việc ấy bằng dòng điều kiện và Trip journal.
-      // Hai nhãn của bảng meta góc phải. 'Booking' đứng cạnh mã, khác
-      // `refLabel` ('Booking reference') vốn là nhãn của mã CỠ LỚN trong cuống.
-      bookingMetaLabel: 'Booking',
-      dateMetaLabel: 'Date',
-      // Nhãn cột giữa: cột này gộp cả ngày đi, thời lượng và điểm đến, không chỉ
-      // mỗi đợt khởi hành, nên gọi là 'Trip' chứ không phải 'Departure'.
-      tripLabel: 'Trip',
+      // G42 (13/10) gỡ hoá đơn `BookingReceipt` của 19/08 cùng chữ chỉ nó dùng (nhãn bảng meta, ba
+      // cột, pill "Settled", "Departed …", "… guests"); thẻ chờ dùng lại voucher và `pendingReceipt`.
       perTraveller: 'per traveller',
       departsOn: (date: string) => `Departs ${date}`,
-      departedOn: (date: string) => `Departed ${date}`,
       print: 'Print',
       needHelp: 'Need help with this booking?',
-      // Dòng nhỏ dưới mã ở cuống hoá đơn — hoá đơn chỉ dựng cho booking CHƯA trả
-      // tiền (`paidAt` null, ở `/checkout/success` lẫn `/checkout/cancel`); khối chờ
-      // trả của trang chi tiết đơn dùng lại. KHÔNG được thay bằng câu chìa-mã-ở-điểm-hẹn
-      // (`voucher.showCode` của đơn đã trả): câu đó ngụ ý mã đã là voucher và ghế
-      // đã được giữ — sai thẳng invariant #1 (booking PENDING KHÔNG giữ seat nào).
+      // Dòng dưới mã của đơn CHƯA trả tiền (`paidAt` null) — ô mã của thẻ chờ ở `/checkout/success`
+      // lẫn `/checkout/cancel`, khối chờ trả của trang chi tiết đơn, bản in B1. KHÔNG được thay bằng
+      // câu chìa-mã-ở-điểm-hẹn (`voucher.showCode` của đơn đã trả): câu đó ngụ ý mã đã là voucher
+      // và ghế đã được giữ — sai thẳng invariant #1 (booking PENDING KHÔNG giữ seat nào).
       // Repo đã bị đúng lớp lỗi này một lần: câu "Your reservation is held" bị
       // bác ở final review cụm C vì ngụ ý giữ chỗ.
       stubNotYetVoucher: 'This code becomes your voucher once payment is complete.',
-      // Cuống của đơn chưa trả đã ĐÓNG (huỷ, lỡ hạn — tâm trạng `settled`): nói thẳng, không hứa
-      // mã sẽ thành voucher cho một đơn không còn trả được (G37). Màn hình và bản in dùng chung.
+      // Đơn chưa trả đã ĐÓNG (huỷ, lỡ hạn): nói thẳng, không hứa mã sẽ thành voucher cho một đơn
+      // không còn trả được (G37). Màn hình và bản in dùng chung.
       stubClosed: 'This booking is closed — no payment was taken.',
-      // Nhãn pill trạng thái — NGẮN, vì nó đứng cạnh tiêu đề vốn đã nói đủ câu.
+      // Nhãn ngắn của đơn đang chờ cổng báo về: dải ô mã và mốc nhật ký của thẻ chờ (G42).
       statusConfirming: 'Confirming',
-      statusSettled: 'Settled',
       // Nút chép mã (CopyCodeButton) — nhãn đổi trong 2 giây sau khi bấm.
       copyCode: 'Copy code',
       copied: 'Copied',
     },
-    // /checkout/cancel.
+    // /checkout/cancel. Câu dưới tiêu đề nay ở `pendingReceipt.heldNote` (G42): có giờ nhả cụ thể
+    // và nút Pay now ngay trên trang, thay câu "…from My bookings within the hour" và câu số phút.
     cancel: {
       title: 'Payment cancelled',
-      manage: 'Pay now or manage booking',
-      retry: 'Try again',
       backToTours: 'Browse tours',
-      // Một câu, KHÔNG đếm ngược — thiết kế đã chốt không có đồng hồ chạy lùi ở
-      // bất kỳ màn nào của luồng này. Nói "khoảng" vì con số làm tròn xuống.
-      expiresIn: (minutes: number) =>
-        `This booking is released in about ${minutes} minute${minutes === 1 ? '' : 's'} if it stays unpaid.`,
-      // Câu trấn an trung thực thay cho `body` ở màn cancel: không hứa giữ
-      // ghế (invariant #1 — PENDING không giữ seat), chỉ nói đúng sự thật là
-      // session Stripe hết hạn sau ~1 giờ. KHÔNG đồng hồ đếm ngược.
-      //
-      // Fix cuối (final review, NHÓM 3): bản cũ nói "Your reservation is
-      // held" — NGỤ Ý giữ chỗ, vi phạm thẳng invariant #1 ngay trong câu nói
-      // ra để trấn an nó. Đổi hướng: nói booking CÒN MỞ (đúng sự thật — khách
-      // trả tiếp được), không nói gì về "held"/"reservation".
-      //
-      // G37 (13/10): CHỈ đơn còn PENDING đọc câu này (`cancelPageNote`); đơn đã đóng đọc câu
-      // `settled` của hoá đơn. "Trips" là tên tab của app mobile, web gọi là "My bookings".
-      heldNote:
-        'No charge was made. Your booking is still open — you can finish payment from My bookings within the hour.',
     },
     // My bookings list (/account/bookings).
     list: {

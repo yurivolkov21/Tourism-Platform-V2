@@ -18,12 +18,12 @@ import {
 } from './booking-vm';
 import {
   bookingPriceLines,
+  closedNote,
   closedStubSentence,
   formatBookingMoney,
   type PriceLine,
   pendingDeadline,
   pendingExpiry,
-  receiptNote,
 } from './checkout';
 import { formatDate, formatDateRange, formatMoneyExact, formatWeekdayDate } from './tours';
 import { refundJournal, tripPlace, type VoucherJournalItem } from './voucher';
@@ -223,7 +223,7 @@ export function pendingView(booking: BookingDetail, now: Date, page: PendingPage
       return {
         ...common,
         title: p.closedTitle,
-        subtitle: receiptNote(booking, 'settled'),
+        subtitle: closedNote(booking),
         conditions: [closedStubSentence(booking)],
         // Bị thu rồi hoàn: dải nói trạng thái đơn như cuống bản in, không "Closed" trần.
         band: charged

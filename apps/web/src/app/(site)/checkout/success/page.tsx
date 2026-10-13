@@ -4,8 +4,7 @@ import { ButtonLink } from '@tourism/ui/components/button-link';
 import { cn } from '@tourism/ui/lib/utils';
 import type { Metadata } from 'next';
 import { cookies } from 'next/headers';
-import { BookingReceipt } from '@/components/checkout/booking-receipt';
-import { CheckoutAutoRefresh } from '@/components/checkout/checkout-auto-refresh';
+import { PendingCard } from '@/components/checkout/pending-card';
 import { PrintButton } from '@/components/checkout/print-button';
 import { VoucherCard } from '@/components/checkout/voucher-card';
 import { ContentHero } from '@/components/content/content-hero';
@@ -14,8 +13,8 @@ import { VoucherPrint } from '@/components/print/voucher-print';
 import { fetchBookingByCode } from '@/lib/api/bookings';
 import { requireSession } from '@/lib/api/session';
 import { fetchTourDetailOrNull } from '@/lib/api/tours';
-import { checkoutMood } from '@/lib/checkout';
 import { tourMeetingPoint } from '@/lib/get-ready';
+import { pendingView } from '@/lib/pending-receipt';
 import { receiptPrintView } from '@/lib/print/receipt-print';
 import { voucherPrintView } from '@/lib/print/voucher-print';
 import { voucherTourData, voucherView } from '@/lib/voucher';
@@ -36,9 +35,9 @@ export const metadata: Metadata = {
  * nên `code` LUÔN tới qua query string, không phải qua route param.
  *
  * Hai nhánh (spec P7 §2.6): đơn ĐÃ TRẢ (có `paidAt`) mở voucher `VoucherCard` — vừa trả thì
- * chào "… is booked." kèm pháo giấy, mở lại thì "Your trip voucher"; đơn CHƯA TRẢ giữ hoá đơn
- * chờ `BookingReceipt` (PENDING tự làm tươi bằng `CheckoutAutoRefresh`, webhook về là chính
- * cây server đổi sang voucher).
+ * chào "… is booked." kèm pháo giấy, mở lại thì "Your trip voucher"; đơn CHƯA TRẢ dựng thẻ chờ
+ * `PendingCard` cùng khung voucher (G42 — PENDING tự làm tươi bằng `CheckoutAutoRefresh`, webhook
+ * về là chính cây server đổi sang voucher: chỉ cột phải đổi màu và mộc đổi chữ).
  *
  * ⚠️ TRANG NÀY CẦN SESSION: `bookings.byCode` là procedure authed (không có
  * đường tra công khai theo mã). Cookie sống sót qua redirect top-level GET từ
@@ -86,33 +85,23 @@ export default async function CheckoutSuccessPage({
 
   if (!view) {
     // Đơn chưa có `paidAt` — PENDING đang chờ webhook, hay giữ chỗ hết hạn/bị huỷ khi chưa
-    // trả: giữ NGUYÊN hoá đơn chờ. Mã của những đơn này chưa bao giờ là voucher.
-    const mood = checkoutMood(booking);
+    // trả: thẻ chờ (G42). Mã của những đơn này chưa bao giờ là voucher.
     return (
       <div>
         {/* Màn hình bọc `print:hidden`; lúc in là hoá đơn chờ B1 (G40, ADR-0057), cùng mốc `now`. */}
         <div className="print:hidden">
           {/* GIỮ `ContentHero`: `/checkout/success` nằm trong `HERO_LESS_EXCEPTIONS` của
               `site-header.tsx`, navbar ở đây giả định có mảng tối phía sau — gỡ hero là navbar
-              tàng hình ở light mode (lỗi `/enquire` 19/08). Không `meta`: hoá đơn đã in mã ở
-              bảng meta và ở cuống. */}
+              tàng hình ở light mode (lỗi `/enquire` 19/08). Breadcrumb "Checkout", không
+              "Voucher": mã của đơn này chưa là voucher. Không `meta`: thẻ đã in mã ở ô mã. */}
           <ContentHero
-            breadcrumb={t.heroBreadcrumb}
+            breadcrumb={messages.pendingReceipt.breadcrumb}
             title={booking.tourTitle}
             action={<PrintButton />}
           />
-          <div className="py-10 md:py-14">
-            <BookingReceipt booking={booking} mood={mood} />
-            <div className="mx-auto mt-8 flex w-full max-w-3xl flex-wrap items-center gap-2.5 px-4">
-              <ButtonLink href={`/account/bookings/${booking.code}`}>{t.viewBooking}</ButtonLink>
-              {mood === 'confirming' ? (
-                <CheckoutAutoRefresh />
-              ) : (
-                <ButtonLink variant="outline" href="/tours">
-                  {t.viewTours}
-                </ButtonLink>
-              )}
-            </div>
+          {/* Cùng lề với voucher bên dưới: tiền về thì thẻ đổi sang voucher ở đúng chỗ ấy. */}
+          <div className={cn(VOUCHER_PAGE_GUTTER, 'py-10 md:py-14')}>
+            <PendingCard booking={booking} view={pendingView(booking, now, 'success')} />
           </div>
         </div>
         <ReceiptPrint view={receiptPrintView(booking, now)} />

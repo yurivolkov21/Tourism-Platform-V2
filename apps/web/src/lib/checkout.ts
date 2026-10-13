@@ -17,20 +17,6 @@ import { formatMoney, formatMoneyExact } from './tours';
 export const CHECKOUT_SESSION_MINUTES = 60;
 
 /**
- * Hai tâm trạng của hoá đơn chờ (`BookingReceipt`) ở màn quay-về sau thanh toán.
- *
- * - `confirming` — khách về trước webhook. Trạng thái TẠM, trang tự làm mới.
- * - `settled`    — booking đã ở một kết cục khác rồi (hết hạn giữa chừng, đã
- *                  huỷ, đã hoàn tiền). KHÔNG tự làm mới: không có gì để đợi.
- *
- * Không còn `confirmed` (tiền đã về): từ P7 đơn đã trả mở voucher ở `/checkout/success`, và
- * `/checkout/cancel` chuyển nó sang đó (`cancelPageRedirect`) — hoá đơn chỉ còn dựng cho đơn
- * `paidAt` null, mà PAID luôn có `paidAt` (API ghi hai cột cùng lúc, `claimSeatsForPaid`). Nhánh
- * ấy hết đường tới mà spec vẫn canh (review cuối P7, M3).
- */
-export type CheckoutMood = 'confirming' | 'settled';
-
-/**
  * Tổng tiền booking — MỘT nguồn dùng CHUNG cho nhãn nút Pay (`booking-wizard.tsx`)
  * VÀ dòng "Total" (`checkout-summary.tsx`) — hai chỗ trước đây tự tính riêng,
  * lệch một chỗ là hai số khác nhau trên cùng một màn hình.
@@ -83,8 +69,8 @@ export interface MoneyOptions {
 }
 
 /**
- * Dòng tiền theo người lớn và trẻ em, tách khỏi `BookingReceipt` để các trang đơn dùng chung
- * (spec P7 §4.2). Cột tóm tắt của wizard đặt chỗ (`CheckoutSummary`) cũng dùng nó cho đơn đang
+ * Dòng tiền theo người lớn và trẻ em, dùng chung cho các trang đơn (spec P7 §4.2) — voucher, thẻ
+ * chờ (G42), bản in. Cột tóm tắt của wizard đặt chỗ (`CheckoutSummary`) cũng dùng nó cho đơn đang
  * dựng, với đơn giá là `effectivePrice` của đợt đang chọn, nên trước và sau khi trả tiền khách
  * thấy cùng những con số. Trẻ em cùng đơn giá người lớn (luật của `computeBookingTotal` ngay trên).
  * Nhãn từ `messages.checkoutSummary`, số tiền định dạng bằng `formatBookingMoney` để dòng và
@@ -110,17 +96,12 @@ export function bookingPriceLines(
   return lines;
 }
 
-/** PENDING là đang chờ webhook; mọi trạng thái khác là kết cục đã rồi (xem `CheckoutMood`). */
-export function checkoutMood(booking: Pick<Booking, 'status'>): CheckoutMood {
-  return booking.status === 'PENDING' ? 'confirming' : 'settled';
-}
-
 /**
  * Đường sang voucher khi khách về `/checkout/cancel` với một đơn ĐÃ TRẢ (trả ở tab khác rồi bấm
- * huỷ ở cổng); `null` khi đơn chưa trả — trang huỷ giữ hoá đơn chờ.
+ * huỷ ở cổng); `null` khi đơn chưa trả — trang huỷ dựng thẻ chờ (G42).
  *
- * Trang huỷ kể chuyện của đơn chưa trả: "Payment cancelled", "No charge was made…", nút "Pay now or
- * manage booking". Dựng nó cho đơn đã trả là pill "Paid" và mã vạch ngay dưới "Payment cancelled",
+ * Trang huỷ kể chuyện của đơn chưa trả: "Payment cancelled", "No charge was made…", nút "Pay now".
+ * Dựng nó cho đơn đã trả là pill "Paid" và mã vạch ngay dưới "Payment cancelled",
  * còn đơn đã trả rồi huỷ vẫn mang mã vạch — đúng lớp lỗi P7 đã sửa ở `/checkout/success` (review
  * P7C, "Ngoài diff"). Cùng luật "đã có `paidAt` thì là voucher" của `voucherView`: voucher kể đơn
  * đã trả theo giai đoạn của nó, kể cả khi đã huỷ.
@@ -130,43 +111,23 @@ export function cancelPageRedirect(booking: Pick<Booking, 'code' | 'paidAt'>): s
 }
 
 /**
- * Câu dưới tiêu đề của hoá đơn (`BookingReceipt`) khi trang không truyền câu riêng — theo tâm
- * trạng. Từ P7 hoá đơn chỉ còn cho đơn CHƯA trả (đơn đã trả mở voucher, spec §2.6), nên câu mặc
- * định cũ cho mọi đơn — "A copy of this receipt was sent to {email}." — nói sai: chưa trả thì
- * không email nào đi, và đơn bị thu rồi hoàn tự động không được nhắc tới khoản hoàn (review
- * P7C#5).
+ * Câu dưới tiêu đề của thẻ chờ khi đơn chưa trả đã ĐÓNG (G42, trạng thái `closed` của
+ * `pendingView`). Từng bị thu (thua đua ghế, chuyến đóng lúc capture về — `paidAt` vẫn null,
+ * `wasCharged`) thì kể khoản hoàn bằng câu chung `refundSentence`, kèm thời gian tiền về khi có
+ * hoàn; chưa từng thu thì "không còn gì để trả". Câu cũ cho mọi đơn — "A copy of this receipt was
+ * sent to {email}." — nói sai: chưa trả thì không email nào đi, và đơn bị thu rồi hoàn tự động
+ * không được nhắc tới khoản hoàn (review P7C#5).
  *
- * - `confirming` — khách về trước webhook: thanh toán đang được xác nhận, trang tự làm tươi.
- * - `settled` — đơn đã ở kết cục khác. Từng bị thu (thua đua ghế, chuyến đóng lúc capture về —
- *   `paidAt` vẫn null, `wasCharged`) thì kể khoản hoàn bằng câu chung `refundSentence`, kèm thời
- *   gian tiền về khi có hoàn; chưa từng thu thì "không còn gì để trả".
+ * Trước G42 đây là `receiptNote(booking, mood)` của hoá đơn `BookingReceipt`; nhánh `confirming`
+ * chỉ trả `pendingBody`, nay `pendingView` đọc thẳng câu ấy.
  */
-export function receiptNote(booking: Booking, mood: CheckoutMood): string {
-  const t = messages.booking.success;
-  switch (mood) {
-    case 'confirming':
-      return t.pendingBody;
-    case 'settled': {
-      const refund = refundSummary(booking);
-      if (refund === null) return t.settledBody;
-      const sentence = refundSentence(refund, booking.currency);
-      return refund.kind === 'none'
-        ? sentence
-        : `${sentence} ${messages.accountBookingDetail.refundLine.timing}`;
-    }
-  }
-}
-
-/**
- * Câu dưới tiêu đề "Payment cancelled" của `/checkout/cancel` (G37). Trang từng truyền cứng câu
- * `heldNote` ("Your booking is still open…") cho MỌI đơn chưa trả, nên khách quay về từ cổng sau
- * khi giữ chỗ đã hết hạn đọc "still open" cho một đơn đã đóng. Nay chỉ đơn còn PENDING đọc
- * `heldNote`; đơn đã đóng đọc đúng câu `settled` của hoá đơn (`receiptNote`) — "không còn gì để
- * trả", hay khoản hoàn khi đơn từng bị thu.
- */
-export function cancelPageNote(booking: Booking): string {
-  const mood = checkoutMood(booking);
-  return mood === 'confirming' ? messages.booking.cancel.heldNote : receiptNote(booking, mood);
+export function closedNote(booking: Booking): string {
+  const refund = refundSummary(booking);
+  if (refund === null) return messages.booking.success.settledBody;
+  const sentence = refundSentence(refund, booking.currency);
+  return refund.kind === 'none'
+    ? sentence
+    : `${sentence} ${messages.accountBookingDetail.refundLine.timing}`;
 }
 
 export interface PendingExpiry {
@@ -187,8 +148,8 @@ function vietnamDayEnd(day: string): number {
  * Mốc đơn chờ bị nhả: `createdAt` cộng `CHECKOUT_SESSION_MINUTES`, KẸP ở hết ngày hạn chót của chuyến
  * (23:59:59 giờ Việt Nam, ADR-0041 §3) — qua mốc ấy API thôi mở phiên trả mới (`reCheckout` từ
  * chối), nên đơn đặt 23:30 ngày hạn chót không được hứa trả tới 00:30 hôm sau (review G40). MỘT
- * nguồn cho `pendingExpiry` (câu "released in about n minutes" của trang huỷ) và dòng "Pay by" của
- * hoá đơn chờ in (G40).
+ * nguồn cho `pendingExpiry`, giờ nhả và dòng "Pay by" của thẻ chờ (G42) và của hoá đơn chờ in
+ * (G40).
  */
 export function pendingDeadline(
   booking: Pick<Booking, 'createdAt' | 'departureStartDate' | 'departureEndDate'>,
@@ -220,8 +181,8 @@ export function pendingExpiry(
 }
 
 /**
- * Câu cuống của đơn chưa trả đã đóng (G37, spec §4.3) — MỘT câu cho màn hình (`BookingReceipt`) và
- * bản in: chưa thu đồng nào thì nói thẳng không thu tiền; bị thu rồi hoàn tự động (`wasCharged`) thì
+ * Câu cuống của đơn chưa trả đã đóng (G37, spec §4.3) — MỘT câu cho màn hình (ô mã của thẻ chờ,
+ * G42) và bản in: chưa thu đồng nào thì nói thẳng không thu tiền; bị thu rồi hoàn tự động (`wasCharged`) thì
  * câu kết cục theo trạng thái — "no payment was taken" cạnh khoản vừa kể là đã hoàn là nói ngược
  * (cùng bất biến review P7 B1).
  */

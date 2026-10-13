@@ -4,37 +4,15 @@ import { makeBooking } from '@/test/fixtures/booking';
 import {
   bookingPriceLines,
   CHECKOUT_SESSION_MINUTES,
-  cancelPageNote,
   cancelPageRedirect,
-  checkoutMood,
+  closedNote,
   closedStubSentence,
   computeBookingTotal,
   formatBookingMoney,
   pendingDeadline,
   pendingExpiry,
-  receiptNote,
   ticketBarcodeWidths,
 } from './checkout';
-
-describe('checkoutMood — tâm trạng của hoá đơn chờ đọc từ status', () => {
-  it('PENDING → confirming (webhook chưa về)', () => {
-    expect(checkoutMood(makeBooking({ status: 'PENDING' }))).toBe('confirming');
-  });
-
-  /**
-   * Các status còn lại KHÔNG phải "đang chờ webhook" — chúng là kết cục đã rồi.
-   * Nếu khách quay về từ cổng mà booking đã CANCELLED (hết hạn giữa chừng) thì
-   * hiện mood confirming là nói dối: trang sẽ tự làm mới mãi mãi cho một thứ
-   * không bao giờ đổi. PAID không tới hoá đơn (đơn đã trả mở voucher), nên hoá đơn
-   * không còn tâm trạng "đã xác nhận" riêng (review cuối P7, M3).
-   */
-  it.each(['PAID', 'CANCELLED', 'REFUNDED', 'PARTIALLY_REFUNDED'] as const)(
-    '%s → settled, KHÔNG tự làm mới',
-    (status) => {
-      expect(checkoutMood(makeBooking({ status }))).toBe('settled');
-    },
-  );
-});
 
 /**
  * `/checkout/cancel` kể chuyện của đơn CHƯA trả ("Payment cancelled", "No charge was made…").
@@ -64,21 +42,14 @@ describe('cancelPageRedirect — đơn đã trả về /checkout/cancel thì san
 });
 
 /**
- * Câu dưới tiêu đề hoá đơn khi trang không truyền câu riêng (review P7C#5). Hoá đơn ở
- * `/checkout/success` nay chỉ còn cho đơn CHƯA trả: câu cũ "A copy of this receipt was sent to …"
- * sai với đơn chưa trả (không email nào đi), và im về khoản hoàn của đơn bị thu rồi hoàn tự động.
+ * Câu dưới tiêu đề thẻ chờ của đơn chưa trả đã đóng (G42; trước đó `receiptNote` của hoá đơn, review
+ * P7C#5): không "A copy of this receipt was sent to …" (đơn chưa trả không email nào đi), và không
+ * im về khoản hoàn của đơn bị thu rồi hoàn tự động.
  */
-describe('receiptNote — câu dưới tiêu đề hoá đơn theo tâm trạng', () => {
-  it('chờ webhook → thanh toán đang được xác nhận, KHÔNG "was sent to"', () => {
-    const pending = makeBooking({ status: 'PENDING', paidAt: null });
-    expect(receiptNote(pending, 'confirming')).toBe(
-      'Your payment is being confirmed — this usually takes a few seconds. This page updates automatically; you can also refresh.',
-    );
-  });
-
+describe('closedNote — câu dưới tiêu đề của đơn chưa trả đã đóng', () => {
   it('giữ chỗ hết hạn, chưa từng thu → không còn gì để trả', () => {
     const lapsed = makeBooking({ status: 'CANCELLED', paidAt: null });
-    expect(receiptNote(lapsed, 'settled')).toBe(
+    expect(closedNote(lapsed)).toBe(
       'There’s nothing left to pay here. Open the booking to see where it stands.',
     );
   });
@@ -90,35 +61,9 @@ describe('receiptNote — câu dưới tiêu đề hoá đơn theo tâm trạng'
       totalAmount: '147.00',
       refundedTotal: '147.00',
     });
-    expect(receiptNote(lostRace, 'settled')).toBe(
+    expect(closedNote(lostRace)).toBe(
       '$147.00 has been refunded to your original payment method. It can take 5–10 business days to appear on your statement.',
     );
-  });
-});
-
-describe('cancelPageNote — câu của /checkout/cancel theo trạng thái đơn (G37)', () => {
-  it('đơn còn PENDING → còn mở, trả tiếp từ My bookings (không phải "Trips" của app mobile)', () => {
-    const note = cancelPageNote(makeBooking({ status: 'PENDING', paidAt: null }));
-    expect(note).toBe(messages.booking.cancel.heldNote);
-    expect(note).toMatch(/My bookings/);
-    expect(note).not.toMatch(/Trips/);
-  });
-
-  it('giữ chỗ đã hết hạn → KHÔNG nói "still open", đọc câu đã đóng của hoá đơn', () => {
-    const lapsed = makeBooking({ status: 'CANCELLED', paidAt: null });
-    expect(cancelPageNote(lapsed)).not.toMatch(/still open/);
-    expect(cancelPageNote(lapsed)).toBe(receiptNote(lapsed, 'settled'));
-  });
-
-  it('bị thu rồi hoàn tự động → kể khoản hoàn, không nói "No charge was made"', () => {
-    const lostRace = makeBooking({
-      status: 'CANCELLED',
-      paidAt: null,
-      totalAmount: '147.00',
-      refundedTotal: '147.00',
-    });
-    expect(cancelPageNote(lostRace)).not.toMatch(/No charge was made/);
-    expect(cancelPageNote(lostRace)).toMatch(/\$147\.00 has been refunded/);
   });
 });
 

@@ -5,7 +5,7 @@ import { makeBooking } from '@/test/fixtures/booking';
 import { BookingTicket } from './booking-ticket';
 
 // jsdom không có IntersectionObserver — mộc vào bằng `RevealItem` (motion `whileInView`).
-// Stub cục bộ theo nếp `booking-receipt.spec.tsx`.
+// Stub cục bộ, khai ngay trong spec này.
 beforeAll(() => {
   vi.stubGlobal(
     'IntersectionObserver',

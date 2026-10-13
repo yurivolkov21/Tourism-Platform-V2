@@ -33,7 +33,7 @@ import { calendarDateParts, formatDate } from '@/lib/tours';
  *
  * Mã vạch và mộc theo `bookingPass` — cùng luật với voucher. Mã vạch (sắp đi, đang đi, đã trả)
  * nói "quét tôi ở điểm đón", in nó cho đơn chưa trả, đã huỷ hay chuyến đã xong là hứa một thứ
- * không có (cùng bất biến chống nói dối của `BookingReceipt`). Mộc theo giai đoạn, không theo
+ * không có (cùng bất biến chống nói dối của thẻ chờ `PendingCard`). Mộc theo giai đoạn, không theo
  * trạng thái đơn: đơn qua hạn chót mà chưa trả không còn "AWAITING PAYMENT", đơn trên chuyến công
  * ty huỷ không còn "CONFIRMED".
  */

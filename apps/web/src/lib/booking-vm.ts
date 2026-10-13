@@ -128,8 +128,8 @@ const BADGE_WORDS: StatusWords = {
  *
  * Voucher: đơn đã trả ở ba giai đoạn của chuyến còn đi hay đã đi. Mã vạch nói "quét tôi ở điểm
  * đón" — chỉ sắp đi và đang đi; chuyến đã xong không còn cổng nào để quét. Chưa có `paidAt` thì
- * không có gì: in mã vạch cho đơn chưa trả là hứa một thứ không có (cùng bất biến của
- * `BookingReceipt`). Mộc và badge: xem `phaseLabel`.
+ * không có gì: in mã vạch cho đơn chưa trả là hứa một thứ không có (cùng bất biến của thẻ chờ
+ * `PendingCard`, G42). Mộc và badge: xem `phaseLabel`.
  */
 export function bookingPass(
   booking: Pick<Booking, 'paidAt' | 'status'>,

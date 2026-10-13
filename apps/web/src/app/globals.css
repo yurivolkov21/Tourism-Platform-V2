@@ -246,7 +246,8 @@ html:not(.dark) .stamp-ink {
  * mép trên và mép dưới của đường xé dọc.
  *
  * Ngoại lệ có chủ đích với JSDoc của `BookingReceipt` (19/08 bác "dashed + notch bán
- * nguyệt"): user duyệt lại kiểu này cho RIÊNG trang chi tiết đơn ngày 05/10/2026.
+ * nguyệt"; hoá đơn ấy gỡ ở G42): user duyệt lại kiểu này cho RIÊNG trang chi tiết đơn ngày
+ * 05/10/2026.
  */
 [data-slot="ticket-stub"]::before,
 [data-slot="ticket-stub"]::after {

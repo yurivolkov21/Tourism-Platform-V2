@@ -93,8 +93,8 @@ export function tripPlace(booking: Pick<BookingDetail, 'tourDestinations' | 'tou
  * Bảng quyết định của voucher `/checkout/success` (spec P7 §2.6) — hàm THUẦN, component chỉ vẽ.
  *
  * Trả `null` khi đơn chưa có `paidAt`: đơn PENDING đang chờ webhook, hay giữ chỗ đã hết hạn rồi
- * bị huỷ khi chưa trả. Những đơn ấy giữ nguyên hoá đơn chờ (`BookingReceipt`) — mã của chúng
- * chưa bao giờ là voucher.
+ * bị huỷ khi chưa trả. Những đơn ấy dựng thẻ chờ (`pendingView`, G42) — mã của chúng chưa bao giờ
+ * là voucher.
  *
  * `now` là đồng hồ server web, trang đọc MỘT lần: vừa đo 30 phút "vừa trả" vừa suy hôm nay —
  * ngày lịch Việt Nam (`vietnamToday`, spec P7 §2.1) mà giai đoạn đọc qua `bookingPhase` của
