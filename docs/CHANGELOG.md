@@ -8,6 +8,34 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-10-13 — Thử tay đăng nhập Google native trên production 4/4 bước
+
+**Thử tay** (ba mục thử trong CÒN TREO của entry merge bên dưới, chia thành bốn bước; sau push
+`1ca92f5`: Actions main xanh, Render deploy API live 03:51 UTC; user làm trên máy mình và điện
+thoại Android, gửi ảnh hoặc báo kết quả, session gốc đối chiếu):
+
+1. Web production, cửa sổ ẩn danh, một tài khoản Google chưa có trên Nexora (Workspace, chưa đặt
+   ảnh): tài khoản tạo xong, khung hộ chiếu và avatar đầu trang hiện ảnh mặc định chữ cái của
+   Google (nền tím, chữ trắng). Khi không có ảnh, app vẽ ô xám nhạt với chữ serif
+   (`passport-card.tsx`), nên URL ảnh Google đã được lưu.
+2. `curl -i` vào `expo-authorization-proxy` từ máy user: `HTTP/1.1 400 Bad Request`, body
+   `{"message":"Invalid authorizationURL"}`, không có `set-cookie`.
+3. Build lại APK `preview` từ `main` (`1ca92f5`, build EAS `e0a6f244`) rồi cài lại. Checkout trên
+   máy user lúc đó còn ở nhánh cũ, thiếu 6 commit của vòng review, nên phải chuyển sang `main` và
+   pull trước khi build.
+4. Trên APK mới: bấm Google hiện bảng chọn; tắt hẳn app, mở lại, Sign out, bấm Google lần nữa vẫn
+   hiện bảng chọn và chọn được tài khoản khác. Đây là ca phát hiện 1 và 2 của review nhắm tới (bản
+   cũ gọi `signOut` khi chưa `configure` sau khi mở lại app). Avatar trên app đúng ảnh tài khoản
+   Google; user không gặp lỗi nào khác.
+
+User đã xoá nhánh `feat/mobile-google-native-signin` trên origin và ở máy mình.
+
+**CÒN TREO:**
+
+- Nút Google ẩn ở bản iOS thiếu client iOS mới có unit test, chưa thử trên máy: cần bản iOS, tức
+  là cần tài khoản Apple Developer. Ghi cùng Credential Manager ở open-items mục 4 (sau v1).
+- Docs, không đổi mã; không migration, không env.
+
 ## 2026-10-13 — Merge đăng nhập Google native trên mobile (ADR-0056), đóng proxy Expo trên API (`b6dacdc`..`2d6f6c7`)
 
 App mobile đăng nhập Google bằng SDK gốc `@react-native-google-signin/google-signin` 16.1.5: bảng
