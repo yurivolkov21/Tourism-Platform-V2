@@ -207,7 +207,7 @@ function SeatMeter({ seatsLeft, maxGroupSize }: { seatsLeft: number; maxGroupSiz
       <p
         className={cn(
           'mt-2 text-xs',
-          status === 'limited' ? 'font-medium text-warning' : 'text-muted-foreground',
+          status === 'limited' ? 'font-medium text-warning-emphasis' : 'text-muted-foreground',
         )}
       >
         {status === 'limited'

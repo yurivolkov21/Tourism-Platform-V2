@@ -157,6 +157,24 @@ export default {
     'success-foreground': c('oklch(0.985 0 0)', 'oklch(0.205 0 0)'),
     warning: c('oklch(0.78 0.15 80)', 'oklch(0.82 0.14 80)'),
     'warning-foreground': c('oklch(0.27 0.04 80)', 'oklch(0.2 0.03 80)'),
+    // `success` và `warning` khi chúng LÀ MỰC (chữ, icon, mộc) — cùng phép tách với
+    // `primary-emphasis` và `destructive-emphasis` (ADR-0019 AMEND 1, open-items G32 và G20).
+    // Đo vai mực của token bề mặt: `warning` sáng /card 2.01 ❌; `success` sáng /card 3.37 ❌,
+    // tối /muted 4.13 ❌. Hạ `warning` sáng thì dải nhắc `bg-warning` cõng `warning-foreground`
+    // rơi từ 7.43 xuống 2.48, nên bề mặt giữ nguyên, mực tách token.
+    //
+    // Đo token mới (nền · card · muted; mộc mờ 85% trên nền · card):
+    //   warning-emphasis sáng 0.47: 6.50 · 6.87 · 5.40; mộc 4.63 · 4.83
+    //   warning-emphasis tối = `warning` (đã đạt): 8.33 · 7.39 · 5.88 — tối không đổi pixel nào
+    //   success-emphasis sáng 0.46: 6.32 · 6.68 · 5.25; mộc 4.57 · 4.76
+    //   success-emphasis tối 0.75: 7.00 · 6.21 · 4.94; mộc 5.48 · 4.94
+    // L sáng do mộc quyết: chữ mộc 13px đậm phải giữ 4.5 cả khi mờ `opacity-85`. Hue warning sáng
+    // 80 → 75 vì ở L thấp hue 80 ngả ô liu; chroma 0.095 còn trong gam sRGB.
+    //
+    // Dùng ở đâu: MỌI `text-warning`/`text-success` đứng làm mực trên nền. Bề mặt và lớp tô
+    // (`bg-*`, viền huy hiệu, `bg-success/10`) vẫn là token gốc.
+    'warning-emphasis': c('oklch(0.47 0.095 75)', 'oklch(0.82 0.14 80)'),
+    'success-emphasis': c('oklch(0.46 0.125 145)', 'oklch(0.75 0.15 145)'),
     info: c('oklch(0.6 0.13 240)', 'oklch(0.7 0.13 240)'),
     'info-foreground': c('oklch(0.985 0 0)', 'oklch(0.205 0 0)'),
     // Bề mặt HERO — luôn là mảng tối nhất của trang, ở CẢ hai chế độ màu.

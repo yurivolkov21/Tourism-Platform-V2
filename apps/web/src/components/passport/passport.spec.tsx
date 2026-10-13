@@ -121,15 +121,18 @@ describe('VisaStamp', () => {
   // Mộc chỉ VẼ: chữ và tông do nơi gọi đưa (vé đọc `bookingPass(…).stamp` — luật ở spec của nó).
   it('in đúng chữ được đưa, màu mực theo tone (success/warning/muted)', () => {
     const CASES = [
-      { tone: 'success', text: 'CONFIRMED', cls: 'text-success' },
-      { tone: 'warning', text: 'AWAITING PAYMENT', cls: 'text-warning' },
+      // Mực của mộc là token vai mực (ADR-0019 AMEND 1, G32), không phải token bề mặt.
+      { tone: 'success', text: 'CONFIRMED', cls: 'text-success-emphasis' },
+      { tone: 'warning', text: 'AWAITING PAYMENT', cls: 'text-warning-emphasis' },
       { tone: 'muted', text: 'NOT PAID', cls: 'text-muted-foreground' },
       { tone: 'destructive', text: 'PARTLY REFUNDED', cls: 'text-muted-foreground' },
     ] as const;
     for (const c of CASES) {
       const { unmount } = render(<VisaStamp label={c.text} tone={c.tone} />);
       const el = screen.getByText(c.text);
-      expect(el.className).toContain(c.cls);
+      expect(el).toHaveClass(c.cls);
+      expect(el).not.toHaveClass('text-success');
+      expect(el).not.toHaveClass('text-warning');
       unmount();
     }
   });

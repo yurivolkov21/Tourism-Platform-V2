@@ -11,8 +11,10 @@ import type { BookingStamp, BookingViewTone } from '@/lib/booking-vm';
  * giữ một hình chữ nhật bo góc cho mọi trạng thái.
  */
 const INK_CLASS: Record<BookingViewTone, string> = {
-  success: 'border-success text-success',
-  warning: 'border-warning text-warning',
+  // Viền và chữ của mộc cùng một mực: token vai mực (ADR-0019 AMEND 1, G32) giữ chữ mộc 4.5:1 cả
+  // khi mờ `opacity-85`.
+  success: 'border-success-emphasis text-success-emphasis',
+  warning: 'border-warning-emphasis text-warning-emphasis',
   muted: 'border-muted-foreground text-muted-foreground',
   destructive: 'border-muted-foreground text-muted-foreground',
 };

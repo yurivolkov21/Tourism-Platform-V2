@@ -51,8 +51,8 @@ const DOT_CLASS: Record<string, string> = {
 };
 
 const BADGE_TONE: Record<string, string> = {
-  success: 'border-success/40 text-success',
-  warning: 'border-warning/50 text-warning',
+  success: 'border-success/40 text-success-emphasis',
+  warning: 'border-warning/50 text-warning-emphasis',
   muted: 'text-muted-foreground',
   destructive: 'text-muted-foreground',
 };

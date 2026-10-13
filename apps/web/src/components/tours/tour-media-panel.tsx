@@ -288,7 +288,7 @@ export function TourMediaPanel({ tour }: { tour: TourDetailVM }) {
                       <span
                         className={cn(
                           'text-[11px]',
-                          limited ? 'text-warning' : 'text-muted-foreground',
+                          limited ? 'text-warning-emphasis' : 'text-muted-foreground',
                         )}
                       >
                         {t.mediaPanel.seatsLeft(d.seatsLeft)}

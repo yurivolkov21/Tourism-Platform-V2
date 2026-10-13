@@ -41,7 +41,7 @@ const INNER_RADIUS: Record<PageStamp['shape'], string> = {
 /** 2–3 màu mực như quầy biên phòng thật — tokens-only. */
 const INK_CLASS = [
   'border-ink text-ink',
-  'border-success/85 text-success/85',
+  'border-success-emphasis/85 text-success-emphasis/85',
   'border-foreground/65 text-foreground/65',
 ];
 

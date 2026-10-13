@@ -57,7 +57,7 @@ const ICON_TONE: Record<MilestoneState, string> = {
  */
 const CHIP_TONE: Record<JourneyChipTone, string> = {
   active: 'bg-foreground text-background',
-  done: 'border border-success/40 bg-success/10 text-success',
+  done: 'border border-success/40 bg-success/10 text-success-emphasis',
   warning: 'border border-warning/60 bg-warning/20 text-accent-foreground',
   muted: 'bg-muted text-muted-foreground',
 };

@@ -128,7 +128,7 @@ describe('BookingTicket — thân vé', () => {
   // chót 31/10.
   it('chờ trả còn trong hạn: mộc "AWAITING PAYMENT" tông cảnh báo', () => {
     renderTicket({ ...PAID, status: 'PENDING', paidAt: null });
-    expect(screen.getByText('AWAITING PAYMENT').className).toContain('text-warning');
+    expect(screen.getByText('AWAITING PAYMENT')).toHaveClass('text-warning-emphasis');
   });
 
   it('chờ trả qua hạn chót: mộc "NOT PAID" mực xám — chưa chắc đã lỡ, nhưng không còn mời trả', () => {

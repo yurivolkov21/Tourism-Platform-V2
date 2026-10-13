@@ -197,7 +197,7 @@ export function ReviewForm({
                 body.length >= BODY_MAX
                   ? 'text-destructive-emphasis'
                   : body.length >= BODY_MAX * 0.9
-                    ? 'text-warning'
+                    ? 'text-warning-emphasis'
                     : 'text-muted-foreground'
               }`}
             >

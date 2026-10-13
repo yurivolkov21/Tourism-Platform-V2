@@ -168,7 +168,7 @@ function SeatBadge({
     );
   }
   return (
-    <span className={cn(BADGE_BASE, 'border-success/50 bg-success/15 text-success')}>
+    <span className={cn(BADGE_BASE, 'border-success/50 bg-success/15 text-success-emphasis')}>
       {t.statusOpen}
     </span>
   );
@@ -694,7 +694,7 @@ function DepartureRow({
           </s>
         ) : null}
         {saving > 0 ? (
-          <span className="block text-[11px] leading-4 font-medium text-success">
+          <span className="block text-[11px] leading-4 font-medium text-success-emphasis">
             {t.save(formatMoney(String(saving), currency))}
           </span>
         ) : null}

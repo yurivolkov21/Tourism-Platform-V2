@@ -87,7 +87,7 @@ export function DecisionButton({ tone, children, disabled, onClick }: DecisionBu
       variant={approve ? 'ghost' : 'destructive'}
       className={cn(
         approve &&
-          'bg-success/10 text-success hover:bg-success/20 hover:text-success focus-visible:border-success/40 focus-visible:ring-success/20',
+          'bg-success/10 text-success-emphasis hover:bg-success/20 hover:text-success-emphasis focus-visible:border-success/40 focus-visible:ring-success/20',
       )}
       disabled={disabled}
       onClick={onClick}

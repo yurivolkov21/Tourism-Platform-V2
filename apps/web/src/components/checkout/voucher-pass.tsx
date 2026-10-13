@@ -64,7 +64,10 @@ export function VoucherPass({ booking, view }: { booking: BookingDetail; view: V
             <ul data-slot="voucher-conditions" className="mt-2.5 grid gap-1.5 text-[12.5px]">
               {view.conditions.map((line) => (
                 <li key={line} className="flex items-start gap-2">
-                  <CheckIcon aria-hidden="true" className="mt-0.5 size-3.5 shrink-0 text-success" />
+                  <CheckIcon
+                    aria-hidden="true"
+                    className="mt-0.5 size-3.5 shrink-0 text-success-emphasis"
+                  />
                   {line}
                 </li>
               ))}

@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { oklch } from 'culori';
+import { oklch, wcagContrast } from 'culori';
 import { describe, expect, it } from 'vitest';
 // Namespace import có chủ đích: cần cả default (tokens) lẫn named export regionDefaults.
 import * as src from '../../style-dictionary/tokens.mjs';
@@ -95,5 +95,33 @@ describe('token của tài liệu in (G40)', () => {
     expect(block).toContain(`--paper: ${tokens.color.paper.value};`);
     expect(block).toContain(`--pending: ${tokens.color.pending.value};`);
     expect(block).not.toContain(tokens.color.background.darkValue);
+  });
+});
+
+// ADR-0019 AMEND 1 (G32, G20): token vai mực của màu trạng thái đạt 4.5:1 trên ba bề mặt chữ đứng
+// lên, ở cả hai theme — chính điều token bề mặt `warning`/`success` không làm được.
+describe('token vai mực của màu trạng thái (ADR-0019 AMEND 1)', () => {
+  const SURFACES = ['background', 'card', 'muted'] as const;
+
+  for (const ink of ['warning-emphasis', 'success-emphasis'] as const) {
+    it(`${ink} đạt 4.5:1 trên nền, card và muted ở cả hai theme`, () => {
+      const token = tokens.color[ink];
+      expect(token, ink).toBeDefined();
+      for (const surface of SURFACES) {
+        const bg = tokens.color[surface];
+        expect(
+          wcagContrast(token.value, bg.value),
+          `${ink}/${surface} sáng`,
+        ).toBeGreaterThanOrEqual(4.5);
+        expect(
+          wcagContrast(token.darkValue, bg.darkValue),
+          `${ink}/${surface} tối`,
+        ).toBeGreaterThanOrEqual(4.5);
+      }
+    });
+  }
+
+  it('warning-emphasis tối giữ y hệt warning — tách token không đổi pixel nào ở theme tối', () => {
+    expect(tokens.color['warning-emphasis'].darkValue).toBe(tokens.color.warning.darkValue);
   });
 });

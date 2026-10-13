@@ -161,7 +161,7 @@ export function ItineraryPanel({
                   </span>
                 ) : null}
                 {state === 'done' ? (
-                  <span className="inline-flex h-[22px] items-center gap-1.5 rounded-full border border-[color-mix(in_oklab,var(--success)_55%,transparent)] bg-[color-mix(in_oklab,var(--success)_18%,transparent)] px-[9px] text-[11px] leading-none font-medium text-success">
+                  <span className="inline-flex h-[22px] items-center gap-1.5 rounded-full border border-[color-mix(in_oklab,var(--success)_55%,transparent)] bg-[color-mix(in_oklab,var(--success)_18%,transparent)] px-[9px] text-[11px] leading-none font-medium text-success-emphasis">
                     <CheckIcon className="size-3" strokeWidth={3.5} />
                     {t.done}
                   </span>

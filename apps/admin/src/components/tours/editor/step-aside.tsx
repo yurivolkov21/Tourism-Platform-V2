@@ -37,12 +37,12 @@ export function StateMark({ state, className }: { state: ChecklistState; classNa
       {state === 'ok' ? (
         <CircleCheckIcon
           aria-hidden="true"
-          className={cn('size-4 shrink-0 text-success', className)}
+          className={cn('size-4 shrink-0 text-success-emphasis', className)}
         />
       ) : state === 'warn' ? (
         <CircleAlertIcon
           aria-hidden="true"
-          className={cn('size-4 shrink-0 text-warning', className)}
+          className={cn('size-4 shrink-0 text-warning-emphasis', className)}
         />
       ) : (
         <span

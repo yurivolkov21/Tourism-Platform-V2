@@ -108,7 +108,7 @@ export function StatCardRow({
 
 /** Tông màu của pill — hệ quả của `deltaGood`, không phải một prop thứ ba. */
 const TONE_CLASS = {
-  good: 'text-success',
+  good: 'text-success-emphasis',
   bad: 'text-destructive-emphasis',
   neutral: 'text-muted-foreground',
 } as const;

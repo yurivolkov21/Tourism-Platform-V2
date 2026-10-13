@@ -187,7 +187,7 @@ describe('TourMediaPanel — panel đặt chỗ', () => {
     render(<TourMediaPanel tour={tourWith(3)} />, { wrapper });
     expect(screen.getByText('14 Sep')).toBeInTheDocument();
     expect(screen.getByText('12 Oct')).toBeInTheDocument();
-    expect(screen.getByText('3 seats left')).toHaveClass('text-warning');
+    expect(screen.getByText('3 seats left')).toHaveClass('text-warning-emphasis');
   });
 
   it('ô điều khoản huỷ sinh TỪ LUẬT, KHÔNG đọc policy loại CANCELLATION nữa', () => {
