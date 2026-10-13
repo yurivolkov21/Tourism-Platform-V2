@@ -191,3 +191,69 @@ Freeze 15/10/2026: sau mốc đó không đổi token nữa.
   yêu cầu WCAG và nó phá ngôn ngữ hairline của mockup.
 - **Đổi `card` dark cho nút nổi hơn.** Sẽ kéo theo mọi bề mặt khác và làm lại
   toàn bộ vòng duyệt visual 06/08. Viền nút rẻ hơn nhiều và đạt cùng mục tiêu.
+
+## AMEND 1 — 13/10/2026 (open-items G32, G20): `warning-emphasis` và `success-emphasis`
+
+### Bối cảnh
+
+`warning` và `success` là màu trạng thái, gánh đúng hai vai mà mục 1 và 2b đã tách cho `primary` và
+`destructive`: **bề mặt** (`bg-warning` cõng `text-warning-foreground` ở dải nhắc xác minh email,
+chip "Limited"; `bg-success` ở thanh bước của admin) và **mực** (`text-warning`, `text-success` làm
+chữ, icon, mộc). Vai mực trượt chuẩn, đo bằng cùng cách của ADR này (OKLab sang sRGB, kẹp, độ chói
+WCAG) trên nguồn `style-dictionary/tokens.mjs`:
+
+| Token | Theme | /nền | /card | /muted |
+| --- | --- | --- | --- | --- |
+| `warning` | sáng | 1.90 ❌ | 2.01 ❌ | 1.58 ❌ |
+| `warning` | tối | 8.33 | 7.39 | 5.88 |
+| `success` | sáng | 3.19 ❌ | 3.37 ❌ | 2.65 ❌ |
+| `success` | tối | 5.84 | 5.18 | 4.13 ❌ |
+
+Hình dạng ngược với `primary`: `warning` hỏng ở theme **sáng** (hổ phách quá nhạt trên nền gần
+trắng), `success` hỏng ở sáng và ở `muted` tối. Chỗ trượt đã thấy (open-items G32, G20): mộc
+`VisaStamp` tông warning ("AWAITING PAYMENT"), huy hiệu warning của accordion My bookings, chữ
+"limited" của rail đặt chỗ và khối ảnh, bộ đếm 90% của form review, mộc CONFIRMED (`text-success`
+85% chỉ 2.77 trên card sáng), icon cảnh báo ở thanh bên khu sửa tour của admin (~2:1). Icon hạn huỷ
+đã qua ở trang chi tiết đơn đang chữa tạm bằng `text-warning-foreground dark:text-warning`, vì không
+token nào đạt ở cả hai theme.
+
+Sửa thẳng `warning` thì giết vai bề mặt: dải nhắc vàng cõng chữ mực tối (`warning-foreground` trên
+`warning` sáng 7.43), hạ `warning` sáng xuống L 0.5 thì cặp đó còn 2.48. Với `success` thì hai vai
+không loại trừ nhau (hạ L sáng còn giúp nhãn trắng trên nền xanh, 3.26 lên 6.18), nhưng sửa thẳng
+token sẽ đổi mọi bề mặt và mọi lớp tô pha `success` ở web, admin và mobile (`bg-success/10`, viền
+40–55%, thanh bước của admin, hộp "Free cancellation" của app), là một vòng đổi giao diện chưa ai
+duyệt sát freeze. Tách token chỉ đổi phần mực.
+
+### Quyết định
+
+Cùng lời giải với mục 2 và 2b: **tách token vai mực**, bề mặt giữ nguyên.
+
+| Token mới | Theme | Giá trị | /nền | /card | /muted | 85% /nền | 85% /card |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `warning-emphasis` | sáng | `oklch(0.47 0.095 75)` ≈ #79520A | 6.50 | 6.87 | 5.40 | 4.63 | 4.83 |
+| `warning-emphasis` | tối | `oklch(0.82 0.14 80)` (= `warning`) | 8.33 | 7.39 | 5.88 | 6.43 | 5.78 |
+| `success-emphasis` | sáng | `oklch(0.46 0.125 145)` ≈ #1D6926 | 6.32 | 6.68 | 5.25 | 4.57 | 4.76 |
+| `success-emphasis` | tối | `oklch(0.75 0.15 145)` ≈ #6BC670 | 7.00 | 6.21 | 4.94 | 5.48 | 4.94 |
+
+- Hai cột 85% là mộc: `VisaStamp` mang `opacity-85` cả khối, mộc CONFIRMED của hộ chiếu là
+  `text-success/85`. Chữ mộc 13px đậm chưa tới cỡ "chữ lớn" của WCAG nên phải giữ 4.5 cả khi mờ, và
+  chính ràng buộc này chọn L sáng: ở L 0.5 mộc warning mờ chỉ còn 4.36 trên card.
+- `warning-emphasis` tối giữ Y HỆT `warning` vì vai mực ở tối đã đạt; tách token không đổi pixel nào
+  ở tối. Sáng L 0.47, hue 80 → 75 vì ở L thấp hue 80 ngả màu ô liu; chroma 0.095 nằm trong gam
+  sRGB (0.1 ở L 0.47 đã ra ngoài gam).
+- `success-emphasis` khác ở cả hai theme: sáng L 0.46, tối L 0.75 (sàn 0.725 cho 4.5 trên `muted`).
+- Mộc không đứng trên `muted`, nên cột `muted` chỉ tính cho mực không mờ (4.02–4.72 ở 85% trên
+  `muted` là con số không dùng tới).
+
+### Phạm vi
+
+- Mọi `text-warning` và `text-success` đứng làm mực trên nền ở `apps/web/src` (chữ, icon, mộc) đổi
+  sang token mới; mộc đổi cả `border-*` sang cùng mực để viền và chữ của mộc vẫn một màu. `bg-*`
+  và `border-*` của huy hiệu giữ token bề mặt.
+- Gỡ chữa tạm `text-warning-foreground dark:text-warning` của icon hạn huỷ.
+- Admin (G20): icon cảnh báo và icon xong ở thanh bên khu sửa tour, chữ "good" của thẻ số liệu, nút
+  duyệt tông success.
+- Mobile không đổi trong đợt này: `MOBILE_COLOR_KEYS` là danh sách chọn lọc; mobile dùng `success`
+  và `warning` ở chỗ nào làm mực thì là việc riêng của app.
+- Bản in (`print-doc`) không dùng `success` từ G40 (mộc confirmed là teal `primary`), nên không đổi.
+- Freeze 15/10/2026 vẫn giữ: AMEND này phải lên `main` trước mốc đó, không thì để sau capstone.
