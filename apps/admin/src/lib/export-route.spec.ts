@@ -71,7 +71,9 @@ describe('guardExportAccess', () => {
     expect(gate.ok).toBe(false);
     if (gate.ok) throw new Error('unreachable');
     expect(gate.response.status).toBe(403);
-    expect(await gate.response.text()).toBe(messages.admin.errors.write.FORBIDDEN);
+    // Staff vẫn là admin: câu "no longer has admin access" của nhánh deny nói sai với họ (plan
+    // P4f, quyết định 5 — cùng lý do `/not-authorized` có biến thể ownerOnly).
+    expect(await gate.response.text()).toBe(messages.admin.errors.exportOwnerOnly);
   });
 
   it('Staff + route xuất không khai khoá quyền (bookings, subscribers) → ok', async () => {

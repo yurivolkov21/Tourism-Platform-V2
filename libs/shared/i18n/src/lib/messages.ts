@@ -4185,6 +4185,11 @@ export const messages = {
       exportFailed:
         'The export could not be built — the back office could not reach the API. Nothing was downloaded; go back and try again.',
       /**
+       * BODY 403 khi Staff mở thẳng link xuất của một thủ tục chỉ Owner (ADR-0052). Staff vẫn
+       * là admin, nên câu "no longer has admin access" của nhánh deny nói sai với họ.
+       */
+      exportOwnerOnly: 'Only the site owner can download this export. Nothing was downloaded.',
+      /**
        * BODY của response 409 khi `sel` không khớp hàng nào — trang đã đổi
        * dưới chân admin (hàng bị huỷ, bộ lọc khác, dữ liệu mới chen vào). Trả
        * một file chỉ có dòng tiêu đề là NÓI DỐI: người tải tưởng tập rỗng là

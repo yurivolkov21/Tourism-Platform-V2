@@ -46,11 +46,12 @@ export async function guardExportAccess(
       response: new Response(messages.admin.errors.write.FORBIDDEN, { status: 403 }),
     };
   }
-  // Route xuất của thủ tục chỉ Owner (ADR-0052): Staff qua cổng app nhưng không qua đây.
+  // Route xuất của thủ tục chỉ Owner (ADR-0052): Staff qua cổng app nhưng không qua đây. Câu
+  // riêng vì Staff vẫn là admin, chỉ thủ tục này thuộc Owner (plan P4f, quyết định 5).
   if (access && !canAccess(session.role, access)) {
     return {
       ok: false,
-      response: new Response(messages.admin.errors.write.FORBIDDEN, { status: 403 }),
+      response: new Response(messages.admin.errors.exportOwnerOnly, { status: 403 }),
     };
   }
   return { ok: true, session };
