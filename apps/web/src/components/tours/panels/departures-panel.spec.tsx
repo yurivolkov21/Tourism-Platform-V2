@@ -4,7 +4,7 @@ import type { ReactNode } from 'react';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 import { DepartureSelectionProvider } from '@/components/tours/departure-selection';
 import type { DepartureVM, TourDetailVM } from '@/lib/api/tours';
-import { DeparturesPanel, seatsColumnWidth } from './departures-panel';
+import { DeparturesPanel, SEAT_SEGMENTS_MAX, seatsColumnWidth } from './departures-panel';
 
 // jsdom không có IntersectionObserver — panel nay bọc `RevealItem` (motion
 // `whileInView`, nhóm motion 1 — 19/08). Stub CỤC BỘ theo quy ước đã ghi ở
@@ -423,6 +423,33 @@ describe('DeparturesPanel — dưới lg mỗi hàng là một thẻ', () => {
     const moreRow = screen.getByRole('button', { name: /See all 7 August dates/i }).closest('tr');
     expect(moreRow).toHaveClass('max-lg:flex');
     expect(moreRow?.firstElementChild).toHaveClass('max-lg:hidden');
+  });
+});
+
+describe('thanh ghế theo sức chứa (G28)', () => {
+  /** Thanh ghế của hàng đợt chứa `dateText` — `aria-hidden` nên hỏi qua data-slot. */
+  function meterIn(dateText: string): HTMLElement {
+    const meter = rowFor(dateText).querySelector<HTMLElement>('[data-slot="seat-meter"]');
+    if (!meter) throw new Error(`hàng "${dateText}" không có thanh ghế`);
+    return meter;
+  }
+
+  it('tour tới 23 chỗ: mỗi ghế một đốt, đúng số đốt bằng sức chứa', () => {
+    render(wrap(DEPARTURES, { ...TOUR, maxGroupSize: SEAT_SEGMENTS_MAX } as TourDetailVM));
+    const meter = meterIn('Thu, 20 Aug');
+    expect(meter).toHaveAttribute('data-variant', 'segments');
+    expect(meter.children).toHaveLength(SEAT_SEGMENTS_MAX);
+  });
+
+  // Đốt có sàn 4px cộng khe 4px nên tour quá 32 chỗ tràn thẻ đợt ở 320px (open-items G28); từ 24
+  // chỗ đốt đã co dưới cỡ đủ ngay ở cột desktop (`seatsColumnWidth` kẹp 400).
+  it('tour từ 24 chỗ: một thanh liền tô theo tỉ lệ ghế còn, không còn đốt nào để tràn', () => {
+    render(wrap(DEPARTURES, { ...TOUR, maxGroupSize: 40 } as TourDetailVM));
+    const meter = meterIn('Thu, 24 Sep');
+    expect(meter).toHaveAttribute('data-variant', 'bar');
+    expect(meter.children).toHaveLength(1);
+    // Đợt 24/9 còn 10 ghế trên 40.
+    expect(meter.firstElementChild).toHaveStyle({ width: '25%' });
   });
 });
 

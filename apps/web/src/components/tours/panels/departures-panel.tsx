@@ -44,9 +44,34 @@ import {
  *    đó ra trang bán hàng thì đợt chưa ai đặt hiện thanh trắng trơn, đọc ra như
  *    tour ế hoặc như widget hỏng. Đảo lại thì đầy = "thoải mái chỗ", vơi + vàng
  *    = "sắp hết", xám hết = "không còn gì cho bạn". Đúng cảm xúc ở cả hai đầu.
+ *
+ * Tour từ `SEAT_SEGMENTS_MAX + 1` chỗ thì thành MỘT thanh liền tô theo tỉ lệ ghế còn (open-items
+ * G28): đốt có sàn 4px cộng khe 4px nên tour quá 32 chỗ tràn thẻ đợt ở 320px, mà đốt bóp về 4px
+ * thì cũng hết đếm được bằng mắt. Con số chính xác vẫn in ngay dưới thanh ("10 of 40 seats left").
  */
 function SeatMeter({ seatsLeft, capacity }: { seatsLeft: number; capacity: number }) {
   const tone = departureStatus(seatsLeft);
+
+  if (capacity > SEAT_SEGMENTS_MAX) {
+    // Kẹp [0,100]: dữ liệu lệch (seatsLeft > capacity) không được vẽ thanh tràn khung — cùng luật
+    // với thanh của rail (`booking-rail.tsx`).
+    const filled = Math.max(0, Math.min(100, (seatsLeft / capacity) * 100));
+    return (
+      <span
+        aria-hidden="true"
+        data-slot="seat-meter"
+        data-variant="bar"
+        className="flex h-4 w-full overflow-hidden rounded-[6px] border border-muted bg-muted"
+      >
+        <span
+          className={cn('block h-full', tone === 'limited' ? 'bg-warning' : 'bg-primary')}
+          style={{ width: `${filled}%` }}
+        />
+      </span>
+    );
+  }
+
+  const fill = tone === 'limited' ? 'border-warning bg-warning' : 'border-primary bg-primary';
   return (
     // `flex` (không `inline-flex`): container ôm đúng bề rộng ô, đốt là flex
     // item nên khi cột hẹp hơn 16×capacity thì chúng CO ĐỀU thay vì thanh tràn
@@ -54,18 +79,14 @@ function SeatMeter({ seatsLeft, capacity }: { seatsLeft: number; capacity: numbe
     // Bình thường cột đã rộng đúng theo `capacity` (xem <colgroup>) nên đốt
     // giữ nguyên 12px — co chỉ là lưới an toàn ở viewport hẹp. `min-w-1` chặn
     // co về 0.
-    <span aria-hidden="true" className="flex gap-1">
+    <span aria-hidden="true" data-slot="seat-meter" data-variant="segments" className="flex gap-1">
       {Array.from({ length: capacity }, (_, i) => (
         <span
           // biome-ignore lint/suspicious/noArrayIndexKey: dãy ghế tĩnh đúng `capacity` đốt, vị trí LÀ danh tính — không reorder, không chèn giữa
           key={i}
           className={cn(
             'block h-4 w-3 min-w-1 rounded-[6px] border',
-            i < seatsLeft
-              ? tone === 'limited'
-                ? 'border-warning bg-warning'
-                : 'border-primary bg-primary'
-              : 'border-muted bg-muted',
+            i < seatsLeft ? fill : 'border-muted bg-muted',
           )}
         />
       ))}
@@ -74,11 +95,16 @@ function SeatMeter({ seatsLeft, capacity }: { seatsLeft: number; capacity: numbe
 }
 
 /**
+ * Sức chứa lớn nhất còn vẽ mỗi ghế một đốt: 23 đốt đủ cỡ (16·23 + 32 = 400) vừa khít trần cột ghế
+ * của `seatsColumnWidth`. Quá mốc này `SeatMeter` vẽ một thanh liền (G28).
+ */
+export const SEAT_SEGMENTS_MAX = 23;
+
+/**
  * Bề rộng cột ghế theo sức chứa: 16·n (đốt 12 + khe 4) + 32 (pr-3 12px + 20px
  * thở trước cột Status — user 19/08: sát quá; cột Month/Date đang dư nên nhường).
- * Kẹp trần 400 (~23 chỗ đủ cỡ đốt): contract chỉ ép `positive()`, admin có thể
- * đặt 40 chỗ, không kẹp thì cột ghế nuốt hết cột ngày — quá trần thì đốt tự co
- * đều trong `SeatMeter`, vẫn giữ "một đốt = một ghế".
+ * Kẹp trần 400 (`SEAT_SEGMENTS_MAX` chỗ đủ cỡ đốt): contract chỉ ép `positive()`, admin có thể
+ * đặt 40 chỗ, không kẹp thì cột ghế nuốt hết cột ngày — quá trần thì `SeatMeter` vẽ thanh liền.
  */
 export function seatsColumnWidth(capacity: number): number {
   return Math.min(capacity * 16 + 32, 400);
