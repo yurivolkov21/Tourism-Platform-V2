@@ -3,7 +3,7 @@
  *
  * Rút về đây ở F15 (bài học 11 của plan P4e-2): hàm này đã có hai bản chép
  * nguyên văn (chuyến khởi hành và danh mục), và màn điểm đến sắp là bản thứ ba.
- * Bản của chuyến khởi hành CHƯA đổi sang dùng file này — code departures của
+ * Bản của chuyến khởi hành đổi sang dùng file này ở G3, vì code departures của
  * F16 nằm ngoài phạm vi F15.
  *
  * Nhận `object` chứ không `Record<string, …>`: kiểu lỗi của từng form khai bằng

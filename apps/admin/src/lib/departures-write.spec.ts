@@ -7,7 +7,6 @@ import {
   createDeadlineHint,
   createdToast,
   departureFormPayload,
-  hasFormErrors,
   isSetStatusStale,
   isUpdateStale,
   SET_STATUS_CONTRACT_CODES,
@@ -17,6 +16,7 @@ import {
   updateErrorCopy,
   validateDepartureForm,
 } from './departures-write';
+import { hasFormErrors } from './form-errors';
 
 /**
  * Logic thuần của ba lệnh ghi vùng chuyến (spec P4e-1 F12).

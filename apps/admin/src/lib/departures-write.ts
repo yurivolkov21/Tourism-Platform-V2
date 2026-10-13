@@ -234,11 +234,6 @@ export function createDeadlineHint(values: DepartureFormValues, today: string): 
   return today > deadline ? t.create.deadlinePassedHint : undefined;
 }
 
-/** Form có ô nào hỏng không — một chỗ hỏi, để không nơi nào tự đếm keys. */
-export function hasFormErrors(errors: DepartureFormErrors): boolean {
-  return Object.keys(errors).length > 0;
-}
-
 /** Bốn ô thô → đúng hình dạng contract. Gọi SAU khi validate đã sạch. */
 export function departureFormPayload(values: DepartureFormValues): {
   startDate: string;

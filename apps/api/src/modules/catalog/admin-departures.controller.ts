@@ -6,13 +6,8 @@ import type { SessionUser } from '../../auth/auth.config.js';
 import { CurrentUser } from '../../auth/current-user.decorator.js';
 import { Roles } from '../../auth/roles.decorator.js';
 import { UserRole } from '../../generated/prisma/enums.js';
-import { declaredError } from '../../lib/contract-error.js';
-import {
-  AdminDeparturesService,
-  DepartureNotFoundError,
-  DepartureRuleError,
-  TourNotFoundError,
-} from './admin-departures.service.js';
+import { toContractError } from '../../lib/contract-error.js';
+import { AdminDeparturesService } from './admin-departures.service.js';
 import { DepartureCancelService } from './departure-cancel.service.js';
 
 /**
@@ -25,6 +20,11 @@ import { DepartureCancelService } from './departure-cancel.service.js';
  * Ba lệnh ghi không nhận danh tính admin qua input và cũng chưa ghi audit
  * row: chuyến không có sổ lịch sử riêng (khác enquiry), còn thứ đổi tiền thì
  * nằm ở đường huỷ của F13. Dấu vết hiện tại là dòng log của service.
+ *
+ * Lỗi service → lỗi contract đi qua `toContractError` dùng chung (nợ G3): lỗi của vùng này
+ * (`admin-departure-errors.ts`) mang sẵn mã, nên không còn nhánh `instanceof` riêng nào ở đây.
+ * `NOT_FOUND` của `list`/`create` nói về tour, của ba lệnh ghi nói về chuyến — mỗi procedure
+ * một câu, khai ngay trong contract.
  */
 @Controller()
 @Roles(UserRole.ADMIN)
@@ -40,7 +40,7 @@ export class AdminDeparturesController {
       try {
         return await this.departures.list(input);
       } catch (error) {
-        throw mapError(error, errors);
+        throw toContractError(error, errors);
       }
     });
   }
@@ -51,7 +51,7 @@ export class AdminDeparturesController {
       try {
         return await this.departures.create(input);
       } catch (error) {
-        throw mapError(error, errors);
+        throw toContractError(error, errors);
       }
     });
   }
@@ -62,7 +62,7 @@ export class AdminDeparturesController {
       try {
         return await this.departures.update(input);
       } catch (error) {
-        throw mapError(error, errors);
+        throw toContractError(error, errors);
       }
     });
   }
@@ -78,7 +78,7 @@ export class AdminDeparturesController {
       try {
         return await this.departureCancel.cancel(input, user.id);
       } catch (error) {
-        throw mapError(error, errors);
+        throw toContractError(error, errors);
       }
     });
   }
@@ -89,40 +89,8 @@ export class AdminDeparturesController {
       try {
         return await this.departures.setStatus(input);
       } catch (error) {
-        throw mapError(error, errors);
+        throw toContractError(error, errors);
       }
     });
   }
-}
-
-/**
- * Lỗi của service → lỗi contract, giữ nguyên câu đã mang con số thật.
- *
- * `errors` khai theo TỪNG procedure nên kiểu của nó hẹp hơn tập mã chung —
- * mỗi handler chỉ gọi hàm này với đúng những mã procedure ấy khai, và một mã
- * lọt sang procedure không khai nó sẽ rơi về `throw error` (500 nhìn thấy
- * được) thay vì biến thành một lỗi im lặng sai loại.
- */
-function mapError(error: unknown, errors: Record<string, (init?: { message: string }) => Error>) {
-  if (error instanceof DepartureNotFoundError) {
-    const notFound = declaredError(errors, 'NOT_FOUND');
-    if (notFound) return notFound();
-  }
-  // `TourNotFoundError` đi cùng đường: `NOT_FOUND` của `list`/`create` nói về
-  // tour, của `update`/`setStatus` nói về chuyến — mỗi procedure một câu, khai
-  // ngay trong contract.
-  //
-  // `instanceof` chứ KHÔNG so `error.name` (F12 vòng hai): repo có NĂM lớp
-  // cùng tên `TourNotFoundError` ở năm module, nên so theo tên là bắt nhầm lỗi
-  // của bất kỳ module nào lọt vào đây. Lớp của vùng này export ngay cạnh, và
-  // nó là lớp DUY NHẤT mà hai service của controller này ném.
-  if (error instanceof TourNotFoundError) {
-    const notFound = declaredError(errors, 'NOT_FOUND');
-    if (notFound) return notFound();
-  }
-  if (error instanceof DepartureRuleError) {
-    const rejected = declaredError(errors, error.code);
-    if (rejected) return rejected({ message: error.message });
-  }
-  return error;
 }

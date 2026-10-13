@@ -3,9 +3,10 @@ import { ContractError, declaredError, toContractError } from './contract-error.
 
 /**
  * `toContractError` là cổng DUY NHẤT từ lỗi service sang lỗi contract của các
- * controller danh mục và điểm đến (nợ G3). Bốn ca dưới đây là bốn cách nó có
- * thể nói sai: đổi nhầm một lỗi không phải của mình, đổi sang mã procedure
- * không khai, lộ câu của service ra ngoài, hoặc nuốt câu mang con số thật.
+ * controller admin: danh mục, điểm đến, chuyến khởi hành (nợ G3), tour, bài viết,
+ * người dùng. Bốn ca dưới đây là bốn cách nó có thể nói sai: đổi nhầm một lỗi
+ * không phải của mình, đổi sang mã procedure không khai, lộ câu của service ra
+ * ngoài, hoặc nuốt câu mang con số thật.
  */
 
 /** Giả `errors` của một procedure: mỗi mã khai một hàm dựng, ghi lại lời gọi. */

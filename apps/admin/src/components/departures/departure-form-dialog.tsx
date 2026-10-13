@@ -22,9 +22,9 @@ import {
   type DepartureFormValues,
   type DepartureWriteResult,
   departureFormPayload,
-  hasFormErrors,
   validateDepartureForm,
 } from '@/lib/departures-write';
+import { hasFormErrors } from '@/lib/form-errors';
 import { useConfirmWrite } from '@/lib/use-confirm-write';
 
 /**

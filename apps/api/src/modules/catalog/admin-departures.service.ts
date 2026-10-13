@@ -23,6 +23,11 @@ import { calendarDate, startOfDayUtc } from '../../lib/calendar-date.js';
 import { toPaged } from '../../lib/paged.js';
 import { WebRevalidationService } from '../web-revalidation/web-revalidation.service.js';
 import {
+  DepartureNotFoundError,
+  DepartureRuleError,
+  TourNotFoundError,
+} from './admin-departure-errors.js';
+import {
   type DepartureCardInput,
   dateChangeBlocker,
   departureRevalidationTags,
@@ -31,48 +36,6 @@ import {
   seatsChangeBlocker,
 } from './departure-rules.js';
 import { costItemsOf } from './tour-cost-items.js';
-
-export class TourNotFoundError extends Error {
-  constructor(slug: string) {
-    super(`Tour ${slug} not found`);
-    this.name = 'TourNotFoundError';
-  }
-}
-
-export class DepartureNotFoundError extends Error {
-  constructor(id: string) {
-    super(`Departure ${id} not found`);
-    this.name = 'DepartureNotFoundError';
-  }
-}
-
-/** Mã phán quyết nghiệp vụ — trùng TỪNG CHỮ với `errors` của contract. */
-export type DepartureRuleCode =
-  | 'INVALID_DATE_RANGE'
-  | 'START_IN_PAST'
-  | 'DEPARTURE_HAS_BOOKINGS'
-  | 'SEATS_BELOW_BOOKED'
-  | 'DEADLINE_PASSED'
-  | 'DEPARTURE_CANCELLED'
-  | 'DEPARTURE_STALE'
-  /** F13: chuyến đã tới ngày khởi hành nên không còn huỷ được. */
-  | 'DEPARTURE_STARTED'
-  /** F12 vòng hai: ghế vượt cỡ nhóm tối đa mà tour công bố. */
-  | 'SEATS_ABOVE_TOUR_MAX';
-
-/**
- * Một lệnh ghi bị luật nghiệp vụ chặn. `code` để controller chọn đúng lỗi
- * contract, `message` là câu đã mang sẵn con số thật (xem `departure-rules.ts`).
- */
-export class DepartureRuleError extends Error {
-  constructor(
-    readonly code: DepartureRuleCode,
-    message: string,
-  ) {
-    super(message);
-    this.name = 'DepartureRuleError';
-  }
-}
 
 /**
  * Booking còn SỐNG trên một chuyến — ba trạng thái mà chỗ ngồi và tiền vẫn

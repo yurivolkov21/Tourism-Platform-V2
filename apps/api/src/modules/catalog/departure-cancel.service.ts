@@ -7,11 +7,8 @@ import { calendarDate } from '../../lib/calendar-date.js';
 import type { DepartureRefundJob } from '../../worker/departure-refund.service.js';
 import { enqueueDepartureRefunds } from '../../worker/departure-refund-queue.js';
 import { WebRevalidationService } from '../web-revalidation/web-revalidation.service.js';
-import {
-  AdminDeparturesService,
-  DepartureNotFoundError,
-  DepartureRuleError,
-} from './admin-departures.service.js';
+import { DepartureNotFoundError, DepartureRuleError } from './admin-departure-errors.js';
+import { AdminDeparturesService } from './admin-departures.service.js';
 import { departureCancelBlocker } from './departure-rules.js';
 
 /**
