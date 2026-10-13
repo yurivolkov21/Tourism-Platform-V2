@@ -4,6 +4,7 @@ import { makeBooking } from '@/test/fixtures/booking';
 import {
   bookingPriceLines,
   CHECKOUT_SESSION_MINUTES,
+  cancelPageNote,
   cancelPageRedirect,
   checkoutMood,
   closedStubSentence,
@@ -92,6 +93,32 @@ describe('receiptNote — câu dưới tiêu đề hoá đơn theo tâm trạng'
     expect(receiptNote(lostRace, 'settled')).toBe(
       '$147.00 has been refunded to your original payment method. It can take 5–10 business days to appear on your statement.',
     );
+  });
+});
+
+describe('cancelPageNote — câu của /checkout/cancel theo trạng thái đơn (G37)', () => {
+  it('đơn còn PENDING → còn mở, trả tiếp từ My bookings (không phải "Trips" của app mobile)', () => {
+    const note = cancelPageNote(makeBooking({ status: 'PENDING', paidAt: null }));
+    expect(note).toBe(messages.booking.cancel.heldNote);
+    expect(note).toMatch(/My bookings/);
+    expect(note).not.toMatch(/Trips/);
+  });
+
+  it('giữ chỗ đã hết hạn → KHÔNG nói "still open", đọc câu đã đóng của hoá đơn', () => {
+    const lapsed = makeBooking({ status: 'CANCELLED', paidAt: null });
+    expect(cancelPageNote(lapsed)).not.toMatch(/still open/);
+    expect(cancelPageNote(lapsed)).toBe(receiptNote(lapsed, 'settled'));
+  });
+
+  it('bị thu rồi hoàn tự động → kể khoản hoàn, không nói "No charge was made"', () => {
+    const lostRace = makeBooking({
+      status: 'CANCELLED',
+      paidAt: null,
+      totalAmount: '147.00',
+      refundedTotal: '147.00',
+    });
+    expect(cancelPageNote(lostRace)).not.toMatch(/No charge was made/);
+    expect(cancelPageNote(lostRace)).toMatch(/\$147\.00 has been refunded/);
   });
 });
 

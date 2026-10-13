@@ -9,7 +9,7 @@ import { ContentHero } from '@/components/content/content-hero';
 import { ReceiptPrint } from '@/components/print/receipt-print';
 import { fetchBookingByCode } from '@/lib/api/bookings';
 import { requireSession } from '@/lib/api/session';
-import { cancelPageRedirect, checkoutMood, pendingExpiry } from '@/lib/checkout';
+import { cancelPageNote, cancelPageRedirect, checkoutMood, pendingExpiry } from '@/lib/checkout';
 import { receiptPrintView } from '@/lib/print/receipt-print';
 
 export const metadata: Metadata = {
@@ -90,7 +90,7 @@ export default async function CheckoutCancelPage({
             booking={booking}
             mood={checkoutMood(booking)}
             title={t.title}
-            body={t.heldNote}
+            body={cancelPageNote(booking)}
           >
             {expiry && !expiry.expired ? (
               <p className="text-sm text-muted-foreground">

@@ -157,6 +157,18 @@ export function receiptNote(booking: Booking, mood: CheckoutMood): string {
   }
 }
 
+/**
+ * Câu dưới tiêu đề "Payment cancelled" của `/checkout/cancel` (G37). Trang từng truyền cứng câu
+ * `heldNote` ("Your booking is still open…") cho MỌI đơn chưa trả, nên khách quay về từ cổng sau
+ * khi giữ chỗ đã hết hạn đọc "still open" cho một đơn đã đóng. Nay chỉ đơn còn PENDING đọc
+ * `heldNote`; đơn đã đóng đọc đúng câu `settled` của hoá đơn (`receiptNote`) — "không còn gì để
+ * trả", hay khoản hoàn khi đơn từng bị thu.
+ */
+export function cancelPageNote(booking: Booking): string {
+  const mood = checkoutMood(booking);
+  return mood === 'confirming' ? messages.booking.cancel.heldNote : receiptNote(booking, mood);
+}
+
 export interface PendingExpiry {
   /** Số phút còn lại, đã kẹp ở 0. */
   minutesLeft: number;

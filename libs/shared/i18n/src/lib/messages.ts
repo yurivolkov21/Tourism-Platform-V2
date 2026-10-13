@@ -543,8 +543,11 @@ export const messages = {
       // held" — NGỤ Ý giữ chỗ, vi phạm thẳng invariant #1 ngay trong câu nói
       // ra để trấn an nó. Đổi hướng: nói booking CÒN MỞ (đúng sự thật — khách
       // trả tiếp được), không nói gì về "held"/"reservation".
+      //
+      // G37 (13/10): CHỈ đơn còn PENDING đọc câu này (`cancelPageNote`); đơn đã đóng đọc câu
+      // `settled` của hoá đơn. "Trips" là tên tab của app mobile, web gọi là "My bookings".
       heldNote:
-        'No charge was made. Your booking is still open — you can finish payment from Trips within the hour.',
+        'No charge was made. Your booking is still open — you can finish payment from My bookings within the hour.',
     },
     // My bookings list (/account/bookings).
     list: {
