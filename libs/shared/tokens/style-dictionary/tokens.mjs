@@ -128,7 +128,14 @@ export default {
     // biến thể destructive (`dark:bg-destructive/20` trên card) chỉ 4.21. Lên
     // L 0.77: nền 6.75 · card 5.99 · muted 4.77 · nút 5.09 · nút hover (30%)
     // 4.62. Chroma 0.148 → 0.13 vì 0.148 ở L 0.77 ra ngoài gam sRGB.
-    'destructive-emphasis': c('oklch(0.516 0.136 27.3)', 'oklch(0.77 0.13 26.7)'),
+    //
+    // AMEND 3 (13/10, G49): phần lớn nút đỏ đứng ở chân hộp thoại (`bg-muted/50`
+    // phủ lên popover), nơi AMEND 2 chưa đo. Lúc hover ở đó: sáng 0.516 chỉ 3.96,
+    // tối 0.77 chỉ 4.27. Sáng xuống L 0.47 (chân hộp thoại 5.59 · hover 4.83 ·
+    // card hover 5.36 · nền hover 5.11), tối lên L 0.80 chroma 0.11 (chân hộp
+    // thoại 5.20 · hover 4.78 · muted 5.34). Câu "LIGHT giữ Y HỆT" ở trên hết
+    // đúng từ đây: hai theme đều tách khỏi `destructive`.
+    'destructive-emphasis': c('oklch(0.47 0.136 27.3)', 'oklch(0.80 0.11 26.7)'),
     // ⚠️ `border` và `input` KHÔNG cùng luật, dù giá trị từng giống hệt nhau
     // (ADR-0019 mục 5). `border` là đường phân cách và mép thẻ — TRANG TRÍ,
     // không thuộc WCAG 1.4.11, nâng nó lên 3:1 sẽ biến toàn site thành lưới kẻ

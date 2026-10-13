@@ -108,7 +108,7 @@ describe('token của tài liệu in (G40)', () => {
 // ADR-0019 AMEND 1 (G32, G20): token vai mực của màu trạng thái đạt 4.5:1 trên ba bề mặt chữ đứng
 // lên, ở cả hai theme — chính điều token bề mặt `warning`/`success` không làm được. AMEND 2 (G46)
 // thêm `destructive-emphasis`: mục 2b chỉ đo nền và card nên bỏ lọt `muted` tối (3.94).
-describe('token vai mực của màu trạng thái (ADR-0019 AMEND 1, AMEND 2)', () => {
+describe('token vai mực của màu trạng thái (ADR-0019 AMEND 1, AMEND 2, AMEND 3)', () => {
   const SURFACES = ['background', 'card', 'muted'] as const;
 
   for (const ink of ['warning-emphasis', 'success-emphasis', 'destructive-emphasis'] as const) {
@@ -133,23 +133,43 @@ describe('token vai mực của màu trạng thái (ADR-0019 AMEND 1, AMEND 2)',
     expect(tokens.color['warning-emphasis'].darkValue).toBe(tokens.color.warning.darkValue);
   });
 
-  // Nút và huy hiệu biến thể destructive của @tourism/ui đặt mực lên lớp tô `bg-destructive/20`
-  // (tối) và `/30` lúc hover. Trộn alpha trong sRGB như trình duyệt vẽ, trên card và nền.
-  it('destructive-emphasis tối đạt 4.5:1 trên lớp tô đỏ 20% và 30% của nút destructive', () => {
-    const ink = tokens.color['destructive-emphasis'].darkValue;
-    const tint = rgb(tokens.color.destructive.darkValue);
-    for (const surface of ['background', 'card'] as const) {
-      const base = rgb(tokens.color[surface].darkValue);
-      for (const alpha of [0.2, 0.3]) {
-        const mixed = {
-          mode: 'rgb' as const,
-          r: tint.r * alpha + base.r * (1 - alpha),
-          g: tint.g * alpha + base.g * (1 - alpha),
-          b: tint.b * alpha + base.b * (1 - alpha),
-        };
-        expect(wcagContrast(ink, mixed), `${surface} + đỏ ${alpha * 100}%`).toBeGreaterThanOrEqual(
-          4.5,
-        );
+  // Nút biến thể destructive của @tourism/ui đặt mực lên lớp tô đỏ: `bg-destructive/10` và `/20` lúc
+  // hover ở sáng, `/20` và `/30` ở tối. Bề mặt dưới nút là nền, card, hoặc chân hộp thoại
+  // (`DialogFooter`, `AlertDialogFooter`: `bg-muted/50` phủ lên popover) — nơi nút xoá tài khoản,
+  // bỏ thay đổi, từ chối review đứng. Trộn alpha trong sRGB như trình duyệt vẽ (AMEND 2, AMEND 3).
+  it('destructive-emphasis đạt 4.5:1 trên nút destructive lúc nghỉ và lúc hover, cả hai theme', () => {
+    const mix = (top: string, alpha: number, base: ReturnType<typeof rgb>) => {
+      const tint = rgb(top);
+      return {
+        mode: 'rgb' as const,
+        r: tint.r * alpha + base.r * (1 - alpha),
+        g: tint.g * alpha + base.g * (1 - alpha),
+        b: tint.b * alpha + base.b * (1 - alpha),
+      };
+    };
+    const themes = [
+      { name: 'sáng', pick: (t: { value: string }) => t.value, alphas: [0.1, 0.2] },
+      { name: 'tối', pick: (t: { darkValue: string }) => t.darkValue, alphas: [0.2, 0.3] },
+    ] as const;
+    for (const theme of themes) {
+      const ink = theme.pick(tokens.color['destructive-emphasis']);
+      const red = theme.pick(tokens.color.destructive);
+      const surfaces = {
+        background: rgb(theme.pick(tokens.color.background)),
+        card: rgb(theme.pick(tokens.color.card)),
+        'chân hộp thoại': mix(
+          theme.pick(tokens.color.muted),
+          0.5,
+          rgb(theme.pick(tokens.color.popover)),
+        ),
+      };
+      for (const [surface, base] of Object.entries(surfaces)) {
+        for (const alpha of theme.alphas) {
+          expect(
+            wcagContrast(ink, mix(red, alpha, base)),
+            `${theme.name}: ${surface} + đỏ ${alpha * 100}%`,
+          ).toBeGreaterThanOrEqual(4.5);
+        }
       }
     }
   });
