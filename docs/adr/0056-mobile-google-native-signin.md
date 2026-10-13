@@ -154,3 +154,32 @@ vào trước 15/10.
 1. Tài khoản Apple Developer: **chưa trả lời**. Mặc định iOS không có Google trong v1, email
    và mật khẩu vẫn chạy. Có tài khoản thì bật theo spec, không phải viết lại code.
 2. Demo buổi bảo vệ: **APK `preview` Android**, có Google (user chốt 09/10).
+
+## AMEND 1 — 13/10/2026: thi công (nhánh `feat/mobile-google-native-signin`)
+
+**Ảnh hồ sơ Google lúc tạo tài khoản (quyết định mới, user chọn 13/10).** Đọc mã khi thi
+công: guard avatar ở `databaseHooks.user.create.before` (vòng vá review W2) chỉ nhận ảnh
+Cloudinary của mình, trong khi Better Auth ghi claim `picture` của Google
+(`lh3.googleusercontent.com`) vào `user.image` khi tạo user lần đầu bằng Google. Guard ném
+`AVATAR_URL_NOT_ALLOWED`, nên **mọi tài khoản mới bằng Google bị từ chối**, cả callback của web
+lẫn nhánh ID token của app. Tài khoản email có sẵn rồi liên kết Google không dính vì Better Auth
+không ghi lại ảnh khi liên kết. Kết luận này từ đọc mã và int test, chưa đối chiếu log
+production.
+
+Chốt: nhánh TẠO biết path. Trên `/sign-in/social` và `/callback/:id`, ảnh đúng host
+`lh3.googleusercontent.com` (https, không userinfo) được giữ, ảnh khác bị bỏ (`null`) thay vì
+từ chối (`auth/google-avatar.ts`). Ngoài hai path đó và ở nhánh SỬA, guard giữ nguyên. Host này
+đã có trong `img-src` của CSP web và admin. Phương án loại: bỏ ảnh Google (luôn `null`) — an
+toàn hơn một chút nhưng mọi tài khoản Google hiện chữ cái đầu cho tới khi tự tải ảnh.
+
+**Build.** `eas.json` có thêm khối `base` (Node 24.21.0, pnpm 11.9.0) cho hai profile kế thừa,
+và `apps/mobile/package.json` có script `eas-build-post-install` build các package workspace sau
+bước cài trên EAS (EAS không chạy turbo, Metro cần `dist`). Client ID web và iOS ghi thẳng trong
+khối `env` của `preview`. `expo-dev-client` làm `expo start` tự nhắm dev build, nên ba script
+dev của app thêm `--go` để Expo Go vẫn là vòng dev mặc định; `dev:client` để nối dev build.
+Runbook: [`mobile-dev-loop.md` §7](../conventions/mobile-dev-loop.md).
+
+**Google Cloud.** Client iOS tạo 13/10 cùng dự án với client web đang chạy (số dự án là phần
+trước dấu `-` của client ID). Client Android chờ SHA-1 từ EAS. Trang OAuth của dự án ở trạng thái
+Testing nên chỉ Test users đăng nhập Google được, kể cả trên web production; user đang điền
+Branding để Publish.

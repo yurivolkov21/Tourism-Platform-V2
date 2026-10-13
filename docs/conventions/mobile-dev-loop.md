@@ -30,12 +30,14 @@ cho `typecheck`/`test` qua `dependsOn: ^build`, nhưng **Metro lúc `expo start`
 thì không** — máy chưa từng build sẽ thấy Metro báo thiếu module chứ không báo
 "hãy build trước".
 
-`.env.local` chỉ có hai biến, cả hai đều công khai:
+`.env.local` có hai biến bắt buộc và hai biến tuỳ chọn, tất cả đều công khai:
 
 | Biến | Là gì |
 | --- | --- |
 | `EXPO_PUBLIC_API_URL` | origin API oRPC, **không** kèm `/api` |
 | `EXPO_PUBLIC_WEB_URL` | gốc web — checkout hosted và trang pháp lý mở bằng trình duyệt |
+| `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID` | tuỳ chọn — client web của Google; thiếu thì nút Google ẩn (§7) |
+| `EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID` | tuỳ chọn — client iOS của Google, chỉ bản iOS cần |
 
 Mọi biến `EXPO_PUBLIC_*` **nằm trong bundle JS và đọc được bằng tay**. Mobile
 là client công khai, cùng hạng browser: không secret nào ở đây, kể cả
@@ -57,6 +59,12 @@ tài khoản EAS — đó chính là thứ đổi lấy việc **Stripe PaymentS
 được** (Expo Go không nạp native module ngoài danh sách dựng sẵn); thanh toán
 mobile mở checkout web, đúng cách Nexora làm
 ([ADR-0001 AMEND 1](../adr/0001-tech-stack.md)).
+
+Ba script `dev`, `dev:lan`, `dev:tunnel` có cờ `--go` từ 13/10: app nay có
+`expo-dev-client` (ADR-0056), và thiếu cờ thì `expo start` thấy gói đó trong
+`package.json` là tự chuyển QR sang dev build — Expo Go quét vào không mở được
+app. Muốn nối dev build thì chạy `dev:client` (hoặc bấm `s` trong terminal của
+Metro để đổi qua lại).
 
 ### Khi nào cần tunnel
 
@@ -135,8 +143,9 @@ mỗi lần loại một gói khỏi tầm mắt của nó là bớt đi một l
   được pnpm isolated. 90 dòng `metro.config.js` của Nexora vá Nx + Windows —
   v2 không có cả hai (ADR-0040 §6). Đã đo: `expo export` bundle được cả iOS
   lẫn Android mà không cần file nào.
-- **Không có `eas.json`, không có Maestro, không có icon tab.** Expo Go không
-  cần EAS; E2E và icon chờ có màn hình thật (P5b).
+- **Không có Maestro, không có icon tab.** E2E và icon chờ có màn hình thật
+  (P5b). `eas.json` thì có từ 13/10, chỉ để build bản có đăng nhập Google (§7);
+  vòng dev hằng ngày vẫn là Expo Go.
 - **Jest chứ không Vitest, và CHỈ ở hai package này.** Ngoại lệ đã được
   ADR-0001 + CLAUDE.md cấp từ P0; ranh giới ở ADR-0040 §4 là thứ giữ cho nó
   không lan. Không có config Jest nào ở root.
@@ -182,3 +191,49 @@ mỗi lần loại một gói khỏi tầm mắt của nó là bớt đi một l
   PHẢI khai `edges` (dùng `SCREEN_EDGES_UNDER_HEADER` / `SCREEN_EDGES_UNDER_TABS`
   của `@tourism/mobile-ui`) — khai sai là dải trắng chết hoặc chữ chui xuống
   thanh cử chỉ, và spec component không bắt được vì test dựng ngoài navigator.
+
+## 7. Đăng nhập Google — dev build và APK `preview` (ADR-0056)
+
+Nút Google dùng SDK gốc `@react-native-google-signin/google-signin`, một native
+module mà **Expo Go không nạp được**. Vì vậy trong Expo Go nút Google ẩn hẳn
+(`canUseGoogleSignIn()` thấy `executionEnvironment` là `storeClient`), email và
+mật khẩu vẫn chạy. Thử Google phải cài một trong hai bản build của EAS:
+
+| Profile | Là gì | Env đọc từ đâu |
+| --- | --- | --- |
+| `preview` | APK cài thẳng, trỏ API production — bản thử máy thật và demo | khối `env` trong `eas.json` |
+| `development` | dev client, nạp JS từ Metro trên máy dev | `.env.local` (điền hai biến Google) |
+
+EAS build trên cloud nên chạy được từ máy Windows, không cần Android Studio.
+Lệnh chạy từ `apps/mobile` (EAS đòi chạy ở gốc app, không phải gốc monorepo):
+
+```bash
+npx eas-cli login                                   # một lần cho máy
+npx eas-cli init                                    # một lần cho dự án: ghi extra.eas.projectId vào app.json, commit thay đổi đó
+npx eas-cli build --platform android --profile preview
+npx eas-cli credentials --platform android          # xem SHA-1 của khoá ký
+```
+
+Ba điều phải khớp, không thì SDK báo `DEVELOPER_ERROR` khi bấm Google:
+
+1. **Client OAuth Android** ở Google Cloud, CÙNG dự án với client web (số dự án
+   là phần trước dấu `-` của client ID): package `agency.nexoratravel.app`, SHA-1
+   lấy từ `eas-cli credentials`. Build local bằng khoá debug thì thêm một client
+   Android nữa với SHA-1 của khoá đó.
+2. **Client web** trong `eas.json` và `.env.local` trùng `GOOGLE_CLIENT_ID` của
+   API: SDK xin ID token với audience này và API kiểm đúng audience đó.
+3. **`iosUrlScheme`** của plugin trong `app.json` là dạng đảo của client iOS.
+   Plugin ném lỗi nếu thiếu khoá này, kể cả khi chỉ build Android.
+   `src/app-config.spec.ts` canh điều 3 và việc hai client cùng dự án.
+
+Trang cấu hình OAuth của dự án Google còn ở trạng thái **Testing** thì chỉ các
+Gmail có tên trong Test users đăng nhập được, cả web lẫn app. Publish (sau khi
+điền trang Branding) thì ai cũng đăng nhập được; với ba quyền cơ bản và không
+tải logo, Google không bắt duyệt.
+
+Build trên EAS không chạy turbo: script `eas-build-post-install` trong
+`package.json` của app build các package của workspace (cùng dòng `^...` ở §1)
+sau bước cài, vì Metro cần `dist` của chúng. Khối `base` của `eas.json` ghim
+Node 24 và pnpm 11.9.0 cho khớp `packageManager` của repo. Gói miễn phí của EAS
+có hạn mức và hàng đợi, nên gom thay đổi native vào ít lượt build: đổi JS thuần
+thì bản `development` chỉ cần Metro, không phải build lại.

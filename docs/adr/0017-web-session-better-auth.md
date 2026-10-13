@@ -319,6 +319,11 @@ rộng hơn login CSRF: sau callback, plugin gắn cookie phiên của nạn nh�
 thế ở [ADR-0056](0056-mobile-google-native-signin.md) (Accepted 09/10): app
 đăng nhập Google bằng SDK gốc và ID token, proxy đóng ở mọi môi trường.
 
+**Ghi chú 13/10/2026 — §11 đã được thay.** Nhánh thi công ADR-0056 trả 400 cho mọi
+`GET /expo-authorization-proxy` và cho `POST /sign-in/social` hay `/link-social` không kèm
+`idToken` mà có callback `nexora:` (`auth/mobile-auth-guard.ts`); `auth/expo-proxy-guard.ts`
+cùng spec đã gỡ.
+
 ## Hệ quả
 
 - `apps/web` thêm dep `better-auth` (client-only import) — bám version API

@@ -29,7 +29,7 @@ Viết `createBetterAuthActions()` cùng hình dạng, đổi giá trị truyề
 | Method của `AuthActions` | Lệnh Better Auth tương ứng |
 | --- | --- |
 | `signInWithEmail({ email, password })` | `authClient.signIn.email({ email, password })`; nếu `error.code === 'EMAIL_NOT_VERIFIED'` thì gọi `authClient.emailOtp.sendVerificationOtp({ email, type: 'email-verification' })` rồi trả `{ ok: false, error: 'emailNotVerified' }` |
-| `signInWithGoogle()` | `authClient.signIn.social({ provider: 'google', callbackURL })` |
+| `signInWithGoogle()` | Từ 13/10 ([ADR-0056](../adr/0056-mobile-google-native-signin.md)): SDK Google gốc lấy ID token (`requestGoogleIdToken` ở `google-native.ts`), rồi `authClient.signIn.social({ provider: 'google', idToken: { token } })`. Luồng `callbackURL` qua trình duyệt đã bỏ |
 | `signUpWithEmail({ name, email, password })` | `authClient.signUp.email({ name, email, password })` |
 | `verifyEmail({ email, otp })` | `authClient.emailOtp.verifyEmail({ email, otp })` |
 | `resendVerificationCode({ email })` | `authClient.emailOtp.sendVerificationOtp({ email, type: 'email-verification' })` |
