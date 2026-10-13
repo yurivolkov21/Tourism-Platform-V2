@@ -8,6 +8,93 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-10-13 — Merge việc tồn đọng của web, lô 1 và lô 2: 15 mục open-items (`5fd101b`..`d154a26`)
+
+User giao 13/10 04:46 UTC: làm các mục còn mở của web từ dễ tới khó, đóng được càng nhiều càng tốt.
+Bản phân tích đầu vào đặt mã tạm `W-01` tới `W-11` cho mục chưa có dòng trong open-items; các mã ấy
+không phải mã chính thức. Một nhánh `fix/web-open-items`, mỗi mục một commit,
+[PR #7](https://github.com/yurivolkov21/Tourism-Platform-V2/pull/7). Thi công trên session cloud.
+Lô 1 được rebase lên `7429bdc` sau khi P4f merge; không xung đột. Không migration, không env, không
+dependency mới. Thư viện dùng chung bị sửa: `@tourism/i18n` (G38, G37, W-05, W-01, W-09) và
+`@tourism/tokens` (G32). Admin bị sửa ba file cho G20.
+
+**Lô 1 (chín mục).**
+
+- G38 `5fd101b`: gỡ năm khoá i18n mồ côi của `booking.success`; JSDoc `TICKET_BARCODE_BAR_COUNT`
+  thôi tả cuống vé đã xoá.
+- G35 `588e339`: ô thả ảnh của form review hết dùng `h3`; vé dùng `tripLengthDays` của contract;
+  `sizes` ảnh bìa voucher đi cùng lề trang `/checkout/success` (`voucher-layout.ts`, có test đối
+  chiếu).
+- W-02 `a0c3d07`: ba nút Reserve gửi `?departure=<id>`, trang đặt chỗ chọn sẵn đợt đó nếu còn mở;
+  `proxy.ts` giữ query trong `?redirect=` nên đợt không mất khi khách phải đăng nhập giữa chừng.
+- W-01 `d9ca015`: `/privacy` nói đúng là mật khẩu lưu dạng hash trong DB của dự án, Google là tuỳ
+  chọn, Supabase là nơi đặt DB (trước đó nói Supabase lo đăng nhập).
+- W-07 `ff6e778`: lượt đọc tour phụ của trang chi tiết đơn và voucher có trần 8 giây; quá trần thì
+  trang vẫn hiện đơn, chỉ thiếu phần lấy từ tour (trước có thể chờ tới khoảng 62 giây).
+- G37 `37f1464`: `/checkout/cancel` thôi nói "still open" với đơn đã đóng (dùng câu "settled" của
+  hoá đơn), và câu `heldNote` gọi đúng "My bookings" thay vì "Trips".
+- W-05 `34aebf3`: tài khoản chỉ có Google được chỉ đường "Forgot password?" rồi tự xoá, thay vì bảo
+  liên hệ support. Int test mới (`account-delete.int.spec.ts`, ca `2d`): tài khoản chỉ OAuth đặt
+  mật khẩu qua reset, đăng nhập lại, `DELETE /api/account` trả 204.
+- G31 `04beaa7`: hộp xoá tài khoản có ô `username` ẩn, chỉ đọc, mang email ngay trước ô mật khẩu, để
+  trình quản lý mật khẩu của Edge có chỗ điền thay vì ô gõ DELETE.
+- G33 `e59cfa6`, `3def7d8`: Lenis buông quán tính (`stop()` rồi `start()`, vì `reset()` là private)
+  mỗi khi đường dẫn đổi, kể cả `router.push` trong mã; bỏ qua lúc có modal mở.
+
+**Lô 2 (sáu mục).**
+
+- G39 `c8ace93`: Passport phân loại đơn theo `bookingPhase` (ADR-0054 AMEND 1) thay vì tông riêng.
+  User chọn 13/10 05:30 UTC: đơn hoàn tiền trọn mà khách vẫn đi thì vẫn đóng tem (`travelled`).
+  Chuyến công ty huỷ không được đếm, đơn `lapsed` không có tem ghost.
+- G28 `d82d446`: tour từ 24 chỗ thì thanh ghế vẽ một thanh liền theo tỉ lệ ghế còn; tới 23 chỗ giữ
+  một đốt một ghế như bản duyệt. Dữ liệu hiện tối đa 22 chỗ nên khách chưa thấy khác.
+- G29 `64ee41a`: dưới 640px và từ 1024 tới 1151px, bảy ảnh nhỏ thành một hàng ô vuông dưới ảnh
+  chính (custom variant `gallery-row` ở `globals.css`); 640–1023 và từ 1152 giữ bố cục cột đã duyệt.
+- W-09 `4a8b1de`: chữ cứng của cụm đăng nhập (6 trang auth, 8 component, nhãn logo ở header và
+  footer) vào `messages.authForms` và `messages.a11y.homeLink`. Chữ khách thấy không đổi.
+- G32 và G20: [ADR-0019](adr/0019-color-token-roles.md) AMEND 1 `70aaa0e` đi trước code `d154a26`.
+  Hai token vai mực `warning-emphasis` (sáng `oklch(0.47 0.095 75)`, tức #79520A nâu hổ phách) và
+  `success-emphasis`; bề mặt giữ nguyên. 14 chỗ ở web và 4 ở admin đổi sang token mới, gỡ cặp tạm
+  `text-warning-foreground dark:text-warning`. Thay đổi nhìn thấy: ở theme sáng mộc "AWAITING
+  PAYMENT" và chữ "N seats left" từ vàng sang nâu hổ phách; mộc và chữ thành công đậm hơn. Theme tối
+  gần như không đổi.
+
+**Đo trên bản build (Chromium headless của session cloud).** G29 ở 14 khổ từ 320 tới 1440px: không
+hở cạnh ảnh nhỏ, không tràn, ảnh chính thẳng hàng cột đặt chỗ từ 1024 (dữ liệu local không có ảnh
+tour nên đo với ô giữ chỗ). W-09: 80/81 chuỗi cũ hiện y nguyên qua các trạng thái; chuỗi còn lại
+("Resend the code", chỉ hiện sau 60 giây) có test ở `otp-form.spec.tsx`. G33 bằng con lăn giả lập rồi
+`router.push`: bản sửa đúng 10/10 lượt; bản đối chứng build tạm không có bản sửa sai 5/10 lượt (dừng
+ở 2000 thay vì 0 hoặc 1135). G32: tương phản tính từ token bằng culori và có test 4.5:1 trên nền,
+card, muted ở cả hai theme (`tokens.spec.ts`).
+
+**Review.** Không có lượt review độc lập. User đọc báo cáo lô 1 và lô 2 kèm ảnh G29 và bảng màu G32
+trước và sau rồi bảo merge (13/10 07:16 UTC). Lỗi tự bắt lúc thi công: G33 gọi `Lenis.reset()` là
+hàm private (tsc bắt, đổi sang `stop()` rồi `start()`); ảnh chính G29 lệch 25px ở 1024 vì lưới kéo
+giãn chiều cao (vá bằng `justify-end`); L của `warning-emphasis` hạ từ 0.5 xuống 0.47 vì mộc mờ 85%
+chỉ đạt 4.36:1.
+
+Tests after (`gate:int` trên `d154a26`, 13/10 xong 06:54 UTC, session cloud theo các bước của CI):
+unit 7246 — web 2270, admin 2083, api 1118, mobile 771, contract 701, mobile-ui 136, i18n 48, core
+48, ui 47, tokens 24 — và int 825. So với main `7429bdc`: unit thêm 40 ca (web 32, i18n 5, tokens 3),
+int thêm 1 ca (W-05). CI của PR xanh ở cả hai lượt chạy của `d154a26`. Một lượt `pull_request` của
+`64ee41a` đỏ dù 2270/2270 test web PASS: Vitest đếm một unhandled error `window is not defined` từ
+timer 1000ms của nanostores gọi cleanup của better-auth sau khi jsdom bị tháo
+(`auth-client.spec.tsx`, file nhánh không đụng). Lượt `push` của cùng commit xanh. Đã tái hiện bằng
+cách xếp spec ấy trước một file giả lập lúc `window` đã mất; ghi G48.
+
+**CÒN TREO:**
+
+- [ ] G31: thử trên Edge có lưu mật khẩu cho www, mở hộp xoá tài khoản, ô "Type DELETE to confirm"
+  phải còn trống. Chưa ai thử trên trình duyệt thật.
+- [ ] W-08: một lượt PayPal sandbox qua giao diện `www` trên production (việc tay của user).
+- [ ] W-09 còn phần ngoài cụm đăng nhập: bản quét trước thấy khoảng 283 chuỗi cứng trong 55 file, đa
+  số trang marketing (họ "i18n sweep" của sổ nợ B1 và E5).
+- [ ] W-06 (ảnh Google ở host khác `lh3`) không làm: `google-avatar.spec` cố ý từ chối `lh5`, chưa có
+  bằng chứng Google trả host khác cho ảnh hồ sơ, và đổi thì phải nới CSP ở web lẫn admin.
+- Phát hiện mới ghi vào open-items: G46 (`destructive-emphasis` theme tối trên `muted` 3.94:1), G47
+  (mobile vẫn dùng `success` và `warning` làm mực), G48 (timer rò của `auth-client.spec.tsx`).
+- Dọn sau merge: nhánh `fix/web-open-items` trên origin nếu GitHub không tự xoá.
+
 ## 2026-10-13 — Merge P4f vùng Users: hai bậc Owner và Staff, khoá tài khoản (`8b453c6`..`26746d3`)
 
 Admin có hai bậc: Owner (role `ADMIN`, chỉ từ `ADMIN_EMAILS`) và Staff (role `STAFF`, Owner cấp cho
