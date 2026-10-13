@@ -14,12 +14,29 @@ const base: RegisterScreenProps = {
   onChange: jest.fn(),
   onAgreeChange: jest.fn(),
   onSubmit: jest.fn(),
+  showGoogle: true,
   onGoogle: jest.fn(),
   onSignIn: jest.fn(),
   onBack: jest.fn(),
 };
 
 describe('RegisterScreen', () => {
+  // ADR-0056 §2: Expo Go không có module Google gốc, thiếu env Google cũng vậy —
+  // route truyền `showGoogle={false}` và màn không vẽ nút Google lẫn dải "or".
+  it('showGoogle=false: không có nút Google, không có dải "or"', async () => {
+    await renderWithTheme(<RegisterScreen {...base} showGoogle={false} />);
+
+    expect(screen.queryByText(messages.mobile.auth.signIn.google)).toBeNull();
+    expect(screen.queryByText(messages.mobile.auth.signIn.or)).toBeNull();
+  });
+
+  it('showGoogle=true: có nút Google và dải "or"', async () => {
+    await renderWithTheme(<RegisterScreen {...base} />);
+
+    expect(screen.getByText(messages.mobile.auth.signIn.google)).toBeTruthy();
+    expect(screen.getByText(messages.mobile.auth.signIn.or)).toBeTruthy();
+  });
+
   it('khung 3a — trống: ba ô và nút chính bị khoá tới khi tick Terms', async () => {
     await renderWithTheme(<RegisterScreen {...base} />, 'dark');
 

@@ -48,3 +48,21 @@ jest.mock('expo-secure-store', () => {
     },
   };
 });
+
+// ADR-0056: module Google gốc (`RNGoogleSignin`) chỉ có trong dev build và APK —
+// app nạp nó LƯỜI qua `loadGoogleSdk()` nên Jest bình thường không chạm tới.
+// Mock một lần ở đây để test nào lỡ đi tới nhánh nạp module cũng không vỡ vì
+// thiếu native; gói không export bộ mock jest của nó qua `exports`.
+jest.mock('@react-native-google-signin/google-signin', () => ({
+  GoogleSignin: {
+    configure: jest.fn(),
+    hasPlayServices: jest.fn(async () => true),
+    signIn: jest.fn(async () => ({ type: 'cancelled', data: null })),
+    signOut: jest.fn(async () => null),
+  },
+  statusCodes: {
+    SIGN_IN_CANCELLED: 'SIGN_IN_CANCELLED',
+    IN_PROGRESS: 'IN_PROGRESS',
+    PLAY_SERVICES_NOT_AVAILABLE: 'PLAY_SERVICES_NOT_AVAILABLE',
+  },
+}));

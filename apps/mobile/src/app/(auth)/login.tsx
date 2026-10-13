@@ -2,6 +2,7 @@ import { router } from 'expo-router';
 import { useState } from 'react';
 import { useAuthActions } from '@/features/auth/auth-actions';
 import { submitGoogle } from '@/features/auth/google-flow';
+import { canUseGoogleSignIn } from '@/features/auth/google-native';
 import { leaveAuthTo, useStillMounted } from '@/features/auth/leave-auth';
 import { clearPendingReturn, consumeReturnPath, peekReturnPath } from '@/features/auth/return-to';
 import { submitSignIn } from '@/features/auth/sign-in-flow';
@@ -26,6 +27,9 @@ export default function LoginRoute() {
   const [formMessage, setFormMessage] = useState<SignInScreenProps['formMessage']>(null);
   const [pending, setPending] = useState(false);
   const mounted = useStillMounted();
+  // ADR-0056 §2: Expo Go hay build thiếu env Google thì không vẽ nút Google.
+  // Môi trường chạy không đổi trong một phiên app nên đọc một lần là đủ.
+  const [showGoogle] = useState(canUseGoogleSignIn);
 
   // Gõ lại vào ô nào thì xoá lỗi của ô đó, và xoá luôn khung lỗi cấp form: câu
   // lỗi cũ nói về lần gửi cũ, giữ lại là nói sai.
@@ -91,6 +95,7 @@ export default function LoginRoute() {
       pending={pending}
       onChange={change}
       onSubmit={() => void submit()}
+      showGoogle={showGoogle}
       onGoogle={() => void google()}
       onForgot={() => router.push('/forgot-password')}
       onCreateAccount={() => router.navigate('/register')}

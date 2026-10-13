@@ -1,4 +1,5 @@
 import type { QueryClient } from '@tanstack/react-query';
+import { loadGoogleSdk, signOutOfGoogle } from './google-native';
 
 /**
  * Đăng xuất + xoá TOÀN BỘ cache TanStack Query (F8, review 06/10). Dùng chung
@@ -12,6 +13,9 @@ import type { QueryClient } from '@tanstack/react-query';
  *
  * Không ném: mất mạng lúc đăng xuất thì phiên trong expo-secure-store vẫn bị
  * `signOut()` xoá cục bộ trước khi gọi server — khách coi như đã đăng xuất.
+ *
+ * ADR-0056 §2 bước 7: đăng xuất thêm khỏi Google trên máy (khi có module gốc)
+ * để lần đăng nhập sau hiện lại bảng chọn tài khoản, không tự vào tài khoản cũ.
  */
 export async function signOutAndClearCache(
   signOut: () => Promise<unknown>,
@@ -24,5 +28,10 @@ export async function signOutAndClearCache(
     // Xem JSDoc — phần cục bộ đã xoá, không có gì để báo lại.
   } finally {
     queryClient.clear();
+  }
+  try {
+    await signOutOfGoogle(loadGoogleSdk());
+  } catch {
+    // Dọn phía Google chỉ là phụ — phiên của app đã xoá ở trên.
   }
 }

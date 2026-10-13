@@ -31,6 +31,12 @@ export interface RegisterScreenProps {
   onChange: (field: RegisterField, value: string) => void;
   onAgreeChange: (next: boolean) => void;
   onSubmit: () => void;
+  /**
+   * Có vẽ nút Google và dải "or" không (ADR-0056 §2). Route truyền kết quả
+   * `canUseGoogleSignIn()`: Expo Go hay build thiếu env Google thì `false`, để
+   * không có nút nào bấm vào là chết.
+   */
+  showGoogle: boolean;
   onGoogle: () => void;
   onSignIn: () => void;
   onBack: () => void;
@@ -52,6 +58,7 @@ export function RegisterScreen({
   onChange,
   onAgreeChange,
   onSubmit,
+  showGoogle,
   onGoogle,
   onSignIn,
   onBack,
@@ -168,15 +175,19 @@ export function RegisterScreen({
           onPress={onSubmit}
         />
 
-        <OrDivider label={messages.mobile.auth.signIn.or} />
+        {showGoogle ? (
+          <>
+            <OrDivider label={messages.mobile.auth.signIn.or} />
 
-        <Button
-          shape="pill"
-          variant="ghost"
-          label={messages.mobile.auth.signIn.google}
-          leading={<AntDesign name="google" size={16} color={theme.colors.foreground} />}
-          onPress={onGoogle}
-        />
+            <Button
+              shape="pill"
+              variant="ghost"
+              label={messages.mobile.auth.signIn.google}
+              leading={<AntDesign name="google" size={16} color={theme.colors.foreground} />}
+              onPress={onGoogle}
+            />
+          </>
+        ) : null}
 
         <View
           style={{

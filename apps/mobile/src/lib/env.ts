@@ -15,12 +15,25 @@
 
 import Constants from 'expo-constants';
 
-/** Hai origin mà app mobile cần biết. */
+/**
+ * Client OAuth Google cho đăng nhập bằng SDK gốc (ADR-0056 §4). Client ID không
+ * phải bí mật — Google gắn chúng với package/bundle đã đăng ký.
+ */
+export interface GoogleEnv {
+  /** Client web — SDK xin ID token với audience này, trùng `GOOGLE_CLIENT_ID` của API. */
+  webClientId: string;
+  /** Client iOS — chỉ cần ở bản iOS; Android không dùng. */
+  iosClientId: string | undefined;
+}
+
+/** Hai origin mà app mobile cần biết, cộng cấu hình Google tuỳ chọn. */
 export interface MobileEnv {
   /** Origin API oRPC — origin TRẦN, không kèm `/api`. */
   apiUrl: string;
   /** Gốc web công khai — checkout hosted và trang pháp lý mở bằng trình duyệt. */
   webUrl: string;
+  /** `null` khi thiếu client web: nút Google ẩn, email và mật khẩu vẫn chạy. */
+  google: GoogleEnv | null;
 }
 
 /** Tên biến env, giữ ở một chỗ để thông báo lỗi và chỗ đọc không trôi lệch. */
@@ -80,7 +93,20 @@ export function readEnv(source: Record<string, string | undefined>): MobileEnv {
   return {
     apiUrl: readOrigin(source.EXPO_PUBLIC_API_URL ?? '', 'EXPO_PUBLIC_API_URL'),
     webUrl: readOrigin(source.EXPO_PUBLIC_WEB_URL ?? '', 'EXPO_PUBLIC_WEB_URL'),
+    google: readGoogleEnv(source),
   };
+}
+
+/**
+ * Hai client ID Google — TUỲ CHỌN, khác hai origin ở trên: thiếu thì không ném
+ * mà trả `null` để nút Google ẩn (bản dev trong Expo Go, build chưa cấu hình).
+ * Chuỗi rỗng hay toàn khoảng trắng coi là thiếu, cùng lý do với `readEnv`.
+ */
+export function readGoogleEnv(source: Record<string, string | undefined>): GoogleEnv | null {
+  const webClientId = source.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID?.trim();
+  if (!webClientId) return null;
+  const iosClientId = source.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID?.trim();
+  return { webClientId, iosClientId: iosClientId ? iosClientId : undefined };
 }
 
 /**
@@ -139,11 +165,14 @@ export function env(): MobileEnv {
     const read = readEnv({
       EXPO_PUBLIC_API_URL: process.env.EXPO_PUBLIC_API_URL,
       EXPO_PUBLIC_WEB_URL: process.env.EXPO_PUBLIC_WEB_URL,
+      EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
+      EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
     });
     const hostUri = Constants.expoConfig?.hostUri;
     cached = {
       apiUrl: resolveDevOrigin(read.apiUrl, hostUri),
       webUrl: resolveDevOrigin(read.webUrl, hostUri),
+      google: read.google,
     };
   }
   return cached;

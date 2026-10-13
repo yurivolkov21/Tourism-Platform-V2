@@ -4,3 +4,10 @@
 
 expo-env.d.ts
 # @end expo-cli
+
+# Continuous Native Generation: `android/` và `ios/` do `expo prebuild` (hoặc
+# `expo run:*`) sinh ra từ `app.json`. Commit chúng là EAS coi dự án như bare
+# workflow và bỏ qua prebuild — plugin trong `app.json` (google-signin…) sẽ
+# không còn tác dụng.
+/android
+/ios

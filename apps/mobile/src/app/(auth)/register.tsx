@@ -2,6 +2,7 @@ import { router } from 'expo-router';
 import { useState } from 'react';
 import { useAuthActions } from '@/features/auth/auth-actions';
 import { submitGoogle } from '@/features/auth/google-flow';
+import { canUseGoogleSignIn } from '@/features/auth/google-native';
 import { leaveAuthTo, useStillMounted } from '@/features/auth/leave-auth';
 import { submitRegister } from '@/features/auth/register-flow';
 import {
@@ -24,6 +25,9 @@ export default function RegisterRoute() {
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [pending, setPending] = useState(false);
   const mounted = useStillMounted();
+  // ADR-0056 §2: Expo Go hay build thiếu env Google thì không vẽ nút Google.
+  // Môi trường chạy không đổi trong một phiên app nên đọc một lần là đủ.
+  const [showGoogle] = useState(canUseGoogleSignIn);
 
   const change = (field: RegisterField, value: string) => {
     setValues((prev) => ({ ...prev, [field]: value }));
@@ -79,6 +83,7 @@ export default function RegisterRoute() {
       onChange={change}
       onAgreeChange={setAgreedToTerms}
       onSubmit={() => void submit()}
+      showGoogle={showGoogle}
       onGoogle={() => void google()}
       onSignIn={() => router.navigate('/login')}
       onBack={() => router.back()}

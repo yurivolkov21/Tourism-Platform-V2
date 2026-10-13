@@ -1,6 +1,8 @@
 import { mapAuthError } from '@tourism/core';
 import { getAuthClient } from '@/lib/auth-client';
+import { env } from '@/lib/env';
 import type { AuthActions, AuthResult, GoogleResult } from './auth-actions';
+import { loadGoogleSdk, requestGoogleIdToken } from './google-native';
 
 /**
  * Bản THẬT của `AuthActions` (bàn giao P5b-1 → hạ tầng, ADR-0017 §9) — thay
@@ -31,23 +33,30 @@ export function createBetterAuthActions(): AuthActions {
       }
     },
 
+    // ADR-0056 §1: lấy ID token bằng SDK Google gốc rồi đổi lấy phiên. Không
+    // trình duyệt, không redirect, không deep link chở cookie — client Expo thấy
+    // `idToken` thì lưu `set-cookie` của response vào SecureStore như đăng nhập
+    // email. Luồng redirect cũ (và bước hỏi lại phiên của F12) đã bỏ.
     async signInWithGoogle(): Promise<GoogleResult> {
       try {
-        const client = getAuthClient();
-        const { error } = await client.signIn.social({
-          provider: 'google',
-          callbackURL: '/',
-        });
-        if (error) return { ok: false, error: mapAuthError(error) };
+        const google = env().google;
+        const sdk = loadGoogleSdk();
+        // Route đã ẩn nút trong trường hợp này; chốt lại ở đây cho chắc.
+        if (sdk === null || google === null) return { ok: false, error: 'notAvailable' };
 
-        // F12: khách đóng cửa sổ Google thì `expoClient` chỉ `return` lặng lẽ,
-        // `signIn.social` vẫn trả `error: null` — nên "không lỗi" chưa có nghĩa
-        // là đã đăng nhập. Hỏi lại phiên thật: có user mới là thành công, không
-        // thì là khách tự huỷ. `disableCookieCache` để không đọc nhầm phiên cũ.
-        const { data: session } = await client.getSession({
-          query: { disableCookieCache: true },
+        const result = await requestGoogleIdToken(sdk, google);
+        if (result.kind === 'cancelled') return { ok: false, error: 'cancelled' };
+        if (result.kind === 'error') return { ok: false, error: 'generic' };
+
+        const { error } = await getAuthClient().signIn.social({
+          provider: 'google',
+          idToken: { token: result.idToken },
         });
-        return session?.user ? { ok: true } : { ok: false, error: 'cancelled' };
+        if (!error) return { ok: true };
+        // 401 ở nhánh này là token bị từ chối (hết hạn, sai audience) — không
+        // phải "sai email hay mật khẩu" như `mapAuthError` hiểu cho đăng nhập email.
+        const mapped = mapAuthError(error);
+        return { ok: false, error: mapped === 'invalidCredentials' ? 'generic' : mapped };
       } catch {
         return { ok: false, error: 'generic' };
       }

@@ -1,4 +1,4 @@
-import { readEnv, resolveDevOrigin } from './env';
+import { readEnv, readGoogleEnv, resolveDevOrigin } from './env';
 
 describe('readEnv', () => {
   it('trả nguyên giá trị khi có đủ hai biến', () => {
@@ -10,6 +10,7 @@ describe('readEnv', () => {
     expect(env).toEqual({
       apiUrl: 'https://api.example.test',
       webUrl: 'https://www.example.test',
+      google: null,
     });
   });
 
@@ -73,7 +74,45 @@ describe('readEnv', () => {
     expect(env).toEqual({
       apiUrl: 'https://api.example.test',
       webUrl: 'https://www.example.test',
+      google: null,
     });
+  });
+});
+
+// ADR-0056 §4: hai client ID Google là tuỳ chọn — thiếu client web thì nút
+// Google ẩn chứ app không được chết lúc mở.
+describe('readGoogleEnv', () => {
+  it('thiếu client web thì trả null — kể cả khi có client iOS', () => {
+    expect(readGoogleEnv({})).toBeNull();
+    expect(readGoogleEnv({ EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID: '   ' })).toBeNull();
+    expect(
+      readGoogleEnv({ EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID: 'ios.apps.googleusercontent.com' }),
+    ).toBeNull();
+  });
+
+  it('có client web thì trả cặp, client iOS thiếu thành undefined', () => {
+    expect(
+      readGoogleEnv({ EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID: ' web.apps.googleusercontent.com ' }),
+    ).toEqual({ webClientId: 'web.apps.googleusercontent.com', iosClientId: undefined });
+    expect(
+      readGoogleEnv({
+        EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID: 'web.apps.googleusercontent.com',
+        EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID: 'ios.apps.googleusercontent.com',
+      }),
+    ).toEqual({
+      webClientId: 'web.apps.googleusercontent.com',
+      iosClientId: 'ios.apps.googleusercontent.com',
+    });
+  });
+
+  it('readEnv mang kèm cấu hình Google khi có', () => {
+    expect(
+      readEnv({
+        EXPO_PUBLIC_API_URL: 'https://api.example.test',
+        EXPO_PUBLIC_WEB_URL: 'https://www.example.test',
+        EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID: 'web.apps.googleusercontent.com',
+      }).google,
+    ).toEqual({ webClientId: 'web.apps.googleusercontent.com', iosClientId: undefined });
   });
 });
 

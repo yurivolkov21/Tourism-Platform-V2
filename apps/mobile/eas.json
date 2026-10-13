@@ -1,0 +1,32 @@
+{
+  "cli": {
+    "appVersionSource": "local"
+  },
+  "build": {
+    "base": {
+      "node": "24.21.0",
+      "pnpm": "11.9.0"
+    },
+    "development": {
+      "extends": "base",
+      "developmentClient": true,
+      "distribution": "internal",
+      "android": {
+        "buildType": "apk"
+      }
+    },
+    "preview": {
+      "extends": "base",
+      "distribution": "internal",
+      "android": {
+        "buildType": "apk"
+      },
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://api.nexora-travel.agency",
+        "EXPO_PUBLIC_WEB_URL": "https://www.nexora-travel.agency",
+        "EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID": "1049946948181-0t2hojmkbr05ao1jsfofrq6q4qcprfmi.apps.googleusercontent.com",
+        "EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID": "1049946948181-mqu8lp0nceqpfc4c0cld365732d9uib9.apps.googleusercontent.com"
+      }
+    }
+  }
+}

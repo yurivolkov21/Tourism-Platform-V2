@@ -27,6 +27,12 @@ export interface SignInScreenProps {
   pending: boolean;
   onChange: (field: SignInField, value: string) => void;
   onSubmit: () => void;
+  /**
+   * Có vẽ nút Google và dải "or" không (ADR-0056 §2). Route truyền kết quả
+   * `canUseGoogleSignIn()`: Expo Go hay build thiếu env Google thì `false`, để
+   * không có nút nào bấm vào là chết.
+   */
+  showGoogle: boolean;
   onGoogle: () => void;
   onForgot: () => void;
   onCreateAccount: () => void;
@@ -44,6 +50,7 @@ export function SignInScreen({
   pending,
   onChange,
   onSubmit,
+  showGoogle,
   onGoogle,
   onForgot,
   onCreateAccount,
@@ -135,15 +142,19 @@ export function SignInScreen({
           onPress={onSubmit}
         />
 
-        <OrDivider label={copy.or} />
+        {showGoogle ? (
+          <>
+            <OrDivider label={copy.or} />
 
-        <Button
-          shape="pill"
-          variant="ghost"
-          label={copy.google}
-          leading={<AntDesign name="google" size={16} color={theme.colors.foreground} />}
-          onPress={onGoogle}
-        />
+            <Button
+              shape="pill"
+              variant="ghost"
+              label={copy.google}
+              leading={<AntDesign name="google" size={16} color={theme.colors.foreground} />}
+              onPress={onGoogle}
+            />
+          </>
+        ) : null}
 
         <View
           style={{

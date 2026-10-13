@@ -1,10 +1,26 @@
 import { getAuthClient } from '@/lib/auth-client';
 import { createBetterAuthActions } from './better-auth-actions';
+import { loadGoogleSdk, requestGoogleIdToken } from './google-native';
 
 // `getAuthClient()` giả — chỉ mock các nhánh mà `better-auth-actions.ts` thật
 // sự gọi tới, cùng shape `{ data, error }` của @better-fetch (xem login-form.tsx
 // của web, nguồn tham chiếu duy nhất cho shape này).
 jest.mock('@/lib/auth-client', () => ({ getAuthClient: jest.fn() }));
+
+// ADR-0056: seam SDK Google gốc — test không chạm module native.
+jest.mock('./google-native', () => ({
+  loadGoogleSdk: jest.fn(),
+  requestGoogleIdToken: jest.fn(),
+}));
+jest.mock('@/lib/env', () => ({
+  env: () => ({
+    apiUrl: 'http://localhost:3001',
+    webUrl: 'http://localhost:3000',
+    google: { webClientId: 'web.apps.googleusercontent.com', iosClientId: undefined },
+  }),
+}));
+
+const FAKE_SDK = { GoogleSignin: {}, statusCodes: {} };
 
 const mockClient = {
   getSession: jest.fn(),
@@ -61,34 +77,80 @@ describe('bản thật AuthActions — đăng nhập', () => {
     ).resolves.toEqual({ ok: false, error: 'generic' });
   });
 
-  it('Google: lỗi qua mapAuthError, thành công thì ok:true', async () => {
+  // ADR-0056 §1: app lấy ID token bằng SDK gốc rồi đổi lấy phiên — không mở
+  // trình duyệt, không redirect, không hỏi lại phiên như luồng F12 cũ.
+  it('Google: gửi đúng body idToken, không callbackURL, thành công thì ok:true', async () => {
+    (loadGoogleSdk as jest.Mock).mockReturnValue(FAKE_SDK);
+    (requestGoogleIdToken as jest.Mock).mockResolvedValue({ kind: 'token', idToken: 'jwt-1' });
+    mockClient.signIn.social.mockResolvedValue({ data: { redirect: false }, error: null });
+
+    await expect(actions.signInWithGoogle()).resolves.toEqual({ ok: true });
+    expect(requestGoogleIdToken).toHaveBeenCalledWith(FAKE_SDK, {
+      webClientId: 'web.apps.googleusercontent.com',
+      iosClientId: undefined,
+    });
+    expect(mockClient.signIn.social).toHaveBeenCalledWith({
+      provider: 'google',
+      idToken: { token: 'jwt-1' },
+    });
+    expect(mockClient.getSession).not.toHaveBeenCalled();
+  });
+
+  it('Google: API 401 (token bị từ chối) thành lỗi chung, không phải "sai mật khẩu"', async () => {
+    (loadGoogleSdk as jest.Mock).mockReturnValue(FAKE_SDK);
+    (requestGoogleIdToken as jest.Mock).mockResolvedValue({ kind: 'token', idToken: 'jwt-1' });
+    mockClient.signIn.social.mockResolvedValue({
+      data: null,
+      error: { status: 401, code: 'INVALID_TOKEN' },
+    });
+
+    await expect(actions.signInWithGoogle()).resolves.toEqual({ ok: false, error: 'generic' });
+  });
+
+  it('Google: lỗi khác của API vẫn đi qua mapAuthError', async () => {
+    (loadGoogleSdk as jest.Mock).mockReturnValue(FAKE_SDK);
+    (requestGoogleIdToken as jest.Mock).mockResolvedValue({ kind: 'token', idToken: 'jwt-1' });
     mockClient.signIn.social.mockResolvedValue({ data: null, error: { status: 404 } });
+
     await expect(actions.signInWithGoogle()).resolves.toEqual({
       ok: false,
       error: 'notAvailable',
     });
-
-    mockClient.signIn.social.mockResolvedValue({ data: {}, error: null });
-    mockClient.getSession.mockResolvedValue({ data: { user: { id: 'u1' } }, error: null });
-    await expect(actions.signInWithGoogle()).resolves.toEqual({ ok: true });
   });
 
-  // F12 (review 06/10): huỷ cửa sổ Google thì plugin expoClient chỉ `return`,
-  // `signIn.social` vẫn trả error:null — không hỏi lại session thì app tưởng
-  // đã đăng nhập và đóng màn Sign in.
-  it('Google: huỷ cửa sổ (không có phiên) trả cancelled, không phải ok', async () => {
-    mockClient.signIn.social.mockResolvedValue({ data: { redirect: true }, error: null });
-    mockClient.getSession.mockResolvedValue({ data: null, error: null });
+  it('Google: khách đóng bảng chọn tài khoản thì cancelled, không gọi API', async () => {
+    (loadGoogleSdk as jest.Mock).mockReturnValue(FAKE_SDK);
+    (requestGoogleIdToken as jest.Mock).mockResolvedValue({ kind: 'cancelled' });
 
     await expect(actions.signInWithGoogle()).resolves.toEqual({
       ok: false,
       error: 'cancelled',
     });
+    expect(mockClient.signIn.social).not.toHaveBeenCalled();
   });
 
-  it('Google: hỏi lại phiên hỏng (mạng đứt) thì báo generic', async () => {
-    mockClient.signIn.social.mockResolvedValue({ data: {}, error: null });
-    mockClient.getSession.mockRejectedValue(new Error('network down'));
+  it('Google: lỗi của SDK gốc thành generic, không gọi API', async () => {
+    (loadGoogleSdk as jest.Mock).mockReturnValue(FAKE_SDK);
+    (requestGoogleIdToken as jest.Mock).mockResolvedValue({ kind: 'error', code: 'unknown' });
+
+    await expect(actions.signInWithGoogle()).resolves.toEqual({ ok: false, error: 'generic' });
+    expect(mockClient.signIn.social).not.toHaveBeenCalled();
+  });
+
+  it('Google: không có module native (Expo Go) thì notAvailable', async () => {
+    (loadGoogleSdk as jest.Mock).mockReturnValue(null);
+
+    await expect(actions.signInWithGoogle()).resolves.toEqual({
+      ok: false,
+      error: 'notAvailable',
+    });
+    expect(requestGoogleIdToken).not.toHaveBeenCalled();
+  });
+
+  it('Google: mạng đứt lúc đổi token lấy phiên thì generic, không reject', async () => {
+    (loadGoogleSdk as jest.Mock).mockReturnValue(FAKE_SDK);
+    (requestGoogleIdToken as jest.Mock).mockResolvedValue({ kind: 'token', idToken: 'jwt-1' });
+    mockClient.signIn.social.mockRejectedValue(new Error('network down'));
 
     await expect(actions.signInWithGoogle()).resolves.toEqual({ ok: false, error: 'generic' });
   });

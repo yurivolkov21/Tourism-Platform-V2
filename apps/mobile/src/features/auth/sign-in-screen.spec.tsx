@@ -12,6 +12,7 @@ const base: SignInScreenProps = {
   pending: false,
   onChange: jest.fn(),
   onSubmit: jest.fn(),
+  showGoogle: true,
   onGoogle: jest.fn(),
   onForgot: jest.fn(),
   onCreateAccount: jest.fn(),
@@ -19,6 +20,22 @@ const base: SignInScreenProps = {
 };
 
 describe('SignInScreen', () => {
+  // ADR-0056 §2: Expo Go không có module Google gốc, thiếu env Google cũng vậy —
+  // route truyền `showGoogle={false}` và màn không vẽ nút Google lẫn dải "or".
+  it('showGoogle=false: không có nút Google, không có dải "or"', async () => {
+    await renderWithTheme(<SignInScreen {...base} showGoogle={false} />);
+
+    expect(screen.queryByText(copy.google)).toBeNull();
+    expect(screen.queryByText(messages.mobile.auth.signIn.or)).toBeNull();
+  });
+
+  it('showGoogle=true: có nút Google và dải "or"', async () => {
+    await renderWithTheme(<SignInScreen {...base} />);
+
+    expect(screen.getByText(copy.google)).toBeTruthy();
+    expect(screen.getByText(messages.mobile.auth.signIn.or)).toBeTruthy();
+  });
+
   it('khung 2a — trống: đủ hai ô, nút chính, Google và đường sang đăng ký', async () => {
     await renderWithTheme(<SignInScreen {...base} />, 'dark');
 

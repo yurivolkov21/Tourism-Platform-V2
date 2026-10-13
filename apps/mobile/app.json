@@ -29,6 +29,12 @@
       "expo-secure-store",
       "expo-web-browser",
       [
+        "@react-native-google-signin/google-signin",
+        {
+          "iosUrlScheme": "com.googleusercontent.apps.1049946948181-mqu8lp0nceqpfc4c0cld365732d9uib9"
+        }
+      ],
+      [
         "expo-image-picker",
         {
           "photosPermission": "Nexora Travel needs photo library access to choose a profile photo.",
