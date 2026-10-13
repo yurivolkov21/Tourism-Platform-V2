@@ -1,6 +1,6 @@
 import { messages } from '@tourism/i18n';
 import { describe, expect, it } from 'vitest';
-import { isActiveNav, NAV_GROUPS, navPath, navTooltip } from './nav';
+import { isActiveNav, NAV_GROUPS, navGroupsFor, navPath, navTooltip } from './nav';
 
 /**
  * Sidebar thu gọn thành cột icon (góp ý giao diện 28/09): cột ấy không còn chữ, nên
@@ -45,5 +45,24 @@ describe('navPath', () => {
   it('đường của href nav, bỏ query — Quick Create dẫn tới path trần (review RU4)', () => {
     expect(navPath('/reviews?status=pending')).toBe('/reviews');
     expect(navPath('/tours')).toBe('/tours');
+  });
+});
+
+describe('navGroupsFor (ADR-0052)', () => {
+  const keys = (role: string) =>
+    navGroupsFor(role).flatMap((group) => group.items.map((i) => i.key));
+
+  it('Owner thấy đủ mọi mục, đúng thứ tự', () => {
+    expect(navGroupsFor('ADMIN')).toEqual(NAV_GROUPS);
+  });
+
+  it('Staff không thấy Reports, Payment events, Users — các mục khác còn nguyên', () => {
+    const staff = keys('STAFF');
+    expect(staff).not.toContain('reports');
+    expect(staff).not.toContain('payment-events');
+    expect(staff).not.toContain('users');
+    expect(staff).toEqual(
+      keys('ADMIN').filter((key) => !['reports', 'payment-events', 'users'].includes(key)),
+    );
   });
 });

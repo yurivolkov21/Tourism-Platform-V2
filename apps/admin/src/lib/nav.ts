@@ -1,3 +1,4 @@
+import { type AdminProcedureKey, canAccess } from '@tourism/contract/admin-access';
 import { messages } from '@tourism/i18n';
 import type { LucideIcon } from 'lucide-react';
 import {
@@ -33,6 +34,11 @@ export interface NavItem {
   enabled: boolean;
   /** Icon lucide hiển thị cạnh nhãn (shell dashboard-01, vòng gọt 21/08). */
   icon: LucideIcon;
+  /**
+   * Thủ tục chính của trang (ADR-0052). Role không gọi được nó thì mục bị ẩn HẲN — không
+   * hiện "Soon" (Soon là "sắp có", còn đây là "không dành cho bạn"). Vắng = mọi role vào app.
+   */
+  access?: AdminProcedureKey;
 }
 
 export interface NavGroup {
@@ -66,7 +72,14 @@ export const NAV_GROUPS: NavGroup[] = [
       // Báo cáo tháng (P4b F6) — nhóm Operations, cạnh ba vùng nó tổng hợp.
       // Href mang sẵn `?month=` KHÔNG được: "tháng hiện tại" phải do trang tự
       // tính lúc mở, còn một href cứng sẽ hoá cũ ngay đầu tháng sau.
-      { key: 'reports', label: t.reports, href: '/reports', enabled: true, icon: FileBarChart },
+      {
+        key: 'reports',
+        label: t.reports,
+        href: '/reports',
+        enabled: true,
+        icon: FileBarChart,
+        access: 'reports.monthly',
+      },
       // Vùng thật thứ ba của P4c (F9) — CRM lead. Mở thẳng hàng NEW (việc
       // cần làm: lead chưa ai chạm tới), cùng nếp `/reviews?status=pending`
       // và `/outbox?status=FAILED`; tab "All" trong trang vẫn xem được tất cả.
@@ -151,8 +164,16 @@ export const NAV_GROUPS: NavGroup[] = [
         href: '/payment-events',
         enabled: true,
         icon: CreditCard,
+        access: 'paymentEvents.list',
       },
-      { key: 'users', label: t.users, href: '/users', enabled: false, icon: Users },
+      {
+        key: 'users',
+        label: t.users,
+        href: '/users',
+        enabled: false,
+        icon: Users,
+        access: 'users.list',
+      },
     ],
   },
 ];
@@ -181,4 +202,12 @@ export function isActiveNav(href: string, pathname: string): boolean {
 /** Đường của một href nav, bỏ query (`/reviews?status=pending` → `/reviews`). */
 export function navPath(href: string): string {
   return href.split('?')[0] ?? href;
+}
+
+/** Bản đồ sidebar của MỘT role — mục mà role ấy không gọi được thủ tục chính thì bỏ. */
+export function navGroupsFor(role: string): NavGroup[] {
+  return NAV_GROUPS.map((group) => ({
+    ...group,
+    items: group.items.filter((item) => !item.access || canAccess(role, item.access)),
+  }));
 }

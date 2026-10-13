@@ -14,7 +14,7 @@ import {
 import { cn } from '@tourism/ui/lib/utils';
 import { usePathname } from 'next/navigation';
 import { QuickCreateMenu } from '@/components/quick-create-menu';
-import { isActiveNav, NAV_GROUPS, navTooltip } from '@/lib/nav';
+import { isActiveNav, navGroupsFor, navTooltip } from '@/lib/nav';
 
 /**
  * Nav chính của shell dashboard-01. Vòng gọt 21/08 (bước 1, user chỉ đạo): phần
@@ -26,8 +26,10 @@ import { isActiveNav, NAV_GROUPS, navTooltip } from '@/lib/nav';
  * Cột icon khi thu gọn (góp ý giao diện 28/09, demo đã duyệt): mỗi mục có tooltip
  * (`navTooltip`), trang đang mở có ô sáng (`isActiveNav`), nhãn nhóm ẩn nên ba nhóm
  * cách nhau bằng vạch mảnh.
+ *
+ * Mục chỉ Owner bị ẩn HẲN với Staff (`navGroupsFor`, ADR-0052).
  */
-export function NavMain() {
+export function NavMain({ role }: { role: string }) {
   const t = messages.admin.shell;
   const pathname = usePathname();
   return (
@@ -41,7 +43,7 @@ export function NavMain() {
       </SidebarGroup>
 
       {/* 15 mục 3 nhóm thật — phủ 18 vùng khảo sát 20/08. */}
-      {NAV_GROUPS.map((group, index) => (
+      {navGroupsFor(role).map((group, index) => (
         <SidebarGroup
           key={group.key}
           // Cột icon không còn nhãn nhóm — vạch mảnh giữ ranh giới giữa ba nhóm.

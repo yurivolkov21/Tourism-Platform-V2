@@ -13,11 +13,11 @@ import { NavMain } from './nav-main';
  */
 vi.mock('next/navigation', () => ({ usePathname: () => '/tours/ha-long-bay-cruise' }));
 
-function renderNav({ open }: { open: boolean }) {
+function renderNav({ open, role = 'ADMIN' }: { open: boolean; role?: string }) {
   return render(
     <TooltipProvider>
       <SidebarProvider defaultOpen={open}>
-        <NavMain />
+        <NavMain role={role} />
       </SidebarProvider>
     </TooltipProvider>,
   );
@@ -102,5 +102,14 @@ describe('NavMain', () => {
       'aria-haspopup',
       'menu',
     );
+  });
+
+  it('Staff: mục chỉ Owner ẩn HẲN — không hiện dạng "Soon" (ADR-0052)', () => {
+    renderNav({ open: true, role: 'STAFF' });
+
+    expect(screen.queryByText('Reports')).not.toBeInTheDocument();
+    expect(screen.queryByText('Payment events')).not.toBeInTheDocument();
+    expect(screen.queryByText('Users')).not.toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Bookings' })).toBeInTheDocument();
   });
 });

@@ -92,4 +92,26 @@ describe('AppSidebar', () => {
       ?.split('=')[1];
     expect(sidebarOpenFromCookie(written)).toBe(false);
   });
+
+  it('menu tài khoản nói bậc của phiên: Owner (ADR-0052)', async () => {
+    const user = userEvent.setup();
+    renderSidebar({ open: true });
+
+    await user.click(screen.getByText('admin@nexora.test'));
+
+    expect(await screen.findByText('Owner')).toBeInTheDocument();
+  });
+
+  it('phiên Staff: sidebar không có Reports, menu tài khoản ghi Staff', async () => {
+    const user = userEvent.setup();
+    render(
+      <SidebarProvider defaultOpen>
+        <AppSidebar user={{ ...USER, role: 'STAFF' }} />
+      </SidebarProvider>,
+    );
+
+    expect(screen.queryByText('Reports')).not.toBeInTheDocument();
+    await user.click(screen.getByText('admin@nexora.test'));
+    expect(await screen.findByText('Staff')).toBeInTheDocument();
+  });
 });

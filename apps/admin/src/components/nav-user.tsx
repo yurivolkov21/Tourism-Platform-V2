@@ -22,6 +22,7 @@ import { EllipsisVerticalIcon, ExternalLinkIcon, LogOutIcon } from 'lucide-react
 import { useRouter } from 'next/navigation';
 import type { SessionUser } from '@/lib/api/session';
 import { authClient } from '@/lib/auth-client';
+import { roleLabel } from '@/lib/role-label';
 import { SITE_URL } from '@/lib/site';
 
 /**
@@ -85,6 +86,11 @@ export function NavUser({ user }: { user: SessionUser }) {
                   <div className="grid flex-1 text-left text-sm leading-tight">
                     <span className="truncate font-medium">{user.name}</span>
                     <span className="truncate text-xs text-muted-foreground">{user.email}</span>
+                    {/* Bậc của phiên (ADR-0052) — trong menu chứ không ở nút sidebar: nút cao
+                        `lg` chỉ đủ hai dòng (plan P4f, quyết định 6). */}
+                    <span className="truncate text-xs text-muted-foreground">
+                      {roleLabel(user.role)}
+                    </span>
                   </div>
                 </div>
               </DropdownMenuLabel>

@@ -5661,6 +5661,10 @@ export const messages = {
         },
       },
     },
+    // Vùng Users (P4f, ADR-0052). Enum giữ ADMIN, giao diện gọi là Owner (ADR-0052 §1).
+    users: {
+      roles: { ADMIN: 'Owner', STAFF: 'Staff', CUSTOMER: 'Customer' },
+    },
     /**
      * Vùng outbox (spec P4c §3-F7) — hàng đợi email mà worker drain mỗi phút,
      * cộng MỘT hành vi ghi: `admin.outbox.retry` (đưa hàng FAILED về hàng đợi).
