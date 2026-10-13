@@ -177,7 +177,10 @@ và `apps/mobile/package.json` có script `eas-build-post-install` build các pa
 bước cài trên EAS (EAS không chạy turbo, Metro cần `dist`). Client ID web và iOS ghi thẳng trong
 khối `env` của `preview`. `expo-dev-client` làm `expo start` tự nhắm dev build, nên ba script
 dev của app thêm `--go` để Expo Go vẫn là vòng dev mặc định; `dev:client` để nối dev build.
-Runbook: [`mobile-dev-loop.md` §7](../conventions/mobile-dev-loop.md).
+Runbook: [`mobile-dev-loop.md` §7](../conventions/mobile-dev-loop.md). Dự án EAS là
+`@yuri-volkovs-team/nexora-travel` (`eas init` 13/10, ghi `owner` và `extra.eas.projectId` vào
+`app.json`; dòng `android.permissions` mà lệnh này tự chép vào được bỏ, vì plugin
+`expo-image-picker` vẫn tự thêm quyền đó lúc build).
 
 **Google Cloud.** Client iOS tạo 13/10 cùng dự án với client web đang chạy (số dự án là phần
 trước dấu `-` của client ID). Client Android chờ SHA-1 từ EAS. Trang OAuth của dự án ở trạng thái

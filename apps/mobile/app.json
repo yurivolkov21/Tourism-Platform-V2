@@ -45,7 +45,11 @@
     "extra": {
       "router": {
         "sitemap": false
+      },
+      "eas": {
+        "projectId": "a77f0621-7b22-45d8-86ba-02b21fadd94a"
       }
-    }
+    },
+    "owner": "yuri-volkovs-team"
   }
 }
