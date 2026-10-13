@@ -1,10 +1,10 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { messages } from '@tourism/i18n';
 import { SidebarProvider } from '@tourism/ui/components/sidebar';
 import { TooltipProvider } from '@tourism/ui/components/tooltip';
 import Link from 'next/link';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { QuickCreateMenu } from '@/components/quick-create-menu';
 import { UnsavedChangesProvider, useReportUnsaved } from './unsaved-changes';
 
@@ -147,5 +147,148 @@ describe('UnsavedChangesProvider', () => {
     const cleanEvent = new Event('beforeunload', { cancelable: true });
     window.dispatchEvent(cleanEvent);
     expect(cleanEvent.defaultPrevented).toBe(false);
+  });
+});
+
+/**
+ * Navigation API giả cho jsdom (jsdom chưa có `window.navigation`): đủ để bắn sự kiện
+ * `navigate` như trình duyệt bắn khi bấm Back/Forward, và ghi lại `traverseTo`.
+ */
+class FakeNavigation extends EventTarget {
+  traverseTo = vi.fn((_key: string) => ({
+    committed: Promise.resolve(),
+    finished: Promise.resolve(),
+  }));
+}
+
+/** Bắn một lượt `navigate` kiểu traverse tới `path`; trả sự kiện để đọc `defaultPrevented`. */
+function traverse(
+  navigation: FakeNavigation,
+  path: string,
+  { key = 'entry-tours', cancelable = true, navigationType = 'traverse' } = {},
+) {
+  const event = new Event('navigate', { cancelable });
+  Object.assign(event, {
+    navigationType,
+    destination: { url: new URL(path, window.location.href).href, key, sameDocument: true },
+  });
+  act(() => {
+    navigation.dispatchEvent(event);
+  });
+  return event;
+}
+
+describe('nút Back và Forward của trình duyệt (G7)', () => {
+  let navigation: FakeNavigation;
+
+  beforeEach(() => {
+    window.history.replaceState(null, '', '/tours/ha-long/details');
+    navigation = new FakeNavigation();
+    Object.defineProperty(window, 'navigation', { configurable: true, value: navigation });
+  });
+
+  afterEach(() => {
+    Reflect.deleteProperty(window, 'navigation');
+  });
+
+  it('có thay đổi mà bấm Back → huỷ lượt đi và hỏi, chưa đi đâu cả', () => {
+    render(<Page dirty />);
+
+    const event = traverse(navigation, '/tours');
+
+    expect(event.defaultPrevented).toBe(true);
+    expect(
+      screen.getByRole('alertdialog', { name: 'Discard unsaved changes?' }),
+    ).toBeInTheDocument();
+    expect(navigation.traverseTo).not.toHaveBeenCalled();
+    expect(push).not.toHaveBeenCalled();
+  });
+
+  it('Discard changes → đi tiếp đúng mục lịch sử vừa bị huỷ', async () => {
+    const user = userEvent.setup();
+    render(<Page dirty />);
+
+    traverse(navigation, '/tours', { key: 'entry-tours' });
+    await user.click(screen.getByRole('button', { name: 'Discard changes' }));
+
+    expect(navigation.traverseTo).toHaveBeenCalledWith('entry-tours');
+    expect(push).not.toHaveBeenCalled();
+  });
+
+  it('lượt đi do Discard mở ra không bị chính provider huỷ lại', async () => {
+    // Trình duyệt bắn `navigate` của `traverseTo` khi listener có thể còn gắn: huỷ nó là hộp hỏi
+    // mở lại mãi và Discard không bao giờ đi được.
+    const user = userEvent.setup();
+    let own: Event | null = null;
+    navigation.traverseTo.mockImplementation((key: string) => {
+      own = traverse(navigation, '/tours', { key });
+      return { committed: Promise.resolve(), finished: Promise.resolve() };
+    });
+    render(<Page dirty />);
+
+    traverse(navigation, '/tours', { key: 'entry-tours' });
+    await user.click(screen.getByRole('button', { name: 'Discard changes' }));
+
+    expect(own).not.toBeNull();
+    expect((own as unknown as Event).defaultPrevented).toBe(false);
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
+  });
+
+  it('Keep editing → ở lại; bấm Back lần nữa thì hỏi lại', async () => {
+    const user = userEvent.setup();
+    render(<Page dirty />);
+
+    traverse(navigation, '/tours');
+    await user.click(screen.getByRole('button', { name: 'Keep editing' }));
+
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
+    expect(navigation.traverseTo).not.toHaveBeenCalled();
+    expect(traverse(navigation, '/tours').defaultPrevented).toBe(true);
+    expect(
+      screen.getByRole('alertdialog', { name: 'Discard unsaved changes?' }),
+    ).toBeInTheDocument();
+  });
+
+  it('Forward sang một bước khác cũng hỏi', () => {
+    render(<Page dirty />);
+
+    expect(traverse(navigation, '/tours/ha-long/itinerary').defaultPrevented).toBe(true);
+    expect(screen.getByRole('alertdialog')).toBeInTheDocument();
+  });
+
+  it('không có thay đổi → để Back đi, không hỏi', () => {
+    render(<Page dirty={false} />);
+
+    expect(traverse(navigation, '/tours').defaultPrevented).toBe(false);
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
+  });
+
+  it('trình duyệt không cho huỷ (chưa tương tác từ lần huỷ trước) → không mở hộp trên trang đã đổi', () => {
+    render(<Page dirty />);
+
+    expect(traverse(navigation, '/tours', { cancelable: false }).defaultPrevented).toBe(false);
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
+  });
+
+  it('Back chỉ đổi #hash trên cùng trang → không hỏi', () => {
+    render(<Page dirty />);
+
+    expect(traverse(navigation, '/tours/ha-long/details#tour-summary').defaultPrevented).toBe(
+      false,
+    );
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
+  });
+
+  it('điều hướng không phải lượt đi trong lịch sử (push) → không đụng tới', () => {
+    render(<Page dirty />);
+
+    expect(traverse(navigation, '/tours', { navigationType: 'push' }).defaultPrevented).toBe(false);
+  });
+
+  it('gỡ khỏi trang thì thôi nghe', () => {
+    const { unmount } = render(<Page dirty />);
+    unmount();
+
+    expect(traverse(navigation, '/tours').defaultPrevented).toBe(false);
   });
 });

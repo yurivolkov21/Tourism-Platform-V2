@@ -28,11 +28,43 @@ export function leaveTarget(click: LeaveClick): string | null {
     return null;
   }
   if ((anchor.target !== '' && anchor.target !== '_self') || anchor.hasDownload) return null;
+  return leavingPath(click.current, anchor.href);
+}
 
-  const here = new URL(click.current);
-  const next = new URL(anchor.href, here);
-  if (next.origin !== here.origin) return null;
-  // Chỉ đổi #hash (link tới một ô của CHÍNH trang này) thì không phải rời trang.
-  if (next.pathname === here.pathname && next.search === here.search) return null;
-  return `${next.pathname}${next.search}${next.hash}`;
+/**
+ * Một lượt đi trong lịch sử của tab — nút Back, Forward, hay nhảy nhiều bước từ menu giữ
+ * chuột — đọc từ sự kiện `navigate` của Navigation API (G7).
+ */
+export interface LeaveTraverse {
+  dirty: boolean;
+  /** `NavigateEvent.navigationType`: 'push' | 'replace' | 'reload' | 'traverse'. */
+  navigationType: string;
+  /** `NavigateEvent.cancelable` — trình duyệt có cho trang huỷ lượt này không. */
+  cancelable: boolean;
+  /** `NavigateEvent.destination.url` — URL của mục lịch sử sắp tới. */
+  destination: string;
+  /** `location.href` lúc sự kiện bắn. */
+  current: string;
+}
+
+/**
+ * Có huỷ lượt đi trong lịch sử này để hỏi lại không. Chỉ huỷ khi trình duyệt cho phép
+ * (`cancelable`): một lượt không huỷ được mà vẫn mở hộp hỏi thì hộp hiện ra trên trang
+ * đã đổi.
+ */
+export function blocksTraverse(nav: LeaveTraverse): boolean {
+  if (!nav.dirty || nav.navigationType !== 'traverse' || !nav.cancelable) return false;
+  return leavingPath(nav.current, nav.destination) !== null;
+}
+
+/**
+ * Đường đích nếu đi từ `current` sang `next` là rời trang này; `null` khi khác origin
+ * (`beforeunload` lo) hoặc chỉ đổi #hash — link tới một ô của CHÍNH trang này.
+ */
+function leavingPath(current: string, next: string): string | null {
+  const here = new URL(current);
+  const target = new URL(next, here);
+  if (target.origin !== here.origin) return null;
+  if (target.pathname === here.pathname && target.search === here.search) return null;
+  return `${target.pathname}${target.search}${target.hash}`;
 }

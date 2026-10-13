@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { type LeaveClick, leaveTarget } from './unsaved-changes';
+import {
+  blocksTraverse,
+  type LeaveClick,
+  type LeaveTraverse,
+  leaveTarget,
+} from './unsaved-changes';
 
 const BASE: LeaveClick = {
   dirty: true,
@@ -58,5 +63,54 @@ describe('leaveTarget', () => {
     expect(leaveTarget({ ...BASE, anchor: { ...anchor, target: '_self' } })).toBe(
       '/tours/ha-long/itinerary',
     );
+  });
+});
+
+const BACK: LeaveTraverse = {
+  dirty: true,
+  navigationType: 'traverse',
+  cancelable: true,
+  destination: 'https://admin.test/tours',
+  current: 'https://admin.test/tours/ha-long/details',
+};
+
+/** Nút Back/Forward của trình duyệt, qua sự kiện `navigate` của Navigation API (G7). */
+describe('blocksTraverse (G7)', () => {
+  it('Back về trang khác khi có thay đổi → chặn để hỏi', () => {
+    expect(blocksTraverse(BACK)).toBe(true);
+  });
+
+  it('Forward sang một bước khác của cùng tour → cũng là rời trang', () => {
+    expect(
+      blocksTraverse({ ...BACK, destination: 'https://admin.test/tours/ha-long/itinerary' }),
+    ).toBe(true);
+  });
+
+  it.each<[string, Partial<LeaveTraverse>]>([
+    ['form không có thay đổi', { dirty: false }],
+    ['điều hướng mới bằng link hay router (push)', { navigationType: 'push' }],
+    ['thay mục hiện tại (replace)', { navigationType: 'replace' }],
+    ['tải lại trang — beforeunload lo', { navigationType: 'reload' }],
+    // Trình duyệt chỉ cho huỷ khi trang có tương tác từ lần huỷ trước, và không cho huỷ lượt
+    // Back sang tài liệu khác (lượt đó qua beforeunload). Không huỷ được thì đừng mở hộp hỏi.
+    ['trình duyệt không cho huỷ', { cancelable: false }],
+  ])('%s → không chặn', (_name, patch) => {
+    expect(blocksTraverse({ ...BACK, ...patch })).toBe(false);
+  });
+
+  it('chỉ đổi #hash trên cùng trang → không chặn; đổi query → chặn', () => {
+    expect(
+      blocksTraverse({
+        ...BACK,
+        destination: 'https://admin.test/tours/ha-long/details#tour-summary',
+      }),
+    ).toBe(false);
+    expect(
+      blocksTraverse({ ...BACK, destination: 'https://admin.test/tours/ha-long/details?x=1' }),
+    ).toBe(true);
+  });
+
+  it('mục lịch sử ở origin khác → không chặn (beforeunload lo phần rời hẳn)', () => {
+    expect(blocksTraverse({ ...BACK, destination: 'https://nexora.test/tours' })).toBe(false);
   });
 });

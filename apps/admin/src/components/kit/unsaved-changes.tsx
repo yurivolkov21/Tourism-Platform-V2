@@ -14,7 +14,7 @@ import {
 import { useRouter } from 'next/navigation';
 import * as React from 'react';
 import { clearCreateRequest } from '@/lib/quick-create';
-import { leaveTarget } from '@/lib/unsaved-changes';
+import { blocksTraverse, leaveTarget } from '@/lib/unsaved-changes';
 
 /**
  * Hỏi lại trước khi rời một bước còn thay đổi chưa lưu (spec F17 §2i).
@@ -31,20 +31,46 @@ import { leaveTarget } from '@/lib/unsaved-changes';
  * được. "Discard changes" thì tự `router.push` tới đúng đường.
  *
  * Rời hẳn trang (đóng tab, gõ địa chỉ, link ra ngoài) là việc của
- * `beforeunload`. Nút Back của trình duyệt không qua đường nào trong hai đường
- * này — giới hạn đã biết, ghi ở báo cáo bàn giao F17.
+ * `beforeunload`.
+ *
+ * Nút Back, Forward và menu giữ chuột của trình duyệt (G7) không bấm vào link nào và, giữa
+ * các trang của app, cũng không rời tài liệu nên `beforeunload` không bắn. Provider nghe sự
+ * kiện `navigate` của Navigation API và HUỶ lượt đi trong lịch sử, rồi hỏi; "Discard changes"
+ * đi tiếp đúng mục ấy bằng `navigation.traverseTo`. Huỷ trước khi trình duyệt kịp đổi mục nên
+ * không có `popstate`: router của Next (nghe `popstate`, không nghe `navigate`) không biết gì,
+ * trang không nhảy cuộn, lịch sử không thêm mục nào. Đo trên Chromium 141 (13/10): trình duyệt
+ * chỉ cho huỷ khi trang có tương tác từ lần huỷ trước — luật chống bẫy nút Back — nên bấm Back
+ * hai lần liền mà không chạm trang thì lần sau đi luôn. Trình duyệt chưa có Navigation API hay
+ * không cho huỷ thì Back đi như trước G7.
+ *
+ * Không dùng cách đẩy thêm một mục lịch sử cùng URL làm "lưới" rồi bắt `popstate`: đo trên
+ * Chromium, listener `popstate` ở `window` chạy theo thứ tự gắn kể cả khi gắn ở pha capture,
+ * nên router của Next (gắn từ lúc app khởi động) luôn chạy trước; còn trình duyệt khôi phục vị
+ * trí cuộn của mục cũ khiến trang nhảy.
  */
 const t = messages.admin.unsavedChanges;
 
 const UnsavedContext = React.createContext<{ setDirty: (dirty: boolean) => void } | null>(null);
 
+/**
+ * Lượt rời trang đang chờ người dùng quyết: một link vừa bị chặn, hoặc một lượt Back/Forward
+ * vừa bị huỷ (G7).
+ */
+type PendingLeave = { kind: 'link'; href: string } | { kind: 'traverse'; key: string };
+
 export function UnsavedChangesProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const [dirty, setDirty] = React.useState(false);
-  const [pendingHref, setPendingHref] = React.useState<string | null>(null);
+  const [pending, setPending] = React.useState<PendingLeave | null>(null);
+  /**
+   * Khoá của mục lịch sử mà "Discard changes" đang đi tới. `navigate` của chính lượt đó có thể
+   * bắn khi listener còn gắn — huỷ nó là hộp hỏi mở lại mãi, Discard không bao giờ đi được.
+   */
+  const leavingTo = React.useRef<string | null>(null);
 
   React.useEffect(() => {
     if (!dirty) return;
+    leavingTo.current = null;
     const onBeforeUnload = (event: BeforeUnloadEvent) => {
       event.preventDefault();
       // Trình duyệt cũ chỉ hỏi khi `returnValue` được đặt.
@@ -73,35 +99,66 @@ export function UnsavedChangesProvider({ children }: { children: React.ReactNode
       if (href === null) return;
       // CHỈ `preventDefault`, không `stopPropagation` (review AL5) — lý do ở JSDoc đầu file.
       event.preventDefault();
-      setPendingHref(href);
+      setPending({ kind: 'link', href });
     };
+    const onNavigate = (event: NavigateEvent) => {
+      if (event.navigationType === 'traverse' && event.destination.key === leavingTo.current) {
+        leavingTo.current = null;
+        return;
+      }
+      const blocked = blocksTraverse({
+        dirty: true,
+        navigationType: event.navigationType,
+        cancelable: event.cancelable,
+        destination: event.destination.url,
+        current: window.location.href,
+      });
+      if (!blocked) return;
+      event.preventDefault();
+      setPending({ kind: 'traverse', key: event.destination.key });
+    };
+    // jsdom và trình duyệt chưa có Navigation API: không có `window.navigation` — Back đi như cũ.
+    const navigation = 'navigation' in window ? window.navigation : null;
     window.addEventListener('beforeunload', onBeforeUnload);
     document.addEventListener('click', onClick, true);
+    navigation?.addEventListener('navigate', onNavigate);
     return () => {
       window.removeEventListener('beforeunload', onBeforeUnload);
       document.removeEventListener('click', onClick, true);
+      navigation?.removeEventListener('navigate', onNavigate);
     };
   }, [dirty]);
 
   const context = React.useMemo(() => ({ setDirty }), []);
 
   function discard() {
-    const href = pendingHref;
-    setPendingHref(null);
+    const leave = pending;
+    setPending(null);
     setDirty(false);
-    if (href !== null) router.push(href);
+    if (leave === null) return;
+    if (leave.kind === 'link') {
+      router.push(leave.href);
+      return;
+    }
+    leavingTo.current = leave.key;
+    const { committed, finished } = window.navigation.traverseTo(leave.key);
+    // Mục đích có thể đã rời lịch sử trong lúc hộp mở (hiếm): ở lại, đừng để lời hứa bị từ chối
+    // trôi thành lỗi không ai bắt.
+    committed?.catch(() => {});
+    finished?.catch(() => {});
   }
 
   return (
     <UnsavedContext.Provider value={context}>
       {children}
       <AlertDialog
-        open={pendingHref !== null}
+        open={pending !== null}
         onOpenChange={(open) => {
           // Đóng mà không qua "Discard changes" (nút đó là Button thường, đóng hộp bằng prop chứ
           // không qua đây) là ở lại: bỏ luôn yêu cầu tạo của cú bấm Quick Create vừa bị chặn.
+          // Lượt Back đã bị huỷ từ đầu nên ở lại không cần trả gì về lịch sử.
           if (!open) {
-            setPendingHref(null);
+            setPending(null);
             clearCreateRequest();
           }
         }}
