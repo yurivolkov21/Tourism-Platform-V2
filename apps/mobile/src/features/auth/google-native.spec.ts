@@ -39,17 +39,25 @@ function nativeError(code: string): Error & { code: string } {
 
 describe('isGoogleSignInAvailable', () => {
   it('Expo Go (storeClient) không có module native — ẩn nút', () => {
-    expect(isGoogleSignInAvailable('storeClient', GOOGLE_ENV)).toBe(false);
+    expect(isGoogleSignInAvailable('storeClient', GOOGLE_ENV, 'android')).toBe(false);
+    expect(isGoogleSignInAvailable('storeClient', GOOGLE_ENV, 'ios')).toBe(false);
   });
 
   it('thiếu env Google — ẩn nút', () => {
-    expect(isGoogleSignInAvailable('bare', null)).toBe(false);
-    expect(isGoogleSignInAvailable('standalone', null)).toBe(false);
+    expect(isGoogleSignInAvailable('bare', null, 'android')).toBe(false);
+    expect(isGoogleSignInAvailable('standalone', null, 'android')).toBe(false);
   });
 
   it('dev build hoặc APK có env — hiện nút', () => {
-    expect(isGoogleSignInAvailable('bare', GOOGLE_ENV)).toBe(true);
-    expect(isGoogleSignInAvailable('standalone', GOOGLE_ENV)).toBe(true);
+    expect(isGoogleSignInAvailable('bare', GOOGLE_ENV, 'android')).toBe(true);
+    expect(isGoogleSignInAvailable('standalone', GOOGLE_ENV, 'android')).toBe(true);
+    expect(isGoogleSignInAvailable('standalone', GOOGLE_ENV, 'ios')).toBe(true);
+  });
+
+  it('Android chỉ cần client web; iOS thiếu client iOS thì ẩn nút — SDK iOS không cấu hình được', () => {
+    const webOnly = { webClientId: GOOGLE_ENV.webClientId, iosClientId: undefined };
+    expect(isGoogleSignInAvailable('standalone', webOnly, 'android')).toBe(true);
+    expect(isGoogleSignInAvailable('standalone', webOnly, 'ios')).toBe(false);
   });
 });
 
@@ -65,6 +73,28 @@ describe('requestGoogleIdToken', () => {
       iosClientId: GOOGLE_ENV.iosClientId,
     });
     expect(sdk.GoogleSignin.hasPlayServices).toHaveBeenCalled();
+  });
+
+  it('đăng xuất phiên Google cũ TRƯỚC khi mở bảng chọn, để lần nào cũng chọn được tài khoản', async () => {
+    // Android nhớ tài khoản đã chọn và tự vào lại nó, không hiện bảng chọn,
+    // cho tới khi signOut — kể cả khi lần trước đổi token lấy phiên thất bại
+    // hay app đã mở lại (signOut lúc đăng xuất chạy khi SDK chưa cấu hình).
+    const sdk = fakeSdk();
+    await requestGoogleIdToken(sdk, GOOGLE_ENV);
+    const signOut = sdk.GoogleSignin.signOut as jest.Mock;
+    const signIn = sdk.GoogleSignin.signIn as jest.Mock;
+    const configure = sdk.GoogleSignin.configure as jest.Mock;
+    expect(signOut).toHaveBeenCalledTimes(1);
+    expect(configure.mock.invocationCallOrder[0]).toBeLessThan(signOut.mock.invocationCallOrder[0]);
+    expect(signOut.mock.invocationCallOrder[0]).toBeLessThan(signIn.mock.invocationCallOrder[0]);
+  });
+
+  it('signOut trước bảng chọn hỏng cũng không chặn đăng nhập', async () => {
+    const sdk = fakeSdk({ signOut: jest.fn().mockRejectedValue(new Error('boom')) });
+    await expect(requestGoogleIdToken(sdk, GOOGLE_ENV)).resolves.toEqual({
+      kind: 'token',
+      idToken: 'id-token-123',
+    });
   });
 
   it('khách đóng bảng chọn tài khoản — cancelled', async () => {
@@ -127,18 +157,34 @@ describe('requestGoogleIdToken', () => {
 });
 
 describe('signOutOfGoogle', () => {
-  it('gọi signOut của SDK để lần sau được chọn tài khoản khác', async () => {
+  it('cấu hình SDK rồi mới signOut — sau khi mở lại app, signOut chưa cấu hình bị Android từ chối', async () => {
     const sdk = fakeSdk();
-    await signOutOfGoogle(sdk);
-    expect(sdk.GoogleSignin.signOut).toHaveBeenCalled();
+    await signOutOfGoogle(sdk, GOOGLE_ENV);
+    const signOut = sdk.GoogleSignin.signOut as jest.Mock;
+    const configure = sdk.GoogleSignin.configure as jest.Mock;
+    expect(configure).toHaveBeenCalledWith({
+      webClientId: GOOGLE_ENV.webClientId,
+      iosClientId: GOOGLE_ENV.iosClientId,
+    });
+    expect(signOut).toHaveBeenCalledTimes(1);
+    expect(configure.mock.invocationCallOrder[0]).toBeLessThan(signOut.mock.invocationCallOrder[0]);
   });
 
   it('nuốt lỗi của SDK — đăng xuất khỏi app không bị chặn', async () => {
     const sdk = fakeSdk({ signOut: jest.fn().mockRejectedValue(new Error('boom')) });
-    await expect(signOutOfGoogle(sdk)).resolves.toBeUndefined();
+    await expect(signOutOfGoogle(sdk, GOOGLE_ENV)).resolves.toBeUndefined();
+    const throwsOnConfigure = fakeSdk({
+      configure: jest.fn(() => {
+        throw new Error('bad config');
+      }),
+    });
+    await expect(signOutOfGoogle(throwsOnConfigure, GOOGLE_ENV)).resolves.toBeUndefined();
   });
 
-  it('không có SDK (Expo Go) thì không làm gì', async () => {
-    await expect(signOutOfGoogle(null)).resolves.toBeUndefined();
+  it('không có SDK (Expo Go) hay thiếu env Google thì không làm gì', async () => {
+    await expect(signOutOfGoogle(null, GOOGLE_ENV)).resolves.toBeUndefined();
+    const sdk = fakeSdk();
+    await expect(signOutOfGoogle(sdk, null)).resolves.toBeUndefined();
+    expect(sdk.GoogleSignin.signOut).not.toHaveBeenCalled();
   });
 });

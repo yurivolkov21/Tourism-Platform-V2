@@ -33,8 +33,8 @@ export interface RegisterScreenProps {
   onSubmit: () => void;
   /**
    * Có vẽ nút Google và dải "or" không (ADR-0056 §2). Route truyền kết quả
-   * `canUseGoogleSignIn()`: Expo Go hay build thiếu env Google thì `false`, để
-   * không có nút nào bấm vào là chết.
+   * `canUseGoogleSignIn()`: Expo Go, build thiếu env Google hay bản iOS thiếu
+   * client iOS thì `false`, để không có nút nào bấm vào là chết.
    */
   showGoogle: boolean;
   onGoogle: () => void;

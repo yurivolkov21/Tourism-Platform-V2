@@ -1,4 +1,5 @@
 import type { QueryClient } from '@tanstack/react-query';
+import { env } from '@/lib/env';
 import { loadGoogleSdk, signOutOfGoogle } from './google-native';
 
 /**
@@ -30,7 +31,7 @@ export async function signOutAndClearCache(
     queryClient.clear();
   }
   try {
-    await signOutOfGoogle(loadGoogleSdk());
+    await signOutOfGoogle(loadGoogleSdk(), env().google);
   } catch {
     // Dọn phía Google chỉ là phụ — phiên của app đã xoá ở trên.
   }

@@ -137,6 +137,21 @@ describe('bản thật AuthActions — đăng nhập', () => {
     expect(mockClient.signIn.social).not.toHaveBeenCalled();
   });
 
+  it('Google: máy không có Google Play Services thì notAvailable, không gọi API', async () => {
+    // Bấm lại không chữa được — câu "thử lại" của lỗi chung sẽ nói sai.
+    (loadGoogleSdk as jest.Mock).mockReturnValue(FAKE_SDK);
+    (requestGoogleIdToken as jest.Mock).mockResolvedValue({
+      kind: 'error',
+      code: 'playServicesNotAvailable',
+    });
+
+    await expect(actions.signInWithGoogle()).resolves.toEqual({
+      ok: false,
+      error: 'notAvailable',
+    });
+    expect(mockClient.signIn.social).not.toHaveBeenCalled();
+  });
+
   it('Google: không có module native (Expo Go) thì notAvailable', async () => {
     (loadGoogleSdk as jest.Mock).mockReturnValue(null);
 

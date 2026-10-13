@@ -46,7 +46,14 @@ export function createBetterAuthActions(): AuthActions {
 
         const result = await requestGoogleIdToken(sdk, google);
         if (result.kind === 'cancelled') return { ok: false, error: 'cancelled' };
-        if (result.kind === 'error') return { ok: false, error: 'generic' };
+        // Máy không có Google Play Services: bấm lại không chữa được, nên báo
+        // "không dùng được" thay vì câu "thử lại" của lỗi chung.
+        if (result.kind === 'error') {
+          return {
+            ok: false,
+            error: result.code === 'playServicesNotAvailable' ? 'notAvailable' : 'generic',
+          };
+        }
 
         const { error } = await getAuthClient().signIn.social({
           provider: 'google',

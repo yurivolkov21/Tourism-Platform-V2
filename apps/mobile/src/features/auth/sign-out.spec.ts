@@ -7,6 +7,14 @@ jest.mock('./google-native', () => ({
   loadGoogleSdk: jest.fn(() => null),
   signOutOfGoogle: jest.fn(async () => {}),
 }));
+const mockGoogleEnv = { webClientId: 'web.apps.googleusercontent.com', iosClientId: undefined };
+jest.mock('@/lib/env', () => ({
+  env: () => ({
+    apiUrl: 'http://localhost:3001',
+    webUrl: 'http://localhost:3000',
+    google: mockGoogleEnv,
+  }),
+}));
 
 function seededClient(): QueryClient {
   const client = new QueryClient();
@@ -53,7 +61,8 @@ describe('signOutAndClearCache', () => {
 
     await signOutAndClearCache(jest.fn().mockResolvedValue(undefined), new QueryClient());
 
-    expect(signOutOfGoogle).toHaveBeenCalledWith(sdk);
+    // Kèm env để SDK được cấu hình lại — sau khi mở lại app nó chưa cấu hình.
+    expect(signOutOfGoogle).toHaveBeenCalledWith(sdk, mockGoogleEnv);
   });
 
   it('nạp SDK Google hỏng cũng không chặn đăng xuất', async () => {
