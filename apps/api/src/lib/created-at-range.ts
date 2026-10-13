@@ -32,7 +32,8 @@ const DAY_MS = 86_400_000;
  * Chuyển từ `modules/bookings/` lên `lib/` 04/09: từ khi `/reviews` cũng lọc
  * theo khoảng ngày (ADR-0028 §AMEND 2), helper này phục vụ ba module, nên để
  * nó nằm trong module bookings là bắt hai module khác import chéo vào một
- * vùng nghiệp vụ chẳng liên quan.
+ * vùng nghiệp vụ chẳng liên quan. 13/10 thêm `/subscribers` của module
+ * newsletter (G43).
  */
 
 /** Khoảng đưa thẳng vào `where.createdAt`; `undefined` = không lọc ngày. */

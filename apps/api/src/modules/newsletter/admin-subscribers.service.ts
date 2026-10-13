@@ -7,6 +7,7 @@ import type {
 } from '@tourism/contract';
 import { prisma } from '../../auth/auth.config.js';
 import type { Prisma } from '../../generated/prisma/client.js';
+import { createdAtRange } from '../../lib/created-at-range.js';
 import { escapeLike } from '../../lib/like.js';
 import { toPaged } from '../../lib/paged.js';
 import { LIST_SELECT, toSubscriberRow } from './subscriber-row.js';
@@ -64,10 +65,17 @@ export class AdminSubscribersService {
    * lựa chọn khác ngay khi vừa chọn một cái là ngõ cụt. Câu này chạy SONG
    * SONG với hai câu kia (`Promise.all`) và CHỈ khi `includeSources` (vòng vá
    * review F10): vòng export gọi list 20 lượt mà không cần nó.
+   *
+   * G43 thêm khoảng ngày theo `createdAt` (cột "Subscribed at", cũng là cột
+   * `orderBy`). Biên NỬA-MỞ và cách hiểu "trọn ngày `to`" theo UTC nằm ở
+   * `created-at-range.ts`, dùng chung với `/bookings` và `/reviews`. Vắng cả
+   * hai đầu là mọi ngày; khoảng GIAO với tab, nguồn và từ khoá như mọi bộ lọc
+   * khác.
    */
   async list(query: AdminSubscribersListQuery): Promise<AdminSubscribersListResult> {
-    const { page, limit, active, confirmed, search, source, includeSources } = query;
+    const { page, limit, active, confirmed, search, source, includeSources, from, to } = query;
     const term = search ? escapeLike(search) : undefined;
+    const createdAt = createdAtRange(from, to);
     const where: Prisma.SubscriberWhereInput = {
       ...(active === true ? { unsubscribedAt: null } : {}),
       ...(active === false ? { unsubscribedAt: { not: null } } : {}),
@@ -76,6 +84,7 @@ export class AdminSubscribersService {
       ...(confirmed === true ? { confirmedAt: { not: null } } : {}),
       ...(confirmed === false ? { confirmedAt: null } : {}),
       ...(source ? { source } : {}),
+      ...(createdAt ? { createdAt } : {}),
       ...(term ? { email: { contains: term, mode: 'insensitive' } } : {}),
     };
     const [total, rows, sources] = await Promise.all([

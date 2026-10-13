@@ -74,6 +74,36 @@ describe('AdminSubscribersListQuerySchema', () => {
     expect(AdminSubscribersListQuerySchema.safeParse({ limit: 101 }).success).toBe(false);
   });
 
+  it('G43: `from`/`to` là ngày lịch theo `createdAt`, mỗi đầu tuỳ chọn; vắng cả hai là mọi ngày', () => {
+    expect(
+      AdminSubscribersListQuerySchema.parse({ from: '2026-09-01', to: '2026-09-30' }),
+    ).toMatchObject({ from: '2026-09-01', to: '2026-09-30' });
+    expect(AdminSubscribersListQuerySchema.parse({ from: '2026-09-01' }).to).toBeUndefined();
+    expect(AdminSubscribersListQuerySchema.parse({ to: '2026-09-30' }).from).toBeUndefined();
+    const bare = AdminSubscribersListQuerySchema.parse({});
+    expect(bare.from).toBeUndefined();
+    expect(bare.to).toBeUndefined();
+  });
+
+  it('G43: từ chối mốc có giờ và ngày không tồn tại — cùng `CalendarDateSchema` với bookings', () => {
+    expect(
+      AdminSubscribersListQuerySchema.safeParse({ from: '2026-09-01T00:00:00.000Z' }).success,
+    ).toBe(false);
+    expect(AdminSubscribersListQuerySchema.safeParse({ to: '2026-02-30' }).success).toBe(false);
+  });
+
+  it('G43: khoảng ngược là 400 ở `to`, không phải tập rỗng; from = to (một ngày) hợp lệ', () => {
+    const reversed = AdminSubscribersListQuerySchema.safeParse({
+      from: '2026-09-30',
+      to: '2026-09-01',
+    });
+    expect(reversed.success).toBe(false);
+    expect(reversed.error?.issues[0]?.path).toEqual(['to']);
+    expect(
+      AdminSubscribersListQuerySchema.safeParse({ from: '2026-09-15', to: '2026-09-15' }).success,
+    ).toBe(true);
+  });
+
   it('giữ nguyên `.shape` — điều kiện để ZodSmartCoercionPlugin ép query string', () => {
     expect(Object.keys(AdminSubscribersListQuerySchema.shape)).toEqual([
       'page',
@@ -83,6 +113,8 @@ describe('AdminSubscribersListQuerySchema', () => {
       'search',
       'source',
       'includeSources',
+      'from',
+      'to',
     ]);
   });
 });

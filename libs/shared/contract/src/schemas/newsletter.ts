@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { PagedSchema } from './catalog.js';
-import { AdminPageQuerySchema, EmailSchema } from './common.js';
+import { AdminPageQuerySchema, CalendarDateSchema, EmailSchema } from './common.js';
 
 /**
  * Đăng ký nhận bản tin (spec §4.4, nửa đầu) — endpoint GHI công khai thứ hai
@@ -198,7 +198,26 @@ export const AdminSubscribersListQuerySchema = AdminPageQuerySchema.extend({
    * trang bảng — nơi duy nhất cần nó.
    */
   includeSources: z.boolean().default(true),
-});
+  /**
+   * Khoảng NGÀY LỊCH theo `createdAt` — ngày địa chỉ ĐĂNG KÝ, cột "Subscribed
+   * at" (G43, spec 2026-10-13). Hai đầu đều tính vào; API đổi ra biên nửa-mở
+   * bằng `createdAtRange`, cùng hàm với `/bookings` và `/reviews`, nên ngày ở
+   * đây cũng là ngày UTC.
+   *
+   * Vắng cả hai = KHÔNG lọc ngày, và đó là mặc định của vùng (giống
+   * `/reviews`, khác `/bookings`): đây là danh sách liên lạc, tự lọc một tháng
+   * sẽ giấu phần lớn danh sách và đổi luôn thứ nút Export xuất ra khi không ai
+   * đụng gì. Vì URL trần đã là "mọi ngày" nên không có sentinel `?dates=all`.
+   */
+  from: CalendarDateSchema.optional(),
+  to: CalendarDateSchema.optional(),
+})
+  // `.refine` giữ nguyên `.shape` của ZodObject (điều kiện sống còn của
+  // `ZodSmartCoercionPlugin` bên API) — xem ghi chú ở `AdminBookingsListQuerySchema`.
+  .refine(({ from, to }) => !(from && to) || from <= to, {
+    message: 'from must be on or before to',
+    path: ['to'],
+  });
 export type AdminSubscribersListQuery = z.output<typeof AdminSubscribersListQuerySchema>;
 
 /**

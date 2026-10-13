@@ -264,6 +264,64 @@ describe('admin subscribers integration (F10)', () => {
       expect((await list('?active=yes', adminCookie)).statusCode).toBe(400);
       expect((await list(`?source=${'x'.repeat(41)}`, adminCookie)).statusCode).toBe(400);
     });
+
+    describe('G43: khoảng ngày theo `createdAt`', () => {
+      // Bốn hàng quanh hai biên của khoảng 10–12/03/2020 (ngày UTC). Năm 2020 để bảy hàng
+      // fixture (tạo vài phút trước) luôn nằm SAU khoảng, đọc lúc nào cũng vậy.
+      beforeEach(async () => {
+        await prisma.subscriber.createMany({
+          data: [
+            subscriber(11, {
+              email: 'before@example.com',
+              createdAt: new Date('2020-03-09T23:59:59.999Z'),
+            }),
+            subscriber(12, {
+              email: 'first@example.com',
+              source: 'popup',
+              createdAt: new Date('2020-03-10T00:00:00.000Z'),
+            }),
+            subscriber(13, {
+              email: 'last@example.com',
+              unsubscribedAt: UNSUBSCRIBED_AT,
+              createdAt: new Date('2020-03-12T23:59:59.999Z'),
+            }),
+            subscriber(14, {
+              email: 'after@example.com',
+              createdAt: new Date('2020-03-13T00:00:00.000Z'),
+            }),
+          ],
+        });
+      });
+
+      it('hai đầu đều tính vào, biên nửa-mở: 00:00 ngày `from` có, 00:00 ngày sau `to` không', async () => {
+        expect(ids(await listOk('?from=2020-03-10&to=2020-03-12'))).toEqual([13, 12].map(rowId));
+        // Một ngày: from = to là trọn ngày đó.
+        expect(ids(await listOk('?from=2020-03-12&to=2020-03-12'))).toEqual([rowId(13)]);
+      });
+
+      it('mỗi đầu đứng một mình được: chỉ `to` là mọi hàng tới hết ngày đó, chỉ `from` là từ ngày đó tới nay', async () => {
+        expect(ids(await listOk('?to=2020-03-12'))).toEqual([13, 12, 11].map(rowId));
+        const fromOnly = await listOk('?from=2020-03-13&limit=100');
+        expect(fromOnly.total).toBe(8);
+        expect(ids(fromOnly)).toContain(rowId(14));
+        expect(ids(fromOnly)).not.toContain(rowId(13));
+      });
+
+      it('khoảng ngày GIAO với tab và nguồn, không phải hợp', async () => {
+        expect(ids(await listOk('?from=2020-03-10&to=2020-03-12&active=false'))).toEqual([
+          rowId(13),
+        ]);
+        expect(ids(await listOk('?from=2020-03-10&to=2020-03-12&source=popup'))).toEqual([
+          rowId(12),
+        ]);
+      });
+
+      it('khoảng ngược, mốc có giờ hay ngày không tồn tại → 400, không phải tập rỗng', async () => {
+        expect((await list('?from=2020-03-12&to=2020-03-10', adminCookie)).statusCode).toBe(400);
+        expect((await list('?from=2020-03-10T00:00:00Z', adminCookie)).statusCode).toBe(400);
+        expect((await list('?to=2020-02-30', adminCookie)).statusCode).toBe(400);
+      });
+    });
   });
 
   describe('unsubscribe', () => {
