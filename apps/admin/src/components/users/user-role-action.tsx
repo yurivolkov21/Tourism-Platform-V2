@@ -48,6 +48,9 @@ export function UserRoleAction({
         variant={mode === 'grant' ? 'default' : 'outline'}
         size="sm"
         disabled={isRefreshing}
+        // Khoá mà vẫn nhận focus (`aria-disabled`): hộp đóng đúng lúc trang làm mới, và Base UI
+        // trả focus về nút đã mở nó — nút `disabled` thật thì focus rơi về <body> (khuôn G6).
+        focusableWhenDisabled
         onClick={() => setOpen(true)}
       >
         {mode === 'grant' ? (

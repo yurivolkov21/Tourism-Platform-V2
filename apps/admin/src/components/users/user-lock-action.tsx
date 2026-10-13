@@ -58,6 +58,8 @@ export function UserLockAction({
         variant="outline"
         size="sm"
         disabled={isRefreshing}
+        // Như nút Staff access: khoá mà vẫn nhận focus lúc trang làm mới (khuôn G6).
+        focusableWhenDisabled
         onClick={() => setOpen(true)}
       >
         {mode === 'lock' ? (

@@ -102,3 +102,31 @@ describe('UserLockAction', () => {
     expect(screen.getByRole('button', { name: t.unlock.action })).toBeInTheDocument();
   });
 });
+
+describe('UserLockAction — focus khi trang làm mới (khuôn G6)', () => {
+  it('lệnh xong, hộp đóng lúc trang còn làm mới: focus về nút đang khoá, bấm cũng không mở gì', async () => {
+    // Lượt làm mới treo: transition giữ nút khoá suốt ca.
+    refresh.mockReturnValue(new Promise(() => {}));
+    const user = userEvent.setup();
+    render(
+      <UserLockAction
+        detail={vm({ lockedAt: '2026-10-02T03:00:00.000Z', status: 'locked' })}
+        lock={vi.fn()}
+        unlock={vi.fn(async () => ({ ok: true as const }))}
+      />,
+    );
+
+    await user.click(screen.getByRole('button', { name: t.unlock.action }));
+    const dialog = await screen.findByRole('dialog');
+    await user.click(within(dialog).getByRole('button', { name: t.unlock.dialog.submit }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+
+    const button = screen.getByRole('button', { name: t.unlock.action });
+    expect(button).toHaveAttribute('aria-disabled', 'true');
+    expect(button).not.toHaveAttribute('disabled');
+    await waitFor(() => expect(button).toHaveFocus());
+
+    await user.click(button);
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+});
