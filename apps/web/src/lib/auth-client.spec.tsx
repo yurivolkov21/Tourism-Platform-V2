@@ -2,7 +2,7 @@
 // `dom` theo ADR-0014 §4 — đuôi .spec.tsx trong `src/lib` quyết định project.
 import { render, screen, waitFor } from '@testing-library/react';
 import { renderToString } from 'react-dom/server';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 // UserMenu gọi `useRouter` — ngoài App Router thật hook này ném invariant, nên
 // mock mỏng đúng khuôn user-menu.spec.tsx. Mọi thứ còn lại là THẬT: client Better
@@ -48,6 +48,18 @@ beforeEach(() => {
     'fetch',
     vi.fn(async () => Response.json(SIGNED_IN_SESSION)),
   );
+});
+
+// Timer rò của nanostores (phụ thuộc của better-auth): khi atom session mất
+// listener cuối (cleanup() của RTL unmount UserMenu), nanostores hẹn một
+// setTimeout THẬT STORE_UNMOUNT_DELAY = 1000ms rồi mới gọi cleanup của
+// better-auth, mà cleanup đó đụng `window`. Nổ sau lúc Vitest tháo jsdom là
+// `ReferenceError: window is not defined`, Vitest đếm thành unhandled error và
+// exit 1 dù mọi test PASS (CI run 38355910448, 13/10). afterAll chạy SAU
+// afterEach cleanup của vitest.setup.ts, nên đợi thật quá 1000ms ở đây là để
+// timer nổ lúc jsdom còn — cùng cách vá otp-form.spec (adaedf3).
+afterAll(async () => {
+  await new Promise((resolve) => setTimeout(resolve, 1_100));
 });
 
 /**
