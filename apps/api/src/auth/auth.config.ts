@@ -12,7 +12,7 @@ import { EmailType, UserRole } from '../generated/prisma/enums.js';
 // không có vòng phụ thuộc.
 import { nudgeOutboxDrain } from '../worker/outbox-nudge.js';
 import { isBootstrapAdmin } from './admin-bootstrap.js';
-import { isAllowedExpoAuthorizationUrl } from './expo-proxy-guard.js';
+import { rejectsMobileAuthRequest } from './mobile-auth-guard.js';
 
 /**
  * PrismaClient dùng chung cho auth + account flows (Prisma 7: connection qua
@@ -112,22 +112,19 @@ export const auth = betterAuth({
     // tiếp. Before-hook ép cờ lên body của chính route BA; BA rồi tự xoá mọi
     // phiên và xoay phiên hiện tại (cookie mới trong response).
     before: createAuthMiddleware(async (ctx) => {
-      // B2 (ADR-0017 §11): proxy của plugin `expo()` là open redirect nếu để
-      // nguyên — chỉ cho đi tiếp khi `authorizationURL` là đúng URL Google
-      // của mình. Chặn TRƯỚC handler nên cookie state cũng không được đặt.
-      if (ctx.path === '/expo-authorization-proxy') {
-        const authorizationURL = (ctx.query as { authorizationURL?: unknown } | undefined)
-          ?.authorizationURL;
-        const allowed =
-          typeof authorizationURL === 'string' &&
-          isAllowedExpoAuthorizationUrl(authorizationURL, {
-            googleClientId: env.GOOGLE_CLIENT_SECRET ? env.GOOGLE_CLIENT_ID : undefined,
-            authBaseUrl: ctx.context.baseURL,
-          });
-        if (!allowed) {
-          throw new APIError('BAD_REQUEST', { message: 'Invalid authorizationURL' });
-        }
-        return;
+      // ADR-0056 §3 (thay chốt B2 của ADR-0017 §11): proxy
+      // `expo-authorization-proxy` đóng ở mọi môi trường, và luồng redirect
+      // social không có idToken thì không được đổ về `nexora://` — hai đường
+      // này từng cho kẻ tấn công nhận cookie phiên của nạn nhân qua deep link.
+      // App mobile đăng nhập Google bằng ID token (nhánh không redirect). Chặn
+      // TRƯỚC handler nên cookie state cũng không được đặt.
+      if (rejectsMobileAuthRequest({ path: ctx.path, body: ctx.body })) {
+        throw new APIError('BAD_REQUEST', {
+          message:
+            ctx.path === '/expo-authorization-proxy'
+              ? 'Invalid authorizationURL'
+              : 'Invalid callbackURL',
+        });
       }
       if (ctx.path !== '/change-password') return;
       const body = (ctx.body ?? {}) as Record<string, unknown>;
@@ -157,11 +154,18 @@ export const auth = betterAuth({
     },
   },
   // Google OAuth chỉ bật khi có ĐỦ cặp env (dev không cần Google vẫn boot được).
+  // ADR-0056 §3: `clientId` dạng mảng — Better Auth dùng phần tử ĐẦU (client
+  // web) cho luồng redirect của web, còn CẢ mảng là audience khi kiểm ID token.
+  // App Android xin token bằng client web nên không cần thêm gì; client iOS
+  // chỉ vào mảng khi có bản iOS.
   ...(env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET
     ? {
         socialProviders: {
           google: {
-            clientId: env.GOOGLE_CLIENT_ID,
+            clientId: [
+              env.GOOGLE_CLIENT_ID,
+              ...(env.GOOGLE_IOS_CLIENT_ID ? [env.GOOGLE_IOS_CLIENT_ID] : []),
+            ],
             clientSecret: env.GOOGLE_CLIENT_SECRET,
           },
         },
@@ -210,8 +214,9 @@ export const auth = betterAuth({
     // httpOnly). Đọc header `origin` giả BA client Expo gắn cho request thay
     // vì origin trình duyệt thật — thiếu plugin này thì trustedOrigins không
     // bao giờ khớp scheme `nexora://` và mọi request từ app mobile bị chặn.
-    // Endpoint `expo-authorization-proxy` của plugin bị khoá ở before-hook
-    // phía trên (B2, ADR-0017 §11) — đừng gỡ khối đó khi nâng plugin.
+    // Plugin còn giữ để đổi header `expo-origin` thành `origin` cho request
+    // mang cookie của app. Endpoint `expo-authorization-proxy` của nó đã ĐÓNG
+    // ở before-hook phía trên (ADR-0056 §3) — đừng gỡ khối đó khi nâng plugin.
     expo(),
     emailOTP({
       otpLength: 6,

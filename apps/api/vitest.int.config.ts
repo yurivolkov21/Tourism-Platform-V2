@@ -36,6 +36,11 @@ export default defineConfig({
       // probe đường miễn cho web SSR/build.
       PUBLIC_READ_THROTTLE_MODE: 'enforce',
       INTERNAL_READ_KEY: 'int-test-internal-read-key',
+      // ADR-0056: cặp Google GIẢ để provider được đăng ký — int test cần nó cho
+      // nhánh ID token và luồng redirect của web. Không ca nào gọi Google thật:
+      // token rác bị từ chối trước khi tải khoá, URL Google chỉ được dựng.
+      GOOGLE_CLIENT_ID: 'int-test-web.apps.googleusercontent.com',
+      GOOGLE_CLIENT_SECRET: 'int-test-google-secret',
     },
     // Một DB test dùng chung + truncate giữa các test → tuần tự hoá.
     fileParallelism: false,

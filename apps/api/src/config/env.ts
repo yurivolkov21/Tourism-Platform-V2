@@ -93,6 +93,10 @@ const EnvSchema = z
     // Google OAuth — optional; auth.config chỉ bật socialProviders.google khi có ĐỦ cặp.
     GOOGLE_CLIENT_ID: z.string().min(1).optional(),
     GOOGLE_CLIENT_SECRET: z.string().min(1).optional(),
+    // ADR-0056 §3–§4: client OAuth iOS — chỉ thêm vào audience nhận ID token
+    // khi có bản iOS. Android không cần biến riêng: SDK xin token bằng client
+    // web nên audience là GOOGLE_CLIENT_ID.
+    GOOGLE_IOS_CLIENT_ID: z.string().min(1).optional(),
     // Payment providers (P2 W5) — đều optional ở dev/test; payments.module chỉ
     // đăng ký gateway khi ĐỦ bộ (Stripe: cặp key+webhook secret; PayPal: trio
     // client id/secret + webhook id). Thiếu bộ → webhook/create của provider

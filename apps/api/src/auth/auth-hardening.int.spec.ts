@@ -17,6 +17,9 @@ import { prisma } from './auth.config.js';
 
 const PASSWORD = 'password-123';
 
+/** Khớp `GOOGLE_CLIENT_ID` giả ở `vitest.int.config.ts`. */
+const INT_GOOGLE_CLIENT_ID = 'int-test-web.apps.googleusercontent.com';
+
 describe('auth hardening: enumeration + trần riêng (W2 mục 3)', () => {
   let app: NestFastifyApplication;
 
@@ -143,16 +146,70 @@ describe('auth hardening: enumeration + trần riêng (W2 mục 3)', () => {
     expect(spoofed.statusCode).toBe(429);
   });
 
-  it('3. expo-authorization-proxy KHÔNG còn là open redirect (B2, ADR-0017 §11): URL lạ → 400, không redirect, không đặt cookie state', async () => {
-    // Trước B2: plugin chỉ đòi https + khác origin API → 302 tới bất kỳ đâu.
+  it('3. expo-authorization-proxy ĐÓNG ở mọi môi trường (ADR-0056 §3): cả URL Google hợp lệ cũng 400, không redirect, không đặt cookie state', async () => {
+    // Chốt §11 cũ cho qua đúng URL này (đúng endpoint, client_id, callback) —
+    // chính nó chở `state` do kẻ tấn công chọn vào trình duyệt nạn nhân.
+    const googleUrl = new URL('https://accounts.google.com/o/oauth2/v2/auth');
+    googleUrl.searchParams.set('response_type', 'code');
+    googleUrl.searchParams.set('client_id', INT_GOOGLE_CLIENT_ID);
+    googleUrl.searchParams.set('state', 'abc');
+    googleUrl.searchParams.set('scope', 'email profile openid');
+    googleUrl.searchParams.set('redirect_uri', 'http://localhost:3001/api/auth/callback/google');
+    for (const authorizationURL of [googleUrl.toString(), 'https://evil.example/phish?state=abc']) {
+      const res = await app.inject({
+        method: 'GET',
+        url: `/api/auth/expo-authorization-proxy?authorizationURL=${encodeURIComponent(
+          authorizationURL,
+        )}&oauthState=abc`,
+      });
+      expect(res.statusCode).toBe(400);
+      expect(res.headers.location).toBeUndefined();
+      expect(res.headers['set-cookie']).toBeUndefined();
+    }
+  });
+
+  it('4. sign-in/social không có idToken mà callbackURL là nexora:// → 400 (ADR-0056 §3, khoá thứ hai)', async () => {
     const res = await app.inject({
-      method: 'GET',
-      url: `/api/auth/expo-authorization-proxy?authorizationURL=${encodeURIComponent(
-        'https://evil.example/phish?state=abc',
-      )}&oauthState=abc`,
+      method: 'POST',
+      url: '/api/auth/sign-in/social',
+      headers: { 'content-type': 'application/json' },
+      payload: JSON.stringify({ provider: 'google', callbackURL: 'nexora://x' }),
     });
     expect(res.statusCode).toBe(400);
-    expect(res.headers.location).toBeUndefined();
     expect(res.headers['set-cookie']).toBeUndefined();
+  });
+
+  it('5. nhánh ID token không bị hai khoá mới hay lớp kiểm Origin chặn: token rác → 401 của Better Auth, không cookie', async () => {
+    // Không cookie, không Origin — đúng request app mobile gửi. 401
+    // INVALID_TOKEN nghĩa là request đã tới tận bước kiểm chữ ký của provider.
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/auth/sign-in/social',
+      headers: { 'content-type': 'application/json' },
+      payload: JSON.stringify({
+        provider: 'google',
+        callbackURL: 'nexora://x',
+        idToken: { token: 'not-a-jwt' },
+      }),
+    });
+    expect(res.statusCode).toBe(401);
+    expect(res.json()).toMatchObject({ code: 'INVALID_TOKEN' });
+    expect(res.headers['set-cookie']).toBeUndefined();
+  });
+
+  it('6. luồng redirect của web vẫn chạy: sign-in/social với callbackURL https của web trả URL Google', async () => {
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/auth/sign-in/social',
+      headers: { 'content-type': 'application/json', origin: 'http://localhost:3000' },
+      payload: JSON.stringify({ provider: 'google', callbackURL: 'http://localhost:3000/account' }),
+    });
+    expect(res.statusCode).toBe(200);
+    const body = res.json() as { url: string; redirect: boolean };
+    expect(body.redirect).toBe(true);
+    const url = new URL(body.url);
+    expect(`${url.origin}${url.pathname}`).toBe('https://accounts.google.com/o/oauth2/v2/auth');
+    // Phần tử ĐẦU của mảng clientId là client web (getPrimaryClientId).
+    expect(url.searchParams.get('client_id')).toBe(INT_GOOGLE_CLIENT_ID);
   });
 });

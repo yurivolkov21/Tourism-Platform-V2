@@ -334,6 +334,13 @@ describe('parseEnv', () => {
     expect(env.GOOGLE_CLIENT_ID).toBe('id');
     expect(env.GOOGLE_CLIENT_SECRET).toBe('secret');
   });
+
+  // ADR-0056 §4: client iOS chỉ là audience phụ cho ID token của bản iOS.
+  it('GOOGLE_IOS_CLIENT_ID là tuỳ chọn, chuỗi rỗng coi như thiếu', () => {
+    expect(parseEnv({}).GOOGLE_IOS_CLIENT_ID).toBeUndefined();
+    expect(parseEnv({ GOOGLE_IOS_CLIENT_ID: '' }).GOOGLE_IOS_CLIENT_ID).toBeUndefined();
+    expect(parseEnv({ GOOGLE_IOS_CLIENT_ID: 'ios-id' }).GOOGLE_IOS_CLIENT_ID).toBe('ios-id');
+  });
 });
 
 describe('parseCommaList', () => {
