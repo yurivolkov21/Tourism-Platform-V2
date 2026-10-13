@@ -262,7 +262,9 @@ export function BookingsTable({
       }
     >
       {/* Thân bảng + empty state nằm ở kit (`DataTableBody`, review F3 31/08). */}
-      <DataTableBody table={table} empty={<BookingsEmpty query={query} />} />
+      {/* Ô tiêu đề cột `export` mang nút Export nên được ghim mép phải: bảng rộng hơn khung thì
+          nút vẫn trong tầm nhìn. */}
+      <DataTableBody table={table} empty={<BookingsEmpty query={query} />} pinnedHeader="export" />
     </DataTableFrame>
   );
 }

@@ -165,3 +165,16 @@ describe('BookingsTable — chọn hàng để export', () => {
     expect(exportLink(t.exportSelected(1))).toBeInTheDocument();
   });
 });
+
+describe('BookingsTable — ô tiêu đề có nút Export ghim mép phải', () => {
+  it('ô tiêu đề cột export `sticky right-0`, các ô tiêu đề khác không ghim', () => {
+    // Đo bằng CSS build thật (13/10): bảng rộng hơn khung thì cột cuối nằm ngoài tầm nhìn và nút
+    // Export mất dạng tới khi cuộn hết sang phải. jsdom không dàn trang nên ở đây chỉ canh class.
+    view();
+
+    const pinned = exportLink(t.exportExcel).closest('th');
+    expect(pinned).toHaveClass('sticky', 'right-0', 'bg-muted');
+    const code = screen.getByRole('columnheader', { name: t.columns.code });
+    expect(code).not.toHaveClass('sticky');
+  });
+});

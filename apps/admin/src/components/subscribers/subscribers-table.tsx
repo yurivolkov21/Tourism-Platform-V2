@@ -293,7 +293,12 @@ export function SubscribersTable({
       }
     >
       <TableContext.Provider value={tableContext}>
-        <DataTableBody table={table} empty={<SubscribersEmpty query={query} />} />
+        {/* Ô tiêu đề cột `actions` mang nút Export nên được ghim mép phải, như `/bookings`. */}
+        <DataTableBody
+          table={table}
+          empty={<SubscribersEmpty query={query} />}
+          pinnedHeader="actions"
+        />
       </TableContext.Provider>
     </DataTableFrame>
   );

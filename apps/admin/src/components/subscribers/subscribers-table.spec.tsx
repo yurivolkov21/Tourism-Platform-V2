@@ -239,3 +239,18 @@ describe('SubscribersTable — ô rỗng khi lọc ngày (G43)', () => {
     expect(screen.getByText(t.emptyTo(formatCalendarDate('2026-09-30')))).toBeInTheDocument();
   });
 });
+
+describe('SubscribersTable — ô tiêu đề có nút Export ghim mép phải', () => {
+  it('ô tiêu đề cột Actions `sticky right-0`, ô thân của cột và ô tiêu đề khác không ghim', () => {
+    // Đo bằng CSS build thật (13/10): dưới khoảng 1400px bảng rộng hơn khung và nút Export nằm ngoài
+    // tầm nhìn. Chỉ ô TIÊU ĐỀ ghim; nút Unsubscribe ở ô thân giữ chỗ cũ. jsdom không dàn trang nên ở
+    // đây chỉ canh class.
+    view();
+
+    const pinned = exportLink(t.exportExcel).closest('th');
+    expect(pinned).toHaveClass('sticky', 'right-0', 'bg-muted');
+    const email = screen.getByRole('columnheader', { name: t.columns.email });
+    expect(email).not.toHaveClass('sticky');
+    for (const cell of screen.getAllByRole('cell')) expect(cell).not.toHaveClass('sticky');
+  });
+});

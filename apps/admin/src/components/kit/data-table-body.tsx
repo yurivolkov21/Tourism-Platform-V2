@@ -45,9 +45,16 @@ type AdminTable<TData extends RowData> =
   | TanstackTable<typeof serverTableFeatures, TData>
   | TanstackTable<typeof selectableTableFeatures, TData>;
 
+/**
+ * Ô tiêu đề GHIM mép phải của khung cuộn ngang. Nền `bg-muted` như cả hàng tiêu đề, để chữ của cột
+ * trôi qua bên dưới bị che hẳn chứ không chồng lên nút.
+ */
+const PINNED_HEAD = 'sticky right-0 bg-muted';
+
 export function DataTableBody<TData extends RowData>({
   table,
   empty,
+  pinnedHeader,
 }: {
   table: AdminTable<TData>;
   /**
@@ -58,6 +65,13 @@ export function DataTableBody<TData extends RowData>({
    * không phải đổi gì.
    */
   empty: React.ReactNode;
+  /**
+   * Id của cột có Ô TIÊU ĐỀ ghim mép phải khi bảng cuộn ngang. Dành cho cột mang nút Export trong
+   * ô tiêu đề (`/bookings`, `/subscribers` — user chốt chỗ đặt ấy 01/09): bảng rộng hơn khung thì
+   * cột cuối nằm ngoài tầm nhìn, và nút Export mất dạng tới khi cuộn hết sang phải (đo 13/10:
+   * `/subscribers` dưới khoảng 1400px). Chỉ ô tiêu đề được ghim; ô thân của cột giữ chỗ cũ.
+   */
+  pinnedHeader?: string;
 }) {
   // Đọc qua kiểu của bộ RỘNG hơn: thân bảng chỉ gọi header group / row model /
   // visible cells — API mà cả hai bộ đều có, và bộ selectable là superset nên
@@ -70,7 +84,11 @@ export function DataTableBody<TData extends RowData>({
         {view.getHeaderGroups().map((headerGroup) => (
           <TableRow key={headerGroup.id}>
             {headerGroup.headers.map((header) => (
-              <TableHead key={header.id} colSpan={header.colSpan}>
+              <TableHead
+                key={header.id}
+                colSpan={header.colSpan}
+                className={header.column.id === pinnedHeader ? PINNED_HEAD : undefined}
+              >
                 {header.isPlaceholder ? null : <FlexRender header={header} />}
               </TableHead>
             ))}
