@@ -8,7 +8,7 @@ import { slugify } from './slug.js';
 // slug trùng thì gãy anchor TOC rất âm thầm.
 const DOCS = [
   ['terms', termsDoc, 'Last updated: 15 September 2026'],
-  ['privacy', privacyDoc, 'Last updated: 25 July 2026'],
+  ['privacy', privacyDoc, 'Last updated: 13 October 2026'],
   ['cancellation', cancellationDoc, 'Last updated: 15 September 2026'],
 ] as const;
 
@@ -30,6 +30,16 @@ describe('nội dung pháp lý', () => {
 
   it.each(DOCS)('%s ghi đúng ngày cập nhật của chính nó', (_name, doc, updated) => {
     expect(doc.updated).toBe(updated);
+  });
+
+  it('privacy nói đúng cách đăng nhập: mật khẩu lưu dạng hash, Supabase không lo xác thực (W-01)', () => {
+    // Bản 25/07 hứa "we never see or store your password" và gọi Supabase là nhà cung cấp xác
+    // thực — sai từ khi chuyển sang Better Auth: DB của dự án giữ hash mật khẩu.
+    const text = JSON.stringify(privacyDoc);
+    expect(text).not.toMatch(/never see or store your password/i);
+    expect(text).not.toMatch(/authentication provider \(Supabase\)/i);
+    expect(text).toMatch(/one-way hash/);
+    expect(text).toMatch(/sign in with Google/);
   });
 
   it('terms nói rõ thanh toán chạy test mode', () => {

@@ -1,15 +1,19 @@
 import type { LegalDoc } from './legal-page.js';
 
 /**
- * Privacy Statement — bám đúng cách nền tảng thực sự xử lý dữ liệu (auth tài
- * khoản qua Supabase, enquiry, booking, thanh toán Stripe/PayPal, email giao
- * dịch qua Resend, media qua Cloudinary). Tên vận hành "Nexora" (đổi 19/08, trước là "Tourism"); thông tin
- * liên hệ khớp footer của site.
+ * Privacy Statement — bám đúng cách nền tảng thực sự xử lý dữ liệu (tài khoản do API của chính
+ * dự án quản qua Better Auth, mật khẩu chỉ lưu dạng hash trong DB Supabase, đăng nhập Google tuỳ
+ * chọn; enquiry, booking, thanh toán Stripe/PayPal, email giao dịch qua Resend, media qua
+ * Cloudinary; web ở Vercel, API ở Render — ADR-0024). Tên vận hành "Nexora" (đổi 19/08, trước là
+ * "Tourism"); thông tin liên hệ khớp footer của site.
+ *
+ * W-01 (13/10): bản 25/07 nói Supabase lo đăng nhập và "we never see or store your password" — sai
+ * từ khi xác thực chuyển sang Better Auth, và sai gấp đôi từ 09/09 khi Supabase Auth tắt hẳn.
  */
 export const privacyDoc: LegalDoc = {
   title: 'Privacy Statement',
   breadcrumb: 'Privacy Statement',
-  updated: 'Last updated: 25 July 2026',
+  updated: 'Last updated: 13 October 2026',
   reviewNote:
     'This document is sample content for a student capstone project, not legal advice. Nexora does not sell real trips here: payments run entirely in Stripe and PayPal test/sandbox mode, and no money changes hands.',
   intro: [
@@ -22,7 +26,7 @@ export const privacyDoc: LegalDoc = {
       paragraphs: ['We collect the following categories of personal information:'],
       bullets: [
         'Information you provide directly: your name, email address, and phone number; enquiry details such as nationality, travel dates, group size, budget range, and travel interests; booking details; reviews you submit; and newsletter sign-ups.',
-        'Account information: if you create an account, your email and authentication details. Sign-in is handled by our authentication provider (Supabase); we never see or store your password.',
+        'Account information: if you create an account, your name, email address, and password. We store your password only as a one-way hash, never in readable form. If you choose to sign in with Google, Google shares your name, email address, and profile photo with us; we never receive your Google password.',
         'Payment information: card and payment details are collected and processed directly by our payment providers (Stripe and PayPal). We do not store full card numbers on our systems — we only keep a reference to the transaction.',
         'Information collected automatically: device and usage data, IP address, browser type, and pages visited, gathered through cookies and similar technologies.',
       ],
@@ -52,7 +56,8 @@ export const privacyDoc: LegalDoc = {
         'We do not sell or rent your personal information. We share it only as needed to provide our services, with:',
       ],
       bullets: [
-        'Service providers who operate the platform on our behalf, including our hosting, database, and authentication provider (Supabase), payment providers (Stripe and PayPal), our transactional email provider (Resend), and our media/image provider (Cloudinary);',
+        'Service providers who operate the platform on our behalf, including our hosting providers (Vercel for the website and Render for our servers), our database provider (Supabase), payment providers (Stripe and PayPal), our transactional email provider (Resend), and our media/image provider (Cloudinary);',
+        'Google, only if you choose to sign in with your Google account;',
         'Travel suppliers — such as hotels, transport operators, and local guides — strictly to the extent needed to deliver the trip you book;',
         'Professional advisers, and authorities or regulators where we are required to do so by law or to protect our rights.',
       ],
