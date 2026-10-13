@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { messages } from '@tourism/i18n';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { DeletePostAction } from '@/lib/posts-write';
+import { withRole } from '@/test/access';
 import { POST_ID, postDetailFixture } from '@/test/post-detail';
 import { DeletePostZone } from './delete-post-zone';
 
@@ -100,5 +101,13 @@ describe('DeletePostZone', () => {
 
     expect(remove).not.toHaveBeenCalled();
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+  });
+
+  it('Staff (ADR-0052): vùng xoá bài không render gì', () => {
+    const { container } = render(
+      <DeletePostZone detail={postDetailFixture()} version={FORM_VERSION} remove={vi.fn()} />,
+      { wrapper: withRole('STAFF') },
+    );
+    expect(container).toBeEmptyDOMElement();
   });
 });

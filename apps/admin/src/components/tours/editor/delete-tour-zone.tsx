@@ -5,6 +5,7 @@ import { messages } from '@tourism/i18n';
 import { Button } from '@tourism/ui/components/button';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
+import { useCanAccess } from '@/components/admin-access-provider';
 import { ConfirmWriteDialog } from '@/components/kit/confirm-write-dialog';
 import { TOURS_LIST_HREF } from '@/lib/departures-query';
 import {
@@ -34,8 +35,12 @@ export function DeleteTourZone({
   detail: AdminTourDetail;
   remove: DeleteTourAction;
 }) {
+  // Xoá tour là thủ tục chỉ Owner (ADR-0052): Staff không thấy vùng này.
+  const mayDelete = useCanAccess('tours.delete');
   const router = useRouter();
   const [open, setOpen] = useState(false);
+
+  if (!mayDelete) return null;
 
   if (detail.bookingCount > 0) {
     return (

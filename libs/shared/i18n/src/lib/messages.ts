@@ -4410,6 +4410,8 @@ export const messages = {
         /** Nút không hiện (Hợp đồng E: hết tiền để hoàn, hoặc PENDING/REFUNDED) — câu này thay chỗ. */
         unavailable:
           'Only a paid, partially refunded or cancelled booking with money left to refund can be refunded.',
+        // ADR-0052: hoàn tiền là thủ tục chỉ Owner — Staff biết phải hỏi ai (plan P4f, quyết định 10).
+        ownerOnly: 'Only the owner can issue refunds.',
         form: {
           title: 'Issue a refund',
           body: 'Step 1 of 2 — enter how much goes back to the customer, and why.',

@@ -6,6 +6,7 @@ import { Button, buttonVariants } from '@tourism/ui/components/button';
 import { cn } from '@tourism/ui/lib/utils';
 import { BanIcon, LockIcon, PencilIcon, UnlockIcon } from 'lucide-react';
 import { useState } from 'react';
+import { useCanAccess } from '@/components/admin-access-provider';
 import { DepartureFormDialog } from '@/components/departures/departure-form-dialog';
 import { ConfirmWriteDialog } from '@/components/kit/confirm-write-dialog';
 import { StableLabel } from '@/components/kit/stable-label';
@@ -90,6 +91,9 @@ export function DepartureRowActions({
    */
   const [toggling, setToggling] = useState<AdminDepartureSettableStatus | null>(null);
   const [cancelling, setCancelling] = useState(false);
+  // Huỷ chuyến là thủ tục chỉ Owner (ADR-0052): Staff không có nút, cũng không ô giữ chỗ —
+  // không hàng nào của Staff có nút ấy, nên cột vẫn thẳng.
+  const mayCancel = useCanAccess('departures.cancel');
 
   // Chuyến đã huỷ: không sửa, không đóng, không mở — bảng chỉ còn là bản ghi.
   if (!row.canEdit) return null;
@@ -151,35 +155,37 @@ export function DepartureRowActions({
         </span>
       )}
 
-      {row.canCancel ? (
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          aria-label={t.cancel.actionLabel(row.dates)}
-          disabled={disabled}
-          onClick={() => setCancelling(true)}
-        >
-          <BanIcon data-icon="inline-start" aria-hidden="true" />
-          {t.cancel.action}
-        </Button>
-      ) : (
-        // Ô GIỮ CHỖ cùng cỡ nút huỷ, cho hàng không còn huỷ được (đã khởi
-        // hành). Thiếu hẳn nút cuối thì cụm canh phải dồn nút Sửa lệch khỏi
-        // cột của hàng trên (lượt thử tay F14, 23/09) — từ F16 hàng ấy cũng
-        // không còn nút đóng/mở, nên Sửa là nút duy nhất phải giữ cột.
-        //
-        // Là một `span` mượn đúng lớp của nút chứ không phải một `Button` bị
-        // ẩn: ẩn đi rồi thì nó vẫn là một nút trong DOM, và chỉ cần quên một
-        // thuộc tính là trình đọc màn hình mời bấm một thứ không tồn tại.
-        <span
-          aria-hidden="true"
-          className={cn(buttonVariants({ variant: 'ghost', size: 'sm' }), 'invisible')}
-        >
-          <BanIcon data-icon="inline-start" />
-          {t.cancel.action}
-        </span>
-      )}
+      {mayCancel ? (
+        row.canCancel ? (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            aria-label={t.cancel.actionLabel(row.dates)}
+            disabled={disabled}
+            onClick={() => setCancelling(true)}
+          >
+            <BanIcon data-icon="inline-start" aria-hidden="true" />
+            {t.cancel.action}
+          </Button>
+        ) : (
+          // Ô GIỮ CHỖ cùng cỡ nút huỷ, cho hàng không còn huỷ được (đã khởi
+          // hành). Thiếu hẳn nút cuối thì cụm canh phải dồn nút Sửa lệch khỏi
+          // cột của hàng trên (lượt thử tay F14, 23/09) — từ F16 hàng ấy cũng
+          // không còn nút đóng/mở, nên Sửa là nút duy nhất phải giữ cột.
+          //
+          // Là một `span` mượn đúng lớp của nút chứ không phải một `Button` bị
+          // ẩn: ẩn đi rồi thì nó vẫn là một nút trong DOM, và chỉ cần quên một
+          // thuộc tính là trình đọc màn hình mời bấm một thứ không tồn tại.
+          <span
+            aria-hidden="true"
+            className={cn(buttonVariants({ variant: 'ghost', size: 'sm' }), 'invisible')}
+          >
+            <BanIcon data-icon="inline-start" />
+            {t.cancel.action}
+          </span>
+        )
+      ) : null}
 
       {editingVersion !== null ? (
         <DepartureFormDialog<UpdateContractCode>

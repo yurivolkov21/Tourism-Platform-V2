@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { messages } from '@tourism/i18n';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { DeleteTourAction } from '@/lib/tour-editor-write';
+import { withRole } from '@/test/access';
 import { detailFixture, TOUR_ID } from '@/test/tour-detail';
 import { DeleteTourZone } from './delete-tour-zone';
 
@@ -95,5 +96,15 @@ describe('DeleteTourZone', () => {
     await waitFor(() =>
       expect(screen.queryByRole('dialog', { name: t.dialog.title })).not.toBeInTheDocument(),
     );
+  });
+
+  it('Staff (ADR-0052): vùng xoá không render gì — kể cả câu "đã có booking"', () => {
+    for (const fixture of [detail, detailFixture({ bookingCount: 3 })]) {
+      const { container, unmount } = render(<DeleteTourZone detail={fixture} remove={vi.fn()} />, {
+        wrapper: withRole('STAFF'),
+      });
+      expect(container).toBeEmptyDOMElement();
+      unmount();
+    }
   });
 });

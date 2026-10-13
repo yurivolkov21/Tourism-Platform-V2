@@ -5,6 +5,7 @@ import { messages } from '@tourism/i18n';
 import { createRef } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { toDestinationRowVM } from '@/lib/destinations-view';
+import { withRole } from '@/test/access';
 import { DestinationRowActions } from './destination-row-actions';
 
 /**
@@ -42,7 +43,7 @@ const row = (over: Partial<AdminDestinationRow> = {}): AdminDestinationRow => ({
   ...over,
 });
 
-function renderRow(data: AdminDestinationRow, over: Record<string, unknown> = {}) {
+function renderRow(data: AdminDestinationRow, over: Record<string, unknown> = {}, role?: string) {
   const vm = toDestinationRowVM(data);
   const update = vi.fn(async () => ({ ok: true as const, row: data }));
   const setActive = vi.fn(async () => ({
@@ -62,6 +63,7 @@ function renderRow(data: AdminDestinationRow, over: Record<string, unknown> = {}
       onSettled={onSettled}
       {...over}
     />,
+    role ? { wrapper: withRole(role) } : undefined,
   );
   return { vm, update, setActive, remove, onSettled };
 }
@@ -318,5 +320,17 @@ describe('DestinationRowActions — nút Delete (ADR-0053)', () => {
     await deleteHitsInUse(false);
 
     expect(errorToast).toHaveBeenCalledWith(t.delete.inUseRaceHidden);
+  });
+
+  it('Staff (ADR-0052): không còn nút Delete — Edit và Hide vẫn còn', () => {
+    const { vm } = renderRow(row({ tourCount: 0, linkedTourCount: 0 }), {}, 'STAFF');
+
+    expect(
+      screen.queryByRole('button', { name: t.delete.actionLabel(vm.name) }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: t.edit.actionLabel(vm.name) })).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: t.setActive.hideLabel(vm.name) }),
+    ).toBeInTheDocument();
   });
 });

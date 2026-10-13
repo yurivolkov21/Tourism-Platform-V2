@@ -5,6 +5,7 @@ import { messages } from '@tourism/i18n';
 import { Button } from '@tourism/ui/components/button';
 import { useRouter } from 'next/navigation';
 import { useRef, useState } from 'react';
+import { useCanAccess } from '@/components/admin-access-provider';
 import { ConfirmWriteDialog } from '@/components/kit/confirm-write-dialog';
 import { isUncertainOutcome } from '@/lib/api/write-error';
 import { POSTS_LIST_HREF, postStatusLabel } from '@/lib/posts-view';
@@ -40,6 +41,10 @@ export function DeletePostZone({
   const [open, setOpen] = useState(false);
   /** Bài đã rời DB — về danh sách thay vì làm mới một trang sẽ 404. */
   const leave = useRef(false);
+  const mayDelete = useCanAccess('posts.delete');
+
+  // Xoá bài là thủ tục chỉ Owner (ADR-0052): Staff không thấy vùng này.
+  if (!mayDelete) return null;
 
   return (
     <section

@@ -19,6 +19,7 @@ import { Textarea } from '@tourism/ui/components/textarea';
 import { cn } from '@tourism/ui/lib/utils';
 import { useRouter } from 'next/navigation';
 import { useState, useTransition } from 'react';
+import { useCanAccess } from '@/components/admin-access-provider';
 import { RefundLedgerTable } from '@/components/bookings/booking-detail-sections';
 import { DIALOG_FRAME } from '@/components/kit/confirm-write-dialog';
 import { LabelValueRow } from '@/components/kit/label-value-row';
@@ -75,6 +76,8 @@ export function RefundPanel({ booking, refund }: { booking: RefundTarget; refund
   // Luồng duyệt huỷ đã gỡ (ADR-0041), nên không còn trạng thái nào phải giữ
   // nút này lại cho một quyết định khác.
   const refundable = canRefund(booking.status, remaining);
+  // Hoàn tiền là thủ tục chỉ Owner (ADR-0052): Staff thấy sổ, không thấy nút.
+  const mayRefund = useCanAccess('bookings.refund');
 
   /** Sau MỌI kết cục đã-chạm-server: kéo sự thật mới về (ledger, status, trần). */
   function refreshBooking() {
@@ -85,7 +88,7 @@ export function RefundPanel({ booking, refund }: { booking: RefundTarget; refund
     <Card>
       <CardHeader className="flex flex-row items-center justify-between gap-3">
         <CardTitle>{t.heading}</CardTitle>
-        {refundable ? (
+        {refundable && mayRefund ? (
           <RefundDialog
             code={booking.code}
             contactName={booking.contactName}
@@ -99,6 +102,7 @@ export function RefundPanel({ booking, refund }: { booking: RefundTarget; refund
       </CardHeader>
       <CardContent className="grid gap-3 text-sm">
         {refundable ? null : <p className="text-muted-foreground">{t.unavailable}</p>}
+        {refundable && !mayRefund ? <p className="text-muted-foreground">{t.ownerOnly}</p> : null}
         {booking.refunds.length > 0 ? (
           <RefundLedgerTable
             refunds={booking.refunds}

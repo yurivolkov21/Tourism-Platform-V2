@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { messages } from '@tourism/i18n';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { REFUND_CONTRACT_CODES } from '@/lib/refund';
+import { withRole } from '@/test/access';
 import { RefundPanel, type RefundTarget } from './refund-panel';
 
 const t = messages.admin.bookings.refund;
@@ -351,5 +352,28 @@ describe('RefundPanel — booking CANCELLED', () => {
     );
     expect(screen.queryByRole('button', { name: t.cta })).toBeNull();
     expect(screen.getByText(t.unavailable)).toBeInTheDocument();
+  });
+});
+
+describe('RefundPanel — Staff (ADR-0052)', () => {
+  it('booking hoàn được: KHÔNG nút refund, có câu "chỉ Owner"; sổ hoàn tiền vẫn hiện', () => {
+    render(
+      <RefundPanel
+        booking={{ ...PAID, refundedTotal: '40.50', refunds: [REFUND_ROW] }}
+        refund={vi.fn()}
+      />,
+      { wrapper: withRole('STAFF') },
+    );
+    expect(screen.queryByRole('button', { name: t.cta })).not.toBeInTheDocument();
+    expect(screen.getByText(t.ownerOnly)).toBeInTheDocument();
+    expect(screen.queryByText(t.ledger.none)).not.toBeInTheDocument();
+  });
+
+  it('booking không hoàn được: câu "unavailable" như cũ, KHÔNG thêm câu "chỉ Owner"', () => {
+    render(<RefundPanel booking={{ ...PAID, status: 'PENDING' }} refund={vi.fn()} />, {
+      wrapper: withRole('STAFF'),
+    });
+    expect(screen.getByText(t.unavailable)).toBeInTheDocument();
+    expect(screen.queryByText(t.ownerOnly)).not.toBeInTheDocument();
   });
 });

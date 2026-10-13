@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { messages } from '@tourism/i18n';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { CancelDepartureAction, UpdateDepartureAction } from '@/lib/departures-write';
+import { withRole } from '@/test/access';
 import { type DepartureRowFixture, makeDepartureRow, serverRow, vmAt } from '@/test/departure-row';
 import { DepartureRowActions } from './departure-row-actions';
 
@@ -41,6 +42,7 @@ function renderActions(
     ok: true as const,
     row: serverRow({ ...row, status: 'CLOSED' as const }, today),
   })),
+  role?: string,
 ) {
   const update = vi.fn();
   render(
@@ -53,6 +55,7 @@ function renderActions(
       disabled={false}
       onSettled={vi.fn()}
     />,
+    role ? { wrapper: withRole(role) } : undefined,
   );
   return { update, setStatus, dates: vmAt(row, today).dates };
 }
@@ -138,6 +141,16 @@ describe('DepartureRowActions — nút nào được bấm', () => {
     const placeholder = screen.getByText(t.setStatus.close).closest('[aria-hidden="true"]');
     expect(placeholder?.tagName).toBe('SPAN');
     expect(placeholder?.closest('button')).toBeNull();
+  });
+
+  it('Staff (ADR-0052): không nút huỷ chuyến, không cả ô giữ chỗ của nó — Close vẫn còn', () => {
+    const { dates } = renderActions(ROW, AFTER_DEADLINE, undefined, 'STAFF');
+
+    expect(
+      screen.queryByRole('button', { name: t.cancel.actionLabel(dates) }),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText(t.cancel.action)).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: t.setStatus.closeLabel(dates) })).toBeEnabled();
   });
 });
 

@@ -5,6 +5,7 @@ import { Button } from '@tourism/ui/components/button';
 import { EyeIcon, EyeOffIcon, PencilIcon } from 'lucide-react';
 import type * as React from 'react';
 import { useState } from 'react';
+import { useCanAccess } from '@/components/admin-access-provider';
 import { DestinationFormDialog } from '@/components/destinations/destination-form-dialog';
 import { ConfirmWriteDialog } from '@/components/kit/confirm-write-dialog';
 import { DeleteRowAction } from '@/components/kit/delete-row-action';
@@ -77,6 +78,9 @@ export function DestinationRowActions({
 }) {
   const [editing, setEditing] = useState(false);
   const [toggling, setToggling] = useState(false);
+  // Xoá là thủ tục chỉ Owner (ADR-0052 §7 và ADR-0053): Staff không có nút, cũng không chỗ
+  // trống — không hàng nào của Staff có nút ấy, nên cụm nút vẫn thẳng cột.
+  const mayDelete = useCanAccess('destinations.delete');
 
   return (
     <div className="flex items-center justify-end gap-1">
@@ -120,27 +124,29 @@ export function DestinationRowActions({
         />
       </Button>
 
-      <DeleteRowAction<DeleteContractCode>
-        label={t.delete.action}
-        actionLabel={t.delete.actionLabel(row.name)}
-        blockedReason={deleteBlockedReason(row)}
-        disabled={disabled}
-        dialog={{
-          copy: deleteDialogCopy(),
-          rows: deleteConfirmRows(row),
-          isStale: isDeleteStale,
-          // Câu `IN_USE` theo trạng thái hiện/ẩn của hàng (Ruling F-b).
-          errorCopy: (code) => deleteErrorCopy(code, row),
-          onSubmit: async () => {
-            const result = await remove({ id: row.id });
-            if (!result.ok) return { ok: false, code: result.code };
-            // Response chỉ chở slug (hàng đã mất), nên tên lấy từ hàng đang hiện.
-            return { ok: true, toast: deleteToast(row.name) };
-          },
-        }}
-        focusAfterDelete={focusAfterDelete}
-        onSettled={onSettled}
-      />
+      {mayDelete ? (
+        <DeleteRowAction<DeleteContractCode>
+          label={t.delete.action}
+          actionLabel={t.delete.actionLabel(row.name)}
+          blockedReason={deleteBlockedReason(row)}
+          disabled={disabled}
+          dialog={{
+            copy: deleteDialogCopy(),
+            rows: deleteConfirmRows(row),
+            isStale: isDeleteStale,
+            // Câu `IN_USE` theo trạng thái hiện/ẩn của hàng (Ruling F-b).
+            errorCopy: (code) => deleteErrorCopy(code, row),
+            onSubmit: async () => {
+              const result = await remove({ id: row.id });
+              if (!result.ok) return { ok: false, code: result.code };
+              // Response chỉ chở slug (hàng đã mất), nên tên lấy từ hàng đang hiện.
+              return { ok: true, toast: deleteToast(row.name) };
+            },
+          }}
+          focusAfterDelete={focusAfterDelete}
+          onSettled={onSettled}
+        />
+      ) : null}
 
       {editing ? (
         <DestinationFormDialog<UpdateContractCode>

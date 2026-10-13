@@ -5,6 +5,7 @@ import { messages } from '@tourism/i18n';
 import { createRef } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { toCategoryRowVMs } from '@/lib/categories-view';
+import { withRole } from '@/test/access';
 import { CategoryRowActions } from './category-row-actions';
 
 /**
@@ -44,7 +45,12 @@ const row = (n: number, over: Partial<AdminCategoryRow> = {}): AdminCategoryRow 
 });
 
 /** Dựng một hàng ở vị trí `index` trong danh sách `rows`. */
-function renderRow(rows: AdminCategoryRow[], index: number, over: Record<string, unknown> = {}) {
+function renderRow(
+  rows: AdminCategoryRow[],
+  index: number,
+  over: Record<string, unknown> = {},
+  role?: string,
+) {
   const vm = toCategoryRowVMs(rows)[index];
   if (!vm) throw new Error(`no row at ${index}`);
   const update = vi.fn();
@@ -72,6 +78,7 @@ function renderRow(rows: AdminCategoryRow[], index: number, over: Record<string,
       onSettled={onSettled}
       {...over}
     />,
+    role ? { wrapper: withRole(role) } : undefined,
   );
   return { vm, update, setActive, move, onMoveStart, remove, onSettled };
 }
@@ -308,5 +315,17 @@ describe('CategoryRowActions — nút Delete (ADR-0053)', () => {
     await deleteHitsInUse(false);
 
     expect(errorToast).toHaveBeenCalledWith(t.delete.inUseRaceHidden);
+  });
+
+  it('Staff (ADR-0052): không còn nút Delete — Edit và Hide vẫn còn', () => {
+    const { vm } = renderRow([row(1)], 0, {}, 'STAFF');
+
+    expect(
+      screen.queryByRole('button', { name: t.delete.actionLabel(vm.name) }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: t.edit.actionLabel(vm.name) })).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: t.setActive.hideLabel(vm.name) }),
+    ).toBeInTheDocument();
   });
 });
