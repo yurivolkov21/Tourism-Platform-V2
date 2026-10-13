@@ -13,7 +13,7 @@ import { EmailType, UserRole } from '../generated/prisma/enums.js';
 import { nudgeOutboxDrain } from '../worker/outbox-nudge.js';
 import { isBootstrapAdmin } from './admin-bootstrap.js';
 import { googleSignInAvatar } from './google-avatar.js';
-import { rejectsMobileAuthRequest } from './mobile-auth-guard.js';
+import { MOBILE_AUTH_REJECTION_MESSAGES, mobileAuthRejection } from './mobile-auth-guard.js';
 
 /**
  * PrismaClient dùng chung cho auth + account flows (Prisma 7: connection qua
@@ -115,17 +115,14 @@ export const auth = betterAuth({
     before: createAuthMiddleware(async (ctx) => {
       // ADR-0056 §3 (thay chốt B2 của ADR-0017 §11): proxy
       // `expo-authorization-proxy` đóng ở mọi môi trường, và luồng redirect
-      // social không có idToken thì không được đổ về `nexora://` — hai đường
-      // này từng cho kẻ tấn công nhận cookie phiên của nạn nhân qua deep link.
-      // App mobile đăng nhập Google bằng ID token (nhánh không redirect). Chặn
-      // TRƯỚC handler nên cookie state cũng không được đặt.
-      if (rejectsMobileAuthRequest({ path: ctx.path, body: ctx.body })) {
-        throw new APIError('BAD_REQUEST', {
-          message:
-            ctx.path === '/expo-authorization-proxy'
-              ? 'Invalid authorizationURL'
-              : 'Invalid callbackURL',
-        });
+      // social không có idToken thì không được đổ về deep link (`nexora://`,
+      // `exp://`…) — hai đường này từng cho kẻ tấn công nhận cookie phiên của
+      // nạn nhân qua deep link. App mobile đăng nhập Google bằng ID token
+      // (nhánh không redirect). Chặn TRƯỚC handler nên cookie state cũng không
+      // được đặt.
+      const rejection = mobileAuthRejection({ path: ctx.path, body: ctx.body });
+      if (rejection) {
+        throw new APIError('BAD_REQUEST', { message: MOBILE_AUTH_REJECTION_MESSAGES[rejection] });
       }
       if (ctx.path !== '/change-password') return;
       const body = (ctx.body ?? {}) as Record<string, unknown>;

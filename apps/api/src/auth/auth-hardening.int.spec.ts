@@ -168,20 +168,28 @@ describe('auth hardening: enumeration + trần riêng (W2 mục 3)', () => {
     }
   });
 
-  it('4. sign-in/social không có idToken mà callbackURL là nexora:// → 400 (ADR-0056 §3, khoá thứ hai)', async () => {
-    const res = await app.inject({
-      method: 'POST',
-      url: '/api/auth/sign-in/social',
-      headers: { 'content-type': 'application/json' },
-      payload: JSON.stringify({ provider: 'google', callbackURL: 'nexora://x' }),
-    });
-    expect(res.statusCode).toBe(400);
-    expect(res.headers['set-cookie']).toBeUndefined();
+  it('4. sign-in/social không có idToken mà callbackURL là deep link (nexora://, exp://) → 400 (ADR-0056 §3, khoá thứ hai)', async () => {
+    // exp:// là origin tin cậy ở development (plugin expo tự thêm). Better Auth
+    // tắt lớp kiểm Origin khi chạy test (isTest), nên thiếu khoá này cả hai
+    // request đi tiếp 200 và đặt cookie state — đã đo bằng cách tạm nới khoá.
+    for (const callbackURL of ['nexora://x', 'exp://192.168.1.10:8081/--/x']) {
+      const res = await app.inject({
+        method: 'POST',
+        url: '/api/auth/sign-in/social',
+        headers: { 'content-type': 'application/json' },
+        payload: JSON.stringify({ provider: 'google', callbackURL }),
+      });
+      expect(res.statusCode).toBe(400);
+      expect(res.json()).toMatchObject({ message: 'Invalid callbackURL' });
+      expect(res.headers['set-cookie']).toBeUndefined();
+    }
   });
 
-  it('5. nhánh ID token không bị hai khoá mới hay lớp kiểm Origin chặn: token rác → 401 của Better Auth, không cookie', async () => {
+  it('5. nhánh ID token không bị hai khoá mới chặn: token rác → 401 của Better Auth, không cookie', async () => {
     // Không cookie, không Origin — đúng request app mobile gửi. 401
     // INVALID_TOKEN nghĩa là request đã tới tận bước kiểm chữ ký của provider.
+    // Lớp kiểm Origin của Better Auth tắt khi chạy test (isTest), nên ca này
+    // không nói gì về nó; đường production đã thử trên điện thoại thật 13/10.
     const res = await app.inject({
       method: 'POST',
       url: '/api/auth/sign-in/social',
