@@ -8,6 +8,88 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-10-13 — Merge đăng nhập Google native trên mobile (ADR-0056), đóng proxy Expo trên API (`b6dacdc`..`2d6f6c7`)
+
+App mobile đăng nhập Google bằng SDK gốc `@react-native-google-signin/google-signin` 16.1.5: bảng
+chọn tài khoản của hệ điều hành cho ID token, app gửi `POST /api/auth/sign-in/social` kèm `idToken`
+rồi lưu cookie phiên như đăng nhập email. Luồng cũ qua trình duyệt và proxy
+`expo-authorization-proxy` bỏ hẳn. Expo Go không nạp được module gốc nên nút Google ẩn ở đó (và ở
+bản iOS thiếu client iOS); thử Google cần APK `preview` hoặc dev build của EAS
+([runbook §7](conventions/mobile-dev-loop.md)). [ADR-0056](adr/0056-mobile-google-native-signin.md)
+cùng AMEND 1, [spec](specs/2026-10-09-mobile-google-native-signin-design.md).
+
+API, deploy theo merge này:
+
+- `b6dacdc`: before-hook trả 400 cho mọi `GET /expo-authorization-proxy`, ở mọi môi trường — vá
+  chuỗi chiếm phiên qua deep link đang mở trên production (ghi chú 09/10 ở ADR-0017 §11) — và cho
+  `/sign-in/social`, `/link-social` không kèm `idToken` mà có callback là deep link. Provider Google
+  nhận `clientId` dạng mảng: client web, rồi client iOS nếu có `GOOGLE_IOS_CLIENT_ID`.
+- `c3bca63`: tài khoản MỚI tạo bằng Google, cả web lẫn app, không còn bị guard avatar chặn. Trên
+  `/sign-in/social` và `/callback/:id`, ảnh `lh3.googleusercontent.com` được giữ, ảnh host khác bị
+  bỏ (user chọn giữ ảnh Google 13/10). Trước bản này mọi tài khoản mới bằng Google bị từ chối, kể cả
+  trên web production — kết luận từ đọc mã và int test, chưa đối chiếu log production.
+
+Mobile `2b26e55` (seam SDK ở `google-native.ts`, nút ẩn khi không dùng được) và `245958e` (nối dự án
+EAS `@yuri-volkovs-team/nexora-travel`): `eas.json` có profile `preview` (APK trỏ API production,
+client ID web và iOS trong khối `env`) và `development`, script `eas-build-post-install` build các
+package workspace trên EAS, `expo-dev-client` nên ba script dev thêm `--go`. Docs `f189183` và
+`8d302da`. Không migration, không đổi env API; hai dependency mobile mới đã có trong ADR-0056.
+
+**Google Cloud và EAS** (user làm 13/10): client iOS và client Android cùng dự án với client web
+đang chạy, trang OAuth Publish ("In production"), build `preview` đầu tiên trên EAS xanh với khoá ký
+sinh trên EAS.
+
+**Thử trên máy thật 13/10** (APK `preview`, API production chưa có nhánh này): Google vào đúng tài
+khoản email có sẵn (không ảnh là đúng thiết kế, Better Auth không chép ảnh khi liên kết); đóng bảng
+chọn thì màn đứng yên; đăng xuất rồi chọn lại tài khoản được; bấm tim khi chưa đăng nhập rồi đăng
+nhập Google quay về đúng chỗ.
+
+**Review 13/10 trên session cloud** (code-review mức high trên `d0d7b88..245958e`): 10 phát hiện, vá
+8, giữ 2.
+
+1. Đăng xuất khỏi app gọi `signOut` của SDK khi SDK chưa cấu hình trong tiến trình (sau khi mở lại
+   app), Android từ chối và lỗi bị nuốt, nên lần sau Android tự vào lại tài khoản cũ. Vá ở
+   `0d46574`: đăng xuất cấu hình SDK trước.
+2. API từ chối token thì SDK vẫn nhớ tài khoản vừa chọn. Vá ở `0d46574`: app `signOut` trước mỗi
+   lần mở bảng chọn, nên lần nào cũng được chọn tài khoản.
+3. Bản iOS thiếu client iOS hiện nút mà bấm vào chỉ ra lỗi. Vá ở `0d46574`: ẩn nút.
+4. Khoá deep link chỉ bắt `nexora:`, trong khi plugin `expo()` tự tin `exp://` ở development và gắn
+   cookie cho mọi deep link tin cậy. Vá ở `9d512f6`: chặn mọi URL tuyệt đối có scheme khác
+   http/https, parse bằng `new URL` như plugin (hoa thường, tab, ký tự điều khiển không lách được).
+5. Ngoại lệ ảnh Google chưa có int test qua đường thật của Better Auth. Vá ở `430f9c7`: 5 ca với
+   JWKS và token endpoint Google giả; chạy trên `auth.config.ts` trước bản vá ảnh thì 3 ca tài khoản
+   mới đỏ.
+6. Mọi lỗi của SDK gộp thành lỗi chung. Vá ở `0d46574`: máy không có Google Play Services báo
+   "not available" (bấm lại không chữa được); các lỗi còn lại vẫn là lỗi chung.
+7. Scheme `nexora` lặp lại ở API ngoài `env.ts`. Hết theo mục 4: API không còn hằng scheme.
+8. Before-hook so path lần hai để chọn thông điệp. Vá ở `9d512f6`: guard trả lý do.
+9. `GOOGLE_IOS_CLIENT_ID` bị cho là cấu hình chết. Giữ: ID token cấp cho app iOS mang audience là
+   client iOS (suy từ tài liệu Google, chưa đo được khi chưa có bản iOS); thừa thì vô hại.
+10. Ảnh Google ở host `lh4`–`lh6` bị bỏ. Giữ: nới host phải sửa cả `img-src` của CSP web và admin;
+    ghi ở open-items mục 4.
+
+Tests after (`gate:int` trên `2d6f6c7`, 13/10 03:11–03:20, chạy trên cloud theo đúng các bước
+của CI): unit 7077 — web 2233, admin 1998, api 1107, mobile 771, contract 675, mobile-ui 136, ui 47,
+core 46, i18n 43, tokens 21 — và int 790/47. So với main: api 1097 → 1107 (guard 12 ca, ảnh Google
+5, env 1, trừ 8 ca của spec proxy cũ đã gỡ), mobile 738 → 771 (seam Google 16, hành động auth 5,
+cấu hình EAS 3, env 3, hai màn auth 4, đăng xuất 2), int 782 → 790 (proxy và khoá deep link 3, đăng
+nhập Google qua Better Auth thật 5). Lượt gate đầu đỏ ở typecheck mobile vì spec mới so
+`invocationCallOrder[0]`, kiểu `number | undefined` dưới `noUncheckedIndexedAccess` (jest vẫn
+xanh); vá ở `2d6f6c7`, lượt sau chạy lại từ bước build API vì int đã xanh trên cùng mã API.
+
+**CÒN TREO:**
+
+- [ ] Sau khi Render deploy: đăng nhập bằng một Gmail chưa có tài khoản, trên web production và trên
+  app, thấy tài khoản tạo xong kèm ảnh Google.
+- [ ] Gọi proxy từ máy, thấy 400 và không có `set-cookie`:
+  `curl -i "https://api.nexora-travel.agency/api/auth/expo-authorization-proxy?authorizationURL=https%3A%2F%2Faccounts.google.com"`.
+- [ ] Build lại APK `preview` (JS của vòng review chưa có trong APK đang cài), cài lại, thử: bảng
+  chọn hiện mỗi lần bấm, đăng xuất rồi đăng nhập lại chọn được tài khoản khác.
+- [ ] Sau v1: Credential Manager thay Google Sign-In cũ trên Android; iOS khi có tài khoản Apple
+  Developer (lúc đó thêm `GOOGLE_IOS_CLIENT_ID` vào env Render). Đã ghi ở open-items mục 4.
+- Dọn sau merge: nhánh `feat/mobile-google-native-signin` trên origin (session cloud không xoá được
+  nhánh trên GitHub).
+
 ## 2026-10-12 — Thử tay G40 Phần 3 trên production 4/4 bước; đóng G40, ghi G43
 
 **Thử tay** (spec §10 bước 5–6 chia thành bốn bước; sau push `9877e518`: Vercel web và admin READY,

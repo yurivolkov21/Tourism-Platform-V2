@@ -8,6 +8,11 @@
   [ADR-0055](../adr/0055-mobile-data-layer.md) ·
   [handoff đăng nhập mobile](../handoff/mobile-auth-handoff.md)
 - **Hạn:** merge trước freeze 15/10/2026, vì thêm dependency.
+- **Thi công 13/10:** khác spec ở các điểm sau, ghi ở ADR-0056 AMEND 1. Khoá ở §3.1 chặn mọi
+  callback là deep link (scheme khác http/https), không riêng `nexora://`. Lúc tạo tài khoản
+  bằng Google, ảnh `lh3.googleusercontent.com` được giữ. App gọi `signOut` của SDK trước mỗi
+  lần mở bảng chọn và cấu hình SDK trước khi đăng xuất. Bản iOS thiếu client iOS ẩn nút, máy
+  thiếu Google Play Services báo câu `notAvailable` đã có.
 
 ## 1. Mục tiêu và phạm vi
 
