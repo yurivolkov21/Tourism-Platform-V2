@@ -1,21 +1,30 @@
 'use client';
 
-import { type ColumnVisibilityState, createColumnHelper, useTable } from '@tanstack/react-table';
+import {
+  type ColumnVisibilityState,
+  createColumnHelper,
+  type RowSelectionState,
+  useTable,
+} from '@tanstack/react-table';
 import { messages } from '@tourism/i18n';
+import { ButtonLink } from '@tourism/ui/components/button-link';
+import { Checkbox } from '@tourism/ui/components/checkbox';
 import { CalendarCheckIcon, CalendarIcon, CalendarOffIcon, TagIcon } from 'lucide-react';
 import * as React from 'react';
 import { ColumnVisibilityMenu, DataTableBody } from '@/components/kit/data-table-body';
 import { DataTableFrame } from '@/components/kit/data-table-frame';
-import { serverTableFeatures } from '@/components/kit/table-features';
+import { selectableTableFeatures } from '@/components/kit/table-features';
 import { TablePagination } from '@/components/kit/table-pagination';
 import { SubscribersExportLink } from '@/components/subscribers/subscribers-export-link';
 import { SubscribersSourceMenu } from '@/components/subscribers/subscribers-source-menu';
 import {
   SubscribersClearFilters,
+  SubscribersDateRange,
   SubscribersSearch,
   SubscribersStatusTabs,
 } from '@/components/subscribers/subscribers-toolbar';
 import { UnsubscribeAction } from '@/components/subscribers/unsubscribe-action';
+import { formatCalendarDate, formatDateRange } from '@/lib/bookings-view';
 import { type SubscribersQuery, subscribersHref } from '@/lib/subscribers-query';
 import type { UnsubscribeAction as UnsubscribeActionFn } from '@/lib/subscribers-unsubscribe';
 import type { SubscriberRowVM } from '@/lib/subscribers-view';
@@ -24,8 +33,12 @@ import { PAGE_SIZE_OPTIONS } from '@/lib/table-query';
 /**
  * Bảng `/subscribers` (spec P4c §3-F10) — dựng trọn trên kit (`DataTableFrame`
  * + `DataTableBody` + `ColumnVisibilityMenu` + `TablePagination` +
- * `serverTableFeatures` — không checkbox, không fork rút gọn; user chốt
- * 31/08: mọi bảng vùng một kiểu). Trang/filter sống trên URL.
+ * `selectableTableFeatures` — không fork rút gọn; user chốt 31/08: mọi bảng
+ * vùng một kiểu). Trang/filter sống trên URL.
+ *
+ * Cột ô tích ở đầu (G43, 13/10, khuôn `/bookings` 01/09): tích vài địa chỉ rồi
+ * bấm "Export N rows" để tải đúng các hàng ấy. Luật vòng đời của tích ở
+ * `BookingsTable`; bảng này chép y nguyên.
  *
  * Cột theo spec: Email · Source · Subscribed at · Unsubscribed at · Actions.
  * Cột Email KHÔNG ẩn được: nó là danh tính của hàng, và không có trang chi
@@ -43,7 +56,7 @@ import { PAGE_SIZE_OPTIONS } from '@/lib/table-query';
  */
 const t = messages.admin.subscribers.list;
 
-const columnHelper = createColumnHelper<typeof serverTableFeatures, SubscriberRowVM>();
+const columnHelper = createColumnHelper<typeof selectableTableFeatures, SubscriberRowVM>();
 
 /** Nhãn cho menu ẩn/hiện — chỉ cột ẩn ĐƯỢC mới cần entry. */
 const COLUMN_LABELS: Record<string, string> = {
@@ -64,9 +77,40 @@ const COLUMN_ICONS = {
  * Cột nhận `query`/`total` qua tham số (không đọc từ module) vì nút Export
  * sống trong ô tiêu đề của cột `actions` — cùng nếp `buildColumns` của
  * `/bookings`.
+ *
+ * CỐ Ý không nhận danh sách id đã tích (cùng lý do `/bookings`): nó đổi theo
+ * mỗi cú click, mà `columns` là đầu vào của row model. Header đọc thẳng lựa
+ * chọn từ `table` mà TanStack đưa cho nó.
  */
 function buildColumns(query: SubscribersQuery, total: number, unsubscribe: UnsubscribeActionFn) {
   return columnHelper.columns([
+    columnHelper.display({
+      id: 'select',
+      /**
+       * Chọn CẢ TRANG, không phải cả tập, và nhãn nói đúng như thế. Bộ
+       * `…AllRows…` chứ không phải `…AllPageRows…`, và "một phần" đếm trên hàng
+       * ĐANG HIỆN — lý do của cả hai ở cột `select` của `BookingsTable`.
+       */
+      header: ({ table }) => (
+        <Checkbox
+          aria-label={t.selectAllRows}
+          checked={table.getIsAllRowsSelected()}
+          indeterminate={
+            !table.getIsAllRowsSelected() && table.getSelectedRowModel().rows.length > 0
+          }
+          onCheckedChange={(value) => table.toggleAllRowsSelected(value === true)}
+        />
+      ),
+      // Nhãn gọi tên địa chỉ: trình đọc màn hình đọc "Select ada@…", không
+      // phải mười lần "Select row" giống hệt nhau.
+      cell: ({ row }) => (
+        <Checkbox
+          aria-label={t.selectRow(row.original.email)}
+          checked={row.getIsSelected()}
+          onCheckedChange={(value) => row.toggleSelected(value === true)}
+        />
+      ),
+    }),
     columnHelper.accessor('email', {
       header: t.columns.email,
       cell: ({ row }) => (
@@ -122,10 +166,16 @@ function buildColumns(query: SubscribersQuery, total: number, unsubscribe: Unsub
        * (còn đọc được "Acti"). Ở đây cột có bề rộng thật, ít nhất bằng nút. Chữ "Actions"
        * còn cho trình đọc màn hình.
        */
-      header: () => (
+      header: ({ table }) => (
         <div className="flex items-center justify-end">
           <span className="sr-only">{t.columns.actions}</span>
-          <SubscribersExportLink query={query} total={total} />
+          <SubscribersExportLink
+            query={query}
+            total={total}
+            // Khoá của row model CHÍNH LÀ `id` (`getRowId` bên dưới) — URL mang
+            // id chứ không mang email (spec G43, quyết định 3).
+            selected={table.getSelectedRowModel().rows.map((row) => row.id)}
+          />
         </div>
       ),
       // Chỉ hàng CÒN nhận tin mới có nút: bấm lên hàng đã huỷ chỉ ra 409, và một nút luôn
@@ -161,23 +211,37 @@ export function SubscribersTable({
   unsubscribe,
 }: SubscribersTableProps) {
   const [columnVisibility, setColumnVisibility] = React.useState<ColumnVisibilityState>({});
+  // Tích sống trong trang đang xem và bị ĐẶT LẠI mỗi khi query đổi, theo khuôn
+  // "chỉnh state trong lúc render" của `BookingsTable` (vòng vá review 02/09):
+  // đổi trang/lọc là soft navigation cùng segment nên React GIỮ `useState` này.
+  // So khoá query với lần trước, lệch thì xoá — không effect, không khung hình
+  // nào lộ tích cũ, và `columnVisibility` vẫn sống qua trang.
+  const [rowSelection, setRowSelection] = React.useState<RowSelectionState>({});
+  const queryKey = subscribersHref(query, {});
+  const [selectionKey, setSelectionKey] = React.useState(queryKey);
+  if (selectionKey !== queryKey) {
+    setSelectionKey(queryKey);
+    setRowSelection({});
+  }
+
   // Deps là GIÁ TRỊ NGUYÊN THUỶ (vòng vá review F10): `query` là object mới
   // mỗi lần server render nên memo theo nó không bao giờ trúng.
-  const { page, limit, active, search, source } = query;
+  const { page, limit, active, search, source, from, to } = query;
   // biome-ignore lint/correctness/useExhaustiveDependencies: memo theo từng field của `query`, không theo object
   const columns = React.useMemo(
     () => buildColumns(query, total, unsubscribe),
-    [page, limit, active, search, source, total, unsubscribe],
+    [page, limit, active, search, source, from, to, total, unsubscribe],
   );
 
   const table = useTable({
-    features: serverTableFeatures,
+    features: selectableTableFeatures,
     data: rows,
     columns,
     // KHÔNG có pagination state ở table: trang/limit sống trên URL.
-    state: { columnVisibility },
+    state: { columnVisibility, rowSelection },
     getRowId: (row) => row.id,
     onColumnVisibilityChange: setColumnVisibility,
+    onRowSelectionChange: setRowSelection,
   });
 
   return (
@@ -185,6 +249,7 @@ export function SubscribersTable({
       views={<SubscribersStatusTabs query={query} />}
       actions={
         <>
+          <SubscribersDateRange query={query} />
           <SubscribersSourceMenu query={query} sources={sources} />
           <SubscribersSearch query={query} />
           <SubscribersClearFilters query={query} />
@@ -203,7 +268,42 @@ export function SubscribersTable({
         />
       }
     >
-      <DataTableBody table={table} empty={t.empty} />
+      <DataTableBody table={table} empty={<SubscribersEmpty query={query} />} />
     </DataTableFrame>
+  );
+}
+
+/**
+ * Ô rỗng của bảng. Khi ĐANG lọc theo ngày (G43) thì nói thẳng khoảng ngày ra và
+ * mở sẵn lối về mọi ngày, cùng nếp `/bookings` và `/reviews`: bộ lọc CỘNG DỒN,
+ * nên "không có kết quả" sau khi tìm một email thường là do hai ô ngày đặt từ
+ * lúc trước chứ không phải do địa chỉ ấy không có trong danh sách.
+ */
+function SubscribersEmpty({ query }: { query: SubscribersQuery }) {
+  if (!query.from && !query.to) return <>{t.empty}</>;
+
+  // Ba dạng câu cho ba hình dạng khoảng — 'between X.' cho khoảng một đầu là
+  // câu cụt và đọc thành 'đúng ngày X'.
+  const message =
+    query.from && query.to
+      ? t.emptyInRange(formatDateRange(query.from, query.to))
+      : query.from
+        ? t.emptyFrom(formatCalendarDate(query.from))
+        : t.emptyTo(formatCalendarDate(query.to as string));
+
+  return (
+    <div className="flex flex-col items-center gap-2">
+      <p>{message}</p>
+      {/* Link chứ không nút: đổi bộ lọc là ĐIỀU HƯỚNG ở vùng này, và một link
+          thì mở tab mới / copy được như mọi filter khác. */}
+      <ButtonLink
+        variant="outline"
+        size="sm"
+        href={subscribersHref(query, { from: null, to: null })}
+      >
+        <CalendarOffIcon data-icon="inline-start" aria-hidden="true" />
+        {t.showAllDates}
+      </ButtonLink>
+    </div>
   );
 }

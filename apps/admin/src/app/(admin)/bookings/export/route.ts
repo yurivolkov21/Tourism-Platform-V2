@@ -3,7 +3,7 @@ import { messages } from '@tourism/i18n';
 import { cookies } from 'next/headers';
 import type { NextRequest } from 'next/server';
 import { fetchAdminBookings, fetchAllAdminBookings } from '@/lib/api/bookings';
-import { EXPORT_SELECTION_PARAM, parseBookingsSearchParams } from '@/lib/bookings-query';
+import { parseBookingsSearchParams } from '@/lib/bookings-query';
 import { buildBookingsWorkbook } from '@/lib/bookings-xlsx';
 import { EXPORT_TIME_BUDGET_MS, type PagedExport } from '@/lib/export-pages';
 import {
@@ -12,6 +12,7 @@ import {
   logExportAudit,
   xlsxAfterBuild,
 } from '@/lib/export-route';
+import { parseExportSelection, pickSelectedRows } from '@/lib/export-selection';
 import { rawSearchParamsFrom } from '@/lib/table-query';
 
 /**
@@ -71,10 +72,7 @@ export async function GET(request: NextRequest) {
   //
   // Bộ lọc vẫn áp vì nó nằm trong cùng `query`: một hàng đã tích mà không còn
   // khớp lọc thì đơn giản không có trong trang server trả về.
-  const selected = (request.nextUrl.searchParams.get(EXPORT_SELECTION_PARAM) ?? '')
-    .split(',')
-    .map((code) => code.trim())
-    .filter(Boolean);
+  const selected = parseExportSelection(request.nextUrl.searchParams);
 
   if (selected.length > 0) {
     let page: Awaited<ReturnType<typeof fetchAdminBookings>>;
@@ -93,17 +91,13 @@ export async function GET(request: NextRequest) {
       return exportFailedResponse();
     }
 
-    const wanted = new Set(selected);
-    const rows = page.items.filter((item) => wanted.has(item.code));
-
-    // Thiếu BẤT KỲ hàng nào đã chỉ đích danh: trang đã đổi dưới chân admin
-    // (hàng bị huỷ rơi khỏi bộ lọc, booking mới chen vào đẩy hàng sang trang
-    // sau). Trả một file ít dòng hơn số hàng đã tích là NÓI DỐI — người tải
-    // tưởng mình có đủ — cùng lý do nhánh export-all từ chối bằng 413 thay vì
-    // cắt bớt. Bản đầu chỉ chặn ca trượt SẠCH (0 hàng), để lọt ca trượt một
-    // phần (vòng vá review 02/09). `wanted.size` chứ không phải
-    // `selected.length`: mã lặp trên URL không được tính là hai hàng.
-    if (rows.length !== wanted.size) {
+    // Thiếu BẤT KỲ hàng nào đã chỉ đích danh là `null`: trang đã đổi dưới chân
+    // admin (hàng bị huỷ rơi khỏi bộ lọc, booking mới chen vào đẩy hàng sang
+    // trang sau). Bản đầu chỉ chặn ca trượt SẠCH (0 hàng), để lọt ca trượt một
+    // phần (vòng vá review 02/09) — luật đầy đủ ở `pickSelectedRows`, dùng
+    // chung với `/subscribers/export` từ G43.
+    const rows = pickSelectedRows(page.items, selected, (item) => item.code);
+    if (!rows) {
       logExportAudit('bookings', { adminId, outcome: 'stale', mode: 'selection', filters });
       return new Response(messages.admin.errors.exportSelectionStale, { status: 409 });
     }

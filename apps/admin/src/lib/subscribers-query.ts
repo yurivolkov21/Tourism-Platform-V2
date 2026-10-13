@@ -1,8 +1,10 @@
 import { SUBSCRIBER_SOURCE_MAX_LENGTH } from '@tourism/contract';
+import { EXPORT_SELECTION_PARAM } from './export-selection';
 import {
   appendPaging,
   clampSearch,
   firstParam,
+  parseDateRange,
   parsePaging,
   pickPatch,
   type RawSearchParams,
@@ -16,8 +18,9 @@ import {
  * → input contract; bảng client đổi trang/lọc bằng điều hướng, KHÔNG fetch từ
  * browser.
  *
- * Ba filter: `active` (tab Active/Unsubscribed/All), `q` (tìm email) và
- * `source` (Select dựng từ chính `sources` mà response trả về).
+ * Bốn filter: `active` (tab Active/Unsubscribed/All), `q` (tìm email),
+ * `source` (Select dựng từ chính `sources` mà response trả về) và khoảng ngày
+ * đăng ký `from`/`to` (G43 — vắng là mọi ngày, giống `/reviews`).
  *
  * `active` là chỗ vùng này KHÁC ba vùng trước, và khác một cách dễ sai: nó
  * là cờ BA TRẠNG THÁI chứ không phải một filter bật/tắt. `false` KHÔNG đồng
@@ -45,6 +48,10 @@ export interface SubscribersQuery {
   active?: boolean;
   search?: string;
   source?: string;
+  /** Ngày lịch `YYYY-MM-DD` theo `createdAt` — ngày ĐĂNG KÝ, TÍNH VÀO (G43). */
+  from?: string;
+  /** Ngày lịch `YYYY-MM-DD`, cũng TÍNH VÀO — trọn ngày đó. */
+  to?: string;
 }
 
 /** Giá trị URL của tab All — tường minh, vì vắng mặt nghĩa là Active. */
@@ -69,6 +76,10 @@ export function parseSubscribersSearchParams(raw: RawSearchParams): SubscribersQ
     ...(active === ACTIVE_ALL_PARAM ? {} : { active: active !== 'false' }),
     ...(search ? { search } : {}),
     ...(source ? { source } : {}),
+    // Luật ngày (rác rơi im lặng, khoảng ngược giữ `from`) nằm ở kit — mọi vùng
+    // lọc ngày phải khoan dung y hệt nhau. KHÔNG độn khoảng mặc định như
+    // `/bookings`: đây là danh sách liên lạc (spec G43, quyết định 1).
+    ...parseDateRange(firstParam(raw.from), firstParam(raw.to)),
   };
 }
 
@@ -84,6 +95,9 @@ export interface SubscribersHrefPatch {
   active?: boolean | null;
   search?: string | null;
   source?: string | null;
+  /** `null` hoặc chuỗi rỗng (ô date bị xoá trắng) đều là XOÁ đầu đó. */
+  from?: string | null;
+  to?: string | null;
 }
 
 /**
@@ -96,6 +110,8 @@ export function subscribersHref(current: SubscribersQuery, patch: SubscribersHre
     patch.active !== undefined ||
     patch.search !== undefined ||
     patch.source !== undefined ||
+    patch.from !== undefined ||
+    patch.to !== undefined ||
     patch.limit !== undefined;
   const paging = resolvePagePatch(current, patch, scopeChanged);
 
@@ -109,39 +125,57 @@ export function subscribersHref(current: SubscribersQuery, patch: SubscribersHre
 /**
  * Link tải Excel — trỏ tới route handler `/subscribers/export`.
  *
- * Cố ý BỎ `page`/`limit`: file là CẢ TẬP đang lọc chứ không phải trang đang
- * xem (cùng lời hứa với `bookingsExportHref`). Vùng này KHÔNG có xuất
- * theo-lựa-chọn — không có cột checkbox, nên không có `sel`.
+ * KHÔNG tích hàng nào: cố ý BỎ `page`/`limit`, vì file là CẢ TẬP đang lọc chứ
+ * không phải trang đang xem (cùng lời hứa với `bookingsExportHref`).
+ *
+ * Có hàng được tích (G43): URL mang THÊM `page`+`limit` và `sel`. Việc chọn
+ * khoá trong trang đang xem (bảng đặt lại tích mỗi khi query đổi), nên
+ * `page`+`limit` chính là phạm vi của tập đã tích, và route chỉ lấy đúng một
+ * trang. `sel` mang `id`, không mang email: URL vào lịch sử trình duyệt và log
+ * máy chủ, còn email là dữ liệu cá nhân. Mảng rỗng tính là KHÔNG chọn — `sel=`
+ * trống sẽ rẽ route sang nhánh "có chọn" rồi trả 409 cho thứ admin không làm.
  */
-export function subscribersExportHref(query: SubscribersQuery): string {
+export function subscribersExportHref(
+  query: SubscribersQuery,
+  selected?: readonly string[],
+): string {
   const params = new URLSearchParams();
   appendFilters(params, query);
+  if (selected?.length) {
+    params.set('page', String(query.page));
+    params.set('limit', String(query.limit));
+    params.set(EXPORT_SELECTION_PARAM, selected.join(','));
+  }
   return tableHref('/subscribers/export', params);
 }
 
-/** Ba filter sau khi áp patch — một chỗ để hai hàm href không trôi lệch. */
+type SubscribersFilters = Pick<SubscribersQuery, 'active' | 'search' | 'source' | 'from' | 'to'>;
+
+/** Các filter sau khi áp patch — một chỗ để hai hàm href không trôi lệch. */
 function resolveFilters(
   current: SubscribersQuery,
   patch: SubscribersHrefPatch,
-): Pick<SubscribersQuery, 'active' | 'search' | 'source'> {
+): SubscribersFilters {
   return {
     active: pickPatch(patch.active, current.active),
     search: clampSearch(pickPatch(patch.search, current.search), SEARCH_MAX_LENGTH),
     source: clampSearch(pickPatch(patch.source, current.source), SUBSCRIBER_SOURCE_MAX_LENGTH),
+    // Ngày rác từ patch bị vứt ở ĐÂY chứ không ném lên URL: một href sinh ra
+    // 400 là một cú click chết, và luật khoan dung phải giống hệt đường đọc.
+    ...parseDateRange(pickPatch(patch.from, current.from), pickPatch(patch.to, current.to)),
   };
 }
 
 /**
- * Ghi ba filter vào query theo THỨ TỰ CỐ ĐỊNH — href ổn định giữa hai render.
+ * Ghi các filter vào query theo THỨ TỰ CỐ ĐỊNH — href ổn định giữa hai render.
  * Gương của `parseSubscribersSearchParams`: Active (mặc định) không viết ra
  * URL, Unsubscribed là `active=false`, All là `active=all` TƯỜNG MINH.
  */
-function appendFilters(
-  params: URLSearchParams,
-  query: Pick<SubscribersQuery, 'active' | 'search' | 'source'>,
-): void {
+function appendFilters(params: URLSearchParams, query: SubscribersFilters): void {
   if (query.active === undefined) params.set('active', ACTIVE_ALL_PARAM);
   else if (query.active === false) params.set('active', 'false');
   if (query.search) params.set('q', query.search);
   if (query.source) params.set('source', query.source);
+  if (query.from) params.set('from', query.from);
+  if (query.to) params.set('to', query.to);
 }

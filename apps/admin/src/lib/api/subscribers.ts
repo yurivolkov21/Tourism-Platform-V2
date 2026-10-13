@@ -24,9 +24,15 @@ import { api, withAdminAuth } from './client';
  */
 export async function fetchAdminSubscribers(
   cookie: string,
-  query: SubscribersQuery,
+  // `includeSources`/`signal` chỉ đường xuất-có-chọn dùng (G43, khuôn
+  // `fetchAdminBookings`): nó lấy MỘT trang rồi giao theo id, không cần danh
+  // sách nguồn, và cần một mốc thời gian để quá hạn là 502 có lời.
+  query: SubscribersQuery & { includeSources?: boolean },
+  signal?: AbortSignal,
 ): Promise<AdminSubscribersListResult> {
-  return api.admin.subscribers.list(query, { context: withAdminAuth(cookie) });
+  return api.admin.subscribers.list(query, {
+    context: signal ? { cookie, signal } : withAdminAuth(cookie),
+  });
 }
 
 /**

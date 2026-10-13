@@ -4818,6 +4818,16 @@ export const messages = {
         /** Chỉ khớp email — bảng này không có cột chữ nào khác để tìm. */
         searchPlaceholder: 'Email address',
         empty: 'No subscribers match this filter.',
+        /**
+         * Ô rỗng KHI ĐANG lọc ngày (G43) — nói thẳng khoảng đang lọc và mở sẵn
+         * lối thoát, cùng nếp `/bookings` và `/reviews`. Ở danh sách liên lạc,
+         * một bảng rỗng dễ bị đọc thành "chưa ai đăng ký", trong khi thủ phạm
+         * chỉ là hai ô ngày đặt từ lúc trước.
+         */
+        emptyInRange: (range: string) => `No subscribers signed up between ${range}.`,
+        emptyFrom: (date: string) => `No subscribers signed up on or after ${date}.`,
+        emptyTo: (date: string) => `No subscribers signed up on or before ${date}.`,
+        showAllDates: 'Show subscribers from all dates',
         columns: {
           email: 'Email',
           source: 'Source',
@@ -4841,17 +4851,33 @@ export const messages = {
         sourceLabel: 'Filter by source',
         sourceAll: 'All sources',
         /**
+         * Lọc theo ngày ĐĂNG KÝ — cột "Subscribed at" (G43), không phải ngày
+         * xác nhận hay ngày huỷ. Nhãn nói rõ cột nào vì hàng này có ba cột ngày.
+         */
+        dateFilterLabel: 'Filter by subscribed date',
+        /**
          * Xuất ĐÚNG tập đang lọc (cả ba tab), không phải trang đang xem —
          * cùng lời hứa với nút Export của `/bookings`.
          */
         exportExcel: 'Export Excel',
         /**
+         * Nhãn nút khi ĐANG có hàng được tích (G43, khuôn `/bookings` 01/09):
+         * người bấm phải biết mình sắp tải về cái gì TRƯỚC cú bấm.
+         */
+        exportSelected: (n: number) => `Export ${n} ${n === 1 ? 'row' : 'rows'}`,
+        /**
+         * Checkbox ở hàng tiêu đề. "On this page" là SỰ THẬT: phân trang là
+         * điều hướng thật nên tích không sống qua trang (cùng câu `/bookings`).
+         */
+        selectAllRows: 'Select all rows on this page',
+        selectRow: (email: string) => `Select ${email}`,
+        /**
          * BODY của một response 413 — người bấm nút thấy nó thay cho file,
          * nên nó phải nói được việc cần làm tiếp theo mà không cần ngữ cảnh
-         * nào khác.
+         * nào khác. Từ G43 có thêm khoảng ngày để thu hẹp.
          */
         exportTooLarge: (total: number, max: number) =>
-          `This filter matches ${total} subscribers and the export is capped at ${max}. Narrow it with the status tabs, the source filter or the email search, then export again.`,
+          `This filter matches ${total} subscribers and the export is capped at ${max}. Narrow it with the status tabs, the date range, the source filter or the email search, then export again.`,
       },
       /**
        * File Excel của `/subscribers/export` (G40, ADR-0034 AMEND 3). Trạng thái dùng nhãn của bảng
@@ -4868,6 +4894,14 @@ export const messages = {
         activeTab: 'Active and awaiting confirmation',
         source: (source: string) => `source “${source}”`,
         search: (query: string) => `search “${query}”`,
+        dateFrom: (date: string) => `from ${date}`,
+        dateUntil: (date: string) => `until ${date}`,
+        /**
+         * Hàng được lọc theo NGÀY UTC như bảng trên màn hình, còn ô mốc thời gian ghi giờ Việt Nam —
+         * đầu trang nói rõ, cùng lý do file bookings (G43).
+         */
+        utcDates: (dates: string) => `${dates} (UTC)`,
+        selected: (n: number) => `${n} selected ${n === 1 ? 'row' : 'rows'}`,
         columns: {
           email: 'Email',
           source: 'Source',

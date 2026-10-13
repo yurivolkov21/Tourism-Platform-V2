@@ -102,3 +102,78 @@ describe('subscribersExportHref', () => {
     expect(subscribersExportHref(active)).toBe('/subscribers/export');
   });
 });
+
+describe('G43: khoảng ngày theo ngày đăng ký', () => {
+  it('parse: hai đầu tuỳ chọn, ngày rác rơi im lặng, khoảng ngược giữ `from` — cùng luật kit với /reviews', () => {
+    expect(parseSubscribersSearchParams({ from: '2026-09-01', to: '2026-09-30' })).toEqual({
+      ...active,
+      from: '2026-09-01',
+      to: '2026-09-30',
+    });
+    expect(parseSubscribersSearchParams({ to: '2026-09-30' })).toEqual({
+      ...active,
+      to: '2026-09-30',
+    });
+    expect(parseSubscribersSearchParams({ from: '2026-02-30', to: 'x' })).toEqual(active);
+    expect(parseSubscribersSearchParams({ from: '2026-09-30', to: '2026-09-01' })).toEqual({
+      ...active,
+      from: '2026-09-30',
+    });
+  });
+
+  it('URL trần là MỌI ngày — không độn tháng hiện tại như /bookings', () => {
+    const bare = parseSubscribersSearchParams({});
+    expect(bare.from).toBeUndefined();
+    expect(bare.to).toBeUndefined();
+  });
+
+  it('href ghi `from`/`to` sau `source`, đổi ngày đặt lại trang 1, `null` xoá', () => {
+    const current = { ...active, page: 4, from: '2026-09-01', to: '2026-09-30' };
+    expect(subscribersHref(current, {})).toBe('/subscribers?from=2026-09-01&to=2026-09-30&page=4');
+    // Mỗi đầu tự đặt lại trang — patch chỉ đổi MỘT đầu vẫn là đổi phạm vi.
+    expect(subscribersHref(current, { to: '2026-10-15' })).toBe(
+      '/subscribers?from=2026-09-01&to=2026-10-15',
+    );
+    expect(subscribersHref(current, { from: '2026-08-01' })).toBe(
+      '/subscribers?from=2026-08-01&to=2026-09-30',
+    );
+    expect(subscribersHref(current, { from: null, to: null })).toBe('/subscribers');
+    expect(
+      subscribersHref({ ...base, source: 'footer', search: 'ada', from: '2026-09-01' }, {}),
+    ).toBe('/subscribers?active=all&q=ada&source=footer&from=2026-09-01');
+  });
+
+  it('ngày rác hay chuỗi rỗng từ patch bị vứt, không ném lên URL thành một cú click 400', () => {
+    expect(subscribersHref(active, { from: '2026-13-01' })).toBe('/subscribers');
+    expect(subscribersHref({ ...active, from: '2026-09-01' }, { from: '' })).toBe('/subscribers');
+  });
+
+  it('parse ∘ href đồng nhất khi có ngày', () => {
+    for (const href of [
+      '/subscribers?from=2026-09-01&to=2026-09-30',
+      '/subscribers?active=false&to=2026-09-30',
+      '/subscribers?active=all&q=ada&from=2026-09-01&page=2',
+    ]) {
+      const raw = Object.fromEntries(new URL(href, 'http://x').searchParams);
+      expect(subscribersHref(parseSubscribersSearchParams(raw), {})).toBe(href);
+    }
+  });
+});
+
+describe('subscribersExportHref — G43', () => {
+  it('mang khoảng ngày như mọi bộ lọc khác, vẫn bỏ phân trang khi không tích gì', () => {
+    expect(
+      subscribersExportHref({ ...active, page: 2, from: '2026-09-01', to: '2026-09-30' }),
+    ).toBe('/subscribers/export?from=2026-09-01&to=2026-09-30');
+  });
+
+  it('có hàng tích thì mang THÊM page, limit và `sel` là các id — phạm vi của tập đã tích', () => {
+    expect(subscribersExportHref({ page: 3, limit: 50, active: false }, ['id-a', 'id-b'])).toBe(
+      '/subscribers/export?active=false&page=3&limit=50&sel=id-a%2Cid-b',
+    );
+  });
+
+  it('mảng chọn RỖNG là không chọn gì — đừng đẻ ra một `sel=` trống', () => {
+    expect(subscribersExportHref(active, [])).toBe('/subscribers/export');
+  });
+});

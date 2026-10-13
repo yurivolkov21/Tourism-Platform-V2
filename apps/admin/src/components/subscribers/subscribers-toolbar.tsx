@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { ALL_FILTER_VALUE as ALL, StatusFilterTabs } from '@/components/kit/status-filter-tabs';
 import { TableSearchForm } from '@/components/kit/table-search-form';
 import { clearFiltersHref, ToolbarClearFilters } from '@/components/kit/toolbar-clear-filters';
+import { ToolbarDateRange } from '@/components/kit/toolbar-date-range';
 import { type SubscribersQuery, subscribersHref } from '@/lib/subscribers-query';
 
 /**
@@ -16,7 +17,8 @@ import { type SubscribersQuery, subscribersHref } from '@/lib/subscribers-query'
  * client.
  *
  * Mẩu thứ ba — lọc theo nguồn — tách sang `subscribers-source-menu.tsx` ngày
- * 03/09: nó thôi là Select và thành menu theo khuôn `dropdown-menu-10`.
+ * 03/09: nó thôi là Select và thành menu theo khuôn `dropdown-menu-10`. Mẩu
+ * thứ tư — khoảng ngày đăng ký — thêm ở G43 (13/10), xem `SubscribersDateRange`.
  */
 const t = messages.admin.subscribers.list;
 
@@ -73,6 +75,29 @@ export function SubscribersSearch({ query }: { query: SubscribersQuery }) {
 }
 
 /**
+ * Khoảng ngày ĐĂNG KÝ (G43) — vỏ mỏng quanh kit `ToolbarDateRange`, cùng nếp
+ * `/reviews`: vùng chỉ góp nhãn, tiền tố id và hàm href của mình.
+ *
+ * Vùng này mặc định KHÔNG lọc ngày (nút đọc "Any date"): một danh sách liên lạc
+ * mở ra phải thấy đủ, và nút Export không được đổi thứ nó xuất khi chẳng ai
+ * đụng vào ô ngày.
+ */
+export function SubscribersDateRange({ query }: { query: SubscribersQuery }) {
+  const router = useRouter();
+
+  return (
+    <ToolbarDateRange
+      idPrefix="subscribers"
+      label={t.dateFilterLabel}
+      from={query.from}
+      to={query.to}
+      hrefFor={(patch) => subscribersHref(query, patch)}
+      onNavigate={router.push}
+    />
+  );
+}
+
+/**
  * Nút xoá DUY NHẤT của hàng điều khiển `/subscribers` (05/09) — vỏ mỏng quanh kit
  * `ToolbarClearFilters`, xem JSDoc ở đó cho luật chung.
  *
@@ -89,7 +114,7 @@ export function SubscribersClearFilters({ query }: { query: SubscribersQuery }) 
     <ToolbarClearFilters
       label={messages.admin.table.clearFilters}
       href={clearFiltersHref(
-        subscribersHref(query, { search: null, source: null, page: 1 }),
+        subscribersHref(query, { search: null, source: null, from: null, to: null, page: 1 }),
         subscribersHref(query, { page: 1 }),
       )}
       onNavigate={router.push}

@@ -21,8 +21,11 @@ const { fetchAdminBookings, fetchAllAdminBookings } = vi.hoisted(() => ({
   fetchAllAdminBookings: vi.fn(),
 }));
 vi.mock('@/lib/api/bookings', () => ({ fetchAdminBookings, fetchAllAdminBookings }));
-const { fetchAllAdminSubscribers } = vi.hoisted(() => ({ fetchAllAdminSubscribers: vi.fn() }));
-vi.mock('@/lib/api/subscribers', () => ({ fetchAllAdminSubscribers }));
+const { fetchAdminSubscribers, fetchAllAdminSubscribers } = vi.hoisted(() => ({
+  fetchAdminSubscribers: vi.fn(),
+  fetchAllAdminSubscribers: vi.fn(),
+}));
+vi.mock('@/lib/api/subscribers', () => ({ fetchAdminSubscribers, fetchAllAdminSubscribers }));
 vi.mock('next/headers', () => ({ cookies: vi.fn(async () => ({ toString: (): string => '' })) }));
 
 const booking = {
@@ -53,6 +56,12 @@ const subscriber: SubscriberRow = {
   confirmedAt: '2026-09-01T10:05:00.000Z',
   unsubscribedAt: null,
 };
+
+/** Dòng audit CUỐI CÙNG mà route ghi (`logExportAudit` in JSON qua `console.info`). */
+function lastAudit(): Record<string, unknown> {
+  const line = vi.mocked(console.info).mock.calls.at(-1)?.[1];
+  return JSON.parse(String(line)) as Record<string, unknown>;
+}
 
 function requestFor(path: string): NextRequest {
   return { nextUrl: new URL(`https://admin.example.com${path}`) } as unknown as NextRequest;
@@ -161,5 +170,82 @@ describe('GET /subscribers/export', () => {
     const { GET } = await import('@/app/(admin)/subscribers/export/route');
     const response = await GET(requestFor('/subscribers/export'));
     expect(response.status).toBe(413);
+  });
+
+  it('G43: khoảng ngày đi vào cả tập xuất lẫn vết audit', async () => {
+    fetchAllAdminSubscribers.mockResolvedValue({ kind: 'rows', items: [subscriber] });
+    const { GET } = await import('@/app/(admin)/subscribers/export/route');
+    const response = await GET(requestFor('/subscribers/export?from=2026-09-01&to=2026-09-30'));
+    expect(response.status).toBe(200);
+    expect(fetchAllAdminSubscribers).toHaveBeenCalledWith(
+      '',
+      expect.objectContaining({ from: '2026-09-01', to: '2026-09-30' }),
+    );
+    expect(lastAudit()).toMatchObject({
+      outcome: 'ok',
+      rows: 1,
+      filters: { from: '2026-09-01', to: '2026-09-30' },
+    });
+    expect(lastAudit()).not.toHaveProperty('mode');
+  });
+
+  it('G43: xuất hàng đã chọn → MỘT trang không kèm sources, file đúng các hàng ấy, audit ghi chế độ', async () => {
+    const other: SubscriberRow = {
+      ...subscriber,
+      id: '4f2a1b3c-0000-4000-8000-000000000002',
+      email: 'bo@example.com',
+    };
+    fetchAdminSubscribers.mockResolvedValue({
+      items: [subscriber, other],
+      total: 22,
+      page: 2,
+      limit: 20,
+      totalPages: 2,
+      sources: [],
+    });
+    const { GET } = await import('@/app/(admin)/subscribers/export/route');
+    const response = await GET(
+      requestFor(`/subscribers/export?from=2026-09-01&page=2&limit=20&sel=${other.id}`),
+    );
+    expect(response.status).toBe(200);
+    expect(fetchAllAdminSubscribers).not.toHaveBeenCalled();
+    expect(fetchAdminSubscribers).toHaveBeenCalledWith(
+      '',
+      expect.objectContaining({ page: 2, limit: 20, from: '2026-09-01', includeSources: false }),
+      expect.any(AbortSignal),
+    );
+    const sheet = await sheetOf(response, messages.admin.subscribers.xlsx.sheet);
+    expect(sheet.getCell('A2').value).toBe('bo@example.com');
+    expect(sheet.getCell('A3').value).toBeNull();
+    expect(sheet.headerFooter.oddHeader).toContain(messages.admin.subscribers.xlsx.selected(1));
+    expect(lastAudit()).toMatchObject({ outcome: 'ok', mode: 'selection', rows: 1 });
+  });
+
+  it('G43: hàng đã chọn không còn trên trang → 409, không file, audit `stale`', async () => {
+    fetchAdminSubscribers.mockResolvedValue({
+      items: [subscriber],
+      total: 1,
+      page: 1,
+      limit: 20,
+      totalPages: 1,
+      sources: [],
+    });
+    const { GET } = await import('@/app/(admin)/subscribers/export/route');
+    const response = await GET(
+      requestFor(
+        `/subscribers/export?page=1&limit=20&sel=${subscriber.id},4f2a1b3c-0000-4000-8000-000000000009`,
+      ),
+    );
+    expect(response.status).toBe(409);
+    expect(await response.text()).toBe(messages.admin.errors.exportSelectionStale);
+    expect(lastAudit()).toMatchObject({ outcome: 'stale', mode: 'selection' });
+  });
+
+  it('G43: API hỏng giữa cú xuất có chọn → 502 có lời, audit `failed`', async () => {
+    fetchAdminSubscribers.mockRejectedValue(new Error('down'));
+    const { GET } = await import('@/app/(admin)/subscribers/export/route');
+    const response = await GET(requestFor(`/subscribers/export?sel=${subscriber.id}`));
+    expect(response.status).toBe(502);
+    expect(lastAudit()).toMatchObject({ outcome: 'failed', mode: 'selection' });
   });
 });

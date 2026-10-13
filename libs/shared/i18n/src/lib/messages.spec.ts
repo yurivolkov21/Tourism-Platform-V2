@@ -400,6 +400,29 @@ describe('messages: file Excel của admin (G40 Phần 3)', () => {
   });
 });
 
+describe('messages: G43 chọn hàng và lọc ngày ở /subscribers', () => {
+  const l = messages.admin.subscribers.list;
+  const x = messages.admin.subscribers.xlsx;
+
+  it('nút xuất và đầu trang file đếm đúng số ít, số nhiều — cùng câu với /bookings', () => {
+    expect(l.exportSelected(1)).toBe('Export 1 row');
+    expect(l.exportSelected(3)).toBe('Export 3 rows');
+    expect(l.exportSelected(2)).toBe(messages.admin.bookings.list.exportSelected(2));
+    expect(x.selected(1)).toBe('1 selected row');
+    expect(x.selected(3)).toBe('3 selected rows');
+  });
+
+  it('đầu trang file nói rõ ngày UTC; nhãn ô ngày gọi đúng cột ngày đăng ký', () => {
+    expect(x.utcDates(x.dateFrom('Sep 01, 2026'))).toBe('from Sep 01, 2026 (UTC)');
+    expect(x.utcDates(x.dateUntil('Sep 30, 2026'))).toBe('until Sep 30, 2026 (UTC)');
+    expect(l.dateFilterLabel).toBe('Filter by subscribed date');
+  });
+
+  it('câu 413 nêu thêm khoảng ngày như một cách thu hẹp', () => {
+    expect(l.exportTooLarge(2500, 2000)).toContain('the date range');
+  });
+});
+
 describe('messages: admin.reports.printDoc (G40 Phần 2 — bản in báo cáo tháng C2)', () => {
   const p = messages.admin.reports.printDoc;
 

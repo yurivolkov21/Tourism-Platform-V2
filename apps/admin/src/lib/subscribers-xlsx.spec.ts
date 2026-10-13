@@ -2,6 +2,8 @@ import type { SubscriberRow } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
 import ExcelJS from 'exceljs';
 import { describe, expect, it } from 'vitest';
+import { formatCalendarDate, formatDateRange } from './bookings-view';
+import type { SubscribersQuery } from './subscribers-query';
 import {
   buildSubscribersWorkbook,
   SUBSCRIBERS_XLSX_HEADER,
@@ -29,11 +31,16 @@ const left: SubscriberRow = {
   unsubscribedAt: '2026-09-02T08:30:00.000Z',
 };
 
-async function open(rows: readonly SubscriberRow[] = [active, left]): Promise<ExcelJS.Worksheet> {
+async function open(
+  rows: readonly SubscriberRow[] = [active, left],
+  query: SubscribersQuery = { page: 1, limit: 20, active: true },
+  selected = 0,
+): Promise<ExcelJS.Worksheet> {
   const book = new ExcelJS.Workbook();
   await book.xlsx.load(
     await buildSubscribersWorkbook(rows, {
-      query: { page: 1, limit: 20, active: true },
+      query,
+      selected,
       generatedAt: '2026-10-10T02:30:00.000Z',
     }),
   );
@@ -60,17 +67,44 @@ describe('subscribersFilterSummary', () => {
   // Tab Active gồm cả địa chỉ chưa xác nhận, còn cột Status chỉ gọi "Active" địa chỉ đã xác nhận —
   // đầu trang không được dùng cùng một chữ cho hai tập (review max G40 Phần 3).
   it('tab · nguồn · từ khoá; tab Active nói rõ gồm cả chưa xác nhận', () => {
-    expect(subscribersFilterSummary({ page: 1, limit: 20, active: true })).toBe(x.activeTab);
-    expect(subscribersFilterSummary({ page: 1, limit: 20 })).toBe(l.all);
+    expect(subscribersFilterSummary({ page: 1, limit: 20, active: true }, 0)).toBe(x.activeTab);
+    expect(subscribersFilterSummary({ page: 1, limit: 20 }, 0)).toBe(l.all);
     expect(
-      subscribersFilterSummary({
-        page: 1,
-        limit: 20,
-        active: false,
-        source: 'footer',
-        search: 'ada',
-      }),
+      subscribersFilterSummary(
+        {
+          page: 1,
+          limit: 20,
+          active: false,
+          source: 'footer',
+          search: 'ada',
+        },
+        0,
+      ),
     ).toBe([l.unsubscribed, x.source('footer'), x.search('ada')].join(' · '));
+  });
+
+  it('G43: khoảng ngày đứng ngay sau tab và nói rõ là ngày UTC — ba hình dạng khoảng', () => {
+    expect(
+      subscribersFilterSummary(
+        { page: 1, limit: 20, active: true, from: '2026-09-01', to: '2026-09-30' },
+        0,
+      ),
+    ).toBe([x.activeTab, x.utcDates(formatDateRange('2026-09-01', '2026-09-30'))].join(' · '));
+    expect(subscribersFilterSummary({ page: 1, limit: 20, from: '2026-09-01' }, 0)).toBe(
+      [l.all, x.utcDates(x.dateFrom(formatCalendarDate('2026-09-01')))].join(' · '),
+    );
+    expect(
+      subscribersFilterSummary({ page: 1, limit: 20, active: false, to: '2026-09-30' }, 0),
+    ).toBe([l.unsubscribed, x.utcDates(x.dateUntil(formatCalendarDate('2026-09-30')))].join(' · '));
+  });
+
+  it('G43: số hàng chọn đứng TRƯỚC nguồn và từ khoá — hai phần chữ tự do, dài thì bị cắt khi in', () => {
+    expect(
+      subscribersFilterSummary(
+        { page: 1, limit: 20, active: true, source: 'footer', search: 'ada' },
+        3,
+      ),
+    ).toBe([x.activeTab, x.selected(3), x.source('footer'), x.search('ada')].join(' · '));
   });
 });
 
@@ -91,6 +125,25 @@ describe('buildSubscribersWorkbook', () => {
   });
 
   // Spec §7.2: cùng kiểu sheet với bookings — khổ ngang, không thu nhỏ còn ~70% khi in.
+  it('G43: đầu trang khi in giữ khoảng ngày và số hàng chọn dù nguồn và từ khoá chạm trần', async () => {
+    const sheet = await open(
+      [active],
+      {
+        page: 1,
+        limit: 20,
+        active: true,
+        from: '2026-09-01',
+        to: '2026-09-30',
+        source: 's'.repeat(40),
+        search: 'q'.repeat(120),
+      },
+      1,
+    );
+    const header = sheet.headerFooter.oddHeader ?? '';
+    expect(header).toContain(x.utcDates(formatDateRange('2026-09-01', '2026-09-30')));
+    expect(header).toContain(x.selected(1));
+  });
+
   it('khổ ngang như file bookings', async () => {
     const sheet = await open();
     expect(sheet.pageSetup.orientation).toBe('landscape');

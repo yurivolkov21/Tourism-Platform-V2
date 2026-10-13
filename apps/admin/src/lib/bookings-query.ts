@@ -1,4 +1,5 @@
 import { BookingStatusSchema, type BookingStatusValue } from '@tourism/contract';
+import { EXPORT_SELECTION_PARAM } from './export-selection';
 import {
   appendPaging,
   clampSearch,
@@ -249,13 +250,6 @@ export function bookingsBackHref(raw: RawSearchParams, now: Date): string {
  * trang chi tiết nghĩa là người ta tới từ bảng, và bộ lọc ấy phải được giữ.
  */
 const LIST_PARAMS = ['status', 'q', 'from', 'to', 'dates', 'page', 'limit'] as const;
-
-/**
- * Tên tham số mang danh sách mã đã tích. Khai ở đây để route export và bên
- * dựng URL đọc CÙNG MỘT chuỗi — gõ tay hai lần là hai bản trôi lệch trong im
- * lặng, và triệu chứng sẽ là "bấm Export mà vẫn ra cả tập".
- */
-export const EXPORT_SELECTION_PARAM = 'sel';
 
 /**
  * Link tải Excel (spec P4b §3-F6) — trỏ tới route handler `/bookings/export`.

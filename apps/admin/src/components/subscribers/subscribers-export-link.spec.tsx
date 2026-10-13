@@ -21,6 +21,7 @@ describe('SubscribersExportLink', () => {
       <SubscribersExportLink
         query={{ page: 2, limit: 20, active: true, search: 'ada' }}
         total={EXPORT_MAX_ROWS}
+        selected={[]}
       />,
     );
     expect(screen.getByRole('link', { name: t.exportExcel })).toHaveAttribute(
@@ -31,9 +32,23 @@ describe('SubscribersExportLink', () => {
 
   it('tập vượt trần → nút TẮT kèm chính câu 413 làm tooltip, không có <a> nào để bấm', () => {
     const total = EXPORT_MAX_ROWS + 1;
-    render(<SubscribersExportLink query={{ page: 1, limit: 20 }} total={total} />);
+    render(<SubscribersExportLink query={{ page: 1, limit: 20 }} total={total} selected={[]} />);
     expect(screen.queryByRole('link')).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: t.exportExcel })).toBeDisabled();
     expect(screen.getByTitle(t.exportTooLarge(total, EXPORT_MAX_ROWS))).toBeInTheDocument();
+  });
+
+  it('G43: có hàng tích → nhãn đếm số hàng, href mang page, limit và id; trần không áp', () => {
+    render(
+      <SubscribersExportLink
+        query={{ page: 2, limit: 50, active: true }}
+        total={EXPORT_MAX_ROWS + 1}
+        selected={['id-a', 'id-b']}
+      />,
+    );
+    expect(screen.getByRole('link', { name: t.exportSelected(2) })).toHaveAttribute(
+      'href',
+      '/subscribers/export?page=2&limit=50&sel=id-a%2Cid-b',
+    );
   });
 });
