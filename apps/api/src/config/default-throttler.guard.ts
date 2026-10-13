@@ -2,10 +2,10 @@ import { timingSafeEqual } from 'node:crypto';
 import type { ExecutionContext } from '@nestjs/common';
 import { Injectable, Logger, UnauthorizedException } from '@nestjs/common';
 import { ThrottlerException, type ThrottlerRequest } from '@nestjs/throttler';
+import { isAdminAppRole } from '@tourism/contract';
 import type { SessionUser } from '../auth/auth.config.js';
 import { IS_PUBLIC_KEY } from '../auth/public.decorator.js';
 import { WriteOnlyThrottlerGuard } from '../auth/write-only-throttler.guard.js';
-import { UserRole } from '../generated/prisma/enums.js';
 import { env, publicReadThrottleMode } from './env.js';
 import { ADMIN_WRITE_THROTTLE, AUTHED_WRITE_THROTTLE, PUBLIC_READ_THROTTLE } from './throttle.js';
 
@@ -67,7 +67,7 @@ interface ThrottledRequest {
  *   đọc chỉ là mặc định cho route không khai gì, còn AUTH_THROTTLE cố ý chỉ
  *   đếm non-GET. Đây là "miễn", KHÔNG phải "thi hành trần đã khai cho GET".
  * - GET không public, không session → bỏ qua (AuthGuard đã 401 trước).
- * - non-GET có session, dưới `/api/admin/*`, role ADMIN → ADMIN_WRITE_THROTTLE
+ * - non-GET có session, dưới `/api/admin/*`, role ADMIN hoặc STAFF → ADMIN_WRITE_THROTTLE
  * - non-GET có session → AUTHED_WRITE_THROTTLE, bucket `user:<id>`
  * - non-GET `@Public()` → PUBLIC_WRITE_THROTTLE (default của module), bucket IP.
  *   LƯU Ý: AuthGuard thoát sớm trên route `@Public()` TRƯỚC khi gắn
@@ -147,8 +147,10 @@ export class DefaultThrottlerGuard extends WriteOnlyThrottlerGuard {
       context.getClass(),
     ]);
     if (declared === undefined && user) {
+      // Owner và Staff (ADR-0052) cùng tầng 60/60s trên bề mặt admin — Staff dọn hàng đợi
+      // review/enquiry y như Owner, trần 20/60s của khách sẽ chặn họ giữa chừng.
       const tier =
-        user.role === UserRole.ADMIN && isAdminSurface(req.url)
+        isAdminAppRole(user.role ?? '') && isAdminSurface(req.url)
           ? ADMIN_WRITE_THROTTLE
           : AUTHED_WRITE_THROTTLE;
       return super.handleRequest({

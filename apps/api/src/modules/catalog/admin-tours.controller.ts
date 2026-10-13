@@ -1,7 +1,8 @@
 import { Controller } from '@nestjs/common';
-import { Implement, implement } from '@orpc/nest';
+import { implement } from '@orpc/nest';
 import { ORPCError } from '@orpc/server';
 import { contract } from '@tourism/contract';
+import { AdminImplement } from '../../auth/admin-implement.decorator.js';
 import { Roles } from '../../auth/roles.decorator.js';
 import { UserRole } from '../../generated/prisma/enums.js';
 import { toContractError } from '../../lib/contract-error.js';
@@ -35,14 +36,14 @@ export class AdminToursController {
     private readonly adminTours: AdminToursService,
   ) {}
 
-  @Implement(contract.admin.tours.list)
+  @AdminImplement(contract.admin.tours.list)
   list() {
     return implement(contract.admin.tours.list).handler(({ input }) =>
       this.adminCatalog.listTours(input),
     );
   }
 
-  @Implement(contract.admin.tours.get)
+  @AdminImplement(contract.admin.tours.get)
   get() {
     return implement(contract.admin.tours.get).handler(async ({ input, errors }) => {
       try {
@@ -53,7 +54,7 @@ export class AdminToursController {
     });
   }
 
-  @Implement(contract.admin.tours.create)
+  @AdminImplement(contract.admin.tours.create)
   create() {
     return implement(contract.admin.tours.create).handler(async ({ input, errors }) => {
       try {
@@ -64,7 +65,7 @@ export class AdminToursController {
     });
   }
 
-  @Implement(contract.admin.tours.updateDetails)
+  @AdminImplement(contract.admin.tours.updateDetails)
   updateDetails() {
     return implement(contract.admin.tours.updateDetails).handler(async ({ input, errors }) => {
       try {
@@ -75,7 +76,7 @@ export class AdminToursController {
     });
   }
 
-  @Implement(contract.admin.tours.setItinerary)
+  @AdminImplement(contract.admin.tours.setItinerary)
   setItinerary() {
     return implement(contract.admin.tours.setItinerary).handler(async ({ input, errors }) => {
       try {
@@ -91,7 +92,7 @@ export class AdminToursController {
     });
   }
 
-  @Implement(contract.admin.tours.setFaqsPolicies)
+  @AdminImplement(contract.admin.tours.setFaqsPolicies)
   setFaqsPolicies() {
     return implement(contract.admin.tours.setFaqsPolicies).handler(async ({ input, errors }) => {
       try {
@@ -102,7 +103,7 @@ export class AdminToursController {
     });
   }
 
-  @Implement(contract.admin.tours.setCosts)
+  @AdminImplement(contract.admin.tours.setCosts)
   setCosts() {
     return implement(contract.admin.tours.setCosts).handler(async ({ input, errors }) => {
       try {
@@ -113,7 +114,7 @@ export class AdminToursController {
     });
   }
 
-  @Implement(contract.admin.tours.setPhotos)
+  @AdminImplement(contract.admin.tours.setPhotos)
   setPhotos() {
     return implement(contract.admin.tours.setPhotos).handler(async ({ input, errors }) => {
       try {
@@ -124,7 +125,7 @@ export class AdminToursController {
     });
   }
 
-  @Implement(contract.admin.tours.signPhotoUploads)
+  @AdminImplement(contract.admin.tours.signPhotoUploads)
   signPhotoUploads() {
     return implement(contract.admin.tours.signPhotoUploads).handler(async ({ input, errors }) => {
       try {
@@ -135,14 +136,14 @@ export class AdminToursController {
     });
   }
 
-  @Implement(contract.admin.tours.photoLibrary)
+  @AdminImplement(contract.admin.tours.photoLibrary)
   photoLibrary() {
     return implement(contract.admin.tours.photoLibrary).handler(() =>
       this.adminTours.photoLibrary(),
     );
   }
 
-  @Implement(contract.admin.tours.delete)
+  @AdminImplement(contract.admin.tours.delete)
   delete() {
     return implement(contract.admin.tours.delete).handler(async ({ input, errors }) => {
       try {
@@ -153,7 +154,7 @@ export class AdminToursController {
     });
   }
 
-  @Implement(contract.admin.tours.setPublished)
+  @AdminImplement(contract.admin.tours.setPublished)
   setPublished() {
     return implement(contract.admin.tours.setPublished).handler(async ({ input, errors }) => {
       try {

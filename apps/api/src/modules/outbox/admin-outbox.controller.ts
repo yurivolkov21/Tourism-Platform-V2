@@ -1,6 +1,7 @@
 import { Controller } from '@nestjs/common';
-import { Implement, implement } from '@orpc/nest';
+import { implement } from '@orpc/nest';
 import { contract } from '@tourism/contract';
+import { AdminImplement } from '../../auth/admin-implement.decorator.js';
 import type { SessionUser } from '../../auth/auth.config.js';
 import { CurrentUser } from '../../auth/current-user.decorator.js';
 import { Roles } from '../../auth/roles.decorator.js';
@@ -13,21 +14,21 @@ import {
 
 /**
  * Bề mặt outbox cho admin (spec P4c §3-F7). Cùng cách ghép guard như
- * AdminBookingsController: `@Roles(ADMIN)` ở cấp class được AuthGuard
- * đọc — ẩn danh → 401, không phải admin → 403, cả hai TRƯỚC khi oRPC parse
- * input.
+ * AdminBookingsController: `@Roles(ADMIN)` cấp class là lưới; quyền thật của từng handler do
+ * `@AdminImplement` suy từ bảng `ADMIN_ACCESS` (ADR-0052) — ẩn danh → 401, khách → 403,
+ * Staff → 403 ở thủ tục chỉ Owner, cả hai TRƯỚC khi oRPC parse input.
  */
 @Controller()
 @Roles(UserRole.ADMIN)
 export class AdminOutboxController {
   constructor(private readonly outbox: AdminOutboxService) {}
 
-  @Implement(contract.admin.outbox.list)
+  @AdminImplement(contract.admin.outbox.list)
   list() {
     return implement(contract.admin.outbox.list).handler(({ input }) => this.outbox.list(input));
   }
 
-  @Implement(contract.admin.outbox.retry)
+  @AdminImplement(contract.admin.outbox.retry)
   retry(@CurrentUser() user: SessionUser) {
     return implement(contract.admin.outbox.retry).handler(async ({ input, errors }) => {
       try {

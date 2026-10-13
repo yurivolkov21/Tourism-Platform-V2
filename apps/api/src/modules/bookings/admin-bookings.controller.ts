@@ -1,6 +1,7 @@
 import { Controller } from '@nestjs/common';
-import { Implement, implement } from '@orpc/nest';
+import { implement } from '@orpc/nest';
 import { contract } from '@tourism/contract';
+import { AdminImplement } from '../../auth/admin-implement.decorator.js';
 import type { SessionUser } from '../../auth/auth.config.js';
 import { CurrentUser } from '../../auth/current-user.decorator.js';
 import { Roles } from '../../auth/roles.decorator.js';
@@ -21,9 +22,10 @@ import {
 
 /**
  * Bề mặt booking cho admin (spec P2 W3). Cùng cách ghép @Implement như
- * BookingsController; `@Roles(ADMIN)` ở cấp class được AuthGuard đọc
- * (getAllAndOverride handler→class), nên ẩn danh → 401, không phải admin → 403 —
- * cả hai đều trước khi oRPC parse bất kỳ input nào.
+ * BookingsController; `@Roles(ADMIN)` cấp class là lưới; quyền thật của từng handler do
+ * `@AdminImplement` suy từ bảng `ADMIN_ACCESS` (ADR-0052) — ẩn danh → 401, khách → 403,
+ * Staff → 403 ở thủ tục chỉ Owner — cả hai đều trước khi oRPC parse bất kỳ
+ * input nào.
  */
 @Controller()
 @Roles(UserRole.ADMIN)
@@ -34,14 +36,14 @@ export class AdminBookingsController {
     private readonly cancellations: CancellationsService,
   ) {}
 
-  @Implement(contract.admin.bookings.list)
+  @AdminImplement(contract.admin.bookings.list)
   list() {
     return implement(contract.admin.bookings.list).handler(({ input }) =>
       this.bookings.adminList(input),
     );
   }
 
-  @Implement(contract.admin.bookings.byCode)
+  @AdminImplement(contract.admin.bookings.byCode)
   byCode() {
     return implement(contract.admin.bookings.byCode).handler(async ({ input, errors }) => {
       const booking = await this.bookings.adminByCode(input.code);
@@ -58,7 +60,7 @@ export class AdminBookingsController {
     });
   }
 
-  @Implement(contract.admin.bookings.refund)
+  @AdminImplement(contract.admin.bookings.refund)
   refund(@CurrentUser() user: SessionUser) {
     return implement(contract.admin.bookings.refund).handler(async ({ input, errors }) => {
       try {

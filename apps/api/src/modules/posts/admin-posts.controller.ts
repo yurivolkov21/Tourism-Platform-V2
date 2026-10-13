@@ -1,6 +1,7 @@
 import { Controller } from '@nestjs/common';
-import { Implement, implement } from '@orpc/nest';
+import { implement } from '@orpc/nest';
 import { contract } from '@tourism/contract';
+import { AdminImplement } from '../../auth/admin-implement.decorator.js';
 import type { SessionUser } from '../../auth/auth.config.js';
 import { CurrentUser } from '../../auth/current-user.decorator.js';
 import { Roles } from '../../auth/roles.decorator.js';
@@ -22,12 +23,12 @@ import { AdminPostsService } from './admin-posts.service.js';
 export class AdminPostsController {
   constructor(private readonly posts: AdminPostsService) {}
 
-  @Implement(contract.admin.posts.list)
+  @AdminImplement(contract.admin.posts.list)
   list() {
     return implement(contract.admin.posts.list).handler(({ input }) => this.posts.list(input));
   }
 
-  @Implement(contract.admin.posts.get)
+  @AdminImplement(contract.admin.posts.get)
   get() {
     return implement(contract.admin.posts.get).handler(async ({ input, errors }) => {
       try {
@@ -38,7 +39,7 @@ export class AdminPostsController {
     });
   }
 
-  @Implement(contract.admin.posts.create)
+  @AdminImplement(contract.admin.posts.create)
   create(@CurrentUser() user: SessionUser) {
     return implement(contract.admin.posts.create).handler(async ({ input, errors }) => {
       try {
@@ -49,7 +50,7 @@ export class AdminPostsController {
     });
   }
 
-  @Implement(contract.admin.posts.update)
+  @AdminImplement(contract.admin.posts.update)
   update() {
     return implement(contract.admin.posts.update).handler(async ({ input, errors }) => {
       try {
@@ -65,7 +66,7 @@ export class AdminPostsController {
     });
   }
 
-  @Implement(contract.admin.posts.delete)
+  @AdminImplement(contract.admin.posts.delete)
   delete() {
     return implement(contract.admin.posts.delete).handler(async ({ input, errors }) => {
       try {
@@ -76,7 +77,7 @@ export class AdminPostsController {
     });
   }
 
-  @Implement(contract.admin.posts.signCoverUpload)
+  @AdminImplement(contract.admin.posts.signCoverUpload)
   signCoverUpload() {
     return implement(contract.admin.posts.signCoverUpload).handler(async ({ input, errors }) => {
       try {
@@ -87,7 +88,7 @@ export class AdminPostsController {
     });
   }
 
-  @Implement(contract.admin.posts.tags)
+  @AdminImplement(contract.admin.posts.tags)
   tags() {
     return implement(contract.admin.posts.tags).handler(() => this.posts.tags());
   }

@@ -286,6 +286,26 @@ describe('trần ghi mặc định toàn cục (ADR-0037)', () => {
     expect((await post(customer)).statusCode).toBe(429);
   });
 
+  it('5b. STAFF dưới /api/admin/* cũng được ADMIN_WRITE_THROTTLE (P4f, ADR-0052 §3)', async () => {
+    await signUpAndSignIn('probe-staff@example.com');
+    await prisma.user.update({
+      where: { email: 'probe-staff@example.com' },
+      data: { role: UserRole.STAFF },
+    });
+    const staffCookie = await signUpAndSignIn('probe-staff@example.com'); // phiên mới mang role mới
+    const post = () =>
+      app.inject({
+        method: 'POST',
+        url: '/api/admin/throttle-probe',
+        remoteAddress: PUBLIC_IP,
+        headers: { cookie: staffCookie },
+      });
+    for (let i = 0; i < ADMIN_WRITE_THROTTLE.limit; i++) {
+      expect((await post()).statusCode).toBe(201);
+    }
+    expect((await post()).statusCode).toBe(429);
+  });
+
   it('6. route khai @Throttle tường minh TRÙNG số public vẫn giữ 5/60s cho user có session — nhận diện bằng metadata, không so số (AMEND 1)', async () => {
     const cookie = await signUpAndSignIn('probe-pinned@example.com');
     const post = () =>

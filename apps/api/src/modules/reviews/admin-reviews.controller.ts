@@ -1,6 +1,7 @@
 import { Controller } from '@nestjs/common';
-import { Implement, implement } from '@orpc/nest';
+import { implement } from '@orpc/nest';
 import { contract } from '@tourism/contract';
+import { AdminImplement } from '../../auth/admin-implement.decorator.js';
 import type { SessionUser } from '../../auth/auth.config.js';
 import { CurrentUser } from '../../auth/current-user.decorator.js';
 import { Roles } from '../../auth/roles.decorator.js';
@@ -17,7 +18,7 @@ import { ReviewNotFoundError, ReviewRetractedError, ReviewsService } from './rev
 export class AdminReviewsController {
   constructor(private readonly reviews: ReviewsService) {}
 
-  @Implement(contract.admin.reviews.moderate)
+  @AdminImplement(contract.admin.reviews.moderate)
   moderate(@CurrentUser() user: SessionUser) {
     return implement(contract.admin.reviews.moderate).handler(async ({ input, errors }) => {
       try {
@@ -33,7 +34,7 @@ export class AdminReviewsController {
     });
   }
 
-  @Implement(contract.admin.reviews.list)
+  @AdminImplement(contract.admin.reviews.list)
   list() {
     return implement(contract.admin.reviews.list).handler(({ input }) =>
       this.reviews.adminList(input),
