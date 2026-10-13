@@ -404,6 +404,13 @@ export const AdminBookingsListQuerySchema = AdminPageQuerySchema.extend({
   from: CalendarDateSchema.optional(),
   to: CalendarDateSchema.optional(),
   /**
+   * Chỉ booking của MỘT tài khoản (G45) — link "View bookings" ở trang `/users/[id]`. Khớp đúng
+   * cột `bookings.user_id`, khác `search` vốn khớp `contains` trên email liên hệ: tài khoản
+   * `an@example.com` tìm theo email sẽ thấy lẫn booking của `lan@example.com`. Cộng dồn với ba bộ
+   * lọc kia; id không ứng với ai cho trang rỗng chứ không phải 404.
+   */
+  userId: z.uuid().optional(),
+  /**
    * `false` = trả `tourImage: null` thay vì resolve ảnh cover (vòng vá
    * review F6). Dành cho đường export CSV: nó gom TỪNG TRANG của cả tập mà
    * file thì không có cột ảnh — mỗi trang một query media + payload phồng

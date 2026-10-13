@@ -892,14 +892,18 @@ export class BookingsService {
    *
    * F6 thêm khoảng ngày `from`/`to` theo `createdAt` — biên NỬA-MỞ, cả hai
    * đầu tính vào khoảng ngày lịch; phép đổi ngày → mốc và lý do dùng `lt`
-   * thay vì `lte 23:59:59` nằm ở `created-at-range.ts`. Ba bộ lọc CỘNG
-   * dồn (AND), không cái nào thay thế cái nào.
+   * thay vì `lte 23:59:59` nằm ở `created-at-range.ts`.
+   *
+   * G45 thêm `userId` — booking của MỘT tài khoản, khớp đúng cột chứ không `contains` như
+   * `search` (index `(user_id, created_at)` có từ migration init). Bốn bộ lọc CỘNG dồn (AND),
+   * không cái nào thay thế cái nào.
    */
   async adminList(query: AdminBookingsListQuery): Promise<Paged<Booking>> {
-    const { page, limit, status, search, from, to, includeMedia } = query;
+    const { page, limit, status, search, from, to, userId, includeMedia } = query;
     const term = search?.trim();
     const createdAt = createdAtRange(from, to);
     const where: Prisma.BookingWhereInput = {
+      ...(userId ? { userId } : {}),
       ...(status ? { status } : {}),
       ...(createdAt ? { createdAt } : {}),
       ...(term

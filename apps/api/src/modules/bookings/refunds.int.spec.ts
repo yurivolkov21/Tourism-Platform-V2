@@ -701,6 +701,91 @@ describe('refunds integration (admin refund ledger)', () => {
     });
   });
 
+  /**
+   * G45 — lọc theo MỘT tài khoản. Ca gốc của mục open-items: `an@example.com` tìm theo email thì
+   * thấy lẫn booking của `lan@example.com`, còn booking `an` đặt bằng email liên hệ khác thì mất.
+   */
+  describe('admin.bookings.list — lọc theo tài khoản userId (G45)', () => {
+    const idOf = async (email: string) =>
+      (await prisma.user.findUniqueOrThrow({ where: { email } })).id;
+
+    const listCodes = async (admin: string, query: string) => {
+      const res = await app.inject({
+        method: 'GET',
+        url: `/api/admin/bookings${query}`,
+        headers: { cookie: admin },
+      });
+      expect(res.statusCode).toBe(200);
+      return PagedSchema(BookingSchema)
+        .parse(res.json())
+        .items.map((b) => b.code);
+    };
+
+    /** `an` có hai booking (một đặt bằng email liên hệ khác), `lan` một booking. */
+    async function seedTwoAccounts() {
+      const an = await signUpUser('an@example.com');
+      const lan = await signUpUser('lan@example.com');
+      // Email liên hệ ghi tường minh: mặc định của `createBooking` là `alice@example.com`.
+      const anPaid = await createBooking(an, { contactEmail: 'an@example.com' });
+      await payBooking(anPaid.id);
+      const anOtherEmail = await createBooking(an, { contactEmail: 'an.work@example.org' });
+      const lanBooking = await createBooking(lan, { contactEmail: 'lan@example.com' });
+      return {
+        anId: await idOf('an@example.com'),
+        anPaid: anPaid.code,
+        anOtherEmail: anOtherEmail.code,
+        lanBooking: lanBooking.code,
+      };
+    }
+
+    it('chỉ ra booking của đúng tài khoản, kể cả booking đặt bằng email liên hệ khác', async () => {
+      const admin = await signUpAdmin();
+      const { anId, anPaid, anOtherEmail, lanBooking } = await seedTwoAccounts();
+
+      // Đối chứng: tìm theo email là đường cũ của link "View bookings" — lẫn `lan`, thiếu booking
+      // đặt bằng email khác.
+      expect((await listCodes(admin, '?search=an@example.com')).sort()).toEqual(
+        [anPaid, lanBooking].sort(),
+      );
+      expect((await listCodes(admin, `?userId=${anId}`)).sort()).toEqual(
+        [anPaid, anOtherEmail].sort(),
+      );
+    });
+
+    it('cộng dồn với status và khoảng ngày chứ không thay thế', async () => {
+      const admin = await signUpAdmin();
+      const { anId, anPaid, anOtherEmail } = await seedTwoAccounts();
+      const today = new Date().toISOString().slice(0, 10);
+
+      expect(await listCodes(admin, `?userId=${anId}&status=PAID`)).toEqual([anPaid]);
+      expect(await listCodes(admin, `?userId=${anId}&status=PENDING`)).toEqual([anOtherEmail]);
+      expect(await listCodes(admin, `?userId=${anId}&to=2020-01-01`)).toEqual([]);
+      expect((await listCodes(admin, `?userId=${anId}&from=${today}`)).sort()).toEqual(
+        [anPaid, anOtherEmail].sort(),
+      );
+    });
+
+    it('id không ứng với ai → trang rỗng 200; id rác → 400', async () => {
+      const admin = await signUpAdmin();
+      await seedTwoAccounts();
+
+      const empty = await app.inject({
+        method: 'GET',
+        url: '/api/admin/bookings?userId=4f2a1b3c-0000-4000-8000-000000000001',
+        headers: { cookie: admin },
+      });
+      expect(empty.statusCode).toBe(200);
+      expect(PagedSchema(BookingSchema).parse(empty.json())).toMatchObject({ total: 0, items: [] });
+
+      const bad = await app.inject({
+        method: 'GET',
+        url: '/api/admin/bookings?userId=an@example.com',
+        headers: { cookie: admin },
+      });
+      expect(bad.statusCode).toBe(400);
+    });
+  });
+
   it("admin.bookings.byCode: reads ANY user's booking; unknown code → 404", async () => {
     const admin = await signUpAdmin();
     const booking = await createPaidBooking(await signUpUser('someone@example.com'));

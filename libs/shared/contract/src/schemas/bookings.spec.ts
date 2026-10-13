@@ -543,6 +543,30 @@ describe('AdminBookingsListQuerySchema — bộ lọc ngày F6', () => {
   });
 });
 
+describe('AdminBookingsListQuerySchema — lọc theo tài khoản (G45)', () => {
+  const USER_ID = '4f2a1b3c-0000-4000-8000-000000000001';
+
+  it('userId là optional: query trống không mang field này', () => {
+    expect(AdminBookingsListQuerySchema.parse({}).userId).toBeUndefined();
+  });
+
+  it('nhận uuid, cộng dồn với các bộ lọc khác', () => {
+    const parsed = AdminBookingsListQuerySchema.parse({
+      userId: USER_ID,
+      status: 'PAID',
+      from: '2026-09-01',
+    });
+    expect(parsed).toMatchObject({ userId: USER_ID, status: 'PAID', from: '2026-09-01' });
+  });
+
+  it.each(['an@example.com', '', '1234'])(
+    'từ chối %j — 400 chứ không phải lọc theo một id bịa',
+    (userId) => {
+      expect(AdminBookingsListQuerySchema.safeParse({ userId }).success).toBe(false);
+    },
+  );
+});
+
 /**
  * ADR-0041: khách tự huỷ không bắt buộc ghi lý do, nên dòng yêu cầu huỷ mang
  * `reason` null. Chỉ nới đúng chỗ này — chuỗi rỗng vẫn là dữ liệu hỏng.
