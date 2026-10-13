@@ -1,6 +1,11 @@
-import { type Booking, findRegion, REGIONS } from '@tourism/contract';
+import {
+  type Booking,
+  type BookingPhase,
+  bookingPhase,
+  findRegion,
+  REGIONS,
+} from '@tourism/contract';
 import { todayDateString } from '@/lib/account-stats';
-import { bookingView } from '@/lib/booking-vm';
 import { foldAccents } from '@/lib/text';
 
 /**
@@ -23,21 +28,32 @@ function hash(input: string): number {
 }
 
 /**
- * "Chuyến đã hoàn thành" = ngày kết thúc đã qua VÀ (ĐÃ TRẢ TIỀN — tone
- * success của bookingView, tức PAID — HOẶC hoàn MỘT PHẦN). Fix 11/08
- * (controller chốt): `PARTIALLY_REFUNDED` tính là đã đi — đi thật rồi mới
- * hoàn một phần, có tem. `REFUNDED` toàn phần vẫn loại: tiền đã hoàn hết thì
- * không đóng tem.
+ * "Chuyến đã đi" là giai đoạn `travelled` của `bookingPhase` (ADR-0054 AMEND 1) — cùng một luật với
+ * ba trang đơn, thay cho bảng tông riêng trước đây (open-items G39). Tem, sổ hành trình và số liệu
+ * Passport đều đọc từ đây.
  *
- * So NGÀY bằng SO CHUỖI `YYYY-MM-DD` (như `account-stats.ts`), KHÔNG parse
- * `Date`: so trực tiếp hai `Date` object trộn giờ-trong-ngày thật của
- * `today` với midnight-UTC của `departureEndDate` — một chuyến kết thúc
- * ĐÚNG HÔM NAY bị tính nhầm "đã xong" ngay khi đồng hồ qua khỏi nửa đêm.
- * So chuỗi thì biên đóng đúng: kết thúc hôm nay vẫn "đang đi".
+ * Khác luật cũ (11/08, đọc tông của `bookingView`): chuyến bị CÔNG TY huỷ không bao giờ thành tem,
+ * kể cả khi đơn còn PAID vì job hoàn tiền chưa chạy hay kẹt qua ngày về; đơn REFUNDED do hoàn
+ * thiện chí trọn (không `cancelledAt`) mà khách vẫn đi thì có tem; PARTIALLY_REFUNDED vẫn có tem
+ * như cũ. Biên ngày giữ nguyên: so chuỗi `YYYY-MM-DD`, chuyến kết thúc đúng hôm nay còn `on_tour`.
  */
 function isCompleted(b: Booking, today: string): boolean {
-  const ended = b.departureEndDate < today;
-  return ended && (bookingView(b).tone === 'success' || b.status === 'PARTIALLY_REFUNDED');
+  return bookingPhase(b, today) === 'travelled';
+}
+
+/**
+ * Giai đoạn còn phía trước — dấu ghost "chờ đóng" của trang tem và node "Pending" của sổ hành
+ * trình. Đơn chờ trả còn trong hạn vẫn tính (khách còn trả được); quá hạn (`lapsed`) thì không,
+ * vì API không mở phiên thanh toán nào nữa.
+ */
+const AHEAD_PHASES: ReadonlySet<BookingPhase> = new Set([
+  'awaiting_payment',
+  'upcoming',
+  'on_tour',
+]);
+
+function isAhead(b: Booking, today: string): boolean {
+  return AHEAD_PHASES.has(bookingPhase(b, today));
 }
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -95,8 +111,8 @@ function stampLook(
  * xếp hàng tầm thường"): tem đóng theo TỪNG CHUYẾN như cửa khẩu thật — đi
  * lại một nơi là THÊM con dấu mới chồng lên trang, không "làm mới" dấu cũ.
  * Chuyến đã đi (một luật `isCompleted` với stats) sort theo endDate — trang
- * tem dày lên theo trình tự thời gian; chuyến còn phía trước (ĐÃ/SẮP trả
- * tiền) thành dấu ghost viền đứt đứng cuối. Deterministic toàn phần.
+ * tem dày lên theo trình tự thời gian; chuyến còn phía trước (`isAhead`)
+ * thành dấu ghost viền đứt đứng cuối. Deterministic toàn phần.
  */
 export function pageStamps(bookings: Booking[], today: string = todayDateString()): PageStamp[] {
   const monthOf = (iso: string) => {
@@ -113,10 +129,7 @@ export function pageStamps(bookings: Booking[], today: string = todayDateString(
       ...stampLook(b.code),
     }));
   const ahead = bookings
-    .filter((b) => {
-      const tone = bookingView(b).tone;
-      return (tone === 'success' || tone === 'warning') && !(b.departureEndDate < today);
-    })
+    .filter((b) => isAhead(b, today))
     .sort((a, b) => a.departureStartDate.localeCompare(b.departureStartDate))
     .map((b) => ({
       key: b.code,
@@ -168,7 +181,7 @@ export interface TravelLogEntry {
   /** Các chuyến đã ghé nơi này, CŨ → MỚI (lần 1 → lần n) — mỗi lần một
    *  node timeline. */
   trips: TravelLogTrip[];
-  /** Chuyến ĐÃ/SẮP trả tiền còn phía trước chạm nơi này (sort theo ngày
+  /** Chuyến còn phía trước (`isAhead`) chạm nơi này (sort theo ngày
    *  khởi hành; month = tháng khởi hành) — node "Pending" cuối timeline. */
   upcoming: TravelLogTrip[];
 }
@@ -217,12 +230,9 @@ export function travelLog(
     const trip = tripOf(b, 'end');
     for (const d of b.tourDestinations) push(tripsBySlug, d.slug, trip);
   }
-  // Chuyến còn phía trước ĐÃ/SẮP trả tiền — một luật với dấu ghost trang tem.
+  // Chuyến còn phía trước — một luật `isAhead` với dấu ghost trang tem.
   const ahead = bookings
-    .filter((b) => {
-      const tone = bookingView(b).tone;
-      return (tone === 'success' || tone === 'warning') && !(b.departureEndDate < today);
-    })
+    .filter((b) => isAhead(b, today))
     .sort((a, b) => a.departureStartDate.localeCompare(b.departureStartDate));
   for (const b of ahead) {
     const trip = tripOf(b, 'start');

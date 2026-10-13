@@ -1,3 +1,4 @@
+import { cancellationDeadline } from '@tourism/contract';
 import { describe, expect, it } from 'vitest';
 import { makeBooking } from '@/test/fixtures/booking';
 import {
@@ -69,11 +70,38 @@ describe('passportStats', () => {
     expect(stats.daysOnRoad).toBe(4); // 3 ngày + 1 ngày
   });
 
-  it('REFUNDED không tính là chuyến đã đi (tiền đã hoàn thì không đóng tem)', () => {
-    const stats = passportStats([doneTrip({ status: 'REFUNDED' })], catalogOf(19), TODAY);
+  it('REFUNDED vì huỷ (có cancelledAt) không tính là chuyến đã đi', () => {
+    const stats = passportStats(
+      [doneTrip({ status: 'REFUNDED', cancelledAt: '2026-07-10T03:00:00.000Z' })],
+      catalogOf(19),
+      TODAY,
+    );
     expect(stats.trips).toBe(0);
     expect(stats.places).toBe(0);
     expect(stats.daysOnRoad).toBe(0);
+  });
+
+  // G39: ADR-0054 AMEND 1 — hoàn thiện chí TRỌN (không cancelledAt) mà khách vẫn đi là `travelled`.
+  it('REFUNDED do hoàn thiện chí trọn (không cancelledAt) vẫn là chuyến đã đi', () => {
+    const stats = passportStats(
+      [doneTrip({ status: 'REFUNDED', cancelledAt: null })],
+      catalogOf(19, 'ha-long-bay'),
+      TODAY,
+    );
+    expect(stats.trips).toBe(1);
+    expect(stats.places).toBe(1);
+    expect(stats.daysOnRoad).toBe(3);
+  });
+
+  // G39: job `departure-refund` kẹt qua ngày về thì đơn còn PAID — chuyến không chạy, không được đếm.
+  it('chuyến bị công ty huỷ không tính là đã đi, kể cả khi đơn còn PAID qua ngày về', () => {
+    const stats = passportStats(
+      [doneTrip({ departureCancelled: true })],
+      catalogOf(19, 'ha-long-bay'),
+      TODAY,
+    );
+    expect(stats.trips).toBe(0);
+    expect(stats.places).toBe(0);
   });
 
   it('0 chuyến → exploredPct 0; có chuyến nhưng tỉ lệ nhỏ → tối thiểu 1', () => {
@@ -197,6 +225,50 @@ describe('pageStamps', () => {
     const stamps = pageStamps([doneTrip({ status: 'PARTIALLY_REFUNDED' })], TODAY);
     expect(stamps).toHaveLength(1);
     expect(stamps[0]?.ghost).toBeUndefined();
+  });
+
+  // G39: trước đây đơn PAID trên chuyến bị công ty huỷ là dấu ghost trong lúc chờ job hoàn tiền.
+  it('chuyến sắp tới bị công ty huỷ → không có dấu ghost dù đơn còn PAID', () => {
+    const stamps = pageStamps(
+      [
+        makeBooking({
+          code: 'BK-DEPCANCL',
+          departureStartDate: '2026-09-01',
+          departureEndDate: '2026-09-03',
+          departureCancelled: true,
+        }),
+      ],
+      TODAY,
+    );
+    expect(stamps).toEqual([]);
+  });
+
+  it('đơn chờ trả đã quá hạn chót (lapsed) → không còn dấu ghost', () => {
+    const lapsed = makeBooking({
+      code: 'BK-LAPSEDAA',
+      status: 'PENDING',
+      departureStartDate: '2026-08-16',
+      departureEndDate: '2026-08-17',
+    });
+    // Tiền đề: hạn chót của đợt này đã qua vào TODAY.
+    expect(cancellationDeadline('2026-08-16', '2026-08-17') < TODAY).toBe(true);
+    expect(pageStamps([lapsed], TODAY)).toEqual([]);
+  });
+
+  it('PARTIALLY_REFUNDED còn phía trước → dấu ghost, đơn vẫn còn hiệu lực', () => {
+    const stamps = pageStamps(
+      [
+        makeBooking({
+          code: 'BK-PARTFUTU',
+          status: 'PARTIALLY_REFUNDED',
+          departureStartDate: '2026-09-01',
+          departureEndDate: '2026-09-03',
+        }),
+      ],
+      TODAY,
+    );
+    expect(stamps).toHaveLength(1);
+    expect(stamps[0]?.ghost).toBe(true);
   });
 
   it('dáng tem deterministic từ mã booking, các biến trong biên: shape 3 loại, xoay [−9,9], size/mực/drift hợp lệ', () => {
