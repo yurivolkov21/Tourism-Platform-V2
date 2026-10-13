@@ -5729,9 +5729,11 @@ export const messages = {
           // mở khoá là vào lại được.
           staffLocked: 'Staff access is on hold while the account is locked.',
           // Đo bằng google-sign-in.int.spec.ts: "Forgot password?" của form admin dẫn sang trang
-          // quên mật khẩu của www, và Better Auth tạo mật khẩu cho tài khoản chưa có.
+          // quên mật khẩu của www, và Better Auth tạo mật khẩu cho tài khoản chưa có. Cố ý không
+          // nói "back office chỉ nhận mật khẩu": prod bắt buộc COOKIE_DOMAIN nên đăng nhập Google
+          // ở www rồi mở admin cũng vào được (suy từ code, chưa đo) — chỉ FORM là cần mật khẩu.
           staffNoPassword:
-            'This account has staff access but no password yet, and the back office only takes email and password. They can set one with “Forgot password?” on the back-office sign-in page.',
+            'This account has staff access but no password yet, and the back-office sign-in form needs one. They can set it with “Forgot password?” on that form.',
           needsVerified: 'Staff access needs a verified email — this account hasn’t verified yet.',
           needsUnlock: 'Unlock the account before granting staff access.',
         },
