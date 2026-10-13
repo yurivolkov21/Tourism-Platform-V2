@@ -214,8 +214,10 @@ export function OtpForm({
 
         {secondsLeft > 0 ? (
           <p className="text-center text-sm text-muted-foreground">
-            Didn't get it? Resend in{' '}
-            <span className="font-mono text-foreground">{secondsLeft}s</span>
+            {messages.authForms.otp.resendIn}{' '}
+            <span className="font-mono text-foreground">
+              {messages.authForms.otp.secondsLeft(secondsLeft)}
+            </span>
           </p>
         ) : (
           <button
@@ -223,7 +225,7 @@ export function OtpForm({
             onClick={handleResend}
             className="cursor-pointer text-center text-sm font-medium text-primary-emphasis hover:underline"
           >
-            Resend the code
+            {messages.authForms.otp.resend}
           </button>
         )}
 

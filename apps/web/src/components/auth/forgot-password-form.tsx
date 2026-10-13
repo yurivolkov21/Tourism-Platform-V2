@@ -46,30 +46,31 @@ export function ForgotPasswordForm() {
     }
   }
 
+  const t = messages.authForms.forgotPassword;
+  const c = messages.authForms.common;
+
   return (
-    <TicketCard stub="LOST TICKET DESK · GATE: RESET">
+    <TicketCard stub={t.stub}>
       {sent ? (
         <div className="flex flex-col gap-5">
           <div>
             <h1 className="font-heading text-2xl font-medium text-card-foreground md:text-3xl">
-              Check your inbox
-              <span className="text-primary-emphasis italic"> — help is on the way.</span>
+              {t.sentHeading}
+              <span className="text-primary-emphasis italic"> {t.sentHeadingAccent}</span>
             </h1>
-            <p className="mt-1.5 text-sm text-muted-foreground">
-              {messages.authForms.forgotPassword.sentBody}
-            </p>
+            <p className="mt-1.5 text-sm text-muted-foreground">{t.sentBody}</p>
           </div>
           <button
             type="button"
             onClick={() => setSent(false)}
             className="w-full cursor-pointer rounded-full border py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-muted"
           >
-            Send it again
+            {t.sendAgain}
           </button>
           <p className="text-center text-sm text-muted-foreground">
-            Remembered it?{' '}
+            {c.rememberedIt}{' '}
             <a href="/login" className="font-medium text-primary-emphasis hover:underline">
-              Back to log in
+              {c.backToLogin}
             </a>
           </p>
         </div>
@@ -77,20 +78,18 @@ export function ForgotPasswordForm() {
         <form className="flex flex-col gap-4" onSubmit={handleSubmit} noValidate>
           <div>
             <h1 className="font-heading text-2xl font-medium text-card-foreground md:text-3xl">
-              Lost your ticket?
-              <span className="text-primary-emphasis italic"> It happens on the road.</span>
+              {t.heading}
+              <span className="text-primary-emphasis italic"> {t.headingAccent}</span>
             </h1>
-            <p className="mt-1.5 text-sm text-muted-foreground">
-              We'll email you a link to reset it.
-            </p>
+            <p className="mt-1.5 text-sm text-muted-foreground">{t.lead}</p>
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor="forgot-email">Email</Label>
+            <Label htmlFor="forgot-email">{c.emailLabel}</Label>
             <Input
               id="forgot-email"
               type="email"
-              placeholder="you@example.com"
+              placeholder={c.emailPlaceholder}
               value={email}
               onChange={(e) => {
                 setEmail(e.target.value);
@@ -112,15 +111,13 @@ export function ForgotPasswordForm() {
             disabled={pending}
             className="w-full cursor-pointer rounded-full bg-primary py-3 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {pending
-              ? messages.authForms.forgotPassword.submitting
-              : messages.authForms.forgotPassword.submit}
+            {pending ? t.submitting : t.submit}
           </button>
 
           <p className="text-center text-sm text-muted-foreground">
-            Remembered it?{' '}
+            {c.rememberedIt}{' '}
             <a href="/login" className="font-medium text-primary-emphasis hover:underline">
-              Back to log in
+              {c.backToLogin}
             </a>
           </p>
         </form>

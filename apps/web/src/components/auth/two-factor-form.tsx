@@ -8,18 +8,19 @@ import { OtpForm } from './otp-form';
 
 // Ruột /two-factor (plan Task 5): OtpForm + khối "Use a recovery code" —
 // toggle mở input text mock (static-first; TOTP thật là nợ twoFactor plugin).
-// W3-C1: description/submit/recovery label dời vào @tourism/i18n (luật 7).
+// W3-C1: description/submit/recovery label dời vào @tourism/i18n (luật 7); W-09 (13/10) dời nốt
+// cuống vé, tiêu đề và hai nút chuyển ô mã.
 export function TwoFactorForm() {
   const [useRecovery, setUseRecovery] = useState(false);
   const t = messages.authForms.twoFactor;
 
   return (
     <OtpForm
-      stub="BOARDING CHECK · TOTP · GATE: 2FA"
+      stub={t.stub}
       heading={
         <>
-          One more stamp
-          <span className="text-primary-emphasis italic"> before boarding.</span>
+          {t.heading}
+          <span className="text-primary-emphasis italic"> {t.headingAccent}</span>
         </>
       }
       description={t.description}
@@ -28,13 +29,13 @@ export function TwoFactorForm() {
         useRecovery ? (
           <div className="flex flex-col gap-1.5 border-t border-dashed pt-4">
             <Label htmlFor="recovery-code">{t.recoveryLabel}</Label>
-            <Input id="recovery-code" type="text" placeholder="xxxx-xxxx-xxxx" />
+            <Input id="recovery-code" type="text" placeholder={t.recoveryPlaceholder} />
             <button
               type="button"
               onClick={() => setUseRecovery(false)}
               className="mt-1 cursor-pointer text-left text-sm font-medium text-primary-emphasis hover:underline"
             >
-              Back to authenticator code
+              {t.backToCode}
             </button>
           </div>
         ) : (
@@ -43,7 +44,7 @@ export function TwoFactorForm() {
             onClick={() => setUseRecovery(true)}
             className="cursor-pointer text-center text-sm text-muted-foreground hover:text-foreground hover:underline"
           >
-            Lost the app? Use a recovery code
+            {t.useRecovery}
           </button>
         )
       }

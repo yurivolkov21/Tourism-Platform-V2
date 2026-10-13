@@ -1,5 +1,6 @@
 'use client';
 
+import { messages } from '@tourism/i18n';
 import { motion } from 'motion/react';
 import { SPRING } from '@/lib/motion';
 import { FacebookIcon, InstagramIcon, TwitterIcon, YoutubeIcon } from './icons/social';
@@ -89,7 +90,11 @@ export function SiteFooter() {
             viewport={{ once: true }}
             transition={SPRING}
           >
-            <a href="/" aria-label="Nexora — home" className="mb-6 inline-block select-none">
+            <a
+              href="/"
+              aria-label={messages.a11y.homeLink}
+              className="mb-6 inline-block select-none"
+            >
               <Logo />
             </a>
             <p className="mb-8 max-w-xs text-sm/5.5 text-muted-foreground">

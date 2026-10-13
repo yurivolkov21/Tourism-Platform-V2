@@ -160,6 +160,67 @@ describe('messages: mobile.auth (P5b-1 — cụm màn auth)', () => {
   });
 });
 
+describe('messages: authForms (W-09 — chữ cụm auth của web về một nơi)', () => {
+  const t = messages.authForms;
+
+  /** Duyệt sâu mọi chuỗi, trả về đường dẫn của chuỗi rỗng hay có khoảng trắng ở mép. */
+  function badPaths(node: unknown, path: string): string[] {
+    if (typeof node === 'string') return node.trim() === '' || node.trim() !== node ? [path] : [];
+    if (node !== null && typeof node === 'object') {
+      return Object.entries(node).flatMap(([key, value]) => badPaths(value, `${path}.${key}`));
+    }
+    return [];
+  }
+
+  it('mọi chuỗi đều có chữ và không mang khoảng trắng ở mép (khoảng cách do JSX lo)', () => {
+    expect(badPaths(t, 'authForms')).toEqual([]);
+  });
+
+  it('sáu trang auth đủ title, description, quote và người nói', () => {
+    const pages = [
+      'login',
+      'register',
+      'forgotPassword',
+      'resetPassword',
+      'twoFactor',
+      'verifyEmail',
+    ] as const;
+    for (const page of pages) {
+      expect(Object.keys(t.pages[page]).sort()).toEqual([
+        'author',
+        'description',
+        'quote',
+        'title',
+      ]);
+      expect(t.pages[page].title.endsWith(' — Nexora')).toBe(true);
+    }
+  });
+
+  it('bộ đếm gửi lại mã in số giây kèm đơn vị', () => {
+    expect(t.otp.secondsLeft(42)).toBe('42s');
+  });
+
+  it('trình đọc màn hình nghe câu yêu cầu kèm trạng thái đạt hay chưa', () => {
+    const rule = t.passwordStrength.requirements.length;
+    expect(t.passwordStrength.requirementState(rule.text, true)).toBe(
+      'At least 8 characters — requirement met',
+    );
+    expect(t.passwordStrength.requirementState(rule.text, false)).toBe(
+      'At least 8 characters — requirement not met',
+    );
+  });
+
+  it('năm yêu cầu mật khẩu theo đúng thứ tự vạch điểm, mỗi yêu cầu có nhãn ngắn và câu đầy đủ', () => {
+    expect(Object.keys(t.passwordStrength.requirements)).toEqual([
+      'length',
+      'lowercase',
+      'uppercase',
+      'number',
+      'symbol',
+    ]);
+  });
+});
+
 describe('messages: accountSaved (trang /account/saved, spec 09/10)', () => {
   it('savedOn ghép đúng chữ của bản vẽ: "Saved 3 Oct"', () => {
     expect(messages.accountSaved.savedOn('3 Oct')).toBe('Saved 3 Oct');

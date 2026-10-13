@@ -1,3 +1,4 @@
+import { messages } from '@tourism/i18n';
 import type { Metadata } from 'next';
 import { Suspense } from 'react';
 import { AuthScreen } from '@/components/auth/auth-screen';
@@ -7,8 +8,8 @@ import { AUTH_PANEL_SLOT, siteMediaImage } from '@/lib/api/site-media';
 // /login — trang MẪU của cụm auth (spec/plan 2026-07-24): AuthScreen split +
 // TicketCard. Duyệt layout ở trang này xong mới nhân ra 5 trang còn lại.
 export const metadata: Metadata = {
-  title: 'Log in — Nexora',
-  description: 'Log in to pick up where the map left off.',
+  title: messages.authForms.pages.login.title,
+  description: messages.authForms.pages.login.description,
 };
 
 export default async function LoginPage() {
@@ -20,8 +21,8 @@ export default async function LoginPage() {
   return (
     <AuthScreen
       image={image}
-      quote="Welcome back — the valley kept your seat."
-      author="Mai, Sa Pa guide"
+      quote={messages.authForms.pages.login.quote}
+      author={messages.authForms.pages.login.author}
     >
       {/* Task 3 (auth-pages-api): LoginForm đọc `redirect` qua useSearchParams
           (Better Auth safe-redirect) — Next 16 bắt buộc bọc Suspense quanh

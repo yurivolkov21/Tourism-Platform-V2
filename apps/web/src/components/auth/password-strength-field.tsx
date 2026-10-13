@@ -1,5 +1,6 @@
 'use client';
 
+import { messages } from '@tourism/i18n';
 import {
   InputGroup,
   InputGroupAddon,
@@ -28,16 +29,14 @@ import { FieldError, invalidProps } from './field-error';
 // Nhãn `short` đổi 20/08 (user xem bản live: `a–z`/`!@#` đọc như ký tự lỗi,
 // "form đăng kí phải rõ ràng") — vẫn MỘT hàng pill (điều kiện vừa laptop 768p)
 // nhưng là TỪ THẬT; câu đầy đủ vẫn ở `text` cho tooltip + trình đọc màn hình.
+// W-09 (13/10): chữ của nhãn, câu đầy đủ và trạng thái nằm ở `authForms.passwordStrength`.
+const copy = messages.authForms.passwordStrength;
 const REQUIREMENTS = [
-  { regex: /.{8,}/, short: '8+ chars', text: 'At least 8 characters' },
-  { regex: /[a-z]/, short: 'lowercase', text: '1 lowercase letter' },
-  { regex: /[A-Z]/, short: 'uppercase', text: '1 uppercase letter' },
-  { regex: /[0-9]/, short: 'number', text: '1 number' },
-  {
-    regex: /[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]/,
-    short: 'symbol',
-    text: '1 special character',
-  },
+  { regex: /.{8,}/, ...copy.requirements.length },
+  { regex: /[a-z]/, ...copy.requirements.lowercase },
+  { regex: /[A-Z]/, ...copy.requirements.uppercase },
+  { regex: /[0-9]/, ...copy.requirements.number },
+  { regex: /[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]/, ...copy.requirements.symbol },
 ] as const;
 
 /** Màu vạch theo điểm: 0 nền · ≤1 đỏ · ≤3 hổ phách · 4 jade nhạt · 5 jade */
@@ -49,11 +48,11 @@ function barColor(score: number): string {
 }
 
 function statusText(score: number): string {
-  if (score === 0) return 'Enter a password';
-  if (score <= 2) return 'Weak password';
-  if (score <= 3) return 'Medium password';
-  if (score === 4) return 'Strong password';
-  return 'Trail-ready password';
+  if (score === 0) return copy.status.empty;
+  if (score <= 2) return copy.status.weak;
+  if (score <= 3) return copy.status.medium;
+  if (score === 4) return copy.status.strong;
+  return copy.status.max;
 }
 
 interface PasswordStrengthFieldProps {
@@ -119,7 +118,7 @@ export function PasswordStrengthField({
             className="text-muted-foreground hover:bg-transparent"
           >
             {visible ? <EyeOffIcon /> : <EyeIcon />}
-            <span className="sr-only">{visible ? 'Hide password' : 'Show password'}</span>
+            <span className="sr-only">{visible ? copy.hide : copy.show}</span>
           </InputGroupButton>
         </InputGroupAddon>
       </InputGroup>
@@ -158,10 +157,7 @@ export function PasswordStrengthField({
               )}
             >
               <span aria-hidden="true">{check.short}</span>
-              <span className="sr-only">
-                {check.text}
-                {check.met ? ' — requirement met' : ' — requirement not met'}
-              </span>
+              <span className="sr-only">{copy.requirementState(check.text, check.met)}</span>
             </span>
           </li>
         ))}

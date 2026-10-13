@@ -70,12 +70,12 @@ export function LoginForm() {
         // Siết verify 20/08: chưa verify thì KHÔNG phải lỗi để đứng nhìn —
         // gửi OTP mới rồi đưa thẳng sang /verify-email (giữ redirect đích).
         if (error.code === 'EMAIL_NOT_VERIFIED') {
-          const t = messages.authForms.verifyEmail.loginBlocked;
+          const blocked = messages.authForms.verifyEmail.loginBlocked;
           // Fire-and-forget: OTP cũ (signup) có thể đã quá hạn 10 phút.
           authClient.emailOtp
             .sendVerificationOtp({ email, type: 'email-verification' })
             .catch(() => {});
-          toast.info(t.title, { description: t.body });
+          toast.info(blocked.title, { description: blocked.body });
           const redirect = safeRedirect(searchParams.get('redirect'));
           router.push(
             `/verify-email?email=${encodeURIComponent(email)}&redirect=${encodeURIComponent(redirect)}`,
@@ -123,17 +123,18 @@ export function LoginForm() {
     }
   }
 
+  const t = messages.authForms.login;
+  const c = messages.authForms.common;
+
   return (
-    <TicketCard stub="HN → SAPA · SEAT 07/12 · GATE: LOGIN">
+    <TicketCard stub={t.stub}>
       <form className="flex flex-col gap-4" onSubmit={handleSubmit} noValidate>
         <div>
           <h1 className="font-heading text-2xl font-medium text-card-foreground md:text-3xl">
-            Welcome back
-            <span className="text-primary-emphasis italic"> to the road.</span>
+            {t.heading}
+            <span className="text-primary-emphasis italic"> {t.headingAccent}</span>
           </h1>
-          <p className="mt-1.5 text-sm text-muted-foreground">
-            Log in to pick up where the map left off.
-          </p>
+          <p className="mt-1.5 text-sm text-muted-foreground">{t.lead}</p>
         </div>
 
         <button
@@ -142,22 +143,22 @@ export function LoginForm() {
           className="flex w-full cursor-pointer items-center justify-center gap-2.5 rounded-full border py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-muted"
         >
           <GoogleIcon className="size-4" />
-          Continue with Google
+          {c.continueWithGoogle}
         </button>
 
         {/* Separator chữ giữa hai lối đăng nhập */}
         <div className="flex items-center gap-3 text-xs text-muted-foreground">
           <span aria-hidden="true" className="h-px flex-1 bg-border" />
-          or continue with email
+          {t.divider}
           <span aria-hidden="true" className="h-px flex-1 bg-border" />
         </div>
 
         <div className="flex flex-col gap-1.5">
-          <Label htmlFor="login-email">Email</Label>
+          <Label htmlFor="login-email">{c.emailLabel}</Label>
           <Input
             id="login-email"
             type="email"
-            placeholder="you@example.com"
+            placeholder={c.emailPlaceholder}
             value={email}
             onChange={(e) => {
               setEmail(e.target.value);
@@ -168,7 +169,7 @@ export function LoginForm() {
           <FieldError id="login-email-error">{fieldErrors.email}</FieldError>
         </div>
         <div className="flex flex-col gap-1.5">
-          <Label htmlFor="login-password">{messages.authForms.login.passwordLabel}</Label>
+          <Label htmlFor="login-password">{t.passwordLabel}</Label>
           <Input
             id="login-password"
             type="password"
@@ -189,10 +190,10 @@ export function LoginForm() {
             className="flex cursor-pointer items-center gap-2 text-muted-foreground"
           >
             <Checkbox id="login-remember" checked={rememberMe} onCheckedChange={setRememberMe} />
-            Remember me
+            {t.rememberMe}
           </label>
           <a href="/forgot-password" className="font-medium text-primary-emphasis hover:underline">
-            Forgot password?
+            {t.forgotPassword}
           </a>
         </div>
 
@@ -207,13 +208,13 @@ export function LoginForm() {
           disabled={pending}
           className="w-full cursor-pointer rounded-full bg-primary py-3 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60"
         >
-          {pending ? messages.authForms.login.submitting : messages.authForms.login.submit}
+          {pending ? t.submitting : t.submit}
         </button>
 
         <p className="text-center text-sm text-muted-foreground">
-          New here?{' '}
+          {t.newHere}{' '}
           <a href="/register" className="font-medium text-primary-emphasis hover:underline">
-            Create an account
+            {t.createAccount}
           </a>
         </p>
       </form>

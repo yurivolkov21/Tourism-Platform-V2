@@ -1,5 +1,6 @@
 'use client';
 
+import { messages } from '@tourism/i18n';
 import { motion } from 'motion/react';
 import { Logo } from '@/components/logo';
 import { SlotImage } from '@/components/slot-image';
@@ -29,13 +30,11 @@ import { SPRING } from '@/lib/motion';
 // này là `'use client'`, và hằng export từ module client khi bị server
 // component import sẽ thành client-reference proxy chứ không phải chuỗi.
 
-/**
- * Nhãn cho Ô GIỮ CHỖ khi khe trống — `SlotImage` bỏ qua nó khi đã có ảnh thật.
- * `alt` của ảnh thật cố ý để RỖNG: panel này là ảnh nền trang trí, nội dung
- * thật (quote + tên người nói) là text riêng ngay bên cạnh, nên đọc thêm mô tả
- * ảnh chỉ làm trình đọc màn hình dài dòng. Luật này ghi ở `slot-image.tsx`.
- */
-const AUTH_PANEL_LABEL = 'Fansipan summit above the clouds at dawn';
+// Chữ của khung trang (W-09). `panelImageLabel` là nhãn cho Ô GIỮ CHỖ khi khe trống —
+// `SlotImage` bỏ qua nó khi đã có ảnh thật. `alt` của ảnh thật cố ý để RỖNG: panel này là ảnh
+// nền trang trí, nội dung thật (quote + tên người nói) là text riêng ngay bên cạnh, nên đọc thêm
+// mô tả ảnh chỉ làm trình đọc màn hình dài dòng. Luật này ghi ở `slot-image.tsx`.
+const copy = messages.authForms.screen;
 
 interface AuthScreenProps {
   /** Câu quote trên panel ảnh — đổi theo ngữ cảnh từng trang */
@@ -97,15 +96,15 @@ export function AuthScreen({ quote, author, image, children }: AuthScreenProps) 
           aria-hidden="true"
           className="pointer-events-none absolute bottom-[17%] left-[15%] font-mono text-[10px] tracking-[0.15em] text-muted-foreground/60"
         >
-          1 650 M
+          {copy.startAltitude}
         </span>
         <span
           aria-hidden="true"
           className="pointer-events-none absolute top-[12.5%] right-[16%] font-mono text-[10px] tracking-[0.15em] text-muted-foreground/60"
         >
-          FAN SI PAN · 3 143 M
+          {copy.summitAltitude}
         </span>
-        <a href="/" aria-label="Nexora — home" className="relative z-10 w-fit select-none">
+        <a href="/" aria-label={messages.a11y.homeLink} className="relative z-10 w-fit select-none">
           <Logo />
         </a>
         {/* `py-2` (trước là `py-10`, rồi `py-4`): đệm này LỒNG trong `py-5`
@@ -128,7 +127,7 @@ export function AuthScreen({ quote, author, image, children }: AuthScreenProps) 
       <div className="dark relative hidden overflow-hidden bg-background lg:block">
         <SlotImage
           image={image}
-          label={AUTH_PANEL_LABEL}
+          label={copy.panelImageLabel}
           className="absolute inset-0 h-full w-full"
           sizes="50vw"
         />
@@ -148,7 +147,7 @@ export function AuthScreen({ quote, author, image, children }: AuthScreenProps) 
           className="pointer-events-none absolute inset-5 rounded-sm border border-on-media/30"
         />
         <p className="absolute inset-x-0 top-10 text-center font-mono text-[11px] tracking-[0.32em] text-on-media/90 uppercase">
-          Sapa Express · departs at dawn
+          {copy.panelCaption}
         </p>
 
         <motion.figure

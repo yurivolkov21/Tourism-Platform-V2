@@ -1,3 +1,4 @@
+import { messages } from '@tourism/i18n';
 import type { Metadata } from 'next';
 import { Suspense } from 'react';
 import { AuthScreen } from '@/components/auth/auth-screen';
@@ -6,8 +7,8 @@ import { AUTH_PANEL_SLOT, siteMediaImage } from '@/lib/api/site-media';
 
 // /register (plan Task 3) — quote "minivan 2014" bám chuyện sáng lập ở /about.
 export const metadata: Metadata = {
-  title: 'Create an account — Nexora',
-  description: 'One account for every valley, coast and city ahead.',
+  title: messages.authForms.pages.register.title,
+  description: messages.authForms.pages.register.description,
 };
 
 export default async function RegisterPage() {
@@ -19,8 +20,8 @@ export default async function RegisterPage() {
   return (
     <AuthScreen
       image={image}
-      quote="In 2014 this was three friends and one rented minivan. There is always room for one more."
-      author="Giang Tử Dương, co-founder"
+      quote={messages.authForms.pages.register.quote}
+      author={messages.authForms.pages.register.author}
     >
       {/* Cùng lý do Suspense với /login: RegisterForm cũng đọc `redirect` qua
           useSearchParams (nút Google) — xem ghi chú đầy đủ ở login/page.tsx. */}

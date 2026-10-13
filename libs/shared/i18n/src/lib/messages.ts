@@ -132,23 +132,118 @@ export const messages = {
     skipToContent: 'Skip to main content',
     opensNewTab: '(opens in a new tab)',
     removeFilter: 'Remove filter',
+    // Logo dẫn về trang chủ ở header, footer và khung trang auth (W-09).
+    homeLink: 'Nexora — home',
   },
   // Copy THẬT cho login/register wire vào Better Auth (Task 3 auth-pages-api,
   // spec 2026-08-03) — khối RIÊNG với `auth` ở trên (đó là bản nháp form
   // static-first trước khi có API thật). `errors` khoá bằng `AuthErrorKey`
   // (@/lib/auth-errors) nên mọi key lỗi map ra đúng MỘT câu tiếng Anh ổn định.
+  //
+  // W-09 (13/10): phần chữ còn gõ cứng trong sáu trang auth (form, khung trang, metadata, quote)
+  // dời hết vào đây (luật 7). Tiêu đề hai mảnh tách `heading` và `headingAccent` (mảnh in nghiêng
+  // màu nhấn); khoảng trắng giữa hai mảnh do JSX lo nên không chuỗi nào mang khoảng trắng ở mép.
   authForms: {
+    // Chữ lặp ở nhiều form của cụm.
+    common: {
+      continueWithGoogle: 'Continue with Google',
+      emailLabel: 'Email',
+      emailPlaceholder: 'you@example.com',
+      passwordPlaceholder: 'Password',
+      backToLogin: 'Back to log in',
+      rememberedIt: 'Remembered it?',
+    },
+    // Khung trang `auth-screen.tsx`: nhãn ô giữ chỗ của ảnh panel, chú thích trên ảnh, hai nhãn
+    // cao độ trang trí của bản đồ (ga Sa Pa → đỉnh Fansipan).
+    screen: {
+      panelImageLabel: 'Fansipan summit above the clouds at dawn',
+      panelCaption: 'Sapa Express · departs at dawn',
+      startAltitude: '1 650 M',
+      summitAltitude: 'FAN SI PAN · 3 143 M',
+    },
+    // Metadata và câu quote trên panel ảnh của từng trang `app/(auth)/<trang>/page.tsx`.
+    pages: {
+      login: {
+        title: 'Log in — Nexora',
+        description: 'Log in to pick up where the map left off.',
+        quote: 'Welcome back — the valley kept your seat.',
+        author: 'Mai, Sa Pa guide',
+      },
+      register: {
+        title: 'Create an account — Nexora',
+        description: 'One account for every valley, coast and city ahead.',
+        quote:
+          'In 2014 this was three friends and one rented minivan. There is always room for one more.',
+        author: 'Giang Tử Dương, co-founder',
+      },
+      forgotPassword: {
+        title: 'Forgot password — Nexora',
+        description: 'Tell us your email and we will send a reset link.',
+        quote: 'Losing the trail is part of the trek. A guide walks you back.',
+        author: 'Mạnh Duy An, Head of Guides',
+      },
+      resetPassword: {
+        title: 'Reset password — Nexora',
+        description: 'Pick a new password and get back on board.',
+        quote: "New key, same door — the mountains didn't move.",
+        author: 'Huỳnh Đại Nghĩa, Head of Routes',
+      },
+      twoFactor: {
+        title: 'Two-factor check — Nexora',
+        description: 'Enter the six-digit code from your authenticator app.',
+        quote: 'Good climbers double-check the knots. So do we.',
+        author: 'Huỳnh Đại Nghĩa, Head of Routes',
+      },
+      verifyEmail: {
+        title: 'Verify your email — Nexora',
+        description: 'We mailed you six digits — enter them to confirm your address.',
+        quote: "A ticket only counts once it's stamped.",
+        author: 'Giang Tử Dương, co-founder',
+      },
+    },
     login: {
+      stub: 'HN → SAPA · SEAT 07/12 · GATE: LOGIN',
+      heading: 'Welcome back',
+      headingAccent: 'to the road.',
+      lead: 'Log in to pick up where the map left off.',
+      divider: 'or continue with email',
+      rememberMe: 'Remember me',
+      forgotPassword: 'Forgot password?',
+      newHere: 'New here?',
+      createAccount: 'Create an account',
       // W3-C1: hai chuỗi từng nằm cứng trong login-form.tsx (luật 7).
       passwordLabel: 'Password',
       submit: 'Board the trip',
       submitting: 'Signing in…',
     },
     register: {
+      stub: 'NEW TRAVELLER · SEAT --/-- · GATE: REGISTER',
+      heading: 'Claim your seat',
+      headingAccent: 'on the next trip.',
+      lead: 'One account for every trip ahead.',
+      divider: 'or sign up with email',
+      nameLabel: 'Full name',
+      namePlaceholder: 'Tran Mai Anh',
+      passwordLabel: 'Password',
+      // Câu đồng ý chia mảnh quanh hai link: "I agree to the Terms and Privacy Policy."
+      termsPrefix: 'I agree to the',
+      termsLink: 'Terms',
+      termsJoin: 'and',
+      privacyLink: 'Privacy Policy',
+      submit: 'Create my account',
       submitting: 'Creating your account…',
+      haveAccount: 'Already have a ticket?',
+      logIn: 'Log in',
     },
     // Task 4 (auth-pages-api): forgot/reset password.
     forgotPassword: {
+      stub: 'LOST TICKET DESK · GATE: RESET',
+      heading: 'Lost your ticket?',
+      headingAccent: 'It happens on the road.',
+      lead: "We'll email you a link to reset it.",
+      sentHeading: 'Check your inbox',
+      sentHeadingAccent: '— help is on the way.',
+      sendAgain: 'Send it again',
       submit: 'Send the reset link',
       submitting: 'Sending the link…',
       // "30 minutes" phải khớp token reset 1800s phía API (ADR-0017 §7) —
@@ -156,7 +251,16 @@ export const messages = {
       sentBody: 'A reset link is on its way — it expires in 30 minutes.',
     },
     resetPassword: {
+      stub: 'REISSUE TICKET · GATE: RESET',
+      heading: 'Fresh ticket,',
+      headingAccent: 'same destination.',
+      lead: "Pick a new password and you're back on board.",
+      newPasswordLabel: 'New password',
+      confirmLabel: 'Confirm new password',
+      confirmPlaceholder: 'Type it once more',
+      submit: 'Save and board again',
       submitting: 'Saving your password…',
+      changedMind: 'Changed your mind?',
       // Panel khi thiếu/rỗng `?token=` — khuôn theo `unsubscribePage.invalidToken`.
       invalidToken: {
         heading: 'This link isn’t working',
@@ -170,6 +274,11 @@ export const messages = {
     },
     // Task 5 (auth-pages-api): verify-email OTP thật.
     verifyEmail: {
+      stub: 'BOARDING CHECK · EMAIL · GATE: VERIFY',
+      heading: 'We mailed you',
+      headingAccent: 'six digits.',
+      description: 'Enter the code we sent to confirm your email address.',
+      submit: 'Stamp my ticket',
       submitting: 'Verifying…',
       /**
        * ADR-0017 §7c (vòng vá review W2): với `requireEmailVerification` +
@@ -205,9 +314,44 @@ export const messages = {
     // Màn /two-factor (W3-C1 — copy từng nằm cứng trong two-factor-form.tsx;
     // TOTP thật vẫn là nợ twoFactor plugin, PARK theo ADR-0017).
     twoFactor: {
+      stub: 'BOARDING CHECK · TOTP · GATE: 2FA',
+      heading: 'One more stamp',
+      headingAccent: 'before boarding.',
       description: 'Open your authenticator app and enter the six-digit code.',
       submit: 'Verify and continue',
       recoveryLabel: 'Recovery code',
+      recoveryPlaceholder: 'xxxx-xxxx-xxxx',
+      backToCode: 'Back to authenticator code',
+      useRecovery: 'Lost the app? Use a recovery code',
+    },
+    // Ô mã sáu số dùng chung cho /verify-email và /two-factor (`otp-form.tsx`).
+    otp: {
+      resendIn: "Didn't get it? Resend in",
+      secondsLeft: (seconds: number) => `${seconds}s`,
+      resend: 'Resend the code',
+    },
+    // Ô mật khẩu có chấm độ mạnh (`password-strength-field.tsx`): /register, /reset-password và
+    // đổi mật khẩu ở /account/security. Thứ tự `requirements` là thứ tự năm vạch điểm. `short` là
+    // nhãn nhìn thấy trên hàng pill, `text` là câu đầy đủ cho tooltip và trình đọc màn hình.
+    passwordStrength: {
+      requirements: {
+        length: { short: '8+ chars', text: 'At least 8 characters' },
+        lowercase: { short: 'lowercase', text: '1 lowercase letter' },
+        uppercase: { short: 'uppercase', text: '1 uppercase letter' },
+        number: { short: 'number', text: '1 number' },
+        symbol: { short: 'symbol', text: '1 special character' },
+      },
+      requirementState: (text: string, met: boolean) =>
+        `${text} — requirement ${met ? 'met' : 'not met'}`,
+      status: {
+        empty: 'Enter a password',
+        weak: 'Weak password',
+        medium: 'Medium password',
+        strong: 'Strong password',
+        max: 'Trail-ready password',
+      },
+      show: 'Show password',
+      hide: 'Hide password',
     },
     errors: {
       invalidCredentials: 'Invalid email or password.',

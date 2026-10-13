@@ -1,3 +1,4 @@
+import { messages } from '@tourism/i18n';
 import type { Metadata } from 'next';
 import { Suspense } from 'react';
 import { AuthScreen } from '@/components/auth/auth-screen';
@@ -6,8 +7,8 @@ import { AUTH_PANEL_SLOT, siteMediaImage } from '@/lib/api/site-media';
 
 // /reset-password (plan Task 4) — quầy "reissue ticket": phát vé mới, chuyến cũ.
 export const metadata: Metadata = {
-  title: 'Reset password — Nexora',
-  description: 'Pick a new password and get back on board.',
+  title: messages.authForms.pages.resetPassword.title,
+  description: messages.authForms.pages.resetPassword.description,
 };
 
 export default async function ResetPasswordPage() {
@@ -19,8 +20,8 @@ export default async function ResetPasswordPage() {
   return (
     <AuthScreen
       image={image}
-      quote="New key, same door — the mountains didn't move."
-      author="Huỳnh Đại Nghĩa, Head of Routes"
+      quote={messages.authForms.pages.resetPassword.quote}
+      author={messages.authForms.pages.resetPassword.author}
     >
       {/* Task 4: ResetPasswordForm đọc `token` qua useSearchParams — cùng lý
           do Suspense của /login (Task 3): Next 16 bắt buộc bọc Suspense

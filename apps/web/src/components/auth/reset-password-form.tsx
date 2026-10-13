@@ -81,10 +81,13 @@ export function ResetPasswordForm() {
   // (khuôn `unsubscribePage.invalidToken`/`InvalidTokenPanel`), KHÔNG 404,
   // dẫn thẳng về /forgot-password để xin link mới — KHÔNG gọi
   // `authClient.resetPassword` với token rỗng.
+  const r = messages.authForms.resetPassword;
+  const c = messages.authForms.common;
+
   if (!token) {
-    const t = messages.authForms.resetPassword.invalidToken;
+    const t = r.invalidToken;
     return (
-      <TicketCard stub="REISSUE TICKET · GATE: RESET">
+      <TicketCard stub={r.stub}>
         <div className="flex flex-col gap-5 text-center">
           <div>
             <h1 className="font-heading text-2xl font-medium text-card-foreground md:text-3xl">
@@ -104,22 +107,20 @@ export function ResetPasswordForm() {
   }
 
   return (
-    <TicketCard stub="REISSUE TICKET · GATE: RESET">
+    <TicketCard stub={r.stub}>
       <form className="flex flex-col gap-4" onSubmit={handleSubmit} noValidate>
         <div>
           <h1 className="font-heading text-2xl font-medium text-card-foreground md:text-3xl">
-            Fresh ticket,
-            <span className="text-primary-emphasis italic"> same destination.</span>
+            {r.heading}
+            <span className="text-primary-emphasis italic"> {r.headingAccent}</span>
           </h1>
-          <p className="mt-1.5 text-sm text-muted-foreground">
-            Pick a new password and you're back on board.
-          </p>
+          <p className="mt-1.5 text-sm text-muted-foreground">{r.lead}</p>
         </div>
 
         <PasswordStrengthField
           id="reset-password"
-          label="New password"
-          placeholder="Password"
+          label={r.newPasswordLabel}
+          placeholder={c.passwordPlaceholder}
           value={password}
           onChange={(value) => {
             setPassword(value);
@@ -129,11 +130,11 @@ export function ResetPasswordForm() {
         />
 
         <div className="flex flex-col gap-1.5">
-          <Label htmlFor="reset-confirm">Confirm new password</Label>
+          <Label htmlFor="reset-confirm">{r.confirmLabel}</Label>
           <Input
             id="reset-confirm"
             type="password"
-            placeholder="Type it once more"
+            placeholder={r.confirmPlaceholder}
             autoComplete="new-password"
             value={confirm}
             onChange={(e) => {
@@ -156,13 +157,13 @@ export function ResetPasswordForm() {
           disabled={pending}
           className="w-full cursor-pointer rounded-full bg-primary py-3 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60"
         >
-          {pending ? messages.authForms.resetPassword.submitting : 'Save and board again'}
+          {pending ? r.submitting : r.submit}
         </button>
 
         <p className="text-center text-sm text-muted-foreground">
-          Changed your mind?{' '}
+          {r.changedMind}{' '}
           <a href="/login" className="font-medium text-primary-emphasis hover:underline">
-            Back to log in
+            {c.backToLogin}
           </a>
         </p>
       </form>

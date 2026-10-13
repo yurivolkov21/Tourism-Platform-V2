@@ -1,5 +1,6 @@
 'use client';
 
+import { messages } from '@tourism/i18n';
 import { AnimatedThemeToggler } from '@tourism/ui/components/animated-theme-toggler';
 import { MenuIcon, XIcon } from 'lucide-react';
 import { usePathname } from 'next/navigation';
@@ -116,7 +117,7 @@ export function SiteHeader() {
             : 'w-full md:px-16 lg:px-24 xl:px-32'
         }`}
       >
-        <a href="/" aria-label="Nexora — home">
+        <a href="/" aria-label={messages.a11y.homeLink}>
           {/* Trên hero (chưa cuộn) logo phải sáng: ép màu qua class dark-scope */}
           <span className={solid ? '' : 'dark'}>
             <Logo />

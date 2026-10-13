@@ -7,8 +7,8 @@ import { AUTH_PANEL_SLOT, siteMediaImage } from '@/lib/api/site-media';
 // /verify-email (plan Task 5) — "boarding check" soát vé email; backend đã
 // gate emailVerified (ADR-0008), nay nối API thật (emailOTP, Task 1).
 export const metadata: Metadata = {
-  title: 'Verify your email — Nexora',
-  description: 'We mailed you six digits — enter them to confirm your address.',
+  title: messages.authForms.pages.verifyEmail.title,
+  description: messages.authForms.pages.verifyEmail.description,
 };
 
 interface VerifyEmailPageProps {
@@ -26,30 +26,27 @@ export default async function VerifyEmailPage({ searchParams }: VerifyEmailPageP
   // rồi truyền prop xuống OtpForm (client) — không cần useSearchParams/Suspense
   // vì form không tự đọc query (khác nếp /login, /reset-password).
   const { email, redirect } = await searchParams;
+  const t = messages.authForms.verifyEmail;
 
   return (
     <AuthScreen
       image={image}
-      quote="A ticket only counts once it's stamped."
-      author="Giang Tử Dương, co-founder"
+      quote={messages.authForms.pages.verifyEmail.quote}
+      author={messages.authForms.pages.verifyEmail.author}
     >
       <OtpForm
-        stub="BOARDING CHECK · EMAIL · GATE: VERIFY"
+        stub={t.stub}
         heading={
           <>
-            We mailed you
-            <span className="text-primary-emphasis italic"> six digits.</span>
+            {t.heading}
+            <span className="text-primary-emphasis italic"> {t.headingAccent}</span>
           </>
         }
-        description="Enter the code we sent to confirm your email address."
-        submitLabel="Stamp my ticket"
+        description={t.description}
+        submitLabel={t.submit}
         email={email ?? null}
         redirect={redirect ?? null}
-        extra={
-          <p className="text-center text-xs text-muted-foreground">
-            {messages.authForms.verifyEmail.existingAccountHint}
-          </p>
-        }
+        extra={<p className="text-center text-xs text-muted-foreground">{t.existingAccountHint}</p>}
       />
     </AuthScreen>
   );

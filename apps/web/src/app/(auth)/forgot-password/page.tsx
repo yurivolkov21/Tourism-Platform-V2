@@ -1,3 +1,4 @@
+import { messages } from '@tourism/i18n';
 import type { Metadata } from 'next';
 import { AuthScreen } from '@/components/auth/auth-screen';
 import { ForgotPasswordForm } from '@/components/auth/forgot-password-form';
@@ -5,8 +6,8 @@ import { AUTH_PANEL_SLOT, siteMediaImage } from '@/lib/api/site-media';
 
 // /forgot-password (plan Task 4) — quầy "lost ticket desk" của nhà ga.
 export const metadata: Metadata = {
-  title: 'Forgot password — Nexora',
-  description: 'Tell us your email and we will send a reset link.',
+  title: messages.authForms.pages.forgotPassword.title,
+  description: messages.authForms.pages.forgotPassword.description,
 };
 
 export default async function ForgotPasswordPage() {
@@ -18,8 +19,8 @@ export default async function ForgotPasswordPage() {
   return (
     <AuthScreen
       image={image}
-      quote="Losing the trail is part of the trek. A guide walks you back."
-      author="Mạnh Duy An, Head of Guides"
+      quote={messages.authForms.pages.forgotPassword.quote}
+      author={messages.authForms.pages.forgotPassword.author}
     >
       <ForgotPasswordForm />
     </AuthScreen>

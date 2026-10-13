@@ -1,3 +1,4 @@
+import { messages } from '@tourism/i18n';
 import type { Metadata } from 'next';
 import { AuthScreen } from '@/components/auth/auth-screen';
 import { TwoFactorForm } from '@/components/auth/two-factor-form';
@@ -6,8 +7,8 @@ import { AUTH_PANEL_SLOT, siteMediaImage } from '@/lib/api/site-media';
 // PARK theo ADR-0017 §5b — API chưa bật plugin twoFactor, trang giữ TĨNH làm
 // UI dự phòng (nợ có kế hoạch, không nối API ở Task 5 này).
 export const metadata: Metadata = {
-  title: 'Two-factor check — Nexora',
-  description: 'Enter the six-digit code from your authenticator app.',
+  title: messages.authForms.pages.twoFactor.title,
+  description: messages.authForms.pages.twoFactor.description,
 };
 
 export default async function TwoFactorPage() {
@@ -19,8 +20,8 @@ export default async function TwoFactorPage() {
   return (
     <AuthScreen
       image={image}
-      quote="Good climbers double-check the knots. So do we."
-      author="Huỳnh Đại Nghĩa, Head of Routes"
+      quote={messages.authForms.pages.twoFactor.quote}
+      author={messages.authForms.pages.twoFactor.author}
     >
       <TwoFactorForm />
     </AuthScreen>

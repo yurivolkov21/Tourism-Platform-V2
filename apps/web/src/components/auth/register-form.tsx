@@ -102,8 +102,11 @@ export function RegisterForm() {
     }
   }
 
+  const t = messages.authForms.register;
+  const c = messages.authForms.common;
+
   return (
-    <TicketCard stub="NEW TRAVELLER · SEAT --/-- · GATE: REGISTER">
+    <TicketCard stub={t.stub}>
       {/* gap-3 (các form auth khác gap-4): register là form dày nhất — 8 khối;
           nhịp 12px là điểm mà card vừa laptop 768p KỂ CẢ khi hiện đủ lỗi (đo
           19/08: 1366×681, 3 lỗi → 663px, dư 18px). */}
@@ -113,10 +116,10 @@ export function RegisterForm() {
             một dòng. Login/forgot vẫn 3xl vì card ngắn hơn nhiều. */}
         <div>
           <h1 className="font-heading text-2xl font-medium text-card-foreground">
-            Claim your seat
-            <span className="text-primary-emphasis italic"> on the next trip.</span>
+            {t.heading}
+            <span className="text-primary-emphasis italic"> {t.headingAccent}</span>
           </h1>
-          <p className="mt-1 text-sm text-muted-foreground">One account for every trip ahead.</p>
+          <p className="mt-1 text-sm text-muted-foreground">{t.lead}</p>
         </div>
 
         <button
@@ -125,13 +128,13 @@ export function RegisterForm() {
           className="flex w-full cursor-pointer items-center justify-center gap-2.5 rounded-full border py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-muted"
         >
           <GoogleIcon className="size-4" />
-          Continue with Google
+          {c.continueWithGoogle}
         </button>
 
         {/* Separator chữ giữa hai lối đăng ký */}
         <div className="flex items-center gap-3 text-xs text-muted-foreground">
           <span aria-hidden="true" className="h-px flex-1 bg-border" />
-          or sign up with email
+          {t.divider}
           <span aria-hidden="true" className="h-px flex-1 bg-border" />
         </div>
 
@@ -139,11 +142,11 @@ export function RegisterForm() {
             dòng lỗi của cặp này chia chung một hàng. Mobile vẫn xếp dọc. */}
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor="register-name">Full name</Label>
+            <Label htmlFor="register-name">{t.nameLabel}</Label>
             <Input
               id="register-name"
               type="text"
-              placeholder="Tran Mai Anh"
+              placeholder={t.namePlaceholder}
               value={name}
               onChange={(e) => {
                 setName(e.target.value);
@@ -154,11 +157,11 @@ export function RegisterForm() {
             <FieldError id="register-name-error">{fieldErrors.name}</FieldError>
           </div>
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor="register-email">Email</Label>
+            <Label htmlFor="register-email">{c.emailLabel}</Label>
             <Input
               id="register-email"
               type="email"
-              placeholder="you@example.com"
+              placeholder={c.emailPlaceholder}
               value={email}
               onChange={(e) => {
                 setEmail(e.target.value);
@@ -172,8 +175,8 @@ export function RegisterForm() {
         {/* Password + chấm độ mạnh (playground.md user cung cấp, đã token hoá) */}
         <PasswordStrengthField
           id="register-password"
-          label="Password"
-          placeholder="Password"
+          label={t.passwordLabel}
+          placeholder={c.passwordPlaceholder}
           value={password}
           onChange={(value) => {
             setPassword(value);
@@ -193,13 +196,13 @@ export function RegisterForm() {
             onCheckedChange={setAgreedToTerms}
           />
           <span>
-            I agree to the{' '}
+            {t.termsPrefix}{' '}
             <a href="/terms" className="font-medium text-primary-emphasis hover:underline">
-              Terms
+              {t.termsLink}
             </a>{' '}
-            and{' '}
+            {t.termsJoin}{' '}
             <a href="/privacy" className="font-medium text-primary-emphasis hover:underline">
-              Privacy Policy
+              {t.privacyLink}
             </a>
             .
           </span>
@@ -216,13 +219,13 @@ export function RegisterForm() {
           disabled={pending || !agreedToTerms}
           className="w-full cursor-pointer rounded-full bg-primary py-3 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60"
         >
-          {pending ? messages.authForms.register.submitting : 'Create my account'}
+          {pending ? t.submitting : t.submit}
         </button>
 
         <p className="text-center text-sm text-muted-foreground">
-          Already have a ticket?{' '}
+          {t.haveAccount}{' '}
           <a href="/login" className="font-medium text-primary-emphasis hover:underline">
-            Log in
+            {t.logIn}
           </a>
         </p>
       </form>
