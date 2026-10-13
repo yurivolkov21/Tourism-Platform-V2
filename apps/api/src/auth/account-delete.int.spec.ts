@@ -272,6 +272,43 @@ describe('DELETE /api/account đòi xác thực lại + gate nghiệp vụ (ADR-
     expect(res.json()).toMatchObject({ code: 'CREDENTIAL_ACCOUNT_NOT_FOUND' });
   });
 
+  it('2d. tài khoản chỉ OAuth đặt mật khẩu qua "Forgot password?" rồi xoá được — đường câu lỗi web chỉ cho khách (W-05)', async () => {
+    // Câu `noPassword` của web hướng khách chỉ có Google sang "Forgot password?". Better Auth
+    // 1.6.23 tạo Account credential khi reset cho user chưa có (routes/password.mjs), test này
+    // khoá hành vi ấy: nâng thư viện mà mất nó thì câu chữ thành chỉ đường cụt.
+    const email = 'google-only@example.com';
+    const { userId } = await createUserAndSignIn(email);
+    await prisma.account.deleteMany({ where: { userId, providerId: 'credential' } });
+
+    await app.inject({
+      method: 'POST',
+      url: '/api/auth/request-password-reset',
+      headers: { 'content-type': 'application/json' },
+      payload: JSON.stringify({ email, redirectTo: '/reset-password' }),
+    });
+    const row = await prisma.outbox.findFirstOrThrow({ where: { type: EmailType.PASSWORD_RESET } });
+    const token = new URL((row.payload as { url: string }).url).pathname.split('/').at(-1);
+    const NEW_PASSWORD = 'new-password-456';
+    const reset = await app.inject({
+      method: 'POST',
+      url: '/api/auth/reset-password',
+      headers: { 'content-type': 'application/json' },
+      payload: JSON.stringify({ newPassword: NEW_PASSWORD, token }),
+    });
+    expect(reset.statusCode).toBe(200);
+    expect(await prisma.account.count({ where: { userId, providerId: 'credential' } })).toBe(1);
+
+    // Reset thu hồi mọi phiên (revokeSessionsOnPasswordReset) — khách đăng nhập lại rồi mới xoá.
+    const si = await app.inject({
+      method: 'POST',
+      url: '/api/auth/sign-in/email',
+      payload: { email, password: NEW_PASSWORD },
+    });
+    expect(si.statusCode).toBe(200);
+    const res = await deleteAccount(sessionCookie(si), { password: NEW_PASSWORD });
+    expect(res.statusCode).toBe(204);
+  });
+
   it('6b. ảnh review của user đã xoá bị gỡ khỏi media_assets và vào hàng dọn (ADR-0017 §7b — erasure không dừng ở cái tên)', async () => {
     const email = 'review-photos@example.com';
     const { cookie, userId } = await createUserAndSignIn(email);

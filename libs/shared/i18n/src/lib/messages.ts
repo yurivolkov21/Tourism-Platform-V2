@@ -3459,8 +3459,12 @@ export const messages = {
           'You still have a paid booking that has not finished, or a refund that is still open. Cancel or complete it before deleting your account.',
         openCancellation:
           'You have a cancellation request in progress. Please wait for it to be resolved first.',
+        // W-05 (13/10): tài khoản chỉ có Google không có mật khẩu để xác nhận xoá. Bản cũ bảo
+        // "contact support" — nay chỉ đường tự làm được: "Forgot password?" tạo mật khẩu cho tài
+        // khoản ấy (khoá bằng int test 2d của `account-delete.int.spec.ts`), reset đăng xuất mọi
+        // nơi nên phải đăng nhập lại.
         noPassword:
-          'This account has no password set, so it cannot be deleted here yet. Please contact support.',
+          'This account signs in with Google and has no password yet. To delete it, set one with “Forgot password?” on the sign-in page, sign back in, then try again here.',
         pendingCheckout:
           'You have a booking with a payment page still open. Cancel that booking first, then delete your account.',
         tooManyAttempts:

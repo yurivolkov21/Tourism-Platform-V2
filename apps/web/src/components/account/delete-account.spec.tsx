@@ -162,6 +162,21 @@ describe('DeleteAccount — xoá tài khoản thật (Task 7/A2)', () => {
     ).toBeInTheDocument();
   });
 
+  it('409 CREDENTIAL_ACCOUNT_NOT_FOUND → chỉ đường "Forgot password?", không bảo liên hệ support (W-05)', async () => {
+    deleteAccount.mockRejectedValueOnce(
+      new AccountDeleteError(409, 'CREDENTIAL_ACCOUNT_NOT_FOUND'),
+    );
+    const user = userEvent.setup();
+    render(<DeleteAccount />);
+
+    await openDialogAndUnlock(user);
+    await user.click(screen.getByRole('button', { name: 'Yes, delete my account' }));
+
+    const message = await screen.findByText(messages.accountProfile.danger.errors.noPassword);
+    expect(message.textContent).toMatch(/Forgot password\?/);
+    expect(message.textContent).not.toMatch(/contact support/i);
+  });
+
   it('deleteAccount lỗi chung → message inline, KHÔNG signOut/push, nút hết pending', async () => {
     deleteAccount.mockRejectedValueOnce(new AccountDeleteError(500));
     const user = userEvent.setup();
