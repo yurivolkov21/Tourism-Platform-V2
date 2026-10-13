@@ -313,3 +313,22 @@ html:not(.dark) .stamp-ink {
  * ───────────────────────────────────────────────────────────────────────────── */
 @custom-variant voucher-stack (@media (width < --theme(--breakpoint-xl)));
 @custom-variant voucher-split (@media (width >= --theme(--breakpoint-xl)));
+
+/* ─────────────────────────────────────────────────────────────────────────────
+ * KHỐI ẢNH TRANG CHI TIẾT TOUR XẾP ẢNH NHỎ THÀNH HÀNG NGANG (open-items G29).
+ *
+ * Bản duyệt đặt cột 7 ảnh nhỏ (cao cố định 496px) cạnh ảnh chính vuông. Ảnh chính chỉ đủ 496px khi
+ * khối ảnh rộng từ ~576px: dưới `sm` (khung 375 còn ảnh 263px, hở 233px) và từ `lg` tới khi khung
+ * chạm bề rộng tối đa của trang (`max-w-6xl`, 1152px — cột trái của lưới hai cột còn 445px ở 1024,
+ * hở 131px) thì cạnh cột ảnh nhỏ là một khoảng trống. Ở hai dải đó `gallery-row:` đưa ảnh nhỏ thành
+ * một hàng bảy ô vuông dưới ảnh chính; từ `sm` tới `lg` và từ 1152px giữ bố cục đã duyệt (đo trên
+ * bản build: ảnh chính 493px, hở 3px).
+ * ───────────────────────────────────────────────────────────────────────────── */
+@custom-variant gallery-row {
+  @media (width < --theme(--breakpoint-sm)) {
+    @slot;
+  }
+  @media (width >= --theme(--breakpoint-lg)) and (width < --theme(--container-6xl)) {
+    @slot;
+  }
+}

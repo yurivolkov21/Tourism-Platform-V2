@@ -95,8 +95,14 @@ export function TourMediaPanel({ tour }: { tour: TourDetailVM }) {
   return (
     <div data-slot="tour-top" className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_443px]">
       {/* ── .gal ── */}
-      <div data-slot="tour-gallery" className="flex items-start gap-4">
-        <ul className="flex w-16 shrink-0 flex-col gap-2">
+      {/* `gallery-row:` (globals.css, G29): ở khổ ảnh chính hẹp hơn cột ảnh nhỏ thì ảnh nhỏ thành
+          một hàng bảy ô dưới ảnh chính. `flex-col-reverse` giữ thứ tự DOM (ảnh nhỏ trước) như bố
+          cục cột. */}
+      <div
+        data-slot="tour-gallery"
+        className="flex items-start gap-4 gallery-row:flex-col-reverse gallery-row:items-stretch gallery-row:justify-end gallery-row:gap-2"
+      >
+        <ul className="flex w-16 shrink-0 flex-col gap-2 gallery-row:grid gallery-row:w-auto gallery-row:grid-cols-7">
           {(hasPhotos ? thumbs : Array.from({ length: GALLERY_THUMB_SLOTS })).map((photo, i) => {
             const isLastVisible = i === (hasPhotos ? thumbs.length : GALLERY_THUMB_SLOTS) - 1;
             const key = hasPhotos ? (photo as (typeof thumbs)[number]).publicId : `slot-${i}`;
@@ -106,14 +112,15 @@ export function TourMediaPanel({ tour }: { tour: TourDetailVM }) {
                   type="button"
                   onClick={() => setOpenAt(i)}
                   aria-label={t.gallery.openPhoto(i + 1, lightboxCount)}
-                  className="group relative size-16 shrink-0 cursor-pointer overflow-hidden rounded-sm border focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                  className="group relative size-16 shrink-0 cursor-pointer overflow-hidden rounded-sm border focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary gallery-row:aspect-square gallery-row:size-auto gallery-row:w-full"
                 >
                   {hasPhotos ? (
                     <Image
                       src={(photo as (typeof thumbs)[number]).url}
                       alt={(photo as (typeof thumbs)[number]).alt ?? ''}
                       fill
-                      sizes="64px"
+                      // 80px: ô lớn nhất đo được ở hàng ngang `gallery-row:` (khung 639px); cột là 64px.
+                      sizes="80px"
                       className="object-cover"
                     />
                   ) : (
@@ -139,7 +146,7 @@ export function TourMediaPanel({ tour }: { tour: TourDetailVM }) {
           type="button"
           onClick={() => setOpenAt(0)}
           aria-label={t.mediaPanel.openGallery}
-          className="relative aspect-square min-w-0 flex-1 cursor-pointer overflow-hidden rounded-md border bg-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+          className="relative aspect-square min-w-0 flex-1 cursor-pointer gallery-row:flex-none overflow-hidden rounded-md border bg-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
         >
           {hasPhotos && photos[0] ? (
             <>
