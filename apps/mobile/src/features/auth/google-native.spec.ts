@@ -37,6 +37,11 @@ function nativeError(code: string): Error & { code: string } {
   return Object.assign(new Error(code), { code });
 }
 
+/** Thứ tự lần gọi đầu của một mock; chưa gọi thì NaN để mọi phép so "trước" đều đỏ. */
+function firstCall(fn: unknown): number {
+  return (fn as jest.Mock).mock.invocationCallOrder[0] ?? Number.NaN;
+}
+
 describe('isGoogleSignInAvailable', () => {
   it('Expo Go (storeClient) không có module native — ẩn nút', () => {
     expect(isGoogleSignInAvailable('storeClient', GOOGLE_ENV, 'android')).toBe(false);
@@ -81,12 +86,10 @@ describe('requestGoogleIdToken', () => {
     // hay app đã mở lại (signOut lúc đăng xuất chạy khi SDK chưa cấu hình).
     const sdk = fakeSdk();
     await requestGoogleIdToken(sdk, GOOGLE_ENV);
-    const signOut = sdk.GoogleSignin.signOut as jest.Mock;
-    const signIn = sdk.GoogleSignin.signIn as jest.Mock;
-    const configure = sdk.GoogleSignin.configure as jest.Mock;
+    const { configure, signOut, signIn } = sdk.GoogleSignin;
     expect(signOut).toHaveBeenCalledTimes(1);
-    expect(configure.mock.invocationCallOrder[0]).toBeLessThan(signOut.mock.invocationCallOrder[0]);
-    expect(signOut.mock.invocationCallOrder[0]).toBeLessThan(signIn.mock.invocationCallOrder[0]);
+    expect(firstCall(configure)).toBeLessThan(firstCall(signOut));
+    expect(firstCall(signOut)).toBeLessThan(firstCall(signIn));
   });
 
   it('signOut trước bảng chọn hỏng cũng không chặn đăng nhập', async () => {
@@ -160,14 +163,13 @@ describe('signOutOfGoogle', () => {
   it('cấu hình SDK rồi mới signOut — sau khi mở lại app, signOut chưa cấu hình bị Android từ chối', async () => {
     const sdk = fakeSdk();
     await signOutOfGoogle(sdk, GOOGLE_ENV);
-    const signOut = sdk.GoogleSignin.signOut as jest.Mock;
-    const configure = sdk.GoogleSignin.configure as jest.Mock;
+    const { configure, signOut } = sdk.GoogleSignin;
     expect(configure).toHaveBeenCalledWith({
       webClientId: GOOGLE_ENV.webClientId,
       iosClientId: GOOGLE_ENV.iosClientId,
     });
     expect(signOut).toHaveBeenCalledTimes(1);
-    expect(configure.mock.invocationCallOrder[0]).toBeLessThan(signOut.mock.invocationCallOrder[0]);
+    expect(firstCall(configure)).toBeLessThan(firstCall(signOut));
   });
 
   it('nuốt lỗi của SDK — đăng xuất khỏi app không bị chặn', async () => {
