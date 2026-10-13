@@ -255,6 +255,27 @@ describe('admin outbox integration (F7)', () => {
       expect(both.items.map((item) => item.id)).toEqual([rowId(3)]);
     });
 
+    it('search KHÔNG khớp phần credential của dedupeKey: không dò được OTP hay token reset từng ký tự', async () => {
+      // Từ P4f Staff mở được outbox. `contains` trên dedupeKey THÔ là một oracle: Staff gửi OTP
+      // đăng nhập tới email Owner (route công khai) rồi tìm `email-otp:<email>:4`, `…:48`… là
+      // đọc ra đủ sáu số sau tối đa 60 lượt, rồi đăng nhập thành Owner (review P4f).
+      await prisma.outbox.create({
+        data: {
+          id: rowId(7),
+          type: EmailType.EMAIL_OTP,
+          payload: { email: 'owner-otp@example.com', otp: '482915' },
+          dedupeKey: 'email-otp:owner-otp@example.com:482915',
+        },
+      });
+      for (const probe of ['482915', 'email-otp:owner-otp@example.com:4', 'TOP-SECRET-RESET']) {
+        expect((await listOk(`?search=${encodeURIComponent(probe)}`)).total).toBe(0);
+      }
+      // Vẫn tìm được hàng email auth theo người nhận.
+      expect((await listOk('?search=owner-otp@example.com')).items.map((item) => item.id)).toEqual([
+        rowId(7),
+      ]);
+    });
+
     it('email auth: url/otp trong payload và dedupeKey bị CHE — response không mang credential', async () => {
       const res = await list('?type=PASSWORD_RESET', adminCookie);
       expect(res.statusCode).toBe(200);

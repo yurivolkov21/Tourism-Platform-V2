@@ -5,7 +5,7 @@ import { Prisma } from '../../generated/prisma/client.js';
 import { OutboxStatus } from '../../generated/prisma/enums.js';
 import { escapeLike } from '../../lib/like.js';
 import { toPaged } from '../../lib/paged.js';
-import { toOutboxRow } from './outbox-row.js';
+import { CREDENTIAL_EMAIL_TYPES, toOutboxRow } from './outbox-row.js';
 
 export class OutboxRowNotFoundError extends Error {
   constructor(id: string) {
@@ -59,7 +59,15 @@ export class AdminOutboxService {
             OR: [
               // Escape `%`/`_` (vòng vá review F9) — chỉ cột text; JSON
               // `string_contains` đi đường khác của Prisma, không phải LIKE.
-              { dedupeKey: { contains: escapeLike(search), mode: 'insensitive' } },
+              {
+                dedupeKey: { contains: escapeLike(search), mode: 'insensitive' },
+                // Loại email auth nhúng credential vào dedupeKey (OTP, link reset), nên
+                // `contains` trên cột thô là một oracle: đoán dần từng ký tự rồi xem có khớp
+                // không. Đo 13/10 (review P4f): Staff gửi OTP đăng nhập tới email Owner rồi dò
+                // đủ sáu số sau 26 lượt tìm, đăng nhập thành Owner. Hàng loại đó vẫn tìm được
+                // theo người nhận ở hai vế payload bên dưới.
+                type: { notIn: [...CREDENTIAL_EMAIL_TYPES] },
+              },
               { payload: { path: ['code'], string_contains: search, mode: 'insensitive' } },
               { payload: { path: ['email'], string_contains: search, mode: 'insensitive' } },
               { payload: { path: ['to'], string_contains: search, mode: 'insensitive' } },
