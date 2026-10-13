@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { messages } from '@tourism/i18n';
 import { describe, expect, it, vi } from 'vitest';
@@ -203,6 +203,30 @@ describe('SubscribersTable — ô Actions sống qua lượt làm mới (G24)', 
     // Hàng thứ ba vừa huỷ ở tab khác: tab Active còn hai hàng.
     rerender(table(2));
     expect(screen.getByRole('dialog')).toBeInTheDocument();
+  });
+
+  it('Unsubscribe xong, hàng rời tab Active: focus sang nút của hàng kế chứ không rơi về <body>', async () => {
+    // G6 giữ được focus ở nút Unsubscribe suốt lượt làm mới, nhưng lượt ấy mang về danh sách
+    // không còn hàng vừa huỷ — nút rời DOM cùng hàng (đo Chromium 13/10: focus về body).
+    const user = userEvent.setup();
+    const unsubscribe = vi.fn(async () => ({
+      ok: true as const,
+      unsubscribedAt: '2026-10-13T09:00:00.000Z',
+    }));
+    const props = { query: ACTIVE, sources: [], totalPages: 1, unsubscribe };
+    const { rerender } = render(<SubscribersTable rows={ROWS} total={2} {...props} />);
+
+    await user.click(screen.getByRole('button', { name: tu.actionLabel('ada@example.com') }));
+    const dialog = await screen.findByRole('dialog');
+    await user.click(within(dialog).getByRole('button', { name: tu.dialog.submit }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: tu.actionLabel('ada@example.com') })).toHaveFocus(),
+    );
+
+    rerender(<SubscribersTable rows={ROWS.slice(1)} total={1} {...props} />);
+
+    expect(screen.getByRole('button', { name: tu.actionLabel('bo@example.com') })).toHaveFocus();
   });
 });
 

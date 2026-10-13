@@ -20,7 +20,8 @@ import {
   TableRow,
 } from '@tourism/ui/components/table';
 import { ChevronDownIcon, Columns3Icon } from 'lucide-react';
-import type * as React from 'react';
+import * as React from 'react';
+import { useRowFocusRescue } from '@/components/kit/row-focus-rescue';
 import type { selectableTableFeatures, serverTableFeatures } from '@/components/kit/table-features';
 import { TOOLBAR_BUTTON } from '@/components/kit/toolbar-metrics';
 
@@ -77,9 +78,13 @@ export function DataTableBody<TData extends RowData>({
   // visible cells — API mà cả hai bộ đều có, và bộ selectable là superset nên
   // ép kiểu ở đây không mở ra lời gọi nào mà bảng thường không trả lời được.
   const view = table as TanstackTable<typeof selectableTableFeatures, TData>;
+  // Nút trong hàng biến mất ở lượt làm mới sau một lệnh ghi thì focus không rơi về <body> —
+  // xem `row-focus-rescue.ts`. Hàng mang `data-row-id` để bước cứu nhận ra hàng cũ còn hay đi.
+  const tableRef = React.useRef<HTMLTableElement>(null);
+  useRowFocusRescue(tableRef);
 
   return (
-    <Table>
+    <Table ref={tableRef}>
       <TableHeader className="sticky top-0 z-10 bg-muted">
         {view.getHeaderGroups().map((headerGroup) => (
           <TableRow key={headerGroup.id}>
@@ -98,7 +103,7 @@ export function DataTableBody<TData extends RowData>({
       <TableBody>
         {view.getRowModel().rows.length ? (
           view.getRowModel().rows.map((row) => (
-            <TableRow key={row.id}>
+            <TableRow key={row.id} data-row-id={row.id}>
               {row.getVisibleCells().map((cell) => (
                 <TableCell key={cell.id}>
                   <FlexRender cell={cell} />
