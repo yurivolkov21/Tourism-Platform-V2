@@ -10,6 +10,12 @@ import { fetchAdminUser } from '@/lib/api/users';
 import type { RawSearchParams } from '@/lib/table-query';
 import { usersBackHref } from '@/lib/users-query';
 import { toUserDetailVM } from '@/lib/users-view';
+import {
+  lockUserAction,
+  revokeUserSessionsAction,
+  setUserRoleAction,
+  unlockUserAction,
+} from './actions';
 
 /**
  * `/users/[id]` — một tài khoản (P4f, spec §7.2). `id` từ URL đi qua CHÍNH schema contract
@@ -45,7 +51,16 @@ export default async function UserDetailPage({
 
   return (
     <AdminShell user={session}>
-      <UserDetail detail={toUserDetailVM(user)} backHref={backHref} />
+      <UserDetail
+        detail={toUserDetailVM(user)}
+        backHref={backHref}
+        actions={{
+          setRole: setUserRoleAction,
+          lock: lockUserAction,
+          unlock: unlockUserAction,
+          revokeSessions: revokeUserSessionsAction,
+        }}
+      />
     </AdminShell>
   );
 }

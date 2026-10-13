@@ -5745,6 +5745,94 @@ export const messages = {
         line: (actor: string, action: string) => `${actor} ${action}`,
         reason: (text: string) => `Reason: ${text}`,
       },
+      actions: {
+        cancel: 'Cancel',
+        rows: { user: 'User', email: 'Email' },
+        grant: {
+          action: 'Grant staff access',
+          dialog: {
+            title: 'Grant staff access?',
+            // Đo trên ADMIN_ACCESS: đúng 16 thủ tục chỉ Owner.
+            body: 'They’ll be able to open the back office and work on everything except refunds, cancelling departures, deleting tours, posts, categories or destinations, reports, payment events and users.',
+            // Role đọc tươi ở mỗi request (không cookieCache) — không cần đăng nhập lại.
+            warning: 'Access starts on their next page load — no new sign-in needed.',
+            submit: 'Grant access',
+            submitting: 'Granting…',
+          },
+          toast: {
+            title: 'Staff access granted',
+            body: (name: string) => `${name} can now use the back office.`,
+          },
+        },
+        revoke: {
+          action: 'Revoke staff access',
+          dialog: {
+            title: 'Revoke staff access?',
+            body: 'They go back to being a customer. Their bookings and reviews stay as they are.',
+            // `setRole → CUSTOMER` xoá MỌI phiên trong cùng transaction; cookie dùng chung www/admin.
+            warning: 'This signs them out everywhere — on the website too.',
+            submit: 'Revoke access',
+            submitting: 'Revoking…',
+          },
+          toast: {
+            title: 'Staff access revoked',
+            body: (name: string) => `${name} has been signed out everywhere.`,
+          },
+        },
+        lock: {
+          action: 'Lock account',
+          dialog: {
+            title: 'Lock this account?',
+            body: 'Their bookings, trips, refunds and booking emails carry on as normal.',
+            // `lock` xoá mọi phiên; hook tạo phiên chặn mọi đường đăng nhập tới khi mở khoá.
+            warning:
+              'This signs them out everywhere straight away, and they can’t sign back in until the account is unlocked.',
+            noteLabel: 'Reason (internal)',
+            notePlaceholder: 'Why is this account being locked?',
+            noteRequired: 'Write the reason — it stays in this account’s history.',
+            submit: 'Lock account',
+            submitting: 'Locking…',
+          },
+          toast: {
+            title: 'Account locked',
+            body: (name: string) => `${name} is signed out and can’t sign in.`,
+          },
+        },
+        unlock: {
+          action: 'Unlock account',
+          dialog: {
+            title: 'Unlock this account?',
+            // `user_events` chỉ ghi thêm — dòng LOCKED và lý do của nó ở lại.
+            body: 'The lock and its reason stay in the history.',
+            warning: 'They can sign in again straight away.',
+            submit: 'Unlock',
+            submitting: 'Unlocking…',
+          },
+          toast: {
+            title: 'Account unlocked',
+            body: (name: string) => `${name} can sign in again.`,
+          },
+        },
+        sessions: {
+          action: 'Sign out everywhere',
+          dialog: {
+            title: 'Sign this account out everywhere?',
+            body: 'Every device they’re signed in on loses its session.',
+            warning: 'They can sign straight back in unless the account is locked.',
+            submit: 'Sign out everywhere',
+            submitting: 'Signing out…',
+          },
+          toast: {
+            title: 'Signed out everywhere',
+            body: (count: number) =>
+              count === 1 ? '1 session ended.' : `${count} sessions ended.`,
+          },
+        },
+      },
+      errors: {
+        NOT_FOUND: 'This account no longer exists — the page has been refreshed.',
+        STATE_CHANGED: 'This account changed while you were looking — the page has been refreshed.',
+      },
     },
     /**
      * Vùng outbox (spec P4c §3-F7) — hàng đợi email mà worker drain mỗi phút,

@@ -1,5 +1,16 @@
 import { isDefinedError, safe } from '@orpc/client';
-import type { AdminUserByIdInput, AdminUserDetail, AdminUserRow, Paged } from '@tourism/contract';
+import type {
+  AdminUserByIdInput,
+  AdminUserDetail,
+  AdminUserLockInput,
+  AdminUserLockResult,
+  AdminUserRevokeSessionsResult,
+  AdminUserRow,
+  AdminUserSetRoleInput,
+  AdminUserSetRoleResult,
+  AdminUserUnlockResult,
+  Paged,
+} from '@tourism/contract';
 import type { UsersQuery } from '@/lib/users-query';
 import { api, withAdminAuth } from './client';
 
@@ -22,4 +33,32 @@ export async function fetchAdminUser(
     throw error;
   }
   return data;
+}
+
+export async function setAdminUserRole(
+  cookie: string,
+  input: AdminUserSetRoleInput,
+): Promise<AdminUserSetRoleResult> {
+  return api.admin.users.setRole(input, { context: withAdminAuth(cookie) });
+}
+
+export async function lockAdminUser(
+  cookie: string,
+  input: AdminUserLockInput,
+): Promise<AdminUserLockResult> {
+  return api.admin.users.lock(input, { context: withAdminAuth(cookie) });
+}
+
+export async function unlockAdminUser(
+  cookie: string,
+  input: AdminUserByIdInput,
+): Promise<AdminUserUnlockResult> {
+  return api.admin.users.unlock(input, { context: withAdminAuth(cookie) });
+}
+
+export async function revokeAdminUserSessions(
+  cookie: string,
+  input: AdminUserByIdInput,
+): Promise<AdminUserRevokeSessionsResult> {
+  return api.admin.users.revokeSessions(input, { context: withAdminAuth(cookie) });
 }

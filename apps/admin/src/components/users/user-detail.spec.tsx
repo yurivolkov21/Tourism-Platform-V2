@@ -1,15 +1,31 @@
 import { render, screen } from '@testing-library/react';
 import { messages } from '@tourism/i18n';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { toUserDetailVM } from '@/lib/users-view';
 import { userDetailFixture } from '@/test/user-detail';
 import { UserDetail } from './user-detail';
 
 const t = messages.admin.users;
 
+// Ba nút thao tác gọi router (làm tươi trang sau khi ghi) — trang thật có, jsdom thì không.
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({ refresh: vi.fn() }),
+}));
+
+const ACTIONS = {
+  setRole: vi.fn(),
+  lock: vi.fn(),
+  unlock: vi.fn(),
+  revokeSessions: vi.fn(),
+};
+
 function renderDetail(patch: Parameters<typeof userDetailFixture>[0] = {}) {
   return render(
-    <UserDetail detail={toUserDetailVM(userDetailFixture(patch))} backHref="/users?view=staff" />,
+    <UserDetail
+      detail={toUserDetailVM(userDetailFixture(patch))}
+      backHref="/users?view=staff"
+      actions={ACTIONS}
+    />,
   );
 }
 
@@ -61,5 +77,13 @@ describe('UserDetail', () => {
   it('lịch sử rỗng nói câu empty', () => {
     renderDetail();
     expect(screen.getByText(t.history.empty)).toBeInTheDocument();
+  });
+
+  it('khách: ba nút nằm đúng ba card — Grant, Lock, Sign out everywhere', () => {
+    renderDetail();
+    const a = messages.admin.users.actions;
+    expect(screen.getByRole('button', { name: a.grant.action })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: a.lock.action })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: a.sessions.action })).toBeInTheDocument();
   });
 });

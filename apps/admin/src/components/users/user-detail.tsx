@@ -7,17 +7,30 @@ import Link from 'next/link';
 import type * as React from 'react';
 import { LabelValueRow } from '@/components/kit/label-value-row';
 import { Timeline, TimelineItem } from '@/components/kit/timeline';
+import { UserLockAction } from '@/components/users/user-lock-action';
+import { UserRoleAction } from '@/components/users/user-role-action';
+import { UserSessionsAction } from '@/components/users/user-sessions-action';
 import type { UserDetailVM } from '@/lib/users-view';
+import type { UserDetailActions } from '@/lib/users-write';
 
 /**
  * Trang chi tiết một tài khoản (P4f, spec §7.2) — component thường: trang chỉ fetch rồi
  * truyền VM xuống (plan P4f, quyết định 16). Thứ tự khối theo dòng làm việc thật: ai đây
  * (đầu trang, Profile, Activity) → làm được gì (Access, Lock, Sessions) → đã làm gì
  * (History). Ba card giữa có khe `action` ở góc phải đầu card — chỗ của nút thao tác.
+ * Ba nút nhận server action qua `actions` — component không tự import đường server nào.
  */
 const t = messages.admin.users;
 
-export function UserDetail({ detail, backHref }: { detail: UserDetailVM; backHref: string }) {
+export function UserDetail({
+  detail,
+  backHref,
+  actions,
+}: {
+  detail: UserDetailVM;
+  backHref: string;
+  actions: UserDetailActions;
+}) {
   return (
     <div className="flex flex-col gap-4 px-4 lg:px-6">
       <Link
@@ -68,13 +81,19 @@ export function UserDetail({ detail, backHref }: { detail: UserDetailVM; backHre
             <p className="text-muted-foreground">{t.detail.owner}</p>
           </DetailCard>
         ) : (
-          <DetailCard title={t.detail.access.heading}>
+          <DetailCard
+            title={t.detail.access.heading}
+            action={<UserRoleAction detail={detail} setRole={actions.setRole} />}
+          >
             <p className="text-muted-foreground">{detail.accessNote}</p>
           </DetailCard>
         )}
         {/* Owner chỉ có card Lock khi ĐANG khoá — đường mở khoá duy nhất của ca hiếm ấy. */}
         {!detail.isOwner || detail.lockedSince ? (
-          <DetailCard title={t.detail.lock.heading}>
+          <DetailCard
+            title={t.detail.lock.heading}
+            action={<UserLockAction detail={detail} lock={actions.lock} unlock={actions.unlock} />}
+          >
             {detail.lockedSince ? (
               <>
                 <p>{detail.lockedSince}</p>
@@ -88,7 +107,10 @@ export function UserDetail({ detail, backHref }: { detail: UserDetailVM; backHre
           </DetailCard>
         ) : null}
         {detail.isOwner ? null : (
-          <DetailCard title={t.detail.sessions.heading}>
+          <DetailCard
+            title={t.detail.sessions.heading}
+            action={<UserSessionsAction detail={detail} revokeSessions={actions.revokeSessions} />}
+          >
             <dl className="grid gap-2">
               <LabelValueRow label={t.detail.sessions.active} value={detail.sessions.active} />
               <LabelValueRow
