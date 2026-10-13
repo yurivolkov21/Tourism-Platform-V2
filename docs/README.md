@@ -186,6 +186,9 @@ Mỗi spec đi kèm một plan cùng tên ở [`plans/`](plans/), trừ vài đ�
 **Màn hoá đơn chờ cho đơn chưa trả (G42, phương án A, xong 13/10)**
 [Thẻ chờ cùng khung voucher ở `/checkout/cancel` và `/checkout/success`](specs/2026-10-13-g42-pending-receipt-design.md)
 
+**Việc tồn đọng của admin (G43 ở `/subscribers`, xong 13/10)**
+[Chọn hàng và lọc ngày đăng ký ở `/subscribers`](specs/2026-10-13-g43-subscribers-selection-dates.md)
+
 **Công cụ máy dev (ngoài repo)**
 [mod `tourism-status`: dải trạng thái, canh CI, docs-freshness](specs/2026-10-02-tourism-status-mod-design.md)
 

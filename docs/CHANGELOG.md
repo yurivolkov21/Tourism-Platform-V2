@@ -8,6 +8,58 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-10-13 — Merge việc tồn đọng của admin: G43, G24, G6, G19, G3, G44, G7 (`ff825b3`..`dc95a68`)
+
+User giao 13/10 02:17 UTC: làm luôn các việc còn tồn đọng của admin. Nhánh `fix/admin-open-items`,
+[PR #8](https://github.com/yurivolkov21/Tourism-Platform-V2/pull/8), thi công trên session cloud.
+Không migration, không dependency mới. Env: admin có thêm biến TUỲ CHỌN `NEXT_PUBLIC_WEB_URL` (G19),
+production không cần khai. Contract đổi: `admin.subscribers.list` nhận `from` và `to`. Thư viện dùng
+chung bị sửa: `@tourism/contract` (hai trường ấy), `@tourism/i18n` (chữ của G43 và G7), `@tourism/ui`
+(ô tích ở trạng thái một phần).
+
+- G43 spec `ff825b3`, API `6effec6`, admin `49f1957`:
+  [spec](specs/2026-10-13-g43-subscribers-selection-dates.md). `/subscribers` có cột ô tích như
+  `/bookings`: tích vài hàng rồi "Export N rows" để tải đúng các hàng ấy (gom một trang; thiếu hàng thì
+  409, API hỏng thì 502, audit ghi `mode: 'selection'`; URL mang `id`, không mang email). Hàng điều
+  khiển có khoảng ngày đăng ký (ngày UTC, biên nửa mở qua `createdAtRange`, khoảng ngược trả 400). Phần
+  dùng chung với `/bookings/export` lên `lib/export-selection.ts`.
+- Ô tích dùng chung `0d08859`: trạng thái một phần đổ nền và vẽ dấu gạch. Trước đó nó vẽ dấu tích không
+  nền, nên ô tiêu đề lúc mới tích vài hàng nhìn như đã chọn hết. Chỉ `/bookings` và `/subscribers` dùng.
+- G24 `e35535e`: `/tours`, `/reviews`, `/outbox` và `/subscribers` không còn dựng lại cả cột hành động
+  sau mỗi lần ghi — cột là hằng của module, lệnh ghi đi qua context như danh mục, điểm đến và chuyến.
+- G6 `c15fb56`: năm nút mở hộp (Unsubscribe, Retry, Refund, cụm Approve/Reject, ba nút của hàng chuyến)
+  khoá bằng `focusableWhenDisabled` khi bảng làm mới, nên Base UI trả focus về được.
+- G19 `5e118d5`: "View on site" đọc `NEXT_PUBLIC_WEB_URL`. Không khai thì dev và test dùng
+  `http://localhost:3000`, production dùng origin thật; khai sai thì `next.config.ts` làm build đỏ.
+- G3 `bb58b0f`: lỗi của chuyến là `ContractError` (`admin-departure-errors.ts`), controller dùng
+  `toContractError`, form dùng `lib/form-errors.ts`. Không đổi hành vi.
+- G44 `50e5e4a`: cột tiêu đề của `/posts` và `/tours` có sàn `min-w-48` theo khuôn bảng Users.
+- G7 `dc95a68`: Back, Forward và menu giữ chuột của trình duyệt mở hộp "Discard unsaved changes?" ở khu
+  sửa tour và trình sửa bài viết.
+
+**Đo trên bản build (Chromium headless của session cloud, DB dev local).** G6: lưu hộp Edit của một
+chuyến thì hộp đóng ở 124 ms, focus nằm trên nút Edit đang `aria-disabled` tới lúc mở khoá ở 233 ms.
+G7: có hỏi, giữ chữ và vị trí cuộn, Discard đi đúng mục lịch sử đã bấm. G44: tiêu đề giữ 192px ở 390
+và 768px, trang không tràn ở 390, 768 và 1600px. G43: không tràn từ 390 tới 1600px; 22/22 đột biến cấy
+vào phần admin của G43 (query, route xuất, bảng, file Excel) đều bị test bắt.
+
+**Review.** Không có lượt review độc lập. User bảo merge (13/10 09:54 UTC). Phát hiện lúc đo, ghi thành
+G50 tới G53 và đang vá ở nhánh `fix/admin-open-items-2`: focus rơi về `<body>` khi nút mở hộp biến mất
+sau lệnh ghi thành công (G50), nút gửi và Cancel của hộp ghi khoá bằng `disabled` thật lúc chờ (G51),
+nút Export ra ngoài khung khi bảng cuộn ngang (G52), trang `/login` sập khi trình duyệt không có WebGL
+(G53).
+
+Tests after (`gate:int` trên `dc95a68`, 13/10 xong 10:09 UTC, session cloud theo các bước của CI):
+unit 7334 — web 2269, admin 2159, api 1123, mobile 771, contract 704, mobile-ui 136, i18n 51,
+core 48, ui 47, tokens 26 — và int 829. So với main `df97df2`: admin thêm 76 ca, api thêm 5,
+contract và i18n mỗi gói thêm 3, int thêm 4.
+
+**CÒN TREO:**
+
+- [ ] Thử tay production `/subscribers`: tích vài hàng rồi "Export N rows" (file chỉ có các hàng ấy),
+  và lọc một khoảng ngày đăng ký.
+- Dọn sau merge: nhánh `fix/admin-open-items` trên origin nếu GitHub không tự xoá.
+
 ## 2026-10-13 — Merge G46 chữ đỏ theme tối và G48 timer của auth-client.spec (`77e9e44`..`c75dee9`)
 
 Làm tiếp open-items của web theo yêu cầu của user 13/10 (đóng càng nhiều càng tốt trước freeze 15/10).
