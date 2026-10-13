@@ -39,6 +39,7 @@ interface GetSessionApiResponse {
     role?: string | null;
     phone?: string | null;
     deletedAt?: string | null;
+    lockedAt?: string | null;
     image?: string | null;
   };
 }
@@ -53,9 +54,9 @@ interface GetSessionApiResponse {
  *
  * KHÔNG throw trong mọi trường hợp — response không-ok, lỗi mạng, hay lỗi
  * parse JSON đều trả `null` để page tự quyết redirect (defense-in-depth,
- * `requireSession` bên dưới). User đã tombstone (`deletedAt != null`) coi
- * như null-session — khớp `apps/api/src/auth/auth.guard.ts` phía API
- * (`session.user.deletedAt != null` → 401).
+ * `requireSession` bên dưới). User đã tombstone (`deletedAt != null`) hay đang
+ * bị khoá (`lockedAt != null`, ADR-0052) coi như null-session — khớp
+ * `apps/api/src/auth/auth.guard.ts` phía API (hai vế ấy → 401).
  */
 export const getServerSession = cache(async (): Promise<SessionUser | null> => {
   try {
@@ -67,7 +68,7 @@ export const getServerSession = cache(async (): Promise<SessionUser | null> => {
     if (!response.ok) return null;
 
     const data = (await response.json()) as GetSessionApiResponse | null;
-    if (!data || data.user.deletedAt != null) return null;
+    if (!data || data.user.deletedAt != null || data.user.lockedAt != null) return null;
 
     const { user } = data;
     return {

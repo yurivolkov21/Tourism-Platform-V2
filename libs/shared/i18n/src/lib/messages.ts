@@ -227,6 +227,9 @@ export const messages = {
       wrongCurrentPassword: 'That isn’t your current password. Try again.',
       noPasswordAccount:
         'This account signs in with Google and has no password yet — use “Forgot password” to set one.',
+      // ADR-0052 §4: Owner khoá tài khoản này. Hệ quả đo trên code: mọi đường đăng nhập bị
+      // chặn ở hook tạo phiên; liên hệ đi qua trang /contact sẵn có.
+      accountLocked: 'This account is locked. Contact us.',
       generic: 'Something went wrong. Please try again.',
     },
   },

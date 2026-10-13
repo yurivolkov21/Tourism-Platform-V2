@@ -150,6 +150,19 @@ describe('RegisterForm — Google', () => {
     searchParamsGet.mockReturnValue(null);
   });
 
+  it('nút Google gửi errorCallbackURL về /login — lỗi của BA quay về form chứ không ra domain API', async () => {
+    signInSocial.mockResolvedValueOnce({ data: null, error: null });
+    const user = userEvent.setup();
+    render(<RegisterForm />);
+
+    await user.click(screen.getByRole('button', { name: /Continue with Google/i }));
+
+    await waitFor(() => expect(signInSocial).toHaveBeenCalledTimes(1));
+    expect(signInSocial).toHaveBeenCalledWith(
+      expect.objectContaining({ errorCallbackURL: `${window.location.origin}/login?redirect=%2F` }),
+    );
+  });
+
   it('Google lỗi (chưa cấu hình) → text "notAvailable" hiện inline', async () => {
     signInSocial.mockResolvedValueOnce({ data: null, error: { status: 404 } });
     const user = userEvent.setup();

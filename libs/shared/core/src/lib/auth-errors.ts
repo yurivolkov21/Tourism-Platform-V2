@@ -17,6 +17,8 @@ export type AuthErrorKey =
   | 'passwordTooLong'
   | 'wrongCurrentPassword'
   | 'noPasswordAccount'
+  // ADR-0052 §4: hook tạo phiên của API trả 403 kèm code ACCOUNT_LOCKED.
+  | 'accountLocked'
   | 'generic';
 
 /**
@@ -38,6 +40,9 @@ export function mapAuthError(
   const { status, code } = error;
 
   if (status === 401) return 'invalidCredentials';
+  // ADR-0052 §4: tài khoản bị khoá. Mã của chính repo (hook `session.create.before`), không
+  // phải của BA — so BẰNG. Đường Google mang nó về qua `?error=` nên không có status.
+  if (code === 'ACCOUNT_LOCKED') return 'accountLocked';
   if (status === 422 || code?.includes('EXISTS')) return 'emailExists';
   // OTP sai quá 5 lần — BA throw FORBIDDEN kèm code TOO_MANY_ATTEMPTS (không
   // phải HTTP 429), nên phải khớp theo code chứ không chỉ theo status.

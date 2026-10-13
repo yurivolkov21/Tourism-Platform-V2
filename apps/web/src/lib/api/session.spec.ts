@@ -125,6 +125,22 @@ describe('getServerSession', () => {
     expect(await getServerSession()).toBeNull();
   });
 
+  it('user có lockedAt khác null (bị khoá, ADR-0052) → coi như null-session', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          session: { id: 's1' },
+          user: { ...validUser, lockedAt: '2026-10-02T03:00:00.000Z' },
+        }),
+      }),
+    );
+    const { getServerSession } = await freshSessionModule();
+
+    expect(await getServerSession()).toBeNull();
+  });
+
   it('response không ok (401) → null, KHÔNG throw', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, json: async () => null }));
     const { getServerSession } = await freshSessionModule();

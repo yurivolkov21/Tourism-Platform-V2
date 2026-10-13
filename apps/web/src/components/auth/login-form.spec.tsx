@@ -145,6 +145,20 @@ describe('LoginForm — submit', () => {
     await waitFor(() => expect(push).toHaveBeenCalledWith('/'));
   });
 
+  it('mật khẩu đúng nhưng tài khoản bị khoá (403 ACCOUNT_LOCKED) → câu báo khoá, KHÔNG push', async () => {
+    signInEmail.mockResolvedValueOnce({
+      data: null,
+      error: { status: 403, code: 'ACCOUNT_LOCKED' },
+    });
+    const user = userEvent.setup();
+    render(<LoginForm />);
+    await fillCredentials(user);
+    await user.click(screen.getByRole('button', { name: messages.authForms.login.submit }));
+
+    expect(await screen.findByText(messages.authForms.errors.accountLocked)).toBeInTheDocument();
+    expect(push).not.toHaveBeenCalled();
+  });
+
   it('401 invalidCredentials → text lỗi i18n hiện inline, KHÔNG push', async () => {
     signInEmail.mockResolvedValueOnce({ data: null, error: { status: 401 } });
     const user = userEvent.setup();
@@ -210,7 +224,25 @@ describe('LoginForm — Google', () => {
     expect(signInSocial).toHaveBeenCalledWith({
       provider: 'google',
       callbackURL: `${window.location.origin}/`,
+      errorCallbackURL: `${window.location.origin}/login?redirect=%2F`,
     });
+  });
+
+  it('Google quay về với ?error=ACCOUNT_LOCKED → câu báo khoá hiện ngay khi mở form', () => {
+    searchParamsGet.mockImplementation((key: string) =>
+      key === 'error' ? 'ACCOUNT_LOCKED' : null,
+    );
+    render(<LoginForm />);
+    expect(screen.getByText(messages.authForms.errors.accountLocked)).toBeInTheDocument();
+  });
+
+  it('mã OAuth lạ ở ?error= → câu chung, không in mã thô ra màn', () => {
+    searchParamsGet.mockImplementation((key: string) =>
+      key === 'error' ? 'state_mismatch' : null,
+    );
+    render(<LoginForm />);
+    expect(screen.getByText(messages.authForms.errors.generic)).toBeInTheDocument();
+    expect(screen.queryByText('state_mismatch')).not.toBeInTheDocument();
   });
 
   it('Google lỗi (chưa cấu hình) → text "notAvailable" hiện inline', async () => {

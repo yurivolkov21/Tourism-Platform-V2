@@ -47,6 +47,11 @@ describe('mapAuthError', () => {
     expect(mapAuthError({ status: 400, code: 'BAD_REQUEST' })).toBe('generic');
   });
 
+  it('code ACCOUNT_LOCKED (403 từ hook tạo phiên, hoặc ?error= của Google) -> accountLocked', () => {
+    expect(mapAuthError({ status: 403, code: 'ACCOUNT_LOCKED' })).toBe('accountLocked');
+    expect(mapAuthError({ code: 'ACCOUNT_LOCKED' })).toBe('accountLocked');
+  });
+
   it('null hoặc undefined -> generic', () => {
     expect(mapAuthError(null)).toBe('generic');
     expect(mapAuthError(undefined)).toBe('generic');
@@ -99,6 +104,10 @@ describe('fieldOfAuthError', () => {
     expect(fieldOfAuthError('tooManyRequests')).toBeNull();
     expect(fieldOfAuthError('generic')).toBeNull();
     expect(fieldOfAuthError('noPasswordAccount')).toBeNull();
+  });
+
+  it('tài khoản bị khoá là lỗi cấp form — không ô nào sửa được nó', () => {
+    expect(fieldOfAuthError('accountLocked')).toBeNull();
   });
 });
 

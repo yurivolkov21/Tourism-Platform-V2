@@ -40,7 +40,13 @@ export function LoginForm() {
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
   const [pending, setPending] = useState(false);
-  const [formError, setFormError] = useState<AuthErrorKey | null>(null);
+  // Google quay về đây với `?error=<mã>` khi BA từ chối (ADR-0052 §4: tài khoản bị khoá ra
+  // `ACCOUNT_LOCKED`); mã OAuth khác rơi về câu chung qua `mapAuthError`. Đọc MỘT lần lúc
+  // dựng: redirect của OAuth là một lượt tải trang mới.
+  const [formError, setFormError] = useState<AuthErrorKey | null>(() => {
+    const code = searchParams.get('error');
+    return code ? mapAuthError({ code }) : null;
+  });
   const [fieldErrors, setFieldErrors] = useState<LoginErrors>({});
 
   // Gõ lại vào ô đang lỗi thì xoá lỗi của RIÊNG ô đó (khuôn `set` của
@@ -100,9 +106,13 @@ export function LoginForm() {
   async function handleGoogleSignIn() {
     setFormError(null);
     try {
+      const redirect = safeRedirect(searchParams.get('redirect'));
       const { error } = await authClient.signIn.social({
         provider: 'google',
-        callbackURL: `${window.location.origin}${safeRedirect(searchParams.get('redirect'))}`,
+        callbackURL: `${window.location.origin}${redirect}`,
+        // BA từ chối (tài khoản bị khoá, OAuth hỏng) thì quay về form này kèm `?error=`, thay
+        // vì trang lỗi mặc định ở domain API (ADR-0052, giới hạn đã biết 4).
+        errorCallbackURL: `${window.location.origin}/login?redirect=${encodeURIComponent(redirect)}`,
       });
       if (error) {
         setFormError(mapAuthError(error));
