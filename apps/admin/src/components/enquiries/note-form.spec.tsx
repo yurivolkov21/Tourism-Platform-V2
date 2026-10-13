@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { ENQUIRY_NOTE_MAX_LENGTH } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
@@ -146,5 +146,35 @@ describe('EnquiryNoteForm', () => {
     await user.click(screen.getByRole('button', { name: t.submitting }));
     expect(addNote).toHaveBeenCalledTimes(1);
     resolve?.();
+  });
+});
+
+describe('EnquiryNoteForm — focus', () => {
+  it('đang gửi: nút khoá kiểu aria-disabled và GIỮ focus, bấm tiếp không bắn lần hai', async () => {
+    const user = userEvent.setup();
+    const addNote = vi.fn(() => new Promise<never>(() => {}));
+    render(<EnquiryNoteForm id={ID} addNote={addNote} />);
+    await user.type(textarea(), 'Called back, wants October.');
+
+    await user.click(submitButton());
+
+    const sending = screen.getByRole('button', { name: t.submitting });
+    expect(sending).toHaveAttribute('aria-disabled', 'true');
+    expect(sending).not.toHaveAttribute('disabled');
+    expect(sending).toHaveFocus();
+    await user.click(sending);
+    await user.keyboard('{Enter}');
+    expect(addNote).toHaveBeenCalledTimes(1);
+  });
+
+  it('gửi xong: focus về ô nhập (trống) để viết note kế tiếp', async () => {
+    const user = userEvent.setup();
+    render(<EnquiryNoteForm id={ID} addNote={vi.fn(async () => ({ ok: true as const }))} />);
+    await user.type(textarea(), 'Called back, wants October.');
+
+    await user.click(submitButton());
+
+    await waitFor(() => expect(textarea()).toHaveFocus());
+    expect(textarea()).toHaveValue('');
   });
 });

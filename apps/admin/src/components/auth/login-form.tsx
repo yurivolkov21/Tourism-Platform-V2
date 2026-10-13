@@ -61,6 +61,9 @@ export function LoginForm() {
 
   async function onSubmit(event: React.FormEvent) {
     event.preventDefault();
+    // Cổng: nút gửi khoá kiểu `aria-disabled` (giữ focus), nên một cú Enter lúc đang chờ vẫn có
+    // thể tới đây — chỉ bắn MỘT lệnh.
+    if (submitting) return;
     const fieldErrors = validateAdminLogin(email, password);
     setErrors(fieldErrors);
     if (fieldErrors.email || fieldErrors.password) return;
@@ -162,7 +165,9 @@ export function LoginForm() {
           {errors.form}
         </p>
       ) : null}
-      <Button type="submit" disabled={submitting} className="w-full">
+      {/* Khoá lúc chờ bằng `aria-disabled` (`focusableWhenDisabled`): nút `disabled` thật đẩy focus
+          bàn phím về <body>, và sai mật khẩu thì người dùng phải Tab lại từ đầu trang (13/10). */}
+      <Button type="submit" disabled={submitting} focusableWhenDisabled className="w-full">
         {submitting ? t.submitting : t.submit}
       </Button>
     </form>

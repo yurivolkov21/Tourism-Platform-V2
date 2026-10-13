@@ -18,6 +18,11 @@ import {
 /**
  * Đăng xuất mọi nơi (P4f). API nhận cả lúc 0 phiên (`revoked: 0`), nhưng nút tắt khi không
  * còn phiên nào sống — bấm một lệnh không làm gì chỉ để lại một dòng lịch sử vô nghĩa.
+ *
+ * Nút tắt vì hết phiên thì giữ `disabled` thật khi trang vừa mở (như nút Reopen quá hạn của
+ * chuyến), NHƯNG sau một lệnh ghi từ chính nút này thì khoá kiểu `aria-disabled`: hộp đóng trả
+ * focus về đây, rồi lượt làm mới mang về 0 phiên — `disabled` thật lúc ấy đẩy focus bàn phím về
+ * <body> (đo Chromium 13/10). Lúc trang đang làm mới cũng vậy (G6).
  */
 const t = messages.admin.users.actions.sessions;
 
@@ -31,6 +36,8 @@ export function UserSessionsAction({
   const router = useRouter();
   const [isRefreshing, startRefresh] = useTransition();
   const [open, setOpen] = useState(false);
+  /** Đã có một lệnh từ nút này chạm server — từ đó nút khoá mà vẫn giữ được focus. */
+  const [wroteHere, setWroteHere] = useState(false);
 
   if (!detail.actions.includes('revokeSessions')) return null;
 
@@ -41,6 +48,7 @@ export function UserSessionsAction({
         variant="outline"
         size="sm"
         disabled={isRefreshing || detail.sessions.count === 0}
+        focusableWhenDisabled={detail.sessions.count > 0 || wroteHere}
         onClick={() => setOpen(true)}
       >
         <LogOutIcon data-icon="inline-start" aria-hidden="true" />
@@ -62,7 +70,10 @@ export function UserSessionsAction({
           isStale={isUserWriteStale}
           errorCopy={userWriteErrorCopy}
           onClose={() => setOpen(false)}
-          onSettled={() => startRefresh(() => router.refresh())}
+          onSettled={() => {
+            setWroteHere(true);
+            startRefresh(() => router.refresh());
+          }}
         />
       ) : null}
     </>

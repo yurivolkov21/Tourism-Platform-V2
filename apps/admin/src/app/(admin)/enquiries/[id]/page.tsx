@@ -159,11 +159,10 @@ export default async function EnquiryDetailPage({
             <CardTitle>{t.setStatus.heading}</CardTitle>
           </CardHeader>
           <CardContent>
-            {/* `key` theo trạng thái hiện tại: sau mỗi lần ghi thành công +
-                `router.refresh()`, ô Select sinh lại từ trạng thái MỚI thay
-                vì giữ một lựa chọn đã cũ. */}
+            {/* KHÔNG `key` theo trạng thái (bỏ 13/10): cụm tự đặt lại lựa
+                chọn khi trạng thái đổi, và phải sống qua lượt làm mới để
+                focus còn chỗ đứng — xem JSDoc của `EnquiryStatusPanel`. */}
             <EnquiryStatusPanel
-              key={enquiry.status}
               id={enquiry.id}
               name={enquiry.name}
               status={enquiry.status}

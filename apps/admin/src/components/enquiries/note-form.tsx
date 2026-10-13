@@ -6,7 +6,7 @@ import { Button } from '@tourism/ui/components/button';
 import { Label } from '@tourism/ui/components/label';
 import { Textarea } from '@tourism/ui/components/textarea';
 import { useRouter } from 'next/navigation';
-import { type FormEvent, useState, useTransition } from 'react';
+import { type FormEvent, useRef, useState, useTransition } from 'react';
 import { toast } from 'sonner';
 import { isUncertainOutcome } from '@/lib/api/write-error';
 import {
@@ -37,6 +37,11 @@ import {
  * cái giá không được phép bắt admin trả (dialog thì không có gì để mất).
  *
  * Component KHÔNG tự import server action: nhận `addNote` từ trang.
+ *
+ * Focus (13/10): nút gửi khoá kiểu `aria-disabled` lúc đang gửi và lúc trang
+ * làm mới — `disabled` thật đẩy focus bàn phím về <body> ngay sau cú bấm. Gửi
+ * xong thì ô nhập trống và nút khoá theo luật "ô rỗng", nên focus về ô nhập:
+ * chỗ viết note kế tiếp.
  */
 const t = messages.admin.enquiries.detail.notes;
 const toastCopy = messages.admin.enquiries.addNote.toast;
@@ -47,6 +52,7 @@ export function EnquiryNoteForm({ id, addNote }: { id: string; addNote: AddNoteA
   const [body, setBody] = useState('');
   const [pending, setPending] = useState(false);
   const [failure, setFailure] = useState<AddNoteFailureCode | null>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const trimmed = body.trim();
   const disabled = pending || isRefreshing || trimmed.length === 0;
@@ -76,6 +82,7 @@ export function EnquiryNoteForm({ id, addNote }: { id: string; addNote: AddNoteA
       setBody('');
       toast.success(toastCopy.title, { description: toastCopy.body });
       startRefresh(() => router.refresh());
+      textareaRef.current?.focus();
       return;
     }
 
@@ -91,6 +98,7 @@ export function EnquiryNoteForm({ id, addNote }: { id: string; addNote: AddNoteA
     <form onSubmit={submit} className="grid gap-2">
       <Label htmlFor={`enquiry-note-${id}`}>{t.label}</Label>
       <Textarea
+        ref={textareaRef}
         id={`enquiry-note-${id}`}
         rows={3}
         maxLength={ENQUIRY_NOTE_MAX_LENGTH}
@@ -105,7 +113,13 @@ export function EnquiryNoteForm({ id, addNote }: { id: string; addNote: AddNoteA
         <span className="text-xs tabular-nums text-muted-foreground">
           {t.counter(body.length, ENQUIRY_NOTE_MAX_LENGTH)}
         </span>
-        <Button type="submit" disabled={disabled} title={trimmed ? undefined : t.emptyHint}>
+        <Button
+          type="submit"
+          disabled={disabled}
+          // Khoá TẠM (đang gửi, đang làm mới) thì vẫn giữ focus; khoá vì ô rỗng thì `disabled` thật.
+          focusableWhenDisabled={pending || isRefreshing}
+          title={trimmed ? undefined : t.emptyHint}
+        >
           {pending ? t.submitting : t.submit}
         </Button>
       </div>

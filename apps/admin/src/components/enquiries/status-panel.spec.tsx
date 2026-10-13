@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { messages } from '@tourism/i18n';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -205,5 +205,61 @@ describe('EnquiryStatusPanel — gói JS của trang chi tiết (review EF3)', (
     });
 
     await expect(import('./status-panel')).resolves.toHaveProperty('EnquiryStatusPanel');
+  });
+});
+
+describe('EnquiryStatusPanel — focus sau lệnh ghi', () => {
+  it('đổi xong: focus về ô Select, và cụm sống qua lượt làm mới với trạng thái MỚI', async () => {
+    // Trước 13/10 trang dựng lại cả cụm theo `key={status}`: nút Change status mà hộp vừa trả
+    // focus về biến mất, focus rơi về <body>.
+    const user = userEvent.setup();
+    const setStatus = vi.fn(async () => ({
+      ok: true as const,
+      name: NAME,
+      status: 'WON' as const,
+      changed: true,
+    }));
+    const { rerender } = render(
+      <EnquiryStatusPanel id={ID} name={NAME} status="NEW" setStatus={setStatus} />,
+    );
+
+    await openDialog(user, status.WON);
+    await user.click(await screen.findByRole('button', { name: t.dialog.submit }));
+    await waitFor(() => expect(screen.queryByText(t.dialog.title)).not.toBeInTheDocument());
+    const picker = screen.getByRole('combobox');
+    await waitFor(() => expect(picker).toHaveFocus());
+
+    // Lượt làm mới mang trạng thái mới về.
+    rerender(<EnquiryStatusPanel id={ID} name={NAME} status="WON" setStatus={setStatus} />);
+
+    expect(screen.getByRole('combobox')).toBe(picker);
+    expect(picker).toHaveFocus();
+    expect(picker).toHaveTextContent(status.WON);
+    expect(screen.getByRole('button', { name: t.action })).toBeDisabled();
+  });
+
+  it('trạng thái đổi từ nơi khác: lựa chọn đang dở đặt lại về trạng thái mới', async () => {
+    const user = userEvent.setup();
+    const { rerender } = render(
+      <EnquiryStatusPanel id={ID} name={NAME} status="NEW" setStatus={vi.fn()} />,
+    );
+    await choose(user, status.WON);
+    expect(screen.getByRole('button', { name: t.action })).toBeEnabled();
+
+    rerender(<EnquiryStatusPanel id={ID} name={NAME} status="LOST" setStatus={vi.fn()} />);
+
+    expect(screen.getByRole('combobox')).toHaveTextContent(status.LOST);
+    expect(screen.getByRole('button', { name: t.action })).toBeDisabled();
+  });
+
+  it('bấm Cancel trong hộp: focus về nút Change status như mặc định', async () => {
+    const user = userEvent.setup();
+    render(<EnquiryStatusPanel id={ID} name={NAME} status="NEW" setStatus={vi.fn()} />);
+
+    await openDialog(user, status.WON);
+    await user.click(await screen.findByRole('button', { name: t.cancel }));
+    await waitFor(() => expect(screen.queryByText(t.dialog.title)).not.toBeInTheDocument());
+
+    await waitFor(() => expect(screen.getByRole('button', { name: t.action })).toHaveFocus());
   });
 });

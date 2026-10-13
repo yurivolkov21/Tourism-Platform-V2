@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { messages } from '@tourism/i18n';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -494,5 +494,43 @@ describe('DepartureRowActions — focus khi bảng đang làm mới (G6)', () =>
         name: t.setStatus.reopenLabel(vmAt(ROW, AFTER_DEADLINE).dates),
       }),
     ).toBeDisabled();
+  });
+
+  it('đóng chuyến đã quá hạn chót: nút lật thành Reopen khoá theo luật mà vẫn GIỮ focus', async () => {
+    // Hộp trả focus về nút Close; lượt làm mới lật nó thành Reopen, bị khoá vì hạn chót. `disabled`
+    // thật lúc ấy đẩy focus về <body> — nút này vừa bắn lệnh nên khoá kiểu `aria-disabled`.
+    const user = userEvent.setup();
+    const closed = { ...ROW, status: 'CLOSED' as const };
+    const setStatus = vi.fn(async () => ({
+      ok: true as const,
+      row: serverRow(closed, AFTER_DEADLINE),
+    }));
+    const actionsFor = (row: DepartureRowFixture) => (
+      <DepartureRowActions
+        row={vmAt(row, AFTER_DEADLINE)}
+        basePriceLabel="$129.00"
+        update={vi.fn()}
+        setStatus={setStatus}
+        cancel={vi.fn()}
+        disabled={false}
+        onSettled={vi.fn()}
+      />
+    );
+    const { rerender } = render(actionsFor(ROW));
+    const dates = vmAt(ROW, AFTER_DEADLINE).dates;
+    const toggle = screen.getByRole('button', { name: t.setStatus.closeLabel(dates) });
+
+    await user.click(toggle);
+    const dialog = await screen.findByRole('dialog');
+    await user.click(within(dialog).getByRole('button', { name: t.setStatus.dialog.closeSubmit }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+    await waitFor(() => expect(toggle).toHaveFocus());
+
+    rerender(actionsFor(closed));
+
+    expect(toggle).toHaveAccessibleName(t.setStatus.reopenLabel(dates));
+    expect(toggle).toHaveAttribute('aria-disabled', 'true');
+    expect(toggle).not.toHaveAttribute('disabled');
+    expect(toggle).toHaveFocus();
   });
 });

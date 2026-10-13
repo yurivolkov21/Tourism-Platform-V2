@@ -64,3 +64,36 @@ describe('UserSessionsAction', () => {
     expect(screen.queryByRole('button')).not.toBeInTheDocument();
   });
 });
+
+describe('UserSessionsAction — focus sau lệnh ghi', () => {
+  it('lệnh xong, trang làm mới về 0 phiên: nút khoá kiểu aria-disabled và GIỮ focus', async () => {
+    // Đo Chromium 13/10: hộp đóng trả focus về nút, rồi nút tắt thật (đang làm mới, rồi hết
+    // phiên) và focus rơi về <body>.
+    const revokeSessions = vi.fn(async () => ({ ok: true as const, revoked: 2 }));
+    const user = userEvent.setup();
+    const { rerender } = render(
+      <UserSessionsAction detail={vm()} revokeSessions={revokeSessions} />,
+    );
+
+    await user.click(screen.getByRole('button', { name: t.sessions.action }));
+    const dialog = await screen.findByRole('dialog');
+    await user.click(within(dialog).getByRole('button', { name: t.sessions.dialog.submit }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+    const button = screen.getByRole('button', { name: t.sessions.action });
+    await waitFor(() => expect(button).toHaveFocus());
+
+    // Lượt làm mới mang về chi tiết mới: không còn phiên nào.
+    rerender(
+      <UserSessionsAction
+        detail={vm({ sessions: { active: 0, lastActiveAt: null } })}
+        revokeSessions={revokeSessions}
+      />,
+    );
+
+    expect(button).toHaveAttribute('aria-disabled', 'true');
+    expect(button).not.toHaveAttribute('disabled');
+    expect(button).toHaveFocus();
+    await user.click(button);
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+});

@@ -122,3 +122,50 @@ describe('LoginForm', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent(/Something went wrong/);
   });
 });
+
+describe('LoginForm — focus lúc đang đăng nhập', () => {
+  async function fillAndSubmit(user: ReturnType<typeof userEvent.setup>) {
+    await user.type(screen.getByLabelText('Email'), 'a@b.co');
+    await user.type(screen.getByLabelText('Password'), 'secret123');
+    await user.click(screen.getByRole('button', { name: /sign in/i }));
+  }
+
+  it('nút Sign in khoá kiểu aria-disabled và GIỮ focus; sai mật khẩu thì focus vẫn ở nút', async () => {
+    let finish: (value: { error: { code: string } }) => void = () => {};
+    signInEmail.mockReturnValue(
+      new Promise((resolve) => {
+        finish = resolve;
+      }),
+    );
+    const user = userEvent.setup();
+    render(<LoginForm />);
+
+    await fillAndSubmit(user);
+
+    const button = screen.getByRole('button', { name: messages.admin.login.submitting });
+    expect(button).toHaveAttribute('aria-disabled', 'true');
+    expect(button).not.toHaveAttribute('disabled');
+    expect(button).toHaveFocus();
+    await user.keyboard('{Enter}');
+    expect(signInEmail).toHaveBeenCalledTimes(1);
+
+    finish({ error: { code: 'INVALID_EMAIL_OR_PASSWORD' } });
+    expect(
+      await screen.findByText(messages.admin.login.errors.invalidCredentials),
+    ).toBeInTheDocument();
+    expect(button).toHaveAccessibleName(messages.admin.login.submit);
+    expect(button).not.toHaveAttribute('aria-disabled', 'true');
+    expect(button).toHaveFocus();
+  });
+
+  it('Enter trong ô mật khẩu lúc đang chờ không gửi lần hai', async () => {
+    signInEmail.mockReturnValue(new Promise(() => {}));
+    const user = userEvent.setup();
+    render(<LoginForm />);
+
+    await fillAndSubmit(user);
+    await user.type(screen.getByLabelText('Password'), '{Enter}');
+
+    expect(signInEmail).toHaveBeenCalledTimes(1);
+  });
+});

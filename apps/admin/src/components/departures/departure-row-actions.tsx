@@ -90,6 +90,12 @@ export function DepartureRowActions({
    * tay người dùng, rồi gửi lệnh ngược với lệnh họ đã chọn.
    */
   const [toggling, setToggling] = useState<AdminDepartureSettableStatus | null>(null);
+  /**
+   * Đã có một lệnh đóng/mở từ nút này chạm server. Đóng một chuyến đã quá hạn chót thì nút lật
+   * thành Reopen bị khoá theo luật — đúng lúc hộp vừa trả focus về nó (đo Chromium 13/10 ở nút
+   * cùng khuôn của trang tài khoản: focus rơi về <body>). Từ đó nút khoá kiểu `aria-disabled`.
+   */
+  const [toggledHere, setToggledHere] = useState(false);
   const [cancelling, setCancelling] = useState(false);
   // Huỷ chuyến là thủ tục chỉ Owner (ADR-0052): Staff không có nút, cũng không ô giữ chỗ —
   // không hàng nào của Staff có nút ấy, nên cột vẫn thẳng.
@@ -132,8 +138,9 @@ export function DepartureRowActions({
           // cancel by" ngay bên cạnh đã nói vì sao.
           disabled={disabled || !toggle.enabled}
           // Khoá TẠM vì bảng làm mới thì vẫn nhận focus, như nút Sửa (G6). Khoá vì luật hạn
-          // chót thì giữ `disabled` thật: không có hộp nào mở từ nó để mà trả focus về.
-          focusableWhenDisabled={toggle.enabled}
+          // chót thì giữ `disabled` thật: không có hộp nào mở từ nó để mà trả focus về — trừ khi
+          // chính nút này vừa bắn lệnh (`toggledHere`).
+          focusableWhenDisabled={toggle.enabled || toggledHere}
           onClick={() => setToggling(toggle.next)}
         >
           {toggle.next === 'CLOSED' ? (
@@ -236,7 +243,10 @@ export function DepartureRowActions({
           isStale={isSetStatusStale}
           errorCopy={setStatusErrorCopy}
           onClose={() => setToggling(null)}
-          onSettled={onSettled}
+          onSettled={() => {
+            setToggledHere(true);
+            onSettled();
+          }}
         />
       ) : null}
 

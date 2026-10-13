@@ -4,7 +4,7 @@ import { EnquiryStatusSchema, type EnquiryStatusValue } from '@tourism/contract'
 import { messages } from '@tourism/i18n';
 import { Button } from '@tourism/ui/components/button';
 import { useRouter } from 'next/navigation';
-import { useState, useTransition } from 'react';
+import { useRef, useState, useTransition } from 'react';
 import { ENQUIRY_STATUS_ICONS } from '@/components/enquiries/status-icons';
 import { ConfirmWriteDialog } from '@/components/kit/confirm-write-dialog';
 import { Picker } from '@/components/kit/picker';
@@ -35,9 +35,15 @@ import {
  * là mời họ mất một cú bấm để học điều đó.
  *
  * Component KHÔNG tự import server action: nhận `setStatus` từ trang — test
- * dựng với hàm giả, không mock `next/headers`. Trang truyền `key={status}`
- * nên sau mỗi lần ghi thành công + refresh, ô Select tự sinh lại từ trạng
- * thái MỚI thay vì giữ một lựa chọn đã cũ.
+ * dựng với hàm giả, không mock `next/headers`. Trạng thái server đổi (sau một
+ * lần ghi + refresh) thì ô Select đặt lại về trạng thái MỚI thay vì giữ một
+ * lựa chọn đã cũ.
+ *
+ * Đặt lại bằng state chứ không bằng `key={status}` ở trang (cách cũ, tới
+ * 13/10): `key` dựng lại cả cụm, và nút "Change status" mà hộp vừa trả focus
+ * về biến mất ngay giữa tay người dùng — focus bàn phím rơi về <body>. Nay cụm
+ * sống qua lượt làm mới, và một lệnh đã chạm server thì hộp trả focus về ô
+ * Select (đang hiện trạng thái mới): nút kia lúc ấy khoá, vì chưa chọn gì khác.
  */
 const t = messages.admin.enquiries.setStatus;
 
@@ -63,8 +69,20 @@ export function EnquiryStatusPanel({
   const router = useRouter();
   const [isRefreshing, startRefresh] = useTransition();
   const [target, setTarget] = useState<EnquiryStatusValue>(status);
+  /** Trạng thái server của lượt vẽ trước — đổi thì đặt lại lựa chọn (khuôn "điều chỉnh state theo prop" của React). */
+  const [shownStatus, setShownStatus] = useState(status);
+  if (shownStatus !== status) {
+    setShownStatus(status);
+    setTarget(status);
+  }
   const [open, setOpen] = useState(false);
+  /**
+   * Lệnh đã chạm server và hộp sắp đóng: focus về ô Select chứ không về nút. Gán trong `onSettled`
+   * — kit gọi nó ngay sau `onClose` cùng một nhịp, trước khi React kịp gỡ hộp.
+   */
+  const wrote = useRef(false);
   const changed = target !== status;
+  const pickerId = `enquiry-status-${id}`;
 
   /** Sau MỌI kết cục đã-chạm-server: kéo trang tươi về, khoá nút tới khi xong. */
   function refresh() {
@@ -81,7 +99,7 @@ export function EnquiryStatusPanel({
   return (
     <div className="flex flex-wrap items-end gap-2">
       <Picker
-        id={`enquiry-status-${id}`}
+        id={pickerId}
         label={t.label}
         value={target}
         options={STATUS_ITEMS}
@@ -89,7 +107,14 @@ export function EnquiryStatusPanel({
         // Cao 32px của biến thể field, bằng nút "Change status" đứng cạnh.
         className="w-fit"
       />
-      <Button type="button" disabled={!changed || isRefreshing} onClick={() => setOpen(true)}>
+      <Button
+        type="button"
+        disabled={!changed || isRefreshing}
+        onClick={() => {
+          wrote.current = false;
+          setOpen(true);
+        }}
+      >
         {t.action}
       </Button>
       {open && changed ? (
@@ -113,8 +138,13 @@ export function EnquiryStatusPanel({
           }}
           isStale={isSetStatusStale}
           errorCopy={setStatusErrorCopy}
+          // Base UI gọi hàm này lúc hộp gỡ; `true` là đích mặc định (nút Change status).
+          finalFocus={() => (wrote.current ? document.getElementById(pickerId) : true)}
           onClose={() => setOpen(false)}
-          onSettled={refresh}
+          onSettled={() => {
+            wrote.current = true;
+            refresh();
+          }}
         />
       ) : null}
     </div>
