@@ -1,8 +1,10 @@
-import { BookingStatus } from '../../generated/prisma/enums.js';
+import { BookingStatus, DepartureStatus } from '../../generated/prisma/enums.js';
 import { calendarDate } from '../../lib/calendar-date.js';
 
 export type EligibilityInput = {
   bookingStatus: BookingStatus;
+  /** Trạng thái của chuyến (`tour_departures.status`) — CANCELLED là công ty huỷ chuyến. */
+  departureStatus: DepartureStatus;
   departureEndDate: Date;
   now: Date;
   ownerId: string;
@@ -11,7 +13,10 @@ export type EligibilityInput = {
 
 export type EligibilityResult =
   | { ok: true }
-  | { ok: false; reason: 'NOT_OWNER' | 'NOT_PAID' | 'TRIP_NOT_COMPLETED' };
+  | {
+      ok: false;
+      reason: 'NOT_OWNER' | 'NOT_PAID' | 'DEPARTURE_CANCELLED' | 'TRIP_NOT_COMPLETED';
+    };
 
 /**
  * So sánh theo NGÀY LỊCH **UTC** — có chủ đích, KHÔNG đổi sang giờ VN.
@@ -43,12 +48,22 @@ const calendarDay = calendarDate;
  * chủ booking không suy ra được trạng thái booking của người khác. Trạng thái
  * PAID được kiểm trước ngày kết thúc chuyến (NOT_PAID thắng TRIP_NOT_COMPLETED).
  *
+ * Chuyến bị công ty huỷ (G36, 13/10): job `departure-refund` chưa chạy hay kẹt
+ * retry thì đơn còn PAID qua ngày về, nên chỉ xét PAID và ngày về là cho review
+ * một chuyến không chạy. Xét SAU quyền sở hữu (người ngoài không dò được trạng
+ * thái chuyến của đơn người khác) và TRƯỚC ngày về (không bảo khách "chờ chuyến
+ * kết thúc" với một chuyến sẽ không chạy). Hai nơi gọi rơi về
+ * `ReviewNotEligibleError` cho lý do này, không cần mã lỗi mới ở contract.
+ *
  * Giả định múi giờ: xem JSDoc của `calendarDay()` — so sánh theo ngày UTC có
  * chủ đích, không theo giờ VN.
  */
 export function checkReviewEligibility(input: EligibilityInput): EligibilityResult {
   if (input.callerId !== input.ownerId) return { ok: false, reason: 'NOT_OWNER' };
   if (input.bookingStatus !== BookingStatus.PAID) return { ok: false, reason: 'NOT_PAID' };
+  if (input.departureStatus === DepartureStatus.CANCELLED) {
+    return { ok: false, reason: 'DEPARTURE_CANCELLED' };
+  }
   if (calendarDay(input.departureEndDate) > calendarDay(input.now)) {
     return { ok: false, reason: 'TRIP_NOT_COMPLETED' };
   }

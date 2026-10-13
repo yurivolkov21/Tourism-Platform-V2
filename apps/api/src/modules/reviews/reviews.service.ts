@@ -235,6 +235,7 @@ export class ReviewsService {
         tourId: true,
         status: true,
         departureEndDate: true,
+        departure: { select: { status: true } },
         user: { select: { name: true } },
       },
     });
@@ -242,6 +243,7 @@ export class ReviewsService {
 
     const eligibility = checkReviewEligibility({
       bookingStatus: booking.status,
+      departureStatus: booking.departure.status,
       departureEndDate: booking.departureEndDate,
       now: new Date(),
       ownerId: booking.userId,

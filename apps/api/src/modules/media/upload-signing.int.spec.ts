@@ -4,7 +4,7 @@ import { v2 as cloudinary } from 'cloudinary';
 import { AppModule } from '../../app.module.js';
 import { prisma } from '../../auth/auth.config.js';
 import { createFastifyAdapter } from '../../bootstrap.js';
-import { BookingStatus } from '../../generated/prisma/enums.js';
+import { BookingStatus, DepartureStatus } from '../../generated/prisma/enums.js';
 
 /**
  * Integration (Docker PG, db tourism_test — xem vitest.int.config.ts).
@@ -261,6 +261,29 @@ describe('media.signUpload', () => {
 
     expect(res.statusCode).toBe(400);
     expect(res.json().code).toBe('REVIEW_TRIP_NOT_COMPLETED');
+  });
+
+  // G36: công ty huỷ chuyến mà job hoàn tiền chưa chạy thì đơn còn PAID qua ngày về — ký ảnh review
+  // phải từ chối như gửi review.
+  it('REVIEW_PHOTO: chuyến bị công ty huỷ, đơn còn PAID → 400 REVIEW_NOT_ELIGIBLE', async () => {
+    const { cookie, userId } = await signUpAndSignIn('cancelled-trip@example.com');
+    const { departure } = await seedCompletedBooking({
+      endDate: new Date(Date.now() - 864e5),
+      userId,
+    });
+    await prisma.tourDeparture.update({
+      where: { id: departure.id },
+      data: { status: DepartureStatus.CANCELLED },
+    });
+
+    const res = await signUploadReq(
+      '10.2.0.10',
+      { purpose: 'REVIEW_PHOTO', ext: 'jpg', bookingCode: 'BK-TESTREV1' },
+      cookie,
+    );
+
+    expect(res.statusCode).toBe(400);
+    expect(res.json().code).toBe('REVIEW_NOT_ELIGIBLE');
   });
 
   it('REVIEW_PHOTO: mã không tồn tại → 404 BOOKING_NOT_FOUND', async () => {

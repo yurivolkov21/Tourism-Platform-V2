@@ -6,6 +6,7 @@ import { AppModule } from '../../app.module.js';
 import { prisma } from '../../auth/auth.config.js';
 import {
   BookingStatus,
+  DepartureStatus,
   EmailType,
   MediaOwnerType,
   MediaRole,
@@ -344,6 +345,31 @@ describe('reviews (int)', () => {
 
     expect(res.statusCode).toBe(400);
     expect(res.json().code).toBe('REVIEW_TRIP_NOT_COMPLETED');
+    expect(await prisma.review.count()).toBe(0);
+  });
+
+  // G36: công ty huỷ chuyến mà job hoàn tiền chưa chạy (hay kẹt retry) thì đơn còn PAID qua ngày về.
+  // Web ẩn form, nhưng app mobile hay request tay vẫn tới — API phải tự chặn.
+  it('chuyến bị công ty huỷ, đơn còn PAID và đã qua ngày về → REVIEW_NOT_ELIGIBLE', async () => {
+    const { user, cookie } = await signUpAndSignIn(app, 'cancelled-trip@example.com');
+    const { departure } = await seedCompletedBooking({
+      endDate: new Date(Date.now() - 864e5),
+      userId: user.id,
+    });
+    await prisma.tourDeparture.update({
+      where: { id: departure.id },
+      data: { status: DepartureStatus.CANCELLED },
+    });
+
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/reviews',
+      headers: { cookie },
+      payload: { bookingCode: 'BK-TESTREV1', rating: 5, body: 'Chuyến này không chạy mà' },
+    });
+
+    expect(res.statusCode).toBe(400);
+    expect(res.json().code).toBe('REVIEW_NOT_ELIGIBLE');
     expect(await prisma.review.count()).toBe(0);
   });
 

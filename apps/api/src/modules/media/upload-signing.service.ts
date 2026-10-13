@@ -34,11 +34,17 @@ export class UploadSigningService {
       // lệch luật là khách upload xong mới bị từ chối ở bước gửi review.
       const booking = await prisma.booking.findUnique({
         where: { code: input.bookingCode },
-        select: { userId: true, status: true, departureEndDate: true },
+        select: {
+          userId: true,
+          status: true,
+          departureEndDate: true,
+          departure: { select: { status: true } },
+        },
       });
       if (!booking) throw new BookingNotFoundError();
       const eligibility = checkReviewEligibility({
         bookingStatus: booking.status,
+        departureStatus: booking.departure.status,
         departureEndDate: booking.departureEndDate,
         now: new Date(),
         ownerId: booking.userId,
