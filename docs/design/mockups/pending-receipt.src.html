@@ -1,0 +1,561 @@
+<!doctype html>
+<html lang="vi">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>G42 Hoá đơn chờ</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Literata:opsz,wght@7..72,500;7..72,600;7..72,700&display=swap">
+<style>
+  /* Tờ duyệt: chữ giải thích tiếng Việt quanh các bản vẽ 1280px (thu cho vừa khung) và một bản 390px. */
+  :root {
+    --bg: oklch(0.972 0.005 180);
+    --fg: oklch(0.27 0.02 195);
+    --dim: oklch(0.5 0.02 190);
+    --line: oklch(0.86 0.012 180);
+    --panel: oklch(0.995 0.002 174);
+    --accent: oklch(0.494 0.067 184.3);
+    --pick: oklch(0.47 0.095 75);
+    --pick-bg: oklch(0.95 0.03 80);
+    --f-display: Literata, Georgia, "Times New Roman", serif;
+    --f-body: Archivo, system-ui, -apple-system, "Segoe UI", sans-serif;
+    --f-mono: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: oklch(0.22 0.012 190); --fg: oklch(0.93 0.008 180); --dim: oklch(0.72 0.02 180);
+      --line: oklch(0.36 0.02 185); --panel: oklch(0.26 0.016 188); --accent: oklch(0.72 0.09 182);
+      --pick: oklch(0.82 0.14 80); --pick-bg: oklch(0.32 0.05 80); color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: oklch(0.22 0.012 190); --fg: oklch(0.93 0.008 180); --dim: oklch(0.72 0.02 180);
+    --line: oklch(0.36 0.02 185); --panel: oklch(0.26 0.016 188); --accent: oklch(0.72 0.09 182);
+    --pick: oklch(0.82 0.14 80); --pick-bg: oklch(0.32 0.05 80); color-scheme: dark;
+  }
+  body { background: var(--bg); color: var(--fg); font: 15px/1.6 var(--f-body); }
+  .wrap { max-width: 1340px; margin: 0 auto; padding-inline: 20px; padding-block: 28px 72px; }
+  h1 { font: 600 30px/1.2 var(--f-display); margin: 0; text-wrap: balance; }
+  h2 { font: 600 22px/1.25 var(--f-display); margin: 0; text-wrap: balance; }
+  .lead { color: var(--dim); max-width: 72ch; margin: 10px 0 0; }
+  .eyebrow { font: 600 11px/1 var(--f-mono); letter-spacing: .14em; text-transform: uppercase; color: var(--dim); }
+  section { margin-top: 44px; display: grid; gap: 14px; }
+  .opt-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 10px 16px; }
+  .rec { font: 600 11px/1 var(--f-mono); letter-spacing: .1em; text-transform: uppercase; color: var(--pick); background: var(--pick-bg); border-radius: 6px; padding: 5px 8px; }
+  .tabs { display: flex; flex-wrap: wrap; gap: 8px; }
+  .tabs button { font: 500 13.5px/1 var(--f-body); color: var(--fg); background: var(--panel); border: 1px solid var(--line); border-radius: 999px; padding: 9px 14px; cursor: pointer; }
+  .tabs button[aria-selected="true"] { background: var(--fg); color: var(--bg); border-color: var(--fg); }
+  .tabs button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .note { color: var(--dim); font-size: 14px; max-width: 80ch; margin: 0; }
+  ul.points { margin: 0; padding-left: 20px; display: grid; gap: 6px; max-width: 88ch; }
+  ul.points code, .note code { font: 13px var(--f-mono); }
+  .fit { width: 100%; overflow: hidden; border-radius: 14px; border: 1px solid var(--line); }
+  .fit.phone { max-width: 392px; }
+  .callout { border: 1px solid var(--line); background: var(--panel); border-radius: 14px; padding: 18px 20px; display: grid; gap: 8px; max-width: 88ch; }
+  .callout b { color: var(--fg); }
+  @media (prefers-reduced-motion: no-preference) { .tabs button { transition: background .15s, color .15s; } }
+
+  /* ── Bản vẽ: mô phỏng giao diện sáng của site, màu cố định theo token sáng (cố ý một theme) ── */
+  .d { --bg: oklch(0.977 0.003 174.5); --card: oklch(0.996 0.002 174); --fg: oklch(0.275 0.021 196);
+       --primary: oklch(0.494 0.067 184.3); --pdeep: oklch(0.36 0.055 188); --muted: oklch(0.914 0.01 174.3);
+       --mfg: oklch(0.473 0.022 179.5); --border: oklch(0.781 0.015 180.6); --soft: oklch(0.87 0.012 180);
+       --ok: oklch(0.46 0.125 145); --warn: oklch(0.47 0.095 75); --warnbg: oklch(0.95 0.035 82); --hero: oklch(0.25 0.015 181.5);
+       --mint: oklch(0.86 0.08 172); --gray: oklch(0.55 0.01 190);
+       width: 1280px; background: var(--bg); color: var(--fg); font: 14px/1.45 var(--f-body); text-align: left; }
+  .d.p390 { width: 390px; }
+  .d * { box-sizing: border-box; min-width: 0; }
+  .d p { margin: 0; }
+  .d .i { width: 16px; height: 16px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; flex: none; display: inline-block; vertical-align: -3px; }
+  .d .mono { font-family: var(--f-mono); }
+  .d .k { font: 700 10.5px/1 var(--f-body); letter-spacing: .15em; text-transform: uppercase; color: var(--mfg); }
+
+  .d .nav { height: 56px; background: var(--hero); display: flex; align-items: center; padding: 0 40px; color: oklch(0.88 0.01 180); font-size: 12.5px; }
+  .d .logo { font: 600 17px/1 var(--f-display); color: #fff; display: flex; align-items: center; gap: 9px; }
+  .d .logo i { width: 14px; height: 14px; background: var(--mint); transform: rotate(45deg); border-radius: 3px; display: inline-block; }
+  .d .links { display: flex; gap: 22px; margin: 0 auto; }
+  .d .cta { background: #fff; color: var(--hero); border-radius: 999px; padding: 7px 16px; font-weight: 600; }
+  .d .hero { background: var(--hero); color: oklch(0.93 0.01 180); padding: 6px 40px 28px; }
+  .d .crumbrow { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  .d .crumb { font-size: 12px; opacity: .7; }
+  .d .act { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; border: 1px solid oklch(1 0 0 / .3); border-radius: 8px; padding: 5px 10px; color: #fff; }
+  .d .htitle { font: 500 34px/1.15 var(--f-display); margin-top: 10px; }
+  .d .page { padding: 28px 40px 40px; }
+
+  /* A — thẻ chia đôi như voucher */
+  .d .vc { display: grid; grid-template-columns: minmax(0, 1fr) 440px; border: 1px solid var(--border); border-radius: 22px; overflow: hidden; background: var(--card); }
+  .d .vl { padding: 32px 40px 36px; position: relative; }
+  .d .vr { padding: 30px 32px 34px; background: var(--muted); }
+  .d .h2 { font: 600 32px/1.15 var(--f-display); max-width: 500px; }
+  .d .sub { color: var(--mfg); margin-top: 8px; font-size: 14px; max-width: 500px; }
+  .d .sub b { color: var(--fg); }
+  .d .visa { position: absolute; right: 38px; top: 34px; transform: rotate(4deg); border: 2px solid var(--warn); color: var(--warn); border-radius: 12px; padding: 9px 15px; font: 700 13px/1 var(--f-display); letter-spacing: .14em; opacity: .9; }
+  .d .visa::before { content: ""; position: absolute; inset: 3px; border: 1px dashed currentColor; border-radius: 8px; opacity: .55; }
+  .d .visa.closed { border-color: var(--gray); color: var(--gray); }
+  .d .phc { position: relative; height: 290px; border-radius: 16px; overflow: hidden; background: center 60% / cover no-repeat var(--muted); margin-top: 24px; }
+  .d .phc::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, transparent 30%, oklch(0.18 0.02 190 / .88) 100%); }
+  .d .phc.dim { filter: grayscale(1) contrast(.92); }
+  .d .phb { position: absolute; left: 24px; right: 24px; bottom: 20px; z-index: 1; color: #fff; }
+  .d .phk { font: 700 10.5px/1 var(--f-body); letter-spacing: .16em; text-transform: uppercase; opacity: .82; }
+  .d .pht { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; margin-top: 8px; }
+  .d .pht b { font: 600 25px/1.2 var(--f-display); }
+  .d .pht span { font: 600 20px/1 var(--f-mono); white-space: nowrap; }
+  .d .glass { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+  .d .glass span { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; padding: 5px 11px; border-radius: 999px; background: oklch(1 0 0 / .16); border: 1px solid oklch(1 0 0 / .32); }
+  .d .icg { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 18px; }
+  .d .icc { display: grid; grid-template-columns: 38px minmax(0, 1fr); gap: 12px; align-items: start; border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; }
+  .d .icc .ic { width: 38px; height: 38px; border-radius: 10px; background: color-mix(in oklch, var(--primary) 11%, white); color: var(--primary); display: grid; place-items: center; }
+  .d .icc.warn .ic { background: var(--warnbg); color: var(--warn); }
+  .d .icc b { display: block; font-size: 13.5px; }
+  .d .icc p { font-size: 12.5px; color: var(--mfg); margin-top: 2px; }
+
+  .d .tk { background: var(--card); border: 1.5px dashed var(--border); border-radius: 14px; padding: 16px 18px; }
+  .d .tk-box { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .d .code { font: 600 22px/1 var(--f-mono); letter-spacing: .1em; margin-top: 6px; }
+  .d .tk.closed .code { color: var(--mfg); }
+  .d .b-copy { background: var(--fg); color: #fff; border-radius: 8px; height: 30px; padding: 0 11px; display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; white-space: nowrap; }
+  .d .meta { display: flex; gap: 16px; font-size: 12px; color: var(--mfg); margin-top: 10px; }
+  .d .meta span { display: inline-flex; gap: 5px; align-items: center; }
+  .d .cond { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 7px; font-size: 12.5px; }
+  .d .cond li { display: flex; gap: 8px; align-items: flex-start; }
+  .d .cond .i { color: var(--warn); margin-top: 1px; width: 15px; height: 15px; }
+  .d .cond.gray .i { color: var(--gray); }
+  .d .unpaid { margin-top: 12px; height: 30px; border-radius: 8px; display: grid; place-items: center; font: 700 11px/1 var(--f-body); letter-spacing: .2em; text-transform: uppercase; color: var(--mfg);
+    background: repeating-linear-gradient(135deg, transparent 0 7px, color-mix(in oklch, var(--border) 70%, transparent) 7px 8px); border: 1px solid var(--soft); }
+  .d .ov { margin-top: 22px; }
+  .d .ovh { font-weight: 600; font-size: 16px; margin-bottom: 8px; }
+  .d .kv { display: flex; justify-content: space-between; gap: 16px; padding: 3px 0; font-size: 13.5px; }
+  .d .kv > span:first-child { color: var(--mfg); }
+  .d .kv.tot { border-top: 1px solid var(--border); margin-top: 6px; padding-top: 8px; font-weight: 700; font-size: 15px; }
+  .d .kv.tot > span:first-child { color: var(--fg); }
+  .d .tiny { font-size: 12px; color: var(--mfg); text-align: right; }
+  .d .jn { background: color-mix(in oklch, white 55%, var(--muted)); border-radius: 12px; padding: 14px 16px; margin-top: 18px; }
+  .d .jnh { font-weight: 600; margin-bottom: 10px; }
+  .d .jit { display: grid; grid-template-columns: 20px minmax(0, 1fr); gap: 10px; position: relative; padding-bottom: 12px; font-size: 13px; }
+  .d .jit::before { content: ""; position: absolute; left: 9px; top: 20px; bottom: 0; width: 1.5px; background: var(--border); }
+  .d .jit:last-child { padding-bottom: 0; }
+  .d .jit:last-child::before { display: none; }
+  .d .jk { width: 20px; height: 20px; border-radius: 50%; border: 1.5px solid var(--border); display: grid; place-items: center; background: var(--card); }
+  .d .jk .i { width: 12px; height: 12px; stroke-width: 3; }
+  .d .jit.done .jk { background: var(--primary); border-color: var(--primary); color: #fff; }
+  .d .jit.now .jk { border: 2px solid var(--warn); }
+  .d .jit.now .jk::after { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--warn); }
+  .d .jit.x .jk { background: var(--gray); border-color: var(--gray); color: #fff; }
+  .d .jit small { display: block; color: var(--mfg); font-size: 12px; }
+  .d .b-pay { display: flex; align-items: center; justify-content: center; gap: 8px; height: 46px; border-radius: 10px; background: var(--primary); color: #fff; font-weight: 700; margin-top: 20px; }
+  .d .b-out { display: flex; align-items: center; justify-content: center; gap: 8px; height: 44px; border-radius: 10px; border: 1px solid var(--border); background: var(--card); font-weight: 600; margin-top: 10px; }
+  .d .lnk { display: flex; justify-content: center; gap: 6px; align-items: center; margin-top: 12px; text-decoration: underline; font-size: 13px; }
+  .d .live { display: flex; gap: 10px; align-items: center; margin-top: 20px; padding: 12px 14px; border-radius: 10px; background: var(--card); border: 1px solid var(--border); font-size: 13px; }
+  .d .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--warn); box-shadow: 0 0 0 4px var(--warnbg); flex: none; }
+  .d .live b { display: block; }
+  .d .live small { color: var(--mfg); font-size: 12px; }
+  .d .help { text-align: center; font-size: 13px; color: var(--mfg); margin-top: 14px; }
+
+  /* B — vé chờ như bản in B1 */
+  .d .b1 { max-width: 920px; margin: 0 auto; }
+  .d .tkt { display: grid; grid-template-columns: minmax(0, 1fr) 236px; border: 1.5px dashed var(--border); border-radius: 18px; overflow: hidden; background: var(--card); }
+  .d .band { background: var(--muted); display: flex; justify-content: space-between; padding: 9px 22px; font: 700 10.5px/1.2 var(--f-body); letter-spacing: .16em; text-transform: uppercase; color: var(--mfg); }
+  .d .band .mono { letter-spacing: .12em; }
+  .d .tbody { padding: 20px 22px 22px; }
+  .d .trow { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; }
+  .d .ttitle { font: 600 24px/1.2 var(--f-display); }
+  .d .stamp { transform: rotate(4deg); border: 2px solid var(--warn); color: var(--warn); border-radius: 10px; padding: 7px 12px; font: 700 11.5px/1 var(--f-display); letter-spacing: .14em; text-transform: uppercase; white-space: nowrap; }
+  .d .stamp.closed { border-color: var(--gray); color: var(--gray); }
+  .d .route { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 18px; margin-top: 18px; }
+  .d .route .big { font: 600 30px/1 var(--f-mono); letter-spacing: .04em; margin-top: 6px; }
+  .d .route .sm { font-size: 12px; color: var(--mfg); margin-top: 4px; }
+  .d .route .r { text-align: right; }
+  .d .rl { position: relative; text-align: center; font-size: 12px; color: var(--mfg); }
+  .d .rl::before { content: ""; position: absolute; left: 0; right: 0; top: 50%; border-top: 1.5px dashed var(--border); }
+  .d .rl span { position: relative; background: var(--card); padding: 0 10px; }
+  .d .tgrid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--soft); }
+  .d .tgrid .v { font-weight: 600; margin-top: 6px; font-size: 13.5px; }
+  .d .stub { border-left: 1.5px dashed var(--border); background: repeating-linear-gradient(135deg, transparent 0 9px, color-mix(in oklch, var(--soft) 80%, transparent) 9px 10px); display: flex; flex-direction: column; }
+  .d .stub .band { justify-content: center; }
+  .d .void { padding: 18px 20px 20px; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 6px; flex: 1; }
+  .d .nyv { font: 700 10.5px/1 var(--f-body); letter-spacing: .14em; text-transform: uppercase; color: var(--warn); background: var(--card); border: 1px solid var(--warn); border-radius: 999px; padding: 5px 10px; }
+  .d .nyv.closed { color: var(--gray); border-color: var(--gray); }
+  .d .money { font: 600 34px/1 var(--f-mono); margin-top: 8px; }
+  .d .payby { font-size: 12.5px; margin-top: 4px; }
+  .d .payby b { display: block; font: 600 15px/1.3 var(--f-mono); }
+  .d .void .b-pay { width: 100%; margin-top: auto; height: 42px; }
+  .d .tear { text-align: center; margin: 16px 0 0; font-size: 13px; color: var(--mfg); display: flex; align-items: center; gap: 14px; }
+  .d .tear::before, .d .tear::after { content: ""; flex: 1; border-top: 1.5px dotted var(--border); }
+  .d .sumt { margin-top: 24px; border: 1px solid var(--border); border-radius: 14px; background: var(--card); padding: 18px 22px; }
+  .d table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 13.5px; }
+  .d th { text-align: left; font: 700 10.5px/1 var(--f-body); letter-spacing: .14em; text-transform: uppercase; color: var(--mfg); padding: 8px 0; border-bottom: 1px solid var(--border); }
+  .d td { padding: 12px 0; border-bottom: 1px solid var(--soft); vertical-align: top; }
+  .d .num { text-align: right; font-variant-numeric: tabular-nums; }
+  .d td .s { font-size: 12px; color: var(--mfg); }
+  .d tfoot td { border-bottom: 0; font-weight: 700; font-size: 15px; }
+  .d .three { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0; margin-top: 18px; border: 1px solid var(--border); border-radius: 14px; background: var(--card); }
+  .d .three > div { padding: 16px 20px; border-right: 1px solid var(--soft); font-size: 13px; }
+  .d .three > div:last-child { border-right: 0; }
+  .d .three h4 { margin: 0 0 6px; font-size: 13.5px; }
+  .d .three p { color: var(--mfg); }
+  .d .three p b { color: var(--fg); }
+  .d .b1 .row-btn { display: flex; gap: 10px; margin-top: 22px; }
+  .d .b1 .row-btn > * { margin-top: 0; padding: 0 18px; }
+
+  /* Điện thoại */
+  .d.p390 .nav { padding: 0 16px; }
+  .d.p390 .hero { padding: 6px 16px 22px; }
+  .d.p390 .htitle { font-size: 26px; }
+  .d.p390 .page { padding: 18px 16px 28px; }
+  .d.p390 .vc { grid-template-columns: minmax(0, 1fr); border-radius: 18px; }
+  .d.p390 .vl { padding: 20px 18px 22px; }
+  .d.p390 .vr { padding: 20px 18px 22px; }
+  .d.p390 .h2 { font-size: 25px; }
+  .d.p390 .visa { position: static; display: inline-block; margin-bottom: 14px; }
+  .d.p390 .phc { height: 190px; }
+  .d.p390 .pht b { font-size: 19px; }
+  .d.p390 .icg { grid-template-columns: minmax(0, 1fr); }
+  .d.p390 .tk { margin-top: 16px; }
+</style>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol>
+    <symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></symbol>
+    <symbol id="i-copy" viewBox="0 0 24 24"><rect x="8" y="8" width="14" height="14" rx="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></symbol>
+    <symbol id="i-cal" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></symbol>
+    <symbol id="i-users" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></symbol>
+    <symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a6 6 0 0 1 6-6h4a6 6 0 0 1 6 6v1"/></symbol>
+    <symbol id="i-msg" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></symbol>
+    <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></symbol>
+    <symbol id="i-print" viewBox="0 0 24 24"><path d="M6 9V2h12v7"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></symbol>
+    <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></symbol>
+    <symbol id="i-card" viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></symbol>
+    <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></symbol>
+    <symbol id="i-lock" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></symbol>
+    <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-2.64-6.36L21 8"/><path d="M21 3v5h-5"/></symbol>
+  </defs>
+</svg>
+
+<main class="wrap">
+  <p class="eyebrow">Open-items G42 · bản vẽ để chọn · 13/10/2026</p>
+  <h1 style="margin-top:10px">Màn hoá đơn chờ cho đơn chưa trả</h1>
+  <p class="lead">Đây là màn khách thấy ở <code>/checkout/cancel</code> (bấm huỷ ở cổng thanh toán) và ở <code>/checkout/success</code> trong vài giây chờ cổng báo về. Hôm nay đó vẫn là thẻ hoá đơn từ 19/08, lạc giọng với voucher và với bản in B1. Dưới đây là hai hướng. Dữ liệu mẫu lấy từ đơn của bản in B1: Hội An, 1 khách, trả bằng thẻ (Stripe). Ảnh là ảnh mẫu của repo.</p>
+
+  <section aria-labelledby="a-h">
+    <div class="opt-head"><h2 id="a-h">A · Voucher chờ</h2><span class="rec">Khuyến nghị</span></div>
+    <p class="note">Cùng khung với voucher của đơn đã trả: mộc, ảnh tour lớn, bốn ô thông tin, cột phải. Khác ở chỗ cột phải là mảng xám thay vì mảng teal, ô mã có viền đứt và dải "Unpaid" thay cho mã vạch. Khi tiền về, chính trang này đổi sang voucher: mảng xám thành teal, mộc thành CONFIRMED.</p>
+    <div class="tabs" role="tablist" aria-label="Trạng thái của phương án A">
+      <button type="button" role="tab" id="a-t1" aria-controls="a-p1" aria-selected="true">Bấm huỷ ở cổng</button>
+      <button type="button" role="tab" id="a-t2" aria-controls="a-p2" aria-selected="false">Đang chờ cổng báo về</button>
+      <button type="button" role="tab" id="a-t3" aria-controls="a-p3" aria-selected="false">Đơn đã đóng</button>
+      <button type="button" role="tab" id="a-t4" aria-controls="a-p4" aria-selected="false">Điện thoại 390px</button>
+    </div>
+
+    <!-- A1 · /checkout/cancel, đơn còn PENDING -->
+    <div id="a-p1" role="tabpanel" aria-labelledby="a-t1" class="fit"><div class="d">
+      <div class="nav"><span class="logo"><i></i>Nexora</span><div class="links"><span>Tours</span><span>Destinations</span><span>Travel Blog</span><span>About Us</span><span>Contact</span></div><span class="cta">Book a tour</span></div>
+      <div class="hero"><div class="crumbrow"><span class="crumb">Home › Checkout</span></div><div class="htitle">Hội An Old Town &amp; Lantern Evening</div></div>
+      <div class="page"><div class="vc">
+        <div class="vl">
+          <span class="visa">AWAITING PAYMENT</span>
+          <div class="h2">Payment cancelled</div>
+          <p class="sub">No charge was made. Your booking stays open until <b>18:59 today</b> (Vietnam time) — seats aren’t held until you pay.</p>
+          <div class="phc" style="background-image:url('../../../apps/web/public/mock/hoian.jpg')"><div class="phb">
+            <div class="phk">Hội An · 1 day</div>
+            <div class="pht"><b>Hội An Old Town &amp; Lantern Evening</b><span>$39</span></div>
+            <div class="glass"><span><svg class="i"><use href="#i-cal"/></svg>Thu 29 Oct 2026</span><span><svg class="i"><use href="#i-users"/></svg>1 adult × $39</span></div>
+          </div></div>
+          <div class="icg">
+            <div class="icc warn"><span class="ic"><svg class="i"><use href="#i-clock"/></svg></span><div><b>Pay by 18:59 · Fri 9 Oct</b><p>After that the booking is released. Vietnam time.</p></div></div>
+            <div class="icc"><span class="ic"><svg class="i"><use href="#i-card"/></svg></span><div><b>Card (Stripe)</b><p>Test mode — no card is charged.</p></div></div>
+            <div class="icc"><span class="ic"><svg class="i"><use href="#i-user"/></svg></span><div><b>Lead traveller</b><p>Nora Dahl · nora.dahl@example.com</p></div></div>
+            <div class="icc"><span class="ic"><svg class="i"><use href="#i-msg"/></svg></span><div><b>Need help?</b><p>Write to us at <span style="color:var(--primary);font-weight:600">tourism.platform.online@gmail.com</span>.</p></div></div>
+          </div>
+        </div>
+        <div class="vr">
+          <div class="tk">
+            <div class="tk-box"><div><div class="k">Booking code · not yet a voucher</div><div class="code">BK-EET0JBTH</div></div><span class="b-copy"><svg class="i"><use href="#i-copy"/></svg>Copy</span></div>
+            <div class="meta"><span><svg class="i"><use href="#i-cal"/></svg>Thu 29 Oct 2026</span><span><svg class="i"><use href="#i-users"/></svg>1 traveller</span></div>
+            <ul class="cond"><li><svg class="i"><use href="#i-info"/></svg>This code becomes your voucher once payment is complete.</li><li><svg class="i"><use href="#i-lock"/></svg>Seats aren’t held until you pay.</li></ul>
+            <div class="unpaid">Unpaid</div>
+          </div>
+          <div class="ov"><div class="ovh">Receipt overview</div><div class="kv"><span>1 adult × $39</span><span class="mono">$39</span></div><div class="kv tot"><span>Total due</span><span class="mono">$39</span></div><p class="tiny">Includes all taxes and fees.</p></div>
+          <div class="jn"><div class="jnh">Trip journal</div>
+            <div class="jit done"><span class="jk"><svg class="i"><use href="#i-check"/></svg></span><div><b>Booked</b><small>Fri 9 Oct 2026, 17:59</small></div></div>
+            <div class="jit now"><span class="jk"></span><div><b>Payment</b><small>Pay by 18:59, Fri 9 Oct</small></div></div>
+            <div class="jit"><span class="jk"></span><div><b>Tour day</b><small>Thu 29 Oct 2026 · Hội An</small></div></div>
+          </div>
+          <div class="b-pay">Pay now · $39<svg class="i"><use href="#i-arrow"/></svg></div>
+          <div class="lnk">View booking</div>
+        </div>
+      </div></div>
+    </div></div>
+
+    <!-- A2 · /checkout/success, PENDING chờ webhook -->
+    <div id="a-p2" role="tabpanel" aria-labelledby="a-t2" class="fit" hidden><div class="d">
+      <div class="nav"><span class="logo"><i></i>Nexora</span><div class="links"><span>Tours</span><span>Destinations</span><span>Travel Blog</span><span>About Us</span><span>Contact</span></div><span class="cta">Book a tour</span></div>
+      <div class="hero"><div class="crumbrow"><span class="crumb">Home › Checkout</span><span class="act"><svg class="i"><use href="#i-print"/></svg>Print</span></div><div class="htitle">Hội An Old Town &amp; Lantern Evening</div></div>
+      <div class="page"><div class="vc">
+        <div class="vl">
+          <span class="visa">AWAITING PAYMENT</span>
+          <div class="h2">Confirming your payment…</div>
+          <p class="sub">Your payment is being confirmed — this usually takes a few seconds. This page updates by itself.</p>
+          <div class="phc" style="background-image:url('../../../apps/web/public/mock/hoian.jpg')"><div class="phb">
+            <div class="phk">Hội An · 1 day</div>
+            <div class="pht"><b>Hội An Old Town &amp; Lantern Evening</b><span>$39</span></div>
+            <div class="glass"><span><svg class="i"><use href="#i-cal"/></svg>Thu 29 Oct 2026</span><span><svg class="i"><use href="#i-users"/></svg>1 adult × $39</span></div>
+          </div></div>
+          <div class="icg">
+            <div class="icc"><span class="ic"><svg class="i"><use href="#i-card"/></svg></span><div><b>Card (Stripe)</b><p>Test mode — no card is charged.</p></div></div>
+            <div class="icc"><span class="ic"><svg class="i"><use href="#i-cal"/></svg></span><div><b>Booked</b><p>Fri 9 Oct 2026, 17:59</p></div></div>
+            <div class="icc"><span class="ic"><svg class="i"><use href="#i-user"/></svg></span><div><b>Lead traveller</b><p>Nora Dahl · nora.dahl@example.com</p></div></div>
+            <div class="icc"><span class="ic"><svg class="i"><use href="#i-msg"/></svg></span><div><b>Need help?</b><p>Write to us at <span style="color:var(--primary);font-weight:600">tourism.platform.online@gmail.com</span>.</p></div></div>
+          </div>
+        </div>
+        <div class="vr">
+          <div class="tk">
+            <div class="tk-box"><div><div class="k">Booking code · not yet a voucher</div><div class="code">BK-EET0JBTH</div></div><span class="b-copy"><svg class="i"><use href="#i-copy"/></svg>Copy</span></div>
+            <div class="meta"><span><svg class="i"><use href="#i-cal"/></svg>Thu 29 Oct 2026</span><span><svg class="i"><use href="#i-users"/></svg>1 traveller</span></div>
+            <ul class="cond"><li><svg class="i"><use href="#i-info"/></svg>This code becomes your voucher once payment is complete.</li></ul>
+            <div class="unpaid">Confirming</div>
+          </div>
+          <div class="ov"><div class="ovh">Receipt overview</div><div class="kv"><span>1 adult × $39</span><span class="mono">$39</span></div><div class="kv tot"><span>Total due</span><span class="mono">$39</span></div><p class="tiny">Includes all taxes and fees.</p></div>
+          <div class="jn"><div class="jnh">Trip journal</div>
+            <div class="jit done"><span class="jk"><svg class="i"><use href="#i-check"/></svg></span><div><b>Booked</b><small>Fri 9 Oct 2026, 17:59</small></div></div>
+            <div class="jit now"><span class="jk"></span><div><b>Payment</b><small>Confirming with Stripe</small></div></div>
+            <div class="jit"><span class="jk"></span><div><b>Tour day</b><small>Thu 29 Oct 2026 · Hội An</small></div></div>
+          </div>
+          <div class="live"><span class="dot"></span><div><b>Checking with Stripe…</b><small>The voucher appears here as soon as payment is confirmed.</small></div></div>
+          <div class="b-out"><svg class="i"><use href="#i-refresh"/></svg>Refresh</div>
+          <div class="lnk">View booking</div>
+        </div>
+      </div></div>
+    </div></div>
+
+    <!-- A3 · đơn chưa trả đã đóng -->
+    <div id="a-p3" role="tabpanel" aria-labelledby="a-t3" class="fit" hidden><div class="d">
+      <div class="nav"><span class="logo"><i></i>Nexora</span><div class="links"><span>Tours</span><span>Destinations</span><span>Travel Blog</span><span>About Us</span><span>Contact</span></div><span class="cta">Book a tour</span></div>
+      <div class="hero"><div class="crumbrow"><span class="crumb">Home › Checkout</span><span class="act"><svg class="i"><use href="#i-print"/></svg>Print</span></div><div class="htitle">Hội An Old Town &amp; Lantern Evening</div></div>
+      <div class="page"><div class="vc">
+        <div class="vl">
+          <span class="visa closed">CLOSED</span>
+          <div class="h2">This booking is closed</div>
+          <p class="sub">No payment was taken. The booking was released at 18:59 on Fri 9 Oct because it stayed unpaid.</p>
+          <div class="phc dim" style="background-image:url('../../../apps/web/public/mock/hoian.jpg')"><div class="phb">
+            <div class="phk">Hội An · 1 day</div>
+            <div class="pht"><b>Hội An Old Town &amp; Lantern Evening</b><span>$39</span></div>
+            <div class="glass"><span><svg class="i"><use href="#i-cal"/></svg>Thu 29 Oct 2026</span><span><svg class="i"><use href="#i-users"/></svg>1 adult × $39</span></div>
+          </div></div>
+          <div class="icg">
+            <div class="icc"><span class="ic"><svg class="i"><use href="#i-clock"/></svg></span><div><b>Released 18:59 · Fri 9 Oct</b><p>The payment window ended. Vietnam time.</p></div></div>
+            <div class="icc"><span class="ic"><svg class="i"><use href="#i-card"/></svg></span><div><b>Card (Stripe)</b><p>Nothing was charged.</p></div></div>
+            <div class="icc"><span class="ic"><svg class="i"><use href="#i-user"/></svg></span><div><b>Lead traveller</b><p>Nora Dahl · nora.dahl@example.com</p></div></div>
+            <div class="icc"><span class="ic"><svg class="i"><use href="#i-msg"/></svg></span><div><b>Need help?</b><p>Write to us at <span style="color:var(--primary);font-weight:600">tourism.platform.online@gmail.com</span>.</p></div></div>
+          </div>
+        </div>
+        <div class="vr">
+          <div class="tk closed">
+            <div class="tk-box"><div><div class="k">Booking code</div><div class="code">BK-EET0JBTH</div></div><span class="b-copy"><svg class="i"><use href="#i-copy"/></svg>Copy</span></div>
+            <ul class="cond gray"><li><svg class="i"><use href="#i-x"/></svg>This booking is closed — no payment was taken.</li></ul>
+            <div class="unpaid">Closed</div>
+          </div>
+          <div class="ov"><div class="ovh">Receipt overview</div><div class="kv"><span>1 adult × $39</span><span class="mono">$39</span></div><div class="kv tot"><span>Charged</span><span class="mono">$0</span></div></div>
+          <div class="jn"><div class="jnh">Trip journal</div>
+            <div class="jit done"><span class="jk"><svg class="i"><use href="#i-check"/></svg></span><div><b>Booked</b><small>Fri 9 Oct 2026, 17:59</small></div></div>
+            <div class="jit x"><span class="jk"><svg class="i"><use href="#i-x"/></svg></span><div><b>Released, unpaid</b><small>Fri 9 Oct 2026, 18:59</small></div></div>
+          </div>
+          <div class="b-pay">Book this tour again<svg class="i"><use href="#i-arrow"/></svg></div>
+          <div class="lnk">View booking</div>
+        </div>
+      </div></div>
+    </div></div>
+
+    <!-- A4 · điện thoại, /checkout/cancel -->
+    <div id="a-p4" role="tabpanel" aria-labelledby="a-t4" class="fit phone" hidden><div class="d p390">
+      <div class="nav"><span class="logo"><i></i>Nexora</span><span style="margin-left:auto;color:#fff">☰</span></div>
+      <div class="hero"><div class="crumbrow"><span class="crumb">Home › Checkout</span></div><div class="htitle">Hội An Old Town &amp; Lantern Evening</div></div>
+      <div class="page"><div class="vc">
+        <div class="vl">
+          <span class="visa">AWAITING PAYMENT</span>
+          <div class="h2">Payment cancelled</div>
+          <p class="sub">No charge was made. Your booking stays open until <b>18:59 today</b> (Vietnam time) — seats aren’t held until you pay.</p>
+          <div class="tk">
+            <div class="tk-box"><div><div class="k">Not yet a voucher</div><div class="code" style="font-size:19px">BK-EET0JBTH</div></div><span class="b-copy"><svg class="i"><use href="#i-copy"/></svg>Copy</span></div>
+            <div class="b-pay" style="margin-top:14px">Pay now · $39<svg class="i"><use href="#i-arrow"/></svg></div>
+          </div>
+          <div class="phc" style="background-image:url('../../../apps/web/public/mock/hoian.jpg')"><div class="phb">
+            <div class="phk">Hội An · 1 day</div>
+            <div class="pht"><b>Hội An Old Town &amp; Lantern Evening</b><span>$39</span></div>
+          </div></div>
+          <div class="icg">
+            <div class="icc warn"><span class="ic"><svg class="i"><use href="#i-clock"/></svg></span><div><b>Pay by 18:59 · Fri 9 Oct</b><p>After that the booking is released. Vietnam time.</p></div></div>
+            <div class="icc"><span class="ic"><svg class="i"><use href="#i-card"/></svg></span><div><b>Card (Stripe)</b><p>Test mode — no card is charged.</p></div></div>
+          </div>
+        </div>
+        <div class="vr">
+          <div class="ov" style="margin-top:0"><div class="ovh">Receipt overview</div><div class="kv"><span>1 adult × $39</span><span class="mono">$39</span></div><div class="kv tot"><span>Total due</span><span class="mono">$39</span></div></div>
+          <div class="jn"><div class="jnh">Trip journal</div>
+            <div class="jit done"><span class="jk"><svg class="i"><use href="#i-check"/></svg></span><div><b>Booked</b><small>Fri 9 Oct 2026, 17:59</small></div></div>
+            <div class="jit now"><span class="jk"></span><div><b>Payment</b><small>Pay by 18:59, Fri 9 Oct</small></div></div>
+            <div class="jit"><span class="jk"></span><div><b>Tour day</b><small>Thu 29 Oct 2026 · Hội An</small></div></div>
+          </div>
+          <div class="lnk">View booking</div>
+        </div>
+      </div></div>
+    </div></div>
+  </section>
+
+  <section aria-labelledby="b-h">
+    <div class="opt-head"><h2 id="b-h">B · Bản in B1 đưa lên màn hình</h2></div>
+    <p class="note">Màn hình chép đúng tờ hoá đơn chờ B1 đã in được từ 12/10: vé viền đứt có cuống gạch chéo, dòng xé, bảng Summary và dải ba cột. Màn và giấy giống hệt nhau, nhưng khác khung với voucher mà khách thấy ngay sau khi trả.</p>
+    <div class="tabs" role="tablist" aria-label="Trạng thái của phương án B">
+      <button type="button" role="tab" id="b-t1" aria-controls="b-p1" aria-selected="true">Bấm huỷ ở cổng</button>
+      <button type="button" role="tab" id="b-t2" aria-controls="b-p2" aria-selected="false">Đơn đã đóng</button>
+    </div>
+
+    <div id="b-p1" role="tabpanel" aria-labelledby="b-t1" class="fit"><div class="d">
+      <div class="nav"><span class="logo"><i></i>Nexora</span><div class="links"><span>Tours</span><span>Destinations</span><span>Travel Blog</span><span>About Us</span><span>Contact</span></div><span class="cta">Book a tour</span></div>
+      <div class="hero"><div class="crumbrow"><span class="crumb">Home › Checkout</span></div><div class="htitle">Payment cancelled</div></div>
+      <div class="page"><div class="b1">
+        <div class="tkt">
+          <div>
+            <div class="band"><span>Booking · payment pending</span><span class="mono">BK-EET0JBTH</span></div>
+            <div class="tbody">
+              <div class="trow"><div class="ttitle">Hội An Old Town &amp; Lantern Evening</div><span class="stamp">Payment pending</span></div>
+              <div class="route">
+                <div><div class="k">Departs</div><div class="big">29 OCT</div><div class="sm">Thu · 2026</div></div>
+                <div class="rl"><span>1 day · Hội An</span></div>
+                <div class="r"><div class="k">Returns</div><div class="big">29 OCT</div><div class="sm">Thu · 2026</div></div>
+              </div>
+              <div class="tgrid">
+                <div><div class="k">Lead traveller</div><div class="v">Nora Dahl</div></div>
+                <div><div class="k">Travellers</div><div class="v">1 adult</div></div>
+                <div><div class="k">Booked</div><div class="v">9 Oct 2026</div></div>
+                <div><div class="k">Payment</div><div class="v">Card (Stripe)</div></div>
+              </div>
+            </div>
+          </div>
+          <div class="stub">
+            <div class="band">Unpaid</div>
+            <div class="void">
+              <span class="nyv">Not yet a voucher</span>
+              <div class="money">$39</div>
+              <p class="tiny" style="text-align:center">Total · includes all taxes and fees</p>
+              <p class="payby">Pay by<b>18:59 · 9 Oct</b></p>
+              <div class="b-pay">Pay now<svg class="i"><use href="#i-arrow"/></svg></div>
+            </div>
+          </div>
+        </div>
+        <p class="tear">This code becomes your voucher once payment is complete</p>
+        <div class="sumt"><div class="k">Summary</div>
+          <table><thead><tr><th>Item</th><th>Travellers</th><th class="num">Price</th><th class="num">Amount</th></tr></thead>
+            <tbody><tr><td><b>Hội An Old Town &amp; Lantern Evening</b><div class="s">Thu 29 Oct 2026 · 1 day · Hội An</div></td><td>1 adult</td><td class="num">$39<div class="s">per traveller</div></td><td class="num">$39</td></tr></tbody>
+            <tfoot><tr><td colspan="3">Total</td><td class="num">$39</td></tr></tfoot>
+          </table>
+        </div>
+        <div class="three">
+          <div><h4>How to pay</h4><p>Choose <b>Pay now</b> above, or open <b>My bookings</b> later. Test mode — no card is charged.</p></div>
+          <div><h4>If it stays unpaid</h4><p>The booking is released at <b>18:59, 9 Oct 2026</b> (Vietnam time). Seats aren’t held until you pay.</p></div>
+          <div><h4>Booking reference</h4><p class="mono" style="color:var(--fg);font-weight:600">BK-EET0JBTH</p><p>Booked by nora.dahl@example.com</p></div>
+        </div>
+        <div class="row-btn"><div class="b-out">View booking</div><div class="b-out">Browse tours</div></div>
+      </div></div>
+    </div></div>
+
+    <div id="b-p2" role="tabpanel" aria-labelledby="b-t2" class="fit" hidden><div class="d">
+      <div class="nav"><span class="logo"><i></i>Nexora</span><div class="links"><span>Tours</span><span>Destinations</span><span>Travel Blog</span><span>About Us</span><span>Contact</span></div><span class="cta">Book a tour</span></div>
+      <div class="hero"><div class="crumbrow"><span class="crumb">Home › Checkout</span><span class="act"><svg class="i"><use href="#i-print"/></svg>Print</span></div><div class="htitle">This booking is closed</div></div>
+      <div class="page"><div class="b1">
+        <div class="tkt">
+          <div>
+            <div class="band"><span>Booking · closed</span><span class="mono">BK-EET0JBTH</span></div>
+            <div class="tbody">
+              <div class="trow"><div class="ttitle">Hội An Old Town &amp; Lantern Evening</div><span class="stamp closed">Closed</span></div>
+              <div class="route">
+                <div><div class="k">Departs</div><div class="big">29 OCT</div><div class="sm">Thu · 2026</div></div>
+                <div class="rl"><span>1 day · Hội An</span></div>
+                <div class="r"><div class="k">Returns</div><div class="big">29 OCT</div><div class="sm">Thu · 2026</div></div>
+              </div>
+              <div class="tgrid">
+                <div><div class="k">Lead traveller</div><div class="v">Nora Dahl</div></div>
+                <div><div class="k">Travellers</div><div class="v">1 adult</div></div>
+                <div><div class="k">Booked</div><div class="v">9 Oct 2026</div></div>
+                <div><div class="k">Payment</div><div class="v">Card (Stripe)</div></div>
+              </div>
+            </div>
+          </div>
+          <div class="stub">
+            <div class="band">Closed</div>
+            <div class="void">
+              <span class="nyv closed">Not a voucher</span>
+              <div class="money" style="color:var(--mfg)">$39</div>
+              <p class="payby">No payment was taken</p>
+              <div class="b-pay">Book again<svg class="i"><use href="#i-arrow"/></svg></div>
+            </div>
+          </div>
+        </div>
+        <p class="tear">This booking is closed — no payment was taken.</p>
+        <div class="three">
+          <div><h4>What happened</h4><p>The booking stayed unpaid and was released at <b>18:59, 9 Oct 2026</b> (Vietnam time).</p></div>
+          <div><h4>Book again</h4><p>Pick a date on the <b>Hội An Old Town</b> tour page. Prices and seats are live.</p></div>
+          <div><h4>Booking reference</h4><p class="mono" style="color:var(--fg);font-weight:600">BK-EET0JBTH</p><p>Booked by nora.dahl@example.com</p></div>
+        </div>
+      </div></div>
+    </div></div>
+  </section>
+
+  <section aria-labelledby="c-h">
+    <h2 id="c-h">Chung cho cả hai</h2>
+    <ul class="points">
+      <li><b>Nút Pay now ngay trên trang huỷ.</b> Hôm nay khách phải vào trang chi tiết đơn mới trả tiếp được. Nút mới gọi đúng đường mở lại cổng thanh toán mà trang chi tiết đơn đang dùng, nên không thêm API. Qua hạn chót thì nút không hiện.</li>
+      <li><b>Trang chờ cổng báo về</b> vẫn tự làm tươi như hôm nay; chỉ đổi chỗ hiện, thêm dòng "Checking with Stripe…" và nút Refresh.</li>
+      <li><b>Đơn đã đóng</b> không hứa thành voucher và có nút đặt lại tour. Đơn bị thu rồi hoàn tự động thì dòng tiền nói khoản hoàn, giống bản in.</li>
+      <li><b>Giữ luật cũ:</b> không đồng hồ đếm ngược, không chữ "held" hay "reserved", không mã vạch cho đơn chưa trả, giờ luôn ghi giờ Việt Nam.</li>
+      <li><b>Breadcrumb</b> của đơn chưa trả đổi từ "Voucher" sang "Checkout", vì trang đang nói mã này chưa là voucher.</li>
+      <li><b>Bản in B1 giữ nguyên</b>, không đụng.</li>
+    </ul>
+  </section>
+
+  <section aria-labelledby="r-h">
+    <h2 id="r-h">Khuyến nghị: A</h2>
+    <div class="callout">
+      <p><b>Lý do chính:</b> khách vừa trả xong thấy voucher ở chính trang này. Với A, màn chờ và voucher là một tài liệu: khi tiền về chỉ đổi màu cột phải và mộc. Với B, khách thấy hai bố cục khác nhau trong vài giây.</p>
+      <p><b>Lý do thực tế:</b> A dựng lại phần lớn từ linh kiện voucher đã có test (lưới ô có icon, Trip journal, ô mã), nên ít mã mới hơn B khi chỉ còn hai ngày tới freeze. Dải ba cột và bảng Summary của B là quy ước của giấy, lên điện thoại thành một trang dài.</p>
+      <p><b>Chưa chắc:</b> mảng xám ở cột phải là lựa chọn của tôi để khác mảng teal. Nếu bạn thấy nó nhạt, có thể dùng mảng tối trung tính.</p>
+    </div>
+  </section>
+</main>
+
+<script>
+  // Thu bản vẽ cố định bề rộng cho vừa khung chứa (zoom giữ tỉ lệ cả chiều cao).
+  (function () {
+    function fit() {
+      document.querySelectorAll('.fit > .d').forEach(function (d) {
+        var base = d.classList.contains('p390') ? 390 : 1280;
+        var w = d.parentElement.clientWidth;
+        if (w > 0) d.style.zoom = String(Math.min(1, w / base));
+      });
+    }
+    // Thẻ tab: một nhóm mỗi phương án, bấm tab nào thì hiện bảng của tab ấy.
+    document.querySelectorAll('[role="tablist"]').forEach(function (list) {
+      var tabs = Array.prototype.slice.call(list.querySelectorAll('[role="tab"]'));
+      tabs.forEach(function (tab, idx) {
+        tab.addEventListener('click', function () { select(idx); });
+        tab.addEventListener('keydown', function (e) {
+          if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
+            var next = (idx + (e.key === 'ArrowRight' ? 1 : tabs.length - 1)) % tabs.length;
+            select(next); tabs[next].focus();
+          }
+        });
+      });
+      function select(i) {
+        tabs.forEach(function (t, j) {
+          t.setAttribute('aria-selected', String(i === j));
+          t.tabIndex = i === j ? 0 : -1;
+          document.getElementById(t.getAttribute('aria-controls')).hidden = i !== j;
+        });
+        fit();
+      }
+      select(0);
+    });
+    window.addEventListener('resize', fit);
+    if (window.ResizeObserver) {
+      var ro = new ResizeObserver(fit);
+      document.querySelectorAll('.fit').forEach(function (f) { ro.observe(f); });
+    }
+    fit();
+  })();
+</script>

@@ -49,6 +49,16 @@ báo cáo là minh hoạ.
 | `print-report.src.html` | Báo cáo tháng in `/reports`: C1 (sổ sách), C2 (dashboard, thác nước) | 10/10 · **C2** · spec §5 |
 | `excel-report-d1.xlsx` | Excel báo cáo tháng D1 — mở bằng Excel; sheet Detail là 71 đơn thật tạo trong tháng 9 | 10/10 · spec §6 |
 
+## Màn hoá đơn chờ (G42) — đang thi công
+
+Duyệt qua Artifact ngày 13/10: hai hướng A (voucher chờ, bốn tab) và B (bản in B1 lên màn hình, hai
+tab); user chọn **A**. Rộng 1280px tự thu cho vừa khung, thêm một bản 390px. Ảnh là ảnh mẫu của repo
+(`apps/web/public/mock/hoian.jpg`), không cần mạng ngoài font.
+
+| File | Trang | Chốt |
+| --- | --- | --- |
+| `pending-receipt.src.html` | `/checkout/cancel` và `/checkout/success` khi đơn chưa trả: thẻ chia đôi như voucher, cột phải mảng xám, nút Pay now | 13/10 · **A** · [spec](../../specs/2026-10-13-g42-pending-receipt-design.md) |
+
 ## Đã dựng xong — bản ghi thiết kế web và admin
 
 Cột cuối trả lời câu "xoá file này thì mất gì".
