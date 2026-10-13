@@ -8,6 +8,45 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-10-13 — Merge G46 chữ đỏ theme tối và G48 timer của auth-client.spec (`77e9e44`..`c75dee9`)
+
+Làm tiếp open-items của web theo yêu cầu của user 13/10 (đóng càng nhiều càng tốt trước freeze 15/10).
+Nhánh `fix/web-open-items-3`, [PR #10](https://github.com/yurivolkov21/Tourism-Platform-V2/pull/10),
+thi công trên session cloud. Không migration, không env, không dependency mới, không đổi API hay
+contract. Thư viện dùng chung bị sửa: `@tourism/tokens` (giá trị tối của `destructive-emphasis`).
+
+- G48 `77e9e44`: `apps/web/src/lib/auth-client.spec.tsx` thêm `afterAll` đợi thật 1100ms để timer
+  1000ms của nanostores (cleanup của better-auth, đụng `window`) nổ trước khi Vitest tháo jsdom; cùng
+  cách vá `otp-form.spec` ở `adaedf3`. Tái hiện bằng cách xếp spec ấy trước một file giả lập lúc
+  `window` đã mất: chưa vá thì `ReferenceError: window is not defined` và thoát 1, có vá thì 3/3 lượt
+  xanh.
+- G46 ADR trước code: [ADR-0019](adr/0019-color-token-roles.md) AMEND 2 `3a8e7f5`, token và test
+  `c75dee9`. `destructive-emphasis` tối từ `oklch(0.72 0.148 26.7)` lên `oklch(0.77 0.13 26.7)`
+  (≈ #FC9287); sáng giữ nguyên. Soát chỗ dùng không thấy câu lỗi nào đặt thẳng trên `bg-muted`, nhưng
+  thấy chữ của nút và huy hiệu biến thể `destructive` ở `@tourism/ui` (lớp tô `dark:bg-destructive/20`)
+  chỉ 4.21:1, lúc hover 3.82:1 — gồm nút xoá tour, xoá bài viết, từ chối review, bỏ thay đổi ở admin và
+  xoá tài khoản ở web. Giá trị mới: nền 6.75, card 5.99, muted 4.77, nút 5.09, hover 4.62.
+  `tokens.spec.ts` thêm `destructive-emphasis` vào phép thử 4.5:1 trên nền, card, muted và thêm phép
+  thử nút đỏ (trộn alpha 20% và 30% trong sRGB); hai test này đỏ với giá trị cũ. Mobile đọc cùng token
+  nên chữ đỏ theme tối của app đổi theo khi build lại.
+
+**Đo.** Bảng màu trước và sau dựng từ `generated/tokens.css` thật (Chromium headless của session
+cloud): `reports/2026-10-13-g46/g46-truoc-sau.png` trong thư mục dự án.
+
+**Review.** Không có lượt review độc lập. User xem bảng màu và bảo merge (13/10 09:54 UTC). Phát hiện
+kèm: nút `destructive` lúc hover ở theme sáng chỉ 4.40 trên card và 4.19 trên nền, ghi thành G49.
+
+**Đóng CÒN TREO của entry G42 ngay dưới:** user thử tay production 13/10 09:27 UTC (đơn BK-NYMOTOYZ,
+huỷ ở trang Stripe về `/checkout/cancel`): thẻ chờ và Pay now đúng như mong đợi.
+
+Tests after (`gate:int` trên `c75dee9`, 13/10 xong 09:44 UTC, session cloud theo các bước của CI):
+unit 7247 — web 2269, admin 2083, api 1118, mobile 771, contract 701, mobile-ui 136, i18n 48, core
+48, ui 47, tokens 26 — và int 825. So với main `2ef92ef`: tokens thêm 2 ca.
+
+**CÒN TREO:**
+
+- Dọn sau merge: nhánh `fix/web-open-items-3` trên origin nếu GitHub không tự xoá.
+
 ## 2026-10-13 — Merge G42 màn hoá đơn chờ cho đơn chưa trả, phương án A (`2e84458`..`18e5ebd`)
 
 User giao 13/10 07:16 UTC: làm G42 trước freeze 15/10 nếu kịp; chọn phương án A "Voucher chờ" trên
