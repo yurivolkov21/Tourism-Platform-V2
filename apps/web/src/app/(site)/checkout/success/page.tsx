@@ -1,6 +1,7 @@
 import { BookingCodeSchema } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
 import { ButtonLink } from '@tourism/ui/components/button-link';
+import { cn } from '@tourism/ui/lib/utils';
 import type { Metadata } from 'next';
 import { cookies } from 'next/headers';
 import { BookingReceipt } from '@/components/checkout/booking-receipt';
@@ -18,6 +19,7 @@ import { tourMeetingPoint } from '@/lib/get-ready';
 import { receiptPrintView } from '@/lib/print/receipt-print';
 import { voucherPrintView } from '@/lib/print/voucher-print';
 import { voucherTourData, voucherView } from '@/lib/voucher';
+import { VOUCHER_PAGE_GUTTER } from '@/lib/voucher-layout';
 
 export const metadata: Metadata = {
   // "Voucher" chứ không "Booking confirmed": trang này mở lại được bất cứ lúc nào, kể cả với
@@ -136,9 +138,9 @@ export default async function CheckoutSuccessPage({
           title={booking.tourTitle}
           action={<PrintButton />}
         />
-        {/* Lề ngang CHÉP của hero (`px-4 md:px-16 lg:px-24 xl:px-32`, khung `max-w-7xl` trong
-            thẻ) để mép thẻ thẳng hàng tiêu đề. */}
-        <div className="px-4 py-10 md:px-16 md:py-14 lg:px-24 xl:px-32">
+        {/* Lề ngang CHÉP của hero (khung `max-w-7xl` trong thẻ) để mép thẻ thẳng hàng tiêu đề.
+            Hằng sống cạnh `sizes` của ảnh bìa vì `sizes` trừ đúng lề này (G35). */}
+        <div className={cn(VOUCHER_PAGE_GUTTER, 'py-10 md:py-14')}>
           <VoucherCard booking={booking} view={view} meetingPoint={tourMeetingPoint(tour)} />
         </div>
       </div>

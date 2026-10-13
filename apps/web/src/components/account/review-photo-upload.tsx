@@ -272,7 +272,9 @@ export function ReviewPhotoUpload({
           <div className="mx-auto mb-3 flex size-8 items-center justify-center rounded-full border border-border">
             <CloudUploadIcon className="size-4" />
           </div>
-          <h3 className="mb-0.5 text-sm font-medium text-foreground">{t.dropTitle}</h3>
+          {/* Câu hướng dẫn, không phải tiêu đề: `h3` ở đây chen một mục giả vào cây tiêu đề của
+              trang chi tiết đơn (G35). */}
+          <p className="mb-0.5 text-sm font-medium text-foreground">{t.dropTitle}</p>
           <span className="mb-3 block text-xs text-muted-foreground">
             {t.dropHint(formatBytes(MAX_PHOTO_BYTES))}
           </span>

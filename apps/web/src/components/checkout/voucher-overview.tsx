@@ -16,6 +16,7 @@ import { VisaStamp } from '@/components/passport/visa-stamp';
 import { SlotImage } from '@/components/slot-image';
 import { formatBookingMoney } from '@/lib/checkout';
 import type { VoucherView } from '@/lib/voucher';
+import { VOUCHER_PHOTO_SIZES } from '@/lib/voucher-layout';
 
 /**
  * Cột trái của voucher (spec P7 §6.2, cách "A" của bản vẽ `booking-voucher.src.html`): mộc
@@ -77,17 +78,14 @@ export function VoucherOverview({
         data-slot="voucher-photo"
         className="relative mt-6 flex min-h-56 flex-col justify-end overflow-hidden rounded-3xl bg-muted md:min-h-72"
       >
-        {/* `sizes` theo đúng bề rộng ô ảnh (review P7C#12) = màn − lề ngang của trang
-            `/checkout/success` (2×16 · 2×64 từ md · 2×96 từ lg · 2×128 từ xl) − viền thẻ (2) − đệm
-            ngang cột này (2×24 · 2×40 từ md); từ `xl` trừ thêm mảng teal 440px, thẻ chặn ở
-            `max-w-7xl` nên từ 1536px ô ảnh đứng yên 758px. Mốc 1280px là `xl` — mốc chia đôi của
-            thẻ (`sizes` không đọc được biến thể CSS). Không `priority`: ở điện thoại ảnh nằm dưới
-            mép gập (dưới hero, tiêu đề, ô mã), nạp sớm chỉ giành băng thông của thứ khách thấy
-            trước. */}
+        {/* `sizes` theo đúng bề rộng ô ảnh (review P7C#12), dựng từ lề trang và đệm thẻ ở
+            `lib/voucher-layout.ts` (G35) — đổi đệm ngang cột này thì sửa bảng số ở đó. Không
+            `priority`: ở điện thoại ảnh nằm dưới mép gập (dưới hero, tiêu đề, ô mã), nạp sớm chỉ
+            giành băng thông của thứ khách thấy trước. */}
         <SlotImage
           image={booking.tourImage}
           className="absolute inset-0"
-          sizes="(min-width: 1536px) 758px, (min-width: 1280px) calc(100vw - 778px), (min-width: 1024px) calc(100vw - 274px), (min-width: 768px) calc(100vw - 210px), calc(100vw - 82px)"
+          sizes={VOUCHER_PHOTO_SIZES}
         />
         {/* Lớp tối GẮN VÀO khối chữ (khuôn caption của `journey-moments.tsx`, `home/gallery.tsx`)
             thay vì phủ cố định theo chiều cao ảnh: tiêu đề xuống dòng hay chip rớt hàng thì lớp

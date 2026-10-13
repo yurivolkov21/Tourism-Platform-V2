@@ -1,4 +1,4 @@
-import { type BookingDetail, type BookingPhase, calendarDaysBetween } from '@tourism/contract';
+import { type BookingDetail, type BookingPhase, tripLengthDays } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
 import { cn } from '@tourism/ui/lib/utils';
 import { BusIcon } from 'lucide-react';
@@ -40,7 +40,7 @@ import { calendarDateParts, formatDate } from '@/lib/tours';
 export function BookingTicket({ booking, phase }: { booking: BookingDetail; phase: BookingPhase }) {
   const t = messages.bookingDetail;
   const photo = booking.tourImage;
-  const days = calendarDaysBetween(booking.departureStartDate, booking.departureEndDate) + 1;
+  const days = tripLengthDays(booking.departureStartDate, booking.departureEndDate);
   const place = booking.tourDestinations[0]?.name;
   const route = place ? `${t.ticket.days(days)} · ${place}` : t.ticket.days(days);
   const pass = bookingPass(booking, phase);

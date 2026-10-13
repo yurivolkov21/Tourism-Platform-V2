@@ -1,5 +1,6 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { messages } from '@tourism/i18n';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ReviewComposer } from './review-composer';
 
@@ -119,5 +120,15 @@ describe('ReviewComposer — cầu nối state ảnh → form', () => {
     await waitFor(() =>
       expect(screen.getByRole('button', { name: /submit review/i })).not.toBeDisabled(),
     );
+  });
+});
+
+describe('ReviewComposer — ô thả ảnh', () => {
+  it('câu hướng dẫn thả ảnh KHÔNG là tiêu đề (G35)', () => {
+    // Composer nằm trong trang chi tiết đơn: một `h3` ở đây là mục giả trong cây tiêu đề trang.
+    render(<ReviewComposer bookingCode={CODE} />);
+    const hint = screen.getByText(messages.reviews.photos.dropTitle);
+    expect(hint.tagName).toBe('P');
+    expect(screen.queryByRole('heading', { name: messages.reviews.photos.dropTitle })).toBeNull();
   });
 });
