@@ -182,7 +182,30 @@ Runbook: [`mobile-dev-loop.md` §7](../conventions/mobile-dev-loop.md). Dự án
 `app.json`; dòng `android.permissions` mà lệnh này tự chép vào được bỏ, vì plugin
 `expo-image-picker` vẫn tự thêm quyền đó lúc build).
 
-**Google Cloud.** Client iOS tạo 13/10 cùng dự án với client web đang chạy (số dự án là phần
-trước dấu `-` của client ID). Client Android chờ SHA-1 từ EAS. Trang OAuth của dự án ở trạng thái
-Testing nên chỉ Test users đăng nhập Google được, kể cả trên web production; user đang điền
-Branding để Publish.
+**Google Cloud.** Client iOS và client Android (SHA-1 của khoá ký EAS) tạo 13/10, cùng dự án với
+client web đang chạy (số dự án là phần trước dấu `-` của client ID). Trang OAuth được Publish
+13/10 ("In production"); trước đó, ở trạng thái Testing, chỉ Test users đăng nhập Google được,
+kể cả trên web production.
+
+**Thử trên máy thật 13/10** (APK `preview`, API production chưa có nhánh này): Google vào đúng tài
+khoản email có sẵn; đóng bảng chọn, đăng xuất rồi chọn lại, bấm tim rồi đăng nhập đều đúng spec
+§5.3. Tài khoản có sẵn không nhận ảnh Google là đúng thiết kế: Better Auth không chép tên và ảnh khi
+liên kết (`overrideUserInfoOnSignIn` và `updateUserInfoOnLink` đều tắt). Tài khoản MỚI chỉ thử được
+sau khi API merge, vì cần bản vá ảnh ở trên.
+
+**Vòng review trước merge (13/10)** đổi ba điểm so với §1–§3:
+
+- Khoá thứ hai của §3 nới từ "bắt đầu bằng `nexora://`" thành **mọi URL tuyệt đối có scheme khác
+  http/https**, parse bằng `new URL` giống after-hook của plugin. Plugin tự tin `exp://` ở
+  development và gắn cookie cho bất kỳ deep link tin cậy nào, nên khoá theo tên scheme của app là
+  hở; parse như plugin thì biến thể hoa thường, tab hay ký tự điều khiển cũng không lách được.
+- App gọi `signOut` của SDK trước mỗi lần mở bảng chọn: Android tự vào lại tài khoản đã chọn mà
+  không hỏi, kể cả khi lần trước API từ chối token hay app vừa mở lại. Đăng xuất khỏi app cũng
+  cấu hình SDK trước khi `signOut`, vì sau khi mở lại app SDK chưa cấu hình và Android từ chối lệnh.
+- Bản iOS thiếu client iOS thì ẩn nút (không có `GoogleService-Info.plist`, SDK iOS không cấu hình
+  được); máy không có Google Play Services báo "not available" thay vì lỗi chung.
+
+Giữ nguyên sau review: `GOOGLE_IOS_CLIENT_ID` trong audience của API, vì ID token cấp cho app iOS
+mang audience là client iOS (suy từ tài liệu Google, chưa đo được khi chưa có bản iOS; thừa thì vô
+hại); ảnh Google chỉ nhận host `lh3.googleusercontent.com`, nới host phải sửa cả `img-src` của CSP
+web và admin.

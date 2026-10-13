@@ -37,7 +37,7 @@ thì không** — máy chưa từng build sẽ thấy Metro báo thiếu module 
 | `EXPO_PUBLIC_API_URL` | origin API oRPC, **không** kèm `/api` |
 | `EXPO_PUBLIC_WEB_URL` | gốc web — checkout hosted và trang pháp lý mở bằng trình duyệt |
 | `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID` | tuỳ chọn — client web của Google; thiếu thì nút Google ẩn (§7) |
-| `EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID` | tuỳ chọn — client iOS của Google, chỉ bản iOS cần |
+| `EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID` | tuỳ chọn — client iOS của Google, chỉ bản iOS cần; bản iOS thiếu nó thì nút Google ẩn |
 
 Mọi biến `EXPO_PUBLIC_*` **nằm trong bundle JS và đọc được bằng tay**. Mobile
 là client công khai, cùng hạng browser: không secret nào ở đây, kể cả
@@ -197,7 +197,8 @@ mỗi lần loại một gói khỏi tầm mắt của nó là bớt đi một l
 Nút Google dùng SDK gốc `@react-native-google-signin/google-signin`, một native
 module mà **Expo Go không nạp được**. Vì vậy trong Expo Go nút Google ẩn hẳn
 (`canUseGoogleSignIn()` thấy `executionEnvironment` là `storeClient`), email và
-mật khẩu vẫn chạy. Thử Google phải cài một trong hai bản build của EAS:
+mật khẩu vẫn chạy. Mỗi lần bấm, app dọn phiên Google cũ rồi mới mở bảng chọn, nên
+lần nào cũng được chọn tài khoản. Thử Google phải cài một trong hai bản build của EAS:
 
 | Profile | Là gì | Env đọc từ đâu |
 | --- | --- | --- |

@@ -256,9 +256,12 @@ nếu còn — file này bị xoá sau khi merge). Không chặn merge, ghi lạ
    đã dùng `dismissTo`, nhưng nhánh đăng nhập/đăng ký thành công vẫn `replace`.
 4. **Đăng nhập Google trên mobile sau ADR-0056** — proxy `expo-authorization-proxy` đóng ở
    mọi môi trường và server không còn luồng redirect nào đổ cookie phiên về deep link
-   `nexora:` (ADR-0017 §11 đã được thay). Còn lại: SDK miễn phí dùng Google Sign-In cũ trên
-   Android (deprecated), chuyển sang Credential Manager sau v1; iOS chưa có Google tới khi có
-   tài khoản Apple Developer (thêm `GOOGLE_IOS_CLIENT_ID` vào env API lúc đó).
+   (`nexora:`, `exp:` hay scheme nào khác ngoài http/https; ADR-0017 §11 đã được thay). Còn
+   lại: SDK miễn phí dùng Google Sign-In cũ trên Android (deprecated), chuyển sang Credential
+   Manager sau v1; iOS chưa có Google tới khi có tài khoản Apple Developer (thêm
+   `GOOGLE_IOS_CLIENT_ID` vào env API lúc đó). Ảnh Google lúc tạo tài khoản chỉ nhận host
+   `lh3.googleusercontent.com`; ảnh ở host khác bị bỏ và tài khoản hiện chữ cái đầu. Nới host
+   phải sửa cả `img-src` của CSP web và admin.
 5. **N7–N10 mức thấp còn mở** — bảng ở mục 7 của tóm tắt nhánh: bấm đúp nút chọn
    ảnh, lỗi form đổi mật khẩu không tự xoá, Saved đếm "100 tours" trước khi tải đủ
    trang, ba chỗ a11y.
