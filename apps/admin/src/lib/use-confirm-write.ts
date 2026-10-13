@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { isUncertainOutcome, type TransportFailureCode } from '@/lib/api/write-error';
 
@@ -20,7 +20,8 @@ import { isUncertainOutcome, type TransportFailureCode } from '@/lib/api/write-e
  * - BA lối ra: thành công → đóng + toast.success + `onSettled`; mã
  *   TRẠNG-THÁI-CŨ (`isStale`, vùng khai) hoặc KHÔNG RÕ (GENERIC) → đóng +
  *   toast.error + `onSettled` (nhìn dữ liệu tươi trước khi thử lại — bấm-lại
- *   mù là công thức ghi đúp); còn lại → `failure` ở lại cho dialog hiện.
+ *   mù là công thức ghi đúp); còn lại → `failure` ở lại cho dialog hiện, và
+ *   focus lạc về `<body>` lúc chờ được trả về phần tử đã giữ nó lúc bắn.
  */
 
 export type ConfirmWriteOutcome<Code extends string> =
@@ -37,6 +38,27 @@ export function useConfirmWrite<Code extends string>(options: {
 }) {
   const [failure, setFailure] = useState<Code | TransportFailureCode | null>(null);
   const [pending, setPending] = useState(false);
+  /**
+   * Phần tử giữ focus lúc bắn lệnh — nút gửi, hay ô vừa nhấn Enter. Ô nhập khoá bằng `disabled`
+   * suốt lúc chờ, và Chromium đẩy focus của một phần tử vừa bị khoá về `<body>` (đo 13/10 ở hộp sửa
+   * chuyến: 23ms sau cú gửi). Lệnh hỏng mà hộp Ở LẠI thì người dùng bàn phím mất chỗ đứng giữa một
+   * hộp đang mở, nên khi hộp mở khoá, focus về lại đúng chỗ ấy.
+   */
+  const focusAtRun = useRef<HTMLElement | null>(null);
+  /** Chỉ nhánh ở-lại đặt cờ này: các nhánh khác đóng hộp và Base UI tự trả focus về nút mở. */
+  const restoreFocus = useRef(false);
+
+  // Chạy theo `failure` chứ không chỉ `pending`: lệnh hỏng ngay (chưa kịp vẽ lượt `pending`) thì
+  // `pending` không đổi giữa hai lượt vẽ, còn `failure` thì luôn đổi từ `null` sang một mã.
+  useEffect(() => {
+    if (pending || failure === null || !restoreFocus.current) return;
+    restoreFocus.current = false;
+    const target = focusAtRun.current;
+    focusAtRun.current = null;
+    // Chỉ trả khi focus đang lạc: người ta đã tự bấm sang chỗ khác thì để yên.
+    const lost = document.activeElement === null || document.activeElement === document.body;
+    if (lost && target?.isConnected) target.focus();
+  }, [pending, failure]);
 
   function onOpenChange(next: boolean) {
     if (pending) return;
@@ -46,6 +68,8 @@ export function useConfirmWrite<Code extends string>(options: {
   /** Bắn một lệnh. `command` ném ⇒ coi như GENERIC (không biết đã tới đâu). */
   async function run(command: () => Promise<ConfirmWriteOutcome<Code>>) {
     if (pending) return;
+    focusAtRun.current =
+      document.activeElement instanceof HTMLElement ? document.activeElement : null;
     setPending(true);
     setFailure(null);
     // Khởi tạo GENERIC để TS khỏi chứng minh tương quan giữa các nhánh —
@@ -76,6 +100,7 @@ export function useConfirmWrite<Code extends string>(options: {
       options.onSettled();
       return;
     }
+    restoreFocus.current = true;
     setFailure(failureCode);
   }
 

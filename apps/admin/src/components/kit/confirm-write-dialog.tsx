@@ -278,16 +278,25 @@ export function ConfirmWriteDialog<Code extends string>(props: ConfirmWriteDialo
           </p>
         ) : null}
 
+        {/* Khoá lúc chờ bằng `aria-disabled` (`focusableWhenDisabled`): nút `disabled` thật làm
+            Chromium đẩy focus về <body> ngay giữa hộp đang mở (đo 13/10). */}
         <DialogFooter>
           <Button
             type="button"
             variant="ghost"
             disabled={pending}
+            focusableWhenDisabled
             onClick={() => onOpenChange(false)}
           >
             {copy.cancel}
           </Button>
-          <Button type="button" variant={submitVariant} disabled={pending} onClick={submit}>
+          <Button
+            type="button"
+            variant={submitVariant}
+            disabled={pending}
+            focusableWhenDisabled
+            onClick={submit}
+          >
             {pending ? copy.submitting : copy.submit}
           </Button>
         </DialogFooter>

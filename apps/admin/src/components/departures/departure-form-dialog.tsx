@@ -243,16 +243,19 @@ export function DepartureFormDialog<Code extends string>({
             </p>
           ) : null}
 
+          {/* Khoá lúc chờ bằng `aria-disabled` (`focusableWhenDisabled`): nút `disabled` thật làm
+              Chromium đẩy focus về <body> ngay giữa hộp đang mở (đo 13/10). */}
           <DialogFooter>
             <Button
               type="button"
               variant="ghost"
               disabled={pending}
+              focusableWhenDisabled
               onClick={() => onOpenChange(false)}
             >
               {t.form.cancel}
             </Button>
-            <Button type="submit" disabled={pending}>
+            <Button type="submit" disabled={pending} focusableWhenDisabled>
               {pending ? copy.submitting : copy.submit}
             </Button>
           </DialogFooter>

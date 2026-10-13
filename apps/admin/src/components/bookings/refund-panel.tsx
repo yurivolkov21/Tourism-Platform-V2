@@ -343,11 +343,14 @@ function RefundDialog({
 
             <p className="text-sm text-destructive-emphasis">{t.confirm.warning}</p>
 
+            {/* Khoá lúc chờ bằng `aria-disabled` (`focusableWhenDisabled`): nút `disabled` thật làm
+                Chromium đẩy focus về <body> ngay giữa hộp đang mở (đo 13/10). */}
             <DialogFooter>
               <Button
                 type="button"
                 variant="ghost"
                 disabled={pending}
+                focusableWhenDisabled
                 onClick={() => {
                   clearFailure();
                   setStep('form');
@@ -355,7 +358,7 @@ function RefundDialog({
               >
                 {t.confirm.back}
               </Button>
-              <Button type="button" disabled={pending} onClick={submit}>
+              <Button type="button" disabled={pending} focusableWhenDisabled onClick={submit}>
                 {pending ? t.confirm.submitting : t.confirm.submit}
               </Button>
             </DialogFooter>

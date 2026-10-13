@@ -216,3 +216,36 @@ describe('DepartureFormDialog — bàn phím và trợ năng (F12 vòng hai)', (
     expect(document.getElementById(id as string)?.textContent).toBe(t.form.datesLocked(4));
   });
 });
+
+describe('DepartureFormDialog — focus khi lệnh hỏng', () => {
+  it('nhấn Enter trong ô số ghế, lệnh hỏng mà hộp ở lại: focus về lại đúng ô ấy', async () => {
+    // Bốn ô khoá bằng `disabled` suốt lúc chờ, nên trên Chromium focus của ô vừa nhấn Enter rơi
+    // về <body>; lệnh ở đây tự `blur()` để giả lập cú đẩy ấy (jsdom không làm).
+    const user = userEvent.setup();
+    renderDialog({
+      isStale: () => false,
+      onSubmit: vi.fn(async () => {
+        (document.activeElement as HTMLElement | null)?.blur();
+        return { ok: false as const, code: 'NOT_FOUND' as const };
+      }),
+    });
+    const seats = screen.getByLabelText(t.form.seats);
+    await user.clear(seats);
+    await user.type(seats, '20{Enter}');
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(t.edit.errors.NOT_FOUND);
+    await waitFor(() => expect(seats).toHaveFocus());
+  });
+
+  it('đang lưu: Save và Cancel khoá bằng aria-disabled, không phải disabled thật', async () => {
+    const user = userEvent.setup();
+    renderDialog({ onSubmit: vi.fn(() => new Promise<never>(() => {})) });
+    await user.click(screen.getByRole('button', { name: COPY.submit }));
+
+    for (const name of [COPY.submitting, t.form.cancel]) {
+      const button = screen.getByRole('button', { name });
+      expect(button).toHaveAttribute('aria-disabled', 'true');
+      expect(button).not.toHaveAttribute('disabled');
+    }
+  });
+});

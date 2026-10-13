@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { messages } from '@tourism/i18n';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -302,5 +302,58 @@ describe('ConfirmWriteDialog — giọng của câu cảnh báo', () => {
     );
 
     expect(await screen.findByText(COPY.warning)).toHaveAttribute('data-tone', 'neutral');
+  });
+});
+
+/**
+ * Focus lúc chờ và khi lệnh hỏng. Đo 13/10 trên Chromium: bấm Save ở hộp sửa chuyến, 23ms sau
+ * focus nằm ở <body> dù hộp còn mở, vì Chromium đẩy focus của phần tử vừa bị `disabled` về <body>.
+ * jsdom không làm vậy, nên ở đây (1) cặp thuộc tính `aria-disabled`/`disabled` là thứ phân biệt nút
+ * khoá kiểu mới với kiểu cũ, và (2) lệnh tự `blur()` để giả lập cú đẩy ấy.
+ */
+describe('ConfirmWriteDialog — focus lúc chờ và khi lệnh hỏng', () => {
+  it('đang bắn: hai nút khoá bằng aria-disabled, focus ở lại nút gửi, bấm Cancel không đóng', async () => {
+    const user = userEvent.setup();
+    renderDialog(vi.fn().mockImplementation(() => new Promise(() => {})));
+    await user.click(await screen.findByRole('button', { name: COPY.submit }));
+
+    const busy = screen.getByRole('button', { name: COPY.submitting });
+    expect(busy).toHaveAttribute('aria-disabled', 'true');
+    expect(busy).not.toHaveAttribute('disabled');
+    expect(busy).toHaveFocus();
+    const cancel = screen.getByRole('button', { name: COPY.cancel });
+    expect(cancel).toHaveAttribute('aria-disabled', 'true');
+    expect(cancel).not.toHaveAttribute('disabled');
+    await user.click(cancel);
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it('lệnh hỏng mà hộp ở lại: focus lạc về <body> lúc chờ quay về nút gửi', async () => {
+    const user = userEvent.setup();
+    renderDialog(
+      vi.fn().mockImplementation(async () => {
+        // Giả lập Chromium: phần tử đang giữ focus bị khoá thì focus về <body>.
+        (document.activeElement as HTMLElement | null)?.blur();
+        return { ok: false, code: 'RETRYABLE' };
+      }),
+    );
+    await user.click(await screen.findByRole('button', { name: COPY.submit }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(ERROR_COPY.RETRYABLE);
+    await waitFor(() => expect(screen.getByRole('button', { name: COPY.submit })).toHaveFocus());
+  });
+
+  it('lúc chờ người ta đã tự sang ô ghi chú: lệnh hỏng không giật focus về nút gửi', async () => {
+    const user = userEvent.setup();
+    renderDialog(
+      vi.fn().mockImplementation(async () => {
+        screen.getByLabelText(COPY.noteLabel).focus();
+        return { ok: false, code: 'RETRYABLE' };
+      }),
+    );
+    await user.click(await screen.findByRole('button', { name: COPY.submit }));
+
+    expect(await screen.findByRole('alert')).toBeInTheDocument();
+    expect(screen.getByLabelText(COPY.noteLabel)).toHaveFocus();
   });
 });

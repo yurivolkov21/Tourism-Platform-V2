@@ -244,16 +244,25 @@ export function RejectReviewDialog({
           </div>
         </div>
 
+        {/* Khoá lúc chờ bằng `aria-disabled` (`focusableWhenDisabled`): nút `disabled` thật làm
+            Chromium đẩy focus về <body> ngay giữa hộp đang mở (đo 13/10). */}
         <DialogFooter>
           <Button
             type="button"
             variant="ghost"
             disabled={pending}
+            focusableWhenDisabled
             onClick={() => onOpenChange(false)}
           >
             {t.cancel}
           </Button>
-          <Button type="button" variant="destructive" disabled={pending} onClick={submit}>
+          <Button
+            type="button"
+            variant="destructive"
+            disabled={pending}
+            focusableWhenDisabled
+            onClick={submit}
+          >
             {pending ? t.rejectDialog.submitting : t.rejectDialog.submit}
           </Button>
         </DialogFooter>
