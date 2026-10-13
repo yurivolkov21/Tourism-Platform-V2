@@ -4,8 +4,10 @@ import {
   bookingsBackHref,
   bookingsExportHref,
   bookingsHref,
+  bookingsSearchHref,
   parseBookingsSearchParams,
 } from './bookings-query';
+import { rawSearchParamsFrom } from './table-query';
 
 /**
  * Trạng thái danh sách bookings nằm TRÊN URL (spec P4b §2.2): searchParams là
@@ -560,3 +562,18 @@ function searchParamsOf(href: string): Record<string, string> {
   const query = href.includes('?') ? href.slice(href.indexOf('?') + 1) : '';
   return Object.fromEntries(new URLSearchParams(query));
 }
+
+describe('bookingsSearchHref (P4f, quyết định 7)', () => {
+  it('lọc theo một chuỗi, MỌI ngày — và parse lại ra đúng bộ lọc ấy', () => {
+    const href = bookingsSearchHref('ada@example.com');
+    expect(href).toBe('/bookings?q=ada%40example.com&dates=all');
+
+    const url = new URL(href, 'https://admin.example.com');
+    const query = parseBookingsSearchParams(
+      rawSearchParamsFrom(url.searchParams),
+      new Date('2026-10-02T00:00:00.000Z'),
+    );
+    expect(query).toMatchObject({ search: 'ada@example.com', allDates: true });
+    expect(query).not.toHaveProperty('from');
+  });
+});

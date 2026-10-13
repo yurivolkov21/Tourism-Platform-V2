@@ -285,3 +285,14 @@ export function bookingsExportHref(query: BookingsQuery, selected?: readonly str
   }
   return tableHref('/bookings/export', params);
 }
+
+/**
+ * Link sang `/bookings` lọc theo MỘT chuỗi tìm, MỌI ngày (P4f, quyết định 7) — dùng ở trang
+ * chi tiết người dùng. URL trần của bảng tự lọc tháng hiện tại (`resolveDates`), nên thiếu
+ * `dates=all` là giấu mọi booking cũ của người đang xem.
+ */
+export function bookingsSearchHref(search: string): string {
+  const params = new URLSearchParams();
+  appendFilters(params, { search: clampSearch(search, SEARCH_MAX_LENGTH), allDates: true });
+  return tableHref('/bookings', params);
+}

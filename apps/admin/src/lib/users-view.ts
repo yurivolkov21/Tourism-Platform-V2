@@ -1,6 +1,14 @@
-import type { AdminUserRow, UserRoleValue, UserStatusValue } from '@tourism/contract';
+import {
+  type AdminUserDetail,
+  type AdminUserRow,
+  type UserAction,
+  type UserRoleValue,
+  type UserStatusValue,
+  userActions,
+} from '@tourism/contract';
 import { messages } from '@tourism/i18n';
-import { formatCalendarDate } from './bookings-view';
+import { bookingsSearchHref } from './bookings-query';
+import { formatCalendarDate, formatDateTime } from './bookings-view';
 import { roleLabel } from './role-label';
 import { userDetailHref } from './users-query';
 
@@ -87,5 +95,110 @@ export function toUserRowVM(row: AdminUserRow, listHref: string): UserRowVM {
     statusLabel: userStatusLabel(row.status),
     joined: formatDay(row.createdAt),
     lastActive: formatDay(row.lastActiveAt),
+  };
+}
+
+export interface UserHistoryVM {
+  id: string;
+  /** "Owner Olive locked the account". */
+  line: string;
+  at: string;
+  /** "Reason: …" — chỉ dòng có ghi chú (LOCKED). */
+  reason: string | null;
+}
+
+export interface UserDetailVM {
+  id: string;
+  name: string;
+  email: string;
+  image: string | null;
+  initial: string;
+  role: UserRoleValue;
+  roleLabel: string;
+  roleVariant: BadgeVariant;
+  status: UserStatusValue;
+  statusLabel: string;
+  statusVariant: BadgeVariant;
+  /** "Joined 1 Sep 2026". */
+  joined: string;
+  isOwner: boolean;
+  /** "Locked since 2 Oct 2026, 03:00 UTC" — null khi không khoá. */
+  lockedSince: string | null;
+  /** "Reason: …" — null khi không khoá hoặc không đọc được lý do. */
+  lockReason: string | null;
+  /** Câu của card Access — null với Owner (card ấy không render). */
+  accessNote: string | null;
+  profile: Array<{ label: string; value: string }>;
+  activity: Array<{ label: string; value: string }>;
+  /** `/bookings?q=<email>&dates=all` — null khi chưa có booking nào. */
+  bookingsHref: string | null;
+  sessions: { count: number; active: string; lastActive: string };
+  history: UserHistoryVM[];
+  /** Thao tác hợp lệ lúc này — CHÍNH hàm API hỏi trong transaction (`userActions`). */
+  actions: UserAction[];
+}
+
+const d = t.detail;
+
+function accessNote(detail: AdminUserDetail, actions: UserAction[]): string | null {
+  if (detail.role === 'ADMIN') return null;
+  if (detail.role === 'STAFF') return d.access.staff;
+  if (actions.includes('grantStaff')) return d.access.customer;
+  return detail.lockedAt ? d.access.needsUnlock : d.access.needsVerified;
+}
+
+export function toUserDetailVM(detail: AdminUserDetail): UserDetailVM {
+  const row = toUserRowVM(detail, '/users');
+  const actions = userActions(detail);
+  return {
+    id: detail.id,
+    name: row.name,
+    email: detail.email,
+    image: detail.image,
+    initial: row.initial,
+    role: detail.role,
+    roleLabel: row.roleLabel,
+    roleVariant: userRoleBadgeVariant(detail.role),
+    status: detail.status,
+    statusLabel: row.statusLabel,
+    statusVariant: userStatusBadgeVariant(detail.status),
+    joined: d.joinedOn(row.joined),
+    isOwner: detail.role === 'ADMIN',
+    lockedSince: detail.lockedAt ? d.lockedSince(formatDateTime(detail.lockedAt)) : null,
+    lockReason: detail.lockedAt && detail.lockReason ? t.history.reason(detail.lockReason) : null,
+    accessNote: accessNote(detail, actions),
+    profile: [
+      { label: d.profile.email, value: detail.email },
+      { label: d.profile.verified, value: detail.emailVerified ? d.profile.yes : d.profile.no },
+      { label: d.profile.phone, value: detail.phone ?? EMPTY },
+      {
+        label: d.profile.signIn,
+        value:
+          detail.signInMethods.length > 0
+            ? detail.signInMethods.map((method) => d.profile.methods[method]).join(', ')
+            : d.profile.noMethod,
+      },
+    ],
+    activity: [
+      { label: d.activity.bookings, value: String(detail.counts.bookings) },
+      { label: d.activity.reviews, value: String(detail.counts.reviews) },
+      { label: d.activity.enquiries, value: String(detail.counts.enquiries) },
+    ],
+    bookingsHref: detail.counts.bookings > 0 ? bookingsSearchHref(detail.email) : null,
+    sessions: {
+      count: detail.sessions.active,
+      active: String(detail.sessions.active),
+      lastActive: formatDay(detail.sessions.lastActiveAt),
+    },
+    history: detail.history.map((event) => ({
+      id: event.id,
+      line: t.history.line(
+        event.actor?.name ?? t.history.removedActor,
+        t.history.actions[event.type],
+      ),
+      at: formatDateTime(event.createdAt),
+      reason: event.note ? t.history.reason(event.note) : null,
+    })),
+    actions,
   };
 }

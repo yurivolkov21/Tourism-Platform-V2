@@ -5684,6 +5684,67 @@ export const messages = {
         },
         viewLabel: (name: string) => `Open ${name}`,
       },
+      detail: {
+        back: 'Back to users',
+        joinedOn: (date: string) => `Joined ${date}`,
+        lockedSince: (at: string) => `Locked since ${at}`,
+        // ADR-0052 §1: quyền Owner chỉ đến từ ADMIN_EMAILS trong env của server.
+        owner: 'Owner access comes from the server configuration and can’t be changed here.',
+        profile: {
+          heading: 'Profile',
+          email: 'Email',
+          verified: 'Email verified',
+          yes: 'Yes',
+          no: 'Not yet',
+          phone: 'Phone',
+          signIn: 'Signs in with',
+          methods: { password: 'Password', google: 'Google' },
+          noMethod: 'No sign-in method',
+        },
+        activity: {
+          heading: 'Activity',
+          bookings: 'Bookings',
+          reviews: 'Reviews',
+          enquiries: 'Enquiries',
+          viewBookings: 'View bookings',
+        },
+        sessions: {
+          heading: 'Sessions',
+          active: 'Active sessions',
+          lastActive: 'Last active',
+        },
+        access: {
+          heading: 'Staff access',
+          // Đo trên ADMIN_ACCESS: 16 thủ tục chỉ Owner = hoàn tiền, huỷ chuyến, xoá tour,
+          // xoá bài, xoá danh mục, xoá điểm đến, báo cáo, sổ thanh toán, vùng Users.
+          customer:
+            'Staff can work on bookings, reviews, enquiries, subscribers, the outbox, tours, departures, categories, destinations and posts. Only the owner can refund, cancel a departure, delete a tour, a post, a category or a destination, or open reports, payment events and users.',
+          staff: 'This account can use the back office as staff.',
+          needsVerified: 'Staff access needs a verified email — this account hasn’t verified yet.',
+          needsUnlock: 'Unlock the account before granting staff access.',
+        },
+        lock: {
+          heading: 'Account lock',
+          // Đo trên code: hook tạo phiên chặn đăng nhập ở cả www lẫn admin; booking, chuyến,
+          // hoàn tiền và email giao dịch không đọc `locked_at`.
+          unlocked:
+            'Locking blocks sign-in on the website and the back office. Bookings, trips, refunds and booking emails carry on as normal.',
+        },
+      },
+      history: {
+        heading: 'History',
+        empty: 'Nothing has been changed on this account yet.',
+        removedActor: 'A removed account',
+        actions: {
+          STAFF_GRANTED: 'granted staff access',
+          STAFF_REVOKED: 'revoked staff access',
+          LOCKED: 'locked the account',
+          UNLOCKED: 'unlocked the account',
+          SESSIONS_REVOKED: 'signed this account out everywhere',
+        },
+        line: (actor: string, action: string) => `${actor} ${action}`,
+        reason: (text: string) => `Reason: ${text}`,
+      },
     },
     /**
      * Vùng outbox (spec P4c §3-F7) — hàng đợi email mà worker drain mỗi phút,
