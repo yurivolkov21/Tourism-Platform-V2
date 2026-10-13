@@ -20,7 +20,7 @@ import {
   replacedRange,
   type TextSelection,
 } from '@/lib/markdown-actions';
-import { SITE_URL } from '@/lib/site';
+import { webUrl } from '@/lib/site';
 
 /**
  * Trình soạn thân bài (spec P4e-4 §4.4, ADR-0051 §1): ô markdown, hàng nút CHÈN cú pháp, tab
@@ -156,7 +156,7 @@ export function MarkdownEditor({
           {value.trim() === '' ? (
             <p className="text-sm text-muted-foreground">{t.previewEmpty}</p>
           ) : (
-            <ArticleMarkdown markdown={value} headingIdPrefix="preview-" linkBase={SITE_URL} />
+            <ArticleMarkdown markdown={value} headingIdPrefix="preview-" linkBase={webUrl()} />
           )}
         </div>
       </TabsContent>

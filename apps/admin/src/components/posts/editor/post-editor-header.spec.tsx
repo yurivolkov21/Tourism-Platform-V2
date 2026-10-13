@@ -1,6 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import { messages } from '@tourism/i18n';
 import { describe, expect, it } from 'vitest';
+import { postPageUrl } from '@/lib/site';
 import { postDetailFixture } from '@/test/post-detail';
 import { PostEditorHeader } from './post-editor-header';
 
@@ -12,10 +13,7 @@ describe('PostEditorHeader', () => {
 
     expect(screen.getByText(messages.admin.posts.status.published)).toBeInTheDocument();
     const view = screen.getByRole('link', { name: t.viewOnSite });
-    expect(view).toHaveAttribute(
-      'href',
-      'https://www.nexora-travel.agency/blog/eating-your-way-through-hoi-an',
-    );
+    expect(view).toHaveAttribute('href', postPageUrl('eating-your-way-through-hoi-an'));
     expect(view).toHaveAttribute('target', '_blank');
     // Khớp TRỌN dòng — `exact: false` là khớp chuỗi con, nên mất `/blog/<slug>` vẫn xanh
     // (vòng review P4e-4).

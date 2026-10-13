@@ -2,6 +2,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { messages } from '@tourism/i18n';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { webUrl } from '@/lib/site';
 import { LoginForm, validateAdminLogin } from './login-form';
 
 // Mock authClient — form chỉ được gọi khi validate client qua hết.
@@ -86,7 +87,7 @@ describe('LoginForm', () => {
     render(<LoginForm />);
     expect(screen.getByRole('link', { name: /forgot password/i })).toHaveAttribute(
       'href',
-      'https://www.nexora-travel.agency/forgot-password',
+      `${webUrl()}/forgot-password`,
     );
   });
 

@@ -10,7 +10,7 @@ import { Logo } from '@/components/logo';
 import { loginDestination } from '@/lib/admin-gate';
 import { getServerSession } from '@/lib/api/session';
 import { SESSION_COOKIE_NAMES } from '@/lib/session-cookie';
-import { SITE_URL } from '@/lib/site';
+import { webUrl } from '@/lib/site';
 
 const t = messages.admin.login;
 
@@ -61,7 +61,7 @@ export default async function LoginPage({
           <span className="hidden sm:inline">{t.lookingForSite}</span>
           {/* ButtonLink chứ không phải Button render=<a>: giữ role link thật
               (JSDoc button-link.tsx — Base UI ép role button lên anchor). */}
-          <ButtonLink size="sm" variant="outline" className="rounded-full" href={SITE_URL}>
+          <ButtonLink size="sm" variant="outline" className="rounded-full" href={webUrl()}>
             {t.visitSite}
           </ButtonLink>
         </div>

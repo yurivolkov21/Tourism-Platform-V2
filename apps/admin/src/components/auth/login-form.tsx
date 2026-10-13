@@ -9,12 +9,17 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useState } from 'react';
 import { authClient } from '@/lib/auth-client';
 import { safeRedirect } from '@/lib/safe-redirect';
-import { SITE_URL } from '@/lib/site';
+import { webUrl } from '@/lib/site';
 
 const t = messages.admin.login;
 
-/** Quên mật khẩu là flow của www (admin không có reset riêng — ADR-0026 §2). */
-const FORGOT_PASSWORD_URL = `${SITE_URL}/forgot-password`;
+/**
+ * Quên mật khẩu là flow của www (admin không có reset riêng — ADR-0026 §2). Hàm chứ không hằng
+ * module: origin web đọc env LƯỜI (G19, xem `webUrl`).
+ */
+function forgotPasswordUrl(): string {
+  return `${webUrl()}/forgot-password`;
+}
 
 /** Regex email cùng ngưỡng contract (EmailSchema) — chỉ chặn sớm phía form. */
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -120,7 +125,7 @@ export function LoginForm() {
         <div className="flex items-center justify-between">
           <Label htmlFor="admin-password">{t.password}</Label>
           <a
-            href={FORGOT_PASSWORD_URL}
+            href={forgotPasswordUrl()}
             className="text-xs text-muted-foreground underline-offset-4 hover:underline"
           >
             {t.forgotPassword}

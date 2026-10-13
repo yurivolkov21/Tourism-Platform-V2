@@ -1,5 +1,6 @@
 import type { NextConfig } from 'next';
 import { browserApiOrigin } from './src/lib/api/env';
+import { webUrl } from './src/lib/site';
 
 // Fail-fast env NGAY LÚC BUILD (vòng vá review W3, ADR-0026 AMEND 4): admin
 // không có chỗ nào gọi resolver ở module scope nữa (đều lười), nên thiếu
@@ -8,6 +9,9 @@ import { browserApiOrigin } from './src/lib/api/env';
 // message nêu tên biến, cùng nếp `headers()` của apps/web. Build local/CI với
 // http://localhost vẫn qua (resolver miễn ép https cho loopback).
 browserApiOrigin();
+// Cùng nếp cho origin site khách (G19): thiếu thì rơi về mặc định, nhưng KHAI SAI thì build đỏ
+// với câu nêu tên biến, thay vì mọi link sang www hỏng âm thầm.
+webUrl();
 
 const nextConfig: NextConfig = {
   // Transpile gói UI dùng chung (source .tsx, không build dist) — ADR-0011,

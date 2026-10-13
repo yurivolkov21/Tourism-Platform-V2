@@ -1,6 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import { messages } from '@tourism/i18n';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { tourPageUrl } from '@/lib/site';
 import { detailFixture } from '@/test/tour-detail';
 import { TourWorkspaceHeader } from './tour-workspace-header';
 
@@ -28,10 +29,7 @@ describe('TourWorkspaceHeader', () => {
     ).toBeInTheDocument();
     expect(screen.getByText(t.header.onSale)).toBeInTheDocument();
     const site = screen.getByRole('link', { name: t.header.viewOnSite });
-    expect(site).toHaveAttribute(
-      'href',
-      'https://www.nexora-travel.agency/tours/ha-long-bay-cruise',
-    );
+    expect(site).toHaveAttribute('href', tourPageUrl('ha-long-bay-cruise'));
     expect(site).toHaveAttribute('target', '_blank');
     expect(site).toHaveAttribute('rel', 'noreferrer');
     expect(screen.queryByRole('switch')).toBeNull();

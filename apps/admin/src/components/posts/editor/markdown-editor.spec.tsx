@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { messages } from '@tourism/i18n';
 import { useState } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { SITE_URL } from '@/lib/site';
+import { webUrl } from '@/lib/site';
 import { MarkdownEditor } from './markdown-editor';
 
 /**
@@ -105,7 +105,7 @@ describe('MarkdownEditor', () => {
     await user.click(screen.getByRole('tab', { name: t.preview }));
 
     const link = await screen.findByRole('link', { name: 'Hoi An tours' });
-    expect(link).toHaveAttribute('href', `${SITE_URL}/tours?destination=hoi-an`);
+    expect(link).toHaveAttribute('href', `${webUrl()}/tours?destination=hoi-an`);
     expect(link).toHaveAttribute('target', '_blank');
   });
 

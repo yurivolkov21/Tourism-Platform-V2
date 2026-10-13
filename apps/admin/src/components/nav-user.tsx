@@ -23,7 +23,7 @@ import { useRouter } from 'next/navigation';
 import type { SessionUser } from '@/lib/api/session';
 import { authClient } from '@/lib/auth-client';
 import { roleLabel } from '@/lib/role-label';
-import { SITE_URL } from '@/lib/site';
+import { webUrl } from '@/lib/site';
 
 /**
  * Nav-user thật (vòng gọt bước 2, 21/08): khung + style GIỮ NGUYÊN của block
@@ -97,7 +97,7 @@ export function NavUser({ user }: { user: SessionUser }) {
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
-              <DropdownMenuItem render={<a href={SITE_URL} target="_blank" rel="noreferrer" />}>
+              <DropdownMenuItem render={<a href={webUrl()} target="_blank" rel="noreferrer" />}>
                 <ExternalLinkIcon />
                 {t.viewSite}
               </DropdownMenuItem>

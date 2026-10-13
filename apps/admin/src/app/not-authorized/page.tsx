@@ -12,7 +12,7 @@ import { connection } from 'next/server';
 import { SignOutButton } from '@/components/auth/sign-out-button';
 import { notAuthorizedVariant } from '@/lib/admin-gate';
 import { getServerSession } from '@/lib/api/session';
-import { SITE_URL } from '@/lib/site';
+import { webUrl } from '@/lib/site';
 
 const t = messages.admin.notAuthorized;
 
@@ -54,7 +54,7 @@ export default async function NotAuthorizedPage() {
         </CardHeader>
         <CardContent className="grid gap-3">
           <SignOutButton label={t.signOut} />
-          <a href={SITE_URL} className="text-center text-sm text-muted-foreground underline">
+          <a href={webUrl()} className="text-center text-sm text-muted-foreground underline">
             {t.backToSite}
           </a>
         </CardContent>
