@@ -235,9 +235,12 @@ export function closedStubSentence(
  *    vạch và khoảng trắng kề nhau, khe đều chen giữa làm nó đọc thành dãy sọc
  *    trang trí.
  *
- * TRẦN 52 KHÔNG PHẢI SỐ ĐẸP, nó bị bề ngang cuống vé dọc ràng buộc: card
- * `max-w-2xl` 672 trừ `px-4` còn 640, cuống chiếm 30% = 192, trừ `md:px-4` hai
- * bên còn **160px**.
+ * TRẦN 52 KHÔNG PHẢI SỐ ĐẸP. Nó sinh ra từ bề ngang cuống vé dọc của
+ * `CheckoutShell` (card `max-w-2xl` 672 trừ `px-4` còn 640, cuống chiếm 30% =
+ * 192, trừ `md:px-4` hai bên còn **160px**). Linh kiện ấy đã xoá 19/08, nhưng
+ * trần 160px được GIỮ có chủ đích: bỏ nó thì không còn gì canh khi có người
+ * nâng số vạch. Mã vạch nay chỉ vẽ ở vé trang chi tiết đơn và voucher (qua
+ * `TicketBarcode`).
  *
  * Con số chốt bằng cách LẤY MẪU chứ không tính trên một mã: bề rộng mỗi vạch
  * phụ thuộc ký tự, nên mã khác cho tổng khác. Quét 200k mã hợp lệ ngẫu nhiên

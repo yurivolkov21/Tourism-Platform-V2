@@ -466,8 +466,6 @@ export const messages = {
         'Your payment is being confirmed — this usually takes a few seconds. This page updates automatically; you can also refresh.',
       refresh: 'Refresh',
       refLabel: 'Booking reference',
-      tourLabel: 'Tour',
-      departureLabel: 'Departure',
       travellersLabel: 'Travellers',
       totalLabel: 'Total paid',
       // Fact mới cho lưới IATA-style (redesign vé) — trước đây provider chỉ
@@ -479,7 +477,6 @@ export const messages = {
       dateLabel: 'Tour date',
       // Dòng mô tả ngắn trong cuống vé, cạnh tên khách — "2 guests".
       guestsCount: (n: number) => `${n} guest${n > 1 ? 's' : ''}`,
-      contactLabel: 'Contact',
       viewTours: 'Browse more tours',
       notFound: 'We couldn’t find that booking.',
       viewBooking: 'View booking',
@@ -502,8 +499,8 @@ export const messages = {
       // `refLabel` ('Booking reference') vốn là nhãn của mã CỠ LỚN trong cuống.
       bookingMetaLabel: 'Booking',
       dateMetaLabel: 'Date',
-      // Nhãn cột giữa. Khác `departureLabel` ('Departure'): cột này gộp cả ngày
-      // đi, thời lượng và điểm đến, không chỉ mỗi đợt khởi hành.
+      // Nhãn cột giữa: cột này gộp cả ngày đi, thời lượng và điểm đến, không chỉ
+      // mỗi đợt khởi hành, nên gọi là 'Trip' chứ không phải 'Departure'.
       tripLabel: 'Trip',
       perTraveller: 'per traveller',
       departsOn: (date: string) => `Departs ${date}`,
@@ -527,14 +524,6 @@ export const messages = {
       // Nút chép mã (CopyCodeButton) — nhãn đổi trong 2 giây sau khi bấm.
       copyCode: 'Copy code',
       copied: 'Copied',
-      // Nhãn lặp lại HAI lần trên vé (`CheckoutShell`): dải header ngang +
-      // cuống vé xoay dọc (`writing-mode: vertical-rl`) — cùng một chữ, hai tư
-      // thế, đúng kiểu ấn phẩm vé thật lặp thông tin ở cuống.
-      voucherLabel: 'Tour Voucher',
-      // Dòng 9px sát mép dưới thân vé — bản dịch trung thực của thứ một tấm vé
-      // giấy thật luôn in: không hứa hẹn gì thêm ngoài chính sách đã có.
-      finePrint:
-        'Present this voucher at the meeting point · Non-transferable · Cancellation policy applies',
     },
     // /checkout/cancel.
     cancel: {
