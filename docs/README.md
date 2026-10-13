@@ -168,8 +168,8 @@ Mỗi spec đi kèm một plan cùng tên ở [`plans/`](plans/), trừ vài đ�
 **Sửa sạn giao diện admin (trước freeze)**
 [**ô chọn chung, Quick Create, xoá danh mục và điểm đến, sạn nhỏ**](specs/2026-10-05-admin-ui-polish-design.md)
 
-**Admin người dùng (P4f, chưa thi công)**
-[P4f vùng Users: Owner và Staff](specs/2026-10-02-p4f-users-staff-design.md)
+**Admin người dùng (P4f; media chưa có spec)**
+[**P4f vùng Users: Owner và Staff**](specs/2026-10-02-p4f-users-staff-design.md)
 
 **Trợ lý AI (P6, chưa thi công)**
 [P6 trợ lý tư vấn tour](specs/2026-09-29-p6-ai-concierge-design.md)

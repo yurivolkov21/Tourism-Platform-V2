@@ -8,6 +8,128 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-10-13 — Merge P4f vùng Users: hai bậc Owner và Staff, khoá tài khoản (`8b453c6`..`26746d3`)
+
+Admin có hai bậc: Owner (role `ADMIN`, chỉ từ `ADMIN_EMAILS`) và Staff (role `STAFF`, Owner cấp cho
+khách đã xác minh). Bảng quyền `ADMIN_ACCESS` ở contract quyết 64 thủ tục admin: Staff dùng 48, 16 là
+của riêng Owner. Owner có `/users`: danh sách, chi tiết, cấp và thu Staff, khoá và mở khoá, đăng xuất
+mọi nơi, lịch sử theo người. Quyết định ở [ADR-0052](adr/0052-admin-staff-tier.md), hợp đồng ở
+[spec](specs/2026-10-02-p4f-users-staff-design.md), các bước ở
+[plan](plans/2026-10-02-p4f-users-staff.md). Một migration chỉ thêm
+(`20261013022702_p4f_users_staff`: giá trị `STAFF`, cột `users.locked_at`, bảng `user_events` có
+RLS); không env. Thi công và review trên session cloud 13/10,
+[PR #6](https://github.com/yurivolkov21/Tourism-Platform-V2/pull/6).
+
+**API.** `@AdminImplement` thay `@Implement` ở mọi handler admin của 14 controller: gắn route như cũ
+cộng `@Roles(...)` suy từ bảng quyền (`owner` → ADMIN, `staff` → ADMIN và STAFF); lưới
+`@Roles(ADMIN)` cấp class giữ nguyên. Test quét quyền gọi mọi thủ tục admin: khách nhận 403 ở tất
+cả, Staff nhận 403 ở thủ tục của Owner và qua cổng ở thủ tục của Staff. Khoá tài khoản: hook
+`session.create.before` ném 403 `ACCOUNT_LOCKED` ở mọi đường tạo phiên (mật khẩu, OTP email, Google
+trên web và app), AuthGuard trả 401 cho phiên sót của tài khoản đang khoá, `lockedAt` đi kèm
+get-session. Sáu route `admin.users.*` (`list`, `byId`, `setRole`, `lock`, `unlock`,
+`revokeSessions`): mỗi lệnh ghi một transaction giành hàng bằng `SELECT … FOR UPDATE` rồi mới hỏi
+`userActions`, xoá phiên trong cùng transaction khi khoá hay thu Staff, ghi đúng một dòng
+`user_events`. Trần ghi 60/60s của bề mặt admin áp cho cả Staff (trước chỉ Owner). Từ vòng vá
+review: hook tạo và sửa user chặn email dài hơn 254 ký tự, `revokeSessions` trả số phiên còn hạn, ô
+tìm của outbox không còn khớp `dedupeKey` của bốn loại email auth.
+
+**Web.** Đăng nhập bị khoá hiện câu `accountLocked` (`mapAuthError` của core nhận
+`ACCOUNT_LOCKED`); nút Google gửi `errorCallbackURL` về `/login` và form đọc `?error=`; phiên có
+`lockedAt` coi như không đăng nhập.
+
+**Admin.** Cổng nhận Staff; `AdminAccessProvider` và `useCanAccess` cho component client hỏi nút
+nào hiện (không provider thì true); `requirePageAccess` chặn `/reports`, `/payment-events`, `/users`
+và `/users/[id]` trước khi fetch, route xuất của thủ tục chỉ Owner trả 403 cho Staff kèm câu
+`exportOwnerOnly`; trang `/not-authorized` có biến thể "Owner only". Sidebar lọc theo bậc, menu tài
+khoản ghi Owner hay Staff. Staff không thấy sáu nút: hoàn tiền, huỷ chuyến, xoá tour, xoá bài, xoá
+danh mục, xoá điểm đến. `/users`: tab All, Staff, Locked, tìm theo tên hay email, phân trang.
+`/users/[id]`: Profile, Activity (link sang bookings đã lọc), Staff access, Account lock, Sessions,
+History; bốn thao tác qua hộp xác nhận (khoá bắt buộc ghi lý do). Card Staff access nói theo đúng
+trạng thái, kể cả Staff đang khoá và Staff chưa có mật khẩu (chỉ đường "Forgot password?").
+
+**Lệch plan.** (1) Spec của `@AdminImplement` import `@nestjs/common/constants.js` và các method
+thăm dò trả `never` để tsc 7 nhận dưới ESM. (2) Throttler gọi `isAdminAppRole(user.role ?? '')` vì
+`role` của user phiên có thể vắng theo kiểu. (3) Test quét quyền đỏ hai ca từ Task 3 tới Task 5:
+`admin.users.*` có trong contract từ Task 1 nhưng route tới Task 5 mới có, nên trả 404 thay vì 403.
+(4) Ca get-session của Task 4 kiểm `user.lockedAt` là chuỗi, chặt hơn plan. (5) `loginDestination`
+(G40 Phần 3 thêm sau khi plan viết) nhận cả Staff, nên Staff đã đăng nhập mở link mã đơn trong Excel
+cũng vào thẳng trang đơn. (6) Spec của provider truyền role qua helper `renderAs` vì luật a11y
+`useValidAriaRole` của Biome bắt prop `role="STAFF"`. (7) Gate đầy đủ chạy ở hai mốc (sau Task 6 và
+ở Task 14) thay vì cuối mỗi task; task nào cũng chạy unit test của gói đã chạm, typecheck và đột
+biến. (8) Ghi chú mobile (Task 14 B3) viết theo đường ID token của ADR-0056: lỗi khoá về thẳng 403,
+không qua redirect như plan tả. (9) Grep của Task 14 B2 trúng ba chỗ đúng: JSDoc của
+`@AdminImplement` nhắc `@Implement(contract.admin.…)`, và `users-view.ts` so
+`detail.role === 'ADMIN'` hai lần (role của tài khoản đang xem, code của chính plan Task 11). (10)
+Session cloud nên nhánh được đẩy lên origin sau mỗi task; docs của Task 14 đi hai commit. (11) Nhánh
+rebase lên `1ca92f5` sau merge Google native; commit CHANGELOG viết sớm bị bỏ và dòng attribution bị
+gỡ theo chỉ dẫn dự án 13/10; int test khoá cho hai đường Google thêm sau rebase (`4a35107`). Lúc
+merge nhánh rebase thêm một lần lên `59af46c` (commit docs thử tay Google): xung đột chỉ ở docs, mã
+không đổi.
+
+**Soi bố cục (CSS build thật; Chromium headless qua CDP vì session cloud không có Browser
+pane).** `/users/[id]` với tên, email và lý do khoá dài: 1600px không cuộn ngang, Profile và Activity
+cùng hàng, ba card Staff access, Account lock, Sessions cùng hàng, không card nào tràn; 390px không
+cuộn ngang, ba card xếp chồng, không card nào tràn. Đo thêm trang của một Staff đang hoạt động: cùng
+kết quả. `/users` 1600px không cuộn ngang; 390px trang không tràn (đạt tiêu chí plan) nhưng cột User
+chỉ còn ảnh đại diện: link tên rộng 0px ở 390px, 33px ở 768px. Vá bằng sàn `min-w-48` cho lưới tên
+(`711c9e6`); đo lại: tên 192px ở 390px và 768px, bảng cuộn ngang trong khung, trang không tràn. Bảng
+Posts và Tours đang chạy prod có cùng tật: ghi G44, không sửa ở nhánh này.
+
+**Review 13/10 trên session cloud** (hai lượt review độc lập trên `38fe4fe`: một lượt rà API,
+contract và Better Auth; một lượt rà admin, web và copy): 11 phát hiện, vá 9, ghi 1, giữ 1.
+
+1. Ô tìm của outbox khớp `contains` trên `dedupeKey` thô, mà khoá của email auth nhúng OTP và link
+   reset. Review xếp Thấp; đo lại là Cao: Staff gửi OTP đăng nhập tới email Owner (route ẩn danh),
+   dò đủ sáu số sau 26 lượt `GET /api/admin/outbox`, đăng nhập thành Owner và gọi được
+   `/api/admin/users`. Lỗ sinh ra từ P4f, vì trước đó chỉ Owner vào được outbox. Vá ở `e4c46c3`:
+   vế `dedupeKey` loại bốn loại email auth, tìm theo người nhận vẫn ra; đo lại sau vá, 60 lượt dò
+   không ra số nào.
+2. Email tài khoản không có trần, nên một email 330 ký tự (đăng ký ẩn danh được) làm
+   `admin.users.list` và `byId` trả 500 ở bước kiểm output. Vá ở `f752d17`: hook tạo và sửa user chặn
+   email dài hơn 254 ký tự (400 `INVALID_EMAIL`), schema đọc bỏ trần để hàng cũ vẫn hiện.
+3. Toast "N sessions ended." đếm cả phiên đã hết hạn, lệch ô Active sessions. Vá ở `5d8347e`.
+4. Card Staff access của một Staff đang khoá vẫn nói dùng được back office. Vá ở `682b7ce`.
+5. Khách vừa khoá vừa chưa xác minh được bảo mở khoá trước, như thể mở khoá là đủ. Vá ở `682b7ce`.
+6. "View bookings" tìm bằng `contains` nên có thể kéo booking của tài khoản khác. Ghi G45: vá cần lọc
+   `userId` cho `admin.bookings.list`, tức thêm tính năng.
+7. Staff mở thẳng link xuất báo cáo nhận câu "no longer has admin access". Vá ở `7830e8c`.
+8. Ca test chip của bảng Users không thể đỏ; ca "ba nút ba card" và ca Owner đang khoá không kiểm nút
+   nằm ở card nào. Vá ở `42823ea`: soi trong đúng hàng và đúng card.
+9. Lớp gác giao diện của Staff (provider ở layout, `requirePageAccess` ở bốn trang) không test nào
+   canh. Vá ở `bdc5f38`: `owner-gates.spec.tsx`, Vitest admin thêm glob `src/app/**`.
+10. Staff chỉ có tài khoản Google không vào được form admin (form cần mật khẩu) và form báo sai mật
+    khẩu. Vá ở `682b7ce` và `b35175e`: card chỉ đường đặt mật khẩu bằng "Forgot password?", int test
+    đo đường đó với tài khoản chỉ có Google; spec §8.4 và §11 ghi giới hạn. Suy luận chưa đo: trên
+    production `COOKIE_DOMAIN` chia phiên giữa www và admin, nên phiên Google ở www có thể vào thẳng
+    admin.
+11. Hook khoá thêm một lượt đọc mỗi lần tạo phiên. Giữ: đọc theo khoá chính.
+
+Tests after (`gate:int` 13/10 04:17–04:29, session cloud theo đúng các bước của CI, trên đầu nhánh
+khi còn đặt trên `1ca92f5`; lần rebase lên `59af46c` sau đó chỉ kéo thêm docs nên mã y hệt `26746d3`):
+unit 7206 — web 2238, admin 2083, api 1118, mobile 771, contract 701, mobile-ui 136, core 48, ui 47,
+i18n 43, tokens 21 — và int 824 ở 50 file. So với main `1ca92f5`: unit thêm 129 ca (admin 85,
+contract 26, api 11, web 5, core 2), int thêm 34 ca (ba file mới `account-lock`, `admin-access`,
+`admin-users`, và ca mới ở `google-sign-in`, `auth-hardening`, `admin-outbox`). Lượt gate đầu đỏ ở
+`@tourism/contract#test` vì container hết RAM (dmesg: kernel giết một tiến trình node 4,4 GB đúng lúc
+worker test chết); contract chạy riêng 701/701, lượt chạy lại xanh. CI của PR #6 xanh trước lần
+rebase đó. Đột biến tay lúc thi công 66 lần, 64 lần test đỏ. Hai lần sống sót: `=== 'ACCOUNT_LOCKED'`
+thành `includes('LOCK')` ở `mapAuthError` (plan chấp nhận: không mã Better Auth nào khác chứa LOCK), và
+gỡ `requirePageAccess` ở trang, lúc thi công không test nào bắt, nay `owner-gates.spec.tsx` bắt.
+
+**Migration lên Supabase:** user chạy tay từ máy mình 13/10, khoảng 05:08–05:12 UTC, trước lượt push
+main (Git Bash, thư mục `apps/api`, checkout của nhánh, `DATABASE_URL` lấy từ `.env.production`).
+`migrate status` báo thiếu đúng `20261013022702_p4f_users_staff`, `migrate deploy` áp xong, rồi
+`migrate status` báo 31 migration và "Database schema is up to date!". Thread không ghi vào Supabase
+(chỉ dẫn dự án 13/10).
+
+**CÒN TREO:**
+
+- [ ] Thử tay trên production theo spec §8.4, từng bước. Cần một tài khoản khách thật thứ hai mà
+  user giữ hộp thư (khách seed không đăng nhập được).
+- [ ] G45 chờ user quyết: thêm lọc `userId` cho `admin.bookings.list` là thêm tính năng.
+- Dọn sau merge: nhánh `feat/p4f-users-staff` trên origin (session cloud không xoá được nhánh trên
+  GitHub).
+
 ## 2026-10-13 — Thử tay đăng nhập Google native trên production 4/4 bước
 
 **Thử tay** (ba mục thử trong CÒN TREO của entry merge bên dưới, chia thành bốn bước; sau push

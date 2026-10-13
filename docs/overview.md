@@ -22,10 +22,12 @@ dùng để thử là thẻ giả do chính Stripe/PayPal cấp.
 | --- | --- | --- |
 | **Khách vãng lai** | Không | Xem tour, xem điểm đến, đọc blog, gửi câu hỏi, đăng ký nhận bản tin |
 | **Khách có tài khoản** | Có | Tất cả những việc trên, cộng: đặt tour, trả tiền, xem chuyến của mình, tự huỷ, lưu tour yêu thích, viết và sửa đánh giá |
-| **Nhân viên quản trị** | Có, và phải có quyền admin | Xem toàn bộ đơn, hoàn tiền ngoại lệ, duyệt/từ chối đánh giá, theo dõi câu hỏi khách gửi, xem báo cáo doanh thu |
+| **Nhân viên (Staff)** | Có, do chủ trang cấp quyền | Xem toàn bộ đơn và bảng số liệu, duyệt/từ chối đánh giá, theo dõi câu hỏi khách gửi, sửa catalog và bài viết |
+| **Chủ trang (Owner)** | Có, email nằm trong danh sách cấu hình sẵn | Mọi việc của nhân viên, cộng: hoàn tiền ngoại lệ, huỷ chuyến, xoá tour, bài viết, danh mục và điểm đến, xem báo cáo tháng và sổ sự kiện thanh toán, cấp quyền nhân viên và khoá tài khoản |
 
-Hệ thống chỉ có **hai mức quyền**: khách (`CUSTOMER`) và quản trị (`ADMIN`).
-Không có vai trung gian nào.
+Hệ thống có **ba mức quyền**: khách (`CUSTOMER`), nhân viên (`STAFF`) và chủ trang
+(`ADMIN`). Chủ trang cấp hay thu quyền nhân viên cho một khách đã xác minh email,
+và khoá được tài khoản: tài khoản bị khoá không đăng nhập được ở đâu cả.
 
 ## Sáu luồng chính
 
@@ -100,6 +102,8 @@ Trang quản trị nằm ở tên miền riêng `admin.nexora-travel.agency`, v�
 - Catalog: bật/tắt đăng tour, lịch chuyến khởi hành của từng tour (kể cả công
   ty huỷ chuyến có hoàn tiền), danh mục và điểm đến — hai bảng này ẩn/hiện được,
   và chỉ xoá được khi chưa tour nào dùng.
+- Tài khoản (chỉ chủ trang): danh sách, cấp và thu quyền nhân viên, khoá và mở
+  khoá, đăng xuất mọi nơi, lịch sử thay đổi của từng người.
 
 ## Bốn phần mềm, một máy chủ
 
