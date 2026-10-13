@@ -262,12 +262,12 @@ export async function voucherTourData(
 
 /**
  * Mốc Refund của voucher đã huỷ — cùng chuyện tiền với cột phải của trang chi tiết đơn
- * (`TripClosedPanel`). Chuyến công ty huỷ mà job hoàn tiền chưa chạy (`operatorRefundPending`, đơn
+ * (`TripClosedPanel`); thẻ chờ của đơn chưa trả đã đóng (G42) dùng lại cho đơn bị thu rồi hoàn. Chuyến công ty huỷ mà job hoàn tiền chưa chạy (`operatorRefundPending`, đơn
  * còn PAID hay hoàn một phần): tiền đang về, sổ chưa ghi khoản hoàn nên chưa có số để kể. Còn lại
  * là câu `refundSentence` của khoản đã hoàn hay "không hoàn đồng nào"; đơn chưa từng thu thì không
  * có mốc này (`refundSummary` là `null`).
  */
-function refundJournal(booking: BookingDetail): VoucherJournalItem[] {
+export function refundJournal(booking: BookingDetail): VoucherJournalItem[] {
   const state = refundState(booking);
   const detail = refundStory(booking);
   if (state === null || detail === null) return [];

@@ -832,6 +832,43 @@ export const messages = {
     },
   },
   /**
+   * Thẻ chờ của đơn CHƯA TRẢ ở `/checkout/cancel` và `/checkout/success` (G42, spec 2026-10-13 §6):
+   * cùng khung voucher, cột phải mảng xám. Chỉ khai chữ MỚI; tiêu đề, câu phụ, nhãn ô mã, nhật ký,
+   * dải trạng thái và nút đặt lại dùng lại khoá sẵn có (`booking.cancel`, `booking.success`,
+   * `voucher`, `bookingDetail`, `printDoc.receipt`) — danh sách ở spec §6.
+   *
+   * Đơn chờ KHÔNG giữ ghế (invariant #1 của API): câu nào có "held" cũng chỉ để nói ghế CHƯA được giữ.
+   */
+  pendingReceipt: {
+    /** Breadcrumb của hero thay "Voucher": mã của đơn này chưa phải voucher. */
+    breadcrumb: 'Checkout',
+    /**
+     * Câu dưới "Payment cancelled". `until`: giờ nhả (`pendingDeadline`) đã định dạng — giờ "18:59",
+     * ngày "Fri 9 Oct"; `null` khi đã qua mốc mà cron chưa quét — API vẫn nhận trả nên đơn còn mở,
+     * nhưng không còn giờ nào hứa được. Không đồng hồ đếm ngược.
+     */
+    heldNote: (until: { time: string; day: string } | null) =>
+      until === null
+        ? 'No charge was made. Your booking is still open — seats aren’t held until you pay.'
+        : `No charge was made. Your booking stays open until ${until.time} on ${until.day} (Vietnam time) — seats aren’t held until you pay.`,
+    /** Ô "Pay by …" của lưới bốn ô (nhãn `printDoc.receipt.payBy`). */
+    payByNote: 'After that the booking is released. Vietnam time.',
+    seatsNotHeld: 'Seats aren’t held until you pay.',
+    /** Nhãn ô mã khi đơn còn mở — đơn đã đóng dùng `voucher.codeLabel`. */
+    codeLabel: 'Booking code · not yet a voucher',
+    totalDue: 'Total due',
+    /** Dòng tiền của đơn đã đóng mà chưa từng thu: "Charged · $0". */
+    charged: 'Charged',
+    /** Dòng đứng cạnh nút Refresh khi khách về trước webhook — tên cổng, không phải nhãn "Card (Stripe)". */
+    checkingWith: {
+      STRIPE: 'Checking with Stripe…',
+      PAYPAL: 'Checking with PayPal…',
+    },
+    closedTitle: 'This booking is closed',
+    /** Ô Need help: nối sau link `passportVisa.contactUs` (`/contact`). */
+    helpBody: '— we reply within a day.',
+  },
+  /**
    * Tài liệu in của khách (G40, ADR-0057, spec 2026-10-10 §3–§4): khung chung ở cấp này, chữ riêng
    * ở `voucher` (bản in 5b) và `receipt` (hoá đơn chờ B1). CỐ Ý chỉ khai thứ MỚI — nhãn tấm vé, tiền,
    * hạn huỷ, tiêu đề dải trùng nghĩa dùng lại khoá sẵn có (`passportVisa`, `bookingDetail`,
