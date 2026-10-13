@@ -1,0 +1,216 @@
+import { generateKeyPairSync, sign } from 'node:crypto';
+import { FastifyAdapter, type NestFastifyApplication } from '@nestjs/platform-fastify';
+import { Test } from '@nestjs/testing';
+import { AppModule } from '../app.module.js';
+import { prisma } from './auth.config.js';
+
+/**
+ * Đăng nhập Google đi hết đường thật của Better Auth (ADR-0056 và AMEND 1): nhánh
+ * ID token của app (`/sign-in/social`) và callback của web (`/callback/:id`).
+ *
+ * Không gọi Google thật: `fetch` tới JWKS và token endpoint của Google trả khoá
+ * RSA sinh ngay trong test, nên Better Auth vẫn kiểm chữ ký, issuer, audience và
+ * tuổi token như ở production. Đây là lưới cho ngoại lệ ảnh Google lúc TẠO tài
+ * khoản — ngoại lệ đó dựa vào `ctx.path` mà hook DB nhận được, thứ unit test của
+ * `google-avatar.ts` không chạm tới.
+ */
+
+/** Khớp `GOOGLE_CLIENT_ID` giả ở `vitest.int.config.ts`. */
+const WEB_CLIENT_ID = 'int-test-web.apps.googleusercontent.com';
+const GOOGLE_CERTS_URL = 'https://www.googleapis.com/oauth2/v3/certs';
+const GOOGLE_TOKEN_URL = 'https://oauth2.googleapis.com/token';
+const KEY_ID = 'int-test-google-key';
+const GOOGLE_PHOTO = 'https://lh3.googleusercontent.com/a/int-test-photo=s96-c';
+const PASSWORD = 'password-123';
+
+const { privateKey, publicKey } = generateKeyPairSync('rsa', { modulusLength: 2048 });
+const GOOGLE_JWKS = {
+  keys: [{ ...publicKey.export({ format: 'jwk' }), kid: KEY_ID, alg: 'RS256', use: 'sig' }],
+};
+
+/** ID token dạng Google ký bằng khoá test; `claims` ghi đè mặc định. */
+function googleIdToken(claims: Record<string, unknown>): string {
+  const now = Math.floor(Date.now() / 1000);
+  const header = Buffer.from(JSON.stringify({ alg: 'RS256', kid: KEY_ID, typ: 'JWT' })).toString(
+    'base64url',
+  );
+  const payload = Buffer.from(
+    JSON.stringify({
+      iss: 'https://accounts.google.com',
+      aud: WEB_CLIENT_ID,
+      iat: now,
+      exp: now + 3600,
+      email_verified: true,
+      ...claims,
+    }),
+  ).toString('base64url');
+  const signature = sign('RSA-SHA256', Buffer.from(`${header}.${payload}`), privateKey);
+  return `${header}.${payload}.${signature.toString('base64url')}`;
+}
+
+/** Ghép `set-cookie` của một response thành header `cookie` cho request kế tiếp. */
+function cookieHeader(setCookie: string | string[] | undefined): string {
+  const list = setCookie === undefined ? [] : Array.isArray(setCookie) ? setCookie : [setCookie];
+  return list.map((cookie) => cookie.split(';')[0]).join('; ');
+}
+
+describe('đăng nhập Google qua Better Auth thật (ADR-0056)', () => {
+  let app: NestFastifyApplication;
+  /** ID token mà token endpoint giả trả về ở luồng callback của web. */
+  let tokenEndpointIdToken: string | undefined;
+
+  beforeAll(async () => {
+    const realFetch = globalThis.fetch;
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+      const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
+      if (url === GOOGLE_CERTS_URL) return Response.json(GOOGLE_JWKS);
+      if (url === GOOGLE_TOKEN_URL) {
+        return Response.json({
+          access_token: 'int-test-access-token',
+          id_token: tokenEndpointIdToken,
+          expires_in: 3599,
+          token_type: 'Bearer',
+          scope: 'openid email profile',
+        });
+      }
+      return realFetch(input, init);
+    });
+
+    const moduleRef = await Test.createTestingModule({ imports: [AppModule] }).compile();
+    app = moduleRef.createNestApplication<NestFastifyApplication>(new FastifyAdapter());
+    await app.init();
+    await app.getHttpAdapter().getInstance().ready();
+  });
+
+  beforeEach(async () => {
+    tokenEndpointIdToken = undefined;
+    await prisma.$executeRawUnsafe(
+      'TRUNCATE TABLE users, sessions, accounts, verifications, outbox CASCADE',
+    );
+  });
+
+  afterAll(async () => {
+    vi.restoreAllMocks();
+    await app.close();
+  });
+
+  /** Đúng request app mobile gửi: không cookie, không Origin. */
+  async function signInWithIdToken(token: string) {
+    return app.inject({
+      method: 'POST',
+      url: '/api/auth/sign-in/social',
+      headers: { 'content-type': 'application/json' },
+      payload: JSON.stringify({ provider: 'google', idToken: { token } }),
+    });
+  }
+
+  it('app, tài khoản MỚI: ID token hợp lệ tạo user, phát phiên, giữ ảnh Google (AMEND 1)', async () => {
+    const res = await signInWithIdToken(
+      googleIdToken({
+        sub: 'google-sub-new',
+        email: 'new-google@example.com',
+        name: 'New Google',
+        picture: GOOGLE_PHOTO,
+      }),
+    );
+
+    expect(res.statusCode).toBe(200);
+    expect(cookieHeader(res.headers['set-cookie'])).toContain('session_token');
+    const user = await prisma.user.findUnique({ where: { email: 'new-google@example.com' } });
+    expect(user?.image).toBe(GOOGLE_PHOTO);
+    expect(user?.emailVerified).toBe(true);
+  });
+
+  it('app, tài khoản MỚI: ảnh ở host lạ bị bỏ (null), tài khoản vẫn được tạo', async () => {
+    const res = await signInWithIdToken(
+      googleIdToken({
+        sub: 'google-sub-odd-photo',
+        email: 'odd-photo@example.com',
+        name: 'Odd Photo',
+        picture: 'https://evil.example/tracker.png',
+      }),
+    );
+
+    expect(res.statusCode).toBe(200);
+    const user = await prisma.user.findUnique({ where: { email: 'odd-photo@example.com' } });
+    expect(user).not.toBeNull();
+    expect(user?.image).toBeNull();
+  });
+
+  it('app: ID token cấp cho client khác (sai audience) → 401, không tạo user', async () => {
+    const res = await signInWithIdToken(
+      googleIdToken({
+        sub: 'google-sub-other-app',
+        email: 'other-app@example.com',
+        aud: 'someone-else.apps.googleusercontent.com',
+      }),
+    );
+
+    expect(res.statusCode).toBe(401);
+    expect(res.headers['set-cookie']).toBeUndefined();
+    expect(await prisma.user.count({ where: { email: 'other-app@example.com' } })).toBe(0);
+  });
+
+  it('app, tài khoản email CÓ SẴN đã xác minh: Google vào đúng user đó, không chép ảnh Google đè lên', async () => {
+    const signUp = await app.inject({
+      method: 'POST',
+      url: '/api/auth/sign-up/email',
+      payload: { email: 'existing@example.com', password: PASSWORD, name: 'Existing User' },
+    });
+    expect(signUp.statusCode).toBe(200);
+    const existing = await prisma.user.update({
+      where: { email: 'existing@example.com' },
+      data: { emailVerified: true },
+    });
+
+    const res = await signInWithIdToken(
+      googleIdToken({
+        sub: 'google-sub-existing',
+        email: 'existing@example.com',
+        name: 'Google Name',
+        picture: GOOGLE_PHOTO,
+      }),
+    );
+
+    expect(res.statusCode).toBe(200);
+    expect(await prisma.user.count({ where: { email: 'existing@example.com' } })).toBe(1);
+    const providers = await prisma.account.findMany({
+      where: { userId: existing.id },
+      select: { providerId: true },
+    });
+    expect(providers.map((row) => row.providerId).sort()).toEqual(['credential', 'google']);
+    const after = await prisma.user.findUniqueOrThrow({ where: { id: existing.id } });
+    expect(after.name).toBe('Existing User');
+    expect(after.image).toBeNull();
+  });
+
+  it('web, tài khoản MỚI: callback Google tạo user kèm ảnh Google rồi về đúng callbackURL (AMEND 1)', async () => {
+    const start = await app.inject({
+      method: 'POST',
+      url: '/api/auth/sign-in/social',
+      headers: { 'content-type': 'application/json', origin: 'http://localhost:3000' },
+      payload: JSON.stringify({ provider: 'google', callbackURL: 'http://localhost:3000/account' }),
+    });
+    expect(start.statusCode).toBe(200);
+    const state = new URL((start.json() as { url: string }).url).searchParams.get('state');
+    expect(state).toBeTruthy();
+
+    tokenEndpointIdToken = googleIdToken({
+      sub: 'google-sub-web',
+      email: 'web-google@example.com',
+      name: 'Web Google',
+      picture: GOOGLE_PHOTO,
+    });
+    const callback = await app.inject({
+      method: 'GET',
+      url: `/api/auth/callback/google?code=int-test-code&state=${encodeURIComponent(state ?? '')}`,
+      headers: { cookie: cookieHeader(start.headers['set-cookie']) },
+    });
+
+    expect(callback.statusCode).toBe(302);
+    expect(callback.headers.location).toBe('http://localhost:3000/account');
+    expect(cookieHeader(callback.headers['set-cookie'])).toContain('session_token');
+    const user = await prisma.user.findUnique({ where: { email: 'web-google@example.com' } });
+    expect(user?.image).toBe(GOOGLE_PHOTO);
+  });
+});
