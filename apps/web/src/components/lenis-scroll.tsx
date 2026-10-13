@@ -1,12 +1,26 @@
 'use client';
 
 import Lenis from 'lenis';
-import { useEffect } from 'react';
+import { usePathname } from 'next/navigation';
+import { useEffect, useLayoutEffect, useRef } from 'react';
 import { setLenis } from '@/lib/smooth-scroll';
 
 // Convert từ template Estate: smooth scroll toàn trang bằng Lenis.
 // Tôn trọng prefers-reduced-motion — người dùng giảm chuyển động thì không bật.
 export function LenisScroll() {
+  const lenisRef = useRef<Lenis | null>(null);
+  const pathname = usePathname();
+
+  // Điều hướng bằng `router.push` (nút Reserve của khối ảnh, đăng nhập xong, đăng xuất…) không có
+  // cú bấm link nào để `stopInertiaOnNavigate` bắt, nên trong ~1,2 giây sau cú lăn chuột Lenis vẫn
+  // kéo trang mới về đích cũ (open-items G33, phần còn lại sau `f79df8c8`). Buông quán tính ngay khi
+  // pathname đổi: layout effect chạy trong cùng lượt commit của trang mới, TRƯỚC khung hình kế
+  // tiếp nơi Lenis sẽ ghi vị trí cũ. `LenisScroll` nằm ở root layout nên sống qua mọi điều hướng.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: chạy lại theo pathname là chủ đích, thân hàm không đọc nó
+  useLayoutEffect(() => {
+    lenisRef.current?.reset();
+  }, [pathname]);
+
   useEffect(() => {
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
       return;
@@ -36,6 +50,7 @@ export function LenisScroll() {
     // không thì chúng tranh vô-lăng với quán tính con lăn và thua (đo 19/08,
     // xem `lib/smooth-scroll.ts`).
     setLenis(lenis);
+    lenisRef.current = lenis;
 
     let frame = requestAnimationFrame(function raf(time) {
       lenis.raf(time);
@@ -62,6 +77,7 @@ export function LenisScroll() {
 
     return () => {
       setLenis(null);
+      lenisRef.current = null;
       observer.disconnect();
       cancelAnimationFrame(frame);
       lenis.destroy();

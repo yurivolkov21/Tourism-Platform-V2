@@ -7,6 +7,10 @@ import { LenisScroll } from './lenis-scroll';
 // Bắt instance Lenis mà component đăng ký — cửa duy nhất nó lộ ra ngoài.
 vi.mock('@/lib/smooth-scroll', () => ({ setLenis: vi.fn() }));
 
+// Pathname điều khiển được: điều hướng bằng `router.push` chỉ lộ ra qua `usePathname` đổi giá trị.
+const { pathname } = vi.hoisted(() => ({ pathname: { current: '/tours/ha-giang-loop-4d' } }));
+vi.mock('next/navigation', () => ({ usePathname: () => pathname.current }));
+
 /**
  * Chiều cao tài liệu và khung nhìn như trình duyệt thấy (jsdom không dàn trang nên đè thẳng getter).
  * `<html>` của site mang `h-full`: hộp của nó luôn cao bằng khung nhìn, nên ResizeObserver mà Lenis
@@ -109,5 +113,34 @@ describe('LenisScroll', () => {
     } finally {
       link.remove();
     }
+  });
+
+  /**
+   * Phần còn lại của G33: `router.push` trong mã (nút Reserve của khối ảnh, đăng nhập xong…) không có
+   * cú bấm link nào, nên `stopInertiaOnNavigate` không bắt được — trang mới vẫn bị kéo về đích cũ
+   * (kịch bản `inertiaSweep` 09/10: dừng ở 1700 thay vì 1167 khi bấm trong 100–1000 ms sau cú lăn).
+   */
+  it('pathname đổi (điều hướng bằng router.push) lúc Lenis còn trượt → Lenis buông quán tính', () => {
+    setDocument({ height: 3000, viewport: 800 });
+    pathname.current = '/tours/ha-giang-loop-4d';
+    const { rerender } = render(<LenisScroll />);
+    const lenis = mountedLenis();
+    fireEvent.wheel(window, { deltaY: 300 });
+    expect(lenis.isScrolling).toBe('smooth');
+
+    pathname.current = '/tours/ha-giang-loop-4d/book';
+    rerender(<LenisScroll />);
+    expect(lenis.isScrolling).toBe(false);
+  });
+
+  it('render lại mà pathname giữ nguyên → không đụng tới cú lăn đang chạy', () => {
+    setDocument({ height: 3000, viewport: 800 });
+    pathname.current = '/tours';
+    const { rerender } = render(<LenisScroll />);
+    const lenis = mountedLenis();
+    fireEvent.wheel(window, { deltaY: 300 });
+
+    rerender(<LenisScroll />);
+    expect(lenis.isScrolling).toBe('smooth');
   });
 });
