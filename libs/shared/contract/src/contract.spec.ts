@@ -41,12 +41,35 @@ describe('contract routes', () => {
     [contract.admin.enquiries.addNote, 'POST /api/admin/enquiries/{id}/notes'],
     [contract.admin.stats.enquiries, 'GET /api/admin/stats/enquiries'],
     [contract.admin.stats.dashboard, 'GET /api/admin/stats/dashboard'],
+    [contract.admin.users.list, 'GET /api/admin/users'],
+    [contract.admin.users.byId, 'GET /api/admin/users/{id}'],
+    [contract.admin.users.setRole, 'POST /api/admin/users/{id}/role'],
+    [contract.admin.users.lock, 'POST /api/admin/users/{id}/lock'],
+    [contract.admin.users.unlock, 'POST /api/admin/users/{id}/unlock'],
+    [contract.admin.users.revokeSessions, 'POST /api/admin/users/{id}/sessions/revoke'],
   ];
 
   it.each(routes)('procedure %# is mounted at %s', (procedure, expected) => {
     expect(isContractProcedure(procedure)).toBe(true);
     const route = procedure['~orpc'].route;
     expect(`${route?.method} ${route?.path}`).toBe(expected);
+  });
+
+  it('bốn lệnh ghi admin.users khai đúng hai lỗi, STATE_CHANGED là 409', () => {
+    for (const procedure of [
+      contract.admin.users.setRole,
+      contract.admin.users.lock,
+      contract.admin.users.unlock,
+      contract.admin.users.revokeSessions,
+    ]) {
+      const errorMap = procedure['~orpc'].errorMap as Record<
+        string,
+        { status?: number } | undefined
+      >;
+      expect(Object.keys(errorMap).sort()).toEqual(['NOT_FOUND', 'STATE_CHANGED']);
+      expect(errorMap.STATE_CHANGED?.status).toBe(409);
+      expect(errorMap.NOT_FOUND?.status).toBe(404);
+    }
   });
 
   it('bySlug declares a typed NOT_FOUND error', () => {

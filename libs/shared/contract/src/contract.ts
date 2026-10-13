@@ -61,6 +61,18 @@ import {
   AdminTourSignPhotoUploadsInputSchema,
 } from './schemas/admin-tours.js';
 import {
+  AdminUserByIdInputSchema,
+  AdminUserDetailSchema,
+  AdminUserLockInputSchema,
+  AdminUserLockResultSchema,
+  AdminUserRevokeSessionsResultSchema,
+  AdminUserSetRoleInputSchema,
+  AdminUserSetRoleResultSchema,
+  AdminUsersListQuerySchema,
+  AdminUsersListResultSchema,
+  AdminUserUnlockResultSchema,
+} from './schemas/admin-users.js';
+import {
   AdminBookingDetailSchema,
   AdminBookingsListQuerySchema,
   AdminRefundInputSchema,
@@ -162,6 +174,16 @@ import {
   SetWishlistResultSchema,
   WishlistItemSchema,
 } from './schemas/wishlist.js';
+
+/**
+ * Hai lỗi chung của bốn lệnh ghi `admin.users.*` (ADR-0052). `STATE_CHANGED` là 409:
+ * input đúng, nhưng trạng thái tài khoản không còn cho phép thao tác (tab cũ, người khác
+ * vừa làm, hoặc mục tiêu là Owner).
+ */
+const ADMIN_USER_WRITE_ERRORS = {
+  NOT_FOUND: { status: 404, message: 'User not found' },
+  STATE_CHANGED: { status: 409, message: 'This account changed — refresh and try again' },
+} as const;
 
 /**
  * oRPC contract v1 (spec §6) — health + catalog read public. Được implement ở
@@ -1658,6 +1680,66 @@ export const contract = {
           summary: 'Every post tag with how many posts use it, drafts included',
         })
         .output(z.array(AdminPostTagSchema)),
+    },
+    /**
+     * Vùng Users (P4f, ADR-0052) — CHỈ Owner (bảng `ADMIN_ACCESS`). Bốn lệnh ghi khoá hàng
+     * user bằng `SELECT … FOR UPDATE` rồi hỏi `userActions`; thao tác không còn hợp lệ →
+     * `STATE_CHANGED`. Mỗi lệnh ghi đúng một dòng `user_events` trong cùng transaction.
+     */
+    users: {
+      list: oc
+        .route({
+          method: 'GET',
+          path: '/api/admin/users',
+          summary: 'List accounts (admin, paged, all/staff/locked views, name or email search)',
+        })
+        .input(AdminUsersListQuerySchema)
+        .output(AdminUsersListResultSchema),
+      byId: oc
+        .route({
+          method: 'GET',
+          path: '/api/admin/users/{id}',
+          summary: 'One account with activity counts, sessions and its history',
+        })
+        .input(AdminUserByIdInputSchema)
+        .errors({ NOT_FOUND: ADMIN_USER_WRITE_ERRORS.NOT_FOUND })
+        .output(AdminUserDetailSchema),
+      setRole: oc
+        .route({
+          method: 'POST',
+          path: '/api/admin/users/{id}/role',
+          summary: 'Grant or revoke staff access (revoking signs the account out everywhere)',
+        })
+        .input(AdminUserSetRoleInputSchema)
+        .errors(ADMIN_USER_WRITE_ERRORS)
+        .output(AdminUserSetRoleResultSchema),
+      lock: oc
+        .route({
+          method: 'POST',
+          path: '/api/admin/users/{id}/lock',
+          summary: 'Lock an account: sign it out everywhere and block every new sign-in',
+        })
+        .input(AdminUserLockInputSchema)
+        .errors(ADMIN_USER_WRITE_ERRORS)
+        .output(AdminUserLockResultSchema),
+      unlock: oc
+        .route({
+          method: 'POST',
+          path: '/api/admin/users/{id}/unlock',
+          summary: 'Unlock an account so it can sign in again',
+        })
+        .input(AdminUserByIdInputSchema)
+        .errors(ADMIN_USER_WRITE_ERRORS)
+        .output(AdminUserUnlockResultSchema),
+      revokeSessions: oc
+        .route({
+          method: 'POST',
+          path: '/api/admin/users/{id}/sessions/revoke',
+          summary: 'Sign an account out on every device',
+        })
+        .input(AdminUserByIdInputSchema)
+        .errors(ADMIN_USER_WRITE_ERRORS)
+        .output(AdminUserRevokeSessionsResultSchema),
     },
   },
 };

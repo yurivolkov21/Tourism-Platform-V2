@@ -1,6 +1,8 @@
 // Thứ tự import CÓ Ý NGHĨA: zod-config phải chạy trước mọi schema (xem file đó).
 import './zod-config.js';
 
+export * from './admin-access.js';
+export * from './admin-procedures.js';
 export * from './contract.js';
 export * from './schemas/admin-catalog.js';
 export * from './schemas/admin-categories.js';
@@ -8,6 +10,7 @@ export * from './schemas/admin-departures.js';
 export * from './schemas/admin-destinations.js';
 export * from './schemas/admin-posts.js';
 export * from './schemas/admin-tours.js';
+export * from './schemas/admin-users.js';
 export * from './schemas/booking-phase.js';
 export * from './schemas/bookings.js';
 export * from './schemas/catalog.js';
