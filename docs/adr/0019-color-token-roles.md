@@ -296,3 +296,37 @@ web đều là biến thể này, nên chữ của chúng ở theme tối đang 
 Ở theme sáng, nút biến thể `destructive` lúc hover (`hover:bg-destructive/20`) cho chữ 4.40 trên
 card và 4.19 trên nền. Đây là trạng thái thoáng qua và ngoài G46; ghi thành mục riêng trong
 open-items.
+
+## AMEND 3 — 13/10/2026 (open-items G49): `destructive-emphasis` cho nút đỏ ở chân hộp thoại
+
+### Bối cảnh
+
+G49 ghi nút biến thể `destructive` ở theme sáng lúc hover chỉ đạt 4.40 trên card và 4.19 trên nền.
+Đo lại cho G49 thì thấy bề mặt thật của phần lớn các nút đỏ này không phải card mà là chân hộp thoại:
+`DialogFooter` và `AlertDialogFooter` của `@tourism/ui` phủ `bg-muted/50` lên `popover` (cùng giá trị
+với card). Nút xoá tài khoản ở web, nút bỏ thay đổi chưa lưu và nút từ chối review ở admin đều nằm ở
+đó. AMEND 2 chỉ đo nền và card nên bỏ sót bề mặt này, và theme tối cũng trượt lúc hover. Số đo là
+chữ trên nút lúc nghỉ / lúc hover, trộn alpha trong sRGB như trình duyệt vẽ (lớp tô đỏ 10% / 20% ở
+sáng, 20% / 30% ở tối):
+
+| Mực | /card | /nền | /chân hộp thoại | /muted (chữ trần) |
+| --- | --- | --- | --- | --- |
+| Sáng `oklch(0.516 0.136 27.3)` (nay) ≈ #A8423A | 5.13 / 4.40 ❌ | 4.87 / 4.19 ❌ | 4.58 / 3.96 ❌ | 4.66 |
+| Sáng `oklch(0.48 0.136 27.3)` | 5.99 / 5.14 | 5.69 / 4.89 | 5.35 / 4.62 | 5.45 |
+| **Sáng `oklch(0.47 0.136 27.3)`** ≈ #98342D | **6.25 / 5.36** | **5.94 / 5.11** | **5.59 / 4.83** | **5.69** |
+| Tối `oklch(0.77 0.13 26.7)` (AMEND 2) ≈ #FC9287 | 5.09 / 4.62 | 5.62 / 5.03 | 4.64 / 4.27 ❌ | 4.77 |
+| Tối `oklch(0.79 0.12 26.7)` | 5.48 / 4.98 | 6.05 / 5.42 | 5.00 / 4.60 | 5.14 |
+| **Tối `oklch(0.80 0.11 26.7)`** ≈ #FDA298 | **5.70 / 5.17** | **6.29 / 5.64** | **5.20 / 4.78** | **5.34** |
+
+### Quyết định
+
+`destructive-emphasis` sáng đổi thành `oklch(0.47 0.136 27.3)`, tối đổi thành `oklch(0.80 0.11
+26.7)`. Chọn mốc mà chỗ yếu nhất (chân hộp thoại lúc hover) còn dư khoảng 0.3 trên 4.5: 0.48 sáng và
+0.79 tối chỉ dư 0.1.
+
+- Chroma tối hạ 0.13 → 0.11 vì ở L 0.80 chroma 0.12 đã ra ngoài gam sRGB; hue giữ 26.7.
+- Mục 2b nói mực sáng giữ y hệt `destructive`. Từ AMEND này hai token tách nhau ở cả hai theme;
+  `destructive` (vai bề mặt) không đổi, nên badge giảm giá và lớp tô đỏ giữ nguyên từng pixel.
+- Thấy đổi: chữ đỏ ở theme sáng (lỗi form, nút xoá, cảnh báo huỷ) đậm hơn một bậc, ở theme tối nhạt
+  và hồng hơn một bậc so với AMEND 2. Mobile đọc cùng token nên đổi theo khi app build lại.
+- `tokens.spec.ts` đo nút đỏ ở cả hai theme trên nền, card và chân hộp thoại, lúc nghỉ và lúc hover.
