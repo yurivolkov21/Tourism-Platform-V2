@@ -257,3 +257,42 @@ Cùng lời giải với mục 2 và 2b: **tách token vai mực**, bề mặt g
   và `warning` ở chỗ nào làm mực thì là việc riêng của app.
 - Bản in (`print-doc`) không dùng `success` từ G40 (mộc confirmed là teal `primary`), nên không đổi.
 - Freeze 15/10/2026 vẫn giữ: AMEND này phải lên `main` trước mốc đó, không thì để sau capstone.
+
+## AMEND 2 — 13/10/2026 (open-items G46): `destructive-emphasis` tối lên L 0.77
+
+### Bối cảnh
+
+Mục 2b chọn `destructive-emphasis` tối `oklch(0.72 0.148 26.7)` khi chỉ đo nền và card. Viết test
+4.5:1 cho AMEND 1 thì thấy trên `muted` nó chỉ đạt 3.94 (G46). Soát chỗ dùng (13/10) chưa thấy câu lỗi
+nào đặt thẳng trên `bg-muted`, nhưng lại thấy một chỗ trượt thường gặp hơn: nút và huy hiệu biến thể
+`destructive` của `@tourism/ui` (`button.tsx`, `badge.tsx`, `bubble.tsx`) đặt mực này lên lớp tô
+`dark:bg-destructive/20`. Đo bằng cách trộn alpha trong sRGB như trình duyệt vẽ:
+
+| Mực tối | /nền | /card | /muted | /card + đỏ 20% | /card + đỏ 30% (hover) |
+| --- | --- | --- | --- | --- | --- |
+| `oklch(0.72 0.148 26.7)` (nay) ≈ #F37C71 | 5.58 | 4.95 | 3.94 ❌ | 4.21 ❌ | 3.82 ❌ |
+| `oklch(0.76 0.13 26.7)` | 6.51 | 5.78 | 4.60 | 4.91 | 4.46 ❌ |
+| **`oklch(0.77 0.13 26.7)`** ≈ #FC9287 | **6.75** | **5.99** | **4.77** | **5.09** | **4.62** |
+
+Nút xoá tour, xoá bài viết, từ chối review, bỏ thay đổi chưa lưu ở admin và nút xoá tài khoản ở
+web đều là biến thể này, nên chữ của chúng ở theme tối đang dưới chuẩn ngay ở trạng thái thường.
+
+### Quyết định
+
+`destructive-emphasis` tối đổi thành `oklch(0.77 0.13 26.7)`. Sáng giữ nguyên `oklch(0.516 0.136
+27.3)` (nền 5.62, card 5.93, muted 4.66, card cộng đỏ 10% là 5.13).
+
+- Chroma hạ 0.148 → 0.13 vì ở L 0.77 chroma 0.148 ra ngoài gam sRGB; hue giữ 26.7.
+- Chọn 0.77 chứ không phải 0.76: ở 0.76 chữ của nút lúc hover chỉ 4.46.
+- `destructive` (vai bề mặt) không đổi, nên badge giảm giá và lớp tô đỏ giữ nguyên từng pixel.
+- Thấy đổi: ở theme tối mọi chữ đỏ (lỗi form, nút xoá, cảnh báo huỷ) sáng hơn một bậc và ngả hồng
+  cam. Theme sáng không đổi.
+- Mobile đọc cùng token (`MOBILE_COLOR_KEYS` có `destructive-emphasis`), nên chữ đỏ ở theme tối của
+  app cũng sáng hơn khi app build lại.
+- `tokens.spec.ts` thêm `destructive-emphasis` vào phép thử 4.5:1 trên nền, card và muted của AMEND 1.
+
+### Chưa làm
+
+Ở theme sáng, nút biến thể `destructive` lúc hover (`hover:bg-destructive/20`) cho chữ 4.40 trên
+card và 4.19 trên nền. Đây là trạng thái thoáng qua và ngoài G46; ghi thành mục riêng trong
+open-items.
