@@ -8,6 +8,37 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-10-14 — Merge Vercel chỉ tạo deployment cho nhánh `main` (`73c2c5d`)
+
+User hỏi 14/10 cách để Vercel và Render chỉ deploy nhánh `main`, không deploy các nhánh thành viên
+nhóm push lên. Nhánh `chore/vercel-chi-deploy-main`,
+[PR #22](https://github.com/yurivolkov21/Tourism-Platform-V2/pull/22), thi công trên session cloud.
+Không migration, không env, không dependency, không đổi code chạy.
+
+- Render không cần đổi (đọc chỉ-đọc 14/10): service API theo dõi `main`, Pull Request Previews tắt,
+  30 lần deploy gần nhất đều là commit của `main`.
+- Vercel: `apps/web/vercel.json` và `apps/admin/vercel.json` đặt `git.deploymentEnabled` thành
+  `{ "main": true, "**": false }`. Trước đó push lên nhánh nào cũng build cả web lẫn admin: 70 trong
+  100 deployment gần nhất là preview, phần lớn là nhánh của các thread Claude; riêng 14/10 UTC đã có
+  69 deployment trong giới hạn 100 mỗi ngày của Hobby. Không dùng Ignored Build Step trên dashboard
+  vì bản bị nó huỷ vẫn tính vào giới hạn deployment.
+- ADR-0024 AMEND 6 ghi số đo, lý do và hệ quả; mục lục ADR tăng số AMEND của 0024.
+
+**Review.** Không có lượt review độc lập. Phép thử thật: push nhánh của PR lúc 11:36 UTC không tạo
+deployment nào trên web và admin (đọc API Vercel tới 11:52), commit không có status nào của Vercel.
+User bảo merge 14/10 11:58 UTC. Nhánh tách từ `f3786de`, main không đổi tới lúc merge nên không cần
+rebase.
+
+Tests after: CI của PR xanh trên `73c2c5d` (run 38557839456, đủ `test:int`, build, typecheck, test,
+lint; xong 11:50 UTC). Không đổi code nên không đếm lại số test.
+
+**CÒN TREO:**
+
+- Nhánh tách ra trước `73c2c5d` vẫn tạo preview Vercel cho tới khi rebase lên `main` mới.
+- Render không deploy commit này: build filter của service bỏ qua `docs/**`, `apps/web/**` và
+  `apps/admin/**`.
+- Dọn sau merge: nhánh `chore/vercel-chi-deploy-main` trên origin nếu GitHub không tự xoá.
+
 ## 2026-10-14 — Merge sáu việc nhỏ của app mobile: đơn quá hạn chót (G54), hoá đơn mời viết đánh giá, N7–N10 của nợ nhỏ P5b-4 (`b8529b9`..`3900a5b`)
 
 Làm tiếp open-items theo yêu cầu của user 13/10 (đóng càng nhiều càng tốt trước freeze 15/10).
