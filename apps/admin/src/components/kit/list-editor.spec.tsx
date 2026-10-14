@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { useRef, useState } from 'react';
 import { describe, expect, it } from 'vitest';
 import { type Keyed, newItemKey } from '@/lib/list-editor';
-import { ListEditor } from './list-editor';
+import { ListEditor, type ListEditorProps } from './list-editor';
 
 interface Line extends Keyed {
   text: string;
@@ -170,5 +170,30 @@ describe('ListEditor', () => {
     ).toEqual(['Upload photos', 'Move photo 1 up', 'Move photo 1 down', 'Remove photo 1']);
     await user.click(screen.getByRole('button', { name: 'Remove photo 1' }));
     expect(screen.getByRole('button', { name: 'Upload photos' })).toHaveFocus();
+  });
+});
+
+describe('ListEditorProps (G14)', () => {
+  it('kiểu props: hoặc kit vẽ nút thêm (newItem cùng addLabel), hoặc nơi dùng chỉ đích tiêu điểm', () => {
+    // Ca này canh ở typecheck (`tsc` của gate): mỗi `@ts-expect-error` không còn lỗi để đè là
+    // một lỗi TS2578, tức kiểu đã nới ra cho một tổ hợp làm rơi tiêu điểm.
+    const base = {
+      items: [] as Line[],
+      onChange: () => {},
+      max: 3,
+      itemName: (index: number) => `line ${index + 1}`,
+      renderItem: () => null,
+    };
+    const add = { newItem: () => ({ key: 'k-1', text: '' }), addLabel: 'Add line' };
+    const focus = { emptyFocus: { current: null } };
+    const withAdd: ListEditorProps<Line> = { ...base, ...add };
+    const withFocus: ListEditorProps<Line> = { ...base, ...focus };
+    // @ts-expect-error: không nút thêm mà cũng không đích, gỡ dòng cuối là tiêu điểm về <body>.
+    const neither: ListEditorProps<Line> = base;
+    // @ts-expect-error: có newItem mà thiếu addLabel, kit lặng lẽ không vẽ nút thêm.
+    const noLabel: ListEditorProps<Line> = { ...base, newItem: add.newItem };
+    // @ts-expect-error: có nút thêm thì đích là chính nút ấy, emptyFocus thừa và đè mất nó.
+    const both: ListEditorProps<Line> = { ...base, ...add, ...focus };
+    expect([withAdd, withFocus, neither, noLabel, both]).toHaveLength(5);
   });
 });

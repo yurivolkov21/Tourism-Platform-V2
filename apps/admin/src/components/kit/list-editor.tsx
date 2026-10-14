@@ -24,16 +24,10 @@ import { type Keyed, moveItem, removeAt } from '@/lib/list-editor';
  */
 const t = messages.admin.listEditor;
 
-export interface ListEditorProps<Item extends Keyed> {
+interface ListEditorBaseProps<Item extends Keyed> {
   items: readonly Item[];
   onChange: (items: Item[]) => void;
   max: number;
-  /**
-   * Vắng (cùng `addLabel`) thì kit KHÔNG vẽ nút thêm — dòng vào danh sách bằng
-   * đường khác (tab Photos: tải lên, thư viện).
-   */
-  newItem?: () => Item;
-  addLabel?: string;
   /** Tên của một dòng cho trình đọc màn hình, vd "highlight 2". */
   itemName: (index: number) => string;
   renderItem: (item: Item, index: number) => React.ReactNode;
@@ -51,12 +45,32 @@ export interface ListEditorProps<Item extends Keyed> {
   labelledRows?: boolean;
   /** Câu hiện khi danh sách rỗng. */
   empty?: string;
-  /**
-   * Phần tử nhận tiêu điểm khi gỡ dòng CUỐI — mặc định là nút thêm của kit. Danh
-   * sách không có nút thêm phải truyền nó, không thì tiêu điểm rơi về `<body>`.
-   */
-  emptyFocus?: React.RefObject<HTMLElement | null>;
 }
+
+/**
+ * Đúng MỘT trong hai cách cho dòng vào danh sách (G14). Bản trước để `newItem`, `addLabel` và
+ * `emptyFocus` là ba prop tuỳ chọn rời nhau, nên quên cả nút thêm lẫn đích tiêu điểm (gỡ dòng
+ * cuối là tiêu điểm rơi về `<body>`) hay có `newItem` mà thiếu `addLabel` (kit lặng lẽ không vẽ
+ * nút) vẫn qua typecheck.
+ */
+type ListEditorEntry<Item> =
+  | {
+      /** Kit vẽ nút thêm; gỡ dòng cuối thì tiêu điểm về chính nút ấy. */
+      newItem: () => Item;
+      addLabel: string;
+      emptyFocus?: never;
+    }
+  | {
+      newItem?: never;
+      addLabel?: never;
+      /**
+       * Dòng vào danh sách bằng đường khác (tab Photos: tải lên, thư viện), nên kit không vẽ nút
+       * thêm và đây là phần tử nhận tiêu điểm khi gỡ dòng CUỐI.
+       */
+      emptyFocus: React.RefObject<HTMLElement | null>;
+    };
+
+export type ListEditorProps<Item extends Keyed> = ListEditorBaseProps<Item> & ListEditorEntry<Item>;
 
 export function ListEditor<Item extends Keyed>(props: ListEditorProps<Item>) {
   const {
