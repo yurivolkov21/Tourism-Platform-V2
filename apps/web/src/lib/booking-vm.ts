@@ -313,6 +313,18 @@ export function cancelledByOperator(b: Booking): boolean {
 }
 
 /**
+ * Lý do công ty huỷ chuyến cho khách đọc (ADR-0041 AMEND 2) — nguyên văn câu admin gõ ở hộp huỷ
+ * chuyến, server đọc sống khi chuyến đang huỷ (`bookings.byCode.departureCancelReason`).
+ *
+ * Chỉ trả khi câu chuyện của trang là "chúng tôi huỷ chuyến" (`cancelledByOperator`): đơn khách tự
+ * huỷ sau hạn chót TRƯỚC khi công ty huỷ chuyến vẫn mang cờ chuyến huỷ, nhưng câu chuyện là của
+ * khách — lý do của công ty cạnh "This booking was cancelled." là lạc đề.
+ */
+export function operatorCancelReason(b: BookingDetail): string | null {
+  return cancelledByOperator(b) ? b.departureCancelReason : null;
+}
+
+/**
  * Tiền của đơn trên chuyến công ty huỷ còn đang về: job hoàn tiền (`departure-refund`) chưa chạy
  * nên đơn còn PAID hay hoàn một phần — sổ chưa ghi khoản hoàn của lần huỷ chuyến, nên chưa có số
  * để kể (ADR-0041 AMEND 1). Job hoàn trọn phần còn lại rồi đặt đơn CANCELLED; từ đó

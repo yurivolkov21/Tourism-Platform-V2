@@ -93,6 +93,7 @@ describe('TripClosedPanel — chuyến công ty huỷ', () => {
     paidAt: '2026-08-15T03:05:00.000Z',
     totalAmount: '147.00',
   });
+  const REASON = 'Heavy rain has closed the trail, so this departure is called off.';
 
   it('job hoàn tiền chưa chạy (đơn còn PAID): h2 "Departure cancelled", câu của công ty, tiền đang về', () => {
     renderClosed(ON_CANCELLED_DEPARTURE);
@@ -148,17 +149,41 @@ describe('TripClosedPanel — chuyến công ty huỷ', () => {
     expect(screen.queryByText('No refund was due on this booking.')).toBeNull();
   });
 
+  it('có lý do admin gõ (ADR-0041 AMEND 2): khối "Why" nguyên văn, sau câu của công ty', () => {
+    renderClosed({ ...ON_CANCELLED_DEPARTURE, departureCancelReason: REASON });
+    const headline = screen.getByText('We had to cancel this departure.');
+    const reason = screen.getByText(REASON);
+    expect(screen.getByText('Why')).toBeInTheDocument();
+    // Nguyên văn trong `blockquote`, đứng sau câu của công ty và trước chuyện tiền.
+    expect(reason.tagName).toBe('BLOCKQUOTE');
+    expect(
+      headline.compareDocumentPosition(reason) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(
+      reason.compareDocumentPosition(screen.getByText('Your full refund is on its way.')) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
+
+  it('chuyến huỷ không có lý do (seed lượt 1): không khối "Why" rỗng', () => {
+    renderClosed(ON_CANCELLED_DEPARTURE);
+    expect(screen.queryByText('Why')).toBeNull();
+  });
+
   it('khách đã tự huỷ sau hạn chót TRƯỚC khi công ty huỷ chuyến: câu chuyện của khách', () => {
     renderClosed({
       ...ON_CANCELLED_DEPARTURE,
       status: 'CANCELLED',
       cancelledAt: '2026-09-21T02:00:00.000Z',
       refundedTotal: '0.00',
+      departureCancelReason: REASON,
     });
     expect(screen.getByRole('heading', { level: 2, name: 'Cancelled' })).toBeInTheDocument();
     expect(screen.getByText('This booking was cancelled.')).toBeInTheDocument();
     expect(screen.getByText('No refund was due on this booking.')).toBeInTheDocument();
     expect(screen.queryByText('We had to cancel this departure.')).toBeNull();
+    // Lý do của công ty không thuộc câu chuyện của khách (ADR-0041 AMEND 2).
+    expect(screen.queryByText(REASON)).toBeNull();
   });
 });
 

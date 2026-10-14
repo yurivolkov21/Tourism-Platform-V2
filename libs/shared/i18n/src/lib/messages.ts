@@ -3618,6 +3618,12 @@ export const messages = {
       weCancelled: `${WE_CANCELLED_COPY}.`,
       /** Job hoàn tiền của chuyến huỷ chưa chạy (đơn còn PAID): tiền đang về, sổ chưa có số để kể. */
       refundOnItsWay: 'Your full refund is on its way.',
+      /**
+       * Nhãn khối lý do công ty huỷ chuyến (ADR-0041 AMEND 2) — cùng chữ với khối "WHY" của
+       * email báo huỷ và nhãn lý do bác bài đánh giá: một lý do khách đọc ở email, web hay app
+       * mang cùng một nhãn.
+       */
+      whyLabel: 'Why',
     },
   },
   // Trang `/account/settings` (spec 09/10, phương án C): thẻ danh tính (ảnh, tên, email,

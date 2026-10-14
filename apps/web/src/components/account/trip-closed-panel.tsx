@@ -4,7 +4,13 @@ import { ButtonLink } from '@tourism/ui/components/button-link';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
 import { PanelCard, PanelKicker } from '@/components/account/panel-card';
-import { closedNarrative, type RefundSummary, refundSentence, refundState } from '@/lib/booking-vm';
+import {
+  closedNarrative,
+  operatorCancelReason,
+  type RefundSummary,
+  refundSentence,
+  refundState,
+} from '@/lib/booking-vm';
 
 /**
  * Cột phải của đơn đã kết thúc mà không đi (spec P7 §2.5): đã huỷ hay đã hoàn đủ
@@ -17,7 +23,8 @@ import { closedNarrative, type RefundSummary, refundSentence, refundState } from
  *
  * Chuyến bị CÔNG TY huỷ (`cancelledByOperator`, ADR-0041 AMEND 1) có câu riêng: "chúng tôi huỷ
  * chuyến", rồi chuyện tiền — đang về khi job hoàn tiền chưa chạy (đơn còn PAID), số đã hoàn khi
- * job xong. Trước AMEND 1 đơn ấy hiện như chuyến còn chạy cho tới lúc job chạy.
+ * job xong. Trước AMEND 1 đơn ấy hiện như chuyến còn chạy cho tới lúc job chạy. Từ AMEND 2, lý do
+ * admin gõ lúc huỷ chuyến đứng nguyên văn giữa câu ấy và chuyện tiền (`operatorCancelReason`).
  */
 export function TripClosedPanel({
   booking,
@@ -30,10 +37,14 @@ export function TripClosedPanel({
   // đơn quá hạn không có chuyện tiền.
   const story = closedNarrative(booking, kind);
   const refund = kind === 'lapsed' ? null : refundState(booking);
+  // Lý do công ty huỷ chuyến không vào bản in (G40): chữ tự do dài tới 500 ký tự là rủi ro tràn
+  // trang in, nên `closedNarrative` dùng chung không mang nó (ADR-0041 AMEND 2).
+  const reason = kind === 'lapsed' ? null : operatorCancelReason(booking);
   return (
     <ClosedFrame title={story.title}>
       {story.headline ? <p className="mt-2 text-[15px] font-semibold">{story.headline}</p> : null}
       {story.note ? <p className="mt-1 text-sm text-muted-foreground">{story.note}</p> : null}
+      {reason ? <ReasonQuote reason={reason} /> : null}
       {refund === null ? null : refund.kind === 'onItsWay' ? (
         <MoneyLines
           sentence={messages.bookingDetail.closed.refundOnItsWay}
@@ -43,6 +54,24 @@ export function TripClosedPanel({
         <RefundText refund={refund} currency={booking.currency} />
       )}
     </ClosedFrame>
+  );
+}
+
+/**
+ * Nguyên văn lý do công ty huỷ chuyến (ADR-0041 AMEND 2) — ĐÚNG câu khách đã nhận ở khối "WHY"
+ * của email báo huỷ, cùng dáng khối lý do bác bài đánh giá (`review-panel`). Chữ tự do: link dán
+ * liền bẻ ở bất kỳ đâu, không đẩy trang cuộn ngang.
+ */
+function ReasonQuote({ reason }: { reason: string }) {
+  return (
+    <figure className="mt-3 rounded-md border border-border/60 bg-muted/40 p-3">
+      <figcaption className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
+        {messages.bookingDetail.closed.whyLabel}
+      </figcaption>
+      <blockquote className="mt-1 text-sm whitespace-pre-wrap [overflow-wrap:anywhere]">
+        {reason}
+      </blockquote>
+    </figure>
   );
 }
 

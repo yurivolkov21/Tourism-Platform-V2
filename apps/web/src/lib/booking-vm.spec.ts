@@ -12,6 +12,7 @@ import {
   closedNarrative,
   freeCancellationOpen,
   legacyCancellationNote,
+  operatorCancelReason,
   operatorRefundPending,
   paymentProviderLabel,
   refundSentence,
@@ -482,6 +483,51 @@ describe('cancelledByOperator — đơn đóng vì công ty huỷ chuyến', () 
     ],
   ] as const)('%s → %s', (_, patch, expected) => {
     expect(cancelledByOperator(makeBooking(patch))).toBe(expected);
+  });
+});
+
+/**
+ * Lý do công ty huỷ chuyến cho khách đọc (ADR-0041 AMEND 2) — chỉ khi câu chuyện của trang là
+ * "chúng tôi huỷ chuyến" (`cancelledByOperator`). Đơn khách tự huỷ sau hạn chót TRƯỚC khi công ty
+ * huỷ chuyến kể câu của khách, nên lý do của công ty ở đó là lạc đề.
+ */
+describe('operatorCancelReason — lý do công ty huỷ chuyến cho khách đọc', () => {
+  const REASON = 'Heavy rain has closed the trail, so this departure is called off.';
+
+  it.each([
+    [
+      'công ty huỷ, job hoàn tiền chưa chạy',
+      { departureCancelled: true, departureCancelReason: REASON },
+      REASON,
+    ],
+    [
+      'công ty huỷ, job đã hoàn trọn',
+      {
+        departureCancelled: true,
+        status: 'CANCELLED',
+        refundedTotal: '10.00',
+        departureCancelReason: REASON,
+      },
+      REASON,
+    ],
+    [
+      'chuyến huỷ của seed lượt 1, không có lý do',
+      { departureCancelled: true, departureCancelReason: null },
+      null,
+    ],
+    [
+      'khách tự huỷ sau hạn chót, trước khi công ty huỷ chuyến',
+      {
+        departureCancelled: true,
+        status: 'CANCELLED',
+        refundedTotal: '0.00',
+        departureCancelReason: REASON,
+      },
+      null,
+    ],
+    ['chuyến vẫn chạy', { departureCancelled: false, departureCancelReason: REASON }, null],
+  ] as const)('%s → %s', (_, patch, expected) => {
+    expect(operatorCancelReason(makeBooking(patch))).toBe(expected);
   });
 });
 
