@@ -1,7 +1,7 @@
 # Spec — cụm trang Tours (P3b): `/tours` + `/tours/[slug]`
 
 Ngày 27/07/2026 · nối tiếp [cụm Blog](2026-07-25-blog-pages-design.md) ·
-đối chiếu Nexora: [phân tích 27/07](../analysis/2026-07-27-tours-parity-nexora.md)
+đối chiếu Nexora: [phân tích 27/07](../analysis/nexora-parity/2026-07-27-tours-parity-nexora.md)
 
 ## 1. Mục tiêu
 

@@ -21,7 +21,7 @@ Gần hai tuần dùng thật cho thấy cái giá của "không xoá": dòng t�
 bảng admin và giữ luôn slug. Prod đang có điểm đến thử `abc` (tạo 04/10, đã ẩn, 0 tour,
 0 ảnh) mà không có cách dọn nào ngoài SQL tay. Lượt seed lại ~03/11 cũng không dọn:
 `data:reset` giữ nguyên `tours`, `destinations` và `tour_categories`. Nexora có `DELETE` trần
-cho cả hai bảng ([admin parity 20/08](../analysis/2026-08-20-admin-parity-nexora.md)).
+cho cả hai bảng ([admin parity 20/08](../analysis/nexora-parity/2026-08-20-admin-parity-nexora.md)).
 
 Khoá ngoại đo trên `schema.prisma`:
 

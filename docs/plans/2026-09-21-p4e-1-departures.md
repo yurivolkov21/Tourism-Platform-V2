@@ -360,6 +360,6 @@ AdminDepartureRow = {
 
 ## Prompt cho từng session
 
-Ba đoạn prompt ở [file riêng](2026-09-21-p4e-1-prompts.md), kèm lệnh dựng
+Ba đoạn prompt ở [file riêng](prompts/2026-09-21-p4e-1-prompts.md), kèm lệnh dựng
 worktree. Mỗi session mở **một worktree riêng**, làm đúng một tính năng, không
 đụng sang tính năng khác.

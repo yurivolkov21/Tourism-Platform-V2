@@ -9,7 +9,7 @@
 P4e-3 là phần cuối của bề mặt ghi catalog. Nexora có đủ tạo, sửa và xoá tour;
 v2 tới hôm nay chỉ có danh sách tour kèm công tắc đăng (F11) và lịch chạy của
 từng tour (F12, F13, F16). Theo luật 10, thiếu tạo và sửa tour là thụt lùi cần
-vá (`docs/analysis/2026-08-20-admin-parity-nexora.md`).
+vá (`docs/analysis/nexora-parity/2026-08-20-admin-parity-nexora.md`).
 
 Tour là thực thể lớn nhất của catalog: 26 cột trên bảng `tours` cùng năm bảng
 con (điểm đến, lịch trình theo ngày, FAQ, chính sách, dòng chi phí), chưa kể

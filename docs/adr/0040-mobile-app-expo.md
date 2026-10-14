@@ -364,7 +364,7 @@ không có trong Jest) và vỡ test.
 - **`expo-doctor` đã chạy lại sau khi cài** — vẫn 20/21 (1 fail cũ, lệch bản
   patch 4 gói `expo`/`expo-constants`/`expo-linking`/`expo-router`, KHÔNG liên
   quan gói mới — xem
-  [docs/analysis/2026-09-24-mobile-browse-screens-status.md](../analysis/2026-09-24-mobile-browse-screens-status.md)).
+  [docs/analysis/2026-09-24-mobile-browse-screens-status.md](../reviews/2026-09-24-mobile-browse-screens-status.md)).
 - **Không đổi ranh giới gate** (§5) — gói chạy được trong Expo Go, không kéo
   theo dev build/EAS nào.
 - **Animation không chạy trên UI thread** — đánh đổi đã nói ở trên. Nếu sau

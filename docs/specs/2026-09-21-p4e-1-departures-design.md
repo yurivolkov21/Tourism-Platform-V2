@@ -1,7 +1,7 @@
 # Spec P4e-1 — Chuyến khởi hành và trạng thái đăng tour
 
 21/09/2026 · mở màn **P4e catalog CRUD**, phase mà ADR-0026 §5 gọi là nặng
-nhất. Đầu vào: [khảo sát parity admin 20/08](../analysis/2026-08-20-admin-parity-nexora.md)
+nhất. Đầu vào: [khảo sát parity admin 20/08](../analysis/nexora-parity/2026-08-20-admin-parity-nexora.md)
 §2 (*"khoảng cách lớn nhất là bề mặt GHI catalog — v2 chưa có endpoint ghi
 nào"*) và món nợ [ADR-0041 §6](../adr/0041-single-cancellation-deadline.md):
 công ty huỷ chuyến hoàn 100% mọi lý do, lõi đã viết sẵn nhưng **chưa có nút**.

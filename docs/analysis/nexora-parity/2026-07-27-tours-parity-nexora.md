@@ -1,6 +1,6 @@
 # Đối chiếu Nexora — cụm trang Tours (trước P3b listing + detail)
 
-Ngày 27/07/2026 · phục vụ [spec cụm Tours](../specs/2026-07-27-tours-pages-design.md)
+Ngày 27/07/2026 · phục vụ [spec cụm Tours](../../specs/2026-07-27-tours-pages-design.md)
 
 Rà theo luật CLAUDE.md #10, **cả hai tầng**: (a) trang/tính năng, (b) hạ tầng
 xuyên suốt. Repo tham chiếu `/mnt/c/Dev Program Files/Dev/Projects/Tourism-Platform`

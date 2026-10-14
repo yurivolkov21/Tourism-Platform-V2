@@ -2,8 +2,8 @@
 
 - **Ngày:** 2026-07-19 · **Branch:** `feat/p3-customer` · **Trạng thái:** chờ user duyệt
 - **Phụ lục:** [ADR-0001](../adr/0001-tech-stack.md) (lộ trình vertical slice) ·
-  [API parity map](../analysis/2026-07-19-api-parity-upgrade-map.md) (nguồn của A1–A14, S1–S10) ·
-  [Schema audit](../analysis/2026-07-18-schema-audit-nexora.md) ·
+  [API parity map](../analysis/nexora-parity/2026-07-19-api-parity-upgrade-map.md) (nguồn của A1–A14, S1–S10) ·
+  [Schema audit](../analysis/nexora-parity/2026-07-18-schema-audit-nexora.md) ·
   [outbox-dedupe-key](../conventions/outbox-dedupe-key.md)
 
 ## 1. Mục tiêu & phạm vi

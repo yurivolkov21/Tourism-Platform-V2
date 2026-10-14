@@ -1,5 +1,5 @@
 // Tourism v2 — Prisma schema (port từ Nexora, đã áp mọi audit delta).
-// Nguồn: docs/specs/2026-07-18-schema-audit-nexora.md (H1-H6, H5b, M1-M8, LOW)
+// Nguồn: docs/analysis/nexora-parity/2026-07-18-schema-audit-nexora.md (H1-H6, H5b, M1-M8, LOW)
 // và docs/specs/2026-07-18-p1-api-core.md §4.
 // Phần hardening Prisma không diễn tả được (CHECK constraint, RLS) nằm ở
 // `prisma/hardening-v2.sql` — apply như một migration ngay sau các schema

@@ -1,7 +1,7 @@
 # Spec P4b — CRUD kit + 3 vùng ăn sẵn (bookings · cancellations · reviews-mod)
 
 31/08/2026 · tiếp nối ADR-0026 (app admin riêng) và vòng shell dashboard-01
-(CHANGELOG 31/08). Đầu vào: [khảo sát parity 20/08](../analysis/2026-08-20-admin-parity-nexora.md).
+(CHANGELOG 31/08). Đầu vào: [khảo sát parity 20/08](../analysis/nexora-parity/2026-08-20-admin-parity-nexora.md).
 AMEND cùng ngày sau nghiệm thu F1: thêm F5 (stat card 3 vùng) + F6
 (reports/export) theo yêu cầu bổ sung của user — xem §1 và §3.
 

@@ -5,8 +5,8 @@
   gộp seed + wiring một branch. **Điểm MỚI so với duyệt miệng: nửa B gộp cả
   trang detail — xem §2 lý do bắt buộc**)
 - **Nền:** [ADR-0016](../adr/0016-web-data-layer.md) (tầng dữ liệu — đã hiện
-  thực ở cụm Blog, dùng lại nguyên khuôn) · [thứ tự nối API 10 bước]
-  (../analysis/2026-07-30-docs-audit-progress.md) — spec này phủ **bước 2 + 3**.
+  thực ở cụm Blog, dùng lại nguyên khuôn) · [thứ tự nối API 10 bước](../analysis/progress/2026-07-30-docs-audit-progress.md)
+  — spec này phủ **bước 2 + 3**.
 - **Branch:** `feat/tours-catalogue-api`.
 
 ## 1. Vì sao làm lại seed (quyết định user 31/07)

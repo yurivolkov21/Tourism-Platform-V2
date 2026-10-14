@@ -4,8 +4,8 @@
 - **Bối cảnh:** Phase nối API cho web P3b. Nối tiếp [ADR-0010](0010-infra-hardening.md)
   (error envelope thống nhất — tiền đề "FE một parser"), [ADR-0011](0011-p3b-web-architecture.md)
   §Quyết định 5 (đã hứa "typed oRPC client", chưa chốt chi tiết), [ADR-0005](0005-media-read-build-url.md)
-  (media hoãn có chủ đích). Dữ kiện nền: [rà soát docs ↔ code 30/07](../analysis/2026-07-30-docs-audit-progress.md)
-  và [đối chiếu Nexora tầng dữ liệu web 31/07](../analysis/2026-07-31-web-data-layer-parity-nexora.md).
+  (media hoãn có chủ đích). Dữ kiện nền: [rà soát docs ↔ code 30/07](../analysis/progress/2026-07-30-docs-audit-progress.md)
+  và [đối chiếu Nexora tầng dữ liệu web 31/07](../analysis/nexora-parity/2026-07-31-web-data-layer-parity-nexora.md).
 
 > **Cập nhật 2026-08-03 (đại tu docs — đối chiếu code):**
 > - **On-demand revalidation thành NỢ QUÁ HẠN.** Bước 1–6 của lộ trình nối API

@@ -27,7 +27,7 @@ export type GoogleResult = AuthResult | { ok: false; error: 'cancelled' };
  * Đợt P5b-1 chỉ có bản giả lập. Người làm hạ tầng viết bản thật bằng
  * `@better-auth/expo` (ADR-0017 §9) với đúng hình dạng này rồi đổi provider ở
  * `src/app/_layout.tsx` — không màn nào phải sửa. Bảng đối chiếu từng method
- * sang lệnh Better Auth nằm ở `docs/conventions/mobile-auth-handoff.md`.
+ * sang lệnh Better Auth nằm ở `docs/handoff/mobile-auth-handoff.md`.
  */
 export interface AuthActions {
   signInWithEmail(input: { email: string; password: string }): Promise<AuthResult>;

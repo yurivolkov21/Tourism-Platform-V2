@@ -15,7 +15,7 @@ F17 cho admin tạo và sửa mọi nội dung chữ và số của tour, nhưng
 tour mới tạo không có ảnh nào, và ảnh của 29 tour đang bán chỉ đổi được bằng bộ
 script `media:*` chạy tay. Nexora có ô chọn ảnh, hộp chọn từ thư viện và một lệnh
 `PUT media` thay trọn danh sách ảnh của tour, nên đây là thụt lùi cần vá (luật
-10, `docs/analysis/2026-08-20-admin-parity-nexora.md`).
+10, `docs/analysis/nexora-parity/2026-08-20-admin-parity-nexora.md`).
 
 Đo trên DB production ngày 28/09:
 

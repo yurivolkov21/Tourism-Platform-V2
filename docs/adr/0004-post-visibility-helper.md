@@ -3,7 +3,7 @@
 - **Trạng thái:** Accepted (2026-07-21)
 - **Bối cảnh:** phần Blog (§4.6) của
   [spec P3a](../specs/2026-07-19-p3a-customer-api.md); quy tắc nghiệp vụ W5
-  trong [quét sâu Nexora](../analysis/2026-07-19-nexora-deep-sweep.md)
+  trong [quét sâu Nexora](../analysis/nexora-parity/2026-07-19-nexora-deep-sweep.md)
 
 ## Bối cảnh
 

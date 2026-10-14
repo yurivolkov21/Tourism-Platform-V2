@@ -1,7 +1,7 @@
 # ADR-0010 — Infra hardening trước P3b: exception filter · helmet · Sentry
 
 - **Trạng thái:** Accepted (2026-07-22)
-- **Bối cảnh:** [độ sẵn sàng backend 22/07](../analysis/2026-07-22-backend-readiness-vs-nexora.md) §hạ tầng —
+- **Bối cảnh:** [độ sẵn sàng backend 22/07](../analysis/nexora-parity/2026-07-22-backend-readiness-vs-nexora.md) §hạ tầng —
   3 gap "độ chín production" (TB) còn mở sau khi 4/8 lỗ 19/07 đã đóng. Đóng trước khi web P3b lộ FE.
 
 ## Bối cảnh

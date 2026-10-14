@@ -2,7 +2,7 @@
 
 22/09/2026 · đợt thứ hai của **P4e catalog CRUD**, ngay sau khi
 [P4e-1](2026-09-21-p4e-1-departures-design.md) đóng trọn (F11–F13). Cùng đầu vào:
-[khảo sát parity admin 20/08](../analysis/2026-08-20-admin-parity-nexora.md) §4.1
+[khảo sát parity admin 20/08](../analysis/nexora-parity/2026-08-20-admin-parity-nexora.md) §4.1
 — *"khoảng cách lớn nhất là bề mặt GHI catalog (tours/departures/categories/
 destinations/posts): v2 chưa có endpoint ghi nào"*.
 

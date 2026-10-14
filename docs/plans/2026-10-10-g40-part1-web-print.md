@@ -68,7 +68,7 @@ file ấy.
 ## Điều kiện bắt đầu
 
 1. Worktree `.claude/worktrees/print-web`, nhánh `feat/print-web` — session gốc tạo sẵn từ `main`
-   (ở commit [prompt thi công](2026-10-10-g40-part1-web-print-prompt.md)); session thi công mở
+   (ở commit [prompt thi công](prompts/2026-10-10-g40-part1-web-print-prompt.md)); session thi công mở
    ngay tại đó, không tạo worktree mới.
 2. Chép `apps/web/.env.local` và `apps/api/.env.local` từ checkout gốc vào worktree (memory
    "Worktree agent thiếu .env.local"); không đọc `.env.production`.

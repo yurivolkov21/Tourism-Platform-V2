@@ -52,7 +52,7 @@ là Vercel/Render tự deploy; mọi chỉnh sửa từ nay là chỉnh đồ Đ
    đối chiếu Nexora (luật #10 — cả endpoint LẪN hạ tầng xuyên suốt) → ADR +
    spec phạm vi → user duyệt.
 2. P5 mobile · P6 AI concierge · P7 polish — sau P4, trước freeze 15/10.
-3. Sổ nợ không-chặn: [backlog sống](2026-08-06-backlog-no-ky-thuat.md)
+3. Sổ nợ không-chặn: [backlog sống](../2026-08-06-backlog-no-ky-thuat.md)
    (A5/A15/A16 · B2/B3 · C1–C4 · D1 input-otp trước freeze · E1–E3/E5–E7 ·
    **mục F mới**: Resend webhooks, payload mail thiếu hero/rating, preview
    origin, dev/prod chung DB, Render ngủ 15′).

@@ -2,7 +2,7 @@
 
 02/09/2026 · tiếp nối [spec P4b](2026-08-31-p4b-admin-ready-areas-design.md)
 (kit đã trưởng thành qua 6 tính năng + vòng polish 01–02/09) và ADR-0026 §5
-(thứ tự P4c → P4d → P4e → P4f). Đầu vào: [khảo sát parity admin 20/08](../analysis/2026-08-20-admin-parity-nexora.md)
+(thứ tự P4c → P4d → P4e → P4f). Đầu vào: [khảo sát parity admin 20/08](../analysis/nexora-parity/2026-08-20-admin-parity-nexora.md)
 §2 — bốn vùng dưới đây đều là `[V]` (Nexora có, v2 thiếu), và nhu cầu đã chứng
 minh bằng chính sự cố 20/08 (vụ Resend key phải soi outbox bằng SQL tay).
 

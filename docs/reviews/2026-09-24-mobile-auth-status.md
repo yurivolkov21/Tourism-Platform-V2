@@ -17,7 +17,7 @@ Phạm vi: `apps/mobile`, `libs/shared/core`, `libs/shared/i18n`, backend `apps/
 Các doc sau đang **lệch code** (code đã tiến xa hơn doc mô tả), cần cập nhật lại:
 - [docs/CHANGELOG.md](../CHANGELOG.md) — entry 2026-09-18 vẫn ghi "nối API thật" ở mục CÒN TREO.
 - [docs/handoff/mobile-auth-handoff.md](../handoff/mobile-auth-handoff.md) — vẫn mô tả `createMockAuthActions()` là provider đang chạy.
-- [docs/analysis/auth-flow-simple.md](auth-flow-simple.md) — dòng 7 ghi "App mobile hiện chưa kết nối hệ thống thật, đang dùng dữ liệu giả để demo giao diện" — không còn đúng.
+- [docs/analysis/auth-flow-simple.md](../guides/auth-flow-simple.md) — dòng 7 ghi "App mobile hiện chưa kết nối hệ thống thật, đang dùng dữ liệu giả để demo giao diện" — không còn đúng.
 
 Theo quy ước repo ("Code là nguồn sự thật. Doc lệch code thì sửa doc."), ba doc trên cần sửa lại sau khi phần auth này được commit/review.
 

@@ -115,7 +115,7 @@ Tests after: 1408 web · 238 api · 180 api-int · 87 contract · 22 ui ·
 ## 2026-08-20 — P4a: scaffold app admin riêng + cổng đăng nhập (nhánh `feat/p4a-admin-scaffold`, 1 commit `a59381b`, 27 file)
 
 Mở P4 theo [ADR-0026](../adr/0026-p4-admin-app.md) + [spec P4a](../specs/2026-08-20-p4a-admin-scaffold-design.md)
-(sau [khảo sát Nexora cũ](../analysis/2026-08-20-admin-parity-nexora.md): 40
+(sau [khảo sát Nexora cũ](../analysis/nexora-parity/2026-08-20-admin-parity-nexora.md): 40
 trang · 18 vùng · ~60 endpoint admin). `apps/admin` mới: Next 16.3.0 + React
 19.2.4 (đúng bản workspace ghim — KHÔNG đuổi mới nhất, luật một-React), cổng
 3002, tái dùng tokens/ui/i18n (khối copy `admin` mới trong `@tourism/i18n`).
@@ -141,7 +141,7 @@ Tests after: 1408 web · 238 api · 180 api-int · 87 contract · 22 ui · 10 to
 ## 2026-08-20 — Rà tiến độ + đồng bộ docs về hiện thực (sweep docs-only)
 
 User hỏi "có bỏ lỡ gì không" → rà bằng ĐO chứ không nhớ:
-[báo cáo tiến độ 20/08](../analysis/2026-08-20-progress-report.md) (31 route ·
+[báo cáo tiến độ 20/08](../analysis/progress/2026-08-20-progress-report.md) (31 route ·
 36 endpoint · 1.947 test · ảnh phủ đủ query từ DB — 29/29 tour, 18/18 địa
 danh, 9/9 bài, 48/52 khe với 4 khe trống là seed-only chưa ai đọc). Kết luận:
 không còn món chặn; kế tiếp P4 admin. Docs lệch hiện thực được kéo về:

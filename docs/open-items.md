@@ -120,7 +120,7 @@ báo ở `bookings/[code]`, đọc cờ `departureCancelled`.
   khoá phải hiện toast lý do. Test chỉ giả lập `pointerType: touch` trong jsdom; thử tay 07/10 đạt
   trên DevTools mô phỏng iPhone 16 Pro Max (một toast, chạm lại không chồng) — còn máy thật.
 - **Màn tài khoản mobile (P5b-4, merge 09/10)** — kịch bản từng bước ở mục 8
-  của [tóm tắt nhánh](analysis/2026-10-06-branch-summary-mobile-account-screens.md).
+  của [tóm tắt nhánh](reviews/2026-10-06-branch-summary-mobile-account-screens.md).
   Ưu tiên ba bản vá chỉ kiểm được trên máy: F2 (Android: pinch, chạm đúp, vuốt
   đóng trình xem ảnh), F3 (iOS: bàn phím không che ô nhập trong tấm sửa tên, xoá
   tài khoản, hỏi ngày), F7 (iOS và Android ≤ 12: từ chối quyền ảnh vẫn mở được
@@ -129,19 +129,19 @@ báo ở `bookings/[code]`, đọc cờ `departureCancelled`.
   in bằng X, back cứng Android hay vuốt iOS rồi đăng nhập từ chỗ khác thì KHÔNG
   được dạt về tour cũ. Máy AI không có thiết bị thật.
 - **Rời màn Sign in của mobile (nhánh browse, merge 12/10)** — kịch bản 1–30 ở mục 6 của
-  [tóm tắt nhánh](analysis/2026-10-11-branch-summary-mobile-browse-screens.md). Ưu tiên R2
+  [tóm tắt nhánh](reviews/2026-10-11-branch-summary-mobile-browse-screens.md). Ưu tiên R2
   (bước 14–17, Android và Google: về đúng tour, back cứng về Home, app không thoát) và đường
   onboarding: mở app lần đầu → "I already have an account" → đăng nhập xong → back cứng ở Home
   không được về lại Sign in.
 - **Cụm đặt tour mobile (P5b-3, merge 12/10)** — kịch bản ở
-  [hướng dẫn test](testing-guide-booking-fixes.md), cộng ba đường của review 12/10: để app nền qua
+  [hướng dẫn test](reviews/testing-guide-booking-fixes.md), cộng ba đường của review 12/10: để app nền qua
   đêm rồi mở chuyến đang đi, P5 phải đúng ngày (N2); hết ghế ở B4 → "Choose another date" về đúng
   trang tour, back một lần là ra; B8 "Browse more tours" mở Explore, back về Home rồi hết (N5); đơn
   hoàn một phần mở cụm P, còn nút huỷ ở hoá đơn (N3). Chưa kiểm: iOS (quyết bỏ 09/10), PayPal
   sandbox thật.
 - **Cụm đánh giá mobile (P5b-5, merge 12/10)** — luồng C1–C6 của
-  [hướng dẫn test máy thật](huong-dan-test-may-that.md) và phần B của
-  [hướng dẫn test](testing-guide-review-fixes.md) (Nghia chạy 10/10 trên nhánh chưa rebase), cộng
+  [hướng dẫn test máy thật](guides/mobile-device-testing.md) và phần B của
+  [hướng dẫn test](reviews/testing-guide-review-fixes.md) (Nghia chạy 10/10 trên nhánh chưa rebase), cộng
   hai đường của review 12/10: R5 gửi lại xong bấm "Back to my reviews" về đúng danh sách, back thêm
   một lần là ra Account (M2); thẻ bị bác hai lần ghi "See why" và mở R6 (M4). Mới xác nhận qua code:
   ảnh bìa tour ở R5 và R6 (V6), thumbnail nhẹ ở R5 (V9).

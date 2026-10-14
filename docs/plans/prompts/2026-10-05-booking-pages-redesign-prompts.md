@@ -1,9 +1,9 @@
 # Prompt session THI CÔNG — P7 ba trang đơn của khách (06/10/2026)
 
 > **CÒN DÙNG.** Prompt cho session thi công từng phần của
-> [plan P7](2026-10-05-booking-pages-redesign.md). Văn bản nguồn là
-> [spec](../specs/2026-10-05-booking-pages-redesign-design.md) và
-> [ADR-0054](../adr/0054-customer-bookings-list-phase-filters.md) — prompt chỉ dẫn đường,
+> [plan P7](../2026-10-05-booking-pages-redesign.md). Văn bản nguồn là
+> [spec](../../specs/2026-10-05-booking-pages-redesign-design.md) và
+> [ADR-0054](../../adr/0054-customer-bookings-list-phase-filters.md) — prompt chỉ dẫn đường,
 > **spec mới là hợp đồng**.
 
 ## Cách dùng

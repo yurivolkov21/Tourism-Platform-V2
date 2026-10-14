@@ -62,7 +62,7 @@ từ chính script đã dựng file ấy (cột, hàng, cỡ chữ, viền, côn
 ## Điều kiện bắt đầu
 
 1. Worktree `.claude/worktrees/admin-excel`, nhánh `feat/admin-excel` — session gốc tạo sẵn từ `main`
-   (ở commit [prompt thi công](2026-10-10-g40-part3-admin-excel-prompt.md)); session thi công mở ngay
+   (ở commit [prompt thi công](prompts/2026-10-10-g40-part3-admin-excel-prompt.md)); session thi công mở ngay
    tại đó, không tạo worktree mới.
 2. Chép `apps/admin/.env.local` (và `apps/api/.env.local` nếu có) DEV từ checkout gốc vào worktree;
    không bao giờ đọc hay chép `.env.production`.

@@ -5,7 +5,7 @@ Tách khỏi [`../CHANGELOG.md`](../CHANGELOG.md) ngày 03/08/2026 — DI CHUY�
 
 ## 2026-07-22 — Infra hardening trước P3b (branch `feat/infra-hardening`)
 
-Đóng 2/3 gap "độ chín production" (TB) từ [độ sẵn sàng backend](../analysis/2026-07-22-backend-readiness-vs-nexora.md)
+Đóng 2/3 gap "độ chín production" (TB) từ [độ sẵn sàng backend](../analysis/nexora-parity/2026-07-22-backend-readiness-vs-nexora.md)
 theo [ADR-0010](../adr/0010-infra-hardening.md), trước khi web P3b lộ FE. 2 commit `a0cb221..dc1beec`, TDD:
 - **Global exception filter** (`APP_FILTER` `AllExceptionsFilter`) — chuẩn hoá MỌI lỗi rơi vào pipeline Nest
   (guard 401/403, route Nest thuần, lỗi bất ngờ) về envelope oRPC `{defined, code, status, message, data}`;
@@ -22,7 +22,7 @@ Tests after: `pnpm gate:int` xanh (145 integration + unit filter/e2e).
 
 Đưa booking PENDING mồ côi về terminal theo [ADR-0006](../adr/0006-pending-lifecycle.md) (Accepted 22/07) —
 gap "v2 kém Nexora" duy nhất chạm checkout, phát hiện ở
-[độ sẵn sàng backend 22/07](../analysis/2026-07-22-backend-readiness-vs-nexora.md). 4 feat + 2 chore commit
+[độ sẵn sàng backend 22/07](../analysis/nexora-parity/2026-07-22-backend-readiness-vs-nexora.md). 4 feat + 2 chore commit
 `d40597b..63af354`, mỗi feat TDD (không migration — enum/cột sẵn có):
 - **PAY-1** (`d40597b`) `VerifiedEvent` +type `payment.expired`; Stripe `checkout.session.expired` tách khỏi
   `payment.failed`; `handleEvent` → flip PENDING→CANCELLED (gate `status='PENDING'`, không đụng ghế).
@@ -43,7 +43,7 @@ capture-đến-muộn sau CANCELLED đã được PAY-R1 fresh-refund guard lo (
 
 Đóng 3 gap hình dạng contract customer/admin API TRƯỚC khi mở P3b Web (đổi sau = rework
 component), theo [spec](../specs/2026-07-21-p3a-contract-closeout-design.md) —
-parity từ [sweep parity toàn code](../analysis/2026-07-21-full-parity-sweep-pre-p3ab.md).
+parity từ [sweep parity toàn code](../analysis/nexora-parity/2026-07-21-full-parity-sweep-pre-p3ab.md).
 3 commit feat `7319426..728c020`, mỗi cái TDD (không ADR — thuần additive; không migration):
 - **C1** (`7319426`) `TourCard`/`TourDetail` trả `destinations[]` (`{slug,name,isPrimary}`, primary
   đứng đầu) thay `primaryDestination` đơn — tour đi qua nhiều nơi không còn mất destination phụ.

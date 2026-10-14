@@ -932,7 +932,7 @@ rồi ADR-0016 (tầng dữ liệu web) ở session mới.
 sửa** — dưới 3:1 của WCAG 1.4.11 ở cả hai bản. Hạ L không tạo ra lỗi đó và cũng không
 chữa được; chữa thật là đổi `card` dark hoặc cho nút một viền, và đó là quyết định
 thiết kế riêng cần user xem. Còn lại: `apps/web` **chưa có API client** nào (xem
-[rà soát 30/07](../analysis/2026-07-30-docs-audit-progress.md)) — việc của ADR-0016.
+[rà soát 30/07](../analysis/progress/2026-07-30-docs-audit-progress.md)) — việc của ADR-0016.
 
 Tests after: `pnpm gate` xanh — **18/18 task** kể cả `next build` · web **654**
 (trước đợt này 649) · API 188 · contract 55 · tokens 10 · ui 5 · i18n 1, tổng **913**.

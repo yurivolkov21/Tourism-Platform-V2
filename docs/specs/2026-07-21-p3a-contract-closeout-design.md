@@ -1,7 +1,7 @@
 # P3a contract closeout — C1 · R1 · R2 (design)
 
 - **Ngày:** 2026-07-21
-- **Nguồn:** 3 finding parity từ [sweep parity toàn code](../analysis/2026-07-21-full-parity-sweep-pre-p3ab.md)
+- **Nguồn:** 3 finding parity từ [sweep parity toàn code](../analysis/nexora-parity/2026-07-21-full-parity-sweep-pre-p3ab.md)
   (C1 Quan trọng · R1/R2 Nên có) — v2 thụt lùi so với Nexora ở độ đầy đủ dữ liệu đọc-ra.
 - **Không ADR:** thuần contract-additive/parity, không phải quyết định kiến trúc. Không migration.
 

@@ -5,7 +5,7 @@
  * đúng tỉ lệ từng chỗ để máy không phải tải ảnh 2400px về rồi thu nhỏ.
  *
  * Khi nối API thật, người làm hạ tầng đổi chỗ này sang dữ liệu khe site-media
- * (xem `docs/conventions/mobile-auth-handoff.md`) — màn không phải sửa, vì màn
+ * (xem `docs/handoff/mobile-auth-handoff.md`) — màn không phải sửa, vì màn
  * chỉ nhận `{ uri }`.
  */
 const BASE = 'https://res.cloudinary.com/dbkgeehow/image/upload';

@@ -4,10 +4,10 @@
   hành trọn 22/07 (5/5 mục)**.
 - **Bối cảnh:** [rà soát độc lập 21/07](../analysis/2026-07-21-independent-review.md)
   (gói pending-expiry BK-1/BK-2/PAY-1/WRK-1); nối tiếp
-  [infra-parity #8](../analysis/2026-07-19-infra-parity-nexora.md),
+  [infra-parity #8](../analysis/nexora-parity/2026-07-19-infra-parity-nexora.md),
   [booking-states.md](../conventions/booking-states.md),
   [ADR-0002](0002-payment-gateway-refund-ledger.md),
-  [độ sẵn sàng backend 22/07](../analysis/2026-07-22-backend-readiness-vs-nexora.md).
+  [độ sẵn sàng backend 22/07](../analysis/nexora-parity/2026-07-22-backend-readiness-vs-nexora.md).
 
 > **Cập nhật 2026-08-04 (cụm capture ADR-0002):** TTL cron WRK-1 nâng
 > **30′ → 65′** (`9aa338f`) — hạn Stripe Checkout đã lên 60′ (fix floor+skew

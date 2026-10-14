@@ -118,9 +118,9 @@ bị đảo, cột đã xoá). Specs và plans gom theo giai đoạn thay vì b�
 file mồ côi vào bản đồ. Thêm mục "Bạn đang cần gì?" ở đầu.
 
 **Đợt 3.** Ba tài liệu mới, viết cho người không lập trình:
-[overview.md](../overview.md) (sản phẩm, vai người dùng, sáu luồng, sơ đồ bốn
-app), [glossary.md](../glossary.md) (khoảng 60 mục chia sáu nhóm),
-[open-items.md](../open-items.md) (mốc thời gian, phần chưa xây, việc tay trên hạ
+[overview.md](../../overview.md) (sản phẩm, vai người dùng, sáu luồng, sơ đồ bốn
+app), [glossary.md](../../glossary.md) (khoảng 60 mục chia sáu nhóm),
+[open-items.md](../../open-items.md) (mốc thời gian, phần chưa xây, việc tay trên hạ
 tầng, trỏ về sổ nợ chi tiết).
 
 **Đợt 4.** Thêm luật độ dài vào mục "Quy tắc viết" của bản đồ; gắn header một
@@ -129,7 +129,7 @@ dòng lên mỗi plan đã đóng, trỏ về entry CHANGELOG tương ứng.
 **Đợt 5.** `CHANGELOG.md` từ 589 KB / 133 entry xuống **60 KB / 17 entry** — chỉ
 còn đợt đang chạy từ 15/09. 116 entry còn lại chuyển vào 10 file lưu trữ mới
 theo kỷ nguyên (28–75 KB mỗi file), cộng
-[mục lục](../changelog/README.md) kể lại 12 giai đoạn bằng ngôn ngữ thường.
+[mục lục](../../changelog/README.md) kể lại 12 giai đoạn bằng ngôn ngữ thường.
 
 Về luật bất biến: **nội dung entry nguyên văn, đã kiểm bằng máy** — ghép 11 file
 lại rồi so từng dòng với bản gốc lấy từ git, 6.904 dòng nội dung khớp 100%, đủ
@@ -150,10 +150,10 @@ làm:
 
 - **`mobile-dev-loop.md` §2 viết lại.** Toàn bộ mục đứng trên tiền đề WSL NAT,
   lỗi thời từ 14/09 khi máy dev sang Windows native — nợ do CHANGELOG 16/09 ghi
-  nhận, nay trả. Kèm [ADR-0040 AMEND 2](../adr/0040-mobile-app-expo.md) đảo §8:
+  nhận, nay trả. Kèm [ADR-0040 AMEND 2](../../adr/0040-mobile-app-expo.md) đảo §8:
   `dev` = `expo start` (LAN), thêm `dev:tunnel` cho ba ca còn cần, `dev:lan`
   giữ làm bí danh để lệnh trong spec 08/09 không gãy. Cần thử lại bằng điện
-  thoại thật — ghi ở [open-items](../open-items.md).
+  thoại thật — ghi ở [open-items](../../open-items.md).
 - **`outbox-dedupe-key.md` vá bốn chỗ**: hai dòng bảng trùng nhau, ví dụ
   `cancellation-denied:` thuộc luồng ADR-0041 đã xoá, tên sự kiện `booking-paid`
   trong khi mã dùng `booking-confirmed`, và thiếu ba dạng đang chạy thật
@@ -163,14 +163,14 @@ làm:
 
 Hai việc sắp xếp lại:
 
-- **Năm tài liệu bàn giao mobile sang [`docs/handoff/`](../handoff/README.md).**
+- **Năm tài liệu bàn giao mobile sang [`docs/handoff/`](../../handoff/README.md).**
   Chúng chiếm 45% dung lượng `conventions/` nhưng có hình dạng của plan (chia
   việc, endpoint từng màn) và có ngày hết hạn — dựng xong là thành lịch sử,
   trong khi `booking-states.md` thì mười năm nữa vẫn áp dụng.
 - **`color-system.md` tách đôi**: luật đang thi hành (codename không rời kho mã,
   tỷ lệ phối, bộ font, luật hero luôn tối) ở lại `conventions/` còn 4 KB; phần
   nguồn gốc màu, phương pháp đo và ba palette vùng đã rút sang
-  [analysis](2026-07-22-color-system-analysis.md), 9 KB. File cũ tự nhận là
+  [analysis](../2026-07-22-color-system-analysis.md), 9 KB. File cũ tự nhận là
   "bản ghi phân tích" — đúng định nghĩa của `analysis/`.
 
 `conventions/` còn **7 file, 41 KB**, mọi file đều là luật thật.
@@ -178,7 +178,7 @@ Hai việc sắp xếp lại:
 **Đợt 7.** Hai thư mục không phải Markdown.
 
 `docs/snapshots/` (1,7 MB, 28 file JSON, có commit) không có **một dòng giải
-thích nào** — nay có [mục lục](../snapshots/README.md): bảy file là gì, ranh
+thích nào** — nay có [mục lục](../../snapshots/README.md): bảy file là gì, ranh
 giới với `backups/` (nơi chứa dữ liệu cá nhân, gitignored), lượt nào đang có
 hiệu lực và vì sao (`reset-operational-data.mjs` đọc `keep-list.json` ở thư mục
 có ngày lớn nhất). Đo được chuyện trùng lặp và ghi luôn vào mục lục để lần sau

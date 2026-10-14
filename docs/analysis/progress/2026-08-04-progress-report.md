@@ -3,11 +3,11 @@
 Chụp tại `b3fbb99` (main). Số liệu đo lại trong ngày, KHÔNG lấy từ trí nhớ:
 route đếm bằng `find page.tsx`, endpoint đếm trong `contract.ts`, test chạy
 thật, bề mặt Nexora quét lại bằng khảo sát read-only cùng ngày. Phần parity
-tổng hợp từ 4 bản chuyên sâu ([infra 19/07](2026-07-19-infra-parity-nexora.md)
-· [backend 22/07](2026-07-22-backend-readiness-vs-nexora.md) ·
-[tours 27/07](2026-07-27-tours-parity-nexora.md) ·
-[data-layer 31/07](2026-07-31-web-data-layer-parity-nexora.md)) + bảng auth
-trong [ADR-0017](../adr/0017-web-session-better-auth.md).
+tổng hợp từ 4 bản chuyên sâu ([infra 19/07](../nexora-parity/2026-07-19-infra-parity-nexora.md)
+· [backend 22/07](../nexora-parity/2026-07-22-backend-readiness-vs-nexora.md) ·
+[tours 27/07](../nexora-parity/2026-07-27-tours-parity-nexora.md) ·
+[data-layer 31/07](../nexora-parity/2026-07-31-web-data-layer-parity-nexora.md)) + bảng auth
+trong [ADR-0017](../../adr/0017-web-session-better-auth.md).
 
 ## 1. Đã hoàn thành
 
@@ -29,7 +29,7 @@ media URL (ADR-0005, chưa consumer). Hạ tầng: envelope lỗi một khuôn
 **20 route sống, 0 mock catalogue**: 14 trang public đọc API thật (ISR 300s +
 cache-tag; 30 tour/19 destination/84 review seed thương phẩm; blog 9 bài +
 RSS; robots/sitemap 52 URL; 404 thật — luật
-[soft-404](../conventions/soft-404-loading-tsx.md)); hành vi GHI (contact ·
+[soft-404](../../conventions/soft-404-loading-tsx.md)); hành vi GHI (contact ·
 newsletter · unsubscribe — anti-enumeration); **on-demand revalidation**
 (moderate → bust `['tours','tour:<slug>']` sau commit, hard-bust
 `{expire: 0}`); **auth end-to-end** (5/6 trang, OTP verify + SEC-1 sống,

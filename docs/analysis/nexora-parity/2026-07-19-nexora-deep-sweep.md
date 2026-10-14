@@ -36,7 +36,7 @@ vi phạm bất biến nếu có.
 
 ## Đã vá (19/07)
 
-A1 + A9 → `d88487d` · A5 → `e5c382a` (kèm [ADR-0003](../adr/0003-auth-fail-closed.md)).
+A1 + A9 → `d88487d` · A5 → `e5c382a` (kèm [ADR-0003](../../adr/0003-auth-fail-closed.md)).
 Còn lại: A2 (next-departure badge) · A3 (huỷ PENDING) · A4 (Admin Outbox) ·
 A6 (công cụ điều tra admin) · A7 (Prisma lifecycle) · A8 (reply-to) ·
 A10 (cận trên khách) · A11 (validate EMAIL_FROM).

@@ -335,7 +335,7 @@ know của trang tour; chi phí chỉ nội bộ.
 
 ## 6. Đối chiếu Nexora (luật 10)
 
-Theo [`2026-08-20-admin-parity-nexora.md`](../analysis/2026-08-20-admin-parity-nexora.md),
+Theo [`2026-08-20-admin-parity-nexora.md`](../analysis/nexora-parity/2026-08-20-admin-parity-nexora.md),
 trang sửa tour của Nexora dựng bằng bộ CRUD kit có "tab pills" — cùng họ với hàng tab
 F17 đang có. Thanh bước là **v2 tốt hơn**: giữ mọi khối nội dung, thêm trạng thái từng
 bước và một chỗ duyệt trước khi bán. Không bỏ gì của Nexora.

@@ -1,7 +1,7 @@
 # Sổ nợ kỹ thuật còn mở — chốt 06/08/2026
 
 > **Đây là sổ SỐNG, không phải ảnh chụp.** Khác với
-> [progress report 04/08](2026-08-04-progress-report.md) (bản chụp một thời
+> [progress report 04/08](progress/2026-08-04-progress-report.md) (bản chụp một thời
 > điểm, đừng sửa), file này được cập nhật mỗi khi một khoản nợ được trả hoặc
 > một khoản mới sinh ra. Trả xong thì **gạch bỏ tại chỗ kèm hash**, đừng xoá —
 > để còn truy được vì sao từng có.

@@ -104,7 +104,7 @@ gate `emailVerified===true` — **nhưng email verification đang là `console.l
   AUTH-1 (bootstrap không self-heal) · AUTH-2 (reset email chưa dây — **đã xác minh**) ·
   gói **pending-expiry** BK-1/BK-2/PAY-1/WRK-1 (→ ADR-0006).
 - **PAY-4 = by-design** (đã xác minh `booking-states.md`: goodwill-refund KHÔNG trả ghế — v2 sạch hơn, KHÔNG phải thụt lùi).
-- **Hạ tầng (so [infra-parity 19/07](2026-07-19-infra-parity-nexora.md)):** #1 CORS · #2
+- **Hạ tầng (so [infra-parity 19/07](nexora-parity/2026-07-19-infra-parity-nexora.md)):** #1 CORS · #2
   timeout · #3 health-DB · #4 trust-proxy = **đã vá** (nhưng #4 vá thành `trustProxy:true`
   → đẻ ra **ENQ-R1**). Còn hở: #6 exception-filter · #7 helmet+Sentry · #8 cron PENDING.
 

@@ -1,6 +1,6 @@
 # Đối chiếu Nexora — tầng dữ liệu của frontend web (trước ADR-0016)
 
-Ngày 31/07/2026 · phục vụ [ADR-0016](../adr/0016-web-data-layer.md) · rà theo
+Ngày 31/07/2026 · phục vụ [ADR-0016](../../adr/0016-web-data-layer.md) · rà theo
 luật CLAUDE.md #10 TRƯỚC phase nối API. Repo tham chiếu
 `/mnt/c/Dev Program Files/Dev/Projects/Tourism-Platform` đọc-only, không sửa gì.
 

@@ -5,7 +5,7 @@
 - **Nền:** [ADR-0016](../adr/0016-web-data-layer.md) §3 — tag cắm sẵn toàn
   site từ bước 1 đúng để hôm nay "chỉ còn thêm endpoint"; nợ này đã thành
   QUÁ HẠN theo khối cập nhật 03/08. Blueprint đã đối chiếu:
-  [parity Nexora 31/07](../analysis/2026-07-31-web-data-layer-parity-nexora.md)
+  [parity Nexora 31/07](../analysis/nexora-parity/2026-07-31-web-data-layer-parity-nexora.md)
   (route web + secret constant-time + tag whitelist + một service phía API).
 - **Branch:** `feat/on-demand-revalidation`. Amend ADR + spec commit thẳng
   `main` TRƯỚC khi mở branch (luật 5 "ADR đi trước code" + luật 1 docs-nhỏ).

@@ -22,7 +22,7 @@ render. Tương tác (lọc, chọn đợt khởi hành) chạy client, trạng 
 `@testing-library/react` (thêm ở Task 1) · Biome.
 
 **Spec:** [docs/specs/2026-07-27-tours-pages-design.md](../specs/2026-07-27-tours-pages-design.md)
-**Đối chiếu Nexora:** [docs/analysis/2026-07-27-tours-parity-nexora.md](../analysis/2026-07-27-tours-parity-nexora.md)
+**Đối chiếu Nexora:** [docs/analysis/2026-07-27-tours-parity-nexora.md](../analysis/nexora-parity/2026-07-27-tours-parity-nexora.md)
 
 ## Tiến độ
 

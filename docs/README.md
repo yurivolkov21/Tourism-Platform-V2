@@ -243,13 +243,13 @@ entry CHANGELOG cùng ngày.
 [mô hình tài chính + Excel](plans/2026-09-05-financial-model-excel-report.md)
 
 **Mobile, seed, hoàn tiền**
-[prompt P5a](plans/2026-09-08-p5a-prompt-thi-cong.md) ·
-[prompt các phase còn lại](plans/2026-09-08-prompts-cac-phase-con-lai.md) ·
+[prompt P5a](plans/prompts/2026-09-08-p5a-prompt-thi-cong.md) ·
+[prompt các phase còn lại](plans/prompts/2026-09-08-prompts-cac-phase-con-lai.md) ·
 [seed trọn năm 2026](plans/2026-09-14-seed-khung-2026.md) ·
 [**một hạn chót**](plans/2026-09-15-refund-deadline.md) ·
 [P5b-1 auth mobile](plans/2026-09-16-p5b-auth-wireframe.md) ·
 [**P4e-1 chuyến khởi hành**](plans/2026-09-21-p4e-1-departures.md) ·
-[prompt ba session P4e-1](plans/2026-09-21-p4e-1-prompts.md) ·
+[prompt ba session P4e-1](plans/prompts/2026-09-21-p4e-1-prompts.md) ·
 [**P4e-2 danh mục + điểm đến**](plans/2026-09-22-p4e-2-categories-destinations.md) ·
 [**F16 giai đoạn chuyến** (kèm prompt thi công)](plans/2026-09-23-departure-phase.md) ·
 [**F17 tạo và sửa tour (P4e-3a)** (kèm prompt thi công)](plans/2026-09-24-p4e-3a-tour-editor.md) ·
@@ -258,14 +258,14 @@ entry CHANGELOG cùng ngày.
 [**P4e-4 quản trị bài viết** (kèm prompt thi công)](plans/2026-10-02-p4e-4-posts-admin.md) ·
 [**P4f vùng Users: Owner và Staff** (kèm prompt thi công)](plans/2026-10-02-p4f-users-staff.md) ·
 [**P7 ba trang đơn của khách** (ba phần A, B, C)](plans/2026-10-05-booking-pages-redesign.md) ·
-[prompt thi công P7](plans/2026-10-05-booking-pages-redesign-prompts.md) ·
+[prompt thi công P7](plans/prompts/2026-10-05-booking-pages-redesign-prompts.md) ·
 [**sửa sạn giao diện admin**](plans/2026-10-05-admin-ui-polish.md) ·
 [**Saved và Settings của khách**](plans/2026-10-09-account-saved-settings.md) ·
 [**G40 Phần 1: bản in voucher và hoá đơn chờ**](plans/2026-10-10-g40-part1-web-print.md) ·
-[prompt thi công G40 Phần 1](plans/2026-10-10-g40-part1-web-print-prompt.md) ·
+[prompt thi công G40 Phần 1](plans/prompts/2026-10-10-g40-part1-web-print-prompt.md) ·
 [**G40 Phần 2: bản in báo cáo tháng C2**](plans/2026-10-12-g40-part2-report-print.md) ·
 [**G40 Phần 3: Excel báo cáo D1 và danh sách xuất Excel**](plans/2026-10-10-g40-part3-admin-excel.md) ·
-[prompt thi công G40 Phần 3](plans/2026-10-10-g40-part3-admin-excel-prompt.md) ·
+[prompt thi công G40 Phần 3](plans/prompts/2026-10-10-g40-part3-admin-excel-prompt.md) ·
 [**G42 màn hoá đơn chờ**](plans/2026-10-13-g42-pending-receipt.md) ·
 [**P5b-2 T0 tầng dữ liệu mobile browse**](plans/2026-09-23-mobile-browse-t0-data-layer.md) ·
 [**P5b-4 spec cụm tài khoản mobile**](plans/2026-09-25-mobile-account-screens.md) ·
@@ -296,9 +296,9 @@ Năm cụm màn app điện thoại (P5b), mục lục và ranh giới ở
 [tài khoản](handoff/mobile-account-handoff.md) ·
 [đánh giá](handoff/mobile-review-handoff.md)
 
-Review nhánh đặt tour (mobile): [review `feat/mobile-booking-screens`](review-feat-mobile-booking-screens.md) · [hướng dẫn test các lỗi đã sửa](testing-guide-booking-fixes.md).
+Review nhánh đặt tour (mobile): [review `feat/mobile-booking-screens`](reviews/review-feat-mobile-booking-screens.md) · [hướng dẫn test các lỗi đã sửa](reviews/testing-guide-booking-fixes.md).
 
-Nhật ký đợt mobile: [tiến độ nhánh review 04/10](progress-review-screens-2026-10-04.md) · [hướng dẫn test app mobile trên máy thật](huong-dan-test-may-that.md) · [review `feat/mobile-review-screens`](review-feat-mobile-review-screens.md) · [hướng dẫn test các lỗi đã sửa](testing-guide-review-fixes.md).
+Nhật ký đợt mobile: [tiến độ nhánh review 04/10](reviews/progress-review-screens-2026-10-04.md) · [hướng dẫn test app mobile trên máy thật](guides/mobile-device-testing.md) · [review `feat/mobile-review-screens`](reviews/review-feat-mobile-review-screens.md) · [hướng dẫn test các lỗi đã sửa](reviews/testing-guide-review-fixes.md).
 
 ## Analysis — đo đạc và rà soát
 
@@ -309,32 +309,32 @@ liệu, đừng coi là hiện trạng.
 | --- | --- |
 | [**Sổ nợ kỹ thuật**](analysis/2026-08-06-backlog-no-ky-thuat.md) | **Sống.** Đọc TRƯỚC khi mở cụm việc mới, bắt buộc trước đợt thiết kế lại |
 | [**Rà bảo mật web 05/09**](analysis/2026-09-05-web-security-audit.md) | Đọc trước mỗi đợt vá web — 8 cụm nhìn từ kẻ tấn công, ~55 phát hiện |
-| [Rà soát docs 21/09](analysis/2026-09-21-docs-audit.md) | **Sống.** Đợt đại tu tài liệu đang chạy: quy mô, vấn đề, 4 đợt sửa |
-| [Soát nhánh `feat/mobile-browse-screens` 24/09](analysis/2026-09-24-mobile-browse-screens-status.md) | Tiến độ T0–T7 so với handoff và bản vẽ, trước bản tóm tắt 26/09 |
-| [Mobile auth — tình trạng 24/09](analysis/2026-09-24-mobile-auth-status.md) | Auth mobile đã có gì, nối API tới đâu, trước cụm tài khoản |
-| [Luồng auth — sequence diagram](analysis/auth-flow-sequence-diagrams.md) | Bản kỹ thuật: better-auth, cookie session, từng luồng đăng nhập/đăng ký/khôi phục |
-| [Luồng auth — bản đơn giản](analysis/auth-flow-simple.md) · [bản gộp một sơ đồ](analysis/auth-flow-merged.md) | Cho người không rành kỹ thuật; cùng nội dung bản sequence |
-| [Tóm tắt nhánh `feat/mobile-browse-screens` 26/09](analysis/2026-09-26-branch-summary-mobile-browse-screens.md) | Đã làm/chưa làm/còn treo cho người chưa theo dõi nhánh |
-| [Tóm tắt nhánh `feat/mobile-browse-screens` 11/10](analysis/2026-10-11-branch-summary-mobile-browse-screens.md) | **Bản hiện hành** — đối chiếu review 05/10 (R1–R8, Q5–Q8), còn treo, kết quả kiểm, kịch bản test máy thật |
-| [Tóm tắt nhánh `feat/mobile-account-screens` 26/09](analysis/2026-09-26-branch-summary-mobile-account-screens.md) | Đã làm/chưa làm/còn treo cho người chưa theo dõi nhánh |
-| [Tóm tắt nhánh `feat/mobile-account-screens` 06/10](analysis/2026-10-06-branch-summary-mobile-account-screens.md) | **Bản hiện hành** — chức năng theo spec, đã sửa sau review, còn treo, lỗi kế thừa |
+| [Rà soát docs 21/09](analysis/progress/2026-09-21-docs-audit.md) | **Sống.** Đợt đại tu tài liệu đang chạy: quy mô, vấn đề, 4 đợt sửa |
+| [Soát nhánh `feat/mobile-browse-screens` 24/09](reviews/2026-09-24-mobile-browse-screens-status.md) | Tiến độ T0–T7 so với handoff và bản vẽ, trước bản tóm tắt 26/09 |
+| [Mobile auth — tình trạng 24/09](reviews/2026-09-24-mobile-auth-status.md) | Auth mobile đã có gì, nối API tới đâu, trước cụm tài khoản |
+| [Luồng auth — sequence diagram](guides/auth-flow-sequence-diagrams.md) | Bản kỹ thuật: better-auth, cookie session, từng luồng đăng nhập/đăng ký/khôi phục |
+| [Luồng auth — bản đơn giản](guides/auth-flow-simple.md) · [bản gộp một sơ đồ](guides/auth-flow-merged.md) | Cho người không rành kỹ thuật; cùng nội dung bản sequence |
+| [Tóm tắt nhánh `feat/mobile-browse-screens` 26/09](reviews/2026-09-26-branch-summary-mobile-browse-screens.md) | Đã làm/chưa làm/còn treo cho người chưa theo dõi nhánh |
+| [Tóm tắt nhánh `feat/mobile-browse-screens` 11/10](reviews/2026-10-11-branch-summary-mobile-browse-screens.md) | **Bản hiện hành** — đối chiếu review 05/10 (R1–R8, Q5–Q8), còn treo, kết quả kiểm, kịch bản test máy thật |
+| [Tóm tắt nhánh `feat/mobile-account-screens` 26/09](reviews/2026-09-26-branch-summary-mobile-account-screens.md) | Đã làm/chưa làm/còn treo cho người chưa theo dõi nhánh |
+| [Tóm tắt nhánh `feat/mobile-account-screens` 06/10](reviews/2026-10-06-branch-summary-mobile-account-screens.md) | **Bản hiện hành** — chức năng theo spec, đã sửa sau review, còn treo, lỗi kế thừa |
 | [Hệ màu — nguồn gốc và số đo](analysis/2026-07-22-color-system-analysis.md) | Màu từ đâu ra, đo thế nào, ba palette vùng đã rút. Luật còn hiệu lực ở [conventions](conventions/color-system.md) |
-| [Schema audit](analysis/2026-07-18-schema-audit-nexora.md) | 27 model của dự án cũ và quyết định tối ưu cho bản này |
-| [API parity + upgrade map](analysis/2026-07-19-api-parity-upgrade-map.md) | ~64 endpoint còn thiếu, 14 nâng cấp, 10 khác biệt schema |
-| [Infra parity](analysis/2026-07-19-infra-parity-nexora.md) | 8 lỗ hạ tầng mà bản đếm endpoint bỏ lọt |
-| [Quét sâu Nexora](analysis/2026-07-19-nexora-deep-sweep.md) | Bảng theo dõi A1–A11 + quy tắc nghiệp vụ |
-| [Kiểm kê biến môi trường](analysis/2026-07-19-env-keys-inventory.md) | Khoá nào đã có, khoá nào còn thiếu |
-| [Đối chiếu P3a-B](analysis/2026-07-21-p3a-b-parity-recheck.md) | Wishlist · enquiry · newsletter |
+| [Schema audit](analysis/nexora-parity/2026-07-18-schema-audit-nexora.md) | 27 model của dự án cũ và quyết định tối ưu cho bản này |
+| [API parity + upgrade map](analysis/nexora-parity/2026-07-19-api-parity-upgrade-map.md) | ~64 endpoint còn thiếu, 14 nâng cấp, 10 khác biệt schema |
+| [Infra parity](analysis/nexora-parity/2026-07-19-infra-parity-nexora.md) | 8 lỗ hạ tầng mà bản đếm endpoint bỏ lọt |
+| [Quét sâu Nexora](analysis/nexora-parity/2026-07-19-nexora-deep-sweep.md) | Bảng theo dõi A1–A11 + quy tắc nghiệp vụ |
+| [Kiểm kê biến môi trường](analysis/nexora-parity/2026-07-19-env-keys-inventory.md) | Khoá nào đã có, khoá nào còn thiếu |
+| [Đối chiếu P3a-B](analysis/nexora-parity/2026-07-21-p3a-b-parity-recheck.md) | Wishlist · enquiry · newsletter |
 | [Rà soát độc lập toàn API](analysis/2026-07-21-independent-review.md) | 4 lỗi nặng, chùm lỗi vừa, 19 bất biến được canh |
-| [Sweep parity trước P3a-B](analysis/2026-07-21-full-parity-sweep-pre-p3ab.md) | 7 vùng, 7 agent chạy song song |
-| [Độ sẵn sàng backend](analysis/2026-07-22-backend-readiness-vs-nexora.md) | Quyết định mở hay chưa mở phần web |
-| [Đối chiếu cụm Tours](analysis/2026-07-27-tours-parity-nexora.md) | Listing và detail, hai tầng |
-| [Rà docs ↔ code 30/07](analysis/2026-07-30-docs-audit-progress.md) | Ảnh chụp trước khi viết dòng API đầu tiên cho web |
-| [Đối chiếu tầng dữ liệu web](analysis/2026-07-31-web-data-layer-parity-nexora.md) | Nền của ADR-0016 |
-| [Đại tu docs 03/08](analysis/2026-08-03-docs-overhaul-audit.md) | Đợt rà soát tài liệu lần trước |
-| [Báo cáo tiến độ 04/08](analysis/2026-08-04-progress-report.md) | Mốc trước bước 8–10 |
-| [Báo cáo tiến độ 20/08](analysis/2026-08-20-progress-report.md) | Mốc site sống thật |
-| [Khảo sát admin Nexora](analysis/2026-08-20-admin-parity-nexora.md) | Mở màn P4 |
+| [Sweep parity trước P3a-B](analysis/nexora-parity/2026-07-21-full-parity-sweep-pre-p3ab.md) | 7 vùng, 7 agent chạy song song |
+| [Độ sẵn sàng backend](analysis/nexora-parity/2026-07-22-backend-readiness-vs-nexora.md) | Quyết định mở hay chưa mở phần web |
+| [Đối chiếu cụm Tours](analysis/nexora-parity/2026-07-27-tours-parity-nexora.md) | Listing và detail, hai tầng |
+| [Rà docs ↔ code 30/07](analysis/progress/2026-07-30-docs-audit-progress.md) | Ảnh chụp trước khi viết dòng API đầu tiên cho web |
+| [Đối chiếu tầng dữ liệu web](analysis/nexora-parity/2026-07-31-web-data-layer-parity-nexora.md) | Nền của ADR-0016 |
+| [Đại tu docs 03/08](analysis/progress/2026-08-03-docs-overhaul-audit.md) | Đợt rà soát tài liệu lần trước |
+| [Báo cáo tiến độ 04/08](analysis/progress/2026-08-04-progress-report.md) | Mốc trước bước 8–10 |
+| [Báo cáo tiến độ 20/08](analysis/progress/2026-08-20-progress-report.md) | Mốc site sống thật |
+| [Khảo sát admin Nexora](analysis/nexora-parity/2026-08-20-admin-parity-nexora.md) | Mở màn P4 |
 
 ## Design — đồ nghề thiết kế
 

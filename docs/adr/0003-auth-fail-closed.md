@@ -2,7 +2,7 @@
 
 - **Trạng thái:** Accepted (2026-07-19)
 - **Bối cảnh:** phát hiện A5 trong
-  [quét sâu Nexora](../analysis/2026-07-19-nexora-deep-sweep.md)
+  [quét sâu Nexora](../analysis/nexora-parity/2026-07-19-nexora-deep-sweep.md)
 
 > **Cập nhật 2026-08-03 (đại tu docs — đối chiếu code):**
 > - **4 controller public mới thêm ở P3a** (bề mặt public giờ 9 controller,
