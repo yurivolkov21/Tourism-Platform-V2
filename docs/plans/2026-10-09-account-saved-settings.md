@@ -1,5 +1,9 @@
 # Thiết kế lại Saved và Settings của khách — Implementation Plan
 
+> **ĐÃ ĐÓNG.** Kế hoạch đã thi công xong (merge 09/10); kết quả thật nằm ở
+> [CHANGELOG 08–10/10](../changelog/2026-10-booking-pages-mobile-account.md). Giữ làm bản ghi lịch sử, đừng sửa cho khớp
+> mã nguồn hôm nay.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** `/account/saved` thành lưới thẻ ảnh có tim nổi trên ảnh, ngày lưu và số tour ở hero

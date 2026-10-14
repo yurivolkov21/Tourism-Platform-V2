@@ -1,5 +1,9 @@
 # G42 — Plan thi công màn hoá đơn chờ (13/10/2026)
 
+> **ĐÃ ĐÓNG.** Kế hoạch đã thi công xong (merge 13/10); kết quả thật nằm ở
+> [CHANGELOG 13/10](../CHANGELOG.md). Giữ làm bản ghi lịch sử, đừng sửa cho khớp
+> mã nguồn hôm nay.
+
 Spec: [2026-10-13-g42-pending-receipt-design.md](../specs/2026-10-13-g42-pending-receipt-design.md),
 phương án A user chọn 13/10. Nhánh `feat/g42-pending-receipt`, mỗi bước một commit, một draft PR.
 Không API, không contract, không migration, không dependency mới.

@@ -1,5 +1,9 @@
 # Plan thi công F17 — Tạo và sửa tour (P4e-3a)
 
+> **ĐÃ ĐÓNG.** Kế hoạch đã thi công xong (F17 merge 28/09); kết quả thật nằm ở
+> [CHANGELOG 25–29/09](../changelog/2026-09-tour-editor-photos.md). Giữ làm bản ghi lịch sử, đừng sửa cho khớp
+> mã nguồn hôm nay.
+
 > **Cho agent thi công:** làm tuần tự từng task bằng skill
 > `superpowers:executing-plans`. Bước dùng checkbox `- [ ]`. Prompt bàn giao ở
 > cuối file KHÔNG cho dùng subagent.

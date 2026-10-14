@@ -1,5 +1,9 @@
 # Plan thi công F19 — Khu sửa tour dạng thanh bước (P4e-3c)
 
+> **ĐÃ ĐÓNG.** Kế hoạch đã thi công xong (F19 merge 01/10); kết quả thật nằm ở
+> [CHANGELOG 28/09–05/10](../changelog/2026-10-tour-workspace-posts-admin.md). Giữ làm bản ghi lịch sử, đừng sửa cho khớp
+> mã nguồn hôm nay.
+
 > **Cho agent thi công:** làm tuần tự từng task bằng skill
 > `superpowers:executing-plans`. Bước dùng checkbox `- [ ]`. Prompt bàn giao ở
 > cuối file KHÔNG cho dùng subagent.

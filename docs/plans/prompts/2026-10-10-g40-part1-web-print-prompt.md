@@ -1,6 +1,6 @@
 # Prompt session THI CÔNG — G40 Phần 1: bản in voucher và hoá đơn chờ (10/10/2026)
 
-> **CÒN DÙNG.** Prompt cho session thi công [plan G40 Phần 1](../2026-10-10-g40-part1-web-print.md).
+> **ĐÃ ĐÓNG** (merge 12/10). Prompt cho session thi công [plan G40 Phần 1](../2026-10-10-g40-part1-web-print.md).
 > Văn bản nguồn là [spec](../../specs/2026-10-10-print-and-export-redesign-design.md) và
 > [ADR-0057](../../adr/0057-print-documents.md) — prompt chỉ dẫn đường, **spec mới là hợp đồng**.
 

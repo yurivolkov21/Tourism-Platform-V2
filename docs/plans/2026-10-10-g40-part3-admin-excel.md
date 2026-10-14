@@ -1,5 +1,9 @@
 # G40 Phần 3 — Excel báo cáo tháng D1 và danh sách xuất Excel thay CSV — Implementation Plan
 
+> **ĐÃ ĐÓNG.** Kế hoạch đã thi công xong (merge 12/10); kết quả thật nằm ở
+> [CHANGELOG 12/10](../changelog/2026-10-print-export-mobile-merges.md). Giữ làm bản ghi lịch sử, đừng sửa cho khớp
+> mã nguồn hôm nay.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** File Excel báo cáo tháng của admin trình bày theo bản thảo D1 (Summary dạng dashboard có

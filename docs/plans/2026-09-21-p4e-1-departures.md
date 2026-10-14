@@ -1,6 +1,8 @@
 # P4e-1 chuyến khởi hành — Implementation Plan
 
-> **CÒN DÙNG.** Kế hoạch thi công cho ba session song song. Spec:
+> **ĐÃ ĐÓNG.** Ba tính năng đã merge 22/09; kết quả thật nằm ở
+> [CHANGELOG 22–24/09](../changelog/2026-09-departures-categories-destinations.md).
+> Kế hoạch thi công cho ba session song song. Spec:
 > [P4e-1](../specs/2026-09-21-p4e-1-departures-design.md). Prompt bàn giao cho
 > từng session ở [mục cuối](#prompt-cho-từng-session).
 

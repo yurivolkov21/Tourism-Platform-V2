@@ -1,5 +1,9 @@
 # Plan thi công P4e-2 — danh mục tour và điểm đến
 
+> **ĐÃ ĐÓNG.** Kế hoạch đã thi công xong (F14 merge 23/09, F15 merge 24/09); kết quả thật nằm ở
+> [CHANGELOG 22–24/09](../changelog/2026-09-departures-categories-destinations.md). Giữ làm bản ghi lịch sử, đừng sửa cho khớp
+> mã nguồn hôm nay.
+
 **Spec:** [2026-09-22-p4e-2-categories-destinations-design.md](../specs/2026-09-22-p4e-2-categories-destinations-design.md)
 **ADR:** [0045 — từ vựng vùng miền ở contract](../adr/0045-region-vocabulary-in-contract.md)
 

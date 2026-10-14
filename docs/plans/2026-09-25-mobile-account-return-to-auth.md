@@ -1,5 +1,9 @@
 # Return-to-auth hạ tầng + AuthGateScreen Implementation Plan
 
+> **ĐÃ ĐÓNG.** Kế hoạch đã thi công xong (theo P5b-4, merge 09/10); kết quả thật nằm ở
+> [CHANGELOG 08–10/10](../changelog/2026-10-booking-pages-mobile-account.md). Giữ làm bản ghi lịch sử, đừng sửa cho khớp
+> mã nguồn hôm nay.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Dựng cơ chế "quay lại đúng chỗ sau đăng nhập" (return-to) dùng chung cho toàn

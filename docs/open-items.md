@@ -140,7 +140,7 @@ báo ở `bookings/[code]`, đọc cờ `departureCancelled`.
   hoàn một phần mở cụm P, còn nút huỷ ở hoá đơn (N3). Chưa kiểm: iOS (quyết bỏ 09/10), PayPal
   sandbox thật.
 - **Cụm đánh giá mobile (P5b-5, merge 12/10)** — luồng C1–C6 của
-  [hướng dẫn test máy thật](guides/mobile-device-testing.md) và phần B của
+  [hướng dẫn test máy thật](guides/huong-dan-test-may-that.md) và phần B của
   [hướng dẫn test](reviews/testing-guide-review-fixes.md) (Nghia chạy 10/10 trên nhánh chưa rebase), cộng
   hai đường của review 12/10: R5 gửi lại xong bấm "Back to my reviews" về đúng danh sách, back thêm
   một lần là ra Account (M2); thẻ bị bác hai lần ghi "See why" và mở R6 (M4). Mới xác nhận qua code:

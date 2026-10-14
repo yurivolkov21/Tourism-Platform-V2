@@ -2,7 +2,7 @@
 
 Bản dành cho người không rành kỹ thuật, không có thuật ngữ code. Bản kỹ thuật chi tiết xem [auth-flow-sequence-diagrams.md](./auth-flow-sequence-diagrams.md).
 
-App mobile hiện chưa kết nối hệ thống thật, đang dùng dữ liệu giả để demo giao diện.
+App mobile dùng cùng hệ thống đăng nhập thật với web (cập nhật 14/10/2026). Trên app, nút Google mở thẳng bảng chọn tài khoản Google của điện thoại, không mở trình duyệt.
 
 ## 1. Đăng ký tài khoản mới
 

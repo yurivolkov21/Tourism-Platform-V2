@@ -1,5 +1,10 @@
 # Plan thi công P7 — Thiết kế lại ba trang đơn của khách
 
+> **ĐÃ ĐÓNG.** Kế hoạch đã thi công xong; kết quả thật nằm ở CHANGELOG: phần A ở
+> [05–08/10](../changelog/2026-10-admin-polish-my-bookings.md) (merge 06/10), phần B và C ở
+> [08–10/10](../changelog/2026-10-booking-pages-mobile-account.md) (merge 09/10). Giữ làm bản
+> ghi lịch sử, đừng sửa cho khớp mã nguồn hôm nay.
+
 > **Cho agent thi công:** làm tuần tự từng task bằng skill
 > `superpowers:subagent-driven-development` (khuyên dùng) hoặc `superpowers:executing-plans`.
 > Bước dùng checkbox `- [ ]`. Ba phần A, B, C merge vào `main` lần lượt; hết một phần thì

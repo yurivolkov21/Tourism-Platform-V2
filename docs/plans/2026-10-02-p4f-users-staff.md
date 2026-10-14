@@ -1,5 +1,9 @@
 # Plan thi công P4f — Vùng Users: Owner và Staff
 
+> **ĐÃ ĐÓNG.** Kế hoạch đã thi công xong (merge 13/10); kết quả thật nằm ở
+> [CHANGELOG 13/10](../CHANGELOG.md). Giữ làm bản ghi lịch sử, đừng sửa cho khớp
+> mã nguồn hôm nay.
+
 > **Cho agent thi công:** làm tuần tự từng task bằng skill
 > `superpowers:executing-plans`. Bước dùng checkbox `- [ ]`. Prompt bàn giao ở
 > cuối file KHÔNG cho dùng subagent.

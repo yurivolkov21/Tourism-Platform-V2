@@ -1,5 +1,9 @@
 # Mobile Browse T0 — Tầng dữ liệu + Token + Primitive Implementation Plan
 
+> **ĐÃ ĐÓNG.** Kế hoạch đã thi công xong (T0, entry 23/09 nằm đầu file); kết quả thật nằm ở
+> [CHANGELOG 05–08/10](../changelog/2026-10-admin-polish-my-bookings.md). Giữ làm bản ghi lịch sử, đừng sửa cho khớp
+> mã nguồn hôm nay.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Dựng tầng dữ liệu oRPC + TanStack Query cho `apps/mobile`, mở 5 token màu, và

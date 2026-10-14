@@ -1,6 +1,6 @@
 # Prompt session THI CÔNG — G40 Phần 3: Excel báo cáo tháng D1 và danh sách xuất Excel (10/10/2026)
 
-> **CÒN DÙNG.** Prompt cho session thi công [plan G40 Phần 3](../2026-10-10-g40-part3-admin-excel.md).
+> **ĐÃ ĐÓNG** (merge 12/10). Prompt cho session thi công [plan G40 Phần 3](../2026-10-10-g40-part3-admin-excel.md).
 > Văn bản nguồn là [spec](../../specs/2026-10-10-print-and-export-redesign-design.md) và
 > [ADR-0034](../../adr/0034-excel-report-export.md) AMEND 3 — prompt chỉ dẫn đường, **spec mới là hợp
 > đồng**.

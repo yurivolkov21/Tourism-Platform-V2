@@ -1,5 +1,9 @@
 # Plan thi công P4e-4 — Quản trị bài viết
 
+> **ĐÃ ĐÓNG.** Kế hoạch đã thi công xong (merge 05/10); kết quả thật nằm ở
+> [CHANGELOG 28/09–05/10](../changelog/2026-10-tour-workspace-posts-admin.md). Giữ làm bản ghi lịch sử, đừng sửa cho khớp
+> mã nguồn hôm nay.
+
 > **Cho agent thi công:** làm tuần tự từng task bằng skill
 > `superpowers:executing-plans`. Bước dùng checkbox `- [ ]`. Prompt bàn giao ở
 > cuối file KHÔNG cho dùng subagent.

@@ -1,5 +1,9 @@
 # Cụm tài khoản mobile (P5b-4) — Saved · Account/hồ sơ/bảo mật · Travel stories — Design Spec
 
+> **ĐÃ ĐÓNG.** Spec đã thi công xong (P5b-4, merge 09/10); kết quả thật nằm ở
+> [CHANGELOG 08–10/10](../changelog/2026-10-booking-pages-mobile-account.md). Giữ làm bản ghi lịch sử, đừng sửa cho khớp
+> mã nguồn hôm nay.
+
 > Đây là SPEC (kiến trúc + hợp đồng giữa các phần), không phải plan chạy tay-bước.
 > V2 (Saved), V3/V5/V6 (Account hub/mật khẩu/đăng xuất) port pattern đã có sẵn trong
 > repo (cùng khuôn browse-screens/auth) nên KHÔNG cần plan riêng — implement thẳng theo

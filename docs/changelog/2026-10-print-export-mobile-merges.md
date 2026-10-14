@@ -245,7 +245,7 @@ bản vá review 6 ca: màn đã gửi 2, thẻ R4 4), int 779 → 781 (nhánh 1
 
 **CÒN TREO:**
 
-- [ ] Thử máy thật cụm đánh giá: luồng C1–C6 của [hướng dẫn test máy thật](../guides/mobile-device-testing.md)
+- [ ] Thử máy thật cụm đánh giá: luồng C1–C6 của [hướng dẫn test máy thật](../guides/huong-dan-test-may-that.md)
   và hai đường của review 12/10 (R5 gửi lại xong bấm "Back to my reviews" về đúng danh sách, back
   thêm một lần là ra Account; thẻ bị bác hai lần ghi "See why" và mở R6). Ảnh bìa ở R5, R6 (V6) và
   thumbnail nhẹ ở R5 (V9) mới xác nhận qua code. Đã ghi ở open-items.

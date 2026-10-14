@@ -1,5 +1,9 @@
 # Đợt sửa sạn giao diện admin — Implementation Plan
 
+> **ĐÃ ĐÓNG.** Kế hoạch đã thi công xong (merge 07/10); kết quả thật nằm ở
+> [CHANGELOG 05–08/10](../changelog/2026-10-admin-polish-my-bookings.md). Giữ làm bản ghi lịch sử, đừng sửa cho khớp
+> mã nguồn hôm nay.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Gom ba họ dropdown của admin về một `Picker`, biến Quick Create thành menu tạo nhanh,

@@ -10,13 +10,18 @@ chỗ dễ làm sai.
 
 ## Năm cụm màn app điện thoại (P5b)
 
+> **Cả năm cụm đã dựng xong và gộp vào `main` từ 09/10 tới 12/10/2026**, nên năm
+> file dưới đây giờ là **bản ghi lịch sử** (cập nhật 14/10). Việc còn mở sau các
+> lần gộp nằm ở [open-items](../open-items.md); bản review và tóm tắt nhánh ở
+> [`reviews/`](../reviews/README.md).
+
 | Cụm | Tài liệu | Tình trạng |
 | --- | --- | --- |
-| P5b-1 đăng nhập | [mobile-auth-handoff](mobile-auth-handoff.md) | Giao diện **đã dựng xong** (17 khung tĩnh); việc còn lại là nối Better Auth thật |
-| P5b-2 xem tour | [mobile-browse-handoff](mobile-browse-handoff.md) | Mới có bản vẽ — **đọc file này trước ba file dưới**, luật chung nằm ở đây |
-| P5b-3 đặt tour | [mobile-booking-handoff](mobile-booking-handoff.md) | **Đã dựng**, merge 12/10 (nhánh `fix/mobile-booking-screens`). Cụm chạm tiền: bốn luật cứng |
-| P5b-4 tài khoản | [mobile-account-handoff](mobile-account-handoff.md) | Mới có bản vẽ |
-| P5b-5 đánh giá | [mobile-review-handoff](mobile-review-handoff.md) | **Đã dựng**, merge 12/10 (nhánh `fix/mobile-review-screens`) |
+| P5b-1 đăng nhập | [mobile-auth-handoff](mobile-auth-handoff.md) | Giao diện dựng 16/09; nối Better Auth thật gộp cùng nhánh tài khoản 09/10; đăng nhập Google native 13/10 (ADR-0056) |
+| P5b-2 xem tour | [mobile-browse-handoff](mobile-browse-handoff.md) | Gộp 09/10 cùng nhánh tài khoản, phần còn lại của nhánh gộp 12/10. Luật chung cho cả năm cụm nằm ở file này |
+| P5b-3 đặt tour | [mobile-booking-handoff](mobile-booking-handoff.md) | Gộp 12/10 (nhánh `fix/mobile-booking-screens`). Cụm chạm tiền: bốn luật cứng |
+| P5b-4 tài khoản | [mobile-account-handoff](mobile-account-handoff.md) | Gộp 09/10 (nhánh `feat/mobile-account-screens`) |
+| P5b-5 đánh giá | [mobile-review-handoff](mobile-review-handoff.md) | Gộp 12/10 (nhánh `fix/mobile-review-screens`) |
 
 Bản vẽ gốc: [`design/mockups/`](../design/mockups/README.md) — file
 `mobile-*-screens.src.html`, mở thẳng bằng trình duyệt. Bản vẽ là **bản ghi bất

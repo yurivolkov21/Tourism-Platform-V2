@@ -1,5 +1,9 @@
 # G40 Phần 1 — Bản in voucher và hoá đơn chờ ở web — Implementation Plan
 
+> **ĐÃ ĐÓNG.** Kế hoạch đã thi công xong (merge 12/10); kết quả thật nằm ở
+> [CHANGELOG 12/10](../changelog/2026-10-print-export-mobile-merges.md). Giữ làm bản ghi lịch sử, đừng sửa cho khớp
+> mã nguồn hôm nay.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** In voucher (`/checkout/success`, đơn đã trả) ra tờ A4 theo bản thảo 5b và in hoá đơn

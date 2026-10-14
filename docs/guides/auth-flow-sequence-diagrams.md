@@ -11,7 +11,7 @@ Lib dùng: **better-auth 1.6.23** (`apps/api`, `apps/web`, `apps/admin`). Sessio
 - `apps/api/src/auth/account.controller.ts` — self-service account (me, xoá tài khoản).
 - `apps/web/src/lib/auth-client.ts`, `apps/web/src/components/auth/*` — client web (login, register, verify OTP, forgot/reset password, sign-out).
 - `apps/admin/src/lib/auth-client.ts`, `apps/admin/src/components/auth/*`, `apps/admin/src/app/(admin)/layout.tsx`, `apps/admin/src/lib/admin-gate.ts` — client admin, role gate.
-- `apps/mobile/src/features/auth/mock-auth-actions.ts`, `docs/conventions/mobile-auth-handoff.md` — mobile hiện mock, kế hoạch dùng plugin `expo()` của better-auth.
+- `apps/mobile/src/lib/auth-client.ts`, `apps/mobile/src/features/auth/better-auth-actions.ts` — mobile gọi Better Auth thật qua plugin `expoClient`; Google bằng SDK gốc và ID token ([ADR-0056](../adr/0056-mobile-google-native-signin.md)).
 
 ---
 
@@ -119,7 +119,12 @@ sequenceDiagram
     end
 ```
 
-## 3. Mobile — hiện trạng (mock) vs kế hoạch thật
+## 3. Mobile — đăng nhập thật qua plugin Expo
+
+Cập nhật 14/10/2026. Mobile không có cookie jar như trình duyệt: plugin `expoClient`
+lưu cookie phiên trong `expo-secure-store` rồi tự đính vào mọi request sau. Google
+không đi trình duyệt hay deep link nữa (ADR-0056, 13/10): SDK Google gốc trả ID
+token, app đổi token đó lấy phiên.
 
 ```mermaid
 %%{init: {'theme':'base', 'themeVariables': {
@@ -133,26 +138,30 @@ sequenceDiagram
 sequenceDiagram
     actor U as Người dùng mobile
     participant M as Mobile app
-    participant Mock as mock-auth-actions.ts
-    participant A as API (kế hoạch expo plugin)
+    participant C as authClient (plugin expoClient)
     participant SS as expo-secure-store
+    participant A as API (Better Auth, plugin expo)
 
     rect rgb(245, 240, 230)
-    Note over M,Mock: HIỆN TẠI - toàn bộ mock, không gọi API thật
+    Note over U,A: Email và mật khẩu
     U->>M: Nhập email/password
-    M->>Mock: signInWithEmail()
-    Mock-->>M: resolve/reject theo magic value
+    M->>C: signIn.email()
+    C->>A: POST /api/auth/sign-in/email
+    A-->>C: set-cookie phiên
+    C->>SS: Lưu cookie phiên
     end
 
     rect rgb(230, 223, 204)
-    Note over M,SS: KẾ HOẠCH - docs/conventions/mobile-auth-handoff.md
-    U->>M: Nhập email/password
-    M->>A: authClient.signIn.email() - POST /api/auth/sign-in/email
-    A-->>M: token (bearer, qua expo plugin)
-    M->>SS: Lưu token
-    M->>A: Request sau kèm Authorization Bearer token
-    A->>A: expo() plugin verify token thay vì cookie
+    Note over U,A: Google (ADR-0056)
+    U->>M: Bấm Continue with Google
+    M->>M: SDK Google gốc trả ID token
+    M->>C: signIn.social(provider google, idToken)
+    C->>A: POST /api/auth/sign-in/social
+    A-->>C: set-cookie phiên
+    C->>SS: Lưu cookie phiên
     end
+
+    M->>A: Request sau kèm cookie phiên lấy từ SecureStore
 ```
 
 ## 4. Đăng ký + xác minh email OTP (web)

@@ -4,6 +4,14 @@
 > khung giao diện** và một **hợp đồng giả lập**; việc còn lại là thay bản giả lập
 > bằng Better Auth thật. **Không màn nào phải sửa.**
 
+> **Đã thi hành (cập nhật 14/10/2026).** Hạ tầng thật vào `main` 09/10 cùng nhánh
+> tài khoản: `_layout.tsx` dùng `createBetterAuthActions()`
+> (`features/auth/better-auth-actions.ts`), kho onboarding là
+> `createSecureStoreOnboardingStore()`; nút Google đăng nhập native từ 13/10
+> ([ADR-0056](../adr/0056-mobile-google-native-signin.md)). Mục 1 và 5 kể lúc
+> chưa nối, giữ làm lịch sử. Chỗ tạm còn lại: `AUTH_PHOTOS` vẫn là URL Cloudinary
+> cố định, chưa đọc khe site-media.
+
 Spec thiết kế: [../specs/2026-09-16-p5b-auth-wireframe-design.md](../specs/2026-09-16-p5b-auth-wireframe-design.md) ·
 Bản mockup user đã duyệt: `docs/design/mockups/mobile-auth-screens.src.html` ·
 Quyết định nền: [ADR-0040](../adr/0040-mobile-app-expo.md), [ADR-0042](../adr/0042-shared-client-rules-core.md),

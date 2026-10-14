@@ -2,7 +2,7 @@
 
 > **GẦN XONG.** Bước 1–7 đã thi công và deploy; còn Bước 8 (lượt seed
 > 2, khoảng 03/11) — xem [open-items.md](../open-items.md). Kết quả từng bước ở
-> [CHANGELOG](../CHANGELOG.md) từ 18/09/2026.
+> [CHANGELOG 16–21/09](../changelog/2026-09-refund-deadline-mobile-auth.md) từ 18/09/2026.
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 

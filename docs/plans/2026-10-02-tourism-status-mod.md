@@ -1,5 +1,10 @@
 # Mod `tourism-status` — Implementation Plan
 
+> **NGOÀI KHO MÃ, CHƯA RÕ TRẠNG THÁI.** Mod nằm trên máy user, không phải trong repo;
+> không entry CHANGELOG nào ghi nó đã dựng xong, và máy đã cài lại 12/10 (đường dẫn
+> `C:\Programming\…` trong plan là đường dẫn cũ). Đọc như bản thiết kế, không phải bản ghi
+> đã chạy.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: dùng superpowers:executing-plans (khuyên dùng
 > cho plan này vì Task 0, 6, 7, 8 có bước thử tay trên Code tab) hoặc
 > superpowers:subagent-driven-development cho Task 1–5 (logic thuần). Steps use checkbox

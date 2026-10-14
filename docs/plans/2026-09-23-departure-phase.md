@@ -1,5 +1,9 @@
 # Plan thi công F16 — Giai đoạn của chuyến khởi hành
 
+> **ĐÃ ĐÓNG.** Kế hoạch đã thi công xong (F16 merge 23/09); kết quả thật nằm ở
+> [CHANGELOG 22–24/09](../changelog/2026-09-departures-categories-destinations.md). Giữ làm bản ghi lịch sử, đừng sửa cho khớp
+> mã nguồn hôm nay.
+
 > **Cho agent thi công:** làm tuần tự từng task bằng skill
 > `superpowers:executing-plans`. Bước dùng checkbox `- [ ]`. Prompt bàn giao ở
 > cuối file KHÔNG cho dùng subagent.

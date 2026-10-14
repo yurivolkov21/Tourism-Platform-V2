@@ -1,5 +1,9 @@
 # G40 Phần 2 — Bản in báo cáo tháng C2 (admin) — Implementation Plan
 
+> **ĐÃ ĐÓNG.** Kế hoạch đã thi công xong (merge 12/10); kết quả thật nằm ở
+> [CHANGELOG 12/10](../changelog/2026-10-print-export-mobile-merges.md). Giữ làm bản ghi lịch sử, đừng sửa cho khớp
+> mã nguồn hôm nay.
+
 > Thi công: chính thread cloud viết plan này (12/10), làm tuần tự từng task, TDD. Không có prompt
 > thi công riêng — Yuri chốt 12/10 "thêm một thread mới để xử lí phần 2 luôn".
 
