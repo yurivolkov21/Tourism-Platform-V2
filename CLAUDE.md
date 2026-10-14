@@ -182,11 +182,13 @@ pnpm lint:fix                    # biome tự sửa format + lint
   Nexora có thể cần chỉnh nhỏ kiểu destructure-with-default.
 - `libs/shared/tokens/generated/` là build artifact (gitignored) — build bằng
   `pnpm turbo run build --filter=@tourism/tokens`, không sửa tay.
-- Postgres: kết nối direct/session với pool ~10 — **cấm transaction pooler**
+- Postgres: kết nối direct/session — **cấm transaction pooler**
   (nguồn gốc mọi contortion của Nexora). Với Supabase: dùng **Session pooler**
   (host `…pooler.supabase.com`, cổng **5432**, user `postgres.<ref>`). Cổng
   **6543** là transaction pooler — cấm. Direct `db.<ref>.supabase.co` chỉ có
-  IPv6, WSL không tới được (đã đo).
+  IPv6, WSL không tới được (đã đo). Session pooler chỉ nhận **15 client**, nên
+  pool mỗi tiến trình API có trần ở `apps/api/src/config/db-pool.ts` (Prisma 5,
+  pg-boss 2 — G23, ADR-0024 AMEND 4); thêm client Postgres mới thì cộng vào đó.
 - **Tên file env — chốt 19/07, áp cho mọi app sinh ra về sau:** `.env.local`
   (dev, file DUY NHẤT script pnpm tự đọc) · `.env.production` (deploy thật,
   CÓ secret, phải trỏ tường minh `--env-file`) · `.env.example` (mẫu, file env

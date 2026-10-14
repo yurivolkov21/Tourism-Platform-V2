@@ -4,6 +4,7 @@ import { betterAuth } from 'better-auth';
 import { prismaAdapter } from 'better-auth/adapters/prisma';
 import { APIError, createAuthMiddleware } from 'better-auth/api';
 import { emailOTP } from 'better-auth/plugins/email-otp';
+import { prismaPoolConfig } from '../config/db-pool.js';
 import { adminEmails, env, trustedOrigins, trustedProxyCidrs } from '../config/env.js';
 import { PrismaClient } from '../generated/prisma/client.js';
 import { EmailType, UserRole } from '../generated/prisma/enums.js';
@@ -17,11 +18,12 @@ import { MOBILE_AUTH_REJECTION_MESSAGES, mobileAuthRejection } from './mobile-au
 
 /**
  * PrismaClient dùng chung cho auth + account flows (Prisma 7: connection qua
- * driver adapter pg, KHÔNG qua schema url). Pool direct/session (~10 conn) —
- * transaction pooler bị cấm (CLAUDE.md).
+ * driver adapter pg, KHÔNG qua schema url). Pool direct/session, trần và tên phiên
+ * ở `config/db-pool.ts` (G23: hai pool của tiến trình phải vừa Session pooler 15
+ * client) — transaction pooler bị cấm (CLAUDE.md).
  */
 export const prisma = new PrismaClient({
-  adapter: new PrismaPg({ connectionString: env.DATABASE_URL, max: 10 }),
+  adapter: new PrismaPg(prismaPoolConfig(env.DATABASE_URL)),
 });
 
 /**

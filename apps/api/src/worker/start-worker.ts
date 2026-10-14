@@ -2,6 +2,7 @@ import 'reflect-metadata';
 import { Logger } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { PgBoss } from 'pg-boss';
+import { pgBossPoolConfig } from '../config/db-pool.js';
 import { env } from '../config/env.js';
 import { MediaGarbageService } from '../modules/media/media-garbage.service.js';
 import {
@@ -82,8 +83,10 @@ export async function startWorker(logger: Logger): Promise<{ stop: () => Promise
   const enquiryRetention = app.get(EnquiryRetentionService);
   const departureRefund = app.get(DepartureRefundService);
 
+  // Pool riêng của pg-boss có trần (G23, `config/db-pool.ts`): không đặt `max` thì nó
+  // theo mặc định 10 của pg.Pool, cộng pool Prisma là vượt 15 client của Session pooler.
   const boss = new PgBoss({
-    connectionString: env.DATABASE_URL,
+    ...pgBossPoolConfig(env.DATABASE_URL),
     schema: 'pgboss',
   });
   boss.on('error', (err) => logger.error(`pg-boss error: ${err.message}`, err.stack));
