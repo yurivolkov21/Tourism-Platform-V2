@@ -400,11 +400,14 @@ function buildEmail(
      * - Không hoàn (quá hạn chót): nói rõ hạn chót đã qua, kèm ngày, và mở cửa
      *   ngoại lệ qua đội hỗ trợ (§5 — hoàn thiện chí).
      *
-     * P4e-1 thêm biến thể công ty huỷ chuyến theo `initiator`.
+     * Công ty huỷ chuyến (`initiator = 'operator'`, ADR-0041 AMEND 2): thêm khối WHY in nguyên
+     * văn câu admin gõ ở hộp huỷ chuyến, cùng khối email bác review in lý do người duyệt. Đường
+     * khách không in lý do, kể cả khi payload lỡ mang một câu: lý do khách gõ là của khách.
      */
     case EmailType.BOOKING_CANCELLED: {
       const refunded = payload.refunded === true && money !== undefined;
       const deadline = formatDate(f('deadline'));
+      const operatorReason = payload.initiator === 'operator' ? f('reason') : undefined;
       return {
         subject: `Booking cancelled — ${subjectCode}`,
         node: (
@@ -439,6 +442,9 @@ function buildEmail(
               {title ? ` (${title})` : ''}
               {refunded ? ' and refunded your payment' : ''}.
             </BodyParagraph>
+            {operatorReason ? (
+              <QuoteCard label="WHY">&quot;{operatorReason}&quot;</QuoteCard>
+            ) : null}
             <DataCard
               rows={[
                 ['Status', <PillValue key="v">Cancelled</PillValue>],

@@ -43,6 +43,7 @@ import { bookingCancellation } from './booking-cancellation.js';
 import { mintBookingCode } from './booking-code.js';
 import { type BookingListKey, selectBookingsPage } from './booking-list.js';
 import { checkoutDescription } from './checkout-description.js';
+import { departureCancelReason } from './departure-cancel-reason.js';
 import { effectiveUnitPrice, totalAmount } from './pricing.js';
 import { withBookingRefundLock } from './refund-lock.js';
 
@@ -832,8 +833,12 @@ export class BookingsService {
       where: { code },
       // Trạng thái chuyến đọc SỐNG (ADR-0041 AMEND 1): chuyến bị công ty huỷ thì
       // luật huỷ của khách thôi áp dụng — xem `bookingCancellation`. Cùng trạng thái
-      // ấy ra cờ `departureCancelled` (ADR-0054 AMEND 1).
-      include: bookingInclude,
+      // ấy ra cờ `departureCancelled` (ADR-0054 AMEND 1). Riêng route này đọc thêm lý do
+      // huỷ chuyến cho khách (ADR-0041 AMEND 2) — cùng hàng chuyến, không thêm câu SQL nào.
+      include: {
+        ...bookingInclude,
+        departure: { select: { status: true, cancelReason: true } },
+      },
     });
     if (!booking || booking.userId !== userId) return null;
     const latestCancellation = await prisma.cancellationRequest.findFirst({
@@ -881,6 +886,7 @@ export class BookingsService {
         new Date(),
         booking.departure.status,
       ),
+      departureCancelReason: departureCancelReason(booking.departure),
     };
   }
 

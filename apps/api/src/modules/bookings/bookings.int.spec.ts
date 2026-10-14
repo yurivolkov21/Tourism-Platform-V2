@@ -1077,7 +1077,11 @@ describe('bookings integration (create PENDING + FakeGateway)', () => {
           headers: { cookie: alice },
         });
         expect(res.statusCode).toBe(200);
-        expect(BookingDetailSchema.parse(res.json()).departureCancelled).toBe(cancelled);
+        const detail = BookingDetailSchema.parse(res.json());
+        expect(detail.departureCancelled).toBe(cancelled);
+        // ADR-0041 AMEND 2: chuyến chỉ đổi trạng thái, không có sổ huỷ (như seed lượt 1) → không
+        // có lý do nào để in.
+        expect(detail.departureCancelReason).toBeNull();
       }
     });
   });

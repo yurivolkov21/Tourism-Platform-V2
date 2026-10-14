@@ -64,6 +64,8 @@ export function makeBooking(overrides: Partial<BookingDetail> = {}): BookingDeta
     // ADR-0041: trạng thái huỷ theo hạn chót (byCode). Mặc định null — test cần
     // hộp xác nhận huỷ thì đè overrides.
     cancellation: null,
+    // ADR-0041 AMEND 2: chuyến còn chạy thì không có lý do huỷ nào để in (byCode).
+    departureCancelReason: null,
     ...overrides,
   };
 }

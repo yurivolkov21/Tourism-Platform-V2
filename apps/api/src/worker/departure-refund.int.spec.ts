@@ -208,8 +208,10 @@ describe('departure-refund worker integration (F13)', () => {
     const mails = await prisma.outbox.findMany({ where: { type: EmailType.BOOKING_CANCELLED } });
     expect(mails).toHaveLength(1);
     // Payload phải nói đúng ai là người huỷ — câu chữ email hai đường khác nhau.
-    const payload = mails[0]?.payload as { initiator?: string } | undefined;
+    const payload = mails[0]?.payload as { initiator?: string; reason?: string } | undefined;
     expect(payload?.initiator).toBe('operator');
+    // ADR-0041 AMEND 2: lý do của job (câu admin gõ) đi vào email cho khách đọc.
+    expect(payload?.reason).toBe(REASON);
   });
 
   it('cổng thanh toán từ chối → KHÔNG ghi sổ, booking ở nguyên PAID để job retry', async () => {

@@ -666,11 +666,35 @@ describe('BookingCancellationSchema / BookingDetailSchema.cancellation — ADR-0
   });
 
   it('BookingDetailSchema mang cancellation nullable, không optional', () => {
-    const detail = { ...validBooking, review: null, cancellation };
+    const detail = { ...validBooking, review: null, cancellation, departureCancelReason: null };
     expect(BookingDetailSchema.parse(detail).cancellation).toEqual(cancellation);
     expect(BookingDetailSchema.parse({ ...detail, cancellation: null }).cancellation).toBeNull();
     const { cancellation: _drop, ...missing } = detail;
     expect(BookingDetailSchema.safeParse(missing).success).toBe(false);
+  });
+});
+
+describe('BookingDetailSchema.departureCancelReason — ADR-0041 AMEND 2', () => {
+  const detail = { ...validBooking, review: null, cancellation: null };
+  const REASON = 'Heavy rain has closed the trail, so this departure is called off.';
+
+  it('nhận nguyên văn câu admin gõ, hoặc null khi không có gì để in', () => {
+    expect(
+      BookingDetailSchema.parse({ ...detail, departureCancelReason: REASON }).departureCancelReason,
+    ).toBe(REASON);
+    expect(
+      BookingDetailSchema.parse({ ...detail, departureCancelReason: null }).departureCancelReason,
+    ).toBeNull();
+  });
+
+  it('chuỗi rỗng bị bắt — server trả null thay vì một khối "Why" trống', () => {
+    expect(BookingDetailSchema.safeParse({ ...detail, departureCancelReason: '' }).success).toBe(
+      false,
+    );
+  });
+
+  it('khoá BẮT BUỘC có mặt, không optional', () => {
+    expect(BookingDetailSchema.safeParse(detail).success).toBe(false);
   });
 });
 

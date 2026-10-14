@@ -251,6 +251,14 @@ export const BookingDetailSchema = BookingSchema.extend({
    * job chạy). Web chỉ IN các con số này, không tự tính lại.
    */
   cancellation: BookingCancellationSchema.nullable(),
+  /**
+   * Lý do CÔNG TY huỷ chuyến, cho chính khách đọc (ADR-0041 AMEND 2) — câu admin gõ ở hộp huỷ
+   * chuyến, nguyên văn. Server đọc SỐNG `tour_departures.cancel_reason` khi chuyến `CANCELLED`;
+   * `null` khi chuyến còn chạy hay huỷ mà không có lý do (chuyến của seed lượt 1). Chỉ route chi
+   * tiết mang nó, cùng lý do mở rộng ghi ở đầu schema này. Web và app chỉ in nó khi trang đang kể
+   * chuyện công ty huỷ chuyến.
+   */
+  departureCancelReason: z.string().min(1).nullable(),
 });
 
 export type BookingDetail = z.output<typeof BookingDetailSchema>;

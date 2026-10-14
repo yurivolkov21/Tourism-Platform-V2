@@ -45,6 +45,8 @@ function makeBooking(overrides: Partial<BookingDetail>): BookingDetail {
     reviewedAt: null,
     review: null,
     cancellation: null,
+    // ADR-0041 AMEND 2: chuyến còn chạy thì không có lý do huỷ nào để in.
+    departureCancelReason: null,
     ...overrides,
   };
 }

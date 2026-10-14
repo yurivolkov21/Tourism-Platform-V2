@@ -1,6 +1,11 @@
 import { FastifyAdapter, type NestFastifyApplication } from '@nestjs/platform-fastify';
 import { Test } from '@nestjs/testing';
-import { CancelBookingResultSchema, cancellationDeadline, vietnamToday } from '@tourism/contract';
+import {
+  BookingDetailSchema,
+  CancelBookingResultSchema,
+  cancellationDeadline,
+  vietnamToday,
+} from '@tourism/contract';
 import * as catalog from '../../../prisma/fixtures/catalog/index.js';
 import { AppModule } from '../../app.module.js';
 import { prisma } from '../../auth/auth.config.js';
@@ -311,6 +316,8 @@ describe('cancellations integration (W4, D1-B append-only)', () => {
           calendarDate(dbBooking.departureEndDate),
         ),
         initiator: 'customer',
+        // ADR-0041 AMEND 2: lý do khách gõ là của khách — email không gửi ngược lại cho chính khách.
+        reason: null,
       });
     });
 
@@ -673,6 +680,8 @@ describe('cancellations integration (W4, D1-B append-only)', () => {
         amount: '117.00',
         refunded: true,
         initiator: 'operator',
+        // ADR-0041 AMEND 2: câu admin gõ ở hộp huỷ chuyến đi vào email cho khách đọc.
+        reason: REASON,
       });
     });
 
@@ -691,10 +700,12 @@ describe('cancellations integration (W4, D1-B append-only)', () => {
         headers: { cookie: alice },
       });
       expect(res.statusCode).toBe(200);
-      const body = res.json() as { status: string; cancellation: unknown };
+      const body = BookingDetailSchema.parse(res.json());
       // Booking vẫn PAID tới lúc job chạy — chỉ luật huỷ của KHÁCH là thôi áp dụng.
       expect(body.status).toBe('PAID');
       expect(body.cancellation).toBeNull();
+      // ADR-0041 AMEND 2: trang đơn in lý do công ty huỷ chuyến ngay, không đợi job hoàn tiền.
+      expect(body.departureCancelReason).toBe(REASON);
     });
 
     it('admin đang giữ khoá chuyến lúc khách bấm huỷ → lệnh khách CHỜ, rồi thấy chuyến đã huỷ: 422, không gọi cổng', async () => {

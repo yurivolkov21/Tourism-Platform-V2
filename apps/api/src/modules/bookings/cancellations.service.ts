@@ -65,7 +65,8 @@ export interface CustomerCancelInput {
  *
  * Lõi huỷ KHÔNG tự chọn con số — người gọi tính rồi đưa vào, vì chỉ người gọi
  * biết mình là đường nào. Ở đây `initiator` chỉ còn hai việc: vào payload email
- * (câu chữ hai đường khác nhau) và làm tài liệu cho người đọc kế tiếp.
+ * (câu chữ hai đường khác nhau; đường công ty kèm lý do cho khách đọc, ADR-0041 AMEND 2) và
+ * làm tài liệu cho người đọc kế tiếp.
  *
  * {@link cancellationBlocker} chạy cho CẢ HAI đường, nhưng hai chốt chỉ áp cho
  * khách: ngày khởi hành, và chuyến đã bị công ty huỷ (ADR-0041 AMEND 1 — tiền
@@ -84,6 +85,10 @@ export interface CancelInLockInput {
    * no-op. Giữ trường thay vì cho optional để không ai quên nó ở đường mới.
    */
   expectedRefundAmount: Prisma.Decimal;
+  /**
+   * Vào `cancellation_requests.reason`. Ở đường `'operator'` nó còn là câu admin gõ ở hộp huỷ
+   * chuyến, nên email báo huỷ in nó cho khách đọc (ADR-0041 AMEND 2).
+   */
   reason: string | null;
   initiator: 'customer' | 'operator';
   /** Đồng hồ của lượt huỷ — dùng cho phép kiểm "chưa tới ngày khởi hành". */
@@ -325,7 +330,8 @@ export class CancellationsService {
    *                       (ADR-0006 AMEND 1b). Trigger `refunds_sum_within_total`
    *                       vẫn là lưới cuối.
    *       seat_release  — `seats_booked − party`, guard `seats_booked >= party`.
-   *       outbox_insert — BOOKING_CANCELLED, dedupe `booking-cancelled:<bookingId>`.
+   *       outbox_insert — BOOKING_CANCELLED, dedupe `booking-cancelled:<bookingId>`; đường
+   *                       công ty mang thêm lý do huỷ chuyến cho khách đọc (ADR-0041 AMEND 2).
    *
    * Guard ghế không khớp: log cho người vận hành, giao dịch vẫn commit (tiền đã đi
    * thì câu chuyện tiền phải được ghi) — giữ hành vi của approve.
@@ -349,6 +355,9 @@ export class CancellationsService {
 
     const amount = input.refundAmount;
     const amountText = amount.toFixed(2);
+    // ADR-0041 AMEND 2: câu admin gõ ở hộp huỷ chuyến đi vào email cho khách đọc. Đường khách
+    // ghi `null` — lý do khách gõ là của khách, không gửi ngược lại cho chính khách.
+    const emailReason = input.initiator === 'operator' ? input.reason : null;
     // Sau chốt trạng thái (booking không huỷ được thì lỗi đó đúng hơn), TRƯỚC cổng: khách
     // chỉ đồng ý huỷ với đúng con số hộp xác nhận đã in.
     if (!amount.equals(input.expectedRefundAmount)) {
@@ -418,7 +427,8 @@ export class CancellationsService {
                  'currency', ${booking.currency}::text,
                  'refunded', ${amountText}::numeric > 0,
                  'deadline', ${deadline}::text,
-                 'initiator', ${input.initiator}::text
+                 'initiator', ${input.initiator}::text,
+                 'reason', ${emailReason}::text
                ),
                'booking-cancelled:' || c.id::text
         FROM cancel c

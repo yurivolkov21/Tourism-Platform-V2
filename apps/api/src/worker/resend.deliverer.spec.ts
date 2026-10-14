@@ -261,6 +261,54 @@ describe('renderEmail — khách tự huỷ (BOOKING_CANCELLED, ADR-0041)', () =
   });
 });
 
+describe('renderEmail — công ty huỷ chuyến (BOOKING_CANCELLED, ADR-0041 AMEND 2)', () => {
+  // Payload đường công ty: lõi huỷ (`cancelByOperator`) ghi thêm `reason` — câu admin gõ ở hộp
+  // huỷ chuyến, khách đọc nguyên văn.
+  const OPERATOR = {
+    ...BOOKING_PAYLOAD,
+    amount: '117.00',
+    refunded: true,
+    deadline: '2026-10-17',
+    initiator: 'operator',
+    reason: 'Heavy rain has closed the trail, so this departure is called off.',
+  };
+
+  it('in lý do trong khối WHY, cạnh khoản đã hoàn', async () => {
+    const { html } = await renderEmail(EmailType.BOOKING_CANCELLED, OPERATOR);
+
+    expect(html).toContain('WHY');
+    expect(html).toContain('Heavy rain has closed the trail, so this departure is called off.');
+    expect(html).toContain('Refund issued');
+  });
+
+  it('lý do là chữ thường, không phải HTML: thẻ admin gõ bị escape', async () => {
+    const { html } = await renderEmail(EmailType.BOOKING_CANCELLED, {
+      ...OPERATOR,
+      reason: 'Storm <b>warning</b>',
+    });
+
+    expect(html).not.toContain('<b>warning</b>');
+    expect(html).toContain('&lt;b&gt;warning&lt;/b&gt;');
+  });
+
+  it('payload không có lý do (chuyến huỷ trước AMEND 2) → không có khối WHY', async () => {
+    const { html } = await renderEmail(EmailType.BOOKING_CANCELLED, { ...OPERATOR, reason: null });
+
+    expect(html).not.toContain('WHY');
+    expect(html).toContain('Refund issued');
+  });
+
+  it('đường khách tự huỷ không in lý do, kể cả khi payload lỡ mang một câu', async () => {
+    const { html } = await renderEmail(EmailType.BOOKING_CANCELLED, {
+      ...OPERATOR,
+      initiator: 'customer',
+    });
+
+    expect(html).not.toContain('WHY');
+    expect(html).not.toContain('Heavy rain');
+  });
+});
+
 describe('renderEmail payload rendering', () => {
   it('renders name, tour title and money fields into the confirmation html', async () => {
     const { html } = await renderEmail(EmailType.BOOKING_CONFIRMATION, BOOKING_PAYLOAD);

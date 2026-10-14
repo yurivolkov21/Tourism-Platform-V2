@@ -47,11 +47,9 @@ export interface DepartureRefundJob {
    * Lý do admin gõ ở hộp xác nhận, chép vào `cancellation_requests.reason` của
    * TỪNG booking.
    *
-   * Hiện là ghi chép NỘI BỘ: chỉ admin đọc được (qua `admin.bookings.byCode`).
-   * Email báo huỷ không mang nó, và trang booking phía khách không render nó —
-   * đo được khi chạy thử tay trên production 22/09, và copy ở màn admin đã sửa
-   * lại cho đúng. Muốn khách đọc được thì phải thêm nó vào payload outbox lẫn
-   * template email; đề xuất ấy nằm ở `docs/open-items.md`.
+   * Từ ADR-0041 AMEND 2 khách đọc nguyên văn câu này: lõi huỷ đưa nó vào email báo
+   * huỷ (khối WHY), và trang đơn đọc cùng câu ở `tour_departures.cancel_reason`.
+   * Trước đó (đo khi thử tay trên production 22/09) nó là ghi chép chỉ admin đọc.
    */
   reason: string;
 }
