@@ -70,6 +70,9 @@ export default function ChangePasswordRoute() {
         setFieldErrors((current) =>
           current[field] === undefined ? current : { ...current, [field]: undefined },
         );
+        // N8: khách gõ lại là đang sửa — khung lỗi cấp form của lần lưu trước thôi đứng đó, cùng
+        // luật màn Sign in (`(auth)/login.tsx`).
+        setFormMessage(null);
       }}
       onSubmit={() => void handleSubmit()}
     />
