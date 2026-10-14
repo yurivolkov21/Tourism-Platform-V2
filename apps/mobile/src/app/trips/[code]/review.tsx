@@ -1,5 +1,6 @@
 import { ORPCError } from '@orpc/client';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { REVIEW_PHOTOS_MAX } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
@@ -106,7 +107,7 @@ export default function ReviewRoute() {
       onBack={() => router.back()}
       onSeeReviews={() => router.push('/reviews/mine')}
       photos={photoState.photos}
-      maxPhotos={5}
+      maxPhotos={REVIEW_PHOTOS_MAX}
       photoError={photoState.photoError}
       sheetOpen={photoState.sheetOpen}
       sheetBusy={false}

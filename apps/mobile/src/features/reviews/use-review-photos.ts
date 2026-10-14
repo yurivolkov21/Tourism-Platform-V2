@@ -1,12 +1,13 @@
 import { useMutation } from '@tanstack/react-query';
+import { REVIEW_PHOTOS_MAX } from '@tourism/contract';
 import type { messages } from '@tourism/i18n';
 import * as ImagePicker from 'expo-image-picker';
 import { useState } from 'react';
 import { imageExtensionOfMime } from '@/features/account/avatar-flow';
 import {
   donePhotoPublicIds,
-  type ReviewPhotoError,
   type ReviewPhotoItem,
+  reviewPhotoErrorText,
   validateReviewPhoto,
 } from '@/features/reviews/review-photos';
 import { orpc, withMobileAuth } from '@/lib/api/client';
@@ -25,12 +26,6 @@ export function useReviewPhotos(
   const signUploadMutation = useMutation(
     orpc.media.signUpload.mutationOptions({ context: withMobileAuth() }),
   );
-
-  function photoErrorText(error: ReviewPhotoError): string {
-    if (error === 'notImage') return copy.errNotImage;
-    if (error === 'tooLarge') return copy.errTooLarge('10 MB');
-    return copy.errTooMany(5);
-  }
 
   function updatePhoto(key: string, patch: Partial<ReviewPhotoItem>) {
     setPhotos((prev) => prev.map((p) => (p.key === key ? { ...p, ...patch } : p)));
@@ -63,8 +58,8 @@ export function useReviewPhotos(
         setSheetError(copy.errPermission);
         return;
       }
-      // Thư viện cho chọn nhiều ảnh cùng lúc, tối đa số ô còn trống.
-      const remaining = 5 - photos.length;
+      // Thư viện cho chọn nhiều ảnh cùng lúc, tối đa số ô còn trống (trần của contract).
+      const remaining = REVIEW_PHOTOS_MAX - photos.length;
       const result =
         source === 'camera'
           ? await ImagePicker.launchCameraAsync({ mediaTypes: ['images'], quality: 0.5 })
@@ -81,7 +76,7 @@ export function useReviewPhotos(
       for (const asset of result.assets) {
         const error = validateReviewPhoto(asset, count);
         if (error !== null) {
-          rejected = rejected ?? photoErrorText(error);
+          rejected = rejected ?? reviewPhotoErrorText(error, copy);
           continue;
         }
         const ext = imageExtensionOfMime(asset.mimeType);

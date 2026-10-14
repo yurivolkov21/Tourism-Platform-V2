@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { REVIEW_REJECTION_LIMIT } from '@tourism/contract';
+import { REVIEW_PHOTOS_MAX, REVIEW_REJECTION_LIMIT } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
@@ -134,7 +134,7 @@ export default function RewriteReviewRoute() {
       backLabel={copy.backToReviews}
       onBack={() => router.back()}
       photos={photoState.photos}
-      maxPhotos={5}
+      maxPhotos={REVIEW_PHOTOS_MAX}
       photoError={photoState.photoError}
       sheetOpen={photoState.sheetOpen}
       sheetBusy={false}
