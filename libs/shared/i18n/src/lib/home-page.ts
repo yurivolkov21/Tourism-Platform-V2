@@ -55,8 +55,8 @@ export const homePage = {
     eyebrow: 'Destinations',
     title: 'From the northern mists to the southern delta',
     body: 'Nine places across three regions — scroll to travel the country from north to south.',
-    /** CỐ Ý không chia số ít: W-09 chỉ dời chữ, đầu ra giữ y như cũ (kể cả "1 tours"). */
-    tourCount: (count: number) => `${count} tours`,
+    /** Chia số ít như mọi bộ đếm tour trong `messages` (bản cứng cũ in "1 tours"). */
+    tourCount: (count: number) => `${count} ${count === 1 ? 'tour' : 'tours'}`,
   },
   whyChooseUs: {
     eyebrow: 'Why Nexora',

@@ -176,11 +176,11 @@ export const aboutPage = {
     eyebrow: 'Through the lens',
     titleLead: 'The country we call',
     titleAccent: 'the office.',
-    // Hàm vì số tour đếm lúc render. Cố ý KHÔNG tách số ít ("1 tour"): W-09 chỉ dời chữ, không
-    // đổi chữ đang hiện.
-    regionTours: (count: number) => `${count} tours`,
+    // Hàm vì số tour đếm lúc render; chia số ít như mọi bộ đếm tour trong `messages` (bản cứng
+    // cũ in "1 tours").
+    regionTours: (count: number) => `${count} ${count === 1 ? 'tour' : 'tours'}`,
     allTitle: 'All of Vietnam',
-    allTours: (count: number) => `${count} tours across three regions`,
+    allTours: (count: number) => `${count} ${count === 1 ? 'tour' : 'tours'} across three regions`,
     imageLabels: {
       north: 'Gallery — terraces under moving mist, Sa Pa',
       central: 'Gallery — lantern night on the Hoài river',
