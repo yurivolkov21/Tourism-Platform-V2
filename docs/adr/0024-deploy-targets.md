@@ -271,3 +271,32 @@ Bảng `pgboss.job` đọc chỉ-đọc ngày 14/10 cho số đo của tám ngà
 - Gói Render trả phí để máy không ngủ: tốn tiền, dự án ở gói free (chốt 14/10).
 - Tự đọc `pgboss.job` xem hôm nay job đã chạy chưa rồi mới gửi: làm lại việc chỉ
   mục duy nhất của pg-boss đã làm, và thêm truy vấn vào schema của thư viện.
+
+## AMEND 6 — 14/10/2026: Vercel chỉ tạo deployment cho nhánh `main`
+
+**Bối cảnh.** Push lên nhánh nào Vercel cũng build cả hai project web và admin thành
+bản preview. Đọc chỉ-đọc 100 deployment gần nhất của hai project (13/10 06:47 tới
+14/10 11:09 UTC): 70 là preview của nhánh khác `main`, 30 là production của `main`;
+riêng ngày 14/10 UTC đã có 69 deployment, 47 trong đó là preview. Gói Hobby cho
+100 deployment mỗi ngày cho cả team, và bản preview chiếm Deployment Storage cùng
+Functions Storage (sáng 14/10 hai mục ở 7,84 và 9,41 trên 10 GB). Preview cũng
+không dùng để thử được: không đăng nhập được (Hệ quả ở trên) và Vercel
+Authentication chặn người ngoài team. Render không cần đổi: service API chỉ theo
+dõi `main`, Pull Request Previews đang tắt.
+
+**Chốt.** `apps/web/vercel.json` và `apps/admin/vercel.json` (thư mục gốc của hai
+project) đặt `git.deploymentEnabled` thành `{ "main": true, "**": false }`. Nhánh
+khớp nhiều luật thì chỉ cần một luật `true` là deploy, nên `main` vẫn lên production;
+`**` của minimatch khớp cả tên có `/` (`fix/…`, `dependabot/…`), nên mọi nhánh khác
+không tạo deployment nào. Không dùng Ignored Build Step trên dashboard: bản bị nó
+huỷ vẫn tính vào giới hạn deployment và build đồng thời (docs Vercel, trang
+Monorepos, mục "Ignoring the build step").
+
+**Hệ quả.**
+
+- PR không còn link preview Vercel và không còn check Vercel trên GitHub. Lưới
+  build của nhánh là CI GitHub Actions (`gate` + `test:int`).
+- Vercel đọc `vercel.json` từ chính commit được push, nên nhánh tách ra trước
+  commit này vẫn tạo preview cho tới khi rebase lên `main`.
+- Cần preview cho một nhánh thì thêm luật `true` cho đúng tên nhánh ấy vào cả
+  hai file.

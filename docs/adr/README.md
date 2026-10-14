@@ -31,7 +31,7 @@ thay, cột đã xoá, và số AMEND để biết phải đọc tới cuối fi
 | [0021](0021-media-write-surface.md) | Khách tải ảnh lên: ký trực tiếp Cloudinary | 3 AMEND |
 | [0022](0022-tour-detail-tabs.md) | Trang chi tiết tour chuyển sang 5 tab | |
 | [0023](0023-tour-merchandising-fields.md) | Năm cột nội dung bán hàng cho tour | cột `freeCancellationDays` đã xoá theo [0041](0041-single-cancellation-deadline.md) |
-| [0024](0024-deploy-targets.md) | Nơi deploy v1: Vercel · Render · Supabase · Resend | 5 AMEND (từ AMEND 5, 14/10: worker chạy bù ba job dọn dẹp hằng ngày khi khởi động) |
+| [0024](0024-deploy-targets.md) | Nơi deploy v1: Vercel · Render · Supabase · Resend | 6 AMEND (từ AMEND 6, 14/10: Vercel chỉ tạo deployment cho nhánh `main`) |
 | [0025](0025-transactional-email-react-email.md) | Email giao dịch viết bằng react-email, không dùng dashboard | |
 | [0026](0026-p4-admin-app.md) | Admin là app riêng, dùng chung phiên qua subdomain | 5 AMEND |
 | [0027](0027-admin-surface-palette.md) | Bề mặt riêng cho admin: vỏ tối, ruột trắng lạnh | 1 AMEND |
