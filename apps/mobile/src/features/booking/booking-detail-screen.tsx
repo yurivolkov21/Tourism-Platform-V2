@@ -182,6 +182,34 @@ function Note({
   );
 }
 
+/**
+ * Khối nguyên văn lý do công ty huỷ chuyến (ADR-0041 AMEND 2) — ĐÚNG câu khách đã nhận ở khối
+ * "WHY" của email báo huỷ, cùng dáng khối "Why" trên trang đơn của web (nền muted mờ, viền mảnh):
+ * nhãn nhỏ rồi chữ admin gõ. Chữ tự do tới 500 ký tự nên đứng riêng dưới khối nổi bật, không nhét
+ * vào cột chữ hẹp cạnh icon của `Note`.
+ */
+function ReasonQuote({ label, text }: { label: string; text: string }) {
+  const theme = useTheme();
+  return (
+    <View
+      style={{
+        gap: theme.spacing(1),
+        padding: theme.spacing(2.5),
+        borderWidth: 1,
+        borderColor: theme.colors.border,
+        borderRadius: theme.radius.base * 1.5,
+        backgroundColor: withAlpha(theme.colors.muted, 0.4),
+        marginTop: theme.spacing(2),
+      }}
+    >
+      <AppText variant="caption" tone="muted">
+        {label}
+      </AppText>
+      <AppText variant="subtitle">{text}</AppText>
+    </View>
+  );
+}
+
 export type BookingDetailPill = 'paid' | 'pending' | 'muted';
 
 /** Chữ "Paid" dùng token vai mực `success-emphasis` (G47, ADR-0019 AMEND 4): `success` trần
@@ -244,6 +272,9 @@ export interface BookingDetailScreenProps {
     title: string;
     body?: string;
   } | null;
+  /** Nguyên văn lý do công ty huỷ chuyến, ngay dưới khối nổi bật (ADR-0041 AMEND 2) — chỉ khung
+   *  `departureCancelled` có, và chỉ khi admin đã gõ lý do. */
+  reason?: { label: string; text: string };
   rows: BookingDetailRow[];
   /** Nút chính dưới đáy — `null` khi không có hành động nào (terminal, T8 giữ
    *  "Browse tours" nên đây hiếm khi null, nhưng khung chừa sẵn). */
@@ -272,6 +303,7 @@ export function BookingDetailScreen({
   pillLabel,
   pillTone,
   note,
+  reason,
   rows,
   primaryAction,
   secondaryAction,
@@ -296,6 +328,8 @@ export function BookingDetailScreen({
         {note === null ? null : (
           <Note tone={note.tone} icon={note.icon} title={note.title} body={note.body} />
         )}
+
+        {reason === undefined ? null : <ReasonQuote label={reason.label} text={reason.text} />}
 
         <View style={{ marginTop: theme.spacing(2.5) }}>
           {rows.map((row, index) => (

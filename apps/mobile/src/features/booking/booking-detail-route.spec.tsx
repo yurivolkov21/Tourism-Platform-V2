@@ -117,3 +117,42 @@ describe('BookingDetailRoute — lời mời viết đánh giá (nợ nhỏ P5b-
     expect(screen.queryByRole('button', { name: writeReview })).toBeNull();
   });
 });
+
+/**
+ * Chuyến bị CÔNG TY huỷ (ADR-0041 AMEND 2): hoá đơn in nguyên văn lý do admin gõ lúc huỷ chuyến,
+ * cùng câu khách đã nhận ở khối "WHY" của email báo huỷ và khối "Why" trên trang đơn của web.
+ */
+describe('BookingDetailRoute — lý do công ty huỷ chuyến (ADR-0041 AMEND 2)', () => {
+  const REASON = 'Heavy rain has closed the trail, so this departure is called off.';
+  const closed = messages.bookingDetail.closed;
+
+  it('chuyến công ty huỷ có lý do: nhãn Why và nguyên văn lý do, cạnh câu của công ty', async () => {
+    await renderRoute(makeBooking({ departureCancelled: true, departureCancelReason: REASON }));
+
+    expect(screen.getByText(closed.weCancelled)).toBeTruthy();
+    expect(screen.getByText(closed.whyLabel)).toBeTruthy();
+    expect(screen.getByText(REASON)).toBeTruthy();
+  });
+
+  it('chuyến huỷ không có lý do (seed lượt 1): không khối Why rỗng', async () => {
+    await renderRoute(makeBooking({ departureCancelled: true }));
+
+    expect(screen.getByText(closed.weCancelled)).toBeTruthy();
+    expect(screen.queryByText(closed.whyLabel)).toBeNull();
+  });
+
+  it('khách tự huỷ sau hạn chót TRƯỚC khi công ty huỷ chuyến: không in lý do của công ty', async () => {
+    await renderRoute(
+      makeBooking({
+        departureCancelled: true,
+        status: 'CANCELLED',
+        cancelledAt: '2026-01-07T02:00:00.000Z',
+        refundedTotal: '0.00',
+        departureCancelReason: REASON,
+      }),
+    );
+
+    expect(screen.queryByText(closed.weCancelled)).toBeNull();
+    expect(screen.queryByText(REASON)).toBeNull();
+  });
+});

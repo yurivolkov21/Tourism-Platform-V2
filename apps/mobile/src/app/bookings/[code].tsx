@@ -263,6 +263,8 @@ export default function BookingDetailRoute() {
   const pillTone: BookingDetailPill = pill.tone;
 
   let note: Parameters<typeof BookingDetailScreen>[0]['note'] = null;
+  // Tên riêng: `reason` của route là lý do KHÁCH gõ ở tấm huỷ đơn.
+  let operatorReason: Parameters<typeof BookingDetailScreen>[0]['reason'];
   let rows: BookingDetailRow[] = [{ label: bookingCopy.bookingCodeLabel, value: booking.code }];
   let primaryAction: Parameters<typeof BookingDetailScreen>[0]['primaryAction'] = null;
   let secondaryAction: Parameters<typeof BookingDetailScreen>[0]['secondaryAction'] = null;
@@ -400,6 +402,14 @@ export default function BookingDetailRoute() {
       title: messages.bookingDetail.closed.weCancelled,
       ...(refundBody === null ? {} : { body: refundBody }),
     };
+    // ADR-0041 AMEND 2: nguyên văn lý do admin gõ lúc huỷ chuyến — câu khách đã nhận ở email báo
+    // huỷ. Chuyến huỷ không có lý do (seed lượt 1) thì không in khối rỗng.
+    if (booking.departureCancelReason !== null) {
+      operatorReason = {
+        label: messages.bookingDetail.closed.whyLabel,
+        text: booking.departureCancelReason,
+      };
+    }
     rows = [
       { label: bookingCopy.bookingCodeLabel, value: booking.code },
       ...(booking.cancelledAt
@@ -472,6 +482,7 @@ export default function BookingDetailRoute() {
         pillLabel={pillLabel}
         pillTone={pillTone}
         note={note}
+        reason={operatorReason}
         rows={rows}
         primaryAction={primaryAction}
         secondaryAction={secondaryAction}
