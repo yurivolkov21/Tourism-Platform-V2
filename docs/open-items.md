@@ -39,31 +39,14 @@
 
 ## Đang chờ chủ dự án quyết
 
-| Việc | Nêu ngày | Tình trạng |
-| --- | --- | --- |
-| Cho KHÁCH đọc được lý do công ty huỷ chuyến | 22/09 | Chưa quyết — xem mục ngay dưới |
-
-## Đề xuất sản phẩm: cho khách biết VÌ SAO chuyến bị huỷ
-
-Nêu 22/09 sau lượt chạy thử tay F13 trên production. Khi công ty huỷ chuyến,
-admin bắt buộc phải gõ lý do và lý do ấy được lưu vào `cancellation_requests`
-của TỪNG booking — nhưng hiện **chỉ admin đọc được**: email báo huỷ không mang
-nó, và trang booking phía khách không hiện nó ở đâu.
-
-Khách bị huỷ chuyến nhận một email nói "đã huỷ và hoàn tiền" mà không biết vì
-sao. Với một chuyến bị bỏ vì hướng dẫn viên ốm hay vì bão, câu giải thích là
-thứ khác biệt giữa một khách hiểu chuyện và một khách mất lòng tin.
-
-Làm thì phải đụng ba chỗ: thêm `reason` vào payload outbox `BOOKING_CANCELLED`,
-thêm một khối vào template email, và hiện nó trên trang booking của khách. Kèm
-một quyết định về copy: lý do admin gõ là câu NỘI BỘ ("guide bỏ việc"), nên
-hoặc ô nhập phải đổi giọng thành câu-cho-khách-đọc, hoặc cần hai ô.
-
-Trong lúc chưa quyết, câu nhắc ở màn admin đã sửa cho nói đúng sự thật (nó là
-ghi chép nội bộ) — trước đó nó hứa nhầm rằng khách sẽ đọc được.
+Không còn việc nào chờ quyết (14/10).
 
 ## Cần thử lại bằng máy thật
 
+- **Lý do công ty huỷ chuyến cho khách đọc** (merge 14/10, nhánh `feat/departure-cancel-reason`, PR #23):
+  admin huỷ một chuyến thử có một đơn đã trả bằng thẻ Stripe test và gõ lý do; email báo huỷ của
+  khách phải có khối "WHY" đúng câu ấy, trang đơn web có khối "Why" dưới "We had to cancel this
+  departure.", và hoá đơn app (bản build kế tiếp) có khối lý do. Mới có test đơn vị và int.
 - **Sáu việc nhỏ của app mobile** (merge 14/10, nhánh `fix/web-open-items-9`, PR #21): đơn chờ trả
   quá hạn chót ghi "Payment not completed" xám ở Trips và hoá đơn không mời trả (G54); hoá đơn
   chuyến đã về chưa có bài có nút "Write a review" mở R1; TalkBack và VoiceOver đọc backdrop tấm

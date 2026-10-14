@@ -27,6 +27,33 @@ Từ bảng "Đang chờ chủ dự án quyết".
 | Tự đăng nhập sau khi xác minh OTP | 18/09 | Đã chốt **không làm** (21/09), lý do ghi trong mã nguồn |
 | Gỡ nhánh tinh chỉnh giao diện web + admin gom 18/09 | 18/09 | Chưa mở *Đóng khi tách 14/10: nhánh `fix/ui-polish-web-admin` đã ff vào `main` ngày 18/09 (CHANGELOG 18/09, [archive 16–21/09](changelog/2026-09-refund-deadline-mobile-auth.md)).* |
 | ~~Chữ cuống hoá đơn của đơn chưa trả đã đóng (G37)~~ | 09/10 | Xong 13/10: cuống ở G40 Phần 1 (12/10), câu `heldNote` của `/checkout/cancel` ở `37f1464` |
+| ~~Cho KHÁCH đọc được lý do công ty huỷ chuyến~~ | 22/09 | Xong 14/10: user chọn bản một ô, làm ở nhánh `feat/departure-cancel-reason`, PR #23 (ADR-0041 AMEND 2) — xem mục ngay dưới |
+
+## ~~Đề xuất sản phẩm: cho khách biết VÌ SAO chuyến bị huỷ~~ — đóng 14/10
+
+**Đóng bởi `4d72658`..`8ee7ecb`** (nhánh `feat/departure-cancel-reason`, PR #23,
+[ADR-0041 AMEND 2](adr/0041-single-cancellation-deadline.md)). User chọn bản một ô 14/10: lý do
+admin gõ ở hộp huỷ chuyến là câu cho khách đọc nguyên văn, không có ô nội bộ thứ hai, không
+migration. Email báo huỷ của khách đã trả có khối "WHY"; trang chi tiết đơn của web có khối "Why"
+dưới "We had to cancel this departure.", hoá đơn app có khối lý do dưới khối báo huỷ; ô lý do ở
+hộp huỷ chuyến nói trước rằng khách đọc nguyên văn. Không in ở hoá đơn in (G40) và voucher.
+
+~~Nêu 22/09 sau lượt chạy thử tay F13 trên production. Khi công ty huỷ chuyến,
+admin bắt buộc phải gõ lý do và lý do ấy được lưu vào `cancellation_requests`
+của TỪNG booking — nhưng hiện **chỉ admin đọc được**: email báo huỷ không mang
+nó, và trang booking phía khách không hiện nó ở đâu.~~
+
+~~Khách bị huỷ chuyến nhận một email nói "đã huỷ và hoàn tiền" mà không biết vì
+sao. Với một chuyến bị bỏ vì hướng dẫn viên ốm hay vì bão, câu giải thích là
+thứ khác biệt giữa một khách hiểu chuyện và một khách mất lòng tin.~~
+
+~~Làm thì phải đụng ba chỗ: thêm `reason` vào payload outbox `BOOKING_CANCELLED`,
+thêm một khối vào template email, và hiện nó trên trang booking của khách. Kèm
+một quyết định về copy: lý do admin gõ là câu NỘI BỘ ("guide bỏ việc"), nên
+hoặc ô nhập phải đổi giọng thành câu-cho-khách-đọc, hoặc cần hai ô.~~
+
+~~Trong lúc chưa quyết, câu nhắc ở màn admin đã sửa cho nói đúng sự thật (nó là
+ghi chép nội bộ) — trước đó nó hứa nhầm rằng khách sẽ đọc được.~~
 
 ## ~~Web: trang đơn chưa biết chuyến đã bị công ty huỷ~~ — đóng 09/10
 

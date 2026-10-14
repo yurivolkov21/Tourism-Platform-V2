@@ -8,6 +8,47 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-10-14 — Merge lý do công ty huỷ chuyến cho khách đọc: email báo huỷ, trang đơn web và app, câu nhắc ở hộp huỷ chuyến (ADR-0041 AMEND 2, `bdc5e72`..`8ee7ecb`)
+
+Làm tiếp open-items theo yêu cầu của user 13/10 (đóng càng nhiều càng tốt trước freeze 15/10): mục
+"Đang chờ chủ dự án quyết" nêu 22/09, user chọn bản một ô 14/10 11:27 UTC. Nhánh
+`feat/departure-cancel-reason`, [PR #23](https://github.com/yurivolkov21/Tourism-Platform-V2/pull/23),
+thi công trên session cloud. Không migration, không env, không dependency. Thư viện dùng chung bị
+sửa: `@tourism/contract` (`BookingDetailSchema.departureCancelReason`, bắt buộc, `string | null`) và
+`@tourism/i18n` (`bookingDetail.closed.whyLabel`, hai câu của hộp huỷ chuyến).
+
+- ADR `bdc5e72`: ADR-0041 AMEND 2. Lý do admin gõ lúc huỷ chuyến là câu cho khách đọc nguyên văn,
+  một ô, không có ô nội bộ thứ hai; ghi chỗ khác ADR-0030 AMEND 2 (lý do hoàn thiện chí vẫn nội
+  bộ) và cái giá.
+- API `4d72658`: lõi huỷ đường công ty đưa `reason` vào payload outbox `BOOKING_CANCELLED` (đường
+  khách tự huỷ ghi `null`), template in khối "WHY" như email bác bài đánh giá. `bookings.byCode`
+  thêm `departureCancelReason`, đọc sống `tour_departures.cancel_reason` khi chuyến `CANCELLED`.
+- Web `58a88db`: trang chi tiết đơn có khối "Why" dưới "We had to cancel this departure.", chỉ khi
+  trang kể chuyện công ty huỷ (`cancelledByOperator`). Không in ở hoá đơn in (G40) và voucher.
+- Mobile `b6efe99`: hoá đơn khung `departureCancelled` có khối lý do dưới khối báo huỷ.
+- Admin `8ee7ecb`: ô lý do của hộp huỷ chuyến nói trước rằng khách đọc nguyên văn, trên trang đơn
+  và trong email báo huỷ nếu đã trả; câu báo khi ô trống thôi nói lý do chỉ để đội mình đọc.
+- `docs/conventions/booking-states.md` ghi email mang `reason`. open-items: mục chờ quyết và mục đề
+  xuất "cho khách biết VÌ SAO chuyến bị huỷ" chuyển sang `open-items-closed.md`; thêm một dòng thử
+  tay.
+
+**Review.** Không có lượt review độc lập. User bảo merge 14/10 12:38 UTC ("Merge nhé"). Nhánh tách
+từ `f3786de`, rebase lên `07278d0` (PR #22, chỉ thêm `vercel.json` và docs) lúc 12:17 UTC; diff
+của nhánh giữ nguyên, main không đổi tới lúc merge.
+
+Tests after (`gate:int` trên `dccd07a`, bản trước khi rebase, 14/10 xong 11:59 UTC, session cloud
+theo các bước của CI): unit 7539 — web 2280, admin 2222, api 1158, mobile 833, contract 712,
+mobile-ui 145, i18n 58, ui 57, core 48, tokens 26 — và int 843; CI của PR xanh 12:30 UTC trên
+`8ee7ecb`. So với `f3786de`: web thêm 7 test, api 8, contract 3, mobile 3, admin 1; int giữ 843 vì
+các ca int chỉ thêm khẳng định vào test có sẵn. Turbo phát lại kết quả đã lưu của mobile-ui và
+tokens. Test của từng phần đỏ trước khi sửa, xanh sau; int test của API đỏ 15 ca khi gỡ phần sửa.
+
+**CÒN TREO:**
+
+- Thử tay trên production (dòng ở open-items): huỷ một chuyến thử có đơn đã trả, đọc email và trang
+  đơn. Hoá đơn app chỉ đổi ở bản build kế tiếp.
+- Dọn sau merge: nhánh `feat/departure-cancel-reason` trên origin nếu GitHub không tự xoá.
+
 ## 2026-10-14 — Merge Vercel chỉ tạo deployment cho nhánh `main` (`73c2c5d`)
 
 User hỏi 14/10 cách để Vercel và Render chỉ deploy nhánh `main`, không deploy các nhánh thành viên
