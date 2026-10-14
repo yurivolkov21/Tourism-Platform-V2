@@ -1,0 +1,492 @@
+<!doctype html>
+<html lang="vi" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Mobile UI nâng cấp — bản v1 (trước 4 chỉnh sửa)</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=Literata:opsz,wght@7..72,700&display=swap">
+<style>
+/* Token lấy từ libs/shared/tokens (hệ Wuling), giữ nguyên giá trị. 1dp = 1px. spacing(n)=4n · radius.base=6 · touch=44 */
+:root{
+  --background:oklch(0.977 0.003 174.5);--foreground:oklch(0.275 0.021 196);
+  --card:oklch(0.996 0.002 174);
+  --primary:oklch(0.494 0.067 184.3);--primary-fg:oklch(0.974 0.007 174.4);--pe:oklch(0.494 0.067 184.3);
+  --secondary:oklch(0.914 0.01 174.3);--secondary-fg:oklch(0.411 0.053 184.5);
+  --muted:oklch(0.914 0.01 174.3);--muted-fg:oklch(0.473 0.022 179.5);
+  --border:oklch(0.865 0.015 175.7);--input:oklch(0.64 0.015 180.6);
+  --de:oklch(0.47 0.136 27.3);--destructive:oklch(0.516 0.136 27.3);--success-e:oklch(0.46 0.125 145);--warning-e:oklch(0.47 0.095 75);
+  --success:oklch(0.62 0.17 145);--warning:oklch(0.78 0.15 80);
+  --rating:oklch(0.64 0.13 73.3);--rating-muted:oklch(0.865 0.015 175.7);
+  --on-media:oklch(0.98 0.005 180);--scrim:oklch(0.15 0.02 182);--overlay:oklch(0 0 0 / .5);
+  --price-compare:oklch(0.473 0.022 179.5);
+  --page:oklch(0.94 0.006 175);--ink:oklch(0.275 0.021 196);
+  --shadow-card:0 1px 2px oklch(0.2 0.02 190 / .06),0 8px 20px -10px oklch(0.2 0.02 190 / .22);
+  --hero-fade:var(--scrim);
+}
+[data-theme=dark]{
+  --background:oklch(0.275 0.015 181.5);--foreground:oklch(0.921 0.014 174.1);
+  --card:oklch(0.309 0.022 177.6);
+  --primary:oklch(0.53 0.076 181.3);--pe:oklch(0.76 0.076 181.3);
+  --secondary:oklch(0.367 0.028 178.3);--secondary-fg:oklch(0.822 0.041 180.6);
+  --muted:oklch(0.367 0.028 178.3);--muted-fg:oklch(0.748 0.026 174.5);
+  --border:oklch(0.402 0.026 173.6);--input:oklch(0.58 0.026 173.6);
+  --de:oklch(0.80 0.11 26.7);--destructive:oklch(0.579 0.148 26.7);--success-e:oklch(0.75 0.15 145);--warning-e:oklch(0.82 0.14 80);
+  --success:oklch(0.7 0.15 145);--warning:oklch(0.82 0.14 80);
+  --rating:oklch(0.78 0.13 75);--rating-muted:oklch(1 0 0 / .2);
+  --price-compare:oklch(0.748 0.026 174.5);
+  --page:oklch(0.2 0.012 182);--ink:oklch(0.921 0.014 174.1);
+  --shadow-card:0 1px 2px oklch(0 0 0 / .3),0 10px 24px -12px oklch(0 0 0 / .55);
+  --hero-fade:var(--background);
+}
+*{box-sizing:border-box;margin:0}
+body{font-family:Archivo,system-ui,sans-serif;background:var(--page);color:var(--ink);padding:28px 24px 90px}
+code{font:12.5px ui-monospace,Consolas,monospace;background:var(--card);padding:1px 6px;border-radius:5px}
+
+/* ---------- trang bao ngoài ---------- */
+.top{max-width:1180px;margin:0 auto 10px}
+.top h1{font:700 30px/1.2 Literata,Georgia,serif}
+.top p{margin-top:8px;max-width:820px;color:var(--muted-fg);line-height:1.55;font-size:15px}
+.ctl{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px;position:sticky;top:0;z-index:100;padding:10px 0;background:var(--page)}
+.ctl button,.ctl a{font:600 13px Archivo;border:1px solid var(--border);background:var(--card);color:var(--foreground);padding:8px 14px;border-radius:99px;cursor:pointer;text-decoration:none}
+.ctl .on{background:var(--primary);color:var(--primary-fg);border-color:transparent}
+.sep{width:1px;background:var(--border);margin:0 4px}
+.legend{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:10px;margin-top:6px}
+.legend div{background:var(--card);border-radius:12px;padding:12px 14px;font-size:13px;line-height:1.5;color:var(--muted-fg);box-shadow:var(--shadow-card)}
+.legend b{display:block;color:var(--ink);font-size:13.5px;margin-bottom:2px}
+main{max-width:1180px;margin:0 auto}
+section.cluster{margin-top:48px;scroll-margin-top:70px}
+section.cluster>h2{font:700 22px Literata,Georgia,serif;color:var(--ink)}
+section.cluster>p{font-size:14px;color:var(--muted-fg);margin:4px 0 20px}
+.row{display:flex;flex-wrap:wrap;gap:36px 32px;align-items:flex-start}
+figure{width:calc(390px*var(--z,1))}
+figure .wrap{width:calc(390px*var(--z,1));height:calc(var(--h,844px)*var(--z,1))}
+figure .wrap>.phone{zoom:var(--z,1);height:var(--h,844px)}
+figcaption{margin-top:12px;font-size:13px;line-height:1.45;color:var(--muted-fg)}
+figcaption b{display:block;color:var(--ink);font-size:13.5px}
+figcaption i{font-style:normal;color:var(--pe);font-weight:600}
+
+/* ---------- khung điện thoại 390×844 ---------- */
+.phone{width:390px;border-radius:46px;background:var(--background);color:var(--foreground);position:relative;overflow:hidden;
+  border:1px solid var(--border);box-shadow:0 22px 50px -16px rgba(0,0,0,.45);font:400 16px/24px Archivo,sans-serif}
+.sb{position:absolute;inset:0 0 auto 0;height:47px;display:flex;justify-content:space-between;align-items:flex-end;padding:0 30px 8px;font:600 15px Archivo;z-index:90;pointer-events:none}
+.sb.m{color:var(--on-media)}
+.sb i{display:inline-block;width:17px;height:10px;border-radius:3px;border:1.5px solid currentColor;position:relative;margin-left:6px}
+.sb i:after{content:"";position:absolute;inset:1.5px;background:currentColor;border-radius:1px;width:70%}
+.hi{position:absolute;left:50%;bottom:8px;width:134px;height:5px;border-radius:3px;background:var(--foreground);opacity:.5;transform:translateX(-50%);z-index:95;pointer-events:none}
+.hi.m{background:#fff;opacity:.7}
+.scr{position:absolute;inset:47px 0 0 0;overflow:hidden}
+.scr.full{inset:0}
+/* cuộn dọc: vùng nội dung giữa header và thanh đáy */
+.flow{position:absolute;left:0;right:0;overflow:hidden}
+
+/* ---------- AppText ---------- */
+.t-display{font:700 30px/36px Literata,Georgia,serif}
+.t-title{font:700 24px/32px Literata,Georgia,serif}
+.t-heading{font:600 18px/28px Archivo}
+.t-body{font:400 16px/24px Archivo}
+.t-sub{font:400 14px/20px Archivo}
+.t-label{font:600 14px/20px Archivo}
+.t-cap{font:400 12px/16px Archivo}
+.mut{color:var(--muted-fg)}.link{color:var(--pe)}.danger{color:var(--de)}.media{color:var(--on-media)}
+.cap-up{font:600 12px/16px Archivo;letter-spacing:.6px;color:var(--muted-fg)}
+.tnum{font-variant-numeric:tabular-nums}
+.sp{flex:1}
+
+/* ---------- ảnh tượng trưng ---------- */
+.photo{position:absolute;inset:0;overflow:hidden;background:linear-gradient(180deg,var(--s1),var(--s2) 60%,var(--s3));--s1:#8fd0c6;--s2:#e6f3d6;--s3:#cfe6bd}
+.photo:before{content:"";position:absolute;inset:0;background:radial-gradient(circle at var(--sx,72%) var(--sy,26%),rgba(255,247,214,.95) 0 5%,rgba(255,247,214,.32) 6% 15%,transparent 16%)}
+.photo:after{content:"";position:absolute;left:0;right:0;bottom:0;height:var(--rh,60%);background:var(--ridge) bottom/100% 100% no-repeat}
+.hills{--ridge:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 200' preserveAspectRatio='none'><path d='M0 120 C60 70 110 90 170 60 S300 40 400 90 V200 H0Z' fill='%23155e57' fill-opacity='.45'/><path d='M0 150 C70 110 140 140 210 110 S330 100 400 130 V200 H0Z' fill='%230f4a45' fill-opacity='.7'/><path d='M0 180 C90 150 180 175 260 155 S360 150 400 165 V200 H0Z' fill='%23093632'/></svg>")}
+.karst{--ridge:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 200' preserveAspectRatio='none'><path d='M30 200 L50 90 Q70 40 90 90 L120 200Z' fill='%23155e57' fill-opacity='.55'/><path d='M150 200 L180 70 Q205 20 230 70 L270 200Z' fill='%230f4a45' fill-opacity='.7'/><path d='M280 200 L305 105 Q325 65 345 105 L380 200Z' fill='%23155e57' fill-opacity='.5'/><path d='M0 185 Q100 170 200 185 T400 180 V200 H0Z' fill='%23093632'/></svg>")}
+.pa{--s1:#8fd0c6;--s2:#e6f3d6;--s3:#cfe6bd}
+.pb{--s1:#7cc4d6;--s2:#cdeaf0;--s3:#9ad0cf;--sx:28%}
+.pc{--s1:#f3c987;--s2:#fbe6b8;--s3:#e5cf86;--sx:62%;--sy:30%}
+.pd{--s1:#f09b7c;--s2:#f8cfa0;--s3:#e8b27a;--sx:26%;--sy:34%}
+.pe2{--s1:#aebfcf;--s2:#dbe5ea;--s3:#b9cdc7;--sx:80%;--sy:18%}
+.pf{--s1:#9cd7a8;--s2:#e2f2b8;--s3:#b8da8a;--sx:50%;--sy:22%}
+.ph-box{position:relative;overflow:hidden;background:var(--muted)}
+.grad{position:absolute;inset:0;pointer-events:none}
+
+/* ---------- thành phần dùng chung (@tourism/mobile-ui) ---------- */
+.ic{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.ic.s12{width:12px;height:12px}.ic.s14{width:14px;height:14px}.ic.s16{width:16px;height:16px}.ic.s18{width:18px;height:18px}.ic.s22{width:22px;height:22px}.ic.s24{width:24px;height:24px}.ic.s28{width:28px;height:28px}.ic.s32{width:32px;height:32px}.ic.s40{width:40px;height:40px}
+.ic.fill{fill:currentColor}
+.btn{min-height:46px;border-radius:46px;padding:0 20px;display:flex;align-items:center;justify-content:center;gap:8px;font:600 14px/20px Archivo;width:100%;
+  background:var(--primary);color:var(--primary-fg);position:relative;
+  background-image:linear-gradient(180deg,rgba(255,255,255,.14),rgba(255,255,255,0));box-shadow:0 6px 14px -8px var(--primary)}
+.btn.ghost{background:transparent;background-image:none;color:var(--pe);border:1px solid var(--border);box-shadow:none}
+.btn.media{background:transparent;background-image:none;color:var(--on-media);border:1px solid rgba(255,255,255,.35);box-shadow:none}
+.btn.destr{background:var(--de);background-image:none;color:var(--background);box-shadow:none}
+.btn.dis{background:var(--muted);background-image:none;color:var(--muted-fg);box-shadow:none}
+[data-theme=dark] .btn:not(.ghost):not(.media):not(.destr):not(.dis){border:1px solid var(--border)}
+.btn.sm{width:auto}
+.ibtn{width:44px;height:44px;border-radius:22px;display:grid;place-items:center;color:var(--foreground);flex:none}
+.ibtn.glass{background:rgba(10,32,32,.5);backdrop-filter:blur(8px);color:var(--on-media)}
+.chip{height:32px;padding:0 14px;border-radius:99px;border:1px solid var(--border);display:inline-flex;align-items:center;gap:6px;font:500 14px/20px Archivo;white-space:nowrap;color:var(--foreground)}
+.chip.on{background:var(--primary);border-color:var(--primary);color:var(--primary-fg);font-weight:600}
+.chip.rem{background:var(--secondary);border-color:var(--secondary);color:var(--secondary-fg)}
+.chips{display:flex;gap:8px;padding:0 16px;overflow:hidden}
+.card{background:var(--card);border:1px solid var(--border);border-radius:18px;padding:16px;box-shadow:var(--shadow-card)}
+.sqicon{width:64px;height:64px;border-radius:12px;background:var(--secondary);display:grid;place-items:center;color:var(--pe);flex:none}
+.empty{display:flex;flex-direction:column;align-items:center;gap:8px;text-align:center}
+.sear{height:44px;border-radius:99px;background:var(--card);border:1px solid var(--border);display:flex;align-items:center;gap:10px;padding:0 16px;color:var(--muted-fg);font:400 16px Archivo}
+.sear.f{border:2px solid var(--pe);color:var(--foreground)}
+.sear .ic{color:var(--muted-fg)}
+.pillt{display:inline-flex;align-items:center;gap:5px;height:24px;padding:0 10px;border-radius:99px;font:600 12px/16px Archivo;background:var(--secondary);color:var(--secondary-fg)}
+.pillt.ok{background:color-mix(in oklch,var(--success) 16%,transparent);color:var(--success-e)}
+.pillt.warn{background:color-mix(in oklch,var(--warning) 16%,transparent);color:var(--warning-e)}
+.pillt.due{background:color-mix(in oklch,var(--warning) 16%,transparent);color:var(--foreground)}
+.pillt.mu{background:color-mix(in oklch,var(--muted-fg) 20%,transparent);color:var(--muted-fg)}
+.pillt.bad{background:color-mix(in oklch,var(--de) 16%,transparent);color:var(--de)}
+/* TextField: gạch chân + icon, nhãn nổi khi đã có chữ */
+.tf .line{display:flex;align-items:center;gap:10px;min-height:44px;margin-top:10px;border-bottom:1px solid var(--border)}
+.tf.ac .line{border-bottom-color:var(--pe)}
+.tf.er .line{border-bottom-color:var(--de)}
+.tf .in{flex:1;min-width:0}
+.tf .val{font:400 16px/24px Archivo;color:var(--foreground)}
+.tf .val.ph{color:var(--muted-fg)}
+.tf .ic{color:var(--muted-fg)}
+.tf.boxed .line{min-height:60px;padding:10px 0}
+.tf.boxed.tall .line{min-height:96px;align-items:flex-start}
+.tf .box{width:40px;height:40px;border-radius:12px;background:var(--secondary);display:grid;place-items:center;flex:none}
+.tf .box .ic{color:var(--pe)}
+.tf .err{font:400 12px/16px Archivo;color:var(--de);margin-top:5px}
+.fmsg{display:flex;gap:10px;align-items:flex-start;padding:10px;border-radius:12px;font:400 12px/16px Archivo;background:color-mix(in oklch,var(--de) 16%,transparent);border:1px solid color-mix(in oklch,var(--de) 45%,transparent)}
+.fmsg .ic{color:var(--de)}
+.fmsg.info{background:var(--secondary);border-color:var(--secondary);color:var(--muted-fg)}.fmsg.info .ic{color:var(--pe)}
+/* thanh tab nổi: 5 ô vuông 60dp, chỉ icon */
+.tabs{position:absolute;left:0;right:0;bottom:0;height:170px;pointer-events:none;z-index:40;background:linear-gradient(180deg,transparent,var(--background) 60%)}
+.tabrow{position:absolute;left:0;right:0;bottom:46px;display:flex;justify-content:space-between;padding:0 24px;z-index:41}
+.tile{width:60px;height:60px;border-radius:18px;display:grid;place-items:center;color:var(--muted-fg)}
+.tile .ic{opacity:.75}
+.tile.on{background:var(--primary);color:var(--primary-fg);box-shadow:0 10px 20px -10px var(--primary)}
+.tile.on .ic{opacity:1;width:26px;height:26px}
+/* header native của stack */
+.nh{height:44px;display:flex;align-items:center;justify-content:center;position:relative;font:600 17px/22px Archivo;color:var(--foreground)}
+.nh .back{position:absolute;left:6px;width:44px;height:44px;display:grid;place-items:center}
+.nh .rt{position:absolute;right:14px}
+/* thanh đáy */
+.bbar{position:absolute;left:0;right:0;bottom:0;padding:16px 24px 34px;display:flex;align-items:center;gap:16px;background:var(--card);border-top:1px solid var(--border);z-index:30}
+.bbar .tot{flex:1}
+.bbar .cta{min-width:152px}
+.dim{position:absolute;inset:0;background:var(--overlay);z-index:70}
+.sheet{position:absolute;left:0;right:0;bottom:0;background:var(--card);border-radius:28px 28px 0 0;padding:16px 24px 66px;z-index:71;box-shadow:0 -14px 40px rgba(0,0,0,.35)}
+.sheet:before{content:"";position:absolute;top:8px;left:50%;width:36px;height:4px;margin-left:-18px;border-radius:99px;background:color-mix(in oklch,var(--muted-fg) 50%,transparent)}
+.kv{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border)}
+.kv:last-child{border-bottom:0}
+.rl{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--border)}
+.rl.last{border-bottom:0}
+.rl .bx{width:40px;height:40px;border-radius:12px;background:var(--secondary);display:grid;place-items:center;color:var(--pe);flex:none}
+.rl .g{flex:1;min-width:0}
+.menu{display:flex;align-items:center;gap:12px;min-height:52px;border-bottom:1px solid var(--border)}
+.menu:last-child{border-bottom:0}
+.note{display:flex;gap:8px;padding:10px;border-radius:9px;margin-top:12px;font:400 12px/16px Archivo}
+.note .ic{margin-top:0;flex:none}
+.note.good{background:color-mix(in oklch,var(--success) 16%,transparent)}
+.note.warn{background:color-mix(in oklch,var(--warning) 16%,transparent)}
+.note.sec{background:var(--secondary);border-radius:12px;padding:14px;gap:10px}
+.prog b{display:block;height:4px;border-radius:99px;background:var(--muted)}
+.prog b.on{background:var(--pe)}
+.meter{height:8px;border-radius:99px;background:var(--muted);margin-top:12px;overflow:hidden}
+.meter i{display:block;height:100%;border-radius:99px;background:var(--pe)}
+.tlcard{position:relative;height:168px;border-radius:18px;overflow:hidden;background:var(--muted);box-shadow:var(--shadow-card)}
+.tlcard .rat{position:absolute;top:12px;left:12px;height:28px;padding:0 10px;border-radius:99px;display:flex;align-items:center;gap:4px;background:rgba(10,32,32,.45);backdrop-filter:blur(6px);font:600 12px/16px Archivo;color:var(--on-media)}
+.tlcard .hrt{position:absolute;top:4px;right:4px;width:44px;height:44px;border-radius:22px;display:grid;place-items:center;background:rgba(10,32,32,.45);backdrop-filter:blur(6px);color:var(--on-media)}
+.tlcard .hrt.on{color:var(--de)}
+.tlcard .l{position:absolute;left:16px;right:96px;bottom:14px}
+.tlcard .r{position:absolute;right:16px;bottom:14px;text-align:right}
+.tlcard .l .t-heading{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tcard{display:flex;gap:12px;padding:12px;border:1px solid var(--border);border-radius:18px;background:var(--card);box-shadow:var(--shadow-card)}
+.tcard .th{width:72px;height:72px;border-radius:12px;flex:none}
+.daynode{width:24px;height:24px;border-radius:99px;display:grid;place-items:center;font:600 12px Archivo;background:var(--secondary);color:var(--pe);flex:none}
+.daynode.on{background:var(--primary);color:var(--primary-fg)}
+.tl{display:flex;gap:12px}
+.tl .rail{width:24px;display:flex;flex-direction:column;align-items:center}
+.tl .rail i{flex:1;width:2px;background:var(--border);margin-top:4px}
+.tick{display:flex;gap:12px;padding:8px 0}
+.radio{width:20px;height:20px;border-radius:99px;border:2px solid var(--muted-fg);flex:none;display:grid;place-items:center}
+.radio.on{border-color:var(--pe)}.radio.on:after{content:"";width:10px;height:10px;border-radius:50%;background:var(--pe)}
+.stepb{width:36px;height:36px;border-radius:99px;border:1px solid var(--border);display:grid;place-items:center}
+.stepb.d{border-color:var(--muted);color:var(--muted-fg)}
+.dot{width:3px;height:3px;border-radius:99px;background:var(--muted-fg)}
+.otp{display:flex;align-items:center;gap:7px;margin-top:24px}
+.otp b{width:34px;height:50px;display:grid;place-items:center;border-bottom:2px solid var(--border);font:700 24px/32px Literata,serif}
+.otp b.f{border-color:var(--pe)}
+.otp u{width:10px;height:2px;background:var(--border);margin:0 1px}
+.dots{display:flex;align-items:center;gap:3px}
+.dots i{width:6px;height:6px;border-radius:3px;background:rgba(255,255,255,.4)}
+.dots i.on{width:22px;background:var(--pe)}
+.rrail{width:52px;align-self:stretch;display:flex;flex-direction:column;justify-content:space-evenly}
+.rrail div{height:120px;display:grid;place-items:center;position:relative}
+.rrail span{display:block;transform:rotate(-90deg);font:400 16px Archivo;letter-spacing:.4px;color:var(--muted-fg);white-space:nowrap}
+.rrail .on span{font-weight:600;color:var(--pe)}
+.rrail .on:before{content:"";position:absolute;left:0;top:50%;height:56px;margin-top:-28px;width:3px;border-radius:3px;background:var(--pe)}
+.star{color:var(--rating);fill:currentColor}
+.confetti i{position:absolute;width:7px;height:12px;border-radius:2px;opacity:.9}
+</style>
+</head>
+<body>
+<div class="top">
+  <h1>Mobile app — bản v1 (trước 4 chỉnh sửa)</h1>
+  <p>Dựng từ code UI trên <code>main</code> (commit 9db6a2ad, đã fetch origin) đối chiếu với các nhánh feature: đúng thứ tự khối, số đo dp, thành phần <code>@tourism/mobile-ui</code> và chữ trong <code>messages.mobile</code>. Hệ màu Wuling lấy từ <code>@tourism/tokens</code> trên <code>main</code>. Ảnh và số liệu chỉ tượng trưng.</p>
+  <div class="ctl">
+    <button id="bt-d" class="on">Nền tối</button><button id="bt-l">Nền sáng</button><span class="sep"></span>
+    <button data-z="1" class="on">100%</button><button data-z="0.75">75%</button><button data-z="0.5">50%</button><span class="sep"></span>
+    <a href="#auth">Auth</a><a href="#browse">Duyệt tour</a><a href="#booking">Đặt tour</a><a href="#tracker">Chuyến đi</a><a href="#reviews">Đánh giá</a><a href="#account">Tài khoản</a>
+  </div>
+  <div class="legend">
+    <div><b>Giữ nguyên</b>Bố cục, thứ tự khối, chữ, số đo, hệ màu, bảng chữ AppText (display/title Literata, còn lại Archivo).</div>
+    <div><b>Tinh chỉnh</b>Dòng Nâng cấp dưới mỗi khung ghi chỗ đã chỉnh: bóng thẻ, độ sâu nút, kính mờ, điểm nhấn hổ phách, nền ảnh có chiều sâu.</div>
+    <div><b>Chưa vẽ</b>Trạng thái loading, lỗi, rỗng của từng màn và màn dev. Không đổi so với code hiện có.</div>
+  </div>
+</div>
+<main id="app"></main>
+<script>
+/* ===== icon (Feather) ===== */
+const P={
+home:'<path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>',
+compass:'<circle cx="12" cy="12" r="10"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/>',
+heart:'<path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>',
+briefcase:'<rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>',
+user:'<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>',
+search:'<circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>',
+sliders:'<line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/>',
+'arrow-left':'<line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/>',
+'arrow-right':'<line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>',
+'chev-r':'<polyline points="9 18 15 12 9 6"/>','chev-l':'<polyline points="15 18 9 12 15 6"/>','chev-d':'<polyline points="6 9 12 15 18 9"/>','chev-u':'<polyline points="18 15 12 9 6 15"/>',
+pin:'<path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>',
+check:'<polyline points="20 6 9 17 4 12"/>',x:'<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>',
+clock:'<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>',
+calendar:'<rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>',
+users:'<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
+shield:'<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>',
+mail:'<path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/>',
+lock:'<rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>',
+eye:'<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>',
+star:'<polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>',
+'log-out':'<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>',
+edit:'<path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4z"/>',
+plus:'<line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>',minus:'<line x1="5" y1="12" x2="19" y2="12"/>',
+flag:'<path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/>',
+msg:'<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>',
+alert:'<circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>',
+ext:'<path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>',
+camera:'<path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/>',
+trash:'<polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>',
+help:'<circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/>',
+info:'<circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/>',
+book:'<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>',
+cc:'<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>',
+card:'<rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/>',
+phone:'<path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"/>',
+map:'<polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/><line x1="8" y1="2" x2="8" y2="18"/><line x1="16" y1="6" x2="16" y2="22"/>',
+file:'<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>',
+sq:'<rect x="3" y="3" width="18" height="18" rx="2"/>',
+csq:'<polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>',
+image:'<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/>',
+xc:'<circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/>',
+wifi:'<line x1="1" y1="1" x2="23" y2="23"/><path d="M16.72 11.06A10.94 10.94 0 0 1 19 12.55"/><path d="M5 12.55a10.94 10.94 0 0 1 5.17-2.39"/><path d="M10.71 5.05A16 16 0 0 1 22.58 9"/><path d="M1.42 9a15.91 15.91 0 0 1 4.7-2.88"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><line x1="12" y1="20" x2="12.01" y2="20"/>'
+};
+const I=(n,c='')=>`<svg class="ic ${c}" viewBox="0 0 24 24">${P[n]}</svg>`;
+const IF=(n,c='')=>`<svg class="ic fill ${c}" viewBox="0 0 24 24">${P[n]}</svg>`;
+const PIC={1:'hills pa',2:'karst pb',3:'hills pc',4:'hills pd',5:'hills pe2',6:'hills pf'};
+const pic=k=>`<div class="photo ${PIC[k]}"></div>`;
+const SB=m=>`<div class="sb ${m?'m':''}"><span>9:41</span><span>5G<i></i></span></div>`;
+
+const sections={};
+function frame(sec,n,name,note,html,o={}){
+  (sections[sec]=sections[sec]||[]).push(`<figure style="--h:${o.h||844}px"><div class="wrap"><div class="phone">${SB(o.m)}${html}<div class="hi ${o.m?'m':''}"></div></div></div><figcaption><b>${n} · ${name}</b>${o.desc||''}<i>Nâng cấp:</i> ${note}</figcaption></figure>`);
+}
+const scr=h=>`<div class="scr">${h}</div>`, scrF=h=>`<div class="scr full">${h}</div>`;
+const tabs=a=>{const T=[['home','home'],['explore','compass'],['saved','heart'],['trips','briefcase'],['account','user']];
+  return `<div class="tabs"></div><div class="tabrow">${T.map(t=>`<div class="tile ${t[0]==a?'on':''}">${I(t[1],'s24')}</div>`).join('')}</div>`};
+const nh=(t,rt='')=>`<div class="nh"><div class="back">${I('chev-l','s24')}</div>${t}${rt?`<div class="rt">${rt}</div>`:''}</div>`;
+const btn=(l,k='',lead='')=>`<div class="btn ${k}">${lead}${l}</div>`;
+const tf=(label,o={})=>{const filled=!!o.val;const ico=o.icon?(o.boxed?`<div class="box">${I(o.icon)}</div>`:I(o.icon,'s18')):'';
+  return `<div class="tf ${o.boxed?'boxed':''} ${o.tall?'tall':''} ${o.ac?'ac':''} ${o.err?'er':''}"><div class="line">${ico}<div class="in">${(filled||o.always)?`<div class="t-cap mut">${label}</div>`:''}<div class="val ${filled?'':'ph'}">${o.val||o.ph||label}</div></div>${o.secure?I(filled?'eye':'eye','s18'):''}</div>${o.err?`<div class="err">${o.err}</div>`:''}</div>`};
+const chip=(l,k='')=>`<span class="chip ${k}">${l}</span>`;
+const grad=(c,loc)=>`<div class="grad" style="background:linear-gradient(180deg,${c.map((x,i)=>x+' '+loc[i]+'%').join(',')})"></div>`;
+const S='oklch(0.15 0.02 182 /';
+const sc=a=>`${S} ${a})`;
+const tl=(o)=>`<div class="tlcard"><div style="position:absolute;inset:0">${pic(o.k)}</div>${grad([sc(.35),sc(0),sc(.1),sc(.88)],[0,30,50,100])}
+  ${o.rating?`<div class="rat">${IF('star','s12 star')}${o.rating}</div>`:''}${o.badge?`<div class="rat">${o.badge}</div>`:''}
+  <div class="hrt ${o.fav?'on':''}">${o.fav?IF('heart','s22'):I('heart','s20')}</div>
+  <div class="l"><div class="t-heading media">${o.title}</div><div class="t-cap media" style="opacity:.85">${o.loc}</div></div>
+  <div class="r">${o.cmp?`<div class="t-cap media" style="opacity:.7;text-decoration:line-through">${o.cmp}</div>`:`<div class="t-cap media" style="opacity:.8">From</div>`}<div class="t-label media tnum">${o.price}</div></div></div>`;
+const bbar=(a,b,cta)=>`<div class="bbar"><div class="tot"><div class="t-cap mut">${a}</div><div class="t-title tnum">${b}</div></div><div class="cta">${btn(cta)}</div></div>`;
+const bonly=l=>`<div class="bbar" style="display:block">${l}</div>`;
+const tripcard=(k,t,d,edit)=>`<div class="tcard"><div class="th ph-box">${pic(k)}</div><div style="flex:1;min-width:0"><div class="t-label">${t}</div><div class="t-cap mut" style="margin-top:4px">${d}</div>${edit?`<div class="t-cap link" style="margin-top:4px">${edit}</div>`:''}</div></div>`;
+const prog=(s,t,l)=>`<div><div class="t-cap mut">${l}</div><div class="prog" style="display:flex;gap:6px;margin-top:8px">${Array.from({length:t},(_,i)=>`<b style="flex:1" class="${i<s?'on':''}"></b>`).join('')}</div></div>`;
+const rl=(ic,l,c,last)=>`<div class="rl ${last?'last':''}"><div class="bx">${I(ic)}</div><div class="g"><div class="t-label">${l}</div><div class="t-cap mut" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${c}</div></div>${I('chev-r','s20 mut')}</div>`;
+const sqi=ic=>`<div class="sqicon">${I(ic,'s28')}</div>`;
+
+/* ================= AUTH ================= */
+const hero=(k,place,ex,h)=>`<div style="position:absolute;top:0;left:0;right:0;height:${h}px"><div style="position:absolute;inset:0">${pic(k)}</div>${grad([sc(.45),'transparent','color-mix(in oklch,var(--background) 55%,transparent)','var(--background)'],[0,30,66,100])}</div>
+  ${ex?`<div class="ibtn glass" style="position:absolute;top:53px;left:12px;z-index:5">${I(ex,'s18')}</div>`:''}${place?`<div style="position:absolute;top:63px;right:18px;display:flex;gap:4px;align-items:center;z-index:5" class="t-cap media">${I('pin','s12')}${place}</div>`:''}`;
+frame('auth','A1','Onboarding — trang 2','Chữ trên ảnh dựa 5 chặng scrim, nút Next 54dp.',`<div style="position:absolute;inset:0">${pic(2)}</div>${grad([sc(.45),sc(0),sc(.15),sc(.82),sc(.94)],[0,22,45,72,100])}
+ <div style="position:absolute;top:59px;right:16px" class="t-label media">Skip</div>
+ <div style="position:absolute;left:24px;right:24px;bottom:58px"><div style="display:flex;gap:4px;align-items:center" class="t-cap media">${I('pin','s12')}Lan Ha Bay, Vietnam</div>
+ <div class="t-display media" style="margin-top:8px">Book a real departure</div><div class="t-sub media" style="margin-top:6px;opacity:.78">Pick a date, see how many seats are left, and pay securely.</div>
+ <div style="display:flex;justify-content:space-between;align-items:center;margin-top:26px"><div class="dots"><i></i><i class="on"></i><i></i></div><div style="width:54px;height:54px;border-radius:27px;background:var(--primary);display:grid;place-items:center;color:var(--primary-fg);box-shadow:0 10px 22px -10px var(--primary)">${I('arrow-right','s22')}</div></div></div>`,{m:1});
+frame('auth','A2','Onboarding — trang cuối','Hai nút pill: chính và viền kính.',`<div style="position:absolute;inset:0">${pic(6)}</div>${grad([sc(.45),sc(0),sc(.15),sc(.82),sc(.94)],[0,22,45,72,100])}
+ <div style="position:absolute;left:24px;right:24px;bottom:58px"><div style="display:flex;gap:4px;align-items:center" class="t-cap media">${I('pin','s12')}Ben Tre, Vietnam</div>
+ <div class="t-display media" style="margin-top:8px">Your trips in your pocket</div><div class="t-sub media" style="margin-top:6px;opacity:.78">Save the tours you love and keep every booking in one place.</div>
+ <div style="margin-top:22px;display:grid;gap:8px"><div class="dots"><i></i><i></i><i class="on"></i></div>${btn('Get started')}${btn('I already have an account','media')}</div></div>`,{m:1});
+frame('auth','A3','Đăng nhập','Ảnh hero 300dp mờ dần về nền, trường nhập gạch chân có nhãn nổi.',scrF(`${hero(1,'Ha Giang, Vietnam','x',300)}<div style="position:absolute;top:226px;left:0;right:0;padding:0 24px"><div class="t-display">Welcome back</div><div class="t-sub mut" style="margin-top:6px">Sign in to save tours and manage your trips.</div>
+ ${tf('Email',{icon:'mail',val:'minhanh@example.com'})}${tf('Password',{icon:'lock',secure:1,val:'••••••••••',ac:1})}
+ <div class="t-label link" style="text-align:right;margin:12px 0">Forgot password?</div>${btn('Sign in')}<div class="or" style="display:flex;align-items:center;gap:10px;margin:10px 0"><i style="flex:1;height:1px;background:var(--border)"></i><span class="t-cap mut">or</span><i style="flex:1;height:1px;background:var(--border)"></i></div>${btn('Continue with Google','ghost','<b style="font:700 15px Archivo">G</b>')}
+ <div style="display:flex;justify-content:center;gap:6px;margin-top:12px" class="t-cap"><span class="mut">New to Nexora?</span><span class="link">Create account</span></div></div>`),{m:1});
+frame('auth','A4','Tạo tài khoản','Cùng khuôn đăng nhập, hero thấp hơn, dòng điều khoản.',scrF(`${hero(3,'Sa Pa, Vietnam','x',230)}<div style="position:absolute;top:156px;left:0;right:0;padding:0 24px"><div class="t-display">Create account</div><div class="t-sub mut" style="margin-top:6px">Join to save tours and book in minutes.</div>
+ ${tf('Full name',{icon:'user',val:'Minh Anh'})}${tf('Email',{icon:'mail',val:'minhanh@example.com'})}${tf('Password',{icon:'lock',secure:1,ph:'Password'})}
+ <div class="t-cap mut" style="margin:14px 0">By creating an account you agree to our <span class="link">Terms</span> and <span class="link">Privacy Policy</span></div>${btn('Create account')}
+ <div style="display:flex;justify-content:center;gap:6px;margin-top:14px" class="t-cap"><span class="mut">Already have an account?</span><span class="link">Sign in</span></div></div>`),{m:1});
+frame('auth','A5','Xác minh email','Ô OTP gạch chân chia 3+3, nút ghim đáy.',scr(`<div style="padding:8px 24px 0">${`<div class="ibtn">${I('arrow-left','s18')}</div>`}<div class="t-display" style="margin-top:16px">Check your email</div><div class="t-sub mut" style="margin-top:6px">Enter the 6-digit code we sent to <span style="color:var(--foreground)">minhanh@example.com</span></div>
+ <div class="otp"><b>4</b><b>8</b><b class="f">1</b><u></u><b>&nbsp;</b><b></b><b></b></div><div class="t-cap mut" style="margin-top:18px">Resend code in <span style="color:var(--foreground)">0:42</span></div></div>
+ <div style="position:absolute;left:24px;right:24px;bottom:34px">${btn('Verify','dis')}</div>`));
+frame('auth','A6','Quên mật khẩu — đã gửi','Ô vuông icon 64dp, bố cục InfoState.',scr(`<div style="padding:8px 24px 0">${`<div class="ibtn">${I('x','s18')}</div>`}<div style="margin-top:24px">${sqi('mail')}</div><div class="t-display" style="margin-top:22px">Check your inbox</div><div class="t-sub mut" style="margin-top:6px">Sent to <span style="color:var(--foreground)">minhanh@example.com</span></div><div class="t-cap mut" style="margin-top:14px">Open the link on any device — you will set the new password on our website.</div></div>
+ <div style="position:absolute;left:24px;right:24px;bottom:34px">${btn('Back to sign in')}</div>`));
+frame('auth','A7','Đặt mật khẩu mới','Hai trường gạch chân, nút Save ghim đáy.',scr(`<div style="padding:8px 24px 0"><div class="ibtn">${I('arrow-left','s18')}</div><div class="t-display" style="margin-top:16px">Set a new password</div><div class="t-sub mut" style="margin-top:6px">Use at least 8 characters. For your security, we'll sign you out on all devices.</div>
+ ${tf('New password',{icon:'lock',secure:1,val:'••••••••••',ac:1})}${tf('Confirm new password',{icon:'lock',secure:1,val:'••••••',err:"Passwords don't match."})}</div><div style="position:absolute;left:24px;right:24px;bottom:34px">${btn('Save password')}</div>`));
+frame('auth','A8','Kết quả — All set','Vòng sáng 96dp quanh icon, ảnh hero mờ.',scrF(`${hero(2,'',null,300)}<div style="position:absolute;top:196px;left:24px;right:24px;display:flex;flex-direction:column;align-items:center;text-align:center"><div style="width:96px;height:96px;border-radius:48px;background:var(--primary);border:10px solid color-mix(in oklch,var(--primary) 28%,transparent);display:grid;place-items:center;color:var(--primary-fg);background-clip:padding-box">${I('check','s40')}</div><div class="t-display" style="margin-top:36px">All set</div><div class="t-sub mut" style="margin-top:6px;max-width:248px">Your password is updated. Sign in with the new one.</div></div><div style="position:absolute;left:24px;right:24px;bottom:34px">${btn('Sign in')}</div>`),{m:1});
+frame('auth','A9','Cổng đăng nhập (khách, tab Trips)','Thẻ rỗng không viền, hai nút pill.',scr(`<div style="padding:12px 24px 0"><div class="t-title">Your trips</div></div><div style="position:absolute;inset:80px 16px 130px;display:flex;align-items:center"><div class="empty" style="width:100%">${sqi('briefcase')}<div class="t-heading" style="margin-top:8px">Your trips, in one place</div><div class="t-body mut">Sign in to see your bookings, tickets and cancellation dates.</div><div style="align-self:stretch;margin-top:12px;display:grid;gap:12px">${btn('Sign in')}${btn('Create account','ghost')}</div></div></div>${tabs('trips')}`));
+
+/* ================= BROWSE ================= */
+const dcard=(k,name,reg,desc,cnt)=>`<div style="position:relative;flex:none;width:262px;height:100%;border-radius:24px;overflow:hidden;background:var(--muted);box-shadow:var(--shadow-card)">${pic(k)}${grad(['transparent',sc(.75)],[42,100])}
+ <div class="rat" style="position:absolute;top:16px;left:16px;height:28px;padding:0 10px;border-radius:99px;display:flex;align-items:center;gap:4px;background:rgba(10,32,32,.45);backdrop-filter:blur(6px);font:600 12px Archivo;color:var(--on-media)"><span style="color:var(--rating);display:flex">${I('compass','s12')}</span>${cnt}</div>
+ <div style="position:absolute;left:0;right:0;bottom:0;padding:20px;display:grid;gap:4px"><div class="t-cap media" style="opacity:.85">Recommended</div><div class="t-display media">${name}</div><div class="t-cap media" style="display:flex;gap:4px;align-items:center;opacity:.9">${I('pin','s14')}${reg}</div>
+ ${desc?`<div class="t-sub media" style="margin-top:8px;opacity:.85">${desc}</div>`:''}<div style="display:flex;justify-content:flex-end;margin-top:12px"><div class="ibtn glass">${I('arrow-right','s22')}</div></div></div></div>`;
+frame('browse','B1','Home','Thẻ điểm đến 24dp có bóng, chip đếm tour kính mờ, rail vùng chỉ báo hổ phách.',scr(`<div style="padding-top:12px;height:100%;display:flex;flex-direction:column;padding-bottom:122px">
+ <div style="display:flex;align-items:center;gap:12px;padding:0 16px"><div style="width:48px;height:48px;border-radius:24px;background:var(--muted);display:grid;place-items:center;color:var(--pe)">${I('user')}</div><div style="flex:1"><div class="t-cap mut">Welcome</div><div class="t-heading">Minh Anh</div></div></div>
+ <div style="margin-top:20px;display:flex;align-items:center;justify-content:space-between;padding:0 16px"><div class="t-display link">Recommendations</div><div class="ibtn">${I('search','s24')}</div></div>
+ <div style="height:1px;margin:12px 0 20px 16px;background:var(--border)"></div>
+ <div style="flex:1;display:flex;padding-left:16px;min-height:0"><div class="rrail"><div><span>North</span></div><div class="on"><span>Central</span></div><div><span>South</span></div></div>
+ <div style="flex:1;display:flex;gap:12px;overflow:hidden">${dcard(2,'Ha Long Bay','Northern Vietnam','Limestone karsts rise from emerald water — sail, kayak and sleep aboard a traditional junk.','12 tours')}${dcard(3,'Sa Pa','Northern Vietnam','','8 tours')}</div></div></div>${tabs('home')}`));
+frame('browse','B2','Explore — danh sách','Thẻ tour 168dp: ảnh, scrim 4 chặng, giá canh phải đáy.',scr(`<div style="padding-top:12px;display:grid;gap:16px"><div style="padding:0 16px;display:grid;gap:12px"><div class="t-title">Explore tours</div>
+ <div style="display:flex;gap:8px"><div class="sear" style="flex:1">${I('search','s18')}Search tours or destinations</div><div style="width:44px;height:44px;border-radius:15px;background:var(--card);border:1px solid var(--border);display:grid;place-items:center;position:relative">${I('sliders')}<b style="position:absolute;top:2px;right:2px;min-width:18px;height:18px;border-radius:9px;background:var(--primary);color:var(--primary-fg);font:600 12px/18px Archivo;text-align:center">2</b></div></div></div>
+ <div class="chips">${chip('All','on')}${chip('Trekking')}${chip('Cruise')}${chip('Culture')}${chip('Food')}</div>
+ <div style="padding:0 16px;display:grid;gap:12px"><div class="t-cap mut">24 tours</div>${tl({k:2,title:'Ha Long Bay Overnight Cruise',loc:'Ha Long Bay · 2 days',price:'$320',rating:'4.8',fav:0,cmp:'$360'})}${tl({k:1,title:'Ha Giang Loop Adventure',loc:'Ha Giang · 4 days',price:'$480',rating:'4.9',fav:1})}${tl({k:3,title:'Sa Pa Rice Terrace Trek',loc:'Sa Pa · 3 days',price:'$260',rating:'4.7'})}</div></div>${tabs('explore')}`));
+frame('browse','B3','Explore — bộ lọc','Chip cao 32dp, nhãn nhóm caption, nút Show results pill.',scr(`<div style="padding-top:12px;display:grid;gap:16px;opacity:.9"><div style="padding:0 16px"><div class="t-title">Explore tours</div></div><div style="padding:0 16px"><div class="sear">${I('search','s18')}Search tours or destinations</div></div></div>${tabs('explore')}<div class="dim" style="top:-47px"></div>
+ <div class="sheet" style="padding-bottom:50px"><div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px"><div class="t-heading">Filters</div><div class="t-label link">Clear all</div></div>
+ <div style="display:grid;gap:16px;padding-top:20px">${[['Region',[['All','on'],['North'],['Central'],['South']]],['Duration',[['1 day'],['2–3 days','on'],['4+ days']]],['Price',[['Under $100'],['$100–300','on'],['Over $300']]],['Difficulty',[['Easy'],['Moderate'],['Challenging']]],['Sort by',[['Popular','on'],['Price: low first'],['Price: high first'],['Top rated']]]].map(f=>`<div><div class="t-cap mut">${f[0]}</div><div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:8px">${f[1].map(c=>chip(c[0],c[1]||'')).join('')}</div></div>`).join('')}</div><div style="padding-top:24px">${btn('Show 24 results')}</div></div>`));
+frame('browse','B4','Explore — kết quả tìm kiếm','Thẻ điểm đến mini 140×100, dòng kết quả 64dp.',scr(`<div style="padding-top:12px;display:grid;gap:16px"><div style="padding:0 16px;display:grid;gap:12px"><div class="t-title">Explore tours</div><div style="display:flex;gap:8px"><div class="sear f" style="flex:1;color:var(--foreground)">${I('search','s18')}ha<span style="flex:1"></span>${I('x','s16')}</div><div style="width:44px;height:44px;border-radius:15px;background:var(--card);border:1px solid var(--border);display:grid;place-items:center">${I('sliders')}</div></div></div>
+ <div style="padding:0 16px;display:grid;gap:20px"><div style="display:grid;gap:8px"><div class="t-cap mut">Destinations</div><div style="display:flex;gap:12px;overflow:hidden">${[[2,'Ha Long Bay','12 tours'],[1,'Ha Giang','6 tours'],[3,'Hanoi','9 tours']].map(d=>`<div style="position:relative;flex:none;width:140px;height:100px;border-radius:15px;overflow:hidden;display:flex;flex-direction:column;justify-content:flex-end;padding:10px">${pic(d[0])}<div class="grad" style="background:${sc(.5)}"></div><div class="t-label media" style="position:relative">${d[1]}</div><div class="t-cap media" style="position:relative;opacity:.85">${d[2]}</div></div>`).join('')}</div></div>
+ <div style="display:grid;gap:8px"><div class="t-cap mut">5 tours</div>${[[2,'Ha Long Bay Overnight Cruise','Ha Long Bay · From $320'],[1,'Ha Giang Loop Adventure','Ha Giang · From $480'],[6,'Hanoi Street Food Walk','Hanoi · From $45'],[4,'Hanoi Old Quarter by Night','Hanoi · From $38']].map(r=>`<div style="display:flex;align-items:center;gap:12px;height:64px"><div class="ph-box" style="width:56px;height:56px;border-radius:12px">${pic(r[0])}</div><div style="flex:1;min-width:0"><div class="t-label" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${r[1]}</div><div class="t-cap mut">${r[2]}</div></div></div>`).join('')}</div></div></div>${tabs('explore')}`));
+/* ---- chi tiết tour ---- */
+const hdrC=t=>`<div style="position:absolute;top:0;left:0;right:0;z-index:30;padding:51px 12px 8px;display:flex;align-items:center;gap:12px;background:var(--background);border-bottom:1px solid var(--border)"><div class="ibtn">${I('arrow-left','s18')}</div><div class="t-label" style="flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${t}</div><div class="ibtn">${I('heart','s18')}</div></div>`;
+const dtabs=a=>`<div style="display:flex;border-bottom:1px solid var(--border)">${['Overview','Itinerary','Dates','Reviews'].map(t=>`<div style="flex:1;text-align:center;padding:12px 0;font:${t==a?600:500} 14px/20px Archivo;color:${t==a?'var(--foreground)':'var(--muted-fg)'};border-bottom:2px solid ${t==a?'var(--pe)':'transparent'}">${t}</div>`).join('')}</div>`;
+const dbar=(price,sub,cta)=>`<div class="bbar" style="padding:12px 20px 34px"><div class="tot"><div class="t-cap mut">${sub}</div><div style="display:flex;align-items:baseline;gap:4px"><span class="t-title tnum">${price}</span><span class="t-cap mut">/ person</span></div></div><div class="cta">${btn(cta)}</div></div>`;
+frame('browse','B5','Chi tiết tour — Overview','Hero 420dp: chữ neo đáy ảnh, dải thumb bên phải, ô fact có bóng.',scrF(`<div style="position:absolute;top:0;left:0;right:0;bottom:90px;overflow:hidden"><div style="position:relative;height:420px">${pic(1)}${grad([sc(.45),'color-mix(in oklch,var(--hero-fade) 0%,transparent)','color-mix(in oklch,var(--hero-fade) 72%,transparent)','var(--hero-fade)'],[0,35,75,100])}
+ <div style="position:absolute;top:53px;left:12px;right:12px;display:flex;justify-content:space-between"><div class="ibtn glass">${I('arrow-left','s18')}</div><div class="ibtn glass">${I('heart','s18')}</div></div>
+ <div style="position:absolute;top:150px;right:16px;display:grid;gap:10px;justify-items:center">${[3,2,6].map((k,i)=>`<div class="ph-box" style="width:52px;height:52px;border-radius:14px;border:2px solid ${i?'transparent':'var(--on-media)'}">${pic(k)}</div>`).join('')}<div style="width:52px;height:28px;border-radius:99px;background:${sc(.6)};display:grid;place-items:center;font:600 12px Archivo;color:var(--on-media)">+8</div></div>
+ <div style="position:absolute;left:24px;right:24px;bottom:16px;display:grid;gap:4px;justify-items:start"><div style="height:28px;padding:0 10px;border-radius:99px;display:flex;align-items:center;gap:4px;background:var(--secondary);font:600 12px Archivo;color:var(--secondary-fg)">${IF('star','s12 star')}4.9 · 128 reviews</div><div class="t-display media">Ha Giang Loop Adventure</div><div class="t-cap media" style="display:flex;gap:4px;align-items:center;opacity:.9">${I('pin','s12')}Ha Giang · Dong Van</div></div></div>
+ <div style="margin-top:16px">${dtabs('Overview')}</div><div style="padding:16px;display:grid;gap:16px"><div class="t-sub mut">Ride the legendary northern loop through limestone passes, hill-tribe markets and homestays with a local rider-guide. Small groups, no previous riding experience needed.</div>
+ <div style="display:grid;gap:12px">${[[['clock','Duration','4 days'],['users','Group size','Up to 10']],[['flag','Difficulty','Moderate'],['heart','Good for','Couples, friends']]].map(r=>`<div style="display:flex;gap:12px">${r.map(f=>`<div style="flex:1;display:grid;gap:2px;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px;box-shadow:var(--shadow-card)"><span style="color:var(--pe);margin-bottom:4px">${I(f[0],'s16')}</span><span class="t-cap mut">${f[1]}</span><span class="t-label">${f[2]}</span></div>`).join('')}</div>`).join('')}</div></div></div>${dbar('$480','From','Choose a date')}`),{m:1});
+const dayrow=(n,t,open,lines,last)=>`<div class="tl"><div class="rail"><div class="daynode ${open?'on':''}">${n}</div>${last?'':'<i></i>'}</div><div style="flex:1;padding-bottom:6px"><div style="display:flex;align-items:center;gap:8px"><div class="t-label" style="flex:1">${t}</div><span class="mut">${I(open?'chev-u':'chev-d','s18')}</span></div>${open?`<div style="display:grid;gap:6px;margin-top:8px">${lines.map(l=>`<div style="display:flex;gap:8px"><span class="t-cap" style="width:44px;font-weight:600">${l[0]}</span><span class="t-cap mut" style="flex:1">${l[1]}</span></div>`).join('')}</div>`:''}</div></div>`;
+frame('browse','B6','Chi tiết tour — Itinerary','Header gọn khi cuộn, mốc ngày nối bằng đường 2dp, thẻ điểm hẹn.',scrF(`${hdrC('Ha Giang Loop Adventure')}<div style="position:absolute;top:103px;left:0;right:0;bottom:90px;overflow:hidden">${dtabs('Itinerary')}<div style="padding:16px;display:grid;gap:14px">${dayrow(1,'Hanoi to Ha Giang',1,[['07:00','Pick-up at your hotel, meet the group'],['12:30','Lunch in Tuyen Quang'],['17:00','Check in at Quan Ba homestay']])}${dayrow(2,'Quan Ba to Dong Van',0)}${dayrow(3,'Dong Van to Meo Vac',0)}${dayrow(4,'Meo Vac to Hanoi',0,[],1)}
+ <div style="display:flex;gap:12px;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px;box-shadow:var(--shadow-card)"><span style="color:var(--pe)">${I('flag','s18')}</span><div><div class="t-cap mut">Meeting point</div><div class="t-sub">Hanoi Old Quarter, 12 Hang Bac. Day 1 starts here.</div></div></div></div></div>${dbar('$480','From','Choose a date')}`));
+const drow=(sel,range,seat,price,o={})=>`<div style="display:flex;gap:12px;align-items:center;padding:12px;border-radius:12px;border:${sel?2:1}px solid ${sel?'var(--pe)':'var(--border)'};opacity:${o.closed?.6:1}"><div class="radio ${sel?'on':''}"></div><div style="flex:1;display:grid;gap:2px"><div class="t-label" style="font-weight:${sel?600:500}">${range}</div>${o.closed?`<div style="display:flex;gap:8px;align-items:center"><span class="pillt mu">Booking closed</span><span class="t-cap link">Ask about this date</span></div>`:o.almost?`<div style="display:flex;gap:8px;align-items:center"><span class="pillt warn">Almost full</span><span class="t-cap mut">${seat}</span></div>`:`<div class="t-cap mut">${seat}</div>`}</div><div style="text-align:right">${o.cmp?`<div class="t-cap" style="color:var(--price-compare);text-decoration:line-through">${o.cmp}</div>`:''}<div class="t-label tnum">${price}</div></div></div>`;
+frame('browse','B7','Chi tiết tour — Dates','Hàng ngày khởi hành bo 12dp, ngày chọn viền 2dp primary.',scrF(`${hdrC('Ha Giang Loop Adventure')}<div style="position:absolute;top:103px;left:0;right:0;bottom:90px;overflow:hidden">${dtabs('Dates')}<div style="padding:16px;display:grid;gap:12px"><div style="display:flex;gap:10px;background:var(--secondary);border-radius:12px;padding:12px;color:var(--secondary-fg)">${I('shield','s18')}<div class="t-sub" style="color:var(--secondary-fg);flex:1">Free cancellation up to 14 days before departure.</div></div>
+ <div style="display:grid;gap:8px"><div class="t-cap mut">November 2026</div>${drow(0,'Nov 3 – Nov 6','8 seats left','$480')}${drow(1,'Nov 10 – Nov 13','4 seats left','$450',{cmp:'$480'})}${drow(0,'Nov 17 – Nov 20','2 seats left','$480',{almost:1})}</div>
+ <div style="display:grid;gap:8px"><div class="t-cap mut">December 2026</div>${drow(0,'Dec 1 – Dec 4','Full','$480',{closed:1})}${drow(0,'Dec 8 – Dec 11','10 seats left','$480')}</div></div></div>
+ <div class="bbar" style="padding:12px 20px 34px"><div class="tot" style="min-width:0"><div style="display:flex;align-items:baseline;gap:4px"><span class="t-title tnum">$450</span><span class="t-cap mut">/ person</span></div><div class="t-cap link" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Free cancellation until Oct 27</div></div><div class="cta">${btn('Book now')}</div></div>`));
+frame('browse','B8','Chi tiết tour — Reviews','Điểm số lớn Literata, thanh phân bố sao 6dp màu hổ phách.',scrF(`${hdrC('Ha Giang Loop Adventure')}<div style="position:absolute;top:103px;left:0;right:0;bottom:90px;overflow:hidden">${dtabs('Reviews')}<div style="padding:16px;display:grid;gap:16px"><div style="display:flex;gap:20px;align-items:center"><div style="display:grid;gap:4px;justify-items:center"><div class="t-display">4.9</div><div style="display:flex;gap:2px">${[1,2,3,4,5].map(()=>IF('star','s14 star')).join('')}</div><div class="t-cap mut">128 reviews</div></div><div style="flex:1;display:grid;gap:6px">${[['5',88],['4',9],['3',2],['2',1],['1',0]].map(r=>`<div style="display:flex;gap:8px;align-items:center"><span class="t-cap mut" style="width:10px">${r[0]}</span><div style="flex:1;height:6px;border-radius:3px;background:var(--secondary)"><div style="width:${r[1]}%;height:100%;background:var(--rating);border-radius:3px"></div></div></div>`).join('')}</div></div>
+ <div style="display:flex;gap:8px">${chip('Newest','on')}${chip('Highest')}${chip('Lowest')}${chip('Oldest')}</div>
+ ${[['LT','Linh T.','Sep 14, 2026',5,'Best trip of the year','Our guide knew every back road. The homestay in Quan Ba was spotless and the food unforgettable.'],['MK','Mark K.','Aug 30, 2026',5,'Worth every dong','Small group, great pace. Bring a rain jacket — the passes get misty in the afternoon.']].map(r=>`<div style="display:grid;gap:8px"><div style="display:flex;gap:10px;align-items:center"><div style="width:36px;height:36px;border-radius:18px;background:var(--secondary);color:var(--secondary-fg);display:grid;place-items:center;font:600 12px Archivo">${r[0]}</div><div style="flex:1"><div class="t-label">${r[1]}</div><div class="t-cap mut">${r[2]}</div></div><div style="display:flex;gap:2px">${[1,2,3,4,5].map(()=>IF('star','s12 star')).join('')}</div></div><div class="t-label">${r[4]}</div><div class="t-sub mut">${r[5]}</div></div>`).join('')}</div></div>${dbar('$480','From','Choose a date')}`));
+frame('browse','B9','Đã lưu','Giữ thẻ 168dp, tim đặc ruột; thẻ hết chỗ mờ 55% có nhãn.',scr(`<div style="padding-top:12px;display:grid;gap:8px"><div style="padding:0 16px;display:grid;gap:16px"><div class="t-title">Saved tours</div><div class="t-cap mut">3 tours</div></div><div style="padding:0 16px;display:grid;gap:12px">${tl({k:1,title:'Ha Giang Loop Adventure',loc:'Ha Giang · 4 days',price:'$480',rating:'4.9',fav:1})}${tl({k:6,title:'Mekong Delta by Boat',loc:'Ben Tre · 2 days',price:'$140',rating:'4.6',fav:1})}<div style="position:relative;opacity:.55">${tl({k:5,title:'Mu Cang Chai Paragliding',loc:'Yen Bai · 3 days',price:'$300',fav:1})}<span class="pillt mu" style="position:absolute;top:12px;left:12px;height:28px;background:${sc(.6)};color:var(--on-media)">No longer available</span></div></div></div>${tabs('saved')}`));
+const trip=(k,pill,pt,trav,title,dates,code,amt,fin)=>`<div class="tcard"><div class="th ph-box">${pic(k)}</div><div style="flex:1;min-width:0"><div style="display:flex;justify-content:space-between;gap:8px;align-items:center"><span class="pillt ${pt}">${pill}</span><span class="t-cap mut">${trav}</span></div><div class="t-label" style="margin-top:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${title}</div><div class="t-cap mut" style="margin-top:2px">${dates}</div><div style="display:flex;justify-content:space-between;margin-top:6px"><span class="t-cap mut">${code}</span><span class="t-label tnum">${amt}</span></div>${fin?`<div class="t-cap link" style="margin-top:6px;font-weight:600">Finish payment</div>`:''}</div></div>`;
+frame('browse','B10','Chuyến của tôi','Thẻ chuyến có bóng, trạng thái dạng nhãn, tiền canh phải.',scr(`<div style="padding-top:12px;display:grid;gap:16px"><div style="padding:0 16px"><div class="t-title">Your trips</div></div><div class="chips">${chip('All','on')}${chip('Upcoming')}${chip('Past')}</div><div style="padding:0 16px;display:grid;gap:12px">${trip(1,'Paid','ok','2 travellers','Ha Giang Loop Adventure','Nov 10 – Nov 13, 2026','NX-48K2P','$900')}${trip(2,'Payment due','due','1 traveller','Ha Long Bay Overnight Cruise','Dec 2 – Dec 3, 2026','NX-91M7T','$320',1)}${trip(3,'Paid','ok','4 travellers','Sa Pa Rice Terrace Trek','Sep 4 – Sep 6, 2026','NX-30B5Q','$1,040')}${trip(4,'Refunded','mu','2 travellers','Hue Imperial Heritage','Aug 12 – Aug 13, 2026','NX-77C1R','$260')}</div></div>${tabs('trips')}`));
+</script>
+<script>
+/* ================= BOOKING ================= */
+const pad=h=>`<div style="padding:16px 24px">${h}</div>`;
+const TRIP=['2','Ha Giang Loop Adventure','Nov 10 – Nov 13, 2026'];
+const step=(i,t)=>`${prog(i,4,'Step '+i+' of 4')}`;
+frame('booking','C1','Đặt tour — Travellers','Thanh bước 4dp, hàng stepper 36dp, thanh đáy tổng tiền + nút 152dp.',scr(`${nh('Book this tour')}<div style="padding:16px 24px">${step(1)}<div class="t-heading" style="margin-top:16px">Your trip</div><div style="margin:8px 0 16px">${tripcard(1,TRIP[1],TRIP[2],'Edit')}</div><div class="t-heading">Travellers</div>
+ ${[['Adults','$450 each',2,0],['Children','Same price as adults',1,1]].map((r,i)=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:12px 0;${i?'':'border-bottom:1px solid var(--border)'}"><div><div class="t-label">${r[0]}</div><div class="t-cap mut" style="margin-top:2px">${r[1]}</div></div><div style="display:flex;align-items:center;gap:16px"><span class="stepb ${r[2]==0?'d':''}">${I('minus','s18')}</span><span class="t-heading">${r[2]}</span><span class="stepb">${I('plus','s18')}</span></div></div>`).join('')}
+ <div class="t-cap mut" style="margin-top:12px">Up to 10 guests on this tour</div></div>${bbar('Total','$1,350','Continue')}`));
+frame('booking','C2','Đặt tour — Contact','Trường icon trong ô vuông 40dp, ô ghi chú cao 96dp.',scr(`${nh('Book this tour')}<div style="padding:16px 24px">${step(2)}<div class="t-heading" style="margin-top:16px">Contact details</div><div class="t-sub mut" style="margin-top:4px">We send the confirmation here.</div>
+ ${tf('Full name',{icon:'user',boxed:1,val:'Minh Anh Nguyen'})}${tf('Email',{icon:'mail',boxed:1,val:'minhanh@example.com'})}${tf('Phone (optional)',{icon:'phone',boxed:1,ph:'Phone (optional)'})}${tf('Anything we should know? (optional)',{icon:'msg',boxed:1,tall:1,ph:'Anything we should know? (optional)'})}</div>${bbar('Total','$1,350','Continue')}`));
+frame('booking','C3','Đặt tour — Review and pay','Tổng tiền cỡ title Literata, ghi chú huỷ miễn phí nền success 14%.',scr(`${nh('Review and pay')}<div style="padding:16px 24px">${step(3)}<div class="t-heading" style="margin-top:16px">Your trip</div><div style="margin:8px 0 16px">${tripcard(1,TRIP[1],TRIP[2],'Edit')}</div>
+ <div class="kv"><div><div class="t-sub mut">3 travellers × $450</div></div><div class="t-label tnum">$1,350</div></div><div class="kv"><div class="t-label">Total</div><div class="t-title tnum">$1,350</div></div>
+ <div class="note good" style="font:400 14px/20px Archivo;gap:10px;padding:12px;border-radius:12px;margin-top:8px"><span style="position:relative;display:grid;place-items:center">${I('shield','s18')}<span style="position:absolute">${I('check','s14')}</span></span><div style="flex:1">Free cancellation until Oct 27 — get a full refund.</div></div>
+ <div class="t-heading" style="margin-top:20px">Payment method</div>
+ ${[['Card — Stripe',1],['PayPal',0]].map(r=>`<div style="display:flex;gap:12px;align-items:center;padding:14px;border-radius:15px;border:${r[1]?2:1}px solid ${r[1]?'var(--pe)':'var(--border)'};margin-top:8px"><div style="width:20px;height:20px;border-radius:99px;border:${r[1]?6:2}px solid ${r[1]?'var(--pe)':'var(--input)'}"></div>${I('card')}<div class="t-label" style="flex:1">${r[0]}</div></div>`).join('')}
+ <div class="t-cap mut" style="margin-top:12px">You'll finish payment in your browser, then come back here.</div></div>${bbar('Total','$1,350','Pay')}`));
+frame('booking','C4','Thanh toán qua trình duyệt','Trạng thái giữa chừng: hai nút rõ chính/phụ, dặn không trả hai lần.',scr(`${nh('Payment')}<div style="position:absolute;inset:44px 8px 0;display:flex;align-items:center"><div class="empty" style="width:100%;padding:0 16px">${sqi('ext')}<div class="t-heading" style="margin-top:8px">Finish in your browser</div><div class="t-body mut">Complete your payment in the secure browser window - we'll confirm your booking here when you're back.</div><div style="align-self:stretch;margin-top:16px;display:grid;gap:12px">${btn('Open payment page')}${btn("I've finished paying",'ghost')}</div></div></div>`));
+const conf=Array.from({length:22},(_,i)=>`<i style="left:${(i*37)%100}%;top:${(i*53)%60}px;background:${['var(--rating)','var(--pe)','var(--de)','var(--success)'][i%4]};transform:rotate(${i*41}deg)"></i>`).join('');
+frame('booking','C5','Đặt xong — You\'re going!','Ô check 64dp đè mép ảnh hero, vài mảnh confetti nhẹ.',scrF(`<div style="position:absolute;top:0;left:0;right:0;height:300px">${pic(1)}${grad([sc(.45),'transparent','color-mix(in oklch,var(--background) 55%,transparent)','var(--background)'],[0,30,66,100])}<div class="confetti" style="position:absolute;inset:0">${conf}</div></div>
+ <div style="position:absolute;top:268px;left:24px;right:24px;display:flex;flex-direction:column;align-items:center"><div style="width:64px;height:64px;border-radius:12px;background:var(--primary);display:grid;place-items:center;color:var(--primary-fg);box-shadow:0 12px 24px -10px var(--primary)">${I('cc','s28')}</div><div class="t-display" style="margin-top:16px;text-align:center">You're going!</div><div class="t-sub mut" style="margin-top:6px;text-align:center">Confirmation is on its way to minhanh@example.com</div>
+ <div style="align-self:stretch;margin-top:16px;padding:12px;border-radius:12px;background:var(--secondary);display:flex;justify-content:space-between;align-items:center;color:var(--secondary-fg)"><span class="t-cap" style="color:var(--secondary-fg)">Booking code</span><span class="t-label tnum">NX-48K2P</span></div>
+ <div style="align-self:stretch;margin-top:8px"><div class="kv"><span class="t-sub mut">Ha Giang Loop Adventure</span><span class="t-label">3 travellers</span></div><div class="kv"><span class="t-sub mut">Nov 10 – Nov 13, 2026</span><span class="t-label tnum">$1,350</span></div></div></div>
+ <div style="position:absolute;left:24px;right:24px;bottom:34px;display:grid;gap:8px">${btn('View booking')}${btn('Browse more tours','ghost')}</div>`),{m:1});
+const kv=(a,b,e)=>`<div class="kv"><span class="${e?'t-label':'t-sub mut'}">${a}</span><span class="${e?'t-title tnum':'t-label'}">${b}</span></div>`;
+frame('booking','C6','Chi tiết booking','Thẻ chuyến gọn 80dp, ghi chú theo sắc (success/warning), thanh hành động đáy.',scr(`${nh('Your booking')}<div style="padding:20px"><div class="tcard" style="border-radius:12px;box-shadow:none"><div class="th ph-box" style="width:80px;height:80px;border-radius:9px">${pic(1)}</div><div style="flex:1"><span class="pillt ok">Paid</span><div class="t-heading" style="margin-top:4px">Ha Giang Loop Adventure</div><div class="t-sub mut" style="margin-top:4px">Nov 10 – Nov 13, 2026</div></div></div>
+ <div class="note good"><span style="position:relative;display:grid;place-items:center">${I('shield','s16')}<span style="position:absolute">${I('check','s12')}</span></span><div><div style="font-weight:600">Free cancellation until Oct 27</div><div class="mut" style="margin-top:2px">Cancel by then and you get $1,350 back.</div></div></div>
+ <div style="margin-top:10px">${kv('Travellers','3 adults')}${kv('Contact','minhanh@example.com')}${kv('Paid on','Oct 14, 2026')}${kv('Total paid','$1,350',1)}</div></div>
+ <div class="bbar" style="display:grid;gap:16px;padding:32px 20px 34px">${btn('Cancel this booking','ghost')}<div class="t-cap mut" style="text-align:center">Questions about this trip? <span class="link">Contact us</span></div></div>`));
+frame('booking','C7','Huỷ booking (sheet)','Ô hoàn tiền nền success 14%, nút huỷ destructive pill.',scr(`${nh('Your booking')}<div style="padding:20px;opacity:.9"><div class="tcard" style="border-radius:12px;box-shadow:none"><div class="th ph-box" style="width:80px;height:80px;border-radius:9px">${pic(1)}</div><div><span class="pillt ok">Paid</span><div class="t-heading" style="margin-top:4px">Ha Giang Loop Adventure</div></div></div></div><div class="dim" style="top:-47px"></div>
+ <div class="sheet" style="padding-bottom:40px"><div class="t-heading" style="margin-top:24px">Cancel this booking?</div><div class="t-sub mut" style="margin-top:14px">You're inside the free-cancellation window, so you get the full amount back to the card you paid with. This can't be undone.</div>
+ <div style="margin-top:20px;padding:12px 14px;border-radius:12px;background:color-mix(in oklch,var(--success) 14%,transparent)"><div class="t-label">Refund</div><div class="t-title tnum">$1,350</div></div>
+ <div style="margin-top:20px">${tf('Reason (optional)',{icon:'msg',boxed:1,always:1,ph:'Tell us what changed…'})}</div>
+ <div style="margin-top:32px;display:grid;gap:14px">${btn('Cancel booking','destr')}${btn('Keep booking','ghost')}</div></div>`));
+frame('booking','C8','Hỏi về chuyến (Enquiry)','Cùng khuôn form đặt tour, thanh đáy một nút.',scr(`${nh('Ask about this trip')}<div style="padding:16px 24px"><div style="margin-bottom:16px">${tripcard(1,TRIP[1],'Nov 10 – Nov 13, 2026')}</div>${tf('Full name',{icon:'user',boxed:1,val:'Minh Anh Nguyen'})}${tf('Email',{icon:'mail',boxed:1,val:'minhanh@example.com'})}${tf('Phone (optional)',{icon:'phone',boxed:1,ph:'Phone (optional)'})}${tf('Message',{icon:'msg',boxed:1,tall:1,always:1,ph:'Tell us about your dates, group size and questions…'})}</div>${bonly(btn('Send enquiry'))}`));
+
+/* ================= TRACKER ================= */
+const tcount=h=>`<div class="card" style="padding:16px">${h}</div>`;
+const ms=(st,ic,t,c,last)=>`<div class="tl"><div class="rail"><div style="width:24px;height:24px;border-radius:99px;border:2px solid ${st=='now'?'var(--pe)':'var(--border)'};background:${st=='done'?'var(--primary)':'transparent'};display:grid;place-items:center;color:${st=='done'?'var(--primary-fg)':st=='now'?'var(--pe)':'var(--muted-fg)'}">${I(ic,'s12')}</div>${last?'':`<i style="margin:2px 0;background:${st=='done'?'var(--primary)':'var(--border)'}"></i>`}</div><div style="flex:1;padding-bottom:${last?0:16}px"><div class="t-label">${t}</div><div class="t-cap mut" style="margin-top:2px">${c}</div></div></div>`;
+frame('tracker','D1','Chuyến — Sắp khởi hành','Thẻ đếm ngược số Literata 30dp, mốc nối đường primary, hàng chuẩn bị.',scr(`${nh('Your trip')}<div style="padding:16px 24px">${tcount(`<div class="cap-up">Departing in</div><div class="t-display" style="margin-top:2px">12 days</div><div class="t-sub mut" style="margin-top:2px">Ha Giang Loop Adventure · Nov 10</div><div class="meter"><i style="width:40%"></i></div><div style="display:flex;justify-content:space-between;margin-top:6px"><span class="t-cap mut">Booked Oct 14</span><span class="t-cap mut">Departure Nov 10</span></div>`)}
+ <div style="margin-top:16px">${ms('done','check','Booking confirmed','Oct 14')}${ms('done','check','Paid in full','Oct 14')}${ms('now','shield','Free cancellation ended','Oct 27')}${ms('todo','flag','Departure','Nov 10',1)}</div>
+ <div class="cap-up" style="margin-top:16px">Get ready</div>${rl('briefcase','What to bring','Layers, rain jacket, sturdy shoes')}${rl('map','Your itinerary','4 days · Hanoi to Ha Giang')}${rl('cc',"What's included",'Guide, homestays, meals',1)}</div>${bonly(btn('Ask about this trip','ghost'))}`));
+const dl=(t,x,s)=>`<div style="display:flex;gap:12px;padding:4px 0"><div style="width:44px" class="t-cap ${s=='a'?'':'mut'}"><span style="${s=='a'?'color:var(--pe)':''}">${t}</span></div><div class="${s=='a'?'t-label':'t-sub'}" style="flex:1;${s=='d'?'text-decoration:line-through;color:var(--muted-fg)':''}">${x}</div></div>`;
+frame('tracker','D2','Chuyến — Đang đi','Dòng ngày: đã xong gạch ngang, mục đang diễn ra nhấn màu primary.',scr(`${nh('Your trip')}<div style="padding:16px 24px">${tcount(`<div style="display:flex;justify-content:space-between"><span class="cap-up">On tour now</span><span class="t-cap mut">Mon, Nov 11</span></div><div class="t-title" style="margin-top:4px">Quan Ba to Dong Van</div><div class="meter"><i style="width:50%"></i></div><div style="display:flex;justify-content:space-between;margin-top:6px"><span class="t-cap mut">Day 2 of 4</span><span class="t-cap mut">Ends Nov 13</span></div>`)}
+ <div class="cap-up" style="margin-top:20px">Today</div><div style="margin-top:8px">${dl('07:30','Breakfast at the homestay','d')}${dl('09:00','Ride over Quan Ba Heaven Gate','d')}${dl('11:30','Lung Cu flag tower','a')}${dl('13:00','Lunch in Dong Van old quarter')}${dl('15:30','Pho Bang village walk')}${dl('18:30','Dinner and campfire')}</div>
+ <div style="margin-top:16px">${rl('calendar','Tomorrow · Day 3','Dong Van to Meo Vac')}${rl('briefcase','Trip notes',"What to bring, what's included")}${rl('file','Booking details','NX-48K2P',1)}</div></div>${bonly(btn('Contact us','ghost',I('msg','s18')))}`));
+frame('tracker','D3','Chuyến — Đã kết thúc','Thẻ chào mừng, ba chỉ số Literata, lời mời viết đánh giá.',scr(`${nh('Your trip')}<div style="padding:16px 24px"><div class="card" style="padding:24px 20px;display:flex;flex-direction:column;align-items:center">${sqi('flag')}<div class="t-title" style="margin-top:12px">Welcome back</div><div class="t-sub mut" style="margin-top:4px;text-align:center">You finished Ha Giang Loop Adventure on Nov 13, 2026.</div><div style="display:flex;gap:24px;margin-top:16px">${[['4','days'],['9','places'],['3','travellers']].map(s=>`<div style="text-align:center"><div class="t-title">${s[0]}</div><div class="t-cap mut">${s[1]}</div></div>`).join('')}</div></div>
+ <div class="note sec" style="margin-top:16px"><span style="color:var(--secondary-fg)">${I('star')}</span><div><div class="t-label" style="color:var(--secondary-fg)">How was it?</div><div class="t-cap" style="color:var(--secondary-fg);opacity:.85;margin-top:2px">Your review helps the next traveller pick this route.</div></div></div>
+ <div style="margin-top:16px">${btn('Write a review')}</div><div style="margin-top:16px">${rl('file','Booking details','NX-48K2P')}${rl('compass','Where to next?','Tours near Ha Giang, Hanoi',1)}</div></div>`));
+frame('tracker','D4','Lịch trình (Itinerary)','Cùng khuôn mốc ngày với tab Itinerary, thêm ngày tháng từng ngày.',scr(`${nh('Your itinerary')}<div style="padding:16px 24px"><div class="t-cap mut">4 days · Nov 10 – Nov 13</div><div style="margin-top:16px;display:grid;gap:14px">${[[1,'Hanoi to Ha Giang','Nov 10',[['07:00','Pick-up at your hotel'],['12:30','Lunch in Tuyen Quang'],['17:00','Check in at Quan Ba homestay']]],[2,'Quan Ba to Dong Van','Nov 11',[]],[3,'Dong Van to Meo Vac','Nov 12',[]],[4,'Meo Vac to Hanoi','Nov 13',[]]].map((d,i,a)=>`<div class="tl"><div class="rail"><div class="daynode ${i==0?'on':''}">${d[0]}</div>${i==a.length-1?'':'<i></i>'}</div><div style="flex:1;padding-bottom:6px"><div style="display:flex;align-items:center"><div style="flex:1"><div class="t-label">${d[1]}</div><div class="t-cap mut" style="margin-top:2px">${d[2]}</div></div><span class="mut">${I(i==0?'chev-u':'chev-d','s18')}</span></div>${d[3].length?`<div style="display:grid;gap:6px;margin-top:8px">${d[3].map(l=>`<div style="display:flex;gap:8px"><span class="t-cap" style="width:44px;font-weight:600">${l[0]}</span><span class="t-cap mut">${l[1]}</span></div>`).join('')}</div>`:''}</div></div>`).join('')}</div></div>`));
+const stk=(t,x)=>`<div class="tick"><span style="margin-top:3px;color:${x?'var(--muted-fg)':'var(--pe)'}">${I(x?'x':'check','s18')}</span><div class="t-sub ${x?'mut':''}" style="flex:1">${t}</div></div>`;
+frame('tracker','D5','Ghi chú chuyến (Before you go)','Nhãn nhóm viết hoa nhẹ, dấu tick tròn màu theo included/excluded.',scr(`${nh('Before you go')}<div style="padding:16px 24px"><div class="cap-up">What to bring</div>${stk('Layers for cool mornings')}${stk('Waterproof jacket')}${stk('Sturdy closed shoes')}
+ <div class="cap-up" style="margin-top:20px">Included in your fare</div>${stk('Rider-guide and motorbike')}${stk('3 nights in local homestays')}${stk('All meals during the loop')}<div class="t-cap link" style="margin-top:4px">Show all 8</div>
+ <div class="cap-up" style="margin-top:20px">Not included — sort these yourself</div>${stk('Flights to Hanoi',1)}${stk('Travel insurance',1)}
+ <div class="rl" style="margin-top:16px;border-top:1px solid var(--border);border-bottom:0"><div class="bx">${I('msg')}</div><div class="g"><div class="t-label">Good to know</div><div class="t-cap mut">3 questions other travellers asked</div></div><span class="mut">${I('chev-u')}</span></div>
+ <div style="margin-top:8px"><div class="t-label">Do I need riding experience?</div><div class="t-sub mut" style="margin-top:2px">No. Each guest rides pillion with a professional rider-guide.</div></div></div>`));
+
+/* ================= REVIEWS ================= */
+frame('reviews','E1','Viết đánh giá','Sao 32dp màu primary, ô ảnh 72dp, thanh đáy ghim nút Submit.',scr(`${nh('Rate this trip')}<div style="padding:16px 24px;display:grid;gap:16px">${tripcard(1,TRIP[1],'Nov 10 – Nov 13, 2026 · NX-48K2P')}<div style="display:grid;gap:8px"><div class="t-label">Your rating</div><div style="display:flex;gap:8px">${[1,2,3,4,5].map(i=>i<=4?`<span style="color:var(--pe)">${IF('star','s32')}</span>`:`<span class="mut">${I('star','s32')}</span>`).join('')}</div><div class="t-cap mut">4 stars</div></div>
+ ${tf('Title (optional)',{always:1,val:'Best trip of the year'})}<div>${tf('Your review',{always:1,val:'Our guide knew every back road and the homestays were spotless. Would ride it again.'})}<div class="t-cap mut" style="text-align:right;margin-top:6px">82/2000</div></div>
+ <div style="display:grid;gap:8px"><div class="t-label">2/5 added</div><div style="display:flex;gap:8px">${[1,3].map(k=>`<div class="ph-box" style="width:72px;height:72px;border-radius:12px">${pic(k)}<span style="position:absolute;top:4px;right:4px">${I('xc','s18')}</span></div>`).join('')}<div style="width:72px;height:72px;border-radius:12px;border:1px solid var(--border);display:grid;place-items:center">${I('plus','s24')}</div></div></div></div>${bonly(btn('Submit review'))}`));
+frame('reviews','E2','Đã gửi — Thanks','Chip chờ duyệt nền warning, nút 220dp, liên kết xem bài của tôi.',scr(`${nh('Rate this trip')}<div style="position:absolute;inset:44px 20px 0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;text-align:center">${sqi('check')}<div class="t-title">Thanks for your review</div><div class="t-sub mut">Your review is awaiting moderation — thank you for sharing your trip.</div><span class="pillt warn" style="height:28px">${I('clock','s12')}Pending review</span><div style="width:220px;margin-top:8px">${btn('Back to my trip')}</div><div class="t-cap link">See my reviews</div></div>`));
+const rev=(pill,pt,date,title,tour,act)=>`<div class="card" style="display:grid;gap:8px;padding:16px"><div style="display:flex;justify-content:space-between;align-items:center"><span class="pillt ${pt}">${pill}</span><span class="t-cap mut">${date}</span></div><div class="t-label">${title}</div><div class="t-cap mut">${tour}</div>${act?`<div class="t-cap link">${act}</div>`:''}</div>`;
+frame('reviews','E3','Bài đánh giá của tôi','Thẻ bài có bóng, trạng thái dạng nhãn theo vòng đời kiểm duyệt.',scr(`${nh('My reviews')}<div style="padding:16px 24px;display:grid;gap:12px">${rev('Published','ok','Sep 14, 2026','Best trip of the year','Ha Giang Loop Adventure','Retract my review')}${rev('Pending review','warn','Oct 10, 2026','Misty mornings and great food','Sa Pa Rice Terrace Trek','Retract my review')}${rev('Not published','bad','Oct 2, 2026','Fine but crowded','Ha Long Bay Overnight Cruise','See why and rewrite')}${rev('Retracted','mu','Aug 18, 2026','Okay','Hue Imperial Heritage','')}</div>`));
+frame('reviews','E4','Rút bài (sheet)','Nút viền destructive pill 48dp, nút giữ bài ở dưới.',scr(`${nh('My reviews')}<div style="padding:16px 24px;opacity:.9">${rev('Published','ok','Sep 14, 2026','Best trip of the year','Ha Giang Loop Adventure','')}</div><div class="dim" style="top:-47px"></div>
+ <div class="sheet" style="padding-bottom:40px"><div style="padding-top:12px;display:grid;gap:12px"><div class="t-heading">Retract this review? It leaves the tour page for good — it can't be edited, re-submitted or restored, and its photos are removed.</div>
+ <div style="height:48px;border-radius:99px;border:1px solid var(--de);display:grid;place-items:center;color:var(--de)" class="t-label">Retract my review</div>${btn('Keep my review')}</div></div>`));
+
+/* ================= ACCOUNT ================= */
+frame('account','F1','Tài khoản','Avatar 72dp, menu 52dp có icon, đăng xuất tách bằng đường kẻ.',scr(`<div style="padding:12px 24px 0;overflow:hidden;height:100%"><div style="display:flex;align-items:center;gap:16px"><div style="width:72px;height:72px;border-radius:36px;background:var(--secondary);display:grid;place-items:center;color:var(--secondary-fg);font:600 24px Archivo;box-shadow:0 0 0 3px var(--background),0 0 0 4px var(--border)">MA</div><div style="flex:1;min-width:0"><div class="t-title">Minh Anh</div><div class="t-cap mut">minhanh@example.com</div></div><div class="ibtn">${I('edit','s18')}</div></div>
+ <div style="margin-top:24px">${[['user','Personal details'],['heart','Saved tours'],['star','My reviews'],['book','Travel stories'],['lock','Password'],['help','Help & FAQ'],['info','About Nexora'],['shield','Privacy policy',1],['file','Terms of service',1],['file','Cancellation & refund policy',1]].map(m=>`<div class="menu">${I(m[0])}<span class="t-label" style="flex:1">${m[1]}</span><span class="mut">${I(m[2]?'ext':'chev-r',m[2]?'s16':'s18')}</span></div>`).join('')}</div>
+ <div class="menu" style="margin-top:12px;border-top:1px solid var(--border);border-bottom:0;padding-top:12px;color:var(--de)">${I('log-out')}<span class="t-label" style="flex:1">Sign out</span></div></div>${tabs('account')}`));
+frame('account','F2','Thông tin cá nhân','Hàng nhãn/giá trị, nút xoá tài khoản destructive.',scr(`${nh('Personal details')}<div style="padding:16px 24px">${kv('Name','Minh Anh Nguyen')}${kv('Email','minhanh@example.com')}<div class="menu" style="margin-top:16px;color:var(--de);border-bottom:0">${I('trash')}<span class="t-label" style="flex:1">Delete account</span></div></div>`));
+frame('account','F3','Đổi mật khẩu','Ba trường icon trong ô vuông, lỗi hiện dưới gạch chân.',scr(`${nh('Password')}<div style="padding:16px 24px"><div class="t-sub mut">Changing your password signs you out on every other device.</div>${tf('Current password',{icon:'lock',boxed:1,secure:1,val:'••••••••'})}${tf('New password',{icon:'lock',boxed:1,secure:1,val:'••••••••••',ac:1})}${tf('Confirm new password',{icon:'lock',boxed:1,secure:1,val:'••••••',err:"Passwords don't match."})}</div><div style="position:absolute;left:24px;right:24px;bottom:34px">${btn('Save password')}</div>`));
+frame('account','F4','Đăng xuất (sheet)','Nút destructive đặc + nút viền, nội dung ngắn gọn.',scr(`<div style="padding:12px 24px;opacity:.9"><div style="display:flex;align-items:center;gap:16px"><div style="width:72px;height:72px;border-radius:36px;background:var(--secondary);display:grid;place-items:center;font:600 24px Archivo;color:var(--secondary-fg)">MA</div><div class="t-title">Minh Anh</div></div></div>${tabs('account')}<div class="dim" style="top:-47px"></div>
+ <div class="sheet" style="padding-bottom:40px"><div style="padding-top:12px"><div class="t-heading">Sign out?</div><div class="t-sub mut" style="margin-top:8px">Your saved tours and bookings stay on your account — you can sign back in any time.</div><div style="margin-top:20px;display:grid;gap:8px">${btn('Sign out','destr')}${btn('Stay signed in','ghost')}</div></div></div>`));
+const post=(k,t,d,tags)=>`<div style="display:flex;gap:12px;align-items:center;min-height:52px"><div class="ph-box" style="width:64px;height:64px;border-radius:12px">${pic(k)}</div><div style="flex:1;min-width:0"><div class="t-label">${t}</div><div class="t-cap mut" style="display:flex;gap:6px;align-items:center;margin-top:4px">${d}${tags.map(x=>`<span class="dot"></span>${x}`).join('')}</div></div></div>`;
+frame('account','F5','Bài viết (Travel stories)','Thẻ nổi bật cover 180dp, hàng gọn thumb 64dp, byline chấm nhỏ.',scr(`${nh('Travel stories')}<div style="padding:16px 24px 0;display:grid;gap:16px"><div class="sear">${I('search','s18')}Search stories</div></div><div class="chips" style="padding:12px 24px">${chip('All','on')}${chip('Packing')}${chip('Food')}${chip('Trekking')}</div>
+ <div style="padding:4px 24px;display:grid;gap:16px"><div><div class="ph-box" style="height:180px;border-radius:18px;box-shadow:var(--shadow-card)">${pic(6)}</div><div class="t-heading" style="margin-top:12px">Layers beat one big coat</div><div class="t-sub mut" style="margin-top:4px">How to dress for Vietnam's northern passes, where one morning holds three seasons.</div><div class="t-cap mut" style="display:flex;gap:6px;align-items:center;margin-top:8px">Sep 20, 2026<span class="dot"></span>Packing</div></div>${post(4,'Shoes that already know mud','Sep 8, 2026',['Trekking'])}${post(5,'The one thing everyone forgets','Aug 25, 2026',['Packing'])}${post(3,'Where locals eat in Hue','Aug 2, 2026',['Food'])}<div style="display:flex;justify-content:center">${btn('Load more','ghost').replace('width:100%','')}</div></div>`));
+frame('account','F6','Bài viết — chi tiết','Cover 248dp, nút kính cố định, thân bài body 16/24, tour liên quan.',scrF(`<div style="position:absolute;inset:0;overflow:hidden"><div class="ph-box" style="height:248px">${pic(6)}${grad([sc(.3),sc(0)],[0,40])}</div><div style="padding:16px 24px"><div style="display:flex;gap:8px">${chip('Packing')}</div><div class="t-title" style="margin-top:12px">Layers beat one big coat</div><div style="display:flex;gap:8px;align-items:center;margin-top:8px"><span style="width:28px;height:28px;border-radius:14px;background:var(--secondary);color:var(--secondary-fg);display:grid;place-items:center;font:600 12px Archivo">NX</span><span class="t-cap mut">Nexora Team</span><span class="dot"></span><span class="t-cap mut">Sep 20, 2026</span></div>
+ <div class="t-heading" style="margin-top:16px">Start with a base layer</div><div class="t-body" style="margin-top:12px">Merino or a synthetic tee keeps you dry when the climb heats you up and the pass turns cold.</div><div class="t-body" style="margin-top:12px">A light fleece and a packable rain shell cover almost every morning from Sa Pa to Ha Giang.</div>
+ <div style="border-top:1px solid var(--border);margin-top:16px;min-height:52px;display:flex;align-items:center;gap:8px"><span class="t-sub mut" style="flex:1">Read this on nexora.travel</span><span class="mut">${I('ext','s16')}</span></div>
+ <div class="t-label mut" style="margin-top:12px">Trips in this story</div><div style="display:flex;gap:12px;align-items:center;padding:8px 0"><div class="ph-box" style="width:64px;height:64px;border-radius:12px">${pic(3)}</div><div><div class="t-label">Sa Pa Rice Terrace Trek</div><div class="t-cap mut" style="margin-top:4px">3 days</div><div class="t-label" style="margin-top:4px">$260</div></div></div></div></div>
+ <div style="position:absolute;top:0;left:0;right:0;height:47px;background:var(--background)"></div><div style="position:absolute;top:53px;left:12px;right:12px;display:flex;justify-content:space-between"><div class="ibtn glass">${I('arrow-left','s18')}</div><div class="ibtn glass">${I('ext','s18')}</div></div>`));
+
+/* ================= lắp trang ================= */
+const META={auth:['Auth và Onboarding','Mở app, đăng nhập, đăng ký, xác minh, đặt lại mật khẩu, cổng đăng nhập cho khách.'],browse:['Duyệt tour','Home, Explore, chi tiết tour 4 tab, Đã lưu, Chuyến của tôi.'],booking:['Đặt tour','Bốn bước đặt chỗ, thanh toán qua trình duyệt, xác nhận, chi tiết và huỷ booking, hỏi về chuyến.'],tracker:['Chuyến đi (bám ngày khởi hành)','Giao diện đổi theo thời điểm: sắp đi, đang đi, đã xong, cùng lịch trình và ghi chú.'],reviews:['Đánh giá','Viết, đã gửi, danh sách bài của tôi, rút bài.'],account:['Tài khoản và bài viết','Hồ sơ, bảo mật, đăng xuất, Travel stories.']};
+const app=document.getElementById('app');
+app.innerHTML=Object.keys(META).map(k=>`<section class="cluster" id="${k}"><h2>${META[k][0]}</h2><p>${META[k][1]}</p><div class="row">${(sections[k]||[]).join('')}</div></section>`).join('');
+const setT=t=>{document.documentElement.dataset.theme=t;document.getElementById('bt-d').classList.toggle('on',t=='dark');document.getElementById('bt-l').classList.toggle('on',t=='light')};
+document.getElementById('bt-d').onclick=()=>setT('dark');document.getElementById('bt-l').onclick=()=>setT('light');
+document.querySelectorAll('[data-z]').forEach(b=>b.onclick=()=>{document.body.style.setProperty('--z',b.dataset.z);document.querySelectorAll('[data-z]').forEach(x=>x.classList.toggle('on',x==b))});
+</script>
+</body>
+</html>
