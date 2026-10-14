@@ -60,6 +60,26 @@ thẳng file của nhánh P7 B (`feat/booking-pages-redesign`) và P7 C
 `booking-journey.ts` tự so ngày khi `cancellation` là `null`, nên đơn `PAID` trên
 chuyến đã huỷ sẽ có bước "Free cancellation" tính theo ngày.~~
 
+## ~~Mobile: thẻ Trips và hoá đơn chưa nói chuyến bị công ty huỷ~~ — đóng 14/10
+
+**Đóng bởi `3a180a9`** (nhánh `fix/web-open-items-8`, PR #20). Pill của thẻ Trips và của hoá đơn
+đọc luật chung `bookingStatusPill` (`apps/mobile/src/features/trips/trips-list.ts`), cùng luật
+giai đoạn `cancelled` của `phaseLabel` bên web: chuyến công ty huỷ ghi "Cancelled" xám dù đơn còn
+PAID, đơn đã hoàn trọn giữ "Refunded". Hoá đơn có khung `departureCancelled` (cùng luật
+`cancelledByOperator` của web): "We had to cancel this departure." rồi "Your full refund is on
+its way." khi job hoàn tiền chưa chạy, hay khoản sổ đã ghi và mốc khi job xong; không nút trả,
+không nút huỷ. Không cần chữ mới: dùng lại `messages.bookingDetail.closed` của web. Cùng commit,
+đơn khách tự huỷ đã trả (API đặt CANCELLED) thôi rơi vào khung "chưa từng thu tiền" mà về T8 kể
+khoản hoàn.
+
+~~Nêu 12/10 ở review nhánh `fix/mobile-booking-screens` (merge cùng ngày). Bản vá N3 đã đưa đơn trên
+chuyến công ty huỷ ra khỏi cụm P và nhãn "On tour now" (`bookingPhase` là `cancelled`), nhưng trong
+lúc chờ job `departure-refund` (thường dưới 15 phút) đơn còn PAID: thẻ ở tab Trips vẫn ghi "Paid"
+nền xanh, và hoá đơn mobile chưa có khối "We had to cancel this departure" như web (mục web đóng
+09/10 ở trên). Job chạy xong thì đơn được huỷ như một lần huỷ thật nên thẻ thôi ghi "Paid", nhưng
+mobile vẫn không nói chuyến do công ty huỷ. Làm: chữ mới trong `@tourism/i18n` cho thẻ và một khối
+báo ở `bookings/[code]`, đọc cờ `departureCancelled`.~~
+
 ## Việc tay trên hạ tầng đã xong hoặc đã thay
 
 - ~~**Render: thêm `nexora://` vào `TRUSTED_ORIGINS`**~~ — user đã thêm 09/10. Đừng thêm
@@ -75,6 +95,47 @@ chuyến đã huỷ sẽ có bước "Free cancellation" tính theo ngày.~~
 - Kiểm nút Export trên production sau lần deploy gần nhất.
   *Đóng khi tách 14/10: thử tay G40 Phần 3 trên production 12/10 đã xuất Excel bookings (có lọc,
   chọn hàng) và subscribers, 4/4 bước đạt (CHANGELOG 12/10).*
+
+## ~~Bug tiềm ẩn: `pending-sweep.service.ts` so sánh timestamp phụ thuộc timezone server~~ — đóng 14/10
+
+**Đóng bởi `a0a7f88`** (nhánh `fix/web-open-items-8`, PR #20). Câu quét so và ghi mốc bằng
+`now() AT TIME ZONE 'UTC'` thay cho `now()`, nên không còn phụ thuộc TimeZone của phiên DB. Int
+spec mới chạy câu quét trong transaction có `SET LOCAL TIME ZONE 'Asia/Bangkok'`: trước khi sửa nó
+huỷ 3 booking thay vì 1, gồm cả session còn sống và booking 5 phút tuổi. Các câu `now()` ghi vào
+cột không tz ở chỗ khác (huỷ, trả tiền, ẩn danh enquiry) vẫn dựa vào phiên UTC như `stats-math.ts`
+đã ghi; Supabase và Docker đều ở UTC.
+
+~~Phát hiện 25/09 khi chạy `pnpm gate:int` trên máy Windows native (Postgres
+service cài native, timezone hệ điều hành `Asia/Bangkok`) trong lúc soát nhánh
+`feat/mobile-browse-screens` — KHÔNG liên quan code nhánh đó, bug có sẵn từ
+trước, chỉ bị máy này làm lộ.~~
+
+~~[`pending-sweep.service.ts`](../apps/api/src/worker/pending-sweep.service.ts)
+so `checkout_session_expires_at < now()` bằng raw SQL. Mọi cột `DateTime`
+trong `schema.prisma` là `timestamp without time zone` (mặc định Prisma, không
+`@db.Timestamptz` chỗ nào). `now()` trả `timestamptz`; Postgres ép cột naive
+sang `timestamptz` theo **session timezone**, không phải UTC. Trên máy có
+session timezone khác UTC, một hạn session còn tương lai bị đọc thành "đã hết
+hạn" (đo được: lệch đúng bằng offset múi giờ).~~
+
+~~**Vì sao chưa ai gặp:** production (Supabase) và Docker Postgres mặc định UTC
+nên bug im lặng ở mọi nơi đã biết — chỉ lộ ra vì máy này cài Postgres native
+theo múi giờ hệ điều hành.~~
+
+~~**Vì sao vẫn phải vá:** worker này chạy CRON thật ở production (pg-boss, ADR-
+0006), không chỉ trong test. Bất kỳ lúc nào server Postgres đổi timezone khác
+UTC (đổi hạ tầng, admin sửa `postgresql.conf`, máy dev khác cài native) — logic
+"session re-mint còn sống thì đừng huỷ" (ADR-0006 AMEND 1c) vô hiệu âm thầm:
+khách đang gõ thẻ trên session còn sống bị huỷ oan booking.~~
+
+~~Vá đúng: ép UTC tường minh trong SQL
+(`checkout_session_expires_at AT TIME ZONE 'UTC' < now()`) hoặc đổi cột thời
+gian sang `@db.Timestamptz` trong schema. Repro: `int-full-3.log` gồm 2 test
+`pending-sweep.int.spec.ts` (AMEND 1c, AMEND 2d) fail đơn định trên máy
+timezone khác UTC — chạy cô lập cũng fail, không phải do đụng độ file khác.~~
+
+~~Chưa vá — ngoài phạm vi nhánh `feat/mobile-browse-screens` (luật 1 CLAUDE.md).
+Cần mở nhánh `fix/` riêng khi có người rảnh tay.~~
 
 ## Nợ nhỏ phát sinh từ P5b-4 — mục đã sửa
 
@@ -97,6 +158,12 @@ chuyến đã huỷ sẽ có bước "Free cancellation" tính theo ngày.~~
    *Đóng khi tách 14/10: R3 của nhánh `feat/mobile-browse-screens` (merge 12/10, `7dc3041b`..`616d782e`)
    cho `leaveAuthTo` gỡ modal Sign in về đúng màn đang nằm dưới thay cho `router.replace`; đo trên
    cây route thật còn một bản tour trong stack (CHANGELOG 12/10). Thử máy thật vẫn ở file chính.*
+
+## Nợ nhỏ phát sinh từ P5b-5 — mục đã sửa
+
+3. **Đã sửa (`9af27b3`, merge 14/10).** **Chữ báo lỗi ảnh ghi cứng "10 MB" và 5** ở `use-review-photos.ts`, cùng số ô còn trống và
+   `maxPhotos={5}` ở hai route, trong khi luật chặn đọc `REVIEW_PHOTO_MAX_BYTES` và
+   `REVIEW_PHOTOS_MAX` của contract: đổi hằng số là chữ lệch.
 
 ## Nợ kỹ thuật — mục đã đóng
 

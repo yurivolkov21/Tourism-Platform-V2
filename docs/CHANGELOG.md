@@ -8,6 +8,58 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-10-14 — Merge thẻ Trips và hoá đơn mobile nói chuyến bị công ty huỷ, chữ lỗi ảnh review theo contract, chip a11y, câu quét PENDING theo giờ UTC (`3a180a9`..`201fa68`)
+
+Làm tiếp open-items theo yêu cầu của user 13/10 (đóng càng nhiều càng tốt trước freeze 15/10).
+Nhánh `fix/web-open-items-8`, [PR #20](https://github.com/yurivolkov21/Tourism-Platform-V2/pull/20),
+thi công trên session cloud. Không migration, không env, không dependency, không đổi contract, không
+thêm chữ. Thư viện dùng chung bị sửa: `@tourism/mobile-ui` (`chip.tsx`, `chip.spec.tsx`).
+
+- Mobile, chuyến công ty huỷ `3a180a9`: trong lúc chờ job `departure-refund`, đơn còn PAID trên chuyến
+  công ty huỷ vẫn ghi "Paid" nền xanh ở tab Trips, và hoá đơn không nói gì về việc huỷ. Pill của thẻ
+  Trips và của hoá đơn nay đọc chung `bookingStatusPill`
+  (`apps/mobile/src/features/trips/trips-list.ts`), cùng luật giai đoạn `cancelled` của `phaseLabel`
+  bên web: "Cancelled" xám, đơn đã hoàn trọn giữ "Refunded". Hoá đơn có khung `departureCancelled`
+  (cùng luật `cancelledByOperator` của web) mở bằng "We had to cancel this departure.", rồi "Your
+  full refund is on its way." khi job chưa chạy, hay khoản đã hoàn và mốc khi job xong; không nút
+  trả, không nút huỷ. Chữ dùng lại `messages.bookingDetail.closed` của web.
+- Cùng commit, phát hiện khi làm: khách tự huỷ đơn đã trả thì API đặt CANCELLED (ADR-0041 §4), mà
+  `bookingDetailKind` coi mọi đơn CANCELLED là chưa từng thu tiền, nên hoá đơn mobile chỉ ghi "This
+  booking was cancelled." và không kể khoản hoàn. Đơn đã thu (cùng luật `wasCharged` của web) nay về
+  khung T8 như handoff ghi. Bảng giai đoạn của
+  [handoff mobile booking](handoff/mobile-booking-handoff.md) ghi thêm hai luật này.
+- Ảnh review `9af27b3`: câu lỗi ảnh và số ô ảnh đọc `REVIEW_PHOTO_MAX_BYTES` và `REVIEW_PHOTOS_MAX` của
+  contract thay cho "10 MB" và 5 ghi cứng (`reviewPhotoErrorText`, `maxPhotos` của hai route).
+- Chip `201fa68`: chip bấm được báo `accessibilityState.selected` cho trình đọc màn hình; chip không có
+  `onPress` (tag của bài viết) là `View` có nhãn thay cho `Pressable` vai "button". Đó là hai trong ba
+  chỗ a11y của N10; backdrop của tấm trượt vẫn chưa có nhãn vì cần chọn cách đóng cho trình đọc màn
+  hình.
+- API, câu quét PENDING bỏ dở `a0a7f88`: `pending-sweep.service.ts` so `checkout_session_expires_at`
+  với `now()`, mà cột không có tz nên Postgres ép theo TimeZone của phiên: trên Postgres cài theo giờ
+  máy (UTC+7, mục nêu 25/09) câu quét huỷ cả booking còn phiên trả tiền sống. Nay so và ghi
+  `cancelled_at`, `updated_at` bằng `now() AT TIME ZONE 'UTC'`. Supabase và Docker ở UTC nên
+  production không đổi hành vi. `sweepAbandoned` nhận client tuỳ chọn cho int spec; `start-worker.ts`
+  không đổi.
+- open-items: mục "Mobile: thẻ Trips và hoá đơn chưa nói chuyến bị công ty huỷ", mục "Bug tiềm ẩn"
+  của `pending-sweep.service.ts` và nợ nhỏ P5b-5 mục 3 chuyển sang `open-items-closed.md`; N10 ghi
+  phần đã sửa; thêm một dòng thử máy thật và G54 (pill và hoá đơn mobile chưa kể giai đoạn `lapsed`).
+
+**Review.** Không có lượt review độc lập. User bảo merge 14/10 08:35 UTC. Nhánh đã rebase lên `31d8ebb` (sau PR #18) trước khi chạy gate, không xung đột: hai bên không chung file nào.
+
+Tests after (`gate:int` trên `201fa68`, 14/10 xong 08:24 UTC, session cloud theo các bước của
+CI): unit 7488 — web 2273, admin 2221, api 1150, mobile 802, contract 709, mobile-ui 144, i18n 58,
+ui 57, core 48, tokens 26 — và int 843; CI của PR xanh 08:40 UTC. So với `31d8ebb`: mobile thêm
+23 test, mobile-ui thêm 2, api thêm 1 int. Lượt này turbo chạy lại test của api, admin, mobile và
+mobile-ui (đầu vào đổi sau khi rebase lên PR #18); các package khác phát lại kết quả đã lưu. Test
+của bốn phần đỏ trước khi sửa, xanh sau. Int spec mới chạy câu quét trong transaction có
+`SET LOCAL TIME ZONE 'Asia/Bangkok'`: trước khi sửa nó huỷ 3 booking thay vì 1, gồm cả booking còn
+phiên sống và booking 5 phút tuổi.
+
+**CÒN TREO:**
+
+- Màn mobile mới chỉ tới người dùng ở bản build app kế tiếp; dòng thử máy thật nằm ở open-items.
+- Dọn sau merge: nhánh `fix/web-open-items-8` trên origin nếu GitHub không tự xoá.
+
 ## 2026-10-14 — Merge G18 vùng xoá tour ở bước Review xuống sau công tắc On sale, G41 chạy bù ba job dọn dẹp hằng ngày khi API thức (`e5666d6`..`8c5392b`)
 
 Làm tiếp việc tồn đọng của admin theo yêu cầu của user 13/10 (đóng càng nhiều open-items càng tốt

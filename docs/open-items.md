@@ -6,7 +6,7 @@
 > [CHANGELOG](CHANGELOG.md) (mục "CÒN TREO" của entry tương ứng) và ở
 > [sổ nợ kỹ thuật](analysis/2026-08-06-backlog-no-ky-thuat.md).
 > **Đóng một mục:** ghi kết quả vào dòng (ngày, nhánh, commit), chuyển cả dòng
-> sang open-items-closed.md, rồi ghi vào CHANGELOG. **Mã G kế tiếp: G54.**
+> sang open-items-closed.md, rồi ghi vào CHANGELOG. **Mã G kế tiếp: G55.**
 
 ## Mốc thời gian
 
@@ -62,18 +62,12 @@ hoặc ô nhập phải đổi giọng thành câu-cho-khách-đọc, hoặc c�
 Trong lúc chưa quyết, câu nhắc ở màn admin đã sửa cho nói đúng sự thật (nó là
 ghi chép nội bộ) — trước đó nó hứa nhầm rằng khách sẽ đọc được.
 
-## Mobile: thẻ Trips và hoá đơn chưa nói chuyến bị công ty huỷ
-
-Nêu 12/10 ở review nhánh `fix/mobile-booking-screens` (merge cùng ngày). Bản vá N3 đã đưa đơn trên
-chuyến công ty huỷ ra khỏi cụm P và nhãn "On tour now" (`bookingPhase` là `cancelled`), nhưng trong
-lúc chờ job `departure-refund` (thường dưới 15 phút) đơn còn PAID: thẻ ở tab Trips vẫn ghi "Paid"
-nền xanh, và hoá đơn mobile chưa có khối "We had to cancel this departure" như web (mục web đóng
-09/10 ở trên). Job chạy xong thì đơn được huỷ như một lần huỷ thật nên thẻ thôi ghi "Paid", nhưng
-mobile vẫn không nói chuyến do công ty huỷ. Làm: chữ mới trong `@tourism/i18n` cho thẻ và một khối
-báo ở `bookings/[code]`, đọc cờ `departureCancelled`.
-
 ## Cần thử lại bằng máy thật
 
+- **Hoá đơn và thẻ Trips khi chuyến bị công ty huỷ, hoá đơn của đơn khách tự huỷ** (merge 14/10,
+  nhánh `fix/web-open-items-8`, PR #20): đơn còn PAID trên chuyến vừa huỷ phải ghi "Cancelled" xám
+  ở Trips, hoá đơn mở bằng "We had to cancel this departure." cùng "Your full refund is on its
+  way."; đơn khách tự huỷ trong hạn phải hiện số đã hoàn và ngày. Mới có test đơn vị.
 - **G31 hộp xoá tài khoản trên Edge** (merge 13/10, `04beaa7`): Edge có lưu mật khẩu cho
   www.nexora-travel.agency, vào Settings, bấm xoá tài khoản, ô "Type DELETE to confirm" phải còn
   trống. Mới có test đơn vị.
@@ -165,40 +159,6 @@ thấy. Lúc chúng vào DB thì có thể đã qua freeze 15/10: đọc lý do 
 - **@nestjs/microservices**: GHSA-m8vh-jmq9-5rjg và GHSA-96h4-vgxj-gvm2 — gói không có
   trong cây.
 
-## Bug tiềm ẩn: `pending-sweep.service.ts` so sánh timestamp phụ thuộc timezone server
-
-Phát hiện 25/09 khi chạy `pnpm gate:int` trên máy Windows native (Postgres
-service cài native, timezone hệ điều hành `Asia/Bangkok`) trong lúc soát nhánh
-`feat/mobile-browse-screens` — KHÔNG liên quan code nhánh đó, bug có sẵn từ
-trước, chỉ bị máy này làm lộ.
-
-[`pending-sweep.service.ts`](../apps/api/src/worker/pending-sweep.service.ts)
-so `checkout_session_expires_at < now()` bằng raw SQL. Mọi cột `DateTime`
-trong `schema.prisma` là `timestamp without time zone` (mặc định Prisma, không
-`@db.Timestamptz` chỗ nào). `now()` trả `timestamptz`; Postgres ép cột naive
-sang `timestamptz` theo **session timezone**, không phải UTC. Trên máy có
-session timezone khác UTC, một hạn session còn tương lai bị đọc thành "đã hết
-hạn" (đo được: lệch đúng bằng offset múi giờ).
-
-**Vì sao chưa ai gặp:** production (Supabase) và Docker Postgres mặc định UTC
-nên bug im lặng ở mọi nơi đã biết — chỉ lộ ra vì máy này cài Postgres native
-theo múi giờ hệ điều hành.
-
-**Vì sao vẫn phải vá:** worker này chạy CRON thật ở production (pg-boss, ADR-
-0006), không chỉ trong test. Bất kỳ lúc nào server Postgres đổi timezone khác
-UTC (đổi hạ tầng, admin sửa `postgresql.conf`, máy dev khác cài native) — logic
-"session re-mint còn sống thì đừng huỷ" (ADR-0006 AMEND 1c) vô hiệu âm thầm:
-khách đang gõ thẻ trên session còn sống bị huỷ oan booking.
-
-Vá đúng: ép UTC tường minh trong SQL
-(`checkout_session_expires_at AT TIME ZONE 'UTC' < now()`) hoặc đổi cột thời
-gian sang `@db.Timestamptz` trong schema. Repro: `int-full-3.log` gồm 2 test
-`pending-sweep.int.spec.ts` (AMEND 1c, AMEND 2d) fail đơn định trên máy
-timezone khác UTC — chạy cô lập cũng fail, không phải do đụng độ file khác.
-
-Chưa vá — ngoài phạm vi nhánh `feat/mobile-browse-screens` (luật 1 CLAUDE.md).
-Cần mở nhánh `fix/` riêng khi có người rảnh tay.
-
 ## Nợ nhỏ phát sinh từ P5b-4 (nhánh `feat/mobile-account-screens`)
 
 Phát hiện 25/09 ở final review của plan return-to-auth (SDD; ledger từng ở
@@ -216,19 +176,19 @@ sang [open-items-closed.md](open-items-closed.md):
    phải sửa cả `img-src` của CSP web và admin.
 5. **N7–N10 mức thấp còn mở** — bảng ở mục 7 của tóm tắt nhánh: bấm đúp nút chọn
    ảnh, lỗi form đổi mật khẩu không tự xoá, Saved đếm "100 tours" trước khi tải đủ
-   trang, ba chỗ a11y.
+   trang, ba chỗ a11y. Sửa 14/10 hai trong ba chỗ a11y của N10 (`201fa68`,
+   nhánh `fix/web-open-items-8`, PR #20): chip lọc báo trạng thái chọn, tag của bài viết thôi đọc là nút. Còn
+   backdrop tấm trượt chưa có nhãn — cần chọn cách đóng cho trình đọc màn hình.
 
 ## Nợ nhỏ phát sinh từ P5b-5 (nhánh `fix/mobile-review-screens`)
 
-Nêu 12/10 ở review lần 2 (merge cùng ngày). Không chặn merge:
+Nêu 12/10 ở review lần 2 (merge cùng ngày). Không chặn merge. Mục 3 đã sửa 14/10, chuyển sang
+[open-items-closed.md](open-items-closed.md):
 
 1. **R1 mới mở được từ P6.** Mockup ghi thêm hai lối: chi tiết booking và dòng My reviews ở
    Account.
 2. **Rút bài xong không có toast "Review retracted"** như web (chữ `reviews.retract.toast.done`
    có sẵn). Thẻ đổi sang "You retracted this review" nên khách vẫn thấy kết quả.
-3. **Chữ báo lỗi ảnh ghi cứng "10 MB" và 5** ở `use-review-photos.ts`, cùng số ô còn trống và
-   `maxPhotos={5}` ở hai route, trong khi luật chặn đọc `REVIEW_PHOTO_MAX_BYTES` và
-   `REVIEW_PHOTOS_MAX` của contract: đổi hằng số là chữ lệch.
 4. **Bài đang gõ ở R1, R5 mất khi bấm back cứng Android**, không hỏi lại.
 
 ## Nợ kỹ thuật chi tiết
@@ -246,3 +206,4 @@ deploy) nằm ở [sổ nợ kỹ thuật](analysis/2026-08-06-backlog-no-ky-thu
 | G17 | Hiệu năng F18, đều nhỏ: mỗi nhịp tiến độ tải lên render lại cả form (vài ms mỗi lần); `setPhotos` requeue từng ảnh một trong transaction đang giữ khoá, và `get` hỏi thêm câu media nối tiếp (cộng lại khoảng 0,1–0,2 giây mỗi lần lưu, dưới timeout 5 giây). Chưa đáng sửa riêng |
 | G25 | Khoá ngoại `tour_destinations.destination_id` vẫn `ON DELETE CASCADE` (ADR-0053, giới hạn 4): luật "đang có tour thì không xoá" chỉ sống ở lệnh xoá của API; xoá điểm đến bằng SQL tay, Prisma Studio hay script sẽ lặng lẽ gỡ nó khỏi mọi tour. Đổi sang `RESTRICT` như danh mục cần một migration — để sau capstone |
 | G30 | Số điện thoại ở `/account/settings` chỉ được lưu để liên hệ (gợi ý dưới nhãn: "So the guide can reach you on the day."), không xác minh bằng OTP như nhiều site. Thêm OTP cần nhà cung cấp SMS (dịch vụ ngoài, có chi phí), luồng gửi lại mã và chống spam. User nêu khi thử tay 09/10; để sau capstone, nhắc trong báo cáo như hướng phát triển |
+| G54 | Pill và hoá đơn của app mobile chưa kể giai đoạn `lapsed`: đơn chờ trả quá hạn chót vẫn mang pill "Payment due" cam ở Trips (nút "Finish payment" đã ẩn), và hoá đơn T5 vẫn mời trả, bấm mới biết đã đóng. Web nói "Payment not completed" xám và "This booking wasn’t paid by the deadline." (review P7 Phần A 06/10, mục 3 và 5). Nêu 14/10 khi làm thẻ chuyến công ty huỷ (nhánh `fix/web-open-items-8`, PR #20) |
