@@ -8,6 +8,48 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-10-14 — Merge G49 nút đỏ ở chân hộp thoại, G36 chặn review chuyến bị huỷ, G34 giờ chốt trong email (`9dcfc15`..`38934c9`)
+
+Làm tiếp open-items phía khách theo yêu cầu của user 13/10 (đóng càng nhiều càng tốt trước freeze
+15/10). Nhánh `fix/web-open-items-4`, [PR #12](https://github.com/yurivolkov21/Tourism-Platform-V2/pull/12),
+thi công trên session cloud. Không migration, không env, không dependency mới, không đổi contract.
+Thư viện dùng chung bị sửa: `@tourism/tokens` (giá trị cả hai theme của `destructive-emphasis`).
+
+- G34 `9dcfc15`: email xác nhận đặt tour (`render-email.tsx`) lấy giờ chốt hạn huỷ từ
+  `DEADLINE_CUTOFF_COPY` của `@tourism/i18n` thay vì gõ tay. Chữ in ra không đổi.
+- G49 ADR trước code: [ADR-0019](adr/0019-color-token-roles.md) AMEND 3 `c97e4da`, token và test
+  `5b105d8`. Đo lại cho G49 thì thấy phần lớn nút đỏ đứng ở chân hộp thoại (`bg-muted/50` phủ lên
+  popover): nút xoá tài khoản ở web, bỏ thay đổi chưa lưu và từ chối review ở admin. AMEND 2 (G46) chỉ
+  đo nền và card nên bỏ sót bề mặt này; lúc hover ở đó theme sáng chỉ 3.96, theme tối 4.27.
+  `destructive-emphasis` sáng xuống `oklch(0.47 0.136 27.3)` (≈ #98342D), tối lên `oklch(0.80 0.11
+  26.7)` (≈ #FDA298); `destructive` (vai bề mặt) không đổi. Chỗ yếu nhất nay là 4.83 (sáng) và 4.78
+  (tối). `tokens.spec.ts` thay ca chỉ đo nút ở theme tối bằng ca đo cả hai theme trên nền, card và chân
+  hộp thoại, lúc nghỉ và lúc hover; ca này đỏ với giá trị cũ. Mobile đọc cùng token nên chữ đỏ của app
+  đổi theo ở lần build sau.
+- G36 `38934c9`: `checkReviewEligibility` có lý do mới `DEPARTURE_CANCELLED`, xét sau `NOT_OWNER` và
+  `NOT_PAID`, trước `TRIP_NOT_COMPLETED`. `reviews.create` và `media.signUpload` nạp thêm trạng thái
+  chuyến và rơi về `ReviewNotEligibleError` sẵn có (400 `REVIEW_NOT_ELIGIBLE`). Hai ca int mới đỏ khi bỏ
+  dòng kiểm.
+
+**Đo.** Bảng màu trước và sau dựng từ `generated/tokens.css` thật (Chromium headless của session
+cloud): `reports/2026-10-13-g49/g49-truoc-sau.png` trong thư mục dự án. Đo lại tương phản từ pixel của
+ảnh chụp lệch số tính toán không quá 0.05 (chỗ yếu nhất đo được 4.79 sáng, 4.82 tối).
+
+**Review.** Không có lượt review độc lập. User xem bảng màu và bảo merge (14/10 00:50 UTC). Tự bắt lúc
+thi công: G46 đã merge bỏ sót chân hộp thoại (sửa luôn trong G49 như trên). G30 (xác minh số điện
+thoại bằng OTP) không làm: cần nhà cung cấp SMS có phí.
+
+Tests after (`gate:int` trên `38934c9`, 13/10 xong 10:34 UTC, session cloud theo các bước của CI):
+unit 7338 — web 2269, admin 2159, api 1127, mobile 771, contract 704, mobile-ui 136, i18n 51,
+core 48, ui 47, tokens 26 — và int 831. So với main `cd589e6`: api thêm 4 ca, int thêm 2, tokens giữ
+26 (một ca được thay).
+
+**CÒN TREO:**
+
+- [ ] Nhìn chữ đỏ trên production ở hai theme, ví dụ nút "Discard changes" của hộp "Discard unsaved
+  changes?" ở khu sửa tour của admin: sửa một ô rồi bấm Back, xem xong chọn "Keep editing".
+- Dọn sau merge: nhánh `fix/web-open-items-4` trên origin nếu GitHub không tự xoá.
+
 ## 2026-10-13 — Merge việc tồn đọng của admin: G43, G24, G6, G19, G3, G44, G7 (`ff825b3`..`dc95a68`)
 
 User giao 13/10 02:17 UTC: làm luôn các việc còn tồn đọng của admin. Nhánh `fix/admin-open-items`,
