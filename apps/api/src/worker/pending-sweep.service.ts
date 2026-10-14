@@ -24,6 +24,15 @@ export const PENDING_TTL_MINUTES = 65;
 export const PENDING_HARD_TTL_HOURS = 24;
 
 /**
+ * Giờ đồng hồ UTC hiện tại, dạng `timestamp` không tz — CÙNG kiểu với cột thời gian của
+ * `bookings` (Prisma ghi giờ UTC vào cột không tz). So hay ghi thẳng `now()` (`timestamptz`) là
+ * để Postgres đổi qua lại theo TimeZone của PHIÊN: ở UTC thì trùng (Supabase, Docker), còn trên
+ * máy cài Postgres native theo múi giờ hệ điều hành (UTC+7, đo 25/09) mọi mốc lệch 7 giờ — session
+ * thanh toán còn sống bị đọc thành đã hết và booking của khách đang trả tiền bị huỷ oan.
+ */
+const NOW_UTC = Prisma.sql`(now() AT TIME ZONE 'UTC')`;
+
+/**
  * WRK-1 (ADR-0006): backstop cho webhook `payment.expired` (PAY-1) khi delivery
  * rớt — hủy mọi booking PENDING quá TTL (xem {@link PENDING_TTL_MINUTES}).
  *
@@ -43,22 +52,26 @@ export class PendingSweepService {
    * created_at đã quá TTL: khách bỏ dở rồi quay lại bấm re-checkout thì đồng
    * hồ phải tính từ session mới, không phải từ lúc tạo booking. Cột null
    * (booking cũ trước migration / chưa mint được session) giữ luật cũ theo
-   * created_at. */
+   * created_at.
+   *
+   * `db` mặc định là client chung; int spec truyền client của một transaction để chạy câu quét
+   * trong phiên có TimeZone khác UTC (`SET LOCAL` chỉ sống trên đúng kết nối ấy). */
   async sweepAbandoned(
     ttlMinutes: number,
     hardTtlHours: number = PENDING_HARD_TTL_HOURS,
+    db: Prisma.TransactionClient = prisma,
   ): Promise<number> {
-    const rows = await prisma.$queryRaw<{ id: string }[]>(Prisma.sql`
+    const rows = await db.$queryRaw<{ id: string }[]>(Prisma.sql`
       UPDATE bookings
-      SET status = 'CANCELLED'::"BookingStatus", cancelled_at = now(), updated_at = now(),
+      SET status = 'CANCELLED'::"BookingStatus", cancelled_at = ${NOW_UTC}, updated_at = ${NOW_UTC},
           checkout_session_url = NULL, checkout_session_expires_at = NULL
       WHERE status = 'PENDING'::"BookingStatus"
-        AND created_at < now() - make_interval(mins => ${ttlMinutes})
+        AND created_at < ${NOW_UTC} - make_interval(mins => ${ttlMinutes})
         AND (
           checkout_session_expires_at IS NULL
-          OR checkout_session_expires_at < now()
+          OR checkout_session_expires_at < ${NOW_UTC}
           -- Trần cứng (AMEND 2d): re-mint liên tục không kéo dài đời PENDING mãi.
-          OR created_at < now() - make_interval(hours => ${hardTtlHours})
+          OR created_at < ${NOW_UTC} - make_interval(hours => ${hardTtlHours})
         )
       RETURNING id
     `);

@@ -166,4 +166,41 @@ describe('pending-sweep worker integration (WRK-1)', () => {
     expect(await statusOf(immortal)).toBe(BookingStatus.CANCELLED);
     expect(await statusOf(youngAlive)).toBe(BookingStatus.PENDING);
   });
+
+  it('so và ghi mốc theo UTC dù TimeZone của phiên DB không phải UTC (Postgres cài theo múi giờ máy)', async () => {
+    // Cột thời gian là `timestamp` không tz, Prisma ghi giờ UTC. Phiên ở UTC+7 (máy Windows cài
+    // Postgres native, đo 25/09) mà so thẳng với `now()` thì Postgres đọc cột như giờ địa phương —
+    // mọi mốc lùi 7 giờ: session còn sống thành "đã hết", booking vừa tạo thành "bỏ dở".
+    const remintedAlive = await seedBooking({
+      code: 'BK-SWEEPTZLIVE',
+      minutesAgo: PENDING_TTL_MINUTES + 35,
+      status: BookingStatus.PENDING,
+      sessionExpiresAt: new Date(Date.now() + 30 * 60_000),
+    });
+    const fresh = await seedBooking({
+      code: 'BK-SWEEPTZNEW',
+      minutesAgo: 5,
+      status: BookingStatus.PENDING,
+    });
+    const abandoned = await seedBooking({
+      code: 'BK-SWEEPTZOLD',
+      minutesAgo: PENDING_TTL_MINUTES + 5,
+      status: BookingStatus.PENDING,
+    });
+
+    // `SET LOCAL` chỉ sống trong transaction này, nên phải chạy câu quét trên chính kết nối ấy.
+    const n = await prisma.$transaction(async (tx) => {
+      await tx.$executeRawUnsafe(`SET LOCAL TIME ZONE 'Asia/Bangkok'`);
+      return sweep.sweepAbandoned(PENDING_TTL_MINUTES, PENDING_HARD_TTL_HOURS, tx);
+    });
+
+    expect(n).toBe(1);
+    expect(await statusOf(remintedAlive)).toBe(BookingStatus.PENDING);
+    expect(await statusOf(fresh)).toBe(BookingStatus.PENDING);
+    const swept = await prisma.booking.findUniqueOrThrow({ where: { id: abandoned } });
+    expect(swept.status).toBe(BookingStatus.CANCELLED);
+    // Mốc ghi ra cũng là giờ UTC: đọc lại lệch khỏi đồng hồ thật không quá một phút, không phải 7 giờ.
+    expect(Math.abs((swept.cancelledAt?.getTime() ?? 0) - Date.now())).toBeLessThan(60_000);
+    expect(Math.abs(swept.updatedAt.getTime() - Date.now())).toBeLessThan(60_000);
+  });
 });
