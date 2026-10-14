@@ -8,6 +8,45 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-10-14 — Merge W-10 ảnh xin Cloudinary đúng cỡ, D1 nâng input-otp lên 1.5.0 (`bedfaff`..`860a501`)
+
+Làm tiếp open-items phía khách theo yêu cầu của user 13/10 (đóng càng nhiều càng tốt trước freeze
+15/10). Nhánh `fix/web-open-items-5`, [PR #14](https://github.com/yurivolkov21/Tourism-Platform-V2/pull/14),
+thi công trên session cloud. Không migration, không env, không đổi contract. **Có nâng dependency**
+trước freeze: `input-otp` ^1.4.2 lên ^1.5.0. Thư viện dùng chung bị sửa: `@tourism/ui`
+(`package.json`), cùng `pnpm-lock.yaml`.
+
+- W-10 ảnh `bedfaff`: hàm `thumbnailSrc` (`apps/web/src/lib/cloudinary-thumb.ts`) xin Cloudinary bề
+  ngang gấp ba khung hiển thị qua `cloudinaryLoader` có sẵn; URL ngoài Cloudinary (ảnh xem trước
+  `blob:`, avatar Google) trả nguyên. Dùng ở `review-card` (64px), `region-reviews` (112px),
+  `passport-card` (112px), `avatar-upload` (96px). Ảnh bìa ở `checkout-summary` đổi sang `SlotImage`,
+  ở `travel-log` sang `next/image`, cả hai có `sizes` đúng khung. Trước đó các ô 64 tới 112px tải bản
+  gốc `f_auto,q_auto`. Đóng mục CÒN TREO "Bốn bề mặt `<img>` trần" của W3 (archive
+  `changelog/2026-09-security-w1-w4.md`): `booking-receipt` không còn từ P7. Hai `<img>` còn lại là cố
+  ý: ảnh bìa bản in (ADR-0057 §4) và preview Object URL ở form ảnh review.
+- W-10 LazyMotion: **không làm, có số đo.** Đổi 47 file sang `LazyMotion` và `m` rồi build production,
+  đếm JS nén mỗi route bằng `next start`: tăng 3,6 tới 4,3 KB trên cả 14 route thay vì giảm. Entry
+  `motion/react` vẫn kéo `motion` đầy đủ (gồm drag và layout) vào chunk đầu, `optimizePackageImports`
+  không đổi được điều đó; lợi thật cần import thẳng `framer-motion`, tức đổi dependency sát freeze.
+- D1 `860a501`: `input-otp` 1.5.0 trả cleanup cho effect hẹn ba timer; type chỉ thêm prop tuỳ chọn
+  `nonce`. Lockfile sửa đúng ba khối của `input-otp` (10 dòng) vì `pnpm add` phân giải lại peer của cả
+  repo (334 dòng churn, đổi cả `@types/node` của mobile); `pnpm install --frozen-lockfile` xác nhận.
+  `otp-form.spec.tsx` gỡ đoạn đợi thật 150ms sau mỗi test (`adaedf3`), thêm test đồng hồ giả gỡ form
+  rồi đếm timer: đỏ với 1.4.2 (6 timer), xanh với 1.5.0; chạy spec 20 lần liền không lần nào lỗi.
+
+**Review.** Không có lượt review độc lập. User bảo merge (14/10 05:06 UTC). Nhánh dựng trên `0d747a7`
+và main không đổi từ đó, nên không cần rebase lại. A5 (tem "Hà Nội · Sa Pa") bỏ qua vì user đã chốt
+giữ ngày 06/08. Rà sổ nợ thấy E5 "Load-more cap 50" đã hết từ P7 Phần A (phân trang 10 đơn), gạch luôn.
+
+Tests after (`gate:int` trên `860a501`, 14/10 xong 02:36 UTC, session cloud theo các bước của CI):
+unit 7416 — web 2273, admin 2217, api 1133, mobile 771, contract 709, mobile-ui 136, i18n 56,
+core 48, ui 47, tokens 26 — và int 836. So với main `0d747a7`: web thêm 4 ca (hai của
+`thumbnailSrc`, một cỡ ảnh avatar, một timer của OtpForm). CI `gate` của PR xanh cả hai lượt.
+
+**CÒN TREO:**
+
+- Dọn sau merge: nhánh `fix/web-open-items-5` trên origin nếu GitHub không tự xoá.
+
 ## 2026-10-14 — Merge G16 bộ dọn media chỉ xoá ảnh trong vùng tải lên, G22 data:reset dọn ảnh review, G14 dọn code ảnh tour (`7da26ee`..`3a6c450`)
 
 Nhánh thứ ba của việc tồn đọng vùng admin, sau PR #11. Nhánh `fix/admin-open-items-3`,

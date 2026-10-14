@@ -292,7 +292,7 @@ deploy) nằm ở [sổ nợ kỹ thuật](analysis/2026-08-06-backlog-no-ky-thu
 | --- | --- |
 | A5 | Con dấu tem thư `/contact` còn ghi "Hà Nội · Sa Pa" trong khi văn phòng Sa Pa đã xoá |
 | A16 | 7 icon mạng xã hội trỏ `#top` — chốt giữ nguyên tới khi có tài khoản thật |
-| D1 | `input-otp@1.4.2` rò rỉ timer, mới chỉ giảm thiểu |
+| ~~D1~~ | ~~`input-otp@1.4.2` rò rỉ timer, mới chỉ giảm thiểu~~ Đóng 14/10 (nhánh `fix/web-open-items-5`, PR #14): `860a501` nâng lên 1.5.0, bản này huỷ timer khi gỡ; spec OtpForm bỏ đoạn đợi 150ms và có test đồng hồ giả đỏ với 1.4.2 |
 | E6 | Xác thực hai lớp — đã quyết định gác lại |
 | F1 | Webhook Resend (`delivered`/`bounced`/`complained`) — hiện `SENT` chỉ nghĩa là Resend đã nhận |
 | G1 | `admin.categories.move` trả CẢ danh sách đã sắp lại, mà client vứt đi rồi `router.refresh()`. Giữ nguyên có chủ đích ở vòng review F14: tiêu thụ payload ấy cần đưa `rows` vào state của bảng, tức hai nguồn sự thật cho một bảng sáu hàng. Cái giá hiện tại là MỘT truy vấn `list()` thừa mỗi cú bấm mũi tên |
