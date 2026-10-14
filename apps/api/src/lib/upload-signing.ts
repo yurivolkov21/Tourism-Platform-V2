@@ -1,5 +1,9 @@
 import { randomUUID } from 'node:crypto';
-import { ALLOWED_IMAGE_EXTENSIONS, type SignedUploadParams } from '@tourism/contract';
+import {
+  ALLOWED_IMAGE_EXTENSIONS,
+  BookingCodeSchema,
+  type SignedUploadParams,
+} from '@tourism/contract';
 import { v2 as cloudinary } from 'cloudinary';
 import { ContractError } from './contract-error.js';
 
@@ -101,6 +105,40 @@ export function isPostUploadPublicId(
   publicId: string,
 ): boolean {
   return publicId.startsWith(`${postCoverFolder(rootFolder, postId)}/`);
+}
+
+/** Dạng Postgres in ra cho cột `uuid` — id của user, tour và bài viết đều là cột ấy. */
+const UUID_SEGMENT = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const isUuidSegment = (segment: string): boolean => UUID_SEGMENT.test(segment);
+
+/**
+ * Bốn thư mục server ký upload vào, kèm dạng chủ sở hữu của từng thư mục — khớp
+ * `uploadFolderFor`, `tourPhotoFolder` và `postCoverFolder` ở trên; thêm đường ký mới thì
+ * thêm thư mục ở đây, không thì bộ dọn từ chối ảnh của nó. `Map` chứ không object thường:
+ * tra `constructor` trên object thường ra một hàm có sẵn, gọi nó là ra "đúng".
+ */
+const UPLOAD_ZONE_OWNERS = new Map<string, (owner: string) => boolean>([
+  ['avatars', isUuidSegment],
+  ['reviews', (owner) => BookingCodeSchema.safeParse(owner).success],
+  ['tours', isUuidSegment],
+  ['posts', isUuidSegment],
+]);
+
+/**
+ * publicId có nằm trong vùng tải lên không (G16, ADR-0035 AMEND 3): đúng dạng
+ * `<root>/<thư mục>/<chủ sở hữu>/<tên file>`, thư mục là một trong bốn ở trên và chủ sở hữu
+ * đúng dạng của nó. Bộ dọn chỉ destroy ảnh khớp ở đây. So tiền tố gốc là chưa đủ vì ảnh
+ * catalog cũng nằm dưới `tourism/`; so tiền tố thư mục cũng chưa đủ vì thư mục cũ
+ * `tourism/tours/hero/` nằm ngay trong `tours` (ADR-0020 Hệ quả) — nên mới phải soi dạng
+ * chủ sở hữu.
+ */
+export function isUploadZonePublicId(rootFolder: string, publicId: string): boolean {
+  if (!publicId.startsWith(`${rootFolder}/`)) return false;
+  const segments = publicId.slice(rootFolder.length + 1).split('/');
+  if (segments.length !== 3) return false;
+  const [zone = '', owner = '', basename = ''] = segments;
+  const ownerMatches = UPLOAD_ZONE_OWNERS.get(zone)?.(owner) ?? false;
+  return ownerMatches && basename !== '' && basename !== '.' && basename !== '..';
 }
 
 /**

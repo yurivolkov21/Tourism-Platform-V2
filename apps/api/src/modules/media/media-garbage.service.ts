@@ -3,7 +3,7 @@ import { prisma } from '../../auth/auth.config.js';
 import { env } from '../../config/env.js';
 import type { Prisma } from '../../generated/prisma/client.js';
 import { destroyAsset } from '../../lib/cloudinary-destroy.js';
-import { resolveUploadConfig } from '../../lib/upload-signing.js';
+import { isUploadZonePublicId, resolveUploadConfig } from '../../lib/upload-signing.js';
 import { classifyDestroyResult, dueBefore, GC_MAX_ATTEMPTS, shouldRetry } from './media-garbage.js';
 
 /** Kết quả một lượt quét — mỗi con số một ý nghĩa, không gộp (xem `sweep`). */
@@ -18,6 +18,8 @@ export interface SweepReport {
   deferred: number;
   /** Hỏng, để lại thử lần sau. */
   failed: number;
+  /** Ngoài vùng tải lên → không bao giờ xoá, row Ở LẠI làm vết (G16, ADR-0035 AMEND 3). */
+  refused: number;
 }
 
 /**
@@ -117,7 +119,14 @@ export class MediaGarbageService {
    * hai câu SELECT mỗi `graceDays` ngày, không lời gọi CDN nào.
    */
   async sweep(now: Date, graceDays: number, batchSize = 200): Promise<SweepReport> {
-    const report: SweepReport = { resolved: 0, destroyed: 0, absent: 0, deferred: 0, failed: 0 };
+    const report: SweepReport = {
+      resolved: 0,
+      destroyed: 0,
+      absent: 0,
+      deferred: 0,
+      failed: 0,
+      refused: 0,
+    };
     const cfg = resolveUploadConfig(env);
     if (!cfg) {
       // Không có secret thì không xoá được gì — và im lặng trả 0 sẽ khiến một
@@ -134,6 +143,15 @@ export class MediaGarbageService {
     if (rows.length === 0) return report;
 
     for (const row of rows) {
+      // G16 (ADR-0035 AMEND 3): bộ dọn chỉ destroy ảnh trong vùng tải lên, bất kể nơi gọi đã
+      // lọc hay chưa. Soi TRƯỚC phép kiểm tham chiếu: ảnh catalog còn được dùng mà đem hoãn
+      // thì kỳ nào nó hết được dùng là kỳ nó bị destroy.
+      if (!isUploadZonePublicId(cfg.rootFolder, row.publicId)) {
+        await this.refuse(row.id);
+        report.refused += 1;
+        continue;
+      }
+
       // ⚠️ Kiểm tham chiếu ở LÚC XOÁ, không phải lúc xếp hàng (ADR-0035 §2).
       // `@@unique([ownerType, ownerId, publicId])` là per-owner CỐ Ý nên một
       // publicId gắn được nhiều owner — "một owner buông" không bằng "mồ côi".
@@ -169,7 +187,8 @@ export class MediaGarbageService {
     // là publicId đang ghi SAI dạng, không phải "đã dọn xong".
     this.logger.log(
       `Dọn media: ${report.destroyed} xoá khỏi CDN, ${report.absent} vốn không có trên CDN, ` +
-        `${report.deferred} còn dùng (hoãn ${graceDays} ngày), ${report.failed} hỏng để lại`,
+        `${report.deferred} còn dùng (hoãn ${graceDays} ngày), ${report.failed} hỏng để lại, ` +
+        `${report.refused} ngoài vùng tải lên (không xoá)`,
     );
     return report;
   }
@@ -204,6 +223,22 @@ export class MediaGarbageService {
       prisma.user.findFirst({ where: { image: { contains: publicId } }, select: { id: true } }),
     ]);
     return asset !== null || avatarUser !== null;
+  }
+
+  /**
+   * Gác một row ngoài vùng tải lên (G16, ADR-0035 AMEND 3): `attempts` lên thẳng trần để
+   * lượt sau không nhặt lại, row Ở LẠI cùng chỗ với row hỏng mãi của `markFailed`. Có row
+   * như vậy nghĩa là có một nơi gọi đang xếp nhầm ảnh vào hàng — xoá row là xoá dấu vết ấy.
+   */
+  private async refuse(id: string): Promise<void> {
+    await prisma.mediaGarbage.update({
+      where: { id },
+      data: {
+        attempts: GC_MAX_ATTEMPTS,
+        lastError: 'Ngoài vùng tải lên: bộ dọn không xoá ảnh này (G16)',
+      },
+    });
+    this.logger.error(`Từ chối media_garbage ${id}: publicId nằm ngoài vùng tải lên`);
   }
 
   /**

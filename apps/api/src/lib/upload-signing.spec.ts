@@ -8,6 +8,7 @@ import {
   isOwnAvatarPublicId,
   isPostUploadPublicId,
   isTourUploadPublicId,
+  isUploadZonePublicId,
   postCoverFolder,
   requireUploadConfig,
   resolveUploadConfig,
@@ -174,5 +175,65 @@ describe('signUploads (một phần G15 — một bản cho ảnh tour và ảnh
       buildSignedUploadParams(CFG, 'tourism/posts/p1', 'a', 1790899210).signature,
     );
     expect(publicIds).toEqual(['tourism/posts/p1/a', 'tourism/posts/p1/b']);
+  });
+});
+
+describe('isUploadZonePublicId (G16, ADR-0035 AMEND 3)', () => {
+  const USER = '00000000-0000-4000-8000-0000000000aa';
+  const TOUR = '7a1b2c3d-0000-4000-8000-000000000001';
+  const POST = '0199a000-0000-7000-8000-000000000001';
+  const FILE = '5f0c2b1e-9d3a-4c7b-8e21-6a4f0d9b7c13';
+
+  it('ảnh do chính bốn đường ký cấp ra đều nằm trong vùng tải lên', () => {
+    const inZone = [
+      `${uploadFolderFor('tourism', { purpose: 'AVATAR', userId: USER })}/${FILE}`,
+      `${uploadFolderFor('tourism', { purpose: 'REVIEW_PHOTO', bookingCode: 'BK-5YU9J339' })}/${FILE}`,
+      `${tourPhotoFolder('tourism', TOUR)}/${FILE}`,
+      `${postCoverFolder('tourism', POST)}/${FILE}`,
+      ...signUploads(CFG, tourPhotoFolder('tourism', TOUR), 2, new Date()).publicIds,
+    ];
+
+    for (const publicId of inZone) expect(isUploadZonePublicId('tourism', publicId)).toBe(true);
+  });
+
+  it('ảnh catalog, ảnh thư viện và thư mục cũ có sẵn trên cloud đều ở ngoài vùng', () => {
+    // Cùng gốc `tourism/` với vùng tải lên — so mỗi tiền tố gốc là chưa đủ.
+    expect(isUploadZonePublicId('tourism', 'tourism/catalog/tour/ha-long-hero')).toBe(false);
+    expect(isUploadZonePublicId('tourism', 'tourism/catalog/destination/hoi-an/1')).toBe(false);
+    // Ba thư mục có từ trước trên cloud (ADR-0020 Hệ quả). `tours/hero` nằm ngay trong
+    // thư mục `tours`, nên chủ sở hữu phải đúng dạng id tour chứ không chỉ là một segment.
+    expect(isUploadZonePublicId('tourism', 'tourism/tours/hero/abc')).toBe(false);
+    expect(isUploadZonePublicId('tourism', 'tourism/destinations/hero/abc')).toBe(false);
+    expect(isUploadZonePublicId('tourism', 'tourism/users/avatars/abc')).toBe(false);
+  });
+
+  it('gốc khác hoặc gốc giống tiền tố thì ngoài vùng', () => {
+    expect(isUploadZonePublicId('tourism', `other/avatars/${USER}/${FILE}`)).toBe(false);
+    expect(isUploadZonePublicId('tourism', `tourism-old/avatars/${USER}/${FILE}`)).toBe(false);
+    expect(isUploadZonePublicId('tourism', `${FILE}`)).toBe(false);
+    expect(isUploadZonePublicId('tourism', '')).toBe(false);
+  });
+
+  it('chủ sở hữu phải đúng dạng của thư mục: uuid, riêng review là booking code', () => {
+    expect(isUploadZonePublicId('tourism', `tourism/avatars/u-1/${FILE}`)).toBe(false);
+    expect(isUploadZonePublicId('tourism', `tourism/reviews/BK-1/${FILE}`)).toBe(false);
+    expect(isUploadZonePublicId('tourism', `tourism/reviews/${USER}/${FILE}`)).toBe(false);
+    expect(isUploadZonePublicId('tourism', `tourism/posts/BK-5YU9J339/${FILE}`)).toBe(false);
+  });
+
+  it('phải đúng một tên file ngay dưới thư mục của chủ sở hữu', () => {
+    expect(isUploadZonePublicId('tourism', `tourism/tours/${TOUR}`)).toBe(false);
+    expect(isUploadZonePublicId('tourism', `tourism/tours/${TOUR}/`)).toBe(false);
+    expect(isUploadZonePublicId('tourism', `tourism/tours/${TOUR}/a/b`)).toBe(false);
+    expect(isUploadZonePublicId('tourism', `tourism/tours/${TOUR}/..`)).toBe(false);
+    expect(isUploadZonePublicId('tourism', `tourism/tours/${TOUR}/.`)).toBe(false);
+  });
+
+  it('tên thư mục trùng khoá có sẵn của Object không lọt thành vùng', () => {
+    // Tra vùng bằng object thường thì `constructor` là một hàm có sẵn — gọi nó trả về
+    // một object, tức "đúng", và ảnh ngoài vùng thành trong vùng.
+    expect(isUploadZonePublicId('tourism', `tourism/constructor/${USER}/${FILE}`)).toBe(false);
+    expect(isUploadZonePublicId('tourism', `tourism/__proto__/${USER}/${FILE}`)).toBe(false);
+    expect(isUploadZonePublicId('tourism', `tourism/toString/${USER}/${FILE}`)).toBe(false);
   });
 });

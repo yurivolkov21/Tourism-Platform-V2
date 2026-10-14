@@ -2,6 +2,7 @@ import { Test } from '@nestjs/testing';
 import { AppModule } from '../../app.module.js';
 import { prisma } from '../../auth/auth.config.js';
 import { MediaOwnerType, MediaRole, MediaType } from '../../generated/prisma/enums.js';
+import { GC_MAX_ATTEMPTS } from './media-garbage.js';
 import { MediaGarbageService } from './media-garbage.service.js';
 
 /**
@@ -46,10 +47,16 @@ async function ageRow(publicId: string, days: number): Promise<void> {
 }
 
 const NOW = new Date();
+/**
+ * Thư mục ảnh review đúng dạng vùng tải lên (G16): `sweep` từ chối mọi publicId ngoài
+ * vùng trước cả phép kiểm tham chiếu, nên ca nào đi tới bước ấy phải dùng booking code
+ * thật dạng `BK-` cộng 8 ký tự.
+ */
+const REVIEWS = 'tourism/reviews/BK-TESTGC01';
 
 describe('enqueue', () => {
   it('ghi mỗi publicId một row', async () => {
-    const count = await service.enqueue(prisma, ['tourism/reviews/BK-1/a', 'tourism/avatars/u/b']);
+    const count = await service.enqueue(prisma, [`${REVIEWS}/a`, 'tourism/avatars/u/b']);
 
     expect(count).toBe(2);
     expect(await prisma.mediaGarbage.count()).toBe(2);
@@ -58,11 +65,11 @@ describe('enqueue', () => {
   it('enqueue LẠI không làm mới đồng hồ — `skipDuplicates`, không upsert', async () => {
     // Ghi đè `created_at` mỗi lần enqueue lại là gia hạn vô thời hạn cho đúng
     // thứ ta đang cố dọn: sửa review nhiều lần sẽ đẩy hạn đi mãi.
-    await service.enqueue(prisma, ['tourism/reviews/BK-1/a']);
-    await ageRow('tourism/reviews/BK-1/a', 30);
+    await service.enqueue(prisma, [`${REVIEWS}/a`]);
+    await ageRow(`${REVIEWS}/a`, 30);
     const before = await prisma.mediaGarbage.findFirstOrThrow();
 
-    const count = await service.enqueue(prisma, ['tourism/reviews/BK-1/a']);
+    const count = await service.enqueue(prisma, [`${REVIEWS}/a`]);
     const after = await prisma.mediaGarbage.findFirstOrThrow();
 
     expect(count).toBe(0);
@@ -76,7 +83,7 @@ describe('enqueue', () => {
 
 describe('sweep — lưới an toàn', () => {
   it('row CHƯA quá hạn thì không đụng tới', async () => {
-    await service.enqueue(prisma, ['tourism/reviews/BK-1/fresh']);
+    await service.enqueue(prisma, [`${REVIEWS}/fresh`]);
 
     expect((await service.sweep(NOW, 7)).resolved).toBe(0);
     expect(await prisma.mediaGarbage.count()).toBe(1);
@@ -89,7 +96,7 @@ describe('sweep — lưới an toàn', () => {
     //
     // HOÃN chứ không xoá row (ADR-0035 §AMEND 2): xoá row là mất dấu vĩnh
     // viễn — avatar/ảnh này đổi chỗ 60 ngày sau thì không còn gì theo dõi.
-    const publicId = 'tourism/reviews/BK-1/still-used';
+    const publicId = `${REVIEWS}/still-used`;
     await prisma.mediaAsset.create({
       data: {
         publicId,
@@ -116,7 +123,7 @@ describe('sweep — lưới an toàn', () => {
     // Khác `enqueue` (lúc ký): cửa sổ 7 ngày §2 hứa là kể từ lúc ảnh MẤT chỗ
     // dùng, không phải kể từ lúc ký — nếu không, ảnh ký ngày 0 gỡ ngày 6 bị
     // xoá ngày 7.
-    const publicId = 'tourism/reviews/BK-1/dropped';
+    const publicId = `${REVIEWS}/dropped`;
     await service.enqueue(prisma, [publicId]);
     await ageRow(publicId, 30);
     await prisma.mediaGarbage.update({
@@ -137,10 +144,11 @@ describe('sweep — lưới an toàn', () => {
   it('avatar đang dùng cũng được giữ, dù KHÔNG có row media_assets nào', async () => {
     // Lỗ phát hiện lúc thi công: `setAvatar` chỉ ghi một URL vào `users.image`.
     // Chỉ hỏi `media_assets` thì bộ dọn xoá đúng avatar khách đang dùng.
-    const publicId = 'tourism/avatars/u-1/live';
+    const userId = '00000000-0000-4000-8000-0000000000aa';
+    const publicId = `tourism/avatars/${userId}/live`;
     await prisma.user.create({
       data: {
-        id: '00000000-0000-4000-8000-0000000000aa',
+        id: userId,
         email: 'avatar-live@tourism.test',
         name: 'Avatar Live',
         emailVerified: true,
@@ -155,7 +163,7 @@ describe('sweep — lưới an toàn', () => {
   });
 
   it('row chạm trần `attempts` bị bỏ qua — không quay vòng vô hạn', async () => {
-    const publicId = 'tourism/reviews/BK-1/broken';
+    const publicId = `${REVIEWS}/broken`;
     await service.enqueue(prisma, [publicId]);
     await ageRow(publicId, 30);
     await prisma.mediaGarbage.update({ where: { publicId }, data: { attempts: 5 } });
@@ -163,5 +171,55 @@ describe('sweep — lưới an toàn', () => {
     expect((await service.sweep(NOW, 7)).resolved).toBe(0);
     // Row Ở LẠI: một publicId hỏng mãi là triệu chứng, xoá nó là xoá triệu chứng.
     expect(await prisma.mediaGarbage.count()).toBe(1);
+  });
+});
+
+describe('sweep — chỉ xoá ảnh trong vùng tải lên (G16, ADR-0035 AMEND 3)', () => {
+  it('ảnh ngoài vùng bị TỪ CHỐI: không xoá, row ở lại làm vết, lượt sau không nhặt lại', async () => {
+    // Hai ca có thật: ảnh catalog nằm cùng gốc `tourism/`, và thư mục cũ `tours/hero` có sẵn
+    // trên cloud từ trước (ADR-0020 Hệ quả). Một nơi gọi lỡ xếp chúng vào hàng là đủ để bộ
+    // dọn destroy ảnh đang phục vụ site, và `destroy` không hoàn tác được.
+    const outside = ['tourism/catalog/tour/ha-long-hero', 'tourism/tours/hero/abc'];
+    await service.enqueue(prisma, outside);
+    for (const publicId of outside) await ageRow(publicId, 30);
+
+    // `failed` bằng 0 nghĩa là không lời gọi Cloudinary nào: secret ở đây là giả, chạm tới
+    // `destroyAsset` là hỏng.
+    expect(await service.sweep(NOW, 7)).toEqual({
+      resolved: 0,
+      destroyed: 0,
+      absent: 0,
+      deferred: 0,
+      failed: 0,
+      refused: 2,
+    });
+    const rows = await prisma.mediaGarbage.findMany();
+    expect(rows).toHaveLength(2);
+    for (const row of rows) {
+      expect(row.attempts).toBe(GC_MAX_ATTEMPTS);
+      expect(row.lastError).toMatch(/vùng tải lên/);
+    }
+    expect((await service.sweep(NOW, 7)).refused).toBe(0);
+  });
+
+  it('ảnh ngoài vùng mà còn được dùng cũng bị từ chối, không hoãn', async () => {
+    // Hoãn thì ảnh catalog bị hỏi lại mỗi kỳ, và kỳ nào nó hết được dùng là kỳ nó bị destroy.
+    const publicId = 'tourism/catalog/tour/ha-long-hero';
+    await prisma.mediaAsset.create({
+      data: {
+        publicId,
+        type: MediaType.IMAGE,
+        ownerType: MediaOwnerType.TOUR,
+        ownerId: '00000000-0000-4000-8000-000000000002',
+        role: MediaRole.hero,
+      },
+    });
+    await service.enqueue(prisma, [publicId]);
+    await ageRow(publicId, 30);
+
+    expect(await service.sweep(NOW, 7)).toMatchObject({ refused: 1, deferred: 0, failed: 0 });
+    const row = await prisma.mediaGarbage.findUniqueOrThrow({ where: { publicId } });
+    expect(row.attempts).toBe(GC_MAX_ATTEMPTS);
+    expect(await prisma.mediaAsset.count()).toBe(1);
   });
 });
