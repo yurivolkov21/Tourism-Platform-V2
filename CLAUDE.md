@@ -11,7 +11,7 @@ Capstone tốt nghiệp (bảo vệ dự kiến sau ~10/11/2026) — nền tản
 hành như trang thương mại thật nhưng **không doanh thu**: Stripe/PayPal luôn ở
 test/sandbox mode. Rebuild nâng cấp từ Nexora. **Bản sao Nexora không còn trên
 máy** (user chốt 14/09/2026 không clone lại) — mọi đối chiếu từ nay đọc các bản
-ghi đã có trong [`docs/analysis/`](docs/analysis/), đừng đi tìm thư mục cũ.
+ghi đã có trong [`docs/analysis/nexora-parity/`](docs/analysis/nexora-parity/), đừng đi tìm thư mục cũ.
 
 Stack đã chốt + lý do: [docs/adr/0001-tech-stack.md](docs/adr/0001-tech-stack.md).
 Roadmap: P0 khung xương ✅ → P1 API lõi ✅ → P2 money-path ✅ → P3a API khách ✅
@@ -75,8 +75,9 @@ P6 AI concierge → P7 polish UI (ba trang đơn của khách: Phần A My booki
     Brief cho subagent có commit phải nhắc luật này.
 13. **Docs sweep sau mỗi feature merge**: 1 entry vào `docs/CHANGELOG.md`
     (ngày · hash · nội dung · review findings · số test) + cập nhật doc
-    hiện-trạng bị ảnh hưởng + **thêm doc mới vào bản đồ `docs/README.md`**
-    (đó là cửa vào duy nhất; doc không nằm trong bản đồ coi như không tồn tại).
+    hiện-trạng bị ảnh hưởng + **thêm doc mới vào `README.md` của thư mục nó
+    nằm** (bản đồ `docs/README.md` trỏ tới các mục lục ấy; doc không nằm trong
+    mục lục nào coi như không tồn tại).
     Luật này từng bị bỏ qua 8 merge liên tiếp (19/07) nên giờ có
     `scripts/docs-freshness.sh` chạy trong CI **trên nhánh main**: còn commit
     `feat`/`fix` mới hơn entry CHANGELOG mới nhất là CI đỏ. Chạy tay bất cứ
@@ -107,7 +108,7 @@ P6 AI concierge → P7 polish UI (ba trang đơn của khách: Phần A My booki
 | --- | --- | --- |
 | Format + lint (ts/tsx/js/jsx/json/css) | **Biome** | editor save · `pnpm lint:fix` · pre-commit · CI |
 | Typecheck | **tsc (TypeScript 7)** | `pnpm typecheck` · CI |
-| Test | **Vitest** (mobile sau này: jest-expo) | `pnpm test` · CI |
+| Test | **Vitest** (mobile và mobile-ui: Jest + jest-expo, ADR-0040 §4) | `pnpm test` · CI |
 | Build/orchestrate | **Turborepo** | `pnpm build` |
 | Markdown | markdownlint (Biome không format .md) | editor |
 | YAML / Prisma | extension chuyên dụng tương ứng | editor |

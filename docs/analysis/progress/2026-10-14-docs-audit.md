@@ -100,5 +100,7 @@ prompt các phase còn lại ghi chỉ còn dùng cho P6.
   plan ghi "chưa rõ trạng thái".
 - **Số test** ở overview lấy từ entry CHANGELOG 14/10 (`gate:int` trên `860a501`);
   đợt này chỉ đổi tài liệu nên không đổi số.
-- **CLAUDE.md** cần sửa theo (luật 13 nói thêm doc vào `docs/README.md`; dòng Test
-  của bảng toolchain còn ghi "mobile sau này: jest-expo") — chờ user duyệt.
+- **CLAUDE.md** sửa theo sau khi user duyệt (14/10): luật 13 nay nói thêm doc vào
+  `README.md` của thư mục nó nằm; dòng Test của bảng toolchain ghi mobile và
+  mobile-ui chạy Jest + jest-expo (ADR-0040 §4); link đối chiếu Nexora trỏ
+  `docs/analysis/nexora-parity/`.
