@@ -319,6 +319,18 @@ describe('DepartureRowActions — huỷ chuyến (F13)', () => {
     expect(checkouts).toHaveTextContent('2');
   });
 
+  it('ô lý do nói TRƯỚC khi gõ rằng khách đọc nguyên văn (ADR-0041 AMEND 2)', async () => {
+    // Trước AMEND 2 lý do là ghi chép nội bộ; giờ khách đọc nó trên trang đơn và trong email báo
+    // huỷ, nên admin phải biết điều đó lúc viết, không phải sau khi bấm.
+    const user = userEvent.setup();
+    const { dates } = renderCancellable(BUSY);
+
+    await user.click(screen.getByRole('button', { name: t.cancel.actionLabel(dates) }));
+    const field = await screen.findByLabelText(t.cancel.dialog.noteLabel);
+
+    expect(field.getAttribute('placeholder')).toMatch(/^Travellers read this word for word/);
+  });
+
   it('lý do TRỐNG thì không bắn lệnh nào', async () => {
     // Sổ trắng ở chỗ duy nhất còn lại sáu tháng sau.
     const user = userEvent.setup();
@@ -328,6 +340,8 @@ describe('DepartureRowActions — huỷ chuyến (F13)', () => {
     await user.click(await screen.findByRole('button', { name: t.cancel.dialog.submit }));
 
     expect(await screen.findByText(t.cancel.dialog.noteRequired)).toBeInTheDocument();
+    // Câu báo nói vì sao phải có lý do: khách đọc nó — không còn "for your team".
+    expect(t.cancel.dialog.noteRequired).toMatch(/travellers read it word for word/);
     expect(cancel).not.toHaveBeenCalled();
   });
 

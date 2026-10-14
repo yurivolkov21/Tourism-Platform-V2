@@ -7401,18 +7401,24 @@ export const messages = {
           warning:
             'Everyone who paid gets their full remaining amount back, even if the cancellation deadline has passed. This cannot be undone — a cancelled departure stays cancelled.',
           noteLabel: 'Why is it called off?',
-          notePlaceholder: 'The guide is unavailable',
           /**
-           * Ô lý do trống là một dòng sổ trắng ở chỗ duy nhất còn lại sáu tháng sau.
-           *
-           * Câu này TỪNG nói "travellers see this on their booking" và đó là một
-           * lời hứa SAI — phát hiện khi chạy thử tay trên production 22/09. Lý do
-           * có vào `cancellation_requests.reason` thật, nhưng email báo huỷ không
-           * mang nó và trang booking phía khách không render nó ở đâu cả. Nói cho
-           * đúng thứ đang xảy ra: nó là ghi chép NỘI BỘ. Cho khách đọc được là
-           * việc riêng, đã ghi vào `docs/open-items.md`.
+           * Lý do này KHÁCH ĐỌC NGUYÊN VĂN (ADR-0041 AMEND 2, 14/10): trên trang đơn của web và
+           * app, và trong email báo huỷ của khách đã trả tiền — giữ chỗ chưa trả bị huỷ tại chỗ,
+           * không có email. Câu nhắc nằm ở placeholder để admin đọc TRƯỚC khi viết, cùng cách hộp
+           * kiểm duyệt đánh giá nói "the author never sees it".
            */
-          noteRequired: 'Say why — it is kept on every affected booking for your team.',
+          notePlaceholder:
+            'Travellers read this word for word: on their booking, and in their cancellation email if they paid.',
+          /**
+           * Lý do bắt buộc (API cũng chặn chuỗi rỗng): khách đọc nó, và đây là dòng sổ duy nhất
+           * còn lại sáu tháng sau.
+           *
+           * Câu này TỪNG nói "travellers see this on their booking" khi điều đó chưa đúng — chạy
+           * thử tay trên production 22/09 phát hiện email báo huỷ và trang đơn không mang lý do,
+           * nên câu bị đổi thành ghi chép NỘI BỘ. AMEND 2 làm lời hứa ấy thành thật, nên câu nói
+           * lại điều khách thấy.
+           */
+          noteRequired: 'Say why — travellers read it word for word.',
           submit: 'Cancel departure',
           submitting: 'Cancelling…',
         },
