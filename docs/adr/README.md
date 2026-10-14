@@ -48,7 +48,7 @@ thay, cột đã xoá, và số AMEND để biết phải đọc tới cuối fi
 | [0038](0038-web-shell-security-headers.md) | Security header + CSP cho web và admin | 5 AMEND |
 | [0039](0039-inbound-channels-outbound-email.md) | Kênh vào và email đi ra: ack, consent, suppression | 1 AMEND |
 | [0040](0040-mobile-app-expo.md) | App mobile Expo trong monorepo | 6 AMEND |
-| [0041](0041-single-cancellation-deadline.md) | **Một hạn chót mỗi chuyến** — luật hoàn tiền hiện hành | thay 0029, 0030 · 1 AMEND (chuyến bị công ty huỷ thì khách hết tự huỷ) |
+| [0041](0041-single-cancellation-deadline.md) | **Một hạn chót mỗi chuyến** — luật hoàn tiền hiện hành | thay 0029, 0030 · 2 AMEND (chuyến bị công ty huỷ thì khách hết tự huỷ; khách đọc lý do huỷ chuyến) |
 | [0042](0042-shared-client-rules-core.md) | `@tourism/core`: luật dùng chung cho mọi client | |
 | [0043](0043-refund-payment-event.md) | Hoàn tiền để lại vết ở sổ `payment_events` | |
 | [0044](0044-prerender-retry-transient-api.md) | Prerender thử lại khi API hắt hơi | 1 AMEND |

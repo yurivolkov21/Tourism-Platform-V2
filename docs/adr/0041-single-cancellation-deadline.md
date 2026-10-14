@@ -4,7 +4,8 @@
   Thi hành 18/09 (nhánh `feat/refund-deadline`,
   [CHANGELOG 18/09](../changelog/2026-09-refund-deadline-mobile-auth.md)).
 - **Sửa đổi:** AMEND 1 (2026-10-08, cuối file) — chuyến đã bị công ty huỷ thì
-  khách không tự huỷ được nữa; §6 thắng §4.
+  khách không tự huỷ được nữa; §6 thắng §4. AMEND 2 (2026-10-14) — khách đọc được
+  lý do công ty huỷ chuyến, ở email báo huỷ và trang đơn.
 - **Bối cảnh:** [spec 15/09](../specs/2026-09-15-refund-deadline-design.md). Đóng
   mục CÒN TREO "chốt chặn đặt chỗ 3 ngày" (CHANGELOG 04/09).
 - **Liên quan:** [ADR-0030](0030-refund-policy-tiers.md) (thay bảng bậc, ân hạn,
@@ -229,3 +230,49 @@ khi booking đã đóng), lưới quét, chốt ngày khởi hành của từng 
 **Để sau:** web chưa biết chuyến đã bị huỷ — trong khoảng chờ voucher và hoá
 đơn vẫn hiện như thường. Cần một trường mới ở `BookingDetail` và một khối báo
 trên trang; ghi ở `docs/open-items.md`, làm sau khi nhánh P7 B và C merge.
+
+## AMEND 2 14/10 — khách đọc được lý do công ty huỷ chuyến
+
+Đề xuất nêu 22/09 sau lượt thử tay F13 trên production, nằm ở `docs/open-items.md` mục
+"Đang chờ chủ dự án quyết". Lý do admin bắt buộc gõ khi huỷ chuyến được lưu ở
+`tour_departures.cancel_reason` và chép vào `cancellation_requests.reason` của từng
+booking, nhưng chỉ admin đọc được: email báo huỷ không mang nó, trang đơn của khách
+không in nó, và câu nhắc ở hộp huỷ chuyến đã sửa thành "ghi chép nội bộ". Khách bị huỷ
+chuyến nhận "đã huỷ và hoàn tiền" mà không biết vì sao. User chọn bản MỘT ô ngày 14/10.
+
+**Đổi:**
+
+- **Một ô, khách đọc nguyên văn.** Lý do admin gõ ở hộp huỷ chuyến là câu cho khách
+  đọc. Không thêm ô nội bộ thứ hai, không migration. Hộp huỷ chuyến nói thẳng điều ấy
+  ở chữ gợi ý trong ô và ở câu báo khi ô trống.
+- **Email.** Lõi huỷ đường công ty (`initiator = 'operator'`) đưa `reason` vào payload
+  outbox `BOOKING_CANCELLED`; template in nó trong khối "WHY", cùng khối email bác
+  review in lý do người duyệt (ADR-0031 §6). Đường khách tự huỷ ghi `reason` là `null`:
+  lý do khách gõ là của khách, không gửi ngược lại cho chính khách.
+- **Trang đơn.** `bookings.byCode` thêm `departureCancelReason` ở `BookingDetailSchema`
+  (chỉ route chi tiết, cùng lý do mở rộng đã ghi ở schema ấy): đọc SỐNG
+  `tour_departures.cancel_reason` khi chuyến `CANCELLED`, `null` khi chuyến còn chạy hay
+  huỷ mà không có lý do (chuyến của seed lượt 1). Cột phải trang chi tiết đơn của web
+  và hoá đơn của app mobile in nó dưới câu "We had to cancel this departure." với nhãn
+  "Why", chỉ khi trang đang kể chuyện công ty huỷ chuyến (`cancelledByOperator`): đơn
+  khách tự huỷ trước khi chuyến bị huỷ vẫn kể chuyện của khách.
+- **Không in ở hoá đơn in (G40) và voucher.** Khung in đo bằng dữ liệu thật, còn lý do
+  dài tới 500 ký tự (`DEPARTURE_CANCEL_REASON_MAX`); voucher chỉ báo đã hết hiệu lực.
+
+**Khác ADR-0030 AMEND 2.** Lý do hoàn thiện chí vẫn NỘI BỘ, nằm trên sổ và không gửi
+khách. Đó là một ô khác cho một việc khác: khoản hoàn ngoại lệ là chuyện của đội, còn
+chuyến bị bỏ là chuyện khách cần hiểu.
+
+**Cái giá:**
+
+- Lý do của các chuyến huỷ TRƯỚC AMEND này được gõ dưới câu nhắc "ghi chép nội bộ", nay
+  hiện trên trang đơn của khách (email đã gửi thì không đổi). Trên production đó là dữ
+  liệu thử (AMEND 1 soát 08/10: một đơn thử tay 22/09), và lượt seed lại 03/11 xoá
+  chuyến cùng booking. Chấp nhận, không lọc theo mốc thời gian.
+- Câu nhắc ở ô nhập là lưới duy nhất: admin quen tay gõ câu nội bộ thì khách đọc nguyên
+  văn.
+
+**KHÔNG đổi:** số tiền và thứ tự khoá của hai đường, cơ chế idempotent của job, cột
+`cancellation_requests.reason`, lưới quét. Chuyến có người huỷ mà thiếu lý do (không đi
+qua hộp huỷ chuyến được, vì ô bắt buộc) vẫn dùng câu dự phòng "The operator cancelled
+this departure" của lưới quét, và nay khách cũng đọc câu ấy.
