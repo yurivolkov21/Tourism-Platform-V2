@@ -1,4 +1,4 @@
-import type { messages } from '@tourism/i18n';
+import { messages } from '@tourism/i18n';
 import { AppText, BottomSheet, Button, FormMessage, useTheme } from '@tourism/mobile-ui';
 import { Pressable, View } from 'react-native';
 
@@ -28,7 +28,7 @@ export function RetractSheet({
   const theme = useTheme();
 
   return (
-    <BottomSheet visible={visible} onClose={onClose}>
+    <BottomSheet visible={visible} closeLabel={messages.mobile.appShell.close} onClose={onClose}>
       <View style={{ paddingTop: theme.spacing(3), gap: theme.spacing(3) }}>
         <AppText variant="heading">{copy.confirm}</AppText>
         {errorText === null ? null : <FormMessage tone="error">{errorText}</FormMessage>}

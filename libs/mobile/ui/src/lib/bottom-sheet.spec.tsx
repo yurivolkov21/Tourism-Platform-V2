@@ -47,7 +47,7 @@ describe('shouldDismissDrag', () => {
 describe('BottomSheet', () => {
   it('visible=false không vẽ children', async () => {
     await renderWithTheme(
-      <BottomSheet visible={false} onClose={jest.fn()}>
+      <BottomSheet closeLabel="Close" visible={false} onClose={jest.fn()}>
         <Text>Filters</Text>
       </BottomSheet>,
     );
@@ -56,7 +56,7 @@ describe('BottomSheet', () => {
 
   it('visible=true vẽ children', async () => {
     await renderWithTheme(
-      <BottomSheet visible onClose={jest.fn()}>
+      <BottomSheet closeLabel="Close" visible onClose={jest.fn()}>
         <Text>Filters</Text>
       </BottomSheet>,
     );
@@ -66,7 +66,7 @@ describe('BottomSheet', () => {
   it('bấm backdrop gọi onClose — bản thân component chỉ theo dõi prop `visible` để tự trượt, không tự ý trễ lời gọi này', async () => {
     const onClose = jest.fn();
     await renderWithTheme(
-      <BottomSheet visible onClose={onClose}>
+      <BottomSheet closeLabel="Close" visible onClose={onClose}>
         <Text>Filters</Text>
       </BottomSheet>,
     );
@@ -74,10 +74,23 @@ describe('BottomSheet', () => {
     expect(onClose).toHaveBeenCalled();
   });
 
+  // N10 (rà 07/10): backdrop là chỗ đóng tấm duy nhất ở tấm không có nút huỷ (mời đăng nhập, sửa
+  // tên) — thiếu vai và nhãn thì trình đọc màn hình đọc một chỗ bấm không tên.
+  it('backdrop là nút mang nhãn đóng cho trình đọc màn hình', async () => {
+    const onClose = jest.fn();
+    await renderWithTheme(
+      <BottomSheet closeLabel="Close" visible onClose={onClose}>
+        <Text>Filters</Text>
+      </BottomSheet>,
+    );
+    await fireEvent.press(screen.getByRole('button', { name: 'Close' }));
+    expect(onClose).toHaveBeenCalled();
+  });
+
   it('cha đổi visible→false: vẫn còn Modal (đang trượt xuống), rồi biến mất sau khi trượt xong', async () => {
     jest.useFakeTimers();
     const { rerender } = await renderWithProviders(
-      <BottomSheet visible onClose={jest.fn()}>
+      <BottomSheet closeLabel="Close" visible onClose={jest.fn()}>
         <Text>Filters</Text>
       </BottomSheet>,
     );
@@ -86,7 +99,7 @@ describe('BottomSheet', () => {
       rerender(
         <SafeAreaProvider initialMetrics={METRICS}>
           <ThemeProvider scheme="light">
-            <BottomSheet visible={false} onClose={jest.fn()}>
+            <BottomSheet closeLabel="Close" visible={false} onClose={jest.fn()}>
               <Text>Filters</Text>
             </BottomSheet>
           </ThemeProvider>
@@ -110,7 +123,7 @@ describe('BottomSheet', () => {
     const first = jest.fn();
     const latest = jest.fn();
     const { rerender } = await renderWithProviders(
-      <BottomSheet visible onClose={first}>
+      <BottomSheet closeLabel="Close" visible onClose={first}>
         <Text>Filters</Text>
       </BottomSheet>,
     );
@@ -118,7 +131,7 @@ describe('BottomSheet', () => {
       rerender(
         <SafeAreaProvider initialMetrics={METRICS}>
           <ThemeProvider scheme="light">
-            <BottomSheet visible onClose={latest}>
+            <BottomSheet closeLabel="Close" visible onClose={latest}>
               <Text>Filters</Text>
             </BottomSheet>
           </ThemeProvider>
@@ -143,7 +156,7 @@ describe('BottomSheet', () => {
   // phím mở chỉ thấy trên máy.
   it('tấm nằm trong KeyboardAvoidingView, theo luồng bố cục (không absolute)', async () => {
     await renderWithTheme(
-      <BottomSheet visible onClose={jest.fn()}>
+      <BottomSheet closeLabel="Close" visible onClose={jest.fn()}>
         <Text testID="sheet-child">Display name</Text>
       </BottomSheet>,
     );

@@ -1,3 +1,4 @@
+import { messages } from '@tourism/i18n';
 import { AppText, BottomSheet, Button, FormMessage, TextField, useTheme } from '@tourism/mobile-ui';
 import { View } from 'react-native';
 import type { AskAboutDateErrors, AskAboutDateField, AskAboutDateState } from './ask-about-date';
@@ -57,7 +58,7 @@ export function AskAboutDateSheet({
   const theme = useTheme();
 
   return (
-    <BottomSheet visible={visible} onClose={onClose}>
+    <BottomSheet visible={visible} closeLabel={messages.mobile.appShell.close} onClose={onClose}>
       <View style={{ paddingTop: theme.spacing(4) }}>
         {sent ? (
           <View

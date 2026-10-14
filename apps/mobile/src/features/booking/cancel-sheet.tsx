@@ -1,3 +1,4 @@
+import { messages } from '@tourism/i18n';
 import {
   AppText,
   BottomSheet,
@@ -75,7 +76,7 @@ export function CancelBookingSheet({
     refundTone === 'good' ? theme.colors.foreground : theme.colors['secondary-foreground'];
 
   return (
-    <BottomSheet visible={visible} onClose={onClose}>
+    <BottomSheet visible={visible} closeLabel={messages.mobile.appShell.close} onClose={onClose}>
       {/* Đệm thêm phía trên tiêu đề — tay nắm kéo của `BottomSheet` là
        *  `position:'absolute'` cao spacing(8)=32dp đè lên đầu nội dung; lần
        *  trước spacing(2) vẫn còn nằm trong vùng đó nên nhìn dính sát

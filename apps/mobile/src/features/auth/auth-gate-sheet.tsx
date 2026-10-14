@@ -1,4 +1,5 @@
 import Feather from '@expo/vector-icons/Feather';
+import { messages } from '@tourism/i18n';
 import { AppText, BottomSheet, Button, useTheme } from '@tourism/mobile-ui';
 import { View } from 'react-native';
 
@@ -32,7 +33,7 @@ export function AuthGateSheet({
   const theme = useTheme();
 
   return (
-    <BottomSheet visible={visible} onClose={onClose}>
+    <BottomSheet visible={visible} closeLabel={messages.mobile.appShell.close} onClose={onClose}>
       {/* Chừa chỗ cho tay nắm: `BottomSheet` vẽ nó `position:absolute` cao
           `spacing(8)`=32dp, mà tấm chỉ đệm `spacing(4)`=16dp — thiếu dòng này
           thì ô icon đè lên tay nắm (phản hồi 25/09). Cùng con số với

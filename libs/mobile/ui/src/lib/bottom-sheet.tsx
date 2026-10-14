@@ -16,6 +16,12 @@ import { useTheme } from './theme-provider';
 export interface BottomSheetProps {
   visible: boolean;
   onClose: () => void;
+  /**
+   * Nhãn của backdrop cho trình đọc màn hình (N10, rà 07/10) — backdrop là một nút "đóng tấm". Bắt
+   * buộc, và không chọn cách ẩn backdrop khỏi trình đọc màn hình: tấm không có nút huỷ (mời đăng
+   * nhập, sửa tên) chỉ đóng được bằng chạm backdrop, ẩn đi thì trên iOS khách hết đường đóng.
+   */
+  closeLabel: string;
   children: ReactNode;
 }
 
@@ -46,7 +52,7 @@ export function shouldDismissDrag(dy: number, vy: number): boolean {
  * padding đáy của lớp bọc đẩy tấm lên đúng bằng chiều cao bàn phím, còn phần
  * tử absolute thì Yoga không bảo đảm đi theo padding của cha.
  */
-export function BottomSheet({ visible, onClose, children }: BottomSheetProps) {
+export function BottomSheet({ visible, onClose, closeLabel, children }: BottomSheetProps) {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   const { height: windowHeight } = useWindowDimensions();
@@ -114,7 +120,13 @@ export function BottomSheet({ visible, onClose, children }: BottomSheetProps) {
         // ra lớp bọc, phải cùng màu overlay chứ không được trong suốt.
         style={{ flex: 1, backgroundColor: theme.colors.overlay }}
       >
-        <Pressable testID="bottom-sheet-backdrop" onPress={onClose} style={{ flex: 1 }} />
+        <Pressable
+          testID="bottom-sheet-backdrop"
+          accessibilityRole="button"
+          accessibilityLabel={closeLabel}
+          onPress={onClose}
+          style={{ flex: 1 }}
+        />
         <Animated.View
           style={{
             backgroundColor: theme.colors.card,

@@ -1,3 +1,4 @@
+import { messages } from '@tourism/i18n';
 import { AppText, BottomSheet, Button, FormMessage, TextField, useTheme } from '@tourism/mobile-ui';
 import { View } from 'react-native';
 
@@ -44,7 +45,11 @@ export function EditNameSheet({
     // N3 (rà 07/10): đang lưu thì backdrop/kéo tay nắm/back Android không đóng
     // được tấm — đóng giữa chừng là lỗi server hiện trên tấm đã đóng, khách
     // tưởng đã đổi xong.
-    <BottomSheet visible={visible} onClose={pending ? () => {} : onClose}>
+    <BottomSheet
+      visible={visible}
+      closeLabel={messages.mobile.appShell.close}
+      onClose={pending ? () => {} : onClose}
+    >
       <View style={{ paddingTop: theme.spacing(3) }}>
         <AppText variant="heading">{label}</AppText>
         <AppText variant="subtitle" tone="muted" style={{ marginTop: theme.spacing(1.5) }}>

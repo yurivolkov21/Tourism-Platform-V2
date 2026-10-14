@@ -1,3 +1,4 @@
+import { messages } from '@tourism/i18n';
 import { AppText, BottomSheet, Button, useTheme } from '@tourism/mobile-ui';
 import { View } from 'react-native';
 
@@ -24,7 +25,7 @@ export function SignOutSheet({
   const theme = useTheme();
 
   return (
-    <BottomSheet visible={visible} onClose={onClose}>
+    <BottomSheet visible={visible} closeLabel={messages.mobile.appShell.close} onClose={onClose}>
       <View style={{ paddingTop: theme.spacing(3) }}>
         <AppText variant="heading">{title}</AppText>
         <AppText variant="subtitle" tone="muted" style={{ marginTop: theme.spacing(2) }}>

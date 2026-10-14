@@ -1,4 +1,5 @@
 import Feather from '@expo/vector-icons/Feather';
+import { messages } from '@tourism/i18n';
 import { AppText, BottomSheet, Button, FormMessage, useTheme } from '@tourism/mobile-ui';
 import { Pressable, View } from 'react-native';
 
@@ -67,7 +68,11 @@ export function EditAvatarSheet({
   return (
     // N3 (rà 07/10): đang upload thì backdrop/kéo tay nắm/back Android không
     // đóng được tấm (nút Cancel đã khoá sẵn) — đóng giữa chừng là nuốt mất lỗi.
-    <BottomSheet visible={visible} onClose={pending ? () => {} : onClose}>
+    <BottomSheet
+      visible={visible}
+      closeLabel={messages.mobile.appShell.close}
+      onClose={pending ? () => {} : onClose}
+    >
       <View style={{ paddingTop: theme.spacing(3) }}>
         <AppText variant="heading">{title}</AppText>
         <View style={{ marginTop: theme.spacing(2) }}>

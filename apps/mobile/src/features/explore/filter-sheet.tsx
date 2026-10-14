@@ -1,4 +1,5 @@
 import type { TourCard } from '@tourism/contract';
+import { messages } from '@tourism/i18n';
 import { AppText, BottomSheet, Button, Chip, useTheme } from '@tourism/mobile-ui';
 import type { ReactNode } from 'react';
 import { ScrollView, View } from 'react-native';
@@ -73,7 +74,7 @@ export function FilterSheet({
   };
 
   return (
-    <BottomSheet visible={visible} onClose={onClose}>
+    <BottomSheet visible={visible} closeLabel={messages.mobile.appShell.close} onClose={onClose}>
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
         <AppText variant="heading">{labels.title}</AppText>
         <AppText variant="label" tone="link" accessibilityRole="button" onPress={onClearAll}>
