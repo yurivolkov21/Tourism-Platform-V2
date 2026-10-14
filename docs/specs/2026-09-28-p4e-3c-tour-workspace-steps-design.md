@@ -232,7 +232,9 @@ Mọi khung form thành `Card` (`CardHeader` · `CardTitle` · `CardDescription`
 - Card **Delete this tour** — tour chưa từng có booking: `DeleteTourZone` (nội dung và
   hộp xác nhận giữ nguyên); đã có booking: câu "Tours that have been booked can't be
   deleted." không có nút, thêm "Take it off sale instead." chỉ khi tour còn bán (vòng review
-  F19: `DeleteTourZone` tự lo nhánh này).
+  F19: `DeleteTourZone` tự lo nhánh này). Sửa 14/10 (G18): card này đứng SAU cột phải trong
+  DOM (`StepColumns` nhận `after`), nên Tab tới công tắc On sale trước nút Delete và màn hẹp
+  gặp nó cuối trang; từ `xl` nó vẫn nằm dưới card Ready to go on sale ở cột trái.
 - Cột phải: card **Visibility** — dòng trạng thái ("On sale — travellers can find and
   book it." / "Off sale — hidden from the site."), công tắc `PublishToggle`
   (`placement="workspace"`, `blocked` khi chưa đủ, `describedBy` trỏ câu `toggleBlocked`

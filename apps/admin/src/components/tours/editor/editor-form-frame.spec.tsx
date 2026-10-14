@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { messages } from '@tourism/i18n';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { UnsavedChangesProvider } from '@/components/kit/unsaved-changes';
-import { EditorFormFrame } from './editor-form-frame';
+import { EditorFormFrame, StepColumns } from './editor-form-frame';
 
 /**
  * Khung chung của bốn form tab (spec F17 §2i): dải báo trên cùng, ghi chú và nút
@@ -253,6 +253,11 @@ describe('EditorFormFrame — bố cục bước (ADR-0049 §6)', () => {
     expect(aside).toHaveClass('xl:sticky', 'xl:max-h-[calc(100svh-2rem)]', 'xl:overflow-y-auto');
   });
 
+  it('không có khối after: cột phải chỉ chiếm một hàng', () => {
+    frame();
+    expect(screen.getByRole('complementary')).not.toHaveClass('xl:row-span-2');
+  });
+
   it('next: link "Next: <bước>" ở chân form, đứng trước nút Save', () => {
     frame({ next: { href: '/tours/ha-long/photos', label: 'Photos' } });
     const next = screen.getByRole('link', { name: t.next('Photos') });
@@ -286,5 +291,50 @@ describe('EditorFormFrame — bố cục bước (ADR-0049 §6)', () => {
       screen.getByRole('alertdialog', { name: messages.admin.unsavedChanges.title }),
     ).toBeInTheDocument();
     expect(push).not.toHaveBeenCalled();
+  });
+});
+
+/**
+ * G18: khối `after` (bước Review đặt vùng xoá tour ở đây) đứng SAU cột phải trong DOM nên Tab
+ * và màn hẹp gặp nó cuối cùng; từ `xl` nó nằm dưới nội dung chính ở cột trái, còn cột phải phủ
+ * cả hai hàng để vẫn dính khi cuộn tới nó. Vị trí thật đo bằng CSS build trên Chromium.
+ */
+describe('StepColumns — khối sau cột phải (G18)', () => {
+  function columns(after?: React.ReactNode) {
+    render(
+      <StepColumns aside={<p>Right column</p>} after={after}>
+        <p>Main</p>
+      </StepColumns>,
+    );
+    return screen.getByRole('complementary');
+  }
+
+  it('after đứng SAU <aside>, nằm cột trái hàng hai từ xl; cột phải phủ hai hàng', () => {
+    const aside = columns(<p>Danger zone</p>);
+    const after = screen.getByText('Danger zone').parentElement as HTMLElement;
+    expect(aside.compareDocumentPosition(after)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+    expect(after).toHaveClass('xl:col-start-1', 'xl:row-start-2');
+    expect(aside).toHaveClass('xl:row-span-2');
+  });
+
+  // Vùng xoá trả null với Staff: khung rỗng phải biến mất (`:empty`) CÙNG khoảng cách phía
+  // trên nó. Cột phải phủ hai hàng nên hàng hai luôn tồn tại: khoảng cách mà là `gap` hàng
+  // của lưới thì vẫn để lại một dải trống dưới cột trái, nên nó phải là `mt-6` của chính
+  // khung. jsdom không áp CSS nên chỉ khoá được lớp; khoảng thật đo trên Chromium.
+  it('khung của after ẩn khi nội dung render ra rỗng, mang theo khoảng cách phía trên', () => {
+    function Nothing() {
+      return null;
+    }
+    const aside = columns(<Nothing />);
+    const frameOfAfter = aside.nextElementSibling as HTMLElement;
+    expect(frameOfAfter).toBeEmptyDOMElement();
+    expect(frameOfAfter).toHaveClass('empty:hidden', 'xl:mt-6');
+    expect(aside.parentElement).toHaveClass('xl:gap-y-0');
+  });
+
+  it('không truyền after: không có khung nào sau cột phải, lưới giữ gap hàng', () => {
+    const aside = columns();
+    expect(aside.nextElementSibling).toBeNull();
+    expect(aside.parentElement).not.toHaveClass('xl:gap-y-0');
   });
 });

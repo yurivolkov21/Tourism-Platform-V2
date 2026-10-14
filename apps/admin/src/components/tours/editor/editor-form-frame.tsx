@@ -119,24 +119,45 @@ export function EditorFormFrame({
  * Cột phải có trần bằng cửa sổ và tự cuộn bên trong (vòng review F19): hộp sticky cao
  * hơn cửa sổ KHÔNG "cuộn theo trang" như spec §4.6 tưởng — nó ghim theo mép trên và
  * giấu phần dưới tới hết form. `p-px` để viền `ring-1` của card không bị khung cuộn cắt.
+ *
+ * `after` (G18): khối đứng SAU cột phải trong DOM, nên Tab và màn hẹp gặp nó cuối cùng;
+ * từ `xl` nó nằm hàng hai của cột trái, dưới nội dung chính. Cột phải khi ấy phủ cả hai
+ * hàng: sticky chỉ dính trong ô lưới của chính nó, phủ một hàng thì cuộn tới khối này là
+ * cột phải trôi mất. Khung của khối ẩn khi nội dung render ra rỗng (vùng xoá với Staff).
+ * Cũng vì cột phải phủ hai hàng mà hàng hai luôn tồn tại, nên khoảng cách trên khối từ `xl`
+ * là `mt-6` của chính khung chứ không phải `gap` hàng của lưới (tắt từ `xl`): khung ẩn thì
+ * khoảng ấy ẩn theo, không để lại một dải trống dưới cột trái.
  */
 export function StepColumns({
   aside,
+  after,
   children,
 }: {
   aside: React.ReactNode;
+  after?: React.ReactNode;
   children: React.ReactNode;
 }) {
   return (
-    <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_20rem]">
+    <div
+      className={cn(
+        'grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_20rem]',
+        after ? 'xl:gap-y-0' : undefined,
+      )}
+    >
       {children}
       {/* `data-slot`: móc cho bước soi bố cục bằng CSS build thật (plan F19, Task 10). */}
       <aside
         data-slot="step-aside"
-        className="grid min-w-0 gap-4 xl:sticky xl:top-4 xl:max-h-[calc(100svh-2rem)] xl:overflow-y-auto xl:p-px"
+        className={cn(
+          'grid min-w-0 gap-4 xl:sticky xl:top-4 xl:max-h-[calc(100svh-2rem)] xl:overflow-y-auto xl:p-px',
+          after ? 'xl:row-span-2' : undefined,
+        )}
       >
         {aside}
       </aside>
+      {after ? (
+        <div className="min-w-0 empty:hidden xl:col-start-1 xl:row-start-2 xl:mt-6">{after}</div>
+      ) : null}
     </div>
   );
 }

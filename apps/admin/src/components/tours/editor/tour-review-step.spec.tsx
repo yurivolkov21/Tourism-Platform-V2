@@ -149,6 +149,27 @@ describe('TourReviewStep — xoá tour', () => {
   });
 });
 
+/**
+ * G18: việc chính của bước (công tắc On sale, khối "When it goes on sale") đứng TRƯỚC vùng
+ * xoá trong DOM — đó là thứ tự Tab, và thứ tự đọc khi màn hẹp xếp một cột. Bản cũ để vùng
+ * xoá ngay dưới danh sách kiểm tra: Tab tới nút Delete trước công tắc.
+ */
+describe('TourReviewStep — thứ tự (G18)', () => {
+  it('Tab tới công tắc On sale trước nút Delete', () => {
+    renderStep(detailFixture({ isPublished: false }));
+    const remove = screen.getByRole('button', { name: e.delete.action });
+    expect(toggle().compareDocumentPosition(remove)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+  });
+
+  it('vùng xoá là khối cuối, sau cả khối "When it goes on sale" (tour đã có booking cũng vậy)', () => {
+    renderStep(detailFixture({ bookingCount: 2 }));
+    const zone = screen.getByRole('region', { name: e.delete.title });
+    expect(screen.getByText(r.after.title).compareDocumentPosition(zone)).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING,
+    );
+  });
+});
+
 describe('TourReviewStep — bật/tắt bán', () => {
   it('bật bán xong: phần đầu đổi NGAY, không chờ lượt refresh', async () => {
     const setPublished = vi

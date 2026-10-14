@@ -108,54 +108,56 @@ export function TourReviewStep({
 
   return (
     <div className="flex flex-col gap-6 px-4 pb-8 lg:px-6">
-      <StepColumns aside={aside}>
-        <div className="grid min-w-0 gap-6">
-          <Card>
-            <CardHeader>
-              <CardTitle id="tour-review-title">{r.title}</CardTitle>
-              <CardDescription>{r.body}</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <ul aria-labelledby="tour-review-title" className="grid">
-                {rows.map((step) => {
-                  const Icon = STEP_ICONS[step.step];
-                  return (
-                    <li
-                      key={step.step}
-                      className="flex flex-wrap items-center gap-3 border-t py-3 text-sm first:border-t-0 first:pt-0 last:pb-0"
-                    >
-                      <StateMark state={step.status} className="size-5" />
-                      <Icon aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />
-                      <span className="w-36 shrink-0 font-medium">{step.title}</span>
-                      <span
-                        className={cn(
-                          'min-w-0 flex-1',
-                          step.status === 'warn' ? 'text-foreground' : 'text-muted-foreground',
-                        )}
-                      >
-                        {step.summary}
-                      </span>
-                      {step.fixHref ? (
-                        <Link
-                          href={step.fixHref}
-                          aria-label={r.fixLabel(step.title)}
-                          className={buttonVariants({ variant: 'outline', size: 'sm' })}
-                        >
-                          {r.fix}
-                          <ChevronRightIcon data-icon="inline-end" aria-hidden="true" />
-                        </Link>
-                      ) : null}
-                    </li>
-                  );
-                })}
-              </ul>
-            </CardContent>
-          </Card>
-
-          {/* Vùng xoá tự lo tour đã có booking (không nút, nói vì sao); server vẫn là
-              trọng tài thật của lệnh xoá (khoá ngoại `Restrict`). */}
+      <StepColumns
+        aside={aside}
+        after={
+          // Vùng xoá tự lo tour đã có booking (không nút, nói vì sao); server vẫn là trọng
+          // tài thật của lệnh xoá (khoá ngoại `Restrict`). Đứng sau cột phải (G18): Tab tới
+          // công tắc On sale trước nút Delete, màn hẹp gặp vùng xoá cuối cùng.
           <DeleteTourZone detail={detail} remove={remove} />
-        </div>
+        }
+      >
+        <Card className="min-w-0">
+          <CardHeader>
+            <CardTitle id="tour-review-title">{r.title}</CardTitle>
+            <CardDescription>{r.body}</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ul aria-labelledby="tour-review-title" className="grid">
+              {rows.map((step) => {
+                const Icon = STEP_ICONS[step.step];
+                return (
+                  <li
+                    key={step.step}
+                    className="flex flex-wrap items-center gap-3 border-t py-3 text-sm first:border-t-0 first:pt-0 last:pb-0"
+                  >
+                    <StateMark state={step.status} className="size-5" />
+                    <Icon aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />
+                    <span className="w-36 shrink-0 font-medium">{step.title}</span>
+                    <span
+                      className={cn(
+                        'min-w-0 flex-1',
+                        step.status === 'warn' ? 'text-foreground' : 'text-muted-foreground',
+                      )}
+                    >
+                      {step.summary}
+                    </span>
+                    {step.fixHref ? (
+                      <Link
+                        href={step.fixHref}
+                        aria-label={r.fixLabel(step.title)}
+                        className={buttonVariants({ variant: 'outline', size: 'sm' })}
+                      >
+                        {r.fix}
+                        <ChevronRightIcon data-icon="inline-end" aria-hidden="true" />
+                      </Link>
+                    ) : null}
+                  </li>
+                );
+              })}
+            </ul>
+          </CardContent>
+        </Card>
       </StepColumns>
     </div>
   );
