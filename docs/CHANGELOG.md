@@ -8,6 +8,52 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-10-14 — Merge G23 trần pool kết nối của API để vừa Session pooler 15 client (`edace31`..`b15239d`)
+
+Thread việc tồn đọng vùng admin nhận G23 ngày 14/10 (user muốn đóng càng nhiều open-items càng tốt
+trước freeze 15/10). Nhánh `fix/api-g23-pool`,
+[PR #16](https://github.com/yurivolkov21/Tourism-Platform-V2/pull/16), thi công trên session cloud.
+Không migration, không env, không dependency mới, không đổi contract, không thư viện dùng chung nào
+bị sửa.
+
+- Đo trước khi sửa, đọc chỉ-đọc log Supavisor (Supabase giữ 24 giờ): Session pooler nhận 15 client,
+  client thứ 16 nhận `EMAXCONNSESSION`. Lúc 02:01:15 UTC một instance duy nhất vừa thức, không deploy
+  nào chạy, giữ 9 phiên Prisma và 6 phiên pg-boss, phiên Prisma thứ 10 bị từ chối (preview web của
+  PR #13 đỏ). Lúc 05:12:19 UTC, cũng một instance, Vercel build web sau push `89afda5`: Prisma 8,
+  pg-boss 7, hai request oRPC trả 500. Trong 24 giờ: 22 phiên bị từ chối, 18 của pg-boss (lượt poll
+  hỏng) và 4 của Prisma (request 500). Ghi chú cũ của G23 đoán đúng (hai pool mặc định 10), giờ có số.
+- ADR `edace31`: [ADR-0024](adr/0024-deploy-targets.md) AMEND 4 chốt ràng buộc
+  `2 × (Prisma + pg-boss) + 1 ≤ 15` (hai instance chồng nhau lúc Render deploy, chừa một phiên chạy
+  tay) và hệ quả: request xếp hàng chờ kết nối thay vì 500; giao dịch tương tác chờ lấy kết nối tối
+  đa 2 giây (`maxWait` mặc định) nên đợt dồn tải rất lớn có thể hỏng một giao dịch, cùng loại rủi ro
+  mà hiếm hơn. Nâng Pool Size của Supavisor là đường thứ hai, không chọn vì nằm ngoài repo.
+- API `b15239d`: trần gom ở `apps/api/src/config/db-pool.ts`, Prisma 5 (tên phiên `tourism-api`,
+  trước đó log ghi tên mặc định `Supavisor`) và pg-boss 2; `auth.config.ts` và `start-worker.ts`
+  dùng lại. CLAUDE.md bỏ câu "pool ~10" ở mục Postgres và trỏ về file này.
+
+**Review.** Không có lượt review độc lập. User bảo merge (14/10 06:27 UTC). Nhánh dựng trên `89afda5`
+và main không đổi từ đó, nên không cần rebase.
+
+Tests after (`gate:int` trên `b15239d`, 14/10 xong 05:40 UTC, session cloud theo các bước của CI):
+unit 7422 — web 2273, admin 2217, api 1139, mobile 771, contract 709, mobile-ui 136, i18n 56,
+core 48, ui 47, tokens 26 — và int 838. So với main `89afda5`: api thêm 6 ca (`db-pool.spec.ts`
+khoá ràng buộc và hai hàm cấu hình), int thêm 2 (`db-pool.int.spec.ts` đếm phiên thật trong
+`pg_stat_activity` lúc dồn việc: Prisma đúng 5 phiên với 15 câu cùng lúc, pg-boss không quá 2 với
+sáu hàng đợi; cấu hình cũ đo được 10 và 8, cả hai ca đỏ). CI `gate` của PR xanh cả hai lượt.
+
+**Đóng CÒN TREO `media-gc` của entry PR #13:** lượt 14/10 04:00 UTC chạy xong trong 18 ms, không row
+nào tới hạn nên không in dòng `Dọn media: …` (sweep trả sớm khi không có row tới hạn,
+`media-garbage.service.ts`). `media_garbage` còn 6 row, cả 6 trong vùng tải lên theo đúng vị từ
+`isUploadZonePublicId`, không row nào có lỗi; tới hạn sớm nhất ở lượt 19/10 04:00 UTC. Nhánh
+`fix/admin-open-items-3` của entry ấy GitHub đã tự xoá lúc merge.
+
+**CÒN TREO:**
+
+- [ ] Sau deploy: đọc log Supavisor, phiên Prisma phải mang tên `tourism-api` và không còn
+  `EMAXCONNSESSION`. Lượt deploy của chính commit merge còn instance cũ (pool cũ) phục vụ build web,
+  nên lượt đó vẫn có thể gặp G23 một lần; build web đỏ thì bấm Redeploy.
+- Dọn sau merge: nhánh `fix/api-g23-pool` trên origin nếu GitHub không tự xoá.
+
 ## 2026-10-14 — Merge W-10 ảnh xin Cloudinary đúng cỡ, D1 nâng input-otp lên 1.5.0 (`bedfaff`..`860a501`)
 
 Làm tiếp open-items phía khách theo yêu cầu của user 13/10 (đóng càng nhiều càng tốt trước freeze
