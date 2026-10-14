@@ -20,6 +20,38 @@ export function canSubmitReview(draft: ReviewDraft): boolean {
   return draft.rating !== null && draft.body.trim().length >= REVIEW_BODY_MIN;
 }
 
+/** Những gì khách đã điền ở R1, R5 — để biết rời màn lúc này có làm mất gì không. */
+export interface ReviewDraftSnapshot extends ReviewDraft {
+  /** Khoá các ô ảnh theo thứ tự đang hiện; ô đang tải và ô tải lỗi cũng tính. */
+  photoKeys: readonly string[];
+}
+
+/** Gốc so sánh của R1: form chưa điền gì. */
+export const BLANK_REVIEW_DRAFT: ReviewDraftSnapshot = {
+  rating: null,
+  title: '',
+  body: '',
+  photoKeys: [],
+};
+
+/**
+ * Bài đang viết có khác gốc không — khác thì rời màn là mất (open-items P5b-5 mục 4). Gốc của R1
+ * là form trống; của R5 là bài cũ điền sẵn, nên mở R5 rồi rời ngay không mất gì. Chữ so sau khi
+ * cắt khoảng trắng hai đầu, cùng cách `buildReviewInput` gửi đi: chỉ gõ dấu cách là chưa viết gì.
+ */
+export function reviewDraftChanged(
+  current: ReviewDraftSnapshot,
+  baseline: ReviewDraftSnapshot,
+): boolean {
+  return (
+    current.rating !== baseline.rating ||
+    current.title.trim() !== baseline.title.trim() ||
+    current.body.trim() !== baseline.body.trim() ||
+    current.photoKeys.length !== baseline.photoKeys.length ||
+    current.photoKeys.some((key, index) => key !== baseline.photoKeys[index])
+  );
+}
+
 /** Dựng input `reviews.create`: cắt khoảng trắng, title rỗng thì bỏ hẳn. */
 export function buildReviewInput(bookingCode: string, draft: ReviewDraft) {
   if (draft.rating === null) throw new Error('rating required');

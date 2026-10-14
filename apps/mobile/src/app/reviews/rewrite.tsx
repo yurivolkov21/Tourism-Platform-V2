@@ -3,7 +3,13 @@ import { REVIEW_PHOTOS_MAX, REVIEW_REJECTION_LIMIT } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { canSubmitReview, reviewSubmitErrorMessage } from '@/features/reviews/review-form';
+import { DiscardDraftGuard } from '@/features/reviews/discard-draft-guard';
+import {
+  canSubmitReview,
+  type ReviewDraftSnapshot,
+  reviewDraftChanged,
+  reviewSubmitErrorMessage,
+} from '@/features/reviews/review-form';
 import { ReviewLoadState } from '@/features/reviews/review-load-state';
 import { useMyReviews } from '@/features/reviews/use-my-reviews';
 import { useReviewPhotos } from '@/features/reviews/use-review-photos';
@@ -37,6 +43,8 @@ export default function RewriteReviewRoute() {
   const [body, setBody] = useState('');
   const [phase, setPhase] = useState<ReviewPhase>('form');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  // Bài cũ đúng như lúc điền sẵn — gốc để biết khách đã sửa gì chưa. `null` tới khi điền xong.
+  const [seededDraft, setSeededDraft] = useState<ReviewDraftSnapshot | null>(null);
   const seeded = useRef(false);
 
   // Điền sẵn đúng một lần khi bài tải về — sau đó khách sửa tự do, không bị ghi đè.
@@ -46,6 +54,13 @@ export default function RewriteReviewRoute() {
     setRating(review.rating);
     setTitle(review.title ?? '');
     setBody(review.body);
+    setSeededDraft({
+      rating: review.rating,
+      title: review.title ?? '',
+      body: review.body,
+      // Cùng khoá với ô ảnh điền sẵn ngay dưới.
+      photoKeys: review.media.map((media) => media.publicId),
+    });
     photoState.setPhotos(
       review.media.map((media) => ({
         key: media.publicId,
@@ -85,6 +100,16 @@ export default function RewriteReviewRoute() {
   const { photoIds } = photoState;
   const canSubmit = canSubmitReview(draft) && photoIds !== null;
   const remaining = REVIEW_REJECTION_LIMIT - review.rejectionCount;
+  // Đã sửa mà chưa gửi lại thì mọi lệnh rời màn đều hỏi (open-items P5b-5 mục 4). Mở R5 rồi rời
+  // ngay không mất gì — bài cũ vẫn nằm trong My reviews.
+  const unsentEdits =
+    seededDraft !== null &&
+    phase === 'form' &&
+    !updateMutation.isPending &&
+    reviewDraftChanged(
+      { ...draft, photoKeys: photoState.photos.map((photo) => photo.key) },
+      seededDraft,
+    );
 
   function submit() {
     if (!canSubmit || photoIds === null || rating === null) return;
@@ -110,57 +135,60 @@ export default function RewriteReviewRoute() {
   }
 
   return (
-    <WriteReviewScreen
-      copy={copy}
-      phase={phase}
-      bookingCode={bookingCode}
-      tourTitle={review.tourTitle ?? ''}
-      imageUrl={review.tourImage?.url ?? null}
-      transformUrl={cloudinaryUrl}
-      // `MyReviewSchema` không có ngày đi; ngày viết bài đặt ở chỗ R1 in ngày chuyến là nói sai.
-      dateRangeLabel=""
-      rating={rating}
-      onRatingChange={setRating}
-      title={title}
-      onTitleChange={setTitle}
-      body={body}
-      onBodyChange={setBody}
-      canSubmit={canSubmit}
-      submitting={updateMutation.isPending}
-      errorMessage={errorMessage}
-      onSubmit={submit}
-      // R5 chỉ mở từ My reviews (R4): gửi xong thì lùi về đúng danh sách ấy. Nhãn "Back to my trip"
-      // của R1 ở đây là nói sai chỗ đến, còn "See my reviews" đẩy thêm một R4 thứ hai lên stack.
-      backLabel={copy.backToReviews}
-      onBack={() => router.back()}
-      photos={photoState.photos}
-      maxPhotos={REVIEW_PHOTOS_MAX}
-      photoError={photoState.photoError}
-      sheetOpen={photoState.sheetOpen}
-      sheetBusy={false}
-      sheetError={photoState.sheetError}
-      onOpenSheet={() => {
-        photoState.setSheetError(null);
-        photoState.setSheetOpen(true);
-      }}
-      onCloseSheet={() => {
-        photoState.setSheetError(null);
-        photoState.setSheetOpen(false);
-      }}
-      onTakePhoto={() => void photoState.pickPhoto('camera')}
-      onChooseLibrary={() => void photoState.pickPhoto('library')}
-      onRetryPhoto={photoState.retryPhoto}
-      onRemovePhoto={photoState.removePhoto}
-      allowAddPhoto={review.bookingCode !== null}
-      submitLabel={copy.resubmit}
-      submittingLabel={copy.resubmitting}
-      rejection={{
-        title: copy.rejectedTitle,
-        body: copy.rejectedBody,
-        reasonLabel: copy.rejectedReason,
-        reason: review.moderationNote ?? '',
-        footnote: remaining === 1 ? copy.rewriteLeft : '',
-      }}
-    />
+    <>
+      <WriteReviewScreen
+        copy={copy}
+        phase={phase}
+        bookingCode={bookingCode}
+        tourTitle={review.tourTitle ?? ''}
+        imageUrl={review.tourImage?.url ?? null}
+        transformUrl={cloudinaryUrl}
+        // `MyReviewSchema` không có ngày đi; ngày viết bài đặt ở chỗ R1 in ngày chuyến là nói sai.
+        dateRangeLabel=""
+        rating={rating}
+        onRatingChange={setRating}
+        title={title}
+        onTitleChange={setTitle}
+        body={body}
+        onBodyChange={setBody}
+        canSubmit={canSubmit}
+        submitting={updateMutation.isPending}
+        errorMessage={errorMessage}
+        onSubmit={submit}
+        // R5 chỉ mở từ My reviews (R4): gửi xong thì lùi về đúng danh sách ấy. Nhãn "Back to my trip"
+        // của R1 ở đây là nói sai chỗ đến, còn "See my reviews" đẩy thêm một R4 thứ hai lên stack.
+        backLabel={copy.backToReviews}
+        onBack={() => router.back()}
+        photos={photoState.photos}
+        maxPhotos={REVIEW_PHOTOS_MAX}
+        photoError={photoState.photoError}
+        sheetOpen={photoState.sheetOpen}
+        sheetBusy={false}
+        sheetError={photoState.sheetError}
+        onOpenSheet={() => {
+          photoState.setSheetError(null);
+          photoState.setSheetOpen(true);
+        }}
+        onCloseSheet={() => {
+          photoState.setSheetError(null);
+          photoState.setSheetOpen(false);
+        }}
+        onTakePhoto={() => void photoState.pickPhoto('camera')}
+        onChooseLibrary={() => void photoState.pickPhoto('library')}
+        onRetryPhoto={photoState.retryPhoto}
+        onRemovePhoto={photoState.removePhoto}
+        allowAddPhoto={review.bookingCode !== null}
+        submitLabel={copy.resubmit}
+        submittingLabel={copy.resubmitting}
+        rejection={{
+          title: copy.rejectedTitle,
+          body: copy.rejectedBody,
+          reasonLabel: copy.rejectedReason,
+          reason: review.moderationNote ?? '',
+          footnote: remaining === 1 ? copy.rewriteLeft : '',
+        }}
+      />
+      <DiscardDraftGuard active={unsentEdits} copy={copy.unsentDraft} />
+    </>
   );
 }

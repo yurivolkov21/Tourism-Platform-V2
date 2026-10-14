@@ -2249,6 +2249,18 @@ export const messages = {
       seeWhyFinal: 'See why',
       retractAction: 'Retract my review',
     },
+    /**
+     * Tấm hỏi lại khi rời màn viết bài (R1) hay viết lại bài bị bác (R5) lúc bài còn dở: back cứng
+     * Android, nút back ở header, vuốt back iOS (open-items P5b-5 mục 4). Một bộ chữ cho cả hai
+     * màn: ở R5 bài cũ vẫn nằm nguyên trong My reviews, chỉ phần vừa sửa là mất — nên câu nói
+     * "chưa lưu gì", không nói "bài sẽ bị xoá".
+     */
+    unsentDraft: {
+      title: 'Leave without sending?',
+      body: 'Nothing here is saved until you send it.',
+      discard: 'Discard and leave',
+      keep: 'Keep writing',
+    },
     // W4 U2 (ADR-0032 AMEND 1): quyền RÚT review đã đăng — chung cuộc.
     retract: {
       button: 'Retract my review',

@@ -1,6 +1,13 @@
 import { ORPCError } from '@orpc/client';
 import { messages } from '@tourism/i18n';
-import { buildReviewInput, canSubmitReview, reviewSubmitErrorMessage } from './review-form';
+import {
+  BLANK_REVIEW_DRAFT,
+  buildReviewInput,
+  canSubmitReview,
+  type ReviewDraftSnapshot,
+  reviewDraftChanged,
+  reviewSubmitErrorMessage,
+} from './review-form';
 
 describe('canSubmitReview', () => {
   it('chặn khi chưa có sao', () => {
@@ -64,5 +71,65 @@ describe('reviewSubmitErrorMessage', () => {
     expect(reviewSubmitErrorMessage(new Error('network'))).toBe(
       messages.accountActionErrors.generic,
     );
+  });
+});
+
+describe('reviewDraftChanged — rời R1, R5 lúc này có làm mất gì khách đã viết không', () => {
+  /** Bài cũ bị bác mà R5 điền sẵn. */
+  const rejected: ReviewDraftSnapshot = {
+    rating: 3,
+    title: 'Rainy but lovely',
+    body: 'The guide kept us dry and cheerful all day.',
+    photoKeys: ['reviews/a', 'reviews/b'],
+  };
+
+  it('R1 chưa điền gì thì rời không mất gì', () => {
+    expect(reviewDraftChanged(BLANK_REVIEW_DRAFT, BLANK_REVIEW_DRAFT)).toBe(false);
+  });
+
+  it('R1 đã chọn sao, gõ tiêu đề, gõ bài hay thêm ảnh thì là có thứ để mất', () => {
+    expect(reviewDraftChanged({ ...BLANK_REVIEW_DRAFT, rating: 4 }, BLANK_REVIEW_DRAFT)).toBe(true);
+    expect(reviewDraftChanged({ ...BLANK_REVIEW_DRAFT, title: 'Wow' }, BLANK_REVIEW_DRAFT)).toBe(
+      true,
+    );
+    expect(reviewDraftChanged({ ...BLANK_REVIEW_DRAFT, body: 'Great' }, BLANK_REVIEW_DRAFT)).toBe(
+      true,
+    );
+    // Ảnh đang tải hay tải lỗi cũng là thứ khách đã chọn.
+    expect(
+      reviewDraftChanged({ ...BLANK_REVIEW_DRAFT, photoKeys: ['local-1'] }, BLANK_REVIEW_DRAFT),
+    ).toBe(true);
+  });
+
+  it('chỉ gõ khoảng trắng thì không tính là đã viết', () => {
+    expect(
+      reviewDraftChanged({ ...BLANK_REVIEW_DRAFT, title: '  ', body: ' \n ' }, BLANK_REVIEW_DRAFT),
+    ).toBe(false);
+  });
+
+  it('R5 mở ra rồi rời ngay thì không mất gì: bài cũ vẫn nguyên', () => {
+    expect(reviewDraftChanged({ ...rejected }, rejected)).toBe(false);
+    expect(reviewDraftChanged({ ...rejected, body: `${rejected.body}  ` }, rejected)).toBe(false);
+  });
+
+  it('R5 đổi sao, chữ hay ảnh thì là có thứ để mất', () => {
+    expect(reviewDraftChanged({ ...rejected, rating: 4 }, rejected)).toBe(true);
+    expect(reviewDraftChanged({ ...rejected, title: '' }, rejected)).toBe(true);
+    expect(
+      reviewDraftChanged({ ...rejected, body: 'Rewritten with kinder words.' }, rejected),
+    ).toBe(true);
+    expect(reviewDraftChanged({ ...rejected, photoKeys: ['reviews/a'] }, rejected)).toBe(true);
+    expect(
+      reviewDraftChanged(
+        { ...rejected, photoKeys: ['reviews/a', 'reviews/b', 'local-1'] },
+        rejected,
+      ),
+    ).toBe(true);
+  });
+
+  it('R5 sửa rồi gõ trả lại đúng như cũ thì không còn gì để mất', () => {
+    const edited = { ...rejected, body: 'Something else entirely.' };
+    expect(reviewDraftChanged(edited, rejected)).toBe(true);
+    expect(reviewDraftChanged({ ...edited, body: rejected.body }, rejected)).toBe(false);
   });
 });

@@ -4,9 +4,12 @@ import { REVIEW_PHOTOS_MAX } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
+import { DiscardDraftGuard } from '@/features/reviews/discard-draft-guard';
 import {
+  BLANK_REVIEW_DRAFT,
   buildReviewInput,
   canSubmitReview,
+  reviewDraftChanged,
   reviewSubmitErrorMessage,
 } from '@/features/reviews/review-form';
 import { ReviewLoadState } from '@/features/reviews/review-load-state';
@@ -60,6 +63,15 @@ export default function ReviewRoute() {
   const draft = { rating, title, body };
   const { photoIds } = photoState;
   const canSubmit = canSubmitReview(draft) && photoIds !== null;
+  // Bài còn dở thì mọi lệnh rời màn đều hỏi lại (open-items P5b-5 mục 4). Đang gửi thì để đi: bài
+  // vẫn tới server, hỏi "bỏ bài" lúc ấy là nói sai.
+  const unsentDraft =
+    phase === 'form' &&
+    !createMutation.isPending &&
+    reviewDraftChanged(
+      { ...draft, photoKeys: photoState.photos.map((photo) => photo.key) },
+      BLANK_REVIEW_DRAFT,
+    );
 
   function submit() {
     if (!canSubmit || photoIds === null) return;
@@ -86,44 +98,47 @@ export default function ReviewRoute() {
   }
 
   return (
-    <WriteReviewScreen
-      copy={copy}
-      phase={phase}
-      bookingCode={bookingCode}
-      tourTitle={booking.tourTitle}
-      imageUrl={booking.tourImage?.url ?? null}
-      transformUrl={cloudinaryUrl}
-      dateRangeLabel={formatDepartureRange(booking.departureStartDate, booking.departureEndDate)}
-      rating={rating}
-      onRatingChange={setRating}
-      title={title}
-      onTitleChange={setTitle}
-      body={body}
-      onBodyChange={setBody}
-      canSubmit={canSubmit}
-      submitting={createMutation.isPending}
-      errorMessage={errorMessage}
-      onSubmit={submit}
-      onBack={() => router.back()}
-      onSeeReviews={() => router.push('/reviews/mine')}
-      photos={photoState.photos}
-      maxPhotos={REVIEW_PHOTOS_MAX}
-      photoError={photoState.photoError}
-      sheetOpen={photoState.sheetOpen}
-      sheetBusy={false}
-      sheetError={photoState.sheetError}
-      onOpenSheet={() => {
-        photoState.setSheetError(null);
-        photoState.setSheetOpen(true);
-      }}
-      onCloseSheet={() => {
-        photoState.setSheetError(null);
-        photoState.setSheetOpen(false);
-      }}
-      onTakePhoto={() => void photoState.pickPhoto('camera')}
-      onChooseLibrary={() => void photoState.pickPhoto('library')}
-      onRetryPhoto={photoState.retryPhoto}
-      onRemovePhoto={photoState.removePhoto}
-    />
+    <>
+      <WriteReviewScreen
+        copy={copy}
+        phase={phase}
+        bookingCode={bookingCode}
+        tourTitle={booking.tourTitle}
+        imageUrl={booking.tourImage?.url ?? null}
+        transformUrl={cloudinaryUrl}
+        dateRangeLabel={formatDepartureRange(booking.departureStartDate, booking.departureEndDate)}
+        rating={rating}
+        onRatingChange={setRating}
+        title={title}
+        onTitleChange={setTitle}
+        body={body}
+        onBodyChange={setBody}
+        canSubmit={canSubmit}
+        submitting={createMutation.isPending}
+        errorMessage={errorMessage}
+        onSubmit={submit}
+        onBack={() => router.back()}
+        onSeeReviews={() => router.push('/reviews/mine')}
+        photos={photoState.photos}
+        maxPhotos={REVIEW_PHOTOS_MAX}
+        photoError={photoState.photoError}
+        sheetOpen={photoState.sheetOpen}
+        sheetBusy={false}
+        sheetError={photoState.sheetError}
+        onOpenSheet={() => {
+          photoState.setSheetError(null);
+          photoState.setSheetOpen(true);
+        }}
+        onCloseSheet={() => {
+          photoState.setSheetError(null);
+          photoState.setSheetOpen(false);
+        }}
+        onTakePhoto={() => void photoState.pickPhoto('camera')}
+        onChooseLibrary={() => void photoState.pickPhoto('library')}
+        onRetryPhoto={photoState.retryPhoto}
+        onRemovePhoto={photoState.removePhoto}
+      />
+      <DiscardDraftGuard active={unsentDraft} copy={copy.unsentDraft} />
+    </>
   );
 }
