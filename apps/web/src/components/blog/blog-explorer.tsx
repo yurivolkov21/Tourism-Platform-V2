@@ -1,5 +1,6 @@
 'use client';
 
+import { messages } from '@tourism/i18n';
 import { AnimatePresence, motion } from 'motion/react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { BlogFilterSidebar } from '@/components/blog/blog-filter-sidebar';
@@ -197,23 +198,25 @@ export function BlogExplorer({
             19/08 theo góp ý user) — ở đây nó chiếm riêng một dòng trên lưới. */}
         {visible.length === 0 ? (
           <div className="rounded-2xl border border-dashed p-12 text-center">
-            <h2 className="font-heading text-xl font-medium text-foreground">Nothing here yet</h2>
+            <h2 className="font-heading text-xl font-medium text-foreground">
+              {messages.blog.emptyTitle}
+            </h2>
             <p className="mt-2 text-pretty text-muted-foreground">
-              Try another topic or a different word.
+              {messages.blog.emptyFilteredBody}
             </p>
             <button
               type="button"
               onClick={clearAll}
               className="mt-5 cursor-pointer text-sm font-medium text-primary-emphasis hover:underline"
             >
-              Clear filters
+              {messages.blog.clearFilters}
             </button>
           </div>
         ) : (
           <>
             {/* H2 ẩn khỏi thị giác nhưng đọc được cho trình đọc màn hình — /blog
               trước đây nhảy thẳng H1 → H3 (tiêu đề card), không có H2 nào. */}
-            <h2 className="sr-only">All stories</h2>
+            <h2 className="sr-only">{messages.blog.listHeading}</h2>
             {/* `overflow-clip` + clip-margin: thẻ đang thoát của popLayout là
                 `position:absolute` ở toạ độ CŨ — khi lưới co (trang 2 ít bài),
                 chúng thò ra ngoài lưới, đè lên thanh phân trang/footer và KÉO

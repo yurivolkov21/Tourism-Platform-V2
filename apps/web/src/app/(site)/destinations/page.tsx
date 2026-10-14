@@ -50,7 +50,7 @@ export const revalidate = 300; // ADR-0016 §3 — khớp REVALIDATE_SEC của f
  * để nhúng Reveal vào bên trong.
  */
 export const metadata: Metadata = {
-  title: 'Destinations — Nexora',
+  title: `${messages.pageMeta.destinations.title} — Nexora`,
   description: messages.destinationsPage.heroSubtitleMeta,
   // Canonical: cùng lý do /tours và /tours/[slug] đã thêm — mẫu /blog từng bỏ sót.
   alternates: { canonical: '/destinations' },
@@ -107,11 +107,11 @@ export default async function DestinationsPage() {
               của trang tour listing. */}
           <Reveal className="relative z-10 mx-auto max-w-7xl">
             <nav
-              aria-label="Breadcrumb"
+              aria-label={messages.common.breadcrumbLabel}
               className="flex items-center gap-1.5 text-sm text-muted-foreground"
             >
               <a href="/" className="transition-colors hover:text-foreground">
-                Home
+                {messages.common.home}
               </a>
               <ChevronRightIcon className="size-3.5" aria-hidden="true" />
               <span aria-current="page" className="text-foreground">

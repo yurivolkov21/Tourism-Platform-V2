@@ -121,7 +121,7 @@ function QuoteFigure({ item }: { item: MockTestimonial }) {
               `tours/review-card.tsx` đã chốt (`tour-reviews.tsx` xoá 13/08). */}
           <div
             role="img"
-            aria-label={`${item.rating} out of 5 stars`}
+            aria-label={messages.tourDetail.reviews.ratingLabel(item.rating)}
             className="flex items-center gap-1"
           >
             {Array.from({ length: 5 }, (_, i) => (

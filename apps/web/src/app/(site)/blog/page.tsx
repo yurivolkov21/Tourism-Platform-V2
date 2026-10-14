@@ -1,3 +1,4 @@
+import { messages } from '@tourism/i18n';
 import type { Metadata } from 'next';
 import { BlogExplorer } from '@/components/blog/blog-explorer';
 import { ContentHero } from '@/components/content/content-hero';
@@ -11,9 +12,8 @@ import { listParam, type RawSearchParam, singleParam } from '@/lib/search-params
 export const revalidate = 300; // ADR-0016 §3
 
 export const metadata: Metadata = {
-  title: 'Journal — Nexora',
-  description:
-    'Notes from the road, written by the local guides who lead our trips — food, packing, seasons, and the places we keep going back to.',
+  title: `${messages.pageMeta.blog.title} — Nexora`,
+  description: messages.pageMeta.blog.description,
   // Khai báo feed để trình duyệt/trình đọc feed tự phát hiện được — không thì
   // /blog/rss.xml tồn tại nhưng không ai tìm ra.
   alternates: {
@@ -62,9 +62,9 @@ export default async function BlogIndexPage({
   return (
     <>
       <ContentHero
-        breadcrumb="Journal"
-        title="Notes from the road"
-        subtitle="Written by the guides who lead the trips — what to pack, where to eat, and when not to come."
+        breadcrumb={messages.blog.breadcrumb}
+        title={messages.blog.indexTitle}
+        subtitle={messages.blog.subtitle}
       />
 
       <div className="w-full px-4 py-16 md:px-16 md:py-20 lg:px-24 xl:px-32">

@@ -23,21 +23,21 @@ import { UserMenu } from './user-menu';
 // mà /tours đọc (xem comment trong destinations-menu.tsx: bản số ít mở trang mà
 // không lọc gì).
 const NAV_LINKS = [
-  { label: 'Travel Blog', href: '/blog' },
-  { label: 'About Us', href: '/about' },
-  { label: 'Contact', href: '/contact' },
+  { label: messages.nav.travelBlog, href: '/blog' },
+  { label: messages.nav.about, href: '/about' },
+  { label: messages.nav.contact, href: '/contact' },
 ];
 
 // Link phẳng cho overlay mobile. Không bung 9 địa danh ra đây — overlay là cột
 // dọc căn giữa, thêm 9 mục là phải cuộn. Một mục Destinations trỏ /tours là đủ;
 // người dùng lọc tiếp bằng toolbar ngay trên trang đó.
 const MOBILE_LINKS = [
-  { label: 'Tours', href: '/tours' },
-  { label: 'Destinations', href: '/tours' },
-  { label: 'Travel Blog', href: '/blog' },
-  { label: 'About Us', href: '/about' },
-  { label: 'Contact', href: '/contact' },
-  { label: 'Log in', href: '/login' },
+  { label: messages.nav.tours, href: '/tours' },
+  { label: messages.nav.destinations, href: '/tours' },
+  { label: messages.nav.travelBlog, href: '/blog' },
+  { label: messages.nav.about, href: '/about' },
+  { label: messages.nav.contact, href: '/contact' },
+  { label: messages.nav.login, href: '/login' },
 ];
 
 /**
@@ -126,7 +126,7 @@ export function SiteHeader() {
 
         <div className="hidden items-center gap-2 text-sm md:flex lg:gap-6">
           <a href="/tours" className={linkClass}>
-            Tours
+            {messages.nav.tours}
           </a>
           <DestinationsMenu triggerClassName={`text-sm font-normal ${triggerSkin}`} />
           {NAV_LINKS.map((l) => (
@@ -153,7 +153,7 @@ export function SiteHeader() {
                 : 'bg-card text-card-foreground hover:bg-card/85'
             }`}
           >
-            Book a tour
+            {messages.nav.bookTour}
           </a>
         </div>
 
@@ -162,7 +162,7 @@ export function SiteHeader() {
           <button
             type="button"
             onClick={() => setMobileOpen(true)}
-            aria-label="Open menu"
+            aria-label={messages.nav.openMenu}
             className={`cursor-pointer rounded-md p-2 transition ${
               solid ? 'text-foreground' : 'text-on-media'
             }`}
@@ -191,7 +191,7 @@ export function SiteHeader() {
         <button
           type="button"
           onClick={() => setMobileOpen(false)}
-          aria-label="Close menu"
+          aria-label={messages.nav.closeMenu}
           className="cursor-pointer rounded-md bg-card p-2 text-card-foreground"
         >
           <XIcon className="size-6" aria-hidden="true" />

@@ -80,7 +80,7 @@ export function NewsletterForm() {
         tabIndex={-1}
         className="absolute -left-[9999px] h-px w-px overflow-hidden"
       >
-        <label htmlFor="footer-newsletter-website">Website</label>
+        <label htmlFor="footer-newsletter-website">{messages.common.honeypotLabel}</label>
         <input
           id="footer-newsletter-website"
           name="website"

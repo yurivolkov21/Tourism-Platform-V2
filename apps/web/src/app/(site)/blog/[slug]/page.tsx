@@ -1,3 +1,4 @@
+import { messages } from '@tourism/i18n';
 import { ArticleMarkdown } from '@tourism/ui/components/article-markdown';
 import { Typeset } from '@tourism/ui/components/typeset';
 import type { Metadata } from 'next';
@@ -35,7 +36,7 @@ export async function generateMetadata({
   const { slug } = await params;
   // React cache() dedupe: cùng slug với thân trang bên dưới chỉ tốn một fetch.
   const post = await fetchPostDetail(slug);
-  if (!post) return { title: 'Post not found — Nexora' };
+  if (!post) return { title: `${messages.pageMeta.notFound.post} — Nexora` };
   // excerpt có thể là '' (VM map null → '' — xem lib/api/posts.ts) — bỏ hẳn
   // field description thay vì phát chuỗi rỗng, để Next tự fallback im lặng
   // thay vì render <meta description=""> vô nghĩa.
@@ -149,7 +150,7 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
       <section className="w-full px-4 pb-24 md:px-16 lg:px-24 xl:px-32">
         <div className="mx-auto max-w-7xl">
           <h2 className="mb-8 font-heading text-2xl font-medium text-foreground">
-            More from the journal
+            {messages.blog.moreHeading}
           </h2>
           <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {more.map((related) => (

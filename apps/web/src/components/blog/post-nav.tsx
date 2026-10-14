@@ -1,3 +1,4 @@
+import { messages } from '@tourism/i18n';
 import { ArrowLeftIcon, ArrowRightIcon } from 'lucide-react';
 import Link from 'next/link';
 import type { JournalPost } from '@/lib/api/posts';
@@ -9,7 +10,7 @@ export function PostNav({ newer, older }: { newer?: JournalPost; older?: Journal
 
   return (
     <nav
-      aria-label="More articles"
+      aria-label={messages.blog.postNavLabel}
       className="mt-12 grid gap-4 border-t border-border pt-8 sm:grid-cols-2"
     >
       {newer ? (
@@ -19,7 +20,7 @@ export function PostNav({ newer, older }: { newer?: JournalPost; older?: Journal
         >
           <span className="inline-flex items-center gap-1.5 font-mono text-xs tracking-widest text-muted-foreground uppercase">
             <ArrowLeftIcon className="size-3.5" aria-hidden="true" />
-            Newer
+            {messages.blog.newerStory}
           </span>
           <p className="mt-2 font-heading text-base font-medium text-balance text-foreground transition-colors group-hover:text-primary-emphasis">
             {newer.title}
@@ -35,7 +36,7 @@ export function PostNav({ newer, older }: { newer?: JournalPost; older?: Journal
           className="group rounded-2xl border p-5 text-right transition-colors hover:border-primary/40"
         >
           <span className="inline-flex items-center gap-1.5 font-mono text-xs tracking-widest text-muted-foreground uppercase">
-            Older
+            {messages.blog.olderStory}
             <ArrowRightIcon className="size-3.5" aria-hidden="true" />
           </span>
           <p className="mt-2 font-heading text-base font-medium text-balance text-foreground transition-colors group-hover:text-primary-emphasis">

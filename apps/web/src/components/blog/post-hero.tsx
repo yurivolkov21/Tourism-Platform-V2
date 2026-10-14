@@ -1,5 +1,6 @@
 'use client';
 
+import { messages } from '@tourism/i18n';
 import { ChevronRightIcon, ClockIcon } from 'lucide-react';
 import { motion } from 'motion/react';
 import Link from 'next/link';
@@ -29,7 +30,7 @@ export function PostHero({ post }: { post: JournalPost }) {
       <SlotImage
         image={post.cover}
         corner
-        label={`${post.category} · cover image`}
+        label={messages.blog.coverImageLabel(post.category)}
         priority
         sizes="100vw"
         className="absolute inset-0 -z-20 h-full w-full"
@@ -45,18 +46,18 @@ export function PostHero({ post }: { post: JournalPost }) {
             (20, .3). Đây là hero màn đầu nên dùng `animate` lúc mount, cùng lệ
             với các hero khác — không phải `whileInView`. */}
         <motion.nav
-          aria-label="Breadcrumb"
+          aria-label={messages.common.breadcrumbLabel}
           className="flex items-center gap-1.5 text-sm text-muted-foreground"
           initial={{ y: -16, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ delay: 0.1, ...SPRING }}
         >
           <Link href="/" className="transition-colors hover:text-foreground">
-            Home
+            {messages.common.home}
           </Link>
           <ChevronRightIcon className="size-3.5" aria-hidden="true" />
           <Link href="/blog" className="transition-colors hover:text-foreground">
-            Journal
+            {messages.blog.breadcrumb}
           </Link>
           <ChevronRightIcon className="size-3.5" aria-hidden="true" />
           <span aria-current="page" className="text-foreground">
@@ -85,7 +86,7 @@ export function PostHero({ post }: { post: JournalPost }) {
           <span aria-hidden="true">·</span>
           <span className="inline-flex items-center gap-1.5">
             <ClockIcon className="size-3.5" aria-hidden="true" />
-            {post.readMinutes} min read
+            {messages.blog.minRead(post.readMinutes)}
           </span>
           {/* Nhánh "Updated …" cũ đọc post.updated — cắt có chủ đích: contract
               PostDetail không có updatedAt, JournalPost/JournalPostDetail

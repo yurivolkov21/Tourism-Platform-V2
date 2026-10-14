@@ -24,7 +24,7 @@ import { mrzLines, passportNo, passportStats, travelLog } from '@/lib/passport';
  * vốn chỉ tính trên chunk trang đầu).
  */
 export const metadata: Metadata = {
-  title: 'Traveler passport — Nexora',
+  title: `${messages.passportHome.heroTitle} — Nexora`,
 };
 
 export default async function AccountPassportPage() {

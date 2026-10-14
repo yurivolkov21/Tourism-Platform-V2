@@ -1,5 +1,6 @@
 'use client';
 
+import { messages } from '@tourism/i18n';
 import { ArrowUpIcon } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { smoothScrollTo } from '@/lib/smooth-scroll';
@@ -7,7 +8,7 @@ import { smoothScrollTo } from '@/lib/smooth-scroll';
 // Convert từ Nexora layout/scroll-to-top.tsx (review #32): nút tròn nổi góc
 // phải-dưới, hiện sau khi cuộn quá 500px, bấm cuộn mượt về đầu trang. Khác
 // Nexora: bottom-6 thay bottom-20 (v2 chưa có bong bóng FloatingContact bên
-// dưới) và copy tiếng Anh hardcode (gom về @tourism/i18n khi làm i18n sweep).
+// dưới); nhãn ở `messages.nav.backToTop` (W-09, 14/10).
 export function ScrollToTop() {
   const [visible, setVisible] = useState(false);
 
@@ -21,7 +22,7 @@ export function ScrollToTop() {
   return (
     <button
       type="button"
-      aria-label="Back to top"
+      aria-label={messages.nav.backToTop}
       // Qua `smoothScrollTo` (Lenis-aware) — `window.scrollTo` trần bị quán tính
       // con lăn của Lenis ghi đè, bấm lúc đang trôi thì không lên (đo 19/08).
       onClick={() => smoothScrollTo(0)}

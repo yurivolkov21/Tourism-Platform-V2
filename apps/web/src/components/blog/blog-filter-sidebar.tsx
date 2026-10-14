@@ -1,5 +1,6 @@
 'use client';
 
+import { messages } from '@tourism/i18n';
 import { Input } from '@tourism/ui/components/input';
 import { cn } from '@tourism/ui/lib/utils';
 import { CheckIcon, SearchIcon, XIcon } from 'lucide-react';
@@ -106,7 +107,11 @@ function FacetSection({
     <fieldset className="flex flex-col gap-3.5 px-5">
       <legend className="flex w-full items-baseline justify-between">
         <span className="text-sm leading-5 font-semibold">{title}</span>
-        {scrolls ? <span className="text-xs text-muted-foreground">{tags.length} tags</span> : null}
+        {scrolls ? (
+          <span className="text-xs text-muted-foreground">
+            {messages.blog.tagCount(tags.length)}
+          </span>
+        ) : null}
       </legend>
       {scrolls ? (
         <div
@@ -178,9 +183,9 @@ export function BlogFilterSidebar({
       <div className="flex flex-col rounded-2xl border bg-card shadow-(--shadow-card)">
         <div className="flex items-center justify-between gap-3 px-5 pt-5">
           <div className="flex items-baseline gap-2">
-            <h2 className="text-base leading-6 font-semibold">Filters</h2>
+            <h2 className="text-base leading-6 font-semibold">{messages.blog.filtersLabel}</h2>
             <span aria-live="polite" className="text-[13px] text-muted-foreground tabular-nums">
-              {resultCount} {resultCount === 1 ? 'story' : 'stories'}
+              {messages.blog.storyCount(resultCount)}
             </span>
           </div>
           {anyActive ? (
@@ -189,7 +194,7 @@ export function BlogFilterSidebar({
               onClick={onClearAll}
               className="cursor-pointer text-[13px] text-muted-foreground hover:text-foreground"
             >
-              Clear all
+              {messages.blog.clearAll}
             </button>
           ) : null}
         </div>
@@ -204,8 +209,8 @@ export function BlogFilterSidebar({
               type="search"
               value={query}
               onChange={(e) => onQueryChange(e.target.value)}
-              placeholder="Search the journal…"
-              aria-label="Search journal posts by title or summary"
+              placeholder={messages.blog.searchPlaceholder}
+              aria-label={messages.blog.searchLabel}
               className="h-11 rounded-full bg-background pr-4 pl-11 text-sm"
             />
           </div>
@@ -221,7 +226,7 @@ export function BlogFilterSidebar({
                 key={chip.slug}
                 type="button"
                 onClick={chip.onRemove}
-                aria-label={`Remove filter ${chip.name}`}
+                aria-label={`${messages.a11y.removeFilter} ${chip.name}`}
                 className="inline-flex h-[30px] cursor-pointer items-center gap-2 rounded-full border border-primary bg-primary px-3 text-[13px] font-medium text-primary-foreground"
               >
                 {chip.name}
@@ -236,7 +241,7 @@ export function BlogFilterSidebar({
         </div>
 
         <FacetSection
-          title="Topic"
+          title={messages.blog.topicsLabel}
           tags={topics}
           counts={topicCounts}
           selected={selectedTopics}
@@ -249,7 +254,7 @@ export function BlogFilterSidebar({
               <span aria-hidden="true" className="block h-px bg-border" />
             </div>
             <FacetSection
-              title="Place"
+              title={messages.blog.placeLabel}
               tags={places}
               counts={placeCounts}
               selected={selectedPlaces}

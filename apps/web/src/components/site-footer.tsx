@@ -20,45 +20,47 @@ import { NewsletterForm } from './newsletter-form';
 // cho trang không tồn tại). Luật: mỗi href là một route/anchor CÓ THẬT; không
 // có trang thì không có link. `/account/*` đi qua `proxy.ts` — chưa đăng nhập
 // thì về /login rồi quay lại, nên để được ở footer cho mọi khách.
+// Chữ ở `messages.siteFooter` (W-09, 14/10); nhãn trùng chữ và nghĩa với navbar đọc `messages.nav`.
+const t = messages.siteFooter;
 const LINK_GROUPS: { title: string; links: [string, string][] }[] = [
   {
-    title: 'Explore',
+    title: t.groups.explore,
     links: [
-      ['Tours', '/tours'],
-      ['Destinations', '/destinations'],
-      ['Journal', '/blog'],
-      ['About us', '/about'],
+      [messages.nav.tours, '/tours'],
+      [messages.nav.destinations, '/destinations'],
+      [messages.nav.blog, '/blog'],
+      [t.links.about, '/about'],
       // Reviews vẫn là section của Home (quyết định review navbar #3) — anchor thật.
-      ['Traveller reviews', '/#reviews'],
+      [t.links.reviews, '/#reviews'],
     ],
   },
   {
-    title: 'Your account',
+    title: t.groups.account,
     links: [
-      ['My bookings', '/account/bookings'],
-      ['Saved tours', '/account/saved'],
-      ['Profile', '/account/profile'],
-      ['Settings', '/account/settings'],
-      ['Log in', '/login'],
+      [t.links.bookings, '/account/bookings'],
+      [t.links.saved, '/account/saved'],
+      [t.links.profile, '/account/profile'],
+      [t.links.settings, '/account/settings'],
+      [messages.nav.login, '/login'],
     ],
   },
   {
-    title: 'Support',
+    title: t.groups.support,
     links: [
-      ['Contact us', '/contact'],
-      ['FAQ', '/faq'],
-      ['Cancellation policy', '/cancellation-policy'],
-      ['Terms of service', '/terms'],
-      ['Privacy policy', '/privacy'],
+      [t.links.contact, '/contact'],
+      [t.links.faq, '/faq'],
+      [t.links.cancellation, '/cancellation-policy'],
+      [t.links.terms, '/terms'],
+      [t.links.privacy, '/privacy'],
     ],
   },
 ];
 
 const SOCIALS = [
-  { Icon: InstagramIcon, label: 'Instagram' },
-  { Icon: TwitterIcon, label: 'X' },
-  { Icon: YoutubeIcon, label: 'YouTube' },
-  { Icon: FacebookIcon, label: 'Facebook' },
+  { Icon: InstagramIcon, label: messages.social.instagram },
+  { Icon: TwitterIcon, label: messages.social.x },
+  { Icon: YoutubeIcon, label: messages.social.youtube },
+  { Icon: FacebookIcon, label: messages.social.facebook },
 ];
 
 export function SiteFooter() {
@@ -97,10 +99,7 @@ export function SiteFooter() {
             >
               <Logo />
             </a>
-            <p className="mb-8 max-w-xs text-sm/5.5 text-muted-foreground">
-              Small-group tours across Vietnam, led by people who grew up there. Limestone bays,
-              misty terraces, lantern towns — at your pace.
-            </p>
+            <p className="mb-8 max-w-xs text-sm/5.5 text-muted-foreground">{t.blurb}</p>
 
             {/* Newsletter — form client nhỏ tách riêng (`newsletter-form.tsx`,
                 spec §3, task-3-brief.md): validate + honeypot + submit
@@ -150,7 +149,7 @@ export function SiteFooter() {
           {/* Ghi công ảnh tạm bỏ khỏi UI — toàn site đang dùng ImagePlaceholder
               (static-first), ghi công cho ảnh không hiển thị là sai. Thêm lại
               cùng lúc với ảnh thật (cùng cách đã làm ở auth-screen.tsx). */}
-          <p className="text-xs text-muted-foreground/70">© 2026 Nexora. All rights reserved.</p>
+          <p className="text-xs text-muted-foreground/70">{t.copyright}</p>
 
           <div className="flex items-center gap-3">
             {SOCIALS.map(({ Icon, label }) => (
@@ -171,11 +170,11 @@ export function SiteFooter() {
               không có trang Cookies nên không hứa. */}
           <p className="flex items-center gap-2 text-xs text-muted-foreground/70">
             <a href="/privacy" className="transition-colors hover:text-foreground">
-              Privacy
+              {t.legalPrivacy}
             </a>
             <span aria-hidden="true">·</span>
             <a href="/terms" className="transition-colors hover:text-foreground">
-              Terms
+              {t.legalTerms}
             </a>
           </p>
         </motion.div>

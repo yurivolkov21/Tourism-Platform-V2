@@ -915,9 +915,20 @@ export const messages = {
     /** Nhãn của chỉ báo cuộn dọc mép phải hero. Ở `common` chứ không ở
         `regionPage`: nó là nhãn giao diện chung, hero nào cũng dùng được. */
     scrollHint: 'Scroll',
+    /** Nhãn ô bẫy bot (honeypot) của ba form khách: footer newsletter, form liên hệ trang chủ
+        và thư ở /contact. Ô đó nằm ngoài màn hình nên khách không thấy, nhưng vẫn là chữ trong
+        DOM nên ở đây theo luật 7 (W-09, 14/10). */
+    honeypotLabel: 'Website',
+    /** Thanh phân trang dùng chung của /tours, /blog và dải tour ở trang vùng
+        (`pagination-bar.tsx`): tên landmark và nhãn đọc của hai nút mũi tên. */
+    pagination: 'Pagination',
+    previousPage: 'Previous page',
+    nextPage: 'Next page',
   },
-  // Page <title>/description copy. Titles are PLAIN — the root layout's title.template
-  // (`%s — Tourism`) appends the brand, so never suffix the brand here (would double it).
+  // Chữ <title> và description của từng trang. Title để TRẦN: layout gốc không có
+  // `title.template`, mỗi trang tự nối ` — Nexora`, nên đừng gắn tên brand vào đây.
+  // W-09 (14/10): about, tours, destinations, contact, notFound từng là khoá mồ côi với chữ
+  // khác trang thật; nay căn đúng chữ đang chạy và được trang đọc.
   pageMeta: {
     privacy: {
       title: 'Privacy Statement',
@@ -938,27 +949,36 @@ export const messages = {
     },
     about: {
       title: 'About us',
-      description:
-        'Meet the local experts behind our boutique heritage journeys across Vietnam — our story, the numbers behind the trips, and the guides who craft them.',
+      description: 'Small-group tours across Vietnam, led by people who grew up there.',
     },
+    // Description của /tours là `toursPage.subtitle`, của /destinations là
+    // `destinationsPage.heroSubtitleMeta` — trang đọc thẳng ở đó, không chép sang đây.
     tours: {
-      title: 'All tours',
-      description:
-        'Browse every journey we run across Vietnam — filter by destination, length and price to find the trip that fits you.',
+      title: 'Tours',
     },
     destinations: {
-      title: 'Vietnam destinations',
-      description: 'Explore Vietnam by destination — from the misty north to the Mekong south.',
+      title: 'Destinations',
     },
     contact: {
-      title: 'Contact us',
-      description:
-        'Get in touch with our local travel experts — office hours, address, phone, and email, plus a quick enquiry form. We usually reply within 24 hours.',
+      title: 'Contact',
+      description: 'Tell us your dates and pace — a real person replies within the hour.',
     },
+    blog: {
+      title: 'Journal',
+      description:
+        'Notes from the road, written by the local guides who lead our trips — food, packing, seasons, and the places we keep going back to.',
+    },
+    /** Description mặc định của layout gốc — trang nào không khai riêng thì dùng câu này. */
+    siteDescription: 'Book tours across Vietnam',
+    /** Description dự phòng của trang tour khi tour chưa có `summary`; `category` truyền vào đã
+        viết thường. */
+    tourFallbackDescription: (days: number, category: string) =>
+      `A ${days}-day ${category} trip with Nexora.`,
     notFound: {
       tour: 'Tour not found',
       post: 'Post not found',
       region: 'Region not found',
+      booking: 'Booking not found',
     },
     regionSuffix: 'tours',
   },
@@ -971,10 +991,17 @@ export const messages = {
     about: 'About Us',
     contact: 'Contact',
     blog: 'Journal',
+    /** Nhãn link /blog trên navbar (hàng ngang và overlay mobile). Footer và breadcrumb
+        của blog gọi trang đó là "Journal" (`blog`). */
+    travelBlog: 'Travel Blog',
     login: 'Log in',
     menu: 'Menu',
     planTrip: 'Plan your trip',
     backToTop: 'Back to top',
+    /** Nút đặc cuối navbar — trỏ /tours: "đặt tour" nghĩa là chọn tour trước. */
+    bookTour: 'Book a tour',
+    openMenu: 'Open menu',
+    closeMenu: 'Close menu',
     // Dropdown Destinations trên navbar. Nexora có đúng 4 dòng phẳng, mỗi dòng một
     // `hint` GÕ TAY ('Hạ Long, Sa Pa, Ninh Bình') — thêm/bớt địa điểm là chữ đó sai
     // mà không ai biết. v2 CỐ TÌNH không có `hint` ở đây: menu sinh hint và số tour
@@ -1003,6 +1030,62 @@ export const messages = {
         south: 'River markets & island dusk',
       },
     },
+  },
+  // Menu avatar trên navbar (user-menu.tsx) — W-09 (14/10). Chưa đăng nhập thì nút là
+  // `nav.login`.
+  userMenu: {
+    /** Tên đọc của nút avatar mở menu. */
+    trigger: 'Account',
+    myAccount: 'My account',
+    saved: 'Saved tours',
+    settings: 'Settings',
+    signOut: 'Sign out',
+  },
+  // Footer (site-footer.tsx) — W-09 (14/10). Nhãn trùng chữ và trùng nghĩa với navbar
+  // (Tours, Destinations, Journal, Log in) đọc từ `nav`, không chép lại ở đây.
+  siteFooter: {
+    blurb:
+      'Small-group tours across Vietnam, led by people who grew up there. Limestone bays, misty terraces, lantern towns — at your pace.',
+    groups: {
+      explore: 'Explore',
+      account: 'Your account',
+      support: 'Support',
+    },
+    links: {
+      about: 'About us',
+      reviews: 'Traveller reviews',
+      bookings: 'My bookings',
+      saved: 'Saved tours',
+      profile: 'Profile',
+      settings: 'Settings',
+      contact: 'Contact us',
+      faq: 'FAQ',
+      cancellation: 'Cancellation policy',
+      terms: 'Terms of service',
+      privacy: 'Privacy policy',
+    },
+    copyright: '© 2026 Nexora. All rights reserved.',
+    /** Hai link pháp lý ngắn ở góc phải dải cuối footer. */
+    legalPrivacy: 'Privacy',
+    legalTerms: 'Terms',
+  },
+  // Dải chữ chạy trên cùng (top-bar.tsx, server component) — W-09 (14/10). Năm thông
+  // điệp luân phiên; không ghi con số hạn huỷ nào (lý do ở comment trong top-bar.tsx).
+  topBar: {
+    marquee: [
+      'Vietnam’s slow-travel journeys, crafted end to end by locals',
+      'Autumn sale — 20% off selected Ha Long departures this week',
+      'Small groups, always led by local guides',
+      'Free cancellation on every tour',
+      'New route: Mekong Delta Boats — two days on the river',
+    ],
+  },
+  // Tên đọc của các nút mạng xã hội ở top bar và footer — W-09 (14/10).
+  social: {
+    facebook: 'Facebook',
+    instagram: 'Instagram',
+    x: 'X',
+    youtube: 'YouTube',
   },
   // `/destinations` — cổng khám phá theo VÙNG.
   //
@@ -1587,6 +1670,13 @@ export const messages = {
     notRated: 'Not yet reviewed',
     activeFiltersLabel: 'Active filters',
     removeFilter: (label: string) => `Remove filter ${label}`,
+    /** Nút X đóng ngăn kéo bộ lọc trên điện thoại. */
+    closeFilters: 'Close filters',
+    /** H2 chỉ cho trình đọc màn hình đứng trước lưới tour (trang không nhảy H1 → H3). */
+    listHeading: 'All tours',
+    /** Nút cuối một nhóm lọc dài: bung hết `count` lựa chọn, hoặc thu lại. */
+    showAllOptions: (count: number) => `Show all ${count}`,
+    showLess: 'Show less',
     viewTour: 'View tour',
     perPerson: 'per person',
     /** Nhãn nút tim. Một nhãn DUY NHẤT cho cả hai trạng thái — trạng thái bật/tắt
@@ -2018,30 +2108,48 @@ export const messages = {
     },
     note: 'Free and no-obligation — we usually reply within 24 hours.',
   },
+  // W-09 (14/10): indexTitle, subtitle, emptyTitle, emptyFilteredBody, searchLabel, topicsLabel,
+  // newerStory, olderStory, postNavLabel từng là khoá mồ côi với chữ khác trang thật; nay căn
+  // đúng chữ đang chạy ở /blog và trang bài, và được component đọc.
   blog: {
     heading: 'Travel guides & stories',
     subtitle:
-      'Practical guides and slow-travel inspiration from our local experts — to help you plan with confidence.',
+      'Written by the guides who lead the trips — what to pack, where to eat, and when not to come.',
     viewAll: 'Read the journal',
     readMore: 'Read more',
     featuredLabel: 'Featured',
-    indexTitle: 'Travel journal',
+    indexTitle: 'Notes from the road',
     breadcrumb: 'Journal',
     minRead: (minutes: number) => `${minutes} min read`,
     byline: (brand: string) => `By the ${brand} team`,
     outlineHeading: 'In this post',
     moreHeading: 'More from the journal',
     backToBlog: 'Back to the journal',
-    emptyTitle: 'No stories yet',
+    emptyTitle: 'Nothing here yet',
     emptyBody: 'We are writing our first guides now - check back soon.',
     bylineNamed: (name: string) => `By ${name}`,
     toursHeading: 'Tours in this story',
-    topicsLabel: 'Topics',
+    topicsLabel: 'Topic',
+    /** Tiêu đề nhóm lọc theo điểm đến trong sidebar /blog. */
+    placeLabel: 'Place',
     allTag: 'All',
     searchPlaceholder: 'Search the journal…',
-    searchLabel: 'Search articles',
-    emptyFilteredBody: 'Nothing matches that filter yet - clear it to see every story.',
+    searchLabel: 'Search journal posts by title or summary',
+    emptyFilteredBody: 'Try another topic or a different word.',
     clearFilters: 'Clear filters',
+    /** Đầu sidebar lọc của /blog. */
+    filtersLabel: 'Filters',
+    clearAll: 'Clear all',
+    /** Đếm tag cạnh tên nhóm khi danh sách dài phải cuộn (luôn nhiều tag nên không chia số ít). */
+    tagCount: (n: number) => `${n} tags`,
+    /** H2 chỉ cho trình đọc màn hình đứng trước lưới bài (trang không nhảy H1 → H3). */
+    listHeading: 'All stories',
+    /** Đếm bài khớp bộ lọc, đứng cạnh "Filters" ở đầu sidebar. */
+    storyCount: (n: number) => `${n} ${n === 1 ? 'story' : 'stories'}`,
+    /** Nhãn ảnh bìa ở thẻ bài và hero bài: tả theo chuyên mục, KHÔNG lặp tiêu đề bài (tiêu đề
+        đứng ngay dưới ảnh, trình đọc màn hình sẽ đọc hai lần). */
+    storyPhotoLabel: (category: string) => `${category} · story photo`,
+    coverImageLabel: (category: string) => `${category} · cover image`,
     updatedOn: (date: string) => `Updated ${date}`,
     // Hàng chia sẻ cuối bài (W3-C1 — copy từng nằm cứng trong share-row.tsx).
     share: {
@@ -2051,9 +2159,9 @@ export const messages = {
       onX: 'Share on X',
       onFacebook: 'Share on Facebook',
     },
-    newerStory: 'Newer story',
-    olderStory: 'Older story',
-    postNavLabel: 'Continue reading',
+    newerStory: 'Newer',
+    olderStory: 'Older',
+    postNavLabel: 'More articles',
     // Đường lùi khi DTO thiếu dữ liệu (Task 5 — lib/api/posts.ts toJournalPost):
     // author.name null → fallbackAuthor; không có tag nào → fallbackCategory.
     // User-facing nên khai ở đây (luật 7), không hardcode trong lib.

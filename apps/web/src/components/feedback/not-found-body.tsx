@@ -1,5 +1,6 @@
 'use client';
 
+import { resilience } from '@tourism/i18n';
 import { motion } from 'motion/react';
 import Link from 'next/link';
 import { SPRING } from '@/lib/motion';
@@ -35,6 +36,8 @@ function Line({ children, delay }: { children: React.ReactNode; delay: number })
 }
 
 export function NotFoundBody() {
+  const t = resilience.notFoundBody;
+
   return (
     // py-24: khoảng thở hai đầu của trang 404 — từ 12/08 footer hết `mt-32`
     // nên pb của section là toàn bộ khoảng cách tới footer, 96px là đủ nhịp.
@@ -43,22 +46,20 @@ export function NotFoundBody() {
         <div className="order-2 max-w-lg lg:order-1">
           <Line delay={0}>
             <p className="font-mono text-[11px] tracking-[0.2em] text-muted-foreground uppercase">
-              No route found
+              {t.eyebrow}
             </p>
           </Line>
 
           <Line delay={0.08}>
             <h2 className="mt-6 font-heading text-3xl leading-tight font-medium text-balance text-foreground md:text-[40px]/12">
-              We lost this page,
+              {t.titleLead}
               <br />
-              <span className="text-primary-emphasis italic">not you.</span>
+              <span className="text-primary-emphasis italic">{t.titleAccent}</span>
             </h2>
           </Line>
 
           <Line delay={0.16}>
-            <p className="mt-5 text-pretty text-muted-foreground">
-              The link may be broken, or the page may have moved — nothing lives at this URL.
-            </p>
+            <p className="mt-5 text-pretty text-muted-foreground">{t.lead}</p>
           </Line>
 
           {/* Link nhúng thẳng trong câu (lối Mailchimp) hữu ích hơn một hàng
@@ -67,19 +68,19 @@ export function NotFoundBody() {
               gợi ý sang đó là đẩy người ta vào một 404 nữa. */}
           <Line delay={0.24}>
             <p className="mt-4 text-pretty text-muted-foreground">
-              While you&rsquo;re here, read the latest notes in{' '}
+              {t.suggestStart}{' '}
               <Link href="/blog" className={INLINE_LINK}>
-                the journal
+                {t.suggestJournal}
               </Link>
-              , meet{' '}
+              {t.suggestMeet}{' '}
               <Link href="/about" className={INLINE_LINK}>
-                the guides behind the trips
+                {t.suggestGuides}
               </Link>
-              , or skim the{' '}
+              {t.suggestSkim}{' '}
               <Link href="/faq" className={INLINE_LINK}>
-                questions travellers ask most
+                {t.suggestFaq}
               </Link>
-              .
+              {t.suggestEnd}
             </p>
           </Line>
 
@@ -91,7 +92,7 @@ export function NotFoundBody() {
                 nên đặt giữa khối trông cân hơn là nép sát mép trái. */}
             <div className="mt-9 flex justify-center">
               <Link href="/" className={PILL_PRIMARY}>
-                Back to home
+                {t.home}
               </Link>
             </div>
           </Line>

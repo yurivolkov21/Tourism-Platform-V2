@@ -1,5 +1,6 @@
 'use client';
 
+import { messages } from '@tourism/i18n';
 import { ArrowLeftIcon, ChevronRightIcon } from 'lucide-react';
 import { motion } from 'motion/react';
 import Link from 'next/link';
@@ -41,14 +42,14 @@ export function ContentHero({
   // con, không có thì đứng thẳng trong hàng như trước.
   const breadcrumbNav = (
     <motion.nav
-      aria-label="Breadcrumb"
+      aria-label={messages.common.breadcrumbLabel}
       className="flex items-center gap-1.5 text-sm text-muted-foreground"
       initial={{ y: -16, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
       transition={{ delay: 0.1, ...SPRING }}
     >
       <a href="/" className="transition-colors hover:text-foreground">
-        Home
+        {messages.common.home}
       </a>
       <ChevronRightIcon className="size-3.5" aria-hidden="true" />
       <span aria-current="page" className="text-foreground">

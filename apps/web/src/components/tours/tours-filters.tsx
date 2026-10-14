@@ -150,7 +150,9 @@ function OptionList({
           onClick={() => setShowAll(!expanded)}
           className="w-full cursor-pointer px-4 py-2.5 text-left text-sm font-medium text-primary-emphasis hover:bg-muted/40"
         >
-          {hiddenCount > 0 ? `Show all ${options.length}` : 'Show less'}
+          {hiddenCount > 0
+            ? messages.toursPage.showAllOptions(options.length)
+            : messages.toursPage.showLess}
         </button>
       ) : null}
     </div>

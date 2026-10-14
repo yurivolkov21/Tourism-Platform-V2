@@ -1,3 +1,4 @@
+import { messages } from '@tourism/i18n';
 import type { Metadata } from 'next';
 import { ContactCta } from '@/components/contact/contact-cta';
 import { ContactFaq } from '@/components/contact/contact-faq';
@@ -13,8 +14,8 @@ import { siteMediaImage } from '@/lib/api/site-media';
 // §5 CTA 01 aurora (hồi sinh — tránh trùng CTA 02 video của /about).
 // Section Contact trên Home GIỮ nguyên (Nexora cũng chạy song song).
 export const metadata: Metadata = {
-  title: 'Contact — Nexora',
-  description: 'Tell us your dates and pace — a real person replies within the hour.',
+  title: `${messages.pageMeta.contact.title} — Nexora`,
+  description: messages.pageMeta.contact.description,
 };
 
 export default async function ContactPage() {

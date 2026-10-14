@@ -1,3 +1,4 @@
+import { messages } from '@tourism/i18n';
 import { Toaster } from '@tourism/ui/components/sonner';
 import type { Metadata } from 'next';
 import { Archivo, IBM_Plex_Mono, Literata } from 'next/font/google';
@@ -33,8 +34,8 @@ export const metadata: Metadata = {
   // đang phục vụ (preview *.vercel.app, apex) — thiếu metadataBase là Next
   // resolve URL tương đối theo host request (ADR-0016 AMEND 1 §7).
   metadataBase: new URL(siteUrl()),
-  title: 'Nexora',
-  description: 'Book tours across Vietnam',
+  title: messages.brand.name,
+  description: messages.pageMeta.siteDescription,
 };
 
 export default function RootLayout({

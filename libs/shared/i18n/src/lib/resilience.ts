@@ -20,6 +20,27 @@ export const resilience = {
     home: 'Back home',
     tours: 'Browse tours',
     blog: 'Read the journal',
+    /** Dòng mono nhỏ trên tiêu đề hero 404. */
+    eyebrow: 'Error 404',
+    /** Nhãn ảnh nền hero 404 (ImagePlaceholder). */
+    imageLabel: '404 — Ha Long Bay panorama',
+  },
+  // Thân trang 404 dưới hero (not-found-body.tsx) — W-09 (14/10). Câu gợi ý có ba link
+  // nhúng giữa câu nên cắt thành từng mảnh theo đúng thứ tự hiển thị; component ghép lại
+  // kèm khoảng trắng `{' '}` trước mỗi link.
+  notFoundBody: {
+    eyebrow: 'No route found',
+    titleLead: 'We lost this page,',
+    titleAccent: 'not you.',
+    lead: 'The link may be broken, or the page may have moved — nothing lives at this URL.',
+    suggestStart: 'While you’re here, read the latest notes in',
+    suggestJournal: 'the journal',
+    suggestMeet: ', meet',
+    suggestGuides: 'the guides behind the trips',
+    suggestSkim: ', or skim the',
+    suggestFaq: 'questions travellers ask most',
+    suggestEnd: '.',
+    home: 'Back to home',
   },
   globalError: {
     title: 'Something went wrong',

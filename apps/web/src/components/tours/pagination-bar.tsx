@@ -107,12 +107,12 @@ function PageNumbers({
   if (totalPages <= 1) return <div aria-hidden="true" />;
 
   return (
-    <nav aria-label="Pagination" className="flex items-center gap-1">
+    <nav aria-label={messages.common.pagination} className="flex items-center gap-1">
       <button
         type="button"
         onClick={() => onChange(page - 1)}
         disabled={page <= 1}
-        aria-label="Previous page"
+        aria-label={messages.common.previousPage}
         className="flex size-9 cursor-pointer items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted disabled:pointer-events-none disabled:opacity-40"
       >
         <ChevronLeftIcon className="size-4" aria-hidden="true" />
@@ -147,7 +147,7 @@ function PageNumbers({
         type="button"
         onClick={() => onChange(page + 1)}
         disabled={page >= totalPages}
-        aria-label="Next page"
+        aria-label={messages.common.nextPage}
         className="flex size-9 cursor-pointer items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted disabled:pointer-events-none disabled:opacity-40"
       >
         <ChevronRightIcon className="size-4" aria-hidden="true" />

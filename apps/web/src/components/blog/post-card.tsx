@@ -1,3 +1,4 @@
+import { messages } from '@tourism/i18n';
 import { ArrowUpRightIcon } from 'lucide-react';
 import Link from 'next/link';
 import { SlotImage } from '@/components/slot-image';
@@ -38,7 +39,7 @@ export function PostCard({
             cùng lỗi đã sửa ở PostHero, mô tả theo chuyên mục thay vào đó. */}
         <SlotImage
           image={post.cover}
-          label={`${post.category} · story photo`}
+          label={messages.blog.storyPhotoLabel(post.category)}
           sizes="(min-width: 1024px) 40vw, 100vw"
           className="absolute inset-0 h-full w-full transition-transform duration-700 group-hover:scale-105"
         />

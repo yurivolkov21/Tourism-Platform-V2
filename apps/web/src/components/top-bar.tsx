@@ -1,3 +1,4 @@
+import { messages } from '@tourism/i18n';
 import { MailIcon, PhoneIcon } from 'lucide-react';
 import { EMAIL, PHONE } from '@/lib/site';
 import { FacebookIcon, InstagramIcon, TwitterIcon } from './icons/social';
@@ -11,24 +12,19 @@ import { FacebookIcon, InstagramIcon, TwitterIcon } from './icons/social';
 // chuỗi, và `.replace()` sẽ ném TypeError lúc prerender. Chi tiết ghi ở đầu
 // `lib/site.ts`.
 // 5 thông điệp riêng biệt luân phiên trong marquee (review vòng 1 #7) —
-// mix định vị + khuyến mãi (khớp flag mock) + cam kết + tin mới.
-const MESSAGES = [
-  'Vietnam’s slow-travel journeys, crafted end to end by locals',
-  'Autumn sale — 20% off selected Ha Long departures this week',
-  'Small groups, always led by local guides',
-  // KHÔNG ghi con số nào (vá 04/09, giữ nguyên lý do): hạn chót dài 1, 3 hay 7
-  // ngày tuỳ độ dài chuyến, nên một con số chung ở marquee là nói sai. Nhưng
-  // cái rào "most tours" thì bỏ được từ ADR-0041: luật hạn chót áp cho MỌI
-  // tour, không còn tour nào đứng ngoài. "Refund schedule" cũng đi theo bảng
-  // bậc đã gỡ.
-  'Free cancellation on every tour',
-  'New route: Mekong Delta Boats — two days on the river',
-];
+// mix định vị + khuyến mãi (khớp flag mock) + cam kết + tin mới. Chữ ở
+// `messages.topBar.marquee` (W-09, 14/10).
+// Câu huỷ miễn phí KHÔNG ghi con số nào (vá 04/09, giữ nguyên lý do): hạn chót
+// dài 1, 3 hay 7 ngày tuỳ độ dài chuyến, nên một con số chung ở marquee là nói
+// sai. Nhưng cái rào "most tours" thì bỏ được từ ADR-0041: luật hạn chót áp cho
+// MỌI tour, không còn tour nào đứng ngoài. "Refund schedule" cũng đi theo bảng
+// bậc đã gỡ.
+const MESSAGES = messages.topBar.marquee;
 
 const SOCIALS = [
-  { Icon: FacebookIcon, label: 'Facebook' },
-  { Icon: InstagramIcon, label: 'Instagram' },
-  { Icon: TwitterIcon, label: 'X' },
+  { Icon: FacebookIcon, label: messages.social.facebook },
+  { Icon: InstagramIcon, label: messages.social.instagram },
+  { Icon: TwitterIcon, label: messages.social.x },
 ];
 
 // Một "toa" marquee: chuỗi 5 thông điệp nối nhau — hai toa giống hệt tạo loop kín.

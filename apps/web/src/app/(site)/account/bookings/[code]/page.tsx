@@ -31,7 +31,7 @@ export async function generateMetadata({
   } catch {
     booking = null;
   }
-  if (!booking) return { title: 'Booking not found — Nexora' };
+  if (!booking) return { title: `${messages.pageMeta.notFound.booking} — Nexora` };
   return {
     title: `${booking.tourTitle} — ${booking.code} — Nexora`,
   };

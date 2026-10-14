@@ -15,7 +15,7 @@ import type { RawSearchParam } from '@/lib/search-params';
  * cũ: sang trang không còn xáo thứ tự, và đơn thứ 51 trở đi tới được.
  */
 export const metadata: Metadata = {
-  title: 'My bookings — Nexora',
+  title: `${messages.passportBookings.title} — Nexora`,
 };
 
 export default async function AccountBookingsPage({

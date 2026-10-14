@@ -68,14 +68,14 @@ export function TourHero({ tour }: { tour: TourDetailVM }) {
       <div className="dark contents">
         <div className="relative z-10 mx-auto max-w-7xl">
           <motion.nav
-            aria-label="Breadcrumb"
+            aria-label={messages.common.breadcrumbLabel}
             className="flex items-center gap-1.5 text-sm text-muted-foreground"
             initial={{ y: -16, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             transition={{ delay: 0.1, ...SPRING }}
           >
             <a href="/" className="transition-colors hover:text-foreground">
-              Home
+              {messages.common.home}
             </a>
             <ChevronRightIcon className="size-3.5 shrink-0" aria-hidden="true" />
             <a href="/tours" className="transition-colors hover:text-foreground">

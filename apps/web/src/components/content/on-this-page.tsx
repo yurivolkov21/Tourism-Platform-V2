@@ -1,5 +1,6 @@
 'use client';
 
+import { messages } from '@tourism/i18n';
 import { cn } from '@tourism/ui/lib/utils';
 import { motion } from 'motion/react';
 import { useEffect, useState } from 'react';
@@ -30,9 +31,9 @@ export function OnThisPage({ items }: { items: TocItem[] }) {
   }, [items]);
 
   return (
-    <nav aria-label="On this page" className="text-sm">
+    <nav aria-label={messages.common.onThisPage} className="text-sm">
       <p className="mb-4 font-mono text-xs tracking-widest text-muted-foreground uppercase">
-        On this page
+        {messages.common.onThisPage}
       </p>
       <ul className="space-y-0.5 border-l border-border">
         {items.map((item) => (

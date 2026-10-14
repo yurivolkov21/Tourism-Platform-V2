@@ -1,5 +1,6 @@
 'use client';
 
+import { messages } from '@tourism/i18n';
 import { Avatar, AvatarFallback, AvatarImage } from '@tourism/ui/components/avatar';
 import {
   DropdownMenu,
@@ -51,7 +52,7 @@ export function UserMenu({ linkClassName }: { linkClassName?: string }) {
   if (isPending || !data?.user) {
     return (
       <a href="/login" className={linkClassName}>
-        Log in
+        {messages.nav.login}
       </a>
     );
   }
@@ -72,7 +73,7 @@ export function UserMenu({ linkClassName }: { linkClassName?: string }) {
         render={
           <button
             type="button"
-            aria-label="Account"
+            aria-label={messages.userMenu.trigger}
             className="inline-flex cursor-pointer items-center justify-center rounded-full"
           />
         }
@@ -91,32 +92,29 @@ export function UserMenu({ linkClassName }: { linkClassName?: string }) {
         <DropdownMenuGroup>
           <DropdownMenuItem render={<a href="/account" />}>
             <UserIcon aria-hidden="true" />
-            My account
+            {messages.userMenu.myAccount}
           </DropdownMenuItem>
           {/* Fix cuối 11/08: "My bookings" → "Saved tours" trỏ `/account/saved`
               — "My account" (route `/account`, trang hộ chiếu) đã LÀ cửa vào
               bookings (Your journey), hai mục cùng trỏ gần như một đích đọc
-              trùng lặp. Không có key i18n web nào sẵn khớp nghĩa "Saved
-              tours" trong ngữ cảnh menu này (grep: `accountSaved.title` =
-              "Tucked inside", khác giọng) nên giữ literal như `My account`/
-              `Sign out` cạnh nó — component này chưa đi qua i18n. */}
+              trùng lặp. Chữ ở khối riêng `messages.userMenu` (W-09, 14/10):
+              `accountSaved.title` = "Tucked inside", khác giọng menu này. */}
           <DropdownMenuItem render={<a href="/account/saved" />}>
             <TicketIcon aria-hidden="true" />
-            Saved tours
+            {messages.userMenu.saved}
           </DropdownMenuItem>
           {/* Settings vào menu theo góp ý user 11/08 (dời khỏi tờ giấy hộ
-              chiếu): đây là chỗ quy ước, mọi trang đều với tới; literal như
-              các mục cạnh nó — component chưa đi qua i18n. */}
+              chiếu): đây là chỗ quy ước, mọi trang đều với tới. */}
           <DropdownMenuItem render={<a href="/account/settings" />}>
             <SettingsIcon aria-hidden="true" />
-            Settings
+            {messages.userMenu.settings}
           </DropdownMenuItem>
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
         <DropdownMenuGroup>
           <DropdownMenuItem onClick={handleSignOut}>
             <LogOutIcon aria-hidden="true" />
-            Sign out
+            {messages.userMenu.signOut}
           </DropdownMenuItem>
         </DropdownMenuGroup>
       </DropdownMenuContent>

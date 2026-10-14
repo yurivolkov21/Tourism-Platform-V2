@@ -1,3 +1,4 @@
+import { messages } from '@tourism/i18n';
 import type { Metadata } from 'next';
 import { AboutCtaVideo } from '@/components/about/about-cta-video';
 import { AboutGallery } from '@/components/about/about-gallery';
@@ -19,8 +20,8 @@ import { fetchDestinations, fetchTours } from '@/lib/api/tours';
 // (forged/Stats — lưới hairline + watermark) · §5 Team (ShadcnSpace Team 01,
 // chỉ founder) · §6 Partners + §7 CTA (tái dùng Home). ĐỦ 7 khối.
 export const metadata: Metadata = {
-  title: 'About us — Nexora',
-  description: 'Small-group tours across Vietnam, led by people who grew up there.',
+  title: `${messages.pageMeta.about.title} — Nexora`,
+  description: messages.pageMeta.about.description,
 };
 
 // SSG→ISR có chủ đích (bước 4 nối API, Task 5 cụm destinations-api): Numbers

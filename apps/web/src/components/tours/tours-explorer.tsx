@@ -445,7 +445,11 @@ export function ToursExplorer({
                         <DrawerTitle>{messages.toursPage.filtersLabel}</DrawerTitle>
                         <DrawerClose
                           render={
-                            <Button variant="ghost" size="icon-sm" aria-label="Close filters">
+                            <Button
+                              variant="ghost"
+                              size="icon-sm"
+                              aria-label={messages.toursPage.closeFilters}
+                            >
                               <XIcon />
                             </Button>
                           }
@@ -537,7 +541,7 @@ export function ToursExplorer({
             <>
               {/* H2 ẩn khỏi thị giác nhưng đọc được cho trình đọc màn hình —
                   không thì trang nhảy thẳng H1 → H3 (tiêu đề card). */}
-              <h2 className="sr-only">All tours</h2>
+              <h2 className="sr-only">{messages.toursPage.listHeading}</h2>
               {/* `minmax(0,1fr)` chứ KHÔNG phải `grid-cols-2`: Tailwind sinh ra
                   `1fr`, mà `1fr` nghĩa là `minmax(auto, 1fr)` — cận dưới `auto`
                   lấy min-content. Tiêu đề thẻ là `truncate` (nowrap), min-content

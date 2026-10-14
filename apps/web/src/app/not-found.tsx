@@ -33,7 +33,7 @@ export default function NotFound() {
       <section className="dark relative flex min-h-[80vh] w-full items-center overflow-hidden px-4 py-32 text-foreground md:px-16 lg:px-24 xl:px-32">
         <ImagePlaceholder
           corner
-          label="404 — Ha Long Bay panorama"
+          label={t.imageLabel}
           className="absolute inset-0 -z-20 h-full w-full"
         />
         <div
@@ -46,7 +46,9 @@ export default function NotFound() {
           {/* on-media chứ không phải primary: jade trên ảnh vịnh (cũng xanh)
               chỉ đạt tương phản 1.96 — đo bằng pixel, dưới ngưỡng WCAG 3:1.
               Nét jade của brand đã có ở nút chính bên dưới. */}
-          <p className="font-mono text-xs tracking-widest text-on-media/80 uppercase">Error 404</p>
+          <p className="font-mono text-xs tracking-widest text-on-media/80 uppercase">
+            {t.eyebrow}
+          </p>
           <h1 className="mt-5 max-w-2xl font-heading text-4xl leading-tight font-medium text-balance md:text-5xl">
             {t.title}
           </h1>
