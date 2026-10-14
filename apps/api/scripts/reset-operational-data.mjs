@@ -12,7 +12,8 @@
  * ── Nó GIỮ gì ──
  * Toàn bộ tầng nội dung và ảnh: tours, destinations, tour_categories và các bảng
  * con của tour, media_assets, site_media_slots, VÀ CẢ blog (posts, post_tags,
- * post_tag_links), cùng đúng một tài khoản admin.
+ * post_tag_links), cùng đúng một tài khoản admin. Ngoại lệ duy nhất là ảnh của
+ * review: chúng rời site cùng review và sang hàng dọn media (G22, xem SQL_ANH_REVIEW).
  *
  * ── Vì sao blog KHÔNG bị xoá, dù đợt này làm mới nội dung blog ──
  * Ban đầu script có xoá `posts`. Review đối kháng bắt được đó là lỗi CHẶN HỎNG:
@@ -123,10 +124,17 @@ const PHAI_CON = [
   'post_tours',
   // Dữ liệu tuân thủ gửi mail: một dòng ở đây là một địa chỉ bị CHẶN GỬI thật.
   'email_suppressions',
-  // Hàng đợi xoá ảnh Cloudinary — phải ở yên (và đang rỗng). Đụng vào là đường
-  // duy nhất mất ảnh THẬT.
+  // Hàng đợi xoá ảnh Cloudinary. Không được MẤT dòng nào, và chỉ được THÊM đúng số
+  // publicId ảnh review lần đầu vào hàng (G22) — xếp nhầm một ảnh vào đây là đường
+  // mất ảnh THẬT, nên bất biến của nó đếm chính xác chứ không chỉ "không giảm".
   'media_garbage',
 ];
+
+/**
+ * Điều kiện đếm riêng của bất biến PHAI_CON. Ảnh review rời `media_assets` có chủ đích
+ * (G22), nên bảng ấy đếm trừ chúng; phần đã rời có bất biến riêng ở cuối transaction.
+ */
+const DEM_PHAI_CON = { media_assets: "owner_type <> 'REVIEW'" };
 
 /** Bảng cố ý không thuộc nhóm nào (sổ ghi của Prisma). */
 const BO_QUA = ['_prisma_migrations'];
@@ -142,6 +150,14 @@ const dem = async (bang, where) => {
   const { rows } = await client.query(
     `select count(*)::int as n from ${bang}${where ? ` where ${where}` : ''}`,
     where ? [ADMIN_ID] : [],
+  );
+  return rows[0].n;
+};
+
+const demPhaiCon = async (bang) => {
+  const where = DEM_PHAI_CON[bang];
+  const { rows } = await client.query(
+    `select count(*)::int as n from ${bang}${where ? ` where ${where}` : ''}`,
   );
   return rows[0].n;
 };
@@ -216,8 +232,26 @@ const SQL_MO_COI = `
     or (m.owner_type = 'DESTINATION' and not exists (select 1 from destinations d      where d.id = m.owner_id))
     or (m.owner_type = 'SITE'        and not exists (select 1 from site_media_slots s  where s.id = m.owner_id))
     or (m.owner_type = 'POST'        and not exists (select 1 from posts p             where p.id = m.owner_id))
-    or m.owner_type not in ('TOUR', 'DESTINATION', 'SITE', 'POST')`;
+    or (m.owner_type = 'REVIEW'      and not exists (select 1 from reviews r           where r.id = m.owner_id))
+    or m.owner_type not in ('TOUR', 'DESTINATION', 'SITE', 'POST', 'REVIEW')`;
 const demMoCoi = async () => (await client.query(SQL_MO_COI)).rows[0].n;
+
+// ── Ảnh review: sang hàng dọn, không để treo (G22) ─────────────────────────────
+// `reviews` bị xoá trắng ở KE_HOACH, mà `media_assets` không có khoá ngoại nào nên dòng
+// ảnh của review sẽ ở lại, trỏ vào review đã mất. Bộ dọn media (ADR-0035) thấy dòng ấy
+// là "còn dùng" và hoãn mãi, file Cloudinary không bao giờ bị xoá — đo 01/10: bốn ảnh
+// của review thử bị bác trên BK-5YU9J339. Nên xoá dòng ảnh review CÙNG transaction và
+// xếp publicId vào `media_garbage` y như `ReviewsService.retract` và lệnh xoá tài khoản:
+// đồng hồ đặt lại lúc này, `attempts`/`last_error` về 0 (ADR-0035 AMEND 2b). Bộ dọn chỉ
+// destroy ảnh trong vùng tải lên (ADR-0035 AMEND 3), mà ảnh review luôn nằm trong vùng.
+const SQL_ANH_REVIEW = "select distinct public_id from media_assets where owner_type = 'REVIEW'";
+const SQL_DA_TRONG_HANG =
+  'select count(*)::int as n from media_garbage where public_id = any($1::text[])';
+const docAnhReview = async () => {
+  const publicIds = (await client.query(SQL_ANH_REVIEW)).rows.map((r) => r.public_id);
+  const daTrongHang = (await client.query(SQL_DA_TRONG_HANG, [publicIds])).rows[0].n;
+  return { publicIds, moiVaoHang: publicIds.length - daTrongHang };
+};
 
 console.log('KẾ HOẠCH XOÁ (thứ tự suy từ pg_constraint)');
 let tong = 0;
@@ -234,6 +268,13 @@ const soBaiPhaiDoi = (
 ).rows[0].n;
 console.log(`  ${String(soBaiPhaiDoi).padStart(5)}  posts.author_id → admin được giữ\n`);
 
+console.log('MỘT LỆNH CHUYỂN (ảnh review rời site cùng review, G22)');
+const keHoachAnh = await docAnhReview();
+console.log(
+  `  ${String(keHoachAnh.publicIds.length).padStart(5)}  ảnh review: media_assets → hàng dọn media_garbage` +
+    ` (${keHoachAnh.moiVaoHang} chưa có trong hàng)\n`,
+);
+
 console.log(`Ảnh mồ côi hiện tại: ${await demMoCoi()}  (phải là 0 trước VÀ sau)\n`);
 
 if (!APPLY) {
@@ -249,7 +290,7 @@ try {
   // Chụp mốc BÊN TRONG transaction: đo ngoài rồi so trong sẽ báo động giả nếu
   // có admin upload ảnh xen vào giữa hai lần đo.
   const truoc = new Map();
-  for (const bang of PHAI_CON) truoc.set(bang, await dem(bang, null));
+  for (const bang of PHAI_CON) truoc.set(bang, await demPhaiCon(bang));
 
   const { rowCount: doiTacGia } = await client.query(
     'update posts set author_id = $1 where author_id <> $1',
@@ -267,6 +308,21 @@ try {
     console.log(`  −${String(rowCount).padStart(5)}  ${bang}`);
   }
 
+  // G22 — xem SQL_ANH_REVIEW ở trên. Đọc lại TRONG transaction, cùng lý do chụp `truoc`.
+  const anh = await docAnhReview();
+  const { rowCount: goAnh } = await client.query(
+    "delete from media_assets where owner_type = 'REVIEW'",
+  );
+  await client.query(
+    `insert into media_garbage (public_id, created_at)
+     select unnest($1::text[]), now()
+     on conflict (public_id) do update set created_at = now(), attempts = 0, last_error = null`,
+    [anh.publicIds],
+  );
+  console.log(
+    `  −${String(goAnh).padStart(5)}  media_assets ảnh review → hàng dọn (${anh.moiVaoHang} publicId mới vào hàng)`,
+  );
+
   // Xoá sạch reviews mà để nguyên `tours.rating_avg`/`rating_count` là để lại
   // một lời nói dối có thể đọc được: card tour vẫn hô "4.5 · 12 đánh giá"
   // trong khi bảng reviews đã trống trơn. Bất biến bên dưới chỉ đếm SỐ DÒNG
@@ -282,11 +338,36 @@ try {
   );
   console.log(`  ~${String(raRating).padStart(5)}  tours.rating_avg/rating_count → null/0`);
 
+  // Bảng duy nhất được phép tăng là hàng dọn, và tăng đúng số ảnh review lần đầu vào hàng.
+  const themDuKien = new Map([['media_garbage', anh.moiVaoHang]]);
   for (const bang of PHAI_CON) {
-    const sau = await dem(bang, null);
-    if (sau !== truoc.get(bang)) {
-      throw new Error(`Bất biến vỡ: ${bang} có ${truoc.get(bang)} dòng trước, còn ${sau} sau`);
+    const sau = await demPhaiCon(bang);
+    const mongDoi = truoc.get(bang) + (themDuKien.get(bang) ?? 0);
+    if (sau !== mongDoi) {
+      throw new Error(
+        `Bất biến vỡ: ${bang} có ${truoc.get(bang)} dòng trước, phải còn ${mongDoi}, còn ${sau} sau`,
+      );
     }
+  }
+
+  // Bất biến của G22: không còn dòng ảnh review nào, và MỌI publicId vừa rời đều nằm trong
+  // hàng dọn với đồng hồ đặt lại — sót một tấm là một file Cloudinary không còn ai theo dõi.
+  // `now()` cố định suốt transaction, nhưng cột là timestamp(3) nên lúc ghi nó bị làm tròn
+  // tới mili giây: so với `now()::timestamp(3)`, so thẳng với `now()` là luôn lệch (đã đo).
+  const { rows: conAnhReview } = await client.query(
+    "select count(*)::int as n from media_assets where owner_type = 'REVIEW'",
+  );
+  if (conAnhReview[0].n !== 0) throw new Error(`${conAnhReview[0].n} dòng ảnh review còn sót`);
+  const { rows: trongHang } = await client.query(
+    `select count(*)::int as n from media_garbage
+     where public_id = any($1::text[]) and attempts = 0 and last_error is null
+       and created_at = now()::timestamp(3)`,
+    [anh.publicIds],
+  );
+  if (trongHang[0].n !== anh.publicIds.length) {
+    throw new Error(
+      `${anh.publicIds.length - trongHang[0].n}/${anh.publicIds.length} ảnh review không vào hàng dọn`,
+    );
   }
 
   // Bất biến GIÁ TRỊ, khác họ với ba bất biến đếm dòng ở trên: không tour nào
@@ -302,7 +383,9 @@ try {
   if ((await dem('users', 'id = $1')) !== 1) throw new Error('Tài khoản admin đã biến mất');
 
   await client.query('COMMIT');
-  console.log('\n✓ COMMIT — 0 ảnh mồ côi, mọi bất biến còn nguyên, admin còn sống.');
+  console.log(
+    `\n✓ COMMIT — 0 ảnh mồ côi, ${anh.publicIds.length} ảnh review vào hàng dọn, mọi bất biến còn nguyên, admin còn sống.`,
+  );
 } catch (err) {
   await client.query('ROLLBACK').catch(() => {});
   console.error(`\n✖ ROLLBACK: ${err.message}`);
