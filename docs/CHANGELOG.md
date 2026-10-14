@@ -8,6 +8,53 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-10-14 — Merge sáu việc nhỏ của app mobile: đơn quá hạn chót (G54), hoá đơn mời viết đánh giá, N7–N10 của nợ nhỏ P5b-4 (`b8529b9`..`3900a5b`)
+
+Làm tiếp open-items theo yêu cầu của user 13/10 (đóng càng nhiều càng tốt trước freeze 15/10).
+Nhánh `fix/web-open-items-9`, [PR #21](https://github.com/yurivolkov21/Tourism-Platform-V2/pull/21),
+thi công trên session cloud. Không migration, không env, không dependency, không đổi contract, không
+thêm chữ. Thư viện dùng chung bị sửa: `@tourism/mobile-ui` (`bottom-sheet.tsx` bắt buộc prop
+`closeLabel`, `bottom-sheet.spec.tsx`).
+
+- G54 `b8529b9`: đơn chờ trả quá hạn chót (giai đoạn `lapsed`) thôi mang pill "Payment due" cam ở
+  tab Trips và trên hoá đơn: nay "Payment not completed" xám như web. Hoá đơn có khung riêng nói
+  "This booking wasn’t paid by the deadline." rồi câu điều kiện của web, chỉ còn nút "Browse tours"
+  — trước đó khung T5 vẫn mời trả và mời huỷ giữ chỗ, bấm mới biết đã đóng. Giai đoạn tính bằng
+  ngày của đồng hồ server như tab Trips.
+- Hoá đơn mời viết đánh giá `e6fbf4e` (nợ nhỏ P5b-5 mục 1): mockup ghi R1 mở từ P6, từ chi tiết
+  booking hoặc từ dòng My reviews, mà app chỉ có lối P6. Hoá đơn T4 nay có nút "Write a review" khi
+  `canWriteReview`: đơn PAID, chưa có bài, chuyến không bị công ty huỷ, ngày về đã tới theo ngày UTC
+  như cổng `checkReviewEligibility` (cùng luật nhánh `form` của `reviewSlot` bên web). Lối từ My
+  reviews chưa làm: R4 chưa vẽ chỗ cho chuyến chờ đánh giá.
+- N10 `be45bde`: backdrop tấm trượt là nút "Close" cho trình đọc màn hình, trước là một chỗ bấm
+  không tên. Chín tấm của app truyền `messages.mobile.appShell.close`. Không chọn ẩn backdrop khỏi
+  trình đọc màn hình: tấm mời đăng nhập và tấm sửa tên không có nút huỷ.
+- N7 `3900a5b`: bấm đúp "Take photo" hay "Choose from library" (ảnh đại diện, ảnh review) trước khi
+  picker kịp mở chỉ mở một picker, qua `createSingleFlight`
+  (`apps/mobile/src/lib/single-flight.ts`).
+- N9 `02a4db7`: Saved trên 100 tour thôi ghi "100 tours" lúc trang sau đang về: `wishlistCount` đọc
+  `total` ở trang mới nhất, trừ các mục vừa bỏ lưu lạc quan.
+- N8 `03438bf`: gõ lại ở màn đổi mật khẩu xoá khung lỗi cấp form của lần lưu trước, như màn Sign in.
+  Nửa sau của N8 (lưu thành công thì về mà không báo) còn mở vì app chưa có toast.
+- Bảng giai đoạn của [handoff mobile booking](handoff/mobile-booking-handoff.md) ghi luật `lapsed`
+  và lối viết đánh giá từ hoá đơn. open-items: G54 chuyển sang `open-items-closed.md`; phần đã sửa
+  của N7–N10 (nợ nhỏ P5b-4 mục 5) chuyển theo, chỉ để lại nửa sau N8; nợ nhỏ P5b-5 mục 1 ghi lối đã
+  có; thêm một dòng thử máy thật.
+
+**Review.** Không có lượt review độc lập. User bảo merge 14/10 11:06 UTC. Nhánh tách từ `9db6a2a`, main không đổi tới lúc merge nên không cần rebase.
+
+Tests after (`gate:int` trên `3900a5b`, 14/10 xong 09:02 UTC, session cloud theo các bước của
+CI): unit 7517 — web 2273, admin 2221, api 1150, mobile 830, contract 709, mobile-ui 145, i18n 58,
+ui 57, core 48, tokens 26 — và int 843; CI của PR xanh 09:17 UTC. So với `9db6a2a`: mobile thêm
+28 test, mobile-ui thêm 1. Turbo chạy lại test và typecheck của mobile và mobile-ui (đầu vào đổi);
+các package khác phát lại kết quả đã lưu. Test của từng phần đỏ trước khi sửa, xanh sau; test route
+của hoá đơn đỏ khi gỡ phần nối nút.
+
+**CÒN TREO:**
+
+- Màn mobile mới chỉ tới người dùng ở bản build app kế tiếp; dòng thử máy thật nằm ở open-items.
+- Dọn sau merge: nhánh `fix/web-open-items-9` trên origin nếu GitHub không tự xoá.
+
 ## 2026-10-14 — Merge thẻ Trips và hoá đơn mobile nói chuyến bị công ty huỷ, chữ lỗi ảnh review theo contract, chip a11y, câu quét PENDING theo giờ UTC (`3a180a9`..`201fa68`)
 
 Làm tiếp open-items theo yêu cầu của user 13/10 (đóng càng nhiều càng tốt trước freeze 15/10).

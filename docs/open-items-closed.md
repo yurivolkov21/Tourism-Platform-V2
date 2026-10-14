@@ -159,6 +159,18 @@ Cần mở nhánh `fix/` riêng khi có người rảnh tay.~~
    cho `leaveAuthTo` gỡ modal Sign in về đúng màn đang nằm dưới thay cho `router.replace`; đo trên
    cây route thật còn một bản tour trong stack (CHANGELOG 12/10). Thử máy thật vẫn ở file chính.*
 
+Mục 4 (đăng nhập Google trên mobile) còn mở ở file chính.
+
+5. **Sửa phần lớn 14/10 (nhánh `fix/web-open-items-9`, PR #21).** **N7–N10 mức thấp còn mở** — bảng ở mục 7 của tóm tắt nhánh: bấm đúp nút chọn
+   ảnh, lỗi form đổi mật khẩu không tự xoá, Saved đếm "100 tours" trước khi tải đủ
+   trang, ba chỗ a11y. Sửa 14/10 hai trong ba chỗ a11y của N10 (`201fa68`,
+   nhánh `fix/web-open-items-8`, PR #20): chip lọc báo trạng thái chọn, tag của bài viết thôi đọc là nút. Còn
+   backdrop tấm trượt chưa có nhãn — cần chọn cách đóng cho trình đọc màn hình.
+   *N7 `3900a5b`: hai nút chọn ảnh (Account, R1, R5) bỏ qua lượt bấm tới khi lượt trước
+   chưa xong. N8 `03438bf`: gõ lại xoá khung lỗi cấp form. N9 `02a4db7`: bộ đếm Saved
+   đọc `total` của server khi còn trang chưa về. N10 `be45bde`: backdrop tấm trượt là nút
+   "Close". Nửa sau N8 (thành công không báo) còn ở file chính.*
+
 ## Nợ nhỏ phát sinh từ P5b-5 — mục đã sửa
 
 3. **Đã sửa (`9af27b3`, merge 14/10).** **Chữ báo lỗi ảnh ghi cứng "10 MB" và 5** ở `use-review-photos.ts`, cùng số ô còn trống và
@@ -220,3 +232,4 @@ Từ bảng "Nợ kỹ thuật chi tiết". Sổ đầy đủ ở [sổ nợ k�
 | ~~G51~~ | ~~Nút gửi và nút Cancel của hộp ghi khoá bằng `disabled` thật lúc chờ: focus rơi về `<body>` ngay giữa hộp đang mở (đo hộp sửa chuyến: 23 ms sau cú bấm Save). Gồm kit `ConfirmWriteDialog`, năm form dialog, hộp bác review và hộp hoàn tiền; cùng lỗi ở nút Staff access và Lock của `/users/[id]` khi trang làm mới. Đang vá ở nhánh `fix/admin-open-items-2`~~ Đóng 14/10 (PR #11): `a45455b`, `7d68ff5` — hai nút khoá bằng `aria-disabled` lúc chờ, lệnh hỏng thì focus về chỗ cũ; Staff access và Lock theo khuôn G6 |
 | ~~G52~~ | ~~Nút Export nằm ở ô tiêu đề cột Actions (`/subscribers`, `/bookings`; chỗ đặt chốt 01/09) nên ra ngoài khung nhìn khi bảng rộng hơn khung, tới khi cuộn hết sang phải: `/subscribers` dưới khoảng 1400px, `/bookings` ở 768 và 1024px (đo Chromium 13/10). Đang vá ở nhánh `fix/admin-open-items-2`: ghim ô tiêu đề ấy ở mép phải; đánh đổi là ở 1024px trở xuống ô ghim che chữ tiêu đề của cột đang trôi dưới nó~~ Đóng 14/10 (PR #11): `2fd26df` — ô tiêu đề ấy ghim mép phải, nút trong khung ở 768 tới 1600px; ở 1024px trở xuống ô ghim che chữ tiêu đề của cột đang trôi dưới nó |
 | ~~G53~~ | ~~Trang `/login` của admin sập cả trang ("Something went wrong") khi trình duyệt không tạo được context WebGL (GPU bị chặn, tắt tăng tốc phần cứng, trình duyệt chặn WebGL): nền `GradientWaves` (ogl, `@tourism/ui`) ném TypeError trong constructor `Renderer`, nên không ai đăng nhập được. Thấy trên Chromium headless của session cloud 13/10. Đang vá ở nhánh `fix/admin-open-items-2`~~ Đóng 14/10 (PR #11): `a39d59d` — không tạo được WebGL thì nền bỏ trống, form đăng nhập vẫn dùng được |
+| ~~G54~~ | ~~Pill và hoá đơn của app mobile chưa kể giai đoạn `lapsed`: đơn chờ trả quá hạn chót vẫn mang pill "Payment due" cam ở Trips (nút "Finish payment" đã ẩn), và hoá đơn T5 vẫn mời trả, bấm mới biết đã đóng. Web nói "Payment not completed" xám và "This booking wasn’t paid by the deadline." (review P7 Phần A 06/10, mục 3 và 5). Nêu 14/10 khi làm thẻ chuyến công ty huỷ (nhánh `fix/web-open-items-8`, PR #20)~~ Đóng 14/10 (nhánh `fix/web-open-items-9`, PR #21): `b8529b9` — pill "Payment not completed" xám ở Trips và hoá đơn (luật chung `bookingStatusPill` đọc giai đoạn của đơn), hoá đơn có khung riêng nói "This booking wasn’t paid by the deadline." cùng câu điều kiện của web và chỉ còn nút "Browse tours"; giai đoạn tính bằng ngày của đồng hồ server như tab Trips |

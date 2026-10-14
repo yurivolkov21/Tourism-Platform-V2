@@ -64,6 +64,11 @@ ghi chép nội bộ) — trước đó nó hứa nhầm rằng khách sẽ đ�
 
 ## Cần thử lại bằng máy thật
 
+- **Sáu việc nhỏ của app mobile** (merge 14/10, nhánh `fix/web-open-items-9`, PR #21): đơn chờ trả
+  quá hạn chót ghi "Payment not completed" xám ở Trips và hoá đơn không mời trả (G54); hoá đơn
+  chuyến đã về chưa có bài có nút "Write a review" mở R1; TalkBack và VoiceOver đọc backdrop tấm
+  trượt là nút "Close", chạm hai lần thì đóng tấm (N10); bấm đúp "Choose from library" chỉ mở
+  một picker (N7). Mới có test đơn vị.
 - **Hoá đơn và thẻ Trips khi chuyến bị công ty huỷ, hoá đơn của đơn khách tự huỷ** (merge 14/10,
   nhánh `fix/web-open-items-8`, PR #20): đơn còn PAID trên chuyến vừa huỷ phải ghi "Cancelled" xám
   ở Trips, hoá đơn mở bằng "We had to cancel this departure." cùng "Your full refund is on its
@@ -163,8 +168,8 @@ thấy. Lúc chúng vào DB thì có thể đã qua freeze 15/10: đọc lý do 
 
 Phát hiện 25/09 ở final review của plan return-to-auth (SDD; ledger từng ở
 `.superpowers/sdd/2026-09-25-mobile-account-return-to-auth/progress.md`, đã xoá
-sau khi merge). Không chặn merge, ghi lại để không quên. Mục 1–3 đã sửa, chuyển
-sang [open-items-closed.md](open-items-closed.md):
+sau khi merge). Không chặn merge, ghi lại để không quên. Mục 1–3 và phần lớn mục 5
+đã sửa, chuyển sang [open-items-closed.md](open-items-closed.md):
 
 4. **Đăng nhập Google trên mobile sau ADR-0056** — proxy `expo-authorization-proxy` đóng ở
    mọi môi trường và server không còn luồng redirect nào đổ cookie phiên về deep link
@@ -174,19 +179,19 @@ sang [open-items-closed.md](open-items-closed.md):
    `GOOGLE_IOS_CLIENT_ID` vào env API lúc đó). Ảnh Google lúc tạo tài khoản chỉ nhận host
    `lh3.googleusercontent.com`; ảnh ở host khác bị bỏ và tài khoản hiện chữ cái đầu. Nới host
    phải sửa cả `img-src` của CSP web và admin.
-5. **N7–N10 mức thấp còn mở** — bảng ở mục 7 của tóm tắt nhánh: bấm đúp nút chọn
-   ảnh, lỗi form đổi mật khẩu không tự xoá, Saved đếm "100 tours" trước khi tải đủ
-   trang, ba chỗ a11y. Sửa 14/10 hai trong ba chỗ a11y của N10 (`201fa68`,
-   nhánh `fix/web-open-items-8`, PR #20): chip lọc báo trạng thái chọn, tag của bài viết thôi đọc là nút. Còn
-   backdrop tấm trượt chưa có nhãn — cần chọn cách đóng cho trình đọc màn hình.
+5. **N8 nửa sau còn mở** — đổi mật khẩu thành công thì màn đóng về Account mà không báo gì,
+   vì app chưa có toast. N7, N9, N10 và nửa đầu N8 đã sửa 14/10
+   (nhánh `fix/web-open-items-9`, PR #21), chuyển sang [open-items-closed.md](open-items-closed.md).
 
 ## Nợ nhỏ phát sinh từ P5b-5 (nhánh `fix/mobile-review-screens`)
 
 Nêu 12/10 ở review lần 2 (merge cùng ngày). Không chặn merge. Mục 3 đã sửa 14/10, chuyển sang
 [open-items-closed.md](open-items-closed.md):
 
-1. **R1 mới mở được từ P6.** Mockup ghi thêm hai lối: chi tiết booking và dòng My reviews ở
-   Account.
+1. **R1 chưa mở được từ dòng My reviews.** Mockup ghi ba lối vào R1: P6, chi tiết booking và
+   dòng My reviews ở Account. Lối chi tiết booking có từ 14/10 (`e6fbf4e`,
+   nhánh `fix/web-open-items-9`, PR #21); R4 chưa vẽ chỗ cho chuyến chờ đánh giá nên lối thứ ba
+   cần thiết kế.
 2. **Rút bài xong không có toast "Review retracted"** như web (chữ `reviews.retract.toast.done`
    có sẵn). Thẻ đổi sang "You retracted this review" nên khách vẫn thấy kết quả.
 4. **Bài đang gõ ở R1, R5 mất khi bấm back cứng Android**, không hỏi lại.
@@ -206,4 +211,3 @@ deploy) nằm ở [sổ nợ kỹ thuật](analysis/2026-08-06-backlog-no-ky-thu
 | G17 | Hiệu năng F18, đều nhỏ: mỗi nhịp tiến độ tải lên render lại cả form (vài ms mỗi lần); `setPhotos` requeue từng ảnh một trong transaction đang giữ khoá, và `get` hỏi thêm câu media nối tiếp (cộng lại khoảng 0,1–0,2 giây mỗi lần lưu, dưới timeout 5 giây). Chưa đáng sửa riêng |
 | G25 | Khoá ngoại `tour_destinations.destination_id` vẫn `ON DELETE CASCADE` (ADR-0053, giới hạn 4): luật "đang có tour thì không xoá" chỉ sống ở lệnh xoá của API; xoá điểm đến bằng SQL tay, Prisma Studio hay script sẽ lặng lẽ gỡ nó khỏi mọi tour. Đổi sang `RESTRICT` như danh mục cần một migration — để sau capstone |
 | G30 | Số điện thoại ở `/account/settings` chỉ được lưu để liên hệ (gợi ý dưới nhãn: "So the guide can reach you on the day."), không xác minh bằng OTP như nhiều site. Thêm OTP cần nhà cung cấp SMS (dịch vụ ngoài, có chi phí), luồng gửi lại mã và chống spam. User nêu khi thử tay 09/10; để sau capstone, nhắc trong báo cáo như hướng phát triển |
-| G54 | Pill và hoá đơn của app mobile chưa kể giai đoạn `lapsed`: đơn chờ trả quá hạn chót vẫn mang pill "Payment due" cam ở Trips (nút "Finish payment" đã ẩn), và hoá đơn T5 vẫn mời trả, bấm mới biết đã đóng. Web nói "Payment not completed" xám và "This booking wasn’t paid by the deadline." (review P7 Phần A 06/10, mục 3 và 5). Nêu 14/10 khi làm thẻ chuyến công ty huỷ (nhánh `fix/web-open-items-8`, PR #20) |
