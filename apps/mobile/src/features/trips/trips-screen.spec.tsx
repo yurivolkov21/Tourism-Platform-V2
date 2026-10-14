@@ -1,6 +1,7 @@
 import { fireEvent, screen } from '@testing-library/react-native';
 import { messages } from '@tourism/i18n';
-import { renderWithTheme } from '@/test-utils';
+import { StyleSheet } from 'react-native';
+import { renderWithTheme, themeFor } from '@/test-utils';
 import { TripsScreen, type TripsScreenProps } from './trips-screen';
 
 const STATUS_LABEL = (status: TripsScreenProps['items'][number]['status']) =>
@@ -63,6 +64,19 @@ describe('TripsScreen', () => {
     expect(screen.getByText('$1,377')).toBeTruthy();
     expect(screen.getByText('BK-9TR2WK5C')).toBeTruthy();
   });
+
+  // G47 (ADR-0019 AMEND 4): chữ 12dp trên lớp tô success 18% — mực `success` trần chỉ 2,77:1 ở
+  // theme sáng, nên nhãn dùng token vai mực.
+  it.each(['light', 'dark'] as const)(
+    'nhãn "Paid" tô mực success-emphasis (theme %s)',
+    async (scheme) => {
+      await renderWithTheme(<TripsScreen {...baseProps()} />, scheme);
+
+      expect(StyleSheet.flatten(screen.getByText('Paid').props.style).color).toBe(
+        themeFor(scheme).colors['success-emphasis'],
+      );
+    },
+  );
 
   it('chỉ đơn còn trả được (chờ trả, chưa quá hạn chót) mới có đường "Finish payment"', async () => {
     await renderWithTheme(<TripsScreen {...baseProps()} />);

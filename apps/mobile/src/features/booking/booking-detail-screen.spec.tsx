@@ -1,5 +1,6 @@
 import { fireEvent, screen } from '@testing-library/react-native';
-import { renderWithTheme } from '@/test-utils';
+import { StyleSheet } from 'react-native';
+import { renderWithTheme, themeFor } from '@/test-utils';
 import { BookingDetailScreen, type BookingDetailScreenProps } from './booking-detail-screen';
 
 function baseProps(overrides: Partial<BookingDetailScreenProps> = {}): BookingDetailScreenProps {
@@ -29,6 +30,19 @@ describe('BookingDetailScreen', () => {
     expect(screen.getByText('BK-4QP8ZT2M')).toBeTruthy();
     expect(screen.getByText('$1,377')).toBeTruthy();
   });
+
+  // G47 (ADR-0019 AMEND 4): chữ 12dp trên lớp tô success 16% — mực `success` trần chỉ 2,83:1 ở
+  // theme sáng, nên pill dùng token vai mực.
+  it.each(['light', 'dark'] as const)(
+    'pill "Paid" tô mực success-emphasis (theme %s)',
+    async (scheme) => {
+      await renderWithTheme(<BookingDetailScreen {...baseProps()} />, scheme);
+
+      expect(StyleSheet.flatten(screen.getByText('Paid').props.style).color).toBe(
+        themeFor(scheme).colors['success-emphasis'],
+      );
+    },
+  );
 
   it('bấm nút phụ (Cancel booking) gọi onPress', async () => {
     const onPress = jest.fn();

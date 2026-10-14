@@ -1325,7 +1325,11 @@ export function TourDetailScreen({
   );
 }
 
-/** Huy hiệu "Booking closed"/"Almost full" (D3) — nền `warning` pha 20%. */
+/**
+ * Huy hiệu "Booking closed"/"Almost full" (D3) — nền `warning` pha 20%. Chữ dùng token vai mực
+ * `warning-emphasis` (G47, ADR-0019 AMEND 4): `warning` trần trên chính lớp tô ấy chỉ 1,68:1 ở
+ * theme sáng; theme tối hai token cùng giá trị nên không đổi pixel nào.
+ */
 function DepartureTag({ label }: { label: string }) {
   const theme = useTheme();
 
@@ -1338,7 +1342,7 @@ function DepartureTag({ label }: { label: string }) {
         backgroundColor: withAlpha(theme.colors.warning, 0.2),
       }}
     >
-      <AppText variant="caption" style={{ color: theme.colors.warning }}>
+      <AppText variant="caption" style={{ color: theme.colors['warning-emphasis'] }}>
         {label}
       </AppText>
     </View>

@@ -71,9 +71,12 @@ function StatusPill({ tone, label }: { tone: TripPillTone; label: string }) {
   const bgColor = bg === 'muted' ? theme.colors.muted : theme.colors[bg];
   // mockup: chữ `.paid` tô `success`, `.pending` tô `foreground` (KHÔNG phải
   // warning), `.off` tô `muted-foreground` — đo `getComputedStyle` trực tiếp.
+  // Riêng `.paid` lệch mockup có chủ đích (G47, ADR-0019 AMEND 4): `success`
+  // trần trên lớp tô 18% của chính nó chỉ 2,77:1 ở theme sáng, nên dùng token
+  // vai mực `success-emphasis` (5,49 sáng, 4,55 tối).
   const textColor =
     tone === 'paid'
-      ? theme.colors.success
+      ? theme.colors['success-emphasis']
       : tone === 'pending'
         ? theme.colors.foreground
         : theme.colors['muted-foreground'];

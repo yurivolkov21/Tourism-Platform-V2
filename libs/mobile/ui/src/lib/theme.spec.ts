@@ -134,6 +134,71 @@ describe('năm khoá màu thêm cho cụm browse (P5b-2)', () => {
   );
 });
 
+/** Độ chói tương đối WCAG của hex `#rrggbb`. */
+function luminance(hex: string): number {
+  const channels = [1, 3, 5].map((i) => Number.parseInt(hex.slice(i, i + 2), 16) / 255);
+  const [r = 0, g = 0, b = 0] = channels.map((c) =>
+    c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4,
+  );
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+}
+
+/** Tỉ lệ tương phản WCAG giữa hai hex `#rrggbb`. */
+function contrast(a: string, b: string): number {
+  const [hi, lo] = [luminance(a), luminance(b)].sort((x, y) => y - x);
+  return ((hi ?? 0) + 0.05) / ((lo ?? 0) + 0.05);
+}
+
+/** Màu `tint` phủ `alpha` lên `surface`, trộn trong sRGB như React Native vẽ. */
+function tintOver(tint: string, alpha: number, surface: string): string {
+  const mixed = [1, 3, 5].map((i) => {
+    const top = Number.parseInt(tint.slice(i, i + 2), 16);
+    const bottom = Number.parseInt(surface.slice(i, i + 2), 16);
+    return Math.round(top * alpha + bottom * (1 - alpha))
+      .toString(16)
+      .padStart(2, '0');
+  });
+  return `#${mixed.join('')}`;
+}
+
+describe('hai khoá vai mực trạng thái (G47, ADR-0019 AMEND 4)', () => {
+  it.each(['warning-emphasis', 'success-emphasis'] as const)(
+    'khoá "%s" có mặt ở cả hai chế độ và lấy đúng giá trị cầu token',
+    (key) => {
+      expect(buildTheme('light').colors[key]).toBe(tokens.colors.light[key]);
+      expect(buildTheme('dark').colors[key]).toBe(tokens.colors.dark[key]);
+    },
+  );
+
+  // Đúng bốn tổ hợp app đang vẽ chữ trạng thái 12dp lên lớp tô nhạt của chính tông ấy: huy hiệu
+  // "Almost full" (`tour-detail-screen.tsx`), nhãn "Paid" của Trips (`trips-screen.tsx`) và của
+  // chi tiết đơn (`booking-detail-screen.tsx`), nhãn "Published" của My reviews (cùng 16% như chi
+  // tiết đơn). Chữ nhỏ nên phải giữ 4.5:1 (WCAG 1.4.3). Chỗ sát nhất là Trips tối: 4.55 ở 18%.
+  it.each([
+    { ink: 'warning-emphasis', tint: 'warning', alpha: 0.2, surface: 'background' },
+    { ink: 'success-emphasis', tint: 'success', alpha: 0.18, surface: 'card' },
+    { ink: 'success-emphasis', tint: 'success', alpha: 0.16, surface: 'card' },
+  ] as const)(
+    '$ink trên $tint $alpha phủ $surface đạt 4.5:1 ở cả hai theme',
+    ({ ink, tint, alpha, surface }) => {
+      for (const scheme of ['light', 'dark'] as const) {
+        const { colors } = buildTheme(scheme);
+        const pill = tintOver(colors[tint], alpha, colors[surface]);
+        expect(contrast(colors[ink], pill)).toBeGreaterThanOrEqual(4.5);
+      }
+    },
+  );
+
+  it('mực bề mặt trần thì trượt ở theme sáng — lý do phải có hai khoá trên', () => {
+    const { colors } = buildTheme('light');
+
+    expect(contrast(colors.warning, tintOver(colors.warning, 0.2, colors.background))).toBeLessThan(
+      4.5,
+    );
+    expect(contrast(colors.success, tintOver(colors.success, 0.16, colors.card))).toBeLessThan(4.5);
+  });
+});
+
 describe('cầu font', () => {
   // Cầu token KHÔNG mang font family (ADR-0013 chỉ mang màu, bo góc, type
   // scale), nên tên khuôn chữ khai ở đây là hợp đồng — đổi nó phải là một

@@ -1,6 +1,7 @@
 import { fireEvent, screen } from '@testing-library/react-native';
 import { messages } from '@tourism/i18n';
-import { renderWithTheme } from '@/test-utils';
+import { StyleSheet } from 'react-native';
+import { renderWithTheme, themeFor } from '@/test-utils';
 import { type MyReviewCardVM, MyReviewsScreen } from './my-reviews-screen';
 
 const copy = messages.reviews.mine;
@@ -65,4 +66,26 @@ describe('MyReviewsScreen (R4)', () => {
 
     expect(screen.getByText(copy.empty)).toBeTruthy();
   });
+
+  // G47 (ADR-0019 AMEND 4): chữ 12dp trên lớp tô success 16% — mực `success` trần chỉ 2,83:1 ở
+  // theme sáng, nên pill "Published" dùng token vai mực.
+  it.each(['light', 'dark'] as const)(
+    'pill đã đăng tô mực success-emphasis (theme %s)',
+    async (scheme) => {
+      await renderWithTheme(
+        <MyReviewsScreen
+          copy={copy}
+          items={[card({ id: 'a', moderationState: 'approved' })]}
+          onRetract={jest.fn()}
+          onRewrite={jest.fn()}
+          onWhy={jest.fn()}
+        />,
+        scheme,
+      );
+
+      expect(StyleSheet.flatten(screen.getByText(copy.publishedLabel).props.style).color).toBe(
+        themeFor(scheme).colors['success-emphasis'],
+      );
+    },
+  );
 });

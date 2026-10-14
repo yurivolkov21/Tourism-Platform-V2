@@ -44,6 +44,11 @@ export const MOBILE_COLOR_KEYS = [
   // P5b-3 (mockup B4/B7/T8): hộp "Free cancellation until…", nhãn PAID, hộp
   // đã hoàn tiền — mọi chỗ tông xanh-thành-công.
   'success',
+  // G47 (ADR-0019 AMEND 4): vai MỰC của hai tông trạng thái. `warning` và
+  // `success` ở trên chỉ còn làm lớp tô; chữ đặt lên lớp tô ấy dùng hai khoá
+  // này (huy hiệu "Almost full", nhãn "Paid", nhãn "Published").
+  'warning-emphasis',
+  'success-emphasis',
 ] as const;
 
 export type MobileColorKey = (typeof MOBILE_COLOR_KEYS)[number];

@@ -1,5 +1,6 @@
 import { fireEvent, screen } from '@testing-library/react-native';
-import { renderWithTheme } from '@/test-utils';
+import { StyleSheet } from 'react-native';
+import { renderWithTheme, themeFor } from '@/test-utils';
 import { chunkPairs, TourDetailScreen, type TourDetailScreenProps } from './tour-detail-screen';
 
 const FACTS = [
@@ -465,6 +466,24 @@ describe('TourDetailScreen', () => {
       );
       expect(screen.getByText('Almost full')).toBeTruthy();
     });
+
+    // G47 (ADR-0019 AMEND 4): chữ 12dp trên lớp tô warning 20% — mực `warning` trần chỉ 1,68:1
+    // ở theme sáng. Hai tag dùng chung một component nên cùng mực.
+    it.each(['light', 'dark'] as const)(
+      'hai tag tô mực warning-emphasis (theme %s)',
+      async (scheme) => {
+        await renderWithTheme(
+          <TourDetailScreen {...baseProps({ activeTab: 'dates', departureGroups: GROUPS })} />,
+          scheme,
+        );
+
+        for (const label of ['Almost full', 'Booking closed']) {
+          expect(StyleSheet.flatten(screen.getByText(label).props.style).color).toBe(
+            themeFor(scheme).colors['warning-emphasis'],
+          );
+        }
+      },
+    );
 
     it('bấm đợt đặt được gọi onSelectDeparture đúng id', async () => {
       const onSelectDeparture = jest.fn();

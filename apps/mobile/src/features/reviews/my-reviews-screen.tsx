@@ -30,6 +30,17 @@ const TONE_COLOR = {
   muted: 'muted',
 } as const;
 
+/**
+ * Tông → khoá MỰC cho chữ pill (G47, ADR-0019 AMEND 4): chữ 12dp nằm trên lớp tô 16% của chính
+ * tông ấy, mà `success` trần chỉ 2,83:1 ở theme sáng — nên chữ dùng token vai mực, lớp tô giữ
+ * `TONE_COLOR`.
+ */
+const TONE_INK = {
+  ...TONE_COLOR,
+  success: 'success-emphasis',
+  warning: 'warning-emphasis',
+} as const;
+
 /** R4 — "Đánh giá của tôi": bốn trạng thái. Pill chỉ nói trạng thái; ngày nằm bên phải cùng hàng. */
 export function MyReviewsScreen({
   copy,
@@ -63,15 +74,17 @@ export function MyReviewsScreen({
           </AppText>
         ) : null}
         {items.map((item) => {
-          const tone = TONE_COLOR[myReviewTone(item.moderationState)];
+          const toneKey = myReviewTone(item.moderationState);
+          const tone = TONE_COLOR[toneKey];
           const step = myReviewNextStep(item);
           // Chữ pill đúng màu tông (chờ duyệt giữ chữ sáng như mockup).
-          // Retracted: nền xám sáng + chữ sáng (mockup); các trạng thái khác: chữ và nền cùng tông.
+          // Retracted: nền xám sáng + chữ sáng (mockup); các trạng thái khác: chữ và nền cùng tông,
+          // chữ lấy vai mực của tông ấy (`TONE_INK`).
           const retracted = item.moderationState === 'retracted';
           const pillText =
             item.moderationState === 'pending' || retracted
               ? theme.colors.foreground
-              : theme.colors[tone];
+              : theme.colors[TONE_INK[toneKey]];
           const pillBg = retracted ? theme.colors['muted-foreground'] : theme.colors[tone];
           return (
             <View

@@ -184,11 +184,16 @@ function Note({
 
 export type BookingDetailPill = 'paid' | 'pending' | 'muted';
 
+/** Chữ "Paid" dùng token vai mực `success-emphasis` (G47, ADR-0019 AMEND 4): `success` trần
+ *  trên lớp tô 16% của chính nó chỉ 2,83:1 ở theme sáng. Lớp tô giữ token bề mặt. */
 const PILL_TONE: Record<
   BookingDetailPill,
-  { bg: 'success' | 'warning' | 'muted'; fg: 'success' | 'foreground' | 'muted-foreground' }
+  {
+    bg: 'success' | 'warning' | 'muted';
+    fg: 'success-emphasis' | 'foreground' | 'muted-foreground';
+  }
 > = {
-  paid: { bg: 'success', fg: 'success' },
+  paid: { bg: 'success', fg: 'success-emphasis' },
   pending: { bg: 'warning', fg: 'foreground' },
   muted: { bg: 'muted', fg: 'muted-foreground' },
 };
