@@ -1,5 +1,5 @@
 import { ORPCError } from '@orpc/client';
-import type { BookingCancellation, BookingDetail } from '@tourism/contract';
+import { type BookingCancellation, type BookingDetail, bookingPhase } from '@tourism/contract';
 import {
   bookingDetailActions,
   bookingDetailKind,
@@ -55,32 +55,41 @@ const CANCELLABLE: BookingCancellation = {
   canCancel: true,
 };
 
+// Ngày hôm nay của test: trước hạn chót 16/10 của chuyến mẫu 17/10.
+const TODAY = '2026-10-14';
+
+/** Khung và hành động của một đơn vào `today` — giai đoạn tính bằng `bookingPhase` thật như route. */
+const kindOf = (booking: BookingDetail, today = TODAY) =>
+  bookingDetailKind(booking, bookingPhase(booking, today));
+const actionsOf = (booking: BookingDetail, today = TODAY) =>
+  bookingDetailActions(booking, bookingPhase(booking, today));
+
 describe('bookingDetailKind', () => {
   it('PENDING -> pending', () => {
-    expect(bookingDetailKind(makeBooking({ status: 'PENDING', paidAt: null }))).toBe('pending');
+    expect(kindOf(makeBooking({ status: 'PENDING', paidAt: null }))).toBe('pending');
   });
 
   it('PAID -> paid', () => {
-    expect(bookingDetailKind(makeBooking({ status: 'PAID' }))).toBe('paid');
+    expect(kindOf(makeBooking({ status: 'PAID' }))).toBe('paid');
   });
 
   it('CANCELLED -> cancelled (chưa từng trả tiền)', () => {
-    expect(bookingDetailKind(makeBooking({ status: 'CANCELLED', paidAt: null }))).toBe('cancelled');
+    expect(kindOf(makeBooking({ status: 'CANCELLED', paidAt: null }))).toBe('cancelled');
   });
 
   it('REFUNDED -> refunded', () => {
-    expect(bookingDetailKind(makeBooking({ status: 'REFUNDED' }))).toBe('refunded');
+    expect(kindOf(makeBooking({ status: 'REFUNDED' }))).toBe('refunded');
   });
 
   it('PARTIALLY_REFUNDED -> refunded', () => {
-    expect(bookingDetailKind(makeBooking({ status: 'PARTIALLY_REFUNDED' }))).toBe('refunded');
+    expect(kindOf(makeBooking({ status: 'PARTIALLY_REFUNDED' }))).toBe('refunded');
   });
 
   // Khách tự huỷ đơn đã trả thì API đặt CANCELLED (ADR-0041 §4), không phải REFUNDED — khung
   // `cancelled` không kể chuyện tiền nên khách không thấy khoản hoàn của chính mình.
   it('CANCELLED đã thu tiền và đã hoàn (khách tự huỷ trong hạn) -> refunded', () => {
     expect(
-      bookingDetailKind(
+      kindOf(
         makeBooking({
           status: 'CANCELLED',
           refundedTotal: '35.00',
@@ -92,7 +101,7 @@ describe('bookingDetailKind', () => {
 
   it('CANCELLED đã thu mà không hoàn đồng nào (huỷ quá hạn) -> refunded: khung T8 nói không hoàn', () => {
     expect(
-      bookingDetailKind(
+      kindOf(
         makeBooking({
           status: 'CANCELLED',
           refundedTotal: '0.00',
@@ -103,9 +112,28 @@ describe('bookingDetailKind', () => {
   });
 
   it('CANCELLED chưa có paidAt mà sổ đã có khoản hoàn (thu rồi hoàn trước khi kịp PAID) -> refunded', () => {
-    expect(
-      bookingDetailKind(makeBooking({ status: 'CANCELLED', paidAt: null, refundedTotal: '35.00' })),
-    ).toBe('refunded');
+    expect(kindOf(makeBooking({ status: 'CANCELLED', paidAt: null, refundedTotal: '35.00' }))).toBe(
+      'refunded',
+    );
+  });
+});
+
+// G54: đơn chờ trả qua hạn chót — API không mở phiên trả nào nữa, hoá đơn T5 mời trả là mời bấm
+// một nút chắc chắn hỏng.
+describe('bookingDetailKind — đơn chờ trả quá hạn chót (`lapsed`)', () => {
+  const pending = makeBooking({ status: 'PENDING', paidAt: null });
+
+  it('đúng ngày hạn chót vẫn là pending (biên đóng)', () => {
+    expect(kindOf(pending, '2026-10-16')).toBe('pending');
+  });
+
+  it('qua hạn chót -> lapsed', () => {
+    expect(kindOf(pending, '2026-10-17')).toBe('lapsed');
+  });
+
+  it('qua hạn chót trên chuyến công ty huỷ -> departureCancelled (cờ chuyến thắng)', () => {
+    const b = makeBooking({ status: 'CANCELLED', paidAt: null, departureCancelled: true });
+    expect(kindOf(b, '2026-10-17')).toBe('departureCancelled');
   });
 });
 
@@ -113,15 +141,13 @@ describe('bookingDetailKind — chuyến bị công ty huỷ (ADR-0041 AMEND 1)'
   it.each(['PAID', 'PARTIALLY_REFUNDED', 'REFUNDED'] as const)(
     '%s trên chuyến công ty huỷ -> departureCancelled (job hoàn tiền có thể chưa chạy)',
     (status) => {
-      expect(bookingDetailKind(makeBooking({ status, departureCancelled: true }))).toBe(
-        'departureCancelled',
-      );
+      expect(kindOf(makeBooking({ status, departureCancelled: true }))).toBe('departureCancelled');
     },
   );
 
   it('CANCELLED đã hoàn trọn (job hoàn tiền đã chạy) -> departureCancelled', () => {
     expect(
-      bookingDetailKind(
+      kindOf(
         makeBooking({
           status: 'CANCELLED',
           departureCancelled: true,
@@ -134,15 +160,13 @@ describe('bookingDetailKind — chuyến bị công ty huỷ (ADR-0041 AMEND 1)'
 
   it('CANCELLED chưa từng thu tiền (đơn chờ trả bị huỷ cùng chuyến) -> departureCancelled', () => {
     expect(
-      bookingDetailKind(
-        makeBooking({ status: 'CANCELLED', departureCancelled: true, paidAt: null }),
-      ),
+      kindOf(makeBooking({ status: 'CANCELLED', departureCancelled: true, paidAt: null })),
     ).toBe('departureCancelled');
   });
 
   it('khách tự huỷ quá hạn TRƯỚC khi chuyến bị huỷ (đã thu, không hoàn) -> refunded: chuyện vẫn là của khách', () => {
     expect(
-      bookingDetailKind(
+      kindOf(
         makeBooking({
           status: 'CANCELLED',
           departureCancelled: true,
@@ -156,25 +180,29 @@ describe('bookingDetailKind — chuyến bị công ty huỷ (ADR-0041 AMEND 1)'
 
 describe('bookingDetailActions', () => {
   it('PENDING -> payNow + cancelPending', () => {
-    expect(bookingDetailActions(makeBooking({ status: 'PENDING', paidAt: null }))).toEqual([
+    expect(actionsOf(makeBooking({ status: 'PENDING', paidAt: null }))).toEqual([
       'payNow',
       'cancelPending',
     ]);
   });
 
+  it('PENDING qua hạn chót -> rỗng: không mời trả, cũng không mời huỷ giữ chỗ (như cột phải của web)', () => {
+    expect(actionsOf(makeBooking({ status: 'PENDING', paidAt: null }), '2026-10-17')).toEqual([]);
+  });
+
   it('PAID với canCancel true -> cancelBooking', () => {
-    expect(
-      bookingDetailActions(makeBooking({ status: 'PAID', cancellation: CANCELLABLE })),
-    ).toEqual(['cancelBooking']);
+    expect(actionsOf(makeBooking({ status: 'PAID', cancellation: CANCELLABLE }))).toEqual([
+      'cancelBooking',
+    ]);
   });
 
   it('PAID với cancellation null (server không gửi) -> rỗng', () => {
-    expect(bookingDetailActions(makeBooking({ status: 'PAID', cancellation: null }))).toEqual([]);
+    expect(actionsOf(makeBooking({ status: 'PAID', cancellation: null }))).toEqual([]);
   });
 
   it('PAID quá hạn (canCancel false — đã khởi hành) -> rỗng', () => {
     expect(
-      bookingDetailActions(
+      actionsOf(
         makeBooking({
           status: 'PAID',
           cancellation: { ...CANCELLABLE, withinDeadline: false, canCancel: false },
@@ -185,7 +213,7 @@ describe('bookingDetailActions', () => {
 
   it('PAID quá hạn huỷ miễn phí nhưng canCancel true (vẫn huỷ được, hoàn 0) -> cancelBooking', () => {
     expect(
-      bookingDetailActions(
+      actionsOf(
         makeBooking({
           status: 'PAID',
           cancellation: { ...CANCELLABLE, withinDeadline: false, refundAmount: '0.00' },
@@ -195,16 +223,16 @@ describe('bookingDetailActions', () => {
   });
 
   it('CANCELLED -> rỗng (terminal)', () => {
-    expect(bookingDetailActions(makeBooking({ status: 'CANCELLED', paidAt: null }))).toEqual([]);
+    expect(actionsOf(makeBooking({ status: 'CANCELLED', paidAt: null }))).toEqual([]);
   });
 
   it('REFUNDED -> rỗng (terminal)', () => {
-    expect(bookingDetailActions(makeBooking({ status: 'REFUNDED' }))).toEqual([]);
+    expect(actionsOf(makeBooking({ status: 'REFUNDED' }))).toEqual([]);
   });
 
   it('chuyến công ty huỷ -> rỗng, kể cả khi đơn còn PAID và cờ huỷ còn mở', () => {
     expect(
-      bookingDetailActions(
+      actionsOf(
         makeBooking({ status: 'PAID', departureCancelled: true, cancellation: CANCELLABLE }),
       ),
     ).toEqual([]);

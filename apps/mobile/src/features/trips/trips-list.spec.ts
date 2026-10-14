@@ -132,42 +132,62 @@ const STATUS_WORDS = {
   PARTIALLY_REFUNDED: 'Partially refunded',
 };
 
+// Chữ giả lập của `lapsed` (`messages.accountBookings.lapsedBadge` bên web).
+const PILL_WORDS = { status: STATUS_WORDS, lapsed: 'Payment not completed' };
+
 describe('bookingStatusPill (pill của thẻ Trips và hoá đơn)', () => {
   it('chuyến còn chạy: chữ và tông theo trạng thái đơn', () => {
-    expect(bookingStatusPill({ status: 'PAID', departureCancelled: false }, STATUS_WORDS)).toEqual({
-      tone: 'paid',
-      label: 'Paid',
-    });
     expect(
-      bookingStatusPill({ status: 'PENDING', departureCancelled: false }, STATUS_WORDS),
+      bookingStatusPill({ status: 'PAID', departureCancelled: false }, 'upcoming', PILL_WORDS),
+    ).toEqual({ tone: 'paid', label: 'Paid' });
+    expect(
+      bookingStatusPill(
+        { status: 'PENDING', departureCancelled: false },
+        'awaiting_payment',
+        PILL_WORDS,
+      ),
     ).toEqual({ tone: 'pending', label: 'Payment due' });
     expect(
-      bookingStatusPill({ status: 'PARTIALLY_REFUNDED', departureCancelled: false }, STATUS_WORDS),
+      bookingStatusPill(
+        { status: 'PARTIALLY_REFUNDED', departureCancelled: false },
+        'upcoming',
+        PILL_WORDS,
+      ),
     ).toEqual({ tone: 'muted', label: 'Partially refunded' });
   });
 
   it('chuyến công ty huỷ mà job hoàn tiền chưa chạy (đơn còn PAID hay hoàn một phần) → "Cancelled" xám, không phải "Paid" xanh', () => {
-    expect(bookingStatusPill({ status: 'PAID', departureCancelled: true }, STATUS_WORDS)).toEqual({
-      tone: 'muted',
-      label: 'Cancelled',
-    });
     expect(
-      bookingStatusPill({ status: 'PARTIALLY_REFUNDED', departureCancelled: true }, STATUS_WORDS),
+      bookingStatusPill({ status: 'PAID', departureCancelled: true }, 'cancelled', PILL_WORDS),
+    ).toEqual({ tone: 'muted', label: 'Cancelled' });
+    expect(
+      bookingStatusPill(
+        { status: 'PARTIALLY_REFUNDED', departureCancelled: true },
+        'cancelled',
+        PILL_WORDS,
+      ),
     ).toEqual({ tone: 'muted', label: 'Cancelled' });
   });
 
   it('chuyến công ty huỷ: đơn đã huỷ giữ "Cancelled", đơn hoàn trọn giữ "Refunded"', () => {
     expect(
-      bookingStatusPill({ status: 'CANCELLED', departureCancelled: true }, STATUS_WORDS),
+      bookingStatusPill({ status: 'CANCELLED', departureCancelled: true }, 'cancelled', PILL_WORDS),
     ).toEqual({ tone: 'muted', label: 'Cancelled' });
     expect(
-      bookingStatusPill({ status: 'REFUNDED', departureCancelled: true }, STATUS_WORDS),
+      bookingStatusPill({ status: 'REFUNDED', departureCancelled: true }, 'cancelled', PILL_WORDS),
     ).toEqual({ tone: 'muted', label: 'Refunded' });
+  });
+
+  // G54: "Payment due" cam mời trả một khoản API không mở lại được sau hạn chót.
+  it('đơn chờ trả quá hạn chót (`lapsed`) → chữ riêng, tông xám, không phải "Payment due" cam', () => {
+    expect(
+      bookingStatusPill({ status: 'PENDING', departureCancelled: false }, 'lapsed', PILL_WORDS),
+    ).toEqual({ tone: 'muted', label: 'Payment not completed' });
   });
 });
 
 describe('tripCardPill (pill của thẻ Trips theo giai đoạn)', () => {
-  const WORDS = { status: STATUS_WORDS, onTourNow: 'On tour now' };
+  const WORDS = { ...PILL_WORDS, onTourNow: 'On tour now' };
 
   it('đang đi → "On tour now" xanh, kể cả đơn đã hoàn một phần (khách vẫn đi tour)', () => {
     expect(
@@ -186,6 +206,20 @@ describe('tripCardPill (pill của thẻ Trips theo giai đoạn)', () => {
     expect(tripCardPill(booking, bookingPhase(booking, '2026-10-12'), WORDS)).toEqual({
       tone: 'muted',
       label: 'Cancelled',
+    });
+  });
+
+  it('đơn chờ trả của chuyến khởi hành hôm nay đã qua hạn chót → chữ của `lapsed`, tông xám', () => {
+    const booking = {
+      status: 'PENDING' as const,
+      departureStartDate: '2026-10-12',
+      departureEndDate: '2026-10-14',
+      cancelledAt: null,
+      departureCancelled: false,
+    };
+    expect(tripCardPill(booking, bookingPhase(booking, '2026-10-12'), WORDS)).toEqual({
+      tone: 'muted',
+      label: 'Payment not completed',
     });
   });
 

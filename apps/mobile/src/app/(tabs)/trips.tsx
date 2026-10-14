@@ -73,9 +73,11 @@ export default function TripsRoute() {
 
   const allItems: TripListItemVM[] = (listQuery.data?.items ?? []).map((booking) => {
     const phase = bookingPhase(booking, today);
-    // Đang đi → "On tour now" xanh; chuyến công ty huỷ → "Cancelled" xám dù đơn còn PAID.
+    // Đang đi → "On tour now" xanh; chuyến công ty huỷ → "Cancelled" xám dù đơn còn PAID; chờ trả
+    // quá hạn chót → chữ trung tính xám của web (G54).
     const pill = tripCardPill(booking, phase, {
       status: trips.status,
+      lapsed: messages.accountBookings.lapsedBadge,
       onTourNow: messages.mobile.trip.onTourNow,
     });
     return {

@@ -1,5 +1,5 @@
 import { ORPCError } from '@orpc/client';
-import { ACTIVE_BOOKING_STATUSES, type BookingDetail } from '@tourism/contract';
+import { ACTIVE_BOOKING_STATUSES, type BookingDetail, type BookingPhase } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
 
 /**
@@ -11,6 +11,7 @@ import { messages } from '@tourism/i18n';
 
 export type BookingDetailKind =
   | 'pending'
+  | 'lapsed'
   | 'paid'
   | 'cancelled'
   | 'refunded'
@@ -49,13 +50,15 @@ function cancelledByOperator(booking: BookingDetail): boolean {
  * từng thu tiền (PENDING bị sweep/`cancelPending`) — không có gì để kể về tiền.
  * Chuyến bị CÔNG TY huỷ thắng mọi trạng thái đơn (ADR-0054 AMEND 1 §2): khung
  * `departureCancelled` nói "chúng tôi huỷ chuyến" như trang chi tiết đơn của
- * web, kể cả lúc job hoàn tiền chưa chạy và đơn còn PAID.
+ * web, kể cả lúc job hoàn tiền chưa chạy và đơn còn PAID. Đơn chờ trả qua hạn
+ * chót (`phase` là `lapsed`, G54) có khung riêng: API không mở phiên trả nào
+ * nữa, nên khung T5 mời trả là mời bấm một nút chắc chắn hỏng.
  */
-export function bookingDetailKind(booking: BookingDetail): BookingDetailKind {
+export function bookingDetailKind(booking: BookingDetail, phase: BookingPhase): BookingDetailKind {
   if (cancelledByOperator(booking)) return 'departureCancelled';
   switch (booking.status) {
     case 'PENDING':
-      return 'pending';
+      return phase === 'lapsed' ? 'lapsed' : 'pending';
     case 'PAID':
       return 'paid';
     case 'CANCELLED':
@@ -93,17 +96,24 @@ export function operatorRefund(booking: BookingDetail): OperatorRefund | null {
 export type BookingDetailAction = 'payNow' | 'cancelPending' | 'cancelBooking';
 
 /**
- * Hành động khả dụng — CHỈ đọc cờ server (`cancellation.canCancel`), không tự
- * so ngày (ADR-0041 §7, cùng luật `bookingView` bên web). Quá hạn huỷ miễn phí
- * vẫn huỷ được (hoàn 0) nên `canCancel` KHÔNG đồng nghĩa `withinDeadline`.
+ * Hành động khả dụng — đơn đã trả CHỈ đọc cờ server (`cancellation.canCancel`),
+ * không tự so ngày (ADR-0041 §7, cùng luật `bookingView` bên web). Quá hạn huỷ
+ * miễn phí vẫn huỷ được (hoàn 0) nên `canCancel` KHÔNG đồng nghĩa
+ * `withinDeadline`. Đơn chờ trả đọc giai đoạn (`bookingPhase` trên ngày của
+ * server — cùng luật hạn chót API dùng để đóng phiên trả).
  */
-export function bookingDetailActions(booking: BookingDetail): BookingDetailAction[] {
+export function bookingDetailActions(
+  booking: BookingDetail,
+  phase: BookingPhase,
+): BookingDetailAction[] {
   // Chuyến công ty huỷ: không còn gì để trả (đơn chờ trả bị huỷ cùng lệnh huỷ chuyến) hay để huỷ
   // (job hoàn tiền tự hoàn trọn phần còn lại).
   if (booking.departureCancelled) return [];
   switch (booking.status) {
     case 'PENDING':
-      return ['payNow', 'cancelPending'];
+      // G54: qua hạn chót thì không mời trả (API từ chối mở phiên) và không mời huỷ giữ chỗ — cột
+      // phải của web cho đơn ấy cũng chỉ còn "Browse tours"; câu quét PENDING tự dọn đơn.
+      return phase === 'lapsed' ? [] : ['payNow', 'cancelPending'];
     case 'PAID':
     case 'PARTIALLY_REFUNDED':
       return booking.cancellation?.canCancel ? ['cancelBooking'] : [];

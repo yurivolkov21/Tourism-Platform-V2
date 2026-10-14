@@ -54,23 +54,41 @@ export interface TripPill {
 }
 
 /**
+ * Chữ của pill trạng thái: bảng theo trạng thái đơn (`messages.mobile.trips.status`) và chữ riêng
+ * của giai đoạn `lapsed`.
+ */
+export interface TripPillWords {
+  status: Readonly<Record<string, string>>;
+  lapsed: string;
+}
+
+/**
  * Pill trạng thái của MỘT đơn — chung cho thẻ Trips và hoá đơn `/bookings/[code]`. Chữ đọc bảng
- * `words` (`messages.mobile.trips.status`) theo trạng thái đơn, trừ chuyến CÔNG TY huỷ: cờ ấy
- * thắng mọi trạng thái đơn (ADR-0054 AMEND 1 §2), nên đơn còn PAID hay hoàn một phần chờ job hoàn
- * tiền không được mang "Paid" xanh. Nhãn nói "Cancelled"; đơn đã hoàn trọn giữ "Refunded" — sự
- * thật về tiền vẫn đúng. Cùng luật giai đoạn `cancelled` của `phaseLabel` bên web
- * (`apps/web/src/lib/booking-vm.ts`): mọi đơn khác rơi vào giai đoạn ấy (CANCELLED, REFUNDED có
- * mốc huỷ) vốn đã cho đúng chữ và tông xám theo trạng thái, nên ở đây không cần ngày hôm nay.
+ * `words.status` theo trạng thái đơn, trừ hai giai đoạn mà trạng thái đơn nói sai — cùng luật
+ * `phaseLabel` bên web (`apps/web/src/lib/booking-vm.ts`):
+ *
+ * - `lapsed` (G54): PENDING qua hạn chót. "Payment due" cam là mời trả một khoản API không mở lại
+ *   được, mà "đã lỡ" thì chưa chắc: claim của webhook còn nhận phiên mở trước hạn (ADR-0054
+ *   AMEND 1 §4). Chữ trung tính `words.lapsed`, tông xám.
+ * - Chuyến CÔNG TY huỷ: cờ ấy thắng mọi trạng thái đơn (AMEND 1 §2), nên đơn còn PAID hay hoàn
+ *   một phần chờ job hoàn tiền không được mang "Paid" xanh. Nhãn nói "Cancelled"; đơn đã hoàn trọn
+ *   giữ "Refunded" — sự thật về tiền vẫn đúng. Mọi đơn khác của giai đoạn `cancelled` (CANCELLED,
+ *   REFUNDED có mốc huỷ) vốn đã cho đúng chữ và tông xám theo trạng thái.
  */
 export function bookingStatusPill(
   booking: Pick<Booking, 'status' | 'departureCancelled'>,
-  words: Readonly<Record<string, string>>,
+  phase: BookingPhase,
+  words: TripPillWords,
 ): TripPill {
+  if (phase === 'lapsed') return { tone: 'muted', label: words.lapsed };
   if (booking.departureCancelled) {
     const key = booking.status === 'REFUNDED' ? 'REFUNDED' : 'CANCELLED';
-    return { tone: 'muted', label: words[key] ?? key };
+    return { tone: 'muted', label: words.status[key] ?? key };
   }
-  return { tone: tripPillTone(booking.status), label: words[booking.status] ?? booking.status };
+  return {
+    tone: tripPillTone(booking.status),
+    label: words.status[booking.status] ?? booking.status,
+  };
 }
 
 /**
@@ -81,8 +99,8 @@ export function bookingStatusPill(
 export function tripCardPill(
   booking: Pick<Booking, 'status' | 'departureCancelled'>,
   phase: BookingPhase,
-  words: { status: Readonly<Record<string, string>>; onTourNow: string },
+  words: TripPillWords & { onTourNow: string },
 ): TripPill {
   if (phase === 'on_tour') return { tone: 'paid', label: words.onTourNow };
-  return bookingStatusPill(booking, words.status);
+  return bookingStatusPill(booking, phase, words);
 }

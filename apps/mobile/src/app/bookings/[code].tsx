@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { bookingPhase } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
 import {
   Button,
@@ -38,6 +39,7 @@ import { orpc, withMobileAuth } from '@/lib/api/client';
 import { getAuthClient } from '@/lib/auth-client';
 import { cloudinaryUrl } from '@/lib/cloudinary-url';
 import { formatMoney } from '@/lib/format-money';
+import { useServerToday } from '@/lib/use-server-clock';
 
 /**
  * Chi tiết booking (T4/T5/T8, W4) + huỷ (T6/T7, W5) — mockup
@@ -53,6 +55,8 @@ export default function BookingDetailRoute() {
   // kẹp về một chuỗi trước khi đưa vào bất kỳ lời gọi API nào.
   const code = Array.isArray(rawCode) ? rawCode[0] : rawCode;
   const theme = useTheme();
+  // Ngày theo đồng hồ server — giai đoạn của đơn (`bookingPhase`) cùng luật với tab Trips.
+  const today = useServerToday();
 
   const { data: session } = getAuthClient().useSession();
   const signedIn = Boolean(session?.user);
@@ -163,8 +167,9 @@ export default function BookingDetailRoute() {
   }
 
   const booking = detailQuery.data;
-  const kind = bookingDetailKind(booking);
-  const actions = bookingDetailActions(booking);
+  const phase = bookingPhase(booking, today);
+  const kind = bookingDetailKind(booking, phase);
+  const actions = bookingDetailActions(booking, phase);
   const amount = formatMoney(booking.totalAmount, booking.currency);
   const refundAmount = booking.cancellation
     ? formatMoney(booking.cancellation.refundAmount, booking.currency)
@@ -246,8 +251,12 @@ export default function BookingDetailRoute() {
     title: booking.tourTitle,
     dateRangeLabel: formatDepartureRange(booking.departureStartDate, booking.departureEndDate),
   };
-  // Cùng luật pill với thẻ Trips: chuyến công ty huỷ không mang "Paid" xanh dù đơn còn PAID.
-  const pill = bookingStatusPill(booking, messages.mobile.trips.status);
+  // Cùng luật pill với thẻ Trips: chuyến công ty huỷ không mang "Paid" xanh dù đơn còn PAID, đơn
+  // chờ trả quá hạn chót không mang "Payment due" cam (G54).
+  const pill = bookingStatusPill(booking, phase, {
+    status: messages.mobile.trips.status,
+    lapsed: messages.accountBookings.lapsedBadge,
+  });
   const pillLabel = pill.label;
   const pillTone: BookingDetailPill = pill.tone;
 
@@ -297,6 +306,29 @@ export default function BookingDetailRoute() {
         onPress: () => setCancelPendingSheetOpen(true),
       };
     }
+  } else if (kind === 'lapsed') {
+    // G54: quá hạn chót mà chưa trả — cùng câu với khung đã đóng của web (`closedNarrative`): câu
+    // sự việc rồi câu điều kiện. Không mời trả (API không mở phiên nào nữa) mà cũng không khẳng
+    // định "đã lỡ": claim của webhook còn nhận phiên mở trước hạn (ADR-0054 AMEND 1 §4).
+    note = {
+      tone: 'warning',
+      icon: 'clock',
+      title: messages.bookingDetail.closed.notPaidByDeadline,
+      body: messages.bookingDetail.closed.finishOpenPayment,
+    };
+    rows = [
+      { label: bookingCopy.bookingCodeLabel, value: booking.code },
+      {
+        label: t.travellersLabel,
+        value: messages.mobile.trips.travellersCount(booking.numAdults + booking.numChildren),
+      },
+      // Chưa trả thì không "Total due" (mời trả) cũng không "Total paid" — cùng `bookingTotalLabel` của web.
+      { label: messages.checkoutSummary.totalLabel, value: amount, emphasis: true },
+    ];
+    primaryAction = {
+      label: messages.mobile.trips.browse,
+      onPress: () => router.navigate('/explore'),
+    };
   } else if (kind === 'paid') {
     if (booking.cancellation) {
       note = booking.cancellation.withinDeadline
