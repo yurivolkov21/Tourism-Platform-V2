@@ -1,6 +1,7 @@
 'use client';
 
 import type { MediaItem } from '@tourism/contract';
+import { homePage } from '@tourism/i18n';
 import { useReducedMotion } from 'motion/react';
 import { useEffect, useState } from 'react';
 import { SlotImage } from '@/components/slot-image';
@@ -11,6 +12,8 @@ import { MOMENTS } from '@/mocks/moments';
 // số liệu social proof, không phải danh mục tour): tự chạy 4s/slide (dừng khi
 // hover / reduced-motion), bấm chấm nhảy slide. Thu ~13% so với cột.
 const SLIDES = MOMENTS;
+
+const copy = homePage.statsSlider;
 
 // Ảnh của mỗi khoảnh khắc lấy từ `cover` của chính TOUR nó trỏ tới, tra theo
 // `tourSlug`. Không dùng ảnh ĐỊA DANH: `DestinationSchema.cover` cố ý chỉ có
@@ -31,8 +34,8 @@ export function StatsSlider({ covers = {} }: { covers?: Record<string, MediaItem
 
   return (
     <section
-      aria-roledescription="carousel"
-      aria-label="Traveler moments"
+      aria-roledescription={copy.roleDescription}
+      aria-label={copy.label}
       className="mx-auto w-full self-center lg:w-[87%]"
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
@@ -46,7 +49,7 @@ export function StatsSlider({ covers = {} }: { covers?: Record<string, MediaItem
             <div key={moment.title} className="w-full shrink-0">
               <SlotImage
                 image={covers[moment.tourSlug] ?? null}
-                label={`${moment.title} — ${moment.credit}`}
+                label={copy.slideImageLabel(moment.title, moment.credit)}
                 className="relative aspect-(--aspect-card) w-full"
                 sizes="(min-width: 1024px) 45vw, 90vw"
               />
@@ -60,7 +63,7 @@ export function StatsSlider({ covers = {} }: { covers?: Record<string, MediaItem
             <button
               key={moment.title}
               type="button"
-              aria-label={`Slide ${i + 1}: ${moment.title}`}
+              aria-label={copy.slideLabel(i + 1, moment.title)}
               aria-current={i === index || undefined}
               onClick={() => setIndex(i)}
               className={`h-2 cursor-pointer rounded-full transition-all duration-300 ${

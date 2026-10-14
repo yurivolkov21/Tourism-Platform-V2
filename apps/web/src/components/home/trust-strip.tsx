@@ -1,6 +1,6 @@
 'use client';
 
-import { messages } from '@tourism/i18n';
+import { homePage, messages } from '@tourism/i18n';
 import { BadgeDollarSignIcon, HeadsetIcon, type LucideIcon, ShieldCheckIcon } from 'lucide-react';
 import { motion } from 'motion/react';
 import Link from 'next/link';
@@ -30,6 +30,8 @@ import { SPRING } from '@/lib/motion';
 //    "Mon–Fri · 8:00 am – 6:00 pm (GMT+7)", và `contact-hero.tsx` viết "a real
 //    person replies within the hour, Monday to Friday". Nên câu ở đây chép
 //    đúng giờ đã khai, thay vì hứa 24/7 rồi trang Contact nói ngược lại.
+//
+// Câu chữ nay ở `homePage.trustStrip.items` (W-09, luật 7); icon và link ở lại đây.
 const BADGES: Array<{
   icon: LucideIcon;
   title: string;
@@ -39,20 +41,11 @@ const BADGES: Array<{
 }> = [
   {
     icon: ShieldCheckIcon,
-    title: 'Free cancellation',
-    detail: 'On every tour. Each departure shows its own deadline before you book.',
+    ...homePage.trustStrip.items.freeCancellation,
     href: '/cancellation-policy',
   },
-  {
-    icon: BadgeDollarSignIcon,
-    title: 'No booking fees',
-    detail: 'Your total is the tour price times travellers. Nothing is added at checkout.',
-  },
-  {
-    icon: HeadsetIcon,
-    title: 'A real person replies',
-    detail: 'Within the hour, Monday to Friday, 8am–6pm (GMT+7).',
-  },
+  { icon: BadgeDollarSignIcon, ...homePage.trustStrip.items.noFees },
+  { icon: HeadsetIcon, ...homePage.trustStrip.items.support },
 ];
 
 export function TrustStrip() {

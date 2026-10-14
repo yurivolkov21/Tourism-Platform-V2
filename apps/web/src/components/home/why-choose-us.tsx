@@ -1,6 +1,7 @@
 'use client';
 
 import type { MediaItem } from '@tourism/contract';
+import { homePage } from '@tourism/i18n';
 import {
   CompassIcon,
   LampIcon,
@@ -22,7 +23,8 @@ import { SectionEyebrow } from './section-eyebrow';
 // điều hướng — làm cơ chế accordion-đổi-ảnh hiện hình thay vì ngầm).
 // Review #27: quote guide (từng thêm ở #26) bị gỡ theo review — khoảng
 // trống dưới heading trả về nhịp thở nguyên bản của Estate.
-const DEFAULT_IMAGE_LABEL = 'Three regions in one country';
+const copy = homePage.whyChooseUs;
+const DEFAULT_IMAGE_LABEL = copy.defaultImageLabel;
 
 // ── Vì sao năm mục này, và vì sao KHÔNG phải năm mục cũ (đổi 14/08) ──
 //
@@ -48,42 +50,15 @@ const DEFAULT_IMAGE_LABEL = 'Three regions in one country';
 //
 // Trường `image` cũ đã GỠ: nó trỏ `/mock/*.jpg` theo ánh xạ địa danh của bản
 // tĩnh, không dòng code nào đọc, và giờ còn sai so với chủ đề mới.
+//
+// Tiêu đề + mô tả của từng mục nằm ở `homePage.whyChooseUs.items` (W-09, luật 7);
+// icon và khe ảnh ở lại đây.
 const ITEMS = [
-  {
-    icon: CompassIcon,
-    title: 'Local guides on every route',
-    slot: 'why-guide',
-    description:
-      'Every journey is led by someone who grew up on it. Paths, meals, and stories come from lived experience — not a script.',
-  },
-  {
-    icon: UtensilsIcon,
-    title: 'You eat where they eat',
-    slot: 'why-food',
-    description:
-      'No hotel buffets. You eat the dishes your guide grew up on — bún, phở, bánh — at the places they have gone to for years.',
-  },
-  {
-    icon: ShipIcon,
-    title: 'The country from the water',
-    slot: 'why-river',
-    description:
-      'Limestone bays in the north, delta canals in the south. Much of Vietnam only makes sense from a boat.',
-  },
-  {
-    icon: LampIcon,
-    title: 'Towns worth staying the evening for',
-    slot: 'why-evening',
-    description:
-      'Day-trippers leave by four. Our evening routes start when the lanterns come on and the streets go back to the people who live there.',
-  },
-  {
-    icon: LandmarkIcon,
-    title: 'Heritage, not a plaque',
-    slot: 'why-heritage',
-    description:
-      'Citadels, tombs and pagodas explained by someone whose own family history runs through them — not read off a sign.',
-  },
+  { icon: CompassIcon, slot: 'why-guide', ...copy.items.guide },
+  { icon: UtensilsIcon, slot: 'why-food', ...copy.items.food },
+  { icon: ShipIcon, slot: 'why-river', ...copy.items.river },
+  { icon: LampIcon, slot: 'why-evening', ...copy.items.evening },
+  { icon: LandmarkIcon, slot: 'why-heritage', ...copy.items.heritage },
 ];
 
 export function WhyChooseUs({
@@ -99,7 +74,7 @@ export function WhyChooseUs({
       <div className="mx-auto grid max-w-7xl grid-cols-1 gap-12 md:grid-cols-2 md:gap-16 lg:gap-24">
         {/* Cột trái: heading + accordion */}
         <div className="flex flex-col">
-          <SectionEyebrow>Why Nexora</SectionEyebrow>
+          <SectionEyebrow>{copy.eyebrow}</SectionEyebrow>
           <motion.h2
             className="mt-4 max-w-100 font-heading text-3xl leading-tight font-medium text-foreground md:text-[40px]/12"
             initial={{ y: 50, opacity: 0 }}
@@ -107,7 +82,7 @@ export function WhyChooseUs({
             viewport={{ once: true }}
             transition={SPRING_HEADING}
           >
-            Travel Vietnam with people who call it home
+            {copy.title}
           </motion.h2>
 
           <div className="mt-12 flex w-full flex-col gap-4 md:mt-16">
@@ -168,8 +143,7 @@ export function WhyChooseUs({
             viewport={{ once: true }}
             transition={{ ...SPRING, delay: 0.2 }}
           >
-            Our local guides bring insider knowledge and personal care to every departure, so your
-            only job is to be there.
+            {copy.body}
           </motion.p>
 
           {/* Bọc ảnh + caption thành MỘT con của flex justify-between — giữ nguyên

@@ -1,5 +1,6 @@
 'use client';
 
+import { homePage } from '@tourism/i18n';
 import { ArrowUpRightIcon } from 'lucide-react';
 import { motion } from 'motion/react';
 import { PostCard } from '@/components/blog/post-card';
@@ -8,6 +9,8 @@ import type { JournalPost } from '@/lib/api/posts';
 import { homeTeaserPosts } from '@/lib/blog';
 import { SPRING, SPRING_HEADING } from '@/lib/motion';
 import { SectionEyebrow } from './section-eyebrow';
+
+const copy = homePage.journal;
 
 // Review #33: convert từ forged/Blog ("Insight Hub") — header hai bên (heading
 // 2 dòng + nút outline phải), grid 3 card bài viết. Da thịt theo chuẩn dự án:
@@ -30,7 +33,7 @@ export function Journal({ posts, failed }: { posts: JournalPost[]; failed: boole
             dù fetch lỗi: tri-state không được giấu cả section (ADR-0016 §4) */}
         <div className="mb-14 flex flex-col justify-between gap-6 md:flex-row md:items-end">
           <div>
-            <SectionEyebrow>Journal</SectionEyebrow>
+            <SectionEyebrow>{copy.eyebrow}</SectionEyebrow>
             <motion.h2
               className="mt-4 font-heading text-3xl leading-tight font-medium text-foreground md:text-[40px]/12"
               initial={{ y: 50, opacity: 0 }}
@@ -38,9 +41,9 @@ export function Journal({ posts, failed }: { posts: JournalPost[]; failed: boole
               viewport={{ once: true }}
               transition={SPRING_HEADING}
             >
-              Notes from the road,
+              {copy.titleLead}
               <br />
-              <span className="text-primary-emphasis italic">written by locals.</span>
+              <span className="text-primary-emphasis italic">{copy.titleAccent}</span>
             </motion.h2>
           </div>
 
@@ -54,7 +57,7 @@ export function Journal({ posts, failed }: { posts: JournalPost[]; failed: boole
             viewport={{ once: true }}
             transition={{ delay: 0.2, ...SPRING }}
           >
-            <span>Read all stories</span>
+            <span>{copy.cta}</span>
             <ArrowUpRightIcon className="size-4" aria-hidden="true" />
           </motion.a>
         </div>

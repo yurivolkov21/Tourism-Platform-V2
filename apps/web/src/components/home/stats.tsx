@@ -1,11 +1,14 @@
 'use client';
 
 import type { MediaItem } from '@tourism/contract';
+import { homePage } from '@tourism/i18n';
 import { motion } from 'motion/react';
 import { CountUp } from '@/components/motion/count-up';
 import { SPRING, SPRING_HEADING } from '@/lib/motion';
 import { SectionEyebrow } from './section-eyebrow';
 import { StatsSlider } from './stats-slider';
+
+const copy = homePage.stats;
 
 // Convert từ Estate stats.tsx: headline lớn + mô tả + nút + 3 counter có vách ngăn.
 export function Stats({
@@ -22,7 +25,7 @@ export function Stats({
       <div className="grid grid-cols-1 items-center gap-12 lg:grid-cols-2 lg:gap-16">
         <div className="flex justify-center">
           <div className="flex w-full flex-col items-start">
-            <SectionEyebrow>Tours across Vietnam</SectionEyebrow>
+            <SectionEyebrow>{copy.eyebrow}</SectionEyebrow>
             <motion.h2
               className="mt-8 max-w-[610px] font-heading text-5xl leading-tight text-foreground md:text-6xl"
               initial={{ y: 50, opacity: 0 }}
@@ -30,7 +33,7 @@ export function Stats({
               viewport={{ once: true }}
               transition={SPRING_HEADING}
             >
-              Journeys shaped by the people who live them
+              {copy.title}
             </motion.h2>
 
             <motion.p
@@ -40,8 +43,7 @@ export function Stats({
               viewport={{ once: true }}
               transition={{ ...SPRING, delay: 0.2 }}
             >
-              From misty terraces in the north to river markets in the delta — every route is
-              researched, walked, and retold by local guides before it reaches you.
+              {copy.body}
             </motion.p>
 
             <motion.a
@@ -52,7 +54,7 @@ export function Stats({
               viewport={{ once: true }}
               transition={SPRING}
             >
-              Explore tours
+              {copy.cta}
             </motion.a>
 
             <div className="mt-16 flex w-full justify-between max-lg:flex-col max-lg:gap-10 md:mt-20">
@@ -68,7 +70,7 @@ export function Stats({
                       <CountUp to={toursCount} />
                     </span>
                     <span className="mt-4 text-sm tracking-wide text-muted-foreground uppercase">
-                      Hand-picked tours
+                      {copy.toursLabel}
                     </span>
                   </div>
 
@@ -81,7 +83,7 @@ export function Stats({
                   <CountUp to={12400} />+
                 </span>
                 <span className="mt-4 text-sm tracking-wide text-muted-foreground uppercase">
-                  Happy travelers
+                  {copy.travelersLabel}
                 </span>
               </div>
 
@@ -92,7 +94,7 @@ export function Stats({
                   <CountUp to={98} />%
                 </span>
                 <span className="mt-4 text-sm tracking-wide text-muted-foreground uppercase">
-                  Traveler satisfaction
+                  {copy.satisfactionLabel}
                 </span>
               </div>
             </div>

@@ -1,5 +1,6 @@
 'use client';
 
+import { homePage, messages } from '@tourism/i18n';
 import { Avatar, AvatarFallback } from '@tourism/ui/components/avatar';
 import { StarIcon } from 'lucide-react';
 import { motion } from 'motion/react';
@@ -21,6 +22,11 @@ const col2 = TESTIMONIALS.slice(4, 8);
 const AVERAGE_RATING = TESTIMONIALS.reduce((acc, t) => acc + t.rating, 0) / TESTIMONIALS.length;
 const AVATAR_PREVIEW = TESTIMONIALS.slice(0, 5);
 
+const copy = homePage.testimonials;
+// Câu a11y của cụm sao DÙNG CHUNG với trang tour và trang vùng ("4 out of 5 stars") —
+// messages.ts giữ MỘT câu cho mọi bề mặt, không chép bản thứ hai vào `homePage`.
+const ratingLabel = messages.tourDetail.reviews.ratingLabel;
+
 function TestimonialCard({ item }: { item: MockTestimonial }) {
   return (
     <div className="flex w-[280px] flex-col gap-4 rounded-xl bg-card p-6 select-none sm:w-[320px]">
@@ -34,11 +40,7 @@ function TestimonialCard({ item }: { item: MockTestimonial }) {
         </div>
       </div>
 
-      <div
-        role="img"
-        aria-label={`${item.rating} out of 5 stars`}
-        className="flex items-center gap-1"
-      >
+      <div role="img" aria-label={ratingLabel(item.rating)} className="flex items-center gap-1">
         {Array.from({ length: 5 }, (_, i) => (
           <StarIcon
             // biome-ignore lint/suspicious/noArrayIndexKey: dãy sao tĩnh 5 phần tử, không reorder
@@ -67,7 +69,7 @@ export function Testimonials() {
       <div className="mx-auto grid max-w-7xl grid-cols-1 items-start justify-start gap-4 lg:grid-cols-12 lg:gap-2">
         {/* Cột trái: heading */}
         <div className="mt-20 flex flex-col items-start lg:col-span-5">
-          <SectionEyebrow>Reviews</SectionEyebrow>
+          <SectionEyebrow>{copy.eyebrow}</SectionEyebrow>
           <div className="mt-3.5 h-[1.5px] w-[148px] bg-linear-to-r from-foreground to-transparent" />
           <motion.h2
             className="mt-5 max-w-[400px] font-heading text-3xl leading-tight font-medium text-foreground md:text-[34px]/12"
@@ -76,7 +78,7 @@ export function Testimonials() {
             viewport={{ once: true }}
             transition={SPRING_HEADING}
           >
-            Trusted by travelers. Proven by stories.
+            {copy.title}
           </motion.h2>
           <motion.p
             className="mt-2.5 max-w-[340px] text-sm text-muted-foreground md:text-base"
@@ -85,7 +87,7 @@ export function Testimonials() {
             viewport={{ once: true }}
             transition={{ ...SPRING, delay: 0.2 }}
           >
-            Honest words from people who trusted us with their time off.
+            {copy.body}
           </motion.p>
 
           {/* Bảng điểm tin cậy (#29) — social proof lấp khoảng trống cột trái */}
@@ -103,7 +105,9 @@ export function Testimonials() {
               <div className="flex flex-col gap-1.5 pb-0.5">
                 <div
                   role="img"
-                  aria-label={`${AVERAGE_RATING.toFixed(1)} out of 5 stars`}
+                  // `Number(toFixed(1))`: hàm chung nhận số, làm tròn y như số hiển thị bên
+                  // cạnh (4.875 → 4.9) nên câu đọc ra trùng bản cũ.
+                  aria-label={ratingLabel(Number(AVERAGE_RATING.toFixed(1)))}
                   className="flex items-center gap-1"
                 >
                   {Array.from({ length: 5 }, (_, i) => (
@@ -119,7 +123,7 @@ export function Testimonials() {
                     />
                   ))}
                 </div>
-                <span className="text-xs text-muted-foreground">from 2,400+ travellers</span>
+                <span className="text-xs text-muted-foreground">{copy.ratingSource}</span>
               </div>
             </div>
 
@@ -129,7 +133,7 @@ export function Testimonials() {
                   <AvatarFallback>{t.name.charAt(0)}</AvatarFallback>
                 </Avatar>
               ))}
-              <span className="ml-3 text-xs text-muted-foreground">and thousands more</span>
+              <span className="ml-3 text-xs text-muted-foreground">{copy.avatarsMore}</span>
             </div>
           </motion.div>
         </div>

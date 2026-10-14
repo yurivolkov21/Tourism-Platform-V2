@@ -1,10 +1,13 @@
 'use client';
 
+import { homePage } from '@tourism/i18n';
 import { CompassIcon } from 'lucide-react';
 import { motion } from 'motion/react';
 import { SlotImage } from '@/components/slot-image';
 import type { SiteMediaItem } from '@/lib/api/site-media';
 import { SPRING, SPRING_HEADING } from '@/lib/motion';
+
+const copy = homePage.hero;
 
 // Convert từ Estate hero-sections.tsx: hero fullscreen ảnh + badge pill +
 // heading giữa + 2 nút (nút phụ có hiệu ứng chữ trượt khi hover).
@@ -26,7 +29,7 @@ export function Hero({ heroImage = null }: { heroImage?: SiteMediaItem | null })
       <div className="dark absolute inset-0 -z-10">
         <SlotImage
           image={heroImage}
-          label="Hero — Ha Long Bay panorama"
+          label={copy.imageLabel}
           className="absolute inset-0 h-full w-full"
           priority
         />
@@ -41,7 +44,7 @@ export function Hero({ heroImage = null }: { heroImage?: SiteMediaItem | null })
         transition={{ ...SPRING, delay: 0.2 }}
       >
         <CompassIcon className="size-4" aria-hidden="true" />
-        <p>Small-group tours across Vietnam</p>
+        <p>{copy.badge}</p>
       </motion.div>
 
       <motion.h1
@@ -51,7 +54,7 @@ export function Hero({ heroImage = null }: { heroImage?: SiteMediaItem | null })
         viewport={{ once: true }}
         transition={SPRING_HEADING}
       >
-        Travel slow. The valley will wait.
+        {copy.title}
       </motion.h1>
 
       <motion.p
@@ -61,8 +64,7 @@ export function Hero({ heroImage = null }: { heroImage?: SiteMediaItem | null })
         viewport={{ once: true }}
         transition={{ ...SPRING, delay: 0.2 }}
       >
-        Hand-picked journeys through limestone bays, terraced highlands, and lantern-lit old towns —
-        led by people who grew up there.
+        {copy.subtitle}
       </motion.p>
 
       <motion.div
@@ -76,7 +78,7 @@ export function Hero({ heroImage = null }: { heroImage?: SiteMediaItem | null })
           href="#tours"
           className="cursor-pointer rounded-md bg-card px-6 py-2.5 text-sm font-medium text-card-foreground transition hover:bg-card/85"
         >
-          View tours
+          {copy.primaryCta}
         </a>
         <a
           href="#contact"
@@ -85,10 +87,10 @@ export function Hero({ heroImage = null }: { heroImage?: SiteMediaItem | null })
           {/* Hiệu ứng chữ trượt dọc khi hover — giữ nguyên từ template */}
           <span className="relative block overflow-hidden">
             <span className="block transition-transform duration-200 group-hover:-translate-y-full">
-              Plan with us
+              {copy.secondaryCta}
             </span>
             <span className="absolute top-0 left-0 block translate-y-full transition-transform duration-200 group-hover:translate-y-0">
-              Plan with us
+              {copy.secondaryCta}
             </span>
           </span>
         </a>

@@ -1,11 +1,14 @@
 'use client';
 
+import { homePage } from '@tourism/i18n';
 import { MoveRightIcon } from 'lucide-react';
 import { motion } from 'motion/react';
 import { SlotImage } from '@/components/slot-image';
 import { TopoPattern } from '@/components/topo-pattern';
 import type { SiteMediaItem } from '@/lib/api/site-media';
 import { SPRING, SPRING_HEADING } from '@/lib/motion';
+
+const copy = homePage.callToAction;
 
 // Review #23: convert 100% lối thiết kế forged/CTABanner (quyết định của user —
 // trước đó #21 mới lấy xương, lần này lấy cả chất giọng): eyebrow màu accent,
@@ -21,7 +24,7 @@ export function CallToAction({ bandImage = null }: { bandImage?: SiteMediaItem |
         <SlotImage
           image={bandImage}
           corner
-          label="Banner — Mekong delta at dusk"
+          label={copy.imageLabel}
           className="absolute inset-0 h-full w-full"
         />
         <div className="absolute inset-0 bg-overlay" />
@@ -41,7 +44,7 @@ export function CallToAction({ bandImage = null }: { bandImage?: SiteMediaItem |
           viewport={{ once: true }}
           transition={{ ...SPRING, delay: 0.2 }}
         >
-          Autumn departures open
+          {copy.eyebrow}
         </motion.span>
 
         {/* Review #25: bỏ ALL-CAPS + weight 900 (Literata viết hoa toàn bộ ra chất
@@ -55,9 +58,9 @@ export function CallToAction({ bandImage = null }: { bandImage?: SiteMediaItem |
           viewport={{ once: true }}
           transition={SPRING_HEADING}
         >
-          Find the journey
+          {copy.titleLead}
           <br />
-          <span className="text-primary-emphasis italic">that fits your pace.</span>
+          <span className="text-primary-emphasis italic">{copy.titleAccent}</span>
         </motion.h2>
 
         <motion.p
@@ -67,8 +70,7 @@ export function CallToAction({ bandImage = null }: { bandImage?: SiteMediaItem |
           viewport={{ once: true }}
           transition={{ ...SPRING, delay: 0.2 }}
         >
-          Limestone bays, misty terraces, imperial cities, and river markets — pick a region and let
-          a local plan the rest. Small groups, no rush, no scripts.
+          {copy.body}
         </motion.p>
 
         <motion.div
@@ -85,7 +87,7 @@ export function CallToAction({ bandImage = null }: { bandImage?: SiteMediaItem |
             whileTap={{ scale: 0.95 }}
             className="group inline-flex items-center gap-2 rounded-full bg-primary px-7 py-3 text-sm font-medium text-primary-foreground transition-shadow duration-300 hover:shadow-[0_0_40px_color-mix(in_oklab,var(--primary)_45%,transparent)]"
           >
-            <span>Browse tours</span>
+            <span>{copy.primaryCta}</span>
             <MoveRightIcon
               className="size-4.5 transition-transform group-hover:translate-x-1"
               aria-hidden="true"
@@ -97,7 +99,7 @@ export function CallToAction({ bandImage = null }: { bandImage?: SiteMediaItem |
             whileTap={{ scale: 0.95 }}
             className="inline-flex items-center gap-2 rounded-full border border-foreground/20 px-7 py-3 text-sm font-medium transition-colors duration-200 hover:border-foreground/50"
           >
-            Talk to a local
+            {copy.secondaryCta}
           </motion.a>
         </motion.div>
       </div>

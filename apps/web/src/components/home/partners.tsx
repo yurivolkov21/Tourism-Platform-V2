@@ -1,5 +1,6 @@
 'use client';
 
+import { homePage } from '@tourism/i18n';
 import { motion } from 'motion/react';
 import { SPRING } from '@/lib/motion';
 
@@ -10,18 +11,8 @@ import { SPRING } from '@/lib/motion';
 // Marquee tái dùng .animate-marquee-left của globals.css (hover dừng,
 // reduced-motion tắt) theo đúng cơ chế hai toa của TopBar.
 // Export cho mini-marquee "Featured by" của trang /contact tái dùng
-export const PARTNERS = [
-  'Lonely Planet',
-  'TripAdvisor',
-  'National Geographic',
-  'Condé Nast Traveler',
-  'Travel + Leisure',
-  'CNN Travel',
-  'BBC Travel',
-  'The Guardian',
-  'Culture Trip',
-  'Vietnam Tourism Board',
-];
+// Danh sách tên nay ở `homePage.partners.names` (W-09, luật 7).
+export const PARTNERS = homePage.partners.names;
 
 // Một "toa" marquee — hai toa giống hệt nối đuôi tạo loop kín (bản hai ẩn a11y).
 function PartnerGroup({ hidden = false }: { hidden?: boolean }) {
@@ -52,7 +43,7 @@ export function Partners() {
         viewport={{ once: true }}
         transition={{ ...SPRING, delay: 0.2 }}
       >
-        In good company — featured by travel storytellers worldwide
+        {homePage.partners.eyebrow}
       </motion.p>
 
       <div className="relative">

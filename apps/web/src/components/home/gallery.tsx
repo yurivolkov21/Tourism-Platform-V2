@@ -1,5 +1,6 @@
 'use client';
 
+import { homePage } from '@tourism/i18n';
 import { motion } from 'motion/react';
 import { useEffect, useRef } from 'react';
 import { LoadErrorState } from '@/components/feedback/load-error-state';
@@ -18,6 +19,8 @@ import { SectionEyebrow } from './section-eyebrow';
 // dùng chung token brand. `data-region` GIỮ lại làm móc dữ liệu — `gallery.spec.tsx`
 // canh nó mang KHOÁ vùng chứ không phải tên hiển thị, một bug đã dính thật.
 const REGION_NAME = new Map(REGIONS.map((r) => [r.key, r.name]));
+
+const copy = homePage.gallery;
 
 // Task 4 (cụm destinations-api): nhận `destinations`/`failed` qua PROP thay vì
 // tự import mock — Home (server) fetch qua `settle(fetchDestinations())` rồi
@@ -72,7 +75,7 @@ export function Gallery({
             combo phương án 1+2). */}
         <div className="mx-auto w-full max-w-5xl px-6 pt-32 text-center">
           <div className="flex justify-center">
-            <SectionEyebrow>Destinations</SectionEyebrow>
+            <SectionEyebrow>{copy.eyebrow}</SectionEyebrow>
           </div>
           <motion.h2
             className="mt-3 font-heading text-3xl leading-tight font-medium text-balance text-foreground md:text-[40px]/12"
@@ -81,7 +84,7 @@ export function Gallery({
             viewport={{ once: true }}
             transition={SPRING_HEADING}
           >
-            From the northern mists to the southern delta
+            {copy.title}
           </motion.h2>
           <motion.p
             className="mx-auto mt-2 max-w-[640px] text-sm text-muted-foreground md:text-base"
@@ -90,7 +93,7 @@ export function Gallery({
             viewport={{ once: true }}
             transition={{ ...SPRING, delay: 0.2 }}
           >
-            Nine places across three regions — scroll to travel the country from north to south.
+            {copy.body}
           </motion.p>
         </div>
 
@@ -142,7 +145,7 @@ export function Gallery({
                       <span className="absolute inset-x-0 bottom-0 flex flex-col gap-1 bg-linear-to-t from-overlay to-transparent p-4 pt-10 text-on-media">
                         <span className="h-0.5 w-8 rounded-full bg-primary" />
                         <span className="font-heading text-2xl font-semibold">{dest.name}</span>
-                        <span className="text-xs opacity-85">{dest.tourCount} tours</span>
+                        <span className="text-xs opacity-85">{copy.tourCount(dest.tourCount)}</span>
                       </span>
                     </a>
                   </TiltCard>

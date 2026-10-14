@@ -1,6 +1,6 @@
 'use client';
 
-import { messages } from '@tourism/i18n';
+import { homePage, messages } from '@tourism/i18n';
 import { Input } from '@tourism/ui/components/input';
 import { Textarea } from '@tourism/ui/components/textarea';
 import { CalendarIcon, ClockIcon, MailIcon, MapPinIcon, PhoneIcon, UserIcon } from 'lucide-react';
@@ -42,21 +42,11 @@ const fieldMotion = {
   transition: SPRING,
 };
 
+// Chữ còn lại của form trang chủ (W-09, luật 7); phần đã có ở `messages.homeContact` giữ nguyên.
+const copy = homePage.contact;
+
 // 3 bước "What happens next" — trả lời câu hỏi "gửi form xong thì sao?"
-const STEPS = [
-  {
-    title: 'Tell us your dates',
-    description: 'Share when, where, and how you like to travel.',
-  },
-  {
-    title: 'Get itineraries in 24 hours',
-    description: 'Local guides draft two or three routes around your pace.',
-  },
-  {
-    title: 'Book when you love one',
-    description: 'No payment until you approve the plan.',
-  },
-];
+const STEPS = copy.next.steps;
 
 // Class gỡ viền/ring riêng của shadcn Input/Textarea khi nằm trong wrapper
 // có viền (tránh viền kép — wrapper lo focus ring qua focus-within).
@@ -186,7 +176,7 @@ export function Contact() {
       <div className="mx-auto grid w-full max-w-7xl grid-cols-1 items-stretch gap-12 lg:grid-cols-2 lg:gap-16">
         {/* Cột trái: form */}
         <div className="flex flex-col">
-          <SectionEyebrow>Contact</SectionEyebrow>
+          <SectionEyebrow>{copy.eyebrow}</SectionEyebrow>
           <motion.h2
             className="mt-5 max-w-[400px] font-heading text-3xl leading-tight font-medium text-foreground md:text-[40px]/11"
             initial={{ y: 50, opacity: 0 }}
@@ -194,8 +184,9 @@ export function Contact() {
             viewport={{ once: true }}
             transition={SPRING_HEADING}
           >
-            Tell us your dates, <br />
-            we’ll draw the route
+            {copy.titleLead}
+            <br />
+            {copy.titleRest}
           </motion.h2>
 
           <form className="relative mt-15 flex flex-col gap-6" onSubmit={handleSubmit} noValidate>
@@ -207,7 +198,7 @@ export function Contact() {
               tabIndex={-1}
               className="absolute -left-[9999px] h-px w-px overflow-hidden"
             >
-              <label htmlFor="contact-website">Website</label>
+              <label htmlFor="contact-website">{messages.common.honeypotLabel}</label>
               <input
                 id="contact-website"
                 name="website"
@@ -220,11 +211,16 @@ export function Contact() {
             </div>
 
             <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-              <ContactField id="contact-name" label="Your name" icon={UserIcon} error={errors.name}>
+              <ContactField
+                id="contact-name"
+                label={copy.fields.name.label}
+                icon={UserIcon}
+                error={errors.name}
+              >
                 <Input
                   id="contact-name"
                   type="text"
-                  placeholder="Michael Anderson"
+                  placeholder={copy.fields.name.placeholder}
                   className={BARE_FIELD}
                   value={state.name}
                   onChange={(e) => set('name', e.target.value)}
@@ -234,14 +230,14 @@ export function Contact() {
               </ContactField>
               <ContactField
                 id="contact-email"
-                label="Email address"
+                label={copy.fields.email.label}
                 icon={MailIcon}
                 error={errors.email}
               >
                 <Input
                   id="contact-email"
                   type="email"
-                  placeholder="michael@example.com"
+                  placeholder={copy.fields.email.placeholder}
                   className={BARE_FIELD}
                   value={state.email}
                   onChange={(e) => set('email', e.target.value)}
@@ -252,11 +248,11 @@ export function Contact() {
             </div>
 
             <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-              <ContactField id="contact-dates" label="Travel dates" icon={CalendarIcon}>
+              <ContactField id="contact-dates" label={copy.fields.dates.label} icon={CalendarIcon}>
                 <Input
                   id="contact-dates"
                   type="text"
-                  placeholder="E.g. Oct 12 – Oct 18"
+                  placeholder={copy.fields.dates.placeholder}
                   className={BARE_FIELD}
                   value={state.dates}
                   onChange={(e) => set('dates', e.target.value)}
@@ -285,11 +281,16 @@ export function Contact() {
               </ContactField>
             </div>
 
-            <ContactField id="contact-message" label="Message" multiline error={errors.loves}>
+            <ContactField
+              id="contact-message"
+              label={copy.fields.message.label}
+              multiline
+              error={errors.loves}
+            >
               <Textarea
                 id="contact-message"
                 rows={4}
-                placeholder="E.g. Two of us, easy pace, love food markets"
+                placeholder={copy.fields.message.placeholder}
                 className={`${BARE_FIELD} resize-none pt-0`}
                 value={state.loves}
                 onChange={(e) => set('loves', e.target.value)}
@@ -304,7 +305,7 @@ export function Contact() {
                 disabled={pending}
                 className="cursor-pointer rounded-full bg-primary px-6 py-3.5 text-xs tracking-wide text-primary-foreground uppercase transition-colors duration-200 hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60"
               >
-                {pending ? messages.homeContact.submitting : 'Get my itineraries'}
+                {pending ? messages.homeContact.submitting : copy.submit}
               </button>
             </motion.div>
           </form>
@@ -325,10 +326,10 @@ export function Contact() {
           transition={SPRING}
         >
           <span className="text-xs font-semibold tracking-[0.2em] text-(--region-spark) uppercase">
-            What happens next
+            {copy.next.eyebrow}
           </span>
           <h3 className="mt-3 max-w-[360px] font-heading text-2xl leading-snug font-medium">
-            Three steps between you and the road
+            {copy.next.title}
           </h3>
 
           {/* Timeline dọc: badge số + đường nối, motion trồi stagger từng bước */}
@@ -382,7 +383,7 @@ export function Contact() {
             </a>
             <p className="flex items-center gap-3 text-primary-foreground/75">
               <ClockIcon className="size-4 shrink-0" aria-hidden="true" />
-              Mon–Fri within the hour · weekends same day
+              {copy.responseTimes}
             </p>
           </motion.div>
         </motion.div>
