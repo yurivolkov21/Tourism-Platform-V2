@@ -129,21 +129,21 @@ dữ liệu; chúng không tự quyết định giá, không tự kết luận �
 tự tính được hoàn bao nhiêu. Đây là lý do gần như mọi tài liệu kỹ thuật trong
 `docs/` đều xoay quanh máy chủ.
 
-## Vài con số (21/09/2026)
+## Vài con số (14/10/2026)
 
 | | |
 | --- | --- |
 | Trang trên web khách | 32 |
-| Trang trên web quản trị | 12 |
-| Endpoint máy chủ | ~110, chia 12 nhóm |
-| Bảng dữ liệu | 35 |
-| Test tự động | 3.689 (Vitest) + 245 (Jest, mobile) + 497 (integration) |
-| Tài liệu | 159 file Markdown |
+| Trang trên web quản trị | 26 |
+| Đường gọi máy chủ | 96 route khai trong contract, chưa tính các đường đăng nhập của Better Auth |
+| Bảng dữ liệu | 36 |
+| Test tự động | 6.509 (Vitest) + 907 (Jest: app 771, component app 136) + 836 (integration) |
+| Tài liệu | 262 file Markdown trong `docs/` |
 
 ## Đọc tiếp gì
 
 - Không rành thuật ngữ → [glossary.md](glossary.md)
 - Muốn biết còn nợ việc gì → [open-items.md](open-items.md)
-- Muốn hiểu vì sao làm thế này thay vì thế kia → [bản đồ tài liệu](README.md),
-  mục ADR
+- Muốn hiểu vì sao làm thế này thay vì thế kia → [mục lục ADR](adr/README.md)
+- Tìm một tài liệu bất kỳ → [bản đồ tài liệu](README.md)
 - Muốn bắt tay vào code → [README của kho mã](../README.md)

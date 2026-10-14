@@ -46,7 +46,7 @@ Chốt sau 2 vòng specimen (22/07/2026) — cả ba đều có subset `vietname
 | | Hero | Nền trang | Card |
 | --- | --- | --- | --- |
 | Light | `oklch(0.25 0.015 181.5)` | `0.977` | `0.996` |
-| Dark | `oklch(0.17 0.019 182.5)` | `0.25` | `0.309` |
+| Dark | `oklch(0.17 0.019 182.5)` | `0.275` (từ 06/08; trước là `0.25`) | `0.309` |
 
 Thứ bậc hero → trang → card giữ nguyên chiều ở cả hai chế độ, chỉ dịch cả thang.
 

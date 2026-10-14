@@ -62,7 +62,7 @@ Vì sao đơn đã huỷ lại có nhiều trạng thái khác nhau: [booking-st
 | **Advisory lock** | Khoá tạm ở cơ sở dữ liệu, bảo đảm hai việc đụng cùng một đơn không chạy chen nhau. |
 | **Idempotency key** | Mã chống-làm-hai-lần. Gửi lại cùng lệnh với cùng mã thì cổng thanh toán chỉ thực hiện một lần. |
 | **Webhook** | Cổng thanh toán tự gọi ngược về máy chủ để báo "đã thu tiền", thay vì máy chủ phải hỏi liên tục. |
-| **Outbox** | Hàng đợi email: việc gửi mail được ghi vào bảng trước, một tiến trình riêng gửi sau — để mail không mất khi có sự cố. |
+| **Outbox** | Hàng đợi email: việc gửi mail được ghi vào bảng trước, phần chạy nền (worker) gửi sau — để mail không mất khi có sự cố. Trên production worker chạy chung tiến trình với máy chủ API (`WORKER_INLINE=true`, vì gói miễn phí của Render không có tiến trình nền riêng). |
 | **Cron / sweep** | Việc chạy định kỳ, ví dụ dọn các đơn chưa trả tiền đã quá hạn. |
 | **Rate limit / throttle** | Chặn một người gọi quá nhiều lần trong thời gian ngắn. |
 | **Soft delete** | Xoá mềm: đánh dấu đã xoá thay vì xoá hẳn, để dữ liệu liên quan không đứt. |
@@ -72,7 +72,7 @@ Vì sao đơn đã huỷ lại có nhiều trạng thái khác nhau: [booking-st
 | Từ | Là gì trong dự án |
 | --- | --- |
 | **Vercel** | Nơi chạy web khách và web quản trị. |
-| **Render** | Nơi chạy máy chủ API và tiến trình gửi mail. Gói miễn phí nên **ngủ sau 15 phút** không ai gọi. |
+| **Render** | Nơi chạy máy chủ API; phần gửi mail và việc định kỳ chạy chung trong cùng tiến trình ấy. Gói miễn phí nên **ngủ sau 15 phút** không ai gọi — lúc ngủ thì việc định kỳ cũng không chạy (G41 ở [open-items](open-items.md)). |
 | **Supabase** | Nơi chứa cơ sở dữ liệu Postgres thật. |
 | **Cloudinary** | Nơi chứa ảnh. |
 | **Resend** | Dịch vụ gửi email. |

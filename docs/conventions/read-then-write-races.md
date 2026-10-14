@@ -60,6 +60,21 @@ là "đừng để khoảng hở giữa đọc và ghi", không phải "nhồi m
 | Recompute `Tour.ratingAvg/ratingCount` khi duyệt review (P3a-A) | Lần 2 | `SELECT … FOR UPDATE` rồi `UPDATE … FROM (SELECT …)` |
 | Đổi trạng thái câu hỏi khách + ghi lịch sử (W4) | — | Cùng khuôn: `SELECT … FOR UPDATE` đọc `status` rồi mới ghi; dùng lại thay vì nghĩ lại |
 
+Từ P4e khuôn này thành nếp chung của admin. Đo 14/10, ngoài ba chỗ trên còn
+dùng ở (`apps/api/src/modules/`):
+
+- `SELECT … FOR UPDATE` trên hàng đích: sửa chuyến và huỷ chuyến
+  (`catalog/admin-departures.service.ts`, `catalog/departure-cancel.service.ts`),
+  bật bán tour (`catalog/admin-catalog.service.ts`), xoá điểm đến
+  (`catalog/admin-destinations.service.ts`), sửa và rút review
+  (`reviews/reviews.service.ts`), đổi quyền và khoá tài khoản
+  (`users/admin-users.service.ts`).
+- `SELECT … FOR SHARE` hàng tour khi tạo hay sửa chuyến, để không chen được
+  lúc tour đang hạ số khách tối đa (`catalog/admin-departures.service.ts`, G8).
+- `pg_advisory_xact_lock`: một khoá theo booking cho mọi luồng hoàn tiền
+  (`bookings/refund-lock.ts`) và một khoá chung cho thứ tự danh mục
+  (`catalog/admin-categories.service.ts`).
+
 ## Checklist khi review
 
 - [ ] Có đoạn nào đọc giá trị rồi ghi lại giá trị dẫn xuất từ nó không?

@@ -20,7 +20,7 @@ cp apps/mobile/.env.example apps/mobile/.env.local
 
 Dòng build **không bỏ được**, và phải là `@tourism/mobile^...` (mọi package mà
 app phụ thuộc) chứ không phải riêng `@tourism/tokens`: Metro cần `dist` của cả
-`@tourism/i18n`, `@tourism/core` và `@tourism/tokens`. Bản cũ chỉ build tokens
+`@tourism/i18n`, `@tourism/core`, `@tourism/tokens` và, từ P5b-2, `@tourism/contract`. Bản cũ chỉ build tokens
 nên máy sạch chết ở `@tourism/i18n` — sửa 16/09 khi cụm auth mobile kéo thêm
 `@tourism/core` vào cây import.
 
@@ -49,7 +49,7 @@ là client công khai, cùng hạng browser: không secret nào ở đây, kể 
 pnpm --filter @tourism/mobile dev
 ```
 
-Đó là `expo start`. Máy dev chạy **Windows native** (từ 14/09/2026) nên Metro
+Đó là `expo start --go`. Máy dev chạy **Windows native** (từ 14/09/2026) nên Metro
 nghe thẳng trên Windows và điện thoại trong cùng mạng Wi-Fi tới được — không
 cần tunnel, không cần cài gì thêm. Tường lửa Windows phải cho Node nhận kết
 nối vào; lần đầu chạy nó sẽ hỏi, chọn Allow cho mạng Private.
@@ -143,8 +143,8 @@ mỗi lần loại một gói khỏi tầm mắt của nó là bớt đi một l
   được pnpm isolated. 90 dòng `metro.config.js` của Nexora vá Nx + Windows —
   v2 không có cả hai (ADR-0040 §6). Đã đo: `expo export` bundle được cả iOS
   lẫn Android mà không cần file nào.
-- **Không có Maestro, không có icon tab.** E2E và icon chờ có màn hình thật
-  (P5b). `eas.json` thì có từ 13/10, chỉ để build bản có đăng nhập Google (§7);
+- **Không có Maestro.** E2E chưa dựng, kể cả sau khi đủ năm cụm màn P5b (12/10).
+  Icon tab thì đã có (`app/(tabs)/_layout.tsx`, đo 14/10). `eas.json` thì có từ 13/10, chỉ để build bản có đăng nhập Google (§7);
   vòng dev hằng ngày vẫn là Expo Go.
 - **Jest chứ không Vitest, và CHỈ ở hai package này.** Ngoại lệ đã được
   ADR-0001 + CLAUDE.md cấp từ P0; ranh giới ở ADR-0040 §4 là thứ giữ cho nó

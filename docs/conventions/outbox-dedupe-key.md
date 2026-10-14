@@ -19,13 +19,18 @@ dạng key theo đúng ngữ nghĩa lặp của event:
 | `<event>:<entityId>:<giá trị dùng một lần>` | Một lần cho mỗi mã/link phát ra | Mỗi lần phát sinh một bí mật mới thì đó là thư mới |
 | `<event>:<entityId>:<uuid ngẫu nhiên>` | Luôn khác nhau | Event **hợp lệ khi lặp** — mỗi lần là một thông báo mới |
 
-## Đang dùng thật (đo 21/09/2026)
+## Đang dùng thật (đo 14/10/2026)
 
 | Key | Nơi sinh | Dạng |
 | --- | --- | --- |
 | `booking-confirmed:<bookingId>` | `bookings.service.ts` | một lần mỗi booking |
 | `enquiry-admin-alert:<enquiryId>` | `enquiries.service.ts` | một lần mỗi câu hỏi |
 | `refund:<bookingId>:<refundRowId>` | `refunds.service.ts` | một lần mỗi dòng hoàn — sổ append-only nên mỗi lần hoàn có một id riêng để neo |
+| `booking-cancelled:<bookingId>` | `cancellations.service.ts` (ghép trong SQL) | một lần mỗi booking — huỷ chỉ xảy ra một lần |
+| `overbook-refund:<bookingId>` · `departure-closed-refund:<bookingId>` · `departure-moved-refund:<bookingId>` | `payments.service.ts` (`DEDUPE_PREFIX` theo nguyên nhân) | một lần mỗi booking — hoàn tự động trọn đơn khi claim trượt |
+| `orphan-refund:<bookingId>` | `payments.service.ts` | một lần mỗi booking — hoàn khoản thu mồ côi |
+| `review-approved:<reviewId>` | `reviews.service.ts` | một lần mỗi review |
+| `review-rejected:<reviewId>:<lần bác thứ mấy>` | `reviews.service.ts` | mỗi lần bác là một thư — review sửa rồi gửi lại có thể bị bác lần nữa, nên neo theo số lần |
 | `newsletter-welcome:<email>` | `newsletter.service.ts` | một lần vĩnh viễn mỗi địa chỉ (chủ đích) |
 | `newsletter-confirm:<email>:<ngày UTC>` | `newsletter.service.ts` | gửi lại thư xác nhận khi chưa confirm sau 24 giờ |
 | `enquiry-received:<email>:<ngày UTC>` | `enquiries.service.ts` | ACK cho người gửi (ADR-0039 §1) |

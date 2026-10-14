@@ -44,7 +44,7 @@ là **ngọc bích trầm trên nền sương phớt lục**, không phải xanh
 | Chữ phụ | `#4F605C` |
 | Chữ chính | `#1B2B2B` |
 | Destructive (lỗi, hủy) | `#A8423A` |
-| Rating ★ (CHỈ dùng cho sao đánh giá) | `#D99A3D` |
+| Rating ★ (CHỈ dùng cho sao đánh giá) | `#BB7E17` (dark `#E8AA4E`) |
 
 ### Dark — bắt buộc thiết kế cả hai
 
@@ -74,7 +74,7 @@ mã. Ngọc bích để dành cho hành động chính và điểm nhấn.
 
 - Không dùng màu nào ngoài bảng trên. Không gradient cầu vồng, không tím/hồng.
 - Không tô màu khác nhau theo miền Bắc/Trung/Nam (đã rút, xem đầu file).
-- Vàng hổ phách `#D99A3D` **chỉ** dùng cho sao rating, không dùng làm accent chung.
+- Vàng hổ phách `#BB7E17` **chỉ** dùng cho sao rating, không dùng làm accent chung.
 
 ---
 
@@ -99,7 +99,9 @@ ba mức: **docs** (rộng rãi, mặc định) · **chat** (chặt, cỡ nhỏ)
 
 ## 4. Component đã có sẵn — hãy dùng lại, đừng phát minh
 
-Dự án có sẵn **63 primitive** (shadcn style `base-nova` trên Base UI). Thiết kế
+Dự án có sẵn **63 primitive** dưới đây (shadcn style `base-nova` trên Base UI;
+đếm lại 14/10: thư mục còn thêm `GradientWaves`, `article-markdown`, `confetti`, cụm
+`reui/` bảy component và `print-doc/` cho bản in). Thiết kế
 trang mới **phải lắp từ những thứ này**; mỗi component bạn nghĩ ra ngoài danh
 sách là một thứ ai đó phải viết mới.
 
@@ -130,14 +132,12 @@ Bám các khuôn này để trang mới trông cùng một nhà:
 - **Hero luôn TỐI.** Mọi trang có hero (`/tours`, `/contact`, `/destinations`,
   trang vùng) dùng nền tối cộng một hoạ tiết đường đồng mức mảnh, chữ sáng đè lên.
   Không có ngoại lệ — navbar chưa cuộn dùng chữ trắng và sẽ tàng hình trên hero sáng.
-- **Ảnh: dùng ô placeholder, đừng dùng ảnh thật.** Sản phẩm đang ở chính sách
-  static-first — mọi vị trí ảnh là ô nền xám sọc chéo mảnh, có icon và nhãn mô tả
-  ảnh sẽ nằm ở đó. Mockup nên theo đúng vậy để không hứa hẹn thứ chưa có.
-  **Ngoại lệ DUY NHẤT (06/08): khu Location của `/contact` là bản đồ MapLibre
+- **Ảnh: site đã dùng ảnh thật** (Cloudinary, phủ dần 14–19/08; đo 20/08: 29/29
+  tour có ảnh bìa và gallery, sổ nợ A8). Trước 14/08 brief này dặn vẽ ô placeholder
+  sọc chéo — luật ấy hết hiệu lực. Khu Location của `/contact` là **bản đồ MapLibre
   THẬT**, tương tác được, 2 pin Hà Nội và Hồ Chí Minh, tile đổi theo sáng/tối
-  ([ADR-0018](../adr/0018-web-map-library.md)). Bản đồ là component *chức năng*
-  chứ không phải ô ảnh — chính sách placeholder không áp cho nó. Mockup nào chạm
-  `/contact` phải vẽ bản đồ thật, đừng vẽ ô sọc chéo ở đó.
+  ([ADR-0018](../adr/0018-web-map-library.md)); mockup nào chạm `/contact` phải
+  vẽ bản đồ, đừng vẽ ô ảnh ở đó.
 - **Padding trang:** hẹp ở mobile, nới dần tới rất rộng ở màn lớn. Nội dung
   không tràn sát mép ở desktop.
 - Bo góc vừa phải, viền mảnh 1px, đổ bóng rất nhẹ hoặc không có. Không neumorphism,
@@ -166,12 +166,11 @@ Home · About · Blog + bài viết · Contact · FAQ · Destinations + trang v�
 Tours (danh sách) · Tour chi tiết · Login/Register/Forgot/Reset/2FA/Verify email ·
 Terms/Privacy/Cancellation policy.
 
-**Chưa có:** Booking (luồng đặt chỗ) — `/tours/[slug]/book`, `/checkout/success`,
-`/checkout/cancel` đều chưa tồn tại, dù API đã trỏ redirect vào hai URL sau.
-
-**Đã ship nhưng ở mức DỰNG TẠM, đang cần thiết kế lại:** cả khu account merge
-06/08 với điều kiện rõ ràng là sẽ redesign — `/account` (dashboard) ·
-`/account/bookings` · `/account/bookings/[code]` · `/account/profile` ·
-`/account/saved`. Lưu ý `/account/security` KHÔNG phải trang: nó là
-`permanentRedirect` 308 sang profile, nên chỉ có **5 màn thật**. Chi tiết nợ:
-[sổ nợ kỹ thuật mục A](../analysis/2026-08-06-backlog-no-ky-thuat.md).
+**Luồng đặt chỗ và khu account đã có đủ (cập nhật 14/10/2026):**
+`/tours/[slug]/book` (wizard 4 bước, 19/08) · `/tours/[slug]/enquire` ·
+`/checkout/success` (voucher, P7 Phần C 09/10) · `/checkout/cancel` (thẻ chờ,
+G42 13/10) · `/account` (hộ chiếu, 11/08) · `/account/bookings` và
+`/account/bookings/[code]` (P7 Phần A, B 06–09/10) · `/account/saved` và
+`/account/settings` (09/10). `/account/profile` và `/account/security` không phải
+trang: cả hai `permanentRedirect` 308 sang `/account/settings`. Ngoài ra có
+`/newsletter/confirm` và `/newsletter/unsubscribe`.

@@ -8,17 +8,17 @@ thật tại **[www.nexora-travel.agency](https://www.nexora-travel.agency)** nh
 
 Kho mã là monorepo **pnpm + Turborepo**; máy dev Windows native (từ 14/09/2026).
 
-> Tên/brand chính thức: chưa chốt — scope `@tourism/*` là codename tạm,
-> đổi một lần bằng find-replace trước khi deploy public.
+> Tên thương hiệu là **Nexora** (chốt 19/08/2026). Scope `@tourism/*` cố ý giữ
+> nguyên: đó là tên gói nội bộ, người dùng không thấy.
 
-## Chín gói trong kho mã
+## Mười gói trong kho mã
 
 | Gói | Đường dẫn | Là gì | Stack | Trạng thái |
 | --- | --- | --- | --- | --- |
 | `@tourism/api` | `apps/api` | Máy chủ: mọi luật nghiệp vụ và tiền bạc | NestJS 11 · Prisma 7 · oRPC · Better Auth · pg-boss · Stripe/PayPal | ✅ chạy thật trên Render |
 | `@tourism/web` | `apps/web` | Trang khách hàng | Next.js 16 · React 19 · Tailwind 4 | ✅ chạy thật trên Vercel |
-| `@tourism/admin` | `apps/admin` | Trang quản trị nội bộ | Next.js 16 · React 19 · Tailwind 4 | ✅ P4a–P4d chạy thật · P4e–P4f chưa làm |
-| `@tourism/mobile` | `apps/mobile` | App điện thoại | Expo SDK 57 · RN 0.86 (New Arch) | 🔶 khung + cụm đăng nhập xong · 4 cụm còn lại mới có bản vẽ |
+| `@tourism/admin` | `apps/admin` | Trang quản trị nội bộ | Next.js 16 · React 19 · Tailwind 4 | ✅ P4a–P4e và P4f Users chạy thật (13/10) · Media chưa có spec |
+| `@tourism/mobile` | `apps/mobile` | App điện thoại | Expo SDK 57 · RN 0.86 (New Arch) | ✅ đủ năm cụm màn (12/10) · đăng nhập Google native (13/10) · demo bằng APK Android |
 | `@tourism/contract` | `libs/shared/contract` | Bản hợp đồng dữ liệu giữa máy chủ và các app | Zod 4 + oRPC (kiểu dữ liệu thông suốt hai đầu) | ✅ |
 | `@tourism/core` | `libs/shared/core` | Luật nghiệp vụ thuần, không dính khung nào | TypeScript | ✅ |
 | `@tourism/ui` | `libs/shared/ui` | Component dùng chung cho web và admin | React 19 · Tailwind 4 | ✅ |
@@ -31,7 +31,7 @@ Kho mã là monorepo **pnpm + Turborepo**; máy dev Windows native (từ 14/09/2
 - **Node 24 LTS** (khớp CI + Dockerfile) · **pnpm 11.9** (ghim ở `packageManager`) ·
   **Docker Desktop** (Postgres cho `test:int`) · **GitHub CLI** đã `gh auth login`
   (luật 14 CLAUDE.md)
-- Windows: `pnpm config set script-shell "C:\Programming\Git\bin\bash.exe"` — lý do
+- Windows: `pnpm config set script-shell "C:\Devs\Git\bin\bash.exe"` — lý do
   và các bẫy còn lại ở CLAUDE.md → Gotchas
 - 8 file env KHÔNG nằm trong git: `.env.local` + `.env.production` của `apps/api`,
   `apps/web`, `apps/admin`, `apps/mobile` — dựng lại từ `.env.example` hoặc bản sao lưu

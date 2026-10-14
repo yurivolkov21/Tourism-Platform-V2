@@ -14,6 +14,11 @@
 | Supabase Auth (GoTrue) | mọi provider `false`, `auth.users` = 0 dòng | `/auth/v1/settings` |
 | App dùng Data API? | **Không** — 0 gói `@supabase/*` trong lockfile | nối DB bằng Prisma qua session pooler 5432 |
 
+> **Sau ngày đo:** từ 09/09 tới 14/10 chỉ một migration tạo bảng mới — `user_events`
+> (P4f, `20261013022702_p4f_users_staff`), và chính migration ấy bật RLS cho nó
+> (`ALTER TABLE user_events ENABLE ROW LEVEL SECURITY`), nên luật deny-all vẫn
+> giữ. Con số 36/36 ở trên là số đo 09/09; chưa đo lại trên prod (rà 14/10).
+
 Supabase với dự án này chỉ là **Postgres có hosting**, không hơn.
 
 ## Vì sao đóng

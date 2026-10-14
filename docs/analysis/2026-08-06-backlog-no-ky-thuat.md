@@ -1,4 +1,4 @@
-# Sổ nợ kỹ thuật còn mở — chốt 06/08/2026
+# Sổ nợ kỹ thuật còn mở — chốt 06/08/2026, rà lại 14/10/2026
 
 > **Đây là sổ SỐNG, không phải ảnh chụp.** Khác với
 > [progress report 04/08](progress/2026-08-04-progress-report.md) (bản chụp một thời
@@ -32,7 +32,7 @@
 | ~~A2~~ | ~~`textarea` lý do huỷ booking bị bỏ sót~~ | Booking detail | ✅ **trả 10/08** cùng A1 — `booking-actions.tsx` gửi `reason` thật, có trần theo `CancelBookingInputSchema.max(1000)` |
 | ~~A3~~ | ~~Nợ tương phản dark chưa đóng~~ | Toàn site, chế độ tối | ✅ **trả 10/08** — và sổ này từng ghi SAI ngưỡng: 2.91/2.57 là cặp BỀ MẶT (WCAG 1.4.11, ngưỡng **3:1**), không phải chữ (4.5:1). Xem [ADR-0019](../adr/0019-color-token-roles.md) |
 | ~~A4~~ | ~~Booking/checkout chưa có thiết kế~~ | Luồng booking | ✅ **trả 07/08** (`4959455`), thiết kế lại hướng B 10/08 (`05d4d1c`) |
-| A5 | **Con dấu tem thư `/contact` ghi "Hà Nội · Sa Pa".** Văn phòng Sa Pa đã bị xoá khỏi dữ liệu (nay là Hà Nội + Hồ Chí Minh) nên đây là **tham chiếu mồ côi**. User chốt 06/08 **giữ nguyên** vì Sa Pa là motif truyện thương hiệu. Ghi lại để lần redesign sau không tưởng là lỗi. | `contact-split.tsx:237` | — (đã chốt giữ) |
+| A5 | **Con dấu tem thư `/contact` ghi "Hà Nội · Sa Pa".** Văn phòng Sa Pa đã bị xoá khỏi dữ liệu (nay là Hà Nội + Hồ Chí Minh) nên đây là **tham chiếu mồ côi**. User chốt 06/08 **giữ nguyên** vì Sa Pa là motif truyện thương hiệu. Ghi lại để lần redesign sau không tưởng là lỗi. | `contact-split.tsx:251` (đo 14/10) | — (đã chốt giữ) |
 | ~~A6~~ | ~~Khu Account phải thiết kế lại TỪ ĐẦU~~ | `/account/*` | ✅ **trả 11/08** ("Hộ chiếu", `b2959c5..bf20383`). **Bài học quy trình vẫn còn giá trị, đừng xoá:** nghe user nói "làm lại" thì phải bỏ hẳn bản cũ và dựng từ đầu — giữ khung cũ rồi vá góp ý lên trên, ba lần liên tiếp, là cách vòng đó hỏng. Lỗi này **lặp lại ở vòng Tour Details 13/08** và tốn nguyên một đợt thi công |
 | ~~A7~~ | ~~Khu checkout/booking chưa bao giờ được rà cùng khu account~~ | `/checkout/*` | ✅ **trả 10/08** — hai khu rà cùng một lượt (`feat/redesign-checkout-account`) |
 
@@ -40,7 +40,7 @@
 
 | # | Nợ | Bề mặt | Chặn? |
 | --- | --- | --- | --- |
-| A13 | **Ba thẻ chính sách cuối tab Departures bị bỏ sót ở R6** — bản duyệt có `fcard ×3`, bản ship có 0. Đã vá 14/08 (`ee051c6`). **Ghi lại vì bài học còn giá trị**: bộ so nghiệm thu R9 báo "0 lệch" mà vẫn lọt, do nó chỉ đối chiếu phần tử CÓ Ở CẢ HAI bên — phần tử app thiếu hẳn thì không có gì để so nên nó im lặng. Lần nghiệm thu sau phải có **phép đếm khối theo pane**, không chỉ bảng so thuộc tính | `/tours/[slug]` | ✅ đã vá |
+| ~~A13~~ | **Ba thẻ chính sách cuối tab Departures bị bỏ sót ở R6** — bản duyệt có `fcard ×3`, bản ship có 0. Đã vá 14/08 (`ee051c6`). **Ghi lại vì bài học còn giá trị**: bộ so nghiệm thu R9 báo "0 lệch" mà vẫn lọt, do nó chỉ đối chiếu phần tử CÓ Ở CẢ HAI bên — phần tử app thiếu hẳn thì không có gì để so nên nó im lặng. Lần nghiệm thu sau phải có **phép đếm khối theo pane**, không chỉ bảng so thuộc tính | `/tours/[slug]` | ✅ đã vá |
 | ~~A8~~ | ~~Ảnh tour vẫn rỗng~~ — công cụ xong 14/08 (`feat/media-inbox`), nội dung phủ dần các đợt 14–19/08 | `/tours/[slug]` + toàn site | ✅ **trả — đo DB 20/08**: 29/29 tour hero+gallery (276 ảnh) · 18/18 địa danh hero (137 ảnh gallery) · 9/9 bài viết · 48/52 khe site (**4 khe trống `content-hero`/`destinations-hero`/`home-experiences`/`home-trust` là khe seed-only, CHƯA bề mặt nào đọc** — không phải lỗ hổng). Nợ mềm còn lại: gallery phân bố lệch **1–17 ảnh/nơi** — nơi mỏng thì khối gallery dày (7 thumb, hai cột) tự rơi nhánh gọn; muốn dày thêm là việc nội dung, không chặn gì |
 | ~~A9~~ | ~~Mô tả cho bốn card dữ kiện~~ | `/tours/[slug]` | ✅ **trả 14/08** (`cacb8d5`) — 4 cột `fact*Note` + 120 câu; card nay cao **199** so với 197 của bản duyệt |
 | ~~A10~~ | ~~Tiêu đề riêng cho thẻ policy~~ | `/tours/[slug]` | ✅ **trả 14/08** (`cacb8d5`) — 90 tiêu đề, mỗi cái nén câu đầu của `body`; đúng như dự đoán KHÔNG cần cột mới |
@@ -98,7 +98,7 @@ Gom lại đây cho đủ mặt; chi tiết ở entry CHANGELOG tương ứng.
 | --- | --- | --- |
 | E1 | `EnquiryCta` component dùng chung (cuối trang FAQ) | [spec 25/07](../specs/2026-07-25-legal-utility-pages-design.md) |
 | E2 | Gắn API cho `/faq` — ứng viên bảng `faqs` | [spec 25/07](../specs/2026-07-25-legal-utility-pages-design.md) |
-| E3 | 5 nợ contract cụm Tours (media tour · next-departure trên card · sort rating · filter price/duration/difficulty · suitableFor+badges) — #2–#5 cần ADR mới | [spec 27/07](../specs/2026-07-27-tours-pages-design.md) §8 |
+| E3 | 5 nợ contract cụm Tours (media tour · next-departure trên card · sort rating · filter price/duration/difficulty · suitableFor+badges) — #2–#5 cần ADR mới. **Rà 14/10:** #1 đã trả theo A8; `suitableFor` và `badges` có trên `TourDetail` nhưng chưa có trên `TourCard`; `TourCard` chưa có next-departure, `TourSortKeySchema` chưa có rating, `ToursListQuerySchema` chưa lọc giá, thời lượng, độ khó (`libs/shared/contract/src/schemas/catalog.ts`) | [spec 27/07](../specs/2026-07-27-tours-pages-design.md) §8 |
 | ~~E4~~ | ~~Media thật thay `ImagePlaceholder` toàn site~~ — ✅ trả theo A8 (đo DB 20/08, mọi bề mặt đang dùng đều có ảnh thật) | [README dòng P3b](../README.md) |
 | E5 | ~~`connected-accounts` một dòng cứng~~ (đã qua i18n) · ~~`saved-grid` 401 thiếu nhánh `sessionExpired`~~ (có, có test) · ~~terminal-note "số tiền đã hoàn" không nguồn~~ (`refundedTotal` trên contract) · ~~DENIED không hiện lý do~~ (CỐ Ý — `decisionNote` không mở ra contract khách, ghi ở `booking-vm.ts`) — rà 19/08. **Còn:** `user-menu` label literal (họ "i18n sweep", xem B1) · ~~Load-more cap 50 không lối thoát~~ (hết từ P7 Phần A 06/10: phân trang 10 đơn, đơn thứ 51 trở đi tới được; rà 14/10) | [CHANGELOG 06/08 cụm A](../CHANGELOG.md) |
 | E6 | Two-factor PARK | [ADR-0017](../adr/0017-web-session-better-auth.md) §5b |
@@ -113,14 +113,16 @@ gom đầu mối ở đây cho đủ mặt.
 
 | # | Nợ | Chi tiết | Chặn? |
 | --- | --- | --- | --- |
-| F1 | Resend webhooks (`email.delivered/bounced/complained`) + cân nhắc Audience sync | outbox hiện coi `SENT` = "Resend nhận", không phải "tới inbox" | — |
+| F1 | Resend webhooks (`email.delivered/bounced/complained`) + cân nhắc Audience sync | outbox hiện coi `SENT` = "Resend nhận", không phải "tới inbox". **Một nửa đã có từ W4 (08/09):** webhook nhận `bounced` và `complained` để ghi suppression (ADR-0039 §4, `resend-event.ts`); `delivered` vẫn bỏ qua (đo 14/10) | — |
 | F2 | Payload outbox chưa mang **ảnh hero tour** và **rating sao** | mail BOOKING_CONFIRMATION/REVIEW_APPROVED của hệ Barebone (ADR-0025) degrade về monogram thay vì ảnh + hàng sao như Nexora cũ; muốn có phải mở rộng producer (bookings/reviews service) | — |
 | F3 | Preview deploy Vercel không đăng nhập được (origin động ngoài `TRUSTED_ORIGINS`) | chấp nhận — preview chỉ xem UI | — |
-| F4 | Dev/prod **chung DB Supabase** — seed/reset từ máy dev đụng dữ liệu chạy thật | nếu tách: spec deploy §2 có sẵn đường | ⚠ rủi ro thao tác |
+| ~~F4~~ | ~~Dev/prod **chung DB Supabase** — seed/reset từ máy dev đụng dữ liệu chạy thật~~ | ✅ **hết từ 14/09** (dựng lại máy): `.env.local` trỏ Postgres Docker, chuỗi Supabase chỉ nằm ở `.env.production` (CLAUDE.md, gotcha `prisma.config.ts`) | — |
 | F5 | Render free ngủ 15′ → lần mở đầu chờ ~50s | nếu vướng trước bảo vệ: cron ping hoặc plan trả phí nhỏ | — |
 
 ---
 
 ## Đã trả
 
-Chưa có mục nào. Khi trả thì chuyển dòng xuống đây kèm hash, đừng xoá.
+Không dùng mục này: luật của sổ là **gạch tại chỗ** (mục Cách dùng ở đầu file),
+nên khoản đã trả nằm ngay trong bảng của nó. Trước 14/10 chỗ này dặn ngược lại
+("chuyển dòng xuống đây") mà chưa ai làm theo.
