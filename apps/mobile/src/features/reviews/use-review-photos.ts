@@ -12,6 +12,7 @@ import {
 } from '@/features/reviews/review-photos';
 import { orpc, withMobileAuth } from '@/lib/api/client';
 import { uploadToCloudinary } from '@/lib/media-upload';
+import { createSingleFlight } from '@/lib/single-flight';
 
 /** Ảnh review (R2) dùng chung cho viết mới (R1) và sửa lại (R5): chọn, tải thẳng lên Cloudinary, giữ publicId. */
 export function useReviewPhotos(
@@ -23,6 +24,8 @@ export function useReviewPhotos(
   const [photoError, setPhotoError] = useState<string | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [sheetError, setSheetError] = useState<string | null>(null);
+  // N7: bấm đúp nút chọn ảnh trước khi picker kịp mở thì lượt sau bị bỏ qua (cùng luật màn Account).
+  const [pickOnce] = useState(createSingleFlight);
   const signUploadMutation = useMutation(
     orpc.media.signUpload.mutationOptions({ context: withMobileAuth() }),
   );
@@ -122,7 +125,7 @@ export function useReviewPhotos(
     setSheetOpen,
     sheetError,
     setSheetError,
-    pickPhoto,
+    pickPhoto: (source: 'camera' | 'library') => pickOnce(() => pickPhoto(source)),
     retryPhoto,
     removePhoto: (key: string) => setPhotos((prev) => prev.filter((p) => p.key !== key)),
   };

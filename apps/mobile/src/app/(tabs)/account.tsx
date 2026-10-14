@@ -20,6 +20,7 @@ import { cloudinaryUrl } from '@/lib/cloudinary-url';
 import { isDevBuild } from '@/lib/dev-only';
 import { uploadToCloudinary } from '@/lib/media-upload';
 import { openExternalPath } from '@/lib/open-external-path';
+import { createSingleFlight } from '@/lib/single-flight';
 
 /**
  * NĂM dòng mở trình duyệt ngoài — dùng CHUNG cho A1 (cuối menu, đã đăng nhập)
@@ -59,6 +60,9 @@ export default function AccountRoute() {
   const [signOutOpen, setSignOutOpen] = useState(false);
   const [avatarSheetOpen, setAvatarSheetOpen] = useState(false);
   const [avatarError, setAvatarError] = useState<string | null>(null);
+  // N7 (rà 07/10): bấm đúp "Take photo" hay "Choose from library" trước khi picker kịp mở thì
+  // lượt sau bị bỏ qua — khoá giữ tới khi ảnh tải xong hay lượt chọn bị huỷ.
+  const [pickOnce] = useState(createSingleFlight);
   const [avatarBusy, setAvatarBusy] = useState(false);
 
   const { account } = messages.mobile;
@@ -326,8 +330,8 @@ export default function AccountRoute() {
         showRemove={user.image !== null && user.image !== undefined}
         pending={avatarBusy}
         errorText={avatarError}
-        onTakePhoto={() => void pickAvatar('camera')}
-        onChooseLibrary={() => void pickAvatar('library')}
+        onTakePhoto={() => void pickOnce(() => pickAvatar('camera'))}
+        onChooseLibrary={() => void pickOnce(() => pickAvatar('library'))}
         onRemove={() => void handleRemoveAvatar()}
       />
       <SignOutSheet
