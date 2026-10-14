@@ -9,6 +9,7 @@ import { useRouter } from 'next/navigation';
 import { type ReactNode, useEffect, useRef, useState } from 'react';
 import { api, withBrowserAuth } from '@/lib/api/client';
 import { MAX_AVATAR_BYTES, validateAvatar } from '@/lib/avatar';
+import { thumbnailSrc } from '@/lib/cloudinary-thumb';
 import { imageExtensionOf, uploadToCloudinary } from '@/lib/media-upload';
 import { formatBytes } from '@/lib/review-photos';
 
@@ -190,8 +191,8 @@ export function AvatarUpload({
           }`}
         >
           {displaySrc ? (
-            // biome-ignore lint/performance/noImgElement: preview là Object URL cục bộ hoặc URL Cloudinary ngoài — next/image chưa khai remotePatterns (nợ ADR-0020).
-            <img src={displaySrc} alt="" className="size-full object-cover" />
+            // biome-ignore lint/performance/noImgElement: preview là Object URL cục bộ hoặc avatar đã lưu (Cloudinary, Google); cỡ Cloudinary xin qua thumbnailSrc (W-10)
+            <img src={thumbnailSrc(displaySrc, 96)} alt="" className="size-full object-cover" />
           ) : (
             <span className="flex size-full items-center justify-center font-heading text-4xl font-semibold text-ink/70">
               {initial.toUpperCase()}

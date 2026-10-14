@@ -2,6 +2,7 @@ import { messages } from '@tourism/i18n';
 import { cn } from '@tourism/ui/lib/utils';
 import { StarIcon } from 'lucide-react';
 import type { TourReviewVM } from '@/lib/api/tours';
+import { thumbnailSrc } from '@/lib/cloudinary-thumb';
 import { formatReviewDate } from '@/lib/tours';
 
 /**
@@ -87,13 +88,12 @@ export function ReviewCard({ review }: { review: TourReviewVM }) {
       {review.media.length > 0 ? (
         <div className="mt-2.5 flex flex-wrap gap-2">
           {review.media.map((photo) => (
-            // Ảnh khách tự đính kèm (ADR-0021). `<img>` thường chứ không
-            // `next/image`: URL Cloudinary đã ký, kích cỡ cố định 64px, không
-            // cần lớp tối ưu nào ở giữa.
-            // biome-ignore lint/performance/noImgElement: ảnh 64px từ Cloudinary đã ký, không cần loader của Next
+            // Ảnh khách tự đính kèm (ADR-0021), cỡ cố định 64px: `thumbnailSrc` xin
+            // Cloudinary đúng cỡ thay vì tải bản gốc (W-10).
+            // biome-ignore lint/performance/noImgElement: ô cố định 64px, cỡ đã xin qua thumbnailSrc — srcSet của next/image không thêm gì
             <img
               key={photo.url}
-              src={photo.url}
+              src={thumbnailSrc(photo.url, 64)}
               alt={photo.alt ?? ''}
               className="size-16 rounded-sm border border-border object-cover"
             />

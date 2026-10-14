@@ -20,6 +20,7 @@ import {
   TimelineTitle,
 } from '@tourism/ui/components/reui/timeline';
 import { CheckIcon, ChevronRightIcon, CircleIcon } from 'lucide-react';
+import Image from 'next/image';
 import Link from 'next/link';
 import { RevealItem } from '@/components/motion/reveal-item';
 import { STAGGER } from '@/lib/motion';
@@ -84,10 +85,15 @@ export function TravelLog({ entries }: { entries: TravelLogEntryWithCover[] }) {
             <RevealItem key={e.slug} enter="rise" delay={Math.min(index, 3) * STAGGER.grid}>
               <section id={`log-${e.slug}`}>
                 {e.cover ? (
-                  // biome-ignore lint/performance/noImgElement: repo không dùng next/image (chưa cấu hình remotePatterns — tiền lệ trip-card/checkout-summary).
-                  <img
+                  // next/image + loader Cloudinary xin đúng cỡ qua `w_` thay vì tải ảnh
+                  // gốc (W-10): từ `lg` cột nội dung của khung `max-w-5xl` còn khoảng
+                  // 760px sau cột nav 10rem, dưới `lg` ảnh trải trọn bề ngang.
+                  <Image
                     src={e.cover.url}
                     alt={e.cover.alt ?? ''}
+                    width={760}
+                    height={160}
+                    sizes="(min-width: 1024px) 760px, 100vw"
                     className="h-40 w-full rounded-2xl border border-border object-cover"
                   />
                 ) : (

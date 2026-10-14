@@ -198,6 +198,10 @@ describe('CheckoutSummary — breakdown giá', () => {
     const img = container.querySelector('img');
     expect(img).toBeInTheDocument();
     expect(img).toHaveAttribute('alt', 'Terraced rice fields at sunrise');
+    // W-10: ảnh bìa đi next/image (src viết lại thành `/_next/image?url=…` trong
+    // test) với `sizes` đúng bề ngang cột, chứ không tải bản gốc qua `<img>` thường.
+    expect(img?.getAttribute('src')).toMatch(/^\/_next\/image\?url=/);
+    expect(img).toHaveAttribute('sizes', '(min-width: 1024px) 312px, 100vw');
   });
 });
 

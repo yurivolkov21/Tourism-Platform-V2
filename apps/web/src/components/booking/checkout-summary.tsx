@@ -6,6 +6,7 @@ import { Badge } from '@tourism/ui/components/badge';
 import { motion } from 'motion/react';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
+import { SlotImage } from '@/components/slot-image';
 import type { DepartureVM } from '@/lib/api/tours';
 import { bookingPriceLines, computeBookingTotal, formatBookingMoney } from '@/lib/checkout';
 import { SPRING } from '@/lib/motion';
@@ -97,19 +98,17 @@ export function CheckoutSummary({
   return (
     // KHÔNG khung card (đổi 19/08): wizard đặt cột này trong một `<aside>` đã có
     // `border-l` làm ranh giới, nên card lồng vào là hai lớp khung chồng nhau —
-    // thấy rõ ở ảnh nghiệm thu bước 1. Ảnh bìa tự bo góc thay vì nhờ
-    // `overflow-hidden` của thẻ cha.
+    // thấy rõ ở ảnh nghiệm thu bước 1. Ảnh bìa tự bo góc (khung của `SlotImage`)
+    // thay vì nhờ `overflow-hidden` của thẻ cha.
     <div>
       {tour.cover ? (
-        // `<img>` thường, KHÔNG `next/image`: `next.config.ts` chưa khai
-        // `images.remotePatterns` cho host media thật (vd res.cloudinary.com)
-        // — `next/image` sẽ ném lỗi cứng cho ảnh ở host chưa khai báo. Đổi
-        // sang `next/image` khi hạ tầng ảnh được cấu hình (ngoài phạm vi Task 2).
-        // biome-ignore lint/performance/noImgElement: lý do ở comment trên.
-        <img
-          src={tour.cover.url}
-          alt={tour.cover.alt ?? ''}
-          className="aspect-16/9 w-full rounded-xl object-cover"
+        // `SlotImage` (next/image + loader Cloudinary) xin đúng cỡ qua `w_` thay vì
+        // tải ảnh gốc (W-10): từ `lg` cột tóm tắt rộng 352px trừ `pl-10` của
+        // `<aside>` ở booking-wizard, dưới `lg` ảnh trải trọn bề ngang.
+        <SlotImage
+          image={tour.cover}
+          className="aspect-16/9 w-full rounded-xl"
+          sizes="(min-width: 1024px) 312px, 100vw"
         />
       ) : null}
 

@@ -1,6 +1,7 @@
 import { messages } from '@tourism/i18n';
 import type { ReactNode } from 'react';
 import { RevealItem } from '@/components/motion/reveal-item';
+import { thumbnailSrc } from '@/lib/cloudinary-thumb';
 
 /**
  * KHUNG HỘ CHIẾU — data page đóng khung (addendum spec §7.4, user duyệt
@@ -89,8 +90,12 @@ export function PassportCard({
             className="flex size-28 flex-none items-center justify-center overflow-hidden rounded-2xl border border-border bg-muted ring-2 ring-ink/10 ring-offset-2 ring-offset-card"
           >
             {image ? (
-              // biome-ignore lint/performance/noImgElement: avatar 112px — chưa chuyển sang next/image + loader Cloudinary (nợ ghi ở CHANGELOG W3 merge).
-              <img src={image} alt="" className="size-full rounded-2xl object-cover" />
+              // biome-ignore lint/performance/noImgElement: avatar 112px có thể là Cloudinary hoặc Google; cỡ Cloudinary xin qua thumbnailSrc (W-10)
+              <img
+                src={thumbnailSrc(image, 112)}
+                alt=""
+                className="size-full rounded-2xl object-cover"
+              />
             ) : (
               <span className="font-heading text-5xl font-semibold text-ink/70">
                 {name.charAt(0).toUpperCase()}

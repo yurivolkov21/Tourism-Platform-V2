@@ -10,7 +10,7 @@ import { RegionReviews } from './region-reviews';
 function reviewPhoto(n: number, alt: string | null): MediaItem {
   return {
     publicId: `reviews/rv-1/${n}`,
-    url: `https://res.cloudinary.com/demo/rv-1-${n}.jpg`,
+    url: `https://res.cloudinary.com/demo/image/upload/f_auto,q_auto/v1/reviews/rv-1/${n}`,
     type: 'IMAGE',
     role: 'body',
     posterUrl: null,
@@ -157,7 +157,11 @@ describe('RegionReviews', () => {
     render(<RegionReviews regionName="Southern Vietnam" reviews={[withMedia]} />);
     const thumbnails = document.querySelectorAll('img');
     expect(thumbnails).toHaveLength(1);
-    expect(thumbnails[0]).toHaveAttribute('src', 'https://res.cloudinary.com/demo/rv-1-0.jpg');
+    // W-10: ô 112×80 xin Cloudinary bề ngang 336px thay vì tải bản gốc.
+    expect(thumbnails[0]).toHaveAttribute(
+      'src',
+      'https://res.cloudinary.com/demo/image/upload/f_auto,q_auto,w_336/v1/reviews/rv-1/0',
+    );
   });
 
   it('review không có ảnh thì KHÔNG hiện strip', () => {

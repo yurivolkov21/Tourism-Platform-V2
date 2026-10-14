@@ -97,6 +97,17 @@ describe('AvatarUpload — prop image đã lưu', () => {
   });
 });
 
+describe('AvatarUpload — cỡ ảnh (W-10)', () => {
+  it('avatar Cloudinary đã lưu xin bề ngang gấp ba ô 96px, không tải bản gốc', () => {
+    const image = 'https://res.cloudinary.com/demo/image/upload/f_auto,q_auto/v3/avatars/user-1';
+    const { container } = render(<AvatarUpload initial="A" image={image} />);
+    expect(container.querySelector('img')).toHaveAttribute(
+      'src',
+      'https://res.cloudinary.com/demo/image/upload/f_auto,q_auto,w_288/v3/avatars/user-1',
+    );
+  });
+});
+
 describe('AvatarUpload — bấm gỡ', () => {
   it('gọi setAvatar publicId null rồi refresh', async () => {
     const user = userEvent.setup();

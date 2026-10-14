@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { SectionEyebrow } from '@/components/home/section-eyebrow';
 import { RevealHeading, RevealLede } from '@/components/motion/reveal-header';
 import { RevealItem } from '@/components/motion/reveal-item';
+import { thumbnailSrc } from '@/lib/cloudinary-thumb';
 import { STAGGER } from '@/lib/motion';
 import type { RegionReview } from '@/lib/regions';
 import { formatReviewDate } from '@/lib/tours';
@@ -132,10 +133,10 @@ export function RegionReviews({
                     {review.media.length > 0 ? (
                       <div className="mt-3 flex flex-wrap gap-2">
                         {review.media.map((m) => (
-                          // biome-ignore lint/performance/noImgElement: URL Cloudinary ngoài — next/image chưa khai remotePatterns (nợ ADR-0020).
+                          // biome-ignore lint/performance/noImgElement: ô cố định 112×80, cỡ đã xin qua thumbnailSrc (W-10) — srcSet của next/image không thêm gì
                           <img
                             key={m.publicId}
-                            src={m.url}
+                            src={thumbnailSrc(m.url, 112)}
                             alt={m.alt ?? ''}
                             loading="lazy"
                             className="h-20 w-28 rounded-md border border-border object-cover"
