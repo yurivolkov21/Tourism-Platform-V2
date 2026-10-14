@@ -330,3 +330,34 @@ sáng, 20% / 30% ở tối):
 - Thấy đổi: chữ đỏ ở theme sáng (lỗi form, nút xoá, cảnh báo huỷ) đậm hơn một bậc, ở theme tối nhạt
   và hồng hơn một bậc so với AMEND 2. Mobile đọc cùng token nên đổi theo khi app build lại.
 - `tokens.spec.ts` đo nút đỏ ở cả hai theme trên nền, card và chân hộp thoại, lúc nghỉ và lúc hover.
+
+## AMEND 4 — 14/10/2026 (open-items G47): app mobile dùng `warning-emphasis` và `success-emphasis` làm mực
+
+### Bối cảnh
+
+AMEND 1 để app mobile ngoài đợt vá vì `MOBILE_COLOR_KEYS` là danh sách chọn lọc. Soát app (14/10)
+thấy bốn chỗ đặt chữ trạng thái cỡ `caption` (12dp) bằng `success` hay `warning` lên lớp tô nhạt của
+chính tông ấy. Các hộp tô `success` hay `warning` khác của app (hộp hạn huỷ, dải nhắc thanh toán, hộp
+hoàn tiền, nhãn chờ duyệt) đã dùng chữ `foreground`, nên không đổi. Đo từ hex của cầu RN, trộn alpha
+trong sRGB như React Native vẽ, theme sáng / tối:
+
+| Chỗ | Lớp tô / bề mặt | Mực nay | Mực emphasis |
+| --- | --- | --- | --- |
+| Huy hiệu "Almost full", tab Dates của chi tiết tour | `warning` 20% / nền | 1.68 ❌ / 5.31 | 5.74 / 5.31 |
+| Nhãn "Paid" ở Trips | `success` 18% / card | 2.77 ❌ / 3.81 ❌ | 5.49 / 4.55 |
+| Nhãn "Paid" ở chi tiết đơn | `success` 16% / card | 2.83 ❌ / 3.92 ❌ | 5.62 / 4.68 |
+| Nhãn "Published" ở My reviews | `success` 16% / card | 2.83 ❌ / 3.92 ❌ | 5.62 / 4.68 |
+
+### Quyết định
+
+- Thêm `warning-emphasis` và `success-emphasis` vào `MOBILE_COLOR_KEYS`; bốn chỗ trên đổi mực sang
+  hai token này. Lớp tô giữ token bề mặt (`warning`, `success`), cùng luật của web ở AMEND 1.
+- Huy hiệu "Booking closed" dùng chung component với "Almost full" nên đổi theo. Hàng của nó là hàng
+  không đặt được, mờ 60% (WCAG 1.4.3 miễn cho thành phần không hoạt động); chữ sáng lên từ 1.36 thành
+  2.54 ở theme sáng.
+- Theme tối của hai huy hiệu không đổi pixel nào, vì `warning-emphasis` tối bằng `warning`.
+- Chỗ sát chuẩn nhất là nhãn "Paid" của Trips ở theme tối (4.55 với lớp tô 18%; lên 20% là còn 4.37).
+  Test của `@tourism/mobile-ui` khoá đúng bốn tổ hợp lớp tô và bề mặt này ở cả hai theme.
+- Mockup của app vẫn tô `success` và `warning` cho các chữ này. Mockup là bản ghi bất biến; code lệch
+  có chủ đích như web đã lệch ở AMEND 1.
+- Thay đổi chỉ tới máy người dùng ở lần build app kế tiếp; push `main` không đẩy app đi đâu.
