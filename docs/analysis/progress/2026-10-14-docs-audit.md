@@ -56,7 +56,7 @@ prompt các phase còn lại ghi chỉ còn dùng cho P6.
 | Chỗ | Sai | Đúng (đo 14/10) |
 | --- | --- | --- |
 | README gốc | thương hiệu "chưa chốt"; "Chín gói"; admin "P4e–P4f chưa làm"; mobile "4 cụm mới có bản vẽ"; Git Bash `C:\Programming\…` | Nexora chốt 19/08; mười gói; P4a–P4e và P4f Users; đủ năm cụm và Google native; `C:\Devs\Git\bin\bash.exe` |
-| `overview.md` | số liệu 21/09 (12 trang admin, 35 bảng, 3.689 test…) | 26 trang admin, 36 bảng, 96 route trong contract, 6.509 Vitest và 907 Jest và 836 int (CHANGELOG 14/10) |
+| `overview.md` | số liệu 21/09 (12 trang admin, 35 bảng, 3.689 test…) | 26 trang admin, 36 bảng, 96 route trong contract, 6.515 Vitest và 907 Jest và 838 int (CHANGELOG 14/10) |
 | `glossary.md` | outbox gửi bằng "một tiến trình riêng" | worker chạy chung tiến trình API (`WORKER_INLINE=true`, `render.yaml`) |
 | `handoff/` | P5b-2, P5b-4 "mới có bản vẽ"; bàn giao auth "việc còn lại là nối Better Auth" | cả năm cụm gộp 09/10–12/10; `createBetterAuthActions` và `createSecureStoreOnboardingStore` đã dùng ở `_layout.tsx` |
 | `guides/` luồng đăng nhập | mobile "chưa kết nối" đăng nhập thật | plugin Expo, cookie trong SecureStore, Google native qua `signIn.social` với ID token (ADR-0056) |
@@ -98,8 +98,8 @@ prompt các phase còn lại ghi chỉ còn dùng cho P6.
   session cloud. DB Docker `tourism_ui` sau khi cài lại máy 12/10: chưa kiểm.
 - **Mod `tourism-status`:** nằm ngoài kho mã, không entry nào ghi đã dựng xong;
   plan ghi "chưa rõ trạng thái".
-- **Số test** ở overview lấy từ entry CHANGELOG 14/10 (`gate:int` trên `860a501`);
-  đợt này chỉ đổi tài liệu nên không đổi số.
+- **Số test** ở overview lấy từ entry CHANGELOG mới nhất lúc rebase (G23,
+  `gate:int` trên `b15239d`); đợt này chỉ đổi tài liệu nên không đổi số.
 - **CLAUDE.md** sửa theo sau khi user duyệt (14/10): luật 13 nay nói thêm doc vào
   `README.md` của thư mục nó nằm; dòng Test của bảng toolchain ghi mobile và
   mobile-ui chạy Jest + jest-expo (ADR-0040 §4); link đối chiếu Nexora trỏ

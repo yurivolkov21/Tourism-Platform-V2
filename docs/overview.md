@@ -137,7 +137,7 @@ tự tính được hoàn bao nhiêu. Đây là lý do gần như mọi tài li�
 | Trang trên web quản trị | 26 |
 | Đường gọi máy chủ | 96 route khai trong contract, chưa tính các đường đăng nhập của Better Auth |
 | Bảng dữ liệu | 36 |
-| Test tự động | 6.509 (Vitest) + 907 (Jest: app 771, component app 136) + 836 (integration) |
+| Test tự động | 6.515 (Vitest) + 907 (Jest: app 771, component app 136) + 838 (integration) |
 | Tài liệu | 263 file Markdown trong `docs/` |
 
 ## Đọc tiếp gì
