@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import type { AdminPhotoLibrary, SignedUploadParams } from '@tourism/contract';
+import type { AdminPhotoLibrary } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
 import { useState } from 'react';
 import { beforeEach, describe, expect, it, type Mock, vi } from 'vitest';
@@ -8,6 +8,7 @@ import type { LoadPhotoLibraryAction } from '@/lib/photo-library';
 import { uploadPhoto } from '@/lib/photo-upload';
 import type { PostCoverDraft } from '@/lib/post-form';
 import type { SignCoverAction } from '@/lib/posts-write';
+import { imageFile, signedUploadParams, uploadedPhoto } from '@/test/photo-upload';
 import { POST_ID } from '@/test/post-detail';
 import { PostCoverCard } from './post-cover-card';
 
@@ -24,22 +25,8 @@ const uploadMock = uploadPhoto as unknown as Mock;
 
 const c = messages.admin.posts.editor.cover;
 
-const PARAMS: SignedUploadParams = {
-  signature: 'sig',
-  timestamp: 1_760_000_000,
-  apiKey: 'key',
-  cloudName: 'demo',
-  folder: `tourism/posts/${POST_ID}`,
-  publicId: 'pid-1',
-  allowedFormats: 'jpg,jpeg,png,webp,avif,gif',
-  transformation: 'c_limit,w_2400,h_2400,fl_force_strip',
-  overwrite: false,
-  uploadUrl: 'https://api.cloudinary.com/v1_1/demo/image/upload',
-};
-const UPLOADED = {
-  publicId: `tourism/posts/${POST_ID}/pid-1`,
-  upload: { version: '1759000000', width: 2000, height: 1333, format: 'jpg', bytes: 1000 },
-};
+const PARAMS = signedUploadParams(`tourism/posts/${POST_ID}`, 'pid-1');
+const UPLOADED = uploadedPhoto(`tourism/posts/${POST_ID}/pid-1`);
 const CURRENT: PostCoverDraft = {
   publicId: `tourism/posts/${POST_ID}/cover`,
   url: 'https://res.cloudinary.com/demo/image/upload/f_auto,q_auto/v1/tourism/posts/x/cover',
@@ -68,8 +55,6 @@ beforeEach(() => {
 });
 
 const fileInput = () => document.querySelector('input[type="file"]') as HTMLInputElement;
-const file = (name: string, bytes = 10) =>
-  new File([new Uint8Array(bytes)], name, { type: 'image/jpeg' });
 
 /** Giữ ảnh bìa trong state như trang sửa — card chỉ báo lên, không tự giữ. */
 function Harness({
@@ -121,7 +106,7 @@ describe('PostCoverCard', () => {
     const user = userEvent.setup({ applyAccept: false });
     render(<Harness initial={null} sign={sign} onBusyChange={onBusyChange} />);
 
-    await user.upload(fileInput(), file('lanterns.jpg'));
+    await user.upload(fileInput(), imageFile('lanterns.jpg'));
 
     await waitFor(() => expect(uploadMock).toHaveBeenCalled());
     expect(sign).toHaveBeenCalledWith({ id: POST_ID });
@@ -141,7 +126,7 @@ describe('PostCoverCard', () => {
     const user = userEvent.setup({ applyAccept: false });
     render(<Harness initial={CURRENT} sign={sign} />);
 
-    await user.upload(fileInput(), file('notes.pdf'));
+    await user.upload(fileInput(), imageFile('notes.pdf'));
 
     expect(await screen.findByText(c.skipped.type('notes.pdf'))).toBeInTheDocument();
     expect(sign).not.toHaveBeenCalled();
@@ -155,7 +140,7 @@ describe('PostCoverCard', () => {
     const user = userEvent.setup({ applyAccept: false });
     render(<Harness initial={null} sign={sign} onBusyChange={onBusyChange} />);
 
-    await user.upload(fileInput(), file('lanterns.jpg'));
+    await user.upload(fileInput(), imageFile('lanterns.jpg'));
 
     expect(
       await screen.findByText(messages.admin.posts.editor.signErrors.MEDIA_UPLOAD_NOT_CONFIGURED),
@@ -170,7 +155,7 @@ describe('PostCoverCard', () => {
     const user = userEvent.setup({ applyAccept: false });
     render(<Harness initial={CURRENT} sign={sign} />);
 
-    await user.upload(fileInput(), file('lanterns.jpg'));
+    await user.upload(fileInput(), imageFile('lanterns.jpg'));
 
     expect(await screen.findByText(c.uploadFailed)).toBeInTheDocument();
     expect(screen.getByTestId('cover')).toHaveTextContent(
@@ -249,7 +234,7 @@ describe('PostCoverCard', () => {
     const user = userEvent.setup({ applyAccept: false });
     const { unmount } = render(<Harness initial={null} sign={sign} />);
 
-    await user.upload(fileInput(), file('lanterns.jpg'));
+    await user.upload(fileInput(), imageFile('lanterns.jpg'));
     await waitFor(() => expect(sign).toHaveBeenCalled());
     unmount();
     finishSign({ ok: true, params: PARAMS });

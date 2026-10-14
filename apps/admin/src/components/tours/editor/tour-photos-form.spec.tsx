@@ -1,12 +1,12 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import type { SignedUploadParams } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
 import { beforeEach, describe, expect, it, type Mock, vi } from 'vitest';
 import { UnsavedChangesProvider } from '@/components/kit/unsaved-changes';
 import type { LoadPhotoLibraryAction } from '@/lib/photo-library';
 import { uploadPhoto } from '@/lib/photo-upload';
 import type { SetPhotosAction, SignPhotoUploadsAction } from '@/lib/tour-photos';
+import { imageFile, signedUploadParams, uploadedPhoto } from '@/test/photo-upload';
 import { COVER_PHOTO, DEST_A, detailFixture, TOUR_ID, VERSION } from '@/test/tour-detail';
 import { TourPhotosForm } from './tour-photos-form';
 
@@ -40,22 +40,8 @@ const SECOND = {
   alt: 'Kayaks in a lagoon',
 };
 
-const params = (n: number): SignedUploadParams => ({
-  signature: 'sig',
-  timestamp: 1_760_000_000,
-  apiKey: 'key',
-  cloudName: 'demo',
-  folder: `tourism/tours/${TOUR_ID}`,
-  publicId: `pid-${n}`,
-  allowedFormats: 'jpg,jpeg,png,webp,avif,gif',
-  transformation: 'c_limit,w_2400,h_2400,fl_force_strip',
-  overwrite: false,
-  uploadUrl: 'https://api.cloudinary.com/v1_1/demo/image/upload',
-});
-const uploaded = (n: number) => ({
-  publicId: `tourism/tours/${TOUR_ID}/pid-${n}`,
-  upload: { version: '1759000000', width: 2000, height: 1333, format: 'jpg', bytes: 1000 },
-});
+const params = (n: number) => signedUploadParams(`tourism/tours/${TOUR_ID}`, `pid-${n}`);
+const uploaded = (n: number) => uploadedPhoto(`tourism/tours/${TOUR_ID}/pid-${n}`);
 function deferred<T>() {
   let resolve!: (value: T) => void;
   const promise = new Promise<T>((res) => {
@@ -83,8 +69,6 @@ function renderForm(
 const saveButton = () => screen.getByRole('button', { name: e.save });
 const altInputs = () => screen.getAllByRole('textbox', { name: t.alt });
 const fileInput = () => document.querySelector('input[type="file"]') as HTMLInputElement;
-const file = (name: string, bytes = 10) =>
-  new File([new Uint8Array(bytes)], name, { type: 'image/jpeg' });
 
 describe('TourPhotosForm', () => {
   it('mở ra đủ ảnh theo thứ tự; ảnh đầu mang nhãn Cover; bộ đếm; Save khoá khi chưa sửa', () => {
@@ -150,7 +134,7 @@ describe('TourPhotosForm', () => {
     uploadMock.mockResolvedValueOnce(uploaded(1)).mockReturnValueOnce(second.promise);
     const { user } = renderForm(undefined, { sign });
 
-    await user.upload(fileInput(), [file('a.jpg'), file('b.jpg')]);
+    await user.upload(fileInput(), [imageFile('a.jpg'), imageFile('b.jpg')]);
 
     expect(sign).toHaveBeenCalledWith({ id: TOUR_ID, count: 2 });
     await waitFor(() => expect(altInputs()).toHaveLength(3));
@@ -169,7 +153,10 @@ describe('TourPhotosForm', () => {
   it('file sai đuôi hay quá 10 MB bị loại kèm lý do; không còn file nào thì không ký', async () => {
     const { user, sign } = renderForm();
 
-    await user.upload(fileInput(), [file('doc.pdf'), file('huge.jpg', 10 * 1024 * 1024 + 1)]);
+    await user.upload(fileInput(), [
+      imageFile('doc.pdf'),
+      imageFile('huge.jpg', 10 * 1024 * 1024 + 1),
+    ]);
 
     expect(screen.getByText(t.skipped.type('doc.pdf'))).toBeInTheDocument();
     expect(screen.getByText(t.skipped.size('huge.jpg'))).toBeInTheDocument();
@@ -184,7 +171,7 @@ describe('TourPhotosForm', () => {
     uploadMock.mockResolvedValueOnce(uploaded(1));
     const { user } = renderForm(undefined, { sign });
 
-    await user.upload(fileInput(), [file('doc.pdf'), file('a.jpg')]);
+    await user.upload(fileInput(), [imageFile('doc.pdf'), imageFile('a.jpg')]);
 
     expect(sign).toHaveBeenCalledWith({ id: TOUR_ID, count: 1 });
     expect(screen.getByText(t.skipped.type('doc.pdf'))).toBeInTheDocument();
@@ -199,7 +186,7 @@ describe('TourPhotosForm', () => {
     uploadMock.mockRejectedValueOnce(new Error('network')).mockResolvedValueOnce(uploaded(9));
     const { user } = renderForm(undefined, { sign });
 
-    await user.upload(fileInput(), [file('a.jpg')]);
+    await user.upload(fileInput(), [imageFile('a.jpg')]);
     await screen.findByText(t.uploadFailed('a.jpg'));
     await user.click(screen.getByRole('button', { name: t.retry }));
 
@@ -218,7 +205,7 @@ describe('TourPhotosForm', () => {
       .mockResolvedValue({ ok: false, code: 'MEDIA_UPLOAD_NOT_CONFIGURED' });
     const { user } = renderForm(undefined, { sign });
 
-    await user.upload(fileInput(), [file('a.jpg')]);
+    await user.upload(fileInput(), [imageFile('a.jpg')]);
 
     expect(await screen.findByText(t.signErrors.MEDIA_UPLOAD_NOT_CONFIGURED)).toBeInTheDocument();
     expect(uploadMock).not.toHaveBeenCalled();
@@ -232,7 +219,7 @@ describe('TourPhotosForm', () => {
     renderForm(undefined, { sign });
 
     fireEvent.drop(screen.getByTestId('photo-drop-zone'), {
-      dataTransfer: { files: [file('a.jpg')] },
+      dataTransfer: { files: [imageFile('a.jpg')] },
     });
 
     await waitFor(() => expect(sign).toHaveBeenCalledWith({ id: TOUR_ID, count: 1 }));
@@ -340,8 +327,8 @@ describe('TourPhotosForm — tải lên (vòng review F18)', () => {
       { sign },
     );
 
-    await user.upload(fileInput(), [file('a.jpg'), file('b.jpg')]);
-    await user.upload(fileInput(), [file('c.jpg')]);
+    await user.upload(fileInput(), [imageFile('a.jpg'), imageFile('b.jpg')]);
+    await user.upload(fileInput(), [imageFile('c.jpg')]);
 
     expect(sign).toHaveBeenCalledTimes(1);
     expect(screen.getByText(t.skipped.full('c.jpg'))).toBeInTheDocument();
@@ -351,7 +338,7 @@ describe('TourPhotosForm — tải lên (vòng review F18)', () => {
     const sign = vi.fn<SignPhotoUploadsAction>().mockRejectedValue(new Error('Failed to fetch'));
     const { user } = renderForm(undefined, { sign });
 
-    await user.upload(fileInput(), [file('a.jpg')]);
+    await user.upload(fileInput(), [imageFile('a.jpg')]);
 
     expect(await screen.findByText(t.signFailed)).toBeInTheDocument();
     expect(screen.queryByRole('progressbar')).toBeNull();
@@ -366,7 +353,7 @@ describe('TourPhotosForm — tải lên (vòng review F18)', () => {
     uploadMock.mockRejectedValueOnce(new Error('network'));
     const { user } = renderForm(undefined, { sign });
 
-    await user.upload(fileInput(), [file('a.jpg')]);
+    await user.upload(fileInput(), [imageFile('a.jpg')]);
     await screen.findByText(t.uploadFailed('a.jpg'));
     await user.click(screen.getByRole('button', { name: t.retry }));
 
@@ -385,7 +372,7 @@ describe('TourPhotosForm — tải lên (vòng review F18)', () => {
     await user.type(altInputs()[1] as HTMLElement, ' at dawn');
     await user.click(saveButton());
     fireEvent.drop(screen.getByTestId('photo-drop-zone'), {
-      dataTransfer: { files: [file('a.jpg')] },
+      dataTransfer: { files: [imageFile('a.jpg')] },
     });
 
     expect(await screen.findByText(t.busySaving)).toBeInTheDocument();
@@ -402,7 +389,7 @@ describe('TourPhotosForm — tải lên (vòng review F18)', () => {
     const save = vi.fn<SetPhotosAction>().mockReturnValueOnce(saving.promise);
     const { user } = renderForm(undefined, { sign, save });
 
-    await user.upload(fileInput(), [file('a.jpg')]);
+    await user.upload(fileInput(), [imageFile('a.jpg')]);
     await screen.findByText(t.uploadFailed('a.jpg'));
     await user.type(altInputs()[1] as HTMLElement, ' at dawn');
     await user.click(saveButton());
@@ -431,7 +418,7 @@ describe('TourPhotosForm — tải lên (vòng review F18)', () => {
       </UnsavedChangesProvider>,
     );
 
-    await user.upload(fileInput(), [file('a.jpg')]);
+    await user.upload(fileInput(), [imageFile('a.jpg')]);
     await waitFor(() => expect(uploadMock).toHaveBeenCalledTimes(1));
     await user.click(screen.getByRole('link', { name: 'Itinerary' }));
 
@@ -455,7 +442,7 @@ describe('TourPhotosForm — tải lên (vòng review F18)', () => {
       />,
     );
 
-    await user.upload(fileInput(), [file('a.jpg')]);
+    await user.upload(fileInput(), [imageFile('a.jpg')]);
     await waitFor(() => expect(uploadMock).toHaveBeenCalledTimes(1));
     const signal = uploadMock.mock.calls[0]?.[3] as AbortSignal | undefined;
     expect(signal?.aborted).toBe(false);
@@ -477,7 +464,7 @@ describe('TourPhotosForm — tải lên (vòng review F18)', () => {
     );
     const { user } = renderForm(undefined, { sign });
 
-    await user.upload(fileInput(), [file('a.jpg')]);
+    await user.upload(fileInput(), [imageFile('a.jpg')]);
     await screen.findByText(t.uploadFailed('a.jpg'));
     await user.click(screen.getByRole('button', { name: t.retry }));
 
@@ -497,7 +484,7 @@ describe('TourPhotosForm — tải lên (vòng review F18)', () => {
     uploadMock.mockRejectedValueOnce(new Error('network')).mockReturnValueOnce(again.promise);
     const { user } = renderForm(undefined, { sign });
 
-    await user.upload(fileInput(), [file('a.jpg')]);
+    await user.upload(fileInput(), [imageFile('a.jpg')]);
     await screen.findByText(t.uploadFailed('a.jpg'));
     await user.click(screen.getByRole('button', { name: t.retry }));
     await waitFor(() => expect(screen.getByRole('progressbar')).toHaveFocus());
@@ -516,7 +503,7 @@ describe('TourPhotosForm — tải lên (vòng review F18)', () => {
       .mockRejectedValueOnce(new Error('network'));
     const { user } = renderForm(undefined, { sign });
 
-    await user.upload(fileInput(), [file('a.jpg'), file('b.jpg')]);
+    await user.upload(fileInput(), [imageFile('a.jpg'), imageFile('b.jpg')]);
     await screen.findByText(t.uploadFailed('b.jpg'));
     await screen.findByText(t.uploadFailed('a.jpg'));
     await user.click(screen.getAllByRole('button', { name: t.remove })[0] as HTMLElement);

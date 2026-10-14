@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { signedUploadParams } from '@/test/photo-upload';
 import {
   buildUploadFormData,
   imageExtensionOf,
@@ -7,18 +8,7 @@ import {
   uploadPhoto,
 } from './photo-upload';
 
-const PARAMS = {
-  signature: 'sig',
-  timestamp: 1_760_000_000,
-  apiKey: 'key',
-  cloudName: 'demo',
-  folder: 'tourism/tours/t-1',
-  publicId: 'pid-1',
-  allowedFormats: 'jpg,jpeg,png,webp,avif,gif',
-  transformation: 'c_limit,w_2400,h_2400,fl_force_strip',
-  overwrite: false as const,
-  uploadUrl: 'https://api.cloudinary.com/v1_1/demo/image/upload',
-};
+const PARAMS = signedUploadParams('tourism/tours/t-1', 'pid-1');
 
 describe('imageExtensionOf', () => {
   it('đuôi whitelist, không phân biệt hoa thường; lạ hay không đuôi thì null', () => {

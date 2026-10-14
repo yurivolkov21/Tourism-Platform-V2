@@ -1,6 +1,7 @@
 import { contract, TOUR_PHOTOS_MAX } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
 import { describe, expect, it } from 'vitest';
+import { imageFile } from '@/test/photo-upload';
 import { COVER_PHOTO, detailFixture } from '@/test/tour-detail';
 import {
   acceptFiles,
@@ -131,8 +132,6 @@ describe('makeCover', () => {
 });
 
 describe('remainingCapacity / acceptFiles', () => {
-  const file = (name: string, bytes: number) => new File([new Uint8Array(bytes)], name);
-
   it('sức chứa = 30 trừ ảnh đang có trừ file đang tải; không âm', () => {
     expect(remainingCapacity(10, 2)).toBe(TOUR_PHOTOS_MAX - 12);
     expect(remainingCapacity(30, 1)).toBe(0);
@@ -141,11 +140,11 @@ describe('remainingCapacity / acceptFiles', () => {
   it('loại file sai đuôi, quá 10 MB, và phần dư quá sức chứa — kèm lý do', () => {
     const { accepted, skipped } = acceptFiles(
       [
-        file('a.jpg', 10),
-        file('b.pdf', 10),
-        file('c.png', 10 * 1024 * 1024 + 1),
-        file('d.webp', 10 * 1024 * 1024),
-        file('e.gif', 10),
+        imageFile('a.jpg', 10),
+        imageFile('b.pdf', 10),
+        imageFile('c.png', 10 * 1024 * 1024 + 1),
+        imageFile('d.webp', 10 * 1024 * 1024),
+        imageFile('e.gif', 10),
       ],
       2,
     );
