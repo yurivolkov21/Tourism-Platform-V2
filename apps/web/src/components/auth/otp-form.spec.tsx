@@ -38,26 +38,14 @@ const baseProps = {
   submitLabel: 'Stamp my ticket',
 };
 
-// Gốc rễ bug "window is not defined" (flaky trên CI, KHÔNG PHẢI thứ tự
-// afterEach): thư viện input-otp tự lên lịch 3 setTimeout THẬT (0/10/50ms —
-// hàm `ht()` trong input-otp/dist/index.mjs) MỖI LẦN giá trị OTP hoặc trạng
-// thái focus đổi, qua `useEffect(() => { ht(cb) }, [i, j])` — effect này
-// KHÔNG trả cleanup function, nên React không có gì để hủy, kể cả lúc
-// unmount (cleanup() của RTL ở vitest.setup.ts) hay khi mount lần đầu (mọi
-// test render OtpForm đều dính, không riêng test dùng fake timers). Nếu một
-// trong các timer đó (tối đa 50ms) chưa kịp nổ trước khi CẢ FILE chạy xong
-// và Vitest tháo môi trường jsdom, nó nổ SAU khi `window` đã bị gỡ →
-// ReferenceError trong dispatchSetState của React — càng dễ trúng ở test
-// cuối file (không còn test nào sau để "mua" thêm thời gian đệm). Áp
-// afterEach này cho CẢ FILE (ngoài mọi describe) để mọi test render OtpForm
-// đều được đợi thật ~150ms (component vẫn mounted, window vẫn còn) cho
-// timer rò rỉ tự nổ an toàn trước khi file kết thúc — bọc trong `act` để
-// React flush state đó gọn gàng, không văng cảnh báo act().
-afterEach(async () => {
+// D1 (đóng 14/10): input-otp 1.4.2 hẹn 3 setTimeout THẬT (0/10/50ms) mỗi lần giá
+// trị OTP hoặc focus đổi, trong một `useEffect` KHÔNG trả cleanup — timer nổ sau
+// khi Vitest tháo jsdom thì ném "window is not defined" và CI đỏ dù mọi test pass
+// (main đỏ 06/08). File này từng đợi thật 150ms sau mỗi test để timer tự nổ. Bản
+// 1.5.0 trả cleanup huỷ cả ba timer nên bỏ được đoạn đợi; test cuối file khoá
+// điều đó bằng đồng hồ giả. Còn lại chỉ việc trả đồng hồ thật cho test sau.
+afterEach(() => {
   vi.useRealTimers();
-  await act(async () => {
-    await new Promise((resolve) => setTimeout(resolve, 150));
-  });
 });
 
 async function typeOtp(user: ReturnType<typeof userEvent.setup>, digits: string) {
@@ -266,5 +254,23 @@ describe('OtpForm — two-factor (không truyền prop email, static mock)', () 
     await user.click(screen.getByRole('button', { name: 'Stamp my ticket' }));
 
     expect(verifyEmail).not.toHaveBeenCalled();
+  });
+});
+
+describe('OtpForm — không để lại timer sau khi gỡ (D1)', () => {
+  it('gõ mã rồi gỡ form → không còn timer nào chờ nổ', () => {
+    vi.useFakeTimers();
+    const { unmount } = render(<OtpForm {...baseProps} email="minh@example.com" />);
+    const hiddenInput = document.querySelector('input[inputmode="numeric"]') as HTMLInputElement;
+    // Cố ý KHÔNG bắn focus: onFocus của input-otp gọi `setSelectionRange`, và jsdom tự
+    // hẹn một setTimeout 0ms để phát sự kiện `select`. Timer đó của jsdom, không phải
+    // rò rỉ, nhưng làm bộ đếm dưới đây lệch một.
+    fireEvent.change(hiddenInput, { target: { value: '12' } });
+
+    unmount();
+
+    // input-otp 1.4.2 để lại sáu timer ở đây (ba lúc mount, ba lúc đổi giá trị — đo
+    // 14/10): đúng loại nổ sau khi jsdom bị tháo.
+    expect(vi.getTimerCount()).toBe(0);
   });
 });

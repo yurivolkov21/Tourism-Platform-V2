@@ -36,9 +36,11 @@ vi.stubGlobal(
   })),
 );
 
-// jsdom KHÔNG hiện thực ResizeObserver. `input-otp` (OtpForm, Task 5) đo kích
+// jsdom KHÔNG hiện thực ResizeObserver. `input-otp` 1.4.2 (OtpForm, Task 5) đo kích
 // thước container bằng nó lúc mount — thiếu polyfill thì effect ném
-// ReferenceError và mọi test render OtpForm/InputOTP đều fail ngay từ mount.
+// ReferenceError và mọi test render OtpForm/InputOTP đều fail ngay từ mount. Từ
+// 1.5.0 (D1, 14/10) thư viện tự bỏ qua khi thiếu; stub giữ lại vì đây là setup
+// chung cho mọi test DOM.
 class ResizeObserverStub {
   observe() {}
   unobserve() {}
