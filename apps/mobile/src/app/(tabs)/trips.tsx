@@ -10,7 +10,7 @@ import {
   filterTripsByWindow,
   isTravellingPhase,
   type TripWindow,
-  tripPillTone,
+  tripCardPill,
 } from '@/features/trips/trips-list';
 import { type TripListItemVM, TripsScreen, type TripsStatus } from '@/features/trips/trips-screen';
 import { orpc, withMobileAuth } from '@/lib/api/client';
@@ -73,13 +73,17 @@ export default function TripsRoute() {
 
   const allItems: TripListItemVM[] = (listQuery.data?.items ?? []).map((booking) => {
     const phase = bookingPhase(booking, today);
+    // Đang đi → "On tour now" xanh; chuyến công ty huỷ → "Cancelled" xám dù đơn còn PAID.
+    const pill = tripCardPill(booking, phase, {
+      status: trips.status,
+      onTourNow: messages.mobile.trip.onTourNow,
+    });
     return {
       code: booking.code,
       status: booking.status,
       phase,
-      // Đang đi thì tô xanh như PAID — kể cả đơn đã hoàn một phần (khách vẫn đi tour).
-      pillTone: phase === 'on_tour' ? 'paid' : tripPillTone(booking.status),
-      pillLabel: phase === 'on_tour' ? messages.mobile.trip.onTourNow : undefined,
+      pillTone: pill.tone,
+      pillLabel: pill.label,
       imageUrl: booking.tourImage?.url ?? null,
       title: booking.tourTitle,
       dateRangeLabel: formatDepartureRange(booking.departureStartDate, booking.departureEndDate),

@@ -69,7 +69,7 @@ cũng lọc theo giai đoạn này (review 12/10, N3):
 | `on_tour` | như trên, hôm nay trong khoảng đi–về | P5 | ngày đang chạy = `today − start + 1` |
 | `travelled` | như trên, sau `departureEndDate` | P6 | mời viết đánh giá |
 | `awaiting_payment` · `lapsed` | PENDING (quá hạn chót là `lapsed`) | T5 | trả tiền trước đã; thẻ chỉ mời "Finish payment" khi chưa quá hạn |
-| `cancelled` | CANCELLED, REFUNDED có `cancelledAt`, mọi đơn trên chuyến bị công ty huỷ | T8 | |
+| `cancelled` | CANCELLED, REFUNDED có `cancelledAt`, mọi đơn trên chuyến bị công ty huỷ | T8 | đơn chưa từng thu tiền: chỉ câu đã huỷ; chuyến công ty huỷ: T8 mở bằng "We had to cancel this departure." như web, thẻ Trips ghi "Cancelled" xám dù đơn còn PAID (14/10) |
 
 PARTIALLY_REFUNDED không phải trạng thái cuối (`booking-states.md`, ADR-0041): nút huỷ vẫn ở
 hoá đơn khi `cancellation.canCancel`, một chạm từ cụm P như đơn PAID.

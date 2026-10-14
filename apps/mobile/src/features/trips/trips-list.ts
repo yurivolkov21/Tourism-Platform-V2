@@ -1,4 +1,4 @@
-import type { BookingPhase, BookingStatusValue } from '@tourism/contract';
+import type { Booking, BookingPhase, BookingStatusValue } from '@tourism/contract';
 
 /**
  * Logic thuần của tab Trips (T1-T3, mockup P5b-3). Chip Upcoming/Past lọc Ở MÁY theo GIAI
@@ -45,4 +45,44 @@ export function tripPillTone(status: BookingStatusValue): TripPillTone {
   if (status === 'PAID') return 'paid';
   if (status === 'PENDING') return 'pending';
   return 'muted';
+}
+
+/** Chữ và tông của MỘT pill trạng thái. */
+export interface TripPill {
+  tone: TripPillTone;
+  label: string;
+}
+
+/**
+ * Pill trạng thái của MỘT đơn — chung cho thẻ Trips và hoá đơn `/bookings/[code]`. Chữ đọc bảng
+ * `words` (`messages.mobile.trips.status`) theo trạng thái đơn, trừ chuyến CÔNG TY huỷ: cờ ấy
+ * thắng mọi trạng thái đơn (ADR-0054 AMEND 1 §2), nên đơn còn PAID hay hoàn một phần chờ job hoàn
+ * tiền không được mang "Paid" xanh. Nhãn nói "Cancelled"; đơn đã hoàn trọn giữ "Refunded" — sự
+ * thật về tiền vẫn đúng. Cùng luật giai đoạn `cancelled` của `phaseLabel` bên web
+ * (`apps/web/src/lib/booking-vm.ts`): mọi đơn khác rơi vào giai đoạn ấy (CANCELLED, REFUNDED có
+ * mốc huỷ) vốn đã cho đúng chữ và tông xám theo trạng thái, nên ở đây không cần ngày hôm nay.
+ */
+export function bookingStatusPill(
+  booking: Pick<Booking, 'status' | 'departureCancelled'>,
+  words: Readonly<Record<string, string>>,
+): TripPill {
+  if (booking.departureCancelled) {
+    const key = booking.status === 'REFUNDED' ? 'REFUNDED' : 'CANCELLED';
+    return { tone: 'muted', label: words[key] ?? key };
+  }
+  return { tone: tripPillTone(booking.status), label: words[booking.status] ?? booking.status };
+}
+
+/**
+ * Pill của thẻ Trips theo giai đoạn: đang đi thì "On tour now" tô xanh như PAID — kể cả đơn đã
+ * hoàn một phần, khách vẫn đi tour; còn lại là `bookingStatusPill`. Chuyến công ty huỷ không
+ * bao giờ là `on_tour`: `bookingPhase` xét cờ ấy trước mọi thứ.
+ */
+export function tripCardPill(
+  booking: Pick<Booking, 'status' | 'departureCancelled'>,
+  phase: BookingPhase,
+  words: { status: Readonly<Record<string, string>>; onTourNow: string },
+): TripPill {
+  if (phase === 'on_tour') return { tone: 'paid', label: words.onTourNow };
+  return bookingStatusPill(booking, words.status);
 }

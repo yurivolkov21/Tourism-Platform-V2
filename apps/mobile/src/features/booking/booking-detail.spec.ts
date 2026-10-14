@@ -5,6 +5,7 @@ import {
   bookingDetailKind,
   cancelErrorAction,
   cancelErrorCopy,
+  operatorRefund,
   payErrorAction,
 } from './booking-detail';
 
@@ -74,6 +75,83 @@ describe('bookingDetailKind', () => {
   it('PARTIALLY_REFUNDED -> refunded', () => {
     expect(bookingDetailKind(makeBooking({ status: 'PARTIALLY_REFUNDED' }))).toBe('refunded');
   });
+
+  // Khách tự huỷ đơn đã trả thì API đặt CANCELLED (ADR-0041 §4), không phải REFUNDED — khung
+  // `cancelled` không kể chuyện tiền nên khách không thấy khoản hoàn của chính mình.
+  it('CANCELLED đã thu tiền và đã hoàn (khách tự huỷ trong hạn) -> refunded', () => {
+    expect(
+      bookingDetailKind(
+        makeBooking({
+          status: 'CANCELLED',
+          refundedTotal: '35.00',
+          cancelledAt: '2026-10-05T00:00:00.000Z',
+        }),
+      ),
+    ).toBe('refunded');
+  });
+
+  it('CANCELLED đã thu mà không hoàn đồng nào (huỷ quá hạn) -> refunded: khung T8 nói không hoàn', () => {
+    expect(
+      bookingDetailKind(
+        makeBooking({
+          status: 'CANCELLED',
+          refundedTotal: '0.00',
+          cancelledAt: '2026-10-05T00:00:00.000Z',
+        }),
+      ),
+    ).toBe('refunded');
+  });
+
+  it('CANCELLED chưa có paidAt mà sổ đã có khoản hoàn (thu rồi hoàn trước khi kịp PAID) -> refunded', () => {
+    expect(
+      bookingDetailKind(makeBooking({ status: 'CANCELLED', paidAt: null, refundedTotal: '35.00' })),
+    ).toBe('refunded');
+  });
+});
+
+describe('bookingDetailKind — chuyến bị công ty huỷ (ADR-0041 AMEND 1)', () => {
+  it.each(['PAID', 'PARTIALLY_REFUNDED', 'REFUNDED'] as const)(
+    '%s trên chuyến công ty huỷ -> departureCancelled (job hoàn tiền có thể chưa chạy)',
+    (status) => {
+      expect(bookingDetailKind(makeBooking({ status, departureCancelled: true }))).toBe(
+        'departureCancelled',
+      );
+    },
+  );
+
+  it('CANCELLED đã hoàn trọn (job hoàn tiền đã chạy) -> departureCancelled', () => {
+    expect(
+      bookingDetailKind(
+        makeBooking({
+          status: 'CANCELLED',
+          departureCancelled: true,
+          refundedTotal: '35.00',
+          cancelledAt: '2026-10-05T00:00:00.000Z',
+        }),
+      ),
+    ).toBe('departureCancelled');
+  });
+
+  it('CANCELLED chưa từng thu tiền (đơn chờ trả bị huỷ cùng chuyến) -> departureCancelled', () => {
+    expect(
+      bookingDetailKind(
+        makeBooking({ status: 'CANCELLED', departureCancelled: true, paidAt: null }),
+      ),
+    ).toBe('departureCancelled');
+  });
+
+  it('khách tự huỷ quá hạn TRƯỚC khi chuyến bị huỷ (đã thu, không hoàn) -> refunded: chuyện vẫn là của khách', () => {
+    expect(
+      bookingDetailKind(
+        makeBooking({
+          status: 'CANCELLED',
+          departureCancelled: true,
+          refundedTotal: '0.00',
+          cancelledAt: '2026-10-05T00:00:00.000Z',
+        }),
+      ),
+    ).toBe('refunded');
+  });
 });
 
 describe('bookingDetailActions', () => {
@@ -122,6 +200,61 @@ describe('bookingDetailActions', () => {
 
   it('REFUNDED -> rỗng (terminal)', () => {
     expect(bookingDetailActions(makeBooking({ status: 'REFUNDED' }))).toEqual([]);
+  });
+
+  it('chuyến công ty huỷ -> rỗng, kể cả khi đơn còn PAID và cờ huỷ còn mở', () => {
+    expect(
+      bookingDetailActions(
+        makeBooking({ status: 'PAID', departureCancelled: true, cancellation: CANCELLABLE }),
+      ),
+    ).toEqual([]);
+  });
+});
+
+describe('operatorRefund (chuyện tiền của đơn trên chuyến công ty huỷ)', () => {
+  it('đơn còn PAID hay hoàn một phần: job hoàn tiền chưa chạy, tiền đang về — đọc TRƯỚC sổ hoàn', () => {
+    expect(operatorRefund(makeBooking({ status: 'PAID', departureCancelled: true }))).toEqual({
+      kind: 'onItsWay',
+    });
+    expect(
+      operatorRefund(
+        makeBooking({
+          status: 'PARTIALLY_REFUNDED',
+          departureCancelled: true,
+          refundedTotal: '10.00',
+        }),
+      ),
+    ).toEqual({ kind: 'onItsWay' });
+  });
+
+  it('đã hoàn: số tiền sổ ghi và mốc quyết hoàn, không có thì mốc huỷ', () => {
+    expect(
+      operatorRefund(
+        makeBooking({
+          status: 'CANCELLED',
+          departureCancelled: true,
+          refundedTotal: '35.00',
+          cancelledAt: '2026-10-05T00:00:00.000Z',
+          cancellationDecidedAt: '2026-10-05T00:01:00.000Z',
+        }),
+      ),
+    ).toEqual({ kind: 'refunded', amount: '35.00', refundedAt: '2026-10-05T00:01:00.000Z' });
+    expect(
+      operatorRefund(
+        makeBooking({
+          status: 'CANCELLED',
+          departureCancelled: true,
+          refundedTotal: '35.00',
+          cancelledAt: '2026-10-05T00:00:00.000Z',
+        }),
+      ),
+    ).toEqual({ kind: 'refunded', amount: '35.00', refundedAt: '2026-10-05T00:00:00.000Z' });
+  });
+
+  it('chưa từng thu tiền -> null (không có chuyện tiền để kể)', () => {
+    expect(
+      operatorRefund(makeBooking({ status: 'CANCELLED', departureCancelled: true, paidAt: null })),
+    ).toBeNull();
   });
 });
 

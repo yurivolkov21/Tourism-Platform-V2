@@ -1,5 +1,11 @@
 import { type BookingPhase, type BookingPhaseInput, bookingPhase } from '@tourism/contract';
-import { filterTripsByWindow, isTravellingPhase, tripPillTone } from './trips-list';
+import {
+  bookingStatusPill,
+  filterTripsByWindow,
+  isTravellingPhase,
+  tripCardPill,
+  tripPillTone,
+} from './trips-list';
 
 describe('filterTripsByWindow', () => {
   const PHASES: BookingPhase[] = [
@@ -114,5 +120,82 @@ describe('tripPillTone', () => {
     expect(tripPillTone('CANCELLED')).toBe('muted');
     expect(tripPillTone('REFUNDED')).toBe('muted');
     expect(tripPillTone('PARTIALLY_REFUNDED')).toBe('muted');
+  });
+});
+
+// Chữ giả lập bảng `messages.mobile.trips.status` — test khoá LUẬT chọn khoá chữ, không khoá copy.
+const STATUS_WORDS = {
+  PENDING: 'Payment due',
+  PAID: 'Paid',
+  CANCELLED: 'Cancelled',
+  REFUNDED: 'Refunded',
+  PARTIALLY_REFUNDED: 'Partially refunded',
+};
+
+describe('bookingStatusPill (pill của thẻ Trips và hoá đơn)', () => {
+  it('chuyến còn chạy: chữ và tông theo trạng thái đơn', () => {
+    expect(bookingStatusPill({ status: 'PAID', departureCancelled: false }, STATUS_WORDS)).toEqual({
+      tone: 'paid',
+      label: 'Paid',
+    });
+    expect(
+      bookingStatusPill({ status: 'PENDING', departureCancelled: false }, STATUS_WORDS),
+    ).toEqual({ tone: 'pending', label: 'Payment due' });
+    expect(
+      bookingStatusPill({ status: 'PARTIALLY_REFUNDED', departureCancelled: false }, STATUS_WORDS),
+    ).toEqual({ tone: 'muted', label: 'Partially refunded' });
+  });
+
+  it('chuyến công ty huỷ mà job hoàn tiền chưa chạy (đơn còn PAID hay hoàn một phần) → "Cancelled" xám, không phải "Paid" xanh', () => {
+    expect(bookingStatusPill({ status: 'PAID', departureCancelled: true }, STATUS_WORDS)).toEqual({
+      tone: 'muted',
+      label: 'Cancelled',
+    });
+    expect(
+      bookingStatusPill({ status: 'PARTIALLY_REFUNDED', departureCancelled: true }, STATUS_WORDS),
+    ).toEqual({ tone: 'muted', label: 'Cancelled' });
+  });
+
+  it('chuyến công ty huỷ: đơn đã huỷ giữ "Cancelled", đơn hoàn trọn giữ "Refunded"', () => {
+    expect(
+      bookingStatusPill({ status: 'CANCELLED', departureCancelled: true }, STATUS_WORDS),
+    ).toEqual({ tone: 'muted', label: 'Cancelled' });
+    expect(
+      bookingStatusPill({ status: 'REFUNDED', departureCancelled: true }, STATUS_WORDS),
+    ).toEqual({ tone: 'muted', label: 'Refunded' });
+  });
+});
+
+describe('tripCardPill (pill của thẻ Trips theo giai đoạn)', () => {
+  const WORDS = { status: STATUS_WORDS, onTourNow: 'On tour now' };
+
+  it('đang đi → "On tour now" xanh, kể cả đơn đã hoàn một phần (khách vẫn đi tour)', () => {
+    expect(
+      tripCardPill({ status: 'PARTIALLY_REFUNDED', departureCancelled: false }, 'on_tour', WORDS),
+    ).toEqual({ tone: 'paid', label: 'On tour now' });
+  });
+
+  it('chuyến công ty huỷ, đơn còn PAID (`bookingPhase` là `cancelled`) → "Cancelled" xám', () => {
+    const booking = {
+      status: 'PAID' as const,
+      departureStartDate: '2026-10-11',
+      departureEndDate: '2026-10-13',
+      cancelledAt: null,
+      departureCancelled: true,
+    };
+    expect(tripCardPill(booking, bookingPhase(booking, '2026-10-12'), WORDS)).toEqual({
+      tone: 'muted',
+      label: 'Cancelled',
+    });
+  });
+
+  it('các giai đoạn còn lại đọc trạng thái đơn', () => {
+    expect(tripCardPill({ status: 'PAID', departureCancelled: false }, 'upcoming', WORDS)).toEqual({
+      tone: 'paid',
+      label: 'Paid',
+    });
+    expect(
+      tripCardPill({ status: 'PENDING', departureCancelled: false }, 'awaiting_payment', WORDS),
+    ).toEqual({ tone: 'pending', label: 'Payment due' });
   });
 });

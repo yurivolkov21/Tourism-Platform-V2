@@ -18,6 +18,7 @@ import {
   bookingDetailKind,
   cancelErrorAction,
   cancelErrorCopy,
+  operatorRefund,
   payErrorAction,
 } from '@/features/booking/booking-detail';
 import {
@@ -32,7 +33,7 @@ import {
   formatDepartureRange,
   formatFullDate,
 } from '@/features/tour-detail/departures';
-import { tripPillTone } from '@/features/trips/trips-list';
+import { bookingStatusPill } from '@/features/trips/trips-list';
 import { orpc, withMobileAuth } from '@/lib/api/client';
 import { getAuthClient } from '@/lib/auth-client';
 import { cloudinaryUrl } from '@/lib/cloudinary-url';
@@ -245,8 +246,10 @@ export default function BookingDetailRoute() {
     title: booking.tourTitle,
     dateRangeLabel: formatDepartureRange(booking.departureStartDate, booking.departureEndDate),
   };
-  const pillLabel = messages.mobile.trips.status[booking.status] ?? booking.status;
-  const pillTone: BookingDetailPill = tripPillTone(booking.status);
+  // Cùng luật pill với thẻ Trips: chuyến công ty huỷ không mang "Paid" xanh dù đơn còn PAID.
+  const pill = bookingStatusPill(booking, messages.mobile.trips.status);
+  const pillLabel = pill.label;
+  const pillTone: BookingDetailPill = pill.tone;
 
   let note: Parameters<typeof BookingDetailScreen>[0]['note'] = null;
   let rows: BookingDetailRow[] = [{ label: bookingCopy.bookingCodeLabel, value: booking.code }];
@@ -334,6 +337,39 @@ export default function BookingDetailRoute() {
         onPress: () => router.push(`/tours/${booking.tourSlug}`),
       };
     }
+  } else if (kind === 'departureCancelled') {
+    // Công ty huỷ chuyến (ADR-0041 AMEND 1): cùng câu với trang chi tiết đơn của web, rồi chuyện
+    // tiền — đang về khi job hoàn tiền chưa chạy, hay khoản sổ đã ghi.
+    const refund = operatorRefund(booking);
+    const refundBody =
+      refund === null
+        ? null
+        : refund.kind === 'onItsWay'
+          ? messages.bookingDetail.closed.refundOnItsWay
+          : refund.refundedAt === null
+            ? t.refundedNoDate(formatMoney(refund.amount, booking.currency))
+            : t.refundedNote(
+                formatMoney(refund.amount, booking.currency),
+                formatFullDate(refund.refundedAt),
+              );
+    note = {
+      tone: 'warning',
+      icon: 'x-circle',
+      title: messages.bookingDetail.closed.weCancelled,
+      ...(refundBody === null ? {} : { body: refundBody }),
+    };
+    rows = [
+      { label: bookingCopy.bookingCodeLabel, value: booking.code },
+      ...(booking.cancelledAt
+        ? [{ label: t.cancelledOnLabel, value: formatFullDate(booking.cancelledAt) }]
+        : []),
+      // Đơn chưa từng thu tiền thì không có dòng tiền nào để in.
+      ...(refund === null ? [] : [{ label: t.paidLabel, value: amount }]),
+    ];
+    primaryAction = {
+      label: messages.mobile.trips.browse,
+      onPress: () => router.navigate('/explore'),
+    };
   } else if (kind === 'cancelled') {
     note = {
       tone: 'warning',
