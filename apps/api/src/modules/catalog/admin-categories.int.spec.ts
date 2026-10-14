@@ -5,6 +5,7 @@ import { AppModule } from '../../app.module.js';
 import { prisma } from '../../auth/auth.config.js';
 import type { Prisma } from '../../generated/prisma/client.js';
 import { trackOpenTransactions } from '../../test/open-transactions.js';
+import { sessionCookie } from '../../test/session-cookie.js';
 import { WebRevalidationService } from '../web-revalidation/web-revalidation.service.js';
 import { CATEGORY_ORDER_LOCK_KEY } from './admin-categories.service.js';
 
@@ -39,18 +40,6 @@ const SEED = [
   { id: catId(3), slug: 'cruises', name: 'Cruises', order: 3, isActive: true },
   { id: catId(4), slug: 'retired', name: 'Retired', order: 4, isActive: false },
 ] satisfies Prisma.TourCategoryCreateManyInput[];
-
-function sessionCookie(res: { headers: Record<string, unknown> }): string {
-  const raw = res.headers['set-cookie'];
-  const cookies = (Array.isArray(raw) ? raw : [raw]).filter(
-    (c): c is string => typeof c === 'string',
-  );
-  const session = cookies.find((c) => c.includes('session_token'));
-  if (!session) throw new Error(`No session cookie in: ${JSON.stringify(raw)}`);
-  const pair = session.split(';')[0];
-  if (!pair) throw new Error('Malformed set-cookie');
-  return pair;
-}
 
 describe('admin categories integration (P4e-2 F14)', () => {
   let app: NestFastifyApplication;

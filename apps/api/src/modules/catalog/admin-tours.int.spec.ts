@@ -13,6 +13,7 @@ import { AppModule } from '../../app.module.js';
 import { prisma } from '../../auth/auth.config.js';
 import type { Prisma } from '../../generated/prisma/client.js';
 import { BookingStatus, PaymentProvider, ReviewSource } from '../../generated/prisma/enums.js';
+import { sessionCookie } from '../../test/session-cookie.js';
 import { WebRevalidationService } from '../web-revalidation/web-revalidation.service.js';
 
 /**
@@ -50,18 +51,6 @@ const day = (offset: number) => {
   date.setUTCDate(date.getUTCDate() + offset);
   return date;
 };
-
-function sessionCookie(res: { headers: Record<string, unknown> }): string {
-  const raw = res.headers['set-cookie'];
-  const cookies = (Array.isArray(raw) ? raw : [raw]).filter(
-    (c): c is string => typeof c === 'string',
-  );
-  const session = cookies.find((c) => c.includes('session_token'));
-  if (!session) throw new Error(`No session cookie in: ${JSON.stringify(raw)}`);
-  const pair = session.split(';')[0];
-  if (!pair) throw new Error('Malformed set-cookie');
-  return pair;
-}
 
 describe('admin tours integration (F17)', () => {
   let app: NestFastifyApplication;

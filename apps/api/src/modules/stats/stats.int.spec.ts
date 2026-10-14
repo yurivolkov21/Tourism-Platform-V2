@@ -22,6 +22,7 @@ import {
   PaymentProvider,
   ReviewSource,
 } from '../../generated/prisma/enums.js';
+import { sessionCookie } from '../../test/session-cookie.js';
 
 /**
  * Integration (Docker PG, db tourism_test) — stats vùng admin (spec P4b
@@ -56,19 +57,6 @@ const DAY = 86_400_000;
 /** Mốc "cách đây N ngày" — mọi fixture đặt xa biên 28/56 ngày để không rung. */
 const daysAgo = (days: number): Date => new Date(Date.now() - days * DAY);
 const minutesAgo = (minutes: number): Date => new Date(Date.now() - minutes * 60_000);
-
-/** Lấy cookie pair (name=value) từ set-cookie của inject response. */
-function sessionCookie(res: { headers: Record<string, unknown> }): string {
-  const raw = res.headers['set-cookie'];
-  const cookies = (Array.isArray(raw) ? raw : [raw]).filter(
-    (c): c is string => typeof c === 'string',
-  );
-  const session = cookies.find((c) => c.includes('session_token'));
-  if (!session) throw new Error(`No session cookie in: ${JSON.stringify(raw)}`);
-  const pair = session.split(';')[0];
-  if (!pair) throw new Error('Malformed set-cookie');
-  return pair;
-}
 
 describe('admin stats integration (F5)', () => {
   let app: NestFastifyApplication;

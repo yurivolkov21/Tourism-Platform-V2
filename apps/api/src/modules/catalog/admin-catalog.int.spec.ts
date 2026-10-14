@@ -18,6 +18,7 @@ import {
   MediaType,
   PaymentProvider,
 } from '../../generated/prisma/enums.js';
+import { sessionCookie } from '../../test/session-cookie.js';
 import { WebRevalidationService } from '../web-revalidation/web-revalidation.service.js';
 
 /**
@@ -42,19 +43,6 @@ const ADMIN_EMAIL = 'bootstrap-admin@tourism.test'; // ADMIN_EMAILS (int config)
 const CUSTOMER_EMAIL = 'catalog-customer@tourism.test';
 
 const PagedTours = PagedSchema(AdminTourRowSchema);
-
-/** Lấy cookie pair (name=value) từ set-cookie của inject response. */
-function sessionCookie(res: { headers: Record<string, unknown> }): string {
-  const raw = res.headers['set-cookie'];
-  const cookies = (Array.isArray(raw) ? raw : [raw]).filter(
-    (c): c is string => typeof c === 'string',
-  );
-  const session = cookies.find((c) => c.includes('session_token'));
-  if (!session) throw new Error(`No session cookie in: ${JSON.stringify(raw)}`);
-  const pair = session.split(';')[0];
-  if (!pair) throw new Error('Malformed set-cookie');
-  return pair;
-}
 
 const DAY_CATEGORY = 'b0000001-0000-4000-8000-000000000001'; // Day Tours
 const PACKAGE_CATEGORY = 'b0000001-0000-4000-8000-000000000002'; // Multi-day Packages

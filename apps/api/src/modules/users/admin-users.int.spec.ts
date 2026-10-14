@@ -10,6 +10,7 @@ import {
 import { AppModule } from '../../app.module.js';
 import { prisma } from '../../auth/auth.config.js';
 import { UserEventType, UserRole } from '../../generated/prisma/enums.js';
+import { sessionCookie } from '../../test/session-cookie.js';
 
 /**
  * Integration (Docker PG, db tourism_test) — vùng Users (P4f, spec §4 và §6). Năm tài khoản
@@ -31,18 +32,6 @@ const MISSING_ID = 'f4f00001-0000-4000-8000-999999999999';
 
 const MINUTE = 60_000;
 const at = (minutesAgo: number): Date => new Date(Date.now() - minutesAgo * MINUTE);
-
-function sessionCookie(res: { headers: Record<string, unknown> }): string {
-  const raw = res.headers['set-cookie'];
-  const cookies = (Array.isArray(raw) ? raw : [raw]).filter(
-    (c): c is string => typeof c === 'string',
-  );
-  const session = cookies.find((c) => c.includes('session_token'));
-  if (!session) throw new Error(`No session cookie in: ${JSON.stringify(raw)}`);
-  const pair = session.split(';')[0];
-  if (!pair) throw new Error('Malformed set-cookie');
-  return pair;
-}
 
 describe('admin users integration (P4f)', () => {
   let app: NestFastifyApplication;

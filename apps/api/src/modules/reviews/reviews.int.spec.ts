@@ -13,6 +13,7 @@ import {
   MediaType,
   ReviewSource,
 } from '../../generated/prisma/enums.js';
+import { sessionCookie } from '../../test/session-cookie.js';
 import { WebRevalidationService } from '../web-revalidation/web-revalidation.service.js';
 import { ReviewsService } from './reviews.service.js';
 
@@ -55,19 +56,6 @@ beforeEach(async () => {
     'TRUNCATE media_garbage, media_assets, review_moderation_events, reviews, outbox, bookings, tour_departures, tours, tour_categories, destinations, users, sessions, accounts RESTART IDENTITY CASCADE',
   );
 });
-
-/** Lấy cookie pair (name=value) từ set-cookie của inject response. */
-function sessionCookie(res: { headers: Record<string, unknown> }): string {
-  const raw = res.headers['set-cookie'];
-  const cookies = (Array.isArray(raw) ? raw : [raw]).filter(
-    (c): c is string => typeof c === 'string',
-  );
-  const session = cookies.find((c) => c.includes('session_token'));
-  if (!session) throw new Error(`No session cookie in: ${JSON.stringify(raw)}`);
-  const pair = session.split(';')[0];
-  if (!pair) throw new Error('Malformed set-cookie');
-  return pair;
-}
 
 /**
  * Trợ giúp gọi `GET /api/tours/:tourSlug/reviews` với query object, mô phỏng

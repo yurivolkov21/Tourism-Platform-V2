@@ -11,6 +11,7 @@ import { AppModule } from '../../app.module.js';
 import { prisma } from '../../auth/auth.config.js';
 import type { Prisma } from '../../generated/prisma/client.js';
 import { BookingStatus, DepartureStatus, PaymentProvider } from '../../generated/prisma/enums.js';
+import { sessionCookie } from '../../test/session-cookie.js';
 
 /**
  * Integration (Docker PG, db tourism_test) — vùng payment events admin (spec
@@ -35,19 +36,6 @@ function requireFixtureTour(slug: string) {
 }
 
 const tour = requireFixtureTour(PUBLISHED_SLUG);
-
-/** Lấy cookie pair (name=value) từ set-cookie của inject response. */
-function sessionCookie(res: { headers: Record<string, unknown> }): string {
-  const raw = res.headers['set-cookie'];
-  const cookies = (Array.isArray(raw) ? raw : [raw]).filter(
-    (c): c is string => typeof c === 'string',
-  );
-  const session = cookies.find((c) => c.includes('session_token'));
-  if (!session) throw new Error(`No session cookie in: ${JSON.stringify(raw)}`);
-  const pair = session.split(';')[0];
-  if (!pair) throw new Error('Malformed set-cookie');
-  return pair;
-}
 
 const DAY = 86_400_000;
 const at = (minutesAgo: number): Date => new Date(Date.now() - minutesAgo * 60_000);

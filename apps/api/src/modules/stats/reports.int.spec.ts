@@ -12,6 +12,7 @@ import {
   PaymentProvider,
   ReviewSource,
 } from '../../generated/prisma/enums.js';
+import { sessionCookie } from '../../test/session-cookie.js';
 import { ReportsService } from './reports.service.js';
 
 /**
@@ -45,19 +46,6 @@ const DAY = 86_400_000;
 
 /** Mốc UTC tường minh — đọc ra là biết nó nằm ở tháng nào. */
 const at = (iso: string): Date => new Date(iso);
-
-/** Lấy cookie pair (name=value) từ set-cookie của inject response. */
-function sessionCookie(res: { headers: Record<string, unknown> }): string {
-  const raw = res.headers['set-cookie'];
-  const cookies = (Array.isArray(raw) ? raw : [raw]).filter(
-    (c): c is string => typeof c === 'string',
-  );
-  const session = cookies.find((c) => c.includes('session_token'));
-  if (!session) throw new Error(`No session cookie in: ${JSON.stringify(raw)}`);
-  const pair = session.split(';')[0];
-  if (!pair) throw new Error('Malformed set-cookie');
-  return pair;
-}
 
 describe('admin monthly report integration (F6)', () => {
   let app: NestFastifyApplication;

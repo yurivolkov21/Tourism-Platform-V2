@@ -5,6 +5,7 @@ import { AppModule } from '../../app.module.js';
 import { prisma } from '../../auth/auth.config.js';
 import type { Prisma } from '../../generated/prisma/client.js';
 import { trackOpenTransactions } from '../../test/open-transactions.js';
+import { sessionCookie } from '../../test/session-cookie.js';
 import { WebRevalidationService } from '../web-revalidation/web-revalidation.service.js';
 import { countLinkedTours } from './destination-tour-links.js';
 
@@ -40,18 +41,6 @@ const SEED = [
   // được với một bản lỡ tay sắp theo slug.
   { id: destId(3), slug: 'retired', name: 'An Bàng', region: 'Southern Vietnam', isActive: false },
 ] satisfies Prisma.DestinationCreateManyInput[];
-
-function sessionCookie(res: { headers: Record<string, unknown> }): string {
-  const raw = res.headers['set-cookie'];
-  const cookies = (Array.isArray(raw) ? raw : [raw]).filter(
-    (c): c is string => typeof c === 'string',
-  );
-  const session = cookies.find((c) => c.includes('session_token'));
-  if (!session) throw new Error(`No session cookie in: ${JSON.stringify(raw)}`);
-  const pair = session.split(';')[0];
-  if (!pair) throw new Error('Malformed set-cookie');
-  return pair;
-}
 
 describe('admin destinations integration (P4e-2 F15)', () => {
   let app: NestFastifyApplication;
