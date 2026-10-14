@@ -88,8 +88,10 @@ prompt các phase còn lại ghi chỉ còn dùng cho P6.
 
 - **ADR-0055 dòng 162** trỏ `apps/mobile/src/components/app-image.tsx`, file
   không còn: các màn truyền thẳng `transformUrl={cloudinaryUrl}` vào `AppImage`
-  của `@tourism/mobile-ui`. Đây là lệch giữa quyết định và code, cần AMEND chứ
-  không phải sửa đường dẫn — để lại cho người viết ADR.
+  của `@tourism/mobile-ui`. ~~Đây là lệch giữa quyết định và code, cần AMEND chứ
+  không phải sửa đường dẫn — để lại cho người viết ADR.~~ Sửa 14/10 (PR #19):
+  không cần AMEND, AMEND 2 ngày 06/10 của ADR-0055 đã ghi việc gỡ wrapper đó;
+  dòng 162 nằm trong AMEND 1, là bản ghi có ngày.
 - **Không đọc hạ tầng sống:** số bảng bật RLS trên Supabase (tài liệu ghi 36/36
   đo 09/09; `user_events` thêm 13/10 có lệnh bật RLS trong migration), trạng thái
   thật của bộ dọn ảnh và tám file thử F18 trên Cloudinary, lỗi build Vercel

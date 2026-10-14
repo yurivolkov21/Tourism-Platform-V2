@@ -26,7 +26,7 @@ thay, cột đã xoá, và số AMEND để biết phải đọc tới cuối fi
 | [0016](0016-web-data-layer.md) | Tầng dữ liệu web: oRPC, server-first, ISR + cache-tag | 4 AMEND |
 | [0017](0017-web-session-better-auth.md) | Phiên đăng nhập: cookie thẳng trình duyệt ↔ API | 6 AMEND |
 | [0018](0018-web-map-library.md) | Bản đồ `/contact`: maplibre-gl + OpenFreeMap | 2 AMEND |
-| [0019](0019-color-token-roles.md) | Tách vai token màu: bề mặt · chữ · ranh giới | 3 AMEND 13/10 (mực cảnh báo, mực đỏ đạt tương phản ở cả hai theme) |
+| [0019](0019-color-token-roles.md) | Tách vai token màu: bề mặt · chữ · ranh giới | 4 AMEND 13–14/10 (mực cảnh báo, mực đỏ đạt tương phản ở cả hai theme, mực trạng thái của app mobile) |
 | [0020](0020-real-images-sourcing.md) | Ảnh thật: nguồn, ghi công, đường vào catalog | mục 1 đã sửa — lô ảnh đầu bị loại toàn bộ · 1 AMEND |
 | [0021](0021-media-write-surface.md) | Khách tải ảnh lên: ký trực tiếp Cloudinary | 3 AMEND |
 | [0022](0022-tour-detail-tabs.md) | Trang chi tiết tour chuyển sang 5 tab | |

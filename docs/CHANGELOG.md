@@ -8,6 +8,55 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-10-14 — Merge G47 chữ trạng thái trên app mobile đạt tương phản, G2 một helper `sessionCookie` cho int spec API (`2482f36`..`f76989d`)
+
+Làm tiếp open-items theo yêu cầu của user 13/10 (đóng càng nhiều càng tốt trước freeze 15/10).
+Nhánh `fix/web-open-items-7`, [PR #19](https://github.com/yurivolkov21/Tourism-Platform-V2/pull/19),
+thi công trên session cloud. Không migration, không env, không dependency. Thư viện dùng chung bị
+sửa: `@tourism/mobile-ui` (`theme.ts` thêm hai khoá màu, `theme.spec.ts`).
+
+- G47: [ADR-0019](adr/0019-color-token-roles.md) AMEND 4 (`2482f36`) đi trước code `5bb5384`. Bốn nhãn
+  chữ 12dp của app mobile vẽ bằng chính màu bề mặt `warning` hoặc `success` lên lớp tô nhạt của
+  màu đó: huy hiệu "Almost full" ở trang tour, nhãn "Paid" ở Trips và ở chi tiết đơn, nhãn
+  "Published" ở My reviews. Theme sáng chỉ đạt 1,68 tới 2,83:1, theme tối 3,81 và 3,92:1 cho hai
+  nhãn xanh. Nay chữ dùng `warning-emphasis` và `success-emphasis` (thêm vào `MOBILE_COLOR_KEYS`, cầu
+  token có sẵn giá trị), lớp tô giữ token bề mặt: theme sáng 5,49 tới 5,74:1, theme tối 4,55 tới
+  5,31:1. Chỗ sát nhất là Trips theme tối, 4,55:1 trên lớp tô 18%. "Booking closed" đi chung thẻ nên
+  đổi theo (1,36 lên 2,54:1, hàng tắt nên WCAG 1.4.3 miễn). Mockup đã duyệt vẫn ghi
+  `success`/`warning` và là bản ghi bất biến; code cố ý lệch, ghi ở AMEND 4. Màu mới tới người dùng
+  ở bản build app kế tiếp.
+- G2 `f76989d`: helper `apps/api/src/test/session-cookie.ts` thay 29 bản chép y hệt của
+  `sessionCookie` trong int spec API (giữ nguyên thân và thông báo lỗi), test riêng 4 ca; 29 file
+  thêm 29 dòng, bớt 367 dòng.
+- Mục lục ADR: 0019 ghi 4 AMEND.
+
+**Đóng CÒN TREO của entry W-09 và G15 (PR #17):** user thử tay production 14/10 07:49 UTC: đổi
+avatar ở web và tải một ảnh tour ở admin đều thành công, chữ trang chủ, About, Contact và trang 404
+không đổi, không chỗ nào hiện `undefined`. GitHub đã tự xoá nhánh `fix/web-open-items-6`.
+
+**Đóng CÒN TREO của entry rà docs:** mục ADR-0055 dựa trên tiền đề sai. AMEND 2 của
+[ADR-0055](adr/0055-mobile-data-layer.md) (06/10, "gỡ wrapper `AppImage` tầng app") đã ghi việc
+wrapper `apps/mobile/src/components/app-image.tsx` bị gỡ và các màn truyền `transformUrl` tường
+minh; đối chiếu code 14/10: file không còn, không chỗ nào import nó, 15 file màn truyền
+`transformUrl={cloudinaryUrl}`. Không cần AMEND mới; link chết ở AMEND 1 là bản ghi có ngày nên
+để nguyên. Cùng commit sửa câu tương ứng trong
+[báo cáo rà tài liệu 14/10](analysis/progress/2026-10-14-docs-audit.md). GitHub cũng đã tự xoá
+nhánh `docs/docs-reorg-2026-10-14`.
+
+**Review.** Không có lượt review độc lập. User bảo merge 14/10 07:52 UTC, sau khi nhận ảnh so màu trước và sau. Nhánh đã rebase lên `587c559` (sau PR #17) trước khi chạy gate, không xung đột: hai bên không chung file nào.
+
+Tests after (`gate:int` trên `f76989d`, 14/10 xong 07:29 UTC, session cloud theo các bước của CI):
+unit 7450 — web 2273, admin 2215, api 1143, mobile 779, contract 709, mobile-ui 142, i18n 58,
+ui 57, core 48, tokens 26 — và int 838; CI của PR xanh 07:47 UTC. So với `587c559`: mobile thêm 8
+test, mobile-ui thêm 6, api thêm 4. G47: test của `mobile-ui` tính tương phản trên màu lớp tô đã
+trộn (sRGB) cho ba tổ hợp đang dùng, cả hai theme đều từ 4,5:1 trở lên, và khoá rằng mực bề mặt
+trần trượt ở theme sáng; test của bốn màn kiểm màu chữ là token emphasis ở cả hai theme; đỏ trước
+khi sửa, xanh sau. G2: test helper đỏ khi chưa có file, xanh sau.
+
+**CÒN TREO:**
+
+- Dọn sau merge: nhánh `fix/web-open-items-7` trên origin nếu GitHub không tự xoá.
+
 ## 2026-10-14 — Merge W-09 chữ cứng của web vào `@tourism/i18n`, "1 tour", G15 một bản tải ảnh cho web và admin (`4b5f4ef`..`8102039`)
 
 Làm tiếp open-items phía khách theo yêu cầu của user 13/10 (đóng càng nhiều càng tốt trước freeze
