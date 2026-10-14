@@ -201,3 +201,73 @@ ro, hiếm hơn. Đường hoàn tiền của ADR-0009 giữ 1 kết nối suố
 thanh toán, còn 4 cho phần khác. Nâng Pool Size của Supavisor trong dashboard
 Supabase là cách thứ hai, không cần deploy; không chọn làm chính vì nó nằm
 ngoài repo. Nếu sau này nâng thì sửa `SESSION_POOLER_CLIENT_CAP` cùng lúc.
+
+## AMEND 5 — 14/10/2026 (G41): chạy bù ba job dọn dẹp hằng ngày khi worker khởi động
+
+**Bối cảnh.** Worker chạy chung tiến trình với API (`WORKER_INLINE=true`, bảng
+Quyết định ở trên), mà API ở gói free ngủ sau 15 phút không có request. Cron của
+pg-boss 12 không bù mốc đã lỡ: mỗi lượt kiểm lịch (30 giây một lần) chỉ gửi job
+khi mốc gần nhất của biểu thức cron cách hiện tại dưới 60 giây (`shouldSendIt`
+trong `timekeeper.js` của pg-boss). Máy ngủ đúng phút 03:00, 03:30 hay 04:00 UTC
+thì `outbox-purge`, `enquiry-retention` hay `media-gc` mất lượt của ngày ấy.
+Bảng `pgboss.job` đọc chỉ-đọc ngày 14/10 cho số đo của tám ngày 07–14/10; job
+`booking-sweep` mười phút một lần cho biết máy thức lúc nào:
+
+- `outbox-purge` chạy 6/8 ngày, `enquiry-retention` 5/8, `media-gc` 3/8.
+- Lượt lỡ nào cũng trùng một quãng không có `booking-sweep`, tức máy đang ngủ:
+  ngày 07 và 08/10 không có lượt nào trong 02:30–04:30; ngày 09/10 máy thức tới
+  03:30 (mất `media-gc`); ngày 10/10 thức tới 03:00 (mất hai job sau); ngày
+  11/10 ngủ từ sau 03:50 (mất `media-gc`).
+- Ba ngày đủ lượt (12–14/10) là ba ngày máy thức suốt 03:00–04:00 UTC, tức
+  10–11 giờ sáng giờ Việt Nam: lượt chạy tuỳ vào việc có ai đang dùng site đúng
+  giờ ấy. Ghi chú G41 ngày 10/10 còn ghi `media_garbage` có 19 mục, tất cả
+  `attempts = 0`, trong đó 11 ảnh thử F18 lẽ ra đã xoá ngày 07/10.
+
+**Chốt.**
+
+- Mỗi lần `startWorker` chạy, sau khi tạo queue và đăng ký worker, nó gửi vào
+  mỗi queue dọn dẹp hằng ngày (`outbox-purge`, `enquiry-retention`, và
+  `media-gc` khi `MEDIA_GC_ENABLED`) một job bù với `singletonKey: 'catch-up'`
+  và `singletonSeconds: 86400` (`worker/daily-catch-up.ts`). pg-boss đặt
+  `singleton_on` của job vào 00:00 UTC của ngày gửi, và chỉ mục duy nhất
+  `job_i4` trên `(name, singleton_on, singleton_key)` chặn job thứ hai cùng ngày
+  kể cả khi job đầu đã chạy xong (chỉ trạng thái `cancelled` không tính); `send`
+  khi ấy trả `null`. Vậy mỗi queue có nhiều nhất một lượt bù mỗi ngày UTC, ở lần
+  thức ĐẦU TIÊN trong ngày, dù máy khởi động lại bao nhiêu lần.
+- Job bù hẹn chạy sau 60 giây (`startAfter`) để request đánh thức máy không
+  phải chia 0,1 CPU và 5 kết nối Prisma (AMEND 4) với ba lượt dọn. Lượt build
+  web đi kèm (AMEND 1) prerender, tức gọi API thật, sau khi `next build` biên
+  dịch xong; chưa đo mốc ấy rơi trước hay sau 60 giây, nên hai việc vẫn có thể
+  trùng giờ. Chấp nhận, vì lượt dọn chỉ giữ kết nối trong từng câu truy vấn,
+  không giữ suốt lượt (`media-gc` gọi Cloudinary ngoài mọi giao dịch). Job đã
+  nằm trong DB, nên tiến trình có tắt trước khi tới giờ thì lần thức sau vẫn
+  chạy nó.
+- Khoá `catch-up` khác khoá rỗng của job do cron gửi, nên một job cron đang chờ
+  không chặn job bù và ngược lại (policy `short` chỉ gộp hai job đang chờ CÙNG
+  khoá).
+- Gửi hỏng (DB chập chờn lúc khởi động) chỉ ghi log lỗi: tiến trình API vẫn phải
+  lên, và lần thức sau hay lượt cron kế tiếp sẽ bù.
+- Lịch cron giữ nguyên; ngày máy thức đúng giờ thì cron vẫn chạy như cũ.
+
+**Hệ quả.**
+
+- Ngày máy vừa khởi động vừa thức đúng giờ cron thì job chạy hai lần. Vô hại:
+  ba job đều idempotent (xoá outbox `SENT` quá 30 ngày; ẩn danh enquiry quá
+  `ENQUIRY_RETENTION_MONTHS`; `media-gc` chỉ xử lý mục đã tới hạn và gỡ mục đã
+  xong khỏi hàng), và mỗi tiến trình xử lý job của một queue lần lượt từng job
+  (`localConcurrency` mặc định 1).
+- Mỗi lần khởi động tốn tối đa ba câu INSERT; từ lần thứ hai trong ngày cả ba bị
+  chỉ mục chặn.
+- Ngày không có lần thức nào thì không có lượt nào, nhưng cả ba job quét theo
+  ngưỡng thời gian chứ không theo ngày, nên lần thức kế tiếp dọn hết phần tồn.
+- Máy dev và CI chỉ gửi job bù khi worker chạy. `media-gc` vẫn chỉ khi có cờ
+  (ADR-0035 §6), nên máy dev không bao giờ gửi job bù cho nó.
+
+**Đã bỏ.**
+
+- Dịch vụ ngoài gọi đánh thức API trước 03:00 UTC (cron-job.org, `schedule` của
+  GitHub Actions): thêm một phụ thuộc nằm ngoài repo, và lịch của GitHub Actions
+  có thể trễ nên vẫn lỡ đúng phút cron.
+- Gói Render trả phí để máy không ngủ: tốn tiền, dự án ở gói free (chốt 14/10).
+- Tự đọc `pgboss.job` xem hôm nay job đã chạy chưa rồi mới gửi: làm lại việc chỉ
+  mục duy nhất của pg-boss đã làm, và thêm truy vấn vào schema của thư viện.
