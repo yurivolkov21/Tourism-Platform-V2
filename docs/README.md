@@ -189,6 +189,9 @@ Mỗi spec đi kèm một plan cùng tên ở [`plans/`](plans/), trừ vài đ�
 **Việc tồn đọng của admin (G43 ở `/subscribers`, xong 13/10)**
 [Chọn hàng và lọc ngày đăng ký ở `/subscribers`](specs/2026-10-13-g43-subscribers-selection-dates.md)
 
+**Việc tồn đọng của admin (G45 ở `/bookings`, xong 14/10)**
+[Lọc `/bookings` theo một tài khoản](specs/2026-10-13-g45-bookings-account-filter.md)
+
 **Công cụ máy dev (ngoài repo)**
 [mod `tourism-status`: dải trạng thái, canh CI, docs-freshness](specs/2026-10-02-tourism-status-mod-design.md)
 

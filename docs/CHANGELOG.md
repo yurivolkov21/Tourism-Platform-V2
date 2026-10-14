@@ -8,6 +8,56 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-10-14 — Merge G45 lọc /bookings theo tài khoản, G50 tới G53 focus sau lệnh ghi, nút Export và login không WebGL (`a935fc4`..`a39d59d`)
+
+Nhánh thứ hai của việc tồn đọng vùng admin (user giao 13/10 02:17 UTC; G45 user chọn "Làm luôn",
+G50 tới G53 là lỗ thấy lúc đo PR #8). Nhánh `fix/admin-open-items-2`,
+[PR #11](https://github.com/yurivolkov21/Tourism-Platform-V2/pull/11), thi công trên session cloud.
+Không migration, không env, không dependency mới. Contract đổi: `admin.bookings.list` nhận `userId`
+(uuid, tuỳ chọn). Thư viện dùng chung bị sửa: `@tourism/contract` (trường ấy), `@tourism/i18n` (chữ
+của G45), `@tourism/ui` (`GradientWaves`).
+
+- G45 spec `a935fc4`, API `ced4c47`, admin `44188f3`:
+  [spec](specs/2026-10-13-g45-bookings-account-filter.md). "View bookings" ở `/users/[id]` mở
+  `/bookings?user=<id>&dates=all`: đúng các booking của tài khoản ấy (lọc cột `bookings.user_id`, có
+  sẵn index), kể cả booking đặt bằng email liên hệ khác. Trước đó link tìm theo email nên lẫn booking
+  của người khác. Hàng điều khiển có chip "Account: <email>" gỡ được (Staff hay tài khoản không còn
+  thấy "One account"), Clear filters gỡ cả nó, file Excel ghi tài khoản ở đầu trang. Id không ứng với
+  ai cho trang rỗng, chuỗi không phải uuid trả 400.
+- G52 `2fd26df`: ô tiêu đề mang nút Export ghim mép phải ở `/subscribers` và `/bookings`. Đánh đổi:
+  ở 1024px trở xuống ô ghim che chữ tiêu đề của cột đang trôi dưới nó cho tới khi cuộn bảng.
+- G51 `a45455b`, `7d68ff5`: nút gửi và Cancel của hộp ghi khoá bằng `aria-disabled` lúc chờ
+  (`ConfirmWriteDialog`, năm form dialog, hộp bác review, hộp hoàn tiền); lệnh hỏng mà hộp ở lại thì
+  focus về chỗ cũ. Nút Staff access và Lock của `/users/[id]` theo khuôn G6.
+- G50 `6c9406c`, `9e48d97`, `c6cc9ed`: `DataTableBody` cứu focus khi nút trong hàng biến mất sau
+  lệnh ghi thành công: ô cùng cột của hàng cũ, rồi hàng thế chỗ, hàng phía trên, cuối cùng là chính
+  bảng; chỉ cứu khi focus thật sự lạc từ thân bảng. Sign out everywhere, Reopen, đổi trạng thái
+  enquiry, Add note và Sign in không còn đánh rơi focus.
+- G53 `a39d59d`: `/login` của admin không sập cả trang khi trình duyệt không tạo được WebGL; nền sóng
+  bỏ trống, form đăng nhập vẫn dùng được.
+
+**Đo trên bản build (Chromium headless của session cloud, DB dev local).** G50: 10 ca, vết focus mỗi
+5 ms, không ca nào chạm `<body>`. Lượt đo đầu bắt được điều jsdom không có: Chromium bắn `focusout`
+ngay trước khi gỡ nút, lúc nút còn trong DOM; test mới giả đúng hành vi ấy (`c6cc9ed`). G51: request
+giữ 1,5 giây, focus nằm trên "Saving…" suốt lúc chờ. G52: nút Export trong khung ở 768, 1024, 1280,
+1366, 1440 và 1600px, lúc bảng ở đầu lẫn khi cuộn hết. G45: email dài từng làm trang tràn ngang 322px
+ở 390px, khe hành động của `DataTableFrame` thêm `min-w-0`. G53: Chromium headless không có WebGL,
+trang login hiện đủ form.
+
+**Review.** Không có lượt review độc lập. User bảo merge (14/10 01:09 UTC). Rebase lên `33df9d4`
+(PR #12 của web) sạch, không xung đột.
+
+Tests after (`gate:int` trên `a39d59d`, 14/10 xong 01:24 UTC, session cloud theo các bước của CI):
+unit 7400 — web 2269, admin 2216, api 1127, mobile 771, contract 709, mobile-ui 136, i18n 51,
+core 48, ui 47, tokens 26 — và int 834. So với main `33df9d4`: admin thêm 57 ca, contract thêm 5,
+int thêm 3 (lọc theo tài khoản của `admin.bookings.list`).
+
+**CÒN TREO:**
+
+- [ ] Thử tay production: ở `/users/[id]` bấm "View bookings" (chỉ booking của tài khoản ấy, chip
+  "Account" gỡ được), và ở `/subscribers` thu hẹp cửa sổ rồi xem nút Export vẫn thấy được.
+- Dọn sau merge: nhánh `fix/admin-open-items-2` trên origin nếu GitHub không tự xoá.
+
 ## 2026-10-14 — Merge G49 nút đỏ ở chân hộp thoại, G36 chặn review chuyến bị huỷ, G34 giờ chốt trong email (`9dcfc15`..`38934c9`)
 
 Làm tiếp open-items phía khách theo yêu cầu của user 13/10 (đóng càng nhiều càng tốt trước freeze
