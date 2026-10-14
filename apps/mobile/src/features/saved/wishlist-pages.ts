@@ -31,3 +31,21 @@ export function flattenWishlistPages<T extends { tourId: string }>(
   }
   return result;
 }
+
+/**
+ * Số tour của bộ đếm Saved (N9, rà 07/10). Còn trang chưa về thì đếm theo `total` server báo ở
+ * trang mới nhất: đếm số mục đã tải là nói "100 tours" cho wishlist 150 mục suốt lúc trang sau
+ * đang về. Trừ các mục khách vừa bỏ lưu trong số đã tải (`loaded − visible`, ẩn lạc quan), và
+ * không bao giờ đếm ít hơn số thẻ đang hiện (`total` cũ hơn danh sách khi wishlist đổi giữa hai
+ * lần tải). Tải hết trang thì số thẻ đang hiện là đúng nhất.
+ */
+export function wishlistCount(
+  pages: readonly { total: number }[] | undefined,
+  hasNextPage: boolean,
+  loaded: number,
+  visible: number,
+): number {
+  const latest = pages?.at(-1);
+  if (latest === undefined || !hasNextPage) return visible;
+  return Math.max(latest.total - (loaded - visible), visible);
+}

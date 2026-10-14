@@ -6,7 +6,11 @@ import { AuthGateScreen } from '@/features/auth/auth-gate-screen';
 import { setPendingReturn } from '@/features/auth/return-to';
 import { pruneRemovedIds } from '@/features/saved/removed-ids';
 import { SavedScreen, type SavedStatus } from '@/features/saved/saved-screen';
-import { flattenWishlistPages, nextWishlistPage } from '@/features/saved/wishlist-pages';
+import {
+  flattenWishlistPages,
+  nextWishlistPage,
+  wishlistCount,
+} from '@/features/saved/wishlist-pages';
 import { orpc, withMobileAuth } from '@/lib/api/client';
 import { getAuthClient } from '@/lib/auth-client';
 import { cloudinaryUrl } from '@/lib/cloudinary-url';
@@ -114,6 +118,13 @@ export default function SavedRoute() {
       rating: item.ratingAvg,
       unavailable: item.unavailable,
     }));
+  // N9: còn trang chưa về thì bộ đếm theo `total` của server, không theo số thẻ đã tải.
+  const savedCount = wishlistCount(
+    listQuery.data?.pages,
+    hasNextPage,
+    serverItems.length,
+    items.length,
+  );
 
   if (!signedIn) {
     return (
@@ -149,7 +160,7 @@ export default function SavedRoute() {
       errorTitle={saved.error}
       retryLabel={saved.retry}
       onRetry={() => void listQuery.refetch()}
-      countLabel={status === 'content' && items.length > 0 ? saved.count(items.length) : null}
+      countLabel={status === 'content' && items.length > 0 ? saved.count(savedCount) : null}
       emptyTitle={saved.empty}
       browseLabel={saved.browse}
       onBrowse={() => router.navigate('/explore')}

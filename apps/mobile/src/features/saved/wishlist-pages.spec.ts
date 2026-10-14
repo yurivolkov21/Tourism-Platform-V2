@@ -1,4 +1,4 @@
-import { flattenWishlistPages, nextWishlistPage } from './wishlist-pages';
+import { flattenWishlistPages, nextWishlistPage, wishlistCount } from './wishlist-pages';
 
 describe('nextWishlistPage', () => {
   it('còn trang thì trả số trang kế', () => {
@@ -42,5 +42,32 @@ describe('flattenWishlistPages', () => {
 
   it('chưa có trang nào thì trả mảng rỗng', () => {
     expect(flattenWishlistPages(undefined)).toEqual([]);
+  });
+});
+
+// N9 (rà 07/10): wishlist 150 mục từng đếm "100 tours" suốt lúc trang 2 đang về.
+describe('wishlistCount', () => {
+  it('còn trang chưa về thì đếm theo total của server, không theo số mục đã tải', () => {
+    expect(wishlistCount([{ total: 150 }], true, 100, 100)).toBe(150);
+  });
+
+  it('còn trang chưa về: trừ các mục khách vừa bỏ lưu trong số đã tải', () => {
+    expect(wishlistCount([{ total: 150 }], true, 100, 98)).toBe(148);
+  });
+
+  it('đọc total của trang mới nhất (wishlist đổi giữa hai lần tải trang)', () => {
+    expect(wishlistCount([{ total: 250 }, { total: 251 }], true, 200, 200)).toBe(251);
+  });
+
+  it('đã tải hết trang thì đếm số mục đang hiện', () => {
+    expect(wishlistCount([{ total: 150 }, { total: 150 }], false, 150, 149)).toBe(149);
+  });
+
+  it('chưa có trang nào thì đếm số mục đang hiện', () => {
+    expect(wishlistCount(undefined, false, 0, 0)).toBe(0);
+  });
+
+  it('không bao giờ đếm ít hơn số thẻ đang hiện', () => {
+    expect(wishlistCount([{ total: 90 }], true, 100, 100)).toBe(100);
   });
 });
