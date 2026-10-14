@@ -19,6 +19,7 @@ import {
   bookingDetailKind,
   cancelErrorAction,
   cancelErrorCopy,
+  canWriteReview,
   operatorRefund,
   payErrorAction,
 } from '@/features/booking/booking-detail';
@@ -39,7 +40,7 @@ import { orpc, withMobileAuth } from '@/lib/api/client';
 import { getAuthClient } from '@/lib/auth-client';
 import { cloudinaryUrl } from '@/lib/cloudinary-url';
 import { formatMoney } from '@/lib/format-money';
-import { useServerToday } from '@/lib/use-server-clock';
+import { useServerClock } from '@/lib/use-server-clock';
 
 /**
  * Chi tiết booking (T4/T5/T8, W4) + huỷ (T6/T7, W5) — mockup
@@ -55,8 +56,9 @@ export default function BookingDetailRoute() {
   // kẹp về một chuỗi trước khi đưa vào bất kỳ lời gọi API nào.
   const code = Array.isArray(rawCode) ? rawCode[0] : rawCode;
   const theme = useTheme();
-  // Ngày theo đồng hồ server — giai đoạn của đơn (`bookingPhase`) cùng luật với tab Trips.
-  const today = useServerToday();
+  // Đồng hồ server — giai đoạn của đơn (`bookingPhase`, ngày VN) cùng luật với tab Trips; lời mời
+  // viết đánh giá đọc `now` vì cổng review của API so ngày UTC.
+  const { now, today } = useServerClock();
 
   const { data: session } = getAuthClient().useSession();
   const signedIn = Boolean(session?.user);
@@ -358,6 +360,14 @@ export default function BookingDetailRoute() {
       ...(booking.paidAt ? [{ label: t.paidOnLabel, value: formatFullDate(booking.paidAt) }] : []),
       { label: t.totalPaidLabel, value: amount, emphasis: true },
     ];
+    // Nợ nhỏ P5b-5 mục 1: chuyến đã về mà chưa có bài thì hoá đơn là lối thứ hai vào R1, như
+    // mockup `mobile-review-screens` ghi — trước đó chỉ P6 mời viết.
+    if (canWriteReview(booking, now)) {
+      primaryAction = {
+        label: messages.mobile.trip.writeReview,
+        onPress: () => router.push(`/trips/${booking.code}/review`),
+      };
+    }
     if (actions.includes('cancelBooking')) {
       secondaryAction = {
         label: messages.accountBookingDetail.actions.cancel,

@@ -5,6 +5,7 @@ import {
   bookingDetailKind,
   cancelErrorAction,
   cancelErrorCopy,
+  canWriteReview,
   operatorRefund,
   payErrorAction,
 } from './booking-detail';
@@ -323,4 +324,35 @@ describe('payErrorAction', () => {
     expect(payErrorAction(new ORPCError('CHECKOUT_FAILED', { status: 502 }))).toBe('message');
     expect(payErrorAction(new Error('network'))).toBe('message');
   });
+});
+
+describe('canWriteReview — hoá đơn mời viết đánh giá (nợ nhỏ P5b-5 mục 1)', () => {
+  // Chuyến mẫu về ngày 17/10. Cổng API so theo ngày UTC: 16/10 17:00 UTC đã là 00:00 ngày 17
+  // giờ Việt Nam nhưng API chưa nhận — nút chỉ hiện từ 17/10 00:00 UTC (07:00 giờ VN).
+  const ARRIVAL_UTC = new Date('2026-10-17T00:00:00.000Z');
+  const VN_MIDNIGHT = new Date('2026-10-16T17:00:00.000Z');
+
+  it('đơn PAID, chuyến đã về, chưa có bài → mời viết', () => {
+    expect(canWriteReview(makeBooking({}), ARRIVAL_UTC)).toBe(true);
+  });
+
+  it('chuyến chưa về theo ngày UTC → chưa mời, kể cả khi đã sang ngày về theo giờ Việt Nam', () => {
+    expect(canWriteReview(makeBooking({}), VN_MIDNIGHT)).toBe(false);
+  });
+
+  it('đơn đã có bài (chờ duyệt, bị bác, đã rút…) → không mời lần hai; bài sống ở My reviews', () => {
+    const review = { moderationState: 'retracted' } as BookingDetail['review'];
+    expect(canWriteReview(makeBooking({ review }), ARRIVAL_UTC)).toBe(false);
+  });
+
+  it('chuyến bị công ty huỷ → không mời, kể cả khi đơn còn PAID vì job hoàn tiền chưa chạy', () => {
+    expect(canWriteReview(makeBooking({ departureCancelled: true }), ARRIVAL_UTC)).toBe(false);
+  });
+
+  it.each(['PENDING', 'CANCELLED', 'REFUNDED', 'PARTIALLY_REFUNDED'] as const)(
+    '%s → không mời (cổng API chỉ nhận PAID)',
+    (status) => {
+      expect(canWriteReview(makeBooking({ status }), ARRIVAL_UTC)).toBe(false);
+    },
+  );
 });
