@@ -31,6 +31,7 @@
     "@dnd-kit/utilities": "^3.2.2",
     "@shadcn/react": "^0.2.1",
     "@stepperize/react": "^7.0.0",
+    "@tourism/contract": "workspace:*",
     "@tourism/tokens": "workspace:*",
     "@types/canvas-confetti": "^1.9.0",
     "canvas-confetti": "^1.9.4",

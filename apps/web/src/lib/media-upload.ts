@@ -1,76 +1,34 @@
-import { ALLOWED_IMAGE_EXTENSIONS, type SignedUploadParams } from '@tourism/contract';
+import type { SignedUploadParams } from '@tourism/contract';
+import { uploadToCloudinary as uploadImage } from '@tourism/ui/lib/cloudinary-upload';
 
 /**
- * Đường upload trực tiếp browser → Cloudinary (ADR-0021): API chỉ ký, bytes
- * không đi qua Nest. Phần thuần (đuôi file, dựng form) tách riêng để TDD;
- * riêng uploadToCloudinary dùng XHR vì fetch chưa có tiến trình upload.
+ * Đường upload trực tiếp browser → Cloudinary (ADR-0021): API chỉ ký, bytes không đi qua
+ * Nest. Từ G15 (ADR-0021 AMEND 3) phần chung với admin — đuôi file, dựng form, khung XHR có
+ * hạn giờ và huỷ — ở `@tourism/ui/lib/cloudinary-upload`; file này chỉ giữ phần riêng của
+ * web (đọc mỗi `public_id`) và giữ nguyên tên hàm, nên component và spec đang mock
+ * `@/lib/media-upload` không đổi.
  */
 
-type AllowedExt = (typeof ALLOWED_IMAGE_EXTENSIONS)[number];
+export { imageExtensionOf } from '@tourism/ui/lib/cloudinary-upload';
 
-/** Đuôi ảnh từ tên file, chuẩn hoá lowercase; ngoài whitelist → null. */
-export function imageExtensionOf(filename: string): AllowedExt | null {
-  const dot = filename.lastIndexOf('.');
-  if (dot <= 0) return null;
-  const ext = filename.slice(dot + 1).toLowerCase();
-  return (ALLOWED_IMAGE_EXTENSIONS as readonly string[]).includes(ext) ? (ext as AllowedExt) : null;
-}
-
-/** Bộ field Cloudinary xác thực — khớp TRỌN chữ ký {folder, public_id,
- * timestamp, allowed_formats, transformation, overwrite} (W4 U1 + vòng vá
- * review): thiếu/thừa một tham số đã ký là Cloudinary 401. */
-export function buildUploadFormData(file: Blob, params: SignedUploadParams): FormData {
-  const form = new FormData();
-  form.set('file', file);
-  form.set('api_key', params.apiKey);
-  form.set('timestamp', String(params.timestamp));
-  form.set('signature', params.signature);
-  form.set('folder', params.folder);
-  form.set('public_id', params.publicId);
-  form.set('allowed_formats', params.allowedFormats);
-  form.set('transformation', params.transformation);
-  form.set('overwrite', String(params.overwrite));
-  return form;
+/** `public_id` ĐẦY ĐỦ từ phản hồi Cloudinary (tự ghép `<folder>/<basename>`); thiếu hay rỗng → null. */
+export function publicIdOf(body: unknown): string | null {
+  const publicId =
+    typeof body === 'object' && body !== null && 'public_id' in body
+      ? String((body as { public_id: unknown }).public_id)
+      : '';
+  return publicId === '' ? null : publicId;
 }
 
 /**
- * POST file lên Cloudinary, báo tiến trình 0–100. Trả `public_id` ĐẦY ĐỦ
- * (Cloudinary tự ghép `<folder>/<basename>`) — đúng chuỗi API cần nhận lại
- * ở account.setAvatar / reviews.create.photos.
+ * POST file lên Cloudinary, báo tiến trình 0–100. Trả `public_id` ĐẦY ĐỦ — đúng chuỗi API cần
+ * nhận lại ở account.setAvatar / reviews.create.photos. Hết giờ (`UPLOAD_TIMEOUT_MS`) là
+ * reject như mọi lỗi tải khác.
  */
 export function uploadToCloudinary(
   file: Blob,
   params: SignedUploadParams,
   onProgress?: (pct: number) => void,
 ): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const xhr = new XMLHttpRequest();
-    xhr.open('POST', params.uploadUrl);
-    xhr.upload.addEventListener('progress', (e) => {
-      if (e.lengthComputable) onProgress?.(Math.round((e.loaded / e.total) * 100));
-    });
-    xhr.addEventListener('load', () => {
-      // try/catch bắt buộc: throw trong callback async của executor KHÔNG
-      // reject promise — JSON.parse ném (2xx nhưng body không phải JSON) mà
-      // không bắt là caller await treo vĩnh viễn (finding review Task 7).
-      try {
-        if (xhr.status >= 200 && xhr.status < 300) {
-          const body: unknown = JSON.parse(xhr.responseText);
-          const publicId =
-            typeof body === 'object' && body !== null && 'public_id' in body
-              ? String((body as { public_id: unknown }).public_id)
-              : '';
-          if (publicId) {
-            resolve(publicId);
-            return;
-          }
-        }
-        reject(new Error(`Cloudinary upload failed (${xhr.status})`));
-      } catch {
-        reject(new Error('Cloudinary upload failed (invalid response)'));
-      }
-    });
-    xhr.addEventListener('error', () => reject(new Error('Cloudinary upload failed (network)')));
-    xhr.send(buildUploadFormData(file, params));
-  });
+  return uploadImage(file, params, publicIdOf, { onProgress });
 }

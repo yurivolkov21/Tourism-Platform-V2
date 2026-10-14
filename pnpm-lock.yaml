@@ -648,6 +648,9 @@ importers:
       '@stepperize/react':
         specifier: ^7.0.0
         version: 7.0.0(react@19.2.4)(typescript@7.0.2)
+      '@tourism/contract':
+        specifier: workspace:*
+        version: link:../contract
       '@tourism/tokens':
         specifier: workspace:*
         version: link:../tokens

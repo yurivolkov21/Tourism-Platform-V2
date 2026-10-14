@@ -1,5 +1,9 @@
-import { describe, expect, it } from 'vitest';
-import { buildUploadFormData, imageExtensionOf } from './media-upload';
+import { UPLOAD_TIMEOUT_MS } from '@tourism/ui/lib/cloudinary-upload';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { publicIdOf, uploadToCloudinary } from './media-upload';
+
+// `imageExtensionOf`, bộ field đã ký và khung XHR (hạn giờ, huỷ, lỗi) có spec ở bản dùng chung
+// `libs/shared/ui/src/lib/cloudinary-upload.spec.ts` (G15). Ở đây chỉ phần riêng của web.
 
 const PARAMS = {
   signature: 'sig',
@@ -14,31 +18,58 @@ const PARAMS = {
   uploadUrl: 'https://api.cloudinary.com/v1_1/demo/image/upload',
 };
 
-describe('imageExtensionOf', () => {
-  it('đuôi whitelist (không phân biệt hoa thường) → chuẩn hoá lowercase', () => {
-    expect(imageExtensionOf('trip.JPG')).toBe('jpg');
-    expect(imageExtensionOf('a.b.webp')).toBe('webp');
+describe('publicIdOf', () => {
+  it('đọc public_id ĐẦY ĐỦ `<folder>/<basename>` — đúng chuỗi account.setAvatar cần nhận lại', () => {
+    expect(publicIdOf({ public_id: 'tourism/avatars/u-1/pid-1', width: 400 })).toBe(
+      'tourism/avatars/u-1/pid-1',
+    );
   });
-  it('đuôi lạ / không đuôi → null', () => {
-    expect(imageExtensionOf('malware.exe')).toBeNull();
-    expect(imageExtensionOf('noext')).toBeNull();
+
+  it('thiếu, rỗng hay không phải object → null', () => {
+    expect(publicIdOf({})).toBeNull();
+    expect(publicIdOf({ public_id: '' })).toBeNull();
+    expect(publicIdOf(null)).toBeNull();
+    expect(publicIdOf('tourism/avatars/u-1/pid-1')).toBeNull();
   });
 });
 
-describe('buildUploadFormData', () => {
-  it('gửi ĐÚNG bộ field chữ ký phủ — file, api_key, timestamp, signature, folder, public_id', () => {
-    const file = new Blob(['x'], { type: 'image/png' });
-    const form = buildUploadFormData(file, PARAMS);
-    expect(form.get('api_key')).toBe('key');
-    expect(form.get('timestamp')).toBe('1760000000');
-    expect(form.get('signature')).toBe('sig');
-    expect(form.get('folder')).toBe('tourism/avatars/u-1');
-    expect(form.get('public_id')).toBe('pid-1');
-    // W4 U1 (ADR-0021 AMEND 1): hai tham số ràng buộc NẰM TRONG chữ ký —
-    // form thiếu là Cloudinary 401, và thiếu tức là mất luôn lớp strip EXIF.
-    expect(form.get('allowed_formats')).toBe('jpg,jpeg,png,webp,avif,gif');
-    expect(form.get('transformation')).toBe('c_limit,w_2400,h_2400,fl_force_strip');
-    expect(form.get('overwrite')).toBe('false');
-    expect(form.get('file')).toBeTruthy();
+/** XHR giả tối thiểu: ghi lại listener để test tự bắn sự kiện. */
+class FakeXhr {
+  static last: FakeXhr | null = null;
+  timeout = 0;
+  status = 0;
+  responseText = '';
+  upload = { addEventListener: vi.fn() };
+  listeners = new Map<string, () => void>();
+  open = vi.fn();
+  send = vi.fn();
+  abort = vi.fn();
+  constructor() {
+    FakeXhr.last = this;
+  }
+  addEventListener(type: string, listener: () => void) {
+    this.listeners.set(type, listener);
+  }
+}
+
+describe('uploadToCloudinary của web', () => {
+  beforeEach(() => {
+    FakeXhr.last = null;
+    vi.stubGlobal('XMLHttpRequest', FakeXhr);
+  });
+  afterEach(() => vi.unstubAllGlobals());
+
+  it('có hạn giờ của bản dùng chung và trả public_id đầy đủ (G15: trước đó mạng chết là treo mãi)', async () => {
+    const pending = uploadToCloudinary(new Blob(['x']), PARAMS);
+    const xhr = FakeXhr.last;
+    expect(xhr?.timeout).toBe(UPLOAD_TIMEOUT_MS);
+
+    if (xhr) {
+      xhr.status = 200;
+      xhr.responseText = JSON.stringify({ public_id: 'tourism/avatars/u-1/pid-1' });
+    }
+    xhr?.listeners.get('load')?.();
+
+    await expect(pending).resolves.toBe('tourism/avatars/u-1/pid-1');
   });
 });
