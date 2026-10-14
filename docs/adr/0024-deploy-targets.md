@@ -157,3 +157,47 @@ throttle sang store chung (Redis), và dòng ghim này là chỗ nhắc.
 - onError của oRPC log kèm STACK cho lỗi không phải ORPCError (500 thật) —
   bản AMEND 2 rút về một dòng làm mất file/line.
 
+## AMEND 4 — 14/10/2026 (G23): trần pool kết nối của mỗi tiến trình API
+
+**Bối cảnh.** Session pooler của Supabase (Supavisor, cổng 5432) nhận tối đa
+15 client cùng lúc (`pool_size: 15`); client thứ 16 nhận `EMAXCONNSESSION`,
+với Prisma đó là một HTTP 500. Một tiến trình API mở HAI pool riêng: client
+Prisma dùng chung (`max: 10`) và pg-boss của worker chạy kèm (không đặt `max`,
+nên theo mặc định 10 của `pg.Pool`), trần lý thuyết 20 mỗi instance. Log
+Supavisor đọc chỉ-đọc ngày 14/10 cho số đo, không còn là suy luận như ghi chú
+G23 cũ:
+
+- 02:01:15 UTC, một instance DUY NHẤT vừa thức, không deploy nào chạy: Prisma
+  giữ 9 phiên, pg-boss 6, phiên Prisma thứ 10 bị từ chối.
+- 05:12:19 UTC, cũng một instance, lúc Vercel build web sau push `89afda5`:
+  Prisma 8, pg-boss 7, hai phiên Prisma kế bị từ chối; log Render ghi hai
+  `DriverAdapterError: (EMAXCONNSESSION)` từ oRPC.
+- Trong 24 giờ tới 05:22 UTC: 22 phiên bị từ chối trong 10 đợt, 18 của pg-boss
+  (lượt poll của worker hỏng) và 4 của Prisma (request trả 500). Log của gói
+  free chỉ giữ một ngày nên không đo được các lần 01/10 và 08/10.
+
+pg-boss mở 5 tới 7 phiên lúc khởi động và mỗi khi sáu vòng poll dồn lại sau
+một quãng event loop bị nghẽn (instance free chỉ có 0,1 CPU), rồi nhả về 2 sau
+10 giây rảnh (`idleTimeoutMillis` mặc định của pg).
+
+**Chốt.**
+
+- Prisma `max: 5`, pg-boss `max: 2`, gom ở `apps/api/src/config/db-pool.ts`
+  cùng ràng buộc `2 × (5 + 2) + 1 ≤ 15`. Hệ số 2 là lúc Render deploy: bản cũ
+  sống tới khi bản mới qua health check (đo 14/10: chồng nhau 8 giây), và kết
+  nối rảnh của bản cũ vẫn giữ phiên tới khi nó tắt. Chỗ thứ 15 chừa cho một
+  phiên chạy tay (`prisma migrate deploy`). `db-pool.spec.ts` khoá ràng buộc.
+- Pool của Prisma mang `application_name` `tourism-api` (pg-boss vốn tự đặt
+  `pgboss`), để log Supavisor và `pg_stat_activity` tách được hai nguồn; trước
+  đây phiên Prisma hiện tên mặc định `Supavisor`.
+
+**Hệ quả.** Lúc dồn tải (prerender của build web), request xếp hàng chờ kết nối
+trong pool thay vì nhận 500; trần chờ là `handlerTimeout` 60s của AMEND 3 (503),
+xa hơn nhiều thời gian một câu query. Với 0,1 CPU, nút thắt là CPU chứ không
+phải số kết nối. Giao dịch tương tác của Prisma chờ lấy kết nối tối đa 2 giây
+(`maxWait` mặc định; khoá hoàn tiền và hai service catalog đặt 5 giây), nên một
+đợt dồn tải lớn có thể làm một giao dịch hỏng P2028 thay vì 500: cùng loại rủi
+ro, hiếm hơn. Đường hoàn tiền của ADR-0009 giữ 1 kết nối suốt lời gọi cổng
+thanh toán, còn 4 cho phần khác. Nâng Pool Size của Supavisor trong dashboard
+Supabase là cách thứ hai, không cần deploy; không chọn làm chính vì nó nằm
+ngoài repo. Nếu sau này nâng thì sửa `SESSION_POOLER_CLIENT_CAP` cùng lúc.
