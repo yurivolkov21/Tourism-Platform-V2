@@ -4,8 +4,8 @@
 > Mỗi giai đoạn trỏ tới file lưu trữ giữ **bản ghi gốc** của nó. Đợt đang chạy
 > nằm ở [`../CHANGELOG.md`](../CHANGELOG.md).
 >
-> Trang này viết ngày 21/09/2026 và là phần **thêm mới** — không một ký tự nào
-> của entry cũ bị sửa khi tách file.
+> Trang này viết ngày 21/09/2026, thêm giai đoạn 13–19 ngày 14/10/2026, và là
+> phần **thêm mới** — không một ký tự nào của entry cũ bị sửa khi tách file.
 
 ## Tra nhanh
 
@@ -23,7 +23,14 @@
 | 10. Bốn đợt vá bảo mật | 06/09–08/09 | [security-w1-w4](2026-09-security-w1-w4.md) |
 | 11. Supabase, thư viện, app điện thoại | 09/09 | [supabase-deps-mobile](2026-09-supabase-deps-mobile.md) |
 | 12. Dữ liệu trọn năm và máy dev mới | 10/09–15/09 | [data-and-machine](2026-09-data-and-machine.md) |
-| **Đang chạy** | 15/09– | [`../CHANGELOG.md`](../CHANGELOG.md) |
+| 13. Một hạn chót hoàn tiền, đăng nhập trên app | 16/09–21/09 | [refund-deadline-mobile-auth](2026-09-refund-deadline-mobile-auth.md) |
+| 14. Admin sửa catalog: chuyến, danh mục, điểm đến | 22/09–24/09 | [departures-categories-destinations](2026-09-departures-categories-destinations.md) |
+| 15. Tạo, sửa tour và ảnh tour | 25/09–29/09 | [tour-editor-photos](2026-09-tour-editor-photos.md) |
+| 16. Khu sửa tour dạng thanh bước, bài viết | 28/09–05/10 | [tour-workspace-posts-admin](2026-10-tour-workspace-posts-admin.md) |
+| 17. Sửa sạn admin, My bookings | 05/10–08/10 | [admin-polish-my-bookings](2026-10-admin-polish-my-bookings.md) |
+| 18. Trang đơn của khách, tài khoản trên app | 08/10–10/10 | [booking-pages-mobile-account](2026-10-booking-pages-mobile-account.md) |
+| 19. Bản in, gộp ba nhánh app điện thoại | 12/10 | [print-export-mobile-merges](2026-10-print-export-mobile-merges.md) |
+| **Đang chạy** | 13/10– | [`../CHANGELOG.md`](../CHANGELOG.md) |
 
 ## Câu chuyện
 
@@ -105,11 +112,55 @@ Seed lại toàn bộ dữ liệu cho trọn năm 2026 rồi đẩy lên cơ s�
 alt text cho 517 ảnh. Giữa đợt, máy dev phải dựng lại từ đầu sang Windows
 native.
 
-### Đợt đang chạy (15/09–)
+### 13. Một hạn chót hoàn tiền, đăng nhập trên app (16/09–21/09)
 
-Thay ba luật hoàn tiền chồng nhau bằng **một hạn chót cho mỗi chuyến**, dựng bản
-vẽ cho bốn cụm màn điện thoại còn lại, và các đợt vá nhỏ. Xem
-[`../CHANGELOG.md`](../CHANGELOG.md).
+Ba luật hoàn tiền chồng nhau gộp thành **một hạn chót cho mỗi chuyến**: trước
+hạn khách tự huỷ và được hoàn đủ, sau hạn thì không. Luật mới lên production
+kèm một lượt seed lại dữ liệu, và từ đây mỗi khoản hoàn để lại vết trong sổ sự
+kiện thanh toán. App điện thoại có cụm màn đăng nhập đầu tiên. Tài liệu được
+đại tu lần thứ hai.
+
+### 14. Admin sửa catalog: chuyến, danh mục, điểm đến (22/09–24/09)
+
+Admin bắt đầu sửa được catalog: bật tắt bán từng tour, lịch chạy của tour, nút
+công ty huỷ chuyến kèm hoàn tiền tự động, rồi quản trị danh mục và điểm đến.
+Giai đoạn của một chuyến (sắp chạy, đang chạy, đã kết thúc) từ đây suy ra từ
+ngày thay vì phải ghi tay.
+
+### 15. Tạo, sửa tour và ảnh tour (25/09–29/09)
+
+Admin tạo và sửa được trọn một tour, rồi tải ảnh tour lên. Hai vòng review tìm
+ra 24 và 15 lỗi thật, vá hết. Bộ dọn ảnh mồ côi được bật trên production.
+
+### 16. Khu sửa tour dạng thanh bước, bài viết (28/09–05/10)
+
+Khu sửa tour thành một thanh bước, bước cuối là xem lại rồi đăng. Báo cáo tháng
+thôi ghi nhận doanh thu của chuyến chưa kết thúc. Lý do bác đánh giá chọn từ
+danh sách. Admin viết và đăng được bài blog. Session cloud tự dựng môi trường.
+
+### 17. Sửa sạn admin, My bookings (05/10–08/10)
+
+Một đợt sửa sạn giao diện admin trước freeze. Trang My bookings của khách lọc,
+tìm và phân trang theo hành trình. Vá 24 cảnh báo bảo mật thư viện. Trang chi
+tiết tour dùng được trên màn điện thoại hẹp.
+
+### 18. Trang đơn của khách, tài khoản trên app (08/10–10/10)
+
+Trang chi tiết đơn và voucher thiết kế lại, trang Saved và Settings đổi giao
+diện. Cụm màn tài khoản trên app gộp vào nhánh chính. Thiết kế lại bản in và
+file xuất được duyệt.
+
+### 19. Bản in, gộp ba nhánh app điện thoại (12/10)
+
+Ba phần của bản in và file xuất lên production: voucher và hoá đơn chờ, báo cáo
+tháng, Excel. Ba nhánh app của thành viên khác (xem tour, đặt tour, đánh giá)
+được review, vá rồi gộp, nên app đủ năm cụm màn.
+
+### Đợt đang chạy (13/10–)
+
+Nước rút trước freeze 15/10: vùng Users của admin với hai bậc Owner và Staff,
+đăng nhập Google bằng SDK gốc trên app, và đóng càng nhiều mục còn treo càng
+tốt. Xem [`../CHANGELOG.md`](../CHANGELOG.md).
 
 ## Luật của thư mục này
 
@@ -120,4 +171,4 @@ mới ở `../CHANGELOG.md`, đừng sửa entry cũ.
 [`2026-07-p3b-static.md`](2026-07-p3b-static.md) có 4 dòng bắt đầu bằng `+` ở
 cột 0 — đó là **phép cộng** số test bị ngắt dòng, không phải gạch đầu dòng. Mở
 rồi save bằng editor có markdownlint sẽ đổi `+` thành `-` và làm sai con số đã
-ghi. Mười một file còn lại hiện sạch; giữ vậy.
+ghi. Mười tám file còn lại hiện sạch; giữ vậy.

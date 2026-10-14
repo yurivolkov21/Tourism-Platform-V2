@@ -1,0 +1,930 @@
+# CHANGELOG — lưu trữ: một hạn chót hoàn tiền, cụm đăng nhập mobile, đại tu tài liệu (16/09–21/09/2026)
+
+Thay ba luật hoàn tiền chồng nhau bằng một hạn chót mỗi chuyến (ADR-0041) rồi
+triển khai lên production, hoàn tiền để lại vết ở sổ `payment_events`, cụm màn
+đăng nhập mobile P5b-1, và đợt đại tu tài liệu 21/09.
+
+Tách khỏi [`../CHANGELOG.md`](../CHANGELOG.md) ngày 14/10/2026.
+⚠️ Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`). **Nội dung nguyên văn —
+không một chữ nào đổi.** Chỗ duy nhất được đụng là đường dẫn tương đối: file
+xuống sâu một cấp nên link tới `adr/`, `specs/`, `plans/`… phải thêm `../`, và
+link tới tài liệu dời thư mục cùng ngày 14/10 trỏ sang chỗ mới. Đừng
+mở-rồi-save bằng editor có markdownlint: nó đổi `+` đầu dòng thành `-` và nói
+sai con số test đã ghi.
+
+## 2026-09-21 — Đại tu tài liệu: bản đồ gọn lại, thêm lớp cho người đọc phổ thông, tách CHANGELOG (nhánh `docs/overhaul-2026-09`)
+
+Đợt rà soát toàn bộ `docs/` đầu tiên kể từ 03/08. Quy mô lúc bắt đầu: **159 file
+Markdown · 78.970 dòng · 4,40 MB**, cộng 114 file khác. Bảy đợt sửa, ghi đầy đủ ở
+[báo cáo rà soát](../analysis/progress/2026-09-21-docs-audit.md).
+
+| Chỉ số | Trước | Sau |
+| --- | ---: | ---: |
+| `docs/README.md` | 149 KB, 665 ký tự/dòng | **19 KB**, 68 ký tự/dòng |
+| `docs/CHANGELOG.md` | 589 KB, 133 entry | **60 KB**, 17 entry |
+| File lưu trữ changelog | 2 | **12** (tối đa 75 KB) |
+| `conventions/` | 12 file, 86 KB | **7 file, 41 KB** |
+| File `.md` ngoài bản đồ | 4 | **0** |
+| Link `.md` gãy trong `docs/` | 17 | **0** |
+| Trang cho người không lập trình | 0 | **3** |
+| `docs/` trên đĩa | 109 MB | **11 MB** |
+
+**Thông tin sai ở đúng chỗ người lạ đọc đầu tiên.** `README.md` gốc ghi admin là
+Vite/TanStack trong khi thật ra là Next 16.3.4, mobile Expo 56 và RN 0.85 trong
+khi thật ra 57 và 0.86.3, ba app còn đánh dấu chưa làm trong khi đã chạy thật,
+thiếu hẳn hai gói `ui`, và vẫn trỏ repo tham chiếu Nexora đã bỏ từ 14/09.
+`CLAUDE.md` còn ghi P4 admin là phase kế tiếp.
+
+**Bản đồ đã hoá thành bách khoa.** 224 dòng nhưng 149 KB: mỗi ô bảng là bản tóm
+tắt đầy đủ của một ADR kèm cả AMEND, ô dài nhất 5.772 ký tự. Cắt được vì mọi
+AMEND chép trong đó đều đã có đủ trong chính file ADR — và bản chép còn cũ hơn
+bản gốc (ghi ADR-0026 tới AMEND 4 trong khi ADR có AMEND 5).
+
+**Ba tài liệu mới cho người không lập trình**: [overview](../overview.md) (sản phẩm
+là gì, ai dùng, sáu luồng chính, sơ đồ bốn app), [glossary](../glossary.md) (khoảng
+60 thuật ngữ chia sáu nhóm), [open-items](../open-items.md) (gom hơn 30 mục CÒN TREO
+vốn rải khắp 133 entry). Không dịch ADR và plan sang ngôn ngữ phổ thông — làm
+loãng chúng thì mất chính xác mà không ai được lợi.
+
+**Tách CHANGELOG, kiểm nguyên văn bằng máy.** 116 entry vào 10 file lưu trữ theo
+kỷ nguyên, cộng [mục lục](README.md) kể lại 12 giai đoạn bằng ngôn ngữ
+thường. Ghép 11 file lại rồi so từng dòng với bản gốc lấy từ git: 6.904 dòng nội
+dung khớp 100%, đủ 133 entry. Chỗ duy nhất đụng là **89 đường dẫn tương đối** phải
+thêm `../` vì file xuống sâu một cấp — đúng cách hai file lưu trữ đợt 03/08 đã
+làm, dù header của chúng tuyên bố "0 ký tự đổi".
+
+**Rà `conventions/` bằng cách đối chiếu mã nguồn.** Bốn file đúng nguyên
+(`booking-states`, `read-then-write-races`, `soft-404-loading-tsx`,
+`supabase-data-api-surface` — kiểm `cancelInLock`, `vietnamToday`, `FOR UPDATE`,
+vị trí `loading.tsx`, 36 bảng RLS). Ba file lệch:
+
+- `mobile-dev-loop` §2 đứng trọn trên tiền đề WSL NAT, lỗi thời từ 14/09 khi máy
+  dev sang Windows native. Nợ này CHANGELOG 16/09 đã ghi nhận mà chưa trả. Kèm
+  [ADR-0040 AMEND 2](../adr/0040-mobile-app-expo.md) đảo §8: `dev` = `expo start`
+  (LAN), thêm `dev:tunnel`, `dev:lan` giữ làm bí danh.
+- `outbox-dedupe-key` sai bốn chỗ: hai dòng bảng trùng nhau, ví dụ
+  `cancellation-denied` thuộc luồng ADR-0041 đã xoá, tên sự kiện `booking-paid`
+  trong khi mã dùng `booking-confirmed`, và thiếu ba dạng đang chạy thật.
+- `read-then-write-races` thiếu nơi áp dụng thứ ba (`admin-enquiries`, W4).
+
+**Sắp xếp lại ba chỗ.** Năm tài liệu bàn giao mobile sang [`handoff/`](../handoff/README.md)
+— chúng có hình dạng của plan và có ngày hết hạn, khác luật áp dụng mãi mãi.
+`color-system` tách đôi: luật thi hành ở lại (4 KB), phần đo đạc sang
+[analysis](../analysis/2026-07-22-color-system-analysis.md) (9 KB). `design/prompts/`
+gộp lên một cấp vì thư mục chỉ có đúng một file.
+
+**Hai thư mục không phải Markdown.** `snapshots/` (28 file JSON, có commit) nay có
+[mục lục](../snapshots/README.md) — trước đó không một dòng giải thích, dù
+`reset-operational-data.mjs` đọc `keep-list.json` ở thư mục có ngày lớn nhất nên
+thêm một lượt là đổi luôn hành vi script dọn dữ liệu. `screenshot/` (98 MB ảnh
+tham chiếu riêng của user, gitignored) đã dời hẳn ra ngoài kho mã.
+
+**Đo được một rủi ro rộng hơn tưởng.** Gotcha `+` ở cột 0 lâu nay chỉ nhắc
+changelog; đo lại thì **11 file** dính, gồm 4 ADR, 2 bản phân tích (một file 37
+dòng), 2 plan, 1 spec và `libs/shared/tokens/README.md`. Tất cả là dòng tiếp nối
+hoặc phép cộng bị ngắt dòng — mở rồi save bằng editor có markdownlint là làm sai
+nghĩa. CLAUDE.md đã ghi đúng phạm vi.
+
+**CÒN TREO:** quét QR thử app điện thoại sau khi đổi lệnh `dev` sang LAN (nếu
+không chạy được thì `dev:tunnel` vẫn còn nguyên) · `.claude/skills/` có 41 link
+gãy nhưng đó là bản sao upstream của skill bên thứ ba, không đụng.
+
+**Review findings:** chưa có vòng review riêng.
+
+Tests after: không đổi code sản phẩm — thay đổi duy nhất ngoài `docs/` là một
+dòng script `dev` trong `apps/mobile/package.json` và ghi chú `.gitignore`. Vitest
+3689, Jest mobile 245, int 497 ở 39 file, tất cả giữ nguyên so với entry trước.
+
+## 2026-09-21 — Prerender thử lại khi API hắt hơi (ADR-0044, nhánh `fix/prerender-retry`)
+
+Ba lượt build web trên Vercel chết liên tiếp, **ba mã lỗi khác nhau trên cùng
+một đường**, trong khi gọi tay chính endpoint ấy trả 200 dưới 0,6 giây:
+
+| Deploy | Trang chết | Lỗi |
+| --- | --- | --- |
+| `f4809d3f` | `/tours/bana-hills-golden-bridge-day` (trang 57/75) | `TimeoutError`, quá 10s |
+| `659a48fc` | `/blog/what-to-pack-for-the-mist-season` (trang đầu) | HTTP 502, header `x-render-routing: dynamic-free-error` |
+| redeploy `659a48fc` | cùng trang | HTTP 520, trang lỗi HTML của Cloudflare |
+
+- **Chẩn đoán sai một nhịp rồi sửa lại giữa chừng.** Bản đầu kết luận "flake do
+  Render ngủ dậy" và đề nghị deploy lại; deploy lại VẪN chết, lần này 520 dù API
+  đã tỉnh ổn định 11 phút. Kết luận đúng có hai tầng: (a) service Render đặt
+  `autoDeploy` theo MỌI commit nên push docs cũng dựng lại API — log Render
+  `03:22:59 ==> Deploying…` rồi `03:23:34 Starting Nest…` trong khi build web gọi
+  lúc `03:23:48`; (b) instance **free** một mình ở Singapore không nuốt nổi loạt
+  75 request prerender bắn từ vùng IAD, Cloudflare đứng trước trả 520/502.
+- **`settle()` của ADR-0016 không dùng được ở đây.** `fetchPostDetail` cố ý ném
+  lại mọi lỗi khác `POST_NOT_FOUND` để error boundary xử lý; đổi sang `settle` là
+  build XANH trong khi xuất bản một trang bài viết rỗng. Thà đỏ.
+- **Vá ở tầng vận chuyển**, một chỗ duy nhất: bọc `fetch` của `OpenAPILink` bằng
+  `createRetryingFetch` (`apps/web/src/lib/api/retry-fetch.ts`). Bốn ràng buộc
+  của ADR-0044 đều có test canh: CHỈ `GET` (gửi lại POST là nguy cơ đặt trùng chỗ
+  và thu tiền hai lần), CHỈ phía server, CHỈ lỗi tạm thời (network/timeout cộng
+  `408 425 429 500 502 503 504 520 521 522 523 524`; 404 và 4xx nghiệp vụ đi
+  thẳng để `notFound()` còn chạy), và đúng ba lượt giãn 400ms rồi 1200ms.
+- **Timeout tách hai phía:** server 20s, trình duyệt giữ nguyên 10s.
+  `AbortSignal.timeout()` phải dựng LẠI từng lượt — dùng chung một signal thì
+  lượt thử thứ hai nhận signal đã hết hạn và chết tức khắc.
+
+**Phần (1) đã xong bằng tay 21/09:** user bật Build Filter trên dashboard Render
+(service `Tourism-Platform-V2` → Settings → Build Filters → Ignored Paths →
+`docs/**`) — Render chưa mở cấu hình này qua API lẫn MCP nên không tự động hoá
+được. Từ nay commit chỉ đụng `docs/` không dựng lại API nữa.
+
+Còn một mức siết nữa CHƯA làm, để dành khi cần: `apps/web/**`, `apps/admin/**`
+và `apps/mobile/**` cũng không vào ảnh Docker của API, nên thêm chúng vào
+Ignored Paths sẽ chặn nốt phần lớn ca còn lại. **Đừng thêm `libs/**`** — API ăn
+`@tourism/contract` và `@tourism/core`, ignore chúng là deploy API thiếu bản
+contract mới mà không ai hay.
+
+**Review findings:** chưa có vòng review riêng.
+
+Tests after: Vitest 3689, trong đó web 1538 (thêm **32** test mới cho
+`retry-fetch`), api 932, admin 838, contract 279, core 46, ui 22, tokens 18,
+i18n 16. Jest mobile 245 không đổi. Int 497 ở 39 file. `pnpm gate:int` trọn
+xanh; lint vẫn đúng 1 warning và 1 info có từ trước.
+
+## 2026-09-21 — Audit hết đỏ: metro bỏ `image-size`, ghim `@types/react`, ghi nhận lỗ `decode-uri-component` (nhánh `fix/audit-metro-image-size`)
+
+Workflow `Audit` (lịch, 09:00 thứ Hai) đỏ từ **14/09** mà không ai nhìn — lần
+xanh cuối là 07/09. Ba lỗ, cả ba chỉ đến từ bộ công cụ Expo trong `apps/mobile`;
+web và api sạch.
+
+- **Hai lỗ high `image-size` (GHSA-w3rx-r6r6-pgpr, GHSA-5p2g-fcmc-qvqq)** — vá
+  bằng MỘT lượt làm mới lockfile, không cần override: `metro@0.87.1` đã **bỏ hẳn**
+  dependency `image-size`, và `metro-config@0.87.1` nằm trọn trong dải `^0.87.0`
+  mà `@react-native/metro-config@0.87.1` (bản repo đang cài) khai. Lock chỉ đang
+  giữ 0.87.0 vì `--frozen-lockfile`. Đây là patch BÊN TRONG dải upstream đã cho
+  phép, không đụng Expo SDK 57 của ADR-0040 — hợp chính sách freeze 15/10.
+- **KHÔNG override `image-size` lên 2.x** dù advisory bảo `>=2.0.3`:
+  `metro/src/Assets.js` gọi `_interopRequireDefault(require("image-size"))`, tức
+  dùng default export, mà v2 chỉ xuất named `imageSize` → Metro sẽ chết khi bundle
+  bất kỳ ảnh nào. Đã kiểm bằng cách đọc mã nguồn metro trong `node_modules`.
+- **Lỗ moderate `decode-uri-component` (GHSA-vcc3-ghjq-m6fr) KHÔNG vá được**, ghi
+  nhận có chủ đích bằng `auditConfig.ignoreGhsas` kèm lý do đo được và điều kiện
+  gỡ. Advisory ghi "Patched versions >=0.4.3" nhưng **bản 0.4.3 không tồn tại trên
+  npm** (registry chỉ tới 0.4.1 rồi nhảy 0.5.0), và 0.5.0 là `"type": "module"`
+  trong khi `query-string@7.1.3` là CJS `require()` nó → ép lên là
+  `ERR_REQUIRE_ESM`, expo-router hỏng lúc CHẠY. Gỡ được khi Expo kéo
+  `query-string >=9.5.1` (bản đó khai `decode-uri-component: ^0.5.0`; 9.0 vẫn khai
+  `^0.4.1` nên chưa đủ).
+- **Tác dụng phụ bắt được nhờ gate, không phải nhờ may:** lượt làm mới lock kéo
+  thêm `@types/react@19.2.18` cạnh 19.2.17 mà react-native và `apps/web` đang
+  dùng → hai bản types trong store → `tsc` ở `libs/shared/ui` báo *"Two different
+  types with this name exist, but they are unrelated"* cho `Ref<SVGSVGElement>`.
+  Ghim `'@types/react': '19.2.17'` theo đúng nếp đã có cho `react`/`react-dom`, và
+  cùng lý lẽ: hạ xuống cho khớp, KHÔNG phải nâng cấp. Lỗi này không hiện ở runtime.
+- **Phạm vi lock:** 33 gói đổi version, toàn bộ patch/minor trong dải đã khai,
+  **không gói nào nhảy major**. Phần lớn là họ `metro-*` 0.87.0 lên 0.87.1; vài gói
+  là đích của override bảo mật sẵn có tự trôi tới (hono 4.13.5 lên 4.13.8, postcss
+  8.5.23 lên 8.5.28, nanoid 3.3.17 lên 3.3.19).
+
+**Kiểm metro riêng vì gate không đụng tới nó:** `pnpm gate` chạy jest-expo chứ
+không chạy Metro (ADR-0040 §5 — `expo export` tốn 1–2 phút nên đứng ngoài vòng
+lặp TDD). Đã chạy `turbo run bundle --filter=@tourism/mobile`: ra bundle iOS
+3.4MB và Android 3.7MB, đúng như CI. Build web thì cần API sống (ADR-0016) nên
+chạy tay với API nền ở cổng 3001 — xanh.
+
+**Review findings:** chưa có vòng review riêng.
+
+Tests after: không đổi con số nào so với entry trước (thay đổi không chạm file
+nguồn nào). Vitest 3657 chia ra api 932, web 1506, admin 838, contract 279, core
+46, ui 22, tokens 18, i18n 16. Jest mobile 245 (mobile 159 và mobile-ui 86). Int
+497 ở 39 file. Lint vẫn đúng 1 warning và 1 info có từ trước. `pnpm audit
+--audit-level=moderate` nay exit 0.
+
+## 2026-09-21 — Việc 4: OTP gửi ngay, `.vercel.app` chuyển hướng về www, và chốt KHÔNG tự đăng nhập sau OTP (nhánh `feat/outbox-nudge`)
+
+Đóng mục cuối của bản bàn giao sau đợt hoàn tiền — ba đề xuất từ 18/09 user
+chưa chọn. Kết cục ba kiểu khác nhau: một cái sửa code, một cái đổi thiết lập
+hạ tầng, một cái chốt KHÔNG làm.
+
+### 1. OTP và đặt lại mật khẩu xin drain ngay
+
+- `9c10a5e3` feat(api): thêm `worker/outbox-nudge.ts` — registry cấp module,
+  vòng worker đăng ký hàm `boss.send` của chính instance nó, đường request gọi
+  `nudgeOutboxDrain()` để đẩy một job vào queue `outbox-drain` thay vì đợi tick
+  cron (mỗi phút, granularity nhỏ nhất pg-boss cho). Gọi ở hai chỗ tạo email
+  auth trong `auth.config.ts`: `PASSWORD_RESET` và `EMAIL_OTP` (callback OTP
+  phục vụ cả ba loại OTP của plugin nên một dòng phủ hết).
+
+  **Vì sao là registry chứ không phải DI** — bản bàn giao đề xuất "đẩy job cho
+  pg-boss" mà chưa biết chỗ vướng: `sendVerificationOTP` là callback của plugin
+  better-auth ở TẦNG MODULE, không nằm trong container Nest và ghi bằng `prisma`
+  trần, nên không inject được gì vào đó. Dùng lại đúng instance pg-boss của
+  worker (không mở client thứ hai) vì pool Postgres chốt ~10 kết nối.
+
+  **BEST-EFFORT là toàn bộ hợp đồng**: không worker nào đăng ký, pg-boss lỗi,
+  queue chưa tạo — đều log rồi đi tiếp, vì cron vẫn là lưới cuối. Để một lỗi
+  pg-boss lan ra ngoài `sendVerificationOTP` là biến "email chậm một phút"
+  thành "không đăng ký được".
+
+  **Giới hạn đã biết, ghi trong JSDoc**: chỉ có tác dụng khi worker chạy CÙNG
+  tiến trình API (`WORKER_INLINE=true` — đúng cấu hình prod trên Render free).
+  Tách worker ra process riêng thì nudge trả `no-worker` và OTP quay lại nhịp
+  cron; muốn phủ cả ca đó thì API phải tự mở một client pg-boss, tức thêm một
+  kết nối vào pool — cố ý không làm khi prod chưa cần.
+
+  Hai đường đã cân và loại: gọi thẳng `outbox.drainOnce()` trong request (app
+  API không import `WorkerModule` nên KHÔNG có deliverer, và nó kéo cả lô 50
+  row vào đường request); gửi thẳng qua Resend bỏ qua outbox (mất kiểm
+  `email_suppressions`, mất retry, mất audit — đúng loại email không được phép
+  mất mấy thứ đó).
+
+- **Test của chính đợt này bắt được lỗi của chính nó.** Int spec mới ghim ca
+  "queue chưa tạo → `failed` chứ không ném" — ca duy nhất soi được lỗi đăng ký
+  sai thứ tự, vì nudge nuốt lỗi nên mọi thứ sai ở tầng queue đều hỏng IM LẶNG.
+  Lượt đầu nó xanh, lượt sau đỏ: schema `pgboss` của `tourism_test` KHÔNG bị
+  truncate giữa các lượt (globalSetup chỉ `migrate deploy` schema Prisma) nên
+  queue do lượt trước tạo vẫn còn. Sửa bằng `deleteQueue` tường minh trước khi
+  khẳng định, rồi chạy hai lượt liên tiếp để chứng minh tính lặp lại.
+
+### 2. `.vercel.app` chuyển hướng về www — user đổi trên Vercel
+
+Domain `tourism-platform-v2-web.vercel.app` đang phục vụ app trực tiếp
+(`redirect: null`), nên mở site qua host đó thì đăng ký/đăng nhập hỏng: API chỉ
+trả CORS cho `www.nexora-travel.agency` (đúng thiết kế W3/W4). User đặt redirect
+308 sang www, giống hệt apex đã có sẵn. Đo sau khi đổi: `/`, `/login` và một
+trang tour đều trả 308 và GIỮ NGUYÊN path; đi theo chuỗi thì đúng một lượt
+chuyển hướng rồi 200 ở www.
+
+Hệ quả phụ đã lường và đo: `robots.txt` trên host cũ nay cũng 308 sang www, nên
+host đó không còn tự phục vụ `disallow: /` nữa. Chặt hơn chứ không hở — 308
+vĩnh viễn gom tín hiệu về www và không còn nội dung nào ở host cũ để index,
+trong khi `disallow` chỉ ngăn thu thập mà vẫn để URL tồn tại. Không file nào
+trong repo ghi cứng host đó; `robots.ts` khớp theo mẫu `*.vercel.app` nên không
+phải sửa.
+
+### 3. Tự đăng nhập sau OTP — CHỐT KHÔNG LÀM
+
+- `ab57f8dd` docs(web): ghi lý do ngay cạnh chỗ redirect trong `otp-form.tsx`.
+
+Đọc plugin `email-otp` của better-auth 1.6.23: nó KHÔNG có tuỳ chọn phát session
+sau `verify-email`. Hai route tách bạch — `/email-otp/verify-email` chỉ đánh dấu
+email đã xác minh, còn `/sign-in/email-otp` là một luồng ĐĂNG NHẬP KHÔNG MẬT
+KHẨU riêng. Nên "tự đăng nhập sau OTP" chỉ làm được bằng cách chuyển sang route
+thứ hai, và cái giá là mã 6 số gửi qua email trở thành yếu tố đăng nhập đầy đủ
+cho MỌI tài khoản, không riêng tài khoản vừa đăng ký — đúng thứ lần siết 20/08
+cố ý bỏ. User chốt không đánh đổi. Ghi vào code chứ không chỉ vào đây, để lần
+sau không ai đề xuất lại mà không biết điều đó; đổi ý thì phải đi qua một ADR.
+
+**Review findings:** chưa có vòng review riêng.
+
+Tests after: cổng đầy đủ xanh (28/28 task với `--concurrency=2`, int 6/6, API
+nền sống cho build web). Int 498 ở 39 file (thêm 1: nối dây nudge trên pg-boss
+thật). Vitest 3680, trong đó api 936 có thêm 4 test cho `outbox-nudge`; web
+1525, admin 838, contract 279, core 46, ui 22, tokens 18, i18n 16 đều không
+đổi. Jest mobile 245 không đổi. Lint vẫn đúng 1 warning và 1 info có từ trước.
+
+## 2026-09-21 — Nghiệm thu trên prod: hoàn tiền đã để lại vết ở `/payment-events` (không đổi code)
+
+Đóng mục CÒN TREO quan trọng nhất của entry ADR-0043 bên dưới. Chạy tay trên
+site thật theo từng bước, user bấm, agent đo.
+
+**Đường đi:** đặt `BK-XKEHLSZL` (Hanoi Old Quarter Street Food by Night, đợt
+16/10/2026, 1 người lớn, 35.00 USD) bằng tài khoản khách `boscowong31@`, trả qua
+Stripe test mode, rồi huỷ. Chọn đợt 16/10 vì tour 1 ngày nên N = 1, hạn chót
+15/10 — còn xa, huỷ phải hoàn ĐỦ. Hộp xác nhận in đúng "full refund of $35.00".
+
+**Đo được, khớp từng lời hứa của ADR-0043:**
+
+| Kiểm | Kết quả |
+| --- | --- |
+| Dòng sổ `refunds` | 35.00 USD, `re_3UHzrvK1oRTwa7qk1hs4Rxnw`, `admin_id` NULL |
+| Row `payment_events` | type `payment.refunded`, gắn `BK-XKEHLSZL` |
+| `event_id` là id refund của CỔNG | trùng `provider_refund_id` |
+| `processed_at` = `received_at` = `refunds.created_at` | cả ba đúng `05:37:06.615` |
+| `payload` | `source: refund-core`, `cause: cancel`, đủ ba id |
+| `payment.refunded` toàn prod | 0 trước, **1** sau |
+| Trang admin `/payment-events` | có dòng "Refund issued", 35.00, gắn đúng booking; drawer in đúng payload |
+
+**Sửa một con số ghi sai ở entry ADR-0043 bên dưới.** Entry đó viết "hai khoản
+hoàn cũ trên prod sẽ còn làm bất biến báo **2** cho tới lượt seed 03/11". Đo
+thật thì là **46**: prod seed ngày 18/09 bằng bộ sinh CŨ nên 44 dòng hoàn của
+seed mang type thô (`charge.refunded` 30, `PAYMENT.CAPTURE.REFUNDED` 14) và
+cũng trượt bất biến mới, cộng 2 khoản hoàn thật. Bản chất không đổi — lượt seed
+lại khoảng 03/11 ghi đúng `payment.refunded` và xoá cả 46 cùng lúc — nhưng con
+số thì phải nói đúng.
+
+**Một quan sát củng cố quyết định của ADR-0043:** lượt thanh toán này lại đẻ
+thêm đúng 2 event Stripe không map được (`other` đi từ 4 lên 6), y như hôm
+18/09. Nếu chọn hướng "bật `charge.refunded` ở dashboard" thay vì để lõi tự
+ghi, dòng hoàn sẽ rơi vào đúng cái hố "Other / Not linked" đó.
+
+**CÒN TREO:** connector Stripe trong phiên đã hết hạn nên KHÔNG đối chiếu được
+dashboard cổng; `re_…` là id do chính Stripe trả về nên khoản hoàn chắc chắn đã
+phát, nhưng muốn nhìn tận mắt thì mở dashboard test mode tìm
+`pi_3UHzrvK1oRTwa7qk1fb0095a`. Booking `BK-XKEHLSZL` ở lại prod dưới dạng
+CANCELLED đã hoàn đủ — không cần dọn, lượt seed 03/11 xoá sạch.
+
+Tests after: không đổi code, không chạy lại cổng. Bằng chứng là dữ liệu prod đo
+trực tiếp, liệt kê ở bảng trên.
+
+## 2026-09-21 — Ba món nợ nhỏ sau đợt hoàn tiền: JSDoc cũ, dải chip chết, favicon 404 (nhánh `chore/refund-followups`)
+
+Gom ba mục còn treo trong bản bàn giao sau đợt "hoàn tiền một hạn chót". Không
+mục nào đổi hành vi money-path; không migration.
+
+- `71050455` docs(contract): khối JSDoc trên `CancellationRequestStatusSchema`
+  còn tả luồng duyệt huỷ của ADR-0029/0030 (REQUESTED là đơn đang mở, DENIED là
+  admin từ chối, REFUNDED là đã duyệt rồi hoàn theo bảng bậc) — cả ba vế đều sai
+  từ ADR-0041. Viết lại: `REFUNDED` là kết cục thường và mang nghĩa "đã giải
+  quyết", KHÔNG phải "đã có tiền về" (huỷ quá hạn hoàn 0 cũng ghi nó mà không
+  sinh dòng sổ `refunds`); `REQUESTED`/`DENIED` chỉ còn để đọc dữ liệu cũ. Câu
+  cuối là đo được chứ không đoán: `verify-seed.mjs` dòng 242 đã có bất biến
+  "yêu cầu huỷ còn REQUESTED hoặc DENIED" phải bằng 0. Chỉ sửa comment.
+- `139c6f5a` refactor(web): xoá `DepartureStrip`. Bản bàn giao ghi "không trang
+  nào render" — đúng nhưng chưa đủ: nó CÓ một người import là
+  `DepartureStripConnected`, mà chính wrapper đó mới là thứ không ai gọi. Trang
+  chi tiết tour cố ý bỏ dải chip theo wireframe đã duyệt (panel đặt chỗ ngay
+  dưới đã in đúng bốn ô ngày đó), nên cả cụm là mã chết — và là mã chết mang
+  LUẬT CŨ: nó chọn đợt theo mỗi `seatsLeft`, chưa qua `isDepartureOpen` của
+  ADR-0041. Xoá component, spec 13 test, wrapper, và `MockTourDeparture` (consumer
+  duy nhất của type đó là chính file vừa xoá — đúng tiền lệ `mocks/types.ts` đã
+  ghi sẵn cho `MockTourDifficulty`/`MockTourBadge`). Hình dạng một đợt ở web nay
+  chỉ còn `DepartureVM`. Vá năm chỗ chú thích trỏ tới file đã xoá, trong đó
+  `tour-hero.spec.tsx` là chỗ ngoài kế hoạch tự lòi ra khi quét.
+- `8d8da389` fix(web): rewrite `/favicon.ico` sang `/icon` ở `next.config.ts`.
+  Icon sinh động từ `app/icon.tsx` (ADR-0038 AMEND 4) nên tab trình duyệt vẫn
+  đúng, nhưng trình đọc RSS, crawler và trình duyệt cũ gọi thẳng `/favicon.ico`
+  và nhận 404. Chọn rewrite thay vì đặt `public/favicon.ico` để giữ MỘT nguồn
+  sự thật cho icon. Đo thật sau khi dựng, không chỉ khai là đã thêm dòng config:
+  `/favicon.ico` trả 200, `content-type: image/png`, magic byte PNG đúng.
+- `5caf15ef` chore(api): `EMAIL_FROM` mẫu ở `.env.example` đổi từ `tourism.test`
+  sang `noreply@nexora-travel.agency`. Tên miền cũ chưa verify ở Resend nên mọi
+  lượt gửi ở máy dev bị 403 và outbox đánh FAILED — đó là lý do luồng quên mật
+  khẩu không thử được ở máy hôm 18/09. Kèm chú thích nói rõ phần sau `@` phải là
+  tên miền đã verify. (`.env.local` của máy cũng đổi theo, nhưng file đó không
+  commit.)
+
+**Một lượt gate đỏ vì FLAKE, không phải hồi quy — ghi lại để khỏi truy lại lần
+sau.** `apps/web/src/mocks/mocks.spec.ts` (test FAQ) timeout đúng 30 000ms trong
+lượt `gate:int` đầu. Truy: test là hàm thuần (`await import('./faq.js')` rồi so
+chuỗi), không I/O, không có gì để mất 30 giây; chạy riêng 14/14 xanh; chạy trọn
+bộ web một mình 1525/1525 xanh; file đó lần cuối đổi ở `8e3f52e2` chứ không phải
+đợt này, và thứ đợt này sửa trong `src/mocks/` chỉ là type — bị xoá lúc runtime,
+mà typecheck trong chính lượt gate ấy đã xanh. Nguyên nhân là tranh tài nguyên:
+bộ web tốn 631 giây CPU chỉ để import trên 96 giây thực, nên khi turbo chạy 8
+package cùng lúc kèm một API server thì một `import()` kẹt là chuyện sẽ tới.
+Chạy lại với `--concurrency=2` xanh trọn 28/28. Kết luận vận hành: ở máy này
+chạy gate nên hãm concurrency, đừng đọc một lượt đỏ kiểu này là hồi quy.
+
+**CÒN TREO:** Việc 4 của bản bàn giao (chuyển hướng `.vercel.app` về www, OTP gửi
+ngay, tự đăng nhập sau OTP) vẫn chưa làm — cả ba chờ user chọn. Lỗ hổng
+`image-size` mà workflow Audit bắt được đã do `f4809d3f` xử lý ở nhánh khác,
+không thuộc đợt này.
+
+**Review findings:** chưa có vòng review riêng.
+
+Tests after: cổng đầy đủ xanh (28/28 task với `--concurrency=2`, int 6/6, API nền
+sống cho build web). Int 497 ở 39 file, không đổi. Vitest 3676, trong đó web 1525
+(bớt 13 test của `departure-strip.spec.tsx`; phần tăng so với entry trước là của
+`969ccb7b` thêm `retry-fetch.spec.ts` theo ADR-0044, không phải đợt này); api 932,
+admin 838, contract 279, core 46, ui 22, tokens 18, i18n 16 đều không đổi. Jest
+mobile 245 không đổi. Lint vẫn đúng 1 warning và 1 info có từ trước.
+
+## 2026-09-21 — Hoàn tiền để lại vết ở sổ `payment_events` (nhánh `feat/refund-payment-event`, ff vào `main` `a1544081` — ĐẨY NHẦM, xem mục Review findings)
+
+Hai khoản hoàn THẬT trên prod (`BK-7WKW9ESB`, `BK-PY7IZMD4`, nghiệm thu 18/09)
+chỉ có event lượt thu, nên `/payment-events` — kính soi tiền của admin — không
+bao giờ thấy tiền đi ra. Rà ra **ba** nguyên nhân chứ không một, và hai cái sau
+khiến "bật thêm event ở dashboard" một mình là vô nghĩa:
+
+1. Cả ba đường ghi dòng sổ `refunds` (admin hoàn thiện chí, khách tự huỷ,
+   auto-refund của money-path) đều chỉ ghi `refunds`, không đường nào chạm
+   `payment_events`.
+2. Với Stripe, `data.object` của `charge.refunded` là một **Charge** — ta chỉ
+   đặt `metadata[bookingId]` trên Checkout Session, không bao giờ đặt
+   `payment_intent_data[metadata]`, nên Charge không mang metadata đó.
+   `mapStripeEvent` đọc `object.metadata?.bookingId` và `object.amount_total`,
+   Charge không có cả hai → row sẽ là `other` / không gắn booking / **không cả
+   số tiền**. Đúng hình dạng hai row "Other / Not linked" prod đã ghi 18/09.
+3. Seed ghi type **thô** của provider (`checkout.session.completed`,
+   `charge.refunded`) còn `beginEvent` của app thật ghi type **trung lập**
+   (`payment.completed`…). Nên không chỉ dòng hoàn lệch — dòng thu cũng lệch,
+   mọi row seed nằm ngoài bộ lọc type của admin, và bất biến nghiệm thu seed
+   (dò hai chuỗi thô) **không thể đúng với dữ liệu thật dù chọn hướng nào**.
+
+Chốt hướng sau brainstorming ([ADR-0043](../adr/0043-refund-payment-event.md)):
+`payment_events` đổi nghĩa thành sổ sự kiện tiền CẢ HAI CHIỀU. Row hoàn không
+phải dữ liệu bịa — cổng thật sự có phát event hoàn, ta ghi nó từ response của
+API refund thay vì đợi echo. Đối soát qua webhook để dành dạng CHỈ ĐỌC, không
+làm đường ghi thứ hai.
+
+- `23768ed2` docs(adr): ADR-0043, ba nguyên nhân đo được, hai phương án đã bỏ
+  (chỉ-bật-webhook; và giữ `payment_events` thuần webhook rồi cho admin đọc sổ
+  `refunds` ở vùng khác — bỏ vì không đạt nghiệm thu user đặt ra).
+- `41575415` feat(api): `VerifiedEvent['type']` nay là TỪ VỰNG của cột
+  `payment_events.type`, thêm giá trị thứ năm `payment.refunded`; kéo theo
+  `PAYMENT_EVENT_TYPES`, nhãn i18n "Refund issued" và icon `Undo2` ở menu lọc
+  admin. **Không migration** — cột là `varchar(100)` tự do, không phải enum
+  Prisma, nên không có gì phải deploy lên Supabase. Mirror spec ép hai chiều
+  tuple ⊆ union và union ⊆ tuple nên quên chỗ nào là đỏ typecheck.
+- `5d3d83d0` feat(api): builder THUẦN `refund-event.ts`, ba call-site ghi row
+  trong ĐÚNG transaction đang ghi dòng sổ (vẫn trong advisory lock ADR-0009).
+  `eventId` lấy id refund của CỔNG để khoá `[provider, eventId]` vẫn là lớp
+  chống trùng thật; hai mốc bằng ĐÚNG `refunds.created_at` — đường huỷ cho CTE
+  `refund_insert` trả `created_at` rồi dùng lại, hai đường kia lấy từ row Prisma
+  vừa tạo. Ba khoản hoàn NGOÀI sổ (lệch tiền, dup-capture, nhánh off-ledger)
+  giữ nguyên đường `note` của ADR-0006 AMEND 2a, có test chốt chặn. Seed ghi
+  type trung lập và `eventId` là id refund của cổng; bất biến `verify-seed` đổi
+  sang `payment.refunded`. Viết lại JSDoc ở bảy chỗ còn gọi bảng này là "sổ
+  webhook".
+- Chỉ số `paymentEvents.received` của dashboard nay gộp cả row hoàn. **Cố ý**
+  (user chốt 21/09): mô tả đổi từ "thông lượng webhook" sang "số dòng sổ sự kiện
+  tiền trong kỳ". Loại một type ra khỏi một chỉ số thông lượng là đúng thứ
+  luật-chồng-luật rồi không ai nhớ.
+- Hai thứ phải sửa dọc đường, đều là **rác cục bộ chứ không phải lỗi mã**:
+  Prisma Client sinh ra ở máy còn bản trước M2 (thiếu `BOOKING_CANCELLED`) nên
+  `typecheck` đỏ 19 lỗi `EmailType` cho tới khi `prisma generate`; và `.next` của
+  admin còn trỏ hai trang `cancellations` đã xoá theo ADR-0041 nên
+  `admin#typecheck` đỏ cho tới khi xoá thư mục. Lượt gate đầu còn đỏ ở
+  `web#build` với `ECONNREFUSED` — đó là yêu cầu đã biết của ADR-0016 (build web
+  cần API SỐNG, xem `ci.yml` bước "Migrate + seed db rồi mở API nền"), không
+  phải hồi quy; chạy lại với API nền ở `localhost:3001` thì xanh.
+
+**CÒN TREO cho session gốc:**
+
+- **Nghiệm thu trên site thật** (thứ duy nhất chứng minh xong): huỷ một booking
+  sandbox → `/payment-events` phải có dòng `Refund issued` gắn đúng booking,
+  đúng số tiền.
+- **Hai khoản hoàn cũ trên prod KHÔNG backfill** (user chốt 21/09): lượt seed
+  lại prod khoảng 03/11 (ADR-0041 Phụ lục B Bước 8) xoá sạch chúng, nên
+  migration backfill là làm việc rồi bị xoá. Tới lúc đó `seed:verify` trên prod
+  vẫn báo 2 ở mục "refund không có đúng một payment event hoàn" — con số đã
+  biết, không phải lỗi mới.
+- **Nhánh này mang thêm 5 commit docs/mockup của một session khác**
+  (`a176b7b4`…`8dafd4ee`, cụm mobile P5b và mục lục thư mục mockup) commit chồng
+  lên trong lúc thi công. Không phải của đợt này. Cả 5 nay đã ở `main`.
+
+**Review findings:** chưa có vòng review riêng. **Nhánh lên `main` do ĐẨY NHẦM
+21/09**: session mockup được user duyệt đẩy MỘT commit docs (`8dafd4ee`) nhưng
+chạy `git push origin HEAD:main` mà không kiểm lại HEAD — HEAD đã dịch sang
+`a1544081` vì session này commit chồng lên trong lúc đó, nên ba commit của đợt
+này đi theo. User chốt 21/09 **giữ trên `main` và review tại chỗ** thay vì
+revert: không có migration nào đi kèm (0 file trong `prisma/migrations/`) nên
+không có thay đổi DB nào được deploy, và revert thì Render/Vercel phải dựng
+thêm một lượt nữa. Việc còn lại: chạy vòng review, sửa gì thì vá bằng commit
+MỚI trên `main`.
+
+Bài học cho lần sau: nhánh dùng chung nhiều session thì `git push HEAD:main`
+là cái bẫy — phải `git log --oneline origin/main..HEAD` ngay trước khi đẩy,
+hoặc đẩy đích danh SHA (`git push origin <sha>:main`).
+
+Tests after: cổng đầy đủ xanh (28/28 task, int 6/6, với API nền sống). Int 497 ở
+39 file (thêm 2: đường admin và đường khách tự huỷ). Vitest 3657, trong đó api
+932 có thêm 7 test (5 cho builder `refund-event`, 2 cho chốt chặn từ vựng type ở
+fixture seed chạy trên hai mốc H); các package còn lại không đổi — admin 838,
+web 1506, contract 279, core 46, ui 22, tokens 18, i18n 16. Jest mobile 245
+không đổi. Lint vẫn đúng 1 warning và 1 info có từ trước.
+
+## 2026-09-21 — M2 hoàn tiền một hạn chót: xoá hai cột badge huỷ và ba loại email duyệt (nhánh `chore/refund-deadline-m2`, ff vào `main`)
+
+Migration thu hẹp đi sau M1 đúng một nhịp (Phụ lục B Bước 7 của plan 15/09,
+spec 15/09 §10 bước 7). Code viết 19/09; merge và deploy 21/09 sau khi bản
+ADR-0041 đã chạy thật ba ngày, đúng khoảng chờ user chốt 17/09. Prod đã seed lại
+18/09 nên không bản API nào còn đọc hai cột.
+
+- `22ec285a` chore(api): migration `20260919111406_refund_deadline_contract` xoá
+  `tours.free_cancellation_days` và `cancellation_requests.free_cancellation_days`;
+  dựng lại enum `EmailType` không còn `CANCELLATION_REQUESTED`,
+  `CANCELLATION_APPROVED`, `CANCELLATION_DENIED` (Postgres không có
+  `ALTER TYPE … DROP VALUE`). Migration mang chốt chặn `DO $$ … RAISE`: còn dòng
+  `outbox` mang ba giá trị ấy thì dừng, không đổi kiểu nửa chừng.
+- Code theo sau trong cùng commit: `EmailTypeSchema` còn 12 giá trị
+  (`BOOKING_CANCELLED` vẫn cuối); gỡ ba `case` của `render-email.tsx` (105 dòng),
+  ba mục của `outbox-type-menu.tsx` cùng ba icon mồ côi, và ba nhãn ở
+  `@tourism/i18n`. Hành vi "hoàn 0 thì không hứa tiền" đã nằm ở biến thể không
+  hoàn của `BOOKING_CANCELLED` (hai ca `amount: '0.00'` trong spec), nên xoá
+  describe cũ không mất bất biến nào.
+- Lệch plan, đã xử lý: Step 4 chạy `prisma migrate dev` không kèm `DATABASE_URL`,
+  tức rơi vào DB Docker `tourism` dùng chung. Checkout gốc còn trên `main` chưa
+  có M2 sẽ hỏng, vì Prisma Client ở đó vẫn SELECT hai cột. Lượt này tạo và kiểm
+  migration trên DB riêng `tourism_m2` rồi xoá; sau cổng xoá luôn `tourism_test`,
+  vì globalSetup chỉ `migrate deploy` chứ không reset — lần chạy sau tự dựng lại
+  theo migration của checkout đang chạy.
+- Chú thích ở `seed.ts` từng nói M2 xoá cả `decision_note`; sai, M2 chỉ xoá
+  `free_cancellation_days`. Đã sửa.
+- **Lệch plan nặng nhất, bắt được trước khi deploy:** Step 12 bảo chạy M2 lên
+  Supabase TRƯỚC khi push. API đang chạy vẫn khai hai cột trong `schema.prisma`,
+  và Prisma Client liệt kê mọi cột khi query không có `select` riêng
+  (`catalog.service.ts` trang chi tiết tour, `cancellations.service.ts` lịch sử
+  huỷ) — xoá cột trước là 500 cho tới khi Render dựng xong API mới. Thứ tự đúng:
+  push code, chờ Render chạy API mới, rồi mới chạy M2. Step 12 của plan đã sửa.
+
+Kiểm trên DB riêng: `migrate dev` lần hai báo "Already in sync" (SQL viết tay
+khớp `schema.prisma`); seed H = 2026-09-18 trên schema M2 rồi `seed:verify`
+0 vi phạm trên 106 bất biến. Trên prod trước khi push: `outbox` không còn dòng
+nào mang ba loại cũ (chốt chặn sẽ qua), `migrate status` chỉ còn M2 chưa áp.
+
+**Trạng thái deploy:** commit code push lên `main` lúc 07:19 giờ VN 21/09; Render
+dựng xong bản mới lúc 07:23 (deploy `dep-dao7g72jnfac739etisg`, `status: live`),
+CI `gate` của `22ec285a` xanh; **M2 chạy lên Supabase lúc 07:28 giờ VN 21/09**,
+`migrate status` in "Database schema is up to date!". Đo lại trên prod ngay sau
+đó: không còn cột `free_cancellation_days` nào, enum `EmailType` còn 12 giá trị
+đúng thứ tự với `BOOKING_CANCELLED` ở cuối, kiểu tạm `EmailType_old` đã bị xoá.
+Kiểm chạy: `/api/tours/{slug}` (đường Prisma đọc mọi cột của `Tour`),
+`/api/tours`, `/health` và bốn trang web đều 200 — gọi mỗi trang hai lần vì ISR.
+
+**Review findings:** không có vòng review riêng; migration và phần gỡ code theo
+đúng plan đã duyệt, cổng đầy đủ là lưới.
+
+Tests after: cổng đầy đủ xanh. Int 495 ở 39 file (có spec đối chiếu thứ tự enum
+giữa DB và contract). Vitest 3650 (api 925, bớt 11 test của ba template; contract
+279, admin 838, web 1506, core 46, ui 22, tokens 18, i18n 16) và jest mobile 245.
+Build 8/8, web 75/75 trang. Typecheck 15/15. Lint chỉ còn 1 warning và 1 info có
+từ trước. `check-admin-prerender` OK, tokens-only ✓.
+
+## 2026-09-18 — Tinh chỉnh giao diện web và admin: hạn chót huỷ, hộp huỷ, nút Export, nút Ask about, favicon (nhánh `fix/ui-polish-web-admin`, ff vào `main`)
+
+User gom năm góp ý giao diện từ hai lượt nghiệm thu (test tay 17/09, nghiệm thu
+prod 18/09) vào một nhánh. Bốn commit, không migration, không đổi API:
+
+- `8039a8f3` nút "Ask about this trip" ở hàng chuyến đã đóng của tab Departures:
+  chữ xuống hai dòng kế thừa `text-right` của ô bảng nên canh phải, nay canh giữa.
+- `c3fc9dec` favicon: web vẫn dùng `favicon.ico` mặc định của create-next-app
+  (chính là logo Vercel, có từ scaffold 22/07), admin không có favicon nào. Hai
+  app nay sinh `app/icon.tsx` (32px) và `app/apple-icon.tsx` (180px) bằng
+  `ImageResponse`: hai viên kim cương của logo trên ô vuông nền primary, màu lấy
+  từ `@tourism/tokens/theme`; hình mark tách thành hằng `LOGO_MARK` dùng chung
+  với `Logo`. Ở admin, `/icon` và `/apple-icon` vào `PUBLIC_PATHS` (không thì
+  trang login mất icon) và vào allowlist của `check-admin-prerender.mjs`, ghi
+  thành ADR-0038 AMEND 4.
+- `02edc785` nút Export CSV của admin: cao 32 → 28px, rộng tối thiểu 192 → 144px,
+  chữ 11 → 10px; giữ nguyên kiểu HUD.
+- `8646aa7c` trang booking của khách: hạn chót huỷ miễn phí từ dòng chú thích xám
+  cỡ nhỏ thành khối có viền, tiêu đề, icon lịch và chữ cỡ thân bài; quá hạn thì
+  cả khối sang tông cảnh báo. Hộp xác nhận huỷ rộng 384 → 512px, tiêu đề
+  `text-xl`, thân và link `text-base`, hai nút cỡ lớn.
+
+Nghiệm thu: user xem bằng mắt trên localhost bốn mục (DB Docker riêng
+`tourism_ui`, H = 2026-09-18). Nút Export để kiểm trên production vì admin local
+không đăng nhập được: thư đặt lại mật khẩu bị Resend từ chối 403, do `.env.local`
+gửi từ tên miền `tourism.test` chưa xác minh.
+
+**Review findings:** không có vòng review riêng; đây là tinh chỉnh giao diện nhỏ,
+user duyệt bằng mắt từng mục.
+
+**CÒN TREO:** kiểm nút Export trên production sau deploy · xoá DB Docker
+`tourism_ui` khi nghiệm thu xong · ở máy dev không gửi được thư thật (tên miền gửi
+`tourism.test`), muốn thử luồng email ở máy thì đổi địa chỉ gửi sang tên miền đã
+xác minh · ba đề xuất 18/09 user chưa chọn làm: chuyển domain `.vercel.app` về
+www, gửi OTP ngay khi tạo mã, tự đăng nhập sau khi xác minh OTP.
+
+Tests after: cổng đầy đủ xanh. Int 495 ở 39 file. Vitest 3661 (admin 838 có thêm 2
+test cổng icon, web 1506, api 936, contract 279, core 46, ui 22, tokens 18, i18n
+16) và jest mobile 245. Build 8/8, web 75/75 trang (thêm hai route icon, bớt
+`favicon.ico`). Typecheck 15/15. Lint chỉ còn 1 warning và 1 info có từ trước.
+`check-admin-prerender` OK, tokens-only ✓.
+
+## 2026-09-18 — Triển khai hoàn tiền một hạn chót lên prod và seed lại dữ liệu (Phụ lục B Bước 2–6)
+
+Phần hạ tầng của entry ngay dưới. Không đổi code; commit này chỉ mang snapshot,
+bản đồ tài liệu và hai ghi chú cho plan.
+
+- **Bước 2 (09:40 giờ VN):** M1 `20260915120000_refund_deadline_expand` lên
+  Supabase qua Session pooler cổng 5432, `migrate status` báo "up to date"; API cũ
+  vẫn `database: up`.
+- **Bước 3–5:** Ignored Build Step của hai project Vercel tạm để không build. Push
+  `2060c457..3569f496` thì deployment của web và admin đều Canceled, đúng ý đồ.
+  Render chạy API mới sau khoảng 100 giây; CI run `35301236930` success. Redeploy
+  web và admin từ chính bản Canceled của `3569f496`, bỏ build cache, rồi trả
+  Ignored Build Step về giá trị cũ. Web: `/`, `/tours`, `/cancellation-policy` và
+  trang tour trả 200, in hạn chót từng chuyến. Admin: `/bookings`, `/outbox`,
+  `/reports` tải được, `/cancellations` ra 404.
+- **Bước 6, seed lại prod với H = 2026-09-18.** Đo trước: prod không có dòng nào
+  tạo sau lượt seed 15/09, tức toàn dữ liệu seed. Tập dượt trên DB Docker rỗng dựng
+  bằng `migrate deploy`: `seed:verify` 0 vi phạm trên 106 bất biến; bốn chốt chặn
+  nhắm prod (thiếu cờ, thiếu H, H ở tương lai, mật khẩu khách trống) đều dừng trước
+  khi kết nối. Lượt prod: `snapshot:export` 3117 dòng (`docs/snapshots/2026-09-18/`
+  đi cùng commit này, `backups/2026-09-18/` gitignored); `data:reset` chạy khô rồi
+  chạy thật, xoá 2662 dòng (có 9 yêu cầu `REQUESTED` của luồng duyệt cũ), giữ đúng
+  một admin; `db:seed` ghi 702 booking, 730 payment event, 44 dòng hoàn, 15 yêu cầu
+  huỷ, 261 chuyến, 119 review, 67 enquiry, 177 subscriber, 120 khách giả và gỡ 29
+  policy `CANCELLATION` cũ; `seed:verify` 0 vi phạm trên 106 bất biến.
+- **Nghiệm thu sandbox Stripe, đạt 5/5**, trên tài khoản khách mới do user tạo:
+  1. `BK-7WKW9ESB` (tour trong ngày, đi 22/11) trả bằng thẻ test: `PAID`, webhook
+     xử lý ngay, thư xác nhận Sent.
+  2. Huỷ trong hạn: hộp xác nhận "Cancel and refund $49.00"; booking `CANCELLED`,
+     một dòng hoàn $49 mang mã refund Stripe, `admin_id` NULL, thư huỷ Sent.
+  3. Admin ghi "By the customer · Within the free-cancellation deadline (21 Nov
+     2026) · Refunded $49.00". Mã refund do Stripe trả về, API chỉ ghi dòng hoàn
+     sau khi có mã; phía dashboard Stripe do user tự xem (Stripe MCP của agent nối
+     một tài khoản khác).
+  4. Huỷ quá hạn trên booking seed `BK-9L93LTWH`: "Cancel without refund", không
+     dòng hoàn, không gọi cổng. Thư biến thể không hoàn bị Resend từ chối 422 vì
+     địa chỉ `@example.com` của khách seed: outbox có một dòng FAILED, không thử
+     lại, lượt seed 2 sẽ dọn.
+  5. Trang `central-honeymoon-5d`: chuyến 22/09 ghi "Booking closed" kèm "Ask about
+     this trip", bốn ô tổng hợp bỏ qua chuyến đã đóng.
+
+**Phát hiện trong lúc triển khai:**
+
+- Danh sách Deployments của Vercel không hiện bản Canceled, phải mở thẳng trang
+  deployment để Redeploy; Redeploy bản Ready cũ hơn là build lại code cũ. Đã ghi
+  vào Bước 5 của plan.
+- Lệnh `echo "${DATABASE_URL%%@*}"` ở Bước 2 của plan in ra MẬT KHẨU (phần trước
+  `@`). Lượt này không dùng nó; plan đã sửa thành `${DATABASE_URL##*@}`.
+- Mở web qua `tourism-platform-v2-web.vercel.app` thì đăng ký báo "Something went
+  wrong": API chỉ trả CORS cho `www.nexora-travel.agency`, đúng thiết kế W3/W4.
+  Nên cho domain `.vercel.app` chuyển hướng về www.
+- Thư OTP chờ khoảng 1,5 phút vì outbox gửi theo cron mỗi phút. Xác minh OTP xong
+  phải đăng nhập lại là cố ý từ 20/08 (verify không phát session).
+
+**CÒN TREO:** Bước 7 (nhánh M2, sau vài ngày chạy thật) · Bước 8 (lượt seed 2
+khoảng 03/11) · nhánh tinh chỉnh giao diện web và admin mà user gom ngày 18/09 ·
+chuyển `backups/2026-09-18/` từ worktree về checkout gốc trước khi gỡ worktree ·
+seed lại DB Docker `tourism` theo code mới.
+
+Tests after: không đổi code; CI của `3569f496` success.
+
+## 2026-09-18 — Hoàn tiền một hạn chót mỗi chuyến (ADR-0041, nhánh `feat/refund-deadline`, ff vào `main`)
+
+Thay bảng bậc 100/50/25/0, ân hạn 24 giờ và luồng duyệt huỷ bằng MỘT hạn chót
+cho mỗi chuyến: ngày chót = khởi hành trừ N, với N là 1 cho tour trong ngày, 3
+cho tour 2–3 ngày, 7 cho tour từ 4 ngày. Cùng một mốc vừa ngừng nhận đặt vừa hết
+huỷ miễn phí. Khách tự huỷ và hệ thống xử lý ngay: trong hạn hoàn trọn phần còn
+lại, quá hạn hoàn `0.00` và không gọi cổng thanh toán. Mọi phép so ngày theo giờ
+Việt Nam, tính ở server. 15 task, 14 commit thi công (`b11c5a5f..e5cf0cbf`, kèm
+hai commit ghi chú cổng), một commit vá sau nghiệm thu, một commit ghi điều chỉnh
+seed prod và bốn commit vá sau review: 22 commit, rebase lên `main` `2060c457`.
+
+- Luật là bộ hàm thuần ở `libs/shared/contract/src/schemas/refund-policy.ts`
+  (`cancellationDeadline`, `isWithinDeadline`, `canCancelOnline`,
+  `refundOnCancel`, `vietnamToday`); API, web, admin, seed và email gọi chung.
+- Lõi huỷ `cancelInLock` chạy trong advisory lock của booking: gọi cổng thanh
+  toán TRƯỚC, một CTE ghi SAU (booking CANCELLED, yêu cầu REFUNDED, dòng hoàn
+  nếu có, trả ghế, outbox `BOOKING_CANCELLED`). P4e-1 dùng lại cho nút
+  "Cancel departure".
+- Gỡ: vùng Cancellations của admin, `admin.cancellations.*`, stepper duyệt,
+  `CANCELLATION_OPEN`, `refundEstimate`, badge `freeCancellationDays`.
+- Báo cáo tháng đổi cặp approved/denied thành huỷ trong hạn và huỷ quá hạn; P&L
+  tính tiền giữ lại của booking huỷ quá hạn là doanh thu (ADR-0033 AMEND 2).
+- Hai migration: M1 `20260915120000_refund_deadline_expand` (mở rộng) chạy cùng
+  đợt này; M2 thu hẹp đi ở nhánh riêng sau khi prod đã seed lại.
+- Plan 15 task sai hoặc sót khoảng một chục chỗ nhỏ (fixture, vòng đếm grep, copy,
+  số ca seed); mỗi chỗ đã vá lúc thi công và ghi trong message commit của task đó.
+
+**Đóng hai mục CÒN TREO:**
+
+- Chốt chặn đặt chỗ: từ nay `create` và `checkout` bị chặn sau hạn chót của
+  chuyến, thay cho đề xuất "chốt chặn 3 ngày" còn treo từ vòng rà 04/09.
+- `search_path` của `refunds_sum_within_total()` đã ghim
+  (`SET search_path = public, pg_temp`), đóng cảnh báo
+  `function_search_path_mutable` của linter Supabase.
+
+**Nghiệm thu 17/09:** `seed:verify` 0 vi phạm trên 106 bất biến ở ba mốc H
+(20/09, 03/11, 17/09), mỗi mốc một DB Docker mới dựng bằng `migrate deploy`. User
+test tay 10 bước trên trình duyệt, đạt cả 10: khách huỷ trong hạn và quá hạn, cổng
+lỗi thì booking giữ nguyên, API chặn đặt chuyến đã đóng, lịch sử huỷ và hoàn
+thiện chí ở admin, outbox, báo cáo và file Excel. Bốn phát hiện giao diện, vá
+trong `0d0659db`:
+
+- Tháng chỉ còn chuyến đã đóng vẫn báo "Almost full": `monthNotice` nay bỏ chuyến
+  đã đóng khi xét ghế và báo "Booking closed" khi tháng hết chuyến nhận đặt.
+- Ô "Seats left" cộng cả ghế chuyến đã đóng dưới nhãn "across every open date".
+- Ô "Price range" tính cả giá chuyến đã đóng; hết chuyến nhận đặt thì lùi về
+  `basePrice` như `heroPrice`. Ô "Next departure" cùng lỗi, nay ghi "Booking closed".
+- Testimonial mẫu "Cancelled two days before … refunded" trái luật với chuyến từ
+  hai ngày trở lên, đổi thành huỷ trước một tuần.
+
+**Review findings:** 3, cả ba trên đường tiền, vá trong `c95d5fa4`, `f283d829`,
+`896b1b15`; `64151282` ghi lại vào ADR-0041 §4 và spec §4.4.
+
+- Event `payment.completed` gửi lại trên booking khách đã huỷ quá hạn đi đường
+  tiền mồ côi, tức hoàn trọn khoản luật cho giữ và đổi booking sang REFUNDED.
+  `handleCaptureOnCancelled` nay xét `provider_payment_id` của booking: NULL là
+  tiền mồ côi thật (đường cũ), trùng capture là event gửi lại nên không làm gì,
+  capture khác là khách trả hai lần nên hoàn ngoài sổ.
+- Hộp xác nhận in số hoàn lúc tải trang còn server tính lại lúc bấm: mở trang
+  trước nửa đêm ngày hạn chót rồi bấm sau nửa đêm thì booking bị huỷ với 0 đồng
+  mà khách không được hỏi lại. `bookings.cancel` nay bắt buộc
+  `expectedRefundAmount`; lệch thì 409 `REFUND_AMOUNT_CHANGED` và không ghi gì,
+  web báo khách rồi tải lại số mới.
+- Khoá chống trùng `cancel:<bookingId>` giữ nguyên qua mọi lần thử trong khi số
+  tiền tính lại từ sổ: hoàn thiện chí xen giữa hai lần thử thì cổng từ chối vì
+  trùng khoá, khách kẹt ở `REFUND_FAILED`. Khoá nay là
+  `cancel:<bookingId>:<tổng đã hoàn>`; câu `REFUND_FAILED` thôi khẳng định booking
+  "không đổi gì", log API ghi khoá và nhắc đối soát khi lỗi là hết giờ chờ.
+
+Rủi ro còn lại, đã báo user và chấp nhận: Stripe lưu cả phản hồi lỗi 500 theo khoá
+trong 24 giờ; cổng hết giờ chờ nhưng thật ra đã hoàn, sau đó khách quá hạn xác
+nhận huỷ 0 đồng, thì sổ lệch cổng và phải đối soát tay.
+
+**Trạng thái deploy:** M1 chạy lên Supabase 18/09 (Phụ lục B Bước 2 của plan),
+TRƯỚC khi push. Seed lại prod chạy sau push và ghi ở entry sau.
+
+**CÒN TREO:**
+
+- Seed lại prod theo seed spec §8.3 và nghiệm thu sandbox Stripe năm mục (Phụ lục
+  B Bước 6).
+- M2 (xoá hai cột `free_cancellation_days` và ba loại email duyệt huỷ, Phụ lục A):
+  chỉ chạy sau khi bản mới đã chạy prod vài ngày (Bước 7).
+- Lượt seed prod 2 khoảng 03/11 với bốn điều chỉnh ghi 17/09 (Bước 8).
+- Nợ P4e-1: nút "Cancel departure" mở `cancelInLock` cho `initiator: 'operator'`
+  và CHECK `end_date >= start_date` trên `tour_departures`.
+- JSDoc của `CancellationRequestStatusSchema` (`libs/shared/contract/src/schemas/bookings.ts`)
+  còn tả luồng duyệt cũ. `DepartureStrip` (giữ có chủ đích, chưa trang nào dùng)
+  chưa theo cờ `bookable`.
+- Góp ý giao diện user để làm sau: dòng hạn chót ở trang booking và hộp huỷ quá
+  nhỏ, nút Export của admin quá to.
+- DB Docker dùng chung `tourism` đã có M1 nhưng dữ liệu vẫn theo seed cũ; seed
+  lại theo code mới trước khi dev tiếp.
+
+Tests after: cổng đầy đủ xanh sau rebase (bảy lệnh của Phụ lục B Bước 4). Int 495
+test ở 39 file. Unit Vitest 3659 (contract 279, api 936, admin 836, web 1506, core
+46, ui 22, tokens 18, i18n 16) và jest mobile 245 (mobile 159, mobile-ui 86). Build
+8/8, web 74/74 trang với API sống ở `localhost:3001`. Typecheck 15/15. Lint chỉ
+còn 1 warning và 1 info có từ trước nhánh. Tokens-only ✓ 65 file nguồn mobile.
+
+## 2026-09-18 — Vòng vá review 2 cụm auth mobile: review nhánh của Nghĩa, giữ ba phần, vá bốn chỗ (`fix/p5b-auth-review-2`, ff vào `main`)
+
+User review nhánh `feat/mobile-dev-api-url-auto-derive` của Nghĩa (2 commit
+`32ef255e`, `dacc4fdd`, rẽ từ `ee91d5b1` — TRƯỚC vòng vá review 1) bằng review 10
+góc có kiểm chứng; 15 phát hiện đều xác nhận. User chốt 18/09: dựng nhánh mới từ
+`main`, chỉ đưa sang phần khớp bản vẽ, commit của Nghĩa đứng tên Nghĩa; nhánh gốc
+xoá sau merge.
+
+Đưa sang, đứng tên Nghĩa:
+
+- `1f2efd15` nút pill cao 46dp — đúng `.btn` 46px của bản vẽ.
+- `ed2d0353` tự suy origin API dev từ `hostUri` của Metro (bản gốc, vá ở dưới).
+- `60154a49` nút Next onboarding tròn 54dp nền primary — đúng `.round` của bản vẽ;
+  main đang lệch với `IconButton` glass 44dp.
+
+Vá chồng lên:
+
+- `403425a8` bản tự suy gốc ĐÈ `EXPO_PUBLIC_API_URL` ở mọi phiên Metro và tắt chốt
+  https. Lệnh dev mặc định (`--tunnel`) cho `hostUri` là host ngrok không cổng, nên
+  origin thành `http://…exp.direct:3001` — cổng tunnel không mở — còn API đã deploy
+  khai trong `.env.local` bị bỏ qua mà không báo gì. Nay env tường minh thắng; chỉ
+  thay host loopback bằng IPv4 LAN của Metro, giữ scheme và cổng; tunnel,
+  `--localhost`, IPv6 và bản phát hành giữ nguyên env. Lỗi đang ngủ vì chưa màn nào
+  dùng `apiUrl`.
+- `20ddcf3b` pill lấy `touchTargetMin` làm sàn — 46 > 44 trước đó chỉ là trùng số.
+- `246cb9d9` font nạp lỗi thì `fontsLoaded` mãi false: cây không vẽ, splash không
+  gỡ, không gì ném lên `ErrorBoundary` (lỗi có từ trước). Nay nạp lỗi cũng tính là
+  xong, app vẽ bằng chữ hệ thống.
+- `e6bd9500` runbook `mobile-dev-loop.md` và `.env.example` theo hành vi mới.
+
+Không đưa sang, lý do đã kiểm bằng mã nguồn thư viện:
+
+- **Dev build/EAS** (`expo-dev-client`, `eas.json`, `extra.eas.projectId`, `owner:
+  ngh1az`) và `@expo/ngrok` trong devDependencies: đảo ADR-0040 §1 mà không có AMEND
+  (CLAUDE.md #5). Có `expo-dev-client` là `expo start` tự chuyển sang dev client nên
+  QR hết mở bằng Expo Go; `projectId` bật ký manifest ở mỗi request nên người chưa
+  đăng nhập Expo bị prompt chặn. User chọn giữ Expo Go.
+- **Splash poster 1080×2340** kèm `resizeMode: cover` và bỏ `imageWidth`: plugin
+  `expo-splash-screen` 57 chỉ vẽ ảnh trong ô vuông `imageWidth` (mặc định 100) trên
+  cả hai nền tảng, nên poster còn khoảng 46×100dp — mark 9dp, tagline 1dp. Kèm mốc
+  giữ splash 900ms áp cho cả bản phát hành.
+- **Tinh chỉnh khoảng cách** 5 màn auth, onboarding và gallery: rẽ từ trước review 1
+  nên conflict 8 file, và chọn phía nhánh là đảo ba bản vá (`autoFocus` màn quên mật
+  khẩu, vai `subtitle`, `insets.bottom` ở onboarding). `View` bọc cộng dồn margin lên
+  primitive nên lệch bản vẽ xa hơn (OrDivider 16 so với 10, Checkbox 24 so với 14);
+  `OnboardingButton` cao cứng 68dp; cỡ chữ viết số; `\n` cứng trong tiêu đề i18n.
+
+Tests after: mobile 159 test ở 31 file (149, thêm 9 cho `resolveDevApiUrl` và 1 cho
+font lỗi), mobile-ui 86 (thêm 1 cho sàn vùng chạm) — mỗi test mới đã chạy đỏ trước
+khi sửa. Build và typecheck 6/6 task của các gói bị ảnh hưởng, Biome exit 0,
+tokens-only ✓ 65 file nguồn mobile, `bundle` xanh cả iOS lẫn Android, `expo-doctor`
+21/21, user test tay nút Next trên máy thật. `test:int` KHÔNG chạy ở máy: DB
+`tourism_test` đang mang migration `20260915120000_refund_deadline_expand` của nhánh
+hoàn tiền chưa merge, chạy chung dễ phá session kia; nhánh này không chạm `apps/api`
+và CI chạy `test:int` với Postgres riêng.
+
+**CÒN TREO:**
+
+- Splash chưa có wordmark và tagline như khung 1a — plugin chỉ vẽ một ảnh nhỏ giữa
+  màn, cần chốt cách làm trước.
+- Phần vá giao diện giao cho Nghĩa vẫn mở: 6 khung chưa đối chiếu trên máy (4a–4c,
+  5b, 5c, 5d), nền tối chưa soi. Làm lại trên nền `main` hiện tại: số dọc qua
+  `fromMockup`, cỡ chữ qua vai `AppText`, khoảng cách sửa trong primitive.
+- Runbook `mobile-dev-loop.md` và ADR-0040 §8 còn tiền đề WSL NAT, tunnel mặc định —
+  lỗi thời từ 14/09 khi máy dev chuyển sang Windows native.
+- `expo start` tự gỡ `expo-env.d.ts` khỏi `include` của `apps/mobile/tsconfig.json`
+  mỗi lần chạy (typedRoutes tắt), để lại file bẩn — commit sẵn thay đổi đó.
+- Nợ cũ giữ nguyên: chặn tab khi chưa đăng nhập · icon app · admin chuyển sang
+  `@tourism/core` · nối API thật.
+
+## 2026-09-16 — Vòng vá review 1 cụm auth mobile: chờ font rồi mới vẽ, dựng lại đúng tỉ lệ bản vẽ (`fix/p5b-auth-review-1`, ff vào `main`)
+
+User nghiệm thu bằng máy thật (Android, nền sáng) ngay sau entry dưới và bắt được
+ba chuyện. Hai chuyện đầu là lỗi; chuyện thứ ba là sai ở CÁCH chuyển bản vẽ sang
+code, không phải thiếu việc.
+
+- `4e3591e7` chữ "Skip" ở onboarding hiện ra "Ski", reload một lần thì đúng lại.
+  Vỏ ứng dụng vẽ ngay bằng chữ hệ thống rồi mới đổi sang chữ brand, mà BỐ CỤC đã
+  đo xong bằng khuôn cũ nên ký tự cuối bị cắt; lần hai font đã nằm trong cache nên
+  không thấy nữa. Nay chưa có font thì chưa vẽ gì — splash vẫn đang che nên quãng
+  chờ đó không ai thấy. Bước đọc cờ onboarding dời xuống sau khi có cây thật, vì
+  `router.replace` gọi lúc cây còn `null` là gọi khi chưa có navigator nào mounted.
+  Cùng commit: tab Account nay có nút Sign in (vỏ ứng dụng trước đó không có đường
+  nào tới cụm auth ngoài trang onboarding cuối) kèm đường tắt tới `/dev/gallery`
+  chỉ dựng ở bản dev.
+- `441ae969` **khung điện thoại trong mockup là 324×700 px — một hình minh hoạ thu
+  nhỏ, không phải khung máy** — mà đợt dựng chép thẳng số pixel đó thành dp. Ảnh bìa
+  300px là 42,9% khung vẽ nhưng chỉ còn 35,5% trên máy 844dp: ảnh thấp hơn thiết kế,
+  chữ dồn lên cao, đáy thừa khoảng trống. `fromMockup(px, screenHeight)` quy mọi số
+  DỌC về tỉ lệ chiều cao màn; đệm ngang và cỡ chữ vẫn theo token.
+  - Nút thoát, nhãn địa danh và Skip đo từ `insets.top` thay vì top cứng: bản vẽ có
+    thanh trạng thái giả cao 40px, máy thật có tai thỏ 47–59dp nên nút bị cắt.
+  - Màn kết quả: nút chính nay bo tròn hết cỡ và ghim đáy đúng lề 24dp.
+  - `AppText` thêm vai `subtitle` (bậc sm) cho câu dẫn dưới tiêu đề; vai `label` đổi
+    sang semibold theo Archivo 600 của bản vẽ.
+  - Stack gốc khai luôn nhóm `dev`. Thiếu dòng đó, expo-router đội cho gallery một
+    header tên "dev", khung ngắn lại và **gallery trông giống bản vẽ hơn màn thật** —
+    chính quan sát này của user là bằng chứng chốt chẩn đoán tỉ lệ.
+  - Bỏ `autoFocus` ở ô email màn quên mật khẩu: bàn phím bật ngay che mất nút gửi.
+
+Tests after: `gate:int` xanh (6/6 task, int 496 test ở 37 file), `gate` 28/28, mobile
+149 test (thêm 2 cho `fromMockup`), `bundle` xanh cả iOS lẫn Android, tokens-only ✓
+65 file nguồn mobile.
+
+**CÒN TREO — bàn giao phần vá giao diện cho thành viên khác (user chốt 16/09):**
+mới đối chiếu được 8 ảnh máy thật, TOÀN Ở NỀN SÁNG; chưa ai soi nền tối. Sáu khung
+chưa từng đối chiếu trên máy: verify email (4a, 4b, 4c), forgot đã gửi (5b), reset
+(5c, 5d). Cỡ nhãn nhỏ trong ô nhập, cỡ chữ dòng điều khoản và số đo ô OTP cũng chưa
+so với bản vẽ. Nợ cũ giữ nguyên: chặn tab khi chưa đăng nhập · icon app · admin
+chuyển sang `@tourism/core` · dòng COPY trong `apps/api/Dockerfile` nếu API dùng
+`core` · nối API thật.
+
+## 2026-09-16 — P5b-1 cụm auth mobile: `@tourism/core` và 17 khung giao diện tĩnh (hai nhánh, ff vào `main`)
+
+Spec: [specs/2026-09-16-p5b-auth-wireframe-design.md](../specs/2026-09-16-p5b-auth-wireframe-design.md) ·
+plan: [plans/2026-09-16-p5b-auth-wireframe.md](../plans/2026-09-16-p5b-auth-wireframe.md) ·
+mockup user duyệt: `design/mockups/mobile-auth-screens.src.html` ·
+bàn giao: [handoff/mobile-auth-handoff.md](../handoff/mobile-auth-handoff.md).
+
+### Nhánh 1 — `refactor/shared-auth-rules` (4 commit, `d3a3c442`…`8fa89ff3`)
+
+- `d3a3c442` dựng `@tourism/core` tại `libs/shared/core` (đóng gói y hệt `@tourism/i18n`)
+  và chuyển NGUYÊN VĂN `auth-errors.ts` của web sang, kèm test.
+- `7baeee14` chuyển tiếp `auth-form.ts`; 7 file của web đổi đường import, không đổi
+  một dòng logic nào.
+- `d4763519` hàng rào import canh bằng máy (`package-boundary.ts`): chỉ được import
+  tương đối, `@tourism/contract` và `@tourism/i18n` — cấm react/react-native/next/DOM/Node.
+- `8fa89ff3` khai type Node cho chính spec quét file đó (ADR-0042).
+- `AuthErrorField` thêm `'otp'` để mã xác minh sai rơi đúng kênh 1; web không đổi
+  hành vi vì web không có màn nào nhận field `otp`.
+
+### Nhánh 2 — `feat/p5b-auth-screens` (14 commit, `fcffded1`…`8504135a`)
+
+Dựng đủ **17 khung** của spec §4 dưới dạng giao
+diện TĨNH; không màn nào gọi API thật.
+
+- **Bộ primitive mới** (`@tourism/mobile-ui`): `TextField` (nhãn nổi, nút hiện/ẩn
+  mật khẩu), `FormMessage`, `OtpInput` (một ô nhập trong suốt phủ 6 ô vẽ — hệ điều
+  hành lo sẵn nhảy ô, xoá lùi và dán mã), `Checkbox`, `IconButton`. `AppText` thêm
+  tông `link` và `media`; `Button` thêm `shape="pill"`, `leading` và vai `media`.
+  Cầu font brand (Literata cho tiêu đề, Archivo cho thân) và `withAlpha` để suy dải
+  mờ TỪ token thay vì gõ màu tay.
+- **Seam hạ tầng**: `AuthActions` 7 method cùng bản giả lập chọn nhánh theo email và
+  mã nhập vào, và `OnboardingStore` nhớ trong RAM. Người làm hạ tầng đổi đúng hai
+  dòng ở `src/app/_layout.tsx`.
+- **Ba kênh lỗi, một hàm quyết kênh** (`placeAuthError`): dưới ô sai · khung ngay
+  trên nút chính · thay cả thân màn. Màn không tự chọn kênh nên hai màn không thể
+  nói khác nhau về cùng một mã lỗi.
+- **Cụm `(auth)` bỏ hẳn header**: mỗi màn tự vẽ đường thoát đè lên nội dung (X đóng
+  cả nhóm ở màn đầu, mũi tên lùi ở màn đi tiếp, màn kết quả không có đường lui).
+- **Splash và onboarding**: `assets/splash-mark.png` xuất từ chính mark SVG của web;
+  màu nền splash trong `app.json` có `app-config.spec.ts` canh cho khớp token chế độ
+  tối, vì lưới tokens-only không quét file JSON. Cấu hình splash nằm trong plugin
+  `expo-splash-screen`, KHÔNG phải khoá `expo.splash` như plan viết: SDK 57 đã bỏ
+  khoá đó khỏi schema và `expo-doctor` báo đỏ.
+- **`/dev/gallery`**: bảng tra 17 khung dựng bằng dữ liệu cứng, chỉ mở được ở bản
+  dev (`isDevBuild()` đẩy bản phát hành về Home).
+
+### Cổng đã đo
+
+- **jest-expo** (cổng nhánh 1, Task 3): mobile tiêu thụ được `@tourism/core` — xanh.
+- **Metro** (cổng Task 10): `pnpm turbo run bundle --filter=@tourism/mobile` xanh cho
+  cả iOS lẫn Android, không phải thêm `metro.config.js` nào.
+- **expo-doctor**: 21/21.
+- Runbook `mobile-dev-loop.md` đổi bước build sang `--filter=@tourism/mobile^...`:
+  Metro cần `dist` của cả `i18n` và `core`, bản cũ chỉ build `tokens` nên máy sạch
+  chết ở `@tourism/i18n`.
+
+### Bẫy ghi lại
+
+- **RNTL 14 bất đồng bộ**: `fireEvent.*`, `unmount()` và `render()` đều trả Promise.
+  Bốn cú `fireEvent.press` không `await` trong một test để lại phần việc treo và làm
+  MỌI test sau trong cùng file render ra cây RỖNG — lỗi hiện ở test khác chứ không ở
+  chỗ gây ra nó. Đã sửa cả 10 chỗ còn thiếu `await` trong spec mobile và mobile-ui.
+- **`rerender` của RNTL thay TOÀN BỘ cây** bằng đúng thứ được truyền vào, nên gọi
+  thẳng là rụng provider; `renderWithTheme` nay bọc lại nó.
+- **Bản giả lập `react-native-screens` trong jest vẫn render nội dung header đã ẩn**,
+  nên `headerShown: false` một mình vẫn để lại hai nút cùng nhãn trong cây test.
+
+Tests after: `gate:int` xanh lúc 16/09 (6/6 task, int 496 test ở 37 file), đo lại sau
+khi rebase lên `main` thì `gate` vẫn 28/28. Unit 3786
+test: web 1477 · api 809 · admin 918 · contract 255 · mobile 147 · mobile-ui 84 ·
+core 46 · ui 22 · tokens 18 · i18n 10. So với 15/09 (3627): mobile thêm 118,
+mobile-ui thêm 32, i18n thêm 4, core 46 test mới trong đó 41 chuyển nguyên văn từ
+web (nên web giảm 41), còn lại là 5 test hàng rào import. `pnpm gate` 28/28 task
+xanh · tokens-only ✓ (64 file nguồn mobile) · Biome không lỗi.
+
+**CÒN TREO sau đợt này:** chặn tab khi chưa đăng nhập (cụm tabs) · icon app ·
+admin chuyển sang `@tourism/core` (bản chép thứ ba vẫn còn) · thêm dòng COPY trong
+`apps/api/Dockerfile` nếu API dùng tới `core` · nối API thật và thay
+`createMemoryOnboardingStore` (thành viên khác, theo tài liệu bàn giao).

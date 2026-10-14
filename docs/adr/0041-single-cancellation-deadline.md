@@ -1,7 +1,8 @@
 # ADR-0041 — Một hạn chót mỗi chuyến: ngừng nhận đặt và hết huỷ miễn phí cùng lúc
 
-- **Trạng thái:** Accepted (2026-09-15, phiên brainstorming; ADR đi trước code,
-  CHƯA thi hành)
+- **Trạng thái:** Accepted (2026-09-15, phiên brainstorming; ADR đi trước code).
+  Thi hành 18/09 (nhánh `feat/refund-deadline`,
+  [CHANGELOG 18/09](../changelog/2026-09-refund-deadline-mobile-auth.md)).
 - **Sửa đổi:** AMEND 1 (2026-10-08, cuối file) — chuyến đã bị công ty huỷ thì
   khách không tự huỷ được nữa; §6 thắng §4.
 - **Bối cảnh:** [spec 15/09](../specs/2026-09-15-refund-deadline-design.md). Đóng
