@@ -87,10 +87,22 @@ export function Chip({ label, variant = 'default', onPress, onRemove, removeLabe
     );
   }
 
+  // N10 (rà 07/10): chip không có `onPress` là NHÃN tĩnh (tag của bài viết) — để `Pressable` vai
+  // "button" thì trình đọc màn hình mời bấm một thứ không làm gì.
+  if (onPress === undefined) {
+    return (
+      <View accessible accessibilityLabel={label} style={shellStyle}>
+        {labelNode}
+      </View>
+    );
+  }
+
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={label}
+      // N10: chip lọc nói "đang chọn" cả với trình đọc màn hình, không chỉ bằng màu.
+      accessibilityState={{ selected: variant === 'selected' }}
       onPress={onPress}
       // Chip cao 32dp (mockup ấn định) — thấp hơn touchTargetMin (44dp). Bù
       // vùng chạm bằng hitSlop dọc thay vì đổi chiều cao nhìn thấy được.

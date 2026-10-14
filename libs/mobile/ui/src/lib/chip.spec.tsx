@@ -59,4 +59,23 @@ describe('Chip', () => {
     await fireEvent.press(screen.getByText('Trekking'));
     expect(onPress).toHaveBeenCalled();
   });
+
+  // N10 (rà 07/10): chip lọc từng chỉ nói "đang chọn" bằng màu — trình đọc màn hình không biết.
+  it('chip bấm được báo trạng thái chọn cho trình đọc màn hình', async () => {
+    await renderWithTheme(
+      <>
+        <Chip label="All" variant="selected" onPress={jest.fn()} />
+        <Chip label="Upcoming" onPress={jest.fn()} />
+      </>,
+    );
+    expect(screen.getByRole('button', { name: 'All', selected: true })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Upcoming', selected: false })).toBeTruthy();
+  });
+
+  // N10: tag của bài viết là chip KHÔNG có onPress — đọc là "nút" thì mời bấm một thứ không làm gì.
+  it('chip không có onPress là nhãn tĩnh, không phải nút', async () => {
+    await renderWithTheme(<Chip label="Culture" />);
+    expect(screen.queryByRole('button')).toBeNull();
+    expect(screen.getByLabelText('Culture')).toBeTruthy();
+  });
 });
