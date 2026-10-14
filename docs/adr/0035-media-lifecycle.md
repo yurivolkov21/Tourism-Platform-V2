@@ -307,6 +307,38 @@ trong khi lượt cũ còn chạy; `markFailed` cũng đổi sang `increment` ng
 đọc `env.MEDIA_GC_GRACE_DAYS`), nên test "khoá lưới an toàn" đang canh nhầm
 chỗ. Số 7 và lý do sống ở `env.ts`, khoá ở `env.spec.ts`.
 
+## AMEND 3 — 14/10/2026 (open-items G16): bộ dọn chỉ destroy ảnh trong vùng tải lên
+
+Tới đợt này, luật "không bao giờ dọn ảnh catalog hay ảnh thư viện" sống ở NƠI GỌI:
+admin tour và admin bài viết chỉ xếp lại ảnh khớp `isTourUploadPublicId` và
+`isPostUploadPublicId` (ADR-0048 §6, ADR-0051 §7), còn đường sửa review, rút review
+và xoá tài khoản thì dựa vào cổng thư mục lúc ghi review. `sweep` nhận mọi publicId
+nằm trong hàng. Một nơi gọi mới quên lọc, hay một script chạy tay, là đủ để ảnh
+catalog đang phục vụ site bị destroy sau ân hạn, và §2 không cứu được nếu lúc ấy
+không còn row nào trỏ tới ảnh.
+
+**a. `sweep` soi vùng trước mọi bước khác.** `isUploadZonePublicId(root, publicId)`
+(`apps/api/src/lib/upload-signing.ts`) chỉ nhận dạng
+`<root>/<thư mục>/<chủ sở hữu>/<tên file>`: thư mục là một trong bốn nơi server ký
+upload vào (`avatars`, `reviews`, `tours`, `posts`), chủ sở hữu đúng dạng của thư mục
+ấy (uuid, riêng `reviews` là booking code). Soi dạng chủ sở hữu là bắt buộc: ảnh
+catalog nằm cùng gốc `tourism/`, còn thư mục cũ `tourism/tours/hero/` có sẵn trên
+cloud (ADR-0020 Hệ quả) nằm ngay trong `tours`.
+
+**b. Ảnh ngoài vùng bị TỪ CHỐI, kể cả khi còn được dùng.** Row không bị xoá:
+`attempts` đặt bằng trần và `lastError` ghi lý do, tức cùng chỗ với row hỏng quá năm
+lượt của §5 — một vết cho người xem, vì row ngoài vùng trong hàng nghĩa là có một nơi
+gọi sai. Không hoãn theo §2: hoãn thì ảnh catalog bị hỏi lại mỗi kỳ, và kỳ nào nó hết
+được dùng là kỳ nó bị destroy. `SweepReport` thêm số thứ sáu, `refused`.
+
+**c. Enqueue vẫn nhận mọi thứ.** Phán quyết thuộc về `sweep` (§3); thêm cổng ở đầu
+vào chỉ thêm một chỗ để lệch, và từ AMEND này một publicId ngoài vùng lọt vào hàng là
+vô hại.
+
+Thêm một đường ký mới (ví dụ media library của admin) thì phải thêm thư mục của nó vào
+`UPLOAD_ZONE_OWNERS`, không thì bộ dọn từ chối ảnh của nó. Đó là hỏng theo hướng giữ
+ảnh, và lộ ra ở số `refused` trong log mỗi lượt.
+
 ## Giới hạn đã biết
 
 1. **Review hết lượt sửa vẫn giữ ảnh.** `rejectedFinal` là trạng thái cuối
