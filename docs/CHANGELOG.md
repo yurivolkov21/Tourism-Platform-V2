@@ -8,6 +8,57 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-10-14 — Merge rà soát và sắp xếp lại `docs/`: thư mục mới, tách CHANGELOG và open-items, sửa thông tin lỗi thời (`90b1236`..`e0e40bb`)
+
+User yêu cầu 14/10: kiểm lại thông tin trong `docs/`, sắp file vào thư mục cho hợp lý, chia nhỏ file
+quá dài. Nhánh `docs/docs-reorg-2026-10-14`,
+[PR #15](https://github.com/yurivolkov21/Tourism-Platform-V2/pull/15), thi công trên session cloud.
+Chỉ đổi tài liệu, `CLAUDE.md` và ba comment trỏ đường dẫn tài liệu; không migration, không env,
+không dependency. Số đo và bảng sai/đúng ở
+[báo cáo rà tài liệu 14/10](analysis/progress/2026-10-14-docs-audit.md).
+
+- Dời thư mục `90b1236`: `reviews/`, `guides/`, `analysis/nexora-parity/`, `analysis/progress/`,
+  `plans/prompts/`, bằng `git mv` để giữ lịch sử. Link tương đối viết lại bằng máy; comment trong
+  `schema.prisma` và hai file `apps/mobile/src/features/auth/` sửa theo đường dẫn mới.
+- Tách CHANGELOG `67a7a36`: entry 16/09–12/10 sang bảy file lưu trữ trong `changelog/`, chép nguyên
+  văn, chỉ đổi đích link (ghép lại khớp 5.999 dòng, đủ 110 entry). File này giữ đợt từ 13/10.
+- Mục lục `f844f6d`: `docs/README.md` từ 380 còn 77 dòng, chỉ trỏ tới `README.md` của từng thư mục;
+  18 plan và 4 prompt đã xong có dòng "ĐÃ ĐÓNG" ở đầu trỏ đúng file lưu trữ.
+- open-items `a27bf10`: `open-items.md` chỉ giữ việc còn mở (69 KB còn 24 KB), mục đã đóng chép
+  nguyên văn sang `open-items-closed.md`. Cùng commit sửa thông tin lỗi thời đối chiếu với code:
+  README gốc, overview, glossary, handoff, guides, sáu file conventions, brief thiết kế, mockups,
+  sổ nợ.
+- Báo cáo `6a4a4b3`; `CLAUDE.md` `edae037` (user duyệt 06:27 UTC): luật 13 nay nói doc mới thêm vào
+  `README.md` của thư mục nó nằm, dòng Test của bảng toolchain ghi mobile và mobile-ui chạy Jest và
+  jest-expo, link đối chiếu Nexora trỏ `analysis/nexora-parity/`. `e0e40bb`: số test ở overview theo
+  entry G23.
+
+**Cách làm từ nay:** đóng một mục open-items là ghi kết quả vào dòng, chuyển cả dòng sang
+`open-items-closed.md` rồi ghi vào CHANGELOG, không gạch tại chỗ nữa. Mã G kế tiếp: G54.
+
+**Review.** Không có lượt review độc lập. Kiểm bằng máy sau khi rebase: 1.287 link tương đối, 22 link
+không tới được và cả 22 đều có sẵn trên `main`; mọi file `.md` nằm trong ít nhất một mục lục; dòng `+`
+cột 0 vẫn 55 dòng ở 11 file. Rebase lên `572eb6f` (G23): dòng G23 đã gạch chuyển nguyên văn sang
+`open-items-closed.md`. User bảo merge 14/10 07:08 UTC.
+
+Tests after (`gate:int` trên `ab244b0`, 14/10 xong 06:04 UTC, session cloud theo các bước của CI):
+unit 7416 — web 2273, admin 2217, api 1133, mobile 771, contract 709, mobile-ui 136, i18n 56,
+core 48, ui 47, tokens 26 — và int 836. Lượt đầu `@tourism/contract` chết vì EPIPE của Vitest lúc
+máy quá tải, chạy riêng 709/709, chạy lại cả lượt thì xanh. Sau rebase, CI `gate` của PR trên
+`e0e40bb` xanh cả hai lượt (gồm test G23). Đợt này không thêm hay bớt test.
+
+**Đóng CÒN TREO của entry G23:** sau deploy `572eb6f` (Render live 06:34 UTC), thread admin đọc chỉ-đọc
+log Supavisor: phiên Prisma mang tên `tourism-api`, pg-boss mở đúng 2 phiên, không còn
+`EMAXCONNSESSION` sau lần cuối 06:25 UTC (máy cũ, cấu hình cũ). GitHub đã tự xoá nhánh
+`fix/api-g23-pool` khi PR #16 merge.
+
+**CÒN TREO:**
+
+- [ ] ADR-0055 dòng 162 trỏ `apps/mobile/src/components/app-image.tsx`, file không còn (các màn truyền
+  thẳng `transformUrl={cloudinaryUrl}` vào `AppImage` của `@tourism/mobile-ui`): cần AMEND, không chỉ
+  sửa đường dẫn.
+- Dọn sau merge: nhánh `docs/docs-reorg-2026-10-14` trên origin nếu GitHub không tự xoá.
+
 ## 2026-10-14 — Merge G23 trần pool kết nối của API để vừa Session pooler 15 client (`edace31`..`b15239d`)
 
 Thread việc tồn đọng vùng admin nhận G23 ngày 14/10 (user muốn đóng càng nhiều open-items càng tốt
