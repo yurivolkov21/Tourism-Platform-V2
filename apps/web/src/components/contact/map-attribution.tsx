@@ -1,3 +1,5 @@
+import { contactPage } from '@tourism/i18n';
+
 // Attribution của tile OpenFreeMap. Tách khỏi `contact-map.tsx` vì hai lý do,
 // cả hai đều thực dụng:
 //
@@ -10,6 +12,10 @@
 //    khối này qua AttributionControl; ta thôi dùng control đó vì lý do bảo mật
 //    ghi ở `contact-map.tsx` (GHSA-jrc7-96c5-q579), nên nghĩa vụ ghi công
 //    chuyển sang đây.
+//
+// W-09 (14/10): chữ nối "Data from" nằm ở `contactPage.mapAttribution`. Ba tên nguồn CỐ Ý giữ
+// nguyên là chuỗi ngay trong JSX, cạnh URL của chúng: đó là tên ghi công licence, không phải
+// copy để dịch hay viết lại.
 export function MapAttribution() {
   return (
     <div className="absolute bottom-0 left-0 rounded-tr-md bg-background/80 px-1.5 py-0.5 text-muted-foreground text-xs backdrop-blur-sm">
@@ -29,7 +35,7 @@ export function MapAttribution() {
       >
         &copy; OpenMapTiles
       </a>{' '}
-      Data from{' '}
+      {contactPage.mapAttribution.dataFrom}{' '}
       <a
         href="https://www.openstreetmap.org/copyright"
         target="_blank"

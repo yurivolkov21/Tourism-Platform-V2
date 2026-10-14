@@ -1,5 +1,6 @@
 'use client';
 
+import { contactPage } from '@tourism/i18n';
 import { ArrowUpRightIcon } from 'lucide-react';
 import { motion } from 'motion/react';
 import { SPRING } from '@/lib/motion';
@@ -24,13 +25,10 @@ export function ContactCta() {
           >
             <div className="flex flex-col items-center gap-3 text-center">
               <h2 className="font-heading text-3xl font-medium text-foreground md:text-5xl">
-                The road is ready
-                <span className="text-primary-emphasis italic"> when you are.</span>
+                {contactPage.cta.titleLead}
+                <span className="text-primary-emphasis italic">{contactPage.cta.titleAccent}</span>
               </h2>
-              <p className="mx-auto max-w-2xl text-muted-foreground">
-                Small groups, three regions, and people who grew up on every path. Pick a journey
-                and let the country set the pace.
-              </p>
+              <p className="mx-auto max-w-2xl text-muted-foreground">{contactPage.cta.body}</p>
             </div>
 
             {/* Nút morph: viên tròn mũi tên trượt phải→trái + xoay 45° khi hover */}
@@ -39,7 +37,7 @@ export function ContactCta() {
               className="group relative h-12 w-fit cursor-pointer overflow-hidden rounded-full bg-primary p-1 ps-6 pe-14 text-sm font-medium text-primary-foreground transition-all duration-500 hover:bg-primary/80 hover:ps-14 hover:pe-6"
             >
               <span className="relative z-10 inline-flex h-full items-center transition-all duration-500">
-                Browse the tours
+                {contactPage.cta.browseTours}
               </span>
               <span className="absolute top-1 right-1 flex size-10 items-center justify-center rounded-full bg-background text-foreground transition-all duration-500 group-hover:right-[calc(100%-44px)] group-hover:rotate-45">
                 <ArrowUpRightIcon className="size-4" aria-hidden="true" />

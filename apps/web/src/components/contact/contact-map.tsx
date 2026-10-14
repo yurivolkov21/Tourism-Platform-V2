@@ -5,6 +5,7 @@
 // Đường import CSS thì giữ nguyên: `exports` map của 6.x có nhánh "./dist/*".
 import * as MapLibreGL from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
+import { contactPage } from '@tourism/i18n';
 import { MapPinIcon, MinusIcon, PlusIcon } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
@@ -167,7 +168,7 @@ export default function ContactMap() {
       <div className="absolute right-3 bottom-3 flex flex-col overflow-hidden rounded-lg shadow-md ring-1 ring-border">
         <button
           type="button"
-          aria-label="Zoom in"
+          aria-label={contactPage.map.zoomIn}
           onClick={() => map?.zoomIn()}
           className="flex size-9 items-center justify-center bg-background text-foreground transition-colors hover:bg-muted"
         >
@@ -175,7 +176,7 @@ export default function ContactMap() {
         </button>
         <button
           type="button"
-          aria-label="Zoom out"
+          aria-label={contactPage.map.zoomOut}
           onClick={() => map?.zoomOut()}
           className="flex size-9 items-center justify-center border-t border-border bg-background text-foreground transition-colors hover:bg-muted"
         >

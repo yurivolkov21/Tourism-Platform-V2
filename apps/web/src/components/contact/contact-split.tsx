@@ -1,7 +1,7 @@
 'use client';
 
 import type { MediaItem } from '@tourism/contract';
-import { messages } from '@tourism/i18n';
+import { contactPage, messages } from '@tourism/i18n';
 import { CheckIcon, ClockIcon, CompassIcon, MailIcon, MapPinIcon, PhoneIcon } from 'lucide-react';
 import { motion } from 'motion/react';
 import { type FormEvent, useEffect, useRef, useState } from 'react';
@@ -48,6 +48,10 @@ const INITIAL_STATE: ContactFormState = {
   region: '',
   website: '',
 };
+
+// Lựa chọn "không chọn miền" đứng đầu nhóm radio (xem ghi chú ở fieldset). `any` là giá trị form;
+// nhãn dùng chung với form trang chủ vì là cùng lựa chọn `any` của cùng một trường (W-09).
+const ANY_REGION_OPTION = { key: 'any', name: messages.homeContact.regionAny };
 
 export function ContactSplit({ panelImage = null }: { panelImage?: MediaItem | null }) {
   const [state, setState] = useState<ContactFormState>(INITIAL_STATE);
@@ -130,7 +134,7 @@ export function ContactSplit({ panelImage = null }: { panelImage?: MediaItem | n
         >
           <SlotImage
             image={panelImage}
-            label="Contact — the people who answer"
+            label={contactPage.split.panel.imageLabel}
             sizes="(min-width: 768px) 50vw, 100vw"
             className="absolute inset-0 h-full w-full"
           />
@@ -149,32 +153,43 @@ export function ContactSplit({ panelImage = null }: { panelImage?: MediaItem | n
           <div className="relative flex h-full flex-col">
             <span className="inline-flex items-center gap-2 self-start rounded-full bg-foreground/15 px-3.5 py-1.5 text-[11px] font-semibold tracking-[0.14em] uppercase">
               <span aria-hidden="true" className="size-1.5 rounded-full bg-primary-emphasis" />
-              We can help
+              {contactPage.split.panel.eyebrow}
             </span>
 
             <h2 className="mt-6 max-w-[15ch] font-heading text-[34px] leading-tight font-medium text-balance md:text-[40px]/12">
-              Let’s plan your dates
-              <span className="text-primary-emphasis italic"> before the seats go.</span>
+              {contactPage.split.panel.titleLead}
+              <span className="text-primary-emphasis italic">
+                {contactPage.split.panel.titleAccent}
+              </span>
             </h2>
             <p className="mt-4 max-w-[36ch] text-sm leading-relaxed text-foreground/75 md:text-base">
-              Tell us your dates and pace. A real person reads every letter and writes back — no
-              bots on this side.
+              {contactPage.split.panel.intro}
             </p>
 
             {/* Hàng thông tin lấy lối của ReUI contact-5: nhãn nhỏ viết hoa ở
                 trên, giá trị đậm ở dưới. `mt-auto` ghim cụm này xuống đáy panel. */}
             <dl className="mt-auto flex flex-col gap-5 pt-10">
               {[
-                { icon: PhoneIcon, k: 'Phone', v: PHONE, href: `tel:${PHONE.replace(/\s/g, '')}` },
-                { icon: MailIcon, k: 'Email', v: EMAIL, href: `mailto:${EMAIL}` },
+                {
+                  icon: PhoneIcon,
+                  k: contactPage.split.panel.details.phone,
+                  v: PHONE,
+                  href: `tel:${PHONE.replace(/\s/g, '')}`,
+                },
+                {
+                  icon: MailIcon,
+                  k: contactPage.split.panel.details.email,
+                  v: EMAIL,
+                  href: `mailto:${EMAIL}`,
+                },
                 {
                   icon: ClockIcon,
-                  k: 'Response time',
-                  v: 'Within the hour · Mon–Fri, 8am–6pm',
+                  k: contactPage.split.panel.details.responseTime,
+                  v: contactPage.split.panel.details.responseTimeValue,
                 },
                 {
                   icon: MapPinIcon,
-                  k: 'Headquarters',
+                  k: contactPage.split.panel.details.headquarters,
                   v: OFFICES[0]?.addressLines.join(', ') ?? '',
                 },
               ].map((row) => (
@@ -229,7 +244,7 @@ export function ContactSplit({ panelImage = null }: { panelImage?: MediaItem | n
               tabIndex={-1}
               className="absolute -left-[9999px] h-px w-px overflow-hidden"
             >
-              <label htmlFor="cl-website">Website</label>
+              <label htmlFor="cl-website">{messages.common.honeypotLabel}</label>
               <input
                 id="cl-website"
                 name="website"
@@ -248,30 +263,32 @@ export function ContactSplit({ panelImage = null }: { panelImage?: MediaItem | n
             >
               <CompassIcon className="size-5" />
               <span className="text-[9px] font-semibold tracking-widest uppercase">
-                Hà Nội · Sa Pa
+                {contactPage.split.letter.stamp}
               </span>
             </div>
 
             <p className="text-xs font-semibold tracking-widest text-muted-foreground uppercase">
-              Write us a letter
+              {contactPage.split.letter.eyebrow}
             </p>
 
             {/* Thân thư — bố cục RÕ RÀNG (điều chỉnh #2: bản mad-libs bị chê
                 rối mắt): mở thư "Hello Nexora," rồi TỪNG DÒNG một nhãn-câu-hỏi
                 + một chỗ điền gạch nét đứt; giữ hồn thư ở tem, mực jade italic,
                 chữ ký "Yours," và tái bút. */}
-            <p className="font-heading text-xl text-card-foreground md:text-2xl">Hello Nexora,</p>
+            <p className="font-heading text-xl text-card-foreground md:text-2xl">
+              {contactPage.split.letter.greeting}
+            </p>
 
             <div className="grid grid-cols-1 gap-x-6 gap-y-5 sm:grid-cols-2">
               <div className="flex flex-col gap-1.5">
                 <label htmlFor="cl-count" className={LETTER_LABEL}>
-                  How many of you?
+                  {contactPage.split.letter.count.label}
                 </label>
                 <input
                   id="cl-count"
                   type="text"
                   inputMode="numeric"
-                  placeholder="2 travellers"
+                  placeholder={contactPage.split.letter.count.placeholder}
                   className={LETTER_BLANK}
                   value={state.count}
                   onChange={(e) => setState((s) => ({ ...s, count: e.target.value }))}
@@ -279,12 +296,12 @@ export function ContactSplit({ panelImage = null }: { panelImage?: MediaItem | n
               </div>
               <div className="flex flex-col gap-1.5">
                 <label htmlFor="cl-dates" className={LETTER_LABEL}>
-                  When are you free?
+                  {contactPage.split.letter.dates.label}
                 </label>
                 <input
                   id="cl-dates"
                   type="text"
-                  placeholder="Oct 12 – 18"
+                  placeholder={contactPage.split.letter.dates.placeholder}
                   className={LETTER_BLANK}
                   value={state.dates}
                   onChange={(e) => setState((s) => ({ ...s, dates: e.target.value }))}
@@ -310,9 +327,9 @@ export function ContactSplit({ panelImage = null }: { panelImage?: MediaItem | n
                 `any` map sang `interests: []` ở `buildEnquiryPayload`, nên chọn
                 sẵn nó không đổi dữ liệu gửi đi mà bỏ được trạng thái trống. */}
             <fieldset className="flex flex-col gap-1.5">
-              <legend className={LETTER_LABEL}>Where are you dreaming of?</legend>
+              <legend className={LETTER_LABEL}>{contactPage.split.letter.region.legend}</legend>
               <div className="mt-1.5 grid grid-cols-1 gap-2 sm:grid-cols-2">
-                {[{ key: 'any', name: 'Anywhere in Vietnam' }, ...REGIONS].map((option) => {
+                {[ANY_REGION_OPTION, ...REGIONS].map((option) => {
                   const checked = (state.region || 'any') === option.key;
                   return (
                     <label
@@ -348,12 +365,12 @@ export function ContactSplit({ panelImage = null }: { panelImage?: MediaItem | n
 
             <div className="flex flex-col gap-1.5">
               <label htmlFor="cl-loves" className={LETTER_LABEL}>
-                What do you love when travelling?
+                {contactPage.split.letter.loves.label}
               </label>
               <textarea
                 id="cl-loves"
                 rows={2}
-                placeholder="Easy pace, food markets, a free afternoon now and then…"
+                placeholder={contactPage.split.letter.loves.placeholder}
                 className={`${LETTER_BLANK} w-full resize-none leading-relaxed`}
                 value={state.loves}
                 onChange={(e) => setState((s) => ({ ...s, loves: e.target.value }))}
@@ -368,12 +385,12 @@ export function ContactSplit({ panelImage = null }: { panelImage?: MediaItem | n
 
             <div className="flex flex-col gap-1.5">
               <label htmlFor="cl-email" className={LETTER_LABEL}>
-                Where do we write back?
+                {contactPage.split.letter.email.label}
               </label>
               <input
                 id="cl-email"
                 type="email"
-                placeholder="michael@example.com"
+                placeholder={contactPage.split.letter.email.placeholder}
                 className={LETTER_BLANK}
                 value={state.email}
                 onChange={(e) => setState((s) => ({ ...s, email: e.target.value }))}
@@ -388,15 +405,17 @@ export function ContactSplit({ panelImage = null }: { panelImage?: MediaItem | n
 
             {/* Chữ ký — giữ chất thư */}
             <div className="flex flex-col items-end gap-1.5">
-              <span className="font-heading text-lg text-card-foreground italic">Yours,</span>
+              <span className="font-heading text-lg text-card-foreground italic">
+                {contactPage.split.letter.signOff}
+              </span>
               <div className="flex w-full flex-col gap-1.5 sm:w-56">
                 <label htmlFor="cl-name" className="sr-only">
-                  Your name
+                  {contactPage.split.letter.name.label}
                 </label>
                 <input
                   id="cl-name"
                   type="text"
-                  placeholder="Your name"
+                  placeholder={contactPage.split.letter.name.placeholder}
                   className={`${LETTER_BLANK} text-right`}
                   value={state.name}
                   onChange={(e) => setState((s) => ({ ...s, name: e.target.value }))}
@@ -416,10 +435,10 @@ export function ContactSplit({ panelImage = null }: { panelImage?: MediaItem | n
                 disabled={pending}
                 className="cursor-pointer self-start rounded-full bg-primary px-6 py-3 text-sm font-medium text-primary-foreground transition-colors duration-200 hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60"
               >
-                {pending ? messages.contactForm.submitting : 'Send the letter'}
+                {pending ? messages.contactForm.submitting : contactPage.split.letter.submit}
               </button>
               <p className="text-xs text-muted-foreground italic">
-                P.S. A human reads every letter — no bots on this side.
+                {contactPage.split.letter.postscript}
               </p>
             </div>
           </form>

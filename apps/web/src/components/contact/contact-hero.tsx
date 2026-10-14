@@ -1,5 +1,6 @@
 'use client';
 
+import { contactPage, messages } from '@tourism/i18n';
 import { ChevronRightIcon } from 'lucide-react';
 import { motion } from 'motion/react';
 import { TopoPattern } from '@/components/topo-pattern';
@@ -29,18 +30,18 @@ export function ContactHero() {
       <div className="dark contents">
         <div className="relative z-10 mx-auto max-w-7xl">
           <motion.nav
-            aria-label="Breadcrumb"
+            aria-label={messages.common.breadcrumbLabel}
             className="flex items-center gap-1.5 text-sm text-muted-foreground"
             initial={{ y: -16, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             transition={{ delay: 0.1, ...SPRING }}
           >
             <a href="/" className="transition-colors hover:text-foreground">
-              Home
+              {messages.common.home}
             </a>
             <ChevronRightIcon className="size-3.5" aria-hidden="true" />
             <span aria-current="page" className="text-foreground">
-              Contact
+              {contactPage.hero.breadcrumbCurrent}
             </span>
           </motion.nav>
 
@@ -50,9 +51,9 @@ export function ContactHero() {
             animate={{ y: 0, opacity: 1 }}
             transition={{ ...SPRING_HEADING, delay: 0.2 }}
           >
-            Talk to a human,
+            {contactPage.hero.titleLead}
             <br />
-            <span className="text-primary-emphasis italic">not a hotline.</span>
+            <span className="text-primary-emphasis italic">{contactPage.hero.titleAccent}</span>
           </motion.h1>
 
           <motion.p
@@ -61,7 +62,7 @@ export function ContactHero() {
             animate={{ y: 0, opacity: 1 }}
             transition={{ delay: 0.35, ...SPRING }}
           >
-            Tell us your dates and pace — a real person replies within the hour, Monday to Friday.
+            {contactPage.hero.intro}
           </motion.p>
 
           {/* Dòng "presence" người thật đang trực (mock — nguồn thật là API/CRM
@@ -76,7 +77,7 @@ export function ContactHero() {
               <span className="absolute inline-flex h-full w-full rounded-full bg-primary opacity-60 motion-safe:animate-ping" />
               <span className="relative inline-flex size-2 rounded-full bg-primary" />
             </span>
-            Mai is on replies today — average answer: 47 minutes
+            {contactPage.hero.presence}
           </motion.p>
         </div>
       </div>

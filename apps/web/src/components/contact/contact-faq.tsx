@@ -1,5 +1,6 @@
 'use client';
 
+import { contactPage } from '@tourism/i18n';
 import {
   Accordion,
   AccordionContent,
@@ -21,7 +22,7 @@ export function ContactFaq() {
     <section id="faq" className="w-full px-4 py-20 md:px-16 md:py-28">
       <div className="mx-auto flex max-w-3xl flex-col gap-12">
         <div className="flex flex-col items-center gap-4 text-center">
-          <SectionEyebrow>Before you write</SectionEyebrow>
+          <SectionEyebrow>{contactPage.faq.eyebrow}</SectionEyebrow>
           <motion.h2
             className="max-w-lg font-heading text-3xl leading-tight font-medium text-foreground md:text-4xl"
             initial={{ y: 50, opacity: 0 }}
@@ -29,8 +30,8 @@ export function ContactFaq() {
             viewport={{ once: true }}
             transition={SPRING_HEADING}
           >
-            Five answers,
-            <span className="text-primary-emphasis italic"> saved you an email.</span>
+            {contactPage.faq.titleLead}
+            <span className="text-primary-emphasis italic">{contactPage.faq.titleAccent}</span>
           </motion.h2>
           <motion.p
             className="text-sm text-muted-foreground md:text-base"
@@ -39,11 +40,11 @@ export function ContactFaq() {
             viewport={{ once: true }}
             transition={{ delay: 0.15, ...SPRING }}
           >
-            The questions every traveller asks first —{' '}
+            {contactPage.faq.intro.lead}{' '}
             <a href="/faq" className="font-medium text-primary-emphasis hover:underline">
-              see the full list
+              {contactPage.faq.intro.link}
             </a>
-            .
+            {contactPage.faq.intro.end}
           </motion.p>
         </div>
 

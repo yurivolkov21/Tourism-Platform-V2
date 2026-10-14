@@ -1,6 +1,6 @@
 'use client';
 
-import { messages } from '@tourism/i18n';
+import { contactPage, messages } from '@tourism/i18n';
 import { Clock8Icon, MapPinIcon } from 'lucide-react';
 import { motion } from 'motion/react';
 import dynamic from 'next/dynamic';
@@ -73,8 +73,8 @@ export function ContactLocation() {
             viewport={{ once: true }}
             transition={SPRING_HEADING}
           >
-            Two doors,
-            <span className="text-primary-emphasis italic"> always open.</span>
+            {contactPage.location.titleLead}
+            <span className="text-primary-emphasis italic">{contactPage.location.titleAccent}</span>
           </motion.h2>
         </div>
 
@@ -136,7 +136,7 @@ export function ContactLocation() {
                 rel="noopener noreferrer"
                 className="mt-4 inline-block text-sm font-medium text-primary-emphasis hover:underline"
               >
-                Get directions →
+                {contactPage.location.getDirections}
               </a>
             </motion.div>
           ))}
