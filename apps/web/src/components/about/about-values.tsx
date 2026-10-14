@@ -1,10 +1,12 @@
 'use client';
 
+import { aboutPage } from '@tourism/i18n';
 import {
   BadgeDollarSignIcon,
   CalendarCheckIcon,
   CompassIcon,
   HandCoinsIcon,
+  type LucideIcon,
   ShieldCheckIcon,
   UsersIcon,
 } from 'lucide-react';
@@ -22,55 +24,28 @@ import { SPRING, SPRING_HEADING } from '@/lib/motion';
 // án lệ #25 (bỏ uppercase 900); hover đổi nền bằng CSS class thay JS
 // whileHover backgroundColor của bản gốc.
 
-const VALUES = [
-  {
-    icon: UsersIcon,
-    title: 'Small groups',
-    tag: 'Small by design',
-    description:
-      'Never a coach. Enough for stories around the table, few enough for silence on the water.',
-  },
-  {
-    icon: HandCoinsIcon,
-    title: 'Local pay stays local',
-    tag: 'Fair share',
-    description:
-      'Guides set their own rates and keep them. What you pay reaches the valley you walk through.',
-  },
-  {
-    icon: ShieldCheckIcon,
-    title: 'Safety first',
-    tag: 'Every route',
-    description:
-      'Every path walked by our own team before it goes on the map, every departure insured end to end.',
-  },
-  {
-    icon: CalendarCheckIcon,
-    title: 'Free cancellation',
-    // Vá 04/09 đã gỡ "48 hours" và "no forms, no phone queue" (khi ấy huỷ CÓ
-    // form bắt nhập lý do và CÓ đội ngũ xem xét). ADR-0041 gỡ chính hàng đợi
-    // duyệt ấy, nên "no queue" lại đúng — còn "published refund schedule" thì
-    // hết đối tượng: bảng bậc không còn, chỉ còn một hạn chót mỗi chuyến. Vẫn
-    // KHÔNG hứa "one click": hộp huỷ cần bấm mở rồi bấm xác nhận.
-    tag: 'Every tour',
-    description:
-      'Every tour, not a select few. Cancel from your account before your trip’s deadline and every dollar comes back — a couple of clicks, no queue, no haggling.',
-  },
-  {
-    icon: BadgeDollarSignIcon,
-    title: 'Fair pricing',
-    tag: 'No hidden fees',
-    description:
-      'Every fee itemized before you book. The price you see is the price you pay, in any season.',
-  },
-  {
-    icon: CompassIcon,
-    title: 'No scripts',
-    tag: 'The promise',
-    description:
-      'Guides tell their own stories at their own pace. If a market is better today than the plan, we follow the market.',
-    highlight: true,
-  },
+const t = aboutPage.values;
+
+// Kiểu khai tường minh: phần chữ trải ra từ object `as const` nên TS không còn tự thêm
+// `highlight?: undefined` cho năm thẻ thường, đọc `value.highlight` sẽ báo lỗi.
+interface ValueCard {
+  icon: LucideIcon;
+  title: string;
+  tag: string;
+  description: string;
+  /** Thẻ nổi bật duy nhất: thanh accent trên đỉnh + tag/icon nền primary. */
+  highlight?: boolean;
+}
+
+// Chữ của từng thẻ (`title`, `tag`, `description`) trải ra từ `aboutPage.values.items` — lý do
+// câu chữ thẻ "Free cancellation" (vá 04/09, ADR-0041) ghi ngay cạnh chuỗi đó.
+const VALUES: ValueCard[] = [
+  { icon: UsersIcon, ...t.items.smallGroups },
+  { icon: HandCoinsIcon, ...t.items.localPay },
+  { icon: ShieldCheckIcon, ...t.items.safety },
+  { icon: CalendarCheckIcon, ...t.items.freeCancellation },
+  { icon: BadgeDollarSignIcon, ...t.items.fairPricing },
+  { icon: CompassIcon, ...t.items.noScripts, highlight: true },
 ];
 
 export function AboutValues() {
@@ -80,7 +55,7 @@ export function AboutValues() {
         {/* Header 2 bên kiểu forged: heading trái, mô tả neo đáy phải */}
         <div className="mb-16 flex flex-col justify-between gap-6 md:flex-row md:items-end">
           <div>
-            <SectionEyebrow>What we promise</SectionEyebrow>
+            <SectionEyebrow>{t.eyebrow}</SectionEyebrow>
             <motion.h2
               className="mt-4 font-heading text-3xl leading-tight font-medium text-foreground md:text-[40px]/12"
               initial={{ y: 50, opacity: 0 }}
@@ -88,9 +63,9 @@ export function AboutValues() {
               viewport={{ once: true }}
               transition={SPRING_HEADING}
             >
-              Six promises,
+              {t.titleLead}
               <br />
-              <span className="text-primary-emphasis italic">kept since the minivan.</span>
+              <span className="text-primary-emphasis italic">{t.titleAccent}</span>
             </motion.h2>
           </div>
           <motion.p
@@ -100,8 +75,7 @@ export function AboutValues() {
             viewport={{ once: true }}
             transition={{ delay: 0.2, ...SPRING }}
           >
-            Written into how tours are priced, staffed, and led — not into a poster on the office
-            wall.
+            {t.intro}
           </motion.p>
         </div>
 

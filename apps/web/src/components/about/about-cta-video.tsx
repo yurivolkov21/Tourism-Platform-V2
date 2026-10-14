@@ -1,6 +1,7 @@
 'use client';
 
 import type { MediaItem } from '@tourism/contract';
+import { aboutPage } from '@tourism/i18n';
 import { SlotVideo } from '@/components/slot-video';
 
 // About §7 ứng viên B — convert ShadcnSpace CTA 02 "Video Background" (đang so
@@ -11,14 +12,17 @@ import { SlotVideo } from '@/components/slot-video';
 // Video ĐÃ GẮN 17/08 qua `SlotVideo` (khe `about-cta-video`) — nó lo trọn
 // autoPlay/loop/muted/playsInline + poster + tôn trọng prefers-reduced-motion,
 // đúng như comment cũ ở đây dặn.
+
+const t = aboutPage.ctaVideo;
+
+// Thứ tự chạy của marquee; câu chữ (và lý do câu "Free cancellation", vá 04/09) ở
+// `aboutPage.ctaVideo.marquee`.
 const MARQUEE_ITEMS = [
-  'Small groups',
-  'Local guides only',
-  // Vá 04/09 cùng lý do `top-bar.tsx`: không mang con số giờ nào. ADR-0041 bỏ
-  // nốt rào "most": một luật hạn chót cho mọi tour.
-  'Free cancellation on every tour',
-  'Three regions, one country',
-  'No scripts, no rush',
+  t.marquee.smallGroups,
+  t.marquee.localGuides,
+  t.marquee.freeCancellation,
+  t.marquee.threeRegions,
+  t.marquee.noScripts,
 ];
 
 // Một "toa" cam kết — hai toa giống hệt nối đuôi tạo loop kín (toa 2 ẩn a11y)
@@ -47,25 +51,20 @@ export function AboutCtaVideo({
         {/* Card nền video (placeholder tới khi có media) + scrim + nội dung trắng */}
         <div className="relative flex min-h-96 items-center justify-center overflow-hidden rounded-t-2xl">
           <div className="dark absolute inset-0">
-            <SlotVideo
-              media={video}
-              corner
-              label="Video — drone flying out of a karst cave over the valley"
-              className="h-full w-full"
-            />
+            <SlotVideo media={video} corner label={t.videoLabel} className="h-full w-full" />
             <div className="absolute inset-0 bg-overlay/60" />
           </div>
 
           <div className="relative z-10 flex flex-col items-center gap-8 px-10 py-16">
             <h2 className="max-w-2xl text-center font-heading text-3xl font-medium text-on-media sm:text-4xl">
-              The road is ready
-              <span className="italic"> when you are.</span>
+              {t.titleLead}
+              <span className="italic"> {t.titleAccent}</span>
             </h2>
             <a
               href="/#tours"
               className="rounded-full bg-card px-6 py-3.5 text-sm font-medium text-card-foreground transition-colors duration-300 hover:bg-card/85"
             >
-              Browse the tours
+              {t.browseTours}
             </a>
           </div>
         </div>

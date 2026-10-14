@@ -1,3 +1,4 @@
+export * from './lib/about-page.js';
 export * from './lib/home-page.js';
 export * from './lib/i18n.js';
 export * from './lib/legal/cancellation.js';

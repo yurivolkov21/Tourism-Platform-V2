@@ -1,6 +1,7 @@
 'use client';
 
 import type { MediaItem } from '@tourism/contract';
+import { aboutPage } from '@tourism/i18n';
 import { GlobeIcon } from 'lucide-react';
 import { motion } from 'motion/react';
 import { SectionEyebrow } from '@/components/home/section-eyebrow';
@@ -18,6 +19,8 @@ import { TEAM } from '@/mocks/team';
 // đích tối giản. Nội dung CHỈ founder (quyết định user 23/07); anchor #team
 // là đích nút hero §1.
 
+const t = aboutPage.team;
+
 export function AboutTeam({
   images = {},
 }: {
@@ -27,7 +30,7 @@ export function AboutTeam({
   return (
     <section id="team" className="w-full bg-background px-4 py-24 md:px-16 md:py-32">
       <div className="mx-auto flex max-w-7xl flex-col items-center">
-        <SectionEyebrow>The team</SectionEyebrow>
+        <SectionEyebrow>{t.eyebrow}</SectionEyebrow>
         <motion.h2
           className="mt-4 max-w-md text-center font-heading text-3xl leading-tight font-medium text-foreground md:text-[40px]/12"
           initial={{ y: 50, opacity: 0 }}
@@ -35,8 +38,8 @@ export function AboutTeam({
           viewport={{ once: true }}
           transition={SPRING_HEADING}
         >
-          Four faces,
-          <span className="text-primary-emphasis italic"> one slow idea.</span>
+          {t.titleLead}
+          <span className="text-primary-emphasis italic"> {t.titleAccent}</span>
         </motion.h2>
         <motion.p
           className="mt-3 max-w-md text-center text-sm text-muted-foreground md:text-base"
@@ -45,7 +48,7 @@ export function AboutTeam({
           viewport={{ once: true }}
           transition={{ delay: 0.2, ...SPRING }}
         >
-          The people who signed the lease, drew the first routes, and still answer the phone.
+          {t.intro}
         </motion.p>
 
         <div className="mt-14 grid w-full grid-cols-1 gap-6 md:grid-cols-3">
@@ -68,7 +71,7 @@ export function AboutTeam({
                   thì khách mobile mất hẳn. */}
               <SlotImage
                 image={images[member.slot] ?? null}
-                label={`Portrait — ${member.name}`}
+                label={t.portraitLabel(member.name)}
                 className="h-80 w-full rounded-xl transition-all duration-500 [@media(hover:hover)]:grayscale group-hover:grayscale-0"
                 sizes="(min-width: 768px) 33vw, 100vw"
               />
@@ -80,14 +83,14 @@ export function AboutTeam({
                 <div className="flex gap-2">
                   <a
                     href="#team"
-                    aria-label={`${member.name} — website`}
+                    aria-label={t.websiteLabel(member.name)}
                     className="rounded-full p-2 text-muted-foreground transition-colors hover:bg-accent/80 hover:text-foreground"
                   >
                     <GlobeIcon className="size-4" aria-hidden="true" />
                   </a>
                   <a
                     href="#team"
-                    aria-label={`${member.name} — LinkedIn`}
+                    aria-label={t.linkedinLabel(member.name)}
                     className="rounded-full p-2 text-muted-foreground transition-colors hover:bg-accent/80 hover:text-foreground"
                   >
                     <LinkedinIcon className="size-4" />

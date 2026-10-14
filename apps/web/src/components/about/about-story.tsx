@@ -1,5 +1,6 @@
 'use client';
 
+import { aboutPage } from '@tourism/i18n';
 import { QuoteIcon } from 'lucide-react';
 import { motion } from 'motion/react';
 import { SectionEyebrow } from '@/components/home/section-eyebrow';
@@ -15,20 +16,11 @@ import { SPRING } from '@/lib/motion';
 // địa (quote của Mai hồi sinh từ WhyChooseUs #26→#27). Motion: ảnh SlideIn
 // từ trái, cột phải FadeUp bậc thang — spring nhà 320/70.
 
-const PILLS = ['Local guides only', 'Small groups', 'Three regions', 'No scripts'];
+const t = aboutPage.story;
 
-const QUOTES = [
-  {
-    text: 'I take people across the terraces my grandfather planted. That is the whole job.',
-    name: 'Mai',
-    role: 'Sa Pa guide',
-  },
-  {
-    text: 'The river taught me its schedule. I just translate it for our guests.',
-    name: 'Tâm',
-    role: 'Cần Thơ guide',
-  },
-];
+const PILLS = [t.pills.localGuides, t.pills.smallGroups, t.pills.threeRegions, t.pills.noScripts];
+
+const QUOTES = [t.quotes.mai, t.quotes.tam];
 
 function FadeUp({
   delay,
@@ -68,7 +60,7 @@ export function AboutStory({ storyImage = null }: { storyImage?: SiteMediaItem |
             <SlotImage
               image={storyImage}
               corner
-              label="Story — the first minivan, Sa Pa 2014"
+              label={t.imageLabel}
               className="absolute inset-0 h-full w-full"
               sizes="(min-width: 1024px) 50vw, 100vw"
             />
@@ -86,37 +78,33 @@ export function AboutStory({ storyImage = null }: { storyImage?: SiteMediaItem |
               <CountUp to={12} />+
             </p>
             <p className="mt-1 text-xs font-medium tracking-widest uppercase opacity-75">
-              Years
+              {t.yearsBadge.top}
               <br />
-              on the road
+              {t.yearsBadge.bottom}
             </p>
           </motion.div>
         </motion.div>
 
         {/* Phải: eyebrow + heading + mission + pill + 2 quote */}
         <div className="lg:col-span-7">
-          <SectionEyebrow>Our story</SectionEyebrow>
+          <SectionEyebrow>{t.eyebrow}</SectionEyebrow>
 
           <FadeUp delay={0.1}>
             <h2 className="mt-4 font-heading text-3xl leading-tight font-medium text-foreground md:text-[40px]/12">
-              We don’t sell tours.
+              {t.titleLead}
               <br />
-              <span className="text-primary-emphasis italic">We introduce you to home.</span>
+              <span className="text-primary-emphasis italic">{t.titleAccent}</span>
             </h2>
           </FadeUp>
 
           <FadeUp delay={0.2}>
             <p className="mt-6 max-w-[560px] text-sm leading-relaxed text-muted-foreground md:text-base">
-              Nexora started in 2014 with a simple bet: the person who grew up on a path shows it
-              better than any brochure. Three guides, one borrowed minivan, and the misty terraces
-              of the north.
+              {t.mission.origin}
             </p>
           </FadeUp>
           <FadeUp delay={0.3}>
             <p className="mt-4 max-w-[560px] text-sm leading-relaxed text-muted-foreground md:text-base">
-              Eleven years later we are still small on purpose — small groups, three regions, and
-              guides who set the pace of their own valleys. Growth, for us, means deeper roads, not
-              more of them.
+              {t.mission.today}
             </p>
           </FadeUp>
 

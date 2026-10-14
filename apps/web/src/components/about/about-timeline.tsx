@@ -1,6 +1,7 @@
 'use client';
 
 import type { MediaItem } from '@tourism/contract';
+import { aboutPage } from '@tourism/i18n';
 import { motion } from 'motion/react';
 import { useEffect, useRef, useState } from 'react';
 import { SectionEyebrow } from '@/components/home/section-eyebrow';
@@ -31,41 +32,32 @@ interface Milestone {
   region?: 'north' | 'central' | 'south';
 }
 
-// Mốc chẵn (index 0,2) cột PHẢI · mốc lẻ (1,3) cột TRÁI — đúng nhịp template
+const t = aboutPage.timeline;
+
+// Mốc chẵn (index 0,2) cột PHẢI · mốc lẻ (1,3) cột TRÁI — đúng nhịp template.
+// Chữ của từng mốc (tiêu đề, mô tả, nhãn ảnh) ở `aboutPage.timeline.milestones`.
 const MILESTONES: Milestone[] = [
   {
     year: '2014',
-    title: 'Three guides, one minivan',
-    description:
-      'It starts in Sa Pa: two brothers and a neighbour borrow a minivan and take eight strangers across the terraces they grew up on. Nobody calls it a company yet.',
-    imageLabel: '2014 — terraced fields above Sa Pa at first light',
+    ...t.milestones.founding,
     slot: 'about-timeline-2014',
     region: 'north',
   },
   {
     year: '2017',
-    title: 'The centre opens',
-    description:
-      'Huế and Hội An join the map — imperial kitchens, lantern rivers, and our first guides who grew up inside the citadel walls.',
-    imageLabel: '2017 — bánh mì, Hội An',
+    ...t.milestones.centre,
     slot: 'about-timeline-2017',
     region: 'central',
   },
   {
     year: '2021',
-    title: 'South to the delta',
-    description:
-      'Mekong boatmen become colleagues. Floating markets before sunrise, island dusk after — the map finally runs the whole country.',
-    imageLabel: '2021 — island dusk over Phú Quốc',
+    ...t.milestones.delta,
     slot: 'about-timeline-2021',
     region: 'south',
   },
   {
     year: '2026',
-    title: 'Still small on purpose',
-    description:
-      'A new home online, the same old promise: small groups, local pace, no scripts. Growth means deeper roads, not more of them.',
-    imageLabel: '2026 — a small group on a delta path',
+    ...t.milestones.today,
     slot: 'about-timeline-2026',
   },
 ];
@@ -158,7 +150,7 @@ export function AboutTimeline({
     // Nền background (trắng ở light) thay muted — review §3 lần 4
     <section id="milestones" className="w-full bg-background px-4 py-24 md:px-16 md:py-32">
       <div className="mx-auto flex max-w-7xl flex-col items-center">
-        <SectionEyebrow>Milestones</SectionEyebrow>
+        <SectionEyebrow>{t.eyebrow}</SectionEyebrow>
         <motion.h2
           className="mt-4 max-w-md text-center font-heading text-3xl leading-tight font-medium text-foreground md:text-[40px]/12"
           initial={{ y: 50, opacity: 0 }}
@@ -166,8 +158,8 @@ export function AboutTimeline({
           viewport={{ once: true }}
           transition={SPRING_HEADING}
         >
-          Twelve years,
-          <span className="text-primary-emphasis italic"> four turning points.</span>
+          {t.titleLead}
+          <span className="text-primary-emphasis italic"> {t.titleAccent}</span>
         </motion.h2>
 
         {/* Desktop: zigzag chữ–ảnh soi gương qua trục — mỗi cột xen kẽ

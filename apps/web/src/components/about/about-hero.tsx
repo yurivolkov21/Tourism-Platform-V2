@@ -1,5 +1,6 @@
 'use client';
 
+import { aboutPage, messages } from '@tourism/i18n';
 import { CompassIcon, MoveRightIcon } from 'lucide-react';
 import { motion } from 'motion/react';
 import { CountUp } from '@/components/motion/count-up';
@@ -17,12 +18,14 @@ import type { SiteMediaItem } from '@/lib/api/site-media';
 // `RevealLine` đã TÁCH sang `components/motion/reveal-line.tsx` (29/07) để hero
 // trang vùng dùng chung đúng một khuôn cắt và đúng một đường cong ease.
 
+const t = aboutPage.hero;
+
 // Số liệu công ty mock (static-first) — sau này một phần lấy từ API catalog
 // như Nexora about-metrics; phần "năm hoạt động" là hằng số brand.
 const HERO_STATS = [
-  { value: 12, suffix: '+', label: 'Years on the road' },
-  { value: 8000, suffix: '+', label: 'Travellers hosted' },
-  { value: 98, suffix: '%', label: 'Would go again' },
+  { value: 12, suffix: '+', label: t.stats.years },
+  { value: 8000, suffix: '+', label: t.stats.travellers },
+  { value: 98, suffix: '%', label: t.stats.wouldGoAgain },
 ];
 
 export function AboutHero({ heroImage = null }: { heroImage?: SiteMediaItem | null }) {
@@ -37,7 +40,7 @@ export function AboutHero({ heroImage = null }: { heroImage?: SiteMediaItem | nu
         <SlotImage
           image={heroImage}
           corner
-          label="About hero — guide leading trekkers, Sa Pa"
+          label={t.imageLabel}
           className="absolute inset-0 h-full w-full"
           priority
         />
@@ -57,17 +60,17 @@ export function AboutHero({ heroImage = null }: { heroImage?: SiteMediaItem | nu
         >
           <CompassIcon className="size-3.5 text-primary-emphasis" aria-hidden="true" />
           <span className="text-xs font-medium tracking-widest text-primary-emphasis uppercase">
-            The people behind the paths
+            {t.badge}
           </span>
         </motion.div>
 
         {/* Heading 3 dòng reveal từng dòng — dòng giữa accent italic */}
         <h1 className="mb-8 font-heading text-5xl leading-[1.05] font-medium tracking-tight text-foreground md:text-6xl xl:text-7xl">
-          <RevealLine delay={0.3}>Slow travel,</RevealLine>
+          <RevealLine delay={0.3}>{t.titleLead}</RevealLine>
           <RevealLine delay={0.45}>
-            <span className="text-primary-emphasis italic">crafted by locals,</span>
+            <span className="text-primary-emphasis italic">{t.titleAccent}</span>
           </RevealLine>
-          <RevealLine delay={0.6}>since 2014.</RevealLine>
+          <RevealLine delay={0.6}>{t.titleTail}</RevealLine>
         </h1>
 
         <motion.div
@@ -76,10 +79,7 @@ export function AboutHero({ heroImage = null }: { heroImage?: SiteMediaItem | nu
           animate={{ y: 0, opacity: 1 }}
           transition={{ duration: 0.7, delay: 0.85 }}
         >
-          <p className="max-w-md text-base leading-relaxed text-foreground/60">
-            Nexora began as three guides and one minivan in Sa Pa. Today we run small-group journeys
-            across all three regions — still no scripts, still no rush.
-          </p>
+          <p className="max-w-md text-base leading-relaxed text-foreground/60">{t.intro}</p>
           <div className="flex items-center gap-4">
             <motion.a
               href="/#tours"
@@ -87,7 +87,7 @@ export function AboutHero({ heroImage = null }: { heroImage?: SiteMediaItem | nu
               whileTap={{ scale: 0.96 }}
               className="group flex items-center gap-2 rounded-full bg-primary px-6 py-3 text-sm font-medium text-primary-foreground transition-shadow duration-300 hover:shadow-[0_0_30px_color-mix(in_oklab,var(--primary)_40%,transparent)]"
             >
-              <span>Browse tours</span>
+              <span>{t.browseTours}</span>
               <MoveRightIcon
                 className="size-4 transition-transform group-hover:translate-x-1"
                 aria-hidden="true"
@@ -99,7 +99,7 @@ export function AboutHero({ heroImage = null }: { heroImage?: SiteMediaItem | nu
               whileTap={{ scale: 0.96 }}
               className="rounded-full border border-foreground/20 px-6 py-3 text-sm font-medium text-foreground transition-colors duration-200 hover:border-foreground/50"
             >
-              Meet the team
+              {t.meetTeam}
             </motion.a>
           </div>
         </motion.div>
@@ -137,7 +137,7 @@ export function AboutHero({ heroImage = null }: { heroImage?: SiteMediaItem | nu
           className="h-16 w-px bg-linear-to-b from-transparent to-primary/60"
         />
         <span className="origin-center translate-x-4 rotate-90 text-[10px] tracking-widest text-foreground/40 uppercase">
-          Scroll
+          {messages.common.scrollHint}
         </span>
       </motion.div>
     </section>

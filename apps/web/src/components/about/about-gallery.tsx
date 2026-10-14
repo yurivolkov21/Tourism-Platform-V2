@@ -1,6 +1,7 @@
 'use client';
 
 import type { MediaItem } from '@tourism/contract';
+import { aboutPage } from '@tourism/i18n';
 import { motion } from 'motion/react';
 import { LoadErrorState } from '@/components/feedback/load-error-state';
 import { SectionEyebrow } from '@/components/home/section-eyebrow';
@@ -23,6 +24,8 @@ import type { MockRegionKey } from '@/mocks/types';
 // tự import mock TOURS/DESTINATIONS — REGIONS vẫn là mock CÓ CHỦ ĐÍCH (tầng
 // trình bày, không đến từ API, xem lib/regions.ts). Component KHÔNG tự fetch
 // (client, có motion, ADR-0016 §4).
+
+const t = aboutPage.gallery;
 
 interface GalleryCardProps {
   title: string;
@@ -98,7 +101,7 @@ export function AboutGallery({
     <section id="country" className="w-full bg-background px-4 py-24 md:px-16 md:py-32">
       <div className="mx-auto max-w-7xl">
         <div className="mb-14 flex flex-col items-center text-center">
-          <SectionEyebrow>Through the lens</SectionEyebrow>
+          <SectionEyebrow>{t.eyebrow}</SectionEyebrow>
           <motion.h2
             className="mt-4 max-w-md font-heading text-3xl leading-tight font-medium text-foreground md:text-[40px]/12"
             initial={{ y: 50, opacity: 0 }}
@@ -106,8 +109,8 @@ export function AboutGallery({
             viewport={{ once: true }}
             transition={SPRING_HEADING}
           >
-            The country we call
-            <span className="text-primary-emphasis italic"> the office.</span>
+            {t.titleLead}
+            <span className="text-primary-emphasis italic"> {t.titleAccent}</span>
           </motion.h2>
         </div>
 
@@ -125,8 +128,8 @@ export function AboutGallery({
             <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
               <GalleryCard
                 title={north.name}
-                count={`${regionTourCount('north')} tours`}
-                imageLabel="Gallery — terraces under moving mist, Sa Pa"
+                count={t.regionTours(regionTourCount('north'))}
+                imageLabel={t.imageLabels.north}
                 image={images['about-gallery-north'] ?? null}
                 region="north"
                 className="h-[420px] md:h-[544px]"
@@ -134,8 +137,8 @@ export function AboutGallery({
               <div className="grid gap-6 md:grid-rows-2">
                 <GalleryCard
                   title={central.name}
-                  count={`${regionTourCount('central')} tours`}
-                  imageLabel="Gallery — lantern night on the Hoài river"
+                  count={t.regionTours(regionTourCount('central'))}
+                  imageLabel={t.imageLabels.central}
                   image={images['about-gallery-central'] ?? null}
                   region="central"
                   className="h-[260px]"
@@ -144,17 +147,17 @@ export function AboutGallery({
                 <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
                   <GalleryCard
                     title={south.name}
-                    count={`${regionTourCount('south')} tours`}
-                    imageLabel="Gallery — floating market, Cần Thơ"
+                    count={t.regionTours(regionTourCount('south'))}
+                    imageLabel={t.imageLabels.south}
                     image={images['about-gallery-south'] ?? null}
                     region="south"
                     className="h-[260px]"
                     delay={0.2}
                   />
                   <GalleryCard
-                    title="All of Vietnam"
-                    count={`${totalTours} tours across three regions`}
-                    imageLabel="Gallery — the road between all three"
+                    title={t.allTitle}
+                    count={t.allTours(totalTours)}
+                    imageLabel={t.imageLabels.all}
                     image={images['about-gallery-all'] ?? null}
                     className="h-[260px]"
                     delay={0.3}

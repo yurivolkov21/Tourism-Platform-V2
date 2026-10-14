@@ -1,5 +1,6 @@
 'use client';
 
+import { aboutPage } from '@tourism/i18n';
 import { motion } from 'motion/react';
 import { LoadErrorState } from '@/components/feedback/load-error-state';
 import { SectionEyebrow } from '@/components/home/section-eyebrow';
@@ -23,6 +24,8 @@ import { SPRING, SPRING_HEADING } from '@/lib/motion';
 // từ mock (review T5). 4 số còn lại (guides/departures/km/scripts) CHƯA có
 // endpoint nguồn — vẫn là số biên tập cố định, cố ý giữ hardcode.
 
+const t = aboutPage.numbers;
+
 export function AboutNumbers({
   tours,
   destinations,
@@ -37,33 +40,14 @@ export function AboutNumbers({
   // Đây là `tours.length` phẳng, không qua toursInRegion() nào cả.
   const totalTours = tours.length;
 
+  // Nhãn và mô tả từng ô (`label`, `description`) trải ra từ `aboutPage.numbers.stats`.
   const STATS = [
-    {
-      value: totalTours,
-      suffix: '',
-      label: 'Tours running',
-      description: 'Across all three regions',
-    },
-    { value: 27, suffix: '', label: 'Local guides', description: 'Every one born on their route' },
-    {
-      value: destinations.length,
-      suffix: '',
-      label: 'Destinations',
-      description: 'From the far north to the islands',
-    },
-    {
-      value: 560,
-      suffix: '+',
-      label: 'Departures a year',
-      description: 'Rain or shine, small groups',
-    },
-    {
-      value: 45000,
-      suffix: '+',
-      label: 'Kilometres each season',
-      description: 'By road, rail and river',
-    },
-    { value: 0, suffix: '', label: 'Scripts', description: 'And none planned' },
+    { value: totalTours, suffix: '', ...t.stats.toursRunning },
+    { value: 27, suffix: '', ...t.stats.localGuides },
+    { value: destinations.length, suffix: '', ...t.stats.destinations },
+    { value: 560, suffix: '+', ...t.stats.departures },
+    { value: 45000, suffix: '+', ...t.stats.kilometres },
+    { value: 0, suffix: '', ...t.stats.scripts },
   ];
 
   return (
@@ -90,13 +74,13 @@ export function AboutNumbers({
         className="pointer-events-none absolute inset-0 flex items-end justify-center overflow-hidden select-none"
       >
         <span className="footer-watermark translate-y-[12%] font-heading text-[26vw] leading-none font-semibold tracking-tighter md:text-[18vw]">
-          NUMBERS
+          {t.watermark}
         </span>
       </div>
 
       <div className="relative z-10 mx-auto max-w-7xl">
         <div className="mb-16 flex flex-col items-center text-center">
-          <SectionEyebrow>Key metrics</SectionEyebrow>
+          <SectionEyebrow>{t.eyebrow}</SectionEyebrow>
           <motion.h2
             className="mt-4 max-w-xl font-heading text-3xl leading-tight font-medium md:text-[40px]/12"
             initial={{ y: 50, opacity: 0 }}
@@ -104,9 +88,9 @@ export function AboutNumbers({
             viewport={{ once: true }}
             transition={SPRING_HEADING}
           >
-            Numbers we’re proud of,
+            {t.titleLead}
             <br />
-            <span className="text-primary-emphasis italic">counted the slow way.</span>
+            <span className="text-primary-emphasis italic">{t.titleAccent}</span>
           </motion.h2>
         </div>
 
