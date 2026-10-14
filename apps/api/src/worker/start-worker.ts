@@ -5,6 +5,7 @@ import { PgBoss } from 'pg-boss';
 import { pgBossPoolConfig } from '../config/db-pool.js';
 import { env } from '../config/env.js';
 import { MediaGarbageService } from '../modules/media/media-garbage.service.js';
+import { describeCatchUp, sendDailyCatchUp } from './daily-catch-up.js';
 import {
   DEPARTURE_REFUND_QUEUE,
   type DepartureRefundJob,
@@ -169,6 +170,22 @@ export async function startWorker(logger: Logger): Promise<{ stop: () => Promise
     });
     await boss.schedule(MEDIA_GC_QUEUE, MEDIA_GC_CRON);
   }
+
+  // Chạy bù job dọn dẹp hằng ngày (G41, ADR-0024 AMEND 5): cron pg-boss không bù mốc đã
+  // lỡ, mà API gói free ngủ sau 15 phút — mỗi lần khởi động gửi một job bù khoá theo ngày
+  // UTC, nên chỉ lần thức đầu tiên trong ngày thật sự chạy. Gửi SAU `createQueue` (queue
+  // chưa có là lỗi), và `media-gc` chỉ khi có cờ, cùng luật với queue của nó ở trên. Không
+  // bao giờ ném: một lượt bù hỏng không được làm sập lần khởi động của API.
+  const catchUp = await sendDailyCatchUp(
+    (queue, data, options) => boss.send(queue, data, options),
+    [
+      OUTBOX_PURGE_QUEUE,
+      ENQUIRY_RETENTION_QUEUE,
+      ...(env.MEDIA_GC_ENABLED ? [MEDIA_GC_QUEUE] : []),
+    ],
+  );
+  if (catchUp.failed.length > 0) logger.error(describeCatchUp(catchUp));
+  else logger.log(describeCatchUp(catchUp));
 
   logger.log(
     `worker loops started (${env.NODE_ENV}) — outbox-drain ${OUTBOX_DRAIN_CRON} · outbox-purge ${OUTBOX_PURGE_CRON} · booking-sweep ${BOOKING_SWEEP_CRON} · enquiry-retention ${ENQUIRY_RETENTION_CRON} · departure-refund theo yêu cầu (retry ${DEPARTURE_REFUND_RETRY_LIMIT})` +
