@@ -8,6 +8,60 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-10-14 — Merge W-09 chữ cứng của web vào `@tourism/i18n`, "1 tour", G15 một bản tải ảnh cho web và admin (`4b5f4ef`..`8102039`)
+
+Làm tiếp open-items phía khách theo yêu cầu của user 13/10 (đóng càng nhiều càng tốt trước freeze
+15/10). Nhánh `fix/web-open-items-6`, [PR #17](https://github.com/yurivolkov21/Tourism-Platform-V2/pull/17),
+thi công trên session cloud. Không migration, không env, không đổi contract, không thêm hay nâng
+dependency ngoài. Thư viện dùng chung bị sửa: `@tourism/i18n` (`messages.ts`, `resilience.ts`,
+`index.ts`, ba module trang mới), `@tourism/ui` (module `cloudinary-upload` mới, `package.json` thêm
+phụ thuộc workspace `@tourism/contract`), cùng `pnpm-lock.yaml` (3 dòng link workspace).
+
+- W-09 (`4b5f4ef`..`21a038d`): khoảng 300 chữ khách đọc hoặc trình đọc màn hình đọc (tiêu đề, đoạn
+  văn, nút, nhãn ảnh, `aria-label`, placeholder, title và description) rời component web về
+  `@tourism/i18n` theo luật 7: trang chủ, About, Contact, navbar, footer, top bar, menu tài khoản, nút
+  về đầu trang, trang 404, blog, tours. Ba module `home-page.ts`, `about-page.ts`, `contact-page.ts`
+  export thẳng từ barrel và CỐ Ý không gắn vào `messages`: component của ba trang là client
+  component, gắn vào `messages` thì chữ của một trang chui vào chunk client dùng chung của mọi trang
+  (cùng lý do đã tách `resilience.ts`). Chữ trùng nghĩa dùng lại khoá sẵn có; khoá mồ côi cùng nghĩa
+  (`pageMeta.about/tours/destinations/contact`, chín khoá của `blog`) căn theo chữ đang chạy rồi nối
+  vào trang. Cố ý để nguyên: logo chữ "Nex"/"ora" và watermark ở footer, ba tên nguồn ghi công bản
+  đồ (ADR-0018), dữ liệu biên tập trong `apps/web/src/mocks/` (ADR-0016), chuỗi `sizes`, lỗi dành
+  cho developer. Đóng mục "`user-menu` label literal", mục cuối còn mở của E5 trong
+  [sổ nợ kỹ thuật](analysis/2026-08-06-backlog-no-ky-thuat.md).
+- "1 tour" `b70b1a7`: thẻ điểm đến ở trang chủ và About in "1 tours" khi điểm đến chỉ có một tour; ba
+  hàm đếm chia số ít như mọi bộ đếm tour khác trong `messages`. Lỗi có từ bản chữ cứng, W-09 cố ý
+  giữ nguyên khi dời chữ.
+- G15: ADR `7275271` ([ADR-0021](adr/0021-media-write-surface.md) AMEND 3) đi trước code `8102039`.
+  Phần chung của web và admin (đuôi file, form đã ký, khung XHR có hạn giờ 5 phút và huỷ qua
+  `AbortSignal`) vào `libs/shared/ui/src/lib/cloudinary-upload.ts`; khung XHR nhận hàm `parse` vì web
+  chỉ cần `public_id` còn admin cần thêm số đo ảnh. `apps/web/src/lib/media-upload.ts` và
+  `apps/admin/src/lib/photo-upload.ts` thành lớp mỏng giữ nguyên tên hàm. Web nay có hạn giờ: mạng
+  chết giữa lúc tải avatar hay ảnh review thì báo lỗi thay vì ô tải quay mãi. Chọn `ui` vì ADR-0042
+  §3 cấm API DOM trong `core`. Mobile giữ bản riêng (React Native gửi `{uri, name, type}`), nên danh
+  sách tham số ký còn hai nơi thay vì ba. Phần ký phía API của G15 đã gom từ P4e-4, nên G15 đóng
+  hẳn: dòng chuyển sang `open-items-closed.md`.
+- Mục lục ADR: 0021 ghi 3 AMEND; 0024 sửa thành 4 AMEND (AMEND 4 của G23 vào sau khi mục lục được
+  viết lại ở đợt rà docs).
+
+**Review.** Không có lượt review độc lập. User bảo merge 14/10 07:09 UTC. Rebase lên `6da00d2` (đợt
+rà docs, trên G23 `572eb6f`) không xung đột: hai bên không chung file code nào.
+
+Tests after (`gate:int` trên `8102039`, 14/10 xong 07:19 UTC, session cloud theo các bước của CI):
+unit 7432 — web 2273, admin 2215, api 1139, mobile 771, contract 709, mobile-ui 136, i18n 58,
+ui 57, core 48, tokens 26 — và int 838. Trừ api và mobile, các gói trúng cache turbo vì đầu vào y
+hệt lượt chạy thật trước rebase (06:23 UTC); api và mobile chạy lại. W-09: chữ trong HTML server
+trả về của 40 route (bản build production, gồm 9 trang cần đăng nhập và các trang 404) khớp từng ký
+tự trước và sau; JS nén gzip tăng 0,67 KB ở `/`, 1,17 KB ở `/about`, 0,64 KB ở `/contact`, 0,03 tới
+0,11 KB ở route khác. G15: module chung 10 test với XHR giả; test hạn giờ của web đỏ trước khi sửa
+và xanh sau; admin bớt 2 test vì test phần chung chuyển về `ui`.
+
+**CÒN TREO:**
+
+- [ ] Thử tay production một lần: đổi avatar ở web và tải một ảnh tour ở admin. Môi trường cloud
+  không có key Cloudinary (luật 15) nên G15 mới chỉ qua test giả lập; lỗi thì revert riêng `8102039`.
+- Dọn sau merge: nhánh `fix/web-open-items-6` trên origin nếu GitHub không tự xoá.
+
 ## 2026-10-14 — Merge rà soát và sắp xếp lại `docs/`: thư mục mới, tách CHANGELOG và open-items, sửa thông tin lỗi thời (`90b1236`..`e0e40bb`)
 
 User yêu cầu 14/10: kiểm lại thông tin trong `docs/`, sắp file vào thư mục cho hợp lý, chia nhỏ file

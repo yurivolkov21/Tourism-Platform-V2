@@ -28,10 +28,10 @@ thay, cột đã xoá, và số AMEND để biết phải đọc tới cuối fi
 | [0018](0018-web-map-library.md) | Bản đồ `/contact`: maplibre-gl + OpenFreeMap | 2 AMEND |
 | [0019](0019-color-token-roles.md) | Tách vai token màu: bề mặt · chữ · ranh giới | 3 AMEND 13/10 (mực cảnh báo, mực đỏ đạt tương phản ở cả hai theme) |
 | [0020](0020-real-images-sourcing.md) | Ảnh thật: nguồn, ghi công, đường vào catalog | mục 1 đã sửa — lô ảnh đầu bị loại toàn bộ · 1 AMEND |
-| [0021](0021-media-write-surface.md) | Khách tải ảnh lên: ký trực tiếp Cloudinary | 2 AMEND |
+| [0021](0021-media-write-surface.md) | Khách tải ảnh lên: ký trực tiếp Cloudinary | 3 AMEND |
 | [0022](0022-tour-detail-tabs.md) | Trang chi tiết tour chuyển sang 5 tab | |
 | [0023](0023-tour-merchandising-fields.md) | Năm cột nội dung bán hàng cho tour | cột `freeCancellationDays` đã xoá theo [0041](0041-single-cancellation-deadline.md) |
-| [0024](0024-deploy-targets.md) | Nơi deploy v1: Vercel · Render · Supabase · Resend | 3 AMEND |
+| [0024](0024-deploy-targets.md) | Nơi deploy v1: Vercel · Render · Supabase · Resend | 4 AMEND |
 | [0025](0025-transactional-email-react-email.md) | Email giao dịch viết bằng react-email, không dùng dashboard | |
 | [0026](0026-p4-admin-app.md) | Admin là app riêng, dùng chung phiên qua subdomain | 5 AMEND |
 | [0027](0027-admin-surface-palette.md) | Bề mặt riêng cho admin: vỏ tối, ruột trắng lạnh | 1 AMEND |
