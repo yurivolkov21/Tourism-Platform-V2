@@ -8,6 +8,61 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-10-14 — Merge G18 vùng xoá tour ở bước Review xuống sau công tắc On sale, G41 chạy bù ba job dọn dẹp hằng ngày khi API thức (`e5666d6`..`8c5392b`)
+
+Làm tiếp việc tồn đọng của admin theo yêu cầu của user 13/10 (đóng càng nhiều open-items càng tốt
+trước freeze 15/10). Nhánh `fix/admin-g18-review-order`,
+[PR #18](https://github.com/yurivolkov21/Tourism-Platform-V2/pull/18), thi công trên session cloud.
+Không migration, không env, không dependency, không đổi contract; thư viện dùng chung không đổi.
+
+- G18 `e5666d6`: ở bước Review của khu sửa tour, vùng "Delete this tour" đứng trước cột phải trong
+  DOM, nên phím Tab tới nút Delete tour trước công tắc On sale, và dưới `xl` vùng xoá chen giữa danh
+  sách kiểm tra và card Visibility. `StepColumns` (`editor-form-frame.tsx`) nhận prop `after` dựng
+  sau `<aside>`; từ `xl` khung ấy nằm ở cột trái hàng hai, cột phải phủ hai hàng để sticky vẫn dính
+  khi cuộn, gap hàng của lưới tắt và khung tự mang `mt-6` để Staff (vùng xoá render rỗng) không có
+  dải trống 24 px. `TourReviewStep` đưa `DeleteTourZone` vào `after`. Từ 1280 px giao diện không
+  đổi; màn hẹp đưa vùng xoá xuống cuối trang.
+  [Spec F19](specs/2026-09-28-p4e-3c-tour-workspace-steps-design.md) §2d.6 thêm dòng "Sửa 14/10
+  (G18)". Thẻ chọn bố cục (khuyến nghị "Dời xuống cuối") chưa có câu trả lời; user bảo merge PR có
+  thay đổi này.
+- G41: [ADR-0024](adr/0024-deploy-targets.md) AMEND 5 (`daba826`) đi trước code `8c5392b`. API gói
+  free ngủ sau 15 phút không có request, còn cron của pg-boss không bù mốc đã lỡ (chỉ gửi job khi
+  mốc gần nhất cách hiện tại dưới 60 giây), nên ba job dọn dẹp hằng ngày chỉ chạy nếu đúng phút ấy
+  máy thức. Bảng `pgboss.job` production 07–14/10 (truy vấn chỉ đọc): `outbox-purge` chạy 6/8 ngày,
+  `enquiry-retention` 5/8, `media-gc` 3/8, lượt lỡ nào cũng trùng quãng máy ngủ. Nay mỗi lần worker
+  khởi động gửi vào mỗi queue dọn dẹp một job bù (`apps/api/src/worker/daily-catch-up.ts`) với
+  `singletonKey: 'catch-up'`, `singletonSeconds: 86400` và `startAfter: 60`: chỉ mục duy nhất
+  `job_i4` của pg-boss cho mỗi queue nhiều nhất một job bù mỗi ngày UTC, kể cả khi job đầu đã chạy
+  xong, nên chỉ lần thức đầu tiên trong ngày chạy bù. Gửi hỏng chỉ ghi log, không làm sập lần khởi
+  động của API; `media-gc` vẫn chỉ khi có `MEDIA_GC_ENABLED`.
+- Mục lục ADR: 0024 ghi 5 AMEND (sửa trong chính commit ADR).
+- open-items: dòng G18 và G41 chuyển sang `open-items-closed.md`; câu về bộ dọn ảnh ở mục "Việc tay
+  trên hạ tầng" ghi G41 đã đóng.
+
+**Review.** Không có lượt review độc lập. User bảo merge 14/10 07:52 UTC. Nhánh rebase lên `ef91e70`
+(sau PR #19) không xung đột: hai bên chỉ chung `docs/adr/README.md`, mỗi bên sửa một dòng khác nhau.
+
+Tests after (`gate:int` trên `8c5392b`, 14/10 xong 08:02 UTC, session cloud theo các bước của CI):
+unit 7463 — web 2273, admin 2221, api 1150, mobile 779, contract 709, mobile-ui 142, i18n 58, ui 57,
+core 48, tokens 26 — và int 842; CI của nhánh trên `8c5392b` xanh 08:11 UTC. So với `ef91e70`: admin
+thêm 6 test, api thêm 7 unit và 4 int. Lượt này turbo chạy lại test của api, mobile và mobile-ui
+(đầu vào đổi sau khi rebase lên PR #19); các package khác phát lại kết quả đã lưu vì đầu vào không
+đổi. G18: test của `StepColumns` khoá thứ tự DOM (khung `after` đứng sau `<aside>`), lớp lưới từ
+`xl` và khung ẩn khi rỗng; test của `TourReviewStep` khoá Tab tới công tắc On sale trước nút Delete
+và vùng xoá là khối cuối. G41: unit cho `sendDailyCatchUp` và `describeCatchUp`; int với pg-boss
+thật khoá rằng lần khởi động thứ hai trong ngày không gửi thêm, job bù đã `completed` vẫn chặn, job
+cron đang chờ không chặn; bỏ `singletonSeconds` làm 2 int test đỏ, bỏ `singletonKey` làm 3 đỏ. Lượt
+gate trên `68f9fb3` (trước rebase) có một test admin (`photo-library-dialog.spec.tsx`) đỏ một lần
+dưới tải đầy rồi xanh khi chạy lại; chạy riêng 16/16, CI của PR trên commit đó xanh.
+
+**CÒN TREO:**
+
+- [ ] Ngay sau deploy API: bảng `pgboss.job` có ba job `singleton_key = 'catch-up'` (`outbox-purge`,
+  `enquiry-retention`, `media-gc`) của hôm nay ở trạng thái `completed` (truy vấn chỉ đọc).
+- [ ] Ngày 15/10: lần thức đầu tiên của ngày mới gửi ba job bù mới, lần thức sau trong ngày không gửi
+  thêm (đọc `pgboss.job` và log `chạy bù hằng ngày` của Render).
+- Dọn sau merge: nhánh `fix/admin-g18-review-order` trên origin nếu GitHub không tự xoá.
+
 ## 2026-10-14 — Merge G47 chữ trạng thái trên app mobile đạt tương phản, G2 một helper `sessionCookie` cho int spec API (`2482f36`..`f76989d`)
 
 Làm tiếp open-items theo yêu cầu của user 13/10 (đóng càng nhiều càng tốt trước freeze 15/10).
