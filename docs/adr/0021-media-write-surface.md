@@ -186,3 +186,38 @@ AMEND 1 sai ba chỗ, đo được:
 - **Nợ ghi:** chưa lưu `version` Cloudinary về `media_assets` nên URL đọc
   chưa bất biến theo bản upload — `overwrite:false` đã chặn tráo bằng chữ ký,
   version là lớp hai khi có nhu cầu.
+
+## AMEND 3 — 14/10/2026 (G15): một bản tải ảnh phía trình duyệt cho cả web và admin, đặt ở `@tourism/ui`
+
+Admin chép phần client của ADR này khi làm tab Photos (ADR-0048 §4) và ảnh bìa
+bài viết (P4e-4), thành `apps/admin/src/lib/photo-upload.ts`. `imageExtensionOf`
+và `buildUploadFormData` ở đó giống từng chữ bản web
+(`apps/web/src/lib/media-upload.ts`). Riêng khung XHR thì bản admin đã tốt hơn sau
+vòng review F18: hạn giờ 5 phút và huỷ qua `AbortSignal`. Bản web không có hạn giờ,
+nên mạng chết giữa lúc tải là ô tải avatar hay ảnh review quay mãi. Hai bản chép
+tay là hai bản sẽ trôi lệch: thêm một tham số ký mà sửa sót một bản là Cloudinary
+401 ở đúng app đó (G15).
+
+Chốt:
+
+- **Phần chung vào `libs/shared/ui/src/lib/cloudinary-upload.ts`**, import là
+  `@tourism/ui/lib/cloudinary-upload`: `imageExtensionOf`, `buildUploadFormData`,
+  `UPLOAD_TIMEOUT_MS` và khung XHR `uploadToCloudinary(file, params, parse,
+  options)`. Khung nhận hàm `parse` vì hai app đọc phản hồi khác nhau: web chỉ cần
+  `public_id`, admin cần thêm số đo ảnh để API ghi dòng ảnh (ADR-0048 §5).
+- **Phần riêng ở lại app.** Web giữ hàm đọc `public_id`; admin giữ
+  `parseUploadResponse` và kiểu `UploadedPhoto`. Hai file của app thành lớp mỏng
+  giữ nguyên tên hàm, nên component và các spec đang mock `@/lib/media-upload`,
+  `@/lib/photo-upload` không phải đổi.
+- **Web nhận hạn giờ và huỷ của admin.** Hết giờ là reject như mọi lỗi tải khác;
+  component web vốn gộp mọi reject về một câu báo lỗi, nên chữ khách thấy không đổi.
+- **`@tourism/ui` thêm phụ thuộc `@tourism/contract`**, chỉ để lấy kiểu
+  `SignedUploadParams` và hằng `ALLOWED_IMAGE_EXTENSIONS`. Đồ thị vẫn một chiều:
+  contract không import ui. Chọn `ui` mà không chọn `core` vì XHR là API của
+  trình duyệt, thứ ADR-0042 §3 cấm trong `core`; còn `ui` vốn là thư viện dùng
+  chung của đúng hai app này (ADR-0011 mục 2).
+- **Mobile giữ bản riêng** (`apps/mobile/src/lib/media-upload.ts`): React Native
+  gửi file bằng `{uri, name, type}` qua XHR của RN chứ không bằng `Blob`, và `ui`
+  là gói Base UI cộng DOM, không dùng được trên RN (ADR-0040). Hệ quả: danh sách
+  tham số ký nay còn hai nơi thay vì ba, là `buildUploadFormData` của `ui` và
+  `buildUploadFields` của mobile; đổi tham số ký phải sửa cả hai.
