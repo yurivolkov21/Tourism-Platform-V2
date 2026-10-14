@@ -1,6 +1,8 @@
 // Kho copy user-facing tập trung (chỉ tiếng Anh, luật #7). Mọi bề mặt đọc từ
 // đây — không rải chuỗi inline.
+import { TOUR_PHOTOS_MAX } from '@tourism/contract';
 import { cancellationWindowSentence, DEADLINE_CUTOFF_COPY } from './legal/cancellation.js';
+import { IMAGE_FORMATS_COPY, TOUR_PHOTO_MAX_SIZE_COPY } from './photo-upload-copy.js';
 import { resilience } from './resilience.js';
 
 // MỘT câu cho luật "refund phải > 0" dù bị chặn ở client (validation.zero) hay
@@ -106,6 +108,14 @@ const POLICY_COUNT_COPY = (n: number) => (n === 1 ? '1 policy' : `${n} policies`
 // (`bookingDetail.closed.weCancelled`) lẫn dải hết hiệu lực của voucher
 // (`voucher.departureCancelledNotice`) — hai bản chép tay là hai bản sẽ trôi lệch.
 const WE_CANCELLED_COPY = 'We had to cancel this departure';
+
+// MỘT câu cho file ảnh admin bị loại vì sai định dạng hay quá cỡ, ở CẢ tab Photos của tour lẫn
+// ảnh bìa bài viết (G14). Hai bản từng chép tay "JPG, PNG…" và "10 MB"; nay dựng từ whitelist ký
+// và trần cỡ của contract, nên hằng đổi là chữ đổi theo.
+const PHOTO_SKIPPED_COPY = {
+  type: (name: string) => `${name} isn’t a ${IMAGE_FORMATS_COPY}.`,
+  size: (name: string) => `${name} is larger than ${TOUR_PHOTO_MAX_SIZE_COPY}.`,
+} as const;
 
 // Ngày chót kèm giờ chốt — "2 Nov, 11:59 pm Vietnam time" — MỘT bản cho câu hạn huỷ
 // (`cancellationDeadline.full`) lẫn mốc nhật ký voucher (`voucher.journal.deadlineAt`); bản chép
@@ -5537,7 +5547,7 @@ export const messages = {
           /** Đo: web in `hero` trước (`tourGallery`); card lấy `hero` (`TourCardSchema.cover`). */
           intro:
             'The first photo is the cover. It shows on tour cards and opens the gallery on the tour page.',
-          formats: 'JPG, PNG, WebP, AVIF or GIF, up to 10 MB each.',
+          formats: `${IMAGE_FORMATS_COPY}, up to ${TOUR_PHOTO_MAX_SIZE_COPY} each.`,
           empty: 'No photos yet. Upload your own or add some from the library.',
           photoName: (n: number) => `photo ${n}`,
           cover: 'Cover',
@@ -5568,11 +5578,10 @@ export const messages = {
           waiting: (n: number) =>
             n === 1 ? 'Waiting for 1 upload to finish.' : `Waiting for ${n} uploads to finish.`,
           skipped: {
-            type: (name: string) => `${name} isn’t a JPG, PNG, WebP, AVIF or GIF.`,
-            size: (name: string) => `${name} is larger than 10 MB.`,
+            ...PHOTO_SKIPPED_COPY,
             /** Sức chứa trừ cả file đang tải hay tải hỏng chưa gỡ (vòng review F18). */
             full: (name: string) =>
-              `${name} didn’t fit — a tour can have up to 30 photos, and uploads still on the list count too.`,
+              `${name} didn’t fit — a tour can have up to ${TOUR_PHOTOS_MAX} photos, and uploads still on the list count too.`,
           },
         },
         delete: {
@@ -5712,7 +5721,7 @@ export const messages = {
           upload: 'Upload',
           library: 'Choose from library',
           remove: 'Remove',
-          formats: 'JPG, PNG, WebP, AVIF or GIF, up to 10 MB.',
+          formats: `${IMAGE_FORMATS_COPY}, up to ${TOUR_PHOTO_MAX_SIZE_COPY}.`,
           alt: 'Alt text',
           /** Quyết định 3 của plan P4e-4: trống thì web vẽ `alt=""`, tiêu đề in ngay cạnh ảnh. */
           altHint:
@@ -5738,10 +5747,7 @@ export const messages = {
           },
           uploading: (percent: number) => `Uploading ${percent}%`,
           uploadFailed: 'The photo didn’t upload. Try again.',
-          skipped: {
-            type: (name: string) => `${name} isn’t a JPG, PNG, WebP, AVIF or GIF.`,
-            size: (name: string) => `${name} is larger than 10 MB.`,
-          },
+          skipped: PHOTO_SKIPPED_COPY,
         },
         tags: {
           title: 'Tags',
