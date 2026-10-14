@@ -75,7 +75,7 @@ Mỗi ADR tự chứa đầy đủ phần sửa bổ sung (AMEND) của nó; b�
 | [0032](adr/0032-review-author-edit.md) | Tác giả sửa lại đánh giá bị bác, có trần vòng lặp | |
 | [0033](adr/0033-financial-model.md) | Báo cáo có kết quả kinh doanh, không chỉ dòng tiền | định nghĩa doanh thu sửa ở [0041](adr/0041-single-cancellation-deadline.md) §9 · 3 AMEND (tháng đang chạy chỉ ghi nhận chuyến đã kết thúc) |
 | [0034](adr/0034-excel-report-export.md) | Báo cáo tháng xuất Excel; từ AMEND 3 (10/10) danh sách cũng xuất Excel thay CSV | 3 AMEND |
-| [0035](adr/0035-media-lifecycle.md) | Ảnh có đường chết, đi qua hàng đợi có độ trễ | |
+| [0035](adr/0035-media-lifecycle.md) | Ảnh có đường chết, đi qua hàng đợi có độ trễ | 3 AMEND (từ AMEND 3, 14/10: bộ dọn chỉ xoá ảnh trong vùng tải lên) |
 | [0036](adr/0036-dashboard-daily-series.md) | Dashboard nối số thật bằng một chuỗi theo ngày | |
 | [0037](adr/0037-default-write-throttle.md) | Mọi route ghi sinh ra đã có trần | |
 | [0038](adr/0038-web-shell-security-headers.md) | Security header + CSP cho web và admin | |

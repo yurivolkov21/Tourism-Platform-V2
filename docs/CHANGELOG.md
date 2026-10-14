@@ -8,6 +8,52 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-10-14 — Merge G16 bộ dọn media chỉ xoá ảnh trong vùng tải lên, G22 data:reset dọn ảnh review, G14 dọn code ảnh tour (`7da26ee`..`3a6c450`)
+
+Nhánh thứ ba của việc tồn đọng vùng admin, sau PR #11. Nhánh `fix/admin-open-items-3`,
+[PR #13](https://github.com/yurivolkov21/Tourism-Platform-V2/pull/13), thi công trên session cloud.
+Không migration, không env, không dependency mới, không đổi contract. Thư viện dùng chung bị sửa:
+`@tourism/i18n` (chữ ảnh của admin dựng từ hằng contract).
+
+- G16 ADR `7da26ee`, API `3deca5e`: [ADR-0035](adr/0035-media-lifecycle.md) AMEND 3. Bộ dọn media
+  chỉ destroy ảnh trong bốn thư mục mà server ký upload vào (`avatars/<id user>`,
+  `reviews/<booking code>`, `tours/<id tour>`, `posts/<id bài>`). Vị từ thuần
+  `isUploadZonePublicId` ở `apps/api/src/lib/upload-signing.ts` soi cả dạng chủ sở hữu, vì thư mục
+  cũ `tourism/tours/hero/` nằm ngay trong `tours`. Ảnh ngoài vùng bị từ chối trước mọi bước khác,
+  kể cả khi còn được dùng: row ở lại với `attempts` bằng trần và `last_error` ghi lý do, dòng log
+  mỗi lượt có thêm số ảnh ngoài vùng. Trước đó luật "không dọn ảnh catalog hay thư viện" chỉ nằm ở
+  từng nơi gọi.
+- G22 `059ca9f`: `data:reset` xoá dòng `media_assets` của review và xếp publicId vào
+  `media_garbage` với đồng hồ mới trong cùng transaction, kèm bất biến đếm riêng. Đo trên DB nháp
+  (seed và 4 ảnh review): main dừng ở `ROLLBACK: 4 ảnh mồ côi`, bản sửa `COMMIT`; ba đột biến cấy
+  vào script đều `ROLLBACK` với lý do rõ.
+- G14 `d551634`, `a1bae80`, `3a6c450`: phần còn lại của đợt dọn F18, người dùng không thấy gì
+  khác. Chữ "JPG, PNG, WebP, AVIF or GIF", "10 MB" và trần 30 ảnh dựng từ
+  `ALLOWED_IMAGE_EXTENSIONS`, `TOUR_PHOTO_MAX_BYTES`, `TOUR_PHOTOS_MAX`
+  (`libs/shared/i18n/src/lib/photo-upload-copy.ts`), chữ in ra giữ nguyên từng ký tự. `ListEditor`
+  nhận đúng một trong hai: nút thêm (`newItem` cùng `addLabel`) hoặc `emptyFocus`. Fixture tải ảnh
+  của bốn spec gom về `apps/admin/src/test/photo-upload.ts`.
+
+**Review.** Không có lượt review độc lập. User bảo merge (14/10 02:20 UTC). Nhánh dựng thẳng trên
+`27bc40c` và main không đổi từ đó, nên không cần rebase. Preview web của Vercel trên `3a6c450` đỏ vì
+G23 (API production hết chỗ kết nối DB đúng lúc build), không do nhánh; CI `gate` xanh cả hai lượt.
+
+Tests after (`gate:int` trên `3a6c450`, 14/10 xong 01:58 UTC, session cloud theo các bước của CI):
+unit 7412 — web 2269, admin 2217, api 1133, mobile 771, contract 709, mobile-ui 136, i18n 56,
+core 48, ui 47, tokens 26 — và int 836. So với main `27bc40c`: api thêm 6 ca, i18n thêm 5, admin
+thêm 1, int thêm 2 (bộ dọn từ chối ảnh ngoài vùng, kể cả ảnh catalog đang được dùng).
+
+**Đóng CÒN TREO thử tay của hai entry trước** (PR #8 và PR #11): user thử trên production 14/10
+02:14 UTC (`/users`, "View bookings" ra đúng booking của một tài khoản kèm chip "Account",
+`/subscribers`), không gặp lỗi. Ảnh chụp không có lượt thu hẹp cửa sổ, "Export N rows" và lọc
+ngày của `/subscribers`; ghi đóng theo lời user.
+
+**CÒN TREO:**
+
+- [ ] Sau lượt `media-gc` kế tiếp (04:00 UTC hằng ngày), đọc dòng `Dọn media: …` trong log Render;
+  số "ngoài vùng tải lên" khác 0 thì xem `last_error` của các row ấy trong `media_garbage`.
+- Dọn sau merge: nhánh `fix/admin-open-items-3` trên origin nếu GitHub không tự xoá.
+
 ## 2026-10-14 — Merge G45 lọc /bookings theo tài khoản, G50 tới G53 focus sau lệnh ghi, nút Export và login không WebGL (`a935fc4`..`a39d59d`)
 
 Nhánh thứ hai của việc tồn đọng vùng admin (user giao 13/10 02:17 UTC; G45 user chọn "Làm luôn",
