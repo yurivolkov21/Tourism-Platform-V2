@@ -75,7 +75,8 @@ mới chưa ai đặt.
 luôn đứng cuối ở cả hai chiều (chưa ai chấm không có nghĩa là bị chấm thấp nhất); hoà điểm thì
 tour nhiều đánh giá hơn đứng trước, rồi tới `id`. Web thêm lựa chọn "Rating: high to low" và sắp ở
 trình duyệt theo cùng luật, vì web đã giữ cả tập (sự thật 3). Phía API mở sẵn cho app mobile, nơi
-sort chạy ở server.
+sort chạy ở server. Vế `id` chỉ để phân trang của API ổn định; web hoà cả điểm lẫn số đánh giá thì
+giữ thứ tự mới nhất trước, vì `Array.sort` ổn định trên danh sách API đã trả theo `createdAt` giảm dần.
 
 ### 5. Bộ lọc giá, thời lượng, độ khó ở lại web
 
