@@ -69,3 +69,12 @@ export const WEBHOOK_THROTTLE = { limit: 600, ttl: 60_000 } as const;
  * Better Auth, nay đã bật tường minh + biết proxy.
  */
 export const AUTH_THROTTLE = { limit: 60, ttl: 60_000 } as const;
+
+/**
+ * Trần của `POST /api/chat` (P6, ADR-0050 §4 lớp 1): 20 lượt mỗi GIỜ theo IP,
+ * kể cả lượt duyệt. Khác trần ghi công khai 5/phút vì một khách thật hỏi liền
+ * vài câu trong một phút là bình thường; cái cần chặn là đốt tiền model đều đặn
+ * cả giờ. Lớp đứng một mình được: dù trần ngày hay trần hội thoại hỏng, một IP
+ * vẫn chỉ tiêu được khoảng 20 cent mỗi giờ.
+ */
+export const CHAT_THROTTLE = { limit: 20, ttl: 3_600_000 } as const;

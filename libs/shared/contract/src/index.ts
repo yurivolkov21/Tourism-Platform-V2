@@ -14,6 +14,7 @@ export * from './schemas/admin-users.js';
 export * from './schemas/booking-phase.js';
 export * from './schemas/bookings.js';
 export * from './schemas/catalog.js';
+export * from './schemas/chat.js';
 export * from './schemas/common.js';
 export * from './schemas/departure-phase.js';
 export * from './schemas/enquiries.js';

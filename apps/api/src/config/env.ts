@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { DEFAULT_CHAT_MODEL, isPricedModel } from '../modules/chat/chat-pricing.js';
 
 /**
  * Dev-only Better Auth secret. `superRefine` dưới đây chặn giá trị này ở
@@ -189,8 +190,41 @@ const EnvSchema = z
     // xoá-ngay-lập-tức, tức bỏ trọn lưới an toàn mà ADR-0035 §1 dựng ra —
     // muốn thế thì sửa code chứ không gõ một con số vào env.
     MEDIA_GC_GRACE_DAYS: z.coerce.number().int().min(1).max(90).default(7),
+    // ── Trợ lý AI (P6, ADR-0050 §4, spec §2g) ──
+    // Cờ TẮT mặc định, cùng khuôn MEDIA_GC_ENABLED: tắt thì `/api/chat` trả 503
+    // và nút nổi của web chỉ còn lựa chọn enquiry. Mỗi lượt chat tốn tiền thật
+    // của chủ dự án (không doanh thu), nên bật là một quyết định có chủ ý.
+    CHAT_ENABLED: z
+      .enum(['true', 'false'])
+      .default('false')
+      .transform((value) => value === 'true'),
+    // Bí mật — chỉ trên Render và `.env.production`. Thiếu khi cờ bật là lỗi
+    // khởi động (superRefine bên dưới), không để tới lượt chat đầu mới lộ.
+    ANTHROPIC_API_KEY: z.string().min(1).optional(),
+    // Phải có dòng trong bảng giá (`chat-pricing.ts`): trần ngày tính tiền từ
+    // token bằng bảng ấy, model không có giá là trần vô nghĩa.
+    CHAT_MODEL: z.string().min(1).default(DEFAULT_CHAT_MODEL),
+    // Trần chi phí toàn hệ thống mỗi ngày UTC. Sàn 0,1 chặn "0" (muốn tắt thì
+    // dùng CHAT_ENABLED); trần 50 chặn lỗi gõ thêm một số 0.
+    CHAT_DAILY_BUDGET_USD: z.coerce.number().min(0.1).max(50).default(1),
   })
   .superRefine((cfg, ctx) => {
+    // Trợ lý AI (P6): cả hai luật áp MỌI môi trường — bật cờ ở máy dev mà thiếu
+    // khoá cũng là cấu hình hỏng, và model lạ thì không có giá để tính trần.
+    if (cfg.CHAT_ENABLED && !cfg.ANTHROPIC_API_KEY) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['ANTHROPIC_API_KEY'],
+        message: 'ANTHROPIC_API_KEY must be set when CHAT_ENABLED=true',
+      });
+    }
+    if (!isPricedModel(cfg.CHAT_MODEL)) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['CHAT_MODEL'],
+        message: `CHAT_MODEL ${cfg.CHAT_MODEL} has no price in chat-pricing.ts (the daily budget needs one)`,
+      });
+    }
     // Lưới thứ hai cho bộ dọn ảnh (ADR-0035 §6): dev và prod dùng CHUNG một
     // Cloudinary cloud, và `.env.production` (có secret) nằm ngay trên máy
     // dev theo quy ước CLAUDE.md — một lần `--env-file .env.production` để

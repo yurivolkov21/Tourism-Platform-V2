@@ -570,3 +570,37 @@ describe('superRefine production — nhóm env deploy (ADR-0024 AMEND 2)', () =>
     expect(parseEnv(base).COOKIE_DOMAIN).toBe('.example.com');
   });
 });
+
+describe('trợ lý AI (P6, spec §2g)', () => {
+  it('mặc định TẮT, model Haiku 4.5, trần 1 USD mỗi ngày', () => {
+    const defaults = parseEnv({});
+    expect(defaults.CHAT_ENABLED).toBe(false);
+    expect(defaults.ANTHROPIC_API_KEY).toBeUndefined();
+    expect(defaults.CHAT_MODEL).toBe('claude-haiku-4-5');
+    expect(defaults.CHAT_DAILY_BUDGET_USD).toBe(1);
+  });
+
+  it('bật mà thiếu khoá Anthropic là lỗi khởi động', () => {
+    expect(() => parseEnv({ CHAT_ENABLED: 'true' })).toThrow(/ANTHROPIC_API_KEY/);
+    // Ô bỏ trống trên Render tới đây là chuỗi rỗng — vẫn là "chưa khai".
+    expect(() => parseEnv({ CHAT_ENABLED: 'true', ANTHROPIC_API_KEY: '' })).toThrow(
+      /ANTHROPIC_API_KEY/,
+    );
+    expect(parseEnv({ CHAT_ENABLED: 'true', ANTHROPIC_API_KEY: 'sk-ant-x' }).CHAT_ENABLED).toBe(
+      true,
+    );
+    // Chuỗi lạ không âm thầm thành true.
+    expect(() => parseEnv({ CHAT_ENABLED: '1' })).toThrow();
+  });
+
+  it('model ngoài bảng giá là lỗi khởi động — không đoán giá', () => {
+    expect(() => parseEnv({ CHAT_MODEL: 'claude-unknown-1' })).toThrow(/CHAT_MODEL/);
+  });
+
+  it('trần ngày nằm trong 0,1..50 USD', () => {
+    expect(parseEnv({ CHAT_DAILY_BUDGET_USD: '2.5' }).CHAT_DAILY_BUDGET_USD).toBe(2.5);
+    expect(() => parseEnv({ CHAT_DAILY_BUDGET_USD: '0' })).toThrow();
+    expect(() => parseEnv({ CHAT_DAILY_BUDGET_USD: '51' })).toThrow();
+    expect(() => parseEnv({ CHAT_DAILY_BUDGET_USD: 'abc' })).toThrow();
+  });
+});
