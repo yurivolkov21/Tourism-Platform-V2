@@ -423,6 +423,209 @@ describe('renderEmail — hạn chót huỷ trong mail xác nhận (ADR-0041)', 
   });
 });
 
+/**
+ * Sổ nợ F2: mail của Nexora cũ có ảnh tour và hàng sao, v2 degrade về monogram vì payload
+ * không mang hai thứ ấy (ADR-0025). Nay payload mang, mail in ra; payload cũ thì vẫn monogram.
+ */
+describe('renderEmail — ảnh tour trong mail xác nhận (sổ nợ F2)', () => {
+  const CLOUD = 'demo-cloud';
+  const HERO = {
+    publicId: 'tourism/tours/ha-long/hero',
+    version: '1726000000',
+    width: 1600,
+    height: 1067,
+    alt: 'Junk boats at dawn in Ha Long Bay',
+    author: 'Jane Doe',
+    license: 'CC BY-SA 4.0',
+    licenseUrl: 'https://creativecommons.org/licenses/by-sa/4.0/',
+  };
+  const WITH_HERO = { ...BOOKING_PAYLOAD, tourImage: HERO };
+  /** Monogram giữa card rộng 56; mark ở mini-header chỉ rộng 33. */
+  const MONOGRAM = /width="56"/;
+
+  it('ảnh bìa tour thay monogram: thu nhỏ theo bề ngang, đổi sang JPEG, có phiên bản', async () => {
+    const { html } = await renderEmail(
+      EmailType.BOOKING_CONFIRMATION,
+      WITH_HERO,
+      OPTS.frontendUrl,
+      CLOUD,
+    );
+    expect(html).toContain(
+      'https://res.cloudinary.com/demo-cloud/image/upload/w_1024,q_auto,f_jpg/v1726000000/tourism/tours/ha-long/hero',
+    );
+    expect(html).toContain('alt="Junk boats at dawn in Ha Long Bay"');
+    // 512 × 1067 / 1600 — Outlook đọc chiều cao ở thuộc tính, không đọc CSS.
+    expect(html).toContain('height="341"');
+    expect(html).not.toMatch(MONOGRAM);
+  });
+
+  it('KHÔNG cắt ảnh phía máy chủ: cắt là tác phẩm phái sinh, kích hoạt ShareAlike (ADR-0020 §4)', async () => {
+    const { html } = await renderEmail(
+      EmailType.BOOKING_CONFIRMATION,
+      WITH_HERO,
+      OPTS.frontendUrl,
+      CLOUD,
+    );
+    expect(html).not.toMatch(/\bc_(fill|crop|thumb|pad|lfill)\b/);
+  });
+
+  it('ảnh CC ghi công ngay dưới ảnh, giấy phép dẫn tới toàn văn (ADR-0020 §3)', async () => {
+    const { html, text } = await renderEmail(
+      EmailType.BOOKING_CONFIRMATION,
+      WITH_HERO,
+      OPTS.frontendUrl,
+      CLOUD,
+    );
+    expect(html).toContain('Photo: Jane Doe, ');
+    expect(html).toContain('href="https://creativecommons.org/licenses/by-sa/4.0/"');
+    expect(text).toContain('Photo: Jane Doe, CC BY-SA 4.0');
+  });
+
+  it('ảnh có tác giả mà không có giấy phép thì ghi tên tác giả, không link', async () => {
+    const { html } = await renderEmail(
+      EmailType.BOOKING_CONFIRMATION,
+      { ...BOOKING_PAYLOAD, tourImage: { ...HERO, license: null, licenseUrl: null } },
+      OPTS.frontendUrl,
+      CLOUD,
+    );
+    expect(html).toContain('Photo: Jane Doe');
+    expect(html).not.toContain('creativecommons.org');
+  });
+
+  it('ảnh không đòi ghi công (không tác giả) thì không có dòng "Photo:"', async () => {
+    const { html } = await renderEmail(
+      EmailType.BOOKING_CONFIRMATION,
+      {
+        ...BOOKING_PAYLOAD,
+        tourImage: { ...HERO, author: null, license: null, licenseUrl: null },
+      },
+      OPTS.frontendUrl,
+      CLOUD,
+    );
+    expect(html).toContain('tourism/tours/ha-long/hero');
+    expect(html).not.toContain('Photo:');
+  });
+
+  it('ảnh chưa có alt thì alt là tên tour', async () => {
+    const { html } = await renderEmail(
+      EmailType.BOOKING_CONFIRMATION,
+      { ...BOOKING_PAYLOAD, tourImage: { ...HERO, alt: null } },
+      OPTS.frontendUrl,
+      CLOUD,
+    );
+    expect(html).toContain('alt="Ha Long Bay Cruise"');
+  });
+
+  it('chưa biết kích thước ảnh thì bỏ thuộc tính height, để ảnh tự giữ tỉ lệ', async () => {
+    const { html } = await renderEmail(
+      EmailType.BOOKING_CONFIRMATION,
+      { ...BOOKING_PAYLOAD, tourImage: { ...HERO, width: null, height: null } },
+      OPTS.frontendUrl,
+      CLOUD,
+    );
+    expect(html).toContain('tourism/tours/ha-long/hero');
+    expect(html).not.toMatch(/<img[^>]*tourism\/tours\/ha-long\/hero[^>]*height="/);
+  });
+
+  it('publicId đã là URL tuyệt đối (ảnh seed giữ chỗ) → dùng nguyên URL', async () => {
+    const { html } = await renderEmail(
+      EmailType.BOOKING_CONFIRMATION,
+      {
+        ...BOOKING_PAYLOAD,
+        tourImage: { ...HERO, publicId: 'https://images.example.com/ha-long.jpg' },
+      },
+      OPTS.frontendUrl,
+      CLOUD,
+    );
+    expect(html).toContain('src="https://images.example.com/ha-long.jpg"');
+  });
+
+  it('payload cũ hoặc tour chưa có ảnh bìa → giữ monogram', async () => {
+    for (const payload of [BOOKING_PAYLOAD, { ...BOOKING_PAYLOAD, tourImage: null }]) {
+      const { html } = await renderEmail(
+        EmailType.BOOKING_CONFIRMATION,
+        payload,
+        OPTS.frontendUrl,
+        CLOUD,
+      );
+      expect(html).toMatch(MONOGRAM);
+      expect(html).not.toContain('Photo:');
+    }
+  });
+
+  it('thiếu cloud name hay publicId hỏng → giữ monogram, không dựng URL hỏng', async () => {
+    const cases: Array<[Record<string, unknown>, string | undefined]> = [
+      [WITH_HERO, undefined],
+      [{ ...BOOKING_PAYLOAD, tourImage: { ...HERO, publicId: '' } }, CLOUD],
+      [{ ...BOOKING_PAYLOAD, tourImage: 'tourism/tours/ha-long/hero' }, CLOUD],
+    ];
+    for (const [payload, cloud] of cases) {
+      const { html } = await renderEmail(
+        EmailType.BOOKING_CONFIRMATION,
+        payload,
+        OPTS.frontendUrl,
+        cloud,
+      );
+      expect(html).toMatch(MONOGRAM);
+      expect(html).not.toContain('res.cloudinary.com/demo-cloud');
+    }
+  });
+});
+
+describe('renderEmail — hàng sao trong mail duyệt bài (sổ nợ F2)', () => {
+  const REVIEW = {
+    reviewId: 'r-1',
+    email: 'buyer@example.com',
+    name: 'Alice',
+    title: 'Ha Long Bay Cruise',
+    rating: 4,
+    tourSlug: 'ha-long-bay-cruise',
+  };
+
+  /** Số sao đầy (★ màu `rating`) và sao rỗng (☆ màu `rating-muted`) trong html. */
+  async function stars(payload: Record<string, unknown>) {
+    const { html, text } = await renderEmail(EmailType.REVIEW_APPROVED, payload, OPTS.frontendUrl);
+    const filled = html.match(/color:#bb7e17[^>]*>★/g)?.length ?? 0;
+    const empty = html.match(/color:#c9d6d2[^>]*>☆/g)?.length ?? 0;
+    return { html, text, filled, empty };
+  }
+
+  it('in đúng số sao khách chấm, kèm nhãn cho trình đọc màn hình', async () => {
+    const { html, filled, empty } = await stars(REVIEW);
+    expect({ filled, empty }).toEqual({ filled: 4, empty: 1 });
+    expect(html).toContain('aria-label="Rated 4 out of 5"');
+    expect(html).not.toMatch(/width="56"/);
+  });
+
+  it('bản chữ thuần vẫn phân biệt sao đầy và sao rỗng (mất màu không được thành năm sao)', async () => {
+    const { text } = await stars(REVIEW);
+    expect(text).toContain('★★★★☆');
+  });
+
+  it('nút dẫn tới tab Reviews của trang tour', async () => {
+    const { html } = await stars(REVIEW);
+    expect(html).toContain('href="https://tourism.test/tours/ha-long-bay-cruise#reviews"');
+    expect(html).toContain('See your review');
+  });
+
+  it('thiếu slug hay FRONTEND_URL thì vẫn in sao, chỉ bỏ nút', async () => {
+    const noSlug = await stars({ ...REVIEW, tourSlug: null });
+    expect(noSlug.filled).toBe(4);
+    expect(noSlug.html).not.toContain('See your review');
+    const { html } = await renderEmail(EmailType.REVIEW_APPROVED, REVIEW);
+    expect(html).not.toContain('See your review');
+  });
+
+  it('payload cũ không có rating, hay rating ngoài 1..5 → giữ monogram, không bịa số sao', async () => {
+    for (const rating of [undefined, null, 0, 6, 3.5, '4']) {
+      const { html, filled } = await stars({ ...REVIEW, rating });
+      expect(filled).toBe(0);
+      expect(html).toMatch(/width="56"/);
+      expect(html).not.toContain('Rated ');
+    }
+  });
+});
+
 describe('ResendDeliverer.deliver', () => {
   it('POSTs the rendered email to the Resend API', async () => {
     const { calls, deliverer } = stub();
@@ -576,5 +779,31 @@ describe('ResendDeliverer.deliver', () => {
     await deliverer.deliver(EmailType.BOOKING_CONFIRMATION, BOOKING_PAYLOAD);
     const body = JSON.parse(calls[0]?.body ?? '{}');
     expect(body.headers).toBeUndefined();
+  });
+
+  it('dựng URL ảnh tour bằng cloud name trong options (sổ nợ F2)', async () => {
+    const calls: HttpPostCall[] = [];
+    const post = async (url: string, init: { headers: Record<string, string>; body: string }) => {
+      calls.push({ url, ...init });
+      return { status: 200, body: '{"id":"email-1"}' };
+    };
+    const deliverer = new ResendDeliverer({ ...OPTS, cloudName: 'demo-cloud' }, post);
+    await deliverer.deliver(EmailType.BOOKING_CONFIRMATION, {
+      ...BOOKING_PAYLOAD,
+      tourImage: {
+        publicId: 'tourism/tours/x/hero',
+        version: null,
+        width: null,
+        height: null,
+        alt: null,
+        author: null,
+        license: null,
+        licenseUrl: null,
+      },
+    });
+    const body = JSON.parse(calls[0]?.body ?? '{}');
+    expect(body.html).toContain(
+      'https://res.cloudinary.com/demo-cloud/image/upload/w_1024,q_auto,f_jpg/tourism/tours/x/hero',
+    );
   });
 });

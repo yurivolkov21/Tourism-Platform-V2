@@ -6,15 +6,19 @@ import { EmailType } from '../../generated/prisma/enums.js';
 import {
   accentLink,
   BodyParagraph,
+  CARD_CONTENT_WIDTH,
   CodeBox,
   CtaButton,
   DataCard,
   EmailShell,
+  HeroImage,
   MoneyValue,
   NoteParagraph,
+  type PhotoCredit,
   PillValue,
   PlainValue,
   QuoteCard,
+  StarRating,
 } from './layout.js';
 
 /** Câu cho khách theo mã lý do auto-refund của PaymentsService (copy email). */
@@ -29,8 +33,9 @@ const REFUND_REASON_COPY: Record<string, string> = {
  * Render email theo từng type (ADR-0025, vòng 2): copy + cấu trúc port từ
  * `email.templates.ts` của Nexora tiền nhiệm (hệ Barebone user duyệt 13/07),
  * thích nghi theo payload outbox v2 — field bản cũ có mà payload v2 không
- * mang (ảnh hero tour, rating sao, URL review) thì degrade về nhánh monogram
- * của chính hệ đó, KHÔNG bịa dữ liệu.
+ * mang thì degrade về nhánh monogram của chính hệ đó, KHÔNG bịa dữ liệu.
+ * Từ sổ nợ F2 (15/10) payload mang ảnh bìa tour (mail xác nhận), số sao và
+ * slug tour (mail duyệt bài); dòng outbox ghi trước đó vẫn in monogram.
  *
  * ASYNC vì render() của react-email đi qua streaming API của React. React tự
  * escape mọi text node; riêng SUBJECT là plain text ngoài React — mọi giá trị
@@ -42,8 +47,10 @@ export async function renderEmail(
   payload: Record<string, unknown>,
   /** Base URL web (env FRONTEND_URL) — nguồn của mọi URL nút bấm + unsubscribe. */
   frontendUrl?: string,
+  /** Cloud Cloudinary (env CLOUDINARY_CLOUD_NAME) — dựng URL ảnh bìa tour; vắng thì bỏ ảnh. */
+  cloudName?: string,
 ): Promise<{ subject: string; html: string; text: string }> {
-  const { subject, node } = buildEmail(type, payload, frontendUrl);
+  const { subject, node } = buildEmail(type, payload, frontendUrl, cloudName);
   const html = await render(node);
   return { subject, html, text: toPlainText(html) };
 }
@@ -98,10 +105,90 @@ function deadlineText(
   }
 }
 
+/** Chuỗi khác rỗng, hoặc `null` cho mọi giá trị khác — đọc các khoá con của `tourImage`. */
+function stringOrNull(value: unknown): string | null {
+  return typeof value === 'string' && value.length > 0 ? value : null;
+}
+
+/** Số nguyên dương, hoặc `null` — bề ngang, bề cao ảnh có thể chưa đo. */
+function positiveIntOrNull(value: unknown): number | null {
+  return typeof value === 'number' && Number.isInteger(value) && value > 0 ? value : null;
+}
+
+/** Bề ngang ảnh xin Cloudinary: gấp đôi khung hiển thị cho màn hình mật độ cao. */
+const EMAIL_IMAGE_REQUEST_WIDTH = CARD_CONTENT_WIDTH * 2;
+
+/**
+ * Ảnh bìa tour cho mail xác nhận (sổ nợ F2). Producer là câu SQL claim của money-path nên
+ * payload chỉ mang dữ liệu thô của `media_assets`; URL dựng ở đây, cùng quy tắc với
+ * `buildCloudinaryUrl` (phiên bản sau transform, publicId tuyệt đối thì dùng nguyên).
+ *
+ * Transform chỉ `w_` và đổi định dạng, KHÔNG `c_fill`/`c_crop`: cắt ảnh CC BY-SA là tạo tác
+ * phẩm phái sinh (ADR-0020 §4). `f_jpg` thay `f_auto`: proxy ảnh của hộp thư tải hộ người
+ * đọc nên Cloudinary không biết hộp thư cuối có đọc WebP hay AVIF không, mà Outlook desktop
+ * thì không đọc.
+ *
+ * `undefined` khi payload cũ, tour chưa có ảnh bìa, dữ liệu hỏng, hay worker không có cloud
+ * name: mail khuyết ảnh vẫn hơn một thẻ `<img>` trỏ URL hỏng.
+ */
+function emailTourImage(
+  payload: Record<string, unknown>,
+  fallbackAlt: string,
+  cloudName: string | undefined,
+):
+  | { src: string; alt: string; height: number | undefined; credit: PhotoCredit | null }
+  | undefined {
+  const raw = payload.tourImage;
+  if (typeof raw !== 'object' || raw === null) return undefined;
+  const image = raw as Record<string, unknown>;
+  const publicId = stringOrNull(image.publicId);
+  if (publicId === null) return undefined;
+
+  let src: string;
+  if (/^https?:\/\//i.test(publicId)) {
+    src = publicId;
+  } else {
+    if (!cloudName) return undefined;
+    const version = stringOrNull(image.version);
+    src = `https://res.cloudinary.com/${cloudName}/image/upload/w_${EMAIL_IMAGE_REQUEST_WIDTH},q_auto,f_jpg/${version ? `v${version}/` : ''}${publicId}`;
+  }
+
+  const width = positiveIntOrNull(image.width);
+  const height = positiveIntOrNull(image.height);
+  const author = stringOrNull(image.author);
+  const licenseUrl = stringOrNull(image.licenseUrl);
+  return {
+    src,
+    alt: stringOrNull(image.alt) ?? fallbackAlt,
+    height:
+      width === null || height === null
+        ? undefined
+        : Math.round((CARD_CONTENT_WIDTH * height) / width),
+    credit:
+      author === null
+        ? null
+        : {
+            author,
+            license: stringOrNull(image.license),
+            // Chỉ http(s): chuỗi này đi thẳng vào `href` của mail.
+            licenseUrl: licenseUrl !== null && /^https?:\/\//i.test(licenseUrl) ? licenseUrl : null,
+          },
+  };
+}
+
+/** Số sao khách chấm (mail duyệt bài, sổ nợ F2): nguyên 1..5, ngoài khoảng ấy coi như vắng. */
+function starRating(payload: Record<string, unknown>): number | undefined {
+  const value = payload.rating;
+  return typeof value === 'number' && Number.isInteger(value) && value >= 1 && value <= 5
+    ? value
+    : undefined;
+}
+
 function buildEmail(
   type: EmailType,
   payload: Record<string, unknown>,
   frontendUrl?: string,
+  cloudName?: string,
 ): { subject: string; node: ReactNode } {
   const f = (key: string) => field(payload, key);
   const s = (key: string) => subjectText(payload, key);
@@ -146,12 +233,14 @@ function buildEmail(
           ? `${formatDate(f('startDate'))} → ${formatDate(f('endDate'))}`
           : undefined;
       const freeUntil = deadlineText(f('startDate'), f('endDate'));
+      const hero = emailTourImage(payload, title ?? 'Your tour', cloudName);
       return {
         subject: `Booking confirmed — ${subjectCode}${s('title') ? ` · ${s('title')}` : ''}`,
         node: (
           <EmailShell
             preview={`Your seats${title ? ` for ${title}` : ''} are reserved — booking ${code}.`}
             heading={name ? `You're going, ${name}!` : "You're going!"}
+            top={hero ? <HeroImage {...hero} /> : undefined}
             note={
               <NoteParagraph>
                 Questions? Reply to this email — a real person reads it.
@@ -240,13 +329,22 @@ function buildEmail(
         ),
       };
     }
-    case EmailType.REVIEW_APPROVED:
+    case EmailType.REVIEW_APPROVED: {
+      const rating = starRating(payload);
+      // Tab Reviews của trang tour (`#reviews` là id của nút tab). Duyệt xong API đã gọi web
+      // revalidate, nên bấm nút là thấy bài.
+      const tourSlug = f('tourSlug');
+      const reviewUrl =
+        frontendUrl && tourSlug
+          ? `${frontendUrl}/tours/${encodeURIComponent(tourSlug)}#reviews`
+          : undefined;
       return {
         subject: `Your review is live${s('title') ? ` — ${s('title')}` : ''}`,
         node: (
           <EmailShell
             preview={`Your review${title ? ` of ${title}` : ''} is now published.`}
             heading="Your review is live"
+            top={rating ? <StarRating rating={rating} /> : undefined}
             note={
               <NoteParagraph>
                 Want to tweak anything? Reply to this email and we&#39;ll help.
@@ -264,9 +362,11 @@ function buildEmail(
               ) : null}{' '}
               is now published — stories like yours help other travellers choose with confidence.
             </BodyParagraph>
+            {reviewUrl ? <CtaButton href={reviewUrl}>See your review</CtaButton> : null}
           </EmailShell>
         ),
       };
+    }
     /**
      * ADR-0031 §6 — bác bỏ mà im lặng là để khách đợi một thứ không bao giờ
      * tới, đúng thứ vừa vá ở mail duyệt huỷ. Mail này KHÔNG xin lỗi và KHÔNG

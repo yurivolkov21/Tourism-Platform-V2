@@ -634,7 +634,8 @@ export class ReviewsService {
         // trong transaction bên dưới) — không cần nhất quán atomic với phần
         // ghi rating.
         user: { select: { email: true, name: true, deletedAt: true } },
-        tour: { select: { title: true } },
+        // `slug` và `isPublished` cho nút "See your review" của mail duyệt (sổ nợ F2).
+        tour: { select: { title: true, slug: true, isPublished: true } },
         // Mã booking cho nút "Edit your review" của mail bác (ADR-0031 AMEND 1
         // §5) — form sửa sống ở trang booking của khách (ADR-0032 §7).
         booking: { select: { code: true } },
@@ -653,7 +654,8 @@ export class ReviewsService {
       // — `FOR UPDATE` buộc câu SELECT này BLOCK tới khi lock giải phóng rồi
       // đọc lại giá trị mới nhất đã commit. Gộp CẢ BA cột vào MỘT câu SELECT
       // (không chỉ isApproved) để `tourId`/`source` dùng ở gate ③ cũng luôn
-      // nhất quán với đúng review vừa bị khoá.
+      // nhất quán với đúng review vừa bị khoá; `rating` cho mail ④ cũng đọc ở
+      // đây vì cùng lý do (sổ nợ F2).
       const [locked] = await tx.$queryRaw<
         {
           isApproved: boolean;
@@ -661,10 +663,12 @@ export class ReviewsService {
           retractedAt: Date | null;
           tourId: string | null;
           source: ReviewSource;
+          rating: number;
         }[]
       >(Prisma.sql`
         SELECT is_approved AS "isApproved", rejected_at AS "rejectedAt",
-               retracted_at AS "retractedAt", tour_id AS "tourId", source AS "source"
+               retracted_at AS "retractedAt", tour_id AS "tourId", source AS "source",
+               rating AS "rating"
         FROM reviews WHERE id = ${input.id}::uuid FOR UPDATE
       `);
       if (!locked) throw new ReviewNotFoundError();
@@ -791,6 +795,13 @@ export class ReviewsService {
                 email: existing.user.email,
                 name: existing.user.name ?? null,
                 title: existing.tour?.title ?? null,
+                // Sổ nợ F2: hàng sao đầu mail. Đọc dưới FOR UPDATE chứ không từ
+                // `existing`: số sao phải đúng bản bài vừa được duyệt, kể cả khi
+                // khách sửa bài ngay trước lúc admin bấm.
+                rating: locked.rating,
+                // Nút "See your review" về tab review của trang tour. Tour đang ẩn
+                // thì trang đó 404, nên không gửi slug và mail bỏ nút.
+                tourSlug: existing.tour?.isPublished ? existing.tour.slug : null,
               },
               dedupeKey: `review-approved:${input.id}`,
             },

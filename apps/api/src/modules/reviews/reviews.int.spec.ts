@@ -517,6 +517,56 @@ describe('reviews (int)', () => {
     );
   });
 
+  it('sổ nợ F2: mail duyệt bài mang số sao và slug tour (hàng sao, nút về tab review)', async () => {
+    const { reviewId } = await createAndApprove(app);
+
+    const row = await prisma.outbox.findUniqueOrThrow({
+      where: { dedupeKey: `review-approved:${reviewId}` },
+    });
+    expect(row.payload).toMatchObject({
+      reviewId,
+      email: 'reviewer@example.com',
+      title: 'Hội An Old Town & Lantern Evening',
+      rating: 5,
+      tourSlug: 'hoi-an-lantern-evening',
+    });
+  });
+
+  it('sổ nợ F2: tour đang ẩn lúc duyệt → slug null (nút trong mail sẽ dẫn vào trang 404)', async () => {
+    const { user, cookie } = await signUpAndSignIn(app, 'reviewer@example.com');
+    const { tour } = await seedCompletedBooking({
+      endDate: new Date(Date.now() - 864e5),
+      userId: user.id,
+    });
+    const created = await app.inject({
+      method: 'POST',
+      url: '/api/reviews',
+      headers: { cookie },
+      payload: {
+        bookingCode: 'BK-TESTREV1',
+        rating: 4,
+        body: 'Hướng dẫn viên nhiệt tình, đáng tiền',
+      },
+    });
+    expect(created.statusCode).toBe(200);
+    const reviewId = created.json().id;
+    await prisma.tour.update({ where: { id: tour.id }, data: { isPublished: false } });
+
+    const admin = await signUpAdmin(app, ADMIN_EMAIL);
+    const res = await app.inject({
+      method: 'POST',
+      url: `/api/admin/reviews/${reviewId}/moderate`,
+      headers: { cookie: admin.cookie },
+      payload: { id: reviewId, verdict: 'approve' },
+    });
+    expect(res.statusCode).toBe(200);
+
+    const row = await prisma.outbox.findUniqueOrThrow({
+      where: { dedupeKey: `review-approved:${reviewId}` },
+    });
+    expect(row.payload).toMatchObject({ rating: 4, tourSlug: null });
+  });
+
   it('moderate trạng-thái-trùng là NO-OP: không ghi đè moderatedBy, không event rác (review F4 31/08)', async () => {
     // Khoá chống tái hiện: tab cũ của admin B bấm approve lên review admin A
     // đã duyệt — trước đây server ghi đè moderatedBy thành B (người không

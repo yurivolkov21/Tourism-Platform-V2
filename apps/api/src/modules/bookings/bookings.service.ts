@@ -1012,7 +1012,9 @@ export class BookingsService {
    *   (c) `outbox_insert` — BOOKING_CONFIRMATION được enqueue trong CÙNG
    *       statement (invariant #7), `ON CONFLICT (dedupe_key) DO NOTHING`,
    *       dedupeKey `booking-confirmed:<bookingId>` (once per booking,
-   *       docs/conventions/outbox-dedupe-key.md).
+   *       docs/conventions/outbox-dedupe-key.md). Payload kèm `tourImage` (sổ
+   *       nợ F2, 15/10): ảnh hero đầu tiên của tour lấy bằng một LATERAL join
+   *       chỉ-đọc, null khi tour chưa có ảnh.
    *
    * `SELECT id FROM claim` cuối cùng là success marker — happy path không cần
    * round-trip thứ hai. Zero row ⇒ không có gì đổi; classification khi đó chạy
@@ -1068,7 +1070,7 @@ export class BookingsService {
                 AND dep.start_date = b.departure_start_date
                 AND dep.end_date = b.departure_end_date
             )
-          RETURNING b.id, b.departure_id, (b.num_adults + b.num_children) AS seats,
+          RETURNING b.id, b.departure_id, b.tour_id, (b.num_adults + b.num_children) AS seats,
                     b.code, b.contact_email, b.contact_name, b.tour_title,
                     b.departure_start_date, b.departure_end_date, b.total_amount, b.currency
         ),
@@ -1092,10 +1094,40 @@ export class BookingsService {
                    'startDate', c.departure_start_date::text,
                    'endDate', c.departure_end_date::text,
                    'amount', c.total_amount::text,
-                   'currency', c.currency
+                   'currency', c.currency,
+                   -- Sổ nợ F2: ảnh bìa tour cho đầu mail. Chụp lúc trả tiền như
+                   -- tour_title; renderer tự dựng URL Cloudinary nên ở đây chỉ
+                   -- mang dữ liệu thô, kèm ghi công (ADR-0020 §3). Tour chưa có
+                   -- ảnh thì null và mail giữ monogram.
+                   'tourImage', CASE WHEN img.public_id IS NULL THEN NULL ELSE
+                     jsonb_build_object(
+                       'publicId', img.public_id,
+                       'version', img.version,
+                       'width', img.width,
+                       'height', img.height,
+                       'alt', img.alt,
+                       'author', img.author,
+                       'license', img.license,
+                       'licenseUrl', img.license_url
+                     ) END
                  ),
                  'booking-confirmed:' || c.id::text
           FROM claim c
+          -- Cùng luật bìa với trang tour (pickCover trên resolveForOwners):
+          -- hero đầu tiên theo sort_order, created_at, id. Riêng mail bỏ qua
+          -- hero là video vì thư điện tử không phát được video. Chỉ đọc,
+          -- không khoá gì, nên không đổi tính nguyên tử của claim ở trên.
+          LEFT JOIN LATERAL (
+            SELECT m.public_id, m.version, m.width, m.height, m.alt,
+                   m.author, m.license, m.license_url
+            FROM media_assets m
+            WHERE m.owner_type = 'TOUR'::"MediaOwnerType"
+              AND m.owner_id = c.tour_id
+              AND m.role = 'hero'::"MediaRole"
+              AND m.type = 'IMAGE'::"MediaType"
+            ORDER BY m.sort_order, m.created_at, m.id
+            LIMIT 1
+          ) img ON true
           ON CONFLICT (dedupe_key) DO NOTHING
         )
         SELECT id FROM claim

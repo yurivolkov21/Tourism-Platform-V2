@@ -23,6 +23,7 @@ const delivererProvider: Provider = env.RESEND_API_KEY
         apiKey: env.RESEND_API_KEY,
         from: env.EMAIL_FROM,
         frontendUrl: env.FRONTEND_URL,
+        cloudName: env.CLOUDINARY_CLOUD_NAME,
       }),
     }
   : { provide: EMAIL_DELIVERER, useClass: ConsoleDeliverer };

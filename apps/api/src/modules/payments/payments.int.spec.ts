@@ -8,7 +8,14 @@ import { prisma } from '../../auth/auth.config.js';
 import type { KeyedThrottlerStorage } from '../../config/keyed-throttler-storage.js';
 import { WEBHOOK_THROTTLE } from '../../config/throttle.js';
 import type { Prisma } from '../../generated/prisma/client.js';
-import { BookingStatus, DepartureStatus, EmailType } from '../../generated/prisma/enums.js';
+import {
+  BookingStatus,
+  DepartureStatus,
+  EmailType,
+  MediaOwnerType,
+  MediaRole,
+  MediaType,
+} from '../../generated/prisma/enums.js';
 import { sessionCookie } from '../../test/session-cookie.js';
 import { BookingsService } from '../bookings/bookings.service.js';
 import { CancellationsService } from '../bookings/cancellations.service.js';
@@ -241,6 +248,84 @@ describe('payments integration (webhooks + PAID atomic claim)', () => {
     expect(pe.currency).toBe('USD');
     expect(pe.bookingId).toBe(booking.id);
     expect(pe.processedAt).not.toBeNull();
+  });
+
+  it('sổ nợ F2: mail xác nhận mang ảnh bìa của tour lúc trả tiền (hero ảnh đầu tiên), null khi tour chưa có ảnh', async () => {
+    // owner_id của media_assets là tham chiếu đa hình, không có FK tới tours: TRUNCATE ở
+    // beforeAll không dọn ảnh spec khác để lại cho cùng tour fixture, nên dọn tay ở đây.
+    const clearTourMedia = () =>
+      prisma.mediaAsset.deleteMany({
+        where: { ownerType: MediaOwnerType.TOUR, ownerId: tour.id },
+      });
+    const payloadOf = async (bookingId: string) =>
+      (
+        await prisma.outbox.findUniqueOrThrow({
+          where: { dedupeKey: `booking-confirmed:${bookingId}` },
+        })
+      ).payload as Record<string, unknown>;
+    await clearTourMedia();
+    const cookie = await signUpUser('alice@example.com', 'Alice');
+
+    // Tour chưa có ảnh: khoá vẫn có mặt với giá trị null, mail rơi về monogram.
+    const bare = await createBooking(cookie);
+    const bareClaim = await postWebhook(fake.emitPaymentCompleted(bare.id));
+    expect(bareClaim.json()).toMatchObject({ outcome: 'claimed' });
+    expect(await payloadOf(bare.id)).toHaveProperty('tourImage', null);
+
+    try {
+      const base = { ownerType: MediaOwnerType.TOUR, ownerId: tour.id };
+      await prisma.mediaAsset.createMany({
+        data: [
+          // Video hero đứng đầu: thư điện tử không phát được video, phải bỏ qua.
+          { ...base, publicId: 'tours/hoi-an/teaser', type: MediaType.VIDEO, role: MediaRole.hero },
+          // Ảnh gallery cùng thứ tự 0: không phải ảnh bìa.
+          {
+            ...base,
+            publicId: 'tours/hoi-an/gallery-1',
+            type: MediaType.IMAGE,
+            role: MediaRole.gallery,
+          },
+          {
+            ...base,
+            publicId: 'tours/hoi-an/lanterns',
+            type: MediaType.IMAGE,
+            role: MediaRole.hero,
+            sortOrder: 1,
+            version: '1760000000',
+            width: 1600,
+            height: 1067,
+            alt: 'Lanterns on the Thu Bon river',
+            author: 'Jane Doe',
+            license: 'CC BY-SA 4.0',
+            licenseUrl: 'https://creativecommons.org/licenses/by-sa/4.0/',
+          },
+          // Hero thứ hai xếp sau: cùng luật "hero đầu tiên" với trang tour, không được chọn.
+          {
+            ...base,
+            publicId: 'tours/hoi-an/second-hero',
+            type: MediaType.IMAGE,
+            role: MediaRole.hero,
+            sortOrder: 2,
+          },
+        ],
+      });
+
+      const booking = await createBooking(cookie, { departureId: depBig.id });
+      const claim = await postWebhook(fake.emitPaymentCompleted(booking.id));
+      expect(claim.json()).toMatchObject({ outcome: 'claimed' });
+      expect((await payloadOf(booking.id)).tourImage).toEqual({
+        publicId: 'tours/hoi-an/lanterns',
+        version: '1760000000',
+        width: 1600,
+        height: 1067,
+        alt: 'Lanterns on the Thu Bon river',
+        author: 'Jane Doe',
+        license: 'CC BY-SA 4.0',
+        licenseUrl: 'https://creativecommons.org/licenses/by-sa/4.0/',
+      });
+    } finally {
+      await clearTourMedia();
+    }
   });
 
   it('duplicate delivery (same eventId) → 200 duplicate, ONE seat claim, ONE outbox row', async () => {

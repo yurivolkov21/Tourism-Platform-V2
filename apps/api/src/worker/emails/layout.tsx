@@ -252,6 +252,109 @@ export function CodeBox({ code }: { code: string }) {
   );
 }
 
+/** Bề ngang vùng nội dung của card xám: 640 − 2 × 24 (lề khung) − 2 × 40 (lề card). */
+export const CARD_CONTENT_WIDTH = 512;
+
+/** Ghi công một ảnh CC (ADR-0020 §3): tên tác giả, giấy phép nếu có, link toàn văn nếu có. */
+export interface PhotoCredit {
+  author: string;
+  license: string | null;
+  licenseUrl: string | null;
+}
+
+/**
+ * Ảnh bìa tour ở đầu card, thay monogram (sổ nợ F2 — mail của Nexora cũ có ảnh này). Khung rộng
+ * đúng vùng nội dung, chiều cao theo tỉ lệ thật của ảnh: KHÔNG cắt (ADR-0020 §4), và hộp thư
+ * không có `object-fit` để giả một khung cố định. `height` truyền vào là cho Outlook desktop,
+ * nơi bỏ qua CSS `height: auto`; thiếu kích thước thì bỏ hẳn để ảnh tự giữ tỉ lệ.
+ *
+ * Ảnh CC BY, CC BY-SA thì ghi công NGAY DƯỚI ẢNH: đó là điều kiện của giấy phép ở mọi nơi dùng
+ * ảnh, mail cũng vậy.
+ */
+export function HeroImage({
+  src,
+  alt,
+  height,
+  credit,
+}: {
+  src: string;
+  alt: string;
+  height: number | undefined;
+  credit: PhotoCredit | null;
+}) {
+  return (
+    <Section style={{ margin: '0 0 28px' }}>
+      <Img
+        src={src}
+        alt={alt}
+        width={CARD_CONTENT_WIDTH}
+        {...(height === undefined ? {} : { height })}
+        style={{
+          display: 'block',
+          width: '100%',
+          maxWidth: `${CARD_CONTENT_WIDTH}px`,
+          height: 'auto',
+          margin: '0 auto',
+          borderRadius: '8px',
+        }}
+      />
+      {credit ? (
+        <Text
+          style={{
+            margin: '8px 0 0',
+            fontFamily: SANS,
+            fontSize: '11px',
+            lineHeight: '1.5',
+            color: c['muted-foreground'],
+          }}
+        >
+          {/* Gộp chữ thành MỘT chuỗi: hai text node liền nhau thì React chèn `<!-- -->` giữa. */}
+          {credit.license === null ? (
+            `Photo: ${credit.author}`
+          ) : credit.licenseUrl === null ? (
+            `Photo: ${credit.author}, ${credit.license}`
+          ) : (
+            <>
+              {`Photo: ${credit.author}, `}
+              <Link
+                href={credit.licenseUrl}
+                style={{ color: c['muted-foreground'], textDecoration: 'underline' }}
+              >
+                {credit.license}
+              </Link>
+            </>
+          )}
+        </Text>
+      ) : null}
+    </Section>
+  );
+}
+
+/**
+ * Hàng năm sao ở đầu card mail duyệt bài, thay monogram (sổ nợ F2): đúng số sao khách đã chấm.
+ * Ký tự chứ không ảnh: Gmail lột SVG, còn ảnh thì bị chặn mặc định ở nhiều hộp thư. Sao đầy ★ tô
+ * `rating`, sao rỗng ☆ tô `rating-muted`, cùng khuôn sao viền của web (`region-reviews`). Hai ký
+ * tự KHÁC nhau chứ không chỉ khác màu: bản chữ thuần mất màu, cùng một ký tự thì 4 sao đọc thành 5.
+ * Nhãn `aria-label` cho trình đọc màn hình.
+ */
+export function StarRating({ rating }: { rating: number }) {
+  return (
+    <Section style={{ margin: '0 0 20px' }}>
+      <Text
+        role="img"
+        aria-label={`Rated ${rating} out of 5`}
+        style={{ margin: 0, fontSize: '30px', lineHeight: '1', letterSpacing: '4px' }}
+      >
+        {[1, 2, 3, 4, 5].map((star) => (
+          <span key={star} style={{ color: star <= rating ? c.rating : c['rating-muted'] }}>
+            {star <= rating ? '★' : '☆'}
+          </span>
+        ))}
+      </Text>
+    </Section>
+  );
+}
+
 /** Mark "Slidex" giữa card — PNG từ CDN, tỉ lệ gốc 46:33. */
 function Monogram({ width }: { width: number }) {
   const height = Math.round((width * 33) / 46);

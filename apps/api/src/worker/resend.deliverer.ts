@@ -22,6 +22,11 @@ export interface ResendDelivererOptions {
    * seam test-được-offline (D2) của file này.
    */
   frontendUrl: string;
+  /**
+   * Cloud Cloudinary (env CLOUDINARY_CLOUD_NAME) — dựng URL ảnh bìa tour trong mail xác nhận
+   * (sổ nợ F2). Vắng thì mail in monogram như trước.
+   */
+  cloudName?: string;
 }
 
 /**
@@ -62,7 +67,12 @@ export class ResendDeliverer implements EmailDeliverer {
       // park row FAILED kèm message này cho operator triage.
       throw new Error(`outbox payload for ${type} has no recipient email`);
     }
-    const { subject, html, text } = await renderEmail(type, fields, this.options.frontendUrl);
+    const { subject, html, text } = await renderEmail(
+      type,
+      fields,
+      this.options.frontendUrl,
+      this.options.cloudName,
+    );
 
     /**
      * List-Unsubscribe (RFC 2369) — vá review Task 6 Khoản 2. CHỈ áp cho
