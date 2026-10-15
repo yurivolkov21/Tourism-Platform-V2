@@ -8,6 +8,52 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-10-15 — Thẻ /tours mang đợt kế tiếp và badge, sắp theo rating (ADR-0058, sổ nợ E3, `6c2098c`)
+
+Mục E3 của sổ nợ kỹ thuật, tách từ lượt Yuri giao làm nốt open-items của web và admin sáng 15/10.
+Nhánh `feat/tours-card-sort-yxb5g6`,
+[PR #28](https://github.com/yurivolkov21/Tourism-Platform-V2/pull/28), session cloud. Không
+migration, không env, không dependency. Contract dùng chung đổi theo kiểu cộng thêm nên app mobile
+bản cũ vẫn đọc được.
+
+- ADR-0058 (Accepted 15/10) đi trước code: một tập "đợt đặt được" (OPEN, còn hạn đặt theo ADR-0041,
+  còn chỗ) nuôi cả giá "from" lẫn đợt kế tiếp trên thẻ. `TourCardSchema` thêm `nextDeparture`
+  (`startDate`, `seatsLeft`; null khi không còn đợt nào đặt được) và nhận `badges` từ detail, hình
+  dạng detail không đổi. `TourSortKeySchema` thêm `rating`: chưa có đánh giá đứng cuối ở cả hai
+  chiều, hoà điểm thì nhiều đánh giá hơn đứng trước, rồi `id`. Bộ lọc giá, thời lượng, độ khó ở lại
+  web theo lựa chọn của Yuri trên thẻ quyết định 01:05 UTC (§5).
+- API: `cardDepartureFactsByTour` tính giá "from" và đợt kế tiếp cho danh sách, chi tiết và tour
+  liên quan của bài viết trong một truy vấn; giá "from" thôi tính đợt đã kín chỗ nên thẻ và hero
+  trang tour in cùng một số. Lệnh ghi đợt của admin bust thêm tag `tours` khi số chỗ của một đợt
+  đang nuôi thẻ đổi.
+- Web: thẻ có băng "Next departure Sat 14 Nov", thêm "Only N seats left" khi còn từ 3 chỗ trở
+  xuống, hoặc "Dates on request". Góc ảnh tối đa hai chip: suất đầu giữ luật −N% hoặc Featured,
+  badge admin lấp suất còn lại. Ô sort thêm "Rating: high to low"; sort giá và nhóm giá của bộ lọc
+  đọc giá "from" in trên thẻ thay cho `basePrice`. Web chịu được API bản cũ thiếu hai field mới trong
+  lúc Vercel build xong trước khi Render lên bản mới. Skeleton `/tours` thêm băng đợt kế tiếp.
+- Admin: thẻ xem trước "Card on /tours" ở bước Details hiện badge như thẻ thật (Featured rồi badge,
+  tối đa hai). Key `preview.featuredNote` đổi thành `preview.chipsNote`; sửa chữ `preview.priceNote`
+  và `badgesHint`.
+- Docs: sổ nợ E3 thành đã trả; spec Tours 27/07 §8 ghi #2–#5 trả theo ADR-0058.
+
+**Review.** Không có lượt review độc lập. CI `gate` đỏ trên `bf88c47` trong lúc thread tạm dừng vì
+giới hạn usage: bài test kiểu ở `libs/shared/contract/src/contract.spec.ts` còn ghim union sort cũ,
+vá ở `5c10ca9` khi chạy lại. User bảo merge 15/10 11:34 UTC ("Merge nhé"). Nhánh tách từ `16ca003`;
+main không đổi tới lúc merge nên không cần rebase.
+
+Tests after: `pnpm gate:int` xanh ở session cloud trên `6c2098c`, ở lần chạy thứ tư. Ba lần trước
+chết vì máy 4 nhân quá tải ở test nhánh không đụng tới: tokens quá 5 giây, bottom sheet của
+mobile-ui quá 60 giây, contract vitest EPIPE. `turbo run build typecheck test` 28/28 task: contract
+719, api 1174, web 2308, admin 2224, mobile 850, mobile-ui 145, ui 57, i18n 58, core 48, tokens 26;
+`test:int` 52 file 846 test. CI `gate` của PR xanh cả lượt push lẫn lượt pull_request trên
+`6c2098c`. Ảnh trước và sau (1440, 390, sáng, tối) ở thư mục chung của project; đo ở khung 360px,
+hai chip dài nhất ("Limited offer" và "Best value") còn dư 81px trước vết khuyết.
+
+**CÒN TREO:**
+
+- App mobile chưa dùng gì mới: Explore vẫn đọc 50 tour đầu, sort giá theo `basePrice`, chưa có sort
+  `rating` hay băng đợt kế tiếp. Ghi để nhóm mobile biết, chưa thành mục open-items.
+
 ## 2026-10-15 — Merge dời freeze từ 15/10 sang 31/10 (ADR-0001 AMEND 3, `68fbe7c`)
 
 User chốt sáng 15/10: buổi bảo vệ còn khoảng 4 tuần tính từ thứ Hai 19/10 (khoảng 16/11), trước

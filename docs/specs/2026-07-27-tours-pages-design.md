@@ -443,6 +443,13 @@ Năm khoản đã xác định. Không cái nào chặn cụm tĩnh; tất cả 
 > ghi trong ADR đã Accepted, hoãn có chủ đích. #2–#5 mới là lỗ thật. Phân biệt
 > này đổi việc phải làm: #1 **không cần ADR mới**, #2–#5 thì cần.
 
+> **Trả 15/10/2026:** #2–#5 thi hành theo
+> [ADR-0058](../adr/0058-tour-card-next-departure-badges-rating-sort.md)
+> ([PR #28](https://github.com/yurivolkov21/Tourism-Platform-V2/pull/28)): card có `nextDeparture`
+> (#2) và `badges` (#5; `suitableFor` cố ý không lên card), sort `rating` (#3); #4 cố ý giữ bộ lọc ở
+> web, lý do ở ADR-0058 §5. #1 đã trả theo A8 của
+> [sổ nợ kỹ thuật](../analysis/2026-08-06-backlog-no-ky-thuat.md).
+
 1. **Media tour — HOÃN CÓ CHỦ ĐÍCH, không phải bỏ sót.** `TourCardSchema` lẫn
    `TourDetailSchema` đều chưa có field ảnh; Prisma `MediaAsset` có
    `ownerType: TOUR` nhưng chưa code nào query cho tour. Nhưng
