@@ -93,8 +93,9 @@ describe('messages: mobile.appShell (P5a — vỏ điều hướng)', () => {
   // P5b-3 (mockup E1, W6) thêm route askAboutTrip.
   // P5b-3 (mockup P1-P6, W7/W8) thêm ba route: yourTrip, beforeYouGo,
   // yourItinerary (P5 có tiêu đề động, không khai tĩnh ở đây).
-  it('có đủ tiêu đề cho 24 màn của cây route', () => {
-    expect(Object.keys(shell.titles)).toHaveLength(24);
+  // N8 nửa sau (15/10) thêm màn kết quả sau đổi mật khẩu: passwordUpdated.
+  it('có đủ tiêu đề cho 25 màn của cây route', () => {
+    expect(Object.keys(shell.titles)).toHaveLength(25);
   });
 
   it('mọi chuỗi trong appShell đều có chữ, không khoá nào rỗng', () => {
