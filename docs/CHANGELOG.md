@@ -8,6 +8,38 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-10-15 — Merge dời freeze từ 15/10 sang 31/10 (ADR-0001 AMEND 3, `68fbe7c`)
+
+User chốt sáng 15/10: buổi bảo vệ còn khoảng 4 tuần tính từ thứ Hai 19/10 (khoảng 16/11), trước
+đó có buổi thuyết trình thử, nên freeze dời sang cuối tháng 10 để làm nốt open-items của web và
+admin. Nhánh `docs/freeze-cuoi-thang-10-28z6kd`,
+[PR #25](https://github.com/yurivolkov21/Tourism-Platform-V2/pull/25), session cloud. Chỉ đổi docs
+và một comment YAML: không code, không migration, không env, không dependency.
+
+- ADR-0001 AMEND 3: freeze là 31/10/2026, nội dung không đổi (không nâng cấp dependency, không đổi
+  nơi deploy); ở lại NestJS v11 tới hết capstone cũng không đổi. AMEND đặt ở ADR-0001 vì chính
+  sách freeze sinh ra ở mục Hệ quả của nó và ở CLAUDE.md. ADR, spec, plan, CHANGELOG, comment code
+  viết trước 15/10 ghi "freeze 15/10" giữ nguyên văn; ba chỗ là luật còn hiệu lực (ADR-0018 Ràng
+  buộc lịch, ADR-0019, ADR-0024 Hệ quả) đọc mốc là 31/10. `docs/adr/README.md`: ADR-0001 lên 3 AMEND.
+- Sửa tại chỗ: CLAUDE.md (ngày bảo vệ khoảng 16/11, roadmap, mục "Chính sách theo lịch"), bảng mốc
+  thời gian của open-items (freeze 31/10, thêm dòng "Thuyết trình thử, chưa có ngày", bảo vệ khoảng
+  16/11) và hai câu nhắc freeze trong đó, `docs/skills.md`,
+  `docs/conventions/supabase-data-api-surface.md` (mốc 30/10 của Supabase nay rơi một ngày trước
+  freeze, vẫn no-op), comment đầu `.github/dependabot.yml`.
+
+**Review.** Không có lượt review độc lập. User bảo merge 15/10 01:03 UTC ("Merge nhé"). Nhánh tách
+từ `4529721`; main không đổi tới lúc merge nên không cần rebase.
+
+Tests after: không chạy `gate:int` riêng vì diff không chạm code; CI của PR (`gate` và `test:int`)
+xanh cả lượt push và lượt pull_request lúc 01:01 UTC trên `68fbe7c`. Diff không thêm hay bớt test nào.
+
+**CÒN TREO:**
+
+- Lượt seed lại prod vẫn ghi khoảng 03/11 (spec seed §8.5, chọn khi bảo vệ dự kiến khoảng 11/11).
+  Có ngày thuyết trình thử thì xem lại ngày chạy lượt này và ghi ngày thử vào bảng mốc của
+  open-items.
+- Dọn sau merge: nhánh `docs/freeze-cuoi-thang-10-28z6kd` trên origin nếu GitHub không tự xoá.
+
 ## 2026-10-15 — Merge hỏi lại trước khi rời màn viết bài của app khi bài còn dở: R1, R5 (open-items P5b-5 mục 4, `c5b4633`)
 
 Làm tiếp open-items theo yêu cầu của user 13/10 (đóng càng nhiều càng tốt): PR xong 14/10, merge
