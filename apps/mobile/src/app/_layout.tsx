@@ -92,6 +92,12 @@ function RootStack() {
       {/* A6 (spec P5b-4 §3) — đã đăng nhập, header native bình thường (khác
           nhóm auth vốn tự vẽ nút X vì là chặng đầu Stack). */}
       <Stack.Screen name="change-password" options={{ title: titles.changePassword }} />
+      {/* Kết quả sau A6 (N8 nửa sau) — không header: `ResultScreen` cho ảnh tràn mép trên như
+          khung 6b của nhóm auth, và nút đáy là đường về Account. */}
+      <Stack.Screen
+        name="password-updated"
+        options={{ headerShown: false, title: titles.passwordUpdated }}
+      />
       {/* "Personal details" (mockup A1) — cùng khuôn header native với A6. */}
       <Stack.Screen name="personal-details" options={{ title: titles.personalDetails }} />
       {/* Travel stories (G1/G2) — header native, cùng khuôn A6/Personal details. */}

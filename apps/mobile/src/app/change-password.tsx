@@ -49,7 +49,9 @@ export default function ChangePasswordRoute() {
     setPending(false);
 
     if (outcome.kind === 'done') {
-      router.back();
+      // N8 nửa sau (15/10): thay chỗ màn form bằng màn kết quả — lùi từ đó là về thẳng Account,
+      // không quay lại một form đã lưu.
+      router.replace('/password-updated');
       return;
     }
     if (outcome.kind === 'fieldErrors') {

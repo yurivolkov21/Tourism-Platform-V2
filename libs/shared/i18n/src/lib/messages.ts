@@ -2382,6 +2382,8 @@ export const messages = {
         reviewAndPay: 'Review and pay',
         payment: 'Payment',
         changePassword: 'Password',
+        // N8 nửa sau (15/10) — màn kết quả sau A6; header ẩn nhưng OS vẫn đọc tên màn.
+        passwordUpdated: 'Password updated',
         personalDetails: 'Personal details',
         travelStories: 'Travel stories',
         // E1 (mockup `mobile-booking-screens`) — header của màn hỏi về chuyến.
@@ -2929,6 +2931,17 @@ export const messages = {
         confirmLabel: 'Confirm new password',
         submit: 'Save password',
         submitting: 'Saving…',
+        /**
+         * N8 nửa sau (15/10) — màn kết quả sau khi lưu, thay cho toast web
+         * `account.toast.passwordUpdatedTitle` (app chưa có toast). Phiên trên máy này được xoay
+         * chứ không mất (int test 2 của `session-revoke.int.spec.ts`), nên câu thân nói rõ khách
+         * vẫn đăng nhập — cùng lời hứa với `revokeNotice` ở trên.
+         */
+        done: {
+          title: 'Password updated',
+          body: "You're still signed in on this phone. Every other device has been signed out.",
+          action: 'Back to account',
+        },
       },
       // A4 (P5b-4, ADR-0040 AMEND 5) — tấm chọn ảnh đại diện. Luồng ADR-0021
       // (KHÔNG authClient.updateUser), avatar tròn ở A1 là nút bấm mở tấm này.

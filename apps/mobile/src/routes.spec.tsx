@@ -99,6 +99,7 @@ const EXPECTED_ROUTES = [
   'dev/tour-gallery',
   'enquiry',
   'onboarding',
+  'password-updated',
   'personal-details',
   'posts/[slug]',
   'posts/index',
