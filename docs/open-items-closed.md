@@ -203,6 +203,9 @@ Mục 4 (đăng nhập Google trên mobile) còn mở ở file chính.
 3. **Đã sửa (`9af27b3`, merge 14/10).** **Chữ báo lỗi ảnh ghi cứng "10 MB" và 5** ở `use-review-photos.ts`, cùng số ô còn trống và
    `maxPhotos={5}` ở hai route, trong khi luật chặn đọc `REVIEW_PHOTO_MAX_BYTES` và
    `REVIEW_PHOTOS_MAX` của contract: đổi hằng số là chữ lệch.
+4. **Đã sửa (`c5b4633`, merge 15/10).** **Bài đang gõ ở R1, R5 mất khi bấm back cứng Android**, không hỏi lại.
+   *Nhánh `fix/review-draft-leave-guard`, PR #24: back cứng, nút back ở header và vuốt back iOS mở
+   tấm "Leave without sending?" khi bài khác gốc (form trống ở R1, bài cũ điền sẵn ở R5).*
 
 ## Nợ kỹ thuật — mục đã đóng
 

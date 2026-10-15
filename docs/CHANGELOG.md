@@ -8,6 +8,37 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-10-15 — Merge hỏi lại trước khi rời màn viết bài của app khi bài còn dở: R1, R5 (open-items P5b-5 mục 4, `c5b4633`)
+
+Làm tiếp open-items theo yêu cầu của user 13/10 (đóng càng nhiều càng tốt): PR xong 14/10, merge
+sáng 15/10. Nhánh `fix/review-draft-leave-guard`,
+[PR #24](https://github.com/yurivolkov21/Tourism-Platform-V2/pull/24), thi công trên session cloud.
+Không migration, không env, không dependency. Thư viện dùng chung bị sửa: `@tourism/i18n`
+(`reviews.unsentDraft`, bốn câu).
+
+- Mobile `c5b4633`: back cứng Android, nút back ở header và vuốt back iOS ở màn viết bài (R1) và màn
+  viết lại bài bị bác (R5) mở tấm "Leave without sending?" khi bài còn dở, cùng khuôn tấm rút bài;
+  chỉ "Discard and leave" mới cho lệnh rời chạy tiếp. Còn dở nghĩa là khác gốc: form trống ở R1,
+  bài cũ điền sẵn ở R5 (`reviewDraftChanged`: chữ so sau khi cắt khoảng trắng, ảnh so theo khoá
+  từng ô). Đang gửi hay đã gửi xong thì không hỏi. `DiscardDraftGuard` dùng `usePreventRemove` của
+  expo-router.
+- open-items: mục 4 của "Nợ nhỏ phát sinh từ P5b-5" chuyển sang `open-items-closed.md`; thêm một
+  dòng thử tay.
+
+**Review.** Không có lượt review độc lập. User bảo merge 15/10 00:36 UTC ("Merge nhé"). Nhánh tách
+từ `1274a3f`; main không đổi tới lúc merge nên không cần rebase.
+
+Tests after (`gate:int` trên `c5b4633`, 14/10 xong 13:24 UTC, session cloud theo các bước của CI):
+unit 7556 — web 2280, admin 2222, api 1158, mobile 850, contract 712, mobile-ui 145, i18n 58, ui 57,
+core 48, tokens 26 — và int 843; CI của PR xanh 13:29 UTC trên cùng commit. So với `1274a3f`: mobile
+thêm 17 test, các gói khác giữ nguyên. Turbo phát lại kết quả đã lưu của mobile-ui và tokens. Test
+viết trước và đỏ, xanh sau; ba lượt đổi code thử (tắt guard, bỏ lệnh rời tiếp, bỏ điều kiện pha form)
+đều làm test đỏ.
+
+**CÒN TREO:**
+
+- Thử tay trên máy thật ở bản build app kế tiếp (dòng ở open-items): back cứng Android ở R1, R5.
+
 ## 2026-10-14 — Merge lý do công ty huỷ chuyến cho khách đọc: email báo huỷ, trang đơn web và app, câu nhắc ở hộp huỷ chuyến (ADR-0041 AMEND 2, `bdc5e72`..`8ee7ecb`)
 
 Làm tiếp open-items theo yêu cầu của user 13/10 (đóng càng nhiều càng tốt trước freeze 15/10): mục

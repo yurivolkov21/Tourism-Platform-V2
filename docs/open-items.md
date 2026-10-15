@@ -1,6 +1,6 @@
 # Việc còn treo
 
-> Bản tóm tắt để điều hướng, cập nhật 14/10/2026. **Chỉ giữ việc còn mở**; mục đã
+> Bản tóm tắt để điều hướng, cập nhật 15/10/2026. **Chỉ giữ việc còn mở**; mục đã
 > đóng (gồm các mã G đã gạch) nằm ở [open-items-closed.md](open-items-closed.md),
 > chép nguyên văn. **Không phải nguồn sự thật** — chi tiết của từng mục sống ở
 > [CHANGELOG](CHANGELOG.md) (mục "CÒN TREO" của entry tương ứng) và ở
@@ -43,6 +43,10 @@ Không còn việc nào chờ quyết (14/10).
 
 ## Cần thử lại bằng máy thật
 
+- **Hỏi lại trước khi rời màn viết bài của app** (merge 15/10, nhánh `fix/review-draft-leave-guard`, PR #24): ở bản
+  build app kế tiếp, gõ vài chữ ở R1 rồi bấm back cứng Android: phải hiện tấm "Leave without
+  sending?", "Keep writing" ở lại màn, "Discard and leave" thì rời. Mở R5 rồi back ngay thì rời
+  luôn, không hỏi. Có iPhone thì thử thêm vuốt back. Mới có test đơn vị.
 - **Lý do công ty huỷ chuyến cho khách đọc** (merge 14/10, nhánh `feat/departure-cancel-reason`, PR #23):
   admin huỷ một chuyến thử có một đơn đã trả bằng thẻ Stripe test và gõ lý do; email báo huỷ của
   khách phải có khối "WHY" đúng câu ấy, trang đơn web có khối "Why" dưới "We had to cancel this
@@ -168,8 +172,8 @@ sau khi merge). Không chặn merge, ghi lại để không quên. Mục 1–3 v
 
 ## Nợ nhỏ phát sinh từ P5b-5 (nhánh `fix/mobile-review-screens`)
 
-Nêu 12/10 ở review lần 2 (merge cùng ngày). Không chặn merge. Mục 3 đã sửa 14/10, chuyển sang
-[open-items-closed.md](open-items-closed.md):
+Nêu 12/10 ở review lần 2 (merge cùng ngày). Không chặn merge. Mục 3 (14/10) và 4 (15/10) đã
+sửa, chuyển sang [open-items-closed.md](open-items-closed.md):
 
 1. **R1 chưa mở được từ dòng My reviews.** Mockup ghi ba lối vào R1: P6, chi tiết booking và
    dòng My reviews ở Account. Lối chi tiết booking có từ 14/10 (`e6fbf4e`,
@@ -177,7 +181,6 @@ Nêu 12/10 ở review lần 2 (merge cùng ngày). Không chặn merge. Mục 3 
    cần thiết kế.
 2. **Rút bài xong không có toast "Review retracted"** như web (chữ `reviews.retract.toast.done`
    có sẵn). Thẻ đổi sang "You retracted this review" nên khách vẫn thấy kết quả.
-4. **Bài đang gõ ở R1, R5 mất khi bấm back cứng Android**, không hỏi lại.
 
 ## Nợ kỹ thuật chi tiết
 
