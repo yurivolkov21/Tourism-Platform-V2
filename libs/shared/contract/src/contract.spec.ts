@@ -179,7 +179,7 @@ describe('contract type inference', () => {
     expectTypeOf<ListInput['page']>().toEqualTypeOf<number | undefined>();
     expectTypeOf<ListInput['featured']>().toEqualTypeOf<boolean | undefined>();
     expectTypeOf<ListInput['sort']>().toEqualTypeOf<
-      'createdAt' | 'updatedAt' | 'basePrice' | 'durationDays' | 'title' | undefined
+      'createdAt' | 'updatedAt' | 'basePrice' | 'durationDays' | 'title' | 'rating' | undefined
     >();
     // Parsed (server-side) query has defaults applied.
     expectTypeOf<ToursListQuery['page']>().toEqualTypeOf<number>();
