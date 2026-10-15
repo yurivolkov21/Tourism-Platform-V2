@@ -176,7 +176,8 @@ export function BlogExplorer({
   return (
     // Sidebar + lưới. Đo trên wireframe đã duyệt: vùng 1184 − sidebar 384 −
     // khe 32 = 768 cho lưới, tức 2 cột 372 (thẻ cũ 379 — hụt 7px).
-    // Mobile chưa làm ngăn kéo (user hoãn 17/08): sidebar xếp trên lưới.
+    // Dưới lg khung lọc vẫn xếp trên lưới nhưng hai nhóm ô chọn đã dời vào
+    // ngăn kéo (15/10, nợ hoãn từ 17/08), nên bài đầu không còn bị đẩy xuống.
     <div className="flex flex-col gap-8 lg:flex-row lg:items-start">
       <BlogFilterSidebar
         topics={topics}

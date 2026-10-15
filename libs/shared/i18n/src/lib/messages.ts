@@ -2153,6 +2153,14 @@ export const messages = {
     listHeading: 'All stories',
     /** Đếm bài khớp bộ lọc, đứng cạnh "Filters" ở đầu sidebar. */
     storyCount: (n: number) => `${n} ${n === 1 ? 'story' : 'stories'}`,
+    /** Nút mở ngăn kéo lọc dưới `lg` (15/10): màn hẹp dời danh sách chủ đề và địa danh vào ngăn kéo. */
+    openFacets: 'Topics & places',
+    /** Như trên khi không có họ Place (API điểm đến hỏng, mọi tag dồn về Topic). */
+    openTopics: 'Topics',
+    /** Nút × đóng ngăn kéo lọc. */
+    closeFilters: 'Close filters',
+    /** Nút chính ở chân ngăn kéo: đóng để xem bài. Lọc đã áp dụng ngay lúc tick, không có bước "Apply". */
+    showResults: (n: number) => `Show ${n} ${n === 1 ? 'story' : 'stories'}`,
     /** Nhãn ảnh bìa ở thẻ bài và hero bài: tả theo chuyên mục, KHÔNG lặp tiêu đề bài (tiêu đề
         đứng ngay dưới ảnh, trình đọc màn hình sẽ đọc hai lần). */
     storyPhotoLabel: (category: string) => `${category} · story photo`,

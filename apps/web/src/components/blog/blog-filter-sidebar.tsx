@@ -1,9 +1,21 @@
 'use client';
 
 import { messages } from '@tourism/i18n';
+import { Button } from '@tourism/ui/components/button';
+import {
+  Drawer,
+  DrawerClose,
+  DrawerContent,
+  DrawerDescription,
+  DrawerFooter,
+  DrawerHeader,
+  DrawerTitle,
+  DrawerTrigger,
+} from '@tourism/ui/components/drawer';
 import { Input } from '@tourism/ui/components/input';
 import { cn } from '@tourism/ui/lib/utils';
-import { CheckIcon, SearchIcon, XIcon } from 'lucide-react';
+import { CheckIcon, SearchIcon, SlidersHorizontalIcon, XIcon } from 'lucide-react';
+import { useState } from 'react';
 import type { FacetCounts, TagLike } from '@/lib/blog';
 import { slugLabel } from '@/lib/text';
 
@@ -24,6 +36,11 @@ import { slugLabel } from '@/lib/text';
  * chỉ chia đôi chiều cao, không giải được "50 tag" — nên quá `SCROLL_AFTER`
  * mục thì section chặn cao và cuộn tại chỗ. Dưới ngưỡng KHÔNG bật cuộn: không
  * ai phải cuộn để thấy thứ vốn đã vừa màn hình.
+ *
+ * ── Màn hẹp: ngăn kéo (15/10, nợ hoãn từ 17/08) ──
+ * Dưới `lg` hai nhóm ô chọn dời vào ngăn kéo trượt từ phải, cùng khuôn ngăn kéo
+ * của /tours; khung ngoài chỉ còn hàng đầu, ô tìm, chip đang lọc và nút mở. Trước
+ * đó cả khung xếp trên lưới, người đọc phải cuộn qua trọn bộ lọc mới tới bài đầu.
  */
 
 /** Quá số này thì section chặn cao và cuộn. 14 = 7 hàng × 2 cột, ≈ 220px. */
@@ -35,18 +52,27 @@ function FacetSection({
   counts,
   selected,
   onToggle,
+  idScope,
+  capHeight = true,
 }: {
   title: string;
   tags: readonly TagLike[];
   counts: FacetCounts;
   selected: readonly string[];
   onToggle: (slug: string) => void;
+  /** Tiền tố id cho bản thứ hai của nhóm (trong ngăn kéo): bản tại chỗ vẫn nằm
+      trong DOM, chỉ bị CSS ẩn, nên trùng id thì nhãn trỏ nhầm sang ô đang ẩn. */
+  idScope?: string;
+  /** Chặn cao và cuộn tại chỗ khi danh sách dài. Trong ngăn kéo thì tắt: ngăn
+      kéo đã tự cuộn, lồng thêm một vùng cuộn nữa trên màn cảm ứng là kẹt ngón. */
+  capHeight?: boolean;
 }) {
   if (tags.length === 0) return null;
-  const scrolls = tags.length > SCROLL_AFTER;
+  const scrolls = capHeight && tags.length > SCROLL_AFTER;
   // id phải kèm tên nhóm: 'sa-pa' có thể xuất hiện ở cả hai section, trùng id
   // thì label trỏ nhầm ô của section kia.
-  const inputId = (slug: string) => `facet-${title.toLowerCase()}-${slug}`;
+  const inputId = (slug: string) =>
+    `facet-${idScope ? `${idScope}-` : ''}${title.toLowerCase()}-${slug}`;
 
   const list = (
     <ul className="grid grid-cols-2 gap-x-4 gap-y-3">
@@ -177,6 +203,41 @@ export function BlogFilterSidebar({
     })),
   ];
   const anyActive = activeChips.length > 0 || query.trim().length > 0;
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  /** Huy hiệu trên nút mở ngăn kéo: chỉ đếm ô đã tick, ô tìm nằm ngoài ngăn kéo. */
+  const facetCount = selectedTopics.length + selectedPlaces.length;
+
+  /** Hai nhóm ô chọn, dựng ở hai chỗ: tại chỗ từ `lg`, trong ngăn kéo dưới `lg`. */
+  const facetSections = (inDrawer: boolean) => (
+    <>
+      <FacetSection
+        title={messages.blog.topicsLabel}
+        tags={topics}
+        counts={topicCounts}
+        selected={selectedTopics}
+        onToggle={onToggleTopic}
+        idScope={inDrawer ? 'drawer' : undefined}
+        capHeight={!inDrawer}
+      />
+
+      {places.length > 0 ? (
+        <>
+          <div className="px-5 py-5">
+            <span aria-hidden="true" className="block h-px bg-border" />
+          </div>
+          <FacetSection
+            title={messages.blog.placeLabel}
+            tags={places}
+            counts={placeCounts}
+            selected={selectedPlaces}
+            onToggle={onTogglePlace}
+            idScope={inDrawer ? 'drawer' : undefined}
+            capHeight={!inDrawer}
+          />
+        </>
+      ) : null}
+    </>
+  );
 
   return (
     <aside className="w-full lg:w-96 lg:shrink-0">
@@ -236,32 +297,75 @@ export function BlogFilterSidebar({
           </div>
         ) : null}
 
-        <div className="px-5 py-5">
-          <span aria-hidden="true" className="block h-px bg-border" />
+        {/* Dưới lg: nút mở ngăn kéo thay cho hai nhóm ô chọn. Ngăn kéo đóng thì
+            không gắn vào DOM, nên lúc thường chỉ có MỘT bản các ô. */}
+        <div className="px-5 pt-4 lg:hidden">
+          <Drawer open={drawerOpen} onOpenChange={setDrawerOpen} swipeDirection="right">
+            <DrawerTrigger
+              render={
+                <Button variant="outline" className="h-11 w-full rounded-full">
+                  <SlidersHorizontalIcon className="size-4" aria-hidden="true" />
+                  {places.length > 0 ? messages.blog.openFacets : messages.blog.openTopics}
+                  {facetCount > 0 ? (
+                    <span className="ml-1 inline-flex size-5 items-center justify-center rounded-full bg-primary text-xs text-primary-foreground">
+                      {facetCount}
+                    </span>
+                  ) : null}
+                </Button>
+              }
+            />
+            {/* Cùng khuôn ngăn kéo /tours: header hai tầng (tên và nút đóng, rồi
+                số bài sống), thân tự cuộn, chân có "Clear all" và nút mang kết quả.
+                Lọc áp dụng ngay lúc tick nên nút chân chỉ là lối thoát, không phải
+                bước "Apply". rounded-none để panel dính mép màn hình. */}
+            <DrawerContent className="data-[swipe-direction=right]:rounded-none">
+              {/* pb-4: DrawerHeader gốc là `p-4 pb-0`, thêm border-b không thôi
+                  thì chữ dính sát đường kẻ. */}
+              <DrawerHeader className="border-b pb-4">
+                <div className="flex items-center justify-between gap-2">
+                  <DrawerTitle>{messages.blog.filtersLabel}</DrawerTitle>
+                  <DrawerClose
+                    render={
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
+                        aria-label={messages.blog.closeFilters}
+                      >
+                        <XIcon />
+                      </Button>
+                    }
+                  />
+                </div>
+                <DrawerDescription aria-live="polite">
+                  {messages.blog.storyCount(resultCount)}
+                </DrawerDescription>
+              </DrawerHeader>
+
+              {/* data-lenis-prevent: Lenis (cuộn mượt toàn site) chặn wheel trên
+                  cả tài liệu; thiếu thuộc tính này thì lăn chuột trong ngăn kéo
+                  lại cuộn trang chính (đã đo ở ngăn kéo /tours). */}
+              <div data-lenis-prevent className="min-h-0 flex-1 overflow-y-auto py-5">
+                {facetSections(true)}
+              </div>
+
+              {/* pt-4: DrawerFooter gốc là `p-4 pt-0`, cùng lý do như header. */}
+              <DrawerFooter className="flex-row items-center justify-between gap-3 border-t pt-4">
+                <Button variant="ghost" onClick={onClearAll} disabled={!anyActive}>
+                  {messages.blog.clearAll}
+                </Button>
+                <DrawerClose render={<Button>{messages.blog.showResults(resultCount)}</Button>} />
+              </DrawerFooter>
+            </DrawerContent>
+          </Drawer>
         </div>
 
-        <FacetSection
-          title={messages.blog.topicsLabel}
-          tags={topics}
-          counts={topicCounts}
-          selected={selectedTopics}
-          onToggle={onToggleTopic}
-        />
-
-        {places.length > 0 ? (
-          <>
-            <div className="px-5 py-5">
-              <span aria-hidden="true" className="block h-px bg-border" />
-            </div>
-            <FacetSection
-              title={messages.blog.placeLabel}
-              tags={places}
-              counts={placeCounts}
-              selected={selectedPlaces}
-              onToggle={onTogglePlace}
-            />
-          </>
-        ) : null}
+        {/* Từ lg: hai nhóm ô chọn nằm tại chỗ như cũ. */}
+        <div className="hidden lg:block">
+          <div className="px-5 py-5">
+            <span aria-hidden="true" className="block h-px bg-border" />
+          </div>
+          {facetSections(false)}
+        </div>
 
         <div className="pb-5" />
       </div>

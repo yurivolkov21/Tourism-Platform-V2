@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MotionConfig } from 'motion/react';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -351,5 +351,73 @@ describe('BlogExplorer — sidebar lọc hai trục', () => {
     await user.click(tickFor('Food'));
     // Bài 'Sa Pa' mang tag packing, không phải food → sau khi lọc Food thì về 0
     expect(placeSection()).toHaveTextContent('0');
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────
+// Ngăn kéo lọc trên điện thoại (15/10, nợ hoãn từ 17/08): dưới `lg` danh sách
+// chủ đề và địa danh không còn xếp trên lưới mà nằm trong ngăn kéo; ô tìm, số
+// bài và chip đang lọc vẫn ở khung ngoài. jsdom không áp CSS, nên phần "chỉ
+// hiện ở màn nào" khẳng định qua lớp responsive, cùng cách test `col-span` ở trên.
+// ─────────────────────────────────────────────────────────────────────────
+describe('BlogExplorer — ngăn kéo lọc trên điện thoại', () => {
+  const trigger = () => screen.getByRole('button', { name: /^topics & places/i });
+  async function openDrawer(user: ReturnType<typeof userEvent.setup>) {
+    await user.click(trigger());
+    return screen.findByRole('dialog');
+  }
+
+  it('dưới lg chỉ có nút mở ngăn kéo; danh sách tại chỗ chỉ hiện từ lg', () => {
+    renderBlog();
+    expect(trigger().closest('.lg\\:hidden')).not.toBeNull();
+    const inline = screen.getByRole('group', { name: /Topic/ });
+    expect(inline.closest('.hidden.lg\\:block')).not.toBeNull();
+    // Ngăn kéo đóng thì không gắn vào DOM: không có bản sao thứ hai của các ô.
+    expect(screen.queryByRole('dialog')).toBeNull();
+  });
+
+  it('nút mở mang huy hiệu đếm số chủ đề và địa danh đang chọn', () => {
+    renderBlog({ initialTopics: ['food'], initialPlaces: ['sa-pa'] });
+    expect(trigger()).toHaveTextContent('2');
+  });
+
+  it('tick trong ngăn kéo lọc ngay, đầu ngăn kéo báo số bài, nút chân mang số bài và đóng ngăn kéo', async () => {
+    const user = userEvent.setup();
+    renderBlog();
+    const drawer = await openDrawer(user);
+    expect(within(drawer).getByRole('heading', { name: 'Filters' })).toBeInTheDocument();
+    await user.click(within(drawer).getByRole('checkbox', { name: /^Food/ }));
+    await waitFor(() => expect(within(drawer).getByText('3 stories')).toBeInTheDocument());
+    await user.click(within(drawer).getByRole('button', { name: 'Show 3 stories' }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    // Đóng ngăn kéo rồi, khung ngoài vẫn nói đang lọc gì.
+    expect(screen.getByRole('button', { name: /remove filter food/i })).toBeInTheDocument();
+  });
+
+  it('ô trong ngăn kéo có id riêng, nhãn không trỏ nhầm sang ô tại chỗ đang ẩn', async () => {
+    const user = userEvent.setup();
+    renderBlog();
+    const drawer = await openDrawer(user);
+    const box = within(drawer).getByRole('checkbox', { name: /^Sa Pa/ });
+    expect(document.querySelectorAll(`[id="${box.id}"]`)).toHaveLength(1);
+  });
+
+  it('"Clear all" ở chân ngăn kéo gỡ hết bộ lọc, và tắt khi chưa lọc gì', async () => {
+    const user = userEvent.setup();
+    renderBlog({ initialTopics: ['food'] });
+    const drawer = await openDrawer(user);
+    const clear = within(drawer).getByRole('button', { name: 'Clear all' });
+    await user.click(clear);
+    await waitFor(() => expect(within(drawer).getByText('9 stories')).toBeInTheDocument());
+    expect(clear).toBeDisabled();
+  });
+
+  it('không có họ Place thì nút chỉ ghi "Topics"', () => {
+    render(
+      <MotionConfig reducedMotion="always">
+        <BlogExplorer posts={POSTS} tags={TAGS} destinationSlugs={[]} />
+      </MotionConfig>,
+    );
+    expect(screen.getByRole('button', { name: /^topics$/i })).toBeInTheDocument();
   });
 });

@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import type { TagLike } from '@/lib/blog';
@@ -65,5 +65,20 @@ describe('BlogFilterSidebar — slug đang lọc mà không còn trong họ củ
     renderSidebar({ selectedPlaces: ['phong-nha'] });
 
     expect(screen.getByRole('button', { name: 'Clear all' })).toBeInTheDocument();
+  });
+});
+
+describe('BlogFilterSidebar — ngăn kéo trên điện thoại', () => {
+  it('danh sách dài trong ngăn kéo không chặn cao 220px: ngăn kéo tự cuộn, không lồng thêm vùng cuộn', async () => {
+    const user = userEvent.setup();
+    const many = Array.from({ length: 20 }, (_, i) => ({ slug: `t${i}`, name: `Topic ${i}` }));
+    renderSidebar({ topics: many });
+    // Tại chỗ (từ lg) giữ luật cũ: quá 14 mục thì chặn 220px và cuộn trong khung.
+    expect(document.querySelectorAll('.max-h-\\[220px\\]')).toHaveLength(1);
+
+    await user.click(screen.getByRole('button', { name: /^topics$/i }));
+    const drawer = await screen.findByRole('dialog');
+    expect(within(drawer).getAllByRole('checkbox')).toHaveLength(20);
+    expect(drawer.querySelector('.max-h-\\[220px\\]')).toBeNull();
   });
 });
