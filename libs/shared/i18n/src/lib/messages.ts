@@ -2206,7 +2206,9 @@ export const messages = {
       chooseLibrary: 'Choose from library',
       cancel: 'Cancel',
       retry: 'Try again',
-      errPermission: 'Camera and photo library access is needed to add photos.',
+      /** Chỉ camera cần quyền (F7): thư viện mở bằng picker của hệ điều hành, không xin quyền. */
+      errPermission:
+        'Camera access is needed to take a photo. You can still choose one from your library.',
     },
     heading: 'Rate this trip',
     /** Tiêu đề R5 (mockup `mobile-review-screens`): sửa bài bị bác, khác màn viết mới. */

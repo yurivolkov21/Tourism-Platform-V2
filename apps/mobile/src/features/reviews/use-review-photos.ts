@@ -53,13 +53,16 @@ export function useReviewPhotos(
     setSheetError(null);
     setPhotoError(null);
     try {
-      const permission =
-        source === 'camera'
-          ? await ImagePicker.requestCameraPermissionsAsync()
-          : await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (!permission.granted) {
-        setSheetError(copy.errPermission);
-        return;
+      // F7 (review 06/10 ở màn Account, port sang ảnh review 15/10): CHỈ camera cần xin quyền.
+      // `launchImageLibraryAsync` mở trình chọn ảnh của hệ điều hành (PHPicker iOS 14+, Photo Picker
+      // Android 13+), app chỉ nhận đúng ảnh khách chọn; xin quyền thư viện trước rồi chặn khi bị từ
+      // chối là khoá oan khách đã bấm "Don't allow" (hoặc chọn "Limited") khỏi thêm ảnh.
+      if (source === 'camera') {
+        const permission = await ImagePicker.requestCameraPermissionsAsync();
+        if (!permission.granted) {
+          setSheetError(copy.errPermission);
+          return;
+        }
       }
       // Thư viện cho chọn nhiều ảnh cùng lúc, tối đa số ô còn trống (trần của contract).
       const remaining = REVIEW_PHOTOS_MAX - photos.length;
