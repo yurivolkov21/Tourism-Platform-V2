@@ -153,9 +153,14 @@ function stubApi(state: ApiState, onWrite: (path: string) => unknown) {
   }) as unknown as typeof fetch;
 }
 
+let announceSpy: jest.SpyInstance | undefined;
+
+// Chỉ gỡ đúng spy của file này: `restoreAllMocks` gỡ luôn bản giả mà `expo-router/testing-library`
+// cài cho cây route, và từ test thứ hai `renderRouter` không dựng được cây mới nữa.
 afterEach(() => {
   for (const client of clients.splice(0)) client.clear();
-  jest.restoreAllMocks();
+  announceSpy?.mockRestore();
+  announceSpy = undefined;
 });
 
 /** Mở Home rồi đẩy R4 lên trên — dữ liệu hai danh sách đã nằm sẵn trong cache. */
@@ -255,6 +260,7 @@ describe('R7 — rút bài', () => {
     const announce = jest
       .spyOn(AccessibilityInfo, 'announceForAccessibilityWithOptions')
       .mockImplementation(() => {});
+    announceSpy = announce;
     const state: ApiState = { reviews: [makeReview({})], bookings: [] };
     stubApi(state, (path) => {
       expect(path).toBe(`/api/reviews/${REVIEW_ID}/retract`);
