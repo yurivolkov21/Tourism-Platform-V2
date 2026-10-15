@@ -236,6 +236,7 @@ export function TourDetailsForm({
     title: values.title,
     summary: values.summary,
     isFeatured: values.isFeatured,
+    badges: values.badges,
     days,
     groupSize: parseWholeNumber(values.maxGroupSize),
     basePrice: values.basePrice,

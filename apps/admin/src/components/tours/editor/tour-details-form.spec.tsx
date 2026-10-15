@@ -636,7 +636,7 @@ describe('TourDetailsForm — bước Details (F19)', () => {
     expect(rows()[0]).toHaveTextContent(`${state.warn}${e.readiness.summary}`);
   });
 
-  it('thẻ xem trước theo ô đang gõ: tên mới; tích Featured là chip hiện kèm câu luật', async () => {
+  it('thẻ xem trước theo ô đang gõ: tên mới; tích Featured hay badge là chip hiện kèm câu luật', async () => {
     const { user } = renderForm();
     expect(within(aside()).getByText('Hạ Long · 3 days · Max 12')).toBeInTheDocument();
     expect(within(aside()).queryByText(messages.toursPage.featuredBadge)).toBeNull();
@@ -644,10 +644,12 @@ describe('TourDetailsForm — bước Details (F19)', () => {
     await user.clear(field(t.title));
     await user.type(field(t.title), 'Lan Ha Bay Escape');
     await user.click(screen.getByRole('checkbox', { name: t.featured }));
+    await user.click(screen.getByRole('checkbox', { name: messages.tourDetail.badges.BEST_VALUE }));
 
     expect(within(aside()).getByText('Lan Ha Bay Escape')).toBeInTheDocument();
     expect(within(aside()).getByText(messages.toursPage.featuredBadge)).toBeInTheDocument();
-    expect(within(aside()).getByText(a.preview.featuredNote)).toBeInTheDocument();
+    expect(within(aside()).getByText(messages.tourDetail.badges.BEST_VALUE)).toBeInTheDocument();
+    expect(within(aside()).getByText(a.preview.chipsNote)).toBeInTheDocument();
   });
 
   it('câu gợi ý của Good for và Badges đứng NGOÀI nhóm (lưới 2×2), sau nhóm của nó', () => {

@@ -5,6 +5,7 @@ import {
   fromCents,
   perDepartureTotal,
   perPersonTotal,
+  type TourBadge,
   TourBasePriceSchema,
   type TourReadiness,
   toCents,
@@ -324,12 +325,22 @@ export function tourPhotoThumb(url: string): string {
   return withDeliveryTransform(url, 'w_320');
 }
 
+/** Một chip trên ảnh thẻ xem trước — như `CardChip` của web, trừ chip giảm giá. */
+export type TourCardPreviewChip = { kind: 'featured' } | { kind: 'badge'; badge: TourBadge };
+
+/** Như `CARD_CHIP_LIMIT` của web: góc ảnh card /tours giữ tối đa hai chip (ADR-0058 §3). */
+const CARD_CHIP_LIMIT = 2;
+
 /** Thẻ xem trước card /tours ở cột phải bước Details (spec F19 §2d.1). */
 export interface TourCardPreviewVM {
   coverUrl: string | null;
   title: string;
   summary: string;
-  featured: boolean;
+  /**
+   * Chip trên ảnh theo luật `cardChips` của web: Featured rồi tới badge theo thứ tự sẽ lưu,
+   * tối đa hai. Không có chip giảm giá vì admin không có giá "from" — câu `chipsNote` nói thay.
+   */
+  chips: TourCardPreviewChip[];
   /** "Hạ Long · 3 days · Max 12" — như băng dữ kiện của card web; mẩu đang gõ dở thì bỏ. */
   facts: string;
   /** Sao như card web: "4.7" và "(1,280)"; `null` = chưa ai đánh giá (KHÁC 0). */
@@ -350,6 +361,7 @@ export function tourCardPreview(
     title: string;
     summary: string;
     isFeatured: boolean;
+    badges: readonly TourBadge[];
     days: number;
     groupSize: number;
     basePrice: string;
@@ -359,11 +371,13 @@ export function tourCardPreview(
   const tp = messages.toursPage;
   const title = draft.title.trim();
   const price = draft.basePrice.trim();
+  const chips: TourCardPreviewChip[] = draft.badges.map((badge) => ({ kind: 'badge', badge }));
+  if (draft.isFeatured) chips.unshift({ kind: 'featured' });
   return {
     coverUrl: detail.photos[0]?.url ?? null,
     title: title === '' ? t.aside.preview.untitled : title,
     summary: draft.summary.trim(),
-    featured: draft.isFeatured,
+    chips: chips.slice(0, CARD_CHIP_LIMIT),
     facts: [
       draft.primaryDestination,
       draft.days > 0 ? tp.durationValue(draft.days) : null,

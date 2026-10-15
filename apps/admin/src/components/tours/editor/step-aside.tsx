@@ -11,7 +11,11 @@ import { CircleAlertIcon, CircleCheckIcon, LightbulbIcon, StarIcon } from 'lucid
 import type * as React from 'react';
 import { SafeImg } from '@/components/kit/safe-img';
 import { ClampedSummary } from '@/components/tours/editor/clamped-summary';
-import { type TourCardPreviewVM, tourPhotoThumb } from '@/lib/tour-editor-view';
+import {
+  type TourCardPreviewChip,
+  type TourCardPreviewVM,
+  tourPhotoThumb,
+} from '@/lib/tour-editor-view';
 
 /**
  * Khối dùng chung của cột phải mỗi bước (ADR-0049 §6). Nơi dùng truyền dữ liệu ĐANG
@@ -215,11 +219,19 @@ function CoverFrame({ url, children }: { url: string | null; children?: React.Re
   );
 }
 
+/** Màu chip như `chipTone` của card web: Limited offer là badge khẩn duy nhất mang token cảnh báo. */
+function previewChipTone(chip: TourCardPreviewChip): string {
+  if (chip.kind === 'featured') return 'bg-primary text-primary-foreground';
+  if (chip.badge === 'LIMITED_OFFER') return 'bg-warning text-warning-foreground';
+  return 'bg-card text-foreground shadow-(--shadow-card)';
+}
+
 /**
  * Thẻ xem trước card /tours (spec F19 §2d.1) — bám `tour-list-card.tsx` của web, dùng
- * lại chữ của nó. Hai chỗ khác card thật đều nói ra bằng chữ: giá là giá GỐC (card web
- * in giá chuyến rẻ nhất sắp tới — admin không có số ấy), và chip Featured nhường chỗ cho
- * chip giảm giá.
+ * lại chữ của nó. Ba chỗ khác card thật đều nói ra bằng chữ: giá là giá GỐC (card web
+ * in giá chuyến rẻ nhất còn đặt được — admin không có số ấy), không có băng đợt kế tiếp
+ * (cùng lý do, `priceNote` nói cả hai), và chip giảm giá của card thật chiếm suất đầu
+ * (`chipsNote`).
  */
 export function TourCardPreview({ preview }: { preview: TourCardPreviewVM }) {
   const tp = messages.toursPage;
@@ -231,14 +243,23 @@ export function TourCardPreview({ preview }: { preview: TourCardPreviewVM }) {
       </CardHeader>
       <CardContent className="grid gap-2">
         <CoverFrame url={preview.coverUrl}>
-          {preview.featured ? (
-            <span className="absolute top-2 left-2 inline-flex h-5 items-center rounded-full bg-primary px-2 text-xs font-semibold text-primary-foreground">
-              {tp.featuredBadge}
+          {preview.chips.length > 0 ? (
+            <span className="absolute top-2 left-2 flex gap-1">
+              {preview.chips.map((chip) => (
+                <span
+                  key={chip.kind === 'featured' ? chip.kind : chip.badge}
+                  className={`inline-flex h-5 items-center rounded-full px-2 text-xs font-semibold ${previewChipTone(chip)}`}
+                >
+                  {chip.kind === 'featured'
+                    ? tp.featuredBadge
+                    : messages.tourDetail.badges[chip.badge]}
+                </span>
+              ))}
             </span>
           ) : null}
         </CoverFrame>
-        {preview.featured ? (
-          <p className="text-xs text-muted-foreground">{a.preview.featuredNote}</p>
+        {preview.chips.length > 0 ? (
+          <p className="text-xs text-muted-foreground">{a.preview.chipsNote}</p>
         ) : null}
         {preview.facts ? (
           <p className="truncate text-xs font-medium tracking-wide text-muted-foreground uppercase">

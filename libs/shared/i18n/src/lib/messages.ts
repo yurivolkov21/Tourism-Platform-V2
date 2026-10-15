@@ -5336,11 +5336,20 @@ export const messages = {
             untitled: 'Untitled tour',
             /** Giá gốc đang gõ chưa hợp lệ. */
             noPrice: '—',
-            /** Luật của card web: chip giảm giá thắng nhãn Featured (tour-list-card.tsx). */
-            featuredNote: 'The Featured label shows unless the card shows a discount.',
+            /**
+             * Luật chip của card web (`cardChips`, ADR-0058 §3): tối đa hai; chip giảm giá thắng
+             * Featured, tour không Featured thì nó đứng đầu và đẩy badge thứ hai ra. Admin không
+             * có giá "from" nên không vẽ được chip giảm giá — câu này nói thay.
+             */
+            chipsNote:
+              'Two labels fit on the photo. A discount, when the card shows one, replaces Featured or goes first.',
             basePrice: 'Base price',
-            /** Card web in giá của chuyến rẻ nhất sắp tới (`cardPrice`), admin không có số ấy. */
-            priceNote: 'The site shows the cheapest upcoming departure.',
+            /**
+             * Card web in giá chuyến rẻ nhất còn đặt được (`cardPrice`) và ngày đợt kế tiếp
+             * (ADR-0058 §2) — admin không có hai số ấy.
+             */
+            priceNote:
+              'The site shows the cheapest bookable departure and the next departure date.',
             /**
              * Summary tràn hai dòng của khung (spec 2026-10-05 §4 #1). Khung ~290px chữ 12px
              * xấp xỉ card web trên điện thoại 360px — màn rộng card in được nhiều hơn.
@@ -5533,9 +5542,13 @@ export const messages = {
           suitableForHint:
             'Shown on the tour page as the Good for card. Tick none and the card is hidden.',
           badges: 'Badges',
-          /** Đo: `tour-hero.tsx` giữ tối đa 2 chip cạnh giá; chip giảm giá chiếm một suất, phần dư gộp "+N". */
+          /**
+           * Đo: card /tours (`cardChips`, ADR-0058 §3) và `tour-hero.tsx` đều giữ tối đa 2 chip,
+           * chip giảm giá chiếm một suất; card bỏ phần dư, trang tour gộp "+N". Featured chỉ chiếm
+           * suất ở card — thẻ xem trước bước Details cho thấy.
+           */
           badgesHint:
-            'Shown next to the price at the top of the tour page. Two fit, one when that price is discounted; the rest show as “+N”.',
+            'Shown on the /tours card and at the top of the tour page: two at most, a discount counting as one. The card preview shows which fit; the tour page shows the rest as “+N”.',
           /**
            * Nghĩa của từng huy hiệu là quy ước biên tập — hệ thống không tự tính — nên
            * câu dưới mỗi ô là hướng dẫn dùng. Limited offer bám luật giá gạch 15/09:

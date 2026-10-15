@@ -1,4 +1,4 @@
-import { type AdminTourDetail, tourReadiness } from '@tourism/contract';
+import { type AdminTourDetail, type TourBadge, tourReadiness } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
 import { describe, expect, it } from 'vitest';
 import { COVER_PHOTO, detailFixture } from '@/test/tour-detail';
@@ -375,6 +375,7 @@ describe('tourCardPreview', () => {
     title: '  Ha Long Bay Cruise ',
     summary: 'Three days on the bay.',
     isFeatured: true,
+    badges: [] as TourBadge[],
     days: 3,
     groupSize: 12,
     basePrice: '199.00',
@@ -387,13 +388,28 @@ describe('tourCardPreview', () => {
         coverUrl: COVER_PHOTO.url,
         title: 'Ha Long Bay Cruise',
         summary: 'Three days on the bay.',
-        featured: true,
+        chips: [{ kind: 'featured' }],
         facts: 'Hạ Long · 3 days · Max 12',
         rating: { value: '4.7', count: '1,280' },
         // Như `formatMoney` của card web: đô tròn, không số lẻ.
         price: '$199',
       },
     );
+  });
+
+  it('chip trên ảnh như card web (ADR-0058 §3): Featured rồi tới badge theo thứ tự sẽ lưu, tối đa hai', () => {
+    const chips = (isFeatured: boolean, badges: TourBadge[]) =>
+      tourCardPreview(detailFixture(), { ...draft, isFeatured, badges }).chips;
+
+    expect(chips(true, ['NEW', 'POPULAR'])).toEqual([
+      { kind: 'featured' },
+      { kind: 'badge', badge: 'NEW' },
+    ]);
+    expect(chips(false, ['NEW', 'POPULAR', 'EXCLUSIVE'])).toEqual([
+      { kind: 'badge', badge: 'NEW' },
+      { kind: 'badge', badge: 'POPULAR' },
+    ]);
+    expect(chips(false, [])).toEqual([]);
   });
 
   it('giá có số lẻ làm tròn như card web: 199.50 → "$200"', () => {

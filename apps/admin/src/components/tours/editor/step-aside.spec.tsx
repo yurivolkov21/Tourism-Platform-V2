@@ -149,7 +149,7 @@ describe('TourCardPreview', () => {
     coverUrl: 'https://res.cloudinary.com/demo/image/upload/f_auto,q_auto/v1/x',
     title: 'Ha Long Bay Cruise',
     summary: 'Three days on the bay.',
-    featured: true,
+    chips: [{ kind: 'featured' }],
     facts: 'Hạ Long · 3 days · Max 12',
     rating: { value: '4.7', count: '128' },
     price: '$199',
@@ -159,7 +159,7 @@ describe('TourCardPreview', () => {
     render(<TourCardPreview preview={PREVIEW} />);
     expect(screen.getByText(a.preview.title)).toBeInTheDocument();
     expect(screen.getByText(tp.featuredBadge)).toBeInTheDocument();
-    expect(screen.getByText(a.preview.featuredNote)).toBeInTheDocument();
+    expect(screen.getByText(a.preview.chipsNote)).toBeInTheDocument();
     expect(screen.getByText('Hạ Long · 3 days · Max 12')).toBeInTheDocument();
     expect(screen.getByText('Ha Long Bay Cruise')).toBeInTheDocument();
     expect(screen.getByText('4.7')).toBeInTheDocument();
@@ -170,10 +170,26 @@ describe('TourCardPreview', () => {
   });
 
   it('không Featured: không chip, không câu luật; chưa ai đánh giá: "Not yet reviewed"', () => {
-    render(<TourCardPreview preview={{ ...PREVIEW, featured: false, rating: null }} />);
+    render(<TourCardPreview preview={{ ...PREVIEW, chips: [], rating: null }} />);
     expect(screen.queryByText(tp.featuredBadge)).toBeNull();
-    expect(screen.queryByText(a.preview.featuredNote)).toBeNull();
+    expect(screen.queryByText(a.preview.chipsNote)).toBeNull();
     expect(screen.getByText(tp.notRated)).toBeInTheDocument();
+  });
+
+  it('badge admin đứng sau Featured như card web; Limited offer mang token cảnh báo', () => {
+    render(
+      <TourCardPreview
+        preview={{
+          ...PREVIEW,
+          chips: [{ kind: 'featured' }, { kind: 'badge', badge: 'LIMITED_OFFER' }],
+        }}
+      />,
+    );
+    const featured = screen.getByText(tp.featuredBadge);
+    const limited = screen.getByText(messages.tourDetail.badges.LIMITED_OFFER);
+    expect(featured.compareDocumentPosition(limited)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+    expect(limited.className).toContain('bg-warning');
+    expect(featured.className).not.toContain('bg-warning');
   });
 
   describe('Summary dài hơn hai dòng', () => {
