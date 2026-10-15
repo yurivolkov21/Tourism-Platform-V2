@@ -86,5 +86,8 @@ CHANGELOG của nó trước.
 [prompt thi công G40 Phần 3](prompts/2026-10-10-g40-part3-admin-excel-prompt.md) ·
 [G42 màn hoá đơn chờ](2026-10-13-g42-pending-receipt.md)
 
+**P6 trợ lý AI**
+[P6 trợ lý AI tư vấn tour](2026-10-15-p6-ai-concierge.md)
+
 **Công cụ máy dev (ngoài repo, chưa rõ trạng thái)**
 [mod `tourism-status` (kèm prompt thi công)](2026-10-02-tourism-status-mod.md)
