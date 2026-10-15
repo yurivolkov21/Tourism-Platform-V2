@@ -104,3 +104,51 @@ chỗ của quyết định gốc; luật xoá, khoá và hộp xác nhận gi�
   hai nhịp): admin cũ gặp mã lạ thì rơi về thông báo lỗi chung, không đá về `/tours`.
 - **§2 và §3, bust cache:** xoá một hàng đang ẩn không bust tag `tours` nữa — hàng ẩn không hiện
   ở web (danh sách công khai lọc `isActive`), nên bust ấy chỉ làm cả site mất cache vô ích.
+
+## AMEND 2 — 15/10/2026 (G25): khoá ngoại điểm đến của tour đổi sang `RESTRICT`
+
+**Bối cảnh.** Giới hạn 4 để khoá ngoại `tour_destinations.destination_id` ở
+`ON DELETE CASCADE` vì đợt sửa sạn không có migration (spec §1), và open-items ghi G25 "để sau
+capstone". Ngày 15/10 user dời freeze sang cuối tháng 10 và giao làm tiếp open-items; lượt tạo
+migration của dự án được giao cho G25. Tới lúc ấy, luật "đang có tour thì không xoá" chỉ sống ở
+lệnh xoá của API: xoá điểm đến bằng SQL tay, Prisma Studio hay một script thì DB vẫn lặng lẽ gỡ
+điểm đến khỏi mọi tour.
+
+**Chốt.**
+
+1. Khoá ngoại `tour_destinations_destination_id_fkey` đổi sang `ON DELETE RESTRICT` (Prisma
+   `onDelete: Restrict`), giống `tours.category_id`. Xoá một điểm đến còn liên kết bằng bất kỳ
+   đường nào thì DB từ chối (Postgres `23503`, Prisma `P2003`) và liên kết còn nguyên. Khoá
+   ngoại `tour_id` giữ `CASCADE`: xoá tour vẫn kéo theo các liên kết của chính tour ấy.
+2. Lệnh xoá của API giữ nguyên §3: khoá hàng điểm đến, đếm liên kết, còn thì `IN_USE`.
+   `RESTRICT` là lưới thứ hai cho các đường ngoài API, không thay phép đếm: phép đếm cho admin
+   câu `IN_USE` rõ nghĩa, còn câu `DELETE` bị DB từ chối chỉ ra lỗi chung. Câu xoá của API không
+   bắt `P2003`: dưới khoá hàng của §3, đếm ra 0 thì không lệnh nào gắn thêm liên kết được trước
+   câu xoá.
+3. Migration chỉ thay khoá ngoại, không đụng dữ liệu, và viết thành MỘT câu `ALTER TABLE` hai
+   mệnh đề (`DROP CONSTRAINT` rồi `ADD CONSTRAINT` cùng tên) thay cho hai câu Prisma sinh ra.
+   `prisma migrate deploy` không bọc file migration trong transaction. Đo 15/10 trên Postgres 17
+   local, với một liên kết mồ côi dựng sẵn để câu ADD hỏng: bản hai câu để bảng mất hẳn khoá
+   ngoại (câu DROP đã ăn), bản một câu để khoá cũ nguyên vẹn. `ADD CONSTRAINT` kiểm lại mọi dòng
+   hiện có trong lúc giữ khoá bảng; production có 53 liên kết và 0 liên kết mồ côi (truy vấn chỉ
+   đọc 15/10), nên bước kiểm ấy qua và khoá rất ngắn. Không dòng code nào phụ thuộc vào luật xoá
+   của khoá ngoại này, nên migration lên trước hay sau bản API đều được.
+
+**Hệ quả.**
+
+- Giới hạn 4 hết hiệu lực. Các giới hạn 1–3 giữ nguyên.
+- Không đường dọn dữ liệu nào đang có xoá điểm đến còn liên kết: `data:reset` giữ nguyên
+  `destinations` và `tour_destinations` (danh sách `PHAI_CON`), seed chỉ xoá liên kết theo tour
+  rồi chèn lại, các int test dọn tour trước điểm đến. Riêng ca int "liên kết mồ côi" của
+  `admin-destinations.int.spec.ts` dựng một liên kết trỏ tour đã xoá, nên `beforeEach` của file
+  ấy xoá liên kết tường minh trước khi xoá điểm đến.
+- Muốn xoá tay một điểm đến còn tour thì phải gỡ liên kết trước. Đó đúng là điều luật này muốn.
+
+**Đã bỏ.**
+
+| Phương án | Vì sao bỏ |
+| --- | --- |
+| `NO ACTION` thay cho `RESTRICT` | `NO ACTION` kiểm ở cuối câu lệnh, `RESTRICT` kiểm ngay; repo không cần khác biệt ấy, còn danh mục đã dùng `RESTRICT` |
+| Trigger chặn xoá điểm đến | Thêm một thứ phải bảo trì để làm đúng việc khoá ngoại đã làm |
+| Bắt `P2003` ở câu xoá của API, đổi thành `IN_USE` | Không xảy ra được dưới khoá hàng của §3, nên là một nhánh không thử được bằng đường thật |
+| Giữ nguyên hai câu `ALTER TABLE` Prisma sinh ra | Không nguyên tử dưới `migrate deploy`: câu thứ hai hỏng thì bảng không còn khoá ngoại nào (đo ở chốt 3) |

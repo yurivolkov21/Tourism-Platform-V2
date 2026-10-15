@@ -60,7 +60,7 @@ thay, cột đã xoá, và số AMEND để biết phải đọc tới cuối fi
 | [0050](0050-ai-concierge-chat.md) | Trợ lý AI: chat trong API, lịch sử ở server, tool ghi phải được khách duyệt, trần chi phí theo token | |
 | [0051](0051-posts-admin.md) | Quản trị bài viết: markdown kèm xem trước, slug đặt một lần, đủ mới được đăng, trang bài viết mang tag `tours` | |
 | [0052](0052-admin-staff-tier.md) | Nhân sự admin hai bậc: Owner từ `ADMIN_EMAILS`, Staff do Owner cấp; bảng quyền ở contract; khoá tài khoản chặn tạo phiên | 1 AMEND |
-| [0053](0053-delete-unused-categories-destinations.md) | Xoá danh mục và điểm đến khi chưa tour nào dùng | 1 AMEND |
+| [0053](0053-delete-unused-categories-destinations.md) | Xoá danh mục và điểm đến khi chưa tour nào dùng | 2 AMEND (từ AMEND 2, 15/10: khoá ngoại điểm đến của tour đổi sang `RESTRICT`) |
 | [0054](0054-customer-bookings-list-phase-filters.md) | Đơn của khách: một luật giai đoạn dùng chung; `bookings.mine` lọc, tìm, xếp theo hành trình và phân trang ở server | 1 AMEND |
 | [0055](0055-mobile-data-layer.md) | Tầng dữ liệu mobile: oRPC `OpenAPILink` + TanStack Query, client-first | 2 AMEND |
 | [0056](0056-mobile-google-native-signin.md) | Đăng nhập Google trên app bằng SDK gốc và ID token; đóng proxy Expo | 1 AMEND (thi công 13/10) |
