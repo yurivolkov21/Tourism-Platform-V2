@@ -1,4 +1,5 @@
 import { vietnamToday } from '@tourism/contract';
+import { dateNames } from '@tourism/i18n';
 import { departureStatus, isDepartureOpen, strikePrice } from './tours';
 
 /** Trần thumb: 7×64 + 6×8 = 496 ≤ 541 (cạnh ảnh vuông). Ô thứ 8 thành 568 > 541. */
@@ -145,20 +146,8 @@ export function monthDateSpan(items: readonly { startDate: string }[]): string {
   return lo === hi ? `${lo} ${month}` : `${lo}–${hi} ${month}`;
 }
 
-const SPAN_MONTHS = [
-  'Jan',
-  'Feb',
-  'Mar',
-  'Apr',
-  'May',
-  'Jun',
-  'Jul',
-  'Aug',
-  'Sep',
-  'Oct',
-  'Nov',
-  'Dec',
-];
+// Tên tháng viết tắt đọc từ `@tourism/i18n` (W-09, luật 7).
+const SPAN_MONTHS = dateNames.monthShort;
 
 /**
  * Tháng mở sẵn khi vào tab: tháng chứa đợt đang chọn ở panel đặt chỗ.

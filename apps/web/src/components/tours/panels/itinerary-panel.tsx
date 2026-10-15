@@ -1,6 +1,6 @@
 'use client';
 
-import { messages } from '@tourism/i18n';
+import { dateNames, messages } from '@tourism/i18n';
 import { cn } from '@tourism/ui/lib/utils';
 import { CheckIcon, ChevronRightIcon, MapPinIcon, XIcon } from 'lucide-react';
 import { useState } from 'react';
@@ -10,8 +10,9 @@ import { useDepartureSelection } from '@/components/tours/departure-selection';
 import type { TourDetailVM } from '@/lib/api/tours';
 import { itineraryDayDate, itineraryDayState, parseItineraryStops } from '@/lib/tour-detail';
 
-const DOW = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+// Tên thứ và tháng viết tắt đọc từ `@tourism/i18n` (W-09, luật 7).
+const DOW = dateNames.weekdayShort;
+const MON = dateNames.monthShort;
 
 /** `Mon 14 Sep` — khuôn `fmt()` của wireframe. Đọc theo UTC, cùng quy ước với
     `itineraryDayState` để ngày và trạng thái không bao giờ lệch nhau. */

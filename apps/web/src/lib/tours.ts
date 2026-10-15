@@ -1,3 +1,4 @@
+import { dateNames } from '@tourism/i18n';
 import type { TourCardVM } from '@/lib/api/tours';
 import type { MockDestinationLink, MockMediaItem } from '@/mocks/types';
 import { foldAccents, slugLabel } from './text';
@@ -599,7 +600,8 @@ export function initialDepartureId<T extends { id: string; bookable: boolean; se
   return departures.find(isDepartureOpen)?.id ?? null;
 }
 
-const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+// Tên tháng viết tắt đọc từ `@tourism/i18n` (W-09, luật 7).
+const MONTHS = dateNames.monthShort;
 
 /** Dải ngày gọn: gộp phần trùng nhau. `startDate`/`endDate` là ngày lịch
     (YYYY-MM-DD) nên tách bằng chuỗi — KHÔNG dựng `new Date()` vì nó diễn giải
@@ -613,7 +615,7 @@ export function formatDate(date: string): string {
 }
 
 /** Thứ viết tắt, đọc theo UTC — cùng luật timezone với `MONTHS`. */
-const DOW = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const DOW = dateNames.weekdayShort;
 
 /**
  * Ngày trên MỘT HÀNG của modal "All dates": `"Mon, 14 Sep"` — thứ + ngày hai

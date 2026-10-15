@@ -5,6 +5,7 @@ import {
   findRegion,
   REGIONS,
 } from '@tourism/contract';
+import { dateNames } from '@tourism/i18n';
 import { todayDateString } from '@/lib/account-stats';
 import { foldAccents } from '@/lib/text';
 
@@ -56,7 +57,8 @@ function isAhead(b: Booking, today: string): boolean {
   return AHEAD_PHASES.has(bookingPhase(b, today));
 }
 
-const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+// Tên tháng viết tắt đọc từ `@tourism/i18n` (W-09, luật 7).
+const MONTHS = dateNames.monthShort;
 
 export interface PageStamp {
   /** Khoá render — mã booking (mỗi CHUYẾN một tem, unique). */
