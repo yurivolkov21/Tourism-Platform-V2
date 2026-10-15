@@ -54,12 +54,15 @@ import {
     rows-per-page mà v2 thiếu — khoản nợ này đóng luôn ở đây. */
 const DEFAULT_PAGE_SIZE = 10;
 
-type SortValue = 'newest' | 'priceAsc' | 'priceDesc' | 'durationAsc';
-const SORT_ORDER: SortValue[] = ['newest', 'priceAsc', 'priceDesc', 'durationAsc'];
+type SortValue = 'newest' | 'rating' | 'priceAsc' | 'priceDesc' | 'durationAsc';
+const SORT_ORDER: SortValue[] = ['newest', 'rating', 'priceAsc', 'priceDesc', 'durationAsc'];
+/** Sắp ở trình duyệt trên cả tập tour — xem `sortTours`. `price` là giá in trên thẻ
+    (`priceFrom`), không phải `basePrice` (ADR-0058 §5). */
 const SORT_MAP: Record<SortValue, { key: TourSortKey; order: 'asc' | 'desc' }> = {
   newest: { key: 'createdAt', order: 'desc' },
-  priceAsc: { key: 'basePrice', order: 'asc' },
-  priceDesc: { key: 'basePrice', order: 'desc' },
+  rating: { key: 'rating', order: 'desc' },
+  priceAsc: { key: 'price', order: 'asc' },
+  priceDesc: { key: 'price', order: 'desc' },
   durationAsc: { key: 'durationDays', order: 'asc' },
 };
 

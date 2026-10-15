@@ -41,6 +41,8 @@ function tour(slug: string, title: string, durationDays: number): TourCardVM {
     ratingAvg: null,
     ratingCount: 0,
     cover: null,
+    badges: [],
+    nextDeparture: null,
   };
 }
 

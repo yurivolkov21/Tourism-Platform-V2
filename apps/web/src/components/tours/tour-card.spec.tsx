@@ -24,6 +24,8 @@ const BASE: TourCardVM = {
   ratingAvg: 4.8,
   ratingCount: 758,
   cover: null,
+  badges: [],
+  nextDeparture: null,
 };
 
 function make(overrides: Partial<TourCardVM> = {}): TourCardVM {

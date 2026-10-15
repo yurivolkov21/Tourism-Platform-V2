@@ -113,10 +113,12 @@ export function durationBucket(durationDays: number): DurationBucket {
   return '4+';
 }
 
-/** Nhóm giá. `basePrice` là chuỗi thập phân — Number() chỉ để SO SÁNH ở đây,
-    không bao giờ để tính tiền. Biên: 100 và 300 thuộc nhóm giữa. */
-export function priceBucket(basePrice: string): PriceBucket {
-  const value = Number(basePrice);
+/** Nhóm giá của MỘT con số — `filterTours` truyền giá in trên thẻ (`cardPrice`, tức
+    `priceFrom`), không phải `basePrice` (ADR-0058 §5): khách tick "$100–$300" theo con số
+    họ thấy. Giá là chuỗi thập phân — Number() chỉ để SO SÁNH ở đây, không bao giờ để tính
+    tiền. Biên: 100 và 300 thuộc nhóm giữa. */
+export function priceBucket(price: string): PriceBucket {
+  const value = Number(price);
   if (value < 100) return '<100';
   if (value <= 300) return '100-300';
   return '300+';
@@ -151,10 +153,10 @@ export const EMPTY_TOUR_FILTERS: TourFilterState = {
  * Facet rỗng = không lọc. Giá trị lạ (link cũ / gõ tay) cho mảng RỖNG chứ
  * không âm thầm rơi về "All" — đúng bug đã sửa ở /blog.
  *
- * LƯU Ý KHI GẮN API: `categories`/`destinations`/`featured` có tham số tương
- * ứng trong ToursListQuerySchema, nhưng `durations`/`prices`/`difficulties`
- * thì KHÔNG — ba facet đó hiện chỉ chạy được vì dữ liệu là mock nằm sẵn ở
- * client. Xem nợ mở rộng contract trong spec §8.
+ * Mọi facet lọc ở trình duyệt trên CẢ tập tour `fetchTours` tải về (G10) — kể cả
+ * `durations`/`prices`/`difficulties`, ba facet `ToursListQuerySchema` không có tham số:
+ * ADR-0058 §5 chốt chúng ở lại web, vì số đếm cạnh mỗi lựa chọn (`facetOptionCounts`) cần
+ * cả tập, và cú tích phải tức thì.
  */
 export function filterTours<T extends TourCardVM>(
   tours: readonly T[],
@@ -174,7 +176,7 @@ export function filterTours<T extends TourCardVM>(
     ) {
       return false;
     }
-    if (state.prices.length > 0 && !state.prices.includes(priceBucket(tour.basePrice)))
+    if (state.prices.length > 0 && !state.prices.includes(priceBucket(cardPrice(tour).price)))
       return false;
     // Tour không ghi độ khó KHÔNG lọt bất kỳ nhóm nào — thà thiếu còn hơn xếp
     // bừa vào "Easy" rồi khách đặt nhầm một chuyến leo núi.
@@ -257,16 +259,19 @@ export function searchTours<T extends TourCardVM>(tours: readonly T[], query: st
   });
 }
 
-export type TourSortKey = 'createdAt' | 'basePrice' | 'durationDays' | 'title';
+export type TourSortKey = 'createdAt' | 'price' | 'durationDays' | 'title' | 'rating';
 
 /**
- * Sắp xếp. Trả mảng MỚI — mock là hằng số dùng chung, sửa tại chỗ là làm hỏng
- * dữ liệu của mọi trang khác.
+ * Sắp xếp. Trả mảng MỚI — mảng tour là dữ liệu dùng chung của cả trang, sửa tại
+ * chỗ là làm hỏng thứ tự mọi chỗ khác đang đọc nó.
  *
  * `createdAt` KHÔNG phải field của contract (nó chỉ là sort key phía server, và
- * `TourCardSchema` không trả nó). Quy ước static-first: thứ tự mảng mock CHÍNH
- * LÀ thứ tự `createdAt desc`. Khi gắn API thật nhánh này biến mất — server sắp
- * hộ và client chỉ truyền `sort=createdAt&order=desc`.
+ * `TourCardSchema` không trả nó). `fetchTours` nhận tour theo sort mặc định của API
+ * (`createdAt desc`), nên thứ tự mảng đầu vào CHÍNH LÀ thứ tự ấy. Các khoá khác dùng
+ * `Array.prototype.sort` (ổn định), nên hoà khoá thì tour mới hơn đứng trước.
+ *
+ * `price` là giá IN TRÊN THẺ (`cardPrice`, tức `priceFrom`) chứ không phải `basePrice`:
+ * khách chọn "Price: low to high" theo con số họ thấy (ADR-0058 §5).
  */
 export function sortTours<T extends TourCardVM>(
   tours: readonly T[],
@@ -278,13 +283,32 @@ export function sortTours<T extends TourCardVM>(
   }
   const sign = order === 'asc' ? 1 : -1;
   return [...tours].sort((a, b) => {
-    if (key === 'basePrice') {
+    if (key === 'price') {
       // So sánh theo SỐ: "89.00" < "1480.00" về mặt số nhưng ">" về mặt chuỗi.
-      return (Number(a.basePrice) - Number(b.basePrice)) * sign;
+      return (Number(cardPrice(a).price) - Number(cardPrice(b).price)) * sign;
     }
+    if (key === 'rating') return compareRating(a, b, sign);
     if (key === 'durationDays') return (a.durationDays - b.durationDays) * sign;
     return a.title.localeCompare(b.title) * sign;
   });
+}
+
+/**
+ * Luật sort `rating` (ADR-0058 §4), cùng luật `tourOrderBy` của API: `ratingAvg` theo
+ * chiều `sign`; tour chưa có đánh giá đứng cuối ở CẢ hai chiều — chưa ai chấm không phải
+ * bị chấm thấp nhất; hoà điểm thì tour nhiều đánh giá hơn đứng trước. Hoà cả hai thì trả 0
+ * để sort ổn định giữ thứ tự đầu vào (mới nhất trước) như mọi khoá khác của trang; vế `id`
+ * cuối cùng của API chỉ có ở đó để phân trang ổn định.
+ */
+function compareRating(
+  a: Pick<TourCardVM, 'ratingAvg' | 'ratingCount'>,
+  b: Pick<TourCardVM, 'ratingAvg' | 'ratingCount'>,
+  sign: 1 | -1,
+): number {
+  if (a.ratingAvg === null || b.ratingAvg === null) {
+    return Number(a.ratingAvg === null) - Number(b.ratingAvg === null);
+  }
+  return (a.ratingAvg - b.ratingAvg) * sign || b.ratingCount - a.ratingCount;
 }
 
 /**
@@ -417,6 +441,68 @@ export function cardPrice(tour: { basePrice: string; priceFrom?: string | null }
   const price = tour.priceFrom ?? tour.basePrice;
   const compareAtPrice = strikePrice({ price, basePrice: tour.basePrice, anchor: null });
   return { price, compareAtPrice, discount: discountPercent(price, compareAtPrice) };
+}
+
+/** Một chip trên góc ảnh của thẻ `/tours` (ADR-0058 §3). */
+export type CardChip =
+  | { kind: 'discount'; percent: number }
+  | { kind: 'featured' }
+  | { kind: 'badge'; badge: TourCardVM['badges'][number] };
+
+/** Góc ảnh chứa tối đa hai chip — cùng ngân sách hai chip của hero trang tour. */
+const CARD_CHIP_LIMIT = 2;
+
+/**
+ * Chip trên góc ảnh của thẻ `/tours`. Suất đầu giữ luật cũ của thẻ: có khuyến mãi thật thì
+ * −N%, không có mà tour nổi bật thì "Featured" — hai thứ không bao giờ cùng hiện, sự thật về
+ * giá thắng nhãn tiếp thị. Badge admin lấp các suất còn lại theo thứ tự admin lưu. Không có
+ * chip "+N": phần dư vẫn hiện đủ ở trang tour (ADR-0058 §3).
+ *
+ * `badges` tuỳ chọn cùng lý do `priceFrom` ở `cardPrice`: field cộng thêm ngày 15/10, và web
+ * build trên Vercel có thể chạy trước khi API mới lên Render.
+ */
+export function cardChips(tour: {
+  basePrice: string;
+  priceFrom?: string | null;
+  isFeatured: boolean;
+  badges?: readonly TourCardVM['badges'][number][] | null;
+}): CardChip[] {
+  const { discount } = cardPrice(tour);
+  const chips: CardChip[] = [];
+  if (discount !== null) chips.push({ kind: 'discount', percent: discount });
+  else if (tour.isFeatured) chips.push({ kind: 'featured' });
+  for (const badge of tour.badges ?? []) {
+    if (chips.length >= CARD_CHIP_LIMIT) break;
+    chips.push({ kind: 'badge', badge });
+  }
+  return chips;
+}
+
+/** Băng đợt kế tiếp của thẻ `/tours` (ADR-0058 §2). */
+export type NextDepartureBand =
+  | { kind: 'date'; date: string; seatsLeft: number; limited: boolean }
+  | { kind: 'on-request' }
+  | { kind: 'unknown' };
+
+/**
+ * Nội dung băng đợt kế tiếp. `limited` dùng CHÍNH ngưỡng `departureStatus` của trang tour
+ * (≤ 3 chỗ), để thẻ và bảng đợt không báo "sắp kín" ở hai ngưỡng khác nhau.
+ *
+ * Ba trạng thái chứ không hai: `null` là API nói tour không còn đợt nào đặt được (khách vẫn
+ * xin được ngày riêng), còn `undefined` là API bản cũ chưa trả field — cùng ca deploy lệch
+ * pha với `badges` ở `cardChips`. Không biết thì không hứa gì, băng chỉ giữ chỗ.
+ */
+export function nextDepartureBand(
+  nextDeparture: TourCardVM['nextDeparture'] | undefined,
+): NextDepartureBand {
+  if (nextDeparture === undefined) return { kind: 'unknown' };
+  if (nextDeparture === null) return { kind: 'on-request' };
+  return {
+    kind: 'date',
+    date: formatWeekdayDate(nextDeparture.startDate),
+    seatsLeft: nextDeparture.seatsLeft,
+    limited: departureStatus(nextDeparture.seatsLeft) === 'limited',
+  };
 }
 
 /** Tiền từ chuỗi thập phân sang chữ hiển thị. `Number()` chỉ dùng ở BƯỚC CUỐI

@@ -15,6 +15,10 @@
 // chạm 2 địa điểm, "north-to-south-classic" xuyên cả ba vùng, …) tiếp tục đúng
 // nguyên xi mà không cần tính lại.
 //
+// Hai field ADR-0058 (`badges`, `nextDeparture`, 15/10) không có trong mock cũ:
+// mọi tour mang giá trị trung tính (`[]`, `null`) — spec nào cần ca khác thì tự
+// spread đè, đừng bịa dữ liệu vào bản trích này.
+//
 // CHỈ field TourCardVM (card-level) được giữ — itinerary/departures/faqs/
 // policies/media của tour đã bị cắt vì không hàm nào trong các spec này đọc
 // tới; UUID/ngày tháng giữ nguyên vì vài test so sánh trực tiếp (v.d. sort
@@ -58,6 +62,8 @@ export const FIXTURE_TOURS: TourCardVM[] = [
     ratingAvg: 4.6,
     ratingCount: 14,
     cover: null,
+    badges: [],
+    nextDeparture: null,
   },
   {
     id: '9f1c0a6e-1d2b-4c3a-8e5f-7a0b1c2d3e41',
@@ -86,6 +92,8 @@ export const FIXTURE_TOURS: TourCardVM[] = [
     ratingAvg: null,
     ratingCount: 0,
     cover: null,
+    badges: [],
+    nextDeparture: null,
   },
   {
     id: '9f1c0a6e-1d2b-4c3a-8e5f-7a0b1c2d3e42',
@@ -120,6 +128,8 @@ export const FIXTURE_TOURS: TourCardVM[] = [
     ratingAvg: 4.7,
     ratingCount: 9,
     cover: null,
+    badges: [],
+    nextDeparture: null,
   },
   {
     id: '9f1c0a6e-1d2b-4c3a-8e5f-7a0b1c2d3e43',
@@ -149,6 +159,8 @@ export const FIXTURE_TOURS: TourCardVM[] = [
     ratingAvg: 4.8,
     ratingCount: 4,
     cover: null,
+    badges: [],
+    nextDeparture: null,
   },
   {
     id: '9f1c0a6e-1d2b-4c3a-8e5f-7a0b1c2d3e44',
@@ -178,6 +190,8 @@ export const FIXTURE_TOURS: TourCardVM[] = [
     ratingAvg: 4.8,
     ratingCount: 5,
     cover: null,
+    badges: [],
+    nextDeparture: null,
   },
   {
     id: '9f1c0a6e-1d2b-4c3a-8e5f-7a0b1c2d3e45',
@@ -207,6 +221,8 @@ export const FIXTURE_TOURS: TourCardVM[] = [
     ratingAvg: 4.7,
     ratingCount: 6,
     cover: null,
+    badges: [],
+    nextDeparture: null,
   },
   {
     id: '9f1c0a6e-1d2b-4c3a-8e5f-7a0b1c2d3e46',
@@ -241,6 +257,8 @@ export const FIXTURE_TOURS: TourCardVM[] = [
     ratingAvg: 4.7,
     ratingCount: 7,
     cover: null,
+    badges: [],
+    nextDeparture: null,
   },
   {
     id: '9f1c0a6e-1d2b-4c3a-8e5f-7a0b1c2d3e47',
@@ -275,6 +293,8 @@ export const FIXTURE_TOURS: TourCardVM[] = [
     ratingAvg: 4.5,
     ratingCount: 4,
     cover: null,
+    badges: [],
+    nextDeparture: null,
   },
   {
     id: '9f1c0a6e-1d2b-4c3a-8e5f-7a0b1c2d3e48',
@@ -304,6 +324,8 @@ export const FIXTURE_TOURS: TourCardVM[] = [
     ratingAvg: 4.8,
     ratingCount: 4,
     cover: null,
+    badges: [],
+    nextDeparture: null,
   },
   {
     id: '9f1c0a6e-1d2b-4c3a-8e5f-7a0b1c2d3e49',
@@ -333,6 +355,8 @@ export const FIXTURE_TOURS: TourCardVM[] = [
     ratingAvg: 4.8,
     ratingCount: 5,
     cover: null,
+    badges: [],
+    nextDeparture: null,
   },
   {
     id: '9f1c0a6e-1d2b-4c3a-8e5f-7a0b1c2d3e4a',
@@ -362,6 +386,8 @@ export const FIXTURE_TOURS: TourCardVM[] = [
     ratingAvg: 4.8,
     ratingCount: 4,
     cover: null,
+    badges: [],
+    nextDeparture: null,
   },
   {
     id: '9f1c0a6e-1d2b-4c3a-8e5f-7a0b1c2d3e4b',
@@ -391,6 +417,8 @@ export const FIXTURE_TOURS: TourCardVM[] = [
     ratingAvg: 4.8,
     ratingCount: 4,
     cover: null,
+    badges: [],
+    nextDeparture: null,
   },
   {
     id: '9f1c0a6e-1d2b-4c3a-8e5f-7a0b1c2d3e4c',
@@ -435,6 +463,8 @@ export const FIXTURE_TOURS: TourCardVM[] = [
     ratingAvg: 4.6,
     ratingCount: 5,
     cover: null,
+    badges: [],
+    nextDeparture: null,
   },
   {
     id: '9f1c0a6e-1d2b-4c3a-8e5f-7a0b1c2d3e4d',
@@ -463,6 +493,8 @@ export const FIXTURE_TOURS: TourCardVM[] = [
     ratingAvg: 4,
     ratingCount: 1,
     cover: null,
+    badges: [],
+    nextDeparture: null,
   },
   {
     id: '9f1c0a6e-1d2b-4c3a-8e5f-7a0b1c2d3e4e',
@@ -491,6 +523,8 @@ export const FIXTURE_TOURS: TourCardVM[] = [
     ratingAvg: 4.8,
     ratingCount: 4,
     cover: null,
+    badges: [],
+    nextDeparture: null,
   },
   {
     id: '9f1c0a6e-1d2b-4c3a-8e5f-7a0b1c2d3e4f',
@@ -529,6 +563,8 @@ export const FIXTURE_TOURS: TourCardVM[] = [
     ratingAvg: 4.7,
     ratingCount: 3,
     cover: null,
+    badges: [],
+    nextDeparture: null,
   },
 ];
 

@@ -53,6 +53,8 @@ function tour(
     ratingAvg: 4.5,
     ratingCount: 20,
     cover: null,
+    badges: [],
+    nextDeparture: null,
   };
 }
 

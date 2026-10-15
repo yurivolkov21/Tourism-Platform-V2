@@ -55,6 +55,8 @@ function tour(
     ratingAvg: rating?.avg ?? null,
     ratingCount: rating?.count ?? 0,
     cover: null,
+    badges: [],
+    nextDeparture: null,
     ...(day1 === null ? {} : { itinerary: [{ dayNumber: 1, title: day1, description: null }] }),
   };
 }

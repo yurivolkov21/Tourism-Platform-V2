@@ -9,6 +9,9 @@ import { TourListCard } from './tour-list-card';
  *
  *   1. HỢP ĐỒNG SỐ DÒNG — tiêu đề đúng 1 dòng, tóm tắt đúng 2 dòng, CỐ ĐỊNH.
  *   2. HAI NHÁNH HUY HIỆU — giảm giá thắng "Featured", không bao giờ hiện cả hai.
+ *
+ * Cộng hai thứ ADR-0058 thêm: badge admin lấp chỗ còn lại trên góc ảnh (§3), và băng đợt
+ * kế tiếp luôn có mặt ngay trên đường kẻ chân thẻ (§2).
  */
 
 const CARD: TourCardVM = {
@@ -29,6 +32,8 @@ const CARD: TourCardVM = {
   ratingAvg: 4.6,
   ratingCount: 14,
   cover: null,
+  badges: [],
+  nextDeparture: null,
 };
 
 const card = (over: Partial<TourCardVM> = {}): TourCardVM => ({ ...CARD, ...over });
@@ -145,5 +150,89 @@ describe('rating', () => {
     render(<TourListCard tour={card()} />);
     expect(screen.getByText('4.6')).toBeInTheDocument();
     expect(screen.getByText('(14)')).toBeInTheDocument();
+  });
+});
+
+describe('badge admin trên góc ảnh (ADR-0058 §3)', () => {
+  it('giảm giá giữ suất đầu, badge đầu tiên lấp suất thứ hai, phần dư không thành "+N"', () => {
+    render(<TourListCard tour={card({ basePrice: '3000000.00', badges: ['POPULAR', 'NEW'] })} />);
+    expect(screen.getByText('−20%')).toBeInTheDocument();
+    expect(screen.getByText('Popular')).toBeInTheDocument();
+    expect(screen.queryByText('New')).toBeNull();
+    expect(screen.queryByText(/^\+\d+$/)).toBeNull();
+  });
+
+  it('không giảm giá mà isFeatured: "Featured" rồi tới badge đầu tiên', () => {
+    render(<TourListCard tour={card({ isFeatured: true, badges: ['NEW', 'POPULAR'] })} />);
+    expect(screen.getByText('Featured')).toBeInTheDocument();
+    expect(screen.getByText('New')).toBeInTheDocument();
+    expect(screen.queryByText('Popular')).toBeNull();
+  });
+
+  it('không giảm giá, không nổi bật: hai badge đầu theo thứ tự đã lưu', () => {
+    render(<TourListCard tour={card({ badges: ['EXCLUSIVE', 'BEST_VALUE', 'NEW'] })} />);
+    expect(screen.getByText('Exclusive')).toBeInTheDocument();
+    expect(screen.getByText('Best value')).toBeInTheDocument();
+    expect(screen.queryByText('New')).toBeNull();
+  });
+
+  it('Limited offer mang token cảnh báo — badge khẩn duy nhất, như hero trang tour', () => {
+    render(<TourListCard tour={card({ badges: ['LIMITED_OFFER', 'NEW'] })} />);
+    expect(screen.getByText('Limited offer').className).toContain('bg-warning');
+    expect(screen.getByText('New').className).not.toContain('bg-warning');
+  });
+});
+
+describe('băng đợt kế tiếp (ADR-0058 §2)', () => {
+  const band = (container: HTMLElement) =>
+    container.querySelector('[data-slot="next-departure"]') as HTMLElement | null;
+
+  it('in "Next departure" kèm thứ, ngày, tháng của đợt', () => {
+    const { container } = render(
+      <TourListCard tour={card({ nextDeparture: { startDate: '2026-11-14', seatsLeft: 8 } })} />,
+    );
+    expect(band(container)).toHaveTextContent('Next departure');
+    expect(band(container)).toHaveTextContent('Sat 14 Nov');
+    // Còn 8 chỗ: chưa đáng báo.
+    expect(band(container)).not.toHaveTextContent(/left/);
+  });
+
+  it('còn từ 3 chỗ trở xuống thì thêm "Only N seats left" bằng mực cảnh báo', () => {
+    render(
+      <TourListCard tour={card({ nextDeparture: { startDate: '2026-11-14', seatsLeft: 2 } })} />,
+    );
+    expect(screen.getByText('Only 2 seats left').className).toContain('text-warning-emphasis');
+  });
+
+  it('một chỗ cuối thì chữ số ít', () => {
+    render(
+      <TourListCard tour={card({ nextDeparture: { startDate: '2026-11-14', seatsLeft: 1 } })} />,
+    );
+    expect(screen.getByText('Only 1 seat left')).toBeInTheDocument();
+  });
+
+  it('không còn đợt nào đặt được: "Dates on request", không in ngày nào', () => {
+    const { container } = render(<TourListCard tour={card({ nextDeparture: null })} />);
+    expect(band(container)).toHaveTextContent('Dates on request');
+    expect(band(container)).not.toHaveTextContent('Next departure');
+  });
+
+  it('băng luôn GIỮ CHỖ đúng một dòng — mọi thẻ cao bằng nhau', () => {
+    const { container } = render(<TourListCard tour={card()} />);
+    expect(band(container)?.className).toContain('h-5');
+    expect(band(container)?.className).toContain('truncate');
+  });
+
+  it('API bản cũ chưa trả `nextDeparture`: băng vẫn giữ chỗ nhưng không hứa gì', () => {
+    const { nextDeparture: _absent, ...legacy } = CARD;
+    const { container } = render(<TourListCard tour={legacy as TourCardVM} />);
+    expect(band(container)).not.toBeNull();
+    expect(band(container)?.textContent).toBe('');
+  });
+
+  it('băng đứng ngay TRÊN chân thẻ (hàng giá và nút)', () => {
+    const { container } = render(<TourListCard tour={card()} />);
+    const footer = screen.getByRole('link', { name: 'View tour' }).parentElement;
+    expect(band(container)?.nextElementSibling).toBe(footer);
   });
 });

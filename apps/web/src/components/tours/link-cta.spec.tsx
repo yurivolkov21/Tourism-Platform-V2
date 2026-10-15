@@ -52,6 +52,8 @@ const CARD = {
   ratingAvg: 4.6,
   ratingCount: 14,
   cover: null,
+  badges: [],
+  nextDeparture: null,
 };
 
 describe('CTA điều hướng là LINK, không phải nút', () => {

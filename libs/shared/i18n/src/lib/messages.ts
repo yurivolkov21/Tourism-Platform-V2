@@ -1598,15 +1598,14 @@ export const messages = {
   },
   // ĐỌC TRƯỚC KHI THÊM KEY: khối này port trọn gói từ Nexora nên từng mô tả cả
   // những filter/sort mà API v2 KHÔNG phục vụ được. Tình trạng hiện tại
-  // (27/07), đối chiếu ToursListQuerySchema:
+  // (15/10, ADR-0058), đối chiếu ToursListQuerySchema:
   //   • API ĐỠ ĐƯỢC: category · destination · search · featured · sort
-  //     (createdAt/basePrice/durationDays/title)
-  //   • API CHƯA CÓ, đang lọc CLIENT trên mock: duration · price · difficulty
-  //   • ĐÃ BỎ HẲN: sort theo popularity/rating (cột đã denormalize nhưng
-  //     TourSortKeySchema không whitelist) · facet travelStyle/theme (schema
-  //     không có, Nexora cũng phải tắt)
-  // Nợ mở rộng contract ghi trong spec §8. Copy KHÔNG phải bằng chứng tính
-  // năng tồn tại — luôn đối chiếu contract trước.
+  //     (createdAt/basePrice/durationDays/title/rating)
+  //   • LỌC Ở WEB CÓ CHỦ ĐÍCH (ADR-0058 §5): duration · price · difficulty —
+  //     trang /tours giữ cả tập tour nên lọc, đếm và sắp ngay ở trình duyệt
+  //   • ĐÃ BỎ HẲN: sort theo popularity (không có tín hiệu trung thực nào, ADR-0058)
+  //     · facet travelStyle/theme (schema không có, Nexora cũng phải tắt)
+  // Copy KHÔNG phải bằng chứng tính năng tồn tại — luôn đối chiếu contract trước.
   toursPage: {
     breadcrumb: 'Tours',
 
@@ -1622,6 +1621,8 @@ export const messages = {
     sortLabel: 'Sort by',
     sortOptions: {
       newest: 'Newest first',
+      /** ADR-0058 §4: tour chưa có đánh giá đứng cuối, hoà điểm thì nhiều đánh giá hơn trước. */
+      rating: 'Rating: high to low',
       priceAsc: 'Price: low to high',
       priceDesc: 'Price: high to low',
       durationAsc: 'Duration: short to long',
@@ -1668,6 +1669,12 @@ export const messages = {
     // ratingAvg null = chưa ai đánh giá, KHÁC 0. Card hiện nhãn này thay vì
     // "0.0" hay 5 sao rỗng.
     notRated: 'Not yet reviewed',
+    /** Băng đợt kế tiếp trên thẻ (ADR-0058 §2): nhãn đứng trước ngày "Sat 14 Nov". Câu sắp
+        kín chỗ dùng chung `tourDetail.departures.seatsLimited` với trang tour. */
+    nextDeparture: 'Next departure',
+    /** Tour không còn đợt nào đặt được — trang tour khi ấy mời khách hỏi ngày riêng
+        (`tourDetail.departures.noneBody`, nút sang `/tours/[slug]/enquire`), nên không phải "hết vé". */
+    datesOnRequest: 'Dates on request',
     activeFiltersLabel: 'Active filters',
     removeFilter: (label: string) => `Remove filter ${label}`,
     /** Nút X đóng ngăn kéo bộ lọc trên điện thoại. */

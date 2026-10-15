@@ -57,7 +57,7 @@ export default function ToursLoading() {
             <div className="mt-4 border-b" />
           </div>
 
-          {/* Thẻ lưới: ảnh 3:2 trên đầu rồi năm băng chữ — cùng bố cục
+          {/* Thẻ lưới: ảnh 3:2 trên đầu rồi sáu băng chữ — cùng bố cục
               TourListCard nên chiều cao khớp sẵn. Ô ảnh KHÔNG vẽ góc khuyết:
               mask chỉ có ý nghĩa khi có ảnh thật bên dưới, còn ở đây nó chỉ là
               một hình chữ nhật xám bị gặm mất một góc — trông như lỗi render. */}
@@ -74,6 +74,8 @@ export default function ToursLoading() {
                   <div className="h-5 w-full rounded bg-muted" />
                   <div className="h-5 w-2/3 rounded bg-muted" />
                   <div className="h-6 w-56 rounded bg-muted" />
+                  {/* Băng đợt kế tiếp (ADR-0058 §2) — thẻ thật luôn có nó. */}
+                  <div className="h-5 w-44 rounded bg-muted" />
 
                   <div className="mt-1 flex items-end justify-between gap-3 border-t pt-3">
                     <div className="h-7 w-32 rounded bg-muted" />

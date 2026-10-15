@@ -259,9 +259,36 @@ describe('ToursExplorer — sắp xếp', () => {
     const user = userEvent.setup();
     renderExplorer();
     await pickSort(user, /price: low to high/i);
-    const cheapest = [...TOURS].sort((a, b) => Number(a.basePrice) - Number(b.basePrice))[0];
+    // Giá in trên thẻ (`priceFrom`), không phải `basePrice` — ADR-0058 §5.
+    const cheapest = [...TOURS].sort((a, b) => Number(a.priceFrom) - Number(b.priceFrom))[0];
     await waitFor(() =>
       expect(screen.getAllByRole('article')[0]).toHaveTextContent(cheapest?.title ?? ''),
+    );
+  });
+
+  it('sort Rating: điểm cao nhất lên đầu, tour chưa ai đánh giá xuống cuối, ghi vào URL', async () => {
+    const user = userEvent.setup();
+    renderExplorer({ limit: 50 });
+    await pickSort(user, /rating: high to low/i);
+    await waitFor(() =>
+      expect(replace).toHaveBeenLastCalledWith(null, '', '/tours?sort=rating&limit=50'),
+    );
+
+    const cards = screen.getAllByRole('article');
+    // Fixture: điểm cao nhất là 4.8, và trong các tour 4.8 thì tour nhiều đánh giá nhất (5) đứng
+    // trước; tour duy nhất chưa ai chấm (phu-quoc-reef-days) đứng cuối.
+    const top = TOURS.filter((t) => t.ratingAvg === 4.8).sort(
+      (a, b) => b.ratingCount - a.ratingCount,
+    )[0];
+    const unrated = TOURS.find((t) => t.ratingAvg === null);
+    expect(cards[0]).toHaveTextContent(top?.title ?? '');
+    expect(cards.at(-1)).toHaveTextContent(unrated?.title ?? '');
+  });
+
+  it('`?sort=rating` trên URL mở sẵn đúng lựa chọn', () => {
+    renderExplorer({ sort: 'rating' });
+    expect(screen.getByRole('combobox', { name: /sort by/i })).toHaveTextContent(
+      'Rating: high to low',
     );
   });
 

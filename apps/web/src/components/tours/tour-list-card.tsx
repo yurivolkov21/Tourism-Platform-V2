@@ -1,10 +1,17 @@
 import { messages } from '@tourism/i18n';
 import { ButtonLink } from '@tourism/ui/components/button-link';
-import { ClockIcon, MapPinIcon, StarIcon, UsersIcon } from 'lucide-react';
+import { CalendarIcon, ClockIcon, MapPinIcon, StarIcon, UsersIcon } from 'lucide-react';
 import { SlotImage } from '@/components/slot-image';
 import { WishlistHeart } from '@/components/tours/wishlist-heart';
 import type { TourCardVM } from '@/lib/api/tours';
-import { cardPrice, formatMoney, routeChain } from '@/lib/tours';
+import {
+  type CardChip,
+  cardChips,
+  cardPrice,
+  formatMoney,
+  nextDepartureBand,
+  routeChain,
+} from '@/lib/tours';
 
 /**
  * Thẻ tour của lưới /tours — dựng theo wireframe user chốt 17/08
@@ -15,7 +22,7 @@ import { cardPrice, formatMoney, routeChain } from '@/lib/tours';
  *
  *   thẻ      padding 12 · viền 1 · bo 1rem
  *   ảnh      3:2, bo 12, mask khuyết góc trên-phải
- *   thân     padding 14 4 4 · gap 8 · năm băng
+ *   thân     padding 14 4 4 · gap 8 · sáu băng (băng đợt kế tiếp thêm 15/10, ADR-0058 §2)
  *
  * Đây là bản THAY THẾ thẻ hàng-ngang cũ (ảnh trái · thân giữa · rail giá phải,
  * một cột dọc). Lưới hai cột nên mỗi thẻ chỉ còn ~580px, không đủ chỗ cho rail
@@ -37,6 +44,7 @@ import { cardPrice, formatMoney, routeChain } from '@/lib/tours';
  *   Tiêu đề                                   ĐÚNG 1 dòng + ellipsis
  *   Tóm tắt                                   ĐÚNG 2 dòng
  *   Băng rating + chip                        1 dòng, tối đa 2 chip
+ *   Băng đợt kế tiếp                          ĐÚNG 1 dòng, CÓ MẶT ở mọi thẻ
  *   Hàng giá + CTA                            1 dòng
  */
 const CLAMP = {
@@ -80,6 +88,24 @@ const notchStyle = {
  */
 const COVER_SIZES = '(min-width: 1024px) 580px, (min-width: 640px) 50vw, 100vw';
 
+/**
+ * Nền của từng loại chip trên ảnh. Chip nằm ĐÈ ẢNH nên mọi loại đều nền đặc — kiểu viền trầm
+ * của hero trang tour biến mất trên một tấm ảnh sáng. `LIMITED_OFFER` giữ token cảnh báo như
+ * ở hero: badge khẩn duy nhất, nếu chip nào cũng nổi thì không chip nào nổi.
+ */
+function chipTone(chip: CardChip): string {
+  if (chip.kind === 'discount') return 'bg-sale text-sale-foreground tabular-nums';
+  if (chip.kind === 'featured') return 'bg-primary text-primary-foreground';
+  if (chip.badge === 'LIMITED_OFFER') return 'bg-warning text-warning-foreground';
+  return 'bg-card text-foreground shadow-(--shadow-card)';
+}
+
+function chipLabel(chip: CardChip): string {
+  if (chip.kind === 'discount') return `−${chip.percent}%`;
+  if (chip.kind === 'featured') return messages.toursPage.featuredBadge;
+  return messages.tourDetail.badges[chip.badge];
+}
+
 export function TourListCard({ tour }: { tour: TourCardVM }) {
   const t = messages.toursPage;
   const href = `/tours/${tour.slug}`;
@@ -87,7 +113,9 @@ export function TourListCard({ tour }: { tour: TourCardVM }) {
   const primary = chain[0];
   // `priceFrom` thay `basePrice` (19/08); giá gạch CHỈ khi có khuyến mãi thật
   // (15/09/2026) — cùng `cardPrice` với `tour-card.tsx`, xem ghi chú ở đó.
-  const { price: from, compareAtPrice, discount } = cardPrice(tour);
+  const { price: from, compareAtPrice } = cardPrice(tour);
+  const corner = cardChips(tour);
+  const next = nextDepartureBand(tour.nextDeparture);
 
   const chips = [
     tour.category.name,
@@ -119,18 +147,22 @@ export function TourListCard({ tour }: { tour: TourCardVM }) {
           />
         </div>
 
-        {/* Hai nhánh huy hiệu, giữ nguyên luật của bản cũ: có giảm giá thì hiện
-            %, không giảm giá mà `isFeatured` thì hiện "Featured". Hai thứ không
-            bao giờ cùng lúc quan trọng bằng nhau — sự thật về giá thắng nhãn
-            tiếp thị. */}
-        {discount !== null ? (
-          <span className="absolute top-3 left-3 inline-flex h-[22px] items-center rounded-full bg-sale px-2 text-xs font-semibold text-sale-foreground tabular-nums">
-            −{discount}%
-          </span>
-        ) : tour.isFeatured ? (
-          <span className="absolute top-3 left-3 inline-flex h-[22px] items-center rounded-full bg-primary px-2 text-xs font-semibold text-primary-foreground">
-            {t.featuredBadge}
-          </span>
+        {/* Tối đa hai chip (`cardChips`, ADR-0058 §3): suất đầu giữ luật cũ —
+            có giảm giá thì %, không giảm giá mà `isFeatured` thì "Featured", hai
+            thứ không bao giờ cùng hiện vì sự thật về giá thắng nhãn tiếp thị —
+            badge admin lấp suất còn lại. Hai chip dài nhất ("Limited offer" +
+            "Best value") vẫn dừng trước vết khuyết ở khung 360px. */}
+        {corner.length > 0 ? (
+          <div className="absolute top-3 left-3 flex gap-1.5">
+            {corner.map((chip) => (
+              <span
+                key={chip.kind === 'badge' ? chip.badge : chip.kind}
+                className={`inline-flex h-[22px] shrink-0 items-center rounded-full px-2 text-xs font-semibold ${chipTone(chip)}`}
+              >
+                {chipLabel(chip)}
+              </span>
+            ))}
+          </div>
         ) : null}
 
         {/* `z-10` vì lớp phủ bấm-cả-thẻ (`after:` của link tiêu đề) nằm SAU
@@ -203,6 +235,37 @@ export function TourListCard({ tour }: { tour: TourCardVM }) {
               </span>
             ))}
           </span>
+        </div>
+
+        {/* Băng đợt kế tiếp (ADR-0058 §2) — LUÔN có mặt, kể cả khi chưa biết gì
+            (API bản cũ), để mọi thẻ trong một hàng cao bằng nhau. Nhãn "Next
+            departure" là phần duy nhất được co (`min-w-0 truncate`): ngày và câu
+            sắp kín chỗ là thứ khách cần đọc, nên ở khung hẹp cắt nhãn trước. */}
+        <div
+          data-slot="next-departure"
+          className={`flex h-5 items-center gap-1.5 text-[13px] leading-5 ${CLAMP.oneLine}`}
+        >
+          {next.kind === 'unknown' ? null : (
+            <CalendarIcon className="size-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
+          )}
+          {next.kind === 'date' ? (
+            <>
+              <span className="min-w-0 truncate text-muted-foreground">{t.nextDeparture}</span>
+              <span className="shrink-0 font-medium tabular-nums">{next.date}</span>
+              {next.limited ? (
+                <>
+                  <span className="shrink-0 text-muted-foreground" aria-hidden="true">
+                    ·
+                  </span>
+                  <span className="shrink-0 font-medium text-warning-emphasis">
+                    {messages.tourDetail.departures.seatsLimited(next.seatsLeft)}
+                  </span>
+                </>
+              ) : null}
+            </>
+          ) : next.kind === 'on-request' ? (
+            <span className="min-w-0 truncate text-muted-foreground">{t.datesOnRequest}</span>
+          ) : null}
         </div>
 
         <div className="mt-1 flex items-end justify-between gap-3 border-t pt-3">

@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import type { TourCardVM } from '@/lib/api/tours';
 import type { MockMediaItem } from '@/mocks/types';
 // `mocks/tours.ts` đã khai tử ở Task 7 (cụm destinations-api) — TOURS giờ là
 // fixture nội bộ trích nguyên vẹn từ mock cũ, xem đầu file fixture để biết vì
@@ -18,6 +19,7 @@ const EMPTY_FILTERS = {
 import {
   bookHref,
   calendarDateParts,
+  cardChips,
   cardPrice,
   countActiveFilters,
   departureStatus,
@@ -35,6 +37,7 @@ import {
   formatWeekdayDate,
   initialDepartureId,
   isDepartureOpen,
+  nextDepartureBand,
   ownLabel,
   priceBucket,
   relatedTours,
@@ -269,7 +272,16 @@ describe('filterTours — đa chọn', () => {
 
   it('lọc theo nhóm giá', () => {
     const result = filterTours(TOURS, { ...EMPTY_FILTERS, prices: ['<100'] });
-    expect(result.every((t) => Number(t.basePrice) < 100)).toBe(true);
+    expect(result.every((t) => Number(t.priceFrom) < 100)).toBe(true);
+  });
+
+  it('nhóm giá đọc giá IN TRÊN THẺ (priceFrom), không phải basePrice (ADR-0058 §5)', () => {
+    // Ca đo ở prod 15/10: ha-giang-loop-4d có base 329 nhưng thẻ in 292.81 — khách tick
+    // "$100–$300" phải thấy nó, tick "$300+" thì không.
+    const discounted = { ...TOURS[0], basePrice: '329.00', priceFrom: '292.81' } as TourCardVM;
+
+    expect(filterTours([discounted], { ...EMPTY_FILTERS, prices: ['100-300'] })).toHaveLength(1);
+    expect(filterTours([discounted], { ...EMPTY_FILTERS, prices: ['300+'] })).toHaveLength(0);
   });
 
   it('lọc theo độ khó; tour có difficulty null KHÔNG lọt bất kỳ nhóm nào', () => {
@@ -390,14 +402,24 @@ describe('searchTours', () => {
 });
 
 describe('sortTours', () => {
-  it('basePrice so sánh theo SỐ dù lưu chuỗi — "89.00" phải nhỏ hơn "1480.00"', () => {
-    const asc = sortTours(TOURS, 'basePrice', 'asc').map((t) => Number(t.basePrice));
+  it('price so sánh theo SỐ dù lưu chuỗi — "89.00" phải nhỏ hơn "1480.00"', () => {
+    const asc = sortTours(TOURS, 'price', 'asc').map((t) => Number(t.priceFrom));
     expect(asc).toEqual([...asc].sort((a, b) => a - b));
     expect(asc[0]).toBeLessThan(asc[asc.length - 1] ?? 0);
   });
-  it('basePrice desc là chiều ngược lại', () => {
-    const desc = sortTours(TOURS, 'basePrice', 'desc').map((t) => Number(t.basePrice));
+  it('price desc là chiều ngược lại', () => {
+    const desc = sortTours(TOURS, 'price', 'desc').map((t) => Number(t.priceFrom));
     expect(desc).toEqual([...desc].sort((a, b) => b - a));
+  });
+  it('price sắp theo giá IN TRÊN THẺ (priceFrom), không phải basePrice (ADR-0058 §5)', () => {
+    const cheapOnCard = { ...TOURS[0], slug: 'giam-gia', basePrice: '329.00', priceFrom: '90.00' };
+    const plain = { ...TOURS[0], slug: 'binh-thuong', basePrice: '100.00', priceFrom: '100.00' };
+    const tours = [plain, cheapOnCard] as TourCardVM[];
+
+    expect(sortTours(tours, 'price', 'asc').map((t) => t.slug)).toEqual([
+      'giam-gia',
+      'binh-thuong',
+    ]);
   });
   it('durationDays sắp tăng dần đúng', () => {
     const asc = sortTours(TOURS, 'durationDays', 'asc').map((t) => t.durationDays);
@@ -419,9 +441,127 @@ describe('sortTours', () => {
   });
   it('không sửa mảng gốc tại chỗ', () => {
     const before = TOURS.map((t) => t.slug);
-    sortTours(TOURS, 'basePrice', 'asc');
+    sortTours(TOURS, 'price', 'asc');
     sortTours(TOURS, 'createdAt', 'asc');
+    sortTours(TOURS, 'rating', 'desc');
     expect(TOURS.map((t) => t.slug)).toEqual(before);
+  });
+});
+
+describe('sortTours — rating (ADR-0058 §4, cùng luật API)', () => {
+  const rated = (slug: string, ratingAvg: number | null, ratingCount: number): TourCardVM =>
+    ({ ...TOURS[0], slug, ratingAvg, ratingCount }) as TourCardVM;
+  const tours = [
+    rated('chua-ai-cham', null, 0),
+    rated('bon-sau', 4.6, 30),
+    rated('bon-tam-it', 4.8, 3),
+    rated('bon-tam-nhieu', 4.8, 120),
+    rated('bon-hai', 4.2, 8),
+  ];
+
+  it('desc: điểm cao trước; hoà điểm thì nhiều đánh giá hơn trước; chưa ai chấm đứng cuối', () => {
+    expect(sortTours(tours, 'rating', 'desc').map((t) => t.slug)).toEqual([
+      'bon-tam-nhieu',
+      'bon-tam-it',
+      'bon-sau',
+      'bon-hai',
+      'chua-ai-cham',
+    ]);
+  });
+
+  it('asc: điểm thấp trước, nhưng tour chưa ai chấm VẪN đứng cuối — chưa chấm không phải bị chấm thấp', () => {
+    expect(sortTours(tours, 'rating', 'asc').map((t) => t.slug)).toEqual([
+      'bon-hai',
+      'bon-sau',
+      'bon-tam-nhieu',
+      'bon-tam-it',
+      'chua-ai-cham',
+    ]);
+  });
+
+  it('hoà cả điểm lẫn số đánh giá thì giữ thứ tự đầu vào (mới nhất trước)', () => {
+    const twins = [rated('moi-hon', 4.8, 4), rated('cu-hon', 4.8, 4), rated('null-a', null, 0)];
+
+    expect(sortTours(twins, 'rating', 'desc').map((t) => t.slug)).toEqual([
+      'moi-hon',
+      'cu-hon',
+      'null-a',
+    ]);
+  });
+});
+
+describe('cardChips — chip góc ảnh của thẻ /tours (ADR-0058 §3)', () => {
+  const tour = (over: Partial<TourCardVM>) => ({
+    basePrice: '100.00',
+    priceFrom: '100.00',
+    isFeatured: false,
+    badges: [] as TourCardVM['badges'],
+    ...over,
+  });
+
+  it('giảm giá thật giữ suất đầu, badge lấp suất còn lại theo thứ tự admin lưu', () => {
+    expect(cardChips(tour({ priceFrom: '80.00', badges: ['POPULAR', 'NEW'] }))).toEqual([
+      { kind: 'discount', percent: 20 },
+      { kind: 'badge', badge: 'POPULAR' },
+    ]);
+  });
+
+  it('không giảm giá mà tour nổi bật: "Featured" giữ suất đầu', () => {
+    expect(cardChips(tour({ isFeatured: true, badges: ['NEW'] }))).toEqual([
+      { kind: 'featured' },
+      { kind: 'badge', badge: 'NEW' },
+    ]);
+  });
+
+  it('vừa giảm giá vừa nổi bật: chỉ −N% — sự thật về giá thắng nhãn tiếp thị', () => {
+    expect(cardChips(tour({ priceFrom: '80.00', isFeatured: true }))).toEqual([
+      { kind: 'discount', percent: 20 },
+    ]);
+  });
+
+  it('không giảm, không nổi bật: badge được cả hai suất, phần dư không thành "+N"', () => {
+    expect(cardChips(tour({ badges: ['BEST_VALUE', 'LIMITED_OFFER', 'NEW'] }))).toEqual([
+      { kind: 'badge', badge: 'BEST_VALUE' },
+      { kind: 'badge', badge: 'LIMITED_OFFER' },
+    ]);
+  });
+
+  it('không có gì để nói thì không chip nào', () => {
+    expect(cardChips(tour({}))).toEqual([]);
+  });
+
+  it('API bản cũ chưa trả `badges` → chỉ còn luật cũ, không vỡ', () => {
+    const { badges: _absent, ...legacy } = tour({ isFeatured: true });
+    expect(cardChips(legacy)).toEqual([{ kind: 'featured' }]);
+  });
+});
+
+describe('nextDepartureBand — băng đợt kế tiếp của thẻ /tours (ADR-0058 §2)', () => {
+  it('có đợt: in thứ + ngày + tháng, chưa báo sắp kín khi còn trên 3 chỗ', () => {
+    expect(nextDepartureBand({ startDate: '2026-11-14', seatsLeft: 8 })).toEqual({
+      kind: 'date',
+      date: 'Sat 14 Nov',
+      seatsLeft: 8,
+      limited: false,
+    });
+  });
+
+  it('còn từ 3 chỗ trở xuống thì báo sắp kín — cùng ngưỡng `departureStatus` của trang tour', () => {
+    expect(nextDepartureBand({ startDate: '2026-12-01', seatsLeft: 3 })).toMatchObject({
+      date: 'Tue 1 Dec',
+      limited: true,
+    });
+    expect(nextDepartureBand({ startDate: '2026-12-01', seatsLeft: 4 })).toMatchObject({
+      limited: false,
+    });
+  });
+
+  it('null = không còn đợt nào đặt được → ngày theo yêu cầu', () => {
+    expect(nextDepartureBand(null)).toEqual({ kind: 'on-request' });
+  });
+
+  it('undefined = API bản cũ chưa trả field → không hứa gì cả', () => {
+    expect(nextDepartureBand(undefined)).toEqual({ kind: 'unknown' });
   });
 });
 

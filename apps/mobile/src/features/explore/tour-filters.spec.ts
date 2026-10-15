@@ -29,6 +29,8 @@ function tour(overrides: Partial<TourCard> = {}): TourCard {
     ratingAvg: 4.8,
     ratingCount: 20,
     cover: null,
+    badges: [],
+    nextDeparture: null,
     ...overrides,
   };
 }
