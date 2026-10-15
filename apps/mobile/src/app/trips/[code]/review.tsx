@@ -25,8 +25,11 @@ import { cloudinaryUrl } from '@/lib/cloudinary-url';
  * Cloudinary → giữ publicId → gửi kèm `reviews.create`. App KHÔNG đẩy ảnh qua API.
  */
 export default function ReviewRoute() {
-  const { code } = useLocalSearchParams<{ code: string }>();
+  const { code, from } = useLocalSearchParams<{ code: string; from?: string }>();
   const bookingCode = code ?? '';
+  // Mở từ khối "chờ viết bài" của R4 (15/10): lùi là về chính R4, nên nút ở màn đã gửi nói đúng
+  // nơi sẽ về, và không có link đẩy thêm một R4 nữa lên trên.
+  const fromMyReviews = from === 'my-reviews';
   const copy = messages.reviews;
   const queryClient = useQueryClient();
 
@@ -118,7 +121,9 @@ export default function ReviewRoute() {
         errorMessage={errorMessage}
         onSubmit={submit}
         onBack={() => router.back()}
-        onSeeReviews={() => router.push('/reviews/mine')}
+        {...(fromMyReviews
+          ? { backLabel: copy.backToReviews }
+          : { onSeeReviews: () => router.push('/reviews/mine') })}
         photos={photoState.photos}
         maxPhotos={REVIEW_PHOTOS_MAX}
         photoError={photoState.photoError}

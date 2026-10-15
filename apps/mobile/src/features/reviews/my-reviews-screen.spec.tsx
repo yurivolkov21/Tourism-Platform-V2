@@ -2,7 +2,11 @@ import { fireEvent, screen } from '@testing-library/react-native';
 import { messages } from '@tourism/i18n';
 import { StyleSheet } from 'react-native';
 import { renderWithTheme, themeFor } from '@/test-utils';
-import { type MyReviewCardVM, MyReviewsScreen } from './my-reviews-screen';
+import {
+  type AwaitingReviewTripVM,
+  type MyReviewCardVM,
+  MyReviewsScreen,
+} from './my-reviews-screen';
 
 const copy = messages.reviews.mine;
 
@@ -17,9 +21,25 @@ function card(over: Partial<MyReviewCardVM> & Pick<MyReviewCardVM, 'id'>): MyRev
   };
 }
 
-async function renderList(items: MyReviewCardVM[]) {
-  const handlers = { onRetract: jest.fn(), onRewrite: jest.fn(), onWhy: jest.fn() };
-  await renderWithTheme(<MyReviewsScreen copy={copy} items={items} {...handlers} />);
+const AWAITING: AwaitingReviewTripVM[] = [
+  {
+    code: 'BK-HALONG01',
+    tourTitle: 'Ha Long Bay Overnight Cruise',
+    dateRangeLabel: '8 – 10 Jan 2026',
+    imageUrl: null,
+  },
+];
+
+async function renderList(items: MyReviewCardVM[], awaiting: AwaitingReviewTripVM[] = []) {
+  const handlers = {
+    onRetract: jest.fn(),
+    onRewrite: jest.fn(),
+    onWhy: jest.fn(),
+    onWriteReview: jest.fn(),
+  };
+  await renderWithTheme(
+    <MyReviewsScreen copy={copy} items={items} awaiting={awaiting} {...handlers} />,
+  );
   return handlers;
 }
 
@@ -67,6 +87,38 @@ describe('MyReviewsScreen (R4)', () => {
     expect(screen.getByText(copy.empty)).toBeTruthy();
   });
 
+  // Card "Thêm khối" (15/10): lối thứ ba vào R1 (open-items P5b-5 mục 1).
+  it('chuyến đã về chưa có bài: khối đầu màn, mỗi chuyến một nút viết bài gọi đúng mã đơn', async () => {
+    const handlers = await renderList([card({ id: 'p' })], AWAITING);
+
+    expect(screen.getByText(copy.awaitingHeading)).toBeTruthy();
+    expect(screen.getByText('Ha Long Bay Overnight Cruise')).toBeTruthy();
+    expect(screen.getByText('8 – 10 Jan 2026')).toBeTruthy();
+    // Có khối chờ viết thì danh sách bài cũng có tiêu đề riêng, không lẫn hai loại thẻ.
+    expect(screen.getByText(copy.writtenHeading)).toBeTruthy();
+
+    // Nhiều thẻ cùng chữ "Write a review": trình đọc màn hình nghe kèm tên tour.
+    await fireEvent.press(
+      screen.getByRole('button', { name: copy.writeReviewFor('Ha Long Bay Overnight Cruise') }),
+    );
+    expect(handlers.onWriteReview).toHaveBeenCalledWith('BK-HALONG01');
+  });
+
+  it('không có chuyến chờ viết: không tiêu đề khối nào, màn giữ như cũ', async () => {
+    await renderList([card({ id: 'p' })]);
+
+    expect(screen.queryByText(copy.awaitingHeading)).toBeNull();
+    expect(screen.queryByText(copy.writtenHeading)).toBeNull();
+  });
+
+  it('có chuyến chờ viết mà chưa có bài nào: khối mời viết rồi câu trống, không tiêu đề danh sách', async () => {
+    await renderList([], AWAITING);
+
+    expect(screen.getByText(copy.awaitingHeading)).toBeTruthy();
+    expect(screen.getByText(copy.empty)).toBeTruthy();
+    expect(screen.queryByText(copy.writtenHeading)).toBeNull();
+  });
+
   // G47 (ADR-0019 AMEND 4): chữ 12dp trên lớp tô success 16% — mực `success` trần chỉ 2,83:1 ở
   // theme sáng, nên pill "Published" dùng token vai mực.
   it.each(['light', 'dark'] as const)(
@@ -76,9 +128,11 @@ describe('MyReviewsScreen (R4)', () => {
         <MyReviewsScreen
           copy={copy}
           items={[card({ id: 'a', moderationState: 'approved' })]}
+          awaiting={[]}
           onRetract={jest.fn()}
           onRewrite={jest.fn()}
           onWhy={jest.fn()}
+          onWriteReview={jest.fn()}
         />,
         scheme,
       );

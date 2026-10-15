@@ -1,6 +1,7 @@
 import type { messages } from '@tourism/i18n';
 import { AppText, Screen, useTheme, withAlpha } from '@tourism/mobile-ui';
 import { Pressable, ScrollView, View } from 'react-native';
+import { BookingTripCard } from '@/features/booking/booking-parts';
 import { formatFullDate } from '@/features/tour-detail/departures';
 import { type MyReviewModerationState, myReviewNextStep, myReviewTone } from './my-reviews';
 
@@ -14,12 +15,24 @@ export interface MyReviewCardVM {
   dateIso: string;
 }
 
+/** Một chuyến đã về mà khách chưa viết bài — một thẻ của khối đầu R4. */
+export interface AwaitingReviewTripVM {
+  code: string;
+  tourTitle: string;
+  dateRangeLabel: string;
+  imageUrl: string | null;
+}
+
 export interface MyReviewsScreenProps {
   copy: typeof messages.reviews.mine;
   items: readonly MyReviewCardVM[];
+  /** Chuyến chờ viết bài (`tripsAwaitingReview`); rỗng thì màn giữ nguyên như trước khối này. */
+  awaiting: readonly AwaitingReviewTripVM[];
   onRetract: (id: string) => void;
   onRewrite: (id: string) => void;
   onWhy: (id: string) => void;
+  onWriteReview: (bookingCode: string) => void;
+  transformUrl?: (source: string, width: number) => string;
 }
 
 /** Tông → khoá màu có trong bảng màu theme (không có khoá `destructive` trần). */
@@ -41,15 +54,25 @@ const TONE_INK = {
   warning: 'warning-emphasis',
 } as const;
 
-/** R4 — "Đánh giá của tôi": bốn trạng thái. Pill chỉ nói trạng thái; ngày nằm bên phải cùng hàng. */
+/**
+ * R4 — "Đánh giá của tôi": bốn trạng thái. Pill chỉ nói trạng thái; ngày nằm bên phải cùng hàng.
+ *
+ * Đầu màn là khối chuyến chờ viết bài (card "Thêm khối", 15/10): mockup R4 chưa vẽ chỗ cho nó, nên
+ * thẻ mượn đúng thẻ chuyến đầu màn R1 (`BookingTripCard`), và nút viết bài là link chữ như mọi nút
+ * khác trong thẻ R4.
+ */
 export function MyReviewsScreen({
   copy,
   items,
+  awaiting,
   onRetract,
   onRewrite,
   onWhy,
+  onWriteReview,
+  transformUrl,
 }: MyReviewsScreenProps) {
   const theme = useTheme();
+  const hasAwaiting = awaiting.length > 0;
 
   function stateLabel(state: MyReviewModerationState): string {
     if (state === 'approved') return copy.publishedLabel;
@@ -68,8 +91,38 @@ export function MyReviewsScreen({
           gap: theme.spacing(3),
         }}
       >
+        {hasAwaiting ? (
+          <AppText variant="label" accessibilityRole="header">
+            {copy.awaitingHeading}
+          </AppText>
+        ) : null}
+        {awaiting.map((trip) => (
+          <BookingTripCard
+            key={trip.code}
+            imageUrl={trip.imageUrl}
+            title={trip.tourTitle}
+            dateRangeLabel={trip.dateRangeLabel}
+            editLabel={copy.writeReview}
+            editAccessibilityLabel={copy.writeReviewFor(trip.tourTitle)}
+            onEdit={() => onWriteReview(trip.code)}
+            transformUrl={transformUrl}
+          />
+        ))}
+        {hasAwaiting && items.length > 0 ? (
+          <AppText
+            variant="label"
+            accessibilityRole="header"
+            style={{ marginTop: theme.spacing(3) }}
+          >
+            {copy.writtenHeading}
+          </AppText>
+        ) : null}
         {items.length === 0 ? (
-          <AppText variant="subtitle" tone="muted" style={{ textAlign: 'center' }}>
+          <AppText
+            variant="subtitle"
+            tone="muted"
+            style={{ textAlign: 'center', marginTop: hasAwaiting ? theme.spacing(3) : 0 }}
+          >
             {copy.empty}
           </AppText>
         ) : null}

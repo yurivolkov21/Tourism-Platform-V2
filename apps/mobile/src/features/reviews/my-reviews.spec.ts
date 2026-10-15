@@ -1,9 +1,12 @@
-import { PageQuerySchema } from '@tourism/contract';
+import { BookingsListQuerySchema, PageQuerySchema } from '@tourism/contract';
 import {
+  AWAITING_REVIEW_BOOKINGS_INPUT,
+  type AwaitingReviewTripInput,
   MY_REVIEWS_INPUT,
   type MyReviewModerationState,
   myReviewNextStep,
   myReviewTone,
+  tripsAwaitingReview,
 } from './my-reviews';
 
 describe('myReviewNextStep', () => {
@@ -45,5 +48,68 @@ describe('MY_REVIEWS_INPUT', () => {
 
   it('qua schema vẫn giữ nguyên 100 bài/trang, không rơi về mặc định 20', () => {
     expect(PageQuerySchema.parse(MY_REVIEWS_INPUT).pageSize).toBe(100);
+  });
+});
+
+describe('tripsAwaitingReview — khối "chờ viết bài" đầu R4', () => {
+  // Cổng API so theo ngày UTC (cùng `canWriteReview`): 17/10 00:00 UTC là 07:00 giờ Việt Nam.
+  const NOW = new Date('2026-10-17T00:00:00.000Z');
+
+  function trip(
+    code: string,
+    over: Partial<AwaitingReviewTripInput> = {},
+  ): AwaitingReviewTripInput {
+    return {
+      code,
+      status: 'PAID',
+      departureCancelled: false,
+      departureEndDate: '2026-10-10',
+      ...over,
+    };
+  }
+
+  it('chuyến PAID đã về mà chưa có bài → mời viết, chuyến về gần nhất đứng đầu', () => {
+    const result = tripsAwaitingReview(
+      [
+        trip('OLD', { departureEndDate: '2026-09-01' }),
+        trip('TODAY', { departureEndDate: '2026-10-17' }),
+      ],
+      [],
+      NOW,
+    );
+
+    expect(result.map((item) => item.code)).toEqual(['TODAY', 'OLD']);
+  });
+
+  it('đơn đã có bài ở My reviews, ở trạng thái nào cũng vậy → không mời lần hai', () => {
+    const result = tripsAwaitingReview(
+      [trip('REVIEWED'), trip('OPEN')],
+      [{ bookingCode: 'REVIEWED' }, { bookingCode: null }],
+      NOW,
+    );
+
+    expect(result.map((item) => item.code)).toEqual(['OPEN']);
+  });
+
+  it('cùng cổng với hoá đơn: chưa về theo ngày UTC, công ty huỷ chuyến, đơn không PAID → không mời', () => {
+    const result = tripsAwaitingReview(
+      [
+        trip('NOT_BACK', { departureEndDate: '2026-10-18' }),
+        trip('OPERATOR_CANCELLED', { departureCancelled: true }),
+        trip('PART_REFUNDED', { status: 'PARTIALLY_REFUNDED' }),
+      ],
+      [],
+      NOW,
+    );
+
+    expect(result).toEqual([]);
+  });
+});
+
+describe('AWAITING_REVIEW_BOOKINGS_INPUT', () => {
+  it('qua schema giữ nguyên mọi bộ lọc (Zod bỏ khoá lạ, sai một chữ là mất bộ lọc)', () => {
+    expect(BookingsListQuerySchema.parse(AWAITING_REVIEW_BOOKINGS_INPUT)).toEqual(
+      AWAITING_REVIEW_BOOKINGS_INPUT,
+    );
   });
 });

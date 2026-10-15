@@ -2265,6 +2265,16 @@ export const messages = {
       /** Bị bác đủ hai lần (R6): chỉ còn đọc lý do — không hứa "rewrite" khi nút sửa đã đóng. */
       seeWhyFinal: 'See why',
       retractAction: 'Retract my review',
+      /**
+       * Khối đầu R4 (card "Thêm khối", 15/10): chuyến đã về mà chưa có bài, lối thứ ba vào R1
+       * (open-items P5b-5 mục 1). Có khối thì danh sách bài bên dưới mang tiêu đề `writtenHeading`
+       * để hai loại thẻ không lẫn vào nhau.
+       */
+      awaitingHeading: 'Waiting for your review',
+      writtenHeading: 'Your reviews',
+      writeReview: 'Write a review',
+      /** Nhãn đọc của nút trên từng thẻ: nhiều thẻ cùng chữ, trình đọc màn hình cần tên tour. */
+      writeReviewFor: (tour: string) => `Write a review for ${tour}`,
     },
     /**
      * Tấm hỏi lại khi rời màn viết bài (R1) hay viết lại bài bị bác (R5) lúc bài còn dở: back cứng

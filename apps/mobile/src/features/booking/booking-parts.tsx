@@ -58,6 +58,11 @@ export interface BookingTripCardProps {
    *  booking đã tạo xong rồi thì không còn gì để sửa ở bước đặt chỗ. */
   editLabel?: string;
   onEdit?: () => void;
+  /**
+   * Nhãn đọc của link khi chữ link một mình chưa đủ nghĩa — R4 có nhiều thẻ cùng chữ
+   * "Write a review" nên trình đọc màn hình cần nghe kèm tên tour. Vắng thì đọc chính chữ link.
+   */
+  editAccessibilityLabel?: string;
   transformUrl?: (source: string, width: number) => string;
 }
 
@@ -73,6 +78,7 @@ export function BookingTripCard({
   dateRangeLabel,
   editLabel,
   onEdit,
+  editAccessibilityLabel,
   transformUrl,
 }: BookingTripCardProps) {
   const theme = useTheme();
@@ -118,7 +124,12 @@ export function BookingTripCard({
           {dateRangeLabel}
         </AppText>
         {editLabel === undefined || onEdit === undefined ? null : (
-          <Pressable accessibilityRole="button" onPress={onEdit} hitSlop={theme.spacing(2)}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={editAccessibilityLabel}
+            onPress={onEdit}
+            hitSlop={theme.spacing(2)}
+          >
             <AppText variant="caption" tone="link" style={{ marginTop: theme.spacing(1) }}>
               {editLabel}
             </AppText>
