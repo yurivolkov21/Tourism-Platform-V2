@@ -65,6 +65,7 @@ thay, cột đã xoá, và số AMEND để biết phải đọc tới cuối fi
 | [0055](0055-mobile-data-layer.md) | Tầng dữ liệu mobile: oRPC `OpenAPILink` + TanStack Query, client-first | 2 AMEND |
 | [0056](0056-mobile-google-native-signin.md) | Đăng nhập Google trên app bằng SDK gốc và ID token; đóng proxy Expo | 1 AMEND (thi công 13/10) |
 | [0057](0057-print-documents.md) | Bản in là tài liệu riêng: component chỉ-in, trang in `doc` A4 lề 0, khung đầu và chân trang chung | |
+| [0058](0058-tour-card-next-departure-badges-rating-sort.md) | Thẻ tour mang đợt kế tiếp đặt được và badge; sắp theo rating; bộ lọc giá, thời lượng, độ khó ở lại web | |
 
 ## Thêm ADR mới
 
