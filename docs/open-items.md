@@ -44,6 +44,16 @@ Không còn việc nào chờ quyết (14/10).
 
 ## Cần thử lại bằng máy thật
 
+- **Việc tồn của app ngày 15/10** (merge 15/10, nhánh `fix/web-open-items-10`, PR #29): ở bản build
+  app kế tiếp, (1) chọn ảnh từ thư viện ở R1 hoặc R5 không hiện hộp xin quyền, chỉ chụp ảnh mới xin
+  quyền camera; (2) đổi mật khẩu ở Account xong mở màn "Password updated", nút dưới đưa về Account;
+  (3) My reviews có khối "Waiting for your review" khi còn chuyến đã về chưa có bài, viết xong bấm
+  "Back to my reviews" về đúng danh sách và chuyến rời khối; (4) bật TalkBack, rút một bài thì nghe
+  "Review retracted". Mới có test đơn vị; ảnh khối ở (3) user duyệt là bản dựng lại từ token.
+- **Mail có ảnh tour và hàng sao** (merge 15/10, sổ nợ F2, PR #29): đặt một đơn Stripe test trên
+  production, mail xác nhận phải có ảnh bìa tour và dòng ghi công dưới ảnh (tour chưa có ảnh vẫn ra
+  monogram); duyệt một bài ở admin thì mail báo duyệt có hàng sao đúng số và nút "See your review".
+  Mới có test đơn vị và int test.
 - **Hỏi lại trước khi rời màn viết bài của app** (merge 15/10, nhánh `fix/review-draft-leave-guard`, PR #24): ở bản
   build app kế tiếp, gõ vài chữ ở R1 rồi bấm back cứng Android: phải hiện tấm "Leave without
   sending?", "Keep writing" ở lại màn, "Discard and leave" thì rời. Mở R5 rồi back ngay thì rời
@@ -156,8 +166,8 @@ thấy. Lúc chúng vào DB thì có thể đã qua freeze 31/10: đọc lý do 
 
 Phát hiện 25/09 ở final review của plan return-to-auth (SDD; ledger từng ở
 `.superpowers/sdd/2026-09-25-mobile-account-return-to-auth/progress.md`, đã xoá
-sau khi merge). Không chặn merge, ghi lại để không quên. Mục 1–3 và phần lớn mục 5
-đã sửa, chuyển sang [open-items-closed.md](open-items-closed.md):
+sau khi merge). Không chặn merge, ghi lại để không quên. Mục 1–3 và 5 đã sửa (nửa sau
+của N8 ở mục 5 xong 15/10), chuyển sang [open-items-closed.md](open-items-closed.md):
 
 4. **Đăng nhập Google trên mobile sau ADR-0056** — proxy `expo-authorization-proxy` đóng ở
    mọi môi trường và server không còn luồng redirect nào đổ cookie phiên về deep link
@@ -167,21 +177,6 @@ sau khi merge). Không chặn merge, ghi lại để không quên. Mục 1–3 v
    `GOOGLE_IOS_CLIENT_ID` vào env API lúc đó). Ảnh Google lúc tạo tài khoản chỉ nhận host
    `lh3.googleusercontent.com`; ảnh ở host khác bị bỏ và tài khoản hiện chữ cái đầu. Nới host
    phải sửa cả `img-src` của CSP web và admin.
-5. **N8 nửa sau còn mở** — đổi mật khẩu thành công thì màn đóng về Account mà không báo gì,
-   vì app chưa có toast. N7, N9, N10 và nửa đầu N8 đã sửa 14/10
-   (nhánh `fix/web-open-items-9`, PR #21), chuyển sang [open-items-closed.md](open-items-closed.md).
-
-## Nợ nhỏ phát sinh từ P5b-5 (nhánh `fix/mobile-review-screens`)
-
-Nêu 12/10 ở review lần 2 (merge cùng ngày). Không chặn merge. Mục 3 (14/10) và 4 (15/10) đã
-sửa, chuyển sang [open-items-closed.md](open-items-closed.md):
-
-1. **R1 chưa mở được từ dòng My reviews.** Mockup ghi ba lối vào R1: P6, chi tiết booking và
-   dòng My reviews ở Account. Lối chi tiết booking có từ 14/10 (`e6fbf4e`,
-   nhánh `fix/web-open-items-9`, PR #21); R4 chưa vẽ chỗ cho chuyến chờ đánh giá nên lối thứ ba
-   cần thiết kế.
-2. **Rút bài xong không có toast "Review retracted"** như web (chữ `reviews.retract.toast.done`
-   có sẵn). Thẻ đổi sang "You retracted this review" nên khách vẫn thấy kết quả.
 
 ## Nợ kỹ thuật chi tiết
 

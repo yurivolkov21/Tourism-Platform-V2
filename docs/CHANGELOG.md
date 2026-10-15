@@ -8,6 +8,61 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-10-15 — Merge việc tồn web và app: ảnh review, mail có ảnh tour và hàng sao, ngăn kéo lọc /blog, màn "Password updated", khối chờ viết bài (sổ nợ F2, N8, P5b-5 mục 1–2, `0d6289e`..`59b3329`)
+
+Lượt open-items của web và app, tách từ yêu cầu của user sáng 15/10 (dời freeze sang 31/10, chia
+luồng web và admin). Nhánh `fix/web-open-items-10`,
+[PR #29](https://github.com/yurivolkov21/Tourism-Platform-V2/pull/29), session cloud; tạm dừng
+giữa chừng vì giới hạn usage rồi chạy tiếp cùng ngày. Không migration, không env, không
+dependency. Thư viện dùng chung bị sửa: `@tourism/i18n` (câu lỗi quyền ảnh, bốn chuỗi ngăn kéo
+blog, màn "Password updated", bốn chuỗi khối chờ viết bài); `libs/mobile/*` không đổi.
+
+- Mobile `0d6289e` (F7 cho ảnh review): chọn ảnh từ thư viện ở R1, R5 đi đường không cần quyền như
+  màn Account; chỉ chụp ảnh mới xin quyền camera, câu lỗi chỉ còn nói camera.
+- API `51603e0` (sổ nợ F2): câu claim PAID của money-path lấy ảnh hero đầu tiên của tour (bỏ hero
+  là video) bằng một `LEFT JOIN LATERAL` chỉ đọc rồi ghi vào payload outbox; mail xác nhận in ảnh qua
+  Cloudinary (`w_1024`, không crop, ADR-0020 §4) kèm dòng ghi công (§3), tour chưa có ảnh vẫn ra
+  monogram như ADR-0025. Mail duyệt bài mang `rating` (đọc dưới `FOR UPDATE`) và `tourSlug` (null
+  khi tour đang ẩn): hàng năm sao và nút "See your review". `ResendDeliverer` đọc
+  `CLOUDINARY_CLOUD_NAME` vốn đã bắt buộc ở production. User duyệt ảnh mẫu mail trên thẻ quyết định.
+- Web `aa66c93` (nợ hoãn 17/08): dưới `lg`, hai nhóm Topic và Place của `/blog` nằm trong ngăn kéo
+  `Drawer` của `@tourism/ui` như `/tours`: số bài sống ở đầu, "Clear all" và "Show N stories" ở
+  chân, nút mở có huy hiệu đếm; từ `lg` giữ sidebar.
+- Mobile `b130599` (N8 nửa sau, thẻ "Màn kết quả"): đổi mật khẩu xong mở màn "Password updated"
+  (route mới `password-updated` dùng lại `ResultScreen` của cụm auth), nút về Account bằng
+  `dismissTo`.
+- Mobile `fc38195` (P5b-5 mục 1 và 2, thẻ "Thêm khối" và "Màn kết quả"): đầu My reviews có khối
+  "Waiting for your review" cho đơn PAID của chuyến đang đi hoặc đã về mà chưa có bài (qua đúng
+  cổng `canWriteReview` của hoá đơn), mỗi dòng một nút "Write a review"; mở R1 từ đây thì màn đã
+  gửi ghi "Back to my reviews" và lùi về đúng My reviews. Rút bài xong app đọc "Review retracted"
+  cho trình đọc màn hình. User duyệt ảnh khối (sáng, tối) trên thẻ quyết định; ảnh dựng lại bằng
+  HTML từ token và số đo trong code vì app không có bản chạy web.
+- Test `c350ba2` (spec i18n đếm 25 màn), `59b3329` (spec R4 chỉ gỡ đúng spy của nó thay vì
+  `restoreAllMocks`).
+- Docs: N8 nửa sau và P5b-5 mục 1, 2 chuyển sang `open-items-closed.md` (mục P5b-5 hết nên bỏ khỏi
+  file chính); sổ nợ F2 và nợ con ở spec deploy v1 §10 thành đã trả; thêm hai dòng thử tay.
+
+**Review.** Không có lượt review độc lập. CI `gate` đỏ trên `e664be8`: spec i18n còn đếm 24 màn,
+vá ở `45309da` (sau rebase là `c350ba2`). User bảo merge 15/10 12:45 UTC ("Merge nhé"). Nhánh tách
+từ `16ca003`, rebase lên `a8db3e9` (PR #28) không conflict.
+
+Tests after (`gate:int` trên `59b3329` sau rebase, 15/10 xong 13:02 UTC, session cloud theo các
+bước của CI, xanh ngay lượt đầu): unit 7646 (web 2315, admin 2224, api 1190, mobile 864, contract
+719, mobile-ui 145, i18n 58, ui 57, core 48, tokens 26) và int 849; Biome 1958 file, tokens-only
+mobile 188 file. Turbo phát lại kết quả đã lưu của tokens và mobile-ui. So với `a8db3e9`: web thêm
+7 test, api thêm 16, mobile thêm 14, int thêm 3, các gói khác giữ nguyên. CI `gate` của PR xanh
+trên cùng code (`d296139`, bản đầu của commit docs này). Trước rebase, `gate:int`
+trên `e6f3f8d` xanh ở lượt thứ ba: hai lượt đầu chết vì một test quá 5 giây khi máy quá tải
+(tokens, rồi `zod-config.spec` của contract), cả hai file không đổi trong nhánh. Test của N8 và
+khối R4 viết trước, đỏ rồi mới xanh.
+
+**CÒN TREO:**
+
+- Thử tay ở bản build app kế tiếp (dòng ở open-items): chọn ảnh review không hỏi quyền, màn
+  "Password updated", khối chờ viết bài, TalkBack đọc "Review retracted".
+- Thử tay trên production sau deploy (dòng ở open-items): mail xác nhận có ảnh tour, mail duyệt bài
+  có hàng sao.
+
 ## 2026-10-15 — Thẻ /tours mang đợt kế tiếp và badge, sắp theo rating (ADR-0058, sổ nợ E3, `6c2098c`)
 
 Mục E3 của sổ nợ kỹ thuật, tách từ lượt Yuri giao làm nốt open-items của web và admin sáng 15/10.

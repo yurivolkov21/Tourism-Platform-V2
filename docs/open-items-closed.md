@@ -198,8 +198,29 @@ Mục 4 (đăng nhập Google trên mobile) còn mở ở file chính.
    đọc `total` của server khi còn trang chưa về. N10 `be45bde`: backdrop tấm trượt là nút
    "Close". Nửa sau N8 (thành công không báo) còn ở file chính.*
 
+   **Nửa sau N8 đã sửa (`b130599`, merge 15/10).** Dòng ở file chính, chép nguyên văn:
+   **N8 nửa sau còn mở** — đổi mật khẩu thành công thì màn đóng về Account mà không báo gì,
+   vì app chưa có toast. N7, N9, N10 và nửa đầu N8 đã sửa 14/10
+   (nhánh `fix/web-open-items-9`, PR #21), chuyển sang [open-items-closed.md](open-items-closed.md).
+   *Nhánh `fix/web-open-items-10`, PR #29: đổi mật khẩu xong mở màn kết quả "Password updated"
+   (route `password-updated` dùng lại `ResultScreen` của cụm auth), nút về Account bằng `dismissTo`.
+   User chọn cách này trên thẻ quyết định 15/10 ("Màn kết quả").*
+
 ## Nợ nhỏ phát sinh từ P5b-5 — mục đã sửa
 
+1. **Đã sửa (`fc38195`, merge 15/10).** **R1 chưa mở được từ dòng My reviews.** Mockup ghi ba lối vào R1: P6, chi tiết booking và
+   dòng My reviews ở Account. Lối chi tiết booking có từ 14/10 (`e6fbf4e`,
+   nhánh `fix/web-open-items-9`, PR #21); R4 chưa vẽ chỗ cho chuyến chờ đánh giá nên lối thứ ba
+   cần thiết kế.
+   *Nhánh `fix/web-open-items-10`, PR #29: đầu R4 có khối "Waiting for your review" cho đơn PAID của
+   chuyến đang đi hoặc đã về mà chưa có bài (qua cổng `canWriteReview` của hoá đơn), mỗi dòng một nút
+   "Write a review" mở R1; mở từ đây thì màn đã gửi ghi "Back to my reviews" và lùi về R4. User chọn
+   thêm khối trên thẻ quyết định 15/10 ("Thêm khối") và duyệt ảnh khối cùng ngày.*
+2. **Đã sửa (`fc38195`, merge 15/10).** **Rút bài xong không có toast "Review retracted"** như web (chữ `reviews.retract.toast.done`
+   có sẵn). Thẻ đổi sang "You retracted this review" nên khách vẫn thấy kết quả.
+   *Nhánh `fix/web-open-items-10`, PR #29: app vẫn chưa có toast; rút xong app đọc "Review retracted"
+   cho trình đọc màn hình (`announceForAccessibilityWithOptions`, xếp sau câu đang đọc), thẻ đổi chữ
+   như cũ. User chọn cách này trên thẻ quyết định 15/10 ("Màn kết quả").*
 3. **Đã sửa (`9af27b3`, merge 14/10).** **Chữ báo lỗi ảnh ghi cứng "10 MB" và 5** ở `use-review-photos.ts`, cùng số ô còn trống và
    `maxPhotos={5}` ở hai route, trong khi luật chặn đọc `REVIEW_PHOTO_MAX_BYTES` và
    `REVIEW_PHOTOS_MAX` của contract: đổi hằng số là chữ lệch.

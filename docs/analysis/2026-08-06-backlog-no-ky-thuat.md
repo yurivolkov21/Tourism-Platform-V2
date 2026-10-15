@@ -114,7 +114,7 @@ gom đầu mối ở đây cho đủ mặt.
 | # | Nợ | Chi tiết | Chặn? |
 | --- | --- | --- | --- |
 | F1 | Resend webhooks (`email.delivered/bounced/complained`) + cân nhắc Audience sync | outbox hiện coi `SENT` = "Resend nhận", không phải "tới inbox". **Một nửa đã có từ W4 (08/09):** webhook nhận `bounced` và `complained` để ghi suppression (ADR-0039 §4, `resend-event.ts`); `delivered` vẫn bỏ qua (đo 14/10) | — |
-| F2 | Payload outbox chưa mang **ảnh hero tour** và **rating sao** | mail BOOKING_CONFIRMATION/REVIEW_APPROVED của hệ Barebone (ADR-0025) degrade về monogram thay vì ảnh + hàng sao như Nexora cũ; muốn có phải mở rộng producer (bookings/reviews service) | — |
+| ~~F2~~ | ~~Payload outbox chưa mang **ảnh hero tour** và **rating sao**~~ | ✅ **trả 15/10** ([PR #29](https://github.com/yurivolkov21/Tourism-Platform-V2/pull/29), `51603e0`): payload BOOKING_CONFIRMATION mang ảnh hero đầu tiên của tour (bỏ hero là video), mail in ảnh kèm dòng ghi công, tour chưa có ảnh giữ monogram; REVIEW_APPROVED mang `rating` và `tourSlug`, mail có hàng năm sao và nút "See your review" | — |
 | F3 | Preview deploy Vercel không đăng nhập được (origin động ngoài `TRUSTED_ORIGINS`) | chấp nhận — preview chỉ xem UI | — |
 | ~~F4~~ | ~~Dev/prod **chung DB Supabase** — seed/reset từ máy dev đụng dữ liệu chạy thật~~ | ✅ **hết từ 14/09** (dựng lại máy): `.env.local` trỏ Postgres Docker, chuỗi Supabase chỉ nằm ở `.env.production` (CLAUDE.md, gotcha `prisma.config.ts`) | — |
 | F5 | Render free ngủ 15′ → lần mở đầu chờ ~50s | nếu vướng trước bảo vệ: cron ping hoặc plan trả phí nhỏ | — |

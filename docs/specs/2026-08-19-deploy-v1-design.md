@@ -151,6 +151,8 @@ Admin (P4), mobile, AI, monitoring trả phí, CDN riêng. Preview deploy có se
   merge `6a3725b`) — react-email v6, hệ Barebone port từ Nexora cũ. Nợ con còn
   lại: payload outbox chưa mang ảnh hero tour + rating sao nên mail booking/
   review chưa có hai khối đó như bản cũ (cần mở rộng producer nếu muốn).
+  ✅ Nợ con này **trả 15/10** (sổ nợ F2, [PR #29](https://github.com/yurivolkov21/Tourism-Platform-V2/pull/29)):
+  mail xác nhận có ảnh hero tour, mail duyệt bài có hàng sao; tour chưa có ảnh vẫn ra monogram.
 - **Preview deploy Vercel không đăng nhập được** (origin động ngoài
   `TRUSTED_ORIGINS`) — chấp nhận, preview chỉ xem UI.
 - **Dev/prod chung DB Supabase**: seed/reset từ máy dev đụng dữ liệu chạy thật;
