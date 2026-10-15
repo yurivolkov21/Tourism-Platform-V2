@@ -20,7 +20,7 @@ import { fetchDestinations, fetchTours } from '@/lib/api/tours';
 // (forged/Stats — lưới hairline + watermark) · §5 Team (ShadcnSpace Team 01,
 // chỉ founder) · §6 Partners + §7 CTA (tái dùng Home). ĐỦ 7 khối.
 export const metadata: Metadata = {
-  title: `${messages.pageMeta.about.title} — Nexora`,
+  title: messages.pageMeta.withBrand(messages.pageMeta.about.title),
   description: messages.pageMeta.about.description,
 };
 

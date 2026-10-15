@@ -36,12 +36,12 @@ export async function generateMetadata({
   const { slug } = await params;
   // React cache() dedupe: cùng slug với thân trang bên dưới chỉ tốn một fetch.
   const post = await fetchPostDetail(slug);
-  if (!post) return { title: `${messages.pageMeta.notFound.post} — Nexora` };
+  if (!post) return { title: messages.pageMeta.withBrand(messages.pageMeta.notFound.post) };
   // excerpt có thể là '' (VM map null → '' — xem lib/api/posts.ts) — bỏ hẳn
   // field description thay vì phát chuỗi rỗng, để Next tự fallback im lặng
   // thay vì render <meta description=""> vô nghĩa.
   return {
-    title: `${post.title} — Nexora`,
+    title: messages.pageMeta.withBrand(post.title),
     ...(post.excerpt ? { description: post.excerpt } : {}),
     openGraph: {
       title: post.title,
@@ -79,13 +79,19 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
   };
 
   // BreadcrumbList 3 cấp khớp breadcrumb đang hiển thị ở PostHero:
-  // Home → Journal → tiêu đề bài.
+  // Home → Journal → tiêu đề bài. Đọc CÙNG hai khoá `common.home`, `blog.breadcrumb` với
+  // PostHero (W-09, 15/10) để chữ của Google và chữ trên trang không trôi lệch nhau.
   const breadcrumbJsonLd = {
     '@context': 'https://schema.org',
     '@type': 'BreadcrumbList',
     itemListElement: [
-      { '@type': 'ListItem', position: 1, name: 'Home', item: absoluteUrl('/') },
-      { '@type': 'ListItem', position: 2, name: 'Journal', item: absoluteUrl('/blog') },
+      { '@type': 'ListItem', position: 1, name: messages.common.home, item: absoluteUrl('/') },
+      {
+        '@type': 'ListItem',
+        position: 2,
+        name: messages.blog.breadcrumb,
+        item: absoluteUrl('/blog'),
+      },
       {
         '@type': 'ListItem',
         position: 3,

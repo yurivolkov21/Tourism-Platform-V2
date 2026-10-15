@@ -1,4 +1,4 @@
-import { resilience } from '@tourism/i18n';
+import { messages, resilience } from '@tourism/i18n';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { NotFoundBody } from '@/components/feedback/not-found-body';
@@ -23,7 +23,7 @@ const PILL_OUTLINE =
 // của tour/bài/vùng đều có "… not found — Nexora"). Next cho `not-found.tsx`
 // export `metadata` tĩnh — đi đúng đường metadata thay vì chèn <title> tay
 // (chèn tay ra HAI thẻ <title>, trình duyệt lấy thẻ đầu = của layout).
-export const metadata: Metadata = { title: `${resilience.notFound.title} — Nexora` };
+export const metadata: Metadata = { title: messages.pageMeta.withBrand(resilience.notFound.title) };
 
 export default function NotFound() {
   const t = resilience.notFound;

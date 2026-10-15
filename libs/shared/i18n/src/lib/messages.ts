@@ -926,7 +926,8 @@ export const messages = {
     nextPage: 'Next page',
   },
   // Chữ <title> và description của từng trang. Title để TRẦN: layout gốc không có
-  // `title.template`, mỗi trang tự nối ` — Nexora`, nên đừng gắn tên brand vào đây.
+  // `title.template`, mỗi trang nối tên brand qua `pageMeta.withBrand` (cuối khối này), nên
+  // đừng gắn tên brand vào đây.
   // W-09 (14/10): about, tours, destinations, contact, notFound từng là khoá mồ côi với chữ
   // khác trang thật; nay căn đúng chữ đang chạy và được trang đọc.
   pageMeta: {
@@ -981,6 +982,11 @@ export const messages = {
       booking: 'Booking not found',
     },
     regionSuffix: 'tours',
+    /** Title đủ của một trang web: các mảnh nối bằng gạch dài, tên brand đứng cuối —
+        `withBrand('Tours')` ra `Tours — Nexora`, `withBrand(tour, code)` ra `tour — code — Nexora`.
+        W-09 (15/10): 28 chỗ ở `apps/web` từng tự gõ ` — Nexora`; nay mọi trang gọi hàm này. Title
+        của sáu trang auth (`authForms.pages`) đã viết sẵn đủ câu nên không đi qua đây. */
+    withBrand: (...parts: string[]) => [...parts, 'Nexora'].join(' — '),
   },
   // Tầng chống chịu — định nghĩa ở ./resilience.ts (client boundary import
   // thẳng module đó để khỏi kéo cả catalogue này vào bundle).
@@ -2182,6 +2188,12 @@ export const messages = {
     // User-facing nên khai ở đây (luật 7), không hardcode trong lib.
     fallbackAuthor: 'Nexora guides',
     fallbackCategory: 'Journal',
+    /** Thẻ `<title>` và `<description>` của kênh RSS `/blog/rss.xml` — trình đọc RSS hiện hai
+        dòng này làm tên và mô tả của nguồn tin (W-09, 15/10; chữ dời nguyên văn). */
+    feed: {
+      title: 'Nexora — Journal',
+      description: 'Notes from the road, written by our local guides.',
+    },
   },
   wishlist: {
     saved: 'Saved to wishlist.',
@@ -3090,6 +3102,11 @@ export const messages = {
       },
     },
     submitting: 'Sending your letter…',
+    /** Dòng ngày mong muốn nối vào cuối thư khi khách điền ô "When are you free?"
+        (`buildEnquiryPayload`, dùng chung cho form ở /contact và trang chủ). Nhân viên đọc nó
+        trong hộp thư enquiry của admin; fixture seed `operations/enquiries.ts` nối đúng dòng
+        này, nên đổi chữ thì đổi cả hai (W-09, 15/10). */
+    preferredDates: (dates: string) => `Preferred dates: ${dates}`,
     toast: {
       success: {
         title: 'Letter sent — thank you!',

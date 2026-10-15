@@ -441,3 +441,19 @@ describe('messages: admin.reports.printDoc (G40 Phần 2 — bản in báo cáo 
     expect(p.waterfallLabel('September 2026')).toBe('Profit and loss waterfall, September 2026');
   });
 });
+
+describe('messages: W-09 phần cuối của web (15/10)', () => {
+  it('pageMeta.withBrand nối các mảnh bằng gạch dài, tên brand đứng cuối', () => {
+    expect(messages.pageMeta.withBrand(messages.pageMeta.tours.title)).toBe('Tours — Nexora');
+    expect(messages.pageMeta.withBrand('Hanoi Heritage Day', 'BK-1234ABCD')).toBe(
+      'Hanoi Heritage Day — BK-1234ABCD — Nexora',
+    );
+    expect(messages.pageMeta.withBrand('About us').endsWith(` — ${messages.brand.name}`)).toBe(
+      true,
+    );
+  });
+
+  it('contactForm.preferredDates in đúng dòng mà fixture seed của enquiry cũng nối', () => {
+    expect(messages.contactForm.preferredDates('next April')).toBe('Preferred dates: next April');
+  });
+});

@@ -12,7 +12,7 @@ import { listParam, type RawSearchParam, singleParam } from '@/lib/search-params
 export const revalidate = 300; // ADR-0016 §3
 
 export const metadata: Metadata = {
-  title: `${messages.pageMeta.blog.title} — Nexora`,
+  title: messages.pageMeta.withBrand(messages.pageMeta.blog.title),
   description: messages.pageMeta.blog.description,
   // Khai báo feed để trình duyệt/trình đọc feed tự phát hiện được — không thì
   // /blog/rss.xml tồn tại nhưng không ai tìm ra.

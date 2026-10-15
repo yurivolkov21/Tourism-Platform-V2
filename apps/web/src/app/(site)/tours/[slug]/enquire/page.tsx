@@ -7,7 +7,7 @@ import { getServerSession } from '@/lib/api/session';
 import { fetchTourDetail } from '@/lib/api/tours';
 
 export const metadata: Metadata = {
-  title: `${messages.booking.form.private.submit} — Nexora`,
+  title: messages.pageMeta.withBrand(messages.booking.form.private.submit),
   robots: { index: false, follow: false },
 };
 

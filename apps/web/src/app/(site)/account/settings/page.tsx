@@ -11,7 +11,7 @@ import { requireSession } from '@/lib/api/session';
  * `SettingsView`. Logic sửa tại dòng, đổi mật khẩu, tải ảnh và xoá tài khoản không đổi.
  */
 export const metadata: Metadata = {
-  title: `${messages.passportSettings.title} — Nexora`,
+  title: messages.pageMeta.withBrand(messages.passportSettings.title),
   description: messages.passportSettings.subtitle,
 };
 

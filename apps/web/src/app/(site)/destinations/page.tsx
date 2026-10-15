@@ -50,7 +50,7 @@ export const revalidate = 300; // ADR-0016 §3 — khớp REVALIDATE_SEC của f
  * để nhúng Reveal vào bên trong.
  */
 export const metadata: Metadata = {
-  title: `${messages.pageMeta.destinations.title} — Nexora`,
+  title: messages.pageMeta.withBrand(messages.pageMeta.destinations.title),
   description: messages.destinationsPage.heroSubtitleMeta,
   // Canonical: cùng lý do /tours và /tours/[slug] đã thêm — mẫu /blog từng bỏ sót.
   alternates: { canonical: '/destinations' },

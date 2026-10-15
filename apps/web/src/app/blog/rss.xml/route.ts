@@ -1,3 +1,4 @@
+import { messages } from '@tourism/i18n';
 import { fetchPosts } from '@/lib/api/posts';
 import { settle } from '@/lib/api/resilience';
 import { sortPostsByDate } from '@/lib/blog';
@@ -35,9 +36,9 @@ export async function GET() {
     '<?xml version="1.0" encoding="UTF-8"?>',
     '<rss version="2.0">',
     '  <channel>',
-    '    <title>Nexora — Journal</title>',
+    `    <title>${escapeXml(messages.blog.feed.title)}</title>`,
     `    <link>${escapeXml(absoluteUrl('/blog'))}</link>`,
-    '    <description>Notes from the road, written by our local guides.</description>',
+    `    <description>${escapeXml(messages.blog.feed.description)}</description>`,
     '    <language>en</language>',
     items,
     '  </channel>',

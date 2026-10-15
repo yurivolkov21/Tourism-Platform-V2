@@ -16,7 +16,7 @@ import { receiptPrintView } from '@/lib/print/receipt-print';
 import { VOUCHER_PAGE_GUTTER } from '@/lib/voucher-layout';
 
 export const metadata: Metadata = {
-  title: `${messages.booking.cancel.title} — Nexora`,
+  title: messages.pageMeta.withBrand(messages.booking.cancel.title),
   robots: { index: false, follow: false },
 };
 

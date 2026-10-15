@@ -7,7 +7,7 @@ import { slugify } from '@/lib/slug';
 import type { TocItem } from '@/lib/toc';
 
 export const metadata: Metadata = {
-  title: `${messages.pageMeta.faq.title} — Nexora`,
+  title: messages.pageMeta.withBrand(messages.pageMeta.faq.title),
   description: messages.pageMeta.faq.description,
 };
 

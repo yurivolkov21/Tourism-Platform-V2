@@ -58,7 +58,9 @@ function parseGroupSize(raw: string): number | undefined {
  */
 export function buildEnquiryPayload(state: ContactFormState): CreateEnquiryInput {
   const dates = state.dates.trim();
-  const message = dates ? `${state.loves}\n\nPreferred dates: ${dates}` : state.loves;
+  const message = dates
+    ? `${state.loves}\n\n${messages.contactForm.preferredDates(dates)}`
+    : state.loves;
 
   const payload: CreateEnquiryInput = {
     name: state.name,

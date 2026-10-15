@@ -12,7 +12,7 @@ import { fetchMyWishlist } from '@/lib/api/wishlist';
  * "Saved {ngày}" không phụ thuộc đồng hồ trình duyệt.
  */
 export const metadata: Metadata = {
-  title: `${messages.accountSaved.title} — Nexora`,
+  title: messages.pageMeta.withBrand(messages.accountSaved.title),
   description: messages.accountSaved.subtitle,
 };
 

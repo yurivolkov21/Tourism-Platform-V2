@@ -13,7 +13,7 @@ import { parseUnsubscribeParams } from '@/lib/unsubscribe';
 // `confirmInfo` KHÔNG side effect — mail client prefetch link, khách phải tự
 // bấm nút trên trang thì POST claim mới chạy.
 export const metadata: Metadata = {
-  title: `${messages.newsletterConfirmPage.title} — Nexora`,
+  title: messages.pageMeta.withBrand(messages.newsletterConfirmPage.title),
   description: messages.newsletterConfirmPage.subtitle,
   robots: { index: false },
 };

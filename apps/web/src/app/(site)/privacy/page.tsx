@@ -4,7 +4,7 @@ import { LegalArticle } from '@/components/legal/legal-article';
 
 // Cùng khung với /terms — chỉ đổi LegalDoc.
 export const metadata: Metadata = {
-  title: `${messages.pageMeta.privacy.title} — Nexora`,
+  title: messages.pageMeta.withBrand(messages.pageMeta.privacy.title),
   description: messages.pageMeta.privacy.description,
 };
 

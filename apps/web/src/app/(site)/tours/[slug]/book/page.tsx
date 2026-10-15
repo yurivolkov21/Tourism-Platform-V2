@@ -11,7 +11,7 @@ import { fetchTourDetail } from '@/lib/api/tours';
 import { BOOK_DEPARTURE_PARAM, bookHref, initialDepartureId, isDepartureOpen } from '@/lib/tours';
 
 export const metadata: Metadata = {
-  title: `${messages.booking.page.title} — Nexora`,
+  title: messages.pageMeta.withBrand(messages.booking.page.title),
   robots: { index: false, follow: false },
 };
 

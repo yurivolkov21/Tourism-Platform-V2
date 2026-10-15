@@ -23,7 +23,7 @@ import { VOUCHER_PAGE_GUTTER } from '@/lib/voucher-layout';
 export const metadata: Metadata = {
   // "Voucher" chứ không "Booking confirmed": trang này mở lại được bất cứ lúc nào, kể cả với
   // đơn đã huỷ — tiêu đề tab nói "đã xác nhận" là đúng lớp lỗi spec P7 §1 sửa ở thân trang.
-  title: `${messages.booking.success.heroBreadcrumb} — Nexora`,
+  title: messages.pageMeta.withBrand(messages.booking.success.heroBreadcrumb),
   // Trang per-user sau thanh toán: không có gì để index, và `robots.ts` cũng đã
   // disallow `/checkout/`. Khai ở đây thêm một lớp cho chắc.
   robots: { index: false, follow: false },
