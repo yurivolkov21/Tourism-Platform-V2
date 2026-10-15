@@ -68,7 +68,7 @@ từng cái không cài lại nằm ở bảng "Đã cân nhắc và LOẠI".
 | P7 polish UI | `pbakaus/impeccable` | Chỉ khi không chạy `init`/`document` — hai lệnh đó sinh `PRODUCT.md`/`DESIGN.md` cạnh tranh `@tourism/tokens`. Cài theo repo, gỡ sau P7 |
 | Tra docs thư viện | Context7 | Dùng **connector**, không cài plugin (trùng) |
 
-Trước freeze 15/10: tắt auto-update của marketplace `claude-plugins-official`
+Trước freeze 31/10: tắt auto-update của marketplace `claude-plugins-official`
 (`/plugin` → Marketplaces → Disable auto-update).
 
 ## Connector claude.ai (15)

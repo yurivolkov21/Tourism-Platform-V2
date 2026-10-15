@@ -7,7 +7,7 @@ hành đã chứng minh ở Nexora, cập nhật cho toolchain mới.
 
 ## Dự án là gì
 
-Capstone tốt nghiệp (bảo vệ dự kiến sau ~10/11/2026) — nền tảng đặt tour vận
+Capstone tốt nghiệp (bảo vệ dự kiến ~16/11/2026, có buổi thuyết trình thử trước đó) — nền tảng đặt tour vận
 hành như trang thương mại thật nhưng **không doanh thu**: Stripe/PayPal luôn ở
 test/sandbox mode. Rebuild nâng cấp từ Nexora. **Bản sao Nexora không còn trên
 máy** (user chốt 14/09/2026 không clone lại) — mọi đối chiếu từ nay đọc các bản
@@ -26,7 +26,8 @@ P4f users ✅ 13/10 (Owner và Staff, khoá tài khoản) — media chưa có sp
 tour ✅ 12/10 · P5b-5 đánh giá ✅ 12/10 — thành viên khác dựng màn; đăng nhập Google native
 ADR-0056 ✅ 13/10) →
 P6 AI concierge → P7 polish UI (ba trang đơn của khách: Phần A My bookings ✅ 06/10; B chi tiết
-đơn và C voucher ✅ 09/10; Saved và Settings thiết kế lại ✅ 09/10) → freeze 15/10. Việc còn nợ gom ở
+đơn và C voucher ✅ 09/10; Saved và Settings thiết kế lại ✅ 09/10) → freeze 31/10 (dời từ 15/10,
+ADR-0001 AMEND 3). Việc còn nợ gom ở
 [docs/open-items.md](docs/open-items.md).
 
 ## Quy ước làm việc (bất di bất dịch trừ khi user nói khác)
@@ -134,8 +135,11 @@ Ba lớp bảo vệ chống lệch chuẩn (đã dựng, đừng gỡ):
 - NestJS v12: chỉ migrate nếu GA trước **30/09/2026**, sau đó ở lại v11. v12 GA
   27/08 nhưng **user chốt 29/09 ở lại v11 tới hết capstone**: bản 12 không thêm gì
   người dùng thấy, còn rủi ro với oRPC, better-auth, throttler khi chỉ còn 16 ngày
-  tới freeze.
-- **Freeze 15/10/2026**: không nâng cấp dependency, không đổi nơi deploy.
+  tới freeze (mốc 15/10 lúc ấy). Dời freeze không mở lại quyết định này.
+- **Freeze 31/10/2026**: không nâng cấp dependency, không đổi nơi deploy. Dời từ
+  15/10 (user chốt 15/10: bảo vệ còn khoảng 4 tuần tính từ thứ Hai 19/10, cần thêm
+  thời gian làm nốt phần còn lại trước buổi thuyết trình thử) — [ADR-0001 AMEND 3](docs/adr/0001-tech-stack.md).
+  Doc viết trước 15/10 ghi "freeze 15/10" là bản ghi lúc viết, không sửa; đọc mốc là 31/10.
 
 ## Lệnh
 

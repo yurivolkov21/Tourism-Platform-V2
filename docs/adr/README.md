@@ -9,7 +9,7 @@ thay, cột đã xoá, và số AMEND để biết phải đọc tới cuối fi
 
 | # | Quyết định | Lưu ý |
 | --- | --- | --- |
-| [0001](0001-tech-stack.md) | Tech stack cho bản rebuild | 2 AMEND |
+| [0001](0001-tech-stack.md) | Tech stack cho bản rebuild | 3 AMEND (từ AMEND 3, 15/10: freeze dời sang 31/10) |
 | [0002](0002-payment-gateway-refund-ledger.md) | `PaymentGateway`, sổ hoàn tiền, atomic claim | |
 | [0003](0003-auth-fail-closed.md) | Auth mặc định đóng, mở từng route bằng `@Public()` | |
 | [0004](0004-post-visibility-helper.md) | Bài blog hiện ra qua đúng một helper | |

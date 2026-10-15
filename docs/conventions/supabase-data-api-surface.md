@@ -135,7 +135,7 @@ Advisor sau khi đóng: **0 error, 7 warning, 36 + 31 suggestion**. Tất cả �
 | `rls_enabled_no_policy` ×36 | Cố ý. RLS bật với 0 policy = Postgres từ chối **mọi** lệnh cho role không `bypassrls`. Advisor không phân biệt "quên viết policy" với "cố tình khoá sạch" |
 | `function_search_path_mutable` ×5 (`pgboss.*`) | `anon` không có USAGE trên schema `pgboss`; còn là code thư viện pg-boss, sửa tay là tạo drift khi nâng cấp |
 | `function_search_path_mutable` (`public.refunds_sum_within_total`) | SECURITY INVOKER, là trigger function, RPC trả 404. Muốn khai thác phải CREATE được object trong `public` mà `anon`/`authenticated` đều không có quyền đó. **Còn treo**: vá một dòng kèm migration kế tiếp |
-| `extension_in_public` (`citext`) | 4 cột email đang dùng (`users`, `enquiries`, `subscribers`, `email_suppressions`). Dời schema đụng `datasource extensions = [citext]` của Prisma; trước freeze 15/10 thì cost > benefit |
+| `extension_in_public` (`citext`) | 4 cột email đang dùng (`users`, `enquiries`, `subscribers`, `email_suppressions`). Dời schema đụng `datasource extensions = [citext]` của Prisma; trước freeze 31/10 thì cost > benefit |
 | `auth_leaked_password_protection` | **Đã tự rút** sau khi tắt provider Email (8 warning → 7). Nếu bật lại Email thì lint quay lại — và tính năng đó là **Pro Plan trở lên**, project đang Free nên không bật được |
 | 20× `unused_index` (performance) | Site gần như không có traffic; thống kê nói "chưa ai dùng" chứ không phải "vô dụng". Xoá index dựa trên prod vắng khách là bẫy kinh điển |
 | 11× `unindexed_foreign_keys` | 3 của `pgboss`, 7 là cột actor admin. Chỉ `cancellation_requests.user_id` đáng cân nhắc khi làm P4e/P4f |
@@ -143,5 +143,5 @@ Advisor sau khi đóng: **0 error, 7 warning, 36 + 31 suggestion**. Tất cả �
 ## Mốc 30/10/2026
 
 Changelog Supabase 28/04/2026: bảng mới trong `public` sẽ **thôi được tự động expose** ra
-Data API, hiệu lực **30/10/2026** — rơi sau freeze 15/10 của dự án. Với ta là no-op vì Data
+Data API, hiệu lực **30/10/2026** — rơi một ngày trước freeze 31/10 của dự án. Với ta là no-op vì Data
 API đã tắt. Ghi lại để nếu dashboard hiện banner trong tuần bảo vệ thì biết đó là gì.

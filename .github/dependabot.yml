@@ -7,7 +7,8 @@
 # đã vá ở 4.1.11, merge cùng ngày). File này khai tường minh lập trường của dự
 # án: NHẬN bản vá bảo mật, KHÔNG nhận version update.
 #
-# Đọc kèm: CLAUDE.md mục "Chính sách theo lịch" — freeze dependency 15/10/2026.
+# Đọc kèm: CLAUDE.md mục "Chính sách theo lịch" — freeze dependency 31/10/2026
+# (dời từ 15/10, ADR-0001 AMEND 3).
 
 version: 2
 

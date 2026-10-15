@@ -12,9 +12,10 @@
 
 | Ngày | Việc |
 | --- | --- |
-| **15/10/2026** | **Freeze**: ngừng nâng cấp thư viện, ngừng đổi nơi deploy |
+| **31/10/2026** | **Freeze**: ngừng nâng cấp thư viện, ngừng đổi nơi deploy. Dời từ 15/10 ([ADR-0001 AMEND 3](adr/0001-tech-stack.md)) |
 | ~03/11/2026 | Seed lại dữ liệu prod lượt 2 (ADR-0041 Phụ lục B Bước 8) — xem [việc phải xong trước lượt này](#trước-lượt-seed-lại-0311) |
-| ~11/11/2026 | Bảo vệ đồ án |
+| chưa có ngày | Thuyết trình thử, trước buổi bảo vệ |
+| ~16/11/2026 | Bảo vệ đồ án (user 15/10: còn khoảng 4 tuần tính từ thứ Hai 19/10; trước đó ghi ~11/11) |
 
 ## Phần chưa xây
 
@@ -115,7 +116,7 @@ Không còn việc nào chờ quyết (14/10).
 - Xoá cơ sở dữ liệu Docker `tourism_ui` khi nghiệm thu xong; seed lại DB Docker
   `tourism` theo mã mới. Máy dev cài lại 12/10 nên Docker dựng mới; chưa kiểm
   `tourism_ui` còn hay không.
-- Tắt tự-động-cập-nhật marketplace `claude-plugins-official` trước freeze 15/10.
+- Tắt tự-động-cập-nhật marketplace `claude-plugins-official` trước freeze 31/10.
 - Cân nhắc siết thêm Build Filter của Render: thêm `apps/web/**`,
   `apps/admin/**`, `apps/mobile/**` vào Ignored Paths. **Đừng thêm `libs/**`** —
   máy chủ ăn `@tourism/contract` và `@tourism/core`.
@@ -136,7 +137,7 @@ Không còn việc nào chờ quyết (14/10).
 
 Soát 08/10 ở repo gốc của từng gói (đợt vá Dependabot, CHANGELOG cùng ngày). Các
 advisory dưới đây chưa vào DB chung của GitHub nên Dependabot và `pnpm audit` chưa
-thấy. Lúc chúng vào DB thì có thể đã qua freeze 15/10: đọc lý do ở đây, dismiss alert
+thấy. Lúc chúng vào DB thì có thể đã qua freeze 31/10: đọc lý do ở đây, dismiss alert
 `tolerable_risk`, thêm GHSA vào `auditConfig.ignoreGhsas` của `pnpm-workspace.yaml`.
 
 - **better-auth 1.6.23**, bản vá chỉ có ở dòng 1.7: GHSA-965c-763c-88jm (critical, cần

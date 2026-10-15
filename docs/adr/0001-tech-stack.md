@@ -133,3 +133,24 @@ thiết kế P6 (29/09), bản hiện hành đã là AI SDK **7** (`ai` 7.0.122,
 của repo). Dựng mới trên bản 6 là hẹn thêm một lần nâng cấp mà freeze 15/10 không cho
 làm. Model giữ nguyên `claude-haiku-4-5`. Cách dùng và lý lẽ ở
 [ADR-0050](0050-ai-concierge-chat.md); ba gói được ghim trước freeze dù code viết sau.
+
+## AMEND 3 — 15/10/2026: freeze dời từ 15/10 sang 31/10
+
+**Bối cảnh.** Chính sách lịch ở mục Hệ quả ("freeze dependency + hạ tầng từ 15/10
+đến sau bảo vệ") đặt mốc khi ngày bảo vệ dự kiến khoảng 10–11/11. Ngày 15/10 user
+đếm lại: buổi bảo vệ còn khoảng 4 tuần tính từ thứ Hai 19/10 (tức khoảng 16/11), và
+trước đó có một buổi thuyết trình thử. Khoảng ấy đủ để làm nốt open-items của web và
+admin trước buổi thử, nên mốc freeze dời theo.
+
+**Chốt.** Freeze là **31/10/2026** (user viết "cuối tháng 10"). Nội dung freeze không
+đổi: từ mốc ấy tới sau bảo vệ không nâng cấp dependency, không đổi nơi deploy
+([ADR-0024](0024-deploy-targets.md)). Quyết định ở lại NestJS v11 tới hết capstone
+(CLAUDE.md, user chốt 29/09) không đổi theo.
+
+**Đọc tài liệu cũ.** ADR, spec, plan, CHANGELOG và comment code viết trước 15/10 nhắc
+"freeze 15/10" là bản ghi lý lẽ lúc viết, giữ nguyên văn. Chỗ nào là luật còn hiệu
+lực thì đọc mốc là 31/10, gồm: ADR-0018 mục Ràng buộc lịch (khoá version dependency),
+ADR-0019 ("sau mốc đó không đổi token nữa"), ADR-0024 mục Hệ quả ("Sau freeze 15/10
+mọi thứ trong bảng trên là cố định"). Doc hiện trạng sửa tại chỗ cùng AMEND này:
+CLAUDE.md, `docs/open-items.md`, `docs/skills.md`,
+`docs/conventions/supabase-data-api-surface.md` và comment đầu `.github/dependabot.yml`.
