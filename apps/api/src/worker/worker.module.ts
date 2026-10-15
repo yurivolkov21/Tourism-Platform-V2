@@ -2,6 +2,7 @@ import { Module, type Provider } from '@nestjs/common';
 import { env } from '../config/env.js';
 import { BookingsModule } from '../modules/bookings/bookings.module.js';
 import { MediaGarbageModule } from '../modules/media/media-garbage.module.js';
+import { ChatRetentionService } from './chat-retention.service.js';
 import { ConsoleDeliverer, EMAIL_DELIVERER } from './deliverer.js';
 import { DepartureRefundService } from './departure-refund.service.js';
 import { EnquiryRetentionService } from './enquiry-retention.service.js';
@@ -42,9 +43,16 @@ const delivererProvider: Provider = env.RESEND_API_KEY
     OutboxService,
     PendingSweepService,
     EnquiryRetentionService,
+    ChatRetentionService,
     DepartureRefundService,
     delivererProvider,
   ],
-  exports: [OutboxService, PendingSweepService, EnquiryRetentionService, DepartureRefundService],
+  exports: [
+    OutboxService,
+    PendingSweepService,
+    EnquiryRetentionService,
+    ChatRetentionService,
+    DepartureRefundService,
+  ],
 })
 export class WorkerModule {}

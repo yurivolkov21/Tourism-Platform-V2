@@ -186,8 +186,6 @@ export interface ChatToolDeps {
   /** Ghi `enquiry_id` vào hội thoại. */
   linkEnquiry(enquiryId: string): Promise<void>;
   userId: string | null;
-  /** Slug trang tour khách đang xem ở lượt này. */
-  currentTourSlug?: string;
 }
 
 export type SearchToursResult = ReturnType<typeof toSearchResult>;
@@ -206,17 +204,14 @@ export interface ChatToolset {
     getTourDetails: ChatTool<{ slug: string }, TourDetailsResult>;
     submitEnquiry: ChatTool<SubmitEnquiryInput, SubmitEnquiryResult>;
   };
-  refineToolInput: {
-    submitEnquiry(input: SubmitEnquiryInput): Promise<SubmitEnquiryInput>;
-  };
   toolApproval: {
     submitEnquiry(input: SubmitEnquiryInput): Promise<{ type: 'user-approval'; reason?: string }>;
   };
 }
 
 export function createChatTools(deps: ChatToolDeps): ChatToolset {
-  // Một lượt tra cùng slug tối đa ba lần (chọn tour, thẻ xác nhận, lúc gửi): nhớ trong
-  // lượt để ba chỗ thấy cùng một kết quả.
+  // Thẻ xác nhận và lúc gửi tra cùng một slug: nhớ trong lượt để hai chỗ thấy cùng
+  // một kết quả.
   const lookups = new Map<string, Promise<PublishedTour | null>>();
   const lookup = (slug: string) => {
     let found = lookups.get(slug);
@@ -272,23 +267,15 @@ export function createChatTools(deps: ChatToolDeps): ChatToolset {
   };
 
   /**
-   * Chốt tour của enquiry NGAY khi model đề xuất (trước thẻ xác nhận): thiếu slug thì
-   * lấy tour đang xem, slug không phải tour đang bán thì bỏ. Input đã chốt được lưu
-   * cùng lời gọi tool, nên thẻ khách thấy và enquiry được gửi ở lượt duyệt là MỘT —
-   * kể cả khi khách chuyển trang giữa hai lượt.
-   */
-  const refineToolInput = {
-    submitEnquiry: async (input: SubmitEnquiryInput): Promise<SubmitEnquiryInput> => {
-      const { tourSlug, ...rest } = input;
-      const slug = tourSlug ?? deps.currentTourSlug;
-      if (slug === undefined) return rest;
-      return (await lookup(slug)) ? { ...rest, tourSlug: slug } : rest;
-    },
-  };
-
-  /**
    * `submitEnquiry` luôn chờ khách bấm (ADR-0050 §3). Tên tour đi theo yêu cầu duyệt
-   * (`approval.requestReason`) để thẻ hiện được mà web không phải tra thêm.
+   * (`approval.requestReason`) để thẻ hiện được mà web không phải tra thêm; slug không
+   * phải tour đang bán thì thẻ không có tên tour, đúng như enquiry chung được gửi đi.
+   *
+   * Tour mặc định là tour đang xem nhờ prompt dặn model điền slug, KHÔNG nhờ server
+   * tự điền: input chỉ có một nguồn là lời gọi tool đã lưu, nên thẻ khách thấy và
+   * enquiry gửi ở lượt duyệt luôn khớp nhau dù khách chuyển trang giữa hai lượt
+   * (`experimental_refineToolInput` từng làm việc này, nhưng SDK dựng lại input lúc
+   * duyệt bằng chính hàm ấy với trang của lượt duyệt — khác trang là lệch).
    */
   const toolApproval = {
     submitEnquiry: async (input: SubmitEnquiryInput) => {
@@ -299,7 +286,7 @@ export function createChatTools(deps: ChatToolDeps): ChatToolset {
     },
   };
 
-  return { tools, refineToolInput, toolApproval };
+  return { tools, toolApproval };
 }
 
 export type ChatTools = ChatToolset['tools'];

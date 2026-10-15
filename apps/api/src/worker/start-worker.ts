@@ -5,6 +5,7 @@ import { PgBoss } from 'pg-boss';
 import { pgBossPoolConfig } from '../config/db-pool.js';
 import { env } from '../config/env.js';
 import { MediaGarbageService } from '../modules/media/media-garbage.service.js';
+import { ChatRetentionService } from './chat-retention.service.js';
 import { describeCatchUp, sendDailyCatchUp } from './daily-catch-up.js';
 import {
   DEPARTURE_REFUND_QUEUE,
@@ -60,6 +61,13 @@ const MEDIA_GC_QUEUE = 'media-gc';
  * kia, và mỗi lượt là một loạt lời gọi API ra ngoài (ADR-0035 §5).
  */
 const MEDIA_GC_CRON = '0 4 * * *';
+const CHAT_RETENTION_QUEUE = 'chat-retention';
+/**
+ * Hằng ngày 04:30 UTC — sau `media-gc` (04:00), cùng họ job dọn dẹp nhẹ (P6,
+ * ADR-0050 §5). Một câu DELETE idempotent nên `retryLimit: 0`; lượt kế theo cron
+ * hoặc lượt chạy bù tự bù.
+ */
+const CHAT_RETENTION_CRON = '30 4 * * *';
 /**
  * Hàng đợi hoàn tiền khi công ty huỷ chuyến (F13) — queue ĐẦU TIÊN của dự án
  * mang payload và chạy theo yêu cầu, không theo cron.
@@ -82,6 +90,7 @@ export async function startWorker(logger: Logger): Promise<{ stop: () => Promise
   const outbox = app.get(OutboxService);
   const pendingSweep = app.get(PendingSweepService);
   const enquiryRetention = app.get(EnquiryRetentionService);
+  const chatRetention = app.get(ChatRetentionService);
   const departureRefund = app.get(DepartureRefundService);
 
   // Pool riêng của pg-boss có trần (G23, `config/db-pool.ts`): không đặt `max` thì nó
@@ -129,6 +138,14 @@ export async function startWorker(logger: Logger): Promise<{ stop: () => Promise
     await enquiryRetention.sweep(new Date(), env.ENQUIRY_RETENTION_MONTHS);
   });
   await boss.schedule(ENQUIRY_RETENTION_QUEUE, ENQUIRY_RETENTION_CRON);
+
+  // Dọn hội thoại trợ lý AI im quá 30 ngày (P6, ADR-0050 §5). Chạy cả khi trợ lý
+  // tắt: hội thoại cũ từ lúc còn bật vẫn phải hết hạn đúng hẹn.
+  await boss.createQueue(CHAT_RETENTION_QUEUE, { policy: 'short', retryLimit: 0 });
+  await boss.work(CHAT_RETENTION_QUEUE, async () => {
+    await chatRetention.sweep(new Date());
+  });
+  await boss.schedule(CHAT_RETENTION_QUEUE, CHAT_RETENTION_CRON);
 
   // Hoàn tiền khi công ty huỷ chuyến (F13) — theo yêu cầu, không cron.
   await boss.createQueue(DEPARTURE_REFUND_QUEUE, {
@@ -181,6 +198,7 @@ export async function startWorker(logger: Logger): Promise<{ stop: () => Promise
     [
       OUTBOX_PURGE_QUEUE,
       ENQUIRY_RETENTION_QUEUE,
+      CHAT_RETENTION_QUEUE,
       ...(env.MEDIA_GC_ENABLED ? [MEDIA_GC_QUEUE] : []),
     ],
   );
@@ -188,7 +206,7 @@ export async function startWorker(logger: Logger): Promise<{ stop: () => Promise
   else logger.log(describeCatchUp(catchUp));
 
   logger.log(
-    `worker loops started (${env.NODE_ENV}) — outbox-drain ${OUTBOX_DRAIN_CRON} · outbox-purge ${OUTBOX_PURGE_CRON} · booking-sweep ${BOOKING_SWEEP_CRON} · enquiry-retention ${ENQUIRY_RETENTION_CRON} · departure-refund theo yêu cầu (retry ${DEPARTURE_REFUND_RETRY_LIMIT})` +
+    `worker loops started (${env.NODE_ENV}) — outbox-drain ${OUTBOX_DRAIN_CRON} · outbox-purge ${OUTBOX_PURGE_CRON} · booking-sweep ${BOOKING_SWEEP_CRON} · enquiry-retention ${ENQUIRY_RETENTION_CRON} · chat-retention ${CHAT_RETENTION_CRON} · departure-refund theo yêu cầu (retry ${DEPARTURE_REFUND_RETRY_LIMIT})` +
       (env.MEDIA_GC_ENABLED
         ? ` · media-gc ${MEDIA_GC_CRON} (chờ ${env.MEDIA_GC_GRACE_DAYS} ngày)`
         : ' · media-gc TẮT'),

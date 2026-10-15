@@ -36,6 +36,8 @@ describe('buildInstructions', () => {
     const onTour = buildInstructions({ now, destinations, categories, tourSlug: 'ha-long-2d1n' });
     expect(onTour).toContain('The visitor is currently viewing the tour with slug "ha-long-2d1n"');
     expect(onTour).toContain('call getTourDetails');
+    // Tour mặc định của enquiry đi qua prompt, không qua server (chat-tools.ts).
+    expect(onTour).toContain('pass this slug as tourSlug');
   });
 
   // Mỗi câu luật của spec §2d một assert: xoá một câu trong prompt là test đỏ.

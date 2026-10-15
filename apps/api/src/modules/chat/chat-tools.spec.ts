@@ -265,28 +265,6 @@ describe('createChatTools', () => {
     expect(d.linkEnquiry).not.toHaveBeenCalled();
   });
 
-  describe('chọn tour cho enquiry trước khi hiện thẻ xác nhận', () => {
-    it('không nêu tour → lấy tour đang xem', async () => {
-      const { refineToolInput } = createChatTools(deps({ currentTourSlug: 'ha-long-2d1n' }));
-      expect(await refineToolInput.submitEnquiry(enquiryInput)).toEqual({
-        ...enquiryInput,
-        tourSlug: 'ha-long-2d1n',
-      });
-    });
-
-    it('slug không phải tour đang bán → bỏ, thẻ hiện enquiry chung', async () => {
-      const { refineToolInput } = createChatTools(deps({ currentTourSlug: 'ha-long-2d1n' }));
-      expect(await refineToolInput.submitEnquiry({ ...enquiryInput, tourSlug: 'gone' })).toEqual(
-        enquiryInput,
-      );
-    });
-
-    it('không có tour nào → giữ nguyên', async () => {
-      const { refineToolInput } = createChatTools(deps());
-      expect(await refineToolInput.submitEnquiry(enquiryInput)).toEqual(enquiryInput);
-    });
-  });
-
   describe('toolApproval', () => {
     it('luôn cần khách bấm; tên tour đi kèm để thẻ hiện trước khi gửi', async () => {
       const { toolApproval } = createChatTools(deps());
@@ -294,6 +272,13 @@ describe('createChatTools', () => {
         await toolApproval.submitEnquiry({ ...enquiryInput, tourSlug: 'ha-long-2d1n' }),
       ).toEqual({ type: 'user-approval', reason: 'Ha Long Bay 2D1N' });
       expect(await toolApproval.submitEnquiry(enquiryInput)).toEqual({ type: 'user-approval' });
+    });
+
+    it('slug không phải tour đang bán → thẻ không có tên tour, như enquiry chung được gửi', async () => {
+      const { toolApproval } = createChatTools(deps());
+      expect(await toolApproval.submitEnquiry({ ...enquiryInput, tourSlug: 'gone' })).toEqual({
+        type: 'user-approval',
+      });
     });
   });
 });

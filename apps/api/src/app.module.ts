@@ -13,6 +13,7 @@ import { captureException } from './lib/observability.js';
 import { describeOrpcError, isUnexpectedOrpcError, orpcErrorStack } from './lib/orpc-error-log.js';
 import { BookingsModule } from './modules/bookings/bookings.module.js';
 import { CatalogModule } from './modules/catalog/catalog.module.js';
+import { ChatModule } from './modules/chat/chat.module.js';
 import { CspReportModule } from './modules/csp-report/csp-report.module.js';
 import { EmailWebhooksModule } from './modules/email-webhooks/email-webhooks.module.js';
 import { EnquiriesModule } from './modules/enquiries/enquiries.module.js';
@@ -95,6 +96,8 @@ import { WishlistModule } from './modules/wishlist/wishlist.module.js';
     EmailWebhooksModule,
     // W4 C1: POST /api/webhooks/csp-report — kênh báo cáo CSP hai app.
     CspReportModule,
+    // P6 (ADR-0050): trợ lý AI tư vấn tour — `/api/chat`, cờ CHAT_ENABLED tắt mặc định.
+    ChatModule,
   ],
   providers: [
     /**
