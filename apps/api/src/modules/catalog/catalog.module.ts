@@ -40,5 +40,7 @@ import { DepartureCancelService } from './departure-cancel.service.js';
     // F17 (P4e-3a): khu làm việc tour — tạo, sửa theo tab, xoá.
     AdminToursService,
   ],
+  // P6: hai tool đọc của trợ lý gọi thẳng service công khai, không qua HTTP.
+  exports: [CatalogService],
 })
 export class CatalogModule {}

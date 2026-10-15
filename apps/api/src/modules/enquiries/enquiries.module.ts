@@ -13,5 +13,7 @@ import { EnquiriesService } from './enquiries.service.js';
 @Module({
   controllers: [EnquiriesController, AdminEnquiriesController],
   providers: [EnquiriesService, AdminEnquiriesService],
+  // P6: tool `submitEnquiry` của trợ lý ghi enquiry qua đúng service của form.
+  exports: [EnquiriesService],
 })
 export class EnquiriesModule {}

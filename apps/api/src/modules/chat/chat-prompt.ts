@@ -71,7 +71,7 @@ export function buildInstructions(input: BuildInstructionsInput): string {
 
   if (input.tourSlug !== undefined) {
     lines.push(
-      `- The visitor is currently viewing the tour with slug "${input.tourSlug}". "This tour" means that tour; call getTourDetails to read it before answering about it.`,
+      `- The visitor is currently viewing the tour with slug "${input.tourSlug}". "This tour" means that tour; call getTourDetails to read it before answering about it. When an enquiry is about this tour, pass this slug as tourSlug.`,
     );
   }
 

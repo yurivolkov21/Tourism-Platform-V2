@@ -896,6 +896,7 @@ model Enquiry {
   user         User?                @relation(fields: [userId], references: [id], onDelete: SetNull)
   notes        EnquiryNote[]
   statusEvents EnquiryStatusEvent[]
+  chat         ChatConversation?
 
   @@index([status, createdAt])
   @@index([tourId])
@@ -1212,12 +1213,20 @@ model MediaGarbage {
 // ─────────────────────────────────────────────────────────────────────────────
 
 model ChatConversation {
-  id        String   @id @default(uuid()) @db.Uuid
-  userId    String?  @map("user_id") @db.Uuid
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  id            String    @id @default(uuid()) @db.Uuid
+  userId        String?   @map("user_id") @db.Uuid
+  /// Enquiry đã gửi qua chat (P6, spec §2c) — mỗi hội thoại tối đa một; unique
+  /// để một enquiry không gắn được vào hai hội thoại.
+  enquiryId     String?   @unique @map("enquiry_id") @db.Uuid
+  /// Cột giữ lượt (ADR-0050 AMEND 1): khác null = có lượt đang chạy. Lượt mới chỉ
+  /// chiếm được khi cột trống hoặc đã giữ quá 2 phút (tiến trình chết giữa lượt),
+  /// không thì 409 CHAT_BUSY.
+  turnStartedAt DateTime? @map("turn_started_at")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
 
   user     User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
+  enquiry  Enquiry?      @relation(fields: [enquiryId], references: [id], onDelete: SetNull)
   messages ChatMessage[]
 
   @@index([userId])
@@ -1234,11 +1243,16 @@ model ChatMessage {
   // UIMessage của AI SDK lưu nguyên văn ({id, role, parts}) — không mất mát và
   // replay thẳng vào useChat trên web.
   payload        Json
+  /// Token của lượt (P6, spec §2f) — chỉ tin trả lời có; tin khách để null. Trần
+  /// ngày cộng hai cột này theo `createdAt` của hôm nay (UTC).
+  inputTokens    Int?     @map("input_tokens")
+  outputTokens   Int?     @map("output_tokens")
   createdAt      DateTime @default(now()) @map("created_at")
 
   conversation ChatConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
 
   @@unique([conversationId, seq])
+  @@index([createdAt])
   @@map("chat_messages")
 }
 
