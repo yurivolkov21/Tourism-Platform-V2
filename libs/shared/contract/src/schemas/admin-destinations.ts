@@ -14,9 +14,10 @@ import { slugSchema } from './slug.js';
  *
  * Ba quyết định của spec hiện ra ngay trong hình dạng các schema dưới đây:
  *
- * - **Xoá chỉ khi chưa tour nào dùng** (ADR-0053). Khoá ngoại `tour_destinations` khai
- *   `ON DELETE CASCADE` nên DB KHÔNG chặn — server kiểm số liên kết dưới khoá hàng trong
- *   cùng transaction rồi mới xoá.
+ * - **Xoá chỉ khi chưa tour nào dùng** (ADR-0053). Server kiểm số liên kết dưới khoá hàng
+ *   trong cùng transaction rồi mới xoá, còn liên kết thì `IN_USE`. Khoá ngoại
+ *   `tour_destinations` là `ON DELETE RESTRICT` từ AMEND 2 (G25), chặn các đường xoá ngoài
+ *   API.
  * - **`update` không mang `slug`.** Slug đi vào `/tours?destinations=<slug>`,
  *   mà tham số truy vấn thì KHÔNG chuyển hướng được (spec §2c).
  * - **`region` ghi qua `RegionNameSchema`.** Cột là chữ tự do, còn web ghép nó

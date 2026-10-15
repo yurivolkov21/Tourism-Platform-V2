@@ -17,8 +17,8 @@ import { countLinkedTours } from './destination-tour-links.js';
  *
  *  ① `setActive` KHÔNG đụng liên kết `tour_destinations` — đếm trước và sau
  *    bằng nhau. Điểm đến còn tour thì ẩn là đường duy nhất (spec §2a,
- *    ADR-0053): khoá ngoại khai `ON DELETE CASCADE`, nên một lệnh xoá sẽ âm
- *    thầm gỡ điểm đến khỏi mọi tour; ẩn thì không được phép làm thế.
+ *    ADR-0053): lệnh xoá trả `IN_USE`, và từ AMEND 2 (G25) khoá ngoại
+ *    `RESTRICT` chặn mọi đường xoá khác; ẩn thì không được gỡ liên kết nào.
  *  ② slug trùng ra 409 chứ không phải 500 của `P2002` — kể cả khi HAI lượt tạo
  *    bắn cùng lúc. Bài học 1 của vòng review F14: bắt `P2002` ngay ở lệnh ghi,
  *    không SELECT kiểm trước (READ COMMITTED không serialize hai INSERT).
@@ -93,8 +93,11 @@ describe('admin destinations integration (P4e-2 F15)', () => {
     await prisma.mediaAsset.deleteMany();
     await prisma.mediaGarbage.deleteMany();
     // Tour trỏ vào danh mục bằng FK RESTRICT — xoá tour TRƯỚC; liên kết
-    // `tour_destinations` đi theo tour (CASCADE).
+    // `tour_destinations` đi theo tour (CASCADE). Liên kết mồ côi của ca đếm (review EF2)
+    // trỏ một tour đã xoá nên không đi theo tour nào, mà khoá ngoại phía điểm đến là
+    // RESTRICT (ADR-0053 AMEND 2) — xoá liên kết tường minh TRƯỚC điểm đến.
     await prisma.tour.deleteMany();
+    await prisma.tourDestination.deleteMany();
     await prisma.destination.deleteMany();
     await prisma.tourCategory.deleteMany();
     await prisma.tourCategory.create({
@@ -237,7 +240,7 @@ describe('admin destinations integration (P4e-2 F15)', () => {
       await prisma.tour.delete({ where: { id: gone.id } });
       // Khoá ngoại không cho dựng liên kết mồ côi ở trạng thái đã commit, nên tắt trigger khoá
       // ngoại trong ĐÚNG một transaction (`SET LOCAL`; user Postgres của docker và CI là
-      // superuser). `beforeEach` dọn nó theo điểm đến (CASCADE).
+      // superuser). `beforeEach` dọn nó bằng câu xoá liên kết tường minh.
       await prisma.$transaction(async (tx) => {
         await tx.$executeRaw`SET LOCAL session_replication_role = replica`;
         await tx.$executeRaw`
@@ -544,6 +547,25 @@ describe('admin destinations integration (P4e-2 F15)', () => {
       expect(res.json()).toMatchObject({ message: 'Destination not found' });
     });
 
+    it('xoá ngoài API (SQL tay, Prisma Client) khi còn tour → khoá ngoại từ chối, tour giữ điểm đến (AMEND 2, G25)', async () => {
+      // Phép đếm dưới khoá hàng (§3) chỉ canh lệnh xoá của API; SQL tay, Prisma Studio hay một
+      // script không đi qua nó. Trước AMEND 2 khoá ngoại là CASCADE: cả hai câu dưới chạy êm và
+      // tour mất hai điểm đến mà không ai được báo.
+      const tour = await tourVisiting('guarded', [destId(1), destId(2)]);
+
+      await expect(
+        prisma.$executeRaw`DELETE FROM destinations WHERE id = ${destId(1)}::uuid`,
+      ).rejects.toThrow(/tour_destinations_destination_id_fkey/);
+      await expect(prisma.destination.delete({ where: { id: destId(2) } })).rejects.toMatchObject({
+        code: 'P2003',
+      });
+
+      expect(
+        await prisma.destination.count({ where: { id: { in: [destId(1), destId(2)] } } }),
+      ).toBe(2);
+      expect(await prisma.tourDestination.count({ where: { tourId: tour.id } })).toBe(2);
+    });
+
     /**
      * Số câu lệnh đang ĐỨNG CHỜ transaction của backend `holderPid` kết thúc. Chờ khoá hàng trong
      * Postgres là chờ khoá `transactionid` của transaction đang giữ hàng ấy: một dòng `pg_locks`
@@ -567,8 +589,10 @@ describe('admin destinations integration (P4e-2 F15)', () => {
     };
 
     it('đua: lệnh gắn tour giữ khoá trước → lệnh xoá thấy liên kết, trả 409', async () => {
-      // ADR-0053 §3. Thiếu `FOR UPDATE` thì lệnh xoá đếm 0 (liên kết chưa commit), chờ khoá
-      // ở câu DELETE, rồi CASCADE gỡ đúng liên kết vừa commit: 200 và tour mất điểm đến.
+      // ADR-0053 §3. Thiếu `FOR UPDATE` thì lệnh xoá đếm 0 (liên kết chưa commit) rồi chờ khoá
+      // ở câu DELETE. Trước AMEND 2, CASCADE gỡ đúng liên kết vừa commit: 200 và tour mất điểm
+      // đến; từ AMEND 2 khoá ngoại RESTRICT từ chối câu DELETE và lệnh xoá ra lỗi chung thay
+      // vì 409 — vẫn đỏ, vì ca này đòi đúng `IN_USE` của phép đếm.
       const tour = await tourVisiting('racing-tour', [destId(2)]);
       let inserted!: (pid: number) => void;
       const didInsert = new Promise<number>((resolve) => {
@@ -597,7 +621,7 @@ describe('admin destinations integration (P4e-2 F15)', () => {
         // ca khoá thứ tự danh mục). Bản cũ chờ cứng 300 ms: máy tải nặng thì lệnh gắn có thể
         // commit TRƯỚC khi lệnh xoá tới nơi, lệnh xoá thấy liên kết rồi trả 409 cả khi thiếu
         // `FOR UPDATE` — ca xanh oan. Có câu chờ thì cả hai bản cùng đứng ở khoá: bản thiếu
-        // `FOR UPDATE` chờ ở câu DELETE và trả 200 (đỏ), bản đúng chờ ở `SELECT … FOR UPDATE`.
+        // `FOR UPDATE` chờ ở câu DELETE và không ra 409 (đỏ), bản đúng chờ ở `SELECT … FOR UPDATE`.
         await vi.waitFor(async () => expect(await waitersOn(linkerPid)).toBe(1), {
           timeout: 5_000,
           interval: 50,
