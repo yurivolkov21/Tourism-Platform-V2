@@ -1,7 +1,10 @@
 # ADR-0050 — Trợ lý AI: chat nằm trong API, lịch sử giữ ở server, tool ghi phải được khách duyệt, trần chi phí tính bằng token
 
-- **Trạng thái:** Accepted (2026-09-29) — **chưa thi công**. Mở sau khi admin xong
-  (P4e-3c, P4e-4, P4f); riêng bước ghim thư viện làm trước freeze 15/10 (§7).
+- **Trạng thái:** Accepted (2026-09-29) — mở thi công 15/10 (user chọn "Làm ngay"),
+  plan [2026-10-15-p6-ai-concierge.md](../plans/2026-10-15-p6-ai-concierge.md). Thư viện
+  đã ghim 29/09 (§7).
+- **Sửa đổi:** AMEND 1 (2026-10-15, cuối file) — tên API của AI SDK 7 cho tool cần
+  duyệt; cột giữ lượt chống hai lượt chạy song song; job dọn có trong danh sách chạy bù.
 - **Bối cảnh thi hành:** P6, đi trước code theo luật CLAUDE.md #5. Thiết kế chốt qua
   brainstorm 29/09, từng câu một.
 - **Liên quan:** [ADR-0001](0001-tech-stack.md) (AMEND 2: AI SDK 7 thay 6) ·
@@ -128,3 +131,26 @@ bằng một commit riêng ngay sau khi spec duyệt**, code viết sau. Test d�
   thể bị dùng để huấn luyện.
 - **Màn admin xem hội thoại.** Hữu ích khi soi lạm dụng, nhưng thêm một màn lúc admin
   còn dở; để sau P6.
+
+## AMEND 1 15/10 — đọc kỹ AI SDK 7 lúc viết plan
+
+Ba chỗ của bản gốc không còn đúng khi đối chiếu `node_modules/ai` 7.0.118 (docs đi kèm
+gói và file `.d.ts`) và hạ tầng sau 29/09:
+
+1. **§3: tool cần duyệt khai ở `streamText`, không ở `tool()`.** `needsApproval` đã
+   deprecated ở AI SDK 7 (hướng dẫn nâng cấp v7, mục "Migrate Deprecated
+   `needsApproval` to `toolApproval`"). Dùng `toolApproval: { submitEnquiry:
+   'user-approval' }`. Hành vi giữ nguyên: model đề xuất, khách bấm Send thì tool mới
+   chạy, trình duyệt thấy phần tool ở trạng thái `approval-requested`. Lịch sử vẫn do
+   server giữ (§2) nên không cần `experimental_toolApprovalSecret` — cờ ấy sinh ra cho
+   mô hình trình duyệt gửi cả lịch sử, mô hình mà §2 đã loại.
+2. **§2, §5: một cột giữ lượt `chat_conversations.turn_started_at`.** Tin ghi lúc lượt
+   kết thúc, nên unique `(conversation_id, seq)` không chặn được lượt thứ hai đến khi
+   lượt đầu còn chạy: lượt ấy sẽ gọi model thêm một lần (tốn tiền), và một lượt duyệt
+   chen vào có thể chạy `submitEnquiry` lần hai. Đầu lượt một câu `UPDATE` có điều kiện
+   giữ lượt (trống, hoặc đã giữ quá 2 phút — tiến trình chết giữa lượt thì hội thoại tự
+   mở lại); 0 dòng là 409 `CHAT_BUSY`. Cột này nằm trong cùng migration với các cột của
+   spec §2f. Không dùng advisory lock của Postgres: lượt stream kéo dài hàng chục giây,
+   giữ một kết nối suốt chừng ấy là ăn vào trần 15 client của Session pooler (G23).
+3. **§5: `chat-retention` vào danh sách chạy bù hằng ngày** (ADR-0024 AMEND 5, G41,
+   có sau 29/09): cron 04:30 UTC lỡ lượt mỗi khi API gói free ngủ đúng giờ ấy.

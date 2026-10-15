@@ -1,14 +1,16 @@
 # Spec P6 — Trợ lý AI tư vấn tour (concierge)
 
-- **Ngày:** 2026-09-29 · **Trạng thái:** thiết kế đã duyệt từng phần trong chat; spec
-  chờ user đọc. **Chưa thi công** — mở sau khi admin xong (P4e-3c, P4e-4, P4f).
+- **Ngày:** 2026-09-29 · **Trạng thái:** thiết kế đã duyệt từng phần trong chat. Mở thi
+  công 15/10 (user chọn "Làm ngay"); plan
+  [2026-10-15-p6-ai-concierge.md](../plans/2026-10-15-p6-ai-concierge.md) chốt lại §2b,
+  §2c, §2f, §3 cho khớp AI SDK 7 (ADR-0050 AMEND 1).
 - **Quyết định kiến trúc:** [ADR-0050](../adr/0050-ai-concierge-chat.md)
 - **Nền:** [ADR-0037](../adr/0037-default-write-throttle.md) (trần ghi) ·
   [ADR-0038](../adr/0038-web-shell-security-headers.md) (CSP) ·
   [ADR-0039](../adr/0039-inbound-channels-outbound-email.md) (enquiry) ·
   [ADR-0035](../adr/0035-media-lifecycle.md) (khuôn cờ và job cron)
 - **Việc làm TRƯỚC freeze 15/10, ngay sau khi spec duyệt:** ghim thư viện (§7 bước 1).
-- **Plan:** viết khi mở thi công, không viết bây giờ.
+- **Plan:** [2026-10-15-p6-ai-concierge.md](../plans/2026-10-15-p6-ai-concierge.md)
 
 ## 1. Mục tiêu & phạm vi
 
@@ -51,9 +53,9 @@ nay chỉ có form enquiry và chờ email.
    ở đâu trả mã lỗi ở đó (§2b), chưa gọi model.
 4. API nạp lịch sử từ DB, dựng prompt hệ thống (§2d), gọi `streamText` với ba tool
    (§2c), stream về trình duyệt theo giao thức UI message.
-5. Hết lượt (`onFinish`): ghi tin khách và câu trả lời, token lên tin trả lời. Dùng
-   `consumeStream` để lượt vẫn chạy trọn và được ghi khi khách đóng tab giữa chừng —
-   token đã tốn thì phải được đếm vào trần ngày.
+5. Hết lượt (`onEnd`, tên AI SDK 7 của `onFinish`): ghi tin khách và câu trả lời,
+   token lên tin trả lời. Dùng `consumeStream` để lượt vẫn chạy trọn và được ghi khi
+   khách đóng tab giữa chừng — token đã tốn thì phải được đếm vào trần ngày.
 
 ### 2b. API
 
@@ -90,7 +92,7 @@ hiện tại thì 404 — không lộ là id có tồn tại.
 | 400 `INVALID_INPUT` | sai schema, hoặc `approvalId` không còn chờ | Retry |
 | 404 `CHAT_NOT_FOUND` | `GET :id` không thấy hoặc không phải của phiên này | bỏ id cũ, bắt đầu hội thoại mới |
 | 409 `CHAT_TURN_LIMIT` | đã đủ 20 tin khách | mời Start over |
-| 409 `CHAT_BUSY` | lượt trước của cùng hội thoại chưa xong | chờ, không gửi lại |
+| 409 `CHAT_BUSY` | lượt trước của cùng hội thoại chưa xong (cột giữ lượt, §2f) | chờ, không gửi lại |
 | 429 | quá `CHAT_THROTTLE` | báo gửi chậm lại, giữ nguyên tin vừa gõ |
 | 503 `CHAT_UNAVAILABLE` | công tắc tắt, chạm trần ngày, hoặc Anthropic lỗi trước khi stream bắt đầu | câu "taking a break" + link enquiry |
 
@@ -118,8 +120,10 @@ Tool gọi thẳng service, không qua HTTP. Kết quả thu gọn để một l
   - `faqs`: tối đa 6, câu trả lời cắt 300 ký tự;
   - `bookUrl` dạng `/tours/<slug>/book`.
 
-**`submitEnquiry`** — `needsApproval: true`, input `{ name, email, message, tourSlug?,
-travelDate?, groupSize? }` cùng luật với `CreateEnquiryInputSchema`:
+**`submitEnquiry`** — cần khách duyệt (`toolApproval: { submitEnquiry: 'user-approval' }`
+trên `streamText`; `needsApproval` của `tool()` đã deprecated ở AI SDK 7), input
+`{ name, email, message, tourSlug?, travelDate?, groupSize? }` cùng luật với
+`CreateEnquiryInputSchema`:
 - `tourSlug` mặc định là tour đang xem; model được đổi sang tour vừa bàn trong hội thoại.
   API chỉ gắn khi slug là tour đang bán, không thì gửi enquiry chung. Thẻ xác nhận hiện
   tên tour để khách thấy trước khi bấm.
@@ -170,14 +174,19 @@ Một migration MỚI (không sửa migration cũ):
   lời có giá trị); index `created_at` cho câu cộng token theo ngày.
 - `chat_conversations`: thêm `enquiry_id UUID NULL UNIQUE`, FK tới `enquiries`
   `ON DELETE SET NULL` (enquiry có hạn lưu riêng).
+- `chat_conversations`: thêm `turn_started_at TIMESTAMPTZ NULL` — cột giữ lượt (plan,
+  quyết định 2). Đầu lượt một câu `UPDATE` có điều kiện "đang trống hoặc giữ quá 2
+  phút"; 0 dòng là 409 `CHAT_BUSY`. Cuối lượt trả về `NULL`.
 
-Ghi tin: `seq` kế tiếp trong cùng transaction; unique `(conversation_id, seq)` sẵn có
-chặn hai lượt chen nhau (lượt thua trả 409 `CHAT_BUSY`). Lượt duyệt cập nhật lại tin
-trả lời đang chờ (cùng `seq`) rồi chèn phần tiếp theo.
+Ghi tin một lần ở cuối lượt: tin khách và tin trả lời cùng một transaction, `seq` kế
+tiếp, chạm `updated_at` của hội thoại, nhả cột giữ lượt; unique `(conversation_id,
+seq)` sẵn có là lưới cuối. Lượt duyệt ghi đè chính tin trả lời đang chờ (cùng `seq`;
+AI SDK nối phần tiếp vào cùng UIMessage) và cộng token của lượt vào tin ấy. Lỗi giữa
+stream không ghi gì (web gửi lại đúng tin cũ).
 
 Dọn: queue pg-boss `chat-retention`, cron `30 4 * * *` (sau `media-gc` lúc 04:00),
-đăng ký trong `worker/start-worker.ts`; xoá hội thoại có `updated_at` quá 30 ngày (tin
-xoá theo cascade). Log mỗi lượt: id hội thoại, token vào/ra, thời gian, tên tool — không
+đăng ký trong `worker/start-worker.ts`, có trong danh sách chạy bù của G41; xoá hội
+thoại có `updated_at` quá 30 ngày (tin xoá theo cascade). Log mỗi lượt: id hội thoại, token vào/ra, thời gian, tên tool — không
 ghi nội dung tin.
 
 ### 2g. Env
@@ -236,8 +245,8 @@ Thêm đủ vào `apps/api/src/config/env.ts`, `render.yaml` (key), `apps/api/.e
 | Vùng | File |
 | --- | --- |
 | Contract | `libs/shared/contract/src/schemas/chat.ts` (+ spec) |
-| API | `apps/api/src/modules/chat/` — `chat.module.ts`, `chat.controller.ts`, `chat.service.ts`, `chat-tools.ts`, `chat-prompt.ts`, `chat-budget.ts`, `chat-history.ts`, spec đơn vị, `chat.int.spec.ts` |
-| API chung | `config/env.ts`, `config/throttle.ts`, `worker/start-worker.ts`, `app.module.ts` |
+| API | `apps/api/src/modules/chat/` — `chat.module.ts`, `chat.controller.ts`, `chat.service.ts`, `chat-config.ts`, `chat-pricing.ts`, `chat-tools.ts`, `chat-prompt.ts`, `chat-budget.ts`, `chat-history.ts`, `chat-stream.ts`, spec đơn vị, `chat.int.spec.ts` |
+| API chung | `config/env.ts`, `config/throttle.ts`, `worker/start-worker.ts`, `worker/chat-retention.service.ts`, `app.module.ts` |
 | DB | `prisma/schema.prisma`, một thư mục migration mới |
 | Web | `components/concierge/` — `contact-launcher.tsx`, `chat-panel.tsx`, `chat-message.tsx`, `chat-markdown.tsx`, `enquiry-confirm-card.tsx`, `use-concierge.ts`; sửa `site-chrome.tsx`, `scroll-to-top.tsx`, `booking-rail.tsx` |
 | Copy | `libs/shared/i18n/src/lib/messages.ts` |
