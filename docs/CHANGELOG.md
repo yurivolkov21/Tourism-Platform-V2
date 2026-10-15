@@ -8,6 +8,54 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-10-15 — Merge W-09 phần cuối của web: hậu tố title, RSS, breadcrumb JSON-LD, tên tháng và thứ vào `@tourism/i18n` (`5c2c5c2`..`61cc745`)
+
+Lượt open-items của web, tách từ yêu cầu của user sáng 15/10 (dời freeze sang 31/10, chia luồng
+web và admin). Nhánh `fix/web-i18n-strings-lwbur9`,
+[PR #27](https://github.com/yurivolkov21/Tourism-Platform-V2/pull/27), session cloud; tạm dừng
+lúc chờ merge vì giới hạn usage. Không migration, không env, không đổi contract, không dependency.
+Thư viện dùng chung bị sửa: `@tourism/i18n` (`messages.ts` thêm `pageMeta.withBrand`, `blog.feed`,
+`contactForm.preferredDates`; module mới `date-names.ts`; `index.ts`).
+
+- `5c2c5c2`: năm bản chép tay của tên tháng và thứ viết tắt trong `apps/web` (`lib/tours.ts` hai
+  bản, `lib/tour-detail.ts`, `lib/passport.ts`, `itinerary-panel.tsx`) đọc từ `dateNames` của module
+  mới `date-names.ts`, export thẳng từ barrel và không gắn vào `messages` (cùng lý do tách
+  `resilience.ts`). Hằng cục bộ giữ tên cũ nên thân các hàm in ngày không đổi. Bản chép ở admin
+  (`bookings-view.ts`) và mobile (`tour-detail/reviews.ts`, `departures.ts`) ngoài phạm vi đợt này.
+- `61cc745`: 28 chỗ trong 24 file trang tự nối ` — Nexora` vào title nay gọi
+  `messages.pageMeta.withBrand` (các mảnh nối bằng gạch dài, brand đứng cuối; title sáu trang auth
+  đã viết đủ câu nên giữ). Tên và mô tả kênh `/blog/rss.xml` vào `messages.blog.feed`; JSON-LD
+  breadcrumb của bài viết đọc `common.home` và `blog.breadcrumb`, đúng hai khoá PostHero đang in;
+  `buildEnquiryPayload` nối `messages.contactForm.preferredDates`. Cố ý giữ: thân 503 của RSS, giá
+  trị `@type` của schema.org, lỗi cho developer, logo chữ, watermark, ba tên nguồn bản đồ, `mocks/`.
+- Docs: sổ nợ B1, phần "i18n sweep" còn lại thành đã trả.
+
+**Đóng CÒN TREO của entry 13/10 (lô 2) "W-09 còn phần ngoài cụm đăng nhập":** con số 283 chuỗi
+trong 55 file ghi ở đó là bản quét trước PR #17; PR #17 (14/10) dời khoảng 300 chữ, đợt này dời
+phần còn lại. Bản quét lại 15/10 bằng cây cú pháp mọi file `.ts`/`.tsx` của `apps/web/src` (bỏ
+spec, mock, test), chạy lại sau rebase lên `e764809`, không còn chữ khách đọc nào ngoài các chỗ cố
+ý giữ ở trên. Còn ngoài phạm vi: chữ a11y của các component shadcn trong `libs/shared/ui` ("Close",
+"Loading", nhãn carousel và pagination), dùng chung với admin.
+
+**Review.** Không có lượt review độc lập. User bảo merge 15/10 12:47 UTC ("Merge nhé."). Nhánh tách
+từ `4529721`, rebase lên `16ca003` rồi lên `e764809` (PR #28 và #29) không conflict.
+
+Tests after (`gate:int` trên `61cc745` sau rebase, 15/10 xong 13:30 UTC, session cloud theo các
+bước của CI): unit 7650 (web 2315, admin 2224, api 1190, mobile 864, contract 719, mobile-ui 145,
+i18n 62, ui 57, core 48, tokens 26) và int 849; Biome 1960 file, tokens-only mobile 188 file. Lượt
+đầu có hai gói đỏ vì máy quá tải, đều ngoài phạm vi nhánh: contract bị kill (mã 137) và một test của
+admin (`photo-library-dialog.spec.tsx`, ô "Photo unavailable") không thấy ảnh đổi sau lỗi tải; chạy
+lại riêng từng gói xanh 719/719 và 2224/2224. So với `e764809`: i18n thêm 4 test (2 cho `dateNames`,
+2 cho `withBrand` và `preferredDates`), các gói khác giữ nguyên. Chữ ra của 77 route trên bản build production
+(sitemap, RSS, các trang 404, trang auth và 11 lượt gọi có đăng nhập) khớp từng ký tự giữa
+`4529721` và `0a69300` (bản trước rebase); bản so này không chạy lại sau rebase lên `e764809`
+(`messages.ts` và `lib/tours.ts` đổi ở cả hai bên nhưng git gộp không conflict). CI `gate` của PR
+xanh hai lượt trên `0a69300`.
+
+**CÒN TREO:**
+
+- Dọn sau merge: nhánh `fix/web-i18n-strings-lwbur9` trên origin nếu GitHub không tự xoá.
+
 ## 2026-10-15 — Merge việc tồn web và app: ảnh review, mail có ảnh tour và hàng sao, ngăn kéo lọc /blog, màn "Password updated", khối chờ viết bài (sổ nợ F2, N8, P5b-5 mục 1–2, `0d6289e`..`59b3329`)
 
 Lượt open-items của web và app, tách từ yêu cầu của user sáng 15/10 (dời freeze sang 31/10, chia
