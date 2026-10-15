@@ -83,6 +83,18 @@ describe('catalog integration (oRPC @Implement over Fastify)', () => {
       endDate: new Date(vnToday + 2 * 86_400_000),
       priceOverride: '19.00',
     }),
+    // ADR-0058 §1: đợt KÍN CHỖ, giá rẻ hơn base, trên cruise (không có đợt nào khác) — không
+    // được kéo giá "from" xuống và không được thành đợt kế tiếp.
+    {
+      id: 'e9000001-0000-4000-8000-000000000006',
+      tourId: cruiseTour.id,
+      startDate: future60,
+      endDate: new Date(future60.getTime() + 86_400_000),
+      seatsTotal: 6,
+      seatsBooked: 6,
+      priceOverride: '99.00',
+      status: DepartureStatus.OPEN,
+    },
   ];
 
   beforeAll(async () => {
@@ -130,6 +142,11 @@ describe('catalog integration (oRPC @Implement over Fastify)', () => {
     await prisma.tour.update({
       where: { id: dayTour.id },
       data: { ratingAvg: '4.5', ratingCount: 12 },
+    });
+    // Badge đặt NGƯỢC thứ tự enum để test thấy card giữ đúng thứ tự admin lưu (ADR-0058 §3).
+    await prisma.tour.update({
+      where: { id: cruiseTour.id },
+      data: { badges: ['NEW', 'BEST_VALUE'] },
     });
 
     const moduleRef = await Test.createTestingModule({
@@ -462,6 +479,50 @@ describe('catalog integration (oRPC @Implement over Fastify)', () => {
     const detail = TourDetailSchema.parse(res.json());
     expect(detail.ratingAvg).toBe(4.5);
     expect(detail.ratingCount).toBe(12);
+  });
+
+  it('card mang đợt kế tiếp đặt được và badge (ADR-0058 §1–§3)', async () => {
+    const res = await app.inject({ method: 'GET', url: '/api/tours' });
+    const page = PagedCards.parse(res.json());
+
+    // Day tour: chuyến đã qua hạn đặt (`closing`, ngày mai) và chuyến CLOSED cùng ngày `open60`
+    // đều không tính — đợt kế tiếp là `open60`, 8 − 3 = 5 chỗ.
+    const day = page.items.find((t) => t.slug === PUBLISHED_DAY_SLUG);
+    expect(day?.nextDeparture).toEqual({
+      startDate: future60.toISOString().slice(0, 10),
+      seatsLeft: 5,
+    });
+    expect(day?.badges).toEqual(dayTour.badges);
+
+    // Cruise chỉ có một đợt, và đợt ấy KÍN: không có đợt kế tiếp, giá "from" rơi về base dù
+    // đợt kín rẻ hơn (99 < 185).
+    const cruise = page.items.find((t) => t.slug === PUBLISHED_CRUISE_SLUG);
+    expect(cruise?.nextDeparture).toBeNull();
+    expect(cruise?.priceFrom).toBe(Number(cruiseTour.basePrice).toFixed(2));
+    expect(cruise?.badges).toEqual(['NEW', 'BEST_VALUE']);
+  });
+
+  it('detail mang CÙNG đợt kế tiếp và badge như card của nó', async () => {
+    const list = PagedCards.parse((await app.inject({ method: 'GET', url: '/api/tours' })).json());
+    for (const slug of [PUBLISHED_DAY_SLUG, PUBLISHED_CRUISE_SLUG]) {
+      const card = list.items.find((t) => t.slug === slug);
+      const detail = TourDetailSchema.parse(
+        (await app.inject({ method: 'GET', url: `/api/tours/${slug}` })).json(),
+      );
+      expect(detail.nextDeparture, slug).toEqual(card?.nextDeparture);
+      expect(detail.priceFrom, slug).toBe(card?.priceFrom);
+      expect(detail.badges, slug).toEqual(card?.badges);
+    }
+  });
+
+  it('sort=rating: tour chưa có đánh giá đứng CUỐI ở cả hai chiều (ADR-0058 §4)', async () => {
+    for (const order of ['desc', 'asc']) {
+      const res = await app.inject({ method: 'GET', url: `/api/tours?sort=rating&order=${order}` });
+      expect(res.statusCode, order).toBe(200);
+      const slugs = PagedCards.parse(res.json()).items.map((t) => t.slug);
+      // Day tour 4.5 (12 bài), cruise chưa ai chấm (null).
+      expect(slugs, order).toEqual([PUBLISHED_DAY_SLUG, PUBLISHED_CRUISE_SLUG]);
+    }
   });
 
   it('category list trả toursCount (A9 — destination đã có, category thì chưa)', async () => {

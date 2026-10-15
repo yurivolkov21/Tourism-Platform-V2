@@ -1,6 +1,12 @@
 import { FastifyAdapter, type NestFastifyApplication } from '@nestjs/platform-fastify';
 import { Test } from '@nestjs/testing';
-import { PagedSchema, PostCardSchema, PostDetailSchema, PostTagSchema } from '@tourism/contract';
+import {
+  PagedSchema,
+  PostCardSchema,
+  PostDetailSchema,
+  PostTagSchema,
+  TourCardSchema,
+} from '@tourism/contract';
 import { z } from 'zod';
 import { AppModule } from '../../app.module.js';
 import { prisma } from '../../auth/auth.config.js';
@@ -352,10 +358,16 @@ describe('posts integration (oRPC @Implement over Fastify) — GET /api/posts', 
 
     // Gương: đúng con số thẻ của chính tour ấy trên `/tours`.
     const list = await app.inject({ method: 'GET', url: '/api/tours?limit=50' });
-    const card = (list.json() as { items: { slug: string; priceFrom: string }[] }).items.find(
-      (item) => item.slug === 'tour-co-chuyen',
-    );
+    const card = PagedSchema(TourCardSchema)
+      .parse(list.json())
+      .items.find((item) => item.slug === 'tour-co-chuyen');
     expect(related?.priceFrom).toBe(card?.priceFrom);
+    // ADR-0058: đợt kế tiếp cũng tính bằng CHÍNH hàm của `/tours` — đợt 120 ngày nữa, 10 chỗ.
+    expect(related?.nextDeparture).toEqual({
+      startDate: day(120).toISOString().slice(0, 10),
+      seatsLeft: 10,
+    });
+    expect(related?.nextDeparture).toEqual(card?.nextDeparture);
   });
 
   it('GET /api/posts-tags: chỉ tag có ≥1 bài published, count chỉ đếm published, order name asc', async () => {

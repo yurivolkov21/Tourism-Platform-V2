@@ -28,6 +28,9 @@ const validCard = {
   ratingCount: 12,
   // ADR-0020: khoá bắt buộc, giá trị nullable. null = tour chưa có ảnh nào.
   cover: null,
+  // ADR-0058: badge và đợt kế tiếp đặt được lên card.
+  badges: ['POPULAR'],
+  nextDeparture: { startDate: '2026-07-31', seatsLeft: 8 },
 };
 
 /** Chuyến một ngày 31/07: N = 1 nên hạn chót đặt chỗ là 30/07 (ADR-0041 §2). */
@@ -133,6 +136,52 @@ describe('TourCardSchema', () => {
   });
 });
 
+describe('TourCardSchema — đợt kế tiếp và badge (ADR-0058)', () => {
+  it('nextDeparture mang ngày lịch và số chỗ còn lại của đợt sớm nhất đặt được', () => {
+    const card = { ...validCard, nextDeparture: { startDate: '2026-11-14', seatsLeft: 2 } };
+    expect(TourCardSchema.parse(card).nextDeparture).toEqual({
+      startDate: '2026-11-14',
+      seatsLeft: 2,
+    });
+  });
+
+  it('nextDeparture null khi không còn đợt nào đặt được — khoá vẫn phải có mặt', () => {
+    expect(TourCardSchema.parse({ ...validCard, nextDeparture: null }).nextDeparture).toBeNull();
+    const { nextDeparture: _n, ...thieu } = validCard;
+    expect(() => TourCardSchema.parse(thieu)).toThrow();
+  });
+
+  it('đợt hết chỗ không phải đợt kế tiếp: seatsLeft 0 bị từ chối', () => {
+    expect(() =>
+      TourCardSchema.parse({
+        ...validCard,
+        nextDeparture: { startDate: '2026-11-14', seatsLeft: 0 },
+      }),
+    ).toThrow();
+  });
+
+  it('startDate phải là ngày lịch YYYY-MM-DD, không phải datetime', () => {
+    expect(() =>
+      TourCardSchema.parse({
+        ...validCard,
+        nextDeparture: { startDate: '2026-11-14T00:00:00Z', seatsLeft: 2 },
+      }),
+    ).toThrow();
+  });
+
+  it('badges bắt buộc trên card, rỗng hợp lệ, giá trị lạ bị từ chối', () => {
+    expect(TourCardSchema.parse({ ...validCard, badges: [] }).badges).toEqual([]);
+    const { badges: _b, ...thieu } = validCard;
+    expect(() => TourCardSchema.parse(thieu)).toThrow();
+    expect(() => TourCardSchema.parse({ ...validCard, badges: ['HOT'] })).toThrow();
+  });
+
+  it('suitableFor KHÔNG lên card — thẻ không có chỗ nào đọc nó', () => {
+    expect('badges' in TourCardSchema.shape).toBe(true);
+    expect('suitableFor' in TourCardSchema.shape).toBe(false);
+  });
+});
+
 describe('TourDetailSchema — gallery (ADR-0020)', () => {
   it('mang mảng media nuôi khảm gallery, KHÁC cover một tấm của card', () => {
     const detail = {
@@ -226,6 +275,11 @@ describe('ToursListQuerySchema — trần page (W4 R3)', () => {
 });
 
 describe('TourSortKeySchema', () => {
+  it('accepts rating (ADR-0058 §4)', () => {
+    expect(TourSortKeySchema.safeParse('rating').success).toBe(true);
+    expect(ToursListQuerySchema.parse({ sort: 'rating', order: 'desc' }).sort).toBe('rating');
+  });
+
   it('accepts updatedAt (parity Nexora sort whitelist)', () => {
     expect(TourSortKeySchema.safeParse('updatedAt').success).toBe(true);
   });

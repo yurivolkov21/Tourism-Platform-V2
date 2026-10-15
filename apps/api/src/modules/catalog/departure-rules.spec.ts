@@ -115,7 +115,7 @@ describe('departure-rules', () => {
     });
   });
 
-  describe('departureRevalidationTags (spec §2g)', () => {
+  describe('departureRevalidationTags (spec §2g, ADR-0058 §6)', () => {
     const SLUG = 'ha-long-bay-cruise';
     const TAG = `tour:${SLUG}`;
     // "Hôm nay" 01/10; chuyến 5 ngày khởi hành 10/10 → N = 7 → hạn chót 03/10.
@@ -125,6 +125,7 @@ describe('departure-rules', () => {
       startDate: '2026-10-10',
       endDate: '2026-10-14',
       priceOverride: null,
+      seatsLeft: 6,
     };
 
     it('chuyến mới còn nhận đặt → bust cả `tours` vì nó có thể kéo giá "from" xuống', () => {
@@ -165,11 +166,60 @@ describe('departure-rules', () => {
       ).toEqual(['tours', TAG]);
     });
 
-    it('chỉ đổi ghế trên một chuyến đang nhận đặt → KHÔNG đụng `tours`', () => {
-      // Card không in số ghế; bust danh sách vì một con số nó không hiện là
-      // bắt cả trang /tours dựng lại cho vui.
+    it('lưu lại mà không đổi gì thẻ đọc → KHÔNG đụng `tours`', () => {
+      // Bust danh sách vì một lệnh ghi không đổi con số nào trên thẻ là bắt cả
+      // trang /tours dựng lại cho vui.
       expect(
         departureRevalidationTags({ tourSlug: SLUG, before: BOOKABLE, after: BOOKABLE, now: NOW }),
+      ).toEqual([TAG]);
+    });
+
+    it('đổi số chỗ còn lại trên một chuyến đang nhận đặt → bust cả `tours`', () => {
+      // ADR-0058: thẻ in ngày và số chỗ của đợt kế tiếp, nên số ghế giờ là thứ
+      // thẻ NHÌN THẤY — trước đó đúng ca này chỉ bust trang tour.
+      expect(
+        departureRevalidationTags({
+          tourSlug: SLUG,
+          before: BOOKABLE,
+          after: { ...BOOKABLE, seatsLeft: 2 },
+          now: NOW,
+        }),
+      ).toEqual(['tours', TAG]);
+    });
+
+    it('chuyến đang bán bị khoá kín ghế → rời tập thẻ → bust cả `tours`', () => {
+      expect(
+        departureRevalidationTags({
+          tourSlug: SLUG,
+          before: BOOKABLE,
+          after: { ...BOOKABLE, seatsLeft: 0 },
+          now: NOW,
+        }),
+      ).toEqual(['tours', TAG]);
+    });
+
+    it('chuyến kín được nới ghế → vào lại tập thẻ → bust cả `tours`', () => {
+      expect(
+        departureRevalidationTags({
+          tourSlug: SLUG,
+          before: { ...BOOKABLE, seatsLeft: 0 },
+          after: { ...BOOKABLE, seatsLeft: 3 },
+          now: NOW,
+        }),
+      ).toEqual(['tours', TAG]);
+    });
+
+    it('chuyến kín vẫn kín dù đổi giá → chỉ trang tour', () => {
+      // Đợt hết chỗ không nuôi giá "from" lẫn đợt kế tiếp (ADR-0058 §1).
+      const full = { ...BOOKABLE, seatsLeft: 0 };
+
+      expect(
+        departureRevalidationTags({
+          tourSlug: SLUG,
+          before: full,
+          after: { ...full, priceOverride: '80.00' },
+          now: NOW,
+        }),
       ).toEqual([TAG]);
     });
 

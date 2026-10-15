@@ -6,6 +6,7 @@ import type {
   TourCard,
   TourCategory,
   TourDetail,
+  TourNextDeparture,
   ToursListQuery,
 } from '@tourism/contract';
 import { cancellationDeadline, isWithinDeadline, vietnamToday } from '@tourism/contract';
@@ -15,6 +16,8 @@ import { DepartureStatus, MediaOwnerType, MediaRole } from '../../generated/pris
 import { calendarDate, startOfDayUtc } from '../../lib/calendar-date.js';
 import { escapeLike } from '../../lib/like.js';
 import { MediaService } from '../media/media.service.js';
+import { type CardDepartureCandidate, feedsTourCard, nextDepartureOf } from './card-departures.js';
+import { tourOrderBy } from './tour-sort.js';
 
 /**
  * Ảnh bìa = asset role `hero`. null khi owner chưa có ảnh nào (ADR-0020).
@@ -51,30 +54,12 @@ export const cardInclude = {
 
 type TourCardRow = Prisma.TourGetPayload<{ include: typeof cardInclude }>;
 
-const SORT_COLUMN = {
-  createdAt: 'createdAt',
-  updatedAt: 'updatedAt',
-  basePrice: 'basePrice',
-  durationDays: 'durationDays',
-  title: 'title',
-} as const satisfies Record<ToursListQuery['sort'], keyof Prisma.TourOrderByWithRelationInput>;
-
 /**
- * `cover` là tham số chứ không tự query bên trong: hàm này chạy trong vòng lặp
- * `map()` trên cả trang kết quả, nên gọi DB ở đây là đẻ ra N+1. Chỗ gọi có
- * trách nhiệm resolve media MỘT lần cho cả lô rồi truyền xuống — cùng khuôn
- * `posts.service` đã dùng từ P3a.
- *
- * Mặc định `null` để chỗ gọi nào chưa cần ảnh vẫn biên dịch được và trả về
- * "không có ảnh" một cách tường minh, thay vì thiếu khoá.
+ * Giá "from" = `min(priceOverride ?? basePrice)` trên các đợt nhận vào; không có đợt nào →
+ * `basePrice`. KHÔNG export: tập đợt do `cardDepartureFacts` lọc, để không chỗ gọi nào tính giá
+ * "from" trên một tập khác tập của đợt kế tiếp (ADR-0058 §1).
  */
-/**
- * Giá "from" thật — `min(priceOverride ?? basePrice)` trên các đợt OPEN còn nhận
- * đặt (`bookable`, ADR-0041 §3) của tour; không có đợt → `basePrice`. Nhận MẢNG
- * priceOverride ĐÃ LỌC (theo tour và theo hạn đặt) để list tính một lần cho cả
- * trang và detail dùng lại departures đã load — hai bên lọc cùng một luật.
- */
-export function priceFrom(
+function priceFrom(
   basePrice: Prisma.Decimal,
   overrides: readonly (Prisma.Decimal | null)[],
 ): string {
@@ -86,17 +71,65 @@ export function priceFrom(
   return money(min ?? basePrice);
 }
 
+/** Một đợt như thẻ tour đọc nó: đủ cột cho `feedsTourCard`, cộng giá riêng của đợt. */
+interface CardDepartureRow extends CardDepartureCandidate {
+  priceOverride: Prisma.Decimal | null;
+}
+
+/** Hàng đợt Prisma → `CardDepartureRow`; ngày `@db.Date` thành ngày lịch Việt Nam. */
+const toCardDepartureRow = (row: {
+  status: DepartureStatus;
+  startDate: Date;
+  endDate: Date;
+  seatsTotal: number;
+  seatsBooked: number;
+  priceOverride: Prisma.Decimal | null;
+}): CardDepartureRow => ({
+  status: row.status,
+  startDate: calendarDate(row.startDate),
+  endDate: calendarDate(row.endDate),
+  seatsLeft: row.seatsTotal - row.seatsBooked,
+  priceOverride: row.priceOverride,
+});
+
+/** Những gì thẻ tour đọc từ các đợt của nó (ADR-0058 §1–§2). */
+export interface CardDepartureFacts {
+  priceFrom: string;
+  nextDeparture: TourNextDeparture | null;
+}
+
 /**
- * Giá "from" của một lô tour — MỘT query đợt cho cả lô, lọc đúng như detail (OPEN, chưa
- * khởi hành theo ngày Việt Nam, còn trong hạn đặt). `listTours` và tour liên quan của bài
- * viết cùng gọi, nên một tour không bao giờ mang hai giá ở hai trang (vòng review P4e-4).
- * Lấy thêm hai cột ngày vì luật hạn chót N chỉ sống ở Node (spec §4.1), không viết lại
- * trong SQL.
+ * Giá "from" và đợt kế tiếp của MỘT tour, tính trên CÙNG một tập đợt: `feedsTourCard` (OPEN,
+ * còn hạn đặt, còn chỗ). Danh sách, tour liên quan của bài viết và trang chi tiết đều đi qua
+ * đây, nên thẻ không in giá của đợt này cạnh ngày của đợt khác, và thẻ với hero trang tour in
+ * cùng một giá "from" (ADR-0058 §1). Đợt hết chỗ không còn kéo giá "from" xuống từ 15/10.
  */
-export async function priceFromByTour(
+export function cardDepartureFacts(
+  basePrice: Prisma.Decimal,
+  departures: readonly CardDepartureRow[],
+  now: Date,
+): CardDepartureFacts {
+  const feeding = departures.filter((departure) => feedsTourCard(departure, now));
+  return {
+    priceFrom: priceFrom(
+      basePrice,
+      feeding.map((departure) => departure.priceOverride),
+    ),
+    nextDeparture: nextDepartureOf(feeding, now),
+  };
+}
+
+/**
+ * `cardDepartureFacts` của một lô tour — MỘT query đợt cho cả lô. `listTours` và tour liên quan
+ * của bài viết cùng gọi, nên một tour không bao giờ mang hai giá hay hai ngày ở hai trang (vòng
+ * review P4e-4). SQL chỉ cắt thô (OPEN, chưa khởi hành theo ngày Việt Nam), cùng `where` với
+ * đợt của trang chi tiết; hạn chót và số chỗ xét ở Node vì luật hạn chót N chỉ sống ở đó (spec
+ * §4.1), không viết lại trong SQL.
+ */
+export async function cardDepartureFactsByTour(
   tours: readonly { id: string; basePrice: Prisma.Decimal }[],
   now: Date,
-): Promise<Map<string, string>> {
+): Promise<Map<string, CardDepartureFacts>> {
   if (tours.length === 0) return new Map();
   const upcoming = await prisma.tourDeparture.findMany({
     where: {
@@ -104,26 +137,45 @@ export async function priceFromByTour(
       status: DepartureStatus.OPEN,
       startDate: { gte: startOfVietnamToday(now) },
     },
-    select: { tourId: true, priceOverride: true, startDate: true, endDate: true },
+    select: {
+      tourId: true,
+      status: true,
+      startDate: true,
+      endDate: true,
+      seatsTotal: true,
+      seatsBooked: true,
+      priceOverride: true,
+    },
   });
-  const overridesByTour = new Map<string, (Prisma.Decimal | null)[]>();
+  const rowsByTour = new Map<string, CardDepartureRow[]>();
   for (const d of upcoming) {
-    // Chuyến đã qua hạn đặt không bán được nữa → không kéo giá "from" xuống
-    // (ADR-0041 §3) — cùng luật với cờ `bookable` của detail.
-    if (!isWithinDeadline(now, calendarDate(d.startDate), calendarDate(d.endDate))) continue;
-    const list = overridesByTour.get(d.tourId) ?? [];
-    list.push(d.priceOverride);
-    overridesByTour.set(d.tourId, list);
+    const list = rowsByTour.get(d.tourId) ?? [];
+    list.push(toCardDepartureRow(d));
+    rowsByTour.set(d.tourId, list);
   }
   return new Map(
-    tours.map((tour) => [tour.id, priceFrom(tour.basePrice, overridesByTour.get(tour.id) ?? [])]),
+    tours.map((tour) => [
+      tour.id,
+      cardDepartureFacts(tour.basePrice, rowsByTour.get(tour.id) ?? [], now),
+    ]),
   );
 }
 
+/**
+ * `cover` là tham số chứ không tự query bên trong: hàm này chạy trong vòng lặp
+ * `map()` trên cả trang kết quả, nên gọi DB ở đây là đẻ ra N+1. Chỗ gọi có
+ * trách nhiệm resolve media MỘT lần cho cả lô rồi truyền xuống — cùng khuôn
+ * `posts.service` đã dùng từ P3a. `facts` cũng vậy: lấy từ `cardDepartureFactsByTour`
+ * (một query cho cả lô) hoặc `cardDepartureFacts` trên các đợt detail đã nạp.
+ *
+ * Mặc định `null` để chỗ gọi nào chưa cần ảnh vẫn biên dịch được và trả về
+ * "không có ảnh" một cách tường minh, thay vì thiếu khoá. `facts` mặc định là đúng
+ * thứ `cardDepartureFacts` trả cho một tour không còn đợt nào: giá base, không có đợt kế tiếp.
+ */
 export function toTourCard(
   tour: TourCardRow,
   cover: MediaItem | null = null,
-  from: string = money(tour.basePrice),
+  facts: CardDepartureFacts = { priceFrom: money(tour.basePrice), nextDeparture: null },
 ): TourCard {
   return {
     cover,
@@ -133,7 +185,7 @@ export function toTourCard(
     summary: tour.summary,
     basePrice: money(tour.basePrice),
     compareAtPrice: tour.compareAtPrice ? money(tour.compareAtPrice) : null,
-    priceFrom: from,
+    priceFrom: facts.priceFrom,
     currency: tour.currency,
     durationDays: tour.durationDays,
     difficulty: tour.difficulty,
@@ -150,6 +202,9 @@ export function toTourCard(
     // null (chưa ai đánh giá), KHÔNG fold về 0.
     ratingAvg: tour.ratingAvg === null ? null : Number(tour.ratingAvg),
     ratingCount: tour.ratingCount,
+    // Thứ tự admin lưu — thẻ lấy badge đầu mảng khi chỉ còn chỗ cho một (ADR-0058 §3).
+    badges: tour.badges,
+    nextDeparture: facts.nextDeparture,
   };
 }
 
@@ -193,7 +248,7 @@ export class CatalogService {
         where,
         include: cardInclude,
         // Sort phụ theo id giữ pagination ổn định khi sort key bằng nhau.
-        orderBy: [{ [SORT_COLUMN[sort]]: order }, { id: 'asc' }],
+        orderBy: tourOrderBy(sort, order),
         skip: (page - 1) * limit,
         take: limit,
       }),
@@ -201,16 +256,16 @@ export class CatalogService {
 
     // MỘT query media cho cả trang (chống N+1) — không gọi trong `map()`.
     const ids = tours.map((t) => t.id);
-    const [coverMap, prices] = await Promise.all([
+    const [coverMap, facts] = await Promise.all([
       // Chỉ cần cover cho card — lọc hero ngay ở query (W4 R3).
       this.media.resolveForOwners(MediaOwnerType.TOUR, ids, [MediaRole.hero]),
-      // MỘT query đợt cho cả trang → giá "from" thật.
-      priceFromByTour(tours, now),
+      // MỘT query đợt cho cả trang → giá "from" thật và đợt kế tiếp.
+      cardDepartureFactsByTour(tours, now),
     ]);
 
     return {
       items: tours.map((tour) =>
-        toTourCard(tour, pickCover(coverMap.get(tour.id)), prices.get(tour.id)),
+        toTourCard(tour, pickCover(coverMap.get(tour.id)), facts.get(tour.id)),
       ),
       page,
       limit,
@@ -247,8 +302,9 @@ export class CatalogService {
     // Detail cần CẢ BỘ ảnh (nuôi khảm gallery), khác list chỉ cần một tấm bìa.
     const media = (await this.media.resolveForOwners(MediaOwnerType.TOUR, [tour.id])).get(tour.id);
 
-    // Luật hạn chót tính MỘT lần mỗi chuyến: vừa in `bookingDeadline`/`bookable`,
-    // vừa lọc giá "from" — web không tự dựng luật N hay so giờ trình duyệt (Q7).
+    // Luật hạn chót tính MỘT lần mỗi chuyến cho `bookingDeadline`/`bookable` — web không
+    // tự dựng luật N hay so giờ trình duyệt (Q7). Giá "from" và đợt kế tiếp đi qua CÙNG hàm
+    // của danh sách (`cardDepartureFacts`), trên đúng các đợt đã nạp ở đây.
     const departureViews = tour.departures.map((row) => {
       const startDate = calendarDate(row.startDate);
       const endDate = calendarDate(row.endDate);
@@ -265,14 +321,10 @@ export class CatalogService {
       ...toTourCard(
         tour,
         pickCover(media),
-        priceFrom(
-          tour.basePrice,
-          departureViews.filter((view) => view.bookable).map((view) => view.row.priceOverride),
-        ),
+        cardDepartureFacts(tour.basePrice, tour.departures.map(toCardDepartureRow), now),
       ),
       media: media ?? [],
       suitableFor: tour.suitableFor,
-      badges: tour.badges,
       included: tour.included,
       excluded: tour.excluded,
       highlights: tour.highlights,

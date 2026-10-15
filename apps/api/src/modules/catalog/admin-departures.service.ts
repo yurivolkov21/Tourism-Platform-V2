@@ -247,12 +247,14 @@ export class AdminDeparturesService {
           start_date: Date;
           end_date: Date;
           price_override: Prisma.Decimal | null;
+          seats_total: number;
           seats_booked: number;
           status: DepartureStatus;
           updated_at: Date;
         }[]
       >(Prisma.sql`
-        SELECT id, tour_id, start_date, end_date, price_override, seats_booked, status, updated_at
+        SELECT id, tour_id, start_date, end_date, price_override, seats_total, seats_booked,
+               status, updated_at
         FROM tour_departures WHERE id = ${input.id}::uuid FOR UPDATE
       `);
       if (!locked) throw new DepartureNotFoundError(input.id);
@@ -320,6 +322,7 @@ export class AdminDeparturesService {
           startDate: currentStart,
           endDate: currentEnd,
           priceOverride: locked.price_override === null ? null : money(locked.price_override),
+          seatsLeft: locked.seats_total - locked.seats_booked,
         } satisfies DepartureCardInput,
       };
     });
@@ -366,10 +369,12 @@ export class AdminDeparturesService {
           start_date: Date;
           end_date: Date;
           price_override: Prisma.Decimal | null;
+          seats_total: number;
+          seats_booked: number;
           status: DepartureStatus;
         }[]
       >(Prisma.sql`
-        SELECT id, tour_id, start_date, end_date, price_override, status
+        SELECT id, tour_id, start_date, end_date, price_override, seats_total, seats_booked, status
         FROM tour_departures WHERE id = ${input.id}::uuid FOR UPDATE
       `);
       if (!locked) throw new DepartureNotFoundError(input.id);
@@ -392,6 +397,7 @@ export class AdminDeparturesService {
         startDate,
         endDate,
         priceOverride: locked.price_override === null ? null : money(locked.price_override),
+        seatsLeft: locked.seats_total - locked.seats_booked,
       } satisfies DepartureCardInput;
       const tourRow = await tx.tour.findUniqueOrThrow({
         where: { id: locked.tour_id },
@@ -476,6 +482,7 @@ export class AdminDeparturesService {
           startDate: after.startDate,
           endDate: after.endDate,
           priceOverride: after.priceOverride,
+          seatsLeft: after.seatsTotal - after.seatsBooked,
         },
         now,
       }),

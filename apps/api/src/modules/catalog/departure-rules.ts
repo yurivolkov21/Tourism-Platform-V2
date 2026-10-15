@@ -1,4 +1,5 @@
 import { canCancelOnline, cancellationDeadline, isWithinDeadline } from '@tourism/contract';
+import { feedsTourCard } from './card-departures.js';
 
 /**
  * Ba luật của một chuyến khởi hành (spec P4e-1 §2b, §2c, F12) — THUẦN, không
@@ -131,33 +132,30 @@ export function departureCancelBlocker(startDate: string, now: Date): string | n
   return `This departure has already started on ${startDate} — it can no longer be cancelled.`;
 }
 
-/** Đúng những field của một chuyến mà CARD `/tours` của web nhìn thấy gián tiếp. */
+/**
+ * Đúng những field của một chuyến mà CARD `/tours` của web nhìn thấy gián tiếp: giá "from",
+ * ngày và số chỗ còn lại của đợt kế tiếp (ADR-0058).
+ */
 export interface DepartureCardInput {
   status: 'OPEN' | 'CLOSED' | 'CANCELLED';
   startDate: string;
   endDate: string;
   priceOverride: string | null;
-}
-
-/**
- * Chuyến này có nuôi giá "from" trên card không: đang `OPEN` và CÒN nhận đặt.
- * Cùng bộ lọc mà `CatalogService` dùng để tính `priceFrom` (ADR-0041 §3) —
- * chuyến qua hạn đặt không bán được nên không được kéo giá xuống.
- */
-function feedsCardPrice(departure: DepartureCardInput, now: Date): boolean {
-  return (
-    departure.status === 'OPEN' && isWithinDeadline(now, departure.startDate, departure.endDate)
-  );
+  /** `seatsTotal − seatsBooked` của hàng. */
+  seatsLeft: number;
 }
 
 /**
  * Tag cache-web cần bust sau một lệnh ghi lên chuyến (spec §2g).
  *
  * `tour:<slug>` LUÔN có: trang chi tiết in danh sách chuyến, mọi thay đổi đều
- * thấy được ở đó. `tours` thì CÓ ĐIỀU KIỆN, vì card danh sách chỉ nhìn thấy
- * chuyến qua đúng một con số — `priceFrom` = min giá trên các chuyến còn đặt
- * được. Đổi số GHẾ của một chuyến không đụng tới con số ấy, mà bust `tours` là
- * bắt cả trang danh sách dựng lại.
+ * thấy được ở đó. `tours` thì CÓ ĐIỀU KIỆN: card danh sách chỉ nhìn thấy những
+ * chuyến nuôi thẻ (`feedsTourCard` — OPEN, còn hạn đặt, còn chỗ; ADR-0058 §1),
+ * qua giá "from" và qua ngày cùng số chỗ của đợt kế tiếp. Lệnh ghi không đổi gì
+ * trong ba thứ ấy mà bust `tours` là bắt cả trang danh sách dựng lại cho vui.
+ *
+ * Từ ADR-0058 §6 số chỗ còn lại nằm trong phép so: trước đó card không in số
+ * ghế nên đổi ghế chỉ bust trang tour.
  *
  * `before: null` = vừa tạo chuyến.
  *
@@ -172,15 +170,16 @@ export function departureRevalidationTags(args: {
   now: Date;
 }): string[] {
   const tourTag = `tour:${args.tourSlug}`;
-  const fedBefore = args.before !== null && feedsCardPrice(args.before, args.now);
-  const feedsAfter = feedsCardPrice(args.after, args.now);
-  // Giá "from" đổi được khi: chuyến bước vào/rời khỏi tập còn-đặt-được, hoặc
-  // vẫn ở trong tập mà giá (hay ngày, thứ quyết định còn-đặt-được) đã khác.
-  const priceMoved =
+  const fedBefore = args.before !== null && feedsTourCard(args.before, args.now);
+  const feedsAfter = feedsTourCard(args.after, args.now);
+  // Thẻ đổi được khi: chuyến bước vào/rời khỏi tập nuôi thẻ, hoặc vẫn ở trong
+  // tập mà giá, ngày hay số chỗ còn lại đã khác.
+  const cardMoved =
     feedsAfter &&
     (args.before === null ||
       args.before.priceOverride !== args.after.priceOverride ||
       args.before.startDate !== args.after.startDate ||
-      args.before.endDate !== args.after.endDate);
-  return fedBefore !== feedsAfter || priceMoved ? ['tours', tourTag] : [tourTag];
+      args.before.endDate !== args.after.endDate ||
+      args.before.seatsLeft !== args.after.seatsLeft);
+  return fedBefore !== feedsAfter || cardMoved ? ['tours', tourTag] : [tourTag];
 }

@@ -65,6 +65,21 @@ export const DestinationLinkSchema = z.object({
   isPrimary: z.boolean(),
 });
 
+/**
+ * Đợt sớm nhất mà khách đặt được NGAY BÂY GIỜ (ADR-0058 §1–§2): `OPEN`, chưa khởi hành theo
+ * ngày Việt Nam, còn trong hạn đặt (ADR-0041) và còn chỗ — đúng vị từ `isDepartureOpen` của
+ * web. Hai đợt cùng ngày thì lấy đợt còn nhiều chỗ hơn.
+ *
+ * Một object nullable thay vì hai trường phẳng kiểu Nexora (`nextDepartureDate`,
+ * `nextDepartureSeatsLeft`): hai con số luôn cùng có hoặc cùng vắng, kiểu phải nói được điều ấy.
+ * `seatsLeft` ≥ 1 vì đợt hết chỗ không bao giờ là "đợt kế tiếp" — thẻ không hứa một ngày khách
+ * không đặt được.
+ */
+export const TourNextDepartureSchema = z.object({
+  startDate: z.iso.date(),
+  seatsLeft: z.int().positive(),
+});
+
 export const TourCardSchema = z.object({
   id: z.uuid(),
   slug: z.string().min(1).max(120),
@@ -73,13 +88,14 @@ export const TourCardSchema = z.object({
   basePrice: DecimalStringSchema,
   compareAtPrice: DecimalStringSchema.nullable(),
   /**
-   * Giá "from" THẬT của tour = `min(effectivePrice)` trên các đợt OPEN còn nhận
-   * đặt (`bookable`, ADR-0041 §3; `effectivePrice = priceOverride ?? basePrice`);
-   * không còn đợt nào đặt được thì rơi về `basePrice`. List và detail lọc cùng
-   * một luật để thẻ tour và trang tour không in hai giá khác nhau: chuyến đã qua
-   * hạn đặt không bán được nên không được kéo giá xuống. Thêm 19/08 (sổ nợ cùng
-   * ngày): thẻ /tours in `basePrice` "from $129" trong khi trang chi tiết có đợt
-   * thấp điểm $119 — card không biết đợt. Tính ở API (một query cho cả trang,
+   * Giá "from" THẬT của tour = `min(effectivePrice)` trên các đợt ĐẶT ĐƯỢC
+   * (`effectivePrice = priceOverride ?? basePrice`); không còn đợt nào đặt được
+   * thì rơi về `basePrice`. "Đặt được" là CÙNG tập với `nextDeparture` (ADR-0058
+   * §1): OPEN, còn hạn đặt (ADR-0041 §3) và còn chỗ. Từ 15/10 tập này bỏ đợt hết
+   * chỗ — trước đó thẻ có thể in giá của một đợt đã kín trong khi hero trang tour
+   * (`heroPrice`, đọc `isDepartureOpen`) in giá đợt kế tiếp. Thêm 19/08 (sổ nợ
+   * cùng ngày): thẻ /tours in `basePrice` "from $129" trong khi trang chi tiết có
+   * đợt thấp điểm $119 — card không biết đợt. Tính ở API (một query cho cả trang,
    * không N+1) chứ không ở web, vì list không mang `departures`. Vẫn là
    * DecimalString — tiền không bao giờ là số.
    */
@@ -108,9 +124,17 @@ export const TourCardSchema = z.object({
   //
   // Card chỉ cần MỘT tấm; mảng đầy đủ nằm ở `TourDetailSchema.media`.
   cover: MediaItemSchema.nullable(),
+  // Nhãn biên tập admin gắn (ADR-0058 §3) — chuyển từ detail lên card để thẻ
+  // /tours in được. Thứ tự giữ đúng thứ tự admin lưu. `suitableFor` thì KHÔNG
+  // lên: thẻ không có chỗ nào đọc nó.
+  badges: z.array(TourBadgeSchema),
+  // Đợt kế tiếp đặt được — xem `TourNextDepartureSchema`. Có mặt ở mọi chỗ trả
+  // card: danh sách, chi tiết (kế thừa), tour liên quan của bài viết.
+  nextDeparture: TourNextDepartureSchema.nullable(),
 });
 
 export type TourCard = z.output<typeof TourCardSchema>;
+export type TourNextDeparture = z.output<typeof TourNextDepartureSchema>;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Tour detail (card + editorial content + upcoming OPEN departures)
@@ -164,7 +188,7 @@ export const TourDetailSchema = TourCardSchema.extend({
   // Schema v2 has no single `description` column — the tour body is the
   // structured merchandising content below (summary lives on the card).
   suitableFor: z.array(TravellerTypeSchema),
-  badges: z.array(TourBadgeSchema),
+  // `badges` kế thừa từ card từ ADR-0058 — hình dạng detail không đổi.
   included: z.array(z.string()),
   excluded: z.array(z.string()),
   highlights: z.array(z.string()),
@@ -240,12 +264,17 @@ export type TourCategory = z.output<typeof TourCategorySchema>;
 // `updatedAt`: parity Nexora — cho sort "mới cập nhật". Từ F17 cột này là
 // phiên bản của khu làm việc tour (ADR-0047 §3), nên nó chỉ nhảy khi NỘI DUNG
 // tour được lưu: bật/tắt bán giữ nguyên, duyệt hay rút review cũng không đụng.
+//
+// `rating` (ADR-0058 §4): `ratingAvg` theo chiều `order`, tour chưa có đánh giá
+// LUÔN đứng cuối ở cả hai chiều (chưa ai chấm ≠ bị chấm thấp nhất), hoà điểm thì
+// tour nhiều đánh giá hơn đứng trước.
 export const TourSortKeySchema = z.enum([
   'createdAt',
   'updatedAt',
   'basePrice',
   'durationDays',
   'title',
+  'rating',
 ]);
 export const SortOrderSchema = z.enum(['asc', 'desc']);
 
