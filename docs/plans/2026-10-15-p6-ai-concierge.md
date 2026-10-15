@@ -26,6 +26,15 @@ và React 19 (web) · Vitest.
 | --- | --- | --- |
 | P6 trợ lý AI (api, contract, web) | `feat/p6-ai-concierge-3xp4sq` | 1–13 |
 
+**Điểm dừng 15/10 (tạm dừng vì giới hạn usage):** xong Task 1–5 và 7–10, 23 int test
+chat và 2 int test job dọn xanh ở máy với model giả. Nhánh đã có `schema.prisma` mới
+nhưng CHƯA có thư mục migration (Task 6 chờ lượt sau G25 của thread admin), nên CI của
+nhánh đỏ ở int test cho tới khi có migration. Bước kế: Task 6 khi được báo lượt, rồi
+Task 11–13. Lệch so với spec cần ghi vào spec và mô tả PR: bỏ refine `tourSlug` (tour
+mặc định đi qua prompt), `getTourDetails` thêm `cancellation`, body policy cắt 600 ký
+tự, tự viết `writeUIMessageStream` thay `pipeUIMessageStreamToResponse`, tee luồng và
+`readUIMessageStream` thay `consumeStream`/`onEnd`.
+
 ## Quyết định của plan
 
 Spec viết trước khi đọc kỹ AI SDK 7 và trước G41, nên có sáu chỗ phải chốt lại. Spec
