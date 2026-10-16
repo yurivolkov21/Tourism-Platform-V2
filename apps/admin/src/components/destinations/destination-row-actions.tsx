@@ -44,9 +44,10 @@ import {
  * §2a. Đếm tour MỌI trạng thái (`linkedTourCount`); còn tour thì nút khoá và tooltip
  * gợi ý ẩn: ẩn đảo ngược được bằng một cú bấm, còn xoá thì không. Hàng đã ẩn thì tooltip
  * và câu `IN_USE` chỉ nói lý do, không khuyên ẩn (Ruling F-b). Server vẫn là phán
- * quyết cuối — bảng có thể cũ hơn DB, và `IN_USE` khi ấy đóng hộp rồi làm mới. Khoá
- * ngoại `tour_destinations` vẫn khai `ON DELETE CASCADE`, nên chốt chặn thật là phép
- * đếm liên kết dưới khoá hàng ở API (ADR-0053 §3), không phải nút này.
+ * quyết cuối — bảng có thể cũ hơn DB, và `IN_USE` khi ấy đóng hộp rồi làm mới. Chốt
+ * chặn thật là phép đếm liên kết dưới khoá hàng ở API (ADR-0053 §3), không phải nút này;
+ * khoá ngoại `tour_destinations` là `ON DELETE RESTRICT` từ AMEND 2 (G25), lưới cuối cho
+ * các đường xoá ngoài API.
  *
  * Hộp xác nhận ẨN nói đủ những gì bảng đo spec §4.6 tìm ra — cả hai hệ quả
  * không hiển nhiên ở trang vùng lẫn hộ chiếu của khách — rồi mới trấn an bằng

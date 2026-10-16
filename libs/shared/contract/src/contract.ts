@@ -1358,9 +1358,9 @@ export const contract = {
      * Điểm đến phía admin (spec P4e-2 F15) — năm thao tác, KHÔNG có sắp thứ tự
      * (bảng không có cột `order`).
      *
-     * Xoá chỉ khi chưa tour nào dùng (ADR-0053): khoá ngoại `tour_destinations`
-     * khai `ON DELETE CASCADE` nên DB không chặn — server khoá hàng điểm đến,
-     * đếm liên kết, rồi mới xoá trong cùng transaction.
+     * Xoá chỉ khi chưa tour nào dùng (ADR-0053): server khoá hàng điểm đến, đếm
+     * liên kết, rồi mới xoá trong cùng transaction. Khoá ngoại `tour_destinations`
+     * là `ON DELETE RESTRICT` từ AMEND 2 (G25), chặn các đường xoá ngoài API.
      *
      * `region` ghi qua `RegionNameSchema` — danh sách chọn ba vùng, không phải
      * chữ tự do (spec §2b, ADR-0045). `update` không mang `slug` (spec §2c).

@@ -486,8 +486,11 @@ model TourDestination {
   destinationId String  @map("destination_id") @db.Uuid
   isPrimary     Boolean @default(false) @map("is_primary")
 
+  // Xoá tour thì liên kết đi theo (CASCADE). Phía điểm đến là RESTRICT (ADR-0053
+  // AMEND 2, G25): còn tour trỏ vào thì DB từ chối xoá điểm đến, kể cả qua SQL tay
+  // hay script không đi qua phép đếm dưới khoá hàng của lệnh xoá ở API.
   tour        Tour        @relation(fields: [tourId], references: [id], onDelete: Cascade)
-  destination Destination @relation(fields: [destinationId], references: [id], onDelete: Cascade)
+  destination Destination @relation(fields: [destinationId], references: [id], onDelete: Restrict)
 
   @@id([tourId, destinationId])
   @@index([destinationId, isPrimary])

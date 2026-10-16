@@ -270,7 +270,7 @@ describe('contract admin.destinations', () => {
 
   it('có lệnh xoá (ADR-0053), KHÔNG có lệnh sắp thứ tự', () => {
     // Sắp: bảng này không có cột `order`. Xoá: chỉ khi chưa tour nào dùng, kiểm dưới
-    // khoá hàng vì khoá ngoại `tour_destinations` khai `ON DELETE CASCADE`.
+    // khoá hàng (ADR-0053 §3); khoá ngoại `tour_destinations` RESTRICT là lưới thứ hai.
     expect(Object.keys(contract.admin.destinations).sort()).toEqual([
       'create',
       'delete',

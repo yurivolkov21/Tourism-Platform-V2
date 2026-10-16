@@ -19,8 +19,10 @@ import { NO_TOURS, type TourCounts } from './tour-counts.js';
  * Năm thao tác quản trị điểm đến (spec P4e-2 F15).
  *
  * Xoá chỉ khi chưa tour nào dùng (ADR-0053, thay quyết định "chỉ ẩn" của spec P4e-2 §2a).
- * Khoá ngoại `tour_destinations_destination_id_fkey` khai `ON DELETE CASCADE` nên DB KHÔNG
- * chặn — `delete` khoá hàng điểm đến rồi đếm liên kết trong cùng transaction.
+ * `delete` khoá hàng điểm đến rồi đếm liên kết trong cùng transaction, còn liên kết thì
+ * `IN_USE`. Từ AMEND 2 (G25) khoá ngoại `tour_destinations_destination_id_fkey` là
+ * `ON DELETE RESTRICT`: lưới thứ hai cho các đường xoá ngoài API, không thay phép đếm —
+ * câu DELETE bị DB từ chối chỉ ra lỗi chung, không ra `IN_USE`.
  *
  * Khác danh mục ở một chỗ đáng kể: bảng này không có cột `order`, nên không có
  * khoá advisory nào. Mỗi lệnh ghi ngoài `delete` là MỘT câu, và mọi lỗi của nó
