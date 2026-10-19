@@ -6,7 +6,7 @@
 > [CHANGELOG](CHANGELOG.md) (mục "CÒN TREO" của entry tương ứng) và ở
 > [sổ nợ kỹ thuật](analysis/2026-08-06-backlog-no-ky-thuat.md).
 > **Đóng một mục:** ghi kết quả vào dòng (ngày, nhánh, commit), chuyển cả dòng
-> sang open-items-closed.md, rồi ghi vào CHANGELOG. **Mã G kế tiếp: G55.**
+> sang open-items-closed.md, rồi ghi vào CHANGELOG. **Mã G kế tiếp: G56.**
 
 ## Mốc thời gian
 
@@ -21,7 +21,7 @@
 
 | Mã | Việc | Ghi chú |
 | --- | --- | --- |
-| **P4f** | Quản trị người dùng và media | **Users XONG 13/10** (merge `26746d3`, PR #6; ADR-0052, spec và plan 02/10): hai bậc Owner và Staff, khoá tài khoản; thử tay production theo spec §8.4 còn treo ở CHANGELOG. Phủ ba bất biến hạ quyền / thu hồi phiên của ADR-0026 AMEND 1 §D. **Appearance XONG 19/10** (merge `ae75d7c`..`838d927`, PR #31; ADR-0059, [spec](specs/2026-10-15-p4f-appearance-design.md)): đổi ảnh 47 khe của web từ admin; thử tay production theo spec §8.3 còn treo ở CHANGELOG. **Media library** ([spec](specs/2026-10-16-p4f-media-library-design.md) 16/10, Yuri duyệt 19/10; ADR-0060) đang thi công: Media A rồi Media B, mỗi phần một PR; G16 đóng 14/10 bằng ADR-0035 AMEND 3 (PR #13) |
+| **P4f** | Quản trị người dùng và media | **Users XONG 13/10** (merge `26746d3`, PR #6; ADR-0052, spec và plan 02/10): hai bậc Owner và Staff, khoá tài khoản; thử tay production theo spec §8.4 còn treo ở CHANGELOG. Phủ ba bất biến hạ quyền / thu hồi phiên của ADR-0026 AMEND 1 §D. **Appearance XONG 19/10** (merge `ae75d7c`..`838d927`, PR #31; ADR-0059, [spec](specs/2026-10-15-p4f-appearance-design.md)): đổi ảnh 47 khe của web từ admin; thử tay production theo spec §8.3 còn treo ở CHANGELOG. **Media library A XONG 19/10** (merge `fb1cf2e`..`dee3ec8`, PR #34; [ADR-0060](adr/0060-media-library.md), [spec](specs/2026-10-16-p4f-media-library-design.md)): trang `/media` xem mọi ảnh, sửa alt và ghi công một lần cho mọi chỗ dùng, hàng dọn chỉ đọc; thử tay production theo spec §8.3 còn treo ở CHANGELOG. **Media B** (trình sửa ảnh điểm đến) xong trên nhánh, PR mở sau Media A; G16 đóng 14/10 bằng ADR-0035 AMEND 3 (PR #13) |
 | **P6** | Trợ lý AI tư vấn tour | **Bật trên production 19/10** (code PR #30, ADR-0050 AMEND 1, [plan 15/10](plans/2026-10-15-p6-ai-concierge.md); migration đã chạy Supabase; cờ bật 03:57 UTC, trần ngày 10 USD). Khung chat dạng hội thoại 19/10 (PR #32). Đã có lượt thật với `searchTours` và `getTourDetails`. Còn treo ở CHANGELOG 19/10: thử gửi enquiry qua thẻ xác nhận trên production, nhóm thử theo kịch bản |
 | **UI mobile** | Nâng cấp giao diện app theo Material 3 (Android) | **Bản vẽ duyệt 19/10** ([mockup](design/mockups/README.md), [bàn giao](handoff/mobile-ui-upgrade-handoff.md)); giao Nghĩa code đợt 23–30/10, P1 trước. ADR-0040 AMEND 7 duyệt 19/10 (font, icon, thanh tab); thanh tab còn chờ spike `NativeTabs` trên Android thật (Expo Go và build EAS) |
 
@@ -187,3 +187,4 @@ deploy) nằm ở [sổ nợ kỹ thuật](analysis/2026-08-06-backlog-no-ky-thu
 | G1 | `admin.categories.move` trả CẢ danh sách đã sắp lại, mà client vứt đi rồi `router.refresh()`. Giữ nguyên có chủ đích ở vòng review F14: tiêu thụ payload ấy cần đưa `rows` vào state của bảng, tức hai nguồn sự thật cho một bảng sáu hàng. Cái giá hiện tại là MỘT truy vấn `list()` thừa mỗi cú bấm mũi tên |
 | G17 | Hiệu năng F18, đều nhỏ: mỗi nhịp tiến độ tải lên render lại cả form (vài ms mỗi lần); `setPhotos` requeue từng ảnh một trong transaction đang giữ khoá, và `get` hỏi thêm câu media nối tiếp (cộng lại khoảng 0,1–0,2 giây mỗi lần lưu, dưới timeout 5 giây). Chưa đáng sửa riêng |
 | G30 | Số điện thoại ở `/account/settings` chỉ được lưu để liên hệ (gợi ý dưới nhãn: "So the guide can reach you on the day."), không xác minh bằng OTP như nhiều site. Thêm OTP cần nhà cung cấp SMS (dịch vụ ngoài, có chi phí), luồng gửi lại mã và chống spam. User nêu khi thử tay 09/10; để sau capstone, nhắc trong báo cáo như hướng phát triển |
+| G55 | Web chưa hiện ghi công ảnh (ADR-0020 Hệ quả; spec Media library §12): dòng tác giả và giấy phép trong lightbox ảnh tour, ô nhỏ (thẻ, tile) gom về trang `/credits` có link ở footer. Ba ảnh CC đòi ghi công như điều kiện của giấy phép; app và email đã in, chỉ web còn thiếu. Từ Media A (PR #34, 19/10) admin sửa được ghi công ở `/media`, phía web chưa thi công. Mở 19/10 lúc merge Media A |

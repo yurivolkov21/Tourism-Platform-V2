@@ -8,6 +8,60 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-10-19 — Merge P4f Media library A: trang `/media` xem mọi ảnh, sửa alt và ghi công một lần cho mọi chỗ dùng, hàng dọn chỉ đọc (`fb1cf2e`..`dee3ec8`)
+
+Spec [2026-10-16-p4f-media-library-design.md](specs/2026-10-16-p4f-media-library-design.md), Yuri duyệt 19/10
+03:05 UTC. Nhánh `feat/admin-p4f-media`,
+[PR #34](https://github.com/yurivolkov21/Tourism-Platform-V2/pull/34), thi công trên session cloud. PR đầu
+trong hai PR nối nhau; Media B (trình sửa ảnh điểm đến) theo sau. Không migration, không biến env, không
+dependency mới, không đổi thiết lập Cloudinary.
+
+- `fb1cf2e`: [ADR-0060](adr/0060-media-library.md) (Accepted 19/10), [ADR-0035](adr/0035-media-lifecycle.md)
+  AMEND 4 (hàng dọn có màn chỉ đọc, handler trả báo cáo) và plan
+  [2026-10-19-p4f-media.md](plans/2026-10-19-p4f-media.md). Một ảnh là một publicId; sửa alt và ghi
+  công một lần thì mọi dòng của ảnh đổi theo; không có nút xoá ảnh.
+- `d229ff0`: contract `schemas/admin-media.ts` (chỗ dùng, mục ảnh, cờ chú ý, input `update` với chuỗi
+  rỗng thành `null` và link chỉ `http`/`https`, hàng dọn bốn trạng thái và `lastSweep`) và ba thủ tục
+  `admin.media.list`, `update`, `queue` bậc `staff`. Hàm thuần dùng chung hai phía: `isCcByLicense`,
+  `mediaAttention`, `mediaAltRequired`.
+- `215c2cb`: API. `list` đọc dòng ảnh và tên chủ trong hai lượt, bỏ REVIEW và video. `update` chạy trong
+  một transaction: khoá chủ theo thứ tự cố định rồi khoá dòng, so version ảnh (`STALE_MEDIA`), ghi mọi
+  dòng, chạm `updatedAt` của chủ (tab Photos của tour lưu bằng version cũ nhận `STALE_TOUR`), bắn tag
+  bust của các chủ sau commit; không đổi gì thì không ghi. `queue` đọc `media_garbage`, kiểm còn dùng
+  gộp một lượt và đọc job `media-gc` mới nhất trong `pgboss.job`. Handler `media-gc` trả `SweepReport`
+  (trước đó pg-boss lưu output rỗng).
+- `0726c70`: `media-upload.mjs` bỏ qua điểm đến đã có dòng ảnh; `apply-alt-text.mjs` chỉ lấp alt trống,
+  nên lần chạy script sau không đè alt và ghi công admin vừa sửa.
+- `dee3ec8`: trang `/media` cho Owner và Staff, mục sidebar Media library bật. Tab In use là lưới ảnh gom
+  theo publicId với số chỗ dùng, cờ chú ý (thiếu alt, thiếu ghi công, CC thiếu link, alt lệch giữa các
+  dòng), lọc và tìm giữ trên URL; ngăn chi tiết có số đo, nguồn, chỗ dùng gắn link tới đúng trình sửa
+  (khe site trỏ `/appearance#<khoá>`), form alt và ghi công. Tab Cleanup queue là bảng hàng dọn chỉ đọc.
+- open-items: dòng P4f; thêm G55 (web hiện ghi công, spec §12). CLAUDE.md: roadmap. Mục lục specs:
+  tiêu đề nhóm P4f.
+
+**Review.** Không có lượt review độc lập. Yuri bảo merge 19/10 08:00 UTC ("Merge nhé"). Nhánh rebase lên
+`08994f9` không xung đột. Int Media: `list` gom đúng và nhãn chỗ dùng; `update` ghi mọi dòng, chạm version
+chủ, `STALE_MEDIA`, `NOT_FOUND`, alt bắt buộc, bust đúng tag sau commit, khách
+403, Staff được; `queue` đủ bốn trạng thái, `lastSweep: null` khi chưa có job, pg-boss thật lưu
+`SweepReport`. Chromium thật trên bản build với API sống ở 1440, 768 và 390: không cuộn ngang trang (bảng
+hàng dọn ở 768 cuộn trong khung của bảng); sửa ghi công một ảnh thư viện Đà Nẵng có hai tour mượn thì
+cả ba dòng đổi và tour được chạm version; lọc "cần chú ý" giữ trên URL, nút Back trả về lưới đầy đủ.
+
+Tests after (`gate:int` trên `dee3ec8`, 19/10, session cloud, API sống ở :3001): unit 7985 (web 2374,
+admin 2329, api 1310, mobile 864, contract 770, mobile-ui 145, i18n 62, ui 57, core 48, tokens 26) và int
+917; Biome 2052 file. So với `08994f9`: admin thêm 60 test, api 28, contract 30, int 14; Biome thêm 31
+file; các gói khác không đổi.
+
+**CÒN TREO:**
+
+- Thử tay production theo spec §8.3 phần Media A, từng bước, chờ xác nhận: mở `/media` thấy 241 ảnh,
+  Needs attention có 3 ảnh CC; điền link giấy phép cho một ảnh CC thì còn 2 (câu đọc chỉ xác nhận mọi
+  dòng có link); sửa alt một ảnh thư viện có tour mượn rồi mở tab Photos của tour ấy thấy alt mới; tab
+  Cleanup queue khớp câu đọc chỉ trên `media_garbage`, sau lượt dọn đầu tiên dòng tóm tắt có số.
+- G55: web hiện ghi công (lightbox ảnh tour, trang `/credits` có link ở footer). Ba ảnh CC đòi ghi công
+  như điều kiện giấy phép; chủ dự án nhập link giấy phép còn thiếu ở `/media`.
+- Dọn nhánh `feat/admin-p4f-media` trên origin nếu GitHub không tự xoá.
+
 ## 2026-10-19 — Merge `/privacy` kể trợ lý AI và Anthropic, test canh liên hệ trong Terms và Privacy (sổ nợ C1, `721825f`..`e719fa6`)
 
 Lượt rà việc còn thiếu ở api, web và admin ngày 19/10 (thread cloud, báo cáo trong thư mục chung của

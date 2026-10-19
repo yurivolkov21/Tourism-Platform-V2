@@ -21,7 +21,7 @@ CHẠY) → P4 admin (a–d ✅ sống trên `admin.nexora-travel.agency`; P4e c
 P4e-1 ✅ · P4e-2 ✅ · P4e-3a F17 tạo và sửa tour ✅ 28/09 · P4e-3b F18 ảnh tour ✅
 29/09 · P4e-3c F19 khu sửa tour dạng thanh bước ✅ 01/10 · P4e-4 F20 bài viết ✅
 05/10; đợt sửa sạn admin — ô chọn chung, Quick Create, xoá danh mục và điểm đến ✅ 07/10;
-P4f users ✅ 13/10 (Owner và Staff, khoá tài khoản) · Appearance ✅ 19/10 (ảnh 47 khe của web, ADR-0059) — Media library đang thi công, spec duyệt 19/10) → P5 mobile
+P4f users ✅ 13/10 (Owner và Staff, khoá tài khoản) · Appearance ✅ 19/10 (ảnh 47 khe của web, ADR-0059) · Media library A ✅ 19/10 (trang `/media`, ADR-0060) — Media B ảnh điểm đến chờ review) → P5 mobile
 (P5a khung ✅ · P5b-1 auth ✅ · P5b-2 xem tour và P5b-4 tài khoản ✅ 09/10 · P5b-3 đặt
 tour ✅ 12/10 · P5b-5 đánh giá ✅ 12/10 — thành viên khác dựng màn; đăng nhập Google native
 ADR-0056 ✅ 13/10) →
