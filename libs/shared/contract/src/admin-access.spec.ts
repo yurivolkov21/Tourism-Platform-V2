@@ -12,6 +12,7 @@ import {
  * này là test đỏ — CỐ Ý: đổi quyền phải là một quyết định, không phải một lần gõ nhầm.
  */
 const OWNER_ONLY: AdminProcedureKey[] = [
+  'activity.list',
   'bookings.refund',
   'categories.delete',
   'departures.cancel',
@@ -31,7 +32,7 @@ const OWNER_ONLY: AdminProcedureKey[] = [
 ];
 
 describe('ADMIN_ACCESS', () => {
-  it('đúng 16 thủ tục là của riêng Owner', () => {
+  it('đúng 17 thủ tục là của riêng Owner', () => {
     const owner = Object.entries(ADMIN_ACCESS)
       .filter(([, level]) => level === 'owner')
       .map(([key]) => key)

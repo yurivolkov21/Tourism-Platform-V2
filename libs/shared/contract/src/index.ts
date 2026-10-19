@@ -4,6 +4,7 @@ import './zod-config.js';
 export * from './admin-access.js';
 export * from './admin-procedures.js';
 export * from './contract.js';
+export * from './schemas/admin-activity.js';
 export * from './schemas/admin-appearance.js';
 export * from './schemas/admin-catalog.js';
 export * from './schemas/admin-categories.js';

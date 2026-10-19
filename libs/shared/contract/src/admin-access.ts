@@ -105,6 +105,9 @@ export const ADMIN_ACCESS = {
   'users.lock': 'owner',
   'users.unlock': 'owner',
   'users.revokeSessions': 'owner',
+  // Nhật ký thao tác (ADR-0061): Owner xem; Staff ghi được lượt xuất Excel của chính mình.
+  'activity.list': 'owner',
+  'activity.recordExport': 'staff',
 } as const satisfies Record<AdminProcedureKey, AdminAccessLevel>;
 
 export function isAdminAppRole(role: string): role is AdminAppRole {

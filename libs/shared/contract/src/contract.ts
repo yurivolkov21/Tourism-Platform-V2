@@ -1,6 +1,12 @@
 import { oc } from '@orpc/contract';
 import { z } from 'zod';
 import {
+  AdminActivityListQuerySchema,
+  AdminActivityListResultSchema,
+  AdminActivityRecordExportInputSchema,
+  AdminActivityRecordExportResultSchema,
+} from './schemas/admin-activity.js';
+import {
   AdminAppearanceSetSlotInputSchema,
   AdminAppearanceSignUploadInputSchema,
   AdminSiteSlotSchema,
@@ -1875,6 +1881,28 @@ export const contract = {
         .input(AdminUserByIdInputSchema)
         .errors(ADMIN_USER_WRITE_ERRORS)
         .output(AdminUserRevokeSessionsResultSchema),
+    },
+    /**
+     * Nhật ký thao tác admin (ADR-0061). Dòng nhật ký của lệnh ghi do `@AdminImplement` tự ghi bên
+     * API; hai thủ tục ở đây là đọc (chỉ Owner) và ghi lượt xuất Excel mà route của app admin báo.
+     */
+    activity: {
+      list: oc
+        .route({
+          method: 'GET',
+          path: '/api/admin/activity',
+          summary: 'Admin activity log (newest first, filter by person, area and dates)',
+        })
+        .input(AdminActivityListQuerySchema)
+        .output(AdminActivityListResultSchema),
+      recordExport: oc
+        .route({
+          method: 'POST',
+          path: '/api/admin/activity/exports',
+          summary: 'Record one finished Excel export in the activity log',
+        })
+        .input(AdminActivityRecordExportInputSchema)
+        .output(AdminActivityRecordExportResultSchema),
     },
   },
 };
