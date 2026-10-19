@@ -8,6 +8,41 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-10-19 — Merge `/privacy` kể trợ lý AI và Anthropic, test canh liên hệ trong Terms và Privacy (sổ nợ C1, `721825f`..`e719fa6`)
+
+Lượt rà việc còn thiếu ở api, web và admin ngày 19/10 (thread cloud, báo cáo trong thư mục chung của
+project) thấy `/privacy` không nhắc trợ lý hay Anthropic, trong khi chat đã bật trên production từ
+03:57 UTC cùng ngày và tin khách gõ đi tới Anthropic. Yuri bảo làm các việc nhẹ trước. Nhánh
+`claude/project-thread-4trwm7`, [PR #33](https://github.com/yurivolkov21/Tourism-Platform-V2/pull/33),
+thi công trên session cloud. Chỉ đổi văn bản pháp lý mà web đọc, một spec của web và docs: không
+migration, không env, không dependency.
+
+- `721825f`: `libs/shared/i18n/src/lib/legal/privacy.ts` thêm bốn câu theo đúng hành vi của code
+  (ADR-0050 §2 và §5). Mục thu thập: tin khách gửi trợ lý và câu trả lời, mỗi hội thoại giữ 30 ngày sau
+  tin cuối rồi xoá (`ChatRetentionService` xoá theo `updatedAt`), gắn tài khoản nếu khách đang đăng
+  nhập, trình duyệt giữ một id ngẫu nhiên để nạp lại hội thoại. Mục dùng: trả lời câu hỏi qua trợ lý.
+  Mục bên nhận: Anthropic nhận tin chat kèm thông tin tour trợ lý tra để viết câu trả lời, kèm lời dặn
+  đừng gõ thông tin thanh toán hay thông tin nhạy cảm. Mục chuyển dữ liệu ra nước ngoài: Anthropic đặt
+  ở Mỹ. Ngày cập nhật 19 October 2026. `legal-content.spec.ts`: một ca canh Anthropic và "30 days", hai
+  ca sổ nợ C1 (mục "Contact us" của Terms và Privacy chứa `EMAIL`, `PHONE` của `lib/site.ts` và dòng
+  đầu địa chỉ văn phòng Hồ Chí Minh của `mocks/offices.ts`).
+- `e719fa6`: open-items chuyển dòng "Build web trên Vercel đỏ 09/10" sang open-items-closed, đóng vì
+  không xác minh được nữa: log của service API trên Render (đọc chỉ-đọc 19/10) chỉ còn từ 12/10 07:10
+  UTC. G23 đã vá 14/10 ở PR #16.
+- Commit merge này: sổ nợ gạch C1.
+
+**Review.** Không có lượt review độc lập. Yuri bảo merge 19/10 07:47 UTC ("Merge nhé"). Nhánh rebase lên
+`33de359` không xung đột. Kiểm đột biến tay: đổi một chữ số điện thoại trong `terms.ts` thì ca C1 đỏ.
+
+Tests after (`gate:int` trên `e719fa6`, 19/10, session cloud, API sống ở :3001): unit 7867 (web 2374,
+admin 2269, api 1282, mobile 864, contract 740, mobile-ui 145, i18n 62, ui 57, core 48, tokens 26) và int
+903; Biome 2021 file. So với `33de359`: web thêm 3 test, các gói khác không đổi.
+
+**CÒN TREO:**
+
+- Ở ngày thử tay: mở `/privacy` trên production, thấy ngày 19 October 2026 và câu về Anthropic.
+- Dọn nhánh `claude/project-thread-4trwm7` trên origin nếu GitHub không tự xoá.
+
 ## 2026-10-19 — Merge P4f Appearance: đổi ảnh 47 khe của web từ admin (`ae75d7c`..`838d927`)
 
 Spec [2026-10-15-p4f-appearance-design.md](specs/2026-10-15-p4f-appearance-design.md), Yuri duyệt 19/10
