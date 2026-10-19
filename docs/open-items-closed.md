@@ -29,6 +29,7 @@ Từ bảng "Đang chờ chủ dự án quyết".
 | Gỡ nhánh tinh chỉnh giao diện web + admin gom 18/09 | 18/09 | Chưa mở *Đóng khi tách 14/10: nhánh `fix/ui-polish-web-admin` đã ff vào `main` ngày 18/09 (CHANGELOG 18/09, [archive 16–21/09](changelog/2026-09-refund-deadline-mobile-auth.md)).* |
 | ~~Chữ cuống hoá đơn của đơn chưa trả đã đóng (G37)~~ | 09/10 | Xong 13/10: cuống ở G40 Phần 1 (12/10), câu `heldNote` của `/checkout/cancel` ở `37f1464` |
 | ~~Cho KHÁCH đọc được lý do công ty huỷ chuyến~~ | 22/09 | Xong 14/10: user chọn bản một ô, làm ở nhánh `feat/departure-cancel-reason`, PR #23 (ADR-0041 AMEND 2) — xem mục ngay dưới |
+| Admin sửa, xoá, ghim và tự tạo đánh giá (Nexora có; [khảo sát admin 20/08](analysis/nexora-parity/2026-08-20-admin-parity-nexora.md) xếp [V]) | 19/10 | Đã chốt **không làm** (Yuri 19/10, sau bản rà việc còn thiếu ở api, web, admin cùng ngày). Phân loại lại theo luật #10 là *cố ý bỏ*: khách tự sửa hoặc rút đánh giá của mình ([ADR-0032](adr/0032-review-author-edit.md)), bản sửa quay lại hàng duyệt; admin duyệt và gỡ duyệt bằng `admin.reviews.moderate`, có vết ở `review_moderation_events`; khối testimonials trang chủ là nội dung biên tập tĩnh (sổ nợ B3) nên đánh giá ghim hay tuyển chọn không có chỗ hiện. Admin sửa chữ của khách thì đánh giá thôi là lời khách |
 
 ## ~~Đề xuất sản phẩm: cho khách biết VÌ SAO chuyến bị huỷ~~ — đóng 14/10
 
