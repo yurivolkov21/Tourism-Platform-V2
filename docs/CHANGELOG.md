@@ -8,6 +8,52 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-10-19 — Merge P4f Appearance: đổi ảnh 47 khe của web từ admin (`ae75d7c`..`838d927`)
+
+Spec [2026-10-15-p4f-appearance-design.md](specs/2026-10-15-p4f-appearance-design.md), Yuri duyệt 19/10
+03:05 UTC. Nhánh `feat/admin-p4f-appearance`,
+[PR #31](https://github.com/yurivolkov21/Tourism-Platform-V2/pull/31), thi công trên session cloud. Không
+migration, không biến env, không dependency mới, không đổi thiết lập Cloudinary.
+
+- `ae75d7c`: [ADR-0059](adr/0059-site-slot-appearance.md) (Accepted 19/10) và plan
+  [2026-10-19-p4f-appearance.md](plans/2026-10-19-p4f-appearance.md). Danh mục khe nằm ở contract; một lần
+  lưu nhận ảnh từ đúng một trong bốn nguồn; bảng ảnh gốc 47 mục nằm trong code API.
+- `df7f3df`: contract `site-slots.ts`, danh mục 47 khe (khoá, nhóm theo tám trang web, đường dẫn, kiểu,
+  khung đo ở 1440 và 390, `inMobileApp`) và ba thủ tục `admin.appearance.list`, `setSlot`, `signUpload`
+  bậc `staff`. Khe video `about-cta-video` chỉ xem. Web đọc khe qua `siteMediaImage(key: SiteSlotKey)`
+  nên gõ sai khoá là lỗi typecheck.
+- `5f20127`: API. Một lần lưu chạy trong một transaction: tạo dòng khe nếu thiếu, `FOR UPDATE`, so phiên
+  bản (`STALE_SLOT`), thay ảnh, nhích phiên bản, đưa ảnh tải lên cũ của chính khe vào hàng dọn 7 ngày;
+  nguồn khác bốn nguồn là `PHOTO_NOT_ALLOWED`. Bắn tag `site-media` sau commit (trước đó API chưa bao
+  giờ bắn tag này). Vùng tải lên của bộ dọn ảnh thêm `site`; `media-upload.mjs` bỏ qua khe đã có ảnh.
+- `c0c1643`, `db2a644`, `838d927`: trang `/appearance` cho Owner và Staff, mục sidebar bật. Mỗi khe một
+  thẻ: ảnh trong khung đúng tỉ lệ, chip nguồn, câu chữ web đặt cạnh ảnh. Hộp Replace có hai khung xem
+  trước (desktop, điện thoại), tải lên hoặc chọn từ thư viện ảnh địa danh, sửa alt; Restore original qua
+  hộp xác nhận; neo `/appearance#<khoá>` cho trang Media sau này. `838d927` sửa khung ảnh tràn thẻ ở
+  lưới hẹp.
+- open-items: dòng P4f. CLAUDE.md: roadmap. Mục lục specs: tiêu đề nhóm P4f.
+
+**Review.** Không có lượt review độc lập. Yuri bảo merge 19/10 07:24 UTC ("Merge nhé"). Nhánh rebase lên
+`50e8546` không xung đột. Int Appearance 29 test: quyền ẩn danh, khách, Staff; bốn nguồn; hai lệnh lưu
+cùng lúc chỉ một qua, kể cả khe chưa có dòng; rollback trọn khi ảnh lạ; hàng dọn; bust sau commit; ký
+tải lên. Chromium thật trên bản build với API sống ở 1440, 768 và 390: không cuộn ngang, không phần tử
+nào tràn thẻ (lượt đo đầu bắt khung ảnh tràn ở 768, sửa ở `838d927`), khung xem trước giữ tỉ lệ khi co,
+Restore original lấp khe trống của DB dev, neo cuộn tới đúng thẻ, console sạch. Ảnh Cloudinary lúc đo
+là ảnh giả vì sandbox không ra mạng, nên đường tải lên thật chỉ thử được trên production.
+
+Tests after (`gate:int` trên `838d927`, 19/10, session cloud, API sống ở :3001): unit 7864 (web 2371,
+admin 2269, api 1282, mobile 864, contract 740, mobile-ui 145, i18n 62, ui 57, core 48, tokens 26) và int
+903; Biome 2021 file. So với `50e8546`: web thêm 7 test, admin 45, api 18, contract 13, int 28; Biome thêm
+31 file; các gói khác không đổi.
+
+**CÒN TREO:**
+
+- Thử tay production theo spec §8.3, từng bước, chờ xác nhận: mở `/appearance` thấy 47 khe đều
+  Original; thay Home · Hero bằng một ảnh thư viện, trang chủ đổi ảnh trong vòng một phút; Restore
+  original đưa về ảnh cũ; tải một ảnh lên một khe Team rồi Restore original, hàng dọn có ảnh vừa tải
+  với đồng hồ mới (kiểm bằng câu đọc chỉ). Lần tải lên đầu tạo thư mục `tourism/site/` trên Cloudinary.
+- Dọn nhánh `feat/admin-p4f-appearance` trên origin nếu GitHub không tự xoá.
+
 ## 2026-10-19 — Merge khung chat trợ lý dạng hội thoại, P6 bật trên production (`a8968f4`..`ab84ad4`)
 
 Yuri thử P6 trên production 19/10 và thấy khung chat "không giống kiểu chat hỏi đáp", bảo thiết kế lại theo

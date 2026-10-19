@@ -71,7 +71,7 @@ code. Mỗi spec đi kèm một plan cùng tên ở [`plans/`](../plans/README.m
 **Sửa sạn giao diện admin (trước freeze)**
 [**ô chọn chung, Quick Create, xoá danh mục và điểm đến, sạn nhỏ**](2026-10-05-admin-ui-polish-design.md)
 
-**Admin người dùng và media (P4f: Users xong 13/10; spec Appearance và Media library viết 15–16/10, Yuri duyệt 19/10)**
+**Admin người dùng và media (P4f: Users xong 13/10; Appearance xong 19/10; spec Media library viết 16/10, Yuri duyệt 19/10, đang thi công)**
 [**P4f vùng Users: Owner và Staff**](2026-10-02-p4f-users-staff-design.md) ·
 [P4f Appearance: ảnh các khe của web](2026-10-15-p4f-appearance-design.md) ·
 [P4f Media library: một chỗ xem và sửa mọi ảnh](2026-10-16-p4f-media-library-design.md)
