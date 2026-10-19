@@ -78,9 +78,10 @@ describe('SlotCard', () => {
     expect(screen.queryByRole('button')).not.toBeInTheDocument();
   });
 
-  it('khe trống: ô giữ chỗ nói site đang vẽ gì', () => {
+  it('khe trống: khung ghi "No photo", câu đầy đủ (site vẽ ô giữ chỗ) đứng một lần dưới nhãn', () => {
     renderCard(siteSlotFixture('cta-band', { image: null, version: null }));
-    expect(screen.getAllByText(t.empty).length).toBeGreaterThan(0);
+    expect(screen.getByText(t.emptyFrame)).toBeInTheDocument();
+    expect(screen.getByText(t.empty)).toBeInTheDocument();
   });
 
   it('Restore original: hộp xác nhận mang tên khe, lệnh gửi ảnh gốc ở phiên bản thẻ đang cầm', async () => {

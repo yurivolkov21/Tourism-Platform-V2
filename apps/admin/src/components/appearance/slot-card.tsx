@@ -44,12 +44,14 @@ export function SlotCard({
 
   return (
     <Card size="sm" className="h-full">
-      <CardContent className="grid content-start gap-3">
-        <div className="grid h-40 place-items-center rounded-md bg-muted/50">
+      {/* `grid-cols-1` = `minmax(0, 1fr)`: cột co theo thẻ, nên khung ảnh rộng không đẩy thẻ tràn ở
+          lưới hai cột hẹp (768 với sidebar mở). */}
+      <CardContent className="grid grid-cols-1 content-start gap-3">
+        <div className="grid h-40 grid-cols-1 place-items-center rounded-md bg-muted/50">
           <FramedImage
             src={image?.previewUrl ?? null}
             size={slot.cardFrame}
-            placeholder={t.empty}
+            placeholder={t.emptyFrame}
           />
         </div>
 

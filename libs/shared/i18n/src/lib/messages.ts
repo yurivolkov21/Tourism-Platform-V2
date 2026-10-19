@@ -6171,6 +6171,8 @@ export const messages = {
       },
       size: (width: number, height: number) => `${width} × ${height} px`,
       empty: 'No photo yet. The site shows a placeholder here.',
+      /** Chữ trong khung xem trước của khe trống — câu đầy đủ đã nằm ngay dưới nhãn khe. */
+      emptyFrame: 'No photo',
       /** Đo: `apps/mobile/src/features/auth/auth-media.ts` ghim URL ảnh gốc, không đọc API. */
       mobileApp: 'The mobile app keeps showing the original photo on its sign-in screens.',
       video: 'Video. View only for now.',
