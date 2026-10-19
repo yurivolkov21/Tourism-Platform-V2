@@ -25,14 +25,15 @@ sáng/tối và hiện vùng an toàn. Tài liệu bàn giao đi kèm ở `docs/
 | `mobile-account-screens.src.html` | P5b-4 Saved · tài khoản · bài viết | 14 | 21/09 · đã dựng xong, [bàn giao](../../handoff/mobile-account-handoff.md) |
 | `mobile-review-screens.src.html` | P5b-5 đánh giá | 7 | 21/09 · đã dựng xong, [bàn giao](../../handoff/mobile-review-handoff.md) |
 
-## Nâng cấp UI mobile — vòng 3, chờ duyệt (19/10)
+## Nâng cấp UI mobile — vòng 4 (Android), chờ duyệt (19/10)
 
 Vòng 1 do Nghĩa dựng 14/10 trên nhánh `docs/mobile-ui-upgrade-mockup`; vòng 2 sửa theo phạm vi user chốt 19/10;
-vòng 3 cùng ngày đổi sang ngôn ngữ app native theo Human Interface Guidelines của Apple (iOS 26) và Material 3, vì
-user thấy vòng 2 vẫn giống web responsive: tiêu đề lớn, chữ hệ thống theo Dynamic Type, thẻ và nút phẳng trên nền
-nhóm, segmented control, ô tìm và danh sách nhóm của hệ thống, thanh tab nổi có nhãn. Khung 390×844, nút đổi nền
-sáng/tối, cuối trang có bảng việc code xếp ưu tiên P1/P2 và link nguồn. Chữ giao diện là font hệ thống nên mở trên
-iPhone mới thấy đúng SF Pro; máy khác rơi về Archivo tải từ Google Fonts (cần mạng).
+vòng 3 cùng ngày đổi sang ngôn ngữ app native vì user thấy vòng 2 vẫn giống web responsive; vòng 4 vẽ lại theo
+Material 3 Expressive vì buổi demo chạy Android là chính: thanh điều hướng đáy tràn ngang có viên chỉ báo, thanh trên
+mũi tên lùi và tiêu đề canh trái, chữ Roboto theo thang Material 3, icon Material Symbols, ô nhập outlined, chip lọc
+bo 8, nhóm nút liền, thanh tìm 56, bottom sheet tràn ngang, danh sách thẻ rời như Cài đặt Android 16. Khung 390×844,
+nút đổi nền sáng/tối, cuối trang có bảng việc code xếp ưu tiên P1/P2 và link nguồn. Font tải từ Google Fonts nên
+cần mạng.
 
 | File | Phạm vi | Khung | Chốt |
 | --- | --- | --- | --- |
