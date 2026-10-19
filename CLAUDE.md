@@ -25,7 +25,8 @@ P4f users ✅ 13/10 (Owner và Staff, khoá tài khoản) — Appearance và Med
 (P5a khung ✅ · P5b-1 auth ✅ · P5b-2 xem tour và P5b-4 tài khoản ✅ 09/10 · P5b-3 đặt
 tour ✅ 12/10 · P5b-5 đánh giá ✅ 12/10 — thành viên khác dựng màn; đăng nhập Google native
 ADR-0056 ✅ 13/10) →
-P6 AI concierge → P7 polish UI (ba trang đơn của khách: Phần A My bookings ✅ 06/10; B chi tiết
+P6 AI concierge (code ✅ 19/10, cờ tắt chờ key Anthropic) →
+P7 polish UI (ba trang đơn của khách: Phần A My bookings ✅ 06/10; B chi tiết
 đơn và C voucher ✅ 09/10; Saved và Settings thiết kế lại ✅ 09/10) → freeze 31/10 (dời từ 15/10,
 ADR-0001 AMEND 3). Việc còn nợ gom ở
 [docs/open-items.md](docs/open-items.md).

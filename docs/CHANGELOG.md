@@ -8,6 +8,72 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-10-19 — Merge P6 trợ lý AI tư vấn tour, API và web, cờ tắt mặc định (ADR-0050 AMEND 1, `abcf44a`..`5d30f0c`)
+
+Phase P6, user bảo "Làm ngay" 15/10 sau khi dời freeze sang 31/10. Nhánh `feat/p6-ai-concierge-3xp4sq`,
+[PR #30](https://github.com/yurivolkov21/Tourism-Platform-V2/pull/30), thi công trên session cloud; tạm
+dừng 15/10 vì giới hạn usage, làm tiếp 19/10. MỘT migration, bốn biến env mới (đều tắt hoặc có mặc định),
+không dependency mới (`ai`, `@ai-sdk/anthropic`, `@ai-sdk/react` đã ghim 29/09). Thư viện dùng chung bị
+sửa: `@tourism/contract` (thêm `schemas/chat.ts`) và `@tourism/i18n` (khối `chatBot`, `contactLauncher`).
+
+- `abcf44a`: plan [2026-10-15-p6-ai-concierge](plans/2026-10-15-p6-ai-concierge.md) và
+  [ADR-0050](adr/0050-ai-concierge-chat.md) AMEND 1: tên API của AI SDK 7 (`toolApproval` thay
+  `needsApproval`), cột giữ lượt `turn_started_at`, job dọn vào danh sách chạy bù của G41. Mục lục
+  ADR: 0050 ghi 1 AMEND. Spec sửa trong cùng commit.
+- `55f17a5`, `9c42cd7`: module `chat` của API. Ba endpoint Nest ngoài oRPC (`GET /api/chat`,
+  `GET /api/chat/:id`, `POST /api/chat`); lịch sử ở server, trình duyệt chỉ gửi tin mới hoặc quyết
+  định duyệt. Ba tool gọi thẳng service; `submitEnquiry` chỉ chạy sau khi khách bấm Send và đi qua
+  `EnquiriesService.create` y như form. Stream UI message ghi SSE thẳng `reply.raw`, chép header CORS
+  và helmet; luồng tee để khách đóng tab thì lượt vẫn chạy trọn và token vẫn vào trần ngày. Trần: 20
+  POST mỗi giờ theo IP, 1000 ký tự mỗi tin, 20 tin khách mỗi hội thoại, 5 bước tool và 800 token mỗi
+  lượt, `CHAT_DAILY_BUDGET_USD` mỗi ngày UTC (mặc định 1). Queue pg-boss `chat-retention` (04:30 UTC,
+  có trong danh sách chạy bù) xoá hội thoại không đụng tới quá 30 ngày.
+- `a6cd80e`: `searchTours` dùng sort `rating` và `nextDeparture` của ADR-0058 (main đi thêm PR #28
+  trong lúc nhánh dừng).
+- `232746b`, `f442182`: web. Nút nổi "Plan your trip" ở mọi trang khách, popover hai lối ("Chat with
+  us" chỉ hiện khi API báo `available`, và enquiry), khung chat (khung nổi ở màn rộng, lớp phủ dưới
+  `sm`), thẻ xác nhận enquiry, markdown chỉ cho link nội bộ. Trang tour dưới `lg`: thanh đặt chỗ gắn
+  `data-booking-bar` lên `<body>`, nút nổi, nút lên đầu trang và khung chat đứng trên thanh. Copy bỏ
+  WhatsApp.
+- `2349383`: `render.yaml` và `apps/api/.env.example` khai `CHAT_ENABLED`, `ANTHROPIC_API_KEY`,
+  `CHAT_MODEL`, `CHAT_DAILY_BUDGET_USD` (đều `sync: false`, bỏ trống là mặc định: cờ tắt,
+  `claude-haiku-4-5`, 1 USD). `reset-operational-data.mjs` chỉ sửa ghi chú hai bảng chat.
+- `d00f695`, `5d30f0c`: spec và plan sửa theo bản thi công (tee thay `consumeStream`, tour mặc định
+  đi qua prompt, `turn_started_at` là `TIMESTAMP(3)`, cách web xử lý Retry).
+- `a6ab308`: migration `20261019024540_chat_tokens_enquiry_turn`, chỉ thêm cột nullable và index:
+  `chat_conversations.enquiry_id` (unique, `SET NULL`), `turn_started_at`,
+  `chat_messages.input_tokens`, `output_tokens`, index `created_at`. Sinh bằng `prisma migrate diff`
+  trên DB đã có mọi migration của main, sau G25.
+- open-items: dòng P6 ghi trạng thái mới, còn mở tới khi bật cờ và thử tay production. CLAUDE.md:
+  roadmap ghi P6.
+
+**Deploy Supabase:** Yuri chạy `prisma migrate deploy` bằng tay từ máy dev ngày 19/10, migration xong
+lúc 03:13:40 UTC, trước khi đẩy main. Truy vấn chỉ đọc ngay sau đó: 33 migration đã chạy, bốn cột mới có
+mặt, hai bảng chat vẫn 0 dòng.
+
+**Review.** Không có lượt review độc lập. User bảo merge 19/10 03:04 UTC ("Merge nhé"). Nhánh rebase lên
+`68f65ef` không xung đột. Thử bằng Chromium thật trên session cloud với API chạy model giả ở 375, 768 và
+1440: stream qua CORS, thẻ xác nhận ghi enquiry đúng tour vào DB local, Esc đóng khung và trả tiêu điểm,
+tải lại trang thì hội thoại nạp lại, nút nổi không đè thanh đặt chỗ. Chưa có lượt nào với Anthropic thật
+vì container không có key.
+
+Tests after (`gate:int` trên `a6ab308`, 19/10 xong 02:56 UTC, session cloud theo các bước của CI): unit
+7777 (web 2360, admin 2224, api 1264, mobile 864, contract 727, mobile-ui 145, i18n 62, ui 57, core 48,
+tokens 26) và int 875 trong 54 file; Biome 1990 file; `check-rls.sh` và `check-admin-prerender.mjs`
+qua. So với `68f65ef`: int thêm 25 (23 ca chat, 2 ca job dọn), unit thêm 127 (web 45, api 74, contract
+8). Lượt cloud đầu (với migration tạm, trên `d0a051d`) có `@tourism/contract#test` bị giết vì hết RAM
+dưới tải turbo (đã gặp 15/10); chạy riêng 727/727, lượt sau xanh. CI của PR xanh cả lượt `push` lẫn `pull_request` trên `5d30f0c`.
+
+**CÒN TREO:**
+
+- Yuri tạo API key Anthropic, nạp trước một khoản nhỏ, tắt tự nạp.
+- Yuri đặt `ANTHROPIC_API_KEY` trên Render và trong `apps/api/.env.production`; `CHAT_MODEL` và
+  `CHAT_DAILY_BUDGET_USD` để trống là `claude-haiku-4-5` và 1 USD. Rồi bật `CHAT_ENABLED=true`.
+- Thử tay production sau khi bật: trên một trang tour, mở nút nổi, hỏi tìm tour, hỏi chi tiết tour,
+  gửi enquiry qua thẻ (email ack đi thật qua Resend), Esc, tải lại trang; log Render có dòng
+  `chat turn {…}` mang token mỗi lượt. Xong thì chuyển dòng P6 sang `open-items-closed.md`.
+- Dọn sau merge: nhánh `feat/p6-ai-concierge-3xp4sq` trên origin nếu GitHub không tự xoá.
+
 ## 2026-10-19 — Merge G25 khoá ngoại điểm đến của tour đổi sang `RESTRICT` (ADR-0053 AMEND 2, `c97b8ba`..`b021316`)
 
 Việc tồn đọng của admin, làm 15/10 sau khi user dời freeze sang 31/10. Nhánh

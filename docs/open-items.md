@@ -1,6 +1,6 @@
 # Việc còn treo
 
-> Bản tóm tắt để điều hướng, cập nhật 15/10/2026. **Chỉ giữ việc còn mở**; mục đã
+> Bản tóm tắt để điều hướng, cập nhật 19/10/2026. **Chỉ giữ việc còn mở**; mục đã
 > đóng (gồm các mã G đã gạch) nằm ở [open-items-closed.md](open-items-closed.md),
 > chép nguyên văn. **Không phải nguồn sự thật** — chi tiết của từng mục sống ở
 > [CHANGELOG](CHANGELOG.md) (mục "CÒN TREO" của entry tương ứng) và ở
@@ -22,7 +22,7 @@
 | Mã | Việc | Ghi chú |
 | --- | --- | --- |
 | **P4f** | Quản trị người dùng và media | **Users XONG 13/10** (merge `26746d3`, PR #6; ADR-0052, spec và plan 02/10): hai bậc Owner và Staff, khoá tài khoản; thử tay production theo spec §8.4 còn treo ở CHANGELOG. Phủ ba bất biến hạ quyền / thu hồi phiên của ADR-0026 AMEND 1 §D. **Appearance** và **Media library** có spec nháp ([Appearance](specs/2026-10-15-p4f-appearance-design.md) 15/10, [Media library](specs/2026-10-16-p4f-media-library-design.md) 16/10), chờ duyệt, chưa thi công; G16 đóng 14/10 bằng ADR-0035 AMEND 3 (PR #13) |
-| **P6** | Trợ lý AI tư vấn tour | Có ADR-0050 và spec (29/09), chưa thi công — mở sau khi admin xong. Thư viện `ai`, `@ai-sdk/anthropic`, `@ai-sdk/react` đã ghim 29/09 (`3f646ace`, spec §7 bước 1). Bảng dữ liệu đã có sẵn (`chat_conversations`, `chat_messages`) |
+| **P6** | Trợ lý AI tư vấn tour | **Code lên main 19/10** (PR #30; ADR-0050 AMEND 1, [plan 15/10](plans/2026-10-15-p6-ai-concierge.md)), migration đã chạy Supabase. Cờ `CHAT_ENABLED` tắt nên production chỉ có lối enquiry. Còn treo ở CHANGELOG 19/10: key Anthropic (nạp trước, tắt tự nạp), env trên Render, bật cờ, thử tay production |
 
 ## Trước lượt seed lại 03/11
 
