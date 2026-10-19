@@ -1604,6 +1604,8 @@ export const messages = {
       sending: 'Sending…',
       sent: 'Enquiry sent. We’ll reply by email, usually within 24 hours.',
       cancelled: 'Enquiry not sent.',
+      /** API trả `already_sent`: hội thoại này đã gửi một enquiry (mỗi hội thoại một cái, spec §2c). */
+      alreadySent: 'You’ve already sent an enquiry from this chat. Start over to send a new one.',
     },
   },
   // Nút nổi "Plan your trip" (P6, spec §2h): mở thẳng khung chat với trợ lý. Menu hai lối

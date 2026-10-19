@@ -448,6 +448,32 @@ describe('ChatPanel — thẻ xác nhận enquiry', () => {
     });
   });
 
+  it('hội thoại đã gửi enquiry rồi → thẻ nói đã gửi trước đó, không nói "not sent"', async () => {
+    api.turns.push(
+      sse(approvalTurn),
+      sse([
+        { type: 'start', messageId: 'a1' },
+        { type: 'start-step' },
+        {
+          type: 'tool-output-available',
+          toolCallId: 'c1',
+          output: { sent: false, reason: 'already_sent' },
+        },
+        { type: 'finish-step' },
+        { type: 'finish' },
+      ]),
+    );
+    render(<ContactLauncher />);
+    const user = await openChat();
+    await say(user, 'Please send my enquiry');
+
+    const card = await screen.findByRole('region', { name: t.confirm.title });
+    await user.click(within(card).getByRole('button', { name: t.confirm.send }));
+
+    expect(await within(card).findByText(t.confirm.alreadySent)).toBeInTheDocument();
+    expect(within(card).queryByText(t.confirm.cancelled)).toBeNull();
+  });
+
   it('gõ tin mới khi thẻ còn chờ → thẻ thôi mời bấm, như API tự từ chối', async () => {
     api.turns.push(sse(approvalTurn), sse(textReply('a2', 'No problem, it is not sent.')));
     render(<ContactLauncher />);

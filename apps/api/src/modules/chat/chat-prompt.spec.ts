@@ -76,6 +76,32 @@ describe('buildInstructions', () => {
     it('tháng hay khoảng ngày ghi vào message, travelDate chỉ cho một ngày cụ thể', () => {
       expect(base).toContain('set travelDate only for an exact day');
     });
+
+    it('mỗi hội thoại một enquiry: đã gửi thì không mời gửi lần hai, chỉ lối Start over', () => {
+      expect(base).toContain('One enquiry can be sent per conversation');
+      expect(base).toContain('do not call submitEnquiry again');
+      expect(base).toContain('already_sent');
+      expect(base).toContain('Start over');
+    });
+
+    it('khách bấm Cancel: nói rõ chưa gửi gì, không nói như lỗi', () => {
+      expect(base).toContain('If they cancel the card, say that nothing was sent');
+    });
+  });
+
+  describe('tìm tour (B4, 19/10)', () => {
+    it('search là chuỗi con trong tên và tóm tắt: một từ khoá, nơi chốn đi bằng slug điểm đến', () => {
+      expect(base).toContain(
+        'searchTours matches search as plain text inside tour titles and summaries',
+      );
+      expect(base).toContain('one distinctive word');
+      expect(base).toContain('use a destination slug for places');
+    });
+
+    it('không ra thì thử lại rộng hơn trước khi nói không có tour', () => {
+      expect(base).toContain('If a search finds nothing, search again');
+      expect(base).toContain('before saying a tour does not exist');
+    });
   });
 
   describe('tài khoản (ADR-0050 AMEND 2)', () => {

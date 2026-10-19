@@ -130,6 +130,10 @@ Tool gọi thẳng service, không qua HTTP. Kết quả thu gọn để một l
 - Trả `{ total, tours: [{ slug, title, url, priceFrom, currency, durationDays,
   destinations, ratingAvg, nextDeparture }] }`, `url` dạng `/tours/<slug>`,
   `nextDeparture` là ngày đi của đợt kế tiếp còn đặt được (ADR-0058) hoặc `null`.
+- `search` là chuỗi con không phân biệt hoa thường trong tên và tóm tắt, có phân biệt dấu.
+  Sửa 19/10 (kịch bản B4: "Saigon Vespa" không ra tour "Sài Gòn After Dark by Vespa"):
+  mô tả `search` và khối "Searching" của prompt dặn tìm bằng một từ khoá, nơi chốn đi bằng
+  slug điểm đến, không ra thì tìm lại rộng hơn trước khi nói không có tour.
 
 **`getTourDetails`** — input `{ slug }`:
 - Gọi `CatalogService.getTourBySlug`; không thấy thì `{ found: false }`.
@@ -159,6 +163,10 @@ trên `streamText`; `needsApproval` của `tool()` đã deprecated ở AI SDK 7)
 - Ghi `chat_conversations.enquiry_id`; hội thoại đã có enquiry thì trả
   `{ sent: false, reason: 'already_sent' }` mà không gọi service.
 - Khách bấm Cancel: AI SDK trả kết quả "bị từ chối" cho model, model hỏi lại hoặc thôi.
+- Sửa 19/10 (thẻ thứ hai trong cùng hội thoại sau B2 hiện "Enquiry not sent." và model nói
+  "wasn't able to process"): thẻ nhận `already_sent` hiện câu `confirm.alreadySent` (đã gửi
+  từ cuộc chat này, muốn gửi cái mới thì Start over); prompt dặn mỗi hội thoại một enquiry,
+  đã gửi thì không gọi lại, và khi khách bấm Cancel thì nói rõ chưa gửi gì.
 
 **Hai tool đọc đơn** (thêm 19/10, ADR-0050 AMEND 2) — chỉ đăng ký khi lượt có phiên; lượt
 vãng lai không có chúng. Không tool nào nhận user id: `userId` lấy từ phiên ở server, và hội
@@ -337,7 +345,8 @@ Thêm đủ vào `apps/api/src/config/env.ts`, `render.yaml` (key), `apps/api/.e
   `<Typeset preset="chat">`; không nhận HTML; link bắt đầu bằng `/` thành `Link`, link
   khác chỉ hiện chữ — chặn link lạ do prompt injection.
 - Tool đang chạy: dòng trạng thái từ `chatBot.toolActivity`. `submitEnquiry` chờ duyệt:
-  thẻ hiện tên, email, lời nhắn với hai nút Send và Cancel.
+  thẻ hiện tên, email, lời nhắn với hai nút Send và Cancel. Sau khi bấm, thẻ báo một trong
+  ba câu: đã gửi, không gửi (Cancel), hoặc cuộc chat này đã gửi enquiry trước đó.
 - Truy cập: nút có `aria-label`; khung `role="dialog"` có tiêu đề; Esc đóng và trả tiêu
   điểm về nút; câu trả lời xong mới báo qua vùng `aria-live="polite"` (không đọc từng
   token).

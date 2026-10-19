@@ -71,7 +71,9 @@ const SearchToursInputSchema = z.object({
     .min(1)
     .max(100)
     .optional()
-    .describe('Free text matched against tour titles and summaries.'),
+    .describe(
+      'One distinctive word, matched as plain text inside tour titles and summaries (for example Vespa). Use destination for places.',
+    ),
   sort: z
     .enum(['price-asc', 'price-desc', 'newest', 'top-rated'])
     .optional()

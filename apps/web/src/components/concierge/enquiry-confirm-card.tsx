@@ -97,8 +97,10 @@ function EnquiryStatus({
         </p>
       );
     case 'output-available':
+      // `sent: false` chỉ có một lý do: hội thoại đã gửi enquiry trước đó. Đó không phải
+      // lần gửi hỏng, nên không dùng câu "not sent" của nút Cancel (B2 thử 19/10).
       return (
-        <p className="mt-3 text-muted-foreground">{part.output.sent ? t.sent : t.cancelled}</p>
+        <p className="mt-3 text-muted-foreground">{part.output.sent ? t.sent : t.alreadySent}</p>
       );
     case 'output-denied':
       return <p className="mt-3 text-muted-foreground">{t.cancelled}</p>;
