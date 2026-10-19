@@ -3,6 +3,7 @@
 import { messages } from '@tourism/i18n';
 import { ButtonLink } from '@tourism/ui/components/button-link';
 import { cn } from '@tourism/ui/lib/utils';
+import { useEffect } from 'react';
 import type { DepartureVM } from '@/lib/api/tours';
 import {
   bookHref,
@@ -46,20 +47,28 @@ export function BookingRail({
 }) {
   const t = messages.tourDetail;
 
+  // Bar đáy đang có mặt thì báo cho hai nút nổi (scroll-to-top, "Plan your trip") qua
+  // `<body data-booking-bar>` để chúng đứng lên trên bar (biến thể `in-data-booking-bar`).
+  // Bar ẩn từ `lg` bằng CSS, nên hai nút chỉ đọc cờ này dưới `lg`.
+  useEffect(() => {
+    if (variant !== 'bar') return;
+    document.body.dataset.bookingBar = '';
+    return () => {
+      delete document.body.dataset.bookingBar;
+    };
+  }, [variant]);
+
   // ── Bar đáy mobile ──
   // Một hàng gọn: giá · ngày · dòng sandbox bên trái, nút bên phải. KHÔNG nhồi
   // thanh ghế và CTA phụ vào đây — bar đáy là lối vào hành động, không phải bản
   // thu nhỏ của cả rail.
   //
-  // `pr-20` chừa đúng góc dưới-phải cho nút scroll-to-top: nó là
-  // `fixed right-5 bottom-6 size-11` cùng `z-(--z-sticky)`, tức nằm ĐÈ lên bar
-  // và đã che mất nút Reserve (đo được ở ảnh mobile vòng đầu). Không hạ z-index
-  // của nó: cùng lớp thì thứ tự DOM quyết định, và dù có thắng thì nút tròn vẫn
-  // phủ lên chữ. Chừa chỗ là cách duy nhất không phá component toàn cục —
-  // `scroll-to-top.tsx` cũng đã có tiền lệ lùi vị trí khi góc đó bị chiếm.
+  // Trước P6 bar chừa `pr-20` cho nút scroll-to-top nằm đè góc phải (nó từng che mất nút
+  // Reserve). Nay hai nút nổi đọc `data-booking-bar` ở trên và đứng hẳn lên trên bar, nên
+  // góc phải trống và bar dùng đủ bề ngang.
   if (variant === 'bar') {
     return (
-      <div className="fixed inset-x-0 bottom-0 z-(--z-sticky) border-t bg-background/95 px-4 py-3 pr-20 backdrop-blur lg:hidden">
+      <div className="fixed inset-x-0 bottom-0 z-(--z-sticky) border-t bg-background/95 px-4 py-3 backdrop-blur lg:hidden">
         {departure ? (
           <div className="flex items-center justify-between gap-3">
             <div className="min-w-0">

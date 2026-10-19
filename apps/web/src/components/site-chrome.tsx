@@ -1,4 +1,5 @@
 import { VerifyEmailBanner } from '@/components/auth/verify-email-banner';
+import { ContactLauncher } from '@/components/concierge/contact-launcher';
 import { ScrollToTop } from '@/components/scroll-to-top';
 import { SiteFooter } from '@/components/site-footer';
 import { SiteHeader } from '@/components/site-header';
@@ -19,6 +20,8 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
       <main className="flex-1">{children}</main>
       <SiteFooter />
       <ScrollToTop />
+      {/* Nút "Plan your trip" và khung chat trợ lý (P6). */}
+      <ContactLauncher />
     </>
   );
 }

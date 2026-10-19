@@ -85,3 +85,15 @@ describe('BookingRail — đích của hai CTA', () => {
     expect(screen.queryByText(/still being confirmed/i)).toBeNull();
   });
 });
+
+describe('BookingRail — cờ data-booking-bar cho hai nút nổi (P6)', () => {
+  it('bar có mặt thì <body> mang cờ, gỡ bar thì cờ mất; rail không đụng cờ', () => {
+    const bar = render(<BookingRail {...BASE} departure={DEPARTURE} variant="bar" />);
+    expect(document.body.hasAttribute('data-booking-bar')).toBe(true);
+    bar.unmount();
+    expect(document.body.hasAttribute('data-booking-bar')).toBe(false);
+
+    render(<BookingRail {...BASE} departure={DEPARTURE} variant="rail" />);
+    expect(document.body.hasAttribute('data-booking-bar')).toBe(false);
+  });
+});
