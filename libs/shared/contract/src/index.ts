@@ -9,6 +9,7 @@ export * from './schemas/admin-catalog.js';
 export * from './schemas/admin-categories.js';
 export * from './schemas/admin-departures.js';
 export * from './schemas/admin-destinations.js';
+export * from './schemas/admin-media.js';
 export * from './schemas/admin-posts.js';
 export * from './schemas/admin-tours.js';
 export * from './schemas/admin-users.js';

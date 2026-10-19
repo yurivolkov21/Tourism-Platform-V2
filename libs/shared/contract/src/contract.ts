@@ -38,6 +38,11 @@ import {
   AdminDestinationUpdateInputSchema,
 } from './schemas/admin-destinations.js';
 import {
+  AdminMediaItemSchema,
+  AdminMediaQueueSchema,
+  AdminMediaUpdateInputSchema,
+} from './schemas/admin-media.js';
+import {
   AdminPostCreateInputSchema,
   AdminPostCreateResultSchema,
   AdminPostDeleteInputSchema,
@@ -1725,6 +1730,39 @@ export const contract = {
           },
         })
         .output(AdminSiteSlotSchema),
+    },
+    /**
+     * Media library (P4f, ADR-0060) — một ảnh là một publicId, gom mọi chỗ dùng ở tour, thư viện
+     * điểm đến, bài viết và khe. `update` ghi alt và ghi công vào mọi dòng của ảnh, chạm version
+     * của các chủ có dòng vừa đổi; `queue` chỉ đọc hàng dọn.
+     */
+    media: {
+      list: oc
+        .route({
+          method: 'GET',
+          path: '/api/admin/media',
+          summary: 'Every photo in use, one item per photo with all the places that use it',
+        })
+        .output(z.array(AdminMediaItemSchema)),
+      update: oc
+        .route({
+          method: 'POST',
+          path: '/api/admin/media',
+          summary: 'Set the alt text and credit of one photo on every place that uses it',
+        })
+        .input(AdminMediaUpdateInputSchema)
+        .errors({
+          NOT_FOUND: { status: 404, message: 'This photo is no longer in use' },
+          STALE_MEDIA: { status: 409, message: 'This photo changed since it was opened' },
+        })
+        .output(AdminMediaItemSchema),
+      queue: oc
+        .route({
+          method: 'GET',
+          path: '/api/admin/media/queue',
+          summary: 'The cleanup queue of uploaded photos, read only, with the last sweep',
+        })
+        .output(AdminMediaQueueSchema),
     },
     /**
      * Vùng Users (P4f, ADR-0052) — CHỈ Owner (bảng `ADMIN_ACCESS`). Bốn lệnh ghi khoá hàng
