@@ -1,6 +1,7 @@
 import { messages } from '@tourism/i18n';
 import type { Metadata } from 'next';
 import { ContentHero } from '@/components/content/content-hero';
+import { EnquiryCta } from '@/components/content/enquiry-cta';
 import { OnThisPage } from '@/components/content/on-this-page';
 import { FaqExplorer } from '@/components/faq/faq-explorer';
 import { slugify } from '@/lib/slug';
@@ -57,6 +58,11 @@ export default function FaqPage() {
               searchLabel={t.searchLabel}
               noResults={t.noResults}
             />
+            {/* Khối "Plan your trip" (sổ nợ E1): nằm trong cột nội dung, dưới câu hỏi cuối,
+                không phải băng riêng sát footer — xem JSDoc `EnquiryCta`. */}
+            <div className="mt-16">
+              <EnquiryCta heading={messages.enquiryCta.headings.faq} />
+            </div>
           </div>
 
           {/* Mục lục lên trước bài trên mobile, giống LegalArticle */}
