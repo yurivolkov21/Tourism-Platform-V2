@@ -120,3 +120,16 @@ services:
       # Bỏ trống cho tới khi nối thật; lỗi 500 vẫn chỉ nằm ở stdout của Render.
       - key: SENTRY_DSN
         sync: false
+      # P6 trợ lý AI (ADR-0050 §4): bỏ trống CHAT_ENABLED là TẮT (/api/chat trả 503, nút
+      # nổi của web chỉ còn enquiry). Bật `true` thì ANTHROPIC_API_KEY bắt buộc, thiếu là
+      # API không boot. CHAT_MODEL phải có dòng trong apps/api/src/modules/chat/chat-pricing.ts
+      # (bỏ trống = claude-haiku-4-5). CHAT_DAILY_BUDGET_USD là trần USD mỗi ngày UTC,
+      # 0.1..50, bỏ trống = 1.
+      - key: CHAT_ENABLED
+        sync: false
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: CHAT_MODEL
+        sync: false
+      - key: CHAT_DAILY_BUDGET_USD
+        sync: false
