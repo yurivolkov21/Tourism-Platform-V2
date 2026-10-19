@@ -11,6 +11,7 @@ import { PUBLIC_WRITE_THROTTLE } from './config/throttle.js';
 import { AllExceptionsFilter } from './lib/all-exceptions.filter.js';
 import { captureException } from './lib/observability.js';
 import { describeOrpcError, isUnexpectedOrpcError, orpcErrorStack } from './lib/orpc-error-log.js';
+import { ActivityModule } from './modules/activity/activity.module.js';
 import { BookingsModule } from './modules/bookings/bookings.module.js';
 import { CatalogModule } from './modules/catalog/catalog.module.js';
 import { ChatModule } from './modules/chat/chat.module.js';
@@ -92,6 +93,8 @@ import { WishlistModule } from './modules/wishlist/wishlist.module.js';
     OutboxModule,
     // P4f (ADR-0052): vùng Users của admin — danh sách, cấp/thu Staff, khoá, đăng xuất mọi nơi.
     UsersModule,
+    // Nhật ký thao tác admin (ADR-0061): trang Activity và lượt xuất Excel.
+    ActivityModule,
     // W4 E6: webhook Resend ghi email_suppressions (bounce cứng/complaint).
     EmailWebhooksModule,
     // W4 C1: POST /api/webhooks/csp-report — kênh báo cáo CSP hai app.

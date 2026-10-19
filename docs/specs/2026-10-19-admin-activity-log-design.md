@@ -91,7 +91,7 @@ nhóm, Owner đã thấy ở trang Users).
 
 - `ADMIN_ACTIVITY` (`log` hoặc `skip`) cho mọi khoá của `ADMIN_ACCESS`; danh sách khoá thao tác là
   37 khoá `log` cộng ba khoá xuất. Hàm thuần `activityArea(action)`.
-- `admin.activity.list` (owner): input `page`, `limit` (mặc định 50, tối đa 100), `actorId`, `area`,
+- `admin.activity.list` (owner): input `page`, `limit` (mặc định 20, tối đa 100, như mọi bảng admin), `actorId`, `area`,
   `from`, `to` (`CalendarDateSchema`, khoảng ngược là 400, cùng luật `createdAtRange` với
   `/subscribers`: URL trần là mọi ngày). Output `items`, `total`, `page`, `limit`, và `actors`
   (người làm có trong nhật ký, cho ô lọc). Mỗi item có `target.ref`: khoá đường hiện tại của đối
@@ -114,7 +114,7 @@ nhóm, Owner đã thấy ở trang Users).
   khoản `/users/<id>`, khe ảnh `/appearance#<khoá>`. Review, email, danh mục, ảnh và người nhận tin
   không có trang riêng: chỉ có nhãn.
 - Trống: "No activity yet" khi chưa có dòng nào; "No activity matches these filters" khi có lọc.
-- Phân trang như các bảng khác (50 dòng một trang).
+- Phân trang như các bảng khác.
 
 ## 7. Xuất Excel
 

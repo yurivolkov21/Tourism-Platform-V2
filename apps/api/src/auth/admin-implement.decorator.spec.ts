@@ -1,9 +1,11 @@
 import 'reflect-metadata';
 import { RequestMethod } from '@nestjs/common';
-import { METHOD_METADATA, PATH_METADATA } from '@nestjs/common/constants.js';
+import { INTERCEPTORS_METADATA, METHOD_METADATA, PATH_METADATA } from '@nestjs/common/constants.js';
+import { ImplementInterceptor } from '@orpc/nest';
 import { contract } from '@tourism/contract';
 import { describe, expect, it } from 'vitest';
 import { UserRole } from '../generated/prisma/enums.js';
+import { AdminActivityInterceptor } from '../modules/activity/admin-activity.interceptor.js';
 import { AdminImplement, adminRolesFor } from './admin-implement.decorator.js';
 import { ROLES_KEY } from './roles.decorator.js';
 
@@ -43,6 +45,22 @@ describe('AdminImplement', () => {
     expect(Reflect.getMetadata(PATH_METADATA, Probe.prototype.refund)).toBe(
       '/api/admin/bookings/:code/refund',
     );
+  });
+
+  it('thủ tục `log` → interceptor nhật ký nằm TRONG ImplementInterceptor, mang đúng khoá (ADR-0061 §3)', () => {
+    const interceptors = Reflect.getMetadata(INTERCEPTORS_METADATA, Probe.prototype.refund);
+    expect(interceptors).toHaveLength(2);
+    // Nest chạy interceptor đầu mảng ở NGOÀI cùng: ImplementInterceptor phải đứng trước để
+    // `next.handle()` của nó phát ra procedure ĐÃ nối middleware nhật ký.
+    expect(interceptors[0]).toBe(ImplementInterceptor);
+    expect(interceptors[1]).toBeInstanceOf(AdminActivityInterceptor);
+    expect((interceptors[1] as AdminActivityInterceptor).key).toBe('bookings.refund');
+  });
+
+  it('thủ tục `skip` (chỉ đọc) → không gắn interceptor nhật ký', () => {
+    expect(Reflect.getMetadata(INTERCEPTORS_METADATA, Probe.prototype.list)).toEqual([
+      ImplementInterceptor,
+    ]);
   });
 
   it('thủ tục ngoài contract.admin → ném ngay lúc khai, không lặng lẽ thành Owner-only', () => {

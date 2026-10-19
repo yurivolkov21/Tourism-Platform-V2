@@ -287,3 +287,6 @@ export const AdminActivityRecordExportInputSchema = z.discriminatedUnion('kind',
 export type AdminActivityRecordExportInput = z.output<typeof AdminActivityRecordExportInputSchema>;
 
 export const AdminActivityRecordExportResultSchema = z.object({ id: z.uuid() });
+export type AdminActivityRecordExportResult = z.output<
+  typeof AdminActivityRecordExportResultSchema
+>;

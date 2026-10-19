@@ -268,6 +268,7 @@ model User {
   enquiries             Enquiry[]
   userEvents            UserEvent[]             @relation("UserEventTarget")
   actedUserEvents       UserEvent[]             @relation("UserEventActor")
+  adminActivities       AdminActivity[]         @relation("AdminActivityActor")
 
   @@index([role])
   @@map("users")
@@ -306,6 +307,36 @@ model UserEvent {
   // Dòng thời gian của một tài khoản (trang chi tiết).
   @@index([userId, createdAt])
   @@map("user_events")
+}
+
+/// Nhật ký thao tác admin (ADR-0061) — một dòng cho mỗi lệnh ghi admin THÀNH CÔNG và mỗi lượt
+/// xuất Excel; chỉ thêm, không thủ tục nào sửa hay xoá. Người làm và nhãn đối tượng là bản chụp
+/// lúc ghi, để dòng còn đọc được khi tài khoản đổi tên, đổi bậc, hay đối tượng đã bị xoá.
+model AdminActivity {
+  id          String   @id @default(uuid(7)) @db.Uuid
+  createdAt   DateTime @default(now()) @map("created_at")
+  // SetNull: dòng sống tiếp khi tài khoản người làm biến mất (chỉ có ở TRUNCATE và script reset).
+  actorId     String?  @map("actor_id") @db.Uuid
+  actorLabel  String   @map("actor_label") @db.VarChar(320)
+  actorRole   UserRole @map("actor_role")
+  // Khoá thao tác (`tours.setPublished`, `bookings.export`) và phần trước dấu chấm của nó.
+  action      String   @db.VarChar(64)
+  area        String   @db.VarChar(32)
+  // Đối tượng: cả ba trống ở lượt xuất. `target_id` là chuỗi vì có thể là uuid, mã đơn,
+  // khoá khe ảnh hay publicId.
+  targetType  String?  @map("target_type") @db.VarChar(32)
+  targetId    String?  @map("target_id") @db.VarChar(200)
+  targetLabel String?  @map("target_label") @db.VarChar(200)
+  // Object phẳng vài giá trị ngắn (contract `ActivityDetailsSchema`); null khi không có gì.
+  details     Json?
+
+  actor User? @relation("AdminActivityActor", fields: [actorId], references: [id], onDelete: SetNull)
+
+  // Trang Activity: mới nhất trước; lọc theo người làm; lọc theo khu vực.
+  @@index([createdAt])
+  @@index([actorId, createdAt])
+  @@index([area, createdAt])
+  @@map("admin_activity")
 }
 
 model Account {
