@@ -12,6 +12,7 @@ import { BookingStatus, ChatRole, EmailType } from '../../generated/prisma/enums
 import { sessionCookie } from '../../test/session-cookie.js';
 import { ChatService } from './chat.service.js';
 import { CHAT_CONFIG, CHAT_LANGUAGE_MODEL, type ChatConfig } from './chat-config.js';
+import { ENQUIRY_NOT_SENT_REASON } from './chat-history.js';
 
 /**
  * Integration P6 (Docker PG, db tourism_test). Model là `MockLanguageModelV4` chạy
@@ -762,6 +763,10 @@ describe('chat (int)', () => {
       expect(reply.parts.find((p) => p.type === 'tool-submitEnquiry')).toMatchObject({
         state: 'output-denied',
       });
+      // Model đọc được vì sao chưa gửi, thay cho câu lỗi mặc định "Tool call execution
+      // denied." của SDK (B3 thử 19/10: model nói "unable to process").
+      expect(JSON.stringify(calls.at(-1)?.prompt)).toContain(ENQUIRY_NOT_SENT_REASON);
+      expect(JSON.stringify(calls.at(-1)?.prompt)).not.toContain('Tool call execution denied');
     });
 
     it('gõ tin mới thay vì bấm thẻ → thẻ tự bị từ chối, không enquiry nào', async () => {
@@ -779,6 +784,7 @@ describe('chat (int)', () => {
       expect(old.parts.find((p) => p.type === 'tool-submitEnquiry')).toMatchObject({
         state: 'output-denied',
       });
+      expect(JSON.stringify(calls.at(-1)?.prompt)).toContain(ENQUIRY_NOT_SENT_REASON);
     });
 
     it('lần thứ hai trong cùng hội thoại → already_sent, không thêm enquiry', async () => {

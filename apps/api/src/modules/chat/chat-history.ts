@@ -42,6 +42,15 @@ export type PreparedTurn =
 
 type MessagePart = UIMessage['parts'][number];
 
+/**
+ * Lý do đi kèm mọi approval bị từ chối (Cancel, gõ tin khác, hay phần chờ thứ hai bị tự
+ * từ chối). Thiếu nó thì SDK gửi model câu mặc định "Tool call execution denied." như một
+ * lỗi, và model nói "I'm unable to process this enquiry" sau khi khách bấm Cancel (B3 thử
+ * 19/10). Viết bằng tiếng Anh vì là chữ cho model, không phải copy khách đọc.
+ */
+export const ENQUIRY_NOT_SENT_REASON =
+  'The visitor did not press Send on the confirmation card, so nothing was sent to the team. This was their choice, not an error.';
+
 export function countUserMessages(rows: readonly StoredChatRow[]): number {
   return rows.filter((row) => row.role === 'USER').length;
 }
@@ -63,7 +72,10 @@ function isPendingApproval(part: MessagePart): boolean {
  */
 function respond(part: MessagePart, approved: boolean): MessagePart {
   if (!isToolUIPart(part) || part.state !== 'approval-requested') return part;
-  return { ...part, state: 'approval-responded', approval: { ...part.approval, approved } };
+  const approval = approved
+    ? { ...part.approval, approved }
+    : { ...part.approval, approved, reason: ENQUIRY_NOT_SENT_REASON };
+  return { ...part, state: 'approval-responded', approval };
 }
 
 /**
@@ -76,7 +88,7 @@ function deny(part: MessagePart): MessagePart {
   return {
     ...part,
     state: 'output-denied',
-    approval: { ...part.approval, approved: false },
+    approval: { ...part.approval, approved: false, reason: ENQUIRY_NOT_SENT_REASON },
   } as MessagePart;
 }
 

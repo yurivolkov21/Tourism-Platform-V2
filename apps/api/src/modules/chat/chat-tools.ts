@@ -184,9 +184,13 @@ const SubmitEnquiryInputSchema = CreateEnquiryInputSchema.pick({
   name: true,
   email: true,
   message: true,
-  travelDate: true,
   groupSize: true,
 }).extend({
+  // Prompt đã dặn, nhưng model vẫn biến "in December" thành 2026-12-15 (B3 thử 19/10);
+  // mô tả nằm ngay ở trường là chỗ model đọc khi điền.
+  travelDate: CreateEnquiryInputSchema.shape.travelDate.describe(
+    'Only an exact day the visitor named, as YYYY-MM-DD. Leave empty for a month or rough dates and put those in message instead.',
+  ),
   tourSlug: TourSlugSchema.optional().describe(
     'Slug of the tour the enquiry is about. Leave empty for a general enquiry.',
   ),

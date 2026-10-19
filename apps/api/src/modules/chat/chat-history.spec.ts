@@ -1,5 +1,11 @@
 import type { UIMessage } from 'ai';
-import { countUserMessages, nextSeq, prepareTurn, type StoredChatRow } from './chat-history.js';
+import {
+  countUserMessages,
+  ENQUIRY_NOT_SENT_REASON,
+  nextSeq,
+  prepareTurn,
+  type StoredChatRow,
+} from './chat-history.js';
 
 function userRow(seq: number, text: string): StoredChatRow {
   return {
@@ -44,6 +50,16 @@ describe('nextSeq', () => {
   });
 });
 
+describe('ENQUIRY_NOT_SENT_REASON', () => {
+  // Không có lý do thì SDK gửi model câu "Tool call execution denied." như một lỗi, và model
+  // nói "I'm unable to process this enquiry" sau khi khách bấm Cancel (B3 thử 19/10).
+  it('nói rõ chưa gửi gì và đó là lựa chọn của khách, không phải lỗi', () => {
+    expect(ENQUIRY_NOT_SENT_REASON).toContain('did not press Send');
+    expect(ENQUIRY_NOT_SENT_REASON).toContain('nothing was sent');
+    expect(ENQUIRY_NOT_SENT_REASON).toContain('not an error');
+  });
+});
+
 describe('prepareTurn — tin chữ', () => {
   it('nối tin khách vào cuối lịch sử, seq kế tiếp', () => {
     const rows = [userRow(1, 'hello'), assistantRow(2, [textPart('hi')])];
@@ -73,7 +89,7 @@ describe('prepareTurn — tin chữ', () => {
     expect(denied).toMatchObject({
       type: 'tool-submitEnquiry',
       state: 'output-denied',
-      approval: { id: 'appr-1', approved: false },
+      approval: { id: 'appr-1', approved: false, reason: ENQUIRY_NOT_SENT_REASON },
     });
     // Lịch sử đưa cho model mang bản đã từ chối, không còn phần đang chờ nào.
     expect(turn.messages[1]).toBe(turn.rewritten?.message);
@@ -99,10 +115,11 @@ describe('prepareTurn — quyết định duyệt', () => {
       state: 'approval-responded',
       approval: { id: 'appr-1', approved: true },
     });
+    expect(turn.messages[1]?.parts[1]).not.toHaveProperty('approval.reason');
     expect(rows[1]?.message.parts[1]).toMatchObject({ state: 'approval-requested' });
   });
 
-  it('Cancel: approved=false', () => {
+  it('Cancel: approved=false, kèm lý do để model không đọc thành lỗi (B3 thử 19/10)', () => {
     const turn = prepareTurn(
       rows,
       { type: 'approval', approvalId: 'appr-1', approved: false },
@@ -111,7 +128,7 @@ describe('prepareTurn — quyết định duyệt', () => {
     if (!turn.ok || turn.kind !== 'approval') throw new Error('expected approval turn');
     expect(turn.messages[1]?.parts[1]).toMatchObject({
       state: 'approval-responded',
-      approval: { approved: false },
+      approval: { approved: false, reason: ENQUIRY_NOT_SENT_REASON },
     });
   });
 
@@ -169,7 +186,7 @@ describe('prepareTurn — quyết định duyệt', () => {
     if (!turn.ok || turn.kind !== 'approval') throw new Error('expected approval turn');
     expect(turn.messages[1]?.parts[0]).toMatchObject({
       state: 'approval-responded',
-      approval: { id: 'appr-1', approved: false },
+      approval: { id: 'appr-1', approved: false, reason: ENQUIRY_NOT_SENT_REASON },
     });
     expect(turn.messages[1]?.parts[1]).toMatchObject({
       state: 'approval-responded',

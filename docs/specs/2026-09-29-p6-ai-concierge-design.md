@@ -167,6 +167,15 @@ trên `streamText`; `needsApproval` của `tool()` đã deprecated ở AI SDK 7)
   "wasn't able to process"): thẻ nhận `already_sent` hiện câu `confirm.alreadySent` (đã gửi
   từ cuộc chat này, muốn gửi cái mới thì Start over); prompt dặn mỗi hội thoại một enquiry,
   đã gửi thì không gọi lại, và khi khách bấm Cancel thì nói rõ chưa gửi gì.
+- Sửa lần hai 19/10 (B3 thử lại sau PR #41: bấm Cancel thì model nói "I'm unable to process
+  this enquiry" và gợi ý thử lại với ngày cụ thể): khi approval bị từ chối mà không có lý
+  do, SDK đưa model câu lỗi mặc định "Tool call execution denied.". Nay mọi approval bị từ
+  chối (Cancel, gõ tin khác thay vì bấm thẻ, phần chờ thứ hai bị tự từ chối) mang
+  `approval.reason` = `ENQUIRY_NOT_SENT_REASON` ở `chat-history.ts`: khách không bấm Send,
+  chưa gửi gì, đó là lựa chọn của khách chứ không phải lỗi. Cùng lần đó model điền
+  `travelDate` 2026-12-15 cho "in December" (suy từ ảnh, log không ghi input), nên trường
+  `travelDate` của tool có mô tả riêng: chỉ ngày khách nói rõ, tháng hay ngày áng chừng
+  để trong `message`.
 
 **Hai tool đọc đơn** (thêm 19/10, ADR-0050 AMEND 2) — chỉ đăng ký khi lượt có phiên; lượt
 vãng lai không có chúng. Không tool nào nhận user id: `userId` lấy từ phiên ở server, và hội

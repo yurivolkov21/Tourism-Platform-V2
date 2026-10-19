@@ -8,6 +8,7 @@ import type {
   ToursListQuery,
 } from '@tourism/contract';
 import { vi } from 'vitest';
+import type { z } from 'zod';
 import {
   type ChatToolDeps,
   createChatTools,
@@ -342,6 +343,19 @@ describe('createChatTools', () => {
     });
     expect(d.enquiries.create).not.toHaveBeenCalled();
     expect(d.linkEnquiry).not.toHaveBeenCalled();
+  });
+
+  it('travelDate chỉ cho một ngày khách nói rõ; tháng hay ngày áng chừng để trong message (B3 thử 19/10)', () => {
+    const { tools } = createChatTools(deps());
+    const schema: unknown = tools.submitEnquiry.inputSchema;
+    const { shape } = schema as { shape: Record<string, z.ZodType> };
+    const description = shape.travelDate?.description ?? '';
+    expect(description).toContain('exact day the visitor named');
+    expect(description).toContain('Leave empty for a month or rough dates');
+    // Vẫn là ngày ISO tuỳ chọn như form enquiry.
+    expect(shape.travelDate?.safeParse(undefined).success).toBe(true);
+    expect(shape.travelDate?.safeParse('2026-12-15').success).toBe(true);
+    expect(shape.travelDate?.safeParse('December').success).toBe(false);
   });
 
   describe('tool đọc đơn (ADR-0050 AMEND 2)', () => {
