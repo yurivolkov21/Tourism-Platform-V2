@@ -1,7 +1,8 @@
 import type { UIMessage } from 'ai';
 import {
   countUserMessages,
-  ENQUIRY_NOT_SENT_REASON,
+  ENQUIRY_CANCELLED_REASON,
+  ENQUIRY_SKIPPED_REASON,
   nextSeq,
   prepareTurn,
   type StoredChatRow,
@@ -50,13 +51,24 @@ describe('nextSeq', () => {
   });
 });
 
-describe('ENQUIRY_NOT_SENT_REASON', () => {
+describe('lý do từ chối gửi cho model', () => {
   // Không có lý do thì SDK gửi model câu "Tool call execution denied." như một lỗi, và model
   // nói "I'm unable to process this enquiry" sau khi khách bấm Cancel (B3 thử 19/10).
-  it('nói rõ chưa gửi gì và đó là lựa chọn của khách, không phải lỗi', () => {
-    expect(ENQUIRY_NOT_SENT_REASON).toContain('did not press Send');
-    expect(ENQUIRY_NOT_SENT_REASON).toContain('nothing was sent');
-    expect(ENQUIRY_NOT_SENT_REASON).toContain('not an error');
+  // Câu "did not press Send" thì model hiểu là "chưa bấm" và bảo khách bấm Send (B3 thử
+  // lại sau PR #42), nên lý do phải nói rõ thẻ đã đóng.
+  it('bấm Cancel: nói rõ khách đã bấm Cancel, chưa gửi gì, thẻ đã đóng, không phải lỗi', () => {
+    expect(ENQUIRY_CANCELLED_REASON).toContain('pressed Cancel');
+    expect(ENQUIRY_CANCELLED_REASON).toContain('was not sent');
+    expect(ENQUIRY_CANCELLED_REASON).toContain('the card is closed');
+    expect(ENQUIRY_CANCELLED_REASON).toContain('not an error');
+    expect(ENQUIRY_CANCELLED_REASON).toContain('tell them nothing was sent');
+    expect(ENQUIRY_CANCELLED_REASON).not.toContain('did not press Send');
+  });
+
+  it('bỏ qua thẻ: chưa gửi gì và thẻ đã đóng', () => {
+    expect(ENQUIRY_SKIPPED_REASON).toContain('without pressing Send or Cancel');
+    expect(ENQUIRY_SKIPPED_REASON).toContain('was not sent');
+    expect(ENQUIRY_SKIPPED_REASON).toContain('the card is closed');
   });
 });
 
@@ -89,7 +101,7 @@ describe('prepareTurn — tin chữ', () => {
     expect(denied).toMatchObject({
       type: 'tool-submitEnquiry',
       state: 'output-denied',
-      approval: { id: 'appr-1', approved: false, reason: ENQUIRY_NOT_SENT_REASON },
+      approval: { id: 'appr-1', approved: false, reason: ENQUIRY_SKIPPED_REASON },
     });
     // Lịch sử đưa cho model mang bản đã từ chối, không còn phần đang chờ nào.
     expect(turn.messages[1]).toBe(turn.rewritten?.message);
@@ -128,7 +140,7 @@ describe('prepareTurn — quyết định duyệt', () => {
     if (!turn.ok || turn.kind !== 'approval') throw new Error('expected approval turn');
     expect(turn.messages[1]?.parts[1]).toMatchObject({
       state: 'approval-responded',
-      approval: { approved: false, reason: ENQUIRY_NOT_SENT_REASON },
+      approval: { approved: false, reason: ENQUIRY_CANCELLED_REASON },
     });
   });
 
@@ -186,11 +198,26 @@ describe('prepareTurn — quyết định duyệt', () => {
     if (!turn.ok || turn.kind !== 'approval') throw new Error('expected approval turn');
     expect(turn.messages[1]?.parts[0]).toMatchObject({
       state: 'approval-responded',
-      approval: { id: 'appr-1', approved: false, reason: ENQUIRY_NOT_SENT_REASON },
+      approval: { id: 'appr-1', approved: false, reason: ENQUIRY_SKIPPED_REASON },
     });
     expect(turn.messages[1]?.parts[1]).toMatchObject({
       state: 'approval-responded',
       approval: { id: 'appr-2', approved: true },
+    });
+  });
+
+  it('hai tool cùng chờ, khách bấm Cancel một cái: cái bấm mang lý do Cancel, cái kia lý do bỏ qua', () => {
+    const two = [
+      userRow(1, 'send'),
+      assistantRow(2, [pendingEnquiry('call-1', 'appr-1'), pendingEnquiry('call-2', 'appr-2')]),
+    ];
+    const turn = prepareTurn(two, { type: 'approval', approvalId: 'appr-2', approved: false }, 'x');
+    if (!turn.ok || turn.kind !== 'approval') throw new Error('expected approval turn');
+    expect(turn.messages[1]?.parts[0]).toMatchObject({
+      approval: { id: 'appr-1', approved: false, reason: ENQUIRY_SKIPPED_REASON },
+    });
+    expect(turn.messages[1]?.parts[1]).toMatchObject({
+      approval: { id: 'appr-2', approved: false, reason: ENQUIRY_CANCELLED_REASON },
     });
   });
 

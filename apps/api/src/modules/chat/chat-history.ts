@@ -43,13 +43,18 @@ export type PreparedTurn =
 type MessagePart = UIMessage['parts'][number];
 
 /**
- * Lý do đi kèm mọi approval bị từ chối (Cancel, gõ tin khác, hay phần chờ thứ hai bị tự
- * từ chối). Thiếu nó thì SDK gửi model câu mặc định "Tool call execution denied." như một
- * lỗi, và model nói "I'm unable to process this enquiry" sau khi khách bấm Cancel (B3 thử
- * 19/10). Viết bằng tiếng Anh vì là chữ cho model, không phải copy khách đọc.
+ * Lý do đi kèm approval bị từ chối, để model biết thẻ đã đóng và vì sao. Thiếu lý do thì SDK
+ * gửi model câu mặc định "Tool call execution denied." như một lỗi, và model nói "I'm unable
+ * to process this enquiry" sau khi khách bấm Cancel (B3 thử 19/10). Câu "did not press Send"
+ * cũng hỏng: model hiểu là "chưa bấm" và bảo khách bấm Send (B3 thử lại sau PR #42). Viết
+ * bằng tiếng Anh vì là chữ cho model, không phải copy khách đọc.
  */
-export const ENQUIRY_NOT_SENT_REASON =
-  'The visitor did not press Send on the confirmation card, so nothing was sent to the team. This was their choice, not an error.';
+export const ENQUIRY_CANCELLED_REASON =
+  'The visitor pressed Cancel on the confirmation card. The enquiry was not sent and the card is closed, so there is nothing left to press. This was their choice, not an error: tell them nothing was sent.';
+
+/** Thẻ bị đóng vì khách gõ tin khác, hoặc vì khách trả lời một thẻ khác cùng tin. */
+export const ENQUIRY_SKIPPED_REASON =
+  'The visitor moved on without pressing Send or Cancel. The enquiry was not sent and the card is closed. This is not an error.';
 
 export function countUserMessages(rows: readonly StoredChatRow[]): number {
   return rows.filter((row) => row.role === 'USER').length;
@@ -68,13 +73,13 @@ function isPendingApproval(part: MessagePart): boolean {
 
 /**
  * Trả lời một phần đang chờ. `approval-responded` để `streamText` tự chạy tool (được
- * duyệt) hay báo `execution-denied` cho model (bị từ chối) ở lượt này.
+ * duyệt) hay báo `execution-denied` kèm `reason` cho model (bị từ chối) ở lượt này.
  */
-function respond(part: MessagePart, approved: boolean): MessagePart {
+function respond(part: MessagePart, approved: boolean, reason: string): MessagePart {
   if (!isToolUIPart(part) || part.state !== 'approval-requested') return part;
   const approval = approved
     ? { ...part.approval, approved }
-    : { ...part.approval, approved, reason: ENQUIRY_NOT_SENT_REASON };
+    : { ...part.approval, approved, reason };
   return { ...part, state: 'approval-responded', approval };
 }
 
@@ -88,7 +93,7 @@ function deny(part: MessagePart): MessagePart {
   return {
     ...part,
     state: 'output-denied',
-    approval: { ...part.approval, approved: false, reason: ENQUIRY_NOT_SENT_REASON },
+    approval: { ...part.approval, approved: false, reason: ENQUIRY_SKIPPED_REASON },
   } as MessagePart;
 }
 
@@ -143,7 +148,9 @@ export function prepareTurn(
     ...target.message,
     parts: target.message.parts.map((part) => {
       if (!isPendingApproval(part) || !isToolUIPart(part)) return part;
-      return respond(part, part.approval?.id === input.approvalId ? input.approved : false);
+      return part.approval?.id === input.approvalId
+        ? respond(part, input.approved, ENQUIRY_CANCELLED_REASON)
+        : respond(part, false, ENQUIRY_SKIPPED_REASON);
     }),
   };
   messages[messages.length - 1] = message;
