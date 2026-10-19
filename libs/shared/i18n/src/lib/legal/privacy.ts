@@ -13,6 +13,10 @@ import type { LegalDoc } from './legal-page.js';
  * 19/10: trợ lý chat (P6, ADR-0050) bật trên production, tin khách gõ đi tới Anthropic để model
  * viết câu trả lời; DB lưu hội thoại và xoá sau 30 ngày không hoạt động (ADR-0050 §5). Ba mục
  * collect, use, share và mục chuyển dữ liệu ra nước ngoài phải kể việc này.
+ *
+ * 19/10 (ADR-0050 AMEND 2): khách đã đăng nhập hỏi được đơn của chính mình, nên chi tiết đơn
+ * trợ lý tra cũng đi tới Anthropic (không kèm email, số điện thoại, ghi chú hay thanh toán), và
+ * hội thoại vô chủ được gắn vào tài khoản ở lượt đầu tiên sau khi đăng nhập.
  */
 export const privacyDoc: LegalDoc = {
   title: 'Privacy Statement',
@@ -31,7 +35,7 @@ export const privacyDoc: LegalDoc = {
       bullets: [
         'Information you provide directly: your name, email address, and phone number; enquiry details such as nationality, travel dates, group size, budget range, and travel interests; booking details; reviews you submit; and newsletter sign-ups.',
         'Account information: if you create an account, your name, email address, and password. We store your password only as a one-way hash, never in readable form. If you choose to sign in with Google, Google shares your name, email address, and profile photo with us; we never receive your Google password.',
-        'Trip-planning assistant: if you chat with our AI assistant, the messages you send and its replies. We keep each conversation for 30 days after its last message and then delete it. If you are signed in when the conversation starts, it is linked to your account. Your browser keeps a random ID for the conversation so the chat can reload it when you come back.',
+        'Trip-planning assistant: if you chat with our AI assistant, the messages you send and its replies. We keep each conversation for 30 days after its last message and then delete it. If you are signed in when the conversation starts, or sign in while it is open, it is linked to your account. When you are signed in and ask about your bookings, the assistant looks up your own bookings (trip, dates, number of travellers, status, amounts, and cancellation, refund and review status); it does not see your email address, phone number, special requests or payment details. Your browser keeps a random ID for the conversation so the chat can reload it when you come back, and forgets it when you sign out.',
         'Payment information: card and payment details are collected and processed directly by our payment providers (Stripe and PayPal). We do not store full card numbers on our systems — we only keep a reference to the transaction.',
         'Information collected automatically: device and usage data, IP address, browser type, and pages visited, gathered through cookies and similar technologies.',
       ],
@@ -63,7 +67,7 @@ export const privacyDoc: LegalDoc = {
       ],
       bullets: [
         'Service providers who operate the platform on our behalf, including our hosting providers (Vercel for the website and Render for our servers), our database provider (Supabase), payment providers (Stripe and PayPal), our transactional email provider (Resend), and our media/image provider (Cloudinary);',
-        'Anthropic, our AI provider, which receives the messages you send to the trip-planning assistant, together with the tour details the assistant looks up, in order to write its replies. Please do not share payment details or other sensitive information in the chat;',
+        'Anthropic, our AI provider, which receives the messages you send to the trip-planning assistant, together with the tour details and, if you are signed in, the details of your own bookings that the assistant looks up, in order to write its replies. Please do not share payment details or other sensitive information in the chat;',
         'Google, only if you choose to sign in with your Google account;',
         'Travel suppliers — such as hotels, transport operators, and local guides — strictly to the extent needed to deliver the trip you book;',
         'Professional advisers, and authorities or regulators where we are required to do so by law or to protect our rights.',
