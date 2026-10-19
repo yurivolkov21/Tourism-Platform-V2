@@ -24,7 +24,8 @@
     "media:alt": "node --env-file-if-exists=.env.local scripts/apply-alt-text.mjs",
     "snapshot:export": "node --env-file-if-exists=.env.local scripts/export-snapshot.mjs",
     "data:reset": "node --env-file-if-exists=.env.local scripts/reset-operational-data.mjs",
-    "seed:verify": "node --env-file-if-exists=.env.local scripts/verify-seed.mjs"
+    "seed:verify": "node --env-file-if-exists=.env.local scripts/verify-seed.mjs",
+    "sentry:test": "pnpm build && node --env-file-if-exists=.env.local scripts/sentry-test.mjs"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "4.0.65",
@@ -40,6 +41,7 @@
     "@orpc/zod": "1.14.15",
     "@prisma/adapter-pg": "7.8.0",
     "@prisma/client": "7.8.0",
+    "@sentry/node": "10.76.2",
     "@tourism/contract": "workspace:*",
     "@tourism/i18n": "workspace:*",
     "@tourism/tokens": "workspace:*",

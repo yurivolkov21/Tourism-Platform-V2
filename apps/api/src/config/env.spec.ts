@@ -604,3 +604,19 @@ describe('trợ lý AI (P6, spec §2g)', () => {
     expect(() => parseEnv({ CHAT_DAILY_BUDGET_USD: 'abc' })).toThrow();
   });
 });
+
+describe('SENTRY_DSN (ADR-0010 AMEND 1)', () => {
+  it('không set, hoặc để trống (chuỗi rỗng bị strip) → undefined, Sentry không bật', () => {
+    expect(parseEnv({}).SENTRY_DSN).toBeUndefined();
+    expect(parseEnv({ SENTRY_DSN: '' }).SENTRY_DSN).toBeUndefined();
+  });
+
+  it('nhận DSN dạng URL của Sentry', () => {
+    const dsn = 'https://public@o1.ingest.sentry.io/1';
+    expect(parseEnv({ SENTRY_DSN: dsn }).SENTRY_DSN).toBe(dsn);
+  });
+
+  it('DSN gõ sai chết lúc boot — Sentry tự tắt im lặng nên đây là chỗ duy nhất thấy lỗi', () => {
+    expect(() => parseEnv({ SENTRY_DSN: 'public@o1.ingest.sentry.io/1' })).toThrow(/SENTRY_DSN/);
+  });
+});

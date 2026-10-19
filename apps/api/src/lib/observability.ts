@@ -1,23 +1,75 @@
 import { Logger } from '@nestjs/common';
-import { env } from '../config/env.js';
+import type { Breadcrumb, ErrorEvent } from '@sentry/node';
+import * as Sentry from '@sentry/node';
 
 const logger = new Logger('Observability');
 
+/** Bật sau `initObservability` có DSN; trước đó `captureException` là no-op. */
+let enabled = false;
+
 /**
- * ADR-0010 seam: đẩy một exception 500 lên error-tracker bền.
+ * ADR-0010 §3 và AMEND 1: bật Sentry MỘT lần lúc boot (`main.ts`, `worker.ts`), trước khi
+ * Nest dựng app. Thiếu DSN thì không làm gì và trả `false`: dev, test, CI chạy y như seam cũ.
  *
- * Hiện là SEAM (chưa cài @sentry/node — cần DSN + là dep nặng): thiếu
- * `SENTRY_DSN` → no-op, capture interim là `Logger.error` của exception filter
- * (Render/Railway bắt stdout/stderr, không mất ngay). Khi provision DSN: cài
- * `@sentry/node`, `Sentry.init` một lần lúc boot, rồi thay thân hàm bằng
- * `Sentry.captureException(error)`. Env-gate + call-site giữ nguyên.
+ * Chỉ bắt lỗi: không `tracesSampleRate` nên SDK không thêm integration hiệu năng, và không
+ * móc ESM loader (móc ấy bọc mọi `import()` động về sau, mà không tracing thì không cần).
+ */
+export function initObservability(config: {
+  dsn: string | undefined;
+  environment: string;
+}): boolean {
+  if (!config.dsn) return false;
+  Sentry.init({
+    dsn: config.dsn,
+    environment: config.environment,
+    // Release: SDK tự đọc RENDER_GIT_COMMIT mà Render cấp sẵn.
+    sendDefaultPii: false,
+    registerEsmLoaderHooks: false,
+    beforeSend: scrubEvent,
+    beforeBreadcrumb: dropConsoleBreadcrumb,
+    // Mặc định của Sentry là `warn`: ghi log rồi chạy tiếp, tức gắn Sentry vào là tiến trình
+    // thôi chết khi có promise bị reject không ai bắt (Node 15+ thì chết). `strict` gửi lỗi,
+    // xả hàng đợi rồi exit(1), giữ đúng hành vi cũ.
+    integrations: (defaults) =>
+      defaults.map((integration) =>
+        integration.name === 'OnUnhandledRejection'
+          ? Sentry.onUnhandledRejectionIntegration({ mode: 'strict' })
+          : integration,
+      ),
+  });
+  enabled = true;
+  logger.log(`Sentry bật (environment=${config.environment})`);
+  return true;
+}
+
+/**
+ * Đẩy một lỗi bất ngờ (500) lên Sentry. Hai call-site: exception filter toàn cục và
+ * `onError` của oRPC. Chưa init (thiếu DSN) thì no-op; lỗi vẫn có `Logger.error` của
+ * call-site ra stdout của Render.
  */
 export function captureException(error: unknown): void {
-  if (!env.SENTRY_DSN) return;
-  // TODO(ADR-0010): wire @sentry/node khi có DSN. Tạm cảnh báo để không im lặng.
-  logger.warn(
-    `SENTRY_DSN set nhưng @sentry/node chưa wire — lỗi chỉ vào log: ${
-      error instanceof Error ? error.message : String(error)
-    }`,
-  );
+  if (!enabled) return;
+  Sentry.captureException(error);
+}
+
+/**
+ * `beforeSend`: request chỉ giữ method và đường dẫn. Query string (tra đơn bằng email),
+ * header (cookie phiên, Authorization), body và `user` đều có thể chở dữ liệu khách, mà
+ * xem một lỗi 500 thì không cần chúng.
+ */
+export function scrubEvent(event: ErrorEvent): ErrorEvent {
+  const { user: _user, request, ...rest } = event;
+  if (!request) return rest;
+  return {
+    ...rest,
+    request: {
+      ...(request.method ? { method: request.method } : {}),
+      ...(request.url ? { url: request.url.split('?')[0] } : {}),
+    },
+  };
+}
+
+/** `beforeBreadcrumb`: bỏ dòng console (log có thể chở email, tên khách), giữ loại khác. */
+export function dropConsoleBreadcrumb(breadcrumb: Breadcrumb): Breadcrumb | null {
+  return breadcrumb.category === 'console' ? null : breadcrumb;
 }

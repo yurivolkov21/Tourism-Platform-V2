@@ -1,5 +1,7 @@
 import 'reflect-metadata';
 import { Logger } from '@nestjs/common';
+import { env } from './config/env.js';
+import { initObservability } from './lib/observability.js';
 import { startWorker } from './worker/start-worker.js';
 
 /**
@@ -14,6 +16,9 @@ import { startWorker } from './worker/start-worker.js';
  * shutdown hook của Nest thay vì SIGTERM tự bắt ở đây.
  */
 const logger = new Logger('Worker');
+
+// Sentry (ADR-0010 AMEND 1): cùng cấu hình với API, thiếu SENTRY_DSN thì không làm gì.
+initObservability({ dsn: env.SENTRY_DSN, environment: env.NODE_ENV });
 
 const { stop } = await startWorker(logger);
 

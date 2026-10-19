@@ -5,9 +5,14 @@ import type { NestFastifyApplication } from '@nestjs/platform-fastify';
 import { AppModule } from './app.module.js';
 import { configureHttp, createFastifyAdapter } from './bootstrap.js';
 import { env } from './config/env.js';
+import { initObservability } from './lib/observability.js';
 import { startWorker } from './worker/start-worker.js';
 
 async function bootstrap() {
+  // Sentry (ADR-0010 AMEND 1) bật TRƯỚC khi Nest dựng app: lỗi lúc dựng module cũng lên được.
+  // Thiếu SENTRY_DSN thì không làm gì.
+  initObservability({ dsn: env.SENTRY_DSN, environment: env.NODE_ENV });
+
   // rawBody (W2): Fastify adapter cất nguyên bytes request chưa đụng vào
   // `req.rawBody` (Buffer) cho body JSON — verify signature webhook BẮT BUỘC
   // thấy raw bytes (JSON re-serialize sẽ phá HMAC của Stripe/PayPal).

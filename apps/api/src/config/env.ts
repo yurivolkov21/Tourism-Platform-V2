@@ -123,11 +123,11 @@ const EnvSchema = z
       .regex(/^whsec_[A-Za-z0-9+/=]+$/, 'must look like whsec_<base64>')
       .optional(),
     EMAIL_FROM: z.string().min(1).default('Nexora <noreply@tourism.test>'),
-    // Observability (ADR-0010) — SEAM CHƯA NỐI: chưa cài @sentry/node, nên đặt SENTRY_DSN
-    // chỉ làm captureException ghi thêm một dòng cảnh báo vào log, KHÔNG gửi gì lên Sentry;
-    // không set → no-op (lỗi 500 vẫn qua Logger.error ra stdout của platform). Optional mọi
-    // env; nối thật (cài @sentry/node, Sentry.init lúc boot) là follow-up.
-    SENTRY_DSN: z.string().min(1).optional(),
+    // Observability (ADR-0010 AMEND 1): set thì lỗi 500 lên Sentry (`lib/observability.ts`);
+    // không set thì no-op, lỗi vẫn qua Logger.error ra stdout của platform. Optional mọi env.
+    // Ép dạng URL: DSN gõ sai thì Sentry tự tắt im lặng, nên chặn ở boot là chỗ duy nhất
+    // người deploy thấy lỗi.
+    SENTRY_DSN: z.url().optional(),
     // Newsletter unsubscribe (P3a spec §4.4) — ký/verify token HMAC tự xác
     // thực, KHÔNG dùng chung BETTER_AUTH_SECRET (xem comment ở
     // DEV_UNSUBSCRIBE_SECRET). Optional-với-default ở dev/test, bắt buộc
