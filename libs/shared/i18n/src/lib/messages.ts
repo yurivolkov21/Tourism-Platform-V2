@@ -1569,6 +1569,9 @@ export const messages = {
     },
     /** Vùng aria-live chỉ báo câu này khi câu trả lời đã xong, không đọc từng token. */
     liveAnswerReady: 'The concierge replied.',
+    copy: 'Copy reply',
+    copied: 'Copied',
+    scrollToLatest: 'Scroll to latest message',
     error: 'Something went wrong. Please try again.',
     retry: 'Retry',
     unavailable: 'The concierge is taking a break right now — please send us an enquiry instead.',

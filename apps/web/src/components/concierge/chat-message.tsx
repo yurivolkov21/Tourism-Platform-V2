@@ -2,16 +2,26 @@
 
 import { messages } from '@tourism/i18n';
 import { Bubble, BubbleContent } from '@tourism/ui/components/bubble';
-import { Message, MessageAvatar, MessageContent } from '@tourism/ui/components/message';
+import { Button } from '@tourism/ui/components/button';
+import {
+  Message,
+  MessageAvatar,
+  MessageContent,
+  MessageFooter,
+} from '@tourism/ui/components/message';
 import { cn } from '@tourism/ui/lib/utils';
-import { Loader2Icon, SparklesIcon } from 'lucide-react';
-import type { ReactNode } from 'react';
+import { CheckIcon, CopyIcon, Loader2Icon, SparklesIcon } from 'lucide-react';
+import { type ReactNode, useEffect, useState } from 'react';
 import { ChatMarkdown } from './chat-markdown';
 import { EnquiryConfirmCard } from './enquiry-confirm-card';
 import type { ConciergeMessage } from './use-concierge';
 
 type ToolName = keyof typeof messages.chatBot.toolActivity;
 type ConciergePart = ConciergeMessage['parts'][number];
+
+/** Tin mới trượt nhẹ lên khi xuất hiện; máy bật giảm chuyển động thì hiện thẳng. */
+const ENTER_CLASS =
+  'motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-bottom-1';
 
 /** Ảnh đại diện của trợ lý: cùng một dấu ở đầu khung và cạnh mỗi lượt trả lời. */
 export function ConciergeAvatar({ className }: { className?: string }) {
@@ -31,7 +41,7 @@ export function ConciergeAvatar({ className }: { className?: string }) {
  */
 export function AssistantTurn({ children }: { children: ReactNode }) {
   return (
-    <Message>
+    <Message className={ENTER_CLASS}>
       <ConciergeAvatar />
       <MessageContent className="items-start">{children}</MessageContent>
     </Message>
@@ -103,18 +113,72 @@ export function hasVisibleContent(message: ConciergeMessage): boolean {
   return message.parts.some(isVisiblePart);
 }
 
+/** Chữ của câu trả lời, để sao chép: các đoạn chữ nối bằng dòng trống. */
+function replyText(message: ConciergeMessage): string {
+  return message.parts
+    .flatMap((part) => (part.type === 'text' && part.text.trim() !== '' ? [part.text.trim()] : []))
+    .join('\n\n');
+}
+
+/**
+ * Nút sao chép câu trả lời, dưới lượt trợ lý đã xong. Đổi thành dấu tích hai giây sau khi
+ * chép; vùng `aria-live` báo "Copied" cho trình đọc màn hình. Trình duyệt chặn clipboard
+ * (trang không bảo mật, khách từ chối quyền) thì nút im lặng, không có gì hỏng.
+ */
+function CopyReply({ text }: { text: string }) {
+  const t = messages.chatBot;
+  const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    if (!copied) return;
+    const timer = window.setTimeout(() => setCopied(false), 2000);
+    return () => window.clearTimeout(timer);
+  }, [copied]);
+
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+    } catch {
+      // Không chép được thì thôi — chữ vẫn nằm trên màn hình để khách tự bôi đen.
+    }
+  };
+
+  return (
+    <MessageFooter className="px-0">
+      <Button
+        variant="ghost"
+        size="icon-xs"
+        aria-label={t.copy}
+        onClick={() => void copy()}
+        className="text-muted-foreground"
+      >
+        {copied ? <CheckIcon aria-hidden="true" /> : <CopyIcon aria-hidden="true" />}
+      </Button>
+      <span aria-live="polite" className="sr-only">
+        {copied ? t.copied : ''}
+      </span>
+    </MessageFooter>
+  );
+}
+
 /**
  * Một tin trong khung chat (spec §2h). Tin khách là bong bóng màu chính bên phải; tin trợ
- * lý là bong bóng sáng bên trái kèm ảnh đại diện, dòng trạng thái của tool đang chạy, và
- * thẻ xác nhận enquiry.
+ * lý là bong bóng sáng bên trái kèm ảnh đại diện, dòng trạng thái của tool đang chạy, thẻ
+ * xác nhận enquiry, và nút sao chép khi lượt đã xong. Tour trợ lý tìm được là link tên tour
+ * ngay trong câu trả lời (bỏ dải thẻ có ảnh 19/10: thẻ chiếm chỗ và đẩy hội thoại trôi đi).
+ *
+ * `streaming`: tin này còn đang nhận chữ (tin cuối, lượt chưa xong).
  */
 export function ChatMessage({
   message,
+  streaming,
   disabled,
   onRespond,
   onNavigate,
 }: {
   message: ConciergeMessage;
+  streaming: boolean;
   disabled: boolean;
   onRespond: (approvalId: string, approved: boolean) => void;
   onNavigate: () => void;
@@ -122,7 +186,7 @@ export function ChatMessage({
   if (message.role === 'user') {
     const text = message.parts.flatMap((part) => (part.type === 'text' ? [part.text] : []));
     return (
-      <Message align="end">
+      <Message align="end" className={ENTER_CLASS}>
         <MessageContent>
           <Bubble align="end">
             <BubbleContent className="rounded-2xl rounded-br-sm px-3.5 py-2.5 whitespace-pre-line">
@@ -135,6 +199,7 @@ export function ChatMessage({
   }
 
   if (!hasVisibleContent(message)) return null;
+  const text = replyText(message);
 
   return (
     <AssistantTurn>
@@ -162,6 +227,7 @@ export function ChatMessage({
         const tool = part.type.slice('tool-'.length) as ToolName;
         return <ActivityLine key={key} text={messages.chatBot.toolActivity[tool]} />;
       })}
+      {!streaming && text !== '' ? <CopyReply text={text} /> : null}
     </AssistantTurn>
   );
 }

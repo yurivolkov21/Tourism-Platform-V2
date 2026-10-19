@@ -231,6 +231,75 @@ describe('ChatPanel — chấm "đang gõ"', () => {
   });
 });
 
+describe('ChatPanel — sao chép, màn chào, cuộn', () => {
+  it('lượt xong mới có nút sao chép; bấm thì chép đúng chữ và báo "Copied"', async () => {
+    const stream = openStream();
+    api.turns.push(stream.response);
+    render(<ContactLauncher />);
+    const user = await openChat();
+    await say(user, 'Hi');
+
+    stream.push({ type: 'start', messageId: 'a1' });
+    stream.push({ type: 'start-step' });
+    stream.push({ type: 'text-start', id: 't1' });
+    stream.push({ type: 'text-delta', id: 't1', delta: 'Hello there.' });
+    expect(await screen.findByText('Hello there.')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: t.copy })).toBeNull();
+
+    stream.push({ type: 'text-end', id: 't1' });
+    stream.push({ type: 'finish-step' });
+    stream.push({ type: 'finish' });
+    stream.close();
+    await user.click(await screen.findByRole('button', { name: t.copy }));
+    expect(await navigator.clipboard.readText()).toBe('Hello there.');
+    expect(await screen.findByText(t.copied)).toBeInTheDocument();
+  });
+
+  it('màn chào có gợi ý; gửi tin đầu thì lời chào thành bong bóng, gợi ý mất', async () => {
+    api.turns.push(sse(textReply('a1', 'Sure!')));
+    render(<ContactLauncher />);
+    const user = await openChat();
+    expect(screen.getByText(t.greeting)).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: t.suggestions.talkHuman })).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: t.suggestions.findTour }));
+    expect(await screen.findByText('Sure!')).toBeInTheDocument();
+    expect(screen.getByText(t.greeting)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: t.suggestions.findTour })).toBeNull();
+  });
+
+  it('cuộn lên đọc lại thì chữ mới không kéo xuống; nút "cuộn xuống" đưa về cuối', async () => {
+    const stream = openStream();
+    api.turns.push(stream.response);
+    render(<ContactLauncher />);
+    const user = await openChat();
+    await say(user, 'Tell me about Hue');
+    stream.push({ type: 'start', messageId: 'a1' });
+    stream.push({ type: 'start-step' });
+    stream.push({ type: 'text-start', id: 't1' });
+    stream.push({ type: 'text-delta', id: 't1', delta: 'Hue is ' });
+    expect(await screen.findByText('Hue is')).toBeInTheDocument();
+
+    // jsdom không dựng bố cục: tự đặt số đo để khung "dài 1000px, nhìn thấy 300px".
+    const viewport = document.querySelector<HTMLElement>('[data-lenis-prevent]');
+    if (viewport === null) throw new Error('no scroll area');
+    Object.defineProperty(viewport, 'scrollHeight', { configurable: true, value: 1000 });
+    Object.defineProperty(viewport, 'clientHeight', { configurable: true, value: 300 });
+    viewport.scrollTop = 100;
+    viewport.dispatchEvent(new Event('scroll'));
+
+    const jump = await screen.findByRole('button', { name: t.scrollToLatest });
+    stream.push({ type: 'text-delta', id: 't1', delta: 'the old capital.' });
+    expect(await screen.findByText('Hue is the old capital.')).toBeInTheDocument();
+    expect(viewport.scrollTop).toBe(100);
+
+    await user.click(jump);
+    expect(viewport.scrollTop).toBe(1000);
+    expect(screen.queryByRole('button', { name: t.scrollToLatest })).toBeNull();
+    stream.close();
+  });
+});
+
 describe('ChatPanel — thẻ xác nhận enquiry', () => {
   const draft = { name: 'An Nguyen', email: 'an@example.com', message: 'Two of us in May.' };
   const approvalTurn: Chunk[] = [

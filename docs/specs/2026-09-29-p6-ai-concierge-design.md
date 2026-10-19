@@ -244,6 +244,20 @@ Thêm đủ vào `apps/api/src/config/env.ts`, `render.yaml` (key), `apps/api/.e
   còn cho trình đọc màn hình. Đầu khung: ảnh đại diện, tên, dòng phụ
   `chatBot.subtitle`; disclaimer dời xuống dưới ô nhập. Ô nhập là `InputGroup` bo tròn,
   cao dần theo chữ, nút gửi nằm trong ô.
+- Vòng 2 (19/10, sau khi đối chiếu shadcn chat, AI Elements, prompt-kit, assistant-ui):
+  - Màn chào khi chưa có tin: ảnh đại diện lớn, câu chào, ba gợi ý thành hàng nút có
+    icon ở giữa khung. Có tin đầu tiên thì câu chào lùi thành bong bóng đầu hội thoại.
+  - Khách cuộn lên đọc lại thì chữ đang stream không kéo khung xuống; nút tròn "cuộn
+    xuống" hiện ở đáy vùng tin. Khách gửi tin thì luôn cuộn về cuối.
+  - Nút sao chép dưới lượt trợ lý đã xong (`MessageFooter`); chép xong đổi dấu tích hai
+    giây và báo "Copied" qua `aria-live`.
+  - Tin mới trượt nhẹ lên khi xuất hiện (`motion-safe`, tắt khi máy giảm chuyển động);
+    nút gửi thành vòng xoay khi đang chờ trả lời.
+  - Khung màn rộng nới từ 23rem x 36rem lên 25rem x 40rem.
+  - Tour tìm được vẫn là tên tour gắn link trong chữ trả lời (prompt ở `chat-prompt.ts`
+    dặn "Link tour names with Markdown links"). Đã thử một dải thẻ tour có ảnh dưới
+    câu trả lời rồi bỏ cùng ngày theo ý Yuri: thẻ chiếm nhiều chỗ trong khung hẹp và
+    đẩy hội thoại trôi đi, còn tên kèm link là đủ để khách mở trang tour.
 - `useChat` của `@ai-sdk/react` với transport gửi thẳng API: `prepareSendMessagesRequest`
   biến tin cuối thành `input` của §2b; `credentials: 'include'`;
   `sendAutomaticallyWhen: lastAssistantMessageIsCompleteWithApprovalResponses` để lượt
@@ -269,6 +283,7 @@ Thêm đủ vào `apps/api/src/config/env.ts`, `render.yaml` (key), `apps/api/.e
 - Thêm: báo gửi quá nhanh (429), hết lượt hội thoại (409), thẻ xác nhận enquiry (tiêu
   đề, Send, Cancel, đã gửi, đã huỷ), nhãn đóng khung. Chữ chốt lúc viết plan.
 - Thêm 19/10: `chatBot.subtitle` ("AI travel assistant") cho dòng phụ ở đầu khung.
+- Thêm 19/10 (vòng 2): `chatBot.copy`, `chatBot.copied`, `chatBot.scrollToLatest`.
 
 ## 3. Bản đồ file (dự kiến)
 
