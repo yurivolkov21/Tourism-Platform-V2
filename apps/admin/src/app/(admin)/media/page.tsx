@@ -2,13 +2,14 @@ import type { Metadata } from 'next';
 import { cookies } from 'next/headers';
 import { AdminShell } from '@/components/admin-shell';
 import { MediaLibrary } from '@/components/media/media-library';
+import { fetchAdminDestinations } from '@/lib/api/destinations';
 import { fetchAdminMedia, fetchAdminMediaQueue } from '@/lib/api/media';
 import { getServerSession } from '@/lib/api/session';
 import { updateMediaAction } from './actions';
 
 /**
  * `/media` — Media library (spec P4f Media §6, ADR-0060): mọi ảnh đang dùng và hàng dọn, đọc trọn
- * một lần. Lọc, tìm và đổi tab chạy trên trình duyệt (URL đổi bằng `history.pushState`), nên trang
+ * một lần, cùng danh sách điểm đến cho nút Add photos to the library (Media B). Lọc, tìm và đổi tab chạy trên trình duyệt (URL đổi bằng `history.pushState`), nên trang
  * không đọc `searchParams`; client đọc lại URL. Ba thủ tục là bậc Staff (ADR-0052), cùng bậc sửa
  * tour và bài viết, nên không có cổng `requirePageAccess` của trang chỉ Owner.
  */
@@ -18,17 +19,24 @@ export const metadata: Metadata = {
 
 export default async function MediaPage() {
   const cookie = (await cookies()).toString();
-  const [session, items, queue] = await Promise.all([
+  const [session, items, queue, destinations] = await Promise.all([
     getServerSession(),
     fetchAdminMedia(cookie),
     fetchAdminMediaQueue(cookie),
+    fetchAdminDestinations(cookie),
   ]);
   // Null chỉ xảy ra khi phiên hết hạn ngay giữa hai request — layout xử lý ở lần điều hướng kế.
   if (!session) return null;
 
   return (
     <AdminShell user={session}>
-      <MediaLibrary items={items} queue={queue} update={updateMediaAction} />
+      <MediaLibrary
+        items={items}
+        queue={queue}
+        // Nút Add photos chỉ cần tên, slug và trạng thái — không chở cả hàng xuống client.
+        destinations={destinations.map(({ name, slug, isActive }) => ({ name, slug, isActive }))}
+        update={updateMediaAction}
+      />
     </AdminShell>
   );
 }

@@ -63,7 +63,7 @@ describe('MediaDrawer', () => {
       .getAllByRole('link')
       .map((link) => [link.textContent, link.getAttribute('href')]);
     expect(links).toEqual([
-      ['Hoi An', '/destinations'],
+      ['Hoi An', '/destinations/hoi-an/photos'],
       ['Hoi An by night', '/tours/hoi-an-by-night/photos'],
       ['A night market', '/posts/a-night-market'],
       ['Home · Hero', '/appearance#home-hero'],

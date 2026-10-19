@@ -146,8 +146,14 @@ export function photosPayload(
   };
 }
 
-/** Đưa một ảnh lên đầu — ảnh bìa (ADR-0048 §1). Key lạ trả nguyên giá trị. */
-export function makeCover(values: PhotosFormValues, key: string): PhotosFormValues {
+/**
+ * Đưa một ảnh lên đầu — ảnh bìa (ADR-0048 §1). Key lạ trả nguyên giá trị. Chung cho tab Photos
+ * của tour và trang Photos của điểm đến (ADR-0060 §8).
+ */
+export function makeCover<Photo extends Keyed>(
+  values: { photos: Photo[] },
+  key: string,
+): { photos: Photo[] } {
   const photo = values.photos.find((item) => item.key === key);
   if (!photo) return values;
   return { photos: [photo, ...values.photos.filter((item) => item.key !== key)] };

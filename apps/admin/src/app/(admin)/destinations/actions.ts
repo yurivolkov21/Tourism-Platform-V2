@@ -6,19 +6,33 @@ import {
   type AdminDestinationDeleteInput,
   AdminDestinationDeleteInputSchema,
   type AdminDestinationDeleteResult,
+  type AdminDestinationPhotos,
   type AdminDestinationRow,
   type AdminDestinationSetActiveInput,
   AdminDestinationSetActiveInputSchema,
+  type AdminDestinationSetPhotosInput,
+  AdminDestinationSetPhotosInputSchema,
+  type AdminDestinationSignPhotoUploadsInput,
+  AdminDestinationSignPhotoUploadsInputSchema,
   type AdminDestinationUpdateInput,
   AdminDestinationUpdateInputSchema,
+  type SignedUploadParams,
 } from '@tourism/contract';
 import { cookies } from 'next/headers';
 import {
   createAdminDestination,
   deleteAdminDestination,
   setAdminDestinationActive,
+  setAdminDestinationPhotos,
+  signAdminDestinationPhotoUploads,
   updateAdminDestination,
 } from '@/lib/api/destinations';
+import {
+  classifySetDestinationPhotosError,
+  classifySignDestinationUploadsError,
+  type SetDestinationPhotosResult,
+  type SignDestinationUploadsCode,
+} from '@/lib/destination-photos';
 import {
   type CreateContractCode,
   classifyCreateError,
@@ -30,9 +44,10 @@ import {
   type SetActiveContractCode,
   type UpdateContractCode,
 } from '@/lib/destinations-write';
+import type { SignPhotoUploadsResult } from '@/lib/tour-photos';
 
 /**
- * BỐN hành vi ghi của vùng điểm đến (spec P4e-2 F15, lệnh xoá theo ADR-0053) —
+ * Hành vi ghi của vùng điểm đến (spec P4e-2 F15, lệnh xoá theo ADR-0053) —
  * cùng khuôn đã chốt ở `categories/actions.ts`:
  *
  * - SERVER ACTION vì client oRPC của admin là đường server-only (đọc cookie
@@ -111,4 +126,41 @@ export async function deleteDestinationAction(
     return { ok: false, code: classifyDeleteError(error) };
   }
   return { ok: true, deleted };
+}
+
+/** Thay trọn danh sách ảnh của một điểm đến (ADR-0060 §8) — trang `/destinations/<slug>/photos`. */
+export async function setDestinationPhotosAction(
+  input: AdminDestinationSetPhotosInput,
+): Promise<SetDestinationPhotosResult> {
+  const parsed = AdminDestinationSetPhotosInputSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, code: 'INVALID_INPUT' };
+
+  const cookie = (await cookies()).toString();
+  let detail: AdminDestinationPhotos;
+  try {
+    detail = await setAdminDestinationPhotos(cookie, parsed.data);
+  } catch (error) {
+    return { ok: false, code: classifySetDestinationPhotosError(error) };
+  }
+  return { ok: true, detail };
+}
+
+/**
+ * Ký một lô upload vào thư mục của điểm đến — trả bộ tham số cho TRÌNH DUYỆT POST thẳng lên
+ * Cloudinary, như ảnh tour. Bộ tham số không mang api_secret (ADR-0021 §1).
+ */
+export async function signDestinationPhotoUploadsAction(
+  input: AdminDestinationSignPhotoUploadsInput,
+): Promise<SignPhotoUploadsResult<SignDestinationUploadsCode>> {
+  const parsed = AdminDestinationSignPhotoUploadsInputSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, code: 'INVALID_INPUT' };
+
+  const cookie = (await cookies()).toString();
+  let params: SignedUploadParams[];
+  try {
+    params = await signAdminDestinationPhotoUploads(cookie, parsed.data);
+  } catch (error) {
+    return { ok: false, code: classifySignDestinationUploadsError(error) };
+  }
+  return { ok: true, params };
 }

@@ -1,16 +1,22 @@
-import type {
-  AdminDestinationCreateInput,
-  AdminDestinationDeleteInput,
-  AdminDestinationDeleteResult,
-  AdminDestinationRow,
-  AdminDestinationSetActiveInput,
-  AdminDestinationUpdateInput,
+import { isDefinedError, safe } from '@orpc/client';
+import {
+  type AdminDestinationCreateInput,
+  type AdminDestinationDeleteInput,
+  type AdminDestinationDeleteResult,
+  type AdminDestinationPhotos,
+  AdminDestinationPhotosInputSchema,
+  type AdminDestinationRow,
+  type AdminDestinationSetActiveInput,
+  type AdminDestinationSetPhotosInput,
+  type AdminDestinationSignPhotoUploadsInput,
+  type AdminDestinationUpdateInput,
+  type SignedUploadParams,
 } from '@tourism/contract';
 import { api, withAdminAuth } from './client';
 
 /**
- * Năm đường của vùng điểm đến (spec P4e-2 F15, lệnh xoá theo ADR-0053) — bọc mỏng
- * `admin.destinations.*`.
+ * Các đường của vùng điểm đến (spec P4e-2 F15, lệnh xoá theo ADR-0053, ba đường ảnh theo
+ * ADR-0060 §8) — bọc mỏng `admin.destinations.*`.
  *
  * KHÔNG nuốt lỗi ở bốn lệnh ghi: mã contract phải tới server action nguyên vẹn
  * để nó đổi thành một mã UI. Cùng nếp `api/categories.ts`.
@@ -49,4 +55,39 @@ export async function deleteAdminDestination(
   input: AdminDestinationDeleteInput,
 ): Promise<AdminDestinationDeleteResult> {
   return api.admin.destinations.delete(input, { context: withAdminAuth(cookie) });
+}
+
+/**
+ * Trang Photos của một điểm đến (ADR-0060 §8). `null` khi slug sai hình hay điểm đến không có —
+ * trang gọi `notFound()`, như `fetchAdminTour`. Lỗi khác NÉM: boundary của trang lo.
+ */
+export async function fetchAdminDestinationPhotos(
+  cookie: string,
+  slug: string,
+): Promise<AdminDestinationPhotos | null> {
+  if (!AdminDestinationPhotosInputSchema.safeParse({ slug }).success) return null;
+  const [error, data] = await safe(
+    api.admin.destinations.photos({ slug }, { context: withAdminAuth(cookie) }),
+  );
+  if (error) {
+    if (isDefinedError(error) && error.code === 'NOT_FOUND') return null;
+    throw error;
+  }
+  return data;
+}
+
+/** Thay trọn danh sách ảnh của điểm đến. */
+export async function setAdminDestinationPhotos(
+  cookie: string,
+  input: AdminDestinationSetPhotosInput,
+): Promise<AdminDestinationPhotos> {
+  return api.admin.destinations.setPhotos(input, { context: withAdminAuth(cookie) });
+}
+
+/** Ký một lô upload thẳng lên Cloudinary vào thư mục của điểm đến. */
+export async function signAdminDestinationPhotoUploads(
+  cookie: string,
+  input: AdminDestinationSignPhotoUploadsInput,
+): Promise<SignedUploadParams[]> {
+  return api.admin.destinations.signPhotoUploads(input, { context: withAdminAuth(cookie) });
 }

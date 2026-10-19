@@ -334,3 +334,18 @@ describe('DestinationRowActions — nút Delete (ADR-0053)', () => {
     ).toBeInTheDocument();
   });
 });
+
+describe('DestinationRowActions — Photos (ADR-0060 §8)', () => {
+  it('link tới trang Photos của điểm đến, tên đọc-màn-hình chứa tên điểm đến', () => {
+    renderRow(row());
+    expect(screen.getByRole('link', { name: t.photos.actionLabel('Hội An') })).toHaveAttribute(
+      'href',
+      '/destinations/hoi-an/photos',
+    );
+  });
+
+  it('Staff cũng thấy: ba thủ tục ảnh là bậc Staff', () => {
+    renderRow(row(), {}, 'STAFF');
+    expect(screen.getByRole('link', { name: t.photos.actionLabel('Hội An') })).toBeInTheDocument();
+  });
+});

@@ -38,7 +38,7 @@ describe('toMediaItemVM — ô ảnh và ngăn chi tiết', () => {
       mediaItem({ usages: [USAGES.library, USAGES.tourA, USAGES.post, USAGES.slot] }),
     );
     expect(vm.usages.map((usage) => [usage.kind, usage.name, usage.href, usage.note])).toEqual([
-      ['Library', 'Hoi An', '/destinations', null],
+      ['Library', 'Hoi An', '/destinations/hoi-an/photos', null],
       ['Tour', 'Hoi An by night', '/tours/hoi-an-by-night/photos', 'Cover'],
       ['Post', 'A night market', '/posts/a-night-market', 'Cover'],
       ['Site', 'Home · Hero', '/appearance#home-hero', null],
@@ -217,6 +217,10 @@ describe('toQueueRowVM — chủ, trạng thái, ngày', () => {
         queueRow({ zone: 'SITE', ownerLabel: null, ownerSlug: null, slotKey: 'cta-band' }),
       ),
     ).toMatchObject({ owner: 'Home · Closing banner', ownerHref: '/appearance#cta-band' });
+    // Ảnh tải lên của điểm đến (Media B): link tới trang Photos của nó.
+    expect(
+      toQueueRowVM(queueRow({ zone: 'DESTINATION', ownerLabel: 'Hoi An', ownerSlug: 'hoi-an' })),
+    ).toMatchObject({ owner: 'Hoi An', ownerHref: '/destinations/hoi-an/photos' });
     expect(
       toQueueRowVM(queueRow({ zone: 'REVIEW', ownerLabel: 'BK-5YU9J339', ownerSlug: null })),
     ).toMatchObject({ owner: 'Booking BK-5YU9J339', ownerHref: '/bookings/BK-5YU9J339' });

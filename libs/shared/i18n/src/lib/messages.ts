@@ -6265,6 +6265,13 @@ export const messages = {
       intro:
         'Every photo the site uses, in one place. Fix its alt text or credit here and every page that shows it changes within a minute.',
       tabs: { label: 'Media view', inUse: 'In use', queue: 'Cleanup queue' },
+      /** Media B (ADR-0060 §8): ảnh mới vào thư viện qua trang Photos của một điểm đến. */
+      addPhotos: {
+        action: 'Add photos to the library',
+        menuLabel: 'Choose a destination',
+        hidden: 'Hidden',
+        none: 'No destinations yet.',
+      },
       stats: {
         photos: 'Photos in use',
         photosCaption: 'On tours, destination libraries, posts and site pages',
@@ -7633,6 +7640,82 @@ export const messages = {
         /** Câu `IN_USE` ở hàng đã ẩn (Ruling F-b) — ngoài `errors` như bản của danh mục. */
         inUseRaceHidden: CATALOG_DELETE_COPY.inUseRaceHidden('destination'),
         toast: { title: 'Destination deleted', body: CATALOG_DELETE_COPY.toastBody },
+      },
+      /**
+       * Trang Photos của một điểm đến (spec P4f Media §7, ADR-0060 §8) — khuôn tab Photos của tour,
+       * không có hộp thư viện: thư viện chính là trang này. Chữ chung của việc tải (đang tải, tải
+       * hỏng, Retry, Remove, Make cover, alt) mượn khối `tours.editor.photos`.
+       */
+      photos: {
+        action: 'Photos',
+        actionLabel: (name: string) => `Photos of ${name}`,
+        back: 'Destinations',
+        title: (name: string) => `${name} photos`,
+        hidden: 'Hidden',
+        /**
+         * Đo: web chỉ vẽ ảnh hero của điểm đến (`listDestinations`, thẻ điểm đến); mọi ảnh còn lại
+         * là kho mà hộp Add from library của tour và ảnh bìa bài viết chọn từ đó.
+         */
+        intro:
+          'The first photo is the cover. It shows on this destination’s card across the site. Every photo here is in the photo library, so tours and posts can use it.',
+        count: (n: number, max: number) => `${n} of ${max} photos`,
+        empty: 'No photos yet. Upload some to start this destination’s library.',
+        /** Không có ảnh bìa thì web vẽ ô giữ chỗ (spec §7.1). */
+        emptyNote: 'With no photos, the site shows a plain placeholder instead of a cover.',
+        saveNote:
+          'Saved photos show on the site within a minute. Credits for new uploads are added in the Media library.',
+        coverTitle: 'Cover',
+        coverBody: 'The first photo, cropped the way the destination card shows it.',
+        noCover: 'No cover photo yet',
+        source: {
+          UPLOAD: 'Uploaded',
+          CATALOG: 'Came with the site',
+        },
+        usedBy: (n: number) => (n === 1 ? 'Used by 1 tour' : `Used by ${n} tours`),
+        /** Ảnh vừa gỡ khỏi danh sách, chưa lưu — mỗi ảnh một câu hậu quả (spec §7.3). */
+        removed: {
+          title: 'Leaving the library when you save',
+          putBack: 'Put back',
+          putBackFor: (name: string) => `Put back: ${name}`,
+          usedByTours: (n: number) =>
+            n === 1
+              ? 'Used by 1 tour. It keeps it; it only leaves the library.'
+              : `Used by ${n} tours. They keep it; it only leaves the library.`,
+          catalog: 'Came with the site. Once saved, you can’t add it back here.',
+          upload: 'Deleted from storage 7 days after you save.',
+        },
+        /** Lưu danh sách rỗng cho điểm đến đang hiện — hỏi lại (spec §7.1). */
+        emptyConfirm: {
+          title: 'Save with no photos?',
+          body: (name: string) =>
+            `${name} is visible on the site. Without photos, its card shows a plain placeholder instead of a cover.`,
+          confirm: 'Save without photos',
+          cancel: 'Keep editing',
+        },
+        /** Mã của contract `admin.destinations.setPhotos` — `createWriteErrorCodec` derive từ keys. */
+        errors: {
+          STALE_DESTINATION: 'Someone else changed this destination while you were editing.',
+          /**
+           * Đo: lệnh lưu khác của chính điểm đến đổi version, nên nó ra `STALE_DESTINATION` trước;
+           * mã này chỉ còn cho ảnh tải lên mà server không nhận ra. Không hứa Reload: tải lại cùng
+           * phiên bản không đổi gì — cách chữa có thật là gỡ ảnh vừa tải rồi lưu lại (khuôn F18).
+           */
+          PHOTO_NOT_ALLOWED:
+            'One of these photos can’t be saved to this destination. Remove the photos you uploaded since your last save, then save again.',
+          NOT_FOUND: 'This destination no longer exists.',
+        },
+        stale:
+          'Someone else changed this destination while you were editing. Reload to see the current photos — the changes on this page will be lost.',
+        signErrors: {
+          MEDIA_UPLOAD_NOT_CONFIGURED: 'Uploads are not set up on this server.',
+          NOT_FOUND: 'This destination no longer exists.',
+        },
+        skippedFull: (name: string) =>
+          `${name} didn’t fit — a destination can have up to ${TOUR_PHOTOS_MAX} photos, and uploads still on the list count too.`,
+        toast: {
+          title: 'Photos saved',
+          body: (name: string) => `${name}’s photos are updated.`,
+        },
       },
     },
     /**

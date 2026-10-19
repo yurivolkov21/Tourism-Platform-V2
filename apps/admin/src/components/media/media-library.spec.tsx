@@ -55,6 +55,10 @@ function renderPage() {
       queue={mediaQueue({
         rows: [queueRow(), queueRow({ publicId: 'x/y', state: 'IN_USE', dueAt: null })],
       })}
+      destinations={[
+        { name: 'Hoi An', slug: 'hoi-an', isActive: true },
+        { name: 'Sa Pa', slug: 'sa-pa', isActive: false },
+      ]}
       update={vi.fn<UpdateMediaAction>()}
     />,
   );
@@ -140,6 +144,21 @@ describe('MediaLibrary', () => {
     expect(within(drawer).getByRole('link', { name: /Central coast/ })).toHaveAttribute(
       'href',
       '/tours/central-coast/photos',
+    );
+  });
+
+  it('Add photos to the library: menu chọn điểm đến, mỗi mục là link tới trang Photos của nó', async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await user.click(screen.getByRole('button', { name: t.addPhotos.action }));
+    expect(await screen.findByRole('menuitem', { name: 'Hoi An' })).toHaveAttribute(
+      'href',
+      '/destinations/hoi-an/photos',
+    );
+    // Điểm đến đã ẩn vẫn chọn được, kèm nhãn phụ.
+    expect(screen.getByRole('menuitem', { name: `Sa Pa ${t.addPhotos.hidden}` })).toHaveAttribute(
+      'href',
+      '/destinations/sa-pa/photos',
     );
   });
 });

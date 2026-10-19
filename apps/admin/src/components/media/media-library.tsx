@@ -6,6 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@tourism/ui/components
 import { useSearchParams } from 'next/navigation';
 import { useMemo, useState } from 'react';
 import { StatCardRow } from '@/components/kit/stat-card';
+import { type AddPhotosDestination, AddPhotosMenu } from '@/components/media/add-photos-menu';
 import { MediaDrawer } from '@/components/media/media-drawer';
 import { MediaGrid } from '@/components/media/media-grid';
 import { MediaQueueTab } from '@/components/media/media-queue';
@@ -34,10 +35,13 @@ const navigate = (href: string) => window.history.pushState(null, '', href);
 export function MediaLibrary({
   items,
   queue,
+  destinations,
   update,
 }: {
   items: AdminMediaItem[];
   queue: AdminMediaQueue;
+  /** Điểm đến cho nút Add photos to the library (Media B). */
+  destinations: readonly AddPhotosDestination[];
   update: UpdateMediaAction;
 }) {
   const searchParams = useSearchParams();
@@ -52,7 +56,10 @@ export function MediaLibrary({
 
   return (
     <>
-      <p className="max-w-prose px-4 text-sm text-muted-foreground lg:px-6">{t.intro}</p>
+      <div className="flex flex-wrap items-start justify-between gap-3 px-4 lg:px-6">
+        <p className="max-w-prose text-sm text-muted-foreground">{t.intro}</p>
+        <AddPhotosMenu destinations={destinations} />
+      </div>
       <StatCardRow cards={toMediaStatCards(mediaStats(vms, queue), queue.graceDays)} />
       <Tabs
         value={query.tab}

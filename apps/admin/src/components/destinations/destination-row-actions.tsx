@@ -1,8 +1,9 @@
 'use client';
 
 import { messages } from '@tourism/i18n';
-import { Button } from '@tourism/ui/components/button';
-import { EyeIcon, EyeOffIcon, PencilIcon } from 'lucide-react';
+import { Button, buttonVariants } from '@tourism/ui/components/button';
+import { EyeIcon, EyeOffIcon, ImagesIcon, PencilIcon } from 'lucide-react';
+import Link from 'next/link';
 import type * as React from 'react';
 import { useState } from 'react';
 import { useCanAccess } from '@/components/admin-access-provider';
@@ -37,8 +38,9 @@ import {
 } from '@/lib/destinations-write';
 
 /**
- * Ba hành động của MỘT hàng bảng điểm đến: Sửa · Ẩn/Hiện (spec P4e-2 F15) và Xoá
- * (ADR-0053). KHÔNG có mũi tên: bảng này không có thứ tự nào để sắp.
+ * Các hành động của MỘT hàng bảng điểm đến: Sửa · Ảnh (link tới trang Photos, ADR-0060 §8) ·
+ * Ẩn/Hiện (spec P4e-2 F15) và Xoá (ADR-0053). KHÔNG có mũi tên: bảng này không có thứ tự nào để
+ * sắp.
  *
  * Delete bật khi 0 tour — ADR-0053, thay quyết định "không có nút xoá" của spec P4e-2
  * §2a. Đếm tour MỌI trạng thái (`linkedTourCount`); còn tour thì nút khoá và tooltip
@@ -100,6 +102,17 @@ export function DestinationRowActions({
         <PencilIcon data-icon="inline-start" aria-hidden="true" />
         {t.edit.action}
       </Button>
+
+      {/* Link chứ không phải nút: mở trang riêng, mở tab mới được. Không khoá theo `disabled`
+          — bảng đang làm mới không đổi gì ở trang ảnh. */}
+      <Link
+        href={`/destinations/${row.slug}/photos`}
+        aria-label={t.photos.actionLabel(row.name)}
+        className={buttonVariants({ variant: 'outline', size: 'sm' })}
+      >
+        <ImagesIcon data-icon="inline-start" aria-hidden="true" />
+        {t.photos.action}
+      </Link>
 
       <Button
         type="button"

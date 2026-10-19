@@ -39,6 +39,7 @@ export function EditorFormFrame({
   note,
   blockedNote,
   busy = false,
+  staleCopy = t.banners.stale,
   aside,
   next,
   onSubmit,
@@ -64,6 +65,8 @@ export function EditorFormFrame({
    * (vòng review F18).
    */
   busy?: boolean;
+  /** Câu của dải stale — mặc định nói về tour; trang Photos của điểm đến nói về điểm đến. */
+  staleCopy?: string;
   /** Cột phải của bước — dính khi cuộn từ `xl`. Mọi bước đều có. */
   aside: React.ReactNode;
   /** Link "Next: <bước>" ở chân form, cạnh nút Save. */
@@ -85,7 +88,7 @@ export function EditorFormFrame({
         if (dirty && !pending && blockedNote === undefined) onSubmit();
       }}
     >
-      {shown ? <FormBanner banner={shown} onReload={onReload} /> : null}
+      {shown ? <FormBanner banner={shown} staleCopy={staleCopy} onReload={onReload} /> : null}
       {children}
       <div className="flex flex-wrap items-center justify-end gap-3 border-t pt-4">
         {(blockedNote ?? note) ? (
@@ -163,7 +166,15 @@ export function StepColumns({
 }
 
 /** Dải báo của một lần Save hỏng — giọng cảnh báo cho stale/notReady, đỏ cho lỗi. */
-function FormBanner({ banner, onReload }: { banner: SectionBanner; onReload: () => void }) {
+function FormBanner({
+  banner,
+  staleCopy,
+  onReload,
+}: {
+  banner: SectionBanner;
+  staleCopy: string;
+  onReload: () => void;
+}) {
   const reload = (
     <Button type="button" variant="outline" size="sm" onClick={onReload}>
       {t.banners.reload}
@@ -185,7 +196,7 @@ function FormBanner({ banner, onReload }: { banner: SectionBanner; onReload: () 
       <div className="grid flex-1 gap-2">
         {banner.kind === 'stale' ? (
           <>
-            <p>{t.banners.stale}</p>
+            <p>{staleCopy}</p>
             <div>{reload}</div>
           </>
         ) : null}

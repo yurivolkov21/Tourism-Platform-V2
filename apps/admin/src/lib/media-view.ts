@@ -55,13 +55,13 @@ export interface MediaUsageVM {
   alt: string | null;
 }
 
-/** Link tới trình sửa của từng loại chủ (spec §6.2). Thư viện về `/destinations` tới Media B. */
+/** Link tới trình sửa của từng loại chủ (spec §6.2): thư viện tới trang Photos của điểm đến (Media B). */
 function usageHref(usage: MediaUsage): string | null {
   switch (usage.ownerType) {
     case 'TOUR':
       return usage.slug === null ? null : `/tours/${usage.slug}/photos`;
     case 'DESTINATION':
-      return usage.label === null ? null : '/destinations';
+      return usage.slug === null ? null : `/destinations/${usage.slug}/photos`;
     case 'POST':
       return usage.slug === null ? null : `/posts/${usage.slug}`;
     case 'SITE':
@@ -260,13 +260,11 @@ function queueOwner(row: AdminMediaQueueRow): { owner: string; href: string | nu
         return { owner: t.deletedOwner[row.zone], href: null };
       }
       const href =
-        row.zone === 'DESTINATION'
-          ? '/destinations'
-          : row.ownerSlug === null
-            ? null
-            : row.zone === 'TOUR'
-              ? `/tours/${row.ownerSlug}/photos`
-              : `/posts/${row.ownerSlug}`;
+        row.ownerSlug === null
+          ? null
+          : row.zone === 'POST'
+            ? `/posts/${row.ownerSlug}`
+            : `/${row.zone === 'TOUR' ? 'tours' : 'destinations'}/${row.ownerSlug}/photos`;
       return { owner: row.ownerLabel, href };
     }
   }
