@@ -1,5 +1,7 @@
 import { cancellationDoc, cancellationWindowBullets, privacyDoc, termsDoc } from '@tourism/i18n';
 import { describe, expect, it } from 'vitest';
+import { OFFICES } from '../mocks/offices.js';
+import { EMAIL, PHONE } from './site.js';
 import { slugify } from './slug.js';
 
 // Nội dung pháp lý port từ bản tiền nhiệm nên phải có lưới canh brand: 19/08 user
@@ -8,7 +10,7 @@ import { slugify } from './slug.js';
 // slug trùng thì gãy anchor TOC rất âm thầm.
 const DOCS = [
   ['terms', termsDoc, 'Last updated: 15 September 2026'],
-  ['privacy', privacyDoc, 'Last updated: 13 October 2026'],
+  ['privacy', privacyDoc, 'Last updated: 19 October 2026'],
   ['cancellation', cancellationDoc, 'Last updated: 15 September 2026'],
 ] as const;
 
@@ -40,6 +42,15 @@ describe('nội dung pháp lý', () => {
     expect(text).not.toMatch(/authentication provider \(Supabase\)/i);
     expect(text).toMatch(/one-way hash/);
     expect(text).toMatch(/sign in with Google/);
+  });
+
+  it('privacy kể trợ lý AI: tin chat đi tới Anthropic, hội thoại xoá sau 30 ngày (P6)', () => {
+    // Chat bật trên production 19/10 (ADR-0050): tin khách gõ đi tới Anthropic để model viết câu
+    // trả lời. Danh sách bên nhận dữ liệu mà thiếu Anthropic là văn bản pháp lý nói sai.
+    const share = privacyDoc.sections.find((s) => s.heading === 'How we share your information');
+    expect(JSON.stringify(share)).toMatch(/Anthropic/);
+    const collect = privacyDoc.sections.find((s) => s.heading === 'Information we collect');
+    expect(JSON.stringify(collect)).toMatch(/30 days/);
   });
 
   it('terms nói rõ thanh toán chạy test mode', () => {
@@ -100,5 +111,26 @@ describe('chính sách huỷ một hạn chót (ADR-0041)', () => {
     for (const pattern of [/reschedule/i, /date change/i, /amendment fee/i, /re-arrange/i]) {
       expect(both).not.toMatch(pattern);
     }
+  });
+});
+
+/**
+ * Sổ nợ C1: Terms và Privacy gõ tay email, số điện thoại và địa chỉ bưu chính, trong khi phần còn
+ * lại của site đọc từ `lib/site.ts` và `mocks/offices.ts`. Đổi một nguồn mà quên văn bản pháp lý
+ * thì không build, lint hay test nào khác bắt được.
+ */
+describe('liên hệ trong văn bản pháp lý khớp nguồn chung (sổ nợ C1)', () => {
+  const hcm = OFFICES.find((o) => o.city === 'Hồ Chí Minh City');
+
+  it.each([
+    ['terms', termsDoc],
+    ['privacy', privacyDoc],
+  ] as const)('%s in đúng EMAIL, PHONE và dòng đầu địa chỉ văn phòng Hồ Chí Minh', (_name, doc) => {
+    const contact = doc.sections.find((s) => s.heading === 'Contact us');
+    const text = JSON.stringify(contact);
+    expect(text).toContain(EMAIL);
+    expect(text).toContain(PHONE);
+    expect(hcm?.addressLines[0]).toBeDefined();
+    expect(text).toContain(hcm?.addressLines[0]);
   });
 });

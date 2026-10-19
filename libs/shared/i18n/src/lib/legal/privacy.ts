@@ -9,11 +9,15 @@ import type { LegalDoc } from './legal-page.js';
  *
  * W-01 (13/10): bản 25/07 nói Supabase lo đăng nhập và "we never see or store your password" — sai
  * từ khi xác thực chuyển sang Better Auth, và sai gấp đôi từ 09/09 khi Supabase Auth tắt hẳn.
+ *
+ * 19/10: trợ lý chat (P6, ADR-0050) bật trên production, tin khách gõ đi tới Anthropic để model
+ * viết câu trả lời; DB lưu hội thoại và xoá sau 30 ngày không hoạt động (ADR-0050 §5). Ba mục
+ * collect, use, share và mục chuyển dữ liệu ra nước ngoài phải kể việc này.
  */
 export const privacyDoc: LegalDoc = {
   title: 'Privacy Statement',
   breadcrumb: 'Privacy Statement',
-  updated: 'Last updated: 13 October 2026',
+  updated: 'Last updated: 19 October 2026',
   reviewNote:
     'This document is sample content for a student capstone project, not legal advice. Nexora does not sell real trips here: payments run entirely in Stripe and PayPal test/sandbox mode, and no money changes hands.',
   intro: [
@@ -27,6 +31,7 @@ export const privacyDoc: LegalDoc = {
       bullets: [
         'Information you provide directly: your name, email address, and phone number; enquiry details such as nationality, travel dates, group size, budget range, and travel interests; booking details; reviews you submit; and newsletter sign-ups.',
         'Account information: if you create an account, your name, email address, and password. We store your password only as a one-way hash, never in readable form. If you choose to sign in with Google, Google shares your name, email address, and profile photo with us; we never receive your Google password.',
+        'Trip-planning assistant: if you chat with our AI assistant, the messages you send and its replies. We keep each conversation for 30 days after its last message and then delete it. If you are signed in when the conversation starts, it is linked to your account. Your browser keeps a random ID for the conversation so the chat can reload it when you come back.',
         'Payment information: card and payment details are collected and processed directly by our payment providers (Stripe and PayPal). We do not store full card numbers on our systems — we only keep a reference to the transaction.',
         'Information collected automatically: device and usage data, IP address, browser type, and pages visited, gathered through cookies and similar technologies.',
       ],
@@ -36,6 +41,7 @@ export const privacyDoc: LegalDoc = {
       paragraphs: ['We use your personal information to:'],
       bullets: [
         'Respond to your enquiries and prepare tour proposals;',
+        'Answer your questions through our AI trip-planning assistant;',
         'Confirm, manage, and deliver your bookings, including arranging transport, accommodation, and guides;',
         'Process payments and prevent fraud;',
         'Send service messages such as booking confirmations, cancellation updates, and changes to your trip;',
@@ -57,6 +63,7 @@ export const privacyDoc: LegalDoc = {
       ],
       bullets: [
         'Service providers who operate the platform on our behalf, including our hosting providers (Vercel for the website and Render for our servers), our database provider (Supabase), payment providers (Stripe and PayPal), our transactional email provider (Resend), and our media/image provider (Cloudinary);',
+        'Anthropic, our AI provider, which receives the messages you send to the trip-planning assistant, together with the tour details the assistant looks up, in order to write its replies. Please do not share payment details or other sensitive information in the chat;',
         'Google, only if you choose to sign in with your Google account;',
         'Travel suppliers — such as hotels, transport operators, and local guides — strictly to the extent needed to deliver the trip you book;',
         'Professional advisers, and authorities or regulators where we are required to do so by law or to protect our rights.',
@@ -65,7 +72,7 @@ export const privacyDoc: LegalDoc = {
     {
       heading: 'International data transfers',
       paragraphs: [
-        'Some of our providers process data outside Vietnam, including our database, which is hosted in the Singapore region. Where we transfer personal information internationally, we rely on appropriate safeguards such as standard contractual clauses or an adequacy decision. Contact us for more detail on the safeguards in place.',
+        'Some of our providers process data outside Vietnam, including our database, which is hosted in the Singapore region, and our AI provider, Anthropic, which is based in the United States. Where we transfer personal information internationally, we rely on appropriate safeguards such as standard contractual clauses or an adequacy decision. Contact us for more detail on the safeguards in place.',
       ],
     },
     {
