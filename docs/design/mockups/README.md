@@ -31,7 +31,8 @@ Vòng 1 do Nghĩa dựng 14/10 trên nhánh `docs/mobile-ui-upgrade-mockup`; vò
 vòng 3 cùng ngày đổi sang ngôn ngữ app native vì user thấy vòng 2 vẫn giống web responsive; vòng 4 vẽ lại theo
 Material 3 Expressive vì buổi demo chạy Android là chính: thanh điều hướng đáy tràn ngang có viên chỉ báo, thanh trên
 mũi tên lùi và tiêu đề canh trái, chữ Roboto theo thang Material 3, icon Material Symbols, ô nhập outlined, chip lọc
-bo 8, nhóm nút liền, thanh tìm 56, bottom sheet tràn ngang, danh sách thẻ rời như Cài đặt Android 16. Khung 390×844,
+bo 8, segmented button bo hai đầu cho Trips, thanh tìm 56, bottom sheet tràn ngang, danh sách thẻ rời như Cài đặt
+Android 16. Home giữ bố cục cũ với rail ba vùng dọc (user chốt 19/10). Khung 390×844,
 nút đổi nền sáng/tối, cuối trang có bảng việc code xếp ưu tiên P1/P2 và link nguồn. Font tải từ Google Fonts nên
 cần mạng.
 
