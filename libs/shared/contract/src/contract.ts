@@ -1754,6 +1754,11 @@ export const contract = {
         .errors({
           NOT_FOUND: { status: 404, message: 'This photo is no longer in use' },
           STALE_MEDIA: { status: 409, message: 'This photo changed since it was opened' },
+          // Alt bắt buộc phán trên tập chỗ dùng ĐÃ KHOÁ (ADR-0060 §3), nên không nằm ở schema.
+          ALT_REQUIRED: {
+            status: 400,
+            message: 'Alt text is required for a photo used on a tour or a destination',
+          },
         })
         .output(AdminMediaItemSchema),
       queue: oc

@@ -4,6 +4,7 @@ import { NestFactory } from '@nestjs/core';
 import { PgBoss } from 'pg-boss';
 import { pgBossPoolConfig } from '../config/db-pool.js';
 import { env } from '../config/env.js';
+import { MEDIA_GC_QUEUE } from '../modules/media/media-garbage.js';
 import { MediaGarbageService } from '../modules/media/media-garbage.service.js';
 import { ChatRetentionService } from './chat-retention.service.js';
 import { describeCatchUp, sendDailyCatchUp } from './daily-catch-up.js';
@@ -54,7 +55,6 @@ const ENQUIRY_RETENTION_QUEUE = 'enquiry-retention';
  * định là thừa — một câu UPDATE, lượt kế theo cron tự bù.
  */
 const ENQUIRY_RETENTION_CRON = '30 3 * * *';
-const MEDIA_GC_QUEUE = 'media-gc';
 /**
  * Hằng ngày 04:00 UTC — sau `outbox-purge` một tiếng để hai job nặng không
  * chồng nhau. Nhịp NGÀY chứ không phút: hàng đợi này không có ai chờ ở đầu
@@ -182,9 +182,10 @@ export async function startWorker(logger: Logger): Promise<{ stop: () => Promise
       retryLimit: 0,
       expireInSeconds: 3600,
     });
-    await boss.work(MEDIA_GC_QUEUE, async () => {
-      await mediaGarbage.sweep(new Date(), env.MEDIA_GC_GRACE_DAYS);
-    });
+    // TRẢ `SweepReport` để pg-boss lưu nó làm output của job — tab Cleanup queue của admin
+    // đọc lượt dọn gần nhất từ đó (ADR-0060 §4). Int spec chạy đúng biểu thức này trên
+    // pg-boss thật (`admin-media.int.spec.ts`).
+    await boss.work(MEDIA_GC_QUEUE, () => mediaGarbage.sweep(new Date(), env.MEDIA_GC_GRACE_DAYS));
     await boss.schedule(MEDIA_GC_QUEUE, MEDIA_GC_CRON);
   }
 

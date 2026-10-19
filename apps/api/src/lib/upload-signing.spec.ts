@@ -18,6 +18,7 @@ import {
   tourPhotoFolder,
   UploadsNotConfiguredError,
   uploadFolderFor,
+  uploadZoneOf,
 } from './upload-signing.js';
 
 const CFG = {
@@ -256,5 +257,40 @@ describe('isUploadZonePublicId (G16, ADR-0035 AMEND 3)', () => {
     expect(isUploadZonePublicId('tourism', `tourism/constructor/${USER}/${FILE}`)).toBe(false);
     expect(isUploadZonePublicId('tourism', `tourism/__proto__/${USER}/${FILE}`)).toBe(false);
     expect(isUploadZonePublicId('tourism', `tourism/toString/${USER}/${FILE}`)).toBe(false);
+  });
+});
+
+describe('uploadZoneOf — vùng và chủ của một publicId (ADR-0060 §4)', () => {
+  const USER = '00000000-0000-4000-8000-0000000000aa';
+  const TOUR = '7a1b2c3d-0000-4000-8000-000000000001';
+  const FILE = '5f0c2b1e-9d3a-4c7b-8e21-6a4f0d9b7c13';
+
+  it('trả thư mục và chủ của ảnh trong vùng tải lên', () => {
+    expect(uploadZoneOf('tourism', `${tourPhotoFolder('tourism', TOUR)}/${FILE}`)).toEqual({
+      folder: 'tours',
+      owner: TOUR,
+    });
+    expect(uploadZoneOf('tourism', `tourism/reviews/BK-5YU9J339/${FILE}`)).toEqual({
+      folder: 'reviews',
+      owner: 'BK-5YU9J339',
+    });
+    expect(uploadZoneOf('tourism', `tourism/avatars/${USER}/${FILE}`)).toEqual({
+      folder: 'avatars',
+      owner: USER,
+    });
+  });
+
+  it('ngoài vùng thì null — cùng phán quyết với isUploadZonePublicId', () => {
+    const outside = [
+      'tourism/catalog/tour/ha-long-hero',
+      'tourism/tours/hero/abc',
+      `tourism/constructor/${USER}/${FILE}`,
+      `tourism/tours/${TOUR}/..`,
+      `other/avatars/${USER}/${FILE}`,
+    ];
+    for (const publicId of outside) {
+      expect(uploadZoneOf('tourism', publicId)).toBeNull();
+      expect(isUploadZonePublicId('tourism', publicId)).toBe(false);
+    }
   });
 });

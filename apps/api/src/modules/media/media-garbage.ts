@@ -25,6 +25,12 @@ const DAY_MS = 86_400_000;
 export const GC_MAX_ATTEMPTS = 5;
 
 /**
+ * Tên queue pg-boss của bộ dọn. Sống ở đây chứ không ở `start-worker.ts` vì API cũng đọc nó:
+ * tab Cleanup queue tìm lượt dọn gần nhất trong `pgboss.job` theo tên này (ADR-0060 §4).
+ */
+export const MEDIA_GC_QUEUE = 'media-gc';
+
+/**
  * Mốc "cũ hơn mốc này thì tới hạn". Tính bằng phép trừ epoch chứ không đụng
  * lịch — không có ca riêng nào cho giao tháng, giao năm hay năm nhuận.
  *
@@ -40,6 +46,14 @@ export const GC_MAX_ATTEMPTS = 5;
  */
 export function dueBefore(now: Date, graceDays: number): Date {
   return new Date(now.getTime() - Math.max(0, graceDays) * DAY_MS);
+}
+
+/**
+ * Chiều ngược của `dueBefore`: dòng xếp lúc `queuedAt` thành quá hạn từ mốc này (hàng dọn của
+ * admin, ADR-0060 §4). Cùng phép kẹp số âm, nên hai hàm không thể lệch nhau một ngày.
+ */
+export function dueAt(queuedAt: Date, graceDays: number): Date {
+  return new Date(queuedAt.getTime() + Math.max(0, graceDays) * DAY_MS);
 }
 
 /**

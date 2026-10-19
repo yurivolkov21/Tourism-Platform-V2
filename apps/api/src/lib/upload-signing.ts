@@ -155,12 +155,25 @@ const UPLOAD_ZONE_OWNERS = new Map<string, (owner: string) => boolean>([
  * chủ sở hữu.
  */
 export function isUploadZonePublicId(rootFolder: string, publicId: string): boolean {
-  if (!publicId.startsWith(`${rootFolder}/`)) return false;
+  return uploadZoneOf(rootFolder, publicId) !== null;
+}
+
+/**
+ * Thư mục và chủ sở hữu của một publicId trong vùng tải lên; ngoài vùng thì `null`. Cùng một
+ * phép soi với `isUploadZonePublicId` — hàng dọn của admin (ADR-0060 §4) đọc chủ từ đây, nên
+ * "trong vùng" ở admin và ở bộ dọn không thể lệch nhau.
+ */
+export function uploadZoneOf(
+  rootFolder: string,
+  publicId: string,
+): { folder: string; owner: string } | null {
+  if (!publicId.startsWith(`${rootFolder}/`)) return null;
   const segments = publicId.slice(rootFolder.length + 1).split('/');
-  if (segments.length !== 3) return false;
-  const [zone = '', owner = '', basename = ''] = segments;
-  const ownerMatches = UPLOAD_ZONE_OWNERS.get(zone)?.(owner) ?? false;
-  return ownerMatches && basename !== '' && basename !== '.' && basename !== '..';
+  if (segments.length !== 3) return null;
+  const [folder = '', owner = '', basename = ''] = segments;
+  const ownerMatches = UPLOAD_ZONE_OWNERS.get(folder)?.(owner) ?? false;
+  const fileMatches = basename !== '' && basename !== '.' && basename !== '..';
+  return ownerMatches && fileMatches ? { folder, owner } : null;
 }
 
 /**
