@@ -73,7 +73,8 @@ CHANGELOG của nó trước.
 [F19 khu sửa tour dạng thanh bước (P4e-3c)](2026-09-28-p4e-3c-tour-workspace-steps.md) ·
 [P4e-4 quản trị bài viết](2026-10-02-p4e-4-posts-admin.md) ·
 [sửa sạn giao diện admin](2026-10-05-admin-ui-polish.md) ·
-[P4f vùng Users: Owner và Staff](2026-10-02-p4f-users-staff.md)
+[P4f vùng Users: Owner và Staff](2026-10-02-p4f-users-staff.md) ·
+[P4f Appearance: ảnh các khe của web](2026-10-19-p4f-appearance.md)
 
 **P7, bản in và hoá đơn chờ**
 [P7 ba trang đơn của khách (A, B, C)](2026-10-05-booking-pages-redesign.md) ·

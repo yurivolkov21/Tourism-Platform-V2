@@ -1,6 +1,7 @@
 # Spec P4f — Media library: một chỗ xem và sửa mọi ảnh
 
-- **Ngày:** 2026-10-16 · **Trạng thái:** bản nháp, chờ Yuri duyệt. Chưa có dòng code nào.
+- **Ngày:** 2026-10-16 · **Trạng thái:** Yuri duyệt 19/10; thi công sau Appearance. Chưa có dòng
+  code nào.
 - **Quyết định kiến trúc:** ADR-0060 (số đã giữ), viết từ §3, §4 và §7 của spec này ngay khi
   spec được duyệt, trước code (luật 5). ADR-0035 thêm AMEND 4 ngắn trỏ sang ADR-0060.
 - **Nền:** [ADR-0005](../adr/0005-media-read-build-url.md) (đọc media) ·
