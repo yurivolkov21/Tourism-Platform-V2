@@ -1,6 +1,11 @@
 import { oc } from '@orpc/contract';
 import { z } from 'zod';
 import {
+  AdminAppearanceSetSlotInputSchema,
+  AdminAppearanceSignUploadInputSchema,
+  AdminSiteSlotSchema,
+} from './schemas/admin-appearance.js';
+import {
   AdminTourRowSchema,
   AdminTourSetPublishedInputSchema,
   AdminTourSetPublishedResultSchema,
@@ -1680,6 +1685,46 @@ export const contract = {
           summary: 'Every post tag with how many posts use it, drafts included',
         })
         .output(z.array(AdminPostTagSchema)),
+    },
+    /**
+     * Appearance (P4f, ADR-0059) — ảnh của 47 khe trên web. Mọi khoá khe đi qua `z.enum` của
+     * danh mục; khe video chỉ đọc. Lưu thì bust tag `site-media` của web sau commit.
+     */
+    appearance: {
+      list: oc
+        .route({
+          method: 'GET',
+          path: '/api/admin/appearance',
+          summary: 'Every site photo slot in catalogue order, with its current and original photo',
+        })
+        .output(z.array(AdminSiteSlotSchema)),
+      signUpload: oc
+        .route({
+          method: 'POST',
+          path: '/api/admin/appearance/{key}/upload',
+          summary: 'Sign one direct-to-Cloudinary upload into the folder of a site photo slot',
+        })
+        .input(AdminAppearanceSignUploadInputSchema)
+        .errors({
+          // 503 chứ không 500: thiếu cặp khoá là trạng thái cấu hình hợp lệ (ADR-0021 §6).
+          MEDIA_UPLOAD_NOT_CONFIGURED: { status: 503, message: 'Uploads are not configured' },
+        })
+        .output(SignedUploadParamsSchema),
+      setSlot: oc
+        .route({
+          method: 'POST',
+          path: '/api/admin/appearance/{key}',
+          summary: 'Set the photo of a site slot: keep, upload, original or destination library',
+        })
+        .input(AdminAppearanceSetSlotInputSchema)
+        .errors({
+          STALE_SLOT: { status: 409, message: 'This slot changed since it was opened' },
+          PHOTO_NOT_ALLOWED: {
+            status: 400,
+            message: 'The photo is not from this slot, its uploads, its original or the library',
+          },
+        })
+        .output(AdminSiteSlotSchema),
     },
     /**
      * Vùng Users (P4f, ADR-0052) — CHỈ Owner (bảng `ADMIN_ACCESS`). Bốn lệnh ghi khoá hàng

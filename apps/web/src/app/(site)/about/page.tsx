@@ -9,7 +9,7 @@ import { AboutTeam } from '@/components/about/about-team';
 import { AboutTimeline } from '@/components/about/about-timeline';
 import { AboutValues } from '@/components/about/about-values';
 import { settle } from '@/lib/api/resilience';
-import { siteMediaImage } from '@/lib/api/site-media';
+import { siteMediaImage, siteMediaImages } from '@/lib/api/site-media';
 import { fetchDestinations, fetchTours } from '@/lib/api/tours';
 
 // Trang About Us (static-first) — dựng TỪNG SECTION theo review của user
@@ -47,41 +47,31 @@ export default async function AboutPage() {
 
   // 4 khe bento Gallery — khuôn giống `whyImages` ở trang chủ: gom thành bản
   // tra cứu khoá→ảnh rồi truyền một prop, thay vì bốn prop rời.
-  const galleryImages = Object.fromEntries(
-    await Promise.all(
-      [
-        'about-gallery-north',
-        'about-gallery-central',
-        'about-gallery-south',
-        'about-gallery-all',
-      ].map(async (key) => [key, await siteMediaImage(key)] as const),
-    ),
-  );
+  const galleryImages = await siteMediaImages([
+    'about-gallery-north',
+    'about-gallery-central',
+    'about-gallery-south',
+    'about-gallery-all',
+  ]);
 
   // 4 mốc Timeline — cùng khuôn.
-  const timelineImages = Object.fromEntries(
-    await Promise.all(
-      [
-        'about-timeline-2014',
-        'about-timeline-2017',
-        'about-timeline-2021',
-        'about-timeline-2026',
-      ].map(async (key) => [key, await siteMediaImage(key)] as const),
-    ),
-  );
+  const timelineImages = await siteMediaImages([
+    'about-timeline-2014',
+    'about-timeline-2017',
+    'about-timeline-2021',
+    'about-timeline-2026',
+  ]);
 
   // Khe VIDEO nền dải CTA cuối trang.
   const ctaVideo = await siteMediaImage('about-cta-video');
 
   // 3 avatar đội ngũ (từ 24/09 — xem `mocks/team.ts`). Khoá theo CHỨC DANH,
   // không theo tên người.
-  const teamImages = Object.fromEntries(
-    await Promise.all(
-      ['about-team-ceo', 'about-team-routes', 'about-team-guides'].map(
-        async (key) => [key, await siteMediaImage(key)] as const,
-      ),
-    ),
-  );
+  const teamImages = await siteMediaImages([
+    'about-team-ceo',
+    'about-team-routes',
+    'about-team-guides',
+  ]);
 
   return (
     <>

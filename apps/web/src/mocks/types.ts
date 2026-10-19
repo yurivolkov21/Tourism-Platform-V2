@@ -2,7 +2,7 @@
 // theo Prisma schema: chỗ nào vượt ra ngoài schema chính là danh sách trường
 // cần thêm khi chốt trang và gắn API (xem memory static-first-page-building).
 
-import type { Region, RegionKey } from '@tourism/contract';
+import type { Region, RegionKey, SiteSlotKey } from '@tourism/contract';
 
 /** Ba vùng là từ vựng của contract (ADR-0045) — tên cũ giữ lại làm bí danh để
     các component vùng khỏi phải đổi import. */
@@ -132,21 +132,21 @@ export interface MockTeamMember {
   line: string;
   /** Khoá khe ảnh. Đặt theo CHỨC DANH chứ không theo tên, để đổi người không
       phải đổi khe (và không phải upload lại ảnh vào khoá mới). */
-  slot: string;
+  slot: SiteSlotKey;
 }
 
 export interface MockMoment {
   /** Khoảnh khắc trải nghiệm của khách trên hành trình (slider ở Stats) */
   title: string;
   /**
-   * Khoá khe site nuôi ảnh của ô này (`moment-*`, khai trong `SITE_SLOT_KEYS`
-   * của seed).
+   * Khoá khe site nuôi ảnh của ô này (`moment-*`, khai trong danh mục khe của
+   * contract, ADR-0059).
    *
    * Ghi TƯỜNG MINH chứ không suy từ vị trí trong mảng — cùng lý lẽ đã áp cho
    * `tourSlug` ngay dưới: suy theo index thì sắp xếp lại `MOMENTS` là ảnh gắn
    * nhầm khoảnh khắc, và không có gì báo lỗi cả.
    */
-  slot: string;
+  slot: SiteSlotKey;
   /** "Tên khách, tên tour" */
   credit: string;
   /**

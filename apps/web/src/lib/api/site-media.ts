@@ -1,4 +1,9 @@
-import type { ContractOutputs } from '@tourism/contract';
+import {
+  type ContractOutputs,
+  isSiteSlotKey,
+  type RegionKey,
+  type SiteSlotKey,
+} from '@tourism/contract';
 import { cache } from 'react';
 import { api } from './client';
 import { TAGS } from './tags';
@@ -26,7 +31,7 @@ export type SiteMediaItem = SiteMediaEntry['media'][number];
  * Luật rút ra: hằng dùng chung giữa server và client phải sống ở module KHÔNG
  * có `'use client'`. File này là chỗ đúng — nó vốn đã là nơi biết về khe.
  */
-export const AUTH_PANEL_SLOT = 'auth-panel';
+export const AUTH_PANEL_SLOT: SiteSlotKey = 'auth-panel';
 
 /**
  * Các khe brand-chrome (`home-hero`, `about-hero`, `about-story`, `auth-panel`…).
@@ -51,8 +56,48 @@ export const fetchSiteMedia = cache(async (): Promise<Map<string, SiteMediaItem[
  *
  * Tách khỏi `fetchSiteMedia` để component không phải tự nhớ luật "khe vắng mặt
  * ≠ lỗi" — mọi khe đều dùng chung một câu hỏi và một câu trả lời.
+ *
+ * Khoá là `SiteSlotKey` của danh mục khe ở contract (ADR-0059 §1): gõ sai khoá là
+ * lỗi typecheck, thay vì một ô giữ chỗ lặng lẽ trên site thật.
  */
-export async function siteMediaImage(key: string): Promise<SiteMediaItem | null> {
+export async function siteMediaImage(key: SiteSlotKey): Promise<SiteMediaItem | null> {
   const map = await fetchSiteMedia();
   return map.get(key)?.[0] ?? null;
+}
+
+/**
+ * Ảnh của nhiều khe một lượt, thành bản tra cứu khoá → ảnh — khuôn mà các khối có
+ * nhiều khe (Why choose us, bento, timeline, Team) truyền xuống bằng MỘT prop. Vẫn
+ * một lần gọi mạng: mọi lần hỏi đi qua `fetchSiteMedia` có `cache()`.
+ */
+export async function siteMediaImages<K extends SiteSlotKey>(
+  keys: readonly K[],
+): Promise<Record<K, SiteMediaItem | null>> {
+  const entries = await Promise.all(keys.map(async (key) => [key, await siteMediaImage(key)]));
+  return Object.fromEntries(entries) as Record<K, SiteMediaItem | null>;
+}
+
+/**
+ * Khoá ghép chuỗi của trang vùng — `region-gallery-<vùng>-<n>` (ô ảnh) và
+ * `region-signature-<vùng>-<n>` (bưu thiếp), `n` đếm từ 1 theo thứ tự ô. Trả `null`
+ * khi khoá ghép ra không có trong danh mục; `site-media.spec.ts` canh mọi khoá mà
+ * ba trang vùng thật sự ghép đều có, nên nhánh `null` chỉ là lưới.
+ */
+export function regionSlotKey(
+  kind: 'gallery' | 'signature',
+  region: RegionKey,
+  n: number,
+): SiteSlotKey | null {
+  const key = `region-${kind}-${region}-${n}`;
+  return isSiteSlotKey(key) ? key : null;
+}
+
+/** Ảnh của một khe ghép chuỗi; khoá không có trong danh mục thì như khe trống. */
+export async function regionSlotImage(
+  kind: 'gallery' | 'signature',
+  region: RegionKey,
+  n: number,
+): Promise<SiteMediaItem | null> {
+  const key = regionSlotKey(kind, region, n);
+  return key === null ? null : siteMediaImage(key);
 }

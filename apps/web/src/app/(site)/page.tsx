@@ -10,7 +10,7 @@ import { TrustStrip } from '@/components/home/trust-strip';
 import { WhyChooseUs } from '@/components/home/why-choose-us';
 import { fetchPosts } from '@/lib/api/posts';
 import { settle } from '@/lib/api/resilience';
-import { siteMediaImage } from '@/lib/api/site-media';
+import { siteMediaImage, siteMediaImages } from '@/lib/api/site-media';
 import { fetchDestinations, fetchTours } from '@/lib/api/tours';
 import { topDestinations } from '@/lib/regions';
 import { MOMENTS } from '@/mocks/moments';
@@ -43,13 +43,14 @@ export default async function HomePage() {
   // Sáu ảnh của khối "why choose us" (5 mục + 1 mặc định). Đọc CẢ CỤM một lần:
   // `fetchSiteMedia` bọc trong `cache()` nên sáu lần gọi này chỉ tốn một lượt
   // mạng, dùng chung với hero và cta-band phía trên.
-  const whyImages = Object.fromEntries(
-    await Promise.all(
-      ['home-why-choose', 'why-guide', 'why-food', 'why-river', 'why-evening', 'why-heritage'].map(
-        async (key) => [key, await siteMediaImage(key)] as const,
-      ),
-    ),
-  );
+  const whyImages = await siteMediaImages([
+    'home-why-choose',
+    'why-guide',
+    'why-food',
+    'why-river',
+    'why-evening',
+    'why-heritage',
+  ]);
 
   // Slider khoảnh khắc lấy ảnh từ `cover` của TOUR mà mỗi khoảnh khắc trỏ tới.
   // Dựng bản tra cứu ở server rồi truyền xuống, thay vì đẩy cả danh sách tour

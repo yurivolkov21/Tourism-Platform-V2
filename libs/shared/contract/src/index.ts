@@ -4,6 +4,7 @@ import './zod-config.js';
 export * from './admin-access.js';
 export * from './admin-procedures.js';
 export * from './contract.js';
+export * from './schemas/admin-appearance.js';
 export * from './schemas/admin-catalog.js';
 export * from './schemas/admin-categories.js';
 export * from './schemas/admin-departures.js';
@@ -34,6 +35,7 @@ export * from './schemas/stats.js';
 export * from './schemas/tour-costs.js';
 export * from './schemas/tour-readiness.js';
 export * from './schemas/wishlist.js';
+export * from './site-slots.js';
 
 // Re-exported so consumers can write `ContractInputs['catalog']['tours']['list']`
 // without depending on @orpc/contract directly.

@@ -14,7 +14,7 @@ import { RegionSignatureTimeline } from '@/components/destinations/region-signat
 import { RegionTours } from '@/components/destinations/region-tours';
 import { LoadErrorState } from '@/components/feedback/load-error-state';
 import { contentState, settle } from '@/lib/api/resilience';
-import { siteMediaImage } from '@/lib/api/site-media';
+import { regionSlotImage } from '@/lib/api/site-media';
 import {
   fetchDestinations,
   fetchTourReviews,
@@ -162,13 +162,13 @@ export default async function RegionPage({ params }: { params: Promise<{ region:
   const glance = regionGlance(tours);
   const copy = t.regions[region.key];
   // Ảnh 6/6/3 ô của section "… in photos" (19/08) — khe `region-gallery-<vùng>-<n>`,
-  // n 1-based theo thứ tự ô của biến thể (xem `SITE_SLOT_KEYS` ở seed).
+  // n 1-based theo thứ tự ô của biến thể (danh mục khe ở contract, ADR-0059).
   // `siteMediaImage` đi qua `fetchSiteMedia` có `cache()` nên 6 lần hỏi = 1 lần
   // gọi mạng; khe trống → null → ô giữ gradient, không settle riêng: cùng luật
   // "khe vắng ≠ lỗi" của mọi khe site.
   const galleryImages = await Promise.all(
     Array.from({ length: TILE_COUNT[theme.galleryVariant] }, (_, i) =>
-      siteMediaImage(`region-gallery-${region.key}-${i + 1}`),
+      regionSlotImage('gallery', region.key, i + 1),
     ),
   );
   // Miền Bắc KHÔNG có khối `signature` (khu riêng của nó là mùa và "mấy ngày"), nên
@@ -180,9 +180,7 @@ export default async function RegionPage({ params }: { params: Promise<{ region:
   const signatureImages =
     signature && 'postcards' in signature
       ? await Promise.all(
-          signature.postcards.map((_, i) =>
-            siteMediaImage(`region-signature-${region.key}-${i + 1}`),
-          ),
+          signature.postcards.map((_, i) => regionSlotImage('signature', region.key, i + 1)),
         )
       : [];
 
