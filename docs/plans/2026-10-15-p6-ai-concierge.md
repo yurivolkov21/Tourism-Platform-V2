@@ -26,15 +26,15 @@ và React 19 (web) · Vitest.
 | --- | --- | --- |
 | P6 trợ lý AI (api, contract, web) | `feat/p6-ai-concierge-3xp4sq` | 1–13 |
 
-**Điểm dừng 19/10:** xong Task 1–5, 7–12 và hai bước đầu của Task 13. Nhánh đã rebase
-lên `d0a051d`; thẻ tour của ADR-0058 đổi kiểu `TourCard`, nên `searchTours` thêm sort
-`top-rated` và trả `nextDeparture`. Web: 20 test component, kiểm đột biến tay; thử bằng
-Chromium với API chạy model giả ở 375, 768 và 1440 (stream qua CORS, thẻ duyệt gửi
-enquiry thật vào DB local, Esc trả tiêu điểm, nạp lại sau khi tải trang). Nhánh có
-`schema.prisma` mới nhưng CHƯA có thư mục migration (Task 6 chờ lượt sau G25 của
-thread admin), nên CI của nhánh đỏ ở int test cho tới khi có migration. Bước kế: Task 6
-khi được báo lượt, rồi `gate:int` và draft PR. Những chỗ lệch spec lúc thi công đã sửa
-thẳng vào spec (§2a, §2b, §2c, §2f, §2h, §4).
+**Điểm dừng 19/10:** xong cả 13 task, chờ review. Nhánh rebase lên `68f65ef` (có G25);
+migration thật `20261019024540_chat_tokens_enquiry_turn` sinh bằng `prisma migrate diff`
+trên DB đã có mọi migration của main, SQL trùng khớp bản tạm dùng lúc thi công. Thẻ
+tour của ADR-0058 đổi kiểu `TourCard`, nên `searchTours` thêm sort `top-rated` và trả
+`nextDeparture`. Web: 20 test component, kiểm đột biến tay; thử bằng Chromium với API
+chạy model giả ở 375, 768 và 1440 (stream qua CORS, thẻ duyệt gửi enquiry thật vào DB
+local, Esc trả tiêu điểm, nạp lại sau khi tải trang). Những chỗ lệch spec lúc thi công
+đã sửa thẳng vào spec (§2a, §2b, §2c, §2f, §2h, §4). Còn lại là checklist hạ tầng bên
+dưới, làm ở bước merge.
 
 ## Quyết định của plan
 
@@ -147,8 +147,10 @@ Hai chỗ chốt thêm, không đổi spec:
 - [x] `schema.prisma`: `ChatMessage.inputTokens Int?`, `outputTokens Int?`,
   `@@index([createdAt])`; `ChatConversation.enquiryId String? @unique` FK
   `enquiries` `onDelete: SetNull`, `turnStartedAt DateTime?`.
-- [ ] `pnpm prisma migrate dev --name chat_tokens_enquiry_turn` từ `main` mới nhất;
-  đọc lại SQL; `check-rls.sh` xanh (bảng không đổi, chỉ thêm cột).
+- [x] `pnpm prisma migrate dev --name chat_tokens_enquiry_turn` từ `main` mới nhất;
+  đọc lại SQL; `check-rls.sh` xanh (bảng không đổi, chỉ thêm cột). Lúc làm dùng
+  `prisma migrate diff --from-config-datasource --to-schema` cho cùng kết quả mà không
+  cần shadow DB.
 
 ### Task 7 — `ChatService`
 
@@ -253,7 +255,7 @@ Hai chỗ chốt thêm, không đổi spec:
 - [x] Thử ở local bằng trình duyệt thật với API chạy `CHAT_ENABLED=true` và model giả
   (không có key Anthropic trong container): preflight, stream, thẻ duyệt, Esc, lớp phủ
   ở 375px. Lượt với Anthropic thật để cho bước thử tay của Yuri.
-- [ ] `pnpm gate:int` xanh; draft PR với checklist hạ tầng bên dưới.
+- [x] `pnpm gate:int` xanh; draft PR với checklist hạ tầng bên dưới.
 
 ## Checklist hạ tầng (vào mô tả PR, làm ở bước merge, luật 15)
 
