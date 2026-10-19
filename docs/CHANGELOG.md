@@ -8,6 +8,34 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-10-19 — Merge ADR-0040 AMEND 7: chữ hệ thống, icon Material, thanh tab `NativeTabs` cho app mobile (`8caaff3`)
+
+Yuri bảo soạn AMEND trước khi Nghĩa code, theo luật 5: bản vẽ duyệt cùng ngày đảo hai quyết định của
+ADR-0040 AMEND 1 (icon Feather; Literata cho tiêu đề, Archivo cho thân). Chỉ đổi tài liệu.
+
+- `8caaff3`: [ADR-0040](adr/0040-mobile-app-expo.md) AMEND 7. Chữ thân dùng font hệ thống, biến
+  thể `brand` giữ Literata, thang chữ token không đổi; icon `MaterialCommunityIcons` của
+  `@expo/vector-icons`; thanh tab `NativeTabs` của `expo-router/unstable-native-tabs` có điều kiện
+  spike trên Android thật (Expo Go và build EAS, màu theo token, bấm lại tab cuộn lên đầu), không
+  đạt thì giữ `FloatingTabBar` vẽ lại; nền bề mặt pha từ token bằng hàm thuần. Không dependency mới.
+  Bàn giao cập nhật tên prop màu thật của `NativeTabs`, icon qua `NativeTabs.Trigger.VectorIcon`,
+  thử spike cả trên build EAS. Mục lục ADR: 0040 ghi 7 AMEND.
+- Commit merge này: Yuri duyệt AMEND 7 ngày 19/10 ("duyệt AMEND 7 rồi gộp vào main"); trạng thái đổi sang
+  Accepted, bàn giao, open-items và mục lục handoff bỏ chữ "chờ duyệt".
+
+**Đính chính entry trước** (entry bất biến nên ghi ở đây): mục CÒN TREO của entry "Merge bản vẽ nâng
+cấp giao diện app mobile" gọi AMEND này là "ADR-0040 AMEND 3" — sai, AMEND 3 đến 6 đã dùng từ 24/09
+tới 09/10. Số đúng là AMEND 7.
+
+**Review.** Không có lượt review độc lập. Đã kiểm trong code trước khi ghi: `NativeTabs` có sẵn
+trong expo-router 57.0.21, bản Android dựng trên `react-native-screens/experimental` (4.26.2); chữ G
+của nút Google lấy từ `AntDesign` nên không đổi; `app-text.spec.tsx` đang khẳng định
+`Archivo_400Regular` và `Literata_700Bold` nên phải sửa khi code N2.
+
+**CÒN TREO:** điền mục "Kết quả spike" của AMEND 7 trước khi gộp N1.
+
+Tests after: không chạy `gate:int` vì chỉ đổi Markdown; CI trên main là lưới.
+
 ## 2026-10-19 — Merge bản vẽ nâng cấp giao diện app mobile theo Material 3 và bàn giao cho Nghĩa (`616357a`..`9c45bea`)
 
 Nhánh `docs/mobile-ui-upgrade-mockup` của Nghĩa (vòng 1, 14/10) được Yuri review 19/10 trên session cloud;

@@ -528,8 +528,8 @@ vòng dev hằng ngày và ẩn nút Google. Hàng `eas.json` ở bảng đối 
 
 ## AMEND 7 — 19/10/2026 (nâng cấp giao diện theo Material 3): chữ hệ thống, icon Material, thanh tab `NativeTabs`
 
-**Trạng thái:** đề xuất 19/10, chờ user duyệt. Duyệt xong ghi ngày duyệt vào đây trước khi code
-N1, N2, N5 của [bàn giao](../handoff/mobile-ui-upgrade-handoff.md).
+**Trạng thái:** Accepted 19/10/2026 (user duyệt cùng ngày soạn, trước khi code N1, N2, N5 của
+[bàn giao](../handoff/mobile-ui-upgrade-handoff.md)). Quyết định 3 vẫn có điều kiện spike bên dưới.
 
 **Đính chính số:** entry CHANGELOG 19/10 và bản đầu của bàn giao gọi AMEND này là "AMEND 3" — sai,
 vì AMEND 3 đến 6 đã có từ trước (gesture-handler, `packageExtensions`, image picker, build EAS).

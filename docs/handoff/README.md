@@ -32,7 +32,7 @@ Vòng lặp chạy thử app: [`conventions/mobile-dev-loop.md`](../conventions/
 ## Nâng cấp giao diện app theo Material 3 (đợt 23–30/10)
 
 > **Đang mở.** Bản vẽ user duyệt 19/10 sau bốn vòng (vòng 1 của Nghĩa 14/10); demo chạy Android
-> nên theo Material 3. ADR-0040 AMEND 7 (đề xuất 19/10) phải được duyệt trước khi code.
+> nên theo Material 3. ADR-0040 AMEND 7 đã duyệt 19/10; còn spike `NativeTabs` trước khi code thanh tab.
 
 | Việc | Tài liệu | Tình trạng |
 | --- | --- | --- |

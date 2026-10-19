@@ -61,13 +61,12 @@ Nền phải **đục** (thanh điều hướng nằm đè nội dung), nên `wi
 
 ## 3. Việc phải làm trước (T0, xong trước 23/10)
 
-1. **[ADR-0040 AMEND 7](../adr/0040-mobile-app-expo.md)** (luật 5 — ADR đi trước code). Bản đề
-   xuất đã soạn 19/10, chờ user duyệt. AMEND 1 §1–§2 đã ghi Literata cho tiêu đề, Archivo cho
-   thân, bộ icon Feather; AMEND 7 đổi cả ba: (a) chữ thân dùng font hệ thống, Literata chỉ còn biến
-   thể `brand`; (b) icon `MaterialCommunityIcons` trong `@expo/vector-icons`; (c) thanh tab dùng
-   `NativeTabs` nếu spike ở mục 2 đạt. Không thêm dependency nào. Chưa duyệt thì chưa code N1, N2,
-   N5. (Bản đầu của tài liệu này và entry CHANGELOG 19/10 gọi nhầm là "AMEND 3" — số 3 đến 6 đã
-   dùng từ trước.)
+1. **[ADR-0040 AMEND 7](../adr/0040-mobile-app-expo.md)** (luật 5 — ADR đi trước code), user
+   duyệt 19/10. AMEND 1 §1–§2 đã ghi Literata cho tiêu đề, Archivo cho thân, bộ icon Feather;
+   AMEND 7 đổi cả ba: (a) chữ thân dùng font hệ thống, Literata chỉ còn biến thể `brand`; (b) icon
+   `MaterialCommunityIcons` trong `@expo/vector-icons`; (c) thanh tab dùng `NativeTabs` nếu spike
+   ở mục 2 đạt. Không thêm dependency nào. (Bản đầu của tài liệu này và entry CHANGELOG 19/10 gọi
+   nhầm là "AMEND 3" — số 3 đến 6 đã dùng từ trước.)
 2. **Spike `NativeTabs` trên máy Android thật (tối đa nửa ngày)**, thử cả Expo Go lẫn build EAS.
    Import từ `expo-router/unstable-native-tabs` — API còn nhãn unstable, đọc kiểu trong
    `node_modules/expo-router/build/native-tabs/types.d.ts` chứ đừng đoán. Prop màu có sẵn:
