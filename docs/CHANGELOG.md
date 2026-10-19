@@ -8,6 +8,59 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-10-19 — Merge khung chat trợ lý dạng hội thoại, P6 bật trên production (`a8968f4`..`ab84ad4`)
+
+Yuri thử P6 trên production 19/10 và thấy khung chat "không giống kiểu chat hỏi đáp", bảo thiết kế lại theo
+nguồn shadcn. Nhánh `feat/p6-ai-concierge-3xp4sq` dựng lại từ main sau PR #30,
+[PR #32](https://github.com/yurivolkov21/Tourism-Platform-V2/pull/32), thi công trên session cloud. Chỉ đổi
+web, `@tourism/i18n` và spec P6: không đổi API hay contract, không dependency, không migration, không env.
+
+- `a8968f4`: vòng 1 dựng bằng bộ chat shadcn có sẵn trong `@tourism/ui` (`Message`, `MessageAvatar`,
+  `Bubble`, `InputGroup`). Tin trợ lý là bong bóng sáng kèm ảnh đại diện, tin khách là bong bóng màu chính
+  bên phải; ba chấm "đang gõ" thay dòng "Thinking…" và giữ cả quãng giữa tool xong với chữ của bước sau.
+  Đầu khung có tên và dòng phụ `chatBot.subtitle`; ô nhập bo tròn, cao dần theo chữ, nút gửi trong ô;
+  disclaimer dời xuống dưới ô nhập.
+- `ab84ad4`: vòng 2, sau khi đối chiếu shadcn chat, AI Elements, prompt-kit, assistant-ui. Màn chào có ba
+  gợi ý kèm icon; khách cuộn lên đọc lại thì chữ đang stream không kéo khung xuống, có nút tròn đưa về
+  cuối; nút sao chép dưới lượt đã xong; tin mới trượt vào (`motion-safe`); vòng xoay trên nút gửi khi
+  chờ; khung màn rộng 25rem x 40rem (trước 23rem x 36rem). Copy mới `chatBot.copy`, `copied`,
+  `scrollToLatest`. Spec P6 §2h, §2i.
+- Dải thẻ tour có ảnh dưới câu trả lời (Carousel shadcn, kèm ảnh bìa trong kết quả `searchTours` và
+  `toModelOutput` để model không thấy ảnh) đã dựng và thử rồi bỏ trước merge theo ý Yuri: thẻ chiếm chỗ
+  trong khung hẹp và đẩy hội thoại trôi đi. Tour vẫn là tên gắn link trong câu trả lời, như prompt trên
+  main đã dặn. Lý do ghi ở spec §2h.
+- open-items: dòng P6 ghi đã bật, còn thử enquiry trên production. CLAUDE.md: roadmap.
+
+**P6 bật trên production** (mục CÒN TREO của entry merge P6 `abcf44a`..`5d30f0c`, entry đó bất biến nên
+ghi ở đây). Yuri tạo key `nexora-prod` ở Claude Console ngày 19/10 (scope workspace Default, hết hạn
+30/11/2026; trả bằng 100 USD credit có sẵn của tổ chức, tự nạp tắt). Yuri đặt `ANTHROPIC_API_KEY` trong
+`apps/api/.env.production` và trên Render, cùng `CHAT_ENABLED=true` và `CHAT_DAILY_BUDGET_USD=10` (Yuri
+nâng từ 1 để nhóm thử nhiều trước khi credit hết hạn); `CHAT_MODEL` để trống là `claude-haiku-4-5`.
+Render live 03:57:54 UTC, log có `ChatModule`. Log Render (chỉ đọc) có ba lượt thật 04:26 đến 04:28 UTC
+trong một hội thoại: `searchTours` hai lần, `getTourDetails` một lần, mỗi lượt 1821 đến 6875 token vào
+và 206 đến 691 token ra. Lần đầu "Chat with us" không hiện vì API gói free đang ngủ; API thức lúc
+04:17:55 UTC thì nút hiện.
+
+**Review.** Không có lượt review độc lập. Yuri xem ảnh từng vòng và bảo merge 19/10 07:07 UTC ("Ổn rồi
+đó, merge nhé"). Nhánh rebase lên `87b873c` không xung đột. Thử bằng Chromium thật trên session cloud với
+API chạy model giả ở 375 và 1440 (vòng 2 thêm 768 nền tối): màn chào, gợi ý, tên tour gắn link, nút sao
+chép, nút cuộn xuống, thẻ xác nhận enquiry, Esc trả tiêu điểm, tải lại trang nạp lại hội thoại, không
+cuộn ngang trang. Kiểm đột biến tay: bỏ điều kiện "lượt xong" của nút sao chép, hay luôn cuộn xuống, thì
+test tương ứng đỏ.
+
+Tests after (`gate:int` trên `ab84ad4`, 19/10, session cloud, API sống ở :3001): unit 7781 (web 2364,
+admin 2224, api 1264, mobile 864, contract 727, mobile-ui 145, i18n 62, ui 57, core 48, tokens 26) và int
+875; Biome 1990 file. So với `265ca46`: web thêm 4 test khung chat, các gói khác không đổi.
+
+**CÒN TREO:**
+
+- Thử gửi enquiry qua thẻ xác nhận trên production (email ack đi thật qua Resend), rồi đọc log Render có
+  `submitEnquiry`. Xong thì chuyển dòng P6 sang `open-items-closed.md`.
+- Nhóm thử trợ lý trên production theo bộ kịch bản 28 ca Yuri nhận ngày 19/10.
+- Trước mỗi buổi demo: mở site vài phút trước cho API gói free thức, không thì lần bấm đầu thiếu
+  "Chat with us".
+- Dọn nhánh `feat/p6-ai-concierge-3xp4sq` trên origin nếu GitHub không tự xoá.
+
 ## 2026-10-19 — Merge ADR-0040 AMEND 7: chữ hệ thống, icon Material, thanh tab `NativeTabs` cho app mobile (`8caaff3`)
 
 Yuri bảo soạn AMEND trước khi Nghĩa code, theo luật 5: bản vẽ duyệt cùng ngày đảo hai quyết định của

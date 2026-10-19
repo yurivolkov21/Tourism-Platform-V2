@@ -22,7 +22,7 @@
 | Mã | Việc | Ghi chú |
 | --- | --- | --- |
 | **P4f** | Quản trị người dùng và media | **Users XONG 13/10** (merge `26746d3`, PR #6; ADR-0052, spec và plan 02/10): hai bậc Owner và Staff, khoá tài khoản; thử tay production theo spec §8.4 còn treo ở CHANGELOG. Phủ ba bất biến hạ quyền / thu hồi phiên của ADR-0026 AMEND 1 §D. **Appearance** và **Media library** có spec nháp ([Appearance](specs/2026-10-15-p4f-appearance-design.md) 15/10, [Media library](specs/2026-10-16-p4f-media-library-design.md) 16/10), chờ duyệt, chưa thi công; G16 đóng 14/10 bằng ADR-0035 AMEND 3 (PR #13) |
-| **P6** | Trợ lý AI tư vấn tour | **Code lên main 19/10** (PR #30; ADR-0050 AMEND 1, [plan 15/10](plans/2026-10-15-p6-ai-concierge.md)), migration đã chạy Supabase. Cờ `CHAT_ENABLED` tắt nên production chỉ có lối enquiry. Còn treo ở CHANGELOG 19/10: key Anthropic (nạp trước, tắt tự nạp), env trên Render, bật cờ, thử tay production |
+| **P6** | Trợ lý AI tư vấn tour | **Bật trên production 19/10** (code PR #30, ADR-0050 AMEND 1, [plan 15/10](plans/2026-10-15-p6-ai-concierge.md); migration đã chạy Supabase; cờ bật 03:57 UTC, trần ngày 10 USD). Khung chat dạng hội thoại 19/10 (PR #32). Đã có lượt thật với `searchTours` và `getTourDetails`. Còn treo ở CHANGELOG 19/10: thử gửi enquiry qua thẻ xác nhận trên production, nhóm thử theo kịch bản |
 | **UI mobile** | Nâng cấp giao diện app theo Material 3 (Android) | **Bản vẽ duyệt 19/10** ([mockup](design/mockups/README.md), [bàn giao](handoff/mobile-ui-upgrade-handoff.md)); giao Nghĩa code đợt 23–30/10, P1 trước. ADR-0040 AMEND 7 duyệt 19/10 (font, icon, thanh tab); thanh tab còn chờ spike `NativeTabs` trên Android thật (Expo Go và build EAS) |
 
 ## Trước lượt seed lại 03/11
