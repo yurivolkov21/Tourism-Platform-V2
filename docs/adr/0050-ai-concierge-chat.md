@@ -5,6 +5,9 @@
   đã ghim 29/09 (§7).
 - **Sửa đổi:** AMEND 1 (2026-10-15, cuối file) — tên API của AI SDK 7 cho tool cần
   duyệt; cột giữ lượt chống hai lượt chạy song song; job dọn có trong danh sách chạy bù.
+  AMEND 2 (2026-10-19, cuối file) — khách đã đăng nhập hỏi được đơn của chính mình (chỉ
+  đọc); khách vãng lai hỏi chuyện tài khoản nhận một câu mời đăng nhập; nút nổi mở thẳng
+  khung chat.
 - **Bối cảnh thi hành:** P6, đi trước code theo luật CLAUDE.md #5. Thiết kế chốt qua
   brainstorm 29/09, từng câu một.
 - **Liên quan:** [ADR-0001](0001-tech-stack.md) (AMEND 2: AI SDK 7 thay 6) ·
@@ -154,3 +157,67 @@ gói và file `.d.ts`) và hạ tầng sau 29/09:
    giữ một kết nối suốt chừng ấy là ăn vào trần 15 client của Session pooler (G23).
 3. **§5: `chat-retention` vào danh sách chạy bù hằng ngày** (ADR-0024 AMEND 5, G41,
    có sau 29/09): cron 04:30 UTC lỡ lượt mỗi khi API gói free ngủ đúng giờ ấy.
+
+## AMEND 2 19/10 — trợ lý đọc đơn của chính khách, bỏ menu hai lối
+
+Sau khi chat bật trên production (19/10), Yuri muốn khách đã đăng nhập hỏi được về tài
+khoản của mình, và bỏ menu "Talk to us" vì lối "Send an enquiry" trong đó thừa. Yuri chọn
+phạm vi **chỉ xem đơn** (thẻ quyết định 19/10 07:46), rồi dặn thêm (08:00): khách chưa
+đăng nhập hỏi chuyện tài khoản hay cá nhân thì chỉ nhận một câu cố định mời đăng nhập.
+AMEND này đảo dòng "Đọc dữ liệu tài khoản" ở mục Ngoài phạm vi của spec P6 §1.
+
+1. **Hai tool chỉ đọc, chỉ cho khách đã đăng nhập.** `listMyBookings({ when })` (tối đa
+   10 đơn, gọi `BookingsService.mine` thứ tự `journey`) và `getMyBooking({ code })` (gọi
+   `BookingsService.byCode`). Không tool nào nhận user id: danh tính lấy từ phiên ở
+   server, mã đơn của người khác trả `{ found: false }` y như trang web trả 404. Hai tool
+   chỉ được đăng ký khi lượt có phiên; lượt vãng lai không có chúng nên model không có
+   đường nào tra đơn. Không tool nào ghi: huỷ, thanh toán tiếp, tải voucher, viết review
+   đều là link tới trang đơn `/account/bookings/<mã>`.
+2. **Kết quả thu gọn ở server, trạng thái viết sẵn bằng chữ.** Model chỉ nhận mã đơn,
+   tên và link tour, ngày đi và về, số khách, trạng thái chuyến và trạng thái tiền viết
+   bằng chữ (suy từ `bookingPhase` của contract và trạng thái đơn), tổng tiền, ngày và cổng
+   thanh toán, hạn huỷ miễn phí và số tiền hoàn nếu huỷ ngay (số `byCode` đã tính), yêu cầu
+   huỷ và số đã hoàn, lý do công ty huỷ chuyến, review đã viết hay viết được chưa. Model
+   KHÔNG nhận email, số điện thoại, tên người liên hệ, ghi chú tự do, link thanh toán, id
+   nội bộ, nội dung review. Lý do: mỗi trường gửi đi là dữ liệu cá nhân tới bên thứ ba, và
+   enum thô để model tự diễn giải là chỗ dễ nói sai trạng thái.
+3. **Hội thoại vô chủ được gắn vào tài khoản trước lượt có phiên.** Theo §2, hội thoại
+   tạo lúc chưa đăng nhập thì ai biết id cũng đọc được. Khách đăng nhập giữa chừng rồi hỏi
+   đơn thì dữ liệu đơn sẽ nằm trong một hội thoại như vậy. Nên: lượt `POST` có phiên vào
+   hội thoại chưa có chủ thì một câu `UPDATE … WHERE user_id IS NULL` gắn nó vào tài khoản
+   TRƯỚC khi giữ lượt và gọi model. Từ đó hội thoại theo luật hội thoại có chủ của §2: chỉ
+   đúng phiên ấy đọc hay ghi được, người khác nhận 404. Vì vậy mọi lượt chạy hai tool đều
+   nằm trong hội thoại thuộc đúng người có đơn. `GET /api/chat/:id` không gắn gì (đọc
+   không đổi chủ).
+4. **Khách vãng lai: một câu cố định.** Prompt mỗi lượt mang cờ đã đăng nhập hay chưa.
+   Chưa đăng nhập thì prompt dặn: hỏi về đơn, thanh toán, hoàn tiền, tài khoản hay thông
+   tin cá nhân thì chỉ trả câu "chưa thể kiểm tra vì bạn chưa đăng nhập" kèm link
+   `/login`, theo ngôn ngữ khách viết; không hỏi mã đơn hay email để tra hộ, không đoán.
+   Tìm tour, xem tour, gửi enquiry giữ nguyên. Lớp chặn thật là §1 (không có tool); câu
+   trong prompt chỉ quyết khách đọc thấy gì.
+5. **Web (sửa §6): nút nổi mở thẳng khung chat.** Bỏ popover hai lối. Khung tự gọi
+   `GET /api/chat` mỗi lần mở: trong lúc chờ (API gói free có thể đang ngủ) đầu khung báo
+   đang kết nối; trợ lý tắt hay chạm trần ngày thì khung hiện câu "taking a break" kèm link
+   enquiry. Lối tới người thật trong khung là gợi ý "Talk to a human" và trợ lý gửi enquiry
+   như cũ. Khách đã đăng nhập thấy lời chào theo tên và thêm gợi ý "Show my bookings"; tên
+   chỉ dùng ở web, không gửi cho model. Phiên đổi từ một tài khoản sang không phiên hay
+   tài khoản khác (đăng xuất ở bất kỳ nút nào) thì web xoá id hội thoại khỏi localStorage
+   và dỡ khung khỏi bộ nhớ, để máy dùng chung không hiện đơn của người trước. Đăng nhập từ
+   vãng lai thì giữ hội thoại; lượt sau sẽ gắn nó vào tài khoản (mục 3).
+6. **Trang `/privacy`** kể thêm: khách đã đăng nhập hỏi về đơn thì chi tiết đơn trợ lý tra
+   được gửi tới Anthropic cùng tin nhắn, không kèm email hay số điện thoại.
+
+Không đổi: không migration, không env, không dependency; trần chi phí §4 giữ nguyên. Lượt
+có tra đơn tốn thêm khoảng 1–2 nghìn token vào (10 đơn, mỗi đơn vài trường). Dữ liệu đơn
+nằm trong hội thoại sống tối đa 30 ngày như mọi tin khác (§5).
+
+**Đã cân và bỏ:**
+
+- *Huỷ đơn hay thanh toán tiếp qua chat* (tool ghi có thẻ duyệt như `submitEnquiry`). Yuri
+  chọn chỉ xem; trang đơn đã có các nút ấy, và đường tiền không đi qua model.
+- *Khách vãng lai tra đơn bằng mã đơn và email.* Không có xác thực thật; ai có mã đơn
+  trong email chuyển tiếp là đọc được đơn của người khác.
+- *Gửi nguyên `BookingDetail` cho model.* Gọn code hơn nhưng kéo theo email, số điện
+  thoại, ghi chú tự do và link thanh toán tới Anthropic.
+- *Chỉ chặn bằng prompt, vẫn đăng ký tool cho mọi lượt.* Prompt injection vượt được câu
+  dặn; không có tool thì không có gì để vượt.

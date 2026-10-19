@@ -3,7 +3,9 @@
 - **Ngày:** 2026-09-29 · **Trạng thái:** thiết kế đã duyệt từng phần trong chat. Mở thi
   công 15/10 (user chọn "Làm ngay"); plan
   [2026-10-15-p6-ai-concierge.md](../plans/2026-10-15-p6-ai-concierge.md) chốt lại §2b,
-  §2c, §2f, §3 cho khớp AI SDK 7 (ADR-0050 AMEND 1).
+  §2c, §2f, §3 cho khớp AI SDK 7 (ADR-0050 AMEND 1). Sửa 19/10 theo ADR-0050 AMEND 2:
+  khách đã đăng nhập hỏi được đơn của chính mình, nút nổi mở thẳng khung chat (§1, §2a,
+  §2b, §2c, §2d, §2h, §2i).
 - **Quyết định kiến trúc:** [ADR-0050](../adr/0050-ai-concierge-chat.md)
 - **Nền:** [ADR-0037](../adr/0037-default-write-throttle.md) (trần ghi) ·
   [ADR-0038](../adr/0038-web-shell-security-headers.md) (CSP) ·
@@ -22,12 +24,15 @@ nay chỉ có form enquiry và chờ email.
 
 ### Trong phạm vi
 
-- Nút nổi "Plan your trip" ở mọi trang của web khách, mở hai lựa chọn: chat với trợ lý,
-  hoặc gửi enquiry.
+- Nút nổi "Plan your trip" ở mọi trang của web khách, mở thẳng khung chat (bản đầu mở
+  menu hai lối chat hoặc enquiry; bỏ 19/10, ADR-0050 AMEND 2).
 - Trợ lý trả lời từ catalogue thật qua ba tool: tìm tour, xem chi tiết tour (lịch trình,
   đợt khởi hành, giá, chỗ, FAQ, chính sách huỷ), và gửi enquiry thay khách **sau khi
   khách bấm duyệt**.
 - Khách vãng lai chat được; khách đã đăng nhập thì hội thoại gắn tài khoản.
+- Thêm 19/10 (ADR-0050 AMEND 2): khách đã đăng nhập hỏi được đơn của chính mình qua hai
+  tool chỉ đọc (§2c). Khách vãng lai hỏi chuyện tài khoản hay cá nhân thì nhận một câu cố
+  định mời đăng nhập (§2d).
 - Lưu hội thoại kèm số token; trần chi phí theo IP, theo hội thoại, theo ngày; tự dọn
   sau 30 ngày; công tắc bật/tắt.
 
@@ -35,7 +40,10 @@ nay chỉ có form enquiry và chờ email.
 
 - App mobile (thành viên khác đang dựng màn; thêm chat là thêm việc cho họ).
 - Màn admin xem hội thoại (để sau P6).
-- Đọc dữ liệu tài khoản (đơn của tôi, hoàn tiền) — lộ dữ liệu cá nhân qua LLM.
+- ~~Đọc dữ liệu tài khoản (đơn của tôi, hoàn tiền) — lộ dữ liệu cá nhân qua LLM.~~ Đảo
+  19/10 (ADR-0050 AMEND 2): đọc đơn của chính khách, chỉ đọc, dữ liệu thu gọn ở server.
+  Vẫn ngoài phạm vi: huỷ, thanh toán, sửa đơn qua chat; hồ sơ, tour đã lưu, enquiry đã
+  gửi, nội dung review.
 - Đặt chỗ hay thanh toán qua chat — trợ lý đưa link trang đặt, đường tiền không đổi.
 - WhatsApp — v2 không có số; mọi chỗ Nexora trỏ WhatsApp nay trỏ form enquiry.
 - Prompt caching của Anthropic — bảng giá giữ hai con số (vào, ra) cho gọn; bật sau
@@ -45,13 +53,15 @@ nay chỉ có form enquiry và chờ email.
 
 ### 2a. Một lượt chat đi qua những đâu
 
-1. Khách mở nút nổi → web gọi `GET /api/chat` → `{ available }`. Không mở thì ẩn lựa
-   chọn chat, chỉ còn enquiry. Lượt gọi này cũng đánh thức API đang ngủ.
+1. Khách bấm nút nổi → khung chat mở và gọi `GET /api/chat` → `{ available }`. Chờ thì
+   đầu khung báo đang kết nối; không mở thì khung hiện câu "taking a break" kèm link
+   enquiry (sửa 19/10, trước đó nút mở menu và ẩn lối chat). Lượt gọi này cũng đánh thức
+   API đang ngủ.
 2. Khách gửi tin → web `POST /api/chat` với `conversationId` (UUID trình duyệt sinh ở
    tin đầu, lưu localStorage), slug tour nếu đang ở trang tour, và `input`.
 3. API kiểm theo thứ tự: công tắc → trần ngày → quyền với hội thoại → trần lượt. Trượt
    ở đâu trả mã lỗi ở đó (§2b), chưa gọi model.
-4. API nạp lịch sử từ DB, dựng prompt hệ thống (§2d), gọi `streamText` với ba tool
+4. API nạp lịch sử từ DB, dựng prompt hệ thống (§2d), gọi `streamText` với các tool
    (§2c), stream về trình duyệt theo giao thức UI message.
 5. Hết lượt: ghi tin khách và câu trả lời, token lên tin trả lời. Luồng UI message
    được tee: nhánh của khách bị huỷ khi khách đóng tab, nhánh của server đọc tới cuối
@@ -87,7 +97,10 @@ vào tin trả lời đang chờ: tìm phần tool có `approval.id` khớp và 
 
 Quyền với hội thoại: id chưa có thì tạo, gắn `userId` nếu có phiên (đọc phiên như
 `enquiries.controller.ts`: `auth.api.getSession`). Id đã có và gắn tài khoản khác phiên
-hiện tại thì 404 — không lộ là id có tồn tại.
+hiện tại thì 404 — không lộ là id có tồn tại. Thêm 19/10 (ADR-0050 AMEND 2 mục 3): id
+đã có, chưa có chủ, mà `POST` có phiên thì gắn hội thoại vào tài khoản ấy trước khi giữ
+lượt (`updateMany` có điều kiện `userId: null`); từ đó chỉ phiên ấy đọc hay ghi được.
+`GET` không gắn gì.
 
 | Mã | Khi nào | Web làm gì |
 | --- | --- | --- |
@@ -104,7 +117,7 @@ bỏ phần trả lời dở rồi gửi lại tin khách (API không ghi gì ch
 lượt duyệt gửi lại đúng quyết định Send hay Cancel, và ô gõ khoá cho tới khi gửi lại
 xong. Stream chạy qua `reply.raw` của Fastify (§4).
 
-### 2c. Ba tool
+### 2c. Các tool
 
 Tool gọi thẳng service, không qua HTTP. Kết quả thu gọn để một lượt không phình token.
 
@@ -147,6 +160,30 @@ trên `streamText`; `needsApproval` của `tool()` đã deprecated ở AI SDK 7)
   `{ sent: false, reason: 'already_sent' }` mà không gọi service.
 - Khách bấm Cancel: AI SDK trả kết quả "bị từ chối" cho model, model hỏi lại hoặc thôi.
 
+**Hai tool đọc đơn** (thêm 19/10, ADR-0050 AMEND 2) — chỉ đăng ký khi lượt có phiên; lượt
+vãng lai không có chúng. Không tool nào nhận user id: `userId` lấy từ phiên ở server, và hội
+thoại của lượt có phiên luôn thuộc đúng người ấy (§2b). Hàm thu gọn và chữ trạng thái nằm ở
+`chat-bookings.ts`.
+
+- **`listMyBookings`** — input `{ when?: 'upcoming' | 'past' | 'all' }` (`upcoming` gồm cả
+  chuyến đang đi và đơn chờ trả). Gọi `BookingsService.mine` với `limit: 10`, `order:
+  'journey'`. Trả `{ today, total, shown, allBookingsUrl, bookings }`; mỗi đơn `{ code, url,
+  tour, tourUrl, startDate, endDate, adults, children, status, payment, total, currency,
+  payBy? }`, `url` dạng `/account/bookings/<mã>`, `payBy` chỉ có ở đơn chờ trả.
+- **`getMyBooking`** — input `{ code }`. Mã chữ thường hay thiếu `BK-` được chuẩn hoá; sai
+  khuôn thì `{ found: false }` không chạm DB. Gọi `BookingsService.byCode`; mã của người khác
+  cũng `{ found: false }`. Thêm vào bản tóm tắt: `paymentMethod`, `paidOn`, `refunded`,
+  `cancellation` (`freeCancellationUntil`, `refundIfCancelledNow`, `canCancelOnline` — số
+  `byCode` đã tính), `cancellationRequest` (trạng thái bằng chữ, ngày gửi, ngày quyết),
+  `cancelledOn`, `nexoraCancellationReason` khi công ty huỷ chuyến, `review` bằng chữ.
+- `status` suy từ `bookingPhase` của contract: "Awaiting payment", "Confirmed, trip
+  upcoming", "Confirmed, trip in progress", "Trip completed", "Cancelled", "Cancelled by
+  Nexora; anything paid is refunded in full", "Not confirmed: the payment deadline has
+  passed". `payment` theo trạng thái đơn: "Not paid", "Paid", "Paid, partly refunded",
+  "Refunded in full". Ngày ghi theo lịch Việt Nam như trang đơn.
+- Không bao giờ gửi model: email, số điện thoại, tên người liên hệ, ghi chú, link thanh
+  toán, id nội bộ, nội dung review và lý do bác review.
+
 ### 2d. Prompt hệ thống
 
 Dựng bằng một hàm thuần (test được), gồm:
@@ -163,6 +200,17 @@ Dựng bằng một hàm thuần (test được), gồm:
 - Ngữ cảnh: ngày hôm nay theo lịch Việt Nam (cùng cách tính "hôm nay" của web); danh
   sách slug điểm đến và danh mục đang bật (đọc qua service, cache ngắn); tour đang xem
   (`tourSlug`) nếu có.
+- Khối "Account" (thêm 19/10, ADR-0050 AMEND 2), chọn theo lượt có phiên hay không:
+  - Đã đăng nhập: hai tool đọc đơn chỉ đọc đơn của chính khách; chỉ nhắc điều tool trả về
+    trong hội thoại, không đoán trạng thái, ngày hay số tiền; nhắc nguyên văn `status` và
+    `payment`; không huỷ, trả tiền, sửa đơn hay gửi lại voucher thay khách mà đưa `url` của
+    đơn; hồ sơ và mật khẩu thì trỏ `/account`.
+  - Chưa đăng nhập: không thấy dữ liệu tài khoản nào; hỏi về đơn, thanh toán, hoàn tiền,
+    huỷ, tài khoản hay thông tin cá nhân thì chỉ trả câu "I can't check this because
+    you're not signed in. Please [sign in](/login) and ask me again." theo ngôn ngữ khách;
+    không hỏi mã đơn hay email để tra hộ, không đoán.
+- Link: ngoài đường dẫn tool trả về, chỉ được dùng trang chính prompt nêu (`/login`,
+  `/account`).
 
 ### 2e. Trần chi phí và chống lạm dụng
 
@@ -221,9 +269,14 @@ Thêm đủ vào `apps/api/src/config/env.ts`, `render.yaml` (key), `apps/api/.e
 
 **Nút nổi** (`components/concierge/contact-launcher.tsx`, gắn trong
 `components/site-chrome.tsx` cạnh `ScrollToTop`):
-- Nhãn "Plan your trip"; mở popover hai dòng: "Chat with us" (chỉ hiện khi
-  `available`) và "Send an enquiry" (`/contact`, hoặc `/tours/<slug>/enquire` khi đang
-  ở trang tour).
+- Nhãn "Plan your trip"; bấm là mở thẳng khung chat, bấm lần nữa là đóng (sửa 19/10,
+  ADR-0050 AMEND 2). Bản đầu mở popover hai dòng "Chat with us" (chỉ hiện khi
+  `available`) và "Send an enquiry"; Yuri bỏ vì lối enquiry thừa: trong khung đã có gợi ý
+  "Talk to a human" trỏ `/contact` (hay `/tours/<slug>/enquire` khi đang ở trang tour) và
+  trợ lý tự gửi enquiry được.
+- Phiên rời một tài khoản (đăng xuất ở bất kỳ nút nào, hay đổi tài khoản) thì xoá id hội
+  thoại khỏi localStorage và dỡ khung khỏi bộ nhớ. Từ vãng lai đăng nhập thì giữ hội
+  thoại. Phiên còn đang đọc (lúc hydrate) không tính là đăng xuất.
 - Góc dưới bên phải; `ScrollToTop` dời lên trên nút (Nexora đặt `bottom-20`, comment
   trong `scroll-to-top.tsx` còn ghi). Trang tour ở màn dưới `lg`: cả hai đứng trên thanh
   đặt chỗ của `booking-rail.tsx`. Thanh ấy gắn `data-booking-bar` lên `<body>` khi
@@ -231,6 +284,13 @@ Thêm đủ vào `apps/api/src/config/env.ts`, `render.yaml` (key), `apps/api/.e
   `max-lg:in-data-booking-bar:` của Tailwind (đo bằng Chromium ở 375, 768, 1440).
 
 **Khung chat** (`chat-panel.tsx`):
+- Mỗi lần mở khung gọi `GET /api/chat` (thay cho popover cũ): chờ thì dòng phụ ở đầu khung
+  là "Connecting…"; không sẵn sàng thì ẩn gợi ý, khoá ô nhập, hiện câu "taking a break" kèm
+  link enquiry. Lần mở sau mà lần trước đã sẵn sàng thì kiểm lại ngầm, không quay lại
+  "Connecting…".
+- Khách đã đăng nhập: lời chào theo tên (`chatBot.greetingFor`, tên không gửi cho model)
+  và gợi ý đầu tiên "Show my bookings" gửi đúng câu ấy cho trợ lý. Tool đọc đơn đang chạy
+  có dòng trạng thái riêng trong `chatBot.toolActivity`.
 - Màn rộng: khung nổi cạnh nút, không chặn trang. Màn hẹp (dưới `sm`): lớp phủ kín
   màn hình, và bấm link trong câu trả lời thì đóng khung để thấy trang vừa mở. Khung
   mount ở lần mở đầu rồi giữ nguyên (đóng chỉ ẩn), nên lượt đang chạy không bị cắt.
@@ -284,13 +344,17 @@ Thêm đủ vào `apps/api/src/config/env.ts`, `render.yaml` (key), `apps/api/.e
   đề, Send, Cancel, đã gửi, đã huỷ), nhãn đóng khung. Chữ chốt lúc viết plan.
 - Thêm 19/10: `chatBot.subtitle` ("AI travel assistant") cho dòng phụ ở đầu khung.
 - Thêm 19/10 (vòng 2): `chatBot.copy`, `chatBot.copied`, `chatBot.scrollToLatest`.
+- Thêm 19/10 (ADR-0050 AMEND 2): `chatBot.greetingFor`, `chatBot.connecting`,
+  `chatBot.suggestions.myBookings`, `chatBot.toolActivity.listMyBookings` và
+  `getMyBooking`. Xoá `contactLauncher.title`, `subtitle`, `bot`, `enquiry` theo popover;
+  `contactLauncher.triggerAria` đổi thành "Chat with our travel assistant".
 
 ## 3. Bản đồ file (dự kiến)
 
 | Vùng | File |
 | --- | --- |
 | Contract | `libs/shared/contract/src/schemas/chat.ts` (+ spec) |
-| API | `apps/api/src/modules/chat/` — `chat.module.ts`, `chat.controller.ts`, `chat.service.ts`, `chat-config.ts`, `chat-pricing.ts`, `chat-tools.ts`, `chat-prompt.ts`, `chat-budget.ts`, `chat-history.ts`, `chat-stream.ts`, spec đơn vị, `chat.int.spec.ts` |
+| API | `apps/api/src/modules/chat/` — `chat.module.ts`, `chat.controller.ts`, `chat.service.ts`, `chat-config.ts`, `chat-pricing.ts`, `chat-tools.ts`, `chat-bookings.ts` (19/10), `chat-prompt.ts`, `chat-budget.ts`, `chat-history.ts`, `chat-stream.ts`, spec đơn vị, `chat.int.spec.ts` |
 | API chung | `config/env.ts`, `config/throttle.ts`, `worker/start-worker.ts`, `worker/chat-retention.service.ts`, `app.module.ts` |
 | DB | `prisma/schema.prisma`, một thư mục migration mới |
 | Web | `components/concierge/` — `contact-launcher.tsx`, `chat-panel.tsx`, `chat-message.tsx`, `chat-markdown.tsx`, `enquiry-confirm-card.tsx`, `use-concierge.ts`; sửa `site-chrome.tsx`, `scroll-to-top.tsx`, `booking-rail.tsx` |
