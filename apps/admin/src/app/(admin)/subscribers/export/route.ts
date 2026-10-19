@@ -2,6 +2,7 @@ import type { SubscriberRow } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
 import { cookies } from 'next/headers';
 import type { NextRequest } from 'next/server';
+import { recordAdminExport } from '@/lib/api/activity';
 import { fetchAdminSubscribers, fetchAllAdminSubscribers } from '@/lib/api/subscribers';
 import { EXPORT_TIME_BUDGET_MS, type PagedExport } from '@/lib/export-pages';
 import {
@@ -56,6 +57,12 @@ export async function GET(request: NextRequest) {
     from: query.from ?? null,
     to: query.to ?? null,
   };
+  // Nhật ký admin (ADR-0061 §5). Tab Active mặc định cũng là lọc: chỉ tab All mới là cả bảng.
+  const filtered = Boolean(
+    query.active !== undefined || query.search || query.source || query.from || query.to,
+  );
+  const record = (rows: number, mode: 'all' | 'selection') => () =>
+    recordAdminExport(cookie, { kind: 'subscribers', rows, mode, filtered });
 
   // Id các hàng admin đã tích trên trang đang xem (G43, khuôn `/bookings/export`
   // 01/09). Có nó thì chỉ lấy ĐÚNG MỘT trang rồi giao theo id: việc chọn khoá
@@ -94,6 +101,7 @@ export async function GET(request: NextRequest) {
       { adminId, rows: rows.length, mode: 'selection', filters },
       'nexora-subscribers',
       () => buildSubscribersWorkbook(rows, { query, selected: rows.length, generatedAt }),
+      record(rows.length, 'selection'),
     );
   }
 
@@ -127,5 +135,6 @@ export async function GET(request: NextRequest) {
     { adminId, rows: result.items.length, filters },
     'nexora-subscribers',
     () => buildSubscribersWorkbook(result.items, { query, selected: 0, generatedAt }),
+    record(result.items.length, 'all'),
   );
 }

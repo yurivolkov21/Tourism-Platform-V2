@@ -2,6 +2,7 @@ import type { Booking } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
 import { cookies } from 'next/headers';
 import type { NextRequest } from 'next/server';
+import { recordAdminExport } from '@/lib/api/activity';
 import { fetchAdminBookings, fetchAllAdminBookings } from '@/lib/api/bookings';
 import { fetchAccountEmail } from '@/lib/api/users';
 import { parseBookingsSearchParams } from '@/lib/bookings-query';
@@ -67,6 +68,11 @@ export async function GET(request: NextRequest) {
     // được (vòng vá review polish 2).
     dates: query.allDates ? 'all' : 'range',
   };
+  // Nhật ký admin (ADR-0061 §5): báo số dòng và cách chọn, không bộ lọc nào — chỉ cờ "có lọc".
+  // Khoảng ngày mặc định của URL trần cũng là lọc: file không phải toàn bộ lịch sử.
+  const filtered = Boolean(query.status || query.search || query.userId || query.from || query.to);
+  const record = (rows: number, mode: 'all' | 'selection') => () =>
+    recordAdminExport(cookie, { kind: 'bookings', rows, mode, filtered });
 
   // Mã các hàng admin đã tích trên trang đang xem (spec 01/09). Có nó thì đây
   // là cú xuất CÓ CHỌN, và đường đi khác hẳn export-all bên dưới: chỉ lấy ĐÚNG
@@ -123,6 +129,7 @@ export async function GET(request: NextRequest) {
           adminOrigin: request.nextUrl.origin,
           generatedAt,
         }),
+      record(rows.length, 'selection'),
     );
   }
 
@@ -165,5 +172,6 @@ export async function GET(request: NextRequest) {
         adminOrigin: request.nextUrl.origin,
         generatedAt,
       }),
+    record(result.items.length, 'all'),
   );
 }

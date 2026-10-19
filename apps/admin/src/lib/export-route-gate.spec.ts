@@ -42,6 +42,12 @@ const { fetchAllAdminSubscribers } = vi.hoisted(() => ({
   }),
 }));
 vi.mock('@/lib/api/subscribers', () => ({ fetchAllAdminSubscribers }));
+const { recordAdminExport } = vi.hoisted(() => ({
+  recordAdminExport: vi.fn(async () => {
+    throw new Error('không được báo nhật ký khi gate từ chối');
+  }),
+}));
+vi.mock('@/lib/api/activity', () => ({ recordAdminExport }));
 vi.mock('next/headers', () => ({ cookies: vi.fn(async () => ({ toString: (): string => '' })) }));
 
 function requestFor(path: string): NextRequest {

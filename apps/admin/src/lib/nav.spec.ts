@@ -64,13 +64,15 @@ describe('navGroupsFor (ADR-0052)', () => {
     expect(navGroupsFor('ADMIN')).toEqual(NAV_GROUPS);
   });
 
-  it('Staff không thấy Reports, Payment events, Users — các mục khác còn nguyên', () => {
+  it('Staff không thấy Reports, Payment events, Users, Activity — các mục khác còn nguyên', () => {
+    const ownerOnly = ['reports', 'payment-events', 'users', 'activity'];
     const staff = keys('STAFF');
-    expect(staff).not.toContain('reports');
-    expect(staff).not.toContain('payment-events');
-    expect(staff).not.toContain('users');
-    expect(staff).toEqual(
-      keys('ADMIN').filter((key) => !['reports', 'payment-events', 'users'].includes(key)),
-    );
+    for (const key of ownerOnly) expect(staff).not.toContain(key);
+    expect(staff).toEqual(keys('ADMIN').filter((key) => !ownerOnly.includes(key)));
+  });
+
+  it('Owner thấy Activity cuối nhóm System (ADR-0061)', () => {
+    const system = navGroupsFor('ADMIN').find((group) => group.key === 'system');
+    expect(system?.items.at(-1)).toMatchObject({ key: 'activity', href: '/activity' });
   });
 });

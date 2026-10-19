@@ -29,6 +29,8 @@ vi.mock('@/lib/api/subscribers', () => ({ fetchAdminSubscribers, fetchAllAdminSu
 const { fetchAccountEmail } = vi.hoisted(() => ({ fetchAccountEmail: vi.fn() }));
 vi.mock('@/lib/api/users', () => ({ fetchAccountEmail }));
 vi.mock('next/headers', () => ({ cookies: vi.fn(async () => ({ toString: (): string => '' })) }));
+const { recordAdminExport } = vi.hoisted(() => ({ recordAdminExport: vi.fn(async () => ({})) }));
+vi.mock('@/lib/api/activity', () => ({ recordAdminExport }));
 
 const booking = {
   code: 'BK-7Q2M9XKD',
@@ -307,5 +309,69 @@ describe('GET /subscribers/export', () => {
     const response = await GET(requestFor(`/subscribers/export?sel=${subscriber.id}`));
     expect(response.status).toBe(502);
     expect(lastAudit()).toMatchObject({ outcome: 'failed', mode: 'selection' });
+  });
+});
+
+// ADR-0061 §5: lượt xuất xong vào nhật ký admin — số dòng, cách chọn, có lọc hay không; không file
+// thì không có dòng nào.
+describe('ADR-0061: báo nhật ký sau khi dựng file', () => {
+  it('bookings cả tập: URL trần có khoảng ngày mặc định nên tính là có lọc', async () => {
+    fetchAllAdminBookings.mockResolvedValue({ kind: 'rows', items: [booking] });
+    const { GET } = await import('@/app/(admin)/bookings/export/route');
+    const response = await GET(requestFor('/bookings/export'));
+    expect(response.status).toBe(200);
+    expect(recordAdminExport).toHaveBeenCalledTimes(1);
+    expect(recordAdminExport).toHaveBeenCalledWith('', {
+      kind: 'bookings',
+      rows: 1,
+      mode: 'all',
+      filtered: true,
+    });
+  });
+
+  it('bookings hàng đã chọn: mode selection', async () => {
+    fetchAdminBookings.mockResolvedValue({
+      items: [booking],
+      total: 1,
+      page: 1,
+      limit: 20,
+      totalPages: 1,
+    });
+    const { GET } = await import('@/app/(admin)/bookings/export/route');
+    await GET(requestFor('/bookings/export?dates=all&page=1&limit=20&sel=BK-7Q2M9XKD'));
+    expect(recordAdminExport).toHaveBeenCalledWith('', {
+      kind: 'bookings',
+      rows: 1,
+      mode: 'selection',
+      filtered: false,
+    });
+  });
+
+  it('vượt trần hay tập đổi: không file, không báo', async () => {
+    fetchAllAdminBookings.mockResolvedValue({ kind: 'too-large', total: 2500, max: 2000 });
+    const { GET } = await import('@/app/(admin)/bookings/export/route');
+    expect((await GET(requestFor('/bookings/export'))).status).toBe(413);
+    expect(recordAdminExport).not.toHaveBeenCalled();
+  });
+
+  it('subscribers tab All không lọc gì: filtered false', async () => {
+    fetchAllAdminSubscribers.mockResolvedValue({ kind: 'rows', items: [subscriber] });
+    const { GET } = await import('@/app/(admin)/subscribers/export/route');
+    await GET(requestFor('/subscribers/export?active=all'));
+    expect(recordAdminExport).toHaveBeenCalledWith('', {
+      kind: 'subscribers',
+      rows: 1,
+      mode: 'all',
+      filtered: false,
+    });
+  });
+
+  it('báo lỗi: file vẫn tải về', async () => {
+    recordAdminExport.mockRejectedValueOnce(new Error('API down'));
+    fetchAllAdminSubscribers.mockResolvedValue({ kind: 'rows', items: [subscriber] });
+    const { GET } = await import('@/app/(admin)/subscribers/export/route');
+    const response = await GET(requestFor('/subscribers/export'));
+    expect(response.status).toBe(200);
+    expect(response.headers.get('content-type')).toBe(XLSX);
   });
 });

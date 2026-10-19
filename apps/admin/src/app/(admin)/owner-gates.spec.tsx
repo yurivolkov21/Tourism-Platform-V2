@@ -8,7 +8,7 @@ import { useCanAccess } from '@/components/admin-access-provider';
  * vẫn xanh. Gác thật vẫn ở API (`admin-access.int.spec.ts`); ở đây canh phần giao diện:
  * - layout bọc mọi trang bằng `AdminAccessProvider` mang role THẬT của phiên. Vắng provider thì
  *   `useCanAccess` mặc định mở (plan P4f, quyết định 3) và sáu nút chỉ Owner hiện lại cho Staff;
- * - bốn trang chỉ Owner đá Staff sang `/not-authorized` TRƯỚC khi gọi API.
+ * - năm trang chỉ Owner đá Staff sang `/not-authorized` TRƯỚC khi gọi API.
  */
 
 type TestSession = { id: string; name: string; email: string; role: string; image: null };
@@ -20,6 +20,7 @@ const api = vi.hoisted(() => ({
   report: vi.fn(),
   events: vi.fn(),
   eventStats: vi.fn(),
+  activity: vi.fn(),
 }));
 
 vi.mock('next/headers', () => ({
@@ -49,6 +50,10 @@ vi.mock('@/lib/api/reports', async (importOriginal) => ({
 vi.mock('@/lib/api/payment-events', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/lib/api/payment-events')>()),
   fetchAdminPaymentEvents: api.events,
+}));
+vi.mock('@/lib/api/activity', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/api/activity')>()),
+  fetchAdminActivity: api.activity,
 }));
 vi.mock('@/lib/api/stats', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/lib/api/stats')>()),
@@ -116,9 +121,14 @@ const OWNER_ONLY_PAGES = [
     render: async () => (await import('./payment-events/page')).default(NO_PARAMS),
     fetches: [api.events, api.eventStats],
   },
+  {
+    path: '/activity',
+    render: async () => (await import('./activity/page')).default(NO_PARAMS),
+    fetches: [api.activity],
+  },
 ];
 
-describe('bốn trang chỉ Owner chặn Staff trước khi gọi API (plan P4f, quyết định 13)', () => {
+describe('năm trang chỉ Owner chặn Staff trước khi gọi API (plan P4f, quyết định 13)', () => {
   it.each(OWNER_ONLY_PAGES)('$path: Staff → /not-authorized, không gọi API', async (page) => {
     state.session = as('STAFF');
     await expect(page.render()).rejects.toThrow('REDIRECT /not-authorized');

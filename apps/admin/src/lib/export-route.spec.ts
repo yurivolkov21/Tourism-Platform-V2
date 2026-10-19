@@ -154,4 +154,66 @@ describe('xlsxAfterBuild', () => {
     info.mockRestore();
     error.mockRestore();
   });
+
+  // ADR-0061 §5: lượt xuất thành công vào nhật ký admin; lỗi khi báo không được chặn file.
+  it('dựng xong thì báo nhật ký đúng một lần, sau khi dựng', async () => {
+    const info = vi.spyOn(console, 'info').mockImplementation(() => {});
+    const order: string[] = [];
+    const record = vi.fn(async () => {
+      order.push('record');
+    });
+    const response = await xlsxAfterBuild(
+      'reports',
+      entry,
+      'nexora-report-2026-09',
+      async () => {
+        order.push('build');
+        return new ArrayBuffer(4);
+      },
+      record,
+    );
+    expect(response.status).toBe(200);
+    expect(record).toHaveBeenCalledTimes(1);
+    expect(order).toEqual(['build', 'record']);
+    info.mockRestore();
+  });
+
+  it('báo nhật ký lỗi: vẫn trả file, log một dòng', async () => {
+    const info = vi.spyOn(console, 'info').mockImplementation(() => {});
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const response = await xlsxAfterBuild(
+      'reports',
+      entry,
+      'nexora-report-2026-09',
+      async () => new ArrayBuffer(4),
+      async () => {
+        throw new Error('API down');
+      },
+    );
+    expect(response.status).toBe(200);
+    expect(error).toHaveBeenCalledWith(
+      '[admin] reports export activity not recorded',
+      expect.any(Error),
+    );
+    info.mockRestore();
+    error.mockRestore();
+  });
+
+  it('dựng lỗi thì không báo nhật ký', async () => {
+    const info = vi.spyOn(console, 'info').mockImplementation(() => {});
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const record = vi.fn(async () => {});
+    await xlsxAfterBuild(
+      'reports',
+      entry,
+      'nexora-report-2026-09',
+      async () => {
+        throw new RangeError('Invalid string length');
+      },
+      record,
+    );
+    expect(record).not.toHaveBeenCalled();
+    info.mockRestore();
+    error.mockRestore();
+  });
 });

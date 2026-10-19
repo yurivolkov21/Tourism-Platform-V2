@@ -6,6 +6,7 @@ import {
   CreditCard,
   FileBarChart,
   FileText,
+  History,
   Image,
   LayoutDashboard,
   Mail,
@@ -176,6 +177,15 @@ export const NAV_GROUPS: NavGroup[] = [
         enabled: true,
         icon: Users,
         access: 'users.list',
+      },
+      // Nhật ký thao tác admin (ADR-0061) — chỉ Owner, cùng nếp Users.
+      {
+        key: 'activity',
+        label: t.activity,
+        href: '/activity',
+        enabled: true,
+        icon: History,
+        access: 'activity.list',
       },
     ],
   },

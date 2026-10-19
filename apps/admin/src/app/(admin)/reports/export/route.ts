@@ -2,6 +2,7 @@ import type { AdminMonthlyReport } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
 import { cookies } from 'next/headers';
 import type { NextRequest } from 'next/server';
+import { recordAdminExport } from '@/lib/api/activity';
 import { fetchAllAdminBookings } from '@/lib/api/bookings';
 import { fetchAdminMonthlyReport } from '@/lib/api/reports';
 import { EXPORT_MAX_ROWS } from '@/lib/export-pages';
@@ -121,5 +122,7 @@ export async function GET(request: NextRequest) {
         // Hyperlink mã đơn trỏ về CHÍNH admin đang chạy (dev hay prod) — builder không đoán domain.
         adminOrigin: request.nextUrl.origin,
       }),
+    // Nhật ký admin (ADR-0061 §5): tháng của báo cáo là chi tiết duy nhất.
+    () => recordAdminExport(cookie, { kind: 'reports', month: report.month }),
   );
 }
