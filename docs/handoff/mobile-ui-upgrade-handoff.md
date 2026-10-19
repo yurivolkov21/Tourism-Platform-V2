@@ -48,7 +48,8 @@ Nền phải **đục** (thanh điều hướng nằm đè nội dung), nên `wi
    `fireEvent`/`unmount`/`rerender`.
 2. **Không thêm dependency, không nâng phiên bản** (freeze 31/10). Mọi thứ đợt này dùng đồ đã
    cài: `expo-router` 57 (có `NativeTabs`), `@expo/vector-icons` (có bộ Material), font hệ thống.
-   App chạy bằng Expo Go (ADR-0001 AMEND 1), nên không có module native mới.
+   Vòng dev hằng ngày là Expo Go; bản demo Android là build EAS ([ADR-0040](../adr/0040-mobile-app-expo.md)
+   AMEND 6). Đợt này không có module native mới nên không cần build lại.
 3. **Không sửa thang chữ ở `libs/shared/tokens/style-dictionary/tokens.mjs`** — web dùng chung.
    Đổi cách `AppText` ánh xạ bậc và độ đậm (N2), không đổi token.
 4. **Không đụng bố cục Home:** `RegionRail` và `home-metrics.ts` giữ nguyên (user chốt 19/10).
@@ -60,18 +61,23 @@ Nền phải **đục** (thanh điều hướng nằm đè nội dung), nên `wi
 
 ## 3. Việc phải làm trước (T0, xong trước 23/10)
 
-1. **ADR-0040 AMEND 3** (luật 5 — ADR đi trước code). AMEND 1 §1–§2 đã ghi Literata cho tiêu
-   đề, Archivo cho thân, bộ icon Feather; đợt này đổi cả ba, nên phải ghi lại: (a) chữ thân dùng
-   font hệ thống, Literata chỉ còn biến thể `brand`; (b) icon bộ Material trong
-   `@expo/vector-icons`; (c) thanh tab dùng `NativeTabs` nếu spike ở mục 2 đạt. Không thêm
-   dependency nào. User duyệt AMEND trước khi code N1, N2, N5.
-2. **Spike `NativeTabs` trên máy Android thật qua Expo Go (tối đa nửa ngày).** Import từ
-   `expo-router/unstable-native-tabs` — API còn nhãn unstable, đọc kiểu trong
-   `node_modules/expo-router/build/native-tabs/` chứ đừng đoán tên prop. Cần trả lời ba câu:
-   chạy được trong Expo Go SDK 57 không; đặt được màu nền thanh, màu viên chỉ báo, màu nhãn
-   theo token không; bấm lại tab đang mở có cuộn lên đầu không (`FloatingTabBar` hiện tự làm
-   việc này qua sự kiện `tabPress`). Đạt cả ba thì N1 dùng `NativeTabs`; thiếu một thì giữ
-   `FloatingTabBar` và vẽ lại theo khung — cùng hình, chỉ khác cách dựng. Ghi kết quả vào AMEND.
+1. **[ADR-0040 AMEND 7](../adr/0040-mobile-app-expo.md)** (luật 5 — ADR đi trước code). Bản đề
+   xuất đã soạn 19/10, chờ user duyệt. AMEND 1 §1–§2 đã ghi Literata cho tiêu đề, Archivo cho
+   thân, bộ icon Feather; AMEND 7 đổi cả ba: (a) chữ thân dùng font hệ thống, Literata chỉ còn biến
+   thể `brand`; (b) icon `MaterialCommunityIcons` trong `@expo/vector-icons`; (c) thanh tab dùng
+   `NativeTabs` nếu spike ở mục 2 đạt. Không thêm dependency nào. Chưa duyệt thì chưa code N1, N2,
+   N5. (Bản đầu của tài liệu này và entry CHANGELOG 19/10 gọi nhầm là "AMEND 3" — số 3 đến 6 đã
+   dùng từ trước.)
+2. **Spike `NativeTabs` trên máy Android thật (tối đa nửa ngày)**, thử cả Expo Go lẫn build EAS.
+   Import từ `expo-router/unstable-native-tabs` — API còn nhãn unstable, đọc kiểu trong
+   `node_modules/expo-router/build/native-tabs/types.d.ts` chứ đừng đoán. Prop màu có sẵn:
+   `backgroundColor`, `indicatorColor`, `iconColor`, `selectedIconColor`, `labelStyle`,
+   `selectedLabelStyle`, `labelVisibilityMode`; icon qua `NativeTabs.Trigger.VectorIcon` với
+   `MaterialCommunityIcons`. Cần trả lời ba câu: chạy được trong Expo Go SDK 57 và build EAS
+   không; tô được màu theo token không; bấm lại tab đang mở có cuộn lên đầu không (mặc định của
+   gói, đừng đặt `disableScrollToTop`). Đạt cả ba thì N1 dùng `NativeTabs`; thiếu một thì giữ
+   `FloatingTabBar` và vẽ lại theo khung — cùng hình, chỉ khác cách dựng. Ghi kết quả vào mục
+   "Kết quả spike" của AMEND 7.
 3. **Hàm thuần pha màu** trong `libs/mobile/ui/src/lib/theme.ts` (viết test trước): nhận hai màu
    token và tỉ lệ, trả màu đục. Dùng cho ba nền ở bảng mục 1. Không gõ màu tay.
 

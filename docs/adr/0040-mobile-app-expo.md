@@ -525,3 +525,82 @@ Google bằng SDK gốc là native module, Expo Go không nạp được. Thêm 
 vòng dev hằng ngày và ẩn nút Google. Hàng `eas.json` ở bảng đối chiếu Nexora đổi từ
 "cố ý bỏ" sang "thêm lại khi cần native module" — đúng đường lên dev build mà §Hệ quả
 đã để mở.
+
+## AMEND 7 — 19/10/2026 (nâng cấp giao diện theo Material 3): chữ hệ thống, icon Material, thanh tab `NativeTabs`
+
+**Trạng thái:** đề xuất 19/10, chờ user duyệt. Duyệt xong ghi ngày duyệt vào đây trước khi code
+N1, N2, N5 của [bàn giao](../handoff/mobile-ui-upgrade-handoff.md).
+
+**Đính chính số:** entry CHANGELOG 19/10 và bản đầu của bàn giao gọi AMEND này là "AMEND 3" — sai,
+vì AMEND 3 đến 6 đã có từ trước (gesture-handler, `packageExtensions`, image picker, build EAS).
+Số đúng là 7. Entry CHANGELOG giữ nguyên (bản ghi bất biến); bàn giao và open-items đã sửa.
+
+Bối cảnh: user duyệt bản vẽ [`mobile-ui-upgrade.src.html`](../design/mockups/mobile-ui-upgrade.src.html)
+ngày 19/10 sau bốn vòng. Vòng 2 bị chê "vẫn giống web responsive"; buổi thuyết trình thử (tuần
+02–08/11) demo trên Android là chính, nên bản cuối theo Material 3 (bản Expressive của Android 16).
+Ba thứ trong bản vẽ đảo quyết định đã ghi ở AMEND 1: §1 chọn bộ icon Feather cho giống lucide của
+web, §2 chọn Literata cho tiêu đề và Archivo cho thân "như web". Luật 5 đòi ADR đi trước code.
+
+### Quyết định
+
+1. **Chữ thân dùng font hệ thống** (Roboto trên Android, SF Pro trên iOS). Mọi biến thể của
+   `AppText` trừ một đặt `fontWeight` (400 hoặc 500) và **không** đặt `fontFamily`. Biến thể mới
+   `brand` giữ `Literata_700Bold`, đặt `fontFamily` và **không** đặt `fontWeight` — luật chống bôi
+   đậm giả ở `theme.ts` nay chỉ còn áp cho nó. `brand` chỉ dùng cho chữ nằm trên ảnh và con số
+   thương hiệu (tên địa danh, tên tour trên ảnh đầu trang, số đếm ngược, tiêu đề onboarding,
+   "You're going!", tiêu đề bài viết). **Thang chữ token giữ nguyên** (12/14/16/18/24/30, dùng
+   chung với web); chỉ đổi cách `AppText` ánh xạ bậc và độ đậm theo bảng ở bàn giao mục N2.
+   Thôi nạp Archivo trong `useFonts` khi không còn chỗ nào dùng; gói
+   `@expo-google-fonts/archivo` giữ trong `package.json` tới sau freeze 31/10, để không đổi
+   lockfile sát hạn.
+2. **Icon bộ `MaterialCommunityIcons`** của `@expo/vector-icons` (gói đã cài từ AMEND 1) thay
+   Feather. Chọn bộ Community vì có cặp viền và đặc cho cùng một hình (`home` và `home-outline`),
+   thứ thanh điều hướng Material 3 cần để báo tab đang chọn; `MaterialIcons` dùng làm dự phòng khi
+   thiếu glyph. Chữ G của nút Google giữ nguyên nguồn cũ.
+3. **Thanh tab dùng `NativeTabs`** của `expo-router/unstable-native-tabs` (có sẵn trong
+   expo-router 57.0.21, dựng trên `react-native-screens` 4.26.2 đã cài) thay `FloatingTabBar` tự
+   vẽ: Android ra thanh điều hướng Material 3 thật (viên chỉ báo, ripple, trợ năng), iOS ra
+   `UITabBar` của hệ thống. Icon nạp qua `NativeTabs.Trigger.VectorIcon` với
+   `MaterialCommunityIcons` — chính ví dụ trong kiểu của gói. **Có điều kiện:** một spike tối đa
+   nửa ngày trên máy Android thật phải đạt cả ba:
+   - chạy được trong Expo Go SDK 57 **và** trong bản build EAS Android của AMEND 6 (bản dựng
+     trên Android dùng `react-native-screens/experimental`, nên phải thử chứ không suy);
+   - tô được màu theo token qua các prop có sẵn: `backgroundColor`, `indicatorColor`, `iconColor`,
+     `selectedIconColor`, `labelStyle`, `selectedLabelStyle`, `labelVisibilityMode`;
+   - bấm lại tab đang mở thì cuộn lên đầu (mặc định của gói; đừng đặt `disableScrollToTop`).
+
+   Thiếu một điều thì giữ `FloatingTabBar` và vẽ lại theo khung mockup — cùng hình, khác cách dựng.
+   Kết quả spike ghi vào mục "Kết quả spike" dưới đây trước khi gộp N1.
+4. **Nền bề mặt pha từ token bằng một hàm thuần** trong `theme.ts` (có test): nền thanh điều hướng,
+   thanh tìm và màn danh sách là `muted` hoặc `secondary` pha vào `background` theo tỉ lệ ở bàn
+   giao mục 1. Màu ra là màu đục, không gõ tay — giữ nguyên luật "không hex viết tay" của §3.
+
+**Không đổi:** không thêm dependency, không đổi token dùng chung với web, không đổi luồng màn,
+không dev build mới ngoài bản EAS đã có. Bố cục Home và `RegionRail` giữ nguyên (user chốt 19/10).
+
+### Kết quả spike
+
+_(Điền sau khi chạy: ngày, máy, Expo Go và build EAS, ba điều kiện đạt hay không.)_
+
+### Đã cân nhắc và loại
+
+| Phương án | Vì sao loại |
+| --- | --- |
+| Giữ Archivo, chỉ đổi kiểu component | Đúng là vòng 2 của bản vẽ — user chê vẫn giống web. Font thân là một trong những dấu hiệu rõ nhất của chất app hay chất web. |
+| Vẽ theo Apple HIG (vòng 3) | Demo chạy Android; giao diện iOS trên máy Android lạc chỗ y như giao diện web. |
+| Nạp Roboto qua `@expo-google-fonts/roboto` | Thêm dependency sát freeze trong khi Android đã có Roboto làm font hệ thống. |
+| `react-native-bottom-tabs` (Callstack) | Module native ngoài danh sách Expo Go, cần build mới; `NativeTabs` có sẵn và dựng trên cùng nền `react-native-screens`. |
+| Thành phần Jetpack Compose của `@expo/ui` | Còn thử nghiệm, đổi cả cách dựng màn chứ không riêng thanh tab; quá rộng cho 8 ngày. |
+| Chỉ vẽ lại `FloatingTabBar` | Vẫn là đường lùi nếu spike hỏng; không chọn trước vì tự vẽ thì thiếu ripple, trợ năng và hành vi chuẩn của thanh điều hướng hệ thống. |
+
+### Hệ quả
+
+- AMEND 1 §1 (Feather) và §2 (map Literata/Archivo) không còn đúng cho mobile; map font nay chỉ còn
+  `brand`. Web không đổi: vẫn lucide, Archivo, Literata.
+- iOS nhận font SF và thanh tab `UITabBar` của hệ thống, phần còn lại mang dáng Material 3 — chấp
+  nhận, vì demo chạy Android và thời gian không đủ cho hai bản.
+- Test phải sửa: `app-text.spec.tsx` (đang khẳng định `Archivo_400Regular` và `Literata_700Bold`),
+  `tab-bar-icon.spec.tsx` nếu bỏ `TabBarIcon`, và kiểm kê route
+  `apps/mobile/src/routes.spec.tsx` nếu `NativeTabs` cần mock trong Jest — spike trả lời luôn câu này.
+- Việc dọn sau freeze: gỡ `@expo-google-fonts/archivo`; gỡ `floating-tab-bar.tsx`,
+  `TAB_BAR_LIFT`, `TAB_BAR_TILE` nếu `NativeTabs` đạt.
