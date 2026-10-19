@@ -21,7 +21,6 @@
 
 | Mã | Việc | Ghi chú |
 | --- | --- | --- |
-| **P6** | Trợ lý AI tư vấn tour | **Bật trên production 19/10** (code PR #30, ADR-0050 AMEND 1, [plan 15/10](plans/2026-10-15-p6-ai-concierge.md); migration đã chạy Supabase; cờ bật 03:57 UTC, trần ngày 10 USD). Khung chat dạng hội thoại 19/10 (PR #32). Đọc đơn của khách đã đăng nhập, chỉ xem 19/10 (PR #35, ADR-0050 AMEND 2). Đã có lượt thật với `searchTours` và `getTourDetails`. Yuri thử hỏi đơn khi đã và chưa đăng nhập, rồi chạy 28 kịch bản thử tay trên production 19/10: đạt, trừ A8 (câu không nêu tên tour bám tour đã bàn trước) và B1 (không hiện thẻ enquiry), sửa ở PR #38. Thử lại 19/10 11:17–11:21 UTC: A8, B1 và B2 đạt (enquiry thật, hai mail tới hộp thư); B4 (tìm "Saigon Vespa") và thẻ enquiry thứ hai trong cùng cuộc chat sửa ở PR #41. Thử lại 19/10 12:37–12:41 UTC: B4 và enquiry lần hai đạt; B3 (bấm Cancel thì trợ lý nói "unable to process") sửa ở PR #42. Thử lại 13:12 UTC: hết câu đó, nhưng sau Cancel trợ lý bảo bấm Send; sửa ở PR #43. Còn treo ở CHANGELOG 19/10: thử lại B3 (Start over rồi Cancel) |
 | **UI mobile** | Nâng cấp giao diện app theo Material 3 (Android) | **Bản vẽ duyệt 19/10** ([mockup](design/mockups/README.md), [bàn giao](handoff/mobile-ui-upgrade-handoff.md)); giao Nghĩa code đợt 23–30/10, P1 trước. ADR-0040 AMEND 7 duyệt 19/10 (font, icon, thanh tab); thanh tab còn chờ spike `NativeTabs` trên Android thật (Expo Go và build EAS) |
 
 ## Trước lượt seed lại 03/11
