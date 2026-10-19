@@ -44,3 +44,11 @@ export function moderationRevalidationTags(args: {
 export function postRevalidationTags(slug: string): string[] {
   return ['posts', `post:${slug}`];
 }
+
+/**
+ * Tag của mọi khe ảnh thương hiệu (ADR-0059 §3): web đọc cả cụm khe một lần (`fetchSiteMedia`),
+ * nên đổi ảnh một khe là bust cả cụm. Gọi sau commit của `admin.appearance.setSlot`.
+ */
+export function siteMediaRevalidationTags(): string[] {
+  return ['site-media'];
+}

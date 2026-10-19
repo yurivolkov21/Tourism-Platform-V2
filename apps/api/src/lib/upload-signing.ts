@@ -107,26 +107,48 @@ export function isPostUploadPublicId(
   return publicId.startsWith(`${postCoverFolder(rootFolder, postId)}/`);
 }
 
-/** Dạng Postgres in ra cho cột `uuid` — id của user, tour và bài viết đều là cột ấy. */
+/**
+ * Thư mục ảnh admin tải lên cho MỘT khe ảnh của web (ADR-0059 §5) — theo `id` của dòng
+ * `site_media_slots`, không theo khoá: khoá là chữ người đọc, còn vùng tải lên của bộ dọn
+ * nhận chủ sở hữu dạng uuid như mọi thư mục khác.
+ */
+export function siteSlotFolder(rootFolder: string, slotId: string): string {
+  return `${rootFolder}/site/${slotId}`;
+}
+
+/**
+ * publicId có nằm trong thư mục tải lên của ĐÚNG khe này không — cùng nếp
+ * `isPostUploadPublicId`. Ảnh gốc ở `<root>/catalog/site/` không bao giờ khớp.
+ */
+export function isSiteSlotUploadPublicId(
+  rootFolder: string,
+  slotId: string,
+  publicId: string,
+): boolean {
+  return publicId.startsWith(`${siteSlotFolder(rootFolder, slotId)}/`);
+}
+
+/** Dạng Postgres in ra cho cột `uuid` — id của user, tour, bài viết và khe site đều là cột ấy. */
 const UUID_SEGMENT = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const isUuidSegment = (segment: string): boolean => UUID_SEGMENT.test(segment);
 
 /**
- * Bốn thư mục server ký upload vào, kèm dạng chủ sở hữu của từng thư mục — khớp
- * `uploadFolderFor`, `tourPhotoFolder` và `postCoverFolder` ở trên; thêm đường ký mới thì
- * thêm thư mục ở đây, không thì bộ dọn từ chối ảnh của nó. `Map` chứ không object thường:
- * tra `constructor` trên object thường ra một hàm có sẵn, gọi nó là ra "đúng".
+ * Năm thư mục server ký upload vào, kèm dạng chủ sở hữu của từng thư mục — khớp
+ * `uploadFolderFor`, `tourPhotoFolder`, `postCoverFolder` và `siteSlotFolder` ở trên; thêm
+ * đường ký mới thì thêm thư mục ở đây, không thì bộ dọn từ chối ảnh của nó. `Map` chứ không
+ * object thường: tra `constructor` trên object thường ra một hàm có sẵn, gọi nó là ra "đúng".
  */
 const UPLOAD_ZONE_OWNERS = new Map<string, (owner: string) => boolean>([
   ['avatars', isUuidSegment],
   ['reviews', (owner) => BookingCodeSchema.safeParse(owner).success],
   ['tours', isUuidSegment],
   ['posts', isUuidSegment],
+  ['site', isUuidSegment],
 ]);
 
 /**
  * publicId có nằm trong vùng tải lên không (G16, ADR-0035 AMEND 3): đúng dạng
- * `<root>/<thư mục>/<chủ sở hữu>/<tên file>`, thư mục là một trong bốn ở trên và chủ sở hữu
+ * `<root>/<thư mục>/<chủ sở hữu>/<tên file>`, thư mục là một trong năm ở trên và chủ sở hữu
  * đúng dạng của nó. Bộ dọn chỉ destroy ảnh khớp ở đây. So tiền tố gốc là chưa đủ vì ảnh
  * catalog cũng nằm dưới `tourism/`; so tiền tố thư mục cũng chưa đủ vì thư mục cũ
  * `tourism/tours/hero/` nằm ngay trong `tours` (ADR-0020 Hệ quả) — nên mới phải soi dạng

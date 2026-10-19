@@ -1,6 +1,7 @@
 import {
   moderationRevalidationTags,
   postRevalidationTags,
+  siteMediaRevalidationTags,
   tourRevalidationTags,
 } from './revalidation-decision.js';
 
@@ -79,5 +80,11 @@ describe('postRevalidationTags', () => {
       'posts',
       'post:eating-your-way-through-hoi-an',
     ]);
+  });
+});
+
+describe('siteMediaRevalidationTags', () => {
+  it('một tag cho cả cụm khe — đúng `TAGS.SITE_MEDIA` của apps/web/src/lib/api/tags.ts', () => {
+    expect(siteMediaRevalidationTags()).toEqual(['site-media']);
   });
 });

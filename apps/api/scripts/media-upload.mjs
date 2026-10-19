@@ -31,6 +31,10 @@
  * ── Sau P4e-4: ảnh bìa BÀI VIẾT cũng vậy (vòng review P4e-4) ──
  * Trang sửa bài cho admin đổi ảnh bìa và alt. Bài ĐÃ có dòng ảnh thì script bỏ qua y như
  * tour — không thì chạy lại sẽ đặt lại hero cũ theo manifest, đè ảnh admin vừa chọn.
+ *
+ * ── Sau P4f Appearance: ảnh KHE SITE cũng vậy (ADR-0059 §6) ──
+ * Trang Appearance cho admin thay ảnh từng khe. Khe ĐÃ có dòng ảnh thì script bỏ qua: không
+ * thì chạy lại sẽ thêm ảnh gốc bên cạnh ảnh admin vừa chọn, và web lấy dòng đầu.
  */
 
 import { execFile } from 'node:child_process';
@@ -90,14 +94,17 @@ if (plan.length === 0) {
 const client = new pg.Client({ connectionString: DB_URL });
 await client.connect();
 
-/** Tour và bài viết đã có dòng ảnh — admin sở hữu chúng (tour từ F18, bài từ P4e-4). */
+/**
+ * Tour, bài viết và khe site đã có dòng ảnh — admin sở hữu chúng (tour từ F18, bài từ
+ * P4e-4, khe từ P4f Appearance).
+ */
 const { rows: ownedRows } = await client.query(
   `SELECT DISTINCT owner_type::text AS owner_type, owner_id
-     FROM media_assets WHERE owner_type IN ('TOUR', 'POST')`,
+     FROM media_assets WHERE owner_type IN ('TOUR', 'POST', 'SITE')`,
 );
 const adminOwned = new Set(ownedRows.map((r) => `${r.owner_type}:${r.owner_id}`));
-/** Loại chủ mà admin sửa ảnh — chỉ hai loại này được bỏ qua khi đã có dòng. */
-const ADMIN_EDITED = new Set(['tour', 'post']);
+/** Loại chủ mà admin sửa ảnh — chỉ ba loại này được bỏ qua khi đã có dòng. */
+const ADMIN_EDITED = new Set(['tour', 'post', 'site-slot']);
 
 /** Khe brand-chrome khoá theo `key`; owner của asset là id của chính row slot. */
 const { rows: slotRows } = await client.query('SELECT id, key FROM site_media_slots');
@@ -133,7 +140,9 @@ for (const item of plan) {
   if (ADMIN_EDITED.has(item.kind) && adminOwned.has(`${ownerType}:${ownerId}`)) {
     skippedOwned++;
     if (DRY)
-      console.log(`  [dry] ${String(item.slug).padEnd(20)} → bỏ qua: ${item.kind} đã có ảnh`);
+      console.log(
+        `  [dry] ${String(item.slug ?? item.key).padEnd(20)} → bỏ qua: ${item.kind} đã có ảnh`,
+      );
     continue;
   }
 
@@ -236,7 +245,7 @@ console.log(
 );
 if (skippedOwned > 0) {
   console.log(
-    `[media-upload] bỏ qua ${skippedOwned} chỗ gắn của tour/bài viết đã có ảnh — admin sửa ở tab Photos và trang sửa bài.`,
+    `[media-upload] bỏ qua ${skippedOwned} chỗ gắn của tour/bài viết/khe site đã có ảnh — admin sửa ở tab Photos, trang sửa bài và Appearance.`,
   );
 }
 if (failures.length) {

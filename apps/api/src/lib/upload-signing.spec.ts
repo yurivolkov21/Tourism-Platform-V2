@@ -7,12 +7,14 @@ import {
   INCOMING_TRANSFORMATION,
   isOwnAvatarPublicId,
   isPostUploadPublicId,
+  isSiteSlotUploadPublicId,
   isTourUploadPublicId,
   isUploadZonePublicId,
   postCoverFolder,
   requireUploadConfig,
   resolveUploadConfig,
   signUploads,
+  siteSlotFolder,
   tourPhotoFolder,
   UploadsNotConfiguredError,
   uploadFolderFor,
@@ -156,6 +158,21 @@ describe('postCoverFolder / isPostUploadPublicId (ADR-0051 §7)', () => {
   });
 });
 
+describe('siteSlotFolder / isSiteSlotUploadPublicId (ADR-0059 §5)', () => {
+  const SLOT = '0dddd001-0000-4000-8000-000000000001';
+
+  it('thư mục ảnh tải lên của một khe nằm dưới <root>/site/<slotId>', () => {
+    expect(siteSlotFolder('tourism', SLOT)).toBe(`tourism/site/${SLOT}`);
+  });
+
+  it('chỉ ảnh trong ĐÚNG thư mục của khe; ảnh gốc ở catalog thì không', () => {
+    expect(isSiteSlotUploadPublicId('tourism', SLOT, `tourism/site/${SLOT}/abc`)).toBe(true);
+    expect(isSiteSlotUploadPublicId('tourism', SLOT, `tourism/site/${SLOT}-evil/abc`)).toBe(false);
+    expect(isSiteSlotUploadPublicId('tourism', SLOT, `tourism/posts/${SLOT}/abc`)).toBe(false);
+    expect(isSiteSlotUploadPublicId('tourism', SLOT, 'tourism/catalog/site/home-hero')).toBe(false);
+  });
+});
+
 describe('signUploads (một phần G15 — một bản cho ảnh tour và ảnh bìa bài viết)', () => {
   it('ký đúng số lượt, cùng một timestamp, tên file do server sinh; publicId đầy đủ cho hàng dọn', () => {
     const names = ['a', 'b'];
@@ -184,12 +201,13 @@ describe('isUploadZonePublicId (G16, ADR-0035 AMEND 3)', () => {
   const POST = '0199a000-0000-7000-8000-000000000001';
   const FILE = '5f0c2b1e-9d3a-4c7b-8e21-6a4f0d9b7c13';
 
-  it('ảnh do chính bốn đường ký cấp ra đều nằm trong vùng tải lên', () => {
+  it('ảnh do chính năm đường ký cấp ra đều nằm trong vùng tải lên', () => {
     const inZone = [
       `${uploadFolderFor('tourism', { purpose: 'AVATAR', userId: USER })}/${FILE}`,
       `${uploadFolderFor('tourism', { purpose: 'REVIEW_PHOTO', bookingCode: 'BK-5YU9J339' })}/${FILE}`,
       `${tourPhotoFolder('tourism', TOUR)}/${FILE}`,
       `${postCoverFolder('tourism', POST)}/${FILE}`,
+      `${siteSlotFolder('tourism', POST)}/${FILE}`,
       ...signUploads(CFG, tourPhotoFolder('tourism', TOUR), 2, new Date()).publicIds,
     ];
 
@@ -200,6 +218,8 @@ describe('isUploadZonePublicId (G16, ADR-0035 AMEND 3)', () => {
     // Cùng gốc `tourism/` với vùng tải lên — so mỗi tiền tố gốc là chưa đủ.
     expect(isUploadZonePublicId('tourism', 'tourism/catalog/tour/ha-long-hero')).toBe(false);
     expect(isUploadZonePublicId('tourism', 'tourism/catalog/destination/hoi-an/1')).toBe(false);
+    // Ảnh gốc của khe site (ADR-0059 §4): bộ dọn không bao giờ được xoá.
+    expect(isUploadZonePublicId('tourism', 'tourism/catalog/site/home-hero')).toBe(false);
     // Ba thư mục có từ trước trên cloud (ADR-0020 Hệ quả). `tours/hero` nằm ngay trong
     // thư mục `tours`, nên chủ sở hữu phải đúng dạng id tour chứ không chỉ là một segment.
     expect(isUploadZonePublicId('tourism', 'tourism/tours/hero/abc')).toBe(false);
@@ -219,6 +239,7 @@ describe('isUploadZonePublicId (G16, ADR-0035 AMEND 3)', () => {
     expect(isUploadZonePublicId('tourism', `tourism/reviews/BK-1/${FILE}`)).toBe(false);
     expect(isUploadZonePublicId('tourism', `tourism/reviews/${USER}/${FILE}`)).toBe(false);
     expect(isUploadZonePublicId('tourism', `tourism/posts/BK-5YU9J339/${FILE}`)).toBe(false);
+    expect(isUploadZonePublicId('tourism', `tourism/site/home-hero/${FILE}`)).toBe(false);
   });
 
   it('phải đúng một tên file ngay dưới thư mục của chủ sở hữu', () => {

@@ -1063,9 +1063,11 @@ model MediaAsset {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// SiteMediaSlot — một row mỗi slot ảnh brand-chrome trên web public. Catalog
-// các key/kind nằm trong code API; bảng này chỉ cấp cho mỗi slot một uuid ổn
-// định để ảnh của nó nằm trong media_assets (ownerType=SITE).
+// SiteMediaSlot — một row mỗi slot ảnh brand-chrome trên web public. Danh mục
+// khe (khoá, nhóm, kiểu, khung) nằm ở `libs/shared/contract/src/site-slots.ts`
+// (ADR-0059); bảng này chỉ cấp cho mỗi slot một uuid ổn định để ảnh của nó nằm
+// trong media_assets (ownerType=SITE), và `updatedAt` là phiên bản của lệnh lưu
+// ảnh khe ở admin.
 // ─────────────────────────────────────────────────────────────────────────────
 
 model SiteMediaSlot {
