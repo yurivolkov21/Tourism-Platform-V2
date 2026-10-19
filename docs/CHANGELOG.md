@@ -8,6 +8,62 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-10-19 — Merge P4f Media library B: trang Photos của điểm đến, thêm ảnh vào thư viện từ `/media` (`a8dbdd5`..`6aeac90`)
+
+Spec [2026-10-16-p4f-media-library-design.md](specs/2026-10-16-p4f-media-library-design.md) §8, Yuri duyệt
+19/10 03:05 UTC. Nhánh `feat/admin-p4f-media-b`,
+[PR #36](https://github.com/yurivolkov21/Tourism-Platform-V2/pull/36), thi công trên session cloud. PR thứ
+hai sau Media A (PR #34). Không migration, không biến env, không dependency mới, không đổi thiết lập
+Cloudinary (thư mục `tourism/destinations/` tự có ở lần tải đầu).
+
+- `a8dbdd5`: contract `schemas/admin-destinations.ts` và ba thủ tục `admin.destinations.photos` (đọc
+  theo slug), `setPhotos` (thay trọn danh sách có thứ tự, kèm version), `signPhotoUploads` (ký lô tải
+  lên), bậc `staff`. Plan [2026-10-19-p4f-media.md](plans/2026-10-19-p4f-media.md) phần Media B.
+- `ea63bfb`: API. Một lần lưu chạy trong một transaction và giành version của điểm đến trước, nên trong
+  hai lệnh lưu cùng lúc lệnh sau ra `STALE_DESTINATION` trước mọi lỗi khác. Ảnh chỉ đến từ hai nguồn: dòng
+  đang có của điểm đến, hoặc ảnh tải lên trong thư mục riêng `destinations/<id>/`; khác đi là
+  `PHOTO_NOT_ALLOWED`. Chỉ ảnh tải lên của chính điểm đến bị gỡ mới vào hàng dọn 7 ngày (đặt lại đồng hồ
+  và số lần thử); tour đang mượn giữ dòng của mình. Xoá điểm đến đưa ảnh tải lên của nó vào hàng dọn.
+  Vùng tải lên của bộ dọn thêm `destinations`.
+- `2c8c657`: tách phần tải ảnh của tab Photos tour thành hook dùng chung (`usePhotoUploads`,
+  `PhotoUploadRows`); `EditorFormFrame` nhận câu stale riêng.
+- `c4fd493`: trang `/destinations/<slug>/photos` cho Owner và Staff, mở từ nút Photos ở bảng
+  Destinations. Danh sách ảnh theo thứ tự, ảnh đầu là ảnh bìa (web chỉ vẽ ảnh này, ở thẻ điểm đến); kéo
+  hoặc bấm để tải nhiều ảnh một lượt, sửa alt, đặt làm bìa. Ảnh gỡ khỏi danh sách hiện ở khối "Leaving
+  the library when you save" kèm câu nói rõ hậu quả và nút Put back. Lưu danh sách rỗng cho điểm đến
+  đang hiện trên web phải xác nhận. `/media` có menu Add photos to the library chọn điểm đến; link "Used
+  in" và hàng dọn của ảnh điểm đến trỏ về trang này.
+- `25b8962`: link Photos ở bảng điểm đến có viền như nút Edit cạnh nó (bọc `buttonVariants()` trong
+  `cn(...)`).
+- `6aeac90`: plan ghi các quyết định lúc thi công Media B.
+- Commit merge này: dòng P4f ghi Media B xong rồi chuyển sang open-items-closed (cả ba vùng đã xây),
+  CLAUDE.md roadmap, tiêu đề nhóm P4f ở mục lục specs.
+
+**Review.** Không có lượt review độc lập. Yuri bảo merge 19/10 09:00 UTC ("Merge nhé"). Nhánh rebase lên
+`7b99cec` không xung đột. Int ảnh điểm đến (12 test): đọc theo slug, slug lạ 404; thay trọn danh sách
+giữ ghi công và số đo dòng cũ; gỡ ảnh thì chỉ ảnh tải lên của điểm đến vào hàng dọn, tour mượn giữ dòng
+của mình; danh sách rỗng hợp lệ; version cũ ra `STALE_DESTINATION` không đổi gì; ảnh lạ ra
+`PHOTO_NOT_ALLOWED` không ghi gì; ký lô đúng thư mục; xoá điểm đến đưa ảnh tải lên vào hàng dọn; bust tag
+sau commit; Staff dùng được, khách 403, chưa đăng nhập 401. Chromium thật trên bản build với API sống
+(Cloudinary chặn bằng phản hồi giả vì sandbox không ra mạng) ở 1440, 768 và 390: tải ảnh lên Bến Tre
+rồi lưu thì `/media` hiện nó với nhãn Uploaded; gỡ rồi lưu thì hàng dọn có nó, hạn 7 ngày; gỡ một ảnh
+catalog có tour mượn thì khối dưới nói tour vẫn giữ ảnh; lưu rỗng hỏi xác nhận; không cuộn ngang trang.
+
+Tests after (`gate:int` trên `6aeac90`, 19/10, session cloud, API sống ở :3001): unit 8090 (web 2381,
+admin 2356, api 1367, mobile 864, contract 784, mobile-ui 145, i18n 62, ui 57, core 48, tokens 26) và int
+932 (56 file); Biome 2063 file. So với `7b99cec`: admin thêm 27 test, api 11, contract 14, int 12; Biome
+thêm 9 file; các gói khác không đổi.
+
+**CÒN TREO:**
+
+- Thử tay production theo spec §8.3 phần Media B, từng bước, chờ xác nhận: tải một ảnh vào một điểm đến
+  rồi lưu, mở hộp Add from library ở tab Photos của một tour thấy ảnh mới, `/media` hiện nó với nhãn
+  Uploaded và ghi công trống; gỡ ảnh ấy rồi lưu thì tab Cleanup queue có nó, hạn 7 ngày.
+- Năm chỗ khác còn dùng `buttonVariants({ variant: 'outline' })` trần trên Link nên mất viền (bảng
+  tours, bước Review của tour, đầu khu sửa tour, `app/error` và `app/not-found` của admin). Media B chỉ
+  sửa chỗ của nó.
+- Dọn nhánh `feat/admin-p4f-media-b` trên origin nếu GitHub không tự xoá.
+
 ## 2026-10-19 — Merge P6 trợ lý đọc đơn của khách đã đăng nhập, nút Plan your trip mở thẳng khung chat (`2f60dca`..`64b4899`)
 
 Yuri hỏi 19/10 07:45 UTC cho trợ lý đọc dữ liệu tài khoản của khách đang đăng nhập và bỏ lối "Send an
