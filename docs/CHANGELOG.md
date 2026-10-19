@@ -8,6 +8,50 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-10-19 — Merge bản vẽ nâng cấp giao diện app mobile theo Material 3 và bàn giao cho Nghĩa (`616357a`..`9c45bea`)
+
+Nhánh `docs/mobile-ui-upgrade-mockup` của Nghĩa (vòng 1, 14/10) được Yuri review 19/10 trên session cloud;
+Yuri chọn sửa thẳng bản vẽ rồi giao lại Nghĩa phần code. Làm trên nhánh `claude/eloquent-darwin-emmopy`,
+hai commit của Nghĩa cherry-pick nên giữ tên tác giả. Chỉ đổi tài liệu và mockup HTML: không code, không
+dependency, không migration, không đụng hạ tầng.
+
+- `616357a`, `e87df77` (Nghĩa): mockup HTML 42 khung, thêm bóng, kính mờ và điểm nhấn nhưng giữ nguyên bố
+  cục; luật Biome `!docs/design/*.html`.
+- `26eb1c7`: dời file về `docs/design/mockups/mobile-ui-upgrade.src.html` (luật Biome sẵn có của
+  `*.src.html` đã phủ), bỏ bản sao `mobile-ui-account-auth-mockup.html`, trả `biome.json` về như cũ.
+- `54047af`: vòng 2 theo phạm vi Yuri chốt: thanh tab có chữ, một kiểu ô nhập, bố cục mới cho Home,
+  Explore và Saved, chi tiết tour, bốn bước đặt tour, Trips. Tài khoản giữ năm dòng mở trình duyệt có icon
+  ↗ (quyết định 21/09).
+- `3cbe858`: vòng 3 theo Apple HIG (iOS 26) vì vòng 2 vẫn dáng web responsive.
+- `36a333a`: vòng 4 theo Material 3 Expressive vì buổi demo chạy Android: thanh điều hướng đáy tràn
+  ngang, thanh trên canh trái, chữ Roboto, icon Material Symbols, ô nhập outlined, chip bo 8, thanh tìm
+  56, bottom sheet tràn ngang, danh sách thẻ rời như Cài đặt Android 16. Bảng việc code xếp P1/P2.
+- `946a10f`: theo góp ý của Yuri: Home giữ bố cục cũ với rail ba vùng dọc; All/Upcoming/Past chỉ bo
+  tròn hai đầu, ô đang chọn giữ hình.
+- `9c45bea`: bàn giao [mobile-ui-upgrade-handoff](handoff/mobile-ui-upgrade-handoff.md) cho đợt code
+  23–30/10; mục lục `handoff/` và `design/mockups/`.
+- Commit merge này: open-items thêm dòng việc đang mở và mốc thuyết trình thử (tuần 02–08/11, Yuri báo
+  19/10); CLAUDE.md roadmap.
+
+**Review.** Lượt review đầu trên nhánh của Nghĩa tìm ra: bố cục giữ nguyên trong khi task giao cả bố
+cục; thanh tab chỉ có icon; hai kiểu ô nhập lẫn trong cùng luồng đặt tour; màn Tài khoản gộp ba trang
+pháp lý thành "Policies" có mũi tên, ngược quyết định 21/09; mockup vẽ 4 bước đặt tour trong khi code có
+3; file đặt sai thư mục, có bản sao 99% và phải nới `biome.json`; mockup chụp từ main 14/10, thiếu năm
+thay đổi mobile vào sau. Tất cả đã xử lý trong các vòng trên. Hướng dẫn đối chiếu: Apple HIG (vòng 3) và
+tài liệu `material-components-android` của Google (vòng 4; m3.material.io bị chặn ở môi trường cloud).
+Yuri duyệt bản vẽ 19/10 ("Ổn rồi").
+
+**CÒN TREO** (cho người nhận, chi tiết ở bàn giao mục 3):
+
+- ADR-0040 AMEND 3 trước khi code: chữ thân dùng font hệ thống, icon bộ Material, thanh tab
+  `NativeTabs` nếu spike đạt.
+- Spike `expo-router/unstable-native-tabs` trên máy Android thật qua Expo Go.
+- Bản xem online của mockup là artifact riêng tư của Yuri; cần chia sẻ cho Nghĩa.
+
+Tests after: không chạy `gate:int` vì nhánh chỉ đổi Markdown và một file HTML mà Biome bỏ qua; CI trên
+main là lưới. Mockup mở bằng Chromium ở bề rộng 1280 và 400, cả hai nền: không lỗi console, không cuộn
+ngang.
+
 ## 2026-10-19 — Merge P6 trợ lý AI tư vấn tour, API và web, cờ tắt mặc định (ADR-0050 AMEND 1, `abcf44a`..`5d30f0c`)
 
 Phase P6, user bảo "Làm ngay" 15/10 sau khi dời freeze sang 31/10. Nhánh `feat/p6-ai-concierge-3xp4sq`,

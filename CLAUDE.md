@@ -27,7 +27,8 @@ tour ✅ 12/10 · P5b-5 đánh giá ✅ 12/10 — thành viên khác dựng màn
 ADR-0056 ✅ 13/10) →
 P6 AI concierge (code ✅ 19/10, cờ tắt chờ key Anthropic) →
 P7 polish UI (ba trang đơn của khách: Phần A My bookings ✅ 06/10; B chi tiết
-đơn và C voucher ✅ 09/10; Saved và Settings thiết kế lại ✅ 09/10) → freeze 31/10 (dời từ 15/10,
+đơn và C voucher ✅ 09/10; Saved và Settings thiết kế lại ✅ 09/10; app mobile theo Material 3: bản vẽ
+duyệt 19/10, giao Nghĩa code 23–30/10) → freeze 31/10 (dời từ 15/10,
 ADR-0001 AMEND 3). Việc còn nợ gom ở
 [docs/open-items.md](docs/open-items.md).
 
