@@ -68,6 +68,7 @@ thay, cột đã xoá, và số AMEND để biết phải đọc tới cuối fi
 | [0058](0058-tour-card-next-departure-badges-rating-sort.md) | Thẻ tour mang đợt kế tiếp đặt được và badge; sắp theo rating; bộ lọc giá, thời lượng, độ khó ở lại web | |
 | [0059](0059-site-slot-appearance.md) | Appearance: danh mục khe ở contract, bốn nguồn ảnh của một lần lưu, bảng ảnh gốc trong code API | |
 | [0060](0060-media-library.md) | Media library: một ảnh là một publicId, sửa ghi công một lần cho mọi chỗ dùng, hàng dọn chỉ đọc, ảnh điểm đến có trình sửa riêng | |
+| [0061](0061-admin-activity-log.md) | Nhật ký thao tác admin: một bảng chỉ thêm, ghi tự động sau mỗi lệnh ghi thành công, chỉ Owner xem | |
 
 ## Thêm ADR mới
 

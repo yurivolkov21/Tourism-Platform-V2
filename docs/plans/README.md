@@ -75,7 +75,8 @@ CHANGELOG của nó trước.
 [sửa sạn giao diện admin](2026-10-05-admin-ui-polish.md) ·
 [P4f vùng Users: Owner và Staff](2026-10-02-p4f-users-staff.md) ·
 [P4f Appearance: ảnh các khe của web](2026-10-19-p4f-appearance.md) ·
-[P4f Media library](2026-10-19-p4f-media.md)
+[P4f Media library](2026-10-19-p4f-media.md) ·
+[Nhật ký thao tác admin](2026-10-19-admin-activity-log.md)
 
 **P7, bản in và hoá đơn chờ**
 [P7 ba trang đơn của khách (A, B, C)](2026-10-05-booking-pages-redesign.md) ·
