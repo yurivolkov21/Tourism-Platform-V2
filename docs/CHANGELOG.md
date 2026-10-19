@@ -8,6 +8,38 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-10-19 — Merge P6 sửa trợ lý: bấm Cancel thì nói chưa gửi gì, travelDate chỉ cho ngày khách nói rõ (`5596064`)
+
+Yuri thử lại trên production 19/10 lúc 12:37–12:41 UTC, sau PR #41. B4 đạt: hỏi "Saigon Vespa" ra tour
+"Sài Gòn After Dark by Vespa" kèm ngày khởi hành gần nhất. Enquiry lần hai trong cùng cuộc chat đạt: trợ lý
+nói đội đã nhận và chỉ nút Start over, không mở thẻ thứ hai. B3 hỏng: sau Start over, bấm Cancel trên thẻ
+thì thẻ hiện đúng "Enquiry not sent.", nhưng trợ lý nói "I'm unable to process this enquiry" và gợi ý thử
+lại với ngày cụ thể. Nguyên nhân: approval bị từ chối mà không có lý do thì AI SDK đưa model câu mặc định
+"Tool call execution denied.", model đọc thành lỗi. Thẻ ấy còn điền Travel date 2026-12-15 dù khách chỉ nói
+"in December" (suy từ ảnh; log không ghi input). Render ghi đủ các lượt trong hai hội thoại. Nhánh
+`feat/p6-ai-concierge-3xp4sq` (tạo lại từ `70f0c5e` sau khi PR #41 merge),
+[PR #42](https://github.com/yurivolkov21/Tourism-Platform-V2/pull/42), thi công trên session cloud. Không
+migration, không biến env, không dependency mới, không copy mới.
+
+- `5596064`: hằng `ENQUIRY_NOT_SENT_REASON` ở `chat-history.ts` (khách không bấm Send, chưa gửi gì, đó là
+  lựa chọn của khách chứ không phải lỗi) gắn vào `approval.reason` ở cả ba đường từ chối: Cancel, gõ tin
+  khác thay vì bấm thẻ, phần chờ thứ hai bị tự từ chối. Trường `travelDate` của `submitEnquiry` có mô tả
+  riêng: chỉ ngày khách nói rõ, tháng hay ngày áng chừng để trong `message`. Spec P6 §2c ghi lần sửa.
+- Commit merge này: open-items dòng P6 ghi kết quả thử và việc còn treo.
+
+**Review.** Không có lượt review độc lập. Chưa thử với model thật (container không có API key); test chỉ
+chứng minh model nhận đúng câu lý do. Yuri bảo đẩy lên main 19/10 12:50 UTC.
+
+Tests after (`gate:int` trên `5596064`, nền `70f0c5e`, 19/10, session cloud, API sống ở :3001): unit 8176
+(admin 2388, web 2386, api 1400, mobile 864, contract 800, mobile-ui 145, i18n 62, ui 57, core 48, tokens
+26) và int 952; Biome 2085 file. PR thêm 2 test unit ở api và câu kiểm lý do ở hai test int sẵn có.
+
+**CÒN TREO:**
+
+- Trên production: thử lại B3 (Start over, xin gửi enquiry, bấm Cancel: trợ lý nói chưa gửi gì, admin
+  không có enquiry mới). Đạt thì dòng P6 chuyển sang open-items-closed.
+- Dọn nhánh `feat/p6-ai-concierge-3xp4sq` trên origin nếu GitHub không tự xoá.
+
 ## 2026-10-19 — Merge P6 sửa trợ lý: tìm tour bằng một từ khoá, thẻ enquiry thứ hai báo đã gửi (`9ff2e4d`)
 
 Yuri thử lại trên production 19/10 lúc 11:17–11:21 UTC, sau PR #38. A8 đạt: dòng `chat turn` có `page`
