@@ -1543,10 +1543,10 @@ export const messages = {
       },
     ],
   },
-  // AI concierge chat panel (spec 2026-07-14-ai-concierge-chat).
+  // Trợ lý AI tư vấn tour (P6, spec 2026-09-29-p6-ai-concierge-design §2h, §2i).
   chatBot: {
     title: 'Nexora Concierge',
-    disclaimer: 'AI assistant — it can make mistakes. Tap WhatsApp for a human.',
+    disclaimer: 'AI assistant — it can make mistakes. For a person, send us an enquiry.',
     greeting:
       'Hi! I can help you find a tour, answer questions about itineraries and policies, or pass your details to our team. What are you planning?',
     suggestions: {
@@ -1555,22 +1555,45 @@ export const messages = {
       talkHuman: 'Talk to a human',
     },
     inputPlaceholder: 'Ask about tours, dates, what’s included…',
+    inputLabel: 'Message the concierge',
     send: 'Send',
     sendAria: 'Send message',
     startOver: 'Start over',
-    openAria: 'Open chat panel',
+    closeAria: 'Close chat',
     thinking: 'Thinking…',
     toolActivity: {
       searchTours: 'Searching tours…',
       getTourDetails: 'Checking tour details…',
       submitEnquiry: 'Sending your enquiry…',
     },
+    /** Vùng aria-live chỉ báo câu này khi câu trả lời đã xong, không đọc từng token. */
+    liveAnswerReady: 'The concierge replied.',
     error: 'Something went wrong. Please try again.',
     retry: 'Retry',
-    unavailable:
-      'The concierge is taking a break right now — please use WhatsApp or the enquiry form instead.',
+    unavailable: 'The concierge is taking a break right now — please send us an enquiry instead.',
+    busy: 'Still working on your last message. Give it a moment, then try again.',
+    rateLimited: 'You’re sending messages quite fast. Please wait a little while, then try again.',
+    turnLimit:
+      'This conversation has reached its limit. Start over to keep chatting, or send us an enquiry.',
+    expired: 'This conversation is no longer available. Start over to keep chatting.',
+    enquiryLink: 'Send an enquiry',
+    /** Thẻ xác nhận trước khi trợ lý gửi enquiry thay khách (spec §2c). */
+    confirm: {
+      title: 'Send this enquiry to our team?',
+      name: 'Name',
+      email: 'Email',
+      message: 'Message',
+      tour: 'Tour',
+      travelDate: 'Travel date',
+      groupSize: 'Travellers',
+      send: 'Send',
+      cancel: 'Cancel',
+      sending: 'Sending…',
+      sent: 'Enquiry sent. We’ll reply by email, usually within 24 hours.',
+      cancelled: 'Enquiry not sent.',
+    },
   },
-  // Floating contact launcher (channel popover; spec 2026-07-14-contact-launcher).
+  // Nút nổi "Plan your trip" (P6, spec §2h): chat với trợ lý hoặc gửi enquiry.
   contactLauncher: {
     trigger: 'Plan your trip',
     triggerAria: 'Open contact options',
@@ -1580,16 +1603,10 @@ export const messages = {
       label: 'Chat with us',
       hint: 'Instant answers from our AI concierge.',
     },
-    whatsapp: {
-      label: 'Chat on WhatsApp',
-      hint: 'Fastest reply — chat with a local expert.',
-    },
     enquiry: {
       label: 'Send an enquiry',
       hint: 'Tell us about your trip and get a tailored quote.',
     },
-    prefillGeneric: 'Hi Nexora! I have a question about planning a trip.',
-    prefillTour: (title: string, url: string) => `Hi Nexora! I’m interested in “${title}” — ${url}`,
   },
   // TravellerType enum → nhãn hiển thị cho hàng chip "Good for" ở trang chi tiết.
   // Khối `tours.suitableFor: 'Ideal for'` đứng ở đây trước 27/07 đã bị bỏ: nó là
