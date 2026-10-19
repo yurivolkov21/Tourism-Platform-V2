@@ -8,6 +8,41 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-10-19 — Merge P6 sửa trợ lý: tìm tour bằng một từ khoá, thẻ enquiry thứ hai báo đã gửi (`9ff2e4d`)
+
+Yuri thử lại trên production 19/10 lúc 11:17–11:21 UTC, sau PR #38. A8 đạt: dòng `chat turn` có `page`
+là `red-river-craft-villages-day`, trợ lý trả lời còn 2 chỗ ngày 27/10, khớp trang. B1 đạt: thẻ xác nhận
+hiện, log có `submitEnquiry`. B2 đạt: enquiry lúc 11:19 UTC có trong admin; Render ghi đã giao
+`ENQUIRY_RECEIVED` và `ENQUIRY_ADMIN_ALERT` lúc 11:20:50; Resend báo delivered; hai mail tới hộp thư.
+Còn hai chỗ sai. B4: "Saigon Vespa" không ra tour "Sài Gòn After Dark by Vespa", vì `search` là chuỗi
+con có phân biệt dấu. Trong cùng hội thoại sau khi đã gửi, trợ lý mời thẻ thứ hai; thẻ hiện "Enquiry not
+sent." và trợ lý nói "wasn't able to process", nghe như hỏng. Nhánh `feat/p6-ai-concierge-3xp4sq` (tạo
+lại từ `2291509` sau khi PR #38 merge), [PR #41](https://github.com/yurivolkov21/Tourism-Platform-V2/pull/41),
+thi công trên session cloud. Không migration, không biến env, không dependency mới.
+
+- `9ff2e4d`: prompt thêm khối "Searching" (tìm bằng một từ khoá, nơi chốn đi bằng slug điểm đến, không ra
+  thì tìm lại trước khi nói không có tour) và hai luật enquiry (mỗi hội thoại một enquiry, kể cả khi tool
+  trả `already_sent`; khách bấm Cancel thì nói chưa gửi gì). Mô tả `search` của `searchTours` nói rõ là
+  một từ khoá. Thẻ nhận `sent: false` hiện copy mới `chatBot.confirm.alreadySent` thay câu của nút
+  Cancel. Spec P6 §2c và §2h ghi hai lần sửa.
+- Commit merge này: open-items dòng P6 ghi kết quả thử và việc còn treo.
+
+**Review.** Không có lượt review độc lập. Chưa thử với model thật (container không có API key). Nguyên
+nhân của B4 suy từ cách tìm (`contains` không bỏ dấu); log không ghi từ khoá model đã gõ. Yuri bảo đẩy
+lên main 19/10 11:47 UTC.
+
+Tests after (`gate:int` trên `2ec656b`, nền `2291509`, 19/10, session cloud, API sống ở :3001): unit 8174
+(admin 2388, web 2386, api 1398, mobile 864, contract 800, mobile-ui 145, i18n 62, ui 57, core 48, tokens
+26) và int 952; Biome 2085 file. PR thêm 4 test prompt ở api và 1 test thẻ ở web. Test contract chết giữa
+chừng ở lượt đầu (worker vitest thoát khi máy tải nặng), chạy riêng 800/800, chạy lại cả gate thì xanh.
+
+**CÒN TREO:**
+
+- Trên production: thử lại B4 (ra đúng tour Vespa và đưa link đặt); xin gửi enquiry lần hai trong cùng
+  cuộc chat (trợ lý nói đã gửi; nếu thẻ vẫn hiện thì sau Send báo đã gửi trước đó); B3 (bấm Start over rồi
+  Cancel, admin không có enquiry mới). Đạt thì dòng P6 chuyển sang open-items-closed.
+- Dọn nhánh `feat/p6-ai-concierge-3xp4sq` trên origin nếu GitHub không tự xoá.
+
 ## 2026-10-19 — Merge sửa comment `SENTRY_DSN` trong `render.yaml`; Sentry của API đã bật trên production (`aceebc2`)
 
 Phần hạ tầng trong mục CÒN TREO của entry PR #37 (Sentry bắt lỗi 500 của API) đã xong 19/10. Nhánh
