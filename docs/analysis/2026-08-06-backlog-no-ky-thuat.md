@@ -96,7 +96,7 @@ Gom lại đây cho đủ mặt; chi tiết ở entry CHANGELOG tương ứng.
 
 | # | Nợ | Nguồn |
 | --- | --- | --- |
-| E1 | `EnquiryCta` component dùng chung (cuối trang FAQ) | [spec 25/07](../specs/2026-07-25-legal-utility-pages-design.md) |
+| ~~E1~~ | ~~`EnquiryCta` component dùng chung (cuối trang FAQ)~~ ✅ **trả 19/10** ([PR #37](https://github.com/yurivolkov21/Tourism-Platform-V2/pull/37), `ca1a4be`): `components/content/enquiry-cta.tsx`, đặt cuối `/faq` | [spec 25/07](../specs/2026-07-25-legal-utility-pages-design.md) |
 | E2 | Gắn API cho `/faq` — ứng viên bảng `faqs` | [spec 25/07](../specs/2026-07-25-legal-utility-pages-design.md) |
 | ~~E3~~ | ~~5 nợ contract cụm Tours (media tour · next-departure trên card · sort rating · filter price/duration/difficulty · suitableFor+badges)~~ — ✅ **trả 15/10** theo [ADR-0058](../adr/0058-tour-card-next-departure-badges-rating-sort.md) ([PR #28](https://github.com/yurivolkov21/Tourism-Platform-V2/pull/28)): #1 đã trả theo A8; `TourCard` có `nextDeparture` và `badges` (`suitableFor` cố ý không lên card, ADR-0058 §3); sort `rating`; bộ lọc giá, thời lượng, độ khó cố ý ở lại web (ADR-0058 §5) | [spec 27/07](../specs/2026-07-27-tours-pages-design.md) §8 |
 | ~~E4~~ | ~~Media thật thay `ImagePlaceholder` toàn site~~ — ✅ trả theo A8 (đo DB 20/08, mọi bề mặt đang dùng đều có ảnh thật) | [README dòng P3b](../README.md) |

@@ -8,6 +8,57 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-10-19 — Merge Sentry bắt lỗi 500 của API, khối Plan your trip cuối `/faq`, ghi bỏ sửa và xoá review ở admin (`db5bf45`..`25d8c56`)
+
+Ba việc Yuri chốt 19/10 08:36 UTC sau bản rà việc còn thiếu ở api, web và admin: mục 4 (Sentry), mục 5
+(sổ nợ E1, khối hỏi đáp cuối `/faq`), mục 7 (bỏ sửa, xoá review ở admin). Mục 8 (nhật ký thao tác admin)
+chuyển sang thread admin. Nhánh `claude/project-thread-4trwm7`,
+[PR #37](https://github.com/yurivolkov21/Tourism-Platform-V2/pull/37), thi công trên session cloud.
+Không migration, không biến env bắt buộc. Một dependency mới (`@sentry/node`), vào trước freeze 31/10.
+
+- `db5bf45`: open-items-closed mục "Quyết định đã chốt" thêm dòng admin sửa, xoá, ghim và tự tạo đánh
+  giá: cố ý bỏ (khách tự sửa hoặc rút đánh giá theo ADR-0032, admin duyệt và gỡ duyệt bằng
+  `admin.reviews.moderate`, testimonials trang chủ là nội dung tĩnh theo sổ nợ B3).
+- `ca1a4be`: component dùng chung `EnquiryCta` (`components/content/enquiry-cta.tsx`) dùng copy sẵn có ở
+  `messages.enquiryCta`: eyebrow "Plan your trip", tiêu đề theo trang, ba lợi ích, link "Start
+  planning" sang `/contact`. Là một thẻ trong cột nội dung, da panel "What happens next" của form liên
+  hệ trang chủ, không phải băng sát footer như CTA bỏ ở `/destinations` 28/07. `/faq` đặt nó dưới câu
+  hỏi cuối với `headings.faq`. Yuri duyệt ảnh chụp desktop, mobile và dark 19/10 09:44 UTC.
+- `2e2dd84`: [ADR-0010 AMEND 1](adr/0010-infra-hardening.md): §3 nối Sentry thật, chín điểm (gói,
+  khởi động, chỉ bắt lỗi, dữ liệu cá nhân tối thiểu, chế độ `strict` cho promise bị reject không ai bắt,
+  DSN ép URL, release, lockfile, cách kiểm). Mục lục ADR ghi 1 AMEND.
+- `4f3984a`: `@sentry/node` ghim `10.76.2` ở `apps/api`. `initObservability` gọi đầu `main.ts` và
+  `worker.ts`; thiếu `SENTRY_DSN` thì không làm gì. `captureException` của hai call-site cũ (exception
+  filter, `onError` của oRPC) đẩy lỗi lên Sentry. Không tracing, không móc ESM loader; `beforeSend` chỉ
+  giữ method và đường dẫn của request, bỏ `user`; bỏ breadcrumb console; `OnUnhandledRejection` ở chế
+  độ `strict`. `SENTRY_DSN` thành `z.url()`. Script `sentry:test` build rồi gửi một sự kiện thử.
+  Lockfile: `@opentelemetry/api` thành peer tuỳ chọn được dùng của `next`, `better-auth`, `@orpc/*` ở
+  mọi app.
+- `25d8c56`: `/privacy` mục bên nhận thêm "our error-monitoring provider (Sentry)"; một ca test canh.
+- Commit merge này: sổ nợ gạch E1, open-items thêm việc đặt DSN vào mục việc tay trên hạ tầng.
+
+**Review.** Không có lượt review độc lập. Yuri duyệt khối `/faq` và bảo đẩy lên main 19/10 09:44 UTC.
+Nhánh rebase lên `7b99cec` (PR #35) có một xung đột ở `privacy.ts`, giữ cả dòng Anthropic mới lẫn vế
+Sentry; rebase tiếp lên `3ae6c68` không xung đột. Thử thật ở local: API chạy với DSN trỏ vào một server
+Sentry giả, tắt Postgres rồi gọi `/api/tours?search=…` kèm cookie và Authorization; lỗi 500 tới nơi với
+`request` chỉ còn method và URL không query, không chuỗi nào của cookie, token hay email. `sentry:test`
+gửi được sự kiện thử tới server giả.
+
+Tests after (`gate:int` trên `25d8c56`, 19/10, session cloud, API sống ở :3001): unit 8104 (web 2385,
+admin 2356, api 1377, mobile 864, contract 784, mobile-ui 145, i18n 62, ui 57, core 48, tokens 26) và int
+932; Biome 2067 file. So với `3ae6c68`: web thêm 4 test, api 10; Biome thêm 4 file; các gói khác không
+đổi. Test contract chết EPIPE của vitest ở lượt đầu, chạy lại riêng thì 784/784.
+
+**CÒN TREO:**
+
+- Hạ tầng (luật 15): tạo project Sentry kiểu Node.js, đặt `SENTRY_DSN` trên Render (service API) và
+  trong `apps/api/.env.production`. Sau deploy: log boot của Render có dòng `Sentry bật
+  (environment=production)`; chạy `sentry:test` với DSN production (cách chạy ở đầu
+  `apps/api/scripts/sentry-test.mjs`) và thấy sự kiện thử trong Sentry. Chưa đặt DSN thì API chạy như cũ.
+- Ở ngày thử tay: mở `/faq` trên production, thấy thẻ cuối trang và link sang `/contact`; mở `/privacy`
+  thấy Sentry trong mục bên nhận.
+- Dọn nhánh `claude/project-thread-4trwm7` trên origin nếu GitHub không tự xoá.
+
 ## 2026-10-19 — Merge P4f Media library B: trang Photos của điểm đến, thêm ảnh vào thư viện từ `/media` (`a8dbdd5`..`6aeac90`)
 
 Spec [2026-10-16-p4f-media-library-design.md](specs/2026-10-16-p4f-media-library-design.md) §8, Yuri duyệt
