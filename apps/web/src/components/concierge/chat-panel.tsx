@@ -1,6 +1,6 @@
 'use client';
 
-import { CHAT_LIMITS } from '@tourism/contract';
+import { CHAT_LIMITS, type ChatStatus } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
 import { Button, buttonVariants } from '@tourism/ui/components/button';
 import {
@@ -17,10 +17,12 @@ import {
   Loader2Icon,
   MessageSquareTextIcon,
   SearchIcon,
+  TicketIcon,
   XIcon,
 } from 'lucide-react';
 import Link from 'next/link';
 import { type FormEvent, type KeyboardEvent, useEffect, useId, useRef, useState } from 'react';
+import { browserApiOrigin } from '@/lib/api/env';
 import type { ConciergeErrorKind } from '@/lib/concierge';
 import {
   AssistantBubble,
@@ -42,6 +44,35 @@ const SUGGESTION_CLASS =
 /** Cách đáy dưới mốc này (px) thì coi như đang ở cuối hội thoại: chữ mới tới thì cuộn theo. */
 const STICK_THRESHOLD = 48;
 
+type Availability = 'checking' | 'available' | 'unavailable';
+
+/**
+ * `GET /api/chat` mỗi lần khung mở (ADR-0050 AMEND 2): vừa biết công tắc và trần ngày, vừa
+ * đánh thức API đang ngủ (Render free) trước khi khách gõ tin đầu. Lần mở sau mà lần trước
+ * đã sẵn sàng thì không quay lại "đang kết nối" — chỉ kiểm lại ngầm.
+ */
+function useAvailability(open: boolean): Availability {
+  const [availability, setAvailability] = useState<Availability>('checking');
+  useEffect(() => {
+    if (!open) return;
+    let active = true;
+    setAvailability((current) => (current === 'available' ? current : 'checking'));
+    fetch(`${browserApiOrigin()}/api/chat`)
+      .then((response) => (response.ok ? (response.json() as Promise<ChatStatus>) : null))
+      .then((status) => {
+        if (active) setAvailability(status?.available === true ? 'available' : 'unavailable');
+      })
+      .catch(() => {
+        // API không tới được: như lúc trợ lý tắt, khung chỉ còn lối enquiry.
+        if (active) setAvailability('unavailable');
+      });
+    return () => {
+      active = false;
+    };
+  }, [open]);
+  return availability;
+}
+
 /**
  * Khung chat của trợ lý (P6, spec §2h). Màn rộng là khung nổi trên nút "Plan your trip",
  * không chặn trang; màn hẹp là lớp phủ kín màn hình. Esc đóng khung, nút gọi trả tiêu điểm.
@@ -54,14 +85,22 @@ export function ChatPanel({
   onClose,
   tourSlug,
   enquiryHref,
+  userName,
+  signedIn,
 }: {
   open: boolean;
   onClose: () => void;
   tourSlug: string | null;
   enquiryHref: string;
+  /** Tên khách đã đăng nhập để chào; chỉ dùng ở web, không gửi cho trợ lý. */
+  userName: string | null;
+  /** Có phiên thì có gợi ý "Show my bookings" (trợ lý có tool đọc đơn, ADR-0050 AMEND 2). */
+  signedIn: boolean;
 }) {
   const t = messages.chatBot;
   const concierge = useConcierge(tourSlug);
+  const availability = useAvailability(open);
+  const greeting = userName === null ? t.greeting : t.greetingFor(userName);
   const titleId = useId();
   const inputId = useId();
   const [draft, setDraft] = useState('');
@@ -111,11 +150,14 @@ export function ChatPanel({
     }
   }, [concierge.status]);
 
+  // Trợ lý nghỉ (báo từ `GET` lúc mở hay từ 503 của một lượt): một thông báo, một lối enquiry.
+  const notice: ConciergeErrorKind | null =
+    concierge.errorKind ?? (availability === 'unavailable' ? 'unavailable' : null);
   const blocked =
     concierge.approvalFailed ||
-    concierge.errorKind === 'turnLimit' ||
-    concierge.errorKind === 'expired' ||
-    concierge.errorKind === 'unavailable';
+    notice === 'turnLimit' ||
+    notice === 'expired' ||
+    notice === 'unavailable';
   const canSend = !concierge.busy && !blocked && draft.trim() !== '';
 
   const submit = (text: string) => {
@@ -170,7 +212,9 @@ export function ChatPanel({
           <h2 id={titleId} className="font-heading text-base leading-tight font-semibold">
             {t.title}
           </h2>
-          <p className="mt-0.5 text-xs text-muted-foreground">{t.subtitle}</p>
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            {availability === 'checking' ? t.connecting : t.subtitle}
+          </p>
         </div>
         {concierge.messages.length > 0 ? (
           <Button variant="ghost" size="sm" disabled={concierge.busy} onClick={concierge.startOver}>
@@ -195,39 +239,51 @@ export function ChatPanel({
             // khung. Có tin đầu tiên thì lời chào lùi thành bong bóng đầu hội thoại.
             <div className="my-auto flex flex-col items-center gap-4 px-2 text-center">
               <ConciergeAvatar className="size-12 min-w-12 self-center [&_svg]:size-5" />
-              <p className="max-w-72 text-sm text-foreground">{t.greeting}</p>
-              <div className="flex w-full max-w-72 flex-col gap-2">
-                <Button
-                  variant="outline"
-                  className={SUGGESTION_CLASS}
-                  onClick={() => submit(t.suggestions.findTour)}
-                >
-                  <SearchIcon aria-hidden="true" />
-                  {t.suggestions.findTour}
-                </Button>
-                <Button
-                  variant="outline"
-                  className={SUGGESTION_CLASS}
-                  onClick={() => submit(t.suggestions.askIncluded)}
-                >
-                  <ListChecksIcon aria-hidden="true" />
-                  {t.suggestions.askIncluded}
-                </Button>
-                {/* `Link` chứ không phải `ButtonLink` (thẻ `<a>` thuần): điều hướng phía client
+              <p className="max-w-72 text-sm text-foreground">{greeting}</p>
+              {notice === 'unavailable' ? null : (
+                <div className="flex w-full max-w-72 flex-col gap-2">
+                  {signedIn ? (
+                    <Button
+                      variant="outline"
+                      className={SUGGESTION_CLASS}
+                      onClick={() => submit(t.suggestions.myBookings)}
+                    >
+                      <TicketIcon aria-hidden="true" />
+                      {t.suggestions.myBookings}
+                    </Button>
+                  ) : null}
+                  <Button
+                    variant="outline"
+                    className={SUGGESTION_CLASS}
+                    onClick={() => submit(t.suggestions.findTour)}
+                  >
+                    <SearchIcon aria-hidden="true" />
+                    {t.suggestions.findTour}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className={SUGGESTION_CLASS}
+                    onClick={() => submit(t.suggestions.askIncluded)}
+                  >
+                    <ListChecksIcon aria-hidden="true" />
+                    {t.suggestions.askIncluded}
+                  </Button>
+                  {/* `Link` chứ không phải `ButtonLink` (thẻ `<a>` thuần): điều hướng phía client
                     giữ khung và lượt đang chạy, tải lại trang thì mất cả hai. */}
-                <Link
-                  href={enquiryHref}
-                  onClick={closeIfNarrow}
-                  className={cn(buttonVariants({ variant: 'outline' }), SUGGESTION_CLASS)}
-                >
-                  <MessageSquareTextIcon aria-hidden="true" />
-                  {t.suggestions.talkHuman}
-                </Link>
-              </div>
+                  <Link
+                    href={enquiryHref}
+                    onClick={closeIfNarrow}
+                    className={cn(buttonVariants({ variant: 'outline' }), SUGGESTION_CLASS)}
+                  >
+                    <MessageSquareTextIcon aria-hidden="true" />
+                    {t.suggestions.talkHuman}
+                  </Link>
+                </div>
+              )}
             </div>
           ) : (
             <AssistantTurn>
-              <AssistantBubble>{t.greeting}</AssistantBubble>
+              <AssistantBubble>{greeting}</AssistantBubble>
             </AssistantTurn>
           )}
           {concierge.messages.map((message) => (
@@ -245,9 +301,9 @@ export function ChatPanel({
             />
           ))}
           {waiting ? <TypingIndicator label={t.thinking} /> : null}
-          {concierge.errorKind === null ? null : (
+          {notice === null ? null : (
             <ErrorNotice
-              kind={concierge.errorKind}
+              kind={notice}
               enquiryHref={enquiryHref}
               onRetry={() => void concierge.retry()}
               onStartOver={concierge.startOver}

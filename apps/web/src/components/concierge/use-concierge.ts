@@ -25,11 +25,14 @@ export interface EnquiryDraft {
 /** Kết quả của `submitEnquiry` sau khi khách bấm Send (chat-tools.ts phía API). */
 export type EnquiryOutcome = { sent: true } | { sent: false; reason: 'already_sent' };
 
-// Chỉ `submitEnquiry` cần kiểu: hai tool đọc chỉ hiện dòng trạng thái, không đọc kết quả.
+// Chỉ `submitEnquiry` cần kiểu: các tool đọc chỉ hiện dòng trạng thái, không đọc kết quả.
+// Hai tool đọc đơn chỉ có ở lượt có phiên (ADR-0050 AMEND 2).
 type ConciergeTools = {
   searchTours: { input: unknown; output: unknown };
   getTourDetails: { input: unknown; output: unknown };
   submitEnquiry: { input: EnquiryDraft; output: EnquiryOutcome };
+  listMyBookings: { input: unknown; output: unknown };
+  getMyBooking: { input: unknown; output: unknown };
 };
 
 export type ConciergeMessage = UIMessage<unknown, UIDataTypes, ConciergeTools>;
@@ -50,6 +53,14 @@ function writeStoredId(id: string | null): void {
   } catch {
     // Như trên: không lưu được thì thôi.
   }
+}
+
+/**
+ * Quên hội thoại đang lưu trên trình duyệt — lúc phiên rời một tài khoản (ADR-0050 AMEND 2).
+ * Khung đang mount phải được dỡ cùng lúc thì tin trong bộ nhớ mới mất theo.
+ */
+export function forgetStoredConversation(): void {
+  writeStoredId(null);
 }
 
 /**

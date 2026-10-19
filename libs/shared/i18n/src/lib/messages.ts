@@ -1550,7 +1550,14 @@ export const messages = {
     disclaimer: 'AI assistant — it can make mistakes. For a person, send us an enquiry.',
     greeting:
       'Hi! I can help you find a tour, answer questions about itineraries and policies, or pass your details to our team. What are you planning?',
+    /** Khách đã đăng nhập (ADR-0050 AMEND 2): tên chỉ dùng ở web, không gửi cho model. */
+    greetingFor: (name: string) =>
+      `Hi ${name}! I can help you find a tour, check on your bookings, or pass your details to our team. What are you planning?`,
+    /** Đầu khung trong lúc chờ `GET /api/chat` — API gói free có thể đang ngủ. */
+    connecting: 'Connecting…',
     suggestions: {
+      /** Chỉ hiện cho khách đã đăng nhập; bấm là gửi đúng câu này cho trợ lý. */
+      myBookings: 'Show my bookings',
       findTour: 'Find me a tour',
       askIncluded: 'What’s included in a tour?',
       talkHuman: 'Talk to a human',
@@ -1566,6 +1573,8 @@ export const messages = {
       searchTours: 'Searching tours…',
       getTourDetails: 'Checking tour details…',
       submitEnquiry: 'Sending your enquiry…',
+      listMyBookings: 'Checking your bookings…',
+      getMyBooking: 'Checking your booking…',
     },
     /** Vùng aria-live chỉ báo câu này khi câu trả lời đã xong, không đọc từng token. */
     liveAnswerReady: 'The concierge replied.',
@@ -1597,20 +1606,11 @@ export const messages = {
       cancelled: 'Enquiry not sent.',
     },
   },
-  // Nút nổi "Plan your trip" (P6, spec §2h): chat với trợ lý hoặc gửi enquiry.
+  // Nút nổi "Plan your trip" (P6, spec §2h): mở thẳng khung chat với trợ lý. Menu hai lối
+  // chat hoặc enquiry bỏ 19/10 (ADR-0050 AMEND 2); lối enquiry nằm trong khung chat.
   contactLauncher: {
     trigger: 'Plan your trip',
-    triggerAria: 'Open contact options',
-    title: 'Talk to us',
-    subtitle: 'Questions about a tour? We usually reply within 24 hours.',
-    bot: {
-      label: 'Chat with us',
-      hint: 'Instant answers from our AI concierge.',
-    },
-    enquiry: {
-      label: 'Send an enquiry',
-      hint: 'Tell us about your trip and get a tailored quote.',
-    },
+    triggerAria: 'Chat with our travel assistant',
   },
   // TravellerType enum → nhãn hiển thị cho hàng chip "Good for" ở trang chi tiết.
   // Khối `tours.suitableFor: 'Ideal for'` đứng ở đây trước 27/07 đã bị bỏ: nó là

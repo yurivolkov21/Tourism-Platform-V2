@@ -14,6 +14,15 @@ import { ContactLauncher } from './contact-launcher';
 const navigation = vi.hoisted(() => ({ pathname: '/' }));
 vi.mock('next/navigation', () => ({ usePathname: () => navigation.pathname }));
 
+/** Phiên Better Auth giả: test đổi giá trị rồi `rerender` để giả đăng nhập, đăng xuất. */
+const auth = vi.hoisted(() => ({
+  session: null as { user: { id: string; name: string } } | null,
+  isPending: false,
+}));
+vi.mock('@/lib/auth-client', () => ({
+  useSession: () => ({ data: auth.session, isPending: auth.isPending }),
+}));
+
 const t = messages.chatBot;
 const API = 'http://localhost:3001/api/chat';
 const STORED_ID = '0b6f6d2e-5a8b-4c41-9a6e-2f1d3c4b5a69';
@@ -67,6 +76,8 @@ const json = (status: number, body: unknown) =>
 
 interface FakeApi {
   available: boolean;
+  /** Có thì `GET /api/chat` chờ promise này — giả API gói free đang dậy. */
+  statusGate: Promise<void> | null;
   history: Response | null;
   turns: Array<Response | (() => Response)>;
   posts: Array<Record<string, unknown>>;
@@ -77,7 +88,9 @@ let api: FakeApi;
 beforeEach(() => {
   navigation.pathname = '/';
   window.localStorage.clear();
-  api = { available: true, history: null, turns: [], posts: [] };
+  auth.session = null;
+  auth.isPending = false;
+  api = { available: true, statusGate: null, history: null, turns: [], posts: [] };
   vi.stubGlobal(
     'fetch',
     vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
@@ -88,7 +101,10 @@ beforeEach(() => {
         if (next === undefined) throw new Error('no scripted turn');
         return typeof next === 'function' ? next() : next;
       }
-      if (url === API) return json(200, { available: api.available });
+      if (url === API) {
+        if (api.statusGate) await api.statusGate;
+        return json(200, { available: api.available });
+      }
       if (url.startsWith(`${API}/`)) return api.history ?? json(404, { code: 'CHAT_NOT_FOUND' });
       throw new Error(`unexpected fetch ${url}`);
     }),
@@ -101,7 +117,6 @@ afterEach(() => {
 
 async function openChat(user = userEvent.setup()) {
   await user.click(screen.getByRole('button', { name: messages.contactLauncher.triggerAria }));
-  await user.click(await screen.findByRole('button', { name: /Chat with us/ }));
   return user;
 }
 
@@ -110,30 +125,118 @@ async function say(user: ReturnType<typeof userEvent.setup>, text: string) {
   await user.click(screen.getByRole('button', { name: t.sendAria }));
 }
 
-describe('ContactLauncher — popover', () => {
-  it('API báo không sẵn sàng → chỉ còn lối enquiry, trỏ /contact', async () => {
-    api.available = false;
-    const user = userEvent.setup();
+describe('ContactLauncher — nút mở thẳng khung chat (ADR-0050 AMEND 2)', () => {
+  it('bấm nút là mở khung chat, không còn menu hai lối; khung hỏi API trạng thái', async () => {
     render(<ContactLauncher />);
-    await user.click(screen.getByRole('button', { name: messages.contactLauncher.triggerAria }));
+    await openChat();
 
-    const enquiry = await screen.findByRole('link', { name: /Send an enquiry/ });
-    expect(enquiry).toHaveAttribute('href', '/contact');
+    expect(screen.getByRole('dialog', { name: t.title })).toBeVisible();
+    expect(screen.queryByText('Talk to us')).toBeNull();
     await waitFor(() => expect(fetch).toHaveBeenCalledWith(API));
-    expect(screen.queryByRole('button', { name: /Chat with us/ })).toBeNull();
+    expect(screen.getByRole('textbox', { name: t.inputLabel })).toBeEnabled();
   });
 
-  it('sẵn sàng → có "Chat with us"; ở trang tour thì enquiry trỏ form của tour', async () => {
-    navigation.pathname = '/tours/ha-long-2d1n';
-    const user = userEvent.setup();
+  it('bấm nút lần nữa thì đóng khung', async () => {
     render(<ContactLauncher />);
+    const user = await openChat();
     await user.click(screen.getByRole('button', { name: messages.contactLauncher.triggerAria }));
+    expect(screen.queryByRole('dialog', { name: t.title })).toBeNull();
+  });
 
-    expect(await screen.findByRole('button', { name: /Chat with us/ })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /Send an enquiry/ })).toHaveAttribute(
+  it('API đang dậy → đầu khung báo đang kết nối, trả lời xong thì về dòng phụ thường', async () => {
+    let wake!: () => void;
+    api.statusGate = new Promise<void>((resolve) => {
+      wake = resolve;
+    });
+    render(<ContactLauncher />);
+    await openChat();
+
+    expect(await screen.findByText(t.connecting)).toBeInTheDocument();
+    wake();
+    expect(await screen.findByText(t.subtitle)).toBeInTheDocument();
+    expect(screen.queryByText(t.connecting)).toBeNull();
+  });
+
+  it('trợ lý nghỉ → câu "taking a break" kèm link enquiry của tour đang xem, ô gõ khoá', async () => {
+    api.available = false;
+    navigation.pathname = '/tours/ha-long-2d1n';
+    render(<ContactLauncher />);
+    await openChat();
+
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent(t.unavailable);
+    expect(within(alert).getByRole('link', { name: t.enquiryLink })).toHaveAttribute(
       'href',
       '/tours/ha-long-2d1n/enquire',
     );
+    expect(screen.getByRole('textbox', { name: t.inputLabel })).toBeDisabled();
+    expect(screen.queryByRole('button', { name: t.suggestions.findTour })).toBeNull();
+  });
+});
+
+describe('ContactLauncher — tài khoản', () => {
+  it('vãng lai: lời chào chung, không có gợi ý xem đơn', async () => {
+    render(<ContactLauncher />);
+    await openChat();
+
+    expect(await screen.findByText(t.greeting)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: t.suggestions.myBookings })).toBeNull();
+  });
+
+  it('đã đăng nhập: chào theo tên, gợi ý "Show my bookings" gửi đúng câu ấy', async () => {
+    auth.session = { user: { id: 'user-a', name: 'An Nguyen' } };
+    api.turns.push(sse(textReply('a1', 'You have one upcoming trip.')));
+    render(<ContactLauncher />);
+    const user = await openChat();
+
+    expect(await screen.findByText(t.greetingFor('An Nguyen'))).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: t.suggestions.myBookings }));
+    expect(await screen.findByText('You have one upcoming trip.')).toBeInTheDocument();
+    expect(api.posts[0]?.input).toEqual({ type: 'message', text: t.suggestions.myBookings });
+  });
+
+  it('đăng xuất: xoá id hội thoại khỏi trình duyệt và dỡ khung, mở lại là hội thoại mới', async () => {
+    auth.session = { user: { id: 'user-a', name: 'An Nguyen' } };
+    api.turns.push(sse(textReply('a1', 'Your booking BK-AB12CD34 is paid.')));
+    const { rerender } = render(<ContactLauncher />);
+    const user = await openChat();
+    await say(user, 'Is my trip paid?');
+    expect(await screen.findByText('Your booking BK-AB12CD34 is paid.')).toBeInTheDocument();
+    expect(window.localStorage.getItem(CONVERSATION_STORAGE_KEY)).not.toBeNull();
+
+    auth.session = null;
+    rerender(<ContactLauncher />);
+
+    expect(window.localStorage.getItem(CONVERSATION_STORAGE_KEY)).toBeNull();
+    expect(screen.queryByRole('dialog', { name: t.title })).toBeNull();
+    await openChat(user);
+    expect(await screen.findByText(t.greeting)).toBeInTheDocument();
+    expect(screen.queryByText('Your booking BK-AB12CD34 is paid.')).toBeNull();
+  });
+
+  it('phiên còn đang đọc (lúc hydrate) không bị coi là đăng xuất', async () => {
+    auth.session = { user: { id: 'user-a', name: 'An Nguyen' } };
+    window.localStorage.setItem(CONVERSATION_STORAGE_KEY, STORED_ID);
+    const { rerender } = render(<ContactLauncher />);
+    auth.session = null;
+    auth.isPending = true;
+    rerender(<ContactLauncher />);
+    expect(window.localStorage.getItem(CONVERSATION_STORAGE_KEY)).toBe(STORED_ID);
+  });
+
+  it('đăng nhập từ vãng lai: giữ hội thoại đang mở', async () => {
+    api.turns.push(sse(textReply('a1', 'Hue is lovely in spring.')));
+    const { rerender } = render(<ContactLauncher />);
+    const user = await openChat();
+    await say(user, 'When to visit Hue?');
+    expect(await screen.findByText('Hue is lovely in spring.')).toBeInTheDocument();
+    const stored = window.localStorage.getItem(CONVERSATION_STORAGE_KEY);
+
+    auth.session = { user: { id: 'user-a', name: 'An Nguyen' } };
+    rerender(<ContactLauncher />);
+
+    expect(window.localStorage.getItem(CONVERSATION_STORAGE_KEY)).toBe(stored);
+    expect(screen.getByText('Hue is lovely in spring.')).toBeInTheDocument();
   });
 });
 
