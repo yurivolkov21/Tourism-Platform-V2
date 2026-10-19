@@ -25,7 +25,7 @@ sáng/tối và hiện vùng an toàn. Tài liệu bàn giao đi kèm ở `docs/
 | `mobile-account-screens.src.html` | P5b-4 Saved · tài khoản · bài viết | 14 | 21/09 · đã dựng xong, [bàn giao](../../handoff/mobile-account-handoff.md) |
 | `mobile-review-screens.src.html` | P5b-5 đánh giá | 7 | 21/09 · đã dựng xong, [bàn giao](../../handoff/mobile-review-handoff.md) |
 
-## Nâng cấp UI mobile — vòng 4 (Android), chờ duyệt (19/10)
+## Nâng cấp UI mobile — vòng 4 (Android), đã duyệt 19/10
 
 Vòng 1 do Nghĩa dựng 14/10 trên nhánh `docs/mobile-ui-upgrade-mockup`; vòng 2 sửa theo phạm vi user chốt 19/10;
 vòng 3 cùng ngày đổi sang ngôn ngữ app native vì user thấy vòng 2 vẫn giống web responsive; vòng 4 vẽ lại theo
@@ -38,7 +38,7 @@ cần mạng.
 
 | File | Phạm vi | Khung | Chốt |
 | --- | --- | --- | --- |
-| `mobile-ui-upgrade.src.html` | Toàn bộ màn app khách. Nhãn "Đổi bố cục" là bố cục khác code hiện có; "Để sau" là màn vòng 1 đã vẽ lại nhưng ngoài đợt code 23–30/10 | 42 | chờ duyệt |
+| `mobile-ui-upgrade.src.html` | Toàn bộ màn app khách. Nhãn "Đổi bố cục" là bố cục khác code hiện có; "Để sau" là màn vòng 1 đã vẽ lại nhưng ngoài đợt code 23–30/10 | 42 | 19/10 · đã duyệt, [bàn giao](../../handoff/mobile-ui-upgrade-handoff.md) |
 
 ## Ba trang đơn của khách (P7) — đã dựng xong (06/10 và 09/10)
 

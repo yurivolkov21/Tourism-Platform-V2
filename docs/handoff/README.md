@@ -29,6 +29,15 @@ biến** của một vòng thiết kế đã duyệt, đừng sửa.
 
 Vòng lặp chạy thử app: [`conventions/mobile-dev-loop.md`](../conventions/mobile-dev-loop.md).
 
+## Nâng cấp giao diện app theo Material 3 (đợt 23–30/10)
+
+> **Đang mở.** Bản vẽ user duyệt 19/10 sau bốn vòng (vòng 1 của Nghĩa 14/10); demo chạy Android
+> nên theo Material 3. Phải viết ADR-0040 AMEND 3 trước khi code.
+
+| Việc | Tài liệu | Tình trạng |
+| --- | --- | --- |
+| Lớp áo Material 3 cho cả app, đổi bố cục năm cụm màn demo | [mobile-ui-upgrade-handoff](mobile-ui-upgrade-handoff.md) | Viết 19/10 để giao Nghĩa; bản vẽ `mobile-ui-upgrade.src.html` |
+
 ## Một lưu ý khi tra đường
 
 Năm file này **từng nằm ở `docs/conventions/`**. Entry CHANGELOG cũ và các plan
