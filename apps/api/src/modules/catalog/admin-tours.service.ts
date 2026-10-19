@@ -245,8 +245,11 @@ export const STORED_PHOTO_SELECT = {
   sourceUrl: true,
 } satisfies Prisma.MediaAssetSelect;
 
-/** Dòng theo publicId; trùng thì giữ dòng ĐẦU (danh sách đã sắp theo `createdAt`). */
-function byPublicId(rows: readonly StoredPhoto[]): Map<string, StoredPhoto> {
+/**
+ * Dòng theo publicId; trùng thì giữ dòng ĐẦU (danh sách đã sắp theo `createdAt`). Trang Photos của
+ * điểm đến (ADR-0060 §8) dùng chung.
+ */
+export function byPublicId(rows: readonly StoredPhoto[]): Map<string, StoredPhoto> {
   const map = new Map<string, StoredPhoto>();
   for (const row of rows) if (!map.has(row.publicId)) map.set(row.publicId, row);
   return map;

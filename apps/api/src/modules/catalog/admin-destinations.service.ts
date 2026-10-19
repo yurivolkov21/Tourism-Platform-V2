@@ -3,17 +3,35 @@ import type {
   AdminDestinationCreateInput,
   AdminDestinationDeleteInput,
   AdminDestinationDeleteResult,
+  AdminDestinationPhotos,
+  AdminDestinationPhotosInput,
   AdminDestinationRow,
   AdminDestinationSetActiveInput,
+  AdminDestinationSetPhotosInput,
+  AdminDestinationSignPhotoUploadsInput,
   AdminDestinationUpdateInput,
+  SignedUploadParams,
 } from '@tourism/contract';
 import { prisma } from '../../auth/auth.config.js';
+import { env } from '../../config/env.js';
 import { Prisma } from '../../generated/prisma/client.js';
-import { MediaOwnerType } from '../../generated/prisma/enums.js';
+import { MediaOwnerType, MediaRole, MediaType } from '../../generated/prisma/enums.js';
 import { ContractError } from '../../lib/contract-error.js';
+import {
+  destinationPhotoFolder,
+  isDestinationUploadPublicId,
+  requireUploadConfig,
+  signUploads,
+} from '../../lib/upload-signing.js';
+import { MediaService } from '../media/media.service.js';
+import { MediaGarbageService } from '../media/media-garbage.service.js';
 import { WebRevalidationService } from '../web-revalidation/web-revalidation.service.js';
+import { byPublicId, STORED_PHOTO_SELECT } from './admin-tours.service.js';
+import { planDestinationPhotos, toAdminDestinationPhoto } from './destination-photos.js';
 import { countLinkedTours, type TourLink, writtenTags } from './destination-tour-links.js';
 import { NO_TOURS, type TourCounts } from './tour-counts.js';
+import { nextTourVersion } from './tour-editor-rules.js';
+import { orderTourPhotos } from './tour-photos.js';
 
 /**
  * Năm thao tác quản trị điểm đến (spec P4e-2 F15).
@@ -54,6 +72,61 @@ export class DestinationInUseError extends ContractError<'IN_USE'> {
     super('IN_USE', 'This destination is still used by tours');
   }
 }
+
+/** Trang Photos mở theo một phiên bản đã cũ (ADR-0060 §8) — cùng luật `STALE_TOUR`. */
+export class StaleDestinationError extends ContractError<'STALE_DESTINATION'> {
+  constructor() {
+    super('STALE_DESTINATION', 'This destination changed since it was opened.');
+  }
+}
+
+/** Ảnh không phải dòng đang có của điểm đến, cũng không phải ảnh tải lên vào thư mục của nó. */
+export class DestinationPhotoNotAllowedError extends ContractError<'PHOTO_NOT_ALLOWED'> {
+  constructor(publicId: string) {
+    super('PHOTO_NOT_ALLOWED', `Photo not allowed for this destination: ${publicId}`, false);
+  }
+}
+
+/**
+ * Dòng ẢNH của một điểm đến — thứ trang Photos đọc và thay (ADR-0060 §8). Chỉ ảnh, vai bìa hay
+ * gallery: dòng video (nếu có) không hiện ở trang này nên lệnh thay cũng không được xoá nó.
+ */
+function destinationPhotoRows(id: string) {
+  return {
+    ownerType: MediaOwnerType.DESTINATION,
+    ownerId: id,
+    type: MediaType.IMAGE,
+    role: { in: [MediaRole.hero, MediaRole.gallery] },
+  } satisfies Prisma.MediaAssetWhereInput;
+}
+
+/**
+ * Số tour đang có dòng của từng publicId — nuôi câu hậu quả khi gỡ ảnh khỏi thư viện. Một câu gom,
+ * đếm tour chứ không đếm dòng.
+ */
+async function toursUsing(publicIds: readonly string[]): Promise<Map<string, number>> {
+  if (publicIds.length === 0) return new Map();
+  const rows = await prisma.$queryRaw<{ publicId: string; tours: number }[]>(Prisma.sql`
+    SELECT public_id AS "publicId", COUNT(DISTINCT owner_id)::int AS tours
+    FROM media_assets
+    WHERE owner_type = 'TOUR' AND public_id = ANY(${[...publicIds]}::text[])
+    GROUP BY public_id
+  `);
+  return new Map(rows.map((row) => [row.publicId, row.tours]));
+}
+
+/** Cột trang Photos cần của hàng điểm đến; `updatedAt` là phiên bản. */
+const DESTINATION_PHOTOS_SELECT = {
+  id: true,
+  name: true,
+  slug: true,
+  isActive: true,
+  updatedAt: true,
+} satisfies Prisma.DestinationSelect;
+
+type DestinationPhotosRow = Prisma.DestinationGetPayload<{
+  select: typeof DESTINATION_PHOTOS_SELECT;
+}>;
 
 /**
  * Cột của một hàng — GỐC CHUNG của mọi select ở đây (review SI3). `list` đọc đúng chừng này rồi
@@ -158,7 +231,11 @@ function isPrismaCode(error: unknown, code: 'P2002' | 'P2025'): boolean {
 export class AdminDestinationsService {
   private readonly logger = new Logger(AdminDestinationsService.name);
 
-  constructor(private readonly webRevalidation: WebRevalidationService) {}
+  constructor(
+    private readonly webRevalidation: WebRevalidationService,
+    private readonly media: MediaService,
+    private readonly garbage: MediaGarbageService,
+  ) {}
 
   /**
    * Cả bảng, gồm hàng đã ẩn — khác hẳn bề mặt công khai. Hai câu cố định, không đổi theo số
@@ -256,9 +333,10 @@ export class AdminDestinationsService {
    *    mã riêng của "danh mục hay điểm đến không còn", không phải `NOT_FOUND` của tour.
    * 2. Đếm `tour_destinations` ở statement SAU khoá (snapshot mới, thấy mọi thứ đã commit);
    *    còn dòng → `IN_USE`.
-   * 3. Xoá dòng `media_assets` chủ `DESTINATION` (bảng đa chủ, không khoá ngoại). KHÔNG
-   *    `requeue` publicId nào: ảnh thư viện là ảnh catalog dùng chung, tour mượn nó bằng
-   *    dòng của riêng tour (ADR-0048 §3, §6).
+   * 3. Xoá dòng `media_assets` chủ `DESTINATION` (bảng đa chủ, không khoá ngoại). Ảnh tải lên
+   *    vào thư mục của điểm đến vào lại hàng dọn (ADR-0060 §8, như xoá tour ở ADR-0048 §7): thiếu
+   *    bước này thì đồng hồ 7 ngày đếm từ lúc ký, và ảnh có thể mất ngay ở lượt dọn kế tiếp. Ảnh
+   *    catalog thì không — tour mượn nó bằng dòng của riêng tour (ADR-0048 §3, §6).
    * 4. Xoá điểm đến.
    *
    * Chỉ bust khi hàng ĐANG HIỆN (EF4): bề mặt công khai lọc `isActive`, nên một hàng ẩn không
@@ -274,9 +352,21 @@ export class AdminDestinationsService {
         if (!locked) throw new DestinationNotFoundError(input.id);
         const links = await tx.tourDestination.count({ where: { destinationId: input.id } });
         if (links > 0) throw new DestinationInUseError();
+        const photos = await tx.mediaAsset.findMany({
+          where: { ownerType: MediaOwnerType.DESTINATION, ownerId: input.id },
+          select: { publicId: true },
+        });
         await tx.mediaAsset.deleteMany({
           where: { ownerType: MediaOwnerType.DESTINATION, ownerId: input.id },
         });
+        await this.garbage.requeue(
+          tx,
+          photos
+            .map((photo) => photo.publicId)
+            .filter((publicId) =>
+              isDestinationUploadPublicId(env.CLOUDINARY_UPLOAD_FOLDER, input.id, publicId),
+            ),
+        );
         await tx.destination.delete({ where: { id: input.id } });
         return locked;
       },
@@ -289,6 +379,139 @@ export class AdminDestinationsService {
     // Không tour nào gắn điểm đến này nên không có trang `tour:<slug>` nào phải bust kèm.
     if (deleted.isActive) this.bust(['tours']);
     return { slug: deleted.slug };
+  }
+
+  /** Trang Photos (ADR-0060 §8): điểm đến theo slug, kèm ảnh theo thứ tự hiển thị. */
+  async photos(input: AdminDestinationPhotosInput): Promise<AdminDestinationPhotos> {
+    const destination = await prisma.destination.findUnique({
+      where: { slug: input.slug },
+      select: DESTINATION_PHOTOS_SELECT,
+    });
+    if (!destination) throw new DestinationNotFoundError(input.slug);
+    return this.photosOf(destination);
+  }
+
+  /**
+   * Thay trọn danh sách ảnh (ADR-0060 §8), MỘT transaction:
+   *
+   * 1. Giành hàng điểm đến bằng `UPDATE … WHERE updated_at = version` — câu ấy vừa so phiên bản
+   *    vừa khoá hàng, cùng khuôn `claimTour`. Không khớp thì hàng còn là `STALE_DESTINATION`,
+   *    mất là `NOT_FOUND`.
+   * 2. Đọc dòng ảnh hiện có, lập kế hoạch (từ chối cả lệnh nếu một ảnh không thuộc nguồn nào).
+   * 3. Thay dòng ảnh; ảnh tải lên bị gỡ vào lại hàng dọn trong cùng transaction (ADR-0035 §7).
+   * 4. Đọc slug các tour gắn điểm đến để bust sau commit, như lệnh sửa điểm đến (`writtenTags`).
+   *
+   * Thứ tự khoá: hàng điểm đến rồi dòng ảnh — cùng chiều lệnh sửa của `/media` (chủ trước, dòng
+   * sau, ADR-0060 §3), nên hai lệnh không chờ nhau thành vòng.
+   */
+  async setPhotos(input: AdminDestinationSetPhotosInput): Promise<AdminDestinationPhotos> {
+    const now = new Date();
+    const saved = await prisma.$transaction(
+      async (tx) => {
+        const { count } = await tx.destination.updateMany({
+          where: { id: input.id, updatedAt: new Date(input.version) },
+          data: { updatedAt: nextTourVersion(input.version, now) },
+        });
+        if (count === 0) {
+          const exists = await tx.destination.findUnique({
+            where: { id: input.id },
+            select: { id: true },
+          });
+          throw exists ? new StaleDestinationError() : new DestinationNotFoundError(input.id);
+        }
+        const current = await tx.mediaAsset.findMany({
+          where: destinationPhotoRows(input.id),
+          select: STORED_PHOTO_SELECT,
+          orderBy: { createdAt: 'asc' },
+        });
+        const plan = planDestinationPhotos({
+          destinationId: input.id,
+          rootFolder: env.CLOUDINARY_UPLOAD_FOLDER,
+          photos: input.photos,
+          current: byPublicId(current),
+        });
+        if (!plan.ok) throw new DestinationPhotoNotAllowedError(plan.rejected);
+
+        await tx.mediaAsset.deleteMany({ where: destinationPhotoRows(input.id) });
+        if (plan.rows.length > 0) {
+          await tx.mediaAsset.createMany({
+            data: plan.rows.map((row) => ({
+              ...row,
+              ownerType: MediaOwnerType.DESTINATION,
+              ownerId: input.id,
+            })),
+          });
+        }
+        await this.garbage.requeue(tx, plan.requeue);
+        // Liên kết khai lại `tour` có thể null như `DestinationWriteRow` (review AL6).
+        const destination: DestinationPhotosRow & { tours: TourLink<{ slug: string }>[] } =
+          await tx.destination.findUniqueOrThrow({
+            where: { id: input.id },
+            select: {
+              ...DESTINATION_PHOTOS_SELECT,
+              tours: { select: { tour: { select: { slug: true } } } },
+            },
+          });
+        return destination;
+      },
+      { timeout: 10_000, maxWait: 5_000 },
+    );
+
+    this.logger.log(
+      `[admin] destination photos saved ${JSON.stringify({ id: input.id, photos: input.photos.length })}`,
+    );
+    this.bust(writtenTags(saved.tours));
+    return this.photosOf(saved);
+  }
+
+  /**
+   * Ký một lô upload thẳng lên Cloudinary cho MỘT điểm đến (ADR-0060 §8) — cùng khuôn ký ảnh tour:
+   * thư mục và tên file do server quyết, mỗi publicId vào hàng dọn NGAY lúc ký (ADR-0035 §3).
+   */
+  async signPhotoUploads(
+    input: AdminDestinationSignPhotoUploadsInput,
+  ): Promise<SignedUploadParams[]> {
+    const cfg = requireUploadConfig(env);
+    const destination = await prisma.destination.findUnique({
+      where: { id: input.id },
+      select: { id: true },
+    });
+    if (!destination) throw new DestinationNotFoundError(input.id);
+
+    const { params, publicIds } = signUploads(
+      cfg,
+      destinationPhotoFolder(cfg.rootFolder, input.id),
+      input.count,
+      new Date(),
+    );
+    await this.garbage.enqueueQuietly(publicIds);
+    this.logger.log(
+      `[admin] destination photo uploads signed ${JSON.stringify({ id: input.id, count: input.count })}`,
+    );
+    return params;
+  }
+
+  /** Hàng điểm đến → trang Photos: ảnh bìa đầu (`orderTourPhotos`), kèm số tour mượn mỗi ảnh. */
+  private async photosOf(destination: DestinationPhotosRow): Promise<AdminDestinationPhotos> {
+    const media = await this.media.resolveForOwners(
+      MediaOwnerType.DESTINATION,
+      [destination.id],
+      [MediaRole.hero, MediaRole.gallery],
+    );
+    const images = orderTourPhotos(
+      (media.get(destination.id) ?? []).filter((item) => item.type === MediaType.IMAGE),
+    );
+    const used = await toursUsing(images.map((item) => item.publicId));
+    return {
+      id: destination.id,
+      name: destination.name,
+      slug: destination.slug,
+      isActive: destination.isActive,
+      version: destination.updatedAt.toISOString(),
+      photos: images.map((item) =>
+        toAdminDestinationPhoto(item, env.CLOUDINARY_UPLOAD_FOLDER, destination.id, used),
+      ),
+    };
   }
 
   /**

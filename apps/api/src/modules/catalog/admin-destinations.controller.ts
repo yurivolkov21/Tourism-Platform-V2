@@ -69,4 +69,39 @@ export class AdminDestinationsController {
       }
     });
   }
+
+  @AdminImplement(contract.admin.destinations.photos)
+  photos() {
+    return implement(contract.admin.destinations.photos).handler(async ({ input, errors }) => {
+      try {
+        return await this.destinations.photos(input);
+      } catch (error) {
+        throw toContractError(error, errors);
+      }
+    });
+  }
+
+  @AdminImplement(contract.admin.destinations.setPhotos)
+  setPhotos() {
+    return implement(contract.admin.destinations.setPhotos).handler(async ({ input, errors }) => {
+      try {
+        return await this.destinations.setPhotos(input);
+      } catch (error) {
+        throw toContractError(error, errors);
+      }
+    });
+  }
+
+  @AdminImplement(contract.admin.destinations.signPhotoUploads)
+  signPhotoUploads() {
+    return implement(contract.admin.destinations.signPhotoUploads).handler(
+      async ({ input, errors }) => {
+        try {
+          return await this.destinations.signPhotoUploads(input);
+        } catch (error) {
+          throw toContractError(error, errors);
+        }
+      },
+    );
+  }
 }

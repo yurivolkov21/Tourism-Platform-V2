@@ -144,8 +144,17 @@ function uploadedPhoto(
   args: { tourId: string; rootFolder: string },
   photo: AdminTourPhotoInput,
 ): StoredPhoto | undefined {
-  if (photo.upload === undefined) return undefined;
   if (!isTourUploadPublicId(args.rootFolder, args.tourId, photo.publicId)) return undefined;
+  return storedUpload(photo);
+}
+
+/**
+ * Dòng của một ảnh VỪA tải lên, dựng từ metadata Cloudinary admin gửi kèm (ADR-0048 §5); thiếu
+ * metadata thì `undefined`. Ghi công để trống — điền sau ở `/media`. Nơi gọi tự soi thư mục: ảnh
+ * tour và ảnh điểm đến (ADR-0060 §8) mỗi bên một thư mục, chung một cách dựng dòng.
+ */
+export function storedUpload(photo: AdminTourPhotoInput): StoredPhoto | undefined {
+  if (photo.upload === undefined) return undefined;
   return {
     publicId: photo.publicId,
     type: 'IMAGE',

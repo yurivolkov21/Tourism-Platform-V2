@@ -4,7 +4,9 @@ import { ContractError } from './contract-error.js';
 import {
   ALLOWED_UPLOAD_FORMATS,
   buildSignedUploadParams,
+  destinationPhotoFolder,
   INCOMING_TRANSFORMATION,
+  isDestinationUploadPublicId,
   isOwnAvatarPublicId,
   isPostUploadPublicId,
   isSiteSlotUploadPublicId,
@@ -196,19 +198,44 @@ describe('signUploads (một phần G15 — một bản cho ảnh tour và ảnh
   });
 });
 
+describe('destinationPhotoFolder / isDestinationUploadPublicId (ADR-0060 §8)', () => {
+  const DEST = '0bbbb001-0000-4000-8000-000000000001';
+
+  it('thư mục ảnh tải lên của một điểm đến nằm dưới <root>/destinations/<id>', () => {
+    expect(destinationPhotoFolder('tourism', DEST)).toBe(`tourism/destinations/${DEST}`);
+  });
+
+  it('chỉ ảnh trong ĐÚNG thư mục của điểm đến; ảnh catalog và thư mục cũ thì không', () => {
+    expect(isDestinationUploadPublicId('tourism', DEST, `tourism/destinations/${DEST}/abc`)).toBe(
+      true,
+    );
+    expect(
+      isDestinationUploadPublicId('tourism', DEST, `tourism/destinations/${DEST}-evil/abc`),
+    ).toBe(false);
+    expect(isDestinationUploadPublicId('tourism', DEST, `tourism/tours/${DEST}/abc`)).toBe(false);
+    expect(
+      isDestinationUploadPublicId('tourism', DEST, 'tourism/catalog/destination/hoi-an/1'),
+    ).toBe(false);
+    expect(isDestinationUploadPublicId('tourism', DEST, 'tourism/destinations/hero/abc')).toBe(
+      false,
+    );
+  });
+});
+
 describe('isUploadZonePublicId (G16, ADR-0035 AMEND 3)', () => {
   const USER = '00000000-0000-4000-8000-0000000000aa';
   const TOUR = '7a1b2c3d-0000-4000-8000-000000000001';
   const POST = '0199a000-0000-7000-8000-000000000001';
   const FILE = '5f0c2b1e-9d3a-4c7b-8e21-6a4f0d9b7c13';
 
-  it('ảnh do chính năm đường ký cấp ra đều nằm trong vùng tải lên', () => {
+  it('ảnh do chính sáu đường ký cấp ra đều nằm trong vùng tải lên', () => {
     const inZone = [
       `${uploadFolderFor('tourism', { purpose: 'AVATAR', userId: USER })}/${FILE}`,
       `${uploadFolderFor('tourism', { purpose: 'REVIEW_PHOTO', bookingCode: 'BK-5YU9J339' })}/${FILE}`,
       `${tourPhotoFolder('tourism', TOUR)}/${FILE}`,
       `${postCoverFolder('tourism', POST)}/${FILE}`,
       `${siteSlotFolder('tourism', POST)}/${FILE}`,
+      `${destinationPhotoFolder('tourism', TOUR)}/${FILE}`,
       ...signUploads(CFG, tourPhotoFolder('tourism', TOUR), 2, new Date()).publicIds,
     ];
 
@@ -241,6 +268,7 @@ describe('isUploadZonePublicId (G16, ADR-0035 AMEND 3)', () => {
     expect(isUploadZonePublicId('tourism', `tourism/reviews/${USER}/${FILE}`)).toBe(false);
     expect(isUploadZonePublicId('tourism', `tourism/posts/BK-5YU9J339/${FILE}`)).toBe(false);
     expect(isUploadZonePublicId('tourism', `tourism/site/home-hero/${FILE}`)).toBe(false);
+    expect(isUploadZonePublicId('tourism', `tourism/destinations/hoi-an/${FILE}`)).toBe(false);
   });
 
   it('phải đúng một tên file ngay dưới thư mục của chủ sở hữu', () => {

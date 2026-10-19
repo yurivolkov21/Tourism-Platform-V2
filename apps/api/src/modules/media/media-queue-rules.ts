@@ -16,11 +16,12 @@ import { type OwnerInfo, ownerRef } from './media-library-rules.js';
  * một dòng `media_garbage`, và output của job `media-gc`. Chỉ đọc — không gì ở đây đổi hàng dọn.
  */
 
-/** Thư mục ký upload → vùng. Thư mục `destinations` vào cùng lúc với đường ký của nó (Media B). */
+/** Thư mục ký upload → vùng; `destinations` vào cùng đường ký ảnh điểm đến (Media B). */
 const FOLDER_ZONES = new Map<string, MediaUploadZone>([
   ['tours', 'TOUR'],
   ['posts', 'POST'],
   ['site', 'SITE'],
+  ['destinations', 'DESTINATION'],
   ['reviews', 'REVIEW'],
   ['avatars', 'AVATAR'],
 ]);

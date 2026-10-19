@@ -17,7 +17,7 @@ const USER = '00000000-0000-4000-8000-0000000000aa';
 const FILE = '5f0c2b1e-9d3a-4c7b-8e21-6a4f0d9b7c13';
 
 describe('parseUploadZone — vùng và chủ từ đường dẫn', () => {
-  it('năm thư mục ký upload thành năm vùng', () => {
+  it('sáu thư mục ký upload thành sáu vùng', () => {
     expect(parseUploadZone(ROOT, `tourism/tours/${TOUR}/${FILE}`)).toEqual({
       zone: 'TOUR',
       owner: TOUR,
@@ -29,6 +29,10 @@ describe('parseUploadZone — vùng và chủ từ đường dẫn', () => {
       owner: 'BK-5YU9J339',
     });
     expect(parseUploadZone(ROOT, `tourism/avatars/${USER}/${FILE}`)?.zone).toBe('AVATAR');
+    expect(parseUploadZone(ROOT, `tourism/destinations/${TOUR}/${FILE}`)).toEqual({
+      zone: 'DESTINATION',
+      owner: TOUR,
+    });
   });
 
   it('ngoài vùng tải lên thì null', () => {

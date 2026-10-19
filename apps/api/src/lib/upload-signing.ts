@@ -128,13 +128,39 @@ export function isSiteSlotUploadPublicId(
   return publicId.startsWith(`${siteSlotFolder(rootFolder, slotId)}/`);
 }
 
-/** Dạng Postgres in ra cho cột `uuid` — id của user, tour, bài viết và khe site đều là cột ấy. */
+/**
+ * Thư mục ảnh admin tải lên cho MỘT điểm đến (ADR-0060 §8) — theo `id`, không theo slug. Khác thư
+ * mục cũ `<root>/destinations/hero/` có sẵn trên cloud (ADR-0020 Hệ quả): chủ ở đây là uuid, nên
+ * vùng tải lên không bao giờ nhận nhầm thư mục ấy.
+ */
+export function destinationPhotoFolder(rootFolder: string, destinationId: string): string {
+  return `${rootFolder}/destinations/${destinationId}`;
+}
+
+/**
+ * publicId có nằm trong thư mục tải lên của ĐÚNG điểm đến này không — cùng nếp
+ * `isTourUploadPublicId`. Chỉ ảnh khớp ở đây mới vào lại hàng dọn khi bị gỡ hay khi điểm đến bị
+ * xoá; ảnh catalog thì không bao giờ.
+ */
+export function isDestinationUploadPublicId(
+  rootFolder: string,
+  destinationId: string,
+  publicId: string,
+): boolean {
+  return publicId.startsWith(`${destinationPhotoFolder(rootFolder, destinationId)}/`);
+}
+
+/**
+ * Dạng Postgres in ra cho cột `uuid` — id của user, tour, bài viết, khe site và điểm đến đều là
+ * cột ấy.
+ */
 const UUID_SEGMENT = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const isUuidSegment = (segment: string): boolean => UUID_SEGMENT.test(segment);
 
 /**
- * Năm thư mục server ký upload vào, kèm dạng chủ sở hữu của từng thư mục — khớp
- * `uploadFolderFor`, `tourPhotoFolder`, `postCoverFolder` và `siteSlotFolder` ở trên; thêm
+ * Sáu thư mục server ký upload vào, kèm dạng chủ sở hữu của từng thư mục — khớp
+ * `uploadFolderFor`, `tourPhotoFolder`, `postCoverFolder`, `siteSlotFolder` và
+ * `destinationPhotoFolder` ở trên; thêm
  * đường ký mới thì thêm thư mục ở đây, không thì bộ dọn từ chối ảnh của nó. `Map` chứ không
  * object thường: tra `constructor` trên object thường ra một hàm có sẵn, gọi nó là ra "đúng".
  */
@@ -144,11 +170,12 @@ const UPLOAD_ZONE_OWNERS = new Map<string, (owner: string) => boolean>([
   ['tours', isUuidSegment],
   ['posts', isUuidSegment],
   ['site', isUuidSegment],
+  ['destinations', isUuidSegment],
 ]);
 
 /**
  * publicId có nằm trong vùng tải lên không (G16, ADR-0035 AMEND 3): đúng dạng
- * `<root>/<thư mục>/<chủ sở hữu>/<tên file>`, thư mục là một trong năm ở trên và chủ sở hữu
+ * `<root>/<thư mục>/<chủ sở hữu>/<tên file>`, thư mục là một trong sáu ở trên và chủ sở hữu
  * đúng dạng của nó. Bộ dọn chỉ destroy ảnh khớp ở đây. So tiền tố gốc là chưa đủ vì ảnh
  * catalog cũng nằm dưới `tourism/`; so tiền tố thư mục cũng chưa đủ vì thư mục cũ
  * `tourism/tours/hero/` nằm ngay trong `tours` (ADR-0020 Hệ quả) — nên mới phải soi dạng

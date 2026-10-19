@@ -1,6 +1,10 @@
 import { FastifyAdapter, type NestFastifyApplication } from '@nestjs/platform-fastify';
 import { Test } from '@nestjs/testing';
-import { AdminDestinationRowSchema } from '@tourism/contract';
+import {
+  AdminDestinationPhotosSchema,
+  AdminDestinationRowSchema,
+  SignedUploadParamsSchema,
+} from '@tourism/contract';
 import { AppModule } from '../../app.module.js';
 import { prisma } from '../../auth/auth.config.js';
 import type { Prisma } from '../../generated/prisma/client.js';
@@ -29,6 +33,7 @@ import { countLinkedTours } from './destination-tour-links.js';
 const PASSWORD = 'password-123';
 const ADMIN_EMAIL = 'bootstrap-admin@tourism.test';
 const CUSTOMER_EMAIL = 'dest-customer@example.com';
+const STAFF_EMAIL = 'dest-staff@tourism.test';
 
 const destId = (n: number) => `d1500001-0000-4000-8000-${String(n).padStart(12, '0')}`;
 const CATEGORY_ID = 'c1500001-0000-4000-8000-000000000001';
@@ -46,6 +51,7 @@ describe('admin destinations integration (P4e-2 F15)', () => {
   let app: NestFastifyApplication;
   let adminCookie: string;
   let customerCookie: string;
+  let staffCookie: string;
   let web: WebRevalidationService;
 
   beforeAll(async () => {
@@ -59,7 +65,8 @@ describe('admin destinations integration (P4e-2 F15)', () => {
     await app.getHttpAdapter().getInstance().ready();
     web = moduleRef.get(WebRevalidationService);
 
-    for (const email of [ADMIN_EMAIL, CUSTOMER_EMAIL]) {
+    const roles = { [ADMIN_EMAIL]: 'ADMIN', [STAFF_EMAIL]: 'STAFF' } as const;
+    for (const email of [ADMIN_EMAIL, STAFF_EMAIL, CUSTOMER_EMAIL]) {
       await app.inject({
         method: 'POST',
         url: '/api/auth/sign-up/email',
@@ -67,7 +74,10 @@ describe('admin destinations integration (P4e-2 F15)', () => {
       });
       await prisma.user.update({
         where: { email },
-        data: { emailVerified: true, ...(email === ADMIN_EMAIL ? { role: 'ADMIN' } : {}) },
+        data: {
+          emailVerified: true,
+          ...(email in roles ? { role: roles[email as keyof typeof roles] } : {}),
+        },
       });
     }
     adminCookie = sessionCookie(
@@ -82,6 +92,13 @@ describe('admin destinations integration (P4e-2 F15)', () => {
         method: 'POST',
         url: '/api/auth/sign-in/email',
         payload: { email: CUSTOMER_EMAIL, password: PASSWORD },
+      }),
+    );
+    staffCookie = sessionCookie(
+      await app.inject({
+        method: 'POST',
+        url: '/api/auth/sign-in/email',
+        payload: { email: STAFF_EMAIL, password: PASSWORD },
       }),
     );
   });
@@ -727,6 +744,347 @@ describe('admin destinations integration (P4e-2 F15)', () => {
       await remove(destId(999), adminCookie);
 
       expect(revalidate).not.toHaveBeenCalled();
+    });
+  });
+  describe('ảnh điểm đến (Media B, ADR-0060 §8)', () => {
+    const DEST = destId(1);
+    const HERO = 'tourism/catalog/destination/hoi-an/hero';
+    const LANTERNS = 'tourism/catalog/destination/hoi-an/lanterns';
+    const upload = (name: string, id = DEST) => `tourism/destinations/${id}/${name}`;
+    const UPLOAD_META = {
+      version: '1786999999',
+      width: 2000,
+      height: 1333,
+      format: 'jpg',
+      bytes: 523000,
+    };
+
+    const photos = (slug: string, cookie: string) =>
+      app.inject({
+        method: 'GET',
+        url: `/api/admin/destinations/${slug}/photos`,
+        headers: { cookie },
+      });
+    const setPhotos = (id: string, payload: Record<string, unknown>, cookie: string) =>
+      app.inject({
+        method: 'POST',
+        url: `/api/admin/destinations/${id}/photos`,
+        headers: { cookie },
+        payload,
+      });
+    const sign = (id: string, payload: Record<string, unknown>, cookie: string) =>
+      app.inject({
+        method: 'POST',
+        url: `/api/admin/destinations/${id}/photo-uploads`,
+        headers: { cookie },
+        payload,
+      });
+    const photosOk = async (slug = 'hoi-an') => {
+      const res = await photos(slug, adminCookie);
+      expect(res.statusCode).toBe(200);
+      return AdminDestinationPhotosSchema.parse(res.json());
+    };
+    const asset = (
+      publicId: string,
+      patch: Partial<Prisma.MediaAssetUncheckedCreateInput> = {},
+    ): Prisma.MediaAssetUncheckedCreateInput => ({
+      ownerType: 'DESTINATION',
+      ownerId: DEST,
+      publicId,
+      type: 'IMAGE',
+      role: 'gallery',
+      sortOrder: 1,
+      alt: publicId,
+      ...patch,
+    });
+    const rowsOf = (ownerId = DEST) =>
+      prisma.mediaAsset.findMany({
+        where: { ownerType: 'DESTINATION', ownerId, type: 'IMAGE' },
+        orderBy: { sortOrder: 'asc' },
+      });
+
+    /** Thư viện Hội An: bìa catalog có ghi công, một ảnh catalog, một ảnh tải lên, một video. */
+    async function seedLibrary() {
+      await prisma.mediaAsset.createMany({
+        data: [
+          asset(LANTERNS, { sortOrder: 1 }),
+          asset(HERO, {
+            role: 'hero',
+            sortOrder: 5,
+            author: 'J. Nguyen',
+            license: 'CC BY-SA 4.0',
+            licenseUrl: 'https://creativecommons.org/licenses/by-sa/4.0/',
+          }),
+          asset(upload('up-1'), { sortOrder: 2, width: 1800, height: 1200, version: '1786000000' }),
+          // Video không hiện ở trang Photos — lệnh thay ảnh không được đụng tới nó.
+          asset('tourism/catalog/destination/hoi-an/clip', { type: 'VIDEO', sortOrder: 3 }),
+        ],
+      });
+    }
+
+    it('đọc theo slug: bìa đầu, nguồn suy từ thư mục, số tour mượn đếm theo tour, không có video', async () => {
+      await seedLibrary();
+      const borrowerA = await tourVisiting('borrower-a', [destId(2)]);
+      const borrowerB = await tourVisiting('borrower-b', [destId(2)]);
+      await prisma.mediaAsset.createMany({
+        data: [borrowerA.id, borrowerB.id].map((ownerId) => ({
+          ownerType: 'TOUR' as const,
+          ownerId,
+          publicId: LANTERNS,
+          type: 'IMAGE' as const,
+          role: 'gallery' as const,
+          sortOrder: 1,
+        })),
+      });
+
+      const page = await photosOk();
+
+      const destination = await prisma.destination.findUniqueOrThrow({ where: { id: DEST } });
+      expect(page).toMatchObject({
+        id: DEST,
+        name: 'Hội An',
+        slug: 'hoi-an',
+        isActive: true,
+        version: destination.updatedAt.toISOString(),
+      });
+      expect(page.photos.map((p) => [p.publicId, p.source, p.usedByTours])).toEqual([
+        [HERO, 'CATALOG', 0],
+        [LANTERNS, 'CATALOG', 2],
+        [upload('up-1'), 'UPLOAD', 0],
+      ]);
+      expect(page.photos[0]).toMatchObject({ author: 'J. Nguyen', license: 'CC BY-SA 4.0' });
+    });
+
+    it('slug lạ → 404 NOT_FOUND', async () => {
+      const res = await photos('no-such-place', adminCookie);
+      expect(res.statusCode).toBe(404);
+      expect(res.json().code).toBe('NOT_FOUND');
+    });
+
+    it('thay trọn danh sách: thứ tự mới, alt mới, ảnh vừa tải lên; giữ ghi công và số đo dòng cũ', async () => {
+      await seedLibrary();
+      const before = await photosOk();
+
+      const res = await setPhotos(
+        DEST,
+        {
+          version: before.version,
+          photos: [
+            { publicId: upload('up-1'), alt: 'Lantern street at dusk' },
+            { publicId: upload('new-1'), alt: 'Thu Bon river', upload: UPLOAD_META },
+            { publicId: HERO, alt: 'Old town roofs' },
+            { publicId: LANTERNS, alt: 'Lanterns' },
+          ],
+        },
+        adminCookie,
+      );
+
+      expect(res.statusCode).toBe(200);
+      const saved = AdminDestinationPhotosSchema.parse(res.json());
+      expect(saved.photos.map((p) => [p.publicId, p.alt, p.source])).toEqual([
+        [upload('up-1'), 'Lantern street at dusk', 'UPLOAD'],
+        [upload('new-1'), 'Thu Bon river', 'UPLOAD'],
+        [HERO, 'Old town roofs', 'CATALOG'],
+        [LANTERNS, 'Lanterns', 'CATALOG'],
+      ]);
+      expect(Date.parse(saved.version)).toBeGreaterThan(Date.parse(before.version));
+
+      const rows = await rowsOf();
+      expect(rows.map((r) => [r.publicId, r.role, r.sortOrder])).toEqual([
+        [upload('up-1'), 'hero', 0],
+        [upload('new-1'), 'gallery', 1],
+        [HERO, 'gallery', 2],
+        [LANTERNS, 'gallery', 3],
+      ]);
+      expect(rows.find((r) => r.publicId === upload('up-1'))).toMatchObject({
+        width: 1800,
+        version: '1786000000',
+      });
+      expect(rows.find((r) => r.publicId === upload('new-1'))).toMatchObject({
+        width: 2000,
+        height: 1333,
+        bytes: 523000,
+        format: 'jpg',
+        version: '1786999999',
+        author: null,
+        license: null,
+      });
+      expect(rows.find((r) => r.publicId === HERO)).toMatchObject({
+        author: 'J. Nguyen',
+        license: 'CC BY-SA 4.0',
+        licenseUrl: 'https://creativecommons.org/licenses/by-sa/4.0/',
+      });
+      // Video vẫn còn — trang Photos không hiện nó nên lệnh thay không được xoá nó.
+      expect(await prisma.mediaAsset.count({ where: { ownerId: DEST, type: 'VIDEO' } })).toBe(1);
+      expect(await prisma.mediaGarbage.count()).toBe(0);
+    });
+
+    it('gỡ ảnh: chỉ ảnh tải lên của điểm đến vào hàng dọn; tour mượn giữ dòng của mình', async () => {
+      await seedLibrary();
+      const borrower = await tourVisiting('borrower', [destId(2)]);
+      await prisma.mediaAsset.create({
+        data: {
+          ownerType: 'TOUR',
+          ownerId: borrower.id,
+          publicId: LANTERNS,
+          type: 'IMAGE',
+          role: 'hero',
+          sortOrder: 0,
+        },
+      });
+      const before = await photosOk();
+
+      const res = await setPhotos(
+        DEST,
+        { version: before.version, photos: [{ publicId: HERO, alt: 'Old town roofs' }] },
+        adminCookie,
+      );
+
+      expect(res.statusCode).toBe(200);
+      const queued = await prisma.mediaGarbage.findMany({ select: { publicId: true } });
+      expect(queued.map((q) => q.publicId)).toEqual([upload('up-1')]);
+      expect(await prisma.mediaAsset.count({ where: { ownerId: borrower.id } })).toBe(1);
+    });
+
+    it('danh sách rỗng hợp lệ — mọi dòng ảnh của điểm đến đi, video ở lại', async () => {
+      await seedLibrary();
+      const before = await photosOk();
+
+      const res = await setPhotos(DEST, { version: before.version, photos: [] }, adminCookie);
+
+      expect(res.statusCode).toBe(200);
+      expect(AdminDestinationPhotosSchema.parse(res.json()).photos).toEqual([]);
+      expect(await rowsOf()).toEqual([]);
+      expect(await prisma.mediaAsset.count({ where: { ownerId: DEST, type: 'VIDEO' } })).toBe(1);
+    });
+
+    it('phiên bản cũ → 409 STALE_DESTINATION, không gì đổi; lệnh sửa tên cũng làm phiên bản cũ', async () => {
+      await seedLibrary();
+      const before = await photosOk();
+      // Lệnh sửa tên không so phiên bản, nhưng chạm `updatedAt` (ADR-0060 §8).
+      expect((await update(DEST, UPDATE, adminCookie)).statusCode).toBe(200);
+
+      const res = await setPhotos(
+        DEST,
+        { version: before.version, photos: [{ publicId: HERO, alt: 'Only' }] },
+        adminCookie,
+      );
+
+      expect(res.statusCode).toBe(409);
+      expect(res.json().code).toBe('STALE_DESTINATION');
+      expect((await rowsOf()).length).toBe(3);
+      expect(await prisma.mediaGarbage.count()).toBe(0);
+    });
+
+    it('ảnh không thuộc hai nguồn → 400 PHOTO_NOT_ALLOWED, cả lệnh không ghi gì', async () => {
+      await seedLibrary();
+      // Ảnh thư viện của Hà Nội: điểm đến không mượn ảnh của nhau.
+      await prisma.mediaAsset.create({
+        data: asset('tourism/catalog/destination/hanoi/1', { ownerId: destId(2) }),
+      });
+      const before = await photosOk();
+
+      for (const stranger of [
+        { publicId: 'tourism/catalog/destination/hanoi/1', alt: 'x' },
+        { publicId: upload('theirs', destId(2)), alt: 'x', upload: UPLOAD_META },
+        { publicId: upload('no-meta'), alt: 'x' },
+      ]) {
+        const res = await setPhotos(
+          DEST,
+          { version: before.version, photos: [{ publicId: HERO, alt: 'Kept' }, stranger] },
+          adminCookie,
+        );
+        expect(res.statusCode).toBe(400);
+        expect(res.json().code).toBe('PHOTO_NOT_ALLOWED');
+      }
+      expect((await rowsOf()).map((r) => r.publicId).sort()).toEqual(
+        [HERO, LANTERNS, upload('up-1')].sort(),
+      );
+      // Rollback trọn: phiên bản không đổi, lần lưu đúng kế tiếp vẫn đi được.
+      expect((await photosOk()).version).toBe(before.version);
+      expect(await prisma.mediaGarbage.count()).toBe(0);
+    });
+
+    it('id lạ → 404 NOT_FOUND ở cả lệnh lưu lẫn lệnh ký, không ký gì', async () => {
+      const missing = destId(999);
+      const saved = await setPhotos(
+        missing,
+        { version: new Date().toISOString(), photos: [] },
+        adminCookie,
+      );
+      expect(saved.statusCode).toBe(404);
+      expect(saved.json().code).toBe('NOT_FOUND');
+      expect((await sign(missing, { count: 1 }, adminCookie)).statusCode).toBe(404);
+      expect(await prisma.mediaGarbage.count()).toBe(0);
+    });
+
+    it('ký đúng count bộ trong thư mục của điểm đến, cả lô vào hàng dọn', async () => {
+      const res = await sign(DEST, { count: 2 }, adminCookie);
+
+      expect(res.statusCode).toBe(200);
+      const params = SignedUploadParamsSchema.array().parse(res.json());
+      expect(params).toHaveLength(2);
+      for (const p of params) {
+        expect(p.folder).toBe(`tourism/destinations/${DEST}`);
+        expect(p.overwrite).toBe(false);
+      }
+      const queued = await prisma.mediaGarbage.findMany({ select: { publicId: true } });
+      expect(queued.map((q) => q.publicId).sort()).toEqual(
+        params.map((p) => `${p.folder}/${p.publicId}`).sort(),
+      );
+      expect((await sign(DEST, { count: 31 }, adminCookie)).statusCode).toBe(400);
+    });
+
+    it('xoá điểm đến đưa ảnh tải lên của nó vào lại hàng dọn; ảnh catalog thì không', async () => {
+      await seedLibrary();
+
+      expect((await remove(DEST, adminCookie)).statusCode).toBe(200);
+
+      const queued = await prisma.mediaGarbage.findMany({ select: { publicId: true } });
+      expect(queued.map((q) => q.publicId)).toEqual([upload('up-1')]);
+    });
+
+    it('bust `tours` và trang của mọi tour gắn điểm đến, SAU commit', async () => {
+      await seedLibrary();
+      await tourVisiting('visits-hoi-an', [DEST]);
+      const before = await photosOk();
+      const openTransactions = trackOpenTransactions();
+      const seen: Array<{ tags: string[]; open: number }> = [];
+      vi.spyOn(web, 'revalidate').mockImplementation(async (tags) => {
+        seen.push({ tags: [...tags].sort(), open: openTransactions() });
+      });
+
+      await setPhotos(
+        DEST,
+        { version: before.version, photos: [{ publicId: HERO, alt: 'Roofs' }] },
+        adminCookie,
+      );
+
+      expect(seen).toEqual([{ tags: ['tour:visits-hoi-an', 'tours'], open: 0 }]);
+    });
+
+    it('Staff dùng được cả ba; khách 403; chưa đăng nhập 401', async () => {
+      await seedLibrary();
+      const res = await photos('hoi-an', staffCookie);
+      expect(res.statusCode).toBe(200);
+      const { version } = AdminDestinationPhotosSchema.parse(res.json());
+      expect(
+        (
+          await setPhotos(
+            DEST,
+            { version, photos: [{ publicId: HERO, alt: 'Roofs' }] },
+            staffCookie,
+          )
+        ).statusCode,
+      ).toBe(200);
+      expect((await sign(DEST, { count: 1 }, staffCookie)).statusCode).toBe(200);
+
+      for (const cookie of [customerCookie, '']) {
+        const expected = cookie === '' ? 401 : 403;
+        expect((await photos('hoi-an', cookie)).statusCode).toBe(expected);
+        expect((await setPhotos(DEST, { version, photos: [] }, cookie)).statusCode).toBe(expected);
+        expect((await sign(DEST, { count: 1 }, cookie)).statusCode).toBe(expected);
+      }
     });
   });
 });
