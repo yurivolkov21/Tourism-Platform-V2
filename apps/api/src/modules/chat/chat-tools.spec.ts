@@ -30,6 +30,8 @@ function card(overrides: Partial<TourCard> = {}): TourCard {
     ratingAvg: 4.6,
     ratingCount: 18,
     cover: null,
+    badges: [],
+    nextDeparture: { startDate: '2026-11-02', seatsLeft: 2 },
     ...overrides,
   };
 }
@@ -93,6 +95,7 @@ describe('toSearchQuery', () => {
     ['price-asc', 'basePrice', 'asc'],
     ['price-desc', 'basePrice', 'desc'],
     ['newest', 'createdAt', 'desc'],
+    ['top-rated', 'rating', 'desc'],
   ] as const)('sort %s → %s %s', (sort, column, order) => {
     expect(toSearchQuery({ sort })).toMatchObject({ sort: column, order });
   });
@@ -125,9 +128,21 @@ describe('toSearchResult', () => {
           durationDays: 2,
           destinations: ['Ha Long Bay', 'Hanoi'],
           ratingAvg: 4.6,
+          nextDeparture: '2026-11-02',
         },
       ],
     });
+  });
+
+  it('không còn đợt đặt được → nextDeparture null', () => {
+    const paged: Paged<TourCard> = {
+      items: [card({ nextDeparture: null })],
+      page: 1,
+      limit: 8,
+      total: 1,
+      totalPages: 1,
+    };
+    expect(toSearchResult(paged).tours[0]?.nextDeparture).toBeNull();
   });
 });
 

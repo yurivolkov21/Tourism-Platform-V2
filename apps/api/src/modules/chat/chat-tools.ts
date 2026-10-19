@@ -58,7 +58,10 @@ const SearchToursInputSchema = z.object({
     .max(100)
     .optional()
     .describe('Free text matched against tour titles and summaries.'),
-  sort: z.enum(['price-asc', 'price-desc', 'newest']).optional(),
+  sort: z
+    .enum(['price-asc', 'price-desc', 'newest', 'top-rated'])
+    .optional()
+    .describe('Default newest. top-rated puts tours without reviews last.'),
 });
 
 export type SearchToursInput = z.infer<typeof SearchToursInputSchema>;
@@ -67,6 +70,8 @@ const SORTS = {
   'price-asc': { sort: 'basePrice', order: 'asc' },
   'price-desc': { sort: 'basePrice', order: 'desc' },
   newest: { sort: 'createdAt', order: 'desc' },
+  // ADR-0058 §4: tour chưa có đánh giá luôn đứng cuối, hoà điểm thì nhiều đánh giá trước.
+  'top-rated': { sort: 'rating', order: 'desc' },
 } as const;
 
 /**
@@ -99,6 +104,8 @@ export function toSearchResult(paged: Paged<TourCard>) {
         .sort((a, b) => Number(b.isPrimary) - Number(a.isPrimary))
         .map((destination) => destination.name),
       ratingAvg: tour.ratingAvg,
+      // Đợt sớm nhất còn đặt được (ADR-0058), như dòng "Next departure" trên thẻ.
+      nextDeparture: tour.nextDeparture?.startDate ?? null,
     })),
   };
 }
