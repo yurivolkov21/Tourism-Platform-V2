@@ -8,6 +8,54 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-10-19 — Merge G25 khoá ngoại điểm đến của tour đổi sang `RESTRICT` (ADR-0053 AMEND 2, `c97b8ba`..`b021316`)
+
+Việc tồn đọng của admin, làm 15/10 sau khi user dời freeze sang 31/10. Nhánh
+`fix/admin-g25-destination-restrict`, [PR #26](https://github.com/yurivolkov21/Tourism-Platform-V2/pull/26),
+thi công trên session cloud; tạm dừng lúc chờ merge vì giới hạn usage. MỘT migration, không env,
+không dependency, không đổi hình dạng contract; thư viện dùng chung bị sửa: `@tourism/contract` (chỉ
+comment và JSDoc).
+
+- `c97b8ba`: [ADR-0053](adr/0053-delete-unused-categories-destinations.md) AMEND 2 chốt khoá ngoại
+  `tour_destinations_destination_id_fkey` đổi từ `ON DELETE CASCADE` sang `ON DELETE RESTRICT`, giống
+  `tours.category_id`, đi trước code. Mục lục ADR: 0053 ghi 2 AMEND (sửa trong chính commit ADR).
+- `b021316`: migration `20261015005139_g25_destination_fk_restrict` là MỘT câu `ALTER TABLE` (DROP
+  rồi ADD cùng tên). `prisma migrate deploy` không bọc file trong transaction: đo trên DB nháp, bản hai
+  câu Prisma sinh ra để bảng mất hẳn khoá ngoại khi câu ADD hỏng, còn bản một câu để khoá cũ nguyên
+  vẹn. `schema.prisma` khai `onDelete: Restrict`. Không đụng dữ liệu: production trước deploy (truy
+  vấn chỉ đọc 19/10) có 53 liên kết, 0 liên kết mồ côi. Lệnh xoá của admin giữ nguyên (đếm liên kết
+  dưới khoá hàng, trả `IN_USE`); khoá ngoại là lưới thứ hai cho SQL tay, Prisma Studio hay script.
+  Sửa năm comment còn ghi CASCADE (service, nút xoá ở admin, contract).
+- open-items: dòng G25 chuyển sang `open-items-closed.md`.
+
+**Deploy Supabase:** Yuri chạy `prisma migrate deploy` bằng tay từ máy dev ngày 19/10, migration xong
+lúc 02:41:48 UTC, trước khi đẩy main. Truy vấn chỉ đọc ngay sau đó: khoá ngoại là `RESTRICT`
+(`confdeltype = 'r'`), 32 migration đã chạy, vẫn 53 liên kết.
+
+**Review.** Không có lượt review độc lập. User bảo merge 19/10 00:56 UTC ("Merge G25"). Nhánh tách từ
+`16ca003`, rebase lên `d0a051d` không xung đột (main đi thêm PR #27, #28, #29 và commit spec, không
+cái nào đụng `prisma/`).
+
+Tests after (`gate:int` trên `b021316`, 19/10 xong 02:40 UTC, session cloud theo các bước của CI):
+unit 7650 (web 2315, admin 2224, api 1190, mobile 864, contract 719, mobile-ui 145, i18n 62, ui 57,
+core 48, tokens 26) và int 850 trong 52 file; Biome 1960 file. Cùng số khi chạy trên máy Windows của
+Yuri trước đó; CI của PR xanh cả lượt `push` lẫn `pull_request` trên `b021316`. So với `d0a051d`: int
+thêm 1, unit giữ nguyên. Lượt cloud đầu có `@tourism/contract#test` hết giờ một lần dưới tải turbo
+(`zod-config.spec.ts`, 5,07 giây so với giới hạn 5 giây, đã gặp 15/10); chạy riêng 719/719, lượt sau
+xanh. Int mới: xoá điểm đến còn tour bằng SQL tay và bằng Prisma Client đều bị từ chối, tour giữ đủ
+điểm đến; đỏ trên khoá CASCADE cũ. Ca đua cũ (bỏ `FOR UPDATE` ở lệnh xoá) nay ra 500 thay vì 409, vẫn
+đỏ.
+
+**Đóng CÒN TREO của entry 14/10 "Merge G18 … G41":** (1) ba job bù `singleton_key = 'catch-up'` của
+14/10 đều `completed` lúc 08:18 UTC, ngay sau deploy; (2) ngày 15/10 lần thức đầu tiên (00:20:54 UTC,
+07:20 giờ VN) gửi đủ ba job bù mới, `completed` lúc 00:21:56 UTC; lần thức 00:41 và 24 lần thức sau
+deploy ngày 14/10 đều log "hôm nay đã có", không gửi thêm (đọc `pgboss.job` và log Render, chỉ đọc);
+(3) nhánh `fix/admin-g18-review-order` không còn trên origin.
+
+**CÒN TREO:**
+
+- Dọn sau merge: nhánh `fix/admin-g25-destination-restrict` trên origin nếu GitHub không tự xoá.
+
 ## 2026-10-15 — Merge W-09 phần cuối của web: hậu tố title, RSS, breadcrumb JSON-LD, tên tháng và thứ vào `@tourism/i18n` (`5c2c5c2`..`61cc745`)
 
 Lượt open-items của web, tách từ yêu cầu của user sáng 15/10 (dời freeze sang 31/10, chia luồng
