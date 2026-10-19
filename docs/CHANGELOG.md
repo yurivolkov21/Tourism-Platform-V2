@@ -8,6 +8,36 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-10-19 — Merge sửa comment `SENTRY_DSN` trong `render.yaml`; Sentry của API đã bật trên production (`aceebc2`)
+
+Phần hạ tầng trong mục CÒN TREO của entry PR #37 (Sentry bắt lỗi 500 của API) đã xong 19/10. Nhánh
+`claude/project-thread-4trwm7`, [PR #40](https://github.com/yurivolkov21/Tourism-Platform-V2/pull/40),
+làm trên session cloud. Chỉ đổi comment YAML và tài liệu: không migration, không biến env, không
+dependency mới.
+
+- `aceebc2`: comment cạnh `SENTRY_DSN` trong `render.yaml` còn ghi "seam chưa nối, đặt DSN không gửi gì",
+  sai từ PR #37. Nay ghi đúng: có DSN thì lỗi 500 của API lên Sentry, chỉ kèm method và đường dẫn; DSN
+  gõ sai thì API không boot; bỏ trống là tắt; kiểm bằng `pnpm sentry:test`.
+- Commit merge này: dòng "Bật Sentry cho API" chuyển từ open-items sang open-items-closed, kèm lời ghi đóng.
+
+**Việc hạ tầng đã làm** (Yuri làm tay, thread hướng dẫn từng bước). Project `nexora-api` kiểu Node.js
+trên Sentry. `SENTRY_DSN` đặt trên Render; lượt Save and deploy xếp hàng sau bản tự deploy của PR #38 và
+live 11:00 UTC trên `f897a7a`. Log Render (đọc chỉ-đọc) có `[Observability] Sentry bật
+(environment=production)` lúc 11:00:36 UTC, rồi `listening on :3001 (production) + inline worker`,
+không dòng lỗi. `SENTRY_DSN` cũng ghi vào `apps/api/.env.production` trên máy. `sentry:test` từ máy lúc
+11:25 UTC in `Sentry bật (environment=development)` và `✓ Đã gửi sự kiện thử`; Sentry có issue
+NEXORA-API-1 đúng mốc giờ, environment `development`, Users 0; Yuri đã Resolve.
+
+**Review.** Không có lượt review độc lập. Chưa có lỗi 500 thật nào từ production lên Sentry, nên bộ lọc
+request (`scrubEvent`) mới được đo trên session cloud với một máy nhận Sentry giả (entry PR #37), chưa
+trên dữ liệu thật.
+
+**CÒN TREO:** khi có lỗi 500 thật đầu tiên trên production, mở issue trong Sentry và xác nhận request
+chỉ có method và đường dẫn, không header, query, cookie hay email.
+
+Tests after: không chạy `gate:int` vì chỉ đổi comment YAML và Markdown; CI của PR #40 trên `fdd9edb`
+(cùng diff `render.yaml`, trước lần rebase lên `2291509`) xanh; CI trên main là lưới.
+
 ## 2026-10-19 — Merge nhật ký thao tác admin: trang `/activity` chỉ Owner, ghi tự động sau mỗi lệnh ghi thành công (`6f50333`..`e597e59`)
 
 Mục 8 của bản rà "Việc còn thiếu ở api, web, admin": Yuri chốt làm 19/10 08:36 UTC, chọn "Chỉ Owner"

@@ -121,10 +121,6 @@ Không còn việc nào chờ quyết (14/10).
   `tourism` theo mã mới. Máy dev cài lại 12/10 nên Docker dựng mới; chưa kiểm
   `tourism_ui` còn hay không.
 - Tắt tự-động-cập-nhật marketplace `claude-plugins-official` trước freeze 31/10.
-- Bật Sentry cho API (PR #37, [ADR-0010 AMEND 1](adr/0010-infra-hardening.md)): tạo project
-  Sentry kiểu Node.js, đặt `SENTRY_DSN` trên Render và trong `apps/api/.env.production`, rồi
-  kiểm bằng `sentry:test` (cách chạy ở đầu `apps/api/scripts/sentry-test.mjs`). Phải trước
-  freeze 31/10 nếu muốn có; chưa đặt thì API chạy như cũ.
 - Cân nhắc siết thêm Build Filter của Render: thêm `apps/web/**`,
   `apps/admin/**`, `apps/mobile/**` vào Ignored Paths. **Đừng thêm `libs/**`** —
   máy chủ ăn `@tourism/contract` và `@tourism/core`.

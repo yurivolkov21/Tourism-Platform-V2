@@ -134,6 +134,15 @@ báo ở `bookings/[code]`, đọc cờ `departureCancelled`.~~
   từ 12/10 07:10 UTC, nên quãng 02:30–03:10 UTC ngày 09/10 không còn dòng nào. G23 (trần pool
   15 client của Session pooler) đã vá 14/10 ở PR #16. Tái phát thì mở mục mới và đọc log Render
   ngay trong ngày.*
+- ~~Bật Sentry cho API~~ (PR #37, [ADR-0010 AMEND 1](adr/0010-infra-hardening.md)): tạo project
+  Sentry kiểu Node.js, đặt `SENTRY_DSN` trên Render và trong `apps/api/.env.production`, rồi
+  kiểm bằng `sentry:test` (cách chạy ở đầu `apps/api/scripts/sentry-test.mjs`). Phải trước
+  freeze 31/10 nếu muốn có; chưa đặt thì API chạy như cũ.
+  *Đóng 19/10: Yuri tạo project `nexora-api` kiểu Node.js trên Sentry, đặt `SENTRY_DSN` trên Render
+  (bản deploy `f897a7a` mang DSN live 11:00 UTC, log boot có `Sentry bật (environment=production)`)
+  và trong `.env.production`. `sentry:test` từ máy lúc 11:25 UTC tạo issue NEXORA-API-1 (environment
+  `development`); Yuri đã Resolve. Chưa có lỗi 500 thật nào từ production lên Sentry để soi bộ lọc
+  request trên dữ liệu thật.*
 
 ## ~~Bug tiềm ẩn: `pending-sweep.service.ts` so sánh timestamp phụ thuộc timezone server~~ — đóng 14/10
 
