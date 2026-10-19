@@ -132,11 +132,12 @@ export const NAV_GROUPS: NavGroup[] = [
       // mặc định, tab All là câu hỏi thường ngày (bài nào sửa gần nhất).
       { key: 'posts', label: t.posts, href: '/posts', enabled: true, icon: FileText },
       { key: 'media', label: t.media, href: '/media', enabled: false, icon: Image },
+      // Ảnh các khe của web (P4f, ADR-0059) — bậc Staff, cùng bậc sửa bài viết.
       {
         key: 'appearance',
         label: t.appearance,
         href: '/appearance',
-        enabled: false,
+        enabled: true,
         icon: Palette,
       },
     ],

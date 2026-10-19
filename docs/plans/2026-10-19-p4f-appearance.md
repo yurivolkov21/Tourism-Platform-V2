@@ -30,7 +30,7 @@ không env mới, không dependency mới; không chạm hạ tầng sống (lu�
      khách 403, Staff được; `signUpload` tạo dòng, thư mục đúng, publicId vào hàng dọn.
 4. **Admin** — chữ `admin.appearance` ở `@tourism/i18n`; `lib/api/appearance.ts`,
    `lib/appearance-view.ts` (nhóm, câu chú thích, thu nhỏ khung, cảnh báo cỡ ảnh) và
-   `lib/appearance-write.ts` (codec lỗi) kèm spec; trang `/appearance` (`requirePageAccess`), thẻ khe,
+   `lib/appearance-write.ts` (codec lỗi) kèm spec; trang `/appearance`, thẻ khe,
    hộp Replace (Upload dùng `uploadPhoto`, From library dùng `PhotoLibraryDialog`, hai khung xem
    trước, alt, ghi công chỉ đọc, dòng 7 ngày), Restore original; bật mục sidebar. Spec component cho
    thẻ và hộp.
@@ -48,3 +48,7 @@ không env mới, không dependency mới; không chạm hạ tầng sống (lu�
 - Câu chú thích của ba khe Team là chức danh trên web (`role` trong `mocks/team.ts`), không chép tên
   người sang admin.
 - Restore original đi qua hộp xác nhận (`ConfirmWriteDialog`), không mở hộp Replace.
+- Sửa lúc thi công: trang KHÔNG gọi `requirePageAccess`. Hàm ấy là cổng của trang chỉ Owner; ba
+  thủ tục Appearance là bậc Staff như `/posts`, mọi tài khoản vào được admin đều gọi được.
+- Sửa lúc thi công: hộp Replace mở sẵn ảnh đang dùng, nên lưu ngay là đổi alt (nguồn thứ nhất của
+  ADR-0059 §2) — không cần một nút sửa alt riêng.

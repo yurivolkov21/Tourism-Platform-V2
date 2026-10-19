@@ -1,6 +1,6 @@
 // Kho copy user-facing tập trung (chỉ tiếng Anh, luật #7). Mọi bề mặt đọc từ
 // đây — không rải chuỗi inline.
-import { TOUR_PHOTOS_MAX } from '@tourism/contract';
+import { type SiteSlotGroupKey, type SiteSlotKey, TOUR_PHOTOS_MAX } from '@tourism/contract';
 import { cancellationWindowSentence, DEADLINE_CUTOFF_COPY } from './legal/cancellation.js';
 import { IMAGE_FORMATS_COPY, TOUR_PHOTO_MAX_SIZE_COPY } from './photo-upload-copy.js';
 import { resilience } from './resilience.js';
@@ -6069,6 +6069,192 @@ export const messages = {
           title: 'Post deleted',
           body: (title: string) => `${title} is gone from the site.`,
         },
+      },
+    },
+    // Vùng Appearance (P4f, ADR-0059) — ảnh 47 khe của web. Nhóm, khung và đường dẫn đọc ở danh
+    // mục `SITE_SLOTS` của contract; ở đây chỉ có chữ.
+    appearance: {
+      /** Đo: API bắn tag `site-media` sau commit (ADR-0059 §3); spec §8.3 thử tay "trong một phút". */
+      intro:
+        'The photos on the public site, page by page. A photo you save shows on the site within a minute.',
+      groups: {
+        home: 'Home',
+        about: 'About',
+        contact: 'Contact',
+        destinations: 'Destinations',
+        north: 'Northern Vietnam',
+        central: 'Central Vietnam',
+        south: 'Southern Vietnam',
+        auth: 'Sign-in pages',
+      } satisfies Record<SiteSlotGroupKey, string>,
+      viewPage: 'View on site',
+      viewPageLabel: (group: string) => `View the ${group} page on the site (opens in a new tab)`,
+      slotCount: (n: number) => (n === 1 ? '1 photo' : `${n} photos`),
+      /**
+       * Nhãn khe, đọc NGAY dưới tên nhóm nên ngắn. Thứ tự đánh số theo thứ tự trên trang web.
+       * `satisfies`: thêm một khe ở danh mục mà quên nhãn là typecheck đỏ.
+       */
+      slots: {
+        'home-hero': 'Hero',
+        'home-why-choose': 'Why choose us · before a reason is opened',
+        'why-guide': 'Why choose us · reason 1',
+        'why-food': 'Why choose us · reason 2',
+        'why-river': 'Why choose us · reason 3',
+        'why-evening': 'Why choose us · reason 4',
+        'why-heritage': 'Why choose us · reason 5',
+        'cta-band': 'Closing banner',
+        'about-hero': 'Hero',
+        'about-story': 'Our story',
+        'about-timeline-2014': 'Timeline · 2014',
+        'about-timeline-2017': 'Timeline · 2017',
+        'about-timeline-2021': 'Timeline · 2021',
+        'about-timeline-2026': 'Timeline · 2026',
+        'about-gallery-north': 'Regions · large tile',
+        'about-gallery-central': 'Regions · wide tile',
+        'about-gallery-south': 'Regions · small tile 1',
+        'about-gallery-all': 'Regions · small tile 2',
+        'about-team-ceo': 'Team · portrait 1',
+        'about-team-routes': 'Team · portrait 2',
+        'about-team-guides': 'Team · portrait 3',
+        'about-cta-video': 'Closing video',
+        'contact-panel': 'Side panel',
+        'moment-lanha-kayak': 'Moments · large photo',
+        'moment-hagiang-valley': 'Moments · photo 2',
+        'moment-hoian-river': 'Moments · photo 3',
+        'moment-myson-towers': 'Moments · photo 4',
+        'moment-bentre-canal': 'Moments · photo 5',
+        'region-gallery-north-1': 'Gallery · photo 1',
+        'region-gallery-north-2': 'Gallery · photo 2',
+        'region-gallery-north-3': 'Gallery · photo 3',
+        'region-gallery-north-4': 'Gallery · photo 4',
+        'region-gallery-north-5': 'Gallery · photo 5',
+        'region-gallery-north-6': 'Gallery · photo 6',
+        'region-gallery-central-1': 'Gallery · photo 1',
+        'region-gallery-central-2': 'Gallery · photo 2',
+        'region-gallery-central-3': 'Gallery · photo 3',
+        'region-gallery-central-4': 'Gallery · photo 4',
+        'region-gallery-central-5': 'Gallery · photo 5',
+        'region-gallery-central-6': 'Gallery · photo 6',
+        'region-gallery-south-1': 'Gallery · large photo',
+        'region-gallery-south-2': 'Gallery · photo 2',
+        'region-gallery-south-3': 'Gallery · photo 3',
+        'region-signature-south-1': 'Postcards · 1',
+        'region-signature-south-2': 'Postcards · 2',
+        'region-signature-south-3': 'Postcards · 3',
+        'auth-panel': 'Photo panel',
+      } satisfies Record<SiteSlotKey, string>,
+      /** Tên đầy đủ của một khe ngoài thẻ của nó (tiêu đề hộp, toast): "Home · Hero". */
+      slotName: (group: string, slot: string) => `${group} · ${slot}`,
+      /**
+       * Câu chú thích nằm trong MOCK của web (`mocks/moments.ts`, `mocks/team.ts`) — admin không
+       * import được app web nên chép sang đây, và `apps/web/src/mocks/appearance-captions.spec.ts`
+       * canh hai bản khớp nhau. Khe Team in chức danh, không in tên người. Câu nằm sẵn ở i18n (trang
+       * vùng, Why choose us, timeline) thì admin đọc thẳng chỗ ấy, không chép.
+       */
+      copiedCaptions: {
+        'moment-lanha-kayak': 'Paddling out under the karst wall, the water goes green',
+        'moment-hagiang-valley': 'The road bends once more and the whole valley opens up',
+        'moment-hoian-river': 'Boats on the Hoài river, hours before the lanterns',
+        'moment-myson-towers': 'The Chăm brick towers at Mỹ Sơn, before the crowds arrive',
+        'moment-bentre-canal': 'Drifting into the coconut canals as the palms close overhead',
+        'about-team-ceo': 'Co-founder & CEO',
+        'about-team-routes': 'Co-founder & Head of Routes',
+        'about-team-guides': 'Co-founder & Head of Guides',
+      },
+      caption: (text: string) => `Caption on the site: ${text}`,
+      /** Khoá đúng tên giá trị `SiteSlotImageSource` của contract. */
+      source: {
+        ORIGINAL: 'Original',
+        UPLOAD: 'Uploaded',
+        LIBRARY: 'From the library',
+        OTHER: 'Other photo',
+      },
+      size: (width: number, height: number) => `${width} × ${height} px`,
+      empty: 'No photo yet. The site shows a placeholder here.',
+      /** Đo: `apps/mobile/src/features/auth/auth-media.ts` ghim URL ảnh gốc, không đọc API. */
+      mobileApp: 'The mobile app keeps showing the original photo on its sign-in screens.',
+      video: 'Video. View only for now.',
+      replace: 'Replace',
+      replaceLabel: (slot: string) => `Replace the photo: ${slot}`,
+      restore: 'Restore original',
+      restoreLabel: (slot: string) => `Restore the original photo: ${slot}`,
+      original: 'Original',
+      frames: {
+        desktop: (width: number, height: number) => `Desktop · ${width} × ${height}`,
+        phone: (width: number, height: number) => `Phone · ${width} × ${height}`,
+        /** Đo: panel đăng nhập ẩn dưới `lg` (spec §3.2). */
+        phoneHidden: 'Not shown on phones.',
+      },
+      replaceDialog: {
+        title: (slot: string) => `Replace ${slot}`,
+        body: 'Upload a new photo or choose one from the destination library. The previews crop it the way the site does.',
+        current: 'Current photo',
+        chosen: 'New photo',
+        none: 'No photo chosen yet.',
+        upload: 'Upload a photo',
+        library: 'Choose from library',
+        formats: `${IMAGE_FORMATS_COPY}, up to ${TOUR_PHOTO_MAX_SIZE_COPY}.`,
+        uploading: (percent: number) => `Uploading ${percent}%`,
+        uploadFailed: 'The photo didn’t upload. Try again.',
+        skipped: PHOTO_SKIPPED_COPY,
+        previews: 'How the site crops it',
+        /** Khung đo ở px CSS (spec §3.2) — cảnh báo, không chặn. */
+        narrow: (width: number, frame: number) =>
+          `This photo is ${width} px wide and the slot is ${frame} px wide on large screens, so it may look soft.`,
+        captionCheck:
+          'Pick a photo of the same scene, or the caption will describe the wrong thing.',
+        alt: 'Alt text',
+        altHint:
+          'Optional. Describe the photo for people who can’t see it. Leave it empty if it only decorates the page.',
+        credit: 'Credit',
+        creditNone: 'None recorded.',
+        /** Đo: ảnh tải lên bị thay vào hàng dọn (ADR-0059 §3), bộ dọn xoá sau 7 ngày (ADR-0035). */
+        uploadedGone:
+          'The current photo was uploaded for this slot. Once you replace it, it is deleted from storage after 7 days and can’t be picked again.',
+        libraryDialog: {
+          title: 'Choose a photo',
+          current: 'Current photo',
+          use: 'Use this photo',
+          replaces: 'The photo you pick replaces the current one.',
+          pickOne: 'Pick one photo for this slot.',
+        },
+        pickFirst: 'Choose a photo first.',
+        save: 'Save photo',
+        saving: 'Saving…',
+        cancel: 'Cancel',
+      },
+      restoreDialog: {
+        title: 'Restore the original photo?',
+        body: 'The slot goes back to the photo the site launched with, and to its original alt text.',
+        uploadedGone:
+          'The current photo was uploaded for this slot. It is deleted from storage after 7 days and can’t be picked again.',
+        kept: 'Nothing is deleted. The current photo can be picked again from the library.',
+        empty: 'The slot has no photo now, so the site shows a placeholder until you restore it.',
+        submit: 'Restore original',
+        submitting: 'Restoring…',
+        cancel: 'Cancel',
+        rows: { slot: 'Slot', current: 'Now showing' },
+        noPhoto: 'No photo',
+        originalCaption: 'Original photo',
+      },
+      /** Mã CONTRACT của `admin.appearance.setSlot`. */
+      errors: {
+        STALE_SLOT:
+          'Someone else changed this photo a moment ago. The page now shows their version.',
+        /** Ca thật: ảnh thư viện mất dòng địa danh giữa lúc chọn và lúc lưu. */
+        PHOTO_NOT_ALLOWED:
+          'This photo is no longer available. Choose another one, then save again.',
+      },
+      /** Mã CONTRACT của `admin.appearance.signUpload`. */
+      signErrors: {
+        MEDIA_UPLOAD_NOT_CONFIGURED: 'Uploads are not set up on this server.',
+      },
+      signFailed: 'The upload could not start. Try again in a moment.',
+      toast: {
+        saved: 'Photo saved',
+        savedBody: (slot: string) => `${slot} shows the new photo on the site within a minute.`,
+        restored: 'Original photo restored',
+        restoredBody: (slot: string) => `${slot} is back to its original photo.`,
       },
     },
     // Vùng Users (P4f, ADR-0052). Enum giữ ADMIN, giao diện gọi là Owner (ADR-0052 §1).

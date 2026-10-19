@@ -55,6 +55,11 @@ export function tourPageUrl(slug: string): string {
   return `${webUrl()}/tours/${encodeURIComponent(slug)}`;
 }
 
+/** Một trang tĩnh của site khách theo đường dẫn tuyệt đối (`/about`) — nhóm khe của Appearance. */
+export function sitePageUrl(path: string): string {
+  return `${webUrl()}${path}`;
+}
+
 /** Trang bài trên site khách — chỉ mở được khi bài đã đăng (nháp và bài hẹn giờ là 404). */
 export function postPageUrl(slug: string): string {
   return `${webUrl()}/blog/${encodeURIComponent(slug)}`;
