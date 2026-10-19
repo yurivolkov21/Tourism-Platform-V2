@@ -17,7 +17,7 @@ thay, cột đã xoá, và số AMEND để biết phải đọc tới cuối fi
 | [0006](0006-pending-lifecycle.md) | Vòng đời đơn chưa trả tiền: hết hạn, tự huỷ, mở lại được | 2 AMEND |
 | [0008](0008-admin-bootstrap-verified.md) | Cấp quyền admin phải qua email đã xác minh | |
 | [0009](0009-refund-correctness.md) | Đúng đắn hoàn tiền: khoá, trigger tổng, gate | thước ngày đổi theo [0041](0041-single-cancellation-deadline.md) · 4 AMEND |
-| [0010](0010-infra-hardening.md) | Gia cố hạ tầng trước P3b | |
+| [0010](0010-infra-hardening.md) | Gia cố hạ tầng trước P3b | 1 AMEND (19/10: §3 nối Sentry thật cho API) |
 | [0011](0011-p3b-web-architecture.md) | Kiến trúc web: Next.js 16 + `libs/shared/ui` | |
 | [0012](0012-typeset-typography.md) | Typography cho nội dung dài | |
 | [0013](0013-wuling-theme-tokens.md) | Theme Wuling + tint theo vùng | tint **đã rút** — xem [0015](0015-retire-region-tint.md) |

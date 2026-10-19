@@ -1,6 +1,6 @@
 # ADR-0010 — Infra hardening trước P3b: exception filter · helmet · Sentry
 
-- **Trạng thái:** Accepted (2026-07-22)
+- **Trạng thái:** Accepted (2026-07-22) · AMEND 1 (2026-10-19): §3 nối Sentry thật
 - **Bối cảnh:** [độ sẵn sàng backend 22/07](../analysis/nexora-parity/2026-07-22-backend-readiness-vs-nexora.md) §hạ tầng —
   3 gap "độ chín production" (TB) còn mở sau khi 4/8 lỗ 19/07 đã đóng. Đóng trước khi web P3b lộ FE.
 
@@ -53,3 +53,41 @@ Ba lỗ hạ tầng Nexora có mà v2 thiếu, không chặn cứng web nhưng n
   lý hai kiểu. Chuẩn hoá trọn về envelope oRPC sạch hơn.
 - **CSP bật luôn ở API**: loại — API không serve HTML, CSP thuộc web P3b; bật mù dễ chặn nhầm.
 - **Sentry bắt buộc (không env-gate)**: loại — cần DSN, chặn dev/test/capstone boot. Env-gate như RESEND.
+
+## AMEND 1 — 19/10/2026: §3 nối Sentry thật cho API
+
+Yuri chốt 19/10 bật Sentry (mục 4 của bản rà việc còn thiếu ở api, web, admin cùng ngày).
+Phải vào trước freeze 31/10 vì là dependency mới ([ADR-0001 AMEND 3](0001-tech-stack.md)).
+AMEND này thay phần "hoãn kích hoạt" của §3; env-gate và hai call-site giữ nguyên.
+
+1. **Gói:** `@sentry/node` ghim đúng `10.76.2` (dòng 10, bản vá 08/10), chỉ ở `apps/api`.
+   Không lấy dòng 11: major ra 23/09, mới bốn tuần khi còn 12 ngày tới freeze. Web và
+   admin không thêm Sentry, ngoài phạm vi ADR này.
+2. **Khởi động:** `initObservability({ dsn, environment })` gọi một lần ở đầu `main.ts`
+   (trước khi Nest dựng app) và đầu `worker.ts`. Thiếu `SENTRY_DSN` thì không init và
+   `captureException` vẫn no-op, nên dev, test và CI không đổi. Hai call-site như cũ:
+   exception filter (500) và `onError` của oRPC (lỗi bất ngờ).
+3. **Chỉ bắt lỗi, không đo hiệu năng:** không đặt `tracesSampleRate`, nên SDK không thêm
+   integration hiệu năng. `registerEsmLoaderHooks: false`: không tracing thì không cần móc
+   ESM, mà móc ấy bọc mọi `import()` động về sau.
+4. **Dữ liệu cá nhân tối thiểu:** `sendDefaultPii: false` (không IP, cookie, user).
+   `beforeSend` bỏ header, cookie, body, query string và `user`, chỉ giữ method và đường
+   dẫn của request; breadcrumb từ console bị bỏ; `includeLocalVariables` để mặc định tắt.
+   `/privacy` kể Sentry trong danh sách nhà cung cấp.
+5. **Tiến trình vẫn chết như Node khi có promise bị reject không ai bắt.** Integration
+   `OnUnhandledRejection` mặc định của Sentry ở chế độ `warn`: ghi log rồi chạy tiếp, tức
+   gắn Sentry vào là đổi hành vi mặc định của Node 15+ mà không ai thấy. Thay bằng
+   `mode: 'strict'`: gửi lên Sentry, xả hàng đợi rồi `exit(1)`. `OnUncaughtException` mặc
+   định đã thoát tiến trình.
+6. **`SENTRY_DSN` siết thành URL** (`z.url()`): DSN sai thì Sentry tự tắt im lặng, nên ép
+   ở boot là chỗ duy nhất người deploy thấy lỗi gõ, cùng nếp `RESEND_WEBHOOK_SECRET`.
+7. **Release** lấy từ `RENDER_GIT_COMMIT` Render cấp sẵn (SDK tự đọc), không thêm env.
+8. **Lockfile:** `@sentry/node` kéo `@opentelemetry/api`, và pnpm dùng luôn nó cho peer tuỳ
+   chọn của `next`, `better-auth`, `@orpc/*` ở mọi app. Web, admin và mobile không đăng ký
+   provider OTel nào nên các gói ấy vẫn chạy nhánh no-op; gate (build web và admin, bundle
+   mobile) là phép đo.
+9. **Kiểm sau khi đặt DSN:** script `sentry:test` của `apps/api` build rồi gửi một sự kiện
+   thử qua chính `initObservability` của API; log boot của Render có dòng báo Sentry đã bật.
+
+Hạ tầng (luật 15, làm sau merge): tạo project Sentry kiểu Node, đặt `SENTRY_DSN` trên
+Render và trong `apps/api/.env.production`. Chưa đặt thì API chạy y như trước.
