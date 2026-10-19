@@ -53,6 +53,12 @@ describe('nội dung pháp lý', () => {
     expect(JSON.stringify(collect)).toMatch(/30 days/);
   });
 
+  it('privacy kể Sentry trong danh sách nhà cung cấp (ADR-0010 AMEND 1)', () => {
+    // API gửi lỗi 500 lên Sentry khi có SENTRY_DSN; chi tiết lỗi kèm đường dẫn trang đi ra ngoài.
+    const share = privacyDoc.sections.find((s) => s.heading === 'How we share your information');
+    expect(JSON.stringify(share)).toMatch(/error-monitoring provider \(Sentry\)/);
+  });
+
   it('terms nói rõ thanh toán chạy test mode', () => {
     const testModeSection = termsDoc.sections.find((s) => s.heading === 'Test-mode payments');
     expect(testModeSection).toBeDefined();

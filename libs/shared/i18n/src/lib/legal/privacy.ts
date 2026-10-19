@@ -66,7 +66,7 @@ export const privacyDoc: LegalDoc = {
         'We do not sell or rent your personal information. We share it only as needed to provide our services, with:',
       ],
       bullets: [
-        'Service providers who operate the platform on our behalf, including our hosting providers (Vercel for the website and Render for our servers), our database provider (Supabase), payment providers (Stripe and PayPal), our transactional email provider (Resend), and our media/image provider (Cloudinary);',
+        'Service providers who operate the platform on our behalf, including our hosting providers (Vercel for the website and Render for our servers), our database provider (Supabase), payment providers (Stripe and PayPal), our transactional email provider (Resend), our media/image provider (Cloudinary), and our error-monitoring provider (Sentry), which receives technical details of server errors, such as the error message and the page address;',
         'Anthropic, our AI provider, which receives the messages you send to the trip-planning assistant, together with the tour details and, if you are signed in, the details of your own bookings that the assistant looks up, in order to write its replies. Please do not share payment details or other sensitive information in the chat;',
         'Google, only if you choose to sign in with your Google account;',
         'Travel suppliers — such as hotels, transport operators, and local guides — strictly to the extent needed to deliver the trip you book;',
