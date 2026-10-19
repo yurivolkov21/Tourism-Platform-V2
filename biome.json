@@ -13,8 +13,7 @@
       "!**/dist-seed",
       "!**/public",
       "!libs/shared/ui/src/styles/typeset.css",
-      "!docs/design/mockups/*.src.html",
-      "!docs/design/*.html"
+      "!docs/design/mockups/*.src.html"
     ]
   },
   "formatter": {
