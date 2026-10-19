@@ -8,6 +8,41 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-10-19 — Merge P6 sửa trợ lý: câu không nêu tên tour là hỏi tour đang xem, yêu cầu tour riêng là enquiry (`a8eab3a`)
+
+Yuri chạy 28 kịch bản thử tay của trợ lý trên production 19/10 khoảng 09:30 UTC: đạt, trừ A8 và B1. A8:
+hỏi về Sa Pa, mở trang Bát Tràng rồi hỏi số chỗ còn lại thì trợ lý trả lời theo tour Sa Pa. B1: xin tour
+Hạ Long riêng cho 6 người kèm tên và email thì không hiện thẻ xác nhận enquiry; log Render cả ngày chưa
+có lượt nào gọi `submitEnquiry`, lượt B1 chỉ gọi `searchTours`. Trước đó (09:07–09:21 UTC) Yuri đã thử
+hỏi đơn khi đã và chưa đăng nhập theo mục CÒN TREO của entry PR #35: đạt. Nhánh
+`feat/p6-ai-concierge-3xp4sq`, [PR #38](https://github.com/yurivolkov21/Tourism-Platform-V2/pull/38),
+thi công trên session cloud. Không migration, không biến env, không dependency mới.
+
+- `a8eab3a`: prompt. Câu ngữ cảnh tour đang xem nói khách có thể đã chuyển trang giữa hội thoại, và câu
+  không nêu tên tour (chỗ, ngày, giá, phần bao gồm) là hỏi tour ấy dù trước đó bàn tour khác. Khối
+  Enquiries thêm: yêu cầu mà tour có sẵn không phủ (tour riêng, đi theo nhóm, ngày riêng) là enquiry;
+  có tên và email thì gọi `submitEnquiry` ngay trong lượt đó thay vì hỏi xác nhận bằng chữ (thẻ là bước
+  xác nhận); tháng hay khoảng ngày ghi vào lời nhắn, `travelDate` chỉ cho một ngày cụ thể. Mô tả tool
+  `submitEnquiry` thêm ví dụ tour riêng, nhóm, ngày riêng. Dòng log `chat turn` thêm `page` (slug trang
+  tour lúc gửi tin; dữ liệu công khai, vẫn không ghi nội dung tin). Spec P6 §2d và §2f ghi hai lần sửa.
+- Commit merge này: open-items dòng P6 ghi kết quả thử và việc còn treo.
+
+**Review.** Không có lượt review độc lập. Chưa thử với model thật (container không có API key); nguyên
+nhân của B1 là suy từ log, chưa thấy câu trả lời thật của lượt ấy. Yuri bảo đẩy lên main 19/10 10:52 UTC.
+
+Tests after (`gate:int` trên `a8eab3a`, 19/10, session cloud, API sống ở :3001): unit 8108 (web 2385,
+admin 2356, api 1381, mobile 864, contract 784, mobile-ui 145, i18n 62, ui 57, core 48, tokens 26) và int
+933; Biome 2067 file. So với `a551710`: api thêm 4 test prompt, int thêm 1 (dòng log có `page`). Test
+`zod-config.spec.ts` của contract quá 5 giây ở lượt đầu, chạy riêng 784/784, chạy lại cả gate thì xanh.
+
+**CÒN TREO:**
+
+- Trên production: thử lại A8 và B1. Dòng `chat turn` trên Render của lượt A8 phải có `page` đúng slug
+  trang đang mở; lượt B1 phải có `submitEnquiry` trong `tools`. Sau đó B2 (bấm Send, có enquiry trong
+  admin và email xác nhận) và B3 (bấm Cancel, không có enquiry mới). Đạt thì dòng P6 chuyển sang
+  open-items-closed.
+- Dọn nhánh `feat/p6-ai-concierge-3xp4sq` trên origin nếu GitHub không tự xoá.
+
 ## 2026-10-19 — Merge Sentry bắt lỗi 500 của API, khối Plan your trip cuối `/faq`, ghi bỏ sửa và xoá review ở admin (`db5bf45`..`25d8c56`)
 
 Ba việc Yuri chốt 19/10 08:36 UTC sau bản rà việc còn thiếu ở api, web và admin: mục 4 (Sentry), mục 5
