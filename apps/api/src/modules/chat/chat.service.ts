@@ -356,6 +356,7 @@ export class ChatService {
       ...(pending ? { pending } : {}),
       usage,
       startedAt,
+      ...(request.tourSlug === undefined ? {} : { tourSlug: request.tourSlug }),
     });
 
     const peeked = await peekUntilContent(clientBranch);
@@ -376,6 +377,8 @@ export class ChatService {
     pending?: UIMessage;
     usage: Promise<LanguageModelUsage | null>;
     startedAt: number;
+    /** Slug trang tour khách đang xem — chỉ để ghi log, là dữ liệu công khai. */
+    tourSlug?: string;
   }): Promise<void> {
     const { conversationId, turn } = input;
     let failed = false;
@@ -407,6 +410,8 @@ export class ChatService {
           inputTokens,
           outputTokens,
           ms: Date.now() - input.startedAt,
+          // Trang tour lúc gửi tin, để soi model có bám đúng tour đang xem không (A8, 19/10).
+          page: input.tourSlug ?? null,
           tools: response.parts.filter(isToolUIPart).map((part) => part.type.slice(5)),
         })}`,
       );

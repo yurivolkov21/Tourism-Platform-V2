@@ -84,7 +84,9 @@ export function buildInstructions(input: BuildInstructionsInput): string {
     '- Only link to internal paths that tools return, such as /tours/<slug>, or to the pages named in these instructions. Never invent URLs or link to other websites.',
     '',
     'Enquiries',
-    "- Collect the visitor's name, email and message before calling submitEnquiry. Tell them they will see a confirmation card and nothing is sent until they press Send.",
+    '- Requests the tours do not cover are enquiries for the team: a private or custom tour, a group, special dates or anything else to arrange. Offer to send one.',
+    "- Collect the visitor's name, email and message before calling submitEnquiry. Ask only for what is missing. Once you have their name and email, call submitEnquiry in that same reply instead of asking them to confirm in text: they will see a confirmation card and nothing is sent until they press Send.",
+    '- Write the message from what they asked (tour, dates, group size). Put a month or rough dates in the message; set travelDate only for an exact day.',
     '- If they cancel the card, do not call submitEnquiry again unless they ask.',
     '',
     'Account',
@@ -102,7 +104,7 @@ export function buildInstructions(input: BuildInstructionsInput): string {
 
   if (input.tourSlug !== undefined) {
     lines.push(
-      `- The visitor is currently viewing the tour with slug "${input.tourSlug}". "This tour" means that tour; call getTourDetails to read it before answering about it. When an enquiry is about this tour, pass this slug as tourSlug.`,
+      `- The visitor is currently viewing the tour with slug "${input.tourSlug}"; they may have moved to this page during the conversation. "This tour" means that tour, and so does a question that names no tour (seats, dates, price, what is included), even if earlier messages were about other tours; call getTourDetails to read it before answering about it. When an enquiry is about this tour, pass this slug as tourSlug.`,
     );
   }
 

@@ -1,4 +1,5 @@
 import { request as httpRequest } from 'node:http';
+import { Logger } from '@nestjs/common';
 import type { NestFastifyApplication } from '@nestjs/platform-fastify';
 import { Test } from '@nestjs/testing';
 import { simulateReadableStream, type UIMessage } from 'ai';
@@ -643,6 +644,37 @@ describe('chat (int)', () => {
     // Ba lượt gọi model, token cộng dồn vào MỘT tin trả lời.
     expect(calls).toHaveLength(3);
     expect((await rows(id))[1]).toMatchObject({ inputTokens: 2600, outputTokens: 130 });
+  });
+
+  // Thử production 19/10 (A8): dòng log mỗi lượt không nói khách đang ở trang tour nào nên
+  // không soi được model đã nhận slug chưa. Slug là dữ liệu công khai, không phải PII.
+  it('dòng log mỗi lượt ghi tour của trang đang xem, không ghi nội dung tin', async () => {
+    const logSpy = vi.spyOn(Logger.prototype, 'log');
+    try {
+      const id = newId();
+      script = [textReply('Hi!')];
+      const res = await post(
+        say(id, 'Seats on the next departure?', { tourSlug: 'hue-food-walk' }),
+      );
+      expect(res.statusCode).toBe(200);
+      await waitForTurnEnd(id);
+
+      const turnLine = await vi.waitFor(() => {
+        const line = logSpy.mock.calls
+          .map(([message]) => String(message))
+          .find((message) => message.startsWith('chat turn') && message.includes(id));
+        if (line === undefined) throw new Error('chưa có dòng log của lượt');
+        return line;
+      });
+      expect(JSON.parse(turnLine.slice('chat turn '.length))).toMatchObject({
+        conversationId: id,
+        page: 'hue-food-walk',
+        tools: [],
+      });
+      expect(turnLine).not.toContain('Seats on the next departure');
+    } finally {
+      logSpy.mockRestore();
+    }
   });
 
   describe('submitEnquiry cần khách bấm Send', () => {

@@ -272,7 +272,7 @@ export function createChatTools(deps: ChatToolDeps): ChatToolset {
     }),
     submitEnquiry: tool({
       description:
-        'Send an enquiry to the Nexora team on behalf of the visitor. The visitor sees a confirmation card and must press Send before it runs.',
+        'Send an enquiry to the Nexora team on behalf of the visitor, for example for a private or custom tour, a group or special dates. The visitor sees a confirmation card and must press Send before it runs.',
       inputSchema: SubmitEnquiryInputSchema,
       execute: async (input) => {
         // Mỗi hội thoại một enquiry (spec §2c). Lượt duyệt chạy tuần tự nhờ cột giữ

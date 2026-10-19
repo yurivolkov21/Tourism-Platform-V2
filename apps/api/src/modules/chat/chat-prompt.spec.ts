@@ -46,6 +46,38 @@ describe('buildInstructions', () => {
     expect(onTour).toContain('pass this slug as tourSlug');
   });
 
+  // Thử production 19/10 (kịch bản A8): hỏi Sa Pa xong mở trang Bát Tràng, hỏi "the next
+  // departure" thì model trả lời theo Sa Pa vì prompt chỉ gắn "this tour" với trang đang xem.
+  it('câu không nêu tên tour là hỏi về tour đang xem, kể cả khi trước đó bàn tour khác', () => {
+    const onTour = buildInstructions({
+      now,
+      destinations,
+      categories,
+      signedIn: false,
+      tourSlug: 'red-river-craft-villages-day',
+    });
+    expect(onTour).toContain('they may have moved to this page during the conversation');
+    expect(onTour).toContain('a question that names no tour');
+    expect(onTour).toContain('even if earlier messages were about other tours');
+  });
+
+  // Thử production 19/10 (kịch bản B1): "private Ha Long tour for 6 people in December" kèm
+  // tên và email chỉ ra một lượt searchTours, không có thẻ xác nhận.
+  describe('enquiry', () => {
+    it('yêu cầu tour riêng, nhóm, ngày riêng là enquiry', () => {
+      expect(base).toContain('a private or custom tour, a group, special dates');
+    });
+
+    it('đủ tên và email thì gọi submitEnquiry ngay, thẻ là chỗ khách xác nhận', () => {
+      expect(base).toContain('call submitEnquiry in that same reply');
+      expect(base).toContain('instead of asking them to confirm in text');
+    });
+
+    it('tháng hay khoảng ngày ghi vào message, travelDate chỉ cho một ngày cụ thể', () => {
+      expect(base).toContain('set travelDate only for an exact day');
+    });
+  });
+
   describe('tài khoản (ADR-0050 AMEND 2)', () => {
     const signedIn = buildInstructions({ now, destinations, categories, signedIn: true });
 

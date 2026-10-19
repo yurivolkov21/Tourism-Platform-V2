@@ -195,11 +195,18 @@ Dựng bằng một hàm thuần (test được), gồm:
 - Không hứa giảm giá, không nhận đặt chỗ hay thanh toán; muốn đặt thì đưa `bookUrl`.
 - Link chỉ dùng đường dẫn nội bộ (`/tours/...`), không bịa URL.
 - Gửi enquiry: hỏi đủ tên, email, lời nhắn rồi mới gọi `submitEnquiry`; nói rõ khách sẽ
-  thấy thẻ xác nhận.
+  thấy thẻ xác nhận. Sửa 19/10 sau lượt thử production (kịch bản B1 chỉ ra một lượt
+  `searchTours`, không có thẻ): yêu cầu mà tour có sẵn không phủ (tour riêng, đi theo nhóm,
+  ngày riêng) là enquiry; chỉ hỏi phần còn thiếu; có tên và email thì gọi `submitEnquiry`
+  ngay trong lượt ấy thay vì hỏi khách xác nhận bằng chữ, vì thẻ là chỗ xác nhận; tháng hay
+  khoảng ngày ghi vào lời nhắn, `travelDate` chỉ cho một ngày cụ thể.
 - Ngôn ngữ: trả lời theo ngôn ngữ khách viết, mặc định tiếng Anh.
 - Ngữ cảnh: ngày hôm nay theo lịch Việt Nam (cùng cách tính "hôm nay" của web); danh
   sách slug điểm đến và danh mục đang bật (đọc qua service, cache ngắn); tour đang xem
-  (`tourSlug`) nếu có.
+  (`tourSlug`) nếu có. Sửa 19/10 (kịch bản A8: hỏi Sa Pa xong mở trang Bát Tràng, hỏi
+  "the next departure" thì model trả lời theo Sa Pa): prompt nói khách có thể đã chuyển
+  sang trang này giữa hội thoại, và câu không nêu tên tour cũng là hỏi về tour đang xem,
+  kể cả khi trước đó bàn tour khác.
 - Khối "Account" (thêm 19/10, ADR-0050 AMEND 2), chọn theo lượt có phiên hay không:
   - Đã đăng nhập: hai tool đọc đơn chỉ đọc đơn của chính khách; chỉ nhắc điều tool trả về
     trong hội thoại, không đoán trạng thái, ngày hay số tiền; nhắc nguyên văn `status` và
@@ -250,7 +257,8 @@ stream không ghi gì (web gửi lại đúng tin cũ).
 Dọn: queue pg-boss `chat-retention`, cron `30 4 * * *` (sau `media-gc` lúc 04:00),
 đăng ký trong `worker/start-worker.ts`, có trong danh sách chạy bù của G41; xoá hội
 thoại có `updated_at` quá 30 ngày (tin xoá theo cascade). Log mỗi lượt: id hội thoại, token vào/ra, thời gian, tên tool — không
-ghi nội dung tin.
+ghi nội dung tin. Từ 19/10 thêm `page`: slug trang tour khách đang xem lúc gửi tin (hoặc
+`null`), là dữ liệu công khai, để soi model có bám đúng tour đang xem không.
 
 ### 2g. Env
 
