@@ -8,6 +8,54 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-10-19 — Merge P6 trợ lý đọc đơn của khách đã đăng nhập, nút Plan your trip mở thẳng khung chat (`2f60dca`..`64b4899`)
+
+Yuri hỏi 19/10 07:45 UTC cho trợ lý đọc dữ liệu tài khoản của khách đang đăng nhập và bỏ lối "Send an
+enquiry" ở menu nút nổi. Kế hoạch nằm trong thư mục chung của project; Yuri chọn phạm vi "Chỉ xem đơn"
+07:46 và thêm luật cho khách chưa đăng nhập 08:00. Nhánh `feat/p6-ai-concierge-3xp4sq`,
+[PR #35](https://github.com/yurivolkov21/Tourism-Platform-V2/pull/35), thi công trên session cloud. Không
+migration, không biến env, không dependency mới; trần chi phí ngày giữ nguyên.
+
+- `2f60dca`: [ADR-0050](adr/0050-ai-concierge-chat.md) AMEND 2 (tool chỉ đọc đơn của chính khách, định
+  danh lấy từ phiên; gắn hội thoại vô chủ vào tài khoản; luật cho khách chưa đăng nhập; nút nổi mở thẳng
+  khung chat) và spec P6 cập nhật theo.
+- `d279913`: API. Hai tool `listMyBookings` (tối đa 10 đơn, thứ tự như trang My bookings, lọc upcoming,
+  past hoặc all) và `getMyBooking` (nhận mã chữ thường hay thiếu `BK-`; mã của người khác trả
+  `found: false`, mã sai khuôn không chạm DB) chỉ đăng ký khi lượt có phiên, gọi `BookingsService.mine`
+  và `byCode` với user id của phiên. `chat-bookings.ts` thu gọn đơn trước khi tới model: không email, số
+  điện thoại, tên liên hệ, ghi chú, link thanh toán, id nội bộ, nội dung hay lý do bác review; trạng thái
+  và thanh toán viết sẵn bằng chữ từ `bookingPhase`. Lượt POST có phiên vào hội thoại chưa có chủ gắn nó
+  vào tài khoản (`updateMany` có điều kiện `userId: null`), từ đó khách khác và khách vãng lai nhận 404;
+  GET không gắn. Prompt có khối Account theo cờ đăng nhập: khách chưa đăng nhập hỏi về đơn, thanh toán,
+  hoàn tiền, tài khoản hay thông tin cá nhân chỉ nhận câu "I can't check this because you're not signed
+  in. Please sign in and ask me again." kèm link `/login`.
+- `13e7d2b`: web. Bỏ popover hai lối; nút "Plan your trip" mở và đóng khung chat. Khung hỏi
+  `GET /api/chat` mỗi lần mở: "Connecting…" lúc chờ, trợ lý nghỉ thì câu "taking a break" kèm link
+  enquiry. Khách đã đăng nhập thấy lời chào theo tên và gợi ý "Show my bookings". Phiên rời một tài khoản
+  thì xoá id hội thoại khỏi localStorage và dỡ khung; từ vãng lai đăng nhập thì giữ hội thoại.
+- `64b4899`: `/privacy` kể chi tiết đơn trợ lý tra cho khách đã đăng nhập cũng gửi tới Anthropic, không
+  kèm email hay số điện thoại; hội thoại gắn tài khoản khi khách đăng nhập lúc khung đang mở; trình duyệt
+  quên id hội thoại khi đăng xuất.
+- Commit merge này: CLAUDE.md roadmap, dòng P6 ở open-items.
+
+**Review.** Không có lượt review độc lập. Yuri bảo merge 19/10 08:35 UTC ("Merge nhé"). Nhánh rebase lên
+`aab0c1c` không xung đột. Kiểm đột biến tay: bỏ bước gắn hội thoại, bỏ bước xoá id lúc đăng xuất, hay bỏ
+điều kiện "phiên đang đọc" lúc hydrate thì test tương ứng đỏ. Chromium thật với API chạy model giả và tài
+khoản seed ở 375 và 1440: khách vãng lai nhận câu mời đăng nhập; đăng nhập rồi hội thoại cũ được gắn vào
+tài khoản (GET không phiên ra 404); "Show my bookings" ra danh sách có link trang đơn; đăng xuất thì khung
+quên hội thoại. Không lỗi console, không cuộn ngang.
+
+Tests after (`gate:int` trên `64b4899`, 19/10, session cloud, API sống ở :3001): unit 8038 (web 2381,
+admin 2329, api 1356, mobile 864, contract 770, mobile-ui 145, i18n 62, ui 57, core 48, tokens 26) và int
+920; Biome 2054 file. So với `aab0c1c`: api thêm 46 test, web 7, int 3; Biome thêm 2 file; các gói khác
+không đổi.
+
+**CÒN TREO:**
+
+- Ở ngày thử tay: đăng nhập trên production, bấm "Show my bookings" và hỏi một mã đơn, đối chiếu với trang
+  My bookings; đăng xuất rồi hỏi lại thì nhận câu mời đăng nhập; mở `/privacy` thấy câu về chi tiết đơn.
+- Dọn nhánh `feat/p6-ai-concierge-3xp4sq` trên origin nếu GitHub không tự xoá.
+
 ## 2026-10-19 — Merge P4f Media library A: trang `/media` xem mọi ảnh, sửa alt và ghi công một lần cho mọi chỗ dùng, hàng dọn chỉ đọc (`fb1cf2e`..`dee3ec8`)
 
 Spec [2026-10-16-p4f-media-library-design.md](specs/2026-10-16-p4f-media-library-design.md), Yuri duyệt 19/10
