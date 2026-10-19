@@ -35,6 +35,12 @@
  * ── Sau P4f Appearance: ảnh KHE SITE cũng vậy (ADR-0059 §6) ──
  * Trang Appearance cho admin thay ảnh từng khe. Khe ĐÃ có dòng ảnh thì script bỏ qua: không
  * thì chạy lại sẽ thêm ảnh gốc bên cạnh ảnh admin vừa chọn, và web lấy dòng đầu.
+ *
+ * ── Sau P4f Media: THƯ VIỆN ĐIỂM ĐẾN cũng vậy (ADR-0060 §6) ──
+ * Trang Media cho admin sửa alt và ghi công của mọi ảnh. Nhánh DO UPDATE bên dưới ghi lại
+ * alt (thành null) và ghi công theo CREDITS.txt, nên điểm đến ĐÃ có dòng ảnh thì script bỏ
+ * qua — không thì mỗi lần chạy xoá mất thứ admin vừa sửa. Ảnh của điểm đến bị bỏ qua vẫn là
+ * nguồn cho tour mượn: publicId và version lấy từ DB, không upload lại.
  */
 
 import { execFile } from 'node:child_process';
@@ -95,16 +101,22 @@ const client = new pg.Client({ connectionString: DB_URL });
 await client.connect();
 
 /**
- * Tour, bài viết và khe site đã có dòng ảnh — admin sở hữu chúng (tour từ F18, bài từ
- * P4e-4, khe từ P4f Appearance).
+ * Tour, bài viết, khe site và điểm đến đã có dòng ảnh — admin sở hữu chúng (tour từ F18, bài
+ * từ P4e-4, khe từ P4f Appearance, thư viện điểm đến từ P4f Media).
  */
 const { rows: ownedRows } = await client.query(
   `SELECT DISTINCT owner_type::text AS owner_type, owner_id
-     FROM media_assets WHERE owner_type IN ('TOUR', 'POST', 'SITE')`,
+     FROM media_assets WHERE owner_type IN ('TOUR', 'POST', 'SITE', 'DESTINATION')`,
 );
 const adminOwned = new Set(ownedRows.map((r) => `${r.owner_type}:${r.owner_id}`));
-/** Loại chủ mà admin sửa ảnh — chỉ ba loại này được bỏ qua khi đã có dòng. */
-const ADMIN_EDITED = new Set(['tour', 'post', 'site-slot']);
+/** Loại chủ mà admin sửa ảnh — chỉ bốn loại này được bỏ qua khi đã có dòng. */
+const ADMIN_EDITED = new Set(['tour', 'post', 'site-slot', 'destination']);
+/** Version Cloudinary đang ghi của mỗi publicId — cho tour mượn ảnh của điểm đến bị bỏ qua. */
+const { rows: versionRows } = await client.query(
+  `SELECT DISTINCT ON (public_id) public_id, version
+     FROM media_assets WHERE version IS NOT NULL ORDER BY public_id, created_at`,
+);
+const knownVersion = new Map(versionRows.map((r) => [r.public_id, r.version]));
 
 /** Khe brand-chrome khoá theo `key`; owner của asset là id của chính row slot. */
 const { rows: slotRows } = await client.query('SELECT id, key FROM site_media_slots');
@@ -139,6 +151,13 @@ for (const item of plan) {
   }
   if (ADMIN_EDITED.has(item.kind) && adminOwned.has(`${ownerType}:${ownerId}`)) {
     skippedOwned++;
+    // Ảnh thư viện là nguồn của tour mượn: ghi nhận file đã có trên CDN để tour chưa có dòng
+    // (hiếm: DB cũ thêm tour mới) mượn đúng publicId thay vì đẩy bản sao vào thư mục tour.
+    if (item.kind === 'destination' && !uploadedFiles.has(item.file)) {
+      const existing = publicIdFor(item);
+      uploadedFiles.set(item.file, existing);
+      if (knownVersion.has(existing)) uploadedVersion.set(item.file, knownVersion.get(existing));
+    }
     if (DRY)
       console.log(
         `  [dry] ${String(item.slug ?? item.key).padEnd(20)} → bỏ qua: ${item.kind} đã có ảnh`,
@@ -245,7 +264,7 @@ console.log(
 );
 if (skippedOwned > 0) {
   console.log(
-    `[media-upload] bỏ qua ${skippedOwned} chỗ gắn của tour/bài viết/khe site đã có ảnh — admin sửa ở tab Photos, trang sửa bài và Appearance.`,
+    `[media-upload] bỏ qua ${skippedOwned} chỗ gắn của tour/bài viết/khe site/điểm đến đã có ảnh — admin sửa ở tab Photos, trang sửa bài, Appearance và Media.`,
   );
 }
 if (failures.length) {

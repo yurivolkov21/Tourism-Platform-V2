@@ -3,8 +3,11 @@
  *
  * ── Sau F18: dòng ảnh của TOUR là dữ liệu admin sửa (vòng review F18) ──
  * Tab Photos cho admin sửa alt từng ảnh của tour, trang sửa bài sửa alt ảnh bìa (P4e-4).
- * Script chỉ LẤP alt còn NULL ở dòng `TOUR` và `POST`, không bao giờ đè alt admin đã viết;
- * các chủ khác (địa danh, trang) vẫn áp theo fixture như cũ.
+ * Script chỉ LẤP alt còn NULL ở dòng `TOUR` và `POST`, không bao giờ đè alt admin đã viết.
+ *
+ * ── Sau P4f Media: mọi loại chủ (ADR-0060 §6) ──
+ * Trang Media cho admin sửa alt của mọi ảnh, kể cả thư viện điểm đến và khe site, nên luật
+ * "chỉ lấp alt còn NULL" nay áp cho MỌI dòng. DB mới dựng chưa có alt nào nên vẫn lấp đủ.
  *
  *   pnpm --filter @tourism/api media:alt          # chỉ in kế hoạch (mặc định)
  *   pnpm --filter @tourism/api media:alt -- --apply
@@ -21,7 +24,7 @@
  * một dòng fixture phủ hết các dòng dùng chung, không bao giờ lệch.
  *
  * ── Chạy lại được ──
- * `alt IS DISTINCT FROM $2` nên lần chạy thứ hai cập nhật 0 dòng. Fixture viết
+ * Chỉ ghi dòng `alt IS NULL` nên lần chạy thứ hai cập nhật 0 dòng. Fixture viết
  * dở nửa chừng cũng không sao: áp được bao nhiêu key thì áp bấy nhiêu, phần
  * chưa có vẫn NULL và web rơi về suy alt từ chủ sở hữu như trước.
  */
@@ -102,8 +105,7 @@ const { rows: seDoi } = await client.query(
   `SELECT count(*)::int AS n
      FROM media_assets m
      JOIN unnest($1::text[], $2::text[]) AS f(k, v) ON f.k = m.public_id
-    WHERE m.alt IS DISTINCT FROM f.v
-      AND (m.owner_type NOT IN ('TOUR', 'POST') OR m.alt IS NULL)`,
+    WHERE m.alt IS NULL`,
   [KEYS, KEYS.map((k) => altText[k])],
 );
 console.log(`[alt] sẽ đổi: ${seDoi[0].n} dòng`);
@@ -119,8 +121,7 @@ const { rowCount } = await client.query(
   `UPDATE media_assets m
       SET alt = f.v
      FROM unnest($1::text[], $2::text[]) AS f(k, v)
-    WHERE m.public_id = f.k AND m.alt IS DISTINCT FROM f.v
-      AND (m.owner_type NOT IN ('TOUR', 'POST') OR m.alt IS NULL)`,
+    WHERE m.public_id = f.k AND m.alt IS NULL`,
   [KEYS, KEYS.map((k) => altText[k])],
 );
 
