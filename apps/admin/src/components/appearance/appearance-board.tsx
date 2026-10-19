@@ -50,7 +50,13 @@ export function AppearanceBoard({
           </div>
           <ul className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
             {group.slots.map((slot) => (
-              <li key={slot.key}>
+              // `id` là khoá khe: thẻ ảnh của Media library link thẳng `/appearance#<khoá>` (spec
+              // P4f Media). Header không dính nên chỉ chừa chút lề; vòng sáng chỉ khe vừa nhảy tới.
+              <li
+                key={slot.key}
+                id={slot.key}
+                className="scroll-mt-4 rounded-xl target:ring-2 target:ring-ring"
+              >
                 <SlotCard
                   slot={slot}
                   actions={actions}

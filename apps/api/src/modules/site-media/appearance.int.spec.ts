@@ -25,6 +25,7 @@ import { siteSlotOriginal } from './site-slot-originals.js';
 
 const PASSWORD = 'password-123';
 const ADMIN_EMAIL = 'bootstrap-admin@tourism.test';
+const STAFF_EMAIL = 'appearance-staff@tourism.test';
 const CUSTOMER_EMAIL = 'appearance-customer@example.com';
 
 const uuid = (prefix: string, n: number) =>
@@ -50,6 +51,7 @@ const SlotListSchema = z.array(AdminSiteSlotSchema);
 describe('admin appearance integration (P4f, ADR-0059)', () => {
   let app: NestFastifyApplication;
   let adminCookie: string;
+  let staffCookie: string;
   let customerCookie: string;
   let web: WebRevalidationService;
 
@@ -67,7 +69,8 @@ describe('admin appearance integration (P4f, ADR-0059)', () => {
     await app.getHttpAdapter().getInstance().ready();
     web = moduleRef.get(WebRevalidationService);
 
-    for (const email of [ADMIN_EMAIL, CUSTOMER_EMAIL]) {
+    const roles = { [ADMIN_EMAIL]: 'ADMIN', [STAFF_EMAIL]: 'STAFF' } as const;
+    for (const email of [ADMIN_EMAIL, STAFF_EMAIL, CUSTOMER_EMAIL]) {
       await app.inject({
         method: 'POST',
         url: '/api/auth/sign-up/email',
@@ -75,7 +78,10 @@ describe('admin appearance integration (P4f, ADR-0059)', () => {
       });
       await prisma.user.update({
         where: { email },
-        data: { emailVerified: true, ...(email === ADMIN_EMAIL ? { role: 'ADMIN' } : {}) },
+        data: {
+          emailVerified: true,
+          ...(email in roles ? { role: roles[email as keyof typeof roles] } : {}),
+        },
       });
     }
     const signIn = (email: string) =>
@@ -85,6 +91,7 @@ describe('admin appearance integration (P4f, ADR-0059)', () => {
         payload: { email, password: PASSWORD },
       });
     adminCookie = sessionCookie(await signIn(ADMIN_EMAIL));
+    staffCookie = sessionCookie(await signIn(STAFF_EMAIL));
     customerCookie = sessionCookie(await signIn(CUSTOMER_EMAIL));
   });
 
@@ -198,6 +205,21 @@ describe('admin appearance integration (P4f, ADR-0059)', () => {
       const res = await save('home-hero', null, { publicId: LIB, alt: null }, customerCookie);
       expect(res.statusCode).toBe(403);
       expect(await prisma.siteMediaSlot.count()).toBe(0);
+    });
+
+    it('Staff đọc, ký và lưu được — ba thủ tục cùng bậc với sửa bài viết (ADR-0052)', async () => {
+      vi.spyOn(web, 'revalidate').mockResolvedValue(undefined);
+      expect((await list(staffCookie)).statusCode).toBe(200);
+      expect((await sign('home-hero', staffCookie)).statusCode).toBe(200);
+      const original = siteSlotOriginal('cta-band');
+      const res = await save(
+        'cta-band',
+        null,
+        { publicId: original.publicId, alt: null },
+        staffCookie,
+      );
+      expect(res.statusCode).toBe(200);
+      expect(AdminSiteSlotSchema.parse(res.json()).image?.source).toBe('ORIGINAL');
     });
   });
 
