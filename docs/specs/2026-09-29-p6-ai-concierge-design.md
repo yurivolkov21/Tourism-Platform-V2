@@ -53,9 +53,11 @@ nay chỉ có form enquiry và chờ email.
    ở đâu trả mã lỗi ở đó (§2b), chưa gọi model.
 4. API nạp lịch sử từ DB, dựng prompt hệ thống (§2d), gọi `streamText` với ba tool
    (§2c), stream về trình duyệt theo giao thức UI message.
-5. Hết lượt (`onEnd`, tên AI SDK 7 của `onFinish`): ghi tin khách và câu trả lời,
-   token lên tin trả lời. Dùng `consumeStream` để lượt vẫn chạy trọn và được ghi khi
-   khách đóng tab giữa chừng — token đã tốn thì phải được đếm vào trần ngày.
+5. Hết lượt: ghi tin khách và câu trả lời, token lên tin trả lời. Luồng UI message
+   được tee: nhánh của khách bị huỷ khi khách đóng tab, nhánh của server đọc tới cuối
+   bằng `readUIMessageStream` rồi mới ghi, nên lượt vẫn chạy trọn và token đã tốn vẫn
+   vào trần ngày. (Bản đầu của spec dùng `consumeStream` với `onEnd`; lúc thi công
+   chuyển sang tee để có đúng UIMessage cuối cùng mà ghi.)
 
 ### 2b. API
 
@@ -92,12 +94,15 @@ hiện tại thì 404 — không lộ là id có tồn tại.
 | 400 `INVALID_INPUT` | sai schema, hoặc `approvalId` không còn chờ | Retry |
 | 404 `CHAT_NOT_FOUND` | `GET :id` không thấy hoặc không phải của phiên này | bỏ id cũ, bắt đầu hội thoại mới |
 | 409 `CHAT_TURN_LIMIT` | đã đủ 20 tin khách | mời Start over |
-| 409 `CHAT_BUSY` | lượt trước của cùng hội thoại chưa xong (cột giữ lượt, §2f) | chờ, không gửi lại |
-| 429 | quá `CHAT_THROTTLE` | báo gửi chậm lại, giữ nguyên tin vừa gõ |
+| 404 `CHAT_NOT_FOUND` | `POST` vào hội thoại đã bị dọn hoặc không phải của phiên này | mời Start over |
+| 409 `CHAT_BUSY` | lượt trước của cùng hội thoại chưa xong (cột giữ lượt, §2f) | báo chờ; web không tự gửi lại, khách bấm Retry |
+| 429 | quá `CHAT_THROTTLE` | báo gửi chậm lại; tin vừa gõ còn trên khung, Retry gửi lại đúng tin ấy |
 | 503 `CHAT_UNAVAILABLE` | công tắc tắt, chạm trần ngày, hoặc Anthropic lỗi trước khi stream bắt đầu | câu "taking a break" + link enquiry |
 
-Lỗi giữa chừng stream đi thành phần lỗi của stream; web hiện Retry. Stream chạy qua
-`reply.raw` của Fastify (§4).
+Lỗi giữa chừng stream đi thành phần lỗi của stream; web hiện Retry. Retry của lượt chữ
+bỏ phần trả lời dở rồi gửi lại tin khách (API không ghi gì cho lượt hỏng); Retry của
+lượt duyệt gửi lại đúng quyết định Send hay Cancel, và ô gõ khoá cho tới khi gửi lại
+xong. Stream chạy qua `reply.raw` của Fastify (§4).
 
 ### 2c. Ba tool
 
@@ -105,28 +110,37 @@ Tool gọi thẳng service, không qua HTTP. Kết quả thu gọn để một l
 
 **`searchTours`** — input `{ destination?, category?, search?, sort? }`:
 - `destination`, `category` là slug (danh sách slug hợp lệ nằm trong prompt, §2d);
-  `search` 1..100 ký tự; `sort` là `price-asc` · `price-desc` · `newest`, map sang
-  `basePrice`/`createdAt` của `ToursListQuerySchema`.
+  `search` 1..100 ký tự; `sort` là `price-asc` · `price-desc` · `newest` · `top-rated`,
+  map sang `basePrice`/`createdAt`/`rating` của `ToursListQuerySchema` (`rating` có từ
+  ADR-0058; tour chưa có đánh giá đứng cuối).
 - Gọi `CatalogService.listTours` với `limit: 8`.
 - Trả `{ total, tours: [{ slug, title, url, priceFrom, currency, durationDays,
-  destinations, ratingAvg }] }`, `url` dạng `/tours/<slug>`.
+  destinations, ratingAvg, nextDeparture }] }`, `url` dạng `/tours/<slug>`,
+  `nextDeparture` là ngày đi của đợt kế tiếp còn đặt được (ADR-0058) hoặc `null`.
 
 **`getTourDetails`** — input `{ slug }`:
 - Gọi `CatalogService.getTourBySlug`; không thấy thì `{ found: false }`.
 - Trả `{ found: true, title, url, bookUrl, summary, durationDays, maxGroupSize,
-  difficulty, highlights, included, excluded, itinerary, departures, faqs, policies }`:
+  difficulty, highlights, included, excluded, itinerary, departures, faqs, policies,
+  cancellation }`:
   - `itinerary`: mỗi ngày `{ day, title }`, mô tả cắt 200 ký tự;
   - `departures`: chỉ đợt còn đặt được, tối đa 6 đợt gần nhất `{ date, price, seatsLeft }`;
   - `faqs`: tối đa 6, câu trả lời cắt 300 ký tự;
+  - `policies`: thân mỗi điều cắt 600 ký tự (admin gõ được tới 4000);
+  - `cancellation`: câu hạn huỷ miễn phí dựng từ độ dài chuyến như thẻ huỷ của trang tour
+    (ADR-0041) — điều khoản này không nằm trong bảng policy;
   - `bookUrl` dạng `/tours/<slug>/book`.
 
 **`submitEnquiry`** — cần khách duyệt (`toolApproval: { submitEnquiry: 'user-approval' }`
 trên `streamText`; `needsApproval` của `tool()` đã deprecated ở AI SDK 7), input
 `{ name, email, message, tourSlug?, travelDate?, groupSize? }` cùng luật với
 `CreateEnquiryInputSchema`:
-- `tourSlug` mặc định là tour đang xem; model được đổi sang tour vừa bàn trong hội thoại.
-  API chỉ gắn khi slug là tour đang bán, không thì gửi enquiry chung. Thẻ xác nhận hiện
-  tên tour để khách thấy trước khi bấm.
+- `tourSlug` mặc định là tour đang xem: prompt dặn model điền slug ấy (§2d), server
+  không tự điền. Input chỉ có một nguồn là lời gọi tool đã lưu, nên thẻ khách thấy và
+  enquiry gửi ở lượt duyệt luôn khớp nhau dù khách chuyển trang giữa hai lượt. Model
+  được đổi sang tour vừa bàn trong hội thoại. API chỉ gắn khi slug là tour đang bán,
+  không thì gửi enquiry chung. Tên tour đi theo yêu cầu duyệt (`approval.requestReason`)
+  để thẻ xác nhận hiện được mà web không phải tra thêm.
 - Chạy `EnquiriesService.create(input, userId)`: một transaction ghi enquiry và hai
   outbox (ack cho khách, báo cho điều hành), dedupe ack theo email mỗi ngày — y như form.
 - Ghi `chat_conversations.enquiry_id`; hội thoại đã có enquiry thì trả
@@ -174,9 +188,10 @@ Một migration MỚI (không sửa migration cũ):
   lời có giá trị); index `created_at` cho câu cộng token theo ngày.
 - `chat_conversations`: thêm `enquiry_id UUID NULL UNIQUE`, FK tới `enquiries`
   `ON DELETE SET NULL` (enquiry có hạn lưu riêng).
-- `chat_conversations`: thêm `turn_started_at TIMESTAMPTZ NULL` — cột giữ lượt (plan,
-  quyết định 2). Đầu lượt một câu `UPDATE` có điều kiện "đang trống hoặc giữ quá 2
-  phút"; 0 dòng là 409 `CHAT_BUSY`. Cuối lượt trả về `NULL`.
+- `chat_conversations`: thêm `turn_started_at TIMESTAMP(3) NULL` (cùng kiểu mọi cột
+  thời gian khác của schema) — cột giữ lượt (plan, quyết định 2). Đầu lượt một
+  `updateMany` có điều kiện "đang trống hoặc giữ quá 2 phút", mốc lấy từ đồng hồ của
+  tiến trình API (một instance); 0 dòng là 409 `CHAT_BUSY`. Cuối lượt trả về `NULL`.
 
 Ghi tin một lần ở cuối lượt: tin khách và tin trả lời cùng một transaction, `seq` kế
 tiếp, chạm `updated_at` của hội thoại, nhả cột giữ lượt; unique `(conversation_id,
@@ -211,17 +226,22 @@ Thêm đủ vào `apps/api/src/config/env.ts`, `render.yaml` (key), `apps/api/.e
   ở trang tour).
 - Góc dưới bên phải; `ScrollToTop` dời lên trên nút (Nexora đặt `bottom-20`, comment
   trong `scroll-to-top.tsx` còn ghi). Trang tour ở màn dưới `lg`: cả hai đứng trên thanh
-  đặt chỗ của `booking-rail.tsx`.
+  đặt chỗ của `booking-rail.tsx`. Thanh ấy gắn `data-booking-bar` lên `<body>` khi
+  mount, và nút, `ScrollToTop`, khung chat dời lên bằng biến thể
+  `max-lg:in-data-booking-bar:` của Tailwind (đo bằng Chromium ở 375, 768, 1440).
 
 **Khung chat** (`chat-panel.tsx`):
-- Màn rộng: khung nổi cạnh nút, không chặn trang. Màn hẹp: lớp phủ kín màn hình.
+- Màn rộng: khung nổi cạnh nút, không chặn trang. Màn hẹp (dưới `sm`): lớp phủ kín
+  màn hình, và bấm link trong câu trả lời thì đóng khung để thấy trang vừa mở. Khung
+  mount ở lần mở đầu rồi giữ nguyên (đóng chỉ ẩn), nên lượt đang chạy không bị cắt.
 - Câu chào, ba gợi ý, dòng disclaimer, nút Start over (sinh id mới, xoá khung).
 - `useChat` của `@ai-sdk/react` với transport gửi thẳng API: `prepareSendMessagesRequest`
   biến tin cuối thành `input` của §2b; `credentials: 'include'`;
   `sendAutomaticallyWhen: lastAssistantMessageIsCompleteWithApprovalResponses` để lượt
   duyệt tự gửi.
 - Mở khung chat mà localStorage có id thì nạp `GET /api/chat/:id` (chỉ lúc mở khung,
-  không gọi ở mỗi lần tải trang); 404 thì bỏ id, bắt đầu hội thoại mới.
+  không gọi ở mỗi lần tải trang); 404 hay lỗi mạng thì bỏ id, bắt đầu hội thoại mới
+  (nạp hỏng mà giữ id thì model nhớ những tin khách không thấy).
 - Tin trả lời: `react-markdown` + `remark-gfm` (web đã có) trong
   `<Typeset preset="chat">`; không nhận HTML; link bắt đầu bằng `/` thành `Link`, link
   khác chỉ hiện chữ — chặn link lạ do prompt injection.
@@ -260,15 +280,18 @@ Thêm đủ vào `apps/api/src/config/env.ts`, `render.yaml` (key), `apps/api/.e
   chỉ `curl`.
 - **Lịch sử và lượt duyệt:** không nhận lịch sử từ trình duyệt; lượt duyệt chỉ đổi đúng
   phần tool có `approvalId` khớp.
-- **Token khi khách đóng tab:** thiếu `consumeStream` thì `onFinish` không chạy, token
-  tốn mà không được đếm — trần ngày hụt.
+- **Token khi khách đóng tab:** nhánh stream của khách bị huỷ thì nhánh của server
+  (tee, §2a) vẫn phải đọc tới cuối, không thì token tốn mà không được đếm — trần ngày
+  hụt. Vì vậy không dùng `pipeUIMessageStreamToResponse` của SDK: nó không nghe `close`
+  của socket, khách đóng tab là nó chờ `drain` mãi và giữ cả luồng trong bộ nhớ;
+  `chat-stream.ts` tự ghi SSE và huỷ đúng nhánh của khách.
 - **Giờ:** trần ngày theo ngày UTC (khớp log Anthropic); "hôm nay" trong prompt theo lịch
   Việt Nam. Hai mốc khác nhau có chủ đích.
 - **Timeout:** `connectionTimeout` 120 giây của API là giới hạn socket im lặng; stream đều
   đặn thì không chạm, nhưng một bước tool treo lâu thì có. Tool đọc DB nhanh, chấp nhận.
 - **Link trong câu trả lời:** chỉ link nội bộ mới bấm được (§2h).
-- **Seed lại 03/11:** `reset-operational-data.mjs` đã có dòng cho hai bảng chat; thêm cột
-  không đổi gì ở đó, nhưng soát lại khi viết plan.
+- **Seed lại 03/11:** `reset-operational-data.mjs` đã có dòng cho hai bảng chat và xoá
+  `chat_conversations` trước `enquiries`; thêm cột không đổi thứ tự, chỉ sửa ghi chú.
 
 ## 5. Kiểm thử
 

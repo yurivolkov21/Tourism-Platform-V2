@@ -26,14 +26,15 @@ và React 19 (web) · Vitest.
 | --- | --- | --- |
 | P6 trợ lý AI (api, contract, web) | `feat/p6-ai-concierge-3xp4sq` | 1–13 |
 
-**Điểm dừng 15/10 (tạm dừng vì giới hạn usage):** xong Task 1–5 và 7–10, 23 int test
-chat và 2 int test job dọn xanh ở máy với model giả. Nhánh đã có `schema.prisma` mới
-nhưng CHƯA có thư mục migration (Task 6 chờ lượt sau G25 của thread admin), nên CI của
-nhánh đỏ ở int test cho tới khi có migration. Bước kế: Task 6 khi được báo lượt, rồi
-Task 11–13. Lệch so với spec cần ghi vào spec và mô tả PR: bỏ refine `tourSlug` (tour
-mặc định đi qua prompt), `getTourDetails` thêm `cancellation`, body policy cắt 600 ký
-tự, tự viết `writeUIMessageStream` thay `pipeUIMessageStreamToResponse`, tee luồng và
-`readUIMessageStream` thay `consumeStream`/`onEnd`.
+**Điểm dừng 19/10:** xong Task 1–5, 7–12 và hai bước đầu của Task 13. Nhánh đã rebase
+lên `d0a051d`; thẻ tour của ADR-0058 đổi kiểu `TourCard`, nên `searchTours` thêm sort
+`top-rated` và trả `nextDeparture`. Web: 20 test component, kiểm đột biến tay; thử bằng
+Chromium với API chạy model giả ở 375, 768 và 1440 (stream qua CORS, thẻ duyệt gửi
+enquiry thật vào DB local, Esc trả tiêu điểm, nạp lại sau khi tải trang). Nhánh có
+`schema.prisma` mới nhưng CHƯA có thư mục migration (Task 6 chờ lượt sau G25 của
+thread admin), nên CI của nhánh đỏ ở int test cho tới khi có migration. Bước kế: Task 6
+khi được báo lượt, rồi `gate:int` và draft PR. Những chỗ lệch spec lúc thi công đã sửa
+thẳng vào spec (§2a, §2b, §2c, §2f, §2h, §4).
 
 ## Quyết định của plan
 
@@ -48,9 +49,10 @@ Spec viết trước khi đọc kỹ AI SDK 7 và trước G41, nên có sáu ch
    Spec §2f dựa vào unique `(conversation_id, seq)`, nhưng tin chỉ được ghi lúc lượt
    KẾT THÚC, nên lượt thứ hai đến khi lượt đầu còn chạy sẽ không đụng unique nào và
    gọi model lần nữa (tốn tiền, và lượt duyệt có thể chạy tool hai lần). Migration
-   thêm `chat_conversations.turn_started_at TIMESTAMPTZ NULL`: đầu lượt một câu
-   `UPDATE … SET turn_started_at = now() WHERE id = $1 AND (turn_started_at IS NULL
-   OR turn_started_at < now() - interval '2 minutes')`; 0 dòng là 409 `CHAT_BUSY`.
+   thêm `chat_conversations.turn_started_at TIMESTAMP(3) NULL` (cùng kiểu các cột
+   thời gian khác): đầu lượt một `updateMany` của Prisma `WHERE id = … AND
+   (turn_started_at IS NULL OR turn_started_at < mốc − 2 phút)` với mốc là đồng hồ
+   của tiến trình API (một instance); 0 dòng là 409 `CHAT_BUSY`.
    Cuối lượt (xong, lỗi, hay khách đóng tab) trả về `NULL`. Hạn 2 phút khớp
    `connectionTimeout` 120 giây: tiến trình chết giữa lượt thì hội thoại tự mở lại.
    Unique `seq` vẫn giữ làm lưới cuối.
@@ -63,7 +65,8 @@ Spec viết trước khi đọc kỹ AI SDK 7 và trước G41, nên có sáu ch
 4. **Lỗi giữa stream không ghi gì.** Khách thấy Retry, web gửi lại đúng tin cũ, lịch
    sử sạch. Token của lượt hỏng (nếu Anthropic đã tính) không vào trần ngày; khách
    không gây ra được loại lỗi này, và tiền nạp trước ở Anthropic vẫn là trần cứng.
-   Khách đóng tab thì KHÁC: `consumeStream` giữ lượt chạy trọn và được ghi (spec §4).
+   Khách đóng tab thì KHÁC: nhánh stream của server (tee) giữ lượt chạy trọn và được
+   ghi (spec §4).
 5. **503 trước stream.** `streamText` lười, lỗi Anthropic chỉ hiện trong stream. API
    đọc trước các chunk tới chunk nội dung đầu tiên rồi mới gửi header; gặp chunk lỗi
    trước đó thì trả 503 `CHAT_UNAVAILABLE` dạng JSON, chưa ghi gì.
@@ -94,45 +97,45 @@ Hai chỗ chốt thêm, không đổi spec:
 
 ### Task 1 — Contract `ChatRequestSchema`
 
-- [ ] Test trước `chat.spec.ts`: `conversationId` phải là uuid; `tourSlug` theo luật
+- [x] Test trước `chat.spec.ts`: `conversationId` phải là uuid; `tourSlug` theo luật
   slug sẵn có; `input.text` trim, 1..1000; `input` là đúng một trong hai dạng
   `message`/`approval`; body thừa field bị bỏ.
-- [ ] Viết `chat.ts`: `ChatRequestSchema`, `ChatErrorCode` (`INVALID_INPUT`,
+- [x] Viết `chat.ts`: `ChatRequestSchema`, `ChatErrorCode` (`INVALID_INPUT`,
   `CHAT_NOT_FOUND`, `CHAT_TURN_LIMIT`, `CHAT_BUSY`, `CHAT_UNAVAILABLE`), hằng
   `CHAT_LIMITS` (1000 ký tự, 20 tin khách) để web và API cùng đọc.
 
 ### Task 2 — Env, trần IP, bảng giá
 
-- [ ] `env.spec.ts`: `CHAT_ENABLED` mặc định false; bật mà thiếu `ANTHROPIC_API_KEY`
+- [x] `env.spec.ts`: `CHAT_ENABLED` mặc định false; bật mà thiếu `ANTHROPIC_API_KEY`
   là lỗi; `CHAT_MODEL` ngoài bảng giá là lỗi; `CHAT_DAILY_BUDGET_USD` 0,1..50, mặc
   định 1.
-- [ ] `chat-pricing.ts` (thuần, test trước): `CHAT_PRICES` theo model, `costUsd(model,
+- [x] `chat-pricing.ts` (thuần, test trước): `CHAT_PRICES` theo model, `costUsd(model,
   inputTokens, outputTokens)`.
-- [ ] `env.ts` thêm bốn biến; `throttle.ts` thêm `CHAT_THROTTLE = { limit: 20, ttl:
+- [x] `env.ts` thêm bốn biến; `throttle.ts` thêm `CHAT_THROTTLE = { limit: 20, ttl:
   3_600_000 }`.
 
 ### Task 3 — Cổng trần và đếm lượt (thuần)
 
-- [ ] `chat-budget.ts`: `utcDayStart(now)`, `isOverDailyBudget({ inputTokens,
+- [x] `chat-budget.ts`: `utcDayStart(now)`, `isOverDailyBudget({ inputTokens,
   outputTokens, model, budgetUsd })`; test biên đúng bằng trần là chặn.
-- [ ] `chat-history.ts`: `countUserMessages(rows)`, `nextSeq(rows)`,
+- [x] `chat-history.ts`: `countUserMessages(rows)`, `nextSeq(rows)`,
   `applyApproval(message, approvalId, approved)` trả tin mới hoặc lỗi "không còn chờ";
   test: approvalId lạ, phần đã `approval-responded`, phần khác tool, hai tool cùng chờ.
 
 ### Task 4 — Prompt hệ thống (thuần)
 
-- [ ] `chat-prompt.ts` `buildInstructions({ today, destinations, categories, tourSlug })`.
+- [x] `chat-prompt.ts` `buildInstructions({ today, destinations, categories, tourSlug })`.
   Test: có và không có tour đang xem; danh sách slug; ngày theo lịch Việt Nam
   (`vietnamToday`); các câu luật của spec §2d có mặt (đột biến tay: xoá một câu thì
   test đỏ).
 
 ### Task 5 — Ba tool
 
-- [ ] `chat-tools.ts` `createChatTools({ catalog, enquiries, conversation })`; hàm thu
+- [x] `chat-tools.ts` `createChatTools({ catalog, enquiries, conversation })`; hàm thu
   gọn kết quả là thuần, test riêng: `searchTours` map sort và `limit: 8`, giữ đúng các
   field spec §2c; `getTourDetails` cắt mô tả 200, FAQ 6 câu cắt 300, chỉ đợt
   `bookable`, tối đa 6 đợt.
-- [ ] `submitEnquiry`: slug → id chỉ khi tour đang bán, không thì enquiry chung; đã có
+- [x] `submitEnquiry`: slug → id chỉ khi tour đang bán, không thì enquiry chung; đã có
   `enquiry_id` thì `{ sent: false, reason: 'already_sent' }`; gọi
   `EnquiriesService.create(input, userId)` rồi ghi `enquiry_id` (unique chặn lần hai).
 
@@ -141,7 +144,7 @@ Hai chỗ chốt thêm, không đổi spec:
 > Chỉ làm khi coordinator báo đến lượt (sau G25). Trước đó code của Task 7–9 viết và
 > chạy test với migration tạm ở máy, KHÔNG commit migration ấy.
 
-- [ ] `schema.prisma`: `ChatMessage.inputTokens Int?`, `outputTokens Int?`,
+- [x] `schema.prisma`: `ChatMessage.inputTokens Int?`, `outputTokens Int?`,
   `@@index([createdAt])`; `ChatConversation.enquiryId String? @unique` FK
   `enquiries` `onDelete: SetNull`, `turnStartedAt DateTime?`.
 - [ ] `pnpm prisma migrate dev --name chat_tokens_enquiry_turn` từ `main` mới nhất;
@@ -149,60 +152,63 @@ Hai chỗ chốt thêm, không đổi spec:
 
 ### Task 7 — `ChatService`
 
-- [ ] `chat-config.ts`: provider `CHAT_CONFIG` (`enabled`, `model`, `budgetUsd`) và
+- [x] `chat-config.ts`: provider `CHAT_CONFIG` (`enabled`, `model`, `budgetUsd`) và
   `CHAT_LANGUAGE_MODEL` (`createAnthropic({ apiKey })(model)`, `null` khi tắt) — test
   ghi đè cả hai bằng `overrideProvider`.
-- [ ] `status()` → `{ available }`: cờ bật và chưa chạm trần ngày.
-- [ ] `getConversation(id, userId)` → UIMessage[]; không thấy hoặc khác chủ → `null`.
-- [ ] `startTurn(request, userId)` theo thứ tự spec §2a bước 3: cờ → trần ngày → tạo
+- [x] `status()` → `{ available }`: cờ bật và chưa chạm trần ngày.
+- [x] `getConversation(id, userId)` → UIMessage[]; không thấy hoặc khác chủ → `null`.
+- [x] `startTurn(request, userId)` theo thứ tự spec §2a bước 3: cờ → trần ngày → tạo
   hoặc kiểm chủ hội thoại → trần 20 tin → giữ lượt → nạp lịch sử, áp quyết định duyệt
   → `validateUIMessages` với tools → `streamText({ instructions, messages:
   convertToModelMessages(...), tools, toolApproval, stopWhen: isStepCount(5),
-  maxOutputTokens: 800 })` → `consumeStream()` → `toUIMessageStream({ originalMessages,
-  onEnd })`. `onEnd` ghi tin (quyết định 3), nhả lượt, log một dòng `{ conversationId,
-  inputTokens, outputTokens, ms, tools }` không có nội dung tin.
-- [ ] Mọi nhánh thoát sớm sau khi đã giữ lượt đều nhả lượt (`try/finally`).
+  maxOutputTokens: 800 })` → `toUIMessageStream({ originalMessages })` rồi tee: nhánh
+  khách trả về controller, nhánh server đọc tới cuối bằng `readUIMessageStream`, ghi tin
+  (quyết định 3), nhả lượt, log một dòng `{ conversationId, inputTokens, outputTokens,
+  ms, tools }` không có nội dung tin. (Bản plan đầu dùng `consumeStream` và `onEnd`;
+  tee cho đúng UIMessage cuối cùng để ghi, kể cả khi khách đóng tab.)
+- [x] Mọi nhánh thoát sớm sau khi đã giữ lượt đều nhả lượt (`try/finally`).
 
 ### Task 8 — Controller và stream qua Fastify
 
-- [ ] `chat-stream.ts`: `peekUntilContent(stream)` trả `{ ok: true, stream }` hoặc
+- [x] `chat-stream.ts`: `peekUntilContent(stream)` trả `{ ok: true, stream }` hoặc
   `{ ok: false }` khi chunk lỗi đến trước nội dung (quyết định 5); test bằng stream giả.
-- [ ] `chat.controller.ts` `@Public()` `@Controller('api/chat')`: `GET` → status;
+- [x] `chat.controller.ts` `@Public()` `@Controller('api/chat')`: `GET` → status;
   `GET :id` (uuid, sai dạng là 404) → messages; `POST` `@Throttle({ default:
   CHAT_THROTTLE })` → parse body bằng `ChatRequestSchema` (400 `INVALID_INPUT`), đọc
-  phiên như `enquiries.controller.ts`, rồi `reply.hijack()` và
-  `pipeUIMessageStreamToResponse({ response: reply.raw, headers: reply.getHeaders(), … })`
-  — chép header CORS và helmet đã đặt trên `reply` (spec §4).
-- [ ] Mã lỗi theo bảng spec §2b, thân lỗi đúng dạng envelope của `AllExceptionsFilter`.
-- [ ] `ChatModule` vào `AppModule`; import `CatalogModule` cần export `CatalogService`,
+  phiên như `enquiries.controller.ts`, rồi `reply.hijack()` và `writeUIMessageStream(
+  reply.raw, reply.getHeaders(), stream)` tự viết — chép header CORS và helmet đã đặt
+  trên `reply` (spec §4). Không dùng `pipeUIMessageStreamToResponse` vì nó không nghe
+  `close` của socket.
+- [x] Mã lỗi theo bảng spec §2b, thân lỗi đúng dạng envelope của `AllExceptionsFilter`.
+- [x] `ChatModule` vào `AppModule`; import `CatalogModule` cần export `CatalogService`,
   `EnquiriesModule` export `EnquiriesService`.
 
 ### Task 9 — Integration test (Postgres, `MockLanguageModelV4`, không gọi Anthropic)
 
-- [ ] Lượt thường ghi đủ hai tin, `seq` 1 và 2, token trên tin trả lời, `updated_at` mới.
-- [ ] Cờ tắt → 503; tổng token hôm nay vượt trần → 503; 21 tin khách → 409
+- [x] Lượt thường ghi đủ hai tin, `seq` 1 và 2, token trên tin trả lời, `updated_at` mới.
+- [x] Cờ tắt → 503; tổng token hôm nay vượt trần → 503; 21 tin khách → 409
   `CHAT_TURN_LIMIT`; đang giữ lượt → 409 `CHAT_BUSY`, giữ lượt quá 2 phút → chạy được;
   21 `POST` một giờ từ một IP → 429; model ném lỗi trước stream → 503, không ghi gì.
-- [ ] Hội thoại gắn tài khoản: phiên khác hoặc không phiên đọc → 404.
-- [ ] Tool đọc chạy trên tour seed thử (mock gọi `searchTours` rồi `getTourDetails`).
-- [ ] `submitEnquiry`: chưa duyệt thì 0 enquiry, tin trả lời có phần
+- [x] Hội thoại gắn tài khoản: phiên khác hoặc không phiên đọc → 404.
+- [x] Tool đọc chạy trên tour seed thử (mock gọi `searchTours` rồi `getTourDetails`).
+- [x] `submitEnquiry`: chưa duyệt thì 0 enquiry, tin trả lời có phần
   `approval-requested`; duyệt → đúng một enquiry, hai outbox, `enquiry_id`; gửi lại
   quyết định cũ → 400; Cancel → 0 enquiry; lần thứ hai trong hội thoại →
   `already_sent`.
-- [ ] Khách ngắt giữa stream (đóng socket) → lượt vẫn được ghi kèm token.
-- [ ] Preflight `OPTIONS /api/chat` từ origin web có `access-control-allow-origin`, và
+- [x] Khách ngắt giữa stream (đóng socket) → lượt vẫn được ghi kèm token.
+- [x] Preflight `OPTIONS /api/chat` từ origin web có `access-control-allow-origin`, và
   response stream mang header CORS (canh lỗi `reply.raw`).
 
 ### Task 10 — Job `chat-retention`
 
-- [ ] `chat-retention.service.ts` `sweep(now, days = 30)` xoá hội thoại `updated_at`
+- [x] `chat-retention.service.ts` `sweep(now, days = 30)` xoá hội thoại `updated_at`
   quá hạn (tin xoá theo cascade). Int test: xoá đúng cái cũ, giữ cái mới.
-- [ ] `start-worker.ts`: queue `chat-retention`, cron `30 4 * * *`, `policy: 'short'`,
+- [x] `start-worker.ts`: queue `chat-retention`, cron `30 4 * * *`, `policy: 'short'`,
   `retryLimit: 0`; thêm vào danh sách chạy bù G41; dòng log khởi động.
 
 ### Task 11 — Copy
 
-- [ ] `chatBot`: sửa `disclaimer`, `unavailable` (bỏ WhatsApp, trỏ enquiry); thêm
+- [x] `chatBot`: sửa `disclaimer`, `unavailable` (bỏ WhatsApp, trỏ enquiry); thêm
   `closeAria`, `busy`, `rateLimited`, `turnLimit`, `confirm.{title, tour, send, cancel,
   sent, cancelled}`, `liveAnswerReady`. Xoá `contactLauncher.whatsapp`,
   `prefillGeneric`, `prefillTour`. Chỉ đụng hai khối này (thread i18n đang gom phần
@@ -210,41 +216,41 @@ Hai chỗ chốt thêm, không đổi spec:
 
 ### Task 12 — Web
 
-- [ ] `concierge-request.ts` (thuần, test trước): `toChatRequest(messages, id, tourSlug)`
+- [x] `lib/concierge.ts` (thuần, test trước): `toChatRequest(messages, id, tourSlug)`
   biến tin cuối thành `input` (tin chữ, hay quyết định duyệt khi tin cuối là trả lời
-  có phần `approval-responded`); `errorKind(status, code)` → `busy | rateLimited |
-  turnLimit | unavailable | notFound | generic`; `tourSlugFromPath(pathname)`.
-- [ ] `use-concierge.ts`: id trong localStorage, `useChat` với `DefaultChatTransport({
+  có phần `approval-responded`); `errorKind(error)` đọc `APICallError` → `busy |
+  rateLimited | turnLimit | unavailable | expired | generic`; `tourSlugFromPath(pathname)`.
+- [x] `use-concierge.ts`: id trong localStorage, `useChat` với `DefaultChatTransport({
   api: browserApiOrigin() + '/api/chat', credentials: 'include',
   prepareSendMessagesRequest })`, `sendAutomaticallyWhen:
   lastAssistantMessageIsCompleteWithApprovalResponses`; mở khung mà có id thì nạp
   `GET /api/chat/:id` (404 thì bỏ id); Start over sinh id mới.
-- [ ] `chat-markdown.tsx`: `react-markdown` + `remark-gfm` trong `<Typeset
+- [x] `chat-markdown.tsx`: `react-markdown` + `remark-gfm` trong `<Typeset
   preset="chat">`, `skipHtml`, link bắt đầu bằng `/` thành `Link`, link khác chỉ còn
   chữ. Test: link ngoài không có thẻ `<a>`.
-- [ ] `enquiry-confirm-card.tsx`: tên, email, lời nhắn, tên tour; Send và Cancel gọi
+- [x] `enquiry-confirm-card.tsx`: tên, email, lời nhắn, tên tour; Send và Cancel gọi
   `addToolApprovalResponse`.
-- [ ] `chat-message.tsx`, `chat-panel.tsx`: câu chào, ba gợi ý (`talkHuman` mở link
+- [x] `chat-message.tsx`, `chat-panel.tsx`: câu chào, ba gợi ý (`talkHuman` mở link
   enquiry), dòng trạng thái tool, lỗi theo `errorKind` kèm Retry; màn rộng là khung
   nổi, màn hẹp là lớp phủ; `role="dialog"`, Esc đóng và trả tiêu điểm về nút,
   `aria-live="polite"` chỉ báo khi câu trả lời xong.
-- [ ] `contact-launcher.tsx`: nút "Plan your trip" góc dưới phải; mở popover thì gọi
+- [x] `contact-launcher.tsx`: nút "Plan your trip" góc dưới phải; mở popover thì gọi
   `GET /api/chat` (vừa đánh thức API), "Chat with us" chỉ hiện khi `available`,
   "Send an enquiry" trỏ `/contact` hoặc `/tours/<slug>/enquire`.
-- [ ] Vị trí: `scroll-to-top.tsx` lên `bottom-20`; thanh đặt chỗ dưới `lg` gắn
-  `data-booking-bar` lên `<body>` khi đang hiện, hai nút nổi dùng biến thể
-  `in-data-[booking-bar]` để đứng trên thanh; gỡ `pr-20` của thanh nếu góc phải đã
-  trống (đo bằng ảnh 375 và 1440).
-- [ ] Test component (transport giả): popover ẩn hoặc hiện "Chat with us" theo
+- [x] Vị trí: `scroll-to-top.tsx` lên `bottom-20`; thanh đặt chỗ dưới `lg` gắn
+  `data-booking-bar` lên `<body>` khi đang hiện, hai nút nổi và khung chat dùng biến
+  thể `max-lg:in-data-booking-bar:` để đứng trên thanh; gỡ `pr-20` của thanh vì góc
+  phải đã trống (đo bằng Chromium ở 375, 768 và 1440).
+- [x] Test component (transport giả): popover ẩn hoặc hiện "Chat with us" theo
   `available`; gửi tin hiện tin và trạng thái tool; thẻ duyệt gọi đúng hàm; bốn mã lỗi
   ra đúng câu; khôi phục hội thoại từ localStorage.
 
 ### Task 13 — Khép lại
 
-- [ ] `render.yaml` thêm bốn key (`ANTHROPIC_API_KEY` `sync: false`, `CHAT_ENABLED`
+- [x] `render.yaml` thêm bốn key (`ANTHROPIC_API_KEY` `sync: false`, `CHAT_ENABLED`
   `false`), `apps/api/.env.example` thêm mẫu; ghi chú cột mới ở
   `reset-operational-data.mjs` (thứ tự xoá đã đúng: hội thoại trước enquiry).
-- [ ] Thử ở local bằng trình duyệt thật với API chạy `CHAT_ENABLED=true` và model giả
+- [x] Thử ở local bằng trình duyệt thật với API chạy `CHAT_ENABLED=true` và model giả
   (không có key Anthropic trong container): preflight, stream, thẻ duyệt, Esc, lớp phủ
   ở 375px. Lượt với Anthropic thật để cho bước thử tay của Yuri.
 - [ ] `pnpm gate:int` xanh; draft PR với checklist hạ tầng bên dưới.
