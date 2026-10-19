@@ -33,8 +33,12 @@ import {
   AdminDestinationCreateInputSchema,
   AdminDestinationDeleteInputSchema,
   AdminDestinationDeleteResultSchema,
+  AdminDestinationPhotosInputSchema,
+  AdminDestinationPhotosSchema,
   AdminDestinationRowSchema,
   AdminDestinationSetActiveInputSchema,
+  AdminDestinationSetPhotosInputSchema,
+  AdminDestinationSignPhotoUploadsInputSchema,
   AdminDestinationUpdateInputSchema,
 } from './schemas/admin-destinations.js';
 import {
@@ -1427,6 +1431,49 @@ export const contract = {
           NOT_FOUND: { status: 404, message: 'Destination not found' },
         })
         .output(AdminDestinationDeleteResultSchema),
+      // Ba lệnh ảnh (Media B, ADR-0060 §8). `GET …/{slug}/photos` không đụng `POST …/{id}` có
+      // sẵn: khác phương thức và có đuôi `/photos`.
+      photos: oc
+        .route({
+          method: 'GET',
+          path: '/api/admin/destinations/{slug}/photos',
+          summary: 'One destination with its photos in display order (ADR-0060 §8)',
+        })
+        .input(AdminDestinationPhotosInputSchema)
+        .errors({ NOT_FOUND: { status: 404, message: 'Destination not found' } })
+        .output(AdminDestinationPhotosSchema),
+      setPhotos: oc
+        .route({
+          method: 'POST',
+          path: '/api/admin/destinations/{id}/photos',
+          summary: 'Replace the photos of one destination; the first one is the cover',
+        })
+        .input(AdminDestinationSetPhotosInputSchema)
+        .errors({
+          STALE_DESTINATION: {
+            status: 409,
+            message: 'This destination changed since it was opened',
+          },
+          PHOTO_NOT_ALLOWED: {
+            status: 400,
+            message: 'A photo is not from this destination or its uploads',
+          },
+          NOT_FOUND: { status: 404, message: 'Destination not found' },
+        })
+        .output(AdminDestinationPhotosSchema),
+      signPhotoUploads: oc
+        .route({
+          method: 'POST',
+          path: '/api/admin/destinations/{id}/photo-uploads',
+          summary: 'Sign a batch of direct-to-Cloudinary uploads for one destination',
+        })
+        .input(AdminDestinationSignPhotoUploadsInputSchema)
+        .errors({
+          // 503 chứ không 500: thiếu cặp khoá là trạng thái cấu hình hợp lệ (ADR-0021 §6).
+          MEDIA_UPLOAD_NOT_CONFIGURED: { status: 503, message: 'Uploads are not configured' },
+          NOT_FOUND: { status: 404, message: 'Destination not found' },
+        })
+        .output(z.array(SignedUploadParamsSchema)),
     },
     /**
      * Chuyến khởi hành của MỘT tour (spec P4e-1 F12) — bề mặt GHI đầu tiên

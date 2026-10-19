@@ -1,4 +1,6 @@
 import { z } from 'zod';
+import { MediaSourceSchema } from './admin-media.js';
+import { AdminTourPhotoInputSchema, TOUR_PHOTOS_MAX } from './admin-tours.js';
 import { descriptionSchema } from './common.js';
 import { RegionNameSchema } from './regions.js';
 import { slugSchema } from './slug.js';
@@ -112,3 +114,74 @@ export type AdminDestinationDeleteInput = z.output<typeof AdminDestinationDelete
 /** Slug của hàng vừa xoá — cùng khuôn kết quả `admin.tours.delete`. */
 export const AdminDestinationDeleteResultSchema = z.object({ slug: z.string() });
 export type AdminDestinationDeleteResult = z.output<typeof AdminDestinationDeleteResultSchema>;
+
+// ── Ảnh (Media B, ADR-0060 §8) ──────────────────────────────────────────────
+
+/**
+ * Trần ảnh của một điểm đến — bằng trần ảnh tour: trang Photos của điểm đến dùng lại khuôn tab
+ * Photos của tour (lọc file, sức chứa, ký theo lô), và lô ký của hai bên cùng một cỡ.
+ */
+export const DESTINATION_PHOTOS_MAX = TOUR_PHOTOS_MAX;
+
+/** Phiên bản của điểm đến: `updatedAt` dạng ISO, cùng nếp tour và bài viết. */
+const DestinationVersionSchema = z.iso.datetime();
+
+/**
+ * Một ảnh của điểm đến như trang Photos cần. Nguồn chỉ có hai (ADR-0060 §8): `UPLOAD` là thư mục
+ * tải lên của chính điểm đến, `CATALOG` là ảnh đi theo site — gỡ ra thì không thêm lại được từ
+ * admin. Không có `LIBRARY`: thư viện chính là trang này. `usedByTours` đếm tour đang mượn ảnh,
+ * nuôi câu hậu quả khi gỡ. Lỏng như mọi schema HÀNG: dữ liệu cũ có thể thiếu alt và số đo.
+ */
+export const AdminDestinationPhotoSchema = z.object({
+  publicId: z.string().min(1),
+  url: z.url(),
+  alt: z.string().nullable(),
+  width: z.int().positive().nullable(),
+  height: z.int().positive().nullable(),
+  source: MediaSourceSchema,
+  usedByTours: z.int().nonnegative(),
+  author: z.string().nullable(),
+  license: z.string().nullable(),
+});
+export type AdminDestinationPhoto = z.output<typeof AdminDestinationPhotoSchema>;
+
+/** Một điểm đến kèm danh sách ảnh theo thứ tự hiển thị — ảnh đầu là ảnh bìa (ADR-0048 §1). */
+export const AdminDestinationPhotosSchema = z.object({
+  id: z.uuid(),
+  name: z.string().min(1).max(DESTINATION_NAME_MAX),
+  slug: z.string().min(1).max(DESTINATION_SLUG_MAX),
+  isActive: z.boolean(),
+  version: DestinationVersionSchema,
+  photos: z.array(AdminDestinationPhotoSchema),
+});
+export type AdminDestinationPhotos = z.output<typeof AdminDestinationPhotosSchema>;
+
+/** Mở trang Photos theo slug — đường dẫn admin đọc được, như khu sửa tour. */
+export const AdminDestinationPhotosInputSchema = z.object({ slug: DestinationSlugSchema });
+export type AdminDestinationPhotosInput = z.output<typeof AdminDestinationPhotosInputSchema>;
+
+/**
+ * Thay trọn danh sách ảnh (ADR-0060 §8). Mỗi ảnh đúng hình ảnh của tab Photos tour (publicId, alt
+ * 1 đến 300 ký tự, metadata khi vừa tải lên) — một schema cho cả hai trình sửa. Danh sách rỗng
+ * hợp lệ: điểm đến mới tạo đã không có ảnh nào, web vẽ ô giữ chỗ.
+ */
+export const AdminDestinationSetPhotosInputSchema = z.object({
+  id: z.uuid(),
+  version: DestinationVersionSchema,
+  photos: z
+    .array(AdminTourPhotoInputSchema)
+    .max(DESTINATION_PHOTOS_MAX)
+    .refine((photos) => new Set(photos.map((photo) => photo.publicId)).size === photos.length, {
+      message: 'a photo can only be listed once',
+    }),
+});
+export type AdminDestinationSetPhotosInput = z.output<typeof AdminDestinationSetPhotosInputSchema>;
+
+/** Ký một LÔ upload vào thư mục của điểm đến — một request cho cả lô, như ảnh tour. */
+export const AdminDestinationSignPhotoUploadsInputSchema = z.object({
+  id: z.uuid(),
+  count: z.int().min(1).max(DESTINATION_PHOTOS_MAX),
+});
+export type AdminDestinationSignPhotoUploadsInput = z.output<
+  typeof AdminDestinationSignPhotoUploadsInputSchema
+>;

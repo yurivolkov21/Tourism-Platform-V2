@@ -3,13 +3,18 @@ import {
   AdminDestinationCreateInputSchema,
   AdminDestinationDeleteInputSchema,
   AdminDestinationDeleteResultSchema,
+  AdminDestinationPhotosInputSchema,
+  AdminDestinationPhotosSchema,
   AdminDestinationRowSchema,
   AdminDestinationSetActiveInputSchema,
+  AdminDestinationSetPhotosInputSchema,
+  AdminDestinationSignPhotoUploadsInputSchema,
   AdminDestinationUpdateInputSchema,
   DESTINATION_COUNTRY_MAX,
   DESTINATION_DEFAULT_COUNTRY,
   DESTINATION_DESCRIPTION_MAX,
   DESTINATION_NAME_MAX,
+  DESTINATION_PHOTOS_MAX,
   DESTINATION_SLUG_MAX,
 } from './admin-destinations.js';
 
@@ -254,13 +259,19 @@ describe('AdminDestinationRowSchema — linkedTourCount', () => {
 });
 
 describe('contract admin.destinations', () => {
-  it('năm thao tác mounted đúng đường', () => {
+  it('tám thao tác mounted đúng đường', () => {
     const routes: Array<[{ '~orpc': { route?: { method?: string; path?: string } } }, string]> = [
       [contract.admin.destinations.list, 'GET /api/admin/destinations'],
       [contract.admin.destinations.create, 'POST /api/admin/destinations'],
       [contract.admin.destinations.update, 'POST /api/admin/destinations/{id}'],
       [contract.admin.destinations.setActive, 'POST /api/admin/destinations/{id}/active'],
       [contract.admin.destinations.delete, 'POST /api/admin/destinations/{id}/delete'],
+      [contract.admin.destinations.photos, 'GET /api/admin/destinations/{slug}/photos'],
+      [contract.admin.destinations.setPhotos, 'POST /api/admin/destinations/{id}/photos'],
+      [
+        contract.admin.destinations.signPhotoUploads,
+        'POST /api/admin/destinations/{id}/photo-uploads',
+      ],
     ];
     for (const [procedure, expected] of routes) {
       const route = procedure['~orpc'].route;
@@ -268,14 +279,17 @@ describe('contract admin.destinations', () => {
     }
   });
 
-  it('có lệnh xoá (ADR-0053), KHÔNG có lệnh sắp thứ tự', () => {
+  it('có lệnh xoá (ADR-0053) và ba lệnh ảnh (ADR-0060 §8), KHÔNG có lệnh sắp thứ tự', () => {
     // Sắp: bảng này không có cột `order`. Xoá: chỉ khi chưa tour nào dùng, kiểm dưới
     // khoá hàng (ADR-0053 §3); khoá ngoại `tour_destinations` RESTRICT là lưới thứ hai.
     expect(Object.keys(contract.admin.destinations).sort()).toEqual([
       'create',
       'delete',
       'list',
+      'photos',
       'setActive',
+      'setPhotos',
+      'signPhotoUploads',
       'update',
     ]);
   });
@@ -308,6 +322,27 @@ describe('contract admin.destinations', () => {
     expect(codes(contract.admin.destinations.update)).toEqual(['NOT_FOUND']);
     expect(codes(contract.admin.destinations.setActive)).toEqual(['NOT_FOUND']);
     expect(codes(contract.admin.destinations.delete)).toEqual(['IN_USE', 'NOT_FOUND']);
+    expect(codes(contract.admin.destinations.photos)).toEqual(['NOT_FOUND']);
+    expect(codes(contract.admin.destinations.setPhotos)).toEqual([
+      'NOT_FOUND',
+      'PHOTO_NOT_ALLOWED',
+      'STALE_DESTINATION',
+    ]);
+    expect(codes(contract.admin.destinations.signPhotoUploads)).toEqual([
+      'MEDIA_UPLOAD_NOT_CONFIGURED',
+      'NOT_FOUND',
+    ]);
+  });
+
+  it('mã của ba lệnh ảnh mang đúng status (ADR-0060 §8)', () => {
+    const status = (procedure: { '~orpc': { errorMap: object } }, code: string) =>
+      (procedure['~orpc'].errorMap as Record<string, { status?: number }>)[code]?.status;
+
+    expect(status(contract.admin.destinations.setPhotos, 'STALE_DESTINATION')).toBe(409);
+    expect(status(contract.admin.destinations.setPhotos, 'PHOTO_NOT_ALLOWED')).toBe(400);
+    expect(
+      status(contract.admin.destinations.signPhotoUploads, 'MEDIA_UPLOAD_NOT_CONFIGURED'),
+    ).toBe(503);
   });
 
   it('`IN_USE` của `delete` là 409 — thế giới đã đổi, không phải input hỏng', () => {
@@ -316,5 +351,129 @@ describe('contract admin.destinations', () => {
       { status?: number }
     >;
     expect(errorMap.IN_USE?.status).toBe(409);
+  });
+});
+
+// ── Ảnh của điểm đến (Media B, ADR-0060 §8) ─────────────────────────────────
+
+const VERSION = '2026-10-19T06:00:00.000Z';
+const UPLOAD_ID = `tourism/destinations/${ID}/3b7e2c4a-1111-4000-8000-000000000001`;
+const UPLOAD = { version: '1786999999', width: 2400, height: 1600, format: 'jpg', bytes: 512000 };
+
+describe('AdminDestinationPhotosSchema', () => {
+  const photo = {
+    publicId: UPLOAD_ID,
+    url: 'https://res.cloudinary.com/demo/image/upload/f_auto,q_auto/v1/x.jpg',
+    alt: 'Ha Long Bay at dawn',
+    width: 2400,
+    height: 1600,
+    source: 'UPLOAD',
+    usedByTours: 0,
+    author: null,
+    license: null,
+  };
+  const destination = {
+    id: ID,
+    name: 'Ha Long Bay',
+    slug: 'ha-long-bay',
+    isActive: true,
+    version: VERSION,
+    photos: [photo],
+  };
+
+  it('nhận điểm đến kèm danh sách ảnh và phiên bản', () => {
+    expect(AdminDestinationPhotosSchema.parse(destination).photos[0]?.source).toBe('UPLOAD');
+  });
+
+  it('nguồn chỉ có UPLOAD và CATALOG — thư viện chính là trang này, không có LIBRARY', () => {
+    const library = { ...destination, photos: [{ ...photo, source: 'LIBRARY' }] };
+    expect(AdminDestinationPhotosSchema.safeParse(library).success).toBe(false);
+  });
+
+  it('alt và số đo lỏng như mọi schema HÀNG: dữ liệu cũ có thể null', () => {
+    const old = { ...photo, alt: null, width: null, height: null };
+    expect(AdminDestinationPhotosSchema.safeParse({ ...destination, photos: [old] }).success).toBe(
+      true,
+    );
+  });
+
+  it('usedByTours không âm', () => {
+    const bad = { ...destination, photos: [{ ...photo, usedByTours: -1 }] };
+    expect(AdminDestinationPhotosSchema.safeParse(bad).success).toBe(false);
+  });
+});
+
+describe('AdminDestinationPhotosInputSchema', () => {
+  it('đọc theo slug', () => {
+    expect(AdminDestinationPhotosInputSchema.parse({ slug: 'ha-long-bay' })).toEqual({
+      slug: 'ha-long-bay',
+    });
+  });
+
+  it('slug sai dạng là 400 ở tầng dạng', () => {
+    expect(AdminDestinationPhotosInputSchema.safeParse({ slug: 'Ha Long' }).success).toBe(false);
+  });
+});
+
+describe('AdminDestinationSetPhotosInputSchema', () => {
+  const input = {
+    id: ID,
+    version: VERSION,
+    photos: [{ publicId: UPLOAD_ID, alt: '  Ha Long Bay at dawn  ', upload: UPLOAD }],
+  };
+
+  it('cắt khoảng trắng của alt, giữ metadata ảnh tải lên', () => {
+    const parsed = AdminDestinationSetPhotosInputSchema.parse(input);
+    expect(parsed.photos[0]?.alt).toBe('Ha Long Bay at dawn');
+    expect(parsed.photos[0]?.upload).toEqual(UPLOAD);
+  });
+
+  it('danh sách rỗng hợp lệ — điểm đến mới tạo hôm nay đã như vậy', () => {
+    expect(AdminDestinationSetPhotosInputSchema.safeParse({ ...input, photos: [] }).success).toBe(
+      true,
+    );
+  });
+
+  it('alt rỗng bị từ chối', () => {
+    const blank = { ...input, photos: [{ publicId: UPLOAD_ID, alt: '   ' }] };
+    expect(AdminDestinationSetPhotosInputSchema.safeParse(blank).success).toBe(false);
+  });
+
+  it('một ảnh chỉ có mặt một lần', () => {
+    const twice = { ...input, photos: [input.photos[0], { publicId: UPLOAD_ID, alt: 'Again' }] };
+    expect(AdminDestinationSetPhotosInputSchema.safeParse(twice).success).toBe(false);
+  });
+
+  it(`tối đa ${DESTINATION_PHOTOS_MAX} ảnh`, () => {
+    const many = Array.from({ length: DESTINATION_PHOTOS_MAX + 1 }, (_, index) => ({
+      publicId: `tourism/catalog/destinations/photo-${index}`,
+      alt: `Photo ${index}`,
+    }));
+    expect(AdminDestinationSetPhotosInputSchema.safeParse({ ...input, photos: many }).success).toBe(
+      false,
+    );
+  });
+
+  it('phải mang phiên bản dạng ISO', () => {
+    expect(
+      AdminDestinationSetPhotosInputSchema.safeParse({ ...input, version: 'yesterday' }).success,
+    ).toBe(false);
+  });
+});
+
+describe('AdminDestinationSignPhotoUploadsInputSchema', () => {
+  it(`một lô từ 1 tới ${DESTINATION_PHOTOS_MAX} file`, () => {
+    expect(
+      AdminDestinationSignPhotoUploadsInputSchema.safeParse({ id: ID, count: 1 }).success,
+    ).toBe(true);
+    expect(
+      AdminDestinationSignPhotoUploadsInputSchema.safeParse({ id: ID, count: 0 }).success,
+    ).toBe(false);
+    expect(
+      AdminDestinationSignPhotoUploadsInputSchema.safeParse({
+        id: ID,
+        count: DESTINATION_PHOTOS_MAX + 1,
+      }).success,
+    ).toBe(false);
   });
 });
