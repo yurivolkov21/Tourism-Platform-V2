@@ -339,6 +339,27 @@ Thêm một đường ký mới (ví dụ media library của admin) thì phải
 `UPLOAD_ZONE_OWNERS`, không thì bộ dọn từ chối ảnh của nó. Đó là hỏng theo hướng giữ
 ảnh, và lộ ra ở số `refused` trong log mỗi lượt.
 
+## AMEND 4 — 19/10/2026 (P4f Media library, ADR-0060): hàng dọn có người xem, hai giới hạn đóng
+
+Chi tiết ở [ADR-0060](0060-media-library.md); ở đây chỉ ghi phần đổi ADR này.
+
+**a. Handler `media-gc` trả `SweepReport`.** pg-boss lưu nó làm output của job, và trang
+`/media` của admin đọc job mới nhất để hiện lượt dọn gần nhất. Trước đợt này mọi job lưu
+output rỗng. Hàng dọn có một màn chỉ đọc (ADR-0060 §4): trạng thái từng dòng xét theo đúng
+thứ tự `sweep` xét (ngoài vùng, hết lượt, còn dùng, chờ tới hạn).
+
+**b. Giới hạn #5 thành quyết định cố ý.** Admin không có nút xoá ảnh (ADR-0060 §5): xoá
+thẳng bỏ qua cả phép kiểm tham chiếu lúc xoá lẫn 7 ngày đổi ý. Đường bỏ ảnh là gỡ nó khỏi
+chỗ dùng; cần gấp thì vẫn vào dashboard Cloudinary.
+
+**c. Giới hạn #6 đóng bằng số đo.** Ngày 16/10 cả 10 ảnh trong vùng tải lên trên Cloudinary
+đều có dòng `media_garbage`; không có ảnh mồ côi nào nằm ngoài hàng (spec Media library §2.3).
+Script backfill không còn việc để làm.
+
+**d. Hai thư mục tải lên mới.** `site` (ADR-0059 §5) và `destinations` (ADR-0060 §8) vào
+`UPLOAD_ZONE_OWNERS` với chủ dạng uuid, đúng luật của AMEND 3 cho mọi đường ký mới. Xoá điểm
+đến `requeue` ảnh tải lên của nó trong cùng transaction, như xoá tour.
+
 ## Giới hạn đã biết
 
 1. **Review hết lượt sửa vẫn giữ ảnh.** `rejectedFinal` là trạng thái cuối
