@@ -3,15 +3,32 @@
 import { CHAT_LIMITS } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
 import { Button, buttonVariants } from '@tourism/ui/components/button';
-import { SendHorizontalIcon, XIcon } from 'lucide-react';
+import {
+  InputGroup,
+  InputGroupAddon,
+  InputGroupButton,
+  InputGroupTextarea,
+} from '@tourism/ui/components/input-group';
+import { cn } from '@tourism/ui/lib/utils';
+import { ArrowUpIcon, XIcon } from 'lucide-react';
 import Link from 'next/link';
 import { type FormEvent, type KeyboardEvent, useEffect, useId, useRef, useState } from 'react';
 import type { ConciergeErrorKind } from '@/lib/concierge';
-import { ActivityLine, ChatMessage } from './chat-message';
+import {
+  AssistantBubble,
+  AssistantTurn,
+  ChatMessage,
+  ConciergeAvatar,
+  hasVisibleContent,
+  TypingIndicator,
+} from './chat-message';
 import { useConcierge } from './use-concierge';
 
 /** Dưới mốc `sm` khung phủ kín màn hình: bấm link trong câu trả lời thì đóng khung để thấy trang. */
 const NARROW_QUERY = '(max-width: 639px)';
+
+/** Gợi ý mở đầu dạng viên thuốc, nằm dưới lời chào như nút trả lời nhanh của app nhắn tin. */
+const SUGGESTION_CLASS = 'rounded-full bg-background';
 
 /**
  * Khung chat của trợ lý (P6, spec §2h). Màn rộng là khung nổi trên nút "Plan your trip",
@@ -94,6 +111,12 @@ export function ChatPanel({
   };
 
   const empty = concierge.messages.length === 0 && !concierge.restoring;
+  // Chấm "đang gõ" từ lúc gửi tới khi có chữ hay dòng tool đầu tiên của câu trả lời.
+  const last = concierge.messages.at(-1);
+  const waiting =
+    concierge.restoring ||
+    concierge.status === 'submitted' ||
+    (concierge.status === 'streaming' && (last?.role !== 'assistant' || !hasVisibleContent(last)));
 
   return (
     <div
@@ -108,12 +131,13 @@ export function ChatPanel({
       }}
       className="fixed inset-0 z-(--z-overlay) flex flex-col bg-background text-foreground sm:inset-auto sm:right-5 sm:bottom-20 sm:h-[min(36rem,calc(100dvh-8rem))] sm:w-[23rem] sm:overflow-hidden sm:rounded-2xl sm:border sm:shadow-(--shadow-popover) max-lg:sm:in-data-booking-bar:bottom-38 max-lg:sm:in-data-booking-bar:h-[min(36rem,calc(100dvh-12rem))]"
     >
-      <div className="flex items-start gap-2 border-b px-4 py-3">
+      <div className="flex items-center gap-3 border-b px-4 py-3">
+        <ConciergeAvatar className="size-9 min-w-9 self-center [&_svg]:size-4" />
         <div className="min-w-0 flex-1">
-          <h2 id={titleId} className="font-heading text-base font-semibold">
+          <h2 id={titleId} className="font-heading text-base leading-tight font-semibold">
             {t.title}
           </h2>
-          <p className="mt-0.5 text-xs text-muted-foreground">{t.disclaimer}</p>
+          <p className="mt-0.5 text-xs text-muted-foreground">{t.subtitle}</p>
         </div>
         {concierge.messages.length > 0 ? (
           <Button variant="ghost" size="sm" disabled={concierge.busy} onClick={concierge.startOver}>
@@ -129,15 +153,29 @@ export function ChatPanel({
       <div
         ref={scrollRef}
         data-lenis-prevent
-        className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto overscroll-contain px-4 py-4"
+        className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto overscroll-contain bg-muted/40 px-3 py-4"
       >
-        <p className="text-sm">{t.greeting}</p>
+        <AssistantTurn>
+          <AssistantBubble>{t.greeting}</AssistantBubble>
+        </AssistantTurn>
         {empty ? (
-          <div className="flex flex-wrap gap-2">
-            <Button variant="outline" size="sm" onClick={() => submit(t.suggestions.findTour)}>
+          // Thụt bằng bề ngang ảnh đại diện cộng khoảng cách (size-7 và gap-2) để gợi ý
+          // thẳng mép bong bóng chào, còn ảnh đại diện đứng cạnh bong bóng.
+          <div className="-mt-2 flex flex-wrap gap-2 pl-9">
+            <Button
+              variant="outline"
+              size="sm"
+              className={SUGGESTION_CLASS}
+              onClick={() => submit(t.suggestions.findTour)}
+            >
               {t.suggestions.findTour}
             </Button>
-            <Button variant="outline" size="sm" onClick={() => submit(t.suggestions.askIncluded)}>
+            <Button
+              variant="outline"
+              size="sm"
+              className={SUGGESTION_CLASS}
+              onClick={() => submit(t.suggestions.askIncluded)}
+            >
               {t.suggestions.askIncluded}
             </Button>
             {/* `Link` chứ không phải `ButtonLink` (thẻ `<a>` thuần): điều hướng phía client giữ
@@ -145,13 +183,12 @@ export function ChatPanel({
             <Link
               href={enquiryHref}
               onClick={closeIfNarrow}
-              className={buttonVariants({ variant: 'outline', size: 'sm' })}
+              className={cn(buttonVariants({ variant: 'outline', size: 'sm' }), SUGGESTION_CLASS)}
             >
               {t.suggestions.talkHuman}
             </Link>
           </div>
         ) : null}
-        {concierge.restoring ? <ActivityLine text={t.thinking} /> : null}
         {concierge.messages.map((message) => (
           <ChatMessage
             key={message.id}
@@ -161,7 +198,7 @@ export function ChatPanel({
             onNavigate={closeIfNarrow}
           />
         ))}
-        {concierge.status === 'submitted' ? <ActivityLine text={t.thinking} /> : null}
+        {waiting ? <TypingIndicator label={t.thinking} /> : null}
         {concierge.errorKind === null ? null : (
           <ErrorNotice
             kind={concierge.errorKind}
@@ -173,25 +210,38 @@ export function ChatPanel({
         )}
       </div>
 
-      <form onSubmit={onSubmit} className="flex items-end gap-2 border-t px-3 py-3">
+      <form onSubmit={onSubmit} className="border-t px-3 pt-3 pb-2">
         <label htmlFor={inputId} className="sr-only">
           {t.inputLabel}
         </label>
-        <textarea
-          ref={inputRef}
-          id={inputId}
-          rows={2}
-          maxLength={CHAT_LIMITS.messageMaxLength}
-          value={draft}
-          disabled={blocked}
-          placeholder={t.inputPlaceholder}
-          onChange={(event) => setDraft(event.target.value)}
-          onKeyDown={onInputKeyDown}
-          className="max-h-32 min-h-10 flex-1 resize-none rounded-lg border border-input bg-transparent px-3 py-2 text-sm outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:opacity-50"
-        />
-        <Button type="submit" size="icon" aria-label={t.sendAria} disabled={!canSend}>
-          <SendHorizontalIcon aria-hidden="true" />
-        </Button>
+        <InputGroup className="rounded-3xl bg-background">
+          {/* `field-sizing-content` của Textarea: ô cao dần theo chữ tới trần `max-h-32`. */}
+          <InputGroupTextarea
+            ref={inputRef}
+            id={inputId}
+            rows={1}
+            maxLength={CHAT_LIMITS.messageMaxLength}
+            value={draft}
+            disabled={blocked}
+            placeholder={t.inputPlaceholder}
+            onChange={(event) => setDraft(event.target.value)}
+            onKeyDown={onInputKeyDown}
+            className="max-h-32 min-h-10 py-2.5 pl-4"
+          />
+          <InputGroupAddon align="inline-end" className="self-end pb-1.5">
+            <InputGroupButton
+              type="submit"
+              variant="default"
+              size="icon-sm"
+              aria-label={t.sendAria}
+              disabled={!canSend}
+              className="rounded-full"
+            >
+              <ArrowUpIcon aria-hidden="true" />
+            </InputGroupButton>
+          </InputGroupAddon>
+        </InputGroup>
+        <p className="mt-2 text-center text-xs text-muted-foreground">{t.disclaimer}</p>
       </form>
 
       <div aria-live="polite" className="sr-only">
@@ -226,7 +276,10 @@ function ErrorNotice({
   }[kind];
 
   return (
-    <div role="alert" className="flex flex-col items-start gap-2 text-sm">
+    <div
+      role="alert"
+      className="flex flex-col items-start gap-2 rounded-xl border bg-background p-3 text-sm"
+    >
       <p className="text-muted-foreground">{text}</p>
       <div className="flex flex-wrap gap-2">
         {kind === 'generic' || kind === 'busy' || kind === 'rateLimited' ? (

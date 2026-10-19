@@ -235,6 +235,15 @@ Thêm đủ vào `apps/api/src/config/env.ts`, `render.yaml` (key), `apps/api/.e
   màn hình, và bấm link trong câu trả lời thì đóng khung để thấy trang vừa mở. Khung
   mount ở lần mở đầu rồi giữ nguyên (đóng chỉ ẩn), nên lượt đang chạy không bị cắt.
 - Câu chào, ba gợi ý, dòng disclaimer, nút Start over (sinh id mới, xoá khung).
+- Dạng hội thoại (sửa 19/10 sau lần thử đầu trên production, khi Yuri thấy khung chưa
+  giống app nhắn tin): dựng bằng `Message` và `Bubble` của `@tourism/ui` (bộ chat
+  shadcn có sẵn trong repo). Tin khách là bong bóng màu chính bên phải; mỗi lượt trợ
+  lý có ảnh đại diện bên trái và bong bóng sáng trên nền khung nhuộm `muted`; câu chào
+  cũng là một bong bóng, ba gợi ý là nút viên thuốc dưới nó. Chờ chữ đầu tiên (kể cả
+  quãng giữa tool xong và chữ của bước sau) là ba chấm "đang gõ", chữ `Thinking…` chỉ
+  còn cho trình đọc màn hình. Đầu khung: ảnh đại diện, tên, dòng phụ
+  `chatBot.subtitle`; disclaimer dời xuống dưới ô nhập. Ô nhập là `InputGroup` bo tròn,
+  cao dần theo chữ, nút gửi nằm trong ô.
 - `useChat` của `@ai-sdk/react` với transport gửi thẳng API: `prepareSendMessagesRequest`
   biến tin cuối thành `input` của §2b; `credentials: 'include'`;
   `sendAutomaticallyWhen: lastAssistantMessageIsCompleteWithApprovalResponses` để lượt
@@ -259,6 +268,7 @@ Thêm đủ vào `apps/api/src/config/env.ts`, `render.yaml` (key), `apps/api/.e
 - Xoá `contactLauncher.whatsapp`, `prefillGeneric`, `prefillTour` (chỉ phục vụ WhatsApp).
 - Thêm: báo gửi quá nhanh (429), hết lượt hội thoại (409), thẻ xác nhận enquiry (tiêu
   đề, Send, Cancel, đã gửi, đã huỷ), nhãn đóng khung. Chữ chốt lúc viết plan.
+- Thêm 19/10: `chatBot.subtitle` ("AI travel assistant") cho dòng phụ ở đầu khung.
 
 ## 3. Bản đồ file (dự kiến)
 

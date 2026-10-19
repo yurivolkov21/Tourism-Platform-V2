@@ -1546,6 +1546,7 @@ export const messages = {
   // Trợ lý AI tư vấn tour (P6, spec 2026-09-29-p6-ai-concierge-design §2h, §2i).
   chatBot: {
     title: 'Nexora Concierge',
+    subtitle: 'AI travel assistant',
     disclaimer: 'AI assistant — it can make mistakes. For a person, send us an enquiry.',
     greeting:
       'Hi! I can help you find a tour, answer questions about itineraries and policies, or pass your details to our team. What are you planning?',

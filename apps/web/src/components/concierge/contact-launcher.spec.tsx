@@ -176,6 +176,8 @@ describe('ChatPanel — một lượt', () => {
       input: {},
     });
     expect(await screen.findByText(t.toolActivity.searchTours)).toBeInTheDocument();
+    // Đã có thứ để xem thì chấm "đang gõ" nhường chỗ cho dòng tool.
+    expect(screen.queryByText(t.thinking)).toBeNull();
 
     stream.push({
       type: 'tool-output-available',
@@ -188,6 +190,44 @@ describe('ChatPanel — một lượt', () => {
 
     expect(await screen.findByText('No Sa Pa tours right now.')).toBeInTheDocument();
     expect(screen.queryByText(t.toolActivity.searchTours)).toBeNull();
+  });
+});
+
+describe('ChatPanel — chấm "đang gõ"', () => {
+  it('từ lúc gửi tới chữ đầu tiên, và cả quãng giữa tool xong với chữ của bước sau', async () => {
+    const stream = openStream();
+    api.turns.push(stream.response);
+    render(<ContactLauncher />);
+    const user = await openChat();
+    await say(user, 'Tours in Hue?');
+
+    expect(await screen.findByText(t.thinking)).toBeInTheDocument();
+    stream.push({ type: 'start', messageId: 'a1' });
+    stream.push({ type: 'start-step' });
+    stream.push({
+      type: 'tool-input-available',
+      toolCallId: 'c1',
+      toolName: 'searchTours',
+      input: {},
+    });
+    expect(await screen.findByText(t.toolActivity.searchTours)).toBeInTheDocument();
+    expect(screen.queryByText(t.thinking)).toBeNull();
+
+    // Tool xong mà model chưa viết chữ: tin trả lời chưa có gì để xem, chấm quay lại.
+    stream.push({
+      type: 'tool-output-available',
+      toolCallId: 'c1',
+      output: { total: 0, tours: [] },
+    });
+    stream.push({ type: 'finish-step' });
+    stream.push({ type: 'start-step' });
+    expect(await screen.findByText(t.thinking)).toBeInTheDocument();
+    expect(screen.queryByText(t.toolActivity.searchTours)).toBeNull();
+
+    for (const chunk of textReply('a1', 'No Hue tours right now.').slice(2)) stream.push(chunk);
+    stream.close();
+    expect(await screen.findByText('No Hue tours right now.')).toBeInTheDocument();
+    expect(screen.queryByText(t.thinking)).toBeNull();
   });
 });
 
