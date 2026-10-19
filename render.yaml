@@ -115,9 +115,10 @@ services:
         sync: false
       - key: PAYMENT_FEE_FIXED
         sync: false
-      # ADR-0010: SEAM CHƯA NỐI — API chưa cài `@sentry/node`, nên đặt DSN KHÔNG gửi gì lên
-      # Sentry: mỗi lỗi 500 chỉ thêm một dòng cảnh báo vào log (apps/api/src/lib/observability.ts).
-      # Bỏ trống cho tới khi nối thật; lỗi 500 vẫn chỉ nằm ở stdout của Render.
+      # ADR-0010 AMEND 1: DSN của project Sentry kiểu Node.js. Có giá trị thì mỗi lỗi 500 của API
+      # lên Sentry, chỉ kèm method và đường dẫn, không header, query hay body
+      # (apps/api/src/lib/observability.ts). Phải là URL `https://…`: gõ sai là API không boot.
+      # Bỏ trống = tắt, lỗi 500 chỉ nằm ở stdout của Render. Kiểm DSN: `pnpm sentry:test`.
       - key: SENTRY_DSN
         sync: false
       # P6 trợ lý AI (ADR-0050 §4): bỏ trống CHAT_ENABLED là TẮT (/api/chat trả 503, nút
