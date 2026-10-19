@@ -50,9 +50,10 @@ export type SetPhotosAction = (
   input: AdminTourPhotosInput,
 ) => Promise<EditorWriteResult<PhotosContractCode>>;
 
-export type SignPhotoUploadsResult =
+/** Kết quả của lệnh ký một lô; `Code` là mã riêng của từng trình sửa (tour, điểm đến). */
+export type SignPhotoUploadsResult<Code extends string = SignUploadsContractCode> =
   | { ok: true; params: SignedUploadParams[] }
-  | { ok: false; code: SignUploadsContractCode | TransportFailureCode };
+  | { ok: false; code: Code | TransportFailureCode };
 export type SignPhotoUploadsAction = (
   input: AdminTourSignPhotoUploadsInput,
 ) => Promise<SignPhotoUploadsResult>;
