@@ -8,6 +8,57 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-10-19 — Merge nhật ký thao tác admin: trang `/activity` chỉ Owner, ghi tự động sau mỗi lệnh ghi thành công (`6f50333`..`e597e59`)
+
+Mục 8 của bản rà "Việc còn thiếu ở api, web, admin": Yuri chốt làm 19/10 08:36 UTC, chọn "Chỉ Owner"
+08:49 UTC. Nhánh `feat/admin-audit-log`,
+[PR #39](https://github.com/yurivolkov21/Tourism-Platform-V2/pull/39), thi công trên session cloud. Một
+migration `20261019094109_admin_activity` (bảng `admin_activity` chỉ thêm, bật RLS): Yuri chạy tay trên
+Supabase 19/10 11:14 UTC trước khi đẩy main; ảnh chụp cho thấy đúng một migration chờ, áp dụng xong,
+`Database schema is up to date!`, production còn 34 migration. Không biến env, không dependency mới.
+
+- `6f50333`: [ADR-0061](adr/0061-admin-activity-log.md),
+  [spec](specs/2026-10-19-admin-activity-log-design.md) và
+  [plan](plans/2026-10-19-admin-activity-log.md).
+- `41a0c25`: contract. `ADMIN_ACTIVITY` phân loại `log` hoặc `skip` cho mọi khoá của `ADMIN_ACCESS`
+  (`satisfies`, thêm thủ tục admin mà quên phân loại là đỏ typecheck): 37 thủ tục `log`, 14 khu vực.
+  `admin.activity.list` (Owner) lọc theo người, khu vực, khoảng ngày (`createdAtRange`), phân trang, kèm
+  danh sách người có trong nhật ký; `admin.activity.recordExport` (Staff gọi được) cho ba loại xuất.
+- `f8673ec`: API. Bảng `admin_activity` chép nhãn người làm và nhãn đối tượng lúc ghi, nên dòng còn đọc
+  được khi đối tượng bị xoá hay tài khoản bị xoá cứng. `@AdminImplement` gắn interceptor cho thủ tục
+  `log`; interceptor nối một middleware oRPC chạy sau bước kiểm input và ghi sau khi handler thành công,
+  nên input sai, lỗi 404/409 hay `changed: false` không ghi. Ghi lỗi thì chỉ log và báo Sentry, response
+  không đổi. Lệnh xoá đọc nhãn trước khi chạy. Không chép email, số điện thoại của khách hay chữ admin gõ
+  (lý do khoá, ghi chú, lý do hoàn tiền). `data:reset` xoá bảng này.
+- `e597e59`: admin. Mục Activity cuối nhóm System, chỉ Owner; Staff mở thẳng `/activity` thì về trang
+  "Owner only". Bảng When · Who · What · Item, mới nhất trước, lọc People, Area và khoảng ngày, nút xoá
+  lọc, phân trang. Ba route xuất Excel (bookings, subscribers, báo cáo tháng) báo lượt xuất sau khi dựng
+  file; báo lỗi thì file vẫn tải về.
+- Commit merge này: CHANGELOG, CLAUDE.md roadmap, mục lục specs và dòng trạng thái của spec.
+
+**Review.** Không có lượt review độc lập. Yuri bảo đẩy lên main 19/10 11:16 UTC ("Đẩy PR #39 lên main").
+Nhánh rebase lên `f897a7a` không xung đột. Int nhật ký (19 test): lưới quét mọi controller, đúng 37 thủ
+tục có interceptor; gỡ bán tour ghi một dòng, lặp lại không đổi gì thì không ghi; 404, 400 và 409 không
+ghi; xoá tour giữ nhãn, list trả `ref` null; Staff ghi dòng mang bậc Staff; enquiry và cấp quyền Staff
+không chép email hay số điện thoại; ghi nhật ký lỗi thì thao tác vẫn thành công; recordExport ba loại;
+list lọc người, khu vực, ngày, phân trang; quyền list chỉ Owner. Chromium thật trên bản build với API
+sống ở 1440, 768 và 390: gỡ bán một tour ghi "Took off sale" kèm link tour; bán lại bị 409 (tour seed
+thiếu ảnh bìa) và không ghi; xuất bookings ghi "730 rows · everything"; lọc Area và ngày đúng; Staff không
+thấy mục Activity; không cuộn ngang trang.
+
+Tests after (`gate:int` trên `e597e59`, 19/10, session cloud, API sống ở :3001): unit 8169 (web 2385,
+admin 2388, api 1394, mobile 864, contract 800, mobile-ui 145, i18n 62, ui 57, core 48, tokens 26) và int
+952 (57 file); Biome 2085 file. So với `f897a7a`: admin thêm 32 test, api 13, contract 16, int 19 (một
+file mới); Biome thêm 18 file; các gói khác không đổi.
+
+**CÒN TREO:**
+
+- Thử tay production theo spec §8.1, từng bước, chờ xác nhận: gỡ bán rồi bán lại một tour thì `/activity`
+  có "Took off sale" và "Put on sale" với link đúng tour; xuất Excel ở `/bookings` thì có dòng "Exported
+  bookings" với số dòng khớp file; đăng nhập Staff thì không thấy mục Activity, mở `/activity` về trang
+  "Owner only".
+- Dọn nhánh `feat/admin-audit-log` trên origin nếu GitHub không tự xoá.
+
 ## 2026-10-19 — Merge P6 sửa trợ lý: câu không nêu tên tour là hỏi tour đang xem, yêu cầu tour riêng là enquiry (`a8eab3a`)
 
 Yuri chạy 28 kịch bản thử tay của trợ lý trên production 19/10 khoảng 09:30 UTC: đạt, trừ A8 và B1. A8:

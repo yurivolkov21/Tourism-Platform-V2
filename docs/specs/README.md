@@ -76,7 +76,7 @@ code. Mỗi spec đi kèm một plan cùng tên ở [`plans/`](../plans/README.m
 [P4f Appearance: ảnh các khe của web](2026-10-15-p4f-appearance-design.md) ·
 [P4f Media library: một chỗ xem và sửa mọi ảnh](2026-10-16-p4f-media-library-design.md)
 
-**Nhật ký thao tác admin (sau P4f; Yuri chọn làm 19/10, đang thi công)**
+**Nhật ký thao tác admin (sau P4f; Yuri chọn làm 19/10, xong 19/10)**
 [Nhật ký thao tác admin và trang Activity](2026-10-19-admin-activity-log-design.md)
 
 **Trợ lý AI (P6, chưa thi công)**

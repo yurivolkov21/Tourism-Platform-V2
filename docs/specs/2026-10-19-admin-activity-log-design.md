@@ -2,7 +2,8 @@
 
 - **Ngày:** 2026-10-19 · **Trạng thái:** Yuri chọn làm 19/10 08:36 UTC (mục 8 của bản rà "Việc còn
   thiếu ở api, web, admin"), chọn "Chỉ Owner" 08:49 UTC. Phạm vi đã gửi Yuri ở thư mục chung của
-  project (`admin-audit/pham-vi-nhat-ky-thao-tac.md`); spec này là bản chi tiết của nó.
+  project (`admin-audit/pham-vi-nhat-ky-thao-tac.md`); spec này là bản chi tiết của nó. Thi công
+  xong 19/10 ([PR #39](https://github.com/yurivolkov21/Tourism-Platform-V2/pull/39)).
 - **Quyết định kiến trúc:** [ADR-0061](../adr/0061-admin-activity-log.md).
 - **Nền:** [spec P4f Users](2026-10-02-p4f-users-staff-design.md) (Owner và Staff, `user_events`) ·
   [spec G43](2026-10-13-g43-subscribers-selection-dates.md) (khoảng ngày theo `createdAtRange`).
