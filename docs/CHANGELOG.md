@@ -8,6 +8,36 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-10-19 — Merge P6 sửa trợ lý lần ba: sau Cancel nói chưa gửi gì, không bảo bấm Send (`e90c60f`)
+
+Yuri thử lại B3 trên production 19/10 lúc 13:12 UTC, sau PR #42. Thẻ hiện đúng "Enquiry not sent.", câu
+"unable to process" đã hết và thẻ không còn tự điền ngày. Nhưng sau khi khách bấm Cancel, trợ lý nói "You'll
+see a confirmation card… Please press Send to submit it", như thể thẻ vẫn chờ. Render ghi lượt sau Cancel
+lúc 13:12:27, 47 token ra, khớp câu đó. Nguyên nhân: câu lý do chung "The visitor did not press Send…"
+của PR #42 bị model hiểu là "chưa bấm Send". Nhánh `feat/p6-ai-concierge-3xp4sq` (tạo lại từ `c215d97`),
+[PR #43](https://github.com/yurivolkov21/Tourism-Platform-V2/pull/43), thi công trên session cloud. Không
+migration, không biến env, không dependency mới, không copy mới.
+
+- `e90c60f`: `ENQUIRY_NOT_SENT_REASON` ở `chat-history.ts` tách làm hai hằng. `ENQUIRY_CANCELLED_REASON` cho
+  thẻ khách bấm Cancel: khách đã bấm Cancel, chưa gửi gì, thẻ đã đóng nên không còn gì để bấm, không phải
+  lỗi, hãy nói chưa gửi gì. `ENQUIRY_SKIPPED_REASON` cho thẻ bị đóng vì khách gõ tin khác hoặc trả lời thẻ
+  khác cùng tin. Spec P6 §2c ghi lần sửa thứ ba.
+- Commit merge này: open-items dòng P6 ghi kết quả thử và việc còn treo.
+
+**Review.** Không có lượt review độc lập. Chưa thử với model thật (container không có API key); test chỉ
+chứng minh model nhận đúng câu lý do. Nếu B3 còn hỏng, hướng tiếp theo là bỏ lượt gọi model sau Cancel và
+cho server trả một câu cố định. Yuri bảo đẩy lên main 19/10 13:20 UTC.
+
+Tests after (`gate:int` trên `e90c60f`, nền `c215d97`, 19/10, session cloud, API sống ở :3001): unit 8178
+(admin 2388, web 2386, api 1402, mobile 864, contract 800, mobile-ui 145, i18n 62, ui 57, core 48, tokens
+26) và int 952; Biome 2085 file. PR thêm 2 test unit ở api và đổi câu kiểm lý do ở hai test int.
+
+**CÒN TREO:**
+
+- Trên production: thử lại B3 (Start over, xin gửi enquiry, bấm Cancel: trợ lý nói chưa gửi gì, không bảo
+  bấm Send, admin không có enquiry mới). Đạt thì dòng P6 chuyển sang open-items-closed.
+- Dọn nhánh `feat/p6-ai-concierge-3xp4sq` trên origin nếu GitHub không tự xoá.
+
 ## 2026-10-19 — Merge P6 sửa trợ lý: bấm Cancel thì nói chưa gửi gì, travelDate chỉ cho ngày khách nói rõ (`5596064`)
 
 Yuri thử lại trên production 19/10 lúc 12:37–12:41 UTC, sau PR #41. B4 đạt: hỏi "Saigon Vespa" ra tour
