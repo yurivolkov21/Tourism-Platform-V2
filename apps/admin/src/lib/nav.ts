@@ -131,7 +131,8 @@ export const NAV_GROUPS: NavGroup[] = [
       // Vùng thứ tư của P4e (P4e-4) — bài viết. Href TRƠN: không có "việc cần làm"
       // mặc định, tab All là câu hỏi thường ngày (bài nào sửa gần nhất).
       { key: 'posts', label: t.posts, href: '/posts', enabled: true, icon: FileText },
-      { key: 'media', label: t.media, href: '/media', enabled: false, icon: Image },
+      // Mọi ảnh đang dùng và hàng dọn (P4f, ADR-0060) — bậc Staff, cùng bậc sửa bài viết.
+      { key: 'media', label: t.media, href: '/media', enabled: true, icon: Image },
       // Ảnh các khe của web (P4f, ADR-0059) — bậc Staff, cùng bậc sửa bài viết.
       {
         key: 'appearance',

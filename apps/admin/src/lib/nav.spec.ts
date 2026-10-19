@@ -18,8 +18,16 @@ describe('navTooltip', () => {
   });
 
   it('mục chưa mở: kèm "Soon" — nhãn Soon bị ẩn khi sidebar thu gọn', () => {
-    expect(navTooltip(item('media'))).toBe(messages.admin.shell.soonItem('Media library'));
-    expect(navTooltip(item('media'))).toBe('Media library · Soon');
+    // Media library là mục "Soon" cuối cùng, mở ở P4f — canh luật bằng một mục dựng tay.
+    const soon = { ...item('media'), enabled: false };
+    expect(navTooltip(soon)).toBe(messages.admin.shell.soonItem('Media library'));
+    expect(navTooltip(soon)).toBe('Media library · Soon');
+  });
+
+  it('mọi mục của sidebar đã mở', () => {
+    expect(NAV_GROUPS.flatMap((group) => group.items).filter((entry) => !entry.enabled)).toEqual(
+      [],
+    );
   });
 });
 

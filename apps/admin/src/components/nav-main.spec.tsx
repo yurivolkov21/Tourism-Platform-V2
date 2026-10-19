@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { messages } from '@tourism/i18n';
 import { SidebarProvider } from '@tourism/ui/components/sidebar';
 import { TooltipProvider } from '@tourism/ui/components/tooltip';
+import { Star } from 'lucide-react';
 import { describe, expect, it, vi } from 'vitest';
 import { NavMain } from './nav-main';
 
@@ -12,6 +13,24 @@ import { NavMain } from './nav-main';
  * được; trang đang mở có ô sáng; ba nhóm cách nhau bằng vạch mảnh.
  */
 vi.mock('next/navigation', () => ({ usePathname: () => '/tours/ha-long-bay-cruise' }));
+
+/**
+ * Mọi mục thật đã mở từ P4f (Media library là mục "Soon" cuối cùng), nên ca "chưa mở" chèn một
+ * mục dựng tay vào nhóm Content — nhánh `enabled: false` của nav vẫn phải nói được vì sao.
+ */
+vi.mock('@/lib/nav', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/lib/nav')>();
+  const soon = { key: 'soon', label: 'Coming page', href: '/coming', enabled: false, icon: Star };
+  return {
+    ...actual,
+    navGroupsFor: (role: string) =>
+      actual
+        .navGroupsFor(role)
+        .map((group) =>
+          group.key === 'content' ? { ...group, items: [...group.items, soon] } : group,
+        ),
+  };
+});
 
 function renderNav({ open, role = 'ADMIN' }: { open: boolean; role?: string }) {
   return render(
@@ -53,12 +72,12 @@ describe('NavMain', () => {
   it('mục chưa mở tiêu điểm được (aria-disabled, không disabled), tooltip nói "Soon"', async () => {
     const user = userEvent.setup();
     renderNav({ open: false });
-    const media = screen.getByRole('button', { name: 'Media library' });
+    const soon = screen.getByRole('button', { name: 'Coming page' });
 
-    expect(media).toHaveAttribute('aria-disabled', 'true');
-    expect(media).not.toBeDisabled();
-    await user.hover(media);
-    expect(await screen.findByText('Media library · Soon')).toBeInTheDocument();
+    expect(soon).toHaveAttribute('aria-disabled', 'true');
+    expect(soon).not.toBeDisabled();
+    await user.hover(soon);
+    expect(await screen.findByText('Coming page · Soon')).toBeInTheDocument();
   });
 
   it('trang đang mở (kể cả trang con) sáng và mang aria-current', () => {

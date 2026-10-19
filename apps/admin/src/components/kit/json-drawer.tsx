@@ -14,6 +14,7 @@ import { ScrollArea } from '@tourism/ui/components/scroll-area';
 import { ToggleGroup, ToggleGroupItem } from '@tourism/ui/components/toggle-group';
 import { BracesIcon, ListIcon, XIcon } from 'lucide-react';
 import * as React from 'react';
+import { DRAWER_SHELL } from '@/components/kit/drawer-shell';
 import { LabelValueRow } from '@/components/kit/label-value-row';
 import { type PayloadField, type PayloadHints, toPayloadFields } from '@/lib/payload-fields';
 
@@ -53,19 +54,6 @@ import { type PayloadField, type PayloadHints, toPayloadFields } from '@/lib/pay
  * Bảng giữ MỘT instance, mở/đóng qua `open` — 50 hàng không mount 50 panel.
  */
 const t = messages.admin.payload;
-
-/**
- * Cấu hình vỏ theo drawer-02. `Popup` (lớp ngoài) thành trong suốt, không
- * viền; hình hài panel đắp lên lớp TRONG (`data-slot=drawer-content`). Phải
- * chia hai lớp như vậy vì lớp ngoài còn phải trải hết chiều cao cho phép tính
- * vuốt/xếp chồng của primitive chạy đúng — co nó lại rồi bo góc là gãy chỗ đó.
- */
-const DRAWER_SHELL = [
-  'm-0 border-0! bg-transparent! shadow-none! [--drawer-bleed-background:transparent] [--drawer-inset:0px]',
-  // 39.125rem = 626px, thay 24rem mặc định của primitive.
-  'data-[swipe-axis=x]:[--drawer-content-width:100%] data-[swipe-axis=x]:sm:[--drawer-content-width:39.125rem]',
-  '**:data-[slot=drawer-content]:m-4 **:data-[slot=drawer-content]:w-full **:data-[slot=drawer-content]:rounded-2xl **:data-[slot=drawer-content]:border **:data-[slot=drawer-content]:bg-popover **:data-[slot=drawer-content]:text-popover-foreground **:data-[slot=drawer-content]:shadow-2xl',
-].join(' ');
 
 /** Hai chế độ xem khối payload. Mặc định `simple` — xem JSDoc `JsonDrawer`. */
 type PayloadMode = 'simple' | 'developer';

@@ -6259,6 +6259,180 @@ export const messages = {
         restoredBody: (slot: string) => `${slot} is back to its original photo.`,
       },
     },
+    // Media library (P4f, ADR-0060) — bậc Staff, cùng bậc sửa tour và bài viết.
+    media: {
+      /** Đo: API bust tag của mọi chủ có dòng vừa đổi sau commit (ADR-0060 §3). */
+      intro:
+        'Every photo the site uses, in one place. Fix its alt text or credit here and every page that shows it changes within a minute.',
+      tabs: { label: 'Media view', inUse: 'In use', queue: 'Cleanup queue' },
+      stats: {
+        photos: 'Photos in use',
+        photosCaption: 'On tours, destination libraries, posts and site pages',
+        attention: 'Need attention',
+        attentionSome: 'Missing alt text, or a CC licence without its author or link',
+        attentionNone: 'Every photo has its alt text and a complete credit',
+        waiting: 'Waiting for deletion',
+        waitingSome: (days: number) => `Uploads nothing uses any more, deleted after ${days} days`,
+        waitingNone: 'No upload is waiting to be deleted',
+      },
+      filters: {
+        searchLabel: 'Search photos',
+        searchPlaceholder: 'Alt text, author, file or page',
+        usedIn: 'Used in',
+        usedAll: 'Used anywhere',
+        used: {
+          tours: 'Tours',
+          library: 'Destination libraries',
+          posts: 'Posts',
+          site: 'Site pages',
+        },
+        show: 'Show',
+        showAll: 'All photos',
+        showAttention: 'Needs attention',
+        showNoCredit: 'No credit info',
+      },
+      count: (shown: number, total: number) =>
+        shown === total
+          ? total === 1
+            ? '1 photo'
+            : `${total} photos`
+          : `${shown} of ${total} photos`,
+      empty: 'No photo matches these filters.',
+      uploaded: 'Uploaded',
+      attentionMark: 'Needs attention',
+      /** Tóm tắt chỗ dùng trên ô ảnh, nối bằng " · ": "Library · 5 tours". */
+      usageSummary: {
+        library: 'Library',
+        tours: (n: number) => (n === 1 ? '1 tour' : `${n} tours`),
+        posts: (n: number) => (n === 1 ? '1 post' : `${n} posts`),
+        site: (n: number) => (n === 1 ? '1 site slot' : `${n} site slots`),
+      },
+      openLabel: (summary: string) => `Open photo details: ${summary}`,
+      /** Tên ảnh khi alt trống — ô ảnh và tiêu đề ngăn vẫn cần một cái tên. */
+      untitled: 'Photo without alt text',
+      /** Một dòng của "Used in": loại chủ đứng trước tên. */
+      owner: {
+        TOUR: 'Tour',
+        DESTINATION: 'Library',
+        POST: 'Post',
+        SITE: 'Site',
+      },
+      deletedOwner: {
+        TOUR: 'Deleted tour',
+        DESTINATION: 'Deleted destination',
+        POST: 'Deleted post',
+        SITE: 'Removed site slot',
+      },
+      cover: 'Cover',
+      drawer: {
+        title: 'Photo details',
+        close: 'Close',
+        source: { UPLOAD: 'Uploaded', CATALOG: 'Catalogue' },
+        size: (width: number, height: number) => `${width} × ${height} px`,
+        sizeUnknown: 'Size not recorded',
+        facts: {
+          dimensions: 'Dimensions',
+          fileSize: 'File size',
+          format: 'Format',
+          source: 'Source',
+          file: 'File',
+        },
+        copy: 'Copy file name',
+        copied: 'File name copied',
+        copyFailed: 'The file name could not be copied. Select it and copy it by hand.',
+        usedIn: 'Used in',
+        usedInCount: (n: number) => (n === 1 ? 'Used in 1 place' : `Used in ${n} places`),
+        /** Đo: link `/destinations` cho tới khi Media B có trang Photos của điểm đến. */
+        edit: (place: string) => `Edit ${place}`,
+        alt: 'Alt text',
+        altRequiredHint:
+          'Required. This photo is on a tour or in a destination library. Describe it for people who can’t see it.',
+        altOptionalHint: 'Optional. Leave it empty if the photo only decorates the page.',
+        altCounter: (n: number, max: number) => `${n} / ${max}`,
+        altMissing: 'Describe this photo. It is on a tour or in a destination library.',
+        altTooLong: (max: number) => `Alt text can be up to ${max} characters.`,
+        author: 'Author',
+        license: 'Licence',
+        licenseHint: 'For example CC BY-SA 4.0, Unsplash License or Public domain.',
+        licenseUrl: 'Licence link',
+        sourceUrl: 'Source link',
+        linkHint: 'A full link that starts with https://',
+        invalidLink: 'Enter a full link that starts with https://',
+        /** Cảnh báo, không chặn lưu (ADR-0060 §3). */
+        ccIncomplete:
+          'CC BY licences ask for the author’s name and a link to the licence. Add both if you can.',
+        varies: (n: number) => `Saving makes all ${n} uses the same.`,
+        altVaries: 'The uses now have different alt text:',
+        creditVaries: 'The uses now have different credits:',
+        emptyValue: 'Empty',
+        noCredit: 'No credit',
+        usesCount: (n: number) => (n === 1 ? '1 use' : `${n} uses`),
+        save: 'Save changes',
+        saving: 'Saving…',
+        unchanged: 'Change a field to save.',
+      },
+      /** Mã CONTRACT của `admin.media.update`. */
+      errors: {
+        STALE_MEDIA:
+          'Someone changed this photo somewhere else a moment ago. The details now show their version.',
+        NOT_FOUND: 'This photo is no longer in use anywhere, so there is nothing left to edit.',
+        ALT_REQUIRED: 'Describe this photo. It is on a tour or in a destination library.',
+      },
+      toast: {
+        saved: 'Photo saved',
+        savedBody: (n: number) =>
+          n === 1
+            ? 'The page that shows it changes within a minute.'
+            : `The ${n} places that show it change within a minute.`,
+      },
+      queue: {
+        intro:
+          'Uploads that were replaced or removed from a page. Cleanup deletes the ones nothing uses any more and keeps the rest. Nothing here can be deleted by hand: to drop a photo, remove it from the page that uses it.',
+        off: 'Cleanup is off here: nothing is deleted.',
+        on: (days: number) =>
+          `Cleanup is on. An upload is deleted from storage ${days} days after the last page stopped using it.`,
+        lastNone: 'No cleanup has run yet.',
+        lastDone: (time: string, deleted: number, kept: number, failed: number) =>
+          `Last cleanup ${time}: ${deleted} deleted, ${kept} kept, ${failed} failed.`,
+        lastDoneNoReport: (time: string) => `Last cleanup finished ${time}.`,
+        lastFailed: (time: string) => `The last cleanup failed ${time}. It runs again tomorrow.`,
+        lastRunning: (time: string) => `A cleanup is running, started ${time}.`,
+        lastQueued: 'A cleanup is queued and starts shortly.',
+        lastCancelled: (time: string) => `The last cleanup was cancelled ${time}.`,
+        empty: 'Nothing is waiting. Every uploaded photo is in use.',
+        caption: 'Uploaded photos waiting for cleanup',
+        columns: {
+          photo: 'Photo',
+          kind: 'From',
+          owner: 'Belonged to',
+          state: 'Status',
+          queued: 'Removed',
+        },
+        zone: {
+          TOUR: 'Tour',
+          POST: 'Post',
+          SITE: 'Site slot',
+          DESTINATION: 'Destination library',
+          REVIEW: 'Review',
+          AVATAR: 'Customer avatar',
+        },
+        outsideZone: 'Not an upload',
+        state: {
+          REFUSED: 'Never deleted',
+          GAVE_UP: 'Gave up after 5 tries',
+          IN_USE: 'Kept, still in use',
+          WAITING: (date: string) => `Deleted after ${date}`,
+        },
+        /** Avatar không lộ ảnh lẫn danh tính khách (ADR-0060 §4). */
+        avatarOwner: 'Customer',
+        reviewOwner: (code: string) => `Booking ${code}`,
+        slotGone: 'Removed site slot',
+        /** Dòng ngoài vùng tải lên: đường dẫn không nói chủ là ai. */
+        noOwner: '—',
+        noPhoto: 'No preview',
+        refusedHint: 'Outside the upload folders, so cleanup never touches it.',
+      },
+    },
     // Vùng Users (P4f, ADR-0052). Enum giữ ADMIN, giao diện gọi là Owner (ADR-0052 §1).
     users: {
       roles: { ADMIN: 'Owner', STAFF: 'Staff', CUSTOMER: 'Customer' },
