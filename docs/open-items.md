@@ -111,12 +111,6 @@ Không còn việc nào chờ quyết (14/10).
 
 ## Việc tay trên hạ tầng
 
-- **Build web trên Vercel đỏ 09/10 vì API trả 500 lúc prerender** (`/blog/two-days-among-the-karsts`,
-  6 lượt thử). Bản preview cùng commit lúc 02:39 UTC cũng nhận 500 ở review của 5 tour, trước
-  khi push main. Redeploy 03:06 UTC xanh, không còn 500. Nghi API đang khởi động lại
-  (deploy hoặc đổi env trên Render) — chưa đọc log Render quanh 02:39 và 02:48 UTC để xác nhận.
-  Cùng hình dạng với các lần tái phát của G23 (API vừa thức trả 500 lúc prerender) — suy
-  luận, chưa kiểm bằng log.
 - Bộ dọn ảnh và tám file thử F18 trên Cloudinary: bộ dọn từng gần như không chạy trên gói
   free của Render (G41), nên hai mốc theo dõi cũ (30/09, 07/10) đã chuyển sang
   open-items-closed.md. G41 đóng 14/10 (PR #18): từ bản deploy ấy worker chạy bù `media-gc`

@@ -122,6 +122,16 @@ báo ở `bookings/[code]`, đọc cờ `departureCancelled`.~~
 - Kiểm nút Export trên production sau lần deploy gần nhất.
   *Đóng khi tách 14/10: thử tay G40 Phần 3 trên production 12/10 đã xuất Excel bookings (có lọc,
   chọn hàng) và subscribers, 4/4 bước đạt (CHANGELOG 12/10).*
+- **Build web trên Vercel đỏ 09/10 vì API trả 500 lúc prerender** (`/blog/two-days-among-the-karsts`,
+  6 lượt thử). Bản preview cùng commit lúc 02:39 UTC cũng nhận 500 ở review của 5 tour, trước
+  khi push main. Redeploy 03:06 UTC xanh, không còn 500. Nghi API đang khởi động lại
+  (deploy hoặc đổi env trên Render) — chưa đọc log Render quanh 02:39 và 02:48 UTC để xác nhận.
+  Cùng hình dạng với các lần tái phát của G23 (API vừa thức trả 500 lúc prerender) — suy
+  luận, chưa kiểm bằng log.
+  *Đóng 19/10, không xác minh được: log của service API trên Render (đọc chỉ-đọc 19/10) chỉ còn
+  từ 12/10 07:10 UTC, nên quãng 02:30–03:10 UTC ngày 09/10 không còn dòng nào. G23 (trần pool
+  15 client của Session pooler) đã vá 14/10 ở PR #16. Tái phát thì mở mục mới và đọc log Render
+  ngay trong ngày.*
 
 ## ~~Bug tiềm ẩn: `pending-sweep.service.ts` so sánh timestamp phụ thuộc timezone server~~ — đóng 14/10
 
