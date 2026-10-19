@@ -1,4 +1,12 @@
-import type { Paged, TourCard, TourDetail, ToursListQuery } from '@tourism/contract';
+import type {
+  BookingDetail,
+  BookingsListQuery,
+  BookingsListResult,
+  Paged,
+  TourCard,
+  TourDetail,
+  ToursListQuery,
+} from '@tourism/contract';
 import { vi } from 'vitest';
 import {
   type ChatToolDeps,
@@ -191,6 +199,42 @@ describe('toTourDetailsResult', () => {
 
 describe('createChatTools', () => {
   const tour = { id: '00000000-0000-4000-8000-0000000000aa', title: 'Ha Long Bay 2D1N' };
+  // Đơn đủ trường để đi qua hàm thu gọn; nội dung chi tiết test ở chat-bookings.spec.ts.
+  const myBooking: BookingDetail = {
+    id: '00000000-0000-4000-8000-0000000000b1',
+    code: 'BK-AB12CD34',
+    status: 'PAID',
+    tourTitle: 'Ha Long Bay 2D1N',
+    tourSlug: 'ha-long-2d1n',
+    tourImage: null,
+    tourDestinations: [],
+    departureStartDate: '2026-11-02',
+    departureEndDate: '2026-11-03',
+    cancellationDeadline: '2026-10-31',
+    departureCancelled: false,
+    unitPrice: '189.00',
+    totalAmount: '189.00',
+    currency: 'USD',
+    numAdults: 1,
+    numChildren: 0,
+    contactName: 'An Nguyen',
+    contactEmail: 'an@example.com',
+    contactPhone: null,
+    specialRequests: null,
+    paymentProvider: 'STRIPE',
+    checkoutUrl: null,
+    paidAt: '2026-10-01T03:00:00.000Z',
+    cancelledAt: null,
+    createdAt: '2026-10-01T02:00:00.000Z',
+    cancellationStatus: null,
+    cancellationRequestedAt: null,
+    cancellationDecidedAt: null,
+    refundedTotal: '0.00',
+    reviewedAt: null,
+    review: null,
+    cancellation: null,
+    departureCancelReason: null,
+  };
 
   function deps(overrides: Partial<ChatToolDeps> = {}): ChatToolDeps {
     return {
@@ -207,6 +251,26 @@ describe('createChatTools', () => {
         getTourBySlug: vi.fn(async (slug: string) => (slug === 'ha-long-2d1n' ? detail() : null)),
       },
       enquiries: { create: vi.fn(async () => ({ id: 'enq-1' })) },
+      bookings: {
+        mine: vi.fn(
+          async (_userId: string, query: BookingsListQuery): Promise<BookingsListResult> => ({
+            items: [],
+            page: 1,
+            limit: query.limit,
+            total: 0,
+            totalPages: 0,
+            facets: {
+              when: { ON_TOUR: 0, UPCOMING: 0, PAST: 0 },
+              status: { PENDING: 0, PAID: 0, CANCELLED: 0, REFUNDED: 0, PARTIALLY_REFUNDED: 0 },
+            },
+            overallTotal: 0,
+            today: '2026-10-15',
+          }),
+        ),
+        byCode: vi.fn(async (_userId: string, code: string) =>
+          code === myBooking.code ? myBooking : null,
+        ),
+      },
       findPublishedTour: vi.fn(async (slug: string) => (slug === 'ha-long-2d1n' ? tour : null)),
       hasEnquiry: vi.fn(async () => false),
       linkEnquiry: vi.fn(async () => {}),
@@ -278,6 +342,54 @@ describe('createChatTools', () => {
     });
     expect(d.enquiries.create).not.toHaveBeenCalled();
     expect(d.linkEnquiry).not.toHaveBeenCalled();
+  });
+
+  describe('tool đọc đơn (ADR-0050 AMEND 2)', () => {
+    it('khách vãng lai không có tool đọc đơn nào', () => {
+      const { tools } = createChatTools(deps({ userId: null }));
+      expect(Object.keys(tools).sort()).toEqual(['getTourDetails', 'searchTours', 'submitEnquiry']);
+    });
+
+    it('input của model không có chỗ nào chỉ định người khác', () => {
+      const { tools } = createChatTools(deps());
+      const fields = (schema: unknown) => Object.keys((schema as { shape: object }).shape);
+      expect(fields(tools.listMyBookings?.inputSchema)).toEqual(['when']);
+      expect(fields(tools.getMyBooking?.inputSchema)).toEqual(['code']);
+    });
+
+    it('listMyBookings đọc đơn của người có phiên, 10 đơn, lọc theo nhóm', async () => {
+      const d = deps();
+      const { tools } = createChatTools(d);
+      const out = await tools.listMyBookings?.execute({ when: 'upcoming' }, call);
+      expect(d.bookings.mine).toHaveBeenCalledWith(
+        'user-1',
+        expect.objectContaining({ limit: 10, order: 'journey', when: ['ON_TOUR', 'UPCOMING'] }),
+      );
+      expect(out).toMatchObject({ total: 0, shown: 0, bookings: [] });
+    });
+
+    it('getMyBooking chuẩn hoá mã rồi đọc theo người có phiên; mã người khác → found: false', async () => {
+      const d = deps({ now: () => new Date('2026-10-15T03:00:00Z') });
+      const { tools } = createChatTools(d);
+      expect(await tools.getMyBooking?.execute({ code: ' bk-ab12cd34 ' }, call)).toMatchObject({
+        found: true,
+        code: 'BK-AB12CD34',
+        url: '/account/bookings/BK-AB12CD34',
+      });
+      expect(d.bookings.byCode).toHaveBeenCalledWith('user-1', 'BK-AB12CD34');
+      expect(await tools.getMyBooking?.execute({ code: 'BK-ZZ99ZZ99' }, call)).toEqual({
+        found: false,
+      });
+    });
+
+    it('mã sai khuôn → found: false mà không chạm DB', async () => {
+      const d = deps();
+      const { tools } = createChatTools(d);
+      expect(await tools.getMyBooking?.execute({ code: 'my last trip' }, call)).toEqual({
+        found: false,
+      });
+      expect(d.bookings.byCode).not.toHaveBeenCalled();
+    });
   });
 
   describe('toolApproval', () => {

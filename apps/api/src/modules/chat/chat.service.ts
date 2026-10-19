@@ -18,6 +18,7 @@ import {
 import { prisma } from '../../auth/auth.config.js';
 import type { Prisma } from '../../generated/prisma/client.js';
 import { ChatRole } from '../../generated/prisma/enums.js';
+import { BookingsService } from '../bookings/bookings.service.js';
 import { CatalogService } from '../catalog/catalog.service.js';
 import { EnquiriesService } from '../enquiries/enquiries.service.js';
 import { isOverDailyBudget, utcDayStart } from './chat-budget.js';
@@ -64,6 +65,7 @@ export class ChatService {
     @Inject(CHAT_LANGUAGE_MODEL) private readonly model: LanguageModel | null,
     private readonly catalog: CatalogService,
     private readonly enquiries: EnquiriesService,
+    private readonly bookings: BookingsService,
   ) {}
 
   /** `GET /api/chat`: cờ bật và hôm nay chưa chạm trần. Lượt gọi này cũng đánh thức API. */
@@ -157,6 +159,10 @@ export class ChatService {
   /**
    * Tạo hội thoại ở tin đầu, gắn tài khoản nếu có phiên. Id đã gắn tài khoản khác → 404
    * (không lộ là id có tồn tại). Quyết định duyệt cho id chưa có thì không tạo gì.
+   *
+   * Hội thoại đã có mà chưa có chủ, lượt này lại có phiên: gắn vào tài khoản TRƯỚC khi chạy
+   * lượt (ADR-0050 AMEND 2 mục 3). Hội thoại vô chủ thì ai biết id cũng đọc được, nên dữ liệu
+   * đơn chỉ được vào hội thoại đã thuộc đúng người có đơn.
    */
   private async claimConversation(
     id: string,
@@ -171,6 +177,7 @@ export class ChatService {
       if (!this.canAccess(existing.userId, userId)) {
         throw chatError(HttpStatus.NOT_FOUND, 'CHAT_NOT_FOUND', 'Conversation not found');
       }
+      if (existing.userId === null && userId !== null) await this.bindToAccount(id, userId);
       return;
     }
     if (inputType === 'approval') {
@@ -184,6 +191,22 @@ export class ChatService {
       select: { userId: true },
     });
     if (!created || !this.canAccess(created.userId, userId)) {
+      throw chatError(HttpStatus.NOT_FOUND, 'CHAT_NOT_FOUND', 'Conversation not found');
+    }
+  }
+
+  /**
+   * Gắn hội thoại vô chủ vào tài khoản. Điều kiện `userId: null` nằm trong câu UPDATE: hai
+   * phiên khác nhau cùng gửi vào một id thì chỉ một bên gắn được, bên kia đọc lại thấy chủ
+   * khác và nhận 404 như mọi hội thoại không phải của mình.
+   */
+  private async bindToAccount(id: string, userId: string): Promise<void> {
+    await prisma.chatConversation.updateMany({ where: { id, userId: null }, data: { userId } });
+    const bound = await prisma.chatConversation.findUnique({
+      where: { id },
+      select: { userId: true },
+    });
+    if (bound?.userId !== userId) {
       throw chatError(HttpStatus.NOT_FOUND, 'CHAT_NOT_FOUND', 'Conversation not found');
     }
   }
@@ -265,6 +288,7 @@ export class ChatService {
     const { tools, toolApproval } = createChatTools({
       catalog: this.catalog,
       enquiries: this.enquiries,
+      bookings: this.bookings,
       findPublishedTour: (slug) =>
         prisma.tour.findFirst({
           where: { slug, isPublished: true },
@@ -293,6 +317,7 @@ export class ChatService {
         now: new Date(startedAt),
         destinations: options.destinations,
         categories: options.categories,
+        signedIn: userId !== null,
         ...(request.tourSlug === undefined ? {} : { tourSlug: request.tourSlug }),
       }),
       messages: await convertToModelMessages(messages, { tools }),

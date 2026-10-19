@@ -10,12 +10,26 @@ import {
 } from '@tourism/contract';
 import { type Tool, type ToolExecuteFunction, tool } from 'ai';
 import { z } from 'zod';
+import type { BookingsService } from '../bookings/bookings.service.js';
 import type { CatalogService } from '../catalog/catalog.service.js';
 import type { EnquiriesService } from '../enquiries/enquiries.service.js';
+import {
+  type GetMyBookingInput,
+  GetMyBookingInputSchema,
+  type ListMyBookingsInput,
+  ListMyBookingsInputSchema,
+  type MyBookingResult,
+  type MyBookingsResult,
+  normalizeBookingCode,
+  toMyBookingDetails,
+  toMyBookingsQuery,
+  toMyBookingsResult,
+} from './chat-bookings.js';
 
 /**
- * Ba tool của trợ lý (spec §2c). Tool gọi thẳng service, không qua HTTP; kết quả thu
+ * Các tool của trợ lý (spec §2c). Tool gọi thẳng service, không qua HTTP; kết quả thu
  * gọn để một lượt nhiều bước không phình token. Hàm thu gọn là thuần, test riêng.
+ * Ba tool cho mọi khách; hai tool đọc đơn chỉ có khi lượt có phiên (ADR-0050 AMEND 2).
  */
 
 const SEARCH_LIMIT = 8;
@@ -186,13 +200,21 @@ interface PublishedTour {
 export interface ChatToolDeps {
   catalog: Pick<CatalogService, 'listTours' | 'getTourBySlug'>;
   enquiries: Pick<EnquiriesService, 'create'>;
+  /** Hai hàm đọc đơn của chính khách — cùng hàm trang My bookings và trang chi tiết đơn gọi. */
+  bookings: Pick<BookingsService, 'mine' | 'byCode'>;
   /** Tour đang bán theo slug, hoặc null. */
   findPublishedTour(slug: string): Promise<PublishedTour | null>;
   /** Hội thoại đã gửi enquiry chưa (`chat_conversations.enquiry_id`). */
   hasEnquiry(): Promise<boolean>;
   /** Ghi `enquiry_id` vào hội thoại. */
   linkEnquiry(enquiryId: string): Promise<void>;
+  /**
+   * Người có phiên ở lượt này, hoặc null. Có phiên thì hội thoại đã thuộc đúng người ấy
+   * (`ChatService.claimConversation`), nên hai tool đọc đơn chỉ thấy đơn của chủ hội thoại.
+   */
   userId: string | null;
+  /** Đồng hồ cho "hôm nay" của chi tiết đơn; test truyền mốc cố định. */
+  now?: () => Date;
 }
 
 export type SearchToursResult = ReturnType<typeof toSearchResult>;
@@ -210,6 +232,9 @@ export interface ChatToolset {
     searchTours: ChatTool<SearchToursInput, SearchToursResult>;
     getTourDetails: ChatTool<{ slug: string }, TourDetailsResult>;
     submitEnquiry: ChatTool<SubmitEnquiryInput, SubmitEnquiryResult>;
+    /** Chỉ có khi lượt có phiên — khách vãng lai không có đường nào tra đơn. */
+    listMyBookings?: ChatTool<ListMyBookingsInput, MyBookingsResult>;
+    getMyBooking?: ChatTool<GetMyBookingInput, MyBookingResult>;
   };
   toolApproval: {
     submitEnquiry(input: SubmitEnquiryInput): Promise<{ type: 'user-approval'; reason?: string }>;
@@ -271,6 +296,7 @@ export function createChatTools(deps: ChatToolDeps): ChatToolset {
         return { sent: true as const };
       },
     }),
+    ...(deps.userId === null ? {} : bookingTools(deps.bookings, deps.userId, deps.now)),
   };
 
   /**
@@ -297,3 +323,34 @@ export function createChatTools(deps: ChatToolDeps): ChatToolset {
 }
 
 export type ChatTools = ChatToolset['tools'];
+
+/**
+ * Hai tool CHỈ ĐỌC đơn của chính khách (ADR-0050 AMEND 2). `userId` đến từ phiên ở server,
+ * không nằm trong input của model; mã đơn của người khác trả `{ found: false }` như trang
+ * web trả 404 (`byCode` lọc theo chủ đơn).
+ */
+function bookingTools(
+  bookings: ChatToolDeps['bookings'],
+  userId: string,
+  now: () => Date = () => new Date(),
+) {
+  return {
+    listMyBookings: tool({
+      description:
+        "List the signed-in visitor's own bookings, at most 10, current and upcoming trips first. Status and payment are written in plain words; repeat them as given.",
+      inputSchema: ListMyBookingsInputSchema,
+      execute: async ({ when }) =>
+        toMyBookingsResult(await bookings.mine(userId, toMyBookingsQuery(when))),
+    }),
+    getMyBooking: tool({
+      description:
+        "Read one of the signed-in visitor's own bookings by its code: payment, free-cancellation deadline and refund if cancelled now, cancellation requests, refunds and review. Returns found: false when the code is not one of their bookings.",
+      inputSchema: GetMyBookingInputSchema,
+      execute: async ({ code }): Promise<MyBookingResult> => {
+        const normalized = normalizeBookingCode(code);
+        const booking = normalized === null ? null : await bookings.byCode(userId, normalized);
+        return booking === null ? { found: false as const } : toMyBookingDetails(booking, now());
+      },
+    }),
+  };
+}

@@ -7,7 +7,7 @@ import { AppModule } from '../../app.module.js';
 import { prisma } from '../../auth/auth.config.js';
 import { configureHttp, createFastifyAdapter } from '../../bootstrap.js';
 import { corsOrigins } from '../../config/env.js';
-import { ChatRole, EmailType } from '../../generated/prisma/enums.js';
+import { BookingStatus, ChatRole, EmailType } from '../../generated/prisma/enums.js';
 import { sessionCookie } from '../../test/session-cookie.js';
 import { ChatService } from './chat.service.js';
 import { CHAT_CONFIG, CHAT_LANGUAGE_MODEL, type ChatConfig } from './chat-config.js';
@@ -95,6 +95,7 @@ const PASSWORD = 'chat-int-password-1';
 let ownerCookie: string;
 let otherCookie: string;
 let ownerId: string;
+let otherId: string;
 
 function post(body: unknown, opts: { ip?: string; cookie?: string; origin?: string } = {}) {
   return app.inject({
@@ -178,6 +179,8 @@ beforeAll(async () => {
   }
   [ownerCookie = '', otherCookie = ''] = cookies;
   ownerId = (await prisma.user.findUniqueOrThrow({ where: { email: 'chat-owner@tourism.test' } }))
+    .id;
+  otherId = (await prisma.user.findUniqueOrThrow({ where: { email: 'chat-other@tourism.test' } }))
     .id;
 });
 
@@ -460,6 +463,147 @@ describe('chat (int)', () => {
         expect((await app.inject({ method: 'GET', url, remoteAddress: nextIp() })).statusCode).toBe(
           404,
         );
+      }
+    });
+  });
+
+  describe('đọc đơn của chính khách (ADR-0050 AMEND 2)', () => {
+    /** Tên các tool model được thấy ở một lần gọi. */
+    const toolNames = (index: number) =>
+      (calls[index]?.tools ?? []).map((tool) => ('name' in tool ? tool.name : '')).sort();
+
+    async function seedBooking(userId: string, code: string) {
+      const tour = await prisma.tour.findFirstOrThrow({ where: { slug: 'hue-food-walk' } });
+      const departure = await prisma.tourDeparture.findFirstOrThrow({ where: { tourId: tour.id } });
+      return prisma.booking.create({
+        data: {
+          code,
+          userId,
+          tourId: tour.id,
+          departureId: departure.id,
+          numAdults: 2,
+          totalAmount: '90.00',
+          currency: 'USD',
+          status: BookingStatus.PAID,
+          paidAt: new Date(),
+          tourTitle: tour.title,
+          departureStartDate: departure.startDate,
+          departureEndDate: departure.endDate,
+          unitPrice: '45.00',
+          contactName: 'Private Contact',
+          contactEmail: `${code.toLowerCase()}@private.test`,
+          contactPhone: '+84 900 111 222',
+          specialRequests: 'Secret allergy note',
+          paymentProvider: 'STRIPE',
+        },
+      });
+    }
+
+    it('hội thoại vô chủ: lượt có phiên gắn nó vào tài khoản, từ đó chỉ chủ đọc ghi được', async () => {
+      const id = newId();
+      script = [textReply('Hi visitor'), textReply('Hi member')];
+      await post(say(id, 'Hello'));
+      await waitForTurnEnd(id);
+      expect((await prisma.chatConversation.findUniqueOrThrow({ where: { id } })).userId).toBe(
+        null,
+      );
+
+      // GET có phiên chỉ đọc, không gắn.
+      const peek = await app.inject({
+        method: 'GET',
+        url: `/api/chat/${id}`,
+        headers: { cookie: ownerCookie },
+      });
+      expect(peek.statusCode).toBe(200);
+      expect((await prisma.chatConversation.findUniqueOrThrow({ where: { id } })).userId).toBe(
+        null,
+      );
+
+      expect((await post(say(id, 'Signed in now'), { cookie: ownerCookie })).statusCode).toBe(200);
+      await waitForTurnEnd(id);
+      expect((await prisma.chatConversation.findUniqueOrThrow({ where: { id } })).userId).toBe(
+        ownerId,
+      );
+      // Lượt đầu tiên sau khi gắn đã có tool đọc đơn.
+      expect(toolNames(1)).toContain('listMyBookings');
+
+      const anonymous = await app.inject({
+        method: 'GET',
+        url: `/api/chat/${id}`,
+        remoteAddress: nextIp(),
+      });
+      expect(anonymous.statusCode).toBe(404);
+      expect((await post(say(id, 'Hijack'), { cookie: otherCookie })).statusCode).toBe(404);
+      expect((await post(say(id, 'Anonymous again'))).statusCode).toBe(404);
+      expect(calls).toHaveLength(2);
+    });
+
+    it('khách vãng lai: không có tool đọc đơn, prompt có câu mời đăng nhập', async () => {
+      const id = newId();
+      script = [textReply("I can't check this because you're not signed in.")];
+      await post(say(id, 'Did I pay for my Hue trip?'));
+      await waitForTurnEnd(id);
+      expect(toolNames(0)).toEqual(['getTourDetails', 'searchTours', 'submitEnquiry']);
+      const system = JSON.stringify(calls[0]?.prompt[0]);
+      expect(system).toContain('The visitor is not signed in');
+      expect(system).toContain('[sign in](/login)');
+    });
+
+    it('khách đã đăng nhập: chỉ thấy đơn của mình, không lộ email hay điện thoại', async () => {
+      await seedTour();
+      await seedBooking(ownerId, 'BK-OWNER001');
+      await seedBooking(otherId, 'BK-OTHER001');
+      const id = newId();
+      script = [
+        toolCall('listMyBookings', {}, 'call-list'),
+        toolCall('getMyBooking', { code: 'BK-OTHER001' }, 'call-other'),
+        toolCall('getMyBooking', { code: 'bk-owner001' }, 'call-mine'),
+        textReply('Your Hue Food Walk is paid.'),
+      ];
+      const res = await post(say(id, 'Is my Hue trip paid?'), { cookie: ownerCookie });
+      expect(res.statusCode).toBe(200);
+      await waitForTurnEnd(id);
+
+      expect(toolNames(0)).toEqual([
+        'getMyBooking',
+        'getTourDetails',
+        'listMyBookings',
+        'searchTours',
+        'submitEnquiry',
+      ]);
+      expect(JSON.stringify(calls[0]?.prompt[0])).toContain('The visitor is signed in');
+
+      const reply = (await rows(id))[1]?.payload as unknown as UIMessage;
+      const outputs = reply.parts.filter(
+        (p) => p.type === 'tool-listMyBookings' || p.type === 'tool-getMyBooking',
+      ) as Array<{ type: string; state: string; output: Record<string, unknown> }>;
+      expect(outputs.map((p) => p.state)).toEqual([
+        'output-available',
+        'output-available',
+        'output-available',
+      ]);
+      expect(outputs[0]?.output).toMatchObject({
+        total: 1,
+        bookings: [
+          expect.objectContaining({
+            code: 'BK-OWNER001',
+            url: '/account/bookings/BK-OWNER001',
+            status: 'Confirmed, trip upcoming',
+            payment: 'Paid',
+          }),
+        ],
+      });
+      expect(outputs[1]?.output).toEqual({ found: false });
+      expect(outputs[2]?.output).toMatchObject({
+        found: true,
+        code: 'BK-OWNER001',
+        paymentMethod: 'Card',
+        refunded: '0.00',
+      });
+
+      const stored = JSON.stringify(reply);
+      for (const secret of ['@private.test', '+84 900', 'Private Contact', 'Secret allergy']) {
+        expect(stored).not.toContain(secret);
       }
     });
   });

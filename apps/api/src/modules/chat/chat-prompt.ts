@@ -18,6 +18,12 @@ export interface BuildInstructionsInput {
   categories: readonly PromptOption[];
   /** Slug trang tour khách đang xem — đã qua khuôn slug của contract nên chèn thẳng được. */
   tourSlug?: string;
+  /**
+   * Lượt có phiên đăng nhập không (ADR-0050 AMEND 2). Có thì model có hai tool đọc đơn; không
+   * thì mọi câu hỏi về tài khoản nhận một câu cố định mời đăng nhập. Bắt buộc truyền để nơi
+   * gọi không quên quyết khối nào.
+   */
+  signedIn: boolean;
 }
 
 const WEEKDAYS = [
@@ -29,6 +35,28 @@ const WEEKDAYS = [
   'Friday',
   'Saturday',
 ] as const;
+
+/**
+ * Khách đã đăng nhập: hai tool chỉ đọc đơn của chính họ. Lớp chặn thật là server (tool
+ * không nhận user id, hội thoại thuộc đúng người); mấy câu này giữ model không đoán số liệu
+ * và không hứa làm thay việc chỉ trang đơn làm được.
+ */
+const SIGNED_IN_RULES = [
+  '- The visitor is signed in. listMyBookings and getMyBooking read their own bookings only. Use them when they ask about their bookings, trips, payments, refunds, cancellations or reviews.',
+  '- Booking details are private: mention only what these tools returned in this conversation, and never guess a status, date or amount.',
+  '- Repeat status and payment exactly as the tools write them.',
+  "- You cannot cancel, pay for, change a booking or resend a voucher. For any of these, give the booking's url; the buttons are on that page.",
+  '- For profile, password or other account settings, point them to /account.',
+];
+
+/**
+ * Khách vãng lai (Yuri 19/10): không có tool đọc đơn nào, và câu trả lời cho mọi câu hỏi về
+ * tài khoản là một câu cố định kèm link đăng nhập — không tra hộ bằng mã đơn hay email.
+ */
+const SIGNED_OUT_RULES = [
+  '- The visitor is not signed in, so you cannot see any account, booking, payment, refund or other personal data.',
+  `- If they ask about their bookings, payments, refunds, cancellations, account or any personal details, answer that part only with this sentence, in their language: "I can't check this because you're not signed in. Please [sign in](/login) and ask me again." Do not ask for a booking code or email to look anything up, and do not guess.`,
+];
 
 function optionList(options: readonly PromptOption[]): string {
   if (options.length === 0) return 'none';
@@ -53,11 +81,14 @@ export function buildInstructions(input: BuildInstructionsInput): string {
     '',
     'Limits',
     "- You cannot make bookings, take payments or promise discounts. When the visitor wants to book, give the tour's bookUrl.",
-    '- Only link to internal paths that tools return, such as /tours/<slug>. Never invent URLs or link to other websites.',
+    '- Only link to internal paths that tools return, such as /tours/<slug>, or to the pages named in these instructions. Never invent URLs or link to other websites.',
     '',
     'Enquiries',
     "- Collect the visitor's name, email and message before calling submitEnquiry. Tell them they will see a confirmation card and nothing is sent until they press Send.",
     '- If they cancel the card, do not call submitEnquiry again unless they ask.',
+    '',
+    'Account',
+    ...(input.signedIn ? SIGNED_IN_RULES : SIGNED_OUT_RULES),
     '',
     'Style',
     '- Reply in the language the visitor writes in; default to English.',
