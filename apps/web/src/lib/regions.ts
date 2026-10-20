@@ -1,6 +1,7 @@
 import { findRegion } from '@tourism/contract';
 import type { MockRegion, MockRegionKey } from '@/mocks/types';
 import type { DestinationVM, TourCardVM, TourReviewVM } from './api/tours';
+import { cardPrice } from './tours';
 
 /** Khoá vùng — giá trị đổ ra thuộc tính `data-region`, nay thuần là móc dữ
     liệu/test (ADR-0015 đã rút lớp tint `[data-region]` khỏi tokens). Tái dùng
@@ -252,7 +253,8 @@ export function topDestinations(
 type TourDifficultyVM = NonNullable<TourCardVM['difficulty']>;
 
 export interface RegionGlance {
-  /** `basePrice` nhỏ nhất — STRING, đúng luật "tiền luôn là string". */
+  /** Giá "from" nhỏ nhất trong các thẻ của vùng (`cardPrice`, ADR-0058) — STRING,
+      đúng luật "tiền luôn là string". */
   fromPrice: string;
   difficulties: TourDifficultyVM[];
   categories: { slug: string; name: string }[];
@@ -272,9 +274,13 @@ const DIFFICULTY_ORDER: TourDifficultyVM[] = ['EASY', 'MODERATE', 'CHALLENGING']
 export function regionGlance(tours: readonly TourCardVM[]): RegionGlance | null {
   if (tours.length === 0) return null;
 
-  let fromPrice = tours[0]?.basePrice ?? '0';
-  for (const tour of tours) {
-    if (Number(tour.basePrice) < Number(fromPrice)) fromPrice = tour.basePrice;
+  // Đọc ĐÚNG con số thẻ tour in (`priceFrom ?? basePrice`, ADR-0058), không đọc
+  // `basePrice`: đợt rẻ nhất có thể rẻ hơn giá niêm yết, và khi đó dải "From $35"
+  // đứng ngay trên một lưới có thẻ in $28 — hai giá "from" cho cùng một vùng.
+  const prices = tours.map((tour) => cardPrice(tour).price);
+  let fromPrice = prices[0] ?? '0';
+  for (const price of prices) {
+    if (Number(price) < Number(fromPrice)) fromPrice = price;
   }
 
   // `difficulty` nullable: bỏ qua null, không in "null" và không coi nó là một bậc.

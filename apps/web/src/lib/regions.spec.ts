@@ -104,10 +104,20 @@ describe('regionGlance — chỉ những thứ PHÂN BIỆT được vùng', () 
   const north = toursInRegion(REGIONS, DESTINATIONS, TOURS, 'north');
   const south = toursInRegion(REGIONS, DESTINATIONS, TOURS, 'south');
 
-  it('fromPrice là string và lấy basePrice nhỏ nhất', () => {
+  it('fromPrice là string và lấy giá nhỏ nhất', () => {
     const glance = regionGlance(north);
     expect(typeof glance?.fromPrice).toBe('string');
     expect(glance?.fromPrice).toBe('68.00');
+  });
+
+  it('lấy giá "from" mà thẻ tour in (`priceFrom`), không lấy `basePrice` — ADR-0058', () => {
+    // Đợt rẻ nhất có thể rẻ hơn giá niêm yết. Seed local đo 20/10: hero miền Bắc in
+    // "From $35" (basePrice) trong khi thẻ rẻ nhất ở lưới ngay dưới in $28.
+    const discounted = north.map((tour) => ({
+      ...tour,
+      priceFrom: (Number(tour.basePrice) / 2).toFixed(2),
+    }));
+    expect(regionGlance(discounted)?.fromPrice).toBe('34.00');
   });
 
   it('phổ độ khó xếp theo bậc, không theo thứ tự gặp', () => {

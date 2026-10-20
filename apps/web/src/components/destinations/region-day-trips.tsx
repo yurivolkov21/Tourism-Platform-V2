@@ -7,7 +7,7 @@ import { RevealHeading, RevealLede } from '@/components/motion/reveal-header';
 import { RevealItem } from '@/components/motion/reveal-item';
 import type { TourCardVM } from '@/lib/api/tours';
 import { STAGGER } from '@/lib/motion';
-import { formatMoney } from '@/lib/tours';
+import { cardPrice, formatMoney } from '@/lib/tours';
 import type { MockItineraryDay } from '@/mocks/types';
 
 /** Dưới ngưỡng này thì khu KHÔNG dựng. Một "dải" một phần tử không phải dải — nó
@@ -203,11 +203,14 @@ export function RegionDayTrips({ tours }: { tours: readonly DayTripTour[] }) {
                       lại trên từng ô là in cùng một sự thật bốn lần.
                       `per person` thêm 30/07 — nó nói giá này là giá MỘT KHÁCH, tức
                       đây là thứ đặt được, không phải một con số trang trí. Cùng chuỗi
-                      `TourCard` dùng, không khai bản thứ hai. */}
+                      `TourCard` dùng, không khai bản thứ hai.
+                      Giá là giá "from" của thẻ (`cardPrice`, ADR-0058), không phải
+                      `basePrice`: tour có đợt rẻ hơn giá niêm yết thì ô này từng in
+                      cao hơn thẻ của CÙNG tour trong lưới phía trên. */}
                     <span className="mt-auto flex items-end justify-between gap-3 border-t border-border pt-4">
                       <span className="flex items-baseline gap-1.5">
                         <span className="font-heading text-lg font-semibold text-foreground tabular-nums">
-                          {formatMoney(tour.basePrice, tour.currency)}
+                          {formatMoney(cardPrice(tour).price, tour.currency)}
                         </span>
                         <span className="font-mono text-[10px] tracking-widest text-muted-foreground uppercase">
                           {messages.toursPage.perPerson}

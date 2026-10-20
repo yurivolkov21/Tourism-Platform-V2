@@ -259,6 +259,17 @@ describe('RegionDayTrips', () => {
     expect(container.querySelector('section')?.hasAttribute('style')).toBe(false);
   });
 
+  it('giá là giá "from" mà thẻ tour in (`priceFrom`), không phải `basePrice` — ADR-0058', () => {
+    // Seed local đo 20/10: 4/6 chuyến một ngày của miền Trung có đợt rẻ hơn giá niêm
+    // yết, nên ô ở đây từng in giá cao hơn thẻ của CÙNG tour trong lưới phía trên.
+    const discounted = CENTRAL.map((t) =>
+      t.slug === 'da-nang-coast-ride' ? { ...t, priceFrom: '71.00' } : t,
+    );
+    render(<RegionDayTrips tours={discounted} />);
+    expect(screen.getByText('$71')).toBeInTheDocument();
+    expect(screen.queryByText('$89')).toBeNull();
+  });
+
   it('giá dùng MÃ TIỀN của chính tour, không phải hằng USD đặt cứng', () => {
     const eur = CENTRAL.slice(0, 2).map((t) => ({ ...t, currency: 'EUR' }));
     render(<RegionDayTrips tours={eur} />);
