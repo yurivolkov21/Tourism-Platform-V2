@@ -23,8 +23,9 @@ import { BookingNotFoundError, RefundsService } from './refunds.service.js';
 
 /**
  * Booking không huỷ online được (422): trạng thái ngoài PAID/PARTIALLY_REFUNDED,
- * không có capture để hoàn vào, hoặc đã tới ngày khởi hành theo giờ Việt Nam
- * (ADR-0041 §4). Lệnh huỷ thứ hai của cùng booking cũng rơi vào đây.
+ * không có capture để hoàn vào, đã tới ngày khởi hành theo giờ Việt Nam (ADR-0041
+ * §4), hoặc chuyến đã bị công ty huỷ (AMEND 1). Lệnh huỷ thứ hai của cùng booking
+ * cũng rơi vào đây.
  */
 export class BookingNotCancellableError extends Error {
   constructor(detail: string) {

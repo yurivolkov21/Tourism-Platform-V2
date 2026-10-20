@@ -669,7 +669,8 @@ export class BookingsService {
    * BK-2 (ADR-0006): chủ tự hủy một PENDING chưa trả (không refund — chưa
    * charge). Owner-or-404 (null → NOT_FOUND); flip atomic gate `status='PENDING'`
    * → PAID/CANCELLED cho 0 row → BookingNotPendingError (422). Không đụng
-   * `seats_booked` (PENDING không giữ ghế). Tách khỏi cancellation-request (PAID).
+   * `seats_booked` (PENDING không giữ ghế). Đơn đã trả huỷ qua lõi huỷ của
+   * `CancellationsService` (ADR-0041 §4), không qua đây.
    */
   async cancelPending(userId: string, code: string): Promise<Booking | null> {
     const booking = await prisma.booking.findUnique({ where: { code } });
@@ -831,9 +832,10 @@ export class BookingsService {
    *
    * Task 6a (A2, user duyệt 06/08): kèm `cancellationStatus` — request MỚI
    * NHẤT theo `createdAt desc` (không phải trạng thái máy trạng thái booking,
-   * chỉ đọc — KHÔNG đổi hành vi/ghi gì). Trang chi tiết (nơi duy nhất gọi
-   * `byCode`) cần field này để biết có nên hiện nút "xin hủy" hay không; `mine`
-   * (list) cố ý không trả (xem comment ở đó).
+   * chỉ đọc — KHÔNG đổi hành vi/ghi gì). Từ ADR-0041 nút huỷ theo trường
+   * `cancellation` bên dưới; ba trường đơn-xin-huỷ chỉ còn cho dòng kể yêu cầu cũ
+   * (REQUESTED, DENIED) và mốc ngày huỷ, ngày hoàn mà web và app in. `mine` (list)
+   * cố ý không trả (xem comment ở đó).
    */
   async byCode(userId: string, code: string): Promise<BookingDetail | null> {
     const booking = await prisma.booking.findUnique({
