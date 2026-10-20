@@ -47,12 +47,17 @@ function MarqueeGroup({ hidden = false }: { hidden?: boolean }) {
 // (1400) và cắt mất header của chúng — thấy thật ở drawer lọc /tours 27/07.
 // Không xung đột với navbar dù cùng 1100: navbar dùng top-(--banner-offset)
 // nên hai thứ không bao giờ chồng chỗ.
+//
+// Chữ để đủ `primary-foreground`, không làm mờ (review F3, 20/10): bản `/85` trên nền
+// `primary` đo 4.49:1 ở theme sáng và 3.90:1 ở theme tối, dưới ngưỡng 4.5:1 của chữ 12px;
+// màu đủ là 5.52:1 và 4.72:1. Mất nấc "mờ rồi sáng" khi rê chuột nên link chữ gạch chân
+// lúc hover thay vào; icon mạng xã hội còn trỏ `#top` (A16) nên không thêm hiệu ứng.
 export function TopBar() {
   return (
     <div className="fixed inset-x-0 top-0 z-(--z-sticky) bg-primary text-primary-foreground max-sm:hidden">
       <div className="flex h-9 w-full items-center justify-between gap-8 px-4 text-xs sm:px-6 lg:px-10">
         {/* Tagline chạy liên tục — bản sao thứ hai chỉ để loop, ẩn khỏi a11y tree */}
-        <div className="relative flex-1 overflow-hidden text-primary-foreground/85">
+        <div className="relative flex-1 overflow-hidden">
           <div className="animate-marquee-left flex w-max">
             <MarqueeGroup />
             <MarqueeGroup hidden />
@@ -62,14 +67,14 @@ export function TopBar() {
         <div className="flex shrink-0 items-center gap-5">
           <a
             href={`mailto:${EMAIL}`}
-            className="inline-flex items-center gap-1.5 text-primary-foreground/85 transition-colors hover:text-primary-foreground max-md:hidden"
+            className="inline-flex items-center gap-1.5 underline-offset-4 hover:underline max-md:hidden"
           >
             <MailIcon className="size-3.5" aria-hidden="true" />
             {EMAIL}
           </a>
           <a
             href={`tel:${PHONE.replace(/\s/g, '')}`}
-            className="inline-flex items-center gap-1.5 text-primary-foreground/85 transition-colors hover:text-primary-foreground"
+            className="inline-flex items-center gap-1.5 underline-offset-4 hover:underline"
           >
             <PhoneIcon className="size-3.5" aria-hidden="true" />
             {PHONE}
@@ -77,12 +82,7 @@ export function TopBar() {
           <div className="h-4 w-px bg-primary-foreground/25" />
           <div className="flex items-center gap-3">
             {SOCIALS.map(({ Icon, label }) => (
-              <a
-                key={label}
-                href="#top"
-                aria-label={label}
-                className="text-primary-foreground/85 transition-colors hover:text-primary-foreground"
-              >
+              <a key={label} href="#top" aria-label={label}>
                 <Icon className="size-4" />
               </a>
             ))}

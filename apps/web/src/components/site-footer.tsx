@@ -148,8 +148,11 @@ export function SiteFooter() {
         >
           {/* Ghi công ảnh tạm bỏ khỏi UI — toàn site đang dùng ImagePlaceholder
               (static-first), ghi công cho ảnh không hiển thị là sai. Thêm lại
-              cùng lúc với ảnh thật (cùng cách đã làm ở auth-screen.tsx). */}
-          <p className="text-xs text-muted-foreground/70">{t.copyright}</p>
+              cùng lúc với ảnh thật (cùng cách đã làm ở auth-screen.tsx).
+              Chữ dòng đáy KHÔNG làm mờ thêm (review F3, 20/10): `muted-foreground/70` trên
+              nền tối của footer chỉ 4.05:1 theo axe, dưới ngưỡng 4.5:1 của chữ 12px; màu
+              muted đủ đậm là 6.66:1. Cỡ `text-xs` đã đủ cho dòng này lùi sau các cột link. */}
+          <p className="text-xs text-muted-foreground">{t.copyright}</p>
 
           <div className="flex items-center gap-3">
             {SOCIALS.map(({ Icon, label }) => (
@@ -168,7 +171,7 @@ export function SiteFooter() {
 
           {/* Hai link pháp lý THẬT thay chuỗi chữ trơ "Privacy · Terms · Cookies":
               không có trang Cookies nên không hứa. */}
-          <p className="flex items-center gap-2 text-xs text-muted-foreground/70">
+          <p className="flex items-center gap-2 text-xs text-muted-foreground">
             <a href="/privacy" className="transition-colors hover:text-foreground">
               {t.legalPrivacy}
             </a>
