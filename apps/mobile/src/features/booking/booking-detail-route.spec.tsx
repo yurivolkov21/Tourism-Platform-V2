@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { fireEvent, screen } from '@testing-library/react-native';
+import { fireEvent, screen, waitFor } from '@testing-library/react-native';
 import type { BookingDetail } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
 import { router } from 'expo-router';
@@ -76,9 +76,13 @@ function makeBooking(overrides: Partial<BookingDetail>): BookingDetail {
 }
 
 /** Dựng route với chi tiết đơn có sẵn trong cache — không gọi mạng cho `bookings.byCode`. */
-async function renderRoute(booking: BookingDetail) {
+async function renderRoute(booking: BookingDetail): Promise<QueryClient> {
   const client = new QueryClient({
-    defaultOptions: { queries: { retry: false, staleTime: Infinity } },
+    // Mutation giữ hẹn giờ gc 5 phút sau khi chạy — đặt 0 để Jest thoát được.
+    defaultOptions: {
+      queries: { retry: false, staleTime: Infinity },
+      mutations: { gcTime: 0 },
+    },
   });
   clients.push(client);
   client.setQueryData(
@@ -90,6 +94,7 @@ async function renderRoute(booking: BookingDetail) {
       <BookingDetailRoute />
     </QueryClientProvider>,
   );
+  return client;
 }
 
 const writeReview = messages.mobile.trip.writeReview;
@@ -180,5 +185,39 @@ describe('BookingDetailRoute — Contact us ở hoá đơn đã trả', () => {
       pathname: '/enquiry',
       params: expect.objectContaining({ tourSlug: 'test-tour', tripTitle: 'Test tour' }),
     });
+  });
+});
+
+/** T5: đơn chờ trả đã đổi trạng thái ở nơi khác (vừa trả trên web) lúc khách bấm huỷ giữ chỗ. */
+describe('BookingDetailRoute — huỷ giữ chỗ khi đơn không còn chờ trả', () => {
+  it('NOT_PENDING: đóng tấm và đọc lại đơn, không hiện câu lỗi chung', async () => {
+    globalThis.fetch = jest.fn(() =>
+      Promise.resolve(
+        new Response(
+          JSON.stringify({ defined: true, code: 'NOT_PENDING', status: 422, message: 'x' }),
+          { status: 422, headers: { 'content-type': 'application/json' } },
+        ),
+      ),
+    ) as unknown as typeof fetch;
+    const actions = messages.accountBookingDetail.actions;
+    const client = await renderRoute(
+      makeBooking({
+        status: 'PENDING',
+        paidAt: null,
+        departureStartDate: '2099-01-08',
+        departureEndDate: '2099-01-10',
+        cancellationDeadline: '2099-01-07',
+      }),
+    );
+
+    await fireEvent.press(
+      screen.getByRole('button', { name: messages.mobile.booking.detail.cancelThisBooking }),
+    );
+    await fireEvent.press(screen.getByRole('button', { name: actions.cancelConfirmCta }));
+
+    const key = orpc.bookings.byCode.queryOptions({ input: { code: CODE } }).queryKey;
+    await waitFor(() => expect(client.getQueryState(key)?.isInvalidated).toBe(true));
+    expect(screen.queryByText(actions.cancelConfirmBody)).toBeNull();
+    expect(screen.queryByText(messages.accountActionErrors.generic)).toBeNull();
   });
 });

@@ -5,6 +5,7 @@ import {
   bookingDetailKind,
   cancelErrorAction,
   cancelErrorCopy,
+  cancelPendingErrorAction,
   canWriteReview,
   operatorRefund,
   payErrorAction,
@@ -308,6 +309,19 @@ describe('cancelErrorCopy / cancelErrorAction', () => {
 
   it('lỗi mạng chung -> stay', () => {
     expect(cancelErrorAction(new Error('network'))).toBe('stay');
+  });
+});
+
+describe('cancelPendingErrorAction', () => {
+  it('NOT_PENDING → refetch (đơn vừa trả trên web hoặc câu quét đã huỷ — màn đọc lại là đúng)', () => {
+    expect(cancelPendingErrorAction(new ORPCError('NOT_PENDING', { status: 422 }))).toBe('refetch');
+  });
+
+  it('lỗi khác / không phải ORPCError → message', () => {
+    expect(cancelPendingErrorAction(new ORPCError('TOO_MANY_REQUESTS', { status: 429 }))).toBe(
+      'message',
+    );
+    expect(cancelPendingErrorAction(new Error('network'))).toBe('message');
   });
 });
 

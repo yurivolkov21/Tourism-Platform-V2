@@ -19,6 +19,7 @@ import {
   bookingDetailKind,
   cancelErrorAction,
   cancelErrorCopy,
+  cancelPendingErrorAction,
   canWriteReview,
   operatorRefund,
   payErrorAction,
@@ -220,7 +221,14 @@ export default function BookingDetailRoute() {
           setCancelPendingSheetOpen(false);
           refetch();
         },
-        onError: (error) => setActionError(cancelErrorCopy(error)),
+        onError: (error) => {
+          if (cancelPendingErrorAction(error) === 'refetch') {
+            setCancelPendingSheetOpen(false);
+            refetch();
+          } else {
+            setActionError(cancelErrorCopy(error));
+          }
+        },
       },
     );
   }

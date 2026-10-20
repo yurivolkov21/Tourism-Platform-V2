@@ -178,6 +178,15 @@ export function cancelErrorCopy(error: unknown): string {
   return e.generic;
 }
 
+/**
+ * Lỗi khi huỷ giữ chỗ ở T5 (`bookings.cancelPending`): `NOT_PENDING` → đơn đã đổi trạng thái
+ * ở nơi khác (vừa trả xong trên web, câu quét đã huỷ) nên không còn gì để huỷ — đóng tấm, đọc
+ * lại để màn tự nói sự thật thay vì câu lỗi chung; còn lại → hiện câu lỗi trong tấm.
+ */
+export function cancelPendingErrorAction(error: unknown): 'refetch' | 'message' {
+  return error instanceof ORPCError && error.code === 'NOT_PENDING' ? 'refetch' : 'message';
+}
+
 export type PayErrorAction = 'departureClosed' | 'refetch' | 'message';
 
 /**
