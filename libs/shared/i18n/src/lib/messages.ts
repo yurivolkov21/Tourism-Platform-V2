@@ -4620,11 +4620,15 @@ export const messages = {
          * chốt 04/09). Nói thẳng khoảng ngày ra: "không có kết quả" mà không
          * nói vì sao là cách nhanh nhất để người tra một booking cũ kết luận
          * nhầm rằng booking đó không tồn tại.
+         *
+         * "matching" (review A1, 20/10): ngày cộng dồn với tìm kiếm, trạng thái, tài khoản — gõ một
+         * mã của tháng trước thì bảng rỗng trong khi tháng này vẫn có hàng chục booking, nên câu
+         * "No bookings were created between …" là nói sai về chính dữ liệu.
          */
-        emptyInRange: (range: string) => `No bookings were created between ${range}.`,
+        emptyInRange: (range: string) => `No matching bookings were created between ${range}.`,
         /** Khoảng MỘT đầu (xoá riêng một ô, hoặc khoảng ngược làm rớt `to`). */
-        emptyFrom: (date: string) => `No bookings were created on or after ${date}.`,
-        emptyTo: (date: string) => `No bookings were created on or before ${date}.`,
+        emptyFrom: (date: string) => `No matching bookings were created on or after ${date}.`,
+        emptyTo: (date: string) => `No matching bookings were created on or before ${date}.`,
         /** Nút thoát ngay trong ô rỗng — một cú bấm về xem toàn bộ. */
         showAllDates: 'Show bookings from all dates',
         /**
