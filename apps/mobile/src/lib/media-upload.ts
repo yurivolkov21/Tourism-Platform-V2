@@ -38,6 +38,14 @@ export function buildUploadFields(params: SignedUploadParams): Record<string, st
   };
 }
 
+/**
+ * Trần cho cả lượt upload. RN không có trần mặc định (OkHttp của Android đặt 0 cho mọi
+ * timeout, XHR `timeout` mặc định 0), nên mạng treo giữa chừng là spinner quay mãi và nút
+ * Submit của review khoá theo. Trên Android số này là trần TOÀN lượt (OkHttp `callTimeout`),
+ * iOS là trần giữa hai gói tin — 2 phút đủ cho ảnh 10 MB (trần của contract) ở ~0,7 Mbps.
+ */
+export const UPLOAD_TIMEOUT_MS = 120_000;
+
 function buildUploadFormData(uri: string, ext: string, params: SignedUploadParams): FormData {
   const form = new FormData();
   form.append('file', { uri, name: `avatar.${ext}`, type: `image/${ext}` } as unknown as Blob);
@@ -48,7 +56,7 @@ function buildUploadFormData(uri: string, ext: string, params: SignedUploadParam
 /**
  * POST file lên Cloudinary, trả `public_id` ĐẦY ĐỦ (Cloudinary tự ghép
  * `<folder>/<basename>`) — đúng chuỗi `account.setAvatar` cần nhận lại.
- * KHÔNG test I/O thật (cùng ranh giới web: `uploadToCloudinary` không có spec).
+ * KHÔNG test I/O thật — spec chỉ thay XHR bằng bản giả để canh các nhánh kết thúc.
  */
 export function uploadToCloudinary(
   uri: string,
@@ -58,6 +66,7 @@ export function uploadToCloudinary(
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
     xhr.open('POST', params.uploadUrl);
+    xhr.timeout = UPLOAD_TIMEOUT_MS;
     xhr.addEventListener('load', () => {
       // try/catch bắt buộc: throw trong callback async của executor KHÔNG
       // reject promise — JSON.parse ném (2xx nhưng body không phải JSON) mà
@@ -80,6 +89,8 @@ export function uploadToCloudinary(
       }
     });
     xhr.addEventListener('error', () => reject(new Error('Cloudinary upload failed (network)')));
+    xhr.addEventListener('timeout', () => reject(new Error('Cloudinary upload failed (timeout)')));
+    xhr.addEventListener('abort', () => reject(new Error('Cloudinary upload failed (aborted)')));
     xhr.send(buildUploadFormData(uri, ext, params));
   });
 }
