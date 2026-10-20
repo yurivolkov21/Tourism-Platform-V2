@@ -144,6 +144,8 @@ export const messages = {
     removeFilter: 'Remove filter',
     // Logo dẫn về trang chủ ở header, footer và khung trang auth (W-09).
     homeLink: 'Nexora — home',
+    // Nút đổi theme sáng tối ở header; chữ từng gõ cứng trong `AnimatedThemeToggler` (review F3).
+    toggleTheme: 'Toggle theme',
   },
   // Copy THẬT cho login/register wire vào Better Auth (Task 3 auth-pages-api,
   // spec 2026-08-03) — khối RIÊNG với `auth` ở trên (đó là bản nháp form

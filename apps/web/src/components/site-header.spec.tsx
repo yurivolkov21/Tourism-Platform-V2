@@ -35,8 +35,9 @@ function mobileMenu() {
   return overlay;
 }
 vi.mock('./destinations-menu', () => ({ DestinationsMenu: () => null }));
+// Bản giả chỉ in nhãn mà header truyền vào, để canh chữ của nút đổi theme đi qua i18n.
 vi.mock('@tourism/ui/components/animated-theme-toggler', () => ({
-  AnimatedThemeToggler: () => null,
+  AnimatedThemeToggler: ({ label }: { label: string }) => <button type="button">{label}</button>,
 }));
 
 describe('SiteHeader — mọi control là đích thật', () => {
@@ -47,6 +48,12 @@ describe('SiteHeader — mọi control là đích thật', () => {
     const cta = screen.getByRole('link', { name: 'Book a tour' });
     expect(cta).toHaveAttribute('href', '/tours');
     expect(screen.queryByRole('button', { name: 'Book a tour' })).toBeNull();
+  });
+
+  // Hai nút đổi theme (thanh desktop và thanh điện thoại) nhận nhãn từ `messages.a11y`.
+  it('nút đổi theme mang nhãn của i18n ở cả hai thanh', () => {
+    render(<SiteHeader />);
+    expect(screen.getAllByRole('button', { name: 'Toggle theme' })).toHaveLength(2);
   });
 
   it('4 link chính trỏ route thật', () => {
