@@ -83,11 +83,16 @@ export class ChatController {
     await writeUIMessageStream(reply.raw, headers, stream);
   }
 
-  /** Cùng cách đọc phiên với form enquiry: lỗi đọc phiên rơi về khách ẩn danh. */
+  /**
+   * Cùng cách đọc phiên với form enquiry: lỗi đọc phiên rơi về khách ẩn danh. Tài khoản đã xoá
+   * hay đang bị khoá cũng là ẩn danh, như AuthGuard trả 401 cho cả hai (ADR-0052 §4, L7-03).
+   */
   private async optionalUserId(req: FastifyRequest): Promise<string | null> {
     try {
       const session = await auth.api.getSession({ headers: fromNodeHeaders(req.headers) });
-      return session && session.user.deletedAt == null ? (session.user.id as string) : null;
+      return session && session.user.deletedAt == null && session.user.lockedAt == null
+        ? (session.user.id as string)
+        : null;
     } catch (err) {
       this.logger.warn(`Chat: could not read session, treating as anonymous — ${String(err)}`);
       return null;

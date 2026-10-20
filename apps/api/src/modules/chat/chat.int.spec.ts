@@ -540,6 +540,25 @@ describe('chat (int)', () => {
       expect(calls).toHaveLength(2);
     });
 
+    // L7-03 (review 20/10): AuthGuard coi tài khoản bị khoá như không có phiên (ADR-0052 §4); trợ
+    // lý đọc phiên riêng nên phải làm y vậy. Lệnh khoá đã xoá mọi phiên, vế này bịt khe hở một
+    // phiên được ghi đúng lúc lệnh khoá đang chạy — test giả khe ấy: đặt mốc khoá mà giữ phiên.
+    it('tài khoản bị khoá mà phiên còn sót: coi như vãng lai, không có tool đọc đơn', async () => {
+      const id = newId();
+      script = [textReply('Hi')];
+      await prisma.user.update({ where: { id: otherId }, data: { lockedAt: new Date() } });
+      try {
+        const res = await post(say(id, 'Show my bookings'), { cookie: otherCookie });
+        expect(res.statusCode).toBe(200);
+        await waitForTurnEnd(id);
+        expect(toolNames(0)).toEqual(['getTourDetails', 'searchTours', 'submitEnquiry']);
+        const conversation = await prisma.chatConversation.findUniqueOrThrow({ where: { id } });
+        expect(conversation.userId).toBeNull();
+      } finally {
+        await prisma.user.update({ where: { id: otherId }, data: { lockedAt: null } });
+      }
+    });
+
     it('khách vãng lai: không có tool đọc đơn, prompt có câu mời đăng nhập', async () => {
       const id = newId();
       script = [textReply("I can't check this because you're not signed in.")];
