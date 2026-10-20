@@ -364,6 +364,27 @@ describe('TourPhotosForm — tải lên (vòng review F18)', () => {
     expect(screen.queryByText(t.waiting(1))).toBeNull();
   });
 
+  // Review A2: trước đây Retry chỉ GHI câu báo khi hỏng, không xoá khi được — câu ký hỏng của
+  // lượt trước nằm lì cạnh tấm ảnh vừa tải xong.
+  it('Retry ký hỏng rồi Retry lần hai tải xong: câu ký hỏng của lượt trước biến mất', async () => {
+    const sign = vi
+      .fn<SignPhotoUploadsAction>()
+      .mockResolvedValueOnce({ ok: true, params: [params(1)] })
+      .mockRejectedValueOnce(new Error('Failed to fetch'))
+      .mockResolvedValueOnce({ ok: true, params: [params(9)] });
+    uploadMock.mockRejectedValueOnce(new Error('network')).mockResolvedValueOnce(uploaded(9));
+    const { user } = renderForm(undefined, { sign });
+
+    await user.upload(fileInput(), [imageFile('a.jpg')]);
+    await screen.findByText(t.uploadFailed('a.jpg'));
+    await user.click(screen.getByRole('button', { name: t.retry }));
+    expect(await screen.findByText(t.signFailed)).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: t.retry }));
+
+    await waitFor(() => expect(altInputs()).toHaveLength(3));
+    expect(screen.queryByText(t.signFailed)).not.toBeInTheDocument();
+  });
+
   it('đang lưu thì thả file không tải — ảnh tải xong lúc này sẽ bị bản vừa lưu đè mất', async () => {
     const saving = deferred<SaveResult>();
     const save = vi.fn<SetPhotosAction>().mockReturnValueOnce(saving.promise);

@@ -181,6 +181,9 @@ export function usePhotoUploads<Code extends string>({
       setNotices([t.busySaving]);
       return;
     }
+    // Câu báo nói về lượt VỪA làm, như `startUploads` thay nguyên danh sách (review A2): trước đây
+    // câu ký hỏng của lượt Retry trước nằm lì cạnh tấm ảnh lượt này đã tải xong.
+    setNotices([]);
     patchUpload(draft.key, { status: 'uploading', percent: 0 });
     setFocusId(uploadProgressId(draft.key));
     const signal = aborter.current.signal;
