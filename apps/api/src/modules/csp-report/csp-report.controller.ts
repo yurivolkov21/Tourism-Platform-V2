@@ -53,8 +53,10 @@ export class CspReportController {
     for (const violation of parseCspReports(body)) {
       if (!isAllowedDocument(violation, this.allowedHosts)) continue;
       if (!this.deduper.shouldLog(violation)) continue;
-      // MỘT dòng cấu trúc — mọi giá trị đã bị parseCspReports cắt trần và
-      // bỏ query nên không bơm được chuỗi dài/CRLF/token vào log.
+      // MỘT dòng cấu trúc: mọi giá trị đã bị parseCspReports cắt trần,
+      // `documentUri` bỏ query (`blockedUri` khác origin thì browser đã tự cắt
+      // về origin), JSON.stringify thoát CRLF — không bơm được chuỗi dài,
+      // xuống dòng hay token của trang vào log.
       this.logger.warn(`csp-report ${JSON.stringify(violation)}`);
     }
     this.summarizeIfDue();
