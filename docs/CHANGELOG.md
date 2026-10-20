@@ -8,6 +8,39 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-10-20 — Merge review L2 đợt hai: hàng tháng của tab Departures chỉ tính đợt còn đặt được, `BookingRail` bỏ biến thể rail (`78e6e8c`)
+
+Đợt hai của luồng L2 (kế hoạch review 20/10 trong thư mục chung của project,
+`code-review/ke-hoach-review-theo-luong.md`): hai đề xuất L2-09 và L2-10 của báo cáo `code-review/L2-bao-cao.md`
+cùng thư mục, Yuri chọn làm cả hai lúc 06:31 UTC sau PR #44. Nhánh `fix/review-l2-browse-xfgnsc` dựng lại trên
+`main` `451f82f`, [PR #48](https://github.com/yurivolkov21/Tourism-Platform-V2/pull/48), thi công trên session
+cloud. Chỉ đụng web và i18n: không migration, không biến env, không dependency mới; bỏ ba khoá i18n không còn
+chỗ đọc.
+
+- `ed3faca`: `departureMonths` tính ghế và khoảng giá của hàng tháng trên tập `isDepartureOpen`, cùng tập với ô
+  "Seats left", "Price range" và huy hiệu tháng. Trước đó tháng chỉ còn đợt đã qua hạn đặt in "N of M seats
+  left" ngay cạnh huy hiệu "Booking closed", và đợt khuyến mãi đã hết chỗ kéo đáy khoảng giá của tháng xuống.
+  Tháng không còn đợt đặt được nay ghi 0 ghế, cột giá giữ giá của mọi đợt trong tháng. Modal "All dates" chỉ
+  đọc tháng và danh sách đợt nên không đổi.
+- `c1c88cc`: `BookingRail` bỏ biến thể `rail` (cột phải dính), không còn call-site từ khi trang Tour Details
+  ghép lại 13/08 (`9c3178c`), cùng `PriceBlock`, `SeatMeter`, prop `variant`, ba prop chỉ rail dùng và khoá
+  `tourDetail.departures.railLabel`; các case rail ở hai spec xoá theo. Bar đáy không đổi hành vi.
+- `78e6e8c`: bỏ `tourDetail.departures.stripHeading` và `seeAll`, mất chỗ đọc từ khi dải đợt dưới hero xoá
+  21/09 (L2-17 của báo cáo).
+
+**Review.** Đây là lượt sửa theo đề xuất của chính luồng L2; không có lượt review độc lập. Yuri bảo đẩy lên main
+20/10 07:35 UTC.
+
+Tests after (`gate:int` trên `78e6e8c`, nền `451f82f`, 20/10, session cloud, API sống ở :3001): unit 8214
+(admin 2388, web 2404, api 1402, mobile 880, contract 800, mobile-ui 145, i18n 64, ui 57, core 48, tokens
+26) và int 954; Biome 2089 file. Web bớt 1 test: thêm 4 test cho L2-09, bỏ 5 case rail.
+
+**CÒN TREO:**
+
+- Buổi test tay: bước 5 và 6 ở mục 3 của `code-review/L2-bao-cao.md` (hàng tháng có đợt "Booking closed" ghi
+  "0 of N seats left", bar đáy dưới 1024px dẫn Reserve sang `/book`).
+- Dọn nhánh `fix/review-l2-browse-xfgnsc` trên origin nếu GitHub không tự xoá.
+
 ## 2026-10-20 — Merge review M3 mobile đặt tour, chuyến, đánh giá: hoá đơn đọc lại sau khi khách quay về từ trang trả trên Android, tracker của tour đã gỡ đưa về hoá đơn, upload ảnh có trần, đồng hồ server đo lại khi app quay lại (`32e9139`)
 
 Luồng M3 của đợt review code theo luồng (kế hoạch 20/10 trong thư mục chung của project,
