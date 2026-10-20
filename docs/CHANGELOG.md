@@ -8,6 +8,64 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-10-20 — Merge review L1 đăng nhập và tài khoản khách: đóng đăng nhập bằng OTP email, xoá tài khoản xoá cả hội thoại chat, đăng nhập xong về đúng trang, API lỗi không còn đẩy khách ra `/login` (`81ccd67`)
+
+Luồng L1 của đợt review code theo luồng (kế hoạch 20/10 trong thư mục chung của project,
+`code-review/ke-hoach-review-theo-luong.md`), rà trên `main` `43e7c75` rồi rebase lên `f8f8634` trước khi đẩy.
+Báo cáo đủ 20 phát hiện, gồm phần để lại và phần chuyển luồng: `code-review/L1-bao-cao.md` cùng thư mục. Nhánh
+`fix/review-l1-auth-hch85p`, [PR #46](https://github.com/yurivolkov21/Tourism-Platform-V2/pull/46),
+thi công trên session cloud. Không migration, không biến env, không dependency mới; thêm một khoá i18n
+(`accountProfile.connected.google`) và ADR-0017 AMEND §12 (đếm AMEND ở `docs/adr/README.md` lên 7).
+
+- `2e58b12`: bốn route của plugin `emailOTP` vào `disabledPaths` (404): `/sign-in/email-otp` (đăng nhập không
+  mật khẩu, email lạ thì tạo luôn tài khoản đã xác minh) và ba route đặt lại mật khẩu bằng OTP. Không app nào gọi
+  chúng nhưng chúng sống trên API production: ai đọc được hộp thư của một tài khoản là có phiên mà không cần mật
+  khẩu, trái chốt 21/09 rằng OTP email chỉ để xác minh email. Before-hook từ chối gửi OTP khác loại
+  `email-verification` (400), nên route gửi OTP thôi nhận loại `sign-in`, loại từng gửi thư cho cả email chưa
+  đăng ký.
+- `8dfb7df`: xoá tài khoản xoá luôn hội thoại với trợ lý AI trong cùng transaction, tin nhắn đi theo cascade.
+  User chỉ bị tombstone nên `onDelete: SetNull` của `chat_conversations` không chạy, và nội dung chat (cả dữ liệu
+  đơn trợ lý đọc ra theo ADR-0050 AMEND 2) từng còn tới 30 ngày.
+- `fc28b4b`: link chéo giữa `/login` và `/register` cùng bước sang `/verify-email` mang `?redirect=` qua
+  `withRedirect` (lọc bằng `safeRedirect`). Trước đó khách mới bị đẩy đi đăng nhập từ trang đặt tour, bấm
+  "Create an account", đăng ký và xác minh xong thì về trang chủ, phải tìm lại tour.
+- `043f29b`: nút "Log in" trên navbar mang pathname của trang đang xem.
+- `296ed9e`: proxy của admin giữ cả query trong `?redirect=`, đăng nhập lại không mất bộ lọc của trang đang mở.
+- `0499642`: hook tạo và sửa user chốt tên 120 và số điện thoại 30 ký tự, trả 400 `NAME_TOO_LONG` hoặc
+  `PHONE_TOO_LONG`. Trước đó gọi thẳng `update-user` với giá trị quá cột ra 500 (thành sự cố giả trên Sentry),
+  `sign-up` ra 422.
+- `439d403`: tour không còn đợt đặt được vẫn có nút lưu tour trên trang chi tiết (L2-12, chuyển từ L2).
+- `d94642b`: `requireSession` ném `SessionUnavailableError` khi API trả 5xx, 429 hoặc lỗi mạng, nên trang đặt
+  tour, checkout và khu `/account` hiện trang lỗi có nút thử lại thay vì đẩy khách đã đăng nhập sang `/login`
+  lúc API đang khởi động lại hay đang deploy (L3-19, chuyển từ L3). `getServerSession` của trang hỏi tour vẫn trả
+  `null` để trang dựng được cho khách vãng lai.
+- `94c7e49`: ba error boundary (`error.tsx` và `global-error.tsx` của web, `error.tsx` của admin) gọi `retry()`
+  thay vì `reset()`. Ở Next 16 `reset` chỉ dựng lại cây con, không tải lại dữ liệu server, nên lỗi phát từ
+  Server Component bấm "Try again" là hiện lại đúng lỗi cũ.
+- `f02640b`: mục "Connected accounts" của Settings đọc `GET /api/auth/list-accounts` của Better Auth song song
+  với hồ sơ và in một dòng cho mỗi cách đăng nhập thật (mật khẩu, Google); không đọc được thì bỏ cả mục. Trước
+  đó mục này luôn in "Email & password", kể cả tài khoản chỉ đăng nhập bằng Google.
+- `81ccd67` (`test(admin)`, file của luồng A5, không đổi hành vi): ca focus của `confirm-write-dialog.spec.tsx`
+  chờ focus đầu của Base UI đậu vào ô ghi chú rồi mới bấm gửi. Ở máy rảnh ca ấy đỏ ở mọi lần chạy cả file, kể cả
+  trên `main`, nên làm đỏ `gate:int` cục bộ của các thread; CI GitHub chậm hơn nên vẫn xanh.
+
+**Review.** Đây chính là lượt review của luồng L1; không có lượt review độc lập cho các bản sửa. Báo luồng khác
+qua coordinator: L7 (xoá tài khoản nay xoá hội thoại chat), A5 (dòng chờ focus trong test hộp xác nhận), F3 và A5
+(error boundary đã chuyển sang `retry()`, không cần làm lại). Chín mục Ghi lại để nguyên, gồm Sign out lúc mất
+mạng không báo gì và admin bị 429 khi đăng nhập không biết phải chờ; không có đề xuất nào chờ Yuri chốt. Yuri bảo
+đẩy lên main 20/10 07:35 UTC.
+
+Tests after (`gate:int` trên `81ccd67`, nền `f8f8634`, 20/10, session cloud, API sống ở :3001): unit 8239
+(web 2427, admin 2390, api 1402, mobile 880, contract 800, mobile-ui 145, i18n 64, ui 57, core 48, tokens 26)
+và int 957; Biome 2092 file. PR thêm 23 test unit ở web, 2 ở admin và 3 test int ở api.
+
+**CÒN TREO:**
+
+- Buổi test tay: chín bước ở mục 3 của `code-review/L1-bao-cao.md` (curl `/sign-in/email-otp` phải ra 404, OTP
+  xác minh email trên web và app, quên mật khẩu, khách mới về đúng trang đặt tour, nút Log in của navbar, admin
+  giữ bộ lọc, xoá tài khoản xoá chat, Connected accounts của tài khoản Google).
+- Dọn nhánh `fix/review-l1-auth-hch85p` trên origin nếu GitHub không tự xoá.
+
 ## 2026-10-20 — Merge review L2 đợt hai: hàng tháng của tab Departures chỉ tính đợt còn đặt được, `BookingRail` bỏ biến thể rail (`78e6e8c`)
 
 Đợt hai của luồng L2 (kế hoạch review 20/10 trong thư mục chung của project,
