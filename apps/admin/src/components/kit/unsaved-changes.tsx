@@ -47,16 +47,37 @@ import { blocksTraverse, leaveTarget } from '@/lib/unsaved-changes';
  * Chromium, listener `popstate` ở `window` chạy theo thứ tự gắn kể cả khi gắn ở pha capture,
  * nên router của Next (gắn từ lúc app khởi động) luôn chạy trước; còn trình duyệt khôi phục vị
  * trí cuộn của mục cũ khiến trang nhảy.
+ *
+ * Thao tác rời trang không phải link, như Sign out, thì tự hỏi qua `requestLeave`.
  */
 const t = messages.admin.unsavedChanges;
 
 const UnsavedContext = React.createContext<{ setDirty: (dirty: boolean) => void } | null>(null);
 
 /**
- * Lượt rời trang đang chờ người dùng quyết: một link vừa bị chặn, hoặc một lượt Back/Forward
- * vừa bị huỷ (G7).
+ * Sự kiện huỷ được mà `requestLeave` phát ở `window`. Sự kiện chứ không context: nơi gọi nằm
+ * NGOÀI provider (Sign out ở sidebar của shell, còn provider bọc khu làm việc bên trong trang).
  */
-type PendingLeave = { kind: 'link'; href: string } | { kind: 'traverse'; key: string };
+const LEAVE_REQUEST = 'admin:request-leave';
+
+/**
+ * Hỏi trước một thao tác rời trang không đi qua link (review A2-17: Sign out). Không provider nào
+ * còn thay đổi chưa lưu thì `proceed` chạy ngay; còn thì hộp hỏi mở, và chỉ "Discard changes"
+ * mới chạy nó.
+ */
+export function requestLeave(proceed: () => void): void {
+  const request = new CustomEvent<() => void>(LEAVE_REQUEST, { cancelable: true, detail: proceed });
+  if (window.dispatchEvent(request)) proceed();
+}
+
+/**
+ * Lượt rời trang đang chờ người dùng quyết: một link vừa bị chặn, một lượt Back/Forward vừa bị
+ * huỷ (G7), hoặc một thao tác xin qua `requestLeave`.
+ */
+type PendingLeave =
+  | { kind: 'link'; href: string }
+  | { kind: 'traverse'; key: string }
+  | { kind: 'action'; proceed: () => void };
 
 export function UnsavedChangesProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -117,13 +138,20 @@ export function UnsavedChangesProvider({ children }: { children: React.ReactNode
       event.preventDefault();
       setPending({ kind: 'traverse', key: event.destination.key });
     };
+    const onLeaveRequest = (event: Event) => {
+      if (!(event instanceof CustomEvent)) return;
+      event.preventDefault();
+      setPending({ kind: 'action', proceed: event.detail });
+    };
     // jsdom và trình duyệt chưa có Navigation API: không có `window.navigation` — Back đi như cũ.
     const navigation = 'navigation' in window ? window.navigation : null;
     window.addEventListener('beforeunload', onBeforeUnload);
+    window.addEventListener(LEAVE_REQUEST, onLeaveRequest);
     document.addEventListener('click', onClick, true);
     navigation?.addEventListener('navigate', onNavigate);
     return () => {
       window.removeEventListener('beforeunload', onBeforeUnload);
+      window.removeEventListener(LEAVE_REQUEST, onLeaveRequest);
       document.removeEventListener('click', onClick, true);
       navigation?.removeEventListener('navigate', onNavigate);
     };
@@ -138,6 +166,10 @@ export function UnsavedChangesProvider({ children }: { children: React.ReactNode
     if (leave === null) return;
     if (leave.kind === 'link') {
       router.push(leave.href);
+      return;
+    }
+    if (leave.kind === 'action') {
+      leave.proceed();
       return;
     }
     leavingTo.current = leave.key;
