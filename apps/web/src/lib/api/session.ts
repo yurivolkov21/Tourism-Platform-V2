@@ -1,5 +1,5 @@
 import { cookies } from 'next/headers';
-import { redirect } from 'next/navigation';
+import { redirect, unstable_rethrow } from 'next/navigation';
 import { cache } from 'react';
 import { apiOrigin } from './env';
 
@@ -45,6 +45,18 @@ interface GetSessionApiResponse {
 }
 
 /**
+ * API không trả lời được câu "ai đang đăng nhập" (5xx, 429, lỗi mạng, body hỏng). KHÁC
+ * "chưa đăng nhập" (200 body `null`): review L3-19 (sửa ở L1) — gộp hai ca thành `null` là
+ * đẩy khách ĐÃ đăng nhập sang /login mỗi lần API đang khởi động lại hay đang deploy.
+ */
+export class SessionUnavailableError extends Error {
+  constructor(cause: unknown) {
+    super('Session lookup failed', { cause });
+    this.name = 'SessionUnavailableError';
+  }
+}
+
+/**
  * Đọc session server-side (ADR-0017 §3) — fetch THẲNG `GET /api/auth/
  * get-session` (endpoint của Better Auth, KHÔNG qua oRPC contract vì đây
  * không phải procedure của contract) kèm cookie forward từ `next/headers`,
@@ -52,47 +64,63 @@ interface GetSessionApiResponse {
  * dedupe: nhiều nơi gọi trong CÙNG một render (vd layout + page) chỉ tốn một
  * fetch.
  *
- * KHÔNG throw trong mọi trường hợp — response không-ok, lỗi mạng, hay lỗi
- * parse JSON đều trả `null` để page tự quyết redirect (defense-in-depth,
- * `requireSession` bên dưới). User đã tombstone (`deletedAt != null`) hay đang
- * bị khoá (`lockedAt != null`, ADR-0052) coi như null-session — khớp
- * `apps/api/src/auth/auth.guard.ts` phía API (hai vế ấy → 401).
+ * User đã tombstone (`deletedAt != null`) hay đang bị khoá (`lockedAt != null`,
+ * ADR-0052) coi như null-session — khớp `apps/api/src/auth/auth.guard.ts` phía
+ * API (hai vế ấy → 401). API không trả lời được thì ném `SessionUnavailableError`.
  */
-export const getServerSession = cache(async (): Promise<SessionUser | null> => {
+const readServerSession = cache(async (): Promise<SessionUser | null> => {
+  let data: GetSessionApiResponse | null;
   try {
     const cookieHeader = (await cookies()).toString();
     const response = await fetch(`${apiOrigin()}/api/auth/get-session`, {
       headers: { cookie: cookieHeader },
       cache: 'no-store',
     });
-    if (!response.ok) return null;
-
-    const data = (await response.json()) as GetSessionApiResponse | null;
-    if (!data || data.user.deletedAt != null || data.user.lockedAt != null) return null;
-
-    const { user } = data;
-    return {
-      id: user.id,
-      name: user.name,
-      email: user.email,
-      role: user.role ?? '',
-      phone: user.phone ?? null,
-      image: user.image ?? null,
-    };
-  } catch {
-    return null;
+    if (!response.ok) throw new Error(`get-session ${response.status}`);
+    data = (await response.json()) as GetSessionApiResponse | null;
+  } catch (error) {
+    // Lỗi nội bộ của Next (cookies() lúc build tĩnh chuyển route sang dynamic) phải đi thẳng ra;
+    // bọc lại là build chết ở mọi trang gọi requireSession.
+    unstable_rethrow(error);
+    throw new SessionUnavailableError(error);
   }
+  if (!data || data.user.deletedAt != null || data.user.lockedAt != null) return null;
+
+  const { user } = data;
+  return {
+    id: user.id,
+    name: user.name,
+    email: user.email,
+    role: user.role ?? '',
+    phone: user.phone ?? null,
+    image: user.image ?? null,
+  };
 });
 
 /**
- * Bắt buộc có session cho trang server component ở khu `/account` — gọi
- * `getServerSession()`, null thì redirect `/login?redirect=<path đã encode>`
+ * Session cho trang mà đăng nhập là TUỲ CHỌN (vd `/tours/[slug]/enquire` điền sẵn form).
+ * KHÔNG throw: API không trả lời được thì cũng `null`, trang vẫn dựng được cho khách vãng lai.
+ */
+export async function getServerSession(): Promise<SessionUser | null> {
+  try {
+    return await readServerSession();
+  } catch (error) {
+    unstable_rethrow(error);
+    return null;
+  }
+}
+
+/**
+ * Bắt buộc có session cho trang server component ở khu `/account` — đọc
+ * `readServerSession()`, null thì redirect `/login?redirect=<path đã encode>`
  * (`safeRedirect` là việc của TRANG LOGIN khi đọc lại param này, đã có từ
  * cụm auth — `lib/safe-redirect.ts`). `redirect()` của Next LUÔN throw để
  * ngắt render tại chỗ gọi nên hàm này không bao giờ trả về khi session null.
  */
 export async function requireSession(redirectTo: string): Promise<SessionUser> {
-  const session = await getServerSession();
+  // API không trả lời được thì để `SessionUnavailableError` nổi lên error boundary của route
+  // (báo lỗi, có nút thử lại) thay vì coi như chưa đăng nhập.
+  const session = await readServerSession();
   if (!session) {
     redirect(`/login?redirect=${encodeURIComponent(redirectTo)}`);
   }

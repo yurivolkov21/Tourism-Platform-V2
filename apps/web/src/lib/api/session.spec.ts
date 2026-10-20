@@ -19,7 +19,11 @@ const { redirectMock } = vi.hoisted(() => ({
     throw new Error(`REDIRECT:${url}`);
   }),
 }));
-vi.mock('next/navigation', () => ({ redirect: redirectMock }));
+// `unstable_rethrow` dùng bản THẬT: nó nhận ra lỗi nội bộ của Next qua `digest`.
+vi.mock('next/navigation', async (importOriginal) => ({
+  unstable_rethrow: (await importOriginal<typeof import('next/navigation')>()).unstable_rethrow,
+  redirect: redirectMock,
+}));
 
 // React `cache()` bản 'react' thường (non-'react-server' condition) mà
 // Vitest node runtime resolve là NO-OP passthrough — đo được tại
@@ -203,5 +207,61 @@ describe('requireSession', () => {
       'REDIRECT:/login?redirect=%2Faccount%2Fbookings',
     );
     expect(redirectMock).toHaveBeenCalledWith('/login?redirect=%2Faccount%2Fbookings');
+  });
+
+  // Review L3-19 (sửa ở L1): API lỗi hay không tới được KHÔNG phải "chưa đăng nhập". Trước
+  // bản vá cả hai thành null, nên khách đã đăng nhập bị đẩy sang /login lúc API đang khởi
+  // động lại (Render) hay đang deploy.
+  it('API trả 5xx hoặc 429 → ném SessionUnavailableError, KHÔNG redirect /login', async () => {
+    for (const status of [502, 503, 429]) {
+      vi.resetModules();
+      vi.stubGlobal(
+        'fetch',
+        vi.fn().mockResolvedValue({ ok: false, status, json: async () => null }),
+      );
+      const { requireSession, SessionUnavailableError } = await freshSessionModule();
+
+      await expect(requireSession('/tours/x/book')).rejects.toBeInstanceOf(SessionUnavailableError);
+    }
+    expect(redirectMock).not.toHaveBeenCalled();
+  });
+
+  it('lỗi nội bộ của Next (cookies() lúc build tĩnh) đi thẳng ra, KHÔNG bọc thành SessionUnavailableError', async () => {
+    // Next ném lỗi mang digest DYNAMIC_SERVER_USAGE để chuyển route sang dynamic; bọc nó lại là
+    // build chết ở `/account` (đo ở gate 20/10).
+    const dynamicUsage = Object.assign(new Error('Dynamic server usage'), {
+      digest: 'DYNAMIC_SERVER_USAGE',
+    });
+    cookiesToString.mockImplementationOnce(() => {
+      throw dynamicUsage;
+    });
+    vi.stubGlobal('fetch', vi.fn());
+    const { requireSession } = await freshSessionModule();
+
+    await expect(requireSession('/account')).rejects.toBe(dynamicUsage);
+  });
+
+  it('lỗi mạng hoặc body không phải JSON → ném SessionUnavailableError, KHÔNG redirect', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('fetch failed')));
+    const first = await freshSessionModule();
+    await expect(first.requireSession('/account')).rejects.toBeInstanceOf(
+      first.SessionUnavailableError,
+    );
+
+    vi.resetModules();
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => {
+          throw new SyntaxError('Unexpected token <');
+        },
+      }),
+    );
+    const second = await freshSessionModule();
+    await expect(second.requireSession('/account')).rejects.toBeInstanceOf(
+      second.SessionUnavailableError,
+    );
+    expect(redirectMock).not.toHaveBeenCalled();
   });
 });
