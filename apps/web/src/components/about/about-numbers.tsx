@@ -117,7 +117,10 @@ export function AboutNumbers({
                   {stat.suffix}
                 </span>
                 <p className="mb-1 text-sm font-semibold tracking-wide uppercase">{stat.label}</p>
-                <p className="text-xs text-foreground/40">{stat.description}</p>
+                {/* `text-foreground/80` chứ KHÔNG phải `text-muted-foreground`: rê chuột thì ô
+                    đổi sang `bg-muted/60`, mà muted-foreground trên nền muted chỉ còn 4.43:1
+                    (cùng lý do ở `destination-tile.tsx`). Bản `/40` cũ: 3.06:1 (review F3-14). */}
+                <p className="text-xs text-foreground/80">{stat.description}</p>
               </motion.div>
             ))}
           </div>

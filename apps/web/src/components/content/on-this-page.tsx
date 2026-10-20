@@ -58,7 +58,9 @@ export function OnThisPage({ items }: { items: TocItem[] }) {
                   : 'text-muted-foreground hover:text-foreground',
               )}
             >
-              <span className="font-mono text-xs tabular-nums opacity-60">{item.index}</span>
+              {/* Số đi theo màu của link, không làm mờ thêm: `opacity-60` cũ chỉ còn 2.62:1
+                  ở theme sáng, dưới 4.5:1 mà chữ 12px cần (review F3-14). */}
+              <span className="font-mono text-xs tabular-nums">{item.index}</span>
               {item.label}
             </a>
           </li>
