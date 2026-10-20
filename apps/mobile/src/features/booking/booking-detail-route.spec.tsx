@@ -221,3 +221,48 @@ describe('BookingDetailRoute — huỷ giữ chỗ khi đơn không còn chờ t
     expect(screen.queryByText(messages.accountActionErrors.generic)).toBeNull();
   });
 });
+
+/** Câu lỗi của lượt huỷ hỏng không được nằm chờ sẵn khi khách mở lại tấm lần sau. */
+describe('BookingDetailRoute — đóng tấm huỷ thì xoá câu lỗi cũ', () => {
+  it('huỷ lỗi, đóng tấm, mở lại: tấm sạch lỗi', async () => {
+    globalThis.fetch = jest.fn(() =>
+      Promise.resolve(
+        new Response(
+          JSON.stringify({
+            defined: false,
+            code: 'INTERNAL_SERVER_ERROR',
+            status: 500,
+            message: 'x',
+          }),
+          { status: 500, headers: { 'content-type': 'application/json' } },
+        ),
+      ),
+    ) as unknown as typeof fetch;
+    const actions = messages.accountBookingDetail.actions;
+    const generic = messages.accountActionErrors.generic;
+    await renderRoute(
+      makeBooking({
+        departureStartDate: '2099-01-08',
+        departureEndDate: '2099-01-10',
+        cancellation: {
+          deadline: '2099-01-01',
+          withinDeadline: true,
+          refundAmount: '35.00',
+          canCancel: true,
+        },
+      }),
+    );
+
+    await fireEvent.press(screen.getByRole('button', { name: actions.cancel }));
+    await fireEvent.press(
+      screen.getByRole('button', {
+        name: messages.accountBookingDetail.cancelDialog.withinCta('$35'),
+      }),
+    );
+    expect(await screen.findByText(generic)).toBeTruthy();
+
+    await fireEvent.press(screen.getByRole('button', { name: actions.cancelDismiss }));
+    await fireEvent.press(screen.getByRole('button', { name: actions.cancel }));
+    expect(screen.queryByText(generic)).toBeNull();
+  });
+});

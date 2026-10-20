@@ -70,6 +70,8 @@ export default function BookingDetailRoute() {
   const [cancelSheetOpen, setCancelSheetOpen] = useState(false);
   const [cancelPendingSheetOpen, setCancelPendingSheetOpen] = useState(false);
   const [reason, setReason] = useState('');
+  // Câu lỗi của lượt huỷ vừa hỏng — chung cho hai tấm (mỗi trạng thái đơn chỉ mở được một), xoá
+  // khi tấm đóng để lần mở sau không còn câu cũ.
   const [actionError, setActionError] = useState<string | null>(null);
   // Lỗi bấm Pay hiện NGAY trên màn (T5) — tách khỏi `actionError` chỉ nằm trong tấm huỷ đang ẩn.
   const [payError, setPayError] = useState<
@@ -511,7 +513,10 @@ export default function BookingDetailRoute() {
       />
       <CancelBookingSheet
         visible={cancelPendingSheetOpen}
-        onClose={() => setCancelPendingSheetOpen(false)}
+        onClose={() => {
+          setCancelPendingSheetOpen(false);
+          setActionError(null);
+        }}
         title={messages.accountBookingDetail.actions.cancelConfirmTitle}
         body={messages.accountBookingDetail.actions.cancelConfirmBody}
         confirmLabel={messages.accountBookingDetail.actions.cancelConfirmCta}
@@ -523,7 +528,10 @@ export default function BookingDetailRoute() {
       {booking.cancellation === null ? null : (
         <CancelBookingSheet
           visible={cancelSheetOpen}
-          onClose={() => setCancelSheetOpen(false)}
+          onClose={() => {
+            setCancelSheetOpen(false);
+            setActionError(null);
+          }}
           title={
             booking.cancellation.withinDeadline
               ? messages.accountBookingDetail.actions.cancelConfirmTitle
