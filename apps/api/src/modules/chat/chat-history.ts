@@ -156,3 +156,38 @@ export function prepareTurn(
   messages[messages.length - 1] = message;
   return { ok: true, kind: 'approval', pendingSeq: target.seq, messages };
 }
+
+/** Trạng thái cuối của một phần tool: đã có kết quả, bị từ chối, hay lỗi khi chạy. */
+const SETTLED_STATES: ReadonlySet<string> = new Set([
+  'output-available',
+  'output-denied',
+  'output-error',
+]);
+
+/**
+ * Lượt duyệt hỏng ở bước model (lỗi giữa stream) sau khi SDK đã chạy xong mọi phần vừa được
+ * trả lời — SDK chạy tool được duyệt và đóng phần bị từ chối TRƯỚC khi gọi model, nên enquiry
+ * có thể đã tạo và email đã xếp hàng dù lượt báo lỗi. Trả về tin đang chờ với các phần ấy thay
+ * bằng trạng thái cuối lấy từ `response`, bỏ mọi phần sinh sau đó (chữ dở của bước hỏng), để
+ * lượt sau không tự từ chối một enquiry đã gửi. Null khi còn phần nào chưa xong (lỗi trước
+ * khi tool chạy): khi ấy không ghi gì, khách gửi lại đúng quyết định.
+ */
+export function settleApproval(pending: UIMessage, response: UIMessage): UIMessage | null {
+  const settled = new Map<string, MessagePart>();
+  for (const part of response.parts) {
+    if (isToolUIPart(part) && SETTLED_STATES.has(part.state)) settled.set(part.toolCallId, part);
+  }
+  let answered = 0;
+  const parts: MessagePart[] = [];
+  for (const part of pending.parts) {
+    if (!isToolUIPart(part) || part.state !== 'approval-responded') {
+      parts.push(part);
+      continue;
+    }
+    const done = settled.get(part.toolCallId);
+    if (done === undefined) return null;
+    answered += 1;
+    parts.push(done);
+  }
+  return answered === 0 ? null : { ...pending, parts };
+}

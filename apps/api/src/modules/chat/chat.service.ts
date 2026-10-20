@@ -28,6 +28,7 @@ import {
   type PreparedTurn,
   prepareTurn,
   type StoredChatRow,
+  settleApproval,
 } from './chat-history.js';
 import { buildInstructions, type PromptOption } from './chat-prompt.js';
 import { peekUntilContent } from './chat-stream.js';
@@ -386,7 +387,9 @@ export class ChatService {
     try {
       for await (const message of readUIMessageStream({
         stream: input.serverBranch,
-        ...(input.pending ? { message: input.pending } : {}),
+        // SDK sửa tại chỗ tin được đưa vào (useChat tự chụp bản sao trước khi đưa), nên đưa
+        // bản sao: `settleApproval` cần tin đang chờ đúng như lúc trước lượt.
+        ...(input.pending ? { message: structuredClone(input.pending) } : {}),
         onError: () => {
           failed = true;
         },
@@ -394,9 +397,15 @@ export class ChatService {
         response = message;
       }
       if (failed || response === undefined) {
-        // Lỗi giữa stream: không ghi gì, khách bấm Retry gửi lại đúng tin cũ.
-        await this.releaseTurn(conversationId);
-        return;
+        // Lượt duyệt mà tool đã chạy xong trước khi model lỗi: enquiry đã gửi nên thẻ phải
+        // được ghi ở trạng thái cuối, không thì lượt sau tự từ chối nó (L7-01, review 20/10).
+        const settled = input.pending && response ? settleApproval(input.pending, response) : null;
+        if (settled === null) {
+          // Lỗi giữa stream: không ghi gì, khách bấm Retry gửi lại đúng tin cũ.
+          await this.releaseTurn(conversationId);
+          return;
+        }
+        response = settled;
       }
       const usage = await input.usage;
       if (usage === null) this.logger.warn(`chat: no token usage for ${conversationId}`);

@@ -751,6 +751,44 @@ describe('chat (int)', () => {
       expect(await prisma.enquiry.count()).toBe(1);
     });
 
+    // L7-01 (review 20/10): SDK chạy tool được duyệt TRƯỚC khi gọi model, nên model lỗi ở bước
+    // sau thì enquiry đã gửi mà lượt vẫn báo lỗi. Trước bản sửa lượt ấy không được ghi: lượt sau
+    // tự từ chối thẻ (model nghe "not sent" dù enquiry đã đi), tải lại thì thẻ lại mời bấm Send.
+    it('Send rồi model lỗi → thẻ vẫn ghi đã gửi; lượt sau không bị báo "not sent"', async () => {
+      await seedTour();
+      const id = newId();
+      const part = await propose(id);
+
+      script = ['throw'];
+      const res = await post(decide(id, part.approval.id, true));
+      expect(res.statusCode).toBe(200);
+      const chunks = sseChunks(res.body);
+      expect(chunks.some((c) => c.type === 'tool-output-available')).toBe(true);
+      expect(chunks.some((c) => c.type === 'error')).toBe(true);
+      await waitForTurnEnd(id);
+
+      expect(await prisma.enquiry.count()).toBe(1);
+      const saved = await rows(id);
+      expect(saved).toHaveLength(2);
+      const reply = saved[1]?.payload as unknown as UIMessage;
+      expect(reply.parts.at(-1)).toMatchObject({
+        type: 'tool-submitEnquiry',
+        state: 'output-available',
+        output: { sent: true },
+        approval: { id: part.approval.id, approved: true },
+      });
+
+      // Thẻ đã đóng: gửi lại quyết định cũ không còn gì để duyệt.
+      expect((await post(decide(id, part.approval.id, true))).statusCode).toBe(400);
+
+      script = [textReply('Yes, it went through.')];
+      expect((await post(say(id, 'Did it go through?'))).statusCode).toBe(200);
+      await waitForTurnEnd(id);
+      expect(JSON.stringify(calls.at(-1)?.prompt)).not.toContain(ENQUIRY_SKIPPED_REASON);
+      expect(await prisma.enquiry.count()).toBe(1);
+      expect(await rows(id)).toHaveLength(4);
+    });
+
     it('Cancel → 0 enquiry, model nhận lời từ chối', async () => {
       await seedTour();
       const id = newId();

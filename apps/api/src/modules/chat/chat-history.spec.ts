@@ -6,6 +6,7 @@ import {
   nextSeq,
   prepareTurn,
   type StoredChatRow,
+  settleApproval,
 } from './chat-history.js';
 
 function userRow(seq: number, text: string): StoredChatRow {
@@ -237,5 +238,114 @@ describe('prepareTurn — quyết định duyệt', () => {
     expect(
       prepareTurn(auto, { type: 'approval', approvalId: 'appr-1', approved: true }, 'x'),
     ).toEqual({ ok: false, reason: 'approval-not-pending' });
+  });
+});
+
+describe('settleApproval — lượt duyệt hỏng ở bước model', () => {
+  /** Tin đang chờ như `prepareTurn` dựng: khách vừa bấm, tool chưa chạy. */
+  function respondedEnquiry(
+    toolCallId: string,
+    approvalId: string,
+    approved: boolean,
+  ): UIMessage['parts'][number] {
+    return {
+      type: 'tool-submitEnquiry',
+      toolCallId,
+      state: 'approval-responded',
+      input: { name: 'An', email: 'an@example.com', message: 'Hi' },
+      approval: approved
+        ? { id: approvalId, approved, requestReason: 'Hue Food Walk' }
+        : { id: approvalId, approved, reason: ENQUIRY_CANCELLED_REASON },
+    } as UIMessage['parts'][number];
+  }
+
+  /** Phần đó sau khi SDK chạy xong tool: giữ nguyên approval, đổi trạng thái và kết quả. */
+  function settled(
+    part: UIMessage['parts'][number],
+    patch: Record<string, unknown>,
+  ): UIMessage['parts'][number] {
+    return { ...part, ...patch } as UIMessage['parts'][number];
+  }
+
+  const pending: UIMessage = {
+    id: 'a2',
+    role: 'assistant',
+    parts: [textPart('Please confirm.'), respondedEnquiry('call-1', 'appr-1', true)],
+  };
+
+  it('Send rồi model lỗi: giữ thẻ ở trạng thái đã gửi, bỏ chữ dở của bước hỏng', () => {
+    const sent = settled(pending.parts[1] as UIMessage['parts'][number], {
+      state: 'output-available',
+      output: { sent: true },
+    });
+    const response: UIMessage = {
+      ...pending,
+      parts: [textPart('Please confirm.'), sent, { type: 'step-start' }, textPart('Your enq')],
+    };
+
+    expect(settleApproval(pending, response)).toEqual({
+      id: 'a2',
+      role: 'assistant',
+      parts: [textPart('Please confirm.'), sent],
+    });
+    expect(sent).toMatchObject({
+      approval: { id: 'appr-1', approved: true, requestReason: 'Hue Food Walk' },
+    });
+  });
+
+  it('Cancel rồi model lỗi: thẻ đóng kèm lý do Cancel', () => {
+    const cancelled: UIMessage = {
+      id: 'a2',
+      role: 'assistant',
+      parts: [respondedEnquiry('call-1', 'appr-1', false)],
+    };
+    const denied = settled(cancelled.parts[0] as UIMessage['parts'][number], {
+      state: 'output-denied',
+    });
+
+    expect(settleApproval(cancelled, { ...cancelled, parts: [denied] })?.parts).toEqual([denied]);
+    expect(denied).toMatchObject({ approval: { reason: ENQUIRY_CANCELLED_REASON } });
+  });
+
+  it('tool lỗi rồi model cũng lỗi: thẻ ghi lỗi của tool, không còn gì chờ', () => {
+    const failed = settled(pending.parts[1] as UIMessage['parts'][number], {
+      state: 'output-error',
+      errorText: 'database is down',
+    });
+    expect(
+      settleApproval(pending, { ...pending, parts: [textPart('Please confirm.'), failed] })
+        ?.parts[1],
+    ).toBe(failed);
+  });
+
+  it('lỗi trước khi tool chạy xong → null, không có gì để ghi', () => {
+    expect(settleApproval(pending, pending)).toBeNull();
+    expect(settleApproval(pending, { ...pending, parts: [] })).toBeNull();
+  });
+
+  it('hai thẻ: phải xong cả hai, kể cả thẻ tự bị từ chối', () => {
+    const two: UIMessage = {
+      id: 'a2',
+      role: 'assistant',
+      parts: [
+        respondedEnquiry('call-1', 'appr-1', false),
+        respondedEnquiry('call-2', 'appr-2', true),
+      ],
+    };
+    const skipped = settled(two.parts[0] as UIMessage['parts'][number], { state: 'output-denied' });
+    const sent = settled(two.parts[1] as UIMessage['parts'][number], {
+      state: 'output-available',
+      output: { sent: true },
+    });
+
+    expect(settleApproval(two, { ...two, parts: [skipped, sent] })?.parts).toEqual([skipped, sent]);
+    expect(
+      settleApproval(two, { ...two, parts: [skipped, two.parts[1] as UIMessage['parts'][number]] }),
+    ).toBeNull();
+  });
+
+  it('tin không có phần nào vừa được trả lời → null', () => {
+    const plain: UIMessage = { id: 'a2', role: 'assistant', parts: [textPart('Hi')] };
+    expect(settleApproval(plain, plain)).toBeNull();
   });
 });
