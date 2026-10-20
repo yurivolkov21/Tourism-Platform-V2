@@ -1,9 +1,9 @@
 import { isDefinedError } from '@orpc/client';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { type PublicReview, windowDaysForTripLength } from '@tourism/contract';
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { windowDaysForTripLength } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { consumePendingReplay, setPendingReturn } from '@/features/auth/return-to';
 import { startBookingDraft } from '@/features/booking/booking-draft';
 import {
@@ -27,11 +27,7 @@ import {
   photoDisplayUrl,
   type TourDetailPhoto,
 } from '@/features/tour-detail/photo-viewer';
-import {
-  formatReviewDate,
-  isReviewSortChange,
-  reviewAuthorInitials,
-} from '@/features/tour-detail/reviews';
+import { formatReviewDate, reviewAuthorInitials } from '@/features/tour-detail/reviews';
 import {
   type TourDetailDepartureGroup,
   type TourDetailFact,
@@ -67,12 +63,6 @@ export default function TourDetailRoute() {
   // date", chỉ đổi "Book now" SAU khi khách tự bấm một đợt).
   const [selectedDepartureId, setSelectedDepartureId] = useState<string | null>(null);
   const [reviewSort, setReviewSort] = useState<TourDetailReviewSort>('newest');
-  // D4 — phân trang review: gộp thủ công (không dùng useInfiniteQuery, không
-  // có tiền lệ nào trong repo) — mỗi `page` là một query key riêng của
-  // TanStack Query, route tự nối các trang đã tải vào `reviewItems`.
-  const [reviewPage, setReviewPage] = useState(1);
-  const [reviewItems, setReviewItems] = useState<readonly PublicReview[]>([]);
-  const [reviewTotalPages, setReviewTotalPages] = useState(1);
   // D6 — tấm mời đăng nhập khi bấm tim lúc chưa có phiên; `wished` là trạng
   // thái LẠC QUAN hiển thị ngay, `wishlistError` tự xoá sau vài giây. Cùng
   // tấm này dùng cho "Book now" (P5b-3) — `authGateReason` chọn tiêu đề/câu.
@@ -103,22 +93,24 @@ export default function TourDetailRoute() {
   const queryClient = useQueryClient();
 
   const query = useQuery(orpc.catalog.tours.bySlug.queryOptions({ input: { slug } }));
-  const reviewsQuery = useQuery(
-    orpc.reviews.listByTour.queryOptions({
-      input: { tourSlug: slug, sort: reviewSort, page: reviewPage },
+  // D4 — phân trang review bằng `useInfiniteQuery`, cùng cách N4/N5 của
+  // `app/posts/index.tsx`. Sort nằm trong query key: đổi sort là sang cache
+  // khác, các trang đã tải luôn thuộc đúng sort đang chọn, chọn lại sort đang
+  // chọn là no-op (F10). `fetchNextPage` tải lại ĐÚNG trang vừa hỏng. Trước đây
+  // route tự giữ `page` và tự nối `items` qua effect: trang 2 hỏng rồi bấm
+  // "Load more" là nhảy sang trang 3 (trang 2 không bao giờ hiện), và một lượt
+  // gọi lại trả dữ liệu mới thì trang ấy bị nối thêm lần nữa.
+  const reviewsQuery = useInfiniteQuery(
+    orpc.reviews.listByTour.infiniteOptions({
+      input: (page: number) => ({ tourSlug: slug, sort: reviewSort, page }),
+      initialPageParam: 1,
+      getNextPageParam: (last) => (last.page < last.totalPages ? last.page + 1 : undefined),
     }),
   );
-  // Nối trang mới vào danh sách đã tải; `reviewPage === 1` (đầu tour, hoặc
-  // vừa đổi `reviewSort`) THAY hẳn thay vì nối, để không dính review của sort
-  // cũ. `reviewTotalPages` tách riêng khỏi `reviewsQuery.data` — data rỗng
-  // trong lúc đang tải trang kế (TanStack Query không giữ data cũ giữa hai
-  // query key khác nhau), giữ riêng thì nút "Load more" không nhấp nháy ẩn.
-  useEffect(() => {
-    if (reviewsQuery.data === undefined) return;
-    const data = reviewsQuery.data;
-    setReviewItems((prev) => (reviewPage === 1 ? data.items : [...prev, ...data.items]));
-    setReviewTotalPages(data.totalPages);
-  }, [reviewsQuery.data, reviewPage]);
+  const reviewItems = useMemo(
+    () => (reviewsQuery.data?.pages ?? []).flatMap((page) => page.items),
+    [reviewsQuery.data],
+  );
   const { tourDetail } = messages.mobile;
   const { toursPage } = messages;
 
@@ -382,10 +374,10 @@ export default function TourDetailRoute() {
           }),
         }));
 
-  // D4 — `reviewItems` đã gộp mọi trang tải tới giờ (xem effect trên).
-  // `breakdown` đọc THẲNG từ lượt fetch gần nhất — ổn định qua các trang vì
-  // server tính trên tập chưa lọc trang, không đổi theo `page`.
-  const reviewBreakdown = reviewsQuery.data?.breakdown ?? {
+  // D4 — `reviewItems` đã gộp mọi trang tải tới giờ (xem query trên).
+  // `breakdown` đọc từ trang đầu — ổn định qua các trang vì server tính trên
+  // tập chưa lọc trang, không đổi theo `page`.
+  const reviewBreakdown = reviewsQuery.data?.pages[0]?.breakdown ?? {
     '1': 0,
     '2': 0,
     '3': 0,
@@ -409,6 +401,17 @@ export default function TourDetailRoute() {
       }),
     ),
   }));
+  // Câu của danh sách rỗng: chỉ nói "chưa có review" khi server ĐÃ trả về rỗng.
+  // Đang tải hay tải hỏng mà nói vậy là nói dối (ADR-0055 §3: lỗi ≠ rỗng), lệch
+  // hẳn dòng "N reviews" ngay phía trên.
+  const reviewsEmptyState = reviewsQuery.isPending
+    ? { title: tourDetail.loadingReviews, body: '' }
+    : reviewsQuery.isError && reviewItems.length === 0
+      ? { title: tourDetail.reviewsError, body: '' }
+      : {
+          title: messages.tourDetail.reviewsTab.emptyTitle,
+          body: messages.tourDetail.reviewsTab.emptyBody,
+        };
   const reviewSortLabels: Record<TourDetailReviewSort, string> = {
     newest: tourDetail.sortNewest,
     oldest: tourDetail.sortOldest,
@@ -528,23 +531,19 @@ export default function TourDetailRoute() {
       reviewBreakdown={reviewBreakdown}
       reviewSort={reviewSort}
       reviewSortLabels={reviewSortLabels}
-      onChangeReviewSort={(sort) => {
-        // F10 — chọn lại sort đang chọn là no-op, không xoá danh sách đã tải.
-        if (!isReviewSortChange(reviewSort, sort)) return;
-        setReviewSort(sort);
-        setReviewPage(1);
-        setReviewItems([]);
-      }}
+      onChangeReviewSort={setReviewSort}
       reviews={reviews}
-      noReviewsTitle={messages.tourDetail.reviewsTab.emptyTitle}
-      noReviewsBody={messages.tourDetail.reviewsTab.emptyBody}
-      hasMoreReviews={reviewPage < reviewTotalPages}
-      loadingMoreReviews={reviewsQuery.isFetching && reviewPage > 1}
-      onLoadMoreReviews={() => setReviewPage((p) => p + 1)}
+      noReviewsTitle={reviewsEmptyState.title}
+      noReviewsBody={reviewsEmptyState.body}
+      hasMoreReviews={reviewsQuery.hasNextPage}
+      loadingMoreReviews={reviewsQuery.isFetchingNextPage}
+      onLoadMoreReviews={() => {
+        // Chặn thêm một lớp ngoài nút đã khoá: TanStack mặc định HUỶ lượt đang
+        // tải để bắt đầu lượt mới khi gọi chồng (cùng lý do `app/posts/index.tsx`).
+        if (!reviewsQuery.isFetchingNextPage) void reviewsQuery.fetchNextPage();
+      }}
       loadMoreReviewsLabel={
-        reviewsQuery.isFetching && reviewPage > 1
-          ? tourDetail.loadingReviews
-          : tourDetail.loadMoreReviews
+        reviewsQuery.isFetchingNextPage ? tourDetail.loadingReviews : tourDetail.loadMoreReviews
       }
       closePhotosLabel={messages.tourDetail.gallery.close}
       photoCounterFor={messages.tourDetail.gallery.counter}

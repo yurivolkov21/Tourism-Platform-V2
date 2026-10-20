@@ -2649,6 +2649,9 @@ export const messages = {
       /** D4 — nút gộp thêm trang review; đổi chữ khi trang kế đang tải. */
       loadMoreReviews: 'Load more reviews',
       loadingReviews: 'Loading…',
+      /** Trang review đầu tải hỏng: thay chữ "chưa có review" — tour có thể có
+          review mà app chưa lấy được (ADR-0055 §3, lỗi khác rỗng). */
+      reviewsError: "Couldn't load reviews.",
       /** Nhãn 4 thẻ dữ kiện tab Overview (D1) — giá trị lấy từ dữ liệu tour. */
       facts: {
         duration: 'Duration',

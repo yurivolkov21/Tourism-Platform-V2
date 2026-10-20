@@ -1,6 +1,6 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { fireEvent, screen } from '@testing-library/react-native';
-import type { TourDetail } from '@tourism/contract';
+import { fireEvent, screen, waitFor } from '@testing-library/react-native';
+import type { PublicReview, TourDetail } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
 import TourDetailRoute from '@/app/tours/[slug]';
 import { formatDepartureRange } from '@/features/tour-detail/departures';
@@ -115,6 +115,33 @@ function makeTour(overrides: Partial<TourDetail>): TourDetail {
   };
 }
 
+function review(id: string, body: string): PublicReview {
+  return {
+    id,
+    rating: 5,
+    title: null,
+    body,
+    authorName: 'Lan N.',
+    authorDeleted: false,
+    createdAt: '2026-07-05T10:30:00.000Z',
+    media: [],
+  };
+}
+
+function reviewPage(page: number, totalPages: number, items: PublicReview[]) {
+  return {
+    status: 200,
+    body: {
+      items,
+      page,
+      limit: 20,
+      total: totalPages * 20,
+      totalPages,
+      breakdown: { '1': 0, '2': 0, '3': 0, '4': 0, '5': 3 },
+    },
+  };
+}
+
 /** Dựng route với chi tiết tour có sẵn trong cache — không gọi mạng cho `catalog.tours.bySlug`. */
 async function renderRoute(tour: TourDetail) {
   // `staleTime: Infinity`: tour trong cache không bị gọi lại khi mount (lượt gọi
@@ -178,5 +205,89 @@ describe('TourDetailRoute — tab Dates', () => {
 
     expect(screen.getByRole('radio', { name: rowName(raised, '$120') })).toBeTruthy();
     expect(screen.queryByText('$110')).toBeNull();
+  });
+});
+
+describe('TourDetailRoute — tab Reviews', () => {
+  const emptyTitle = messages.tourDetail.reviewsTab.emptyTitle;
+
+  it('review đang tải: không nói "chưa có review" trong khi tour có 3 review', async () => {
+    await renderRoute(makeTour({}));
+    await fireEvent.press(screen.getByRole('tab', { name: t.reviewsTitle }));
+
+    expect(screen.queryByText(emptyTitle)).toBeNull();
+    expect(screen.getByText(t.loadingReviews)).toBeTruthy();
+  });
+
+  it('tải review hỏng: báo lỗi, không nói "chưa có review"', async () => {
+    reviewReplies = { 1: [{ status: 500 }] };
+    await renderRoute(makeTour({}));
+    await fireEvent.press(screen.getByRole('tab', { name: t.reviewsTitle }));
+
+    expect(await screen.findByText(t.reviewsError)).toBeTruthy();
+    expect(screen.queryByText(emptyTitle)).toBeNull();
+  });
+
+  // Trước đây route tự cộng `page` mỗi lần bấm: trang 2 hỏng rồi bấm lại là
+  // nhảy sang trang 3, trang 2 không bao giờ hiện.
+  it('trang kế hỏng rồi bấm "Load more" lần nữa: tải lại đúng trang đó, không nhảy trang', async () => {
+    reviewReplies = {
+      1: [reviewPage(1, 3, [review('00000000-0000-4000-8000-0000000000b1', 'Page one review')])],
+      2: [
+        { status: 500 },
+        reviewPage(2, 3, [review('00000000-0000-4000-8000-0000000000c2', 'Page two review')]),
+      ],
+      3: [reviewPage(3, 3, [review('00000000-0000-4000-8000-0000000000c3', 'Page three review')])],
+    };
+    await renderRoute(makeTour({}));
+    await fireEvent.press(screen.getByRole('tab', { name: t.reviewsTitle }));
+    await screen.findByText('Page one review');
+
+    await fireEvent.press(screen.getByRole('button', { name: t.loadMoreReviews }));
+    await waitFor(() => expect(reviewPagesRequested).toEqual([1, 2]));
+    await waitFor(() =>
+      expect(
+        screen.getByRole('button', { name: t.loadMoreReviews }).props.accessibilityState,
+      ).toMatchObject({
+        disabled: false,
+      }),
+    );
+
+    await fireEvent.press(screen.getByRole('button', { name: t.loadMoreReviews }));
+    expect(await screen.findByText('Page two review')).toBeTruthy();
+    expect(reviewPagesRequested).toEqual([1, 2, 2]);
+    expect(screen.queryByText('Page three review')).toBeNull();
+  });
+
+  // F10: bấm lại đúng chip đang chọn từng xoá sạch danh sách tới khi rời màn.
+  it('bấm lại chip sắp xếp đang chọn: giữ nguyên review đã tải', async () => {
+    reviewReplies = {
+      1: [reviewPage(1, 1, [review('00000000-0000-4000-8000-0000000000b1', 'Newest review')])],
+    };
+    await renderRoute(makeTour({}));
+    await fireEvent.press(screen.getByRole('tab', { name: t.reviewsTitle }));
+    await screen.findByText('Newest review');
+
+    await fireEvent.press(screen.getByRole('button', { name: t.sortNewest }));
+    expect(screen.getByText('Newest review')).toBeTruthy();
+    expect(reviewPagesRequested).toEqual([1]);
+  });
+
+  it('đổi sắp xếp: tải lại từ trang 1 theo thứ tự mới, không nối vào danh sách cũ', async () => {
+    reviewReplies = {
+      1: [
+        reviewPage(1, 1, [review('00000000-0000-4000-8000-0000000000b1', 'Newest review')]),
+        reviewPage(1, 1, [review('00000000-0000-4000-8000-0000000000d1', 'Highest review')]),
+      ],
+    };
+    await renderRoute(makeTour({}));
+    await fireEvent.press(screen.getByRole('tab', { name: t.reviewsTitle }));
+    await screen.findByText('Newest review');
+
+    await fireEvent.press(screen.getByRole('button', { name: t.sortHighest }));
+    expect(await screen.findByText('Highest review')).toBeTruthy();
+    expect(screen.queryByText('Newest review')).toBeNull();
+    expect(reviewSortsRequested).toEqual(['newest', 'highest']);
+    expect(reviewPagesRequested).toEqual([1, 1]);
   });
 });
