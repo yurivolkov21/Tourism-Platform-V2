@@ -23,14 +23,16 @@ vi.mock('sonner', () => ({
 }));
 
 const push = vi.fn();
+const refresh = vi.fn();
 vi.mock('next/navigation', () => ({
-  useRouter: () => ({ push: (href: string) => push(href), refresh: vi.fn() }),
+  useRouter: () => ({ push: (href: string) => push(href), refresh: () => refresh() }),
 }));
 
 beforeEach(() => {
   success.mockReset();
   errorToast.mockReset();
   push.mockReset();
+  refresh.mockReset();
 });
 
 const detail = detailFixture({ departureCount: 2 });
@@ -83,6 +85,35 @@ describe('DeleteTourZone', () => {
     expect(await within(dialog).findByRole('alert')).toHaveTextContent(t.errors.TOUR_HAS_BOOKINGS);
     expect(push).not.toHaveBeenCalled();
     expect(screen.getByRole('dialog', { name: t.dialog.title })).toBeInTheDocument();
+  });
+
+  // Review A2: booking tới sau lúc trang tải nên `bookingCount` trong tay còn 0 — đóng hộp mà
+  // không làm mới thì vùng vẫn mời bấm "Delete tour" để nhận lại đúng lỗi ấy.
+  it('TOUR_HAS_BOOKINGS rồi đóng hộp → làm mới để vùng thành dạng "đã có booking"', async () => {
+    const remove = vi.fn().mockResolvedValue({ ok: false, code: 'TOUR_HAS_BOOKINGS' });
+    const { user, dialog } = await openDialog(remove);
+
+    await user.click(within(dialog).getByRole('button', { name: t.dialog.submit }));
+    await within(dialog).findByRole('alert');
+    expect(refresh).not.toHaveBeenCalled();
+    await user.click(within(dialog).getByRole('button', { name: t.dialog.cancel }));
+
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog', { name: t.dialog.title })).not.toBeInTheDocument(),
+    );
+    expect(refresh).toHaveBeenCalledTimes(1);
+    expect(push).not.toHaveBeenCalled();
+  });
+
+  it('huỷ hộp khi chưa gửi gì → không làm mới', async () => {
+    const { user, dialog } = await openDialog(vi.fn());
+
+    await user.click(within(dialog).getByRole('button', { name: t.dialog.cancel }));
+
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog', { name: t.dialog.title })).not.toBeInTheDocument(),
+    );
+    expect(refresh).not.toHaveBeenCalled();
   });
 
   it('NOT_FOUND → hộp đóng, toast lỗi, về /tours', async () => {

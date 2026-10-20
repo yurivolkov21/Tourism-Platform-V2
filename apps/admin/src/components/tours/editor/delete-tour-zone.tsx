@@ -4,7 +4,7 @@ import type { AdminTourDetail } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
 import { Button } from '@tourism/ui/components/button';
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useCanAccess } from '@/components/admin-access-provider';
 import { ConfirmWriteDialog } from '@/components/kit/confirm-write-dialog';
 import { TOURS_LIST_HREF } from '@/lib/departures-query';
@@ -24,7 +24,8 @@ import {
  *
  * Hộp là kit `ConfirmWriteDialog`, giọng đỏ: lệnh lấy đi hẳn thứ đang hiện ra
  * ngoài, và câu thân hộp kể đúng từng thứ mất theo (đo trên `schema.prisma`).
- * Nút mở hộp KHÔNG khoá — không có lượt làm mới nào chạy nền ở đây.
+ * Nút mở hộp KHÔNG khoá — lượt làm mới duy nhất ở đây chạy SAU khi hộp đóng vì
+ * `TOUR_HAS_BOOKINGS`, và kết cục của nó là gỡ luôn chính nút ấy.
  */
 const t = messages.admin.tours.editor.delete;
 
@@ -39,6 +40,13 @@ export function DeleteTourZone({
   const mayDelete = useCanAccess('tours.delete');
   const router = useRouter();
   const [open, setOpen] = useState(false);
+  /**
+   * Hộp vừa nhận `TOUR_HAS_BOOKINGS` (review A2): booking tới sau lúc trang tải nên
+   * `bookingCount` trong tay còn 0. Đóng hộp thì làm mới để vùng thành dạng "đã có booking",
+   * không còn mời bấm lại để nhận đúng lỗi ấy. Không làm mới ngay lúc lỗi về: bản mới gỡ luôn
+   * cái hộp đang hiện câu lỗi.
+   */
+  const bookedMeanwhile = useRef(false);
 
   if (!mayDelete) return null;
 
@@ -93,13 +101,19 @@ export function DeleteTourZone({
           errorCopy={deleteTourErrorCopy}
           onSubmit={async () => {
             const result = await remove({ id: detail.id });
-            if (!result.ok) return { ok: false, code: result.code };
+            if (!result.ok) {
+              if (result.code === 'TOUR_HAS_BOOKINGS') bookedMeanwhile.current = true;
+              return { ok: false, code: result.code };
+            }
             return {
               ok: true,
               toast: { title: t.toast.title, description: t.toast.body(detail.title) },
             };
           }}
-          onClose={() => setOpen(false)}
+          onClose={() => {
+            setOpen(false);
+            if (bookedMeanwhile.current) router.refresh();
+          }}
           onSettled={() => router.push(TOURS_LIST_HREF)}
         />
       ) : null}
