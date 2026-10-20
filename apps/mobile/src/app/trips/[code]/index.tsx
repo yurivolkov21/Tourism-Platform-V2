@@ -1,3 +1,4 @@
+import { ORPCError } from '@orpc/client';
 import { useQuery } from '@tanstack/react-query';
 import { bookingPhase } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
@@ -67,9 +68,15 @@ export default function TripTrackerRoute() {
     orpc.catalog.tours.bySlug.queryOptions({
       input: { slug: booking?.tourSlug ?? '' },
       enabled: booking !== undefined,
+      // Tour đã gỡ khỏi web thì hỏi lại cũng vẫn 404 — đừng bắt khách chờ ba lượt retry.
+      retry: (failureCount, error) => !isTourGone(error) && failureCount < 3,
     }),
   );
   const tour = tourQuery.data;
+  // Admin gỡ tour (bỏ publish) không bị chặn kể cả khi còn đơn sống, mà `bySlug` chỉ trả
+  // tour đang publish — tracker không dựng được nữa thì đưa về hoá đơn, nơi khách vẫn xem
+  // được đơn và huỷ được, thay vì kẹt ở nút Retry không bao giờ thành công.
+  const tourGone = tourQuery.isError && isTourGone(tourQuery.error);
 
   useEffect(() => {
     if (code === undefined) return;
@@ -82,10 +89,10 @@ export default function TripTrackerRoute() {
   // P1 vô nghĩa.
   const travelling = booking === undefined || isTravellingPhase(bookingPhase(booking, today));
   useEffect(() => {
-    if (booking !== undefined && !travelling) {
+    if (booking !== undefined && (!travelling || tourGone)) {
       router.replace(`/bookings/${booking.code}`);
     }
-  }, [booking, travelling]);
+  }, [booking, travelling, tourGone]);
 
   if (code === undefined) return null;
 
@@ -117,7 +124,7 @@ export default function TripTrackerRoute() {
     tourError: tourQuery.isError,
   });
 
-  if (loadState === 'loading') {
+  if (loadState === 'loading' || tourGone) {
     return <PlaceholderScreen edges={SCREEN_EDGES_UNDER_HEADER} detail={code} />;
   }
 
@@ -401,4 +408,8 @@ export default function TripTrackerRoute() {
       }}
     />
   );
+}
+
+function isTourGone(error: unknown): boolean {
+  return error instanceof ORPCError && error.code === 'NOT_FOUND';
 }
