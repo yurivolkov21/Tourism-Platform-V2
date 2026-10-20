@@ -179,11 +179,6 @@ export function destinationUpdatePayload(
 }
 
 /**
- * Giá trị đầu của form sửa: vùng chọn sẵn là tên CHUẨN mà web đang xếp hàng
- * này vào (qua `findRegion`), hoặc rỗng khi chuỗi trong DB không khớp vùng nào
- * — admin phải chọn lại, và lưu xong là cột mang đúng một trong ba tên.
- */
-/**
  * Giá trị đầu của hộp Add — quốc gia điền sẵn theo contract, mọi ô khác trống.
  * Bảng dùng CHÍNH hàm này, nên spec canh được giá trị thật mà admin thấy (vòng
  * review F15: spec của hộp thoại từng tự cấp "Vietnam" qua fixture).
@@ -198,6 +193,11 @@ export function newDestinationFormValues(): DestinationFormValues {
   };
 }
 
+/**
+ * Giá trị đầu của form sửa: vùng chọn sẵn là tên CHUẨN mà web đang xếp hàng
+ * này vào (qua `findRegion`), hoặc rỗng khi chuỗi trong DB không khớp vùng nào
+ * — admin phải chọn lại, và lưu xong là cột mang đúng một trong ba tên.
+ */
 export function destinationEditValues(row: DestinationRowVM): DestinationFormValues {
   return {
     name: row.name,

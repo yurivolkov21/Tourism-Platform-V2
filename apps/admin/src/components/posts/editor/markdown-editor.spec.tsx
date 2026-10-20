@@ -109,6 +109,27 @@ describe('MarkdownEditor', () => {
     expect(link).toHaveAttribute('target', '_blank');
   });
 
+  // Review A3 (trọng tâm 1): contract chỉ chặn HTML thô và ảnh, link `javascript:` vẫn lưu được —
+  // lưới duy nhất là `urlTransform` mặc định của react-markdown trong `ArticleMarkdown`, bộ render
+  // chung của web và bản xem trước. Ai đổi nó để cho thêm scheme thì ca này đỏ.
+  it('Preview: link `javascript:` và HTML trong thân bài không thành mã chạy được', async () => {
+    const user = userEvent.setup();
+    render(
+      <Harness
+        initial={
+          '[Click](javascript:alert(1)) <script>alert(2)</script> <img src="x" onerror="alert(3)">'
+        }
+      />,
+    );
+
+    await user.click(screen.getByRole('tab', { name: t.preview }));
+
+    const link = await screen.findByRole('link', { name: 'Click' });
+    expect(link.getAttribute('href')).toMatch(/^https?:\/\//);
+    expect(document.querySelector('script')).toBeNull();
+    expect(document.querySelector('img')).toBeNull();
+  });
+
   it('Preview vẫn giữ ô chữ trong trang — nhãn và link "Content" không trỏ vào khoảng không', async () => {
     const user = userEvent.setup();
     render(<Harness initial="Text" />);

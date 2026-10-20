@@ -1,10 +1,11 @@
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { AdminCategoryRow } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
 import { createRef } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { toCategoryRowVMs } from '@/lib/categories-view';
+import { moveErrorCopy } from '@/lib/categories-write';
 import { withRole } from '@/test/access';
 import { CategoryRowActions } from './category-row-actions';
 
@@ -159,6 +160,117 @@ describe('CategoryRowActions — nút nào được bấm', () => {
     // Lệnh còn đang bay — cha đã phải biết là bảng đang bận.
     expect(onMoveStart).toHaveBeenCalledTimes(1);
     resolveMove?.();
+  });
+
+  it('lệnh đổi chỗ NÉM (mạng đứt, redeploy): toast câu chung, vẫn trả bảng về — không nuốt im (review A3-01)', async () => {
+    // Server action ném thì không biết lệnh đã tới đâu — cùng luật `useConfirmWrite` và nút
+    // đăng/gỡ tour: coi như GENERIC. Trước bản vá, lời hứa bị từ chối thoát khỏi `runMove`
+    // thành lỗi không ai bắt, admin không thấy câu nào.
+    const user = userEvent.setup();
+    const move = vi.fn(async () => {
+      throw new Error('Failed to fetch');
+    });
+    const { vm, onSettled } = renderRow([row(1), row(2)], 0, { move });
+
+    await user.click(screen.getByRole('button', { name: t.move.downLabel(vm.name) }));
+
+    await waitFor(() => expect(onSettled).toHaveBeenCalledTimes(1));
+    expect(errorToast).toHaveBeenCalledWith(moveErrorCopy('GENERIC'));
+  });
+});
+
+/**
+ * Focus bàn phím sau một lượt đổi chỗ (review A3-03). Hai chỗ trình duyệt đẩy focus về `<body>`
+ * (đo Chromium 141, 20/10): mũi tên đang giữ focus bị khoá `disabled` thật lúc bảng bận, và hàng
+ * chứa nó bị React dời chỗ trong DOM ở lượt làm mới. jsdom không làm cả hai việc ấy, nên ca giả
+ * lập bằng `blur()` đúng lúc bảng bận.
+ */
+describe('CategoryRowActions — focus sau khi đổi chỗ', () => {
+  function renderMovable(rows: AdminCategoryRow[], index: number) {
+    const move = vi.fn(async () => ({ ok: true as const, rows }));
+    const props = (list: AdminCategoryRow[], at: number, disabled: boolean) => {
+      const vm = toCategoryRowVMs(list)[at];
+      if (!vm) throw new Error(`no row at ${at}`);
+      return {
+        row: vm,
+        update: vi.fn(),
+        setActive: vi.fn(),
+        move,
+        remove: vi.fn(),
+        disabled,
+        onMoveStart: vi.fn(),
+        focusAfterDelete: createRef<HTMLElement>(),
+        onSettled: vi.fn(),
+      };
+    };
+    const view = render(<CategoryRowActions {...props(rows, index, false)} />);
+    return {
+      move,
+      /** Bảng vẽ lại với danh sách `list`, hàng này ở vị trí `at`. */
+      redraw: (list: AdminCategoryRow[], at: number, disabled: boolean) =>
+        view.rerender(<CategoryRowActions {...props(list, at, disabled)} />),
+    };
+  }
+
+  /** Bấm một mũi tên rồi đi hết vòng: bảng bận, focus lạc, lượt làm mới mang thứ tự mới về. */
+  async function moveAndRefresh(
+    direction: 'up' | 'down',
+    before: { rows: AdminCategoryRow[]; at: number },
+    after: { rows: AdminCategoryRow[]; at: number },
+  ) {
+    const user = userEvent.setup();
+    const { move, redraw } = renderMovable(before.rows, before.at);
+    const name = `Category ${before.at + 1}`;
+    const label = direction === 'up' ? t.move.upLabel(name) : t.move.downLabel(name);
+    const arrow = screen.getByRole('button', { name: label });
+
+    arrow.focus();
+    await user.keyboard('{Enter}');
+    await waitFor(() => expect(move).toHaveBeenCalled());
+    redraw(before.rows, before.at, true);
+    act(() => arrow.blur());
+    expect(document.activeElement).toBe(document.body);
+
+    redraw(after.rows, after.at, false);
+    return { name };
+  }
+
+  it('lượt làm mới về mà focus đã lạc: trả focus về đúng mũi tên vừa bấm', async () => {
+    const rows = [row(1), row(2), row(3)];
+    const moved = [row(2, { order: 1 }), row(1, { order: 2 }), row(3)];
+
+    await moveAndRefresh('down', { rows, at: 0 }, { rows: moved, at: 1 });
+
+    expect(screen.getByRole('button', { name: t.move.downLabel('Category 1') })).toHaveFocus();
+  });
+
+  it('hàng vừa chạm đáy: nút xuống tắt thật, focus về nút lên của chính hàng ấy', async () => {
+    const rows = [row(1), row(2)];
+    const moved = [row(2, { order: 1 }), row(1, { order: 2 })];
+
+    await moveAndRefresh('down', { rows, at: 0 }, { rows: moved, at: 1 });
+
+    expect(screen.getByRole('button', { name: t.move.downLabel('Category 1') })).toBeDisabled();
+    expect(screen.getByRole('button', { name: t.move.upLabel('Category 1') })).toHaveFocus();
+  });
+
+  it('người dùng đã tự đi chỗ khác trong lúc chờ: không giành focus về', async () => {
+    const user = userEvent.setup();
+    const outside = document.createElement('input');
+    document.body.append(outside);
+    const rows = [row(1), row(2), row(3)];
+    const { move, redraw } = renderMovable(rows, 1);
+    const arrow = screen.getByRole('button', { name: t.move.upLabel('Category 2') });
+
+    arrow.focus();
+    await user.keyboard('{Enter}');
+    await waitFor(() => expect(move).toHaveBeenCalled());
+    redraw(rows, 1, true);
+    act(() => outside.focus());
+    redraw([row(2, { order: 1 }), row(1, { order: 2 }), row(3)], 0, false);
+
+    expect(outside).toHaveFocus();
+    outside.remove();
   });
 });
 
