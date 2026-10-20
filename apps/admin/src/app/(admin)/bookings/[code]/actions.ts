@@ -20,7 +20,8 @@ import { classifyRefundError, type RefundActionResult } from '@/lib/refund';
  *
  * Ai chặn quyền: KHÔNG phải action này. Server action là một endpoint POST
  * mở như mọi endpoint khác, nên quyền được kiểm ở nơi duy nhất đáng tin —
- * `AuthGuard` + `@Roles(ADMIN)` của API, đọc chính cookie được forward.
+ * `AuthGuard` + `@AdminImplement` của API (role suy từ `ADMIN_ACCESS`, ADR-0052;
+ * `bookings.refund` chỉ Owner), đọc chính cookie được forward.
  *
  * Ba luật vòng vá review 31/08:
  * - Input được re-parse bằng CHÍNH `AdminRefundInputSchema` trước khi đi:

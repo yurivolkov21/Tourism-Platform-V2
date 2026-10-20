@@ -4207,7 +4207,8 @@ export const messages = {
         /**
          * MẪU SỐ của hàng đợi (ADR-0028 §AMEND 2 §4): không có nó thì
          * "Approved 12" không đọc được — 12 trên 12 hay 12 trên 300 là hai
-         * tình trạng khác hẳn. Cùng tập, cùng cột neo với `averageRating`.
+         * tình trạng khác hẳn. Cùng cột neo với `averageRating`, khác tập: điểm
+         * trung bình bỏ review đã bị bác.
          */
         submitted: (days: number) => `Submitted ${days}d`,
         approved: (days: number) => `Approved ${days}d`,

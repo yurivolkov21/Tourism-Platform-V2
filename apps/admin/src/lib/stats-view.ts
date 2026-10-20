@@ -87,8 +87,9 @@ const formatPercent = (value: string): string => `${value}%`;
 /**
  * Ngày trong nhãn khoảng. UTC là BẮT BUỘC chứ không phải mặc định tuỳ tiện:
  * mốc `2026-09-01T00:00:00Z` đọc theo giờ máy ở múi âm sẽ lùi thành 31/08, và
- * nhãn phải khớp cột `Created` của bảng ngay dưới — cùng thước đo với sổ
- * audit của API (xem `stats-math.ts`), không phải đồng hồ người đang xem.
+ * nhãn phải khớp ngày UTC mà bảng ngay dưới lọc theo `createdAt` (bảng `/bookings` không có cột
+ * ngày tạo, review A1 ghi thành đề xuất) — cùng thước đo với sổ audit của API (xem
+ * `stats-math.ts`), không phải đồng hồ người đang xem.
  */
 const DAY_FORMAT = new Intl.DateTimeFormat('en-US', {
   month: 'short',
@@ -311,8 +312,8 @@ function decimalCard(
 export function toBookingsStatCards(stats: AdminBookingsStats): StatCardVM[] {
   const days = stats.period.windowDays;
   const revenue = stats.revenue;
-  // Vùng DUY NHẤT có bộ lọc ngày (ADR-0028), nên cũng là vùng duy nhất có hai
-  // chế độ caption. Dựng MỘT lần cho cả bốn card: bốn lần gọi là bốn lần
+  // Một trong hai vùng có bộ lọc ngày (ADR-0028; vùng kia là `/reviews`), nên có
+  // hai chế độ caption. Dựng MỘT lần cho cả bốn card: bốn lần gọi là bốn lần
   // format cùng một khoảng.
   const caption = comparisonCaption(stats.period);
 
@@ -343,7 +344,7 @@ export function toBookingsStatCards(stats: AdminBookingsStats): StatCardVM[] {
   ];
 }
 
-/** Ba card của `/reviews`. */
+/** Bốn card của `/reviews`. */
 export function toReviewsStatCards(stats: AdminReviewsStats): StatCardVM[] {
   const days = stats.period.windowDays;
   const picked = isPickedPeriod(stats.period);
@@ -395,8 +396,8 @@ export function toReviewsStatCards(stats: AdminReviewsStats): StatCardVM[] {
       formatRating,
       // Thang sao chặn hai đầu → delta là hiệu số thô (0.23), không phải %.
       'points',
-      // Cùng caption với `submitted` vì cùng tập, cùng cột neo — kỳ do admin
-      // chọn thì in ngày thật thay vì "28 days ago".
+      // Cùng caption với `submitted` vì cùng kỳ, cùng cột neo (khác tập: bỏ review
+      // đã bị bác) — kỳ do admin chọn thì in ngày thật thay vì "28 days ago".
       caption,
     ),
   ];

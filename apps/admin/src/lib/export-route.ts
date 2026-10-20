@@ -86,7 +86,7 @@ export function logExportAudit(
 
 /**
  * Ngày UTC `YYYY-MM-DD` của một mốc — cùng thước với ngày mà API lọc
- * (`bookings-date-range.ts`), nên tên file nói cùng một ngày với dữ liệu bên
+ * (`apps/api/src/lib/created-at-range.ts`), nên tên file nói cùng một ngày với dữ liệu bên
  * trong dù người xuất ngồi ở múi giờ nào.
  */
 export function isoDay(now: Date): string {

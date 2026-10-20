@@ -45,7 +45,8 @@ import { PAGE_SIZE_OPTIONS } from '@/lib/table-query';
  *
  * - Drag-row TẮT: thứ tự hàng do server quyết (mới nhất trước), kéo thả không
  *   mang nghĩa gì ở vùng thật (§2.2).
- * - Không checkbox chọn hàng: chưa có hành vi hàng loạt nào để chọn cho.
+ * - Checkbox chọn hàng CÓ (spec 01/09): hành vi hàng loạt duy nhất là xuất Excel các hàng đã tích,
+ *   khoá trong trang đang xem (xem cột `select` và `bookings-selection.spec.tsx`).
  * - Không pagination state ở table: `data` CHÍNH LÀ một trang server đã cắt,
  *   `TablePagination` đọc thẳng props từ URL — table chỉ lo ẩn/hiện cột.
  * - Không sort/filter client: cả hai là việc của API, row model client chỉ
