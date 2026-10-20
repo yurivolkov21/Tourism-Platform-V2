@@ -61,4 +61,28 @@ describe('KeyedThrottlerStorage', () => {
       spy.mockRestore();
     }
   });
+
+  it('lượt quét dọn do bucket 60 giây kích không xoá bucket cửa sổ một giờ còn hit (review F1-02)', async () => {
+    const storage = new KeyedThrottlerStorage();
+    const now = Date.now();
+    const spy = vi.spyOn(Date, 'now');
+    try {
+      spy.mockReturnValue(now);
+      // Trần chat (CHAT_THROTTLE): 20 lượt mỗi GIỜ — dùng hết, chưa block.
+      for (let i = 0; i < 20; i++) {
+        await storage.increment('chat', 3_600_000, 20, 3_600_000, 'default');
+      }
+      // 61 giây sau, 1 000 lượt đọc công khai (cửa sổ 60 giây) kích một lượt quét.
+      spy.mockReturnValue(now + 61_000);
+      for (let i = 0; i < 1_000; i++) {
+        await storage.increment(`read:${i % 3}`, 60_000, 300, 60_000, 'default');
+      }
+      // Bản cũ quét theo ttl của lượt kích nên xoá bucket chat, lượt 21 lại đếm từ 1.
+      const next = await storage.increment('chat', 3_600_000, 20, 3_600_000, 'default');
+      expect(next.totalHits).toBe(21);
+      expect(next.isBlocked).toBe(true);
+    } finally {
+      spy.mockRestore();
+    }
+  });
 });
