@@ -112,6 +112,22 @@ describe('BlogExplorer — phân trang', () => {
     expect(postCards()).toHaveLength(POSTS.length - 6);
   });
 
+  it('?page= vượt số trang thật thì hiện trang cuối, không ra lưới rỗng với "Showing 49–9"', () => {
+    // Link cũ hay link chia sẻ lúc blog còn nhiều bài hơn: 9 bài chỉ có 2 trang.
+    renderBlog({ initialPage: 9 });
+    expect(postCards()).toHaveLength(POSTS.length - 6);
+    expect(screen.getByText(/showing 7–9 of 9/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '2' })).toHaveAttribute('aria-current', 'page');
+    // Trang cuối không phải trang 1, nên không có card featured tràn 2 cột.
+    expect(document.querySelector('.sm\\:col-span-2')).toBeNull();
+  });
+
+  it('?page= lẻ thập phân thì làm tròn xuống, không cắt lưới lệch nửa trang', () => {
+    renderBlog({ initialPage: 1.5 });
+    expect(postCards()).toHaveLength(6);
+    expect(screen.getByText(/showing 1–6 of 9/i)).toBeInTheDocument();
+  });
+
   it('thanh phân trang có mặt và công bố trang hiện tại', () => {
     renderBlog();
     const nav = screen.getByRole('navigation', { name: /pagination/i });

@@ -141,10 +141,16 @@ export function BlogExplorer({
   const searched = searchPosts(posts, query);
   const topicCounts = facetCounts(searched, facets, 'topics');
   const placeCounts = facetCounts(searched, facets, 'places');
-  const paged = paginate(visible, page, PAGE_SIZE);
+  // `?page=` của URL (link cũ, link chia sẻ lúc blog còn nhiều bài hơn, gõ tay) có
+  // thể vượt số trang thật hoặc lẻ thập phân. Kẹp về số nguyên trong dải TẠI ĐÂY,
+  // cùng cách /tours làm: để `paginate` trả trang rỗng thì lưới trắng trơn, thanh
+  // phân trang không nút nào sáng và dòng phạm vi in "Showing 49–9 of 9".
+  const lastPage = Math.max(1, Math.ceil(visible.length / PAGE_SIZE));
+  const paged = paginate(visible, Math.min(Math.floor(page), lastPage), PAGE_SIZE);
   // Trang 1 mới có card featured tràn 2 cột: ở trang 2 thì bài đầu của trang chỉ
-  // là bài thứ 7 theo ngày, cho nó khổ lớn là nói sai về thứ bậc nội dung.
-  const showFeatured = !filtering && page === 1;
+  // là bài thứ 7 theo ngày, cho nó khổ lớn là nói sai về thứ bậc nội dung. Đọc
+  // `paged.page` (trang đã kẹp), không đọc `page` thô của URL.
+  const showFeatured = !filtering && paged.page === 1;
 
   // Đổi bộ lọc/tìm kiếm thì về trang 1 — cùng quy tắc ToursExplorer. Không reset
   // thì đang ở trang 2 mà lọc còn 3 kết quả sẽ ra màn hình trắng.
