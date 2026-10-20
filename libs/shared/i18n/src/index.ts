@@ -2,7 +2,6 @@ export * from './lib/about-page.js';
 export * from './lib/contact-page.js';
 export * from './lib/date-names.js';
 export * from './lib/home-page.js';
-export * from './lib/i18n.js';
 export * from './lib/legal/cancellation.js';
 export * from './lib/legal/legal-page.js';
 export * from './lib/legal/privacy.js';
