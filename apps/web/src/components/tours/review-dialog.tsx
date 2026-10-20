@@ -89,6 +89,12 @@ export function ReviewDialog({
   const [page, setPage] = useState(1);
   const [data, setData] = useState<TourReviewsPageVM>(initialPage);
   const [loading, setLoading] = useState(false);
+  /** Lần gọi gần nhất hỏng. Khác "không có review nào khớp": cái đó là câu trả lời
+      thật của server, cái này là chưa có câu trả lời. */
+  const [failed, setFailed] = useState(false);
+  /** Tăng lên mỗi lần bấm "Try again" — effect tải đọc nó để chạy lại đúng bộ
+      tham số đang chọn, không phải dựng lại tay từng tham số ở nút bấm. */
+  const [attempt, setAttempt] = useState(0);
   const [hoverStar, setHoverStar] = useState(0);
 
   // Trang 1 mặc định đã nằm sẵn trong `initialPage`, nên bỏ qua lần fetch đầu:
@@ -96,10 +102,12 @@ export function ReviewDialog({
   // nháy "Loading…" cho không.
   const isDefaultView = sort === 'newest' && rating === undefined && !withPhotos && page === 1;
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: chạy lại theo `attempt` là chủ đích (nút "Try again"), thân hàm không đọc nó
   useEffect(() => {
     if (!open || isDefaultView) return;
     let cancelled = false;
     setLoading(true);
+    setFailed(false);
     fetchTourReviewsFromBrowser(slug, {
       page,
       pageSize: REVIEWS_PAGE_SIZE,
@@ -110,17 +118,26 @@ export function ReviewDialog({
       .then((next) => {
         if (!cancelled) setData(next);
       })
+      // Không có nhánh này thì lỗi mạng thành "Uncaught (in promise)" và modal giữ
+      // danh sách cũ dưới nhãn bộ lọc mới — khách tưởng đó là kết quả đã lọc.
+      .catch(() => {
+        if (!cancelled) setFailed(true);
+      })
       .finally(() => {
         if (!cancelled) setLoading(false);
       });
     return () => {
       cancelled = true;
     };
-  }, [open, isDefaultView, slug, page, sort, rating, withPhotos]);
+  }, [open, isDefaultView, slug, page, sort, rating, withPhotos, attempt]);
 
-  // Về bản mặc định thì trả lại dữ liệu server, không giữ kết quả lọc cũ.
+  // Về bản mặc định thì trả lại dữ liệu server, không giữ kết quả lọc cũ — và
+  // không giữ cả báo lỗi của lần gọi trước: bản mặc định không cần gọi mạng.
   useEffect(() => {
-    if (isDefaultView) setData(initialPage);
+    if (isDefaultView) {
+      setData(initialPage);
+      setFailed(false);
+    }
   }, [isDefaultView, initialPage]);
 
   const filtered = rating !== undefined || withPhotos;
@@ -292,7 +309,22 @@ export function ReviewDialog({
           <p aria-live="polite" className="sr-only">
             {loading ? t.loadingReviews : ''}
           </p>
-          {data.items.length === 0 ? (
+          {failed ? (
+            // Thay CẢ danh sách: danh sách cũ để lại dưới nhãn bộ lọc mới là nói
+            // sai về bộ lọc. Khác với lúc đang tải (giữ cũ, chỉ làm mờ) vì ở đây
+            // không có kết quả mới nào sắp tới.
+            <div role="alert" className="flex flex-col items-center gap-3 py-8 text-center">
+              <p className="text-sm text-muted-foreground">{t.reviewsLoadFailed}</p>
+              <Button
+                type="button"
+                variant="outline"
+                className={PANEL_BTN_SM}
+                onClick={() => setAttempt((n) => n + 1)}
+              >
+                {t.retry}
+              </Button>
+            </div>
+          ) : data.items.length === 0 ? (
             <p className="py-8 text-center text-sm text-muted-foreground">{t.noReviewsMatch}</p>
           ) : (
             data.items.map((review) => <ReviewCard key={review.id} review={review} />)
@@ -301,10 +333,14 @@ export function ReviewDialog({
 
         {/* `.dlg-foot` — viền trên, pad 16/24, hai đầu. */}
         <div className="flex items-center justify-between gap-4 border-t border-border px-6 py-4">
+          {/* Lỗi thì để trống: con số của lần tải trước không mô tả bộ lọc đang
+              chọn. Giữ thẻ `<p>` để cụm nút trang vẫn nằm bên phải. */}
           <p className="text-[13px] text-muted-foreground tabular-nums">
-            {filtered
-              ? t.showingMatching(from, to, data.total)
-              : t.showingRange(from, to, data.total)}
+            {failed
+              ? null
+              : filtered
+                ? t.showingMatching(from, to, data.total)
+                : t.showingRange(from, to, data.total)}
           </p>
           <div className="flex items-center gap-2">
             <Button

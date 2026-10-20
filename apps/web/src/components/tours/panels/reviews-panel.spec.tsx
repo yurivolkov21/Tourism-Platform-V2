@@ -234,6 +234,47 @@ describe('ReviewsPanel', () => {
     expect(box.className).not.toContain('max-h-[min(760px,100%)]');
   });
 
+  it('server lỗi khi lọc thì báo lỗi kèm nút thử lại, không để kết quả cũ đứng dưới bộ lọc mới', async () => {
+    // API free tier ngủ hoặc mạng rớt: trước đây promise bị bỏ rơi (không catch),
+    // modal giữ nguyên danh sách cũ trong khi nhãn đã ghi "4 stars only" — khách
+    // tưởng đó là kết quả lọc (review L2, 20/10).
+    const user = userEvent.setup();
+    fetchFromBrowser.mockRejectedValueOnce(new Error('timeout'));
+    render(<ReviewsPanel tour={TOUR} reviews={PAGE} />);
+    await open();
+    await user.click(screen.getByRole('button', { name: '4 stars only' }));
+    const dialog = screen.getByRole('dialog');
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent(
+      'Couldn’t load reviews. Check your connection and try again.',
+    );
+    expect(within(dialog).queryByText(/Four days on the back/)).toBeNull();
+    expect(within(dialog).queryByText(/Showing/)).toBeNull();
+
+    await user.click(within(dialog).getByRole('button', { name: 'Try again' }));
+    expect(fetchFromBrowser).toHaveBeenCalledTimes(2);
+    expect(fetchFromBrowser).toHaveBeenLastCalledWith(
+      'ha-giang-loop-4d',
+      expect.objectContaining({ rating: 4, page: 1 }),
+    );
+    expect(await within(dialog).findByText('Showing 1–1 of 1 matching')).toBeInTheDocument();
+    expect(within(dialog).queryByRole('alert')).toBeNull();
+  });
+
+  it('lỗi rồi quay về bản mặc định thì hết báo lỗi, hiện lại trang server đã gửi', async () => {
+    const user = userEvent.setup();
+    fetchFromBrowser.mockRejectedValueOnce(new Error('timeout'));
+    render(<ReviewsPanel tour={TOUR} reviews={PAGE} />);
+    await open();
+    const fourStars = screen.getByRole('button', { name: '4 stars only' });
+    await user.click(fourStars);
+    const dialog = screen.getByRole('dialog');
+    await within(dialog).findByRole('alert');
+    await user.click(fourStars);
+    expect(within(dialog).queryByRole('alert')).toBeNull();
+    expect(within(dialog).getByText(/Four days on the back/)).toBeInTheDocument();
+    expect(within(dialog).getByText('Showing 1–5 of 5')).toBeInTheDocument();
+  });
+
   it('bộ lọc không khớp gì thì nói thẳng, không để danh sách trống trơn', async () => {
     const user = userEvent.setup();
     fetchFromBrowser.mockResolvedValue({ ...PAGE, items: [], total: 0, totalPages: 0 });

@@ -2112,6 +2112,9 @@ export const messages = {
       reviewsSubtitle: (tourTitle: string, average: string, count: number) =>
         `${tourTitle} · ${average} out of 5 · ${count} ${count === 1 ? 'review' : 'reviews'}`,
       loadingReviews: 'Loading reviews…',
+      /** Gọi lại server hỏng (API ngủ, mạng rớt) khi đổi sắp xếp, bộ lọc hay trang. */
+      reviewsLoadFailed: 'Couldn’t load reviews. Check your connection and try again.',
+      retry: 'Try again',
       prevPage: 'Previous',
       nextPage: 'Next',
       pageOf: (page: number, totalPages: number) => `${page} / ${totalPages}`,
