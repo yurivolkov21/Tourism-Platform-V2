@@ -95,9 +95,9 @@ describe('itineraryDayState', () => {
 
 describe('departureMonths', () => {
   const deps = [
-    { startDate: '2026-09-14', seatsLeft: 6, effectivePrice: '329.00' },
-    { startDate: '2026-09-28', seatsLeft: 9, effectivePrice: '329.00' },
-    { startDate: '2026-10-12', seatsLeft: 3, effectivePrice: '349.00' },
+    { startDate: '2026-09-14', seatsLeft: 6, effectivePrice: '329.00', bookable: true },
+    { startDate: '2026-09-28', seatsLeft: 9, effectivePrice: '329.00', bookable: true },
+    { startDate: '2026-10-12', seatsLeft: 3, effectivePrice: '349.00', bookable: true },
   ];
   it('gộp theo tháng, cộng ghế, lấy khoảng giá', () => {
     const [sep, oct] = departureMonths(deps);
@@ -106,6 +106,39 @@ describe('departureMonths', () => {
     expect(sep.minPrice).toBe(329);
     expect(oct.minPrice).toBe(349);
     expect(oct.maxPrice).toBe(349);
+  });
+
+  // Hàng tháng phải nói cùng tập `isDepartureOpen` với ô "Seats left", "Price range"
+  // và huy hiệu tháng: tháng chỉ còn đợt đã đóng từng in "8 of 20 seats left" ngay
+  // cạnh huy hiệu "Booking closed".
+  it('ghế của tháng chỉ cộng đợt còn đặt được, đợt đã qua hạn đặt vẫn là một hàng', () => {
+    const [nov] = departureMonths([
+      { startDate: '2026-11-03', seatsLeft: 8, effectivePrice: '329.00', bookable: false },
+      { startDate: '2026-11-17', seatsLeft: 5, effectivePrice: '329.00', bookable: true },
+    ]);
+    expect(nov.items).toHaveLength(2);
+    expect(nov.seatsLeft).toBe(5);
+  });
+
+  it('khoảng giá của tháng bỏ đợt hết chỗ và đợt đã qua hạn đặt', () => {
+    const [nov] = departureMonths([
+      { startDate: '2026-11-03', seatsLeft: 0, effectivePrice: '199.00', bookable: true },
+      { startDate: '2026-11-10', seatsLeft: 4, effectivePrice: '249.00', bookable: false },
+      { startDate: '2026-11-17', seatsLeft: 5, effectivePrice: '329.00', bookable: true },
+      { startDate: '2026-11-24', seatsLeft: 7, effectivePrice: '349.00', bookable: true },
+    ]);
+    expect(nov.minPrice).toBe(329);
+    expect(nov.maxPrice).toBe(349);
+  });
+
+  it('tháng không còn đợt đặt được: 0 ghế, cột giá lùi về giá của mọi đợt trong tháng', () => {
+    const [nov] = departureMonths([
+      { startDate: '2026-11-03', seatsLeft: 0, effectivePrice: '199.00', bookable: true },
+      { startDate: '2026-11-10', seatsLeft: 4, effectivePrice: '249.00', bookable: false },
+    ]);
+    expect(nov.seatsLeft).toBe(0);
+    expect(nov.minPrice).toBe(199);
+    expect(nov.maxPrice).toBe(249);
   });
 });
 

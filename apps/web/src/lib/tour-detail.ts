@@ -53,8 +53,18 @@ export function itineraryDayState(
   return a < b ? 'done' : a === b ? 'active' : 'upcoming';
 }
 
+/**
+ * Nhóm đợt theo tháng cho hàng cha của tab Departures và modal "All dates".
+ *
+ * Đợt nào cũng là một hàng con, nhưng ghế và khoảng giá của hàng tháng chỉ tính
+ * tập `isDepartureOpen`, cùng tập với ô "Seats left", "Price range" (ADR-0058 §1)
+ * và huy hiệu tháng (`monthNotice`): ghế của đợt đã qua hạn đặt không mua được,
+ * và giá của đợt khuyến mãi đã hết chỗ không còn ai trả. Tháng không còn đợt đặt
+ * được thì ghế là 0 và cột giá lùi về giá của mọi đợt trong tháng, để ô giá không
+ * rỗng; huy hiệu "Booking closed" hay "Sold out" đã nói lý do.
+ */
 export function departureMonths<
-  T extends { startDate: string; seatsLeft: number; effectivePrice: string },
+  T extends { startDate: string; seatsLeft: number; effectivePrice: string; bookable: boolean },
 >(departures: readonly T[]) {
   const out: {
     month: string;
@@ -70,11 +80,14 @@ export function departureMonths<
       bucket = { month, items: [], seatsLeft: 0, minPrice: Infinity, maxPrice: 0 };
       out.push(bucket);
     }
-    const price = Number(d.effectivePrice);
     bucket.items.push(d);
-    bucket.seatsLeft += d.seatsLeft;
-    bucket.minPrice = Math.min(bucket.minPrice, price);
-    bucket.maxPrice = Math.max(bucket.maxPrice, price);
+  }
+  for (const bucket of out) {
+    const open = bucket.items.filter(isDepartureOpen);
+    const prices = (open.length > 0 ? open : bucket.items).map((d) => Number(d.effectivePrice));
+    bucket.seatsLeft = open.reduce((sum, d) => sum + d.seatsLeft, 0);
+    bucket.minPrice = Math.min(...prices);
+    bucket.maxPrice = Math.max(...prices);
   }
   return out;
 }

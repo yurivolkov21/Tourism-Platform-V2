@@ -266,6 +266,14 @@ describe('DeparturesPanel', () => {
     expect(within(monthRow).queryByText('Almost full')).toBeNull();
   });
 
+  it('tháng chỉ có đợt đã qua hạn đặt: ô ghế của dòng tháng ghi 0, cạnh huy hiệu "Booking closed"', () => {
+    // Trước bản vá dòng tháng in "2 of 10 seats left": hai ghế không mua được.
+    render(wrap([closedFrom(DEPARTURES[0] as DepartureVM), DEPARTURES[1] as DepartureVM]));
+    const monthRow = screen.getByText('August 2026').closest('tr');
+    if (!monthRow) throw new Error('không tìm thấy hàng tháng 8');
+    expect(within(monthRow).getByText('0 of 10 seats left')).toBeInTheDocument();
+  });
+
   it('giảm giá hiện cả giá gạch lẫn số tiền tiết kiệm', async () => {
     const user = userEvent.setup();
     render(wrap());
