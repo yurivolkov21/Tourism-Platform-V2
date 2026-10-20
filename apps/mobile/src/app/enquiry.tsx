@@ -16,9 +16,9 @@ import { getAuthClient } from '@/lib/auth-client';
 import { cloudinaryUrl } from '@/lib/cloudinary-url';
 
 /**
- * E1/E2 (W6) — mở từ ba chỗ (đợt đã đóng, tour hết đợt — cả hai ở nhánh
- * `feat/mobile-browse-screens`; hộp huỷ quá hạn — `bookings/[code].tsx` của
- * nhánh này). `tourSlug` tuỳ chọn: `enquiries.create` KHÔNG bắt buộc gắn tour.
+ * E1/E2 (W6) — mở từ trang tour (đợt đã đóng, tour hết đợt), từ hoá đơn và tracker
+ * (Contact us, hộp huỷ quá hạn) và từ màn hết lượt đánh giá. `tourSlug` tuỳ chọn:
+ * `enquiries.create` KHÔNG bắt buộc gắn tour.
  */
 export default function EnquiryRoute() {
   const { tourSlug, tripTitle, tripSubtitle, tripImageUrl } = useLocalSearchParams<{
@@ -77,7 +77,10 @@ export default function EnquiryRoute() {
   }
 
   function handleClose() {
-    if (tourSlug !== undefined) router.push(`/tours/${tourSlug}`);
+    // `dismissTo` lùi về trang tour đã nằm dưới trong stack (mở từ trang tour); không có thì
+    // thay màn này bằng trang tour (mở từ hoá đơn, tracker). `push` để lại màn "đã gửi" phía
+    // sau — bấm Back là gặp lại nó.
+    if (tourSlug !== undefined) router.dismissTo(`/tours/${tourSlug}`);
     else router.back();
   }
 
