@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { waitFor } from '@testing-library/react-native';
-import type { BookingDetail } from '@tourism/contract';
+import { fireEvent, screen, waitFor } from '@testing-library/react-native';
+import type { BookingDetail, TourDetail } from '@tourism/contract';
+import { messages } from '@tourism/i18n';
 import { router } from 'expo-router';
 import TripTrackerRoute from '@/app/trips/[code]/index';
 import { orpc } from '@/lib/api/client';
@@ -16,7 +17,13 @@ jest.mock('@/lib/auth-client', () => ({
 }));
 jest.mock('@/lib/env', () => ({ env: () => ({ apiUrl: 'http://api.test' }) }));
 jest.mock('expo-router', () => ({
-  router: { push: jest.fn(), replace: jest.fn(), navigate: jest.fn(), back: jest.fn() },
+  router: {
+    push: jest.fn(),
+    replace: jest.fn(),
+    navigate: jest.fn(),
+    dismissTo: jest.fn(),
+    back: jest.fn(),
+  },
   Stack: { Screen: () => null },
   useLocalSearchParams: () => ({ code: 'BK-TEST0001' }),
 }));
@@ -93,5 +100,55 @@ describe('TripTrackerRoute — tour đã gỡ khỏi web', () => {
     await waitFor(() => expect(globalThis.fetch).toHaveBeenCalled());
     await new Promise((resolve) => setTimeout(resolve, 50));
     expect(router.replace).not.toHaveBeenCalled();
+  });
+});
+
+/**
+ * P6 "Where to next?": tracker là màn của stack gốc, `navigate('/explore')` từ đây đẩy thêm một bộ
+ * tab mới chồng lên — từ Explore bấm back về Home rồi back nữa lại ra đúng P6 vừa rời (review M1,
+ * đo bằng router thật). `dismissTo` lùi về bộ tab đang có rồi mở Explore, cùng khuôn B8.
+ */
+describe('TripTrackerRoute — Where to next? ở P6 lùi về bộ tab đang có', () => {
+  beforeEach(() => {
+    jest.mocked(router.dismissTo).mockClear();
+    jest.mocked(router.navigate).mockClear();
+  });
+
+  it('chuyến đã về: dòng Where to next? mở Explore bằng dismissTo', async () => {
+    globalThis.fetch = jest.fn(() =>
+      Promise.reject(new Error('offline')),
+    ) as unknown as typeof fetch;
+    const client = new QueryClient({
+      defaultOptions: { queries: { retry: false, staleTime: Infinity } },
+    });
+    clients.push(client);
+    client.setQueryData(orpc.bookings.byCode.queryOptions({ input: { code: CODE } }).queryKey, {
+      code: CODE,
+      status: 'PAID',
+      tourTitle: 'Test tour',
+      tourSlug: 'test-tour',
+      tourDestinations: [],
+      departureStartDate: '2026-01-08',
+      departureEndDate: '2026-01-10',
+      departureCancelled: false,
+      totalAmount: '35.00',
+      currency: 'USD',
+      numAdults: 1,
+      numChildren: 0,
+      reviewedAt: null,
+    } as Partial<BookingDetail> as BookingDetail);
+    client.setQueryData(
+      orpc.catalog.tours.bySlug.queryOptions({ input: { slug: 'test-tour' } }).queryKey,
+      { durationDays: 3, policies: [] } as Partial<TourDetail> as TourDetail,
+    );
+    await renderWithTheme(
+      <QueryClientProvider client={client}>
+        <TripTrackerRoute />
+      </QueryClientProvider>,
+    );
+
+    await fireEvent.press(screen.getByText(messages.mobile.trip.whereToNext));
+    expect(router.dismissTo).toHaveBeenCalledWith('/explore');
+    expect(router.navigate).not.toHaveBeenCalled();
   });
 });

@@ -16,7 +16,7 @@ jest.mock('@/lib/auth-client', () => ({
 }));
 jest.mock('@/lib/env', () => ({ env: () => ({ apiUrl: 'http://api.test' }) }));
 jest.mock('expo-router', () => ({
-  router: { push: jest.fn(), navigate: jest.fn(), back: jest.fn() },
+  router: { push: jest.fn(), navigate: jest.fn(), dismissTo: jest.fn(), back: jest.fn() },
   Stack: { Screen: () => null },
   useLocalSearchParams: () => ({ code: 'BK-TEST0001' }),
 }));
@@ -264,5 +264,32 @@ describe('BookingDetailRoute — đóng tấm huỷ thì xoá câu lỗi cũ', (
     await fireEvent.press(screen.getByRole('button', { name: actions.cancelDismiss }));
     await fireEvent.press(screen.getByRole('button', { name: actions.cancel }));
     expect(screen.queryByText(generic)).toBeNull();
+  });
+});
+
+/**
+ * Hoá đơn mở từ tab Trips là màn của stack gốc: `navigate('/explore')` từ đây đẩy thêm một bộ tab
+ * mới chồng lên — từ Explore bấm back về Home rồi back nữa lại ra đúng hoá đơn vừa rời (review M1,
+ * đo bằng router thật). `dismissTo` lùi về bộ tab đang có rồi mở Explore, cùng khuôn B8.
+ */
+describe('BookingDetailRoute — Browse tours lùi về bộ tab đang có', () => {
+  const CANCELLED_AT = '2026-01-02T00:00:00.000Z';
+
+  beforeEach(() => {
+    jest.mocked(router.dismissTo).mockClear();
+    jest.mocked(router.navigate).mockClear();
+  });
+
+  it.each<[string, Partial<BookingDetail>]>([
+    ['chờ trả quá hạn chót', { status: 'PENDING', paidAt: null }],
+    ['chuyến công ty huỷ', { departureCancelled: true }],
+    ['huỷ khi chưa thu tiền', { status: 'CANCELLED', paidAt: null, cancelledAt: CANCELLED_AT }],
+    ['đã hoàn tiền', { status: 'REFUNDED', refundedTotal: '35.00', cancelledAt: CANCELLED_AT }],
+  ])('%s', async (_label, overrides) => {
+    await renderRoute(makeBooking(overrides));
+
+    await fireEvent.press(screen.getByRole('button', { name: messages.mobile.trips.browse }));
+    expect(router.dismissTo).toHaveBeenCalledWith('/explore');
+    expect(router.navigate).not.toHaveBeenCalled();
   });
 });

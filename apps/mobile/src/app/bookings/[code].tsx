@@ -50,6 +50,11 @@ import { useServerClock } from '@/lib/use-server-clock';
  * Reachable qua deep link (`nexora://bookings/<mã>`, namespace không độc
  * quyền — xem comment cũ của file này) nên PHẢI gác đăng nhập Ở ĐÂY, không
  * nhờ cậy việc chỉ tới từ tab Trips đã gác.
+ *
+ * "Browse tours" của các khung đã đóng mở Explore bằng `dismissTo` (cùng khuôn
+ * B8): màn này nằm ở stack gốc, `navigate('/explore')` đẩy thêm một bộ tab mới
+ * chồng lên — từ Explore back về Home rồi back nữa lại ra hoá đơn vừa rời
+ * (review M1). `dismissTo` lùi về bộ tab đang có rồi mở Explore.
  */
 export default function BookingDetailRoute() {
   const { code: rawCode } = useLocalSearchParams<{ code: string }>();
@@ -353,7 +358,7 @@ export default function BookingDetailRoute() {
     ];
     primaryAction = {
       label: messages.mobile.trips.browse,
-      onPress: () => router.navigate('/explore'),
+      onPress: () => router.dismissTo('/explore'),
     };
   } else if (kind === 'paid') {
     if (booking.cancellation) {
@@ -442,7 +447,7 @@ export default function BookingDetailRoute() {
     ];
     primaryAction = {
       label: messages.mobile.trips.browse,
-      onPress: () => router.navigate('/explore'),
+      onPress: () => router.dismissTo('/explore'),
     };
   } else if (kind === 'cancelled') {
     note = {
@@ -452,7 +457,7 @@ export default function BookingDetailRoute() {
     };
     primaryAction = {
       label: messages.mobile.trips.browse,
-      onPress: () => router.navigate('/explore'),
+      onPress: () => router.dismissTo('/explore'),
     };
   } else {
     const refunded = Number(booking.refundedTotal) > 0;
@@ -484,7 +489,7 @@ export default function BookingDetailRoute() {
     ];
     primaryAction = {
       label: messages.mobile.trips.browse,
-      onPress: () => router.navigate('/explore'),
+      onPress: () => router.dismissTo('/explore'),
     };
     // PARTIALLY_REFUNDED không phải trạng thái cuối (booking-states.md, ADR-0041):
     // khách vẫn đi tour và còn huỷ được khi server cho phép.

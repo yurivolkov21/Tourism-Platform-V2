@@ -231,7 +231,9 @@ export default function TripTrackerRoute() {
         whereToNextRow={{
           label: t.whereToNext,
           caption: t.nearPlaces(booking.tourDestinations.map((d) => d.name)),
-          onPress: () => router.navigate('/explore'),
+          // `dismissTo`, không `navigate` (cùng khuôn B8): `navigate` đẩy thêm một bộ tab mới chồng
+          // lên — từ Explore back về Home rồi back nữa lại ra P6 vừa rời (review M1).
+          onPress: () => router.dismissTo('/explore'),
         }}
       />
     );
