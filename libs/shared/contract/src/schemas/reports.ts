@@ -4,8 +4,8 @@ import { DecimalStringSchema, SignedDecimalStringSchema } from './catalog.js';
 import { CalendarMonthSchema } from './common.js';
 
 /**
- * Báo cáo THÁNG của admin (spec P4b §3-F6) — nguồn cho trang `/reports`, nút
- * CSV của nó và bản in ra PDF bằng chính trình duyệt.
+ * Báo cáo THÁNG của admin (spec P4b §3-F6) — nguồn cho trang `/reports`, file
+ * Excel của nó (ADR-0034) và bản in ra PDF bằng chính trình duyệt.
  *
  * ## Vì sao một endpoint RIÊNG chứ không chỉ dùng `admin.stats.*`
  *
@@ -65,7 +65,7 @@ export const BookingStatusCountSchema = z.object({
 export type BookingStatusCount = z.output<typeof BookingStatusCountSchema>;
 
 export const AdminMonthlyReportSchema = z.object({
-  /** Chính tháng đã hỏi, dội lại — để bản in/CSV không phải tin vào URL. */
+  /** Chính tháng đã hỏi, dội lại — để bản in/Excel không phải tin vào URL. */
   month: ReportMonthSchema,
   /** Đầu kỳ, ISO UTC — TÍNH VÀO (`>=`). */
   from: z.iso.datetime(),
@@ -86,7 +86,7 @@ export const AdminMonthlyReportSchema = z.object({
    * Tổng các `count` luôn bằng `newBookings` — hai con số kiểm chéo nhau.
    *
    * Phủ ĐỦ mọi trạng thái kể cả 0 (`.length` theo chính enum): bảng báo cáo
-   * và CSV có số hàng cố định giữa các tháng, nên "0" hiện ra như một con số
+   * và file Excel có số hàng cố định giữa các tháng, nên "0" hiện ra như một con số
    * chứ không biến mất thành một dòng thiếu.
    */
   bookingsByStatus: z.array(BookingStatusCountSchema).length(BookingStatusSchema.options.length),
@@ -100,13 +100,15 @@ export const AdminMonthlyReportSchema = z.object({
   /** Số LƯỢT hoàn trong tháng (một booking có thể hoàn nhiều lần). */
   refunds: z.int().nonnegative(),
   /**
-   * Lần huỷ TRONG hạn chót trong tháng (ADR-0041 §9): yêu cầu REFUNDED có
-   * `decided_at` trong kỳ, xếp loại bằng `isWithinDeadline` trên `created_at`
-   * của yêu cầu cùng ngày đi, ngày về của booking. Luật N chỉ sống ở Node nên
-   * phép xếp loại chạy ở API, không viết lại trong SQL.
+   * Lần KHÁCH huỷ TRONG hạn chót trong tháng (ADR-0041 §9): yêu cầu REFUNDED
+   * do chính khách quyết (`decided_by = user_id`) có `decided_at` trong kỳ, xếp
+   * loại bằng `isWithinDeadline` trên `created_at` của yêu cầu cùng ngày đi,
+   * ngày về của booking. Công ty huỷ chuyến không vào hai bộ đếm này: hạn chót
+   * không áp cho nó (xem `cancellationOutcomesSlice`). Luật N chỉ sống ở Node
+   * nên phép xếp loại chạy ở API, không viết lại trong SQL.
    */
   cancellationsWithinDeadline: z.int().nonnegative(),
-  /** Lần huỷ QUÁ hạn chót trong tháng — cùng tập, vế còn lại của phép xếp loại. */
+  /** Lần KHÁCH huỷ QUÁ hạn chót trong tháng — cùng tập, vế còn lại của phép xếp loại. */
   cancellationsAfterDeadline: z.int().nonnegative(),
   /** Lượt duyệt review trong tháng — đếm trên audit trail, xem `StatsService`. */
   reviewsApproved: z.int().nonnegative(),

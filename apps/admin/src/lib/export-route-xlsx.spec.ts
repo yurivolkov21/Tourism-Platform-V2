@@ -194,9 +194,11 @@ describe('GET /bookings/export', () => {
       );
 
       expect(response.status).toBe(200);
+      // `includeMedia: false` nay do chính fetcher gắn cho mọi trang admin (review A1) — pin ở
+      // `lib/api/bookings.spec.ts`; route chỉ còn phải giữ bộ lọc tài khoản.
       expect(fetchAdminBookings).toHaveBeenCalledWith(
         '',
-        expect.objectContaining({ userId: USER, includeMedia: false }),
+        expect.objectContaining({ userId: USER }),
         expect.any(AbortSignal),
       );
       const sheet = await sheetOf(response, messages.admin.bookings.xlsx.sheet);

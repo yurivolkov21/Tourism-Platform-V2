@@ -816,10 +816,11 @@ export const contract = {
      * cái trả bộ metric của vùng đó kèm giá trị kỳ liền trước (xem
      * `schemas/stats.ts`: server trả cả hai số, client không tự chế delta).
      *
-     * Vì sao ba endpoint chứ không một `admin.stats.all`: mỗi trang vùng chỉ
-     * cần bộ của nó, và trang đó fetch stats SONG SONG với list (Promise.all)
-     * — gộp làm một sẽ bắt `/reviews` chờ luôn cả aggregate tiền của
-     * bookings. P4d dashboard cần nhiều bộ thì gọi song song ba cái.
+     * Vì sao mỗi vùng một endpoint (nay sáu vùng, cộng chuỗi `dashboard`) chứ
+     * không một `admin.stats.all`: mỗi trang vùng chỉ cần bộ của nó, và trang
+     * đó fetch stats SONG SONG với list (Promise.all) — gộp làm một sẽ bắt
+     * `/reviews` chờ luôn cả aggregate tiền của bookings. Trang nào cần nhiều
+     * bộ thì gọi song song nhiều cái.
      *
      * Input: chỉ vùng NÀO CÓ bộ lọc ngày trên trang mới có, và luôn optional
      * (ADR-0028) — hàng card ăn theo hai ô ngày của bảng ngay dưới nó, thiếu
@@ -1083,8 +1084,8 @@ export const contract = {
         .output(AdminSubscriberUnsubscribeResultSchema),
     },
     /**
-     * Báo cáo THÁNG (spec P4b §3-F6) — nguồn của trang `/reports`, nút CSV
-     * của nó và bản in PDF bằng chính trình duyệt.
+     * Báo cáo THÁNG (spec P4b §3-F6) — nguồn của trang `/reports`, file Excel
+     * của nó (ADR-0034) và bản in PDF bằng chính trình duyệt.
      *
      * Đứng RIÊNG chứ không phải `admin.stats.*` với input `{from,to}`: lý do
      * đầy đủ ở JSDoc đầu `schemas/reports.ts` (stats là CẶP số của hai kỳ dài

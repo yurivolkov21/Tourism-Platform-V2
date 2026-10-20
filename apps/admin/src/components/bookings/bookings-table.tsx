@@ -9,7 +9,7 @@ import {
 import { messages } from '@tourism/i18n';
 import { ButtonLink } from '@tourism/ui/components/button-link';
 import { Checkbox } from '@tourism/ui/components/checkbox';
-import { CalendarOffIcon } from 'lucide-react';
+import { CalendarClockIcon, CalendarOffIcon } from 'lucide-react';
 import * as React from 'react';
 import {
   AmountCell,
@@ -45,7 +45,8 @@ import { PAGE_SIZE_OPTIONS } from '@/lib/table-query';
  *
  * - Drag-row TẮT: thứ tự hàng do server quyết (mới nhất trước), kéo thả không
  *   mang nghĩa gì ở vùng thật (§2.2).
- * - Không checkbox chọn hàng: chưa có hành vi hàng loạt nào để chọn cho.
+ * - Checkbox chọn hàng CÓ (spec 01/09): hành vi hàng loạt duy nhất là xuất Excel các hàng đã tích,
+ *   khoá trong trang đang xem (xem cột `select` và `bookings-selection.spec.tsx`).
  * - Không pagination state ở table: `data` CHÍNH LÀ một trang server đã cắt,
  *   `TablePagination` đọc thẳng props từ URL — table chỉ lo ẩn/hiện cột.
  * - Không sort/filter client: cả hai là việc của API, row model client chỉ
@@ -59,7 +60,13 @@ const t = messages.admin.bookings.list;
 const columnHelper = createColumnHelper<typeof selectableTableFeatures, BookingRowVM>();
 
 // Nhãn + icon của menu Columns và năm ô thân dùng CHUNG với bảng "Recent
-// bookings" của dashboard — xem `booking-cells.tsx` (ADR-0036 §3).
+// bookings" của dashboard — xem `booking-cells.tsx` (ADR-0036 §3). Cột
+// Created thêm ở đây như bảng dashboard thêm ở file của nó (review A1-18).
+const COLUMN_LABELS: Record<string, string> = {
+  ...BOOKING_COLUMN_LABELS,
+  createdAt: t.columns.created,
+};
+const COLUMN_ICONS = { ...BOOKING_COLUMN_ICONS, createdAt: CalendarClockIcon };
 
 /**
  * Cột nhận `query`/`total` qua tham số (không đọc từ module) vì nút Export nay
@@ -131,6 +138,19 @@ function buildColumns(query: BookingsQuery, total: number) {
     columnHelper.accessor('tourTitle', {
       header: t.columns.tour,
       cell: ({ row }) => <TourCell row={row.original} />,
+    }),
+    // Ngày ĐẶT, mốc mà bộ lọc ngày và hàng card đang đo (review A1-18, 20/10): thiếu nó thì chuyến
+    // tháng 12 nằm trong danh sách "tháng 10" mà không ô nào cho thấy vì sao. Đứng cạnh ngày đi
+    // của ô Tour, và KHÔNG đứng cuối: nút Export treo đè lên nửa phải tiêu đề cột cuối, chỉ
+    // Customer đủ rộng cho nó. Hai dòng như ô Tour, ô Customer để bảng không tràn ngang ở 1366px.
+    columnHelper.accessor('createdAt', {
+      header: t.columns.created,
+      cell: ({ row }) => (
+        <div className="whitespace-nowrap">
+          <div>{row.original.createdDate}</div>
+          <div className="text-xs text-muted-foreground">{row.original.createdTime}</div>
+        </div>
+      ),
     }),
     columnHelper.accessor('statusLabel', {
       header: t.columns.status,
@@ -242,11 +262,7 @@ export function BookingsTable({
               control lên 44px. Nút nay nằm trong ô tiêu đề cột `export` — xem
               `buildColumns`. */}
           <BookingsClearFilters query={query} />
-          <ColumnVisibilityMenu
-            table={table}
-            labels={BOOKING_COLUMN_LABELS}
-            icons={BOOKING_COLUMN_ICONS}
-          />
+          <ColumnVisibilityMenu table={table} labels={COLUMN_LABELS} icons={COLUMN_ICONS} />
         </>
       }
       footer={

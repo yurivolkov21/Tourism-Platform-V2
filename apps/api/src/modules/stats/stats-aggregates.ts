@@ -134,9 +134,15 @@ export async function refundCurrency(from: Date, to: Date): Promise<string | nul
 /**
  * Hai bộ đếm huỷ của MỘT khoảng (Hợp đồng D, ADR-0041 §9).
  *
- * Tập đếm là các yêu cầu `REFUNDED` có `decided_at` trong `[from, to)` — mỗi
- * lần khách huỷ ghi đúng một dòng như vậy. Mỗi dòng được xếp loại trong hay
- * quá hạn chót.
+ * Tập đếm là các yêu cầu `REFUNDED` có `decided_at` trong `[from, to)` mà
+ * CHÍNH khách quyết (`decided_by = user_id`) — mỗi lần khách huỷ ghi đúng một
+ * dòng như vậy. Mỗi dòng được xếp loại trong hay quá hạn chót.
+ *
+ * Công ty huỷ chuyến (F13) cũng ghi một dòng `REFUNDED`, nhưng `decided_by` là
+ * admin và hạn chót không áp cho nó: khách được hoàn trọn dù job chạy lúc nào
+ * (`docs/conventions/booking-states.md`). Xếp nó vào "quá hạn" là kể rằng khách
+ * huỷ muộn và công ty giữ tiền, trong khi công ty đã hoàn đủ. Cùng phép so với
+ * cờ `decidedByCustomer` của contract (`cancellations.service.ts`).
  *
  * Xếp loại ở NODE bằng `isWithinDeadline` của contract chứ không trong SQL:
  * luật N chỉ sống ở một chỗ (spec §4.1). Mốc đem so là `created_at` của yêu
@@ -144,7 +150,7 @@ export async function refundCurrency(from: Date, to: Date): Promise<string | nul
  * `REQUESTED`/`DENIED` của luồng duyệt cũ không huỷ booking nào nên không đếm.
  *
  * Kéo từng dòng về thay vì `groupBy`: một tháng chỉ vài chục lần huỷ, và
- * `select` chỉ ba cột.
+ * `select` chỉ năm cột.
  */
 export async function cancellationOutcomesSlice(
   from: Date,
@@ -157,20 +163,25 @@ export async function cancellationOutcomesSlice(
     },
     select: {
       createdAt: true,
+      userId: true,
+      decidedById: true,
       booking: { select: { departureStartDate: true, departureEndDate: true } },
     },
   });
 
   let withinDeadline = 0;
+  let afterDeadline = 0;
   for (const row of rows) {
+    if (row.decidedById !== row.userId) continue;
     const within = isWithinDeadline(
       row.createdAt,
       calendarDate(row.booking.departureStartDate),
       calendarDate(row.booking.departureEndDate),
     );
     if (within) withinDeadline += 1;
+    else afterDeadline += 1;
   }
-  return { withinDeadline, afterDeadline: rows.length - withinDeadline };
+  return { withinDeadline, afterDeadline };
 }
 
 /**
@@ -217,7 +228,8 @@ export function outboxSentCount(from: Date, to: Date): Promise<number> {
 }
 
 /**
- * Webhook đã NHẬN trong khoảng (theo `receivedAt`) và bao nhiêu trong đó gắn
+ * Row vào sổ trong khoảng (theo `receivedAt`: webhook đã nhận, cộng row hoàn tiền do lõi
+ * hoàn tiền tự ghi — ADR-0043) và bao nhiêu trong đó gắn
  * được booking (`bookingId` not null) — F8, spec P4c §3-F8. MỘT `aggregate`
  * trả cả hai (vòng vá review F8): `_count.<cột>` của Prisma đếm row có cột
  * đó KHÁC null — đúng nghĩa "gắn booking" — nên không cần lượt đếm thứ hai

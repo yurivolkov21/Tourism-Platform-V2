@@ -39,7 +39,7 @@ import {
 
 /**
  * Dựng file Excel của báo cáo tháng (ADR-0034) — THUẦN: nhận dữ liệu, trả
- * `Buffer`. Không đọc cookie, không fetch, không đụng Next — nên mọi ô test
+ * `ArrayBuffer`. Không đọc cookie, không fetch, không đụng Next — nên mọi ô test
  * được bằng cách mở lại chính buffer vừa dựng.
  *
  * File theo bản thảo D1 (ADR-0034 AMEND 3, spec G40 §6); đồ nghề chung ở `xlsx-style.ts`.

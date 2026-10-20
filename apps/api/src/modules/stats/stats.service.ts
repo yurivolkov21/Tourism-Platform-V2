@@ -146,7 +146,7 @@ import {
  *   "đã duyệt" sẽ khiến một hàng đợi tồn đọng tự kéo tụt kỳ này so với kỳ
  *   trước dù không khách nào đổi ý. Đây KHÁC số sao trên trang tour (chỉ đếm
  *   review đã duyệt của tour đó — `Tour.ratingAvg`), và khác một cách có chủ
- *   đích. `null` khi kỳ không có review nào.
+ *   đích. `null` khi kỳ không có review nào chưa bị bác.
  *
  * **outbox** (F7, spec P4c §3-F7 — siết ở vòng vá review F7)
  * - `sent` — số row `SENT` có `processed_at` TRONG KỲ NÀY. Neo `processed_at`
@@ -516,9 +516,9 @@ export class StatsService {
   /**
    * Ba con số review của MỘT kỳ `[from, to)`.
    *
-   * `submitted` và `rating` ra từ CÙNG một aggregate: hai card ấy nói về cùng
-   * một tập (review gửi trong kỳ) nên đọc hai lần là vừa tốn một query vừa mở
-   * cửa cho hai `where` trôi lệch nhau.
+   * `submitted` và `rating` là HAI query có chủ đích (vòng 05/09): cùng cột neo
+   * `created_at`, nhưng điểm trung bình bỏ review đã bị bác còn khối lượng việc
+   * thì không — xem định nghĩa `averageRating` đầu file.
    */
   private async reviewsSlice(from: Date, to: Date) {
     const window = { createdAt: { gte: from, lt: to } };

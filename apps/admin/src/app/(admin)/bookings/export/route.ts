@@ -92,13 +92,9 @@ export async function GET(request: NextRequest) {
     let page: Awaited<ReturnType<typeof fetchAdminBookings>>;
     try {
       // Cùng hai chốt ngân sách với export-all (`fetchAllAdminBookings`): không
-      // ảnh, và một mốc thời gian để quá hạn là 502 có lời chứ không phải
-      // response cụt (vòng vá review 02/09 — bản đầu bỏ cả hai).
-      page = await fetchAdminBookings(
-        cookie,
-        { ...query, includeMedia: false },
-        AbortSignal.timeout(EXPORT_TIME_BUDGET_MS),
-      );
+      // ảnh (fetcher tự tắt), và một mốc thời gian để quá hạn là 502 có lời chứ
+      // không phải response cụt (vòng vá review 02/09 — bản đầu bỏ cả hai).
+      page = await fetchAdminBookings(cookie, query, AbortSignal.timeout(EXPORT_TIME_BUDGET_MS));
     } catch (error) {
       console.error('[admin] bookings export (selection) failed', error);
       logExportAudit('bookings', { adminId, outcome: 'failed', mode: 'selection', filters });

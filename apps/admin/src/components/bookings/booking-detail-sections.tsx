@@ -248,8 +248,10 @@ export function RefundLedgerTable({
                   {refund.providerRefundId ?? t.empty}
                 </TableCell>
                 {/* Lý do NỘI BỘ của refund thiện chí (ADR-0030 AMEND 2) — trống
-                    với auto-refund và approve theo chính sách. */}
-                <TableCell className="max-w-64 truncate text-muted-foreground">
+                    với auto-refund và approve theo chính sách. Xuống dòng chứ không
+                    cắt (review A1, 20/10): lý do dài tới 500 ký tự, bản `truncate`
+                    không có `title` nên phần bị cắt không đọc được ở đâu cả. */}
+                <TableCell className="max-w-64 whitespace-normal wrap-anywhere text-muted-foreground">
                   {refund.reason ?? t.empty}
                 </TableCell>
               </TableRow>

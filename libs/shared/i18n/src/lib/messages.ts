@@ -4197,7 +4197,12 @@ export const messages = {
         fromZero: 'Up from zero in the previous period',
       },
       bookings: {
-        revenue: 'Revenue',
+        /**
+         * Tổng tiền thu theo `paid_at`, KHÔNG trừ khoản hoàn (review A1-19, 20/10): hoàn đủ một
+         * đơn thì số này đứng yên, nên tên trơn "Revenue" đọc thành doanh thu ròng. Cùng tên với
+         * dòng `reports.operationsTable.revenue` của báo cáo tháng, nơi định nghĩa 1 nói rõ "gross".
+         */
+        revenue: 'Revenue (gross)',
         paid: 'Paid bookings',
         created: 'New bookings',
         cancellationRate: 'Cancellation rate',
@@ -4207,7 +4212,8 @@ export const messages = {
         /**
          * MẪU SỐ của hàng đợi (ADR-0028 §AMEND 2 §4): không có nó thì
          * "Approved 12" không đọc được — 12 trên 12 hay 12 trên 300 là hai
-         * tình trạng khác hẳn. Cùng tập, cùng cột neo với `averageRating`.
+         * tình trạng khác hẳn. Cùng cột neo với `averageRating`, khác tập: điểm
+         * trung bình bỏ review đã bị bác.
          */
         submitted: (days: number) => `Submitted ${days}d`,
         approved: (days: number) => `Approved ${days}d`,
@@ -4381,9 +4387,11 @@ export const messages = {
          * nó chỉ là chưa đầy đủ.
          */
         departuresCostMissing: (count: string) =>
-          `${count} departure(s) that ran have no fixed-cost data — their transport and guide costs are counted as 0.`,
+          count === '1'
+            ? `${count} departure that ran has no fixed-cost data — its transport and guide costs are counted as 0.`
+            : `${count} departures that ran have no fixed-cost data — their transport and guide costs are counted as 0.`,
         costMissing: (count: string) =>
-          `${count} bookings have no cost data, so cost of sales is understated.`,
+          `${count} ${count === '1' ? 'booking has' : 'bookings have'} no cost data, so cost of sales is understated.`,
         /** Biên gộp KHÔNG XÁC ĐỊNH — khác hẳn 0%. */
         marginUnknown: '—',
       },
@@ -4404,7 +4412,10 @@ export const messages = {
         newBookings: 'New bookings',
         refundedTotal: 'Refunds paid out',
         refunds: 'Refund payments',
-        /** ADR-0041 §9: đếm theo ngày huỷ, xếp loại theo hạn chót của chuyến (giờ Việt Nam). */
+        /**
+         * ADR-0041 §9: đếm theo ngày huỷ, xếp loại theo hạn chót của chuyến (giờ Việt Nam). Chỉ
+         * lượt KHÁCH tự huỷ — công ty huỷ chuyến không áp hạn chót (ADR-0033 AMEND 4).
+         */
         cancellationsWithinDeadline: 'Cancelled within the deadline',
         cancellationsAfterDeadline: 'Cancelled after the deadline',
         reviewsApproved: 'Reviews approved',
@@ -4423,9 +4434,12 @@ export const messages = {
           'Per-traveller costs follow the travellers who went, including anyone given a full goodwill refund; per-departure costs are charged once for each departure that ran with at least one traveller, whether it sold out or not.',
         netProfit:
           'Net profit is after cost of sales, tax and payment fees. It does not include salaries, rent or marketing.',
-        /** ADR-0041 §9 — câu cho cặp bộ đếm huỷ ở bảng vận hành. */
+        /**
+         * ADR-0041 §9 — câu cho cặp bộ đếm huỷ ở bảng vận hành. "Customer" là phạm vi thật của hai
+         * bộ đếm (ADR-0033 AMEND 4): lượt công ty huỷ chuyến hoàn trọn và chỉ nằm ở dòng hoàn tiền.
+         */
         cancellations:
-          'Cancellations are counted on the day they were made. Within the deadline means on or before the free-cancellation deadline of the trip (Vietnam time), with the unrefunded balance returned; after the deadline means no automatic refund.',
+          'Customer cancellations are counted on the day they were made. Within the deadline means on or before the free-cancellation deadline of the trip (Vietnam time), with the unrefunded balance returned; after the deadline means no automatic refund.',
       },
       /**
        * Chữ RIÊNG của bản in báo cáo tháng C2 (G40 Phần 2, spec 2026-10-10 §5). Tên khối là
@@ -4599,11 +4613,15 @@ export const messages = {
          * chốt 04/09). Nói thẳng khoảng ngày ra: "không có kết quả" mà không
          * nói vì sao là cách nhanh nhất để người tra một booking cũ kết luận
          * nhầm rằng booking đó không tồn tại.
+         *
+         * "matching" (review A1, 20/10): ngày cộng dồn với tìm kiếm, trạng thái, tài khoản — gõ một
+         * mã của tháng trước thì bảng rỗng trong khi tháng này vẫn có hàng chục booking, nên câu
+         * "No bookings were created between …" là nói sai về chính dữ liệu.
          */
-        emptyInRange: (range: string) => `No bookings were created between ${range}.`,
+        emptyInRange: (range: string) => `No matching bookings were created between ${range}.`,
         /** Khoảng MỘT đầu (xoá riêng một ô, hoặc khoảng ngược làm rớt `to`). */
-        emptyFrom: (date: string) => `No bookings were created on or after ${date}.`,
-        emptyTo: (date: string) => `No bookings were created on or before ${date}.`,
+        emptyFrom: (date: string) => `No matching bookings were created on or after ${date}.`,
+        emptyTo: (date: string) => `No matching bookings were created on or before ${date}.`,
         /** Nút thoát ngay trong ô rỗng — một cú bấm về xem toàn bộ. */
         showAllDates: 'Show bookings from all dates',
         /**
@@ -4623,6 +4641,11 @@ export const messages = {
           guests: 'Guests',
           amount: 'Amount',
           customer: 'Customer',
+          /**
+           * Ngày ĐẶT (review A1-18, 20/10): bộ lọc ngày lọc theo mốc này, nên bảng phải in nó cạnh
+           * ngày đi. Cùng chữ với cột của bảng đơn gần đây ở dashboard.
+           */
+          created: 'Created',
         },
         /**
          * Bộ lọc khoảng ngày + nút export (spec P4b §3-F6). Ngày lọc theo
@@ -4753,6 +4776,11 @@ export const messages = {
           withinDeadline: (deadline: string) =>
             `Within the free-cancellation deadline (${deadline})`,
           afterDeadline: (deadline: string) => `After the free-cancellation deadline (${deadline})`,
+          /**
+           * Công ty huỷ chuyến (F13): hạn chót là luật cho khách đổi ý, không áp cho chuyến bị bỏ —
+           * cùng lời hộp "Cancel departure" đã hứa (`departures.cancel.dialog.warning`).
+           */
+          departureCalledOff: 'Departure called off, so the deadline does not apply',
           refunded: (amount: string) => `Refunded ${amount}`,
           notRefunded: 'No refund',
           // Enum CancellationRequestStatus. REQUESTED và DENIED chỉ còn ở dữ liệu
@@ -6838,6 +6866,12 @@ export const messages = {
          * là cái gì.
          */
         payload: 'What the payment provider sent',
+        /**
+         * Tiêu đề khối payload của row `payment.refunded` (review A1, 20/10): row ấy do CHÍNH lõi
+         * hoàn tiền ghi (`refund-event.ts`, payload mang `source: 'refund-core'`), không gateway
+         * nào map ra type này — câu "What the payment provider sent" đứng trên nó là nói sai.
+         */
+        payloadRefund: 'What we recorded for this refund',
         loading: 'Loading payload…',
         /**
          * Tên đời thường cho trường của Stripe/PayPal, dùng ở chế độ xem
@@ -6866,7 +6900,9 @@ export const messages = {
           id: 'Event reference',
           object: 'Kind',
           type: 'Event',
-          created: 'Received at',
+          // Giờ provider TẠO event, không phải giờ ta nhận (review A1, 20/10): provider retry lúc
+          // API ngủ thì hai mốc lệch nhau, mà field "Received" của drawer là `receivedAt` của ta.
+          created: 'Event created',
           livemode: 'Live mode',
           api_version: 'Provider API version',
           pending_webhooks: 'Deliveries still queued',
@@ -6887,7 +6923,7 @@ export const messages = {
           'data.object.metadata.bookingCode': 'Booking code',
           // ── PayPal: tầng ngoài ──
           event_type: 'Event',
-          create_time: 'Received at',
+          create_time: 'Event created',
           resource_type: 'Kind',
           summary: 'Summary',
           // ── PayPal: `resource` (sau khi cắt bao bì) ──

@@ -235,7 +235,7 @@ describe('refunds integration (admin refund ledger)', () => {
     // phải '0.00' mặc định của `toBooking` khi không đọc sổ (review L4).
     expect(body.booking.refundedTotal).toBe('30.00');
     expect(body.refunds).toHaveLength(1);
-    expect(Number(body.refunds[0]?.amount)).toBe(30);
+    expect(body.refunds[0]?.amount).toBe('30.00');
     expect(body.refunds[0]?.currency).toBe('USD');
     expect(body.refunds[0]?.providerRefundId).toMatch(/^fake_re_/);
     // ADR-0030 AMEND 2: lý do NỘI BỘ nằm trên chính dòng sổ (contract + DB),
@@ -815,7 +815,9 @@ describe('refunds integration (admin refund ledger)', () => {
     expect(res.statusCode).toBe(200);
     const detail = AdminBookingDetailSchema.parse(res.json());
     expect(detail.refunds).toHaveLength(2);
-    expect(detail.refunds.map((r) => Number(r.amount))).toEqual([30, 20.5]); // cũ nhất trước
+    // Cũ nhất trước; tiền là chuỗi hai chữ số lẻ như mọi số tiền khác của API (`refundedTotal`
+    // ngay dưới) — `Decimal.toString()` từng trả "30" và "20.5" (L4-22, review 20/10).
+    expect(detail.refunds.map((r) => r.amount)).toEqual(['30.00', '20.50']);
     expect(detail.refundedTotal).toBe('50.50');
     expect(detail.status).toBe('PARTIALLY_REFUNDED');
   });

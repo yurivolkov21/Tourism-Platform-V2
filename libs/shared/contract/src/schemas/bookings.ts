@@ -397,7 +397,7 @@ export type AdminRefundResult = z.output<typeof AdminRefundResultSchema>;
  * LỊCH `YYYY-MM-DD`, không phải mốc ISO có giờ: đây là thứ admin gõ vào hai ô
  * date trên toolbar và là thứ in ra tiêu đề báo cáo. Cả hai đầu ĐỀU tính vào
  * khoảng — "01/09 → 30/09" nghĩa là trọn ngày 30 cũng nằm trong; phép đổi ra
- * biên nửa-mở `[from 00:00Z, to+1d 00:00Z)` nằm ở API (`bookings-date-range.ts`,
+ * biên nửa-mở `[from 00:00Z, to+1d 00:00Z)` nằm ở API (`lib/created-at-range.ts`,
  * cùng nếp nửa-mở của StatsService) chứ không rải ra client.
  *
  * `from > to` là 400 chứ KHÔNG phải một tập rỗng im lặng: khoảng ngược là lỗi
@@ -420,9 +420,9 @@ export const AdminBookingsListQuerySchema = AdminPageQuerySchema.extend({
   userId: z.uuid().optional(),
   /**
    * `false` = trả `tourImage: null` thay vì resolve ảnh cover (vòng vá
-   * review F6). Dành cho đường export CSV: nó gom TỪNG TRANG của cả tập mà
-   * file thì không có cột ảnh — mỗi trang một query media + payload phồng
-   * chỉ để vứt đi. Bảng `/bookings` giữ mặc định `true`.
+   * review F6). Mọi đường của admin đều gửi `false` (review A1, 20/10): bảng
+   * `/bookings`, dashboard và file Excel không có cột ảnh — mỗi trang một query
+   * media + payload phồng chỉ để vứt đi. Mặc định vẫn là `true`, không đổi contract.
    */
   includeMedia: z.boolean().default(true),
 })

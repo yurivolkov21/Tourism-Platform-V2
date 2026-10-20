@@ -122,7 +122,8 @@ export function statsWindowFromRange(
   const requestedFrom = from
     ? startOfDayUtc(from).getTime()
     : currentToMs - STATS_WINDOW_DAYS * DAY_MS;
-  // `from` ở tương lai (URL gõ tay, contract chỉ chặn `from > to`): kỳ RỖNG
+  // `from` ở tương lai (URL gõ tay, hoặc chọn ngày tới trên bộ chọn ngày của admin — nó cho chọn
+  // tới hai năm sau; contract chỉ chặn `from > to`): kỳ RỖNG
   // chứ không phải kỳ ÂM — span âm làm previousFrom nhảy ra sau currentFrom và
   // mọi mốc tự mâu thuẫn mà không mã lỗi nào nói ra.
   const currentFromMs = Math.min(requestedFrom, currentToMs);

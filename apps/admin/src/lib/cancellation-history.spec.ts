@@ -21,6 +21,7 @@ const t = messages.admin.bookings.detail.cancellations;
 const BOOKING: CancellationHistoryBooking = {
   departureStartDate: '2026-10-20',
   departureEndDate: '2026-10-21',
+  departureCancelled: false,
   currency: 'USD',
   refunds: [],
 };
@@ -105,6 +106,46 @@ describe('toCancellationHistoryRow — khách tự huỷ', () => {
 
     expect(row.refund).toBe(t.refunded('$87.00'));
     expect(row.reason).toBe('Change of plans');
+  });
+});
+
+describe('toCancellationHistoryRow — công ty huỷ chuyến (F13)', () => {
+  /** Job `departure-refund` ghi yêu cầu REFUNDED do admin quyết, cùng lúc với dòng hoàn trọn. */
+  function operatorCancel(at: string): CancellationHistoryRequest {
+    return {
+      ...selfCancel(at),
+      id: '22222222-2222-4222-8222-000000000005',
+      reason: 'Typhoon warning, the boat cannot sail',
+      decidedByCustomer: false,
+    };
+  }
+
+  it('hạn chót không áp: in câu chuyến bị bỏ thay vì "after the deadline", vẫn in số đã hoàn', () => {
+    // Quá ngày chót 17/10 mà vẫn hoàn trọn: câu "After the free-cancellation deadline" cạnh
+    // "Refunded $117.00" đọc như một ngoại lệ không ai giải thích (review A1).
+    const at = '2026-10-18T03:00:00.000Z';
+    const row = toCancellationHistoryRow(operatorCancel(at), {
+      ...BOOKING,
+      departureCancelled: true,
+      refunds: [refund(4, '117.00', at, ADMIN_ID)],
+    });
+
+    expect(row).toMatchObject({
+      actor: t.byStaff,
+      deadline: t.departureCalledOff,
+      refund: t.refunded('$117.00'),
+      reason: 'Typhoon warning, the boat cannot sail',
+    });
+  });
+
+  it('khách tự huỷ TRƯỚC khi chuyến bị bỏ vẫn là chuyện của khách: giữ câu hạn chót', () => {
+    const row = toCancellationHistoryRow(selfCancel('2026-10-17T17:00:00.000Z'), {
+      ...BOOKING,
+      departureCancelled: true,
+    });
+
+    expect(row.actor).toBe(t.byCustomer);
+    expect(row.deadline).toBe(t.afterDeadline('17 Oct 2026'));
   });
 });
 

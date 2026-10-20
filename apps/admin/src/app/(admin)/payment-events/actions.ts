@@ -17,7 +17,8 @@ import { classifyLoadError, type PaymentEventLoadResult } from '@/lib/payment-ev
  * - Route handler phải TỰ gác quyền (`decideAdminAccess`, như
  *   `bookings/export`) — ở đây không có file để trả nên không có lý do trả
  *   giá đó; action đi qua guard của API như mọi lời gọi khác.
- * - Quyền KHÔNG kiểm ở đây: gác ở `AuthGuard` + `@Roles(ADMIN)` của API.
+ * - Quyền KHÔNG kiểm ở đây: gác ở `AuthGuard` + `@AdminImplement` của API (role suy từ
+ *   `ADMIN_ACCESS`, ADR-0052; `paymentEvents.byId` chỉ Owner).
  * - Input re-parse bằng CHÍNH schema contract: hỏng thì `INVALID_INPUT`.
  * - `ORPCError` không sống sót qua ranh giới action — phân loại tại đây.
  *

@@ -258,3 +258,28 @@ hoặc một biểu đồ thứ hai sau này không phải mở lại contract.
 7. **Int spec** — `todayUtc` chụp trong `beforeEach` (không đỏ khi vắt nửa
    đêm UTC giữa load file và request); fixture PENDING hôm nay không ở tương
    lai và được khẳng định là KHÔNG lọt vào bucket.
+
+## AMEND 3 20/10 (review A1) — bốn card của `/` đọc tươi
+
+**Chỗ sai của lời chấp nhận ở §2** (đoạn ⚠️ "bốn card có thể trễ tối đa 60s"):
+`next.revalidate` của Data Cache là stale-while-revalidate
+(`next/dist/docs/01-app/02-guides/how-revalidation-works.md`): quá 60s thì lượt
+xem kế vẫn nhận bản cũ rồi mới làm mới ngầm. Key cache gồm cả header cookie
+(`fetch` khớp theo URL, method, headers, body), nên độ trễ thật là "tính từ
+lượt xem trước của cùng phiên", không có trần. Kịch bản: Owner mở `/` lúc 9:00,
+một khách trả tiền lúc 9:30, Owner mở lại `/` lúc 10:00. Biểu đồ đã có khoản
+9:30, bốn card vẫn là số lúc 9:00, phải tải lại thêm một lần card mới đổi.
+
+**Quyết định:** card của `/` gọi `admin.stats.bookings` không cache
+(`fetchDashboardBookingsStats`), như biểu đồ và bảng cạnh nó. Lý do cache của
+vòng F5 là refetch trên mỗi click phân trang, lọc của `/bookings`; `/` không có
+phân trang hay bộ lọc, nên cache ở đây chỉ đỡ được lượt tải lại, đổi lại là số
+lệch với biểu đồ ngay bên dưới.
+
+**Không đổi:** `/bookings` và `/reviews` vẫn cache 60s theo tag. Độ trễ của
+chúng cũng là "từ lượt xem trước" chứ không phải 60s; báo cáo review A1 ghi
+thành đề xuất (khoá cache theo phút ở `withAdminOptions` của `client.ts`) cho
+luồng sở hữu file ấy, chưa sửa ở đây.
+
+**Cái giá:** mỗi lượt mở `/` thêm một lượt đọc stats không cache, chạy song
+song với hai khối kia nên không kéo dài thời gian tải trang.
