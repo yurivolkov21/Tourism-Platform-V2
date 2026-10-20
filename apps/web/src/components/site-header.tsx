@@ -5,6 +5,8 @@ import { AnimatedThemeToggler } from '@tourism/ui/components/animated-theme-togg
 import { MenuIcon, XIcon } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import { useSession } from '@/lib/auth-client';
+import { withRedirect } from '@/lib/safe-redirect';
 import { DestinationsMenu } from './destinations-menu';
 import { Logo } from './logo';
 import { UserMenu } from './user-menu';
@@ -29,16 +31,19 @@ const NAV_LINKS = [
 ];
 
 // Link phẳng cho overlay mobile. Không bung 9 địa danh ra đây — overlay là cột
-// dọc căn giữa, thêm 9 mục là phải cuộn. Một mục Destinations trỏ /tours là đủ;
-// người dùng lọc tiếp bằng toolbar ngay trên trang đó.
+// dọc căn giữa, thêm 9 mục là phải cuộn. Một mục Destinations trỏ trang
+// /destinations (ba vùng), cùng đích với desktop và footer. Mục tài khoản không
+// nằm ở đây vì nó đổi theo session — xem `accountLink` trong component.
 const MOBILE_LINKS = [
   { label: messages.nav.tours, href: '/tours' },
-  { label: messages.nav.destinations, href: '/tours' },
+  { label: messages.nav.destinations, href: '/destinations' },
   { label: messages.nav.travelBlog, href: '/blog' },
   { label: messages.nav.about, href: '/about' },
   { label: messages.nav.contact, href: '/contact' },
-  { label: messages.nav.login, href: '/login' },
 ];
+
+/** `id` của lớp phủ menu điện thoại, để nút mở trỏ tới qua `aria-controls`. */
+const MOBILE_MENU_ID = 'site-mobile-menu';
 
 /**
  * Đường dẫn KHÔNG có hero tối phía sau navbar.
@@ -73,6 +78,15 @@ export function SiteHeader() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const pathname = usePathname();
+  const { data: session, isPending } = useSession();
+
+  // Mục tài khoản của menu điện thoại — cùng luật với `UserMenu` ở desktop: đang chờ
+  // session thì coi như chưa đăng nhập (HTML server luôn là nhánh này), đã đăng nhập
+  // thì vào trang hộ chiếu, chưa thì "Log in" mang theo trang đang xem.
+  const accountLink =
+    !isPending && session?.user
+      ? { label: messages.userMenu.myAccount, href: '/account' }
+      : { label: messages.nav.login, href: withRedirect('/login', pathname) };
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 50);
@@ -163,6 +177,8 @@ export function SiteHeader() {
             type="button"
             onClick={() => setMobileOpen(true)}
             aria-label={messages.nav.openMenu}
+            aria-expanded={mobileOpen}
+            aria-controls={MOBILE_MENU_ID}
             className={`cursor-pointer rounded-md p-2 transition ${
               solid ? 'text-foreground' : 'text-on-media'
             }`}
@@ -172,13 +188,17 @@ export function SiteHeader() {
         </div>
       </nav>
 
-      {/* Overlay menu mobile — trượt ngang toàn màn, blur nền (pattern template) */}
+      {/* Overlay menu mobile — trượt ngang toàn màn, blur nền (pattern template).
+          Đóng thì chỉ co về bề rộng 0 (để còn chạy hiệu ứng trượt), nên phải `inert`:
+          thiếu nó thì link bên trong vẫn nhận Tab và trình đọc màn hình vẫn đọc. */}
       <div
+        id={MOBILE_MENU_ID}
+        inert={!mobileOpen}
         className={`${
           mobileOpen ? 'max-md:w-full' : 'max-md:w-0'
         } flex items-center gap-5 text-sm max-md:fixed max-md:top-0 max-md:left-0 max-md:z-(--z-overlay) max-md:h-full max-md:flex-col max-md:justify-center max-md:overflow-hidden max-md:bg-background/80 max-md:backdrop-blur-xl max-md:transition-all max-md:duration-300 md:hidden`}
       >
-        {MOBILE_LINKS.map((l) => (
+        {[...MOBILE_LINKS, accountLink].map((l) => (
           <a
             key={l.label}
             href={l.href}
