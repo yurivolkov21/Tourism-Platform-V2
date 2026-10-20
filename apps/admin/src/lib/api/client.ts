@@ -14,8 +14,8 @@ import { markAdminForbidden } from './forbidden';
  *   `next/headers` rồi forward (cùng nếp `lib/api/session.ts`). Không có
  *   nhánh `credentials: 'include'` của web (đường gọi từ browser) — khi F2
  *   cần hành vi ghi thì đi qua server action, vẫn là đường server này.
- * - KHÔNG có `next.revalidate`/cache-tag: back-office luôn đọc dữ liệu tươi,
- *   nên `cache: 'no-store'` là VÔ ĐIỀU KIỆN chứ không phải tuỳ context.
+ * - Mặc định `cache: 'no-store'`: back-office đọc dữ liệu tươi. Ngoại lệ duy nhất
+ *   là `cacheFor` (vòng vá review F5), chỉ các bộ số trong `stats.ts` dùng.
  *
  * Giữ nguyên hai thứ của bản web vì chúng là ràng buộc thật, không phải trang
  * trí: `OpenAPILink` (API mount contract theo path REST qua @orpc/nest —
@@ -30,9 +30,13 @@ export interface AdminApiContext {
   /**
    * Đè luật `no-store` mặc định bằng Data Cache có TTL + tag (vòng vá review
    * F5 — stats bị refetch trên MỌI click phân trang/lọc và nằm thẳng trên
-   * đường useTransition khoá nút). CHỈ dùng cho dữ liệu GIỐNG NHAU với mọi
-   * admin (cache của Next chia sẻ giữa các request, key KHÔNG gồm cookie) —
-   * stats nền tảng thoả, dữ liệu theo phiên thì tuyệt đối không.
+   * đường useTransition khoá nút). Số cũ nhất là `seconds`: `withAdminOptions`
+   * đổi khoá cache sau mỗi khung `seconds` (review A1-13).
+   *
+   * Khoá cache của Next gồm MỌI header, cả cookie (`generateCacheKey` trong
+   * `incremental-cache/index.js`, đọc ở next 16.3.8), nên entry thực ra theo
+   * từng phiên. Dù vậy vẫn CHỈ dùng cho dữ liệu giống nhau với mọi admin như
+   * stats nền tảng: đừng dựa vào chi tiết ấy cho dữ liệu theo phiên.
    */
   cacheFor?: { seconds: number; tags: string[] };
 }
@@ -43,7 +47,14 @@ export function withAdminAuth(cookie: string): AdminApiContext {
 }
 
 /**
- * Thuần để test: trộn cookie + `no-store` vào RequestInit của một call.
+ * Header mang số thứ tự của khung TTL hiện tại, chỉ để đổi khoá Data Cache. API
+ * không đọc nó.
+ */
+const CACHE_WINDOW_HEADER = 'x-admin-cache-window';
+
+/**
+ * Thuần để test: trộn cookie + `no-store` vào RequestInit của một call. `now`
+ * chỉ để test ghim đồng hồ.
  *
  * Nhận `request` gốc để merge qua `new Headers(request.headers)` thay vì gán
  * đè `init.headers` — oRPC đã tự set content-type/accept trên `request`, gán
@@ -53,6 +64,7 @@ export function withAdminOptions(
   request: Request,
   init: RequestInit,
   context: AdminApiContext | undefined,
+  now: number = Date.now(),
 ): RequestInit {
   if (!context) return { ...init, cache: 'no-store' };
   const headers = new Headers(request.headers);
@@ -60,11 +72,13 @@ export function withAdminOptions(
   if (context.cacheFor) {
     // Data Cache với TTL + tag thay cho no-store — xem cảnh báo ở JSDoc
     // `cacheFor` (chỉ cho dữ liệu không theo phiên).
-    return {
-      ...init,
-      headers,
-      next: { revalidate: context.cacheFor.seconds, tags: context.cacheFor.tags },
-    } as RequestInit;
+    const { seconds, tags } = context.cacheFor;
+    // `revalidate` của Next là stale-while-revalidate: entry quá hạn vẫn được TRẢ cho
+    // lượt đọc kế tiếp rồi mới làm mới ngầm, nên lượt mở trang đầu sau một quãng dài
+    // mang số của lượt xem trước, có khi từ hôm trước (review A1-13). Header đổi theo
+    // khung `seconds` thì entry của khung trước không bao giờ được đọc lại.
+    headers.set(CACHE_WINDOW_HEADER, String(Math.floor(now / (seconds * 1000))));
+    return { ...init, headers, next: { revalidate: seconds, tags } } as RequestInit;
   }
   return { ...init, headers, cache: 'no-store' };
 }

@@ -113,6 +113,19 @@ describe('LoginForm', () => {
     expect(push).not.toHaveBeenCalled();
   });
 
+  it('quá trần đăng nhập (429) → câu bảo chờ, không câu chung mời thử lại ngay (L1-12)', async () => {
+    // Better Auth chặn quá ba lần đăng nhập trong mười giây; lỗi của nó mang status, mã thì tuỳ bản.
+    signInEmail.mockResolvedValue({ error: { status: 429, message: 'Too many requests' } });
+    render(<LoginForm />);
+    await userEvent.type(screen.getByLabelText('Email'), 'a@b.co');
+    await userEvent.type(screen.getByLabelText('Password'), 'secret123');
+    await userEvent.click(screen.getByRole('button', { name: 'Sign in' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      messages.admin.login.errors.tooManyAttempts,
+    );
+    expect(push).not.toHaveBeenCalled();
+  });
+
   it('lỗi mạng (reject) → câu chung, không sập', async () => {
     signInEmail.mockRejectedValue(new Error('network'));
     render(<LoginForm />);

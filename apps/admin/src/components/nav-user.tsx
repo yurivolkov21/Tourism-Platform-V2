@@ -20,6 +20,7 @@ import {
 import { Tooltip, TooltipContent, TooltipTrigger } from '@tourism/ui/components/tooltip';
 import { EllipsisVerticalIcon, ExternalLinkIcon, LogOutIcon } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { requestLeave } from '@/components/kit/unsaved-changes';
 import type { SessionUser } from '@/lib/api/session';
 import { authClient } from '@/lib/auth-client';
 import { roleLabel } from '@/lib/role-label';
@@ -105,15 +106,19 @@ export function NavUser({ user }: { user: SessionUser }) {
             <DropdownMenuSeparator />
             {/* Base UI Menu.Item KHÔNG có `onSelect` (idiom Radix) — phải dùng
                 `onClick` như user-menu web; viết onSelect thì prop bị nuốt,
-                bấm chỉ đóng menu (bug user báo 21/08). */}
+                bấm chỉ đóng menu (bug user báo 21/08). Còn bản nháp chưa lưu thì
+                hỏi trước (review A2-17): Sign out không phải link nên hộp hỏi của
+                khu làm việc không tự chặn được. */}
             <DropdownMenuItem
-              onClick={async () => {
-                // Sign out xong về /login — layout gác đọc session server-side,
-                // cần điều hướng hẳn (cùng nếp shell P4a).
-                await authClient.signOut();
-                router.push('/login');
-                router.refresh();
-              }}
+              onClick={() =>
+                requestLeave(async () => {
+                  // Sign out xong về /login — layout gác đọc session server-side,
+                  // cần điều hướng hẳn (cùng nếp shell P4a).
+                  await authClient.signOut();
+                  router.push('/login');
+                  router.refresh();
+                })
+              }
             >
               <LogOutIcon />
               {t.signOut}

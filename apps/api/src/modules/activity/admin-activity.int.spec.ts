@@ -33,6 +33,8 @@ const CUSTOMER = 'customer-activity@tourism.test';
 const CATEGORY_ID = 'a6100001-0000-4000-8000-000000000001';
 const TOUR_ID = 'a6100002-0000-4000-8000-000000000001';
 const ENQUIRY_ID = 'a6100003-0000-4000-8000-000000000001';
+const REVIEW_ID = 'a6100004-0000-4000-8000-000000000001';
+const DEPARTURE_ID = 'a6100005-0000-4000-8000-000000000001';
 const MISSING_ID = 'a6100009-0000-4000-8000-999999999999';
 
 describe('nhật ký thao tác admin (ADR-0061)', () => {
@@ -269,6 +271,67 @@ describe('nhật ký thao tác admin (ADR-0061)', () => {
       const stored = JSON.stringify(all[0]);
       expect(stored).not.toContain('linh@example.com');
       expect(stored).not.toContain('+84');
+    });
+
+    // Hai lệnh dưới không trả cờ `changed`, nên mô tả so một dấu đọc trước khi chạy (review
+    // L5-17, A2-20): lệnh trùng hiện trạng từ một tab cũ không được thành dòng "đã duyệt" hay
+    // "đã đóng chuyến" thứ hai.
+    it('duyệt review hai lần từ hai tab: lần trùng hiện trạng không ghi', async () => {
+      const review = await prisma.review.create({
+        data: {
+          id: REVIEW_ID,
+          tourId: TOUR_ID,
+          rating: 5,
+          body: 'Lovely crew and a calm bay.',
+          authorName: 'Mai',
+          source: 'CURATED',
+        },
+      });
+      // Hai tab mở cùng lúc nên cùng mang một phiên bản. API chưa đọc `version` thì bỏ qua nó.
+      const payload = { verdict: 'approve', version: review.updatedAt.toISOString() };
+      expect((await call('reviews.moderate', cookie.owner, payload, REVIEW_ID)).statusCode).toBe(
+        200,
+      );
+      expect((await call('reviews.moderate', cookie.staff, payload, REVIEW_ID)).statusCode).toBe(
+        200,
+      );
+
+      const all = await rows();
+      expect(all).toHaveLength(1);
+      expect(all[0]).toMatchObject({
+        actorId: idOf(OWNER),
+        action: 'reviews.moderate',
+        targetType: 'review',
+        targetId: REVIEW_ID,
+        targetLabel: 'Ha Long Bay Cruise',
+        details: { verdict: 'approve' },
+      });
+    });
+
+    it('đóng chuyến hai lần: lần trùng trạng thái không ghi', async () => {
+      await prisma.tourDeparture.create({
+        data: {
+          id: DEPARTURE_ID,
+          tourId: TOUR_ID,
+          startDate: new Date('2027-03-10'),
+          endDate: new Date('2027-03-11'),
+          seatsTotal: 12,
+        },
+      });
+      const close = () =>
+        call('departures.setStatus', cookie.owner, { status: 'CLOSED' }, DEPARTURE_ID);
+      expect((await close()).statusCode).toBe(200);
+      expect((await close()).statusCode).toBe(200);
+
+      const all = await rows();
+      expect(all).toHaveLength(1);
+      expect(all[0]).toMatchObject({
+        action: 'departures.setStatus',
+        targetType: 'departure',
+        targetId: DEPARTURE_ID,
+        targetLabel: 'Ha Long Bay Cruise',
+        details: { startDate: '2027-03-10', status: 'CLOSED' },
+      });
     });
 
     it('cấp quyền Staff: nhãn là tên tài khoản, không bao giờ là email', async () => {

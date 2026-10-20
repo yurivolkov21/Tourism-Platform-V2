@@ -3887,6 +3887,8 @@ export const messages = {
         emailNotVerified: 'Verify your email on nexora-travel.agency first, then sign in here.',
         // ADR-0052 §4 — Staff bị khoá: người mở khoá được là Owner.
         accountLocked: 'This account is locked. Ask the site owner to unlock it.',
+        // Trần đăng nhập của Better Auth (L1-12) — cùng câu với form đăng nhập của web.
+        tooManyAttempts: 'Too many attempts. Please wait a minute.',
         generic: 'Something went wrong. Please try again.',
       },
       backToSite: 'Back to nexora-travel.agency',

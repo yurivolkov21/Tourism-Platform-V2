@@ -35,7 +35,8 @@ type Promisable<T> = T | PromiseLike<T>;
 /**
  * Middleware oRPC ghi một dòng nhật ký sau khi handler THÀNH CÔNG (ADR-0061 §3, §4). Nối SAU mọi
  * middleware có sẵn nên chạy sau bước kiểm input; handler ném thì `next()` ném và không có dòng
- * nào. Bước `before` (chỉ lệnh xoá) lỗi thì nhãn trống, không chặn thao tác.
+ * nào. Bước `before` lỗi thì không chặn thao tác: lệnh xoá ghi nhãn trống, lệnh so dấu thì vẫn ghi
+ * như một lệnh có đổi.
  */
 export function activityMiddleware(
   key: ActivityLoggedProcedure,
@@ -50,7 +51,7 @@ export function activityMiddleware(
         before = await describer.before(input);
       } catch (error) {
         logger.warn(
-          `Không đọc được nhãn trước ${key}: ${error instanceof Error ? error.message : String(error)}`,
+          `Không đọc được giá trị trước ${key}: ${error instanceof Error ? error.message : String(error)}`,
         );
       }
     }

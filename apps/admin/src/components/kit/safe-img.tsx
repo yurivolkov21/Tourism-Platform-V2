@@ -15,6 +15,10 @@ import { useEffect, useRef, useState } from 'react';
  *
  * Ngoài `onError`, đo lại một lần sau mount: ảnh hỏng TRƯỚC khi React hydrate thì sự kiện
  * `error` đã trôi qua. `complete && naturalWidth === 0` là "tải xong mà không có ảnh".
+ *
+ * Dấu hỏng gắn với ĐÚNG `src` đã hỏng (review A2-18): `src` đổi thì ảnh mới tự được thử, không
+ * cần bước xoá dấu cũ. Bước xoá ấy từng nằm trong effect đo lại, và `error` tới trước effect (ảnh
+ * hỏng về sớm, hay test khi máy chậm) thì effect xoá luôn dấu vừa ghi.
  */
 export function SafeImg({
   src,
@@ -43,16 +47,14 @@ export function SafeImg({
   brokenClassName?: string;
 }) {
   const ref = useRef<HTMLImageElement>(null);
-  const [broken, setBroken] = useState(false);
+  const [brokenSrc, setBrokenSrc] = useState<string | null>(null);
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: src đổi là ảnh mới — xoá dấu hỏng cũ, đo lại
   useEffect(() => {
-    setBroken(false);
     const image = ref.current;
-    if (image?.complete && image.naturalWidth === 0) setBroken(true);
+    if (image?.complete && image.naturalWidth === 0) setBrokenSrc(src);
   }, [src]);
 
-  if (broken) {
+  if (brokenSrc === src) {
     return (
       <span
         role="img"
@@ -77,7 +79,7 @@ export function SafeImg({
       height={height}
       loading="lazy"
       decoding="async"
-      onError={() => setBroken(true)}
+      onError={() => setBrokenSrc(src)}
       className={cn('shrink-0 rounded-md object-cover', className)}
     />
   );

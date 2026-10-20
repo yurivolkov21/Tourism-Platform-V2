@@ -81,6 +81,8 @@ export function LoginForm() {
         // (admin không có UI nhập OTP riêng — ADR-0026 §2).
         // ADR-0052 §4: tài khoản bị khoá (hook tạo phiên của API) — form admin không đi qua
         // `mapAuthError` nên tự nhận mã (plan P4f, quyết định 4).
+        // 429 nhận theo status vì lỗi trần của Better Auth không mang mã (L1-12): câu chung mời
+        // bấm lại ngay, mà bấm lại trong lúc bị chặn thì vẫn 429.
         setErrors({
           form:
             error.code === 'INVALID_EMAIL_OR_PASSWORD'
@@ -89,7 +91,9 @@ export function LoginForm() {
                 ? t.errors.emailNotVerified
                 : error.code === 'ACCOUNT_LOCKED'
                   ? t.errors.accountLocked
-                  : t.errors.generic,
+                  : error.status === 429
+                    ? t.errors.tooManyAttempts
+                    : t.errors.generic,
         });
         return;
       }
