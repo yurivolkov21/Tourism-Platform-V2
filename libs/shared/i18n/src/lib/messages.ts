@@ -1906,12 +1906,6 @@ export const messages = {
 
     // ── Dải khởi hành + rail booking + bảng đợt ──
     departures: {
-      /** Dải chip ngay dưới hero — 4–6 đợt gần nhất. */
-      stripHeading: 'Next departures',
-      /** Link từ dải xuống bảng đầy đủ. Cả 8 sản phẩm đã khảo sát đều có
-          affordance "See all dates"; ta đảo pattern (đưa ngày lên đầu) nhưng vẫn
-          giữ đường dẫn tới bảng, vì dải chỉ hiện 4–6 đợt gần nhất. */
-      seeAll: (n: number) => `See all ${n} dates`,
       /** Không còn đợt nào ĐẶT ĐƯỢC (chưa có đợt, hết chỗ, hoặc đã qua hạn đặt):
           MỘT câu chung cho bar đáy, panel đặt chỗ và trang /book, luôn kèm CTA
           hỏi. */
