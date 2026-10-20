@@ -1,5 +1,6 @@
 import { FastifyAdapter, type NestFastifyApplication } from '@nestjs/platform-fastify';
 import { corsOrigins, trustProxy } from './config/env.js';
+import { isAdminSurfacePath, routingPath } from './lib/request-path.js';
 
 /**
  * Adapter Fastify dùng chung cho `main.ts` VÀ test — một nguồn sự thật.
@@ -47,6 +48,12 @@ export function createFastifyAdapter(): FastifyAdapter {
   });
 }
 
+/** Hai MIME browser dùng để gửi báo cáo CSP (report-uri / report-to). */
+const CSP_REPORT_MIME: ReadonlySet<string> = new Set([
+  'application/csp-report',
+  'application/reports+json',
+]);
+
 /**
  * Cấu hình tầng HTTP dùng chung cho cả `main.ts` (production) lẫn test e2e.
  *
@@ -55,13 +62,11 @@ export function createFastifyAdapter(): FastifyAdapter {
  * tới được — app trong test dựng thẳng từ `AppModule` nên bỏ qua sạch. Đó
  * đúng là kiểu lỗ mà đợt mutation-test 19/07 đã vạch ra: xoá guard đi mà
  * cả suite vẫn xanh.
+ *
+ * Mọi phép so path ở đây đi qua `routingPath`/`isAdminSurfacePath`: router
+ * giải mã percent-encoding trước khi khớp route, so `req.url` thô thì
+ * `/api/%61dmin/...` lọt (review F1-01).
  */
-/** Hai MIME browser dùng để gửi báo cáo CSP (report-uri / report-to). */
-const CSP_REPORT_MIME: ReadonlySet<string> = new Set([
-  'application/csp-report',
-  'application/reports+json',
-]);
-
 export async function configureHttp(app: NestFastifyApplication): Promise<void> {
   // W2 (ADR-0026 AMEND 1 §B): danh sách origin cho CORS nay là `corsOrigins`
   // (env CORS_ORIGINS, không set thì rơi về TRUSTED_ORIGINS) — TÁCH khỏi câu
@@ -84,8 +89,8 @@ export async function configureHttp(app: NestFastifyApplication): Promise<void> 
   // không bao giờ thấy request tới (đo sống bằng Playwright thật mới lộ ra —
   // bootstrap.e2e.spec.ts canh lại để không tái phát, bài học hạ tầng xuyên
   // suốt CLAUDE.md §10). Danh sách khớp ĐÚNG tập verb toàn contract hiện có
-  // (`grep "method: '" contract.ts` = GET/POST + đúng 1 PATCH) cộng 1 route
-  // DELETE thuần REST — thêm verb mới thì cập nhật cả đây lẫn test canh.
+  // (`grep "method: '" contract.ts` = GET/POST/PATCH) cộng 1 route DELETE
+  // thuần REST — thêm verb mới thì cập nhật cả đây lẫn test canh.
   //
   // `PATCH` vào danh sách 12/08 vì ĐÚNG lớp lỗi cũ tái phát: cụm ADR-0021
   // thêm `account.setAvatar` (`PATCH /api/account/avatar`) mà quên chỗ này,
@@ -100,9 +105,9 @@ export async function configureHttp(app: NestFastifyApplication): Promise<void> 
       req: { url?: string },
       callback: (err: Error | null, options: Record<string, unknown>) => void,
     ) => {
-      // Bỏ query trước khi so (vòng vá review W2): `/api/admin?x` từng trượt.
-      const url = (req.url ?? '').split('?')[0] ?? '';
-      const isAdminSurface = url === '/api/admin' || url.startsWith('/api/admin/');
+      // So trên path router khớp: `/api/admin?x` (vòng vá review W2) và
+      // `/api/%61dmin` (review F1-01) từng trượt.
+      const isAdminSurface = isAdminSurfacePath(req.url);
       callback(null, {
         // Spread: `corsOrigins` là readonly, @fastify/cors nhận mảng thường.
         origin: isAdminSurface ? false : [...corsOrigins],
@@ -127,7 +132,7 @@ export async function configureHttp(app: NestFastifyApplication): Promise<void> 
     .getInstance()
     .addHook('onRequest', async (req, reply) => {
       if (req.method === 'GET' || req.method === 'HEAD' || req.method === 'OPTIONS') return;
-      const path = req.url.split('?')[0] ?? '';
+      const path = routingPath(req.url);
       const contentType =
         String(req.headers['content-type'] ?? '')
           .split(';')[0]
@@ -154,8 +159,7 @@ export async function configureHttp(app: NestFastifyApplication): Promise<void> 
           .send({ code: 'UNSUPPORTED_MEDIA_TYPE', message: 'Send application/json' });
         return reply;
       }
-      const isAdminSurface = path === '/api/admin' || path.startsWith('/api/admin/');
-      if (isAdminSurface && req.headers['sec-fetch-site'] === 'cross-site') {
+      if (isAdminSurfacePath(req.url) && req.headers['sec-fetch-site'] === 'cross-site') {
         await reply.status(403).send({ code: 'CROSS_SITE_FORBIDDEN', message: 'Forbidden' });
         return reply;
       }
