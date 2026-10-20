@@ -39,14 +39,6 @@ export interface MobileEnv {
 /** Tên biến env, giữ ở một chỗ để thông báo lỗi và chỗ đọc không trôi lệch. */
 const KEYS = ['EXPO_PUBLIC_API_URL', 'EXPO_PUBLIC_WEB_URL'] as const;
 
-/**
- * Đọc và kiểm env từ một nguồn bất kỳ — hàm THUẦN nên test được mà không phải
- * đụng `process.env`.
- *
- * Chuỗi rỗng bị coi là THIẾU: nền tảng deploy gửi chuỗi rỗng khi ô cấu hình bị
- * bỏ trống (cùng gotcha `parseEnv` của apps/api), nên `KEY=` phải đỏ chứ không
- * được lọt qua thành origin rỗng.
- */
 /** Loopback: môi trường thử, được phép `http`. */
 function isLoopback(hostname: string): boolean {
   return hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1';
@@ -79,6 +71,14 @@ function readOrigin(raw: string, key: string): string {
   return url.origin;
 }
 
+/**
+ * Đọc và kiểm env từ một nguồn bất kỳ — hàm THUẦN nên test được mà không phải
+ * đụng `process.env`.
+ *
+ * Chuỗi rỗng bị coi là THIẾU: nền tảng deploy gửi chuỗi rỗng khi ô cấu hình bị
+ * bỏ trống (cùng gotcha `parseEnv` của apps/api), nên `KEY=` phải đỏ chứ không
+ * được lọt qua thành origin rỗng.
+ */
 export function readEnv(source: Record<string, string | undefined>): MobileEnv {
   const missing = KEYS.filter((key) => !source[key]?.trim());
   if (missing.length > 0) {
