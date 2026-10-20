@@ -1,9 +1,9 @@
-// Design tokens — source of truth for @tourism/tokens.
+// Design token — nguồn sự thật của @tourism/tokens.
 // Hướng brand: "Wuling" — ngọc bích trầm trên nền sương celadon, mực tàu, accent
 // sơn mài/hổ phách; heading serif (Literata) + thân sans (Archivo); radius refined.
 // Phân tích & giá trị chốt: docs/conventions/color-system.md · ADR-0013.
 //
-// Authored in Style Dictionary token format. Each color carries light + dark values.
+// Viết theo định dạng token của Style Dictionary. Mỗi màu mang cả giá trị sáng lẫn tối.
 
 const c = (light, dark) => ({ value: light, darkValue: dark, type: 'color' });
 
@@ -73,8 +73,8 @@ export default {
     // Dùng ở đâu: chữ nhấn mạnh, link, icon, số lớn — tức mọi chỗ `primary`
     // đứng làm mực trên nền. KHÔNG dùng cho `bg-*`; bề mặt vẫn là `primary`.
     'primary-emphasis': c('oklch(0.494 0.067 184.3)', 'oklch(0.76 0.076 181.3)'),
-    // Text/icons that sit ON dark media (image scrims via --overlay). Stays light in BOTH themes —
-    // the scrim is always dark, so this must NOT flip like primary-foreground does.
+    // Chữ và icon đặt TRÊN media tối (lớp phủ ảnh qua --overlay). Sáng ở CẢ HAI theme —
+    // lớp phủ luôn tối, nên token này KHÔNG được lật như primary-foreground.
     'on-media': c('oklch(0.98 0.005 180)', 'oklch(0.98 0.005 180)'),
     secondary: c('oklch(0.914 0.01 174.3)', 'oklch(0.367 0.028 178.3)'),
     'secondary-foreground': c('oklch(0.411 0.053 184.5)', 'oklch(0.822 0.041 180.6)'),
@@ -160,11 +160,11 @@ export default {
     // soi gương khác — đó là lý do vòng focus âm thầm trượt chuẩn suốt từ đó.
     ring: c('oklch(0.494 0.067 184.3)', 'oklch(0.60 0.076 181.3)'),
     overlay: c('oklch(0 0 0 / 0.5)', 'oklch(0 0 0 / 0.6)'),
-    // P5.6: uniform photo treatment — bottom scrim + full-bleed grade tint
+    // P5.6: xử lý ảnh đồng nhất — lớp phủ ở đáy + lớp tint chỉnh màu phủ kín ảnh
     // (consumed by mobile-ui ScrimImage; alpha-bearing like `overlay`). Hue → họ ngọc Wuling.
     scrim: c('oklch(0.15 0.02 182 / 0.75)', 'oklch(0.13 0.02 182 / 0.8)'),
     'media-tint': c('oklch(0.35 0.05 184 / 0.1)', 'oklch(0.3 0.05 184 / 0.16)'),
-    // Functional status colors (not brand "gu") — used by departure status, badges, alerts.
+    // Màu trạng thái chức năng (không phải "gu" của brand) — dùng cho trạng thái chuyến, badge, alert.
     success: c('oklch(0.62 0.17 145)', 'oklch(0.7 0.15 145)'),
     'success-foreground': c('oklch(0.985 0 0)', 'oklch(0.205 0 0)'),
     warning: c('oklch(0.78 0.15 80)', 'oklch(0.82 0.14 80)'),
@@ -273,7 +273,7 @@ export default {
   },
 };
 
-// Radius scale multipliers (× --radius) → Tailwind @theme radius steps.
+// Hệ số của thang bo góc (× --radius) → các nấc radius trong @theme của Tailwind.
 export const radiusScale = {
   sm: 0.6,
   md: 0.8,
@@ -284,16 +284,16 @@ export const radiusScale = {
   '4xl': 2.6,
 };
 
-// Font family theme vars (passthrough to the runtime --font-sans set in each app layout).
+// Biến theme cho font family (chuyển tiếp tới --font-sans lúc chạy, đặt ở layout của từng app).
 export const fonts = {
   sans: 'var(--font-sans)',
   heading: 'var(--font-heading)', // Literata (serif), đặt per-app qua next/font; fallback về sans
 };
 
-// Mode-independent Tailwind v4 @theme tokens → generate utilities (text-*, font-*,
-// tracking-*, leading-*, shadow-*, ease-*). Ordered [cssVar, value].
+// Token @theme của Tailwind v4 không đổi theo theme → sinh utility (text-*, font-*,
+// tracking-*, leading-*, shadow-*, ease-*). Thứ tự [cssVar, value].
 export const themeExtras = [
-  // Type scale (size + paired line-height)
+  // Thang chữ (cỡ chữ + line-height đi cặp)
   ['--text-xs', '0.75rem'],
   ['--text-xs--line-height', 'calc(1 / 0.75)'],
   ['--text-sm', '0.875rem'],
@@ -331,7 +331,7 @@ export const themeExtras = [
   ['--leading-snug', '1.375'],
   ['--leading-normal', '1.5'],
   ['--leading-relaxed', '1.625'],
-  // Elevation by intent (light; dark-mode shadow softening handled via .dark rule later)
+  // Độ nổi theo mục đích (bản sáng; bóng dịu hơn ở theme tối do luật .dark phía sau lo)
   ['--shadow-card', '0 1px 3px 0 oklch(0 0 0 / 0.08), 0 1px 2px -1px oklch(0 0 0 / 0.08)'],
   ['--shadow-dropdown', '0 4px 12px -2px oklch(0 0 0 / 0.12)'],
   ['--shadow-popover', '0 8px 24px -4px oklch(0 0 0 / 0.14)'],
@@ -339,11 +339,11 @@ export const themeExtras = [
   // Easing
   ['--ease-out-expo', 'cubic-bezier(0.16, 1, 0.3, 1)'],
   ['--ease-in-out-smooth', 'cubic-bezier(0.45, 0, 0.55, 1)'],
-  // Spacing base (Tailwind multiplies this for p-*/m-*/gap-*/size-*)
+  // Đơn vị spacing gốc (Tailwind nhân lên cho p-*/m-*/gap-*/size-*)
   ['--spacing', '0.25rem'],
-  // Content container width → max-w-content
+  // Bề rộng khung nội dung → max-w-content
   ['--container-content', '80rem'],
-  // Breakpoints (explicit single source; values match the standard scale → no behavior change)
+  // Breakpoint (một nguồn tường minh; giá trị khớp thang chuẩn → không đổi hành vi)
   ['--breakpoint-sm', '40rem'],
   ['--breakpoint-md', '48rem'],
   ['--breakpoint-lg', '64rem'],
@@ -351,8 +351,9 @@ export const themeExtras = [
   ['--breakpoint-2xl', '96rem'],
 ];
 
-// Mode-independent :root custom props consumed via var() (no Tailwind utility namespace):
-// motion durations, z-index layering, a11y, and content measure. Ordered [cssVar, value].
+// Custom property ở :root không đổi theo theme, đọc qua var() (không có namespace utility
+// của Tailwind): thời lượng chuyển động, tầng z-index, a11y, độ dài dòng của nội dung.
+// Thứ tự [cssVar, value].
 export const rootExtras = [
   ['--duration-fast', '150ms'],
   ['--duration-normal', '250ms'],
@@ -372,13 +373,13 @@ export const rootExtras = [
   ['--touch-target-min', '44px'],
   ['--prose-measure', '65ch'],
   ['--section-space', 'clamp(4rem, 3rem + 5vw, 8rem)'],
-  // Sizing — control heights (comfortable density) + iconography. Components adopt via var().
+  // Kích thước — chiều cao control (mật độ thoáng) + icon. Component dùng qua var().
   ['--control-h-sm', '1.75rem'],
   ['--control-h-md', '2rem'],
   ['--control-h-lg', '2.25rem'],
   ['--icon-size', '1rem'],
   ['--icon-stroke', '2'],
-  // Media aspect ratios (tourism) — use via aspect-[var(--aspect-card)] or component CSS.
+  // Tỉ lệ khung media (du lịch) — dùng qua aspect-[var(--aspect-card)] hoặc CSS của component.
   ['--aspect-card', '4 / 3'],
   ['--aspect-hero', '16 / 9'],
   ['--aspect-thumb', '1 / 1'],
@@ -390,7 +391,7 @@ export const rootExtras = [
   ['--aspect-band', '21 / 9'],
 ];
 
-// Compact density overrides — emitted under [data-density='compact'] for dense admin tables.
+// Ghi đè mật độ gọn — sinh dưới [data-density='compact'] cho bảng admin dày.
 export const densityCompact = [
   ['--control-h-sm', '1.5rem'],
   ['--control-h-md', '1.75rem'],
@@ -398,7 +399,7 @@ export const densityCompact = [
   ['--section-space', 'clamp(2.5rem, 2rem + 3vw, 5rem)'],
 ];
 
-// Plain base-layer rules derived from tokens (not custom-property declarations).
+// Luật base-layer thường suy từ token (không phải khai báo custom property).
 export const baseRules = [
   '::selection {',
   '  background-color: var(--accent);',
