@@ -3676,8 +3676,9 @@ export const messages = {
       pickupOn: (date: string) => `Pickup on ${date}`,
       fullItinerary: 'Full itinerary',
       /**
-       * Chân khối, chỉ đơn PAID. `date` là ngày VỀ: cổng review của API mở từ 07:00 giờ VN của
-       * chính ngày ấy, không phải "sau khi chuyến xong".
+       * Chân khối, chỉ đơn còn chuyến (`bookingKeepsTrip` của contract — PAID, hoàn một phần, hoàn
+       * thiện chí trọn mà không huỷ; review L5-07). `date` là ngày VỀ: cổng review của API mở từ
+       * 07:00 giờ VN của chính ngày ấy, không phải "sau khi chuyến xong".
        */
       reviewOpens: (date: string) => `Your review opens on ${date}.`,
     },
