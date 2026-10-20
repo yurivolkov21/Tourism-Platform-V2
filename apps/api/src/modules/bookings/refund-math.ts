@@ -42,7 +42,6 @@ export class RefundNothingLeftError extends Error {
 }
 
 export interface ClassifyRefundInput {
-  /** Amount yêu cầu dạng decimal string; null/absent → refund phần remainder. */
   /** Số tiền xin hoàn — BẮT BUỘC (ADR-0030 AMEND 1/2): nhánh 'vắng = trọn phần dư' đã xoá cả ở đây, không chỉ ở contract. */
   requested: string;
   /** Booking.totalAmount. */

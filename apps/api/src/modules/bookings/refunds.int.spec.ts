@@ -231,6 +231,9 @@ describe('refunds integration (admin refund ledger)', () => {
     expect(res.statusCode).toBe(200);
     const body = AdminRefundResultSchema.parse(res.json());
     expect(body.booking.status).toBe('PARTIALLY_REFUNDED');
+    // Tổng đã hoàn THẬT ngay trong kết quả (như `cancel` của khách và `adminByCode`), không
+    // phải '0.00' mặc định của `toBooking` khi không đọc sổ (review L4).
+    expect(body.booking.refundedTotal).toBe('30.00');
     expect(body.refunds).toHaveLength(1);
     expect(Number(body.refunds[0]?.amount)).toBe(30);
     expect(body.refunds[0]?.currency).toBe('USD');

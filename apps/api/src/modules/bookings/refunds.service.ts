@@ -82,10 +82,11 @@ export class RefundsService {
    *
    *  1. Gate + classify theo ledger (`classifyRefundAmount` trên total vs
    *     SUM(refunds) — ném các domain error 422 có kiểu).
-   *  2. Provider refund TRƯỚC, ngoài mọi transaction — ta không bao giờ ledger
-   *     một refund chưa xảy ra, và latency HTTP của provider không bao giờ giữ
-   *     một DB connection.
-   *  3. MỘT transaction: append Refund row (set adminId) → re-derive
+   *  2. Provider refund TRƯỚC khi ghi sổ — ta không bao giờ ledger một refund
+   *     chưa xảy ra. Lời gọi nằm TRONG transaction của advisory lock (ngoại lệ có
+   *     chủ đích của "gateway ngoài transaction", ADR-0009 — xem `refund-lock.ts`)
+   *     để khoá giữ suốt đọc sổ → cổng → ghi sổ.
+   *  3. Cùng transaction ấy: append Refund row (set adminId) → re-derive
    *     Booking.status qua {@link deriveStatusAfterRefund} → enqueue outbox row
    *     BOOKING_REFUNDED. dedupeKey `refund:<bookingId>:<refundRowId>` — refund
    *     lặp lại hợp lệ theo từng booking, và refund row id là unique theo mỗi
@@ -118,7 +119,7 @@ export class RefundsService {
     });
     if (!pre) throw new BookingNotFoundError(bookingCode);
 
-    const updated = await withBookingRefundLock(pre.id, async (tx) => {
+    const { updated, refundedTotal } = await withBookingRefundLock(pre.id, async (tx) => {
       const booking = await tx.booking.findUniqueOrThrow({ where: { id: pre.id } });
       // REFUNDED nhận error chính xác (ledger đã settle), đặt trước generic
       // status gate — cùng lớp 422, nhưng tín hiệu cho operator tốt hơn.
@@ -223,25 +224,29 @@ export class RefundsService {
       this.logger.log(
         `Admin ${adminUserId} refunded ${amount.toFixed(2)} ${booking.currency} on booking ${booking.code} (${kind} → ${nextStatus})`,
       );
-      return row;
+      // Sổ sau lần hoàn này, đọc trong khoá: không phải đọc lại sau commit.
+      return { updated: row, refundedTotal: alreadyRefunded.add(amount) };
     });
 
     const tourImage = await resolveTourCover(this.media, updated.tourId);
     return {
-      booking: toBooking(updated, null, tourImage),
+      // `refundedTotal` THẬT (như `cancelByCustomer` và `adminByCode`): không truyền thì
+      // `toBooking` trả '0.00' ngay trong kết quả của chính một lệnh hoàn tiền.
+      booking: toBooking(updated, null, tourImage, { refundedTotal }),
       refunds: await this.historyForBooking(bookingCode),
     };
   }
 
   /**
-   * Bước provider-refund được DÙNG CHUNG bởi admin refund phía trên và W4
-   * cancellation-approve flow (spec: reuse, đừng nhân bản logic gateway):
-   * resolve gateway của booking và refund `amount` theo currency của BOOKING —
-   * invariant #6 theo thiết kế, một currency mismatch là bất khả biểu diễn.
-   * Chạy NGOÀI mọi transaction một cách cố ý (latency HTTP của provider không
-   * bao giờ giữ DB connection; ta không bao giờ ledger một refund chưa xảy ra
-   * — caller ledger SAU khi hàm này trả về). Fail thì bọc vào
-   * {@link ProviderRefundFailedError} (→ 502), chưa có gì được ghi.
+   * Bước provider-refund được DÙNG CHUNG bởi admin refund phía trên và lõi huỷ của
+   * `CancellationsService` (khách tự huỷ, công ty huỷ chuyến — spec: reuse, đừng
+   * nhân bản logic gateway): resolve gateway của booking và refund `amount` theo
+   * currency của BOOKING — invariant #6 theo thiết kế, một currency mismatch là bất
+   * khả biểu diễn. Hàm không tự mở transaction; cả hai chỗ gọi gọi nó TRONG
+   * transaction của `withBookingRefundLock` (ngoại lệ có chủ đích của ADR-0009, trần
+   * 20 giây > 15 giây HTTP của cổng), và ghi sổ SAU khi nó trả về — ta không bao giờ
+   * ledger một refund chưa xảy ra. Fail thì bọc vào {@link ProviderRefundFailedError}
+   * (→ 502), chưa có gì được ghi.
    *
    * `idempotencyKey` (W5): deterministic theo mỗi refund ATTEMPT, được các
    * gateway thật forward làm provider idempotency header (Stripe
