@@ -262,6 +262,33 @@ describe('SubscribersTable — ô rỗng khi lọc ngày (G43)', () => {
     view({ rows: [], total: 0, query: { ...ACTIVE, to: '2026-09-30' } });
     expect(screen.getByText(t.emptyTo(formatCalendarDate('2026-09-30')))).toBeInTheDocument();
   });
+
+  // Review L6 (cùng khuôn A1-07 của /bookings): ngày CỘNG DỒN với tab, ô tìm và nguồn, nên bảng
+  // rỗng vì một email không khớp thì câu không được nói khoảng ngày ấy không ai đăng ký. Pin chữ
+  // thật, không gọi lại hàm i18n, để đổi câu về bản cũ là đỏ.
+  it('lọc ngày cùng ô tìm: cả ba dạng câu nói "matching", không nói khoảng ấy trống', () => {
+    const range = view({
+      rows: [],
+      total: 0,
+      query: { ...ACTIVE, search: 'ada', from: '2026-09-01', to: '2026-09-30' },
+    });
+    expect(screen.getByText(/^No matching subscribers signed up between /)).toBeInTheDocument();
+    expect(screen.queryByText(/^No subscribers signed up/)).not.toBeInTheDocument();
+    range.unmount();
+
+    const from = view({
+      rows: [],
+      total: 0,
+      query: { ...ACTIVE, search: 'ada', from: '2026-09-01' },
+    });
+    expect(screen.getByText(/^No matching subscribers signed up on or after /)).toBeInTheDocument();
+    from.unmount();
+
+    view({ rows: [], total: 0, query: { ...ACTIVE, search: 'ada', to: '2026-09-30' } });
+    expect(
+      screen.getByText(/^No matching subscribers signed up on or before /),
+    ).toBeInTheDocument();
+  });
 });
 
 describe('SubscribersTable — ô tiêu đề có nút Export ghim mép phải', () => {

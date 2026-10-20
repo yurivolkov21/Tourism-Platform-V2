@@ -5072,10 +5072,14 @@ export const messages = {
          * lối thoát, cùng nếp `/bookings` và `/reviews`. Ở danh sách liên lạc,
          * một bảng rỗng dễ bị đọc thành "chưa ai đăng ký", trong khi thủ phạm
          * chỉ là hai ô ngày đặt từ lúc trước.
+         *
+         * "matching" (review L6, cùng khuôn A1-07 của `/bookings`): ngày cộng dồn với tab, ô tìm và
+         * nguồn — tìm một email không có trong danh sách thì bảng rỗng dù khoảng ấy vẫn có người
+         * đăng ký, nên "No subscribers signed up between …" là nói sai về chính dữ liệu.
          */
-        emptyInRange: (range: string) => `No subscribers signed up between ${range}.`,
-        emptyFrom: (date: string) => `No subscribers signed up on or after ${date}.`,
-        emptyTo: (date: string) => `No subscribers signed up on or before ${date}.`,
+        emptyInRange: (range: string) => `No matching subscribers signed up between ${range}.`,
+        emptyFrom: (date: string) => `No matching subscribers signed up on or after ${date}.`,
+        emptyTo: (date: string) => `No matching subscribers signed up on or before ${date}.`,
         showAllDates: 'Show subscribers from all dates',
         columns: {
           email: 'Email',
