@@ -103,10 +103,38 @@ export function withAlpha(color: string, alpha: number): string {
   return `${base}${hex}`;
 }
 
+/**
+ * Pha `color` vào `base` theo `ratio` (0 = chỉ `base`, 1 = chỉ `color`) và trả màu
+ * ĐỤC `#rrggbb`. React Native không có `color-mix`, còn nền thanh điều hướng đè lên
+ * nội dung nên `withAlpha` không đủ — nền phải đục. Alpha của đầu vào bị bỏ.
+ */
+export function mixColors(base: string, color: string, ratio: number): string {
+  const t = Math.min(1, Math.max(0, ratio));
+  const channel = (hex: string, i: number) => Number.parseInt(hex.slice(i, i + 2), 16);
+  return `#${[1, 3, 5]
+    .map((i) =>
+      Math.round(channel(base, i) * (1 - t) + channel(color, i) * t)
+        .toString(16)
+        .padStart(2, '0'),
+    )
+    .join('')}`;
+}
+
+/** Ba nền bề mặt Material 3 dựng từ token — xem bàn giao nâng cấp UI mục 1. */
+export interface MobileSurfaces {
+  /** Surface container: nền thanh điều hướng đáy, bottom sheet. */
+  container: string;
+  /** Surface container high: thanh tìm, ô segmented chưa chọn. */
+  containerHigh: string;
+  /** Nền màn có danh sách thẻ rời. */
+  grouped: string;
+}
+
 export interface MobileTheme {
   /** Chế độ đang dùng — hữu ích cho component cần rẽ nhánh (vd bóng đổ). */
   scheme: ColorScheme;
   colors: Record<MobileColorKey, string>;
+  surfaces: MobileSurfaces;
   radius: RnTheme['radius'];
   /** Type scale theo dp. Mọi bậc trong `MOBILE_TYPE_STEPS` chắc chắn có mặt. */
   type: Record<MobileTypeStep, { fontSize: number; lineHeight: number }>;
@@ -169,9 +197,19 @@ export function buildTheme(scheme: ColorScheme, source: Partial<RnTheme> = {}): 
     weight[key] = value as FontWeight;
   }
 
+  // Sáng pha `muted` vào `background`; tối pha `secondary` (muted tối quá gần
+  // nền), và màn danh sách thẻ rời ở nền tối dùng thẳng `background`.
+  const tint = scheme === 'dark' ? colors.secondary : colors.muted;
+  const surfaces: MobileSurfaces = {
+    container: mixColors(colors.background, tint, 0.45),
+    containerHigh: mixColors(colors.background, tint, scheme === 'dark' ? 0.8 : 0.75),
+    grouped: scheme === 'dark' ? colors.background : mixColors(colors.background, tint, 0.35),
+  };
+
   return {
     scheme,
     colors,
+    surfaces,
     radius: source.radius ?? tokens.radius,
     fonts: MOBILE_FONTS,
     type,

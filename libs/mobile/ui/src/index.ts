@@ -37,8 +37,14 @@ export type { TabBarIconProps } from './lib/tab-bar-icon';
 export { TabBarIcon } from './lib/tab-bar-icon';
 export type { FeatherIconName, TextFieldProps } from './lib/text-field';
 export { TextField } from './lib/text-field';
-export type { ColorScheme, FontWeight, MobileColorKey, MobileTheme } from './lib/theme';
-export { buildTheme, MOBILE_COLOR_KEYS, MOBILE_FONTS, withAlpha } from './lib/theme';
+export type {
+  ColorScheme,
+  FontWeight,
+  MobileColorKey,
+  MobileSurfaces,
+  MobileTheme,
+} from './lib/theme';
+export { buildTheme, MOBILE_COLOR_KEYS, MOBILE_FONTS, mixColors, withAlpha } from './lib/theme';
 export type { ThemeProviderProps } from './lib/theme-provider';
 export { ThemeProvider, useTheme } from './lib/theme-provider';
 export type { TourListCardProps } from './lib/tour-list-card';

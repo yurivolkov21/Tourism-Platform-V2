@@ -5,6 +5,7 @@ import {
   MOBILE_FONT_WEIGHTS,
   MOBILE_FONTS,
   MOBILE_TYPE_STEPS,
+  mixColors,
   withAlpha,
 } from './theme';
 
@@ -218,6 +219,53 @@ describe('cầu font', () => {
 
     for (const weight of MOBILE_FONT_WEIGHTS) {
       expect(fonts[weight]).toBe(MOBILE_FONTS[weight]);
+    }
+  });
+});
+
+describe('mixColors', () => {
+  it('ratio 0 trả màu nền, ratio 1 trả màu pha', () => {
+    expect(mixColors('#102030', '#ffffff', 0)).toBe('#102030');
+    expect(mixColors('#102030', '#ffffff', 1)).toBe('#ffffff');
+  });
+
+  it('pha tuyến tính từng kênh và làm tròn', () => {
+    expect(mixColors('#000000', '#ffffff', 0.5)).toBe('#808080');
+    expect(mixColors('#000000', '#646464', 0.45)).toBe('#2d2d2d');
+  });
+
+  it('luôn trả màu ĐỤC 6 ký tự — bỏ alpha của đầu vào', () => {
+    expect(mixColors('#000000cc', '#ffffff80', 0.5)).toBe('#808080');
+  });
+
+  it('kẹp ratio về 0–1', () => {
+    expect(mixColors('#102030', '#ffffff', 2)).toBe('#ffffff');
+    expect(mixColors('#102030', '#ffffff', -1)).toBe('#102030');
+  });
+});
+
+describe('theme.surfaces (nền Material 3 đục, bàn giao mục 1)', () => {
+  it('sáng: container pha 45% muted, containerHigh 75% muted, grouped 35% muted vào background', () => {
+    const t = buildTheme('light');
+    const { background, muted } = t.colors;
+
+    expect(t.surfaces.container).toBe(mixColors(background, muted, 0.45));
+    expect(t.surfaces.containerHigh).toBe(mixColors(background, muted, 0.75));
+    expect(t.surfaces.grouped).toBe(mixColors(background, muted, 0.35));
+  });
+
+  it('tối: container 45% và containerHigh 80% secondary, grouped là chính background', () => {
+    const t = buildTheme('dark');
+    const { background, secondary } = t.colors;
+
+    expect(t.surfaces.container).toBe(mixColors(background, secondary, 0.45));
+    expect(t.surfaces.containerHigh).toBe(mixColors(background, secondary, 0.8));
+    expect(t.surfaces.grouped).toBe(background);
+  });
+
+  it.each(['light', 'dark'] as const)('chế độ %s: cả ba nền là hex 6 ký tự đục', (scheme) => {
+    for (const value of Object.values(buildTheme(scheme).surfaces)) {
+      expect(value).toMatch(/^#[0-9a-f]{6}$/);
     }
   });
 });
