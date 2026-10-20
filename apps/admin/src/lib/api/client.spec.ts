@@ -7,8 +7,8 @@ import { ADMIN_FORBIDDEN_DIGEST } from './forbidden';
 
 /**
  * Client oRPC của admin (spec P4b §2.3) rút gọn từ bản web: chỉ còn ĐƯỜNG
- * SERVER cookie-forward, không có nhánh browser-credentials và không có
- * revalidate/tag — back-office luôn đọc dữ liệu tươi.
+ * SERVER cookie-forward, không có nhánh browser-credentials, và mặc định
+ * no-store — back-office đọc dữ liệu tươi, trừ `cacheFor` của các bộ số.
  */
 describe('withAdminAuth', () => {
   it('bọc cookie thành context dùng thẳng cho call oRPC', () => {
@@ -38,6 +38,27 @@ describe('withAdminOptions', () => {
     const request = new Request('http://api.test/x');
     const init = withAdminOptions(request, { method: 'GET' }, undefined);
     expect(init).toEqual({ method: 'GET', cache: 'no-store' });
+  });
+
+  it('cacheFor: khoá cache đổi sau mỗi khung TTL, nên không bao giờ đọc lại số cũ hơn TTL', () => {
+    // Review A1-13: Data Cache của Next là stale-while-revalidate, entry quá hạn vẫn được trả cho
+    // lượt đọc kế tiếp. Khoá gồm mọi header, nên header đổi theo khung là entry của khung trước
+    // không bao giờ được đọc lại.
+    const request = new Request('http://api.test/x');
+    const context: AdminApiContext = {
+      cookie: 'session=abc',
+      cacheFor: { seconds: 60, tags: ['admin-stats'] },
+    };
+    const windowAt = (now: number) =>
+      (withAdminOptions(request, {}, context, now).headers as Headers).get('x-admin-cache-window');
+    const start = Date.UTC(2026, 9, 20, 8, 0, 0);
+
+    expect(windowAt(start)).not.toBeNull();
+    expect(windowAt(start + 59_999)).toBe(windowAt(start));
+    expect(windowAt(start + 60_000)).not.toBe(windowAt(start));
+    expect(withAdminOptions(request, {}, context, start)).toMatchObject({
+      next: { revalidate: 60, tags: ['admin-stats'] },
+    });
   });
 });
 
