@@ -45,8 +45,9 @@ export function ReviewPanel({ booking, slot }: { booking: BookingDetail; slot: R
 }
 
 /**
- * Cột phải của chuyến đã đi mà không có khu review (slot `hidden` — vd đơn hoàn một phần): lời
- * cảm ơn và "Browse tours" — một cột trống là một trang trông như hỏng.
+ * Cột phải của chuyến đã đi mà không có khu review (slot `hidden`): lời cảm ơn và "Browse tours" —
+ * một cột trống là một trang trông như hỏng. Từ L5-07 đơn đã đi nào cũng qua cổng review, nên đây
+ * là lưới an toàn.
  */
 export function TripThanksPanel() {
   return (

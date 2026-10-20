@@ -382,7 +382,8 @@ describe('voucherView — đã đi (travelled)', () => {
     ]);
   });
 
-  it('PARTIALLY_REFUNDED chưa review → không mời viết (API chỉ nhận review của đơn PAID)', () => {
+  // L5-07: hoàn một phần mà khách vẫn đi — cổng review của API nhận như đơn PAID.
+  it('PARTIALLY_REFUNDED chưa review → mời viết như đơn PAID', () => {
     const v = view(
       voucherBooking({
         ...THREE_DAY_TRIP,
@@ -392,7 +393,11 @@ describe('voucherView — đã đi (travelled)', () => {
       }),
       AFTER,
     );
-    expect(v.journal.map((item) => item.label)).toEqual(['Booked and paid', 'Travelled']);
+    expect(v.journal.map((item) => item.label)).toEqual([
+      'Booked and paid',
+      'Travelled',
+      'Write a review',
+    ]);
   });
 });
 

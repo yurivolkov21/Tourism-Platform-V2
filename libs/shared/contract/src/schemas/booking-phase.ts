@@ -31,7 +31,7 @@ export type BookingWhen = z.output<typeof BookingWhenSchema>;
  * PAID và PARTIALLY_REFUNDED: đơn còn hiệu lực — đúng hai trạng thái `isCancellableStatus` của
  * API nhận (`apps/api/src/modules/bookings/booking-cancellation.ts`). Không đồng nghĩa "chuyến
  * còn đi": đơn hoàn thiện chí trọn là REFUNDED mà khách vẫn đi (ADR-0054 AMEND 1) — chuyến có
- * đi hay không thì đọc `bookingPhase`.
+ * đi hay không thì đọc `bookingKeepsTrip`.
  */
 export const ACTIVE_BOOKING_STATUSES: readonly BookingStatusValue[] = [
   'PAID',
@@ -72,18 +72,37 @@ export interface BookingPhaseInput {
  */
 export function bookingPhase(booking: BookingPhaseInput, today: string): BookingPhase {
   if (booking.departureCancelled) return 'cancelled';
+  if (booking.status === 'PENDING') {
+    return today <= cancellationDeadline(booking.departureStartDate, booking.departureEndDate)
+      ? 'awaiting_payment'
+      : 'lapsed';
+  }
+  return bookingKeepsTrip(booking) ? tripPhase(booking, today) : 'cancelled';
+}
+
+/**
+ * Đơn còn chuyến để đi — chỉ xét đơn, KHÔNG xét chuyến bị công ty huỷ (`departureCancelled`):
+ * PAID và PARTIALLY_REFUNDED (hoàn một phần không kết thúc chuyến đi); REFUNDED khi chưa huỷ thật
+ * (`cancelledAt` null) là hoàn thiện chí trọn — khách vẫn đi (ADR-0054 AMEND 1). CANCELLED, và
+ * REFUNDED có mốc huỷ, là chuyến đã thôi; PENDING chưa trả thì chưa có chuyến.
+ *
+ * MỘT luật cho giai đoạn chuyến đi của `bookingPhase` và cho cổng review: API
+ * (`checkReviewEligibility`) và web (`reviewSlot`) cùng đọc hàm này thay vì chép tay "chỉ PAID" —
+ * bản chép ấy chặn khách được hoàn tiền thiện chí, vẫn cầm voucher và vẫn đi tour, viết review
+ * (review L5-07).
+ */
+export function bookingKeepsTrip(
+  booking: Pick<BookingPhaseInput, 'status' | 'cancelledAt'>,
+): boolean {
   switch (booking.status) {
-    case 'CANCELLED':
-      return 'cancelled';
-    case 'REFUNDED':
-      return booking.cancelledAt === null ? tripPhase(booking, today) : 'cancelled';
-    case 'PENDING':
-      return today <= cancellationDeadline(booking.departureStartDate, booking.departureEndDate)
-        ? 'awaiting_payment'
-        : 'lapsed';
     case 'PAID':
     case 'PARTIALLY_REFUNDED':
-      return tripPhase(booking, today);
+      return true;
+    case 'REFUNDED':
+      return booking.cancelledAt === null;
+    case 'PENDING':
+    case 'CANCELLED':
+      return false;
   }
 }
 

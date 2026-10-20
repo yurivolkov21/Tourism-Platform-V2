@@ -371,6 +371,53 @@ describe('reviews (int)', () => {
     expect(await prisma.review.count()).toBe(0);
   });
 
+  // L5-07: hoàn một phần, hay hoàn thiện chí trọn mà không huỷ (REFUNDED, `cancelledAt` null), thì
+  // khách vẫn đi tour (ADR-0054 AMEND 1) — đã đi thì viết được như đơn PAID.
+  it.each([
+    ['hoàn một phần', BookingStatus.PARTIALLY_REFUNDED, 'partial-refund@example.com'],
+    ['hoàn thiện chí trọn, không huỷ', BookingStatus.REFUNDED, 'goodwill@example.com'],
+  ])('đơn %s, chuyến đã xong → tạo review chờ duyệt', async (_label, status, email) => {
+    const { user, cookie } = await signUpAndSignIn(app, email);
+    const { booking } = await seedCompletedBooking({
+      endDate: new Date(Date.now() - 864e5),
+      userId: user.id,
+    });
+    await prisma.booking.update({ where: { id: booking.id }, data: { status } });
+
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/reviews',
+      headers: { cookie },
+      payload: { bookingCode: 'BK-TESTREV1', rating: 4, body: 'Được hoàn một phần mà vẫn đi vui' },
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(await prisma.review.count({ where: { bookingId: booking.id } })).toBe(1);
+  });
+
+  it('đơn huỷ thật rồi mới hoàn (REFUNDED kèm cancelledAt) → REVIEW_NOT_ELIGIBLE', async () => {
+    const { user, cookie } = await signUpAndSignIn(app, 'refunded-cancelled@example.com');
+    const { booking } = await seedCompletedBooking({
+      endDate: new Date(Date.now() - 864e5),
+      userId: user.id,
+    });
+    await prisma.booking.update({
+      where: { id: booking.id },
+      data: { status: BookingStatus.REFUNDED, cancelledAt: new Date() },
+    });
+
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/reviews',
+      headers: { cookie },
+      payload: { bookingCode: 'BK-TESTREV1', rating: 5, body: 'Đơn này đã huỷ từ trước rồi' },
+    });
+
+    expect(res.statusCode).toBe(400);
+    expect(res.json().code).toBe('REVIEW_NOT_ELIGIBLE');
+    expect(await prisma.review.count()).toBe(0);
+  });
+
   it('booking của người khác → 403 BOOKING_FORBIDDEN', async () => {
     const owner = await signUpAndSignIn(app, 'owner@example.com');
     const other = await signUpAndSignIn(app, 'other@example.com');

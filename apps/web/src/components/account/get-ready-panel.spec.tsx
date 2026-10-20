@@ -126,9 +126,9 @@ describe('GetReadyPanel', () => {
     expect(screen.getByText('Your review opens on Thu 5 Nov.')).toBeInTheDocument();
   });
 
-  it('đơn không viết review được (hoàn một phần): không có chân khối', () => {
-    const partial = { ...BOOKING, status: 'PARTIALLY_REFUNDED' as const, refundedTotal: '20.00' };
-    render(<GetReadyPanel view={getReadySteps(partial, TOUR, TODAY)} bookingCode={partial.code} />);
+  it('view không có chân khối (đơn không viết review được): không vẽ chân', () => {
+    const view = { ...getReadySteps(BOOKING, TOUR, TODAY), footer: null };
+    render(<GetReadyPanel view={view} bookingCode={BOOKING.code} />);
     expect(screen.getByRole('heading', { level: 2, name: 'Get ready' })).toBeInTheDocument();
     expect(screen.queryByText(/Your review opens/)).toBeNull();
   });

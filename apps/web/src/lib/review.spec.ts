@@ -145,11 +145,24 @@ describe('reviewSlot — trang chi tiết booking hiện gì ở chỗ đánh gi
     );
   });
 
-  it('đã huỷ hoặc đã hoàn tiền → "hidden"', () => {
-    for (const status of ['CANCELLED', 'REFUNDED', 'PARTIALLY_REFUNDED'] as const) {
-      expect(reviewSlot(makeBooking({ status, departureEndDate: '2026-08-01' }))).toBe('hidden');
+  it('đơn đã huỷ thật → "hidden": CANCELLED, và REFUNDED có mốc huỷ', () => {
+    const cancelledAt = '2026-07-20T02:00:00.000Z';
+    for (const status of ['CANCELLED', 'REFUNDED'] as const) {
+      expect(reviewSlot(makeBooking({ status, cancelledAt, departureEndDate: '2026-08-01' }))).toBe(
+        'hidden',
+      );
     }
   });
+
+  // L5-07: hoàn một phần, hay hoàn thiện chí trọn mà không huỷ, thì khách vẫn đi (ADR-0054 AMEND 1).
+  // Cùng cổng `bookingKeepsTrip` với API: như đơn PAID — mời viết sau chuyến, trước đó chờ.
+  it.each(['PARTIALLY_REFUNDED', 'REFUNDED'] as const)(
+    '%s chưa huỷ thật: như đơn PAID — "form" sau chuyến, "tooEarly" trước',
+    (status) => {
+      expect(reviewSlot(makeBooking({ status, departureEndDate: '2026-08-01' }))).toBe('form');
+      expect(reviewSlot(makeBooking({ status, departureEndDate: '2026-12-01' }))).toBe('tooEarly');
+    },
+  );
 
   it('CHƯA trả tiền thắng CHƯA kết thúc — cùng thứ tự ưu tiên với API', () => {
     // API kiểm PAID trước ngày kết thúc; web phải nói cùng một câu, không thì

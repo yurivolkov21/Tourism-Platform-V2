@@ -288,10 +288,9 @@ export function refundJournal(booking: BookingDetail): VoucherJournalItem[] {
  * hay đã rút (review P7C#2).
  *
  * - Đã duyệt, đang chờ duyệt: khách ĐÃ viết — "Reviewed" ✓ kèm ngày viết (spec §2.6).
- * - Chưa viết mà đủ điều kiện (`form` — cổng `checkReviewEligibility` chỉ nhận PAID), hay bị bác
- *   mà còn lượt viết lại: mời viết.
- * - Bị bác hết lượt, đã rút, hay không đủ điều kiện (đơn hoàn một phần chưa viết gì): không có
- *   mốc thứ ba nào nói thật được.
+ * - Chưa viết mà đủ điều kiện (`form` — cổng `checkReviewEligibility` nhận đơn còn chuyến, kể cả
+ *   hoàn một phần hay hoàn thiện chí trọn), hay bị bác mà còn lượt viết lại: mời viết.
+ * - Bị bác hết lượt, đã rút, hay không đủ điều kiện: không có mốc thứ ba nào nói thật được.
  *
  * `now` là đồng hồ của `voucherView` — một lần render chỉ có một "bây giờ".
  */

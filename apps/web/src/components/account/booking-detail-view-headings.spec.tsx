@@ -78,10 +78,10 @@ const CASES: [string, BookingDetail, string, string[]][] = [
   ],
   ['đã đi, viết review', at(FEB_TRIP), '2026-10-05T03:00:00.000Z', ['Your review']],
   [
-    'đã đi, không viết review được',
+    'đã đi, hoàn một phần: vẫn viết review như đơn PAID (L5-07)',
     at({ ...FEB_TRIP, status: 'PARTIALLY_REFUNDED', refundedTotal: '2.00' }),
     '2026-10-05T03:00:00.000Z',
-    ['Thanks for travelling with us.'],
+    ['Your review'],
   ],
   [
     'đã huỷ có review: khối đóng rồi khu review',

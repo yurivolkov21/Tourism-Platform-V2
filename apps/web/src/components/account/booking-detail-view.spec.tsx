@@ -202,10 +202,11 @@ describe('BookingDetailView — khu review theo cổng `reviewSlot`, ở mọi g
     expect(column(container)).toEqual(['review|approved']);
   });
 
-  it('đã đi mà không viết review được (hoàn một phần, chưa review): lời cảm ơn thay cột trống', () => {
+  // L5-07: hoàn một phần mà khách vẫn đi — cổng review nhận như đơn PAID, nên khu review mời viết.
+  it('đã đi, hoàn một phần, chưa review: khu review mời viết như đơn PAID', () => {
     const booking = at({ ...FEB_TRIP, status: 'PARTIALLY_REFUNDED', refundedTotal: '2.00' });
     const { container } = render(<BookingDetailView booking={booking} tour={TOUR} today={TODAY} />);
-    expect(column(container)).toEqual(['thanks']);
+    expect(column(container)).toEqual(['review|form']);
   });
 
   it('đơn sắp đi đã trả (slot `tooEarly`): không khu review — chân Get ready nói ngày mở', () => {

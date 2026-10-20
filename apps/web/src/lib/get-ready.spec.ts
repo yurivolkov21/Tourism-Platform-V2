@@ -155,13 +155,25 @@ describe('getReadySteps — đầu và chân khối', () => {
     expect(view.footer).toBe('Your review opens on Thu 5 Nov.');
   });
 
-  // Cổng review của API chỉ nhận đơn PAID (`NOT_PAID`): hứa với đơn hoàn một phần hay hoàn thiện
-  // chí — vẫn đi nhưng không viết review được — là hứa sai (review P7 B5).
+  // L5-07: đơn hoàn một phần hay hoàn thiện chí trọn vẫn đi, và cổng review của API nhận cả hai
+  // (`bookingKeepsTrip`) — chân khối hứa đúng ngày mở như với đơn PAID.
   it.each([
     ['hoàn một phần', { status: 'PARTIALLY_REFUNDED', refundedTotal: '20.00' }],
     ['hoàn thiện chí trọn', { status: 'REFUNDED', refundedTotal: '147.00' }],
-  ] as const)('%s: không viết review được — không có chân khối', (_, patch) => {
-    expect(getReadySteps({ ...BOOKING, ...patch }, TOUR, TODAY).footer).toBeNull();
+  ] as const)('%s: vẫn đi, vẫn viết review được — chân khối nói ngày mở', (_, patch) => {
+    expect(getReadySteps({ ...BOOKING, ...patch }, TOUR, TODAY).footer).toBe(
+      'Your review opens on Thu 5 Nov.',
+    );
+  });
+
+  it('đơn đã huỷ thật (REFUNDED kèm mốc huỷ): không hứa ngày mở review', () => {
+    const cancelled = {
+      ...BOOKING,
+      status: 'REFUNDED' as const,
+      refundedTotal: '147.00',
+      cancelledAt: '2026-10-20T02:00:00.000Z',
+    };
+    expect(getReadySteps(cancelled, TOUR, TODAY).footer).toBeNull();
   });
 
   it('còn đúng một ngày: "Tomorrow" thay cho con số', () => {

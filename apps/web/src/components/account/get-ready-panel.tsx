@@ -9,7 +9,7 @@ import { type GetReadyStep, type GetReadyView, prepStorageKey } from '@/lib/get-
 
 /**
  * Cột phải của đơn sắp đi (spec P7 §2.4, §2.5, bản vẽ `.gr`): số ngày còn lại cỡ lớn, dòng
- * Departs, các bước đánh số kiểu timeline, chân khối nói ngày mở review (chỉ đơn PAID — không có
+ * Departs, các bước đánh số kiểu timeline, chân khối nói ngày mở review (đơn còn chuyến — không có
  * chân thì không vẽ). Mọi luật (bỏ bước thiếu dữ liệu, đánh số lại) ở `getReadySteps`; component
  * chỉ vẽ.
  *

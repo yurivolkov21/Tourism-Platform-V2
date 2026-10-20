@@ -268,10 +268,11 @@ describe('BookingAccordion', () => {
     expect(screen.queryByText(statusLabel)).toBeNull();
   });
 
-  it('REFUNDED đã qua ngày → không mời Review', () => {
+  it('REFUNDED huỷ thật (có cancelledAt) đã qua ngày → không mời Review', () => {
     render(
       one({
         status: 'REFUNDED',
+        cancelledAt: '2026-07-10T03:00:00.000Z',
         departureStartDate: '2026-07-21',
         departureEndDate: '2026-07-23',
       }),
@@ -323,17 +324,19 @@ describe('BookingAccordion', () => {
     expect(meta('BK-TESTAAAA · 17–19 Aug 2026')).toBeInTheDocument();
   });
 
-  /** Review chỉ cho PAID: `checkReviewEligibility` của API từ chối PARTIALLY_REFUNDED. */
-  it('PARTIALLY_REFUNDED đã đi xong → không mời Review', () => {
-    render(
-      one({
-        status: 'PARTIALLY_REFUNDED',
-        departureStartDate: '2026-07-21',
-        departureEndDate: '2026-07-23',
-      }),
+  /**
+   * L5-07: hoàn một phần, hay hoàn thiện chí trọn mà không huỷ, thì khách vẫn đi (ADR-0054 AMEND 1)
+   * — cổng review của API nhận như đơn PAID (`bookingKeepsTrip`), nên mời Review như đơn PAID.
+   */
+  it.each([
+    ['PARTIALLY_REFUNDED', { status: 'PARTIALLY_REFUNDED', refundedTotal: '20.00' }],
+    ['REFUNDED không cancelledAt (hoàn thiện chí trọn)', { status: 'REFUNDED' }],
+  ] as const)('%s đã đi xong → mời Review như đơn PAID', (_, patch) => {
+    render(one({ ...patch, departureStartDate: '2026-07-21', departureEndDate: '2026-07-23' }));
+    expect(screen.getByRole('link', { name: 'Review →' })).toHaveAttribute(
+      'href',
+      '/account/bookings/BK-TESTAAAA#review',
     );
-    expect(screen.queryByRole('link', { name: 'Review →' })).not.toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'View details' })).toBeInTheDocument();
   });
 
   // ADR-0054 AMEND 1: REFUNDED chỉ là huỷ khi có mốc huỷ thật — không mốc là hoàn thiện chí trọn,

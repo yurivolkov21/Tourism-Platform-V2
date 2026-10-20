@@ -85,8 +85,10 @@ export function BookingAccordion({ bookings, today }: { bookings: Booking[]; tod
         const canPay = phase === 'awaiting_payment' && view.actions.includes('payNow');
         // Hôm sau ngày về theo giờ VN thì ngày UTC ít nhất đã tới ngày về, nên
         // cổng review (UTC) của API chắc chắn đã mở — link không dẫn tới form
-        // bị từ chối. Review chỉ dành cho đơn PAID (`reviewSlot`).
-        const canReview = phase === 'travelled' && booking.status === 'PAID';
+        // bị từ chối. Tới `travelled` là đơn còn chuyến trên chuyến không bị công
+        // ty huỷ — đúng cổng `bookingKeepsTrip` của API (L5-07), nên không xét
+        // thêm trạng thái đơn.
+        const canReview = phase === 'travelled';
         // Badge và voucher cùng luật với mộc và nút "View voucher" của trang chi tiết đơn và chính
         // trang voucher (ADR-0054 AMEND 1 §5): theo giai đoạn, không theo trạng thái đơn — chuyến
         // công ty huỷ là "Cancelled" xám dù đơn còn PAID chờ job hoàn tiền (review cuối I1); đơn

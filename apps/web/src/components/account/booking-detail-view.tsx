@@ -107,9 +107,10 @@ function PhasePanel({
     case 'on_tour':
       return <OnTourPanel booking={booking} tour={tour} today={today} />;
     case 'travelled':
-      // Chuyến đã đi thì khu review (nếu có) LÀ cột phải. Không có (`hidden` — vd hoàn một phần)
-      // thì lời cảm ơn thay cột trống. `tooEarly` không tới được đây: ngày về trước hôm nay giờ VN
-      // thì ngày UTC cũng đã tới ngày về (review P7 B7).
+      // Chuyến đã đi thì khu review LÀ cột phải: tới `travelled` là đơn còn chuyến trên chuyến không
+      // bị công ty huỷ — đúng cổng review (L5-07), nên slot luôn có khu review. Lời cảm ơn thay cột
+      // trống chỉ còn là lưới an toàn nếu cổng đổi. `tooEarly` cũng không tới được đây: ngày về
+      // trước hôm nay giờ VN thì ngày UTC cũng đã tới ngày về (review P7 B7).
       return slot === 'hidden' ? <TripThanksPanel /> : null;
     case 'cancelled':
       return <TripClosedPanel booking={booking} kind="cancelled" />;

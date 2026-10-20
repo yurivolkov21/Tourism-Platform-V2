@@ -1,4 +1,9 @@
-import { type BookingDetail, type BookingPhase, tripDayNumbers } from '@tourism/contract';
+import {
+  type BookingDetail,
+  type BookingPhase,
+  bookingKeepsTrip,
+  tripDayNumbers,
+} from '@tourism/contract';
 import { messages } from '@tourism/i18n';
 import type { TourDetailVM } from '@/lib/api/tours';
 import { cancellationDeadlineText } from './booking-vm';
@@ -50,7 +55,7 @@ export interface GetReadyView {
   countdown: { count: number | null; label: string };
   departs: string;
   steps: GetReadyStep[];
-  /** Chân khối: ngày mở review — `null` khi đơn không viết review được (không phải PAID). */
+  /** Chân khối: ngày mở review — `null` khi đơn không viết review được (`bookingKeepsTrip`). */
   footer: string | null;
 }
 
@@ -124,12 +129,13 @@ export function getReadySteps(
       daysToGo === 1 ? { count: null, label: t.tomorrow } : { count: daysToGo, label: t.daysToGo },
     departs: place ? `${departs} · ${place}` : departs,
     steps: bodies.map((body, index) => ({ ...body, number: String(index + 1).padStart(2, '0') })),
-    // Cổng review của API chỉ nhận đơn PAID (`NOT_PAID`) — ở giai đoạn sắp đi, PAID đúng là slot
-    // `tooEarly` của `reviewSlot`. Đơn hoàn một phần hay hoàn thiện chí vẫn đi nhưng không viết
-    // review được: hứa với họ là hứa sai (review P7 B5). Ngày mở là ngày VỀ — cổng nhận từ 07:00
-    // giờ VN của chính ngày ấy, và trang dựng khu review theo cổng (`hasReviewArea`).
-    footer:
-      booking.status === 'PAID' ? t.reviewOpens(formatWeekdayDate(booking.departureEndDate)) : null,
+    // Cùng cổng review với API (`bookingKeepsTrip`): đơn PAID, hoàn một phần hay hoàn thiện chí
+    // trọn mà vẫn đi đều viết được sau chuyến (L5-07) — ở giai đoạn sắp đi đó là slot `tooEarly`
+    // của `reviewSlot`. Ngày mở là ngày VỀ — cổng nhận từ 07:00 giờ VN của chính ngày ấy, và trang
+    // dựng khu review theo cổng (`hasReviewArea`).
+    footer: bookingKeepsTrip(booking)
+      ? t.reviewOpens(formatWeekdayDate(booking.departureEndDate))
+      : null,
   };
 }
 

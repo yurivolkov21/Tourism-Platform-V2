@@ -1,8 +1,11 @@
-import { BookingStatus, DepartureStatus } from '../../generated/prisma/enums.js';
+import { bookingKeepsTrip } from '@tourism/contract';
+import { type BookingStatus, DepartureStatus } from '../../generated/prisma/enums.js';
 import { calendarDate } from '../../lib/calendar-date.js';
 
 export type EligibilityInput = {
   bookingStatus: BookingStatus;
+  /** Mốc huỷ thật (`bookings.cancelled_at`) — REFUNDED không mốc là hoàn thiện chí, khách vẫn đi. */
+  cancelledAt: Date | null;
   /** Trạng thái của chuyến (`tour_departures.status`) — CANCELLED là công ty huỷ chuyến. */
   departureStatus: DepartureStatus;
   departureEndDate: Date;
@@ -15,7 +18,7 @@ export type EligibilityResult =
   | { ok: true }
   | {
       ok: false;
-      reason: 'NOT_OWNER' | 'NOT_PAID' | 'DEPARTURE_CANCELLED' | 'TRIP_NOT_COMPLETED';
+      reason: 'NOT_OWNER' | 'NOT_TRAVELLING' | 'DEPARTURE_CANCELLED' | 'TRIP_NOT_COMPLETED';
     };
 
 /**
@@ -44,12 +47,19 @@ const calendarDay = calendarDate;
  * khách trả tiền hôm nay cho tour khởi hành 3 tháng nữa vẫn review được ngay
  * — vô nghĩa với người đọc. Ở đây đòi chuyến đã kết thúc.
  *
+ * Đơn phải còn chuyến để đi (`bookingKeepsTrip` của contract — cùng luật với
+ * giai đoạn đơn của web): PAID, hoàn một phần, hay hoàn thiện chí trọn mà không
+ * huỷ (REFUNDED, `cancelledAt` null — ADR-0054 AMEND 1). Bản cũ chỉ nhận PAID
+ * nên khách được hoàn thiện chí, vẫn cầm voucher và vẫn đi tour, bị chặn viết
+ * review (review L5-07).
+ *
  * Thứ tự kiểm là CỐ Ý: quyền sở hữu trước trạng thái, để caller không phải
  * chủ booking không suy ra được trạng thái booking của người khác. Trạng thái
- * PAID được kiểm trước ngày kết thúc chuyến (NOT_PAID thắng TRIP_NOT_COMPLETED).
+ * đơn được kiểm trước ngày kết thúc chuyến (NOT_TRAVELLING thắng
+ * TRIP_NOT_COMPLETED).
  *
  * Chuyến bị công ty huỷ (G36, 13/10): job `departure-refund` chưa chạy hay kẹt
- * retry thì đơn còn PAID qua ngày về, nên chỉ xét PAID và ngày về là cho review
+ * retry thì đơn còn PAID qua ngày về, nên chỉ xét đơn và ngày về là cho review
  * một chuyến không chạy. Xét SAU quyền sở hữu (người ngoài không dò được trạng
  * thái chuyến của đơn người khác) và TRƯỚC ngày về (không bảo khách "chờ chuyến
  * kết thúc" với một chuyến sẽ không chạy). Hai nơi gọi rơi về
@@ -60,7 +70,14 @@ const calendarDay = calendarDate;
  */
 export function checkReviewEligibility(input: EligibilityInput): EligibilityResult {
   if (input.callerId !== input.ownerId) return { ok: false, reason: 'NOT_OWNER' };
-  if (input.bookingStatus !== BookingStatus.PAID) return { ok: false, reason: 'NOT_PAID' };
+  if (
+    !bookingKeepsTrip({
+      status: input.bookingStatus,
+      cancelledAt: input.cancelledAt?.toISOString() ?? null,
+    })
+  ) {
+    return { ok: false, reason: 'NOT_TRAVELLING' };
+  }
   if (input.departureStatus === DepartureStatus.CANCELLED) {
     return { ok: false, reason: 'DEPARTURE_CANCELLED' };
   }

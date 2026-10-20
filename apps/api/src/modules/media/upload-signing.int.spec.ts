@@ -273,6 +273,44 @@ describe('media.signUpload', () => {
     expect(res.json().code).toBe('REVIEW_NOT_ELIGIBLE');
   });
 
+  // L5-07: hoàn thiện chí trọn mà không huỷ (REFUNDED, `cancelledAt` null) thì khách vẫn đi tour —
+  // ký ảnh review được như gửi review. Huỷ thật rồi mới hoàn (có `cancelledAt`) thì không.
+  it('REVIEW_PHOTO: đơn hoàn thiện chí trọn, chuyến đã xong → 200', async () => {
+    const { cookie, userId } = await signUpAndSignIn('goodwill@example.com');
+    await seedCompletedBooking({
+      endDate: new Date(Date.now() - 864e5),
+      userId,
+      status: BookingStatus.REFUNDED,
+    });
+
+    const res = await signUploadReq(
+      '10.2.0.11',
+      { purpose: 'REVIEW_PHOTO', ext: 'jpg', bookingCode: 'BK-TESTREV1' },
+      cookie,
+    );
+
+    expect(res.statusCode).toBe(200);
+  });
+
+  it('REVIEW_PHOTO: đơn huỷ thật rồi mới hoàn (REFUNDED kèm cancelledAt) → 400 REVIEW_NOT_ELIGIBLE', async () => {
+    const { cookie, userId } = await signUpAndSignIn('refunded-cancelled@example.com');
+    const { booking } = await seedCompletedBooking({
+      endDate: new Date(Date.now() - 864e5),
+      userId,
+      status: BookingStatus.REFUNDED,
+    });
+    await prisma.booking.update({ where: { id: booking.id }, data: { cancelledAt: new Date() } });
+
+    const res = await signUploadReq(
+      '10.2.0.12',
+      { purpose: 'REVIEW_PHOTO', ext: 'jpg', bookingCode: 'BK-TESTREV1' },
+      cookie,
+    );
+
+    expect(res.statusCode).toBe(400);
+    expect(res.json().code).toBe('REVIEW_NOT_ELIGIBLE');
+  });
+
   it('REVIEW_PHOTO: mã không tồn tại → 404 BOOKING_NOT_FOUND', async () => {
     const { cookie } = await signUpAndSignIn('nobooking@example.com');
 

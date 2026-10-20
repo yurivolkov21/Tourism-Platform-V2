@@ -1,4 +1,9 @@
-import { type BookingDetail, canAuthorEdit, isEditLimitReached } from '@tourism/contract';
+import {
+  type BookingDetail,
+  bookingKeepsTrip,
+  canAuthorEdit,
+  isEditLimitReached,
+} from '@tourism/contract';
 
 /**
  * Chỗ đánh giá trên trang chi tiết booking hiện gì.
@@ -8,12 +13,12 @@ import { type BookingDetail, canAuthorEdit, isEditLimitReached } from '@tourism/
  * - `rejected`      — bị bác, còn lượt viết lại: hiện LÝ DO + form sửa.
  * - `rejectedFinal` — bị bác và hết lượt: hiện lý do + lối liên hệ.
  * - `approved`      — đã lên site, hiện lời cảm ơn.
- * - `tooEarly`      — đã trả tiền nhưng chuyến chưa xong (cổng API chưa mở). Trang
+ * - `tooEarly`      — đơn còn chuyến nhưng chuyến chưa xong (cổng API chưa mở). Trang
  *                     chi tiết đơn KHÔNG dựng khu review cho slot này
  *                     (`hasReviewArea`): chân khối Get ready đã nói ngày mở, nên
  *                     khách không tưởng site thiếu tính năng đánh giá.
- * - `hidden`        — không có gì để nói ở đây (chưa trả tiền, đã huỷ, đã hoàn, chuyến bị
- *                     công ty huỷ).
+ * - `hidden`        — không có gì để nói ở đây (chưa trả tiền, đã huỷ thật, chuyến bị công
+ *                     ty huỷ).
  *
  * ## Vì sao đọc `booking.review` chứ không `booking.reviewedAt`
  *
@@ -27,9 +32,10 @@ import { type BookingDetail, canAuthorEdit, isEditLimitReached } from '@tourism/
  *
  * `canAuthorEdit` là hàm của contract, và API dùng ĐÚNG hàm ấy làm cổng
  * (ADR-0032 §6). Bài học đã trả giá ngay trong chính file này: nhánh
- * PAID/chưa-xong-chuyến bên dưới là bản CHÉP TAY của `checkReviewEligibility`
+ * PAID/chưa-xong-chuyến bên dưới từng là bản CHÉP TAY của `checkReviewEligibility`
  * phía API, và JSDoc cũ phải tự dặn "web nói khác API thì khách gõ hết bài rồi
- * mới bị từ chối". Phần mới không chép nữa.
+ * mới bị từ chối". Phần mới không chép nữa; luật "đơn còn chuyến" cũng đã về
+ * contract (`bookingKeepsTrip`, review L5-07), chỉ còn mốc ngày là chép.
  *
  * Biên đóng: chuyến kết thúc ĐÚNG hôm nay là đã xong (API chặn khi
  * `end > now`, không phải `end >= now`).
@@ -73,7 +79,9 @@ export function reviewSlot(booking: BookingDetail, now: Date = new Date()): Revi
   // DEPARTURE_CANCELLED), nên hai bên nói cùng một câu. Đơn đã có review thì đi nhánh trên: còn
   // sửa, rút được như mọi đơn đã đóng.
   if (booking.departureCancelled) return 'hidden';
-  if (booking.status !== 'PAID') return 'hidden';
+  // Đơn còn chuyến (`bookingKeepsTrip` — PAID, hoàn một phần, hoàn thiện chí trọn mà không huỷ):
+  // CÙNG hàm với cổng API, nên khách được hoàn thiện chí mà vẫn đi cũng được mời viết (L5-07).
+  if (!bookingKeepsTrip(booking)) return 'hidden';
   // Ngày UTC, cố ý — xem JSDoc của `ReviewSlot`.
   const today = now.toISOString().slice(0, 10);
   return booking.departureEndDate > today ? 'tooEarly' : 'form';

@@ -2,6 +2,7 @@ import {
   ACTIVE_BOOKING_STATUSES,
   BookingPhaseSchema,
   BookingWhenSchema,
+  bookingKeepsTrip,
   bookingPhase,
   bookingWhen,
   calendarDaysBetween,
@@ -161,6 +162,48 @@ describe('ACTIVE_BOOKING_STATUSES', () => {
         (status) => ACTIVE_BOOKING_STATUSES.includes(status) || status === 'REFUNDED',
       ),
     );
+  });
+});
+
+/**
+ * Đơn còn chuyến để đi (ADR-0054 AMEND 1): PAID, PARTIALLY_REFUNDED, và REFUNDED chưa huỷ thật —
+ * hoàn thiện chí trọn, khách vẫn đi. Cổng review của API và trang đơn của web cùng đọc hàm này
+ * (review L5-07), nên nó phải nói đúng câu `bookingPhase` nói về chuyến đi.
+ */
+describe('bookingKeepsTrip — đơn còn chuyến để đi', () => {
+  it.each([
+    ['PAID', { status: 'PAID', cancelledAt: null }, true],
+    ['PARTIALLY_REFUNDED', { status: 'PARTIALLY_REFUNDED', cancelledAt: null }, true],
+    [
+      'REFUNDED không cancelledAt — hoàn thiện chí trọn',
+      { status: 'REFUNDED', cancelledAt: null },
+      true,
+    ],
+    [
+      'REFUNDED có cancelledAt — huỷ thật, có hoàn',
+      { status: 'REFUNDED', cancelledAt: CANCELLED_AT },
+      false,
+    ],
+    ['CANCELLED', { status: 'CANCELLED', cancelledAt: CANCELLED_AT }, false],
+    ['PENDING — chưa trả thì chưa có chuyến', { status: 'PENDING', cancelledAt: null }, false],
+  ] as const)('%s → %s', (_label, booking, expected) => {
+    expect(bookingKeepsTrip(booking)).toBe(expected);
+  });
+
+  it('khớp bookingPhase: đơn còn chuyến đúng là đơn đi theo ngày khi chuyến không bị công ty huỷ', () => {
+    const tripPhases: readonly string[] = ['upcoming', 'on_tour', 'travelled'];
+    for (const status of BookingStatusSchema.options) {
+      for (const cancelledAt of [null, CANCELLED_AT]) {
+        const reachesTrip = DAYS.some((today) =>
+          tripPhases.includes(bookingPhase({ status, ...TRIP, ...LIVE, cancelledAt }, today)),
+        );
+        expect({
+          status,
+          cancelledAt,
+          keepsTrip: bookingKeepsTrip({ status, cancelledAt }),
+        }).toEqual({ status, cancelledAt, keepsTrip: reachesTrip });
+      }
+    }
   });
 });
 

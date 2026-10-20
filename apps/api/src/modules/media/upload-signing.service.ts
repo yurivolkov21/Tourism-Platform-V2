@@ -37,6 +37,7 @@ export class UploadSigningService {
         select: {
           userId: true,
           status: true,
+          cancelledAt: true,
           departureEndDate: true,
           departure: { select: { status: true } },
         },
@@ -44,6 +45,7 @@ export class UploadSigningService {
       if (!booking) throw new BookingNotFoundError();
       const eligibility = checkReviewEligibility({
         bookingStatus: booking.status,
+        cancelledAt: booking.cancelledAt,
         departureStatus: booking.departure.status,
         departureEndDate: booking.departureEndDate,
         now: new Date(),
