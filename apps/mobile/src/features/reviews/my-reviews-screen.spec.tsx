@@ -44,6 +44,14 @@ async function renderList(items: MyReviewCardVM[], awaiting: AwaitingReviewTripV
 }
 
 describe('MyReviewsScreen (R4)', () => {
+  // Ngày của bài là ngày lịch Việt Nam (ADR-0041 §7): cắt 10 ký tự đầu của
+  // mốc thời gian là lấy ngày UTC, bài viết lúc 06:00 giờ Việt Nam lùi một ngày.
+  it('bài viết lúc 06:00 giờ Việt Nam mang đúng ngày Việt Nam', async () => {
+    await renderList([card({ id: 'p', dateIso: '2026-07-04T23:00:00.000Z' })]);
+
+    expect(screen.getByText('5 Jul 2026')).toBeTruthy();
+  });
+
   it('chờ duyệt và đã rút: có pill trạng thái, không có nút nào', async () => {
     await renderList([
       card({ id: 'p', moderationState: 'pending' }),

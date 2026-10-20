@@ -174,7 +174,7 @@ export function MyReviewsScreen({
                   </AppText>
                 </View>
                 <AppText variant="caption" tone="muted">
-                  {formatFullDate(item.dateIso.slice(0, 10))}
+                  {formatFullDate(item.dateIso)}
                 </AppText>
               </View>
               {item.title === null ? null : <AppText variant="label">{item.title}</AppText>}
