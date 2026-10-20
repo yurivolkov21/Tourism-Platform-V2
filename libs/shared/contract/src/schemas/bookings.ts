@@ -420,9 +420,9 @@ export const AdminBookingsListQuerySchema = AdminPageQuerySchema.extend({
   userId: z.uuid().optional(),
   /**
    * `false` = trả `tourImage: null` thay vì resolve ảnh cover (vòng vá
-   * review F6). Dành cho đường export CSV: nó gom TỪNG TRANG của cả tập mà
-   * file thì không có cột ảnh — mỗi trang một query media + payload phồng
-   * chỉ để vứt đi. Bảng `/bookings` giữ mặc định `true`.
+   * review F6). Mọi đường của admin đều gửi `false` (review A1, 20/10): bảng
+   * `/bookings`, dashboard và file Excel không có cột ảnh — mỗi trang một query
+   * media + payload phồng chỉ để vứt đi. Mặc định vẫn là `true`, không đổi contract.
    */
   includeMedia: z.boolean().default(true),
 })
