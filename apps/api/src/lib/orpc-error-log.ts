@@ -17,11 +17,6 @@ export function describeOrpcError(error: unknown): string {
 }
 
 /**
- * Lỗi có đáng đẩy Sentry không: ORPCError 4xx là nghiệp vụ bình thường
- * (NOT_FOUND, CONFLICT…) — đẩy hết là chôn tín hiệu thật dưới rác; 5xx và
- * mọi lỗi không phải ORPCError là thứ không ai chủ đích ném.
- */
-/**
  * Stack cho lỗi KHÔNG phải ORPCError (500 thật) — bản đầu chỉ log một dòng
  * name/message nên TypeError trong handler prod không có file/line (vòng vá
  * review W2). ORPCError nghiệp vụ không cần stack.
@@ -31,6 +26,11 @@ export function orpcErrorStack(error: unknown): string | undefined {
   return error instanceof Error ? error.stack : undefined;
 }
 
+/**
+ * Lỗi có đáng đẩy Sentry không: ORPCError 4xx là nghiệp vụ bình thường
+ * (NOT_FOUND, CONFLICT…) — đẩy hết là chôn tín hiệu thật dưới rác; 5xx và
+ * mọi lỗi không phải ORPCError là thứ không ai chủ đích ném.
+ */
 export function isUnexpectedOrpcError(error: unknown): boolean {
   if (error instanceof ORPCError) return error.status >= 500;
   return true;

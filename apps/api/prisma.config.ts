@@ -3,13 +3,13 @@ import path from 'node:path';
 import { defineConfig } from 'prisma/config';
 
 /**
- * Prisma 7 config. The schema-level `url` is gone in Prisma 7 — the CLI
- * (migrate/studio) reads the datasource url here; the runtime `PrismaClient`
- * gets its connection via the PrismaPg driver adapter instead.
+ * Cấu hình Prisma 7. Prisma 7 bỏ `url` trong schema: CLI (migrate, studio) đọc
+ * url của datasource ở đây, còn `PrismaClient` lúc chạy nối qua driver adapter
+ * PrismaPg (trần pool của tiến trình API nằm ở `src/config/db-pool.ts`).
  *
- * DATABASE_URL: direct/session connection ONLY (pool ~10) — transaction
- * poolers are banned in this repo (see CLAUDE.md). Local dev default matches
- * `compose.yaml`'s postgres service.
+ * DATABASE_URL: CHỈ kết nối direct hoặc session — repo cấm transaction pooler
+ * (xem CLAUDE.md). File này chỉ đọc `.env` qua `dotenv/config`, KHÔNG đọc
+ * `.env.local`; không có biến thì rơi về Postgres của `compose.yaml`.
  */
 const LOCAL_COMPOSE_URL = 'postgresql://tourism:tourism@localhost:5432/tourism';
 

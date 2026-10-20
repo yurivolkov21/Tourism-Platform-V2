@@ -241,16 +241,16 @@ describe('parseEnv', () => {
       CLOUDINARY_CLOUD_NAME: 'real-cloud-name',
       REVALIDATE_SECRET: 'real-revalidate-secret',
     };
-    // None configured → rejected.
+    // Không khai provider nào → bị từ chối.
     expect(() => parseEnv(base)).toThrow(/payment provider/i);
-    // Half a pair does not count.
+    // Nửa cặp không tính.
     expect(() => parseEnv({ ...base, STRIPE_SECRET_KEY: 'sk_test_x' })).toThrow(
       /payment provider/i,
     );
     expect(() =>
       parseEnv({ ...base, PAYPAL_CLIENT_ID: 'id', PAYPAL_CLIENT_SECRET: 'secret' }),
     ).toThrow(/payment provider/i);
-    // A full Stripe pair suffices.
+    // Đủ cặp Stripe là được.
     expect(
       parseEnv({
         ...base,
@@ -260,7 +260,7 @@ describe('parseEnv', () => {
         ...PROD_DEPLOY_KEYS,
       }).STRIPE_SECRET_KEY,
     ).toBe('sk_test_x');
-    // A full PayPal trio suffices.
+    // Đủ bộ ba PayPal là được.
     expect(
       parseEnv({
         ...base,
