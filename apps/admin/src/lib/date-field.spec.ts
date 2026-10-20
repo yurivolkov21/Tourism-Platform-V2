@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest';
-import { parseIsoDate, toIsoDate } from './date-field';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { parseIsoDate, toIsoDate, utcToday } from './date-field';
 
 /**
  * Cầu nối giữa HAI cách viết một ngày: chuỗi ISO `YYYY-MM-DD` mà URL và
@@ -48,5 +48,28 @@ describe('toIsoDate', () => {
     const parsed = parseIsoDate(iso);
 
     expect(parsed && toIsoDate(parsed)).toBe(iso);
+  });
+});
+
+describe('utcToday', () => {
+  // Ghim giờ Việt Nam: ở UTC (máy CI) ngày UTC trùng ngày địa phương, nên không ghim thì ca không
+  // phân biệt được hai cách tính. Node đọc lại `TZ` ngay lúc gán.
+  beforeEach(() => {
+    vi.stubEnv('TZ', 'Asia/Ho_Chi_Minh');
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it('06:30 sáng 21/10 ở Việt Nam vẫn là ngày 20/10 UTC, ngày mà API dùng để cắt', () => {
+    const now = new Date('2026-10-20T23:30:00.000Z');
+
+    expect(now.getDate()).toBe(21);
+    expect(toIsoDate(utcToday(now))).toBe('2026-10-20');
+  });
+
+  it('qua 00:00 UTC, tức 07:00 giờ Việt Nam, mới sang ngày 21/10', () => {
+    expect(toIsoDate(utcToday(new Date('2026-10-21T00:00:00.000Z')))).toBe('2026-10-21');
   });
 });

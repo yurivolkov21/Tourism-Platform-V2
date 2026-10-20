@@ -8,7 +8,7 @@ import { CalendarIcon, ChevronDownIcon } from 'lucide-react';
 import * as React from 'react';
 import { MENU_CHEVRON } from '@/components/kit/menu-style';
 import { TOOLBAR_BUTTON } from '@/components/kit/toolbar-metrics';
-import { formatDateRangeLabel, parseIsoDate, toIsoDate } from '@/lib/date-field';
+import { formatDateRangeLabel, parseIsoDate, toIsoDate, utcToday } from '@/lib/date-field';
 
 /**
  * Bộ lọc KHOẢNG NGÀY của hàng điều khiển bảng admin — MỘT nút mở lịch hai
@@ -67,8 +67,6 @@ const t = messages.admin.table;
 
 /** Năm sớm nhất dropdown năm cho chọn — trước cả booking đầu tiên của hệ. */
 const EARLIEST_YEAR = 2020;
-/** Đệm về tương lai: chuyến khởi hành đặt trước cả năm là chuyện bình thường. */
-const FUTURE_YEARS = 2;
 
 export interface ToolbarDateRangeProps {
   /** Tiền tố id cho nút — phải khác nhau giữa các vùng để label gắn đúng. */
@@ -139,7 +137,15 @@ export function ToolbarDateRange({
         : shownRange.text
     : t.dateAny;
 
-  const thisYear = new Date().getFullYear();
+  /**
+   * Ngày cuối chọn được: hôm nay theo UTC (review A1-14). Cả bốn vùng dùng kit lọc theo một mốc
+   * ĐÃ QUA (ngày đặt đơn, gửi review, đăng ký, thao tác), nên ngày sau đó chỉ cho ra bảng rỗng,
+   * còn hàng thẻ số liệu của `/bookings` đọc ra một kỳ sai ("Oct 20 – Oct 20", Revenue $0.00).
+   * Lịch từng cho chọn tới hai năm sau vì "chuyến đặt trước cả năm", nhưng không vùng nào lọc
+   * theo ngày khởi hành. Từ 00:00 tới 07:00 giờ Việt Nam ô hôm nay của lịch vì thế bị khoá: ngày
+   * UTC của nó chưa bắt đầu.
+   */
+  const lastDay = utcToday(new Date());
 
   /**
    * Chốt khoảng vừa chọn.
@@ -203,7 +209,8 @@ export function ToolbarDateRange({
           // có nó thì lọc một tháng của năm ngoái là hơn chục cú bấm mũi tên.
           captionLayout="dropdown"
           startMonth={new Date(EARLIEST_YEAR, 0)}
-          endMonth={new Date(thisYear + FUTURE_YEARS, 11)}
+          endMonth={lastDay}
+          disabled={{ after: lastDay }}
           defaultMonth={parseIsoDate(from) ?? parseIsoDate(to)}
           selected={draft}
           // Nhận cả `day` (mốc vừa bấm) chứ không chỉ `range`: khi nháp đang

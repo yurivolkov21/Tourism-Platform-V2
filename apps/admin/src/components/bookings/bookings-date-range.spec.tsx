@@ -83,12 +83,14 @@ describe('BookingsDateRange', () => {
   });
 
   describe('URL chưa có khoảng ngày — lịch mở ở tháng của HÔM NAY', () => {
-    // Không có `from`/`to` thì lịch mở ở tháng hiện tại, nên ngày bấm phụ thuộc đồng
-    // hồ máy chạy test: không ghim thì hai ca này đỏ từ 01/10/2026 (lịch sang tháng
-    // 10–11, mất tháng 9). Chỉ giả `Date` — popover và userEvent vẫn cần timer thật.
+    // Không có `from`/`to` thì lịch mở với tháng hiện tại ở cột phải (trần của lịch là
+    // hôm nay, review A1-14), nên ngày bấm phụ thuộc đồng hồ máy chạy test: không ghim
+    // thì hai ca này đỏ từ 01/11/2026 (lịch sang tháng 10–11, mất tháng 9). Ghim sau
+    // ngày 20/09 vì ngày sau hôm nay bị khoá. Chỉ giả `Date` — popover và userEvent vẫn
+    // cần timer thật.
     beforeEach(() => {
       vi.useFakeTimers({ toFake: ['Date'] });
-      vi.setSystemTime(new Date('2026-09-15T05:00:00.000Z'));
+      vi.setSystemTime(new Date('2026-09-25T05:00:00.000Z'));
     });
 
     afterEach(() => {
