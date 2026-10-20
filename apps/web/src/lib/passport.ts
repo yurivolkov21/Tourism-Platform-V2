@@ -4,6 +4,7 @@ import {
   bookingPhase,
   findRegion,
   REGIONS,
+  tripLengthDays,
 } from '@tourism/contract';
 import { dateNames } from '@tourism/i18n';
 import { todayDateString } from '@/lib/account-stats';
@@ -15,8 +16,6 @@ import { foldAccents } from '@/lib/text';
  * (xoay lệch, tròn/vuông) sinh từ hash mã booking để test được và không nhảy
  * lung tung giữa hai lần render.
  */
-
-const MS_PER_DAY = 86_400_000;
 
 /** Hash chuỗi → số nguyên không âm, deterministic (FNV-1a rút gọn). */
 function hash(input: string): number {
@@ -168,7 +167,7 @@ export interface TravelLogTrip {
   /** Tên destination primary (fallback 2 từ đầu tourTitle) — phụ đề card. */
   destName: string;
   month: string;
-  /** Độ dài chuyến tính cả hai đầu — cùng công thức daysOnRoad. */
+  /** Độ dài chuyến tính cả hai đầu (`tripLengthDays` của contract) — cùng công thức daysOnRoad. */
   days: number;
 }
 
@@ -198,20 +197,17 @@ function tripOf(b: Booking, monthFrom: 'end' | 'start'): TravelLogTrip {
     tourTitle: b.tourTitle,
     destName: primary?.name ?? b.tourTitle.split(/\s+/).slice(0, 2).join(' '),
     month: `${MONTHS[anchor.getUTCMonth()]} ${anchor.getUTCFullYear()}`,
-    days:
-      Math.round(
-        (new Date(b.departureEndDate).getTime() - new Date(b.departureStartDate).getTime()) /
-          MS_PER_DAY,
-      ) + 1,
+    days: tripLengthDays(b.departureStartDate, b.departureEndDate),
   };
 }
 
 /**
- * SỔ HÀNH TRÌNH (vòng ReUI 11/08 + stepper): các địa danh ĐÃ ĐI — chỉ nơi
- * có tem, sort cụm miền như bản đồ; chuyến chạm nhiều nơi tính cho CẢ các
- * nơi đó, mỗi entry mang danh sách chuyến CŨ → MỚI của nơi mình. Ảnh cover
- * do page tự ghép từ catalog (giữ hàm thuần khỏi type Media). Một luật
- * đã-đi `isCompleted` với stats.
+ * SỔ HÀNH TRÌNH (vòng ReUI 11/08 + stepper): các địa danh đã đi HOẶC có chuyến
+ * còn phía trước (`isAhead` — entry chỉ có chuyến sắp tới thì `visits` 0, không
+ * `lastMonth`), sort cụm miền; nơi không còn trong danh mục thì không có entry.
+ * Chuyến chạm nhiều nơi tính cho CẢ các nơi đó, mỗi entry mang danh sách chuyến
+ * CŨ → MỚI của nơi mình. Ảnh cover do page tự ghép từ catalog (giữ hàm thuần
+ * khỏi type Media). Một luật đã-đi `isCompleted` với stats.
  */
 export function travelLog(
   catalog: Array<{ slug: string; name: string; region: string | null }>,
@@ -291,13 +287,7 @@ export function passportStats(
   const exploredPct =
     places === 0 || catalogTotal === 0 ? 0 : Math.max(1, Math.floor((places / catalogTotal) * 100));
   const daysOnRoad = done.reduce(
-    (sum, b) =>
-      sum +
-      Math.round(
-        (new Date(b.departureEndDate).getTime() - new Date(b.departureStartDate).getTime()) /
-          MS_PER_DAY,
-      ) +
-      1,
+    (sum, b) => sum + tripLengthDays(b.departureStartDate, b.departureEndDate),
     0,
   );
   return { trips: done.length, places, exploredPct, daysOnRoad };

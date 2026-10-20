@@ -36,10 +36,11 @@ import { formatDateRange } from '@/lib/tours';
  * View voucher theo `bookingPass` của giai đoạn ấy, cùng luật với mộc và nút "View voucher" của
  * trang chi tiết đơn và voucher.
  *
- * `today` là ngày lịch VIỆT NAM do server truyền xuống (`todayDateString`,
- * chuỗi `YYYY-MM-DD`, so lexicographic) — client KHÔNG tự lấy giờ máy để tránh
- * lệch hydration qua nửa đêm, và để started/ended/đếm ngược đổi cùng lúc với
- * cổng huỷ online và giai đoạn chuyến của admin (ADR-0041 §7, ADR-0046).
+ * `today` là ngày lịch VIỆT NAM mà API đã dùng để lọc và xếp chính trang này
+ * (`result.today` của `bookings.mine`, chuỗi `YYYY-MM-DD`, so lexicographic) —
+ * client KHÔNG tự lấy giờ máy để tránh lệch hydration qua nửa đêm, và để
+ * started/ended/đếm ngược đổi cùng lúc với cổng huỷ online và giai đoạn chuyến
+ * của admin (ADR-0041 §7, ADR-0046).
  */
 
 /** Chấm màu trong badge theo tone — tra bảng, thiếu thì rơi về muted. */

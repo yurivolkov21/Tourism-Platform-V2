@@ -15,13 +15,13 @@ import { mrzLines, passportNo, passportStats, travelLog } from '@/lib/passport';
 /**
  * Trang HỘ CHIẾU — cửa của khu account (spec 2026-08-11 + addendum §7.4,
  * user duyệt 11/08): THÔNG TIN TÀI KHOẢN đứng đầu (khung PassportCard),
- * rồi mới tới phân tích (stats) và lưu niệm (tem + bản đồ). Danh sách
- * booking "Your journey" đã dời TRỌN sang `/account/bookings` — ở đây chỉ
- * còn thẻ lối vào.
+ * rồi tới dòng số liệu (stats) và sổ hành trình. Danh sách booking "Your
+ * journey" đã dời TRỌN sang `/account/bookings` — ở đây chỉ còn nút lối vào
+ * trong khung. Trang tem (đã gộp bản đồ chấm) gỡ tạm từ 11/08.
  *
- * Hết phân trang: không còn danh sách nên fetch bookings MỘT Lần kẹp trần
- * `BOOKINGS_MAX_LIMIT` để nuôi stats/tem/bản đồ (nhiều dữ liệu hơn bản cũ
- * vốn chỉ tính trên chunk trang đầu).
+ * Hết phân trang: không còn danh sách nên fetch bookings MỘT lần kẹp trần
+ * `BOOKINGS_MAX_LIMIT` để nuôi stats và sổ hành trình (nhiều dữ liệu hơn bản
+ * cũ vốn chỉ tính trên chunk trang đầu).
  */
 export const metadata: Metadata = {
   title: messages.pageMeta.withBrand(messages.passportHome.heroTitle),
@@ -117,8 +117,9 @@ export default async function AccountPassportPage() {
           </div>
         ) : null}
 
-        {/* SỔ HÀNH TRÌNH (vòng ReUI 11/08): chỉ hiện khi ĐÃ có chuyến hoàn
-            thành — trái địa danh + ảnh, phải các lần đã đi. (Trang tem
+        {/* SỔ HÀNH TRÌNH (vòng ReUI 11/08): hiện khi có chuyến đã đi HOẶC còn
+            phía trước chạm một nơi trong danh mục (`travelLog`) — trái địa
+            danh + ảnh, phải các lần đã đi và node "Pending". (Trang tem
             StampPages vẫn gỡ tạm từ vòng trước.) */}
         {logEntries.length > 0 ? (
           <section className="mt-12">

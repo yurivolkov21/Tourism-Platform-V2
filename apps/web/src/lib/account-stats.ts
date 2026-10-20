@@ -13,9 +13,10 @@ import { vietnamToday } from '@tourism/contract';
  * giờ/múi giờ) nên so sánh lexicographic (`>=`/`<`) là đủ đúng thứ tự thời
  * gian, khỏi parse `Date`.
  *
- * Export (fix cuối 11/08): `lib/passport.ts`, `BookingAccordion` (nhận qua
- * prop từ trang `/account/bookings`) và cuống của receipt tái dùng ĐÚNG helper
- * này thay vì tự parse `Date` — một luật "đã xong"/"đang đi" duy nhất.
+ * Export (fix cuối 11/08): `lib/passport.ts` (mặc định của `today`), trang chi
+ * tiết đơn và trang Saved tái dùng ĐÚNG helper này thay vì tự parse `Date` — một
+ * luật "đã xong"/"đang đi" duy nhất. Trang `/account/bookings` thì không: nó dùng
+ * `today` API trả kèm danh sách (ADR-0054), chính ngày đã lọc và xếp trang ấy.
  *
  * KHÔNG dùng để quyết form review mở hay chưa: `reviewSlot` cố ý giữ ngày UTC
  * để chép đúng `checkReviewEligibility` của API (ADR-0009 AMEND 3).
