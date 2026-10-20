@@ -4197,7 +4197,12 @@ export const messages = {
         fromZero: 'Up from zero in the previous period',
       },
       bookings: {
-        revenue: 'Revenue',
+        /**
+         * Tổng tiền thu theo `paid_at`, KHÔNG trừ khoản hoàn (review A1-19, 20/10): hoàn đủ một
+         * đơn thì số này đứng yên, nên tên trơn "Revenue" đọc thành doanh thu ròng. Cùng tên với
+         * dòng `reports.operationsTable.revenue` của báo cáo tháng, nơi định nghĩa 1 nói rõ "gross".
+         */
+        revenue: 'Revenue (gross)',
         paid: 'Paid bookings',
         created: 'New bookings',
         cancellationRate: 'Cancellation rate',
