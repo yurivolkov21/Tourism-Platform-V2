@@ -14,17 +14,20 @@ const PILL_OUTLINE =
 // Tên KHÔNG đặt là `Error`: nó che global `Error`, mà chính annotation
 // `error: Error` bên dưới lại trỏ vào global đó. Next chỉ quan tâm default
 // export, tên hàm là gì cũng được.
+// Nút thử lại gọi `retry`, KHÔNG `reset` (review L1): `reset` chỉ dựng lại cây con mà không
+// tải lại dữ liệu server, nên lỗi từ Server Component (API ngủ, đang deploy) hiện lại y nguyên.
 export default function RouteError({
-  reset,
+  retry,
 }: {
   error: Error & { digest?: string };
+  retry: () => void;
   reset: () => void;
 }) {
   const t = resilience.error;
 
   return (
     <ErrorState title={t.title} body={t.body}>
-      <button type="button" onClick={reset} className={PILL_PRIMARY}>
+      <button type="button" onClick={retry} className={PILL_PRIMARY}>
         {t.retry}
       </button>
       <Link href="/" className={PILL_OUTLINE}>

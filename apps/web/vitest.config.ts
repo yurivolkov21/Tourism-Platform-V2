@@ -51,7 +51,9 @@ export default defineConfig({
           // use-resolved-theme) — ADR-0014 §4 xếp thứ phải render vào bên
           // `dom`, và nó CẦN vitest.setup.ts để có cleanup() của RTL. Logic
           // thuần vẫn ở `lib/*.spec.ts` bên project `node`, không đổi.
-          include: ['src/components/**/*.spec.tsx', 'src/lib/**/*.spec.tsx'],
+          // `src/app/*.spec.tsx`: error boundary ở gốc app (review L1), cùng lý do glob riêng
+          // của proxy.spec.ts — chỉ gốc, không quét các route bên dưới.
+          include: ['src/components/**/*.spec.tsx', 'src/lib/**/*.spec.tsx', 'src/app/*.spec.tsx'],
           setupFiles: ['./vitest.setup.ts'],
         },
       },

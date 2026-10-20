@@ -17,11 +17,14 @@ import { routeForErrorDigest } from '@/lib/error-route';
 const t = messages.admin.errors;
 
 // Không đặt tên `Error`: che mất global Error mà annotation bên dưới cần.
+// Nút thử lại gọi `retry`, KHÔNG `reset` (review L1): `reset` chỉ dựng lại cây con mà không
+// tải lại dữ liệu server, nên lỗi từ layout gác (API không với tới) hiện lại y nguyên.
 export default function AdminRouteError({
   error,
-  reset,
+  retry,
 }: {
   error: Error & { digest?: string };
+  retry: () => void;
   reset: () => void;
 }) {
   const router = useRouter();
@@ -40,7 +43,7 @@ export default function AdminRouteError({
       <h1 className="text-2xl font-semibold tracking-tight">{t.title}</h1>
       <p className="max-w-md text-sm text-muted-foreground">{t.body}</p>
       <div className="flex items-center gap-3">
-        <Button type="button" onClick={reset}>
+        <Button type="button" onClick={retry}>
           {t.retry}
         </Button>
         {/* Phiên hết hạn là nguyên nhân đời thường nhất — cho lối ra thẳng. */}
