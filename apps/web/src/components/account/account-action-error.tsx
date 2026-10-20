@@ -12,6 +12,9 @@ import type { ReactNode } from 'react';
  * `redirectTo` KHÁC nhau theo từng chỗ (trang profile vs trang chi tiết
  * booking), nên nó là tham số chứ không phải hằng — đây là điểm dễ gom ẩu
  * thành một giá trị cứng rồi đẩy khách về sai trang sau khi đăng nhập lại.
+ * Nó được ghép THẲNG vào `?redirect=`, không encode ở đây: chỗ gọi truyền path tĩnh, hoặc đã
+ * `encodeURIComponent` khi path có query (như `booking-wizard`). Thêm encode ở đây là encode hai
+ * lần link của wizard (review L1-15).
  *
  * Session hết hạn GIỮA CHỪNG có UI riêng — báo + link đăng nhập lại, KHÔNG tự
  * đăng xuất — vì khách đang làm dở một việc, đá họ ra là mất thao tác.
