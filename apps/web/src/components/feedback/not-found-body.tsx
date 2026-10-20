@@ -64,8 +64,9 @@ export function NotFoundBody() {
 
           {/* Link nhúng thẳng trong câu (lối Mailchimp) hữu ích hơn một hàng
               nút trống: người đang lạc đọc được ngay mình có thể đi đâu.
-              CHỈ trỏ tới trang CÓ THẬT — /tours và /destinations chưa dựng,
-              gợi ý sang đó là đẩy người ta vào một 404 nữa. */}
+              CHỈ trỏ tới trang CÓ THẬT — gợi ý một trang chưa có là đẩy người ta
+              vào một 404 nữa. (Câu này viết lúc /tours và /destinations chưa dựng;
+              nay cả hai đã có, hero 404 phía trên đã có nút tới danh mục tour.) */}
           <Line delay={0.24}>
             <p className="mt-4 text-pretty text-muted-foreground">
               {t.suggestStart}{' '}
