@@ -51,8 +51,8 @@ export function CancellationDeadlineLine({ departure }: { departure: DepartureVM
 /**
  * Card tóm tắt đơn ở cột phải trang `/tours/[slug]/book` (checkout hướng B —
  * marketplace). KHÔNG `'use client'`: thuần render, để `BookingWizard` (client)
- * import và bọc `cta` (nút submit) vào form của chính nó — `cta` nằm TRONG
- * `<form>` cha, component này không tự dựng `<form>`/`<button>` submit riêng.
+ * import thẳng. Component này không tự dựng `<form>`/`<button>` submit nào —
+ * wizard đặt nút Continue/Pay ở thanh chân cột trái và không truyền `cta`.
  *
  * `departure: null` (chưa chọn đợt khởi hành) → breakdown hiện
  * `pickDeparture`, không có dòng giá/total nào — tránh hiện số tiền bịa khi

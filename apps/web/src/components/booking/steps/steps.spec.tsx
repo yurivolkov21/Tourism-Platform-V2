@@ -133,6 +133,14 @@ describe('StepReview', () => {
     render(<StepReview {...REVIEW} selected={{ ...DEPARTURE, effectivePrice: '45.24' }} />);
     expect(screen.getByText('$45.24')).toBeInTheDocument();
   });
+
+  // Review L3 (20/10): email dài hay yêu cầu đặc biệt là một chuỗi liền không
+  // dấu cách (tới 1000 ký tự) từng đẩy cột giá trị tràn ngang ra khỏi màn 390px.
+  it('giá trị dài không dấu cách được ngắt dòng, không tràn ngang', () => {
+    const long = 'x'.repeat(300);
+    render(<StepReview {...REVIEW} state={{ ...STATE, specialRequests: long }} />);
+    expect(screen.getByText(long)).toHaveClass('min-w-0', 'wrap-anywhere');
+  });
 });
 
 describe('StepPay', () => {

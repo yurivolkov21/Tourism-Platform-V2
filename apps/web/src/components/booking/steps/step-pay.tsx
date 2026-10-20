@@ -9,7 +9,7 @@ import type { StepShared } from './types';
  * và cũng là điều luồng thật đòi hỏi: sau `bookings.create`, `checkoutUrl` đưa
  * khách sang trang hosted của Stripe/PayPal, và số thẻ chỉ được gõ ở đó. Mẫu
  * ReUI gốc có sẵn khối Name-on-card/Card-number/CVC — đã gỡ bỏ có chủ đích, và
- * `step-pay.spec.tsx` có một test khẳng định không `input` nào tồn tại ở đây để
+ * `steps.spec.tsx` có một test khẳng định không `input` nào tồn tại ở đây để
  * lần sửa sau không lén dựng lại nó.
  */
 export function StepPay({ state, set }: StepShared) {

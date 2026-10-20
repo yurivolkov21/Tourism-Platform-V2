@@ -191,6 +191,22 @@ describe('logic bước của wizard đặt chỗ', () => {
     expect(canLeaveStep('travellers', STATE)).toBe(true);
   });
 
+  /** Nút cộng chỉ chặn TĂNG thêm; đổi sang một đợt ít ghế hơn sau khi đã chọn số người thì
+   *  party đang có vượt trần mà không gì chặn — tới bước Pay server mới trả hết ghế. */
+  it('party vượt trần của đợt đang chọn → chặn ở bước Travellers, câu theo đúng lý do', () => {
+    const t = messages.booking.errors;
+    const party: BookingFormState = { ...STATE, numAdults: 4, numChildren: 1 };
+    const bySeats = partyCap(12, 2);
+    expect(stepErrors('travellers', party, bySeats)).toEqual({ numAdults: t.PARTY_OVER_SEATS });
+    expect(canLeaveStep('travellers', party, bySeats)).toBe(false);
+    expect(stepErrors('travellers', party, partyCap(4, 9))).toEqual({
+      numAdults: t.PARTY_TOO_LARGE,
+    });
+    // Vừa khít trần là hợp lệ; không truyền trần thì luật cũ giữ nguyên.
+    expect(canLeaveStep('travellers', party, partyCap(12, 5))).toBe(true);
+    expect(canLeaveStep('travellers', party)).toBe(true);
+  });
+
   /** Review không sở hữu trường nào nên không bao giờ tự chặn — nhưng nó vẫn
    *  phải chặn khi bước TRƯỚC còn hỏng, và chuyện đó do wizard lo bằng cách
    *  không cho nhảy cóc, không phải do hàm này. */

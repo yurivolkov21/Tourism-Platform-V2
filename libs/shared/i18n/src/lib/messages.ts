@@ -600,6 +600,8 @@ export const messages = {
       SEATS_NOT_AVAILABLE: 'Sorry — those seats just sold out. Try a different departure.',
       PARTY_TOO_LARGE:
         'Your group is larger than this tour allows. Reduce the party size or ask us about a private trip.',
+      PARTY_OVER_SEATS:
+        'This departure doesn’t have enough seats left for your group. Remove a traveller or pick another date.',
       DEPARTURE_DEPARTED: 'That departure has already started.',
       CHECKOUT_FAILED: 'We couldn’t start the payment session. Please try again.',
       UNAUTHORIZED: 'Your session has expired — please sign in again, then retry.',

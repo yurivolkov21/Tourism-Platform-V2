@@ -2,7 +2,7 @@ import { messages } from '@tourism/i18n';
 import { Input } from '@tourism/ui/components/input';
 import { Textarea } from '@tourism/ui/components/textarea';
 import { partyCap } from '@/lib/booking-form';
-import { Field, Stepper } from '../form-parts';
+import { Field, FieldError, Stepper } from '../form-parts';
 import type { StepShared } from './types';
 
 /**
@@ -60,15 +60,23 @@ export function StepTravellers({
         />
       </div>
 
-      <p className="mt-2 text-sm text-muted-foreground">
-        {atCap
-          ? // Chạm trần: nói ĐÚNG ràng buộc nào đang bó, vì hai lý do dẫn tới hai
-            // lối ra khác nhau (đổi đợt vs bỏ bớt người).
-            reason === 'seats'
-            ? t.capBySeats
-            : messages.tourDetail.groupSize(cap)
-          : tw.childRateNote}
-      </p>
+      {errors.numAdults ? (
+        // Party VƯỢT trần (đổi sang đợt ít ghế hơn sau khi đã chọn số người):
+        // lỗi thay chỗ dòng ghi chú, không xếp chồng hai câu cùng nói về trần.
+        <div className="mt-2">
+          <FieldError>{errors.numAdults}</FieldError>
+        </div>
+      ) : (
+        <p className="mt-2 text-sm text-muted-foreground">
+          {atCap
+            ? // Chạm trần: nói ĐÚNG ràng buộc nào đang bó, vì hai lý do dẫn tới hai
+              // lối ra khác nhau (đổi đợt vs bỏ bớt người).
+              reason === 'seats'
+              ? t.capBySeats
+              : messages.tourDetail.groupSize(cap)
+            : tw.childRateNote}
+        </p>
+      )}
 
       <div className="mt-6 grid gap-4 sm:grid-cols-2">
         <Field label={t.contactName} error={errors.contactName}>

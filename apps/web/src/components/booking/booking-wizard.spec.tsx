@@ -1,7 +1,8 @@
-import { render, screen, within } from '@testing-library/react';
+import { ORPCError } from '@orpc/client';
+import { act, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { messages } from '@tourism/i18n';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { DepartureVM } from '@/lib/api/tours';
 import { BookingWizard } from './booking-wizard';
 import type { CheckoutSummaryTour } from './checkout-summary';
@@ -68,8 +69,32 @@ async function clickContinue(user: ReturnType<typeof userEvent.setup>) {
   await user.click(screen.getByRole('button', { name: tw.continue }));
 }
 
+// Vài ca thay `window.location` bằng bản giả để bắt `assign` — trả lại bản thật sau mỗi ca, không
+// thì ca sau (và file sau trong cùng worker) chạy với một `location` không có `pathname`.
+const realLocation = window.location;
+
+/** Thay `window.location` bằng bản giả chỉ có `assign` và đường dẫn hiện tại. */
+function stubLocation(path = '/tours/sapa-highlands-trek/book?departure=dep-1') {
+  const assign = vi.fn();
+  const url = new URL(path, 'https://www.nexora-travel.agency');
+  Object.defineProperty(window, 'location', {
+    value: { assign, pathname: url.pathname, search: url.search },
+    writable: true,
+    configurable: true,
+  });
+  return assign;
+}
+
 beforeEach(() => {
   create.mockReset();
+});
+
+afterEach(() => {
+  Object.defineProperty(window, 'location', {
+    value: realLocation,
+    writable: true,
+    configurable: true,
+  });
 });
 
 describe('BookingWizard — điều hướng bước', () => {
@@ -225,8 +250,7 @@ describe('BookingWizard — tiền và submit', () => {
   it('đi hết 4 bước → gọi create ĐÚNG payload, bỏ hẳn field optional rỗng', async () => {
     const user = userEvent.setup();
     create.mockResolvedValue({ checkoutUrl: 'https://checkout.stripe.test/s/1' });
-    const assign = vi.fn();
-    Object.defineProperty(window, 'location', { value: { assign }, writable: true });
+    const assign = stubLocation();
 
     renderWizard();
     await clickContinue(user);
@@ -235,6 +259,8 @@ describe('BookingWizard — tiền và submit', () => {
     await user.click(screen.getByRole('button', { name: tw.payCta('$1,290') }));
 
     expect(create).toHaveBeenCalledTimes(1);
+    // Bỏ lệnh chuyển sang trang thanh toán thì khách đứng im ở bước Pay — phải đỏ.
+    expect(assign).toHaveBeenCalledWith('https://checkout.stripe.test/s/1');
     expect(create.mock.calls[0]?.[0]).toEqual({
       departureId: 'e9000001-0000-4000-8000-000000000001',
       numAdults: 1,
@@ -263,5 +289,113 @@ describe('BookingWizard — tiền và submit', () => {
     await user.click(screen.getByRole('button', { name: tw.back }));
     await user.click(screen.getByRole('button', { name: tw.back }));
     expect(screen.getByLabelText(messages.booking.form.contactPhone)).toHaveValue('0901234567');
+  });
+});
+
+describe('BookingWizard — quay lại từ trang thanh toán và lỗi giữa chừng', () => {
+  it('checkoutUrl không phải https → KHÔNG điều hướng, báo lỗi và mở lại nút Pay', async () => {
+    const user = userEvent.setup();
+    create.mockResolvedValue({ checkoutUrl: 'javascript:alert(1)' });
+    const assign = stubLocation();
+
+    renderWizard();
+    await clickContinue(user);
+    await clickContinue(user);
+    await clickContinue(user);
+    await user.click(screen.getByRole('button', { name: tw.payCta('$1,290') }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      messages.booking.errors.CHECKOUT_FAILED,
+    );
+    expect(assign).not.toHaveBeenCalled();
+    expect(screen.getByRole('button', { name: tw.payCta('$1,290') })).toBeEnabled();
+  });
+
+  /**
+   * Bấm Back ở trang Stripe/PayPal: trình duyệt có thể khôi phục `/book` từ back-forward cache với
+   * NGUYÊN state React lúc rời trang — `submitting` còn true, nút Pay và Back khoá cứng, chỉ tải lại
+   * trang mới thoát.
+   */
+  it('trang được khôi phục từ back-forward cache → nút Pay và Back bấm lại được', async () => {
+    const user = userEvent.setup();
+    create.mockResolvedValue({ checkoutUrl: 'https://checkout.stripe.test/s/1' });
+    stubLocation();
+
+    renderWizard();
+    await clickContinue(user);
+    await clickContinue(user);
+    await clickContinue(user);
+    await user.click(screen.getByRole('button', { name: tw.payCta('$1,290') }));
+    expect(screen.getByRole('button', { name: messages.booking.form.submitting })).toBeDisabled();
+
+    act(() => {
+      window.dispatchEvent(new PageTransitionEvent('pageshow', { persisted: true }));
+    });
+    expect(screen.getByRole('button', { name: tw.payCta('$1,290') })).toBeEnabled();
+    expect(screen.getByRole('button', { name: tw.back })).toBeEnabled();
+  });
+
+  it('pageshow của lần tải thường (không từ cache) không đụng tới nút đang chờ', async () => {
+    const user = userEvent.setup();
+    create.mockResolvedValue({ checkoutUrl: 'https://checkout.stripe.test/s/1' });
+    stubLocation();
+
+    renderWizard();
+    await clickContinue(user);
+    await clickContinue(user);
+    await clickContinue(user);
+    await user.click(screen.getByRole('button', { name: tw.payCta('$1,290') }));
+
+    act(() => {
+      window.dispatchEvent(new PageTransitionEvent('pageshow', { persisted: false }));
+    });
+    expect(screen.getByRole('button', { name: messages.booking.form.submitting })).toBeDisabled();
+  });
+
+  it('phiên hết hạn lúc bấm Pay → báo kèm link đăng nhập lại về ĐÚNG trang đặt chỗ', async () => {
+    const user = userEvent.setup();
+    create.mockRejectedValue(new ORPCError('UNAUTHORIZED', { status: 401 }));
+    stubLocation('/tours/sapa-highlands-trek/book?departure=dep-1');
+
+    renderWizard();
+    await clickContinue(user);
+    await clickContinue(user);
+    await clickContinue(user);
+    await user.click(screen.getByRole('button', { name: tw.payCta('$1,290') }));
+
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent(messages.accountActionErrors.sessionExpired);
+    expect(
+      within(alert).getByRole('link', { name: messages.accountActionErrors.loginLink }),
+    ).toHaveAttribute(
+      'href',
+      `/login?redirect=${encodeURIComponent('/tours/sapa-highlands-trek/book?departure=dep-1')}`,
+    );
+  });
+
+  it('đổi sang đợt ít ghế hơn party đã chọn → chặn ở Travellers, không gọi API', async () => {
+    const user = userEvent.setup();
+    renderWizard([
+      makeDeparture({ id: 'dep-roomy', seatsLeft: 9 }),
+      makeDeparture({
+        id: 'dep-tight',
+        seatsLeft: 2,
+        startDate: '2026-10-02',
+        endDate: '2026-10-13',
+      }),
+    ]);
+    await clickContinue(user);
+    const addAdult = screen.getByRole('button', { name: `${messages.booking.form.adults} +` });
+    await user.click(addAdult);
+    await user.click(addAdult);
+    await user.click(screen.getByRole('button', { name: tw.back }));
+
+    await user.click(screen.getByRole('button', { name: /2–13 Oct 2026/ }));
+    await clickContinue(user);
+    await clickContinue(user);
+
+    expect(screen.getByRole('heading', { name: tw.travellers.heading })).toBeInTheDocument();
+    expect(screen.getByText(messages.booking.errors.PARTY_OVER_SEATS)).toBeInTheDocument();
+    expect(create).not.toHaveBeenCalled();
   });
 });

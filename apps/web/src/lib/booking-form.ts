@@ -46,6 +46,9 @@ export function partyCap(
   return { cap: seatsLeft, reason: 'seats' };
 }
 
+/** Trần số khách của đợt đang chọn — đúng thứ {@link partyCap} trả về. */
+export type PartyLimit = ReturnType<typeof partyCap>;
+
 /**
  * Kiểm form phía client TRƯỚC khi gọi API.
  *
@@ -53,8 +56,14 @@ export function partyCap(
  * để khách không phải đi hết một round-trip mới biết thiếu email. Luật ở đây
  * bám ĐÚNG `CreateBookingInputSchema` (phone min 6, specialRequests max 1000,
  * numAdults min 1) để hai bên không nói khác nhau.
+ *
+ * `limit` vắng thì không kiểm trần — caller nào không biết đợt/tour (test luật
+ * nắn payload) không phải bịa ra một trần.
  */
-export function validateBookingForm(state: BookingFormState): BookingFormErrors {
+export function validateBookingForm(
+  state: BookingFormState,
+  limit?: PartyLimit,
+): BookingFormErrors {
   const t = messages.booking.errors;
   // Sweep 19/08: lỗi TỪNG Ô dùng `formErrors` (required/invalid/tooLong tách
   // câu) — trước đó mọi ô liên hệ đều nhận một câu `INVALID_CONTACT` (đã gỡ) "valid
@@ -65,6 +74,13 @@ export function validateBookingForm(state: BookingFormState): BookingFormErrors 
 
   if (!state.departureId) errors.departureId = t.MISSING_DEPARTURE;
   if (state.numAdults < 1) errors.numAdults = t.INVALID_PARTY_SIZE;
+  // Review L3 (20/10): bộ đếm chỉ chặn nút + khi CHẠM trần, nên party chọn ở
+  // đợt rộng rồi Back đổi sang đợt ít ghế hơn vẫn đi tiếp được tới Pay và chỉ
+  // vỡ ở server (409). Kiểm ở đây để bước Travellers chặn ngay, câu theo đúng
+  // ràng buộc đang bó như dòng ghi chú của bộ đếm.
+  else if (limit && state.numAdults + state.numChildren > limit.cap) {
+    errors.numAdults = limit.reason === 'seats' ? t.PARTY_OVER_SEATS : t.PARTY_TOO_LARGE;
+  }
 
   const name = state.contactName.trim();
   if (!name) errors.contactName = f.name.required;
@@ -153,8 +169,12 @@ export function stepOf(field: keyof BookingFormState): BookingStep {
  * thấy "email không hợp lệ" thì không sửa được, ô email còn chưa hiện ra. Lỗi
  * phải nằm cùng chỗ với ô gây ra nó.
  */
-export function stepErrors(step: BookingStep, state: BookingFormState): BookingFormErrors {
-  const all = validateBookingForm(state);
+export function stepErrors(
+  step: BookingStep,
+  state: BookingFormState,
+  limit?: PartyLimit,
+): BookingFormErrors {
+  const all = validateBookingForm(state, limit);
   const out: BookingFormErrors = {};
   for (const key of Object.keys(all) as (keyof BookingFormState)[]) {
     if (FIELD_STEP[key] === step) out[key] = all[key];
@@ -163,8 +183,12 @@ export function stepErrors(step: BookingStep, state: BookingFormState): BookingF
 }
 
 /** Bước hiện tại đã sạch lỗi chưa — điều kiện để nút Continue hoạt động. */
-export function canLeaveStep(step: BookingStep, state: BookingFormState): boolean {
-  return Object.keys(stepErrors(step, state)).length === 0;
+export function canLeaveStep(
+  step: BookingStep,
+  state: BookingFormState,
+  limit?: PartyLimit,
+): boolean {
+  return Object.keys(stepErrors(step, state, limit)).length === 0;
 }
 
 /**

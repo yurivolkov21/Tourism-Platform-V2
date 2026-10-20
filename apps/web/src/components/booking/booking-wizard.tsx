@@ -1,9 +1,11 @@
 'use client';
 
+import { ORPCError } from '@orpc/client';
 import { messages } from '@tourism/i18n';
 import { Button } from '@tourism/ui/components/button';
 import { motion } from 'motion/react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { AccountActionError } from '@/components/account/account-action-error';
 import { api, withBrowserAuth } from '@/lib/api/client';
 import type { DepartureVM } from '@/lib/api/tours';
 import {
@@ -14,6 +16,7 @@ import {
   bookingSubmitErrorCopy,
   buildBookingInput,
   canLeaveStep,
+  partyCap,
   stepErrors,
 } from '@/lib/booking-form';
 import { computeBookingTotal, formatBookingMoney } from '@/lib/checkout';
@@ -89,8 +92,27 @@ export function BookingWizard({
   const [shownErrors, setShownErrors] = useState<BookingFormErrors>({});
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  // Đường dẫn quay lại sau khi đăng nhập lại (đã encode) — có giá trị nghĩa là
+  // `bookings.create` trả 401: phiên hết giữa chừng, cần link chứ không chỉ một
+  // câu bảo "sign in again" mà không chỉ chỗ nào.
+  const [expiredRedirect, setExpiredRedirect] = useState<string | null>(null);
+
+  // Review L3 (20/10): Back từ trang Stripe/PayPal thì trình duyệt có thể khôi
+  // phục trang này từ back-forward cache, nguyên state lúc rời đi —
+  // `submitting = true`, nút Pay và Back tắt vĩnh viễn, chỉ reload mới gỡ được.
+  // `pageshow` với `persisted` là tín hiệu duy nhất của ca đó.
+  useEffect(() => {
+    const onPageShow = (event: PageTransitionEvent) => {
+      if (event.persisted) setSubmitting(false);
+    };
+    window.addEventListener('pageshow', onPageShow);
+    return () => window.removeEventListener('pageshow', onPageShow);
+  }, []);
 
   const selected = departures.find((d) => d.id === state.departureId) ?? null;
+  // Trần của ĐỢT ĐANG CHỌN — đưa vào kiểm bước để party chọn ở một đợt rộng
+  // không lọt qua khi khách quay lại đổi sang đợt ít ghế hơn.
+  const limit = partyCap(maxGroupSize, selected?.seatsLeft ?? null);
   // Tổng in trên nút Pay theo CẢ ĐƠN như cột tóm tắt và các trang đơn (`formatBookingMoney`):
   // đơn giá có xu thì đủ hai số lẻ, đúng bằng số cổng thanh toán thu ($180.96, không "$181").
   const total = selected
@@ -110,12 +132,17 @@ export function BookingWizard({
   const set = <K extends keyof BookingFormState>(key: K, value: BookingFormState[K]) => {
     setState((s) => ({ ...s, [key]: value }));
     // Xoá lỗi của đúng field vừa sửa — giữ các lỗi còn lại để khách thấy hết
-    // việc phải làm, thay vì lỗi nhấp nháy từng cái một.
-    setShownErrors((e) => (e[key] ? { ...e, [key]: undefined } : e));
+    // việc phải làm, thay vì lỗi nhấp nháy từng cái một. Lỗi vượt trần nằm ở
+    // `numAdults` nhưng bớt trẻ em cũng gỡ nó, nên đổi số trẻ em xoá cả lỗi đó.
+    const owner = key === 'numChildren' ? 'numAdults' : key;
+    setShownErrors((e) =>
+      e[key] || e[owner] ? { ...e, [key]: undefined, [owner]: undefined } : e,
+    );
   };
 
   const goBack = () => {
     setSubmitError(null);
+    setExpiredRedirect(null);
     setDirection(-1);
     setStep(BOOKING_STEPS[Math.max(0, index - 1)] as BookingStep);
   };
@@ -123,6 +150,7 @@ export function BookingWizard({
   /** Về đúng bước cần sửa từ link `Edit` của màn Review. */
   const goEdit = (target: BookingStep) => {
     setSubmitError(null);
+    setExpiredRedirect(null);
     setDirection(BOOKING_STEPS.indexOf(target) < index ? -1 : 1);
     setStep(target);
   };
@@ -130,6 +158,7 @@ export function BookingWizard({
   async function submit() {
     setSubmitting(true);
     setSubmitError(null);
+    setExpiredRedirect(null);
     try {
       const booking = await api.bookings.create(buildBookingInput(state), {
         context: withBrowserAuth(),
@@ -147,6 +176,9 @@ export function BookingWizard({
       // Sweep 19/08: nói ĐÚNG lỗi API (hết ghế / đợt đóng / hết phiên /
       // throttle) thay vì gom hết thành "couldn't start the payment session".
       setSubmitError(bookingSubmitErrorCopy(error));
+      if (error instanceof ORPCError && error.status === 401) {
+        setExpiredRedirect(encodeURIComponent(window.location.pathname + window.location.search));
+      }
       setSubmitting(false);
     }
   }
@@ -154,8 +186,8 @@ export function BookingWizard({
   function advance() {
     // Chặn ở BƯỚC HIỆN TẠI, và chỉ lộ lỗi của bước đó — lỗi của bước sau hiện
     // ra lúc này thì khách không sửa được, ô còn chưa render.
-    if (!canLeaveStep(step, state)) {
-      setShownErrors(stepErrors(step, state));
+    if (!canLeaveStep(step, state, limit)) {
+      setShownErrors(stepErrors(step, state, limit));
       return;
     }
     if (isLast) {
@@ -230,7 +262,14 @@ export function BookingWizard({
             ) : null}
           </motion.div>
 
-          {submitError ? (
+          {expiredRedirect ? (
+            <AccountActionError
+              expired
+              redirectTo={expiredRedirect}
+              fallback={null}
+              className="mt-4"
+            />
+          ) : submitError ? (
             <p role="alert" className="mt-4 text-sm text-destructive">
               {submitError}
             </p>

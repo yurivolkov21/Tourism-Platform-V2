@@ -107,10 +107,13 @@ function Group({
 }
 
 function Row({ k, v }: { k: string; v: string }) {
+  // `min-w-0 wrap-anywhere`: giá trị là thứ khách gõ (email, yêu cầu đặc biệt)
+  // nên có thể là một chuỗi liền không dấu cách — thiếu hai lớp này thì flex
+  // item không co dưới bề rộng nội dung và cả hàng tràn ngang trên mobile.
   return (
     <div className="mt-1 flex justify-between gap-4 text-sm">
-      <span className="text-muted-foreground">{k}</span>
-      <span className="text-right tabular-nums">{v}</span>
+      <span className="shrink-0 text-muted-foreground">{k}</span>
+      <span className="min-w-0 text-right tabular-nums wrap-anywhere">{v}</span>
     </div>
   );
 }
