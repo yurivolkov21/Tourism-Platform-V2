@@ -2,7 +2,11 @@ import { call, implement, ORPCError } from '@orpc/server';
 import { contract } from '@tourism/contract';
 import { describe, expect, it, vi } from 'vitest';
 import { UserRole } from '../../generated/prisma/enums.js';
-import { ACTIVITY_DESCRIBERS, type ActivityEntry } from './activity-describers.js';
+import {
+  ACTIVITY_DESCRIBERS,
+  type ActivityEntry,
+  type ActivityInput,
+} from './activity-describers.js';
 import type { ActivityActor } from './activity-recorder.js';
 import { type ActivityRecordFn, withActivity } from './admin-activity.interceptor.js';
 
@@ -148,6 +152,63 @@ describe('ACTIVITY_DESCRIBERS — các mô tả không cần DB', () => {
     expect(entry).toEqual({
       target: { type: 'category', id: TOUR_ID, label: 'Culture' },
       details: { direction: 'up' },
+    });
+  });
+
+  describe('lệnh không có cờ `changed`: so dấu đọc TRƯỚC khi chạy (review L5-17, A2-20)', () => {
+    const EARLIER = '2026-10-01T08:00:00.000Z';
+    const LATER = '2026-10-20T08:00:00.000Z';
+    // Ép kiểu thay vì khai đủ: input của lệnh duyệt sắp có thêm `version` (PR của L5), mà
+    // spec này chỉ đọc `verdict`.
+    const moderate = (verdict: 'approve' | 'reject' | 'unpublish') =>
+      ({ id: TOUR_ID, verdict }) as ActivityInput<'reviews.moderate'>;
+    const review = (moderatedAt: string | null) =>
+      ({ id: TOUR_ID, tourTitle: 'Ha Long Bay Cruise', moderatedAt }) as never;
+
+    it('duyệt lại review đã duyệt: mốc duyệt không nhích → không ghi', async () => {
+      const entry = await ACTIVITY_DESCRIBERS['reviews.moderate'].describe({
+        input: moderate('approve'),
+        output: review(EARLIER),
+        before: EARLIER,
+      });
+      expect(entry).toBeNull();
+    });
+
+    it('gỡ đăng một review chưa ai duyệt: vẫn chưa có mốc duyệt → không ghi', async () => {
+      const entry = await ACTIVITY_DESCRIBERS['reviews.moderate'].describe({
+        input: moderate('unpublish'),
+        output: review(null),
+        before: null,
+      });
+      expect(entry).toBeNull();
+    });
+
+    it('quyết định thật: mốc duyệt mới → ghi verdict, kể cả khi không đọc được mốc cũ', async () => {
+      for (const before of [EARLIER, null]) {
+        const entry = await ACTIVITY_DESCRIBERS['reviews.moderate'].describe({
+          input: moderate('reject'),
+          output: review(LATER),
+          before,
+        });
+        expect(entry).toEqual<ActivityEntry>({
+          target: { type: 'review', id: TOUR_ID, label: 'Ha Long Bay Cruise' },
+          details: { verdict: 'reject' },
+        });
+      }
+    });
+
+    it('đóng chuyến đã đóng: phiên bản chuyến không nhích → không ghi', async () => {
+      const entry = await ACTIVITY_DESCRIBERS['departures.setStatus'].describe({
+        input: { id: TOUR_ID, status: 'CLOSED' },
+        output: {
+          id: TOUR_ID,
+          status: 'CLOSED',
+          startDate: '2027-03-10',
+          version: EARLIER,
+        } as never,
+        before: EARLIER,
+      });
+      expect(entry).toBeNull();
     });
   });
 
