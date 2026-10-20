@@ -1,12 +1,16 @@
 import { PHASE_PRODUCTION_BUILD } from 'next/constants';
 import { describe, expect, it, vi } from 'vitest';
 import {
+  BROWSER_TIMEOUT_MS,
+  BROWSER_WRITE_TIMEOUT_MS,
   BUILD_RETRY_DELAYS_MS,
   createRetryingFetch,
   isTransientError,
   isTransientStatus,
   RETRY_DELAYS_MS,
+  requestTimeoutMs,
   retryDelaysFor,
+  SERVER_TIMEOUT_MS,
 } from './retry-fetch';
 
 /**
@@ -63,6 +67,37 @@ describe('retryDelaysFor', () => {
       expect(retryDelaysFor(phase)).toEqual([400, 1200]);
     },
   );
+});
+
+describe('requestTimeoutMs (ADR-0044 §2 + AMEND 2)', () => {
+  it('server: 20 giây cho mọi method, như §2', () => {
+    for (const method of ['GET', 'POST', 'PATCH', 'DELETE']) {
+      expect(requestTimeoutMs(method, true)).toBe(SERVER_TIMEOUT_MS);
+    }
+    expect(SERVER_TIMEOUT_MS).toBe(20_000);
+  });
+
+  it('trình duyệt đọc (GET, HEAD) giữ 10 giây', () => {
+    expect(requestTimeoutMs('GET', false)).toBe(BROWSER_TIMEOUT_MS);
+    expect(requestTimeoutMs('HEAD', false)).toBe(BROWSER_TIMEOUT_MS);
+    expect(BROWSER_TIMEOUT_MS).toBe(10_000);
+  });
+
+  // L3-20: trình duyệt bỏ cuộc ở 10 giây trong khi API vẫn làm tiếp tới trần
+  // `handlerTimeout` 60 giây và không huỷ khi client đóng kết nối — khách thấy
+  // "lỗi" trong lúc đơn PENDING đã được tạo, bấm lại là thêm một đơn nữa.
+  it.each(['POST', 'PATCH', 'PUT', 'DELETE'])('trình duyệt ghi (%s) chờ đủ 60 giây', (method) => {
+    expect(requestTimeoutMs(method, false)).toBe(BROWSER_WRITE_TIMEOUT_MS);
+  });
+
+  it('hạn ghi của trình duyệt bằng trần handlerTimeout 60 giây của API', () => {
+    expect(BROWSER_WRITE_TIMEOUT_MS).toBe(60_000);
+  });
+
+  it('method viết thường vẫn nhận đúng (Request luôn chuẩn hoá, nhưng gọi tay thì không)', () => {
+    expect(requestTimeoutMs('get', false)).toBe(BROWSER_TIMEOUT_MS);
+    expect(requestTimeoutMs('post', false)).toBe(BROWSER_WRITE_TIMEOUT_MS);
+  });
 });
 
 describe('isTransientStatus', () => {

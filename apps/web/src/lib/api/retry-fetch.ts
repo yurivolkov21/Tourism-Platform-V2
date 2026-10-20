@@ -76,6 +76,24 @@ export function retryDelaysFor(phase: string | undefined): readonly number[] {
 export const SERVER_TIMEOUT_MS = 20_000;
 export const BROWSER_TIMEOUT_MS = 10_000;
 
+/**
+ * Hạn một lượt GHI ở trình duyệt (ADR-0044 AMEND 2): bằng trần `handlerTimeout` 60 giây
+ * của API. API không huỷ việc đang làm khi client bỏ đi, nên bỏ cuộc sớm hơn trần ấy là
+ * báo lỗi cho một lượt có thể đã thành công — `bookings.create` đã sinh đơn `PENDING` và
+ * khách bấm lại thì sinh thêm đơn nữa (L3-20).
+ */
+export const BROWSER_WRITE_TIMEOUT_MS = 60_000;
+
+/**
+ * Hạn chót của một lượt gọi theo method và phía gọi. Server giữ 20 giây cho mọi method
+ * (server web hiện chỉ đọc). Trình duyệt: đọc 10 giây, ghi 60 giây.
+ */
+export function requestTimeoutMs(method: string, server: boolean): number {
+  if (server) return SERVER_TIMEOUT_MS;
+  const upper = method.toUpperCase();
+  return upper === 'GET' || upper === 'HEAD' ? BROWSER_TIMEOUT_MS : BROWSER_WRITE_TIMEOUT_MS;
+}
+
 type FetchLike = (request: Request, init: RequestInit) => Promise<Response>;
 
 /**
