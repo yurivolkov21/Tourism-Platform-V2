@@ -283,10 +283,10 @@ async function main(): Promise<void> {
   }
   console.log(`[seed] site media slots: ${SITE_SLOT_KEYS.length} keys upserted.`);
 
-  // 3. Functional overlay — một CUSTOMER đã biết + một ADMIN (upsert theo email
-  //    unique kiểu citext). Chỉ là row thường trong bảng `users` của Better
-  //    Auth: đăng ký qua Better Auth cùng email sẽ link vào row đó (v2 không có
-  //    supabaseId).
+  // 3. Tài khoản ADMIN — `ADMIN_EMAILS[0]`, rơi về `admin@tourism.test` khi env trống
+  //    (upsert theo email unique kiểu citext). Chỉ là row thường trong bảng `users`
+  //    của Better Auth: đăng ký qua Better Auth cùng email sẽ link vào row đó (v2
+  //    không có supabaseId). Khách để đăng nhập là 120 khách giả ở bước 3b.
   const admin = await prisma.user.upsert({
     where: { email: adminEmail },
     create: {
@@ -301,7 +301,7 @@ async function main(): Promise<void> {
   console.log(`[seed] admin: đã upsert (id ${admin.id})`);
 
   // 3b. KHÁCH GIẢ (120, xem SO_KHACH) (đợt làm mới dữ liệu 10/09/2026) — người đứng tên cho
-  //     ≈400 booking và ≈116 review sắp seed. Không có họ thì không seed được
+  //     toàn bộ booking và review VERIFIED sắp seed. Không có họ thì không seed được
   //     hai bảng đó: `bookings.user_id` là FK RESTRICT, và review `VERIFIED`
   //     bị CHECK `reviews_source_shape` bắt buộc có `user_id` + `booking_id`.
   //
@@ -578,8 +578,8 @@ async function main(): Promise<void> {
   console.log(`[seed] reviews: +${reviewCount} VERIFIED, +${soSuKienDuyet} sự kiện duyệt`);
 
   // 6b. Recompute ratingAvg/ratingCount cho MỌI tour (kể cả 0 review → null/0)
-  //     — CÙNG MỘT công thức với `ReviewsService.moderate` ③
-  //     (`src/modules/reviews/reviews.service.ts` ~dòng 250-296) kể từ quyết
+  //     — CÙNG MỘT công thức mà `ReviewsService` (`src/modules/reviews/reviews.service.ts`)
+  //     chạy khi admin duyệt bài (`moderate`) và khi khách rút bài (`retract`), kể từ quyết
   //     định 31/07: `AVG(rating)::numeric(2,1)` trong một câu `UPDATE tours …
   //     FROM (SELECT AVG…)`, lọc `is_approved = true` + `tour_id` khớp,
   //     KHÔNG lọc theo `source` — mọi review approved có tourId đều tính, kể
