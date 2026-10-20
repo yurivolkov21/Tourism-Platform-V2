@@ -91,6 +91,15 @@ export function TourMediaPanel({ tour }: { tour: TourDetailVM }) {
   // Lightbox mở được cả khi chưa có ảnh: khi đó nó trưng đúng số Ô ẢNH người
   // dùng đang nhìn thấy (7 placeholder), không phải một con số bịa.
   const lightboxCount = hasPhotos ? photos.length : GALLERY_THUMB_SLOTS;
+  // Suspense bọc ĐÚNG cái nút: `WishlistProvider` đọc `useSearchParams()` mà trang này là SSG.
+  // Bọc rộng hơn là đẩy cả nội dung trang ra khỏi HTML tĩnh — đúng thứ ADR-0022 cấm.
+  const wishlist = (
+    <Suspense fallback={<div aria-hidden="true" className="h-9" />}>
+      <WishlistProvider tourIds={[tour.id]}>
+        <WishlistButton tourId={tour.id} tourTitle={tour.title} />
+      </WishlistProvider>
+    </Suspense>
+  );
 
   return (
     <div data-slot="tour-top" className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_443px]">
@@ -318,22 +327,19 @@ export function TourMediaPanel({ tour }: { tour: TourDetailVM }) {
                 <TicketIcon />
                 {t.mediaPanel.reserve(departure.seatsLeft)}
               </Button>
-              {/* Suspense bọc ĐÚNG cái nút: `WishlistProvider` đọc
-                  `useSearchParams()` mà trang này là SSG. Bọc rộng hơn là đẩy cả
-                  nội dung trang ra khỏi HTML tĩnh — đúng thứ ADR-0022 cấm. */}
-              <Suspense fallback={<div aria-hidden="true" className="h-9" />}>
-                <WishlistProvider tourIds={[tour.id]}>
-                  <WishlistButton tourId={tour.id} tourTitle={tour.title} />
-                </WishlistProvider>
-              </Suspense>
+              {wishlist}
             </div>
           </>
         ) : (
           <>
             <p className="text-sm leading-[20px] text-muted-foreground">{t.departures.none}</p>
-            <ButtonLink className="h-9 w-full rounded-sm" href={`/tours/${tour.slug}/enquire`}>
-              {t.booking.ask}
-            </ButtonLink>
+            {/* Tour hết đợt vẫn lưu được (review L2-12): khách lưu để quay lại khi có đợt mới. */}
+            <div className="grid gap-2">
+              <ButtonLink className="h-9 w-full rounded-sm" href={`/tours/${tour.slug}/enquire`}>
+                {t.booking.ask}
+              </ButtonLink>
+              {wishlist}
+            </div>
           </>
         )}
 

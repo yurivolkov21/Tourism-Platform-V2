@@ -1,5 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { messages } from '@tourism/i18n';
 import type { ReactNode } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import { DepartureSelectionProvider } from '@/components/tours/departure-selection';
@@ -293,6 +294,21 @@ describe('TourMediaPanel — panel đặt chỗ', () => {
       'href',
       '/tours/ha-giang-loop-4d/enquire',
     );
+  });
+
+  it('tour không còn đợt nào vẫn có nút lưu tour (review L2-12, sửa ở L1)', () => {
+    // Trước bản vá nút Wishlist chỉ nằm trong nhánh có đợt đang chọn: tour hết đợt thì trang
+    // chi tiết không còn chỗ nào để lưu tour.
+    render(
+      <DepartureSelectionProvider departures={[]}>
+        <TourMediaPanel tour={tourWith(0, { departures: [] } as Partial<TourDetailVM>)} />
+      </DepartureSelectionProvider>,
+    );
+    expect(
+      screen.getByRole('button', {
+        name: messages.toursPage.wishlistLabel('Hà Giang Loop by Easyrider 4D3N'),
+      }),
+    ).toBeInTheDocument();
   });
 
   it('tour không còn đợt nào: giá rơi về basePrice, KHÔNG gạch giá niêm yết của tour', () => {
