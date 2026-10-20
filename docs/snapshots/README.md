@@ -39,7 +39,7 @@ slug, không kéo theo nội dung biên tập.
 | Thư mục | Nội dung | Git |
 | --- | --- | --- |
 | `docs/snapshots/<ngày>/` | Bản đồ ảnh + id, **không có dữ liệu cá nhân** | **commit** |
-| `backups/<ngày>/` | Người dùng, đơn hàng, thanh toán, đánh giá… | **gitignored** |
+| `backups/<ngày>/` | Trọn mọi bảng, mỗi bảng một file JSON (trừ sổ migration của Prisma): người dùng, đơn hàng, thanh toán, đánh giá, cả nội dung tour mà seed sẽ ghi đè | **gitignored** |
 
 Kho mã này công khai trên GitHub. Trộn hai thứ là đẩy email của khách lên mạng.
 

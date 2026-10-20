@@ -13,7 +13,7 @@
  * ── Vì sao chia hai nơi ──
  * Repo này là PUBLIC trên GitHub. Nên:
  *   docs/snapshots/<ngày>/  → commit được: bản đồ ảnh + id/slug nội dung, KHÔNG PII
- *   backups/<ngày>/         → gitignored: dữ liệu người dùng, booking, thanh toán
+ *   backups/<ngày>/         → gitignored: TRỌN mọi bảng (xem RIENG_TU), có PII
  * Trộn hai thứ là đẩy email của 63 người lên GitHub công khai.
  */
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
@@ -30,7 +30,7 @@ const CONG_KHAI = {
   // thêm sau này — mà sót một cột ở đây là mất một mảnh bản đồ nối ảnh.
   'media-assets': 'select * from media_assets order by owner_type, owner_id, role, sort_order',
   'site-media-slots': 'select * from site_media_slots order by key',
-  // Ba bảng dưới CHỈ lấy id + slug + nhãn: đủ để nối lại ảnh theo slug, không
+  // Bốn bảng dưới CHỈ lấy id + slug + nhãn: đủ để nối lại ảnh theo slug, không
   // kéo theo nội dung biên tập (nội dung đầy đủ nằm ở bản backups/ riêng tư).
   'tours-ids': 'select id, slug, title, is_published from tours order by slug',
   'destinations-ids': 'select id, slug, name, region from destinations order by slug',
@@ -38,31 +38,8 @@ const CONG_KHAI = {
   'tour-categories-ids': 'select id, slug, name from tour_categories order by slug',
 };
 
-// Có PII hoặc dữ liệu giao dịch — CHỈ để local, không bao giờ commit.
-const RIENG_TU = {
-  // `select *` + `order by 1`: đây là BẢN SAO LƯU, không phải báo cáo — liệt kê
-  // cột hay đoán tên cột sắp xếp chỉ tạo chỗ để sai. `order by 1` (cột đầu) hợp lệ
-  // với mọi bảng, kể cả bảng nối không có `id` hay `created_at`.
-  users: 'select * from users order by 1',
-  accounts: 'select * from accounts order by 1',
-  sessions: 'select * from sessions order by 1',
-  user_events: 'select * from user_events order by 1',
-  verifications: 'select * from verifications order by 1',
-  bookings: 'select * from bookings order by 1',
-  payment_events: 'select * from payment_events order by 1',
-  refunds: 'select * from refunds order by 1',
-  cancellation_requests: 'select * from cancellation_requests order by 1',
-  reviews: 'select * from reviews order by 1',
-  review_moderation_events: 'select * from review_moderation_events order by 1',
-  wishlist: 'select * from wishlist order by 1',
-  enquiries: 'select * from enquiries order by 1',
-  subscribers: 'select * from subscribers order by 1',
-  outbox: 'select * from outbox order by 1',
-  tour_departures: 'select * from tour_departures order by 1',
-  posts: 'select * from posts order by 1',
-  post_tags: 'select * from post_tags order by 1',
-  post_tag_links: 'select * from post_tag_links order by 1',
-};
+/** Sổ migration của Prisma — không phải dữ liệu, `prisma migrate deploy` tự dựng lại. */
+const KHONG_SAO_LUU = new Set(['_prisma_migrations']);
 
 const url = process.env.DATABASE_URL ?? 'postgresql://tourism:tourism@localhost:5432/tourism';
 const host = new URL(url).host;
@@ -70,6 +47,27 @@ console.log(`Nối tới: ${host}\n`);
 
 const client = new pg.Client({ connectionString: url });
 await client.connect();
+
+// Có PII hoặc dữ liệu giao dịch — CHỈ để local, không bao giờ commit.
+// TRỌN mọi bảng của schema public, đọc từ information_schema lúc chạy chứ không kê tay
+// (review F2, 20/10): bản kê tay 19 bảng thiếu năm bảng `data:reset` xoá (chat, ghi chú
+// và sự kiện của enquiry, nhật ký admin) và sáu bảng seed ghi đè (29 tour fixture cùng
+// năm bảng con), tức đúng phần sẽ mất mà không có bản nào để lấy lại. Bảng sinh sau
+// này tự có mặt, không ai phải nhớ thêm vào đây.
+// `select *` + `order by 1`: đây là BẢN SAO LƯU, không phải báo cáo — liệt kê cột hay
+// đoán tên cột sắp xếp chỉ tạo chỗ để sai. `order by 1` (cột đầu) hợp lệ với mọi bảng,
+// kể cả bảng nối không có `id` hay `created_at`.
+const { rows: bangThat } = await client.query(
+  `select table_name from information_schema.tables
+    where table_schema = 'public' and table_type = 'BASE TABLE'
+    order by table_name`,
+);
+const RIENG_TU = Object.fromEntries(
+  bangThat
+    .map((r) => r.table_name)
+    .filter((ten) => !KHONG_SAO_LUU.has(ten))
+    .map((ten) => [ten, `select * from "${ten}" order by 1`]),
+);
 
 async function xuat(thuMuc, bang) {
   mkdirSync(thuMuc, { recursive: true });
