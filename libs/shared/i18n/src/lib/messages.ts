@@ -4381,9 +4381,11 @@ export const messages = {
          * nó chỉ là chưa đầy đủ.
          */
         departuresCostMissing: (count: string) =>
-          `${count} departure(s) that ran have no fixed-cost data — their transport and guide costs are counted as 0.`,
+          count === '1'
+            ? `${count} departure that ran has no fixed-cost data — its transport and guide costs are counted as 0.`
+            : `${count} departures that ran have no fixed-cost data — their transport and guide costs are counted as 0.`,
         costMissing: (count: string) =>
-          `${count} bookings have no cost data, so cost of sales is understated.`,
+          `${count} ${count === '1' ? 'booking has' : 'bookings have'} no cost data, so cost of sales is understated.`,
         /** Biên gộp KHÔNG XÁC ĐỊNH — khác hẳn 0%. */
         marginUnknown: '—',
       },
