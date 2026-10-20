@@ -51,7 +51,7 @@ thay, cột đã xoá, và số AMEND để biết phải đọc tới cuối fi
 | [0041](0041-single-cancellation-deadline.md) | **Một hạn chót mỗi chuyến** — luật hoàn tiền hiện hành | thay 0029, 0030 · 2 AMEND (chuyến bị công ty huỷ thì khách hết tự huỷ; khách đọc lý do huỷ chuyến) |
 | [0042](0042-shared-client-rules-core.md) | `@tourism/core`: luật dùng chung cho mọi client | |
 | [0043](0043-refund-payment-event.md) | Hoàn tiền để lại vết ở sổ `payment_events` | |
-| [0044](0044-prerender-retry-transient-api.md) | Prerender thử lại khi API hắt hơi | 1 AMEND |
+| [0044](0044-prerender-retry-transient-api.md) | Prerender thử lại khi API hắt hơi | 2 AMEND (AMEND 2, 20/10: lượt ghi của trình duyệt chờ 60 giây) |
 | [0045](0045-region-vocabulary-in-contract.md) | Ba vùng miền là từ vựng chung, sống ở contract | |
 | [0046](0046-departure-phase-derived.md) | Giai đoạn chuyến suy từ ngày; `status` chỉ là công tắc bán hàng | 1 AMEND |
 | [0047](0047-tour-editor-sections.md) | Sửa tour theo từng khối: thay nguyên danh sách, khoá phiên bản, cổng đăng tour | |
