@@ -193,6 +193,15 @@ describe('toBookingsStatCards', () => {
     expect(rate.caption).toBe(t.comparison(t.noValue, 28));
   });
 
+  it('card tiền ghi "Revenue (gross)", cùng tên với dòng của báo cáo tháng (review A1-19)', () => {
+    // Số này là tổng tiền thu theo `paid_at`, KHÔNG trừ khoản hoàn: hoàn đủ một đơn thì nó đứng
+    // yên. Tên trơn "Revenue" đọc thành doanh thu ròng; khối "Money and operations" của `/reports`
+    // gọi đúng con số này là "Revenue (gross)". Pin chữ thật để đổi về tên cũ là đỏ.
+    const label = card(toBookingsStatCards(BOOKINGS), 'revenue').label;
+    expect(label).toBe('Revenue (gross)');
+    expect(label).toBe(messages.admin.reports.operationsTable.revenue);
+  });
+
   it('bốn card theo đúng thứ tự spec §3-F5', () => {
     expect(toBookingsStatCards(BOOKINGS).map((c) => c.key)).toEqual([
       'revenue',
