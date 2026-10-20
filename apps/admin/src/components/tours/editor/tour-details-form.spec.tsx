@@ -127,6 +127,35 @@ describe('TourDetailsForm', () => {
     expect(screen.queryByText(t.daysRemoved('3–4', 2))).not.toBeInTheDocument();
   });
 
+  // Review A2: props còn lịch trình 4 ngày tới khi lượt refresh về, nên trước đây câu "sẽ bị
+  // xoá khi lưu" vẫn hiện SAU khi đã lưu xong.
+  it('lưu xong việc hạ số ngày: câu báo ngày bị xoá tắt ngay, không chờ refresh', async () => {
+    const itinerary = [1, 2, 3, 4].map((n) => ({
+      dayNumber: n,
+      title: `D${n}`,
+      description: null,
+    }));
+    const detail = detailFixture({ isPublished: false, durationDays: 4, itinerary });
+    const save = vi.fn().mockResolvedValue({
+      ok: true,
+      detail: {
+        ...detail,
+        durationDays: 2,
+        itinerary: itinerary.slice(0, 2),
+        version: NEXT_VERSION,
+      },
+    });
+    const { user } = renderForm(detail, save);
+
+    await user.clear(field(t.durationDays));
+    await user.type(field(t.durationDays), '2');
+    expect(screen.getByText(t.daysRemoved('3–4', 2))).toBeInTheDocument();
+    await user.click(saveButton());
+
+    await waitFor(() => expect(success).toHaveBeenCalledWith(e.saved));
+    expect(screen.queryByText(t.daysRemoved('3–4', 2))).not.toBeInTheDocument();
+  });
+
   it('sàn số khách: dưới sàn thì lỗi dưới ô và KHÔNG gửi', async () => {
     const save = vi.fn();
     const { user } = renderForm(detailFixture({ liveSeatsMax: 12, maxGroupSize: 20 }), save);
@@ -395,6 +424,49 @@ describe('TourDetailsForm', () => {
       ),
     );
     expect(screen.getAllByRole('alert')).toHaveLength(1);
+  });
+
+  // Review A2: thêm chuyến không đổi phiên bản tour, nên tab mở từ trước còn cầm
+  // `liveSeatsMax` cũ — câu của server không có con số, lần thử nào cũng hỏng mò.
+  it('GROUP_SIZE_BELOW_SEATS → làm mới; refresh mang sàn ghế mới về thì câu dưới ô nói con số, chữ đang gõ còn nguyên', async () => {
+    const save = vi.fn().mockResolvedValue({ ok: false, code: 'GROUP_SIZE_BELOW_SEATS' });
+    const user = userEvent.setup();
+    const detail = detailFixture({ maxGroupSize: 25, liveSeatsMax: null });
+    const view = render(<TourDetailsForm detail={detail} options={OPTIONS} save={save} />);
+
+    await user.clear(field(t.maxGroupSize));
+    await user.type(field(t.maxGroupSize), '15');
+    await user.click(saveButton());
+    await waitFor(() => expect(refresh).toHaveBeenCalledTimes(1));
+
+    // Lượt refresh đáp xuống: tab khác vừa thêm một chuyến 20 ghế, phiên bản tour giữ nguyên.
+    view.rerender(
+      <TourDetailsForm
+        detail={{ ...detail, departureCount: 1, liveSeatsMax: 20 }}
+        options={OPTIONS}
+        save={save}
+      />,
+    );
+
+    expect(field(t.maxGroupSize)).toHaveAccessibleDescription(
+      expect.stringContaining(e.form.errors.groupFloor(20)),
+    );
+    expect(field(t.maxGroupSize)).toHaveValue('15');
+  });
+
+  // Review A2: refresh sau DURATION_LOCKED sẽ khoá ô số ngày đang mang số mới — không sửa về
+  // được, Save cũng không qua. Câu dưới ô đã đủ để người dùng tự trả số cũ.
+  it('DURATION_LOCKED KHÔNG làm mới: ô số ngày còn sửa được để trả về số cũ', async () => {
+    const save = vi.fn().mockResolvedValue({ ok: false, code: 'DURATION_LOCKED' });
+    const { user } = renderForm(detailFixture({ isPublished: false }), save);
+
+    await user.clear(field(t.durationDays));
+    await user.type(field(t.durationDays), '2');
+    await user.click(saveButton());
+
+    await waitFor(() => expect(field(t.durationDays)).toHaveAttribute('aria-invalid', 'true'));
+    expect(refresh).not.toHaveBeenCalled();
+    expect(field(t.durationDays)).toBeEnabled();
   });
 
   it('server trả STALE_TOUR → dải báo kèm Reload, chữ đang gõ còn nguyên', async () => {

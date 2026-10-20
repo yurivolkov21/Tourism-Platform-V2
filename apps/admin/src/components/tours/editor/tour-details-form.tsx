@@ -24,6 +24,7 @@ import { Input } from '@tourism/ui/components/input';
 import { Textarea } from '@tourism/ui/components/textarea';
 import { cn } from '@tourism/ui/lib/utils';
 import { LockIcon } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 import { useId, useState } from 'react';
 import { FormField } from '@/components/kit/form-field';
 import { ListEditor } from '@/components/kit/list-editor';
@@ -96,6 +97,7 @@ export function TourDetailsForm({
   options: TourEditorOptions;
   save: UpdateDetailsAction;
 }) {
+  const router = useRouter();
   const publishSaved = usePublishSavedDetail();
   const form = useTourFormState<TourDetailsFormValues>(detail, detailsFormValues);
   /** `name` chung của các radio điểm chính — duy nhất cho mỗi form trên trang. */
@@ -122,7 +124,12 @@ export function TourDetailsForm({
     ? validateTourDetailsForm(values, detail)
     : {};
   const days = parseWholeNumber(values.durationDays);
-  const removed = removedItineraryDays(detail.itinerary, days);
+  // Chỉ báo khi số ngày khác bản ĐÃ LƯU mà form cầm (review A2): lưu xong 4 → 2 ngày thì props
+  // còn lịch trình 4 ngày tới khi lượt refresh về, và câu "sẽ bị xoá khi lưu" hiện sai trong khe ấy.
+  const removed =
+    values.durationDays === form.base.durationDays
+      ? []
+      : removedItineraryDays(detail.itinerary, days);
   const locked = detail.departureCount > 0;
 
   const { pending, banner, save } = useSectionSave<DetailsContractCode>({
@@ -142,9 +149,14 @@ export function TourDetailsForm({
     },
     onFieldError: (code) => {
       if (code === 'DURATION_LOCKED') {
+        // KHÔNG làm mới ở đây: bản mới mang `departureCount > 0` sẽ khoá ô đang giữ số vừa gõ —
+        // không sửa về được mà Save cũng không qua. Câu dưới ô đủ để người dùng tự trả số cũ.
         setFieldError({ field: 'durationDays', message: detailsErrorCopy(code), version });
       } else if (code === 'GROUP_SIZE_BELOW_SEATS') {
         setFieldError({ field: 'maxGroupSize', message: detailsErrorCopy(code), version });
+        // Thêm chuyến không đổi phiên bản tour, nên `liveSeatsMax` trong tay có thể đã cũ (review
+        // A2): làm mới để lỗi dưới ô nói đúng sàn ghế. Cùng phiên bản nên chữ đang gõ còn nguyên.
+        router.refresh();
       } else return false;
       return true;
     },

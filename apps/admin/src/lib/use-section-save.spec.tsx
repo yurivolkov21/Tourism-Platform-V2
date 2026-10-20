@@ -104,6 +104,18 @@ describe('useSectionSave', () => {
     expect(readinessIssues(PROJECTED, 'ha-long')).toHaveLength(2);
   });
 
+  // Review A2: bật bán ở tab khác giữ nguyên phiên bản, nên tab này có thể còn tưởng tour đang
+  // tắt bán — phần đầu ghi "Off sale" ngay cạnh dải nói "This tour is on sale".
+  it('TOUR_NOT_READY → làm mới để phần đầu và luật đang-bán theo kịp; không toast', async () => {
+    const { save } = setup();
+
+    await save({ ok: false, code: 'TOUR_NOT_READY' });
+
+    expect(refresh).toHaveBeenCalledTimes(1);
+    expect(success).not.toHaveBeenCalled();
+    expect(errorToast).not.toHaveBeenCalled();
+  });
+
   it('NOT_FOUND → toast lỗi rồi về /tours', async () => {
     const { hook, save } = setup();
 

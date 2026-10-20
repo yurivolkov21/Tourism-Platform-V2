@@ -17,10 +17,12 @@ import type { EditorWriteResult } from '@/lib/tour-editor-write';
  * - `pending` là CỔNG: bấm đúp chỉ bắn một lệnh. Cổng thật là một ref — state
  *   chỉ để vẽ: hai lần gọi trong CÙNG một lượt render đọc chung một `pending`
  *   cũ, ref thì không.
- * - Thành công: form nhận NGUYÊN tour mới (`version` mới) rồi `router.refresh()`
- *   cho layout (phần đầu, thanh bước) theo kịp.
+ * - Thành công: form nhận NGUYÊN tour mới (`version` mới) — phần đầu và thanh bước đổi ngay
+ *   qua `publishSaved` của form — rồi `router.refresh()` để props `detail` của trang theo kịp.
  * - `STALE_TOUR`: dải báo kèm Reload, form GIỮ chữ đang gõ.
- * - `TOUR_NOT_READY`: dải liệt kê chỗ thiếu, tính từ bản dự tính của chính lệnh này.
+ * - `TOUR_NOT_READY`: dải liệt kê chỗ thiếu, tính từ bản dự tính của chính lệnh này, rồi
+ *   `router.refresh()` (review A2): bật bán giữ nguyên phiên bản, nên tab có thể còn tưởng tour
+ *   đang tắt bán. Cùng phiên bản nên form GIỮ chữ đang gõ.
  * - `NOT_FOUND`: tour đã bị xoá — toast rồi về `/tours`.
  * - `LINK_NOT_FOUND`: tour vẫn còn, chỉ danh mục hay điểm đến được chọn vừa bị xoá (review S1) —
  *   dải lỗi, form GIỮ chữ đang gõ, `router.refresh()` để danh sách chọn bỏ mục đã xoá.
@@ -80,6 +82,7 @@ export function useSectionSave<Code extends string>(options: {
     }
     if (code === 'TOUR_NOT_READY') {
       setBanner({ kind: 'notReady', issues: readinessIssues(options.projected(), options.slug) });
+      router.refresh();
       return;
     }
     if (code === 'NOT_FOUND') {
