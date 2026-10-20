@@ -2,48 +2,36 @@
 
 import { messages } from '@tourism/i18n';
 import { ButtonLink } from '@tourism/ui/components/button-link';
-import { cn } from '@tourism/ui/lib/utils';
 import { useEffect } from 'react';
 import type { DepartureVM } from '@/lib/api/tours';
-import {
-  bookHref,
-  departureStatus,
-  discountPercent,
-  formatDateRange,
-  formatMoney,
-} from '@/lib/tours';
+import { bookHref, formatDateRange, formatMoney } from '@/lib/tours';
 
 /**
- * Rail booking — nơi đợt đang chọn được nói lại bằng con số, cộng CTA.
+ * Bar đặt chỗ dính đáy (dưới lg) — nơi đợt đang chọn được nói lại bằng giá và
+ * ngày, cộng CTA. Từ lg trở lên việc đặt chỗ nằm ở panel cạnh gallery
+ * (`TourMediaPanel`), nên bar ẩn bằng CSS.
+ *
+ * Biến thể `rail` (cột phải dính từ lg) đã xoá 20/10 (review L2-10): trang tour
+ * chỉ dựng bar từ khi panel đặt chỗ ra đời, nên nhánh rail cùng `PriceBlock` và
+ * `SeatMeter` của nó không còn call-site nào. Tên component giữ nguyên để không
+ * đổi import của trang và các spec.
  *
  * `Reserve` điều hướng tới `/tours/{slug}/book?departure={id}` — mang theo đợt
- * đang chọn để wizard chọn sẵn đúng đợt ấy (`bookHref`, W-02). Trước đây nó là
- * <button> cụt vì trang book chưa tồn tại lúc dựng static-first; nợ đó nay đã trả. CTA phụ `Ask about this trip` → `/tours/{slug}/enquire`
- * (đổi 19/08, trước là `/contact`): form liên hệ chung không biết khách đang
- * hỏi tour nào, nên đội vận hành phải hỏi lại vòng nữa. Cả BA nhánh render
- * đều đổi — bỏ sót một nhánh thì lỗi chỉ lộ ở đúng tour hết đợt.
+ * đang chọn để wizard chọn sẵn đúng đợt ấy (`bookHref`, W-02). Không còn đợt đặt
+ * được thì CTA là `Ask about this trip` → `/tours/{slug}/enquire` (đổi 19/08, trước
+ * là `/contact`): form liên hệ chung không biết khách đang hỏi tour nào, nên đội
+ * vận hành phải hỏi lại vòng nữa.
  */
 export function BookingRail({
   slug,
   departure,
   currency,
-  basePrice,
-  durationDays,
-  maxGroupSize,
-  variant,
 }: {
   /** Slug tour — dựng href trang book cho nút Reserve (`bookHref`). */
   slug: string;
-  /** Đợt đang chọn; `undefined` khi tour chưa mở đợt nào. */
+  /** Đợt đang chọn; `undefined` khi tour không còn đợt nào đặt được. */
   departure: DepartureVM | undefined;
   currency: string;
-  /** Giá mặc định khi chưa có đợt — hero cũng in "from" giá này. */
-  basePrice: string;
-  durationDays: number;
-  /** Mẫu số của thanh mức ghế. Xem comment ở SeatMeter. */
-  maxGroupSize: number;
-  /** `rail` = cột phải dính (từ lg). `bar` = bar dính đáy (dưới lg). */
-  variant: 'rail' | 'bar';
 }) {
   const t = messages.tourDetail;
 
@@ -51,178 +39,50 @@ export function BookingRail({
   // `<body data-booking-bar>` để chúng đứng lên trên bar (biến thể `in-data-booking-bar`).
   // Bar ẩn từ `lg` bằng CSS, nên hai nút chỉ đọc cờ này dưới `lg`.
   useEffect(() => {
-    if (variant !== 'bar') return;
     document.body.dataset.bookingBar = '';
     return () => {
       delete document.body.dataset.bookingBar;
     };
-  }, [variant]);
+  }, []);
 
-  // ── Bar đáy mobile ──
   // Một hàng gọn: giá · ngày · dòng sandbox bên trái, nút bên phải. KHÔNG nhồi
   // thanh ghế và CTA phụ vào đây — bar đáy là lối vào hành động, không phải bản
-  // thu nhỏ của cả rail.
+  // thu nhỏ của panel đặt chỗ.
   //
   // Trước P6 bar chừa `pr-20` cho nút scroll-to-top nằm đè góc phải (nó từng che mất nút
   // Reserve). Nay hai nút nổi đọc `data-booking-bar` ở trên và đứng hẳn lên trên bar, nên
   // góc phải trống và bar dùng đủ bề ngang.
-  if (variant === 'bar') {
-    return (
-      <div className="fixed inset-x-0 bottom-0 z-(--z-sticky) border-t bg-background/95 px-4 py-3 backdrop-blur lg:hidden">
-        {departure ? (
-          <div className="flex items-center justify-between gap-3">
-            <div className="min-w-0">
-              <p className="flex items-baseline gap-1.5">
-                <span className="font-heading text-xl font-semibold text-foreground tabular-nums">
-                  {formatMoney(departure.effectivePrice, currency)}
-                </span>
-                <span className="text-xs text-muted-foreground">{t.booking.perPerson}</span>
-              </p>
-              <p className="truncate font-mono text-xs text-muted-foreground">
-                {formatDateRange(departure.startDate, departure.endDate)}
-              </p>
-              {/* Dòng sandbox chuyển sang cột TRÁI: đặt dưới nút thì nó nong cột
-                  phải ra và bóp chính cái nút. Vẫn nằm trong cùng một bar cao
-                  ~64px nên vẫn ở ngay cạnh chỗ người dùng sắp bấm. */}
-              <p className="truncate text-[0.6875rem] text-muted-foreground">
-                {t.booking.testMode}
-              </p>
-            </div>
-            <ButtonLink className="shrink-0" href={bookHref(slug, departure.id)}>
-              {t.booking.reserve}
-            </ButtonLink>
-          </div>
-        ) : (
-          <div className="flex items-center justify-between gap-3">
-            <p className="min-w-0 text-sm text-muted-foreground">{t.departures.none}</p>
-            <ButtonLink variant="outline" className="shrink-0" href={`/tours/${slug}/enquire`}>
-              {t.booking.ask}
-            </ButtonLink>
-          </div>
-        )}
-      </div>
-    );
-  }
-
-  // ── Rail dính (từ lg) ──
   return (
-    <div className={cn('rounded-2xl border bg-card p-5', 'lg:sticky lg:top-28')}>
-      <p className="font-mono text-xs tracking-widest text-muted-foreground uppercase">
-        {t.departures.railLabel}
-      </p>
-
+    <div className="fixed inset-x-0 bottom-0 z-(--z-sticky) border-t bg-background/95 px-4 py-3 backdrop-blur lg:hidden">
       {departure ? (
-        <>
-          <p className="mt-3 font-heading text-lg font-medium text-foreground">
-            {formatDateRange(departure.startDate, departure.endDate)}
-          </p>
-          <p className="mt-0.5 text-sm text-muted-foreground">
-            {t.durationValue(durationDays)} · {t.groupSize(maxGroupSize)}
-          </p>
-
-          <PriceBlock departure={departure} currency={currency} />
-          <SeatMeter seatsLeft={departure.seatsLeft} maxGroupSize={maxGroupSize} />
-
-          <ButtonLink className="mt-5 w-full" href={bookHref(slug, departure.id)}>
+        <div className="flex items-center justify-between gap-3">
+          <div className="min-w-0">
+            <p className="flex items-baseline gap-1.5">
+              <span className="font-heading text-xl font-semibold text-foreground tabular-nums">
+                {formatMoney(departure.effectivePrice, currency)}
+              </span>
+              <span className="text-xs text-muted-foreground">{t.booking.perPerson}</span>
+            </p>
+            <p className="truncate font-mono text-xs text-muted-foreground">
+              {formatDateRange(departure.startDate, departure.endDate)}
+            </p>
+            {/* Dòng sandbox chuyển sang cột TRÁI: đặt dưới nút thì nó nong cột
+                phải ra và bóp chính cái nút. Vẫn nằm trong cùng một bar cao
+                ~64px nên vẫn ở ngay cạnh chỗ người dùng sắp bấm. */}
+            <p className="truncate text-[0.6875rem] text-muted-foreground">{t.booking.testMode}</p>
+          </div>
+          <ButtonLink className="shrink-0" href={bookHref(slug, departure.id)}>
             {t.booking.reserve}
           </ButtonLink>
-          {/* Câu sandbox NGẮN đặt sát nút — chỗ người dùng thật sự phân vân trước
-              khi bấm (spec §6.5). Câu dài ở chân bảng đợt. Không banner đỏ. */}
-          <p className="mt-3 text-xs text-muted-foreground">{t.booking.testMode}</p>
-
-          <ButtonLink variant="ghost" className="mt-2 w-full" href={`/tours/${slug}/enquire`}>
-            {t.booking.ask}
-          </ButtonLink>
-        </>
+        </div>
       ) : (
-        <>
-          {/* Chưa mở đợt nào: BỎ HẲN giá và nút Reserve. Hiện giá "from" cạnh một
-              nút không đặt được là mời người dùng bấm vào chỗ không có gì. */}
-          <p className="mt-3 font-medium text-foreground">{t.departures.none}</p>
-          <p className="mt-2 text-sm text-pretty text-muted-foreground">{t.departures.noneBody}</p>
-          <p className="mt-4 flex items-baseline gap-1.5 text-sm text-muted-foreground">
-            <span>{t.fromPrice}</span>
-            <span className="font-heading text-lg font-semibold text-foreground tabular-nums">
-              {formatMoney(basePrice, currency)}
-            </span>
-            <span className="text-xs">{t.booking.perPerson}</span>
-          </p>
-          <ButtonLink className="mt-5 w-full" href={`/tours/${slug}/enquire`}>
+        <div className="flex items-center justify-between gap-3">
+          <p className="min-w-0 text-sm text-muted-foreground">{t.departures.none}</p>
+          <ButtonLink variant="outline" className="shrink-0" href={`/tours/${slug}/enquire`}>
             {t.booking.ask}
           </ButtonLink>
-        </>
+        </div>
       )}
-    </div>
-  );
-}
-
-function PriceBlock({ departure, currency }: { departure: DepartureVM; currency: string }) {
-  const t = messages.tourDetail;
-  // Giảm giá tính theo giá CỦA ĐỢT, không phải basePrice của tour: đợt có
-  // priceOverride riêng nên hai con số có thể khác nhau.
-  const discount = discountPercent(departure.effectivePrice, departure.compareAtPrice);
-
-  return (
-    <div className="mt-4 flex flex-wrap items-baseline gap-x-2 gap-y-1">
-      <span className="font-heading text-3xl font-semibold text-foreground tabular-nums">
-        {formatMoney(departure.effectivePrice, currency)}
-      </span>
-      <span className="text-xs text-muted-foreground">{t.booking.perPerson}</span>
-      {departure.compareAtPrice ? (
-        <>
-          <span className="sr-only">
-            {t.wasPrice(formatMoney(departure.compareAtPrice, currency))}
-          </span>
-          <span aria-hidden="true" className="text-sm text-price-compare tabular-nums line-through">
-            {formatMoney(departure.compareAtPrice, currency)}
-          </span>
-        </>
-      ) : null}
-      {discount !== null ? (
-        <span className="rounded-full bg-destructive px-2 py-0.5 text-xs font-medium text-white">
-          −{discount}%
-        </span>
-      ) : null}
-    </div>
-  );
-}
-
-/**
- * Thanh mức ghế. Mẫu số là `maxGroupSize` của tour — contract KHÔNG có sức chứa
- * riêng từng đợt, nên đây là xấp xỉ tốt nhất từ dữ liệu có thật, và nó vẫn đúng
- * về mặt ý nghĩa: "còn N trong tối đa M khách".
- *
- * Thanh là `aria-hidden`: nghĩa đã nằm trọn trong dòng chữ ngay dưới nó, thêm
- * một nhãn nữa cho trình đọc màn hình chỉ là nói hai lần.
- */
-function SeatMeter({ seatsLeft, maxGroupSize }: { seatsLeft: number; maxGroupSize: number }) {
-  const t = messages.tourDetail;
-  const status = departureStatus(seatsLeft);
-  // Kẹp về [0,100]: dữ liệu lệch (seatsLeft > maxGroupSize) không được vẽ ra
-  // thanh tràn khỏi khung.
-  const filled = Math.max(0, Math.min(100, Math.round((seatsLeft / maxGroupSize) * 100)));
-
-  return (
-    <div className="mt-4">
-      <div aria-hidden="true" className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
-        <div
-          className={cn(
-            'h-full rounded-full transition-[width]',
-            status === 'limited' ? 'bg-warning' : 'bg-primary',
-          )}
-          style={{ width: `${filled}%` }}
-        />
-      </div>
-      <p
-        className={cn(
-          'mt-2 text-xs',
-          status === 'limited' ? 'font-medium text-warning-emphasis' : 'text-muted-foreground',
-        )}
-      >
-        {status === 'limited'
-          ? t.departures.seatsLimited(seatsLeft)
-          : t.departures.seatsAvailable(seatsLeft)}
-      </p>
     </div>
   );
 }

@@ -228,14 +228,7 @@ export default async function TourDetailPage({ params }: { params: Promise<{ slu
           dưới để bar không che mất hàng cuối trước footer — cùng lớp lỗi với đợt
           vá "đệm footer" ở vòng test listing. */}
       <div aria-hidden="true" className="h-24 lg:hidden" />
-      <BookingRailConnected
-        slug={tour.slug}
-        variant="bar"
-        currency={tour.currency}
-        basePrice={tour.basePrice}
-        durationDays={tour.durationDays}
-        maxGroupSize={tour.maxGroupSize}
-      />
+      <BookingRailConnected slug={tour.slug} currency={tour.currency} />
     </DepartureSelectionProvider>
   );
 }

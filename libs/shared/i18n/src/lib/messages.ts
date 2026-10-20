@@ -1912,10 +1912,9 @@ export const messages = {
           affordance "See all dates"; ta đảo pattern (đưa ngày lên đầu) nhưng vẫn
           giữ đường dẫn tới bảng, vì dải chỉ hiện 4–6 đợt gần nhất. */
       seeAll: (n: number) => `See all ${n} dates`,
-      railLabel: 'Your departure',
       /** Không còn đợt nào ĐẶT ĐƯỢC (chưa có đợt, hết chỗ, hoặc đã qua hạn đặt):
-          MỘT câu chung cho rail, bar đáy, panel đặt chỗ và trang /book, luôn kèm
-          CTA hỏi. */
+          MỘT câu chung cho bar đáy, panel đặt chỗ và trang /book, luôn kèm CTA
+          hỏi. */
       none: 'No departures are open for booking',
       noneBody:
         'Ask us about this trip — we’ll tell you when new dates open, or plan one around you.',

@@ -63,58 +63,12 @@ describe('CTA điều hướng là LINK, không phải nút', () => {
     expect(cta).toHaveAttribute('href', '/tours/ha-long-bay-cruise');
   });
 
-  // NỢ: case cho CTA hỏi ở panel đặt chỗ. `TourMediaPanel` đã xoá ngày 13/08 để
-  // dựng lại từ wireframe; gắn lại case này ngay khi component mới có mặt —
-  // nhánh "tour không còn đợt nào" là chỗ duy nhất CTA đó xuất hiện trên trang.
-  // Ba nhánh của BookingRail có ba CTA hỏi riêng biệt — cả ba đều phải là link.
-  it('BookingRail rail + có đợt — CTA hỏi phụ là link', () => {
-    render(
-      <BookingRail
-        slug="ha-long-bay-cruise"
-        departure={DEPARTURE}
-        currency="VND"
-        basePrice="2400000.00"
-        durationDays={2}
-        maxGroupSize={12}
-        variant="rail"
-      />,
-    );
-    expect(screen.getByRole('link', { name: /ask about this trip/i })).toHaveAttribute(
-      'href',
-      '/tours/ha-long-bay-cruise/enquire',
-    );
-  });
-
-  it('BookingRail rail + KHÔNG đợt — CTA hỏi là link', () => {
-    render(
-      <BookingRail
-        slug="ha-long-bay-cruise"
-        departure={undefined}
-        currency="VND"
-        basePrice="2400000.00"
-        durationDays={2}
-        maxGroupSize={12}
-        variant="rail"
-      />,
-    );
-    expect(screen.getByRole('link', { name: /ask about this trip/i })).toHaveAttribute(
-      'href',
-      '/tours/ha-long-bay-cruise/enquire',
-    );
-  });
-
-  it('BookingRail bar + KHÔNG đợt — CTA hỏi là link', () => {
-    render(
-      <BookingRail
-        slug="ha-long-bay-cruise"
-        departure={undefined}
-        currency="VND"
-        basePrice="2400000.00"
-        durationDays={2}
-        maxGroupSize={12}
-        variant="bar"
-      />,
-    );
+  // CTA hỏi ở panel đặt chỗ (nhánh "tour không còn đợt nào") có case riêng trong
+  // `tour-media-panel.spec.tsx`, cũng khẳng định bằng `getByRole('link')`. Bar đáy
+  // (`BookingRail`) chỉ còn hai CTA — hỏi khi không còn đợt, Reserve khi có đợt —
+  // cả hai đều phải là link. Các case của biến thể `rail` xoá cùng nó ngày 20/10.
+  it('BookingRail KHÔNG đợt — CTA hỏi là link', () => {
+    render(<BookingRail slug="ha-long-bay-cruise" departure={undefined} currency="VND" />);
     expect(screen.getByRole('link', { name: /ask about this trip/i })).toHaveAttribute(
       'href',
       '/tours/ha-long-bay-cruise/enquire',
@@ -139,35 +93,9 @@ describe('CTA điều hướng là LINK, không phải nút', () => {
   });
 
   // `/tours/[slug]/book` nay đã sống — `Reserve` phải điều hướng tới đó, không
-  // còn là nút cụt. Kiểm cả hai vị trí render (rail cột phải + bar đáy mobile).
-  it('BookingRail rail + có đợt — nút Reserve là link trỏ trang book', () => {
-    render(
-      <BookingRail
-        slug="ha-long-bay-cruise"
-        departure={DEPARTURE}
-        currency="VND"
-        basePrice="2400000.00"
-        durationDays={2}
-        maxGroupSize={12}
-        variant="rail"
-      />,
-    );
-    const reserve = screen.getByRole('link', { name: /reserve/i });
-    expect(reserve).toHaveAttribute('href', '/tours/ha-long-bay-cruise/book?departure=dep-1');
-  });
-
-  it('BookingRail bar + có đợt — nút Reserve là link trỏ trang book', () => {
-    render(
-      <BookingRail
-        slug="ha-long-bay-cruise"
-        departure={DEPARTURE}
-        currency="VND"
-        basePrice="2400000.00"
-        durationDays={2}
-        maxGroupSize={12}
-        variant="bar"
-      />,
-    );
+  // còn là nút cụt.
+  it('BookingRail có đợt — nút Reserve là link trỏ trang book', () => {
+    render(<BookingRail slug="ha-long-bay-cruise" departure={DEPARTURE} currency="VND" />);
     const reserve = screen.getByRole('link', { name: /reserve/i });
     expect(reserve).toHaveAttribute('href', '/tours/ha-long-bay-cruise/book?departure=dep-1');
   });

@@ -7,8 +7,8 @@ import { isDepartureOpen } from '@/lib/tours';
 
 /**
  * Trạng thái "đợt đang chọn" dùng chung cho BA nơi: panel đặt chỗ cạnh gallery,
- * tab Departures, rail booking (+ bar đáy mobile). Một hành động → mọi nơi phản
- * hồi. Modal "All dates" cũng sống ở đây vì hai chỗ khác nhau cùng mở nó mà
+ * tab Departures, bar đặt chỗ đáy mobile (`BookingRail`). Một hành động → mọi nơi
+ * phản hồi. Modal "All dates" cũng sống ở đây vì hai chỗ khác nhau cùng mở nó mà
  * trang chỉ render một instance.
  *
  * VÌ SAO LÀ CONTEXT chứ không phải state nâng lên `page.tsx`: các nơi đó nằm ở
@@ -92,32 +92,8 @@ export function DepartureSelectionProvider({
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
 
-export function BookingRailConnected({
-  slug,
-  currency,
-  basePrice,
-  durationDays,
-  maxGroupSize,
-  variant,
-}: {
-  slug: string;
-  currency: string;
-  basePrice: string;
-  durationDays: number;
-  maxGroupSize: number;
-  variant: 'rail' | 'bar';
-}) {
+export function BookingRailConnected({ slug, currency }: { slug: string; currency: string }) {
   const { departures, selectedId } = useDepartureSelection();
   const departure = departures.find((d) => d.id === selectedId);
-  return (
-    <BookingRail
-      slug={slug}
-      departure={departure}
-      currency={currency}
-      basePrice={basePrice}
-      durationDays={durationDays}
-      maxGroupSize={maxGroupSize}
-      variant={variant}
-    />
-  );
+  return <BookingRail slug={slug} departure={departure} currency={currency} />;
 }
