@@ -2,6 +2,7 @@
 
 import { messages } from '@tourism/i18n';
 import { Button, buttonVariants } from '@tourism/ui/components/button';
+import { cn } from '@tourism/ui/lib/utils';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
@@ -46,8 +47,9 @@ export default function AdminRouteError({
         <Button type="button" onClick={retry}>
           {t.retry}
         </Button>
-        {/* Phiên hết hạn là nguyên nhân đời thường nhất — cho lối ra thẳng. */}
-        <Link href="/login" className={buttonVariants({ variant: 'outline' })}>
+        {/* Phiên hết hạn là nguyên nhân đời thường nhất — cho lối ra thẳng. `cn` gộp lớp:
+            `buttonVariants` trần để `border-transparent` gốc thắng viền outline. */}
+        <Link href="/login" className={cn(buttonVariants({ variant: 'outline' }))}>
           {t.signIn}
         </Link>
       </div>

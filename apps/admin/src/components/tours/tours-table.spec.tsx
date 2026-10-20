@@ -75,6 +75,13 @@ describe('ToursTable', () => {
     ).toHaveAttribute('href', '/tours/hoi-an-lantern-evening/departures');
   });
 
+  it('link Departures giữ viền nút outline: lớp đã gộp, không còn border-transparent (review A2)', () => {
+    renderTable([row()]);
+    const link = screen.getByRole('link', { name: t.manageDepartures('Hoi An Lantern Evening') });
+    expect(link).toHaveClass('border-border');
+    expect(link).not.toHaveClass('border-transparent');
+  });
+
   it('thanh công cụ có nút New tour (spec F17 §2g)', () => {
     renderTable([row()]);
     expect(

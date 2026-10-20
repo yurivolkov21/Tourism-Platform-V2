@@ -1,5 +1,6 @@
 import { messages } from '@tourism/i18n';
 import { buttonVariants } from '@tourism/ui/components/button';
+import { cn } from '@tourism/ui/lib/utils';
 import Link from 'next/link';
 import { connection } from 'next/server';
 
@@ -22,7 +23,8 @@ export default async function AdminNotFound() {
     <main className="flex min-h-svh flex-col items-center justify-center gap-4 px-6 text-center">
       <h1 className="text-2xl font-semibold tracking-tight">{t.notFoundTitle}</h1>
       <p className="max-w-md text-sm text-muted-foreground">{t.notFoundBody}</p>
-      <Link href="/" className={buttonVariants({ variant: 'outline' })}>
+      {/* `cn` gộp lớp: `buttonVariants` trần để `border-transparent` gốc thắng viền outline. */}
+      <Link href="/" className={cn(buttonVariants({ variant: 'outline' }))}>
         {t.backHome}
       </Link>
     </main>

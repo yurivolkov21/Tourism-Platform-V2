@@ -146,7 +146,8 @@ export function TourReviewStep({
                       <Link
                         href={step.fixHref}
                         aria-label={r.fixLabel(step.title)}
-                        className={buttonVariants({ variant: 'outline', size: 'sm' })}
+                        // `cn` gộp lớp: `buttonVariants` trần để `border-transparent` gốc thắng viền outline.
+                        className={cn(buttonVariants({ variant: 'outline', size: 'sm' }))}
                       >
                         {r.fix}
                         <ChevronRightIcon data-icon="inline-end" aria-hidden="true" />

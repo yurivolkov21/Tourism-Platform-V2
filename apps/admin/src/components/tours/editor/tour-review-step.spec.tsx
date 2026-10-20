@@ -83,6 +83,9 @@ describe('TourReviewStep — danh sách kiểm tra', () => {
     expect(fix).toHaveAttribute('href', '/tours/ha-long-bay-cruise/itinerary#day-2');
     expect(fix).toHaveTextContent(r.fix);
     expect(screen.getAllByRole('link', { name: /^Fix/ })).toHaveLength(1);
+    // Viền nút outline (review A2): `buttonVariants` trần để `border-transparent` gốc thắng.
+    expect(fix).toHaveClass('border-border');
+    expect(fix).not.toHaveClass('border-transparent');
   });
 });
 

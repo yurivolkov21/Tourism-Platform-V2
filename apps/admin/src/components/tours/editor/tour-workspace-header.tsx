@@ -72,7 +72,9 @@ export function TourWorkspaceHeader({ detail }: { detail: AdminTourDetail }) {
           <Link
             href={departuresHref(detail.slug)}
             aria-current={onDepartures ? 'page' : undefined}
-            className={buttonVariants({ variant: 'outline' })}
+            // `cn` gộp lớp như `ButtonLink` cạnh nó: `buttonVariants` trần để `border-transparent`
+            // gốc thắng viền outline.
+            className={cn(buttonVariants({ variant: 'outline' }))}
           >
             <CalendarDaysIcon data-icon="inline-start" aria-hidden="true" />
             {t.tabs.departures}

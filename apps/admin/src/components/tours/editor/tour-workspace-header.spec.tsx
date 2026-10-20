@@ -46,6 +46,9 @@ describe('TourWorkspaceHeader', () => {
     const departures = () => screen.getByRole('link', { name: t.tabs.departures });
     expect(departures()).toHaveAttribute('href', '/tours/ha-long-bay-cruise/departures');
     expect(departures()).not.toHaveAttribute('aria-current');
+    // Viền nút outline như View on site cạnh nó (review A2): lớp phải được gộp.
+    expect(departures()).toHaveClass('border-border');
+    expect(departures()).not.toHaveClass('border-transparent');
 
     pathname = '/tours/ha-long-bay-cruise/departures';
     view.rerender(<TourWorkspaceHeader detail={detailFixture()} />);

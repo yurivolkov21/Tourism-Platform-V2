@@ -4,6 +4,7 @@ import { type ColumnVisibilityState, createColumnHelper, useTable } from '@tanst
 import { messages } from '@tourism/i18n';
 import { Badge } from '@tourism/ui/components/badge';
 import { buttonVariants } from '@tourism/ui/components/button';
+import { cn } from '@tourism/ui/lib/utils';
 import { CalendarRangeIcon, DollarSignIcon, ShoppingBagIcon, TagIcon } from 'lucide-react';
 import Link from 'next/link';
 import * as React from 'react';
@@ -172,7 +173,9 @@ const COLUMNS = columnHelper.columns([
       <Link
         href={row.original.departuresHref}
         aria-label={row.original.departuresLabel}
-        className={buttonVariants({ variant: 'outline', size: 'sm' })}
+        // `cn` gộp lớp như `Button` làm: `buttonVariants` trần giữ cả `border-transparent` gốc
+        // lẫn `border-border` của outline, và viền trong suốt thắng — link mất viền.
+        className={cn(buttonVariants({ variant: 'outline', size: 'sm' }))}
       >
         <CalendarRangeIcon data-icon="inline-start" aria-hidden="true" />
         {t.departuresAction}

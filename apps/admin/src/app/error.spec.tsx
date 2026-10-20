@@ -21,4 +21,12 @@ describe('error boundary của admin', () => {
     expect(retry).toHaveBeenCalledTimes(1);
     expect(reset).not.toHaveBeenCalled();
   });
+
+  // Review A2: `buttonVariants` trần trên `Link` để `border-transparent` gốc thắng viền outline.
+  it('link Sign in giữ viền nút outline', () => {
+    render(<AdminRouteError error={new Error('x')} retry={vi.fn()} reset={vi.fn()} />);
+    const signIn = screen.getByRole('link', { name: messages.admin.errors.signIn });
+    expect(signIn).toHaveClass('border-border');
+    expect(signIn).not.toHaveClass('border-transparent');
+  });
 });
