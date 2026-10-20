@@ -228,6 +228,11 @@ export class AccountService {
       // Cùng máy anonymize với job hằng ngày (một nguồn sự thật), chạy trong
       // CÙNG tx tombstone.
       await anonymizeEnquiriesOfUser(tx, userId);
+      // Hội thoại với trợ lý AI (review L1): user chỉ bị tombstone nên `onDelete: SetNull`
+      // không chạy, nội dung chat còn tới 30 ngày theo lịch dọn. Xoá hẳn, tin nhắn đi theo
+      // cascade. Token hôm nay của các tin này rời khỏi tổng trần chi tiêu ngày: chấp nhận,
+      // vì mỗi lần như vậy tốn một tài khoản đã xác minh email.
+      await tx.chatConversation.deleteMany({ where: { userId } });
       // GDPR erasure (NL-R1): xoá HẲN Subscriber trùng email. Account deletion là
       // quyền-được-xoá — mạnh hơn soft-unsubscribe của flow công khai; để lại thì
       // vẫn gửi marketing tới email của user đã xoá VÀ giữ PII email trong DB.

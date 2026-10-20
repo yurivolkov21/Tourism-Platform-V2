@@ -333,6 +333,26 @@ describe('DELETE /api/account đòi xác thực lại + gate nghiệp vụ (ADR-
     expect(after.authorName).toBe('');
   });
 
+  it('6c. hội thoại với trợ lý AI của user bị xoá cùng tin nhắn; hội thoại của khách vãng lai còn nguyên (review L1)', async () => {
+    // User chỉ bị tombstone nên `onDelete: SetNull` không bao giờ chạy: thiếu bước xoá thì
+    // nội dung chat (khách tự gõ, cả dữ liệu đơn trợ lý đọc ra, ADR-0050 AMEND 2) còn tới
+    // 30 ngày theo lịch dọn chat.
+    const email = 'chatty@example.com';
+    const { cookie, userId } = await createUserAndSignIn(email);
+    const payload = { id: 'm1', role: 'user', parts: [{ type: 'text', text: 'My phone is 0900' }] };
+    const mine = await prisma.chatConversation.create({
+      data: { userId, messages: { create: { seq: 0, role: 'USER', payload } } },
+    });
+    const guest = await prisma.chatConversation.create({
+      data: { messages: { create: { seq: 0, role: 'USER', payload } } },
+    });
+
+    expect((await deleteAccount(cookie, { password: PASSWORD })).statusCode).toBe(204);
+    expect(await prisma.chatConversation.count({ where: { id: mine.id } })).toBe(0);
+    expect(await prisma.chatMessage.count({ where: { conversationId: mine.id } })).toBe(0);
+    expect(await prisma.chatMessage.count({ where: { conversationId: guest.id } })).toBe(1);
+  });
+
   it('5. còn cancellation request đang REQUESTED → 409 ACCOUNT_HAS_OPEN_CANCELLATION', async () => {
     const email = 'open-cxl@example.com';
     const { cookie, userId } = await createUserAndSignIn(email);
