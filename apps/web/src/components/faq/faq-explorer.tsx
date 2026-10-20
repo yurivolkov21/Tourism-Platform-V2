@@ -47,6 +47,12 @@ export function FaqExplorer({
 }) {
   const [query, setQuery] = useState('');
   const groups = filterFaqCategories(categories, query);
+  // Icon gắn với NHÓM theo thứ tự gốc của catalogue, không theo vị trí sau khi lọc:
+  // tìm "visa" chỉ còn nhóm "Travelling in Vietnam", và đếm theo vị trí thì nó thành
+  // nhóm đầu và mang icon thẻ thanh toán của "Booking & payment".
+  const iconByTitle = new Map(
+    categories.map((category, index) => [category.title, CATEGORY_ICONS[index] ?? CompassIcon]),
+  );
 
   return (
     <div>
@@ -69,8 +75,8 @@ export function FaqExplorer({
         <p className="py-8 text-pretty text-muted-foreground">{noResults}</p>
       ) : (
         <div className="space-y-14">
-          {groups.map((group, groupIndex) => {
-            const Icon = CATEGORY_ICONS[groupIndex] ?? CompassIcon;
+          {groups.map((group) => {
+            const Icon = iconByTitle.get(group.title) ?? CompassIcon;
             return (
               <section key={group.title} id={slugify(group.title)} className="scroll-mt-28">
                 <div className="mb-5 flex items-center gap-3">
