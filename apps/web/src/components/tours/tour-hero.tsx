@@ -84,10 +84,10 @@ export function TourHero({ tour }: { tour: TourDetailVM }) {
             <ChevronRightIcon className="size-3.5 shrink-0" aria-hidden="true" />
             {/* Mắt xích cuối là chuyên mục, KHÔNG phải tên tour: tên tour đã là H1
                 ngay dưới, lặp lại là bắt trình đọc màn hình đọc hai lần. Nó cũng
-                dẫn tới một trang lọc CÓ THẬT. */}
+                dẫn tới một trang lọc CÓ THẬT — nên KHÔNG mang `aria-current`: trang
+                hiện tại là trang tour, không phải trang lọc ấy. */}
             <a
               href={`/tours?categories=${tour.category.slug}`}
-              aria-current="page"
               className="truncate text-foreground transition-colors hover:text-primary-emphasis"
             >
               {tour.category.name}

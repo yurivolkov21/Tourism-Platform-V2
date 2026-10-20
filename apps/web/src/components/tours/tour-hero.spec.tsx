@@ -131,3 +131,15 @@ describe('TourHero — giá bám đợt đang chọn', () => {
     expect(screen.queryByText(/\$119/)).toBeNull();
   });
 });
+
+describe('TourHero — breadcrumb', () => {
+  it('mắt xích chuyên mục là link tới trang lọc, KHÔNG mang aria-current="page"', () => {
+    // Trang hiện tại là trang tour, không phải trang lọc chuyên mục: aria-current
+    // ở đây làm trình đọc màn hình đọc "current page" cho một link dẫn đi nơi khác
+    // (review L2, 20/10).
+    render(<TourHero tour={TOUR} />);
+    const crumb = screen.getByRole('link', { name: 'Beach' });
+    expect(crumb).toHaveAttribute('href', '/tours?categories=beach');
+    expect(crumb).not.toHaveAttribute('aria-current');
+  });
+});
