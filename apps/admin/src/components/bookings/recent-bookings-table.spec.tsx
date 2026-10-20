@@ -25,6 +25,8 @@ const ROW: BookingRowVM = {
   departure: '14 Sep 2026 – 20 Sep 2026',
   href: '/bookings/NX-ABC123',
   createdAt: '29 Aug 2026, 02:05 UTC',
+  createdDate: '29 Aug 2026',
+  createdTime: '02:05 UTC',
 };
 
 describe('RecentBookingsTable', () => {

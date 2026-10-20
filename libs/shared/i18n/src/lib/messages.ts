@@ -4656,6 +4656,11 @@ export const messages = {
           guests: 'Guests',
           amount: 'Amount',
           customer: 'Customer',
+          /**
+           * Ngày ĐẶT (review A1-18, 20/10): bộ lọc ngày lọc theo mốc này, nên bảng phải in nó cạnh
+           * ngày đi. Cùng chữ với cột của bảng đơn gần đây ở dashboard.
+           */
+          created: 'Created',
         },
         /**
          * Bộ lọc khoảng ngày + nút export (spec P4b §3-F6). Ngày lọc theo
