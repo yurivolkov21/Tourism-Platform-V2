@@ -77,12 +77,23 @@ export function formatTripDates(start: string, end: string): string {
  */
 export function formatDateTime(iso: string | null): string {
   if (!iso) return t.detail.empty;
+  const { date, time } = formatUtcParts(iso);
+  return `${date}, ${time}`;
+}
+
+/**
+ * Hai mảnh của `formatDateTime`: `{ date: "30 Aug 2026", time: "09:30 UTC" }`. Cả phần ngày cũng
+ * theo UTC, cùng thước với bộ lọc ngày của `/bookings`. Ô Created hai dòng của bảng ấy (review
+ * A1-18) đọc ở đây để không tự cắt chuỗi đã ghép.
+ */
+export function formatUtcParts(iso: string): { date: string; time: string } {
   const date = new Date(iso);
-  const day = date.getUTCDate();
-  const month = MONTHS[date.getUTCMonth()];
   const hh = String(date.getUTCHours()).padStart(2, '0');
   const mm = String(date.getUTCMinutes()).padStart(2, '0');
-  return `${day} ${month} ${date.getUTCFullYear()}, ${hh}:${mm} UTC`;
+  return {
+    date: `${date.getUTCDate()} ${MONTHS[date.getUTCMonth()]} ${date.getUTCFullYear()}`,
+    time: `${hh}:${mm} UTC`,
+  };
 }
 
 /** Phần booking mà hai hàm khách bên dưới cần — nhận subset để test gọn. */
@@ -147,10 +158,16 @@ export interface BookingRowVM {
   /**
    * Lúc booking được TẠO, đã format ("29 Aug 2026, 02:05 UTC"). Bảng "Recent
    * bookings" của dashboard (ADR-0036 §3) in cột này vì "gần nhất" cần một
-   * con dấu thời gian mới đọc được; `/bookings` chưa hiện nó — thêm khi có
-   * nhu cầu, không phải ở đây.
+   * con dấu thời gian mới đọc được.
    */
   createdAt: string;
+  /**
+   * Cùng mốc ấy tách hai dòng ("29 Aug 2026" và "02:05 UTC") cho cột Created của `/bookings`
+   * (review A1-18): một dòng rộng chừng 170px làm bảng tràn ngang ở màn 1366px, hai dòng chỉ cần
+   * chừng 100px.
+   */
+  createdDate: string;
+  createdTime: string;
 }
 
 /** Booking của contract → hàng bảng đã format sẵn (server component gọi). */
@@ -160,6 +177,7 @@ export interface BookingRowVM {
  * dựng một `BookingsQuery` giả chỉ để thoả chữ ký (vòng vá review 05/09).
  */
 export function toBookingRow(booking: Booking, query?: BookingsQuery): BookingRowVM {
+  const created = formatUtcParts(booking.createdAt);
   return {
     code: booking.code,
     tourTitle: booking.tourTitle,
@@ -176,5 +194,7 @@ export function toBookingRow(booking: Booking, query?: BookingsQuery): BookingRo
     // nhả filter. Chi tiết luật ở `bookingDetailHref`.
     href: query ? bookingDetailHref(query, booking.code) : `/bookings/${booking.code}`,
     createdAt: formatDateTime(booking.createdAt),
+    createdDate: created.date,
+    createdTime: created.time,
   };
 }

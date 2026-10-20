@@ -8,6 +8,7 @@ import {
   formatDateTime,
   formatGuests,
   formatTripDates,
+  formatUtcParts,
   guestCount,
   statusBadgeVariant,
   toBookingRow,
@@ -99,6 +100,22 @@ describe('formatDateTime', () => {
   });
 });
 
+describe('formatUtcParts', () => {
+  it('tách mốc thành ngày và giờ UTC — hai dòng của ô Created ở /bookings (review A1-18)', () => {
+    expect(formatUtcParts('2026-09-05T00:07:00.000Z')).toEqual({
+      date: '5 Sep 2026',
+      time: '00:07 UTC',
+    });
+  });
+
+  it('cả phần NGÀY cũng theo UTC, cùng thước với bộ lọc ngày: 06:30 giờ Việt Nam ngày 2/10 là 1/10', () => {
+    expect(formatUtcParts('2026-10-02T06:30:00+07:00')).toEqual({
+      date: '1 Oct 2026',
+      time: '23:30 UTC',
+    });
+  });
+});
+
 describe('guestCount', () => {
   it('khách = người lớn + trẻ em', () => {
     expect(guestCount({ numAdults: 2, numChildren: 1 })).toBe(3);
@@ -142,6 +159,8 @@ describe('toBookingRow', () => {
       departure: '14 Sep 2026 – 20 Sep 2026',
       href: '/bookings/NX-ABC123?status=PAID&from=2026-07-01&to=2026-07-31&page=2',
       createdAt: '29 Aug 2026, 02:05 UTC',
+      createdDate: '29 Aug 2026',
+      createdTime: '02:05 UTC',
     });
   });
 

@@ -32,6 +32,8 @@ function row(code: string, name: string): BookingRowVM {
     departure: '24 Sep 2026',
     href: `/bookings/${code}`,
     createdAt: '20 Sep 2026, 08:00 UTC',
+    createdDate: '20 Sep 2026',
+    createdTime: '08:00 UTC',
   };
 }
 
