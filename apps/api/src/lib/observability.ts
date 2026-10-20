@@ -55,10 +55,21 @@ export function captureException(error: unknown): void {
 /**
  * `beforeSend`: request chỉ giữ method và đường dẫn. Query string (tra đơn bằng email),
  * header (cookie phiên, Authorization), body và `user` đều có thể chở dữ liệu khách, mà
- * xem một lỗi 500 thì không cần chúng.
+ * xem một lỗi 500 thì không cần chúng. Message lỗi validation của Prisma cũng qua lọc
+ * (xem `scrubPrismaValidation`).
  */
 export function scrubEvent(event: ErrorEvent): ErrorEvent {
   const { user: _user, request, ...rest } = event;
+  if (rest.exception?.values) {
+    rest.exception = {
+      ...rest.exception,
+      values: rest.exception.values.map((value) =>
+        value.type === 'PrismaClientValidationError' && value.value
+          ? { ...value, value: scrubPrismaValidation(value.value) }
+          : value,
+      ),
+    };
+  }
   if (!request) return rest;
   return {
     ...rest,
@@ -67,6 +78,17 @@ export function scrubEvent(event: ErrorEvent): ErrorEvent {
       ...(request.url ? { url: request.url.split('?')[0] } : {}),
     },
   };
+}
+
+/**
+ * Message của `PrismaClientValidationError` in nguyên tham số câu truy vấn (email, tên
+ * khách) thành một khối giữa dòng đầu và dòng lý do (đo trên Prisma 7.8, review F1-11).
+ * Chỉ giữ đoạn đầu (model và hàm gọi) và đoạn cuối (trường nào sai kiểu gì).
+ */
+function scrubPrismaValidation(message: string): string {
+  const paragraphs = message.trim().split(/\n\s*\n/);
+  if (paragraphs.length < 3) return message;
+  return `${paragraphs[0]} ${paragraphs.at(-1)}`;
 }
 
 /** `beforeBreadcrumb`: bỏ dòng console (log có thể chở email, tên khách), giữ loại khác. */
