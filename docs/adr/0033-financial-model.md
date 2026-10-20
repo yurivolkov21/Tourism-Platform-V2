@@ -363,6 +363,32 @@ date)") chứ không tự suy lại từ `generatedAt` — bài học bản ché
 rác, rơi về tháng hiện tại như tháng trước mốc 01/2026 — menu tháng chưa bao giờ
 bày tháng tương lai.
 
+## AMEND 4 20/10 (review A1) — hai bộ đếm huỷ chỉ đếm lượt KHÁCH huỷ
+
+**Chỗ sót.** AMEND 2 cho `cancellationsWithinDeadline` và
+`cancellationsAfterDeadline` đếm mọi yêu cầu `REFUNDED` có `decided_at` trong
+kỳ. Lúc viết, chỉ khách tự huỷ sinh ra dòng như vậy. Từ F13 (P4e-1), công ty huỷ
+chuyến cũng ghi một yêu cầu `REFUNDED` cho từng đơn đã trả (`cancelByOperator`,
+`decided_by` là admin huỷ chuyến), mà hạn chót không áp cho lượt ấy: khách được
+hoàn trọn dù job chạy lúc nào (`docs/conventions/booking-states.md`). Hai bộ đếm
+vì vậy xếp lượt công ty huỷ theo ngày job chạy. Huỷ một chuyến ba ngày trước
+ngày đi với sáu đơn đã trả thì báo cáo ghi "Cancelled after the deadline: 6",
+ngay trên câu định nghĩa "after the deadline means no automatic refund", trong
+khi cả sáu đơn đã được hoàn đủ. Seed không có lượt công ty huỷ nào mang yêu cầu
+huỷ (review F2-04), nên lỗi chỉ hiện từ lần huỷ chuyến thật đầu tiên.
+
+**Quyết định.** Hai bộ đếm chỉ đếm yêu cầu `REFUNDED` do CHÍNH khách quyết
+(`decided_by = user_id`), cùng phép so với cờ `decidedByCustomer` mà trang chi
+tiết đơn của admin in thành "By the customer". Lượt công ty huỷ không vào bộ
+đếm nào; tiền của nó vẫn nằm ở `refundedTotal` và `refunds` của tháng. Không
+thêm bộ đếm thứ ba cho lượt công ty huỷ: việc ấy đổi contract, bản in và file
+Excel, ngoài tầm một đợt sửa lỗi. Câu chú giải đổi "Cancellations" thành
+"Customer cancellations" để tờ báo cáo tự nói phạm vi.
+
+**Cái giá.** Yêu cầu `REFUNDED` do admin duyệt của luồng duyệt CŨ cũng ra khỏi
+hai bộ đếm, ngược câu cuối của AMEND 2. Prod không còn dòng nào như vậy từ lượt
+seed lại 18/09, nên con số thật không đổi.
+
 ## Hình dạng câu trả lời
 
 `AdminMonthlyReportSchema` mọc thêm (mọi tiền là `DecimalStringSchema`):

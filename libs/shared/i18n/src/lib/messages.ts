@@ -4404,7 +4404,10 @@ export const messages = {
         newBookings: 'New bookings',
         refundedTotal: 'Refunds paid out',
         refunds: 'Refund payments',
-        /** ADR-0041 §9: đếm theo ngày huỷ, xếp loại theo hạn chót của chuyến (giờ Việt Nam). */
+        /**
+         * ADR-0041 §9: đếm theo ngày huỷ, xếp loại theo hạn chót của chuyến (giờ Việt Nam). Chỉ
+         * lượt KHÁCH tự huỷ — công ty huỷ chuyến không áp hạn chót (ADR-0033 AMEND 4).
+         */
         cancellationsWithinDeadline: 'Cancelled within the deadline',
         cancellationsAfterDeadline: 'Cancelled after the deadline',
         reviewsApproved: 'Reviews approved',
@@ -4423,9 +4426,12 @@ export const messages = {
           'Per-traveller costs follow the travellers who went, including anyone given a full goodwill refund; per-departure costs are charged once for each departure that ran with at least one traveller, whether it sold out or not.',
         netProfit:
           'Net profit is after cost of sales, tax and payment fees. It does not include salaries, rent or marketing.',
-        /** ADR-0041 §9 — câu cho cặp bộ đếm huỷ ở bảng vận hành. */
+        /**
+         * ADR-0041 §9 — câu cho cặp bộ đếm huỷ ở bảng vận hành. "Customer" là phạm vi thật của hai
+         * bộ đếm (ADR-0033 AMEND 4): lượt công ty huỷ chuyến hoàn trọn và chỉ nằm ở dòng hoàn tiền.
+         */
         cancellations:
-          'Cancellations are counted on the day they were made. Within the deadline means on or before the free-cancellation deadline of the trip (Vietnam time), with the unrefunded balance returned; after the deadline means no automatic refund.',
+          'Customer cancellations are counted on the day they were made. Within the deadline means on or before the free-cancellation deadline of the trip (Vietnam time), with the unrefunded balance returned; after the deadline means no automatic refund.',
       },
       /**
        * Chữ RIÊNG của bản in báo cáo tháng C2 (G40 Phần 2, spec 2026-10-10 §5). Tên khối là

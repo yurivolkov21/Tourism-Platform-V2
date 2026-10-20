@@ -52,6 +52,7 @@ describe('admin monthly report integration (F6)', () => {
   let adminCookie: string;
   let customerCookie: string;
   let customerId: string;
+  let adminId: string;
 
   const future45 = new Date(Date.now() + 45 * DAY);
   const dep = {
@@ -149,6 +150,7 @@ describe('admin monthly report integration (F6)', () => {
       }),
     );
     customerId = (await prisma.user.findUniqueOrThrow({ where: { email: CUSTOMER_EMAIL } })).id;
+    adminId = (await prisma.user.findUniqueOrThrow({ where: { email: ADMIN_EMAIL } })).id;
   });
 
   beforeEach(async () => {
@@ -443,6 +445,11 @@ describe('admin monthly report integration (F6)', () => {
       };
     }
 
+    /**
+     * Yêu cầu huỷ của khách. Dòng đã quyết mặc định do CHÍNH khách quyết, đúng
+     * hình dạng lõi huỷ ghi khi khách tự huỷ (ADR-0041 §4); `decidedById` khác
+     * là đường công ty huỷ chuyến (F13), nơi `decided_by` là admin.
+     */
     function cancellation(
       n: number,
       row: {
@@ -450,6 +457,7 @@ describe('admin monthly report integration (F6)', () => {
         status: CancellationRequestStatus;
         createdAt: string;
         decidedAt: string | null;
+        decidedById?: string;
       },
     ): Prisma.CancellationRequestCreateManyInput {
       return {
@@ -460,6 +468,7 @@ describe('admin monthly report integration (F6)', () => {
         status: row.status,
         createdAt: at(row.createdAt),
         decidedAt: row.decidedAt === null ? null : at(row.decidedAt),
+        decidedById: row.decidedAt === null ? null : (row.decidedById ?? customerId),
       };
     }
 
@@ -544,6 +553,40 @@ describe('admin monthly report integration (F6)', () => {
       expect(may.cancellationsWithinDeadline + may.cancellationsAfterDeadline).toBe(3);
       const april = await report('2026-04');
       expect(april.cancellationsWithinDeadline + april.cancellationsAfterDeadline).toBe(0);
+    });
+
+    it('công ty huỷ chuyến (decided_by là admin) không vào hai bộ đếm hạn chót của khách', async () => {
+      // Lõi huỷ đường công ty cũng ghi một yêu cầu REFUNDED, nhưng hạn chót không áp cho
+      // nó (booking-states.md: hoàn trọn, KHÔNG xét hạn chót). Một ca rơi sau ngày chót,
+      // một ca trước ngày chót — xếp vào bộ đếm nào cũng là kể sai chuyện khách huỷ.
+      await prisma.booking.createMany({
+        data: [
+          tripBooking(27, BookingStatus.CANCELLED, '2026-05-20', '2026-05-21'),
+          tripBooking(28, BookingStatus.CANCELLED, '2026-05-26', '2026-05-26'),
+        ],
+      });
+      await prisma.cancellationRequest.createMany({
+        data: [
+          cancellation(7, {
+            bookingN: 27,
+            status: CancellationRequestStatus.REFUNDED,
+            createdAt: '2026-05-18T03:00:00.000Z',
+            decidedAt: '2026-05-18T03:00:00.000Z',
+            decidedById: adminId,
+          }),
+          cancellation(8, {
+            bookingN: 28,
+            status: CancellationRequestStatus.REFUNDED,
+            createdAt: '2026-05-10T03:00:00.000Z',
+            decidedAt: '2026-05-10T03:00:00.000Z',
+            decidedById: adminId,
+          }),
+        ],
+      });
+
+      const may = await report('2026-05');
+      expect(may.cancellationsWithinDeadline).toBe(1);
+      expect(may.cancellationsAfterDeadline).toBe(2);
     });
   });
 

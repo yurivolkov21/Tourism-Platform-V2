@@ -40,7 +40,7 @@ thay, cột đã xoá, và số AMEND để biết phải đọc tới cuối fi
 | [0030](0030-refund-policy-tiers.md) | Chính sách hoàn tiền theo bậc | **thay một phần** bởi [0041](0041-single-cancellation-deadline.md) — phần còn hiệu lực ghi ở đầu ADR |
 | [0031](0031-review-rejection.md) | Từ chối đánh giá là quyết định chung cuộc | AMEND 28/09: lý do chọn từ danh sách |
 | [0032](0032-review-author-edit.md) | Tác giả sửa lại đánh giá bị bác, có trần vòng lặp | 2 AMEND |
-| [0033](0033-financial-model.md) | Báo cáo có kết quả kinh doanh, không chỉ dòng tiền | định nghĩa doanh thu sửa ở [0041](0041-single-cancellation-deadline.md) §9 · 3 AMEND (tháng đang chạy chỉ ghi nhận chuyến đã kết thúc) |
+| [0033](0033-financial-model.md) | Báo cáo có kết quả kinh doanh, không chỉ dòng tiền | định nghĩa doanh thu sửa ở [0041](0041-single-cancellation-deadline.md) §9 · 4 AMEND (AMEND 3: tháng đang chạy chỉ ghi nhận chuyến đã kết thúc · AMEND 4, 20/10: hai bộ đếm huỷ chỉ đếm lượt khách huỷ) |
 | [0034](0034-excel-report-export.md) | Báo cáo tháng xuất Excel; từ AMEND 3 (10/10) danh sách cũng xuất Excel thay CSV | 3 AMEND |
 | [0035](0035-media-lifecycle.md) | Ảnh có đường chết, đi qua hàng đợi có độ trễ | 4 AMEND (từ AMEND 4, 19/10: hàng dọn có màn chỉ đọc, handler trả báo cáo; Giới hạn #5 và #6 đóng) |
 | [0036](0036-dashboard-daily-series.md) | Dashboard nối số thật bằng một chuỗi theo ngày | 2 AMEND |
