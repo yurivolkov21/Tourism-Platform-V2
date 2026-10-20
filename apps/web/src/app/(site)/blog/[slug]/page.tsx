@@ -43,6 +43,9 @@ export async function generateMetadata({
   return {
     title: messages.pageMeta.withBrand(post.title),
     ...(post.excerpt ? { description: post.excerpt } : {}),
+    // Canonical: cùng khuôn `/tours/[slug]` (thụt lùi so với Nexora, ghi ở bản đối
+    // chiếu 27/07 — "mẫu blog bỏ sót").
+    alternates: { canonical: `/blog/${post.slug}` },
     openGraph: {
       title: post.title,
       ...(post.excerpt ? { description: post.excerpt } : {}),

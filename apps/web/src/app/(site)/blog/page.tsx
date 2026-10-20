@@ -16,7 +16,11 @@ export const metadata: Metadata = {
   description: messages.pageMeta.blog.description,
   // Khai báo feed để trình duyệt/trình đọc feed tự phát hiện được — không thì
   // /blog/rss.xml tồn tại nhưng không ai tìm ra.
+  // Canonical: cùng lý do /tours và /destinations — mọi biến thể `?topic=`,
+  // `?place=`, `?q=`, `?page=` là cùng một trang với crawler (thụt lùi so với
+  // Nexora, ghi ở bản đối chiếu 27/07).
   alternates: {
+    canonical: '/blog',
     types: { 'application/rss+xml': '/blog/rss.xml' },
   },
 };
