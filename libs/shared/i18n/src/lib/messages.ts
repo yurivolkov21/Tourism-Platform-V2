@@ -6259,6 +6259,12 @@ export const messages = {
         uploadedGone:
           'The current photo was uploaded for this slot. It is deleted from storage after 7 days and can’t be picked again.',
         kept: 'Nothing is deleted. The current photo can be picked again from the library.',
+        /**
+         * Nguồn OTHER: ảnh không còn dòng điểm đến nào (vd điểm đến đã gỡ ảnh mượn ấy), nên không
+         * hứa chọn lại được. Không nói "không xoá": ảnh điểm đến tự tải lên mà bị gỡ thì đã vào lại
+         * hàng dọn, khe buông ra là bộ dọn xoá nó.
+         */
+        notInLibrary: 'The current photo isn’t in the library, so it can’t be picked again.',
         empty: 'The slot has no photo now, so the site shows a placeholder until you restore it.',
         submit: 'Restore original',
         submitting: 'Restoring…',

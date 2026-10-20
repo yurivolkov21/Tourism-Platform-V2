@@ -19,11 +19,19 @@ import {
 /**
  * Restore original (spec P4f Appearance §6.1, plan 19/10): khe về ảnh gốc của bảng ảnh gốc và alt
  * gốc, qua hộp xác nhận chứ không mở hộp Replace — lệnh đã biết hết tham số, chỉ còn hỏi "chắc
- * chưa". Câu hệ quả đổi theo ảnh đang dùng: ảnh tải lên cho khe sẽ bị xoá sau 7 ngày (giọng đỏ),
- * còn lại không mất gì (giọng trung tính).
+ * chưa". Câu hệ quả đổi theo ảnh đang dùng: ảnh tải lên cho khe sẽ bị xoá sau 7 ngày (giọng đỏ);
+ * ảnh thư viện vẫn chọn lại được, ảnh không còn ở thư viện thì không (giọng trung tính).
  */
 const t = messages.admin.appearance;
 const r = t.restoreDialog;
+
+/** Câu hệ quả theo ảnh đang dùng — chỉ ảnh thư viện mới chọn lại được sau khi về ảnh gốc. */
+function restoreWarning(image: SlotVM['image']): string {
+  if (image === null) return r.empty;
+  if (image.source === 'UPLOAD') return r.uploadedGone;
+  if (image.source === 'OTHER') return r.notInLibrary;
+  return r.kept;
+}
 
 export function RestoreOriginalAction({
   slot,
@@ -42,7 +50,7 @@ export function RestoreOriginalAction({
   if (!slot.canRestore) return null;
 
   const uploaded = slot.image?.source === 'UPLOAD';
-  const warning = uploaded ? r.uploadedGone : slot.image === null ? r.empty : r.kept;
+  const warning = restoreWarning(slot.image);
 
   return (
     <>

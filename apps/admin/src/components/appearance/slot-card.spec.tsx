@@ -123,6 +123,24 @@ describe('SlotCard', () => {
     expect(within(dialog).getByText(t.restoreDialog.uploadedGone)).toBeInTheDocument();
   });
 
+  it('Restore original khi ảnh đang dùng không còn ở thư viện (Other photo): không hứa chọn lại được', async () => {
+    // Ca thật: khe mượn ảnh của một điểm đến, rồi điểm đến gỡ ảnh ấy ra (hay bị xoá). Ảnh vẫn
+    // hiện trên web, nhưng không còn đường nào chọn lại nó sau khi về ảnh gốc.
+    const user = userEvent.setup();
+    renderCard(
+      siteSlotFixture('cta-band', {
+        image: slotImage('cta-band', {
+          publicId: 'tourism/destinations/7a1b2c3d-0000-4000-8000-0000000000d1/lanterns',
+          source: 'OTHER',
+        }),
+      }),
+    );
+    await user.click(screen.getByRole('button', { name: t.restoreLabel('Home · Closing banner') }));
+    const dialog = await screen.findByRole('dialog');
+    expect(within(dialog).getByText(t.restoreDialog.notInLibrary)).toBeInTheDocument();
+    expect(within(dialog).queryByText(t.restoreDialog.kept)).not.toBeInTheDocument();
+  });
+
   it('Restore original gặp STALE_SLOT: đóng hộp, toast lỗi, tải lại thẻ', async () => {
     const setSlot = vi.fn<SetSlotAction>(async () => ({ ok: false, code: 'STALE_SLOT' }));
     const user = userEvent.setup();
