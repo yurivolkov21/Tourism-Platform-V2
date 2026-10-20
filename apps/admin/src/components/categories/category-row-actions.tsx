@@ -4,7 +4,7 @@ import { messages } from '@tourism/i18n';
 import { Button } from '@tourism/ui/components/button';
 import { ArrowDownIcon, ArrowUpIcon, EyeIcon, EyeOffIcon, PencilIcon } from 'lucide-react';
 import type * as React from 'react';
-import { useState } from 'react';
+import { useLayoutEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { useCanAccess } from '@/components/admin-access-provider';
 import { CategoryFormDialog } from '@/components/categories/category-form-dialog';
@@ -96,7 +96,34 @@ export function CategoryRowActions({
   // trống — không hàng nào của Staff có nút ấy, nên cụm nút vẫn thẳng cột.
   const mayDelete = useCanAccess('categories.delete');
 
+  const upButton = useRef<HTMLButtonElement>(null);
+  const downButton = useRef<HTMLButtonElement>(null);
+  /**
+   * Mũi tên vừa bấm khi nó đang giữ focus — bảng hết bận thì trả focus về nó (review A3-03). Hai
+   * chỗ đẩy focus bàn phím về `<body>` giữa chừng (đo Chromium 141, 20/10): mũi tên khoá
+   * `disabled` thật lúc bảng bận, và lượt làm mới dời hàng trong DOM (`insertBefore` gỡ phần tử
+   * đang giữ focus). Không trả thì người dùng bàn phím phải Tab lại từ đầu trang sau mỗi cú bấm.
+   */
+  const refocus = useRef<'up' | 'down' | null>(null);
+
+  // Chạy khi bảng hết bận — lượt làm mới mang thứ tự mới về cùng lượt vẽ ấy.
+  useLayoutEffect(() => {
+    const direction = refocus.current;
+    if (disabled || direction === null) return;
+    refocus.current = null;
+    // Người dùng đã tự đi chỗ khác trong lúc chờ thì không giành focus về.
+    const active = document.activeElement;
+    if (active !== null && active !== document.body) return;
+    // Hàng vừa chạm biên thì mũi tên ấy tắt thật — focus về mũi tên còn lại của chính hàng.
+    const stillMovable = direction === 'up' ? row.canMoveUp : row.canMoveDown;
+    const pressed = direction === 'up' ? upButton : downButton;
+    const other = direction === 'up' ? downButton : upButton;
+    (stillMovable ? pressed : other).current?.focus();
+  }, [disabled, row.canMoveUp, row.canMoveDown]);
+
   async function runMove(direction: 'up' | 'down') {
+    const arrow = direction === 'up' ? upButton.current : downButton.current;
+    refocus.current = arrow !== null && document.activeElement === arrow ? direction : null;
     onMoveStart();
     try {
       const result = await move({ id: row.id, direction });
@@ -105,6 +132,10 @@ export function CategoryRowActions({
       if (!result.ok) {
         toast.error(moveErrorCopy(result.code));
       }
+    } catch {
+      // Action ném (mạng đứt, redeploy) ⇒ không biết lệnh đã đi tới đâu — cùng luật
+      // `useConfirmWrite`: coi như GENERIC, và lượt làm mới cho thấy thứ tự thật (review A3-01).
+      toast.error(moveErrorCopy('GENERIC'));
     } finally {
       onSettled();
     }
@@ -113,6 +144,7 @@ export function CategoryRowActions({
   return (
     <div className="flex items-center justify-end gap-1">
       <Button
+        ref={upButton}
         type="button"
         variant="ghost"
         size="icon"
@@ -123,6 +155,7 @@ export function CategoryRowActions({
         <ArrowUpIcon aria-hidden="true" />
       </Button>
       <Button
+        ref={downButton}
         type="button"
         variant="ghost"
         size="icon"
