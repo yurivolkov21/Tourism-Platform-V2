@@ -274,6 +274,39 @@ describe('BookingActions — hành động thật (code, không có onAction)', 
     expect(refresh).not.toHaveBeenCalled();
   });
 
+  it('payNow gặp NOT_PENDING (webhook vừa đưa đơn sang PAID, hay câu quét vừa huỷ) → câu "đơn vừa đổi trạng thái" và làm mới trang (review L3-18)', async () => {
+    checkout.mockRejectedValueOnce(new ORPCError('NOT_PENDING', { status: 422 }));
+    const user = userEvent.setup();
+    const view: BookingView = { tone: 'warning', statusKey: 'PENDING', actions: ['payNow'] };
+    render(<BookingActions view={view} code={CODE} />);
+
+    await user.click(screen.getByRole('button', { name: 'Pay now' }));
+
+    expect(
+      await screen.findByText(
+        'This booking’s status has just changed, so we’ve refreshed the page.',
+      ),
+    ).toBeInTheDocument();
+    expect(refresh).toHaveBeenCalledTimes(1);
+  });
+
+  it('cancelPending gặp NOT_PENDING (đơn vừa được trả ở tab khác) → câu "đơn vừa đổi trạng thái" trong hộp và làm mới trang (review M3-12)', async () => {
+    cancelPending.mockRejectedValueOnce(new ORPCError('NOT_PENDING', { status: 422 }));
+    const user = userEvent.setup();
+    const view: BookingView = { tone: 'warning', statusKey: 'PENDING', actions: ['cancelPending'] };
+    render(<BookingActions view={view} code={CODE} />);
+
+    await user.click(screen.getByRole('button', { name: 'Cancel booking' }));
+    await user.click(screen.getByRole('button', { name: 'Yes, cancel it' }));
+
+    expect(
+      await screen.findByText(
+        'This booking’s status has just changed, so we’ve refreshed the page.',
+      ),
+    ).toBeInTheDocument();
+    expect(refresh).toHaveBeenCalledTimes(1);
+  });
+
   it('cancelPending → confirm → gọi bookings.cancelPending({code}), thành công → toast + refresh', async () => {
     cancelPending.mockResolvedValueOnce({});
     const user = userEvent.setup();

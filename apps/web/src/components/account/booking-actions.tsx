@@ -47,6 +47,7 @@ type ActionErrorKind =
   | 'refundFailed'
   | 'refundChanged'
   | 'notCancellable'
+  | 'notPending'
   | 'bookingClosed'
   | 'generic';
 
@@ -56,6 +57,7 @@ function classifyActionError(error: unknown): ActionErrorKind {
     if (error.code === 'REFUND_FAILED') return 'refundFailed';
     if (error.code === 'REFUND_AMOUNT_CHANGED') return 'refundChanged';
     if (error.code === 'NOT_CANCELLABLE') return 'notCancellable';
+    if (error.code === 'NOT_PENDING') return 'notPending';
     if (error.code === 'DEPARTURE_NOT_AVAILABLE') return 'bookingClosed';
   }
   return classifySubmitError(error) === 'throttle' ? 'throttle' : 'generic';
@@ -73,6 +75,8 @@ function errorCopy(kind: ActionErrorKind): string {
       return e.refundChanged;
     case 'notCancellable':
       return e.notCancellable;
+    case 'notPending':
+      return e.notPending;
     case 'bookingClosed':
       return e.bookingClosed;
     default:
@@ -349,9 +353,12 @@ export function BookingActions({
       setErrorKind(kind);
       setErrorAt(action);
       // Server nói booking không còn huỷ online được (đã huỷ ở tab khác, đã tới
-      // ngày khởi hành), hoặc số hoàn đã đổi: đọc lại trang để nút, trạng thái và
-      // con số trong hộp xác nhận khớp sự thật.
-      if (kind === 'notCancellable' || kind === 'refundChanged') router.refresh();
+      // ngày khởi hành), đơn không còn chờ trả (webhook vừa đưa sang PAID, câu quét
+      // vừa huỷ — "Pay now" và huỷ giữ chỗ), hoặc số hoàn đã đổi: đọc lại trang để
+      // nút, trạng thái và con số trong hộp xác nhận khớp sự thật.
+      if (kind === 'notCancellable' || kind === 'notPending' || kind === 'refundChanged') {
+        router.refresh();
+      }
     } finally {
       setPending(false);
     }

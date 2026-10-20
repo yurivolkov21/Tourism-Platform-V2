@@ -3854,6 +3854,11 @@ export const messages = {
       'The refund for this booking has changed since you opened this page. Check the new amount and confirm again.',
     /** 400 `DEPARTURE_NOT_AVAILABLE` ở "Pay now" và ở wizard đặt chỗ — chuyến đã qua hạn đặt (ADR-0041 §3). */
     bookingClosed: 'Booking for this departure has closed.',
+    /**
+     * 422 `NOT_PENDING` ở "Pay now" và huỷ giữ chỗ — đơn không còn chờ trả (webhook vừa đưa sang
+     * PAID, câu quét vừa huỷ, hay tab khác vừa huỷ); trang tự đọc lại (review L3-18, M3-12).
+     */
+    notPending: 'This booking’s status has just changed, so we’ve refreshed the page.',
     sessionExpired: 'Your session has expired.',
     loginLink: 'Log in again',
   },
