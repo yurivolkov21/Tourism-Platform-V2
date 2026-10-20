@@ -427,8 +427,8 @@ export const contract = {
   },
   /**
    * Form liên hệ công khai (spec §4.3) — endpoint GHI đầu tiên khách CHƯA
-   * đăng nhập gọi được (`@Public()` trên controller, ADR-0003), có
-   * `@UseGuards(ThrottlerGuard)` riêng chống spam (`PUBLIC_WRITE_THROTTLE`).
+   * đăng nhập gọi được (`@Public()` trên controller, ADR-0003), chống spam
+   * bằng trần ghi công khai của guard toàn cục (`PUBLIC_WRITE_THROTTLE`, ADR-0037).
    *
    * Giữ mặc định 200 của oRPC (KHÔNG khai `successStatus: 201`) — mọi
    * endpoint create khác trong repo (bookings, reviews, wishlist) đều 200,

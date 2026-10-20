@@ -10,8 +10,9 @@ import { EnquiriesService, TourNotFoundError } from './enquiries.service.js';
 
 // Form liên hệ công khai: khách chưa đăng nhập PHẢI gửi được (ADR-0003) —
 // AuthGuard chạy toàn cục nên thiếu @Public() ở đây là 401 chết form ngay.
-// ThrottlerGuard riêng (PUBLIC_WRITE_THROTTLE, config/throttle.ts) chống spam
-// vì endpoint này không có auth để dựa vào.
+// Chống spam: guard toàn cục `DefaultThrottlerGuard` (ADR-0037) áp
+// PUBLIC_WRITE_THROTTLE (5/60s theo IP, config/throttle.ts) cho POST công khai
+// — endpoint này không có auth để dựa vào.
 @Public()
 @Controller()
 export class EnquiriesController {

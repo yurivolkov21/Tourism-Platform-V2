@@ -19,10 +19,10 @@ export class NewsletterController {
 
   constructor(private readonly newsletter: NewsletterService) {}
 
-  // ThrottlerGuard riêng (PUBLIC_WRITE_THROTTLE, config/throttle.ts) chống
-  // spam — gắn ở METHOD (không phải class) vì chỉ áp cho endpoint GHI công
-  // khai, cùng khuôn với EnquiriesController. `unsubscribeConfirm` (GET) bên
-  // dưới cố ý KHÔNG có guard này — đọc thuần, không cần trần tần suất.
+  // Trần tần suất KHÔNG khai ở đây: guard toàn cục `DefaultThrottlerGuard`
+  // (ADR-0037) tự áp PUBLIC_WRITE_THROTTLE (5/60s theo IP) cho mọi POST công
+  // khai của controller này, và trần đọc công khai cho GET như
+  // `unsubscribeConfirm` bên dưới (config/throttle.ts).
   @Implement(contract.newsletter.subscribe)
   subscribe() {
     return implement(contract.newsletter.subscribe).handler(async ({ input }) => {
