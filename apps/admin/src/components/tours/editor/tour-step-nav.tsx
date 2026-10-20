@@ -37,7 +37,7 @@ export function TourStepNav({ slug, steps }: { slug: string; steps: readonly Tou
       <nav aria-label={t.tabsLabel} className="rounded-xl border bg-card px-4 py-3 sm:px-8">
         <ol className="flex items-center">
           {steps.map((step, index) => {
-            const current = step.step === active;
+            const isCurrent = step.step === active;
             const last = index === steps.length - 1;
             const Icon = STEP_ICONS[step.step];
             return (
@@ -47,12 +47,12 @@ export function TourStepNav({ slug, steps }: { slug: string; steps: readonly Tou
                     render={
                       <Link
                         href={step.href}
-                        aria-current={current ? 'step' : undefined}
+                        aria-current={isCurrent ? 'step' : undefined}
                         data-status={step.status}
                         className={cn(
                           'relative flex size-8 shrink-0 items-center justify-center rounded-full border bg-background text-muted-foreground outline-none transition-colors hover:border-primary hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50 sm:size-10',
                           step.status === 'optional' && 'border-dashed',
-                          current &&
+                          isCurrent &&
                             'border-primary bg-primary text-primary-foreground ring-4 ring-primary/15 hover:text-primary-foreground',
                         )}
                       />

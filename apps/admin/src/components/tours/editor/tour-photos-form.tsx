@@ -278,7 +278,7 @@ export function TourPhotosForm({
                 disabled={pending}
                 empty={t.empty}
                 renderItem={(photo, index) => {
-                  const altId = `photo-${photo.key}-alt`;
+                  const altId = altInputId(photo.key);
                   return (
                     <div className="grid gap-3 sm:grid-cols-[8rem_1fr]">
                       <div className="relative">
