@@ -51,6 +51,7 @@ const PENDING: AdminReview = {
   tourTitle: 'Ha Long Bay Cruise',
   moderatedAt: null,
   moderatedBy: null,
+  version: '2026-10-20T03:00:00.000Z',
 };
 
 describe('toReviewRow', () => {
@@ -76,6 +77,8 @@ describe('toReviewRow', () => {
       submitted: '30 Aug 2026, 09:30 UTC',
       moderated: null,
       moderatedBy: null,
+      // Phiên bản đi nguyên xi tới dialog — server so nó với hàng đã khoá (review L5).
+      version: '2026-10-20T03:00:00.000Z',
     });
   });
 

@@ -6,12 +6,9 @@ import {
 } from './reviews.js';
 
 const ID = '11111111-1111-4111-8111-111111111111';
+/** Phiên bản admin đang xem (`AdminReview.version`) — bắt buộc từ review L5. */
+const VERSION = '2026-10-20T03:00:00.000Z';
 
-/**
- * ADR-0031 §7: bác là phán quyết chung cuộc, và nó phải có lý do vì lý do đi
- * thẳng vào email cho khách. Luật gác ở CONTRACT để không caller nào — dialog
- * admin hay bất kỳ ai cầm JWT admin — bác được mà không nói vì sao.
- */
 /**
  * ADR-0035: publicId ảnh review là đối số của một lệnh destroy không hoàn
  * tác (7 ngày sau khi tác giả gỡ), nên cổng ký tự nằm ở contract.
@@ -43,27 +40,49 @@ describe('ReviewPhotoPublicIdSchema', () => {
   });
 });
 
+/**
+ * ADR-0031 §7: bác là phán quyết chung cuộc, và nó phải có lý do vì lý do đi
+ * thẳng vào email cho khách. Luật gác ở CONTRACT để không caller nào — dialog
+ * admin hay bất kỳ ai cầm JWT admin — bác được mà không nói vì sao.
+ */
 describe('ModerateReviewInputSchema', () => {
   it('reject KHÔNG có note → từ chối, lỗi trỏ vào `note`', () => {
-    const res = ModerateReviewInputSchema.safeParse({ id: ID, verdict: 'reject' });
+    const res = ModerateReviewInputSchema.safeParse({
+      id: ID,
+      verdict: 'reject',
+      version: VERSION,
+    });
     expect(res.success).toBe(false);
     if (!res.success) expect(res.error.issues[0]?.path).toEqual(['note']);
   });
 
   it('reject với note toàn khoảng trắng cũng bị từ chối (trim trước khi xét)', () => {
     expect(
-      ModerateReviewInputSchema.safeParse({ id: ID, verdict: 'reject', note: '   ' }).success,
+      ModerateReviewInputSchema.safeParse({
+        id: ID,
+        verdict: 'reject',
+        note: '   ',
+        version: VERSION,
+      }).success,
     ).toBe(false);
   });
 
   it('reject có note → qua; approve/unpublish không cần note', () => {
     expect(
-      ModerateReviewInputSchema.safeParse({ id: ID, verdict: 'reject', note: 'Spam.' }).success,
+      ModerateReviewInputSchema.safeParse({
+        id: ID,
+        verdict: 'reject',
+        note: 'Spam.',
+        version: VERSION,
+      }).success,
     ).toBe(true);
-    expect(ModerateReviewInputSchema.safeParse({ id: ID, verdict: 'approve' }).success).toBe(true);
-    expect(ModerateReviewInputSchema.safeParse({ id: ID, verdict: 'unpublish' }).success).toBe(
-      true,
-    );
+    expect(
+      ModerateReviewInputSchema.safeParse({ id: ID, verdict: 'approve', version: VERSION }).success,
+    ).toBe(true);
+    expect(
+      ModerateReviewInputSchema.safeParse({ id: ID, verdict: 'unpublish', version: VERSION })
+        .success,
+    ).toBe(true);
   });
 
   it('trần note là REVIEW_MODERATION_NOTE_MAX — khớp cột `review_moderation_events.note` VARCHAR(500)', () => {
@@ -71,9 +90,19 @@ describe('ModerateReviewInputSchema', () => {
     // (ADR-0031 AMEND 1): lệch với schema là admin cho gõ một thứ server từ chối.
     expect(REVIEW_MODERATION_NOTE_MAX).toBe(500);
     const at = (length: number) =>
-      ModerateReviewInputSchema.safeParse({ id: ID, verdict: 'reject', note: 'x'.repeat(length) })
-        .success;
+      ModerateReviewInputSchema.safeParse({
+        id: ID,
+        verdict: 'reject',
+        note: 'x'.repeat(length),
+        version: VERSION,
+      }).success;
     expect(at(REVIEW_MODERATION_NOTE_MAX)).toBe(true);
     expect(at(REVIEW_MODERATION_NOTE_MAX + 1)).toBe(false);
+  });
+
+  it('thiếu `version` → từ chối, lỗi trỏ vào `version` (review L5: chống duyệt mù bản đã đổi)', () => {
+    const res = ModerateReviewInputSchema.safeParse({ id: ID, verdict: 'approve' });
+    expect(res.success).toBe(false);
+    if (!res.success) expect(res.error.issues[0]?.path).toEqual(['version']);
   });
 });

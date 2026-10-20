@@ -6,7 +6,12 @@ import type { SessionUser } from '../../auth/auth.config.js';
 import { CurrentUser } from '../../auth/current-user.decorator.js';
 import { Roles } from '../../auth/roles.decorator.js';
 import { UserRole } from '../../generated/prisma/enums.js';
-import { ReviewNotFoundError, ReviewRetractedError, ReviewsService } from './reviews.service.js';
+import {
+  ReviewNotFoundError,
+  ReviewRetractedError,
+  ReviewsService,
+  StaleReviewError,
+} from './reviews.service.js';
 
 /**
  * Bề mặt moderation review cho admin (spec P3a-A W1). Cùng cách ghép guard
@@ -29,6 +34,7 @@ export class AdminReviewsController {
         if (err instanceof ReviewNotFoundError) throw errors.REVIEW_NOT_FOUND();
         // W4 U2: review tác giả đã rút — moderation bị chặn, kể cả approve lại.
         if (err instanceof ReviewRetractedError) throw errors.REVIEW_RETRACTED();
+        if (err instanceof StaleReviewError) throw errors.STALE_REVIEW();
         throw err;
       }
     });

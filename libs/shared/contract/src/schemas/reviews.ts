@@ -171,6 +171,16 @@ export const ModerateReviewInputSchema = z
      * trail rồi không nơi nào đọc.
      */
     note: z.string().trim().max(REVIEW_MODERATION_NOTE_MAX).optional(),
+    /**
+     * Phiên bản review admin ĐANG XEM (`AdminReview.version`), gửi lại nguyên
+     * xi. Bài `pending` tác giả vẫn sửa được (ADR-0032 §2), nên `FOR UPDATE` một
+     * mình không đủ: nó tuần tự hoá hai lệnh ghi chứ không biết dialog đang hiện
+     * bản cũ. Thiếu token thì khách tráo nội dung đúng lúc admin đọc là bản mới
+     * lên site mà không ai duyệt, và admin B mở tab từ trước lật ngược quyết định
+     * của admin A mà không hay. Lệch là `STALE_REVIEW` (khuôn `version` của chuyến
+     * khởi hành, vòng vá review F12).
+     */
+    version: z.iso.datetime(),
   })
   .superRefine((input, ctx) => {
     // ADR-0031 §7: "không có lý do thì không bác được". Bản đầu gác luật này
@@ -218,6 +228,12 @@ export const AdminReviewSchema = PublicReviewSchema.extend({
   tourTitle: z.string().nullable(),
   moderatedAt: z.iso.datetime().nullable(),
   moderatedBy: z.string().nullable(),
+  /**
+   * Phiên bản hàng = `updatedAt` dạng ISO có mili-giây, không thêm cột: Prisma
+   * đẩy nó ở mọi lần ghi lên review (tác giả sửa hay rút, admin quyết). Dialog
+   * moderation gửi lại nguyên xi — xem `ModerateReviewInputSchema`.
+   */
+  version: z.iso.datetime(),
 });
 
 /** R2: ngoài `isApproved`, admin lọc thêm theo nguồn + số sao + free-text

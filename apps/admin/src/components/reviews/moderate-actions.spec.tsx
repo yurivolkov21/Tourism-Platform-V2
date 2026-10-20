@@ -43,6 +43,7 @@ const PENDING: ModerateTarget = {
   approved: false,
   state: 'pending',
   rejectionCount: 0,
+  version: '2026-10-20T03:00:00.000Z',
 };
 
 const APPROVED: ModerateTarget = { ...PENDING, approved: true, state: 'approved' };
@@ -104,7 +105,13 @@ describe('ModerateActions — nút của hàng', () => {
     await user.click(screen.getByRole('button', { name: t.reopen }));
     await user.click(await screen.findByRole('button', { name: t.reopenDialog.submit }));
 
-    expect(moderate).toHaveBeenCalledWith({ id: REJECTED.id, verdict: 'unpublish' });
+    // Kèm phiên bản của đúng bản dialog đang hiện (review L5) — server so nó
+    // với hàng đã khoá, lệch là STALE_REVIEW chứ không duyệt mù.
+    expect(moderate).toHaveBeenCalledWith({
+      id: REJECTED.id,
+      verdict: 'unpublish',
+      version: REJECTED.version,
+    });
   });
 
   it('dialog Reopen KHÔNG hứa gỡ khỏi trang tour — review vốn đã không ở đó', async () => {
@@ -219,7 +226,37 @@ describe('ModerateActions — chiều lệnh đóng băng lúc mở dialog (revi
     expect(screen.queryByText(t.unpublishDialog.title)).not.toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: t.approveDialog.submit }));
-    expect(moderate).toHaveBeenCalledWith({ id: PENDING.id, verdict: 'approve' });
+    expect(moderate).toHaveBeenCalledWith({
+      id: PENDING.id,
+      verdict: 'approve',
+      version: PENDING.version,
+    });
+  });
+
+  it('refresh mang về bản tác giả vừa sửa → dialog vẫn hiện bản lúc mở và gửi ĐÚNG phiên bản ấy (review L5)', async () => {
+    // Bản mới chưa chắc đã được đọc: gửi phiên bản lúc mở thì server so với
+    // hàng đã khoá và trả STALE_REVIEW, thay vì duyệt một nội dung admin chưa xem.
+    const user = userEvent.setup();
+    const moderate = vi.fn().mockResolvedValue({ ok: false, code: 'STALE_REVIEW' });
+    const view = render(<ModerateActions review={PENDING} moderate={moderate} />);
+    await user.click(screen.getByRole('button', { name: t.approve }));
+    expect(await screen.findByText(t.approveDialog.title)).toBeInTheDocument();
+
+    const edited: ModerateTarget = {
+      ...PENDING,
+      body: 'Swapped in while the dialog was open.',
+      version: '2026-10-20T03:05:00.000Z',
+    };
+    view.rerender(<ModerateActions review={edited} moderate={moderate} />);
+    expect(screen.getByText(PENDING.body)).toBeInTheDocument();
+    expect(screen.queryByText(edited.body)).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: t.approveDialog.submit }));
+    expect(moderate).toHaveBeenCalledWith({
+      id: PENDING.id,
+      verdict: 'approve',
+      version: PENDING.version,
+    });
   });
 });
 
@@ -231,7 +268,11 @@ describe('ModerateActions — input gửi đi', () => {
     await open(user, 'approve');
     await user.click(await screen.findByRole('button', { name: t.approveDialog.submit }));
 
-    expect(moderate).toHaveBeenCalledWith({ id: PENDING.id, verdict: 'approve' });
+    expect(moderate).toHaveBeenCalledWith({
+      id: PENDING.id,
+      verdict: 'approve',
+      version: PENDING.version,
+    });
   });
 
   it('unpublish gửi verdict kèm note đã trim — note vào lịch sử moderation', async () => {
@@ -246,6 +287,7 @@ describe('ModerateActions — input gửi đi', () => {
       id: PENDING.id,
       verdict: 'unpublish',
       note: 'Spam link in the body.',
+      version: APPROVED.version,
     });
   });
 });
@@ -286,6 +328,19 @@ describe('ModerateActions — kết quả server', () => {
     await user.click(await screen.findByRole('button', { name: t.approveDialog.submit }));
 
     expect(errorToast).toHaveBeenCalledWith(t.errors.REVIEW_NOT_FOUND);
+    expect(refresh).toHaveBeenCalled();
+    expect(screen.queryByText(t.approveDialog.warning)).not.toBeInTheDocument();
+    expect(success).not.toHaveBeenCalled();
+  });
+
+  it('STALE_REVIEW (bài đã đổi từ lúc mở): đóng + toast bảo đọc lại + refresh, KHÔNG báo đã duyệt', async () => {
+    const user = userEvent.setup();
+    const moderate = vi.fn().mockResolvedValue({ ok: false, code: 'STALE_REVIEW' });
+    render(<ModerateActions review={PENDING} moderate={moderate} />);
+    await open(user, 'approve');
+    await user.click(await screen.findByRole('button', { name: t.approveDialog.submit }));
+
+    expect(errorToast).toHaveBeenCalledWith(t.errors.STALE_REVIEW);
     expect(refresh).toHaveBeenCalled();
     expect(screen.queryByText(t.approveDialog.warning)).not.toBeInTheDocument();
     expect(success).not.toHaveBeenCalled();

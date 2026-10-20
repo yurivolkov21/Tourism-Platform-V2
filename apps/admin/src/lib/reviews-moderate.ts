@@ -15,9 +15,12 @@ const t = messages.admin.reviews.moderate;
  * — test đối chiếu với `errorMap` thật của contract).
  */
 // Mã trạng-thái-cũ khai NGAY trong codec (vòng vá review F7) — hết predicate tay.
-// REVIEW_RETRACTED (W4 U2) cùng họ stale với NOT_FOUND: hàng dưới chân
-// dialog đã đổi số phận ngoài tầm admin — đóng dialog, toast, refresh queue.
-const codec = createWriteErrorCodec(t.errors, { stale: ['REVIEW_NOT_FOUND', 'REVIEW_RETRACTED'] });
+// REVIEW_RETRACTED (W4 U2) và STALE_REVIEW (review L5) cùng họ stale với
+// NOT_FOUND: hàng dưới chân dialog đã đổi số phận ngoài tầm admin — đóng
+// dialog, toast, refresh queue.
+const codec = createWriteErrorCodec(t.errors, {
+  stale: ['REVIEW_NOT_FOUND', 'REVIEW_RETRACTED', 'STALE_REVIEW'],
+});
 
 export const MODERATE_CONTRACT_CODES = codec.codes;
 
@@ -29,20 +32,16 @@ export const moderateErrorCopy = codec.copy;
 
 /**
  * Mã TRẠNG-THÁI-CŨ: lệnh không sửa được tại chỗ vì thế giới đã đổi dưới chân
- * dialog. Vùng này chỉ có MỘT — review đã biến mất khỏi DB (hard-delete row
- * user hoặc xoá tour mới cascade xuống review; LƯU Ý: khách tự xoá tài khoản
- * là SOFT-delete tombstone, review Ở LẠI queue với `authorDeleted` — xem
- * `AccountService`, đừng tưởng nó biến mất). UI xử: đóng dialog + toast +
- * refresh hàng đợi — copy hứa "the queue has been refreshed" nên UI PHẢI làm
- * thật (bài học review F3 31/08).
+ * dialog. Vùng này có BA: review đã biến mất khỏi DB (hard-delete row user
+ * hoặc xoá tour mới cascade xuống review; LƯU Ý: khách tự xoá tài khoản là
+ * SOFT-delete tombstone, review Ở LẠI queue với `authorDeleted` — xem
+ * `AccountService`, đừng tưởng nó biến mất), tác giả vừa rút, hoặc review đã
+ * đổi từ lúc mở dialog. UI xử: đóng dialog + toast + refresh hàng đợi — copy
+ * hứa "the queue has been refreshed" nên UI PHẢI làm thật (bài học review F3
+ * 31/08).
  */
 export const isStaleStateCode = codec.isStale;
 
-/**
- * Phần review mà dialog thật sự cần — bảng cắt ĐÚNG các field này từ
- * `ReviewRowVM` (không truyền cả hàng: dialog không cần ngày gửi hay dấu vết
- * duyệt cũ, và cắt hẹp thì đọc code là biết dialog dựa vào gì để nói).
- */
 /**
  * Việc admin BẤM, khác với động từ gửi lên server (vá 05/09, user báo).
  *
@@ -64,6 +63,12 @@ export const VERDICT_OF: Record<ModerateActionKind, ReviewVerdict> = {
   reopen: 'unpublish',
 };
 
+/**
+ * Phần review mà dialog thật sự cần — bảng cắt ĐÚNG các field này từ
+ * `ReviewRowVM` (không truyền cả hàng: dialog không cần ngày gửi hay dấu vết
+ * duyệt cũ, và cắt hẹp thì đọc code là biết dialog dựa vào gì để nói).
+ * `version` đi cùng nội dung: dialog hiện bản nào thì gửi đúng phiên bản ấy.
+ */
 export type ModerateTarget = Pick<
   ReviewRowVM,
   | 'id'
@@ -79,6 +84,7 @@ export type ModerateTarget = Pick<
   | 'approved'
   | 'state'
   | 'rejectionCount'
+  | 'version'
 >;
 
 /**
@@ -248,4 +254,5 @@ export type ModerateAction = (input: {
   id: string;
   verdict: ReviewVerdict;
   note?: string;
+  version: string;
 }) => Promise<ModerateActionResult>;

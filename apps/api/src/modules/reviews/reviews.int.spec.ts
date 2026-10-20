@@ -170,6 +170,16 @@ async function seedCompletedBooking(opts: { endDate: Date; userId: string }) {
   return { tour, departure, booking };
 }
 
+/**
+ * Phiên bản HIỆN TẠI của review (`updatedAt` ISO) — thứ admin gửi kèm mọi lệnh
+ * duyệt (STALE_REVIEW, review L5). Test không bàn chuyện cũ-mới thì đọc ngay
+ * trước khi gọi, đúng như dialog mở trên một hàng vừa tải.
+ */
+async function versionOf(id: string): Promise<string> {
+  const row = await prisma.review.findUniqueOrThrow({ where: { id }, select: { updatedAt: true } });
+  return row.updatedAt.toISOString();
+}
+
 /** Tạo review VERIFIED qua API thật rồi duyệt luôn — dùng lại ở nhiều test. */
 async function createAndApprove(app: NestFastifyApplication) {
   const { user, cookie } = await signUpAndSignIn(app, 'reviewer@example.com');
@@ -188,7 +198,7 @@ async function createAndApprove(app: NestFastifyApplication) {
     method: 'POST',
     url: `/api/admin/reviews/${reviewId}/moderate`,
     headers: { cookie: admin.cookie },
-    payload: { id: reviewId, verdict: 'approve' },
+    payload: { id: reviewId, verdict: 'approve', version: await versionOf(reviewId) },
   });
 
   return { reviewId, adminCookie: admin.cookie };
@@ -492,7 +502,7 @@ describe('reviews (int)', () => {
       method: 'POST',
       url: `/api/admin/reviews/${reviewId}/moderate`,
       headers: { cookie: admin.cookie },
-      payload: { id: reviewId, verdict: 'approve' },
+      payload: { id: reviewId, verdict: 'approve', version: await versionOf(reviewId) },
     });
 
     const beforeApprove = fresh.updatedAt;
@@ -557,7 +567,7 @@ describe('reviews (int)', () => {
       method: 'POST',
       url: `/api/admin/reviews/${reviewId}/moderate`,
       headers: { cookie: admin.cookie },
-      payload: { id: reviewId, verdict: 'approve' },
+      payload: { id: reviewId, verdict: 'approve', version: await versionOf(reviewId) },
     });
     expect(res.statusCode).toBe(200);
 
@@ -579,7 +589,7 @@ describe('reviews (int)', () => {
       method: 'POST',
       url: `/api/admin/reviews/${reviewId}/moderate`,
       headers: { cookie: second.cookie },
-      payload: { id: reviewId, verdict: 'approve' },
+      payload: { id: reviewId, verdict: 'approve', version: await versionOf(reviewId) },
     });
     expect(res.statusCode).toBe(200);
     expect(res.json().isApproved).toBe(true); // trả trạng thái hiện tại
@@ -612,7 +622,7 @@ describe('reviews (int)', () => {
       method: 'POST',
       url: `/api/admin/reviews/${reviewId}/moderate`,
       headers: { cookie: admin.cookie },
-      payload: { id: reviewId, verdict: 'approve' },
+      payload: { id: reviewId, verdict: 'approve', version: await versionOf(reviewId) },
     });
     expect(res.statusCode).toBe(200);
     expect(res.json().isApproved).toBe(true); // duyệt vẫn ăn — chỉ email là không
@@ -629,7 +639,7 @@ describe('reviews (int)', () => {
         method: 'POST',
         url: `/api/admin/reviews/${reviewId}/moderate`,
         headers: { cookie: adminCookie },
-        payload: { id: reviewId, verdict },
+        payload: { id: reviewId, verdict, version: await versionOf(reviewId) },
       });
     }
 
@@ -682,7 +692,7 @@ describe('reviews (int)', () => {
       method: 'POST',
       url: `/api/admin/reviews/${curated.id}/moderate`,
       headers: { cookie: admin.cookie },
-      payload: { id: curated.id, verdict: 'approve' },
+      payload: { id: curated.id, verdict: 'approve', version: await versionOf(curated.id) },
     });
 
     expect(res.statusCode).toBe(200);
@@ -717,7 +727,7 @@ describe('reviews (int)', () => {
       method: 'POST',
       url: `/api/admin/reviews/${reviewId}/moderate`,
       headers: { cookie: admin.cookie },
-      payload: { id: reviewId, verdict: 'approve' },
+      payload: { id: reviewId, verdict: 'approve', version: await versionOf(reviewId) },
     });
 
     const res = await app.inject({ method: 'GET', url: `/api/tours/${tour.slug}/reviews` });
@@ -916,9 +926,10 @@ describe('reviews (int)', () => {
       // Song song THẬT trên Postgres thật — gọi thẳng ReviewsService.moderate()
       // (không qua app.inject) để chắc chắn 2 transaction chồng nhau, không bị
       // hàng đợi ẩn nào của lớp HTTP làm tuần tự hoá.
+      const [v1, v2] = await Promise.all([versionOf(id1), versionOf(id2)]);
       await Promise.all([
-        reviewsService.moderate(admin.user.id, { id: id1, verdict: 'approve' }),
-        reviewsService.moderate(admin.user.id, { id: id2, verdict: 'approve' }),
+        reviewsService.moderate(admin.user.id, { id: id1, verdict: 'approve', version: v1 }),
+        reviewsService.moderate(admin.user.id, { id: id2, verdict: 'approve', version: v2 }),
       ]);
 
       const fresh = await prisma.tour.findUniqueOrThrow({ where: { id: tour.id } });
@@ -1028,7 +1039,7 @@ describe('reviews (int)', () => {
         method: 'POST',
         url: `/api/admin/reviews/${secondId}/moderate`,
         headers: { cookie: admin.cookie },
-        payload: { id: secondId, verdict: 'approve' },
+        payload: { id: secondId, verdict: 'approve', version: await versionOf(secondId) },
       });
 
       const res = await app.inject({
@@ -1138,7 +1149,7 @@ describe('reviews (int)', () => {
         method: 'POST',
         url: `/api/admin/reviews/${fakeId}/moderate`,
         headers: { cookie },
-        payload: { id: fakeId, verdict: 'approve' },
+        payload: { id: fakeId, verdict: 'approve', version: new Date().toISOString() },
       });
 
       expect(res.statusCode).toBe(403);
@@ -1150,7 +1161,7 @@ describe('reviews (int)', () => {
       const res = await app.inject({
         method: 'POST',
         url: `/api/admin/reviews/${fakeId}/moderate`,
-        payload: { id: fakeId, verdict: 'approve' },
+        payload: { id: fakeId, verdict: 'approve', version: new Date().toISOString() },
       });
 
       expect(res.statusCode).toBe(401);
@@ -1215,6 +1226,7 @@ describe('reviews (int)', () => {
           id: review.id,
           verdict: 'reject',
           note: 'Không nói về chuyến đi.',
+          version: await versionOf(review.id),
         });
 
         const after = await prisma.review.findUniqueOrThrow({ where: { id: review.id } });
@@ -1231,7 +1243,11 @@ describe('reviews (int)', () => {
         const admin = await signUpAdmin(app, ADMIN_EMAIL);
         const review = await seedPending('audit');
 
-        await reviewsService.moderate(admin.user.id, { id: review.id, verdict: 'reject' });
+        await reviewsService.moderate(admin.user.id, {
+          id: review.id,
+          verdict: 'reject',
+          version: await versionOf(review.id),
+        });
 
         const [event] = await prisma.reviewModerationEvent.findMany({
           where: { reviewId: review.id },
@@ -1245,9 +1261,17 @@ describe('reviews (int)', () => {
         // cột ấy sẽ nuốt lệnh và review kẹt vĩnh viễn ngoài hàng đợi.
         const admin = await signUpAdmin(app, ADMIN_EMAIL);
         const review = await seedPending('back');
-        await reviewsService.moderate(admin.user.id, { id: review.id, verdict: 'reject' });
+        await reviewsService.moderate(admin.user.id, {
+          id: review.id,
+          verdict: 'reject',
+          version: await versionOf(review.id),
+        });
 
-        await reviewsService.moderate(admin.user.id, { id: review.id, verdict: 'unpublish' });
+        await reviewsService.moderate(admin.user.id, {
+          id: review.id,
+          verdict: 'unpublish',
+          version: await versionOf(review.id),
+        });
 
         const after = await prisma.review.findUniqueOrThrow({ where: { id: review.id } });
         expect(after.rejectedAt).toBeNull();
@@ -1261,9 +1285,17 @@ describe('reviews (int)', () => {
         // rằng nhánh approve dọn dấu vết cũ chứ không để DB chặn giữa chừng.
         const admin = await signUpAdmin(app, ADMIN_EMAIL);
         const review = await seedPending('undo');
-        await reviewsService.moderate(admin.user.id, { id: review.id, verdict: 'reject' });
+        await reviewsService.moderate(admin.user.id, {
+          id: review.id,
+          verdict: 'reject',
+          version: await versionOf(review.id),
+        });
 
-        await reviewsService.moderate(admin.user.id, { id: review.id, verdict: 'approve' });
+        await reviewsService.moderate(admin.user.id, {
+          id: review.id,
+          verdict: 'approve',
+          version: await versionOf(review.id),
+        });
 
         const after = await prisma.review.findUniqueOrThrow({ where: { id: review.id } });
         expect(after.isApproved).toBe(true);
@@ -1286,7 +1318,11 @@ describe('reviews (int)', () => {
         const admin = await signUpAdmin(app, ADMIN_EMAIL);
         const rejected = await seedPending('filter-a');
         const pending = await seedPending('filter-b');
-        await reviewsService.moderate(admin.user.id, { id: rejected.id, verdict: 'reject' });
+        await reviewsService.moderate(admin.user.id, {
+          id: rejected.id,
+          verdict: 'reject',
+          version: await versionOf(rejected.id),
+        });
 
         const ids = async (qs: string) => {
           const res = await app.inject({
@@ -1308,6 +1344,7 @@ describe('reviews (int)', () => {
           id: review.id,
           verdict: 'reject',
           note: 'Nội dung quảng cáo.',
+          version: await versionOf(review.id),
         });
 
         const res = await app.inject({
@@ -1327,7 +1364,11 @@ describe('reviews (int)', () => {
         const admin = await signUpAdmin(app, ADMIN_EMAIL);
         const review = await seedPending('curated-mail');
 
-        await reviewsService.moderate(admin.user.id, { id: review.id, verdict: 'reject' });
+        await reviewsService.moderate(admin.user.id, {
+          id: review.id,
+          verdict: 'reject',
+          version: await versionOf(review.id),
+        });
 
         expect(await prisma.outbox.count({ where: { type: EmailType.REVIEW_REJECTED } })).toBe(0);
       });
@@ -1471,7 +1512,7 @@ describe('reviews (int)', () => {
         method: 'POST',
         url: `/api/admin/reviews/${twoStar.id}/moderate`,
         headers: { cookie: admin.cookie },
-        payload: { id: twoStar.id, verdict: 'approve' },
+        payload: { id: twoStar.id, verdict: 'approve', version: await versionOf(twoStar.id) },
       });
       const moderated = (await get('?state=approved'))
         .json()
@@ -1612,6 +1653,7 @@ describe('reviews (int)', () => {
         id: reviewId,
         verdict: 'reject',
         note: 'Chưa nói về chuyến đi.',
+        version: await versionOf(reviewId),
       });
 
       await patch(cookie, reviewId, { id: reviewId, rating: 4, body: 'Lần này viết về chuyến đi' });
@@ -1643,7 +1685,11 @@ describe('reviews (int)', () => {
     it('review ĐÃ DUYỆT KHÔNG sửa được — chặn đường tráo nội dung đang hiển thị', async () => {
       const admin = await signUpAdmin(app, ADMIN_EMAIL);
       const { cookie, reviewId } = await seedOwnReview('edit-approved@example.com');
-      await reviewsService.moderate(admin.user.id, { id: reviewId, verdict: 'approve' });
+      await reviewsService.moderate(admin.user.id, {
+        id: reviewId,
+        verdict: 'approve',
+        version: await versionOf(reviewId),
+      });
 
       const res = await patch(cookie, reviewId, {
         id: reviewId,
@@ -1667,12 +1713,14 @@ describe('reviews (int)', () => {
         id: reviewId,
         verdict: 'reject',
         note: 'Lần một.',
+        version: await versionOf(reviewId),
       });
       await patch(cookie, reviewId, { id: reviewId, rating: 4, body: 'Viết lại lần một' });
       await reviewsService.moderate(admin.user.id, {
         id: reviewId,
         verdict: 'reject',
         note: 'Lần hai — chung cuộc.',
+        version: await versionOf(reviewId),
       });
 
       const mails = await prisma.outbox.findMany({
@@ -1695,12 +1743,14 @@ describe('reviews (int)', () => {
         id: reviewId,
         verdict: 'reject',
         note: 'Lần một.',
+        version: await versionOf(reviewId),
       });
       await patch(cookie, reviewId, { id: reviewId, rating: 4, body: 'Viết lại lần một' });
       await reviewsService.moderate(admin.user.id, {
         id: reviewId,
         verdict: 'reject',
         note: 'Lần hai — chung cuộc.',
+        version: await versionOf(reviewId),
       });
 
       const mails = await prisma.outbox.findMany({
@@ -1718,11 +1768,16 @@ describe('reviews (int)', () => {
       // contract hứa `moderationNote` null ở mọi trạng thái khác `rejected`.
       const admin = await signUpAdmin(app, ADMIN_EMAIL);
       const { cookie, reviewId } = await seedOwnReview('no-leak@example.com');
-      await reviewsService.moderate(admin.user.id, { id: reviewId, verdict: 'approve' });
+      await reviewsService.moderate(admin.user.id, {
+        id: reviewId,
+        verdict: 'approve',
+        version: await versionOf(reviewId),
+      });
       await reviewsService.moderate(admin.user.id, {
         id: reviewId,
         verdict: 'unpublish',
         note: 'Nghi review giả — đang điều tra.',
+        version: await versionOf(reviewId),
       });
 
       const res = await app.inject({
@@ -1743,13 +1798,21 @@ describe('reviews (int)', () => {
       const admin = await signUpAdmin(app, ADMIN_EMAIL);
       const { cookie, reviewId } = await seedOwnReview('edit-limit@example.com');
 
-      await reviewsService.moderate(admin.user.id, { id: reviewId, verdict: 'reject' });
+      await reviewsService.moderate(admin.user.id, {
+        id: reviewId,
+        verdict: 'reject',
+        version: await versionOf(reviewId),
+      });
       expect(
         (await patch(cookie, reviewId, { id: reviewId, rating: 4, body: 'Viết lại lần một' }))
           .statusCode,
       ).toBe(200);
 
-      await reviewsService.moderate(admin.user.id, { id: reviewId, verdict: 'reject' });
+      await reviewsService.moderate(admin.user.id, {
+        id: reviewId,
+        verdict: 'reject',
+        version: await versionOf(reviewId),
+      });
       const res = await patch(cookie, reviewId, {
         id: reviewId,
         rating: 4,
@@ -1813,6 +1876,7 @@ describe('reviews (int)', () => {
         id: reviewId,
         verdict: 'reject',
         note: 'Ảnh có mặt người khác.',
+        version: await versionOf(reviewId),
       });
 
       const res = await app.inject({
@@ -1829,6 +1893,124 @@ describe('reviews (int)', () => {
       expect(review.moderationState).toBe('rejected');
       expect(review.moderationNote).toBe('Ảnh có mặt người khác.');
       expect(review.rejectionCount).toBe(1);
+    });
+
+    /**
+     * Phiên bản admin ĐANG XEM — đọc qua hàng đợi như trang `/reviews`, không
+     * đọc thẳng DB: test này cũng là lưới cho việc `adminList` trả `version`.
+     */
+    async function queuedVersion(adminCookie: string, reviewId: string): Promise<string> {
+      const res = await app.inject({
+        method: 'GET',
+        url: '/api/admin/reviews',
+        headers: { cookie: adminCookie },
+      });
+      const row = (res.json().items as { id: string; version: string }[]).find(
+        (item) => item.id === reviewId,
+      );
+      if (!row) throw new Error(`review ${reviewId} không có trong hàng đợi`);
+      return row.version;
+    }
+
+    const moderateHttp = (adminCookie: string, id: string, payload: Record<string, unknown>) =>
+      app.inject({
+        method: 'POST',
+        url: `/api/admin/reviews/${id}/moderate`,
+        headers: { cookie: adminCookie },
+        payload: { id, ...payload },
+      });
+
+    it('khách sửa bài lúc dialog duyệt đang mở → duyệt bằng phiên bản cũ ăn 409 STALE_REVIEW, bài không lên site (review L5)', async () => {
+      // ADR-0032 §2 chặn sửa bài ĐÃ duyệt để không ai "được duyệt một bài tử
+      // tế rồi tráo thành spam, sau lưng kiểm duyệt". Bài `pending` vẫn sửa
+      // được, nên thiếu phiên bản thì cú tráo chỉ cần rơi vào lúc admin đang
+      // đọc dialog: admin duyệt bản cũ, site đăng bản mới.
+      const admin = await signUpAdmin(app, ADMIN_EMAIL);
+      const { cookie, reviewId } = await seedOwnReview('stale-edit@example.com');
+      const seen = await queuedVersion(admin.cookie, reviewId);
+
+      const edit = await patch(cookie, reviewId, {
+        id: reviewId,
+        rating: 1,
+        body: 'Nội dung tráo vào đúng lúc admin đang đọc',
+      });
+      expect(edit.statusCode).toBe(200);
+
+      const res = await moderateHttp(admin.cookie, reviewId, { verdict: 'approve', version: seen });
+
+      expect(res.statusCode).toBe(409);
+      expect(res.json().code).toBe('STALE_REVIEW');
+      const after = await prisma.review.findUniqueOrThrow({ where: { id: reviewId } });
+      expect(after.isApproved).toBe(false);
+      expect(after.moderatedAt).toBeNull();
+      expect(await prisma.reviewModerationEvent.count({ where: { reviewId } })).toBe(0);
+      expect(await prisma.outbox.count({ where: { type: EmailType.REVIEW_APPROVED } })).toBe(0);
+      const tour = await prisma.tour.findUniqueOrThrow({
+        where: { slug: 'hoi-an-lantern-evening' },
+      });
+      expect(tour.ratingCount).toBe(0);
+
+      // Hàng đợi tải lại thì admin đọc đúng bản mới, và phiên bản mới qua được.
+      const fresh = await queuedVersion(admin.cookie, reviewId);
+      expect(fresh).not.toBe(seen);
+      const retry = await moderateHttp(admin.cookie, reviewId, {
+        verdict: 'approve',
+        version: fresh,
+      });
+      expect(retry.statusCode).toBe(200);
+      expect(retry.json().isApproved).toBe(true);
+    });
+
+    it('hai admin: B bác từ tab cũ sau khi A đã duyệt → 409, quyết định của A đứng nguyên, không mail bác', async () => {
+      const first = await signUpAdmin(app, ADMIN_EMAIL);
+      const second = await signUpAdmin(app, 'second-admin@tourism.test');
+      const { reviewId } = await seedOwnReview('two-admins@example.com');
+      const seen = await queuedVersion(second.cookie, reviewId);
+
+      const approve = await moderateHttp(first.cookie, reviewId, {
+        verdict: 'approve',
+        version: await queuedVersion(first.cookie, reviewId),
+      });
+      expect(approve.statusCode).toBe(200);
+
+      const reject = await moderateHttp(second.cookie, reviewId, {
+        verdict: 'reject',
+        note: 'Không nói về chuyến đi.',
+        version: seen,
+      });
+
+      expect(reject.statusCode).toBe(409);
+      expect(reject.json().code).toBe('STALE_REVIEW');
+      const after = await prisma.review.findUniqueOrThrow({ where: { id: reviewId } });
+      expect(after.isApproved).toBe(true);
+      expect(after.rejectedAt).toBeNull();
+      expect(after.moderatedById).toBe(first.user.id);
+      expect(await prisma.outbox.count({ where: { type: EmailType.REVIEW_REJECTED } })).toBe(0);
+    });
+
+    it('tab cũ mà TRÙNG ý với hiện trạng vẫn là no-op 200, không 409 — guard trùng trạng thái đứng trước', async () => {
+      // Duyệt lên bài đã duyệt không mang thông tin gì (review F4 31/08), nên
+      // không có gì để báo "đã đổi": bắt admin tải lại chỉ để nhận đúng kết
+      // cục họ muốn là phiền vô ích.
+      const first = await signUpAdmin(app, ADMIN_EMAIL);
+      const second = await signUpAdmin(app, 'second-admin@tourism.test');
+      const { reviewId } = await seedOwnReview('same-verdict@example.com');
+      const seen = await queuedVersion(second.cookie, reviewId);
+      await moderateHttp(first.cookie, reviewId, {
+        verdict: 'approve',
+        version: await queuedVersion(first.cookie, reviewId),
+      });
+
+      const res = await moderateHttp(second.cookie, reviewId, {
+        verdict: 'approve',
+        version: seen,
+      });
+
+      expect(res.statusCode).toBe(200);
+      expect(res.json().isApproved).toBe(true);
+      const after = await prisma.review.findUniqueOrThrow({ where: { id: reviewId } });
+      expect(after.moderatedById).toBe(first.user.id);
+      expect(await prisma.reviewModerationEvent.count({ where: { reviewId } })).toBe(1);
     });
   });
 
@@ -1862,7 +2044,11 @@ describe('reviews (int)', () => {
       });
       const reviewId = created.json().id;
 
-      await reviewsService.moderate(admin.user.id, { id: reviewId, verdict: 'approve' });
+      await reviewsService.moderate(admin.user.id, {
+        id: reviewId,
+        verdict: 'approve',
+        version: await versionOf(reviewId),
+      });
 
       expect(spy).toHaveBeenCalledTimes(1);
       expect(spy).toHaveBeenCalledWith(['tours', `tour:${tour.slug}`]);
@@ -1881,11 +2067,19 @@ describe('reviews (int)', () => {
       const reviewId = created.json().id;
 
       // Lần 1: PENDING → approved, có bust.
-      await reviewsService.moderate(admin.user.id, { id: reviewId, verdict: 'approve' });
+      await reviewsService.moderate(admin.user.id, {
+        id: reviewId,
+        verdict: 'approve',
+        version: await versionOf(reviewId),
+      });
       expect(spy).toHaveBeenCalledTimes(1);
 
       // Lần 2: approve lại khi ĐÃ approved — fromApproved === toApproved, không bust thêm.
-      await reviewsService.moderate(admin.user.id, { id: reviewId, verdict: 'approve' });
+      await reviewsService.moderate(admin.user.id, {
+        id: reviewId,
+        verdict: 'approve',
+        version: await versionOf(reviewId),
+      });
       expect(spy).toHaveBeenCalledTimes(1);
     });
 
@@ -1903,10 +2097,18 @@ describe('reviews (int)', () => {
         payload: { bookingCode: 'BK-TESTREV1', rating: 3, body: 'Bình thường, tạm được thôi' },
       });
       const reviewId = created.json().id;
-      await reviewsService.moderate(admin.user.id, { id: reviewId, verdict: 'approve' });
+      await reviewsService.moderate(admin.user.id, {
+        id: reviewId,
+        verdict: 'approve',
+        version: await versionOf(reviewId),
+      });
       expect(spy).toHaveBeenCalledTimes(1);
 
-      await reviewsService.moderate(admin.user.id, { id: reviewId, verdict: 'unpublish' });
+      await reviewsService.moderate(admin.user.id, {
+        id: reviewId,
+        verdict: 'unpublish',
+        version: await versionOf(reviewId),
+      });
 
       expect(spy).toHaveBeenCalledTimes(2);
       expect(spy).toHaveBeenLastCalledWith(['tours', `tour:${tour.slug}`]);
@@ -1925,7 +2127,11 @@ describe('reviews (int)', () => {
         },
       });
 
-      await reviewsService.moderate(admin.user.id, { id: curated.id, verdict: 'approve' });
+      await reviewsService.moderate(admin.user.id, {
+        id: curated.id,
+        verdict: 'approve',
+        version: await versionOf(curated.id),
+      });
 
       expect(spy).not.toHaveBeenCalled();
     });
@@ -1988,7 +2194,11 @@ describe('reviews (int)', () => {
       });
       const reviewId = created.json().id as string;
       const admin = await signUpAdmin(app, ADMIN_EMAIL);
-      await reviewsService.moderate(admin.user.id, { id: reviewId, verdict: 'approve' });
+      await reviewsService.moderate(admin.user.id, {
+        id: reviewId,
+        verdict: 'approve',
+        version: await versionOf(reviewId),
+      });
       return { user, cookie, reviewId, tour, admin };
     }
 
@@ -2068,7 +2278,11 @@ describe('reviews (int)', () => {
 
       // Đường đã duyệt: rút lần một OK, lần hai 409 (chung cuộc, không lặp).
       const admin = await signUpAdmin(app, ADMIN_EMAIL);
-      await reviewsService.moderate(admin.user.id, { id: pendingId, verdict: 'approve' });
+      await reviewsService.moderate(admin.user.id, {
+        id: pendingId,
+        verdict: 'approve',
+        version: await versionOf(pendingId),
+      });
       expect((await retract(cookie, pendingId)).statusCode).toBe(200);
       expect((await retract(cookie, pendingId)).statusCode).toBe(409);
     });
@@ -2078,7 +2292,11 @@ describe('reviews (int)', () => {
       await retract(cookie, reviewId);
 
       await expect(
-        reviewsService.moderate(admin.user.id, { id: reviewId, verdict: 'approve' }),
+        reviewsService.moderate(admin.user.id, {
+          id: reviewId,
+          verdict: 'approve',
+          version: await versionOf(reviewId),
+        }),
       ).rejects.toThrow();
 
       const after = await prisma.review.findUniqueOrThrow({ where: { id: reviewId } });

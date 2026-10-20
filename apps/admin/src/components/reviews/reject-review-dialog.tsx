@@ -91,7 +91,12 @@ export function RejectReviewDialog({
     if (problem !== null || reason === null) return;
     const note = composeRejectNote(reason, detail);
     void run(async () => {
-      const result = await moderate({ id: review.id, verdict: 'reject', note });
+      const result = await moderate({
+        id: review.id,
+        verdict: 'reject',
+        note,
+        version: review.version,
+      });
       if (!result.ok) return { ok: false, code: result.code };
       // Kết cục đọc từ RESPONSE: lệnh đua với người khác thì toast kể đúng thứ đang có.
       return { ok: true, toast: moderationToast(result.state, review.authorLabel) };

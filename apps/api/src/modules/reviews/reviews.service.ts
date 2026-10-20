@@ -53,6 +53,8 @@ export class TourNotFoundError extends Error {}
 export class ReviewNotRetractableError extends Error {}
 /** Review tác giả đã rút — mọi động từ moderation bị chặn (W4 U2). */
 export class ReviewRetractedError extends Error {}
+/** Review đã đổi kể từ lúc admin mở dialog — phiên bản gửi lên đã cũ (review L5). */
+export class StaleReviewError extends Error {}
 /** Ảnh gửi kèm KHÔNG nằm trong folder booking đang review (ADR-0021 §4). */
 export class ReviewPhotoInvalidError extends Error {}
 
@@ -149,6 +151,7 @@ export function toAdminReview(
     authorName: string;
     authorDeleted: boolean;
     createdAt: Date;
+    updatedAt: Date;
     isApproved: boolean;
     rejectedAt: Date | null;
     retractedAt: Date | null;
@@ -175,6 +178,7 @@ export function toAdminReview(
     tourTitle: row.tour?.title ?? null,
     moderatedAt: row.moderatedAt?.toISOString() ?? null,
     moderatedBy: row.moderatedBy?.name ?? null,
+    version: row.updatedAt.toISOString(),
   };
 }
 
@@ -382,7 +386,7 @@ export class ReviewsService {
 
     const row = await prisma.$transaction(async (tx) => {
       // Khoá row rồi KIỂM LẠI cổng bằng giá trị vừa khoá — cùng lý do với
-      // "Ba điểm concurrency" ở `moderate()`: `existing` đọc ngoài tx là một
+      // "Bốn điểm concurrency" ở `moderate()`: `existing` đọc ngoài tx là một
       // snapshot, và giữa nó với dòng UPDATE dưới đây admin có thể vừa
       // approve. Không khoá thì lệnh sửa ghi đè `is_approved=false` + nội
       // dung mới lên một review ĐANG ở trên site, rating tour thừa một, cache
@@ -596,7 +600,7 @@ export class ReviewsService {
    * dưới — KHÔNG có shared helper giữa hai file; sửa công thức ở đây mà quên
    * sửa seed.ts thì rating seed ra và rating `moderate()` tính sẽ lệch nhau.
    *
-   * Ba điểm concurrency đã fix (code review):
+   * Bốn điểm concurrency đã fix (code review):
    *   - `fromApproved`/`justApproved` được tính từ giá trị `isApproved` đọc
    *     LẠI TRONG transaction (khoá bằng `FOR UPDATE`) chứ không dùng
    *     snapshot đọc trước transaction — tránh TOCTOU khi hai admin bấm
@@ -609,10 +613,13 @@ export class ReviewsService {
    *     song song với request sửa đó có thể tính rating cho SAI tour.
    *   - Rating của tour được khoá row (`SELECT … FOR UPDATE`) TRƯỚC khi
    *     aggregate+ghi, xem chi tiết ở ③.
+   *   - `FOR UPDATE` không biết dialog đang hiện bản CŨ: tác giả vẫn sửa được
+   *     bài `pending`, admin khác có thể vừa quyết. Lệnh mang `version` của bản
+   *     admin đọc, so ngay sau guard trùng trạng thái (review L5).
    */
   async moderate(
     actorId: string,
-    input: { id: string; verdict: ReviewVerdict; note?: string },
+    input: { id: string; verdict: ReviewVerdict; note?: string; version: string },
   ): Promise<AdminReview> {
     // Ba động từ → cặp trạng thái đích, khai thành DỮ LIỆU (ADR-0031 §3).
     // Rải if/else theo verdict trong một transaction dài là cách chắc chắn để
@@ -664,11 +671,12 @@ export class ReviewsService {
           tourId: string | null;
           source: ReviewSource;
           rating: number;
+          updatedAt: Date;
         }[]
       >(Prisma.sql`
         SELECT is_approved AS "isApproved", rejected_at AS "rejectedAt",
                retracted_at AS "retractedAt", tour_id AS "tourId", source AS "source",
-               rating AS "rating"
+               rating AS "rating", updated_at AS "updatedAt"
         FROM reviews WHERE id = ${input.id}::uuid FOR UPDATE
       `);
       if (!locked) throw new ReviewNotFoundError();
@@ -695,6 +703,14 @@ export class ReviewsService {
           include: REVIEW_ADMIN_INCLUDE,
         });
       }
+
+      // Chống duyệt mù (review L5): dialog gửi lại phiên bản nó ĐANG hiện.
+      // `FOR UPDATE` ở trên tuần tự hoá hai lệnh ghi nhưng không biết bản nào
+      // cũ, mà bài `pending` tác giả vẫn sửa được (ADR-0032 §2) — không so thì
+      // khách tráo nội dung đúng lúc admin đọc là bản mới lên site không qua ai,
+      // và admin B mở tab từ trước lật ngược quyết định của admin A. Đặt SAU
+      // guard trên: một lệnh trùng ý với hiện trạng không có gì để báo "đã đổi".
+      if (locked.updatedAt.toISOString() !== input.version) throw new StaleReviewError();
 
       const justApproved = !fromApproved && target.isApproved;
       const justRejected = !fromRejected && target.rejected;
@@ -730,7 +746,7 @@ export class ReviewsService {
       // cần CÓ `tourId` là tính (quyết định 31/07, xem doc-comment đầu hàm).
       // `locked.tourId` đọc TRONG transaction dưới CÙNG `FOR UPDATE` với
       // `isApproved` ở trên (không phải snapshot `existing` đọc trước tx) —
-      // xem "Ba điểm concurrency" ở doc-comment đầu hàm.
+      // xem "Bốn điểm concurrency" ở doc-comment đầu hàm.
       //
       // Race đã tránh (ADR-0009 "single-statement atomic claims", áp dụng
       // TINH THẦN chứ không thể gộp mù một câu): trước đây đọc-rồi-ghi qua

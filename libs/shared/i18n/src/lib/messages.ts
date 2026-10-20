@@ -7266,15 +7266,20 @@ export const messages = {
           submit: 'Reject review',
           submitting: 'Rejecting…',
         },
-        /** Mã TRẠNG-THÁI-CŨ duy nhất của vùng: review đã biến mất dưới chân
-         *  dialog (tài khoản tác giả bị xoá, tour bị xoá — cả hai cascade).
-         *  UI đóng dialog + toast + refresh THẬT: copy hứa thì phải làm
-         *  (bài học review F3 31/08). */
+        /** Cả ba mã đều là TRẠNG-THÁI-CŨ: hàng dưới chân dialog đã đổi số phận
+         *  ngoài tầm admin. UI đóng dialog + toast + refresh THẬT: copy hứa thì
+         *  phải làm (bài học review F3 31/08). */
         errors: {
+          /** Row user hay tour bị xoá cứng (cascade); khách TỰ xoá tài khoản là
+           *  soft-delete, review ở lại hàng đợi. */
           REVIEW_NOT_FOUND: 'This review no longer exists. The queue below has been refreshed.',
           /** W4 U2: tác giả rút giữa chừng — như NOT_FOUND, refresh là câu trả lời. */
           REVIEW_RETRACTED:
             'The author retracted this review — it can no longer be moderated. The queue below has been refreshed.',
+          /** Review L5: tác giả sửa bài, hay admin khác quyết trước. Phải bảo đọc
+           *  LẠI: thứ dialog vừa hiện có thể không còn là bài sắp được đăng. */
+          STALE_REVIEW:
+            'This review changed after you opened it, so nothing was saved. The queue below has been refreshed — read it again before deciding.',
         },
         toast: {
           approvedTitle: 'Review approved',

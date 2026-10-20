@@ -809,6 +809,8 @@ export const contract = {
             status: 409,
             message: 'The author retracted this review — it cannot be moderated',
           },
+          /** Review đã đổi kể từ lúc admin mở (tác giả sửa, hay admin khác vừa quyết). */
+          STALE_REVIEW: { status: 409, message: 'This review changed since it was opened' },
         }),
     },
     /**

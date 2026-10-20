@@ -61,8 +61,16 @@ export function ModerateActions({
    * hàng) và một dialog "Approve" tự lật thành "Unapprove" nghĩa là cú click
    * operator định là duyệt lại gửi lệnh gỡ (review F4 31/08). Nếu chiều đã
    * đóng băng thành ra cũ, server no-op guard đỡ nốt (không ghi gì).
+   *
+   * Bản review dialog hiện cũng chụp CÙNG lúc, kèm phiên bản của nó (review
+   * L5, khuôn "form chụp `version` lúc mở" của chuyến khởi hành): bản mới mà
+   * refresh mang về giữa chừng chưa chắc đã được đọc, nên lệnh gửi phiên bản
+   * của đúng bản đang hiện và server trả STALE_REVIEW nếu hàng đã đổi.
    */
-  const [frozenAction, setFrozenAction] = useState<ModerateActionKind | null>(null);
+  const [frozen, setFrozen] = useState<{
+    action: ModerateActionKind;
+    review: ModerateTarget;
+  } | null>(null);
 
   /**
    * Nút nào hiện, theo TRẠNG THÁI (ADR-0031 §3) — dữ liệu, không phải ternary
@@ -70,8 +78,8 @@ export function ModerateActions({
    *
    * - `pending` — duyệt, hoặc bác.
    * - `approved` — gỡ xuống (chưa quyết), hoặc bác luôn.
-   * - `rejected` — chỉ còn đường duyệt. Muốn trả nó về hàng đợi thì duyệt rồi
-   *   gỡ; ca ấy hiếm tới mức một nút thứ ba trên MỌI hàng là cái giá sai.
+   * - `rejected` — duyệt, hoặc trả về hàng đợi (`reopen`, lý do ở bảng dưới).
+   * - `retracted` — không nút nào.
    */
   const ACTIONS: Record<ReviewRowVM['state'], ModerateActionKind[]> = {
     pending: ['approve', 'reject'],
@@ -106,29 +114,29 @@ export function ModerateActions({
           key={action}
           tone={action === 'approve' ? 'approve' : 'deny'}
           disabled={isRefreshing}
-          onClick={() => setFrozenAction(action)}
+          onClick={() => setFrozen({ action, review })}
         >
           {BUTTON_LABEL[action]}
         </DecisionButton>
       ))}
       {/* Bác có dialog riêng (ADR-0031 AMEND 1): lý do chọn từ danh sách chứ
           không gõ tay. Ba lệnh kia vẫn đi qua kit. */}
-      {frozenAction === 'reject' ? (
+      {frozen === null ? null : frozen.action === 'reject' ? (
         <RejectReviewDialog
-          review={review}
+          review={frozen.review}
           moderate={moderate}
-          onClose={() => setFrozenAction(null)}
+          onClose={() => setFrozen(null)}
           onSettled={refreshQueue}
         />
-      ) : frozenAction !== null ? (
+      ) : (
         <ModerateDialog
-          review={review}
+          review={frozen.review}
           moderate={moderate}
-          action={frozenAction}
-          onClose={() => setFrozenAction(null)}
+          action={frozen.action}
+          onClose={() => setFrozen(null)}
           onSettled={refreshQueue}
         />
-      ) : null}
+      )}
     </fieldset>
   );
 }
@@ -202,6 +210,9 @@ function ModerateDialog({
           // trắng chỉ để lại một dòng audit `note: ""` vô nghĩa trong
           // ReviewModerationEvent.
           ...(note ? { note } : {}),
+          // Phiên bản của CHÍNH bản đang hiện trong dialog — tác giả sửa hay
+          // admin khác quyết trước thì server trả STALE_REVIEW, không duyệt mù.
+          version: review.version,
         });
         if (!result.ok) return { ok: false, code: result.code };
         // Chiều đọc từ RESPONSE của server, không từ nút vừa bấm: trạng thái

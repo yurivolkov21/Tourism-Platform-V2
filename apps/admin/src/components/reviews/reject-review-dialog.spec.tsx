@@ -42,6 +42,7 @@ const PENDING: ModerateTarget = {
   approved: false,
   state: 'pending',
   rejectionCount: 0,
+  version: '2026-10-20T03:00:00.000Z',
 };
 
 const reason = (key: string) => {
@@ -150,6 +151,7 @@ describe('RejectReviewDialog — gửi đi', () => {
       id: PENDING.id,
       verdict: 'reject',
       note: `${reason('peopleInPhotos').text} The second photo.`,
+      version: PENDING.version,
     });
     expect(success).toHaveBeenCalledWith(t.toast.rejectedTitle, {
       description: t.toast.rejectedBody(PENDING.authorLabel),

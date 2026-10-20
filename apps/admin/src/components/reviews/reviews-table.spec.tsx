@@ -44,6 +44,7 @@ const row = (patch: Partial<ReviewRowVM> = {}): ReviewRowVM => ({
   submitted: '4 Sep 2026, 12:15 UTC',
   moderated: null,
   moderatedBy: null,
+  version: '2026-10-20T03:00:00.000Z',
   ...patch,
 });
 

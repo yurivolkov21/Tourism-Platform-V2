@@ -76,6 +76,8 @@ export interface ReviewRowVM {
   moderated: string | null;
   /** `null` khi không biết ai duyệt (admin cũ đã bị xoá — FK SetNull). */
   moderatedBy: string | null;
+  /** Phiên bản hàng lúc tải — dialog gửi lại nguyên xi để server bắt bản đã đổi. */
+  version: string;
 }
 
 /**
@@ -133,5 +135,6 @@ export function toReviewRow(review: AdminReview): ReviewRowVM {
     // làm mất luôn mốc thời gian.
     moderated: review.moderatedAt ? t.list.moderated(formatDateTime(review.moderatedAt)) : null,
     moderatedBy: review.moderatedBy ? t.list.moderatedBy(review.moderatedBy) : null,
+    version: review.version,
   };
 }

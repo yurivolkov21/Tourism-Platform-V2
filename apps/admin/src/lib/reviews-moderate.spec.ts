@@ -26,8 +26,12 @@ describe('MODERATE_CONTRACT_CODES', () => {
     expect([...MODERATE_CONTRACT_CODES].sort()).toEqual(declared.sort());
   });
 
-  it('đúng HAI mã: REVIEW_NOT_FOUND + REVIEW_RETRACTED (W4 U2) — không có mã ledger vì moderate không đụng tiền', () => {
-    expect([...MODERATE_CONTRACT_CODES].sort()).toEqual(['REVIEW_NOT_FOUND', 'REVIEW_RETRACTED']);
+  it('đúng BA mã: REVIEW_NOT_FOUND + REVIEW_RETRACTED (W4 U2) + STALE_REVIEW (review L5) — không có mã ledger vì moderate không đụng tiền', () => {
+    expect([...MODERATE_CONTRACT_CODES].sort()).toEqual([
+      'REVIEW_NOT_FOUND',
+      'REVIEW_RETRACTED',
+      'STALE_REVIEW',
+    ]);
   });
 });
 
@@ -48,6 +52,10 @@ describe('moderateErrorCopy', () => {
 describe('isStaleStateCode', () => {
   it('REVIEW_NOT_FOUND là lỗi TRẠNG-THÁI-CŨ: review biến mất dưới chân dialog, bấm lại vô nghĩa', () => {
     expect(isStaleStateCode('REVIEW_NOT_FOUND')).toBe(true);
+  });
+
+  it('STALE_REVIEW cũng vậy: bản dialog đang hiện đã cũ, phải tải lại hàng đợi rồi đọc lại', () => {
+    expect(isStaleStateCode('STALE_REVIEW')).toBe(true);
   });
 
   it('mã tầng vận chuyển KHÔNG thuộc nhóm này — chúng có lối xử riêng', () => {
@@ -80,6 +88,7 @@ const PENDING: ModerateTarget = {
   approved: false,
   state: 'pending',
   rejectionCount: 0,
+  version: '2026-10-20T03:00:00.000Z',
 };
 
 describe('moderateConsequences — nhánh approve', () => {
