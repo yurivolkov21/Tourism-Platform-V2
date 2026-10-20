@@ -128,25 +128,26 @@ export function validateEnquiry(
     return errors;
   }
 
+  const copy = messages.contactForm.errors;
   for (const issue of result.error.issues) {
     const field = issue.path[0];
     if (field === 'name') {
-      errors.name =
-        state.name.trim().length === 0
-          ? messages.contactForm.errors.name.required
-          : messages.contactForm.errors.name.tooShort;
+      // Review L6: `too_big` từng rơi vào nhánh "tooShort" — bảo khách viết thêm
+      // trong khi lỗi thật là quá dài.
+      if (state.name.trim().length === 0) errors.name = copy.name.required;
+      else errors.name = issue.code === 'too_big' ? copy.name.tooLong : copy.name.tooShort;
     } else if (field === 'email') {
-      errors.email =
-        state.email.trim().length === 0
-          ? messages.contactForm.errors.email.required
-          : messages.contactForm.errors.email.invalid;
+      errors.email = state.email.trim().length === 0 ? copy.email.required : copy.email.invalid;
     } else if (field === 'message') {
       // Payload đặt tên "message", UI đặt tên "loves" — hai tên khác nhau cố
       // ý (mapping giữ UI, không ép người dùng theo schema, spec §2).
-      errors.loves =
-        state.loves.trim().length === 0
-          ? messages.contactForm.errors.message.required
-          : messages.contactForm.errors.message.tooShort;
+      if (state.loves.trim().length === 0) errors.loves = copy.message.required;
+      else if (issue.code === 'too_big') {
+        // Trần của schema áp lên message ĐÃ GHÉP dòng ngày mong muốn — báo cho ô "loves"
+        // phần còn lại sau khi trừ đoạn ghép, để con số khớp thứ khách thấy trong ô.
+        const appended = payload.message.length - state.loves.length;
+        errors.loves = copy.message.tooLong(Number(issue.maximum) - appended);
+      } else errors.loves = copy.message.tooShort;
     }
   }
   return errors;

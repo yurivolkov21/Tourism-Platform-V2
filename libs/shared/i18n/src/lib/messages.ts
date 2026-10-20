@@ -3120,6 +3120,7 @@ export const messages = {
       name: {
         required: 'Enter your name.',
         tooShort: 'A first name is enough — just 2 characters or more.',
+        tooLong: 'Keep your name under 120 characters.',
       },
       email: {
         required: 'Enter your email address.',
@@ -3128,6 +3129,9 @@ export const messages = {
       message: {
         required: 'Tell us a little about your trip.',
         tooShort: 'A few more words would help — at least 10 characters.',
+        /** Trần nhận làm tham số: form ở /contact ghép thêm dòng ngày mong muốn vào message,
+            nên phần khách tự gõ còn ít hơn 2000 (review L6). */
+        tooLong: (max: number) => `Keep your message under ${max} characters.`,
       },
     },
     submitting: 'Sending your letter…',

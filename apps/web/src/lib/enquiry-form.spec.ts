@@ -140,6 +140,25 @@ describe('validateEnquiry', () => {
     expect(errors.loves).toBe('A few more words would help — at least 10 characters.');
   });
 
+  // Review L6: ba ca dưới từng ra copy "tooShort" — bảo khách viết THÊM trong khi lỗi thật
+  // là quá dài, và form không có bộ đếm ký tự nào để khách tự nhận ra.
+  it('name quá 120 ký tự → lỗi field "name", copy "tooLong"', () => {
+    const errors = validateEnquiry({ ...VALID_STATE, name: 'A'.repeat(121) });
+    expect(errors.name).toBe('Keep your name under 120 characters.');
+  });
+
+  it('loves quá 2000 ký tự → lỗi field "loves", copy "tooLong"', () => {
+    const errors = validateEnquiry({ ...VALID_STATE, loves: 'x'.repeat(2001) });
+    expect(errors.loves).toBe('Keep your message under 2000 characters.');
+  });
+
+  it('dòng "Preferred dates" ghép vào đẩy message quá trần → trần báo cho ô loves đã TRỪ phần ghép', () => {
+    const dates = 'next April';
+    const suffix = `\n\nPreferred dates: ${dates}`.length;
+    const errors = validateEnquiry({ ...VALID_STATE, loves: 'x'.repeat(1995), dates });
+    expect(errors.loves).toBe(`Keep your message under ${2000 - suffix} characters.`);
+  });
+
   it('dates/region không thuộc schema → không bao giờ xuất hiện trong lỗi', () => {
     // count "bốn" bị buildEnquiryPayload bỏ field groupSize (không phải lỗi
     // schema); region/dates không map tới lỗi nào — kiểm luôn trong state
