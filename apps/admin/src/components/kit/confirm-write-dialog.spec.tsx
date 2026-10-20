@@ -337,6 +337,9 @@ describe('ConfirmWriteDialog — focus lúc chờ và khi lệnh hỏng', () => 
         return { ok: false, code: 'RETRYABLE' };
       }),
     );
+    // Focus đầu của Base UI đậu vào ô ghi chú CHẬM một nhịp; bấm gửi trước nó thì nó giành focus
+    // về ô ghi chú SAU nhánh lỗi (máy rảnh là đỏ ở mọi lần chạy cả file, đo 20/10).
+    await waitFor(() => expect(screen.getByLabelText(COPY.noteLabel)).toHaveFocus());
     await user.click(await screen.findByRole('button', { name: COPY.submit }));
 
     expect(await screen.findByRole('alert')).toHaveTextContent(ERROR_COPY.RETRYABLE);
