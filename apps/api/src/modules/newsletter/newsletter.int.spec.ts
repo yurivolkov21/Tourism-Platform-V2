@@ -717,6 +717,99 @@ describe('newsletter double opt-in (int)', () => {
     expect(back.confirmedAt?.getTime() ?? 0).toBeGreaterThan(stillOff.confirmedAt?.getTime() ?? 0);
   });
 
+  /** POST huỷ bằng token v1 như link trong thư; trả response để test đọc `resubscribeToken`. */
+  async function unsubscribeViaApi(subscriber: { id: string }, ip: string) {
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/newsletter/unsubscribe',
+      headers: { 'x-forwarded-for': ip },
+      payload: {
+        id: subscriber.id,
+        token: makeNewsletterToken(subscriber.id, 'unsubscribe', env.NEWSLETTER_UNSUBSCRIBE_SECRET),
+      },
+    });
+    expect(res.statusCode).toBe(200);
+    return res;
+  }
+
+  it('review L6: huỷ rồi điền lại form → worker GỬI thư xác nhận mới (không SKIPPED), link trong thư mở lại consent', async () => {
+    const email = 'optin.comeback@example.com';
+    const ip = '10.1.4.7';
+    const subscriber = await createSubscriber(email, ip);
+    // Thư đầu đi như thường, rồi khách huỷ.
+    expect((await outbox.drainOnce()).sent).toBe(1);
+    await unsubscribeViaApi(subscriber, ip);
+
+    // Quá 24h sau thư trước, khách tự điền lại form ở footer — đúng đường quay lại mà trang
+    // huỷ chỉ cho khách. Row vẫn đang huỷ tới khi khách bấm link (double opt-in).
+    await prisma.subscriber.update({
+      where: { id: subscriber.id },
+      data: { welcomeSentAt: new Date(Date.now() - CONFIRM_RESEND_AFTER_MS - 1000) },
+    });
+    expect((await postSubscribe(app, { email }, ip)).statusCode).toBe(200);
+    fakeDeliverer.reset();
+
+    // Bản cũ: worker thấy `unsubscribedAt` ≠ null là SKIPPED — khách thấy toast "Check your
+    // inbox" mà không bao giờ có thư.
+    const result = await outbox.drainOnce();
+    expect(result).toMatchObject({ sent: 1, skippedUnsubscribed: 0 });
+    expect(fakeDeliverer.calls).toHaveLength(1);
+    const [delivered] = fakeDeliverer.calls;
+    if (!delivered) throw new Error('deliverer không được gọi');
+    expect(delivered.type).toBe(EmailType.NEWSLETTER_WELCOME);
+
+    // Link trong thư VỪA GỬI mở lại consent thật.
+    const token = (delivered.payload as Record<string, unknown>).confirmToken as string;
+    const ok = await app.inject({
+      method: 'POST',
+      url: '/api/newsletter/confirm',
+      headers: { 'x-forwarded-for': ip },
+      payload: { id: subscriber.id, token },
+    });
+    expect(ok.statusCode).toBe(200);
+    const back = await prisma.subscriber.findUniqueOrThrow({ where: { id: subscriber.id } });
+    expect(back.unsubscribedAt).toBeNull();
+  });
+
+  it('review L6: thư xác nhận xếp hàng TRƯỚC lần huỷ → vẫn SKIPPED, không gửi một link đã chết', async () => {
+    const email = 'optin.withdrawn@example.com';
+    const ip = '10.1.4.8';
+    // Thư xác nhận đang PENDING thì khách huỷ (link huỷ của thư cũ, hoặc admin gỡ tay).
+    const subscriber = await createSubscriber(email, ip);
+    await unsubscribeViaApi(subscriber, ip);
+
+    const result = await outbox.drainOnce();
+    expect(result).toMatchObject({ sent: 0, skippedUnsubscribed: 1 });
+    expect(fakeDeliverer.calls).toHaveLength(0);
+  });
+
+  it('review L6: thư xác nhận của lượt xin lại mà khách đã bấm "Re-subscribe" trước khi thư đi → SKIPPED (link trong thư đã chết)', async () => {
+    const email = 'optin.undo@example.com';
+    const ip = '10.1.4.9';
+    const subscriber = await createSubscriber(email, ip);
+    expect((await outbox.drainOnce()).sent).toBe(1);
+    const unsubscribed = await unsubscribeViaApi(subscriber, ip);
+    await prisma.subscriber.update({
+      where: { id: subscriber.id },
+      data: { welcomeSentAt: new Date(Date.now() - CONFIRM_RESEND_AFTER_MS - 1000) },
+    });
+    expect((await postSubscribe(app, { email }, ip)).statusCode).toBe(200);
+    // Nút "đổi ý" trên trang huỷ đưa row về đang nhận — thế hệ consent đổi, thư đang chờ
+    // mang token của thế hệ cũ.
+    const undo = await app.inject({
+      method: 'POST',
+      url: '/api/newsletter/resubscribe',
+      headers: { 'x-forwarded-for': ip },
+      payload: { id: subscriber.id, token: unsubscribed.json().resubscribeToken },
+    });
+    expect(undo.statusCode).toBe(200);
+    fakeDeliverer.reset();
+
+    const result = await outbox.drainOnce();
+    expect(result).toMatchObject({ sent: 0, skippedUnsubscribed: 1 });
+    expect(fakeDeliverer.calls).toHaveLength(0);
+  });
+
   it('vòng vá review W4: chưa xác nhận, thư đầu quá 24h → điền lại form gửi LẠI thư xác nhận (một lần/ngày); đã xác nhận → không gửi gì', async () => {
     const email = 'optin.resend@example.com';
     const ip = '10.1.4.6';

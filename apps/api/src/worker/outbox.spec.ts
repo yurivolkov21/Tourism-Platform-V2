@@ -1,6 +1,13 @@
 import { OutboxStatus } from '../generated/prisma/enums.js';
+import { consentGeneration, makeNewsletterToken } from '../modules/newsletter/unsubscribe-token.js';
 import { DeliveryHttpError, isPermanentDeliveryError } from './deliverer.js';
-import { backoffDelayMs, MAX_ATTEMPTS, nextAttemptState, trimError } from './outbox.service.js';
+import {
+  backoffDelayMs,
+  isDeadConfirmMail,
+  MAX_ATTEMPTS,
+  nextAttemptState,
+  trimError,
+} from './outbox.service.js';
 
 // Unit — logic thuần của state machine retry (stateful paths ở outbox.int.spec.ts).
 
@@ -89,5 +96,49 @@ describe('trimError', () => {
   it('trims to 1000 chars (last_error column cap)', () => {
     const long = 'x'.repeat(2500);
     expect(trimError(new Error(long))).toHaveLength(1000);
+  });
+});
+
+describe('isDeadConfirmMail (review L6)', () => {
+  const SECRET = 'unit-test-newsletter-secret';
+  const ID = '0198c000-0000-7000-8000-0000000000c1';
+  const UNSUBSCRIBED_AT = new Date('2026-10-01T08:00:00.000Z');
+  const active = { id: ID, unsubscribedAt: null };
+  const unsubscribed = { id: ID, unsubscribedAt: UNSUBSCRIBED_AT };
+  /** Token confirm mint lúc enqueue, khoá vào thế hệ consent của row LÚC ĐÓ. */
+  const confirmFor = (row: { unsubscribedAt: Date | null }) => ({
+    email: 'reader@example.com',
+    confirmToken: makeNewsletterToken(ID, 'confirm', SECRET, NOW, consentGeneration(row)),
+  });
+
+  it('huỷ rồi điền lại form: row vẫn đang huỷ, token đúng thế hệ hiện tại → thư CÒN SỐNG, phải gửi', () => {
+    expect(isDeadConfirmMail(unsubscribed, confirmFor(unsubscribed), SECRET, NOW)).toBe(false);
+  });
+
+  it('thư đầu, row chưa từng huỷ → còn sống', () => {
+    expect(isDeadConfirmMail(active, confirmFor(active), SECRET, NOW)).toBe(false);
+  });
+
+  it('huỷ SAU khi thư xếp hàng → thế hệ đổi, link đã chết → bỏ', () => {
+    expect(isDeadConfirmMail(unsubscribed, confirmFor(active), SECRET, NOW)).toBe(true);
+  });
+
+  it('bấm "Re-subscribe" SAU khi thư của lượt xin lại xếp hàng → link đã chết → bỏ', () => {
+    expect(isDeadConfirmMail(active, confirmFor(unsubscribed), SECRET, NOW)).toBe(true);
+  });
+
+  it('token ký bằng secret khác hoặc sai mục đích → bỏ', () => {
+    expect(isDeadConfirmMail(active, confirmFor(active), 'rotated-secret', NOW)).toBe(true);
+    const unsubscribeToken = makeNewsletterToken(ID, 'unsubscribe', SECRET);
+    expect(isDeadConfirmMail(active, { confirmToken: unsubscribeToken }, SECRET, NOW)).toBe(true);
+  });
+
+  it('payload không mang confirmToken (row trước W4) → luật cũ: chỉ row đã huỷ mới bỏ', () => {
+    expect(isDeadConfirmMail(unsubscribed, { email: 'reader@example.com' }, SECRET, NOW)).toBe(
+      true,
+    );
+    expect(isDeadConfirmMail(active, { email: 'reader@example.com' }, SECRET, NOW)).toBe(false);
+    expect(isDeadConfirmMail(active, { confirmToken: 42 }, SECRET, NOW)).toBe(false);
+    expect(isDeadConfirmMail(unsubscribed, null, SECRET, NOW)).toBe(true);
   });
 });

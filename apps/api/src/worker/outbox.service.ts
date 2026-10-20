@@ -1,9 +1,14 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { OUTBOX_MAX_ATTEMPTS } from '@tourism/contract';
 import { prisma } from '../auth/auth.config.js';
+import { env } from '../config/env.js';
 import { Prisma } from '../generated/prisma/client.js';
 import { EmailType, OutboxStatus } from '../generated/prisma/enums.js';
 import { isMailableSubscriber } from '../modules/newsletter/mailable.js';
+import {
+  consentGeneration,
+  verifyNewsletterToken,
+} from '../modules/newsletter/unsubscribe-token.js';
 import { EMAIL_DELIVERER, type EmailDeliverer, isPermanentDeliveryError } from './deliverer.js';
 import { resolveRecipient } from './recipient.js';
 
@@ -21,9 +26,10 @@ const LAST_ERROR_MAX = 1000;
 export const FAILED_RETENTION_DAYS = 180;
 
 /**
- * Loại email coi là "bản tin" — chịu chi phối bởi `unsubscribedAt` của
- * Subscriber (spec §4.4: "worker bỏ qua subscriber có unsubscribedAt ≠
- * null"). Set riêng thay vì mọi EmailType: các email giao dịch khác
+ * Loại email coi là "bản tin" — chịu chi phối bởi consent của Subscriber
+ * (spec §4.4: "worker bỏ qua subscriber có unsubscribedAt ≠ null"; thư xác
+ * nhận theo luật riêng, xem `isDeadConfirmMail`). Set riêng thay vì mọi
+ * EmailType: các email giao dịch khác
  * (BOOKING_CONFIRMATION, REVIEW_APPROVED…) không liên quan tới bảng
  * subscribers — subscriber huỷ đăng ký bản tin không có nghĩa họ ngừng nhận
  * email xác nhận đơn hàng của chính họ.
@@ -51,9 +57,10 @@ export interface DrainResult {
   /** Row lỗi nhưng còn lượt → vẫn PENDING chờ lượt drain sau. */
   retried: number;
   /**
-   * Bản tin cho subscriber đã huỷ đăng ký (`unsubscribedAt` ≠ null) — bỏ
-   * qua, KHÔNG gọi deliverer, đánh dấu SENT ngay (spec §4.4). Đếm riêng
-   * thay vì gộp vào `sent`: gộp chung sẽ nói dối số email THẬT SỰ đã gửi.
+   * Bản tin bị consent chặn (spec §4.4): subscriber đã huỷ, hoặc thư xác nhận
+   * mà link trong thư đã chết (`isDeadConfirmMail`) — bỏ qua, KHÔNG gọi
+   * deliverer, đánh dấu SKIPPED. Đếm riêng thay vì gộp vào `sent`: gộp chung
+   * sẽ nói dối số email THẬT SỰ đã gửi.
    */
   skippedUnsubscribed: number;
   /**
@@ -115,6 +122,44 @@ export function nextAttemptState(
 export function trimError(err: unknown): string {
   const message = err instanceof Error ? err.message : String(err);
   return message.slice(0, LAST_ERROR_MAX);
+}
+
+/**
+ * Thư XÁC NHẬN đăng ký (NEWSLETTER_WELCOME) đã thành thư chết chưa — thuần để
+ * unit test (review L6). Luật: thư đi khi và chỉ khi link trong thư CÒN MỞ
+ * ĐƯỢC, tức `confirmToken` của payload khớp thế hệ consent HIỆN TẠI của row
+ * (`consentGeneration`, ADR-0039 AMEND 1 §3). Hệ quả:
+ * - khách huỷ rồi tự điền lại form → thư mang thế hệ mới, row vẫn đang huỷ
+ *   tới khi khách bấm link → GỬI. Bản cũ chặn mọi row đã huỷ, nên đường quay
+ *   lại mà trang huỷ chỉ cho khách là một ngõ cụt im lặng;
+ * - khách huỷ, hoặc bấm "Re-subscribe", SAU khi thư xếp hàng → thế hệ đổi,
+ *   link đã chết → BỎ.
+ * Payload không mang `confirmToken` (row trước W4, row test enqueue tay) giữ
+ * luật cũ: row đã huỷ thì bỏ.
+ */
+export function isDeadConfirmMail(
+  subscriber: { id: string; unsubscribedAt: Date | null },
+  payload: unknown,
+  secret: string,
+  now: Date = new Date(),
+): boolean {
+  const token = confirmTokenOf(payload);
+  if (token === null) return subscriber.unsubscribedAt !== null;
+  return !verifyNewsletterToken(
+    subscriber.id,
+    token,
+    'confirm',
+    secret,
+    now,
+    consentGeneration(subscriber),
+  );
+}
+
+/** `confirmToken` của payload thư xác nhận, `null` khi vắng hoặc sai kiểu. */
+function confirmTokenOf(payload: unknown): string | null {
+  if (typeof payload !== 'object' || payload === null || Array.isArray(payload)) return null;
+  const token = (payload as Record<string, unknown>).confirmToken;
+  return typeof token === 'string' && token.length > 0 ? token : null;
 }
 
 /**
@@ -260,13 +305,13 @@ export class OutboxService {
   }
 
   /**
-   * Bản tin tới người nhận này có bị chặn không. Thư XÁC NHẬN
-   * (NEWSLETTER_WELCOME) chỉ tránh row đã huỷ — nó là thư đi xin consent nên
-   * gửi tới row chưa xác nhận là đúng. Mọi loại bản tin KHÁC (campaign tương
-   * lai) phải qua predicate mailable chung (`isMailableSubscriber`, ADR-0039
-   * §2): chưa xác nhận hoặc đã huỷ đều chặn. `findUnique` trên `email` chạy
-   * trên cột `@db.Citext` nên không cần tự lowercase — DB tự so khớp không
-   * phân biệt hoa/thường (cùng bài học citext ở `NewsletterService.subscribe()`).
+   * Bản tin tới người nhận này có bị chặn không. Mọi loại bản tin KHÁC thư
+   * xác nhận (campaign tương lai) phải qua predicate mailable chung
+   * (`isMailableSubscriber`, ADR-0039 §2): chưa xác nhận hoặc đã huỷ đều chặn.
+   * Thư XÁC NHẬN (NEWSLETTER_WELCOME) là thư đi xin consent nên luật khác —
+   * xem `isDeadConfirmMail`. `findUnique` trên `email` chạy trên cột
+   * `@db.Citext` nên không cần tự lowercase — DB tự so khớp không phân biệt
+   * hoa/thường (cùng bài học citext ở `NewsletterService.subscribe()`).
    */
   private async isBlockedNewsletterRecipient(
     type: EmailType,
@@ -276,10 +321,12 @@ export class OutboxService {
     if (!email) return false;
     const subscriber = await prisma.subscriber.findUnique({
       where: { email },
-      select: { unsubscribedAt: true, confirmedAt: true },
+      select: { id: true, unsubscribedAt: true, confirmedAt: true },
     });
     if (!subscriber) return false;
-    if (type === EmailType.NEWSLETTER_WELCOME) return subscriber.unsubscribedAt !== null;
+    if (type === EmailType.NEWSLETTER_WELCOME) {
+      return isDeadConfirmMail(subscriber, payload, env.NEWSLETTER_UNSUBSCRIBE_SECRET);
+    }
     return !isMailableSubscriber(subscriber);
   }
 
