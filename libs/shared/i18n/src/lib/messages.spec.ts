@@ -24,6 +24,18 @@ describe('messages: tourDetail.itinerary.stopsSummary', () => {
   });
 });
 
+describe('messages: toursPage.resultSummary', () => {
+  const summary = messages.toursPage.resultSummary;
+
+  it('số nhiều ở cả hai vế', () => {
+    expect(summary(29, 9)).toBe('29 tours across 9 destinations');
+  });
+
+  it('số ít ở cả hai vế — không "1 destinations" (review L2, 20/10)', () => {
+    expect(summary(1, 1)).toBe('1 tour across 1 destination');
+  });
+});
+
 describe('messages: admin catalog — đếm tour và luật xoá của danh mục và điểm đến (review RU2)', () => {
   const categories = messages.admin.categories;
   const destinations = messages.admin.destinations;

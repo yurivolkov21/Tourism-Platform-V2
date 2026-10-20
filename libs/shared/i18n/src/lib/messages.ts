@@ -1666,7 +1666,7 @@ export const messages = {
         (bộ lọc đã áp dụng tức thì). */
     showResults: (n: number) => `Show ${n} ${n === 1 ? 'tour' : 'tours'}`,
     resultSummary: (tours: number, destinations: number) =>
-      `${tours} ${tours === 1 ? 'tour' : 'tours'} across ${destinations} destinations`,
+      `${tours} ${tours === 1 ? 'tour' : 'tours'} across ${destinations} ${destinations === 1 ? 'destination' : 'destinations'}`,
     showing: (from: number, to: number, total: number) => `Showing ${from}–${to} of ${total}`,
     perPage: 'per page',
     perPageLabel: 'Tours per page',
