@@ -11,10 +11,14 @@ import type { JournalPost } from '@/lib/api/posts';
 // Card TRẦN: không viền, không nền bg-card, không nâng lên khi hover (thiết
 // kế Home không có hộp để nâng — nâng sẽ trông sai). Ba tín hiệu hover: ảnh
 // zoom, tiêu đề đổi màu + gạch chân, nút mũi tên sáng viền.
+// `timeZone: 'UTC'` BẮT BUỘC: `post.date` là chuỗi YYYY-MM-DD nên `new Date()` đọc
+// nó là nửa đêm UTC, và card render cả ở trình duyệt (trong `BlogExplorer`) — máy
+// khách ở múi giờ âm (châu Mỹ) sẽ in lùi một ngày. Cùng bẫy `region-seasons.tsx`.
 const DATE_FMT = new Intl.DateTimeFormat('en-US', {
   month: 'short',
   day: 'numeric',
   year: 'numeric',
+  timeZone: 'UTC',
 });
 
 export function PostCard({

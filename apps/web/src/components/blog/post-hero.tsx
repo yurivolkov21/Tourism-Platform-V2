@@ -12,10 +12,14 @@ import { SPRING, SPRING_HEADING } from '@/lib/motion';
 // cuộn dùng chữ on-media — hero sáng làm navbar tàng hình (pattern chốt ở
 // /contact). Khác ContentHero của trang pháp lý ở chỗ có ảnh: bài viết vốn
 // bán bằng hình.
+// `timeZone: 'UTC'` BẮT BUỘC, cùng lý do `post-card.tsx`: `post.date` là chuỗi
+// YYYY-MM-DD (nửa đêm UTC) và hero là client component, nên máy khách ở múi giờ
+// âm sẽ in lùi một ngày.
 const DATE_FMT = new Intl.DateTimeFormat('en-US', {
   month: 'long',
   day: 'numeric',
   year: 'numeric',
+  timeZone: 'UTC',
 });
 
 export function PostHero({ post }: { post: JournalPost }) {
