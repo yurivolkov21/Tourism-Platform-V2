@@ -47,11 +47,15 @@ export class ProviderRefundFailedError extends Error {
 
 type RefundRow = Prisma.RefundModel;
 
-/** Refund ledger row → contract shape (money dạng string, cùng quy ước). */
+/**
+ * Refund ledger row → contract shape. Tiền là chuỗi HAI chữ số lẻ, cùng quy ước
+ * `money()` của `bookings.service.ts`: `Decimal.toString()` bỏ số 0 ở đuôi nên
+ * từng trả "30" và "20.5" cạnh `refundedTotal` "50.50" (L4-22, review 20/10).
+ */
 function toRefund(row: RefundRow): RefundView {
   return {
     id: row.id,
-    amount: row.amount.toString(),
+    amount: row.amount.toFixed(2),
     currency: row.currency,
     providerRefundId: row.providerRefundId,
     adminId: row.adminId,
