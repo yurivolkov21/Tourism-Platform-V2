@@ -3,13 +3,17 @@ import { Separator } from '@tourism/ui/components/separator';
 import { cn } from '@tourism/ui/lib/utils';
 import { MailIcon } from 'lucide-react';
 import { AvatarUpload } from '@/components/account/avatar-upload';
+import { GoogleIcon } from '@/components/icons/social';
+import type { SignInMethod } from '@/lib/api/account';
 import type { SessionUser } from '@/lib/api/session';
 
 /**
  * Thẻ danh tính — cột trái của Settings (spec 09/10 §2, phương án C): ảnh đại diện 96px dùng lại
  * `AvatarUpload` (bấm hoặc kéo thả, nút "Upload avatar", tiến độ, lỗi, nút gỡ — hành vi không đổi),
  * tên chữ serif, email muted, dòng gợi ý cỡ ảnh; dưới vạch ngăn là Connected accounts (mục riêng cũ
- * gộp vào đây): nhãn nhỏ và dòng "Email & password" có icon thư.
+ * gộp vào đây): nhãn nhỏ và mỗi cách đăng nhập khách THẬT có một dòng ("Email & password" icon thư,
+ * "Google" chữ G). Review L1-08: bản đầu luôn in "Email & password", kể cả khách chỉ có Google.
+ * Trang không đọc được cách đăng nhập (`null`) thì bỏ cả mục lẫn vạch ngăn, không đoán.
  *
  * Dính khi cuộn chỉ từ `lg` — trang truyền `className` (`lg:sticky lg:top-28`), thẻ không tự quyết
  * vị trí của mình.
@@ -19,7 +23,15 @@ import type { SessionUser } from '@/lib/api/session';
  * KHÔNG đủ: nó không hạ min-content của ô flex, nên thẻ phình theo email — đẩy cả trang cuộn ngang
  * ở 320px, và từ `lg` (cột trái cố định 320px) email thò ra khỏi viền thẻ.
  */
-export function IdentityCard({ profile, className }: { profile: SessionUser; className?: string }) {
+export function IdentityCard({
+  profile,
+  signInMethods,
+  className,
+}: {
+  profile: SessionUser;
+  signInMethods: readonly SignInMethod[] | null;
+  className?: string;
+}) {
   const t = messages.accountProfile;
   return (
     <section
@@ -43,18 +55,32 @@ export function IdentityCard({ profile, className }: { profile: SessionUser; cla
           {profile.email}
         </p>
       </AvatarUpload>
-      <Separator className="my-4.5" />
-      <div className="text-left">
-        <h3 className="text-[0.625rem] font-bold tracking-[0.15em] text-muted-foreground uppercase">
-          {t.connected.heading}
-        </h3>
-        <div className="mt-2.5 flex items-center gap-2.5">
-          <span className="grid size-9.5 shrink-0 place-items-center rounded-full bg-muted text-ink">
-            <MailIcon aria-hidden="true" className="size-4" />
-          </span>
-          <span className="text-sm font-semibold text-foreground">{t.connected.emailPassword}</span>
-        </div>
-      </div>
+      {signInMethods && signInMethods.length > 0 ? (
+        <>
+          <Separator className="my-4.5" />
+          <div className="text-left">
+            <h3 className="text-[0.625rem] font-bold tracking-[0.15em] text-muted-foreground uppercase">
+              {t.connected.heading}
+            </h3>
+            <ul className="mt-2.5 grid gap-2.5">
+              {signInMethods.map((method) => (
+                <li key={method} className="flex items-center gap-2.5">
+                  <span className="grid size-9.5 shrink-0 place-items-center rounded-full bg-muted text-ink">
+                    {method === 'google' ? (
+                      <GoogleIcon className="size-4" />
+                    ) : (
+                      <MailIcon aria-hidden="true" className="size-4" />
+                    )}
+                  </span>
+                  <span className="text-sm font-semibold text-foreground">
+                    {method === 'google' ? t.connected.google : t.connected.emailPassword}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </>
+      ) : null}
     </section>
   );
 }

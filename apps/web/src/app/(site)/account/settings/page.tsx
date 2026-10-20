@@ -2,13 +2,15 @@ import { messages } from '@tourism/i18n';
 import type { Metadata } from 'next';
 import { cookies } from 'next/headers';
 import { SettingsView } from '@/components/account/settings-view';
-import { fetchAccountMe } from '@/lib/api/account';
+import { fetchAccountMe, fetchSignInMethods } from '@/lib/api/account';
 import { requireSession } from '@/lib/api/session';
 
 /**
  * `/account/settings` — tầng sau của hộ chiếu (spec 2026-08-11 M3; bố cục phương án C của spec
- * 09/10). Trang chỉ gác phiên và đọc hồ sơ (`fetchAccountMe`); hero, hai cột và các thẻ nằm ở
- * `SettingsView`. Logic sửa tại dòng, đổi mật khẩu, tải ảnh và xoá tài khoản không đổi.
+ * 09/10). Trang chỉ gác phiên, đọc hồ sơ (`fetchAccountMe`) và cách đăng nhập cho mục Connected
+ * accounts (`fetchSignInMethods`, review L1-08) — hai fetch chạy song song nên trang không chậm
+ * thêm; hero, hai cột và các thẻ nằm ở `SettingsView`. Logic sửa tại dòng, đổi mật khẩu, tải ảnh
+ * và xoá tài khoản không đổi.
  */
 export const metadata: Metadata = {
   title: messages.pageMeta.withBrand(messages.passportSettings.title),
@@ -18,6 +20,9 @@ export const metadata: Metadata = {
 export default async function AccountSettingsPage() {
   await requireSession('/account/settings');
   const cookie = (await cookies()).toString();
-  const profile = await fetchAccountMe(cookie);
-  return <SettingsView profile={profile} />;
+  const [profile, signInMethods] = await Promise.all([
+    fetchAccountMe(cookie),
+    fetchSignInMethods(cookie),
+  ]);
+  return <SettingsView profile={profile} signInMethods={signInMethods} />;
 }

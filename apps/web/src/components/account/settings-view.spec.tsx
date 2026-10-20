@@ -20,7 +20,7 @@ const cardOf = (title: string) =>
 
 describe('SettingsView', () => {
   it('hero giữ chữ cũ, có nút tròn "Back to Passport" về /account; không còn link chữ "← Passport"', () => {
-    render(<SettingsView profile={makeSessionUser()} />);
+    render(<SettingsView profile={makeSessionUser()} signInMethods={['password']} />);
     expect(screen.getByRole('heading', { level: 1, name: 'Traveler details' })).toBeInTheDocument();
     expect(screen.getByText('The information printed in your passport.')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Back to Passport' })).toHaveAttribute(
@@ -31,7 +31,7 @@ describe('SettingsView', () => {
   });
 
   it('xếp đúng thẻ: thẻ danh tính trước, rồi Personal information, Password, Danger zone', () => {
-    render(<SettingsView profile={makeSessionUser()} />);
+    render(<SettingsView profile={makeSessionUser()} signInMethods={['password']} />);
     expect(screen.getAllByRole('heading', { level: 2 }).map((h) => h.textContent)).toEqual([
       'Minh Anh',
       'Personal information',
@@ -41,7 +41,7 @@ describe('SettingsView', () => {
   });
 
   it('đủ dòng: Personal information có Full name, Phone, Email; Password một dòng che chấm tròn', () => {
-    render(<SettingsView profile={makeSessionUser()} />);
+    render(<SettingsView profile={makeSessionUser()} signInMethods={['password']} />);
     expect(
       within(cardOf('Personal information'))
         .getAllByRole('listitem')
@@ -53,7 +53,9 @@ describe('SettingsView', () => {
   });
 
   it('Connected accounts nằm trong thẻ danh tính, không còn mục riêng', () => {
-    const { container } = render(<SettingsView profile={makeSessionUser()} />);
+    const { container } = render(
+      <SettingsView profile={makeSessionUser()} signInMethods={['password']} />,
+    );
     const identity = container.querySelector('[data-slot="identity-card"]') as HTMLElement;
     expect(
       within(identity).getByRole('heading', { level: 3, name: 'Connected accounts' }),
@@ -62,8 +64,19 @@ describe('SettingsView', () => {
     expect(screen.queryByText('Sign-in methods linked to your account.')).not.toBeInTheDocument();
   });
 
+  it('cách đăng nhập của trang đi xuống thẻ danh tính: tài khoản chỉ có Google thấy dòng Google', () => {
+    const { container } = render(
+      <SettingsView profile={makeSessionUser()} signInMethods={['google']} />,
+    );
+    const identity = container.querySelector('[data-slot="identity-card"]') as HTMLElement;
+    expect(within(identity).getByText('Google')).toBeInTheDocument();
+    expect(screen.queryByText('Email & password')).not.toBeInTheDocument();
+  });
+
   it('bố cục: hai cột từ lg (trái 20rem, khe 24px, khung 1024px); thẻ danh tính đứng đầu, chỉ dính từ lg', () => {
-    const { container } = render(<SettingsView profile={makeSessionUser()} />);
+    const { container } = render(
+      <SettingsView profile={makeSessionUser()} signInMethods={['password']} />,
+    );
     const layout = container.querySelector('[data-slot="settings-layout"]');
     expect(layout).toHaveClass(
       'mx-auto',

@@ -3788,6 +3788,7 @@ export const messages = {
     connected: {
       heading: 'Connected accounts',
       emailPassword: 'Email & password',
+      google: 'Google',
     },
     danger: {
       heading: 'Danger zone',

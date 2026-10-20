@@ -4,6 +4,7 @@ import { IdentityCard } from '@/components/account/identity-card';
 import { PasswordCard } from '@/components/account/password-card';
 import { ProfileSummary } from '@/components/account/profile-summary';
 import { ContentHero } from '@/components/content/content-hero';
+import type { SignInMethod } from '@/lib/api/account';
 import type { SessionUser } from '@/lib/api/session';
 
 /**
@@ -18,8 +19,16 @@ import type { SessionUser } from '@/lib/api/session';
  *   1024px giữa trang. `lg:items-start` để ô lưới không giãn cao bằng cột phải — giãn thì
  *   `sticky` không còn chỗ trượt.
  * - Dưới `lg`: một cột, thẻ danh tính lên đầu và không dính; lề 16px.
+ *
+ * `signInMethods` (review L1-08) trang đọc song song với hồ sơ, đi thẳng xuống thẻ danh tính.
  */
-export function SettingsView({ profile }: { profile: SessionUser }) {
+export function SettingsView({
+  profile,
+  signInMethods,
+}: {
+  profile: SessionUser;
+  signInMethods: readonly SignInMethod[] | null;
+}) {
   const tp = messages.passportSettings;
   return (
     <div>
@@ -34,7 +43,11 @@ export function SettingsView({ profile }: { profile: SessionUser }) {
           data-slot="settings-layout"
           className="mx-auto grid max-w-5xl gap-5 lg:grid-cols-[20rem_minmax(0,1fr)] lg:items-start lg:gap-6"
         >
-          <IdentityCard profile={profile} className="lg:sticky lg:top-28" />
+          <IdentityCard
+            profile={profile}
+            signInMethods={signInMethods}
+            className="lg:sticky lg:top-28"
+          />
           <div className="flex min-w-0 flex-col gap-5">
             <ProfileSummary profile={profile} />
             <PasswordCard />

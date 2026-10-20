@@ -1,3 +1,4 @@
+import { unstable_rethrow } from 'next/navigation';
 import { apiOrigin } from './env';
 import type { SessionUser } from './session';
 
@@ -51,6 +52,46 @@ export async function fetchAccountMe(cookie: string): Promise<SessionUser> {
     phone: user.phone ?? null,
     image: user.image ?? null,
   };
+}
+
+/** Cách đăng nhập mà mục Connected accounts của Settings biết in (review L1-08). */
+export type SignInMethod = 'password' | 'google';
+
+/** `providerId` của Better Auth → cách đăng nhập; thứ tự mảng là thứ tự in trên thẻ. */
+const SIGN_IN_METHODS: ReadonlyArray<readonly [providerId: string, method: SignInMethod]> = [
+  ['credential', 'password'],
+  ['google', 'google'],
+];
+
+/**
+ * Đọc cách đăng nhập của khách (review L1-08): trước đây thẻ danh tính luôn in "Email & password",
+ * nên khách chỉ đăng nhập Google đọc thấy mình có mật khẩu. Fetch THẲNG `GET /api/auth/list-accounts`
+ * của Better Auth (mỗi row một `providerId`) kèm cookie forward, `no-store`, như `fetchAccountMe`.
+ *
+ * Đây là mục phụ của trang: lỗi gì (API lỗi, mạng, body lạ) cũng trả `null` để thẻ bỏ mục này,
+ * KHÔNG ném lên error boundary như `fetchAccountMe`. Provider web chưa biết in thì bỏ qua.
+ */
+export async function fetchSignInMethods(cookie: string): Promise<SignInMethod[] | null> {
+  try {
+    const response = await fetch(`${apiOrigin()}/api/auth/list-accounts`, {
+      headers: { cookie },
+      cache: 'no-store',
+    });
+    if (!response.ok) return null;
+    const rows: unknown = await response.json();
+    if (!Array.isArray(rows)) return null;
+    const providers = new Set(
+      (rows as Array<{ providerId?: unknown } | null>).map((row) => row?.providerId),
+    );
+    return SIGN_IN_METHODS.filter(([providerId]) => providers.has(providerId)).map(
+      ([, method]) => method,
+    );
+  } catch (error) {
+    // Lỗi nội bộ của Next (route chuyển sang dynamic lúc build) phải đi thẳng ra, cùng lý do
+    // `session.ts`; nuốt nó thành `null` là trang bị dựng tĩnh với mục này trống.
+    unstable_rethrow(error);
+    return null;
+  }
 }
 
 /**
