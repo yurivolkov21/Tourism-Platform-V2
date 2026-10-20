@@ -15,6 +15,24 @@ type ScrollspyProps = {
   throttleTime?: number;
 };
 
+/**
+ * Vùng cuộn mà scrollspy bám theo. Không có `targetRef`, hoặc `targetRef` trỏ `document`,
+ * là cuộn của window. `targetRef` trỏ phần tử thì là phần tử đó, hoặc viewport ScrollArea
+ * bên trong nó. `null`: `targetRef` có nhưng chưa gắn phần tử, chưa có gì để bám.
+ *
+ * Bản gốc chỉ nhận window khi `targetRef.current === document`, nên thiếu `targetRef` thì
+ * nhánh theo dõi cuộn trả về sớm và nút không bao giờ sáng theo cuộn. Sổ hành trình ở
+ * /account (ca dùng duy nhất) dùng đúng kiểu không `targetRef` đó.
+ */
+function resolveScroller(targetRef: ScrollspyProps['targetRef']): Window | HTMLElement | null {
+  if (!targetRef) return window;
+  const current = targetRef.current;
+  if (current === document) return window;
+  if (!(current instanceof HTMLElement)) return null;
+  const viewport = current.querySelector('[data-slot="scroll-area-viewport"]');
+  return viewport instanceof HTMLElement ? viewport : current;
+}
+
 export function Scrollspy({
   children,
   targetRef,
@@ -27,11 +45,15 @@ export function Scrollspy({
 }: ScrollspyProps) {
   const selfRef = useRef<HTMLDivElement | null>(null);
   const anchorElementsRef = useRef<Element[] | null>(null);
-  const prevIdTracker = useRef<string | null>(null);
 
-  // Sets active nav, hash, prevIdTracker, and calls onUpdate
+  // Đánh dấu nút đang sáng, gọi onUpdate, và ghi hash khi đi từ một cú bấm.
+  //
+  // Cuộn KHÔNG ghi hash (bản gốc ghi mỗi khi đổi section): khi nhánh theo dõi cuộn còn
+  // hỏng, hash chỉ đổi lúc bấm, và đó là hành vi URL người dùng đã thấy ở /account. Vá
+  // nhánh cuộn mà giữ việc ghi hash thì URL nhảy theo từng lần cuộn, kể cả ngay lúc mở
+  // trang (lượt dò đầu tiên luôn chọn một nút).
   const setActiveSection = useCallback(
-    (sectionId: string | null, force = false) => {
+    (sectionId: string | null, fromClick = false) => {
       if (!sectionId) return;
       anchorElementsRef.current?.forEach((item) => {
         const id = item.getAttribute(`data-${dataAttribute}-anchor`);
@@ -42,10 +64,9 @@ export function Scrollspy({
         }
       });
       if (onUpdate) onUpdate(sectionId);
-      if (history && (force || prevIdTracker.current !== sectionId)) {
+      if (history && fromClick) {
         window.history.replaceState({}, '', `#${sectionId}`);
       }
-      prevIdTracker.current = sectionId;
     },
     [dataAttribute, history, onUpdate],
   );
@@ -53,23 +74,20 @@ export function Scrollspy({
   const handleScroll = useCallback(() => {
     if (!anchorElementsRef.current || anchorElementsRef.current.length === 0) return;
 
-    let scrollElement =
-      targetRef?.current === document
-        ? document.documentElement
-        : (targetRef?.current as HTMLElement);
-
-    if (!scrollElement) return;
-
-    // If the scrollElement has a data-slot="scroll-area-viewport" inside, use that
-    const viewport = scrollElement.querySelector('[data-slot="scroll-area-viewport"]');
-    if (viewport instanceof HTMLElement) {
-      scrollElement = viewport;
-    }
+    const scroller = resolveScroller(targetRef);
+    if (!scroller) return;
+    const scrollElement =
+      scroller === window ? document.documentElement : (scroller as HTMLElement);
 
     const scrollTop =
-      scrollElement === document.documentElement
+      scroller === window
         ? window.scrollY || document.documentElement.scrollTop
         : scrollElement.scrollTop;
+
+    // Đỉnh section trong hệ toạ độ của vùng cuộn. Với window, `offsetTop` chỉ đúng khi
+    // offsetParent là body (cùng lý do nhánh bấm bên dưới), nên đo bằng rect + scrollY.
+    const sectionTop = (section: HTMLElement) =>
+      scroller === window ? section.getBoundingClientRect().top + scrollTop : section.offsetTop;
 
     // Find the anchor whose section is closest to but not past the top
     let activeIdx = 0;
@@ -85,17 +103,18 @@ export function Scrollspy({
       const dataOffset = anchor.getAttribute(`data-${dataAttribute}-offset`);
       if (dataOffset) customOffset = parseInt(dataOffset, 10);
 
-      const delta = Math.abs(sectionElement.offsetTop - customOffset - scrollTop);
+      const top = sectionTop(sectionElement);
+      const delta = Math.abs(top - customOffset - scrollTop);
 
-      if (sectionElement.offsetTop - customOffset <= scrollTop && delta < minDelta) {
+      if (top - customOffset <= scrollTop && delta < minDelta) {
         minDelta = delta;
         activeIdx = idx;
       }
     });
 
     // If at bottom, force last anchor
-    const scrollHeight = (scrollElement as HTMLElement).scrollHeight;
-    const clientHeight = (scrollElement as HTMLElement).clientHeight;
+    const scrollHeight = scrollElement.scrollHeight;
+    const clientHeight = scrollElement.clientHeight;
 
     if (scrollTop + clientHeight >= scrollHeight - 2) {
       activeIdx = anchorElementsRef.current.length - 1;
@@ -117,21 +136,10 @@ export function Scrollspy({
       const sectionElement = document.getElementById(sectionId);
       if (!sectionElement) return;
 
-      // Vá bug bản gốc: không có targetRef (bám cuộn WINDOW — cách phần theo
-      // dõi cuộn phía trên vẫn fallback) thì nhánh này ra `undefined` và cú
-      // bấm không cuộn gì cả — chỉ nút đổi màu. Đưa window làm mặc định cho
-      // khớp hai chiều.
-      let scrollToElement: HTMLElement | Window | null =
-        !targetRef?.current || targetRef.current === document
-          ? window
-          : (targetRef.current as HTMLElement);
-
-      if (scrollToElement instanceof HTMLElement) {
-        const viewport = scrollToElement.querySelector('[data-slot="scroll-area-viewport"]');
-        if (viewport instanceof HTMLElement) {
-          scrollToElement = viewport;
-        }
-      }
+      // Vá bug bản gốc: không có targetRef (bám cuộn WINDOW) thì nhánh này ra
+      // `undefined` và cú bấm không cuộn gì cả — chỉ nút đổi màu. Cùng một luật
+      // chọn vùng cuộn với nhánh theo dõi cuộn ở trên (`resolveScroller`).
+      const scrollToElement = resolveScroller(targetRef);
 
       let customOffset = offset;
       const dataOffset = anchorElement.getAttribute(`data-${dataAttribute}-offset`);
@@ -180,20 +188,19 @@ export function Scrollspy({
       );
     }
 
-    const currentAnchors = anchorElementsRef.current;
-    currentAnchors?.forEach((item) => {
-      item.addEventListener('click', scrollTo(item as HTMLElement));
+    // Giữ đúng hàm đã gắn để gỡ được: bản gốc gọi `scrollTo(item)` lần nữa khi gỡ, ra một
+    // hàm MỚI nên không gỡ gì cả, và mỗi lần effect chạy lại là chồng thêm listener click.
+    const clickHandlers = (anchorElementsRef.current ?? []).map((item) => {
+      const handler = scrollTo(item as HTMLElement);
+      item.addEventListener('click', handler);
+      return [item, handler] as const;
     });
 
     const onScroll = (event: Event) => {
-      const scrollElement =
-        targetRef?.current === document ? window : (targetRef?.current as HTMLElement);
-      if (!scrollElement) return;
+      const scroller = resolveScroller(targetRef);
+      if (!scroller) return;
 
-      if (
-        scrollElement === window ||
-        (scrollElement instanceof HTMLElement && scrollElement.contains(event.target as Node))
-      ) {
+      if (scroller === window || (scroller as HTMLElement).contains(event.target as Node)) {
         handleScroll();
       }
     };
@@ -209,9 +216,9 @@ export function Scrollspy({
 
     return () => {
       window.removeEventListener('scroll', onScroll, true);
-      currentAnchors?.forEach((item) => {
-        item.removeEventListener('click', scrollTo(item as HTMLElement));
-      });
+      for (const [item, handler] of clickHandlers) {
+        item.removeEventListener('click', handler);
+      }
       clearTimeout(initialTimeout);
     };
   }, [targetRef, handleScroll, dataAttribute, scrollTo, scrollToHashSection]);
