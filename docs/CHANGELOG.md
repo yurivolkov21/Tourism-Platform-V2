@@ -8,6 +8,46 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-10-20 — Merge review L3 đặt tour và thanh toán: huỷ đơn khi "Pay again" chạy song song, wizard sau Back từ cổng, trần số khách, trang chờ tự làm tươi (`368d484`)
+
+Luồng L3 của đợt review code theo luồng (kế hoạch 20/10 trong thư mục chung của project,
+`code-review/ke-hoach-review-theo-luong.md`), rà trên `main` `43e7c75`. Báo cáo đủ 20 phát hiện, gồm phần
+để lại và phần chuyển luồng: `code-review/L3-bao-cao.md` cùng thư mục. Nhánh `fix/review-l3-booking-je1ptg`,
+[PR #45](https://github.com/yurivolkov21/Tourism-Platform-V2/pull/45), thi công trên session cloud. Không
+migration, không biến env, không dependency mới; một khoá i18n mới.
+
+- `fa92dbd`: `cancelPending` lấy session id từ `RETURNING` của chính câu `UPDATE`. Trước đó nó đọc session
+  ngoài khoá, trước câu `UPDATE`, nên khách huỷ đơn đúng lúc "Pay again" vừa ghi session mới thì code vô hiệu
+  session cũ (đã chết) và để session mới sống: tab thanh toán mới vẫn thu tiền cho đơn CANCELLED rồi hoàn tự
+  động. Hàm thuộc L4 nhưng lỗi sinh từ `reCheckout` của L3 và L4 chưa mở (ngoại lệ mục 2.2 của kế hoạch).
+  Hai int test mới: huỷ chen ngang lúc "Pay again", hai "Pay again" song song; `FakeGateway` có thêm độ trễ.
+- `d6d2911`: `CheckoutAutoRefresh` làm tươi mỗi 5 giây trong phút đầu, rồi mỗi 30 giây tới mốc 10 phút. Bản
+  cũ tắt sau 60 giây trong khi trang chờ vẫn in "This page updates automatically"; PayPal cần hai webhook.
+  Component có spec đầu tiên.
+- `368d484`: wizard nghe `pageshow` có `persisted` để mở lại nút Pay và Back khi trình duyệt khôi phục trang
+  từ back-forward cache. `validateBookingForm`, `stepErrors`, `canLeaveStep` nhận trần của đợt đang chọn, nên
+  party chọn ở đợt rộng rồi đổi sang đợt ít ghế bị chặn ở bước Travellers với câu mới
+  `booking.errors.PARTY_OVER_SEATS`. 401 lúc bấm Pay hiện `AccountActionError` có link đăng nhập lại về đúng
+  trang đặt tour. Hàng của màn Review ngắt dòng giá trị dài. Sửa hai comment lệch code.
+
+**Review.** Đây chính là lượt review của luồng L3; không có lượt review độc lập cho các bản sửa. Chuyển
+luồng khác qua coordinator: L4 (`classifyActionError` thiếu `NOT_PENDING`), L1 (`getServerSession` coi lỗi
+mạng là chưa đăng nhập), F3 (timeout trình duyệt 10 giây có thể sinh hai đơn PENDING khi API vừa thức).
+Nghi ngờ chưa kiểm được: Stripe coi `checkout.session.completed` là đã trả mà không đọc `payment_status`
+(chỉ thành lỗi nếu Dashboard bật phương thức trả chậm). Yuri bảo đẩy lên main 20/10 02:35 UTC.
+
+Tests after (`gate:int` trên `368d484`, nền `43e7c75`, 20/10, session cloud, API sống ở :3001): unit 8188
+(admin 2388, web 2396, api 1402, mobile 864, contract 800, mobile-ui 145, i18n 62, ui 57, core 48, tokens
+26) và int 954. PR thêm 10 test unit ở web và 2 test int ở api. Lượt đầu `@tourism/contract#test` chết vì
+vitest EPIPE (flake đã biết), chạy riêng 800/800, chạy lại từ bước turbo thì xanh.
+
+**CÒN TREO:**
+
+- Buổi test tay: sáu bước ở mục 3 của `code-review/L3-bao-cao.md` (Back từ trang Stripe, danh sách phương
+  thức trả trên trang Stripe, trần số khách khi đổi đợt, màn Review ở 390px, trang chờ của PayPal, huỷ đơn
+  sau Pay now).
+- Dọn nhánh `fix/review-l3-booking-je1ptg` trên origin nếu GitHub không tự xoá.
+
 ## 2026-10-19 — Merge P6 sửa trợ lý lần ba: sau Cancel nói chưa gửi gì, không bảo bấm Send (`e90c60f`)
 
 Yuri thử lại B3 trên production 19/10 lúc 13:12 UTC, sau PR #42. Thẻ hiện đúng "Enquiry not sent.", câu
