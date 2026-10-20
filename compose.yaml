@@ -1,5 +1,10 @@
-# Boot cả hệ một lệnh: docker compose up -d --build
-# (dev hằng ngày chỉ cần: docker compose up -d postgres)
+# Dev hằng ngày (và hook session cloud) chỉ dùng: docker compose up -d postgres
+#
+# Ba service còn lại (migrate, api, worker) dựng đúng image của Render để thử
+# image, KHÔNG phải cách chạy cả hệ: api và worker chạy NODE_ENV=production nên
+# env.ts dừng tiến trình khi thiếu env thật (BETTER_AUTH_URL và TRUSTED_ORIGINS
+# https, cặp khoá thanh toán, RESEND…). `docker compose up -d --build` với env
+# dưới đây thì api và worker thoát ngay ở bước kiểm env — đúng thiết kế.
 
 # Ghim tên project: không ghim thì Compose lấy tên THƯ MỤC clone làm tiền tố, nên
 # container đổi tên theo máy (clone `Tourism-Platform-V2` → tourism-platform-v2-postgres-1)

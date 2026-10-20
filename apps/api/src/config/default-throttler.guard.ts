@@ -6,6 +6,7 @@ import { isAdminAppRole } from '@tourism/contract';
 import type { SessionUser } from '../auth/auth.config.js';
 import { IS_PUBLIC_KEY } from '../auth/public.decorator.js';
 import { WriteOnlyThrottlerGuard } from '../auth/write-only-throttler.guard.js';
+import { isAdminSurfacePath, routingPath } from '../lib/request-path.js';
 import { env, publicReadThrottleMode } from './env.js';
 import { ADMIN_WRITE_THROTTLE, AUTHED_WRITE_THROTTLE, PUBLIC_READ_THROTTLE } from './throttle.js';
 
@@ -150,7 +151,7 @@ export class DefaultThrottlerGuard extends WriteOnlyThrottlerGuard {
       // Owner và Staff (ADR-0052) cùng tầng 60/60s trên bề mặt admin — Staff dọn hàng đợi
       // review/enquiry y như Owner, trần 20/60s của khách sẽ chặn họ giữa chừng.
       const tier =
-        isAdminAppRole(user.role ?? '') && isAdminSurface(req.url)
+        isAdminAppRole(user.role ?? '') && isAdminSurfacePath(req.url)
           ? ADMIN_WRITE_THROTTLE
           : AUTHED_WRITE_THROTTLE;
       return super.handleRequest({
@@ -195,8 +196,10 @@ export class DefaultThrottlerGuard extends WriteOnlyThrottlerGuard {
     const route = req.routeOptions?.url ?? '';
     // Wildcard = một handler cho nhiều đường (Better Auth mount): tách bucket
     // theo pathname thật, không thì sign-in/sign-up/OTP/sign-out chia nhau
-    // 60/phút của cả CGNAT (vòng vá review W2).
-    const pathname = route.includes('*') ? `:${(req.url ?? '').split('?')[0]}` : '';
+    // 60/phút của cả CGNAT (vòng vá review W2). Pathname là path router khớp
+    // (review F1-01): `#1`, `#2`… sau path thô từng mở bucket mới mỗi lượt
+    // trong khi Better Auth vẫn chạy đúng handler sign-in.
+    const pathname = route.includes('*') ? `:${routingPath(req.url)}` : '';
     return super.generateKey(context, `${suffix}${pathname}`, name);
   }
 
@@ -223,10 +226,4 @@ export function hasInternalReadKey(req: { headers?: Record<string, unknown> }): 
   const given = Array.isArray(raw) ? raw[0] : raw;
   if (typeof given !== 'string' || given.length !== expected.length) return false;
   return timingSafeEqual(Buffer.from(given), Buffer.from(expected));
-}
-
-/** Đường admin — cùng phép so với CORS delegator ở `bootstrap.ts` (bỏ query). */
-function isAdminSurface(url: string | undefined): boolean {
-  const path = (url ?? '').split('?')[0] ?? '';
-  return path === '/api/admin' || path.startsWith('/api/admin/');
 }

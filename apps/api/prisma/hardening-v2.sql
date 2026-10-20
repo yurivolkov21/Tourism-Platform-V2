@@ -6,7 +6,11 @@
 -- migration. Khi đã có schema migration đầu tiên:
 --   pnpm prisma migrate dev --create-only --name hardening_v2
 --   → dán file này vào migration.sql được sinh ra, rồi `migrate dev`.
--- Giữ file này là source of truth; migration là bản đã apply.
+-- Đã apply thành migration `20260718092447_hardening`; file này nay là BẢN GHI
+-- của lượt đó, KHÔNG còn là nguồn sự thật: bảng thêm về sau tự bật RLS và
+-- CHECK trong migration của chính nó (file này có 31 bảng, schema đã nhiều
+-- hơn). Nguồn sự thật là `prisma/migrations/`; lưới canh RLS là
+-- `scripts/check-rls.sh` chạy trong CI (review F1-08).
 --
 -- Ghi chú so với Nexora:
 --   * citext: extension giờ do schema sở hữu

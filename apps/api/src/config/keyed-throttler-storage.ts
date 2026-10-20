@@ -26,6 +26,8 @@ interface ThrottlerStorageRecord {
 interface Bucket {
   hits: number[];
   blockedUntil: number;
+  /** Cửa sổ của chính bucket — lượt quét dọn so theo nó, không theo lượt kích (review F1-02). */
+  ttl: number;
 }
 
 /** Trần số bucket sống — chạm là quét dọn, vẫn quá thì đuổi cũ nhất (vòng vá review W4). */
@@ -54,9 +56,10 @@ export class KeyedThrottlerStorage implements ThrottlerStorage {
     // xoá thì Map phình đơn điệu suốt vòng đời process (Render 512 MB, worker
     // inline chung tiến trình).
     if (++this.increments % SWEEP_EVERY === 0 || this.buckets.size >= MAX_BUCKETS) {
-      this.sweep(now, ttl);
+      this.sweep(now);
     }
-    const bucket = this.buckets.get(key) ?? { hits: [], blockedUntil: 0 };
+    const bucket = this.buckets.get(key) ?? { hits: [], blockedUntil: 0, ttl };
+    bucket.ttl = Math.max(bucket.ttl, ttl);
     bucket.hits = bucket.hits.filter((at) => at > now - ttl);
 
     if (bucket.blockedUntil > now) {
@@ -81,10 +84,15 @@ export class KeyedThrottlerStorage implements ThrottlerStorage {
     };
   }
 
-  /** Xoá bucket không còn hit trong cửa sổ và hết block; vẫn quá trần → đuổi cũ nhất. */
-  private sweep(now: number, ttl: number): void {
+  /**
+   * Xoá bucket không còn hit trong cửa sổ CỦA NÓ và hết block; vẫn quá trần →
+   * đuổi cũ nhất. Bản cũ dùng ttl của lượt kích (gần như luôn 60 giây), nên
+   * bucket chat một giờ bị xoá sau 60 giây im lặng và trần 20 lượt mỗi giờ
+   * mở lại (review F1-02).
+   */
+  private sweep(now: number): void {
     for (const [key, bucket] of this.buckets) {
-      const alive = bucket.hits.some((at) => at > now - ttl);
+      const alive = bucket.hits.some((at) => at > now - bucket.ttl);
       if (!alive && bucket.blockedUntil <= now) this.buckets.delete(key);
     }
     if (this.buckets.size < MAX_BUCKETS) return;

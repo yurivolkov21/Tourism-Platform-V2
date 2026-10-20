@@ -70,6 +70,12 @@ fi
 # thật cần thấy ngay, không âm thầm sửa lock trên nhánh đang review.
 pnpm install --frozen-lockfile >>"$LOG" 2>&1 || fail "pnpm install --frozen-lockfile lỗi"
 
+# ── Prisma client ── `src/generated/` bị gitignore và chỉ sinh khi một task
+# turbo (build, test, test:int) chạy `db:generate`. Bước "Migrate + seed" mà
+# dòng cuối hook này trỏ tới gọi thẳng `db:seed`, nên làm nó trước test:int là
+# ERR_MODULE_NOT_FOUND `src/generated/prisma/client.js` (dính 20/10, review L2).
+pnpm --filter @tourism/api exec prisma generate >>"$LOG" 2>&1 || fail "prisma generate lỗi"
+
 # ── File env dev ── `.env.local` là file DUY NHẤT script pnpm tự đọc (CLAUDE.md
 # §Gotchas). Clone mới không có nên chép từ `.env.example`: toàn giá trị dev trỏ
 # localhost, không secret, không chạm Supabase/Stripe/Resend thật (luật 15).

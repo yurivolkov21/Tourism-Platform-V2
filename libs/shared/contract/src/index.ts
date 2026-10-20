@@ -39,8 +39,8 @@ export * from './schemas/tour-readiness.js';
 export * from './schemas/wishlist.js';
 export * from './site-slots.js';
 
-// Re-exported so consumers can write `ContractInputs['catalog']['tours']['list']`
-// without depending on @orpc/contract directly.
+// Xuất lại để nơi dùng viết được `ContractInputs['catalog']['tours']['list']`
+// mà không phải phụ thuộc thẳng vào @orpc/contract.
 import type { InferContractRouterInputs, InferContractRouterOutputs } from '@orpc/contract';
 import type { ContractRouter } from './contract.js';
 
