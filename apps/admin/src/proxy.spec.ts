@@ -28,6 +28,14 @@ describe('proxy (admin)', () => {
     expect(location.searchParams.get('redirect')).toBe('/bookings');
   });
 
+  it('?redirect= giữ cả query của trang đang mở (bộ lọc danh sách) — review L1', () => {
+    const response = proxy(
+      new NextRequest('https://admin.example.com/bookings?status=PAID&page=2'),
+    );
+    const location = new URL(response.headers.get('location') ?? '');
+    expect(location.searchParams.get('redirect')).toBe('/bookings?status=PAID&page=2');
+  });
+
   it('cho qua khi có cookie session (cả tên trần lẫn __Secure-)', () => {
     for (const cookie of [
       'better-auth.session_token=abc',

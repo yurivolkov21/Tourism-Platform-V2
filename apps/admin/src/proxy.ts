@@ -52,7 +52,9 @@ export function proxy(request: NextRequest) {
   let response: NextResponse;
   if (decision.kind === 'login') {
     const login = new URL('/login', request.url);
-    login.searchParams.set('redirect', decision.redirectTo);
+    // Kèm query (review L1), cùng nếp `x-pathname` dưới đây: phiên hết hạn giữa chừng thì
+    // đăng nhập lại về đúng danh sách đang lọc, không về trang trần.
+    login.searchParams.set('redirect', `${decision.redirectTo}${request.nextUrl.search}`);
     response = NextResponse.redirect(login);
   } else {
     // Forward CSP + nonce vào request để Next gắn nonce lên script của nó.
