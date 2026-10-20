@@ -1,12 +1,12 @@
 # Việc còn treo
 
-> Bản tóm tắt để điều hướng, cập nhật 19/10/2026. **Chỉ giữ việc còn mở**; mục đã
+> Bản tóm tắt để điều hướng, cập nhật 20/10/2026. **Chỉ giữ việc còn mở**; mục đã
 > đóng (gồm các mã G đã gạch) nằm ở [open-items-closed.md](open-items-closed.md),
 > chép nguyên văn. **Không phải nguồn sự thật** — chi tiết của từng mục sống ở
 > [CHANGELOG](CHANGELOG.md) (mục "CÒN TREO" của entry tương ứng) và ở
 > [sổ nợ kỹ thuật](analysis/2026-08-06-backlog-no-ky-thuat.md).
 > **Đóng một mục:** ghi kết quả vào dòng (ngày, nhánh, commit), chuyển cả dòng
-> sang open-items-closed.md, rồi ghi vào CHANGELOG. **Mã G kế tiếp: G56.**
+> sang open-items-closed.md, rồi ghi vào CHANGELOG. **Mã G kế tiếp: G57.**
 
 ## Mốc thời gian
 
@@ -186,3 +186,4 @@ deploy) nằm ở [sổ nợ kỹ thuật](analysis/2026-08-06-backlog-no-ky-thu
 | G17 | Hiệu năng F18, đều nhỏ: mỗi nhịp tiến độ tải lên render lại cả form (vài ms mỗi lần); `setPhotos` requeue từng ảnh một trong transaction đang giữ khoá, và `get` hỏi thêm câu media nối tiếp (cộng lại khoảng 0,1–0,2 giây mỗi lần lưu, dưới timeout 5 giây). Chưa đáng sửa riêng |
 | G30 | Số điện thoại ở `/account/settings` chỉ được lưu để liên hệ (gợi ý dưới nhãn: "So the guide can reach you on the day."), không xác minh bằng OTP như nhiều site. Thêm OTP cần nhà cung cấp SMS (dịch vụ ngoài, có chi phí), luồng gửi lại mã và chống spam. User nêu khi thử tay 09/10; để sau capstone, nhắc trong báo cáo như hướng phát triển |
 | G55 | Web chưa hiện ghi công ảnh (ADR-0020 Hệ quả; spec Media library §12): dòng tác giả và giấy phép trong lightbox ảnh tour, ô nhỏ (thẻ, tile) gom về trang `/credits` có link ở footer. Ba ảnh CC đòi ghi công như điều kiện của giấy phép; app và email đã in, chỉ web còn thiếu. Từ Media A (PR #34, 19/10) admin sửa được ghi công ở `/media`, phía web chưa thi công. Mở 19/10 lúc merge Media A |
+| G56 | Trang đơn kể chuyện "công ty huỷ chuyến" (câu "We had to cancel this departure" và khối Why của công ty, voucher và bản in theo) cho đơn khách đã tự huỷ trong hạn, hay giữ chỗ chưa trả đã bị huỷ, TRƯỚC khi công ty huỷ chính chuyến ấy. `cancelledByOperator` (`apps/web/src/lib/booking-vm.ts`) suy từ cờ chuyến huỷ và khoản hoàn nên không biết thứ tự; trợ lý AI (`apps/api/src/modules/chat/chat-bookings.ts`) và app mobile (`booking-detail.ts`) cùng gốc. Tiền và email vẫn đúng; trái ADR-0041 AMEND 2. Cách sửa: server trả cờ theo `bookings.cancelled_at` ≥ `tour_departures.cancelled_at` (đơn PENDING bị công ty huỷ mang đúng mốc ấy), ADR-0041 AMEND 3, khoảng 8 file và 80 dòng; không migration. Yuri chọn để sau buổi bảo vệ (thẻ quyết định 20/10, review L4-08 trong `code-review/L4-bao-cao.md` của thư mục chung) |

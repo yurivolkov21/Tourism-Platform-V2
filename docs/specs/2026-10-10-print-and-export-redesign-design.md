@@ -149,6 +149,10 @@ trang tour), trang Passport.
 - **Tour một ngày:** tối đa 10 mục; hơn thì 9 mục và "…".
 - **Included / Not included:** tối đa 6 mục mỗi cột; hơn thì "+{n} more".
 - **Tên tour** trên bìa: tối đa hai dòng (cắt bằng dấu …); trên vé cũng hai dòng.
+- **Ô của vé** (sửa sau review L4, 20/10 — tên liên hệ được tới 120 ký tự; đo bản in thì tên 120 ký tự đẩy
+  dải cuối và chân trang của voucher tour 12 ngày ra khỏi tờ, tên một từ dài đè sang ô bên): bốn ô Lead
+  traveller · Travellers · Booked · Paid with kẹp hai dòng và ngắt chuỗi liền, để vé giữ chiều cao mà phép
+  tính vừa trang giả định. Hoá đơn chờ (§4) dùng cùng vé.
 - **Kẹp số dòng** (sửa sau review Phần 1 — đo hai tour seed dài thì chân trang tràn tới mép giấy, vì
   luật cắt đếm mục, không đếm dòng gãy): mỗi mục lịch trình và mục gồm tối đa hai dòng, chữ mỗi cột
   dải cuối tối đa bốn dòng. Mục gồm bỏ mục trống, mục trùng (cùng luật khối Get ready). Ngày cần in

@@ -8,6 +8,57 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-10-20 — Merge review L4 đơn của khách, huỷ và hoàn tiền: nút Pay now và huỷ giữ chỗ gặp đơn vừa đổi trạng thái thì làm mới trang, tiền đủ hai số lẻ khi có khoản hoàn, kết quả hoàn của admin, ô vé in gọn hai dòng (`d32f730`)
+
+Luồng L4 của đợt review code theo luồng (kế hoạch 20/10 trong thư mục chung của project,
+`code-review/ke-hoach-review-theo-luong.md`), rà trên `main` `99de947` rồi rebase lên `3e78c3f` trước khi đẩy.
+Báo cáo đủ 23 phát hiện, gồm phần để lại và phần chuyển luồng: `code-review/L4-bao-cao.md` cùng thư mục. Nhánh
+`fix/review-l4-customer-bookings-51rc91`, [PR #52](https://github.com/yurivolkov21/Tourism-Platform-V2/pull/52),
+thi công trên session cloud. Đụng web, api và i18n: không migration, không biến env, không dependency mới, không
+đổi contract; một khoá i18n mới.
+
+- `74d5365`: nút "Pay now" và "Cancel booking" của trang chi tiết đơn nhận `NOT_PENDING` (422 của
+  `bookings.checkout` và `bookings.cancelPending`): đơn chờ trả vừa được trả (webhook về sau khi trang đã render),
+  vừa bị câu quét huỷ hay bị huỷ ở tab khác. Trước đó khách đọc câu lỗi chung, trang đứng yên, bấm lại vẫn lỗi;
+  nay in câu `accountActionErrors.notPending` và `router.refresh()`, cùng nếp `NOT_CANCELLABLE` (chuyển từ L3-18,
+  M3-12).
+- `9ebb4d1`: `admin.bookings.refund` trả `refundedTotal` thật (tổng sau lần hoàn, đọc trong khoá) thay cho
+  `'0.00'`. Sửa comment nói lời gọi cổng chạy ngoài transaction (thật ra trong transaction của advisory lock,
+  ngoại lệ ADR-0009) và dòng JSDoc cũ của `refund-math`.
+- `3e8ac05`: JSDoc của `byCode`, `cancelPending` và `BookingNotCancellableError` theo ADR-0041 và AMEND 1.
+- `6fdb293`: khối tiền của trang chi tiết đơn và của hoá đơn in đủ hai số lẻ khi đơn có khoản hoàn. Trước đó
+  "Total paid $147" đứng trên "Refunded −$73.50", và "$39" đứng cạnh câu "$39.00 has been refunded"; voucher và
+  thẻ chờ đã theo luật này từ thử tay production 09/10.
+- `f0008a3`: hộ chiếu tính độ dài chuyến bằng `tripLengthDays` của contract thay cho phép tính tay; sửa comment
+  lỗi thời của trang hộ chiếu, `booking-accordion` và `account-stats`.
+- `4a88860`: JSDoc của `AccountActionError` ghi rõ `redirectTo` được ghép thẳng vào `?redirect=`, chỗ gọi tự
+  encode (chuyển từ L1-15).
+- `d32f730`: bốn ô của vé in (voucher và hoá đơn chờ) kẹp hai dòng và ngắt chuỗi liền. Phép tính vừa trang của
+  voucher coi vé cao cố định, mà tên liên hệ được tới 120 ký tự: đo bản in thì tên 120 ký tự đẩy dải cuối (Where
+  to meet, Cancellation, Payment) và chân trang của voucher tour 12 ngày ra khỏi tờ, còn tên một từ dài đè sang
+  ba ô bên. Đánh đổi: tên dài hơn khoảng 25 ký tự bị cắt "…" trên giấy in; màn hình và trang đơn vẫn in đủ. Spec
+  in ấn §3.4 thêm luật này.
+
+**Review.** Đây chính là lượt review của luồng L4; không có lượt review độc lập cho các bản sửa. Đo bản in bằng
+Chromium headless trên DB local: 68 đơn seed của đủ 12 tháng và 6 biến thể tạm, mọi tờ một trang A4. Chuyển
+luồng khác qua coordinator: L7 (trợ lý AI ghi "Not paid" cho mọi đơn CANCELLED, kể cả đơn đã trả rồi được hoàn),
+A1 (bộ lọc Status của My bookings đếm theo trạng thái DB còn huy hiệu theo giai đoạn; `toRefund` trả `amount`
+thiếu hai số lẻ), F2 (đơn seed đã trả mang mã thanh toán giả, nên huỷ chuyến có đơn ấy trên production thì cổng
+từ chối hoàn). Hai đề xuất Yuri chọn trên thẻ 20/10: L4-08 để sau buổi bảo vệ (`G56` ở open-items), L4-09 giữ
+nguyên mã trang tem đã gỡ tạm. Yuri bảo gộp 20/10 11:23 UTC.
+
+Tests after (`gate:int` trên `d32f730`, nền `3e78c3f`, 20/10, session cloud, API sống ở :3001): unit 8244
+(web 2432, admin 2390, api 1402, mobile 880, contract 800, mobile-ui 145, i18n 64, ui 57, core 48, tokens 26)
+và int 957; Biome 2092 file. PR thêm 5 test unit ở web và một khẳng định vào int test hoàn tiền của
+admin.
+
+**CÒN TREO:**
+
+- Buổi test tay: bốn bước ở mục 3 của `code-review/L4-bao-cao.md` (hai tab cùng một đơn chờ trả với Pay now và
+  Cancel booking, khối tiền của đơn hoàn một phần, huỷ chuyến trên một đợt không có đơn seed đã trả và khác đợt
+  khách tự huỷ, in voucher của đơn có tên liên hệ dài).
+- Dọn nhánh `fix/review-l4-customer-bookings-51rc91` trên origin nếu GitHub không tự xoá.
+
 ## 2026-10-20 — Merge review L1 đăng nhập và tài khoản khách: đóng đăng nhập bằng OTP email, xoá tài khoản xoá cả hội thoại chat, đăng nhập xong về đúng trang, API lỗi không còn đẩy khách ra `/login` (`81ccd67`)
 
 Luồng L1 của đợt review code theo luồng (kế hoạch 20/10 trong thư mục chung của project,
