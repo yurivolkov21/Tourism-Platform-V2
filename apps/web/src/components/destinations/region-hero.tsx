@@ -201,18 +201,19 @@ export function RegionHero({
             >
               {stats.map((stat) => (
                 <div key={stat.label} className="flex flex-col">
-                  <dt className="order-1 font-heading text-3xl leading-none font-semibold text-rating tabular-nums">
+                  {/* `order` lật lại thứ tự NHÌN THẤY: DOM phải là `<dt>` NHÃN rồi
+                      `<dd>` CON SỐ (trình đọc màn hình đọc "From: $28"), còn mắt
+                      đọc số trước nhãn. Bản trước để con số trong `<dt>` nên cặp
+                      mô tả bị đọc ngược, và hai lớp `order` không lật gì cả. */}
+                  <dt className="order-2 mt-1 text-xs tracking-wide text-on-media/80 uppercase">
+                    {stat.label}
+                  </dt>
+                  <dd className="order-1 font-heading text-3xl leading-none font-semibold text-rating tabular-nums">
                     {PURE_NUMBER.test(stat.value) ? (
                       <CountUp to={Number(stat.value)} delay={1.1} />
                     ) : (
                       stat.value
                     )}
-                  </dt>
-                  {/* `order` lật lại thứ tự NHÌN THẤY: DOM phải là `<dt>` rồi
-                      `<dd>` (nhãn của cặp mô tả đi trước), còn mắt đọc số trước
-                      nhãn. */}
-                  <dd className="order-2 mt-1 text-xs tracking-wide text-on-media/80 uppercase">
-                    {stat.label}
                   </dd>
                 </div>
               ))}
