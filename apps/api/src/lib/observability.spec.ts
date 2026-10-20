@@ -112,6 +112,29 @@ describe('scrubEvent', () => {
     expect(JSON.stringify(scrubbed)).not.toContain('khach@example.com');
   });
 
+  it('lỗi validation của Prisma: bỏ khối tham số câu truy vấn (chở email khách), giữ dòng đầu và dòng lý do (review F1-11)', async () => {
+    const { scrubEvent } = await load();
+    // Message thật của Prisma 7.8 (đo 20/10 trên `user.findUnique` truyền sai kiểu một trường).
+    const value =
+      '\nInvalid `prisma.user.findUnique()` invocation:\n\n{\n  where: {\n    email: "khach@example.com",\n    name: 42\n          ~~\n  }\n}\n\nArgument `name`: Invalid value provided. Expected StringNullableFilter, String or Null, provided Int.';
+    const event = {
+      type: undefined,
+      exception: {
+        values: [
+          { type: 'PrismaClientValidationError', value },
+          { type: 'TypeError', value: 'x is not a function' },
+        ],
+      },
+    } as ErrorEvent;
+
+    const scrubbed = scrubEvent(event);
+    expect(JSON.stringify(scrubbed)).not.toContain('khach@example.com');
+    expect(scrubbed.exception?.values?.[0]?.value).toBe(
+      'Invalid `prisma.user.findUnique()` invocation: Argument `name`: Invalid value provided. Expected StringNullableFilter, String or Null, provided Int.',
+    );
+    expect(scrubbed.exception?.values?.[1]?.value).toBe('x is not a function');
+  });
+
   it('sự kiện không có request vẫn đi qua nguyên vẹn', async () => {
     const { scrubEvent } = await load();
     const event = { type: undefined, message: 'boom' } as ErrorEvent;
