@@ -70,36 +70,72 @@ const PHASE_TEXT: Record<Exclude<BookingPhase, 'cancelled'>, string> = {
 };
 
 /**
+ * Tổng đã hoàn của đơn, hoặc null khi không biết: chỉ `bookings.byCode` điền `refundedTotal`
+ * thật, `bookings.mine` luôn để '0.00' (BookingSchema) — nên danh sách truyền null.
+ */
+type RefundedTotal = string | null;
+
+/**
+ * Đơn đã từng thu tiền: có `paidAt`, hoặc sổ đã có khoản hoàn (đơn bị thu rồi hoàn tự động
+ * trước khi kịp sang PAID không có `paidAt`) — cùng luật `wasCharged` của web.
+ */
+function wasCharged(booking: Booking, refunded: RefundedTotal): boolean {
+  return booking.paidAt !== null || Number(refunded ?? 0) > 0;
+}
+
+const NEXORA_CANCELLED = 'Cancelled by Nexora; anything paid is refunded in full';
+
+/**
  * Giai đoạn của đơn bằng chữ, suy bằng CHÍNH `bookingPhase` của contract (luật của trang
  * My bookings). Chuyến bị công ty huỷ thì ghi rõ ai huỷ: khách hay hỏi "sao đơn tôi bị
  * huỷ", và mọi khoản đã trả đều được hoàn trọn qua job (ADR-0041 AMEND 1).
+ *
+ * Đơn khách tự huỷ TRƯỚC khi chuyến bị huỷ vẫn mang cờ chuyến huỷ. Công ty huỷ thì hoàn trọn,
+ * nên đơn đã thu mà không hoàn đồng nào chỉ có thể là khách huỷ quá hạn: câu chuyện của khách,
+ * như `cancelledByOperator` của web (L4-20, review 20/10). Không biết sổ hoàn thì chỉ nói điều
+ * chắc chắn: đơn đã huỷ, và chuyến đã bị công ty huỷ.
  */
-export function bookingStatusText(booking: Booking, today: string): string {
+export function bookingStatusText(
+  booking: Booking,
+  today: string,
+  refunded: RefundedTotal,
+): string {
   const phase = bookingPhase(booking, today);
   if (phase !== 'cancelled') return PHASE_TEXT[phase];
-  return booking.departureCancelled
-    ? 'Cancelled by Nexora; anything paid is refunded in full'
-    : 'Cancelled';
+  if (!booking.departureCancelled) return 'Cancelled';
+  // Còn PAID là đang chờ job hoàn; chưa thu đồng nào thì không có chuyện tiền để kể sai.
+  if (booking.status !== 'CANCELLED' || !wasCharged(booking, refunded)) return NEXORA_CANCELLED;
+  if (refunded === null) return 'Cancelled; Nexora cancelled this departure';
+  return Number(refunded) > 0 ? NEXORA_CANCELLED : 'Cancelled';
 }
 
-const PAYMENT_TEXT: Record<BookingStatusValue, string> = {
+const PAYMENT_TEXT: Record<Exclude<BookingStatusValue, 'CANCELLED'>, string> = {
   PENDING: 'Not paid',
-  // CANCELLED chỉ đến từ đơn chưa trả (tự huỷ hay hết hạn); đơn đã trả mà huỷ là REFUNDED.
-  CANCELLED: 'Not paid',
   PAID: 'Paid',
   PARTIALLY_REFUNDED: 'Paid, partly refunded',
   REFUNDED: 'Refunded in full',
 };
 
-export function paymentText(status: BookingStatusValue): string {
-  return PAYMENT_TEXT[status];
+/**
+ * Thanh toán bằng chữ. CANCELLED kể chuyện ghế, không kể chuyện tiền
+ * (docs/conventions/booking-states.md): đơn đã trả rồi huỷ — khách tự huỷ, công ty huỷ chuyến —
+ * vẫn CANCELLED dù hoàn trọn, hoàn một phần hay không hoàn đồng nào. Nên với đơn huỷ, tiền đọc
+ * từ `paidAt` và sổ hoàn; bản cũ ghi mọi đơn huỷ là "Not paid" (L4-20, review 20/10).
+ */
+export function paymentText(booking: Booking, refunded: RefundedTotal): string {
+  if (booking.status !== 'CANCELLED') return PAYMENT_TEXT[booking.status];
+  if (!wasCharged(booking, refunded)) return 'Not paid';
+  if (refunded === null) return 'Paid; refund details are on the booking page';
+  const amount = Number(refunded);
+  if (amount <= 0) return 'Paid, not refunded';
+  return amount >= Number(booking.totalAmount) ? 'Paid, refunded in full' : 'Paid, partly refunded';
 }
 
 // ── Thu gọn ─────────────────────────────────────────────────────────────────
 
 /** Một đơn trong danh sách: chỉ các trường cột trái của bảng dữ liệu (ADR-0050 AMEND 2). */
-export function toBookingSummary(booking: Booking, today: string) {
-  const status = bookingStatusText(booking, today);
+export function toBookingSummary(booking: Booking, today: string, refunded: RefundedTotal) {
+  const status = bookingStatusText(booking, today, refunded);
   return {
     code: booking.code,
     url: bookingUrl(booking.code),
@@ -110,7 +146,7 @@ export function toBookingSummary(booking: Booking, today: string) {
     adults: booking.numAdults,
     children: booking.numChildren,
     status,
-    payment: paymentText(booking.status),
+    payment: paymentText(booking, refunded),
     total: booking.totalAmount,
     currency: booking.currency,
     // Hạn chót của chuyến cũng là ngày cuối còn trả được (ADR-0041 §3).
@@ -127,7 +163,8 @@ export function toMyBookingsResult(result: BookingsListResult) {
     total: result.total,
     shown: result.items.length,
     allBookingsUrl: '/account/bookings',
-    bookings: result.items.map((booking) => toBookingSummary(booking, result.today)),
+    // `mine` không đọc sổ hoàn (`refundedTotal` luôn '0.00'), nên danh sách không kể số hoàn.
+    bookings: result.items.map((booking) => toBookingSummary(booking, result.today, null)),
   };
 }
 
@@ -184,7 +221,7 @@ function reviewText(booking: BookingDetail, now: Date): string | null {
 export function toMyBookingDetails(booking: BookingDetail, now: Date) {
   return {
     found: true as const,
-    ...toBookingSummary(booking, vietnamToday(now)),
+    ...toBookingSummary(booking, vietnamToday(now), booking.refundedTotal),
     paymentMethod: booking.paymentProvider === 'PAYPAL' ? 'PayPal' : 'Card',
     paidOn: booking.paidAt === null ? null : vietnamDate(booking.paidAt),
     refunded: booking.refundedTotal,

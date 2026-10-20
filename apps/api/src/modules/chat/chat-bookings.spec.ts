@@ -65,6 +65,8 @@ function detail(overrides: Partial<BookingDetail> = {}): BookingDetail {
   };
 }
 
+const NEXORA_CANCELLED = 'Cancelled by Nexora; anything paid is refunded in full';
+
 const review = (moderationState: string) =>
   ({ moderationState }) as unknown as NonNullable<BookingDetail['review']>;
 
@@ -112,25 +114,75 @@ describe('bookingStatusText', () => {
       'Not confirmed: the payment deadline has passed',
     ],
   ] as const)('%j → %s', (overrides, text) => {
-    expect(bookingStatusText(booking(overrides), today)).toBe(text);
+    expect(bookingStatusText(booking(overrides), today, null)).toBe(text);
+  });
+
+  // L4-20 (review 20/10): đơn khách tự huỷ TRƯỚC khi công ty huỷ chuyến vẫn mang cờ chuyến huỷ.
+  // Công ty huỷ thì hoàn trọn, nên đơn đã thu mà không hoàn đồng nào là khách huỷ quá hạn: câu
+  // chuyện của khách, như `cancelledByOperator` của web. Bản cũ hứa "refunded in full" cả cho ca ấy.
+  it.each([
+    ['đơn còn PAID chờ job hoàn', { status: 'PAID' }, '0.00', NEXORA_CANCELLED],
+    ['công ty huỷ, sổ đã hoàn trọn', { status: 'CANCELLED' }, '378.00', NEXORA_CANCELLED],
+    ['khách huỷ quá hạn rồi chuyến mới bị huỷ', { status: 'CANCELLED' }, '0.00', 'Cancelled'],
+    [
+      'đơn chưa trả bị huỷ cùng chuyến',
+      { status: 'CANCELLED', paidAt: null },
+      '0.00',
+      NEXORA_CANCELLED,
+    ],
+    // Danh sách không biết sổ hoàn: chỉ nói điều chắc chắn.
+    [
+      'danh sách, đơn đã thu',
+      { status: 'CANCELLED' },
+      null,
+      'Cancelled; Nexora cancelled this departure',
+    ],
+    ['danh sách, đơn chưa trả', { status: 'CANCELLED', paidAt: null }, null, NEXORA_CANCELLED],
+  ] as const)('chuyến bị huỷ — %s', (_case, overrides, refunded, text) => {
+    expect(
+      bookingStatusText(booking({ departureCancelled: true, ...overrides }), today, refunded),
+    ).toBe(text);
   });
 });
 
 describe('paymentText', () => {
   it.each([
     ['PENDING', 'Not paid'],
-    ['CANCELLED', 'Not paid'],
     ['PAID', 'Paid'],
     ['PARTIALLY_REFUNDED', 'Paid, partly refunded'],
     ['REFUNDED', 'Refunded in full'],
   ] as const)('%s → %s', (status, text) => {
-    expect(paymentText(status)).toBe(text);
+    expect(paymentText(booking({ status }), null)).toBe(text);
+  });
+
+  // L4-20 (review 20/10): CANCELLED kể chuyện ghế, không kể chuyện tiền — đơn đã trả rồi huỷ
+  // (khách tự huỷ, công ty huỷ chuyến) vẫn CANCELLED. Bản cũ ghi mọi đơn huỷ là "Not paid".
+  it.each([
+    ['chưa trả bao giờ', { paidAt: null }, '0.00', 'Not paid'],
+    ['đã trả, hoàn trọn', {}, '378.00', 'Paid, refunded in full'],
+    ['đã trả, hoàn một phần', {}, '100.00', 'Paid, partly refunded'],
+    ['đã trả, huỷ quá hạn nên không hoàn', {}, '0.00', 'Paid, not refunded'],
+    [
+      'bị thu rồi hoàn tự động trước khi sang PAID',
+      { paidAt: null },
+      '378.00',
+      'Paid, refunded in full',
+    ],
+    [
+      'danh sách, đã trả: không biết sổ hoàn',
+      {},
+      null,
+      'Paid; refund details are on the booking page',
+    ],
+    ['danh sách, chưa trả', { paidAt: null }, null, 'Not paid'],
+  ] as const)('đơn đã huỷ — %s', (_case, overrides, refunded, text) => {
+    expect(paymentText(booking({ status: 'CANCELLED', ...overrides }), refunded)).toBe(text);
   });
 });
 
 describe('toBookingSummary', () => {
   it('chỉ giữ trường được phép, kèm link trang đơn và link tour', () => {
-    expect(toBookingSummary(booking(), today)).toEqual({
+    expect(toBookingSummary(booking(), today, null)).toEqual({
       code: 'BK-AB12CD34',
       url: '/account/bookings/BK-AB12CD34',
       tour: 'Ha Long Bay 2D1N',
@@ -147,14 +199,14 @@ describe('toBookingSummary', () => {
   });
 
   it('đơn chờ trả có hạn trả tiền là hạn chót của chuyến', () => {
-    expect(toBookingSummary(booking({ status: 'PENDING' }), today)).toMatchObject({
+    expect(toBookingSummary(booking({ status: 'PENDING' }), today, null)).toMatchObject({
       status: 'Awaiting payment',
       payBy: '2026-10-31',
     });
   });
 
   it('không để lọt email, điện thoại, tên liên hệ, ghi chú, link thanh toán, id', () => {
-    const json = JSON.stringify(toBookingSummary(booking(), today));
+    const json = JSON.stringify(toBookingSummary(booking(), today, null));
     for (const secret of [
       'an@example.com',
       '+84 90',
@@ -191,6 +243,27 @@ describe('toMyBookingsResult', () => {
       allBookingsUrl: '/account/bookings',
     });
     expect(out.bookings.map((b) => b.code)).toEqual(['BK-AB12CD34', 'BK-ZZ99ZZ99']);
+  });
+
+  it('đơn đã trả rồi huỷ: `mine` không đọc sổ hoàn nên không đoán số hoàn', () => {
+    const cancelled = booking({ status: 'CANCELLED', cancelledAt: '2026-10-05T00:00:00.000Z' });
+    const result: BookingsListResult = {
+      items: [cancelled],
+      page: 1,
+      limit: 10,
+      total: 1,
+      totalPages: 1,
+      facets: {
+        when: { ON_TOUR: 0, UPCOMING: 0, PAST: 1 },
+        status: { PENDING: 0, PAID: 0, CANCELLED: 1, REFUNDED: 0, PARTIALLY_REFUNDED: 0 },
+      },
+      overallTotal: 1,
+      today,
+    };
+    expect(toMyBookingsResult(result).bookings[0]).toMatchObject({
+      status: 'Cancelled',
+      payment: 'Paid; refund details are on the booking page',
+    });
   });
 });
 
@@ -292,6 +365,17 @@ describe('toMyBookingDetails', () => {
         now,
       ),
     ).toMatchObject({ status: 'Cancelled', cancelledOn: '2026-10-08', refunded: '378.00' });
+    expect(
+      toMyBookingDetails(
+        detail({
+          status: 'CANCELLED',
+          cancelledAt: '2026-10-08T03:00:00.000Z',
+          refundedTotal: '378.00',
+          cancellation: null,
+        }),
+        now,
+      ),
+    ).toMatchObject({ status: 'Cancelled', payment: 'Paid, refunded in full' });
     const active = toMyBookingDetails(detail(), now);
     expect(active).not.toHaveProperty('cancelledOn');
     expect(active).not.toHaveProperty('nexoraCancellationReason');
