@@ -40,6 +40,8 @@ function baseProps(overrides: Partial<PostDetailScreenProps> = {}): PostDetailSc
     errorTitle: "Couldn't load this story.",
     retryLabel: 'Try again',
     onRetry: jest.fn(),
+    notFoundTitle: "This story isn't available anymore.",
+    goBackLabel: 'Go back',
     ...overrides,
   };
 }
@@ -84,5 +86,15 @@ describe('PostDetailScreen', () => {
     expect(screen.getByText("Couldn't load this story.")).toBeTruthy();
     await fireEvent.press(screen.getByText('Try again'));
     expect(onRetry).toHaveBeenCalled();
+  });
+
+  // Bài đã gỡ hoặc đổi slug: "Try again" chỉ gọi lại đúng lỗi 404 ấy.
+  it('status="notFound" hiện notFoundTitle + nút quay lại, không có nút retry', async () => {
+    const onBack = jest.fn();
+    await renderWithTheme(<PostDetailScreen {...baseProps({ status: 'notFound', onBack })} />);
+    expect(screen.getByText("This story isn't available anymore.")).toBeTruthy();
+    expect(screen.queryByText('Try again')).toBeNull();
+    await fireEvent.press(screen.getByText('Go back'));
+    expect(onBack).toHaveBeenCalled();
   });
 });

@@ -1,3 +1,4 @@
+import { isDefinedError } from '@orpc/client';
 import { useQuery } from '@tanstack/react-query';
 import { messages } from '@tourism/i18n';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -35,11 +36,16 @@ export default function PostDetailRoute() {
     [query.data],
   );
 
+  // Bài đã gỡ hoặc đổi slug: màn "bài không còn" riêng, khác lỗi mạng chung.
+  const notFound =
+    query.isError && isDefinedError(query.error) && query.error.code === 'POST_NOT_FOUND';
   const status: PostDetailStatus = query.isPending
     ? 'loading'
-    : query.isError
-      ? 'error'
-      : 'content';
+    : notFound
+      ? 'notFound'
+      : query.isError
+        ? 'error'
+        : 'content';
 
   const relatedTours: RelatedTourVM[] = (query.data?.relatedTours ?? []).map((tour) => ({
     slug: tour.slug,
@@ -72,6 +78,8 @@ export default function PostDetailRoute() {
       errorTitle={posts.errorDetail}
       retryLabel={posts.retry}
       onRetry={() => void query.refetch()}
+      notFoundTitle={posts.notFound}
+      goBackLabel={posts.goBack}
       transformUrl={cloudinaryUrl}
     />
   );

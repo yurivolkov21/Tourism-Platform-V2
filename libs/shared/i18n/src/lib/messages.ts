@@ -3082,6 +3082,10 @@ export const messages = {
       loadMore: 'Load more',
       error: "Couldn't load stories.",
       errorDetail: "Couldn't load this story.",
+      // Bài đã gỡ hoặc đổi slug (server trả POST_NOT_FOUND): gọi lại vô ích,
+      // nút chính là quay lại thay vì "Try again".
+      notFound: "This story isn't available anymore.",
+      goBack: 'Go back',
       retry: 'Try again',
       back: 'Back',
       // G3 — nút góc phải mở bài trên web thật.

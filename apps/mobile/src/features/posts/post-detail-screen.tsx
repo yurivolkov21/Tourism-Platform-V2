@@ -14,7 +14,7 @@ import { Pressable, ScrollView, StyleSheet, useWindowDimensions, View } from 're
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { MarkdownBlock } from './markdown';
 
-export type PostDetailStatus = 'loading' | 'error' | 'content';
+export type PostDetailStatus = 'loading' | 'error' | 'notFound' | 'content';
 
 export interface RelatedTourVM {
   slug: string;
@@ -44,6 +44,9 @@ export interface PostDetailScreenProps {
   errorTitle: string;
   retryLabel: string;
   onRetry: () => void;
+  /** Bài không còn (`status: 'notFound'`): câu báo và nút quay lại thay nút thử lại. */
+  notFoundTitle: string;
+  goBackLabel: string;
   transformUrl?: (source: string, width: number) => string;
 }
 
@@ -75,6 +78,8 @@ export function PostDetailScreen({
   errorTitle,
   retryLabel,
   onRetry,
+  notFoundTitle,
+  goBackLabel,
   transformUrl,
 }: PostDetailScreenProps) {
   const theme = useTheme();
@@ -85,12 +90,18 @@ export function PostDetailScreen({
   // `TourDetailScreen`, KHÔNG dùng `theme.spacing(3)` trần.
   const insets = useSafeAreaInsets();
 
-  if (status === 'error') {
+  if (status === 'error' || status === 'notFound') {
+    // Cùng khuôn với lỗi mạng; bài không còn thì gọi lại vô ích nên nút chính
+    // là quay lại (như D7 của `TourDetailScreen`).
+    const isError = status === 'error';
     return (
       <Screen edges={['bottom']} scrollable={false}>
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-          <EmptyState title={errorTitle} surface={false}>
-            <Button label={retryLabel} onPress={onRetry} />
+          <EmptyState title={isError ? errorTitle : notFoundTitle} surface={false}>
+            <Button
+              label={isError ? retryLabel : goBackLabel}
+              onPress={isError ? onRetry : onBack}
+            />
           </EmptyState>
         </View>
         <View
