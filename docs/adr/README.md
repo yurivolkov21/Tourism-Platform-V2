@@ -43,7 +43,7 @@ thay, cột đã xoá, và số AMEND để biết phải đọc tới cuối fi
 | [0033](0033-financial-model.md) | Báo cáo có kết quả kinh doanh, không chỉ dòng tiền | định nghĩa doanh thu sửa ở [0041](0041-single-cancellation-deadline.md) §9 · 4 AMEND (AMEND 3: tháng đang chạy chỉ ghi nhận chuyến đã kết thúc · AMEND 4, 20/10: hai bộ đếm huỷ chỉ đếm lượt khách huỷ) |
 | [0034](0034-excel-report-export.md) | Báo cáo tháng xuất Excel; từ AMEND 3 (10/10) danh sách cũng xuất Excel thay CSV | 3 AMEND |
 | [0035](0035-media-lifecycle.md) | Ảnh có đường chết, đi qua hàng đợi có độ trễ | 4 AMEND (từ AMEND 4, 19/10: hàng dọn có màn chỉ đọc, handler trả báo cáo; Giới hạn #5 và #6 đóng) |
-| [0036](0036-dashboard-daily-series.md) | Dashboard nối số thật bằng một chuỗi theo ngày | 2 AMEND |
+| [0036](0036-dashboard-daily-series.md) | Dashboard nối số thật bằng một chuỗi theo ngày | 3 AMEND (AMEND 3, 20/10: bốn card của `/` đọc tươi) |
 | [0037](0037-default-write-throttle.md) | Mọi route ghi sinh ra đã có trần | 3 AMEND |
 | [0038](0038-web-shell-security-headers.md) | Security header + CSP cho web và admin | 5 AMEND |
 | [0039](0039-inbound-channels-outbound-email.md) | Kênh vào và email đi ra: ack, consent, suppression | 1 AMEND |

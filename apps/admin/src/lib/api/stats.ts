@@ -10,33 +10,41 @@ import type {
 import { api, withAdminAuth } from './client';
 
 /**
- * Tám đường đọc số liệu (spec P4b §3-F5 + dashboard ADR-0036) — bọc mỏng `admin.stats.*`.
+ * Tám fetcher số liệu trên bảy endpoint (spec P4b §3-F5 + dashboard ADR-0036) — bọc mỏng
+ * `admin.stats.*`.
  *
  * ## Vùng nào cache, vùng nào không — LUẬT CHUNG
  *
- * Cache theo tag CHỈ khi MỌI kẻ ghi bảng đều là server action của admin. Hai
- * vùng của P4b còn lại (bookings/reviews) đúng như vậy nên cache 60s
- * theo `ADMIN_STATS_TAG`; bốn vùng của P4c thì không, và mỗi cái ghi lý do
- * riêng ở JSDoc của mình (worker · webhook provider · form "Inquire Now" ·
- * form footer + link HMAC trong email khách).
+ * Cache theo tag CHỈ khi MỌI kẻ ghi bảng đều là server action của admin; có kẻ ghi ngoài —
+ * worker, webhook, form khách — thì không. Bốn vùng của P4c theo đúng luật đó, mỗi cái ghi lý
+ * do riêng ở JSDoc của mình (worker · webhook provider · form "Inquire Now" · form footer + link
+ * HMAC trong email khách).
  *
- * Vì sao ba vùng kia CÓ cache (vòng vá review F5): `no-store` từng bắt refetch
- * trọn bộ stats trên MỌI click phân trang/lọc/refresh-sau-ghi dù hàng card
- * không phụ thuộc searchParams — và vì refresh nằm trong `useTransition`, nó
- * kéo dài luôn thời gian khoá nút ghi của trang. Cửa sổ đo là 28 ngày nên 60s
- * staleness là số lẻ thứ năm sau dấu phẩy; còn "tươi ngay sau khi CHÍNH MÌNH
- * ghi" thì server action gọi `updateTag(ADMIN_STATS_TAG)`. An toàn chia sẻ
- * cache giữa admin: stats là số nền tảng, không theo phiên (xem cảnh báo
- * `cacheFor` ở client.ts).
+ * Hai vùng bookings/reviews của P4b là NGOẠI LỆ có chủ đích (vòng vá review F5), không phải ca
+ * thoả luật: chúng vẫn có kẻ ghi ngoài — webhook provider ghi `paid_at`, khách tự huỷ, khách
+ * viết, sửa, rút review — nhưng `no-store` từng bắt refetch trọn bộ stats trên MỌI click phân
+ * trang/lọc/refresh-sau-ghi dù hàng card không phụ thuộc searchParams, và vì refresh nằm trong
+ * `useTransition`, nó kéo dài luôn thời gian khoá nút ghi của trang. "Tươi ngay sau khi CHÍNH
+ * MÌNH ghi" thì server action gọi `updateTag(ADMIN_STATS_TAG)`.
  *
- * `undefined` ở vị trí input là ĐÚNG chữ ký với SÁU procedure không khai
- * `.input()` — cùng cách gọi `catalog.destinations.list` bên web. Ngoại lệ là
- * `bookings`: từ ADR-0028 nó nhận khoảng ngày của bộ lọc.
+ * Số của hai vùng ấy cũ nhất 60s. `revalidate` của Data Cache là stale-while-revalidate
+ * (`next/dist/docs/01-app/02-guides/how-revalidation-works.md`), nên riêng nó không có trần:
+ * quá hạn thì lượt xem kế vẫn nhận bản cũ rồi mới làm mới ngầm. Trần đến từ `withAdminOptions`
+ * của `client.ts`, nơi khoá cache đổi theo từng khung `cacheFor.seconds` (review A1-13). Key
+ * cache gồm cả header cookie (`fetch` khớp theo URL, method, headers, body), tức cache theo
+ * PHIÊN: không lộ số giữa hai admin, nhưng cũng không chia sẻ. Dashboard `/` vẫn đọc card không
+ * cache (`fetchDashboardBookingsStats`, ADR-0036 AMEND 3): không phân trang, không lọc, và card
+ * đứng cạnh biểu đồ tươi nên lệch tới 60s vẫn thấy được.
  *
- * KHÔNG nuốt lỗi ở đây: trang gọi fetcher stats cùng `Promise.all` với list,
- * nên một endpoint stats hỏng sẽ rơi vào `app/error.tsx` y như khi list hỏng.
- * Cố ý — "vẫn hiện bảng, âm thầm giấu hàng card" nghĩa là một endpoint chết
- * có thể sống nhiều tuần mà không ai biết.
+ * `undefined` ở vị trí input là ĐÚNG chữ ký với BỐN procedure không khai `.input()` (outbox,
+ * payment events, enquiries, subscribers) — cùng cách gọi `catalog.destinations.list` bên web.
+ * Ba procedure còn lại có input: `bookings`, `reviews` nhận khoảng ngày (ADR-0028), `dashboard`
+ * nhận số ngày.
+ *
+ * KHÔNG nuốt lỗi ở đây: trang vùng gọi fetcher stats cùng `Promise.all` với list, nên một
+ * endpoint stats hỏng sẽ rơi vào `app/error.tsx` y như khi list hỏng. Cố ý — "vẫn hiện bảng,
+ * âm thầm giấu hàng card" nghĩa là một endpoint chết có thể sống nhiều tuần mà không ai biết.
+ * Riêng `/` gom ba khối bằng `allSettled` và tự vẽ khối lỗi (ADR-0036 AMEND 2).
  */
 
 /** Tag Data Cache của hai endpoint stats CÓ cache — action ghi nào đổi số thì update. */
@@ -49,23 +57,34 @@ function statsContext(cookie: string) {
 }
 
 /**
- * Bộ số `/bookings` — endpoint stats DUY NHẤT nhận khoảng ngày (ADR-0028):
+ * Bộ số `/bookings` — endpoint stats ĐẦU TIÊN nhận khoảng ngày (ADR-0028):
  * hàng card tính đúng kỳ mà bảng ngay dưới nó đang lọc.
  *
  * Truyền `{}` khi không lọc (`?dates=all`) chứ không phải `undefined`: schema
  * khai hai field optional nên object rỗng là input hợp lệ, và server rơi về
  * cửa sổ trượt 28 ngày.
  *
- * Cache VẪN dùng được dù có tham số: Data Cache của Next key theo URL, mà
+ * Cache VẪN dùng được dù có tham số: key của Data Cache gồm URL, mà
  * `from`/`to` nằm trên query string — mỗi khoảng một entry, và
  * `ADMIN_STATS_TAG` vẫn `updateTag` được cả cụm sau mỗi lệnh ghi. Mặc định là
- * tháng hiện tại nên đại đa số lượt truy cập chung một key.
+ * tháng hiện tại nên đại đa số lượt truy cập của một phiên chung một key.
  */
 export async function fetchAdminBookingsStats(
   cookie: string,
   range?: { from?: string; to?: string },
 ): Promise<AdminBookingsStats> {
   return api.admin.stats.bookings(range ?? {}, { context: statsContext(cookie) });
+}
+
+/**
+ * Bốn card của dashboard `/` (ADR-0036 §1 + AMEND 3): cùng endpoint, cùng cửa sổ trượt 28 ngày
+ * (`{}` như `?dates=all` của `/bookings`), nhưng KHÔNG cache. Biểu đồ và bảng cạnh nó đọc tươi;
+ * card cache thì mở lại `/` sau một khoản trả tiền là biểu đồ có tiền mới còn card vẫn mang số
+ * của lượt xem trước (stale-while-revalidate, xem đầu file). `/` không phân trang, không lọc,
+ * nên lý do cache của F5 không có ở đây.
+ */
+export async function fetchDashboardBookingsStats(cookie: string): Promise<AdminBookingsStats> {
+  return api.admin.stats.bookings({}, { context: withAdminAuth(cookie) });
 }
 
 /**

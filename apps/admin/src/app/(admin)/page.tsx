@@ -14,7 +14,7 @@ import { SectionError } from '@/components/kit/section-error';
 import { StatCardRow } from '@/components/kit/stat-card';
 import { fetchRecentAdminBookings } from '@/lib/api/bookings';
 import { getServerSession } from '@/lib/api/session';
-import { fetchAdminBookingsStats, fetchAdminDashboardSeries } from '@/lib/api/stats';
+import { fetchAdminDashboardSeries, fetchDashboardBookingsStats } from '@/lib/api/stats';
 import { toBookingRow } from '@/lib/bookings-view';
 import { statsPeriodLabel, toBookingsStatCards } from '@/lib/stats-view';
 
@@ -43,7 +43,8 @@ export default async function Page() {
   //
   // Card: `admin.stats.bookings` KHÔNG tham số → cửa sổ trượt 28 ngày, đúng
   // cách gọi ADR-0028 §1 đã hẹn cho dashboard; cùng kit `StatCardRow` +
-  // `toBookingsStatCards` với `/bookings`, không có bản card thứ hai.
+  // `toBookingsStatCards` với `/bookings`, không có bản card thứ hai. Đọc tươi,
+  // không cache, giống biểu đồ và bảng cạnh nó (ADR-0036 AMEND 3, review A1).
   //
   // Biểu đồ: chuỗi 90 ngày MỘT lần, không cache (ADR-0036 §2); bộ chọn 7/30
   // cắt đuôi ở client.
@@ -52,7 +53,7 @@ export default async function Page() {
   const [session, statsResult, seriesResult, recentResult] = await Promise.all([
     getServerSession(),
     ...(await Promise.allSettled([
-      fetchAdminBookingsStats(cookie),
+      fetchDashboardBookingsStats(cookie),
       fetchAdminDashboardSeries(cookie),
       fetchRecentAdminBookings(cookie),
     ])),
