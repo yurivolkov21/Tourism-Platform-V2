@@ -151,7 +151,7 @@ export function SiteHeader() {
         </div>
 
         <div className="hidden items-center gap-2 md:flex">
-          <AnimatedThemeToggler className={iconButtonClass} />
+          <AnimatedThemeToggler className={iconButtonClass} label={messages.a11y.toggleTheme} />
           <UserMenu linkClassName={`px-2 text-sm ${linkClass}`} />
           {/* LINK thật tới /tours (user báo 19/08: nút không làm gì — tàn dư
               `<button>` static-first không handler). "Book a tour" = chọn tour
@@ -172,7 +172,7 @@ export function SiteHeader() {
         </div>
 
         <div className="flex items-center gap-1 md:hidden">
-          <AnimatedThemeToggler className={iconButtonClass} />
+          <AnimatedThemeToggler className={iconButtonClass} label={messages.a11y.toggleTheme} />
           <button
             type="button"
             onClick={() => setMobileOpen(true)}
