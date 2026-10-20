@@ -148,8 +148,13 @@ export default async function EnquiryDetailPage({
             <CardContent>
               {/* NGUYÊN VĂN khách gõ: `whitespace-pre-wrap` giữ xuống dòng,
                   `break-words` chặn một chuỗi dài không dấu cách kéo giãn cả
-                  thẻ. Không cắt ngắn — đây là lý do trang chi tiết tồn tại. */}
-              <p className="whitespace-pre-wrap break-words text-sm">{enquiry.message}</p>
+                  thẻ. Không cắt ngắn — đây là lý do trang chi tiết tồn tại.
+                  Lead đã ẩn danh không còn message: nói thẳng thay vì để thẻ trống. */}
+              {vm.message === null ? (
+                <p className="text-sm text-muted-foreground">{t.detail.message.anonymized}</p>
+              ) : (
+                <p className="whitespace-pre-wrap break-words text-sm">{vm.message}</p>
+              )}
             </CardContent>
           </Card>
         </div>

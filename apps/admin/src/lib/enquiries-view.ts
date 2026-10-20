@@ -116,6 +116,11 @@ export interface EnquiryStatusEventVM {
 
 export interface EnquiryDetailVM {
   leadFields: LeadField[];
+  /**
+   * Nguyên văn khách viết; `null` = lead đã ẩn danh (ADR-0039 §6 ghi message rỗng) — trang
+   * in một câu giải thích thay vì một thẻ trống trông như lỗi vẽ.
+   */
+  message: string | null;
   interests: string[];
   notes: EnquiryNoteVM[];
   statusEvents: EnquiryStatusEventVM[];
@@ -151,6 +156,8 @@ export function toEnquiryDetailVM(detail: EnquiryDetail): EnquiryDetailVM {
         .filter((entry): entry is [string, string] => entry[1] !== null)
         .map(([label, value]) => ({ label, value, isEmail: false })),
     ],
+    // Form công khai đòi tối thiểu 10 ký tự, nên rỗng chỉ có thể là do anonymize.
+    message: detail.message === '' ? null : detail.message,
     interests: detail.interests,
     notes: detail.notes.map((note) => ({
       id: note.id,

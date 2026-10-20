@@ -144,6 +144,11 @@ describe('toEnquiryDetailVM', () => {
     expect(vm.interests).toEqual([]);
   });
 
+  it('message giữ nguyên văn; lead đã ẩn danh (message rỗng) → null để trang in câu giải thích', () => {
+    expect(toEnquiryDetailVM(detail).message).toBe('We would like a private tour for four.');
+    expect(toEnquiryDetailVM({ ...detail, message: '' }).message).toBeNull();
+  });
+
   it('note giữ NGUYÊN thứ tự server (cũ trước) và mang nhãn tác giả + mốc đã format', () => {
     const vm = toEnquiryDetailVM(detail);
     expect(vm.notes).toEqual([

@@ -33,7 +33,7 @@ import { boSinh, chonMot, idTinh, nguyen } from '../stable-id.js';
  * ── Thứ KHÔNG nằm ở đây ──
  * `authorId`/`authorName` của ghi chú và `adminId` của sự kiện do `seed.ts` gắn bằng
  * admin thật; outbox không bao giờ được seed (worker gửi mail thật); không dòng nào ẩn
- * danh (retention 18 tháng, và dòng ẩn danh làm vỡ trang admin).
+ * danh (retention 18 tháng: lead của năm 2026 chưa dòng nào tới hạn).
  */
 
 export type TrangThaiEnquiry = 'NEW' | 'CONTACTED' | 'QUOTED' | 'WON' | 'LOST';

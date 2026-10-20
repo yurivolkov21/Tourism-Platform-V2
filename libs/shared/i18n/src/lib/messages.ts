@@ -4954,6 +4954,8 @@ export const messages = {
         },
         message: {
           heading: 'Message',
+          /** Lead đã ẩn danh (ADR-0039 §6) — message bị xoá cùng tên, email, số điện thoại. */
+          anonymized: 'Removed when this lead was anonymized.',
         },
         notes: {
           heading: 'Internal notes',

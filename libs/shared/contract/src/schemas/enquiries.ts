@@ -112,14 +112,28 @@ export const AdminEnquiriesListQuerySchema = AdminPageQuerySchema.extend({
 export type AdminEnquiriesListQuery = z.output<typeof AdminEnquiriesListQuerySchema>;
 
 /**
+ * Email của lead ĐÃ ẨN DANH (ADR-0039 §6): câu UPDATE của
+ * `apps/api/src/lib/enquiry-anonymize.ts` ghi `anon-<id>@invalid`. Domain
+ * `invalid` không có dấu chấm nên `z.email()` từ chối nó — thiếu nhánh này thì
+ * output validation của oRPC trả 500 cho CẢ trang `/enquiries` chỉ vì MỘT hàng
+ * ẩn danh (review L6, 20/10). Khớp ĐÚNG dạng ấy, không nới cho chuỗi bất kỳ.
+ */
+const AnonymizedEnquiryEmailSchema = z
+  .string()
+  .regex(/^anon-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}@invalid$/);
+
+/**
  * Một hàng của bảng `/enquiries`. KHÔNG mang `message`/`nationality`/
  * `interests` (spec §3-F9): message tới 2000 ký tự × 20 hàng là một trang
  * nặng để hiển thị bốn dòng đầu — trang chi tiết đọc nguyên văn.
+ *
+ * Lead đã ẩn danh (retention 18 tháng hoặc khách xoá tài khoản) vẫn là một
+ * hàng: tên `[anonymized]`, email dạng `AnonymizedEnquiryEmailSchema`.
  */
 export const EnquiryRowSchema = z.object({
   id: z.uuid(),
   name: z.string().min(1).max(120),
-  email: EmailSchema,
+  email: z.union([EmailSchema, AnonymizedEnquiryEmailSchema]),
   /**
    * Tour mà lead hỏi — join `tour`. null khi enquiry là câu hỏi chung HOẶC
    * tour đã bị xoá (`onDelete: SetNull` trên `Enquiry.tourId`). Chỉ TITLE:
@@ -184,7 +198,11 @@ export const EnquiryDetailSchema = EnquiryRowSchema.extend({
    * mỗi trang không việc gì phải chở số điện thoại không màn hình nào in.
    */
   phone: z.string().max(30).nullable(),
-  message: z.string().min(1).max(2000),
+  /**
+   * Rỗng CHỈ ở lead đã ẩn danh: cột NOT NULL nên anonymize ghi chuỗi rỗng
+   * (ADR-0039 AMEND 1, §6). Form công khai vẫn đòi tối thiểu 10 ký tự.
+   */
+  message: z.string().max(2000),
   nationality: z.string().max(80).nullable(),
   /** Multi-select TỰ DO của form công khai — mảng có thể rỗng, không có enum. */
   interests: z.array(z.string().max(40)),

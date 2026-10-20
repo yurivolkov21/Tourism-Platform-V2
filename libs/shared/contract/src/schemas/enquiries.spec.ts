@@ -123,6 +123,24 @@ describe('EnquiryRowSchema', () => {
     ).toBe(false);
   });
 
+  it('lead đã ẩn danh (ADR-0039 §6) vẫn là row hợp lệ: `[anonymized]` + `anon-<id>@invalid`', () => {
+    // Đúng chuỗi câu UPDATE của `enquiry-anonymize.ts` ghi. Row này mà trượt schema thì
+    // output validation của oRPC trả 500 cho CẢ trang `/enquiries` (review L6).
+    expect(
+      EnquiryRowSchema.safeParse({
+        ...adminRow,
+        name: '[anonymized]',
+        email: `anon-${adminRow.id}@invalid`,
+      }).success,
+    ).toBe(true);
+  });
+
+  it('nới email CHỈ cho đúng dạng ẩn danh — chuỗi không phải email khác vẫn bị từ chối', () => {
+    for (const email of ['not-an-email', 'anon-123@invalid', 'someone@invalid']) {
+      expect(EnquiryRowSchema.safeParse({ ...adminRow, email }).success, email).toBe(false);
+    }
+  });
+
   it('row KHÔNG có phone/tourSlug/message (vòng vá review F9: bảng không có cột nào in chúng)', () => {
     for (const key of ['phone', 'tourSlug', 'message']) {
       expect(EnquiryRowSchema.shape).not.toHaveProperty(key);
@@ -141,6 +159,18 @@ describe('EnquiryDetailSchema', () => {
     notes: [],
     statusEvents: [],
   };
+
+  it('lead đã ẩn danh: message rỗng (cột NOT NULL nên anonymize ghi chuỗi rỗng) và phone null', () => {
+    expect(
+      EnquiryDetailSchema.safeParse({
+        ...detail,
+        name: '[anonymized]',
+        email: `anon-${adminRow.id}@invalid`,
+        phone: null,
+        message: '',
+      }).success,
+    ).toBe(true);
+  });
 
   it('hai danh sách là BẮT BUỘC (mảng rỗng), không optional — client không phải phòng `undefined`', () => {
     expect(EnquiryDetailSchema.safeParse(detail).success).toBe(true);

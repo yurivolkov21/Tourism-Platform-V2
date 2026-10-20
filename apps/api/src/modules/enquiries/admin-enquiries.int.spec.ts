@@ -13,6 +13,7 @@ import { AppModule } from '../../app.module.js';
 import { prisma } from '../../auth/auth.config.js';
 import type { Prisma } from '../../generated/prisma/client.js';
 import { EnquiryStatus } from '../../generated/prisma/enums.js';
+import { ANONYMIZED_NAME, anonymizeEnquiriesOfUser } from '../../lib/enquiry-anonymize.js';
 import { sessionCookie } from '../../test/session-cookie.js';
 
 /**
@@ -388,6 +389,40 @@ describe('admin enquiries integration (F9)', () => {
       expect(missing.statusCode).toBe(404);
       expect(missing.json()).toMatchObject({ code: 'NOT_FOUND' });
       expect((await byId('lead-42', adminCookie)).statusCode).toBe(400);
+    });
+  });
+
+  describe('lead đã ẩn danh (ADR-0039 §6) — review L6', () => {
+    // Đúng đường `deleteAccount` đi: lead gửi lúc khách đăng nhập mang `user_id`, xoá tài
+    // khoản là anonymize theo cột đó. Bản cũ: email `anon-<id>@invalid` trượt `z.email()`
+    // của output schema → 500 cho CẢ trang, mọi lead khác cũng mất theo.
+    beforeEach(async () => {
+      const customer = await prisma.user.findUniqueOrThrow({
+        where: { email: CUSTOMER_EMAIL },
+        select: { id: true },
+      });
+      await prisma.enquiry.update({ where: { id: rowId(3) }, data: { userId: customer.id } });
+      expect(await anonymizeEnquiriesOfUser(prisma, customer.id)).toBe(1);
+    });
+
+    it('list: 200, hàng ẩn danh vẫn có mặt cạnh các lead khác', async () => {
+      const paged = await listOk('');
+      expect(paged.total).toBe(6);
+      expect(paged.items.find((item) => item.id === rowId(3))).toMatchObject({
+        name: ANONYMIZED_NAME,
+        email: `anon-${rowId(3)}@invalid`,
+        status: 'QUOTED',
+      });
+      expect(paged.items.find((item) => item.id === rowId(1))?.email).toBe('ada@example.com');
+    });
+
+    it('byId: 200, message rỗng và phone null', async () => {
+      expect(await detailOk(rowId(3))).toMatchObject({
+        name: ANONYMIZED_NAME,
+        email: `anon-${rowId(3)}@invalid`,
+        phone: null,
+        message: '',
+      });
     });
   });
 
