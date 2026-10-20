@@ -216,6 +216,29 @@ describe('ReviewForm — gửi xong thì báo bằng toast', () => {
     expect(create).not.toHaveBeenCalled();
   });
 
+  it('bài vừa được duyệt trong lúc khách đang sửa (REVIEW_NOT_EDITABLE) → toast báo + kéo trang tươi', async () => {
+    // Form đã cũ: khung phải đổi sang trạng thái thật (đã đăng, có nút rút) thay
+    // vì mời bấm lại mãi — khuôn nút rút review (W4). Câu báo đi bằng toast vì
+    // trang tải lại là form biến mất cùng dòng lỗi (review L5).
+    update.mockRejectedValueOnce(
+      createORPCErrorFromJson({
+        defined: true,
+        code: 'REVIEW_NOT_EDITABLE',
+        status: 409,
+        message: 'not editable',
+        data: null,
+      }),
+    );
+    const review = makeReview({ rating: 4, body: 'A lovely trip with great guides.' });
+    const user = userEvent.setup();
+    render(<ReviewForm bookingCode={CODE} review={review} />);
+    await user.click(screen.getByRole('button', { name: t.resubmit }));
+
+    await waitFor(() => expect(refresh).toHaveBeenCalled());
+    expect(error).toHaveBeenCalledWith(t.errors.REVIEW_NOT_EDITABLE, { description: undefined });
+    expect(success).not.toHaveBeenCalled();
+  });
+
   it('API báo lỗi → không toast cảm ơn, chỉ câu lỗi trong form', async () => {
     create.mockRejectedValueOnce(new Error('network down'));
     const user = userEvent.setup();

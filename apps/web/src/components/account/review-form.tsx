@@ -151,6 +151,15 @@ export function ReviewForm({
         return;
       }
       const code = err instanceof ORPCError ? err.code : '';
+      // Bài vừa được duyệt trong lúc khách đang sửa: form này đã cũ. Kéo trang
+      // tươi để khung đổi sang trạng thái thật thay vì mời bấm lại mãi (khuôn
+      // nút rút review, W4); câu báo đi bằng toast vì form sẽ biến mất cùng
+      // dòng lỗi (review L5).
+      if (code === 'REVIEW_NOT_EDITABLE') {
+        submitToast('error', { title: t.errors.REVIEW_NOT_EDITABLE });
+        router.refresh();
+        return;
+      }
       setError(t.errors[code] ?? t.errors.generic);
     } finally {
       setPending(false);
