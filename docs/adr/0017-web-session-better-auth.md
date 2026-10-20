@@ -324,6 +324,34 @@ thế ở [ADR-0056](0056-mobile-google-native-signin.md) (Accepted 09/10): app
 `idToken` mà có callback là deep link, tức scheme khác http/https
 (`auth/mobile-auth-guard.ts`); `auth/expo-proxy-guard.ts` cùng spec đã gỡ.
 
+### 12. AMEND 20/10/2026 — OTP email chỉ để xác minh email: tắt đăng nhập và đặt lại mật khẩu bằng OTP
+
+Plugin `emailOTP` (1.6.23) mount nhiều route hơn phần §5a dùng. Ngoài
+`send-verification-otp` và `verify-email`, nó còn mở `/sign-in/email-otp` (đăng
+nhập không mật khẩu, email chưa có tài khoản thì TẠO luôn tài khoản đã xác minh)
+cùng ba route đặt lại mật khẩu bằng OTP (`/email-otp/request-password-reset`,
+`/forget-password/email-otp`, `/email-otp/reset-password`). Không app nào gọi
+chúng: web và mobile đặt lại mật khẩu bằng link qua `/request-password-reset`
+của lõi BA. Nhưng route vẫn sống trên API production, nên ai đọc được hộp thư
+của một tài khoản là vào được mà không cần mật khẩu. Điều đó trái với chốt
+21/09 ghi ở `otp-form.tsx` (OTP email không được thành yếu tố đăng nhập đầy đủ).
+Review luồng L1 bắt ngày 20/10.
+
+**Chốt:**
+
+- Bốn route trên vào `disabledPaths` cạnh `check-verification-otp` (§8), nên trả
+  404 ở mọi trạng thái.
+- Before-hook toàn cục từ chối `send-verification-otp` khi `type` khác
+  `email-verification`, trả 400 `Invalid OTP type` (cùng thông điệp BA dùng cho
+  loại `change-email`). Thiếu bước này thì loại `sign-in` vẫn gửi thư OTP cho cả
+  email chưa đăng ký, dù không còn route nào dùng mã ấy.
+
+Đo ở `auth-hardening.int.spec.ts` test 8. Hệ quả với ADR-0052 §4: hook khoá tài
+khoản nay còn ba đường tạo phiên phải chặn (mật khẩu và hai đường Google), vì
+đường OTP email không còn. `account-lock.int.spec.ts` đổi ca OTP thành ca đo
+route đã đóng. Muốn mở lại đăng nhập bằng OTP thì phải có ADR mới và gỡ route
+khỏi `disabledPaths`.
+
 ## Hệ quả
 
 - `apps/web` thêm dep `better-auth` (client-only import) — bám version API

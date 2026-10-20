@@ -7,8 +7,9 @@ import { prisma } from './auth.config.js';
 
 /**
  * Integration (Docker PG, db tourism_test) — khoá tài khoản (ADR-0052 §4): hook
- * `session.create.before` chặn MỌI đường tạo phiên (đo ở đây mật khẩu và OTP email; hai
- * đường Google — ID token của app và callback của web — đo ở `google-sign-in.int.spec.ts`),
+ * `session.create.before` chặn MỌI đường tạo phiên (đo ở đây mật khẩu; hai đường Google — ID
+ * token của app và callback của web — đo ở `google-sign-in.int.spec.ts`; đăng nhập bằng OTP
+ * email đã tắt, ADR-0017 §12),
  * và AuthGuard trả 401 cho một phiên sót — phiên được ghi đúng lúc lệnh khoá đang chạy.
  *
  * Fixture khoá bằng cách ghi THẲNG `locked_at`: lệnh khoá thật của Owner (xoá phiên, ghi
@@ -78,27 +79,27 @@ describe('khoá tài khoản chặn mọi phiên (ADR-0052 §4)', () => {
     expect(await sessionCount()).toBe(0);
   });
 
-  it('khoá → đăng nhập bằng OTP email cũng 403 ACCOUNT_LOCKED', async () => {
+  it('khoá → OTP email không còn là đường đăng nhập: route gửi mã từ chối loại sign-in, route đăng nhập 404', async () => {
+    // Trước review L1 (20/10) đây là đường thứ hai hook phải chặn. Nay đăng nhập bằng OTP
+    // tắt hẳn (ADR-0017 §12), nên phần còn đo là đường ấy đóng với cả tài khoản bị khoá.
     await setLocked(true);
+    // Thư OTP của lần đăng ký ở beforeAll đã nằm trong outbox; chỉ đếm phần tăng thêm.
+    const otpRows = () => prisma.outbox.count({ where: { type: EmailType.EMAIL_OTP } });
+    const before = await otpRows();
     const sent = await app.inject({
       method: 'POST',
       url: '/api/auth/email-otp/send-verification-otp',
       payload: { email: EMAIL, type: 'sign-in' },
     });
-    expect(sent.statusCode).toBe(200);
-    const row = await prisma.outbox.findFirstOrThrow({
-      where: { type: EmailType.EMAIL_OTP },
-      orderBy: { createdAt: 'desc' },
-    });
-    const { otp } = row.payload as { otp: string };
+    expect(sent.statusCode).toBe(400);
+    expect(await otpRows()).toBe(before);
 
     const res = await app.inject({
       method: 'POST',
       url: '/api/auth/sign-in/email-otp',
-      payload: { email: EMAIL, otp },
+      payload: { email: EMAIL, otp: '000000' },
     });
-    expect(res.statusCode).toBe(403);
-    expect(res.json()).toMatchObject({ code: 'ACCOUNT_LOCKED' });
+    expect(res.statusCode).toBe(404);
     expect(await sessionCount()).toBe(0);
   });
 

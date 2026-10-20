@@ -1,6 +1,7 @@
 import { FastifyAdapter, type NestFastifyApplication } from '@nestjs/platform-fastify';
 import { Test } from '@nestjs/testing';
 import { AppModule } from '../app.module.js';
+import { EmailType } from '../generated/prisma/enums.js';
 import { prisma } from './auth.config.js';
 
 /**
@@ -242,5 +243,70 @@ describe('auth hardening: enumeration + trần riêng (W2 mục 3)', () => {
 
     expect((await signUp(atLimit)).statusCode).toBe(200);
     expect(await prisma.user.count({ where: { email: atLimit } })).toBe(1);
+  });
+
+  it('8. OTP email CHỈ để xác minh email: đăng nhập không mật khẩu và đặt lại mật khẩu bằng OTP bị tắt (ADR-0017 §12)', async () => {
+    // Quyết định 21/09 (otp-form.tsx): OTP email không phải một cách đăng nhập. Plugin
+    // emailOTP vẫn mount `/sign-in/email-otp` — ai đọc được hộp thư là có phiên mà không
+    // cần mật khẩu, email lạ còn được TẠO tài khoản (review L1, 20/10).
+    const post = (url: string, body: Record<string, unknown>) =>
+      app.inject({
+        method: 'POST',
+        url,
+        headers: { 'content-type': 'application/json' },
+        payload: JSON.stringify(body),
+      });
+    const otpRows = () => prisma.outbox.count({ where: { type: EmailType.EMAIL_OTP } });
+
+    expect(
+      (await post('/api/auth/sign-in/email-otp', { email: 'x@example.com', otp: '000000' }))
+        .statusCode,
+    ).toBe(404);
+    expect(
+      (await post('/api/auth/email-otp/request-password-reset', { email: 'x@example.com' }))
+        .statusCode,
+    ).toBe(404);
+    expect(
+      (await post('/api/auth/forget-password/email-otp', { email: 'x@example.com' })).statusCode,
+    ).toBe(404);
+    expect(
+      (
+        await post('/api/auth/email-otp/reset-password', {
+          email: 'x@example.com',
+          otp: '000000',
+          password: 'new-password-123',
+        })
+      ).statusCode,
+    ).toBe(404);
+
+    // Gửi OTP loại `sign-in` từng gửi thư cho CẢ email chưa có tài khoản. Nay 400, không
+    // thư nào vào outbox, không mã nào được ghi.
+    for (const type of ['sign-in', 'forget-password']) {
+      const res = await post('/api/auth/email-otp/send-verification-otp', {
+        email: 'stranger@example.com',
+        type,
+      });
+      expect(res.statusCode).toBe(400);
+    }
+    expect(await otpRows()).toBe(0);
+    expect(await prisma.verification.count()).toBe(0);
+
+    // Đối chứng: OTP xác minh email (web và mobile đều dùng) vẫn chạy.
+    const su = await post('/api/auth/sign-up/email', {
+      email: 'verify-still-works@example.com',
+      password: PASSWORD,
+      name: 'V',
+    });
+    expect(su.statusCode).toBe(200);
+    // Xoá mã của lần đăng ký: BA dùng lại mã còn hạn, outbox chống trùng theo mã nên gửi
+    // lại cùng mã không thêm dòng nào.
+    await prisma.verification.deleteMany();
+    await prisma.outbox.deleteMany();
+    const resend = await post('/api/auth/email-otp/send-verification-otp', {
+      email: 'verify-still-works@example.com',
+      type: 'email-verification',
+    });
+    expect(resend.statusCode).toBe(200);
+    expect(await otpRows()).toBe(1);
   });
 });

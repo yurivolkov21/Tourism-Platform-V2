@@ -112,6 +112,8 @@ export function OtpForm({
       // hai, và cái giá là mã 6 số gửi qua email trở thành yếu tố đăng nhập
       // đầy đủ cho MỌI tài khoản — ai đọc được hộp thư là vào được, không cần
       // mật khẩu. User chốt không đánh đổi; đổi ý thì phải đi qua một ADR.
+      // Từ 20/10 (ADR-0017 §12) API tắt hẳn `/sign-in/email-otp`, nên đổi ý
+      // còn phải mở lại route ấy trong `disabledPaths` của auth.config.ts.
       router.push(`/login?redirect=${encodeURIComponent(safeRedirect(redirect))}`);
       router.refresh();
     } catch {

@@ -107,7 +107,17 @@ export const auth = betterAuth({
   // đầu đè body 400 tại mount nên vẫn hở 403. BA có `disabledPaths` → 404
   // cho mọi trạng thái, tắt hẳn ở đúng tầng. Web dùng `verifyEmail` (đường
   // khác), không mất gì.
-  disabledPaths: ['/email-otp/check-verification-otp'],
+  // ADR-0017 §12 (review L1, 20/10): OTP email CHỈ để xác minh email (chốt
+  // 21/09). Plugin emailOTP còn mount đăng nhập không mật khẩu (tạo luôn tài
+  // khoản cho email lạ) và đặt lại mật khẩu bằng OTP; web và mobile đặt lại
+  // mật khẩu bằng link (`/request-password-reset`), không gọi route nào dưới đây.
+  disabledPaths: [
+    '/email-otp/check-verification-otp',
+    '/sign-in/email-otp',
+    '/email-otp/request-password-reset',
+    '/forget-password/email-otp',
+    '/email-otp/reset-password',
+  ],
   hooks: {
     // ADR-0017 §7a (vòng vá review W2): "đổi mật khẩu = phiên khác chết" phải
     // được SERVER cưỡng chế — bản đầu chỉ có cờ `revokeOtherSessions` do web
@@ -126,6 +136,16 @@ export const auth = betterAuth({
       if (rejection) {
         throw new APIError('BAD_REQUEST', { message: MOBILE_AUTH_REJECTION_MESSAGES[rejection] });
       }
+      // ADR-0017 §12: route gửi OTP còn nhận loại `sign-in` (gửi thư cả cho email
+      // chưa có tài khoản) và `forget-password`, mà route dùng hai mã đó đã tắt ở
+      // `disabledPaths`. Chỉ loại xác minh email được gửi.
+      if (ctx.path === '/email-otp/send-verification-otp') {
+        const type = (ctx.body as { type?: unknown } | undefined)?.type;
+        if (type !== 'email-verification') {
+          throw new APIError('BAD_REQUEST', { message: 'Invalid OTP type' });
+        }
+        return;
+      }
       if (ctx.path !== '/change-password') return;
       const body = (ctx.body ?? {}) as Record<string, unknown>;
       return { context: { body: { ...body, revokeOtherSessions: true } } };
@@ -134,7 +154,7 @@ export const auth = betterAuth({
   databaseHooks: {
     user: {
       // W2 mục 4 (audit cụm 1): `image` của BA nhận CHUỖI BẤT KỲ cả lúc TẠO
-      // (sign-up/email, sign-in/email-otp lần đầu) lẫn lúc SỬA (update-user),
+      // (sign-up/email) lẫn lúc SỬA (update-user),
       // trong khi đường avatar chính danh là account.setAvatar (ký + kiểm chủ
       // quyền publicId — ADR-0021 §3). Bản đầu chỉ gác `update` — kẻ ẩn danh
       // đặt được avatar bất kỳ bằng một request sign-up (vòng vá review W2).
