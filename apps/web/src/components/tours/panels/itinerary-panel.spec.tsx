@@ -1,6 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { ReactNode } from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import { DepartureSelectionProvider } from '@/components/tours/departure-selection';
 import type { DepartureVM, TourDetailVM } from '@/lib/api/tours';
@@ -74,7 +75,8 @@ describe('ItineraryPanel', () => {
 
   it('mốc giờ nằm cột riêng, tách khỏi phần việc', () => {
     wrap(<ItineraryPanel tour={TOUR} live={false} today={AUG} />);
-    expect(screen.getByText('07:30')).toBeInTheDocument();
+    // Ngày 3 cũng có mốc 07:30 (ẩn vì đang đóng) — đọc mốc của ngày 1, ngày tự xổ.
+    expect(screen.getAllByText('07:30')[0]).toBeVisible();
     expect(screen.getByText(/Gear check/)).toBeInTheDocument();
   });
 
@@ -93,7 +95,32 @@ describe('ItineraryPanel', () => {
     if (!toggle) return;
     await user.click(toggle);
     expect(toggle).toHaveAttribute('aria-expanded', 'false');
-    expect(screen.queryByText('07:30')).toBeNull();
+    expect(screen.getByText(/Gear check/)).not.toBeVisible();
+  });
+
+  it('ngày ĐANG ĐÓNG vẫn có mốc trong HTML server render, chỉ ẩn đi', () => {
+    // ADR-0022 §2: lịch trình là nội dung chính của trang tour SSG nằm trong
+    // sitemap, nên phải có trong HTML crawler nhận. Trước đây chỉ ngày 1 (tự xổ)
+    // có mốc giờ; ngày 2 trở đi chỉ còn tiêu đề (review L2, 20/10).
+    const html = renderToStaticMarkup(
+      <DepartureSelectionProvider departures={DEPARTURES}>
+        <ItineraryPanel tour={TOUR} live={false} today={AUG} />
+      </DepartureSelectionProvider>,
+    );
+    expect(html).toContain('Ride out');
+    expect(html).toContain('Drop-off');
+  });
+
+  it('bấm mở một ngày đang đóng thì mốc của ngày đó hiện ra', async () => {
+    const user = userEvent.setup();
+    wrap(<ItineraryPanel tour={TOUR} live={false} today={AUG} />);
+    expect(screen.getByText(/Ride out/)).not.toBeVisible();
+    const day2 = screen.getAllByRole('button', { expanded: false })[0];
+    expect(day2).toBeDefined();
+    if (!day2) return;
+    await user.click(day2);
+    expect(day2).toHaveAttribute('aria-expanded', 'true');
+    expect(screen.getByText(/Ride out/)).toBeVisible();
   });
 
   it('không có đợt nào thì vẫn render lịch trình, chỉ là không có ngày cụ thể', () => {

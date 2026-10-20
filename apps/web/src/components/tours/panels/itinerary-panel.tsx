@@ -214,28 +214,30 @@ export function ItineraryPanel({
                   />
                 </button>
 
-                {open ? (
-                  <div className="px-3 pt-2.5 pb-1.5">
-                    {stops.map((stop) => (
-                      <div
-                        key={`${stop.time ?? ''}-${stop.text}`}
-                        // `.stop` — lưới 60px | 1fr, gap 14, canh baseline.
-                        className="grid grid-cols-[60px_1fr] items-baseline gap-3.5 border-t border-[color-mix(in_oklab,var(--border)_45%,transparent)] py-[7px] first:border-t-0"
-                      >
-                        <time className="font-mono text-xs font-medium text-foreground tabular-nums">
-                          {stop.time}
-                        </time>
-                        {/* Mô tả là MARKDOWN: **đậm** cho địa danh và bữa ăn,
-                            *nghiêng* cho ghi chú mềm. Markdown thoái hoá êm nên
-                            nội dung cũ không có ký hiệu nào vẫn render y như chữ
-                            thường — không cần migration dữ liệu. */}
-                        <div className="text-foreground [&_em]:text-muted-foreground [&_strong]:font-semibold">
-                          <Markdown remarkPlugins={[remarkGfm]}>{stop.text}</Markdown>
-                        </div>
+                {/* Ngày đang đóng vẫn render mốc, chỉ ẩn bằng `hidden`: lịch trình là
+                    nội dung chính của trang SSG nằm trong sitemap, mount có điều
+                    kiện thì HTML crawler nhận chỉ còn mốc của ngày tự xổ — cùng
+                    ràng buộc ADR-0022 §2 đặt cho năm panel. */}
+                <div hidden={!open} className="px-3 pt-2.5 pb-1.5">
+                  {stops.map((stop) => (
+                    <div
+                      key={`${stop.time ?? ''}-${stop.text}`}
+                      // `.stop` — lưới 60px | 1fr, gap 14, canh baseline.
+                      className="grid grid-cols-[60px_1fr] items-baseline gap-3.5 border-t border-[color-mix(in_oklab,var(--border)_45%,transparent)] py-[7px] first:border-t-0"
+                    >
+                      <time className="font-mono text-xs font-medium text-foreground tabular-nums">
+                        {stop.time}
+                      </time>
+                      {/* Mô tả là MARKDOWN: **đậm** cho địa danh và bữa ăn,
+                          *nghiêng* cho ghi chú mềm. Markdown thoái hoá êm nên
+                          nội dung cũ không có ký hiệu nào vẫn render y như chữ
+                          thường — không cần migration dữ liệu. */}
+                      <div className="text-foreground [&_em]:text-muted-foreground [&_strong]:font-semibold">
+                        <Markdown remarkPlugins={[remarkGfm]}>{stop.text}</Markdown>
                       </div>
-                    ))}
-                  </div>
-                ) : null}
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
           );
