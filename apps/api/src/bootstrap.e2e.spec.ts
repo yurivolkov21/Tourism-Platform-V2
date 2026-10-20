@@ -117,7 +117,7 @@ describe('configureHttp + AppModule infra (e2e — CORS · helmet · exception f
    * xanh vì `app.inject()` KHÔNG enforce CORS. Case này là thứ duy nhất bắt
    * được lớp lỗi đó mà không cần mở trình duyệt thật.
    */
-  it('cho phép preflight PATCH (account.setAvatar — verb PATCH DUY NHẤT của contract)', async () => {
+  it('cho phép preflight PATCH (account.setAvatar, reviews.update — hai route PATCH của contract)', async () => {
     const res = await app.inject({
       method: 'OPTIONS',
       url: '/api/account/avatar',
@@ -163,6 +163,49 @@ describe('configureHttp + AppModule infra (e2e — CORS · helmet · exception f
       headers: { origin: allowedOrigin },
     });
     expect(res.headers['access-control-allow-origin']).toBeUndefined();
+  });
+
+  /**
+   * Review F1-01: router giải mã percent-encoding trước khi khớp route, nên
+   * `/api/%61dmin/bookings` chạy đúng handler admin. Bản cũ so `req.url` thô:
+   * CORS cấp quyền đọc cho origin web và chặn cross-site không nhận ra vùng
+   * admin — đúng cửa mà một XSS ở www cần.
+   */
+  it('đường admin viết bằng percent-encoding (/api/%61dmin/...) cũng KHÔNG phát CORS', async () => {
+    const preflight = await app.inject({
+      method: 'OPTIONS',
+      url: '/api/%61dmin/bookings',
+      headers: { origin: allowedOrigin, 'access-control-request-method': 'GET' },
+    });
+    expect(preflight.headers['access-control-allow-origin']).toBeUndefined();
+    const read = await app.inject({
+      method: 'GET',
+      url: '/api/%61dmin/bookings',
+      headers: { origin: allowedOrigin },
+    });
+    expect(read.statusCode).toBe(401); // tới AuthGuard của route admin thật
+    expect(read.headers['access-control-allow-origin']).toBeUndefined();
+  });
+
+  it('POST cross-site vào đường admin percent-encoding → 403 như đường thường', async () => {
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/%61dmin/bookings/BK-X/refund',
+      headers: { 'content-type': 'application/json', 'sec-fetch-site': 'cross-site' },
+      payload: JSON.stringify({ amount: '1.00', reason: 'x' }),
+    });
+    expect(res.statusCode).toBe(403);
+    expect(res.json()).toMatchObject({ code: 'CROSS_SITE_FORBIDDEN' });
+  });
+
+  it('csp-report viết bằng percent-encoding không lách được luật hai MIME (415 cho JSON)', async () => {
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/webhooks/csp-r%65port',
+      headers: { 'content-type': 'application/json' },
+      payload: JSON.stringify({ 'csp-report': {} }),
+    });
+    expect(res.statusCode).toBe(415);
   });
 
   /**
