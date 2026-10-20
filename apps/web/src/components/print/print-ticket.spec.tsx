@@ -89,4 +89,17 @@ describe('PrintTicket', () => {
     expect(screen.getByText('Hội An Old Town & Lantern Evening')).toBeInTheDocument();
     expect(screen.getByText('REFUNDED')).toBeInTheDocument();
   });
+
+  // Đo bản in 20/10 (review L4): tên liên hệ 120 ký tự làm ô cao 11 dòng, dải cuối của voucher rơi
+  // khỏi trang; tên một từ dài đè sang ba ô bên. Phép tính vừa trang coi vé cao cố định.
+  it('ô của vé kẹp hai dòng và ngắt cả chuỗi liền: tên dài không đẩy tờ, không đè ô bên', () => {
+    const long =
+      'Nguyễn Hoàng Bảo Ngọc Phương Thảo Trần Lê Minh Khang Đặng Thị Thu Hương Võ Quốc Anh';
+    const cells = [{ label: 'Lead traveller', value: long }, ...ACTIVE.cells.slice(1)];
+    render(<PrintTicket view={{ ...ACTIVE, cells }} />);
+    for (const value of [long, '1 adult', '9 Oct 2026', 'Card (Stripe)']) {
+      expect(screen.getByText(value).className).toContain('line-clamp-2');
+      expect(screen.getByText(value).className).toContain('[overflow-wrap:anywhere]');
+    }
+  });
 });

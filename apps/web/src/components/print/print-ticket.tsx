@@ -95,7 +95,11 @@ export function PrintTicket({ view }: { view: PrintTicketView }) {
                     )}
                   >
                     <dt className={PRINT_LABEL}>{cell.label}</dt>
-                    <dd className="mt-[0.8mm] font-semibold">{cell.value}</dd>
+                    {/* Kẹp hai dòng, ngắt cả chuỗi liền: phép tính vừa trang của voucher coi vé cao
+                        cố định, mà tên liên hệ dài tới 120 ký tự (đo bản in 20/10, review L4). */}
+                    <dd className="mt-[0.8mm] line-clamp-2 font-semibold [overflow-wrap:anywhere]">
+                      {cell.value}
+                    </dd>
                   </div>
                 ))}
               </dl>
