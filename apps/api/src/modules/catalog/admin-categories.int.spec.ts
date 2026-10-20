@@ -382,6 +382,44 @@ describe('admin categories integration (P4e-2 F14)', () => {
 
       expect(res.statusCode).toBe(404);
     });
+
+    it('đổi tên bust cả trang chi tiết của MỌI tour thuộc danh mục; ẩn/hiện chỉ bust `tours` (review A3-02)', async () => {
+      // Trang `/tours/<slug>` in tên danh mục (breadcrumb và dòng eyebrow) qua tag `tour:<slug>`,
+      // không qua `tours` — bust riêng `tours` thì trang ấy giữ tên cũ tới hết 300 giây ISR. Cùng
+      // lớp nợ G5 mà điểm đến đã đóng ở vòng review F15. Ẩn/hiện không đổi gì trên trang ấy.
+      const tourIn = (slug: string, categoryId: string, isPublished: boolean) => ({
+        slug,
+        title: slug,
+        categoryId,
+        durationDays: 1,
+        basePrice: '39.00',
+        currency: 'USD',
+        isPublished,
+      });
+      await prisma.tour.createMany({
+        data: [
+          tourIn('published-one', catId(1), true),
+          tourIn('draft-one', catId(1), false),
+          tourIn('in-packages', catId(2), true),
+        ] as unknown as Prisma.TourCreateManyInput[],
+      });
+      const revalidate = vi.spyOn(web, 'revalidate').mockResolvedValue(undefined);
+
+      expect(
+        (await update(catId(1), { name: 'Day tours', description: null }, adminCookie)).statusCode,
+      ).toBe(200);
+      expect(revalidate).toHaveBeenCalledTimes(1);
+      expect([...(revalidate.mock.calls[0]?.[0] ?? [])].sort()).toEqual([
+        'tour:draft-one',
+        'tour:published-one',
+        'tours',
+      ]);
+
+      revalidate.mockClear();
+      expect((await setActive(catId(1), false, adminCookie)).statusCode).toBe(200);
+      expect(revalidate).toHaveBeenCalledTimes(1);
+      expect(revalidate).toHaveBeenCalledWith(['tours']);
+    });
   });
 
   describe('setActive', () => {
