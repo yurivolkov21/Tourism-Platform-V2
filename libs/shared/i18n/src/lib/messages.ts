@@ -6979,10 +6979,14 @@ export const messages = {
          * thoát, cùng nếp hai vùng trước. Ở hàng đợi kiểm duyệt chuyện này
          * đáng nói hơn: một bảng rỗng dễ bị đọc thành "đã dọn sạch", trong khi
          * thủ phạm chỉ là hai ô ngày đặt từ lúc trước.
+         *
+         * "matching" (review L5, cùng khuôn A1-07 của `/bookings`, 20/10): ngày cộng dồn với tab
+         * trạng thái, nguồn, số sao và ô tìm kiếm — đứng ở tab Pending thì bảng rỗng trong khi
+         * khoảng ấy vẫn có review đã duyệt, nên "No reviews were submitted between …" là nói sai.
          */
-        emptyInRange: (range: string) => `No reviews were submitted between ${range}.`,
-        emptyFrom: (date: string) => `No reviews were submitted on or after ${date}.`,
-        emptyTo: (date: string) => `No reviews were submitted on or before ${date}.`,
+        emptyInRange: (range: string) => `No matching reviews were submitted between ${range}.`,
+        emptyFrom: (date: string) => `No matching reviews were submitted on or after ${date}.`,
+        emptyTo: (date: string) => `No matching reviews were submitted on or before ${date}.`,
         showAllDates: 'Show reviews from all dates',
         columns: {
           review: REVIEW_CONTEXT_COPY.review,
