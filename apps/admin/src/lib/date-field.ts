@@ -37,6 +37,17 @@ export function parseIsoDate(iso: string | undefined | null): Date | undefined {
   return date;
 }
 
+/**
+ * Hôm nay theo UTC, ở dạng `Date` giờ địa phương mà lịch cầm (cùng cách dựng của `parseIsoDate`).
+ *
+ * Ngày lọc của admin là ngày UTC: API cắt bằng `startOfDayUtc` (`created-at-range.ts`), khoảng
+ * mặc định của `/bookings` là tháng UTC. Lấy ngày địa phương thì từ 00:00 tới 07:00 ở Việt Nam
+ * lịch cho chọn một ngày UTC chưa bắt đầu.
+ */
+export function utcToday(now: Date): Date {
+  return new Date(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+}
+
 /** `Date` (giờ địa phương) → ISO `YYYY-MM-DD` để đắp vào URL. */
 export function toIsoDate(date: Date): string {
   const year = String(date.getFullYear()).padStart(4, '0');
