@@ -8,6 +8,59 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-10-20 — Merge review M3 mobile đặt tour, chuyến, đánh giá: hoá đơn đọc lại sau khi khách quay về từ trang trả trên Android, tracker của tour đã gỡ đưa về hoá đơn, upload ảnh có trần, đồng hồ server đo lại khi app quay lại (`32e9139`)
+
+Luồng M3 của đợt review code theo luồng (kế hoạch 20/10 trong thư mục chung của project,
+`code-review/ke-hoach-review-theo-luong.md`), rà trên `main` `43e7c75` rồi rebase lên `99de947` trước khi đẩy.
+Báo cáo đủ 20 phát hiện, gồm phần để lại và phần chuyển luồng: `code-review/M3-bao-cao.md` cùng thư mục. Nhánh
+`fix/review-m3-mobile-booking-g0iuac`, [PR #47](https://github.com/yurivolkov21/Tourism-Platform-V2/pull/47),
+thi công trên session cloud. Chỉ đụng `apps/mobile/src`: không migration, không biến env, không dependency mới,
+không khoá i18n mới; không sửa file nào trong danh sách Nghĩa làm lại giao diện 22–30/10.
+
+- `04b0597`: `openCheckout` đợi lần AppState về `active` kế tiếp rồi mới trả, cùng cách polyfill
+  `openAuthSessionAsync` của expo-web-browser. Trên Android `openBrowserAsync` trả `opened` ngay khi Custom Tab
+  bật (iOS đợi đóng), nên nút Pay của hoá đơn đọc lại đơn TRƯỚC khi khách trả: trả xong quay về app vẫn thấy
+  "Payment due" cho tới khi rời màn.
+- `d9f752d`: B6 đánh dấu `bookings.mine` cũ khi đơn ra trạng thái cuối. Trước đó tab Trips đã mở trong phiên vẫn
+  giữ "Payment due" sau khi B6 báo đã trả, vì app không có focus refetch.
+- `43854cc`: tracker không retry `NOT_FOUND` của `catalog.tours.bySlug` và `replace` sang hoá đơn. Admin gỡ
+  publish tour không bị chặn khi còn đơn sống, nên trước đó đơn PAID của tour ấy mở ra tracker chỉ có nút Retry
+  không bao giờ thành công, khách không tới được hoá đơn để xem hay huỷ.
+- `ce0a0c5`: "Contact us" ở hoá đơn đã trả còn hạn huỷ mở form enquiry gắn sẵn chuyến (trước đó mở trang tour),
+  cùng đích với tracker và tấm huỷ quá hạn; hai lối gom về `openEnquiry`.
+- `41cf13e`: huỷ giữ chỗ gặp `NOT_PENDING` (đơn vừa được trả nơi khác hoặc câu quét đã huỷ) thì đóng tấm và đọc
+  lại đơn thay vì hiện "Something went wrong"; hàm `cancelPendingErrorAction` cùng khuôn `payErrorAction`.
+- `b2f0d56`: `uploadToCloudinary` đặt `xhr.timeout` 120 giây và reject ở `timeout`, `abort`. React Native không
+  có trần mặc định (OkHttp của Android đặt 0), nên mạng treo giữa chừng làm ô ảnh quay mãi và khoá nút gửi
+  review; nay ô ảnh chuyển lỗi và thử lại được.
+- `7f858ec`: "Back to tour" sau khi gửi enquiry dùng `router.dismissTo`, lùi về trang tour nằm dưới thay vì đẩy
+  thêm một bản đè lên màn "đã gửi".
+- `a4c6404`: `useServerClock` nghe AppState và đánh dấu `health.check` cũ khi app quay lại foreground. Trước đó
+  lệch đồng hồ chỉ đo một lần mỗi phiên, nên chỉnh đồng hồ máy giữa phiên làm "giờ server" của tracker trôi
+  đúng bằng khoảng vừa chỉnh.
+- `32e9139`: đóng tấm huỷ thì xoá câu lỗi của lượt huỷ trước.
+
+**Review.** Đây chính là lượt review của luồng M3; không có lượt review độc lập cho các bản sửa. Chuyển luồng
+khác qua coordinator: M2 (`formatFullDate` cắt ngày UTC nên mốc thời gian từ 00:00 tới 07:00 giờ VN in lùi một
+ngày), L4 (web `cancelPending` gặp `NOT_PENDING` hiện lỗi chung), A2 (đợt khởi hành dài khác `durationDays` làm
+tracker in "Day n of N" lệch). Chuyển Nghĩa qua Yuri: màn P6 `trip-ended-screen.tsx` vẫn mời viết đánh giá cho
+đơn `PARTIALLY_REFUNDED` hoặc `REFUNDED` mà API sẽ từ chối. Một đề xuất chờ Yuri chốt: M3-14 (tách view model
+khỏi route hoá đơn và route tracker, chuyển khoảng 250 dòng, thêm khoảng 300 dòng test, chỉ làm sau khi phần
+của Nghĩa đã gộp). Yuri bảo đẩy lên main 20/10 03:09 UTC.
+
+Tests after (`gate:int` trên `32e9139`, nền `99de947`, 20/10, session cloud, API sống ở :3001): unit 8215
+(admin 2388, web 2405, api 1402, mobile 880, contract 800, mobile-ui 145, i18n 64, ui 57, core 48, tokens
+26) và int 954; Biome 2089 file. PR thêm 16 test unit ở mobile.
+
+**CÒN TREO:**
+
+- Bản APK mới từ `main` (EAS trên PC) để các sửa tới máy khách, gộp vào lượt dựng lại sau phần giao diện của
+  Nghĩa (22–30/10).
+- Buổi test tay: tám bước ở mục 3 của `code-review/M3-bao-cao.md`, làm trên Android (Pay ở hoá đơn rồi đóng
+  trình duyệt, tour bị gỡ publish, Contact us, huỷ giữ chỗ sau khi trả trên web, upload ảnh lúc mất mạng, Back to
+  tour, chỉnh đồng hồ máy, mở lại tấm huỷ).
+- Dọn nhánh `fix/review-m3-mobile-booking-g0iuac` trên origin nếu GitHub không tự xoá.
+
 ## 2026-10-20 — Merge review L2 tìm và xem tour: modal review báo lỗi và cho thử lại, lịch trình đủ trong HTML, `?page=` được kẹp, khoảng giá bỏ đợt hết chỗ (`eab1e57`)
 
 Luồng L2 của đợt review code theo luồng (kế hoạch 20/10 trong thư mục chung của project,
