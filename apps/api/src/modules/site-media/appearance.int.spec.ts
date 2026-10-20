@@ -1,6 +1,7 @@
 import { FastifyAdapter, type NestFastifyApplication } from '@nestjs/platform-fastify';
 import { Test } from '@nestjs/testing';
 import {
+  AdminMediaQueueSchema,
   AdminSiteSlotSchema,
   SITE_SLOT_KEYS,
   SignedUploadParamsSchema,
@@ -10,6 +11,7 @@ import { z } from 'zod';
 import { AppModule } from '../../app.module.js';
 import { prisma } from '../../auth/auth.config.js';
 import { sessionCookie } from '../../test/session-cookie.js';
+import { MediaGarbageService } from '../media/media-garbage.service.js';
 import { WebRevalidationService } from '../web-revalidation/web-revalidation.service.js';
 import { siteSlotOriginal } from './site-slot-originals.js';
 
@@ -21,6 +23,8 @@ import { siteSlotOriginal } from './site-slot-originals.js';
  *  ② Ảnh không thuộc bốn nguồn bị từ chối và rollback trọn — kể cả dòng khe vừa tạo.
  *  ③ Thay ảnh: chỉ ảnh tải lên của chính khe vào lại hàng dọn, ảnh gốc và ảnh thư viện thì không.
  *  ④ Khe `signUpload` vừa tạo dòng vẫn nhận lần lưu đầu với `version: null`.
+ *
+ * Cộng một ca liên luồng (L8-15): ảnh khe mượn của điểm đến sống qua lúc điểm đến gỡ nó ra.
  */
 
 const PASSWORD = 'password-123';
@@ -54,6 +58,7 @@ describe('admin appearance integration (P4f, ADR-0059)', () => {
   let staffCookie: string;
   let customerCookie: string;
   let web: WebRevalidationService;
+  let garbage: MediaGarbageService;
 
   beforeAll(async () => {
     // Int spec chạy tuần tự (`fileParallelism: false`), nên dọn ở đây không giẫm spec khác.
@@ -68,6 +73,7 @@ describe('admin appearance integration (P4f, ADR-0059)', () => {
     await app.init();
     await app.getHttpAdapter().getInstance().ready();
     web = moduleRef.get(WebRevalidationService);
+    garbage = moduleRef.get(MediaGarbageService);
 
     const roles = { [ADMIN_EMAIL]: 'ADMIN', [STAFF_EMAIL]: 'STAFF' } as const;
     for (const email of [ADMIN_EMAIL, STAFF_EMAIL, CUSTOMER_EMAIL]) {
@@ -542,6 +548,58 @@ describe('admin appearance integration (P4f, ADR-0059)', () => {
     it('khe video: 400, không tạo dòng', async () => {
       expect((await sign('about-cta-video')).statusCode).toBe(400);
       expect(await prisma.siteMediaSlot.count()).toBe(0);
+    });
+  });
+
+  describe('ảnh mượn của điểm đến bị điểm đến gỡ ra (L8-15)', () => {
+    it('khe còn giữ ảnh: bộ dọn hoãn, không xoá; khe về ảnh gốc thì ảnh mới tới lượt dọn', async () => {
+      // Media library không có nút xoá (ADR-0060 §5), nên đường duy nhất xoá được ảnh của một khe
+      // là bộ dọn. Ảnh điểm đến tự tải lên nằm trong vùng tải lên: điểm đến gỡ nó ra là nó vào
+      // lại hàng dọn, trong khi khe vẫn đang hiện nó trên web.
+      const borrowed = `${ROOT}/destinations/${DEST_ID}/lanterns`;
+      await makeSlot(1, 'home-hero');
+      await makeOriginal(1, 'home-hero');
+      await makeLibrary(borrowed);
+      vi.spyOn(web, 'revalidate').mockResolvedValue(undefined);
+      const picked = await save('home-hero', await versionOf('home-hero'), {
+        publicId: borrowed,
+        alt: 'Lanterns over the river',
+      });
+      expect(picked.statusCode).toBe(200);
+
+      // Đúng hai bước `AdminDestinationsService.setPhotos` và `delete` làm với ảnh bị gỡ: xoá
+      // dòng DESTINATION, ảnh tải lên vào lại hàng dọn với đồng hồ mới.
+      await prisma.mediaAsset.deleteMany({ where: { ownerType: 'DESTINATION' } });
+      await garbage.requeue(prisma, [borrowed]);
+
+      // Tám ngày sau, quá hạn chờ 7 ngày. `destroyed` và `failed` bằng 0 là không có lời gọi
+      // Cloudinary nào: int test chỉ mang secret giả, lệnh xoá mà chạy sẽ thành `failed`.
+      const report = await garbage.sweep(new Date(Date.now() + 8 * DAY_MS), 7);
+      expect(report).toMatchObject({ deferred: 1, destroyed: 0, absent: 0, failed: 0, refused: 0 });
+      expect(await garbageIds()).toEqual([borrowed]);
+      const slot = await slotOf('home-hero');
+      // Khe vẫn hiện ảnh ấy; nó chỉ không còn ở thư viện nên mang nguồn OTHER.
+      expect(slot.image).toMatchObject({ publicId: borrowed, source: 'OTHER' });
+
+      // Về ảnh gốc: ảnh ngoài thư mục của khe nên khe không tự xếp nó vào hàng dọn, nhưng dòng
+      // cũ của nó vẫn ở đó và hết còn ai dùng — bộ dọn xoá nó ở kỳ tới hạn, không rò.
+      const restored = await save('home-hero', slot.version, {
+        publicId: siteSlotOriginal('home-hero').publicId,
+        alt: null,
+      });
+      expect(restored.statusCode).toBe(200);
+      const queue = AdminMediaQueueSchema.parse(
+        (
+          await app.inject({
+            method: 'GET',
+            url: '/api/admin/media/queue',
+            headers: { cookie: adminCookie },
+          })
+        ).json(),
+      );
+      expect(queue.rows).toEqual([
+        expect.objectContaining({ publicId: borrowed, state: 'WAITING' }),
+      ]);
     });
   });
 });
