@@ -6849,6 +6849,12 @@ export const messages = {
          * là cái gì.
          */
         payload: 'What the payment provider sent',
+        /**
+         * Tiêu đề khối payload của row `payment.refunded` (review A1, 20/10): row ấy do CHÍNH lõi
+         * hoàn tiền ghi (`refund-event.ts`, payload mang `source: 'refund-core'`), không gateway
+         * nào map ra type này — câu "What the payment provider sent" đứng trên nó là nói sai.
+         */
+        payloadRefund: 'What we recorded for this refund',
         loading: 'Loading payload…',
         /**
          * Tên đời thường cho trường của Stripe/PayPal, dùng ở chế độ xem
@@ -6877,7 +6883,9 @@ export const messages = {
           id: 'Event reference',
           object: 'Kind',
           type: 'Event',
-          created: 'Received at',
+          // Giờ provider TẠO event, không phải giờ ta nhận (review A1, 20/10): provider retry lúc
+          // API ngủ thì hai mốc lệch nhau, mà field "Received" của drawer là `receivedAt` của ta.
+          created: 'Event created',
           livemode: 'Live mode',
           api_version: 'Provider API version',
           pending_webhooks: 'Deliveries still queued',
@@ -6898,7 +6906,7 @@ export const messages = {
           'data.object.metadata.bookingCode': 'Booking code',
           // ── PayPal: tầng ngoài ──
           event_type: 'Event',
-          create_time: 'Received at',
+          create_time: 'Event created',
           resource_type: 'Kind',
           summary: 'Summary',
           // ── PayPal: `resource` (sau khi cắt bao bì) ──
