@@ -29,6 +29,7 @@ import { DIALOG_PREVIEW_BOX, fitFrame, narrowFrameWidth, type SlotVM } from '@/l
 import {
   currentSlotDraft,
   isSetSlotStale,
+  isUnchangedSlotDraft,
   librarySlotDraft,
   type SetSlotAction,
   type SetSlotContractCode,
@@ -56,6 +57,8 @@ import { useConfirmWrite } from '@/lib/use-confirm-write';
  * - Vòng đời lệnh lưu là của kit (`useConfirmWrite`): `STALE_SLOT` hay kết cục không rõ thì đóng
  *   hộp, toast, tải lại thẻ; `PHOTO_NOT_ALLOWED` ở lại hộp để chọn ảnh khác.
  * - Đang tải thì Save khoá; đóng hộp giữa lúc tải là huỷ XHR.
+ * - Chưa có gì để lưu (chưa có ảnh, hay ảnh đang dùng mà alt chưa đổi) thì Save chỉ nhắc, không
+ *   gửi lệnh.
  */
 const t = messages.admin.appearance;
 const d = t.replaceDialog;
@@ -91,8 +94,11 @@ export function ReplaceSlotDialog({
   const [progress, setProgress] = useState<number | null>(null);
   const [problem, setProblem] = useState<string | null>(null);
   const [libraryOpen, setLibraryOpen] = useState(false);
-  /** Bấm Save khi chưa có ảnh nào — chỉ mắng SAU lần bấm ấy. */
-  const [pickFirst, setPickFirst] = useState(false);
+  /**
+   * Bấm Save khi chưa có gì để lưu — chưa có ảnh nào, hay ảnh đang dùng mà alt chưa đổi. Chỉ nhắc
+   * SAU lần bấm ấy; giá trị là khoá câu nhắc trong `replaceDialog`.
+   */
+  const [nudge, setNudge] = useState<'pickFirst' | 'unchanged' | null>(null);
 
   const { pending, failure, onOpenChange, run, clearFailure } =
     useConfirmWrite<SetSlotContractCode>({
@@ -117,7 +123,7 @@ export function ReplaceSlotDialog({
 
   function choose(next: SlotDraft) {
     setDraft(next);
-    setPickFirst(false);
+    setNudge(null);
     clearFailure();
   }
 
@@ -161,7 +167,11 @@ export function ReplaceSlotDialog({
   function submit() {
     if (busy) return;
     if (draft === null) {
-      setPickFirst(true);
+      setNudge('pickFirst');
+      return;
+    }
+    if (isUnchangedSlotDraft(draft, slot.image)) {
+      setNudge('unchanged');
       return;
     }
     void run(async () => {
@@ -291,6 +301,7 @@ export function ReplaceSlotDialog({
                     aria-describedby={describedBy}
                     onChange={(event) => {
                       setDraft({ ...draft, alt: event.target.value });
+                      setNudge(null);
                       clearFailure();
                     }}
                   />
@@ -303,9 +314,9 @@ export function ReplaceSlotDialog({
             </>
           ) : null}
 
-          {pickFirst ? (
+          {nudge ? (
             <p role="alert" className="text-sm text-destructive-emphasis">
-              {d.pickFirst}
+              {d[nudge]}
             </p>
           ) : null}
           {failure ? (

@@ -121,6 +121,19 @@ export function librarySlotDraft(photo: AdminLibraryPhoto): SlotDraft {
   };
 }
 
+/** Alt đúng như lệnh lưu gửi đi: cắt khoảng trắng, trống là `null`. */
+const cleanAlt = (alt: string): string | null => (alt.trim() === '' ? null : alt.trim());
+
+/**
+ * Hộp chưa có gì để lưu: vẫn là ảnh đang dùng và alt (sau khi cắt) như cũ. Lưu lúc ấy vẫn nhích
+ * phiên bản khe, bust cache web và ghi một dòng nhật ký thao tác — khuôn `canSaveMedia` của Media.
+ */
+export function isUnchangedSlotDraft(draft: SlotDraft, image: SlotImageVM | null): boolean {
+  return (
+    draft.origin === 'CURRENT' && image !== null && cleanAlt(draft.alt) === cleanAlt(image.alt)
+  );
+}
+
 /** Lệnh lưu của hộp Replace — `version` là phiên bản thẻ đang cầm. */
 export function setSlotPayload(
   key: SiteImageSlotKey,
@@ -132,7 +145,7 @@ export function setSlotPayload(
     version,
     image: {
       publicId: draft.publicId,
-      alt: draft.alt.trim() === '' ? null : draft.alt.trim(),
+      alt: cleanAlt(draft.alt),
       ...(draft.upload ? { upload: draft.upload } : {}),
     },
   };

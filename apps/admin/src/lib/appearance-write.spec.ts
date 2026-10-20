@@ -6,6 +6,7 @@ import { toSlotVM } from './appearance-view';
 import {
   currentSlotDraft,
   isSetSlotStale,
+  isUnchangedSlotDraft,
   librarySlotDraft,
   restorePayload,
   SET_SLOT_CONTRACT_CODES,
@@ -76,6 +77,18 @@ describe('ảnh đang soạn của hộp Replace', () => {
       width: 1200,
     });
     expect(draft.upload).toBeUndefined();
+  });
+
+  it('chưa đổi gì: ảnh đang dùng mà alt (sau khi cắt khoảng trắng) vẫn như cũ', () => {
+    const image = toSlotVM(siteSlotFixture('home-hero')).image;
+    const kept = currentSlotDraft(image);
+    if (kept === null) throw new Error('fixture thiếu ảnh');
+    expect(isUnchangedSlotDraft(kept, image)).toBe(true);
+    expect(isUnchangedSlotDraft({ ...kept, alt: '  A city at sunrise ' }, image)).toBe(true);
+    expect(isUnchangedSlotDraft({ ...kept, alt: 'Sunrise over the river' }, image)).toBe(false);
+    // Ảnh vừa tải hay ảnh thư viện là ảnh MỚI — có gì để lưu, kể cả khi trùng alt.
+    expect(isUnchangedSlotDraft({ ...kept, origin: 'LIBRARY' }, image)).toBe(false);
+    expect(isUnchangedSlotDraft({ ...kept, origin: 'UPLOAD' }, image)).toBe(false);
   });
 });
 

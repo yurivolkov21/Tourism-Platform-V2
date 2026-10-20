@@ -232,14 +232,39 @@ describe('ReplaceSlotDialog', () => {
     expect(setSlot).not.toHaveBeenCalled();
   });
 
+  it('ảnh đang dùng mà alt chưa đổi, bấm Save: nhắc đổi gì đó, không gửi lệnh; sửa alt là lưu được', async () => {
+    // Lệnh lưu y nguyên vẫn nhích phiên bản khe, bust cache web và ghi một dòng "Replaced site
+    // image" vào nhật ký thao tác dù không có gì thay.
+    const setSlot = vi.fn<SetSlotAction>(async () => ({
+      ok: true,
+      slot: siteSlotFixture('home-hero'),
+    }));
+    const user = userEvent.setup();
+    renderDialog({ setSlot });
+
+    await user.click(screen.getByRole('button', { name: d.save }));
+    expect(await screen.findByRole('alert')).toHaveTextContent(d.unchanged);
+    expect(setSlot).not.toHaveBeenCalled();
+
+    await user.type(screen.getByLabelText(d.alt), ' by the river');
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: d.save }));
+    await waitFor(() => expect(setSlot).toHaveBeenCalledTimes(1));
+  });
+
   it('PHOTO_NOT_ALLOWED: ở lại hộp kèm câu báo, bỏ kho thư viện đã tải', async () => {
     const setSlot = vi.fn<SetSlotAction>(async () => ({ ok: false, code: 'PHOTO_NOT_ALLOWED' }));
     const onLibraryChange = vi.fn();
     const onClose = vi.fn();
     const user = userEvent.setup();
-    renderDialog({ setSlot, onLibraryChange, onClose });
+    renderDialog({ setSlot, onLibraryChange, onClose, library: LIBRARY });
 
-    await user.click(screen.getByRole('button', { name: d.save }));
+    // Ca thật: ảnh thư viện vừa chọn rời kho giữa lúc chọn và lúc lưu.
+    await user.click(screen.getByRole('button', { name: d.library }));
+    const picker = await screen.findByRole('dialog', { name: d.libraryDialog.title });
+    await user.click(within(picker).getByRole('checkbox'));
+    await user.click(within(picker).getByRole('button', { name: d.libraryDialog.use }));
+    await user.click(await screen.findByRole('button', { name: d.save }));
 
     expect(await screen.findByRole('alert')).toHaveTextContent(t.errors.PHOTO_NOT_ALLOWED);
     expect(onLibraryChange).toHaveBeenCalledWith(null);

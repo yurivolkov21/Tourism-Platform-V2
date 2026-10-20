@@ -6247,6 +6247,8 @@ export const messages = {
           pickOne: 'Pick one photo for this slot.',
         },
         pickFirst: 'Choose a photo first.',
+        /** Ảnh đang dùng mà alt chưa đổi: lưu là ghi lại y nguyên, vẫn vào nhật ký thao tác. */
+        unchanged: 'Choose a new photo or change the alt text first.',
         save: 'Save photo',
         saving: 'Saving…',
         cancel: 'Cancel',
