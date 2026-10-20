@@ -6,6 +6,7 @@ import {
   reopenBlocker,
   seatsAboveTourMaxBlocker,
   seatsChangeBlocker,
+  tripLengthBlocker,
 } from './departure-rules.js';
 
 /**
@@ -281,5 +282,28 @@ describe('seatsAboveTourMaxBlocker (F12 vòng hai — trần ghế theo cỡ nh�
 
   it('dưới trần thì không nói gì', () => {
     expect(seatsAboveTourMaxBlocker(1, 6)).toBeNull();
+  });
+});
+
+describe('tripLengthBlocker (review A2, M3-13 — chuyến dài đúng số ngày tour)', () => {
+  it('đúng số ngày thì được — kể cả tour một ngày, về cùng ngày đi', () => {
+    expect(tripLengthBlocker('2026-12-01', '2026-12-05', 5)).toBeNull();
+    expect(tripLengthBlocker('2026-12-01', '2026-12-01', 1)).toBeNull();
+  });
+
+  it('dài hơn hay ngắn hơn một ngày đều chặn', () => {
+    expect(tripLengthBlocker('2026-12-01', '2026-12-06', 5)).not.toBeNull();
+    expect(tripLengthBlocker('2026-12-01', '2026-12-04', 5)).not.toBeNull();
+  });
+
+  it('đếm theo ngày lịch, qua cả cuối tháng', () => {
+    expect(tripLengthBlocker('2026-10-30', '2026-11-02', 4)).toBeNull();
+  });
+
+  it('câu từ chối mang CẢ hai độ dài — admin thấy ngay lệch bao nhiêu', () => {
+    const reason = tripLengthBlocker('2026-12-01', '2026-12-07', 5);
+
+    expect(reason).toContain('5 days');
+    expect(reason).toContain('7 days');
   });
 });

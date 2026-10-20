@@ -35,7 +35,9 @@ export type DepartureRuleCode =
   /** F13: chuyến đã tới ngày khởi hành nên không còn huỷ được. */
   | 'DEPARTURE_STARTED'
   /** F12 vòng hai: ghế vượt cỡ nhóm tối đa mà tour công bố. */
-  | 'SEATS_ABOVE_TOUR_MAX';
+  | 'SEATS_ABOVE_TOUR_MAX'
+  /** Review A2 (M3-13): chuyến dài khác số ngày tour công bố. */
+  | 'TRIP_LENGTH_MISMATCH';
 
 /**
  * Một lệnh ghi bị luật nghiệp vụ chặn. `code` chọn đúng lỗi contract, `message` là câu đã mang

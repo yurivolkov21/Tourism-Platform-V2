@@ -1,4 +1,9 @@
-import { canCancelOnline, cancellationDeadline, isWithinDeadline } from '@tourism/contract';
+import {
+  canCancelOnline,
+  cancellationDeadline,
+  isWithinDeadline,
+  tripLengthDays,
+} from '@tourism/contract';
 import { feedsTourCard } from './card-departures.js';
 
 /**
@@ -109,6 +114,29 @@ export function reopenBlocker(startDate: string, endDate: string, now: Date): st
 export function seatsAboveTourMaxBlocker(seatsTotal: number, maxGroupSize: number): string | null {
   if (seatsTotal <= maxGroupSize) return null;
   return `This tour runs groups of at most ${maxGroupSize} travellers, so a departure cannot have ${seatsTotal} seats.`;
+}
+
+/**
+ * Chuyến dài khác số ngày tour công bố (review A2, M3-13) — chuỗi lý do, hoặc `null` khi khớp.
+ *
+ * `durationDays` không chỉ là chữ "5 days" trên thẻ tour: web in luật huỷ miễn phí theo nó
+ * (`windowDaysForTripLength(durationDays)`), app đếm "Day n of N" theo nó, còn hạn huỷ thật của
+ * từng chuyến tính từ chính ngày đi và ngày về (ADR-0041 §8). Chuyến 7 ngày trên tour 5 ngày là
+ * khách đọc hạn N = 7 ở dòng chuyến mà thẻ chính sách hứa theo 5 ngày. Seed đã giữ luật này
+ * (`departures-2026.spec.ts`); chỉ form admin phá được nó, nên server canh ở `create`, và ở
+ * `update` khi ngày đổi.
+ *
+ * Gọi SAU `assertDateRange`: `tripLengthDays` ném khi ngày về trước ngày đi.
+ */
+export function tripLengthBlocker(
+  startDate: string,
+  endDate: string,
+  durationDays: number,
+): string | null {
+  const length = tripLengthDays(startDate, endDate);
+  if (length === durationDays) return null;
+  const days = (n: number) => `${n} ${n === 1 ? 'day' : 'days'}`;
+  return `This tour runs ${days(durationDays)}, but a departure from ${startDate} to ${endDate} runs ${days(length)}.`;
 }
 
 /**

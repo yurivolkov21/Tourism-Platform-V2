@@ -21,6 +21,7 @@ import {
   type DepartureFormErrors,
   type DepartureFormValues,
   type DepartureWriteResult,
+  departureEndDate,
   departureFormPayload,
   validateDepartureForm,
 } from '@/lib/departures-write';
@@ -59,6 +60,13 @@ export interface DepartureFormDialogProps<Code extends string> {
    */
   seatsBooked: number;
   /**
+   * Số ngày tour công bố (review A2, M3-13). Có số thì ô ngày về CHỈ ĐỌC và đi theo ngày đi —
+   * server từ chối chuyến dài khác số này (`TRIP_LENGTH_MISMATCH`), nên để admin gõ tay là mời
+   * một câu lỗi. `null` chỉ trong khe deploy (admin mới đọc API cũ chưa trả số ngày): ô về gõ tay
+   * như trước.
+   */
+  durationDays: number | null;
+  /**
    * Cảnh báo phụ thuộc thứ NGƯỜI TA ĐANG GÕ — nhận values hiện tại, trả câu
    * cần nói hoặc `undefined`. Hàm chứ không chuỗi, vì cha không nhìn thấy
    * state của form (chỉ dùng ở chiều THÊM: chuyến tạo ra đã quá hạn đặt).
@@ -87,6 +95,7 @@ export function DepartureFormDialog<Code extends string>({
   copy,
   initial,
   seatsBooked,
+  durationDays,
   notice,
   basePriceLabel,
   formId,
@@ -106,6 +115,7 @@ export function DepartureFormDialog<Code extends string>({
   const [showValidation, setShowValidation] = useState(false);
 
   const datesLocked = seatsBooked > 0;
+  const endFollowsStart = durationDays !== null;
   const errors: DepartureFormErrors = showValidation
     ? validateDepartureForm(values, { seatsBooked })
     : {};
@@ -170,18 +180,33 @@ export function DepartureFormDialog<Code extends string>({
                     disabled={datesLocked || pending}
                     aria-invalid={errors.startDate !== undefined}
                     aria-describedby={describedBy}
-                    onChange={(event) => patch({ startDate: event.target.value })}
+                    onChange={(event) => {
+                      const startDate = event.target.value;
+                      patch(
+                        durationDays === null
+                          ? { startDate }
+                          : { startDate, endDate: departureEndDate(startDate, durationDays) },
+                      );
+                    }}
                   />
                 )}
               </FormField>
-              <FormField id={`${formId}-end`} label={t.form.endDate} error={errors.endDate}>
+              {/* Ô về đi theo ô đi: lỗi của nó (thiếu ngày) chỉ là lỗi của ô đi nói lại, nên
+                  không in lần hai. */}
+              <FormField
+                id={`${formId}-end`}
+                label={t.form.endDate}
+                error={endFollowsStart ? undefined : errors.endDate}
+                hint={durationDays === null ? undefined : t.form.endDateFollows(durationDays)}
+              >
                 {(describedBy) => (
                   <Input
                     id={`${formId}-end`}
                     type="date"
                     value={values.endDate}
+                    readOnly={endFollowsStart}
                     disabled={datesLocked || pending}
-                    aria-invalid={errors.endDate !== undefined}
+                    aria-invalid={!endFollowsStart && errors.endDate !== undefined}
                     aria-describedby={describedBy}
                     onChange={(event) => patch({ endDate: event.target.value })}
                   />

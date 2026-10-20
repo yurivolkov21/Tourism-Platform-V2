@@ -123,11 +123,22 @@ describe('AdminDepartureTourSchema', () => {
     title: 'Hoi An Lantern Evening',
     basePrice: '39.00',
     currency: 'USD',
+    durationDays: 1,
   };
 
   it('BẮT BUỘC nói tour đang đăng hay không (F16 §2h)', () => {
     expect(AdminDepartureTourSchema.safeParse(TOUR).success).toBe(false);
     expect(AdminDepartureTourSchema.safeParse({ ...TOUR, isPublished: false }).success).toBe(true);
+  });
+
+  it('BẮT BUỘC mang số ngày tour, từ 1 trở lên — form chuyến điền ngày về theo nó (review A2)', () => {
+    const { durationDays: _, ...withoutDuration } = TOUR;
+    expect(
+      AdminDepartureTourSchema.safeParse({ ...withoutDuration, isPublished: true }).success,
+    ).toBe(false);
+    expect(
+      AdminDepartureTourSchema.safeParse({ ...TOUR, durationDays: 0, isPublished: true }).success,
+    ).toBe(false);
   });
 });
 
@@ -144,6 +155,7 @@ describe('AdminDeparturesListResultSchema', () => {
       title: 'Hoi An Lantern Evening',
       basePrice: '39.00',
       currency: 'USD',
+      durationDays: 1,
       isPublished: true,
     },
   };

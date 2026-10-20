@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { AdminDepartureRow } from '@tourism/contract';
 import { DEPARTURE_SEATS_MAX } from '@tourism/contract';
@@ -52,6 +52,7 @@ function renderDialog(
       formId="departure-edit-1"
       initial={{ startDate: '2026-12-01', endDate: '2026-12-03', seats: '18', price: '' }}
       seatsBooked={0}
+      durationDays={null}
       basePriceLabel="$129.00"
       isStale={() => true}
       errorCopy={() => t.edit.errors.NOT_FOUND}
@@ -96,6 +97,59 @@ describe('DepartureFormDialog — ô ngày và luật của nó', () => {
 
     expect(screen.getByLabelText(t.form.seats)).toBeEnabled();
     expect(screen.getByLabelText(t.form.price)).toBeEnabled();
+  });
+});
+
+describe('DepartureFormDialog — ngày về đi theo số ngày tour (review A2, M3-13)', () => {
+  it('ô về CHỈ ĐỌC, nói vì sao, và đổi ngày đi là ngày về đi theo', () => {
+    renderDialog({ durationDays: 3 });
+
+    const end = screen.getByLabelText(t.form.endDate);
+    expect(end).toHaveAttribute('readonly');
+    expect(screen.getByText(t.form.endDateFollows(3))).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText(t.form.startDate), {
+      target: { value: '2026-12-30' },
+    });
+    expect(end).toHaveValue('2027-01-01');
+  });
+
+  it('gửi đi đúng ngày về đã suy — server canh cùng luật bằng TRIP_LENGTH_MISMATCH', async () => {
+    const user = userEvent.setup();
+    const { onSubmit } = renderDialog({
+      durationDays: 5,
+      initial: { startDate: '', endDate: '', seats: '12', price: '' },
+    });
+
+    fireEvent.change(screen.getByLabelText(t.form.startDate), {
+      target: { value: '2026-12-01' },
+    });
+    await user.click(screen.getByRole('button', { name: COPY.submit }));
+
+    expect(onSubmit).toHaveBeenCalledWith(
+      expect.objectContaining({ startDate: '2026-12-01', endDate: '2026-12-05' }),
+    );
+  });
+
+  it('ngày đi trống: chỉ ô đi báo lỗi, ô về không nói lại lần hai', async () => {
+    const user = userEvent.setup();
+    const { onSubmit } = renderDialog({
+      durationDays: 5,
+      initial: { startDate: '', endDate: '', seats: '12', price: '' },
+    });
+
+    await user.click(screen.getByRole('button', { name: COPY.submit }));
+
+    expect(await screen.findByText(t.form.errors.startRequired)).toBeInTheDocument();
+    expect(screen.queryByText(t.form.errors.endRequired)).not.toBeInTheDocument();
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
+
+  it('khe deploy (API chưa trả số ngày): ô về gõ tay như trước', () => {
+    renderDialog({ durationDays: null });
+
+    expect(screen.getByLabelText(t.form.endDate)).not.toHaveAttribute('readonly');
+    expect(screen.queryByText(t.form.endDateFollows(3))).not.toBeInTheDocument();
   });
 });
 

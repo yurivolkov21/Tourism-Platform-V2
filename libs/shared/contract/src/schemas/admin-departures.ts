@@ -157,6 +157,11 @@ export const AdminDepartureTourSchema = z.object({
   basePrice: DecimalStringSchema,
   currency: z.string().length(3),
   /**
+   * Số ngày tour công bố (review A2, M3-13): form thêm và sửa chuyến tự điền ngày về theo nó, vì
+   * server từ chối chuyến dài khác số ngày này (`TRIP_LENGTH_MISMATCH`).
+   */
+  durationDays: z.int().min(1),
+  /**
    * Tour đang đăng hay không (spec F16 §2h). Chưa đăng thì khách không đặt
    * được chuyến nào của nó, kể cả chuyến `on-sale` — màn chuyến báo điều đó
    * một lần ở đầu trang thay vì trộn nó vào giai đoạn của từng chuyến.

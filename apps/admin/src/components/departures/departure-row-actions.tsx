@@ -59,6 +59,7 @@ const TOGGLE_LABELS = [t.setStatus.close, t.setStatus.reopen];
 export function DepartureRowActions({
   row,
   basePriceLabel,
+  durationDays,
   update,
   setStatus,
   cancel,
@@ -67,6 +68,8 @@ export function DepartureRowActions({
 }: {
   row: DepartureRowVM;
   basePriceLabel: string;
+  /** Số ngày tour — form sửa điền ngày về theo nó; `null` ở khe deploy (xem `DepartureFormDialog`). */
+  durationDays: number | null;
   update: UpdateDepartureAction;
   setStatus: SetDepartureStatusAction;
   cancel: CancelDepartureAction;
@@ -216,6 +219,7 @@ export function DepartureRowActions({
             price: row.priceOverride ?? '',
           }}
           seatsBooked={row.seatsBooked}
+          durationDays={durationDays}
           basePriceLabel={basePriceLabel}
           isStale={isUpdateStale}
           errorCopy={updateErrorCopy}

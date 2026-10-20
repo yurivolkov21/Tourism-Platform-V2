@@ -49,6 +49,7 @@ function renderActions(
     <DepartureRowActions
       row={vmAt(row, today)}
       basePriceLabel="$129.00"
+      durationDays={5}
       update={update}
       setStatus={setStatus}
       cancel={vi.fn()}
@@ -216,6 +217,7 @@ describe('DepartureRowActions — hộp xác nhận đóng chuyến', () => {
     }));
     const props = {
       basePriceLabel: '$129.00',
+      durationDays: 5,
       update: vi.fn(),
       setStatus,
       cancel: vi.fn(),
@@ -251,6 +253,7 @@ describe('DepartureRowActions — form sửa mang theo token phiên bản', () =
       <DepartureRowActions
         row={vm}
         basePriceLabel="$129.00"
+        durationDays={5}
         update={update}
         setStatus={vi.fn()}
         cancel={vi.fn()}
@@ -267,6 +270,7 @@ describe('DepartureRowActions — form sửa mang theo token phiên bản', () =
       <DepartureRowActions
         row={vmAt({ ...ROW, version: '2026-09-21T09:00:00.000Z' }, BEFORE_DEADLINE)}
         basePriceLabel="$129.00"
+        durationDays={5}
         update={update}
         setStatus={vi.fn()}
         cancel={vi.fn()}
@@ -294,6 +298,7 @@ describe('DepartureRowActions — huỷ chuyến (F13)', () => {
       <DepartureRowActions
         row={vmAt(row, BEFORE_DEADLINE)}
         basePriceLabel="$129.00"
+        durationDays={5}
         update={vi.fn()}
         setStatus={vi.fn()}
         cancel={cancel}
@@ -384,6 +389,7 @@ describe('DepartureRowActions — toast của chuyến một ngày (spec 2026-10
       <DepartureRowActions
         row={vm}
         basePriceLabel="$129.00"
+        durationDays={5}
         update={actions.update ?? vi.fn()}
         setStatus={vi.fn()}
         cancel={actions.cancel ?? vi.fn()}
@@ -451,6 +457,7 @@ describe('DepartureRowActions — focus khi bảng đang làm mới (G6)', () =>
       <DepartureRowActions
         row={vmAt(ROW, BEFORE_DEADLINE)}
         basePriceLabel="$129.00"
+        durationDays={5}
         update={vi.fn()}
         setStatus={vi.fn()}
         cancel={vi.fn()}
@@ -495,6 +502,7 @@ describe('DepartureRowActions — focus khi bảng đang làm mới (G6)', () =>
       <DepartureRowActions
         row={vmAt({ ...ROW, status: 'CLOSED' }, AFTER_DEADLINE)}
         basePriceLabel="$129.00"
+        durationDays={5}
         update={vi.fn()}
         setStatus={vi.fn()}
         cancel={vi.fn()}
@@ -523,6 +531,7 @@ describe('DepartureRowActions — focus khi bảng đang làm mới (G6)', () =>
       <DepartureRowActions
         row={vmAt(row, AFTER_DEADLINE)}
         basePriceLabel="$129.00"
+        durationDays={5}
         update={vi.fn()}
         setStatus={setStatus}
         cancel={vi.fn()}

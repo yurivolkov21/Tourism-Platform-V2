@@ -1553,6 +1553,12 @@ export const contract = {
             status: 422,
             message: 'This departure has more seats than the tour allows per group',
           },
+          // Review A2 (M3-13): chuyến phải dài đúng `durationDays` của tour — web in luật huỷ,
+          // app đếm ngày theo con số ấy (xem `tripLengthBlocker` của api).
+          TRIP_LENGTH_MISMATCH: {
+            status: 422,
+            message: 'This departure does not run for as many days as the tour',
+          },
         })
         .output(AdminDepartureRowSchema),
       update: oc
@@ -1589,6 +1595,11 @@ export const contract = {
           DEPARTURE_STALE: {
             status: 409,
             message: 'Someone else changed this departure while the form was open',
+          },
+          // Review A2 (M3-13): chỉ canh khi NGÀY đổi — chuyến lệch từ trước vẫn sửa ghế, giá được.
+          TRIP_LENGTH_MISMATCH: {
+            status: 422,
+            message: 'This departure does not run for as many days as the tour',
           },
         })
         .output(AdminDepartureRowSchema),

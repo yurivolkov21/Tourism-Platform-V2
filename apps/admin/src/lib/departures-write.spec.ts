@@ -6,7 +6,9 @@ import {
   CREATE_CONTRACT_CODES,
   createDeadlineHint,
   createdToast,
+  departureEndDate,
   departureFormPayload,
+  isCreateStale,
   isSetStatusStale,
   isUpdateStale,
   SET_STATUS_CONTRACT_CODES,
@@ -56,6 +58,10 @@ describe('tập mã lỗi khớp contract', () => {
     // bắt người ta gõ lại từ đầu.
     expect(isUpdateStale('INVALID_DATE_RANGE')).toBe(false);
     expect(isUpdateStale('START_IN_PAST')).toBe(false);
+    // Review A2: ngày về đi theo số ngày tour form nhận lúc mở — lệch nghĩa là số ấy đã đổi
+    // dưới chân dialog, sửa tại chỗ vẫn dùng con số cũ.
+    expect(isCreateStale('TRIP_LENGTH_MISMATCH')).toBe(true);
+    expect(isUpdateStale('TRIP_LENGTH_MISMATCH')).toBe(true);
   });
 
   it('mỗi mã một câu riêng, không rơi về giọng GENERIC', () => {
@@ -216,6 +222,24 @@ describe('createDeadlineHint', () => {
     // phép giết cả dialog đang mở.
     expect(createDeadlineHint({ ...DATES, startDate: '' }, '2026-11-29')).toBeUndefined();
     expect(createDeadlineHint({ ...DATES, endDate: '2026-11-30' }, '2026-11-29')).toBeUndefined();
+  });
+});
+
+describe('departureEndDate (review A2 — ngày về theo số ngày tour)', () => {
+  it('chuyến dài đúng số ngày tour: về = đi + số ngày − 1', () => {
+    expect(departureEndDate('2026-12-01', 5)).toBe('2026-12-05');
+    expect(departureEndDate('2026-12-01', 1)).toBe('2026-12-01');
+  });
+
+  it('qua cuối tháng, cuối năm và 29/02 đều đúng ngày lịch', () => {
+    expect(departureEndDate('2026-10-30', 4)).toBe('2026-11-02');
+    expect(departureEndDate('2026-12-30', 3)).toBe('2027-01-01');
+    expect(departureEndDate('2028-02-28', 2)).toBe('2028-02-29');
+  });
+
+  it('ngày đi chưa gõ xong thì ngày về để trống', () => {
+    expect(departureEndDate('', 5)).toBe('');
+    expect(departureEndDate('2026-12', 5)).toBe('');
   });
 });
 

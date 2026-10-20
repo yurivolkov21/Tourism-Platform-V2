@@ -92,6 +92,9 @@ export default async function DeparturesPage({
         tour={{
           slug: paged.tour.slug,
           basePriceLabel: formatAmount(paged.tour.basePrice, paged.tour.currency),
+          // `??` chỉ cho khe deploy, cùng nếp `today` ở trên: API cũ chưa trả số ngày tour thì
+          // form về lối gõ tay ngày về.
+          durationDays: paged.tour.durationDays ?? null,
         }}
         today={today}
         create={createDepartureAction}

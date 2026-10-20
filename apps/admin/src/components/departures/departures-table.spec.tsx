@@ -55,7 +55,7 @@ function table({
       query={query}
       total={rows.length}
       totalPages={1}
-      tour={{ slug: QUERY.slug, basePriceLabel: '$129.00' }}
+      tour={{ slug: QUERY.slug, basePriceLabel: '$129.00', durationDays: 5 }}
       today={today}
       {...actions}
     />

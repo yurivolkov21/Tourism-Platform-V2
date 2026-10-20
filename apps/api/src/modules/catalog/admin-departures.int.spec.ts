@@ -444,6 +444,10 @@ describe('admin departures integration (F12)', () => {
       expect(AdminDepartureRowSchema.parse(reopened.json()).phase).toBe('on-sale');
     });
 
+    it('trả số ngày tour — form chuyến tự điền ngày về theo nó (review A2)', async () => {
+      expect((await listOk(`?slug=${PUBLISHED_SLUG}`)).tour.durationDays).toBe(tour.durationDays);
+    });
+
     it('báo tour đang đăng hay không — và màn chuyến VẪN mở được khi tour đã ẩn', async () => {
       expect((await listOk(`?slug=${PUBLISHED_SLUG}`)).tour.isPublished).toBe(true);
 
@@ -459,7 +463,7 @@ describe('admin departures integration (F12)', () => {
   describe('create', () => {
     it('thêm một chuyến, giá để trống thì thừa hưởng basePrice của tour', async () => {
       const res = await create(
-        { slug: PUBLISHED_SLUG, startDate: dateAt(120), endDate: dateAt(122), seatsTotal: 12 },
+        { slug: PUBLISHED_SLUG, startDate: dateAt(120), endDate: dateAt(120), seatsTotal: 12 },
         adminCookie,
       );
 
@@ -477,7 +481,7 @@ describe('admin departures integration (F12)', () => {
       // ADR-0033 §3: báo cáo tháng tính vế này MỘT lần cho mỗi chuyến đã chạy.
       // Chuyến tạo tay mà để null là biên lợi nhuận đẹp hơn sự thật.
       const res = await create(
-        { slug: PUBLISHED_SLUG, startDate: dateAt(130), endDate: dateAt(131), seatsTotal: 10 },
+        { slug: PUBLISHED_SLUG, startDate: dateAt(130), endDate: dateAt(130), seatsTotal: 10 },
         adminCookie,
       );
       const row = AdminDepartureRowSchema.parse(res.json());
@@ -514,6 +518,22 @@ describe('admin departures integration (F12)', () => {
       );
 
       expect(res.statusCode).toBe(200);
+    });
+
+    it('chuyến dài khác số ngày tour → 422 TRIP_LENGTH_MISMATCH, không ghi gì', async () => {
+      // Review A2 (M3-13): tour fixture chạy đúng 1 ngày (`durationDays`).
+      expect(tour.durationDays).toBe(1);
+      const res = await create(
+        { slug: PUBLISHED_SLUG, startDate: dateAt(150), endDate: dateAt(152), seatsTotal: 10 },
+        adminCookie,
+      );
+
+      expect(res.statusCode).toBe(422);
+      expect(res.json().code).toBe('TRIP_LENGTH_MISMATCH');
+      // Câu mang cả hai độ dài — admin thấy ngay lệch bao nhiêu.
+      expect(res.json().message).toContain('1 day');
+      expect(res.json().message).toContain('3 days');
+      expect(await prisma.tourDeparture.count({ where: { startDate: dayAt(150) } })).toBe(0);
     });
 
     it('tour lạ → 404', async () => {
@@ -568,12 +588,40 @@ describe('admin departures integration (F12)', () => {
       const before = await rowById(FREE);
       const res = await update(
         FREE,
-        { ...editable(before), startDate: dateAt(95), endDate: dateAt(97) },
+        { ...editable(before), startDate: dateAt(95), endDate: dateAt(95) },
         adminCookie,
       );
 
       expect(res.statusCode).toBe(200);
       expect(AdminDepartureRowSchema.parse(res.json()).startDate).toBe(dateAt(95));
+    });
+
+    it('đổi ngày thành chuyến dài khác số ngày tour → 422 TRIP_LENGTH_MISMATCH, hàng KHÔNG đổi', async () => {
+      // Review A2 (M3-13): tour fixture chạy 1 ngày; chuyến 2 ngày là web hứa một luật huỷ, hạn
+      // thật tính theo luật khác.
+      const before = await rowById(FREE);
+      const res = await update(
+        FREE,
+        { ...editable(before), startDate: dateAt(96), endDate: dateAt(97) },
+        adminCookie,
+      );
+
+      expect(res.statusCode).toBe(422);
+      expect(res.json().code).toBe('TRIP_LENGTH_MISMATCH');
+      expect(res.json().message).toContain('2 days');
+      const after = await rowById(FREE);
+      expect(after.startDate).toBe(before.startDate);
+      expect(after.endDate).toBe(before.endDate);
+    });
+
+    it('chuyến lệch số ngày từ TRƯỚC luật vẫn sửa ghế được — luật chỉ áp khi ngày đổi', async () => {
+      // FREE dựng thẳng vào DB dài 3 ngày trên tour 1 ngày, như chuyến admin tạo tay trước
+      // review A2. Khoá cả hàng vì một luật mới là bắt admin xoá rồi tạo lại.
+      const before = await rowById(FREE);
+      const res = await update(FREE, { ...editable(before), seatsTotal: 10 }, adminCookie);
+
+      expect(res.statusCode).toBe(200);
+      expect(AdminDepartureRowSchema.parse(res.json()).seatsTotal).toBe(10);
     });
 
     it('HẠ GHẾ dưới số đã đặt → 409 ở tầng API, KHÔNG phải 23514 của CHECK', async () => {
@@ -836,7 +884,7 @@ describe('admin departures integration (F12)', () => {
         {
           slug: PUBLISHED_SLUG,
           startDate: dateAt(100),
-          endDate: dateAt(101),
+          endDate: dateAt(100),
           seatsTotal: max + 1,
         },
         adminCookie,
@@ -856,7 +904,7 @@ describe('admin departures integration (F12)', () => {
         {
           slug: PUBLISHED_SLUG,
           startDate: dateAt(102),
-          endDate: dateAt(103),
+          endDate: dateAt(102),
           seatsTotal: max,
         },
         adminCookie,
@@ -981,7 +1029,7 @@ describe('admin departures integration (F12)', () => {
       // của câu UPDATE kia, nên chuyến 10 ghế commit trong lúc tour đang về 8.
       const release = await lowerGroupSizeInFlight(8);
       const pending = create(
-        { slug: PUBLISHED_SLUG, startDate: dateAt(140), endDate: dateAt(141), seatsTotal: 10 },
+        { slug: PUBLISHED_SLUG, startDate: dateAt(140), endDate: dateAt(140), seatsTotal: 10 },
         adminCookie,
       );
       await settle();

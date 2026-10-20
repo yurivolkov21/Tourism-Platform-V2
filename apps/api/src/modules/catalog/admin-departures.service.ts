@@ -34,6 +34,7 @@ import {
   reopenBlocker,
   seatsAboveTourMaxBlocker,
   seatsChangeBlocker,
+  tripLengthBlocker,
 } from './departure-rules.js';
 import { costItemsOf } from './tour-cost-items.js';
 
@@ -71,6 +72,8 @@ const TOUR_SELECT = {
   currency: true,
   /** Cỡ nhóm tối đa tour công bố — trần cho `seatsTotal` của mọi chuyến. */
   maxGroupSize: true,
+  /** Số ngày tour công bố — mọi chuyến phải dài đúng chừng ấy (`tripLengthBlocker`). */
+  durationDays: true,
   /** Màn chuyến báo một dòng khi tour chưa đăng (spec F16 §2h). */
   isPublished: true,
 } satisfies Prisma.TourSelect;
@@ -173,6 +176,7 @@ export class AdminDeparturesService {
         where: { id: locked.id },
         select: { ...TOUR_SELECT, costItems: { select: { amount: true, basis: true } } },
       });
+      assertTripLength(input.startDate, input.endDate, tour.durationDays);
       assertSeatsWithinTourMax(input.seatsTotal, tour.maxGroupSize);
 
       const created = await tx.tourDeparture.create({
@@ -302,6 +306,9 @@ export class AdminDeparturesService {
         where: { id: locked.tour_id },
         select: TOUR_SELECT,
       });
+      // Chỉ khi NGÀY đổi, như hai luật ngày ở trên: chuyến lệch số ngày từ trước luật này (tạo
+      // tay trước review A2) vẫn sửa ghế, giá được.
+      if (datesChanged) assertTripLength(input.startDate, input.endDate, tourRow.durationDays);
       assertSeatsWithinTourMax(input.seatsTotal, tourRow.maxGroupSize);
 
       const updated = await tx.tourDeparture.update({
@@ -500,6 +507,12 @@ function assertDateRange(startDate: string, endDate: string): void {
   }
 }
 
+/** Chuyến dài đúng số ngày tour công bố — chung cho `create` và `update` (khi ngày đổi). */
+function assertTripLength(startDate: string, endDate: string, durationDays: number): void {
+  const blocked = tripLengthBlocker(startDate, endDate, durationDays);
+  if (blocked) throw new DepartureRuleError('TRIP_LENGTH_MISMATCH', blocked);
+}
+
 /** Trần ghế theo cỡ nhóm tour công bố — chung cho `create` và `update`. */
 function assertSeatsWithinTourMax(seatsTotal: number, maxGroupSize: number): void {
   const blocked = seatsAboveTourMaxBlocker(seatsTotal, maxGroupSize);
@@ -619,6 +632,7 @@ function toTour(tour: TourData): AdminDepartureTour {
     title: tour.title,
     basePrice: money(tour.basePrice),
     currency: tour.currency,
+    durationDays: tour.durationDays,
     isPublished: tour.isPublished,
   };
 }

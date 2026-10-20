@@ -87,6 +87,7 @@ const columnHelper = createColumnHelper<typeof serverTableFeatures, DepartureRow
 const RowActionsContext = React.createContext<{
   disabled: boolean;
   basePriceLabel: string;
+  durationDays: number | null;
   update: UpdateDepartureAction;
   setStatus: SetDepartureStatusAction;
   cancel: CancelDepartureAction;
@@ -250,7 +251,11 @@ export interface DeparturesTableProps {
   query: DeparturesQuery;
   total: number;
   totalPages: number;
-  tour: { slug: string; basePriceLabel: string };
+  /**
+   * `durationDays`: số ngày tour — form thêm và sửa điền ngày về theo nó (review A2). `null` chỉ
+   * trong khe deploy khi API cũ chưa trả số này: ô ngày về gõ tay như trước.
+   */
+  tour: { slug: string; basePriceLabel: string; durationDays: number | null };
   /**
    * Ngày lịch VIỆT NAM của CHÍNH lượt đọc đã tính giai đoạn cho `rows`
    * (`AdminDeparturesListResult.today`) — cùng giá trị đã nấu ra `rows`. Form
@@ -290,12 +295,13 @@ export function DeparturesTable({
     () => ({
       disabled: isRefreshing,
       basePriceLabel: tour.basePriceLabel,
+      durationDays: tour.durationDays,
       update,
       setStatus,
       cancel,
       onSettled: refreshList,
     }),
-    [isRefreshing, tour.basePriceLabel, update, setStatus, cancel, refreshList],
+    [isRefreshing, tour.basePriceLabel, tour.durationDays, update, setStatus, cancel, refreshList],
   );
 
   const table = useTable({
@@ -370,6 +376,7 @@ export function DeparturesTable({
           // con số không ai đọc lại.
           initial={{ startDate: '', endDate: '', seats: '', price: '' }}
           seatsBooked={0}
+          durationDays={tour.durationDays}
           // Hạn nhận đặt là `ngày đi − N` với N tới 7 ngày: một chuyến khởi
           // hành tuần sau có thể đã quá hạn ngay lúc tạo. Vẫn cho tạo, nhưng
           // nói trước rằng nó sẽ không bán được.

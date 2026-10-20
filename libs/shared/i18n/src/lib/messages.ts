@@ -7855,6 +7855,14 @@ export const messages = {
       form: {
         startDate: 'Start date',
         endDate: 'Return date',
+        /**
+         * Ô ngày về đi theo ngày đi (review A2, M3-13): server từ chối chuyến dài khác số ngày
+         * tour, nên ô chỉ đọc và câu này nói vì sao.
+         */
+        endDateFollows: (days: number) =>
+          days === 1
+            ? 'This is a one-day tour, so it returns on the start date.'
+            : `Set from the start date: this tour runs ${days} days.`,
         seats: 'Seats',
         seatsHint: (max: number) => `Between 1 and ${max}.`,
         price: 'Price per traveller',
@@ -7912,6 +7920,12 @@ export const messages = {
            */
           SEATS_ABOVE_TOUR_MAX:
             'This tour runs small groups — the departure has more seats than it allows. Lower the seat count.',
+          /**
+           * Ngày về lệch số ngày tour (review A2). Form điền ngày về theo ngày đi, nên mã này chỉ
+           * về khi số ngày tour đổi lúc form đang mở: đóng hộp, làm mới bảng, mở lại là xong.
+           */
+          TRIP_LENGTH_MISMATCH:
+            "The dates no longer match this tour's length, so the departure was not added. The table has been refreshed — add it again and the return date will follow the start date.",
         },
         toast: {
           title: 'Departure added',
@@ -7954,6 +7968,9 @@ export const messages = {
            */
           DEPARTURE_STALE:
             'Someone else changed this departure while the form was open, so nothing was saved. The table has been refreshed — reopen the form and make the change again.',
+          /** Như ở `create.errors` — ngày về lệch số ngày tour (review A2). */
+          TRIP_LENGTH_MISMATCH:
+            "The new dates do not match this tour's length, so nothing was saved. The table has been refreshed — reopen the form and pick the start date again.",
         },
         toast: {
           title: 'Departure updated',

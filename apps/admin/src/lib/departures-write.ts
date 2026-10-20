@@ -32,7 +32,11 @@ const t = messages.admin.departures;
  * đích: chúng nói về thứ đang nằm trong ô nhập, sửa tại chỗ là xong — đóng
  * dialog ở đó là bắt người ta gõ lại từ đầu.
  */
-const createCodec = createWriteErrorCodec(t.create.errors, { stale: ['NOT_FOUND'] });
+// `TRIP_LENGTH_MISMATCH` cũng là trạng-thái-cũ: form điền ngày về theo số ngày tour nó nhận lúc
+// mở, nên mã này chỉ về khi số ngày ấy đổi dưới chân dialog — sửa tại chỗ vẫn dùng con số cũ.
+const createCodec = createWriteErrorCodec(t.create.errors, {
+  stale: ['NOT_FOUND', 'TRIP_LENGTH_MISMATCH'],
+});
 const updateCodec = createWriteErrorCodec(t.edit.errors, {
   stale: [
     'NOT_FOUND',
@@ -42,6 +46,7 @@ const updateCodec = createWriteErrorCodec(t.edit.errors, {
     // Ai đó vừa sửa chính chuyến này: thế giới đã đổi dưới chân dialog, bấm
     // lại cùng một payload cũ thì lần nào cũng hỏng như nhau.
     'DEPARTURE_STALE',
+    'TRIP_LENGTH_MISMATCH',
   ],
 });
 const setStatusCodec = createWriteErrorCodec(t.setStatus.errors, {
@@ -166,8 +171,11 @@ export interface DepartureFormErrors {
   price?: string;
 }
 
-/** Ngày lịch `YYYY-MM-DD` — đúng thứ `<input type="date">` trả về. */
-const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
+/**
+ * Ngày lịch `YYYY-MM-DD` — đúng thứ `<input type="date">` trả về. Có nhóm bắt để
+ * `departureEndDate` tách năm-tháng-ngày bằng chính khuôn này.
+ */
+const ISO_DATE = /^(\d{4})-(\d{2})-(\d{2})$/;
 /** Tiền: tối đa 2 số lẻ, khớp `Decimal(14,2)` của cột. */
 const AMOUNT = /^\d+(\.\d{1,2})?$/;
 
@@ -232,6 +240,22 @@ export function createDeadlineHint(values: DepartureFormValues, today: string): 
   const deadline = cancellationDeadline(values.startDate, values.endDate);
   // Hạn hết lúc 23:59:59 giờ Việt Nam của CHÍNH ngày đó — bằng nhau là còn kịp.
   return today > deadline ? t.create.deadlinePassedHint : undefined;
+}
+
+/**
+ * Ngày về suy từ ngày đi: chuyến dài ĐÚNG `durationDays` ngày lịch (L = về − đi + 1, ADR-0041),
+ * cùng luật server canh bằng `TRIP_LENGTH_MISMATCH` (review A2, M3-13). Ngày đi chưa gõ xong thì
+ * trả chuỗi rỗng — ô ngày đi đã có câu lỗi riêng của nó.
+ *
+ * Cộng ngày trên `Date.UTC` chứ không trên giờ địa phương: ngày lịch không có múi giờ, còn một
+ * ngày đổi giờ mùa hè ở máy admin sẽ làm phép cộng theo mili-giây hụt một ngày.
+ */
+export function departureEndDate(startDate: string, durationDays: number): string {
+  const match = ISO_DATE.exec(startDate);
+  if (!match) return '';
+  const [, year, month, day] = match;
+  const end = Date.UTC(Number(year), Number(month) - 1, Number(day) + durationDays - 1);
+  return new Date(end).toISOString().slice(0, 10);
 }
 
 /** Bốn ô thô → đúng hình dạng contract. Gọi SAU khi validate đã sạch. */
