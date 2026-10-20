@@ -315,16 +315,23 @@ function compareRating(
 /**
  * Ngày của review: "July 2026".
  *
- * `Intl` + `new Date()` ở đây là ĐÚNG, khác hẳn `formatDateRange`: `createdAt` là
- * ISO datetime có múi giờ tường minh (`…Z`) nên không có chỗ nào để diễn giải sai.
- * Bẫy "đừng dựng new Date()" chỉ áp cho `startDate`/`endDate` dạng date-only
- * `YYYY-MM-DD` — chuỗi đó bị hiểu là UTC rồi hiển thị theo giờ máy, lệch một ngày
- * ở múi giờ âm.
+ * `new Date()` ở đây đọc ĐÚNG mốc, khác hẳn `formatDateRange`: `createdAt` là
+ * ISO datetime có múi giờ tường minh (`…Z`). Bẫy "đừng dựng new Date()" chỉ áp cho
+ * `startDate`/`endDate` dạng date-only `YYYY-MM-DD`.
+ *
+ * Nhưng lúc IN thì vẫn phải khoá `timeZone: 'UTC'`: `ReviewCard` render cả trong
+ * panel client, nên không khoá thì trình duyệt in tháng theo giờ máy. Đánh giá viết
+ * 03:00 UTC ngày 1/10 thành "September 2026" với khách ở Mỹ, lệch HTML server (UTC)
+ * lúc hydrate.
  *
  * Chỉ tháng + năm, không ngày: độ chính xác tới ngày không giúp người đọc quyết
  * định gì, mà lại làm review trông "cũ" một cách không cần thiết.
  */
-const REVIEW_DATE_FMT = new Intl.DateTimeFormat('en-US', { month: 'long', year: 'numeric' });
+const REVIEW_DATE_FMT = new Intl.DateTimeFormat('en-US', {
+  month: 'long',
+  year: 'numeric',
+  timeZone: 'UTC',
+});
 
 export function formatReviewDate(createdAt: string): string {
   return REVIEW_DATE_FMT.format(new Date(createdAt));
