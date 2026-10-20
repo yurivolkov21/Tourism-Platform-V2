@@ -79,7 +79,10 @@ export function receiptPrintView(booking: Booking, now: Date): ReceiptPrintView 
   );
   const place = tripPlace(booking);
   const when = formatWeekdayDate(booking.departureStartDate, { year: true });
-  const amount = formatBookingMoney(booking, booking.totalAmount);
+  // Có khoản hoàn thì CẢ giấy đủ hai số lẻ — cùng luật thẻ chờ (`pendingView`) và voucher
+  // (thử tay prod 09/10): "$39" trên câu "$39.00 has been refunded" là hai độ chính xác (review L4).
+  const money = { exact: Number(booking.refundedTotal) > 0 };
+  const amount = formatBookingMoney(booking, booking.totalAmount, money);
   const reference = referenceColumn(booking.code, r.bookedBy(booking.contactEmail));
   const releaseAt = `${deadlineTime}, ${formatDate(deadlineDay)}`;
 
@@ -133,7 +136,7 @@ export function receiptPrintView(booking: Booking, now: Date): ReceiptPrintView 
       item: booking.tourTitle,
       sub: `${when} · ${days} · ${place}`,
       travellers: messages.accountBookings.travellers(booking.numAdults, booking.numChildren),
-      price: formatBookingMoney(booking, booking.unitPrice),
+      price: formatBookingMoney(booking, booking.unitPrice, money),
       priceNote: messages.booking.success.perTraveller,
       amount,
     },

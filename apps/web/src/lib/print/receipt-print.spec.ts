@@ -174,6 +174,23 @@ describe('receiptPrintView — đơn chưa trả đã đóng (G37)', () => {
       `${messages.accountBookingDetail.terminalNote.REFUNDED} ${messages.accountBookingDetail.refundLine.full('$39.00')}`,
     );
   });
+
+  // Giấy kể "$39.00 has been refunded" thì cuống, dòng tiền và tổng cũng đủ hai số lẻ — cùng luật
+  // thẻ chờ trên màn hình (`pendingView`) và bản in voucher (review L4).
+  it('bị thu rồi hoàn tự động: mọi số tiền của giấy đủ hai số lẻ như câu kể khoản hoàn', () => {
+    const v = receiptPrintView(
+      pending({
+        status: 'REFUNDED',
+        refundedTotal: '39.00',
+        cancelledAt: '2026-10-09T11:30:00.000Z',
+      }),
+      AT,
+    );
+    expect(v.ticket.stub.amount).toBe('$39.00');
+    expect(v.line.price).toBe('$39.00');
+    expect(v.line.amount).toBe('$39.00');
+    expect(v.total.amount).toBe('$39.00');
+  });
 });
 
 /**

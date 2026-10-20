@@ -71,14 +71,16 @@ export function BookingDetailsPanel({
 
       <Block title={messages.booking.success.paymentLabel}>
         <dl>
-          {bookingPriceLines(booking).map((line) => (
+          {/* Có dòng Refunded thì CẢ khối đủ hai số lẻ — cùng luật khối tiền của voucher và thẻ
+              chờ: "$147" trên "−$73.50" là hai độ chính xác trong một cột (review L4). */}
+          {bookingPriceLines(booking, { exact: refunded }).map((line) => (
             <Row key={line.label} label={line.label} value={line.amount} mono />
           ))}
           <Row
             total
             mono
             label={bookingTotalLabel(booking)}
-            value={formatBookingMoney(booking, booking.totalAmount)}
+            value={formatBookingMoney(booking, booking.totalAmount, { exact: refunded })}
           />
           {refunded ? (
             <Row

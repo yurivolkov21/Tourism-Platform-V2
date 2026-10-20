@@ -103,6 +103,16 @@ describe('BookingDetailsPanel — bốn khối (spec §5.3)', () => {
     expect(screen.getByText('−$73.50')).toBeInTheDocument();
   });
 
+  // "$147" trên "−$73.50" là hai độ chính xác trong một cột — cùng luật khối tiền của voucher và
+  // thẻ chờ (`formatBookingMoney` `exact`, thử tay prod 09/10; review L4).
+  it('có hoàn: cả khối tiền đủ hai số lẻ, cùng độ chính xác với dòng Refunded', () => {
+    renderPanel({ ...PAID, status: 'PARTIALLY_REFUNDED', refundedTotal: '73.50' });
+    expect(screen.getByText('$98.00')).toBeInTheDocument();
+    expect(screen.getByText('$49.00')).toBeInTheDocument();
+    expect(screen.getByText('$147.00')).toBeInTheDocument();
+    expect(screen.queryByText('$147')).not.toBeInTheDocument();
+  });
+
   it('chưa trả: nhãn "Total", không có dòng "Paid in full"', () => {
     renderPanel(
       { ...PAID, status: 'PENDING', paidAt: null, cancellation: null },
