@@ -1,9 +1,11 @@
 import {
+  departureStrikePrice,
   formatDepartureDate,
   formatDepartureMonth,
   formatDepartureRange,
   formatFullDate,
   groupDeparturesByMonth,
+  isDepartureOpen,
 } from './departures';
 
 describe('formatDepartureDate', () => {
@@ -45,6 +47,53 @@ describe('formatFullDate', () => {
 
   it('cuối năm theo giờ Việt Nam sang năm mới', () => {
     expect(formatFullDate('2026-12-31T17:00:00.000Z')).toBe('1 Jan 2027');
+  });
+});
+
+describe('isDepartureOpen', () => {
+  it('còn hạn đặt và còn chỗ: chọn được', () => {
+    expect(isDepartureOpen({ bookable: true, seatsLeft: 1 })).toBe(true);
+  });
+
+  // `bookable` của API chỉ nói còn hạn đặt; đợt đã kín vẫn `bookable: true`.
+  it('còn hạn đặt nhưng hết chỗ: không chọn được', () => {
+    expect(isDepartureOpen({ bookable: true, seatsLeft: 0 })).toBe(false);
+  });
+
+  it('qua hạn đặt: không chọn được dù còn chỗ', () => {
+    expect(isDepartureOpen({ bookable: false, seatsLeft: 5 })).toBe(false);
+  });
+});
+
+describe('departureStrikePrice', () => {
+  it('đợt giảm giá dưới giá gốc, không neo riêng: gạch giá gốc', () => {
+    expect(departureStrikePrice({ price: '80.00', basePrice: '100.00', anchor: null })).toBe(
+      '100.00',
+    );
+  });
+
+  it('đợt đúng giá gốc, không neo: không gạch', () => {
+    expect(departureStrikePrice({ price: '100.00', basePrice: '100.00', anchor: null })).toBeNull();
+  });
+
+  // Đợt khuyến mãi của seed (neo = giá gốc) bị admin nâng giá lên trên neo:
+  // gạch neo thấp hơn giá trả là in một "khuyến mãi" ngược.
+  it('neo không cao hơn giá trả: không gạch', () => {
+    expect(
+      departureStrikePrice({ price: '120.00', basePrice: '100.00', anchor: '100.00' }),
+    ).toBeNull();
+  });
+
+  it('neo riêng cao hơn giá gốc: gạch số cao nhất', () => {
+    expect(departureStrikePrice({ price: '80.00', basePrice: '100.00', anchor: '150.00' })).toBe(
+      '150.00',
+    );
+  });
+
+  it('giá gốc cao hơn neo: vẫn gạch giá gốc', () => {
+    expect(departureStrikePrice({ price: '80.00', basePrice: '100.00', anchor: '90.00' })).toBe(
+      '100.00',
+    );
   });
 });
 

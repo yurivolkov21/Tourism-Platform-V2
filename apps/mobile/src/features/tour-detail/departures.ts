@@ -83,6 +83,46 @@ export function formatFullDate(date: string): string {
   return `${p.d} ${MONTHS_SHORT[p.m - 1]} ${p.y}`;
 }
 
+/**
+ * Đợt CHỌN ĐƯỢC để đặt — port `isDepartureOpen` của web (`apps/web/src/lib/tours.ts`):
+ * còn hạn đặt (`bookable`, server tính theo ngày Việt Nam) VÀ còn chỗ. Cờ
+ * `bookable` của API KHÔNG xét ghế (doc của `TourDepartureSchema`), nên chỉ
+ * đọc mỗi cờ đó thì đợt đã kín vẫn chọn được và vẫn mở được nút "Book now".
+ */
+export function isDepartureOpen(departure: { bookable: boolean; seatsLeft: number }): boolean {
+  return departure.bookable && departure.seatsLeft > 0;
+}
+
+/**
+ * Giá gạch của một đợt — port `strikePrice` của web (luật user chốt 15/09: chỉ
+ * gạch khi có khuyến mãi THẬT). Ứng viên: `basePrice` nếu giá trả thấp hơn nó,
+ * và neo riêng của đợt (`anchor` = `compareAtPrice` thô từ API) nếu neo cao hơn
+ * giá trả; lấy số cao nhất, không có ứng viên thì không gạch. In thẳng
+ * `compareAtPrice` là lệch web ở hai ca: đợt hạ giá không có neo (web gạch giá
+ * gốc, app không gạch gì) và neo thấp hơn giá trả (app gạch một số thấp hơn).
+ *
+ * So bằng `Number()` nhưng trả NGUYÊN chuỗi thập phân thắng cuộc.
+ */
+export function departureStrikePrice({
+  price,
+  basePrice,
+  anchor,
+}: {
+  price: string;
+  basePrice: string;
+  anchor: string | null;
+}): string | null {
+  const paid = Number(price);
+  const candidates: string[] = [];
+  if (paid < Number(basePrice)) candidates.push(basePrice);
+  if (anchor !== null && Number(anchor) > paid) candidates.push(anchor);
+  let strike: string | null = null;
+  for (const candidate of candidates) {
+    if (strike === null || Number(candidate) > Number(strike)) strike = candidate;
+  }
+  return strike;
+}
+
 export interface RawDeparture {
   id: string;
   startDate: string;

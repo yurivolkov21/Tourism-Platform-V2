@@ -15,9 +15,11 @@ import {
 } from '@/features/tour-detail/ask-about-date';
 import {
   ALMOST_FULL_THRESHOLD,
+  departureStrikePrice,
   formatDepartureDate,
   formatDepartureRange,
   groupDeparturesByMonth,
+  isDepartureOpen,
 } from '@/features/tour-detail/departures';
 import { parseItineraryDescription } from '@/features/tour-detail/itinerary';
 import {
@@ -264,7 +266,8 @@ export default function TourDetailRoute() {
       return;
     }
     const departure = tour?.departures.find((d) => d.id === selectedDepartureId);
-    if (tour === undefined || departure === undefined) return;
+    // Đợt đã chọn có thể vừa kín chỗ sau một lượt tải lại — không mở wizard cho nó.
+    if (tour === undefined || departure === undefined || !isDepartureOpen(departure)) return;
 
     startBookingDraft(
       {
@@ -342,8 +345,12 @@ export default function TourDetailRoute() {
     })) ?? [];
 
   // D3 — nhóm theo tháng + quy đổi mỗi đợt sang view model (tiền/ngày đã
-  // format sẵn, `almostFull` suy từ `seatsLeft`). `bookable` đọc THẲNG cờ
-  // server tính (ADR-0041) — route không tự so ngày bằng giờ máy.
+  // format sẵn, `almostFull` suy từ `seatsLeft`). `bookable` của view model là
+  // `isDepartureOpen`: cờ hạn đặt server tính (ADR-0041, route không tự so ngày
+  // bằng giờ máy) VÀ còn chỗ, như web. Cờ của API không xét ghế, nên đợt đã kín
+  // từng chọn được và mở "Book now". Màn chưa có nhãn "Sold out" riêng: đợt kín
+  // hiện như đợt đã đóng (nhãn "Booking closed" và lối hỏi về ngày).
+  // Giá gạch theo luật web (`departureStrikePrice`), không in thẳng neo thô.
   const cancellationBanner =
     tour === undefined
       ? ''
@@ -353,21 +360,26 @@ export default function TourDetailRoute() {
       ? []
       : groupDeparturesByMonth(tour.departures).map((group) => ({
           monthLabel: group.monthLabel,
-          rows: group.departures.map((departure) => ({
-            id: departure.id,
-            rangeLabel: formatDepartureRange(departure.startDate, departure.endDate),
-            seatsLabel: tourDetail.seatsLeft(departure.seatsLeft),
-            priceLabel: formatMoney(departure.effectivePrice, tour.currency),
-            compareAtPriceLabel:
-              departure.compareAtPrice === null
-                ? null
-                : formatMoney(departure.compareAtPrice, tour.currency),
-            bookable: departure.bookable,
-            almostFull: departure.bookable && departure.seatsLeft <= ALMOST_FULL_THRESHOLD,
-            cancellationCaption: messages.cancellationDeadline.short(
-              formatDepartureDate(departure.bookingDeadline),
-            ),
-          })),
+          rows: group.departures.map((departure) => {
+            const open = isDepartureOpen(departure);
+            const strike = departureStrikePrice({
+              price: departure.effectivePrice,
+              basePrice: tour.basePrice,
+              anchor: departure.compareAtPrice,
+            });
+            return {
+              id: departure.id,
+              rangeLabel: formatDepartureRange(departure.startDate, departure.endDate),
+              seatsLabel: tourDetail.seatsLeft(departure.seatsLeft),
+              priceLabel: formatMoney(departure.effectivePrice, tour.currency),
+              compareAtPriceLabel: strike === null ? null : formatMoney(strike, tour.currency),
+              bookable: open,
+              almostFull: open && departure.seatsLeft <= ALMOST_FULL_THRESHOLD,
+              cancellationCaption: messages.cancellationDeadline.short(
+                formatDepartureDate(departure.bookingDeadline),
+              ),
+            };
+          }),
         }));
 
   // D4 — `reviewItems` đã gộp mọi trang tải tới giờ (xem effect trên).
