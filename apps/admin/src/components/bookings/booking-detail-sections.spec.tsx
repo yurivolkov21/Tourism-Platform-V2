@@ -2,12 +2,13 @@ import { render, screen } from '@testing-library/react';
 import type { AdminBookingDetail } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
 import { describe, expect, it } from 'vitest';
-import { BookingSummaryCards } from './booking-detail-sections';
+import { BookingSummaryCards, RefundLedgerTable } from './booking-detail-sections';
 
 /**
  * Ba card ngữ cảnh của `/bookings/[code]` — pin ba sạn nhỏ của spec 2026-10-05 §4: email
  * xuống dòng sau `@` (#7), provider in nhãn thay vì enum thô (#9), chuyến một ngày in một
  * ngày (#10). Thêm một ca canh luật rỗng của `DetailRow`, vì nó vừa đổi sang nhận node.
+ * Cuối file là ô lý do của sổ hoàn (review A1).
  */
 const t = messages.admin.bookings.detail;
 
@@ -89,5 +90,35 @@ describe('BookingSummaryCards', () => {
 
     expect(valueCell(t.customer.phone).textContent).toBe(t.empty);
     expect(valueCell(t.customer.requests).textContent).toBe(t.empty);
+  });
+});
+
+describe('RefundLedgerTable', () => {
+  it('lý do dài xuống dòng chứ không bị cắt mất (review A1)', () => {
+    // Ô bảng của kit UI mặc `whitespace-nowrap`; bản cũ `max-w-64 truncate` không có `title`
+    // nên phần sau dấu "…" của một lý do 500 ký tự không đọc được ở đâu cả.
+    const reason =
+      'Medical emergency: the customer sent a hospital note on 18 Oct and asked to move the trip; Owner approved half back as goodwill.';
+    render(
+      <RefundLedgerTable
+        refunds={[
+          {
+            id: '22222222-2222-4222-8222-222222222222',
+            amount: '58.50',
+            currency: 'USD',
+            providerRefundId: 're_test_1',
+            adminId: '33333333-3333-4333-8333-333333333333',
+            reason,
+            createdAt: '2026-10-18T03:00:00.000Z',
+          },
+        ]}
+        refundedTotal="58.50"
+        currency="USD"
+      />,
+    );
+
+    const cell = screen.getByText(reason);
+    expect(cell).toHaveClass('max-w-64', 'whitespace-normal', 'wrap-anywhere');
+    expect(cell).not.toHaveClass('truncate');
   });
 });
