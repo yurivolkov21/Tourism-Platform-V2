@@ -47,6 +47,11 @@ export default function BookingVerifyRoute() {
       );
       if (!aliveRef.current) return;
       const outcome = verifyOutcome(result.status);
+      // Đơn đã ra trạng thái cuối — tab Trips cầm `bookings.mine` riêng, không đánh dấu cũ
+      // thì còn hiện "Payment due" tới lần nó tự đọc lại.
+      if (outcome !== 'pending') {
+        void queryClient.invalidateQueries({ queryKey: orpc.bookings.mine.key() });
+      }
       if (outcome === 'paid') {
         // Xoá draft NGAY — các màn B1–B5 còn trong stack không tạo lại được booking.
         completeBookingDraft(result.totalAmount);
