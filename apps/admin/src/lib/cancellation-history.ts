@@ -30,10 +30,13 @@ export type CancellationHistoryRequest = Pick<
   'id' | 'status' | 'reason' | 'decisionNote' | 'decidedAt' | 'decidedByCustomer' | 'createdAt'
 >;
 
-/** Phần booking mà một dòng lịch sử cần: ngày đi, ngày về (hạn chót), đồng tiền, sổ hoàn. */
+/**
+ * Phần booking mà một dòng lịch sử cần: ngày đi, ngày về (hạn chót), chuyến đã bị công ty
+ * huỷ chưa, đồng tiền, sổ hoàn.
+ */
 export type CancellationHistoryBooking = Pick<
   AdminBookingDetail,
-  'departureStartDate' | 'departureEndDate' | 'currency' | 'refunds'
+  'departureStartDate' | 'departureEndDate' | 'departureCancelled' | 'currency' | 'refunds'
 >;
 
 /** Một dòng lịch sử đã định dạng sẵn. */
@@ -45,7 +48,10 @@ export interface CancellationHistoryRowVM {
   actor: string | null;
   requested: string;
   decided: string | null;
-  /** Câu trong/quá hạn chót — chỉ dòng REFUNDED, tức lần huỷ thật. */
+  /**
+   * Câu trong/quá hạn chót — chỉ dòng REFUNDED, tức lần huỷ thật. Lượt công ty huỷ chuyến in
+   * câu riêng: hạn chót không áp cho nó.
+   */
   deadline: string | null;
   /** Số tiền hoàn của CHÍNH lần huỷ — chỉ dòng REFUNDED. */
   refund: string | null;
@@ -119,9 +125,16 @@ export function toCancellationHistoryRow(
   if (request.status === 'REFUNDED') {
     const { departureStartDate: start, departureEndDate: end } = booking;
     const deadlineLabel = formatCalendarDate(cancellationDeadline(start, end));
-    deadline = isWithinDeadline(new Date(request.createdAt), start, end)
-      ? t.withinDeadline(deadlineLabel)
-      : t.afterDeadline(deadlineLabel);
+    // Công ty huỷ chuyến (F13): job ghi yêu cầu do admin quyết và hoàn trọn dù chạy lúc nào,
+    // nên xếp nó vào trong hay quá hạn là kể sai chuyện (ADR-0033 AMEND 4). Cần cả cờ chuyến
+    // huỷ: dòng "By staff" của luồng duyệt cũ vẫn là khách xin huỷ, vẫn xếp theo hạn chót.
+    if (!request.decidedByCustomer && booking.departureCancelled) {
+      deadline = t.departureCalledOff;
+    } else {
+      deadline = isWithinDeadline(new Date(request.createdAt), start, end)
+        ? t.withinDeadline(deadlineLabel)
+        : t.afterDeadline(deadlineLabel);
+    }
 
     const amount = refundedForRequest(request, booking.refunds);
     refund =
