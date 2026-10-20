@@ -177,13 +177,13 @@ export type AdminBookingsStats = z.output<typeof AdminBookingsStatsSchema>;
 /** Bộ số vùng `/reviews`. */
 export const AdminReviewsStatsSchema = z.object({
   period: StatsPeriodSchema,
-  /** Ảnh chụp hàng đợi chờ duyệt: BÂY GIỜ so với ĐẦU kỳ này. */
+  /** Ảnh chụp hàng đợi chờ duyệt: CUỐI kỳ (bây giờ, với cửa sổ trượt) so với ĐẦU kỳ. */
   pending: CountMetricSchema,
   /**
    * Review GỬI trong kỳ (`created_at`) — MẪU SỐ của cả hàng đợi (ADR-0028
    * §AMEND 2 §4). Không có nó thì "duyệt 12" không đọc được: 12 trên 12 hay
-   * 12 trên 300 là hai tình trạng khác hẳn. Cùng tập, cùng cột neo với
-   * `averageRating`.
+   * 12 trên 300 là hai tình trạng khác hẳn. Cùng cột neo với `averageRating`
+   * nhưng KHÔNG cùng tập: điểm trung bình bỏ review đã bị bác (vòng 05/09).
    */
   submitted: CountMetricSchema,
   /**
@@ -194,7 +194,7 @@ export const AdminReviewsStatsSchema = z.object({
    * không đo lô hàng nào được xử (ADR-0028 §AMEND 2 §1).
    */
   approved: CountMetricSchema,
-  /** Điểm trung bình 1..5 ('4.60'). null = kỳ không có review nào. */
+  /** Điểm trung bình 1..5 ('4.60'). null = kỳ không có review nào chưa bị bác. */
   averageRating: DecimalMetricSchema,
 });
 export type AdminReviewsStats = z.output<typeof AdminReviewsStatsSchema>;
@@ -229,7 +229,10 @@ export type AdminOutboxStats = z.output<typeof AdminOutboxStatsSchema>;
  */
 export const AdminPaymentEventsStatsSchema = z.object({
   period: StatsPeriodSchema,
-  /** Webhook đã NHẬN (verify chữ ký xong) trong kỳ — mọi provider, mọi type. */
+  /**
+   * Row vào sổ trong kỳ — mọi provider, mọi type: webhook đã verify chữ ký, CỘNG row
+   * `payment.refunded` do lõi hoàn tiền tự ghi (ADR-0043).
+   */
   received: CountMetricSchema,
   /** Row `processedAt` null ngay bây giờ — đúng bằng `/payment-events?unprocessed=true`. */
   unprocessed: z.int().nonnegative(),
@@ -415,7 +418,7 @@ export const AdminDashboardSeriesSchema = z
       from: z.iso.datetime(),
       /**
        * Mốc chặn — KHÔNG tính vào, và bằng `generatedAt` theo cấu tạo (giữ cả
-       * hai để `period` cùng hình dạng với `StatsPeriod` của bảy endpoint kia):
+       * hai để `period` cùng hình dạng với `StatsPeriod` của sáu endpoint vùng):
        * cửa sổ kết ở lúc chốt sổ nên bucket cuối (hôm nay) là bucket ĐANG
        * CHẠY, nửa ngày thì nửa số — client đọc `to` để nói điều đó ra.
        */

@@ -228,7 +228,8 @@ export function outboxSentCount(from: Date, to: Date): Promise<number> {
 }
 
 /**
- * Webhook đã NHẬN trong khoảng (theo `receivedAt`) và bao nhiêu trong đó gắn
+ * Row vào sổ trong khoảng (theo `receivedAt`: webhook đã nhận, cộng row hoàn tiền do lõi
+ * hoàn tiền tự ghi — ADR-0043) và bao nhiêu trong đó gắn
  * được booking (`bookingId` not null) — F8, spec P4c §3-F8. MỘT `aggregate`
  * trả cả hai (vòng vá review F8): `_count.<cột>` của Prisma đếm row có cột
  * đó KHÁC null — đúng nghĩa "gắn booking" — nên không cần lượt đếm thứ hai

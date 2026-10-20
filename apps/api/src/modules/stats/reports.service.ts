@@ -17,8 +17,8 @@ import {
 import { grossAmount, monthWindow, recognitionWindow, recognizedThrough } from './stats-math.js';
 
 /**
- * Báo cáo THÁNG của admin (spec P4b §3-F6) — nguồn của trang `/reports`, nút
- * CSV của nó và bản in PDF.
+ * Báo cáo THÁNG của admin (spec P4b §3-F6) — nguồn của trang `/reports`, file
+ * Excel của nó (ADR-0034) và bản in PDF.
  *
  * ## Quan hệ với `StatsService`
  *
@@ -42,8 +42,10 @@ import { grossAmount, monthWindow, recognitionWindow, recognizedThrough } from '
  *   này (một query, một khoảnh khắc) — bất biến theo cấu trúc.
  * - `refundedTotal` / `refunds` — sổ cái tiền ĐI RA theo `refunds.created_at`.
  *   KHÔNG trừ vào `revenue` và không cần cùng tháng với booking gốc.
- * - `generatedAt` — lúc chốt sổ. Là thứ DUY NHẤT trong response đổi giữa hai
- *   lần đọc cùng một tháng; mọi con số còn lại phải đứng yên.
+ * - `generatedAt` — lúc chốt sổ, nên luôn đổi giữa hai lần đọc. Với tháng ĐÃ
+ *   ĐÓNG, các con số dòng tiền đứng yên; `bookingsByStatus` thì không (ảnh chụp
+ *   ở trên), cột kết quả kinh doanh cũng không (ADR-0033 AMEND 3 cho tháng đang
+ *   chạy, §Giới hạn đã biết #5 cho khoản hoàn muộn).
  *
  * ## Cột thứ hai — kết quả kinh doanh (ADR-0033 §1)
  *
@@ -117,7 +119,7 @@ export class ReportsService {
     );
 
     // Điền 0 cho trạng thái vắng mặt: contract hứa ĐỦ mọi trạng thái, và thứ
-    // tự theo enum để bảng/CSV có số hàng cố định giữa các tháng.
+    // tự theo enum để bảng/Excel có số hàng cố định giữa các tháng.
     const bookingsByStatus = BookingStatusSchema.options.map((status) => ({
       status,
       count: created.get(status as BookingStatus) ?? 0,
