@@ -64,7 +64,11 @@ export default function PersonalDetailsRoute() {
     // phiên trong expo-secure-store, kèm xoá cache query (F8) để không còn
     // wishlist/booking của tài khoản vừa xoá trong bộ nhớ.
     await signOutAndClearCache(() => getAuthClient().signOut(), queryClient);
-    router.replace('/');
+    // `dismissTo`, không `replace`: `replace` dựng một bộ tab MỚI thay chỗ màn
+    // này, bộ tab cũ (đang mở Account) nằm lại dưới — back cứng Android về lại
+    // bộ cũ thay vì thoát app (review M1). `dismissTo` gỡ về đúng bộ tab đang
+    // có và mở tab Home.
+    router.dismissTo('/');
   }
 
   return (

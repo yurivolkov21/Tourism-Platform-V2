@@ -10,6 +10,12 @@ import {
 /**
  * Route quên mật khẩu. `sent` đổi khung NGAY TẠI CHỖ chứ không đẩy thêm một màn:
  * vẫn là một việc, và bấm back từ lời nhắn hộp thư phải về Sign in.
+ *
+ * "Back to sign in" dùng `dismissTo`, không `replace`: màn này thường mở từ
+ * link "Forgot password?" nên Sign in đang nằm ngay dưới, và `replace` dựng thêm
+ * một bản Sign in chồng lên bản đó — back một lần lại ra Sign in (review M1).
+ * Mở từ "Request a new link" của Reset password thì chưa có Sign in nào, và
+ * `dismissTo` thay màn hiện tại bằng Sign in.
  */
 export default function ForgotPasswordRoute() {
   const actions = useAuthActions();
@@ -50,7 +56,7 @@ export default function ForgotPasswordRoute() {
       sent={sent}
       onChangeEmail={change}
       onSubmit={() => void submit()}
-      onBackToSignIn={() => router.replace('/login')}
+      onBackToSignIn={() => router.dismissTo('/login')}
       onBack={() => router.back()}
     />
   );

@@ -85,7 +85,10 @@ export default function RegisterRoute() {
       onSubmit={() => void submit()}
       showGoogle={showGoogle}
       onGoogle={() => void google()}
-      onSignIn={() => router.navigate('/login')}
+      // `dismissTo`: mở từ Sign in thì Sign in đang nằm ngay dưới — `navigate`
+      // đẩy thêm một bản mới, qua lại hai link là stack dài mãi (review M1). Mở
+      // thẳng từ cổng "Create account" của các tab thì thay màn này bằng Sign in.
+      onSignIn={() => router.dismissTo('/login')}
       onBack={() => router.back()}
     />
   );

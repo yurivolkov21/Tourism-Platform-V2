@@ -63,7 +63,10 @@ export default function ResetPasswordRoute() {
       onChange={change}
       onSubmit={() => void submit()}
       onRequestNewLink={() => router.replace('/forgot-password')}
-      onClose={() => router.replace('/')}
+      // `dismissTo`, không `replace`: `replace` ở stack gốc dựng một bộ tab MỚI
+      // thay chỗ nhóm auth, chồng lên bộ tab đang có — back lại về bộ cũ (review
+      // M1). `dismissTo` gỡ nhóm auth về đúng bộ tab đang nằm dưới, mở tab Home.
+      onClose={() => router.dismissTo('/')}
     />
   );
 }
