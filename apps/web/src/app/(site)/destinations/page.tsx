@@ -123,8 +123,11 @@ export default async function DestinationsPage() {
               {t.heroTitle}
             </h1>
 
+            {/* API địa điểm lỗi thì in câu KHÔNG có số (bản của thẻ meta): đếm
+                trên mảng rỗng in "Three regions, 0 places." — một con số sai, đúng
+                thứ khu 2 bên dưới đã cấm ("CẤM tourCount tính từ dữ liệu rỗng"). */}
             <p className="mt-4 max-w-2xl text-pretty text-muted-foreground">
-              {t.heroSubtitle(destinations.length)}
+              {destinationsRes.ok ? t.heroSubtitle(destinations.length) : t.heroSubtitleMeta}
             </p>
           </Reveal>
         </div>
