@@ -4759,6 +4759,11 @@ export const messages = {
           withinDeadline: (deadline: string) =>
             `Within the free-cancellation deadline (${deadline})`,
           afterDeadline: (deadline: string) => `After the free-cancellation deadline (${deadline})`,
+          /**
+           * Công ty huỷ chuyến (F13): hạn chót là luật cho khách đổi ý, không áp cho chuyến bị bỏ —
+           * cùng lời hộp "Cancel departure" đã hứa (`departures.cancel.dialog.warning`).
+           */
+          departureCalledOff: 'Departure called off, so the deadline does not apply',
           refunded: (amount: string) => `Refunded ${amount}`,
           notRefunded: 'No refund',
           // Enum CancellationRequestStatus. REQUESTED và DENIED chỉ còn ở dữ liệu
