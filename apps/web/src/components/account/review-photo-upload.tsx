@@ -26,7 +26,8 @@ import { formatBytes, MAX_PHOTO_BYTES, MAX_PHOTOS, validatePhoto } from '@/lib/r
  * - Dropzone viền đứt (kéo-thả hoặc Browse) → validate qua `lib/review-photos`
  *   (logic thuần, TDD): đúng loại → trần 10MB → trần 5 ảnh; lỗi gom vào Alert.
  * - Lưới preview KÉO-THẢ SẮP XẾP được (ReUI Sortable — ảnh đầu là ảnh đại
- *   diện), mỗi ô có tay nắm + nút xoá hiện khi hover.
+ *   diện), mỗi ô có tay nắm + nút xoá hiện khi hover hay focus, và luôn hiện
+ *   trên màn cảm ứng.
  * - Progress card từng file trong lúc upload; upload thật đi thẳng browser →
  *   Cloudinary (`api.media.signUpload` ký theo `bookingCode` rồi
  *   `uploadToCloudinary`, bytes không qua Nest).
@@ -222,7 +223,11 @@ export function ReviewPhotoUpload({
                     alt={photo.name}
                     className="pointer-events-none h-24 w-full rounded-md object-cover"
                   />
-                  <SortableItemHandle className="absolute top-2 left-2 cursor-grab opacity-0 group-hover/item:opacity-100 active:cursor-grabbing">
+                  {/* Hai nút mờ tới khi hover — nhưng Tailwind v4 bọc `hover:` trong
+                      `@media (hover: hover)`, nên điện thoại không bao giờ thấy chúng.
+                      Hiện thêm khi focus nằm trong ô (bàn phím) và luôn hiện trên màn
+                      cảm ứng (review L5). */}
+                  <SortableItemHandle className="absolute top-2 left-2 cursor-grab opacity-0 group-focus-within/item:opacity-100 group-hover/item:opacity-100 active:cursor-grabbing pointer-coarse:opacity-100">
                     <Button
                       type="button"
                       variant="outline"
@@ -238,7 +243,7 @@ export function ReviewPhotoUpload({
                     onClick={() => removePhoto(photo.id)}
                     variant="outline"
                     size="icon"
-                    className="absolute top-2 right-2 size-6 rounded-full opacity-0 shadow-sm group-hover/item:opacity-100"
+                    className="absolute top-2 right-2 size-6 rounded-full opacity-0 shadow-sm group-focus-within/item:opacity-100 group-hover/item:opacity-100 pointer-coarse:opacity-100"
                     aria-label={t.removePhoto}
                   >
                     <XIcon className="size-3.5" />
