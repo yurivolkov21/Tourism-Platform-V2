@@ -256,4 +256,15 @@ describe('P&L', () => {
       '2 departure',
     );
   });
+
+  it('cảnh báo thiếu giá vốn chia số ít, số nhiều như dòng "departures ran" (review A1)', () => {
+    // Bản cũ in "1 bookings have…" và "1 departure(s) that ran have…" ở cả màn hình,
+    // bản in lẫn sheet Excel — cùng khối chữ mà `departuresRun` đã chia đúng.
+    expect(costWarning({ ...report, costDataMissing: 1, departuresCostMissing: 1 })).toBe(
+      '1 booking has no cost data, so cost of sales is understated. 1 departure that ran has no fixed-cost data — its transport and guide costs are counted as 0.',
+    );
+    expect(costWarning({ ...report, costDataMissing: 12, departuresCostMissing: 2 })).toBe(
+      '12 bookings have no cost data, so cost of sales is understated. 2 departures that ran have no fixed-cost data — their transport and guide costs are counted as 0.',
+    );
+  });
 });
