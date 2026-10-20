@@ -237,6 +237,20 @@ describe('Lightbox — thu/phóng (nợ A12)', () => {
     expect(screen.getByText('100%')).toBeInTheDocument();
   });
 
+  it('đóng rồi mở lại thì zoom về gốc — không mở ảnh mới ở mức phóng của lần trước', async () => {
+    // State zoom sống trong Lightbox, mà Lightbox không unmount khi dialog đóng:
+    // trước đây phóng 150%, đóng, bấm một ô ảnh khác là ảnh đó mở ra ở 150% với
+    // độ dời cũ (review L2, 20/10).
+    const user = await openZoomable();
+    await user.click(screen.getByRole('button', { name: 'Zoom in' }));
+    expect(screen.getByText('150%')).toBeInTheDocument();
+    await user.keyboard('{Escape}');
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    await user.click(screen.getByRole('button', { name: 'Open' }));
+    await screen.findByRole('dialog');
+    expect(screen.getByText('100%')).toBeInTheDocument();
+  });
+
   it('phím + và - đổi mức, phím 0 về gốc', async () => {
     const user = await openZoomable();
     await user.keyboard('+');

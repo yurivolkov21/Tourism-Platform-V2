@@ -202,7 +202,16 @@ export function Lightbox({
   const text = caption?.(current) ?? null;
 
   return (
-    <Dialog open={openAt !== null} onOpenChange={onOpenChange}>
+    <Dialog
+      open={openAt !== null}
+      onOpenChange={(open) => {
+        // Đóng cũng trả zoom về gốc, cùng lý do với lúc đổi ảnh: state zoom sống ở
+        // đây và Lightbox không unmount khi dialog đóng, nên không trả về thì lần
+        // mở sau (thường là một ô ảnh khác) hiện ra ở mức phóng và độ dời cũ.
+        if (!open) resetZoom();
+        onOpenChange(open);
+      }}
+    >
       <DialogContent
         showCloseButton={false}
         onKeyDown={onKeyDown}
