@@ -1,5 +1,7 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { vietnamToday } from '@tourism/contract';
+import { useEffect } from 'react';
+import { AppState } from 'react-native';
 import { orpc } from '@/lib/api/client';
 import { clockOffsetMs, serverNow } from './server-clock';
 
@@ -15,9 +17,25 @@ import { clockOffsetMs, serverNow } from './server-clock';
  *
  * `offsetMs = 0` khi chưa có dữ liệu (app mới mở) — màn tạm dùng giờ máy, sai
  * số đó biến mất ngay khi `health.check` về.
+ *
+ * Ngoại lệ duy nhất của "một lần mỗi phiên": app quay lại `active` thì đo lại. Chỉnh đồng
+ * hồ máy phải rời app (Settings), mà lệch cũ cộng giờ máy MỚI là trôi đúng bằng khoảng vừa
+ * chỉnh — chính kịch bản luật #5 canh. Nhiều màn cùng nghe thì `cancelRefetch: false` gộp
+ * về một lượt gọi.
  */
 function useServerClockOffsetMs(): number {
+  const queryClient = useQueryClient();
   const query = useQuery(orpc.health.check.queryOptions({ staleTime: Infinity, gcTime: Infinity }));
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (state) => {
+      if (state !== 'active') return;
+      void queryClient.invalidateQueries(
+        { queryKey: orpc.health.check.key() },
+        { cancelRefetch: false },
+      );
+    });
+    return () => subscription.remove();
+  }, [queryClient]);
   if (query.data === undefined) return 0;
   return clockOffsetMs(query.data.timestamp, query.dataUpdatedAt);
 }

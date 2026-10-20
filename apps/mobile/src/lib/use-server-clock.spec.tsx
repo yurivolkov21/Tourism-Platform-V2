@@ -1,9 +1,12 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { act, renderHook, waitFor } from '@testing-library/react-native';
 import type { ReactNode } from 'react';
+import { AppState, type AppStateStatus } from 'react-native';
 import { useServerClock } from './use-server-clock';
 
 const SERVER_TIME = '2026-10-10T00:00:00.000Z';
+// Giờ server mà `health.check` giả trả về — tiền tố `mock` để factory của jest.mock đọc được.
+let mockServerTimestamp = SERVER_TIME;
 
 jest.mock('@/lib/api/client', () => ({
   orpc: {
@@ -11,9 +14,10 @@ jest.mock('@/lib/api/client', () => ({
       check: {
         queryOptions: (opts: object) => ({
           queryKey: ['health'],
-          queryFn: async () => ({ timestamp: '2026-10-10T00:00:00.000Z' }),
+          queryFn: async () => ({ timestamp: mockServerTimestamp }),
           ...opts,
         }),
+        key: () => ['health'],
       },
     },
   },
@@ -32,12 +36,26 @@ function sharedWrapper() {
   );
 }
 
+let appStateListeners: Array<(state: AppStateStatus) => void> = [];
+let appStateSpy: jest.SpyInstance;
+
 beforeEach(() => {
   jest.useFakeTimers({ doNotFake: ['nextTick', 'setImmediate', 'queueMicrotask'] });
   jest.setSystemTime(new Date('2026-10-09T00:00:00.000Z'));
+  mockServerTimestamp = SERVER_TIME;
+  appStateListeners = [];
+  appStateSpy = jest.spyOn(AppState, 'addEventListener').mockImplementation((_type, listener) => {
+    appStateListeners.push(listener as (state: AppStateStatus) => void);
+    return {
+      remove: () => {
+        appStateListeners = appStateListeners.filter((l) => l !== listener);
+      },
+    } as ReturnType<typeof AppState.addEventListener>;
+  });
 });
 
 afterEach(() => {
+  appStateSpy.mockRestore();
   jest.useRealTimers();
 });
 
@@ -67,5 +85,22 @@ describe('useServerClock', () => {
     const second = await renderHook(() => useServerClock(), { wrapper: shared });
 
     expect(second.result.current.now.toISOString()).toBe('2026-10-10T02:00:00.000Z');
+  });
+
+  it('khách chỉnh đồng hồ máy rồi quay lại app: đo lại lệch, giờ server không trôi theo máy', async () => {
+    const { result, rerender } = await renderHook(() => useServerClock(), { wrapper });
+    await waitFor(() => expect(result.current.now.toISOString()).toBe(SERVER_TIME));
+
+    // Vào Settings vặn đồng hồ máy tới 3 ngày (server thật chưa nhích), rồi quay lại app.
+    await act(async () => {
+      jest.setSystemTime(new Date('2026-10-12T00:00:00.000Z'));
+    });
+    await act(async () => {
+      for (const listener of appStateListeners) listener('active');
+    });
+    await rerender({});
+
+    await waitFor(() => expect(result.current.now.toISOString()).toBe(SERVER_TIME));
+    expect(result.current.today).toBe('2026-10-10');
   });
 });
