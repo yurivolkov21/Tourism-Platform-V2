@@ -488,6 +488,103 @@ describe('ChatPanel — thẻ xác nhận enquiry', () => {
     expect(within(card).getByText(t.confirm.cancelled)).toBeInTheDocument();
     expect(api.posts[1]).toMatchObject({ input: { type: 'message', text: 'Actually, wait' } });
   });
+
+  // L7-01 (review 20/10): API chạy tool TRƯỚC khi gọi model, nên model lỗi ở bước sau thì
+  // enquiry đã gửi mà lượt vẫn báo lỗi. Bản cũ hiện Retry: bấm thì tin cũ của khách đi lại như
+  // tin mới, còn gõ tin mới thì thẻ "Enquiry sent" rời màn trong khi API vẫn giữ nó.
+  it('Send xong mà model lỗi ở bước sau → thẻ giữ "đã gửi", không báo lỗi, gõ tiếp như thường', async () => {
+    const stream = openStream();
+    api.turns.push(sse(approvalTurn), stream.response, sse(textReply('a2', 'Yes, it went.')));
+    render(<ContactLauncher />);
+    const user = await openChat();
+    await say(user, 'Please send my enquiry');
+    const card = await screen.findByRole('region', { name: t.confirm.title });
+    await user.click(within(card).getByRole('button', { name: t.confirm.send }));
+
+    stream.push({ type: 'start', messageId: 'a1' });
+    stream.push({ type: 'tool-output-available', toolCallId: 'c1', output: { sent: true } });
+    stream.push({ type: 'start-step' });
+    stream.push({ type: 'text-start', id: 't1' });
+    stream.push({ type: 'text-delta', id: 't1', delta: 'Your enq' });
+    expect(await screen.findByText('Your enq')).toBeInTheDocument();
+    stream.push({ type: 'error', errorText: 'Something went wrong.' });
+
+    // Màn khớp bản API lưu: thẻ đã gửi, không có chữ dở của bước hỏng, không có lỗi để Retry.
+    await waitFor(() => expect(screen.queryByText('Your enq')).toBeNull());
+    expect(within(card).getByText(t.confirm.sent)).toBeInTheDocument();
+    expect(screen.queryByRole('alert')).toBeNull();
+
+    await say(user, 'Did it go through?');
+
+    expect(await screen.findByText('Yes, it went.')).toBeInTheDocument();
+    expect(screen.getByText('Please send my enquiry')).toBeInTheDocument();
+    expect(within(card).getByText(t.confirm.sent)).toBeInTheDocument();
+    expect(api.posts[2]).toMatchObject({ input: { type: 'message', text: 'Did it go through?' } });
+  });
+
+  it('cắt phần dở chỉ ở tin cuối: câu trả lời của lượt duyệt trước giữ nguyên', async () => {
+    window.localStorage.setItem(CONVERSATION_STORAGE_KEY, STORED_ID);
+    api.history = json(200, {
+      messages: [
+        { id: 'u1', role: 'user', parts: [{ type: 'text', text: 'Send my enquiry' }] },
+        {
+          id: 'a1',
+          role: 'assistant',
+          parts: [
+            {
+              type: 'tool-submitEnquiry',
+              toolCallId: 'c0',
+              state: 'output-available',
+              input: draft,
+              output: { sent: true },
+              approval: { id: 'ap-0', approved: true },
+            },
+            { type: 'step-start' },
+            { type: 'text', text: 'Sent! The team will reply by email.', state: 'done' },
+          ],
+        },
+        { id: 'u2', role: 'user', parts: [{ type: 'text', text: 'One more for Hue' }] },
+        {
+          id: 'a2',
+          role: 'assistant',
+          parts: [
+            {
+              type: 'tool-submitEnquiry',
+              toolCallId: 'c1',
+              state: 'approval-requested',
+              input: draft,
+              approval: { id: 'ap-1' },
+            },
+          ],
+        },
+      ],
+    });
+    api.turns.push(
+      sse([
+        { type: 'start', messageId: 'a2' },
+        {
+          type: 'tool-output-available',
+          toolCallId: 'c1',
+          output: { sent: false, reason: 'already_sent' },
+        },
+        { type: 'start-step' },
+        { type: 'text-start', id: 't1' },
+        { type: 'text-delta', id: 't1', delta: 'You already' },
+        { type: 'error', errorText: 'Something went wrong.' },
+      ]),
+    );
+    render(<ContactLauncher />);
+    const user = await openChat();
+    const cards = await screen.findAllByRole('region', { name: t.confirm.title });
+    await user.click(within(cards[1] as HTMLElement).getByRole('button', { name: t.confirm.send }));
+
+    expect(
+      await within(cards[1] as HTMLElement).findByText(t.confirm.alreadySent),
+    ).toBeInTheDocument();
+    await waitFor(() => expect(screen.queryByText('You already')).toBeNull());
+    expect(screen.getByText('Sent! The team will reply by email.')).toBeInTheDocument();
+    expect(screen.queryByRole('alert')).toBeNull();
+  });
 });
 
 describe('ChatPanel — lỗi theo mã của API', () => {

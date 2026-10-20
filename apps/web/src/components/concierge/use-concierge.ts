@@ -167,6 +167,24 @@ export function useConcierge(tourSlug: string | null) {
    */
   const approvalFailed = chat.error !== undefined && hasRespondedApproval(chat.messages.at(-1));
 
+  // Lượt duyệt hỏng ở bước model SAU khi tool đã chạy (enquiry đã gửi, hay thẻ đã đóng): API
+  // ghi thẻ ở trạng thái cuối và bỏ chữ dở (`settleApproval`), nên ở đây cũng cắt phần sau thẻ
+  // và gỡ lỗi. Để lỗi lại thì Retry gửi tin cũ của khách như tin mới, còn gõ tin mới thì thẻ
+  // "Enquiry sent" rời màn trong khi API vẫn giữ nó (L7-01, review 20/10).
+  const settledAfterError = chat.error !== undefined && hasSettledApproval(chat.messages.at(-1));
+  const { clearError } = chat;
+  useEffect(() => {
+    if (!settledAfterError) return;
+    // Chỉ tin cuối: tin cũ có thẻ đã chốt thì phần sau thẻ là câu trả lời thật của lượt trước.
+    setMessagesRef.current((current) => {
+      const last = current.at(-1);
+      return last === undefined
+        ? current
+        : [...current.slice(0, -1), trimAfterSettledApproval(last)];
+    });
+    clearError();
+  }, [settledAfterError, clearError]);
+
   const retry = useCallback(
     () => (approvalFailed ? chat.sendMessage() : chat.regenerate()),
     [chat, approvalFailed],
@@ -175,7 +193,8 @@ export function useConcierge(tourSlug: string | null) {
   return {
     messages: chat.messages,
     status: chat.status,
-    errorKind: chat.error === undefined ? null : errorKind(chat.error),
+    // Lượt duyệt đã chốt thì không có gì để báo hay Retry; effect trên gỡ lỗi ngay sau đó.
+    errorKind: chat.error === undefined || settledAfterError ? null : errorKind(chat.error),
     restoring,
     busy: restoring || chat.status === 'submitted' || chat.status === 'streaming',
     /** Lượt duyệt vừa hỏng: chỉ Retry mới gửi lại đúng quyết định, nên khoá ô gõ. */
@@ -194,6 +213,32 @@ function hasRespondedApproval(message: ConciergeMessage | undefined): boolean {
     message?.role === 'assistant' &&
     message.parts.some((part) => isToolUIPart(part) && part.state === 'approval-responded')
   );
+}
+
+/** Thẻ đã được quyết và tool đã xong: đã gửi, đã đóng, hay lỗi khi gửi. */
+function isSettledApproval(part: ConciergeMessage['parts'][number]): boolean {
+  return (
+    part.type === 'tool-submitEnquiry' &&
+    (part.state === 'output-available' ||
+      part.state === 'output-denied' ||
+      part.state === 'output-error') &&
+    part.approval?.approved !== undefined
+  );
+}
+
+/**
+ * Tin trả lời cuối mang một thẻ vừa chốt. Lượt chữ luôn sinh tin trả lời MỚI chưa có thẻ nào
+ * được quyết, nên thẻ đã chốt ở tin cuối chỉ có thể đến từ lượt duyệt vừa chạy.
+ */
+function hasSettledApproval(message: ConciergeMessage | undefined): boolean {
+  return message?.role === 'assistant' && message.parts.some(isSettledApproval);
+}
+
+/** Bỏ mọi phần sau thẻ đã chốt cuối cùng — đúng phần API không ghi khi lượt hỏng. */
+function trimAfterSettledApproval(message: ConciergeMessage): ConciergeMessage {
+  if (message.role !== 'assistant') return message;
+  const last = message.parts.findLastIndex(isSettledApproval);
+  return last === -1 ? message : { ...message, parts: message.parts.slice(0, last + 1) };
 }
 
 function lastUserIndex(messages: ConciergeMessage[]): number {
