@@ -8,22 +8,23 @@ import { useTheme } from './theme-provider';
  * (CLAUDE.md #6).
  */
 export const APP_TEXT_VARIANTS = {
-  display: { step: '3xl', weight: 'bold' },
-  title: { step: '2xl', weight: 'semibold' },
-  heading: { step: 'lg', weight: 'semibold' },
+  display: { step: '3xl', weight: 'normal' },
+  title: { step: '2xl', weight: 'normal' },
+  heading: { step: 'base', weight: 'medium' },
   /** Câu dẫn dưới một tiêu đề `display` — nhỏ hơn chữ thân để tiêu đề còn nổi. */
   subtitle: { step: 'sm', weight: 'normal' },
   body: { step: 'base', weight: 'normal' },
-  // `semibold` chứ không `medium`: nhãn nút và chữ bấm được phải nặng hơn chữ
-  // thường quanh nó mới ra dáng bấm được (bản thiết kế 16/09 dùng Archivo 600).
-  label: { step: 'sm', weight: 'semibold' },
+  label: { step: 'sm', weight: 'medium' },
   caption: { step: 'xs', weight: 'normal' },
+  /**
+   * Chữ thương hiệu (Literata) — CHỈ cho chữ nằm trên ảnh và con số thương hiệu:
+   * tiêu đề onboarding, tên địa danh, tên tour trên ảnh đầu trang, số đếm ngược,
+   * "You're going!", tiêu đề bài viết. Còn lại là chữ hệ thống (ADR-0040 AMEND 7).
+   */
+  brand: { step: '3xl', weight: 'bold' },
 } as const satisfies Record<string, { step: MobileTypeStep; weight: MobileFontWeightKey }>;
 
 export type AppTextVariant = keyof typeof APP_TEXT_VARIANTS;
-
-/** Hai bậc lấy khuôn chữ tiêu đề (serif brand); các bậc còn lại dùng khuôn thân. */
-const HEADING_VARIANTS = new Set<AppTextVariant>(['display', 'title']);
 
 /** Vai màu của chữ. `muted` cho câu phụ, `inverse` cho chữ nằm trên nền brand. */
 export type AppTextTone = 'default' | 'muted' | 'inverse' | 'danger' | 'media' | 'link';
@@ -54,10 +55,13 @@ export function AppText({ variant = 'body', tone = 'default', style, ...rest }: 
   // đây là biến một lỗi ném-ngay thành `undefined` lặng lẽ → RN rơi về 14dp và
   // cả app sai cỡ chữ mà không gì đỏ.
   const scale = theme.type[step];
-  // Hai bậc tiêu đề dùng khuôn serif của brand; còn lại dùng khuôn thân theo
-  // đúng độ đậm của bậc. KHÔNG đặt `fontWeight` kèm theo: family đã mang sẵn độ
-  // đậm, đặt cả hai thì Android bôi đậm giả (xem `MOBILE_FONTS`).
-  const fontFamily = HEADING_VARIANTS.has(variant) ? theme.fonts.heading : theme.fonts[weight];
+  // Chữ hệ thống đặt `fontWeight` và KHÔNG đặt `fontFamily`; `brand` làm ngược lại:
+  // family Literata đã mang sẵn độ đậm, đặt thêm `fontWeight` thì Android bôi đậm
+  // giả (bàn giao nâng cấp UI mục 7.1).
+  const face =
+    variant === 'brand'
+      ? { fontFamily: theme.fonts.heading }
+      : { fontWeight: theme.weight[weight] };
 
   return (
     <Text
@@ -65,7 +69,7 @@ export function AppText({ variant = 'body', tone = 'default', style, ...rest }: 
         {
           fontSize: scale.fontSize,
           lineHeight: scale.lineHeight,
-          fontFamily,
+          ...face,
           color: theme.colors[TONE_COLOR[tone]],
         },
         style,

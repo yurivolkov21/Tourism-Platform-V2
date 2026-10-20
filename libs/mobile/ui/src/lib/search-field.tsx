@@ -52,7 +52,7 @@ export function SearchField({
         style={{
           flex: 1,
           color: focused ? theme.colors.foreground : theme.colors['muted-foreground'],
-          fontFamily: theme.fonts.normal,
+          fontWeight: theme.weight.normal,
           fontSize: theme.type.base.fontSize,
           padding: 0,
         }}

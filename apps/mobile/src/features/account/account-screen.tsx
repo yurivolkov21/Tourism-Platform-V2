@@ -94,7 +94,7 @@ export function AccountScreen({
               <AppText
                 style={{
                   color: theme.colors['secondary-foreground'],
-                  fontFamily: theme.fonts.semibold,
+                  fontWeight: theme.weight.semibold,
                   fontSize: 24,
                 }}
               >

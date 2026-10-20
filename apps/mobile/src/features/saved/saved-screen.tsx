@@ -192,7 +192,7 @@ export function SavedScreen({
                   >
                     <AppText
                       variant="caption"
-                      style={{ color: theme.colors['on-media'], fontFamily: theme.fonts.semibold }}
+                      style={{ color: theme.colors['on-media'], fontWeight: theme.weight.semibold }}
                     >
                       {unavailableLabel}
                     </AppText>

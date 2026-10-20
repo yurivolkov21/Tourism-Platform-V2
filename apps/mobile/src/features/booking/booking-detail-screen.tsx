@@ -169,7 +169,7 @@ function Note({
         <Feather name={icon} size={16} color={theme.colors.foreground} />
       )}
       <View style={{ flex: 1 }}>
-        <AppText variant="caption" style={{ fontFamily: theme.fonts.semibold }}>
+        <AppText variant="caption" style={{ fontWeight: theme.weight.semibold }}>
           {title}
         </AppText>
         {body === undefined ? null : (
@@ -241,7 +241,7 @@ function StatusPill({ label, tone }: { label: string; tone: BookingDetailPill })
     >
       <AppText
         variant="caption"
-        style={{ color: theme.colors[t.fg], fontFamily: theme.fonts.semibold }}
+        style={{ color: theme.colors[t.fg], fontWeight: theme.weight.semibold }}
       >
         {label}
       </AppText>

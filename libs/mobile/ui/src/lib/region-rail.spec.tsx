@@ -16,7 +16,7 @@ describe('RegionRail', () => {
 
     const style = StyleSheet.flatten(screen.getByText('North').props.style);
     expect(style.color).toBe(theme.colors['primary-emphasis']);
-    expect(style.fontFamily).toBe(theme.fonts.semibold);
+    expect(style.fontWeight).toBe(theme.weight.semibold);
     expect(screen.getByTestId('region-rail-indicator')).toBeTruthy();
   });
 
@@ -26,7 +26,7 @@ describe('RegionRail', () => {
 
     const style = StyleSheet.flatten(screen.getByText('Central').props.style);
     expect(style.color).toBe(theme.colors['muted-foreground']);
-    expect(style.fontFamily).toBe(theme.fonts.normal);
+    expect(style.fontWeight).toBe(theme.weight.normal);
   });
 
   it('không có đoạn nào đang chọn thì không vẽ vạch chỉ báo', async () => {

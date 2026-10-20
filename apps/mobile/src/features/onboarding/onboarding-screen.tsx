@@ -90,7 +90,7 @@ export function OnboardingScreen({
               </AppText>
             </View>
 
-            <AppText variant="display" tone="media" style={{ marginTop: theme.spacing(2) }}>
+            <AppText variant="brand" tone="media" style={{ marginTop: theme.spacing(2) }}>
               {page.title}
             </AppText>
             <AppText

@@ -18,7 +18,7 @@ export function SectionLabel({ children }: { children: string }) {
       variant="caption"
       tone="muted"
       style={{
-        fontFamily: theme.fonts.semibold,
+        fontWeight: theme.weight.semibold,
         textTransform: 'uppercase',
         letterSpacing: 0.6,
       }}

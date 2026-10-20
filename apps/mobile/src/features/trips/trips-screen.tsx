@@ -92,7 +92,7 @@ function StatusPill({ tone, label }: { tone: TripPillTone; label: string }) {
         backgroundColor: alpha === 1 ? bgColor : withAlpha(bgColor, alpha),
       }}
     >
-      <AppText variant="caption" style={{ color: textColor, fontFamily: theme.fonts.semibold }}>
+      <AppText variant="caption" style={{ color: textColor, fontWeight: theme.weight.semibold }}>
         {label}
       </AppText>
     </View>

@@ -56,7 +56,7 @@ export function Chip({ label, variant = 'default', onPress, onRemove, removeLabe
       variant="label"
       style={{
         color: theme.colors[foreground],
-        fontFamily: variant === 'selected' ? theme.fonts.semibold : theme.fonts.medium,
+        fontWeight: variant === 'selected' ? theme.weight.semibold : theme.weight.medium,
       }}
     >
       {label}

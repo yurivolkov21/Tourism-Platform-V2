@@ -112,7 +112,7 @@ export function TourListCard({
           <Ionicons name="star" size={12} color={theme.colors.rating} />
           <AppText
             variant="caption"
-            style={{ color: theme.colors['on-media'], fontFamily: theme.fonts.semibold }}
+            style={{ color: theme.colors['on-media'], fontWeight: theme.weight.semibold }}
           >
             {rating.toFixed(1)}
           </AppText>

@@ -69,7 +69,7 @@ export function TripItineraryScreen({
                         color: open
                           ? theme.colors['primary-foreground']
                           : theme.colors['primary-emphasis'],
-                        fontFamily: theme.fonts.semibold,
+                        fontWeight: theme.weight.semibold,
                       }}
                     >
                       {day.dayNumber}
@@ -121,7 +121,7 @@ export function TripItineraryScreen({
                           >
                             <AppText
                               variant="caption"
-                              style={{ width: 44, fontFamily: theme.fonts.semibold }}
+                              style={{ width: 44, fontWeight: theme.weight.semibold }}
                             >
                               {line.time}
                             </AppText>

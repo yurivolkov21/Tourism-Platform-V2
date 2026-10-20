@@ -157,7 +157,7 @@ export function PostDetailScreen({
               ))}
             </View>
           )}
-          <AppText variant="title" style={{ marginTop: theme.spacing(3) }}>
+          <AppText variant="brand" style={{ marginTop: theme.spacing(3) }}>
             {title}
           </AppText>
           <View
@@ -182,7 +182,7 @@ export function PostDetailScreen({
                 variant="caption"
                 style={{
                   color: theme.colors['secondary-foreground'],
-                  fontFamily: theme.fonts.semibold,
+                  fontWeight: theme.weight.semibold,
                 }}
               >
                 {authorInitials}

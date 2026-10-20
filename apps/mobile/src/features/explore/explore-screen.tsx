@@ -211,7 +211,7 @@ export function ExploreScreen({
                     variant="caption"
                     style={{
                       color: theme.colors['primary-foreground'],
-                      fontFamily: theme.fonts.semibold,
+                      fontWeight: theme.weight.semibold,
                     }}
                   >
                     {activeFilterCount}
@@ -413,7 +413,7 @@ function DestinationHeaderBlock({
             { backgroundColor: withAlpha(theme.colors.scrim, 0.45) },
           ]}
         />
-        <AppText variant="title" tone="media">
+        <AppText variant="brand" tone="media">
           {header.name}
         </AppText>
         {header.region === null ? null : (

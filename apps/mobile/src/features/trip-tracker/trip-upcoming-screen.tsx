@@ -152,7 +152,7 @@ export function TripUpcomingScreen({
       >
         <TripCountCard>
           <SectionLabel>{countdownLabel}</SectionLabel>
-          <AppText variant="display" style={{ marginTop: 2 }}>
+          <AppText variant="brand" style={{ marginTop: 2 }}>
             {countdownValue}
           </AppText>
           <AppText variant="subtitle" tone="muted" style={{ marginTop: 2 }}>

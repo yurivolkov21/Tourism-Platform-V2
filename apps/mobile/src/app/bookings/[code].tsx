@@ -103,7 +103,7 @@ export default function BookingDetailRoute() {
       options={{
         title: code,
         headerTitleAlign: 'left',
-        headerTitleStyle: { fontSize: theme.type.sm.fontSize, fontFamily: theme.fonts.semibold },
+        headerTitleStyle: { fontSize: theme.type.sm.fontSize, fontWeight: theme.weight.semibold },
       }}
     />
   );

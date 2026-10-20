@@ -540,7 +540,7 @@ export function TourDetailScreen({
                 >
                   <AppText
                     variant="caption"
-                    style={{ color: theme.colors['on-media'], fontFamily: theme.fonts.semibold }}
+                    style={{ color: theme.colors['on-media'], fontWeight: theme.weight.semibold }}
                   >
                     +{moreImagesCount}
                   </AppText>
@@ -582,14 +582,14 @@ export function TourDetailScreen({
                   variant="caption"
                   style={{
                     color: theme.colors['secondary-foreground'],
-                    fontFamily: theme.fonts.semibold,
+                    fontWeight: theme.weight.semibold,
                   }}
                 >
                   {rating.toFixed(1)} · {reviewCountLabel}
                 </AppText>
               </View>
             )}
-            <AppText variant="display" tone="media">
+            <AppText variant="brand" tone="media">
               {title}
             </AppText>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing(1) }}>
@@ -629,7 +629,7 @@ export function TourDetailScreen({
                   variant="label"
                   style={{
                     color: on ? theme.colors.foreground : theme.colors['muted-foreground'],
-                    fontFamily: on ? theme.fonts.semibold : theme.fonts.medium,
+                    fontWeight: on ? theme.weight.semibold : theme.weight.medium,
                   }}
                 >
                   {tabLabels[tab]}
@@ -724,7 +724,7 @@ export function TourDetailScreen({
                           color: open
                             ? theme.colors['primary-foreground']
                             : theme.colors['primary-emphasis'],
-                          fontFamily: theme.fonts.semibold,
+                          fontWeight: theme.weight.semibold,
                         }}
                       >
                         {day.dayNumber}
@@ -773,7 +773,7 @@ export function TourDetailScreen({
                             >
                               <AppText
                                 variant="caption"
-                                style={{ width: 44, fontFamily: theme.fonts.semibold }}
+                                style={{ width: 44, fontWeight: theme.weight.semibold }}
                               >
                                 {line.time}
                               </AppText>
@@ -906,7 +906,7 @@ export function TourDetailScreen({
                           <AppText
                             variant="label"
                             style={{
-                              fontFamily: selected ? theme.fonts.semibold : theme.fonts.medium,
+                              fontWeight: selected ? theme.weight.semibold : theme.weight.medium,
                             }}
                           >
                             {row.rangeLabel}
@@ -964,7 +964,7 @@ export function TourDetailScreen({
                           <AppText
                             variant="label"
                             style={{
-                              fontFamily: selected ? theme.fonts.semibold : theme.fonts.medium,
+                              fontWeight: selected ? theme.weight.semibold : theme.weight.medium,
                             }}
                           >
                             {row.priceLabel}
@@ -1092,7 +1092,7 @@ export function TourDetailScreen({
                           variant="caption"
                           style={{
                             color: theme.colors['secondary-foreground'],
-                            fontFamily: theme.fonts.semibold,
+                            fontWeight: theme.weight.semibold,
                           }}
                         >
                           {review.initials}
@@ -1200,7 +1200,7 @@ export function TourDetailScreen({
           <AppText
             variant="label"
             numberOfLines={1}
-            style={{ flex: 1, fontFamily: theme.fonts.semibold }}
+            style={{ flex: 1, fontWeight: theme.weight.semibold }}
           >
             {title}
           </AppText>

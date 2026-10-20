@@ -105,7 +105,7 @@ export function DestinationCard({
         <Feather name="compass" size={12} color={theme.colors.rating} />
         <AppText
           variant="caption"
-          style={{ color: theme.colors['on-media'], fontFamily: theme.fonts.semibold }}
+          style={{ color: theme.colors['on-media'], fontWeight: theme.weight.semibold }}
         >
           {tourCountLabel}
         </AppText>
@@ -125,7 +125,7 @@ export function DestinationCard({
         <AppText variant="caption" tone="media" style={{ opacity: 0.85 }}>
           {eyebrow}
         </AppText>
-        <AppText variant="display" tone="media" numberOfLines={2}>
+        <AppText variant="brand" tone="media" numberOfLines={2}>
           {name}
         </AppText>
         {regionLabel === '' ? null : (

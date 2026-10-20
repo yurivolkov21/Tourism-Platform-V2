@@ -171,7 +171,7 @@ export function WriteReviewScreen({
                 <Feather name="clock" size={13} color={theme.colors.foreground} />
                 <AppText
                   variant="caption"
-                  style={{ color: theme.colors.foreground, fontFamily: theme.fonts.semibold }}
+                  style={{ color: theme.colors.foreground, fontWeight: theme.weight.semibold }}
                 >
                   {copy.pendingReview}
                 </AppText>

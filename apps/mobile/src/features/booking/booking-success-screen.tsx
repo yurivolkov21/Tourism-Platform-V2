@@ -86,7 +86,7 @@ export function BookingSuccessScreen({
           >
             <Feather name="check-circle" size={30} color={theme.colors['primary-foreground']} />
           </View>
-          <AppText variant="display" style={{ marginTop: theme.spacing(4), textAlign: 'center' }}>
+          <AppText variant="brand" style={{ marginTop: theme.spacing(4), textAlign: 'center' }}>
             {heading}
           </AppText>
           <AppText

@@ -168,7 +168,7 @@ export function MyReviewsScreen({
                 >
                   <AppText
                     variant="caption"
-                    style={{ color: pillText, fontFamily: theme.fonts.semibold }}
+                    style={{ color: pillText, fontWeight: theme.weight.semibold }}
                   >
                     {stateLabel(item.moderationState)}
                   </AppText>

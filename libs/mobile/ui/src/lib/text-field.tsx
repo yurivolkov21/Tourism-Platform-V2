@@ -144,7 +144,7 @@ export const TextField = forwardRef<TextInput, TextFieldProps>(function TextFiel
             accessibilityLabel={label}
             style={{
               color: theme.colors.foreground,
-              fontFamily: theme.fonts.normal,
+              fontWeight: theme.weight.normal,
               fontSize: theme.type.base.fontSize,
               padding: 0,
             }}

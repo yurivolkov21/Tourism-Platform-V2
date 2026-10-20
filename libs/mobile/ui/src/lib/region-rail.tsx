@@ -76,7 +76,7 @@ export function RegionRail({ items, selected, onSelect }: RegionRailProps) {
               <Text
                 numberOfLines={1}
                 style={{
-                  fontFamily: on ? theme.fonts.semibold : theme.fonts.normal,
+                  fontWeight: on ? theme.weight.semibold : theme.weight.normal,
                   fontSize: theme.type.base.fontSize,
                   letterSpacing: 0.4,
                   color: on ? theme.colors['primary-emphasis'] : theme.colors['muted-foreground'],
