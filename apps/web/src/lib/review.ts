@@ -69,9 +69,9 @@ export function reviewSlot(booking: BookingDetail, now: Date = new Date()): Revi
   }
   // Chuyến bị CÔNG TY huỷ không chạy (ADR-0041 AMEND 1) — không mời viết, kể cả khi đơn còn PAID vì
   // job hoàn tiền chưa chạy (hay kẹt retry) mà ngày về đã qua: form từng đứng dưới khối "Departure
-  // cancelled" (review cuối M1). Chỗ này web chặt hơn cổng API (`checkReviewEligibility` chưa xét
-  // chuyến huỷ) — lệch theo chiều không làm khách gõ xong bài mới bị từ chối. Đơn đã có review thì
-  // đi nhánh trên: còn sửa, rút được như mọi đơn đã đóng.
+  // cancelled" (review cuối M1). Cổng API chặn đúng ca này từ G36 (`checkReviewEligibility` →
+  // DEPARTURE_CANCELLED), nên hai bên nói cùng một câu. Đơn đã có review thì đi nhánh trên: còn
+  // sửa, rút được như mọi đơn đã đóng.
   if (booking.departureCancelled) return 'hidden';
   if (booking.status !== 'PAID') return 'hidden';
   // Ngày UTC, cố ý — xem JSDoc của `ReviewSlot`.
