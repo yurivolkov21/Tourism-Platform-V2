@@ -1,3 +1,4 @@
+import { ORPCError } from '@orpc/client';
 import type { CreateEnquiryInput } from '@tourism/contract';
 import { CreateEnquiryInputSchema } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
@@ -66,4 +67,17 @@ export function validateAskAboutDate(state: AskAboutDateState): AskAboutDateErro
     }
   }
   return errors;
+}
+
+/**
+ * Câu lỗi khi gửi tấm "Ask about this date" hỏng. `enquiries.create` có trần 5
+ * lượt mỗi phút (PUBLIC_WRITE_THROTTLE): 429 dùng câu bảo chờ của form enquiry
+ * (`enquiryErrorCopy`), vì "Please try again" ngay lúc ấy chỉ đụng trần lần
+ * nữa. Lỗi khác giữ câu chung của tấm.
+ */
+export function askAboutDateErrorCopy(error: unknown): string {
+  if (error instanceof ORPCError && error.status === 429) {
+    return messages.mobile.enquiry.errors.rateLimited;
+  }
+  return messages.mobile.tourDetail.askAboutDateSheet.error;
 }

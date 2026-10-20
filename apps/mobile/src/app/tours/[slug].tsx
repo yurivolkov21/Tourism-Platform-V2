@@ -10,6 +10,7 @@ import {
   type AskAboutDateErrors,
   type AskAboutDateField,
   type AskAboutDateState,
+  askAboutDateErrorCopy,
   buildAskAboutDatePayload,
   validateAskAboutDate,
 } from '@/features/tour-detail/ask-about-date';
@@ -289,7 +290,7 @@ export default function TourDetailRoute() {
       buildAskAboutDatePayload(askAboutDateValues, askAboutDateDeparture),
       {
         onSuccess: () => setAskAboutDateSent(true),
-        onError: () => setAskAboutDateFormError(tourDetail.askAboutDateSheet.error),
+        onError: (error) => setAskAboutDateFormError(askAboutDateErrorCopy(error)),
       },
     );
   }

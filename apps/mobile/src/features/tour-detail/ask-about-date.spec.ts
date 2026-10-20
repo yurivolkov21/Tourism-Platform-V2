@@ -1,4 +1,10 @@
-import { buildAskAboutDatePayload, validateAskAboutDate } from './ask-about-date';
+import { ORPCError } from '@orpc/client';
+import { messages } from '@tourism/i18n';
+import {
+  askAboutDateErrorCopy,
+  buildAskAboutDatePayload,
+  validateAskAboutDate,
+} from './ask-about-date';
 
 const VALID_STATE = {
   name: 'Alice Nguyen',
@@ -52,5 +58,23 @@ describe('validateAskAboutDate', () => {
 
   it('khoảng trắng đầu/cuối không tính vào độ dài (schema `.trim()` trước `.min()`)', () => {
     expect(validateAskAboutDate({ ...VALID_STATE, name: '  Al  ' })).toEqual({});
+  });
+});
+
+describe('askAboutDateErrorCopy', () => {
+  // Trần 5 lượt gửi mỗi phút của `enquiries.create`: "Please try again" ngay
+  // lúc ấy chỉ đụng trần lần nữa.
+  it('429: câu bảo chờ một phút, không phải "thử lại"', () => {
+    expect(askAboutDateErrorCopy(new ORPCError('TOO_MANY_REQUESTS', { status: 429 }))).toBe(
+      messages.mobile.enquiry.errors.rateLimited,
+    );
+  });
+
+  it('lỗi khác (5xx, mạng): câu lỗi chung của tấm', () => {
+    const generic = messages.mobile.tourDetail.askAboutDateSheet.error;
+    expect(askAboutDateErrorCopy(new ORPCError('INTERNAL_SERVER_ERROR', { status: 500 }))).toBe(
+      generic,
+    );
+    expect(askAboutDateErrorCopy(new TypeError('Network request failed'))).toBe(generic);
   });
 });
