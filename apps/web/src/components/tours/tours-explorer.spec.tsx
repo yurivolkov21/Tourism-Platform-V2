@@ -220,6 +220,22 @@ describe('ToursExplorer — phân trang', () => {
     expect(replace).toHaveBeenLastCalledWith(null, '', '/tours?categories=trekking');
   });
 
+  it('?page= vượt số trang thật thì hiện trang cuối, không báo "không khớp bộ lọc"', () => {
+    // Link cũ hoặc chia sẻ từ lúc catalogue còn nhiều tour hơn. Trước đây lưới
+    // rỗng in "No tours match your filters" và nút "Clear all filters" dù không
+    // bật bộ lọc nào (review L2, 20/10).
+    renderExplorer({ page: 9 });
+    expect(screen.getAllByRole('article')).toHaveLength(6);
+    expect(screen.getByText(/showing 11–16 of 16/i)).toBeInTheDocument();
+    expect(screen.queryByText(messages.toursPage.empty.title)).toBeNull();
+  });
+
+  it('?page= lẻ thập phân thì làm tròn xuống, không cắt lưới lệch nửa trang', () => {
+    renderExplorer({ page: 1.5 });
+    expect(screen.getAllByRole('article')).toHaveLength(10);
+    expect(screen.getByText(/showing 1–10 of 16/i)).toBeInTheDocument();
+  });
+
   it('bấm số trang 2 thì ghi page vào URL', async () => {
     const user = userEvent.setup();
     renderExplorer();

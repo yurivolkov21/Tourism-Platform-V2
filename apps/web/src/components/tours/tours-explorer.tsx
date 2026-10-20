@@ -232,7 +232,13 @@ export function ToursExplorer({
     () => sortTours(filterTours(searched, filters), key, order),
     [searched, filters, key, order],
   );
-  const paged = paginate(matched, page, pageSize);
+  // `?page=` của URL (link cũ, link chia sẻ lúc catalogue còn nhiều tour hơn, gõ
+  // tay) có thể vượt số trang thật hoặc lẻ thập phân. Kẹp về số nguyên trong dải
+  // TẠI ĐÂY chứ không để `paginate` trả trang rỗng: lưới rỗng của trang này in
+  // "No tours match your filters" dù không bật bộ lọc nào. Không sửa `paginate`
+  // vì /blog và trang vùng dùng chung nó.
+  const lastPage = Math.max(1, Math.ceil(matched.length / pageSize));
+  const paged = paginate(matched, Math.min(Math.floor(page), lastPage), pageSize);
   const activeCount = countActiveFilters(filters);
 
   /**
