@@ -2,6 +2,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { fireEvent, screen, waitFor } from '@testing-library/react-native';
 import type { PublicReview, TourDetail } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
+import { router } from 'expo-router';
 import TourDetailRoute from '@/app/tours/[slug]';
 import { formatDepartureRange } from '@/features/tour-detail/departures';
 import { orpc } from '@/lib/api/client';
@@ -16,7 +17,7 @@ jest.mock('@/lib/auth-client', () => ({
 }));
 jest.mock('@/lib/env', () => ({ env: () => ({ apiUrl: 'http://api.test' }) }));
 jest.mock('expo-router', () => ({
-  router: { push: jest.fn(), navigate: jest.fn(), back: jest.fn() },
+  router: { push: jest.fn(), navigate: jest.fn(), back: jest.fn(), dismissTo: jest.fn() },
   useLocalSearchParams: () => ({ slug: 'test-tour' }),
 }));
 
@@ -32,6 +33,8 @@ type ReviewReply = { status: number; body?: unknown } | 'pending';
 let reviewReplies: Record<number, ReviewReply[]> = {};
 let reviewPagesRequested: number[] = [];
 let reviewSortsRequested: (string | null)[] = [];
+/** Phản hồi của `catalog.tours.bySlug` khi tour KHÔNG có sẵn trong cache. */
+let tourReply: { status: number; body: unknown } | null = null;
 
 function json(status: number, body: unknown): Response {
   return new Response(JSON.stringify(body), {
@@ -41,11 +44,16 @@ function json(status: number, body: unknown): Response {
 }
 
 beforeEach(() => {
+  jest.clearAllMocks();
+  tourReply = null;
   reviewReplies = {};
   reviewPagesRequested = [];
   reviewSortsRequested = [];
   globalThis.fetch = jest.fn((input: RequestInfo | URL) => {
     const url = new URL(input instanceof Request ? input.url : String(input));
+    if (tourReply !== null && url.pathname.endsWith(`/api/tours/${SLUG}`)) {
+      return Promise.resolve(json(tourReply.status, tourReply.body));
+    }
     if (!url.pathname.endsWith(`/api/tours/${SLUG}/reviews`)) {
       return Promise.reject(new Error(`unexpected call ${url.pathname}`));
     }
@@ -142,18 +150,23 @@ function reviewPage(page: number, totalPages: number, items: PublicReview[]) {
   };
 }
 
-/** Dựng route với chi tiết tour có sẵn trong cache — không gọi mạng cho `catalog.tours.bySlug`. */
-async function renderRoute(tour: TourDetail) {
+/**
+ * Dựng route với chi tiết tour có sẵn trong cache — không gọi mạng cho
+ * `catalog.tours.bySlug`. `null`: không nạp sẵn, route gọi `fetch` (xem `tourReply`).
+ */
+async function renderRoute(tour: TourDetail | null) {
   // `staleTime: Infinity`: tour trong cache không bị gọi lại khi mount (lượt gọi
   // lại hỏng sẽ đẩy query sang `error` dù còn dữ liệu).
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false, staleTime: Infinity }, mutations: { gcTime: 0 } },
   });
   clients.push(client);
-  client.setQueryData(
-    orpc.catalog.tours.bySlug.queryOptions({ input: { slug: SLUG } }).queryKey,
-    tour,
-  );
+  if (tour !== null) {
+    client.setQueryData(
+      orpc.catalog.tours.bySlug.queryOptions({ input: { slug: SLUG } }).queryKey,
+      tour,
+    );
+  }
   await renderWithTheme(
     <QueryClientProvider client={client}>
       <TourDetailRoute />
@@ -289,5 +302,21 @@ describe('TourDetailRoute — tab Reviews', () => {
     expect(screen.queryByText('Newest review')).toBeNull();
     expect(reviewSortsRequested).toEqual(['newest', 'highest']);
     expect(reviewPagesRequested).toEqual([1, 1]);
+  });
+});
+
+describe('TourDetailRoute — tour không còn', () => {
+  // Trang tour nằm ở stack gốc, trên bộ tab: `navigate('/explore')` dựng thêm
+  // một bộ tab đè lên, nên back từ Explore về Home rồi lại về trang tour.
+  it('"Explore other tours" lùi về bộ tab đang có, không dựng thêm bộ tab', async () => {
+    tourReply = {
+      status: 404,
+      body: { defined: true, code: 'NOT_FOUND', status: 404, message: 'Tour not found' },
+    };
+    await renderRoute(null);
+
+    await fireEvent.press(await screen.findByText(t.exploreOther));
+    expect(router.dismissTo).toHaveBeenCalledWith('/explore');
+    expect(router.navigate).not.toHaveBeenCalled();
   });
 });

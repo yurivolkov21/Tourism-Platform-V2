@@ -431,7 +431,10 @@ export default function TourDetailRoute() {
       notFoundTitle={tourDetail.notFound}
       goBackLabel={tourDetail.goBack}
       exploreOtherLabel={tourDetail.exploreOther}
-      onExploreOther={() => router.navigate('/explore')}
+      // Lùi về bộ tab đang có rồi mở Explore, như B8 (`bookings/new/success.tsx`).
+      // Trang tour nằm ở stack gốc: `navigate('/explore')` dựng thêm một bộ tab đè
+      // lên, back từ Explore về Home rồi lại về trang tour không còn này.
+      onExploreOther={() => router.dismissTo('/explore')}
       galleryImages={galleryImages.map((m) => ({ url: m.url, alt: m.alt ?? tour?.title ?? '' }))}
       galleryPhotos={galleryPhotos}
       moreImagesCount={Math.max(0, galleryImages.length - 3)}
