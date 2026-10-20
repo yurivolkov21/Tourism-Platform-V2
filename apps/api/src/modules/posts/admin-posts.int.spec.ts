@@ -447,6 +447,21 @@ describe('admin posts integration (P4e-4)', () => {
       expect(revalidate).toHaveBeenCalledWith(['posts', 'post:p4e4-post-1']);
     });
 
+    it('gửi kèm slug cũng không đổi được — slug đặt một lần lúc tạo, link cũ không gãy (ADR-0051 §2)', async () => {
+      // Trọng tâm 2 của review A3: input của `update` không có khoá `slug` và Zod bỏ khoá lạ,
+      // nên một lệnh mang slug mới (client cũ, lệnh gõ tay) vẫn không dời được trang của bài.
+      await makePost(1);
+      const revalidate = vi.spyOn(web, 'revalidate').mockResolvedValue(undefined);
+
+      const res = await save(1, await fullSave(1, { slug: 'renamed-post' }));
+
+      expect(res.statusCode).toBe(200);
+      expect(AdminPostDetailSchema.parse(res.json()).slug).toBe('p4e4-post-1');
+      const row = await prisma.post.findUniqueOrThrow({ where: { id: postId(1) } });
+      expect(row.slug).toBe('p4e4-post-1');
+      expect(revalidate).toHaveBeenCalledWith(['posts', 'post:p4e4-post-1']);
+    });
+
     it('phiên bản cũ: 409 STALE_POST, không đổi gì, không bust', async () => {
       await makePost(1);
       const stale = await fullSave(1);
