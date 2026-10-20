@@ -486,6 +486,8 @@ describe('ChatPanel — thẻ xác nhận enquiry', () => {
     expect(await screen.findByText('No problem, it is not sent.')).toBeInTheDocument();
     expect(within(card).queryByRole('button', { name: t.confirm.send })).toBeNull();
     expect(within(card).getByText(t.confirm.cancelled)).toBeInTheDocument();
+    // Thẻ đóng vẫn ghi tour như bản API lưu (tải lại thấy y vậy).
+    expect(within(card).getByText('Ha Long Bay 2D1N')).toBeInTheDocument();
     expect(api.posts[1]).toMatchObject({ input: { type: 'message', text: 'Actually, wait' } });
   });
 

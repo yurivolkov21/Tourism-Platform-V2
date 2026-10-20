@@ -255,7 +255,8 @@ function denyPendingApprovals(message: ConciergeMessage): ConciergeMessage {
         ? {
             ...part,
             state: 'output-denied' as const,
-            approval: { id: part.approval.id, approved: false as const },
+            // Giữ `requestReason` (tên tour) như bản API lưu (`deny` ở chat-history.ts).
+            approval: { ...part.approval, approved: false as const },
           }
         : part,
     ),
