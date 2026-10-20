@@ -22,9 +22,9 @@ import type { SectionBanner } from '@/lib/use-section-save';
  *   chưa hỏng. Reload đi qua `onReload` của form: form tự nạp bản mới, không
  *   phải gỡ rồi dựng lại (vòng review F17).
  *
- * Bước (ADR-0049 §6): `lead` trải hết bề ngang trên hai cột; `aside` là cột phải — do
- * CHÍNH form dựng nên đọc được giá trị đang soạn; `next` là link đi tiếp cạnh Save. Link
- * là `<a>` thật nên hộp hỏi lại chặn nó như mọi link khác.
+ * Bước (ADR-0049 §6): `aside` là cột phải — do CHÍNH form dựng nên đọc được giá trị đang
+ * soạn; `next` là link đi tiếp cạnh Save. Link là `<a>` thật nên hộp hỏi lại chặn nó như mọi
+ * link khác.
  */
 const t = messages.admin.tours.editor;
 const SAVE_LABELS = [t.save, t.saving] as const;

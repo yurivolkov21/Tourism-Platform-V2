@@ -48,8 +48,8 @@ export function toIsoDate(date: Date): string {
 
 /**
  * `Date` → nhãn NGẮN cho nút khoảng ngày ("Sep 05, 2026"). Tháng viết tắt vì
- * nút phải chứa được HAI ngày cạnh nhau; dạng dài của `formatDateLabel` thì
- * một mình đã gần bằng chiều rộng cả nút.
+ * nút phải chứa được HAI ngày cạnh nhau; dạng tháng viết đủ (như `formatDateLabel`
+ * cũ, đã bỏ) thì một mình đã gần bằng chiều rộng cả nút.
  */
 function formatShortDateLabel(date: Date): string {
   return date.toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: 'numeric' });

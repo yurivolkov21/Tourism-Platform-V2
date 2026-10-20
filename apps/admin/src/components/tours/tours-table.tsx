@@ -35,7 +35,7 @@ import type { TourRowVM } from '@/lib/tours-view';
  * `serverTableFeatures`): không checkbox, không fork rút gọn; user chốt
  * 31/08: mọi bảng vùng một kiểu. Trang/filter sống trên URL.
  *
- * Cột theo spec: Tour · Category · Base price · Open departures · On sale ·
+ * Cột theo spec: Tour · Category · Base price · Bookable departures · On sale ·
  * Actions. Cột Tour KHÔNG ẩn được — nó là danh tính của hàng.
  *
  * Hai đường ra khỏi hàng, có chủ đích, chứ không phải một cú bấm lên cả hàng:

@@ -23,8 +23,8 @@ import { withDeliveryTransform } from '@/lib/cloudinary-url';
 import { type LoadPhotoLibraryAction, libraryLoadErrorCopy } from '@/lib/photo-library';
 
 /**
- * Hộp chọn ảnh từ kho địa danh (ADR-0048 §9) — kit dùng chung: tab Photos của tour (F18)
- * và card Cover của bài viết (P4e-4, ADR-0051 §8).
+ * Hộp chọn ảnh từ kho địa danh (ADR-0048 §9) — kit dùng chung: tab Photos của tour (F18),
+ * card Cover của bài viết (P4e-4, ADR-0051 §8) và hộp thay ảnh một khe của Appearance (ADR-0059).
  *
  * - Thư viện tải MỘT lần khi hộp mở lần đầu; nơi dùng giữ nó (`library`/`onLoaded`) cho
  *   các lần mở sau.

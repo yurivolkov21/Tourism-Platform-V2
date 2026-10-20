@@ -52,9 +52,11 @@ export const AdminTourRowSchema = z.object({
    */
   heroUrl: z.url().nullable(),
   /**
-   * Số chuyến còn MỞ (`status = OPEN`) trong KHOẢNG LỌC của chính lượt gọi
-   * này — không phải toàn bộ lịch sử chuyến của tour. Không có `?month=` thì
-   * khoảng là "từ hôm nay (giờ Việt Nam) trở đi"; có thì là đúng tháng ấy.
+   * Số chuyến khách còn đặt được trong KHOẢNG LỌC của chính lượt gọi này — giai đoạn
+   * `on-sale` của `departurePhase` (ADR-0046: OPEN và chưa qua hạn chót), đúng thứ màn chuyến
+   * in "Bookable"; tên field còn từ thuở chỉ đếm `status = OPEN`. Không phải toàn bộ lịch sử
+   * chuyến của tour: không có `?month=` thì khoảng là "từ hôm nay (giờ Việt Nam) trở đi"; có
+   * thì là đúng tháng ấy.
    *
    * Đây là cột trả lời câu "tour nào tháng sau còn chạy" ngay tại màn danh
    * sách, thay vì phải bấm vào từng tour (spec §2a).

@@ -10,8 +10,8 @@ import type { AdminTourDetail } from '@tourism/contract';
  * vắng mặt nhưng tab Departures vẫn phải sống. Ném tiếp ở layout là kéo cả tab
  * ấy xuống trang lỗi, đúng lớp lỗi vòng review F16 từng vá.
  *
- * Bốn tab còn lại đọc lại cùng lượt ấy (React `cache()`), nên chúng vẫn ra trang
- * lỗi như cũ — chúng không có gì để hiện khi không đọc được tour.
+ * Sáu bước còn lại (Details tới Review) đọc lại cùng lượt ấy (React `cache()`), nên
+ * chúng vẫn ra trang lỗi như cũ — chúng không có gì để hiện khi không đọc được tour.
  */
 export type WorkspaceTour =
   | { kind: 'found'; detail: AdminTourDetail }

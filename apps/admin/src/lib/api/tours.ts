@@ -58,7 +58,7 @@ export interface TourCategoryOption {
  * không phải cho gọn: từ F14 admin có nút Hide, mà endpoint CÔNG KHAI chỉ trả
  * hàng đang bật — ẩn một danh mục là menu lọc ở `/tours` của chính back office
  * mất mục ấy, nên không còn cách nào lọc ra các tour thuộc nó để đi sửa, đúng
- * lúc người ta cần nhất. Nếu URL đang mang `?categoryId=<uuid>` thì
+ * lúc người ta cần nhất. Nếu URL đang mang `?category=<uuid>` thì
  * `ToursCategoryMenu` rơi về `unknownItem` và bày một UUID trần cho admin đọc.
  *
  * Kèm theo, cả đoạn cảnh báo về `PUBLIC_READ_THROTTLE` của bản cũ hết hiệu

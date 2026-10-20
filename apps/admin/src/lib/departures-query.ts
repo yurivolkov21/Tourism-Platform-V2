@@ -77,8 +77,7 @@ export function departuresPath(slug: string): string {
 }
 
 /**
- * Đường VỀ danh sách tour. Trang `/tours` là của F11; tới khi nhánh đó lên
- * `main`, link này 404 — cố ý, và ghi trong bàn giao. Một breadcrumb trỏ
- * thẳng chỗ đúng vẫn tốt hơn một breadcrumb không có.
+ * Đường VỀ danh sách tour `/tours` — một bản, để không nơi nào tự ghép chuỗi. Nằm ở đây vì
+ * bảng chuyến dùng nó trước tiên; nút bật bán, vùng xoá tour và `useSectionSave` cũng nhập.
  */
 export const TOURS_LIST_HREF = '/tours';
