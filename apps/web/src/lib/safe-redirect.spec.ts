@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { safeRedirect } from './safe-redirect';
+import { safeRedirect, withRedirect } from './safe-redirect';
 
 describe('safeRedirect', () => {
   it('giữ nguyên path local hợp lệ có query string', () => {
@@ -45,5 +45,25 @@ describe('safeRedirect', () => {
 
   it('dùng fallback tùy biến khi truyền vào', () => {
     expect(safeRedirect('//evil.example', '/dashboard')).toBe('/dashboard');
+  });
+});
+
+describe('withRedirect', () => {
+  it('nối đích đã lọc vào path, có mã hoá', () => {
+    expect(withRedirect('/register', '/tours/ha-long/book?date=2026-11-02')).toBe(
+      '/register?redirect=%2Ftours%2Fha-long%2Fbook%3Fdate%3D2026-11-02',
+    );
+  });
+
+  it('path đã có query → nối bằng &', () => {
+    expect(withRedirect('/verify-email?email=a%40b.c', '/account')).toBe(
+      '/verify-email?email=a%40b.c&redirect=%2Faccount',
+    );
+  });
+
+  it('không có đích, đích là / hoặc đích không an toàn → giữ path trần', () => {
+    expect(withRedirect('/login', null)).toBe('/login');
+    expect(withRedirect('/login', '/')).toBe('/login');
+    expect(withRedirect('/login', '//evil.example')).toBe('/login');
   });
 });

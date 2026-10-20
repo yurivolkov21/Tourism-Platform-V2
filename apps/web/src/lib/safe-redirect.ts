@@ -12,3 +12,13 @@ export function safeRedirect(raw: unknown, fallback = '/'): string {
   }
   return raw;
 }
+
+/** Nối đích `redirect` (đã qua `safeRedirect`) vào một đường dẫn, để khách chuyển giữa các
+    trang đăng nhập, đăng ký, xác minh mà không mất trang định quay về. Đích là `/` (không
+    có, hoặc không an toàn) thì giữ path trần. */
+export function withRedirect(path: string, raw: unknown): string {
+  const target = safeRedirect(raw);
+  if (target === '/') return path;
+  const separator = path.includes('?') ? '&' : '?';
+  return `${path}${separator}redirect=${encodeURIComponent(target)}`;
+}

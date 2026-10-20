@@ -15,7 +15,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { type FormEvent, useState } from 'react';
 import { GoogleIcon } from '@/components/icons/social';
 import { authClient } from '@/lib/auth-client';
-import { safeRedirect } from '@/lib/safe-redirect';
+import { safeRedirect, withRedirect } from '@/lib/safe-redirect';
 import { FieldError, invalidProps } from './field-error';
 import { PasswordStrengthField } from './password-strength-field';
 import { TicketCard } from './ticket-card';
@@ -72,7 +72,14 @@ export function RegisterForm() {
         }
         return;
       }
-      router.push(`/verify-email?email=${encodeURIComponent(email)}`);
+      // Giữ đích (review L1): khách bị đẩy tới đăng nhập từ trang đặt tour, rồi sang đăng
+      // ký, phải về lại trang ấy sau khi xác minh và đăng nhập.
+      router.push(
+        withRedirect(
+          `/verify-email?email=${encodeURIComponent(email)}`,
+          searchParams.get('redirect'),
+        ),
+      );
     } catch {
       setFormError('generic');
     } finally {
@@ -224,7 +231,10 @@ export function RegisterForm() {
 
         <p className="text-center text-sm text-muted-foreground">
           {t.haveAccount}{' '}
-          <a href="/login" className="font-medium text-primary-emphasis hover:underline">
+          <a
+            href={withRedirect('/login', searchParams.get('redirect'))}
+            className="font-medium text-primary-emphasis hover:underline"
+          >
             {t.logIn}
           </a>
         </p>

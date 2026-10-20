@@ -207,6 +207,30 @@ describe('LoginForm — submit', () => {
   });
 });
 
+describe('LoginForm — link sang đăng ký', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  // Review L1: khách mới bị đẩy tới /login từ trang đặt tour bấm "Create account" từng mất
+  // đích, đăng ký và xác minh xong thì về trang chủ.
+  it('link "Create account" mang theo redirect đã lọc', () => {
+    searchParamsGet.mockReturnValue('/tours/ha-long/book');
+    render(<LoginForm />);
+    expect(
+      screen.getByRole('link', { name: messages.authForms.login.createAccount }),
+    ).toHaveAttribute('href', '/register?redirect=%2Ftours%2Fha-long%2Fbook');
+  });
+
+  it('không có redirect → link trần /register', () => {
+    searchParamsGet.mockReturnValue(null);
+    render(<LoginForm />);
+    expect(
+      screen.getByRole('link', { name: messages.authForms.login.createAccount }),
+    ).toHaveAttribute('href', '/register');
+  });
+});
+
 describe('LoginForm — Google', () => {
   beforeEach(() => {
     vi.clearAllMocks();

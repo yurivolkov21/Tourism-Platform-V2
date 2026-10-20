@@ -16,7 +16,7 @@ import { type FormEvent, useState } from 'react';
 import { toast } from 'sonner';
 import { GoogleIcon } from '@/components/icons/social';
 import { authClient } from '@/lib/auth-client';
-import { safeRedirect } from '@/lib/safe-redirect';
+import { safeRedirect, withRedirect } from '@/lib/safe-redirect';
 import { FieldError, invalidProps } from './field-error';
 import { TicketCard } from './ticket-card';
 
@@ -213,7 +213,10 @@ export function LoginForm() {
 
         <p className="text-center text-sm text-muted-foreground">
           {t.newHere}{' '}
-          <a href="/register" className="font-medium text-primary-emphasis hover:underline">
+          <a
+            href={withRedirect('/register', searchParams.get('redirect'))}
+            className="font-medium text-primary-emphasis hover:underline"
+          >
             {t.createAccount}
           </a>
         </p>

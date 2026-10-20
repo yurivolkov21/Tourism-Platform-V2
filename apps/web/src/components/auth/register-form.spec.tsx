@@ -144,6 +144,36 @@ describe('RegisterForm — submit', () => {
   });
 });
 
+describe('RegisterForm — giữ đích sau đăng ký (review L1)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    searchParamsGet.mockReturnValue('/tours/ha-long/book');
+  });
+
+  it('thành công → /verify-email mang theo redirect để đăng nhập xong về đúng trang', async () => {
+    signUpEmail.mockResolvedValueOnce({ data: { user: { id: '1' } }, error: null });
+    const user = userEvent.setup();
+    render(<RegisterForm />);
+
+    await fillValidRegistration(user);
+    await user.click(screen.getByRole('button', { name: 'Create my account' }));
+
+    await waitFor(() =>
+      expect(push).toHaveBeenCalledWith(
+        '/verify-email?email=minh%40example.com&redirect=%2Ftours%2Fha-long%2Fbook',
+      ),
+    );
+  });
+
+  it('link "Log in" mang theo redirect', () => {
+    render(<RegisterForm />);
+    expect(screen.getByRole('link', { name: messages.authForms.register.logIn })).toHaveAttribute(
+      'href',
+      '/login?redirect=%2Ftours%2Fha-long%2Fbook',
+    );
+  });
+});
+
 describe('RegisterForm — Google', () => {
   beforeEach(() => {
     vi.clearAllMocks();
