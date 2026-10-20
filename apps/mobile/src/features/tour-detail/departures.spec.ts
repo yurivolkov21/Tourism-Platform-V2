@@ -33,8 +33,18 @@ describe('formatFullDate', () => {
     expect(formatFullDate('2026-09-21')).toBe('21 Sep 2026');
   });
 
-  it('chuỗi ISO datetime — chỉ đọc 10 ký tự đầu', () => {
+  it('mốc thời gian ISO: in ngày lịch Việt Nam', () => {
     expect(formatFullDate('2026-09-21T10:15:00.000Z')).toBe('21 Sep 2026');
+  });
+
+  // M3-10: 18:30 UTC ngày 20 là 01:30 sáng 21 giờ Việt Nam — cắt 10 ký tự đầu
+  // (ngày UTC) là in lùi một ngày so với web (`vietnamDay`).
+  it('mốc thời gian từ 00:00 tới 07:00 giờ Việt Nam không lùi về hôm trước', () => {
+    expect(formatFullDate('2026-09-20T18:30:00.000Z')).toBe('21 Sep 2026');
+  });
+
+  it('cuối năm theo giờ Việt Nam sang năm mới', () => {
+    expect(formatFullDate('2026-12-31T17:00:00.000Z')).toBe('1 Jan 2027');
   });
 });
 

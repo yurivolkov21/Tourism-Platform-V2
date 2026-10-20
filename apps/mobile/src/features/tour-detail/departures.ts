@@ -1,3 +1,5 @@
+import { vietnamToday } from '@tourism/contract';
+
 const DOW = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] as const;
 const MONTHS_SHORT = [
   'Jan',
@@ -66,11 +68,18 @@ export function formatDepartureMonth(date: string): string {
   return `${MONTHS_FULL[p.m - 1]} ${p.y}`;
 }
 
-/** "21 Sep 2026" — ngày đầy đủ kèm năm, không thứ (chi tiết booking T4/T7/T8:
- *  "Paid on"/"Cancelled on"). Nhận chuỗi ISO datetime hoặc date-only — chỉ
- *  đọc 10 ký tự đầu. */
+/**
+ * "21 Sep 2026" — ngày đầy đủ kèm năm, không thứ (chi tiết booking T4/T7/T8:
+ * "Paid on"/"Cancelled on", ngày review, ngày đăng bài).
+ *
+ * Nhận ngày lịch `YYYY-MM-DD` (in nguyên) hoặc mốc thời gian ISO. Mốc thời gian
+ * quy về ngày lịch VIỆT NAM trước khi in (ADR-0041 §7, cùng `vietnamDay` của
+ * web): cắt 10 ký tự đầu là lấy ngày UTC, nên mốc từ 00:00 tới 07:00 giờ Việt
+ * Nam từng in lùi một ngày (M3-10).
+ */
 export function formatFullDate(date: string): string {
-  const p = dateParts(date.slice(0, 10));
+  const day = date.length > 10 ? vietnamToday(new Date(date)) : date;
+  const p = dateParts(day);
   return `${p.d} ${MONTHS_SHORT[p.m - 1]} ${p.y}`;
 }
 

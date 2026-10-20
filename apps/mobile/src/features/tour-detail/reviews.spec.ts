@@ -9,6 +9,11 @@ describe('formatReviewDate', () => {
   it('"5 Jul 2026" — ngày (không đệm 0) + tháng viết tắt + năm', () => {
     expect(formatReviewDate('2026-07-05T10:30:00.000Z')).toBe('5 Jul 2026');
   });
+
+  // Cùng luật `formatFullDate`: ngày lịch Việt Nam, không phải ngày UTC.
+  it('bài viết lúc 06:00 giờ Việt Nam vẫn mang đúng ngày Việt Nam', () => {
+    expect(formatReviewDate('2026-07-04T23:00:00.000Z')).toBe('5 Jul 2026');
+  });
 });
 
 describe('reviewAuthorInitials', () => {

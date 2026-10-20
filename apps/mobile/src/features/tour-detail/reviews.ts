@@ -1,26 +1,13 @@
-const MONTHS_SHORT = [
-  'Jan',
-  'Feb',
-  'Mar',
-  'Apr',
-  'May',
-  'Jun',
-  'Jul',
-  'Aug',
-  'Sep',
-  'Oct',
-  'Nov',
-  'Dec',
-] as const;
+import { formatFullDate } from './departures';
 
 /**
- * "5 Jul 2026" — `createdAt` là datetime ISO thật (khác ngày lịch date-only
- * của `departures.ts`), nên đọc qua `Date` là hợp lệ. Dùng getter UTC để kết
- * quả không phụ thuộc múi giờ máy chạy test/app.
+ * "5 Jul 2026" — ngày của review (và ngày đăng bài viết). `createdAt` là mốc
+ * thời gian ISO: đi qua `formatFullDate` để in ngày lịch VIỆT NAM, không phụ
+ * thuộc múi giờ máy. Trước đây đọc getter UTC nên review hay bài đăng từ 00:00
+ * tới 07:00 giờ Việt Nam in lùi một ngày.
  */
 export function formatReviewDate(createdAt: string): string {
-  const d = new Date(createdAt);
-  return `${d.getUTCDate()} ${MONTHS_SHORT[d.getUTCMonth()]} ${d.getUTCFullYear()}`;
+  return formatFullDate(createdAt);
 }
 
 /**
