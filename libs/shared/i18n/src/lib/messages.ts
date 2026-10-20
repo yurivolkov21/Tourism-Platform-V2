@@ -7770,7 +7770,7 @@ export const messages = {
       list: {
         /** Nói ngay luật đắt nhất của màn, trước khi ai đó mở form sửa. */
         subtitle:
-          'Dates can only change while a departure has no live bookings — every booking keeps its own copy of the travel dates.',
+          'Dates can only change while no seats are booked — every booking keeps its own copy of the travel dates.',
         /**
          * Dòng báo đầu trang khi tour chưa đăng (spec F16 §2h). Nói bằng ĐÚNG
          * chữ của trang Tours — tab "Off sale", công tắc "On sale" — vì đó là
@@ -7944,7 +7944,7 @@ export const messages = {
         actionLabel: (dates: string) => `Edit the departure on ${dates}`,
         dialog: {
           title: 'Edit this departure',
-          body: 'Price and seats can always change. Dates can only change while nobody has booked.',
+          body: 'Price and seats can always change. Dates can only change while no seats are booked.',
           submit: 'Save changes',
           submitting: 'Saving…',
         },
@@ -7972,6 +7972,15 @@ export const messages = {
           TRIP_LENGTH_MISMATCH:
             "The new dates do not match this tour's length, so nothing was saved. The table has been refreshed — reopen the form and pick the start date again.",
         },
+        /**
+         * Dời ngày khi còn checkout đang dở (review A2). Server vẫn cho dời — chặn chỉ thu hẹp cửa sổ
+         * chứ không đóng được nó (ADR-0009 AMEND 4) — nhưng thanh toán về sau đó bị gate claim từ
+         * chối rồi hoàn tiền tự động kèm email. Cùng giọng `closePendingWarning` của hộp Close.
+         */
+        datesPendingWarning: (count: number) =>
+          count === 1
+            ? 'One traveller is paying for this departure right now. If you change its dates, their payment is refunded automatically and they are emailed about it.'
+            : `${count} travellers are paying for this departure right now. If you change its dates, their payments are refunded automatically and they are emailed about it.`,
         toast: {
           title: 'Departure updated',
           body: (dates: string) => `${dates} is saved.`,

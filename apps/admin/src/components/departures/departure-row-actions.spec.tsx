@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { messages } from '@tourism/i18n';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -284,6 +284,24 @@ describe('DepartureRowActions — form sửa mang theo token phiên bản', () =
     expect(update).toHaveBeenCalledWith(
       expect.objectContaining({ id: ROW.id, version: ROW.version }),
     );
+  });
+});
+
+describe('DepartureRowActions — dời ngày khi còn checkout đang dở (review A2)', () => {
+  it('đổi ngày đi trên chuyến có người đang trả: hộp sửa nói trước rằng họ sẽ được hoàn', async () => {
+    // ADR-0009 AMEND 4: server vẫn cho dời ngày (chưa ghế nào bị giữ), nhưng thanh toán về sau
+    // đó bị gate claim từ chối rồi hoàn tự động kèm email — admin phải biết trước khi bấm.
+    const user = userEvent.setup();
+    const { dates } = renderActions({ ...ROW, pendingBookingCount: 2 }, BEFORE_DEADLINE);
+
+    await user.click(screen.getByRole('button', { name: t.edit.actionLabel(dates) }));
+    await screen.findByText(t.edit.dialog.title);
+    expect(screen.queryByText(t.edit.datesPendingWarning(2))).not.toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText(t.form.startDate), {
+      target: { value: '2026-10-11' },
+    });
+    expect(screen.getByText(t.edit.datesPendingWarning(2))).toBeInTheDocument();
   });
 });
 

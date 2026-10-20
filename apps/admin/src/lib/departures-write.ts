@@ -243,6 +243,23 @@ export function createDeadlineHint(values: DepartureFormValues, today: string): 
 }
 
 /**
+ * Dời ngày một chuyến còn khách ĐANG trả tiền — câu cảnh báo, hoặc `undefined` (review A2).
+ *
+ * Server cho dời ngày khi chưa ghế nào bị giữ, kể cả lúc có checkout đang dở: chặn ở đó chỉ thu
+ * hẹp cửa sổ chứ không đóng được nó (ADR-0009 AMEND 4). Thanh toán về SAU khi dời bị gate claim
+ * từ chối, hoàn tiền tự động kèm email — admin phải biết trước khi bấm, cùng lý lẽ câu
+ * `closePendingWarning` của hộp Close. So với ngày ĐANG lưu của hàng: đó là thứ server so.
+ */
+export function editDatesHint(
+  values: DepartureFormValues,
+  row: { startDate: string; endDate: string; pendingBookingCount: number },
+): string | undefined {
+  if (row.pendingBookingCount === 0) return undefined;
+  const moved = values.startDate !== row.startDate || values.endDate !== row.endDate;
+  return moved ? t.edit.datesPendingWarning(row.pendingBookingCount) : undefined;
+}
+
+/**
  * Ngày về suy từ ngày đi: chuyến dài ĐÚNG `durationDays` ngày lịch (L = về − đi + 1, ADR-0041),
  * cùng luật server canh bằng `TRIP_LENGTH_MISMATCH` (review A2, M3-13). Ngày đi chưa gõ xong thì
  * trả chuỗi rỗng — ô ngày đi đã có câu lỗi riêng của nó.

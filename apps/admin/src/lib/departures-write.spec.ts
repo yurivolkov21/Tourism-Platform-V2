@@ -8,6 +8,7 @@ import {
   createdToast,
   departureEndDate,
   departureFormPayload,
+  editDatesHint,
   isCreateStale,
   isSetStatusStale,
   isUpdateStale,
@@ -222,6 +223,27 @@ describe('createDeadlineHint', () => {
     // phép giết cả dialog đang mở.
     expect(createDeadlineHint({ ...DATES, startDate: '' }, '2026-11-29')).toBeUndefined();
     expect(createDeadlineHint({ ...DATES, endDate: '2026-11-30' }, '2026-11-29')).toBeUndefined();
+  });
+});
+
+describe('editDatesHint (review A2 — dời ngày khi còn checkout đang dở)', () => {
+  const ROW = { startDate: '2026-12-01', endDate: '2026-12-05', pendingBookingCount: 2 };
+  const SAME = { ...VALID, startDate: ROW.startDate, endDate: ROW.endDate };
+
+  it('dời ngày khi còn người đang trả: cảnh báo mang đúng số người', () => {
+    expect(editDatesHint({ ...SAME, startDate: '2026-12-02', endDate: '2026-12-06' }, ROW)).toBe(
+      t.edit.datesPendingWarning(2),
+    );
+  });
+
+  it('ngày giữ nguyên thì im — sửa ghế, giá không đụng tới ai', () => {
+    expect(editDatesHint({ ...SAME, seats: '20' }, ROW)).toBeUndefined();
+  });
+
+  it('không ai đang trả thì im, kể cả khi dời ngày', () => {
+    expect(
+      editDatesHint({ ...SAME, startDate: '2026-12-02' }, { ...ROW, pendingBookingCount: 0 }),
+    ).toBeUndefined();
   });
 });
 

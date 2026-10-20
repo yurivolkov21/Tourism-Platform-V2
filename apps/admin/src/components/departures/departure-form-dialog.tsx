@@ -69,7 +69,8 @@ export interface DepartureFormDialogProps<Code extends string> {
   /**
    * Cảnh báo phụ thuộc thứ NGƯỜI TA ĐANG GÕ — nhận values hiện tại, trả câu
    * cần nói hoặc `undefined`. Hàm chứ không chuỗi, vì cha không nhìn thấy
-   * state của form (chỉ dùng ở chiều THÊM: chuyến tạo ra đã quá hạn đặt).
+   * state của form. Chiều THÊM: chuyến tạo ra đã quá hạn đặt; chiều SỬA (review
+   * A2): dời ngày khi còn checkout đang dở thì thanh toán ấy bị hoàn tự động.
    */
   notice?: (values: DepartureFormValues) => string | undefined;
   /** Giá gốc của tour, đã format — gợi ý cho ô giá để trống. */
@@ -215,7 +216,8 @@ export function DepartureFormDialog<Code extends string>({
             </div>
 
             {/* Cảnh báo NGAY dưới hai ô ngày, vì nó nói về chính hai ô ấy — và
-              tông destructive vì thứ sắp tạo ra sẽ không bán được. */}
+              tông destructive vì cả hai câu báo một hậu quả xấu: chuyến không bán
+              được, hay thanh toán đang dở bị hoàn. */}
             {noticeMessage ? (
               <p className="text-sm text-destructive-emphasis">{noticeMessage}</p>
             ) : null}

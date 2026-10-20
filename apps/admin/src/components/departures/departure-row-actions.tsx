@@ -18,6 +18,7 @@ import {
   cancelConfirmRows,
   cancelDialogCopy,
   cancelErrorCopy,
+  editDatesHint,
   isCancelStale,
   isSetStatusStale,
   isUpdateStale,
@@ -220,6 +221,8 @@ export function DepartureRowActions({
           }}
           seatsBooked={row.seatsBooked}
           durationDays={durationDays}
+          // Dời ngày khi còn checkout đang dở: thanh toán ấy sẽ bị hoàn tự động — nói trước.
+          notice={(values) => editDatesHint(values, row)}
           basePriceLabel={basePriceLabel}
           isStale={isUpdateStale}
           errorCopy={updateErrorCopy}
