@@ -365,10 +365,20 @@ describe('canWriteReview — hoá đơn mời viết đánh giá (nợ nhỏ P5b
     expect(canWriteReview(makeBooking({ departureCancelled: true }), ARRIVAL_UTC)).toBe(false);
   });
 
-  it.each(['PENDING', 'CANCELLED', 'REFUNDED', 'PARTIALLY_REFUNDED'] as const)(
-    '%s → không mời (cổng API chỉ nhận PAID)',
+  // L5-07: hoàn một phần, hay hoàn thiện chí trọn mà không huỷ, thì khách vẫn đi (ADR-0054 AMEND 1)
+  // — cổng API nhận như đơn PAID (`bookingKeepsTrip`), nên hoá đơn mời viết như đơn PAID.
+  it.each(['PARTIALLY_REFUNDED', 'REFUNDED'] as const)(
+    '%s chưa huỷ thật (khách vẫn đi) → mời viết như đơn PAID',
     (status) => {
-      expect(canWriteReview(makeBooking({ status }), ARRIVAL_UTC)).toBe(false);
+      expect(canWriteReview(makeBooking({ status }), ARRIVAL_UTC)).toBe(true);
     },
   );
+
+  it.each([
+    ['PENDING', 'PENDING', null],
+    ['CANCELLED', 'CANCELLED', '2026-10-05T00:00:00.000Z'],
+    ['REFUNDED huỷ thật rồi mới hoàn', 'REFUNDED', '2026-10-05T00:00:00.000Z'],
+  ] as const)('%s → không mời', (_label, status, cancelledAt) => {
+    expect(canWriteReview(makeBooking({ status, cancelledAt }), ARRIVAL_UTC)).toBe(false);
+  });
 });

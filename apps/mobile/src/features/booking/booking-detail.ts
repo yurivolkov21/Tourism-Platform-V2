@@ -1,5 +1,10 @@
 import { ORPCError } from '@orpc/client';
-import { ACTIVE_BOOKING_STATUSES, type BookingDetail, type BookingPhase } from '@tourism/contract';
+import {
+  ACTIVE_BOOKING_STATUSES,
+  type BookingDetail,
+  type BookingPhase,
+  bookingKeepsTrip,
+} from '@tourism/contract';
 import { messages } from '@tourism/i18n';
 
 /**
@@ -96,17 +101,21 @@ export function operatorRefund(booking: BookingDetail): OperatorRefund | null {
 /**
  * Hoá đơn của chuyến đã về mời viết đánh giá (R1) — mockup `mobile-review-screens` ghi R1 mở từ
  * P6, từ chi tiết booking hoặc từ dòng "My reviews", mà trước đó app chỉ có lối P6 (nợ nhỏ P5b-5
- * mục 1). Cùng luật nhánh `form` của `reviewSlot` bên web, tức bản chép cổng
- * `checkReviewEligibility` của API: chưa có bài, chuyến không bị công ty huỷ, đơn PAID, ngày về đã
- * tới theo ngày lịch UTC. Cổng so ngày UTC có chủ đích (ADR-0009 AMEND 3): đọc ngày Việt Nam là mời
+ * mục 1). Cùng luật nhánh `form` của `reviewSlot` bên web, tức cổng `checkReviewEligibility` của
+ * API: chưa có bài, chuyến không bị công ty huỷ, đơn còn chuyến (`bookingKeepsTrip` của contract —
+ * PAID, hoàn một phần, hoàn thiện chí trọn mà không huỷ; review L5-07), ngày về đã tới theo ngày
+ * lịch UTC. Cổng so ngày UTC có chủ đích (ADR-0009 AMEND 3): đọc ngày Việt Nam là mời
  * từ 00:00 giờ VN của ngày về, trong khi API tới 07:00 mới nhận. Đơn đã có bài (chờ duyệt, bị bác,
  * đã rút) thì bài sống ở My reviews, không mời viết lần hai.
  */
 export function canWriteReview(
-  booking: Pick<BookingDetail, 'review' | 'departureCancelled' | 'status' | 'departureEndDate'>,
+  booking: Pick<
+    BookingDetail,
+    'review' | 'departureCancelled' | 'status' | 'cancelledAt' | 'departureEndDate'
+  >,
   now: Date,
 ): boolean {
-  if (booking.review !== null || booking.departureCancelled || booking.status !== 'PAID') {
+  if (booking.review !== null || booking.departureCancelled || !bookingKeepsTrip(booking)) {
     return false;
   }
   return booking.departureEndDate <= now.toISOString().slice(0, 10);

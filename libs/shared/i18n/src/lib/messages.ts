@@ -2221,7 +2221,8 @@ export const messages = {
     removed: 'Removed from wishlist.',
     error: 'Something went wrong — please try again.',
   },
-  // "Rate this trip" review-creation form on a PAID booking's detail page.
+  // Form "Rate this trip" viết review ở trang chi tiết của đơn còn chuyến (`bookingKeepsTrip` của
+  // contract: PAID, hoàn một phần, hoàn thiện chí trọn mà không huỷ — review L5-07).
   reviews: {
     /** Khối upload ảnh chuyến đi (mảnh 1 cụm review-ảnh 12/08 — UI theo mẫu
      *  user chọn, static-first: upload thật nối ở mảnh backend). */

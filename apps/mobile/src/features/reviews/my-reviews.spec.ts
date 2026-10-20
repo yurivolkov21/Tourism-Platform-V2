@@ -1,4 +1,9 @@
-import { BookingsListQuerySchema, PageQuerySchema } from '@tourism/contract';
+import {
+  BookingStatusSchema,
+  BookingsListQuerySchema,
+  bookingKeepsTrip,
+  PageQuerySchema,
+} from '@tourism/contract';
 import {
   AWAITING_REVIEW_BOOKINGS_INPUT,
   type AwaitingReviewTripInput,
@@ -62,6 +67,7 @@ describe('tripsAwaitingReview — khối "chờ viết bài" đầu R4', () => {
     return {
       code,
       status: 'PAID',
+      cancelledAt: null,
       departureCancelled: false,
       departureEndDate: '2026-10-10',
       ...over,
@@ -91,18 +97,32 @@ describe('tripsAwaitingReview — khối "chờ viết bài" đầu R4', () => {
     expect(result.map((item) => item.code)).toEqual(['OPEN']);
   });
 
-  it('cùng cổng với hoá đơn: chưa về theo ngày UTC, công ty huỷ chuyến, đơn không PAID → không mời', () => {
+  it('cùng cổng với hoá đơn: chưa về theo ngày UTC, công ty huỷ chuyến, đơn huỷ thật → không mời', () => {
     const result = tripsAwaitingReview(
       [
         trip('NOT_BACK', { departureEndDate: '2026-10-18' }),
         trip('OPERATOR_CANCELLED', { departureCancelled: true }),
-        trip('PART_REFUNDED', { status: 'PARTIALLY_REFUNDED' }),
+        trip('REFUNDED_CANCELLED', { status: 'REFUNDED', cancelledAt: '2026-10-05T00:00:00.000Z' }),
       ],
       [],
       NOW,
     );
 
     expect(result).toEqual([]);
+  });
+
+  // L5-07: hoàn một phần, hay hoàn thiện chí trọn mà không huỷ, thì khách vẫn đi — mời như đơn PAID.
+  it('đơn hoàn một phần hay hoàn thiện chí trọn mà vẫn đi → mời viết như đơn PAID', () => {
+    const result = tripsAwaitingReview(
+      [
+        trip('PART_REFUNDED', { status: 'PARTIALLY_REFUNDED' }),
+        trip('GOODWILL', { status: 'REFUNDED' }),
+      ],
+      [],
+      NOW,
+    );
+
+    expect(result.map((item) => item.code)).toEqual(['PART_REFUNDED', 'GOODWILL']);
   });
 });
 
@@ -111,5 +131,14 @@ describe('AWAITING_REVIEW_BOOKINGS_INPUT', () => {
     expect(BookingsListQuerySchema.parse(AWAITING_REVIEW_BOOKINGS_INPUT)).toEqual(
       AWAITING_REVIEW_BOOKINGS_INPUT,
     );
+  });
+
+  // L5-07: server lọc theo trạng thái trước khi app soi `canWriteReview` — thiếu một trạng thái còn
+  // chuyến ở đây là đơn ấy không bao giờ tới khối "chờ viết bài", dù cổng nhận.
+  it('lọc đúng các trạng thái còn có thể còn chuyến (`bookingKeepsTrip`)', () => {
+    const keepsTrip = BookingStatusSchema.options.filter((status) =>
+      bookingKeepsTrip({ status, cancelledAt: null }),
+    );
+    expect(new Set([AWAITING_REVIEW_BOOKINGS_INPUT.status].flat())).toEqual(new Set(keepsTrip));
   });
 });

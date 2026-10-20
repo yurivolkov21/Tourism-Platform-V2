@@ -42,14 +42,15 @@ export const MY_REVIEWS_INPUT = { page: 1, pageSize: 100 } as const;
 
 /**
  * Tham số `bookings.mine` cho khối "chờ viết bài" đầu R4 (card "Thêm khối", 15/10): server lọc
- * sẵn đơn PAID đang đi hoặc đã qua theo giờ Việt Nam. Có `ON_TOUR` vì cổng review mở từ ngày về
- * theo ngày UTC (`canWriteReview`), mà theo giờ Việt Nam ngày về vẫn là "đang đi". 50 là trần
- * `limit` của contract.
+ * sẵn đơn có thể còn chuyến (PAID, hoàn một phần, REFUNDED — `bookingKeepsTrip`, review L5-07)
+ * đang đi hoặc đã qua theo giờ Việt Nam; REFUNDED đã huỷ thật thì `canWriteReview` loại. Có
+ * `ON_TOUR` vì cổng review mở từ ngày về theo ngày UTC (`canWriteReview`), mà theo giờ Việt Nam
+ * ngày về vẫn là "đang đi". 50 là trần `limit` của contract.
  */
 export const AWAITING_REVIEW_BOOKINGS_INPUT: BookingsListQuery = {
   page: 1,
   limit: 50,
-  status: 'PAID',
+  status: ['PAID', 'PARTIALLY_REFUNDED', 'REFUNDED'],
   when: ['ON_TOUR', 'PAST'],
   order: 'recent',
 };
@@ -57,7 +58,7 @@ export const AWAITING_REVIEW_BOOKINGS_INPUT: BookingsListQuery = {
 /** Phần của một đơn trong `bookings.mine` mà khối "chờ viết bài" cần để lọc. */
 export type AwaitingReviewTripInput = Pick<
   Booking,
-  'code' | 'status' | 'departureCancelled' | 'departureEndDate'
+  'code' | 'status' | 'cancelledAt' | 'departureCancelled' | 'departureEndDate'
 >;
 
 /**
