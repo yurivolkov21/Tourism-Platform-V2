@@ -1,7 +1,25 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { messages } from '@tourism/i18n';
+import { useLayoutEffect, useRef } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { SafeImg } from './safe-img';
+
+/**
+ * Bắn `error` lên ảnh trong layout effect của cha: chạy SAU khi `<img>` vào DOM nhưng TRƯỚC effect
+ * thường của `SafeImg`. Đó là thứ tự của ảnh hỏng về sớm ở trình duyệt, và của test chập chờn
+ * "Photo unavailable" ở `photo-library-dialog.spec.tsx` khi máy chậm (review A2-18).
+ */
+function ErrorsBeforeEffects({ src }: { src: string }) {
+  const box = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    box.current?.querySelector('img')?.dispatchEvent(new Event('error'));
+  }, []);
+  return (
+    <div ref={box}>
+      <SafeImg src={src} alt="" width={40} height={40} className="size-10" />
+    </div>
+  );
+}
 
 /** Ô ảnh của admin (spec 2026-10-05 §4 #13): ảnh hỏng thành icon có tên, không thành ô trống. */
 describe('SafeImg', () => {
@@ -103,6 +121,13 @@ describe('SafeImg', () => {
     expect(
       screen.queryByRole('img', { name: messages.admin.table.photoUnavailable }),
     ).not.toBeInTheDocument();
+  });
+
+  it('lỗi tới TRƯỚC effect đo lại sau mount: dấu hỏng không bị effect ấy xoá mất', () => {
+    render(<ErrorsBeforeEffects src="https://res.cloudinary.com/demo/gone.jpg" />);
+    expect(
+      screen.getByRole('img', { name: messages.admin.table.photoUnavailable }),
+    ).toBeInTheDocument();
   });
 
   it('src đổi sau khi ảnh cũ hỏng: thử ảnh mới, không giữ ô hỏng của ảnh cũ', () => {
