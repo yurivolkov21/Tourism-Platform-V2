@@ -263,8 +263,40 @@ describe('PaymentEventDetailSheet', () => {
     // `11700` là ĐƠN VỊ NHỎ NHẤT — người không đọc code sẽ hiểu là 11.700.
     expect(payload.getByText('$117.00')).toBeInTheDocument();
     expect(payload.getByText('3 Sep 2025, 05:20 UTC')).toBeInTheDocument();
+    // `created` là giờ provider TẠO event, không phải giờ ta nhận (review A1): nhãn cũ
+    // "Received at" đứng cạnh field "Received" của drawer là hai mốc khác nhau cùng một tên.
+    expect(payload.getByText('Event created')).toBeInTheDocument();
+    expect(screen.queryByText('Received at')).not.toBeInTheDocument();
     // Cả hai đều giữ số gốc để đối soát.
     const raws = payload.getAllByTestId('payload-raw').map((node) => node.textContent);
     expect(raws).toEqual(['1756876800', '11700']);
+  });
+
+  it('row hoàn tiền do lõi hoàn tiền ghi: tiêu đề khối payload không nói là cổng thanh toán gửi', async () => {
+    // `payment.refunded` chỉ do `refund-event.ts` ghi (payload mang `source: 'refund-core'`),
+    // không gateway nào map ra type này (review A1).
+    const load = loader({ ok: false, code: 'GENERIC' });
+    render(
+      <PaymentEventDetailSheet
+        row={{ ...ROW, type: 'payment.refunded', typeLabel: t.type['payment.refunded'] }}
+        onClose={vi.fn()}
+        load={load}
+      />,
+    );
+
+    expect(screen.getByText(t.detail.payloadRefund)).toBeInTheDocument();
+    expect(screen.queryByText(t.detail.payload)).not.toBeInTheDocument();
+  });
+
+  it('row thanh toán thường giữ tiêu đề "What the payment provider sent"', () => {
+    render(
+      <PaymentEventDetailSheet
+        row={ROW}
+        onClose={vi.fn()}
+        load={loader({ ok: false, code: 'GENERIC' })}
+      />,
+    );
+
+    expect(screen.getByText(t.detail.payload)).toBeInTheDocument();
   });
 });

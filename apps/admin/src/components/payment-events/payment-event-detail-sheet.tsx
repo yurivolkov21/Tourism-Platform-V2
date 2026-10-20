@@ -119,7 +119,8 @@ export function PaymentEventDetailSheet({
       onClose={onClose}
       title={t.detail.title}
       description={row ? t.detail.description(row.eventId) : ''}
-      jsonLabel={t.detail.payload}
+      // Row hoàn tiền do lõi hoàn tiền của ta ghi, không phải thứ cổng thanh toán gửi (review A1).
+      jsonLabel={row?.type === 'payment.refunded' ? t.detail.payloadRefund : t.detail.payload}
       json={view?.status === 'ready' ? view.payload : undefined}
       loadingLabel={t.detail.loading}
       error={view?.status === 'error' ? view.message : null}

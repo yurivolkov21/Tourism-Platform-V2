@@ -17,6 +17,7 @@ import { ColumnVisibilityMenu, DataTableBody } from '@/components/kit/data-table
 import { DataTableFrame } from '@/components/kit/data-table-frame';
 import { serverTableFeatures } from '@/components/kit/table-features';
 import { TablePagination } from '@/components/kit/table-pagination';
+import { HandlerNoteBadge } from '@/components/payment-events/handler-note-badge';
 import { PaymentEventDetailSheet } from '@/components/payment-events/payment-event-detail-sheet';
 import {
   PaymentEventsClearFilters,
@@ -39,8 +40,9 @@ import { PAGE_SIZE_OPTIONS } from '@/lib/table-query';
  *
  * Cột: Provider (kèm eventId mono bên dưới — danh tính của hàng, không ẩn
  * được) · Type · Amount · Booking (link `/bookings/[code]`) · Received ·
- * Processed (mốc, hoặc badge "Unprocessed" có tooltip) · Actions (Details mở
- * drawer — drawer tự tải payload vì list không mang JSON).
+ * Processed (mốc, hoặc badge "Unprocessed" có tooltip; cộng badge "Handler note" khi handler
+ * để lại ghi chú — review A1) · Actions (Details mở drawer — drawer tự tải payload vì list
+ * không mang JSON).
  *
  * Component này KHÔNG tự tính gì: mọi con chữ đã được `toPaymentEventRowVM`
  * (thuần, có test) nấu sẵn.
@@ -119,12 +121,18 @@ function buildColumns(onView: (row: PaymentEventRowVM) => void) {
     }),
     columnHelper.accessor('processed', {
       header: t.columns.processed,
-      cell: ({ row }) =>
-        row.original.processed ? (
-          <div className="whitespace-nowrap text-muted-foreground">{row.original.processed}</div>
-        ) : (
-          <UnprocessedBadge />
-        ),
+      // Ghi chú handler đứng cạnh mốc (review A1): row có ghi chú vẫn có `processedAt`, nên
+      // không badge "Unprocessed" nào nói hộ nó — trước đây chỉ drawer mới hiện.
+      cell: ({ row }) => (
+        <div className="flex items-center gap-1.5">
+          {row.original.processed ? (
+            <div className="whitespace-nowrap text-muted-foreground">{row.original.processed}</div>
+          ) : (
+            <UnprocessedBadge />
+          )}
+          {row.original.note ? <HandlerNoteBadge note={row.original.note} /> : null}
+        </div>
+      ),
     }),
     columnHelper.display({
       id: 'actions',
