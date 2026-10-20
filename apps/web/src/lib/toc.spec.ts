@@ -68,6 +68,15 @@ describe('tocFromMarkdown', () => {
       { id: 'bold-and-italic-words', label: 'Bold and italic words', index: '01' },
     ]);
   });
+
+  // L8-20: hai H2 cùng chữ từng cùng một id — mục thứ hai nhảy về section đầu.
+  it('heading trùng chữ: id lần sau mang hậu tố, nhãn giữ nguyên', () => {
+    const md = '## Tips\n\nbody\n\n## Tips\n';
+    expect(tocFromMarkdown(md)).toEqual([
+      { id: 'tips', label: 'Tips', index: '01' },
+      { id: 'tips-2', label: 'Tips', index: '02' },
+    ]);
+  });
 });
 
 describe('headingPlainText', () => {

@@ -1,8 +1,13 @@
 import type { LegalDoc } from '@tourism/i18n';
+import { markdownH2s } from '@tourism/ui/lib/markdown-headings';
 // Import KHÔNG đuôi: Turbopack không map './slug.js' sang './slug.ts' (Vitest
 // thì có — nên test xanh mà dev server vẫn đỏ). Trong mocks/ đuôi .js vô hại
 // vì ở đó toàn `import type`, bị xoá lúc biên dịch nên chẳng ai phải resolve.
 import { slugify } from './slug';
+
+// Bóc inline markdown của heading: sống ở `@tourism/ui` từ L8-20 (review F3), cùng chỗ với
+// hàm dựng id mà `ArticleMarkdown` gắn lên `<h2>`. Re-export để chỗ gọi cũ giữ đường import.
+export { headingPlainText } from '@tourism/ui/lib/markdown-headings';
 
 /** Một mục trong "On this page" — `index` là số thứ tự đã pad cho cột mono. */
 export type TocItem = { id: string; label: string; index: string };
@@ -21,46 +26,15 @@ export function tocFromLegalDoc(doc: LegalDoc): TocItem[] {
   return tocFromSections(doc.sections);
 }
 
-/** Strip inline markdown (bold/italic/code/link) khỏi text raw của một heading,
-    trả về text thuần để slugify. ArticleMarkdown flatten children React về
-    cùng text thuần này (xem flattenToText) — hai phía PHẢI hội tụ về cùng
-    chuỗi trước khi slugify, nếu không TOC trỏ vào id không tồn tại (bug đã
-    thấy: heading có bold/italic/code từng cho id kiểu "object-object"). */
-export function headingPlainText(raw: string): string {
-  return raw
-    .replace(/!\[([^\]]*)\]\([^)]+\)/g, '$1') // ![alt](url) -> alt — ảnh đóng góp alt text (TRƯỚC regex link thường, vì link thường khớp luôn phần sau dấu !)
-    .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1') // [text](url) -> text
-    .replace(/`([^`]+)`/g, '$1') // `code` -> code
-    .replace(/\*\*([^*]+)\*\*/g, '$1') // **bold** -> bold (trước italic vì ** chứa *)
-    .replace(/__([^_]+)__/g, '$1') // __bold__ -> bold
-    .replace(/\*([^*]+)\*/g, '$1') // *italic* -> italic
-    .replace(/_([^_]+)_/g, '$1') // _italic_ -> italic
-    .trim();
-}
-
 /** Mục lục từ markdown: chỉ H2 (`## `) — cùng cấp với section cũ; heading
-    trong code fence không phải heading. Id PHẢI khớp id mà ArticleMarkdown
-    gắn cho <h2> (cùng slugify text thuần) — lệch là TOC trỏ vào không khí. */
+    trong code fence không phải heading. Id lấy từ `markdownH2s`, đúng hàm mà
+    ArticleMarkdown dùng gắn id cho <h2> — nên TOC không thể trỏ vào không khí, kể cả
+    khi hai heading trùng chữ (lần sau mang hậu tố `-2`, L8-20). Nhãn cũng là text
+    thuần: nhãn thô in nguyên dấu sao của heading in đậm (thử tay P4e-4 trên prod). */
 export function tocFromMarkdown(markdown: string): TocItem[] {
-  const items: TocItem[] = [];
-  let inFence = false;
-  for (const line of markdown.split('\n')) {
-    if (line.trimStart().startsWith('```')) {
-      inFence = !inFence;
-      continue;
-    }
-    if (inFence) continue;
-    const match = /^##\s+(.+)$/.exec(line);
-    if (match?.[1]) {
-      // Nhãn cũng là text thuần như id: "On this page" in nhãn thành chữ, nhãn thô in nguyên
-      // dấu sao của heading in đậm (thử tay P4e-4 trên prod).
-      const plain = headingPlainText(match[1]);
-      items.push({
-        id: slugify(plain),
-        label: plain,
-        index: String(items.length + 1).padStart(2, '0'),
-      });
-    }
-  }
-  return items;
+  return markdownH2s(markdown).map((heading, i) => ({
+    id: heading.id,
+    label: heading.label,
+    index: String(i + 1).padStart(2, '0'),
+  }));
 }

@@ -26,6 +26,24 @@ describe('ArticleMarkdown', () => {
     expect(headings[1]).toHaveAttribute('id', toc[1]?.id);
   });
 
+  // L8-20: id trùng làm HTML sai và mục thứ hai của "On this page" nhảy về section đầu.
+  it('hai H2 trùng chữ — id khác nhau, khớp từng mục của tocFromMarkdown', () => {
+    const md = '## Tips\n\nFirst\n\n## Day one\n\nMiddle\n\n## Tips\n\nSecond';
+    render(<ArticleMarkdown markdown={md} />);
+
+    const ids = screen.getAllByRole('heading', { level: 2 }).map((h) => h.id);
+    expect(ids).toEqual(tocFromMarkdown(md).map((item) => item.id));
+    expect(ids).toEqual(['tips', 'day-one', 'tips-2']);
+  });
+
+  it('bản xem trước của admin: tiền tố đứng trước cả id đã khử trùng', () => {
+    const md = '## Tips\n\n## Tips\n';
+    render(<ArticleMarkdown markdown={md} headingIdPrefix="preview-" />);
+
+    const ids = screen.getAllByRole('heading', { level: 2 }).map((h) => h.id);
+    expect(ids).toEqual(['preview-tips', 'preview-tips-2']);
+  });
+
   it('heading có inline markdown (bold/italic) — id khớp tocFromMarkdown, không phải "[object Object]"', () => {
     const md = '## **Bold** and *italic* words\n\nBody text';
     render(<ArticleMarkdown markdown={md} />);

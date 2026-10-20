@@ -1,4 +1,5 @@
 import { Typeset } from '@tourism/ui/components/typeset';
+import { markdownH2s } from '@tourism/ui/lib/markdown-headings';
 import { slugify } from '@tourism/ui/lib/slug';
 import { isValidElement, type ReactNode } from 'react';
 import Markdown from 'react-markdown';
@@ -10,8 +11,10 @@ import remarkGfm from 'remark-gfm';
  * bold/italic/code/link thì children là mảng string + React element, và
  * String(children) trên mảng đó cho ra "[object Object]" (bug đã vá — coi
  * task-6-report.md mục "Fix sau review"). Hàm này lấy props.children đệ quy
- * của element để ra cùng text thuần mà headingPlainText() bên tocFromMarkdown
- * tạo ra từ text raw — hai phía PHẢI hội tụ trước khi slugify.
+ * của element để ra cùng text thuần mà headingPlainText() tạo ra từ text raw.
+ *
+ * Từ L8-20 id của H2 lấy theo số dòng từ `markdownH2s`; hàm này chỉ còn là đường lùi
+ * cho heading mà bộ dò dòng không thấy (setext, trong blockquote).
  */
 function flattenToText(node: ReactNode): string {
   if (node === null || node === undefined || typeof node === 'boolean') return '';
@@ -19,7 +22,7 @@ function flattenToText(node: ReactNode): string {
   if (Array.isArray(node)) return node.map(flattenToText).join('');
   if (isValidElement<{ children?: ReactNode; alt?: string }>(node)) {
     // <img> (từ ![alt](url)) không có children — ảnh đóng góp alt text vào
-    // heading, hội tụ với headingPlainText() bên toc.ts xử `![alt](url)` -> alt.
+    // heading, hội tụ với headingPlainText() xử `![alt](url)` -> alt.
     if (node.props.children === undefined && typeof node.props.alt === 'string') {
       return node.props.alt;
     }
@@ -40,8 +43,9 @@ function resolveHref(href: string | undefined, base: string): string | undefined
 
 /**
  * Thân bài markdown từ API (PostDetail.content — ADR-0016/spec §2D), render
- * trong Typeset preset reading (ADR-0012). H2 gắn id = slugify(text thuần đã
- * flatten) để khớp tocFromMarkdown. KHÔNG bật rehype-raw: content là dữ liệu
+ * trong Typeset preset reading (ADR-0012). H2 gắn id lấy từ `markdownH2s` theo số
+ * dòng của heading — đúng hàm mục lục web dùng (`tocFromMarkdown`), nên hai phía
+ * khớp nhau kể cả khi hai H2 trùng chữ (L8-20). KHÔNG bật rehype-raw: content là dữ liệu
  * seed của mình nhưng giữ mặc định không-raw-HTML làm lưới (spec §6).
  *
  * Ở `@tourism/ui` từ P4e-4 (ADR-0051 §1): web vẽ bài bằng nó, tab Preview của admin cũng
@@ -65,14 +69,22 @@ export function ArticleMarkdown({
    */
   linkBase?: string;
 }) {
+  // Id theo dòng bắt đầu của heading (react-markdown gắn `position` vào node). Heading mà
+  // bộ dò dòng không thấy (kiểu setext `---`, H2 trong blockquote) thì lùi về slug của chữ
+  // như trước — mục lục cũng không liệt kê chúng nên không có gì phải khớp.
+  const idByLine = new Map(markdownH2s(markdown).map((heading) => [heading.line, heading.id]));
   return (
     <Typeset preset="reading" className="text-muted-foreground">
       <Markdown
         remarkPlugins={[remarkGfm]}
         components={{
-          h2: ({ children }) => (
-            <h2 id={`${headingIdPrefix}${slugify(flattenToText(children))}`}>{children}</h2>
-          ),
+          h2: ({ node, children }) => {
+            const line = node?.position?.start.line;
+            const id =
+              (line === undefined ? undefined : idByLine.get(line)) ??
+              slugify(flattenToText(children));
+            return <h2 id={`${headingIdPrefix}${id}`}>{children}</h2>;
+          },
           // Thân bài không có ảnh (spec P4e-4 §2.4): contract chặn mọi `![`, đây là lưới thứ
           // hai cho nội dung sửa thẳng trong DB — không tải ảnh ngoài Cloudinary, in alt tại
           // chỗ. `alt` vẫn nằm trên props nên `flattenToText` cho heading ra cùng id như cũ.
