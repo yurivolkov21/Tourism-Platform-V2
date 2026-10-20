@@ -1,7 +1,7 @@
 import type { SVGProps } from 'react';
 
-// Brand social glyphs (lucide deprecated its brand icons). Stroke uses currentColor
-// so callers control color via text-* tokens — no hardcoded brand hues.
+// Glyph mạng xã hội của các brand (lucide đã bỏ bộ icon brand). Nét vẽ dùng currentColor
+// nên chỗ gọi tự chỉnh màu qua token text-* — không gõ cứng màu của brand.
 const base: SVGProps<SVGSVGElement> = {
   xmlns: 'http://www.w3.org/2000/svg',
   width: 24,

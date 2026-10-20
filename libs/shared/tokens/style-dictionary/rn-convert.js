@@ -1,7 +1,7 @@
-// oklch token strings → RN-consumable values. The ONLY place raw color math lives.
+// Chuỗi token oklch → giá trị React Native dùng được. Nơi DUY NHẤT chứa phép tính màu thô.
 import { formatHex, formatHex8, parse } from 'culori';
 
-/** 'oklch(0.42 0.08 155)' → '#rrggbb'; with alpha → '#rrggbbaa'. */
+/** 'oklch(0.42 0.08 155)' → '#rrggbb'; có alpha → '#rrggbbaa'. */
 export function toRnColor(oklchString) {
   const color = parse(oklchString);
   if (!color) {
@@ -10,7 +10,7 @@ export function toRnColor(oklchString) {
   return color.alpha !== undefined && color.alpha < 1 ? formatHex8(color) : formatHex(color);
 }
 
-/** '0.375rem' → 6 (dp at the 16px web root). */
+/** '0.375rem' → 6 (dp theo cỡ gốc 16px của web). */
 export function remToDp(remString) {
   const match = /^(-?\d*\.?\d+)rem$/.exec(remString.trim());
   if (!match) {
