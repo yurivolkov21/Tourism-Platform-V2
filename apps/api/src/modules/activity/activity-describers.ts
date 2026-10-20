@@ -53,9 +53,16 @@ export interface ActivityEntry {
 }
 
 export interface ActivityDescriber<K extends ActivityLoggedProcedure> {
-  /** Chỉ lệnh xoá: đọc nhãn TRƯỚC khi handler chạy, vì sau đó đối tượng không còn. */
+  /**
+   * Đọc TRƯỚC khi handler chạy thứ mà sau đó không đọc lại được: nhãn của lệnh xoá (đối tượng sẽ
+   * mất), hoặc một dấu thời gian để lệnh không trả cờ `changed` nhận ra mình không đổi gì. Đọc
+   * lỗi thì `describe` nhận `null`.
+   */
   before?: (input: ActivityInput<K>) => Promise<string | null>;
-  /** `null` = không ghi: output nói lệnh không đổi gì (`changed: false`). */
+  /**
+   * `null` = không ghi: output nói lệnh không đổi gì (`changed: false`), hoặc dấu đọc ở `before`
+   * vẫn y nguyên.
+   */
   describe: (args: {
     input: ActivityInput<K>;
     output: ActivityOutput<K>;
@@ -99,6 +106,25 @@ async function departureTourTitle(id: string): Promise<string | null> {
   return row?.tour.title ?? null;
 }
 
+/**
+ * Mốc của quyết định gần nhất. Mọi quyết định thật ghi mốc mới; lệnh trùng hiện trạng (tab cũ bấm
+ * Approve lên bài đã duyệt) trả bài như cũ, và mốc không nhích.
+ */
+async function reviewModeratedAt(id: string): Promise<string | null> {
+  const row = await prisma.review.findUnique({ where: { id }, select: { moderatedAt: true } });
+  return row?.moderatedAt?.toISOString() ?? null;
+}
+
+/**
+ * Phiên bản của chuyến (`version` của hàng admin). So phiên bản chứ không so trạng thái: admin khác
+ * mở lại chuyến giữa lúc đọc và lúc khoá thì lệnh đóng này là một thay đổi thật, mà trạng thái đọc
+ * trước lại trùng trạng thái sau.
+ */
+async function departureVersion(id: string): Promise<string | null> {
+  const row = await prisma.tourDeparture.findUnique({ where: { id }, select: { updatedAt: true } });
+  return row?.updatedAt.toISOString() ?? null;
+}
+
 /** Tên hiển thị của tài khoản; trống thì không có nhãn — không bao giờ lấy email (spec §3). */
 async function accountName(id: string): Promise<string | null> {
   const row = await prisma.user.findUnique({ where: { id }, select: { name: true } });
@@ -122,10 +148,15 @@ export const ACTIVITY_DESCRIBERS = {
     }),
   },
   'reviews.moderate': {
-    describe: ({ input, output }) => ({
-      target: { type: 'review', id: output.id, label: output.tourTitle ?? null },
-      details: { verdict: input.verdict },
-    }),
+    // Lệnh không trả `changed`: mốc duyệt y nguyên nghĩa là lệnh trùng hiện trạng (review L5-17).
+    before: (input) => reviewModeratedAt(input.id),
+    describe: ({ input, output, before }) =>
+      output.moderatedAt === before
+        ? null
+        : {
+            target: { type: 'review', id: output.id, label: output.tourTitle ?? null },
+            details: { verdict: input.verdict },
+          },
   },
   'outbox.retry': {
     // Người nhận là email của khách: không lưu, chỉ loại email.
@@ -279,10 +310,19 @@ export const ACTIVITY_DESCRIBERS = {
     }),
   },
   'departures.setStatus': {
-    describe: async ({ output }) => ({
-      target: { type: 'departure', id: output.id, label: await departureTourTitle(output.id) },
-      details: { startDate: output.startDate, status: output.status },
-    }),
+    // Trùng trạng thái là no-op không ghi gì, nên phiên bản không nhích (review A2-20).
+    before: (input) => departureVersion(input.id),
+    describe: async ({ output, before }) =>
+      output.version === before
+        ? null
+        : {
+            target: {
+              type: 'departure',
+              id: output.id,
+              label: await departureTourTitle(output.id),
+            },
+            details: { startDate: output.startDate, status: output.status },
+          },
   },
   'posts.create': {
     describe: ({ input, output }) => ({
