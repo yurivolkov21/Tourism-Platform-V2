@@ -34,8 +34,8 @@ const money = (value: Prisma.Decimal): string => value.toFixed(2);
  * `CatalogService` chỉ được thấy row đã published và nấu nội dung bán hàng,
  * còn ở đây thấy TẤT CẢ và nấu con số vận hành.
  *
- * F11 (file này) là danh sách tour + công tắc đăng. F12 đắp thêm bề mặt chuyến
- * khởi hành vào chính service này.
+ * F11 (file này) là danh sách tour + công tắc đăng. Bề mặt chuyến khởi hành (F12)
+ * nằm ở `AdminDeparturesService` riêng.
  */
 @Injectable()
 export class AdminCatalogService {
@@ -161,8 +161,8 @@ export class AdminCatalogService {
    *
    * **Không đẩy `updatedAt`** (plan F17, quyết định 2): công tắc không đổi nội
    * dung, nên form đang mở trong khu làm việc không được thành "cũ" chỉ vì admin
-   * bấm On sale ở phần đầu trang. Đặt tường minh giá trị cũ — Prisma tự đẩy cột
-   * `@updatedAt` ở mọi câu ghi nếu không truyền.
+   * bấm On sale ở bước Review (ADR-0049) hay ở bảng `/tours`. Đặt tường minh giá
+   * trị cũ — Prisma tự đẩy cột `@updatedAt` ở mọi câu ghi nếu không truyền.
    */
   async setTourPublished(input: AdminTourSetPublishedInput): Promise<AdminTourSetPublishedResult> {
     const { id, isPublished } = input;

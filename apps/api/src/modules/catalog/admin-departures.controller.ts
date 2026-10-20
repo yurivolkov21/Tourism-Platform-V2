@@ -17,9 +17,10 @@ import { DepartureCancelService } from './departure-cancel.service.js';
  * Staff → 403 ở thủ tục chỉ Owner, cả hai TRƯỚC khi oRPC parse
  * input, nên một request không quyền không bao giờ chạm tới bảng.
  *
- * Ba lệnh ghi không nhận danh tính admin qua input và cũng chưa ghi audit
- * row: chuyến không có sổ lịch sử riêng (khác enquiry), còn thứ đổi tiền thì
- * nằm ở đường huỷ của F13. Dấu vết hiện tại là dòng log của service.
+ * Ba lệnh ghi không nhận danh tính admin qua input: ai làm gì nằm ở nhật ký thao tác
+ * (ADR-0061) — `@AdminImplement` gắn interceptor ghi một dòng sau mỗi lệnh ghi thành công,
+ * người làm đọc từ phiên, mô tả từng lệnh ở `activity-describers.ts`. Chuyến không có sổ
+ * lịch sử riêng (khác enquiry); thứ đổi tiền nằm ở đường huỷ của F13.
  *
  * Lỗi service → lỗi contract đi qua `toContractError` dùng chung (nợ G3): lỗi của vùng này
  * (`admin-departure-errors.ts`) mang sẵn mã, nên không còn nhánh `instanceof` riêng nào ở đây.

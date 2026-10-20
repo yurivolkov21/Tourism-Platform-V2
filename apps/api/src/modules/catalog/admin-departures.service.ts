@@ -500,17 +500,17 @@ function assertDateRange(startDate: string, endDate: string): void {
   }
 }
 
-/**
- * Không dựng lịch cho một ngày đã trôi qua. Thước là ngày VIỆT NAM của server
- * (ADR-0041 §7) chứ không phải đồng hồ trình duyệt — ô ngày của admin ở múi
- * giờ khác sẽ không bao giờ quyết định thay server.
- */
 /** Trần ghế theo cỡ nhóm tour công bố — chung cho `create` và `update`. */
 function assertSeatsWithinTourMax(seatsTotal: number, maxGroupSize: number): void {
   const blocked = seatsAboveTourMaxBlocker(seatsTotal, maxGroupSize);
   if (blocked) throw new DepartureRuleError('SEATS_ABOVE_TOUR_MAX', blocked);
 }
 
+/**
+ * Không dựng lịch cho một ngày đã trôi qua. Thước là ngày VIỆT NAM của server
+ * (ADR-0041 §7) chứ không phải đồng hồ trình duyệt — ô ngày của admin ở múi
+ * giờ khác sẽ không bao giờ quyết định thay server.
+ */
 function assertNotInPast(startDate: string, now: Date): void {
   const today = vietnamToday(now);
   if (startDate < today) {
