@@ -19,17 +19,22 @@ import { api, withAdminAuth } from './client';
 /**
  * Một trang booking (TẤT CẢ khách, mới nhất trước — server đã orderBy). Input
  * là kết quả `parseBookingsSearchParams`, tức đã clamp/lọc xong.
+ *
+ * `includeMedia: false` LUÔN LUÔN (review A1, 20/10): không màn admin nào in ảnh tour của một
+ * booking — bảng `/bookings`, dashboard, file Excel đều không có cột ảnh — nên bắt API resolve
+ * ảnh cover cho từng trang là một query media và payload phồng chỉ để vứt đi.
  */
 export async function fetchAdminBookings(
   cookie: string,
-  // `includeMedia`/`signal` chỉ đường export-có-chọn dùng (vòng vá review
-  // 02/09): nó lấy MỘT trang rồi giao theo mã, và cũng không cần ảnh.
-  query: BookingsQuery & { includeMedia?: boolean },
+  query: BookingsQuery,
+  // `signal` chỉ đường export-có-chọn dùng (vòng vá review 02/09): nó lấy MỘT trang rồi giao
+  // theo mã, trong trần thời gian của file.
   signal?: AbortSignal,
 ): Promise<Paged<Booking>> {
-  return api.admin.bookings.list(query, {
-    context: signal ? { cookie, signal } : withAdminAuth(cookie),
-  });
+  return api.admin.bookings.list(
+    { ...query, includeMedia: false },
+    { context: signal ? { cookie, signal } : withAdminAuth(cookie) },
+  );
 }
 
 /** Số hàng của bảng "Recent bookings" trên dashboard (ADR-0036 §3). */

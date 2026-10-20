@@ -1,7 +1,7 @@
 import type { Booking, Paged } from '@tourism/contract';
 import { beforeEach, describe, expect, it, type Mock, vi } from 'vitest';
 import { EXPORT_MAX_ROWS, EXPORT_PAGE_SIZE } from '@/lib/export-pages';
-import { fetchAllAdminBookings } from './bookings';
+import { fetchAdminBookings, fetchAllAdminBookings } from './bookings';
 import { api } from './client';
 
 /**
@@ -11,6 +11,8 @@ import { api } from './client';
  * từ-chối, đợt song song, dedupe, tập đổi giữa chừng — pin ở
  * `export-pages.spec.ts` (vòng vá review F10: bản đầu chép lại bốn kịch bản
  * đó ở đây với mock oRPC).
+ *
+ * Thêm hai ca của `fetchAdminBookings` (review A1): bảng `/bookings` cũng tắt ảnh như file.
  */
 vi.mock('./client', () => ({
   api: { admin: { bookings: { list: vi.fn(), byCode: vi.fn(), refund: vi.fn() } } },
@@ -33,6 +35,31 @@ const paged = (over: Partial<Paged<Booking>>): Paged<Booking> => ({
 
 beforeEach(() => {
   listMock.mockReset();
+});
+
+describe('fetchAdminBookings', () => {
+  it('bảng `/bookings` không xin ảnh tour: không màn admin nào in nó (review A1)', async () => {
+    listMock.mockResolvedValue(paged({ limit: 20 }));
+
+    await fetchAdminBookings('cookie=x', { page: 2, limit: 20, search: 'BK-AAAA' });
+
+    expect(listMock).toHaveBeenCalledWith(
+      { page: 2, limit: 20, search: 'BK-AAAA', includeMedia: false },
+      { context: { cookie: 'cookie=x' } },
+    );
+  });
+
+  it('đường export-có-chọn: vẫn tắt ảnh, signal của file đi cùng cookie', async () => {
+    listMock.mockResolvedValue(paged({ limit: 20 }));
+    const signal = new AbortController().signal;
+
+    await fetchAdminBookings('cookie=x', { page: 1, limit: 20 }, signal);
+
+    expect(listMock).toHaveBeenCalledWith(
+      { page: 1, limit: 20, includeMedia: false },
+      { context: { cookie: 'cookie=x', signal } },
+    );
+  });
 });
 
 describe('fetchAllAdminBookings', () => {
