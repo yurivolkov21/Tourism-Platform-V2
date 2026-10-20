@@ -676,15 +676,22 @@ export class BookingsService {
     if (!booking || booking.userId !== userId) return null;
     // Xoá luôn URL/hạn session (AMEND 2b): booking đã huỷ không được giữ một
     // trang thanh toán còn sống — và vô hiệu nó ở provider ngay bên dưới.
-    const rows = await prisma.$queryRaw<{ id: string }[]>(Prisma.sql`
-      UPDATE bookings
-      SET status = 'CANCELLED'::"BookingStatus", cancelled_at = now(), updated_at = now(),
-          checkout_session_url = NULL, checkout_session_expires_at = NULL
-      WHERE id = ${booking.id}::uuid AND status = 'PENDING'::"BookingStatus"
-      RETURNING id
-    `);
-    if (rows.length === 0) throw new BookingNotPendingError();
-    if (booking.providerSessionId) {
+    // Id session lấy từ RETURNING, không từ câu đọc phía trên: "Pay again" song
+    // song có thể đã ghi session mới trong lúc câu UPDATE này chờ khoá hàng, và
+    // RETURNING trả đúng bản hàng vừa huỷ — vô hiệu id đọc trước là bỏ session
+    // mới sống ở provider, tab ấy vẫn thu được tiền của một booking đã huỷ.
+    const rows = await prisma.$queryRaw<{ id: string; provider_session_id: string | null }[]>(
+      Prisma.sql`
+        UPDATE bookings
+        SET status = 'CANCELLED'::"BookingStatus", cancelled_at = now(), updated_at = now(),
+            checkout_session_url = NULL, checkout_session_expires_at = NULL
+        WHERE id = ${booking.id}::uuid AND status = 'PENDING'::"BookingStatus"
+        RETURNING id, provider_session_id
+      `,
+    );
+    const cancelled = rows[0];
+    if (!cancelled) throw new BookingNotPendingError();
+    if (cancelled.provider_session_id) {
       // Khách bấm Huỷ trong lúc tab Stripe còn mở: không expire thì tab đó vẫn
       // thu được tiền → orphan refund + event rác. Best-effort, sau khi đã
       // CANCELLED (thứ tự ngược với reCheckout — ở đây không còn session nào
@@ -692,7 +699,7 @@ export class BookingsService {
       await this.expireSessionBestEffort(
         resolveGateway(this.gateways, booking.paymentProvider),
         booking.code,
-        booking.providerSessionId,
+        cancelled.provider_session_id,
       );
     }
     const updated = await prisma.booking.findUniqueOrThrow({

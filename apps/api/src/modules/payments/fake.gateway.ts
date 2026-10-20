@@ -45,6 +45,9 @@ export class FakeGateway implements PaymentGateway {
   readonly followUpCalls: VerifiedEvent[] = [];
   /** Ghi lại mọi session đã bị `expireSession` vô hiệu (ADR-0006 AMEND 1a). */
   readonly expiredSessions: string[] = [];
+  /** Session mà `expireSession` đã BẮT ĐẦU vô hiệu (ghi trước {@link expireDelayMs}) — int test
+   * chờ mốc này để biết bên gọi đang đứng giữa lời gọi provider. */
+  readonly expireStarted: string[] = [];
 
   /** TTL session mà fake khai trong `CheckoutSession.expiresAt` — test chỉnh
    * được để mô phỏng session sống ngắn/dài. Reset về 60′ trong `reset()`. */
@@ -84,6 +87,19 @@ export class FakeGateway implements PaymentGateway {
   refundDelayMs = 0;
 
   /**
+   * Test toggle: trễ nhân tạo (ms) trong `createCheckoutSession` — ép hai "Pay again" song song
+   * cùng đứng giữa lời gọi mint, canh advisory lock của reCheckout (ADR-0006 AMEND 2b).
+   * Reset về 0 trong `reset()`.
+   */
+  checkoutDelayMs = 0;
+
+  /**
+   * Test toggle: trễ nhân tạo (ms) trong `expireSession` — giữ reCheckout đứng giữa transaction
+   * sau khi đã ghi session mới, để một lệnh huỷ chen vào đúng khe ấy. Reset về 0 trong `reset()`.
+   */
+  expireDelayMs = 0;
+
+  /**
    * Test toggle: đặt để `followUp` NÉM lỗi này, mô phỏng side-effect
    * follow-up thất bại (vd PayPal capture lỗi ở Task 2) — canh nhánh
    * throw-lan-ra-500 của webhook controller. Reset về undefined trong
@@ -96,6 +112,9 @@ export class FakeGateway implements PaymentGateway {
   async createCheckoutSession(input: CreateCheckoutSessionInput): Promise<CheckoutSession> {
     if (this.failCheckout) {
       throw new Error('FakeGateway: forced checkout failure');
+    }
+    if (this.checkoutDelayMs > 0) {
+      await new Promise((resolve) => setTimeout(resolve, this.checkoutDelayMs));
     }
     const sessionId = `fake_cs_${++this.seq}`;
     const session: FakeCheckoutSession = {
@@ -114,6 +133,10 @@ export class FakeGateway implements PaymentGateway {
 
   /** Ghi nhận session bị vô hiệu — int test assert reCheckout expire đúng cái cũ. */
   async expireSession(sessionId: string): Promise<void> {
+    this.expireStarted.push(sessionId);
+    if (this.expireDelayMs > 0) {
+      await new Promise((resolve) => setTimeout(resolve, this.expireDelayMs));
+    }
     if (this.failExpireSession) {
       throw new Error('FakeGateway: forced expireSession failure');
     }
@@ -207,10 +230,13 @@ export class FakeGateway implements PaymentGateway {
     this.refunds.length = 0;
     this.followUpCalls.length = 0;
     this.expiredSessions.length = 0;
+    this.expireStarted.length = 0;
     this.seq = 0;
     this.sessionTtlMs = 60 * 60_000;
     this.failRefunds = false;
     this.refundDelayMs = 0;
+    this.checkoutDelayMs = 0;
+    this.expireDelayMs = 0;
     this.failCheckout = false;
     this.failExpireSession = false;
     this.followUpError = undefined;

@@ -433,6 +433,65 @@ describe('bookings integration (create PENDING + FakeGateway)', () => {
       expect(fake.sessions).toHaveLength(2);
       expect(retry.json().checkoutUrl).toBe(fake.sessions[1]?.checkoutUrl);
     });
+
+    it('AMEND 2b: hai "Pay again" song song trên session đã chết → đúng MỘT session mới, cả hai nhận cùng URL', async () => {
+      // Canh advisory lock của reCheckout: không có lock thì cả hai cùng thấy session chết, cùng
+      // mint, và session ghi trước sống mồ côi ở provider — hai trang cùng thu được tiền.
+      const cookie = await signUpUser('session-parallel@example.com');
+      const body = (await createBooking(cookie)).json();
+      const s1 = fake.sessions[0];
+      await prisma.booking.update({
+        where: { code: body.code },
+        data: { checkoutSessionExpiresAt: new Date(Date.now() - 1000) },
+      });
+      fake.checkoutDelayMs = 300;
+
+      const [first, second] = await Promise.all([
+        postCheckout(cookie, body.code),
+        postCheckout(cookie, body.code),
+      ]);
+      expect(first.statusCode).toBe(200);
+      expect(second.statusCode).toBe(200);
+      expect(fake.sessions).toHaveLength(2);
+      const s2 = fake.sessions[1];
+      expect(first.json().checkoutUrl).toBe(s2?.checkoutUrl);
+      expect(second.json().checkoutUrl).toBe(s2?.checkoutUrl);
+      expect(fake.expiredSessions).toEqual([s1?.sessionId]);
+    });
+
+    it('huỷ chen vào lúc "Pay again" vừa ghi session mới → vô hiệu session MỚI, không phải session đã đọc trước khi chờ', async () => {
+      // reCheckout ghi S2 rồi đứng giữa lời gọi expire S1, còn giữ khoá hàng booking. Lệnh huỷ
+      // đọc booking lúc ấy vẫn thấy S1 (S2 chưa commit), chờ khoá, rồi huỷ trên bản đã có S2.
+      // Vô hiệu theo id đọc trước khi chờ là bỏ S2 sống ở provider: tab "Pay again" vẫn trả được
+      // tiền cho một booking đã huỷ.
+      const cookie = await signUpUser('session-cancel-race@example.com');
+      const body = (await createBooking(cookie)).json();
+      const s1 = fake.sessions[0];
+      await prisma.booking.update({
+        where: { code: body.code },
+        data: { checkoutSessionExpiresAt: new Date(Date.now() - 1000) },
+      });
+      fake.expireDelayMs = 400;
+
+      const payAgain = postCheckout(cookie, body.code);
+      await vi.waitFor(() => expect(fake.expireStarted).toEqual([s1?.sessionId]), {
+        timeout: 5_000,
+        interval: 10,
+      });
+      const cancel = await app.inject({
+        method: 'POST',
+        url: `/api/bookings/${body.code}/cancel-pending`,
+        headers: { cookie },
+      });
+      const paid = await payAgain;
+
+      expect(paid.statusCode).toBe(200);
+      expect(cancel.statusCode).toBe(200);
+      expect(cancel.json().status).toBe('CANCELLED');
+      const s2 = fake.sessions[1];
+      expect(paid.json().checkoutUrl).toBe(s2?.checkoutUrl);
+      expect(fake.expiredSessions).toContain(s2?.sessionId);
+    });
   });
 
   it('BK-2: chủ tự hủy PENDING → CANCELLED (không refund); lặp lại/PAID → 422; non-owner → 404', async () => {
