@@ -11,8 +11,9 @@ import {
   DropdownMenuTrigger,
 } from '@tourism/ui/components/dropdown-menu';
 import { LogOutIcon, SettingsIcon, TicketIcon, UserIcon } from 'lucide-react';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { authClient, useSession } from '@/lib/auth-client';
+import { withRedirect } from '@/lib/safe-redirect';
 
 /**
  * Khoảng cách từ avatar xuống dropdown, tính bằng px.
@@ -45,13 +46,16 @@ export const USER_MENU_SIDE_OFFSET = 28;
 export function UserMenu({ linkClassName }: { linkClassName?: string }) {
   const { data, isPending } = useSession();
   const router = useRouter();
+  const pathname = usePathname();
 
   // isPending cũng render nhánh chưa đăng nhập: BA cần một round-trip
   // `/get-session` trước khi biết chắc, và trong lúc chờ thà hiện "Log in"
   // ổn định còn hơn chớp avatar rồi rớt xuống nếu hoá ra chưa đăng nhập.
+  // Mang theo trang đang xem (review L1) để đăng nhập xong quay lại đó. Chỉ path, không
+  // query: `useSearchParams` ở navbar buộc mọi trang tĩnh bọc Suspense.
   if (isPending || !data?.user) {
     return (
-      <a href="/login" className={linkClassName}>
+      <a href={withRedirect('/login', pathname)} className={linkClassName}>
         {messages.nav.login}
       </a>
     );

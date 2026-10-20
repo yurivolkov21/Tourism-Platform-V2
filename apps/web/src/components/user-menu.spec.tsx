@@ -16,12 +16,14 @@ vi.mock('@/lib/auth-client', () => ({
 }));
 
 // Mock next/navigation — khuôn giống login-form.spec.tsx.
-const { push, refresh } = vi.hoisted(() => ({
+const { push, refresh, pathname } = vi.hoisted(() => ({
   push: vi.fn(),
   refresh: vi.fn(),
+  pathname: vi.fn(() => '/'),
 }));
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ push, refresh }),
+  usePathname: pathname,
 }));
 
 /**
@@ -41,6 +43,16 @@ describe('UserMenu', () => {
     const link = screen.getByRole('link', { name: /log in/i });
     expect(link).toHaveAttribute('href', '/login');
     expect(screen.queryByRole('button', { name: 'Account' })).not.toBeInTheDocument();
+  });
+
+  it('"Log in" mang theo trang đang xem để đăng nhập xong quay lại đó (review L1)', () => {
+    useSessionMock.mockReturnValue({ data: null, isPending: false });
+    pathname.mockReturnValueOnce('/tours/ha-long-bay-cruise');
+    render(<UserMenu />);
+    expect(screen.getByRole('link', { name: /log in/i })).toHaveAttribute(
+      'href',
+      '/login?redirect=%2Ftours%2Fha-long-bay-cruise',
+    );
   });
 
   it('không mở popup nào ở nhánh chưa đăng nhập', async () => {

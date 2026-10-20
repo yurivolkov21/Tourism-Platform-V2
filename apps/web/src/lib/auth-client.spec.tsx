@@ -4,11 +4,12 @@ import { render, screen, waitFor } from '@testing-library/react';
 import { renderToString } from 'react-dom/server';
 import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
-// UserMenu gọi `useRouter` — ngoài App Router thật hook này ném invariant, nên
-// mock mỏng đúng khuôn user-menu.spec.tsx. Mọi thứ còn lại là THẬT: client Better
-// Auth, atom session của nó, `useStore` của `better-auth/react`, UserMenu, Base UI.
+// UserMenu gọi `useRouter` và `usePathname` — ngoài App Router thật hai hook này ném
+// invariant, nên mock mỏng đúng khuôn user-menu.spec.tsx. Mọi thứ còn lại là THẬT: client
+// Better Auth, atom session của nó, `useStore` của `better-auth/react`, UserMenu, Base UI.
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ push: vi.fn(), refresh: vi.fn() }),
+  usePathname: () => '/',
 }));
 
 /**
