@@ -11,6 +11,7 @@ import type {
 import { prisma } from '../../auth/auth.config.js';
 import { Prisma } from '../../generated/prisma/client.js';
 import { ContractError } from '../../lib/contract-error.js';
+import { tourRevalidationTags } from '../web-revalidation/revalidation-decision.js';
 import { WebRevalidationService } from '../web-revalidation/web-revalidation.service.js';
 import { countTours, NO_TOURS, type TourCounts } from './tour-counts.js';
 
@@ -75,11 +76,12 @@ const CATEGORY_SELECT = {
  *
  * Hai con số đếm bằng `countTours` (`tour-counts.ts`, dùng chung với điểm đến) trên CÙNG MỘT
  * mảng cờ, nên `tourCount ≤ linkedTourCount` vẫn luôn đúng mà không cần ảnh chụp. Danh mục vài
- * hàng, tour vài chục — đọc cờ từng tour rẻ.
+ * hàng, tour vài chục — đọc cờ từng tour rẻ. `slug` của tour nuôi tag bust của lệnh sửa
+ * (`renamedTags`).
  */
 const CATEGORY_SELECT_WITH_TOURS = {
   ...CATEGORY_SELECT,
-  tours: { select: { isPublished: true } },
+  tours: { select: { slug: true, isPublished: true } },
 } satisfies Prisma.TourCategorySelect;
 
 type CategoryData = Prisma.TourCategoryGetPayload<{ select: typeof CATEGORY_SELECT }>;
@@ -236,7 +238,7 @@ export class AdminCategoriesService {
     this.logger.log(
       `[admin] category updated ${JSON.stringify({ id: input.id, name: input.name })}`,
     );
-    this.bust();
+    this.bust(renamedTags(updated.tours));
     return toRowWithTours(updated);
   }
 
@@ -281,7 +283,11 @@ export class AdminCategoriesService {
 
       // Hàng liền kề theo `order`, không phải theo chỉ số mảng: `order` có thể
       // không liên tục (một hàng bị xoá bằng tay từ thời seed chẳng hạn).
-      // Khoá phụ `id` cho ca hai hàng ngang số — xem `CATEGORY_ORDER_BY`.
+      // KHÔNG có khoá phụ `id` ở đây: qua service này hai hàng không bao giờ ngang
+      // số (tạo lấy max + 1 trong khoá, đổi chỗ hoán hai số; seed đánh 1..6). Hàng
+      // ngang số chỉ có khi sửa DB bằng tay — `lt`/`gt` bỏ qua hàng ngang số với
+      // hàng đang đổi, nên mũi tên nhảy qua nó hay báo CANNOT_MOVE; khi ấy đánh lại
+      // `order` bằng tay.
       const neighbour = await tx.tourCategory.findFirst({
         where:
           input.direction === 'up'
@@ -338,14 +344,25 @@ export class AdminCategoriesService {
    * Bust cache web SAU khi lệnh ghi đã xong (ADR-0016 §3, tiền lệ F11–F13).
    *
    * Tag `tours` chứ không phải một tag riêng: chip lọc danh mục sống trên trang
-   * `/tours` và đi cùng vòng đời với danh sách tour ở đó.
+   * `/tours` và đi cùng vòng đời với danh sách tour ở đó. Riêng lệnh sửa bust
+   * thêm trang của từng tour — xem `renamedTags`.
    *
    * `void` có chủ đích — đường này chết thì site chỉ kém tươi, còn lệnh ghi đã
    * ăn rồi thì không được phép fail theo.
    */
-  private bust(): void {
-    void this.webRevalidation.revalidate(['tours']);
+  private bust(tags: string[] = ['tours']): void {
+    void this.webRevalidation.revalidate(tags);
   }
+}
+
+/**
+ * Tag cần bust sau khi SỬA một danh mục — `tours` cộng trang của mọi tour thuộc nó (review
+ * A3-02). Trang `/tours/<slug>` in tên danh mục (breadcrumb, dòng eyebrow) qua tag `tour:<slug>`,
+ * nên bust riêng `tours` thì trang ấy giữ tên cũ tới hết 300 giây ISR — cùng lớp nợ G5 mà điểm
+ * đến đã đóng (`writtenTags`). Ẩn/hiện không đổi gì trên trang ấy nên vẫn chỉ bust `tours`.
+ */
+function renamedTags(tours: ReadonlyArray<{ slug: string }>): string[] {
+  return [...new Set(['tours', ...tours.flatMap((tour) => tourRevalidationTags(tour.slug))])];
 }
 
 /**
