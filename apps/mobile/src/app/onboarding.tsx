@@ -15,7 +15,14 @@ export default function OnboardingRoute() {
   const [index, setIndex] = useState(0);
 
   const leaveTo = async (path: '/' | '/login') => {
-    await store.markSeen();
+    try {
+      await store.markSeen();
+    } catch {
+      // Ghi cờ hỏng (Keychain đang khoá, keystore Android hỏng) vẫn phải cho
+      // khách đi tiếp — cùng lẽ `readHasSeen` (F9) ở chiều đọc: lần mở sau thấy
+      // lại onboarding chỉ mất ba trang giới thiệu, còn nút bấm không đi đâu là
+      // kẹt ngoài cửa app (review M1).
+    }
     router.replace(path);
   };
 

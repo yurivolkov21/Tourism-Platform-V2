@@ -167,3 +167,23 @@ describe('về Home', () => {
     expect(router.canGoBack()).toBe(false);
   });
 });
+
+// Ghi cờ "đã xem" hỏng (Keychain đang khoá, keystore Android hỏng) — cùng loại
+// lỗi mà `readHasSeen` (F9) đã chặn ở chiều đọc. Không chặn thì mọi nút của
+// onboarding bấm không đi đâu và khách kẹt ở ba trang giới thiệu.
+it('ghi cờ onboarding hỏng thì Skip vẫn đưa khách vào app', async () => {
+  const app = await openApp('/');
+  await act(() => router.replace('/onboarding'));
+  const markSeen = jest
+    .spyOn(onboardingStore, 'markSeen')
+    .mockRejectedValueOnce(new Error('keystore hỏng'));
+
+  try {
+    await fireEvent.press(screen.getByText(messages.mobile.onboarding.skip));
+
+    await waitFor(() => expect(app.pathname()).toBe('/'));
+    expect(markSeen).toHaveBeenCalledTimes(1);
+  } finally {
+    markSeen.mockRestore();
+  }
+});
