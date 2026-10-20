@@ -98,8 +98,8 @@ export default async function AboutPage() {
       <AboutTeam images={teamImages} />
       {/* §6 Partners BỎ khỏi About (review: dải tối chen giữa Team trắng và
           CTA trắng làm CTA bị cô lập — trust đã có ở Home + khối Numbers);
-          §7 CTA riêng — ShadcnSpace CTA 01 (ứng viên còn lại: CTA 02 video) */}
-      {/* Đang so CTA 02 (video + marquee) với CTA 01 (aurora — about-cta.tsx) */}
+          §7 CTA riêng — ShadcnSpace CTA 02 (video + marquee); user chốt bản này,
+          CTA 01 aurora đã dọn ở 5e9dd086 */}
       <AboutCtaVideo video={ctaVideo} />
     </>
   );

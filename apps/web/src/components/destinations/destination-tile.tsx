@@ -66,17 +66,6 @@ export function DestinationTile({
         sizes="(min-width: 640px) 33vw, 100vw"
       />
 
-      {/* Scrim HAI LỚP — lệch khỏi công thức `bg-overlay/25 → /55` của Nexora vì
-          nền ở đây là `ImagePlaceholder` (`--muted`, RẤT SÁNG ở light mode), khác
-          ảnh thật của Nexora vốn tự mang độ tối riêng. Đo bằng WCAG luminance
-          (oklch → linear sRGB) trên chính token thật của repo: `bg-overlay/25`
-          composite với `--muted` sáng chỉ đạt ~1.6:1 — KHÔNG đọc được. Một lớp
-          `bg-overlay` KHÔNG chia (alpha gốc 0.5/0.6) đạt ~4.6:1 (light) / 16.6:1
-          (dark) — đủ AA cho tên (chữ lớn). Lớp thứ hai trồi lên khi
-          hover/focus cộng dồn alpha ~0.75/0.84 — ~11:1 (light) / ~19:1 (dark),
-          đủ AA cho mô tả nhỏ trồi lên cùng lúc. Đây là lớp bảo vệ cho đúng lỗi
-          "3 lần liên tiếp" ghi trong brief — không dùng số của Nexora rồi hy
-          vọng có ảnh thật che lại. */}
       {/* KHÔNG có lớp phủ tối, và đây là chỗ CỐ Ý lệch khỏi Nexora.
           Nexora phủ `bg-overlay/25` rồi in chữ trắng — đẹp vì nền họ là ẢNH
           THẬT, tự có sáng-tối. Ở đây nền là `ImagePlaceholder` (`--muted`, một

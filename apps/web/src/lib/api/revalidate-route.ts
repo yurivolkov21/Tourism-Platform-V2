@@ -7,8 +7,9 @@ import { POST_SLUG_MAX, TOUR_SLUG_MAX } from '@tourism/contract';
  * vitest của web không include src/app/**. Whitelist PHẢI gương đúng
  * taxonomy lib/api/tags.ts: 'posts' | 'tours' | 'site-media' | post:<slug>
  * | tour:<slug> ('site-media' bổ sung W3-O5 — whitelist từng lệch taxonomy).
- * Gương taxonomy KHÔNG có nghĩa API đã bust đủ: `site-media` chưa có producer
- * phía API (CÒN TREO ở CHANGELOG W3 merge).
+ * Producer phía API của `site-media` là Appearance (`appearance.service.ts`) và
+ * Media library (`media-library-rules.ts`), cùng gọi `siteMediaRevalidationTags()`
+ * từ 19/10 (ADR-0059); trước đó tag này nằm trong whitelist mà không ai bắn.
  *
  * Trần độ dài slug lấy từ hằng của contract (gương cột DB), không ghi tay: bản
  * `{1,100}` cũ lệch `TOUR_SLUG_MAX` = 120, và một tour slug 101–120 ký tự làm

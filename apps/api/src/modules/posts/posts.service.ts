@@ -32,8 +32,8 @@ const postCardInclude = {
 
 /**
  * Đọc blog public (spec §4.6, P3a-C) — chỉ bài published-quá-khứ (spread
- * `publishedPostWhere()`, ADR-0004), card gọn (KHÔNG content). Task 6 sẽ mở
- * rộng thêm (tags).
+ * `publishedPostWhere()`, ADR-0004), card gọn (KHÔNG content) kèm tag và tác giả
+ * (`postCardInclude`).
  */
 @Injectable()
 export class PostsService {
