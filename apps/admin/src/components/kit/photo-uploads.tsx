@@ -240,10 +240,13 @@ export function PhotoUploadRows({
         alt=""
         className="aspect-[3/2] w-32 rounded-md bg-muted object-cover"
       />
-      <div className="grid flex-1 gap-1.5">
+      {/* `min-w-0` và `wrap-anywhere` (review A2, đo ở 390px trên Chromium): tên file điện thoại
+          như `PXL_20261012_093512345.MP.jpg` không có chỗ ngắt, cột chữ không co dưới bề rộng của
+          nó nên tràn khỏi dòng và Card cắt mất phần trăm cùng đầu phải thanh tiến độ. */}
+      <div className="grid min-w-0 flex-1 gap-1.5">
         {upload.status === 'uploading' ? (
           <>
-            <p className="text-sm text-muted-foreground">
+            <p className="text-sm text-muted-foreground wrap-anywhere">
               {t.uploading(upload.file.name, upload.percent)}
             </p>
             {/* Progress của kit dùng chung, như ô tải ảnh review của web (G14). */}
@@ -257,7 +260,7 @@ export function PhotoUploadRows({
           </>
         ) : (
           <>
-            <p role="alert" className="text-sm text-destructive-emphasis">
+            <p role="alert" className="text-sm text-destructive-emphasis wrap-anywhere">
               {t.uploadFailed(upload.file.name)}
             </p>
             <div className="flex gap-2">

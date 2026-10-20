@@ -364,6 +364,22 @@ describe('TourPhotosForm — tải lên (vòng review F18)', () => {
     expect(screen.queryByText(t.waiting(1))).toBeNull();
   });
 
+  // Review A2: cột chữ của dòng tải không co dưới bề rộng tên file nên tên điện thoại dài tràn
+  // khỏi dòng ở 390px (đo trên Chromium); hai lớp này là chỗ sửa, canh để không ai gỡ mất.
+  it('dòng tải: tên file dài ngắt được giữa chữ, cột chữ co được', async () => {
+    const sign = vi
+      .fn<SignPhotoUploadsAction>()
+      .mockResolvedValue({ ok: true, params: [params(1)] });
+    uploadMock.mockReturnValueOnce(new Promise(() => {}));
+    const { user } = renderForm(undefined, { sign });
+
+    await user.upload(fileInput(), [imageFile('PXL_20261012_093512345.MP.jpg')]);
+
+    const line = await screen.findByText(t.uploading('PXL_20261012_093512345.MP.jpg', 0));
+    expect(line).toHaveClass('wrap-anywhere');
+    expect(line.parentElement).toHaveClass('min-w-0');
+  });
+
   // Review A2: trước đây Retry chỉ GHI câu báo khi hỏng, không xoá khi được — câu ký hỏng của
   // lượt trước nằm lì cạnh tấm ảnh vừa tải xong.
   it('Retry ký hỏng rồi Retry lần hai tải xong: câu ký hỏng của lượt trước biến mất', async () => {
