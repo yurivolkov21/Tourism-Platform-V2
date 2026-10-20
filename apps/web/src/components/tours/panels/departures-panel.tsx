@@ -255,11 +255,12 @@ export function DeparturesPanel({ tour }: { tour: TourDetailVM }) {
   // "Dates open" và "Next departure" đếm theo ĐẶT ĐƯỢC, cùng vị từ với mọi nơi
   // chọn đợt khác — nếu không, ô thống kê hứa 5 ngày còn bảng chỉ cho bấm 3.
   const openTotal = departures.filter(isDepartureOpen).length;
-  // Đợt đã qua hạn đặt vẫn là một HÀNG trong bảng, nhưng không vào "Seats left"
-  // hay "Price range": đó là ghế và giá không ai mua được nữa — cùng luật với giá
-  // "from" (ADR-0041 §3). Hết đợt nhận đặt thì giá lùi về `basePrice`, trùng
-  // đường lùi của `heroPrice` để hero và ô thống kê không nói hai giá.
-  const bookable = departures.filter((d) => d.bookable);
+  // Đợt đã qua hạn đặt hay đã hết chỗ vẫn là một HÀNG trong bảng, nhưng không vào
+  // "Seats left" hay "Price range": đó là ghế và giá không ai mua được nữa — cùng
+  // tập `isDepartureOpen` với giá "from" (ADR-0058 §1, trước đó ADR-0041 §3 chỉ
+  // loại đợt quá hạn). Hết đợt đặt được thì giá lùi về `basePrice`, trùng đường
+  // lùi của `heroPrice` để hero và ô thống kê không nói hai giá.
+  const bookable = departures.filter(isDepartureOpen);
   const seatsTotal = bookable.reduce((sum, d) => sum + d.seatsLeft, 0);
   const next = departures.find(isDepartureOpen) ?? departures[0];
   // `next` chỉ rơi vào đợt đã đóng khi không còn đợt nào đặt được — in số ghế

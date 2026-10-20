@@ -148,6 +148,23 @@ describe('DeparturesPanel', () => {
     expect(within(statCard('Dates open')).getByText('2 / 3')).toBeInTheDocument();
   });
 
+  it('"Price range" bỏ qua đợt hết chỗ dù còn hạn đặt — cùng tập với giá "from" (ADR-0058 §1)', () => {
+    // Đợt khuyến mãi $199 đã bán hết: tính vào là ô thống kê in "$199–$329"
+    // trong khi hero và thẻ tour in "from $329" (review L2, 20/10).
+    const soldOutPromo = {
+      ...DEPARTURES[0],
+      id: 'aug-promo',
+      startDate: '2026-08-28',
+      endDate: '2026-08-31',
+      seatsLeft: 0,
+      effectivePrice: '199.00',
+      compareAtPrice: '329.00',
+    } as DepartureVM;
+    render(wrap([DEPARTURES[0] as DepartureVM, soldOutPromo, DEPARTURES[1] as DepartureVM]));
+    expect(within(statCard('Price range')).getByText('$329')).toBeInTheDocument();
+    expect(within(statCard('Seats left')).getByText('12')).toBeInTheDocument();
+  });
+
   it('không còn đợt nào nhận đặt: "Next departure" nói Booking closed, "Price range" lùi về basePrice', () => {
     // Đường lùi của giá trùng `heroPrice`: hero và ô thống kê không được nói hai giá.
     render(wrap([closedFrom(DEPARTURES[2] as DepartureVM)]));
