@@ -54,16 +54,19 @@ export function validateAskAboutDate(state: AskAboutDateState): AskAboutDateErro
   for (const issue of result.error.issues) {
     const field = issue.path[0];
     if (field === 'name') {
-      errors.name =
-        state.name.trim().length === 0 ? fieldErrors.name.required : fieldErrors.name.tooShort;
+      // Review L6: `too_big` từng rơi vào nhánh "tooShort" — bảo khách viết thêm trong khi lỗi
+      // thật là quá dài (cùng lỗi với form web, `validateEnquiry`).
+      if (state.name.trim().length === 0) errors.name = fieldErrors.name.required;
+      else if (issue.code === 'too_big') errors.name = fieldErrors.name.tooLong;
+      else errors.name = fieldErrors.name.tooShort;
     } else if (field === 'email') {
       errors.email =
         state.email.trim().length === 0 ? fieldErrors.email.required : fieldErrors.email.invalid;
     } else if (field === 'message') {
-      errors.message =
-        state.message.trim().length === 0
-          ? fieldErrors.message.required
-          : fieldErrors.message.tooShort;
+      if (state.message.trim().length === 0) errors.message = fieldErrors.message.required;
+      else if (issue.code === 'too_big') {
+        errors.message = fieldErrors.message.tooLong(Number(issue.maximum));
+      } else errors.message = fieldErrors.message.tooShort;
     }
   }
   return errors;

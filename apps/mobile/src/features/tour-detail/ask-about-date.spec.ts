@@ -56,6 +56,17 @@ describe('validateAskAboutDate', () => {
     );
   });
 
+  // Review L6: quá trần từng ra copy "tooShort", bảo khách viết THÊM trong khi lỗi thật là
+  // quá dài, và tấm không có bộ đếm ký tự nào để khách tự nhận ra.
+  it('tên quá 120 ký tự: lỗi tooLong; lời nhắn quá 2000 ký tự: lỗi tooLong kèm trần', () => {
+    expect(validateAskAboutDate({ ...VALID_STATE, name: 'A'.repeat(121) }).name).toBe(
+      'Keep your name under 120 characters.',
+    );
+    expect(validateAskAboutDate({ ...VALID_STATE, message: 'x'.repeat(2001) }).message).toBe(
+      'Keep your message under 2000 characters.',
+    );
+  });
+
   it('khoảng trắng đầu/cuối không tính vào độ dài (schema `.trim()` trước `.min()`)', () => {
     expect(validateAskAboutDate({ ...VALID_STATE, name: '  Al  ' })).toEqual({});
   });
