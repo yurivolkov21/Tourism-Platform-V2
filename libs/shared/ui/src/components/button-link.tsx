@@ -24,9 +24,12 @@ import type * as React from 'react';
  * shadcn, chạy lại `shadcn add button --overwrite` là mất. `buttonVariants` import
  * từ đó nên kiểu dáng vẫn có đúng một nguồn sự thật.
  *
- * Cần `next/link` (điều hướng phía client, prefetch)? Dùng thẳng `buttonVariants`:
- * `<Link className={buttonVariants({ variant: 'outline' })}>`. Component này cố ý
- * chỉ phục vụ `<a>` thuần để không kéo phụ thuộc Next vào thư viện dùng chung.
+ * Cần `next/link` (điều hướng phía client, prefetch)? Dùng `buttonVariants` bọc trong `cn`:
+ * `<Link className={cn(buttonVariants({ variant: 'outline' }))}>`. Thiếu `cn` thì chuỗi
+ * mang cả `border-transparent` của lớp nền lẫn `border-border` của outline, và trong CSS
+ * sinh ra cái trong suốt đứng sau nên thắng: nút outline mất viền ở giao diện sáng
+ * (A2-19, `button.spec.ts` canh). Component này cố ý chỉ phục vụ `<a>` thuần để không
+ * kéo phụ thuộc Next vào thư viện dùng chung.
  */
 function ButtonLink({
   className,

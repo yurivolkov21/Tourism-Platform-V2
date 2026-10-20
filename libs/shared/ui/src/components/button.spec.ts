@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { cn } from '../lib/utils';
 import { buttonVariants } from './button';
 
 // Đóng nợ contrast 2.91/2.57 (ADR-0019): nút primary (`variant: 'default'`) ở dark
@@ -24,5 +25,23 @@ describe('buttonVariants', () => {
     const classes = buttonVariants().split(' ');
     expect(classes).toContain('aria-disabled:opacity-50');
     expect(classes).toContain('aria-disabled:pointer-events-none');
+  });
+});
+
+// A2-19: JSDoc của `ButtonLink` từng dạy `<Link className={buttonVariants({ variant: 'outline' })}>`.
+// Chuỗi trần mang CẢ `border-transparent` của lớp nền lẫn `border-border` của outline; trong
+// CSS sinh ra, `border-transparent` đứng sau nên thắng và nút outline mất viền ở giao diện
+// sáng. `Button` và `ButtonLink` không dính vì luôn bọc `cn` (tailwind-merge giữ class sau).
+describe('buttonVariants dùng ngoài Button/ButtonLink', () => {
+  it('chuỗi trần mang hai màu viền đánh nhau', () => {
+    const classes = buttonVariants({ variant: 'outline' }).split(' ');
+    expect(classes).toContain('border-transparent');
+    expect(classes).toContain('border-border');
+  });
+
+  it('bọc cn thì chỉ còn viền của outline', () => {
+    const classes = cn(buttonVariants({ variant: 'outline' })).split(' ');
+    expect(classes).toContain('border-border');
+    expect(classes).not.toContain('border-transparent');
   });
 });
