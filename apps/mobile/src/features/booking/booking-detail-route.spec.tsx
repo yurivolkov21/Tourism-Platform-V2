@@ -156,3 +156,29 @@ describe('BookingDetailRoute — lý do công ty huỷ chuyến (ADR-0041 AMEND 
     expect(screen.queryByText(REASON)).toBeNull();
   });
 });
+
+/** T4 (đơn đã trả, chuyến chưa đi): "Contact us" mở form hỏi như mọi nút Contact us khác của app. */
+describe('BookingDetailRoute — Contact us ở hoá đơn đã trả', () => {
+  it('mở form enquiry gắn sẵn chuyến, không mở trang tour', async () => {
+    await renderRoute(
+      makeBooking({
+        departureStartDate: '2099-01-08',
+        departureEndDate: '2099-01-10',
+        cancellation: {
+          deadline: '2099-01-01',
+          withinDeadline: true,
+          refundAmount: '35.00',
+          canCancel: true,
+        },
+      }),
+    );
+
+    await fireEvent.press(
+      screen.getByRole('button', { name: messages.mobile.booking.detail.contactLinkLabel }),
+    );
+    expect(router.push).toHaveBeenCalledWith({
+      pathname: '/enquiry',
+      params: expect.objectContaining({ tourSlug: 'test-tour', tripTitle: 'Test tour' }),
+    });
+  });
+});

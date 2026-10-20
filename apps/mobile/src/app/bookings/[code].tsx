@@ -253,6 +253,18 @@ export default function BookingDetailRoute() {
     title: booking.tourTitle,
     dateRangeLabel: formatDepartureRange(booking.departureStartDate, booking.departureEndDate),
   };
+  // Form hỏi gắn sẵn chuyến này — đích chung của mọi "Contact us" trên hoá đơn, như tracker.
+  const openEnquiry = () => {
+    router.push({
+      pathname: '/enquiry',
+      params: {
+        tourSlug: booking.tourSlug,
+        tripTitle: booking.tourTitle,
+        tripSubtitle: trip.dateRangeLabel,
+        ...(trip.imageUrl ? { tripImageUrl: trip.imageUrl } : {}),
+      },
+    });
+  };
   // Cùng luật pill với thẻ Trips: chuyến công ty huỷ không mang "Paid" xanh dù đơn còn PAID, đơn
   // chờ trả quá hạn chót không mang "Payment due" cam (G54).
   const pill = bookingStatusPill(booking, phase, {
@@ -378,7 +390,7 @@ export default function BookingDetailRoute() {
       contactLine = {
         prompt: t.questionsAboutTrip,
         actionLabel: t.contactLinkLabel,
-        onPress: () => router.push(`/tours/${booking.tourSlug}`),
+        onPress: openEnquiry,
       };
     }
   } else if (kind === 'departureCancelled') {
@@ -532,15 +544,7 @@ export default function BookingDetailRoute() {
                   onPress: () => {
                     // Đóng tấm trước khi đẩy màn mới — trên iOS Modal còn mở sẽ đè lên form.
                     setCancelSheetOpen(false);
-                    router.push({
-                      pathname: '/enquiry',
-                      params: {
-                        tourSlug: booking.tourSlug,
-                        tripTitle: booking.tourTitle,
-                        tripSubtitle: trip.dateRangeLabel,
-                        ...(trip.imageUrl ? { tripImageUrl: trip.imageUrl } : {}),
-                      },
-                    });
+                    openEnquiry();
                   },
                 }
           }
