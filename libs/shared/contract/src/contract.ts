@@ -1304,7 +1304,8 @@ export const contract = {
      *
      * `move` nhận HƯỚNG chứ không nhận số thứ tự: client không cần biết `order`
      * đang là bao nhiêu, và hai admin bấm cùng lúc không thể ghi hai hàng cùng
-     * số. Server khoá hai hàng liền kề theo thứ tự id cố định rồi mới đổi chỗ.
+     * số: server đọc và đổi chỗ hai hàng liền kề trong MỘT khoá advisory của cả
+     * bảng (`withCategoryOrderLock`), cùng khoá với lệnh tạo và lệnh xoá.
      *
      * `SLUG_TAKEN` là 409 chứ không 422: input hoàn toàn hợp lệ, chỉ là có
      * người khác đã lấy chuỗi ấy — đúng họ "thế giới đã đổi" như `DEPARTURE_STALE`.
@@ -1377,8 +1378,9 @@ export const contract = {
         .output(AdminCategoryDeleteResultSchema),
     },
     /**
-     * Điểm đến phía admin (spec P4e-2 F15) — năm thao tác, KHÔNG có sắp thứ tự
-     * (bảng không có cột `order`).
+     * Điểm đến phía admin (spec P4e-2 F15) — tám thao tác (ba đường ảnh cuối là
+     * của trang Photos, ADR-0060 §8), KHÔNG có sắp thứ tự (bảng không có cột
+     * `order`).
      *
      * Xoá chỉ khi chưa tour nào dùng (ADR-0053): server khoá hàng điểm đến, đếm
      * liên kết, rồi mới xoá trong cùng transaction. Khoá ngoại `tour_destinations`
