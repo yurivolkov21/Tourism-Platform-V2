@@ -2,6 +2,7 @@ import { FastifyAdapter, type NestFastifyApplication } from '@nestjs/platform-fa
 import { Test } from '@nestjs/testing';
 import { AppModule } from '../app.module.js';
 import { EmailType } from '../generated/prisma/enums.js';
+import { sessionCookie } from '../test/session-cookie.js';
 import { prisma } from './auth.config.js';
 
 /**
@@ -308,5 +309,46 @@ describe('auth hardening: enumeration + trần riêng (W2 mục 3)', () => {
     });
     expect(resend.statusCode).toBe(200);
     expect(await otpRows()).toBe(1);
+  });
+
+  it('9. tên quá 120 hoặc số điện thoại quá 30 ký tự (trần cột DB) → 400, không 500 (review L1)', async () => {
+    // Form web và app chặn sớm (`auth-form.ts`), nhưng gọi thẳng API thì Postgres từ chối
+    // giá trị quá cột và Better Auth trả 500, kéo theo một sự cố giả trên Sentry.
+    const signUp = (email: string, name: string) =>
+      app.inject({
+        method: 'POST',
+        url: '/api/auth/sign-up/email',
+        payload: { email, password: PASSWORD, name },
+      });
+    const tooLongName = await signUp('long-name@example.com', 'n'.repeat(121));
+    // Trước bản vá: 422 FAILED_TO_CREATE_USER (BA bắt lỗi DB lúc tạo).
+    expect(tooLongName.statusCode).toBe(400);
+    expect(await prisma.user.count({ where: { email: 'long-name@example.com' } })).toBe(0);
+
+    expect((await signUp('ok-name@example.com', 'n'.repeat(120))).statusCode).toBe(200);
+    await prisma.user.update({
+      where: { email: 'ok-name@example.com' },
+      data: { emailVerified: true },
+    });
+    const si = await app.inject({
+      method: 'POST',
+      url: '/api/auth/sign-in/email',
+      payload: { email: 'ok-name@example.com', password: PASSWORD },
+    });
+    expect(si.statusCode).toBe(200);
+    const update = (payload: Record<string, unknown>) =>
+      app.inject({
+        method: 'POST',
+        url: '/api/auth/update-user',
+        headers: { cookie: sessionCookie(si), 'content-type': 'application/json' },
+        payload: JSON.stringify(payload),
+      });
+    // Trước bản vá: cả hai 500 (đo 20/10).
+    expect((await update({ phone: '9'.repeat(31) })).statusCode).toBe(400);
+    expect((await update({ name: 'm'.repeat(121) })).statusCode).toBe(400);
+    expect((await update({ phone: '9'.repeat(30) })).statusCode).toBe(200);
+    const user = await prisma.user.findUniqueOrThrow({ where: { email: 'ok-name@example.com' } });
+    expect(user.phone).toBe('9'.repeat(30));
+    expect(user.name).toBe('n'.repeat(120));
   });
 });

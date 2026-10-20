@@ -164,9 +164,12 @@ export const auth = betterAuth({
       // Trần email (review P4f): hôm nay chỉ lúc TẠO ghi email vì changeEmail đang tắt; gác
       // cả lúc SỬA để ngày bật changeEmail không mở lại lỗ.
       create: {
-        before: async (data, ctx) => guardAvatarImage(guardEmailLength(data), ctx?.path),
+        before: async (data, ctx) =>
+          guardAvatarImage(guardProfileLengths(guardEmailLength(data)), ctx?.path),
       },
-      update: { before: async (data) => guardAvatarImage(guardEmailLength(data)) },
+      update: {
+        before: async (data) => guardAvatarImage(guardProfileLengths(guardEmailLength(data))),
+      },
     },
     session: {
       // ADR-0052 §4: tài khoản bị khoá không được có phiên MỚI. Mọi đường đăng nhập (mật
@@ -331,6 +334,26 @@ const ACCOUNT_EMAIL_MAX = 254;
 function guardEmailLength<T extends { email?: unknown }>(data: T): T {
   if (typeof data.email === 'string' && data.email.length > ACCOUNT_EMAIL_MAX) {
     throw new APIError('BAD_REQUEST', { code: 'INVALID_EMAIL', message: 'Invalid email' });
+  }
+  return data;
+}
+
+/** Trần cột `users.name` (VarChar 120) và `users.phone` (VarChar 30) ở schema.prisma. */
+const PROFILE_NAME_MAX = 120;
+const PROFILE_PHONE_MAX = 30;
+
+/**
+ * Review L1: Better Auth không trần `name` lẫn field thêm `phone`, nên giá trị quá cột đi tới
+ * Postgres và bị từ chối ở đó: update-user trả 500, sign-up trả 422. Form web và app chặn sớm
+ * (`auth-form.ts`), chốt này chỉ đổi lỗi của request gọi thẳng API thành 400. `.length` đếm
+ * đơn vị UTF-16, không ít hơn số ký tự Postgres đếm, nên không lọt giá trị nào cột từ chối.
+ */
+function guardProfileLengths<T extends { name?: unknown; phone?: unknown }>(data: T): T {
+  if (typeof data.name === 'string' && data.name.length > PROFILE_NAME_MAX) {
+    throw new APIError('BAD_REQUEST', { code: 'NAME_TOO_LONG', message: 'Name is too long' });
+  }
+  if (typeof data.phone === 'string' && data.phone.length > PROFILE_PHONE_MAX) {
+    throw new APIError('BAD_REQUEST', { code: 'PHONE_TOO_LONG', message: 'Phone is too long' });
   }
   return data;
 }
