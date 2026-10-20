@@ -8,6 +8,47 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-10-20 — Merge review L2 tìm và xem tour: modal review báo lỗi và cho thử lại, lịch trình đủ trong HTML, `?page=` được kẹp, khoảng giá bỏ đợt hết chỗ (`eab1e57`)
+
+Luồng L2 của đợt review code theo luồng (kế hoạch 20/10 trong thư mục chung của project,
+`code-review/ke-hoach-review-theo-luong.md`), rà trên `main` `43e7c75` rồi rebase lên `46f96d5` trước khi đẩy.
+Báo cáo đủ 16 phát hiện, gồm phần để lại và phần chuyển luồng: `code-review/L2-bao-cao.md` cùng thư mục. Nhánh
+`fix/review-l2-browse-xfgnsc`, [PR #44](https://github.com/yurivolkov21/Tourism-Platform-V2/pull/44), thi công
+trên session cloud. Chỉ đụng web và i18n: không migration, không biến env, không dependency mới; hai khoá i18n
+mới.
+
+- `28b418b`: modal "Show all reviews" bắt lỗi khi tải trang lọc. Trước đó lời gọi API không có `.catch`: đổi
+  sort, chọn mức sao hay sang trang lúc API ngủ hoặc mạng rớt thì modal giữ danh sách cũ dưới nhãn lọc mới,
+  chân modal in số đếm cũ, không có chữ nào báo lỗi. Nay danh sách nhường chỗ cho câu
+  `tourDetail.dialogs.reviewsLoadFailed` và nút "Try again" (`retry`) chạy lại đúng bộ lọc; chân modal bỏ số
+  đếm; về bản mặc định thì hết báo lỗi.
+- `5505ebf`: lightbox đóng thì trả thu/phóng về 100%. Trước đó phóng 150%, nhấn Esc rồi mở ảnh khác thì ảnh
+  mới vẫn ở 150% với độ dời cũ.
+- `a58ac3b`: tab Itinerary render mốc giờ của mọi ngày, ngày đóng chỉ mang `hidden`. Trước đó HTML server
+  render chỉ có mốc của ngày 1 (ngày tự mở), trái ADR-0022 §2.
+- `d22c2d3`: `/tours` làm tròn xuống và kẹp `?page=` về trang cuối có thật. Link cũ `?page=9` khi chỉ còn 3
+  trang từng ra lưới rỗng kèm "No tours match your filters"; `?page=1.5` cắt lưới lệch nửa trang.
+- `d2964f7`: `toursPage.resultSummary` chia số ít cho cả vế điểm đến ("1 tour across 1 destination").
+- `6875af0`: breadcrumb trang tour bỏ `aria-current="page"` trên link chuyên mục.
+- `eab1e57`: ô "Price range" và "Seats left" của tab Departures lọc bằng `isDepartureOpen` như giá "from" của
+  hero và thẻ tour (ADR-0058 §1), nên đợt khuyến mãi đã hết chỗ không còn kéo đáy khoảng giá xuống.
+
+**Review.** Đây chính là lượt review của luồng L2; không có lượt review độc lập cho các bản sửa. Chuyển luồng
+khác qua coordinator: L1 (nút lưu tour chỉ hiện khi có đợt đang chọn), L8 (`/blog?page=` vượt số trang ra lưới
+rỗng, cùng cách sửa với `d22c2d3`). Hai đề xuất chờ Yuri chốt: L2-09 (hàng tháng của tab Departures cộng cả
+đợt đã đóng và đợt hết chỗ) và L2-10 (xoá biến thể `rail` không còn call-site của `BookingRail`, khoảng 120
+dòng). Yuri bảo đẩy lên main 20/10 02:41 UTC.
+
+Tests after (`gate:int` trên `eab1e57`, nền `46f96d5`, 20/10, session cloud, API sống ở :3001): unit 8199
+(admin 2388, web 2405, api 1402, mobile 864, contract 800, mobile-ui 145, i18n 64, ui 57, core 48, tokens
+26) và int 954; Biome 2086 file. PR thêm 9 test unit ở web và 2 ở i18n.
+
+**CÒN TREO:**
+
+- Buổi test tay: bốn bước ở mục 3 của `code-review/L2-bao-cao.md` (`/tours?page=9`, modal review lúc mất mạng
+  rồi "Try again", mở ảnh khác sau khi phóng trong lightbox, mã nguồn trang tour có lịch trình của ngày 2).
+- Dọn nhánh `fix/review-l2-browse-xfgnsc` trên origin nếu GitHub không tự xoá.
+
 ## 2026-10-20 — Merge review L3 đặt tour và thanh toán: huỷ đơn khi "Pay again" chạy song song, wizard sau Back từ cổng, trần số khách, trang chờ tự làm tươi (`368d484`)
 
 Luồng L3 của đợt review code theo luồng (kế hoạch 20/10 trong thư mục chung của project,
