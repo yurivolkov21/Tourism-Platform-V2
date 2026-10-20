@@ -86,7 +86,6 @@ export function toPublicReview(
   };
 }
 
-/** Row + tour slug → shape admin. Admin thấy cả review chưa duyệt. */
 /**
  * Include cho MỌI đường đọc trả `AdminReview`. Ba chỗ từng chép tay cùng một
  * object; nay còn phải kèm sự kiện moderation gần nhất (lý do bác), nên chép
@@ -142,6 +141,7 @@ function latestNote(row: { moderationEvents?: { note: string | null }[] }): stri
   return row.moderationEvents?.[0]?.note ?? null;
 }
 
+/** Row + tour slug → shape admin. Admin thấy cả review chưa duyệt. */
 export function toAdminReview(
   row: {
     id: string;
@@ -182,11 +182,10 @@ export function toAdminReview(
   };
 }
 
-/** Row → shape trả về ở `mine()`: chỉ thêm `isApproved` lên trên
- * `toPublicReview` (không cần source/tourSlug/moderatedAt như admin) — tách
- * hàm riêng thay vì mở rộng `toAdminReview` để khỏi kéo theo `tour.slug`
- * (query của `mine()` không include quan hệ `tour`, ít trùng lặp hơn phải
- * thêm include chỉ để phục vụ một field không dùng tới). */
+/** Row → shape của KHÁCH (`mine()`, `update()`, `retract()`, `bookings.byCode`),
+ * đọc kèm `REVIEW_MINE_INCLUDE`. Tách khỏi `toAdminReview` vì hai bên được thấy
+ * hai thứ khác nhau: khách chỉ đọc lý do BÁC (ADR-0031 §6), không đọc ghi chú
+ * nội bộ, nguồn hay ai duyệt. */
 export function toMyReview(
   row: Parameters<typeof toPublicReview>[0] & {
     isApproved: boolean;
@@ -217,6 +216,34 @@ export function toMyReview(
     bookingCode: row.booking?.code ?? null,
     tourImage,
   };
+}
+
+/**
+ * Tính lại `rating_avg`/`rating_count` của MỘT tour, trong transaction đang
+ * chạy — ③ của `moderate()` và bước rating của `retract()` gọi cùng hàm này.
+ * Hai statement CỐ Ý: khoá row tour bằng `SELECT … FOR UPDATE` trước, rồi
+ * `UPDATE … FROM (SELECT AVG…)` là statement MỚI nên có snapshot mới — gộp
+ * thành một câu thì mất update (đo được, lý do ghi trọn ở ③ của `moderate()`).
+ *
+ * `prisma/seed.ts` (bước 6b) vẫn chép tay cùng công thức: đổi ở đây thì đổi cả đó.
+ */
+async function recomputeTourRating(tx: Prisma.TransactionClient, tourId: string): Promise<void> {
+  const [lockedTour] = await tx.$queryRaw<{ id: string }[]>(Prisma.sql`
+    SELECT id FROM tours WHERE id = ${tourId}::uuid FOR UPDATE
+  `);
+  if (!lockedTour) return;
+  await tx.$executeRaw(Prisma.sql`
+    UPDATE tours t
+    SET rating_avg = s.avg_rating,
+        rating_count = s.cnt
+    FROM (
+      SELECT AVG(rating)::numeric(2,1) AS avg_rating, COUNT(*)::int AS cnt
+      FROM reviews
+      WHERE tour_id = ${tourId}::uuid
+        AND is_approved = true
+    ) s
+    WHERE t.id = ${tourId}::uuid
+  `);
 }
 
 @Injectable()
@@ -327,7 +354,7 @@ export class ReviewsService {
   /**
    * Tác giả viết lại review của CHÍNH mình (ADR-0032).
    *
-   * Bốn cổng, theo thứ tự CỐ Ý:
+   * Ba cổng, theo thứ tự CỐ Ý:
    *
    *  1. **Sở hữu** — không phải review của mình thì `REVIEW_NOT_FOUND`, KHÔNG
    *     phải 403. Khác `create` (ở đó 403 đúng, vì khách đã thấy mã booking
@@ -367,14 +394,11 @@ export class ReviewsService {
     // Dedupe TRƯỚC insert, cùng lý do đã ghi ở `create`: `MediaAsset` có
     // `@@unique([ownerType, ownerId, publicId])` nên publicId trùng ném P2002.
     const photos = [...new Set(input.photos ?? [])];
-    if (existing.bookingId) {
-      const booking = await prisma.booking.findUnique({
-        where: { id: existing.bookingId },
-        select: { code: true },
-      });
+    // Mã booking đi sẵn trong `REVIEW_MINE_INCLUDE` — không đọc booking lần hai.
+    if (existing.booking) {
       const folder = `${uploadFolderFor(env.CLOUDINARY_UPLOAD_FOLDER, {
         purpose: 'REVIEW_PHOTO',
-        bookingCode: booking?.code ?? '',
+        bookingCode: existing.booking.code,
       })}/`;
       if (photos.some((publicId) => !publicId.startsWith(folder))) {
         throw new ReviewPhotoInvalidError();
@@ -529,28 +553,8 @@ export class ReviewsService {
         );
       }
 
-      // Recompute rating của đúng tour — NGUYÊN VĂN khuôn ③ của moderate()
-      // (khoá row tour bằng statement riêng rồi UPDATE...FROM statement mới,
-      // lý do concurrency ghi trọn ở doc-comment moderate()).
-      if (locked.tourId) {
-        const [lockedTour] = await tx.$queryRaw<{ id: string }[]>(Prisma.sql`
-          SELECT id FROM tours WHERE id = ${locked.tourId}::uuid FOR UPDATE
-        `);
-        if (lockedTour) {
-          await tx.$executeRaw(Prisma.sql`
-            UPDATE tours t
-            SET rating_avg = s.avg_rating,
-                rating_count = s.cnt
-            FROM (
-              SELECT AVG(rating)::numeric(2,1) AS avg_rating, COUNT(*)::int AS cnt
-              FROM reviews
-              WHERE tour_id = ${locked.tourId}::uuid
-                AND is_approved = true
-            ) s
-            WHERE t.id = ${locked.tourId}::uuid
-          `);
-        }
-      }
+      // Recompute rating của đúng tour — cùng hàm với ③ của moderate().
+      if (locked.tourId) await recomputeTourRating(tx, locked.tourId);
 
       return await tx.review.findUniqueOrThrow({
         where: { id: input.id },
@@ -574,11 +578,12 @@ export class ReviewsService {
   }
 
   /**
-   * Duyệt / bỏ duyệt review — MỘT transaction gồm 4 việc:
-   *   ① flip isApproved + dấu vết người duyệt
+   * Duyệt / bác / gỡ đăng review — MỘT transaction gồm 5 việc:
+   *   ① flip trạng thái + dấu vết người duyệt
    *   ② ghi ReviewModerationEvent (append-only, audit A8)
    *   ③ recompute Tour.ratingAvg/ratingCount
    *   ④ enqueue outbox REVIEW_APPROVED, CHỈ khi false→true
+   *   ④b enqueue outbox REVIEW_REJECTED, CHỈ khi chưa-bác→bác
    *
    * ③ nằm trong transaction nên rating không bao giờ lệch với trạng thái
    * duyệt — Nexora tính live mỗi page load (scan toàn bảng reviews).
@@ -596,9 +601,10 @@ export class ReviewsService {
    * (`listByTour`), tách riêng khỏi rating hiển thị cùng trang gây khó hiểu
    * cho người xem hơn là giúp gì.
    *
-   * `prisma/seed.ts` (bước 6b) SAO CHÉP TAY đúng công thức recompute ③ bên
-   * dưới — KHÔNG có shared helper giữa hai file; sửa công thức ở đây mà quên
-   * sửa seed.ts thì rating seed ra và rating `moderate()` tính sẽ lệch nhau.
+   * `prisma/seed.ts` (bước 6b) SAO CHÉP TAY đúng công thức của
+   * `recomputeTourRating` — KHÔNG có shared helper giữa hai file; sửa công thức
+   * ở đó mà quên sửa seed.ts thì rating seed ra và rating `moderate()` tính sẽ
+   * lệch nhau.
    *
    * Bốn điểm concurrency đã fix (code review):
    *   - `fromApproved`/`justApproved` được tính từ giá trị `isApproved` đọc
@@ -607,10 +613,10 @@ export class ReviewsService {
    *     duyệt cùng review gần như đồng thời (audit trail ghi sai
    *     `fromApproved`, email có thể gửi/không-gửi sai).
    *   - `tourId` dùng ở gate ③ CŨNG đọc TRONG transaction dưới CÙNG
-   *     `FOR UPDATE` đó (không phải snapshot trước tx) — nhánh chưa có
-   *     endpoint sửa review nên hiện tại vô hại, nhưng P4 (admin CRUD review)
-   *     sẽ có request có thể đổi cột này; đọc trước tx thì moderate() chạy
-   *     song song với request sửa đó có thể tính rating cho SAI tour.
+   *     `FOR UPDATE` đó (không phải snapshot trước tx). Hiện không lệnh nào
+   *     đổi cột này (tác giả sửa nội dung chứ không đổi tour; admin CRUD
+   *     review đã bỏ 19/10), nên đây là phòng xa: ngày có lệnh đổi tour, đọc
+   *     trước tx thì moderate() chạy song song với nó sẽ tính rating cho SAI tour.
    *   - Rating của tour được khoá row (`SELECT … FOR UPDATE`) TRƯỚC khi
    *     aggregate+ghi, xem chi tiết ở ③.
    *   - `FOR UPDATE` không biết dialog đang hiện bản CŨ: tác giả vẫn sửa được
@@ -774,25 +780,7 @@ export class ReviewsService {
       // tour (ADR-0047 §3). Đẩy nó ở đây thì mỗi lần duyệt hay rút một review,
       // form admin đang mở tour đó nhận STALE_TOUR dù không ai sửa tour (vòng
       // review F17). Điểm đánh giá là số liệu dẫn xuất, không phải một lần sửa.
-      if (locked.tourId) {
-        const [lockedTour] = await tx.$queryRaw<{ id: string }[]>(Prisma.sql`
-          SELECT id FROM tours WHERE id = ${locked.tourId}::uuid FOR UPDATE
-        `);
-        if (lockedTour) {
-          await tx.$executeRaw(Prisma.sql`
-            UPDATE tours t
-            SET rating_avg = s.avg_rating,
-                rating_count = s.cnt
-            FROM (
-              SELECT AVG(rating)::numeric(2,1) AS avg_rating, COUNT(*)::int AS cnt
-              FROM reviews
-              WHERE tour_id = ${locked.tourId}::uuid
-                AND is_approved = true
-            ) s
-            WHERE t.id = ${locked.tourId}::uuid
-          `);
-        }
-      }
+      if (locked.tourId) await recomputeTourRating(tx, locked.tourId);
 
       // ④ email — chỉ ở lần chuyển false→true; dedupeKey chặn gửi lại khi
       // unapprove rồi approve lần nữa (quy ước <event>:<entityId>). Bỏ qua
