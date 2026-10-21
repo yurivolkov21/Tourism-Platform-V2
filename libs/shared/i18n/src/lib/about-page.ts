@@ -192,7 +192,7 @@ export const aboutPage = {
   // nhãn ảnh chân dung là hàm nhận tên người đó.
   team: {
     eyebrow: 'The team',
-    titleLead: 'Four faces,',
+    titleLead: 'Three faces,',
     titleAccent: 'one slow idea.',
     intro: 'The people who signed the lease, drew the first routes, and still answer the phone.',
     portraitLabel: (name: string) => `Portrait — ${name}`,
