@@ -247,10 +247,10 @@ sách: điểm nổi bật, bao gồm, không bao gồm, FAQ, chính sách, chi 
 | --- | --- |
 | `STALE_TOUR` | Dải báo trên form kèm nút Reload; form giữ chữ đang gõ |
 | `DURATION_LOCKED` | Dưới ô số ngày |
-| `GROUP_SIZE_BELOW_SEATS` | Dưới ô số khách tối đa |
-| `TOUR_NOT_READY` | Dải báo liệt kê chỗ thiếu, như khung readiness |
+| `GROUP_SIZE_BELOW_SEATS` | Dưới ô số khách tối đa; làm mới để câu nói đúng sàn ghế (review A2, 21/10) |
+| `TOUR_NOT_READY` | Dải báo liệt kê chỗ thiếu, như khung readiness; làm mới để phần đầu theo kịp (review A2, 21/10) |
 | `SLUG_TAKEN` | Dưới ô slug, hộp New tour vẫn mở |
-| `TOUR_HAS_BOOKINGS` | Trong hộp xác nhận xoá |
+| `TOUR_HAS_BOOKINGS` | Trong hộp xác nhận xoá; đóng hộp thì làm mới, vùng xoá thành dạng "đã có booking" (review A2, 21/10) |
 | `NOT_FOUND` | Toast, rồi về `/tours` |
 
 - Codec lỗi theo khuôn `destinations-write.ts`: derive từ khối i18n, rút

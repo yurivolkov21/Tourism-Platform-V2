@@ -8,6 +8,66 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-10-21 — Merge review A2 admin catalog tour: link nút viền có lại viền, chuyến khởi hành dài đúng số ngày của tour, báo trước khi dời ngày lúc khách đang trả tiền, khu sửa tour làm mới sau lỗi lưu do tab khác, Retry và dòng tải ảnh (`aba5933`)
+
+Luồng A2 của đợt review code theo luồng (kế hoạch 20/10 trong thư mục chung của project,
+`code-review/ke-hoach-review-theo-luong.md`), rà trên `main` `3e78c3f`, rebase lên `e8fdfee`, `b048d66` rồi
+`6fcf63b` trước khi đẩy. Báo cáo đủ 25 phát hiện (11 sửa ở đây, 5 đề xuất, phần còn lại ghi lại hay chuyển luồng
+khác): `code-review/A2-bao-cao.md` cùng thư mục. Nhánh `fix/review-a2-admin-tours-1gh80p`,
+[PR #56](https://github.com/yurivolkov21/Tourism-Platform-V2/pull/56), thi công trên session cloud. Đụng api
+(module catalog), contract (schema chuyến của admin, một mã lỗi mới ở `create` và `update`), i18n (khối
+`admin.departures`) và admin: không migration, không biến env, không dependency mới.
+
+- `04b1f8c` (A2-01, việc CÒN TREO của entry Media B): năm link dạng nút viền ngoài (Departures ở bảng `/tours`, Fix
+  ở bước Review, Departures ở đầu khu sửa tour, Sign in ở trang lỗi, Back to dashboard ở trang 404) có lại viền.
+  `buttonVariants()` trần trên `Link` giữ cả `border-transparent` của lớp gốc lẫn `border-border` của outline, và
+  lớp trong suốt thắng; nay đi qua `cn` như `Button` và `ButtonLink`. Hai file của A5 (`app/error.tsx`,
+  `app/not-found.tsx`) sửa theo phép của điều phối.
+- `2ca2685` (A2-03, M3-13 do M3 chuyển sang): chuyến khởi hành phải dài đúng `durationDays` của tour, tính bằng
+  `tripLengthDays` như hạn huỷ ADR-0041. API từ chối tạo chuyến, hay đổi NGÀY chuyến, khi lệch (422
+  `TRIP_LENGTH_MISMATCH`); đổi giá hay ghế trên chuyến lệch sẵn vẫn được. Form admin tự đặt ngày về theo ngày đi
+  (ô chỉ đọc, kèm dòng gợi ý); contract thêm `durationDays` vào tour của chuyến, chỉ admin đọc. Trước đó tour 5 ngày
+  mang được chuyến 2 ngày, nên hạn huỷ miễn phí và "Day n of N" ở trang theo dõi chuyến tính theo chuyến lệch.
+- `9002411` (A2-04): dời ngày một chuyến còn khách đang trả tiền (checkout dở, chưa giữ ghế) thì hộp sửa báo trước
+  khoản trả ấy sẽ bị hoàn (ADR-0009 AMEND 4); phụ đề tab Departures và lời hộp sửa nói "while no seats are booked"
+  thay cho "while nobody has booked", khớp thước `seatsBooked` của server.
+- `72a1e51` (A2-06, A2-07): bật bán hay thêm chuyến ở tab khác không đổi phiên bản tour, nên lần lưu ở tab này hỏng
+  với `TOUR_NOT_READY` (phần đầu còn ghi "Off sale") hay `GROUP_SIZE_BELOW_SEATS` (câu không kèm sàn ghế). Nay hai
+  mã này làm mới trang mà giữ chữ đang gõ; `DURATION_LOCKED` cố ý không làm mới. Câu "Days … will be removed"
+  tắt ngay khi lưu xong.
+- `450eef4` (A2-08): booking tới sau lúc trang tải thì Delete bị chặn đúng, nhưng đóng hộp xong vùng xoá vẫn mời
+  bấm; nay đóng hộp sau `TOUR_HAS_BOOKINGS` thì làm mới.
+- `b19ec4a` (A2-05) và `511895a` (A2-09), kit ảnh dùng chung với trang Photos của điểm đến: Retry xoá câu báo của
+  lượt trước; cột chữ của dòng tải có `min-w-0` và `wrap-anywhere`, nên tên ảnh dài không làm dòng tràn ở 390px
+  (đo bằng Chromium headless).
+- `9aac420` (A2-02), `9892ecf` (A2-10) và `aba5933` (A2-11): không đổi hành vi. Mười một comment nói sai về catalog
+  admin, id ô alt của tab Photos dùng chung helper `altInputId`, thanh bước bỏ tên biến trùng.
+
+Khe deploy: Render lên trước Vercel là an toàn. Admin cũ gặp `TRIP_LENGTH_MISMATCH` thì hộp báo lỗi chung; admin mới
+đọc API cũ chưa có `durationDays` thì ô ngày về gõ tay như trước. Spec P4e-1 (F12) và P4e-3a (bảng mã lỗi) ghi luật
+mới.
+
+**Review.** Bốn mảng rà song song: API và lịch chuyến tự đọc; form sửa tour; phần ảnh cùng bảng `/tours`. Mọi phát
+hiện của các lượt soát được đọc lại trên code trước khi ghi; test mới chạy đỏ trên mã cũ trước khi sửa. M3-13: Yuri
+chọn "Chặn luôn" trên thẻ hỏi 21/10 03:49 UTC; cỡ thật 18 file, 329 dòng thêm, lớn hơn mức ước trên thẻ (khoảng 10
+file, 120 dòng). Yuri bảo đẩy lên main 21/10 03:49 UTC.
+
+Tests after (`gate:int` trên `aba5933`, nền `6fcf63b`, 21/10, session cloud, API sống ở :3001): unit 8389 (admin
+2420, web 2445, api 1445, mobile 927, contract 812, mobile-ui 145, i18n 64, ui 57, core 48, tokens 26) và int
+976; Biome 2098 file; RLS, tokens-only của mobile và prerender admin xanh. PR thêm 27 test unit (admin 22, api 4,
+contract 1) và 4 int test.
+
+**CÒN TREO:**
+
+- Buổi test tay: mục 3 của `code-review/A2-bao-cao.md` (năm link có viền; ngày về tự điền theo số ngày tour; câu
+  cảnh báo khi dời ngày lúc có người đang trả, bấm Cancel chứ KHÔNG lưu; dòng tải tên dài ở 390px).
+- Đề xuất chờ Yuri: A2-12 (đưa tiêu điểm tới ô lỗi đầu tiên khi Save), A2-13 (Reload sau lỗi không rõ kết cục khi
+  form còn thay đổi), A2-14 (gỡ lớp đỡ khe deploy F18 đã chết), A2-15 (hook `useTourStep`, nên để sau bảo vệ),
+  A2-16 (`PhotoDropZone` dùng chung với trang Photos của điểm đến).
+- Chuyển qua điều phối 20/10: A2-17, A2-18, A2-20 cho A5; A2-19 cho F3.
+- ADR-0049 còn nhắc prop `lead` của khung bước, đã gỡ ở `604aae0`; ADR là bản ghi quyết định nên không sửa (A2-25).
+- Dọn nhánh `fix/review-a2-admin-tours-1gh80p` trên origin nếu GitHub không tự xoá.
+
 ## 2026-10-21 — Merge review L6-04: thư khách trả lời mail của Nexora về hộp hỗ trợ công khai, alert lead mới trả lời thẳng cho khách (`dfc2baa`)
 
 Phần còn lại của luồng L6 (đề xuất L6-04 trong `code-review/L6-bao-cao.md` cùng thư mục chung của project). Yuri

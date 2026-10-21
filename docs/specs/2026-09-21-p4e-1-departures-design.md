@@ -210,10 +210,16 @@ tính bằng `cancellationDeadline`, và số booking sống — con số này n
 chặn đổi ngày lẫn cột tiến độ của F13.
 
 `create`: ngày về ≥ ngày đi · không tạo chuyến có ngày đi trong quá khứ ·
-`seatsTotal ≥ 1` · giá để trống thì lấy `basePrice` của tour.
+`seatsTotal ≥ 1` · giá để trống thì lấy `basePrice` của tour. Từ review A2 (21/10,
+M3-13) chuyến còn phải dài đúng `durationDays` của tour, tính bằng `tripLengthDays`
+như hạn huỷ ADR-0041, không thì `TRIP_LENGTH_MISMATCH` (422); form admin tự đặt ngày
+về theo ngày đi và số ngày tour.
 
 `update`: sửa giá và ghế tự do trong ràng buộc 2c; **sửa ngày chỉ khi chưa có
-booking sống** (2b), vi phạm thì trả mã lỗi riêng để màn in đúng câu.
+booking sống** (2b), vi phạm thì trả mã lỗi riêng để màn in đúng câu. Thước thật
+là ghế đã giữ (`seatsBooked`): checkout dở không chặn đổi ngày (ADR-0009 AMEND 4),
+nên từ review A2 (21/10) hộp sửa báo trước khoản trả ấy sẽ bị hoàn. Đổi NGÀY cũng
+kiểm độ dài như `create`; đổi giá hay ghế trên chuyến lệch sẵn thì không.
 
 `setStatus`: `OPEN ↔ CLOSED`. Mở lại chỉ được khi chưa qua hạn chót. **Không**
 nhận `CANCELLED` — huỷ là đường riêng của F13.
