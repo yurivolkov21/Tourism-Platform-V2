@@ -8,6 +8,43 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-10-21 — Merge review M3-14: nội dung hoá đơn và tracker của app mobile dựng bằng hàm thuần có test, route chỉ còn giữ state và nối nút (`910017b`)
+
+Đề xuất M3-14 của luồng M3 (`code-review/M3-bao-cao.md` trong thư mục chung của project). Entry M3 ngày 20/10 ghi
+"chỉ làm sau khi phần của Nghĩa đã gộp"; Yuri đổi ý 21/10 04:31 UTC ("làm luôn cho tối ưu") để Nghĩa làm giao diện
+22–30/10 trên nền mới thay vì trên hai route dài. Rà và làm trên `main` `852c53b`. Nhánh
+`fix/review-m3-mobile-booking-g0iuac` (dùng lại tên nhánh của PR #47 đã gộp, dựng lại từ `main`),
+[PR #65](https://github.com/yurivolkov21/Tourism-Platform-V2/pull/65), thi công trên session cloud. Chỉ đụng
+`apps/mobile/src` và một mục handoff: không đổi hành vi, không đổi chữ, không migration, không biến env, không
+dependency mới; không sửa file màn nào trong danh sách Nghĩa làm lại giao diện.
+
+- `8e21ac7`: `features/booking/booking-detail-view.ts` dựng props của `BookingDetailScreen` cho sáu khung hoá đơn
+  (chờ trả, quá hạn trả, đã trả, chuyến bị công ty huỷ, khách đã huỷ, đã hoàn) bằng
+  `bookingDetailView(booking, { today, now, payError, paying }, handlers)`; `cancelSheetView` dựng tấm huỷ T6/T7;
+  `bookingEnquiryParams` gom tham số form hỏi gắn chuyến, dùng chung với tracker. Route
+  `app/bookings/[code].tsx` từ 585 còn 276 dòng.
+- `78cb3fa`: `features/trip-tracker/trip-tracker-view.ts` dựng bốn mặt tracker (`tripUpcomingView` P1,
+  `tripImminentView` P2, `tripDayView` P5, `tripEndedView` P6). Route `app/trips/[code]/index.tsx` từ 417 còn 210
+  dòng.
+- Việc của từng nút truyền vào qua `handlers`, nên hàm vẫn thuần và test bấm thử được; kiểu lấy từ props của màn
+  bằng `import type`, nên đợt giao diện đổi props hay tên icon thì `tsc` chỉ chỗ sửa ở hai file view.
+- `910017b`: mục 7 của `docs/handoff/mobile-ui-upgrade-handoff.md` thêm ý 6, chỉ hai file view cho đợt giao diện.
+
+**Review.** Không có lượt review độc lập; test route cũ giữ nguyên, không sửa một dòng, và vẫn xanh, là bằng chứng
+props không đổi. 34 test unit mới (23 hoá đơn, 11 tracker) phủ 100% dòng của hai file view. Yuri bảo đẩy lên main
+21/10 05:05 UTC.
+
+Tests after (`gate:int` trên `910017b`, nền `852c53b`, 21/10, session cloud, API sống ở :3001): unit 8423 (admin
+2420, web 2445, api 1445, mobile 961, contract 812, mobile-ui 145, i18n 64, ui 57, core 48, tokens 26) và int
+976; Biome 2102 file; RLS, tokens-only của mobile và prerender admin xanh. `@tourism/contract#test` dính flake
+"Worker forks emitted error" một lần, chạy riêng và chạy lại đều xanh.
+
+**CÒN TREO:**
+
+- Bản APK mới từ `main` (EAS trên PC), gộp vào lượt dựng lại sau phần giao diện của Nghĩa; buổi test tay bấm lại
+  sáu khung hoá đơn và bốn mặt tracker trên Android cùng tám bước mục 3 của `code-review/M3-bao-cao.md`.
+- Dọn nhánh `fix/review-m3-mobile-booking-g0iuac` trên origin nếu GitHub không tự xoá.
+
 ## 2026-10-21 — Merge review A2 admin catalog tour: link nút viền có lại viền, chuyến khởi hành dài đúng số ngày của tour, báo trước khi dời ngày lúc khách đang trả tiền, khu sửa tour làm mới sau lỗi lưu do tab khác, Retry và dòng tải ảnh (`aba5933`)
 
 Luồng A2 của đợt review code theo luồng (kế hoạch 20/10 trong thư mục chung của project,
