@@ -8,6 +8,52 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-10-21 — Merge review M1 mobile đăng nhập, tài khoản, khung app: nút về không để lại bản sao màn trong stack, onboarding vẫn mở app khi ghi cờ hỏng, test canh env hỏng (`d1e50c5`)
+
+Luồng M1 của đợt review code theo luồng (kế hoạch 20/10 trong thư mục chung của project,
+`code-review/ke-hoach-review-theo-luong.md`), rà trên `main` `99de947`, rebase lên `451f82f` rồi lên `cacdf3a`
+trước khi đẩy. Báo cáo đủ 17 phát hiện, gồm phần để lại và một chỗ chuyển M2: `code-review/M1-bao-cao.md` cùng
+thư mục. Nhánh `fix/review-m1-mobile-auth-orptsn`,
+[PR #50](https://github.com/yurivolkov21/Tourism-Platform-V2/pull/50), thi công trên session cloud. Chỉ đụng
+`apps/mobile/src`: không migration, không biến env, không dependency mới, không khoá i18n mới; không sửa file
+nào trong danh sách Nghĩa làm lại giao diện 22–30/10.
+
+- `7f4546a`: sáu nút "về" đổi `router.replace` hay `router.navigate` sang `router.dismissTo`, gỡ về bản màn đang
+  có (chưa có thì thay màn hiện tại). Đo trên cây route thật của expo-router 57: hai lệnh kia dựng bản MỚI kể cả
+  khi màn đích nằm ngay dưới. "Back to sign in" của Forgot password, "Sign in" ở màn kết quả sau xác minh email
+  và link "Sign in" ở chân Create account từng đẩy thêm một Sign in, phải back thêm lần nữa mới đóng nhóm auth.
+  Xoá tài khoản xong, X ở Reset password và "Back to home" của `+not-found` từng dựng một bộ tab mới chồng lên bộ
+  cũ: back cứng Android về bộ cũ thay vì thoát app. Spec mới `back-stack-routes.spec.tsx` chạy trên router thật.
+- `ce197a9`: onboarding bắt lỗi của `markSeen()` rồi vẫn điều hướng, cùng lẽ `readHasSeen` (F9) ở chiều đọc.
+  Trước đó SecureStore ném lúc ghi (Keychain đang khoá, keystore hỏng) thì Skip, Get started và "I already have
+  an account" không đi đâu.
+- `8a4b9a3`: trả JSDoc của `readEnv` về đúng hàm (từng nằm trên `isLoopback`).
+- `68032f4`: `env-failure.spec.tsx` canh hợp đồng thiếu biến `EXPO_PUBLIC_*` thì ErrorBoundary gốc hiện câu lỗi
+  nêu tên biến và gỡ splash. Trước đó dời `env()` ra module scope là app đóng ngay lúc mở mà không test nào đỏ.
+- `d1e50c5`: bốn nút "Browse tours" ở các khung hoá đơn đã đóng và dòng "Where to next?" ở P6 dùng
+  `router.dismissTo('/explore')` như B8 (file của luồng M3 đã xong, điều phối đồng ý 20/10). Trước đó từ Explore
+  back về Home rồi back nữa lại ra đúng hoá đơn hay P6 vừa rời.
+
+**Review.** Đây chính là lượt review của luồng M1; không có lượt review độc lập cho các bản sửa. Chuyển M2 qua
+điều phối: "Explore other tours" ở `tours/[slug].tsx` cùng lỗi, M2 đã sửa ở `d3e6ab6` (entry M2 ngay dưới ghi
+"không còn dùng `router.dismissTo`", code thật thì nay dùng nó). Ghi lại không sửa: M1-10 Create account mở từ
+cổng của tab còn nằm dưới Sign in sau xác minh, M1-11 lệnh auth không có trần thời gian, M1-12 màn lỗi gốc in
+thẳng `error.message`, M1-13 đếm ngược "Resend code" đứng khi app nằm nền, M1-14 deep link ở lần mở đầu tiên bị
+onboarding thay chỗ, M1-15 bốn khoá mobile không còn dùng (dọn sau 30/10). Yuri bảo đẩy lên main 21/10 00:29 UTC.
+
+Tests after (`gate:int` trên `d1e50c5`, nền `cacdf3a`, 21/10, session cloud, API sống ở :3001): unit 8287 (admin
+2390, web 2432, api 1402, mobile 923, contract 800, mobile-ui 145, i18n 64, ui 57, core 48, tokens 26) và int
+957; Biome 2097 file; RLS, bundle mobile và prerender admin xanh. PR thêm 14 test unit ở mobile (909 lên 923).
+
+**CÒN TREO:**
+
+- Bản APK mới từ `main` (EAS trên PC) để các sửa tới máy khách, gộp vào lượt dựng lại sau phần giao diện của
+  Nghĩa (22–30/10).
+- Buổi test tay: bảy bước ở mục 3 của `code-review/M1-bao-cao.md`, làm trên Android (Back to sign in, link Sign
+  in qua lại, Sign in sau xác minh email, X ở Reset password mở từ email, trang không tìm thấy qua `adb`, xoá một
+  tài khoản thử, Browse tours và Where to next? rồi back).
+- Dọn nhánh `fix/review-m1-mobile-auth-orptsn` trên origin nếu GitHub không tự xoá.
+
 ## 2026-10-21 — Merge review M2 mobile xem tour, Saved, bài viết: ngày theo giờ Việt Nam, đợt hết chỗ không chọn được và giá gạch như web, tab Reviews không báo rỗng sai và không nhảy trang, lỗi 4xx không thử lại (`d3e6ab6`)
 
 Luồng M2 của đợt review code theo luồng (kế hoạch 20/10 trong thư mục chung của project,
