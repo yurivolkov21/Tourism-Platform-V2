@@ -85,7 +85,7 @@ StyleDictionary.registerFormat({
   },
 });
 
-// React Native theme — hex colors + dp radius, consumed by @tourism/mobile-ui.
+// Theme React Native — màu hex + radius theo dp, @tourism/mobile-ui đọc.
 StyleDictionary.registerFormat({
   name: 'tourism/rn-theme',
   format: ({ dictionary }) => {
@@ -130,7 +130,7 @@ StyleDictionary.registerFormat({
   },
 });
 
-// Type surface for the generated theme.js (emitted together so they stay in lockstep).
+// Khai báo kiểu cho theme.js được sinh (sinh cùng lúc để hai file luôn khớp nhau).
 StyleDictionary.registerFormat({
   name: 'tourism/rn-theme-dts',
   format: () =>
@@ -166,7 +166,7 @@ const sd = new StyleDictionary({
   log: { verbosity: 'silent' },
   platforms: {
     tailwind: {
-      // No value transforms — emit oklch strings verbatim; names come from token paths.
+      // Không biến đổi giá trị — in nguyên chuỗi oklch; tên lấy từ đường dẫn token.
       transforms: [],
       buildPath: `${outDir}/`,
       files: [

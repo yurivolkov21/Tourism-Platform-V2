@@ -26,6 +26,11 @@ interface AnimatedThemeTogglerProps extends React.ComponentPropsWithoutRef<'butt
   theme?: 'light' | 'dark';
   /** Called on toggle. Pair with `theme` for controlled usage. */
   onThemeChange?: (theme: 'light' | 'dark') => void;
+  /**
+   * Chữ cho trình đọc màn hình trong nút. Bắt buộc vì gói UI không giữ chữ sản phẩm: app
+   * truyền từ `@tourism/i18n` (luật 7). Bản vendored gõ cứng "Toggle theme" (review F3).
+   */
+  label: string;
 }
 
 function polygonCollapsed(point: string, vertexCount: number): string {
@@ -145,6 +150,7 @@ export const AnimatedThemeToggler = ({
   fromCenter = false,
   theme,
   onThemeChange,
+  label,
   ...props
 }: AnimatedThemeTogglerProps) => {
   const shape = variant ?? 'circle';
@@ -279,7 +285,7 @@ export const AnimatedThemeToggler = ({
       {...props}
     >
       {isDark ? <Sun /> : <Moon />}
-      <span className="sr-only">Toggle theme</span>
+      <span className="sr-only">{label}</span>
     </button>
   );
 };

@@ -4,12 +4,7 @@ import type { JsonifiedClient } from '@orpc/openapi-client';
 import { OpenAPILink } from '@orpc/openapi-client/fetch';
 import { contract } from '@tourism/contract';
 import { apiOrigin } from './env';
-import {
-  BROWSER_TIMEOUT_MS,
-  createRetryingFetch,
-  retryDelaysFor,
-  SERVER_TIMEOUT_MS,
-} from './retry-fetch';
+import { createRetryingFetch, requestTimeoutMs, retryDelaysFor } from './retry-fetch';
 
 /** Context per-call: Server Component điều khiển Next Data Cache qua đây. */
 export interface ApiClientContext {
@@ -120,8 +115,9 @@ export function withInternalReadKey(
  * Link OpenAPI (KHÔNG phải RPCLink): API mount contract theo path REST qua
  * @orpc/nest nên client phải nói chuyện bằng đúng các path đó (ADR-0016 §1).
  * Timeout theo phía gọi (ADR-0044): 20s ở server vì prerender bắn hàng loạt
- * xuyên châu lục sang instance free, 10s ở trình duyệt giữ nguyên như cũ.
- * Nexora không có timeout ở đâu cả, đây là điểm vá.
+ * xuyên châu lục sang instance free; ở trình duyệt lượt đọc 10s, lượt ghi 60s bằng
+ * trần handler của API (AMEND 2 — bỏ cuộc sớm hơn là báo lỗi cho lượt ghi có thể đã
+ * xong). Nexora không có timeout ở đâu cả, đây là điểm vá.
  *
  * Chữ ký `fetch` đối chiếu trực tiếp .d.ts của bản @orpc 1.14.8 đã pin (KHÔNG
  * theo mẫu docs chung — bản docs online cho signature 2 tham số `(request,
@@ -148,7 +144,7 @@ const resilientFetch = createRetryingFetch({
   fetch: (request, init) =>
     globalThis.fetch(request, {
       ...init,
-      signal: AbortSignal.timeout(isServer() ? SERVER_TIMEOUT_MS : BROWSER_TIMEOUT_MS),
+      signal: AbortSignal.timeout(requestTimeoutMs(request.method, isServer())),
     }),
   sleep: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
   isServer,

@@ -150,3 +150,50 @@ khi build đỏ.
   `apps/web/**`, `apps/admin/**`, `apps/mobile/**` vẫn là việc tay để dành. Không
   mức siết nào cứu được lượt push có sửa `apps/api/**` hay `libs/**`, vốn phải dựng
   lại API.
+
+## AMEND 2 — Lượt ghi của trình duyệt chờ bằng trần của API (20/10)
+
+Review F3 (vỏ web) theo phát hiện L3-20 của review L3. §2 cho trình duyệt hạn 10 giây
+cho MỌI lượt gọi. Với lượt đọc thì đúng. Với lượt ghi thì sai, vì hai đầu không bỏ
+cuộc cùng lúc:
+
+- API cho một route chạy tới trần `handlerTimeout` 60 giây (`apps/api/src/bootstrap.ts`).
+  `bookings.create` gọi Stripe hoặc PayPal, mỗi lượt gọi nhà cung cấp được tới 15 giây
+  (`PROVIDER_HTTP_TIMEOUT_MS`), PayPal lúc nguội gọi hai lượt.
+- API không huỷ việc đang làm khi client đóng kết nối. Đo trên máy thi công: một lượt
+  `POST /api/bookings` thường và hai lượt client đóng socket sau 2 ms và 10 ms, cả hai
+  lượt bỏ ngang đều không nhận được byte trả lời nào, vẫn sinh đủ ba đơn `PENDING` cho
+  cùng một khách và một chuyến.
+- Render free ngủ khi rảnh. Lượt gọi đầu tiên sau giấc ngủ phải chờ API dậy (đo ở
+  AMEND 1: 24 giây), rồi vẫn được chuyển tới API sau khi trình duyệt đã bỏ cuộc.
+
+Hệ quả cũ: khách bấm "Reserve", sau 10 giây thấy câu lỗi "không mở được thanh toán",
+trong khi đơn đã được tạo. Bấm lại là thêm một đơn nữa. App admin đã gặp đúng lớp này
+từ review F2 (31/08) và cho lượt ghi tiền 30 giây
+(`apps/admin/src/lib/api/bookings.ts`).
+
+**Quyết định:** §2 tách theo method, chỉ phía trình duyệt.
+
+- Trình duyệt, `GET` và `HEAD`: giữ 10 giây.
+- Trình duyệt, mọi method khác: 60 giây, bằng `handlerTimeout` của API. Tới lúc đó API
+  đã tự trả 503 nếu vẫn chưa xong, nên khách nhận câu trả lời thật thay vì một lần bỏ
+  cuộc phía mình.
+- Server: giữ 20 giây cho mọi method. Server web hiện chỉ gọi `GET`.
+- Không thử lại lượt ghi nào, như §1.1.
+
+Hạn đặt một chỗ, hàm `requestTimeoutMs` trong `apps/web/src/lib/api/retry-fetch.ts`, và
+áp cho mọi lượt gọi qua client oRPC của web. Đăng nhập (Better Auth client) và khung
+chat không đi qua client này nên không đổi.
+
+**Còn lại, không giải ở đây:** khách bấm lại sau một lỗi THẬT vẫn sinh đơn thứ hai, vì
+`bookings.create` không chống trùng. Chống trùng thật (khoá idempotency do client sinh,
+hoặc trả lại đơn `PENDING` còn hạn của cùng khách và cùng chuyến) là việc của luồng đặt
+tour (L3), ghi thành đề xuất trong báo cáo F3.
+
+**Đã cân và bỏ:**
+
+- **30 giây như admin:** PayPal lúc nguội đã tới 30 giây chỉ riêng phần nhà cung cấp,
+  cộng giấc ngủ của Render là vượt.
+- **Chỉ nới cho `bookings.create`:** lượt huỷ đơn (hoàn tiền), mở lại thanh toán, gửi
+  đánh giá, gửi yêu cầu tour riêng đều cùng một kiểu lỗi; một luật theo method gọn hơn
+  một danh sách endpoint phải nhớ cập nhật.

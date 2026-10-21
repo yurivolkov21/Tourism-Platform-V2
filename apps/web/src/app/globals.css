@@ -1,5 +1,5 @@
-/* ADR-0011: dùng chung theme shadcn từ gói UI `@tourism/ui`. Theme thật (màu,
- * spacing) sẽ wire vào @tourism/tokens ở giai đoạn sau (tokens-only #6). */
+/* ADR-0011: dùng chung theme shadcn từ gói UI `@tourism/ui`. Màu, chữ, khoảng cách đến
+ * từ `@tourism/tokens` (tokens-only #6) — `globals.css` của gói UI import `tokens.css`. */
 @import "@tourism/ui/globals.css";
 
 /* Tailwind v4: quét class Tailwind bên trong gói UI dùng chung (workspace
