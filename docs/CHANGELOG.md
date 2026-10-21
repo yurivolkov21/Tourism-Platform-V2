@@ -8,6 +8,53 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-10-21 — Merge review L8 trang chủ, điểm đến, blog và trang tĩnh: blog kẹp `?page=`, ngày và tháng đúng múi giờ, giá "from" của trang vùng, canonical blog, sáu nút xem tour về `/tours` (`4bee6ff`)
+
+Luồng L8 của đợt review code theo luồng (kế hoạch 20/10 trong thư mục chung của project,
+`code-review/ke-hoach-review-theo-luong.md`), rà trên `main` `f8f8634`, rebase lên `3e78c3f`, `e8fdfee` rồi
+`a856dd9` trước khi đẩy. Báo cáo đủ 24 phát hiện (13 sửa ở đây, gồm một của L2 và một do F3 đo ra; một đề xuất để
+sau bảo vệ; phần còn lại ghi lại hay chuyển luồng khác): `code-review/L8-bao-cao.md` cùng thư mục. Nhánh
+`fix/review-l8-home-blog-xjppea`, [PR #57](https://github.com/yurivolkov21/Tourism-Platform-V2/pull/57), thi công
+trên session cloud. Đụng web, i18n (khối `aboutPage.team`) và một comment ở api: không migration, không đổi
+contract, không biến env, không dependency mới.
+
+- `7f8c91c` (L8-01): `/blog?page=` lạ được làm tròn xuống và kẹp về trang có thật trước `paginate`, như `/tours`
+  ở `d22c2d3`; trước đó `?page=9` ra lưới trắng với dòng "Showing 49–9 of 9".
+- `a1b7da1` (L8-02) và `619b811` (L8-22, file của L2 do coordinator giao): ngày đăng ở card, hero bài và tháng
+  của đánh giá khoá `timeZone: 'UTC'`; khách ở múi giờ âm từng thấy lùi một ngày hay một tháng, kèm lệch HTML lúc
+  hydrate.
+- `8871069` (L8-03): ô "From" ở hero trang vùng và giá ô chuyến một ngày đọc `cardPrice()` (ADR-0058), cùng giá
+  với thẻ tour; seed local trước đó in "From $35" ở miền Bắc trong khi thẻ rẻ nhất in $28.
+- `863165c` (L8-04): API địa điểm lỗi thì hero `/destinations` dùng câu không số thay cho "Three regions, 0
+  places.".
+- `aa2af57` (L8-05): icon nhóm ở `/faq` gắn theo nhóm, không theo vị trí sau khi lọc.
+- `d056024` (L8-06): hàng số liệu hero trang vùng đặt nhãn vào `<dt>`, số vào `<dd>`.
+- `4fe49a7` (L8-07): `/blog` và trang bài khai `alternates.canonical`.
+- `5c59490` (L8-08): sửa bốn comment nói sai code.
+- `26655e5` (L8-23, F3-14 đo bằng axe): mô tả dưới sáu con số ở `/about` đổi `text-foreground/40` (3.06:1) sang
+  `text-foreground/80` (7.61:1, 5.67:1 khi rê chuột lên ô); số "01", "02" của mục lục "On this page" bỏ
+  `opacity-60` (2.62:1 lên 5.55:1 trở lên).
+- `dd0fd2e` (L8-09, Yuri chọn 21/10): sáu nút "View tours", "Browse tours", "Browse the tours" ở trang chủ,
+  `/about`, `/contact` và trang 404 trỏ `/tours` thay cho `#tours` của khu Stats trang chủ.
+- `d790adc` (L8-10, Yuri chọn 21/10): bỏ icon Website và LinkedIn trỏ `#team` ở khu Team, cùng hai khoá i18n.
+- `4bee6ff` (L8-24): tiêu đề khu Team đổi "Four faces," thành "Three faces,"; đội còn ba người từ `22f245f`
+  (24/09).
+
+**Review.** Không có lượt review độc lập; mỗi commit sửa có test đỏ trên mã cũ (L8-08 chỉ là comment). Hai đề xuất
+L8-09, L8-10 Yuri chọn trên thẻ trong thread L8 ngày 21/10 05:29 UTC; L8-11 (nhánh ghi chú hành trình của ô chuyến
+một ngày không chạy trên production) để sau bảo vệ. Tương phản của L8-23 đo trên bản build của nhánh bằng
+Chromium theo cách của axe; cùng cách đo ra 3.06 và 2.62 cho bản cũ như axe. Yuri bảo đẩy lên main 21/10 05:29 UTC.
+
+Tests after (`gate:int` trên `4bee6ff`, nền `a856dd9`, 21/10, session cloud, API sống ở :3001): unit 8447 (web
+2469, admin 2420, api 1445, mobile 961, contract 812, mobile-ui 145, i18n 64, ui 57, core 48, tokens 26) và int
+976; Biome 2113 file; RLS và tokens-only của mobile xanh. Lượt đầu `@tourism/contract#test` dính flake "Worker forks emitted error" (một ca
+quá 5 giây trên máy tải nặng), chạy lại thì xanh.
+
+**CÒN TREO:**
+
+- Buổi test tay chạy chín bước mục 3 của `code-review/L8-bao-cao.md` trên production.
+- Dọn nhánh `fix/review-l8-home-blog-xjppea` trên origin nếu GitHub không tự xoá.
+
 ## 2026-10-21 — Merge review M3-14: nội dung hoá đơn và tracker của app mobile dựng bằng hàm thuần có test, route chỉ còn giữ state và nối nút (`910017b`)
 
 Đề xuất M3-14 của luồng M3 (`code-review/M3-bao-cao.md` trong thư mục chung của project). Entry M3 ngày 20/10 ghi
