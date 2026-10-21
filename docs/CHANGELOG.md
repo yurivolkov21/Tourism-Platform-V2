@@ -8,6 +8,61 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-10-21 — Merge review M2 mobile xem tour, Saved, bài viết: ngày theo giờ Việt Nam, đợt hết chỗ không chọn được và giá gạch như web, tab Reviews không báo rỗng sai và không nhảy trang, lỗi 4xx không thử lại (`d3e6ab6`)
+
+Luồng M2 của đợt review code theo luồng (kế hoạch 20/10 trong thư mục chung của project,
+`code-review/ke-hoach-review-theo-luong.md`), rà trên `main` `99de947`, rebase lên `451f82f` rồi lên `e8fdfee`
+trước khi đẩy. Báo cáo đủ 18 phát hiện, gồm phần để lại, phần chuyển cho Nghĩa và một đề xuất:
+`code-review/M2-bao-cao.md` cùng thư mục. Nhánh `fix/review-m2-mobile-browse-5jm83v`,
+[PR #49](https://github.com/yurivolkov21/Tourism-Platform-V2/pull/49), thi công trên session cloud. Đụng
+`apps/mobile/src` và ba khoá mới trong khối mobile của `@tourism/i18n`: không migration, không biến env, không
+dependency mới; không sửa file nào trong danh sách Nghĩa làm lại giao diện 22–30/10.
+
+- `7505571`: `formatFullDate` nhận cả mốc thời gian: chuỗi dài hơn 10 ký tự đi qua `vietnamToday(new Date(iso))`
+  như web (ADR-0041 §7), `formatReviewDate` gọi lại nó. Trước đó mốc từ 00:00 tới 07:00 giờ Việt Nam in lùi một
+  ngày: ngày trả, huỷ, hoàn ở hoá đơn và tracker (M3-10), ngày review ở trang tour, ngày đăng bài viết.
+- `87740f5`: tab Dates dùng `isDepartureOpen` (còn hạn VÀ còn chỗ) cho view model hàng đợt và chốt chặn
+  `handleBookPress`. Cờ `bookable` của API chỉ xét hạn đặt, nên đợt kín còn hạn từng chọn được và mở wizard với
+  trần 0 khách. Giá gạch theo `departureStrikePrice`, chép luật `strikePrice` của web (15/09): đợt hạ giá không
+  có neo riêng nay gạch giá gốc, đợt có neo thấp hơn giá trả thôi gạch.
+- `d2d5187`: review của chi tiết tour chuyển sang `useInfiniteQuery` như `app/posts/index.tsx`: trang tải hỏng
+  rồi bấm "Load more" tải lại đúng trang ấy thay vì nhảy sang trang sau; helper `isReviewSortChange` thành thừa,
+  đã bỏ. Câu của danh sách rỗng theo trạng thái query (ADR-0055 §3): "Loading…" khi đang tải, "Couldn't load
+  reviews." khi hỏng (khoá mới `mobile.tourDetail.reviewsError`), chỉ nói chưa có review khi server trả rỗng.
+- `1442cd6`: `queryClient` có `retry: shouldRetryQuery`: lỗi 4xx của server không gọi lại, trừ 401, 408, 429;
+  lỗi mạng, hết giờ chờ và 5xx giữ trần 3 lần. Trước đó tour đã gỡ hay bài viết không còn quay vòng thêm khoảng
+  7 giây rồi mới hiện màn "không còn".
+- `8349b82`: bài viết gặp `POST_NOT_FOUND` có trạng thái `notFound` riêng của `PostDetailScreen`: "This story
+  isn't available anymore." với nút "Go back" (hai khoá mới ở `mobile.posts`), thay màn lỗi có nút "Try again"
+  không bao giờ thành công.
+- `99478f5`: tấm "Ask about this date" đụng trần 5 lượt mỗi phút thì báo chờ một phút (`askAboutDateErrorCopy`,
+  cùng câu 429 của form enquiry chung) thay vì mời thử lại ngay.
+- `cfa1575`: My reviews bỏ phần cắt 10 ký tự trước khi gọi `formatFullDate` (phần còn lại của M3-10, ở file của
+  luồng M3 đã xong, sửa theo ngoại lệ mục 2.2 của kế hoạch).
+- `d3e6ab6`: "Explore other tours" ở màn tour không còn dùng `router.dismissTo('/explore')` như B8, lùi về bộ tab
+  có sẵn thay vì dựng thêm một bộ tab đè lên trang tour (M1 báo sang).
+
+**Review.** Đây chính là lượt review của luồng M2; không có lượt review độc lập cho các bản sửa. Chuyển Nghĩa qua
+Yuri, cả ba ở `tour-detail-screen.tsx`: M2-11 hàng đợt kín còn hạn cần nhãn "Sold out" thay vì "Booking closed",
+M2-12 tab Reviews chưa có nút thử lại, M2-13 trạng thái loading của chi tiết tour không có nút back. Một đề xuất
+chờ Yuri chốt: M2-14 (thêm `priceFrom` vào `WishlistItemSchema` để thẻ Saved của web và app in cùng giá "from"
+như Explore; khoảng 40 đến 60 dòng, phần app chờ Nghĩa). Ghi lại không sửa: M2-15 Explore thay danh sách bằng
+khung chờ mỗi lần đổi sort (file của Nghĩa), M2-17 thanh tiến độ của tracker tính từ ngày UTC, M2-18 tên
+`formatReviewDate`. Yuri bảo đẩy lên main 20/10 23:52 UTC.
+
+Tests after (`gate:int` trên `d3e6ab6`, nền `e8fdfee`, 21/10, session cloud, API sống ở :3001): unit 8273 (admin
+2390, web 2432, api 1402, mobile 909, contract 800, mobile-ui 145, i18n 64, ui 57, core 48, tokens 26) và int
+957; Biome 2095 file; RLS, bundle mobile và prerender admin xanh. PR thêm 29 test unit ở mobile (880 lên 909).
+
+**CÒN TREO:**
+
+- Bản APK mới từ `main` (EAS trên PC) để các sửa tới máy khách, gộp vào lượt dựng lại sau phần giao diện của
+  Nghĩa (22–30/10).
+- Buổi test tay: tám bước ở mục 3 của `code-review/M2-bao-cao.md`, làm trên Android (đợt kín ở tab Dates, giá
+  gạch so với web, tab Reviews lúc API ngủ, Load more sau khi mất mạng, bài viết không tồn tại, ngày trả và ngày
+  review từ 00:00 tới 07:00, Explore other tours rồi back, Ask about this date sáu lần).
+- Dọn nhánh `fix/review-m2-mobile-browse-5jm83v` trên origin nếu GitHub không tự xoá.
+
 ## 2026-10-20 — Merge review L4 đơn của khách, huỷ và hoàn tiền: nút Pay now và huỷ giữ chỗ gặp đơn vừa đổi trạng thái thì làm mới trang, tiền đủ hai số lẻ khi có khoản hoàn, kết quả hoàn của admin, ô vé in gọn hai dòng (`d32f730`)
 
 Luồng L4 của đợt review code theo luồng (kế hoạch 20/10 trong thư mục chung của project,
