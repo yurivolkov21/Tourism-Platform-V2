@@ -75,7 +75,7 @@ export function Hero({ heroImage = null }: { heroImage?: SiteMediaItem | null })
         transition={SPRING}
       >
         <a
-          href="#tours"
+          href="/tours"
           className="cursor-pointer rounded-md bg-card px-6 py-2.5 text-sm font-medium text-card-foreground transition hover:bg-card/85"
         >
           {copy.primaryCta}

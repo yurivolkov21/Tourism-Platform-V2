@@ -82,7 +82,7 @@ export function AboutHero({ heroImage = null }: { heroImage?: SiteMediaItem | nu
           <p className="max-w-md text-base leading-relaxed text-foreground/60">{t.intro}</p>
           <div className="flex items-center gap-4">
             <motion.a
-              href="/#tours"
+              href="/tours"
               whileHover={{ scale: 1.04 }}
               whileTap={{ scale: 0.96 }}
               className="group flex items-center gap-2 rounded-full bg-primary px-6 py-3 text-sm font-medium text-primary-foreground transition-shadow duration-300 hover:shadow-[0_0_30px_color-mix(in_oklab,var(--primary)_40%,transparent)]"

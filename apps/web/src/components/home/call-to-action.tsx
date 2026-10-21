@@ -82,7 +82,7 @@ export function CallToAction({ bandImage = null }: { bandImage?: SiteMediaItem |
         >
           {/* Glow hover của forged: bóng đổ lấy màu từ token primary qua color-mix */}
           <motion.a
-            href="#tours"
+            href="/tours"
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             className="group inline-flex items-center gap-2 rounded-full bg-primary px-7 py-3 text-sm font-medium text-primary-foreground transition-shadow duration-300 hover:shadow-[0_0_40px_color-mix(in_oklab,var(--primary)_45%,transparent)]"

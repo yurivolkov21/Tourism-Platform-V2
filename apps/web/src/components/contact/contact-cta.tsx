@@ -33,7 +33,7 @@ export function ContactCta() {
 
             {/* Nút morph: viên tròn mũi tên trượt phải→trái + xoay 45° khi hover */}
             <a
-              href="/#tours"
+              href="/tours"
               className="group relative h-12 w-fit cursor-pointer overflow-hidden rounded-full bg-primary p-1 ps-6 pe-14 text-sm font-medium text-primary-foreground transition-all duration-500 hover:bg-primary/80 hover:ps-14 hover:pe-6"
             >
               <span className="relative z-10 inline-flex h-full items-center transition-all duration-500">

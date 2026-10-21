@@ -61,7 +61,7 @@ export function AboutCtaVideo({
               <span className="italic"> {t.titleAccent}</span>
             </h2>
             <a
-              href="/#tours"
+              href="/tours"
               className="rounded-full bg-card px-6 py-3.5 text-sm font-medium text-card-foreground transition-colors duration-300 hover:bg-card/85"
             >
               {t.browseTours}
