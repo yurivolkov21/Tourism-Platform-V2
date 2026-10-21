@@ -166,9 +166,11 @@ Tính trên ngày lịch (chuỗi `YYYY-MM-DD`), không tính giờ.
    nút tab mang `id` bằng hash của nó (đợt vá 09/10; trước đó không phần tử nào mang id ấy nên
    trang không cuộn).
 
-Chân khối chỉ cho đơn PAID — cổng review của API chỉ nhận PAID:
-"Your review opens on {ngày về}." (cổng mở từ 07:00 giờ Việt Nam của chính ngày về). Đơn hoàn
-một phần hay hoàn thiện chí vẫn đi nhưng không viết review được, nên không có chân.
+Chân khối cho đơn còn chuyến, đúng cổng review của API (`bookingKeepsTrip` của contract: PAID,
+hoàn một phần, hoàn thiện chí trọn mà không huỷ):
+"Your review opens on {ngày về}." (cổng mở từ 07:00 giờ Việt Nam của chính ngày về). Trước
+review L5-07 (21/10) cổng chỉ nhận PAID, nên khách hoàn thiện chí vẫn đi mà không viết review
+được và không có chân.
 
 Dữ liệu tour lấy bằng `fetchTourDetailOrNull(slug)` (cache 300 giây, tag `tour:<slug>`; tour đã
 gỡ hay API catalog lỗi đều ra null), và CHỈ ở hai giai đoạn cần nó — `upcoming`, `on_tour`
@@ -189,7 +191,9 @@ gỡ hay API catalog lỗi đều ra null), và CHỈ ở hai giai đoạn cần
 dựng ở MỌI giai đoạn khi slot khác `hidden` và `tooEarly` (`hasReviewArea`), đứng dưới khối của
 giai đoạn — dưới "Today's plan" từ 07:00 giờ Việt Nam ngày về (cổng mở theo ngày UTC), dưới khối
 đóng khi đơn đã có review rồi bị hoàn hay huỷ (API vẫn cho sửa, rút). Slot `tooEarly` không dựng
-khu review — chân Get ready đã nói ngày mở. Thẻ cảm ơn chỉ cho `travelled` với slot `hidden`.
+khu review — chân Get ready đã nói ngày mở. Thẻ cảm ơn chỉ cho `travelled` với slot `hidden`;
+từ L5-07 không đơn nào ở `travelled` ra `hidden` nữa (giai đoạn ấy đã là đơn còn chuyến, chuyến
+không bị huỷ), nên thẻ chỉ còn là lưới an toàn.
 Trước đợt vá 09/10 khu review chỉ có ở `travelled` (ngày Việt Nam): mất form ~17 giờ mỗi chuyến,
 và đơn có review rồi bị hoàn mất đường sửa, rút.
 
@@ -197,8 +201,8 @@ Chuyến bị công ty huỷ mà đơn chưa có review thì slot `hidden` (`rev
 `departureCancelled` ngay sau nhánh đã có review): không mời viết cho một chuyến không chạy, kể cả
 khi đơn còn PAID vì job hoàn tiền chưa chạy hay kẹt retry qua ngày về — form từng đứng ngay dưới
 khối "Departure cancelled" và gửi được thật (review cuối 09/10, M1). Đơn đã có review vẫn theo
-phán quyết của review, còn sửa, rút được. Ở chỗ này web chặt hơn cổng API:
-`checkReviewEligibility` chưa xét chuyến huỷ (open-items G36).
+phán quyết của review, còn sửa, rút được. Cổng API chặn đúng ca này từ G36
+(`checkReviewEligibility` trả `DEPARTURE_CANCELLED`), nên web và API nói cùng một câu.
 
 ### 2.6 Voucher: vừa trả tiền và mở lại
 

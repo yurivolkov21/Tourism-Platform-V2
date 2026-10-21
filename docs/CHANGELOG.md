@@ -8,6 +8,77 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-10-21 — Merge review L5 đánh giá tour: lệnh duyệt mang phiên bản, khách hoàn thiện chí mà vẫn đi viết được review, nút ảnh review hiện trên điện thoại, form sửa gặp bài vừa duyệt thì tải lại, câu bảng rỗng của /reviews (`b80c25f`)
+
+Luồng L5 của đợt review code theo luồng (kế hoạch 20/10 trong thư mục chung của project,
+`code-review/ke-hoach-review-theo-luong.md`), rà trên `main` `451f82f`, rebase dần lên `56e23ae` trước khi đẩy.
+Báo cáo đủ 21 phát hiện, gồm phần để lại, phần chuyển luồng và đề xuất L5-07 Yuri chọn "Mở" ngày 20/10:
+`code-review/L5-bao-cao.md` cùng thư mục. Nhánh `fix/review-l5-reviews-ulk5gf`,
+[PR #51](https://github.com/yurivolkov21/Tourism-Platform-V2/pull/51), thi công trên session cloud. Đụng contract
+(route `admin.reviews.moderate` đòi `version` và có mã `STALE_REVIEW`; hàm mới `bookingKeepsTrip`), api, admin,
+web, mobile và `@tourism/i18n` (một khoá mới, ba câu đổi): không migration, không biến env, không dependency mới;
+không sửa file nào trong danh sách Nghĩa làm lại giao diện 22–30/10.
+
+- `49ecf2a` (L5-01): lệnh duyệt review mang `version` (`updatedAt` dạng ISO, `AdminReview.version`, không thêm
+  cột). `moderate()` so phiên bản dưới `FOR UPDATE`, đặt sau guard trùng trạng thái; lệch thì 409
+  `STALE_REVIEW`, admin thấy toast bảo đọc lại, dialog đóng và hàng đợi tải lại. Dialog chụp bài cùng phiên bản
+  lúc mở. Trước đó khách sửa bài trong lúc admin đọc thì Approve đăng luôn bản mới chưa ai đọc (điểm tour tính
+  theo số sao mới), và tab admin mở từ trước bác được bài admin khác vừa duyệt. Theo khuôn `DEPARTURE_STALE`
+  của vòng F12, không ADR.
+- `0c55abe` (L5-04, L5-05): câu tính lại điểm tour của `retract` và `moderate` gom về một hàm
+  `recomputeTourRating`; `update()` bỏ một lần đọc booking thừa. Không đổi hành vi.
+- `1559b23` (L5-02): nút gỡ ảnh và tay nắm sắp xếp ảnh của review hiện khi focus nằm trong ô
+  (`group-focus-within/item:`) và luôn hiện trên màn cảm ứng (`pointer-coarse:`). Tailwind v4 bọc `hover`
+  trong `@media (hover: hover)`, nên trước đó trên điện thoại hai nút không bao giờ hiện, còn người dùng bàn
+  phím tab vào một nút vô hình.
+- `01fb7f2` (L5-03): form sửa review gặp `REVIEW_NOT_EDITABLE` (bài vừa được duyệt) báo toast rồi
+  `router.refresh()`, khung đổi sang trạng thái đã đăng; trước đó form in lỗi và đứng nguyên, bấm lại vẫn lỗi.
+- `dc5e020` (L5-06): comment lệch code ở `reviews.service.ts`, `moderate-actions.tsx`, `reviews-moderate.ts`,
+  spec của contract và `lib/review.ts` (cổng API chặn chuyến bị công ty huỷ từ G36).
+- `3dad5bb` (L5-07): `bookingKeepsTrip` ở contract cạnh `bookingPhase` (đơn còn chuyến: PAID,
+  PARTIALLY_REFUNDED, REFUNDED chưa có `cancelledAt`, theo ADR-0054 AMEND 1), và `bookingPhase` dùng chính hàm
+  ấy. Cổng `checkReviewEligibility` đọc hàm này thay cho "chỉ PAID" (lý do `NOT_PAID` đổi tên thành
+  `NOT_TRAVELLING`); `reviews.create` và `media.signUpload` nạp thêm `cancelledAt`. Web: `reviewSlot`, link
+  Review của My bookings và chân khối Get ready theo cùng luật. Khách được hoàn thiện chí một phần hay trọn mà
+  vẫn đi nay viết được review; đơn huỷ thật rồi mới hoàn vẫn bị chặn.
+- `4bdb7c9` (L5-19): app theo cổng mới: `canWriteReview` của hoá đơn chuyến đã về đọc `bookingKeepsTrip`; khối
+  "chờ viết bài" của My reviews xin server PAID, PARTIALLY_REFUNDED và REFUNDED, có test buộc bộ lọc khớp
+  `bookingKeepsTrip`. Hai file của luồng M3, coordinator cho làm trong PR này.
+- `7caa6f7`: JSDoc của chân khối Get ready trong `messages.ts` thôi nói "chỉ đơn PAID" (chỉ comment).
+- `b80c25f` (L5-21, A1 chuyển sang): ba câu ô rỗng của `/reviews` khi đang lọc ngày thành "No matching reviews
+  were submitted …", như A1-07 sửa `/bookings`: ngày cộng dồn với tab trạng thái, nguồn, số sao và ô tìm kiếm,
+  nên câu cũ đọc thành "khoảng này không ai gửi review" khi chỉ là tab Pending trống.
+
+Doc hiện trạng sửa theo: spec ba trang đơn 05/10 (§2.4 chân Get ready theo `bookingKeepsTrip`, §2.5 cổng API đã
+chặn chuyến huỷ từ G36, thẻ cảm ơn ở `travelled` nay chỉ là lưới an toàn) và bảng giai đoạn của
+`docs/handoff/mobile-booking-handoff.md` (hoá đơn T4 mời viết theo `bookingKeepsTrip`).
+
+**Review.** Đây chính là lượt review của luồng L5; không có lượt review độc lập cho các bản sửa. Chuyển luồng:
+L5-17 sang A5 (nhật ký `/activity` ghi "approved" cho lệnh duyệt no-op), L5-18 sang F2 (comment của seed trỏ
+công thức điểm cũ), L5-20 sang L7 (`reviewText` của trợ lý AI còn chép cổng "chỉ PAID"; vào PR #55 sau khi PR
+này lên). Ghi lại không sửa: L5-08 tới L5-15 (câu "hết lượt" khi admin Reopen bài bị bác hai lần, "last reason"
+của hồ sơ review, ký upload cho bài đã duyệt, trần 10 MB chỉ ở client, sạn nhỏ của khung ảnh, hai câu copy chờ
+Yuri chọn chữ, bấm Submit hai lần, số query của `listByTour`), L5-16 không làm (`version` theo mili-giây, cùng
+giới hạn `DEPARTURE_STALE`). Yuri bảo đẩy lên main 21/10 00:33 UTC.
+
+Tests after (`gate:int` trên `b80c25f`, nền `56e23ae`, 21/10, session cloud, API sống ở :3001): unit 8317 (admin
+2396, web 2440, api 1407, mobile 926, contract 808, mobile-ui 145, i18n 64, ui 57, core 48, tokens 26) và int
+965; Biome 2099 file; RLS, bundle mobile và prerender admin xanh. PR thêm 30 test unit (contract 8, web 8, admin
+6, api 5, mobile 3) và 8 int test.
+
+**CÒN TREO:**
+
+- Lúc deploy, Render (API) và Vercel (admin, web) lên riêng: tab admin mở từ trước deploy phải tải lại, không
+  thì nút duyệt trả 400 vì thiếu `version`; web lên trước API thì khách hoàn một phần thấy form review nhưng gửi
+  bị từ chối cho tới khi Render xong.
+- Bản APK mới từ `main` (EAS trên PC) để phần app của L5-07 tới máy khách, gộp vào lượt dựng lại sau phần giao
+  diện của Nghĩa (22–30/10). Màn chuyến đã xong của APK đang cài chạy đúng ngay khi API lên.
+- Buổi test tay: tám bước ở mục 3 của `code-review/L5-bao-cao.md` (ảnh review trên điện thoại và bàn phím, duyệt
+  bài vừa bị sửa, hai tab admin, sửa bài vừa được duyệt, đơn hoàn thiện chí viết review trên web và app, ô rỗng
+  của `/reviews`).
+- L5-20 vào PR #55 của L7.
+- Dọn nhánh `fix/review-l5-reviews-ulk5gf` trên origin nếu GitHub không tự xoá.
+
 ## 2026-10-21 — Merge review M1 mobile đăng nhập, tài khoản, khung app: nút về không để lại bản sao màn trong stack, onboarding vẫn mở app khi ghi cờ hỏng, test canh env hỏng (`d1e50c5`)
 
 Luồng M1 của đợt review code theo luồng (kế hoạch 20/10 trong thư mục chung của project,

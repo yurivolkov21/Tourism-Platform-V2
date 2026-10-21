@@ -67,7 +67,7 @@ cũng lọc theo giai đoạn này (review 12/10, N3):
 | --- | --- | --- | --- |
 | `upcoming` | PAID, PARTIALLY_REFUNDED, REFUNDED hoàn thiện chí (không `cancelledAt`) — khách vẫn đi | P1 (P2 khi còn ≤ 3 ngày) | màn khách quay lại nhiều nhất |
 | `on_tour` | như trên, hôm nay trong khoảng đi–về | P5 | ngày đang chạy = `today − start + 1` |
-| `travelled` | như trên, sau `departureEndDate` | P6 | mời viết đánh giá; hoá đơn T4 cũng mời (nút "Write a review" mở R1) khi đơn PAID chưa có bài, tính ngày về theo ngày UTC như cổng `checkReviewEligibility` của API (14/10, nợ nhỏ P5b-5 mục 1) |
+| `travelled` | như trên, sau `departureEndDate` | P6 | mời viết đánh giá; hoá đơn T4 cũng mời (nút "Write a review" mở R1) khi đơn còn chuyến (`bookingKeepsTrip`: PAID, hoàn một phần, hoàn thiện chí trọn; review L5-07, 21/10) chưa có bài, tính ngày về theo ngày UTC như cổng `checkReviewEligibility` của API (14/10, nợ nhỏ P5b-5 mục 1) |
 | `awaiting_payment` · `lapsed` | PENDING (quá hạn chót là `lapsed`) | T5 | trả tiền trước đã; thẻ chỉ mời "Finish payment" khi chưa quá hạn; `lapsed`: pill "Payment not completed" xám, hoá đơn nói "This booking wasn’t paid by the deadline." như web, không nút trả hay huỷ (14/10, G54) |
 | `cancelled` | CANCELLED, REFUNDED có `cancelledAt`, mọi đơn trên chuyến bị công ty huỷ | T8 | đơn chưa từng thu tiền: chỉ câu đã huỷ; chuyến công ty huỷ: T8 mở bằng "We had to cancel this departure." như web, thẻ Trips ghi "Cancelled" xám dù đơn còn PAID (14/10) |
 
