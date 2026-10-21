@@ -189,15 +189,13 @@ export const aboutPage = {
     },
   },
   // §5 Team — `about-team.tsx`. Tên và vai trò từng người là dữ liệu biên tập ở `mocks/team`;
-  // ba nhãn dưới là hàm nhận tên người đó.
+  // nhãn ảnh chân dung là hàm nhận tên người đó.
   team: {
     eyebrow: 'The team',
     titleLead: 'Four faces,',
     titleAccent: 'one slow idea.',
     intro: 'The people who signed the lease, drew the first routes, and still answer the phone.',
     portraitLabel: (name: string) => `Portrait — ${name}`,
-    websiteLabel: (name: string) => `${name} — website`,
-    linkedinLabel: (name: string) => `${name} — LinkedIn`,
   },
   // §7 CTA nền video — `about-cta-video.tsx`.
   ctaVideo: {

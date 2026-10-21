@@ -2,10 +2,8 @@
 
 import type { MediaItem } from '@tourism/contract';
 import { aboutPage } from '@tourism/i18n';
-import { GlobeIcon } from 'lucide-react';
 import { motion } from 'motion/react';
 import { SectionEyebrow } from '@/components/home/section-eyebrow';
-import { LinkedinIcon } from '@/components/icons/social';
 import { SlotImage } from '@/components/slot-image';
 import { SPRING, SPRING_HEADING } from '@/lib/motion';
 import { TEAM } from '@/mocks/team';
@@ -13,11 +11,13 @@ import { TEAM } from '@/mocks/team';
 // About §5 Team — §5 lần 2: bản slidex bị chê "trang nào cũng có", thay bằng
 // convert ShadcnSpace **Team 01** (user chọn sau vòng săn 3 nguồn): grid 3 cột (4 cột tới 24/09)
 // portrait LỚN, hover ảnh chuyển GRAYSCALE (thấy rõ khi có ảnh thật — ghi chú
-// dưới), name/role căn giữa + hàng social icon tròn. Motion đổi ease gốc
+// dưới), name/role căn giữa. Motion đổi ease gốc
 // [0.21,0.47,0.32,0.98] về spring nhà, giữ stagger 0.1s. Trường `line` của
 // mock giữ trong data (schema candidate) nhưng không render — Team 01 chủ
 // đích tối giản. Nội dung CHỈ founder (quyết định user 23/07); anchor #team
 // là đích nút hero §1.
+// Hàng icon Website, LinkedIn của mẫu Team 01 đã bỏ 21/10 (review L8-10, Yuri chọn): đội là
+// dữ liệu mock nên icon chỉ trỏ `#team`, bấm không đi đâu. Có link thật thì thêm lại.
 
 const t = aboutPage.team;
 
@@ -79,22 +79,6 @@ export function AboutTeam({
                 <div className="flex flex-col items-center gap-1.5 text-center">
                   <p className="font-heading text-2xl font-medium text-foreground">{member.name}</p>
                   <p className="text-sm text-muted-foreground">{member.role}</p>
-                </div>
-                <div className="flex gap-2">
-                  <a
-                    href="#team"
-                    aria-label={t.websiteLabel(member.name)}
-                    className="rounded-full p-2 text-muted-foreground transition-colors hover:bg-accent/80 hover:text-foreground"
-                  >
-                    <GlobeIcon className="size-4" aria-hidden="true" />
-                  </a>
-                  <a
-                    href="#team"
-                    aria-label={t.linkedinLabel(member.name)}
-                    className="rounded-full p-2 text-muted-foreground transition-colors hover:bg-accent/80 hover:text-foreground"
-                  >
-                    <LinkedinIcon className="size-4" />
-                  </a>
                 </div>
               </figcaption>
             </motion.figure>
