@@ -9,33 +9,22 @@ import { View } from 'react-native';
 import { PlaceholderScreen } from '@/components/placeholder-screen';
 import { AuthGateScreen } from '@/features/auth/auth-gate-screen';
 import { setPendingReturn } from '@/features/auth/return-to';
-import {
-  formatDepartureDate,
-  formatDepartureRange,
-  formatFullDate,
-} from '@/features/tour-detail/departures';
-import { parseItineraryDescription } from '@/features/tour-detail/itinerary';
+import { bookingEnquiryParams } from '@/features/booking/booking-detail-view';
 import { packingListStore, toggleChecked } from '@/features/trip-tracker/packing-list';
-import { type TripDayLineVM, TripDayScreen } from '@/features/trip-tracker/trip-day-screen';
+import { TripDayScreen } from '@/features/trip-tracker/trip-day-screen';
 import { TripEndedScreen } from '@/features/trip-tracker/trip-ended-screen';
+import { tripLoadState, tripPhase } from '@/features/trip-tracker/trip-tracker';
 import {
-  bookingProgressPercent,
-  currentTripDay,
-  daysBetween,
-  itineraryCalendarDate,
-  packingChecklistItems,
-  timedStopStates,
-  tripLoadState,
-  tripPhase,
-  vietnamTimeOfDay,
-  whatToBringLines,
-} from '@/features/trip-tracker/trip-tracker';
-import type { TripMilestone } from '@/features/trip-tracker/trip-upcoming-screen';
+  type TripTrackerHandlers,
+  tripDayView,
+  tripEndedView,
+  tripImminentView,
+  tripUpcomingView,
+} from '@/features/trip-tracker/trip-tracker-view';
 import { TripUpcomingScreen } from '@/features/trip-tracker/trip-upcoming-screen';
 import { isTravellingPhase } from '@/features/trips/trips-list';
 import { orpc, withMobileAuth } from '@/lib/api/client';
 import { getAuthClient } from '@/lib/auth-client';
-import { formatMoney } from '@/lib/format-money';
 import { useServerClock } from '@/lib/use-server-clock';
 
 /**
@@ -43,6 +32,9 @@ import { useServerClock } from '@/lib/use-server-clock';
  * hành (W7/W8, mockup `mobile-booking-screens` mục 4). Chạm thẻ của đơn còn đi theo
  * ngày ở tab Trips (`isTravellingPhase`) route tới đây; đơn chờ trả, đã huỷ hay chuyến
  * bị công ty huỷ vẫn đi thẳng `/bookings/[code]` (luật vào màn, handoff mục 3).
+ *
+ * Nội dung từng mặt dựng ở `trip-tracker-view.ts` (review M3-14); route giữ state, tải dữ liệu
+ * và nối mỗi dòng với việc của nó.
  */
 export default function TripTrackerRoute() {
   const { code: rawCode } = useLocalSearchParams<{ code: string }>();
@@ -50,7 +42,7 @@ export default function TripTrackerRoute() {
 
   const { data: session } = getAuthClient().useSession();
   const signedIn = Boolean(session?.user);
-  const { trip: t, trips, booking: bookingCopy } = messages.mobile;
+  const { trips, booking: bookingCopy } = messages.mobile;
   const { now, today } = useServerClock();
 
   const [packingChecked, setPackingChecked] = useState<string[]>([]);
@@ -157,259 +149,60 @@ export default function TripTrackerRoute() {
   if (!travelling) return null;
 
   const phase = tripPhase(today, booking.departureStartDate, booking.departureEndDate);
-  const generalPolicy = tour.policies.find((p) => p.kind === 'GENERAL');
-  const travellersLabel = trips.travellersCount(booking.numAdults + booking.numChildren);
-
-  // Ba hàm điều hướng khai dạng ARROW CONST (không phải `function` — khai báo
-  // hàm bị hoist lên đầu scope, nên TS kiểm thân hàm với kiểu CHƯA được hẹp
-  // của `booking`/`tour` ở các guard phía trên, báo sai "possibly undefined").
-  // Arrow const không hoist, giữ đúng kiểu đã hẹp tại điểm khai.
-  const openEnquiry = () => {
-    router.push({
-      pathname: '/enquiry',
-      params: {
-        tourSlug: booking.tourSlug,
-        tripTitle: booking.tourTitle,
-        tripSubtitle: formatDepartureRange(booking.departureStartDate, booking.departureEndDate),
-        ...(booking.tourImage ? { tripImageUrl: booking.tourImage.url } : {}),
-      },
-    });
-  };
 
   // P3/P4 đọc `catalog.tours.bySlug` công khai — mang sẵn `tourSlug` (và
   // `departureStartDate` cho P4, cần nó để tính ngày lịch từng ngày) qua
   // query param thay vì bắt hai route đó gọi lại `bookings.byCode`.
-  const openNotes = () => {
-    router.push({
-      pathname: '/trips/[code]/notes',
-      params: { code: booking.code, tourSlug: booking.tourSlug },
-    });
-  };
-  const openItinerary = () => {
-    router.push({
-      pathname: '/trips/[code]/itinerary',
-      params: {
-        code: booking.code,
-        tourSlug: booking.tourSlug,
-        departureStartDate: booking.departureStartDate,
-      },
-    });
+  const on: TripTrackerHandlers = {
+    openBooking: () => router.push(`/bookings/${booking.code}`),
+    openEnquiry: () => router.push({ pathname: '/enquiry', params: bookingEnquiryParams(booking) }),
+    openNotes: () =>
+      router.push({
+        pathname: '/trips/[code]/notes',
+        params: { code: booking.code, tourSlug: booking.tourSlug },
+      }),
+    openItinerary: () =>
+      router.push({
+        pathname: '/trips/[code]/itinerary',
+        params: {
+          code: booking.code,
+          tourSlug: booking.tourSlug,
+          departureStartDate: booking.departureStartDate,
+        },
+      }),
+    // Viết đánh giá (R1) ở `/trips/[code]/review`.
+    writeReview: () => router.push(`/trips/${booking.code}/review`),
+    // `dismissTo`, không `navigate` (cùng khuôn B8): `navigate` đẩy thêm một bộ tab mới chồng
+    // lên — từ Explore back về Home rồi back nữa lại ra P6 vừa rời (review M1).
+    browse: () => router.dismissTo('/explore'),
   };
 
-  if (phase === 'ended') {
-    return (
-      <TripEndedScreen
-        welcomeBackLabel={t.welcomeBack}
-        summary={t.finishedSummary(booking.tourTitle, formatFullDate(booking.departureEndDate))}
-        stats={[
-          {
-            value: tour.durationDays,
-            label: tour.durationDays === 1 ? t.dayUnitOne : t.daysUnit,
-          },
-          {
-            value: booking.tourDestinations.length,
-            label: booking.tourDestinations.length === 1 ? t.placeUnitOne : t.placesUnit,
-          },
-          {
-            value: booking.numAdults + booking.numChildren,
-            label:
-              booking.numAdults + booking.numChildren === 1 ? t.travellerUnitOne : t.travellersUnit,
-          },
-        ]}
-        reviewed={booking.reviewedAt !== null}
-        howWasItTitle={t.howWasIt}
-        howWasItBody={t.reviewHelpsNote}
-        writeReviewLabel={t.writeReview}
-        // Viết đánh giá (R1) ở `/trips/[code]/review`.
-        onWriteReviewPress={() => router.push(`/trips/${booking.code}/review`)}
-        reviewedLabel={t.reviewed}
-        bookingDetailsRow={{
-          label: t.bookingDetailsRow,
-          caption: `${booking.code} · ${t.paidAmount(formatMoney(booking.totalAmount, booking.currency))}`,
-          onPress: () => router.push(`/bookings/${booking.code}`),
-        }}
-        whereToNextRow={{
-          label: t.whereToNext,
-          caption: t.nearPlaces(booking.tourDestinations.map((d) => d.name)),
-          // `dismissTo`, không `navigate` (cùng khuôn B8): `navigate` đẩy thêm một bộ tab mới chồng
-          // lên — từ Explore back về Home rồi back nữa lại ra P6 vừa rời (review M1).
-          onPress: () => router.dismissTo('/explore'),
-        }}
-      />
-    );
-  }
+  if (phase === 'ended') return <TripEndedScreen {...tripEndedView(booking, tour, on)} />;
 
   if (phase === 'onTour') {
-    const dayNumber = currentTripDay(today, booking.departureStartDate, tour.durationDays);
-    const day = tour.itinerary.find((d) => d.dayNumber === dayNumber);
-    const lines: TripDayLineVM[] = parseItineraryDescription(day?.description ?? null).map(
-      (line) =>
-        line.kind === 'timed' ? { time: line.time, text: line.text } : { text: line.text },
-    );
-    const times = lines.filter((l): l is TripDayLineVM & { time: string } => l.time !== undefined);
-    const states = timedStopStates(
-      times.map((l) => l.time),
-      vietnamTimeOfDay(now),
-    );
-    let timedIndex = 0;
-    const linesWithState = lines.map((line) =>
-      line.time === undefined ? line : { ...line, state: states[timedIndex++] },
-    );
-    const hasNextDay = dayNumber < tour.durationDays;
-
+    const day = tripDayView(booking, tour, { today, now }, on);
     return (
       <>
-        <Stack.Screen options={{ title: t.dayOfTotal(dayNumber, tour.durationDays) }} />
-        <TripDayScreen
-          onTourNowLabel={t.onTourNow}
-          dateLabel={formatDepartureDate(
-            itineraryCalendarDate(booking.departureStartDate, dayNumber),
-          )}
-          dayTitle={day?.title ?? ''}
-          progressPercent={Math.round((dayNumber / tour.durationDays) * 100)}
-          dayOfTotalLabel={t.dayOfTotal(dayNumber, tour.durationDays)}
-          endsOnLabel={t.endsOn(formatDepartureDate(booking.departureEndDate))}
-          todayLabel={t.today}
-          lines={linesWithState}
-          nextDayRow={
-            hasNextDay
-              ? {
-                  label: t.tomorrowDay(dayNumber + 1),
-                  caption: tour.itinerary.find((d) => d.dayNumber === dayNumber + 1)?.title ?? '',
-                  onPress: openItinerary,
-                }
-              : undefined
-          }
-          tripNotesRow={{
-            label: t.tripNotesRow,
-            caption: t.tripNotesCaption,
-            onPress: openNotes,
-          }}
-          bookingDetailsRow={{
-            label: t.bookingDetailsRow,
-            caption: `${booking.code} · ${travellersLabel}`,
-            onPress: () => router.push(`/bookings/${booking.code}`),
-          }}
-          contactLabel={messages.mobile.booking.detail.contactLinkLabel}
-          onContactPress={openEnquiry}
-        />
+        <Stack.Screen options={{ title: day.dayOfTotalLabel }} />
+        <TripDayScreen {...day} />
       </>
     );
   }
 
-  // upcoming | imminent — cùng màn "Your trip", đổi giọng theo khoảng cách.
-  const milestones: TripMilestone[] = [
-    {
-      state: 'done',
-      icon: 'check',
-      title: t.milestoneBookingConfirmed,
-      caption: `${formatFullDate(booking.createdAt)} · ${booking.code}`,
-    },
-    {
-      state: 'done',
-      icon: 'check',
-      title: t.milestonePaidInFull,
-      caption: `${formatFullDate(booking.paidAt ?? booking.createdAt)} · ${formatMoney(booking.totalAmount, booking.currency)} · ${booking.paymentProvider === 'STRIPE' ? messages.mobile.booking.providerStripe : messages.mobile.booking.providerPayPal}`,
-    },
-    ...(booking.cancellation === null
-      ? []
-      : [
-          booking.cancellation.withinDeadline
-            ? {
-                state: 'now' as const,
-                icon: 'shield' as const,
-                title: messages.cancellationDeadline.short(
-                  formatDepartureDate(booking.cancellation.deadline),
-                ),
-                caption: bookingCopy.detail.cancelByThenNote(
-                  formatMoney(booking.cancellation.refundAmount, booking.currency),
-                ),
-              }
-            : {
-                state: 'upcoming' as const,
-                icon: 'shield' as const,
-                title: t.freeCancellationEnded,
-                caption: '',
-              },
-        ]),
-    {
-      state: 'upcoming',
-      icon: 'flag',
-      title: `${t.milestoneDeparture} · ${formatDepartureDate(booking.departureStartDate)}`,
-      caption: tour.meetingPoint ?? '',
-    },
-  ];
-
   if (phase === 'imminent') {
-    const items = packingChecklistItems(generalPolicy?.body, tour.excluded);
-    const daysUntilStart = daysBetween(today, booking.departureStartDate);
-    return (
-      <TripUpcomingScreen
-        countdownLabel={t.departing}
-        // Spec: "Tomorrow"/"Today" viết chữ, từ 2 ngày trở lên mới in số —
-        // `imminent` luôn `daysUntilStart` trong [1,3] (onTour mới chạm 0).
-        countdownValue={daysUntilStart === 1 ? t.tomorrow : t.daysCount(daysUntilStart)}
-        subtitle={`${formatDepartureRange(booking.departureStartDate, booking.departureEndDate)} · ${travellersLabel}`}
-        progressPercent={bookingProgressPercent(
-          today,
-          booking.createdAt.slice(0, 10),
-          booking.departureStartDate,
-        )}
-        bottomBarLabel={t.fullTripNotes}
-        onBottomBarPress={openNotes}
-        imminent={{
-          meetingNote:
-            tour.meetingPoint === null
-              ? null
-              : { title: tour.meetingPoint, body: t.meetingNoteBody(booking.code) },
-          packingChecklistLabel: t.packingChecklist,
-          items: items.map((text) => ({ text, checked: packingChecked.includes(text) })),
-          onToggle: (text) => {
-            const next = toggleChecked(packingChecked, text);
-            setPackingChecked(next);
-            void packingListStore.setChecked(booking.code, next);
-          },
-          ticksNoteLabel: t.ticksLocalOnly,
-        }}
-      />
-    );
+    const packing = {
+      checked: packingChecked,
+      onToggle: (text: string) => {
+        const next = toggleChecked(packingChecked, text);
+        setPackingChecked(next);
+        void packingListStore.setChecked(booking.code, next);
+      },
+    };
+    return <TripUpcomingScreen {...tripImminentView(booking, tour, today, packing, on)} />;
   }
 
-  return (
-    <TripUpcomingScreen
-      countdownLabel={t.departingIn}
-      countdownValue={t.daysCount(daysBetween(today, booking.departureStartDate))}
-      subtitle={`${formatDepartureRange(booking.departureStartDate, booking.departureEndDate)} · ${travellersLabel}`}
-      progressPercent={bookingProgressPercent(
-        today,
-        booking.createdAt.slice(0, 10),
-        booking.departureStartDate,
-      )}
-      bottomBarLabel={t.bookingDetailsRow}
-      onBottomBarPress={() => router.push(`/bookings/${booking.code}`)}
-      upcoming={{
-        bookedLabel: t.bookedOn(formatFullDate(booking.createdAt)),
-        departureFooterLabel: t.departureOn(formatFullDate(booking.departureStartDate)),
-        milestones,
-        getReadyLabel: t.getReady,
-        whatToBringRow: {
-          label: t.whatToBring,
-          caption: whatToBringLines(generalPolicy?.body)[0] ?? '',
-          onPress: openNotes,
-        },
-        itineraryRow: {
-          label: t.yourItinerary,
-          caption: tour.destinations.map((d) => d.name).join(' → '),
-          onPress: openItinerary,
-        },
-        includedRow: {
-          label: t.whatsIncluded,
-          caption: tour.included.slice(0, 4).join(', '),
-          onPress: openNotes,
-        },
-      }}
-    />
-  );
+  // upcoming — cùng màn "Your trip" với P2, đổi giọng theo khoảng cách.
+  return <TripUpcomingScreen {...tripUpcomingView(booking, tour, today, on)} />;
 }
 
 function isTourGone(error: unknown): boolean {
