@@ -208,6 +208,11 @@ Contact, Review, Pay), "Next trip", nhãn đọc màn hình cho chip đếm ản
    biến thành viên tròn; user đã chốt ô chọn giữ hình, chỉ đổi màu.
 5. **Đừng nâng chữ thân lên 17** như mockup vòng 3 (iOS). Thang Material 3 là 16/14/12, khớp
    token hiện có.
+6. **Hoá đơn và tracker dựng props ở file view, không ở route** (review M3-14, 21/10):
+   `features/booking/booking-detail-view.ts` và `features/trip-tracker/trip-tracker-view.ts`. Đổi
+   props hay tên icon của `BookingDetailScreen`, `CancelBookingSheet`, `TripDayScreen`,
+   `TripEndedScreen`, `TripUpcomingScreen` thì sửa ở hai file đó: kiểu lấy thẳng từ props của
+   màn nên `tsc` chỉ ra chỗ sót, và test unit theo từng khung nằm cạnh.
 
 ## 8. Báo xong
 
