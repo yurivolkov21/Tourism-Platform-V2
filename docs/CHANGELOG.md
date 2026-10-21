@@ -8,6 +8,58 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-10-21 — Merge review L7 trợ lý AI tư vấn tour: thẻ enquiry đã gửi không còn bị báo "not sent" khi model lỗi sau Send, thẻ tự đóng giữ tên tour, tài khoản bị khoá không đọc đơn qua chat, trợ lý nói đúng tiền của đơn đã huỷ và mời viết review theo cổng mới (`9ba82e2`)
+
+Luồng L7 của đợt review code theo luồng (kế hoạch 20/10 trong thư mục chung của project,
+`code-review/ke-hoach-review-theo-luong.md`), rà trên `main` `451f82f`, rebase lên `3e78c3f`, `e8fdfee`, `a05cece`
+rồi `250b67f` trước khi đẩy. Báo cáo đủ phát hiện, gồm bốn mục để lại và L4-20, L5-20 chuyển sang:
+`code-review/L7-bao-cao.md` cùng thư mục. Nhánh `fix/review-l7-ai-chat-rxs353`,
+[PR #55](https://github.com/yurivolkov21/Tourism-Platform-V2/pull/55), thi công trên session cloud. Đụng api (module
+chat) và web (khung chat): không migration, không đổi contract, không biến env, không dependency mới. Không gọi
+Anthropic thật: mọi kịch bản lỗi của model chạy trên model giả `MockLanguageModelV4`.
+
+- `00233c7` (L7-01, API) và `1efa8ab` (L7-01, web): khách bấm Send trên thẻ enquiry, tool `submitEnquiry` chạy xong
+  (enquiry đã tạo, hai thư đã xếp hàng) rồi bước model ngay sau đó lỗi. Trước đó API coi cả lượt là hỏng nên không
+  ghi gì, thẻ trong DB còn chờ; Retry hay gõ tin mới đều khiến API tự từ chối thẻ, nên trợ lý nói "enquiry not
+  sent" trong khi thư xác nhận đã tới hộp thư. Nay `settleApproval` (`chat-history.ts`) ghi thẻ ở trạng thái cuối
+  và bỏ chữ dở; còn phần nào chưa chốt thì lượt đi đường cũ. Web thấy thẻ vừa chốt ở tin cuối thì cắt phần chữ dở
+  và gỡ lỗi, khách gõ tiếp như thường.
+- `cdeb656` (L7-02): gõ tin mới khi thẻ enquiry còn chờ thì thẻ tự đóng mà vẫn giữ dòng Tour (`requestReason`), như
+  bản API lưu; trước đó dòng ấy mất tới khi tải lại trang.
+- `98e3bfa` (L7-03): controller chat (`@Public`, tự đọc phiên) coi tài khoản đang bị khoá như khách vãng lai, cùng
+  luật `AuthGuard` (ADR-0052 §4). Trước đó một phiên sót, được ghi đúng lúc lệnh khoá chạy, vẫn đọc được đơn qua
+  hai tool.
+- `5e6b50a` (L4-20, L4 chuyển sang): đơn đã trả rồi huỷ không còn bị ghi "Not paid": `payment` ghi "Paid, refunded
+  in full", "Paid, partly refunded" hay "Paid, not refunded" theo sổ hoàn của trang chi tiết đơn, danh sách đơn ghi
+  "Paid; refund details are on the booking page". Đơn khách tự huỷ quá hạn (không được hoàn) mà sau đó công ty huỷ
+  chuyến không còn được hứa "anything paid is refunded in full". Ca khách huỷ TRONG hạn rồi công ty huỷ chuyến
+  vẫn kể chuyện của công ty, theo quyết định L4-08 (để sau bảo vệ).
+- `9ba82e2` (L5-20, L5 chuyển sang, thêm sau khi PR #51 lên `main`): `reviewText` của trợ lý dùng `bookingKeepsTrip`
+  của contract thay cho bản chép tay "chỉ PAID", nên đơn hoàn một phần hay hoàn thiện chí trọn mà vẫn đi được mời
+  viết review như trang đơn.
+- Commit docs này: spec P6 (`specs/2026-09-29-p6-ai-concierge-design.md`) ghi ba thay đổi trên (lượt duyệt hỏng sau
+  khi tool chạy xong vẫn được ghi, chữ tiền của đơn huỷ, phiên của tài khoản bị khoá không tính là có phiên).
+
+**Review.** Đây chính là lượt review của luồng L7; không có lượt review độc lập cho các bản sửa. Ghi lại không sửa:
+L7-04 (Anthropic lỗi thoáng qua trước chữ đầu tiên thì khung khoá như lúc hết trần ngày, tới khi Start over hay tải
+lại trang; cách sửa khoảng 20 dòng ở 2 file web), L7-05 (trần ngày cộng token theo ngày của tin đề xuất, lượt hỏng
+không tính: vượt nhẹ, throttle giới hạn), L7-06 (mất mạng giữa lượt duyệt: Retry gặp 400 tới khi tải lại; cách sửa
+khoảng 15 dòng), L7-07 (`handlerTimeout` 60 giây của Fastify bao cả lúc chờ chữ đầu tiên; suy luận, chưa đo).
+Gửi L6: form enquiry đọc phiên tuỳ chọn cũng chỉ loại `deletedAt`, vô hại vì chỉ ghi `enquiries.user_id`. Yuri bảo
+đẩy lên main 21/10 03:22 UTC.
+
+Tests after (`gate:int` trên `9ba82e2`, nền `250b67f`, 21/10, session cloud, API sống ở :3001): unit 8358 (admin
+2398, web 2445, api 1437, mobile 927, contract 811, mobile-ui 145, i18n 64, ui 57, core 48, tokens 26) và int
+972; Biome 2097 file; RLS, tokens-only của mobile và prerender admin xanh. PR thêm 26 test unit (api 24, web 2) và
+2 int test; mỗi test đã chạy đỏ trên code cũ, trừ hai ca canh đơn huỷ không được mời viết review.
+
+**CÒN TREO:**
+
+- Buổi test tay: năm bước ở mục 3 của `code-review/L7-bao-cao.md` (kịch bản P6 mục A tới F rồi G cuối cùng, thẻ tự
+  đóng vẫn ghi tour, tiền của đơn đã huỷ, đọc đơn khi đăng nhập, cổng review của đơn được hoàn mà vẫn đi). L7-01 và
+  L7-03 không dựng được trên production, chỉ có test tự động canh.
+- Dọn nhánh `fix/review-l7-ai-chat-rxs353` trên origin nếu GitHub không tự xoá.
+
 ## 2026-10-21 — Merge review L6 liên hệ, bản tin và email đi ra: lead đã ẩn danh không còn đánh sập trang Enquiries, thư xác nhận đi khi khách đăng ký lại sau khi huỷ, form liên hệ báo "quá dài" thay vì "quá ngắn", câu bảng trống của /subscribers (`cb8fff1`)
 
 Luồng L6 của đợt review code theo luồng (kế hoạch 20/10 trong thư mục chung của project,

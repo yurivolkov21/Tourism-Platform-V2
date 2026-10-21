@@ -97,7 +97,9 @@ vào tin trả lời đang chờ: tìm phần tool có `approval.id` khớp và 
 
 Quyền với hội thoại: id chưa có thì tạo, gắn `userId` nếu có phiên (đọc phiên như
 `enquiries.controller.ts`: `auth.api.getSession`). Id đã có và gắn tài khoản khác phiên
-hiện tại thì 404 — không lộ là id có tồn tại. Thêm 19/10 (ADR-0050 AMEND 2 mục 3): id
+hiện tại thì 404 — không lộ là id có tồn tại. "Có phiên" là phiên của tài khoản chưa xoá và
+không bị khoá, cùng luật `AuthGuard` (ADR-0052 §4; review L7-03, 21/10). Thêm 19/10
+(ADR-0050 AMEND 2 mục 3): id
 đã có, chưa có chủ, mà `POST` có phiên thì gắn hội thoại vào tài khoản ấy trước khi giữ
 lượt (`updateMany` có điều kiện `userId: null`); từ đó chỉ phiên ấy đọc hay ghi được.
 `GET` không gắn gì.
@@ -115,7 +117,9 @@ lượt (`updateMany` có điều kiện `userId: null`); từ đó chỉ phiên
 Lỗi giữa chừng stream đi thành phần lỗi của stream; web hiện Retry. Retry của lượt chữ
 bỏ phần trả lời dở rồi gửi lại tin khách (API không ghi gì cho lượt hỏng); Retry của
 lượt duyệt gửi lại đúng quyết định Send hay Cancel, và ô gõ khoá cho tới khi gửi lại
-xong. Stream chạy qua `reply.raw` của Fastify (§4).
+xong. Riêng lượt duyệt mà tool đã chạy xong rồi bước model sau đó mới lỗi: API vẫn ghi thẻ ở
+trạng thái cuối và bỏ chữ dở, web giữ thẻ và không hiện lỗi (review L7-01, 21/10). Stream
+chạy qua `reply.raw` của Fastify (§4).
 
 ### 2c. Các tool
 
@@ -203,7 +207,10 @@ thoại của lượt có phiên luôn thuộc đúng người ấy (§2b). Hàm
   upcoming", "Confirmed, trip in progress", "Trip completed", "Cancelled", "Cancelled by
   Nexora; anything paid is refunded in full", "Not confirmed: the payment deadline has
   passed". `payment` theo trạng thái đơn: "Not paid", "Paid", "Paid, partly refunded",
-  "Refunded in full". Ngày ghi theo lịch Việt Nam như trang đơn.
+  "Refunded in full"; đơn CANCELLED đã từng thu tiền ghi "Paid, refunded in full", "Paid,
+  partly refunded" hay "Paid, not refunded" theo sổ hoàn của `byCode`, còn danh sách (không
+  đọc sổ hoàn) ghi "Paid; refund details are on the booking page" (review L4-20, 21/10). Ngày
+  ghi theo lịch Việt Nam như trang đơn.
 - Không bao giờ gửi model: email, số điện thoại, tên người liên hệ, ghi chú, link thanh
   toán, id nội bộ, nội dung review và lý do bác review.
 
@@ -275,7 +282,8 @@ Ghi tin một lần ở cuối lượt: tin khách và tin trả lời cùng m�
 tiếp, chạm `updated_at` của hội thoại, nhả cột giữ lượt; unique `(conversation_id,
 seq)` sẵn có là lưới cuối. Lượt duyệt ghi đè chính tin trả lời đang chờ (cùng `seq`;
 AI SDK nối phần tiếp vào cùng UIMessage) và cộng token của lượt vào tin ấy. Lỗi giữa
-stream không ghi gì (web gửi lại đúng tin cũ).
+stream không ghi gì (web gửi lại đúng tin cũ), trừ lượt duyệt mà tool đã chạy xong: ghi thẻ
+ở trạng thái cuối, bỏ chữ dở (`settleApproval` ở `chat-history.ts`, review L7-01).
 
 Dọn: queue pg-boss `chat-retention`, cron `30 4 * * *` (sau `media-gc` lúc 04:00),
 đăng ký trong `worker/start-worker.ts`, có trong danh sách chạy bù của G41; xoá hội
