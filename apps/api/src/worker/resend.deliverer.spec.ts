@@ -1,3 +1,4 @@
+import { privacyDoc, termsDoc } from '@tourism/i18n';
 import { EmailType } from '../generated/prisma/enums.js';
 import type { HttpPostCall, HttpPostResponse } from '../lib/provider-http.js';
 import {
@@ -5,7 +6,7 @@ import {
   verifyUnsubscribeToken,
 } from '../modules/newsletter/unsubscribe-token.js';
 import { DeliveryHttpError } from './deliverer.js';
-import { ResendDeliverer, renderEmail } from './resend.deliverer.js';
+import { ResendDeliverer, renderEmail, SUPPORT_REPLY_TO } from './resend.deliverer.js';
 
 const OPTS = {
   apiKey: 're_unit_key',
@@ -693,6 +694,55 @@ describe('ResendDeliverer.deliver', () => {
     await deliverer.deliver(EmailType.BOOKING_CONFIRMATION, BOOKING_PAYLOAD);
     const body = JSON.parse(calls[0]?.body ?? '{}');
     expect(body.to).toEqual([BOOKING_PAYLOAD.email]);
+  });
+
+  it('L6-04: mail gửi khách trả lời về hộp hỗ trợ công khai, không về noreply', async () => {
+    // Sáu loại mail và ba câu trên web bảo khách "reply"; thiếu reply_to thì
+    // thư trả lời đi về `noreply@` của EMAIL_FROM, nơi không ai đọc.
+    const { calls, deliverer } = stub();
+    await deliverer.deliver(EmailType.BOOKING_CONFIRMATION, BOOKING_PAYLOAD);
+    const body = JSON.parse(calls[0]?.body ?? '{}');
+    expect(body.reply_to).toBe('tourism.platform.online@gmail.com');
+    expect(body.reply_to).toBe(SUPPORT_REPLY_TO);
+  });
+
+  it('L6-04: hộp hỗ trợ trùng địa chỉ Terms và Privacy đang in cho khách', () => {
+    // Canh lệch: đổi địa chỉ liên hệ ở trang pháp lý (và `EMAIL` của web) mà
+    // quên hằng này thì thư trả lời đi một nơi, trang web chỉ một nơi khác.
+    expect(JSON.stringify(termsDoc)).toContain(SUPPORT_REPLY_TO);
+    expect(JSON.stringify(privacyDoc)).toContain(SUPPORT_REPLY_TO);
+  });
+
+  it('L6-04: alert lead mới trả lời thẳng cho khách gửi form', async () => {
+    // Admin bấm Reply trên alert là viết cho người gửi form, không phải cho
+    // noreply hay cho chính hộp hỗ trợ.
+    const { calls, deliverer } = stub();
+    await deliverer.deliver(EmailType.ENQUIRY_ADMIN_ALERT, {
+      to: 'admin@tourism.test',
+      name: 'Jane',
+      email: 'jane@example.com',
+      message: 'hi',
+      tourTitle: null,
+    });
+    const body = JSON.parse(calls[0]?.body ?? '{}');
+    expect(body.to).toEqual(['admin@tourism.test']);
+    expect(body.reply_to).toBe('jane@example.com');
+  });
+
+  it('L6-04: alert có email khách hỏng thì bỏ reply_to nhưng vẫn gửi', async () => {
+    // Resend trả 422 cho reply_to sai dạng, mà drain coi 4xx là FAILED ngay:
+    // một địa chỉ hỏng không được làm mất alert lead mới.
+    const { calls, deliverer } = stub();
+    await deliverer.deliver(EmailType.ENQUIRY_ADMIN_ALERT, {
+      to: 'admin@tourism.test',
+      name: 'Jane',
+      email: 'jane at example\r\nBcc: x@evil.com',
+      message: 'hi',
+      tourTitle: null,
+    });
+    expect(calls).toHaveLength(1);
+    const body = JSON.parse(calls[0]?.body ?? '{}');
+    expect(body).not.toHaveProperty('reply_to');
   });
 
   it('subject KHÔNG escape HTML nhưng body thì CÓ', async () => {

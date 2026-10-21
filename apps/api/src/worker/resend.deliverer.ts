@@ -11,6 +11,30 @@ export { renderEmail } from './emails/render-email.js';
 
 const RESEND_EMAILS_URL = 'https://api.resend.com/emails';
 
+/**
+ * Hộp thư hỗ trợ công khai (review L6-04, 21/10) — CÙNG địa chỉ web in ở topbar, section Contact
+ * và /contact (`EMAIL` của `apps/web/src/lib/site.ts`), ở Terms, Privacy và chân voucher in.
+ * Thư đi từ `noreply@` của EMAIL_FROM (ADR-0024) mà Resend tắt Receiving cho tên miền ấy, nên
+ * thiếu `reply_to` thì mọi câu "Reply to this email" trong mail và trên web dẫn thư trả lời của
+ * khách về một hộp không ai đọc. Đổi địa chỉ liên hệ thì đổi cả ở đây (spec canh Terms, Privacy).
+ */
+export const SUPPORT_REPLY_TO = 'tourism.platform.online@gmail.com';
+
+/** Đủ chặt để không gửi Resend một `reply_to` nó trả 422 (khoảng trắng, CR/LF, thiếu `@`). */
+const PLAIN_EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+/**
+ * `reply_to` theo loại mail. Alert lead mới trả lời thẳng cho KHÁCH gửi form (`email` của
+ * payload): admin bấm Reply là viết cho người ấy. Email khách hỏng thì bỏ hẳn `reply_to` —
+ * Resend trả 422 và drain coi 4xx là FAILED ngay, tức mất alert. Mọi mail khác trả lời về
+ * {@link SUPPORT_REPLY_TO}.
+ */
+export function replyToFor(type: EmailType, fields: Record<string, unknown>): string | undefined {
+  if (type !== EmailType.ENQUIRY_ADMIN_ALERT) return SUPPORT_REPLY_TO;
+  const customer = fields.email;
+  return typeof customer === 'string' && PLAIN_EMAIL.test(customer) ? customer : undefined;
+}
+
 export interface ResendDelivererOptions {
   apiKey: string;
   /** From theo RFC-5322, vd `Tourism <noreply@tourism.test>` (env EMAIL_FROM). */
@@ -92,6 +116,7 @@ export class ResendDeliverer implements EmailDeliverer {
       type === EmailType.NEWSLETTER_WELCOME && unsubscribeUrl
         ? { headers: { 'List-Unsubscribe': `<${unsubscribeUrl}>` } }
         : {};
+    const replyTo = replyToFor(type, fields);
 
     const response = await this.httpPost(RESEND_EMAILS_URL, {
       headers: {
@@ -105,6 +130,7 @@ export class ResendDeliverer implements EmailDeliverer {
         html,
         // Bản plain-text đi kèm (deliverability) — render từ chính HTML.
         text,
+        ...(replyTo ? { reply_to: replyTo } : {}),
         ...resendHeaders,
       }),
     });
