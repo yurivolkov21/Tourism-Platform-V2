@@ -388,6 +388,33 @@ describe('toMyBookingDetails', () => {
     [{ review: review('retracted') }, 'Withdrawn'],
     [{ departureEndDate: '2026-10-15' }, 'Not written yet; can be written on the booking page'],
     [{ status: 'PENDING' as const }, null],
+    // L5-20 (review 20/10): cùng cổng `bookingKeepsTrip` với API và trang đơn (L5-07) — đơn hoàn
+    // một phần, hay hoàn thiện chí trọn mà không huỷ, vẫn đi tour nên viết review được.
+    [
+      { status: 'PARTIALLY_REFUNDED' as const, departureEndDate: '2026-10-15' },
+      'Not written yet; can be written on the booking page',
+    ],
+    [
+      { status: 'REFUNDED' as const, departureEndDate: '2026-10-15' },
+      'Not written yet; can be written on the booking page',
+    ],
+    [{ status: 'PARTIALLY_REFUNDED' as const }, 'Can be written after the trip ends'],
+    [
+      {
+        status: 'REFUNDED' as const,
+        cancelledAt: '2026-10-08T03:00:00.000Z',
+        departureEndDate: '2026-10-15',
+      },
+      null,
+    ],
+    [
+      {
+        status: 'CANCELLED' as const,
+        cancelledAt: '2026-10-08T03:00:00.000Z',
+        departureEndDate: '2026-10-15',
+      },
+      null,
+    ],
   ])('review %j → %s', (overrides, text) => {
     expect(toMyBookingDetails(detail(overrides), now).review).toBe(text);
   });

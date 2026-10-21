@@ -7,6 +7,7 @@ import {
   type BookingsListQuery,
   BookingsListQuerySchema,
   type BookingsListResult,
+  bookingKeepsTrip,
   bookingPhase,
   type CancellationRequestStatusValue,
   vietnamToday,
@@ -205,13 +206,15 @@ const REVIEW_TEXT = {
 
 /**
  * Review của đơn bằng chữ — cùng cổng với `reviewSlot` của web: có review thì nói trạng
- * thái; chưa có thì chỉ đơn PAID của chuyến công ty không huỷ mới viết được, và chỉ từ
- * ngày về theo lịch UTC (cổng `checkReviewEligibility` của API). Ngoài các ca ấy là null:
- * không có gì để nói.
+ * thái; chưa có thì chỉ đơn còn chuyến (`bookingKeepsTrip` của contract: PAID, hoàn một
+ * phần, hay hoàn thiện chí trọn mà không huỷ) của chuyến công ty không huỷ mới viết được,
+ * và chỉ từ ngày về theo lịch UTC (cổng `checkReviewEligibility` của API). Ngoài các ca ấy
+ * là null: không có gì để nói. Bản cũ chép tay cổng "chỉ PAID" nên lệch trang đơn sau L5-07
+ * (L5-20, review 20/10).
  */
 function reviewText(booking: BookingDetail, now: Date): string | null {
   if (booking.review) return REVIEW_TEXT[booking.review.moderationState];
-  if (booking.departureCancelled || booking.status !== 'PAID') return null;
+  if (booking.departureCancelled || !bookingKeepsTrip(booking)) return null;
   return booking.departureEndDate > now.toISOString().slice(0, 10)
     ? 'Can be written after the trip ends'
     : 'Not written yet; can be written on the booking page';
