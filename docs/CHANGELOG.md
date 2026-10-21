@@ -8,6 +8,34 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-10-21 — Merge review L6-04: thư khách trả lời mail của Nexora về hộp hỗ trợ công khai, alert lead mới trả lời thẳng cho khách (`dfc2baa`)
+
+Phần còn lại của luồng L6 (đề xuất L6-04 trong `code-review/L6-bao-cao.md` cùng thư mục chung của project). Yuri
+giao chọn hướng 21/10 03:19 UTC. Nhánh `fix/review-l6-contact-email-tls7up` dựng lại từ `main` `250b67f` (sau
+PR #54), [PR #64](https://github.com/yurivolkov21/Tourism-Platform-V2/pull/64), thi công trên session cloud. Chỉ
+đụng worker của `apps/api`: không đổi chữ, không migration, không biến env, không dependency mới.
+
+- `dfc2baa` (L6-04): request gửi Resend mang `reply_to`. Mail gửi khách trả lời về `tourism.platform.online@gmail.com`
+  (hằng `SUPPORT_REPLY_TO`), cùng địa chỉ web in ở topbar, `/contact`, Terms, Privacy và chân voucher; spec canh
+  hằng này trùng địa chỉ của Terms và Privacy. `ENQUIRY_ADMIN_ALERT` trả lời thẳng cho email của khách gửi form;
+  email sai dạng thì bỏ `reply_to`, vì Resend trả 422 và drain coi 4xx là FAILED ngay, tức mất alert. Trước đó mọi
+  mail đi từ `noreply@nexora-travel.agency` không kèm `reply_to`, mà Resend tắt Receiving cho tên miền ấy, trong
+  khi sáu loại mail gửi khách và ba câu trên web bảo khách trả lời mail.
+
+**Review.** Không có lượt review độc lập; hướng sửa chọn giữa ba phương án của báo cáo L6 (biến env
+`EMAIL_REPLY_TO`, đổi chữ ở 10 chỗ sang trang liên hệ, hoặc `reply_to` về địa chỉ web đã công bố). Giả định: hộp
+gmail ấy có người đọc, vì web đã công bố nó là kênh liên hệ. Yuri bảo đẩy lên main 21/10 03:26 UTC.
+
+Tests after (`gate:int` trên `dfc2baa`, nền `b048d66`, 21/10, session cloud, API sống ở :3001): unit 8362 (admin
+2398, web 2445, api 1441, mobile 927, contract 811, mobile-ui 145, i18n 64, ui 57, core 48, tokens 26) và int
+972; Biome 2097 file; RLS, tokens-only của mobile và prerender admin xanh. PR thêm 4 test unit (api).
+
+**CÒN TREO:**
+
+- Buổi test tay: bước 6 ở mục 3 của `code-review/L6-bao-cao.md` (Reply trên mail xác nhận enquiry tới hộp gmail;
+  Reply trên mail báo lead mới tới khách).
+- Dọn nhánh `fix/review-l6-contact-email-tls7up` trên origin nếu GitHub không tự xoá.
+
 ## 2026-10-21 — Merge review L7 trợ lý AI tư vấn tour: thẻ enquiry đã gửi không còn bị báo "not sent" khi model lỗi sau Send, thẻ tự đóng giữ tên tour, tài khoản bị khoá không đọc đơn qua chat, trợ lý nói đúng tiền của đơn đã huỷ và mời viết review theo cổng mới (`9ba82e2`)
 
 Luồng L7 của đợt review code theo luồng (kế hoạch 20/10 trong thư mục chung của project,
