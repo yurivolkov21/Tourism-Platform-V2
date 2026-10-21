@@ -1,5 +1,4 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { bookingPhase } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
 import {
   Button,
@@ -15,32 +14,23 @@ import { PlaceholderScreen } from '@/components/placeholder-screen';
 import { AuthGateScreen } from '@/features/auth/auth-gate-screen';
 import { setPendingReturn } from '@/features/auth/return-to';
 import {
-  bookingDetailActions,
-  bookingDetailKind,
   cancelErrorAction,
   cancelErrorCopy,
   cancelPendingErrorAction,
-  canWriteReview,
-  operatorRefund,
   payErrorAction,
 } from '@/features/booking/booking-detail';
+import { BookingDetailScreen } from '@/features/booking/booking-detail-screen';
 import {
-  type BookingDetailPill,
-  type BookingDetailRow,
-  BookingDetailScreen,
-} from '@/features/booking/booking-detail-screen';
+  bookingDetailView,
+  bookingEnquiryParams,
+  cancelSheetView,
+  type PayError,
+} from '@/features/booking/booking-detail-view';
 import { CancelBookingSheet } from '@/features/booking/cancel-sheet';
 import { openCheckout } from '@/features/booking/open-checkout';
-import {
-  formatDepartureDate,
-  formatDepartureRange,
-  formatFullDate,
-} from '@/features/tour-detail/departures';
-import { bookingStatusPill } from '@/features/trips/trips-list';
 import { orpc, withMobileAuth } from '@/lib/api/client';
 import { getAuthClient } from '@/lib/auth-client';
 import { cloudinaryUrl } from '@/lib/cloudinary-url';
-import { formatMoney } from '@/lib/format-money';
 import { useServerClock } from '@/lib/use-server-clock';
 
 /**
@@ -50,6 +40,9 @@ import { useServerClock } from '@/lib/use-server-clock';
  * Reachable qua deep link (`nexora://bookings/<mã>`, namespace không độc
  * quyền — xem comment cũ của file này) nên PHẢI gác đăng nhập Ở ĐÂY, không
  * nhờ cậy việc chỉ tới từ tab Trips đã gác.
+ *
+ * Nội dung từng khung (khối nổi bật, các hàng, hai nút, tấm huỷ) dựng ở `booking-detail-view.ts`
+ * (review M3-14); route giữ state, gọi mutation và nối mỗi nút với việc của nó.
  *
  * "Browse tours" của các khung đã đóng mở Explore bằng `dismissTo` (cùng khuôn
  * B8): màn này nằm ở stack gốc, `navigate('/explore')` đẩy thêm một bộ tab mới
@@ -69,7 +62,6 @@ export default function BookingDetailRoute() {
   const { data: session } = getAuthClient().useSession();
   const signedIn = Boolean(session?.user);
   const { booking: bookingCopy } = messages.mobile;
-  const { detail: t } = bookingCopy;
   const queryClient = useQueryClient();
 
   const [cancelSheetOpen, setCancelSheetOpen] = useState(false);
@@ -79,9 +71,7 @@ export default function BookingDetailRoute() {
   // khi tấm đóng để lần mở sau không còn câu cũ.
   const [actionError, setActionError] = useState<string | null>(null);
   // Lỗi bấm Pay hiện NGAY trên màn (T5) — tách khỏi `actionError` chỉ nằm trong tấm huỷ đang ẩn.
-  const [payError, setPayError] = useState<
-    { kind: 'closed' } | { kind: 'message'; text: string } | null
-  >(null);
+  const [payError, setPayError] = useState<PayError | null>(null);
 
   const detailQuery = useQuery(
     orpc.bookings.byCode.queryOptions({
@@ -177,13 +167,6 @@ export default function BookingDetailRoute() {
   }
 
   const booking = detailQuery.data;
-  const phase = bookingPhase(booking, today);
-  const kind = bookingDetailKind(booking, phase);
-  const actions = bookingDetailActions(booking, phase);
-  const amount = formatMoney(booking.totalAmount, booking.currency);
-  const refundAmount = booking.cancellation
-    ? formatMoney(booking.cancellation.refundAmount, booking.currency)
-    : null;
 
   // Đọc lại cả chi tiết LẪN danh sách — tab Trips cầm `bookings.mine` riêng, không
   // làm mới thì còn hiện trạng thái cũ sau khi huỷ/trả tiền.
@@ -263,259 +246,28 @@ export default function BookingDetailRoute() {
     );
   }
 
-  const trip = {
-    imageUrl: booking.tourImage?.url ?? null,
-    title: booking.tourTitle,
-    dateRangeLabel: formatDepartureRange(booking.departureStartDate, booking.departureEndDate),
-  };
   // Form hỏi gắn sẵn chuyến này — đích chung của mọi "Contact us" trên hoá đơn, như tracker.
   const openEnquiry = () => {
-    router.push({
-      pathname: '/enquiry',
-      params: {
-        tourSlug: booking.tourSlug,
-        tripTitle: booking.tourTitle,
-        tripSubtitle: trip.dateRangeLabel,
-        ...(trip.imageUrl ? { tripImageUrl: trip.imageUrl } : {}),
-      },
-    });
+    router.push({ pathname: '/enquiry', params: bookingEnquiryParams(booking) });
   };
-  // Cùng luật pill với thẻ Trips: chuyến công ty huỷ không mang "Paid" xanh dù đơn còn PAID, đơn
-  // chờ trả quá hạn chót không mang "Payment due" cam (G54).
-  const pill = bookingStatusPill(booking, phase, {
-    status: messages.mobile.trips.status,
-    lapsed: messages.accountBookings.lapsedBadge,
-  });
-  const pillLabel = pill.label;
-  const pillTone: BookingDetailPill = pill.tone;
 
-  let note: Parameters<typeof BookingDetailScreen>[0]['note'] = null;
-  // Tên riêng: `reason` của route là lý do KHÁCH gõ ở tấm huỷ đơn.
-  let operatorReason: Parameters<typeof BookingDetailScreen>[0]['reason'];
-  let rows: BookingDetailRow[] = [{ label: bookingCopy.bookingCodeLabel, value: booking.code }];
-  let primaryAction: Parameters<typeof BookingDetailScreen>[0]['primaryAction'] = null;
-  let secondaryAction: Parameters<typeof BookingDetailScreen>[0]['secondaryAction'] = null;
-  let contactLine: Parameters<typeof BookingDetailScreen>[0]['contactLine'];
-
-  if (kind === 'pending') {
-    const closed = payError?.kind === 'closed';
-    note =
-      payError === null
-        ? {
-            tone: 'warning',
-            icon: 'alert-circle',
-            title: t.paymentNotFinishedTitle,
-            body: t.paymentNotFinishedBody,
-          }
-        : payError.kind === 'closed'
-          ? {
-              tone: 'warning',
-              icon: 'alert-circle',
-              title: t.departureClosedTitle,
-              body: t.departureClosedBody,
-            }
-          : { tone: 'warning', icon: 'alert-circle', title: payError.text };
-    rows = [
-      { label: bookingCopy.bookingCodeLabel, value: booking.code },
-      {
-        label: t.travellersLabel,
-        value: messages.mobile.trips.travellersCount(booking.numAdults + booking.numChildren),
-      },
-      { label: t.totalDueLabel, value: amount, emphasis: true },
-    ];
-    // Đợt đã đóng thì không còn gì để trả — chỉ để lại nút bỏ booking.
-    primaryAction = closed
-      ? null
-      : {
-          label: messages.booking.wizard.payCta(amount),
-          onPress: payNow,
-          disabled: checkoutMutation.isPending,
-        };
-    if (actions.includes('cancelPending')) {
-      secondaryAction = {
-        label: t.cancelThisBooking,
-        onPress: () => setCancelPendingSheetOpen(true),
-      };
-    }
-  } else if (kind === 'lapsed') {
-    // G54: quá hạn chót mà chưa trả — cùng câu với khung đã đóng của web (`closedNarrative`): câu
-    // sự việc rồi câu điều kiện. Không mời trả (API không mở phiên nào nữa) mà cũng không khẳng
-    // định "đã lỡ": claim của webhook còn nhận phiên mở trước hạn (ADR-0054 AMEND 1 §4).
-    note = {
-      tone: 'warning',
-      icon: 'clock',
-      title: messages.bookingDetail.closed.notPaidByDeadline,
-      body: messages.bookingDetail.closed.finishOpenPayment,
-    };
-    rows = [
-      { label: bookingCopy.bookingCodeLabel, value: booking.code },
-      {
-        label: t.travellersLabel,
-        value: messages.mobile.trips.travellersCount(booking.numAdults + booking.numChildren),
-      },
-      // Chưa trả thì không "Total due" (mời trả) cũng không "Total paid" — cùng `bookingTotalLabel` của web.
-      { label: messages.checkoutSummary.totalLabel, value: amount, emphasis: true },
-    ];
-    primaryAction = {
-      label: messages.mobile.trips.browse,
-      onPress: () => router.dismissTo('/explore'),
-    };
-  } else if (kind === 'paid') {
-    if (booking.cancellation) {
-      note = booking.cancellation.withinDeadline
-        ? {
-            tone: 'success',
-            icon: 'shield',
-            title: messages.cancellationDeadline.short(
-              formatDepartureDate(booking.cancellation.deadline),
-            ),
-            body: t.cancelByThenNote(refundAmount ?? amount),
-          }
-        : // Quá hạn: không được hứa hoàn tiền (quy tắc #5 — chỉ tin `withinDeadline` của server).
-          {
-            tone: 'warning',
-            icon: 'alert-circle',
-            title: messages.mobile.trip.freeCancellationEnded,
-            body: t.cancelAfterBody(formatDepartureDate(booking.cancellation.deadline)),
-          };
-    }
-    rows = [
-      { label: bookingCopy.bookingCodeLabel, value: booking.code },
-      {
-        label: t.travellersLabel,
-        value: messages.mobile.trips.travellersCount(booking.numAdults + booking.numChildren),
-      },
-      { label: t.contactLabel, value: booking.contactEmail },
-      ...(booking.paidAt ? [{ label: t.paidOnLabel, value: formatFullDate(booking.paidAt) }] : []),
-      { label: t.totalPaidLabel, value: amount, emphasis: true },
-    ];
-    // Nợ nhỏ P5b-5 mục 1: chuyến đã về mà chưa có bài thì hoá đơn là lối thứ hai vào R1, như
-    // mockup `mobile-review-screens` ghi — trước đó chỉ P6 mời viết.
-    if (canWriteReview(booking, now)) {
-      primaryAction = {
-        label: messages.mobile.trip.writeReview,
-        onPress: () => router.push(`/trips/${booking.code}/review`),
-      };
-    }
-    if (actions.includes('cancelBooking')) {
-      secondaryAction = {
-        label: messages.accountBookingDetail.actions.cancel,
-        onPress: () => setCancelSheetOpen(true),
-      };
-      contactLine = {
-        prompt: t.questionsAboutTrip,
-        actionLabel: t.contactLinkLabel,
-        onPress: openEnquiry,
-      };
-    }
-  } else if (kind === 'departureCancelled') {
-    // Công ty huỷ chuyến (ADR-0041 AMEND 1): cùng câu với trang chi tiết đơn của web, rồi chuyện
-    // tiền — đang về khi job hoàn tiền chưa chạy, hay khoản sổ đã ghi.
-    const refund = operatorRefund(booking);
-    const refundBody =
-      refund === null
-        ? null
-        : refund.kind === 'onItsWay'
-          ? messages.bookingDetail.closed.refundOnItsWay
-          : refund.refundedAt === null
-            ? t.refundedNoDate(formatMoney(refund.amount, booking.currency))
-            : t.refundedNote(
-                formatMoney(refund.amount, booking.currency),
-                formatFullDate(refund.refundedAt),
-              );
-    note = {
-      tone: 'warning',
-      icon: 'x-circle',
-      title: messages.bookingDetail.closed.weCancelled,
-      ...(refundBody === null ? {} : { body: refundBody }),
-    };
-    // ADR-0041 AMEND 2: nguyên văn lý do admin gõ lúc huỷ chuyến — câu khách đã nhận ở email báo
-    // huỷ. Chuyến huỷ không có lý do (seed lượt 1) thì không in khối rỗng.
-    if (booking.departureCancelReason !== null) {
-      operatorReason = {
-        label: messages.bookingDetail.closed.whyLabel,
-        text: booking.departureCancelReason,
-      };
-    }
-    rows = [
-      { label: bookingCopy.bookingCodeLabel, value: booking.code },
-      ...(booking.cancelledAt
-        ? [{ label: t.cancelledOnLabel, value: formatFullDate(booking.cancelledAt) }]
-        : []),
-      // Đơn chưa từng thu tiền thì không có dòng tiền nào để in.
-      ...(refund === null ? [] : [{ label: t.paidLabel, value: amount }]),
-    ];
-    primaryAction = {
-      label: messages.mobile.trips.browse,
-      onPress: () => router.dismissTo('/explore'),
-    };
-  } else if (kind === 'cancelled') {
-    note = {
-      tone: 'warning',
-      icon: 'x-circle',
-      title: messages.accountBookingDetail.terminalNote.CANCELLED ?? '',
-    };
-    primaryAction = {
-      label: messages.mobile.trips.browse,
-      onPress: () => router.dismissTo('/explore'),
-    };
-  } else {
-    const refunded = Number(booking.refundedTotal) > 0;
-    // Không có mốc hoàn thật (hoàn do admin không qua đơn xin huỷ) thì KHÔNG in ngày —
-    // trước đây rơi về ngày đặt chỗ, sai sự thật.
-    const refundedAt = booking.cancellationDecidedAt ?? booking.cancelledAt;
-    const refundedMoney = formatMoney(booking.refundedTotal, booking.currency);
-    note = refunded
-      ? {
-          tone: 'success',
-          icon: 'refresh-cw',
-          title:
-            refundedAt === null
-              ? t.refundedNoDate(refundedMoney)
-              : t.refundedNote(refundedMoney, formatFullDate(refundedAt)),
-          body: t.refundedTiming,
-        }
-      : {
-          tone: 'warning',
-          icon: 'x-circle',
-          title: messages.accountBookingDetail.refundLine.none,
-        };
-    rows = [
-      { label: bookingCopy.bookingCodeLabel, value: booking.code },
-      ...(booking.cancelledAt
-        ? [{ label: t.cancelledOnLabel, value: formatFullDate(booking.cancelledAt) }]
-        : []),
-      { label: t.paidLabel, value: amount },
-    ];
-    primaryAction = {
-      label: messages.mobile.trips.browse,
-      onPress: () => router.dismissTo('/explore'),
-    };
-    // PARTIALLY_REFUNDED không phải trạng thái cuối (booking-states.md, ADR-0041):
-    // khách vẫn đi tour và còn huỷ được khi server cho phép.
-    if (actions.includes('cancelBooking')) {
-      secondaryAction = {
-        label: messages.accountBookingDetail.actions.cancel,
-        onPress: () => setCancelSheetOpen(true),
-      };
-    }
-  }
+  const view = bookingDetailView(
+    booking,
+    { today, now, payError, paying: checkoutMutation.isPending },
+    {
+      pay: payNow,
+      openCancelPending: () => setCancelPendingSheetOpen(true),
+      openCancel: () => setCancelSheetOpen(true),
+      writeReview: () => router.push(`/trips/${booking.code}/review`),
+      browse: () => router.dismissTo('/explore'),
+      contact: openEnquiry,
+    },
+  );
 
   return (
     <>
       {titleScreen}
-      <BookingDetailScreen
-        trip={trip}
-        pillLabel={pillLabel}
-        pillTone={pillTone}
-        note={note}
-        reason={operatorReason}
-        rows={rows}
-        primaryAction={primaryAction}
-        secondaryAction={secondaryAction}
-        contactLine={contactLine}
-        transformUrl={cloudinaryUrl}
-      />
+      <BookingDetailScreen {...view} transformUrl={cloudinaryUrl} />
       <CancelBookingSheet
         visible={cancelPendingSheetOpen}
         onClose={() => {
@@ -532,49 +284,20 @@ export default function BookingDetailRoute() {
       />
       {booking.cancellation === null ? null : (
         <CancelBookingSheet
+          {...cancelSheetView(booking.cancellation, booking.currency, {
+            changeReason: setReason,
+            contact: () => {
+              // Đóng tấm trước khi đẩy màn mới — trên iOS Modal còn mở sẽ đè lên form.
+              setCancelSheetOpen(false);
+              openEnquiry();
+            },
+          })}
           visible={cancelSheetOpen}
           onClose={() => {
             setCancelSheetOpen(false);
             setActionError(null);
           }}
-          title={
-            booking.cancellation.withinDeadline
-              ? messages.accountBookingDetail.actions.cancelConfirmTitle
-              : t.cancelAfterTitle
-          }
-          body={
-            booking.cancellation.withinDeadline
-              ? t.cancelWithinBody
-              : t.cancelAfterBody(formatDepartureDate(booking.cancellation.deadline))
-          }
-          refundLabel={t.refundLabel}
-          refundAmount={refundAmount ?? ''}
-          refundTone={booking.cancellation.withinDeadline ? 'good' : 'info'}
-          // Mockup T7 (quá hạn) KHÔNG có ô lý do — chỉ T6 còn hạn mới hỏi.
-          reasonLabel={booking.cancellation.withinDeadline ? t.cancelReasonLabel : undefined}
-          reasonPlaceholder={
-            booking.cancellation.withinDeadline ? t.cancelReasonPlaceholder : undefined
-          }
           reason={reason}
-          onChangeReason={booking.cancellation.withinDeadline ? setReason : undefined}
-          contactLine={
-            booking.cancellation.withinDeadline
-              ? undefined
-              : {
-                  prompt: messages.accountBookingDetail.cancelDialog.afterContact,
-                  onPress: () => {
-                    // Đóng tấm trước khi đẩy màn mới — trên iOS Modal còn mở sẽ đè lên form.
-                    setCancelSheetOpen(false);
-                    openEnquiry();
-                  },
-                }
-          }
-          confirmLabel={
-            booking.cancellation.withinDeadline
-              ? messages.accountBookingDetail.cancelDialog.withinCta(refundAmount ?? '')
-              : messages.accountBookingDetail.cancelDialog.afterCta
-          }
-          dismissLabel={messages.accountBookingDetail.actions.cancelDismiss}
           pending={cancelMutation.isPending}
           error={actionError}
           onConfirm={confirmCancel}
