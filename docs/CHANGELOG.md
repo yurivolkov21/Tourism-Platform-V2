@@ -8,6 +8,61 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-10-21 — Merge review L6 liên hệ, bản tin và email đi ra: lead đã ẩn danh không còn đánh sập trang Enquiries, thư xác nhận đi khi khách đăng ký lại sau khi huỷ, form liên hệ báo "quá dài" thay vì "quá ngắn", câu bảng trống của /subscribers (`cb8fff1`)
+
+Luồng L6 của đợt review code theo luồng (kế hoạch 20/10 trong thư mục chung của project,
+`code-review/ke-hoach-review-theo-luong.md`), rà trên `main` `451f82f`, rebase lên `f8f8634`, `e8fdfee` rồi `0141b84`
+trước khi đẩy. Báo cáo đủ 11 phát hiện, gồm phần để lại, đề xuất L6-04 còn chờ Yuri và A1-07 chuyển sang thành
+L6-11: `code-review/L6-bao-cao.md` cùng thư mục. Nhánh `fix/review-l6-contact-email-tls7up`,
+[PR #54](https://github.com/yurivolkov21/Tourism-Platform-V2/pull/54), thi công trên session cloud. Đụng contract
+(schema enquiry của admin), api (worker outbox và comment), admin, web, mobile và `@tourism/i18n` (ba khoá mới, ba
+câu đổi): không migration, không biến env, không dependency mới; không sửa file nào trong danh sách Nghĩa làm lại
+giao diện 22–30/10. Không gửi mail thật nào; với Resend chỉ đọc trạng thái tên miền và webhook qua connector.
+
+- `01a817e` (L6-01): schema hàng và chi tiết enquiry của admin nhận thêm đúng dạng email ẩn danh
+  `anon-<uuid>@invalid` (không nới chung) và lời nhắn rỗng; trang chi tiết in "Removed when this lead was
+  anonymized." thay cho thẻ Message trống. Anonymize (job retention 18 tháng, hoặc xoá tài khoản khi lead mang
+  `user_id`) ghi hai giá trị ấy, mà oRPC kiểm output, nên trước đó `/enquiries` trả 500 ở mọi tab và trang có
+  hàng ẩn danh, trang chi tiết của nó cũng 500. Trên production: khách đăng nhập gửi form `/contact` rồi xoá tài
+  khoản là trang Enquiries sập. Đây là bug "task riêng" ở Q9 của spec seed khung 2026 (14/09); comment fixture
+  seed bỏ câu "dòng ẩn danh làm vỡ trang admin".
+- `9c581c8` (L6-02): worker gửi thư xác nhận bản tin khi và chỉ khi link trong thư còn mở được (`confirmToken`
+  khớp thế hệ consent hiện tại, hàm `isDeadConfirmMail`). Trước đó khách huỷ rồi đăng ký lại ở footer, đúng đường
+  trang huỷ chỉ, thì thư thành SKIPPED vì row vẫn ở trạng thái huỷ tới lúc bấm link: toast báo đã gửi mà không có
+  thư nào. Huỷ hoặc bấm "Re-subscribe" sau khi thư đã xếp hàng thì thư vẫn bị bỏ; trần một thư mỗi 24 giờ giữ
+  nguyên.
+- `22a8f7e` (L6-03, web) và `668a0df` (L6-03, app): form `/contact`, form trang chủ và tấm "Ask about this date"
+  của app báo "Keep your name under 120 characters." và "Keep your message under N characters." thay cho câu
+  "at least 10 characters" khi vượt trần. Ô lời nhắn của web trừ sẵn dòng ngày mong muốn mà form ghép vào. App
+  nhận bản sửa ở APK kế tiếp (file của M2, không thuộc danh sách của Nghĩa).
+- `cea3e13` (L6-05): ba comment của `newsletter.controller.ts`, `enquiries.controller.ts` và `contract.ts` thôi
+  tả một `ThrottlerGuard` riêng gắn ở method; trần là guard toàn cục của ADR-0037 (chỉ comment).
+- `cb8fff1` (L6-11, A1-07 chuyển sang): ba câu ô rỗng của `/subscribers` khi đang lọc ngày thành "No matching
+  subscribers signed up …", cùng khuôn `/bookings` và `/reviews`: ngày cộng dồn với tab, ô tìm và nguồn.
+
+**Review.** Đây chính là lượt review của luồng L6; không có lượt review độc lập cho các bản sửa. Ghi lại không
+sửa: L6-06 (lúc Render deploy, hai bản worker có thể cùng gửi một row; request tới Resend không có
+`Idempotency-Key`), L6-07 (template `EMAIL_CHANGED` và `EMAIL_VERIFICATION` dạng link không còn nơi xếp hàng),
+L6-08 (trang xác nhận và huỷ bản tin in "link hỏng" khi API 5xx, cố ý), L6-09 (xoá tài khoản không dọn mail outbox
+đang chờ, file của L1), L6-10 (đăng ký lại trong 24 giờ không có thư, cố ý). Còn chờ Yuri: L6-04, hộp
+`noreply@nexora-travel.agency` có nhận thư không; sáu loại mail gửi khách và ba câu trên web bảo khách trả lời
+mail, trong khi Resend tắt Receiving cho tên miền này. Yuri bảo đẩy lên main 21/10 02:34 UTC.
+
+Tests after (`gate:int` trên `cb8fff1`, nền `0141b84`, 21/10, session cloud, API sống ở :3001): unit 8332 (admin
+2398, web 2443, api 1413, mobile 927, contract 811, mobile-ui 145, i18n 64, ui 57, core 48, tokens 26) và int
+970; Biome 2097 file; RLS, tokens-only của mobile và prerender admin xanh. PR thêm 15 test unit (api 6, contract
+3, web 3, admin 2, mobile 1) và 5 int test.
+
+**CÒN TREO:**
+
+- Bản APK mới từ `main` (EAS trên PC) để phần app của L6-03 tới máy khách, gộp vào lượt dựng lại sau phần giao
+  diện của Nghĩa (22–30/10).
+- L6-04 chờ Yuri: có hộp thư hoặc chuyển tiếp cho `noreply@` thì thôi; không có thì chọn giữa env tuỳ chọn
+  `EMAIL_REPLY_TO` (Yuri đặt trên Render lúc merge) hoặc đổi chữ ở 10 chỗ sang trang liên hệ.
+- Buổi test tay: sáu bước ở mục 3 của `code-review/L6-bao-cao.md` (lead ẩn danh trên admin, đăng ký lại bản tin
+  ở footer sau 24 giờ, form liên hệ quá dài trên web và app, ô rỗng của `/subscribers`, trả lời một mail).
+- Dọn nhánh `fix/review-l6-contact-email-tls7up` trên origin nếu GitHub không tự xoá.
+
 ## 2026-10-21 — Merge review F2 dữ liệu demo: bản sao lưu trước khi seed lại lấy trọn mọi bảng, gỡ hai script dev đã hỏng, kế hoạch `data:reset` không còn khai số liệu của lượt 09/09 (`16743d3`)
 
 Luồng F2 của đợt review code theo luồng (kế hoạch 20/10 trong thư mục chung của project,
