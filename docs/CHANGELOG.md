@@ -8,6 +8,55 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-10-21 — Merge review F2 dữ liệu demo: bản sao lưu trước khi seed lại lấy trọn mọi bảng, gỡ hai script dev đã hỏng, kế hoạch `data:reset` không còn khai số liệu của lượt 09/09 (`16743d3`)
+
+Luồng F2 của đợt review code theo luồng (kế hoạch 20/10 trong thư mục chung của project,
+`code-review/ke-hoach-review-theo-luong.md`), rà trên `main` `451f82f`, rebase lên `f8f8634` rồi lên `a05cece`
+trước khi đẩy. Báo cáo đủ 9 phát hiện của luồng và hai phát hiện chuyển sang (L4-19, L5-18), câu trả lời "có
+cần seed lại lần hai trước bảo vệ không" cùng hướng dẫn seed lại production từng bước:
+`code-review/F2-bao-cao.md` cùng thư mục. Nhánh `fix/review-f2-seed-reset-m7kz98`,
+[PR #53](https://github.com/yurivolkov21/Tourism-Platform-V2/pull/53), thi công trên session cloud. Chỉ đụng
+script chạy tay và comment của `apps/api` cùng một dòng của `docs/snapshots/README.md`: không migration, không
+biến env, không dependency mới, không đổi code chạy trên production. Seed, reset và verify chỉ chạy trên
+Postgres local của container.
+
+- `010fd96`: `snapshot:export` đọc danh sách bảng từ `information_schema` lúc chạy và sao lưu trọn mọi bảng của
+  schema `public` vào `backups/<ngày>/`, trừ `_prisma_migrations`. Trước đó bản kê tay 19 bảng thiếu năm bảng
+  mà `data:reset` xoá (chat của trợ lý AI, ghi chú và lịch sử trạng thái của enquiry, nhật ký thao tác admin)
+  và sáu bảng mà seed ghi đè (29 tour gốc cùng năm bảng con), tức đúng phần sẽ mất khi seed lại mà không có
+  bản nào để lấy lại. Đo trên Postgres local: 37 file cho 37 bảng.
+- `eb503cd`: gỡ `scripts/demo-account.mjs`, `prisma/seed-demo-visits.ts` và script `demo:account`. Script đầu
+  chết ở bước đầu từ khi đăng ký phải xác minh email (`3bab8e2`, 20/08); file sau đắp lịch sử cho hai tài
+  khoản mà reset đã xoá; cả hai ghi thẳng vào `DATABASE_URL` mà không có chốt production. Seed nay tạo 120
+  khách giả đăng nhập được, có đơn ở mọi giai đoạn.
+- `fb4ab52`: kế hoạch in của `data:reset` bỏ hai câu chỉ đúng với prod ngày 09/09 ở dòng `outbox` và `enquiries`
+  ("137 dòng đều SENT, không email nào đang chờ"), nhắc soát `/outbox` trước `--apply`. Đo local: outbox còn
+  hai dòng PENDING mà kế hoạch cũ vẫn in câu ấy.
+- `16743d3`: ba comment lệch code trong `seed.ts`, gồm L5-18 chuyển từ luồng L5: công thức điểm tour nay trỏ theo
+  tên hàm `moderate` và `retract` của `ReviewsService`, đúng cả trước lẫn sau PR #51; bỏ các con số đổi theo
+  ngày H.
+
+**Review.** Đây chính là lượt review của luồng F2; không có lượt review độc lập cho các bản sửa. Vòng reset,
+seed, verify chạy đủ trên Postgres local với H 18/09, 05/11 và 08/11; lượt cuối `seed:verify` 0 vi phạm trên
+119 bất biến. Ghi lại không sửa: L4-19 đơn seed mang mã thanh toán giả nên cổng sandbox từ chối hoàn (luật khi
+trình bày ở mục 3 và 6.6 của báo cáo); F2-04 đợt công ty huỷ trong seed còn hình dạng trước F13, Yuri chọn
+không làm 21/10 01:05 UTC nên A1-21 của luồng A1 cũng không làm; F2-05 tới F2-09 là việc của lượt seed lại.
+Yuri bảo đẩy lên main 21/10 01:06 UTC.
+
+Tests after (`gate:int` trên `16743d3`, nền `a05cece`, 21/10, session cloud, API sống ở :3001): unit 8317
+(admin 2396, web 2440, api 1407, mobile 926, contract 808, mobile-ui 145, i18n 64, ui 57, core 48, tokens
+26) và int 965; Biome 2097 file; RLS và prerender admin xanh. PR không thêm test: không đổi logic thuần, đo
+bằng chạy thật trên Postgres local.
+
+**CÒN TREO:**
+
+- Seed lại production theo mục 6 của `code-review/F2-bao-cao.md`: 1–2 ngày trước buổi thuyết trình thử và
+  lần nữa 1–2 ngày trước bảo vệ (chờ Yuri chốt ngày). Mục "Trước lượt seed lại 03/11" của `docs/open-items.md`
+  và dòng "lượt seed 2, khoảng 03/11" của `docs/snapshots/README.md` đổi theo ngày Yuri chốt.
+- Buổi test tay: hai điều ở mục 3 của `code-review/F2-bao-cao.md` (công ty huỷ đợt chỉ trên đợt 0 ghế đã đặt,
+  với đơn mới trả bằng thẻ 4242; khách tự huỷ trong hạn và hoàn goodwill chỉ trên đơn mới).
+- Dọn nhánh `fix/review-f2-seed-reset-m7kz98` trên origin nếu GitHub không tự xoá.
+
 ## 2026-10-21 — Merge review L5 đánh giá tour: lệnh duyệt mang phiên bản, khách hoàn thiện chí mà vẫn đi viết được review, nút ảnh review hiện trên điện thoại, form sửa gặp bài vừa duyệt thì tải lại, câu bảng rỗng của /reviews (`b80c25f`)
 
 Luồng L5 của đợt review code theo luồng (kế hoạch 20/10 trong thư mục chung của project,
