@@ -8,6 +8,53 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-10-22 — Merge review A4 admin Appearance và thư viện ảnh: hộp Replace không lưu khi chưa đổi gì, Restore original nói đúng về ảnh đã rời thư viện, test liên luồng cho ảnh khe đang mượn (`29d8c19`)
+
+Luồng A4 của đợt review code theo luồng (kế hoạch 20/10 trong thư mục chung của project,
+`code-review/ke-hoach-review-theo-luong.md`), rà trên `main` `e8fdfee`, rebase lên `f5877b7` trước khi đẩy. Báo
+cáo đủ 10 phát hiện (2 sửa ở đây, 1 test canh hành vi đang đúng, 7 ghi lại): `code-review/A4-bao-cao.md` cùng thư
+mục. Nhánh `fix/review-a4-admin-appearance-media-20h631`,
+[PR #58](https://github.com/yurivolkov21/Tourism-Platform-V2/pull/58), thi công trên session cloud. Đụng admin (khu
+`/appearance`), i18n (khối `admin.appearance`) và một int test của api: không migration, không đổi contract, không
+biến env, không dependency mới.
+
+- `9a6ac8d` (A4-01): hộp Replace mở sẵn ảnh đang dùng, nên bấm Save khi alt chưa đổi từng gửi `setSlot`: phiên bản
+  khe nhích (người khác đang mở khe ấy gặp `STALE_SLOT`), cache `site-media` của web bị bust và `/activity` thêm một
+  dòng "Replaced site image" dù không có gì thay. Nay hàm thuần `isUnchangedSlotDraft` chặn ở admin theo khuôn
+  `canSaveMedia` của Media library: hộp nhắc "Choose a new photo or change the alt text first.", sửa alt là lưu
+  được.
+- `2a7c553` (A4-02): khe mượn ảnh của một điểm đến, rồi điểm đến gỡ ảnh ấy khỏi trang Photos, thì khe mang nguồn
+  `OTHER` mà hộp Restore original vẫn hứa "The current photo can be picked again from the library." Nay nguồn
+  `OTHER` có câu riêng "The current photo isn’t in the library, so it can’t be picked again."
+- `29d8c19` (A4-03, câu hỏi L8-15 của luồng L8): Media library không có đường xoá ảnh (ADR-0060 §5), còn bộ dọn
+  kiểm tham chiếu trên mọi chủ, nên ảnh đang gắn vào khe không bị xoá. Int test mới canh đúng ca liên luồng: điểm
+  đến gỡ ảnh khe đang mượn, quá hạn 7 ngày bộ dọn vẫn hoãn, khe về ảnh gốc thì ảnh mới chuyển sang chờ dọn. Thử
+  đột biến: bỏ chủ `SITE` khỏi phép kiểm tham chiếu thì test đỏ.
+
+Spec P4f Appearance ghi thêm đường ra nguồn `OTHER` (§5) và luật Save khi chưa đổi gì (§6.2).
+
+**Review.** Không có lượt review độc lập; A4-01 và A4-02 có test đỏ trên mã cũ (1 hàm thuần, 1 ca hộp Replace, 1
+ca thẻ khe), A4-03 kiểm bằng đột biến. Để lại A4-04 đến A4-10: lưới `/media` in "No photo matches these filters."
+khi DB chưa có ảnh nào; hộp Replace không nói gì về ảnh nguồn `OTHER`; khe mili giây giữa phép kiểm tham chiếu và
+lệnh destroy của bộ dọn; `setSlot` nhận publicId tải lên sâu hơn vùng tải lên của bộ dọn với lệnh Staff tự chế
+(rò ảnh, không mất ảnh); `altVaries` của API theo alt thô; câu của khung xem trước `null`; `libraryPublicIds` chép
+hai nơi. Yuri bảo đẩy lên main 22/10 01:30 UTC.
+
+Tests after (`gate:int` trên `29d8c19`, nền `f5877b7`, 22/10, session cloud, API sống ở :3001): unit 8450 (web
+2469, admin 2423, api 1445, mobile 961, contract 812, mobile-ui 145, i18n 64, ui 57, core 48, tokens 26) và int
+977; Biome 2113 file; RLS, tokens-only của mobile và prerender admin xanh. Container mới để trần heap Node
+2240 MB nên `src/contract.spec.ts` (46 test) chết vì hết bộ nhớ ở lượt đầu, cả khi chạy riêng; chạy với
+`--max-old-space-size=6144` thì 812/812 xanh. Code contract y như `main`, CI của `main` trên GitHub xanh. PR thêm
+3 test unit (admin) và 1 int test.
+
+**CÒN TREO:**
+
+- Buổi test tay: hai bước mục 3 của `code-review/A4-bao-cao.md` (Replace rồi Save ngay thì chỉ nhắc, nhật ký không
+  thêm dòng; ảnh thử mượn từ một điểm đến, điểm đến gỡ ra, Restore original in câu mới, tab Cleanup queue có ảnh
+  chờ dọn). Bước 2 gộp được với Media B §8.3 của A3. Cuối buổi Restore original mọi khe đã đổi.
+- Đề xuất nhỏ A4-05 chờ Yuri: hộp Replace in lại câu `notInLibrary` khi nguồn là `OTHER` (3 dòng, 1 test).
+- Dọn nhánh `fix/review-a4-admin-appearance-media-20h631` trên origin nếu GitHub không tự xoá.
+
 ## 2026-10-21 — Merge review L8 trang chủ, điểm đến, blog và trang tĩnh: blog kẹp `?page=`, ngày và tháng đúng múi giờ, giá "from" của trang vùng, canonical blog, sáu nút xem tour về `/tours` (`4bee6ff`)
 
 Luồng L8 của đợt review code theo luồng (kế hoạch 20/10 trong thư mục chung của project,

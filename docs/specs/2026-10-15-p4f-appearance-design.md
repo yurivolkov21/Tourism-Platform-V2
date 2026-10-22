@@ -206,7 +206,9 @@ không phải REVIEW và giữ `site_media_slots`.
 | `setSlot` | `{ key, version, image: { publicId, alt, upload? } }` | khe sau khi lưu, cùng hình một dòng của `list` | `STALE_SLOT` 409, `PHOTO_NOT_ALLOWED` 400 |
 
 - `source` của ảnh đang dùng: `UPLOAD`, `ORIGINAL`, `LIBRARY`, hoặc `OTHER` (dòng script ghi mà
-  không khớp nguồn nào; hiện không có).
+  không khớp nguồn nào; lúc viết spec không có). Review A4 (22/10) tìm thêm một đường ra `OTHER`:
+  khe chọn ảnh thư viện rồi điểm đến gỡ ảnh ấy khỏi trang Photos. Khe vẫn hiện ảnh, hộp Restore
+  original báo ảnh không chọn lại được, và bộ dọn hoãn chừng nào khe còn dùng ảnh.
 - `key` của `signUpload` và `setSlot` chỉ nhận khe ảnh: khe video bị chặn ngay ở schema.
 - `alt` tối đa 300 ký tự (độ rộng cột); trống là ảnh trang trí, web vẽ `alt=""` như hôm nay.
 
@@ -239,6 +241,9 @@ không phải REVIEW và giữ `site_media_slots`.
 - Khi ảnh đang dùng là ảnh tải lên: một dòng báo ảnh ấy sẽ bị xoá khỏi kho sau 7 ngày, vì không
   có đường nào chọn lại nó.
 - Lưu thì báo toast; `STALE_SLOT` thì báo khe vừa bị người khác đổi rồi tải lại thẻ.
+- Vẫn là ảnh đang dùng và alt (sau khi cắt khoảng trắng) chưa đổi thì Save chỉ nhắc chọn ảnh khác
+  hay sửa alt, không gửi lệnh: lưu như thế vẫn nhích phiên bản khe, bust cache và ghi một dòng
+  nhật ký thao tác (review A4, 22/10).
 
 ## 7. Web
 
