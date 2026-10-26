@@ -27,7 +27,7 @@
 | 14. Admin sửa catalog: chuyến, danh mục, điểm đến | 22/09–24/09 | [departures-categories-destinations](2026-09-departures-categories-destinations.md) |
 | 15. Tạo, sửa tour và ảnh tour | 25/09–29/09 | [tour-editor-photos](2026-09-tour-editor-photos.md) |
 | 16. Khu sửa tour dạng thanh bước, bài viết | 28/09–05/10 | [tour-workspace-posts-admin](2026-10-tour-workspace-posts-admin.md) |
-| 17. Sửa sạn admin, My bookings | 05/10–08/10 | [admin-polish-my-bookings](2026-10-admin-polish-my-bookings.md) |
+| 17. Sửa lỗi nhỏ của admin, My bookings | 05/10–08/10 | [admin-polish-my-bookings](2026-10-admin-polish-my-bookings.md) |
 | 18. Trang đơn của khách, tài khoản trên app | 08/10–10/10 | [booking-pages-mobile-account](2026-10-booking-pages-mobile-account.md) |
 | 19. Bản in, gộp ba nhánh app điện thoại | 12/10 | [print-export-mobile-merges](2026-10-print-export-mobile-merges.md) |
 | **Đang chạy** | 13/10– | [`../CHANGELOG.md`](../CHANGELOG.md) |
@@ -138,9 +138,9 @@ Khu sửa tour thành một thanh bước, bước cuối là xem lại rồi đ
 thôi ghi nhận doanh thu của chuyến chưa kết thúc. Lý do bác đánh giá chọn từ
 danh sách. Admin viết và đăng được bài blog. Session cloud tự dựng môi trường.
 
-### 17. Sửa sạn admin, My bookings (05/10–08/10)
+### 17. Sửa lỗi nhỏ của admin, My bookings (05/10–08/10)
 
-Một đợt sửa sạn giao diện admin trước freeze. Trang My bookings của khách lọc,
+Một đợt sửa các lỗi nhỏ của giao diện admin trước mốc đóng băng. Trang My bookings của khách lọc,
 tìm và phân trang theo hành trình. Vá 24 cảnh báo bảo mật thư viện. Trang chi
 tiết tour dùng được trên màn điện thoại hẹp.
 
@@ -158,9 +158,11 @@ tháng, Excel. Ba nhánh app của thành viên khác (xem tour, đặt tour, đ
 
 ### Đợt đang chạy (13/10–)
 
-Nước rút trước freeze 15/10: vùng Users của admin với hai bậc Owner và Staff,
-đăng nhập Google bằng SDK gốc trên app, và đóng càng nhiều mục còn treo càng
-tốt. Xem [`../CHANGELOG.md`](../CHANGELOG.md).
+Chặng cuối trước mốc đóng băng 31/10 (dời từ 15/10): vùng Users của admin với
+hai bậc Owner và Staff, đăng nhập Google bằng SDK gốc trên app, đổi ảnh các khe
+của web từ admin, thư viện ảnh, nhật ký thao tác, trợ lý AI tư vấn tour bật trên
+production, rồi một đợt rà soát code theo từng luồng và vá các lỗi tìm được. Xem
+[`../CHANGELOG.md`](../CHANGELOG.md).
 
 ## Luật của thư mục này
 
