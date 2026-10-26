@@ -3,7 +3,7 @@ import { messages } from '@tourism/i18n';
 import ExcelJS from 'exceljs';
 import { guestCount, statusLabel } from './bookings-view';
 import { formatMonthLabel } from './month-options';
-import { costWarning, formatMarginPct, reportPeriodLabel } from './reports-view';
+import { costWarning, formatMarginPct, reportDefinitions, reportPeriodLabel } from './reports-view';
 import { formatCount } from './stats-view';
 import {
   addSheet,
@@ -538,21 +538,19 @@ function buildDefinitions(book: ExcelJS.Workbook, frame: Partial<ExcelJS.HeaderF
   sheet.columns = [2, 5, 100].map((width) => ({ width }));
   put(sheet.getCell('B2'), t.definitions.heading, { name: HEAD_FONT, size: 15, bold: true });
   sheet.getRow(2).height = 28;
-  const d = t.definitions;
-  [d.revenue, d.recognised, d.costs, d.netProfit, d.refunds, d.statuses, d.cancellations].forEach(
-    (line, index) => {
-      const row = 4 + index;
-      put(sheet.getCell(`B${row}`), index + 1, {
-        name: MONO_FONT,
-        size: 10,
-        bold: true,
-        color: { argb: BRAND },
-      }).alignment = { vertical: 'top' };
-      put(sheet.getCell(`C${row}`), line).alignment = { wrapText: true, vertical: 'top' };
-      // Excel không tự giãn hàng khi mở file: ước ~95 ký tự một dòng ở cột rộng 100.
-      sheet.getRow(row).height = Math.max(30, Math.ceil(line.length / 95) * 15 + 4);
-    },
-  );
+  // Cùng thứ tự với màn hình và bản in (review A1-20).
+  reportDefinitions().forEach((line, index) => {
+    const row = 4 + index;
+    put(sheet.getCell(`B${row}`), index + 1, {
+      name: MONO_FONT,
+      size: 10,
+      bold: true,
+      color: { argb: BRAND },
+    }).alignment = { vertical: 'top' };
+    put(sheet.getCell(`C${row}`), line).alignment = { wrapText: true, vertical: 'top' };
+    // Excel không tự giãn hàng khi mở file: ước ~95 ký tự một dòng ở cột rộng 100.
+    sheet.getRow(row).height = Math.max(30, Math.ceil(line.length / 95) * 15 + 4);
+  });
 }
 
 /**

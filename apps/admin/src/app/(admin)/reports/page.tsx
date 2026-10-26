@@ -12,7 +12,7 @@ import { getServerSession } from '@/lib/api/session';
 import { formatDateTime } from '@/lib/bookings-view';
 import { reportPrintView } from '@/lib/report-print';
 import { formatMonthLabel, monthOptions, parseReportsSearchParams } from '@/lib/reports-query';
-import { reportPeriodLabel, toReportStatCards } from '@/lib/reports-view';
+import { reportDefinitions, reportPeriodLabel, toReportStatCards } from '@/lib/reports-view';
 import type { RawSearchParams } from '@/lib/table-query';
 
 /**
@@ -87,13 +87,10 @@ export default async function ReportsPage({
 
         <section className="flex flex-col gap-1 px-4 text-sm text-muted-foreground lg:px-6">
           <h3 className="font-medium text-foreground">{t.definitions.heading}</h3>
-          <p>{t.definitions.revenue}</p>
-          <p>{t.definitions.refunds}</p>
-          <p>{t.definitions.statuses}</p>
-          <p>{t.definitions.cancellations}</p>
-          <p>{t.definitions.recognised}</p>
-          <p>{t.definitions.costs}</p>
-          <p>{t.definitions.netProfit}</p>
+          {/* Cùng thứ tự với bản in và sheet Definitions (review A1-20). */}
+          {reportDefinitions().map((line) => (
+            <p key={line}>{line}</p>
+          ))}
         </section>
       </div>
 

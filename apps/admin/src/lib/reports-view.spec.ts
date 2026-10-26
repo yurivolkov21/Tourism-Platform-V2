@@ -5,6 +5,7 @@ import {
   costWarning,
   formatMarginPct,
   reportBookingsTotal,
+  reportDefinitions,
   reportPeriodLabel,
   toReportPnlRows,
   toReportStatCards,
@@ -266,5 +267,32 @@ describe('P&L', () => {
     expect(costWarning({ ...report, costDataMissing: 12, departuresCostMissing: 2 })).toBe(
       '12 bookings have no cost data, so cost of sales is understated. 2 departures that ran have no fixed-cost data — their transport and guide costs are counted as 0.',
     );
+  });
+});
+
+describe('reportDefinitions — khối "How to read these numbers"', () => {
+  /**
+   * Review A1-20: màn hình `/reports` từng chép tay bảy câu theo thứ tự khác bản in C2 và sheet
+   * Definitions (revenue, refunds, statuses, cancellations, recognised…), dù comment bản in hứa
+   * "giấy và file đọc như nhau". Nay cả ba đọc chung danh sách này.
+   */
+  it('bảy câu theo dòng chảy lãi lỗ rồi tới ba bảng vận hành, chung cho màn hình, giấy và file', () => {
+    const d = messages.admin.reports.definitions;
+    expect(reportDefinitions()).toEqual([
+      d.revenue,
+      d.recognised,
+      d.costs,
+      d.netProfit,
+      d.refunds,
+      d.statuses,
+      d.cancellations,
+    ]);
+  });
+
+  it('đủ mọi câu chú giải của i18n, mỗi câu một lần: thêm câu mới mà quên danh sách thì đỏ', () => {
+    const { heading: _heading, ...lines } = messages.admin.reports.definitions;
+    const all = reportDefinitions();
+    expect(new Set(all).size).toBe(all.length);
+    expect([...all].sort()).toEqual(Object.values(lines).sort());
   });
 });

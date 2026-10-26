@@ -272,3 +272,24 @@ export function toReportSummaryRows(report: AdminMonthlyReport): ReportSummaryRo
     value: display(report),
   }));
 }
+
+/**
+ * Thứ tự khối "How to read these numbers" — MỘT danh sách cho màn hình `/reports`, bản in C2 và
+ * sheet Definitions của file Excel (review A1-20). Đọc theo dòng chảy của bảng lãi lỗ (tiền thu,
+ * doanh thu ghi nhận, chi phí, lãi ròng) rồi tới ba bảng vận hành (hoàn tiền, trạng thái, huỷ).
+ * Trước đây mỗi bề mặt chép tay một danh sách, và màn hình lệch thứ tự với giấy lẫn file.
+ */
+const DEFINITION_KEYS = [
+  'revenue',
+  'recognised',
+  'costs',
+  'netProfit',
+  'refunds',
+  'statuses',
+  'cancellations',
+] as const satisfies readonly Exclude<keyof typeof t.definitions, 'heading'>[];
+
+/** Bảy câu chú giải, theo thứ tự chung của ba bề mặt. */
+export function reportDefinitions(): string[] {
+  return DEFINITION_KEYS.map((key) => t.definitions[key]);
+}

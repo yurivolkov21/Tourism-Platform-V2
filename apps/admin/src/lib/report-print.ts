@@ -6,6 +6,7 @@ import {
   costWarning,
   formatMarginPct,
   reportBookingsTotal,
+  reportDefinitions,
   reportPeriodLabel,
   toReportPnlRows,
   toReportSummaryRows,
@@ -506,17 +507,6 @@ const COST_ROWS: ReadonlySet<PnlKey> = new Set([
 /** Từ "$1,000,000.00" (13 ký tự) trở lên thì ô 15 pt không chứa nổi. */
 const LONG_TILE = 12;
 
-/** Thứ tự chú giải của sheet Definitions trong file Excel (G40 Phần 3): giấy và file đọc như nhau. */
-const DEFINITION_ORDER = [
-  'revenue',
-  'recognised',
-  'costs',
-  'netProfit',
-  'refunds',
-  'statuses',
-  'cancellations',
-] as const satisfies readonly (keyof typeof t.definitions)[];
-
 /** Toàn bộ chữ, số và hình của tờ C2 — `ReportPrint` chỉ việc vẽ. */
 export function reportPrintView(report: AdminMonthlyReport): ReportPrintView {
   const money = (amount: string) => formatAmount(amount, report.currency);
@@ -580,7 +570,8 @@ export function reportPrintView(report: AdminMonthlyReport): ReportPrintView {
     costWarning: costWarning(report),
     statusBar: statusBarView(report),
     ops: toReportSummaryRows(report),
-    definitions: DEFINITION_ORDER.map((key) => t.definitions[key]),
+    // Cùng thứ tự với màn hình và sheet Definitions (review A1-20): giấy và file đọc như nhau.
+    definitions: reportDefinitions(),
     footerRef: t.printDoc.docRef(report.month),
   };
 }
