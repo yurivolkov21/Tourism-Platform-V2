@@ -213,6 +213,12 @@ Contact, Review, Pay), "Next trip", nhãn đọc màn hình cho chip đếm ản
    props hay tên icon của `BookingDetailScreen`, `CancelBookingSheet`, `TripDayScreen`,
    `TripEndedScreen`, `TripUpcomingScreen` thì sửa ở hai file đó: kiểu lấy thẳng từ props của
    màn nên `tsc` chỉ ra chỗ sót, và test unit theo từng khung nằm cạnh.
+7. **Thẻ Saved đọc `priceFrom` và `nextDeparture` của wishlist** (review M2-14, 26/10). Từ bản này
+   mỗi mục của `wishlist.list` mang hai trường ấy, tính cùng luật thẻ Explore (ADR-0058 §1), nên
+   thẻ B2 ở khung B9 in được giá "from", giá gạch và dòng đợt như Explore. Route
+   `app/(tabs)/saved.tsx` hiện còn in `formatMoney(item.basePrice, …)`: đổi sang `item.priceFrom`
+   (file nằm trong danh sách của đợt này nên luồng review không sửa hộ). Wishlist không có
+   `badges`, nên thẻ Saved không có chip badge.
 
 ## 8. Báo xong
 
