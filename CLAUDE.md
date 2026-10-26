@@ -178,7 +178,9 @@ pnpm lint:fix                    # biome tự sửa format + lint
 - **Session cloud (claude.ai/code) tự dựng môi trường bằng
   `.claude/hooks/session-start.sh`** (thêm 05/10): image cloud chỉ có Node
   20–22 nên hook cài Node 24 qua nvm, pnpm đúng `packageManager`, chạy
-  `pnpm install --frozen-lockfile`, chép `.env.example` → `.env.local` và dựng
+  `pnpm install --frozen-lockfile` rồi `prisma generate` (thêm 26/10, review
+  F1: thiếu nó thì `db:seed` chạy trước mọi task turbo chết vì chưa có
+  `src/generated/`), chép `.env.example` → `.env.local` và dựng
   Postgres 17 bằng `docker compose` (đo: `gate` + `test:int` xanh). **Không khai
   secret ở cài đặt environment cloud** — giá trị dev đủ chạy test (luật 15).
   Hai bẫy: hook chỉ chạy trên nhánh CÓ nó, nên nhánh tách trước khi hook vào

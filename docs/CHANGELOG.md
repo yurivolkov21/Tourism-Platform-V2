@@ -8,6 +8,101 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-10-26 — Merge review F1 hạ tầng API, CI và cấu hình gốc: đường admin viết mã hoá không còn lọt CORS và chặn cross-site, trần chat một giờ không bị quét sớm, Sentry không nhận tham số câu truy vấn của Prisma (`7a71882`)
+
+Luồng F1 của đợt review code theo luồng (kế hoạch 20/10 trong thư mục chung của project,
+`code-review/ke-hoach-review-theo-luong.md`), rà trên `main` `e8fdfee`, rebase lên `96db013` trước khi đẩy. Báo
+cáo đủ 19 dòng (9 sửa ở đây, 1 việc hạ tầng Yuri chọn làm, 1 đề xuất, 7 ghi lại, và L1-16 chuyển từ L1 chỉ ghi
+nhận) từng nằm ở `code-review/F1-bao-cao.md` của thư mục chung; thư mục ấy đã được dọn trước lúc merge, nên việc
+hạ tầng, các bước test tay và phần ghi lại chép ở mục CÒN TREO dưới đây. Nhánh `fix/review-f1-api-ci-config-6sek70`,
+[PR #62](https://github.com/yurivolkov21/Tourism-Platform-V2/pull/62), thi công trên session cloud. Đụng api
+(bootstrap, throttle, Sentry, comment), hook session cloud và `compose.yaml`: không migration, không đổi contract,
+không biến env mới, không dependency mới.
+
+- `b53f22d` (F1-01, P1; phần `bootstrap.ts` của F1-03): router của Fastify (find-my-way 9.7) giải mã
+  percent-encoding của path trước khi khớp route, còn delegator CORS, hook onRequest (cổng JSON 415, chặn
+  cross-site 403) và guard throttle so `req.url` thô. Đo bằng e2e trên API local: `OPTIONS /api/%61dmin/bookings`
+  với Origin của web được cấp `Access-Control-Allow-Origin` (ADR-0026 AMEND 1 hứa vùng admin không phát CORS cho
+  origin nào), POST JSON cross-site tới `/api/%61dmin/bookings/BK-X/refund` ra 401 thay vì 403, và
+  `/api/webhooks/csp-r%65port` nhận `application/json` qua parser 1 MiB thay vì 415. Kịch bản: một XSS ở www gọi
+  đường admin viết mã hoá kèm cookie khi nạn nhân là admin, đọc được dữ liệu và gửi được lệnh ghi JSON. Đây là
+  lớp phòng thủ chiều sâu; lớp chính vẫn là CSP của web. Nay `lib/request-path.ts` (`routingPath`,
+  `isAdminSurfacePath`) chép đúng cách router cắt `?`, `#` và giải mã (giữ ký tự dành riêng và `%25`), dùng ở
+  mọi phép so path của tầng HTTP. Cùng gốc, nhẹ hơn: key throttle của đường auth wildcard lấy path thô, nên
+  `/api/auth/sign-in/email#1`, `#2`… mỗi lượt một bucket mới (trần riêng của Better Auth vẫn chặn).
+- `29b59e3` (F1-02, P2): lượt quét dọn của `KeyedThrottlerStorage` (mỗi 1 000 lượt đếm, hoặc khi chạm trần
+  50 000 bucket) dùng `ttl` của lượt kích nó, gần như luôn 60 giây, nên xoá bucket chat một giờ còn hit mà chưa
+  bị block. Trần 20 lượt mỗi giờ của khách chưa đăng nhập vì thế mở lại sau một phút im lặng, và ai cũng kích
+  được lượt quét bằng khoảng 1 000 GET công khai. Nay mỗi bucket giữ cửa sổ của chính nó (lớn nhất từng nhận);
+  ADR-0037 AMEND 4. Trần tiền theo ngày `CHAT_DAILY_BUDGET_USD` vẫn chặn tổng trong suốt thời gian lỗi tồn tại.
+- `f326fd4` (F1-11): `scrubEvent` chỉ lọc khối request, mà message của `PrismaClientValidationError` in nguyên
+  tham số câu truy vấn (đo trên Prisma 7.8: `where: { email: "…" }`), kể cả với `errorFormat: 'minimal'`. Nay
+  Sentry chỉ nhận đoạn đầu (model và hàm gọi) và đoạn cuối (trường nào sai kiểu gì). Chỉ xảy ra khi có lỗi lập
+  trình (input đã qua zod) nên hiếm. Log stdout trên Render vẫn in nguyên, vì đó là nơi chẩn đoán lỗi.
+- `219a408` (F1-03, F1-04, F1-08, F1-12): sửa comment nói sai code hoặc viết tiếng Anh ở `bootstrap.ts` (PATCH
+  nay là hai route), `orpc-error-log.ts` (JSDoc nằm nhầm hàm), `prisma.config.ts` (CLI không dùng pool, pool của
+  tiến trình API là 5), `contract/src/index.ts`, `env.spec.ts`, `csp-report.controller.ts` (chỉ `documentUri` bỏ
+  query) và header `prisma/hardening-v2.sql` (bản ghi của migration `20260718092447_hardening`, không phải nguồn
+  sự thật; lưới thật là `check-rls.sh`). File ấy không nằm trong `prisma/migrations/` nên không đụng checksum.
+- `7a71882` (F1-05, F1-06): hook session cloud chạy `prisma generate` ngay sau `pnpm install` (thiếu nó thì làm
+  bước "Migrate + seed" trước mọi task turbo là `ERR_MODULE_NOT_FOUND`, dính 20/10 ở L2); header `compose.yaml`
+  thôi hứa "boot cả hệ một lệnh": `api` và `worker` chạy `NODE_ENV=production` với env tối thiểu nên chốt
+  production của `env.ts` dừng tiến trình ngay, đúng thiết kế; hai service giữ để thử image.
+
+**Review.** Không có lượt review độc lập; mỗi phần sửa có test đỏ trên mã cũ: F1-01 (3 e2e, cùng 16 unit test
+cho `request-path` viết khi module chưa có), F1-02 (1), F1-11 (1, dùng message thật đo được). Năm trọng tâm của
+kế hoạch: Render ngủ rồi thức êm phía API (timeout, `/health` 503 khi DB lỗi, job bù có khoá theo ngày) pass có
+điều kiện vì thời gian khởi động thật và timeout phía web thuộc F3 và L3; cấu hình production sai thì tiến trình
+dừng pass (ngoại lệ `ADMIN_EMAILS`, `EMAIL_FROM`, xem CÒN TREO); truy vấn nóng có index pass (55 `@@index`); CI
+canh đủ thứ CLAUDE.md nói pass có điều kiện (docs-freshness kiểm theo ngày, F1-07); lỗi 500 lên Sentry chỉ mang
+method và path pass sau F1-11. Yuri chọn "Đặt trước buổi test tay" cho F1-10 và bảo đẩy lên main 26/10 02:09 UTC.
+Docs sweep cùng đợt: ADR-0037 AMEND 4, một dòng ở "Việc tay trên hạ tầng" của `open-items.md`, mô tả hook ở
+`CLAUDE.md`.
+
+Tests after (`gate:int` trên `7a71882`, nền `96db013`, 26/10, session cloud, API sống ở :3001): unit 8508 (web 2469, admin
+2456, api 1470, mobile 961, contract 812, mobile-ui 145, i18n 64, ui 57, core 48, tokens 26) và int 982; Biome 2122
+file; RLS, tokens-only của mobile (190 file), bundle mobile và prerender admin xanh. Lượt đầu `@tourism/contract#test`
+chết vì hết heap ở một file như entry A3, A4, A5 và A1; chạy lại với `--max-old-space-size=6144`: 812/812. PR thêm
+21 test unit ở api (16 `request-path`, 3 e2e, 1 storage, 1 `scrubEvent`).
+
+**CÒN TREO:**
+
+- **Trước buổi test tay, việc tay trên Render (F1-10, Yuri chọn 26/10, ADR-0037 AMEND 4).** Service API, mục
+  Environment, ô `TRUST_PROXY` đặt giá trị dưới đây (một dòng, không dấu cách), Save, đợi deploy xong. Đối chiếu
+  dải với `https://www.cloudflare.com/ips-v4` và `https://www.cloudflare.com/ips-v6` trước khi dán (mạng của
+  session review không mở được hai trang đó; danh sách dưới là bản đã ổn định từ 2023):
+  `loopback,linklocal,uniquelocal,173.245.48.0/20,103.21.244.0/22,103.22.200.0/22,103.31.4.0/22,141.101.64.0/18,108.162.192.0/18,190.93.240.0/20,188.114.96.0/20,197.234.240.0/22,198.41.128.0/17,162.158.0.0/15,104.16.0.0/13,104.24.0.0/14,172.64.0.0/13,131.0.72.0/22,2400:cb00::/32,2606:4700::/32,2803:f800::/32,2405:b500::/32,2405:8100::/32,2a06:98c0::/29,2c0f:f248::/32`
+  Rồi mở `https://api.nexora-travel.agency/health` từ Wi-Fi và từ 4G: `clientIp` mỗi lần phải bằng IP công khai
+  của mạng đó (so với `https://api.ipify.org` mở trên cùng mạng), hai lần khác nhau. Ra IP dạng `162.158…`,
+  `172.64…` tới `172.71…` là chưa ăn: xoá ô để quay về mặc định và báo lại. Deploy hỏng ngay sau khi lưu thì
+  một CIDR gõ sai: sửa ô hoặc xoá ô. `PUBLIC_READ_THROTTLE_MODE` giữ `log`.
+- Buổi test tay, trên production sau khi bản này deploy. Bước 1 và 2 chỉ đọc (không cookie, không lệnh nào được
+  thi hành).
+  1. (F1-01) Từ Git Bash:
+     `curl -si -X OPTIONS "https://api.nexora-travel.agency/api/%61dmin/bookings" -H "Origin: https://www.nexora-travel.agency" -H "Access-Control-Request-Method: GET" | grep -i "^access-control-allow-origin"`
+     không in ra dòng nào.
+  2. (F1-01) `curl -si -X POST "https://api.nexora-travel.agency/api/%61dmin/bookings/BK-X/refund" -H "Content-Type: application/json" -H "Sec-Fetch-Site: cross-site" -d "{}" | head -1`
+     ra `403` (trước bản này là `401`).
+  3. Admin làm một thao tác ghi thường (duyệt một review hay đổi trạng thái một enquiry) và khách chưa đăng
+     nhập gửi hai, ba câu cho trợ lý chat: cả hai chạy như cũ.
+  4. Làm nóng API 1 tới 2 phút trước demo: mở `https://api.nexora-travel.agency/health`, đợi ra `ok`.
+  5. (F1-11) Gặp một lỗi 500 thật trong buổi test thì mở issue trên Sentry: phần request chỉ có method và path.
+- Đề xuất F1-07, không gấp: `scripts/docs-freshness.sh` kiểm theo NGÀY, nên đã có một entry ngày D thì mọi
+  commit feat hay fix lên `main` cùng ngày mà thiếu entry riêng vẫn xanh, trong khi luật 13 hứa chặn từng lượt
+  gộp. Cách làm: đếm commit feat và fix sau commit cuối cùng có sửa `docs/CHANGELOG.md`, khoảng 10 dòng, thử
+  trên repo tạm. Rủi ro: entry viết trong commit đứng trước commit fix là CI `main` đỏ. Chưa làm vì đây là cổng
+  của `main`, sát freeze.
+- Ghi lại, không sửa: F1-09 production không bắt buộc `ADMIN_EMAILS`, `EMAIL_FROM` (ô trống rơi về
+  `admin@tourism.test`, `noreply@tourism.test`; thêm chốt boot khi không đọc được env Render là có thể chặn
+  deploy kế); F1-13 chạm trần 50 000 bucket thì đuổi cả bucket đang block (khoảng 45 000 POST tới
+  `/api/auth/<chuỗi ngẫu nhiên>`; nếu cần, đuổi bucket hết block trước, khoảng 10 dòng); F1-14
+  `pnpm-workspace.yaml` còn `libs/web/*` và vài mục `minimumReleaseAgeExclude` cũ; F1-15 JSDoc gốc của
+  `contract.ts` còn ghi "contract v1 — health + catalog read public"; F1-16 `totalPages` tính tay ở 8 chỗ dù có
+  `toPaged`; F1-17 regex hex của `check-mobile-tokens-only.mjs` có thể báo nhầm chuỗi như `'#add'`; F1-18 JSDoc
+  đầu `auth.config.ts` ghi `requireEmailVerification` false trong khi code là `true` từ 20/08. L1-16 (trần mặc
+  định của Better Auth cho `/get-session`) giữ quyết định cũ; sau F1-10 thì SSR chỉ còn chia IP của Vercel.
+- Dọn nhánh `fix/review-f1-api-ci-config-6sek70` trên origin nếu GitHub không tự xoá.
+
 ## 2026-10-26 — Merge review A1 admin vận hành: hai bộ đếm huỷ của báo cáo tháng chỉ đếm khách tự huỷ, thẻ dashboard đọc tươi, sổ thanh toán và sổ hoàn dễ đọc hơn, nhãn "Revenue (gross)" và cột Created ở `/bookings` (`6c4caec`)
 
 Luồng A1 của đợt review code theo luồng (kế hoạch 20/10 trong thư mục chung của project,

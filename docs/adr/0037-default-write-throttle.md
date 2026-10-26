@@ -174,3 +174,32 @@ một bucket. Chốt:
 - **`PublicCacheInterceptor`:** `@SkipPublicCache()` cho `catalog.health`
   (probe cache 60 giây là probe mù); `reviews.listByTour` cũng mang
   Cache-Control công khai như catalog.
+
+## AMEND 4 — 26/10/2026 (review F1): `TRUST_PROXY` trên Render tin dải Cloudflare, lượt quét theo cửa sổ của từng bucket
+
+Nợ W2 mà AMEND 3 ghi ("TRUST_PROXY trên Render chưa ai đo") đã được đo 08/09 và giữa tháng 9
+(`docs/changelog/2026-09-supabase-deps-mobile.md`): `/health` trên prod trả `clientIp` là IP biên của
+Cloudflare, IP thật nằm trái nhất trong `forwardedFor`. Request đi Cloudflare, tới ingress của Render (mạng
+riêng, được tin theo mặc định) rồi tới API, nên hop công khai đầu tiên tính từ phải là IP biên. Mọi trần
+theo IP vì thế gộp người lạ đi qua cùng một IP biên vào một bucket, ở cả Fastify lẫn Better Auth: một kẻ
+đập sign-in khoá được sign-in của người khác, còn một khách nhảy giữa nhiều bucket nên trần với chính họ
+yếu đi. Kế hoạch 08/09 (`docs/plans/prompts/2026-09-08-prompts-cac-phase-con-lai.md` mục 0) đặt tên việc
+này là AMEND 4 nhưng chưa chạy. Chốt (Yuri chọn 26/10, làm trước buổi test tay):
+
+- **`TRUST_PROXY` = ba dải mặc định cộng dải của Cloudflare**, đặt bằng env của service API trên Render,
+  không đổi code. Hai bên đọc biến (`trustProxy` của Fastify và `advanced.ipAddress.trustedProxies` của
+  Better Auth qua `expandTrustProxyToCidrs`) cùng nhận dải mới; tái hiện bằng chính `@fastify/proxy-addr`
+  và hàm giải IP của Better Auth: cả hai ra IP khách, phần XFF giả ở bên trái bị bỏ qua. Dải lấy từ
+  `cloudflare.com/ips-v4` và `ips-v6`; giá trị đầy đủ ở entry CHANGELOG review F1, mục CÒN TREO.
+  Cloudflare đổi dải thì sửa ô env; dải còn thiếu chỉ làm request qua dải ấy rơi về IP biên như trước.
+- **Đo như AMEND 3:** `/health` mở từ hai mạng phải ra hai `clientIp` khác nhau, mỗi cái bằng IP công khai
+  của mạng đó. Còn ra IP biên thì xoá ô để quay về mặc định.
+- **Một CIDR gõ sai thì API dừng lúc boot** (`@fastify/proxy-addr` ném lỗi, đã thử), không chạy sai.
+- **`PUBLIC_READ_THROTTLE_MODE` giữ `log`** tới sau buổi bảo vệ; AMEND này không bật `enforce`.
+- **Giới hạn chấp nhận:** request xuất phát từ chính dải của Cloudflare (ví dụ một Worker gọi thẳng origin
+  trên Render) tự đặt được XFF bên trái. Với trần của một đồ án không doanh thu, chấp nhận.
+
+Cùng đợt, `KeyedThrottlerStorage` của AMEND 3 sửa lượt quét: mỗi bucket giữ cửa sổ của chính nó (lớn
+nhất từng nhận) và lượt quét so theo cửa sổ ấy. Trước đó lượt quét dùng `ttl` của lượt kích nó, gần như
+luôn 60 giây, nên xoá bucket chat một giờ (`CHAT_THROTTLE`) còn hit: trần 20 lượt mỗi giờ của khách chưa
+đăng nhập mở lại sau một phút im lặng (review F1-02).
