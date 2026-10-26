@@ -12,8 +12,9 @@ nhận email xác nhận. Nếu đổi ý, khách tự bấm huỷ và được 
 công khai. Đi về, khách viết đánh giá. Phía trong, nhân viên có trang quản trị
 riêng để xem đơn, xử lý hoàn tiền ngoại lệ, duyệt đánh giá và xuất báo cáo.
 
-Khách cũng dùng được app Android để xem tour, đặt chỗ, theo dõi chuyến và viết
-đánh giá. Trên web có thêm một trợ lý AI trả lời câu hỏi về tour.
+Khách cũng dùng được app Android để xem tour, đặt chỗ, theo dõi chuyến, viết đánh
+giá và xem thông báo về đơn của mình. Trên web có thêm một trợ lý AI trả lời câu
+hỏi về tour.
 
 Website chạy thật trên Internet tại [www.nexora-travel.agency](https://www.nexora-travel.agency), nhưng **không ai
 mất tiền thật**: cổng thanh toán Stripe và PayPal luôn ở chế độ thử nghiệm — thẻ
@@ -169,12 +170,12 @@ Danh sách đầy đủ, kèm lý do để lại, nằm ở [open-items.md](open
 
 | | |
 | --- | --- |
-| Trang trên web khách | 32 |
+| Trang trên web khách | 33 |
 | Trang trên web quản trị | 30 |
 | Đường gọi máy chủ | 107 route khai trong contract, chưa tính các đường đăng nhập của Better Auth |
 | Bảng dữ liệu | 37 |
-| Test tự động | 9526 test, chạy trước mỗi lần gộp code: 8543 test thường và 983 integration test chạy với PostgreSQL thật |
-| Tài liệu | 187 file Markdown trong `docs/` |
+| Test tự động | 9753 test, chạy trước mỗi lần gộp code: 8770 test thường và 983 integration test chạy với PostgreSQL thật |
+| Tài liệu | 190 file Markdown trong `docs/` |
 
 ## Đọc tiếp
 
