@@ -42,6 +42,7 @@ const HA_GIANG = makeWishlistItem({
   slug: 'ha-giang-loop-4d',
   title: 'Hà Giang Loop by Easyrider 4D3N',
   basePrice: '189.00',
+  priceFrom: '189.00',
 });
 const HOI_AN = makeWishlistItem({
   tourId: '3c1e8a52-6f0b-4d7e-9a14-2b5f7c9d1e03',

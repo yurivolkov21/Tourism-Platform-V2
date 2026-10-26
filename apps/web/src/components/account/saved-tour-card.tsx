@@ -4,7 +4,7 @@ import { Button } from '@tourism/ui/components/button';
 import { cn } from '@tourism/ui/lib/utils';
 import { ClockIcon, HeartIcon, StarIcon } from 'lucide-react';
 import { SlotImage } from '@/components/slot-image';
-import { formatMoney } from '@/lib/tours';
+import { cardPrice, formatMoney } from '@/lib/tours';
 import { formatSavedDate } from '@/lib/wishlist';
 
 /**
@@ -123,7 +123,9 @@ export function SavedTourCard({
         </p>
         {off ? null : (
           <p className="mt-1.5 font-heading text-lg font-semibold text-foreground tabular-nums">
-            {formatMoney(item.basePrice, item.currency)}
+            {/* Giá "from" như `TourCard` (review M2-14); `cardPrice` giữ luật rơi về `basePrice`
+                khi API bản cũ chưa trả `priceFrom`. Thẻ này chỉ in một số, không giá gạch. */}
+            {formatMoney(cardPrice(item).price, item.currency)}
           </p>
         )}
       </div>

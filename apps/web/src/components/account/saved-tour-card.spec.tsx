@@ -59,6 +59,18 @@ describe('SavedTourCard — tour còn bán', () => {
     expect(screen.getByText('$79')).toBeInTheDocument();
   });
 
+  it('giá là `priceFrom` như thẻ Explore, không phải `basePrice` (review M2-14)', () => {
+    renderCard({ basePrice: '100.00', priceFrom: '80.00' });
+    expect(screen.getByText('$80')).toBeInTheDocument();
+    expect(screen.queryByText('$100')).not.toBeInTheDocument();
+  });
+
+  it('API bản cũ chưa trả `priceFrom` (web lên trước API) thì rơi về `basePrice`', () => {
+    // Ép kiểu vì contract khai trường này bắt buộc; đây là payload của API trước 26/10.
+    renderCard({ basePrice: '100.00', priceFrom: undefined as unknown as string });
+    expect(screen.getByText('$100')).toBeInTheDocument();
+  });
+
   it('điểm tròn số vẫn in MỘT chữ số thập phân: 5 → "5.0" (ca 4.8 in ra giống `String`, không bắt được thiếu `.toFixed(1)`)', () => {
     renderCard({ ratingAvg: 5, ratingCount: 3 });
     expect(screen.getByText('5.0')).toBeInTheDocument();
