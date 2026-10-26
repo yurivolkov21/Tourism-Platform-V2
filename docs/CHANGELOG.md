@@ -8,6 +8,55 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-10-26 — Merge đề xuất M2-14 của review M2: thẻ Saved của web in giá "from" như thẻ tour, mục wishlist mang giá "from" và đợt kế tiếp cho thẻ Saved mới của app (`2692d35`)
+
+Đề xuất M2-14 của luồng M2 trong đợt review code theo luồng (kế hoạch 20/10 trong thư mục chung của project,
+`code-review/ke-hoach-review-theo-luong.md`), nêu ở entry merge PR #49 ngày 21/10; Yuri chọn làm ngày 26/10 02:10
+UTC. Nhánh `fix/review-m2-mobile-browse-5jm83v` (cùng tên nhánh của PR #49, dựng lại từ `main` `5251f20`), rebase
+lên `4160f5c` trước khi đẩy, [PR #67](https://github.com/yurivolkov21/Tourism-Platform-V2/pull/67), thi công trên
+session cloud. Đụng contract (`WishlistItemSchema`), api (`WishlistService.list`), web (thẻ Saved) và tài liệu bàn
+giao app: không migration, không biến env, không dependency mới. Contract chỉ thêm trường và web chịu được API cũ,
+nên thứ tự deploy Render và Vercel không quan trọng.
+
+- `da4f579` (contract, api): `WishlistItemSchema` thêm `priceFrom` (`DecimalStringSchema`) và `nextDeparture`
+  (`TourNextDepartureSchema.nullable()`). `WishlistService.list` lấy cả hai từ `cardDepartureFactsByTour`, đúng hàm
+  của `catalog.tours.list` (ADR-0058 §1: cùng tập đợt đặt được; không còn đợt nào thì giá "from" là `basePrice` hai
+  số lẻ), một query đợt cho cả trang, chạy song song với lượt lấy ảnh bìa. `nextDeparture` vượt phần Yuri duyệt:
+  khung B9 của bản vẽ app 19/10 in "Nov 3 · 8 seats left" trên thẻ Saved bằng chính thẻ của Explore. PR nói rõ
+  điều này, và Yuri bảo đẩy mà không yêu cầu bỏ.
+- `b6b4bd7` (web): `SavedTourCard` in `cardPrice(item).price` như `TourCard`, nên tour có đợt khuyến mãi không còn
+  mang hai giá (Explore in giá "from", Saved in giá gốc). Thiếu `priceFrom` (web lên Vercel trước API) thì in
+  `basePrice`; client oRPC của web không kiểm output theo contract nên payload cũ vẫn qua. Thẻ vẫn chỉ in một số,
+  không giá gạch.
+- `a7ba1e9` (docs): mục 7, ý 7 của `docs/handoff/mobile-ui-upgrade-handoff.md`: route `app/(tabs)/saved.tsx` của app
+  còn in `item.basePrice`, đổi sang `item.priceFrom`; file nằm trong danh sách Nghĩa làm lại 22–30/10 nên luồng
+  review không sửa hộ.
+- `2692d35` (F1-10): dòng "Trước buổi test tay: đặt `TRUST_PROXY`…" của `docs/open-items.md` chuyển sang
+  open-items-closed.md. Yuri đặt `TRUST_PROXY` trên Render 26/10, bản deploy đổi env Live 03:05 UTC; `/health`
+  lúc 02:59:48 UTC còn ra `clientIp` là IP biên của Cloudflare, lúc 03:09:58 UTC ra đúng IP đầu của
+  `forwardedFor`. `PUBLIC_READ_THROTTLE_MODE` giữ `log`.
+
+**Review.** Không có lượt review độc lập. Test viết đỏ trước: int test của `wishlist.list` (đợt rẻ hơn mà kín chỗ
+không kéo giá "from" xuống và không thành đợt kế tiếp; tour không còn đợt thì giá base, đợt `null`) đỏ khi API
+chưa trả hai trường; test thẻ web "giá là `priceFrom`" đỏ khi thẻ còn in `basePrice`. Yuri bảo đẩy lên main 26/10
+03:09 UTC.
+
+Tests after (`gate:int` trên `a7ba1e9`, nền `4160f5c`, 26/10, session cloud, API sống ở :3001): unit 8537 (web
+2491, admin 2456, api 1470, mobile 961, contract 812, mobile-ui 145, i18n 63, ui 65, core 48, tokens 26) và int 983;
+Biome 2124 file; RLS, tokens-only của mobile, prerender admin và bundle mobile xanh. Container để trần heap Node
+2240 MB nên cả lượt chạy với `NODE_OPTIONS=--max-old-space-size=4096`, contract 812/812. PR thêm 2 test unit ở
+web và 1 int test ở API: unit hơn entry Dependabot ngay dưới đúng 2, int hơn 1.
+
+**CÒN TREO:**
+
+- Nghĩa đổi `app/(tabs)/saved.tsx` sang `item.priceFrom` (và dùng `nextDeparture` nếu thẻ Saved theo khung B9),
+  qua Yuri; xem mục 7, ý 7 của tài liệu bàn giao app. Tới bản APK sau đợt giao diện của Nghĩa, app vẫn in giá gốc.
+- Buổi test tay, trên production: đăng nhập web bằng khách seed, lưu một tour đang có đợt giảm giá còn bán (thẻ ở
+  `/tours` có giá gạch), mở `/account/saved`: giá trên thẻ Saved bằng giá "from" của thẻ cùng tour ở `/tours`, không
+  phải giá gạch.
+- Thử 4G cho `TRUST_PROXY` (F1-10) để tuỳ, ở buổi test tay.
+- Dọn nhánh `fix/review-m2-mobile-browse-5jm83v` trên origin nếu GitHub không tự xoá.
+
 ## 2026-10-26 — Vá đợt cảnh báo Dependabot 26/10 trước freeze: zod 4.6.7 chặn lỗ cạn bộ nhớ ở form enquiry, next 16.4.3, vitest 4.1.12 và override gói bắc cầu (`9fb6252`)
 
 Yuri nhờ soát 5 alert Dependabot đang mở (26/10, thread "Dependabot alerts"). Thread không đọc được alert của GitHub
