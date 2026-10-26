@@ -7,6 +7,9 @@ Dành cho Yuri, chạy trên PC bằng Git Bash. Làm theo đúng thứ tự; m�
 - **Khi nào:** trước buổi test tay cuối, để buổi test chạy trên dữ liệu mới. Sau
   buổi test không seed lại nữa: dữ liệu đã test giữ nguyên cho buổi thuyết trình
   thử và buổi bảo vệ (Yuri chốt 26/10). Chọn giờ vắng.
+- **Đã chạy:** 26/10/2026, 09:12–09:16 UTC, H = 26/10: `seed:verify` trên prod 0 vi
+  phạm trên 119 bất biến, snapshot ở `docs/snapshots/2026-10-26/` (entry CHANGELOG
+  cùng ngày). Đây là lượt cuối; hướng dẫn giữ lại làm bản ghi cách chạy.
 - **Mất bao lâu:** khoảng 30–45 phút kể cả chuẩn bị. Từ lúc xoá tới khi seed xong
   và ISR sinh lại trang (khoảng 5–10 phút), site mất lịch khởi hành và sao đánh giá.
 - **Thiết kế và lý do:** [spec seed 14/09](../specs/2026-09-14-seed-khung-2026-design.md)

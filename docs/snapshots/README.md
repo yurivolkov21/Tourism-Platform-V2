@@ -51,9 +51,9 @@ một lượt mới là đổi luôn hành vi của script dọn dữ liệu. Xu
 ngày thì thư mục `docs/snapshots/<ngày>/` bị ghi đè, còn bản sao lưu sang
 `backups/<ngày>-2/`, `-3`…: bản chụp trước reset không bao giờ bị thay.
 
-Hiện tại: **`2026-09-18/`**.
+Hiện tại: **`2026-10-26/`**.
 
-## Bốn lượt đã có, và chuyện trùng lặp
+## Năm lượt đã có, và chuyện trùng lặp
 
 | Lượt | Dịp |
 | --- | --- |
@@ -61,18 +61,25 @@ Hiện tại: **`2026-09-18/`**.
 | `2026-09-10` | Trước khi seed toàn bộ dữ liệu mới |
 | `2026-09-15` | Trước lượt seed prod 1 (trọn năm 2026) |
 | `2026-09-18` | Trước khi triển khai luật hoàn tiền một hạn chót |
+| `2026-10-26` | Trước lượt seed lại 2, lượt cuối: làm mới mọi tài khoản, kể cả Owner |
 
 **Phần lớn nội dung trùng nhau, và điều đó bình thường** — đo ngày 21/09: bốn
 file `*-ids.json` cộng `site-media-slots.json` giống hệt ở cả bốn lượt (danh mục
 không đổi), `media-assets.json` có hai phiên bản, `keep-list.json` có ba. Lượt
 `2026-09-18` trùng `2026-09-15` ở cả bảy file.
 
-Đừng vội xoá lượt trùng: mỗi lượt là **bằng chứng của một bước đã làm**, và ba
-lượt gần nhất đều được entry CHANGELOG nhắc đích danh. Cả bốn lượt cộng lại chỉ
-1,7 MB.
+Lượt `2026-10-26` (đo 26/10) trùng `2026-09-18` ở bốn file. Ba file khác:
+`tours-ids.json` có thêm hai tour thử, xoá ngay sau lượt seed; `media-assets.json`
+có 523 dòng, thêm một ảnh của mỗi tour thử và bốn ảnh của một bài đánh giá, không
+dòng nào bị bớt hay đổi; `keep-list.json` ghi Owner được làm mới thay vì giữ nguyên.
+
+Đừng vội xoá lượt trùng: mỗi lượt là **bằng chứng của một bước đã làm**, và bốn
+lượt gần nhất đều được entry CHANGELOG nhắc đích danh. Cả năm lượt cộng lại chỉ
+khoảng 2 MB.
 
 ## Khi nào xuất lượt mới
 
-Trước bất cứ thao tác nào xoá hoặc tạo lại dữ liệu trên prod. Lượt kế tiếp đã
-biết trước: **lượt seed 2, trước buổi test tay cuối** (xem
-[hướng dẫn seed lại](../guides/huong-dan-seed-lai-production.md) và [open-items](../open-items.md)).
+Trước bất cứ thao tác nào xoá hoặc tạo lại dữ liệu trên prod. Lượt seed lại 2 đã
+chạy ngày 26/10 (thư mục `2026-10-26/`) và là lượt cuối: dữ liệu sau lượt này giữ
+cho buổi test tay cuối, buổi thuyết trình thử và buổi bảo vệ, nên không còn lượt
+nào biết trước. Cách chạy nằm ở [hướng dẫn seed lại](../guides/huong-dan-seed-lai-production.md).

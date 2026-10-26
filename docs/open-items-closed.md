@@ -21,6 +21,45 @@ Từ bảng "Phần chưa xây" của file chính.
 | **P7** | Đợt trau chuốt giao diện cuối | Ba trang đơn của khách (ADR-0054, spec và plan 05/10, 26 task chia ba phần): **Phần A XONG** 06/10 — My bookings lọc, tìm, 10 đơn mỗi trang theo hành trình, phân trang "Previous / Next" (review 15 phát hiện, vá cả 15). **Phần B** (chi tiết đơn) và **Phần C** (voucher) **XONG** 09/10: thi công 07–08/10, review max 08/10 (C 15, B 15 phát hiện), vá gộp trên một nhánh kèm ADR-0054 AMEND 1 — đóng luôn mục web của ADR-0041 AMEND 1 bên dưới. Review cuối của đợt vá (09/10): 1 Important, 3 Minor, vá hết; việc ngoài phạm vi ở G36–G39. Thử tay prod 09/10 bước 4–14 của spec §11 (1–3 là phần A, thử 06/10): năm chỗ vá ngay (TODAY lệch, mũi tên và cuộn của "Full itinerary", toast sau khi gửi review, receipt có tiền hoàn), chờ user thử lại sau deploy; bản in voucher để đợt thiết kế lại bản in (G40) |
 | **UI mobile** | Nâng cấp giao diện app theo Material 3 (Android) | **Bản vẽ duyệt 19/10** ([mockup](design/mockups/README.md), [bàn giao](handoff/mobile-ui-upgrade-handoff.md)); giao Nghĩa code đợt 23–30/10, P1 trước. ADR-0040 AMEND 7 duyệt 19/10 (font, icon, thanh tab); thanh tab còn chờ spike `NativeTabs` trên Android thật (Expo Go và build EAS) — **XONG 26/10**: merge PR #71 (`f2785af`..`63cfa81`, entry CHANGELOG 26/10), kèm ADR-0062 thanh toán tự quay về app, ADR-0063 Reanimated và trung tâm thông báo; thanh tab vẫn là thanh tab JS, không dùng `NativeTabs` (nhánh không ghi kết quả spike). Còn thử trên Android thật bằng APK mới ở buổi test tay |
 
+## ~~Trước lượt seed lại~~ — đóng 26/10
+
+**Đóng bởi lượt seed lại prod 2** (Yuri chạy tay 26/10, 09:12–09:16 UTC, H = 26/10, theo
+[hướng dẫn seed lại](guides/huong-dan-seed-lai-production.md); snapshot `docs/snapshots/2026-10-26/`,
+PR #72). Hai tour thử `test-01` và Vung Tau Coastal 3D gỡ bán trước khi chạy, xoá qua admin sau
+seed: còn 29 tour đang bán, 0 ảnh mồ côi. `seed:verify` trên prod 0 vi phạm trên 119 bất biến.
+Hai dòng khác của file chính đóng cùng lượt này, chép ở cuối mục: dòng ở bảng "Mốc thời gian"
+và dòng hai khoản hoàn cũ ở "Con số đã biết, không phải lỗi mới" (dữ liệu cũ đã xoá cùng lượt).
+
+~~Lượt này chạy trước buổi test tay cuối, để buổi test chạy trên dữ liệu mới (Yuri chốt
+26/10, bỏ mốc 03/11, rồi đổi thứ tự cùng ngày), theo từng bước của
+[hướng dẫn seed lại production](guides/huong-dan-seed-lai-production.md). Đây là lượt
+seed cuối: sau buổi test không seed lại, dữ liệu đã test giữ nguyên cho buổi thuyết
+trình thử và buổi bảo vệ.~~
+
+- ~~**Ngay trước khi chạy seed:** gỡ bán hoặc xoá các tour thử tạo bằng F17 —
+  `seed:verify` bắt "tour đang bán không có rating". Đo 01/10: còn đúng một tour
+  như vậy, `test-01` (tạo 01/10 bằng tài khoản admin, đang bán, một chuyến giá
+  $2.00, một booking đã huỷ và hoàn đủ). Có booking nên chưa xoá được; `data:reset`
+  giữ bảng `tours`, nên SAU lượt seed tour này hết booking và xoá được qua admin.~~
+- ~~Lượt ấy ghi đè TRỌN nội dung 29 tour seed về fixture: cột của `tours` và năm
+  bảng con (điểm đến, lịch trình, FAQ, chính sách, dòng chi phí), cùng giá vốn.
+  Tour tạo tay còn sống, chỉ mất chuyến, booking, đánh giá. Vá 28/09 ở vòng
+  review F17 — trước đó seed chèn lại bảng con CẠNH bản admin nên FAQ, chính
+  sách, dòng chi phí nhân đôi; `seed:verify` nay có năm bất biến canh đúng dấu
+  vết ấy.~~
+
+Dòng ở bảng "Mốc thời gian" của file chính:
+
+| Ngày | Việc |
+| --- | --- |
+| ~~Trước buổi test tay cuối~~ | ~~Seed lại dữ liệu prod lượt 2, làm mới mọi tài khoản kể cả Owner, để buổi test tay chạy trên dữ liệu mới; sau buổi test không seed lại nữa (Yuri chốt 26/10; [plan hoàn tiền một hạn chót](https://github.com/yurivolkov21/Tourism-Platform-V2/blob/6785326e69949d4ef566c5eaf7c3eaa3706859c8/docs/plans/2026-09-15-refund-deadline.md) Phụ lục B Bước 8) — cách chạy ở [hướng dẫn seed lại](guides/huong-dan-seed-lai-production.md), xem [việc phải xong trước lượt này](#trước-lượt-seed-lại--đóng-2610)~~ |
+
+Dòng ở "Con số đã biết, không phải lỗi mới" của file chính:
+
+- ~~`seed:verify` trên prod báo **2** ở mục "refund không có đúng một payment
+  event hoàn": hai khoản hoàn cũ (trước ADR-0043) cố ý không backfill, vì lượt
+  seed lại 2 sẽ xoá sạch.~~
+
 ## Quyết định đã chốt
 
 Từ bảng "Đang chờ chủ dự án quyết".
