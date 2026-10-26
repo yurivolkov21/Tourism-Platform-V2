@@ -69,8 +69,8 @@ thay, cột đã xoá, và số AMEND để biết phải đọc tới cuối fi
 | [0059](0059-site-slot-appearance.md) | Appearance: danh mục khe ở contract, bốn nguồn ảnh của một lần lưu, bảng ảnh gốc trong code API | |
 | [0060](0060-media-library.md) | Media library: một ảnh là một publicId, sửa ghi công một lần cho mọi chỗ dùng, hàng dọn chỉ đọc, ảnh điểm đến có trình sửa riêng | |
 | [0061](0061-admin-activity-log.md) | Nhật ký thao tác admin: một bảng chỉ thêm, ghi tự động sau mỗi lệnh ghi thành công, chỉ Owner xem | |
-| [0062](0062-mobile-checkout-app-return.md) | Thanh toán trên app mobile: cổng trả về trang web chuyển tiếp, rồi mới về app | Proposed |
-| [0063](0063-mobile-reanimated.md) | App mobile dùng Reanimated cho chuyển động theo ngón tay và theo layout; ghim bản Expo Go; Jest dùng bản thay thế | Proposed |
+| [0062](0062-mobile-checkout-app-return.md) | Thanh toán trên app mobile: cổng trả về trang web chuyển tiếp, rồi mới về app | |
+| [0063](0063-mobile-reanimated.md) | App mobile dùng Reanimated cho chuyển động theo ngón tay và theo layout; ghim bản Expo Go; Jest dùng bản thay thế | |
 
 ## Thêm ADR mới
 

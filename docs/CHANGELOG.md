@@ -12,7 +12,7 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 
 Thi công trên nhánh `feat/mobile-m3-surfaces`, chạy thử trên Galaxy S24 Ultra (Expo Go) qua cáp USB. Chỉ đụng
 `apps/mobile`, `libs/mobile/ui` và `docs/`; không API, không migration, không biến env. **Có dependency mới trước
-freeze 31/10** — quyết định ở [ADR-0063](adr/0063-mobile-reanimated.md) (Proposed, viết sau khi code chạy, trái luật 5)
+freeze 31/10** — quyết định ở [ADR-0063](adr/0063-mobile-reanimated.md) (Accepted 26/10, viết sau khi code chạy, trái luật 5)
 và [ADR-0040](adr/0040-mobile-app-expo.md) AMEND 8.
 
 - **Reanimated 4.5.1 và Worklets 0.10.1** ghim đúng bản Expo Go; `expo install --fix` nâng bản vá tám gói Expo

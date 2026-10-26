@@ -1,6 +1,7 @@
 # ADR-0062 — Thanh toán trên app mobile: cổng trả về trang web chuyển tiếp, rồi mới về app
 
-- **Trạng thái:** Proposed (2026-10-20) — chờ user review trước khi gộp; chưa deploy.
+- **Trạng thái:** Accepted (2026-10-26) — user duyệt. Đề xuất 20/10; code đã nằm trên nhánh
+  `feat/mobile-m3-surfaces` nhưng **chưa deploy** (web và API còn phải lên production theo thứ tự ở mục triển khai).
 - **Bối cảnh thi hành:** user báo 20/10 (thử máy thật): trả xong Stripe/PayPal thì khách kẹt ở
   trình duyệt, phải tự đóng tab mới quay lại app. User chọn hướng "trang web chuyển tiếp" cùng ngày.
   Đi trước code theo luật CLAUDE.md #5.

@@ -1,9 +1,9 @@
 # ADR-0063 — App mobile dùng `react-native-reanimated` cho chuyển động chạy theo ngón tay và theo layout
 
-- **Trạng thái:** Proposed (2026-10-26) — **viết SAU khi code đã chạy** trên nhánh
-  `feat/mobile-m3-surfaces`, trái luật 5 (ADR đi trước code). Chờ user duyệt; nếu không duyệt
-  thì gỡ theo mục "Đường lùi" cuối ADR. Quyết định này đảo [ADR-0040](0040-mobile-app-expo.md)
-  AMEND 3 (KHÔNG cài `reanimated`).
+- **Trạng thái:** Accepted (2026-10-26) — user duyệt cùng ngày. **Viết SAU khi code đã chạy** trên
+  nhánh `feat/mobile-m3-surfaces`, trái luật 5 (ADR đi trước code); ghi lại để lần sau không lặp.
+  Mục "Đường lùi" cuối ADR vẫn là cách gỡ nếu sau này Reanimated gây lỗi. Quyết định này đảo
+  [ADR-0040](0040-mobile-app-expo.md) AMEND 3 (KHÔNG cài `reanimated`).
 - **Bối cảnh:** đợt làm mượt giao diện app mobile 25–26/10, chạy thử trên máy thật
   (Galaxy S24 Ultra, Expo Go). Không có spec riêng: yêu cầu đến từng lượt từ user, mỗi thay đổi
   có test.
