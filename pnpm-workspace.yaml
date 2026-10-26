@@ -114,6 +114,15 @@ minimumReleaseAgeExclude:
 #
 # GỠ TỪNG DÒNG KHI: npm có bản vá của gói tương ứng (`npm view <gói> version`),
 # rồi vá bằng override scoped như các đợt bên dưới.
+#
+# 26/10 — GHSA-mrhx-c7xc-m3w5 (high — zod <4.6.6, validate mảng quá cỡ cạn bộ
+# nhớ). Dòng 4.x ĐÃ vá: ba package.json khai 4.6.7 và override `zod@>=4.0.0
+# <4.6.6` ép nốt bản bắc cầu (xem overrides). Còn lại zod 3.25.76, chỉ ở công cụ
+# dev: @expo/cli (lệnh `expo`, EAS build) và shadcn CLI cùng MCP SDK của nó.
+# Advisory không có bản vá 3.x, còn ép hai CLI đó lên zod 4 là đổi API mà chúng
+# viết theo — @expo/cli hỏng là hỏng luôn đường build APK. Bỏ qua GHSA này thì
+# audit không canh dòng 4.x nữa: override nói trên là lớp canh thay.
+# GỠ DÒNG NÀY KHI: `pnpm why zod` không còn bản 3.x nào, hoặc npm có bản vá 3.x.
 auditConfig:
   ignoreGhsas:
     - GHSA-vcc3-ghjq-m6fr
@@ -121,6 +130,7 @@ auditConfig:
     - GHSA-86w9-cpqp-85rv
     - GHSA-ch52-4w7c-c8xp
     - GHSA-hp3w-g68c-fv3c
+    - GHSA-mrhx-c7xc-m3w5
 
 # Vá lỗ hổng bảo mật ở dependency bắc cầu (medium: middleware bypass qua
 # serveStatic). Đường đi: prisma CLI (devDep) → @prisma/dev → @hono/node-server.
@@ -234,7 +244,13 @@ overrides:
   # Độ trễ đó không nhỏ: hai advisory 28/09 có bản vá từ 02/09. Dòng 3.x chạy
   # ở production (fastify → @fastify/ajv-compiler → ajv → fast-uri), nên vá
   # theo advisory của repo luôn, đừng đợi DB — cùng bài học 03/09.
-  fast-uri@>=3.0.0 <3.1.8: ^3.1.8
+  # 26/10 nới lên <3.1.9: GHSA-w74x-v6f9-j3xg (moderate — giả scheme qua scheme
+  # percent-encoded), GHSA-wjr9-j795-jxcr (moderate — host confusion khi chuẩn
+  # hoá host kiểu WHATWG), GHSA-xhq7-xmqj-769h và GHSA-333x-w4r6-6crp (low). Cả
+  # bốn có HAI dải: 3.x vá ở 3.1.9, 4.x vá ở 4.2.3 (dòng 4.x bên dưới). API không
+  # khai schema Fastify nào nên ajv và fast-json-stringify không đưa URI của
+  # request cho fast-uri; vá để sạch audit.
+  fast-uri@>=3.0.0 <3.1.9: ^3.1.9
   # 03/09 — bốn alert fast-uri mới (#32–#35, high: host confusion / SSRF qua
   # chuẩn hoá IPv6 và percent-decoding), CVE công bố 02/09 SAU đợt vá cùng
   # ngày; dải dính nới tới <4.1.3. Đường kéo: fastify → fast-json-stringify
@@ -250,7 +266,8 @@ overrides:
   # DB chung: GHSA-hrr3-gc8f-f4qj (như dòng 3.x) và GHSA-jvvf-x445-j334
   # (header injection ở `mailto`, dính >=4.1.3 <4.1.5). Các bản vá đều đủ
   # tuổi (4.1.5 ra 15/09), không cần exclude.
-  fast-uri@>=4.0.0 <4.1.5: ^4.1.5
+  # 26/10 nới lên <4.2.3: cùng bốn advisory ghi ở dòng 3.x phía trên.
+  fast-uri@>=4.0.0 <4.2.3: ^4.2.3
   # 03/09 — qs (GHSA-x5fp-wj9c-mxmx, GHSA-4mjr-xmp4-gh2g, moderate) `pnpm audit`
   # thấy trước khi Dependabot kịp mở alert; đường kéo @orpc/nest → express →
   # qs/body-parser. API không dùng express (adapter Fastify) nên qs là code
@@ -262,7 +279,10 @@ overrides:
   # (toSSG() ghi ra ngoài thư mục đích). Đường kéo vẫn là dev-tooling: shadcn →
   # @modelcontextprotocol/sdk, và prisma CLI → @prisma/dev. API là NestJS +
   # Fastify nên hono KHÔNG phục vụ request nào — vá để sạch audit, ở lại 4.x.
-  hono@<4.13.5: ^4.13.5
+  # 26/10 nới lên <4.13.11: GHSA-5r4p-p66f-jhc7 (moderate — `serveStatic` giải mã
+  # path lần hai nên vượt được middleware trên đường tĩnh). Đường kéo vẫn là
+  # prisma CLI → @prisma/dev; prisma vẫn là devDependency.
+  hono@<4.13.11: ^4.13.11
   # 29/09 — GỘP ba dòng ip-address của đợt 03/08 (`<=10.3.0`,
   # `>=10.1.1 <=10.2.0`, `>=10.1.1 <=10.2.1`) thành một. Hai advisory moderate
   # vào DB chung 28/09: GHSA-rpw4-54j3-4h4q (isLinkLocal() nhận fe80::/64 thay
@@ -277,7 +297,9 @@ overrides:
   # có thể vẫn là ^10.2.2 hay ^10.3.1 — 10.4.0 thoả cả hai nên lock giữ nguyên
   # bản còn lỗ. Đường kéo vẫn là dev-tooling: shadcn →
   # @modelcontextprotocol/sdk → express-rate-limit.
-  ip-address@<=10.7.0: ^10.7.1
+  # 26/10 nới lên <=10.7.3: GHSA-rxp7-6hxx-x8q5 (moderate — Address6 khớp zone id
+  # trong thời gian bậc hai trước khi xét trần độ dài). Vẫn chỉ shadcn CLI kéo.
+  ip-address@<=10.7.3: ^10.7.4
   postcss@<=8.5.22: ^8.5.23
   # 29/09 — nới từ <7.29.0 lên <7.29.1: GHSA-3wwx-pv8p-q78v (moderate, vào DB
   # chung 28/09 — DoS khi giải nén permessage-deflate của WebSocket). Repo
@@ -285,7 +307,15 @@ overrides:
   # chung chưa có (API trả 404 ngày 29/09), đều vá ở 7.29.1 — dòng dưới trùm
   # luôn. Đường kéo: shadcn CLI → undici và shadcn → @dotenvx/dotenvx →
   # undici; dev-tooling, không nằm trên đường request.
-  undici@>=7.0.0 <7.29.1: ^7.29.1
+  # 26/10 nới lên <7.30.1: GHSA-xjj6-f33q-929c (high — lỗi không bắt khi response
+  # mang quá nhiều content-encoding), GHSA-4qv8-2p9j-2685 (moderate — parser
+  # EventSource giữ bộ nhớ không giới hạn) và GHSA-f72v-6w45-q472 (moderate — SRI
+  # bỏ qua token thuật toán viết hoa). Đường kéo nay có thêm jsdom của test và
+  # apps/api → ai, @ai-sdk/anthropic → @ai-sdk/provider-utils. Gói cuối chỉ
+  # `require('undici')` trong `createSafeNodeFetch`, dùng để tải file theo URL khi
+  # prompt có phần file hay ảnh; chat của API chỉ dựng phần text
+  # (`modules/chat/chat-history.ts`), nên request của khách không với tới.
+  undici@>=7.0.0 <7.30.1: ^7.30.1
   # Đợt vá Dependabot 11/08 (2 alert high) — cả hai là dep bắc cầu, scoped
   # theo dải dính như hai batch trên.
   # nanoid < 3.3.17: kéo về qua postcss@8.5.25 (dùng nanoid sinh source-map
@@ -334,7 +364,11 @@ overrides:
   # GHSA-4mh8-r7rc-xpvc vá ở 5.12.5. THAY dòng cũ chứ không thêm: platform-fastify
   # 11.2.7 vẫn ghim 5.11.3, và dòng cũ mà còn thì nó kéo adapter về 5.12.1 — đúng
   # cái PR Dependabot #5 mắc (lock của nó có hai fastify, adapter chạy 5.12.1).
-  fastify@>=5.0.0 <5.12.5: 5.12.5
+  #
+  # 26/10 nới lên <5.12.6: GHSA-389g-gv7q-r4x8 (low — bỏ qua kiểm header khi
+  # schema header dùng `propertyNames`, vì so hoa/thường). API không khai schema
+  # Fastify nào, vá để sạch alert; `apps/api` cũng lên 5.12.6.
+  fastify@>=5.0.0 <5.12.6: 5.12.6
   # 02/09 — ba alert mới (#27 #28 #29, đều high), đều là dependency bắc cầu
   # KHÔNG nằm trên đường phục vụ request; vá theo cùng nếp scoped override
   # (chỉ áp trong dải dính lỗ hổng, không ghim chết bản sau).
@@ -392,3 +426,30 @@ overrides:
   # (GHSA-22jm-h49p-29qw high, GHSA-6prh-2h8m-c8cw, GHSA-rvq5-wwqv-78pq) vá ở
   # 1.32.0 — selector lấy theo repo, cùng bài học fast-uri 29/09.
   '@modelcontextprotocol/sdk@<1.32.0': ^1.32.0
+  # Đợt vá 26/10 (trước freeze 31/10), phần mới — scoped theo dải dính như trên.
+  #
+  # zod 4.x dưới 4.6.6 (GHSA-mrhx-c7xc-m3w5, high — validate mảng quá cỡ tích một
+  # issue cho MỖI phần tử hỏng trước khi xét `.max()`). Lỗ DUY NHẤT của đợt này
+  # với tới production mà không cần đăng nhập: POST /api/enquiries (@Public) có
+  # `interests: z.array(...).max(20)`. Đo 26/10 với body ~1 MB: zod 4.4.3 ra
+  # 500 001 issue, heap tăng ~509 MB, 4,4 s (trần heap 256 MB thì tiến trình
+  # chết); zod 4.6.6 ra 1 issue trong 19 ms. Ba package.json khai thẳng 4.6.7;
+  # override ép nốt bản bắc cầu, vì có gói khai zod là dependency thường (như
+  # @better-auth/core) nên không ép thì lock giữ 4.4.3 bên cạnh 4.6.7 (đo 26/10).
+  # Dòng 3.x không có bản vá: xem auditConfig ở trên.
+  zod@>=4.0.0 <4.6.6: ^4.6.6
+  # body-parser (GHSA-27r3-jxmh-p828, high — DoS khi có byte thừa sau body nén):
+  # @orpc/nest → express và shadcn → MCP SDK. API chạy adapter Fastify, không file
+  # nào import express, nên đây là code chết trong store; vá để sạch audit.
+  body-parser@>=2.0.0 <2.4.0: ^2.4.0
+  # vite (GHSA-587h-7wmj-h5pm high; GHSA-698v-4r3x-3vcv, GHSA-r825-w8mm-5pxw,
+  # GHSA-rq7h-c2jc-7f22 moderate; GHSA-9jrq-w75r-8gcw low — phần lớn ở
+  # launch-editor của dev server): chỉ Vitest kéo, mà Vitest ở đây chạy node và
+  # jsdom, không mở dev server, không bật browser mode hay UI. vitest lên 4.1.12
+  # (vá luôn @vitest/mocker: GHSA-qxg6-89mg-rqv8, GHSA-xp26-3454-mjgp).
+  # KHÔNG vá vite bằng override: vitest khai vite ở cả dependencies lẫn
+  # peerDependencies nên pnpm giải nó như peer tự cài, và override không với tới
+  # (đo 26/10: có dòng `vite@>=8.0.0 <8.1.6: ^8.1.6` mà lock vẫn giữ 8.1.5). Vá
+  # bằng `vite: 8.1.6` ở devDependencies của package.json gốc: peer của mọi gói
+  # trong workspace giải từ gốc (resolvePeersFromWorkspaceRoot mặc định bật).
+  # Nâng vitest về sau thì xem lại dòng đó.
