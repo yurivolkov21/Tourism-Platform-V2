@@ -30,6 +30,13 @@ const transform = Object.fromEntries(
 module.exports = {
   preset: 'jest-expo',
   setupFiles: ['<rootDir>/jest.setup.js'],
+  // Reanimated (và worklets) chạy native nên không nạp được ở Node. `expo-router/testing-library`
+  // tự `jest.mock` nó bằng `react-native-reanimated/mock` (hỏng khi không có worklets native),
+  // nên ánh xạ CẢ HAI tên về bản thay thế tối giản — mock nào đè lên cũng ra cùng một thứ.
+  moduleNameMapper: {
+    '^react-native-reanimated$': '<rootDir>/../../libs/mobile/ui/jest/reanimated-entry.js',
+    '^react-native-reanimated/mock$': '<rootDir>/../../libs/mobile/ui/jest/reanimated-mock.js',
+  },
   transformIgnorePatterns,
   transform,
   // Trần 5s mặc định của Jest KHÔNG đủ cho `renderRouter`: lần gọi đầu nạp cả
