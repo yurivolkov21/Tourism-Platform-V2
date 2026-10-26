@@ -8,6 +8,72 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-10-26 — Merge rà và viết lại docs cho người ngoài đọc repo public: README gốc thêm đoạn tiếng Anh, mục lục theo chủ đề, gỡ 89 file plan, review và báo cáo đã hết dùng (`10a5f2c`)
+
+Repo để public nên Yuri nhờ rà `docs/` 26/10 07:08 UTC: chỉnh nội dung cho đúng hiện trạng, xoá file không còn cần
+và đổi lối văn để người clone repo đọc hiểu được. 08:05–08:06 UTC Yuri chọn trên thẻ quyết định: tài liệu giữ tiếng
+Việt, README gốc thêm một đoạn tiếng Anh; duyệt cả danh sách xoá 89 file, kể cả viết lại `docs/README.md` ngay trong
+PR và thêm một dòng đầu `CLAUDE.md`. Nhánh `claude/project-thread-kn2hjv` dựng từ `main` `6785326`, rebase lên
+`5b44ed1` sau PR #71, [PR #70](https://github.com/yurivolkov21/Tourism-Platform-V2/pull/70), session cloud. Chỉ đụng
+file `.md` và comment của 4 file fixture catalog: không đổi hành vi, không migration, không biến env, không
+dependency.
+
+- `efc8453`, `f6ef3ba`, `9290e31`, `5e84923`, `dff7dba`: gỡ 89 file, mục lục `guides/`, `analysis/`, `design/` và
+  `handoff/` sửa cùng lúc. `docs/plans/` kể cả `prompts/` (67 kịch bản thi công và prompt cho trợ lý AI, việc đã
+  xong), `docs/reviews/` (12 file soát và review các nhánh mobile đã gộp), `docs/analysis/progress/` (6 file: báo
+  cáo tiến độ và ba đợt rà docs cũ), ba file của `docs/design/` (brief thiết kế, prompt sinh mockup, bản khảo sát
+  mẫu) và `docs/guides/auth-flow-merged.md` (bản trùng của sơ đồ đăng nhập).
+- `6f8d469`, `3c4a5fb`, `95da38c`: link tới các file bị gỡ trong ADR, spec, tài liệu hiện hành, `open-items.md` và
+  comment của 4 file fixture catalog trỏ sang bản cố định ở commit `6785326`, commit cuối còn đủ các file. Link
+  trong CHANGELOG, archive `changelog/` và `open-items-closed.md` giữ nguyên vì là bản ghi bất biến; `docs/README.md`
+  có link tới cả thư mục `docs/` ở commit đó.
+- `61f7ab6`, `b839851`: README gốc viết lại cho người clone repo: dự án là gì, bảng 10 gói, nơi chạy thật, các bước
+  chạy trên máy (đã chạy thử trên một bản clone mới), tài khoản đăng nhập thử, chỗ khác với site thật, lưu ý cho
+  Windows, kiểm tra trước khi gửi thay đổi, thứ tự đọc tài liệu và đoạn English summary. `docs/README.md` thành bản
+  đồ theo câu hỏi, bảng thư mục kèm cột "còn cập nhật không", cách đọc tài liệu cũ và luật viết tài liệu mới.
+- `794f257`, `10a5f2c`: `docs/overview.md` thêm app Android, trợ lý AI, các khu quản trị mới, thông báo trong app,
+  mục "Những gì chưa có" và số liệu đo 26/10 (33 trang web, 30 trang admin, 9753 test).
+- `5760673`: `docs/glossary.md` thêm bảng giải nghĩa các họ mã nội bộ (P, F, W, G, mã màn mobile, nhóm sổ nợ) và
+  cách tài liệu cũ gọi người, công cụ.
+- `7a81c86`, `6e09c45`, `47fde8d`, `ea639f4`, `5e455b5`: mục lục ADR xếp 62 ADR theo nhóm chủ đề, thêm cách đọc ADR
+  và AMEND, sửa số lần bổ sung lệch file ở ADR-0023, 0028, 0029, 0030; mục lục spec xếp 60 spec theo vùng sản phẩm,
+  mỗi spec một dòng mô tả; mục lục `changelog/` kể đúng đợt đang chạy (file lưu trữ không đổi); mục lục mockup gọi
+  người theo vai và giải nghĩa mã đợt. Lúc rebase lên `5b44ed1` thêm các dòng của PR #71 (ADR-0062, ADR-0063,
+  ADR-0040 AMEND 8, spec thông báo trong app) và ghi đợt giao diện Material 3 đã gộp ở mục lục handoff và mockup.
+- `6330620`, `8aec064`, `92e6011`, `6030b29`, `a528eae`, `c73ed53`: `docs/conventions/` (7 file) có câu mở đầu cho
+  người mới và giải nghĩa mã, số mục của `mobile-dev-loop` giữ nguyên vì ADR, handoff và code trích §5, §6, §7; sơ
+  đồ đăng nhập bỏ dòng "mobile chưa nối API thật"; `docs/skills.md` giữ 11 skill trong repo và cách cài; phần đầu
+  sổ nợ kỹ thuật giải nghĩa các nhóm mã A–F; `CLAUDE.md` thêm một dòng đầu trỏ người mới sang README.
+- Bỏ thông tin không nên công khai: mã dự án Supabase thật trong `conventions/` thay bằng `<project-ref>`
+  (`6330620`), đường dẫn thư mục người dùng Windows trong ADR-0040 (`6030b29`), bản rà plugin của máy và danh sách
+  connector cá nhân trong `skills.md` (`92e6011`).
+- `d4ab7ab`, `a5a0d14`, `e9fa07b`: Yuri đổi thứ tự lượt seed lại prod 2 lúc 08:25 và 08:31 UTC: chạy trước buổi
+  test tay cuối để buổi test dùng dữ liệu mới, và là lượt cuối, sau buổi test không seed lại. Sửa cho khớp hướng dẫn
+  seed lại, `guides/README.md`, `open-items.md` (dòng mốc thời gian và mục "Trước lượt seed lại"),
+  `snapshots/README.md` và phần điều chỉnh 26/10 trong §8.5 của seed spec. Hướng dẫn seed lại ghi đúng kết quả
+  `seed:verify` hiện tại: `✓ 0 vi phạm trên 119 bất biến.`, trên DB Docker kèm một dòng ⚠ vì không có ảnh tour.
+
+**Review.** Không có lượt review độc lập. Tự kiểm trên nhánh: script kiểm link (đích tồn tại, anchor khớp heading)
+trên mọi `.md` trừ bản ghi bất biến còn 11 link hỏng, cả 11 đã hỏng sẵn ở `main` (main có 18); markdownlint-cli2
+bản 0.18.1 với `.markdownlint.json`, so từng file với `main`: không lỗi mới, bớt 4 lỗi cũ; không dòng `.md` thêm
+vào nào bắt đầu bằng `+`; `git diff` với `main` của CHANGELOG, `changelog/2026-*`, `open-items-closed.md`, mockup
+`*.src.html` và `migration.sql` rỗng; quét dòng thêm không thấy secret hay email thật (chỉ email mẫu `@example.com`
+và `admin@tourism.test`). Các bước chạy trên máy của README chạy lại trên một bản clone mới: API, web, admin lên,
+đăng nhập bằng khách mẫu, đặt mật khẩu admin qua link in trong log API. `docs/handoff/mobile-ui-upgrade-handoff.md`
+không đụng. Yuri bảo đẩy lên main 26/10 10:23 UTC.
+
+Tests after (`gate:int` trên `5e455b5`, nền `5b44ed1`, 26/10, session cloud, API sống ở :3001; `10a5f2c` sau đó chỉ
+sửa `docs/overview.md`, CI của PR trên `10a5f2c` xanh): unit 8770 (web 2496, admin 2458, api 1477, mobile 1050,
+contract 833, mobile-ui 254, ui 65, i18n 63, core 48, tokens 26) và int 983; Biome 2177 file; tokens-only của mobile
+(215 file) xanh. Cả lượt chạy với `NODE_OPTIONS=--max-old-space-size=4096`. PR không thêm hay bớt test nên số bằng
+entry Material 3 ngay dưới.
+
+**CÒN TREO:**
+
+- Dọn nhánh `claude/project-thread-kn2hjv` trên origin nếu GitHub không tự xoá.
+- Repo public nhưng chưa có file `LICENSE`: mặc định người ngoài chỉ được xem và fork trên GitHub, không có quyền
+  dùng lại code. Chưa ai chốt; muốn mở thì Yuri chọn giấy phép.
+
 ## 2026-10-26 — Merge đợt giao diện mobile Material 3 của Nghĩa và lượt review trước merge: thanh toán tự quay về app, trung tâm thông báo, Reanimated, các lỗi review M2 còn nợ (`63cfa81`)
 
 Nhánh `feat/mobile-m3-surfaces` của Nghĩa: đợt giao diện theo [bàn giao](handoff/mobile-ui-upgrade-handoff.md)
