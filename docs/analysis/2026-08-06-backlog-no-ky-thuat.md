@@ -1,15 +1,25 @@
 # Sổ nợ kỹ thuật còn mở — chốt 06/08/2026, rà lại 14/10/2026
 
-> **Đây là sổ SỐNG, không phải ảnh chụp.** Khác với
-> [progress report 04/08](https://github.com/yurivolkov21/Tourism-Platform-V2/blob/6785326e69949d4ef566c5eaf7c3eaa3706859c8/docs/analysis/progress/2026-08-04-progress-report.md) (bản chụp một thời
-> điểm, đừng sửa), file này được cập nhật mỗi khi một khoản nợ được trả hoặc
-> một khoản mới sinh ra. Trả xong thì **gạch bỏ tại chỗ kèm hash**, đừng xoá —
-> để còn truy được vì sao từng có.
->
-> Lý do lập: trước 06/08 nợ nằm rải trong "Nợ mở" của từng entry
-> [CHANGELOG](../CHANGELOG.md). Đọc được nếu biết tìm ở entry nào, nhưng một
-> session mới (đặc biệt session **redesign giao diện**) không có cách nào gom
-> lại. Sổ này là chỗ gom.
+Sổ này liệt kê việc kỹ thuật còn nợ: chỗ giao diện chưa ổn, dữ liệu chưa sạch,
+test còn thiếu, thư viện cần theo dõi. Khác với báo cáo tiến độ, vốn là ảnh chụp tại
+một thời điểm ([bản 04/08 xem trong lịch sử git](https://github.com/yurivolkov21/Tourism-Platform-V2/blob/6785326e69949d4ef566c5eaf7c3eaa3706859c8/docs/analysis/progress/2026-08-04-progress-report.md)),
+sổ này được cập nhật mỗi khi một khoản nợ được trả hoặc một khoản mới sinh ra. Trả
+xong thì gạch bỏ tại chỗ kèm hash commit, không xoá, để còn biết vì sao từng có.
+
+Mỗi khoản có mã gồm chữ cái của nhóm và số thứ tự, ví dụ A5 hay F1:
+
+| Nhóm | Nội dung |
+| --- | --- |
+| A, A′, A″ | Ảnh hưởng trực tiếp tới giao diện. A′ và A″ là nợ mới sinh ra sau hai vòng sửa giao diện ngày 13/08 và 19/08 |
+| B | Dọn dẹp dữ liệu và nội dung |
+| C | Lỗ hổng kiểm thử |
+| D | Thư viện bên thứ ba |
+| E | Nợ có từ trước, vẫn mở |
+| F | Nợ sau lần lên sóng đầu tiên và phần email |
+
+Mã G trong [open-items.md](../open-items.md) là một dãy số riêng, không thuộc sổ
+này. Sổ được lập vì trước 06/08 nợ nằm rải rác trong mục "Nợ mở" của từng entry
+[CHANGELOG](../CHANGELOG.md), không có chỗ nào gom lại.
 
 ## Cách dùng
 
