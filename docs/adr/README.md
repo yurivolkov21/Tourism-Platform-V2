@@ -47,7 +47,7 @@ thay, cột đã xoá, và số AMEND để biết phải đọc tới cuối fi
 | [0037](0037-default-write-throttle.md) | Mọi route ghi sinh ra đã có trần | 4 AMEND (AMEND 4, 26/10: `TRUST_PROXY` trên Render tin dải Cloudflare) |
 | [0038](0038-web-shell-security-headers.md) | Security header + CSP cho web và admin | 5 AMEND |
 | [0039](0039-inbound-channels-outbound-email.md) | Kênh vào và email đi ra: ack, consent, suppression | 1 AMEND |
-| [0040](0040-mobile-app-expo.md) | App mobile Expo trong monorepo | 7 AMEND |
+| [0040](0040-mobile-app-expo.md) | App mobile Expo trong monorepo | 8 AMEND |
 | [0041](0041-single-cancellation-deadline.md) | **Một hạn chót mỗi chuyến** — luật hoàn tiền hiện hành | thay 0029, 0030 · 2 AMEND (chuyến bị công ty huỷ thì khách hết tự huỷ; khách đọc lý do huỷ chuyến) |
 | [0042](0042-shared-client-rules-core.md) | `@tourism/core`: luật dùng chung cho mọi client | |
 | [0043](0043-refund-payment-event.md) | Hoàn tiền để lại vết ở sổ `payment_events` | |
@@ -69,6 +69,8 @@ thay, cột đã xoá, và số AMEND để biết phải đọc tới cuối fi
 | [0059](0059-site-slot-appearance.md) | Appearance: danh mục khe ở contract, bốn nguồn ảnh của một lần lưu, bảng ảnh gốc trong code API | |
 | [0060](0060-media-library.md) | Media library: một ảnh là một publicId, sửa ghi công một lần cho mọi chỗ dùng, hàng dọn chỉ đọc, ảnh điểm đến có trình sửa riêng | |
 | [0061](0061-admin-activity-log.md) | Nhật ký thao tác admin: một bảng chỉ thêm, ghi tự động sau mỗi lệnh ghi thành công, chỉ Owner xem | |
+| [0062](0062-mobile-checkout-app-return.md) | Thanh toán trên app mobile: cổng trả về trang web chuyển tiếp, rồi mới về app | Proposed |
+| [0063](0063-mobile-reanimated.md) | App mobile dùng Reanimated cho chuyển động theo ngón tay và theo layout; ghim bản Expo Go; Jest dùng bản thay thế | Proposed |
 
 ## Thêm ADR mới
 

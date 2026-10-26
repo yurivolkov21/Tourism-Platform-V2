@@ -8,6 +8,50 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-10-26 — Đợt làm mượt giao diện mobile: Reanimated, lịch trình mở dần, tab dính, thông báo, màu giao thoa (`4b384152` đến `4c95058e`)
+
+Thi công trên nhánh `feat/mobile-m3-surfaces`, chạy thử trên Galaxy S24 Ultra (Expo Go) qua cáp USB. Chỉ đụng
+`apps/mobile`, `libs/mobile/ui` và `docs/`; không API, không migration, không biến env. **Có dependency mới trước
+freeze 31/10** — quyết định ở [ADR-0063](adr/0063-mobile-reanimated.md) (Proposed, viết sau khi code chạy, trái luật 5)
+và [ADR-0040](adr/0040-mobile-app-expo.md) AMEND 8.
+
+- **Reanimated 4.5.1 và Worklets 0.10.1** ghim đúng bản Expo Go; `expo install --fix` nâng bản vá tám gói Expo
+  (`expo` 57.0.31, `expo-router` 57.0.29, …) và `libs/mobile/ui` nâng `expo`, `jest-expo` theo. Jest ánh xạ hai tên
+  Reanimated về bản thay thế tối giản (`libs/mobile/ui/jest/`).
+- **Mở/thu mượt:** `Collapsible` chạy chiều cao trên luồng UI (Itinerary trang tour, lịch trình chuyến đã mua, "Good
+  to know"); `ItineraryDays` tách `memo`; `ExitCollapse`; "Read more" ở Explore bằng `LinearTransition`. Bỏ
+  `animateNextLayout` (không chạy trên máy user).
+- **Cử chỉ và cuộn:** cuộn tour detail bằng `useAnimatedScrollHandler`; hàng tab dính dưới header gọn; vuốt ngang
+  đổi tab; chấm báo ảnh bìa; trình xem ảnh toàn màn chạy worklet; `SwipeToRemove` ở Saved; chống bấm đúp ở `Button`.
+- **Chuyển động khác:** Home bỏ `FadeIn` ở header và hàng tiêu đề; thanh step, dot onboarding, thanh sao, `SegmentedControl` (lò xo, nhãn đổi màu theo khối),
+  viền `TextField`, gạch dưới tab và thanh tab dưới và thanh vùng Home sang lò xo; số tiền đếm ghi từ luồng UI;
+  `Presence` bằng `Keyframe`; `freezeOnBlur` cho tab; `keyboardDismissMode` ở Explore.
+- **Tải sẵn:** chi tiết tour và ảnh bìa khi chạm thẻ ở Explore và Saved; danh sách Explore từ Home; giữ vị trí cuộn
+  khi đổi tab ở tour detail.
+- **Màu giao thoa:** `AuroraGradient` tĩnh kèm lớp nhiễu chống vỡ mảng, ở onboarding, đăng nhập, màn đặt tour thành
+  công; thẻ đếm ngược đậm dần theo tiến độ. Bỏ hiệu ứng thu nhỏ tiêu đề lớn và chuyển cảnh kính lúp sau khi thử.
+- **Sửa lỗi:** nhảy lên đầu khi đổi tab ở tour detail; `useAnimatedKeyboard` làm vùng an toàn Android thành trắng (nay
+  chỉ iOS và chỉ lúc sheet mở).
+- **Thông báo:** tin huỷ và hoàn tiền hết hạn sau 30 ngày kể từ ngày về; đơn `REFUNDED` không có mốc huỷ không còn
+  báo "đang đi" hay "sắp đi". Cập nhật
+  [spec thông báo](specs/2026-10-25-in-app-notifications-design.md).
+
+**Review.** Không có lượt review độc lập. Chưa kiểm chứng: iOS, Android ngoài Galaxy S24 Ultra, va chạm vuốt ngang đổi
+tab với dải ảnh review cuộn ngang, màn đặt tour thành công qua thanh toán thật (chỉ xem bằng dữ liệu giả).
+
+**CÒN TREO cho session gốc.** Build dev client và EAS phải dựng lại native (Reanimated và Worklets là module native).
+Hash ở tiêu đề là của nhánh `feat/mobile-m3-surfaces`; đổi lại theo hash sau rebase khi merge.
+
+Tests after: mobile 937 (126 suite), mobile-ui 254. `pnpm gate` các bước chạy tay với `--concurrency=1`: turbo `build`
+`typecheck` `test` xanh 28/28 tác vụ; Biome sạch; `check-mobile-tokens-only` sạch (212 file). Lần chạy `pnpm gate:int`
+mặc định (song song) chết vì hết bộ nhớ trên máy dev (heap OOM, fork lỗi), nên chạy tuần tự. `test:int`: 5/6 tác vụ xanh;
+**`@tourism/api#test:int` đỏ 4 test, cả hai nhóm do môi trường máy dev, không do code**: `admin-tours.int.spec.ts` (2 test)
+vì Postgres cục bộ là 18.3 (CI dùng 17): khoá ngoại `ON DELETE RESTRICT` nay trả SQLSTATE `23001`, mà
+`@prisma/adapter-pg` 7.8.0 chỉ ánh xạ `23503` thành `P2003`, nên xoá tour có booking ra 500 thay vì 409
+`TOUR_HAS_BOOKINGS`; `check-rls.int.spec.ts` (2 test) vì máy không có `psql` và Docker Desktop chưa chạy. CI trên
+`main` (Node 24, Postgres 17) xanh cả hai file. Chưa sửa API: nếu hạ tầng lên Postgres 18 thì `P2003` ở 9 file service
+cần nhận thêm `23001`.
+
 ## 2026-10-26 — Merge lượt seed lại 2 làm mới cả Owner: `data:reset` tạo lại Owner cùng email, `snapshot:export` không ghi đè bản sao lưu cùng ngày, hướng dẫn seed lại production (`a53e9d5`)
 
 Yuri chốt phạm vi lượt seed lại prod 2 ngày 26/10 03:23 UTC: chạy ngay sau buổi test tay cuối (bỏ mốc 03/11), giữ

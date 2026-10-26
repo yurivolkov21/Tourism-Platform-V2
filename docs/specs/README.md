@@ -100,5 +100,8 @@ code. Mỗi spec đi kèm một plan cùng tên ở [`plans/`](../plans/README.m
 **Việc tồn đọng của admin (G45 ở `/bookings`, xong 14/10)**
 [Lọc `/bookings` theo một tài khoản](2026-10-13-g45-bookings-account-filter.md)
 
+**Thông báo trong app mobile (25/10)**
+[Danh sách thông báo suy ra ở máy, chuông ở Home](2026-10-25-in-app-notifications-design.md)
+
 **Công cụ máy dev (ngoài repo)**
 [mod `tourism-status`: dải trạng thái, canh CI, docs-freshness](2026-10-02-tourism-status-mod-design.md)

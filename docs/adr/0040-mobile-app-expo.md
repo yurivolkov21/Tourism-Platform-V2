@@ -580,7 +580,11 @@ không dev build mới ngoài bản EAS đã có. Bố cục Home và `RegionRai
 
 ### Kết quả spike
 
-_(Điền sau khi chạy: ngày, máy, Expo Go và build EAS, ba điều kiện đạt hay không.)_
+**Chưa chạy (21/10/2026).** Spike cần máy Android thật với Expo Go SDK 57 và build EAS; session
+thi công không có máy này. Theo bàn giao mục 3, chưa đạt thì giữ `FloatingTabBar` và vẽ lại theo
+khung: N1 đã làm theo hướng đó (thanh nằm trong luồng bố cục, nền `surfaces.container`, viên chỉ
+báo 56×32, nhãn luôn hiện, bấm lại tab đang mở vẫn bắn `tabPress`). Đổi sang `NativeTabs` chỉ cần
+thay `FloatingTabBar` ở `(tabs)/_layout.tsx` nếu sau này spike đạt cả ba câu hỏi ở bàn giao.
 
 ### Đã cân nhắc và loại
 
@@ -604,3 +608,11 @@ _(Điền sau khi chạy: ngày, máy, Expo Go và build EAS, ba điều kiện 
   `apps/mobile/src/routes.spec.tsx` nếu `NativeTabs` cần mock trong Jest — spike trả lời luôn câu này.
 - Việc dọn sau freeze: gỡ `@expo-google-fonts/archivo`; gỡ `floating-tab-bar.tsx`,
   `TAB_BAR_LIFT`, `TAB_BAR_TILE` nếu `NativeTabs` đạt.
+
+## AMEND 8 — 26/10/2026: `reanimated` được cài (đảo AMEND 3)
+
+[ADR-0063](0063-mobile-reanimated.md) cài `react-native-reanimated@4.5.1` và
+`react-native-worklets@0.10.1`, ghim đúng bản Expo SDK 57 gắn với Expo Go. Lý do bỏ ở AMEND 3 (hai bản
+`react-native-worklets` xung đột) không còn: lockfile chỉ còn một bản mỗi gói. Phần "KHÔNG `reanimated`" của
+AMEND 3 và dòng "Không đổi quyết định BỎ `reanimated`" ở AMEND 4 không còn đúng; vá `packageExtensions` của AMEND 4
+vẫn giữ. Các đoạn cũ giữ nguyên làm bản ghi lịch sử.
