@@ -149,12 +149,6 @@ mỗi lần loại một gói khỏi tầm mắt của nó là bớt đi một l
 - **Jest chứ không Vitest, và CHỈ ở hai package này.** Ngoại lệ đã được
   ADR-0001 + CLAUDE.md cấp từ P0; ranh giới ở ADR-0040 §4 là thứ giữ cho nó
   không lan. Không có config Jest nào ở root.
-- **`/dev/gallery` chỉ có ở bản dev.** Bảng tra 17 khung của cụm auth, dựng
-  bằng dữ liệu cứng nên soi được cả những trạng thái chỉ hiện sau một chuỗi
-  thao tác đúng (mã sai, link hết hạn, vừa gửi lại mã). Mở bằng
-  `nexora://dev/gallery`, hoặc gõ đường dẫn `/dev/gallery` trong Expo Go. Route
-  vẫn nằm trong bundle phát hành (Metro không bỏ file route theo điều kiện),
-  nhưng `isDevBuild()` đẩy thẳng về Home nên không có đường vào.
 - **Spec của cây route nằm ở `src/routes.spec.tsx`, ngoài `src/app`.**
   expo-router coi mọi file `.tsx` dưới thư mục app là một route (ignore list
   của nó chỉ có `+html`, `+native-intent`, `+api`, `+middleware`) — để
