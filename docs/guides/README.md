@@ -1,14 +1,12 @@
-# Guides — hướng dẫn dùng lâu dài
+# Hướng dẫn
 
-> Mục lục của `guides/`. Bản đồ chung của tài liệu ở [../README.md](../README.md).
-
-Tài liệu giải thích một luồng hoặc hướng dẫn làm một việc lặp lại, viết cho cả
-người không lập trình. Khác [`conventions/`](../conventions/README.md): ở đây
-không có luật, chỉ có cách làm và cách hệ thống chạy.
+Mỗi file ở đây giải thích cách một luồng chạy hoặc cách làm một việc lặp lại, viết
+để cả người không lập trình đọc được. Luật bắt buộc khi viết code nằm ở
+[quy ước](../conventions/README.md), không nằm ở đây.
 
 | Tài liệu | Dành cho |
 | --- | --- |
-| [Test app mobile trên máy thật](huong-dan-test-may-that.md) | Người mới cầm điện thoại Android thử app: từng bước kèm kết quả mong đợi, cách ghi lỗi |
-| [Seed lại dữ liệu production](huong-dan-seed-lai-production.md) | Yuri, lượt seed lại 2 ngay sau buổi test tay cuối: chuẩn bị, từng lệnh kèm kết quả mong đợi, Owner đặt lại mật khẩu, xử lý sự cố |
-| [Luồng đăng nhập — bản đơn giản](auth-flow-simple.md) · [bản gộp một sơ đồ](auth-flow-merged.md) | Người không rành kỹ thuật |
-| [Luồng đăng nhập — sequence diagram](auth-flow-sequence-diagrams.md) | Lập trình viên: Better Auth, cookie phiên, từng luồng đăng nhập, đăng ký, khôi phục trên web, admin và mobile |
+| [Test app mobile trên máy thật](huong-dan-test-may-that.md) | Người thử app trên điện thoại Android: từng bước kèm kết quả mong đợi và cách ghi lỗi |
+| [Seed lại dữ liệu production](huong-dan-seed-lai-production.md) | Chủ dự án, cho lượt làm mới dữ liệu của site đang chạy sau buổi test tay cuối: chuẩn bị, từng lệnh kèm kết quả mong đợi, đặt lại mật khẩu chủ trang, xử lý sự cố |
+| [Luồng đăng nhập, bản đơn giản](auth-flow-simple.md) | Người không rành kỹ thuật |
+| [Luồng đăng nhập, sơ đồ tuần tự](auth-flow-sequence-diagrams.md) | Lập trình viên: Better Auth, cookie phiên, từng luồng đăng nhập, đăng ký và khôi phục trên web, admin và mobile |
