@@ -144,6 +144,14 @@ báo ở `bookings/[code]`, đọc cờ `departureCancelled`.~~
   và trong `.env.production`. `sentry:test` từ máy lúc 11:25 UTC tạo issue NEXORA-API-1 (environment
   `development`); Yuri đã Resolve. Chưa có lỗi 500 thật nào từ production lên Sentry để soi bộ lọc
   request trên dữ liệu thật.*
+- ~~**Trước buổi test tay:** đặt `TRUST_PROXY` của service API trên Render gồm dải Cloudflare~~, rồi mở
+  `/health` từ Wi-Fi và từ 4G để so `clientIp` (review F1-10, Yuri chọn 26/10;
+  [ADR-0037 AMEND 4](adr/0037-default-write-throttle.md)). Giá trị và các bước ở entry CHANGELOG review
+  F1, mục CÒN TREO.
+  *Đóng 26/10: Yuri đặt `TRUST_PROXY` trên Render, bản deploy đổi env Live 03:05 UTC. `/health` lúc
+  02:59:48 UTC còn ra `clientIp` 172.68.211.10, IP biên của Cloudflare; lúc 03:09:58 UTC ra đúng IP
+  đầu của `forwardedFor`. Thử từ 4G để tuỳ, ở buổi test tay. `PUBLIC_READ_THROTTLE_MODE` giữ `log`.
+  Ghi ở entry CHANGELOG merge PR #67.*
 
 ## ~~Bug tiềm ẩn: `pending-sweep.service.ts` so sánh timestamp phụ thuộc timezone server~~ — đóng 14/10
 

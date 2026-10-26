@@ -109,10 +109,6 @@ Không còn việc nào chờ quyết (14/10).
 
 ## Việc tay trên hạ tầng
 
-- **Trước buổi test tay:** đặt `TRUST_PROXY` của service API trên Render gồm dải Cloudflare, rồi mở
-  `/health` từ Wi-Fi và từ 4G để so `clientIp` (review F1-10, Yuri chọn 26/10;
-  [ADR-0037 AMEND 4](adr/0037-default-write-throttle.md)). Giá trị và các bước ở entry CHANGELOG review
-  F1, mục CÒN TREO.
 - Bộ dọn ảnh và tám file thử F18 trên Cloudinary: bộ dọn từng gần như không chạy trên gói
   free của Render (G41), nên hai mốc theo dõi cũ (30/09, 07/10) đã chuyển sang
   open-items-closed.md. G41 đóng 14/10 (PR #18): từ bản deploy ấy worker chạy bù `media-gc`
