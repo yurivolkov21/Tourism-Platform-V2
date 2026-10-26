@@ -31,7 +31,7 @@ theo quán tính**: tiền đề đã đổi (Turborepo + WSL ext4).
 Ba ràng buộc thật của máy dev, đo 08/09 chứ không đoán:
 
 1. **WSL ở chế độ NAT** — `hostname -I` ra `172.26.107.162`, default route
-   `172.26.96.1`, không có `C:\Users\yuriv\.wslconfig`. Điện thoại trong LAN
+   `172.26.96.1`, máy chưa có file `.wslconfig`. Điện thoại trong LAN
    **không tới được** Metro chạy trong WSL. Nexora né được vì chạy Expo từ
    Windows native (`start-dev.ps1` set `REACT_NATIVE_PACKAGER_HOSTNAME`).
 2. **Không có Mac, không có Android Studio trong WSL** — dev build tại chỗ
