@@ -3,6 +3,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { messages } from '@tourism/i18n';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
+import { AccessibilityInfo } from 'react-native';
 import { MyReviewDetailScreen } from '@/features/reviews/my-review-detail-screen';
 import { myReviewNextStep } from '@/features/reviews/my-reviews';
 import { RetractSheet } from '@/features/reviews/retract-sheet';
@@ -56,6 +57,13 @@ export default function MyReviewDetailRoute() {
         onSuccess: () => {
           closeRetract();
           void queryClient.invalidateQueries({ queryKey: orpc.reviews.mine.key() });
+          // Cùng cách `reviews/mine.tsx`: tấm trượt đóng và pill đổi sang "Retracted" là kết quả
+          // chỉ người nhìn thấy, nên đọc kết quả cho người dùng trình đọc màn hình. `queue` (iOS)
+          // xếp câu này sau câu VoiceOver đang đọc lúc tấm trượt đóng.
+          const { done } = retractCopy.toast;
+          AccessibilityInfo.announceForAccessibilityWithOptions(`${done.title}. ${done.body}`, {
+            queue: true,
+          });
         },
         onError: (error) => {
           if (error instanceof ORPCError && error.code in retractCopy.errors) {

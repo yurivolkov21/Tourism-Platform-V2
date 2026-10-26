@@ -86,6 +86,16 @@ describe('MyReviewDetailScreen', () => {
     expect(screen.queryByText(copy.whyHeading)).toBeNull();
   });
 
+  // Cùng luật `formatFullDate` của danh sách: ngày lịch Việt Nam. Cắt `slice(0, 10)` là lấy ngày
+  // UTC — bài gửi lúc 03:30 sáng 20/10 giờ VN (20:30 UTC ngày 19) từng hiện "19 Oct".
+  it('ngày gửi in theo lịch Việt Nam, không theo ngày UTC', async () => {
+    await renderWithTheme(
+      <MyReviewDetailScreen {...props({ review: vm({ dateIso: '2026-10-19T20:30:00.000Z' }) })} />,
+    );
+    expect(screen.getByText('20 Oct 2026')).toBeTruthy();
+    expect(screen.queryByText('19 Oct 2026')).toBeNull();
+  });
+
   it('bấm khối tour gọi onOpenTour', async () => {
     const onOpenTour = jest.fn();
     await renderWithTheme(<MyReviewDetailScreen {...props({ onOpenTour })} />);

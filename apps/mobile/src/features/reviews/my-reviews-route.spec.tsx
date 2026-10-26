@@ -8,6 +8,7 @@ import type { ReactNode } from 'react';
 import { AccessibilityInfo, Text } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import ReviewsLayout from '@/app/reviews/_layout';
+import MyReviewDetailRoute from '@/app/reviews/[id]';
 import MyReviewsRoute from '@/app/reviews/mine';
 import TripLayout from '@/app/trips/[code]/_layout';
 import ReviewRoute from '@/app/trips/[code]/review';
@@ -198,6 +199,7 @@ async function openMyReviews(state: ApiState) {
       index: () => <Text>Home</Text>,
       'reviews/_layout': ReviewsLayout,
       'reviews/mine': MyReviewsRoute,
+      'reviews/[id]': MyReviewDetailRoute,
       'trips/[code]/_layout': TripLayout,
       'trips/[code]/review': ReviewRoute,
     },
@@ -288,5 +290,41 @@ describe('R7 — rút bài', () => {
     );
     // Người nhìn thấy kết quả ngay trên thẻ: pill đổi sang "Retracted".
     expect(await screen.findByText(mine.retractedLabel)).toBeTruthy();
+  });
+
+  // Rút từ màn chi tiết bài (mở bằng thẻ ở R4) cũng phải đọc kết quả như rút ngay trên danh sách:
+  // tấm trượt đóng, pill đổi sang "Retracted" — người dùng trình đọc màn hình không thấy cả hai.
+  it('rút từ màn chi tiết bài cũng đọc kết quả cho trình đọc màn hình', async () => {
+    const announce = jest
+      .spyOn(AccessibilityInfo, 'announceForAccessibilityWithOptions')
+      .mockImplementation(() => {});
+    announceSpy = announce;
+    const state: ApiState = { reviews: [makeReview({})], bookings: [] };
+    stubApi(state, (path) => {
+      expect(path).toBe(`/api/reviews/${REVIEW_ID}/retract`);
+      const retracted = makeReview({
+        isApproved: false,
+        moderationState: 'retracted',
+        retractedAt: '2026-10-15T01:00:00.000Z',
+      });
+      state.reviews = [retracted];
+      return retracted;
+    });
+    const app = await openMyReviews(state);
+    await act(() => router.push(`/reviews/${REVIEW_ID}`));
+    expect(app.pathname()).toBe(`/reviews/${REVIEW_ID}`);
+
+    await fireEvent.press(screen.getByRole('button', { name: mine.retractAction }));
+    const sheetButtons = screen.getAllByRole('button', { name: retractCopy.button });
+    const confirm = sheetButtons.at(-1);
+    if (confirm === undefined) throw new Error('Tấm rút bài không mở');
+    await fireEvent.press(confirm);
+
+    await waitFor(() =>
+      expect(announce).toHaveBeenCalledWith(
+        `${retractCopy.toast.done.title}. ${retractCopy.toast.done.body}`,
+        { queue: true },
+      ),
+    );
   });
 });

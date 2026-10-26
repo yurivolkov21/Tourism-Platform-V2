@@ -134,7 +134,7 @@ export function MyReviewDetailScreen({
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing(3) }}>
             <ReviewStatePill copy={copy} state={review.moderationState} />
             <AppText variant="caption" tone="muted">
-              {formatFullDate(review.dateIso.slice(0, 10))}
+              {formatFullDate(review.dateIso)}
             </AppText>
           </View>
 
