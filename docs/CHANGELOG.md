@@ -8,6 +8,100 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-10-26 — Merge review F3 vỏ web và thư viện UI dùng chung: lượt ghi của trình duyệt chờ bằng trần 60 giây của API, menu điện thoại theo đăng nhập, scrollspy sổ hành trình sáng theo cuộn, H2 trùng chữ có id riêng, chữ footer và thanh trên cùng đủ tương phản (`4bb4371`)
+
+Luồng F3 của đợt review code theo luồng (kế hoạch 20/10 trong thư mục chung của project,
+`code-review/ke-hoach-review-theo-luong.md`), rà trên `main` `e8fdfee`, rebase lên `5251f20` trước khi đẩy. Báo
+cáo đủ 22 phát hiện (10 sửa ở đây, 1 chuyển L8 và sửa ở PR #57, 1 đề xuất Yuri chọn để sau thành G57, 2 đề xuất
+để sau bảo vệ, 8 ghi lại) từng nằm ở `code-review/F3-bao-cao.md` của thư mục chung; thư mục ấy đã được dọn trước
+lúc merge, nên các bước test tay và việc còn treo chép ở mục CÒN TREO dưới đây. Nhánh
+`fix/review-f3-web-shell-ui-qgyr3f`, [PR #63](https://github.com/yurivolkov21/Tourism-Platform-V2/pull/63), thi công
+trên session cloud. Đụng web (client API, header, footer, thanh trên cùng, mục lục), `@tourism/ui` (Scrollspy,
+`ArticleMarkdown`, module mới `markdown-headings`, `AnimatedThemeToggler`, JSDoc `ButtonLink`), i18n (thêm một khoá,
+bỏ hàm mẫu `i18n()`) và comment của script tokens: không migration, không đổi contract, không biến env, không
+dependency mới.
+
+- `85b362e` và `6dbd072` (F3-01, L3-20, P1): mọi lượt gọi API từ trình duyệt, kể cả lượt ghi, bỏ cuộc sau 10 giây, trong
+  khi API cho mỗi request tới 60 giây (`handlerTimeout`) và không dừng việc khi trình duyệt bỏ đi. API vừa thức hay
+  cổng thanh toán chậm thì khách bấm Pay, 10 giây sau thấy lỗi mà server vẫn tạo đơn PENDING và phiên thanh toán,
+  bấm lại thành đơn thứ hai (tái hiện trên DB local: `bookings.create` bị huỷ sau 2 ms vẫn để lại đơn). Nay
+  `requestTimeoutMs` cho lượt ghi của trình duyệt (POST, PATCH, PUT, DELETE) chờ 60 giây, lượt đọc giữ 10 giây,
+  phía server giữ 20 giây, vẫn không thử lại lượt ghi; ADR-0044 AMEND 2. Ca còn sót (request quá 60 giây, mạng rớt
+  giữa chừng, hai tab) thành G57.
+- `7ed6975` (F3-02, F3-03): menu điện thoại luôn có "Log in" kể cả khi đã đăng nhập, và Destinations trỏ `/tours`.
+  Nay mục cuối đọc `useSession` của `lib/auth-client` (bản an toàn khi hydrate): đã đăng nhập là "My account" tới
+  `/account`, chưa thì "Log in" kèm `?redirect=` về trang đang xem; Destinations tới `/destinations`. Menu đóng là
+  `inert` nên không còn nằm trong thứ tự Tab và cây trợ năng; nút mở có `aria-expanded`, `aria-controls`.
+- `7f05a2c` (F3-04, P1): sổ hành trình ở `/account` dùng Scrollspy bám cuộn window (không truyền `targetRef`), mà
+  `handleScroll` trả về sớm khi thiếu `targetRef`, nên nút địa danh không bao giờ sáng theo cuộn. Listener click gỡ
+  bằng một hàm mới tạo nên không gỡ được gì, chồng thêm mỗi lần effect chạy lại. Nay một hàm `resolveScroller` cho
+  ba chỗ, lưu đúng handler để gỡ, chỉ ghi hash khi bấm (cuộn không đổi URL). Đo trên bản build: 11 nút của khách
+  seed sáng lần lượt theo thứ tự section.
+- `5e6c72d` (F3-05, L8-20): hai H2 cùng chữ trong một bài cho hai `id` trùng, mục thứ hai của "On this page" nhảy về
+  H2 đầu. Nay `markdownH2s` ở `@tourism/ui/lib/markdown-headings` cho id duy nhất (lần sau mang `-2`, `-3`, đọc được
+  dòng CRLF); `ArticleMarkdown` gắn id theo số dòng của heading, `tocFromMarkdown` đọc cùng hàm. Tab Preview của
+  admin dùng cùng component nên cũng hết id trùng.
+- `fda9118` (F3-06, A2-19): JSDoc của `ButtonLink` từng khuyên `className={buttonVariants({ variant: 'outline' })}`,
+  đúng mẫu đã làm mất viền ở A2-01; nay khuyên bọc `cn(...)`, kèm 2 test ghi lại cái bẫy `border-transparent`.
+- `188ef46` (F3-07): bỏ hàm mẫu `i18n()` không ai gọi của `@tourism/i18n` cùng test của nó; sửa comment cũ ở trang
+  404 và đầu `apps/web/src/app/globals.css`.
+- `4c77c26` (F3-08): đo bằng axe-core 4.10.3 (chữ 12px cần 4.5:1), dòng đáy footer đạt 4.05:1 ở mọi trang, chữ thanh
+  trên cùng 4.49:1 ở theme sáng và 3.90:1 ở theme tối. Bỏ phần làm mờ: 6.66:1, 5.52:1 và 4.72:1; link chữ của
+  thanh trên cùng gạch chân khi hover thay cho nấc mờ rồi sáng.
+- `b499dca` (F3-09): nhãn "Toggle theme" của `AnimatedThemeToggler` gõ cứng trong gói UI; nay là prop `label` bắt
+  buộc, header truyền `messages.a11y.toggleTheme`. Chữ người dùng nghe không đổi.
+- `34f1167` (F3-10): dịch sang tiếng Việt các comment tiếng Anh còn sót ở `libs/shared/tokens/style-dictionary/` và
+  `icons/social.tsx`; CSS, JS và theme RN sinh ra giống hệt từng byte.
+- `4bb4371` (F3-11): dòng G57 của `docs/open-items.md`; mã G kế tiếp G58.
+
+**Review.** Không có lượt review độc lập; test mới chạy trên mã nguồn của `e8fdfee` đỏ 20 ca: F3-01 (8), F3-02 và
+F3-03 (4), F3-04 (3 trên 4, ca còn lại canh hành vi bấm vốn đúng), F3-05 (3; 5 test của `markdownH2s` đỏ vì hàm
+chưa có), F3-09 (2). F3-06 chỉ ghi lại hành vi sẵn có; F3-08 là class CSS, bằng chứng là lượt đo axe trước và sau.
+Bốn trọng tâm của kế hoạch: CSP không chặn host web cần và không mở thừa (Chromium trên bản build của nhánh, 16 trang
+công khai ở desktop sáng và 390px tối, 4 trang tài khoản: 0 vi phạm CSP, 0 tràn ngang); build web khi API ngủ vẫn
+chạy nhờ `warm-api.mjs` và retry của ADR-0044, nay lượt ghi phía trình duyệt khớp trần API; theme tối: axe trên 20
+trang ở hai chế độ, trước khi sửa chỉ 2 trang sạch, sau F3-08 là 12, phần còn lại là F3-14 (mô tả số liệu ở `/about`
+3.06:1, số thứ tự mục lục 2.62:1; chuyển L8, sửa ở PR #57 thành L8-23) và hai chỗ chữ trang trí WCAG miễn; đổi gói
+dùng chung không vỡ admin. Yuri chọn "Để sau bảo vệ" cho F3-11 ở thẻ quyết định 21/10, rồi bảo đẩy lên main 26/10
+02:10 UTC.
+
+Tests after (`gate:int` trên `4bb4371`, nền `5251f20`, 26/10, session cloud, API sống ở :3001): unit 8535 (web 2489,
+admin 2456, api 1470, mobile 961, contract 812, mobile-ui 145, i18n 63, ui 65, core 48, tokens 26) và
+int 982; Biome 2124 file; RLS, tokens-only của mobile, prerender admin và bundle mobile xanh. Container mới để trần heap
+Node 2240 MB nên test contract chạy với `--max-old-space-size=6144` như entry A1, A3, A4 và A5, 812/812. PR thêm
+20 test unit ở web và 8 ở gói UI, bỏ 1 test của hàm mẫu i18n.
+
+**CÒN TREO:**
+
+- Buổi test tay, trên production.
+  1. (F3-02) Điện thoại hoặc cửa sổ hẹp dưới 768px, đã đăng nhập: mở menu, mục cuối là "My account" và mở
+     `/account`; Destinations mở `/destinations`. Đăng xuất, mở menu ở `/tours`: "Log in", đăng nhập xong quay về
+     `/tours`.
+  2. (F3-03) Cửa sổ hẹp, chỉ dùng bàn phím: menu đang đóng thì Tab đi từ nút menu sang nội dung trang, không dừng
+     ở link nào vô hình.
+  3. (F3-04) `/account` của khách đã đi nhiều nơi: cuộn sổ hành trình, nút địa danh bên cạnh sáng theo đoạn đang
+     đọc; thanh địa chỉ không đổi khi cuộn; bấm một nút thì cuộn tới đúng nơi.
+  4. (F3-01) Dùng chung đơn thẻ 4242 với bước của L4 hay A1: bấm Pay một lần, nút khoá tới khi sang trang Stripe;
+     My bookings có đúng một đơn mới. Ca API vừa thức khó tạo chủ động trên prod; test unit canh hạn chờ 60 giây.
+  5. (F3-05) Admin tạo bài nháp có hai H2 cùng chữ, mở tab Preview: mỗi H2 một id. Nếu đăng thử, mục thứ hai của
+     "On this page" trên web nhảy đúng H2 thứ hai; gỡ bài thử sau đó.
+  6. (F3-08) Nhìn nhanh dòng đáy footer và thanh trên cùng ở desktop, theme sáng và tối: chữ đọc rõ, link của thanh
+     trên cùng gạch chân khi rê chuột.
+  7. Console trình duyệt không có lỗi CSP khi trả tiền (Stripe 4242, PayPal sandbox) và khi chat.
+- G57 (F3-11) chờ sau bảo vệ, xem `docs/open-items.md`.
+- Đề xuất để sau bảo vệ: F3-12, tách khối `admin` (226 KB nguồn, 53%) và `mobile` khỏi `messages`, vì web tải cả
+  hai trong một chunk 564 KB (146 KB gzip) ở mọi trang; cỡ L, ước chừng bớt 60 tới 75 KB gzip mỗi lượt tải đầu,
+  chưa đo bằng build tách thật. F3-13, vỏ web (header, footer, menu điểm đến, menu tài khoản) dùng `<a href>` (15
+  link) nên mỗi cú bấm là một lượt tải lại toàn trang; đổi sang `next/link` cỡ S tới M, cần một lượt thử tay vì đổi
+  cách điều hướng toàn site.
+- Ghi lại, để nguyên: 22 component của `@tourism/ui` không app nào import (F3-15); `localStorage.setItem` của nút
+  đổi theme không bọc try/catch (F3-16); nhãn đọc của `Rating` là "4.4 / 5" trong khi comment nói "out of 5"
+  (F3-17); `DragOverlay` của Sortable còn `z-50`, đổi sang `--z-popover` nếu có ngày dùng trong Dialog (F3-18);
+  `REGIONS` của gói tokens trùng với contract, không ai đọc (F3-19); comment "Hiện 0 consumer" của dải màu biểu đồ
+  đã cũ (F3-20); prop `throttleTime` của Scrollspy khai mà không dùng (F3-21); bản đồ `/contact` không gắn listener
+  `error` cho tile (F3-22, L6).
+- Dọn nhánh `fix/review-f3-web-shell-ui-qgyr3f` trên origin nếu GitHub không tự xoá.
+
 ## 2026-10-26 — Merge review F1 hạ tầng API, CI và cấu hình gốc: đường admin viết mã hoá không còn lọt CORS và chặn cross-site, trần chat một giờ không bị quét sớm, Sentry không nhận tham số câu truy vấn của Prisma (`7a71882`)
 
 Luồng F1 của đợt review code theo luồng (kế hoạch 20/10 trong thư mục chung của project,
