@@ -1,7 +1,8 @@
-# Read-then-write dưới Read Committed — cái bẫy EvalPlanQual
+# Đọc rồi ghi dưới Read Committed: cái bẫy EvalPlanQual
 
-> Đã cắn dự án này **hai lần**. Đọc trước khi viết bất kỳ đoạn nào
-> "đọc trạng thái → tính → ghi lại" trên dữ liệu có nhiều người ghi.
+Lỗi này đã xảy ra hai lần trong dự án. Đọc trang này trước khi viết bất kỳ đoạn
+code nào theo kiểu "đọc trạng thái, tính toán, rồi ghi lại" trên dữ liệu mà nhiều
+người có thể ghi cùng lúc.
 
 ## Bẫy
 
@@ -18,7 +19,7 @@ await tx.tour.update({ where: { id: tourId }, data: { ratingCount: agg._count } 
 
 A và B cùng tính ra `5`, cả hai ghi `5`, trong khi đúng phải là `6`. **Lost update.**
 
-## Cái bẫy TRONG cái bẫy — EvalPlanQual
+## Cái bẫy bên trong cái bẫy: EvalPlanQual
 
 Phản xạ tự nhiên là gộp thành một statement để "atomic":
 
@@ -56,12 +57,13 @@ là "đừng để khoảng hở giữa đọc và ghi", không phải "nhồi m
 
 | Chỗ | Lần dính | Cách xử lý |
 | --- | --- | --- |
-| Claim seat khi webhook thanh toán (P2-W2) | Lần 1 | Bookings-first conditional claim + CHECK constraint abort (23514) |
-| Recompute `Tour.ratingAvg/ratingCount` khi duyệt review (P3a-A) | Lần 2 | `SELECT … FOR UPDATE` rồi `UPDATE … FROM (SELECT …)` |
-| Đổi trạng thái câu hỏi khách + ghi lịch sử (W4) | — | Cùng khuôn: `SELECT … FOR UPDATE` đọc `status` rồi mới ghi; dùng lại thay vì nghĩ lại |
+| Giành ghế khi webhook thanh toán về (gói việc W2 của spec P2) | Lần 1 | Bookings-first conditional claim + CHECK constraint abort (23514) |
+| Tính lại `Tour.ratingAvg/ratingCount` khi duyệt đánh giá (đợt P3a) | Lần 2 | `SELECT … FOR UPDATE` rồi `UPDATE … FROM (SELECT …)` |
+| Đổi trạng thái câu hỏi khách và ghi lịch sử (`enquiries/admin-enquiries.service.ts`) | — | Cùng khuôn: `SELECT … FOR UPDATE` đọc `status` rồi mới ghi; dùng lại thay vì nghĩ lại |
 
-Từ P4e khuôn này thành nếp chung của admin. Đo 14/10, ngoài ba chỗ trên còn
-dùng ở (`apps/api/src/modules/`):
+Từ đợt quản trị catalog (P4e), khuôn này thành nếp chung của trang quản trị. Kiểm
+lại ngày 14/10/2026, ngoài ba chỗ trên còn dùng ở các file sau (trong
+`apps/api/src/modules/`):
 
 - `SELECT … FOR UPDATE` trên hàng đích: sửa chuyến và huỷ chuyến
   (`catalog/admin-departures.service.ts`, `catalog/departure-cancel.service.ts`),
@@ -70,7 +72,7 @@ dùng ở (`apps/api/src/modules/`):
   (`reviews/reviews.service.ts`), đổi quyền và khoá tài khoản
   (`users/admin-users.service.ts`).
 - `SELECT … FOR SHARE` hàng tour khi tạo hay sửa chuyến, để không chen được
-  lúc tour đang hạ số khách tối đa (`catalog/admin-departures.service.ts`, G8).
+  lúc tour đang hạ số khách tối đa (`catalog/admin-departures.service.ts`).
 - `pg_advisory_xact_lock`: một khoá theo booking cho mọi luồng hoàn tiền
   (`bookings/refund-lock.ts`) và một khoá chung cho thứ tự danh mục
   (`catalog/admin-categories.service.ts`).

@@ -1,14 +1,16 @@
-# Vòng lặp dev app mobile — chạy thử, nghiệm thu, và những chỗ cố ý lệch
+# Chạy thử và kiểm tra app mobile
 
-Áp dụng cho `apps/mobile` (`@tourism/mobile`) + `libs/mobile/ui`
-(`@tourism/mobile-ui`). Quyết định đằng sau ở [ADR-0040](../adr/0040-mobile-app-expo.md);
-văn bản này chỉ nói **làm thế nào** và **vì sao chỗ này không giống chỗ kia**.
+Trang này hướng dẫn chạy app điện thoại trên máy của bạn, cách kiểm tra trước khi
+gộp code, và giải thích những chỗ cấu hình cố ý khác mặc định. Áp dụng cho
+`apps/mobile` (`@tourism/mobile`) và `libs/mobile/ui` (`@tourism/mobile-ui`). Lý
+do của các quyết định nằm ở [ADR-0040](../adr/0040-mobile-app-expo.md).
 
-## 0. Ai bấm nút
+## 0. Kiểm tra tự động và kiểm tra bằng tay
 
-**Agent không tự bật/tắt dev server** — user giữ. Agent nghiệm thu bằng
-`typecheck` + `test` + `bundle`, không bằng `expo start`. Bước cuối cùng —
-cầm điện thoại quét QR — là bước duy nhất không ai làm thay được.
+Kiểm tra tự động chạy bằng `typecheck`, `test` và `bundle` (§3), không cần mở dev
+server. Dev server (`expo start`) do người phát triển tự bật khi muốn thử trên
+điện thoại; trợ lý AI làm việc trong repo không tự bật hay tắt nó. Bước cuối là
+cầm điện thoại quét mã QR để xem app chạy thật, và bước này phải có người làm.
 
 ## 1. Trước lần chạy đầu tiên
 
@@ -49,10 +51,10 @@ là client công khai, cùng hạng browser: không secret nào ở đây, kể 
 pnpm --filter @tourism/mobile dev
 ```
 
-Đó là `expo start --go`. Máy dev chạy **Windows native** (từ 14/09/2026) nên Metro
-nghe thẳng trên Windows và điện thoại trong cùng mạng Wi-Fi tới được — không
-cần tunnel, không cần cài gì thêm. Tường lửa Windows phải cho Node nhận kết
-nối vào; lần đầu chạy nó sẽ hỏi, chọn Allow cho mạng Private.
+Đó là `expo start --go`. Khi máy dev chạy thẳng Windows, macOS hoặc Linux (không
+qua WSL), Metro nghe trên máy và điện thoại trong cùng mạng Wi-Fi tới được, không
+cần tunnel hay cài thêm gì. Trên Windows, tường lửa phải cho Node nhận kết nối
+vào; lần đầu chạy nó sẽ hỏi, chọn Allow cho mạng Private.
 
 Trên điện thoại: cài **Expo Go** rồi quét QR. Không cần Mac, Android Studio hay
 tài khoản EAS — đó chính là thứ đổi lấy việc **Stripe PaymentSheet không dùng
@@ -116,9 +118,9 @@ cd apps/mobile && pnpm exec expo-doctor
 Dòng thứ hai **không nằm trong `pnpm gate`**. Task turbo tên `bundle` chứ
 không phải `build` là cố ý (ADR-0040 §5): `gate` là vòng lặp TDD, còn
 `expo export` tốn ~1–2 phút và chạy lại mỗi lần bất kỳ package chung nào đổi.
-Hệ quả phải nhớ: **"gate xanh" một mình không còn bảo chứng mobile bundle
-được** — lưới là CI (step *"App mobile bundle được"*), nên ai chạm
-`apps/mobile` phải liếc đèn CI (CLAUDE.md #14) hoặc gọi tay dòng đó.
+Hệ quả cần nhớ: `pnpm gate` xanh chưa chứng minh app mobile bundle được. Lưới
+bắt lỗi này là bước *"App mobile bundle được"* trong CI, nên ai sửa `apps/mobile`
+cần xem kết quả CI (luật 14 trong `CLAUDE.md`) hoặc tự chạy dòng thứ hai.
 
 ## 4. Hai phiên bản cố ý lệch ma trận Expo
 
@@ -143,9 +145,9 @@ mỗi lần loại một gói khỏi tầm mắt của nó là bớt đi một l
   được pnpm isolated. 90 dòng `metro.config.js` của Nexora vá Nx + Windows —
   v2 không có cả hai (ADR-0040 §6). Đã đo: `expo export` bundle được cả iOS
   lẫn Android mà không cần file nào.
-- **Không có Maestro.** E2E chưa dựng, kể cả sau khi đủ năm cụm màn P5b (12/10).
-  Icon tab thì đã có (`app/(tabs)/_layout.tsx`, đo 14/10). `eas.json` thì có từ 13/10, chỉ để build bản có đăng nhập Google (§7);
-  vòng dev hằng ngày vẫn là Expo Go.
+- **Không có Maestro.** App chưa có test đầu cuối (E2E). `eas.json` có từ
+  13/10/2026, chỉ để build bản có đăng nhập Google (§7); vòng dev hằng ngày vẫn
+  là Expo Go.
 - **Jest chứ không Vitest, và CHỈ ở hai package này.** Ngoại lệ đã được
   ADR-0001 + CLAUDE.md cấp từ P0; ranh giới ở ADR-0040 §4 là thứ giữ cho nó
   không lan. Không có config Jest nào ở root.

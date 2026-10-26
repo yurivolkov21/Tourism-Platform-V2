@@ -1,8 +1,9 @@
 # Bề mặt Supabase: Data API và Auth (đã đóng 09/09/2026)
 
-> Đo và chốt **09/09/2026**, sau khi Supabase gửi mail cảnh báo `rls_disabled_in_public`.
-> Đọc file này TRƯỚC KHI bật lại bất cứ thứ gì trong Supabase dashboard, và trước khi
-> tin một dòng Security Advisor nào — quá nửa số cảnh báo ở đó là cố ý.
+Trang này ghi những gì dự án đã tắt trên Supabase và lý do. Trạng thái được đo và chốt
+ngày 09/09/2026, sau khi Supabase gửi mail cảnh báo `rls_disabled_in_public`. Đọc trang
+này trước khi bật lại bất cứ thứ gì trong dashboard Supabase, và trước khi tin một dòng
+cảnh báo nào của Security Advisor: quá nửa số cảnh báo ở đó là cố ý.
 
 ## Trạng thái hiện tại
 
@@ -46,7 +47,7 @@ migration `20260906150000_w2_rls_backstop_new_tables` vá ngày 07/09.
 Lớp 1 và 2 tháo được bằng một cú click; lớp 3 và 4 thì không. Đừng nhầm bốn lớp này là
 bốn lần an toàn — chúng là bốn thứ khác nhau phải cùng đúng.
 
-## Bề mặt CÒN MỞ — biết để canh
+## Những phần vẫn còn mở
 
 Tắt Data API **không** đóng hết Supabase:
 
@@ -78,8 +79,8 @@ notify pgrst, 'reload config';
 
 rồi mới bật Data API + đặt Exposed schemas trong Dashboard, và **chỉ sau đó** mới được
 `drop schema pgrst_no_exposed_schemas`. Drop một schema còn nằm trong `db_schemas` thì
-PostgREST không build được schema cache và trả `PGRST002` — đúng kiểu "lệch pha không ai
-canh" mà CLAUDE.md §15 nói tới.
+PostgREST không build được schema cache và trả `PGRST002`, đúng kiểu hạ tầng lệch pha với
+code mà luật 15 trong [CLAUDE.md](../../CLAUDE.md) cảnh báo.
 
 ## Cách kiểm chứng lại
 
@@ -87,8 +88,9 @@ Project có **HAI khóa publishable đang bật**: khóa `anon` legacy (JWT) và
 `sb_publishable_…`. Kiểm mà chỉ thử một khóa là kết luận hẹp hơn cái mình tưởng.
 
 ```bash
-# thay <KEY> lần lượt bằng CẢ HAI khóa (Settings → API Keys)
-curl -s -w '\nHTTP %{http_code}\n' 'https://nodcpmpqxgnekhjftrcf.supabase.co/rest/v1/tours?select=id&limit=1' -H 'apikey: <KEY>'
+# <project-ref>: mã dự án Supabase (Settings → General)
+# <KEY>: thử lần lượt cả hai khóa (Settings → API Keys)
+curl -s -w '\nHTTP %{http_code}\n' 'https://<project-ref>.supabase.co/rest/v1/tours?select=id&limit=1' -H 'apikey: <KEY>'
 ```
 
 Kỳ vọng: `404 PGRST205` nhắc tới `pgrst_no_exposed_schemas`. Thêm `-H 'Accept-Profile: public'`
@@ -106,7 +108,7 @@ Ba cái bẫy khi đọc kết quả:
 - **`/signup` trả 404; đường đăng ký thật của web là `/register`.** Nhắm nhầm là tự tạo
   báo động giả.
 
-## Bẫy đo lường đã cắn — đừng cắn lại
+## Bẫy khi đo, đã gặp một lần
 
 - **`curl` KHÔNG kiểm được Realtime.** Nó bắt tay upgrade qua HTTP/2 nên Cloudflare ném
   `500 error code: 1101` cả ba lần thử — nhìn vào là tưởng Realtime đã đóng. Mở WebSocket
@@ -116,8 +118,8 @@ Ba cái bẫy khi đọc kết quả:
   `supabase_realtime_messages_publication`, tạo một **logical replication slot**. Slot tự
   biến mất khi tenant ngủ lại (đo lại sau ~15 phút: `pg_replication_slots` rỗng), publication
   thì ở lại. Kèm theo đó, event trigger `pgrst_ddl_watch` bắn `NOTIFY pgrst` — nhìn rời rạc
-  rất dễ tưởng có ai đó đang cào lại cấu hình. **Không dùng phép đo này trong session thi
-  công** (CLAUDE.md §15).
+  rất dễ tưởng có ai đó đang cào lại cấu hình. **Không dùng phép đo này khi đang làm trên
+  một nhánh chưa được duyệt** (luật 15 trong `CLAUDE.md`).
 - **Dấu vết audit của Supabase Auth không nằm trong Postgres.** Bảng
   `auth.audit_log_entries` trống trơn (0 dòng); bản ghi `user_deleted` nằm ở luồng log nền
   tảng `auth_audit_logs`, lấy bằng `query_logs`. Tìm sai chỗ rồi kết luận "không có dấu vết"
@@ -138,10 +140,11 @@ Advisor sau khi đóng: **0 error, 7 warning, 36 + 31 suggestion**. Tất cả �
 | `extension_in_public` (`citext`) | 4 cột email đang dùng (`users`, `enquiries`, `subscribers`, `email_suppressions`). Dời schema đụng `datasource extensions = [citext]` của Prisma; trước freeze 31/10 thì cost > benefit |
 | `auth_leaked_password_protection` | **Đã tự rút** sau khi tắt provider Email (8 warning → 7). Nếu bật lại Email thì lint quay lại — và tính năng đó là **Pro Plan trở lên**, project đang Free nên không bật được |
 | 20× `unused_index` (performance) | Site gần như không có traffic; thống kê nói "chưa ai dùng" chứ không phải "vô dụng". Xoá index dựa trên prod vắng khách là bẫy kinh điển |
-| 11× `unindexed_foreign_keys` | 3 của `pgboss`, 7 là cột actor admin. Chỉ `cancellation_requests.user_id` đáng cân nhắc khi làm P4e/P4f |
+| 11× `unindexed_foreign_keys` | 3 của `pgboss`, 7 là cột ghi quản trị viên thao tác. Chỉ `cancellation_requests.user_id` từng được ghi là đáng cân nhắc khi làm trang quản trị; tới nay vẫn chưa thêm index |
 
 ## Mốc 30/10/2026
 
 Changelog Supabase 28/04/2026: bảng mới trong `public` sẽ **thôi được tự động expose** ra
-Data API, hiệu lực **30/10/2026** — rơi một ngày trước freeze 31/10 của dự án. Với ta là no-op vì Data
-API đã tắt. Ghi lại để nếu dashboard hiện banner trong tuần bảo vệ thì biết đó là gì.
+Data API, hiệu lực **30/10/2026**, một ngày trước mốc đóng băng 31/10 của dự án. Với dự án này
+thay đổi đó không có tác dụng gì vì Data API đã tắt. Ghi lại để nếu dashboard hiện thông báo
+về nó thì biết đó là gì.

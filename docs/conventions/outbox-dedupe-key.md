@@ -1,14 +1,19 @@
-# Quy ước Outbox `dedupeKey`
+# Khoá chống gửi trùng email (`dedupeKey`)
 
-Nguồn gốc: bug Nexora 2026-07-16 — dedupeKey khóa theo email làm notice
-EMAIL_CHANGED bị nuốt vĩnh viễn khi đổi A→B→A→B. Nguyên nhân: quy ước chỉ tồn
-tại ngầm trong đầu người viết. Văn bản hóa tại đây (audit M5).
+Mọi email của hệ thống đi qua hàng đợi outbox (xem [thuật ngữ](../glossary.md)),
+và mỗi thư mang một `dedupeKey` để không bị gửi hai lần. Trang này quy định cách
+đặt khoá đó.
+
+Nguồn gốc: một lỗi ở dự án tiền nhiệm Nexora ngày 16/07/2026. Khoá đặt theo địa chỉ
+email làm thông báo `EMAIL_CHANGED` bị nuốt vĩnh viễn khi người dùng đổi email qua
+lại A→B→A→B. Nguyên nhân là quy ước chỉ nằm ngầm trong đầu người viết, nên nay được
+ghi thành văn ở đây.
 
 ## Quy tắc
 
-Row `SENT` được giữ lại (retention 30 ngày) và `dedupeKey` là `@unique`, nên
-một key đã dùng **chặn mọi enqueue trùng key cho đến khi row bị purge**. Chọn
-dạng key theo đúng ngữ nghĩa lặp của event:
+Dòng `SENT` được giữ lại 30 ngày và `dedupeKey` là `@unique`, nên một khoá đã
+dùng sẽ chặn mọi lần xếp hàng trùng khoá cho tới khi dòng đó bị dọn. Chọn dạng
+khoá theo đúng cách sự kiện có thể lặp lại:
 
 | Dạng key | Nghĩa | Dùng khi |
 | --- | --- | --- |
@@ -47,11 +52,11 @@ Hai lưu ý đọc được từ bảng:
 
 `EmailType.EMAIL_CHANGED` đã khai nhưng **chưa có luồng nào enqueue**. Khi nào
 làm, nó là ví dụ mẫu của dạng "lặp hợp lệ": `email-changed:<userId>:<uuid>` —
-đúng cái mà bug Nexora 16/07 đã vấp khi khóa theo địa chỉ.
+đúng chỗ lỗi ngày 16/07 của Nexora đã vấp khi khoá theo địa chỉ.
 
 ## Cấm
 
-- ❌ Key theo email cho event có thể lặp (chính là bug 16/07)
+- ❌ Key theo email cho event có thể lặp (chính là lỗi ngày 16/07)
 - ❌ Key theo timestamp tự sinh lúc enqueue — mất tính idempotent khi retry
   transaction: cùng một event enqueue hai lần ra hai key khác nhau
 - ❌ Tái dùng một key cho hai loại event khác nhau

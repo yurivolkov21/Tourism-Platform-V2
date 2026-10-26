@@ -1,72 +1,78 @@
-# Quy ước trạng thái terminal của Booking
+# Trạng thái cuối của một đơn
 
-Chốt ở P2-W4 (design của lead, spec P2 §2 D1 + §4). Một chỗ duy nhất trả lời
-câu hỏi "booking đã kết thúc thì mang status gì?" — code lệch doc này thì sửa
-doc, nhưng sửa SAU khi đã đọc lý do bên dưới.
+Trang này trả lời câu hỏi: khi một đơn (booking) kết thúc thì nó mang trạng thái
+gì, và vì sao. Luật được chốt lúc xây luồng thanh toán (spec P2 §2 và §4). Nếu code
+lệch tài liệu thì sửa tài liệu, nhưng hãy đọc phần lý do bên dưới trước.
+
+Tóm tắt cho người mới: tiền và ghế được ghi ở hai nơi khác nhau. Muốn biết khách đã
+được hoàn bao nhiêu thì đọc sổ hoàn tiền; muốn biết khách còn đi tour không thì đọc
+trạng thái đơn. Hai câu hỏi này không suy ra được từ nhau.
 
 ## Nguyên tắc: hai câu chuyện, hai nơi ghi
 
-- **Refund ledger (`refunds`)** ghi **câu chuyện tiền**: mỗi row là một lần
-  tiền thật đi ra, append-only, `SUM(amount)` so với `total_amount` là sự thật.
-- **`Booking.status`** ghi **câu chuyện ghế/chuyến đi**: khách còn đi tour hay
-  không. Nó là projection đọc-nhanh, KHÔNG phải nguồn sự thật về tiền.
+- **Sổ hoàn tiền (`refunds`)** ghi câu chuyện tiền: mỗi dòng là một lần tiền thật
+  đi ra, chỉ ghi thêm, và `SUM(amount)` so với `total_amount` là sự thật về tiền.
+- **`Booking.status`** ghi câu chuyện ghế và chuyến đi: khách còn đi tour hay
+  không. Đây là bản tóm tắt để đọc nhanh, không phải nguồn sự thật về tiền.
 
-Cancellation ≠ refund-only: một booking bị hủy (hết đi tour, ghế trả lại) khác
-với một booking được trả tiền nhưng vẫn đi tour. Vì vậy lõi huỷ (`cancelInLock`
-trong `cancellations.service.ts`) đặt `CANCELLED` **tường minh**, không đi qua
+Huỷ đơn khác với chỉ hoàn tiền: một đơn bị huỷ (không đi tour nữa, ghế trả lại)
+khác với một đơn được trả tiền mà khách vẫn đi tour. Vì vậy lõi huỷ (`cancelInLock`
+trong `cancellations.service.ts`) đặt `CANCELLED` một cách tường minh, không đi qua
 `deriveStatusAfterRefund`.
 
-## Sáu ngữ nghĩa terminal
+## Sáu cách một đơn kết thúc
 
-| Flow | Status cuối | Ledger | Ghế | Vì sao |
+| Tình huống | Trạng thái cuối | Sổ hoàn tiền | Ghế | Vì sao |
 | --- | --- | --- | --- | --- |
-| **Công ty huỷ chuyến** (F13, ADR-0041 §6: admin huỷ cả chuyến; job `departure-refund` huỷ từng booking `PAID`/`PARTIALLY_REFUNDED`, lưới quét `booking-sweep` vớt job sót) | `CANCELLED` + `cancelledAt` | 1 row — **trọn phần còn lại**, KHÔNG xét hạn chót, kể cả khi job chạy sau ngày khởi hành | **Trả lại** | Khách không đổi ý gì cả, nên luật hạn chót không áp. `CancellationRequest` `REFUNDED`, `decided_by` = admin đã huỷ chuyến, lý do là câu admin gõ lúc huỷ (cũng nằm ở `tour_departures.cancel_reason`); email mang `initiator: 'operator'` và `reason` — khách đọc nguyên văn lý do ở khối WHY của email và trên trang đơn của web, app (ADR-0041 AMEND 2). Booking `PENDING` của chuyến thì huỷ NGAY trong giao dịch huỷ chuyến, không qua job |
-| **Khách tự huỷ** (ADR-0041: khách bấm Cancel trên booking `PAID` hoặc `PARTIALLY_REFUNDED`, ngày hôm nay theo giờ Việt Nam còn trước ngày khởi hành, và chuyến **chưa bị công ty huỷ** — AMEND 1) | `CANCELLED` + `cancelledAt` | 0..1 row — **1 row bằng trọn phần còn lại** khi huỷ TRONG hạn chót của chuyến; **0 row** ở hai ca: huỷ SAU hạn chót (hoàn `0.00`, không gọi cổng thanh toán), hoặc sổ đã settle từ trước. Sổ append-only chỉ kể tiền thật sự đi | **Trả lại** (`seats_booked -= party`) — BẤT KỂ hoàn bao nhiêu | Khách chủ động thôi đi tour — chuyến đi kết thúc. Tiền đã trả nằm trọn trong ledger; status kể chuyện ghế/chuyến đi, không kể chuyện tiền. `CancellationRequest` sinh ra ở trạng thái `REFUNDED` NGAY (không qua `REQUESTED`), `decided_by` = chính chủ booking — contract phơi ra thành `decidedByCustomer: true` để admin đọc được "ai huỷ" mà không cần join |
-| **Claim trượt** (W2: thanh toán xong nhưng booking PENDING không claim được — thua cuộc đua ghế `overbooked`, chuyến đã đóng `departure-closed`, hay chuyến dời ngày `departure-moved` theo ADR-0009 AMEND 4; ba nguyên nhân ở `DEDUPE_PREFIX` của `payments.service.ts`, đo 14/10) | `CANCELLED` + `cancelledAt` | 1 row full (adminId NULL = tự động) | Không đụng (chưa từng giữ) | Booking chưa bao giờ rời PENDING thành doanh thu, chưa bao giờ giữ ghế — hủy + hoàn là trạng thái đúng. |
-| **Orphaned capture** (W2/W3: capture đến SAU khi booking đã CANCELLED) | `REFUNDED` (derive từ ledger) | 1 row full (adminId NULL) | Không đụng (CANCELLED chưa giữ ghế) | Tiền thật đã vào trên một booking đã chết → câu chuyện còn lại thuần về tiền; ledger derive ra terminal `REFUNDED` trung thực. |
-| **Admin goodwill refund full** (W3: `admin.bookings.refund` không qua cancellation) | `REFUNDED` (derive từ ledger) | 1..n rows cộng dồn đến total | **KHÔNG trả ghế** | Khách VẪN đi tour — refund thiện chí không hủy chuyến. Trả ghế là đặc quyền của flow cancellation (W4). |
-| **PENDING hết hạn / bỏ hoang / khách tự hủy** (ADR-0006: PAY-1 webhook `payment.expired` · WRK-1 cron TTL 65′ · BK-2 `bookings.cancelPending`) | `CANCELLED` + `cancelledAt` | KHÔNG có row (chưa charge) | Không đụng (PENDING chưa từng giữ ghế) | Booking chưa trả tiền, chưa rời PENDING thành doanh thu. Cả ba đường gate `status='PENDING'` nên idempotent với nhau. Không refund. |
+| **Công ty huỷ chuyến** (tính năng F13, ADR-0041 §6: quản trị viên huỷ cả chuyến; job `departure-refund` huỷ từng đơn `PAID` hoặc `PARTIALLY_REFUNDED`, việc quét `booking-sweep` vớt job bị sót) | `CANCELLED` kèm `cancelledAt` | 1 dòng bằng trọn phần còn lại, không xét hạn chót, kể cả khi job chạy sau ngày khởi hành | Trả lại | Khách không đổi ý gì cả, nên luật hạn chót không áp dụng. `CancellationRequest` ở trạng thái `REFUNDED`, `decided_by` là quản trị viên đã huỷ chuyến, lý do là câu họ gõ lúc huỷ (cũng nằm ở `tour_departures.cancel_reason`). Email mang `initiator: 'operator'` và `reason`; khách đọc nguyên văn lý do trong email, trên trang đơn của web và trong app (ADR-0041 AMEND 2). Đơn `PENDING` của chuyến được huỷ ngay trong giao dịch huỷ chuyến, không qua job |
+| **Khách tự huỷ** (ADR-0041: khách bấm Cancel trên đơn `PAID` hoặc `PARTIALLY_REFUNDED`, hôm nay theo giờ Việt Nam còn trước ngày khởi hành, và chuyến chưa bị công ty huỷ, theo AMEND 1) | `CANCELLED` kèm `cancelledAt` | 0 hoặc 1 dòng. Huỷ trong hạn chót thì 1 dòng bằng trọn phần còn lại. Không có dòng nào ở hai trường hợp: huỷ sau hạn chót (hoàn `0.00`, không gọi cổng thanh toán), hoặc sổ đã đủ từ trước. Sổ chỉ ghi tiền thật sự đi ra | Trả lại (`seats_booked -= party`), bất kể hoàn bao nhiêu | Khách chủ động thôi đi tour nên chuyến đi của khách kết thúc. Tiền đã trả nằm trọn trong sổ; trạng thái kể chuyện ghế, không kể chuyện tiền. `CancellationRequest` sinh ra ở trạng thái `REFUNDED` ngay (không qua `REQUESTED`), `decided_by` là chính chủ đơn; contract đưa ra thành `decidedByCustomer: true` để trang quản trị biết ai huỷ mà không cần join |
+| **Giành ghế không thành** (gói việc W2 của spec P2: khách đã trả tiền nhưng đơn `PENDING` không chuyển được sang `PAID`, vì thua cuộc tranh ghế `overbooked`, chuyến đã đóng `departure-closed`, hoặc chuyến dời ngày `departure-moved` theo ADR-0009 AMEND 4; ba nguyên nhân khai ở `DEDUPE_PREFIX` của `payments.service.ts`) | `CANCELLED` kèm `cancelledAt` | 1 dòng hoàn toàn bộ (`adminId` rỗng nghĩa là hệ thống tự làm) | Không đụng tới (đơn chưa từng giữ ghế) | Đơn chưa bao giờ rời `PENDING` để thành doanh thu và chưa bao giờ giữ ghế, nên huỷ kèm hoàn tiền là trạng thái đúng |
+| **Tiền về muộn** (gói việc W2 và W3 của spec P2: cổng thanh toán báo thu tiền sau khi đơn đã `CANCELLED`) | `REFUNDED` (suy từ sổ) | 1 dòng hoàn toàn bộ (`adminId` rỗng) | Không đụng tới (đơn `CANCELLED` không giữ ghế) | Tiền thật đã vào trên một đơn đã chết, nên câu chuyện còn lại chỉ là chuyện tiền; sổ suy ra trạng thái cuối `REFUNDED` một cách trung thực |
+| **Quản trị viên hoàn thiện chí toàn bộ** (gói việc W3 của spec P2: `admin.bookings.refund`, không qua luồng huỷ) | `REFUNDED` (suy từ sổ) | 1 tới n dòng cộng dồn tới tổng tiền | Không trả ghế | Khách vẫn đi tour, vì hoàn tiền thiện chí không huỷ chuyến đi. Chỉ luồng huỷ (gói việc W4 của spec P2) mới được trả ghế |
+| **Đơn chưa trả tiền hết hạn, bị bỏ, hoặc khách tự bỏ** (ADR-0006: webhook `payment.expired` của cổng thanh toán, việc định kỳ quét đơn quá 65 phút, và `bookings.cancelPending`) | `CANCELLED` kèm `cancelledAt` | Không có dòng nào (chưa thu tiền) | Không đụng tới (đơn `PENDING` chưa từng giữ ghế) | Đơn chưa trả tiền nên chưa thành doanh thu. Cả ba đường đều chỉ chạy khi `status='PENDING'` nên chạy lặp hay chạy chen nhau vẫn cho cùng kết quả. Không hoàn tiền |
 
-(`PARTIALLY_REFUNDED` không terminal: ledger chưa đủ total, khách vẫn đi tour.)
+`PARTIALLY_REFUNDED` không phải trạng thái cuối: sổ chưa đủ tổng tiền và khách vẫn
+đi tour.
 
-**Ca `CANCELLED` mà ledger CÒN DƯ.** Từ ADR-0041 nó đến từ MỘT nguồn duy nhất
-thay vì bậc chính sách: khách huỷ SAU hạn chót. Chuyến đã huỷ, ghế đã trả,
-nhưng sổ không cộng thêm đồng nào — `total_amount` nằm nguyên bên công ty. Phần
-dư đó **vẫn hoàn tiếp được** qua `admin.bookings.refund` (gate mở cho
-`CANCELLED` từ ADR-0029 §3, trước đó là ngõ cụt 422), và từ ADR-0041 §5 đây là
-**đường ngoại lệ chính thức**: mọi ca "luật nói không hoàn nhưng ta vẫn muốn
-hoàn" đi qua hoàn thiện chí, có số tiền và lý do ghi vào sổ, không có bậc nào
-để tranh cãi.
+### Đơn `CANCELLED` mà sổ còn dư
 
-⚠️ Khi hoàn nốt trên một booking `CANCELLED`, status **GIỮ NGUYÊN `CANCELLED`**,
-KHÔNG chạy `deriveStatusAfterRefund`. Hàm ấy chỉ biết kể chuyện tiền; áp nó lên
-một booking đã huỷ là ghi đè travel story bằng money story — khách hết huỷ,
-`cancelled_at` mồ côi, và ghế đã nhả thì không ai đọc ra được nữa.
+Từ ADR-0041, trường hợp này chỉ còn một nguồn: khách huỷ sau hạn chót. Chuyến đi
+đã huỷ, ghế đã trả, nhưng sổ không ghi thêm đồng nào, nên `total_amount` vẫn nằm
+bên công ty. Phần dư đó vẫn hoàn tiếp được qua `admin.bookings.refund` (cửa này mở
+cho đơn `CANCELLED` từ ADR-0029 §3; trước đó trả lỗi 422). Từ ADR-0041 §5, đây là
+đường ngoại lệ chính thức: mọi trường hợp "luật nói không hoàn nhưng công ty vẫn
+muốn hoàn" đi qua hoàn tiền thiện chí, có số tiền và lý do ghi vào sổ.
+
+Khi hoàn nốt trên một đơn `CANCELLED`, trạng thái giữ nguyên `CANCELLED` và không
+chạy `deriveStatusAfterRefund`. Hàm ấy chỉ biết chuyện tiền; áp nó lên một đơn đã
+huỷ là ghi đè chuyện chuyến đi bằng chuyện tiền: đơn mất dấu đã huỷ, `cancelled_at`
+thành dữ liệu mồ côi, và không ai đọc ra được là ghế đã được nhả.
 
 ## Hệ quả cho code
 
-- `deriveStatusAfterRefund` chỉ dành cho các flow **refund-only** (admin refund,
-  orphaned capture). Lõi huỷ và overbook set `CANCELLED` cứng.
-- Chỉ lõi huỷ được release ghế, và chỉ bằng single-statement
+- `deriveStatusAfterRefund` chỉ dành cho các luồng chỉ hoàn tiền (quản trị viên
+  hoàn tiền, tiền về muộn). Lõi huỷ và trường hợp giành ghế không thành đặt cứng
+  `CANCELLED`.
+- Chỉ lõi huỷ được trả ghế, và chỉ bằng một câu lệnh duy nhất
   `UPDATE tour_departures SET seats_booked = seats_booked - party WHERE id = …
-  AND seats_booked >= party` (CHECK `departures_seats_nonneg` là backstop).
-- Một booking `CANCELLED` có thể có ledger đầy (đã hoàn đủ) — đọc "đã hoàn bao
-  nhiêu" LUÔN từ ledger, đừng suy từ status.
-- **Không còn trạng thái chờ.** App không sinh `CancellationRequest` nào ở
-  `REQUESTED` hay `DENIED` nữa; mỗi lần huỷ là đúng một dòng `REFUNDED`. Dòng cũ
-  hai loại kia còn trên prod tới lượt seed lại (spec 15/09 §10 bước 6) và vẫn
-  hiện dạng chỉ đọc trong lịch sử booking.
-- **Ngày so bằng giờ Việt Nam.** "Chuyến đã đi chưa" và "còn trong hạn chót
-  không" đều đo bằng `vietnamToday(now)` ở Node, `vietnamDateSql` ở SQL
+  AND seats_booked >= party` (ràng buộc CHECK `departures_seats_nonneg` là lưới cuối).
+- Một đơn `CANCELLED` có thể có sổ đầy (đã hoàn đủ). Muốn biết đã hoàn bao nhiêu
+  thì luôn đọc từ sổ, đừng suy từ trạng thái.
+- Không còn trạng thái chờ duyệt huỷ. App không sinh `CancellationRequest` nào ở
+  `REQUESTED` hay `DENIED` nữa; mỗi lần huỷ là đúng một dòng `REFUNDED`. Dữ liệu
+  production có thể còn dòng cũ của hai loại kia từ trước 15/09/2026 (tới lượt seed
+  lại theo spec 15/09 §10 bước 6); chúng hiện dạng chỉ đọc trong lịch sử đơn.
+- Ngày được so theo giờ Việt Nam. "Chuyến đã đi chưa" và "còn trong hạn chót
+  không" đều đo bằng `vietnamToday(now)` ở Node và `vietnamDateSql` ở SQL
   (ADR-0009 AMEND 3). Không dùng UTC, không dùng đồng hồ trình duyệt.
-- **Một lõi cho hai người gọi.** `cancelInLock` nhận `initiator: 'customer'`
-  (`cancelByCustomer`) và `'operator'` (`cancelByOperator`, job của F13) — cùng
-  một lõi, không có đường thứ hai; đó là lý do lõi nhận `decidedById` và
-  `refundAmount` làm tham số thay vì tự đi tìm.
-- **Chuyến đã `CANCELLED` thì chỉ còn đường công ty** (ADR-0041 AMEND 1). Từ lúc
-  admin huỷ chuyến tới lúc job chạy, booking `PAID` vẫn nằm đó — nhưng khách
-  không tự huỷ được nữa (422) và `bookings.byCode.cancellation` là `null`. Để
-  khách tự huỷ trong khoảng chờ là để luật hạn chót trả 0, rồi job thấy booking
-  đã `CANCELLED` và coi như xong. Trạng thái chuyến đọc SỐNG (khác ngày, đọc bản
-  sao); lõi khoá hàng chuyến `FOR KEY SHARE` trước khi đọc, để xếp hàng với
-  `FOR UPDATE` của lượt huỷ chuyến.
+- Một lõi cho hai người gọi. `cancelInLock` nhận `initiator: 'customer'`
+  (`cancelByCustomer`) và `'operator'` (`cancelByOperator`, job công ty huỷ chuyến
+  của F13). Cả hai dùng cùng một lõi, không có đường thứ hai; đó là lý do lõi nhận
+  `decidedById` và `refundAmount` làm tham số thay vì tự đi tìm.
+- Chuyến đã `CANCELLED` thì chỉ còn đường công ty huỷ (ADR-0041 AMEND 1). Từ lúc
+  quản trị viên huỷ chuyến tới lúc job chạy, đơn `PAID` vẫn nằm đó, nhưng khách
+  không tự huỷ được nữa (lỗi 422) và `bookings.byCode.cancellation` là `null`. Nếu
+  cho khách tự huỷ trong khoảng chờ này thì luật hạn chót sẽ hoàn 0, rồi job thấy
+  đơn đã `CANCELLED` và coi như xong. Trạng thái chuyến được đọc trực tiếp (khác
+  với ngày, đọc từ bản sao); lõi khoá hàng chuyến bằng `FOR KEY SHARE` trước khi
+  đọc, để xếp hàng sau `FOR UPDATE` của lượt huỷ chuyến.
