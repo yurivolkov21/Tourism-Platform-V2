@@ -15,13 +15,27 @@ describe('Chip', () => {
     expect(style.backgroundColor).toBeUndefined();
   });
 
-  it('variant "selected": nền/viền primary, chữ primary-foreground', async () => {
-    const theme = themeFor('light');
-    await renderWithTheme(<Chip label="Trekking" variant="selected" />);
+  it('chip cao 32, bo 8, viền 1 (Material 3)', async () => {
+    await renderWithTheme(<Chip label="Trekking" />);
     const style = StyleSheet.flatten(screen.getByText('Trekking').parent?.props.style);
-    expect(style.backgroundColor).toBe(theme.colors.primary);
+    expect(style.height).toBe(32);
+    expect(style.borderRadius).toBe(8);
+    expect(style.borderWidth).toBe(1);
+  });
+
+  it('variant "selected": nền secondary, chữ secondary-foreground, kèm dấu tick', async () => {
+    const theme = themeFor('light');
+    await renderWithTheme(<Chip label="Trekking" variant="selected" onPress={() => {}} />);
+    const style = StyleSheet.flatten(screen.getByText('Trekking').parent?.props.style);
+    expect(style.backgroundColor).toBe(theme.colors.secondary);
     const textStyle = StyleSheet.flatten(screen.getByText('Trekking').props.style);
-    expect(textStyle.color).toBe(theme.colors['primary-foreground']);
+    expect(textStyle.color).toBe(theme.colors['secondary-foreground']);
+    expect(screen.getByTestId('chip-check')).toBeTruthy();
+  });
+
+  it('chip chưa chọn không có dấu tick', async () => {
+    await renderWithTheme(<Chip label="Trekking" onPress={() => {}} />);
+    expect(screen.queryByTestId('chip-check')).toBeNull();
   });
 
   it('variant "removable": nền/viền secondary, có nút x gọi onRemove', async () => {

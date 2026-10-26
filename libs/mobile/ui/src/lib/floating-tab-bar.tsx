@@ -1,8 +1,7 @@
-import { LinearGradient } from 'expo-linear-gradient';
-import type { ReactNode } from 'react';
-import { Pressable, View } from 'react-native';
+import { type ReactNode, useEffect, useRef } from 'react';
+import { Animated, Pressable, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { withAlpha } from './theme';
+import { AppText } from './app-text';
 import { useTheme } from './theme-provider';
 
 /**
@@ -36,96 +35,147 @@ export interface FloatingTabBarProps {
   };
 }
 
-/** Cạnh ô nền của tab đang chọn, cũng là vùng chạm của mỗi tab. */
-export const TAB_BAR_TILE = 60;
+/** Chiều cao thanh điều hướng đáy chưa tính lề an toàn (N1, Material 3). */
+export const TAB_BAR_HEIGHT = 80;
+
+/** Bề ngang viên chỉ báo — 64 theo M3, đủ rộng để nhãn đậm không chạm mép. */
+const INDICATOR_WIDTH = 64;
+
+interface TabItemProps {
+  name: string;
+  label: string;
+  focused: boolean;
+  icon: ReactNode;
+  onPress: () => void;
+}
 
 /**
- * Khoảng NÂNG thanh tab khỏi mép dưới an toàn. Đủ để thanh đọc ra là "nổi"
- * trên nội dung chứ không dính đáy màn (dính đáy nhìn rất kì — phản hồi 23/09),
- * nhưng gọn lại (20→12, phản hồi 24/09: thanh chiếm quá nhiều chiều dọc). Màn
- * cộng số này vào `sceneStyle.paddingBottom` để nội dung không chui xuống thanh.
+ * Một tab của thanh. Viên chỉ báo luôn được vẽ (nền `secondary`) và đổi `progress` 0↔1:
+ * mở từ giữa ra hai bên (scaleX) kèm hiện dần; icon nảy nhẹ khi vào tab. Chỉ dùng transform và
+ * opacity nên chạy hết trên native driver, không gây layout lại.
  */
-export const TAB_BAR_LIFT = 12;
+function TabItem({ name, label, focused, icon, onPress }: TabItemProps) {
+  const theme = useTheme();
+  const progress = useRef(new Animated.Value(focused ? 1 : 0)).current;
+  const bounce = useRef(new Animated.Value(1)).current;
+  const color = focused ? theme.colors['secondary-foreground'] : theme.colors['muted-foreground'];
+
+  useEffect(() => {
+    // Lò xo thay cho tween: viên chỉ báo mở ra có đà rồi lắng, bấm đổi tab liên tục vẫn nối mượt.
+    Animated.spring(progress, {
+      toValue: focused ? 1 : 0,
+      stiffness: 300,
+      damping: 26,
+      mass: 1,
+      useNativeDriver: true,
+    }).start();
+    if (focused) {
+      bounce.setValue(0.8);
+      Animated.spring(bounce, {
+        toValue: 1,
+        friction: 4,
+        tension: 180,
+        useNativeDriver: true,
+      }).start();
+    }
+  }, [focused, progress, bounce]);
+
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      accessibilityState={{ selected: focused }}
+      onPress={onPress}
+      style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 4 }}
+    >
+      <View
+        testID={`tab-icon-${name}`}
+        style={{
+          width: INDICATOR_WIDTH,
+          height: 32,
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        <Animated.View
+          testID={`tab-indicator-${name}`}
+          style={{
+            position: 'absolute',
+            width: INDICATOR_WIDTH,
+            height: 32,
+            borderRadius: 16,
+            backgroundColor: theme.colors.secondary,
+            opacity: progress,
+            transform: [
+              {
+                scaleX: progress.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [0.3, 1],
+                  extrapolate: 'clamp',
+                }),
+              },
+            ],
+          }}
+        />
+        <Animated.View style={{ transform: [{ scale: bounce }] }}>{icon}</Animated.View>
+      </View>
+      <AppText variant="caption" style={{ color, fontWeight: '500' }}>
+        {label}
+      </AppText>
+    </Pressable>
+  );
+}
 
 /**
- * Thanh tab KHÔNG khung — icon trần nổi trên nền trang, tab đang chọn nằm
- * trong một ô vuông bo góc màu `primary`. Phía sau có dải mờ chuyển dần về
- * màu nền để nội dung cuộn phía dưới không tranh chấp độ đọc với icon.
+ * Thanh điều hướng đáy kiểu Material 3: tràn ngang, nền `surfaces.container` đục, mỗi tab là
+ * viên chỉ báo 64×32 bo 16 (đang chọn: nền `secondary`, icon đặc) và nhãn 12 luôn hiện.
  *
- * Màn phải tự chừa chỗ cho thanh này (`sceneStyle.paddingBottom` ở `Tabs`).
- * Không có nhãn chữ: tên tab đi qua `accessibilityLabel` cho trình đọc màn hình.
+ * Thanh nằm TRONG luồng bố cục của `Tabs` (không nổi) nên màn không phải chừa đáy. Bấm lại tab
+ * đang mở vẫn bắn `tabPress` để màn cuộn lên đầu.
  */
 export function FloatingTabBar({ state, descriptors, navigation }: FloatingTabBarProps) {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
 
   return (
-    <>
-      <LinearGradient
-        testID="tabbar-fade"
-        pointerEvents="none"
-        colors={[withAlpha(theme.colors.background, 0), theme.colors.background]}
-        locations={[0, 0.6]}
-        style={{
-          position: 'absolute',
-          left: 0,
-          right: 0,
-          bottom: 0,
-          height: insets.bottom + TAB_BAR_TILE + theme.spacing(10),
-        }}
-      />
-      <View
-        style={{
-          position: 'absolute',
-          left: 0,
-          right: 0,
-          bottom: insets.bottom + TAB_BAR_LIFT,
-          flexDirection: 'row',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          paddingHorizontal: theme.spacing(6),
-        }}
-      >
-        {state.routes.map((route, index) => {
-          const focused = state.index === index;
-          const { options } = descriptors[route.key] ?? { options: {} };
-          const color = focused
-            ? theme.colors['primary-foreground']
-            : theme.colors['muted-foreground'];
+    <View
+      style={{
+        flexDirection: 'row',
+        height: TAB_BAR_HEIGHT + insets.bottom,
+        paddingBottom: insets.bottom,
+        backgroundColor: theme.surfaces.container,
+        // Vạch mảnh phân thanh với thân trang — nền tối hai bên gần cùng màu.
+        borderTopWidth: 1,
+        borderTopColor: theme.colors.border,
+      }}
+    >
+      {state.routes.map((route, index) => {
+        const focused = state.index === index;
+        const { options } = descriptors[route.key] ?? { options: {} };
+        const color = focused
+          ? theme.colors['secondary-foreground']
+          : theme.colors['muted-foreground'];
 
-          return (
-            <Pressable
-              key={route.key}
-              accessibilityRole="button"
-              accessibilityLabel={options.title ?? route.name}
-              accessibilityState={{ selected: focused }}
-              onPress={() => {
-                // Giống thanh tab mặc định của react-navigation: LUÔN bắn
-                // `tabPress`, chỉ bỏ qua điều hướng khi tab tự xử lý
-                // (`defaultPrevented`) hoặc nó đang mở sẵn.
-                const event = navigation.emit({
-                  type: 'tabPress',
-                  target: route.key,
-                  canPreventDefault: true,
-                });
-                if (!focused && !event.defaultPrevented) navigation.navigate(route.name);
-              }}
-              style={{
-                width: TAB_BAR_TILE,
-                height: TAB_BAR_TILE,
-                borderRadius: theme.radius.base * 3,
-                alignItems: 'center',
-                justifyContent: 'center',
-                backgroundColor: focused ? theme.colors.primary : 'transparent',
-              }}
-            >
-              <View testID={`tab-icon-${route.name}`} style={{ opacity: focused ? 1 : 0.75 }}>
-                {options.tabBarIcon?.({ focused, color, size: focused ? 26 : 24 })}
-              </View>
-            </Pressable>
-          );
-        })}
-      </View>
-    </>
+        return (
+          <TabItem
+            key={route.key}
+            name={route.name}
+            label={options.title ?? route.name}
+            focused={focused}
+            icon={options.tabBarIcon?.({ focused, color, size: 24 })}
+            onPress={() => {
+              // Giống thanh tab mặc định của react-navigation: LUÔN bắn `tabPress`, chỉ bỏ
+              // qua điều hướng khi tab tự xử lý (`defaultPrevented`) hoặc nó đang mở sẵn.
+              const event = navigation.emit({
+                type: 'tabPress',
+                target: route.key,
+                canPreventDefault: true,
+              });
+              if (!focused && !event.defaultPrevented) navigation.navigate(route.name);
+            }}
+          />
+        );
+      })}
+    </View>
   );
 }

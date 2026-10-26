@@ -1,6 +1,17 @@
-import { fireEvent, screen } from '@testing-library/react-native';
+import { fireEvent, screen, waitFor } from '@testing-library/react-native';
+import { processColor, StyleSheet } from 'react-native';
 import { renderWithTheme, themeFor } from '../test-utils';
 import { TextField } from './text-field';
+
+/** Viền đổi màu có tween ~160ms nên đọc ra dạng `rgba(...)` và có thể đang lưng chừng — so qua `processColor`, chờ tween xong. */
+async function expectBorderColor(expected: string) {
+  await waitFor(() => {
+    const { borderColor } = StyleSheet.flatten(
+      screen.getByTestId('text-field-outline').props.style,
+    );
+    expect(processColor(borderColor)).toBe(processColor(expected));
+  });
+}
 
 describe('TextField', () => {
   it('ô trống thì nhãn đứng làm placeholder', async () => {
@@ -20,7 +31,7 @@ describe('TextField', () => {
     expect(screen.getByDisplayValue('lan.nguyen@example.com')).toBeTruthy();
   });
 
-  it('có lỗi thì in câu lỗi, đổi màu gạch chân và đánh dấu ô sai', async () => {
+  it('có lỗi thì in câu lỗi, viền 2 màu destructive-emphasis và đánh dấu ô sai', async () => {
     const theme = themeFor('dark');
     await renderWithTheme(
       <TextField
@@ -34,9 +45,10 @@ describe('TextField', () => {
 
     expect(screen.getByText('Enter a valid email address.')).toBeTruthy();
     expect(screen.getByDisplayValue('lan.nguyen@').props['aria-invalid']).toBe(true);
-    expect(screen.getByTestId('text-field-line').props.style.borderBottomColor).toBe(
-      theme.colors['destructive-emphasis'],
-    );
+    expect(StyleSheet.flatten(screen.getByTestId('text-field-outline').props.style)).toMatchObject({
+      borderWidth: 2,
+    });
+    await expectBorderColor(theme.colors['destructive-emphasis']);
   });
 
   it('ô mật khẩu che chữ, nút hiện/ẩn đổi cả trạng thái lẫn nhãn', async () => {
@@ -59,37 +71,70 @@ describe('TextField', () => {
     expect(screen.getByDisplayValue('correct-horse').props.secureTextEntry).toBe(false);
   });
 
-  it('icon="plain" (mặc định, cụm auth): icon trần, không khung', async () => {
+  it('ô outlined: cao 56, bo 4, viền 1 màu input', async () => {
+    const theme = themeFor('dark');
+    await renderWithTheme(<TextField label="Email" value="" onChangeText={() => {}} />, 'dark');
+
+    expect(StyleSheet.flatten(screen.getByTestId('text-field-outline').props.style)).toMatchObject({
+      minHeight: 56,
+      borderRadius: 4,
+      borderWidth: 1,
+    });
+    await expectBorderColor(theme.colors.input);
+  });
+
+  it('đang gõ thì viền 2 màu primary-emphasis và nhãn nổi lên đường viền', async () => {
+    const theme = themeFor('dark');
+    await renderWithTheme(<TextField label="Email" value="" onChangeText={() => {}} />, 'dark');
+
+    await fireEvent(screen.getByLabelText('Email'), 'focus');
+
+    await screen.findByText('Email');
+    expect(StyleSheet.flatten(screen.getByTestId('text-field-outline').props.style)).toMatchObject({
+      borderWidth: 2,
+    });
+    await expectBorderColor(theme.colors['primary-emphasis']);
+  });
+
+  it('nhãn nổi nằm trên đường viền, nền che mặc định là background', async () => {
+    const theme = themeFor('light');
+    await renderWithTheme(<TextField label="Email" value="a@b.c" onChangeText={() => {}} />);
+
+    expect(StyleSheet.flatten(screen.getByTestId('text-field-label').props.style)).toMatchObject({
+      position: 'absolute',
+      top: -8,
+      backgroundColor: theme.colors.background,
+    });
+  });
+
+  it('nền che nhãn nhận từ prop để trùng mặt phía sau (bottom sheet…)', async () => {
+    const theme = themeFor('light');
+    await renderWithTheme(
+      <TextField
+        label="Email"
+        value="a@b.c"
+        labelBackground={theme.surfaces.container}
+        onChangeText={() => {}}
+      />,
+    );
+
+    expect(StyleSheet.flatten(screen.getByTestId('text-field-label').props.style)).toMatchObject({
+      backgroundColor: theme.surfaces.container,
+    });
+  });
+
+  it('icon trần, không còn khung boxed', async () => {
     await renderWithTheme(
       <TextField label="Display name" icon="user" value="" onChangeText={() => {}} />,
     );
     expect(screen.queryByTestId('text-field-icon-box')).toBeNull();
   });
 
-  it('iconVariant="boxed" (cụm Account, A3/A6): icon nằm trong khung vuông bo', async () => {
-    const theme = themeFor('dark');
-    await renderWithTheme(
-      <TextField
-        label="Display name"
-        icon="user"
-        iconVariant="boxed"
-        value=""
-        onChangeText={() => {}}
-      />,
-      'dark',
-    );
-    expect(screen.getByTestId('text-field-icon-box').props.style).toMatchObject({
-      backgroundColor: theme.colors.secondary,
-    });
-  });
-
-  it('tall (B3/E1, .field.tall): icon neo lên đầu, ô cao hơn', async () => {
-    const theme = themeFor('dark');
+  it('tall: ô cao 96 và icon neo lên đầu', async () => {
     await renderWithTheme(
       <TextField
         label="Anything we should know?"
         icon="message-square"
-        iconVariant="boxed"
         multiline
         tall
         value=""
@@ -97,39 +142,28 @@ describe('TextField', () => {
       />,
       'dark',
     );
-    expect(screen.getByTestId('text-field-line').props.style).toMatchObject({
+    expect(StyleSheet.flatten(screen.getByTestId('text-field-outline').props.style)).toMatchObject({
       alignItems: 'flex-start',
-      minHeight: theme.spacing(24),
+      minHeight: 96,
     });
     expect(screen.getByLabelText('Anything we should know?').props.multiline).toBe(true);
   });
 
-  it('multiline KHÔNG tall (huỷ booking, .field.ph không .tall): TextInput vẫn nhận multiline, nhưng ô cao/canh y hệt ô một dòng — không tự kéo cao', async () => {
-    const theme = themeFor('dark');
+  it('multiline KHÔNG tall: TextInput nhận multiline, ô cao 56 và canh giữa', async () => {
     await renderWithTheme(
       <TextField
         label="Reason (optional)"
         icon="message-square"
-        iconVariant="boxed"
         multiline
         value=""
         onChangeText={() => {}}
       />,
       'dark',
     );
-    expect(screen.getByTestId('text-field-line').props.style).toMatchObject({
+    expect(StyleSheet.flatten(screen.getByTestId('text-field-outline').props.style)).toMatchObject({
       alignItems: 'center',
-      minHeight: theme.spacing(15),
+      minHeight: 56,
     });
     expect(screen.getByLabelText('Reason (optional)').props.multiline).toBe(true);
-  });
-
-  it('không có lỗi thì gạch chân dùng màu viền bình thường', async () => {
-    const theme = themeFor('dark');
-    await renderWithTheme(<TextField label="Email" value="" onChangeText={() => {}} />, 'dark');
-
-    expect(screen.getByTestId('text-field-line').props.style.borderBottomColor).toBe(
-      theme.colors.border,
-    );
   });
 });

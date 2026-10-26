@@ -1,6 +1,7 @@
-import type { ReactNode } from 'react';
-import { Pressable, type PressableProps } from 'react-native';
+import { type ReactNode, useRef } from 'react';
+import type { PressableProps } from 'react-native';
 import { AppText } from './app-text';
+import { PressableScale } from './motion';
 import { type MobileColorKey, withAlpha } from './theme';
 import { useTheme } from './theme-provider';
 
@@ -9,36 +10,34 @@ import { useTheme } from './theme-provider';
  * trong suốt — nút viền, không phải một màu token nào; `border` khai luôn màu và
  * độ đậm của viền để không vai nào phải đặc cách trong thân component.
  */
+export interface ButtonSpec {
+  background: MobileColorKey | null;
+  /** Pha loãng nền khi nút nằm trên ảnh; bỏ trống là nền đặc. */
+  backgroundAlpha?: number;
+  foreground: MobileColorKey;
+  border: { color: MobileColorKey; alpha: number } | null;
+}
+
 export const BUTTON_VARIANTS = {
   primary: { background: 'primary', foreground: 'primary-foreground', border: null },
   secondary: { background: 'secondary', foreground: 'secondary-foreground', border: null },
-  // `primary-emphasis`, KHÔNG `primary` — `primary` là màu NỀN của nút primary
-  // (đậm, gần màu nền ở dark mode), dùng làm CHỮ trên nền trong suốt gần như vô
-  // hình (phản hồi 26/09, "Stay signed in" đọc không ra). Mockup `.btn.ghost`
-  // luôn dùng `--primary-emphasis` — cùng token `.link`/`AppText tone="link"`
-  // đã dùng, token DÀNH RIÊNG cho chữ tương phản trên nền, không phải để fill.
-  ghost: {
-    background: null,
-    foreground: 'primary-emphasis',
-    border: { color: 'border', alpha: 1 },
+  // N3 (mockup vòng 4): `.btn.ghost` thành nút TÔNG — nền `secondary`, chữ `secondary-foreground`,
+  // không viền (bản vòng 1 là nút viền chữ `primary-emphasis`). Tên `ghost` giữ nguyên để 17 chỗ
+  // gọi không phải đổi; hình dạng khác `secondary` ở chỗ nào thì bàn giao N3 chưa tách.
+  ghost: { background: 'secondary', foreground: 'secondary-foreground', border: null },
+  // N3 (mockup vòng 4): nền `destructive` đỏ đặc ở cả hai theme, chữ `primary-foreground` — vai
+  // BỀ MẶT của `destructive` đã đo đạt tương phản. `destructive-emphasis` là màu MỰC (sáng ở
+  // dark mode), đặt làm nền thì ra nút hồng nhạt chữ tối, lệch bản vẽ.
+  destructive: { background: 'destructive', foreground: 'primary-foreground', border: null },
+  // Nút phụ nằm TRÊN ẢNH (onboarding trang cuối, A2): nền trắng mờ — màu chữ-trên-ảnh
+  // pha alpha 0,22 — không viền, chữ lấy màu chữ-trên-ảnh.
+  media: {
+    background: 'on-media',
+    backgroundAlpha: 0.22,
+    foreground: 'on-media',
+    border: null,
   },
-  // A5 (Sign out) — chữ LẤY MÀU `background` của theme (không phải
-  // `primary-foreground` cố định): tương phản đúng ở CẢ hai theme vì
-  // `destructive-emphasis` là màu sáng ở dark mode, màu tối ở light mode —
-  // "background" luôn là đầu đối lập của nó trong bảng màu. Mockup 21/09 dùng
-  // đúng cặp này, không phải chọn ngẫu nhiên.
-  destructive: { background: 'destructive-emphasis', foreground: 'background', border: null },
-  // Nút phụ nằm TRÊN ẢNH (onboarding trang cuối): chữ lấy màu chữ-trên-ảnh, viền
-  // cùng màu nhưng pha loãng để không cắt ngang ảnh.
-  media: { background: null, foreground: 'on-media', border: { color: 'on-media', alpha: 0.35 } },
-} as const satisfies Record<
-  string,
-  {
-    background: MobileColorKey | null;
-    foreground: MobileColorKey;
-    border: { color: MobileColorKey; alpha: number } | null;
-  }
->;
+} as const satisfies Record<string, ButtonSpec>;
 
 export type ButtonVariant = keyof typeof BUTTON_VARIANTS;
 
@@ -50,21 +49,38 @@ export interface ButtonProps extends Omit<PressableProps, 'children' | 'style'> 
    * (chữ G của Google chẳng hạn không nằm trong bộ Feather).
    */
   leading?: ReactNode;
-  /** `pill` cho nút bo tròn hết cỡ của cụm auth; mặc định bo theo token. */
+  /** `small` cho nút nhỏ (cao 40, bo 20, chữ 14); mặc định là nút 56. */
+  size?: 'default' | 'small';
+  /**
+   * Không còn tác dụng: mọi nút đều bo tròn hết cỡ theo Material 3 (N3). Giữ prop
+   * để khỏi sửa hàng chục chỗ gọi cùng lúc.
+   */
   shape?: 'rounded' | 'pill';
 }
+
+/** Cao 56 / bo 28 cho nút thường, 40 / 20 cho nút nhỏ — số đo của bản vẽ Material 3. */
+const BUTTON_HEIGHT = { default: 56, small: 40 } as const;
+
+/** Hai lần bấm cách nhau dưới ngưỡng này coi là bấm đúp, lần sau bị bỏ. */
+const DOUBLE_PRESS_GUARD_MS = 500;
 
 /** Nút bấm của app. Vùng chạm luôn ≥ ngưỡng a11y trong token. */
 export function Button({
   label,
   variant = 'primary',
   leading,
-  shape = 'rounded',
+  size = 'default',
+  shape: _shape,
   disabled,
+  onPress,
   ...rest
 }: ButtonProps) {
   const theme = useTheme();
-  const { background, foreground, border } = BUTTON_VARIANTS[variant];
+  // Bấm đúp nhanh không chạy `onPress` hai lần (vd mở hai màn chồng nhau khi nút điều hướng).
+  const lastPressAt = useRef(0);
+  // Khai kiểu `ButtonSpec` để `border` giữ hình `{…} | null` dù hiện chưa biến thể nào có viền.
+  const spec: ButtonSpec = BUTTON_VARIANTS[variant];
+  const { background, foreground, border, backgroundAlpha = 1 } = spec;
   // `PressableProps.disabled` cho phép cả `null`; quy về boolean thật một lần
   // để `accessibilityState` không bao giờ báo `null` cho trình đọc màn hình.
   const isDisabled = disabled === true;
@@ -75,25 +91,42 @@ export function Button({
     ? theme.colors.muted
     : background === null
       ? 'transparent'
-      : theme.colors[background];
+      : backgroundAlpha === 1
+        ? theme.colors[background]
+        : withAlpha(theme.colors[background], backgroundAlpha);
   const textColor = isDisabled ? theme.colors['muted-foreground'] : theme.colors[foreground];
-  // Pill cao 46dp như `.btn` của bản vẽ cụm auth, nhưng lấy ngưỡng a11y của token
-  // làm sàn: nâng `--touch-target-min` thì pill lên theo, không tụt dưới ngưỡng.
-  const pillHeight = Math.max(theme.touchTargetMin, theme.spacing(11.5));
+  const small = size === 'small';
+  // Sàn a11y của token thắng số đo bản vẽ — nâng `--touch-target-min` thì nút lên theo.
+  // Nút nhỏ (40) dưới ngưỡng nên bù bằng `hitSlop`, không đổi hình.
+  const height = small
+    ? BUTTON_HEIGHT.small
+    : Math.max(theme.touchTargetMin, BUTTON_HEIGHT.default);
+  const slop = Math.max(0, Math.ceil((theme.touchTargetMin - height) / 2));
 
   return (
-    <Pressable
+    <PressableScale
       accessibilityRole="button"
       accessibilityState={{ disabled: isDisabled }}
       disabled={isDisabled}
+      onPress={
+        onPress == null
+          ? undefined
+          : (event) => {
+              const now = Date.now();
+              if (now - lastPressAt.current < DOUBLE_PRESS_GUARD_MS) return;
+              lastPressAt.current = now;
+              onPress(event);
+            }
+      }
+      hitSlop={slop > 0 ? { top: slop, bottom: slop } : undefined}
       style={({ pressed }) => [
         {
           backgroundColor,
-          borderRadius: shape === 'pill' ? pillHeight : theme.radius.base,
+          borderRadius: height / 2,
           flexDirection: 'row',
           gap: theme.spacing(2),
-          minHeight: shape === 'pill' ? pillHeight : theme.touchTargetMin,
-          paddingHorizontal: theme.spacing(5),
+          minHeight: height,
+          paddingHorizontal: theme.spacing(small ? 4 : 6),
           alignItems: 'center',
           justifyContent: 'center',
         },
@@ -108,9 +141,12 @@ export function Button({
       {...rest}
     >
       {leading}
-      <AppText variant="label" style={{ color: textColor }}>
+      <AppText
+        variant={small ? 'label' : 'body'}
+        style={{ color: textColor, fontWeight: theme.weight.medium }}
+      >
         {label}
       </AppText>
-    </Pressable>
+    </PressableScale>
   );
 }

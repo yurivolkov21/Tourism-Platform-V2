@@ -1,9 +1,10 @@
-import Feather from '@expo/vector-icons/Feather';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Animated, StyleSheet, View } from 'react-native';
 import { AppImage } from './app-image';
 import { AppText } from './app-text';
+import { Icon } from './icon';
 import { IconButton } from './icon-button';
+import { FadeIn, PressableScale, useMotionScale } from './motion';
 import { withAlpha } from './theme';
 import { useTheme } from './theme-provider';
 
@@ -29,7 +30,16 @@ export interface DestinationCardProps {
    * dp khi cần khung cố định (khung xám lúc tải).
    */
   height: number | '100%';
+  /**
+   * Parallax khi vuốt carousel: ảnh trôi chậm hơn thẻ. `scrollX` là vị trí cuộn ngang của
+   * ScrollView chứa thẻ, `index` là thứ tự thẻ, `interval` là bề ngang một nhịp snap.
+   * Bỏ trống thì ảnh đứng yên trong thẻ như cũ.
+   */
+  parallax?: { scrollX: Animated.Value; index: number; interval: number };
 }
+
+/** Ảnh được vẽ rộng thêm mỗi bên chừng này dp để có chỗ trôi mà không lộ mép. */
+const PARALLAX_RANGE = 36;
 
 /**
  * Thẻ địa danh khổ lớn của carousel Home: ảnh phủ kín, chip số tour ở góc
@@ -49,11 +59,29 @@ export function DestinationCard({
   transformUrl,
   width,
   height,
+  parallax,
 }: DestinationCardProps) {
   const theme = useTheme();
+  const motionScale = useMotionScale();
+  const shift =
+    parallax === undefined
+      ? undefined
+      : Animated.multiply(
+          parallax.scrollX.interpolate({
+            inputRange: [
+              (parallax.index - 1) * parallax.interval,
+              (parallax.index + 1) * parallax.interval,
+            ],
+            outputRange: [-PARALLAX_RANGE, PARALLAX_RANGE],
+            extrapolate: 'clamp',
+          }),
+          motionScale,
+        );
+  const bleed = shift === undefined ? 0 : PARALLAX_RANGE;
 
   return (
-    <Pressable
+    <PressableScale
+      containerStyle={{ width, height }}
       accessibilityRole="button"
       accessibilityLabel={name}
       onPress={onPress}
@@ -66,17 +94,27 @@ export function DestinationCard({
       }}
     >
       {imageUrl === null ? null : (
-        <View style={StyleSheet.absoluteFill}>
+        <Animated.View
+          style={{
+            position: 'absolute',
+            top: 0,
+            bottom: 0,
+            left: -bleed,
+            right: -bleed,
+            transform: shift === undefined ? [] : [{ translateX: shift }],
+          }}
+        >
           {/* `fill`: chiều cao do khung thẻ quyết, `width` vẫn dùng dựng URL
               transform Cloudinary đúng cỡ cần tải. */}
           <AppImage
             source={imageUrl}
-            width={width}
+            width={width + bleed * 2}
             alt={imageAlt}
             transformUrl={transformUrl}
             fill
+            reveal
           />
-        </View>
+        </Animated.View>
       )}
       {/* Dải tối chân ảnh để chữ đọc được: trong suốt ở nửa trên, tối dần
           xuống đáy. */}
@@ -102,7 +140,7 @@ export function DestinationCard({
           backgroundColor: withAlpha(theme.colors.scrim, 0.45),
         }}
       >
-        <Feather name="compass" size={12} color={theme.colors.rating} />
+        <Icon name="compass" size={12} color={theme.colors.rating} />
         <AppText
           variant="caption"
           style={{ color: theme.colors['on-media'], fontWeight: theme.weight.semibold }}
@@ -122,31 +160,39 @@ export function DestinationCard({
           gap: theme.spacing(1),
         }}
       >
-        <AppText variant="caption" tone="media" style={{ opacity: 0.85 }}>
-          {eyebrow}
-        </AppText>
-        <AppText variant="brand" tone="media" numberOfLines={2}>
-          {name}
-        </AppText>
+        {/* Chữ hiện so le sau khi ảnh lộ ra: eyebrow + tên, rồi vị trí, rồi mô tả, rồi nút. */}
+        <FadeIn delay={200} style={{ gap: theme.spacing(1) }}>
+          <AppText variant="caption" tone="media" style={{ opacity: 0.85 }}>
+            {eyebrow}
+          </AppText>
+          <AppText variant="brand" tone="media" numberOfLines={2}>
+            {name}
+          </AppText>
+        </FadeIn>
         {regionLabel === '' ? null : (
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing(1) }}>
-            <Feather name="map-pin" size={13} color={theme.colors['on-media']} />
-            <AppText variant="caption" tone="media" numberOfLines={1} style={{ opacity: 0.9 }}>
-              {regionLabel}
-            </AppText>
-          </View>
+          <FadeIn delay={280}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing(1) }}>
+              <Icon name="map-pin" size={13} color={theme.colors['on-media']} />
+              <AppText variant="caption" tone="media" numberOfLines={1} style={{ opacity: 0.9 }}>
+                {regionLabel}
+              </AppText>
+            </View>
+          </FadeIn>
         )}
         {description === '' ? null : (
-          <AppText
-            variant="subtitle"
-            tone="media"
-            numberOfLines={3}
-            style={{ marginTop: theme.spacing(2), opacity: 0.85 }}
-          >
-            {description}
-          </AppText>
+          <FadeIn delay={360}>
+            <AppText
+              variant="subtitle"
+              tone="media"
+              numberOfLines={3}
+              style={{ marginTop: theme.spacing(2), opacity: 0.85 }}
+            >
+              {description}
+            </AppText>
+          </FadeIn>
         )}
-        <View
+        <FadeIn
+          delay={440}
           style={{
             flexDirection: 'row',
             justifyContent: 'flex-end',
@@ -160,8 +206,8 @@ export function DestinationCard({
             variant="glass"
             size={22}
           />
-        </View>
+        </FadeIn>
       </View>
-    </Pressable>
+    </PressableScale>
   );
 }

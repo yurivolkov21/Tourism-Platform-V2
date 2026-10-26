@@ -1,6 +1,7 @@
-import Feather from '@expo/vector-icons/Feather';
 import { Pressable, View, type ViewStyle } from 'react-native';
 import { AppText } from './app-text';
+import { Icon } from './icon';
+import { PopIn, PressableScale } from './motion';
 import type { MobileColorKey } from './theme';
 import { useTheme } from './theme-provider';
 
@@ -8,7 +9,8 @@ export type ChipVariant = 'default' | 'selected' | 'removable';
 
 const CHIP_VARIANTS = {
   default: { background: null, border: 'border', foreground: 'foreground' },
-  selected: { background: 'primary', border: 'primary', foreground: 'primary-foreground' },
+  // Chip đang chọn kiểu Material 3: nền `secondary` kèm dấu tick bên trái.
+  selected: { background: 'secondary', border: 'secondary', foreground: 'secondary-foreground' },
   removable: { background: 'secondary', border: 'secondary', foreground: 'secondary-foreground' },
 } as const satisfies Record<
   ChipVariant,
@@ -38,12 +40,12 @@ export function Chip({ label, variant = 'default', onPress, onRemove, removeLabe
   const shellStyle: ViewStyle = {
     flexDirection: 'row',
     alignItems: 'center',
-    height: theme.spacing(8),
-    paddingHorizontal: theme.spacing(3.5),
-    borderRadius: 999,
+    height: 32,
+    paddingHorizontal: theme.spacing(3),
+    borderRadius: 8,
     borderWidth: 1,
     borderColor: theme.colors[border],
-    gap: theme.spacing(1.5),
+    gap: theme.spacing(1),
     // `backgroundColor: 'transparent'` tường minh (thay vì bỏ hẳn property)
     // kết hợp borderRadius + Pressable trên Android vẽ THIẾU cạnh đáy viền
     // (đo được 01/10 — "Upcoming"/"Past" mất hẳn nét dưới, "All" tô đặc thì
@@ -52,15 +54,22 @@ export function Chip({ label, variant = 'default', onPress, onRemove, removeLabe
   };
 
   const labelNode = (
-    <AppText
-      variant="label"
-      style={{
-        color: theme.colors[foreground],
-        fontWeight: variant === 'selected' ? theme.weight.semibold : theme.weight.medium,
-      }}
-    >
-      {label}
-    </AppText>
+    <>
+      {variant === 'selected' ? (
+        <PopIn>
+          <Icon testID="chip-check" name="check" size={18} color={theme.colors[foreground]} />
+        </PopIn>
+      ) : null}
+      <AppText
+        variant="label"
+        style={{
+          color: theme.colors[foreground],
+          fontWeight: theme.weight.medium,
+        }}
+      >
+        {label}
+      </AppText>
+    </>
   );
 
   if (variant === 'removable') {
@@ -81,7 +90,7 @@ export function Chip({ label, variant = 'default', onPress, onRemove, removeLabe
           hitSlop={theme.spacing(4)}
           onPress={onRemove}
         >
-          <Feather name="x" size={14} color={theme.colors[foreground]} />
+          <Icon name="x" size={14} color={theme.colors[foreground]} />
         </Pressable>
       </View>
     );
@@ -98,7 +107,7 @@ export function Chip({ label, variant = 'default', onPress, onRemove, removeLabe
   }
 
   return (
-    <Pressable
+    <PressableScale
       accessibilityRole="button"
       accessibilityLabel={label}
       // N10: chip lọc nói "đang chọn" cả với trình đọc màn hình, không chỉ bằng màu.
@@ -110,6 +119,6 @@ export function Chip({ label, variant = 'default', onPress, onRemove, removeLabe
       style={shellStyle}
     >
       {labelNode}
-    </Pressable>
+    </PressableScale>
   );
 }

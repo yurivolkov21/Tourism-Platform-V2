@@ -18,7 +18,7 @@ describe('SearchField', () => {
     expect(onChangeText).toHaveBeenCalledWith('ha');
   });
 
-  it('nền pill và viền mặc định lấy đúng token', async () => {
+  it('thanh tìm Material 3: cao 56, bo 28, nền containerHigh, không viền', async () => {
     const theme = themeFor('light');
     await renderWithTheme(
       <SearchField
@@ -29,12 +29,13 @@ describe('SearchField', () => {
       />,
     );
     const style = StyleSheet.flatten(screen.getByTestId('search-field-shell').props.style);
-    expect(style.backgroundColor).toBe(theme.colors.card);
-    expect(style.borderColor).toBe(theme.colors.border);
-    expect(style.borderWidth).toBe(1);
+    expect(style.height).toBe(56);
+    expect(style.borderRadius).toBe(28);
+    expect(style.backgroundColor).toBe(theme.surfaces.containerHigh);
+    expect(style.borderWidth).toBeUndefined();
   });
 
-  it('focus đổi viền sang 2px primary-emphasis', async () => {
+  it('focus vẫn không vẽ viền — chỉ chữ đổi sang foreground', async () => {
     const theme = themeFor('light');
     await renderWithTheme(
       <SearchField
@@ -47,8 +48,10 @@ describe('SearchField', () => {
     const input = screen.getByPlaceholderText('Search');
     await fireEvent(input, 'focus');
     const style = StyleSheet.flatten(screen.getByTestId('search-field-shell').props.style);
-    expect(style.borderWidth).toBe(2);
-    expect(style.borderColor).toBe(theme.colors['primary-emphasis']);
+    expect(style.borderWidth).toBeUndefined();
+    expect(StyleSheet.flatten(screen.getByPlaceholderText('Search').props.style).color).toBe(
+      theme.colors.foreground,
+    );
   });
 
   it('có nút xoá khi value không rỗng, bấm thì gọi onChangeText("")', async () => {

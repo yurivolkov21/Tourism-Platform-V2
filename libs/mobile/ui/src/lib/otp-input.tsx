@@ -1,5 +1,6 @@
 import { TextInput, View } from 'react-native';
 import { AppText } from './app-text';
+import { Shake } from './motion';
 import { useTheme } from './theme-provider';
 
 export interface OtpInputProps {
@@ -46,7 +47,7 @@ export function OtpInput({
   };
 
   return (
-    <View style={{ marginTop: theme.spacing(6) }}>
+    <Shake active={invalid} style={{ marginTop: theme.spacing(6) }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing(1.75) }}>
         {cells.map((cell) => (
           <View
@@ -97,6 +98,6 @@ export function OtpInput({
           backgroundColor: theme.colors.border,
         }}
       />
-    </View>
+    </Shake>
   );
 }

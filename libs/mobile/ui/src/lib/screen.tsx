@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { KeyboardAvoidingView, Platform, ScrollView, View, type ViewProps } from 'react-native';
+import { KeyboardAvoidingView, ScrollView, View, type ViewProps } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from './theme-provider';
 
@@ -80,9 +80,10 @@ export function Screen({
     >
       <KeyboardAvoidingView
         style={{ flex: 1 }}
-        // Android tự resize cửa sổ theo bàn phím; thêm `padding` ở đó là đẩy
-        // nội dung lên hai lần.
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        // Cả hai nền tảng dùng `padding`: Expo SDK 57 bật edge-to-edge trên Android nên cửa
+        // sổ KHÔNG còn tự resize theo bàn phím (`adjustResize` mất tác dụng) — đo trên máy
+        // 20/10: ô Password và nút Create account nằm dưới bàn phím, không cuộn tới được.
+        behavior="padding"
       >
         {scrollable ? (
           <ScrollView

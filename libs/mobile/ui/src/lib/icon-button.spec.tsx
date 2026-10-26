@@ -41,4 +41,13 @@ describe('IconButton', () => {
 
     expect(screen.getByLabelText('Back').props.style.backgroundColor).toBeUndefined();
   });
+
+  it('bản link: không nền, icon màu primary-emphasis cùng chữ link bên cạnh', async () => {
+    await renderWithTheme(
+      <IconButton icon="search" accessibilityLabel="Search" variant="link" onPress={() => {}} />,
+      'dark',
+    );
+
+    expect(screen.getByLabelText('Search').props.style.backgroundColor).toBeUndefined();
+  });
 });

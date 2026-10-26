@@ -1,6 +1,7 @@
-import Feather from '@expo/vector-icons/Feather';
 import type { ReactNode } from 'react';
-import { Pressable, View } from 'react-native';
+import { Animated, Pressable, View } from 'react-native';
+import { Icon } from './icon';
+import { usePop } from './motion';
 import { useTheme } from './theme-provider';
 
 export interface CheckboxProps {
@@ -17,6 +18,7 @@ export interface CheckboxProps {
  */
 export function Checkbox({ checked, onValueChange, accessibilityLabel, children }: CheckboxProps) {
   const theme = useTheme();
+  const pop = usePop(checked, 0.7);
 
   return (
     <Pressable
@@ -32,8 +34,9 @@ export function Checkbox({ checked, onValueChange, accessibilityLabel, children 
         paddingVertical: theme.spacing(3),
       }}
     >
-      <View
+      <Animated.View
         style={{
+          transform: [{ scale: pop }],
           width: theme.spacing(4.5),
           height: theme.spacing(4.5),
           borderRadius: theme.radius.base,
@@ -45,9 +48,9 @@ export function Checkbox({ checked, onValueChange, accessibilityLabel, children 
         }}
       >
         {checked ? (
-          <Feather name="check" size={12} color={theme.colors['primary-foreground']} />
+          <Icon name="check" size={12} color={theme.colors['primary-foreground']} />
         ) : null}
-      </View>
+      </Animated.View>
       <View style={{ flex: 1 }}>{children}</View>
     </Pressable>
   );

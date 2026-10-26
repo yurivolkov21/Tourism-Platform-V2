@@ -1,5 +1,6 @@
 import { Image, type ImageProps } from 'expo-image';
-import { PixelRatio } from 'react-native';
+import { useRef } from 'react';
+import { AccessibilityInfo, Animated, Easing, PixelRatio } from 'react-native';
 import { useTheme } from './theme-provider';
 
 export interface AppImageProps extends Omit<ImageProps, 'source' | 'style' | 'accessibilityLabel'> {
@@ -22,7 +23,18 @@ export interface AppImageProps extends Omit<ImageProps, 'source' | 'style' | 'ac
    * cao do khung cha quyết định — `width` vẫn dùng để dựng URL transform.
    */
   fill?: boolean;
+  /**
+   * Ảnh "lộ ra" sang trọng: hiện dần chậm (500ms) và hơi phóng to rồi lắng về cỡ thật
+   * khi ảnh vừa tải xong. Chỉ bật cho ảnh nằm trong khung đã `overflow: hidden` (thẻ, ảnh
+   * bìa) — phần phóng vượt khung sẽ bị cắt.
+   */
+  reveal?: boolean;
 }
+
+/** Cỡ bản thu nhỏ làm nền chờ — vài KB, bị phóng to nên tự mờ. */
+const PLACEHOLDER_WIDTH = 24;
+const REVEAL_SCALE = 1.08;
+const REVEAL_MS = 1000;
 
 /** Mật độ tối đa khi xin ảnh — trên 2x mắt không phân biệt được ở ảnh chụp. */
 const MAX_IMAGE_DENSITY = 2;
@@ -44,9 +56,13 @@ export function AppImage({
   alt,
   transformUrl = (src) => src,
   fill = false,
+  reveal = false,
+  onLoad,
   ...rest
 }: AppImageProps) {
   const theme = useTheme();
+  const scale = useRef(new Animated.Value(reveal ? REVEAL_SCALE : 1)).current;
+  const revealed = useRef(false);
   // Cloudinary co ảnh về ĐÚNG số pixel yêu cầu — truyền thẳng `width` (đơn vị
   // dp) là xin ảnh 1 pixel vật lý cho mỗi dp, trong khi máy thật vẽ 2-3 pixel
   // vật lý/dp. Kết quả: ảnh đủ để lấp khung nhưng mờ hẳn trên màn hình mật độ
@@ -57,7 +73,14 @@ export function AppImage({
   // đừng tự nhân thêm.
   const uri = transformUrl(source, physicalWidth(width, PixelRatio.get()));
 
-  return (
+  // Bản thu nhỏ của chính ảnh làm nền chờ (thay ô xám trống). Chỉ khi có transformUrl —
+  // không thì URL trùng ảnh thật, thêm một lượt tải mà chẳng có gì mới.
+  const placeholder =
+    reveal && transformUrl !== undefined
+      ? { uri: transformUrl(source, PLACEHOLDER_WIDTH) }
+      : undefined;
+
+  const image = (
     <Image
       source={{ uri }}
       accessibilityLabel={alt}
@@ -67,8 +90,39 @@ export function AppImage({
           : { width, height: height ?? width, backgroundColor: theme.colors.muted }
       }
       contentFit="cover"
-      transition={200}
+      placeholder={placeholder}
+      placeholderContentFit="cover"
+      transition={reveal ? 600 : 200}
+      onLoad={(event) => {
+        onLoad?.(event);
+        if (!reveal || revealed.current) return;
+        revealed.current = true;
+        AccessibilityInfo.isReduceMotionEnabled().then((reduced) => {
+          if (reduced) {
+            scale.setValue(1);
+            return;
+          }
+          Animated.timing(scale, {
+            toValue: 1,
+            duration: REVEAL_MS,
+            easing: Easing.out(Easing.cubic),
+            useNativeDriver: true,
+          }).start();
+        });
+      }}
       {...rest}
     />
+  );
+
+  if (!reveal) return image;
+  return (
+    <Animated.View
+      style={[
+        fill ? { width: '100%', height: '100%' } : { width, height: height ?? width },
+        { transform: [{ scale }] },
+      ]}
+    >
+      {image}
+    </Animated.View>
   );
 }

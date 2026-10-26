@@ -30,6 +30,7 @@ export const MOBILE_COLOR_KEYS = [
   'border',
   // P5b-1: bốn khoá cụm auth thật sự dùng — chữ nằm trên ảnh, câu lỗi, viền ô
   // nhập, và màu phủ ảnh. Danh sách vẫn là CURATED theo đúng JSDoc phía trên.
+  'destructive',
   'destructive-emphasis',
   'input',
   'on-media',

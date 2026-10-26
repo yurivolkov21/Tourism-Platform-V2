@@ -34,7 +34,7 @@ describe('EmptyState', () => {
 
     const style = StyleSheet.flatten(screen.getByTestId('empty').props.style);
     expect(style.backgroundColor).toBe(theme.colors.card);
-    expect(style.borderRadius).toBe(theme.radius.base);
+    expect(style.borderRadius).toBe(16);
     expect(style.alignItems).toBe('center');
   });
 

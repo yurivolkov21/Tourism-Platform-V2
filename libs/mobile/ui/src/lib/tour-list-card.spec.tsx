@@ -1,5 +1,6 @@
 import { fireEvent, screen } from '@testing-library/react-native';
-import { renderWithTheme } from '../test-utils';
+import { StyleSheet } from 'react-native';
+import { renderWithTheme, themeFor } from '../test-utils';
 import { TourListCard } from './tour-list-card';
 
 describe('TourListCard', () => {
@@ -97,5 +98,85 @@ describe('TourListCard', () => {
 
     await fireEvent.press(screen.getByLabelText('Tour'));
     expect(onPress).toHaveBeenCalledTimes(1);
+  });
+
+  const base = {
+    imageUrl: null,
+    imageAlt: 'Hà Giang',
+    title: 'Ha Giang Loop',
+    locationLabel: 'Ha Giang · 4 days',
+    fromLabel: 'From',
+    priceLabel: '$480',
+    compareAtPriceLabel: null,
+    rating: 4.9,
+    favorited: false,
+    favoriteLabel: 'Save',
+    onFavoritePress: jest.fn(),
+    onPress: jest.fn(),
+    width: 343,
+  } as const;
+
+  it('thẻ không khung: không viền, ảnh cao 180 bo 14', async () => {
+    await renderWithTheme(<TourListCard {...base} />);
+
+    const card = StyleSheet.flatten(screen.getByLabelText('Ha Giang Loop').props.style);
+    expect(card.borderWidth).toBeUndefined();
+    expect(card.backgroundColor).toBeUndefined();
+  });
+
+  it('có badge thì vẽ đúng một chip badge trên ảnh', async () => {
+    await renderWithTheme(<TourListCard {...base} badgeLabel="Popular" />);
+
+    expect(screen.getByTestId('tour-list-card-badge')).toBeTruthy();
+    expect(screen.getByText('Popular')).toBeTruthy();
+  });
+
+  it('dòng đợt khởi hành: ngày + số chỗ; sắp kín thì số chỗ đổi sang warning-emphasis', async () => {
+    const theme = themeFor('light');
+    await renderWithTheme(
+      <TourListCard
+        {...base}
+        departureLabel="Next departure: Nov 3"
+        seatsLabel="2 seats left"
+        almostFull
+      />,
+    );
+
+    expect(screen.getByText('Next departure: Nov 3')).toBeTruthy();
+    const seats = StyleSheet.flatten(screen.getByTestId('tour-list-card-seats').props.style);
+    expect(seats.color).toBe(theme.colors['warning-emphasis']);
+  });
+
+  it('còn nhiều chỗ thì số chỗ giữ màu muted', async () => {
+    const theme = themeFor('light');
+    await renderWithTheme(
+      <TourListCard {...base} departureLabel="Next departure: Nov 3" seatsLabel="8 seats left" />,
+    );
+
+    const seats = StyleSheet.flatten(screen.getByTestId('tour-list-card-seats').props.style);
+    expect(seats.color).toBe(theme.colors['muted-foreground']);
+  });
+
+  it('không có departureLabel thì ẩn dòng đợt', async () => {
+    await renderWithTheme(<TourListCard {...base} />);
+
+    expect(screen.queryByTestId('tour-list-card-departure')).toBeNull();
+  });
+
+  it('tour đã gỡ: mờ 55%, chip "No longer available", bỏ dòng đợt và chip sao', async () => {
+    await renderWithTheme(
+      <TourListCard
+        {...base}
+        unavailable
+        unavailableLabel="No longer available"
+        departureLabel="Next departure: Nov 3"
+      />,
+    );
+
+    const card = StyleSheet.flatten(screen.getByLabelText('Ha Giang Loop').props.style);
+    expect(card.opacity).toBe(0.55);
+    expect(screen.getByText('No longer available')).toBeTruthy();
+    expect(screen.queryByTestId('tour-list-card-departure')).toBeNull();
+    expect(screen.queryByTestId('tour-list-card-rating')).toBeNull();
   });
 });

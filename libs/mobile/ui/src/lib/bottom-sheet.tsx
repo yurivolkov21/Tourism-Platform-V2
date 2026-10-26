@@ -1,14 +1,16 @@
 import { type ReactNode, useEffect, useRef, useState } from 'react';
 import {
+  AccessibilityInfo,
   Animated,
-  KeyboardAvoidingView,
   Modal,
   PanResponder,
   Platform,
   Pressable,
+  StyleSheet,
   useWindowDimensions,
   View,
 } from 'react-native';
+import Reanimated, { useAnimatedKeyboard, useAnimatedStyle } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { withAlpha } from './theme';
 import { useTheme } from './theme-provider';
@@ -31,6 +33,7 @@ export interface BottomSheetProps {
  * mô phỏng PanResponder (RNTL không có API bắn gesture responder thật).
  */
 export function shouldDismissDrag(dy: number, vy: number): boolean {
+  'worklet';
   return dy > 100 || vy > 0.5;
 }
 
@@ -46,12 +49,43 @@ export function shouldDismissDrag(dy: number, vy: number): boolean {
  * phạm chính gây mảng đen render sai vị trí lúc mở (phản hồi 24/09).
  *
  * Bàn phím (F3, review 06/10): `Modal` iOS không tự co khi bàn phím mở (khác
- * Android `adjustResize`), nên tấm có ô nhập bị che. Bọc `KeyboardAvoidingView`
- * `padding` (CHỈ iOS — Android đã co sẵn, thêm nữa là đẩy hai lần) và để tấm
+ * Android `adjustResize`), nên tấm có ô nhập bị che. Lớp bọc đệm đáy theo chiều cao bàn phím
+ * từ `useAnimatedKeyboard` (CHỈ iOS, xem `KeyboardAvoider`) và để tấm
  * nằm trong LUỒNG bố cục dưới backdrop `flex:1` thay vì `position:absolute`:
  * padding đáy của lớp bọc đẩy tấm lên đúng bằng chiều cao bàn phím, còn phần
  * tử absolute thì Yoga không bảo đảm đi theo padding của cha.
  */
+/** Phần đáy tấm nối dài ra ngoài màn để lò xo nảy không lộ khe hở. */
+const OVERSHOOT_EXTENSION = 56;
+
+/**
+ * Lớp bọc đẩy tấm lên theo bàn phím. CHỈ iOS dùng `useAnimatedKeyboard`: Android đã tự co
+ * (`adjustResize`), và hook này trên Android chiếm quyền xử lý inset của cửa sổ — để nó chạy ở mọi
+ * màn có sheet từng làm vùng an toàn đỉnh/đáy đổi thành trắng. Hook nằm trong component riêng, chỉ
+ * dựng khi tấm đang mở (`Modal` chỉ có con lúc `mounted`), nên không chạm tới các màn bên dưới.
+ */
+function KeyboardAvoider({ children }: { children: ReactNode }) {
+  return Platform.OS === 'ios' ? (
+    <IosKeyboardAvoider>{children}</IosKeyboardAvoider>
+  ) : (
+    <View testID="bottom-sheet-keyboard-avoider" style={{ flex: 1 }}>
+      {children}
+    </View>
+  );
+}
+
+function IosKeyboardAvoider({ children }: { children: ReactNode }) {
+  const keyboard = useAnimatedKeyboard();
+  // Đệm đáy chạy ĐÚNG nhịp trượt của bàn phím (Reanimated đọc chiều cao từng khung hình) thay vì
+  // nhảy một lần như `KeyboardAvoidingView`.
+  const style = useAnimatedStyle(() => ({ paddingBottom: keyboard.height.value }));
+  return (
+    <Reanimated.View testID="bottom-sheet-keyboard-avoider" style={[{ flex: 1 }, style]}>
+      {children}
+    </Reanimated.View>
+  );
+}
+
 export function BottomSheet({ visible, onClose, closeLabel, children }: BottomSheetProps) {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
@@ -65,7 +99,21 @@ export function BottomSheet({ visible, onClose, closeLabel, children }: BottomSh
     if (visible) {
       setMounted(true);
       translateY.setValue(windowHeight);
-      Animated.timing(translateY, { toValue: 0, duration: 250, useNativeDriver: true }).start();
+      // Mở bằng lò xo: sheet vọt lên quá vị trí cuối một chút (~4%) rồi lắng lại — cảm giác "nảy". Máy bật
+      // "giảm chuyển động" thì trượt thẳng, không nảy.
+      AccessibilityInfo.isReduceMotionEnabled().then((reduced) => {
+        if (reduced) {
+          Animated.timing(translateY, { toValue: 0, duration: 200, useNativeDriver: true }).start();
+          return;
+        }
+        Animated.spring(translateY, {
+          toValue: 0,
+          stiffness: 200,
+          damping: 20,
+          mass: 1,
+          useNativeDriver: true,
+        }).start();
+      });
     } else if (mounted) {
       Animated.timing(translateY, {
         toValue: windowHeight,
@@ -113,13 +161,23 @@ export function BottomSheet({ visible, onClose, closeLabel, children }: BottomSh
 
   return (
     <Modal visible={mounted} transparent animationType="none" onRequestClose={onClose}>
-      <KeyboardAvoidingView
-        testID="bottom-sheet-keyboard-avoider"
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        // Nền overlay đặt ở lớp bọc (không ở backdrop): góc bo của tấm để lộ
-        // ra lớp bọc, phải cùng màu overlay chứ không được trong suốt.
-        style={{ flex: 1, backgroundColor: theme.colors.overlay }}
-      >
+      <KeyboardAvoider>
+        {/* Nền overlay mờ dần theo vị trí tấm (kéo xuống / đóng càng xa càng trong); đứng sau tấm nên góc bo
+            của tấm vẫn lộ ra đúng màu overlay. */}
+        <Animated.View
+          pointerEvents="none"
+          style={[
+            StyleSheet.absoluteFill,
+            {
+              backgroundColor: theme.colors.overlay,
+              opacity: translateY.interpolate({
+                inputRange: [0, windowHeight * 0.6],
+                outputRange: [1, 0],
+                extrapolate: 'clamp',
+              }),
+            },
+          ]}
+        />
         <Pressable
           testID="bottom-sheet-backdrop"
           accessibilityRole="button"
@@ -141,7 +199,10 @@ export function BottomSheet({ visible, onClose, closeLabel, children }: BottomSh
             paddingTop: theme.spacing(4),
             // Cộng vùng an toàn đáy: thiếu nó nút cuối tấm dính sát/chui dưới
             // thanh cử chỉ (bản vẽ đặt nút trên `inset-bottom`).
-            paddingBottom: insets.bottom + theme.spacing(8),
+            // Nối dài đáy xuống ngoài màn (OVERSHOOT_EXTENSION) — lúc lò xo vọt lên quá vị trí cuối, phần dư này
+            // lấp khe hở dưới tấm; đệm đáy cộng thêm đúng bằng đó để nội dung không bị dịch.
+            paddingBottom: insets.bottom + theme.spacing(8) + OVERSHOOT_EXTENSION,
+            marginBottom: -OVERSHOOT_EXTENSION,
             // Đệm ngang spacing(6)=24dp khớp `.sheet` bản vẽ 18/09 (trước là
             // spacing(4)=16dp → chip lọc tràn sát mép hơn mẫu).
             paddingHorizontal: theme.spacing(6),
@@ -174,7 +235,7 @@ export function BottomSheet({ visible, onClose, closeLabel, children }: BottomSh
           </View>
           {children}
         </Animated.View>
-      </KeyboardAvoidingView>
+      </KeyboardAvoider>
     </Modal>
   );
 }

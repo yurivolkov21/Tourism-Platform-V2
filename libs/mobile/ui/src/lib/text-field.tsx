@@ -1,7 +1,15 @@
-import Feather from '@expo/vector-icons/Feather';
-import { type ComponentProps, forwardRef, useState } from 'react';
+import type Feather from '@expo/vector-icons/Feather';
+import { type ComponentProps, forwardRef, useEffect, useState } from 'react';
 import { Pressable, TextInput, type TextInputProps, View } from 'react-native';
+import Reanimated, {
+  interpolateColor,
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+} from 'react-native-reanimated';
 import { AppText } from './app-text';
+import { Icon } from './icon';
+import { Shake } from './motion';
 import { useTheme } from './theme-provider';
 
 /** Tên icon của bộ Feather — bộ mà lucide bên web mọc ra, nên hình gần như trùng. */
@@ -22,13 +30,12 @@ export interface TextFieldProps extends Omit<TextInputProps, 'style' | 'placehol
   value: string;
   icon?: FeatherIconName;
   /**
-   * Cách vẽ `icon`. `plain` (mặc định) — icon trần, cùng khuôn cụm auth (bản
-   * duyệt 16/09: login/register/reset). `boxed` — icon trong khung vuông bo
-   * `secondary`+`primary-emphasis`, khuôn `.field` của cụm Account (A3/A6,
-   * mockup 21/09) — HAI mockup khác nhau nên KHÔNG đổi mặc định, chỉ thêm lựa
-   * chọn (phản hồi 26/09, đổi mặc định sẽ vỡ 4 màn auth đã duyệt).
+   * Màu nền che đường viền sau nhãn nổi. PHẢI trùng màu mặt phía sau ô: mặc định là
+   * `background`; ô nằm trên nền khác (bottom sheet = `surfaces.container`, màn danh
+   * sách thẻ rời = `surfaces.grouped`) thì truyền màu đó, không thì nhãn hiện một mảng
+   * màu lệch trên đường viền.
    */
-  iconVariant?: 'plain' | 'boxed';
+  labelBackground?: string;
   /** Cho phép gõ xuống dòng (`TextInput multiline`) — THUẦN hành vi nhập, không
    *  tự kéo cao ô. Ô huỷ booking (`.field.ph`, KHÔNG `.tall`) vẫn `multiline`
    *  để chữ lý do dài tự xuống dòng, nhưng cao y hệt ô một dòng (phát hiện
@@ -36,11 +43,9 @@ export interface TextFieldProps extends Omit<TextInputProps, 'style' | 'placehol
    *  chân trôi xa khỏi chữ — soi ảnh chụp máy). */
   multiline?: boolean;
   /**
-   * Ô CAO (B3 "Anything we should know?", E1 "Message" — mockup `.field.tall`
-   * VỚI `min-height` riêng mỗi khung, ở đây gộp một hằng số `spacing(24)`
-   * xấp xỉ cả hai). CHỈ có nghĩa với `iconVariant="boxed"`. Icon neo lên đầu
-   * thay vì canh giữa. ĐỘC LẬP với `multiline` — ô huỷ booking multiline mà
-   * KHÔNG tall (mockup không có class `.tall`), xem ghi chú ở `multiline`.
+   * Ô CAO (B3 "Anything we should know?", E1 "Message"): cao 96, icon neo lên đầu.
+   * ĐỘC LẬP với `multiline` — ô huỷ booking multiline mà KHÔNG tall: chữ lý do dài
+   * tự xuống dòng nhưng ô vẫn cao 56 như ô một dòng.
    */
   tall?: boolean;
   /** Câu lỗi của ô (kênh 1). Có nó thì gạch chân đổi màu và ô bị đánh dấu sai. */
@@ -52,9 +57,10 @@ export interface TextFieldProps extends Omit<TextInputProps, 'style' | 'placehol
 }
 
 /**
- * Ô nhập gạch chân của cụm auth (bản thiết kế duyệt 16/09). Nhãn thu nhỏ khi ô
- * đã có chữ — nếu chỉ dùng placeholder thì lúc gõ xong người ta không còn biết
- * ô nào là ô nào, nhất là hai ô mật khẩu ở màn đặt lại.
+ * Ô nhập outlined của Material 3 (N3): cao 56, bo 4, viền 1 `input`; đang gõ viền 2
+ * `primary-emphasis`, lỗi viền 2 `destructive-emphasis`. Nhãn nổi lên NẰM TRÊN đường
+ * viền khi ô đã có chữ hoặc đang gõ — nếu chỉ dùng placeholder thì gõ xong người ta
+ * không còn biết ô nào là ô nào, nhất là hai ô mật khẩu ở màn đặt lại.
  *
  * `forwardRef` để màn gọi được `focus()` cho ô sai đầu tiên sau khi kiểm ở máy.
  */
@@ -65,87 +71,108 @@ export const TextField = forwardRef<TextInput, TextFieldProps>(function TextFiel
     alwaysShowLabel = false,
     value,
     icon,
-    iconVariant = 'plain',
+    labelBackground,
     multiline = false,
     tall = false,
     error,
     secure = false,
     revealLabel,
     hideLabel,
+    onFocus,
+    onBlur,
     ...rest
   },
   ref,
 ) {
   const theme = useTheme();
   const [revealed, setRevealed] = useState(false);
+  const [focused, setFocused] = useState(false);
   const filled = value.length > 0;
   const invalid = error !== undefined;
 
+  // Viền đổi màu mượt giữa ba trạng thái (thường 0, đang gõ 1, lỗi 2) thay vì nhảy.
+  const toneIndex = invalid ? 2 : focused ? 1 : 0;
+  const tone = useSharedValue(toneIndex);
+  const colors = [
+    theme.colors.input,
+    theme.colors['primary-emphasis'],
+    theme.colors['destructive-emphasis'],
+  ];
+  useEffect(() => {
+    tone.value = withTiming(toneIndex, { duration: 160 });
+  }, [toneIndex, tone]);
+  // Màu viền chạy thẳng trên luồng UI.
+  const borderStyle = useAnimatedStyle(() => ({
+    borderColor: interpolateColor(tone.value, [0, 1, 2], colors),
+  }));
+  const showLabel = filled || alwaysShowLabel || focused;
+
   return (
-    <View>
-      <View
-        testID="text-field-line"
-        style={{
-          flexDirection: 'row',
-          // `tall` (B3/E1, mockup `.field.tall`): icon neo lên đầu, không canh
-          // giữa — vài dòng chữ cao hơn icon 40dp thì canh giữa sẽ kéo icon
-          // trôi xuống lệch với dòng đầu tiên. ĐỘC LẬP với `multiline` (xem
-          // JSDoc `multiline`/`tall` ở trên) — ô huỷ booking multiline vẫn
-          // canh giữa vì mockup không đánh dấu nó `tall`.
-          alignItems: tall ? 'flex-start' : 'center',
-          gap: theme.spacing(2.5),
-          // `boxed` (Account, A3/A6): khớp `.field` mockup — `minHeight`
-          // spacing(15)=60dp KÈM `paddingVertical` riêng, không chỉ dựa vào
-          // `alignItems:'center'` để chừa khoảng cách. Icon 40dp giờ cao hơn
-          // chữ nhãn+giá trị cộng lại; canh giữa thuần làm chữ như dán sát
-          // gạch chân (phản hồi 26/09) vì khối chữ không có padding riêng để
-          // "nở" theo icon — `paddingVertical` đảm bảo khoảng trống LUÔN có,
-          // bất kể icon cao bao nhiêu. `tall` cao hơn nữa (spacing(24)) để
-          // chừa chỗ vài dòng chữ.
-          minHeight: iconVariant === 'boxed' ? theme.spacing(tall ? 24 : 15) : theme.touchTargetMin,
-          paddingVertical: iconVariant === 'boxed' ? theme.spacing(2.5) : 0,
-          marginTop: theme.spacing(2.5),
-          borderBottomWidth: 1,
-          borderBottomColor: invalid ? theme.colors['destructive-emphasis'] : theme.colors.border,
-        }}
+    <Shake active={invalid}>
+      <Reanimated.View
+        testID="text-field-outline"
+        style={[
+          {
+            flexDirection: 'row',
+            // `tall`: icon neo lên đầu — vài dòng chữ cao hơn icon thì canh giữa sẽ kéo
+            // icon trôi xuống lệch với dòng đầu tiên.
+            alignItems: tall ? 'flex-start' : 'center',
+            gap: theme.spacing(3),
+            minHeight: tall ? 96 : 56,
+            paddingHorizontal: theme.spacing(4),
+            paddingVertical: tall ? theme.spacing(3.5) : 0,
+            marginTop: theme.spacing(2.5),
+            borderRadius: 4,
+            borderWidth: invalid || focused ? 2 : 1,
+          },
+          borderStyle,
+        ]}
       >
-        {icon === undefined ? null : iconVariant === 'boxed' ? (
-          <View
-            testID="text-field-icon-box"
+        {showLabel ? (
+          <AppText
+            testID="text-field-label"
+            variant="caption"
+            tone={invalid ? 'danger' : focused ? 'link' : 'muted'}
             style={{
-              width: theme.spacing(10),
-              height: theme.spacing(10),
-              borderRadius: theme.radius.base * 2,
-              backgroundColor: theme.colors.secondary,
-              alignItems: 'center',
-              justifyContent: 'center',
-              marginTop: tall ? theme.spacing(1) : 0,
+              position: 'absolute',
+              top: -8,
+              left: theme.spacing(3),
+              paddingHorizontal: theme.spacing(1),
+              backgroundColor: labelBackground ?? theme.colors.background,
             }}
           >
-            <Feather name={icon} size={20} color={theme.colors['primary-emphasis']} />
-          </View>
-        ) : (
-          <Feather name={icon} size={18} color={theme.colors['muted-foreground']} />
+            {label}
+          </AppText>
+        ) : null}
+        {icon === undefined ? null : (
+          <Icon name={icon} size={24} color={theme.colors['muted-foreground']} />
         )}
         <View style={{ flex: 1 }}>
-          {filled || alwaysShowLabel ? (
-            <AppText variant="caption" tone="muted">
-              {label}
-            </AppText>
-          ) : null}
           <TextInput
             ref={ref}
             value={value}
-            placeholder={filled ? undefined : (placeholder ?? label)}
+            // Nhãn đã nổi lên viền (đang gõ hoặc ép hiện) thì không in lại chính nó làm
+            // placeholder — chỉ còn placeholder riêng nếu nơi gọi truyền.
+            placeholder={filled ? undefined : showLabel ? placeholder : (placeholder ?? label)}
             placeholderTextColor={theme.colors['muted-foreground']}
             secureTextEntry={secure && !revealed}
             multiline={multiline}
             aria-invalid={invalid}
+            onFocus={(event) => {
+              setFocused(true);
+              onFocus?.(event);
+            }}
+            onBlur={(event) => {
+              setFocused(false);
+              onBlur?.(event);
+            }}
             accessibilityLabel={label}
             style={{
               color: theme.colors.foreground,
               fontWeight: theme.weight.normal,
               fontSize: theme.type.base.fontSize,
+              // Ô tall: chữ bắt đầu từ trên, không canh giữa theo chiều dọc.
+              textAlignVertical: tall ? 'top' : 'center',
               padding: 0,
             }}
             {...rest}
@@ -158,14 +185,14 @@ export const TextField = forwardRef<TextInput, TextFieldProps>(function TextFiel
             hitSlop={theme.spacing(2)}
             onPress={() => setRevealed((shown) => !shown)}
           >
-            <Feather
+            <Icon
               name={revealed ? 'eye-off' : 'eye'}
-              size={18}
+              size={24}
               color={theme.colors['muted-foreground']}
             />
           </Pressable>
         ) : null}
-      </View>
+      </Reanimated.View>
       {invalid ? (
         <AppText
           variant="caption"
@@ -176,6 +203,6 @@ export const TextField = forwardRef<TextInput, TextFieldProps>(function TextFiel
           {error}
         </AppText>
       ) : null}
-    </View>
+    </Shake>
   );
 });

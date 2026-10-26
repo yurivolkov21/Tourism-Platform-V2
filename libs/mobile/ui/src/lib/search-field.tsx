@@ -1,6 +1,7 @@
-import Feather from '@expo/vector-icons/Feather';
 import { useState } from 'react';
 import { Pressable, TextInput, type TextInputProps, View } from 'react-native';
+import { Icon } from './icon';
+import { PopIn } from './motion';
 import { useTheme } from './theme-provider';
 
 export interface SearchFieldProps extends Omit<TextInputProps, 'style' | 'onFocus' | 'onBlur'> {
@@ -15,7 +16,7 @@ export interface SearchFieldProps extends Omit<TextInputProps, 'style' | 'onFocu
   clearLabel: string;
 }
 
-/** Ô tìm pill (bản vẽ 18/09, `.search` — ADR-0055 T3). */
+/** Thanh tìm Material 3 (N8, khung B2): cao 56, bo 28, nền `containerHigh`, không viền. */
 export function SearchField({
   value,
   onChangeText,
@@ -32,16 +33,14 @@ export function SearchField({
       style={{
         flexDirection: 'row',
         alignItems: 'center',
-        height: theme.touchTargetMin,
-        borderRadius: 999,
-        backgroundColor: theme.colors.card,
-        borderWidth: focused ? 2 : 1,
-        borderColor: focused ? theme.colors['primary-emphasis'] : theme.colors.border,
-        gap: theme.spacing(2.5),
+        height: 56,
+        borderRadius: 28,
+        backgroundColor: theme.surfaces.containerHigh,
+        gap: theme.spacing(3),
         paddingHorizontal: theme.spacing(4),
       }}
     >
-      <Feather name="search" size={18} color={theme.colors['muted-foreground']} />
+      <Icon name="search" size={24} color={theme.colors['muted-foreground']} />
       <TextInput
         value={value}
         onChangeText={onChangeText}
@@ -59,14 +58,16 @@ export function SearchField({
         {...rest}
       />
       {value.length > 0 ? (
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={clearLabel}
-          hitSlop={theme.spacing(2)}
-          onPress={() => onChangeText('')}
-        >
-          <Feather name="x" size={16} color={theme.colors['muted-foreground']} />
-        </Pressable>
+        <PopIn>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={clearLabel}
+            hitSlop={theme.spacing(2)}
+            onPress={() => onChangeText('')}
+          >
+            <Icon name="x" size={24} color={theme.colors['muted-foreground']} />
+          </Pressable>
+        </PopIn>
       ) : null}
     </View>
   );

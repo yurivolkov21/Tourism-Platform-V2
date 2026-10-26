@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { StyleSheet, View, type ViewProps } from 'react-native';
+import { View, type ViewProps } from 'react-native';
 import { useTheme } from './theme-provider';
 
 export interface CardProps extends ViewProps {
@@ -15,11 +15,9 @@ export function Card({ children, style, ...rest }: CardProps) {
       style={[
         {
           backgroundColor: theme.colors.card,
-          borderColor: theme.colors.border,
-          // `hairlineWidth` là đường mảnh nhất mà màn hình vẽ được — 1dp trên
-          // màn @3x sẽ dày gấp ba lần cần thiết.
-          borderWidth: StyleSheet.hairlineWidth,
-          borderRadius: theme.radius.base,
+          // Thẻ Material 3: không viền, không bóng — nền `card` đặt trên nền màn
+          // (`surfaces.grouped`) là đủ tách lớp.
+          borderRadius: 16,
           padding: theme.spacing(4),
         },
         style,

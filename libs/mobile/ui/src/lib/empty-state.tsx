@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { View, type ViewProps } from 'react-native';
 import { AppText, type AppTextTone, type AppTextVariant } from './app-text';
 import { Card } from './card';
+import { FadeIn, PopIn } from './motion';
 import { useTheme } from './theme-provider';
 
 export interface EmptyStateProps extends ViewProps {
@@ -22,7 +23,7 @@ export interface EmptyStateProps extends ViewProps {
   /** Khe cho hành động đi kèm (thường là một `Button`). */
   children?: ReactNode;
   /**
-   * Dựng trên nền `Card` (viền + bo góc + nền thẻ) — mặc định giữ nguyên (màn
+   * Dựng trên nền `Card` (bo góc + nền thẻ) — mặc định giữ nguyên (màn
    * placeholder/lỗi kiểu cũ đã duyệt với khối này). Đặt `false` cho tri-state
    * chiếm TRỌN vùng còn lại của màn (H2–H4, E5 bản vẽ 18/09) — bản vẽ KHÔNG có
    * khung thẻ bao quanh icon+câu+nút, chỉ nổi trần trên nền trang.
@@ -47,16 +48,20 @@ export function EmptyState({
 
   return (
     <Container style={[{ alignItems: 'center', gap: theme.spacing(2) }, style]} {...rest}>
-      {icon}
-      <AppText variant={titleVariant} tone={titleTone} style={{ textAlign: 'center' }}>
-        {title}
-      </AppText>
-      {body === undefined ? null : (
-        <AppText tone="muted" style={{ textAlign: 'center' }}>
-          {body}
+      {icon === undefined ? null : <PopIn>{icon}</PopIn>}
+      <FadeIn delay={120}>
+        <AppText variant={titleVariant} tone={titleTone} style={{ textAlign: 'center' }}>
+          {title}
         </AppText>
+      </FadeIn>
+      {body === undefined ? null : (
+        <FadeIn delay={180}>
+          <AppText tone="muted" style={{ textAlign: 'center' }}>
+            {body}
+          </AppText>
+        </FadeIn>
       )}
-      {children}
+      {children === undefined ? null : <FadeIn delay={240}>{children}</FadeIn>}
     </Container>
   );
 }

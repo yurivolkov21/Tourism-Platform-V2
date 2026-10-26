@@ -46,8 +46,11 @@ export interface AppTextProps extends TextProps {
   tone?: AppTextTone;
 }
 
-/** Chữ của app. Mọi chuỗi hiển thị đi qua đây thay vì `<Text>` trần. */
-export function AppText({ variant = 'body', tone = 'default', style, ...rest }: AppTextProps) {
+/**
+ * Kiểu chữ đã phân giải theo vai trò + vai màu. Tách khỏi `AppText` để những chỗ không dùng được
+ * `<Text>` (vd ô `TextInput` chỉ đọc cho số chạy trên luồng UI) vẫn ra cùng cỡ chữ, độ đậm, màu.
+ */
+export function useAppTextStyle(variant: AppTextVariant = 'body', tone: AppTextTone = 'default') {
   const theme = useTheme();
   const { step, weight } = APP_TEXT_VARIANTS[variant];
   // KHÔNG optional-chaining: `buildTheme` đã bảo đảm mọi bậc trong
@@ -63,18 +66,15 @@ export function AppText({ variant = 'body', tone = 'default', style, ...rest }: 
       ? { fontFamily: theme.fonts.heading }
       : { fontWeight: theme.weight[weight] };
 
-  return (
-    <Text
-      style={[
-        {
-          fontSize: scale.fontSize,
-          lineHeight: scale.lineHeight,
-          ...face,
-          color: theme.colors[TONE_COLOR[tone]],
-        },
-        style,
-      ]}
-      {...rest}
-    />
-  );
+  return {
+    fontSize: scale.fontSize,
+    lineHeight: scale.lineHeight,
+    ...face,
+    color: theme.colors[TONE_COLOR[tone]],
+  };
+}
+
+/** Chữ của app. Mọi chuỗi hiển thị đi qua đây thay vì `<Text>` trần. */
+export function AppText({ variant = 'body', tone = 'default', style, ...rest }: AppTextProps) {
+  return <Text style={[useAppTextStyle(variant, tone), style]} {...rest} />;
 }
