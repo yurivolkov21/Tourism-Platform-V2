@@ -1,0 +1,32 @@
+[
+  {
+    "id": "b0000001-0000-4000-8000-000000000003",
+    "slug": "cruise",
+    "name": "Cruises"
+  },
+  {
+    "id": "b0000001-0000-4000-8000-000000000001",
+    "slug": "day",
+    "name": "Day Tours"
+  },
+  {
+    "id": "b0000001-0000-4000-8000-000000000005",
+    "slug": "honeymoon",
+    "name": "Honeymoon"
+  },
+  {
+    "id": "b0000001-0000-4000-8000-000000000002",
+    "slug": "package",
+    "name": "Multi-day Packages"
+  },
+  {
+    "id": "b0000001-0000-4000-8000-000000000006",
+    "slug": "seasonal-classics",
+    "name": "Seasonal Classics"
+  },
+  {
+    "id": "b0000001-0000-4000-8000-000000000004",
+    "slug": "trekking",
+    "name": "Trekking & Adventure"
+  }
+]

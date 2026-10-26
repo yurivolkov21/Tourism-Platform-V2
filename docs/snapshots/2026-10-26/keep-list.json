@@ -1,0 +1,12 @@
+{
+  "ghi_chu": "Sinh tự động bởi export-snapshot.mjs. reset-operational-data.mjs đọc file này ở thư mục snapshot MỚI NHẤT để biết Owner nào được làm mới.",
+  "ly_do_giu_email": "Owner được làm mới chứ không xoá hẳn: dòng mới cùng email, uuid mới, chưa có mật khẩu. Giữ email để ADMIN_EMAILS trên Render vẫn khớp; 9 bài blog trỏ vào Owner qua FK RESTRICT nên được chuyển sang dòng mới trước khi xoá dòng cũ.",
+  "admin_duy_nhat": {
+    "id": "60b92d84-b84d-48dd-bfb8-8654768b7cd4",
+    "email_rut_gon": "tour….online@gmail.com",
+    "name": "Admin Nexora",
+    "created_at": "2026-08-19T21:21:15.196Z",
+    "ghi_chu": "Chỉ có đúng một ADMIN lúc xuất; bản này được làm mới khi reset."
+  },
+  "so_admin_luc_xuat": 1
+}
