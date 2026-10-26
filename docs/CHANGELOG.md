@@ -8,6 +8,59 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-10-26 — Merge lượt seed lại 2 làm mới cả Owner: `data:reset` tạo lại Owner cùng email, `snapshot:export` không ghi đè bản sao lưu cùng ngày, hướng dẫn seed lại production (`a53e9d5`)
+
+Yuri chốt phạm vi lượt seed lại prod 2 ngày 26/10 03:23 UTC: chạy ngay sau buổi test tay cuối (bỏ mốc 03/11), giữ
+tour, điểm đến, danh mục, bài viết và ảnh, làm mới mọi thứ khác, kể cả tài khoản Owner. 04:50 UTC Yuri chọn giữ email
+Owner cũ trên thẻ quyết định, 05:10 UTC bảo triển khai. Nhánh `claude/project-thread-w3wgvy` dựng từ `main`
+`e23be63`, [PR #69](https://github.com/yurivolkov21/Tourism-Platform-V2/pull/69), thi công trên session cloud. Chỉ
+đụng script chạy tay của api, cấu hình Vitest của api và docs: không migration, không đổi contract, không biến env,
+không dependency mới; code chạy của API không đổi.
+
+- `00326c7` (docs): seed spec 14/09 §8.5 thêm "Điều chỉnh 26/10 — phạm vi mới của lượt 2"; các gạch cũ giữ làm bản
+  ghi lúc viết.
+- `63ff864` (fix): `snapshot:export` chạy lần hai trong cùng ngày từng ghi đè `backups/<ngày>/`, bản chụp duy nhất
+  của dữ liệu trước reset. Nay thư mục của ngày đã có thì ghi sang `<ngày>-2`, `-3`… (`scripts/thu-muc-sao-luu.mjs`,
+  4 test viết đỏ trước); `docs/snapshots/<ngày>/` vẫn bị ghi đè có chủ ý vì `data:reset` đọc keep-list ở thư mục
+  mới nhất. `vitest.config.ts` của api cho swc bỏ qua `.mjs`: `.swcrc` chỉ khớp `.ts`/`.tsx` nên swc từ chối file
+  `.mjs`.
+- `ba69d16` (feat): `data:reset --apply` làm mới Owner trong cùng transaction: dòng cũ nhả email sang
+  `owner-cu-<uuid>@lam-moi.invalid`, chèn dòng Owner mới cùng email và tên (ADMIN, `email_verified`, không mật khẩu,
+  không phiên, không avatar, không số điện thoại), chuyển `posts.author_id` (khoá RESTRICT duy nhất từ bảng được giữ
+  trỏ vào `users`) sang dòng mới để 9 bài giữ uuid, rồi xoá mọi `sessions`, `accounts`, `users` còn lại. Bất biến mới
+  trước COMMIT: `users` còn đúng Owner mới với hình dạng ấy, 0 phiên, 0 dòng `accounts`, mọi bài trỏ Owner mới. Chạy
+  lại sau một lượt đã COMMIT thì cổng 2 dừng và dặn xuất lại snapshot. Keep-list đổi lời ghi chú (`ly_do_giu_uuid`
+  thành `ly_do_giu_email`), giữ khoá `admin_duy_nhat`. `email_verified` phải bật vì Better Auth 1.6.23 chặn đăng
+  nhập mật khẩu khi email chưa xác minh, mà `resetPassword` (tạo dòng `accounts` credential cho tài khoản chưa có)
+  không bật cờ này.
+- `a53e9d5` (docs): hướng dẫn mới `docs/guides/huong-dan-seed-lai-production.md` thay mục 6 của báo cáo F2 đã bị dọn
+  khỏi thư mục chung, có trong mục lục `guides/README.md`. Mốc 03/11 bỏ khỏi `open-items.md` (sửa luôn chỗ trỏ nhầm
+  "ADR-0041 Phụ lục B": Phụ lục B nằm ở plan hoàn tiền một hạn chót), `snapshots/README.md`, `plans/README.md`, đầu
+  plan hoàn tiền một hạn chót và Bước 8 của nó (thêm ghi chú điều chỉnh, giữ bản cũ).
+
+**Review.** Không có lượt review độc lập. Script reset vẫn không có test tự động; bằng chứng là lượt chạy thử trọn
+vòng trên Postgres local (db `tourism`, H = 26/10) với trạng thái dựng giống prod đã dùng: Owner có mật khẩu, phiên,
+avatar, số điện thoại và dòng Google; một Staff có phiên; `user_events`, `admin_activity`, chat; ảnh POST, TOUR,
+REVIEW. Chạy khô đếm users 122, accounts 123, sessions 2, 9 bài cần chuyển. `--apply` COMMIT, còn 1 user là Owner
+mới, 0 phiên, 0 dòng `accounts`. Chạy lại thì dừng ở cổng 2. `db:seed` upsert đúng id Owner mới; `seed:verify` xanh
+mọi bất biến tài khoản (hai dòng ✖ về ảnh là của DB local không có bản đồ ảnh, xem "Con số đã biết" của
+open-items). Owner mới: mật khẩu cũ trả 401, đặt lại qua `request-password-reset` rồi đăng nhập 200, role ADMIN.
+Xuất lại cùng ngày ghi vào `backups/<ngày>-2/`, bản đầu còn 122 users. Yuri bảo đẩy lên main 26/10 06:02 UTC.
+
+Tests after (`gate:int` trên `a53e9d5`, nền `e23be63`, 26/10, session cloud, API sống ở :3001): unit 8543 (web 2491,
+admin 2458, api 1474, mobile 961, contract 812, mobile-ui 145, ui 65, i18n 63, core 48, tokens 26), int 983, Biome
+2126 file; RLS, tokens-only mobile, prerender admin và bundle mobile xanh; cả lượt chạy với
+`NODE_OPTIONS=--max-old-space-size=4096`. PR thêm 4 unit test ở api: unit hơn entry A1 ngay dưới đúng 4.
+
+**CÒN TREO:**
+
+- Lượt seed lại prod 2: Yuri chạy tay ngay sau buổi test tay cuối (sau cả phần app của Nghĩa), theo
+  `docs/guides/huong-dan-seed-lai-production.md`. Entry CHANGELOG riêng cho lượt ấy, kèm commit thư mục
+  `docs/snapshots/<ngày>/`.
+- Kịch bản test tay `test-tay/web-admin-api/gioi-han-va-sau-seed.md` trong thư mục chung của project (thread giữ bộ
+  kịch bản) còn ghi `data:reset` giữ một admin; coordinator đã được báo để đổi theo hướng dẫn mới.
+- Dọn nhánh `claude/project-thread-w3wgvy` trên origin nếu GitHub không tự xoá.
+
 ## 2026-10-26 — Merge phần còn treo của review A1: khối chú giải của `/reports` cùng thứ tự với bản in và file Excel, comment quyền của mười file action (`88bb0f2`)
 
 Hai mục mà entry A1 của PR #61 (cùng ngày, ở dưới) để ở CÒN TREO; Yuri bảo làm luôn 26/10 03:57 UTC. Nhánh
