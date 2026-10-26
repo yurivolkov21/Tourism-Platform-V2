@@ -1,5 +1,7 @@
 # CLAUDE.md — tourism-v2
 
+> Mới vào repo? Đọc [README.md](README.md) trước: dự án là gì và cách chạy trên máy.
+
 Quy ước cho AI agent (và người) làm việc trong repo này. Kế thừa hợp đồng vận
 hành đã chứng minh ở Nexora, cập nhật cho toolchain mới.
 
