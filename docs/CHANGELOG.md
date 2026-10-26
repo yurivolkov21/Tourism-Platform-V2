@@ -8,6 +8,103 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-10-26 — Merge review A1 admin vận hành: hai bộ đếm huỷ của báo cáo tháng chỉ đếm khách tự huỷ, thẻ dashboard đọc tươi, sổ thanh toán và sổ hoàn dễ đọc hơn, nhãn "Revenue (gross)" và cột Created ở `/bookings` (`6c4caec`)
+
+Luồng A1 của đợt review code theo luồng (kế hoạch 20/10 trong thư mục chung của project,
+`code-review/ke-hoach-review-theo-luong.md`), rà trên `main` `e8fdfee`, rebase lên `4b40972` trước khi đẩy. Báo
+cáo đủ 36 phát hiện (12 sửa ở đây, 2 sửa ở PR #60 của A5, 3 chuyển coordinator, 2 đề xuất làm theo lựa chọn của
+Yuri, 1 đề xuất còn treo, 1 bỏ, 15 ghi lại) từng nằm ở `code-review/A1-bao-cao.md` của thư mục chung; thư mục ấy đã
+được dọn trước lúc merge, nên các bước test tay và việc còn treo chép ở mục CÒN TREO dưới đây. Nhánh
+`fix/review-a1-admin-ops-n6iayk`, [PR #61](https://github.com/yurivolkov21/Tourism-Platform-V2/pull/61), thi công
+trên session cloud. Đụng api (thống kê, sổ hoàn), admin (dashboard, `/bookings`, chi tiết đơn, sổ thanh toán),
+i18n và JSDoc của contract: không migration, không đổi kiểu contract, không biến env, không dependency mới.
+
+- `a25f094` (A1-01, P1): hai bộ đếm "Cancelled within the deadline" và "Cancelled after the deadline" của báo cáo
+  tháng (màn hình, bản in, sheet Operations) đếm cả lượt công ty huỷ chuyến, vì đường F13 ghi yêu cầu huỷ
+  `REFUNDED` với `decided_by` là admin. Owner huỷ một chuyến có sáu đơn đã trả, ba ngày trước ngày đi, thì báo cáo
+  ghi "Cancelled after the deadline: 6" ngay trên câu "after the deadline means no automatic refund", dù cả sáu đơn
+  được hoàn đủ. Nay `cancellationOutcomesSlice` chỉ đếm yêu cầu có `decided_by = user_id`, cùng phép so với cờ
+  `decidedByCustomer` của contract; câu định nghĩa thành "Customer cancellations are counted…"; ADR-0033 AMEND 4.
+  Seed che lỗi này (đơn công ty huỷ của seed còn dạng trước F13), nên nó chỉ hiện từ lượt huỷ chuyến thật đầu tiên.
+- `cfaf0a6` (A1-02): ở chi tiết đơn của admin, lượt công ty huỷ từng ghi "After the free-cancellation deadline (…)"
+  cạnh "Refunded $117.00". Yêu cầu không do khách quyết trên chuyến đã huỷ nay in "Departure called off, so the
+  deadline does not apply", vẫn in số đã hoàn.
+- `a91035e` (A1-03): bốn thẻ của `/` dùng chung fetcher có cache 60 giây với `/bookings`, mà Data Cache là
+  stale-while-revalidate, nên thẻ mang số của lượt xem trước trong khi biểu đồ và bảng ngay dưới đã có khoản trả
+  mới. Nay `fetchDashboardBookingsStats` đọc không cache; ADR-0036 AMEND 3. Lúc rebase sau PR #60, header
+  `lib/api/stats.ts` và đoạn "Không đổi" của AMEND 3 ghi theo khoá cache theo khung `x-admin-cache-window`: trần 60
+  giây của `/bookings` và `/reviews` nay là thật, còn `/` vẫn đọc tươi vì thẻ đứng cạnh biểu đồ không cache.
+- `703878a` (A1-04, A1-05, A1-06): sổ thanh toán. Ghi chú của handler ("operator must refund manually") từng chỉ thấy
+  khi mở đúng row, vì row ấy đã có mốc Processed; nay bảng có badge "Handler note" cạnh mốc ấy, nguyên văn ở tooltip.
+  Row hoàn tiền do chính hệ thống ghi có tiêu đề "What we recorded for this refund" thay cho "What the payment
+  provider sent". Mốc tạo event của Stripe và PayPal mang nhãn "Event created" thay cho "Received at", vốn trùng tên
+  với field Received của drawer.
+- `97610ba` (A1-07): `/bookings` đang lọc thêm tìm kiếm hay trạng thái mà rỗng thì từng báo "No bookings were created
+  between …", như thể lỗi do khoảng ngày; nay là "No matching bookings were created between …". Cùng khuôn ở bảng
+  review (L5) và subscriber (L6) để lại, đã báo coordinator.
+- `12fc4c4` (A1-08): lý do hoàn dài trên sổ hoàn của chi tiết đơn xuống dòng thay vì bị cắt.
+- `fee55c8` (A1-09): `fetchAdminBookings` luôn gửi `includeMedia: false`; bảng và route xuất file không in ảnh tour,
+  nên API thôi chạy thêm một câu tìm ảnh mỗi lần lọc hay phân trang. Contract giữ mặc định `true`.
+- `1856baf` (A1-10): hai cảnh báo thiếu giá vốn của báo cáo tháng chia số ít, số nhiều ("1 booking has…").
+- `9e15ee6` (A1-11, L4-22): dòng sổ hoàn của API trả "30.00" thay cho "30" và "20.5".
+- `8c03495` (A1-12): sửa comment nói sai code ở module stats, báo cáo tháng, contract và danh sách đơn; không đổi
+  hành vi.
+- `fa8bd42` (A1-19): thẻ tiền của `/` và `/bookings` ghi "Revenue (gross)", đúng tên dòng của khối "Money and
+  operations" ở báo cáo tháng: số ấy là tiền thu theo `paid_at`, không trừ khoản hoàn.
+- `6c4caec` (A1-18): `/bookings` lọc theo ngày đặt mà bảng chỉ in ngày đi; nay có cột Created ngay sau Tour, hai
+  dòng ngày và giờ UTC, ẩn được ở menu Columns. Cột không đứng cuối vì nút Export treo đè lên nửa phải tiêu đề cột
+  cuối (bản đầu đặt cuối thì nút che chữ "Created" ở 1440px). Bảng vừa khung từ 1366px; ở 1280px tràn chừng 25px và
+  nút Export che đuôi chữ Customer, thân bảng đủ chữ.
+
+**Review.** Không có lượt review độc lập; mỗi phần sửa có test đỏ trên mã cũ: A1-01 (1 int), A1-02 tới A1-05 (mỗi
+phần 1), A1-06 (1 assertion thêm vào test sẵn có), A1-07 (3), A1-08 (1), A1-09 (2), A1-10 (1), A1-11 (2 assertion
+int đổi theo), A1-18 (5), A1-19 (1); ba ca canh hành vi đúng (A1-02, A1-03, A1-05) xanh ở cả hai bản. Bốn trọng tâm
+của kế hoạch đều pass: cùng một khoảng ngày thì dashboard, `/bookings`, báo cáo tháng và Excel ra cùng số; hoàn
+ngoại lệ không vượt phần còn hoàn được, không chạy hai lần, Staff không làm được; route xuất file kiểm quyền như
+trang; bản in mười tháng 01–10/2026 của seed local mỗi tờ một trang A4. Giả định "ngày cắt theo giờ Việt Nam" của kế
+hoạch sai: code cắt theo UTC có chủ đích (ADR-0028 §3, ADR-0036 §2) và mọi nhãn đều ghi UTC. A1-13 (cache không trần
+của `/bookings`, `/reviews`) và A1-14 (lịch lọc chọn được ngày tương lai) sửa ở PR #60, xem entry A5. A1-15 và A1-16
+(lượt tra phiên không có timeout khi API ngủ) đã gộp vào đề xuất A5-12 ở entry A5. A1-21 bỏ vì Yuri chọn "Không làm"
+ở thẻ F2-04. Yuri chọn "Làm cả hai" cho A1-18 và A1-19, rồi bảo đẩy lên main 26/10 01:32 UTC.
+
+Tests after (`gate:int` trên `6c4caec`, nền `4b40972`, 26/10, session cloud, API sống ở :3001): unit 8487 (web
+2469, admin 2456, api 1449, mobile 961, contract 812, mobile-ui 145, i18n 64, ui 57, core 48, tokens 26) và int
+982; Biome 2120 file; RLS, tokens-only của mobile và prerender admin xanh. Test contract chạy với
+`--max-old-space-size=6144` như entry A3, A4 và A5, 812/812. PR thêm 19 test unit ở admin và 1 int test.
+
+**CÒN TREO:**
+
+- Buổi test tay, trên production. Theo luật demo của F2: không hoàn, không huỷ trên đơn seed đã trả; dùng một đơn
+  mới trả bằng thẻ 4242. Bước 1 tới 5 dùng chung đợt và đơn với bước 3 của L4 (công ty huỷ chuyến): làm bước 2 tới
+  4 trước khi huỷ đợt.
+  1. Chuẩn bị: Owner tạo một đợt mới cho một tour. Trước khi khách trả, ghi lại thẻ "Revenue (gross)" và Paid
+     bookings của `/`, và hai dòng "Cancelled within the deadline", "Cancelled after the deadline" của `/reports`
+     tháng hiện tại.
+  2. (A1-03) Khách đặt một chỗ trên đợt ấy và trả bằng thẻ 4242. Tải lại `/` một lần: thẻ tiền tăng đúng tổng đơn,
+     Paid bookings tăng 1, cùng lúc với cột hôm nay của biểu đồ. Phần `/bookings` đo ở bước 10 của A5.
+  3. (A1-08) Ở chi tiết đơn ấy, hoàn một phần (ví dụ $10) với lý do dài khoảng 300 ký tự: sổ hoàn in đủ lý do,
+     xuống nhiều dòng.
+  4. (A1-05, A1-06) `/payment-events`: row "payment.refunded" vừa sinh có tiêu đề payload "What we recorded for this
+     refund"; row Stripe của lần trả ở bước 2, chế độ Simple, có nhãn "Event created". Badge "Handler note" (A1-04)
+     chỉ hiện khi handler ghi chú (lệch tiền, hoàn tự động hỏng), không tạo an toàn trên prod được; test unit canh.
+  5. (A1-01, A1-02) Huỷ đợt ở bước 1 kèm lý do (bước 3 của L4), đợi job hoàn phần còn lại. Tải lại `/reports`: hai
+     dòng ghi ở bước 1 không đổi, dòng Refunds có thêm khoản hoàn, khối định nghĩa ghi "Customer cancellations are
+     counted on the day they were made…". Chi tiết đơn của admin: dòng lịch sử huỷ ghi "Departure called off, so the
+     deadline does not apply" cạnh số đã hoàn. Rồi in `/reports` tháng hiện tại và một tháng cũ (Print, lưu PDF):
+     mỗi tờ một trang, đủ khối chú giải và chân trang.
+  6. (A1-07, A1-18, A1-23) `/bookings`, giữ khoảng ngày mặc định, tìm "zzz": bảng ghi "No matching bookings were
+     created between …". Xoá ô tìm: cột Created (ngay sau Tour) in ngày đặt hai dòng, đơn ở bước 2 mang ngày hôm
+     nay; chữ Customer và nút Export không chồng nhau trên màn laptop; trên điện thoại cột ẩn được ở menu Columns.
+     Bấm Export một lần và đợi file về: `/activity` có đúng một dòng "Exported bookings" với số dòng khớp file.
+- Đề xuất A1-20 chờ Yuri, không gấp: thứ tự khối định nghĩa của `/reports` trên màn hình khác bản in và Excel, dù
+  comment `report-print.ts` hứa "giấy và file đọc như nhau"; gốc là các danh sách chỉ số chép nhiều nơi. Cách làm:
+  export `DEFINITION_ORDER` và các danh sách từ `reports-view.ts` cho cả ba bề mặt, khoảng 3 file, 40 tới 60 dòng,
+  test hiện có canh đủ.
+- A1-17 (ghi lại, đã báo coordinator): comment ở mười file action dưới `apps/admin/src/app/(admin)/` của A2, A3, L5,
+  L6 còn ghi quyền gác là "`AuthGuard` + `@Roles(ADMIN)`", trong khi từ ADR-0052 Staff gọi được phần lớn các thủ
+  tục ấy. Sửa kèm khi file ấy có dịp.
+- Dọn nhánh `fix/review-a1-admin-ops-n6iayk` trên origin nếu GitHub không tự xoá.
+
 ## 2026-10-26 — Merge review A5 khung admin, quyền, nhân sự, nhật ký thao tác: nhật ký bỏ lệnh trùng hiện trạng, Sign out hỏi trước khi bỏ bản nháp, lịch lọc ngày dừng ở hôm nay, thẻ số liệu không cũ quá 60 giây (`5d5272c`)
 
 Luồng A5 của đợt review code theo luồng (kế hoạch 20/10 trong thư mục chung của project,
