@@ -3,7 +3,7 @@
 - **Trạng thái:** Accepted (2026-08-08)
 - **Bối cảnh thi hành:** nhánh `feat/account-redesign`, đi trước code theo
   luật CLAUDE.md #5
-- **Liên quan:** [design brief §6](../design/claude-design-brief.md) (ngưỡng
+- **Liên quan:** [design brief §6](https://github.com/yurivolkov21/Tourism-Platform-V2/blob/6785326e69949d4ef566c5eaf7c3eaa3706859c8/docs/design/claude-design-brief.md) (ngưỡng
   tương phản) · [sổ nợ 06/08 mục A3](../analysis/2026-08-06-backlog-no-ky-thuat.md)
   · commit `cf8f821` (hạ `primary` dark 30/07) · commit `121cff6` (nâng nền
   dark 06/08)

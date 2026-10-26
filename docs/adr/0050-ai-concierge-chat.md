@@ -1,7 +1,7 @@
 # ADR-0050 — Trợ lý AI: chat nằm trong API, lịch sử giữ ở server, tool ghi phải được khách duyệt, trần chi phí tính bằng token
 
 - **Trạng thái:** Accepted (2026-09-29) — mở thi công 15/10 (user chọn "Làm ngay"),
-  plan [2026-10-15-p6-ai-concierge.md](../plans/2026-10-15-p6-ai-concierge.md). Thư viện
+  plan [2026-10-15-p6-ai-concierge.md](https://github.com/yurivolkov21/Tourism-Platform-V2/blob/6785326e69949d4ef566c5eaf7c3eaa3706859c8/docs/plans/2026-10-15-p6-ai-concierge.md). Thư viện
   đã ghim 29/09 (§7).
 - **Sửa đổi:** AMEND 1 (2026-10-15, cuối file) — tên API của AI SDK 7 cho tool cần
   duyệt; cột giữ lượt chống hai lượt chạy song song; job dọn có trong danh sách chạy bù.

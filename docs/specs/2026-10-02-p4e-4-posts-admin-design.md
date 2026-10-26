@@ -2,7 +2,7 @@
 
 - **Ngày:** 2026-10-02 · **Trạng thái:** thiết kế duyệt qua bốn phần trong chat cùng ngày;
   spec user duyệt cùng ngày. Plan thi công
-  [2026-10-02-p4e-4-posts-admin.md](../plans/2026-10-02-p4e-4-posts-admin.md) sửa tám đoạn cho
+  [2026-10-02-p4e-4-posts-admin.md](https://github.com/yurivolkov21/Tourism-Platform-V2/blob/6785326e69949d4ef566c5eaf7c3eaa3706859c8/docs/plans/2026-10-02-p4e-4-posts-admin.md) sửa tám đoạn cho
   khớp code — mỗi đoạn ghi "plan, quyết định N" ngay tại chỗ đã sửa.
 - **Quyết định kiến trúc:** [ADR-0051](../adr/0051-posts-admin.md)
 - **Nền:** [ADR-0004](../adr/0004-post-visibility-helper.md) (luật "đã đăng") ·

@@ -106,7 +106,7 @@ viewport có kiểm soát, popup/tooltip/label, nút la bàn + định vị + to
 hình). Quyết định cuối: **viết riêng ~180 dòng dùng thẳng `maplibre-gl`**,
 KHÔNG port primitive nào — xem [ADR-0018](../adr/0018-web-map-library.md) và
 mục "Sai lệch có chủ đích so với spec §4a" ở đầu
-[plan](../plans/2026-08-06-contact-map-offices.md). Thực tế đã ship đúng theo
+[plan](https://github.com/yurivolkov21/Tourism-Platform-V2/blob/6785326e69949d4ef566c5eaf7c3eaa3706859c8/docs/plans/2026-08-06-contact-map-offices.md). Thực tế đã ship đúng theo
 quyết định này.
 
 ### 4b. Hành vi

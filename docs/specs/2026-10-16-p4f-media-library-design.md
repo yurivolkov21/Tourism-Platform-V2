@@ -1,7 +1,7 @@
 # Spec P4f — Media library: một chỗ xem và sửa mọi ảnh
 
 - **Ngày:** 2026-10-16 · **Trạng thái:** Yuri duyệt 19/10; thi công sau Appearance, theo
-  [plan 19/10](../plans/2026-10-19-p4f-media.md) và [ADR-0060](../adr/0060-media-library.md).
+  [plan 19/10](https://github.com/yurivolkov21/Tourism-Platform-V2/blob/6785326e69949d4ef566c5eaf7c3eaa3706859c8/docs/plans/2026-10-19-p4f-media.md) và [ADR-0060](../adr/0060-media-library.md).
 - **Quyết định kiến trúc:** ADR-0060 (số đã giữ), viết từ §3, §4 và §7 của spec này ngay khi
   spec được duyệt, trước code (luật 5). ADR-0035 thêm AMEND 4 ngắn trỏ sang ADR-0060.
 - **Nền:** [ADR-0005](../adr/0005-media-read-build-url.md) (đọc media) ·

@@ -364,7 +364,7 @@ không có trong Jest) và vỡ test.
 - **`expo-doctor` đã chạy lại sau khi cài** — vẫn 20/21 (1 fail cũ, lệch bản
   patch 4 gói `expo`/`expo-constants`/`expo-linking`/`expo-router`, KHÔNG liên
   quan gói mới — xem
-  [docs/analysis/2026-09-24-mobile-browse-screens-status.md](../reviews/2026-09-24-mobile-browse-screens-status.md)).
+  [docs/analysis/2026-09-24-mobile-browse-screens-status.md](https://github.com/yurivolkov21/Tourism-Platform-V2/blob/6785326e69949d4ef566c5eaf7c3eaa3706859c8/docs/reviews/2026-09-24-mobile-browse-screens-status.md)).
 - **Không đổi ranh giới gate** (§5) — gói chạy được trong Expo Go, không kéo
   theo dev build/EAS nào.
 - **Animation không chạy trên UI thread** — đánh đổi đã nói ở trên. Nếu sau
@@ -436,7 +436,7 @@ Dọn `apps/mobile/dist/` sau khi xác nhận (output thử, không commit).
 
 ## AMEND 5 — 27/09/2026 (P5b-4, A4): `expo-image-picker` cho đổi ảnh đại diện
 
-Bối cảnh: [plan P5b-4](../plans/2026-09-25-mobile-account-screens.md) §4 đánh dấu
+Bối cảnh: [plan P5b-4](https://github.com/yurivolkov21/Tourism-Platform-V2/blob/6785326e69949d4ef566c5eaf7c3eaa3706859c8/docs/plans/2026-09-25-mobile-account-screens.md) §4 đánh dấu
 A4 "CẦN QUYẾT ĐỊNH TRƯỚC (ADR)" — dependency mới, CLAUDE.md luật 5 đòi ADR đi
 trước code. AMEND này là bước đó.
 

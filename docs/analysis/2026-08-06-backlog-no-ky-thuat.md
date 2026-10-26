@@ -1,7 +1,7 @@
 # Sổ nợ kỹ thuật còn mở — chốt 06/08/2026, rà lại 14/10/2026
 
 > **Đây là sổ SỐNG, không phải ảnh chụp.** Khác với
-> [progress report 04/08](progress/2026-08-04-progress-report.md) (bản chụp một thời
+> [progress report 04/08](https://github.com/yurivolkov21/Tourism-Platform-V2/blob/6785326e69949d4ef566c5eaf7c3eaa3706859c8/docs/analysis/progress/2026-08-04-progress-report.md) (bản chụp một thời
 > điểm, đừng sửa), file này được cập nhật mỗi khi một khoản nợ được trả hoặc
 > một khoản mới sinh ra. Trả xong thì **gạch bỏ tại chỗ kèm hash**, đừng xoá —
 > để còn truy được vì sao từng có.
@@ -49,7 +49,7 @@
 
 **Lưu ý quan trọng cho mockup:** khu Location của `/contact` nay là **bản đồ
 MapLibre thật**, không phải ô placeholder — xem [ADR-0018](../adr/0018-web-map-library.md)
-và ghi chú đã thêm vào [design brief §5](../design/claude-design-brief.md).
+và ghi chú đã thêm vào [design brief §5](https://github.com/yurivolkov21/Tourism-Platform-V2/blob/6785326e69949d4ef566c5eaf7c3eaa3706859c8/docs/design/claude-design-brief.md).
 
 ---
 

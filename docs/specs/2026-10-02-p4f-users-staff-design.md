@@ -2,7 +2,7 @@
 
 - **Ngày:** 2026-10-02 · **Trạng thái:** thiết kế duyệt qua bốn phần trong chat cùng ngày;
   spec user duyệt cùng ngày. Plan thi công
-  [2026-10-02-p4f-users-staff.md](../plans/2026-10-02-p4f-users-staff.md) sửa mười sáu chỗ
+  [2026-10-02-p4f-users-staff.md](https://github.com/yurivolkov21/Tourism-Platform-V2/blob/6785326e69949d4ef566c5eaf7c3eaa3706859c8/docs/plans/2026-10-02-p4f-users-staff.md) sửa mười sáu chỗ
   cho khớp code — mỗi chỗ ghi "plan, quyết định N" ngay tại chỗ đã sửa.
 - **Quyết định kiến trúc:** [ADR-0052](../adr/0052-admin-staff-tier.md)
 - **Nền:** [ADR-0003](../adr/0003-auth-fail-closed.md) (fail-closed) ·

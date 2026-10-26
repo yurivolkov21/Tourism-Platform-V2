@@ -91,7 +91,7 @@ thật — v2 kế thừa quyết định đó, không tự đặt lại vấn �
 handle… những thứ `/contact` không dùng).~~
 
 **AMENDED 06/08 (lúc lập plan, trước khi viết code — xem
-[plan](../plans/2026-08-06-contact-map-offices.md) mục "Sai lệch có chủ đích
+[plan](https://github.com/yurivolkov21/Tourism-Platform-V2/blob/6785326e69949d4ef566c5eaf7c3eaa3706859c8/docs/plans/2026-08-06-contact-map-offices.md) mục "Sai lệch có chủ đích
 so với spec §4a")**: đọc source thật `libs/web/ui/src/components/ui/map.tsx`
 lộ ra 4 primitive đó vẫn kéo theo ~700 dòng máy móc tổng quát mà `/contact`
 không dùng tới — basemap trong suốt, `projection`, viewport có kiểm soát,

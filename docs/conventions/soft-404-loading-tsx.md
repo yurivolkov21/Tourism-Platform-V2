@@ -51,7 +51,7 @@ hai xanh không đủ để kết luận.
 
 ## Tham chiếu
 
-- [`docs/plans/2026-07-27-tours-pages.md`](../plans/2026-07-27-tours-pages.md)
+- [`docs/plans/2026-07-27-tours-pages.md`](https://github.com/yurivolkov21/Tourism-Platform-V2/blob/6785326e69949d4ef566c5eaf7c3eaa3706859c8/docs/plans/2026-07-27-tours-pages.md)
   §"Soft 404 vì `loading.tsx`" — bản ghi phép đo gốc (Task 8), giữ nguyên văn
   làm lịch sử.
 - [ADR-0016](../adr/0016-web-data-layer.md) — chốt luật này thành mặc định

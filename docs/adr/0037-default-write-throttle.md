@@ -183,7 +183,7 @@ Cloudflare, IP thật nằm trái nhất trong `forwardedFor`. Request đi Cloud
 riêng, được tin theo mặc định) rồi tới API, nên hop công khai đầu tiên tính từ phải là IP biên. Mọi trần
 theo IP vì thế gộp người lạ đi qua cùng một IP biên vào một bucket, ở cả Fastify lẫn Better Auth: một kẻ
 đập sign-in khoá được sign-in của người khác, còn một khách nhảy giữa nhiều bucket nên trần với chính họ
-yếu đi. Kế hoạch 08/09 (`docs/plans/prompts/2026-09-08-prompts-cac-phase-con-lai.md` mục 0) đặt tên việc
+yếu đi. Kế hoạch 08/09 ([`docs/plans/prompts/2026-09-08-prompts-cac-phase-con-lai.md`](https://github.com/yurivolkov21/Tourism-Platform-V2/blob/6785326e69949d4ef566c5eaf7c3eaa3706859c8/docs/plans/prompts/2026-09-08-prompts-cac-phase-con-lai.md) mục 0) đặt tên việc
 này là AMEND 4 nhưng chưa chạy. Chốt (Yuri chọn 26/10, làm trước buổi test tay):
 
 - **`TRUST_PROXY` = ba dải mặc định cộng dải của Cloudflare**, đặt bằng env của service API trên Render,

@@ -418,7 +418,7 @@ trả lời theo trang chính sách), email nhắc sắp hết hạn huỷ.
     bỏ luồng duyệt;
   - seed spec 14/09: câu "Không cần ADR… không có migration" ở §2, yêu cầu phủ đủ
     4 bậc, rủi ro "lịch sử theo ân hạn 24 giờ" ở §9, lượt 2 ở §8.5;
-  - prompt P4e-1 ở `docs/plans/2026-09-08-prompts-cac-phase-con-lai.md` §1a: thêm
+  - prompt P4e-1 ở [`docs/plans/2026-09-08-prompts-cac-phase-con-lai.md`](https://github.com/yurivolkov21/Tourism-Platform-V2/blob/6785326e69949d4ef566c5eaf7c3eaa3706859c8/docs/plans/prompts/2026-09-08-prompts-cac-phase-con-lai.md) §1a: thêm
     nút "Cancel departure" dùng lõi §4.4;
   - `docs/CHANGELOG.md`: entry mới, đóng hai mục CÒN TREO (chốt chặn 3 ngày,
     `search_path`);

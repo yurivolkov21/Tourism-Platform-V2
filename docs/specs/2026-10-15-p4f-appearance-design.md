@@ -1,7 +1,7 @@
 # Spec P4f — Appearance: ảnh các khe của web
 
 - **Ngày:** 2026-10-15 · **Trạng thái:** Yuri duyệt 19/10; thi công theo
-  [plan 19/10](../plans/2026-10-19-p4f-appearance.md).
+  [plan 19/10](https://github.com/yurivolkov21/Tourism-Platform-V2/blob/6785326e69949d4ef566c5eaf7c3eaa3706859c8/docs/plans/2026-10-19-p4f-appearance.md).
 - **Quyết định kiến trúc:** [ADR-0059](../adr/0059-site-slot-appearance.md), viết từ §4 của spec
   này sau khi spec được duyệt, trước code (luật 5).
 - **Nền:** [ADR-0005](../adr/0005-media-read-build-url.md) (đọc media) ·

@@ -2,7 +2,7 @@
 
 - **Ngày:** 2026-09-29 · **Trạng thái:** thiết kế đã duyệt từng phần trong chat. Mở thi
   công 15/10 (user chọn "Làm ngay"); plan
-  [2026-10-15-p6-ai-concierge.md](../plans/2026-10-15-p6-ai-concierge.md) chốt lại §2b,
+  [2026-10-15-p6-ai-concierge.md](https://github.com/yurivolkov21/Tourism-Platform-V2/blob/6785326e69949d4ef566c5eaf7c3eaa3706859c8/docs/plans/2026-10-15-p6-ai-concierge.md) chốt lại §2b,
   §2c, §2f, §3 cho khớp AI SDK 7 (ADR-0050 AMEND 1). Sửa 19/10 theo ADR-0050 AMEND 2:
   khách đã đăng nhập hỏi được đơn của chính mình, nút nổi mở thẳng khung chat (§1, §2a,
   §2b, §2c, §2d, §2h, §2i).
@@ -12,7 +12,7 @@
   [ADR-0039](../adr/0039-inbound-channels-outbound-email.md) (enquiry) ·
   [ADR-0035](../adr/0035-media-lifecycle.md) (khuôn cờ và job cron)
 - **Việc làm TRƯỚC freeze 15/10, ngay sau khi spec duyệt:** ghim thư viện (§7 bước 1).
-- **Plan:** [2026-10-15-p6-ai-concierge.md](../plans/2026-10-15-p6-ai-concierge.md)
+- **Plan:** [2026-10-15-p6-ai-concierge.md](https://github.com/yurivolkov21/Tourism-Platform-V2/blob/6785326e69949d4ef566c5eaf7c3eaa3706859c8/docs/plans/2026-10-15-p6-ai-concierge.md)
 
 ## 1. Mục tiêu & phạm vi
 

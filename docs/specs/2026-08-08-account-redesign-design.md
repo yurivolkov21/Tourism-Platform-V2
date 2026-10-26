@@ -1,6 +1,6 @@
 # Redesign khu account — thay da, đóng ba khoản nợ
 
-- **Trạng thái:** ✅ Đã thi hành 10/08 — xem [plan](../plans/2026-08-10-account-redesign.md)
+- **Trạng thái:** ✅ Đã thi hành 10/08 — xem [plan](https://github.com/yurivolkov21/Tourism-Platform-V2/blob/6785326e69949d4ef566c5eaf7c3eaa3706859c8/docs/plans/2026-08-10-account-redesign.md)
 
 > ⚠️ **AMENDED 10/08 — hai chỗ spec nói khác code đã ship:**
 >

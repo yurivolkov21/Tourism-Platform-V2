@@ -4,7 +4,7 @@
 - **Bối cảnh:** Phase nối API cho web P3b. Nối tiếp [ADR-0010](0010-infra-hardening.md)
   (error envelope thống nhất — tiền đề "FE một parser"), [ADR-0011](0011-p3b-web-architecture.md)
   §Quyết định 5 (đã hứa "typed oRPC client", chưa chốt chi tiết), [ADR-0005](0005-media-read-build-url.md)
-  (media hoãn có chủ đích). Dữ kiện nền: [rà soát docs ↔ code 30/07](../analysis/progress/2026-07-30-docs-audit-progress.md)
+  (media hoãn có chủ đích). Dữ kiện nền: [rà soát docs ↔ code 30/07](https://github.com/yurivolkov21/Tourism-Platform-V2/blob/6785326e69949d4ef566c5eaf7c3eaa3706859c8/docs/analysis/progress/2026-07-30-docs-audit-progress.md)
   và [đối chiếu Nexora tầng dữ liệu web 31/07](../analysis/nexora-parity/2026-07-31-web-data-layer-parity-nexora.md).
 
 > **Cập nhật 2026-08-03 (đại tu docs — đối chiếu code):**
