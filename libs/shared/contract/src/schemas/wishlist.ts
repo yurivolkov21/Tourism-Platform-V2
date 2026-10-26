@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { DecimalStringSchema, TourNextDepartureSchema } from './catalog.js';
 import { MediaItemSchema } from './media.js';
 
 /** Một mục trong wishlist — dữ liệu tour rút gọn kèm cờ khả dụng. */
@@ -7,6 +8,13 @@ export const WishlistItemSchema = z.object({
   slug: z.string().min(1).max(120),
   title: z.string().min(1).max(200),
   basePrice: z.string(),
+  // Giá "from" như `TourCardSchema.priceFrom`: đợt đặt được rẻ nhất, không còn đợt nào thì
+  // `basePrice` (ADR-0058 §1). Thêm 26/10 (review M2-14): thẻ Saved của web và app in
+  // `basePrice` trong khi thẻ Home, Explore in giá này, nên tour có đợt khuyến mãi mang hai giá.
+  priceFrom: DecimalStringSchema,
+  // Đợt kế tiếp đặt được, cùng tập đợt với `priceFrom` như `TourCardSchema.nextDeparture`. Khung
+  // B9 của bản vẽ app 19/10 in "Nov 3 · 8 seats left" trên thẻ Saved bằng chính thẻ của Explore.
+  nextDeparture: TourNextDepartureSchema.nullable(),
   currency: z.string().length(3),
   durationDays: z.int().positive(),
   // Địa danh CHÍNH của tour (primary trong `tour_destinations`, `null` nếu

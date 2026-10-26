@@ -3,6 +3,7 @@ import { Test } from '@nestjs/testing';
 import { AppModule } from '../../app.module.js';
 import { prisma } from '../../auth/auth.config.js';
 import { createFastifyAdapter } from '../../bootstrap.js';
+import { DepartureStatus } from '../../generated/prisma/enums.js';
 import { sessionCookie } from '../../test/session-cookie.js';
 
 /**
@@ -242,6 +243,63 @@ describe('wishlist (int)', () => {
     const items = res.json().items;
     expect(items).toHaveLength(1);
     expect(items[0].unavailable).toBe(true);
+  });
+
+  it('list trả priceFrom và nextDeparture theo đợt đặt được, cùng luật thẻ catalog (ADR-0058 §1)', async () => {
+    const { cookie } = await signUpAndSignIn(app, 'list-price-from@example.com');
+    const withDepartures = await createPublishedTour('list-tour-price-from');
+    const noDepartures = await createPublishedTour('list-tour-no-departures');
+    const future60 = new Date(Date.now() + 60 * 86_400_000);
+    const future90 = new Date(Date.now() + 90 * 86_400_000);
+    await prisma.tourDeparture.createMany({
+      data: [
+        // Đặt được, giá riêng 29 thấp hơn base 39 → đây là giá "from".
+        {
+          tourId: withDepartures.id,
+          startDate: future90,
+          endDate: future90,
+          seatsTotal: 8,
+          priceOverride: '29.00',
+          status: DepartureStatus.OPEN,
+        },
+        // Rẻ hơn nữa nhưng KÍN CHỖ → không được kéo giá "from" xuống, như thẻ Explore.
+        {
+          tourId: withDepartures.id,
+          startDate: future60,
+          endDate: future60,
+          seatsTotal: 6,
+          seatsBooked: 6,
+          priceOverride: '19.00',
+          status: DepartureStatus.OPEN,
+        },
+      ],
+    });
+    for (const tour of [withDepartures, noDepartures]) {
+      await app.inject({
+        method: 'POST',
+        url: '/api/wishlist',
+        headers: { cookie },
+        payload: { tourId: tour.id, wished: true },
+      });
+    }
+
+    const res = await app.inject({ method: 'GET', url: '/api/wishlist', headers: { cookie } });
+
+    const items: {
+      tourId: string;
+      priceFrom: string;
+      nextDeparture: { startDate: string; seatsLeft: number } | null;
+    }[] = res.json().items;
+    const itemOf = (tourId: string) => items.find((item) => item.tourId === tourId);
+    expect(itemOf(withDepartures.id)?.priceFrom).toBe('29.00');
+    // Đợt kín chỗ đi sớm hơn nhưng không phải "đợt kế tiếp" — thẻ Saved in đúng đợt của thẻ Explore.
+    expect(itemOf(withDepartures.id)?.nextDeparture).toEqual({
+      startDate: future90.toISOString().slice(0, 10),
+      seatsLeft: 8,
+    });
+    // Không còn đợt nào đặt được → giá base, cùng dạng hai số lẻ với thẻ catalog, và không có đợt.
+    expect(itemOf(noDepartures.id)?.priceFrom).toBe('39.00');
+    expect(itemOf(noDepartures.id)?.nextDeparture).toBeNull();
   });
 
   it('check batch trả đúng tập con đã lưu; gọi ẩn danh mọi endpoint → 401', async () => {

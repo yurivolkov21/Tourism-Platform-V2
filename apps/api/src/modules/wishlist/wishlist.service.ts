@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import type { WishlistItem } from '@tourism/contract';
 import { prisma } from '../../auth/auth.config.js';
 import { MediaOwnerType, MediaRole } from '../../generated/prisma/enums.js';
-import { pickCover } from '../catalog/catalog.service.js';
+import { cardDepartureFactsByTour, pickCover } from '../catalog/catalog.service.js';
 import { MediaService } from '../media/media.service.js';
 
 export class TourNotFoundError extends Error {}
@@ -84,19 +84,31 @@ export class WishlistService {
     ]);
 
     // Một lượt duy nhất cho cả trang, kể cả khi rỗng (`resolveForOwners` với
-    // mảng rỗng trả Map rỗng, không đánh DB).
-    const coverMap = await this.media.resolveForOwners(
-      MediaOwnerType.TOUR,
-      rows.map((row) => row.tourId),
-      // Card wishlist chỉ vẽ cover (W4 R3) — lọc hero ngay ở query.
-      [MediaRole.hero],
-    );
+    // mảng rỗng trả Map rỗng, không đánh DB). Giá "from" và đợt kế tiếp cũng
+    // một query đợt cho cả trang, qua đúng hàm của thẻ catalog (ADR-0058 §1),
+    // để thẻ Saved và thẻ Explore không in hai giá hay hai ngày cho một tour.
+    const [coverMap, factsMap] = await Promise.all([
+      this.media.resolveForOwners(
+        MediaOwnerType.TOUR,
+        rows.map((row) => row.tourId),
+        // Card wishlist chỉ vẽ cover (W4 R3) — lọc hero ngay ở query.
+        [MediaRole.hero],
+      ),
+      cardDepartureFactsByTour(
+        rows.map((row) => ({ id: row.tourId, basePrice: row.tour.basePrice })),
+        new Date(),
+      ),
+    ]);
 
     const items: WishlistItem[] = rows.map((row) => ({
       tourId: row.tourId,
       slug: row.tour.slug,
       title: row.tour.title,
       basePrice: row.tour.basePrice.toString(),
+      // `factsMap` có đủ mọi tour của trang; `??` chỉ để TypeScript khỏi phải ép kiểu, và rơi
+      // về đúng thứ `cardDepartureFacts` trả cho tour không còn đợt nào: giá base hai số lẻ.
+      priceFrom: factsMap.get(row.tourId)?.priceFrom ?? row.tour.basePrice.toFixed(2),
+      nextDeparture: factsMap.get(row.tourId)?.nextDeparture ?? null,
       currency: row.tour.currency,
       durationDays: row.tour.durationDays,
       destinationName: row.tour.destinations[0]?.destination.name ?? null,

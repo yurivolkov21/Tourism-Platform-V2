@@ -13,6 +13,8 @@ export function makeWishlistItem(overrides: Partial<WishlistItem> = {}): Wishlis
     slug: 'ninh-binh-trang-an-day',
     title: 'Ninh Bình: Tràng An, Múa Cave & Rice Fields',
     basePrice: '79.00',
+    priceFrom: '79.00',
+    nextDeparture: null,
     currency: 'USD',
     durationDays: 1,
     destinationName: 'Ninh Bình',
