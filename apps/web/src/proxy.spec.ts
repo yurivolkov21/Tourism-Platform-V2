@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server';
 import { describe, expect, it } from 'vitest';
-import { proxy } from './proxy';
+import { config, proxy } from './proxy';
 
 // I-1: proxy phải nhận CẢ HAI tên cookie session — tên trần (dev http) và
 // tên có prefix `__Secure-` (prod https, Better Auth tự gắn khi baseURL
@@ -51,5 +51,15 @@ describe('proxy', () => {
 
     expect(response.status).toBe(200);
     expect(response.headers.get('location')).toBeNull();
+  });
+});
+
+describe('config.matcher (ADR-0062)', () => {
+  it('trang chuyển tiếp về app nằm ngoài matcher — khách app không có cookie web', () => {
+    expect(config.matcher).not.toContain('/checkout/:path*');
+    expect(config.matcher).not.toContain('/checkout/app-return');
+    expect(config.matcher).toEqual(
+      expect.arrayContaining(['/checkout/success', '/checkout/cancel']),
+    );
   });
 });

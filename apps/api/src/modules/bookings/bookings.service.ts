@@ -43,6 +43,7 @@ import { bookingCancellation } from './booking-cancellation.js';
 import { mintBookingCode } from './booking-code.js';
 import { type BookingListKey, selectBookingsPage } from './booking-list.js';
 import { checkoutDescription } from './checkout-description.js';
+import { checkoutReturnUrls } from './checkout-return-urls.js';
 import { departureCancelReason } from './departure-cancel-reason.js';
 import { effectiveUnitPrice, totalAmount } from './pricing.js';
 import { withBookingRefundLock } from './refund-lock.js';
@@ -489,8 +490,7 @@ export class BookingsService {
           calendarDate(booking.departureStartDate),
           calendarDate(booking.departureEndDate),
         ),
-        successUrl: `${env.FRONTEND_URL}/checkout/success?code=${booking.code}`,
-        cancelUrl: `${env.FRONTEND_URL}/checkout/cancel?code=${booking.code}`,
+        ...checkoutReturnUrls(env.FRONTEND_URL, booking.code, input.appReturnUrl),
       });
     } catch (err) {
       this.logger.error(
@@ -542,7 +542,7 @@ export class BookingsService {
    * rồi mới mint session mới. Mint chồng khi session cũ còn sống là cửa
    * double charge: hai trang thanh toán cùng thu được tiền.
    */
-  async reCheckout(userId: string, code: string): Promise<Booking | null> {
+  async reCheckout(userId: string, code: string, appReturnUrl?: string): Promise<Booking | null> {
     const probe = await prisma.booking.findUnique({
       where: { code },
       select: { id: true, userId: true },
@@ -602,8 +602,7 @@ export class BookingsService {
             calendarDate(booking.departureStartDate),
             calendarDate(booking.departureEndDate),
           ),
-          successUrl: `${env.FRONTEND_URL}/checkout/success?code=${booking.code}`,
-          cancelUrl: `${env.FRONTEND_URL}/checkout/cancel?code=${booking.code}`,
+          ...checkoutReturnUrls(env.FRONTEND_URL, booking.code, appReturnUrl),
         });
       } catch (err) {
         this.logger.error(

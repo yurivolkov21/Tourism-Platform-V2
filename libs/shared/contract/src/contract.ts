@@ -92,6 +92,7 @@ import {
   AdminUsersListResultSchema,
   AdminUserUnlockResultSchema,
 } from './schemas/admin-users.js';
+import { AppReturnUrlSchema } from './schemas/app-return-url.js';
 import {
   AdminBookingDetailSchema,
   AdminBookingsListQuerySchema,
@@ -581,7 +582,7 @@ export const contract = {
         path: '/api/bookings/{code}/checkout',
         summary: 'Re-mint checkout session for an own PENDING booking (authed, owner-only)',
       })
-      .input(z.object({ code: BookingCodeSchema }))
+      .input(z.object({ code: BookingCodeSchema, appReturnUrl: AppReturnUrlSchema.optional() }))
       .errors({
         NOT_FOUND: { message: 'Booking not found' },
         NOT_PENDING: { status: 422, message: 'Only a PENDING booking can be checked out' },

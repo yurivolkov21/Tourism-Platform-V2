@@ -66,7 +66,7 @@ export class BookingsController {
   checkout(@CurrentUser() user: SessionUser) {
     return implement(contract.bookings.checkout).handler(async ({ input, errors }) => {
       try {
-        const booking = await this.bookings.reCheckout(user.id, input.code);
+        const booking = await this.bookings.reCheckout(user.id, input.code, input.appReturnUrl);
         if (!booking) throw errors.NOT_FOUND(); // owner-or-404, không lộ tồn tại
         return booking;
       } catch (error) {

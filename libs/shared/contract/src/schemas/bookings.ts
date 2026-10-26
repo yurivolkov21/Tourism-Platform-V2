@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { AppReturnUrlSchema } from './app-return-url.js';
 import { BookingWhenSchema } from './booking-phase.js';
 import { DecimalStringSchema, DestinationLinkSchema, PagedSchema } from './catalog.js';
 import {
@@ -57,6 +58,9 @@ export const CreateBookingInputSchema = z.object({
   contactPhone: z.string().min(6).max(30).optional(),
   specialRequests: z.string().min(1).max(1000).optional(),
   paymentProvider: PaymentProviderSchema,
+  // ADR-0062: app mobile gửi URL của chính nó để cổng trả khách về app qua trang chuyển tiếp
+  // của web. Vắng thì cổng trả về trang success của web như trước.
+  appReturnUrl: AppReturnUrlSchema.optional(),
 });
 
 export type CreateBookingInput = z.output<typeof CreateBookingInputSchema>;

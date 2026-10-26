@@ -49,6 +49,10 @@ export function proxy(request: NextRequest) {
  * Vẫn GIỮ defense-in-depth: mỗi page tự gọi `requireSession`. Proxy chỉ chặn
  * sớm cho đỡ một round-trip, không phải lớp bảo vệ duy nhất.
  */
+//
+// `/checkout/app-return` (ADR-0062) cố ý NẰM NGOÀI matcher: khách trên app mobile không có cookie
+// web, trang đó chỉ chuyển tiếp về app và không đọc dữ liệu đơn nào — chặn nó về /login là kẹt khách
+// ở trình duyệt, đúng lỗi ADR-0062 sửa. Vì vậy liệt kê từng trang `/checkout/*` cần phiên.
 export const config = {
-  matcher: ['/account/:path*', '/tours/:slug/book', '/checkout/:path*'],
+  matcher: ['/account/:path*', '/tours/:slug/book', '/checkout/success', '/checkout/cancel'],
 };

@@ -14,6 +14,7 @@ export * from './schemas/admin-media.js';
 export * from './schemas/admin-posts.js';
 export * from './schemas/admin-tours.js';
 export * from './schemas/admin-users.js';
+export * from './schemas/app-return-url.js';
 export * from './schemas/booking-phase.js';
 export * from './schemas/bookings.js';
 export * from './schemas/catalog.js';
