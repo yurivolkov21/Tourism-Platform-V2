@@ -70,9 +70,10 @@ pnpm db:seed
 pnpm seed:verify
 ```
 
-**Kết quả mong đợi:** seed in `[seed] done.`; `seed:verify` chỉ có hai dòng ✖ về ảnh
-("tour đang bán mà không có ảnh bìa" và "bài đang đăng thiếu thứ card cần"), vì DB
-Docker không có ảnh. Mọi dòng khác ✓. Xong thì **đóng cửa sổ này**.
+**Kết quả mong đợi:** seed in `[seed] done.`; `seed:verify` kết thúc bằng
+`✓ 0 vi phạm trên 119 bất biến.`, kèm một dòng ⚠ `DB chưa có ảnh tour nào`. Dòng ⚠
+này bình thường vì DB Docker không có ảnh, và không tính là vi phạm. Xong thì
+**đóng cửa sổ này**.
 
 ## 3. Mở cửa sổ prod
 
@@ -143,8 +144,9 @@ pnpm seed:verify
 
 - Seed in `[seed] admin: đã upsert (id …)` với **đúng id Owner mới** ở mục 5, rồi
   `[seed] done.`
-- `seed:verify` báo 0 vi phạm, gồm dòng `số tài khoản ADMIN khác 1`. Prod có ảnh nên
-  không có hai dòng ✖ về ảnh như lúc tập dượt.
+- `seed:verify` báo `✓ 0 vi phạm trên 119 bất biến.`, trong đó có dòng
+  `số tài khoản ADMIN khác 1`. Prod có ảnh nên không có dòng ⚠ về ảnh như lúc tập
+  dượt.
 
 ## 7. Owner đặt mật khẩu
 
