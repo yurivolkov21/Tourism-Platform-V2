@@ -9,7 +9,7 @@ import type {
 /**
  * Fixture 12 tour miền BẮC (roster #1–#12, spec
  * 2026-07-31-tours-catalogue-api-design.md §3), viết đủ chuẩn §4 ở Task 2 của
- * plan `docs/plans/2026-07-31-tours-catalogue-api.md`. Shape từng phần tử xem
+ * plan `2026-07-31-tours-catalogue-api.md` (đã gỡ khỏi repo, link bản cũ ở `index.ts`). Shape từng phần tử xem
  * `./types.js`.
  *
  * Dải UUID được cấp cho miền này (Global Constraints của plan + quy ước mở

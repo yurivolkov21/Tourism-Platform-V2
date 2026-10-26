@@ -3,7 +3,8 @@
  * thành các mảng seed.ts đang import, cộng `tourReviews` (mới, spec
  * 2026-07-31-tours-catalogue-api-design.md §4). Trước khi tách folder này,
  * toàn bộ ở một file `fixtures/catalog.ts` (23 tour cũ, đã xoá cùng commit
- * tách này) — xem `docs/plans/2026-07-31-tours-catalogue-api.md` Task 1.
+ * tách này) — xem Task 1 của plan `2026-07-31-tours-catalogue-api.md`. Plan đã gỡ
+ * khỏi repo, bản cũ ở https://github.com/yurivolkov21/Tourism-Platform-V2/blob/6785326e69949d4ef566c5eaf7c3eaa3706859c8/docs/plans/2026-07-31-tours-catalogue-api.md
  *
  * Thứ tự concat các mảng miền LUÔN Bắc → Trung → Nam, khớp thứ tự roster spec
  * §3 (tour #1–12 → #13–21 → #22–30) để dải UUID tĩnh của từng miền (xem

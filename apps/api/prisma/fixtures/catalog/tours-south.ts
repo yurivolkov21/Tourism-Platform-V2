@@ -9,7 +9,7 @@ import type {
 /**
  * Fixture 9 tour miền NAM (roster #22–#30, spec
  * 2026-07-31-tours-catalogue-api-design.md §3), viết đủ chuẩn §4 ở Task 4 của
- * plan `docs/plans/2026-07-31-tours-catalogue-api.md`, đúng khuôn Task 2/3
+ * plan `2026-07-31-tours-catalogue-api.md` (đã gỡ khỏi repo, link bản cũ ở `index.ts`), đúng khuôn Task 2/3
  * (`tours-north.ts`/`tours-central.ts`). Tour #22 `vung-tau-coastal-2d` khớp
  * spec §5 TỪNG MỤC (tour mẫu chuẩn 100% để 29 tour còn lại soi theo). Shape
  * từng phần tử xem `./types.js`.
