@@ -175,7 +175,9 @@ mọi controller admin.
    · region 80. Contract phải gương đúng từng con số, cùng lý do như trên.
 4. **Bust cache sau commit.** Điểm đến nuôi `TAGS.TOURS`; danh mục sau khi nối
    web cũng vào tag ấy. Gọi **sau** transaction, fire-and-forget (ADR-0016 §3,
-   tiền lệ F11–F13).
+   tiền lệ F11–F13). Sửa danh mục bust thêm `tour:<slug>` của mọi tour thuộc nó
+   (review A3, 26/10): trang chi tiết tour in tên danh mục, như điểm đến với
+   `writtenTags` (G5).
 5. **Copy lúc tắt một danh mục còn tour** phải nói đúng BA điều: chip biến khỏi
    `/tours`, **tour vẫn hiện**, và breadcrumb trên trang tour vẫn link
    `/tours?categories=<slug>` — link ấy **vẫn lọc được**. Bài học

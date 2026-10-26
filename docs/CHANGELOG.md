@@ -8,6 +8,68 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-10-26 — Merge review A3 admin danh mục, điểm đến, bài viết: mũi tên đổi chỗ danh mục báo lỗi và giữ focus, đổi tên danh mục làm tươi trang tour, test canh slug bài viết và link `javascript:` (`1eec242`)
+
+Luồng A3 của đợt review code theo luồng (kế hoạch 20/10 trong thư mục chung của project,
+`code-review/ke-hoach-review-theo-luong.md`), rà trên `main` `e8fdfee`, rebase lên `ef3a211` trước khi đẩy. Báo
+cáo đủ 9 phát hiện (3 lỗi sửa ở đây, 1 dòng sửa comment, 2 test canh hành vi đang đúng, 2 ghi lại, 1 đề xuất chuyển
+từ luồng A5) từng nằm ở `code-review/A3-bao-cao.md` của thư mục chung; Yuri đã dọn thư mục ấy trước lúc merge, nên
+các bước test tay và đề xuất còn treo chép ở mục CÒN TREO dưới đây. Nhánh `fix/review-a3-admin-content-s8ij19`,
+[PR #59](https://github.com/yurivolkov21/Tourism-Platform-V2/pull/59), thi công trên session cloud. Đụng admin (khu
+`/categories`, test trình soạn bài viết), api (danh mục, một int test bài viết) và comment của contract: không
+migration, không đổi schema contract, không biến env, không dependency mới, không đổi chữ hiển thị.
+
+- `30127b7` (A3-01, A3-03): mũi tên đổi chỗ trên `/categories`. Lệnh đổi chỗ ném (mạng đứt, redeploy giữa chừng)
+  từng thành unhandled rejection và admin không thấy toast nào; nay `catch` hiện câu chung của lệnh đổi chỗ, bảng
+  vẫn làm mới. Người dùng bàn phím từng mất focus sau mỗi cú bấm: Chromium 141 đẩy focus về `<body>` khi nút đang
+  giữ focus bị `disabled` và khi hàng của nó bị dời trong DOM, còn `useRowFocusRescue` chỉ phủ ca phần tử bị gỡ.
+  Nay nhớ mũi tên vừa bấm và trả focus trong `useLayoutEffect` khi bảng hết bận; hàng chạm đầu hay cuối thì về
+  mũi tên còn lại; người dùng đã tự đi chỗ khác thì không giành lại. Vòng focus chỉ hiện khi bấm bằng phím.
+- `20549e1` (A3-02): đổi tên danh mục chỉ bust `tours`, nên trang `/tours/<slug>` (breadcrumb, dòng chữ trên tiêu
+  đề, câu meta dự phòng) giữ tên cũ tới hết 300 giây ISR. Nay lệnh sửa bust thêm `tour:<slug>` của mọi tour thuộc
+  danh mục (`renamedTags`), như `writtenTags` của điểm đến (G5); ẩn hiện vẫn chỉ bust `tours`. API chia lô 20 tag
+  mỗi lệnh nên danh mục nhiều tour không vượt trần của route web.
+- `db36b27` (A3-05) và `1eec242` (A3-06): hai lưới cho hành vi đang đúng. Int test: lệnh lưu bài viết gửi kèm slug
+  khác thì slug ở kết quả, ở DB và ở tag bust vẫn là slug cũ (danh mục và điểm đến đã có ca này). Test tab Preview
+  của trình soạn bài viết (cùng `ArticleMarkdown` với web): `[Click](javascript:alert(1))`, `<script>` và
+  `<img onerror>` không thành mã chạy được. Contract chỉ chặn HTML thô và ảnh nên link `javascript:` vẫn lưu được;
+  lớp chặn là `urlTransform` mặc định của react-markdown, lớp sau là React 19. Phá thử `urlTransform` thì test đỏ.
+- `b2c0f55` (A3-04): sửa comment nói sai code: khoá của lệnh đổi chỗ danh mục trong contract (thật ra là một khoá
+  advisory cả bảng, `withCategoryOrderLock`), "khoá phụ `id`" không có thật, "năm thao tác" của điểm đến (nay là
+  tám), `setPhotos` mang transaction riêng, JSDoc nằm nhầm chỗ ở `destinations-write.ts`.
+
+Spec P4e-2 §4 mục 4 ghi thêm tag `tour:<slug>` khi sửa danh mục.
+
+**Review.** Không có lượt review độc lập; A3-01, A3-02 và A3-03 có test đỏ trên mã cũ (1 test admin, 1 int test, 3
+test admin), A3-06 kiểm bằng đột biến. Bốn trọng tâm của kế hoạch đều pass: markdown không chèn được HTML hay
+script, slug không đổi được, xoá danh mục hay điểm đến đang có tour bị chặn ở cả API lẫn giao diện, web làm tươi
+đúng tag sau khi sửa (sau A3-02). Để lại A3-07 (hai danh mục ngang `order`, chỉ có khi sửa DB bằng tay) và A3-08
+(G1, lệnh đổi chỗ trả cả danh sách mà client bỏ đi). Đề xuất A3-09 ở mục CÒN TREO. Yuri bảo đẩy lên main 26/10
+00:25 UTC.
+
+Tests after (`gate:int` trên `1eec242`, nền `ef3a211`, 26/10, session cloud, API sống ở :3001): unit 8455 (web
+2469, admin 2428, api 1445, mobile 961, contract 812, mobile-ui 145, i18n 64, ui 57, core 48, tokens 26) và int
+979; Biome 2113 file; RLS, tokens-only của mobile và prerender admin xanh. Test contract chạy với
+`--max-old-space-size=6144` như entry A4 (container mới để trần heap Node thấp), 812/812. PR thêm 5 test unit
+(admin) và 2 int test.
+
+**CÒN TREO:**
+
+- Buổi test tay, trên production:
+  1. `/categories`, chỉ dùng bàn phím: Tab tới mũi tên lên của danh mục nằm cuối danh sách, bấm Enter hai lần.
+     Hàng lên hai bậc, vòng focus vẫn ở mũi tên lên. Tab sang mũi tên xuống, bấm Enter tới khi hàng về cuối: lúc
+     chạm cuối, focus nhảy sang mũi tên lên của chính hàng đó. Bấm bằng chuột thì không hiện vòng focus.
+  2. Đổi tên một danh mục đang có tour đã đăng (thêm chữ " test" vào cuối tên). Trong khoảng một phút, mở trang
+     một tour của danh mục ấy trên www: breadcrumb và dòng chữ nhỏ trên tiêu đề in tên mới. Đổi lại tên cũ ngay.
+- Đề xuất A3-09 (chuyển từ A5-09) chờ Yuri, sau buổi demo: `categories.setActive` và `destinations.setActive` ghi
+  không điều kiện, nên ẩn hay hiện lại một hàng vốn đã ở đúng trạng thái (tab mở từ trước, hai admin cùng bấm) vẫn
+  `UPDATE`, nhích `updatedAt` và thêm một dòng thừa vào `/activity`; với điểm đến, `updatedAt` là phiên bản của
+  trang Photos nên trang Photos đang mở gặp `STALE_DESTINATION` oan khi lưu. Cách làm: `updateMany` có điều kiện
+  `isActive`, trả thêm `changed`, describer trả null khi `changed` là false như `tours.setPublished`; vẫn bust như
+  `setTourPublished`. Khoảng 6 file mã (35 dòng) và 3 file test (50 dòng); chỉ thêm trường vào output nên Render
+  hay Vercel deploy trước đều được. Đụng `activity-describers.ts` của A5, nên làm sau khi PR #60 lên `main`.
+- Dọn nhánh `fix/review-a3-admin-content-s8ij19` trên origin nếu GitHub không tự xoá.
+
 ## 2026-10-22 — Merge review A4 admin Appearance và thư viện ảnh: hộp Replace không lưu khi chưa đổi gì, Restore original nói đúng về ảnh đã rời thư viện, test liên luồng cho ảnh khe đang mượn (`29d8c19`)
 
 Luồng A4 của đợt review code theo luồng (kế hoạch 20/10 trong thư mục chung của project,
