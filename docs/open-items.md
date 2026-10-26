@@ -7,15 +7,19 @@
 > [sổ nợ kỹ thuật](analysis/2026-08-06-backlog-no-ky-thuat.md).
 > **Đóng một mục:** ghi kết quả vào dòng (ngày, nhánh, commit), chuyển cả dòng
 > sang open-items-closed.md, rồi ghi vào CHANGELOG. **Mã G kế tiếp: G58.**
+>
+> Các mã như G41, F2 hay P5b-3 là mã nội bộ đặt trong lúc làm dự án; bảng giải
+> nghĩa ở [thuật ngữ](glossary.md#mã-nội-bộ-trong-tài-liệu). Link tới `plans/` và
+> `reviews/` trỏ bản lưu trong git, vì hai thư mục này đã gỡ ngày 26/10/2026.
 
 ## Mốc thời gian
 
 | Ngày | Việc |
 | --- | --- |
 | **31/10/2026** | **Freeze**: ngừng nâng cấp thư viện, ngừng đổi nơi deploy. Dời từ 15/10 ([ADR-0001 AMEND 3](adr/0001-tech-stack.md)) |
-| Ngay sau buổi test tay cuối | Seed lại dữ liệu prod lượt 2, làm mới mọi tài khoản kể cả Owner (Yuri chốt 26/10; [plan hoàn tiền một hạn chót](plans/2026-09-15-refund-deadline.md) Phụ lục B Bước 8) — cách chạy ở [hướng dẫn seed lại](guides/huong-dan-seed-lai-production.md), xem [việc phải xong trước lượt này](#trước-lượt-seed-lại) |
+| Ngay sau buổi test tay cuối | Seed lại dữ liệu prod lượt 2, làm mới mọi tài khoản kể cả Owner (Yuri chốt 26/10; [plan hoàn tiền một hạn chót](https://github.com/yurivolkov21/Tourism-Platform-V2/blob/6785326e69949d4ef566c5eaf7c3eaa3706859c8/docs/plans/2026-09-15-refund-deadline.md) Phụ lục B Bước 8) — cách chạy ở [hướng dẫn seed lại](guides/huong-dan-seed-lai-production.md), xem [việc phải xong trước lượt này](#trước-lượt-seed-lại) |
 | tuần 02–08/11/2026 | Thuyết trình thử, trước buổi bảo vệ (Yuri 19/10: đầu tháng 11, tuần thứ ba tính từ 19/10; chưa có ngày cụ thể) |
-| ~16/11/2026 | Bảo vệ đồ án (user 15/10: còn khoảng 4 tuần tính từ thứ Hai 19/10; trước đó ghi ~11/11) |
+| ~16/11/2026 | Bảo vệ đồ án (chủ dự án 15/10: còn khoảng 4 tuần tính từ thứ Hai 19/10; trước đó ghi ~11/11) |
 
 ## Phần chưa xây
 
@@ -50,7 +54,7 @@ Không còn việc nào chờ quyết (14/10).
   quyền camera; (2) đổi mật khẩu ở Account xong mở màn "Password updated", nút dưới đưa về Account;
   (3) My reviews có khối "Waiting for your review" khi còn chuyến đã về chưa có bài, viết xong bấm
   "Back to my reviews" về đúng danh sách và chuyến rời khối; (4) bật TalkBack, rút một bài thì nghe
-  "Review retracted". Mới có test đơn vị; ảnh khối ở (3) user duyệt là bản dựng lại từ token.
+  "Review retracted". Mới có test đơn vị; ảnh khối ở (3) chủ dự án duyệt là bản dựng lại từ token.
 - **Mail có ảnh tour và hàng sao** (merge 15/10, sổ nợ F2, PR #29): đặt một đơn Stripe test trên
   production, mail xác nhận phải có ảnh bìa tour và dòng ghi công dưới ảnh (tour chưa có ảnh vẫn ra
   monogram); duyệt một bài ở admin thì mail báo duyệt có hàng sao đúng số và nút "See your review".
@@ -83,7 +87,7 @@ Không còn việc nào chờ quyết (14/10).
   khoá phải hiện toast lý do. Test chỉ giả lập `pointerType: touch` trong jsdom; thử tay 07/10 đạt
   trên DevTools mô phỏng iPhone 16 Pro Max (một toast, chạm lại không chồng) — còn máy thật.
 - **Màn tài khoản mobile (P5b-4, merge 09/10)** — kịch bản từng bước ở mục 8
-  của [tóm tắt nhánh](reviews/2026-10-06-branch-summary-mobile-account-screens.md).
+  của [tóm tắt nhánh](https://github.com/yurivolkov21/Tourism-Platform-V2/blob/6785326e69949d4ef566c5eaf7c3eaa3706859c8/docs/reviews/2026-10-06-branch-summary-mobile-account-screens.md).
   Ưu tiên ba bản vá chỉ kiểm được trên máy: F2 (Android: pinch, chạm đúp, vuốt
   đóng trình xem ảnh), F3 (iOS: bàn phím không che ô nhập trong tấm sửa tên, xoá
   tài khoản, hỏi ngày), F7 (iOS và Android ≤ 12: từ chối quyền ảnh vẫn mở được
@@ -92,19 +96,19 @@ Không còn việc nào chờ quyết (14/10).
   in bằng X, back cứng Android hay vuốt iOS rồi đăng nhập từ chỗ khác thì KHÔNG
   được dạt về tour cũ. Máy AI không có thiết bị thật.
 - **Rời màn Sign in của mobile (nhánh browse, merge 12/10)** — kịch bản 1–30 ở mục 6 của
-  [tóm tắt nhánh](reviews/2026-10-11-branch-summary-mobile-browse-screens.md). Ưu tiên R2
+  [tóm tắt nhánh](https://github.com/yurivolkov21/Tourism-Platform-V2/blob/6785326e69949d4ef566c5eaf7c3eaa3706859c8/docs/reviews/2026-10-11-branch-summary-mobile-browse-screens.md). Ưu tiên R2
   (bước 14–17, Android và Google: về đúng tour, back cứng về Home, app không thoát) và đường
   onboarding: mở app lần đầu → "I already have an account" → đăng nhập xong → back cứng ở Home
   không được về lại Sign in.
 - **Cụm đặt tour mobile (P5b-3, merge 12/10)** — kịch bản ở
-  [hướng dẫn test](reviews/testing-guide-booking-fixes.md), cộng ba đường của review 12/10: để app nền qua
+  [hướng dẫn test](https://github.com/yurivolkov21/Tourism-Platform-V2/blob/6785326e69949d4ef566c5eaf7c3eaa3706859c8/docs/reviews/testing-guide-booking-fixes.md), cộng ba đường của review 12/10: để app nền qua
   đêm rồi mở chuyến đang đi, P5 phải đúng ngày (N2); hết ghế ở B4 → "Choose another date" về đúng
   trang tour, back một lần là ra; B8 "Browse more tours" mở Explore, back về Home rồi hết (N5); đơn
   hoàn một phần mở cụm P, còn nút huỷ ở hoá đơn (N3). Chưa kiểm: iOS (quyết bỏ 09/10), PayPal
   sandbox thật.
 - **Cụm đánh giá mobile (P5b-5, merge 12/10)** — luồng C1–C6 của
   [hướng dẫn test máy thật](guides/huong-dan-test-may-that.md) và phần B của
-  [hướng dẫn test](reviews/testing-guide-review-fixes.md) (Nghia chạy 10/10 trên nhánh chưa rebase), cộng
+  [hướng dẫn test](https://github.com/yurivolkov21/Tourism-Platform-V2/blob/6785326e69949d4ef566c5eaf7c3eaa3706859c8/docs/reviews/testing-guide-review-fixes.md) (Nghia chạy 10/10 trên nhánh chưa rebase), cộng
   hai đường của review 12/10: R5 gửi lại xong bấm "Back to my reviews" về đúng danh sách, back thêm
   một lần là ra Account (M2); thẻ bị bác hai lần ghi "See why" và mở R6 (M4). Mới xác nhận qua code:
   ảnh bìa tour ở R5 và R6 (V6), thumbnail nhẹ ở R5 (V9).
@@ -186,7 +190,7 @@ deploy) nằm ở [sổ nợ kỹ thuật](analysis/2026-08-06-backlog-no-ky-thu
 | F1 | Webhook Resend (`delivered`/`bounced`/`complained`) — hiện `SENT` chỉ nghĩa là Resend đã nhận. Một nửa đã có từ W4 (08/09, ADR-0039 §4): webhook nhận `bounced` (vĩnh viễn) và `complained` để ghi suppression (`apps/api/src/modules/email-webhooks/resend-event.ts`); `delivered` vẫn bị bỏ qua nên `SENT` chưa đổi nghĩa (đo 14/10) |
 | G1 | `admin.categories.move` trả CẢ danh sách đã sắp lại, mà client vứt đi rồi `router.refresh()`. Giữ nguyên có chủ đích ở vòng review F14: tiêu thụ payload ấy cần đưa `rows` vào state của bảng, tức hai nguồn sự thật cho một bảng sáu hàng. Cái giá hiện tại là MỘT truy vấn `list()` thừa mỗi cú bấm mũi tên |
 | G17 | Hiệu năng F18, đều nhỏ: mỗi nhịp tiến độ tải lên render lại cả form (vài ms mỗi lần); `setPhotos` requeue từng ảnh một trong transaction đang giữ khoá, và `get` hỏi thêm câu media nối tiếp (cộng lại khoảng 0,1–0,2 giây mỗi lần lưu, dưới timeout 5 giây). Chưa đáng sửa riêng |
-| G30 | Số điện thoại ở `/account/settings` chỉ được lưu để liên hệ (gợi ý dưới nhãn: "So the guide can reach you on the day."), không xác minh bằng OTP như nhiều site. Thêm OTP cần nhà cung cấp SMS (dịch vụ ngoài, có chi phí), luồng gửi lại mã và chống spam. User nêu khi thử tay 09/10; để sau capstone, nhắc trong báo cáo như hướng phát triển |
+| G30 | Số điện thoại ở `/account/settings` chỉ được lưu để liên hệ (gợi ý dưới nhãn: "So the guide can reach you on the day."), không xác minh bằng OTP như nhiều site. Thêm OTP cần nhà cung cấp SMS (dịch vụ ngoài, có chi phí), luồng gửi lại mã và chống spam. Chủ dự án nêu khi thử tay 09/10; để sau capstone, nhắc trong báo cáo như hướng phát triển |
 | G55 | Web chưa hiện ghi công ảnh (ADR-0020 Hệ quả; spec Media library §12): dòng tác giả và giấy phép trong lightbox ảnh tour, ô nhỏ (thẻ, tile) gom về trang `/credits` có link ở footer. Ba ảnh CC đòi ghi công như điều kiện của giấy phép; app và email đã in, chỉ web còn thiếu. Từ Media A (PR #34, 19/10) admin sửa được ghi công ở `/media`, phía web chưa thi công. Mở 19/10 lúc merge Media A |
 | G56 | Trang đơn kể chuyện "công ty huỷ chuyến" (câu "We had to cancel this departure" và khối Why của công ty, voucher và bản in theo) cho đơn khách đã tự huỷ trong hạn, hay giữ chỗ chưa trả đã bị huỷ, TRƯỚC khi công ty huỷ chính chuyến ấy. `cancelledByOperator` (`apps/web/src/lib/booking-vm.ts`) suy từ cờ chuyến huỷ và khoản hoàn nên không biết thứ tự; trợ lý AI (`apps/api/src/modules/chat/chat-bookings.ts`) và app mobile (`booking-detail.ts`) cùng gốc. Tiền và email vẫn đúng; trái ADR-0041 AMEND 2. Cách sửa: server trả cờ theo `bookings.cancelled_at` ≥ `tour_departures.cancelled_at` (đơn PENDING bị công ty huỷ mang đúng mốc ấy), ADR-0041 AMEND 3, khoảng 8 file và 80 dòng; không migration. Yuri chọn để sau buổi bảo vệ (thẻ quyết định 20/10, review L4-08 trong `code-review/L4-bao-cao.md` của thư mục chung) |
 | G57 | `bookings.create` không chống trùng (`apps/api/src/modules/bookings/bookings.service.ts`): request quá 60 giây, mạng rớt giữa chừng hay khách mở hai tab vẫn ra hai đơn PENDING. Đơn PENDING không giữ ghế và lượt quét huỷ sau 60 phút, nhưng My bookings hiện hai đơn chờ trả, kèm hai phiên thanh toán. Ca hay gặp đã bịt ở PR #63: lượt ghi của trình duyệt chờ 60 giây, bằng trần của API (ADR-0044 AMEND 2). Cách nhỏ nhất: API trả lại đơn PENDING còn hạn của cùng khách, cùng chuyến, cùng số khách thay vì tạo mới (khoảng 30 dòng và int test, không migration). Cách đầy đủ: wizard sinh khoá chống trùng cho mỗi lượt đặt, API lưu theo cặp khách và khoá (contract thêm một trường tuỳ chọn, migration cho cột và unique index). Yuri chọn để sau buổi bảo vệ (thẻ quyết định 21/10, review F3-11; chi tiết ở entry CHANGELOG 26/10 của PR #63, vì báo cáo trong thư mục chung đã được dọn) |
