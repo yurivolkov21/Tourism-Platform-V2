@@ -76,6 +76,7 @@ function baseProps(overrides: Partial<TourDetailScreenProps> = {}): TourDetailSc
     selectedDepartureId: null,
     onSelectDeparture: jest.fn(),
     bookingClosedLabel: 'Booking closed',
+    soldOutLabel: 'Sold out',
     almostFullLabel: 'Almost full',
     askAboutDateLabel: 'Ask about this date',
     onAskAboutDate: jest.fn(),
@@ -127,6 +128,16 @@ describe('TourDetailScreen', () => {
   it('trạng thái loading: không vẽ tiêu đề tour', async () => {
     await renderWithTheme(<TourDetailScreen {...baseProps({ status: 'loading' })} />);
     expect(screen.queryByText('Central Heritage: Đà Nẵng–Hội An–Huế 4D3N')).toBeNull();
+  });
+
+  // Review M2-13: API trên Render ngủ dậy chậm, khách đứng ở khung chờ cả chục giây mà trước đây
+  // chỉ lùi được bằng cử chỉ hệ thống.
+  it('trạng thái loading: có nút lùi, bấm gọi onBack', async () => {
+    const onBack = jest.fn();
+    await renderWithTheme(<TourDetailScreen {...baseProps({ status: 'loading', onBack })} />);
+
+    await fireEvent.press(screen.getByRole('button', { name: 'Back' }));
+    expect(onBack).toHaveBeenCalledTimes(1);
   });
 
   it('trạng thái error: vẽ câu lỗi + nút thử lại, bấm gọi onRetry', async () => {
@@ -455,8 +466,20 @@ describe('TourDetailScreen', () => {
             priceLabel: '$459',
             compareAtPriceLabel: null,
             bookable: false,
+            soldOut: false,
             almostFull: false,
             cancellationCaption: 'Free cancellation until Sat 19 Sep',
+          },
+          {
+            id: 'sold-out-1',
+            rangeLabel: 'Sun 27 – Wed 30 Sep',
+            seatsLabel: '0 seats left',
+            priceLabel: '$459',
+            compareAtPriceLabel: null,
+            bookable: false,
+            soldOut: true,
+            almostFull: false,
+            cancellationCaption: 'Free cancellation until Sun 20 Sep',
           },
         ],
       },
@@ -470,6 +493,7 @@ describe('TourDetailScreen', () => {
             priceLabel: '$459',
             compareAtPriceLabel: null,
             bookable: true,
+            soldOut: false,
             almostFull: false,
             cancellationCaption: 'Free cancellation until Sat 26 Sep',
           },
@@ -480,6 +504,7 @@ describe('TourDetailScreen', () => {
             priceLabel: '$459',
             compareAtPriceLabel: null,
             bookable: true,
+            soldOut: false,
             almostFull: true,
             cancellationCaption: 'Free cancellation until Sat 3 Oct',
           },
@@ -523,8 +548,29 @@ describe('TourDetailScreen', () => {
       await fireEvent.press(screen.getByText('Wed 23 – Sat 26 Sep'));
       expect(onSelectDeparture).not.toHaveBeenCalled();
 
-      await fireEvent.press(screen.getByText('Ask about this date'));
+      // Hàng đầu là đợt đã qua hạn; hàng hết chỗ bên dưới cũng có link hỏi riêng.
+      const closedAsk = screen.getAllByText('Ask about this date').at(0);
+      if (closedAsk === undefined) throw new Error('Không thấy link hỏi của đợt đã đóng');
+      await fireEvent.press(closedAsk);
       expect(onAskAboutDate).toHaveBeenCalledWith('closed-1');
+    });
+
+    // Review M2-11: đợt còn hạn đặt mà kín chỗ không phải "đã đóng" — nói đúng lý do như web.
+    it('đợt hết chỗ còn hạn: tag "Sold out" thay "Booking closed", vẫn có link hỏi', async () => {
+      const onAskAboutDate = jest.fn();
+      await renderWithTheme(
+        <TourDetailScreen
+          {...baseProps({ activeTab: 'dates', departureGroups: GROUPS, onAskAboutDate })}
+        />,
+      );
+
+      expect(screen.getByText('Sold out')).toBeTruthy();
+      // Chỉ hàng đã qua hạn đặt mang "Booking closed".
+      expect(screen.getAllByText('Booking closed')).toHaveLength(1);
+      const soldOutAsk = screen.getAllByText('Ask about this date').at(-1);
+      if (soldOutAsk === undefined) throw new Error('Không thấy link hỏi của đợt hết chỗ');
+      await fireEvent.press(soldOutAsk);
+      expect(onAskAboutDate).toHaveBeenCalledWith('sold-out-1');
     });
 
     it('đợt gần đầy: hiện tag "Almost full"', async () => {
@@ -535,16 +581,16 @@ describe('TourDetailScreen', () => {
     });
 
     // G47 (ADR-0019 AMEND 4): chữ 12dp trên lớp tô warning 20% — mực `warning` trần chỉ 1,68:1
-    // ở theme sáng. Hai tag dùng chung một component nên cùng mực.
+    // ở theme sáng. Ba tag dùng chung một component nên cùng mực.
     it.each(['light', 'dark'] as const)(
-      'hai tag tô mực warning-emphasis (theme %s)',
+      'ba tag tô mực warning-emphasis (theme %s)',
       async (scheme) => {
         await renderWithTheme(
           <TourDetailScreen {...baseProps({ activeTab: 'dates', departureGroups: GROUPS })} />,
           scheme,
         );
 
-        for (const label of ['Almost full', 'Booking closed']) {
+        for (const label of ['Almost full', 'Booking closed', 'Sold out']) {
           expect(StyleSheet.flatten(screen.getByText(label).props.style).color).toBe(
             themeFor(scheme).colors['warning-emphasis'],
           );
@@ -666,6 +712,35 @@ describe('TourDetailScreen', () => {
       expect(
         screen.getByText('This trip is new. Be the first to ride it and tell us how it went.'),
       ).toBeTruthy();
+    });
+
+    // Review M2-12: trang review đầu tải hỏng từng chỉ có một câu báo lỗi — khách phải rời màn rồi
+    // vào lại mới thử được.
+    it('tải review hỏng (có onRetryReviews): nút thử lại, bấm gọi onRetryReviews', async () => {
+      const onRetryReviews = jest.fn();
+      await renderWithTheme(
+        <TourDetailScreen
+          {...baseProps({
+            activeTab: 'reviews',
+            reviews: [],
+            noReviewsTitle: "Couldn't load reviews.",
+            noReviewsBody: '',
+            onRetryReviews,
+          })}
+        />,
+      );
+
+      expect(screen.getByText("Couldn't load reviews.")).toBeTruthy();
+      await fireEvent.press(screen.getByRole('button', { name: 'Try again' }));
+      expect(onRetryReviews).toHaveBeenCalledTimes(1);
+    });
+
+    it('không có onRetryReviews (rỗng thật hay đang tải): không vẽ nút thử lại', async () => {
+      await renderWithTheme(
+        <TourDetailScreen {...baseProps({ activeTab: 'reviews', reviews: [] })} />,
+      );
+
+      expect(screen.queryByRole('button', { name: 'Try again' })).toBeNull();
     });
 
     it('hasMoreReviews=false: không vẽ nút "Load more"', async () => {

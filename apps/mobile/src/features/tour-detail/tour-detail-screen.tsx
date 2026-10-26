@@ -77,6 +77,9 @@ export interface TourDetailDepartureRow {
   /** `null` khi đợt không có giá gạch (không giảm giá). */
   compareAtPriceLabel: string | null;
   bookable: boolean;
+  /** Còn hạn đặt nhưng kín chỗ — tag nói "Sold out" thay vì "Booking closed" (review M2-11).
+      Chỉ có nghĩa khi `bookable` là `false`. */
+  soldOut: boolean;
   almostFull: boolean;
   /** "Free cancellation until Sat 26 Sep" của RIÊNG đợt này — đáy màn đọc từ
       đợt đang chọn, không phải câu luật chung `cancellationBanner`. */
@@ -174,6 +177,7 @@ export interface TourDetailScreenProps {
   selectedDepartureId: string | null;
   onSelectDeparture: (id: string) => void;
   bookingClosedLabel: string;
+  soldOutLabel: string;
   almostFullLabel: string;
   askAboutDateLabel: string;
   onAskAboutDate: (departureId: string) => void;
@@ -211,6 +215,9 @@ export interface TourDetailScreenProps {
   reviews: readonly TourDetailReview[];
   noReviewsTitle: string;
   noReviewsBody: string;
+  /** Trang review đầu tải hỏng: có thì vẽ nút thử lại (chữ `retryLabel`) dưới câu báo lỗi
+      (review M2-12). Vắng khi danh sách rỗng thật hay đang tải. */
+  onRetryReviews?: () => void;
   /** Còn trang sau (server trả `page < totalPages`) — route tự gộp các trang đã tải. */
   hasMoreReviews: boolean;
   /** Đang tải trang kế — vô hiệu nút, tránh bấm chồng. */
@@ -432,6 +439,7 @@ export function TourDetailScreen({
   selectedDepartureId,
   onSelectDeparture,
   bookingClosedLabel,
+  soldOutLabel,
   almostFullLabel,
   askAboutDateLabel,
   onAskAboutDate,
@@ -463,6 +471,7 @@ export function TourDetailScreen({
   reviews,
   noReviewsTitle,
   noReviewsBody,
+  onRetryReviews,
   hasMoreReviews,
   loadingMoreReviews,
   onLoadMoreReviews,
@@ -592,7 +601,25 @@ export function TourDetailScreen({
     // hết mép trên, cùng cách trạng thái content xử lý vùng an toàn.
     return (
       <Screen edges={['bottom']} padded={false} scrollable={false}>
-        <Skeleton style={{ height: HERO_HEIGHT }} />
+        <View>
+          <Skeleton style={{ height: HERO_HEIGHT }} />
+          {/* Review M2-13: API ngủ dậy chậm thì khung chờ đứng cả chục giây — giữ nút lùi đúng chỗ
+              của nó trên ảnh bìa để khách không phải đợi hay dùng cử chỉ hệ thống. */}
+          <View
+            style={{
+              position: 'absolute',
+              top: insets.top + theme.spacing(1.5),
+              left: theme.spacing(3),
+            }}
+          >
+            <IconButton
+              icon="arrow-left"
+              accessibilityLabel={backLabel}
+              variant="glass"
+              onPress={onBack}
+            />
+          </View>
+        </View>
         <View style={{ padding: theme.spacing(4), gap: theme.spacing(3) }}>
           <View style={{ flexDirection: 'row', gap: theme.spacing(2) }}>
             {[0, 1, 2, 3].map((i) => (
@@ -1065,7 +1092,9 @@ export function TourDetailScreen({
                                       gap: theme.spacing(2),
                                     }}
                                   >
-                                    <DepartureTag label={bookingClosedLabel} />
+                                    <DepartureTag
+                                      label={row.soldOut ? soldOutLabel : bookingClosedLabel}
+                                    />
                                     <Pressable
                                       accessibilityRole="button"
                                       onPress={() => onAskAboutDate(row.id)}
@@ -1220,6 +1249,11 @@ export function TourDetailScreen({
                       <AppText variant="subtitle" tone="muted" style={{ textAlign: 'center' }}>
                         {noReviewsBody}
                       </AppText>
+                      {onRetryReviews === undefined ? null : (
+                        <View style={{ marginTop: theme.spacing(2) }}>
+                          <Button variant="ghost" label={retryLabel} onPress={onRetryReviews} />
+                        </View>
+                      )}
                     </View>
                   ) : (
                     <View style={{ gap: theme.spacing(4) }}>

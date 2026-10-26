@@ -2693,6 +2693,9 @@ export const messages = {
           `messages.tourDetail.departures.closed` (web) — hai app giữ khoá riêng,
           "dùng chung chữ" chỉ áp cho câu huỷ miễn phí (`cancellationDeadline`). */
       bookingClosed: 'Booking closed',
+      /** D3 — nhãn đợt còn hạn đặt nhưng kín chỗ (`seatsLeft` 0): nói đúng lý do thay vì
+          "Booking closed" (review M2-11). */
+      soldOut: 'Sold out',
       /** D3 — huy hiệu khi `seatsLeft <= departures.ALMOST_FULL_THRESHOLD`. */
       almostFull: 'Almost full',
       /** D3 — link trên đợt đã đóng, mở form hỏi. */

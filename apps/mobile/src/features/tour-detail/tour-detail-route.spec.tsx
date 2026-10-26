@@ -195,6 +195,9 @@ describe('TourDetailRoute — tab Dates', () => {
 
     const soldOutRow = screen.getByRole('radio', { name: rowName(soldOut, '$100') });
     expect(soldOutRow.props.accessibilityState).toMatchObject({ disabled: true });
+    // Review M2-11: kín chỗ chứ chưa hết hạn — tag nói "Sold out", không "Booking closed".
+    expect(screen.getByText(t.soldOut)).toBeTruthy();
+    expect(screen.queryByText(t.bookingClosed)).toBeNull();
     await fireEvent.press(soldOutRow);
     expect(screen.queryByRole('button', { name: bookCta })).toBeNull();
 
@@ -239,6 +242,23 @@ describe('TourDetailRoute — tab Reviews', () => {
 
     expect(await screen.findByText(t.reviewsError)).toBeTruthy();
     expect(screen.queryByText(emptyTitle)).toBeNull();
+  });
+
+  // Review M2-12: trước đây chỉ có câu báo lỗi, khách phải rời màn rồi vào lại.
+  it('tải review hỏng rồi bấm "Try again": gọi lại trang 1 và hiện review', async () => {
+    reviewReplies = {
+      1: [
+        { status: 500 },
+        reviewPage(1, 1, [review('00000000-0000-4000-8000-0000000000d1', 'Recovered review')]),
+      ],
+    };
+    await renderRoute(makeTour({}));
+    await fireEvent.press(screen.getByRole('tab', { name: t.reviewsTitle }));
+    await screen.findByText(t.reviewsError);
+
+    await fireEvent.press(screen.getByRole('button', { name: t.retry }));
+    expect(await screen.findByText('Recovered review')).toBeTruthy();
+    expect(reviewPagesRequested).toEqual([1, 1]);
   });
 
   // Trước đây route tự cộng `page` mỗi lần bấm: trang 2 hỏng rồi bấm lại là

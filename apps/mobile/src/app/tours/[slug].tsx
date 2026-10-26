@@ -377,6 +377,8 @@ export default function TourDetailRoute() {
               priceLabel: formatMoney(departure.effectivePrice, tour.currency),
               compareAtPriceLabel: strike === null ? null : formatMoney(strike, tour.currency),
               bookable: open,
+              // Còn hạn mà kín chỗ: `isDepartureOpen` đã khoá, tag nói "Sold out" (review M2-11).
+              soldOut: departure.bookable && departure.seatsLeft <= 0,
               almostFull: open && departure.seatsLeft <= ALMOST_FULL_THRESHOLD,
               cancellationCaption: messages.cancellationDeadline.short(
                 formatDepartureDate(departure.bookingDeadline),
@@ -512,6 +514,7 @@ export default function TourDetailRoute() {
       selectedDepartureId={selectedDepartureId}
       onSelectDeparture={setSelectedDepartureId}
       bookingClosedLabel={tourDetail.bookingClosed}
+      soldOutLabel={tourDetail.soldOut}
       almostFullLabel={tourDetail.almostFull}
       askAboutDateLabel={tourDetail.askAboutDate}
       onAskAboutDate={openAskAboutDate}
@@ -550,6 +553,12 @@ export default function TourDetailRoute() {
       reviews={reviews}
       noReviewsTitle={reviewsEmptyState.title}
       noReviewsBody={reviewsEmptyState.body}
+      // Trang đầu hỏng (chưa có review nào để hiện): nút thử lại gọi lại đúng query (review M2-12).
+      onRetryReviews={
+        reviewsQuery.isError && reviewItems.length === 0
+          ? () => void reviewsQuery.refetch()
+          : undefined
+      }
       hasMoreReviews={reviewsQuery.hasNextPage}
       loadingMoreReviews={reviewsQuery.isFetchingNextPage}
       onLoadMoreReviews={() => {
