@@ -200,6 +200,13 @@ describe('buildNotifications — review', () => {
     const retracted = review({ id: 'rev-x', moderationState: 'retracted' });
     expect(build([], [stale, pending, retracted])).toEqual([]);
   });
+
+  // Ngày viết tính theo lịch Việt Nam như `today` (ADR-0041 §7): 18:00 UTC ngày 10 là 01:00 sáng
+  // ngày 11 giờ VN, tức đúng 14 ngày trước 25/10 — cắt 10 ký tự đầu ra ngày 10 và loại nhầm bài.
+  it('cửa sổ 14 ngày đếm từ ngày viết theo lịch Việt Nam, không theo ngày UTC', () => {
+    const lateNight = review({ id: 'rev-n', createdAt: '2026-10-10T18:00:00.000Z' });
+    expect(kinds(build([], [lateNight]))).toEqual(['review_approved']);
+  });
 });
 
 describe('buildNotifications — thứ tự', () => {

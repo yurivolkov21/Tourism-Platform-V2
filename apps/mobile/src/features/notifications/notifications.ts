@@ -1,4 +1,4 @@
-import { type Booking, bookingPhase, type MyReview } from '@tourism/contract';
+import { type Booking, bookingPhase, type MyReview, vietnamToday } from '@tourism/contract';
 import { tripsAwaitingReview } from '@/features/reviews/my-reviews';
 import { currentTripDay, daysBetween } from '@/features/trip-tracker/trip-tracker';
 
@@ -144,7 +144,7 @@ export function buildNotifications(input: {
       list.push({ id: `review_rejected:${review.id}`, kind: 'review_rejected', ...base });
     } else if (
       review.moderationState === 'approved' &&
-      daysBetween(review.createdAt.slice(0, 10), today) <= REVIEW_APPROVED_WINDOW_DAYS
+      daysBetween(vietnamToday(new Date(review.createdAt)), today) <= REVIEW_APPROVED_WINDOW_DAYS
     ) {
       list.push({ id: `review_approved:${review.id}`, kind: 'review_approved', ...base });
     }
