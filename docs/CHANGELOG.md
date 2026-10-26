@@ -8,6 +8,64 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-10-26 — Lượt seed lại prod 2, lượt cuối trước buổi bảo vệ: làm mới mọi tài khoản kể cả Owner, seed với H = 26/10, snapshot trước khi xoá (`a962bb5`)
+
+Yuri chạy tay trên PC ngày 26/10 theo [hướng dẫn seed lại production](guides/huong-dan-seed-lai-production.md) của
+PR #69, sau khi bản deploy của PR #71 lên xong (API Render live 08:49 UTC, CI main xanh 08:59 UTC). Phạm vi Yuri chốt
+03:23 UTC: giữ tour, điểm đến, danh mục, bài viết và ảnh, làm mới mọi thứ khác kể cả Owner. 08:25 và 08:31 UTC Yuri
+đổi thứ tự: lượt này chạy trước buổi test tay cuối và là lượt cuối, sau buổi test không seed lại. Session cloud chỉ đọc
+prod (SQL chỉ đọc, log Render và Vercel) để đối chiếu từng bước; mọi lệnh ghi prod do Yuri gõ. Nhánh
+`claude/project-thread-qthmnz`, [PR #72](https://github.com/yurivolkov21/Tourism-Platform-V2/pull/72), rebase lên
+`ede26fd` sau PR #70: chỉ đụng `docs/`, không code, không migration, không biến env.
+
+Lượt chạy trên prod:
+
+- Kiểm trước, chỉ đọc: Outbox 0 mail `PENDING`; `test-01` và Vung Tau Coastal 3D đã gỡ bán; 29 tour seed cùng năm
+  bảng con trên prod khớp đúng fixture, nên seed ghi đè không mất chỗ sửa tay nào.
+- Chạy thử trên session cloud (DB rỗng, H = 26/10, `main` `5b44ed1`) rồi tập dượt Docker trên máy Yuri:
+  `seed:verify` 0 vi phạm trên 119 bất biến, bản Docker kèm cảnh báo DB chưa có ảnh.
+- `snapshot:export`: 4833 dòng, gồm 639 dòng công khai (`docs/snapshots/2026-10-26/`) và 4194 dòng riêng tư
+  (`backups/2026-10-26/`, chỉ nằm trên máy Yuri), khớp tổng số dòng đếm trên prod.
+- `data:reset` chạy khô: xoá 3049 dòng, ba cổng ✓, 9 bài đổi tác giả, 4 ảnh review sang hàng dọn, 0 ảnh mồ côi.
+  `--apply` COMMIT; Owner mới cùng email tạo 09:12 UTC.
+- `db:seed` với H = 26/10: 120 khách giả, 744 booking, 767 payment event, 39 refund, 15 yêu cầu huỷ, 289 chuyến, 119
+  review VERIFIED, 82 enquiry, 216 subscriber, khớp bản chạy thử. `seed:verify` 0 vi phạm trên 119 bất biến.
+- Sau seed: Owner đặt mật khẩu qua "Forgot password?" và vào được admin; Yuri xoá `test-01` và Vung Tau Coastal 3D
+  qua admin (nhật ký admin ghi hai lệnh `tours.delete`); còn 29 tour đang bán, `media_assets` 517 dòng, 0 ảnh mồ
+  côi; Render không có log lỗi, web trên Vercel không có lỗi runtime.
+
+Commit:
+
+- `9611098` (docs, Yuri tạo trên máy): bảy file của `docs/snapshots/2026-10-26/`, bản chụp TRƯỚC khi xoá nên còn 31
+  tour và 523 dòng ảnh.
+- `a962bb5` (docs): `snapshots/README.md` trỏ lượt hiện hành `2026-10-26/` và ghi lượt 2 là lượt cuối;
+  `open-items.md` chuyển dòng mốc, mục "Trước lượt seed lại" và dòng hai khoản hoàn cũ sang `open-items-closed.md`;
+  hướng dẫn seed lại ghi ngày đã chạy.
+
+Đóng mục "Lượt seed lại prod 2" ở CÒN TREO của entry PR #69 (cùng ngày, ở dưới).
+
+Hệ quả cho buổi thuyết trình thử và buổi bảo vệ:
+
+- Tài khoản thật (của nhóm và vài người dùng thử) đã xoá; ai cần thì đăng ký lại, app mobile phải đăng nhập lại.
+- Luật demo L4-19: booking seed mang mã thanh toán giả. Không huỷ chuyến đang có booking seed đã trả, không tự huỷ
+  trong hạn hay hoàn tiền thiện chí cho booking seed; cần thì đặt đơn mới bằng thẻ 4242.
+- Seed không có giao dịch từ H. Trong cửa sổ trượt 28 ngày của thẻ dashboard, số đơn trả tiền là 67 ngày 26/10, còn
+  29 ngày 10/11 và 14 ngày 16/11; biểu đồ phẳng từ 26/10. Yuri hỏi 10:24 UTC có nên seed thêm: không, vì chạy lại
+  cùng mốc chỉ thêm 0 dòng và đổi mốc phải reset lần nữa; thay vào đó đặt vài đơn mới trong tuần trước mỗi buổi demo.
+
+**Review.** Không có lượt review độc lập: PR chỉ thêm JSON do script sinh và sửa docs. markdownlint-cli2 0.18.1 trên
+bốn file `.md` đã sửa, so với `main`: không lỗi mới (còn 3 lỗi có từ trước), anchor mới trong `open-items-closed.md`
+khớp heading; không dòng `.md` thêm vào nào bắt đầu bằng `+`; `open-items-closed.md` chỉ thêm dòng. Yuri bảo đẩy lên
+main 26/10 10:24 UTC, sau khi PR #70 vào main.
+
+Tests after: PR không đổi code, không thêm hay bớt test nên số bằng entry ngay dưới (unit 8770, int 983). CI của PR
+trên `db47fef` (nền `5b44ed1`, trước rebase) xanh 26/10 09:54 UTC.
+
+**CÒN TREO:**
+
+- `backups/2026-10-26/` (có dữ liệu cá nhân) giữ trên máy Yuri tới sau buổi bảo vệ, không commit.
+- Dọn nhánh `claude/project-thread-qthmnz` trên origin nếu GitHub không tự xoá.
+
 ## 2026-10-26 — Merge rà và viết lại docs cho người ngoài đọc repo public: README gốc thêm đoạn tiếng Anh, mục lục theo chủ đề, gỡ 89 file plan, review và báo cáo đã hết dùng (`10a5f2c`)
 
 Repo để public nên Yuri nhờ rà `docs/` 26/10 07:08 UTC: chỉnh nội dung cho đúng hiện trạng, xoá file không còn cần
