@@ -663,6 +663,14 @@ export const messages = {
       title: 'Payment cancelled',
       backToTours: 'Browse tours',
     },
+    // ADR-0062 — trang chuyển tiếp từ cổng thanh toán về app mobile (/checkout/app-return).
+    appReturn: {
+      title: 'Taking you back to the app',
+      body: 'If the app doesn’t open on its own, tap the button below.',
+      cta: 'Return to the app',
+      invalidTitle: 'We couldn’t open the app',
+      invalidBody: 'Open the Nexora app to check your booking, or see it here on the website.',
+    },
     // My bookings list (/account/bookings).
     list: {
       menuLink: 'My bookings',
@@ -2311,6 +2319,13 @@ export const messages = {
       writeReview: 'Write a review',
       /** Nhãn đọc của nút trên từng thẻ: nhiều thẻ cùng chữ, trình đọc màn hình cần tên tour. */
       writeReviewFor: (tour: string) => `Write a review for ${tour}`,
+      /** Màn chi tiết một bài (bấm thẻ ở R4). */
+      detailTitle: 'Your review',
+      ratingLabel: (rating: number) => `${rating} out of 5 stars`,
+      whyHeading: 'Why it wasn’t published',
+      viewTour: 'View tour',
+      openReviewFor: (tour: string) => `Open your review of ${tour}`,
+      openReview: 'Open your review',
     },
     /**
      * Tấm hỏi lại khi rời màn viết bài (R1) hay viết lại bài bị bác (R5) lúc bài còn dở: back cứng
@@ -2434,6 +2449,7 @@ export const messages = {
         travelStories: 'Travel stories',
         // E1 (mockup `mobile-booking-screens`) — header của màn hỏi về chuyến.
         askAboutTrip: 'Ask about this trip',
+        notifications: 'Notifications',
         // Cụm P (W7/W8) — P1/P2/P6 dùng chung `yourTrip`; P5 có tiêu đề ĐỘNG
         // "Day {n} of {total}" nên không khai cố định ở đây, route tự đặt
         // qua `<Stack.Screen options={{ title }} />` của chính nó.
@@ -2476,6 +2492,61 @@ export const messages = {
       agreeTerms: 'Terms',
       agreeAnd: ' and ',
       agreePrivacy: 'Privacy Policy',
+    },
+    /** Trung tâm thông báo trong app (spec 2026-10-25): danh sách suy ra từ đơn và review. */
+    notifications: {
+      title: 'Notifications',
+      bellLabel: (unread: number) =>
+        unread === 0 ? 'Notifications' : `Notifications, ${unread} unread`,
+      markAllRead: 'Mark all as read',
+      unreadLabel: 'Unread',
+      emptyTitle: "You're all caught up",
+      emptyBody: 'Trip reminders and review updates will show up here.',
+      signedOutTitle: 'Sign in to see notifications',
+      signedOutBody: 'Your trip reminders and review updates live here.',
+      signIn: 'Sign in',
+      loadError: "Couldn't load notifications.",
+      retry: 'Try again',
+      fallbackTourTitle: 'your trip',
+      item: {
+        paymentDue: {
+          title: (tour: string) => `Finish payment for ${tour}`,
+          body: "Your seat isn't secured until payment is complete.",
+        },
+        onTour: {
+          title: (tour: string) => `You're on ${tour}`,
+          body: (day: number, total: number) => `Day ${day} of ${total}`,
+        },
+        departing: {
+          title: (tour: string) => `${tour} is coming up`,
+          body: (days: number) =>
+            days === 0
+              ? 'Departs today'
+              : days === 1
+                ? 'Departs tomorrow'
+                : `Departs in ${days} days`,
+        },
+        tripCancelled: {
+          title: (tour: string) => `${tour} was cancelled`,
+          body: 'Open your booking for the refund details.',
+        },
+        refunded: {
+          title: (tour: string) => `Refund processed for ${tour}`,
+          body: 'Open your booking for the details.',
+        },
+        reviewPrompt: {
+          title: (tour: string) => `How was ${tour}?`,
+          body: 'Share a quick review of your trip.',
+        },
+        reviewRejected: {
+          title: (tour: string) => `Your review of ${tour} needs changes`,
+          body: 'Open it to see what to fix.',
+        },
+        reviewApproved: {
+          title: (tour: string) => `Your review of ${tour} is live`,
+          body: 'Thanks for sharing your trip.',
+        },
+      },
     },
     /**
      * Ba trang onboarding, chữ lấy từ bản thiết kế user duyệt 16/09
@@ -2570,6 +2641,8 @@ export const messages = {
       error: "Couldn't load tours. Check your connection and try again.",
       retry: 'Try again',
       slowServer: 'Waking the server — the first load can take up to a minute…',
+      /** B2 — dòng đợt trên thẻ tour khi chưa có đợt đặt được. */
+      datesOnRequest: 'Dates on request',
       duration: { '1': '1 day', '2-3': '2–3 days', '4+': '4+ days' },
       price: {
         '<100': 'Under $100',
@@ -2689,6 +2762,8 @@ export const messages = {
       departuresError: "Couldn't load departures.",
       soldOut: 'Sold out',
       stepLabel: (n: number, total: number) => `Step ${n} of ${total}`,
+      /** B4 — tên bốn bước, in dưới vạch tiến trình. */
+      stepNames: ['Travellers', 'Contact', 'Review', 'Pay'],
       continueCta: 'Continue',
       tripHeading: 'Your trip',
       editTrip: 'Edit',
@@ -2744,6 +2819,8 @@ export const messages = {
       successTitle: "You're going!",
       successSubtitle: (email: string) => `Confirmation is on its way to ${email}`,
       bookingCodeLabel: 'Booking code',
+      successTravellersLabel: 'Travellers',
+      successTotalLabel: 'Total',
       // B9 — không tạo được booking. Đường đi tiếp riêng cho SEATS_UNAVAILABLE/
       // DEPARTURE_NOT_AVAILABLE — câu lỗi CHÍNH đã có ở `booking.errors` trên
       // web, mobile đọc lại qua `bookingSubmitErrorCopy`.
@@ -2958,6 +3035,8 @@ export const messages = {
       menuMyReviews: 'My reviews',
       menuTravelStories: 'Travel stories',
       menuPassword: 'Password',
+      // F1 — nhãn nhóm năm dòng mở trình duyệt ngoài.
+      menuHelpGroup: 'Help & policies',
       menuHelp: 'Help & FAQ',
       menuAbout: 'About Nexora',
       menuPrivacy: 'Privacy policy',
@@ -3017,6 +3096,7 @@ export const messages = {
         title: 'Personal details',
         nameLabel: 'Name',
         emailLabel: 'Email',
+        passwordLabel: 'Password',
         deleteAccount: 'Delete account',
         deleting: 'Deleting…',
         // A7 — gọi `DELETE /api/account` (ADR-0017 §7b). Copy lỗi dùng LẠI
@@ -3054,6 +3134,9 @@ export const messages = {
       chipAll: 'All',
       chipUpcoming: 'Upcoming',
       chipPast: 'Past',
+      /** B5 — thẻ lớn đầu tab và nút trên thẻ. */
+      nextTrip: 'Next trip',
+      viewTrip: 'View trip',
       travellersCount: (n: number) => (n === 1 ? '1 traveller' : `${n} travellers`),
       finishPayment: 'Finish payment',
       emptyTitle: 'No trips yet — your bookings will show up here.',
