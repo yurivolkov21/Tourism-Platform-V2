@@ -447,8 +447,9 @@ Các gạch trên là bản ghi lúc viết; chỗ nào lệch thì theo phần 
 
 - Thời điểm: không còn "khoảng 03/11". Lượt này chạy trước buổi test tay cuối, để
   buổi test chạy trên dữ liệu mới. Bản đầu của điều chỉnh này ghi "ngay sau buổi
-  test tay cuối"; Yuri đổi thứ tự cùng ngày 26/10. Có seed lại thêm một lần sau
-  buổi test hay không thì chưa chốt.
+  test tay cuối"; Yuri đổi thứ tự cùng ngày 26/10. Đây là lượt seed cuối: sau buổi
+  test không seed lại, dữ liệu đã test giữ nguyên cho buổi thuyết trình thử và
+  buổi bảo vệ.
 - Giữ như cũ: tour, điểm đến, danh mục, bài viết, ảnh (`media_assets`, khe site,
   hàng dọn ảnh) và `email_suppressions`. Làm mới mọi thứ khác, **kể cả tài khoản
   Owner**, nên gạch "Không sửa code" ở trên hết đúng: trước 26/10, `data:reset` giữ

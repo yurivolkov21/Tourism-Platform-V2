@@ -4,9 +4,9 @@ Dành cho Yuri, chạy trên PC bằng Git Bash. Làm theo đúng thứ tự; m�
 **Kết quả mong đợi** để đối chiếu. Lệch ở đâu thì dừng ở đó và xem mục
 [Khi có sự cố](#khi-có-sự-cố).
 
-- **Khi nào:** trước buổi test tay cuối, để buổi test chạy trên dữ liệu mới (Yuri
-  đổi thứ tự 26/10). Có seed lại thêm một lần sau buổi test hay không thì chưa
-  chốt. Chọn giờ vắng.
+- **Khi nào:** trước buổi test tay cuối, để buổi test chạy trên dữ liệu mới. Sau
+  buổi test không seed lại nữa: dữ liệu đã test giữ nguyên cho buổi thuyết trình
+  thử và buổi bảo vệ (Yuri chốt 26/10). Chọn giờ vắng.
 - **Mất bao lâu:** khoảng 30–45 phút kể cả chuẩn bị. Từ lúc xoá tới khi seed xong
   và ISR sinh lại trang (khoảng 5–10 phút), site mất lịch khởi hành và sao đánh giá.
 - **Thiết kế và lý do:** [spec seed 14/09](../specs/2026-09-14-seed-khung-2026-design.md)

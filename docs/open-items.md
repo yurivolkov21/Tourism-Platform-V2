@@ -17,7 +17,7 @@
 | Ngày | Việc |
 | --- | --- |
 | **31/10/2026** | **Freeze**: ngừng nâng cấp thư viện, ngừng đổi nơi deploy. Dời từ 15/10 ([ADR-0001 AMEND 3](adr/0001-tech-stack.md)) |
-| Trước buổi test tay cuối | Seed lại dữ liệu prod lượt 2, làm mới mọi tài khoản kể cả Owner, để buổi test tay chạy trên dữ liệu mới (Yuri chốt 26/10; [plan hoàn tiền một hạn chót](https://github.com/yurivolkov21/Tourism-Platform-V2/blob/6785326e69949d4ef566c5eaf7c3eaa3706859c8/docs/plans/2026-09-15-refund-deadline.md) Phụ lục B Bước 8) — cách chạy ở [hướng dẫn seed lại](guides/huong-dan-seed-lai-production.md), xem [việc phải xong trước lượt này](#trước-lượt-seed-lại) |
+| Trước buổi test tay cuối | Seed lại dữ liệu prod lượt 2, làm mới mọi tài khoản kể cả Owner, để buổi test tay chạy trên dữ liệu mới; sau buổi test không seed lại nữa (Yuri chốt 26/10; [plan hoàn tiền một hạn chót](https://github.com/yurivolkov21/Tourism-Platform-V2/blob/6785326e69949d4ef566c5eaf7c3eaa3706859c8/docs/plans/2026-09-15-refund-deadline.md) Phụ lục B Bước 8) — cách chạy ở [hướng dẫn seed lại](guides/huong-dan-seed-lai-production.md), xem [việc phải xong trước lượt này](#trước-lượt-seed-lại) |
 | tuần 02–08/11/2026 | Thuyết trình thử, trước buổi bảo vệ (Yuri 19/10: đầu tháng 11, tuần thứ ba tính từ 19/10; chưa có ngày cụ thể) |
 | ~16/11/2026 | Bảo vệ đồ án (chủ dự án 15/10: còn khoảng 4 tuần tính từ thứ Hai 19/10; trước đó ghi ~11/11) |
 
@@ -30,8 +30,9 @@ Không còn mục nào: mục cuối (UI mobile theo Material 3) đóng 26/10, x
 
 Lượt này chạy trước buổi test tay cuối, để buổi test chạy trên dữ liệu mới (Yuri chốt
 26/10, bỏ mốc 03/11, rồi đổi thứ tự cùng ngày), theo từng bước của
-[hướng dẫn seed lại production](guides/huong-dan-seed-lai-production.md). Có seed lại
-thêm một lần sau buổi test hay không thì chưa chốt.
+[hướng dẫn seed lại production](guides/huong-dan-seed-lai-production.md). Đây là lượt
+seed cuối: sau buổi test không seed lại, dữ liệu đã test giữ nguyên cho buổi thuyết
+trình thử và buổi bảo vệ.
 
 - **Ngay trước khi chạy seed:** gỡ bán hoặc xoá các tour thử tạo bằng F17 —
   `seed:verify` bắt "tour đang bán không có rating". Đo 01/10: còn đúng một tour
