@@ -1,5 +1,4 @@
-import Feather from '@expo/vector-icons/Feather';
-import { AppText, Screen, useTheme } from '@tourism/mobile-ui';
+import { AppText, Collapsible, Icon, Screen, useTheme } from '@tourism/mobile-ui';
 import { useState } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
 import type { ItineraryLine } from '@/features/tour-detail/itinerary';
@@ -105,37 +104,39 @@ export function TripItineraryScreen({
                         {day.dateLabel}
                       </AppText>
                     </View>
-                    <Feather
+                    <Icon
                       name={open ? 'chevron-up' : 'chevron-down'}
                       size={18}
                       color={theme.colors['muted-foreground']}
                     />
                   </View>
-                  {!open || day.lines.length === 0 ? null : (
-                    <View style={{ marginTop: theme.spacing(2), gap: 6 }}>
-                      {day.lines.map((line) =>
-                        line.kind === 'timed' ? (
-                          <View
-                            key={`${line.time}-${line.text}`}
-                            style={{ flexDirection: 'row', gap: theme.spacing(2) }}
-                          >
-                            <AppText
-                              variant="caption"
-                              style={{ width: 44, fontWeight: theme.weight.semibold }}
+                  {day.lines.length === 0 ? null : (
+                    <Collapsible open={open}>
+                      <View style={{ marginTop: theme.spacing(2), gap: 6 }}>
+                        {day.lines.map((line) =>
+                          line.kind === 'timed' ? (
+                            <View
+                              key={`${line.time}-${line.text}`}
+                              style={{ flexDirection: 'row', gap: theme.spacing(2) }}
                             >
-                              {line.time}
-                            </AppText>
-                            <AppText variant="caption" tone="muted" style={{ flex: 1 }}>
+                              <AppText
+                                variant="caption"
+                                style={{ width: 44, fontWeight: theme.weight.semibold }}
+                              >
+                                {line.time}
+                              </AppText>
+                              <AppText variant="caption" tone="muted" style={{ flex: 1 }}>
+                                {line.text}
+                              </AppText>
+                            </View>
+                          ) : (
+                            <AppText key={line.text} variant="caption" tone="muted">
                               {line.text}
                             </AppText>
-                          </View>
-                        ) : (
-                          <AppText key={line.text} variant="caption" tone="muted">
-                            {line.text}
-                          </AppText>
-                        ),
-                      )}
-                    </View>
+                          ),
+                        )}
+                      </View>
+                    </Collapsible>
                   )}
                 </Pressable>
               </View>

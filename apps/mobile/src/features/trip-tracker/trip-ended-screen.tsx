@@ -1,5 +1,4 @@
-import Feather from '@expo/vector-icons/Feather';
-import { AppText, Button, Screen, useTheme } from '@tourism/mobile-ui';
+import { AppText, Button, Icon, Screen, useTheme } from '@tourism/mobile-ui';
 import { ScrollView, View } from 'react-native';
 import { RowLink } from './trip-tracker-parts';
 
@@ -42,7 +41,12 @@ export function TripEndedScreen({
   const theme = useTheme();
 
   return (
-    <Screen edges={[]} padded={false} scrollable={false}>
+    <Screen
+      edges={[]}
+      padded={false}
+      scrollable={false}
+      style={{ backgroundColor: theme.surfaces.grouped }}
+    >
       <ScrollView
         style={{ flex: 1 }}
         contentContainerStyle={{
@@ -72,7 +76,7 @@ export function TripEndedScreen({
               justifyContent: 'center',
             }}
           >
-            <Feather name="flag" size={28} color={theme.colors['primary-emphasis']} />
+            <Icon name="flag" size={28} color={theme.colors['primary-emphasis']} />
           </View>
           <AppText variant="title" style={{ marginTop: theme.spacing(3), textAlign: 'center' }}>
             {welcomeBackLabel}
@@ -114,7 +118,7 @@ export function TripEndedScreen({
                 backgroundColor: theme.colors.secondary,
               }}
             >
-              <Feather name="star" size={20} color={theme.colors['secondary-foreground']} />
+              <Icon name="star" size={20} color={theme.colors['secondary-foreground']} />
               <View style={{ flex: 1 }}>
                 <AppText variant="label" style={{ color: theme.colors['secondary-foreground'] }}>
                   {howWasItTitle}
@@ -139,6 +143,7 @@ export function TripEndedScreen({
 
         <View style={{ marginTop: theme.spacing(4) }}>
           <RowLink
+            first
             icon="file-text"
             label={bookingDetailsRow.label}
             caption={bookingDetailsRow.caption}

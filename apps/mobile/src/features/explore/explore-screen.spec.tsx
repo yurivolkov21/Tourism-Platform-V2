@@ -1,4 +1,4 @@
-import { fireEvent, screen } from '@testing-library/react-native';
+import { fireEvent, screen, waitFor } from '@testing-library/react-native';
 import { renderWithTheme } from '@/test-utils';
 import { ExploreScreen, type ExploreScreenProps } from './explore-screen';
 
@@ -14,6 +14,7 @@ function baseProps(overrides: Partial<ExploreScreenProps> = {}): ExploreScreenPr
     searchValue: '',
     searchPlaceholder: 'Search tours or destinations',
     clearSearchLabel: 'Clear search',
+    searchBackLabel: 'Back',
     onChangeSearch: jest.fn(),
     onRetry: jest.fn(),
     activeFilterCount: 0,
@@ -122,7 +123,8 @@ describe('ExploreScreen', () => {
     expect(screen.getByText('Something went wrong.')).toBeTruthy();
 
     await rerender(<ExploreScreen {...baseProps({ wishlistErrorLabel: null })} />);
-    expect(screen.queryByText('Something went wrong.')).toBeNull();
+    // Banner trượt ra ~0.2s rồi mới gỡ khỏi cây.
+    await waitFor(() => expect(screen.queryByText('Something went wrong.')).toBeNull());
   });
 
   it('không có destinationHeader: vẽ hàng chip danh mục, bấm gọi onSelectCategory', async () => {
@@ -230,5 +232,17 @@ describe('ExploreScreen', () => {
     );
 
     expect(screen.getByText('No tours match your search.')).toBeTruthy();
+  });
+
+  it('N8 — chạm thanh tìm thì mở search view (đầu màn 72, mũi tên lùi); lùi thì đóng và xoá chữ', async () => {
+    const onChangeSearch = jest.fn();
+    await renderWithTheme(<ExploreScreen {...baseProps({ onChangeSearch })} />);
+
+    await fireEvent(screen.getByPlaceholderText(baseProps().searchPlaceholder), 'pressIn');
+    expect(screen.getByTestId('search-view-header')).toBeTruthy();
+
+    await fireEvent.press(screen.getByLabelText('Back'));
+    expect(onChangeSearch).toHaveBeenCalledWith('');
+    expect(screen.queryByTestId('search-view-header')).toBeNull();
   });
 });

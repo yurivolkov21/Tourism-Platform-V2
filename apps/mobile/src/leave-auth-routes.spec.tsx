@@ -35,6 +35,12 @@ async function openApp(initialUrl: string) {
   return { pathname: () => app.getPathname() };
 }
 
+/** Ô trống bị chặn ngay ở route (không gọi flow) — nhập đủ để lượt bấm đi tới `submitSignIn` (đã mock). */
+async function fillSignIn() {
+  await fireEvent.changeText(screen.getByPlaceholderText(signIn.email), 'lan@example.com');
+  await fireEvent.changeText(screen.getByPlaceholderText(signIn.password), 'correct-horse-1');
+}
+
 // Test này PHẢI chạy trước: nó cần `onboardingStore` còn "chưa xem".
 it('lần đầu mở app, đăng nhập từ onboarding xong thì Sign in không nằm lại dưới Home', async () => {
   const app = await openApp('/');
@@ -46,6 +52,7 @@ it('lần đầu mở app, đăng nhập từ onboarding xong thì Sign in khôn
   await fireEvent.press(screen.getByText(onboarding.haveAccount));
   await waitFor(() => expect(app.pathname()).toBe('/login'));
 
+  await fillSignIn();
   await fireEvent.press(screen.getByText(signIn.submit));
 
   await waitFor(() => expect(app.pathname()).toBe('/'));
@@ -81,6 +88,7 @@ it('đăng nhập từ tour xong thì về đúng tour đó, back một lần l�
   setPendingReturn({ path: '/tours/ha-giang-loop' });
   await act(() => router.navigate('/login'));
 
+  await fillSignIn();
   await fireEvent.press(screen.getByText(signIn.submit));
   await waitFor(() => expect(app.pathname()).toBe('/tours/ha-giang-loop'));
 

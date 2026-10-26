@@ -144,11 +144,12 @@ function browseAction(on: BookingDetailHandlers): Slots['primaryAction'] {
   return { label: messages.mobile.trips.browse, onPress: on.browse };
 }
 
-/** Nút huỷ của đơn đã trả — chỉ khi server cho huỷ (`cancellation.canCancel`). */
+/**
+ * Nút huỷ của đơn đã trả — chỉ khi server cho huỷ (`cancellation.canCancel`). Cùng nhãn "Cancel
+ * this booking" với đơn chờ trả: màn vẽ nó thành hàng chữ đỏ ở khối riêng cuối nội dung (C6).
+ */
 function cancelAction(canCancel: boolean, on: BookingDetailHandlers): Slots['secondaryAction'] {
-  return canCancel
-    ? { label: messages.accountBookingDetail.actions.cancel, onPress: on.openCancel }
-    : null;
+  return canCancel ? { label: t.cancelThisBooking, onPress: on.openCancel } : null;
 }
 
 function pendingSlots(

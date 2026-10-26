@@ -119,6 +119,7 @@ export default function MyReviewsRoute() {
         onRetract={(id) => setRetractId(id)}
         onRewrite={(id) => router.push(`/reviews/rewrite?id=${id}`)}
         onWhy={(id) => router.push(`/reviews/exhausted?id=${id}`)}
+        onOpen={(id) => router.push(`/reviews/${id}`)}
         onWriteReview={(code) => router.push(`/trips/${code}/review?from=my-reviews`)}
         transformUrl={cloudinaryUrl}
       />

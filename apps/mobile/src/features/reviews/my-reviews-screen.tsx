@@ -1,9 +1,10 @@
 import type { messages } from '@tourism/i18n';
-import { AppText, Screen, useTheme, withAlpha } from '@tourism/mobile-ui';
+import { AppText, FadeIn, Screen, useTheme } from '@tourism/mobile-ui';
 import { Pressable, ScrollView, View } from 'react-native';
 import { BookingTripCard } from '@/features/booking/booking-parts';
 import { formatFullDate } from '@/features/tour-detail/departures';
-import { type MyReviewModerationState, myReviewNextStep, myReviewTone } from './my-reviews';
+import { type MyReviewModerationState, myReviewNextStep } from './my-reviews';
+import { ReviewStatePill } from './review-state-pill';
 
 export interface MyReviewCardVM {
   id: string;
@@ -31,28 +32,11 @@ export interface MyReviewsScreenProps {
   onRetract: (id: string) => void;
   onRewrite: (id: string) => void;
   onWhy: (id: string) => void;
+  /** Bấm thẻ — mở chi tiết bài. */
+  onOpen: (id: string) => void;
   onWriteReview: (bookingCode: string) => void;
   transformUrl?: (source: string, width: number) => string;
 }
-
-/** Tông → khoá màu có trong bảng màu theme (không có khoá `destructive` trần). */
-const TONE_COLOR = {
-  success: 'success',
-  warning: 'warning',
-  destructive: 'destructive-emphasis',
-  muted: 'muted',
-} as const;
-
-/**
- * Tông → khoá MỰC cho chữ pill (G47, ADR-0019 AMEND 4): chữ 12dp nằm trên lớp tô 16% của chính
- * tông ấy, mà `success` trần chỉ 2,83:1 ở theme sáng — nên chữ dùng token vai mực, lớp tô giữ
- * `TONE_COLOR`.
- */
-const TONE_INK = {
-  ...TONE_COLOR,
-  success: 'success-emphasis',
-  warning: 'warning-emphasis',
-} as const;
 
 /**
  * R4 — "Đánh giá của tôi": bốn trạng thái. Pill chỉ nói trạng thái; ngày nằm bên phải cùng hàng.
@@ -68,18 +52,12 @@ export function MyReviewsScreen({
   onRetract,
   onRewrite,
   onWhy,
+  onOpen,
   onWriteReview,
   transformUrl,
 }: MyReviewsScreenProps) {
   const theme = useTheme();
   const hasAwaiting = awaiting.length > 0;
-
-  function stateLabel(state: MyReviewModerationState): string {
-    if (state === 'approved') return copy.publishedLabel;
-    if (state === 'pending') return copy.pendingLabel;
-    if (state === 'rejected') return copy.notPublishedLabel;
-    return copy.retractedLabel;
-  }
 
   return (
     <Screen edges={[]} padded={false} scrollable={false}>
@@ -96,17 +74,18 @@ export function MyReviewsScreen({
             {copy.awaitingHeading}
           </AppText>
         ) : null}
-        {awaiting.map((trip) => (
-          <BookingTripCard
-            key={trip.code}
-            imageUrl={trip.imageUrl}
-            title={trip.tourTitle}
-            dateRangeLabel={trip.dateRangeLabel}
-            editLabel={copy.writeReview}
-            editAccessibilityLabel={copy.writeReviewFor(trip.tourTitle)}
-            onEdit={() => onWriteReview(trip.code)}
-            transformUrl={transformUrl}
-          />
+        {awaiting.map((trip, tripIndex) => (
+          <FadeIn key={trip.code} index={tripIndex}>
+            <BookingTripCard
+              imageUrl={trip.imageUrl}
+              title={trip.tourTitle}
+              dateRangeLabel={trip.dateRangeLabel}
+              editLabel={copy.writeReview}
+              editAccessibilityLabel={copy.writeReviewFor(trip.tourTitle)}
+              onEdit={() => onWriteReview(trip.code)}
+              transformUrl={transformUrl}
+            />
+          </FadeIn>
         ))}
         {hasAwaiting && items.length > 0 ? (
           <AppText
@@ -126,98 +105,79 @@ export function MyReviewsScreen({
             {copy.empty}
           </AppText>
         ) : null}
-        {items.map((item) => {
-          const toneKey = myReviewTone(item.moderationState);
-          const tone = TONE_COLOR[toneKey];
+        {items.map((item, itemIndex) => {
           const step = myReviewNextStep(item);
-          // Chữ pill đúng màu tông (chờ duyệt giữ chữ sáng như mockup).
-          // Retracted: nền xám sáng + chữ sáng (mockup); các trạng thái khác: chữ và nền cùng tông,
-          // chữ lấy vai mực của tông ấy (`TONE_INK`).
-          const retracted = item.moderationState === 'retracted';
-          const pillText =
-            item.moderationState === 'pending' || retracted
-              ? theme.colors.foreground
-              : theme.colors[TONE_INK[toneKey]];
-          const pillBg = retracted ? theme.colors['muted-foreground'] : theme.colors[tone];
           return (
-            <View
-              key={item.id}
-              style={{
-                padding: theme.spacing(4),
-                borderWidth: 1,
-                borderColor: theme.colors.border,
-                borderRadius: theme.radius.base * 3,
-                backgroundColor: theme.colors.card,
-                gap: theme.spacing(2),
-              }}
-            >
-              <View
+            <FadeIn key={item.id} index={itemIndex}>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={
+                  item.tourTitle === null ? copy.openReview : copy.openReviewFor(item.tourTitle)
+                }
+                onPress={() => onOpen(item.id)}
                 style={{
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
+                  padding: theme.spacing(4),
+                  borderWidth: 1,
+                  borderColor: theme.colors.border,
+                  borderRadius: theme.radius.base * 3,
+                  backgroundColor: theme.colors.card,
+                  gap: theme.spacing(2),
                 }}
               >
                 <View
                   style={{
-                    paddingHorizontal: theme.spacing(3),
-                    paddingVertical: theme.spacing(1),
-                    borderRadius: 999,
-                    backgroundColor: withAlpha(pillBg, retracted ? 0.24 : 0.16),
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
                   }}
                 >
-                  <AppText
-                    variant="caption"
-                    style={{ color: pillText, fontWeight: theme.weight.semibold }}
-                  >
-                    {stateLabel(item.moderationState)}
+                  <ReviewStatePill copy={copy} state={item.moderationState} />
+                  <AppText variant="caption" tone="muted">
+                    {formatFullDate(item.dateIso)}
                   </AppText>
                 </View>
-                <AppText variant="caption" tone="muted">
-                  {formatFullDate(item.dateIso)}
-                </AppText>
-              </View>
-              {item.title === null ? null : <AppText variant="label">{item.title}</AppText>}
-              {item.tourTitle === null ? null : (
-                <AppText variant="caption" tone="muted">
-                  {item.tourTitle}
-                </AppText>
-              )}
-              {step === 'retract' ? (
-                <Pressable
-                  accessibilityRole="button"
-                  onPress={() => onRetract(item.id)}
-                  style={{ alignSelf: 'flex-start' }}
-                >
-                  <AppText variant="caption" style={{ color: theme.colors['primary-emphasis'] }}>
-                    {copy.retractAction}
+                {item.title === null ? null : <AppText variant="label">{item.title}</AppText>}
+                {item.tourTitle === null ? null : (
+                  <AppText variant="caption" tone="muted">
+                    {item.tourTitle}
                   </AppText>
-                </Pressable>
-              ) : null}
-              {step === 'rewrite' ? (
-                <Pressable
-                  accessibilityRole="button"
-                  onPress={() => onRewrite(item.id)}
-                  style={{ alignSelf: 'flex-start' }}
-                >
-                  <AppText variant="caption" style={{ color: theme.colors['primary-emphasis'] }}>
-                    {copy.seeWhy}
-                  </AppText>
-                </Pressable>
-              ) : null}
-              {/* Hết lượt (R6): nút sửa đã đóng nên nhãn không được mời "rewrite" (mockup R6). */}
-              {step === 'exhausted' ? (
-                <Pressable
-                  accessibilityRole="button"
-                  onPress={() => onWhy(item.id)}
-                  style={{ alignSelf: 'flex-start' }}
-                >
-                  <AppText variant="caption" style={{ color: theme.colors['primary-emphasis'] }}>
-                    {copy.seeWhyFinal}
-                  </AppText>
-                </Pressable>
-              ) : null}
-            </View>
+                )}
+                {step === 'retract' ? (
+                  <Pressable
+                    accessibilityRole="button"
+                    onPress={() => onRetract(item.id)}
+                    style={{ alignSelf: 'flex-start' }}
+                  >
+                    <AppText variant="caption" style={{ color: theme.colors['primary-emphasis'] }}>
+                      {copy.retractAction}
+                    </AppText>
+                  </Pressable>
+                ) : null}
+                {step === 'rewrite' ? (
+                  <Pressable
+                    accessibilityRole="button"
+                    onPress={() => onRewrite(item.id)}
+                    style={{ alignSelf: 'flex-start' }}
+                  >
+                    <AppText variant="caption" style={{ color: theme.colors['primary-emphasis'] }}>
+                      {copy.seeWhy}
+                    </AppText>
+                  </Pressable>
+                ) : null}
+                {/* Hết lượt (R6): nút sửa đã đóng nên nhãn không được mời "rewrite" (mockup R6). */}
+                {step === 'exhausted' ? (
+                  <Pressable
+                    accessibilityRole="button"
+                    onPress={() => onWhy(item.id)}
+                    style={{ alignSelf: 'flex-start' }}
+                  >
+                    <AppText variant="caption" style={{ color: theme.colors['primary-emphasis'] }}>
+                      {copy.seeWhyFinal}
+                    </AppText>
+                  </Pressable>
+                ) : null}
+              </Pressable>
+            </FadeIn>
           );
         })}
       </ScrollView>

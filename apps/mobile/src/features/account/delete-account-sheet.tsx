@@ -60,7 +60,6 @@ export function DeleteAccountSheet({
           <TextField
             label={passwordLabel}
             icon="lock"
-            iconVariant="boxed"
             secure
             revealLabel={revealLabel}
             hideLabel={hideLabel}

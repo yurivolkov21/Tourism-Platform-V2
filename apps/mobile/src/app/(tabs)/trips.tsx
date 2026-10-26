@@ -1,14 +1,17 @@
 import { useQuery } from '@tanstack/react-query';
 import { bookingPhase } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
-import { router } from 'expo-router';
-import { useState } from 'react';
+import { router, useFocusEffect } from 'expo-router';
+import { useCallback, useState } from 'react';
 import { AuthGateScreen } from '@/features/auth/auth-gate-screen';
 import { setPendingReturn } from '@/features/auth/return-to';
 import { formatDepartureRange } from '@/features/tour-detail/departures';
+import { currentTripDay, daysBetween } from '@/features/trip-tracker/trip-tracker';
+import type { NextTripVM } from '@/features/trips/next-trip-card';
 import {
   filterTripsByWindow,
   isTravellingPhase,
+  pickNextTrip,
   type TripWindow,
   tripCardPill,
 } from '@/features/trips/trips-list';
@@ -17,6 +20,8 @@ import { orpc, withMobileAuth } from '@/lib/api/client';
 import { getAuthClient } from '@/lib/auth-client';
 import { cloudinaryUrl } from '@/lib/cloudinary-url';
 import { formatMoney } from '@/lib/format-money';
+import { withReplayOnFocus } from '@/lib/replay-on-focus';
+import { usePullToRefresh } from '@/lib/use-pull-to-refresh';
 import { useServerToday } from '@/lib/use-server-clock';
 
 /**
@@ -29,7 +34,7 @@ import { useServerToday } from '@/lib/use-server-clock';
  * (`/trips/[code]`, W7/W8); còn lại (chờ trả, đã huỷ, chuyến bị công ty huỷ) → thẳng
  * hoá đơn `/bookings/[code]` — T5/T8 đã tự xử đủ trong đó.
  */
-export default function TripsRoute() {
+function TripsRoute() {
   const [window, setWindow] = useState<TripWindow>('all');
   const { data: session } = getAuthClient().useSession();
   const signedIn = Boolean(session?.user);
@@ -42,6 +47,15 @@ export default function TripsRoute() {
       context: withMobileAuth(),
       enabled: signedIn,
     }),
+  );
+  const refresh = usePullToRefresh([listQuery.refetch]);
+  // Tab giữ màn mount sẵn: quay lại tab (vd sau khi trả tiền xong) thì hỏi lại danh sách đơn,
+  // không bắt khách thoát app hay đăng nhập lại mới thấy trạng thái mới.
+  const { refetch: refetchList } = listQuery;
+  useFocusEffect(
+    useCallback(() => {
+      if (signedIn) void refetchList();
+    }, [signedIn, refetchList]),
   );
 
   if (!signedIn) {
@@ -94,10 +108,55 @@ export default function TripsRoute() {
     };
   });
 
-  const items = filterTripsByWindow(allItems, window);
+  // B5 — thẻ lớn: đơn upcoming/on_tour có ngày đi sớm nhất; danh sách bên dưới bỏ đơn đó.
+  const bookings = listQuery.data?.items ?? [];
+  const nextBooking = pickNextTrip(
+    bookings.map((booking) => ({
+      booking,
+      phase: bookingPhase(booking, today),
+      startDate: booking.departureStartDate,
+    })),
+  );
+  const nextTrip: NextTripVM | null =
+    nextBooking === null
+      ? null
+      : {
+          code: nextBooking.booking.code,
+          imageUrl: nextBooking.booking.tourImage?.url ?? null,
+          title: nextBooking.booking.tourTitle,
+          kicker:
+            nextBooking.phase === 'on_tour'
+              ? messages.mobile.trip.onTourNow
+              : messages.mobile.trip.departingIn,
+          headline:
+            nextBooking.phase === 'on_tour'
+              ? messages.mobile.trip.dayOfTotal(
+                  currentTripDay(
+                    today,
+                    nextBooking.startDate,
+                    daysBetween(nextBooking.startDate, nextBooking.booking.departureEndDate) + 1,
+                  ),
+                  daysBetween(nextBooking.startDate, nextBooking.booking.departureEndDate) + 1,
+                )
+              : messages.mobile.trip.daysCount(
+                  Math.max(0, daysBetween(today, nextBooking.startDate)),
+                ),
+          subLabel: `${formatDepartureRange(
+            nextBooking.booking.departureStartDate,
+            nextBooking.booking.departureEndDate,
+          )} · ${trips.travellersCount(
+            nextBooking.booking.numAdults + nextBooking.booking.numChildren,
+          )}`,
+          ctaLabel: trips.viewTrip,
+        };
+
+  const items = filterTripsByWindow(allItems, window).filter(
+    (item) => item.code !== nextTrip?.code,
+  );
 
   return (
     <TripsScreen
+      refresh={refresh}
       status={status}
       title={trips.title}
       hasAnyTrips={allItems.length > 0}
@@ -107,9 +166,11 @@ export default function TripsRoute() {
       chipUpcomingLabel={trips.chipUpcoming}
       chipPastLabel={trips.chipPast}
       items={items}
+      nextTrip={nextTrip}
+      nextTripLabel={trips.nextTrip}
       statusLabel={(bookingStatus) => trips.status[bookingStatus] ?? bookingStatus}
       onTripPress={(code) => {
-        const item = items.find((i) => i.code === code);
+        const item = allItems.find((i) => i.code === code);
         router.push(
           item !== undefined && isTravellingPhase(item.phase)
             ? `/trips/${code}`
@@ -127,3 +188,5 @@ export default function TripsRoute() {
     />
   );
 }
+
+export default withReplayOnFocus(TripsRoute);

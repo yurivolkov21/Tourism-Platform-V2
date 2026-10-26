@@ -3,6 +3,7 @@ import {
   bookingStatusPill,
   filterTripsByWindow,
   isTravellingPhase,
+  pickNextTrip,
   tripCardPill,
   tripPillTone,
 } from './trips-list';
@@ -231,5 +232,49 @@ describe('tripCardPill (pill của thẻ Trips theo giai đoạn)', () => {
     expect(
       tripCardPill({ status: 'PENDING', departureCancelled: false }, 'awaiting_payment', WORDS),
     ).toEqual({ tone: 'pending', label: 'Payment due' });
+  });
+});
+
+describe('pickNextTrip (thẻ Next trip, B5)', () => {
+  const trip = (code: string, phase: BookingPhase, startDate: string) => ({
+    code,
+    phase,
+    startDate,
+  });
+
+  it('không có đơn nào thì không có thẻ', () => {
+    expect(pickNextTrip([])).toBeNull();
+  });
+
+  it('không có đơn upcoming hoặc on_tour thì không có thẻ', () => {
+    const items = [
+      trip('a', 'awaiting_payment', '2026-11-01'),
+      trip('b', 'travelled', '2026-09-01'),
+      trip('c', 'cancelled', '2026-12-01'),
+      trip('d', 'lapsed', '2026-10-25'),
+    ];
+    expect(pickNextTrip(items)).toBeNull();
+  });
+
+  it('chọn đơn upcoming có ngày đi sớm nhất', () => {
+    const items = [
+      trip('late', 'upcoming', '2026-12-01'),
+      trip('soon', 'upcoming', '2026-11-03'),
+      trip('mid', 'upcoming', '2026-11-20'),
+    ];
+    expect(pickNextTrip(items)?.code).toBe('soon');
+  });
+
+  it('đơn on_tour tính như ứng viên, ngày đi sớm hơn nên thắng đơn upcoming', () => {
+    const items = [trip('future', 'upcoming', '2026-11-03'), trip('now', 'on_tour', '2026-10-18')];
+    expect(pickNextTrip(items)?.code).toBe('now');
+  });
+
+  it('hai đơn trùng ngày: giữ đơn đứng trước trong danh sách (ổn định)', () => {
+    const items = [
+      trip('first', 'upcoming', '2026-11-03'),
+      trip('second', 'upcoming', '2026-11-03'),
+    ];
+    expect(pickNextTrip(items)?.code).toBe('first');
   });
 });

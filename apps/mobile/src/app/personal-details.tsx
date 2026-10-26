@@ -5,6 +5,7 @@ import { useState } from 'react';
 import { submitDeleteAccount } from '@/features/account/delete-account-flow';
 import { DeleteAccountSheet } from '@/features/account/delete-account-sheet';
 import { PersonalDetailsScreen } from '@/features/account/personal-details-screen';
+import { useEditName } from '@/features/account/use-edit-name';
 import { signOutAndClearCache } from '@/features/auth/sign-out';
 import { deleteAccountRequest } from '@/lib/account-api';
 import { getAuthClient } from '@/lib/auth-client';
@@ -30,6 +31,7 @@ export default function PersonalDetailsRoute() {
   const [formError, setFormError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   const queryClient = useQueryClient();
+  const editName = useEditName(session?.user.name ?? '');
 
   function closeSheet() {
     // Đang gọi API thì không cho đóng — đóng giữa chừng là mất kết cục lỗi.
@@ -78,9 +80,13 @@ export default function PersonalDetailsRoute() {
         email={session?.user.email ?? ''}
         nameLabel={personalDetails.nameLabel}
         emailLabel={personalDetails.emailLabel}
+        passwordLabel={personalDetails.passwordLabel}
+        onNamePress={editName.open}
+        onPasswordPress={() => router.push('/change-password')}
         deleteAccountLabel={personalDetails.deleteAccount}
         onDeleteAccountPress={() => setDeleteSheetOpen(true)}
       />
+      {editName.sheet}
       <DeleteAccountSheet
         visible={deleteSheetOpen}
         onClose={closeSheet}

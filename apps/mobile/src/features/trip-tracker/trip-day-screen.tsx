@@ -1,5 +1,4 @@
-import Feather from '@expo/vector-icons/Feather';
-import { AppText, Button, Screen, useTheme } from '@tourism/mobile-ui';
+import { AppText, Button, Icon, Screen, useTheme } from '@tourism/mobile-ui';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { StopState } from './trip-tracker';
@@ -82,7 +81,12 @@ export function TripDayScreen({
   const insets = useSafeAreaInsets();
 
   return (
-    <Screen edges={[]} padded={false} scrollable={false}>
+    <Screen
+      edges={[]}
+      padded={false}
+      scrollable={false}
+      style={{ backgroundColor: theme.surfaces.grouped }}
+    >
       <ScrollView
         style={{ flex: 1 }}
         contentContainerStyle={{
@@ -136,6 +140,7 @@ export function TripDayScreen({
         <View style={{ marginTop: theme.spacing(4) }}>
           {nextDayRow === undefined ? null : (
             <RowLink
+              first
               icon="calendar"
               label={nextDayRow.label}
               caption={nextDayRow.caption}
@@ -143,6 +148,7 @@ export function TripDayScreen({
             />
           )}
           <RowLink
+            first={nextDayRow === undefined}
             icon="briefcase"
             label={tripNotesRow.label}
             caption={tripNotesRow.caption}
@@ -173,7 +179,7 @@ export function TripDayScreen({
           variant="ghost"
           label={contactLabel}
           leading={
-            <Feather name="message-square" size={18} color={theme.colors['primary-emphasis']} />
+            <Icon name="message-square" size={18} color={theme.colors['primary-emphasis']} />
           }
           onPress={onContactPress}
         />

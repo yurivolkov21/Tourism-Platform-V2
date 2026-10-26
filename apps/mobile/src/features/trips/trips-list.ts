@@ -104,3 +104,19 @@ export function tripCardPill(
   if (phase === 'on_tour') return { tone: 'paid', label: words.onTourNow };
   return bookingStatusPill(booking, phase, words);
 }
+
+/**
+ * Đơn lên thẻ "Next trip" (B5): đơn có giai đoạn `upcoming` hoặc `on_tour` và ngày đi sớm
+ * nhất. Hai đơn trùng ngày thì giữ đơn đứng trước trong danh sách. Không có đơn hợp lệ
+ * thì `null` — màn ẩn thẻ.
+ */
+export function pickNextTrip<T extends { phase: BookingPhase; startDate: string }>(
+  items: readonly T[],
+): T | null {
+  let best: T | null = null;
+  for (const item of items) {
+    if (item.phase !== 'upcoming' && item.phase !== 'on_tour') continue;
+    if (best === null || item.startDate < best.startDate) best = item;
+  }
+  return best;
+}

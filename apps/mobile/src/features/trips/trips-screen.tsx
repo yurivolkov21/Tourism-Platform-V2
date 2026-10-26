@@ -1,17 +1,23 @@
-import Feather from '@expo/vector-icons/Feather';
 import type { BookingPhase, BookingStatusValue } from '@tourism/contract';
 import {
   AppImage,
+  AppRefreshControl,
   AppText,
   Button,
-  Chip,
   EmptyState,
+  FadeIn,
+  Icon,
+  LargeTitleHeader,
+  PopIn,
   SCREEN_EDGES_UNDER_TABS,
   Screen,
+  SegmentedControl,
+  Skeleton,
   useTheme,
   withAlpha,
 } from '@tourism/mobile-ui';
 import { Pressable, ScrollView, View } from 'react-native';
+import { NextTripCard, type NextTripVM } from './next-trip-card';
 import type { TripPillTone, TripWindow } from './trips-list';
 
 export type TripsStatus = 'loading' | 'error' | 'content';
@@ -33,6 +39,8 @@ export interface TripListItemVM {
 }
 
 export interface TripsScreenProps {
+  /** Kéo xuống để làm mới — route giữ trạng thái và gọi refetch; vắng thì không có. */
+  refresh?: { refreshing: boolean; onRefresh: () => void };
   status: TripsStatus;
   title: string;
   /** `false` = chưa từng có booking nào (T2, không chip) — khác "lọc ra rỗng". */
@@ -42,6 +50,10 @@ export interface TripsScreenProps {
   chipAllLabel: string;
   chipUpcomingLabel: string;
   chipPastLabel: string;
+  /** B5 — thẻ lớn đầu danh sách; `null` = ẩn (không có đơn upcoming/on_tour). */
+  nextTrip?: NextTripVM | null;
+  /** Nhãn nhóm phía trên thẻ lớn ("Next trip"). */
+  nextTripLabel?: string;
   /** Đã lọc theo `window` — route lo lọc (logic thuần `filterTripsByWindow`). */
   items: readonly TripListItemVM[];
   statusLabel: (status: BookingStatusValue) => string;
@@ -123,9 +135,8 @@ function TripCard({
         flexDirection: 'row',
         gap: theme.spacing(3),
         padding: theme.spacing(3),
-        borderWidth: 1,
-        borderColor: theme.colors.border,
-        borderRadius: theme.radius.base * 3,
+        // Thẻ Material 3 (N3): bo 16, không viền — nền `card` trên nền màn là đủ tách lớp.
+        borderRadius: 16,
         backgroundColor: theme.colors.card,
       }}
     >
@@ -153,7 +164,9 @@ function TripCard({
         <View
           style={{ flexDirection: 'row', justifyContent: 'space-between', gap: theme.spacing(2) }}
         >
-          <StatusPill tone={item.pillTone} label={item.pillLabel ?? statusLabel(item.status)} />
+          <PopIn delay={200} style={{ alignSelf: 'flex-start' }}>
+            <StatusPill tone={item.pillTone} label={item.pillLabel ?? statusLabel(item.status)} />
+          </PopIn>
           <AppText variant="caption" tone="muted">
             {item.travellersLabel}
           </AppText>
@@ -200,7 +213,7 @@ function SquareIcon() {
         justifyContent: 'center',
       }}
     >
-      <Feather name="briefcase" size={28} color={theme.colors['primary-emphasis']} />
+      <Icon name="briefcase" size={28} color={theme.colors['primary-emphasis']} />
     </View>
   );
 }
@@ -210,12 +223,11 @@ function TripsLoading() {
   return (
     <View style={{ paddingHorizontal: theme.spacing(4), gap: theme.spacing(3) }}>
       {[0, 1, 2].map((i) => (
-        <View
+        <Skeleton
           key={i}
           style={{
             height: theme.spacing(28),
             borderRadius: theme.radius.base * 3,
-            backgroundColor: theme.colors.muted,
           }}
         />
       ))}
@@ -226,6 +238,7 @@ function TripsLoading() {
 /** T1 (danh sách) + T2 (rỗng), mục 3 spec P5b-3. T3 (chưa đăng nhập) là
  *  `AuthGateScreen` riêng, route quyết định vẽ cái nào theo `signedIn`. */
 export function TripsScreen({
+  refresh,
   status,
   title,
   hasAnyTrips,
@@ -235,6 +248,8 @@ export function TripsScreen({
   chipUpcomingLabel,
   chipPastLabel,
   items,
+  nextTrip = null,
+  nextTripLabel,
   statusLabel,
   onTripPress,
   finishPaymentLabel,
@@ -250,10 +265,8 @@ export function TripsScreen({
 
   return (
     <Screen edges={SCREEN_EDGES_UNDER_TABS} padded={false} scrollable={false}>
-      <View style={{ flex: 1, paddingTop: theme.spacing(3), gap: theme.spacing(4) }}>
-        <AppText variant="title" style={{ paddingHorizontal: theme.spacing(4) }}>
-          {title}
-        </AppText>
+      <View style={{ flex: 1, gap: theme.spacing(4) }}>
+        <LargeTitleHeader title={title} />
 
         {status === 'loading' ? (
           <TripsLoading />
@@ -289,50 +302,61 @@ export function TripsScreen({
           </View>
         ) : (
           <>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={{
-                paddingHorizontal: theme.spacing(4),
-                paddingVertical: theme.spacing(1),
-                gap: theme.spacing(2),
-              }}
-              style={{ flexGrow: 0, flexShrink: 0, height: theme.spacing(8) + theme.spacing(2) }}
-            >
-              <Chip
-                label={chipAllLabel}
-                variant={window === 'all' ? 'selected' : 'default'}
-                onPress={() => onChangeWindow('all')}
-              />
-              <Chip
-                label={chipUpcomingLabel}
-                variant={window === 'upcoming' ? 'selected' : 'default'}
-                onPress={() => onChangeWindow('upcoming')}
-              />
-              <Chip
-                label={chipPastLabel}
-                variant={window === 'past' ? 'selected' : 'default'}
-                onPress={() => onChangeWindow('past')}
-              />
-            </ScrollView>
+            <SegmentedControl
+              options={[
+                { value: 'all', label: chipAllLabel },
+                { value: 'upcoming', label: chipUpcomingLabel },
+                { value: 'past', label: chipPastLabel },
+              ]}
+              value={window}
+              onChange={onChangeWindow}
+            />
 
             <ScrollView
               contentContainerStyle={{
-                paddingHorizontal: theme.spacing(4),
                 gap: theme.spacing(3),
                 paddingBottom: theme.spacing(4),
               }}
+              style={{ flex: 1 }}
+              refreshControl={
+                refresh === undefined ? undefined : <AppRefreshControl {...refresh} />
+              }
             >
-              {items.map((item) => (
-                <TripCard
-                  key={item.code}
-                  item={item}
-                  finishPaymentLabel={finishPaymentLabel}
-                  statusLabel={statusLabel}
-                  onPress={() => onTripPress(item.code)}
-                  transformUrl={transformUrl}
-                />
-              ))}
+              {nextTrip === null ? null : (
+                <View style={{ gap: theme.spacing(2) }}>
+                  {nextTripLabel === undefined ? null : (
+                    <AppText
+                      variant="label"
+                      style={{
+                        paddingHorizontal: theme.spacing(4),
+                        color: theme.colors['primary-emphasis'],
+                      }}
+                    >
+                      {nextTripLabel}
+                    </AppText>
+                  )}
+                  <FadeIn>
+                    <NextTripCard
+                      trip={nextTrip}
+                      onPress={onTripPress}
+                      transformUrl={transformUrl}
+                    />
+                  </FadeIn>
+                </View>
+              )}
+              <View style={{ paddingHorizontal: theme.spacing(4), gap: theme.spacing(3) }}>
+                {items.map((item, index) => (
+                  <FadeIn key={item.code} index={index}>
+                    <TripCard
+                      item={item}
+                      finishPaymentLabel={finishPaymentLabel}
+                      statusLabel={statusLabel}
+                      onPress={() => onTripPress(item.code)}
+                      transformUrl={transformUrl}
+                    />
+                  </FadeIn>
+                ))}
+              </View>
             </ScrollView>
           </>
         )}

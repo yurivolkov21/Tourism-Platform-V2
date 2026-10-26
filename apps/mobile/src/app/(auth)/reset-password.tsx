@@ -1,3 +1,4 @@
+import { validateResetPassword } from '@tourism/core';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { useAuthActions } from '@/features/auth/auth-actions';
@@ -36,6 +37,14 @@ export default function ResetPasswordRoute() {
 
   const submit = async () => {
     if (pending) return;
+    // Kiểm tra ô trống/sai định dạng NGAY, trước khi bật `pending` — không thì nút nháy sang
+    // "Signing in…" một nhịp rồi mới hiện lỗi.
+    const errors = validateResetPassword(values);
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
+      setFormMessage(null);
+      return;
+    }
     setPending(true);
     setFieldErrors({});
     setFormMessage(null);

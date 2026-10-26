@@ -1,6 +1,5 @@
-import Feather from '@expo/vector-icons/Feather';
 import { messages } from '@tourism/i18n';
-import { AppText, BottomSheet, Button, useTheme } from '@tourism/mobile-ui';
+import { AppText, BottomSheet, Button, Icon, useTheme } from '@tourism/mobile-ui';
 import { View } from 'react-native';
 
 export interface AuthGateSheetProps {
@@ -50,7 +49,7 @@ export function AuthGateSheet({
             marginBottom: theme.spacing(2),
           }}
         >
-          <Feather name="heart" size={26} color={theme.colors['primary-emphasis']} />
+          <Icon name="heart" size={26} color={theme.colors['primary-emphasis']} />
         </View>
         <AppText variant="heading" style={{ textAlign: 'center' }}>
           {title}

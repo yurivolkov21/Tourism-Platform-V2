@@ -35,6 +35,7 @@ async function renderList(items: MyReviewCardVM[], awaiting: AwaitingReviewTripV
     onRetract: jest.fn(),
     onRewrite: jest.fn(),
     onWhy: jest.fn(),
+    onOpen: jest.fn(),
     onWriteReview: jest.fn(),
   };
   await renderWithTheme(
@@ -127,6 +128,14 @@ describe('MyReviewsScreen (R4)', () => {
     expect(screen.queryByText(copy.writtenHeading)).toBeNull();
   });
 
+  it('bấm thẻ bài mở chi tiết với đúng id', async () => {
+    const handlers = await renderList([card({ id: 'abc', moderationState: 'approved' })]);
+    await fireEvent.press(
+      screen.getByLabelText(copy.openReviewFor('Sa Pa Terraces & Homestay Trek 2D1N')),
+    );
+    expect(handlers.onOpen).toHaveBeenCalledWith('abc');
+  });
+
   // G47 (ADR-0019 AMEND 4): chữ 12dp trên lớp tô success 16% — mực `success` trần chỉ 2,83:1 ở
   // theme sáng, nên pill "Published" dùng token vai mực.
   it.each(['light', 'dark'] as const)(
@@ -140,6 +149,7 @@ describe('MyReviewsScreen (R4)', () => {
           onRetract={jest.fn()}
           onRewrite={jest.fn()}
           onWhy={jest.fn()}
+          onOpen={jest.fn()}
           onWriteReview={jest.fn()}
         />,
         scheme,

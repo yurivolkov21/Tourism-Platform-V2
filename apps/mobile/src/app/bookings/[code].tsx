@@ -1,14 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { messages } from '@tourism/i18n';
-import {
-  Button,
-  EmptyState,
-  SCREEN_EDGES_UNDER_HEADER,
-  Screen,
-  useTheme,
-} from '@tourism/mobile-ui';
+import { Button, EmptyState, SCREEN_EDGES_UNDER_HEADER, Screen } from '@tourism/mobile-ui';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { View } from 'react-native';
 import { PlaceholderScreen } from '@/components/placeholder-screen';
 import { AuthGateScreen } from '@/features/auth/auth-gate-screen';
@@ -26,11 +20,13 @@ import {
   cancelSheetView,
   type PayError,
 } from '@/features/booking/booking-detail-view';
+import { VERIFY_BACKOFF_MS, verifyOutcome } from '@/features/booking/booking-form';
 import { CancelBookingSheet } from '@/features/booking/cancel-sheet';
-import { openCheckout } from '@/features/booking/open-checkout';
+import { appReturnUrl, openCheckout } from '@/features/booking/open-checkout';
 import { orpc, withMobileAuth } from '@/lib/api/client';
 import { getAuthClient } from '@/lib/auth-client';
 import { cloudinaryUrl } from '@/lib/cloudinary-url';
+import { usePullToRefresh } from '@/lib/use-pull-to-refresh';
 import { useServerClock } from '@/lib/use-server-clock';
 
 /**
@@ -54,7 +50,6 @@ export default function BookingDetailRoute() {
   // `useLocalSearchParams` trả `string | string[] | undefined` ở runtime —
   // kẹp về một chuỗi trước khi đưa vào bất kỳ lời gọi API nào.
   const code = Array.isArray(rawCode) ? rawCode[0] : rawCode;
-  const theme = useTheme();
   // Đồng hồ server — giai đoạn của đơn (`bookingPhase`, ngày VN) cùng luật với tab Trips; lời mời
   // viết đánh giá đọc `now` vì cổng review của API so ngày UTC.
   const { now, today } = useServerClock();
@@ -73,6 +68,15 @@ export default function BookingDetailRoute() {
   // Lỗi bấm Pay hiện NGAY trên màn (T5) — tách khỏi `actionError` chỉ nằm trong tấm huỷ đang ẩn.
   const [payError, setPayError] = useState<PayError | null>(null);
 
+  // Rời màn là dừng hẳn vòng hỏi lại sau khi trả tiền (khuôn `verify.tsx`).
+  const aliveRef = useRef(true);
+  useEffect(() => {
+    aliveRef.current = true;
+    return () => {
+      aliveRef.current = false;
+    };
+  }, []);
+
   const detailQuery = useQuery(
     orpc.bookings.byCode.queryOptions({
       input: { code: code ?? '' },
@@ -80,6 +84,7 @@ export default function BookingDetailRoute() {
       enabled: signedIn && code !== undefined,
     }),
   );
+  const refresh = usePullToRefresh([detailQuery.refetch]);
 
   const checkoutMutation = useMutation(
     orpc.bookings.checkout.mutationOptions({ context: withMobileAuth() }),
@@ -93,17 +98,12 @@ export default function BookingDetailRoute() {
 
   if (code === undefined) return null;
 
-  // Mockup T4/T5/T8: tiêu đề header là MÃ BOOKING, không phải một nhãn chung
-  // chung ("Booking detail" tĩnh ở root layout chỉ là fallback khi chưa đọc
-  // được tham số URL). Cỡ chữ/canh trái đè riêng cho màn này (không đụng
-  // `screenOptions` gốc) — mặc định Native Stack cho mã đặt chỗ to và đậm hơn
-  // hẳn mockup (phản hồi 01/10, soi ảnh thật).
+  // Bản giao diện Material 3 (26/10): tiêu đề header là nhãn chung "Your booking", mã đơn đã
+  // nằm ở hàng đầu của nội dung.
   const titleScreen = (
     <Stack.Screen
       options={{
-        title: code,
-        headerTitleAlign: 'left',
-        headerTitleStyle: { fontSize: theme.type.sm.fontSize, fontWeight: theme.weight.semibold },
+        title: messages.mobile.appShell.titles.bookingDetail,
       }}
     />
   );
@@ -177,20 +177,52 @@ export default function BookingDetailRoute() {
     void queryClient.invalidateQueries({ queryKey: orpc.bookings.mine.key() });
   }
 
+  /**
+   * Quay về từ trang thanh toán: webhook của cổng có thể tới sau vài giây, nên hỏi lại
+   * `bookings.byCode` theo `VERIFY_BACKOFF_MS` (2s/4s/8s) tới khi đơn rời PENDING, thay vì chỉ một
+   * lần ngay lúc về — lần đó thường vẫn thấy "Payment due".
+   */
+  async function refetchUntilSettled() {
+    refetch();
+    for (const wait of VERIFY_BACKOFF_MS) {
+      await new Promise((resolve) => setTimeout(resolve, wait));
+      if (!aliveRef.current) return;
+      try {
+        const fresh = await queryClient.fetchQuery({
+          ...orpc.bookings.byCode.queryOptions({
+            input: { code: code ?? '' },
+            context: withMobileAuth(),
+          }),
+          staleTime: 0,
+        });
+        if (verifyOutcome(fresh.status) !== 'pending') {
+          refetch();
+          return;
+        }
+      } catch {
+        // Lỗi mạng giữa chừng: thử lượt kế tiếp, hết lượt thì giữ nguyên trạng thái đang hiện.
+      }
+    }
+  }
+
   function payNow() {
     setPayError(null);
     checkoutMutation.mutate(
-      { code: code ?? '' },
+      // ADR-0062 — trả xong thì cổng đưa khách về lại đúng hoá đơn này trong app.
+      { code: code ?? '', appReturnUrl: appReturnUrl(`/bookings/${code ?? ''}`) },
       {
         onSuccess: async (result) => {
           if (!result.checkoutUrl) return;
-          const opened = await openCheckout(result.checkoutUrl);
-          if (!opened) {
+          const outcome = await openCheckout(
+            result.checkoutUrl,
+            appReturnUrl(`/bookings/${code ?? ''}`),
+          );
+          if (outcome === 'failed') {
             setPayError({ kind: 'message', text: bookingCopy.openBrowserFailed });
             return;
           }
-          // Trình duyệt đóng → hỏi lại trạng thái (webhook có thể đã tới).
-          refetch();
+          // Trình duyệt đóng → hỏi lại trạng thái (webhook có thể chưa tới kịp).
+          void refetchUntilSettled();
         },
         onError: (error) => {
           const action = payErrorAction(error);
@@ -267,7 +299,7 @@ export default function BookingDetailRoute() {
   return (
     <>
       {titleScreen}
-      <BookingDetailScreen {...view} transformUrl={cloudinaryUrl} />
+      <BookingDetailScreen {...view} refresh={refresh} transformUrl={cloudinaryUrl} />
       <CancelBookingSheet
         visible={cancelPendingSheetOpen}
         onClose={() => {

@@ -22,6 +22,16 @@ describe('BookingStatusScreen', () => {
     expect(screen.getByText("I've finished paying")).toBeTruthy();
   });
 
+  it('B6 — busy: vẽ vòng xoay thay icon tĩnh; mặc định không có vòng xoay', async () => {
+    await renderWithTheme(<BookingStatusScreen {...baseProps({ busy: true })} />);
+    expect(screen.getByTestId('booking-status-spinner')).toBeTruthy();
+  });
+
+  it('không busy: không có vòng xoay', async () => {
+    await renderWithTheme(<BookingStatusScreen {...baseProps()} />);
+    expect(screen.queryByTestId('booking-status-spinner')).toBeNull();
+  });
+
   it('bấm nút chính gọi đúng onPress', async () => {
     const onPress = jest.fn();
     await renderWithTheme(

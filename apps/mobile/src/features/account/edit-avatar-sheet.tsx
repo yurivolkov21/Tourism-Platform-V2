@@ -1,6 +1,5 @@
-import Feather from '@expo/vector-icons/Feather';
 import { messages } from '@tourism/i18n';
-import { AppText, BottomSheet, Button, FormMessage, useTheme } from '@tourism/mobile-ui';
+import { AppText, BottomSheet, Button, FormMessage, Icon, useTheme } from '@tourism/mobile-ui';
 import { Pressable, View } from 'react-native';
 
 export interface EditAvatarSheetProps {
@@ -96,7 +95,7 @@ export function EditAvatarSheet({
                 borderBottomColor: theme.colors.border,
               }}
             >
-              <Feather
+              <Icon
                 name={row.icon}
                 size={20}
                 color={

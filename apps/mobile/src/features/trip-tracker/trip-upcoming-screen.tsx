@@ -1,5 +1,4 @@
-import Feather from '@expo/vector-icons/Feather';
-import { AppText, Button, type FeatherIconName, Screen, useTheme } from '@tourism/mobile-ui';
+import { AppText, Button, type FeatherIconName, Icon, Screen, useTheme } from '@tourism/mobile-ui';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { RowLink, SectionLabel, TripCountCard, TripMeter } from './trip-tracker-parts';
@@ -63,7 +62,7 @@ function MilestoneNode({ milestone, isLast }: { milestone: TripMilestone; isLast
             justifyContent: 'center',
           }}
         >
-          <Feather
+          <Icon
             name={icon}
             size={13}
             color={
@@ -110,7 +109,7 @@ function PackingTick({ item, onToggle }: { item: PackingItemVM; onToggle: () => 
         paddingVertical: theme.spacing(2),
       }}
     >
-      <Feather
+      <Icon
         name={item.checked ? 'check-square' : 'square'}
         size={20}
         color={item.checked ? theme.colors['primary-emphasis'] : theme.colors['muted-foreground']}
@@ -128,6 +127,15 @@ function PackingTick({ item, onToggle }: { item: PackingItemVM; onToggle: () => 
 }
 
 /** P1 (còn nhiều ngày) + P2 (≤ 3 ngày, cùng màn đổi giọng) — mockup mục 4. */
+/**
+ * Độ đậm màu giao thoa của thẻ đếm ngược theo tiến độ tới ngày đi: xa thì nhạt, sát ngày thì rực
+ * hơn — màu có nghĩa (còn bao lâu) chứ không chỉ trang trí.
+ */
+export function countdownGlow(progressPercent: number): number {
+  const progress = Math.min(1, Math.max(0, progressPercent / 100));
+  return 0.12 + 0.3 * progress;
+}
+
 export function TripUpcomingScreen({
   countdownLabel,
   countdownValue,
@@ -142,7 +150,12 @@ export function TripUpcomingScreen({
   const insets = useSafeAreaInsets();
 
   return (
-    <Screen edges={[]} padded={false} scrollable={false}>
+    <Screen
+      edges={[]}
+      padded={false}
+      scrollable={false}
+      style={{ backgroundColor: theme.surfaces.grouped }}
+    >
       <ScrollView
         style={{ flex: 1 }}
         contentContainerStyle={{
@@ -150,7 +163,7 @@ export function TripUpcomingScreen({
           paddingVertical: theme.spacing(4),
         }}
       >
-        <TripCountCard>
+        <TripCountCard glow={countdownGlow(progressPercent)}>
           <SectionLabel>{countdownLabel}</SectionLabel>
           <AppText variant="brand" style={{ marginTop: 2 }}>
             {countdownValue}
@@ -193,6 +206,7 @@ export function TripUpcomingScreen({
               <SectionLabel>{upcoming.getReadyLabel}</SectionLabel>
             </View>
             <RowLink
+              first
               icon="briefcase"
               label={upcoming.whatToBringRow.label}
               caption={upcoming.whatToBringRow.caption}
@@ -227,7 +241,7 @@ export function TripUpcomingScreen({
                   backgroundColor: theme.colors.secondary,
                 }}
               >
-                <Feather name="map-pin" size={20} color={theme.colors['secondary-foreground']} />
+                <Icon name="map-pin" size={20} color={theme.colors['secondary-foreground']} />
                 <View style={{ flex: 1 }}>
                   <AppText variant="label" style={{ color: theme.colors['secondary-foreground'] }}>
                     {imminent.meetingNote.title}

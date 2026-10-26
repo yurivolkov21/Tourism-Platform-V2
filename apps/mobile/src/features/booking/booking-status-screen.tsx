@@ -1,7 +1,7 @@
-import Feather from '@expo/vector-icons/Feather';
 import type { FeatherIconName } from '@tourism/mobile-ui';
-import { Button, EmptyState, Screen, useTheme } from '@tourism/mobile-ui';
-import { View } from 'react-native';
+import { Button, EmptyState, Icon, Screen, useTheme } from '@tourism/mobile-ui';
+import type { ReactNode } from 'react';
+import { ActivityIndicator, View } from 'react-native';
 
 export interface BookingStatusAction {
   label: string;
@@ -15,6 +15,10 @@ export interface BookingStatusScreenProps {
   /** `null` = không có nút chính (B6 — đang xác nhận, không có đường đi nào ở đây). */
   primary?: BookingStatusAction | null;
   secondary?: BookingStatusAction | null;
+  /** B4 — dải bước ở đầu màn (màn thanh toán là bước 4 "Pay"); vắng thì không vẽ. */
+  progress?: ReactNode;
+  /** B6 — đang chờ: vòng xoay thay icon tĩnh để khách thấy app còn làm việc. */
+  busy?: boolean;
 }
 
 /**
@@ -29,11 +33,14 @@ export function BookingStatusScreen({
   body,
   primary = null,
   secondary = null,
+  progress = null,
+  busy = false,
 }: BookingStatusScreenProps) {
   const theme = useTheme();
 
   return (
     <Screen edges={['bottom']}>
+      {progress === null ? null : <View style={{ paddingTop: theme.spacing(2) }}>{progress}</View>}
       <View style={{ flex: 1, justifyContent: 'center', paddingHorizontal: theme.spacing(2) }}>
         <EmptyState
           icon={
@@ -47,7 +54,16 @@ export function BookingStatusScreen({
                 justifyContent: 'center',
               }}
             >
-              <Feather name={icon} size={28} color={theme.colors['primary-emphasis']} />
+              {busy ? (
+                <ActivityIndicator
+                  testID="booking-status-spinner"
+                  size="large"
+                  color={theme.colors['primary-emphasis']}
+                  accessibilityLabel={heading}
+                />
+              ) : (
+                <Icon name={icon} size={28} color={theme.colors['primary-emphasis']} />
+              )}
             </View>
           }
           title={heading}

@@ -1,5 +1,4 @@
-import Feather from '@expo/vector-icons/Feather';
-import { AppText, Screen, useTheme } from '@tourism/mobile-ui';
+import { AppText, Icon, Screen, useTheme } from '@tourism/mobile-ui';
 import { useState } from 'react';
 import { type LayoutChangeEvent, Pressable, ScrollView, View } from 'react-native';
 import {
@@ -12,6 +11,8 @@ import {
 export interface BookingTravellersScreenProps {
   step: number;
   totalSteps: number;
+  /** B4 — tên các bước dưới vạch tiến trình. */
+  stepNames?: readonly string[];
   stepLabel: string;
   tripHeading: string;
   trip: { imageUrl: string | null; title: string; dateRangeLabel: string };
@@ -90,7 +91,7 @@ function StepperRow({
           justifyContent: 'center',
         }}
       >
-        <Feather
+        <Icon
           name={icon}
           size={18}
           color={disabled ? theme.colors['muted-foreground'] : theme.colors.foreground}
@@ -101,13 +102,21 @@ function StepperRow({
 
   return (
     <View
+      testID="traveller-stepper-row"
+      // C1 (N6): hàng số khách là thẻ rời — `bordered` (hàng trên) bo trên 20, hàng dưới bo
+      // dưới 20, chỗ giáp nhau bo 4; hai hàng cách nhau 2dp ở khối bọc bên ngoài.
       style={{
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
+        minHeight: 56,
         paddingVertical: theme.spacing(3),
-        borderBottomWidth: bordered ? 1 : 0,
-        borderBottomColor: theme.colors.border,
+        paddingHorizontal: theme.spacing(4),
+        backgroundColor: theme.colors.card,
+        borderTopLeftRadius: bordered ? 20 : 4,
+        borderTopRightRadius: bordered ? 20 : 4,
+        borderBottomLeftRadius: bordered ? 4 : 20,
+        borderBottomRightRadius: bordered ? 4 : 20,
       }}
     >
       <View>
@@ -133,6 +142,7 @@ function StepperRow({
 export function BookingTravellersScreen({
   step,
   totalSteps,
+  stepNames,
   stepLabel,
   tripHeading,
   trip,
@@ -170,7 +180,12 @@ export function BookingTravellersScreen({
   return (
     // `edges={[]}`: header native lo đỉnh, `BookingBottomBar` tự lo vùng an
     // toàn đáy bằng đúng màu nền `card` của nó (xem JSDoc `booking-parts.tsx`).
-    <Screen edges={[]} padded={false} scrollable={false}>
+    <Screen
+      edges={[]}
+      padded={false}
+      scrollable={false}
+      style={{ backgroundColor: theme.surfaces.grouped }}
+    >
       <ScrollView
         style={{ flex: 1 }}
         contentContainerStyle={{
@@ -178,7 +193,12 @@ export function BookingTravellersScreen({
           paddingVertical: theme.spacing(4),
         }}
       >
-        <BookingStepProgress step={step} total={totalSteps} label={stepLabel} />
+        <BookingStepProgress
+          step={step}
+          total={totalSteps}
+          label={stepLabel}
+          stepNames={stepNames}
+        />
 
         <AppText variant="heading" style={{ marginTop: theme.spacing(4) }}>
           {tripHeading}
@@ -195,31 +215,33 @@ export function BookingTravellersScreen({
         </View>
 
         <AppText variant="heading">{travellersHeading}</AppText>
-        <StepperRow
-          label={adultsLabel}
-          hint={adultPriceLabel}
-          count={numAdults}
-          onDecrease={onDecreaseAdults}
-          onIncrease={onIncreaseAdults}
-          atMin={adultsAtMin}
-          atCap={adultsAtCap}
-          decreaseLabel={decreaseAdultsLabel}
-          increaseLabel={increaseAdultsLabel}
-          bordered
-        />
-        <StepperRow
-          label={childrenLabel}
-          hint={childrenPriceNote}
-          count={numChildren}
-          onDecrease={onDecreaseChildren}
-          onIncrease={onIncreaseChildren}
-          // Children không có sàn riêng — 0 luôn hợp lệ, nút trừ tắt ở 0.
-          atMin={numChildren === 0}
-          atCap={childrenAtCap}
-          decreaseLabel={decreaseChildrenLabel}
-          increaseLabel={increaseChildrenLabel}
-          bordered={false}
-        />
+        <View style={{ gap: 2, marginTop: theme.spacing(2) }}>
+          <StepperRow
+            label={adultsLabel}
+            hint={adultPriceLabel}
+            count={numAdults}
+            onDecrease={onDecreaseAdults}
+            onIncrease={onIncreaseAdults}
+            atMin={adultsAtMin}
+            atCap={adultsAtCap}
+            decreaseLabel={decreaseAdultsLabel}
+            increaseLabel={increaseAdultsLabel}
+            bordered
+          />
+          <StepperRow
+            label={childrenLabel}
+            hint={childrenPriceNote}
+            count={numChildren}
+            onDecrease={onDecreaseChildren}
+            onIncrease={onIncreaseChildren}
+            // Children không có sàn riêng — 0 luôn hợp lệ, nút trừ tắt ở 0.
+            atMin={numChildren === 0}
+            atCap={childrenAtCap}
+            decreaseLabel={decreaseChildrenLabel}
+            increaseLabel={increaseChildrenLabel}
+            bordered={false}
+          />
+        </View>
         <AppText variant="caption" tone="muted" style={{ marginTop: theme.spacing(3) }}>
           {capHintNote}
         </AppText>

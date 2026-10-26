@@ -1,4 +1,3 @@
-import Feather from '@expo/vector-icons/Feather';
 import type { Destination } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
 import {
@@ -7,15 +6,19 @@ import {
   Button,
   DestinationCard,
   EmptyState,
+  FadeIn,
+  Icon,
   IconButton,
+  PopIn,
   RegionRail,
   type RegionRailItem,
   SCREEN_EDGES_UNDER_TABS,
   Screen,
+  Skeleton,
   useTheme,
 } from '@tourism/mobile-ui';
-import { type ReactNode, useEffect, useState } from 'react';
-import { Pressable, ScrollView, useWindowDimensions, View } from 'react-native';
+import { type ReactNode, useEffect, useRef, useState } from 'react';
+import { Animated, Pressable, useWindowDimensions, View } from 'react-native';
 import { type HomeMetrics, homeMetrics } from './home-metrics';
 
 export type HomeStatus = 'loading' | 'error' | 'content';
@@ -37,6 +40,8 @@ export interface HomeScreenProps {
   /** `user.image` của phiên thật; `null`/chưa đăng nhập → giữ icon `user` (mặc định cũ). */
   avatarUrl?: string | null;
   transformUrl?: (source: string, width: number) => string;
+  /** Chuông thông báo ở bên phải hàng đầu — bỏ trống (khách chưa đăng nhập) thì không vẽ. */
+  notifications?: { unreadCount: number; label: string; onPress: () => void };
 }
 
 /**
@@ -62,10 +67,19 @@ export function HomeScreen({
   userName,
   avatarUrl = null,
   transformUrl,
+  notifications,
 }: HomeScreenProps) {
   const theme = useTheme();
   const { home, tabs } = messages.mobile;
   const metrics = homeMetrics(useWindowDimensions());
+  // Vị trí cuộn ngang của rail thẻ — nuôi parallax ảnh (native driver, không qua JS mỗi khung hình).
+  const scrollX = useRef(new Animated.Value(0)).current;
+  const cardInterval = metrics.cardWidth + theme.spacing(3);
+  // ScrollView mới ở vùng mới bắt đầu từ 0 — đặt lại giá trị parallax cho khớp.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: chạy khi đổi vùng
+  useEffect(() => {
+    scrollX.setValue(0);
+  }, [selectedRegion]);
 
   return (
     <Screen edges={SCREEN_EDGES_UNDER_TABS} padded={false} scrollable={false}>
@@ -97,7 +111,7 @@ export function HomeScreen({
             }}
           >
             {avatarUrl === null ? (
-              <Feather name="user" size={20} color={theme.colors['primary-emphasis']} />
+              <Icon name="user" size={20} color={theme.colors['primary-emphasis']} />
             ) : (
               <AppImage
                 source={avatarUrl}
@@ -116,6 +130,13 @@ export function HomeScreen({
               {userName}
             </AppText>
           </View>
+          {notifications === undefined ? null : (
+            <NotificationBell
+              unreadCount={notifications.unreadCount}
+              label={notifications.label}
+              onPress={notifications.onPress}
+            />
+          )}
         </View>
 
         {/* Tiêu đề khổ lớn + kính lúp trần trên cùng một hàng; đường kẻ mảnh
@@ -130,14 +151,23 @@ export function HomeScreen({
               gap: theme.spacing(3),
             }}
           >
-            <AppText variant="display" tone="link" numberOfLines={1} style={{ flex: 1 }}>
+            <AppText
+              variant="display"
+              tone="link"
+              numberOfLines={1}
+              // Bán đậm riêng ở Home để tiêu đề khu chính nổi trên ảnh thẻ to bên dưới; bậc
+              // `display` dùng chung giữ nguyên.
+              style={{ flex: 1, fontWeight: theme.weight.semibold }}
+            >
               {home.browseHeadline}
             </AppText>
             <IconButton
               icon="search"
+              variant="link"
               accessibilityLabel={home.searchButton}
               onPress={onSearchPress}
-              size={24}
+              // To hơn và cùng màu tiêu đề "Recommendations" — nhìn thành một cặp.
+              size={28}
             />
           </View>
           <View
@@ -188,13 +218,20 @@ export function HomeScreen({
                 </SquareIconPanel>
               </View>
             ) : (
-              <ScrollView
+              <Animated.ScrollView
+                // `key` theo vùng: đổi vùng thì dựng ScrollView mới, nằm ở thẻ đầu — dùng chung một ScrollView thì vị trí
+                // cuộn cũ (vd thẻ cuối của North) vượt quá nội dung vùng mới ít thẻ hơn → màn trống tới khi chạm.
+                key={selectedRegion}
                 horizontal
                 style={{ flex: 1 }}
+                onScroll={Animated.event([{ nativeEvent: { contentOffset: { x: scrollX } } }], {
+                  useNativeDriver: true,
+                })}
+                scrollEventThrottle={16}
                 showsHorizontalScrollIndicator={false}
                 // Vuốt dừng đúng mép từng thẻ — thẻ kế luôn ló ra cùng một
                 // lượng, không dừng lửng lơ giữa hai thẻ (v1 `snapToInterval`).
-                snapToInterval={metrics.cardWidth + theme.spacing(3)}
+                snapToInterval={cardInterval}
                 decelerationRate="fast"
                 contentContainerStyle={{
                   gap: theme.spacing(3),
@@ -205,31 +242,111 @@ export function HomeScreen({
                   height: '100%',
                 }}
               >
-                {destinations.map((destination) => (
-                  <DestinationCard
-                    key={destination.id}
-                    imageUrl={destination.cover?.url ?? null}
-                    imageAlt={destination.name}
-                    name={destination.name}
-                    regionLabel={destination.region ?? ''}
-                    description={destination.description ?? ''}
-                    tourCountLabel={messages.mobile.explore.resultsCount(destination.tourCount)}
-                    eyebrow={home.recommendedEyebrow}
-                    goToLabel={destination.name}
-                    onPress={() => onDestinationPress(destination.slug)}
-                    transformUrl={transformUrl}
-                    width={metrics.cardWidth}
-                    // Cao HẾT khu duyệt vùng (khuôn v1) — rail và thẻ cùng
-                    // một chiều cao, không còn thẻ lùn tịt giữa rail dài.
-                    height="100%"
-                  />
+                {destinations.map((destination, index) => (
+                  <FadeIn key={destination.id} index={index} style={{ height: '100%' }}>
+                    <Animated.View
+                      style={{
+                        height: '100%',
+                        // Thẻ nằm sát mép trái (đang xem) to và rõ nhất; thẻ ló ra bên cạnh nhỏ và
+                        // mờ dần theo khoảng cách tới vị trí snap — chạy bằng native driver.
+                        opacity: scrollX.interpolate({
+                          inputRange: [
+                            (index - 1) * cardInterval,
+                            index * cardInterval,
+                            (index + 1) * cardInterval,
+                          ],
+                          outputRange: [0.75, 1, 0.75],
+                          extrapolate: 'clamp',
+                        }),
+                        transform: [
+                          {
+                            scale: scrollX.interpolate({
+                              inputRange: [
+                                (index - 1) * cardInterval,
+                                index * cardInterval,
+                                (index + 1) * cardInterval,
+                              ],
+                              outputRange: [0.94, 1, 0.94],
+                              extrapolate: 'clamp',
+                            }),
+                          },
+                        ],
+                      }}
+                    >
+                      <DestinationCard
+                        imageUrl={destination.cover?.url ?? null}
+                        imageAlt={destination.name}
+                        name={destination.name}
+                        regionLabel={destination.region ?? ''}
+                        description={destination.description ?? ''}
+                        tourCountLabel={messages.mobile.explore.resultsCount(destination.tourCount)}
+                        eyebrow={home.recommendedEyebrow}
+                        goToLabel={destination.name}
+                        onPress={() => onDestinationPress(destination.slug)}
+                        transformUrl={transformUrl}
+                        width={metrics.cardWidth}
+                        // Cao HẾT khu duyệt vùng (khuôn v1) — rail và thẻ cùng
+                        // một chiều cao, không còn thẻ lùn tịt giữa rail dài.
+                        height="100%"
+                        parallax={{ scrollX, index, interval: cardInterval }}
+                      />
+                    </Animated.View>
+                  </FadeIn>
                 ))}
-              </ScrollView>
+              </Animated.ScrollView>
             )}
           </View>
         )}
       </View>
     </Screen>
+  );
+}
+
+/** Chuông thông báo: chấm đỏ kèm số chưa đọc (9+ khi nhiều) nảy vào khi xuất hiện. */
+function NotificationBell({
+  unreadCount,
+  label,
+  onPress,
+}: {
+  unreadCount: number;
+  label: string;
+  onPress: () => void;
+}) {
+  const theme = useTheme();
+
+  return (
+    <View>
+      <IconButton icon="bell" accessibilityLabel={label} onPress={onPress} size={24} />
+      {unreadCount === 0 ? null : (
+        <PopIn style={{ position: 'absolute', top: 4, right: 2 }}>
+          <View
+            testID="notification-badge"
+            pointerEvents="none"
+            style={{
+              minWidth: 18,
+              height: 18,
+              borderRadius: 9,
+              paddingHorizontal: 4,
+              backgroundColor: theme.colors.destructive,
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <AppText
+              variant="caption"
+              style={{
+                color: theme.colors['primary-foreground'],
+                fontSize: 11,
+                lineHeight: 14,
+                fontWeight: theme.weight.semibold,
+              }}
+            >
+              {unreadCount > 9 ? '9+' : String(unreadCount)}
+            </AppText>
+          </View>
+        </PopIn>
+      )}
+    </View>
   );
 }
 
@@ -258,7 +375,7 @@ function SquareIconPanel({
             justifyContent: 'center',
           }}
         >
-          <Feather name={icon} size={28} color={theme.colors['primary-emphasis']} />
+          <Icon name={icon} size={28} color={theme.colors['primary-emphasis']} />
         </View>
       }
       title={title}
@@ -284,20 +401,18 @@ function HomeLoading({ metrics }: { metrics: HomeMetrics }) {
   return (
     <View style={{ flex: 1, paddingLeft: theme.spacing(4) }}>
       <View style={{ flex: 1, flexDirection: 'row', gap: theme.spacing(3) }}>
-        <View
+        <Skeleton
           style={{
             width: theme.spacing(11),
             height: '80%',
             borderRadius: theme.radius.base,
-            backgroundColor: theme.colors.muted,
           }}
         />
-        <View
+        <Skeleton
           style={{
             width: metrics.cardWidth,
             height: '100%',
             borderRadius: theme.radius.base * 4,
-            backgroundColor: theme.colors.muted,
           }}
         />
       </View>
@@ -310,7 +425,7 @@ function HomeLoading({ metrics }: { metrics: HomeMetrics }) {
             paddingVertical: theme.spacing(3),
           }}
         >
-          <Feather name="loader" size={14} color={theme.colors['muted-foreground']} />
+          <Icon name="loader" size={14} color={theme.colors['muted-foreground']} />
           <AppText variant="caption" tone="muted">
             {messages.mobile.home.slowServer}
           </AppText>

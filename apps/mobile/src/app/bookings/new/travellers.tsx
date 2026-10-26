@@ -40,8 +40,9 @@ export default function BookingTravellersRoute() {
   return (
     <BookingTravellersScreen
       step={1}
-      totalSteps={3}
-      stepLabel={booking.stepLabel(1, 3)}
+      totalSteps={4}
+      stepNames={booking.stepNames}
+      stepLabel={booking.stepLabel(1, 4)}
       tripHeading={booking.tripHeading}
       trip={{
         imageUrl: trip.tourImageUrl,

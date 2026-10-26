@@ -3,6 +3,7 @@ import { useTheme } from '@tourism/mobile-ui';
 import { Stack } from 'expo-router';
 import { useEffect } from 'react';
 import { abandonPendingReturn } from '@/features/auth/return-to';
+import { STACK_TRANSITION } from '@/lib/stack-transition';
 
 /**
  * Nhóm auth — trình bày dạng modal (đặt ở `_layout` gốc), và KHÔNG màn nào có
@@ -30,6 +31,7 @@ export default function AuthLayout() {
   return (
     <Stack
       screenOptions={{
+        ...STACK_TRANSITION,
         headerShown: false,
         contentStyle: { backgroundColor: theme.colors.background },
       }}

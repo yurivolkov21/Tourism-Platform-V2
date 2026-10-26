@@ -58,7 +58,6 @@ export function EditNameSheet({
         <TextField
           label={label}
           icon="user"
-          iconVariant="boxed"
           value={value}
           error={error}
           onChangeText={onChangeText}

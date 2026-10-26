@@ -7,8 +7,16 @@ import {
   withAlpha,
 } from '@tourism/mobile-ui';
 import { useRef, useState } from 'react';
-import { Animated, Modal, ScrollView, useWindowDimensions, View } from 'react-native';
+import { Modal, ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
+import Reanimated, {
+  interpolate,
+  runOnJS,
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+  withTiming,
+} from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export interface TourDetailPhoto {
@@ -58,6 +66,7 @@ export function pageIndexFromOffset(
 
 /** Kẹp scale chụm-để-phóng-to trong [1, 4] — dưới 1 là thu nhỏ hơn ảnh gốc (vô nghĩa), trên 4 là phóng quá mức đọc được. */
 export function clampZoomScale(scale: number): number {
+  'worklet';
   return Math.min(4, Math.max(1, scale));
 }
 
@@ -86,16 +95,10 @@ export interface PhotoViewerProps {
  * (vuốt ngang đổi ảnh, chụm hai ngón, vuốt dọc đóng); đúng bài toán
  * gesture-handler sinh ra để giải.
  *
- * KHÔNG dùng `react-native-reanimated` — thử ở lượt đầu (24/09) thì bản SDK 57
- * `npx expo install` chọn (4.5.1) đòi `react-native-worklets@0.10.x`, nhưng
- * cây phụ thuộc của chính `@expo/ui`/`expo-router` lại kéo `0.12.1`: HAI bản
- * `react-native-worklets` xung đột trong cùng cây, và reanimated tự chặn lúc
- * KHỞI TẠO (`assertWorkletsVersion`) — vỡ ở runtime thật, không phải lỗi giả
- * riêng Jest. Không đáng mạo hiểm gần freeze 15/10 cho một tính năng phụ.
- * `GestureDetector` của gesture-handler chạy được callback JS thuần (không
- * qua worklet) khi KHÔNG cấu hình reanimated — driving `Animated.Value` lõi
- * RN (đúng thứ `BottomSheet` đã dùng) vẫn cho pinch/pan/tap thật, chỉ mất
- * phần chạy trên UI thread của reanimated (không cần cho một trình xem ảnh).
+ * Cử chỉ chạy trên luồng UI bằng `react-native-reanimated` (4.5.1 + `react-native-worklets`
+ * 0.10.1, đúng bản Expo SDK 57 gắn với Expo Go): kéo/chụm theo ngón tay không qua luồng JS nên
+ * không rớt khung. Hai bản worklets từng xung đột trong cây phụ thuộc (24/09) đã được gom về một
+ * bản khi cài lại Reanimated; đừng nâng riêng một trong hai gói.
  *
  * `GestureHandlerRootView` bọc RIÊNG ở đây (không chỉ ở gốc app): `Modal` của
  * RN dựng một root native TÁCH KHỎI cây app chính, root ở `app/_layout.tsx`
@@ -118,7 +121,8 @@ export function PhotoViewer({
   // component cha (không phải per-page) vì chỉ MỘT trang hiện trên màn tại
   // một thời điểm (paging).
   const [zoomed, setZoomed] = useState(false);
-  const dismissTranslateY = useRef(new Animated.Value(0)).current;
+  const dismissTranslateY = useSharedValue(0);
+  const scrollRef = useRef<ScrollView>(null);
 
   const dismissGesture = Gesture.Pan()
     .enabled(!zoomed)
@@ -128,32 +132,39 @@ export function PhotoViewer({
     .activeOffsetY([-10, 10])
     .failOffsetX([-15, 15])
     .onUpdate((e) => {
-      if (e.translationY > 0) dismissTranslateY.setValue(e.translationY);
+      if (e.translationY > 0) dismissTranslateY.value = e.translationY;
     })
     .onEnd((e) => {
       if (shouldDismissDrag(e.translationY, e.velocityY / 1000)) {
-        onClose();
+        runOnJS(onClose)();
       } else {
-        Animated.spring(dismissTranslateY, {
-          toValue: 0,
-          useNativeDriver: true,
-          bounciness: 4,
-        }).start();
+        dismissTranslateY.value = withSpring(0, { stiffness: 220, damping: 20 });
       }
-    })
-    // Không cài reanimated (xem doc comment component) nên KHÔNG có worklet —
-    // khai rõ chạy trên JS thread, né cảnh báo "some callbacks are worklets
-    // and some are not" của chính gesture-handler khi để mặc định tự đoán.
-    .runOnJS(true);
+    });
+
+  // Nền tối mờ dần theo ngón kéo xuống, ảnh trượt theo — cả hai tính trên luồng UI.
+  const backdropStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(dismissTranslateY.value, [0, 320], [1, 0.2]),
+  }));
+  const sheetStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: dismissTranslateY.value }],
+  }));
 
   return (
     <Modal visible transparent animationType="fade" statusBarTranslucent onRequestClose={onClose}>
       {/* F2 (review 06/10): root PHẢI là con trực tiếp của `Modal` — bọc ở
           ngoài thì nó nằm ở cây app chính, Android không nhận pinch/double-tap/
           vuốt-đóng bên trong. Jest mock không phân biệt được, chỉ máy thật thấy. */}
-      <GestureHandlerRootView
-        style={{ flex: 1, backgroundColor: withAlpha(theme.colors.scrim, 1) }}
-      >
+      <GestureHandlerRootView style={{ flex: 1 }}>
+        {/* Nền tối tách riêng để mờ dần theo ngón kéo xuống — kéo càng xa càng thấy trang phía sau. */}
+        <Reanimated.View
+          pointerEvents="none"
+          style={[
+            StyleSheet.absoluteFill,
+            { backgroundColor: withAlpha(theme.colors.scrim, 1) },
+            backdropStyle,
+          ]}
+        />
         <View
           style={{
             flexDirection: 'row',
@@ -172,13 +183,19 @@ export function PhotoViewer({
         </View>
 
         <GestureDetector gesture={dismissGesture}>
-          <Animated.View style={{ flex: 1, transform: [{ translateY: dismissTranslateY }] }}>
+          <Reanimated.View style={[{ flex: 1 }, sheetStyle]}>
             <ScrollView
               testID="photo-viewer-scroll"
               horizontal
               pagingEnabled
               showsHorizontalScrollIndicator={false}
+              ref={scrollRef}
+              // `contentOffset` chỉ có tác dụng trên iOS — Android luôn mở ở ảnh đầu dù bộ
+              // đếm báo ảnh khác. Cuộn tường minh tới ảnh được chọn ngay khi đo xong khung.
               contentOffset={{ x: initialIndex * pageWidth, y: 0 }}
+              onLayout={() =>
+                scrollRef.current?.scrollTo({ x: initialIndex * pageWidth, y: 0, animated: false })
+              }
               onMomentumScrollEnd={(e) => {
                 setIndex(
                   pageIndexFromOffset(e.nativeEvent.contentOffset.x, pageWidth, photos.length),
@@ -195,7 +212,7 @@ export function PhotoViewer({
                 </View>
               ))}
             </ScrollView>
-          </Animated.View>
+          </Reanimated.View>
         </GestureDetector>
 
         <View
@@ -229,11 +246,9 @@ export function PhotoViewer({
  * zoom nhanh. Báo `onZoomChange` lên cha để cha BẬT/TẮT gesture đóng-bằng-vuốt
  * (zoom rồi thì vuốt dọc phải di chuyển ảnh, không phải đóng trình xem).
  *
- * `scaleRef`/`translateXRef`/`translateYRef`: giá trị SỐ THẬT song song với
- * `Animated.Value` — gesture-handler cho delta TÍCH LUỸ từ lúc bắt đầu cử chỉ
- * (`e.scale`/`e.translationX/Y`), nên cần biết điểm xuất phát của LƯỢT TRƯỚC
- * để cộng dồn đúng qua nhiều lượt chụm/kéo liên tiếp — `Animated.Value` không
- * đọc được đồng bộ, phải giữ song song bằng `useRef<number>`.
+ * `saved*`: điểm xuất phát của LƯỢT TRƯỚC — gesture-handler cho delta TÍCH LUỸ từ lúc bắt đầu cử
+ * chỉ (`e.scale`/`e.translationX/Y`), nên cần nhớ để cộng dồn đúng qua nhiều lượt chụm/kéo liên
+ * tiếp. Tất cả là shared value: đọc/ghi đồng bộ trên luồng UI trong callback cử chỉ.
  *
  * SIMPLIFICATION có chủ ý: không kẹp biên khi kéo ảnh đã phóng (ảnh có thể
  * kéo ra ngoài khung hình) — kẹp biên đúng cần biết kích thước hiển thị thật
@@ -251,82 +266,83 @@ function PhotoPage({
   onZoomChange: (zoomed: boolean) => void;
 }) {
   const { width } = useWindowDimensions();
-  const scale = useRef(new Animated.Value(1)).current;
-  const translateX = useRef(new Animated.Value(0)).current;
-  const translateY = useRef(new Animated.Value(0)).current;
-  const scaleRef = useRef(1);
-  const savedScaleRef = useRef(1);
-  const translateXRef = useRef(0);
-  const translateYRef = useRef(0);
-  const savedTranslateXRef = useRef(0);
-  const savedTranslateYRef = useRef(0);
+  const scale = useSharedValue(1);
+  const translateX = useSharedValue(0);
+  const translateY = useSharedValue(0);
+  const savedScale = useSharedValue(1);
+  const savedTranslateX = useSharedValue(0);
+  const savedTranslateY = useSharedValue(0);
+  const [zoomedLocal, setZoomedLocal] = useState(false);
+
+  // Chạy trên JS: cập nhật state (bật/tắt Pan kéo ảnh và gesture đóng của cha).
+  function notifyZoom(zoomed: boolean) {
+    setZoomedLocal(zoomed);
+    onZoomChange(zoomed);
+  }
 
   function resetZoom() {
-    Animated.parallel([
-      Animated.timing(scale, { toValue: 1, duration: 200, useNativeDriver: true }),
-      Animated.timing(translateX, { toValue: 0, duration: 200, useNativeDriver: true }),
-      Animated.timing(translateY, { toValue: 0, duration: 200, useNativeDriver: true }),
-    ]).start();
-    scaleRef.current = 1;
-    savedScaleRef.current = 1;
-    translateXRef.current = 0;
-    translateYRef.current = 0;
-    savedTranslateXRef.current = 0;
-    savedTranslateYRef.current = 0;
-    onZoomChange(false);
+    'worklet';
+    scale.value = withTiming(1, { duration: 200 });
+    translateX.value = withTiming(0, { duration: 200 });
+    translateY.value = withTiming(0, { duration: 200 });
+    savedScale.value = 1;
+    savedTranslateX.value = 0;
+    savedTranslateY.value = 0;
+    runOnJS(notifyZoom)(false);
   }
 
   function zoomTo(next: number) {
-    scale.setValue(next);
-    scaleRef.current = next;
-    savedScaleRef.current = next;
-    onZoomChange(next > 1);
+    'worklet';
+    // Double-tap phóng bằng lò xo chứ không nhảy tức thì.
+    scale.value = withSpring(next, { stiffness: 140, damping: 14 });
+    savedScale.value = next;
+    runOnJS(notifyZoom)(next > 1);
   }
 
   const pinch = Gesture.Pinch()
     .onUpdate((e) => {
-      const next = clampZoomScale(savedScaleRef.current * e.scale);
-      scale.setValue(next);
-      scaleRef.current = next;
+      scale.value = clampZoomScale(savedScale.value * e.scale);
     })
     .onEnd(() => {
-      savedScaleRef.current = scaleRef.current;
-      if (scaleRef.current <= 1) resetZoom();
-      else onZoomChange(true);
-    })
-    // Không cài reanimated — chạy JS thread, cùng lý do `dismissGesture` ở
-    // `PhotoViewer`.
-    .runOnJS(true);
+      savedScale.value = scale.value;
+      if (scale.value <= 1) resetZoom();
+      else runOnJS(notifyZoom)(true);
+    });
 
   const panWhileZoomed = Gesture.Pan()
+    // Chỉ nhận cử chỉ khi ảnh đã phóng: Pan con luôn thắng Pan cha, nên nếu bật cả lúc chưa zoom
+    // thì cử chỉ vuốt-xuống-để-đóng ở `PhotoViewer` không bao giờ được kích hoạt.
+    .enabled(zoomedLocal)
     .onUpdate((e) => {
-      if (scaleRef.current <= 1) return;
-      const nextX = savedTranslateXRef.current + e.translationX;
-      const nextY = savedTranslateYRef.current + e.translationY;
-      translateX.setValue(nextX);
-      translateY.setValue(nextY);
-      translateXRef.current = nextX;
-      translateYRef.current = nextY;
+      if (scale.value <= 1) return;
+      translateX.value = savedTranslateX.value + e.translationX;
+      translateY.value = savedTranslateY.value + e.translationY;
     })
     .onEnd(() => {
-      savedTranslateXRef.current = translateXRef.current;
-      savedTranslateYRef.current = translateYRef.current;
-    })
-    .runOnJS(true);
+      savedTranslateX.value = translateX.value;
+      savedTranslateY.value = translateY.value;
+    });
 
   const doubleTap = Gesture.Tap()
     .numberOfTaps(2)
     .onEnd(() => {
-      if (scaleRef.current > 1) resetZoom();
+      if (scale.value > 1) resetZoom();
       else zoomTo(2.5);
-    })
-    .runOnJS(true);
+    });
 
   const zoomGesture = Gesture.Simultaneous(pinch, panWhileZoomed, doubleTap);
 
+  const imageStyle = useAnimatedStyle(() => ({
+    transform: [
+      { translateX: translateX.value },
+      { translateY: translateY.value },
+      { scale: scale.value },
+    ],
+  }));
+
   return (
     <GestureDetector gesture={zoomGesture}>
-      <Animated.View style={{ flex: 1, transform: [{ translateX }, { translateY }, { scale }] }}>
+      <Reanimated.View style={[{ flex: 1 }, imageStyle]}>
         <AppImage
           source={photo.url}
           // Truyền dp, không tự nhân 2 — `AppImage` đã nhân mật độ màn hình (L2).
@@ -340,7 +356,7 @@ function PhotoPage({
           // nhân bản component.
           contentFit="contain"
         />
-      </Animated.View>
+      </Reanimated.View>
     </GestureDetector>
   );
 }

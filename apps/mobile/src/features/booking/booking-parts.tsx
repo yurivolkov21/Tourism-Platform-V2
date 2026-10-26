@@ -1,13 +1,24 @@
-import Feather from '@expo/vector-icons/Feather';
 import {
   AppImage,
   AppText,
   Button,
   type ButtonProps,
+  CountUpText,
+  FadeIn,
+  Icon,
   useTheme,
   withAlpha,
 } from '@tourism/mobile-ui';
+import { useEffect } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
+import Reanimated, {
+  Easing,
+  useAnimatedStyle,
+  useReducedMotion,
+  useSharedValue,
+  withDelay,
+  withTiming,
+} from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 /**
@@ -21,10 +32,61 @@ export interface BookingStepProgressProps {
   step: number;
   total: number;
   label: string;
+  /** B4 — tên từng bước, in dưới vạch; vắng thì chỉ có dải vạch. */
+  stepNames?: readonly string[];
+}
+
+/**
+ * Một đoạn của thanh bước: vạch nền `trackColor`, phần tô `fillColor` chạy từ trái sang phải. Đoạn của bước
+ * HIỆN TẠI (`animateIn`) chạy từ 0 lúc màn mount — mỗi bước là một màn riêng nên khách thấy vạch "tiến" mỗi
+ * lần bấm Continue; các đoạn đã qua đứng sẵn đầy.
+ */
+function StepSegment({
+  filled,
+  animateIn,
+  fillColor,
+  trackColor,
+}: {
+  filled: boolean;
+  animateIn: boolean;
+  fillColor: string;
+  trackColor: string;
+}) {
+  const progress = useSharedValue(filled && !animateIn ? 1 : 0);
+  const reduceMotion = useReducedMotion();
+
+  useEffect(() => {
+    const toValue = filled ? 1 : 0;
+    if (reduceMotion) {
+      progress.value = toValue;
+      return;
+    }
+    // Chạy trên luồng UI: bề rộng thanh không đi qua JS từng khung hình.
+    progress.value = withDelay(
+      animateIn ? 150 : 0,
+      withTiming(toValue, { duration: 420, easing: Easing.out(Easing.cubic) }),
+    );
+  }, [filled, animateIn, reduceMotion, progress]);
+
+  const fillStyle = useAnimatedStyle(() => ({ width: `${progress.value * 100}%` }));
+
+  return (
+    <View
+      style={{
+        flex: 1,
+        height: 4,
+        borderRadius: 99,
+        backgroundColor: trackColor,
+        overflow: 'hidden',
+      }}
+    >
+      <Reanimated.View style={[{ height: '100%', backgroundColor: fillColor }, fillStyle]} />
+    </View>
+  );
 }
 
 /** ".progress" — dải chấm bước, chấm đã qua VÀ chấm hiện tại đều tô đậm. */
-export function BookingStepProgress({ step, total, label }: BookingStepProgressProps) {
+export function BookingStepProgress({ step, total, label, stepNames }: BookingStepProgressProps) {
   const theme = useTheme();
 
   return (
@@ -34,18 +96,40 @@ export function BookingStepProgress({ step, total, label }: BookingStepProgressP
       </AppText>
       <View style={{ flexDirection: 'row', gap: theme.spacing(1.5), marginTop: theme.spacing(2) }}>
         {Array.from({ length: total }, (_, index) => (
-          <View
+          <StepSegment
             // biome-ignore lint/suspicious/noArrayIndexKey: mảng tĩnh, không bao giờ chèn/xoá giữa chừng.
             key={index}
-            style={{
-              flex: 1,
-              height: 4,
-              borderRadius: 99,
-              backgroundColor: index < step ? theme.colors['primary-emphasis'] : theme.colors.muted,
-            }}
+            filled={index < step}
+            animateIn={index === step - 1}
+            fillColor={theme.colors['primary-emphasis']}
+            trackColor={theme.colors.muted}
           />
         ))}
       </View>
+      {stepNames === undefined ? null : (
+        <View
+          style={{ flexDirection: 'row', gap: theme.spacing(1.5), marginTop: theme.spacing(1.5) }}
+        >
+          {stepNames.map((name, index) => (
+            <AppText
+              key={name}
+              variant="caption"
+              style={{
+                flex: 1,
+                color:
+                  index + 1 < step
+                    ? theme.colors['primary-emphasis']
+                    : index + 1 === step
+                      ? theme.colors.foreground
+                      : theme.colors['muted-foreground'],
+                fontWeight: index + 1 === step ? theme.weight.medium : theme.weight.normal,
+              }}
+            >
+              {name}
+            </AppText>
+          ))}
+        </View>
+      )}
     </View>
   );
 }
@@ -143,6 +227,8 @@ export function BookingTripCard({
 export interface BookingBottomBarProps {
   totalLabel: string;
   totalAmount: string;
+  /** Số tiền chạy từ giá trị cũ lên giá trị mới (màn review). */
+  animateAmount?: boolean;
   ctaLabel: string;
   onPress: () => void;
   ctaDisabled?: boolean;
@@ -171,6 +257,7 @@ export interface BookingBottomBarProps {
 export function BookingBottomBar({
   totalLabel,
   totalAmount,
+  animateAmount = false,
   ctaLabel,
   onPress,
   ctaDisabled = false,
@@ -198,7 +285,11 @@ export function BookingBottomBar({
         <AppText variant="caption" tone="muted">
           {totalLabel}
         </AppText>
-        <AppText variant="title">{totalAmount}</AppText>
+        {animateAmount ? (
+          <CountUpText variant="title" text={totalAmount} />
+        ) : (
+          <AppText variant="title">{totalAmount}</AppText>
+        )}
       </View>
       {/* mockup: nút chính `min-width:150-160px` — Button không nhận `style` nên
           bọc một View, mặc định `alignItems:'stretch'` của View kéo nó rộng
@@ -240,41 +331,51 @@ export function BookingFloatNote({ message, barHeight, action }: BookingFloatNot
   const theme = useTheme();
 
   return (
-    <View
+    <FadeIn
+      distance={16}
       style={{
         position: 'absolute',
         left: theme.spacing(6),
         right: theme.spacing(6),
         bottom: barHeight + theme.spacing(3),
-        flexDirection: 'row',
-        gap: theme.spacing(2.5),
-        alignItems: action === undefined ? 'center' : 'flex-start',
-        padding: theme.spacing(3.5),
-        borderRadius: theme.radius.base * 2,
-        backgroundColor: withAlpha(theme.colors.warning, 0.16),
-        shadowColor: theme.colors.overlay,
-        shadowOffset: { width: 0, height: 6 },
-        shadowOpacity: 0.25,
-        shadowRadius: 12,
-        elevation: 6,
       }}
     >
-      <Feather
-        name="alert-circle"
-        size={18}
-        color={theme.colors.foreground}
-        style={action === undefined ? undefined : { marginTop: 2 }}
-      />
-      <View style={{ flex: 1 }}>
-        <AppText variant="subtitle">{message}</AppText>
-        {action === undefined ? null : (
-          <Pressable accessibilityRole="button" onPress={action.onPress} hitSlop={theme.spacing(2)}>
-            <AppText variant="caption" tone="link" style={{ marginTop: theme.spacing(0.5) }}>
-              {action.label}
-            </AppText>
-          </Pressable>
-        )}
+      <View
+        style={{
+          flexDirection: 'row',
+          gap: theme.spacing(2.5),
+          alignItems: action === undefined ? 'center' : 'flex-start',
+          padding: theme.spacing(3.5),
+          borderRadius: theme.radius.base * 2,
+          backgroundColor: withAlpha(theme.colors.warning, 0.16),
+          shadowColor: theme.colors.overlay,
+          shadowOffset: { width: 0, height: 6 },
+          shadowOpacity: 0.25,
+          shadowRadius: 12,
+          elevation: 6,
+        }}
+      >
+        <Icon
+          name="alert-circle"
+          size={18}
+          color={theme.colors.foreground}
+          style={action === undefined ? undefined : { marginTop: 2 }}
+        />
+        <View style={{ flex: 1 }}>
+          <AppText variant="subtitle">{message}</AppText>
+          {action === undefined ? null : (
+            <Pressable
+              accessibilityRole="button"
+              onPress={action.onPress}
+              hitSlop={theme.spacing(2)}
+            >
+              <AppText variant="caption" tone="link" style={{ marginTop: theme.spacing(0.5) }}>
+                {action.label}
+              </AppText>
+            </Pressable>
+          )}
+        </View>
       </View>
-    </View>
+    </FadeIn>
   );
 }

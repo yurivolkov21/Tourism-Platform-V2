@@ -1,8 +1,15 @@
-import Feather from '@expo/vector-icons/Feather';
 import type { PaymentProviderValue } from '@tourism/contract';
-import { AppText, Screen, useTheme, withAlpha } from '@tourism/mobile-ui';
+import {
+  AppText,
+  CountUpText,
+  Icon,
+  Screen,
+  usePop,
+  useTheme,
+  withAlpha,
+} from '@tourism/mobile-ui';
 import { useState } from 'react';
-import { type LayoutChangeEvent, Pressable, ScrollView, View } from 'react-native';
+import { Animated, type LayoutChangeEvent, Pressable, ScrollView, View } from 'react-native';
 import {
   BookingBottomBar,
   BookingFloatNote,
@@ -13,6 +20,8 @@ import {
 export interface BookingReviewScreenProps {
   step: number;
   totalSteps: number;
+  /** B4 — tên các bước dưới vạch tiến trình. */
+  stepNames?: readonly string[];
   stepLabel: string;
   tripHeading: string;
   trip: { imageUrl: string | null; title: string; dateRangeLabel: string };
@@ -49,8 +58,8 @@ export interface BookingReviewScreenProps {
 function ShieldCheckIcon({ size, color }: { size: number; color: string }) {
   return (
     <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
-      <Feather name="shield" size={size} color={color} />
-      <Feather name="check" size={size * 0.5} color={color} style={{ position: 'absolute' }} />
+      <Icon name="shield" size={size} color={color} />
+      <Icon name="check" size={size * 0.5} color={color} style={{ position: 'absolute' }} />
     </View>
   );
 }
@@ -60,13 +69,18 @@ function ProviderRow({
   label,
   selected,
   onPress,
+  first = true,
+  last = true,
 }: {
   icon: 'credit-card';
   label: string;
   selected: boolean;
   onPress: () => void;
+  first?: boolean;
+  last?: boolean;
 }) {
   const theme = useTheme();
+  const pop = usePop(selected, 0.7);
 
   return (
     <Pressable
@@ -74,27 +88,32 @@ function ProviderRow({
       accessibilityState={{ checked: selected }}
       accessibilityLabel={label}
       onPress={onPress}
+      // C3 (N6): cổng thanh toán là hàng thẻ rời, radio đặt đầu hàng như Material 3.
       style={{
         flexDirection: 'row',
         alignItems: 'center',
-        gap: theme.spacing(3),
-        padding: theme.spacing(3.5),
-        borderRadius: theme.radius.base * 2.5,
-        borderWidth: selected ? 2 : 1,
-        borderColor: selected ? theme.colors['primary-emphasis'] : theme.colors.border,
-        marginTop: theme.spacing(2),
+        gap: theme.spacing(4),
+        minHeight: 56,
+        paddingVertical: theme.spacing(3),
+        paddingHorizontal: theme.spacing(4),
+        borderTopLeftRadius: first ? 20 : 4,
+        borderTopRightRadius: first ? 20 : 4,
+        borderBottomLeftRadius: last ? 20 : 4,
+        borderBottomRightRadius: last ? 20 : 4,
+        backgroundColor: theme.colors.card,
       }}
     >
-      <View
+      <Animated.View
         style={{
           width: 20,
           height: 20,
           borderRadius: 99,
           borderWidth: selected ? 6 : 2,
           borderColor: selected ? theme.colors['primary-emphasis'] : theme.colors.input,
+          transform: [{ scale: pop }],
         }}
       />
-      <Feather name={icon} size={20} color={theme.colors.foreground} />
+      <Icon name={icon} size={24} color={theme.colors['muted-foreground']} />
       <AppText variant="label" style={{ flex: 1 }}>
         {label}
       </AppText>
@@ -106,6 +125,7 @@ function ProviderRow({
 export function BookingReviewScreen({
   step,
   totalSteps,
+  stepNames,
   stepLabel,
   tripHeading,
   trip,
@@ -135,7 +155,12 @@ export function BookingReviewScreen({
   return (
     // `edges={[]}`: header native lo đỉnh, `BookingBottomBar` tự lo vùng an
     // toàn đáy bằng đúng màu nền `card` của nó (xem JSDoc `booking-parts.tsx`).
-    <Screen edges={[]} padded={false} scrollable={false}>
+    <Screen
+      edges={[]}
+      padded={false}
+      scrollable={false}
+      style={{ backgroundColor: theme.surfaces.grouped }}
+    >
       <ScrollView
         style={{ flex: 1 }}
         contentContainerStyle={{
@@ -143,7 +168,12 @@ export function BookingReviewScreen({
           paddingVertical: theme.spacing(4),
         }}
       >
-        <BookingStepProgress step={step} total={totalSteps} label={stepLabel} />
+        <BookingStepProgress
+          step={step}
+          total={totalSteps}
+          label={stepLabel}
+          stepNames={stepNames}
+        />
 
         <AppText variant="heading" style={{ marginTop: theme.spacing(4) }}>
           {tripHeading}
@@ -159,29 +189,44 @@ export function BookingReviewScreen({
           />
         </View>
 
-        <View
-          style={{
-            flexDirection: 'row',
-            justifyContent: 'space-between',
-            paddingVertical: theme.spacing(2.5),
-            borderBottomWidth: 1,
-            borderBottomColor: theme.colors.border,
-          }}
-        >
-          <AppText variant="subtitle" tone="muted">
-            {travellersTotalLine}
-          </AppText>
-          <AppText variant="label">{priceTotal}</AppText>
-        </View>
-        <View
-          style={{
-            flexDirection: 'row',
-            justifyContent: 'space-between',
-            paddingVertical: theme.spacing(2.5),
-          }}
-        >
-          <AppText variant="label">{totalRowLabel}</AppText>
-          <AppText variant="title">{priceTotal}</AppText>
+        {/* C3 (N6): giá là danh sách thẻ rời — hai hàng cách nhau 2dp. */}
+        <View style={{ gap: 2, marginTop: theme.spacing(2) }}>
+          <View
+            style={{
+              flexDirection: 'row',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              minHeight: 56,
+              paddingHorizontal: theme.spacing(4),
+              backgroundColor: theme.colors.card,
+              borderTopLeftRadius: 20,
+              borderTopRightRadius: 20,
+              borderBottomLeftRadius: 4,
+              borderBottomRightRadius: 4,
+            }}
+          >
+            <AppText variant="subtitle" tone="muted">
+              {travellersTotalLine}
+            </AppText>
+            <CountUpText variant="label" text={priceTotal} />
+          </View>
+          <View
+            style={{
+              flexDirection: 'row',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              minHeight: 56,
+              paddingHorizontal: theme.spacing(4),
+              backgroundColor: theme.colors.card,
+              borderTopLeftRadius: 4,
+              borderTopRightRadius: 4,
+              borderBottomLeftRadius: 20,
+              borderBottomRightRadius: 20,
+            }}
+          >
+            <AppText variant="label">{totalRowLabel}</AppText>
+            <CountUpText variant="title" text={priceTotal} />
+          </View>
         </View>
 
         <View
@@ -207,18 +252,22 @@ export function BookingReviewScreen({
         <AppText variant="heading" style={{ marginTop: theme.spacing(5) }}>
           {paymentMethodHeading}
         </AppText>
-        <ProviderRow
-          icon="credit-card"
-          label={stripeLabel}
-          selected={paymentProvider === 'STRIPE'}
-          onPress={() => onSelectProvider('STRIPE')}
-        />
-        <ProviderRow
-          icon="credit-card"
-          label={payPalLabel}
-          selected={paymentProvider === 'PAYPAL'}
-          onPress={() => onSelectProvider('PAYPAL')}
-        />
+        <View style={{ gap: 2, marginTop: theme.spacing(2) }}>
+          <ProviderRow
+            icon="credit-card"
+            label={stripeLabel}
+            selected={paymentProvider === 'STRIPE'}
+            onPress={() => onSelectProvider('STRIPE')}
+            last={false}
+          />
+          <ProviderRow
+            icon="credit-card"
+            label={payPalLabel}
+            selected={paymentProvider === 'PAYPAL'}
+            onPress={() => onSelectProvider('PAYPAL')}
+            first={false}
+          />
+        </View>
         <AppText variant="caption" tone="muted" style={{ marginTop: theme.spacing(3) }}>
           {browserNote}
         </AppText>
@@ -232,6 +281,7 @@ export function BookingReviewScreen({
         <BookingBottomBar
           totalLabel={totalLabel}
           totalAmount={priceTotal}
+          animateAmount
           ctaLabel={payLabel}
           onPress={onPay}
           ctaDisabled={pending}

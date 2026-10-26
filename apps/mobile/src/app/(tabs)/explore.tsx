@@ -6,6 +6,7 @@ import { AuthGateSheet } from '@/features/auth/auth-gate-sheet';
 import { consumePendingReplay, setPendingReturn } from '@/features/auth/return-to';
 import { matchDestinationsByPrefix } from '@/features/explore/destination-search';
 import { destinationFromEntryParams } from '@/features/explore/explore-entry';
+import { exploreToursInput } from '@/features/explore/explore-prefetch';
 import { ExploreScreen, type ExploreStatus } from '@/features/explore/explore-screen';
 import { FilterSheet, type SortKey } from '@/features/explore/filter-sheet';
 import {
@@ -17,26 +18,16 @@ import {
   type TourFilterState,
 } from '@/features/explore/tour-filters';
 import { HOME_REGIONS } from '@/features/home/group-destinations-by-region';
+import { ALMOST_FULL_THRESHOLD, formatDepartureDate } from '@/features/tour-detail/departures';
+import { prefetchTour } from '@/features/tour-detail/prefetch-tour';
 import { orpc, withMobileAuth } from '@/lib/api/client';
 import { getAuthClient } from '@/lib/auth-client';
 import { cloudinaryUrl } from '@/lib/cloudinary-url';
 import { formatMoney } from '@/lib/format-money';
+import { withReplayOnFocus } from '@/lib/replay-on-focus';
+import { usePullToRefresh } from '@/lib/use-pull-to-refresh';
 import { toggleWishedId } from '@/lib/wishlist';
 import { isWishlistMutating, useWishlistSetMutation } from '@/lib/wishlist-mutation';
-
-/**
- * Sort chạy SERVER (handoff §6.1): đúng 4 kiểu `toursPage.sortOptions` — API
- * đỡ đủ. KHÔNG dùng `mobile.explore.sort` (popular/rating), bị bỏ có chủ ý.
- */
-const SORT_PARAMS: Record<
-  SortKey,
-  { sort: 'createdAt' | 'basePrice' | 'durationDays'; order: 'asc' | 'desc' }
-> = {
-  newest: { sort: 'createdAt', order: 'desc' },
-  priceAsc: { sort: 'basePrice', order: 'asc' },
-  priceDesc: { sort: 'basePrice', order: 'desc' },
-  durationAsc: { sort: 'durationDays', order: 'asc' },
-};
 
 const DURATION_KEYS = ['1', '2-3', '4+'] as const;
 const PRICE_KEYS = ['<100', '100-300', '300+'] as const;
@@ -48,7 +39,7 @@ const DIFFICULTY_KEYS = ['EASY', 'MODERATE', 'CHALLENGING'] as const;
  * price/difficulty — `tour-filters.ts`). `ExploreScreen`/`FilterSheet` chỉ vẽ
  * (ADR-0055 §2, khuôn `features/home`).
  */
-export default function ExploreRoute() {
+function ExploreRoute() {
   const params = useLocalSearchParams<{ destination?: string; nav?: string }>();
   const [destinationSlug, setDestinationSlug] = useState<string | null>(
     destinationFromEntryParams(params) ?? null,
@@ -97,12 +88,7 @@ export default function ExploreRoute() {
   // difficulty đã lọc client-side sẵn.
   const toursQuery = useQuery(
     orpc.catalog.tours.list.queryOptions({
-      input: {
-        limit: 50,
-        category: selectedCategory ?? undefined,
-        destination: destinationSlug ?? undefined,
-        ...SORT_PARAMS[sort],
-      },
+      input: exploreToursInput({ category: selectedCategory, destination: destinationSlug, sort }),
     }),
   );
   const categoriesQuery = useQuery(orpc.catalog.categories.list.queryOptions());
@@ -234,14 +220,22 @@ export default function ExploreRoute() {
     { key: 'durationAsc', label: messages.toursPage.sortOptions.durationAsc },
   ];
 
+  const refresh = usePullToRefresh([
+    toursQuery.refetch,
+    categoriesQuery.refetch,
+    destinationsQuery.refetch,
+  ]);
+
   return (
     <>
       <ExploreScreen
+        refresh={refresh}
         status={status}
         title={explore.title}
         searchValue={searchInput}
         searchPlaceholder={explore.searchPlaceholder}
         clearSearchLabel={explore.clearSearch}
+        searchBackLabel={messages.mobile.auth.back}
         onChangeSearch={setSearchInput}
         onRetry={() => void toursQuery.refetch()}
         activeFilterCount={countActiveFilters(filters)}
@@ -298,9 +292,27 @@ export default function ExploreRoute() {
             compareAtPriceLabel: showCompare ? formatMoney(tour.basePrice, tour.currency) : null,
             rating: tour.ratingAvg,
             favorited: wishedIds.has(tour.id),
+            // B2: tối đa MỘT badge trên ảnh; dòng đợt đọc `nextDeparture` có sẵn trên thẻ.
+            badgeLabel:
+              tour.badges[0] === undefined ? null : messages.tourDetail.badges[tour.badges[0]],
+            departureLabel:
+              tour.nextDeparture === null
+                ? explore.datesOnRequest
+                : messages.mobile.tourDetail.nextDeparture(
+                    formatDepartureDate(tour.nextDeparture.startDate),
+                  ),
+            seatsLabel:
+              tour.nextDeparture === null
+                ? null
+                : messages.mobile.tourDetail.seatsLeft(tour.nextDeparture.seatsLeft),
+            almostFull:
+              tour.nextDeparture !== null && tour.nextDeparture.seatsLeft <= ALMOST_FULL_THRESHOLD,
           };
         })}
-        onTourPress={(slug) => router.navigate(`/tours/${slug}`)}
+        onTourPress={(slug) => {
+          prefetchTour(queryClient, slug);
+          router.navigate(`/tours/${slug}`);
+        }}
         onFavoritePress={handleFavoritePress}
         fromLabel={home.from}
         favoriteLabelFor={(title) => messages.toursPage.wishlistLabel(title)}
@@ -358,3 +370,5 @@ export default function ExploreRoute() {
     </>
   );
 }
+
+export default withReplayOnFocus(ExploreRoute);

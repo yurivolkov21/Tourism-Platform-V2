@@ -1,15 +1,14 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { validateProfileName } from '@tourism/core';
 import { messages } from '@tourism/i18n';
-import { AppText, type FeatherIconName } from '@tourism/mobile-ui';
+import type { FeatherIconName } from '@tourism/mobile-ui';
 import * as ImagePicker from 'expo-image-picker';
-import { Link, router } from 'expo-router';
+import { router } from 'expo-router';
 import { useState } from 'react';
 import { type AccountMenuItem, AccountScreen } from '@/features/account/account-screen';
 import { applyAvatarPick, removeAvatar as removeAvatarFlow } from '@/features/account/avatar-flow';
 import { EditAvatarSheet } from '@/features/account/edit-avatar-sheet';
-import { EditNameSheet } from '@/features/account/edit-name-sheet';
 import { SignOutSheet } from '@/features/account/sign-out-sheet';
+import { useEditName } from '@/features/account/use-edit-name';
 import { AuthGateScreen } from '@/features/auth/auth-gate-screen';
 import { setPendingReturn } from '@/features/auth/return-to';
 import { signOutAndClearCache } from '@/features/auth/sign-out';
@@ -17,9 +16,9 @@ import { reviewAuthorInitials } from '@/features/tour-detail/reviews';
 import { orpc, withMobileAuth } from '@/lib/api/client';
 import { getAuthClient } from '@/lib/auth-client';
 import { cloudinaryUrl } from '@/lib/cloudinary-url';
-import { isDevBuild } from '@/lib/dev-only';
 import { uploadToCloudinary } from '@/lib/media-upload';
 import { openExternalPath } from '@/lib/open-external-path';
+import { withReplayOnFocus } from '@/lib/replay-on-focus';
 import { createSingleFlight } from '@/lib/single-flight';
 
 /**
@@ -49,14 +48,9 @@ function externalLinks(
  * Route Account (A1-A3-A5, mục 3 spec P5b-4). Chưa đăng nhập → `AuthGateScreen`
  * (A2) kèm `legalLinks` — năm dòng mở trình duyệt ngoài vẫn mở được, không cần phiên.
  */
-export default function AccountRoute() {
+function AccountRoute() {
   const { data: session, refetch: refetchSession } = getAuthClient().useSession();
 
-  const [editNameOpen, setEditNameOpen] = useState(false);
-  const [nameValue, setNameValue] = useState('');
-  const [nameError, setNameError] = useState<string | undefined>(undefined);
-  const [nameFormError, setNameFormError] = useState<string | null>(null);
-  const [nameSaving, setNameSaving] = useState(false);
   const [signOutOpen, setSignOutOpen] = useState(false);
   const [avatarSheetOpen, setAvatarSheetOpen] = useState(false);
   const [avatarError, setAvatarError] = useState<string | null>(null);
@@ -66,6 +60,7 @@ export default function AccountRoute() {
   const [avatarBusy, setAvatarBusy] = useState(false);
 
   const { account } = messages.mobile;
+  const editName = useEditName(session?.user.name ?? '');
   const queryClient = useQueryClient();
 
   const signUploadMutation = useMutation(
@@ -106,36 +101,6 @@ export default function AccountRoute() {
   const user = session.user;
   const name = user.name;
   const email = user.email;
-
-  function openEditName() {
-    setNameValue(name);
-    setNameError(undefined);
-    setNameFormError(null);
-    setEditNameOpen(true);
-  }
-
-  async function saveName() {
-    const error = validateProfileName(nameValue);
-    if (error !== undefined) {
-      setNameError(error);
-      return;
-    }
-    setNameError(undefined);
-    setNameFormError(null);
-    setNameSaving(true);
-    try {
-      const { error: apiError } = await getAuthClient().updateUser({ name: nameValue.trim() });
-      setNameSaving(false);
-      if (apiError) {
-        setNameFormError(account.editNameError);
-        return;
-      }
-      setEditNameOpen(false);
-    } catch {
-      setNameSaving(false);
-      setNameFormError(account.editNameError);
-    }
-  }
 
   function openAvatarSheet() {
     setAvatarError(null);
@@ -227,18 +192,13 @@ export default function AccountRoute() {
     router.replace('/');
   }
 
+  // F1: ba mục tài khoản (Saved là tab, Password nằm trong Personal details) rồi nhóm Help & policies.
   const menuItems: AccountMenuItem[] = [
     {
       key: 'personal',
       icon: 'user',
       label: account.menuPersonalDetails,
       onPress: () => router.push('/personal-details'),
-    },
-    {
-      key: 'saved',
-      icon: 'heart',
-      label: account.menuSaved,
-      onPress: () => router.push('/saved'),
     },
     {
       key: 'reviews',
@@ -252,73 +212,35 @@ export default function AccountRoute() {
       label: account.menuTravelStories,
       onPress: () => router.push('/posts'),
     },
-    {
-      key: 'password',
-      icon: 'lock',
-      label: account.menuPassword,
-      onPress: () => router.push('/change-password'),
-    },
-    ...externalLinks(account).map((link) => ({
-      key: link.key,
-      icon: link.icon,
-      label: link.label,
-      external: true,
-      onPress: () => openExternalPath(link.path),
-    })),
   ];
+  const linkItems: AccountMenuItem[] = externalLinks(account).map((link) => ({
+    key: link.key,
+    icon: link.icon,
+    label: link.label,
+    external: true,
+    onPress: () => openExternalPath(link.path),
+  }));
 
   return (
     <>
       <AccountScreen
+        title={messages.mobile.tabs.account}
         name={name}
         email={email}
         avatarUrl={user.image ?? null}
         initials={reviewAuthorInitials(name)}
         editNameLabel={account.editNameAria}
-        onEditName={openEditName}
+        onEditName={editName.open}
         avatarEditLabel={account.avatar.editLabel}
         onEditAvatar={openAvatarSheet}
         menuItems={menuItems}
+        linksLabel={account.menuHelpGroup}
+        linkItems={linkItems}
         signOutLabel={account.signOut}
         onSignOutPress={() => setSignOutOpen(true)}
         transformUrl={cloudinaryUrl}
-        footer={
-          // PHẢI nằm trong `footer` (bên trong ScrollView của AccountScreen) —
-          // `Screen` bên trong đó chiếm `flex:1` toàn màn, đặt sibling ở NGOÀI
-          // `<AccountScreen>` như route.cũ làm sẽ mất tích, không lỗi gì báo.
-          isDevBuild() ? (
-            <>
-              <Link href="/dev/gallery" style={{ alignSelf: 'center' }}>
-                <AppText variant="caption" tone="link">
-                  Gallery (dev)
-                </AppText>
-              </Link>
-              <Link href="/dev/tour-gallery" style={{ alignSelf: 'center' }}>
-                <AppText variant="caption" tone="link">
-                  Tour gallery (dev)
-                </AppText>
-              </Link>
-            </>
-          ) : undefined
-        }
       />
-      <EditNameSheet
-        visible={editNameOpen}
-        onClose={() => setEditNameOpen(false)}
-        label={account.editNameLabel}
-        description={account.editNameDescription}
-        value={nameValue}
-        error={nameError}
-        formError={nameFormError}
-        pending={nameSaving}
-        saveLabel={account.editNameSave}
-        savingLabel={account.editNameSaving}
-        onChangeText={(next) => {
-          setNameValue(next);
-          setNameError(undefined);
-        }}
-        onSave={() => void saveName()}
-      />
+      {editName.sheet}
       <EditAvatarSheet
         visible={avatarSheetOpen}
         onClose={() => setAvatarSheetOpen(false)}
@@ -346,3 +268,5 @@ export default function AccountRoute() {
     </>
   );
 }
+
+export default withReplayOnFocus(AccountRoute);

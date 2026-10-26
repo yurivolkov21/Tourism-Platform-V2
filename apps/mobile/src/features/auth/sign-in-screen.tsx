@@ -3,6 +3,7 @@ import { messages } from '@tourism/i18n';
 import {
   AppText,
   Button,
+  FadeIn,
   FormMessage,
   SCREEN_EDGES_UNDER_HEADER,
   Screen,
@@ -10,7 +11,13 @@ import {
   useTheme,
 } from '@tourism/mobile-ui';
 import { useEffect, useRef } from 'react';
-import { Pressable, type TextInput, useWindowDimensions, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Pressable,
+  type TextInput,
+  useWindowDimensions,
+  View,
+} from 'react-native';
 import { AuthHero } from './auth-hero';
 import { AUTH_PHOTOS } from './auth-media';
 import { fromMockup } from './auth-metrics';
@@ -93,32 +100,36 @@ export function SignInScreen({
           {copy.body}
         </AppText>
 
-        <TextField
-          ref={emailRef}
-          label={copy.email}
-          icon="mail"
-          value={values.email}
-          error={fieldErrors.email}
-          onChangeText={(next) => onChange('email', next)}
-          keyboardType="email-address"
-          autoCapitalize="none"
-          autoComplete="email"
-          textContentType="emailAddress"
-        />
-        <TextField
-          ref={passwordRef}
-          label={copy.password}
-          icon="lock"
-          secure
-          revealLabel={auth.showPassword}
-          hideLabel={auth.hidePassword}
-          value={values.password}
-          error={fieldErrors.password}
-          onChangeText={(next) => onChange('password', next)}
-          autoCapitalize="none"
-          autoComplete="current-password"
-          textContentType="password"
-        />
+        <FadeIn index={0}>
+          <TextField
+            ref={emailRef}
+            label={copy.email}
+            icon="mail"
+            value={values.email}
+            error={fieldErrors.email}
+            onChangeText={(next) => onChange('email', next)}
+            keyboardType="email-address"
+            autoCapitalize="none"
+            autoComplete="email"
+            textContentType="emailAddress"
+          />
+        </FadeIn>
+        <FadeIn index={1}>
+          <TextField
+            ref={passwordRef}
+            label={copy.password}
+            icon="lock"
+            secure
+            revealLabel={auth.showPassword}
+            hideLabel={auth.hidePassword}
+            value={values.password}
+            error={fieldErrors.password}
+            onChangeText={(next) => onChange('password', next)}
+            autoCapitalize="none"
+            autoComplete="current-password"
+            textContentType="password"
+          />
+        </FadeIn>
 
         <Pressable
           onPress={onForgot}
@@ -139,6 +150,11 @@ export function SignInScreen({
           shape="pill"
           label={pending ? messages.authForms.login.submitting : copy.submit}
           disabled={pending}
+          leading={
+            pending ? (
+              <ActivityIndicator size="small" color={theme.colors['muted-foreground']} />
+            ) : undefined
+          }
           onPress={onSubmit}
         />
 

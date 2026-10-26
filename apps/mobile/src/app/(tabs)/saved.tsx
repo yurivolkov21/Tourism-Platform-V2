@@ -1,4 +1,4 @@
-import { useInfiniteQuery } from '@tanstack/react-query';
+import { useInfiniteQuery, useQueryClient } from '@tanstack/react-query';
 import { messages } from '@tourism/i18n';
 import { router } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
@@ -11,10 +11,13 @@ import {
   nextWishlistPage,
   wishlistCount,
 } from '@/features/saved/wishlist-pages';
+import { prefetchTour } from '@/features/tour-detail/prefetch-tour';
 import { orpc, withMobileAuth } from '@/lib/api/client';
 import { getAuthClient } from '@/lib/auth-client';
 import { cloudinaryUrl } from '@/lib/cloudinary-url';
 import { formatMoney } from '@/lib/format-money';
+import { withReplayOnFocus } from '@/lib/replay-on-focus';
+import { usePullToRefresh } from '@/lib/use-pull-to-refresh';
 import { useWishlistSetMutation } from '@/lib/wishlist-mutation';
 
 /**
@@ -23,7 +26,7 @@ import { useWishlistSetMutation } from '@/lib/wishlist-mutation';
  * tác lạc quan — cùng khuôn D6/E1 (`tours/[slug].tsx`, `explore.tsx`): ẩn
  * NGAY khỏi danh sách, hỏng thì hiện lại + báo lỗi ngắn.
  */
-export default function SavedRoute() {
+function SavedRoute() {
   const [removedIds, setRemovedIds] = useState<ReadonlySet<string>>(new Set());
   const [wishlistError, setWishlistError] = useState<string | null>(null);
 
@@ -34,6 +37,7 @@ export default function SavedRoute() {
 
   // L5: contract kẹp `pageSize` ở 100 nên phải tải nhiều trang — xin trang 1
   // rồi effect bên dưới tự kéo nốt, để danh sách và bộ đếm phủ ĐỦ wishlist.
+  const queryClient = useQueryClient();
   const listQuery = useInfiniteQuery(
     orpc.wishlist.list.infiniteOptions({
       input: (page: number) => ({ page, pageSize: 100 }),
@@ -43,6 +47,7 @@ export default function SavedRoute() {
       enabled: signedIn,
     }),
   );
+  const refresh = usePullToRefresh([listQuery.refetch]);
   const { hasNextPage, isFetchingNextPage, isFetchNextPageError, fetchNextPage } = listQuery;
   // Không lật trang tiếp khi trang trước vừa hỏng — không thì effect gọi lại
   // ngay, thành vòng lặp request. Khách bấm Retry (refetch) là thử lại.
@@ -149,10 +154,14 @@ export default function SavedRoute() {
 
   return (
     <SavedScreen
+      refresh={refresh}
       status={status}
       title={saved.title}
       items={items}
-      onTourPress={(slug) => router.navigate(`/tours/${slug}`)}
+      onTourPress={(slug) => {
+        prefetchTour(queryClient, slug);
+        router.navigate(`/tours/${slug}`);
+      }}
       onRemovePress={handleRemovePress}
       removeLabel={saved.removeLabel}
       unavailableLabel={saved.unavailable}
@@ -169,3 +178,5 @@ export default function SavedRoute() {
     />
   );
 }
+
+export default withReplayOnFocus(SavedRoute);

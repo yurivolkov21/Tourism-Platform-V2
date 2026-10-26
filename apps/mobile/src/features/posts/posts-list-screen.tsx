@@ -1,13 +1,15 @@
-import Feather from '@expo/vector-icons/Feather';
 import {
   AppImage,
   AppText,
   Button,
   Chip,
   EmptyState,
+  FadeIn,
+  Icon,
   SCREEN_EDGES_UNDER_HEADER,
   Screen,
   SearchField,
+  Skeleton,
   useTheme,
 } from '@tourism/mobile-ui';
 import { Pressable, ScrollView, useWindowDimensions, View } from 'react-native';
@@ -180,20 +182,22 @@ export function PostsListScreen({
           >
             {items.map((item, index) =>
               index === 0 ? (
-                <FeaturedPostCard
-                  key={item.slug}
-                  item={item}
-                  onPress={() => onPostPress(item.slug)}
-                  transformUrl={transformUrl}
-                  coverWidth={cardWidth}
-                />
+                <FadeIn key={item.slug} index={index}>
+                  <FeaturedPostCard
+                    item={item}
+                    onPress={() => onPostPress(item.slug)}
+                    transformUrl={transformUrl}
+                    coverWidth={cardWidth}
+                  />
+                </FadeIn>
               ) : (
-                <CompactPostRow
-                  key={item.slug}
-                  item={item}
-                  onPress={() => onPostPress(item.slug)}
-                  transformUrl={transformUrl}
-                />
+                <FadeIn key={item.slug} index={index}>
+                  <CompactPostRow
+                    item={item}
+                    onPress={() => onPostPress(item.slug)}
+                    transformUrl={transformUrl}
+                  />
+                </FadeIn>
               ),
             )}
             {hasMore ? (
@@ -217,10 +221,7 @@ export function PostsListScreen({
 /** Khung chờ: một thẻ lớn và hai hàng gọn — cùng khuôn `SavedLoading`. */
 function PostsLoading() {
   const theme = useTheme();
-  const block = {
-    borderRadius: theme.radius.base * 3,
-    backgroundColor: theme.colors.muted,
-  };
+  const block = { borderRadius: theme.radius.base * 3 };
   return (
     <View
       testID="posts-loading"
@@ -230,9 +231,9 @@ function PostsLoading() {
         gap: theme.spacing(4),
       }}
     >
-      <View style={{ ...block, height: theme.spacing(56) }} />
-      <View style={{ ...block, height: theme.spacing(20) }} />
-      <View style={{ ...block, height: theme.spacing(20) }} />
+      <Skeleton style={{ ...block, height: theme.spacing(56) }} />
+      <Skeleton style={{ ...block, height: theme.spacing(20) }} />
+      <Skeleton style={{ ...block, height: theme.spacing(20) }} />
     </View>
   );
 }
@@ -395,7 +396,7 @@ function SquareIcon({ name }: { name: 'wifi-off' | 'search' }) {
         justifyContent: 'center',
       }}
     >
-      <Feather name={name} size={28} color={theme.colors['primary-emphasis']} />
+      <Icon name={name} size={28} color={theme.colors['primary-emphasis']} />
     </View>
   );
 }

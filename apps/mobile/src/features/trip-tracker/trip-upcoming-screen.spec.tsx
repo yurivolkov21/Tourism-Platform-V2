@@ -1,6 +1,10 @@
 import { fireEvent, screen } from '@testing-library/react-native';
 import { renderWithTheme } from '@/test-utils';
-import { TripUpcomingScreen, type TripUpcomingScreenProps } from './trip-upcoming-screen';
+import {
+  countdownGlow,
+  TripUpcomingScreen,
+  type TripUpcomingScreenProps,
+} from './trip-upcoming-screen';
 
 function upcomingProps(overrides: Partial<TripUpcomingScreenProps> = {}): TripUpcomingScreenProps {
   return {
@@ -128,5 +132,15 @@ describe('TripUpcomingScreen — mặt P2 (imminent)', () => {
     await renderWithTheme(<TripUpcomingScreen {...props} />);
 
     expect(screen.queryByText('Day 1 starts here.')).toBeNull();
+  });
+});
+
+describe('countdownGlow', () => {
+  it('càng gần ngày đi càng đậm, kẹp trong khoảng hợp lệ', () => {
+    expect(countdownGlow(0)).toBeCloseTo(0.12);
+    expect(countdownGlow(100)).toBeCloseTo(0.42);
+    expect(countdownGlow(50)).toBeGreaterThan(countdownGlow(10));
+    expect(countdownGlow(-20)).toBeCloseTo(0.12);
+    expect(countdownGlow(250)).toBeCloseTo(0.42);
   });
 });

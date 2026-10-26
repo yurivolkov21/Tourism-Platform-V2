@@ -1,5 +1,11 @@
 import { isDefinedError } from '@orpc/client';
-import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import {
+  keepPreviousData,
+  useInfiniteQuery,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from '@tanstack/react-query';
 import { windowDaysForTripLength } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -44,6 +50,7 @@ import { orpc, withMobileAuth } from '@/lib/api/client';
 import { getAuthClient } from '@/lib/auth-client';
 import { cloudinaryUrl } from '@/lib/cloudinary-url';
 import { formatMoney } from '@/lib/format-money';
+import { usePullToRefresh } from '@/lib/use-pull-to-refresh';
 import { isWishlistMutating, useWishlistSetMutation } from '@/lib/wishlist-mutation';
 
 /**
@@ -106,6 +113,9 @@ export default function TourDetailRoute() {
       input: (page: number) => ({ tourSlug: slug, sort: reviewSort, page }),
       initialPageParam: 1,
       getNextPageParam: (last) => (last.page < last.totalPages ? last.page + 1 : undefined),
+      // Giữ các trang của sort cũ trong lúc tải sort mới: danh sách/biểu đồ sao không rỗng đi
+      // rồi dựng lại, nên trang không co lại và bị đẩy lên đầu khi đổi chip.
+      placeholderData: keepPreviousData,
     }),
   );
   const reviewItems = useMemo(
@@ -420,8 +430,11 @@ export default function TourDetailRoute() {
     lowest: tourDetail.sortLowest,
   };
 
+  const refresh = usePullToRefresh([query.refetch, reviewsQuery.refetch]);
+
   return (
     <TourDetailScreen
+      refresh={refresh}
       status={status}
       onBack={() => router.back()}
       backLabel={messages.mobile.auth.back}
@@ -437,8 +450,6 @@ export default function TourDetailRoute() {
       onExploreOther={() => router.dismissTo('/explore')}
       galleryImages={galleryImages.map((m) => ({ url: m.url, alt: m.alt ?? tour?.title ?? '' }))}
       galleryPhotos={galleryPhotos}
-      moreImagesCount={Math.max(0, galleryImages.length - 3)}
-      openGalleryLabel={messages.tourDetail.mediaPanel.openGallery}
       title={tour?.title ?? ''}
       rating={tour?.ratingAvg ?? null}
       // `reviewCount`/`notRated` sống ở khối tourDetail của WEB (top-level,

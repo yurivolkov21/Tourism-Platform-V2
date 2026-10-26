@@ -53,8 +53,9 @@ export default function BookingContactRoute() {
   return (
     <BookingContactScreen
       step={2}
-      totalSteps={3}
-      stepLabel={booking.stepLabel(2, 3)}
+      totalSteps={4}
+      stepNames={booking.stepNames}
+      stepLabel={booking.stepLabel(2, 4)}
       heading={booking.contactHeading}
       subtitle={booking.contactSubtitle}
       nameLabel={booking.nameLabel}

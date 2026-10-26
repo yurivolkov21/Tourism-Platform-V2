@@ -13,6 +13,7 @@ import {
 } from '@/features/booking/booking-form';
 import { BookingReviewScreen } from '@/features/booking/booking-review-screen';
 import { backToTourDates } from '@/features/booking/leave-booking';
+import { appReturnUrl } from '@/features/booking/open-checkout';
 import { formatDepartureDate, formatDepartureRange } from '@/features/tour-detail/departures';
 import { orpc, withMobileAuth } from '@/lib/api/client';
 import { cloudinaryUrl } from '@/lib/cloudinary-url';
@@ -71,23 +72,28 @@ export default function BookingReviewRoute() {
       },
     };
 
+    // ADR-0062 — cổng thanh toán trả khách về màn xác nhận B6 của app, không kẹt ở trình duyệt.
+    const returnUrl = appReturnUrl('/bookings/new/verify');
     // Draft đã có booking PENDING (quay lại từ B5/B6) → checkout lại đúng booking
     // đó, KHÔNG tạo booking thứ hai (quy tắc #2 handoff: không trả tiền hai lần).
     if (current.bookingCode !== null) {
-      checkoutMutation.mutate({ code: current.bookingCode }, handlers);
+      checkoutMutation.mutate({ code: current.bookingCode, appReturnUrl: returnUrl }, handlers);
       return;
     }
     createMutation.mutate(
-      buildBookingInput({
-        departureId: trip.departureId,
-        numAdults: current.numAdults,
-        numChildren: current.numChildren,
-        contactName: current.contactName,
-        contactEmail: current.contactEmail,
-        contactPhone: current.contactPhone,
-        specialRequests: current.specialRequests,
-        paymentProvider,
-      }),
+      {
+        ...buildBookingInput({
+          departureId: trip.departureId,
+          numAdults: current.numAdults,
+          numChildren: current.numChildren,
+          contactName: current.contactName,
+          contactEmail: current.contactEmail,
+          contactPhone: current.contactPhone,
+          specialRequests: current.specialRequests,
+          paymentProvider,
+        }),
+        appReturnUrl: returnUrl,
+      },
       handlers,
     );
   }
@@ -111,8 +117,9 @@ export default function BookingReviewRoute() {
   return (
     <BookingReviewScreen
       step={3}
-      totalSteps={3}
-      stepLabel={booking.stepLabel(3, 3)}
+      totalSteps={4}
+      stepNames={booking.stepNames}
+      stepLabel={booking.stepLabel(3, 4)}
       tripHeading={booking.tripHeading}
       trip={{
         imageUrl: trip.tourImageUrl,

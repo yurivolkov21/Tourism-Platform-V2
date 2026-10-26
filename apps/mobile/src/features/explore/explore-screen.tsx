@@ -1,19 +1,34 @@
-import Feather from '@expo/vector-icons/Feather';
 import {
   AppImage,
+  AppRefreshControl,
   AppText,
   Button,
   Chip,
   EmptyState,
+  FadeIn,
+  Icon,
+  LargeTitleHeader,
+  ParallaxCell,
+  Presence,
   SCREEN_EDGES_UNDER_TABS,
   Screen,
   SearchField,
+  SearchViewHeader,
+  Skeleton,
   TourListCard,
   useTheme,
   withAlpha,
 } from '@tourism/mobile-ui';
-import { useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
+import { useRef, useState } from 'react';
+import {
+  Animated,
+  type FlatList,
+  ScrollView,
+  StyleSheet,
+  useWindowDimensions,
+  View,
+} from 'react-native';
+import Reanimated, { LinearTransition } from 'react-native-reanimated';
 import { type SearchResultDestination, SearchResults } from './search-results';
 
 export type ExploreStatus = 'loading' | 'error' | 'content';
@@ -27,6 +42,12 @@ export interface ExploreTourVM {
   compareAtPriceLabel: string | null;
   rating: number | null;
   favorited: boolean;
+  /** B2 — badge biên tập đầu tiên, đã dịch. */
+  badgeLabel?: string | null;
+  /** B2 — "Next departure: Nov 3" hoặc "Dates on request". */
+  departureLabel?: string | null;
+  seatsLabel?: string | null;
+  almostFull?: boolean;
 }
 
 export interface ExploreDestinationHeader {
@@ -38,12 +59,16 @@ export interface ExploreDestinationHeader {
 }
 
 export interface ExploreScreenProps {
+  /** Kéo xuống để làm mới — route giữ trạng thái và gọi refetch; vắng thì không có. */
+  refresh?: { refreshing: boolean; onRefresh: () => void };
   status: ExploreStatus;
   title: string;
   searchValue: string;
   searchPlaceholder: string;
   /** Nhãn đọc màn hình nút "x" trong ô tìm (L4). */
   clearSearchLabel: string;
+  /** N8 — nhãn đọc màn hình mũi tên lùi của search view. */
+  searchBackLabel: string;
   onChangeSearch: (value: string) => void;
   onRetry: () => void;
   activeFilterCount: number;
@@ -96,12 +121,17 @@ export interface ExploreScreenProps {
  * nhất: mở/thu mô tả địa danh (`readMoreOpen`) — thuần UI hiển thị, không
  * chạm dữ liệu, cùng tiền lệ `HomeLoading`'s `slow` timer.
  */
+/** `Animated.FlatList` giữ kiểu generic của `FlatList` để `renderItem` suy đúng kiểu phần tử. */
+const AnimatedFlatList = Animated.FlatList as unknown as typeof FlatList;
+
 export function ExploreScreen({
+  refresh,
   status,
   title,
   searchValue,
   searchPlaceholder,
   clearSearchLabel,
+  searchBackLabel,
   onChangeSearch,
   onRetry,
   activeFilterCount,
@@ -134,24 +164,34 @@ export function ExploreScreen({
 }: ExploreScreenProps) {
   const theme = useTheme();
   const [readMoreOpen, setReadMoreOpen] = useState(false);
+  // Vị trí cuộn của danh sách tour — nuôi parallax ảnh thẻ (native driver).
+  const scrollY = useRef(new Animated.Value(0)).current;
+  const windowHeight = useWindowDimensions().height;
   // Bề rộng thẻ = màn − đệm hai bên (spacing(4) mỗi bên, y hệt padding của
   // ScrollView chứa nó) — trước đây là một số dp cứng, lệch với máy thật khác
   // độ rộng khung thiết kế (đo được 23/09: thẻ tràn mép / lệch cột).
   const cardWidth = useWindowDimensions().width - theme.spacing(8);
   const searching = searchValue.trim().length > 0;
+  // N8 — chạm thanh tìm thì mở search view (state thuần UI, cùng tiền lệ `readMoreOpen`).
+  const [searchOpen, setSearchOpen] = useState(false);
+  const searchView = searchOpen || searching;
   const searchHasNoResults = searching && searchDestinations.length === 0 && tours.length === 0;
 
   return (
     <Screen edges={SCREEN_EDGES_UNDER_TABS} padded={false} scrollable={false}>
-      <View style={{ flex: 1, paddingTop: theme.spacing(3), gap: theme.spacing(4) }}>
-        {wishlistErrorLabel === null ? null : (
+      <View style={{ flex: 1, gap: theme.spacing(4) }}>
+        <Presence
+          show={wishlistErrorLabel !== null}
+          style={{
+            position: 'absolute',
+            top: theme.spacing(2),
+            left: theme.spacing(4),
+            right: theme.spacing(4),
+            zIndex: 10,
+          }}
+        >
           <View
             style={{
-              position: 'absolute',
-              top: theme.spacing(2),
-              left: theme.spacing(4),
-              right: theme.spacing(4),
-              zIndex: 10,
               backgroundColor: theme.colors.card,
               borderWidth: 1,
               borderColor: theme.colors['destructive-emphasis'],
@@ -164,63 +204,43 @@ export function ExploreScreen({
               {wishlistErrorLabel}
             </AppText>
           </View>
-        )}
-        <View style={{ paddingHorizontal: theme.spacing(4), gap: theme.spacing(3) }}>
-          <AppText variant="title">{title}</AppText>
-          <View style={{ flexDirection: 'row', gap: theme.spacing(2), alignItems: 'center' }}>
-            <View style={{ flex: 1 }}>
+        </Presence>
+        {searchView ? (
+          <SearchViewHeader
+            value={searchValue}
+            onChangeText={onChangeSearch}
+            placeholder={searchPlaceholder}
+            clearLabel={clearSearchLabel}
+            backLabel={searchBackLabel}
+            onBack={() => {
+              onChangeSearch('');
+              setSearchOpen(false);
+            }}
+          />
+        ) : (
+          <>
+            <LargeTitleHeader
+              title={title}
+              actions={[
+                {
+                  icon: 'sliders',
+                  label: filtersLabel,
+                  onPress: onOpenFilters,
+                  badge: activeFilterCount,
+                },
+              ]}
+            />
+            <View style={{ paddingHorizontal: theme.spacing(4), paddingTop: theme.spacing(2.5) }}>
               <SearchField
                 value={searchValue}
                 onChangeText={onChangeSearch}
                 placeholder={searchPlaceholder}
                 clearLabel={clearSearchLabel}
+                onPressIn={() => setSearchOpen(true)}
               />
             </View>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={filtersLabel}
-              onPress={onOpenFilters}
-              style={{
-                width: theme.touchTargetMin,
-                height: theme.touchTargetMin,
-                borderRadius: theme.radius.base * 2.5,
-                backgroundColor: theme.colors.card,
-                borderWidth: 1,
-                borderColor: theme.colors.border,
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              <Feather name="sliders" size={20} color={theme.colors.foreground} />
-              {activeFilterCount > 0 ? (
-                <View
-                  style={{
-                    position: 'absolute',
-                    top: 2,
-                    right: 2,
-                    minWidth: theme.spacing(4.5),
-                    height: theme.spacing(4.5),
-                    borderRadius: 999,
-                    backgroundColor: theme.colors.primary,
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    paddingHorizontal: 2,
-                  }}
-                >
-                  <AppText
-                    variant="caption"
-                    style={{
-                      color: theme.colors['primary-foreground'],
-                      fontWeight: theme.weight.semibold,
-                    }}
-                  >
-                    {activeFilterCount}
-                  </AppText>
-                </View>
-              ) : null}
-            </Pressable>
-          </View>
-        </View>
+          </>
+        )}
 
         {/* Hàng chip (danh mục HOẶC địa danh đang lọc) biến mất khi 0 kết quả
             (E5) hoặc khi đang gõ ô tìm (E2 thay bằng kết quả gộp) — bản vẽ 18/09. */}
@@ -301,6 +321,7 @@ export function ExploreScreen({
           </View>
         ) : searching ? (
           <ScrollView
+            keyboardDismissMode="on-drag"
             contentContainerStyle={{
               paddingHorizontal: theme.spacing(4),
               paddingBottom: theme.spacing(4),
@@ -322,44 +343,74 @@ export function ExploreScreen({
             />
           </ScrollView>
         ) : (
-          <ScrollView
-            contentContainerStyle={{ paddingHorizontal: theme.spacing(4), gap: theme.spacing(4) }}
-          >
-            {destinationHeader === null ? null : (
-              <DestinationHeaderBlock
-                header={destinationHeader}
-                open={readMoreOpen}
-                onToggleOpen={() => setReadMoreOpen((v) => !v)}
-                readMoreLabel={readMoreLabel ?? 'Read more'}
-                transformUrl={transformUrl}
-                width={cardWidth}
-              />
+          // FlatList thay ScrollView + map: tới 50 thẻ có ảnh, chỉ dựng phần đang thấy (cuộn mượt,
+          // mở tab nhanh). Khối đầu (header điểm đến + số kết quả) nằm trong ListHeaderComponent.
+          <AnimatedFlatList
+            data={tours}
+            keyboardDismissMode="on-drag"
+            onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], {
+              useNativeDriver: true,
+            })}
+            scrollEventThrottle={16}
+            keyExtractor={(tour) => tour.slug}
+            style={{ flex: 1 }}
+            contentContainerStyle={{
+              paddingHorizontal: theme.spacing(4),
+              paddingBottom: theme.spacing(4),
+            }}
+            refreshControl={refresh === undefined ? undefined : <AppRefreshControl {...refresh} />}
+            initialNumToRender={4}
+            maxToRenderPerBatch={4}
+            windowSize={7}
+            removeClippedSubviews
+            ListHeaderComponent={
+              <View style={{ gap: theme.spacing(4), paddingBottom: theme.spacing(4) }}>
+                {destinationHeader === null ? null : (
+                  <DestinationHeaderBlock
+                    header={destinationHeader}
+                    open={readMoreOpen}
+                    onToggleOpen={() => setReadMoreOpen((v) => !v)}
+                    readMoreLabel={readMoreLabel ?? 'Read more'}
+                    transformUrl={transformUrl}
+                    width={cardWidth}
+                  />
+                )}
+                <AppText variant="caption" tone="muted">
+                  {resultsCountLabel}
+                </AppText>
+              </View>
+            }
+            ItemSeparatorComponent={() => <View style={{ height: theme.spacing(3) }} />}
+            renderItem={({ item: tour, index }) => (
+              <ParallaxCell scrollY={scrollY} viewport={windowHeight}>
+                {(parallax) => (
+                  <FadeIn index={index}>
+                    <TourListCard
+                      parallax={parallax}
+                      imageUrl={tour.imageUrl}
+                      imageAlt={tour.title}
+                      title={tour.title}
+                      locationLabel={tour.locationLabel}
+                      fromLabel={fromLabel}
+                      priceLabel={tour.priceLabel}
+                      compareAtPriceLabel={tour.compareAtPriceLabel}
+                      rating={tour.rating}
+                      badgeLabel={tour.badgeLabel}
+                      departureLabel={tour.departureLabel}
+                      seatsLabel={tour.seatsLabel}
+                      almostFull={tour.almostFull}
+                      favorited={tour.favorited}
+                      favoriteLabel={favoriteLabelFor(tour.title)}
+                      onFavoritePress={() => onFavoritePress(tour.slug)}
+                      onPress={() => onTourPress(tour.slug)}
+                      transformUrl={transformUrl}
+                      width={cardWidth}
+                    />
+                  </FadeIn>
+                )}
+              </ParallaxCell>
             )}
-            <AppText variant="caption" tone="muted">
-              {resultsCountLabel}
-            </AppText>
-            <View style={{ gap: theme.spacing(3), paddingBottom: theme.spacing(4) }}>
-              {tours.map((tour) => (
-                <TourListCard
-                  key={tour.slug}
-                  imageUrl={tour.imageUrl}
-                  imageAlt={tour.title}
-                  title={tour.title}
-                  locationLabel={tour.locationLabel}
-                  fromLabel={fromLabel}
-                  priceLabel={tour.priceLabel}
-                  compareAtPriceLabel={tour.compareAtPriceLabel}
-                  rating={tour.rating}
-                  favorited={tour.favorited}
-                  favoriteLabel={favoriteLabelFor(tour.title)}
-                  onFavoritePress={() => onFavoritePress(tour.slug)}
-                  onPress={() => onTourPress(tour.slug)}
-                  transformUrl={transformUrl}
-                  width={cardWidth}
-                />
-              ))}
-            </View>
-          </ScrollView>
+          />
         )}
       </View>
     </Screen>
@@ -384,7 +435,7 @@ function DestinationHeaderBlock({
   const theme = useTheme();
 
   return (
-    <View style={{ gap: theme.spacing(3) }}>
+    <Reanimated.View layout={LinearTransition.duration(240)} style={{ gap: theme.spacing(3) }}>
       <View
         style={{
           height: theme.spacing(33),
@@ -418,7 +469,7 @@ function DestinationHeaderBlock({
         </AppText>
         {header.region === null ? null : (
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing(1) }}>
-            <Feather name="map-pin" size={12} color={theme.colors['on-media']} />
+            <Icon name="map-pin" size={12} color={theme.colors['on-media']} />
             <AppText variant="caption" tone="media" style={{ opacity: 0.9 }}>
               {header.region}
             </AppText>
@@ -426,16 +477,17 @@ function DestinationHeaderBlock({
         )}
       </View>
       {header.description === null ? null : (
-        <View>
+        // Chiều cao mô tả đổi khi mở/thu: chạy chuyển động bố cục của Reanimated (trên luồng UI).
+        <Reanimated.View layout={LinearTransition.duration(240)}>
           <AppText variant="subtitle" tone="muted" numberOfLines={open ? undefined : 2}>
             {header.description}
           </AppText>
           <AppText variant="label" tone="link" accessibilityRole="button" onPress={onToggleOpen}>
             {readMoreLabel}
           </AppText>
-        </View>
+        </Reanimated.View>
       )}
-    </View>
+    </Reanimated.View>
   );
 }
 
@@ -454,7 +506,7 @@ function SquareIcon({ name }: { name: 'wifi-off' | 'search' }) {
         justifyContent: 'center',
       }}
     >
-      <Feather name={name} size={28} color={theme.colors['primary-emphasis']} />
+      <Icon name={name} size={28} color={theme.colors['primary-emphasis']} />
     </View>
   );
 }
@@ -466,12 +518,11 @@ function ExploreLoading() {
   return (
     <View style={{ paddingHorizontal: theme.spacing(4), gap: theme.spacing(3) }}>
       {[0, 1].map((i) => (
-        <View
+        <Skeleton
           key={i}
           style={{
             height: theme.spacing(42),
             borderRadius: theme.radius.base * 3,
-            backgroundColor: theme.colors.muted,
           }}
         />
       ))}

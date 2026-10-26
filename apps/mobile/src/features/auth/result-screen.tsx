@@ -1,8 +1,10 @@
-import Feather from '@expo/vector-icons/Feather';
 import {
   AppText,
   Button,
+  FadeIn,
   type FeatherIconName,
+  Icon,
+  PopIn,
   SCREEN_EDGES_UNDER_HEADER,
   Screen,
   useTheme,
@@ -44,37 +46,41 @@ export function ResultScreen({ icon, title, body, actionLabel, onAction }: Resul
           paddingTop: fromMockup(196, screenHeight),
         }}
       >
-        <View
-          style={{
-            width: glow,
-            height: glow,
-            borderRadius: glow / 2,
-            alignItems: 'center',
-            justifyContent: 'center',
-            backgroundColor: theme.colors.primary,
-            // Hai vòng sáng quanh icon: bóng đổ của RN không vẽ được vòng như
-            // thiết kế, nên dùng viền dày màu primary pha loãng.
-            borderWidth: theme.spacing(2.5),
-            borderColor: withAlpha(theme.colors.primary, 0.28),
-          }}
-        >
-          <Feather name={icon} size={40} color={theme.colors['primary-foreground']} />
-        </View>
+        <PopIn delay={100}>
+          <View
+            style={{
+              width: glow,
+              height: glow,
+              borderRadius: glow / 2,
+              alignItems: 'center',
+              justifyContent: 'center',
+              backgroundColor: theme.colors.primary,
+              // Hai vòng sáng quanh icon: bóng đổ của RN không vẽ được vòng như
+              // thiết kế, nên dùng viền dày màu primary pha loãng.
+              borderWidth: theme.spacing(2.5),
+              borderColor: withAlpha(theme.colors.primary, 0.28),
+            }}
+          >
+            <Icon name={icon} size={40} color={theme.colors['primary-foreground']} />
+          </View>
+        </PopIn>
 
-        <AppText variant="display" style={{ marginTop: theme.spacing(9), textAlign: 'center' }}>
-          {title}
-        </AppText>
-        <AppText
-          variant="subtitle"
-          tone="muted"
-          style={{
-            marginTop: theme.spacing(1.5),
-            textAlign: 'center',
-            maxWidth: theme.spacing(62),
-          }}
-        >
-          {body}
-        </AppText>
+        <FadeIn delay={250} style={{ alignItems: 'center' }}>
+          <AppText variant="display" style={{ marginTop: theme.spacing(9), textAlign: 'center' }}>
+            {title}
+          </AppText>
+          <AppText
+            variant="subtitle"
+            tone="muted"
+            style={{
+              marginTop: theme.spacing(1.5),
+              textAlign: 'center',
+              maxWidth: theme.spacing(62),
+            }}
+          >
+            {body}
+          </AppText>
+        </FadeIn>
       </View>
 
       {/* Nút ghim đáy, bo tròn hết cỡ như mọi nút chính của cụm auth. */}

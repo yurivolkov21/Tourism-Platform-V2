@@ -1,4 +1,4 @@
-import { fireEvent, screen } from '@testing-library/react-native';
+import { fireEvent, screen, waitFor } from '@testing-library/react-native';
 import { renderWithTheme } from '@/test-utils';
 import { SavedScreen, type SavedScreenProps } from './saved-screen';
 
@@ -92,7 +92,8 @@ describe('SavedScreen', () => {
     );
 
     await fireEvent.press(screen.getByLabelText('Remove from saved'));
-    expect(onRemovePress).toHaveBeenCalledWith('tour-1');
+    // Thẻ mờ và co lại (~0.26s) rồi mới gỡ khỏi dữ liệu.
+    await waitFor(() => expect(onRemovePress).toHaveBeenCalledWith('tour-1'));
   });
 
   it('bấm thẻ available gọi onTourPress; thẻ unavailable không bấm vào được', async () => {

@@ -136,4 +136,18 @@ describe('TripsScreen', () => {
     await fireEvent.press(screen.getByText('Browse tours'));
     expect(onBrowse).toHaveBeenCalled();
   });
+
+  it('thẻ đơn kiểu Material 3: bo 16, không viền', async () => {
+    await renderWithTheme(<TripsScreen {...baseProps()} />);
+
+    const card = screen
+      .getAllByRole('button')
+      .find(
+        (b) =>
+          String(b.props.accessibilityLabel ?? '').length === 0 &&
+          b.props.style?.borderRadius === 16,
+      );
+    expect(card).toBeDefined();
+    expect(StyleSheet.flatten(card?.props.style).borderWidth).toBeUndefined();
+  });
 });

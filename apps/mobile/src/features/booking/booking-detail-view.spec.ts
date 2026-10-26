@@ -182,7 +182,7 @@ describe('bookingDetailView — T4 đã trả', () => {
     ]);
     // Chuyến chưa về thì chưa mời viết đánh giá.
     expect(view.primaryAction).toBeNull();
-    expect(view.secondaryAction?.label).toBe(messages.accountBookingDetail.actions.cancel);
+    expect(view.secondaryAction?.label).toBe(t.cancelThisBooking);
     view.secondaryAction?.onPress();
     expect(on.openCancel).toHaveBeenCalledTimes(1);
     expect(view.contactLine).toMatchObject({
@@ -205,7 +205,7 @@ describe('bookingDetailView — T4 đã trả', () => {
       title: messages.mobile.trip.freeCancellationEnded,
       body: t.cancelAfterBody('Fri 16 Oct'),
     });
-    expect(view.secondaryAction?.label).toBe(messages.accountBookingDetail.actions.cancel);
+    expect(view.secondaryAction?.label).toBe(t.cancelThisBooking);
   });
 
   it('server không gửi khối huỷ, chưa có ngày trả: không khối nổi bật, không nút huỷ, không dòng ngày trả', () => {
@@ -371,7 +371,7 @@ describe('bookingDetailView — đơn đã đóng', () => {
       {},
       on,
     );
-    expect(view.secondaryAction?.label).toBe(messages.accountBookingDetail.actions.cancel);
+    expect(view.secondaryAction?.label).toBe(t.cancelThisBooking);
     view.secondaryAction?.onPress();
     expect(on.openCancel).toHaveBeenCalledTimes(1);
   });

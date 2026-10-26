@@ -4,6 +4,7 @@ import {
   AppText,
   Button,
   Checkbox,
+  FadeIn,
   FormMessage,
   SCREEN_EDGES_UNDER_HEADER,
   Screen,
@@ -11,7 +12,13 @@ import {
   useTheme,
 } from '@tourism/mobile-ui';
 import { useEffect, useRef } from 'react';
-import { Pressable, type TextInput, useWindowDimensions, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Pressable,
+  type TextInput,
+  useWindowDimensions,
+  View,
+} from 'react-native';
 import { openExternalPath } from '@/lib/open-external-path';
 import { AuthHero } from './auth-hero';
 import { AUTH_PHOTOS } from './auth-media';
@@ -100,42 +107,48 @@ export function RegisterScreen({
           {copy.body}
         </AppText>
 
-        <TextField
-          ref={nameRef}
-          label={copy.name}
-          icon="user"
-          value={values.name}
-          error={fieldErrors.name}
-          onChangeText={(next) => onChange('name', next)}
-          autoComplete="name"
-          textContentType="name"
-        />
-        <TextField
-          ref={emailRef}
-          label={messages.mobile.auth.signIn.email}
-          icon="mail"
-          value={values.email}
-          error={fieldErrors.email}
-          onChangeText={(next) => onChange('email', next)}
-          keyboardType="email-address"
-          autoCapitalize="none"
-          autoComplete="email"
-          textContentType="emailAddress"
-        />
-        <TextField
-          ref={passwordRef}
-          label={messages.mobile.auth.signIn.password}
-          icon="lock"
-          secure
-          revealLabel={auth.showPassword}
-          hideLabel={auth.hidePassword}
-          value={values.password}
-          error={fieldErrors.password}
-          onChangeText={(next) => onChange('password', next)}
-          autoCapitalize="none"
-          autoComplete="new-password"
-          textContentType="newPassword"
-        />
+        <FadeIn index={0}>
+          <TextField
+            ref={nameRef}
+            label={copy.name}
+            icon="user"
+            value={values.name}
+            error={fieldErrors.name}
+            onChangeText={(next) => onChange('name', next)}
+            autoComplete="name"
+            textContentType="name"
+          />
+        </FadeIn>
+        <FadeIn index={1}>
+          <TextField
+            ref={emailRef}
+            label={messages.mobile.auth.signIn.email}
+            icon="mail"
+            value={values.email}
+            error={fieldErrors.email}
+            onChangeText={(next) => onChange('email', next)}
+            keyboardType="email-address"
+            autoCapitalize="none"
+            autoComplete="email"
+            textContentType="emailAddress"
+          />
+        </FadeIn>
+        <FadeIn index={2}>
+          <TextField
+            ref={passwordRef}
+            label={messages.mobile.auth.signIn.password}
+            icon="lock"
+            secure
+            revealLabel={auth.showPassword}
+            hideLabel={auth.hidePassword}
+            value={values.password}
+            error={fieldErrors.password}
+            onChangeText={(next) => onChange('password', next)}
+            autoCapitalize="none"
+            autoComplete="new-password"
+            textContentType="newPassword"
+          />
+        </FadeIn>
 
         <Checkbox
           checked={agreedToTerms}
@@ -172,6 +185,11 @@ export function RegisterScreen({
           shape="pill"
           label={pending ? messages.authForms.register.submitting : copy.submit}
           disabled={pending || !agreedToTerms}
+          leading={
+            pending ? (
+              <ActivityIndicator size="small" color={theme.colors['muted-foreground']} />
+            ) : undefined
+          }
           onPress={onSubmit}
         />
 

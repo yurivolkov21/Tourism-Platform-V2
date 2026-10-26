@@ -6,11 +6,13 @@ import {
   EmptyState,
   IconButton,
   Screen,
+  useMotionScale,
   useTheme,
   withAlpha,
 } from '@tourism/mobile-ui';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Pressable, ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
+import { useRef } from 'react';
+import { Animated, Pressable, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { MarkdownBlock } from './markdown';
 
@@ -59,6 +61,9 @@ export interface PostDetailScreenProps {
  * MÀN CHỈ VẼ — fetch nằm ở route `app/posts/[slug].tsx`. `blocks` đã qua
  * `markdown.ts` (parse thuần, tách khỏi component để test).
  */
+/** Ảnh bìa vẽ dư phía trên chừng này dp để có chỗ trôi (parallax) mà không lộ nền. */
+const COVER_EXTRA = 80;
+
 export function PostDetailScreen({
   status,
   coverUrl,
@@ -89,6 +94,17 @@ export function PostDetailScreen({
   // không thì dính thẳng status bar (phản hồi 27/09) — cùng khuôn
   // `TourDetailScreen`, KHÔNG dùng `theme.spacing(3)` trần.
   const insets = useSafeAreaInsets();
+  // Parallax ảnh bìa: ảnh trôi NỬA tốc độ cuộn (tối đa COVER_EXTRA dp), nhân hệ số giảm chuyển động.
+  const scrollY = useRef(new Animated.Value(0)).current;
+  const motionScale = useMotionScale();
+  const coverShift = Animated.multiply(
+    scrollY.interpolate({
+      inputRange: [0, COVER_EXTRA * 2],
+      outputRange: [0, COVER_EXTRA],
+      extrapolate: 'clamp',
+    }),
+    motionScale,
+  );
 
   if (status === 'error' || status === 'notFound') {
     // Cùng khuôn với lỗi mạng; bài không còn thì gọi lại vô ích nên nút chính
@@ -125,22 +141,39 @@ export function PostDetailScreen({
           cuộn theo mất luôn (phản hồi 27/09, cuộn sâu là chữ trôi lên đè
           status bar, nút back cũng biến mất). Set `scrollable={false}` rồi
           tự dựng ScrollView riêng — overlay đứng NGOÀI, luôn cố định. */}
-      <ScrollView>
+      <Animated.ScrollView
+        onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], {
+          useNativeDriver: true,
+        })}
+        scrollEventThrottle={16}
+      >
         <View
           style={{
             width: '100%',
             height: theme.spacing(62),
             backgroundColor: theme.colors.muted,
+            overflow: 'hidden',
           }}
         >
           {coverUrl === null ? null : (
-            <AppImage
-              source={coverUrl}
-              width={coverWidth}
-              alt={title}
-              transformUrl={transformUrl}
-              fill
-            />
+            <Animated.View
+              style={{
+                position: 'absolute',
+                left: 0,
+                right: 0,
+                top: -COVER_EXTRA,
+                bottom: 0,
+                transform: [{ translateY: coverShift }],
+              }}
+            >
+              <AppImage
+                source={coverUrl}
+                width={coverWidth}
+                alt={title}
+                transformUrl={transformUrl}
+                fill
+              />
+            </Animated.View>
           )}
           <LinearGradient
             colors={[withAlpha(theme.colors.scrim, 0.3), withAlpha(theme.colors.scrim, 0)]}
@@ -148,7 +181,6 @@ export function PostDetailScreen({
             style={StyleSheet.absoluteFill}
           />
         </View>
-
         <View style={{ paddingHorizontal: theme.spacing(6), paddingTop: theme.spacing(4) }}>
           {tagLabels.length === 0 ? null : (
             <View style={{ flexDirection: 'row', gap: theme.spacing(2), flexWrap: 'wrap' }}>
@@ -249,7 +281,7 @@ export function PostDetailScreen({
             </View>
           )}
         </View>
-      </ScrollView>
+      </Animated.ScrollView>
 
       {/* Dải chắn status bar CỐ ĐỊNH — sibling của ScrollView ở trên, không
           cuộn theo, luôn che đúng dải `insets.top`. */}

@@ -1,5 +1,4 @@
-import Feather from '@expo/vector-icons/Feather';
-import { AppText, Screen, useTheme } from '@tourism/mobile-ui';
+import { AppText, Collapsible, Icon, Screen, useTheme } from '@tourism/mobile-ui';
 import { useState } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
 import { visibleIncluded } from './trip-tracker';
@@ -106,7 +105,7 @@ export function TripNotesScreen({
               justifyContent: 'center',
             }}
           >
-            <Feather name="message-square" size={20} color={theme.colors['primary-emphasis']} />
+            <Icon name="message-square" size={20} color={theme.colors['primary-emphasis']} />
           </View>
           <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
             <AppText variant="label">{goodToKnowLabel}</AppText>
@@ -114,23 +113,25 @@ export function TripNotesScreen({
               {goodToKnowCaption}
             </AppText>
           </View>
-          <Feather
+          <Icon
             name={faqsOpen ? 'chevron-up' : 'chevron-down'}
             size={20}
             color={theme.colors['muted-foreground']}
           />
         </Pressable>
 
-        {faqsOpen
-          ? faqs.map((faq) => (
+        {faqs.length === 0 ? null : (
+          <Collapsible open={faqsOpen}>
+            {faqs.map((faq) => (
               <View key={faq.question} style={{ marginTop: theme.spacing(3) }}>
                 <AppText variant="label">{faq.question}</AppText>
                 <AppText variant="subtitle" tone="muted" style={{ marginTop: 2 }}>
                   {faq.answer}
                 </AppText>
               </View>
-            ))
-          : null}
+            ))}
+          </Collapsible>
+        )}
       </ScrollView>
     </Screen>
   );

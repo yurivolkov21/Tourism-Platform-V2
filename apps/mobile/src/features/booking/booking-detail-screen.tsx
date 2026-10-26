@@ -1,9 +1,14 @@
-import Feather from '@expo/vector-icons/Feather';
+import type Feather from '@expo/vector-icons/Feather';
 import {
   AppImage,
+  AppRefreshControl,
   AppText,
   Button,
   type ButtonVariant,
+  Icon,
+  ListGroup,
+  ListRow,
+  PopIn,
   SCREEN_EDGES_UNDER_HEADER,
   Screen,
   useTheme,
@@ -12,41 +17,44 @@ import {
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-/** Một hàng mã/nhãn — khuôn `.kv` của mockup. Hàng cuối (Total paid) KHÔNG có
- *  gạch dưới — khép khối bằng chính biên dưới của danh sách, không phải một
- *  đường kẻ thừa (soi lại ảnh mẫu 01/10). */
+/** Một hàng mã/nhãn của danh sách thẻ rời (C6, N6): mỗi hàng là một thẻ nền `card`, cách
+ *  nhau 2dp; hàng đầu bo trên 20, hàng cuối bo dưới 20, còn lại bo 4. */
 function KvRow({
   label,
   value,
   emphasis = false,
+  isFirst = false,
   isLast = false,
 }: {
   label: string;
   value: string;
   emphasis?: boolean;
+  isFirst?: boolean;
   isLast?: boolean;
 }) {
   const theme = useTheme();
+  const top = isFirst ? 20 : 4;
+  const bottom = isLast ? 20 : 4;
   return (
     <View
+      testID="booking-kv-row"
       style={{
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        paddingVertical: theme.spacing(2.5),
-        borderBottomWidth: isLast ? 0 : 1,
-        borderBottomColor: theme.colors.border,
+        minHeight: 56,
+        paddingVertical: theme.spacing(3),
+        paddingHorizontal: theme.spacing(4),
+        backgroundColor: theme.colors.card,
+        borderTopLeftRadius: top,
+        borderTopRightRadius: top,
+        borderBottomLeftRadius: bottom,
+        borderBottomRightRadius: bottom,
       }}
     >
-      {/* Mockup: hàng thường dùng `.t-subtitle.muted` cho nhãn; hàng Total paid
-       *  đổi hẳn sang `.t-label` (không muted) — ĐÚNG class `label`/`subtitle`
-       *  AppText đã có sẵn, không cần tự chế style (soi lại ảnh mẫu 01/10). */}
-      <AppText variant={emphasis ? 'label' : 'subtitle'} tone={emphasis ? 'default' : 'muted'}>
+      <AppText variant={emphasis ? 'label' : 'body'} tone={emphasis ? 'default' : 'muted'}>
         {label}
       </AppText>
-      {/* Giá trị nhấn mạnh dùng `.t-title` — serif Literata, cùng khuôn số
-       *  tiền mọi nơi khác trong app (giá tour, tổng đơn), KHÔNG phải Archivo
-       *  đậm tự chế. */}
       <AppText variant={emphasis ? 'title' : 'label'}>{value}</AppText>
     </View>
   );
@@ -113,7 +121,9 @@ function CompactTripCard({
         )}
       </View>
       <View style={{ flex: 1, minWidth: 0 }}>
-        <StatusPill label={pillLabel} tone={pillTone} />
+        <PopIn delay={150} style={{ alignSelf: 'flex-start' }}>
+          <StatusPill label={pillLabel} tone={pillTone} />
+        </PopIn>
         <AppText variant="heading" numberOfLines={2} style={{ marginTop: theme.spacing(1) }}>
           {title}
         </AppText>
@@ -157,16 +167,16 @@ function Note({
        *  `check` đè giữa thay vì đổi sang bộ icon khác chỉ cho một chỗ. */}
       {icon === 'shield' ? (
         <View style={{ width: 16, height: 16, alignItems: 'center', justifyContent: 'center' }}>
-          <Feather
+          <Icon
             name="shield"
             size={16}
             color={theme.colors.foreground}
             style={{ position: 'absolute' }}
           />
-          <Feather name="check" size={8} color={theme.colors.foreground} />
+          <Icon name="check" size={8} color={theme.colors.foreground} />
         </View>
       ) : (
-        <Feather name={icon} size={16} color={theme.colors.foreground} />
+        <Icon name={icon} size={16} color={theme.colors.foreground} />
       )}
       <View style={{ flex: 1 }}>
         <AppText variant="caption" style={{ fontWeight: theme.weight.semibold }}>
@@ -262,6 +272,8 @@ export interface BookingDetailRow {
 }
 
 export interface BookingDetailScreenProps {
+  /** Kéo xuống để làm mới — route giữ trạng thái và gọi refetch; vắng thì không có. */
+  refresh?: { refreshing: boolean; onRefresh: () => void };
   trip: BookingDetailTrip;
   pillLabel: string;
   pillTone: BookingDetailPill;
@@ -284,7 +296,7 @@ export interface BookingDetailScreenProps {
     disabled?: boolean;
     variant?: ButtonVariant;
   } | null;
-  /** Nút phụ (viền) — "Cancel booking"/"Cancel this booking". */
+  /** Hàng chữ đỏ ở khối riêng cuối nội dung cuộn (C6) — "Cancel this booking". */
   secondaryAction: { label: string; onPress: () => void; disabled?: boolean } | null;
   /** Dòng "Questions about this trip? Contact us" (chỉ T4). */
   contactLine?: { prompt: string; actionLabel: string; onPress: () => void };
@@ -299,6 +311,7 @@ export interface BookingDetailScreenProps {
  * bên web (chỉ render theo view, không tự quyết).
  */
 export function BookingDetailScreen({
+  refresh,
   trip,
   pillLabel,
   pillTone,
@@ -314,8 +327,17 @@ export function BookingDetailScreen({
   const insets = useSafeAreaInsets();
 
   return (
-    <Screen edges={SCREEN_EDGES_UNDER_HEADER} padded={false} scrollable={false}>
-      <ScrollView contentContainerStyle={{ padding: theme.spacing(5) }}>
+    <Screen
+      edges={SCREEN_EDGES_UNDER_HEADER}
+      padded={false}
+      scrollable={false}
+      style={{ backgroundColor: theme.surfaces.grouped }}
+    >
+      <ScrollView
+        contentContainerStyle={{ padding: theme.spacing(5) }}
+        style={{ flex: 1 }}
+        refreshControl={refresh === undefined ? undefined : <AppRefreshControl {...refresh} />}
+      >
         <CompactTripCard
           imageUrl={trip.imageUrl}
           title={trip.title}
@@ -331,20 +353,46 @@ export function BookingDetailScreen({
 
         {reason === undefined ? null : <ReasonQuote label={reason.label} text={reason.text} />}
 
-        <View style={{ marginTop: theme.spacing(2.5) }}>
+        <View style={{ marginTop: theme.spacing(4), gap: 2 }}>
           {rows.map((row, index) => (
             <KvRow
               key={row.label}
               label={row.label}
               value={row.value}
               emphasis={row.emphasis}
+              isFirst={index === 0}
               isLast={index === rows.length - 1}
             />
           ))}
         </View>
+
+        {/* C6 — "Contact us" là một hàng có icon thay cho link nằm trong câu. */}
+        {contactLine === undefined ? null : (
+          <View style={{ marginTop: theme.spacing(5) }}>
+            <ListGroup>
+              <ListRow
+                icon="message-square"
+                title={contactLine.actionLabel}
+                subtitle={contactLine.prompt}
+                onPress={contactLine.onPress}
+              />
+            </ListGroup>
+          </View>
+        )}
+        {secondaryAction === null ? null : (
+          <View style={{ marginTop: theme.spacing(5) }}>
+            <ListGroup>
+              <ListRow
+                title={secondaryAction.label}
+                destructive
+                onPress={secondaryAction.disabled ? undefined : secondaryAction.onPress}
+              />
+            </ListGroup>
+          </View>
+        )}
       </ScrollView>
 
-      {primaryAction === null && secondaryAction === null ? null : (
+      {primaryAction === null ? null : (
         <View
           style={{
             gap: theme.spacing(4),
@@ -356,40 +404,13 @@ export function BookingDetailScreen({
             borderTopColor: theme.colors.border,
           }}
         >
-          {primaryAction === null ? null : (
-            <Button
-              shape="pill"
-              label={primaryAction.label}
-              onPress={primaryAction.onPress}
-              disabled={primaryAction.disabled}
-              variant={primaryAction.variant}
-            />
-          )}
-          {secondaryAction === null ? null : (
-            <Button
-              shape="pill"
-              variant="ghost"
-              label={secondaryAction.label}
-              onPress={secondaryAction.onPress}
-              disabled={secondaryAction.disabled}
-            />
-          )}
-          {contactLine === undefined ? null : (
-            // `Text` lồng `Text` để trôi đúng dòng (baseline canh theo chữ) —
-            // `Pressable` (View) lồng trong `Text` trước đó làm "Contact us"
-            // lệch dòng so với câu trước nó (phản hồi 01/10).
-            <AppText variant="caption" tone="muted" style={{ textAlign: 'center' }}>
-              {contactLine.prompt}{' '}
-              <AppText
-                variant="caption"
-                tone="link"
-                accessibilityRole="button"
-                onPress={contactLine.onPress}
-              >
-                {contactLine.actionLabel}
-              </AppText>
-            </AppText>
-          )}
+          <Button
+            shape="pill"
+            label={primaryAction.label}
+            onPress={primaryAction.onPress}
+            disabled={primaryAction.disabled}
+            variant={primaryAction.variant}
+          />
         </View>
       )}
     </Screen>

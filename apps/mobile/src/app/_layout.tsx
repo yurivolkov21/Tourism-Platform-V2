@@ -13,6 +13,7 @@ import { type ErrorBoundaryProps, router, Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
+import { View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AuthActionsProvider } from '@/features/auth/auth-actions';
@@ -22,8 +23,9 @@ import {
   onboardingStore,
   readHasSeen,
 } from '@/features/onboarding/onboarding-store';
-import { queryClient } from '@/lib/api/query-client';
+import { bindAppStateFocus, queryClient } from '@/lib/api/query-client';
 import { env } from '@/lib/env';
+import { STACK_TRANSITION } from '@/lib/stack-transition';
 
 // Giữ splash cho tới khi vỏ điều hướng dựng xong — tránh một nháy nền trắng
 // trước khi màn đầu tiên kịp vẽ.
@@ -55,66 +57,69 @@ function RootStack() {
   const theme = useTheme();
   const { titles } = messages.mobile.appShell;
 
+  // Nền gốc phía sau các màn: lúc màn trượt ra/vào (nhất là back + parallax) phần lộ
+  // ra là nền cửa sổ native — mặc định trắng, nháy trắng trên giao diện tối.
   return (
-    <Stack
-      screenOptions={{
-        // `background`, KHÔNG `card` — mockup `.compact-head` dùng
-        // `background: var(--background)` (khớp `contentStyle` dưới), hoà
-        // liền với thân màn. `card` đậm hơn một chút ở dark mode — dùng
-        // nhầm tạo viền ngang không có trong mockup (phản hồi 27/09).
-        headerStyle: { backgroundColor: theme.colors.background },
-        headerTintColor: theme.colors.foreground,
-        // Native Stack mặc định vẽ shadow/border dưới header (iOS: shadow,
-        // Android: elevation) — mockup không có viền này, header phải hoà
-        // phẳng vào nền (cùng phản hồi 27/09).
-        headerShadowVisible: false,
-        contentStyle: { backgroundColor: theme.colors.background },
-      }}
-    >
-      <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-      {/* Nhóm auth mở dạng modal; header do stack bên trong nó vẽ. */}
-      <Stack.Screen name="(auth)" options={{ presentation: 'modal', headerShown: false }} />
-      {/* Không header native (D1-D7 bản vẽ): màn tự vẽ nút lùi/tim kính mờ đè
+    <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
+      <Stack
+        screenOptions={{
+          ...STACK_TRANSITION,
+          // `background`, KHÔNG `card` — mockup `.compact-head` dùng
+          // `background: var(--background)` (khớp `contentStyle` dưới), hoà
+          // liền với thân màn. `card` đậm hơn một chút ở dark mode — dùng
+          // nhầm tạo viền ngang không có trong mockup (phản hồi 27/09).
+          headerStyle: { backgroundColor: theme.colors.background },
+          headerTintColor: theme.colors.foreground,
+          // Native Stack mặc định vẽ shadow/border dưới header (iOS: shadow,
+          // Android: elevation) — mockup không có viền này, header phải hoà
+          // phẳng vào nền (cùng phản hồi 27/09).
+          headerShadowVisible: false,
+          contentStyle: { backgroundColor: theme.colors.background },
+        }}
+      >
+        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        {/* Nhóm auth mở dạng modal; header do stack bên trong nó vẽ. */}
+        <Stack.Screen name="(auth)" options={{ presentation: 'modal', headerShown: false }} />
+        {/* Không header native (D1-D7 bản vẽ): màn tự vẽ nút lùi/tim kính mờ đè
           lên ảnh bìa — có header là ra HAI nút lùi chồng nhau (phản hồi 24/09). */}
-      <Stack.Screen
-        name="tours/[slug]"
-        options={{ headerShown: false, title: titles.tourDetail }}
-      />
-      <Stack.Screen name="bookings/[code]" options={{ title: titles.bookingDetail }} />
-      {/* E1/E2 (W6) — header native bình thường, cùng khuôn A6/Personal details. */}
-      <Stack.Screen name="enquiry" options={{ title: titles.askAboutTrip }} />
-      {/* Cụm đặt tour (P5b-3, B1-B5) — Stack riêng, tự vẽ header từng bước
+        <Stack.Screen
+          name="tours/[slug]"
+          options={{ headerShown: false, title: titles.tourDetail }}
+        />
+        <Stack.Screen name="bookings/[code]" options={{ title: titles.bookingDetail }} />
+        {/* E1/E2 (W6) — header native bình thường, cùng khuôn A6/Personal details. */}
+        <Stack.Screen name="enquiry" options={{ title: titles.askAboutTrip }} />
+        {/* Trung tâm thông báo (spec 2026-10-25) — header native bình thường. */}
+        <Stack.Screen name="notifications" options={{ title: titles.notifications }} />
+        {/* Cụm đặt tour (P5b-3, B1-B5) — Stack riêng, tự vẽ header từng bước
           (`bookings/new/_layout.tsx`), cùng khuôn `(auth)`. */}
-      <Stack.Screen name="bookings/new" options={{ headerShown: false }} />
-      {/* Cụm P bám ngày khởi hành (W7/W8) — Stack riêng cùng khuôn
+        <Stack.Screen name="bookings/new" options={{ headerShown: false }} />
+        {/* Cụm P bám ngày khởi hành (W7/W8) — Stack riêng cùng khuôn
           `bookings/new`, header do `trips/[code]/_layout.tsx` tự vẽ. */}
-      <Stack.Screen name="trips/[code]" options={{ headerShown: false }} />
-      {/* A6 (spec P5b-4 §3) — đã đăng nhập, header native bình thường (khác
+        <Stack.Screen name="trips/[code]" options={{ headerShown: false }} />
+        {/* A6 (spec P5b-4 §3) — đã đăng nhập, header native bình thường (khác
           nhóm auth vốn tự vẽ nút X vì là chặng đầu Stack). */}
-      <Stack.Screen name="change-password" options={{ title: titles.changePassword }} />
-      {/* Kết quả sau A6 (N8 nửa sau) — không header: `ResultScreen` cho ảnh tràn mép trên như
+        <Stack.Screen name="change-password" options={{ title: titles.changePassword }} />
+        {/* Kết quả sau A6 (N8 nửa sau) — không header: `ResultScreen` cho ảnh tràn mép trên như
           khung 6b của nhóm auth, và nút đáy là đường về Account. */}
-      <Stack.Screen
-        name="password-updated"
-        options={{ headerShown: false, title: titles.passwordUpdated }}
-      />
-      {/* "Personal details" (mockup A1) — cùng khuôn header native với A6. */}
-      <Stack.Screen name="personal-details" options={{ title: titles.personalDetails }} />
-      {/* Travel stories (G1/G2) — header native, cùng khuôn A6/Personal details. */}
-      <Stack.Screen name="posts/index" options={{ title: titles.travelStories }} />
-      {/* Bài viết (G3/G4) — header TỰ VẼ đè lên ảnh bìa, không header native
+        <Stack.Screen
+          name="password-updated"
+          options={{ headerShown: false, title: titles.passwordUpdated }}
+        />
+        {/* "Personal details" (mockup A1) — cùng khuôn header native với A6. */}
+        <Stack.Screen name="personal-details" options={{ title: titles.personalDetails }} />
+        {/* Travel stories (G1/G2) — header native, cùng khuôn A6/Personal details. */}
+        <Stack.Screen name="posts/index" options={{ title: titles.travelStories }} />
+        {/* Bài viết (G3/G4) — header TỰ VẼ đè lên ảnh bìa, không header native
           (cùng lý do `tours/[slug]` ở trên). */}
-      <Stack.Screen name="posts/[slug]" options={{ headerShown: false }} />
-      {/* Onboarding phủ toàn màn và tự vẽ mọi thứ của nó. */}
-      <Stack.Screen name="onboarding" options={{ headerShown: false }} />
-      {/* Nhóm dev cũng vậy: thiếu dòng này thì stack gốc đội cho nó một header
-          tên "dev", và mọi khung trong gallery bị đo trong một khung ngắn hơn
-          màn thật. */}
-      <Stack.Screen name="dev" options={{ headerShown: false }} />
-      {/* Cụm review tự vẽ header qua Stack riêng (reviews/_layout.tsx) — tắt header của nhóm. */}
-      <Stack.Screen name="reviews" options={{ headerShown: false }} />
-      <Stack.Screen name="+not-found" options={{ title: titles.notFound }} />
-    </Stack>
+        <Stack.Screen name="posts/[slug]" options={{ headerShown: false }} />
+        {/* Onboarding phủ toàn màn và tự vẽ mọi thứ của nó. */}
+        <Stack.Screen name="onboarding" options={{ headerShown: false }} />
+        {/* Cụm review tự vẽ header qua Stack riêng (reviews/_layout.tsx) — tắt header của nhóm. */}
+        <Stack.Screen name="reviews" options={{ headerShown: false }} />
+        <Stack.Screen name="+not-found" options={{ title: titles.notFound }} />
+      </Stack>
+    </View>
   );
 }
 
@@ -190,6 +195,9 @@ export default function RootLayout() {
       cancelled = true;
     };
   }, [fontsReady]);
+
+  // App quay lại tiền cảnh (vd từ trình duyệt thanh toán) thì query đang hiện tự tải lại.
+  useEffect(() => bindAppStateFocus(), []);
 
   // Splash chỉ gỡ khi xong CẢ font lẫn cờ onboarding — không ai kịp thấy một
   // nháy Home trước khi nhảy sang onboarding.

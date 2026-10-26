@@ -30,6 +30,14 @@ function baseProps(overrides: Partial<BookingContactScreenProps> = {}): BookingC
 }
 
 describe('BookingContactScreen', () => {
+  it('C2 — câu giải thích nằm SAU ô ghi chú (chân khối), không phải dưới tiêu đề', async () => {
+    await renderWithTheme(<BookingContactScreen {...baseProps()} />);
+    const tree = JSON.stringify(screen.toJSON());
+    expect(tree.indexOf('We send the confirmation here.')).toBeGreaterThan(
+      tree.indexOf('Anything we should know'),
+    );
+  });
+
   it('B3 — điền sẵn tên/email, giữ nguyên phone rỗng', async () => {
     await renderWithTheme(<BookingContactScreen {...baseProps()} />);
 

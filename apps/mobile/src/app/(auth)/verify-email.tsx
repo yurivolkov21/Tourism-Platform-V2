@@ -1,3 +1,4 @@
+import { validateOtp } from '@tourism/core';
 import { messages } from '@tourism/i18n';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
@@ -52,6 +53,14 @@ export default function VerifyEmailRoute() {
 
   const submit = async () => {
     if (pending) return;
+    // Kiểm tra ô trống/sai định dạng NGAY, trước khi bật `pending` — không thì nút nháy sang
+    // "Signing in…" một nhịp rồi mới hiện lỗi.
+    const otpError = validateOtp(otp);
+    if (otpError !== undefined) {
+      setFieldErrors({ otp: otpError });
+      setFormMessage(null);
+      return;
+    }
     setPending(true);
     setFieldErrors({});
     setFormMessage(null);

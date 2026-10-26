@@ -1,6 +1,7 @@
 import { messages } from '@tourism/i18n';
 import { useTheme } from '@tourism/mobile-ui';
 import { Stack } from 'expo-router';
+import { STACK_TRANSITION } from '@/lib/stack-transition';
 
 /**
  * Cụm P (W7/W8, mockup `mobile-booking-screens` mục 4) — Stack riêng lồng
@@ -16,6 +17,7 @@ export default function TripLayout() {
   return (
     <Stack
       screenOptions={{
+        ...STACK_TRANSITION,
         headerStyle: { backgroundColor: theme.colors.background },
         headerTintColor: theme.colors.foreground,
         headerShadowVisible: false,

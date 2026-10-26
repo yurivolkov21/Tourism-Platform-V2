@@ -9,6 +9,8 @@ import { BookingBottomBar, BookingStepProgress } from './booking-parts';
 export interface BookingContactScreenProps {
   step: number;
   totalSteps: number;
+  /** B4 — tên các bước dưới vạch tiến trình. */
+  stepNames?: readonly string[];
   stepLabel: string;
   heading: string;
   subtitle: string;
@@ -32,11 +34,12 @@ const FIELD_ORDER: readonly (keyof ContactFormState)[] = [
   'specialRequests',
 ];
 
-/** B3 — bước 2: liên hệ. Ô icon boxed (`TextField iconVariant="boxed"`), BIẾN
+/** B3 — bước 2: liên hệ. Ô nhập outlined có icon, BIẾN
  *  THỂ mới, không đụng cụm auth (mockup B3 caption). */
 export function BookingContactScreen({
   step,
   totalSteps,
+  stepNames,
   stepLabel,
   heading,
   subtitle,
@@ -80,20 +83,21 @@ export function BookingContactScreen({
         }}
         keyboardShouldPersistTaps="handled"
       >
-        <BookingStepProgress step={step} total={totalSteps} label={stepLabel} />
+        <BookingStepProgress
+          step={step}
+          total={totalSteps}
+          label={stepLabel}
+          stepNames={stepNames}
+        />
 
         <AppText variant="heading" style={{ marginTop: theme.spacing(4) }}>
           {heading}
-        </AppText>
-        <AppText variant="subtitle" tone="muted" style={{ marginTop: theme.spacing(1) }}>
-          {subtitle}
         </AppText>
 
         <TextField
           ref={nameRef}
           label={nameLabel}
           icon="user"
-          iconVariant="boxed"
           value={values.contactName}
           error={errors.contactName}
           onChangeText={(next) => onChange('contactName', next)}
@@ -104,7 +108,6 @@ export function BookingContactScreen({
           ref={emailRef}
           label={emailLabel}
           icon="mail"
-          iconVariant="boxed"
           value={values.contactEmail}
           error={errors.contactEmail}
           onChangeText={(next) => onChange('contactEmail', next)}
@@ -116,7 +119,6 @@ export function BookingContactScreen({
           ref={phoneRef}
           label={phoneLabel}
           icon="phone"
-          iconVariant="boxed"
           value={values.contactPhone}
           error={errors.contactPhone}
           onChangeText={(next) => onChange('contactPhone', next)}
@@ -127,13 +129,16 @@ export function BookingContactScreen({
           ref={notesRef}
           label={notesLabel}
           icon="message-square"
-          iconVariant="boxed"
           multiline
           tall
           value={values.specialRequests}
           error={errors.specialRequests}
           onChangeText={(next) => onChange('specialRequests', next)}
         />
+        {/* C2 — câu giải thích nằm ở chân khối (mockup), cùng kiểu chữ chân nhóm ở C1. */}
+        <AppText variant="caption" tone="muted" style={{ marginTop: theme.spacing(3) }}>
+          {subtitle}
+        </AppText>
       </ScrollView>
 
       <BookingBottomBar

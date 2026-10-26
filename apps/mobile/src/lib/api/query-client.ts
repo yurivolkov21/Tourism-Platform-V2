@@ -1,5 +1,6 @@
 import { ORPCError } from '@orpc/client';
-import { QueryClient } from '@tanstack/react-query';
+import { focusManager, QueryClient } from '@tanstack/react-query';
+import { AppState, Platform } from 'react-native';
 
 /** Trần số lần gọi lại — giữ đúng mặc định 3 của TanStack Query. */
 const MAX_QUERY_RETRIES = 3;
@@ -28,5 +29,28 @@ export function shouldRetryQuery(failureCount: number, error: unknown): boolean 
  * dựng ở module scope, không trong thân component).
  */
 export const queryClient = new QueryClient({
-  defaultOptions: { queries: { retry: shouldRetryQuery } },
+  defaultOptions: {
+    queries: {
+      retry: shouldRetryQuery,
+      // Dữ liệu tour/danh sách đổi chậm: trong 30 giây mở lại tab hay màn đã xem thì dùng cache,
+      // không gọi lại API và không nháy loading. Query nào cần luôn mới tự đặt `staleTime: 0`
+      // (vd `bookings/[code]`); đơn hàng/ví yêu thích đổi xong đã tự `invalidateQueries`.
+      staleTime: 30_000,
+      // Giữ cache 10 phút sau khi rời màn (mặc định 5) để quay lại vẫn có dữ liệu cũ hiện ngay.
+      gcTime: 10 * 60_000,
+    },
+  },
 });
+
+/**
+ * React Native không có sự kiện focus của cửa sổ nên `refetchOnWindowFocus` của react-query
+ * không bao giờ chạy. Nối nó với `AppState`: app quay lại tiền cảnh (vd khách thanh toán xong
+ * trên trình duyệt rồi trở về) thì mọi query đang hiện và đã cũ tự tải lại.
+ */
+export function bindAppStateFocus(): () => void {
+  if (Platform.OS === 'web') return () => {};
+  const subscription = AppState.addEventListener('change', (status) => {
+    focusManager.setFocused(status === 'active');
+  });
+  return () => subscription.remove();
+}

@@ -1,5 +1,13 @@
-import Feather from '@expo/vector-icons/Feather';
-import { AppText, Button, FormMessage, Screen, TextField, useTheme } from '@tourism/mobile-ui';
+import {
+  AppText,
+  Button,
+  FormMessage,
+  Icon,
+  PopIn,
+  Screen,
+  TextField,
+  useTheme,
+} from '@tourism/mobile-ui';
 import { useEffect, useRef } from 'react';
 import type { TextInput } from 'react-native';
 import { ScrollView, StyleSheet, View } from 'react-native';
@@ -92,18 +100,20 @@ export function EnquiryScreen({
             paddingHorizontal: theme.spacing(6),
           }}
         >
-          <View
-            style={{
-              width: theme.spacing(16),
-              height: theme.spacing(16),
-              borderRadius: theme.radius.base * 2,
-              backgroundColor: theme.colors.secondary,
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <Feather name="check-circle" size={28} color={theme.colors['primary-emphasis']} />
-          </View>
+          <PopIn delay={100}>
+            <View
+              style={{
+                width: theme.spacing(16),
+                height: theme.spacing(16),
+                borderRadius: theme.radius.base * 2,
+                backgroundColor: theme.colors.secondary,
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <Icon name="check-circle" size={28} color={theme.colors['primary-emphasis']} />
+            </View>
+          </PopIn>
           <AppText variant="heading" style={{ textAlign: 'center' }}>
             {successTitle}
           </AppText>
@@ -146,7 +156,6 @@ export function EnquiryScreen({
           ref={nameRef}
           label={nameLabel}
           icon="user"
-          iconVariant="boxed"
           value={values.name}
           error={errors.name}
           onChangeText={(next) => onChange('name', next)}
@@ -157,7 +166,6 @@ export function EnquiryScreen({
           ref={emailRef}
           label={emailLabel}
           icon="mail"
-          iconVariant="boxed"
           value={values.email}
           error={errors.email}
           onChangeText={(next) => onChange('email', next)}
@@ -169,7 +177,6 @@ export function EnquiryScreen({
           ref={phoneRef}
           label={phoneLabel}
           icon="phone"
-          iconVariant="boxed"
           value={values.phone}
           error={errors.phone}
           onChangeText={(next) => onChange('phone', next)}
@@ -183,7 +190,6 @@ export function EnquiryScreen({
           placeholder={messagePlaceholder}
           alwaysShowLabel
           icon="message-square"
-          iconVariant="boxed"
           multiline
           tall
           value={values.message}

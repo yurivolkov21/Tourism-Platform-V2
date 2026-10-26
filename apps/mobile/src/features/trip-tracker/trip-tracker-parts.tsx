@@ -1,5 +1,4 @@
-import Feather from '@expo/vector-icons/Feather';
-import { AppText, type FeatherIconName, useTheme } from '@tourism/mobile-ui';
+import { AppText, AuroraGradient, type FeatherIconName, Icon, useTheme } from '@tourism/mobile-ui';
 import type { ReactNode } from 'react';
 import { Pressable, View } from 'react-native';
 
@@ -29,18 +28,26 @@ export function SectionLabel({ children }: { children: string }) {
 }
 
 /** ".count" — khung thẻ bọc khối đếm ngược/tiến trình (P1/P2/P5). */
-export function TripCountCard({ children }: { children: ReactNode }) {
+export function TripCountCard({
+  children,
+  glow,
+}: {
+  children: ReactNode;
+  /** Độ đậm (0–1) của màu giao thoa phía sau; bỏ trống thì thẻ phẳng như cũ. */
+  glow?: number;
+}) {
   const theme = useTheme();
   return (
     <View
       style={{
+        // Thẻ Material 3 (N3): bo 16, không viền.
         backgroundColor: theme.colors.card,
-        borderWidth: 1,
-        borderColor: theme.colors.border,
-        borderRadius: theme.radius.base * 3,
+        borderRadius: 16,
         padding: theme.spacing(4),
+        overflow: 'hidden',
       }}
     >
+      {glow === undefined ? null : <AuroraGradient intensity={glow} />}
       {children}
     </View>
   );
@@ -76,13 +83,27 @@ export interface RowLinkProps {
   label: string;
   caption: string;
   onPress: () => void;
-  /** Hàng cuối không vẽ gạch dưới (mockup `border-bottom:none`). */
+  /** Hàng đầu nhóm — bo trên 20. */
+  first?: boolean;
+  /** Hàng cuối nhóm — bo dưới 20, không chừa khe 2dp phía dưới. */
   last?: boolean;
 }
 
-/** ".row-link" — hàng icon-vuông + hai dòng chữ + chevron, điều hướng tiếp. */
-export function RowLink({ icon, label, caption, onPress, last = false }: RowLinkProps) {
+/**
+ * Hàng điều hướng tiếp của cụm P (D1–D3, N6): mỗi hàng là một thẻ rời nền `card`, cách
+ * nhau 2dp — hàng đầu bo trên 20, hàng cuối bo dưới 20, còn lại bo 4; icon trần 24.
+ */
+export function RowLink({
+  icon,
+  label,
+  caption,
+  onPress,
+  first = false,
+  last = false,
+}: RowLinkProps) {
   const theme = useTheme();
+  const top = first ? 20 : 4;
+  const bottom = last ? 20 : 4;
   return (
     <Pressable
       accessibilityRole="button"
@@ -90,31 +111,31 @@ export function RowLink({ icon, label, caption, onPress, last = false }: RowLink
       style={{
         flexDirection: 'row',
         alignItems: 'center',
-        gap: theme.spacing(3),
+        gap: theme.spacing(4),
+        minHeight: 56,
         paddingVertical: theme.spacing(3),
-        borderBottomWidth: last ? 0 : 1,
-        borderBottomColor: theme.colors.border,
+        paddingHorizontal: theme.spacing(4),
+        marginBottom: last ? 0 : 2,
+        backgroundColor: theme.colors.card,
+        borderTopLeftRadius: top,
+        borderTopRightRadius: top,
+        borderBottomLeftRadius: bottom,
+        borderBottomRightRadius: bottom,
       }}
     >
-      <View
-        style={{
-          width: theme.spacing(10),
-          height: theme.spacing(10),
-          borderRadius: theme.radius.base * 2,
-          backgroundColor: theme.colors.secondary,
-          alignItems: 'center',
-          justifyContent: 'center',
-        }}
-      >
-        <Feather name={icon} size={20} color={theme.colors['primary-emphasis']} />
-      </View>
+      <Icon name={icon} size={24} color={theme.colors['muted-foreground']} />
       <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
-        <AppText variant="label">{label}</AppText>
-        <AppText variant="caption" tone="muted" numberOfLines={1}>
+        <AppText variant="body">{label}</AppText>
+        <AppText
+          variant="label"
+          tone="muted"
+          numberOfLines={1}
+          style={{ fontWeight: theme.weight.normal }}
+        >
           {caption}
         </AppText>
       </View>
-      <Feather name="chevron-right" size={20} color={theme.colors['muted-foreground']} />
+      <Icon name="chevron-right" size={24} color={theme.colors['muted-foreground']} />
     </Pressable>
   );
 }
@@ -137,7 +158,7 @@ export function StaticTick({
         paddingVertical: theme.spacing(2),
       }}
     >
-      <Feather
+      <Icon
         name={tone === 'included' ? 'check' : 'x'}
         size={18}
         color={

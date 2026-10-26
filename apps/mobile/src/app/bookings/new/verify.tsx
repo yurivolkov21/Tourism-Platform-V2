@@ -9,7 +9,7 @@ import {
 } from '@/features/booking/booking-draft';
 import { VERIFY_BACKOFF_MS, verifyOutcome } from '@/features/booking/booking-form';
 import { BookingStatusScreen } from '@/features/booking/booking-status-screen';
-import { openCheckout } from '@/features/booking/open-checkout';
+import { appReturnUrl, openCheckout } from '@/features/booking/open-checkout';
 import { orpc, withMobileAuth } from '@/lib/api/client';
 
 type VerifyPhase = 'checking' | 'stillPending' | 'ended';
@@ -55,6 +55,8 @@ export default function BookingVerifyRoute() {
       if (outcome === 'paid') {
         // Xoá draft NGAY — các màn B1–B5 còn trong stack không tạo lại được booking.
         completeBookingDraft(result.totalAmount);
+        // Tab Trips vẫn mount sẵn với dữ liệu cũ ("Payment due") — đánh dấu cũ để nó tải lại.
+        void queryClient.invalidateQueries({ queryKey: orpc.bookings.mine.key() });
         router.replace('/bookings/new/success');
         return;
       }
@@ -105,7 +107,10 @@ export default function BookingVerifyRoute() {
 
   function reopenCheckout() {
     if (draft?.checkoutUrl !== null && draft?.checkoutUrl !== undefined) {
-      void openCheckout(draft.checkoutUrl).then((opened) => setOpenFailed(!opened));
+      void openCheckout(draft.checkoutUrl, appReturnUrl('/bookings/new/verify')).then((outcome) => {
+        setOpenFailed(outcome === 'failed');
+        if (outcome !== 'failed') verifyAgain();
+      });
     }
   }
 
@@ -127,6 +132,7 @@ export default function BookingVerifyRoute() {
     return (
       <BookingStatusScreen
         icon="loader"
+        busy
         heading={booking.verifying}
         body={booking.confirmingBody}
       />

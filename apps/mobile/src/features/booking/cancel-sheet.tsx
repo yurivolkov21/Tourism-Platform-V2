@@ -124,7 +124,6 @@ export function CancelBookingSheet({
             icon="message-square"
             // mockup `.field .ico`: khung vuông nền `secondary`, KHÔNG phải
             // icon trần (phản hồi 01/10, icon nhìn "lạc lõng" không khung).
-            iconVariant="boxed"
             value={reason ?? ''}
             maxLength={CANCEL_REASON_MAX_LENGTH}
             onChangeText={onChangeReason}

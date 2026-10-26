@@ -1,16 +1,25 @@
-import Feather from '@expo/vector-icons/Feather';
-import Ionicons from '@expo/vector-icons/Ionicons';
+import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import type { messages } from '@tourism/i18n';
 import {
   AppText,
   Button,
   FormMessage,
+  Icon,
   Screen,
   TextField,
+  usePop,
   useTheme,
   withAlpha,
 } from '@tourism/mobile-ui';
-import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Animated,
+  Image,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  View,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { EditAvatarSheet } from '@/features/account/edit-avatar-sheet';
 import { BookingTripCard } from '@/features/booking/booking-parts';
@@ -74,6 +83,22 @@ const STAR_COUNT = 5;
  * R1 — viết đánh giá (mockup `mobile-review-screens` mục 1), cùng màn R3 (đã gửi)
  * và hai ca chặn (chưa đi xong / đã viết rồi). Một màn cuộn, không chia bước.
  */
+/** Ngôi sao chọn điểm: nảy nhẹ mỗi khi chuyển từ rỗng sang đặc. */
+function RatingStar({ filled }: { filled: boolean }) {
+  const theme = useTheme();
+  const pop = usePop(filled, 0.5);
+
+  return (
+    <Animated.View style={{ transform: [{ scale: pop }] }}>
+      <MaterialCommunityIcons
+        name={filled ? 'star' : 'star-outline'}
+        size={32}
+        color={filled ? theme.colors['primary-emphasis'] : theme.colors['muted-foreground']}
+      />
+    </Animated.View>
+  );
+}
+
 export function WriteReviewScreen({
   copy,
   phase,
@@ -145,7 +170,7 @@ export function WriteReviewScreen({
               justifyContent: 'center',
             }}
           >
-            <Feather
+            <Icon
               name={phase === 'submitted' ? 'check' : 'info'}
               size={28}
               color={theme.colors['primary-emphasis']}
@@ -168,7 +193,7 @@ export function WriteReviewScreen({
               }}
             >
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing(1) }}>
-                <Feather name="clock" size={13} color={theme.colors.foreground} />
+                <Icon name="clock" size={13} color={theme.colors.foreground} />
                 <AppText
                   variant="caption"
                   style={{ color: theme.colors.foreground, fontWeight: theme.weight.semibold }}
@@ -251,13 +276,7 @@ export function WriteReviewScreen({
                   hitSlop={theme.spacing(2)}
                   onPress={() => onRatingChange(value)}
                 >
-                  <Ionicons
-                    name={filled ? 'star' : 'star-outline'}
-                    size={32}
-                    color={
-                      filled ? theme.colors['primary-emphasis'] : theme.colors['muted-foreground']
-                    }
-                  />
+                  <RatingStar filled={filled} />
                 </Pressable>
               );
             })}
@@ -345,7 +364,7 @@ export function WriteReviewScreen({
                       justifyContent: 'center',
                     }}
                   >
-                    <Feather
+                    <Icon
                       name="refresh-cw"
                       size={20}
                       color={theme.colors['destructive-emphasis']}
@@ -359,7 +378,7 @@ export function WriteReviewScreen({
                   onPress={() => onRemovePhoto(photo.key)}
                   style={{ position: 'absolute', top: 4, right: 4 }}
                 >
-                  <Feather name="x-circle" size={18} color={theme.colors.foreground} />
+                  <Icon name="x-circle" size={18} color={theme.colors.foreground} />
                 </Pressable>
               </View>
             ))}
@@ -378,7 +397,7 @@ export function WriteReviewScreen({
                   justifyContent: 'center',
                 }}
               >
-                <Feather name="plus" size={24} color={theme.colors.foreground} />
+                <Icon name="plus" size={24} color={theme.colors.foreground} />
               </Pressable>
             ) : null}
           </View>

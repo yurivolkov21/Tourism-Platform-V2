@@ -1,5 +1,6 @@
-import { fireEvent, screen } from '@testing-library/react-native';
+import { fireEvent, screen, waitFor } from '@testing-library/react-native';
 import { StyleSheet } from 'react-native';
+import { fireGestureHandler, getByGestureTestId } from 'react-native-gesture-handler/jest-utils';
 import { renderWithTheme, themeFor } from '@/test-utils';
 import { chunkPairs, TourDetailScreen, type TourDetailScreenProps } from './tour-detail-screen';
 
@@ -39,8 +40,6 @@ function baseProps(overrides: Partial<TourDetailScreenProps> = {}): TourDetailSc
     onExploreOther: jest.fn(),
     galleryImages: [],
     galleryPhotos: [],
-    moreImagesCount: 0,
-    openGalleryLabel: 'Open gallery',
     title: 'Central Heritage: Đà Nẵng–Hội An–Huế 4D3N',
     rating: 4.3,
     reviewCountLabel: '3 reviews',
@@ -168,16 +167,16 @@ describe('TourDetailScreen', () => {
     expect(screen.getByText('New — no reviews yet')).toBeTruthy();
   });
 
-  it('chỉ 1 ảnh: không vẽ ô thumb nào (chỉ ảnh bìa)', async () => {
+  it('chỉ 1 ảnh: không vẽ chip đếm', async () => {
     await renderWithTheme(
       <TourDetailScreen
         {...baseProps({ galleryImages: [{ url: 'https://x/1.jpg', alt: 'Ảnh 1' }] })}
       />,
     );
-    expect(screen.queryByRole('button', { name: 'Ảnh 1' })).toBeNull();
+    expect(screen.queryByTestId('tour-detail-photo-counter')).toBeNull();
   });
 
-  it('nhiều ảnh: vẽ tối đa 3 ô thumb + "+N", bấm thumb đổi ảnh bìa', async () => {
+  it('nhiều ảnh (B3): pager ngang, chip đếm "1 / 4", không còn dải thumb', async () => {
     await renderWithTheme(
       <TourDetailScreen
         {...baseProps({
@@ -187,19 +186,13 @@ describe('TourDetailScreen', () => {
             { url: 'https://x/3.jpg', alt: 'Ảnh 3' },
             { url: 'https://x/4.jpg', alt: 'Ảnh 4' },
           ],
-          moreImagesCount: 14,
         })}
       />,
     );
 
-    expect(screen.getByRole('button', { name: 'Ảnh 1' })).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'Ảnh 3' })).toBeTruthy();
-    expect(screen.queryByRole('button', { name: 'Ảnh 4' })).toBeNull();
-    expect(screen.getByText('+14')).toBeTruthy();
-
-    const thumb2 = screen.getByRole('button', { name: 'Ảnh 2' });
-    await fireEvent.press(thumb2);
-    expect(thumb2.props.accessibilityState.selected).toBe(true);
+    expect(screen.getByTestId('tour-detail-hero-pager')).toBeTruthy();
+    expect(screen.getByText('1 / 4')).toBeTruthy();
+    expect(screen.queryByText(/^\+\d+$/)).toBeNull();
   });
 
   describe('trình xem ảnh (D5)', () => {
@@ -222,30 +215,14 @@ describe('TourDetailScreen', () => {
           {...baseProps({
             galleryImages: GALLERY_IMAGES,
             galleryPhotos: GALLERY_PHOTOS,
-            moreImagesCount: 1,
           })}
         />,
       );
 
       await fireEvent.press(screen.getByTestId('tour-detail-hero-image'));
-      expect(screen.getByText('1 / 4')).toBeTruthy();
+      // Hai chỗ in "1 / 4": chip đếm của hero và bộ đếm của trình xem toàn màn.
+      expect(screen.getAllByText('1 / 4')).toHaveLength(2);
       expect(screen.getByText('Photo: Nguyễn Minh')).toBeTruthy();
-    });
-
-    it('bấm "+N": mở trình xem tại ảnh thứ 4 (đầu tiên chưa lọt thumb)', async () => {
-      await renderWithTheme(
-        <TourDetailScreen
-          {...baseProps({
-            galleryImages: GALLERY_IMAGES,
-            galleryPhotos: GALLERY_PHOTOS,
-            moreImagesCount: 1,
-            openGalleryLabel: 'Open gallery',
-          })}
-        />,
-      );
-
-      await fireEvent.press(screen.getByLabelText('Open gallery'));
-      expect(screen.getByText('4 / 4')).toBeTruthy();
     });
 
     it('bấm ảnh review (D4): mở trình xem SCOPE theo ảnh của review đó', async () => {
@@ -373,6 +350,96 @@ describe('TourDetailScreen', () => {
       await fireEvent.scroll(scrollView, { nativeEvent: { contentOffset: { y: 0 } } });
 
       expect(screen.queryByTestId('tour-detail-compact-header')).toBeNull();
+    });
+  });
+
+  describe('vuốt ngang đổi tab', () => {
+    async function swipe(activeTab: 'overview' | 'itinerary', events: object[]) {
+      const onChangeTab = jest.fn();
+      await renderWithTheme(<TourDetailScreen {...baseProps({ activeTab, onChangeTab })} />);
+      fireGestureHandler(getByGestureTestId('tour-tab-swipe'), events as never);
+      return onChangeTab;
+    }
+
+    it('vuốt trái đủ xa từ tab đầu → sang tab kế', async () => {
+      const onChangeTab = await swipe('overview', [
+        { x: 200, translationX: -10, velocityX: -100 },
+        { x: 200, translationX: -90, velocityX: -200 },
+      ]);
+      expect(onChangeTab).toHaveBeenCalledWith('itinerary');
+    });
+
+    it('vuốt phải đủ xa → về tab trước', async () => {
+      const onChangeTab = await swipe('itinerary', [
+        { x: 200, translationX: 10, velocityX: 100 },
+        { x: 200, translationX: 90, velocityX: 200 },
+      ]);
+      expect(onChangeTab).toHaveBeenCalledWith('overview');
+    });
+
+    it('vuốt ngắn và chậm → không đổi tab', async () => {
+      const onChangeTab = await swipe('overview', [
+        { x: 200, translationX: -10, velocityX: -50 },
+        { x: 200, translationX: -30, velocityX: -50 },
+      ]);
+      expect(onChangeTab).not.toHaveBeenCalled();
+    });
+
+    it('bắt đầu sát mép trái (cử chỉ quay lại) → bỏ qua', async () => {
+      const onChangeTab = await swipe('itinerary', [
+        { x: 5, translationX: 10, velocityX: 100 },
+        { x: 5, translationX: 120, velocityX: 900 },
+      ]);
+      expect(onChangeTab).not.toHaveBeenCalled();
+    });
+
+    it('đang ở tab đầu mà vuốt phải → không có tab trước, không gọi', async () => {
+      const onChangeTab = await swipe('overview', [
+        { x: 200, translationX: 10, velocityX: 100 },
+        { x: 200, translationX: 120, velocityX: 900 },
+      ]);
+      expect(onChangeTab).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('chấm báo ảnh bìa', () => {
+    const PHOTOS = [
+      { url: 'https://img/a.jpg', alt: 'a' },
+      { url: 'https://img/b.jpg', alt: 'b' },
+    ];
+    // Dải chấm ẩn khỏi trình đọc màn hình (đã có bộ đếm) nên phải bật `includeHiddenElements`.
+    const dots = { includeHiddenElements: true };
+
+    it('nhiều ảnh → có dải chấm', async () => {
+      await renderWithTheme(<TourDetailScreen {...baseProps({ galleryImages: PHOTOS })} />);
+      expect(screen.getByTestId('tour-detail-hero-dots', dots)).toBeTruthy();
+    });
+
+    it('một ảnh → không có dải chấm', async () => {
+      await renderWithTheme(
+        <TourDetailScreen {...baseProps({ galleryImages: PHOTOS.slice(0, 1) })} />,
+      );
+      expect(screen.queryByTestId('tour-detail-hero-dots', dots)).toBeNull();
+    });
+  });
+
+  describe('hàng tab dính (D2)', () => {
+    it('cuộn tới sát mép: header gọn kèm bản sao hàng tab; cuộn lên lại thì gỡ', async () => {
+      await renderWithTheme(<TourDetailScreen {...baseProps()} />);
+      const scrollView = screen.getByTestId('tour-detail-scroll');
+
+      await fireEvent.scroll(scrollView, { nativeEvent: { contentOffset: { y: 1000 } } });
+      await fireEvent(screen.getByTestId('tour-detail-compact-header-row'), 'layout', {
+        nativeEvent: { layout: { x: 0, y: 0, width: 400, height: 90 } },
+      });
+      // Chưa dính trước khi biết chiều cao header: 4 tab của hàng thật.
+      expect(screen.getAllByRole('tab')).toHaveLength(4);
+
+      await fireEvent.scroll(scrollView, { nativeEvent: { contentOffset: { y: 1001 } } });
+      expect(screen.getAllByRole('tab')).toHaveLength(8);
+
+      await fireEvent.scroll(scrollView, { nativeEvent: { contentOffset: { y: 0 } } });
+      expect(screen.getAllByRole('tab')).toHaveLength(4);
     });
   });
 
@@ -708,7 +775,8 @@ describe('TourDetailScreen', () => {
           {...baseProps({ activeTab: 'itinerary', itineraryDays: [...ITINERARY_DAYS] })}
         />,
       );
-      expect(screen.queryByText('Airport pickup')).toBeNull();
+      // Thu gọn có animation ~0.3s: nội dung chỉ gỡ khỏi cây sau khi chạy xong.
+      await waitFor(() => expect(screen.queryByText('Airport pickup')).toBeNull());
     });
 
     it('bấm ngày đang thu gọn để mở, bấm ngày đang mở để thu lại', async () => {
@@ -720,7 +788,8 @@ describe('TourDetailScreen', () => {
 
       // Ngày 1 mở sẵn — bấm để thu lại.
       await fireEvent.press(screen.getByText('Arrival in Đà Nẵng'));
-      expect(screen.queryByText('Airport pickup')).toBeNull();
+      // Thu gọn có animation ~0.3s: nội dung chỉ gỡ khỏi cây sau khi chạy xong.
+      await waitFor(() => expect(screen.queryByText('Airport pickup')).toBeNull());
     });
 
     it('có meetingPoint: vẽ khối "Meeting point"; null thì không vẽ', async () => {

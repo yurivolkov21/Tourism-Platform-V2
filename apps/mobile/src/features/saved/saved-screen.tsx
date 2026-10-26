@@ -1,15 +1,23 @@
-import Feather from '@expo/vector-icons/Feather';
 import {
+  AppRefreshControl,
   AppText,
   Button,
   EmptyState,
+  ExitCollapse,
+  FadeIn,
+  Icon,
+  LargeTitleHeader,
+  ParallaxCell,
+  Presence,
   SCREEN_EDGES_UNDER_TABS,
   Screen,
+  Skeleton,
+  SwipeToRemove,
   TourListCard,
   useTheme,
-  withAlpha,
 } from '@tourism/mobile-ui';
-import { ScrollView, useWindowDimensions, View } from 'react-native';
+import { useRef, useState } from 'react';
+import { Animated, useWindowDimensions, View } from 'react-native';
 
 export type SavedStatus = 'loading' | 'error' | 'content';
 
@@ -27,6 +35,8 @@ export interface SavedTourVM {
 }
 
 export interface SavedScreenProps {
+  /** Kéo xuống để làm mới — route giữ trạng thái và gọi refetch; vắng thì không có. */
+  refresh?: { refreshing: boolean; onRefresh: () => void };
   status: SavedStatus;
   title: string;
   items: readonly SavedTourVM[];
@@ -55,6 +65,7 @@ export interface SavedScreenProps {
  * riêng, KHÔNG vẽ ở đây — route quyết định vẽ cái nào theo `signedIn`.
  */
 export function SavedScreen({
+  refresh,
   status,
   title,
   items,
@@ -74,6 +85,11 @@ export function SavedScreen({
   transformUrl,
 }: SavedScreenProps) {
   const theme = useTheme();
+  // Thẻ đang chạy hiệu ứng "đi ra" — gỡ khỏi dữ liệu (onRemovePress) chỉ SAU khi hiệu ứng xong.
+  const [removingIds, setRemovingIds] = useState<ReadonlySet<string>>(new Set());
+  // Vị trí cuộn — nuôi parallax ảnh thẻ (native driver).
+  const scrollY = useRef(new Animated.Value(0)).current;
+  const windowHeight = useWindowDimensions().height;
   // Bề rộng thẻ = màn − đệm hai bên (spacing(4) mỗi bên) — cùng khuôn ExploreScreen.
   const cardWidth = useWindowDimensions().width - theme.spacing(8);
 
@@ -82,15 +98,19 @@ export function SavedScreen({
       {/* gap(2) chứ không gap(4) như trước: card đầu tiên phải NẰM GẦN dòng
           đếm hơn là cách xa nó — khoảng cách title↔count (gap(4) trong khối
           bên dưới) mới là khoảng lớn, count↔card phải hẹp hơn. */}
-      <View style={{ flex: 1, paddingTop: theme.spacing(3), gap: theme.spacing(2) }}>
-        {wishlistErrorLabel === null ? null : (
+      <View style={{ flex: 1, gap: theme.spacing(2) }}>
+        <Presence
+          show={wishlistErrorLabel !== null}
+          style={{
+            position: 'absolute',
+            top: theme.spacing(2),
+            left: theme.spacing(4),
+            right: theme.spacing(4),
+            zIndex: 10,
+          }}
+        >
           <View
             style={{
-              position: 'absolute',
-              top: theme.spacing(2),
-              left: theme.spacing(4),
-              right: theme.spacing(4),
-              zIndex: 10,
               backgroundColor: theme.colors.card,
               borderWidth: 1,
               borderColor: theme.colors['destructive-emphasis'],
@@ -103,17 +123,8 @@ export function SavedScreen({
               {wishlistErrorLabel}
             </AppText>
           </View>
-        )}
-        {/* gap(4)=16dp khớp mockup (title `top:s*2`, count `top:s*14` — lệch
-            s*12=48dp trừ chiều cao dòng title ~32dp ≈ 16dp khoảng cách thật). */}
-        <View style={{ paddingHorizontal: theme.spacing(4), gap: theme.spacing(4) }}>
-          <AppText variant="title">{title}</AppText>
-          {countLabel === null ? null : (
-            <AppText variant="caption" tone="muted">
-              {countLabel}
-            </AppText>
-          )}
-        </View>
+        </Presence>
+        <LargeTitleHeader title={title} subtitle={countLabel} />
 
         {status === 'loading' ? (
           <SavedLoading />
@@ -150,57 +161,69 @@ export function SavedScreen({
             </EmptyState>
           </View>
         ) : (
-          <ScrollView
+          <Animated.ScrollView
+            onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], {
+              useNativeDriver: true,
+            })}
+            scrollEventThrottle={16}
             contentContainerStyle={{
               paddingHorizontal: theme.spacing(4),
-              gap: theme.spacing(3),
               paddingBottom: theme.spacing(4),
             }}
+            style={{ flex: 1 }}
+            refreshControl={refresh === undefined ? undefined : <AppRefreshControl {...refresh} />}
           >
-            {items.map((item) => (
-              <View key={item.tourId} style={{ opacity: item.unavailable ? 0.55 : 1 }}>
-                <TourListCard
-                  imageUrl={item.imageUrl}
-                  imageAlt={item.title}
-                  title={item.title}
-                  locationLabel={item.locationLabel}
-                  fromLabel={fromLabel}
-                  priceLabel={item.priceLabel}
-                  compareAtPriceLabel={null}
-                  rating={item.unavailable ? null : item.rating}
-                  favorited
-                  favoriteLabel={removeLabel}
-                  onFavoritePress={() => onRemovePress(item.tourId)}
-                  onPress={item.unavailable ? () => {} : () => onTourPress(item.slug)}
-                  transformUrl={transformUrl}
-                  width={cardWidth}
-                />
-                {item.unavailable ? (
-                  <View
-                    pointerEvents="none"
-                    style={{
-                      position: 'absolute',
-                      top: theme.spacing(3),
-                      left: theme.spacing(3),
-                      height: theme.spacing(7),
-                      paddingHorizontal: theme.spacing(2.5),
-                      borderRadius: 999,
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      backgroundColor: withAlpha(theme.colors.scrim, 0.6),
+            {items.map((item, index) => (
+              <ParallaxCell key={item.tourId} scrollY={scrollY} viewport={windowHeight}>
+                {(parallax) => (
+                  <ExitCollapse
+                    gap={theme.spacing(3)}
+                    exiting={removingIds.has(item.tourId)}
+                    onExited={() => {
+                      setRemovingIds((current) => {
+                        const next = new Set(current);
+                        next.delete(item.tourId);
+                        return next;
+                      });
+                      onRemovePress(item.tourId);
                     }}
                   >
-                    <AppText
-                      variant="caption"
-                      style={{ color: theme.colors['on-media'], fontWeight: theme.weight.semibold }}
-                    >
-                      {unavailableLabel}
-                    </AppText>
-                  </View>
-                ) : null}
-              </View>
+                    <FadeIn index={index}>
+                      <SwipeToRemove
+                        label={removeLabel}
+                        disabled={removingIds.has(item.tourId)}
+                        onRemove={() =>
+                          setRemovingIds((current) => new Set(current).add(item.tourId))
+                        }
+                      >
+                        <TourListCard
+                          imageUrl={item.imageUrl}
+                          imageAlt={item.title}
+                          title={item.title}
+                          locationLabel={item.locationLabel}
+                          fromLabel={fromLabel}
+                          priceLabel={item.priceLabel}
+                          compareAtPriceLabel={null}
+                          rating={item.unavailable ? null : item.rating}
+                          unavailable={item.unavailable}
+                          unavailableLabel={unavailableLabel}
+                          favorited
+                          favoriteLabel={removeLabel}
+                          onFavoritePress={() =>
+                            setRemovingIds((current) => new Set(current).add(item.tourId))
+                          }
+                          onPress={item.unavailable ? () => {} : () => onTourPress(item.slug)}
+                          transformUrl={transformUrl}
+                          width={cardWidth}
+                          parallax={parallax}
+                        />
+                      </SwipeToRemove>
+                    </FadeIn>
+                  </ExitCollapse>
+                )}
+              </ParallaxCell>
             ))}
-          </ScrollView>
+          </Animated.ScrollView>
         )}
       </View>
     </Screen>
@@ -220,7 +243,7 @@ function SquareIcon({ name }: { name: 'wifi-off' | 'heart' }) {
         justifyContent: 'center',
       }}
     >
-      <Feather name={name} size={28} color={theme.colors['primary-emphasis']} />
+      <Icon name={name} size={28} color={theme.colors['primary-emphasis']} />
     </View>
   );
 }
@@ -230,12 +253,11 @@ function SavedLoading() {
   return (
     <View style={{ paddingHorizontal: theme.spacing(4), gap: theme.spacing(3) }}>
       {[0, 1].map((i) => (
-        <View
+        <Skeleton
           key={i}
           style={{
             height: theme.spacing(42),
             borderRadius: theme.radius.base * 3,
-            backgroundColor: theme.colors.muted,
           }}
         />
       ))}

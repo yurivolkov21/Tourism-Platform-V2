@@ -1,9 +1,9 @@
-import Feather from '@expo/vector-icons/Feather';
 import {
   AppText,
   Button,
   EmptyState,
   type FeatherIconName,
+  Icon,
   SCREEN_EDGES_UNDER_TABS,
   Screen,
   useTheme,
@@ -79,7 +79,7 @@ export function AuthGateScreen({
                 justifyContent: 'center',
               }}
             >
-              <Feather name={icon} size={28} color={theme.colors['primary-emphasis']} />
+              <Icon name={icon} size={28} color={theme.colors['primary-emphasis']} />
             </View>
           }
           title={title}
@@ -117,11 +117,11 @@ export function AuthGateScreen({
                 borderBottomColor: theme.colors.border,
               }}
             >
-              <Feather name={link.icon} size={20} color={theme.colors.foreground} />
+              <Icon name={link.icon} size={20} color={theme.colors.foreground} />
               <AppText variant="label" style={{ flex: 1 }}>
                 {link.label}
               </AppText>
-              <Feather name="external-link" size={16} color={theme.colors['muted-foreground']} />
+              <Icon name="external-link" size={16} color={theme.colors['muted-foreground']} />
             </Pressable>
           ))}
         </View>

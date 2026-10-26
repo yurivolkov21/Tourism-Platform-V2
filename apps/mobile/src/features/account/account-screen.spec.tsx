@@ -1,10 +1,11 @@
 import { fireEvent, screen } from '@testing-library/react-native';
-import { Text } from 'react-native';
-import { renderWithTheme } from '@/test-utils';
+import { StyleSheet } from 'react-native';
+import { renderWithTheme, themeFor } from '@/test-utils';
 import { AccountScreen, type AccountScreenProps } from './account-screen';
 
 function baseProps(overrides: Partial<AccountScreenProps> = {}): AccountScreenProps {
   return {
+    title: 'Account',
     name: 'Lan Nguyen',
     email: 'lan.nguyen@example.com',
     avatarUrl: null,
@@ -15,7 +16,10 @@ function baseProps(overrides: Partial<AccountScreenProps> = {}): AccountScreenPr
     onEditAvatar: jest.fn(),
     menuItems: [
       { key: 'personal', icon: 'user', label: 'Personal details', onPress: jest.fn() },
-      { key: 'saved', icon: 'heart', label: 'Saved tours', onPress: jest.fn() },
+      { key: 'reviews', icon: 'star', label: 'My reviews', onPress: jest.fn() },
+    ],
+    linksLabel: 'Help & policies',
+    linkItems: [
       {
         key: 'terms',
         icon: 'file-text',
@@ -34,15 +38,15 @@ describe('AccountScreen', () => {
   it('A1 — vẽ tên, email, chữ cái đầu khi chưa có ảnh', async () => {
     await renderWithTheme(<AccountScreen {...baseProps()} />);
 
-    // KHÔNG có tiêu đề trang "Account" riêng — chốt 26/09: đã đăng nhập thì bỏ,
-    // chỉ A2 (chưa đăng nhập, AuthGateScreen) còn giữ.
-    expect(screen.queryByText('Account')).toBeNull();
+    // Có tiêu đề lớn "Account" (F1, mockup vòng 4 thay quyết định 26/09);
+    // A2 (chưa đăng nhập, AuthGateScreen) cũng có.
+    expect(screen.getByText('Account')).toBeTruthy();
     expect(screen.getByText('Lan Nguyen')).toBeTruthy();
     expect(screen.getByText('lan.nguyen@example.com')).toBeTruthy();
     expect(screen.getByText('LN')).toBeTruthy();
   });
 
-  it('bấm bút chì gọi onEditName', async () => {
+  it('bấm thẻ hồ sơ gọi onEditName', async () => {
     const onEditName = jest.fn();
     await renderWithTheme(<AccountScreen {...baseProps({ onEditName })} />);
 
@@ -63,12 +67,12 @@ describe('AccountScreen', () => {
     await renderWithTheme(
       <AccountScreen
         {...baseProps({
-          menuItems: [{ key: 'saved', icon: 'heart', label: 'Saved tours', onPress }],
+          menuItems: [{ key: 'reviews', icon: 'star', label: 'My reviews', onPress }],
         })}
       />,
     );
 
-    await fireEvent.press(screen.getByText('Saved tours'));
+    await fireEvent.press(screen.getByText('My reviews'));
     expect(onPress).toHaveBeenCalled();
   });
 
@@ -80,19 +84,29 @@ describe('AccountScreen', () => {
     expect(onSignOutPress).toHaveBeenCalled();
   });
 
-  it('dòng menu CUỐI không có viền dưới — Sign out ngay sau đã có viền trên riêng, tránh gạch đôi', async () => {
+  it('menu là danh sách thẻ rời: hàng đầu bo trên 20, hàng cuối bo dưới 20, Sign out nằm nhóm riêng', async () => {
     await renderWithTheme(<AccountScreen {...baseProps()} />);
 
     const rows = screen.getAllByRole('button');
-    // Ba dòng menu (personal/saved/terms) đứng TRƯỚC "Sign out"/"Edit name"
-    // trong cây — đọc theo đúng thứ tự dựng ở JSX.
-    const lastMenuRow = rows[rows.length - 2]; // dòng cuối menuItems, ngay trước Sign out
-    expect(lastMenuRow?.props.style).toMatchObject({ borderBottomWidth: 0 });
+    const firstMenuRow = rows[2]; // sau nút avatar và thẻ hồ sơ
+    expect(firstMenuRow?.props.style).toMatchObject({ borderTopLeftRadius: 20 });
+    expect(screen.getByText('Sign out')).toBeTruthy();
   });
 
-  it('footer render được BÊN TRONG ScrollView (không mất tích như sibling ngoài Screen)', async () => {
-    await renderWithTheme(<AccountScreen {...baseProps({ footer: <Text>Gallery (dev)</Text> })} />);
+  it('F1 — nhóm Help & policies có nhãn nhóm, Sign out không icon', async () => {
+    await renderWithTheme(<AccountScreen {...baseProps()} />);
 
-    expect(screen.getByText('Gallery (dev)')).toBeTruthy();
+    expect(screen.getByText('Help & policies')).toBeTruthy();
+    expect(screen.getByText('Terms of service')).toBeTruthy();
+  });
+
+  it('F1 — ô hồ sơ là một thẻ: nền card, bo 20, không viền', async () => {
+    const theme = themeFor('light');
+    await renderWithTheme(<AccountScreen {...baseProps()} />);
+
+    const style = StyleSheet.flatten(screen.getByTestId('account-profile-card').props.style);
+    expect(style.backgroundColor).toBe(theme.colors.card);
+    expect(style.borderRadius).toBe(20);
+    expect(style.borderWidth).toBeUndefined();
   });
 });

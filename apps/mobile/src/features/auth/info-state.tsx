@@ -1,8 +1,8 @@
-import Feather from '@expo/vector-icons/Feather';
 import {
   AppText,
   Button,
   type FeatherIconName,
+  Icon,
   IconButton,
   Screen,
   useTheme,
@@ -70,7 +70,7 @@ export function InfoState({
             marginTop: theme.spacing(6),
           }}
         >
-          <Feather name={icon} size={28} color={theme.colors['primary-emphasis']} />
+          <Icon name={icon} size={28} color={theme.colors['primary-emphasis']} />
         </View>
 
         <AppText variant="display" style={{ marginTop: theme.spacing(5.5) }}>

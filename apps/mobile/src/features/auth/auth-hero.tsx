@@ -1,5 +1,12 @@
-import Feather from '@expo/vector-icons/Feather';
-import { AppText, type FeatherIconName, IconButton, useTheme, withAlpha } from '@tourism/mobile-ui';
+import {
+  AppText,
+  AuroraGradient,
+  type FeatherIconName,
+  Icon,
+  IconButton,
+  useTheme,
+  withAlpha,
+} from '@tourism/mobile-ui';
 import { LinearGradient } from 'expo-linear-gradient';
 import { ImageBackground, type ImageSourcePropType, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -42,6 +49,7 @@ export function AuthHero({ image, place, exit, height = 'tall' }: AuthHeroProps)
         resizeMode="cover"
         style={{ height: photoHeight }}
       >
+        <AuroraGradient intensity={0.28} />
         <LinearGradient
           colors={[
             withAlpha(theme.colors.scrim, 0.45),
@@ -82,7 +90,7 @@ export function AuthHero({ image, place, exit, height = 'tall' }: AuthHeroProps)
             gap: theme.spacing(1),
           }}
         >
-          <Feather name="map-pin" size={12} color={theme.colors['on-media']} />
+          <Icon name="map-pin" size={12} color={theme.colors['on-media']} />
           <AppText variant="caption" tone="media">
             {place}
           </AppText>

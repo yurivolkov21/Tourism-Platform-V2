@@ -2,8 +2,9 @@ import { messages } from '@tourism/i18n';
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { getBookingDraft } from '@/features/booking/booking-draft';
+import { BookingStepProgress } from '@/features/booking/booking-parts';
 import { BookingStatusScreen } from '@/features/booking/booking-status-screen';
-import { openCheckout } from '@/features/booking/open-checkout';
+import { appReturnUrl, openCheckout } from '@/features/booking/open-checkout';
 
 /**
  * B5 (spec P5b-3) — rời app sang trình duyệt. `checkoutUrl` đã có từ lúc
@@ -27,11 +28,24 @@ export default function BookingCheckoutRoute() {
   return (
     <BookingStatusScreen
       icon="external-link"
+      progress={
+        <BookingStepProgress
+          step={4}
+          total={4}
+          label={booking.stepLabel(4, 4)}
+          stepNames={booking.stepNames}
+        />
+      }
       heading={booking.checkoutHeading}
       body={openFailed ? booking.openBrowserFailed : booking.browserHint}
       primary={{
         label: booking.openCheckout,
-        onPress: () => void openCheckout(openUrl).then((opened) => setOpenFailed(!opened)),
+        onPress: () =>
+          void openCheckout(openUrl, appReturnUrl('/bookings/new/verify')).then((outcome) => {
+            setOpenFailed(outcome === 'failed');
+            // Cổng trả khách về app (ADR-0062): sang thẳng B6 — B6 hỏi lại server, không tin trình duyệt.
+            if (outcome === 'returned') router.replace('/bookings/new/verify');
+          }),
       }}
       // B6 (đang xác nhận) — hỏi lại server, KHÔNG tự cho là đã trả.
       secondary={{

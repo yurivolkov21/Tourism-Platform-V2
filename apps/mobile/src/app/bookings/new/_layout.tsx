@@ -1,6 +1,7 @@
 import { messages } from '@tourism/i18n';
 import { useTheme } from '@tourism/mobile-ui';
 import { Stack } from 'expo-router';
+import { STACK_TRANSITION } from '@/lib/stack-transition';
 
 /**
  * Cụm đặt tour (P5b-3, mockup B1-B9) — Stack RIÊNG lồng trong stack gốc, cùng
@@ -16,6 +17,7 @@ export default function BookingNewLayout() {
   return (
     <Stack
       screenOptions={{
+        ...STACK_TRANSITION,
         headerStyle: { backgroundColor: theme.colors.background },
         headerTintColor: theme.colors.foreground,
         headerShadowVisible: false,
@@ -24,8 +26,8 @@ export default function BookingNewLayout() {
     >
       <Stack.Screen name="travellers" options={{ title: titles.bookThisTour }} />
       <Stack.Screen name="contact" options={{ title: titles.bookThisTour }} />
-      <Stack.Screen name="review" options={{ title: titles.reviewAndPay }} />
-      <Stack.Screen name="checkout" options={{ title: titles.payment }} />
+      <Stack.Screen name="review" options={{ title: titles.bookThisTour }} />
+      <Stack.Screen name="checkout" options={{ title: titles.bookThisTour }} />
       <Stack.Screen name="verify" options={{ title: titles.payment }} />
       <Stack.Screen name="success" options={{ headerShown: false, gestureEnabled: false }} />
     </Stack>

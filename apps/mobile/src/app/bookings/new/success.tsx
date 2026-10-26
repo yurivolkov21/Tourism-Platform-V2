@@ -29,7 +29,6 @@ export default function BookingSuccessRoute() {
   if (draft === null) return null;
 
   const { trip } = draft;
-  const partySize = draft.numAdults + draft.numChildren;
   const amount = formatMoney(draft.totalAmount, trip.currency);
   const bookingCode = draft.bookingCode ?? '';
 
@@ -53,7 +52,9 @@ export default function BookingSuccessRoute() {
       bookingCodeLabel={booking.bookingCodeLabel}
       bookingCode={bookingCode}
       tourTitle={trip.tourTitle}
-      travellersLabel={messages.mobile.trips.travellersCount(partySize)}
+      travellersCaption={booking.successTravellersLabel}
+      travellersLabel={messages.accountBookings.travellers(draft.numAdults, draft.numChildren)}
+      totalCaption={booking.successTotalLabel}
       dateRangeLabel={formatDepartureRange(trip.startDate, trip.endDate)}
       totalAmount={amount}
       viewBookingLabel={booking.viewBooking}

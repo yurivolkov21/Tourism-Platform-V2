@@ -132,4 +132,51 @@ describe('HomeScreen', () => {
     await fireEvent.press(screen.getByText('South'));
     expect(onSelectRegion).toHaveBeenCalledWith('Southern Vietnam');
   });
+
+  describe('chuông thông báo', () => {
+    it('không truyền notifications (khách chưa đăng nhập) → không vẽ chuông', async () => {
+      await renderWithTheme(<HomeScreen {...NOOP_PROPS} status="content" destinations={[]} />);
+      expect(screen.queryByLabelText('Notifications')).toBeNull();
+    });
+
+    it('có notifications → chuông bên phải hàng đầu, bấm gọi onPress', async () => {
+      const onPress = jest.fn();
+      await renderWithTheme(
+        <HomeScreen
+          {...NOOP_PROPS}
+          status="content"
+          destinations={[]}
+          notifications={{ unreadCount: 0, label: 'Notifications', onPress }}
+        />,
+      );
+
+      await fireEvent.press(screen.getByLabelText('Notifications'));
+      expect(onPress).toHaveBeenCalled();
+      // Hết chưa đọc thì không có chấm.
+      expect(screen.queryByTestId('notification-badge')).toBeNull();
+    });
+
+    it('có chưa đọc → chấm đỏ kèm số; từ 10 trở lên hiện "9+"', async () => {
+      const { rerender } = await renderWithTheme(
+        <HomeScreen
+          {...NOOP_PROPS}
+          status="content"
+          destinations={[]}
+          notifications={{ unreadCount: 3, label: 'Notifications, 3 unread', onPress: jest.fn() }}
+        />,
+      );
+      expect(screen.getByTestId('notification-badge')).toBeTruthy();
+      expect(screen.getByText('3')).toBeTruthy();
+
+      await rerender(
+        <HomeScreen
+          {...NOOP_PROPS}
+          status="content"
+          destinations={[]}
+          notifications={{ unreadCount: 12, label: 'Notifications, 12 unread', onPress: jest.fn() }}
+        />,
+      );
+      expect(screen.getByText('9+')).toBeTruthy();
+    });
+  });
 });
