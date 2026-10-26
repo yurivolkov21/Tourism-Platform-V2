@@ -97,12 +97,13 @@ if (SAO_LUU !== NGAY) {
 const nRieng = await xuat(join(ROOT, 'backups', SAO_LUU), RIENG_TU);
 
 // ── keep-list.json ──────────────────────────────────────────────────────────
-// `reset-operational-data.mjs` đọc file này để biết ID admin DUY NHẤT được giữ.
+// `reset-operational-data.mjs` đọc file này để biết Owner nào được LÀM MỚI: cùng
+// email, dòng mới (Yuri chốt 26/10/2026; trước đó nó GIỮ nguyên dòng admin này).
 // Trước 10/09 nó được viết TAY một lần rồi script reset trỏ cứng vào thư mục
 // ngày 09/09 — nghĩa là mọi lần xuất snapshot mới đều thiếu file, và bước xoá
 // vẫn im lặng đọc bản cũ. Sinh nó ở đây để snapshot tự đủ.
 //
-// Chọn admin nào để GIỮ — tuyệt đối không đoán. Bản nháp đầu của khối này dùng
+// Chọn admin nào — tuyệt đối không đoán. Bản nháp đầu của khối này dùng
 // "ADMIN cũ nhất" và chọn NHẦM `admin@tourism.test` (rác của seed) thay vì tài
 // khoản gmail thật; chạy reset với nó là xoá đúng tài khoản người dùng đang
 // dùng. Một heuristic sai ở đây không báo lỗi — nó chỉ lặng lẽ xoá nhầm người.
@@ -150,10 +151,11 @@ writeFileSync(
     {
       ghi_chu:
         'Sinh tự động bởi export-snapshot.mjs. reset-operational-data.mjs đọc file ' +
-        'này ở thư mục snapshot MỚI NHẤT để biết admin nào được giữ lại.',
-      ly_do_giu_uuid:
-        'Giữ nguyên uuid admin thay vì tạo mới: 9 bài blog trỏ vào nó qua FK ' +
-        'RESTRICT, và ADMIN_EMAILS trên Render phải khớp email này.',
+        'này ở thư mục snapshot MỚI NHẤT để biết Owner nào được làm mới.',
+      ly_do_giu_email:
+        'Owner được làm mới chứ không xoá hẳn: dòng mới cùng email, uuid mới, chưa ' +
+        'có mật khẩu. Giữ email để ADMIN_EMAILS trên Render vẫn khớp; 9 bài blog ' +
+        'trỏ vào Owner qua FK RESTRICT nên được chuyển sang dòng mới trước khi xoá dòng cũ.',
       admin_duy_nhat: {
         id: giu.id,
         email_rut_gon: rutGon(giu.email),
@@ -161,8 +163,8 @@ writeFileSync(
         created_at: giu.created_at,
         ghi_chu:
           admins.length > 1
-            ? `Prod có ${admins.length} ADMIN lúc xuất; giữ bản này, ${admins.length - 1} bản còn lại sẽ bị xoá khi reset.`
-            : 'Chỉ có đúng một ADMIN lúc xuất.',
+            ? `Prod có ${admins.length} ADMIN lúc xuất; bản này được làm mới, ${admins.length - 1} bản còn lại bị xoá khi reset.`
+            : 'Chỉ có đúng một ADMIN lúc xuất; bản này được làm mới khi reset.',
       },
       so_admin_luc_xuat: admins.length,
     },
@@ -171,7 +173,7 @@ writeFileSync(
   )}\n`,
 );
 console.log(
-  `\n  keep-list.json  → giữ admin ${rutGon(giu.email)} (${admins.length} ADMIN lúc xuất)`,
+  `\n  keep-list.json  → làm mới Owner ${rutGon(giu.email)} (${admins.length} ADMIN lúc xuất)`,
 );
 
 console.log(`\n✓ Tổng ${nCongKhai + nRieng} dòng (${nCongKhai} công khai, ${nRieng} riêng tư)`);

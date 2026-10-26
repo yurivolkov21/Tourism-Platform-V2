@@ -46,12 +46,12 @@ const COT_NGAY_LICH = new Set([
   'departure_end_date',
   'travel_date',
 ]);
-/** Hai bảng tài khoản chỉ kiểm dòng của khách giả — admin giữ lại mang mốc thật. */
+/** Hai bảng tài khoản chỉ kiểm dòng của khách giả — Owner (reset tạo lại, giữ email) mang mốc thật. */
 const LOC_BANG = {
   users: `email like '%@example.com'`,
   accounts: `user_id in (select id from users where email like '%@example.com')`,
 };
-/** Dòng GIỮ LẠI của hai bảng tài khoản (admin thật) — chỉ kiểm nằm trong năm 2026. */
+/** Dòng không phải khách giả của hai bảng tài khoản (Owner thật) — chỉ kiểm nằm trong năm 2026. */
 const LOC_BANG_GIU_LAI = {
   users: `email not like '%@example.com'`,
   accounts: `user_id not in (select id from users where email like '%@example.com')`,
@@ -73,7 +73,8 @@ const BAT_BIEN = [
     `select abs(count(*) - 120)::int as n from users where email like '%@example.com'`,
     false,
   ],
-  // User chốt 14/09: giữ đúng một tài khoản admin — seed không bao giờ được sinh admin thứ hai.
+  // Đúng một tài khoản admin (user chốt 14/09; từ 26/10 là Owner do reset làm mới) — seed không
+  // bao giờ được sinh admin thứ hai.
   [
     'số tài khoản ADMIN khác 1',
     `select abs(count(*) - 1)::int as n from users where role = 'ADMIN'`,

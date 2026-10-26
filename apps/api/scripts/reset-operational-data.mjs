@@ -12,8 +12,19 @@
  * ── Nó GIỮ gì ──
  * Toàn bộ tầng nội dung và ảnh: tours, destinations, tour_categories và các bảng
  * con của tour, media_assets, site_media_slots, VÀ CẢ blog (posts, post_tags,
- * post_tag_links), cùng đúng một tài khoản admin. Ngoại lệ duy nhất là ảnh của
- * review: chúng rời site cùng review và sang hàng dọn media (G22, xem SQL_ANH_REVIEW).
+ * post_tag_links). Ngoại lệ duy nhất là ảnh của review: chúng rời site cùng review
+ * và sang hàng dọn media (G22, xem SQL_ANH_REVIEW). Không giữ tài khoản nào, kể cả
+ * Owner: xem mục kế tiếp.
+ *
+ * ── Owner được LÀM MỚI chứ không được giữ (Yuri chốt 26/10/2026) ──
+ * Trước 26/10 script giữ nguyên dòng admin cùng phiên đăng nhập của nó. Lượt seed lại
+ * 2 làm mới mọi tài khoản, kể cả Owner, và Owner giữ email cũ để `ADMIN_EMAILS` trên
+ * Render khỏi đổi. Trong cùng transaction: đổi email dòng cũ sang một địa chỉ tạm
+ * (email là citext unique), chèn dòng Owner mới mang email ấy, chuyển `posts.author_id`
+ * sang dòng mới, rồi mới xoá mọi tài khoản, cả dòng cũ. Dòng mới chưa có mật khẩu:
+ * trang đăng nhập admin có "Forgot password?", và Better Auth tạo dòng `accounts`
+ * credential khi đặt lại mật khẩu cho tài khoản chưa có. Spec seed 14/09 §8.5, điều
+ * chỉnh 26/10.
  *
  * ── Vì sao blog KHÔNG bị xoá, dù đợt này làm mới nội dung blog ──
  * Ban đầu script có xoá `posts`. Review đối kháng bắt được đó là lỗi CHẶN HỎNG:
@@ -24,8 +35,8 @@
  *
  * Lý do DUY NHẤT phải xoá posts là khoá ngoại RESTRICT `posts.author_id → users`
  * (tài khoản Seed Admin đang giữ cả 9 bài). Cách đúng là gỡ tham chiếu đó bằng
- * một lệnh UPDATE trỏ tác giả sang admin được giữ — giữ nguyên 9 uuid, giữ
- * nguyên ảnh. Chính `keep-list.json` đã kê đúng thuốc này.
+ * một lệnh UPDATE trỏ tác giả sang Owner mới (mục trên) — giữ nguyên 9 uuid, giữ
+ * nguyên ảnh.
  * Làm mới NỘI DUNG blog là việc của seed (upsert theo `slug`), không phải việc
  * của lệnh xoá.
  *
@@ -41,6 +52,7 @@
  * cancellation_requests→users, cancellation_requests→bookings, posts→users,
  * refunds→bookings, tours→tour_categories.
  */
+import { randomUUID } from 'node:crypto';
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import pg from 'pg';
@@ -79,7 +91,14 @@ const keep = JSON.parse(
   readFileSync(join(THU_MUC_SNAPSHOT, NGAY_MOI_NHAT, 'keep-list.json'), 'utf8'),
 );
 console.log(`keep-list: docs/snapshots/${NGAY_MOI_NHAT}/keep-list.json`);
-const ADMIN_ID = keep.admin_duy_nhat.id;
+/** Owner hiện tại theo keep-list: dòng này nhường email cho {@link OWNER_MOI} rồi bị xoá. */
+const OWNER_CU = keep.admin_duy_nhat.id;
+/**
+ * Id của dòng Owner mới. Sinh từ đầu để lượt chạy khô đếm bằng đúng câu lệnh của lượt
+ * chạy thật: `users` xoá `id <> OWNER_MOI`, mà lúc chạy khô chưa dòng nào mang id này,
+ * nên con số in ra là mọi tài khoản, kể cả Owner cũ.
+ */
+const OWNER_MOI = randomUUID();
 
 /** Thứ tự BẮT BUỘC — con trước cha. Đảo là gãy ở khoá RESTRICT. */
 const KE_HOACH = [
@@ -101,9 +120,9 @@ const KE_HOACH = [
   ['verifications', null, 'token Better Auth, tự sinh lại'],
   ['user_events', null, 'CASCADE ← users, xoá tường minh cho rõ ý (P4f)'],
   ['admin_activity', null, 'nhật ký admin (ADR-0061 §8): dòng trỏ tới đơn và tài khoản xoá ở đây'],
-  ['sessions', 'user_id <> $1', 'giữ phiên admin để không tự đá mình khỏi trang admin'],
-  ['accounts', 'user_id <> $1', 'CASCADE ← users, xoá tường minh cho khớp'],
-  ['users', 'id <> $1', 'GIỮ ĐÚNG MỘT admin — xem keep-list.admin_duy_nhat'],
+  ['sessions', null, 'xoá hết, cả phiên Owner: Owner mới đăng nhập lại sau khi đặt mật khẩu'],
+  ['accounts', null, 'CASCADE ← users, xoá tường minh: cả mật khẩu và Google của Owner cũ'],
+  ['users', 'id <> $1', 'xoá hết, cả Owner cũ; chỉ còn Owner mới cùng email (26/10)'],
 ];
 
 /** Bảng phải còn NGUYÊN VẸN: số dòng trước và sau phải bằng nhau. */
@@ -145,12 +164,13 @@ await client.connect();
 
 console.log(`Nối tới  : ${host}${LA_PROD ? '  ⚠ PRODUCTION' : '  (local)'}`);
 console.log(`Chế độ   : ${APPLY ? 'XOÁ THẬT' : 'DRY RUN — không đụng gì'}`);
-console.log(`Giữ admin: ${keep.admin_duy_nhat.email_rut_gon}  (${ADMIN_ID})\n`);
+console.log(`Owner    : ${keep.admin_duy_nhat.email_rut_gon}  (${OWNER_CU})`);
+console.log(`Owner mới: cùng email, id ${OWNER_MOI}\n`);
 
 const dem = async (bang, where) => {
   const { rows } = await client.query(
     `select count(*)::int as n from ${bang}${where ? ` where ${where}` : ''}`,
-    where ? [ADMIN_ID] : [],
+    where ? [OWNER_MOI] : [],
   );
   return rows[0].n;
 };
@@ -180,35 +200,40 @@ if (chuaPhanLoai.length > 0) {
 }
 console.log(`✓ Cổng phân loại: ${bangThat.length}/${bangThat.length} bảng đã có chỗ`);
 
-// ── Cổng 2: tài khoản admin phải CÓ THẬT trong DB đích ──────────────────────
-// Thiếu bước này thì lỗi lộ ra rất muộn và rất tối nghĩa: lệnh
-// `update posts set author_id = <admin>` sẽ vi phạm khoá ngoại và ném
-// "posts_author_id_fkey" — không ai đoán được nguyên nhân thật là "id trong
-// keep-list không tồn tại ở database này". Đã dính đúng vậy khi chạy thử trên
-// docker local ngày 09/09.
-const { rows: adminRows } = await client.query('select email, role from users where id = $1', [
-  ADMIN_ID,
-]);
+// ── Cổng 2: Owner của keep-list phải CÓ THẬT trong DB đích ──────────────────
+// Thiếu bước này thì lỗi lộ ra rất muộn và rất tối nghĩa (trước 26/10 là lệnh sửa
+// `posts.author_id` vấp khoá ngoại "posts_author_id_fkey"; nay là không có email nào để
+// trao cho Owner mới) — không ai đoán được nguyên nhân thật là "id trong keep-list không
+// tồn tại ở database này". Đã dính đúng vậy khi chạy thử trên docker local ngày 09/09.
+const { rows: adminRows } = await client.query(
+  'select email, name, role from users where id = $1',
+  [OWNER_CU],
+);
 if (adminRows.length !== 1) {
-  console.error(`\n✖ DỪNG: không tìm thấy tài khoản admin ${ADMIN_ID} trong ${host}.`);
-  console.error('  keep-list.json ghi id của Supabase prod. Muốn chạy ở database khác thì DB đó');
-  console.error('  phải có sẵn một user mang đúng id này (hoặc sửa keep-list cho khớp).');
+  console.error(`\n✖ DỪNG: không tìm thấy Owner ${OWNER_CU} của keep-list trong ${host}.`);
+  console.error('  Vừa chạy --apply xong một lượt thì đây là chuyện thường: Owner cũ đã được thay');
+  console.error('  bằng dòng mới, nên phải chạy lại snapshot:export trước khi reset lần nữa.');
+  console.error('  keep-list.json ghi id của DB lúc xuất: muốn chạy ở database khác thì xuất');
+  console.error('  snapshot từ chính DB đó (hoặc sửa keep-list cho khớp).');
   process.exit(1);
 }
 if (adminRows[0].role !== 'ADMIN') {
-  console.error(`\n✖ DỪNG: user ${ADMIN_ID} có role ${adminRows[0].role}, không phải ADMIN.`);
+  console.error(`\n✖ DỪNG: user ${OWNER_CU} có role ${adminRows[0].role}, không phải ADMIN.`);
   process.exit(1);
 }
-console.log(`✓ Cổng admin: tìm thấy, role ${adminRows[0].role}\n`);
+/** Dòng Owner cũ: email và tên của nó sang dòng Owner mới. */
+const ownerCu = adminRows[0];
+console.log(`✓ Cổng admin: tìm thấy, role ${ownerCu.role}\n`);
 
-// ── Cổng 3 (review cuối 14/09): trên prod, admin được giữ phải là admin mà seed sẽ dùng ─
+// ── Cổng 3 (review cuối 14/09): trên prod, Owner phải mang email mà seed sẽ dùng ─
 // `db:seed` chỉ chạy tiếp khi prod có đúng một admin trùng ADMIN_EMAILS[0]
-// (`prisma/fixtures/chot-chan-seed.ts`), nhưng chốt đó chạy SAU bước xoá này. Giữ nhầm
-// admin thì seed từ chối khi admin thật đã bị xoá. Chạy cả ở dry run, để lộ ra trước
-// `--apply`. Không in email: log lượt prod có thể được chép vào CHANGELOG.
+// (`prisma/fixtures/chot-chan-seed.ts`), nhưng chốt đó chạy SAU bước xoá này. Owner mới
+// nhận đúng email của Owner trong keep-list, nên keep-list chọn nhầm admin là Owner thật
+// bị xoá và seed từ chối. Chạy cả ở dry run, để lộ ra trước `--apply`. Không in email:
+// log lượt prod có thể được chép vào CHANGELOG.
 if (LA_PROD) {
   const emailSeed = process.env.ADMIN_EMAILS?.split(',')[0]?.trim().toLowerCase() ?? '';
-  if (!emailSeed || adminRows[0].email.trim().toLowerCase() !== emailSeed) {
+  if (!emailSeed || ownerCu.email.trim().toLowerCase() !== emailSeed) {
     console.error(
       '\n✖ DỪNG: admin trong keep-list không trùng ADMIN_EMAILS[0] (hoặc ADMIN_EMAILS trống).',
     );
@@ -263,11 +288,17 @@ for (const [bang, where, ly_do] of KE_HOACH) {
 }
 console.log(`  ${'─'.repeat(5)}\n  ${String(tong).padStart(5)}  TỔNG\n`);
 
-console.log('MỘT LỆNH SỬA (gỡ khoá RESTRICT mà không xoá bài)');
+console.log('LÀM MỚI OWNER (giữ email, tạo lại tài khoản; gỡ khoá RESTRICT mà không xoá bài)');
+console.log(
+  `  ${'1'.padStart(5)}  Owner cũ: nhường email cho Owner mới, rồi xoá cùng dòng users ở trên`,
+);
+console.log(
+  `  ${'1'.padStart(5)}  Owner mới: cùng email, tên "${ownerCu.name ?? ''}", chưa mật khẩu, chưa phiên`,
+);
 const soBaiPhaiDoi = (
-  await client.query('select count(*)::int as n from posts where author_id <> $1', [ADMIN_ID])
+  await client.query('select count(*)::int as n from posts where author_id <> $1', [OWNER_MOI])
 ).rows[0].n;
-console.log(`  ${String(soBaiPhaiDoi).padStart(5)}  posts.author_id → admin được giữ\n`);
+console.log(`  ${String(soBaiPhaiDoi).padStart(5)}  posts.author_id → Owner mới\n`);
 
 console.log('MỘT LỆNH CHUYỂN (ảnh review rời site cùng review, G22)');
 const keHoachAnh = await docAnhReview();
@@ -293,18 +324,35 @@ try {
   const truoc = new Map();
   for (const bang of PHAI_CON) truoc.set(bang, await demPhaiCon(bang));
 
+  // Làm mới Owner TRƯỚC mọi lệnh xoá: dòng `users` xoá ở cuối KE_HOACH sẽ vấp khoá
+  // RESTRICT `posts.author_id` nếu bài còn trỏ dòng cũ. Email là citext unique nên dòng cũ
+  // phải nhả email trước khi dòng mới nhận; đuôi `.invalid` dành riêng (RFC 2606), không
+  // bao giờ nhận thư, và dòng cũ chỉ sống tới hết transaction này.
+  await client.query('update users set email = $2 where id = $1', [
+    OWNER_CU,
+    `owner-cu-${OWNER_CU}@lam-moi.invalid`,
+  ]);
+  // Chép tên vì blog in tên tác giả dưới 9 bài; mọi thứ khác của tài khoản để trống.
+  // `email_verified` phải bật: Better Auth chặn đăng nhập mật khẩu khi email chưa xác minh
+  // (`requireEmailVerification`), mà lệnh đặt lại mật khẩu không tự bật cờ này.
+  await client.query(
+    `insert into users (id, email, name, email_verified, role, created_at, updated_at)
+     values ($1, $2, $3, true, 'ADMIN', now(), now())`,
+    [OWNER_MOI, ownerCu.email, ownerCu.name],
+  );
+  console.log(`  +${'1'.padStart(5)}  users: Owner mới cùng email (id ${OWNER_MOI})`);
   const { rowCount: doiTacGia } = await client.query(
     'update posts set author_id = $1 where author_id <> $1',
-    [ADMIN_ID],
+    [OWNER_MOI],
   );
   console.log(
-    `  ~${String(doiTacGia).padStart(5)}  posts.author_id (gỡ RESTRICT, giữ nguyên uuid)`,
+    `  ~${String(doiTacGia).padStart(5)}  posts.author_id → Owner mới (gỡ RESTRICT, giữ nguyên uuid)`,
   );
 
   for (const [bang, where] of KE_HOACH) {
     const { rowCount } = await client.query(
       `delete from ${bang}${where ? ` where ${where}` : ''}`,
-      where ? [ADMIN_ID] : [],
+      where ? [OWNER_MOI] : [],
     );
     console.log(`  −${String(rowCount).padStart(5)}  ${bang}`);
   }
@@ -381,11 +429,49 @@ try {
   }
   const moCoi = await demMoCoi();
   if (moCoi !== 0) throw new Error(`${moCoi} ảnh mồ côi — chủ sở hữu đã biến mất`);
-  if ((await dem('users', 'id = $1')) !== 1) throw new Error('Tài khoản admin đã biến mất');
+
+  // Bất biến của lượt làm mới Owner: còn đúng một tài khoản, chính là dòng vừa chèn, mang
+  // hình dạng một tài khoản mới tinh; không phiên, không dòng đăng nhập nào sống sót; không
+  // bài nào trỏ đi đâu khác. Thiếu khối này thì một KE_HOACH sửa sai về sau (giữ lại phiên,
+  // quên xoá dòng cũ) vẫn in COMMIT thành công.
+  const { rows: conUser } = await client.query(
+    'select id, email, role, email_verified, image, phone, locked_at, deleted_at from users',
+  );
+  if (conUser.length !== 1 || conUser[0].id !== OWNER_MOI) {
+    throw new Error(`users phải còn đúng Owner mới, đang còn ${conUser.length} dòng`);
+  }
+  const moi = conUser[0];
+  if (
+    moi.email.toLowerCase() !== ownerCu.email.toLowerCase() ||
+    moi.role !== 'ADMIN' ||
+    moi.email_verified !== true ||
+    moi.image !== null ||
+    moi.phone !== null ||
+    moi.locked_at !== null ||
+    moi.deleted_at !== null
+  ) {
+    throw new Error(
+      'Owner mới sai hình dạng: phải cùng email, ADMIN, đã xác minh, không avatar, không số điện thoại, không khoá',
+    );
+  }
+  const { rows: sot } = await client.query(
+    `select (select count(*) from sessions)::int as phien,
+            (select count(*) from accounts)::int as dang_nhap,
+            (select count(*) from posts where author_id <> $1)::int as bai`,
+    [OWNER_MOI],
+  );
+  if (sot[0].phien !== 0 || sot[0].dang_nhap !== 0 || sot[0].bai !== 0) {
+    throw new Error(
+      `còn ${sot[0].phien} phiên, ${sot[0].dang_nhap} dòng accounts, ${sot[0].bai} bài không trỏ Owner mới`,
+    );
+  }
 
   await client.query('COMMIT');
   console.log(
-    `\n✓ COMMIT — 0 ảnh mồ côi, ${anh.publicIds.length} ảnh review vào hàng dọn, mọi bất biến còn nguyên, admin còn sống.`,
+    `\n✓ COMMIT — 0 ảnh mồ côi, ${anh.publicIds.length} ảnh review vào hàng dọn, mọi bất biến còn nguyên, Owner đã làm mới.`,
+  );
+  console.log(
+    '  Owner mới chưa có mật khẩu: sau db:seed, đặt mật khẩu bằng "Forgot password?" ở trang đăng nhập admin.',
   );
 } catch (err) {
   await client.query('ROLLBACK').catch(() => {});
