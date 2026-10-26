@@ -441,6 +441,37 @@ pnpm seed:verify
   liệu.
 - Entry CHANGELOG riêng cho lượt này.
 
+**Điều chỉnh 26/10 — phạm vi mới của lượt 2** (Yuri chốt 26/10; cách chạy từng bước
+ở [hướng dẫn seed lại production](../guides/huong-dan-seed-lai-production.md)).
+Các gạch trên là bản ghi lúc viết; chỗ nào lệch thì theo phần này.
+
+- Thời điểm: không còn "khoảng 03/11". Lượt này chạy ngay sau buổi test tay cuối,
+  sau cả phần web và admin của Yuri lẫn phần app của Nghĩa, vì cả hai thao tác
+  trên prod.
+- Giữ như cũ: tour, điểm đến, danh mục, bài viết, ảnh (`media_assets`, khe site,
+  hàng dọn ảnh) và `email_suppressions`. Làm mới mọi thứ khác, **kể cả tài khoản
+  Owner**, nên gạch "Không sửa code" ở trên hết đúng: trước 26/10, `data:reset` giữ
+  nguyên Owner cùng phiên đăng nhập của nó.
+- Owner giữ email cũ (Yuri chọn 26/10), nên `ADMIN_EMAILS` trên Render không đổi.
+  Trong cùng một transaction, `data:reset` đổi email của dòng Owner cũ sang một
+  địa chỉ tạm, tạo dòng Owner mới mang email ấy (uuid mới, `email_verified`, chưa
+  mật khẩu, chưa phiên, không avatar, không số điện thoại), chuyển `posts.author_id`
+  sang dòng mới rồi mới xoá mọi tài khoản, kể cả dòng cũ. `posts.author_id` là
+  khoá RESTRICT duy nhất từ một bảng được giữ trỏ vào `users`, và bài viết phải
+  giữ uuid để ảnh hero khỏi mồ côi. Tên được chép sang vì đó là tên tác giả mà
+  blog in dưới 9 bài.
+- Bất biến trước COMMIT, thêm vào các bất biến cũ: `users` còn đúng một dòng là
+  Owner mới với đúng hình dạng trên, 0 dòng `sessions`, 0 dòng `accounts`, mọi bài
+  trỏ Owner mới.
+- Seed nhận Owner mới qua upsert theo email; chốt "đúng một admin trùng
+  `ADMIN_EMAILS[0]`" không đổi. Trang đăng nhập admin chỉ nhận mật khẩu, nên sau
+  seed Owner đặt mật khẩu bằng "Forgot password?": Better Auth 1.6.23 tạo dòng
+  `accounts` credential khi chưa có (đọc ở `dist/api/routes/password.mjs`).
+- Chạy lại `data:reset` sau một lượt đã COMMIT thì keep-list cũ trỏ Owner đã bị
+  thay và cổng 2 từ chối: xuất snapshot mới trước. `snapshot:export` không còn ghi
+  đè bản sao lưu cùng ngày: lần xuất sau vào `backups/<ngày>-2/`, để bản chụp
+  trước reset còn nguyên.
+
 ## 9. Rủi ro và giới hạn đã biết
 
 - **Khoảng trống quanh H:** không có chuyến đang diễn ra và không có giao dịch
