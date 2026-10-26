@@ -12,7 +12,10 @@ nhận email xác nhận. Nếu đổi ý, khách tự bấm huỷ và được 
 công khai. Đi về, khách viết đánh giá. Phía trong, nhân viên có trang quản trị
 riêng để xem đơn, xử lý hoàn tiền ngoại lệ, duyệt đánh giá và xuất báo cáo.
 
-Website chạy thật trên Internet tại **www.nexora-travel.agency**, nhưng **không ai
+Khách cũng dùng được app Android để xem tour, đặt chỗ, theo dõi chuyến và viết
+đánh giá. Trên web có thêm một trợ lý AI trả lời câu hỏi về tour.
+
+Website chạy thật trên Internet tại [www.nexora-travel.agency](https://www.nexora-travel.agency), nhưng **không ai
 mất tiền thật**: cổng thanh toán Stripe và PayPal luôn ở chế độ thử nghiệm — thẻ
 dùng để thử là thẻ giả do chính Stripe/PayPal cấp.
 
@@ -22,14 +25,14 @@ dùng để thử là thẻ giả do chính Stripe/PayPal cấp.
 | --- | --- | --- |
 | **Khách vãng lai** | Không | Xem tour, xem điểm đến, đọc blog, gửi câu hỏi, đăng ký nhận bản tin |
 | **Khách có tài khoản** | Có | Tất cả những việc trên, cộng: đặt tour, trả tiền, xem chuyến của mình, tự huỷ, lưu tour yêu thích, viết và sửa đánh giá |
-| **Nhân viên (Staff)** | Có, do chủ trang cấp quyền | Xem toàn bộ đơn và bảng số liệu, duyệt/từ chối đánh giá, theo dõi câu hỏi khách gửi, sửa catalog và bài viết |
-| **Chủ trang (Owner)** | Có, email nằm trong danh sách cấu hình sẵn | Mọi việc của nhân viên, cộng: hoàn tiền ngoại lệ, huỷ chuyến, xoá tour, bài viết, danh mục và điểm đến, xem báo cáo tháng và sổ sự kiện thanh toán, cấp quyền nhân viên và khoá tài khoản |
+| **Nhân viên (Staff)** | Có, do chủ trang cấp quyền | Xem toàn bộ đơn và bảng số liệu, duyệt hoặc từ chối đánh giá, theo dõi câu hỏi khách gửi, tạo và sửa tour, lịch chuyến, bài viết, thay ảnh của trang web và quản lý thư viện ảnh |
+| **Chủ trang (Owner)** | Có, email nằm trong danh sách cấu hình sẵn | Mọi việc của nhân viên, cộng: hoàn tiền ngoại lệ, huỷ chuyến, xoá tour, bài viết, danh mục và điểm đến, xem báo cáo tháng và sổ sự kiện thanh toán, cấp quyền nhân viên, khoá tài khoản, xem nhật ký thao tác |
 
 Hệ thống có **ba mức quyền**: khách (`CUSTOMER`), nhân viên (`STAFF`) và chủ trang
 (`ADMIN`). Chủ trang cấp hay thu quyền nhân viên cho một khách đã xác minh email,
 và khoá được tài khoản: tài khoản bị khoá không đăng nhập được ở đâu cả.
 
-## Sáu luồng chính
+## Bảy luồng chính
 
 ### 1. Tìm tour
 
@@ -99,15 +102,34 @@ Trang quản trị nằm ở tên miền riêng `admin.nexora-travel.agency`, v�
 - Sổ sự kiện thanh toán (mọi thứ cổng thanh toán báo về đều được lưu lại).
 - Hàng đợi email chờ gửi, để biết mail nào kẹt.
 - Bảng số liệu: doanh thu, số đơn, biểu đồ theo ngày, báo cáo tháng.
-- Catalog: bật/tắt đăng tour, lịch chuyến khởi hành của từng tour (kể cả công
-  ty huỷ chuyến có hoàn tiền), danh mục và điểm đến — hai bảng này ẩn/hiện được,
-  và chỉ xoá được khi chưa tour nào dùng.
+- Catalog: tạo và sửa tour theo từng bước (thông tin, lịch trình, câu hỏi
+  thường gặp và chính sách, chi phí, ảnh), bật hoặc tắt đăng bán, lịch chuyến
+  khởi hành của từng tour (kể cả công ty huỷ chuyến có hoàn tiền), danh mục và
+  điểm đến. Danh mục và điểm đến ẩn hiện được, và chỉ xoá được khi chưa tour nào
+  dùng.
+- Bài viết blog: soạn, sửa, đăng và gỡ.
+- Ảnh của trang web: thay 47 ô ảnh cố định của web, như ảnh lớn ở trang chủ.
+- Thư viện ảnh: mọi ảnh đang dùng, sửa dòng ghi công tác giả một lần cho mọi chỗ
+  dùng ảnh đó, và ảnh của từng điểm đến.
 - Tài khoản (chỉ chủ trang): danh sách, cấp và thu quyền nhân viên, khoá và mở
   khoá, đăng xuất mọi nơi, lịch sử thay đổi của từng người.
+- Nhật ký thao tác (chỉ chủ trang): mỗi lệnh ghi thành công trên trang quản trị
+  để lại một dòng, để trả lời được câu hỏi "ai đã làm việc này, khi nào".
+
+### 7. Trợ lý AI
+
+Trên web có nút chat mở trợ lý AI. Trợ lý tìm tour theo yêu cầu của khách, trả
+lời câu hỏi về một tour cụ thể, và gửi câu hỏi tới nhân viên thay khách khi khách
+bấm đồng ý. Khách đã đăng nhập hỏi được về đơn của chính mình; trợ lý chỉ đọc,
+không sửa hay huỷ đơn.
+
+Mỗi lượt trả lời tốn tiền thật của chủ dự án, nên hệ thống đặt trần chi phí mỗi
+ngày. Chạm trần thì nút chat ẩn tới hôm sau, và khách vẫn gửi câu hỏi được qua
+form liên hệ. Lý do thiết kế ở [ADR-0050](adr/0050-ai-concierge-chat.md).
 
 ## Bốn phần mềm, một máy chủ
 
-```
+```text
    Khách                  Nhân viên               Khách (điện thoại)
      │                        │                          │
  ┌───▼────┐              ┌────▼────┐               ┌─────▼──────┐
@@ -121,7 +143,7 @@ Trang quản trị nằm ở tên miền riêng `admin.nexora-travel.agency`, v�
               │   NestJS   │        │ (Supabase)   │
               └─────┬──────┘        └──────────────┘
                     │
-      Stripe · PayPal · Cloudinary (ảnh) · Resend (email)
+  Stripe · PayPal · Cloudinary (ảnh) · Resend (email) · Anthropic (trợ lý AI)
 ```
 
 **Mọi luật nghiệp vụ nằm ở máy chủ `api`.** Ba app kia chỉ hiển thị và thu thập
@@ -129,21 +151,35 @@ dữ liệu; chúng không tự quyết định giá, không tự kết luận �
 tự tính được hoàn bao nhiêu. Đây là lý do gần như mọi tài liệu kỹ thuật trong
 `docs/` đều xoay quanh máy chủ.
 
-## Vài con số (14/10/2026)
+## Những gì chưa có
+
+- Site không bán tour thật: thanh toán chỉ chạy ở chế độ thử của Stripe và PayPal.
+- App điện thoại chỉ có bản Android dạng build thử, chưa lên cửa hàng ứng dụng;
+  bản iOS chưa được thử trên máy thật.
+- Chưa có xác thực hai lớp. Số điện thoại khách nhập chỉ để liên hệ, chưa được xác
+  minh bằng mã SMS.
+- Web chưa hiện dòng ghi công tác giả của ảnh; app và email đã hiện.
+- Các biểu tượng mạng xã hội ở chân trang chưa trỏ tới tài khoản thật.
+- Giao diện chỉ có tiếng Anh.
+
+Danh sách đầy đủ, kèm lý do để lại, nằm ở [open-items.md](open-items.md) và
+[sổ nợ kỹ thuật](analysis/2026-08-06-backlog-no-ky-thuat.md).
+
+## Vài con số (26/10/2026)
 
 | | |
 | --- | --- |
 | Trang trên web khách | 32 |
-| Trang trên web quản trị | 26 |
-| Đường gọi máy chủ | 96 route khai trong contract, chưa tính các đường đăng nhập của Better Auth |
-| Bảng dữ liệu | 36 |
-| Test tự động | 6.515 (Vitest) + 907 (Jest: app 771, component app 136) + 838 (integration) |
-| Tài liệu | 263 file Markdown trong `docs/` |
+| Trang trên web quản trị | 30 |
+| Đường gọi máy chủ | 107 route khai trong contract, chưa tính các đường đăng nhập của Better Auth |
+| Bảng dữ liệu | 37 |
+| Test tự động | 9526 test, chạy trước mỗi lần gộp code: 8543 test thường và 983 integration test chạy với PostgreSQL thật |
+| Tài liệu | 187 file Markdown trong `docs/` |
 
-## Đọc tiếp gì
+## Đọc tiếp
 
-- Không rành thuật ngữ → [glossary.md](glossary.md)
-- Muốn biết còn nợ việc gì → [open-items.md](open-items.md)
-- Muốn hiểu vì sao làm thế này thay vì thế kia → [mục lục ADR](adr/README.md)
-- Tìm một tài liệu bất kỳ → [bản đồ tài liệu](README.md)
-- Muốn bắt tay vào code → [README của kho mã](../README.md)
+- Gặp từ lạ: [thuật ngữ](glossary.md).
+- Muốn biết còn việc gì chưa làm: [open-items.md](open-items.md).
+- Muốn hiểu vì sao làm thế này thay vì thế kia: [mục lục ADR](adr/README.md).
+- Tìm một tài liệu bất kỳ: [bản đồ tài liệu](README.md).
+- Muốn chạy dự án hoặc đọc code: [README của repo](../README.md).
