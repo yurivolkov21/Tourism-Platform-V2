@@ -12,8 +12,8 @@ import { type CreatePostResult, classifyCreatePostError } from '@/lib/posts-writ
 /**
  * Hành vi GHI của trang `/posts` — cùng khuôn `tours/actions.ts`: re-parse bằng CHÍNH
  * schema contract (hỏng là `INVALID_INPUT`), `cookies()` gọi ngoài `try`, `try` chỉ ôm
- * đúng lời gọi API. Quyền gác ở `AuthGuard` + `@Roles(ADMIN)` của API. Client tự điều
- * hướng vào trang sửa của bài mới.
+ * đúng lời gọi API. Quyền gác ở `AuthGuard` + `@AdminImplement` của API (role suy từ
+ * `ADMIN_ACCESS`, ADR-0052; Staff tạo bài được). Client tự điều hướng vào trang sửa của bài mới.
  */
 export async function createPostAction(input: AdminPostCreateInput): Promise<CreatePostResult> {
   const parsed = AdminPostCreateInputSchema.safeParse(input);

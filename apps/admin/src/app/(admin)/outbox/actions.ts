@@ -15,7 +15,8 @@ import { classifyRetryError, type RetryActionResult } from '@/lib/outbox-retry';
  *
  * - SERVER ACTION vì client oRPC của admin là đường server-only (đọc cookie
  *   phiên qua `next/headers`), được gọi từ một nút trong client component.
- * - Quyền KHÔNG kiểm ở đây: gác ở `AuthGuard` + `@Roles(ADMIN)` của API.
+ * - Quyền KHÔNG kiểm ở đây: gác ở `AuthGuard` + `@AdminImplement` của API (role suy từ
+ *   `ADMIN_ACCESS`, ADR-0052; Staff gọi được).
  * - Input re-parse bằng CHÍNH schema contract: hỏng thì `INVALID_INPUT`.
  * - `try` chỉ ôm ĐÚNG lời gọi; lỗi sau-commit không biến một retry đã ăn
  *   thành thông báo thất bại.

@@ -20,7 +20,8 @@ import { classifyModerateError, type ModerateActionResult } from '@/lib/reviews-
  *   từ một nút trong client component.
  * - Quyền KHÔNG kiểm ở đây: server action là một endpoint POST mở như mọi
  *   endpoint khác, nên quyền gác ở nơi duy nhất đáng tin — `AuthGuard` +
- *   `@Roles(ADMIN)` của API, đọc chính cookie được forward.
+ *   `@AdminImplement` của API (role suy từ `ADMIN_ACCESS`, ADR-0052; Staff duyệt được),
+ *   đọc chính cookie được forward.
  * - Input re-parse bằng CHÍNH schema contract trước khi đi: input hỏng phải
  *   ra `INVALID_INPUT` ("chưa từng rời lớp validate") chứ không phải câu
  *   GENERIC "không rõ đã tới đâu".

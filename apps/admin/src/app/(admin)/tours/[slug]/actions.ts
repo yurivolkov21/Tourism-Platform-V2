@@ -54,7 +54,8 @@ import {
  *
  * - SERVER ACTION vì client oRPC của admin là đường server-only (đọc cookie
  *   phiên qua `next/headers`), được gọi từ form client của từng tab.
- * - Quyền KHÔNG kiểm ở đây: gác ở `AuthGuard` + `@Roles(ADMIN)` của API.
+ * - Quyền KHÔNG kiểm ở đây: gác ở `AuthGuard` + `@AdminImplement` của API (role suy từ
+ *   `ADMIN_ACCESS`, ADR-0052; `tours.delete` chỉ Owner, còn lại Staff gọi được).
  * - Input re-parse bằng CHÍNH schema contract: hỏng thì `INVALID_INPUT`.
  * - `cookies()` gọi NGOÀI `try`, và `try` chỉ ôm ĐÚNG lời gọi API.
  * - KHÔNG `revalidatePath`: trang là server component động, client tự

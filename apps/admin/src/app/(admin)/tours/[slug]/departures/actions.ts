@@ -37,8 +37,9 @@ import {
  * - SERVER ACTION vì client oRPC của admin là đường server-only (đọc cookie
  *   phiên qua `next/headers`), được gọi từ một dialog client.
  * - Quyền KHÔNG kiểm ở đây: server action là một endpoint POST mở như mọi
- *   endpoint khác, nên gác ở `AuthGuard` + `@Roles(ADMIN)` của API — nơi duy
- *   nhất đáng tin, đọc chính cookie được forward.
+ *   endpoint khác, nên gác ở `AuthGuard` + `@AdminImplement` của API (role suy từ
+ *   `ADMIN_ACCESS`, ADR-0052; `departures.cancel` chỉ Owner, còn lại Staff gọi được) —
+ *   nơi duy nhất đáng tin, đọc chính cookie được forward.
  * - Input re-parse bằng CHÍNH schema contract TRƯỚC khi đi: input hỏng ra mã
  *   `INVALID_INPUT` chứ không phải một câu GENERIC mập mờ. Đây cũng là chốt
  *   cuối chặn `status: 'CANCELLED'` — schema không nhận nó, nên kể cả một

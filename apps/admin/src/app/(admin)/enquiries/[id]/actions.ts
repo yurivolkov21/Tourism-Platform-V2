@@ -24,8 +24,9 @@ import {
  * - SERVER ACTION vì client oRPC của admin là đường server-only (đọc cookie
  *   phiên qua `next/headers`), được gọi từ một nút trong client component.
  * - Quyền KHÔNG kiểm ở đây: server action là một endpoint POST mở như mọi
- *   endpoint khác, nên gác ở `AuthGuard` + `@Roles(ADMIN)` của API — nơi
- *   duy nhất đáng tin, đọc chính cookie được forward.
+ *   endpoint khác, nên gác ở `AuthGuard` + `@AdminImplement` của API (role suy từ
+ *   `ADMIN_ACCESS`, ADR-0052; Staff gọi được cả hai thủ tục) — nơi duy nhất đáng tin,
+ *   đọc chính cookie được forward.
  * - Input re-parse bằng CHÍNH schema contract TRƯỚC khi đi: input hỏng phải
  *   ra mã `INVALID_INPUT` ("chưa từng rời lớp validate") chứ không phải câu
  *   GENERIC mập mờ.

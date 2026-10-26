@@ -19,7 +19,8 @@ import { classifySetPublishedError, type SetPublishedActionResult } from '@/lib/
  *
  * - SERVER ACTION vì client oRPC của admin là đường server-only (đọc cookie
  *   phiên qua `next/headers`), được gọi từ một công tắc trong client component.
- * - Quyền KHÔNG kiểm ở đây: gác ở `AuthGuard` + `@Roles(ADMIN)` của API.
+ * - Quyền KHÔNG kiểm ở đây: gác ở `AuthGuard` + `@AdminImplement` của API (role suy từ
+ *   `ADMIN_ACCESS`, ADR-0052; Staff gọi được).
  * - Input re-parse bằng CHÍNH schema contract: hỏng thì `INVALID_INPUT`.
  * - `try` chỉ ôm ĐÚNG lời gọi; lỗi sau-commit không biến một tour đã được gỡ
  *   đăng thành thông báo thất bại.
