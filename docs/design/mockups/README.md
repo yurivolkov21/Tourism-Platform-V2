@@ -44,7 +44,7 @@ P2. Font tải từ Google Fonts nên cần mạng.
 
 | File | Phạm vi | Số khung | Duyệt |
 | --- | --- | --- | --- |
-| `mobile-ui-upgrade.src.html` | Toàn bộ màn của app khách. Nhãn "Đổi bố cục" đánh dấu màn có bố cục khác code hiện tại; nhãn "Để sau" đánh dấu màn đã vẽ lại nhưng nằm ngoài đợt code 23–30/10 | 42 | 19/10, [bàn giao](../../handoff/mobile-ui-upgrade-handoff.md) |
+| `mobile-ui-upgrade.src.html` | Toàn bộ màn của app khách. Nhãn "Đổi bố cục" đánh dấu màn có bố cục khác code hiện tại; nhãn "Để sau" đánh dấu màn đã vẽ lại nhưng nằm ngoài đợt code 23–30/10 | 42 | 19/10, [bàn giao](../../handoff/mobile-ui-upgrade-handoff.md); code gộp 26/10 |
 
 ## Ba trang đơn của khách
 

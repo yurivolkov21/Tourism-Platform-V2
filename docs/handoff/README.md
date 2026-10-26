@@ -30,13 +30,17 @@ Cách chạy thử app nằm ở [mobile-dev-loop](../conventions/mobile-dev-loo
 
 ## Nâng cấp giao diện app theo Material 3
 
-Đang làm trong đợt 23–30/10/2026. Bản vẽ được chủ dự án duyệt ngày 19/10 sau bốn
-vòng. Bản demo chạy trên Android nên giao diện đi theo Material 3
-([ADR-0040](../adr/0040-mobile-app-expo.md), AMEND 7).
+Bản vẽ được chủ dự án duyệt ngày 19/10/2026 sau bốn vòng. Bản demo chạy trên
+Android nên giao diện đi theo Material 3 ([ADR-0040](../adr/0040-mobile-app-expo.md),
+AMEND 7). Đợt code gộp vào nhánh chính ngày 26/10/2026, nên file bàn giao dưới đây
+cũng đã thành bản ghi lịch sử. Đợt này kèm ba thứ ngoài phạm vi bàn giao: thanh
+toán tự quay về app ([ADR-0062](../adr/0062-mobile-checkout-app-return.md)),
+chuyển động bằng Reanimated ([ADR-0063](../adr/0063-mobile-reanimated.md)) và
+[thông báo trong app](../specs/2026-10-25-in-app-notifications-design.md).
 
-| Việc | Tài liệu | Tình trạng |
+| Việc | Tài liệu | Kết quả |
 | --- | --- | --- |
-| Lớp giao diện Material 3 cho cả app, đổi bố cục năm cụm màn demo | [mobile-ui-upgrade-handoff](mobile-ui-upgrade-handoff.md) | Giao ngày 19/10; bản vẽ `mobile-ui-upgrade.src.html` |
+| Lớp giao diện Material 3 cho cả app, đổi bố cục năm cụm màn demo | [mobile-ui-upgrade-handoff](mobile-ui-upgrade-handoff.md) | Giao 19/10, gộp 26/10; bản vẽ `mobile-ui-upgrade.src.html` |
 
 ## Đường dẫn cũ
 
