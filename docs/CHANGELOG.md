@@ -8,6 +8,76 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-10-26 — Vá đợt cảnh báo Dependabot 26/10 trước freeze: zod 4.6.7 chặn lỗ cạn bộ nhớ ở form enquiry, next 16.4.3, vitest 4.1.12 và override gói bắc cầu (`9fb6252`)
+
+Yuri nhờ soát 5 alert Dependabot đang mở (26/10, thread "Dependabot alerts"). Thread không đọc được alert của GitHub
+(connector GitHub không có công cụ Dependabot, `gh` của session cloud không có token), nên soát bằng `pnpm audit` trên
+lock của `main` `96db013`: 22 GHSA trong 10 gói, 26 mục audit (fast-uri tính riêng dải 3.x và 4.x). Lượt Audit theo
+lịch lúc 02:15 UTC cùng ngày ([run 13](https://github.com/yurivolkov21/Tourism-Platform-V2/actions/runs/40258211851))
+đỏ với 29 mục: 26 mục ấy cộng 3 mục đã ignore từ trước. Báo cáo đường kéo và lỗ nào chạm production nằm ở
+`security/dependabot-2026-10-26.md` của thư mục chung. Yuri chọn vá cả đợt trong một PR trước freeze 31/10 (thẻ quyết
+định 01:47 UTC), rồi bảo đẩy lên main lúc 02:58 UTC. Nhánh `claude/project-thread-btji3h`,
+[PR #66](https://github.com/yurivolkov21/Tourism-Platform-V2/pull/66), thi công trên session cloud, rebase lên
+`7005a3b` trước khi đẩy. Chỉ đổi chín `package.json`, `pnpm-workspace.yaml` và lock: không migration, không đổi code,
+contract, i18n hay env.
+
+**Hai lỗ với tới production mà không cần đăng nhập:**
+
+- **zod 4.4.3 lên 4.6.7** (api, admin, contract). GHSA-mrhx-c7xc-m3w5 (high): validate mảng tích một issue cho mỗi
+  phần tử hỏng trước khi xét `.max()`. `POST /api/enquiries` là `@Public`, có `interests: z.array(...).max(20)`. Đo
+  bằng schema giống ô ấy với body khoảng 1 MB: zod 4.4.3 ra 500 001 issue, heap tăng chừng 500 MB, 2,2 tới 4,4 giây
+  qua hai lượt đo (trần heap 256 MB thì tiến trình chết); zod 4.6.7 ra 1 issue `too_big` trong 12 ms. Override
+  `zod@>=4.0.0 <4.6.6` ép nốt bản bắc cầu, vì @better-auth/core khai zod là dependency thường: không ép thì lock giữ
+  4.4.3 bên cạnh 4.6.7.
+- **next 16.3.8 lên 16.4.3** (web, admin). GHSA-p3m5-59mp-jv5r (high, DoS qua Server Actions) chạm admin: 17 file có
+  `'use server'`, `/login` chạy action khi chưa đăng nhập. Hai lỗ critical cùng bản vá không với tới:
+  GHSA-673q-mjm6-r5xr cần `use cache` mà repo không dùng, GHSA-2464-fhr4-w9xw cần Image Optimization mà cả hai app trả
+  404 cho `/_next/image` (sharp cũng đã 0.35.5).
+
+**Không nằm trên đường request, vá để Audit xanh:**
+
+- vitest 4.1.11 lên 4.1.12 ở chín `package.json` (vá `@vitest/mocker`: GHSA-qxg6-89mg-rqv8, GHSA-xp26-3454-mjgp).
+  vite 8.1.5 lên 8.1.6 (GHSA-587h-7wmj-h5pm và bốn GHSA khác, phần lớn ở launch-editor của dev server) KHÔNG vá được
+  bằng override: vitest khai vite ở cả dependencies lẫn peerDependencies nên pnpm giải nó như peer tự cài, và override
+  không với tới (đo: có dòng override mà lock vẫn giữ 8.1.5). Vá bằng `vite: 8.1.6` ở devDependencies của
+  `package.json` gốc, vì peer của mọi gói giải từ gốc (`resolvePeersFromWorkspaceRoot` mặc định bật); comment trong
+  `pnpm-workspace.yaml` dặn xem lại dòng ấy khi nâng vitest.
+- fastify 5.12.5 lên 5.12.6 (GHSA-389g-gv7q-r4x8, low; API không khai schema Fastify), override thay dòng cũ.
+- Nới override: fast-uri lên 3.1.9 và 4.2.3 (bốn GHSA, hai dải), hono lên 4.13.13 (GHSA-5r4p-p66f-jhc7, chỉ prisma CLI
+  kéo), ip-address lên 10.7.5 (GHSA-rxp7-6hxx-x8q5, chỉ shadcn CLI kéo), undici lên 7.30.1 (ba GHSA; nay kéo thêm qua
+  `ai` của API, nhưng gói ấy chỉ dùng undici để tải file theo URL, còn chat chỉ dựng phần text). Override mới:
+  body-parser 2.4.0 (GHSA-27r3-jxmh-p828; express của `@orpc/nest` không chạy vì API dùng adapter Fastify).
+- zod 3.25.76 còn lại, chỉ ở `@expo/cli` và shadcn CLI cùng MCP SDK của nó. Advisory không có bản vá 3.x, còn ép hai CLI
+  lên zod 4 là đổi API mà chúng viết theo (`@expo/cli` hỏng là hỏng đường build APK), nên GHSA-mrhx-c7xc-m3w5 vào
+  `auditConfig.ignoreGhsas` kèm điều kiện gỡ; override ở trên là lớp canh dòng 4.x.
+
+Lock chỉ đổi bản của các gói trên, cộng `qs` 6.16.1 theo body-parser 2.4.0, `@jridgewell/sourcemap-codec` và
+`picomatch` gộp về bản có sẵn, và hậu tố peer của next (styled-jsx thấy `@babel/core` qua shadcn; React Compiler không
+bật nên lúc chạy không khác). `pnpm install --lockfile-only` không đổi lock. `pnpm audit --audit-level=moderate` thoát
+0, còn 4 mục đều nằm trong `ignoreGhsas`.
+
+**Review.** Không có lượt review độc lập. Lỗ zod có số đo trước và sau như trên; các gói còn lại là nâng patch hoặc
+minor, bằng chứng là gate và audit. CI của PR xanh cả hai lượt (push và pull_request) trên `1ff7cae`, bản trước khi
+rebase.
+
+Tests after (`gate:int` trên `9fb6252`, nền `7005a3b`, 26/10, session cloud, API sống ở :3001): unit 8535 (web
+2489, admin 2456, api 1470, mobile 961, contract 812, mobile-ui 145, i18n 63, ui 65, core 48, tokens 26) và int 982;
+Biome 2124 file; RLS, tokens-only của mobile, prerender admin, bundle mobile và `pnpm audit --audit-level=moderate`
+xanh. Container mới để trần heap Node 2240 MB nên test contract chạy với `--max-old-space-size=6144` như các entry
+trước, 812/812. PR không thêm hay bỏ test nào: số unit bằng đúng entry F3 ngay dưới.
+
+**CÒN TREO:**
+
+- Sau khi push: chạy tay workflow Audit (workflow_dispatch) để thấy xanh, và xem Dependabot tự đóng alert của các bản
+  đã vá. Alert zod 3.25.76 sẽ còn mở: Yuri dismiss với lý do "Vulnerable code is not actually used" (chỉ công cụ dev).
+  Thread không đọc hay dismiss được alert.
+- Buổi test tay: next 16.4 là bản minor, nên lướt web và admin trên production (đăng nhập admin, một trang danh sách,
+  một form lưu bằng Server Action, trang tour của web, chat), console không có lỗi CSP. Lượt gửi enquiry ở bước test của
+  L6 kiểm luôn form còn nhận `interests`.
+- Nhánh nào khác đổi `pnpm-lock.yaml` (nhánh mobile của Nghĩa đợt 22–30/10 nếu có thêm gói) phải dựng lại lock khi
+  rebase lên main này.
+- Dọn nhánh `claude/project-thread-btji3h` trên origin nếu GitHub không tự xoá.
+
 ## 2026-10-26 — Merge review F3 vỏ web và thư viện UI dùng chung: lượt ghi của trình duyệt chờ bằng trần 60 giây của API, menu điện thoại theo đăng nhập, scrollspy sổ hành trình sáng theo cuộn, H2 trùng chữ có id riêng, chữ footer và thanh trên cùng đủ tương phản (`4bb4371`)
 
 Luồng F3 của đợt review code theo luồng (kế hoạch 20/10 trong thư mục chung của project,
