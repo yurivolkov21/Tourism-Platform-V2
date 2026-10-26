@@ -4,8 +4,9 @@ Dành cho Yuri, chạy trên PC bằng Git Bash. Làm theo đúng thứ tự; m�
 **Kết quả mong đợi** để đối chiếu. Lệch ở đâu thì dừng ở đó và xem mục
 [Khi có sự cố](#khi-có-sự-cố).
 
-- **Khi nào:** ngay sau buổi test tay cuối, sau cả phần web và admin lẫn phần app
-  của Nghĩa, vì cả hai thao tác trên prod. Chọn giờ vắng.
+- **Khi nào:** trước buổi test tay cuối, để buổi test chạy trên dữ liệu mới (Yuri
+  đổi thứ tự 26/10). Có seed lại thêm một lần sau buổi test hay không thì chưa
+  chốt. Chọn giờ vắng.
 - **Mất bao lâu:** khoảng 30–45 phút kể cả chuẩn bị. Từ lúc xoá tới khi seed xong
   và ISR sinh lại trang (khoảng 5–10 phút), site mất lịch khởi hành và sao đánh giá.
 - **Thiết kế và lý do:** [spec seed 14/09](../specs/2026-09-14-seed-khung-2026-design.md)
@@ -35,7 +36,7 @@ Bước reset xoá mọi phiên, nên những việc cần admin phải làm tr�
 1. Vào admin, trang **Outbox**: không còn mail nào `PENDING`. Bước reset xoá trắng
    hàng đợi, mail còn chờ sẽ không bao giờ đi. Hàng đợi chạy mỗi phút: có mail chờ
    thì đợi nó đi hết.
-2. **Gỡ bán** (unpublish) mọi tour thử: `test-01` và tour tạo trong buổi test tay.
+2. **Gỡ bán** (unpublish) mọi tour thử: `test-01` và tour tạo trong các lần thử tay trước đó.
    `seed:verify` báo lỗi tour đang bán mà không có đánh giá. Chưa xoá được vì còn
    booking; xoá ở mục 8.
 3. Ghi lại email của những người cần cấp lại quyền Staff, và các tài khoản khách

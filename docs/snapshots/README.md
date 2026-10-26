@@ -74,5 +74,5 @@ lượt gần nhất đều được entry CHANGELOG nhắc đích danh. Cả b�
 ## Khi nào xuất lượt mới
 
 Trước bất cứ thao tác nào xoá hoặc tạo lại dữ liệu trên prod. Lượt kế tiếp đã
-biết trước: **lượt seed 2, ngay sau buổi test tay cuối** (xem
+biết trước: **lượt seed 2, trước buổi test tay cuối** (xem
 [hướng dẫn seed lại](../guides/huong-dan-seed-lai-production.md) và [open-items](../open-items.md)).
