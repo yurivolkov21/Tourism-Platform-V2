@@ -57,7 +57,7 @@ CHANGELOG của nó trước.
 [prompt P5a](prompts/2026-09-08-p5a-prompt-thi-cong.md) ·
 [prompt các phase còn lại](prompts/2026-09-08-prompts-cac-phase-con-lai.md) (chỉ còn P6) ·
 [seed trọn năm 2026](2026-09-14-seed-khung-2026.md) ·
-[**một hạn chót**](2026-09-15-refund-deadline.md) (còn Bước 8, lượt seed ~03/11) ·
+[**một hạn chót**](2026-09-15-refund-deadline.md) (còn Bước 8, lượt seed lại sau buổi test tay cuối) ·
 [P5b-1 auth mobile](2026-09-16-p5b-auth-wireframe.md) ·
 [P5b-2 T0 tầng dữ liệu mobile browse](2026-09-23-mobile-browse-t0-data-layer.md) ·
 [P5b-4 spec cụm tài khoản mobile](2026-09-25-mobile-account-screens.md) ·

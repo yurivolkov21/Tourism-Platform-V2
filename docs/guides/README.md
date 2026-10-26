@@ -9,5 +9,6 @@ không có luật, chỉ có cách làm và cách hệ thống chạy.
 | Tài liệu | Dành cho |
 | --- | --- |
 | [Test app mobile trên máy thật](huong-dan-test-may-that.md) | Người mới cầm điện thoại Android thử app: từng bước kèm kết quả mong đợi, cách ghi lỗi |
+| [Seed lại dữ liệu production](huong-dan-seed-lai-production.md) | Yuri, lượt seed lại 2 ngay sau buổi test tay cuối: chuẩn bị, từng lệnh kèm kết quả mong đợi, Owner đặt lại mật khẩu, xử lý sự cố |
 | [Luồng đăng nhập — bản đơn giản](auth-flow-simple.md) · [bản gộp một sơ đồ](auth-flow-merged.md) | Người không rành kỹ thuật |
 | [Luồng đăng nhập — sequence diagram](auth-flow-sequence-diagrams.md) | Lập trình viên: Better Auth, cookie phiên, từng luồng đăng nhập, đăng ký, khôi phục trên web, admin và mobile |

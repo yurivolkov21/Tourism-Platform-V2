@@ -13,7 +13,7 @@
 | Ngày | Việc |
 | --- | --- |
 | **31/10/2026** | **Freeze**: ngừng nâng cấp thư viện, ngừng đổi nơi deploy. Dời từ 15/10 ([ADR-0001 AMEND 3](adr/0001-tech-stack.md)) |
-| ~03/11/2026 | Seed lại dữ liệu prod lượt 2 (ADR-0041 Phụ lục B Bước 8) — xem [việc phải xong trước lượt này](#trước-lượt-seed-lại-0311) |
+| Ngay sau buổi test tay cuối | Seed lại dữ liệu prod lượt 2, làm mới mọi tài khoản kể cả Owner (Yuri chốt 26/10; [plan hoàn tiền một hạn chót](plans/2026-09-15-refund-deadline.md) Phụ lục B Bước 8) — cách chạy ở [hướng dẫn seed lại](guides/huong-dan-seed-lai-production.md), xem [việc phải xong trước lượt này](#trước-lượt-seed-lại) |
 | tuần 02–08/11/2026 | Thuyết trình thử, trước buổi bảo vệ (Yuri 19/10: đầu tháng 11, tuần thứ ba tính từ 19/10; chưa có ngày cụ thể) |
 | ~16/11/2026 | Bảo vệ đồ án (user 15/10: còn khoảng 4 tuần tính từ thứ Hai 19/10; trước đó ghi ~11/11) |
 
@@ -23,7 +23,10 @@
 | --- | --- | --- |
 | **UI mobile** | Nâng cấp giao diện app theo Material 3 (Android) | **Bản vẽ duyệt 19/10** ([mockup](design/mockups/README.md), [bàn giao](handoff/mobile-ui-upgrade-handoff.md)); giao Nghĩa code đợt 23–30/10, P1 trước. ADR-0040 AMEND 7 duyệt 19/10 (font, icon, thanh tab); thanh tab còn chờ spike `NativeTabs` trên Android thật (Expo Go và build EAS) |
 
-## Trước lượt seed lại 03/11
+## Trước lượt seed lại
+
+Lượt này chạy ngay sau buổi test tay cuối (Yuri chốt 26/10, bỏ mốc 03/11), theo từng
+bước của [hướng dẫn seed lại production](guides/huong-dan-seed-lai-production.md).
 
 - **Ngay trước khi chạy seed:** gỡ bán hoặc xoá các tour thử tạo bằng F17 —
   `seed:verify` bắt "tour đang bán không có rating". Đo 01/10: còn đúng một tour
@@ -128,7 +131,7 @@ Không còn việc nào chờ quyết (14/10).
 
 - `seed:verify` trên prod báo **2** ở mục "refund không có đúng một payment
   event hoàn": hai khoản hoàn cũ (trước ADR-0043) cố ý không backfill, vì lượt
-  seed 03/11 sẽ xoá sạch.
+  seed lại 2 sẽ xoá sạch.
 - Lint còn đúng **1 warning và 1 info** có từ trước.
 - `seed:verify` ở DB local mới seed (chưa chạy `media:upload`) in cảnh báo "DB chưa
   có ảnh tour nào": seed không ghi `media_assets`, nên theo readiness của F18 cả 29

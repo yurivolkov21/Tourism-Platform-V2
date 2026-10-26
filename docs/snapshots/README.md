@@ -29,7 +29,7 @@ Script **chỉ đọc** — không có một câu `INSERT`/`UPDATE`/`DELETE` nà
 | `destinations-ids.json` | id · slug · tên · vùng |
 | `posts-ids.json` | id · slug · tiêu đề · trạng thái · ngày đăng |
 | `tour-categories-ids.json` | id · slug · tên |
-| `keep-list.json` | Tài khoản quản trị được giữ lại khi dọn dữ liệu, kèm lý do |
+| `keep-list.json` | Owner mà lượt dọn dữ liệu làm mới (giữ email, tạo lại tài khoản), kèm lý do. Lượt trước 26/10 ghi tài khoản quản trị được giữ nguyên |
 
 Bốn file `*-ids.json` **chỉ lấy id, slug và nhãn** — đủ để nối lại ảnh theo
 slug, không kéo theo nội dung biên tập.
@@ -46,8 +46,10 @@ Kho mã này công khai trên GitHub. Trộn hai thứ là đẩy email của kh
 ## Lượt nào đang có hiệu lực
 
 **Lượt mới nhất**, luôn luôn. `reset-operational-data.mjs` đọc `keep-list.json`
-ở **thư mục có ngày lớn nhất** để biết giữ lại tài khoản quản trị nào — nên thêm
-một lượt mới là đổi luôn hành vi của script dọn dữ liệu.
+ở **thư mục có ngày lớn nhất** để biết Owner nào được làm mới — nên thêm
+một lượt mới là đổi luôn hành vi của script dọn dữ liệu. Xuất lần nữa trong cùng
+ngày thì thư mục `docs/snapshots/<ngày>/` bị ghi đè, còn bản sao lưu sang
+`backups/<ngày>-2/`, `-3`…: bản chụp trước reset không bao giờ bị thay.
 
 Hiện tại: **`2026-09-18/`**.
 
@@ -72,4 +74,5 @@ lượt gần nhất đều được entry CHANGELOG nhắc đích danh. Cả b�
 ## Khi nào xuất lượt mới
 
 Trước bất cứ thao tác nào xoá hoặc tạo lại dữ liệu trên prod. Lượt kế tiếp đã
-biết trước: **lượt seed 2, khoảng 03/11/2026** (xem [open-items](../open-items.md)).
+biết trước: **lượt seed 2, ngay sau buổi test tay cuối** (xem
+[hướng dẫn seed lại](../guides/huong-dan-seed-lai-production.md) và [open-items](../open-items.md)).

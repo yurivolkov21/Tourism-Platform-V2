@@ -1,7 +1,8 @@
 # Hoàn tiền một hạn chót — Implementation Plan
 
 > **GẦN XONG.** Bước 1–7 đã thi công và deploy; còn Bước 8 (lượt seed
-> 2, khoảng 03/11) — xem [open-items.md](../open-items.md). Kết quả từng bước ở
+> 2, ngay sau buổi test tay cuối, xem điều chỉnh 26/10 ở Bước 8) — xem
+> [open-items.md](../open-items.md). Kết quả từng bước ở
 > [CHANGELOG 16–21/09](../changelog/2026-09-refund-deadline-mobile-auth.md) từ 18/09/2026.
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
@@ -16948,6 +16949,11 @@ policy, FAQ; xoá policy `CANCELLATION`).
 - Freeze 15/10 chỉ cấm nâng dependency và đổi nơi deploy, không cấm thao tác dữ
   liệu.
 - Entry `docs/CHANGELOG.md` riêng cho lượt này.
+
+**Điều chỉnh 26/10 (Yuri chốt):** lượt này không còn mốc 03/11, chạy ngay sau buổi
+test tay cuối, và làm mới cả tài khoản Owner (giữ email cũ), nên dòng "không sửa
+code" ở trên hết đúng: `data:reset` nay tạo lại Owner. Phạm vi ở seed spec §8.5,
+cách chạy từng bước ở [hướng dẫn seed lại production](../guides/huong-dan-seed-lai-production.md).
 
 - [ ] **Bước 8 xong:** `seed:verify` 0 vi phạm với H của ngày chạy; entry CHANGELOG đã ghi.
 
