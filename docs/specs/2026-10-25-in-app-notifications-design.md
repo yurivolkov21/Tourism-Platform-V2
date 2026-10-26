@@ -34,8 +34,11 @@ app đóng (đó là việc của push, chưa có), trạng thái "đã đọc" 
 | `review_approved` | `approved`, tạo ≤ 14 ngày | `/reviews/<id>` |
 
 Không sinh thông báo cho: đơn khách tự huỷ (khách biết rồi), đơn chờ trả đã quá hạn (`lapsed`), review chờ
-duyệt hoặc đã rút, đơn REFUNDED không có mốc huỷ (khách đã nhận tiền lại nên không nhắc "đang đi" hay
-"sắp đi").
+duyệt hoặc đã rút.
+
+Đơn REFUNDED chưa có mốc huỷ là hoàn tiền thiện chí, khách vẫn đi (ADR-0054 AMEND 1, review L5-07):
+`bookingPhase` xếp nó theo ngày đi như đơn PAID, nên nó được nhắc "đang đi" hay "sắp đi" như ở tab Trips và
+không có tin `refunded`. Bản đầu của spec bỏ qua loại đơn này; sửa ở lượt review trước khi merge (26/10).
 
 Thứ tự: `payment_due`, `on_tour`, `departing` (ngày đi gần nhất trước), `trip_cancelled`/`refunded`,
 `review_prompt`, `review_rejected`, `review_approved`. Mỗi thông báo có `id` ổn định

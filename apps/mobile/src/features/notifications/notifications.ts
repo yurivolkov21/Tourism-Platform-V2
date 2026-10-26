@@ -96,11 +96,9 @@ export function buildNotifications(input: {
   });
 
   for (const booking of bookings) {
+    // `bookingPhase` đã gộp luật đơn còn chuyến (`bookingKeepsTrip`): REFUNDED chưa có mốc huỷ là hoàn
+    // tiền thiện chí, khách vẫn đi (ADR-0054 AMEND 1), nên được nhắc "đang đi"/"sắp đi" như tab Trips.
     const phase = bookingPhase(booking, today);
-
-    // Đã hoàn tiền mà chưa có mốc huỷ: giai đoạn vẫn tính theo ngày đi, nhưng khách đã nhận tiền lại
-    // nên không nhắc "đang đi"/"sắp đi".
-    if (booking.status === 'REFUNDED' && phase !== 'cancelled') continue;
 
     if (phase === 'awaiting_payment') {
       list.push(ofBooking('payment_due', booking));

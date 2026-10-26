@@ -169,19 +169,21 @@ describe('buildNotifications — huỷ và hoàn tiền', () => {
     expect(build([old])).toEqual([]);
   });
 
-  it('đơn REFUNDED không có mốc huỷ, chuyến chưa đi → không báo "sắp đi"', () => {
+  // REFUNDED chưa có mốc huỷ là hoàn tiền thiện chí trọn: khách vẫn đi (ADR-0054 AMEND 1, review L5-07)
+  // và tab Trips vẫn hiện chuyến, nên vẫn nhắc như đơn PAID — không có tin "refunded" riêng.
+  it('đơn REFUNDED không có mốc huỷ (hoàn thiện chí), chuyến chưa đi → vẫn báo "sắp đi"', () => {
     const refunded = booking({ status: 'REFUNDED', cancelledAt: null });
-    expect(build([refunded])).toEqual([]);
+    expect(kinds(build([refunded]))).toEqual(['departing']);
   });
 
-  it('đơn REFUNDED không có mốc huỷ, chuyến đang đi → không báo "đang đi"', () => {
+  it('đơn REFUNDED không có mốc huỷ (hoàn thiện chí), chuyến đang đi → vẫn báo "đang đi"', () => {
     const refunded = booking({
       status: 'REFUNDED',
       cancelledAt: null,
       departureStartDate: '2026-10-24',
       departureEndDate: '2026-10-27',
     });
-    expect(build([refunded])).toEqual([]);
+    expect(kinds(build([refunded]))).toEqual(['on_tour']);
   });
 });
 
