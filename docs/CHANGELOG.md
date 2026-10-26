@@ -8,6 +8,107 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-10-26 — Merge review A5 khung admin, quyền, nhân sự, nhật ký thao tác: nhật ký bỏ lệnh trùng hiện trạng, Sign out hỏi trước khi bỏ bản nháp, lịch lọc ngày dừng ở hôm nay, thẻ số liệu không cũ quá 60 giây (`5d5272c`)
+
+Luồng A5 của đợt review code theo luồng (kế hoạch 20/10 trong thư mục chung của project,
+`code-review/ke-hoach-review-theo-luong.md`), rà trên `main` `e8fdfee`, rebase lên `e586945` trước khi đẩy. Báo
+cáo đủ 12 phát hiện (7 sửa ở đây, gồm hai mục luồng A1 chuyển sang; 4 ghi lại; 1 đề xuất) và một việc giao đọc lại
+test của L1 (sạch) từng nằm ở `code-review/A5-bao-cao.md` của thư mục chung; thư mục ấy đã được dọn trước lúc
+merge, nên các bước test tay và đề xuất còn treo chép ở mục CÒN TREO dưới đây. Nhánh
+`fix/review-a5-admin-shell-n9pad7`, [PR #60](https://github.com/yurivolkov21/Tourism-Platform-V2/pull/60), thi
+công trên session cloud. Đụng api (mô tả của nhật ký thao tác), admin (menu tài khoản, kit, form đăng nhập, client
+API) và i18n (một khoá ở `admin.login.errors`): không migration, không đổi contract, không biến env, không
+dependency mới.
+
+- `02dca26` (A5-01, A5-02; L5-17 và A2-20 chuyển sang): `reviews.moderate` và `departures.setStatus` không trả cờ
+  `changed`, nên duyệt lại từ tab thứ hai một review đã duyệt, hay đóng một chuyến đã đóng, từng thêm một dòng vào
+  `/activity` như thể có người vừa quyết lại. Nay bước `before` đọc dấu trước khi chạy: `moderatedAt` cho review
+  (mọi quyết định thật đặt mốc mới), `version` (`updatedAt`) cho chuyến. Không so trạng thái, để không bỏ sót
+  lệnh đổi thật khi admin khác vừa đảo trạng thái giữa chừng; đọc dấu lỗi thì vẫn ghi như một lệnh có đổi.
+- `8236834` (A5-03, A2-18): `SafeImg` giữ dấu ảnh hỏng theo đúng `src` (`brokenSrc === src`). Effect đo lại sau
+  mount từng xoá dấu khi sự kiện `error` tới trước nó, nên ô hiện ảnh vỡ thay cho "Photo unavailable"; đó là
+  nguồn flake của `photo-library-dialog.spec.tsx` (5 lần liền xanh sau sửa).
+- `1af8457` (A5-04, L1-12): form đăng nhập admin gặp 429 của Better Auth (3 lần trong 10 giây) báo "Too many
+  attempts. Please wait a minute." thay cho câu chung mời bấm lại.
+- `c287e1b` (A5-05, A2-17): Sign out nằm ở sidebar, ngoài `UnsavedChangesProvider`, và không phải link, nên từng
+  đăng xuất ngay dù khu sửa tour hay bài viết còn bản nháp chưa lưu. Nay `requestLeave(proceed)` phát một sự kiện
+  huỷ được ở `window`; provider đang có thay đổi mở đúng hộp "Discard unsaved changes?", chỉ Discard changes mới
+  đăng xuất. `kit/unsaved-changes.tsx` là file kit của A2, sửa có phép của coordinator.
+- `54f9159` (A5-10, A1-14): lịch lọc khoảng ngày của `/bookings`, `/reviews`, `/subscribers` và `/activity` cho
+  chọn tới hai năm sau, trong khi cả bốn vùng lọc theo ngày tạo. Chọn 05–10/11 vào ngày 20/10 thì bảng rỗng, còn
+  hàng thẻ của `/bookings` ghi "Oct 20 – Oct 20, 2026", Revenue $0.00. Nay ngày sau hôm nay bị khoá và dropdown năm
+  dừng ở năm nay. "Hôm nay" là ngày UTC (`utcToday`), cùng phép cắt ngày của API, nên từ 00:00 tới 07:00 giờ Việt
+  Nam ô hôm nay cũng bị khoá. URL gõ tay vẫn mang được ngày tương lai; khi ấy API trả kỳ rỗng như ADR-0028.
+- `5d5272c` (A5-11, A1-13): `cacheFor` của bộ số `/bookings` và `/reviews` dùng `next.revalidate: 60`, mà Data
+  Cache của Next là stale-while-revalidate: lượt mở đầu sau một quãng dài nhận số của lượt xem trước, có khi từ
+  hôm trước, lệch với bảng ngay dưới. Nay `withAdminOptions` gắn header `x-admin-cache-window` bằng
+  `floor(now / ttl)`. Khoá cache của Next gồm mọi header (đọc ở next 16.3.8, `patch-fetch.js` và
+  `generateCacheKey`), nên entry của khung trước không bao giờ được đọc lại và trần 60 giây mà ADR-0036 §2 chấp
+  nhận thành thật. API không đọc header này. Sửa hai comment sai ở `client.ts` (no-store "vô điều kiện"; khoá
+  "không gồm cookie", thật ra entry theo từng phiên). Trên `main` lúc này bốn thẻ của `/` cũng đi đường này cho
+  tới khi PR #61 (A1-03) bỏ cache ở đó; theo luật của coordinator, #61 lên sau nên #61 sửa header `stats.ts` và
+  đoạn "Không đổi" của ADR-0036 AMEND 3 cho khớp.
+
+Spec nhật ký thao tác (§3, §8) ghi thêm luật lệnh trùng hiện trạng; spec P4e-3a §2i ghi Sign out cũng hỏi.
+
+**Review.** Không có lượt review độc lập; mỗi phần sửa có test đỏ trên mã cũ: A5-01 và A5-02 (3 unit, 2 int),
+A5-03, A5-04 và A5-05 (mỗi phần 1), A5-10 (4), A5-11 (1); hai ca canh hành vi cũ (quyết định thật vẫn ghi, Sign
+out khi không có bản nháp) xanh ở cả hai bản. Bốn trọng tâm của kế hoạch và phần security header đều pass: ba lớp
+quyền khớp nhau cho mọi trang và ba route xuất file; khoá tài khoản thu mọi phiên trong cùng transaction, Owner
+không tự hạ quyền hay tự khoá mình; mọi lệnh ghi admin có một dòng nhật ký, lệnh lỗi không có (sau A5-01, A5-02);
+kit giữ focus và về trang 1 khi lọc; CSP theo nonce. Đọc lại bản sửa test của L1 (L1-18): sạch. Để lại A5-07
+(Sign out bỏ qua kết quả của `signOut()` khi API ngủ: bấm như không ăn, bấm lại khi API thức là được) và A5-08
+(tài khoản không tên thì tooltip ở cột icon rỗng). A5-09 đã thành đề xuất A3-09 ở entry A3. Đề xuất A5-06 và A5-12
+ở mục CÒN TREO. Yuri bảo đẩy lên main 26/10 00:59 UTC.
+
+Tests after (`gate:int` trên `5d5272c`, nền `e586945`, 26/10, session cloud, API sống ở :3001): unit 8468 (web
+2469, admin 2437, api 1449, mobile 961, contract 812, mobile-ui 145, i18n 64, ui 57, core 48, tokens 26) và int
+981; Biome 2115 file; RLS, tokens-only của mobile và prerender admin xanh. Test contract chạy với
+`--max-old-space-size=6144` như entry A3 và A4, 812/812. PR thêm 13 test unit (admin 9, api 4) và 2 int test.
+
+**CÒN TREO:**
+
+- Buổi test tay, trên production. Dùng tài khoản thử, không dùng khách của seed; xong thì mở khoá và thu Staff để
+  trả hiện trạng.
+  1. Đăng nhập Staff: sidebar không có Reports, Payment events, Users, Activity; gõ thẳng `/activity` thì ra trang
+     Not authorized với câu dành cho Staff.
+  2. Owner cấp Staff cho một khách thử đã xác minh, rồi thu lại: tab đang đăng nhập của người ấy văng ra ở lần tải
+     trang kế; trang chi tiết của người ấy có hai dòng lịch sử tương ứng.
+  3. Khoá tài khoản thử đang đăng nhập ở một trình duyệt khác: lần tải trang kế về `/login`, đăng nhập lại thì báo
+     tài khoản bị khoá; lịch sử có dòng khoá kèm lý do. Mở khoá.
+  4. `/activity` có đúng một dòng cho mỗi thao tác ở bước 2 và 3.
+  5. (A5-01) Mở cùng một review chờ duyệt ở hai tab. Tab 1 Approve; tab 2 Approve mà không tải lại: `/activity`
+     chỉ có một dòng duyệt review ấy.
+  6. (A5-02) Mở tab Departures của một tour ở hai tab, Close cùng một chuyến chưa ai đặt ở cả hai: `/activity` có
+     một dòng đóng chuyến. Mở lại chuyến ấy cho đúng hiện trạng.
+  7. (A5-05) Sửa một ô ở bước Details của một tour, không lưu, mở menu tài khoản, bấm Sign out: hộp "Discard
+     unsaved changes?" hiện. Keep editing thì ở lại, chữ vừa gõ còn nguyên. Bấm Sign out lần nữa rồi Discard
+     changes: về `/login`. Đăng nhập lại, không sửa gì, Sign out thì đi ngay.
+  8. (A5-04) Trang đăng nhập admin, gõ sai mật khẩu 4 lần liền trong 10 giây: lần thứ tư báo "Too many attempts.
+     Please wait a minute."; chờ một phút rồi đăng nhập đúng được.
+  9. (A5-10) `/bookings`, mở lịch lọc ngày: ngày sau hôm nay mờ và bấm không được, dropdown năm dừng ở năm nay.
+     Chọn một khoảng kết thúc hôm nay: bảng và hàng thẻ cùng nói về khoảng ấy. Test trong khoảng 00:00 tới 07:00
+     giờ Việt Nam thì ô hôm nay cũng bị khoá, đúng thiết kế.
+  10. (A5-11) Ghi số ở thẻ New bookings của `/bookings`. Đặt một đơn mới bên web (thẻ 4242). Chờ ít nhất một phút
+      rồi tải `/bookings` một lần: thẻ đã tăng và khớp số dòng của bảng, không cần tải lại lần hai. Bước này thay
+      cho ghi chú A1-13 trong các bước test tay của A1.
+  11. (A5-12, đo, tuỳ chọn) Để API nhàn rỗi ít nhất 15 phút, phiên admin còn hạn. Mở thẳng `/bookings`, ghi thời
+      gian chờ và thứ hiện ra (bảng, khối lỗi, hay trang lỗi có Retry). Một lần nhàn rỗi khác, bấm Export ở
+      `/bookings`: ghi tải được file, ra câu 502 có lời, hay trang 504 của Vercel, cùng tổng thời gian.
+- Đề xuất A5-12 chờ Yuri (file của L1 và A1): lượt tra phiên ở `lib/api/session.ts` không có timeout. API Render
+  ngủ thì trang chờ API thức (khoảng 50 giây, số đo G23) trong khi các lệnh đọc chạy song song bị cắt ở giây thứ
+  10; route export cộng dồn chờ phiên, tra email, ngân sách gom 45 giây và ghi nhật ký nên có thể quá
+  `maxDuration = 60` và ra trang 504 của Vercel. Không thêm timeout vào lượt tra phiên dùng chung: layout coi
+  `unreachable` là chưa đăng nhập và redirect `/login`, nên mỗi lần API thức dậy sẽ đẩy admin về trang đăng nhập dù
+  phiên còn nguyên. Cách đề xuất: một hạn chót chung cho cả GET của ba route export (tra phiên, tra email, gom
+  trang, ghi nhật ký) dưới 60 giây, hết hạn thì 502 có lời, khoảng 30 dòng và 2 tới 3 test; trang thì chờ phiên
+  xong mới đọc, hoặc thử lại một lần lệnh đọc bị `TimeoutError` (đụng 15 trang). Luật demo đánh thức API trước khi
+  trình bày che được cả hai.
+- Đề xuất nhỏ A5-06 chờ Yuri: 429 của trần ghi admin (60 lệnh trong 60 giây) rơi vào câu "kết cục không rõ" nên hộp
+  xác nhận đóng và mất chữ đang gõ, trong khi lệnh chắc chắn chưa chạy. Cách làm: mã transport `RATE_LIMITED` ở
+  `write-error.ts` giữ hộp mở kèm câu chờ một phút; 1 khoá i18n, 2 tới 3 test; đổi hành vi của mọi lệnh ghi admin.
+- Dọn nhánh `fix/review-a5-admin-shell-n9pad7` trên origin nếu GitHub không tự xoá.
+
 ## 2026-10-26 — Merge review A3 admin danh mục, điểm đến, bài viết: mũi tên đổi chỗ danh mục báo lỗi và giữ focus, đổi tên danh mục làm tươi trang tour, test canh slug bài viết và link `javascript:` (`1eec242`)
 
 Luồng A3 của đợt review code theo luồng (kế hoạch 20/10 trong thư mục chung của project,

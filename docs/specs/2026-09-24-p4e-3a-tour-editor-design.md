@@ -241,6 +241,7 @@ sách: điểm nổi bật, bao gồm, không bao gồm, FAQ, chính sách, chi 
   kịp.
 - Có thay đổi chưa lưu: `beforeunload` hỏi khi rời trang; bấm tab khác hỏi
   "Discard unsaved changes?" (một provider client bọc thanh tab và nội dung).
+  Sign out ở menu tài khoản cũng mở hộp ấy, qua `requestLeave` (review A5, 26/10).
 - Mã lỗi hiện đúng chỗ:
 
 | Mã | Hiện ở đâu |

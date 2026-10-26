@@ -26,7 +26,9 @@ giữ khoảng một tuần. Từ khi có Staff (13/10), có hơn một người
 
 Khoá thao tác là khoá thủ tục; khu vực là phần trước dấu chấm. "Nhãn" là chữ chụp lúc ghi. "Chi tiết"
 là các giá trị lưu ở `details`. Lệnh xoá đọc nhãn trước khi chạy. Lệnh có cờ `changed: false` trong
-output (không đổi gì) thì không ghi.
+output (không đổi gì) thì không ghi. Hai lệnh không có cờ ấy, `reviews.moderate` và `departures.setStatus`,
+đọc dấu trước khi chạy (`moderatedAt`, `version`): dấu không nhích là lệnh trùng hiện trạng, không ghi
+(review A5, 26/10).
 
 | Khoá | Đối tượng (id) | Nhãn | Chi tiết | Nhãn tiếng Anh của thao tác |
 | --- | --- | --- | --- | --- |
@@ -127,7 +129,8 @@ dữ liệu đổi giữa chừng không ghi.
 
 - Contract: phân loại đủ (typecheck), schema list và recordExport, `activityArea`.
 - API int: mỗi nhóm thao tác ghi đúng một dòng với nhãn và chi tiết đúng; lệnh lỗi (404, 409) không
-  ghi; `changed: false` không ghi; lỗi khi ghi nhật ký không làm hỏng response; lệnh xoá có nhãn;
+  ghi; `changed: false` và lệnh trùng hiện trạng không ghi; lỗi khi ghi nhật ký không làm hỏng
+  response; lệnh xoá có nhãn;
   list lọc theo người, khu vực, ngày; `ref` null khi đối tượng đã xoá; Staff gọi list nhận 403, gọi
   recordExport được; khách 403, chưa đăng nhập 401.
 - Admin: hàm dựng link và câu tóm tắt; trang Owner thấy, Staff không thấy mục sidebar; đo Chromium ở
