@@ -15,10 +15,15 @@
  *   docs/snapshots/<ngày>/  → commit được: bản đồ ảnh + id/slug nội dung, KHÔNG PII
  *   backups/<ngày>/         → gitignored: TRỌN mọi bảng (xem RIENG_TU), có PII
  * Trộn hai thứ là đẩy email của 63 người lên GitHub công khai.
+ *
+ * Xuất lần nữa trong cùng ngày: `docs/snapshots/<ngày>/` bị ghi đè (có chủ ý:
+ * `data:reset` đọc keep-list ở thư mục mới nhất), còn bản sao lưu sang
+ * `backups/<ngày>-2/`, `-3`… để bản chụp TRƯỚC reset không bao giờ bị thay.
  */
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import pg from 'pg';
+import { chonThuMucSaoLuu } from './thu-muc-sao-luu.mjs';
 
 const ROOT = join(import.meta.dirname, '..', '..', '..');
 const NGAY = new Date().toISOString().slice(0, 10);
@@ -84,8 +89,12 @@ async function xuat(thuMuc, bang) {
 console.log(`docs/snapshots/${NGAY}/  (commit được — không PII)`);
 const nCongKhai = await xuat(join(ROOT, 'docs', 'snapshots', NGAY), CONG_KHAI);
 
-console.log(`\nbackups/${NGAY}/  (gitignored — có PII)`);
-const nRieng = await xuat(join(ROOT, 'backups', NGAY), RIENG_TU);
+const SAO_LUU = chonThuMucSaoLuu(NGAY, (ten) => existsSync(join(ROOT, 'backups', ten)));
+console.log(`\nbackups/${SAO_LUU}/  (gitignored — có PII)`);
+if (SAO_LUU !== NGAY) {
+  console.log(`  backups/${NGAY}/ đã có từ lượt xuất trước: giữ nguyên, ghi sang thư mục mới.`);
+}
+const nRieng = await xuat(join(ROOT, 'backups', SAO_LUU), RIENG_TU);
 
 // ── keep-list.json ──────────────────────────────────────────────────────────
 // `reset-operational-data.mjs` đọc file này để biết ID admin DUY NHẤT được giữ.
