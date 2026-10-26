@@ -27,6 +27,21 @@ export function partyCap(
 }
 
 /**
+ * Hai câu về trần của B1/B2 theo đúng lý do của trần: `hint` luôn hiện dưới hai bộ đếm,
+ * `reached` chỉ hiện khi đã chạm trần. Trần do ghế còn lại của đợt thì không được nói "tour
+ * chỉ nhận chừng ấy" — tour nhận 12 mà đợt còn 3 thì câu ấy sai sự thật.
+ */
+export function partyCapCopy(cap: { cap: number; reason: PartyCapReason }): {
+  hint: string;
+  reached: string;
+} {
+  const copy = messages.mobile.booking;
+  return cap.reason === 'seats'
+    ? { hint: copy.seatsLeftOnDate(cap.cap), reached: copy.seatsCapReached }
+    : { hint: copy.groupCapNote(cap.cap), reached: copy.groupCapReached(cap.cap) };
+}
+
+/**
  * Tổng tiền hiển thị = đơn giá × TỔNG chỗ (API không có giá trẻ em riêng —
  * B1 caption). `Number()` chỉ ở bước cuối để định dạng (cùng luật
  * `format-money.ts`), party size luôn là số nguyên nhỏ nên không có rủi ro

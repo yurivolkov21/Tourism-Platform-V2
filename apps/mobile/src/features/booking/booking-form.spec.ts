@@ -6,6 +6,7 @@ import {
   buildBookingInput,
   type ContactFormState,
   partyCap,
+  partyCapCopy,
   totalPrice,
   validateContactForm,
   verifyOutcome,
@@ -26,6 +27,25 @@ describe('partyCap — trần số người là cái NHỎ HƠN trong hai ràng 
 
   it('đợt hết chỗ → trần 0', () => {
     expect(partyCap(12, 0)).toEqual({ cap: 0, reason: 'seats' });
+  });
+});
+
+describe('partyCapCopy — câu của B1 nói đúng lý do của trần', () => {
+  const copy = messages.mobile.booking;
+
+  it('trần do nhóm tối đa của tour: "Up to N guests" và "the most this tour takes"', () => {
+    expect(partyCapCopy({ cap: 8, reason: 'group' })).toEqual({
+      hint: copy.groupCapNote(8),
+      reached: copy.groupCapReached(8),
+    });
+  });
+
+  // Trước đây câu chạm trần luôn là "That's the most this tour takes" kể cả khi trần là số ghế
+  // còn lại của đợt — tour nhận 12 mà đợt còn 3 thì câu ấy sai sự thật.
+  it('trần do ghế còn lại của đợt: câu chạm trần nói hết ghế, không nói trần của tour', () => {
+    const result = partyCapCopy({ cap: 3, reason: 'seats' });
+    expect(result).toEqual({ hint: copy.seatsLeftOnDate(3), reached: copy.seatsCapReached });
+    expect(result.reached).not.toBe(copy.groupCapReached(3));
   });
 });
 

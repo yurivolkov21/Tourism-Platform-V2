@@ -2799,6 +2799,10 @@ export const messages = {
       groupCapNote: (n: number) => `Up to ${n} guests on this tour`,
       groupCapReached: (n: number) =>
         `That's the most this tour takes — ${n} ${n === 1 ? 'guest' : 'guests'}.`,
+      /** B2 — chạm trần vì đợt chỉ còn chừng ấy ghế (không phải trần của tour), cùng ý câu
+          `booking.wizard.capBySeats` của web. */
+      seatsCapReached:
+        "That's every seat left on this date — pick another date for a bigger party.",
       travellersTotal: (n: number, price: string) =>
         `${n} ${n === 1 ? 'traveller' : 'travellers'} × ${price}`,
       // B3 — bước 2: liên hệ.

@@ -2,7 +2,7 @@ import { messages } from '@tourism/i18n';
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { getBookingDraft, updateBookingDraft } from '@/features/booking/booking-draft';
-import { partyCap, totalPrice } from '@/features/booking/booking-form';
+import { partyCap, partyCapCopy, totalPrice } from '@/features/booking/booking-form';
 import { BookingTravellersScreen } from '@/features/booking/booking-travellers-screen';
 import { formatDepartureRange } from '@/features/tour-detail/departures';
 import { cloudinaryUrl } from '@/lib/cloudinary-url';
@@ -28,6 +28,7 @@ export default function BookingTravellersRoute() {
 
   const { trip } = draft;
   const cap = partyCap(trip.maxGroupSize, trip.seatsLeft);
+  const capCopy = partyCapCopy(cap);
   const partySize = numAdults + numChildren;
   const atCap = partySize >= cap.cap;
   const total = totalPrice(trip.unitPrice, partySize);
@@ -73,10 +74,8 @@ export default function BookingTravellersRoute() {
       childrenAtCap={atCap}
       decreaseChildrenLabel={booking.stepperDecrease(messages.booking.box.children)}
       increaseChildrenLabel={booking.stepperIncrease(messages.booking.box.children)}
-      capHintNote={
-        cap.reason === 'seats' ? booking.seatsLeftOnDate(cap.cap) : booking.groupCapNote(cap.cap)
-      }
-      capReachedNote={atCap ? booking.groupCapReached(cap.cap) : null}
+      capHintNote={capCopy.hint}
+      capReachedNote={atCap ? capCopy.reached : null}
       totalLabel={booking.travellersTotal(partySize, formatMoney(trip.unitPrice, trip.currency))}
       totalAmount={formatMoney(total, trip.currency)}
       continueLabel={booking.continueCta}
