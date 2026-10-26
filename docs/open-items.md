@@ -19,9 +19,8 @@
 
 ## Phần chưa xây
 
-| Mã | Việc | Ghi chú |
-| --- | --- | --- |
-| **UI mobile** | Nâng cấp giao diện app theo Material 3 (Android) | **Bản vẽ duyệt 19/10** ([mockup](design/mockups/README.md), [bàn giao](handoff/mobile-ui-upgrade-handoff.md)); giao Nghĩa code đợt 23–30/10, P1 trước. ADR-0040 AMEND 7 duyệt 19/10 (font, icon, thanh tab); thanh tab còn chờ spike `NativeTabs` trên Android thật (Expo Go và build EAS) |
+Không còn mục nào: mục cuối (UI mobile theo Material 3) đóng 26/10, xem
+[open-items-closed.md](open-items-closed.md#phần-đã-xây).
 
 ## Trước lượt seed lại
 

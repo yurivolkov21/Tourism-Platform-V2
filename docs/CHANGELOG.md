@@ -8,49 +8,94 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
-## 2026-10-26 — Đợt làm mượt giao diện mobile: Reanimated, lịch trình mở dần, tab dính, thông báo, màu giao thoa (`4b384152` đến `4c95058e`)
+## 2026-10-26 — Merge đợt giao diện mobile Material 3 của Nghĩa và lượt review trước merge: thanh toán tự quay về app, trung tâm thông báo, Reanimated, các lỗi review M2 còn nợ (`63cfa81`)
 
-Thi công trên nhánh `feat/mobile-m3-surfaces`, chạy thử trên Galaxy S24 Ultra (Expo Go) qua cáp USB. Chỉ đụng
-`apps/mobile`, `libs/mobile/ui` và `docs/`; không API, không migration, không biến env. **Có dependency mới trước
-freeze 31/10** — quyết định ở [ADR-0063](adr/0063-mobile-reanimated.md) (Accepted 26/10, viết sau khi code chạy, trái luật 5)
-và [ADR-0040](adr/0040-mobile-app-expo.md) AMEND 8.
+Nhánh `feat/mobile-m3-surfaces` của Nghĩa: đợt giao diện theo [bàn giao](handoff/mobile-ui-upgrade-handoff.md)
+22–30/10, Nghĩa chạy thử trên Galaxy S24 Ultra qua Expo Go. Yuri nhờ review 26/10 07:03 UTC (đợt giao diện đã sửa
+các lỗi review cũ chưa, sửa phần còn thiếu rồi merge cho xong luồng mobile), 08:33 UTC nhờ sửa nốt và merge. Nhánh
+`claude/project-thread-fbkww5`: 11 commit của Nghĩa (giữ tác giả) rebase lên `main` `6785326`, cộng 7 commit của
+lượt review, [PR #71](https://github.com/yurivolkov21/Tourism-Platform-V2/pull/71), session cloud. Đụng
+`apps/mobile`, `libs/mobile/ui`, i18n và cả api, web, contract (ADR-0062); không migration, không biến env.
+**Có dependency native mới trước freeze 31/10**: [ADR-0063](adr/0063-mobile-reanimated.md), viết sau khi code
+chạy (trái luật 5), và [ADR-0040](adr/0040-mobile-app-expo.md) AMEND 8. Merge là nhận ADR-0062, ADR-0063 và trung
+tâm thông báo, ba thứ nằm ngoài phạm vi bàn giao (bàn giao ghi "không đổi API, không thêm dependency").
 
-- **Reanimated 4.5.1 và Worklets 0.10.1** ghim đúng bản Expo Go; `expo install --fix` nâng bản vá tám gói Expo
-  (`expo` 57.0.31, `expo-router` 57.0.29, …) và `libs/mobile/ui` nâng `expo`, `jest-expo` theo. Jest ánh xạ hai tên
-  Reanimated về bản thay thế tối giản (`libs/mobile/ui/jest/`).
-- **Mở/thu mượt:** `Collapsible` chạy chiều cao trên luồng UI (Itinerary trang tour, lịch trình chuyến đã mua, "Good
-  to know"); `ItineraryDays` tách `memo`; `ExitCollapse`; "Read more" ở Explore bằng `LinearTransition`. Bỏ
-  `animateNextLayout` (không chạy trên máy user).
-- **Cử chỉ và cuộn:** cuộn tour detail bằng `useAnimatedScrollHandler`; hàng tab dính dưới header gọn; vuốt ngang
-  đổi tab; chấm báo ảnh bìa; trình xem ảnh toàn màn chạy worklet; `SwipeToRemove` ở Saved; chống bấm đúp ở `Button`.
-- **Chuyển động khác:** Home bỏ `FadeIn` ở header và hàng tiêu đề; thanh step, dot onboarding, thanh sao, `SegmentedControl` (lò xo, nhãn đổi màu theo khối),
-  viền `TextField`, gạch dưới tab và thanh tab dưới và thanh vùng Home sang lò xo; số tiền đếm ghi từ luồng UI;
-  `Presence` bằng `Keyframe`; `freezeOnBlur` cho tab; `keyboardDismissMode` ở Explore.
-- **Tải sẵn:** chi tiết tour và ảnh bìa khi chạm thẻ ở Explore và Saved; danh sách Explore từ Home; giữ vị trí cuộn
-  khi đổi tab ở tour detail.
-- **Màu giao thoa:** `AuroraGradient` tĩnh kèm lớp nhiễu chống vỡ mảng, ở onboarding, đăng nhập, màn đặt tour thành
-  công; thẻ đếm ngược đậm dần theo tiến độ. Bỏ hiệu ứng thu nhỏ tiêu đề lớn và chuyển cảnh kính lúp sau khi thử.
-- **Sửa lỗi:** nhảy lên đầu khi đổi tab ở tour detail; `useAnimatedKeyboard` làm vùng an toàn Android thành trắng (nay
-  chỉ iOS và chỉ lúc sheet mở).
-- **Thông báo:** tin huỷ và hoàn tiền hết hạn sau 30 ngày kể từ ngày về; đơn `REFUNDED` không có mốc huỷ không còn
-  báo "đang đi" hay "sắp đi". Cập nhật
-  [spec thông báo](specs/2026-10-25-in-app-notifications-design.md).
+Phần của Nghĩa:
 
-**Review.** Không có lượt review độc lập. Chưa kiểm chứng: iOS, Android ngoài Galaxy S24 Ultra, va chạm vuốt ngang đổi
-tab với dải ảnh review cuộn ngang, màn đặt tour thành công qua thanh toán thật (chỉ xem bằng dữ liệu giả).
+- `f2785af`, `47abd1a`, `36a36fd` (mobile-ui): `mixColors` và `theme.surfaces` cho nền Material 3 đục, chữ hệ thống
+  theo thang Material 3 cùng biến thể brand (N2), các thành phần Material 3 và chuyển động Reanimated.
+- `7a0ca2c` (i18n): chuỗi cho trang chuyển tiếp thanh toán, chi tiết review và trung tâm thông báo.
+- `d2f655c` (api, web, contract; [ADR-0062](adr/0062-mobile-checkout-app-return.md)): `bookings.create` và
+  `bookings.checkout` nhận `appReturnUrl` tuỳ chọn. URL hợp lệ theo `isAllowedAppReturnUrl` của contract
+  (`nexora://`, hoặc `exp://` với host mạng riêng) thì `successUrl` và `cancelUrl` trỏ trang web mới
+  `/checkout/app-return`; trang này kiểm lại `to`, chuyển sang URL app và có nút "Return to the app" phòng trình
+  duyệt chặn chuyển hướng. Không gửi trường này thì URL cũ giữ nguyên, nên web và APK cũ không đổi hành vi. App mở
+  cổng bằng `openAuthSessionAsync` để tab tự đóng khi cổng trả về app; màn xác nhận vẫn hỏi lại `bookings.byCode`.
+- `28c5195` (deps): Reanimated 4.5.1 và Worklets 0.10.1 ghim đúng bản Expo Go; `expo install --fix` nâng bản vá
+  tám gói Expo (`expo` 57.0.31, `expo-router` 57.0.29, …). Jest ánh xạ hai tên Reanimated về bản thay thế tối giản
+  (`libs/mobile/ui/jest/`).
+- `b7e3937`: bỏ trang dev gallery và `dev-only`.
+- `88df187`: trung tâm thông báo trong app ([spec](specs/2026-10-25-in-app-notifications-design.md)). Nút chuông ở
+  Home kèm số chưa đọc; tám loại tin suy ra từ `bookings.mine` và `reviews.mine` đã có trong cache, không có bảng
+  mới ở server; trạng thái "đã đọc" lưu trên máy theo tài khoản. Tin huỷ và hoàn tiền hết hạn sau 30 ngày kể từ
+  ngày về.
+- `7f6694e`: làm mượt giao diện. `Collapsible` chạy chiều cao trên luồng UI (Itinerary, lịch trình chuyến, "Good to
+  know"); hàng tab dính và vuốt ngang đổi tab ở trang tour; trình xem ảnh toàn màn chạy worklet; `SwipeToRemove` ở
+  Saved; `Button` chặn bấm đúp trong 500 ms; tải sẵn chi tiết tour khi chạm thẻ ở Explore và Saved; `AuroraGradient`
+  tĩnh ở onboarding, đăng nhập và màn đặt tour xong. Sửa nhảy lên đầu khi đổi tab ở trang tour, và vùng an toàn
+  Android hoá trắng do `useAnimatedKeyboard` (nay chỉ iOS, chỉ lúc tấm trượt mở).
+- `af62ebe`, `83630f5` (docs): ADR-0063, spec thông báo, hai ADR chuyển sang Accepted.
 
-**CÒN TREO cho session gốc.** Build dev client và EAS phải dựng lại native (Reanimated và Worklets là module native).
-Hash ở tiêu đề là của nhánh `feat/mobile-m3-surfaces`; đổi lại theo hash sau rebase khi merge.
+Rebase gộp tay các xung đột với sửa review M1–M3 đã lên `main` và giữ cả hai phía: `router.dismissTo('/explore')` từ
+màn ở stack gốc, luật gọi lại query bỏ qua lỗi 4xx, Android đợi khách quay về khi mở checkout không có URL về, ngày
+lịch Việt Nam, tab Reviews tải thêm theo trang. `pnpm-lock.yaml` dựng lại trên lock của `main` với manifest của
+Nghĩa. `expo-doctor` báo peer `@expo/metro-runtime` 57.0.15 trong khi cần ^57.0.17; so mã hai bản thì chỉ khác số
+phiên bản, nên để nguyên.
 
-Tests after: mobile 937 (126 suite), mobile-ui 254. `pnpm gate` các bước chạy tay với `--concurrency=1`: turbo `build`
-`typecheck` `test` xanh 28/28 tác vụ; Biome sạch; `check-mobile-tokens-only` sạch (212 file). Lần chạy `pnpm gate:int`
-mặc định (song song) chết vì hết bộ nhớ trên máy dev (heap OOM, fork lỗi), nên chạy tuần tự. `test:int`: 5/6 tác vụ xanh;
-**`@tourism/api#test:int` đỏ 4 test, cả hai nhóm do môi trường máy dev, không do code**: `admin-tours.int.spec.ts` (2 test)
-vì Postgres cục bộ là 18.3 (CI dùng 17): khoá ngoại `ON DELETE RESTRICT` nay trả SQLSTATE `23001`, mà
-`@prisma/adapter-pg` 7.8.0 chỉ ánh xạ `23503` thành `P2003`, nên xoá tour có booking ra 500 thay vì 409
-`TOUR_HAS_BOOKINGS`; `check-rls.int.spec.ts` (2 test) vì máy không có `psql` và Docker Desktop chưa chạy. CI trên
-`main` (Node 24, Postgres 17) xanh cả hai file. Chưa sửa API: nếu hạ tầng lên Postgres 18 thì `P2003` ở 9 file service
-cần nhận thêm `23001`.
+Lượt review:
+
+- `964bb35` (test): ba bộ test route của `main` khớp giao diện mới mà không đổi hành vi được kiểm: form liên hệ chặn
+  trước khi gửi, `ListRow` gộp tên trợ năng, nút huỷ thành "Cancel this booking", `Button` chặn bấm đúp.
+- `1f8948c` (M2-11, M2-12, M2-13 của review M2; đợt giao diện chưa sửa): đợt hết chỗ ghi "Sold out" thay vì "Booking
+  closed"; tab Reviews lỗi khi chưa có bài nào có nút "Try again"; màn tour đang tải có nút lùi.
+- `b3d0ca7` (phần app của M2-14, ý 7 mục 7 của bàn giao): thẻ Saved in giá "from", giá gạch và dòng đợt kế tiếp như
+  thẻ Explore, qua hàm chung `tourCardLabels`.
+- `03c4a43`: trần số khách là số ghế còn lại của đợt thì câu chạm trần nói hết ghế ("That's every seat left on this
+  date…"), không còn câu "That's the most this tour takes".
+- `a20e603`: màn chi tiết bài review của tôi (mới ở đợt này) in ngày theo lịch Việt Nam thay vì cắt ngày UTC; rút
+  bài ở màn này cũng đọc "Review retracted" cho trình đọc màn hình như rút trên danh sách R4.
+- `55289ee`: cửa sổ 14 ngày của tin "review được duyệt" đếm từ ngày viết theo lịch Việt Nam.
+- `63cfa81`: đơn REFUNDED chưa có mốc huỷ (hoàn tiền thiện chí, khách vẫn đi; ADR-0054 AMEND 1, review L5-07) được
+  nhắc "sắp đi" và "đang đi" như tab Trips. Bản đầu của spec thông báo cố ý bỏ qua loại đơn này; spec sửa cùng
+  commit.
+- Docs sweep lúc merge: dòng "UI mobile" của `docs/open-items.md` chuyển sang open-items-closed.md; ý 7 mục 7 của
+  bàn giao ghi đã làm; dòng trạng thái ADR-0062 và roadmap trong `CLAUDE.md` theo hiện trạng.
+
+**Review.** Lượt review của session cloud 26/10 (báo cáo trong thư mục chung của project,
+`code-review/mobile-m3-bao-cao.md`). Đợt giao diện chưa sửa M2-11, M2-12, M2-13, thẻ Saved và câu chạm trần; P6 và
+M3-14 vẫn đúng; lỗi điều hướng của M1 không tái phát (mọi `router.navigate('/explore')` còn lại đều nằm trong các
+tab). Bốn lỗi mới trong code của đợt này sửa ở `a20e603`, `55289ee` và `63cfa81`. Test của các commit sửa viết đỏ
+trước. Nghĩa chạy `test:int` trên Postgres 18.3 thì 2 test xoá tour đỏ: khoá ngoại `RESTRICT` trả SQLSTATE `23001`,
+mà `@prisma/adapter-pg` 7.8.0 chỉ ánh xạ `23503` thành `P2003`. CI và Supabase chạy Postgres 17 nên không ảnh
+hưởng; lên Postgres 18 thì 9 file service cần nhận thêm `23001`.
+
+Tests after (`gate:int` trên `63cfa81`, nền `6785326`, 26/10, session cloud, API sống ở :3001): unit 8770 (web 2496,
+admin 2458, api 1477, mobile 1050, contract 833, mobile-ui 254, ui 65, i18n 63, core 48, tokens 26) và int 983;
+Biome 2177 file; RLS, tokens-only của mobile (215 file), prerender admin và bundle mobile xanh. Cả lượt chạy với
+`NODE_OPTIONS=--max-old-space-size=4096`. So với entry seed lại 2 ngay dưới: unit thêm 227 (mobile-ui 109, mobile
+89, contract 21, web 5, api 3).
+
+**CÒN TREO:**
+
+- Yuri build APK mới từ `main` bằng EAS: Reanimated và Worklets là module native nên bản APK cũ không chạy được code
+  này. Nghĩa test theo kịch bản test tay của app (thư mục chung của project, `test-tay/mobile-nghia/`); luồng soạn
+  kịch bản đã nhận danh sách nhãn và hành vi đổi.
+- Trên APK mới: trả Stripe và PayPal thật thì tab tự đóng, app tự sang màn xác nhận hoặc tự đọc lại hoá đơn. Đơn chờ
+  trả tạo trước đợt này giữ session checkout cũ (ADR-0062, hệ quả 2), nên trả đơn đó không tự quay về app.
+- Nghĩa ghi chưa kiểm: Android ngoài Galaxy S24 Ultra, vuốt ngang đổi tab va với dải ảnh review cuộn ngang, màn
+  đặt tour xong qua thanh toán thật. iOS không phải mục tiêu.
+- Dọn nhánh `feat/mobile-m3-surfaces` và `claude/project-thread-fbkww5` trên origin sau khi Nghĩa xác nhận không
+  còn việc trên nhánh của mình.
 
 ## 2026-10-26 — Merge lượt seed lại 2 làm mới cả Owner: `data:reset` tạo lại Owner cùng email, `snapshot:export` không ghi đè bản sao lưu cùng ngày, hướng dẫn seed lại production (`a53e9d5`)
 

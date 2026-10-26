@@ -28,8 +28,8 @@ ADR-0056 ✅ 13/10) →
 P6 AI concierge (✅ bật trên production 19/10; khung chat dạng hội thoại 19/10; đọc đơn
 của khách đã đăng nhập 19/10, ADR-0050 AMEND 2) →
 P7 polish UI (ba trang đơn của khách: Phần A My bookings ✅ 06/10; B chi tiết
-đơn và C voucher ✅ 09/10; Saved và Settings thiết kế lại ✅ 09/10; app mobile theo Material 3: bản vẽ
-duyệt 19/10, giao Nghĩa code 23–30/10) → freeze 31/10 (dời từ 15/10,
+đơn và C voucher ✅ 09/10; Saved và Settings thiết kế lại ✅ 09/10; app mobile theo Material 3 ✅
+26/10, PR #71: kèm thanh toán tự quay về app ADR-0062, Reanimated ADR-0063, trung tâm thông báo) → freeze 31/10 (dời từ 15/10,
 ADR-0001 AMEND 3). Việc còn nợ gom ở
 [docs/open-items.md](docs/open-items.md).
 
