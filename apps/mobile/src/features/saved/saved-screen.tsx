@@ -29,7 +29,12 @@ export interface SavedTourVM {
   /** "Hội An · 1 day" — địa danh chính + thời lượng đã ghép sẵn, cùng khuôn
       `ExploreScreen`. Route tự nối, `null destinationName` rơi về chỉ số ngày. */
   locationLabel: string;
+  /** Giá "from", giá gạch và dòng đợt — cùng luật thẻ Explore (`tourCardLabels`, review M2-14). */
   priceLabel: string;
+  compareAtPriceLabel: string | null;
+  departureLabel: string | null;
+  seatsLabel: string | null;
+  almostFull: boolean;
   rating: number | null;
   unavailable: boolean;
 }
@@ -203,7 +208,10 @@ export function SavedScreen({
                           locationLabel={item.locationLabel}
                           fromLabel={fromLabel}
                           priceLabel={item.priceLabel}
-                          compareAtPriceLabel={null}
+                          compareAtPriceLabel={item.compareAtPriceLabel}
+                          departureLabel={item.departureLabel}
+                          seatsLabel={item.seatsLabel}
+                          almostFull={item.almostFull}
                           rating={item.unavailable ? null : item.rating}
                           unavailable={item.unavailable}
                           unavailableLabel={unavailableLabel}

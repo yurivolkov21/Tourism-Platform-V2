@@ -4,6 +4,7 @@ import { router } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import { AuthGateScreen } from '@/features/auth/auth-gate-screen';
 import { setPendingReturn } from '@/features/auth/return-to';
+import { tourCardLabels } from '@/features/explore/tour-card-labels';
 import { pruneRemovedIds } from '@/features/saved/removed-ids';
 import { SavedScreen, type SavedStatus } from '@/features/saved/saved-screen';
 import {
@@ -15,7 +16,6 @@ import { prefetchTour } from '@/features/tour-detail/prefetch-tour';
 import { orpc, withMobileAuth } from '@/lib/api/client';
 import { getAuthClient } from '@/lib/auth-client';
 import { cloudinaryUrl } from '@/lib/cloudinary-url';
-import { formatMoney } from '@/lib/format-money';
 import { withReplayOnFocus } from '@/lib/replay-on-focus';
 import { usePullToRefresh } from '@/lib/use-pull-to-refresh';
 import { useWishlistSetMutation } from '@/lib/wishlist-mutation';
@@ -119,7 +119,9 @@ function SavedRoute() {
         item.destinationName === null
           ? messages.mobile.home.durationDays(item.durationDays)
           : `${item.destinationName} · ${messages.mobile.home.durationDays(item.durationDays)}`,
-      priceLabel: formatMoney(item.basePrice, item.currency),
+      // Giá "from", giá gạch và dòng đợt như thẻ Explore (review M2-14). Thẻ tự bỏ dòng đợt khi
+      // tour đã gỡ.
+      ...tourCardLabels(item),
       rating: item.ratingAvg,
       unavailable: item.unavailable,
     }));

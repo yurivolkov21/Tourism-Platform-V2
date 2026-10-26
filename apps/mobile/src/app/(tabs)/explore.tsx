@@ -9,6 +9,7 @@ import { destinationFromEntryParams } from '@/features/explore/explore-entry';
 import { exploreToursInput } from '@/features/explore/explore-prefetch';
 import { ExploreScreen, type ExploreStatus } from '@/features/explore/explore-screen';
 import { FilterSheet, type SortKey } from '@/features/explore/filter-sheet';
+import { tourCardLabels } from '@/features/explore/tour-card-labels';
 import {
   countActiveFilters,
   destinationRegionMap,
@@ -18,12 +19,10 @@ import {
   type TourFilterState,
 } from '@/features/explore/tour-filters';
 import { HOME_REGIONS } from '@/features/home/group-destinations-by-region';
-import { ALMOST_FULL_THRESHOLD, formatDepartureDate } from '@/features/tour-detail/departures';
 import { prefetchTour } from '@/features/tour-detail/prefetch-tour';
 import { orpc, withMobileAuth } from '@/lib/api/client';
 import { getAuthClient } from '@/lib/auth-client';
 import { cloudinaryUrl } from '@/lib/cloudinary-url';
-import { formatMoney } from '@/lib/format-money';
 import { withReplayOnFocus } from '@/lib/replay-on-focus';
 import { usePullToRefresh } from '@/lib/use-pull-to-refresh';
 import { toggleWishedId } from '@/lib/wishlist';
@@ -280,33 +279,19 @@ function ExploreRoute() {
         resultsCountLabel={explore.resultsCount(filteredTours.length)}
         tours={filteredTours.map((tour) => {
           const primary = tour.destinations.find((d) => d.isPrimary) ?? tour.destinations[0];
-          // Giá gạch CHỈ khi có khuyến mãi thật (luật 15/09 của web) — không in
-          // `tour.compareAtPrice` (giá niêm yết) cấp tour.
-          const showCompare = Number(tour.priceFrom) < Number(tour.basePrice);
           return {
             slug: tour.slug,
             imageUrl: tour.cover?.url ?? null,
             title: tour.title,
             locationLabel: `${primary?.name ?? ''} · ${home.durationDays(tour.durationDays)}`,
-            priceLabel: formatMoney(tour.priceFrom, tour.currency),
-            compareAtPriceLabel: showCompare ? formatMoney(tour.basePrice, tour.currency) : null,
+            // Giá "from", giá gạch (chỉ khi có khuyến mãi thật, luật 15/09 của web) và dòng đợt
+            // đọc `nextDeparture` có sẵn trên thẻ — chung luật với thẻ Saved.
+            ...tourCardLabels(tour),
             rating: tour.ratingAvg,
             favorited: wishedIds.has(tour.id),
-            // B2: tối đa MỘT badge trên ảnh; dòng đợt đọc `nextDeparture` có sẵn trên thẻ.
+            // B2: tối đa MỘT badge trên ảnh.
             badgeLabel:
               tour.badges[0] === undefined ? null : messages.tourDetail.badges[tour.badges[0]],
-            departureLabel:
-              tour.nextDeparture === null
-                ? explore.datesOnRequest
-                : messages.mobile.tourDetail.nextDeparture(
-                    formatDepartureDate(tour.nextDeparture.startDate),
-                  ),
-            seatsLabel:
-              tour.nextDeparture === null
-                ? null
-                : messages.mobile.tourDetail.seatsLeft(tour.nextDeparture.seatsLeft),
-            almostFull:
-              tour.nextDeparture !== null && tour.nextDeparture.seatsLeft <= ALMOST_FULL_THRESHOLD,
           };
         })}
         onTourPress={(slug) => {

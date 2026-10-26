@@ -14,6 +14,10 @@ function baseProps(overrides: Partial<SavedScreenProps> = {}): SavedScreenProps 
         title: 'Hội An Old Town & Lantern Evening',
         locationLabel: 'Hội An · 1 day',
         priceLabel: '$39',
+        compareAtPriceLabel: '$45',
+        departureLabel: 'Next departure: Tue 3 Nov',
+        seatsLabel: '8 seats left',
+        almostFull: false,
         rating: 4.8,
         unavailable: false,
       },
@@ -24,6 +28,10 @@ function baseProps(overrides: Partial<SavedScreenProps> = {}): SavedScreenProps 
         title: 'Mai Châu Valley Cycling 2D1N',
         locationLabel: 'Mai Châu · 2 days',
         priceLabel: '$99',
+        compareAtPriceLabel: null,
+        departureLabel: 'Dates on request',
+        seatsLabel: null,
+        almostFull: false,
         rating: 4.5,
         unavailable: true,
       },
@@ -45,6 +53,16 @@ function baseProps(overrides: Partial<SavedScreenProps> = {}): SavedScreenProps 
 }
 
 describe('SavedScreen', () => {
+  // Review M2-14: thẻ Saved in cùng giá "from", giá gạch và dòng đợt như thẻ Explore.
+  it('thẻ còn bán: giá gạch và dòng đợt như Explore; thẻ đã gỡ không có dòng đợt', async () => {
+    await renderWithTheme(<SavedScreen {...baseProps()} />);
+
+    expect(screen.getByText('$45')).toBeTruthy();
+    expect(screen.getByText('Next departure: Tue 3 Nov')).toBeTruthy();
+    expect(screen.getByText('· 8 seats left')).toBeTruthy();
+    expect(screen.queryByText('Dates on request')).toBeNull();
+  });
+
   it('trạng thái loading: vẽ khung xám, không vẽ danh sách', async () => {
     await renderWithTheme(<SavedScreen {...baseProps({ status: 'loading' })} />);
     expect(screen.queryByText('Hội An Old Town & Lantern Evening')).toBeNull();
