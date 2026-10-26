@@ -8,6 +8,38 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-10-26 — Merge phần còn treo của review A1: khối chú giải của `/reports` cùng thứ tự với bản in và file Excel, comment quyền của mười file action (`88bb0f2`)
+
+Hai mục mà entry A1 của PR #61 (cùng ngày, ở dưới) để ở CÒN TREO; Yuri bảo làm luôn 26/10 03:57 UTC. Nhánh
+`fix/review-a1-admin-ops-n6iayk` dựng lại từ `main` `3f28ac4`,
+[PR #68](https://github.com/yurivolkov21/Tourism-Platform-V2/pull/68), thi công trên session cloud. Chỉ đụng admin:
+không migration, không đổi contract, không biến env, không dependency mới.
+
+- `f96439f` (A1-20): khối "How to read these numbers" của `/reports` từng chép tay bảy câu theo thứ tự revenue,
+  refunds, statuses, cancellations, recognised, costs, net profit, còn bản in C2 và sheet Definitions đọc revenue,
+  recognised, costs, net profit, refunds, statuses, cancellations, dù comment bản in hứa "giấy và file đọc như nhau".
+  Nay `reportDefinitions()` của `lib/reports-view.ts` giữ một danh sách theo thứ tự của bản in và file; trang,
+  `report-print.ts` (bỏ `DEFINITION_ORDER` riêng) và `buildDefinitions` của `xlsx.ts` cùng gọi nó. Danh sách dòng
+  của bảng vận hành (`SUMMARY_METRICS` và `operationsMetrics` của Excel) cũng là hai bản chép, nhưng đang cùng thứ
+  tự và Excel cần ô kiểu số, nên để nguyên.
+- `88bb0f2` (A1-17): comment của mười file action dưới `apps/admin/src/app/(admin)/` (categories, destinations,
+  enquiries, outbox, posts, reviews, subscribers, tours, sửa tour, đợt) ghi quyền gác là `AuthGuard` và
+  `@AdminImplement` suy role từ `ADMIN_ACCESS` (ADR-0052), kèm thủ tục chỉ Owner của file: `categories.delete`,
+  `destinations.delete`, `tours.delete`, `departures.cancel`. Không đổi hành vi.
+
+**Review.** Không có lượt review độc lập. A1-20 có 2 test mới ở `reports-view.spec.ts` (thứ tự, và đủ mọi câu của
+i18n mỗi câu một lần), đỏ trên mã cũ vì hàm chưa có; test sẵn có của bản in và sheet Definitions xanh không đổi.
+
+Tests after (`gate:int` trên `88bb0f2`, nền `3f28ac4`, 26/10, session cloud, API sống ở :3001): unit 8539 (web 2491,
+admin 2458, api 1470, mobile 961, contract 812, mobile-ui 145, ui 65, i18n 63, core 48, tokens 26), int 983, Biome
+2124 file; RLS, tokens-only mobile, prerender admin xanh. PR thêm 2 unit test admin.
+
+**CÒN TREO:**
+
+- Buổi test tay: ở bước 5 của entry A1, khi xem khối chú giải của `/reports`, thứ tự bảy câu trên màn hình phải khớp
+  bản in (Print) và sheet Definitions của file Excel tải về.
+- Dọn nhánh `fix/review-a1-admin-ops-n6iayk` trên origin nếu GitHub không tự xoá.
+
 ## 2026-10-26 — Merge đề xuất M2-14 của review M2: thẻ Saved của web in giá "from" như thẻ tour, mục wishlist mang giá "from" và đợt kế tiếp cho thẻ Saved mới của app (`2692d35`)
 
 Đề xuất M2-14 của luồng M2 trong đợt review code theo luồng (kế hoạch 20/10 trong thư mục chung của project,
