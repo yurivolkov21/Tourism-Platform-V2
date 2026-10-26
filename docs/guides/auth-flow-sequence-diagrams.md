@@ -1,6 +1,11 @@
-# Auth flow — phân tích & sequence diagrams
+# Luồng đăng nhập: sơ đồ tuần tự
 
-Lib dùng: **better-auth 1.6.23** (`apps/api`, `apps/web`, `apps/admin`). Session kiểu cookie httpOnly (`better-auth.session_token`), không JWT/bearer cho web/admin, không có endpoint refresh riêng — cookie tự gia hạn qua `updateAge` của better-auth. Mobile (`apps/mobile`) **chưa nối API thật**, hiện chỉ có mock UI theo `docs/conventions/mobile-auth-handoff.md`.
+Trang này mô tả bằng sơ đồ tuần tự (*sequence diagram*) cách đăng nhập, đăng ký và
+khôi phục tài khoản chạy trên web khách, trang quản trị và app mobile. Viết cho lập
+trình viên; bản dễ hiểu cho người không rành kỹ thuật ở
+[auth-flow-simple](auth-flow-simple.md).
+
+Thư viện dùng: **better-auth 1.6.23** (`apps/api`, `apps/web`, `apps/admin`, `apps/mobile`). Session kiểu cookie httpOnly (`better-auth.session_token`), không JWT/bearer cho web/admin, không có endpoint refresh riêng — cookie tự gia hạn qua `updateAge` của better-auth. App mobile dùng cùng Better Auth qua plugin `expoClient` (mục 3).
 
 ## Tổng quan nguồn
 
@@ -299,7 +304,7 @@ sequenceDiagram
     end
 
     Note over U,A: Chỉ chạy nếu GOOGLE_CLIENT_ID/SECRET được cấu hình server
-    Note over U,A: Mobile (kế hoạch): dùng custom scheme redirect nexora:// thay vì callback https
+    Note over U,A: App mobile không đi luồng này: dùng SDK Google gốc và ID token (mục 3)
 ```
 
 ## 8. Bootstrap / promote role ADMIN
@@ -385,6 +390,5 @@ sequenceDiagram
 ## Điều chưa xác nhận từ source
 
 - Path chính xác từng route nội bộ better-auth suy ra từ client call (`authClient.signIn.email` ...), chưa mở `node_modules/better-auth/dist` để verify từng chữ.
-- Mobile: cơ chế lưu token, tên header, refresh — chưa có trong source, chỉ có trong `docs/conventions/mobile-auth-handoff.md` (kế hoạch, chưa build).
 - `account.service.ts` — chỉ đọc phần map lỗi ở controller, chưa đọc hết logic service (đếm số lần thử sai password, rule xoá).
 - Giá trị `updateAge`/`expiresIn` cookie dùng default của better-auth, không override rõ trong `auth.config.ts`.
