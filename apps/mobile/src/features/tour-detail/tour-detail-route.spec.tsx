@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { fireEvent, screen, waitFor } from '@testing-library/react-native';
+import { act, fireEvent, screen, waitFor } from '@testing-library/react-native';
 import type { PublicReview, TourDetail } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
 import { router } from 'expo-router';
@@ -266,6 +266,9 @@ describe('TourDetailRoute — tab Reviews', () => {
       }),
     );
 
+    // `Button` bỏ lần bấm thứ hai trong 500 ms (chống bấm đúp) — khách thật bấm lại sau khi
+    // thấy lỗi thì đã quá ngưỡng đó.
+    await act(() => new Promise((resolve) => setTimeout(resolve, 600)));
     await fireEvent.press(screen.getByRole('button', { name: t.loadMoreReviews }));
     expect(await screen.findByText('Page two review')).toBeTruthy();
     expect(reviewPagesRequested).toEqual([1, 2, 2]);

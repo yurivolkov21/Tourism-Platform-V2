@@ -178,8 +178,12 @@ describe('BookingDetailRoute — Contact us ở hoá đơn đã trả', () => {
       }),
     );
 
+    // Hàng "Contact us" của bản giao diện Material 3 đọc cả nhãn lẫn câu hỏi dưới nó.
+    const detail = messages.mobile.booking.detail;
     await fireEvent.press(
-      screen.getByRole('button', { name: messages.mobile.booking.detail.contactLinkLabel }),
+      screen.getByRole('button', {
+        name: `${detail.contactLinkLabel}, ${detail.questionsAboutTrip}`,
+      }),
     );
     expect(router.push).toHaveBeenCalledWith({
       pathname: '/enquiry',
@@ -253,7 +257,9 @@ describe('BookingDetailRoute — đóng tấm huỷ thì xoá câu lỗi cũ', (
       }),
     );
 
-    await fireEvent.press(screen.getByRole('button', { name: actions.cancel }));
+    await fireEvent.press(
+      screen.getByRole('button', { name: messages.mobile.booking.detail.cancelThisBooking }),
+    );
     await fireEvent.press(
       screen.getByRole('button', {
         name: messages.accountBookingDetail.cancelDialog.withinCta('$35'),
@@ -262,7 +268,9 @@ describe('BookingDetailRoute — đóng tấm huỷ thì xoá câu lỗi cũ', (
     expect(await screen.findByText(generic)).toBeTruthy();
 
     await fireEvent.press(screen.getByRole('button', { name: actions.cancelDismiss }));
-    await fireEvent.press(screen.getByRole('button', { name: actions.cancel }));
+    await fireEvent.press(
+      screen.getByRole('button', { name: messages.mobile.booking.detail.cancelThisBooking }),
+    );
     expect(screen.queryByText(generic)).toBeNull();
   });
 });

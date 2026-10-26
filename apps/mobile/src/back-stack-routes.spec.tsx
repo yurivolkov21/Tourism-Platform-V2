@@ -79,6 +79,12 @@ describe('về Sign in từ trong nhóm auth', () => {
   it('"Back to sign in" ở Forgot password về lại đúng Sign in đang nằm dưới', async () => {
     const app = await openSignIn();
     await fireEvent.press(screen.getByText(auth.signIn.forgot));
+    // Route kiểm ô email trước khi gửi, nên phải gõ một địa chỉ hợp lệ mới tới được bước gửi
+    // (đã giả). Sign in nằm dưới cũng có ô cùng placeholder: ô CUỐI thuộc màn trên cùng.
+    const emailFields = screen.getAllByPlaceholderText(auth.signIn.email);
+    const forgotEmail = emailFields.at(-1);
+    if (forgotEmail === undefined) throw new Error('Không thấy ô email của Forgot password');
+    await fireEvent.changeText(forgotEmail, 'guest@example.com');
     await fireEvent.press(screen.getByText(messages.authForms.forgotPassword.submit));
 
     await fireEvent.press(screen.getByText(auth.forgotPassword.backToSignIn));
