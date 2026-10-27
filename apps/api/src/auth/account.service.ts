@@ -7,6 +7,7 @@ import {
   CancellationRequestStatus,
   MediaOwnerType,
   MediaType,
+  UserRole,
 } from '../generated/prisma/enums.js';
 import { startOfDayUtc } from '../lib/calendar-date.js';
 import { buildCloudinaryUrl } from '../lib/cloudinary-url.js';
@@ -31,6 +32,10 @@ export class AccountHasPendingCheckoutError extends Error {}
 export class AccountHasOpenCancellationError extends Error {}
 /** Sai mật khẩu quá nhiều lần trong cửa sổ khoá — chống dò bằng cookie trộm. */
 export class AccountTooManyAttemptsError extends Error {}
+/** Tài khoản Owner (role ADMIN) — không có đường tự xoá (ADR-0052 AMEND 2). */
+export class AccountIsOwnerError extends Error {}
+/** Tài khoản Staff — Owner thu Staff trước, rồi mới tự xoá như mọi khách (ADR-0052 AMEND 2). */
+export class AccountIsStaffError extends Error {}
 
 /** Số lần sai mật khẩu ở DELETE trước khi khoá, và độ dài cửa sổ khoá. */
 export const DELETE_MAX_ATTEMPTS = 5;
@@ -99,10 +104,19 @@ export class AccountService {
   async deleteAccount(userId: string, password: string, now: Date = new Date()): Promise<void> {
     // Đọc email gốc TRƯỚC khi scrub — cần để dọn Subscriber trùng email (NL-R1).
     // TOCTOU không đáng lo: chỉ chính chủ xoá tài khoản mình, và email-change đang tắt.
-    const { email } = await prisma.user.findUniqueOrThrow({
+    const { email, role } = await prisma.user.findUniqueOrThrow({
       where: { id: userId },
-      select: { email: true },
+      select: { email: true, role: true },
     });
+
+    // ADR-0052 AMEND 2: chỉ khách tự xoá được. Xét TRƯỚC mật khẩu: lần bấm của Owner hay Staff
+    // không tính vào trần sai mật khẩu, và route này không cho dò mật khẩu của hai bậc ấy.
+    // Role khác CUSTOMER mà không phải ADMIN (Staff, và role nào thêm về sau) chặn theo nhánh
+    // Staff: fail-closed. Role đọc ngoài tx: Owner cấp Staff đúng lúc khách đang xoá thì tài
+    // khoản vẫn bị xoá, mang role STAFF; chấp nhận vì kết cục là một tài khoản đã chết.
+    if (role !== UserRole.CUSTOMER) {
+      throw role === UserRole.ADMIN ? new AccountIsOwnerError() : new AccountIsStaffError();
+    }
 
     // XÁC THỰC LẠI (ADR-0017 §7b): tombstone là bất khả hoàn tác — một cookie
     // (trộm được, tự gia hạn) không đủ; mật khẩu là bằng chứng SỞ HỮU. Verify

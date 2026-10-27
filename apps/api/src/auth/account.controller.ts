@@ -6,6 +6,8 @@ import {
   AccountHasOpenCancellationError,
   AccountHasPaidBookingsError,
   AccountHasPendingCheckoutError,
+  AccountIsOwnerError,
+  AccountIsStaffError,
   AccountPasswordInvalidError,
   AccountService,
   AccountTooManyAttemptsError,
@@ -43,6 +45,20 @@ export class AccountController {
     try {
       await this.accountService.deleteAccount(user.id, parsed.data.password);
     } catch (error) {
+      // ADR-0052 AMEND 2: 403 như mọi lần role không đủ quyền; mã riêng để client nói được
+      // Owner thì không xoá được, Staff thì nhờ Owner thu quyền trước.
+      if (error instanceof AccountIsOwnerError) {
+        throw new HttpException(
+          { code: 'ACCOUNT_IS_OWNER', message: 'The owner account cannot be deleted' },
+          403,
+        );
+      }
+      if (error instanceof AccountIsStaffError) {
+        throw new HttpException(
+          { code: 'ACCOUNT_IS_STAFF', message: 'Revoke staff access before deleting this account' },
+          403,
+        );
+      }
       if (error instanceof AccountPasswordInvalidError) {
         throw new HttpException({ code: 'INVALID_PASSWORD', message: 'Incorrect password' }, 403);
       }

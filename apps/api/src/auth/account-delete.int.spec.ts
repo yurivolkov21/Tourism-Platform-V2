@@ -403,6 +403,43 @@ describe('DELETE /api/account đòi xác thực lại + gate nghiệp vụ (ADR-
     expect(user.deletedAt).not.toBeNull();
   });
 
+  it('8. Owner (ADMIN) → 403 ACCOUNT_IS_OWNER kể cả gõ đúng mật khẩu; xét role TRƯỚC mật khẩu nên không thành chỗ dò (ADR-0052 AMEND 2)', async () => {
+    const { cookie, userId } = await createUserAndSignIn('owner@example.com');
+    await prisma.user.update({ where: { id: userId }, data: { role: 'ADMIN' } });
+
+    const res = await deleteAccount(cookie, { password: PASSWORD });
+    expect(res.statusCode).toBe(403);
+    expect(res.json()).toMatchObject({ code: 'ACCOUNT_IS_OWNER' });
+    // Sáu lần sai mật khẩu vẫn chỉ nhận cùng một câu trả lời: không có INVALID_PASSWORD để
+    // phân biệt đúng sai, không chạm trần TOO_MANY_ATTEMPTS.
+    for (let i = 0; i < 6; i++) {
+      const wrong = await deleteAccount(cookie, { password: 'sai-be-bet-123' });
+      expect(wrong.statusCode).toBe(403);
+      expect(wrong.json()).toMatchObject({ code: 'ACCOUNT_IS_OWNER' });
+    }
+
+    const user = await prisma.user.findUniqueOrThrow({ where: { id: userId } });
+    expect(user.deletedAt).toBeNull();
+    expect(user.email).toBe('owner@example.com');
+    expect(await prisma.session.count({ where: { userId } })).toBeGreaterThan(0);
+  });
+
+  it('8b. Staff → 403 ACCOUNT_IS_STAFF; Owner thu Staff (về CUSTOMER) thì tự xoá được như mọi khách (ADR-0052 AMEND 2)', async () => {
+    const { cookie, userId } = await createUserAndSignIn('staff@example.com');
+    await prisma.user.update({ where: { id: userId }, data: { role: 'STAFF' } });
+
+    const blocked = await deleteAccount(cookie, { password: PASSWORD });
+    expect(blocked.statusCode).toBe(403);
+    expect(blocked.json()).toMatchObject({ code: 'ACCOUNT_IS_STAFF' });
+    expect((await prisma.user.findUniqueOrThrow({ where: { id: userId } })).deletedAt).toBeNull();
+
+    await prisma.user.update({ where: { id: userId }, data: { role: 'CUSTOMER' } });
+    expect((await deleteAccount(cookie, { password: PASSWORD })).statusCode).toBe(204);
+    expect(
+      (await prisma.user.findUniqueOrThrow({ where: { id: userId } })).deletedAt,
+    ).not.toBeNull();
+  });
+
   it('7. token reset sống 30 phút — khớp copy web "expires in 30 minutes"', async () => {
     const email = 'reset-ttl@example.com';
     await createUserAndSignIn(email);
