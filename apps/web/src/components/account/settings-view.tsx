@@ -51,7 +51,7 @@ export function SettingsView({
           <div className="flex min-w-0 flex-col gap-5">
             <ProfileSummary profile={profile} />
             <PasswordCard />
-            <DeleteAccount email={profile.email} />
+            <DeleteAccount email={profile.email} accountRole={profile.role} />
           </div>
         </div>
       </div>

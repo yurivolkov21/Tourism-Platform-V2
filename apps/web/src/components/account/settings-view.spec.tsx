@@ -1,4 +1,5 @@
 import { render, screen, within } from '@testing-library/react';
+import { messages } from '@tourism/i18n';
 import { describe, expect, it, vi } from 'vitest';
 import { makeSessionUser } from '@/test/fixtures/account';
 import { SettingsView } from './settings-view';
@@ -71,6 +72,15 @@ describe('SettingsView', () => {
     const identity = container.querySelector('[data-slot="identity-card"]') as HTMLElement;
     expect(within(identity).getByText('Google')).toBeInTheDocument();
     expect(screen.queryByText('Email & password')).not.toBeInTheDocument();
+  });
+
+  it('role trong hồ sơ đi xuống Danger zone: Owner thấy câu giải thích, không có nút xoá (ADR-0052 AMEND 2)', () => {
+    render(
+      <SettingsView profile={makeSessionUser({ role: 'ADMIN' })} signInMethods={['password']} />,
+    );
+    const danger = cardOf('Danger zone');
+    expect(within(danger).queryByRole('button', { name: 'Delete account' })).toBeNull();
+    expect(danger).toHaveTextContent(messages.accountProfile.danger.errors.ownerAccount);
   });
 
   it('bố cục: hai cột từ lg (trái 20rem, khe 24px, khung 1024px); thẻ danh tính đứng đầu, chỉ dính từ lg', () => {

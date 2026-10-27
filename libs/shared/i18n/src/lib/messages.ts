@@ -3926,6 +3926,11 @@ export const messages = {
           'You have a booking with a payment page still open. Cancel that booking first, then delete your account.',
         tooManyAttempts:
           'Too many incorrect passwords. Please wait 15 minutes before trying again.',
+        // ADR-0052 AMEND 2: chỉ tài khoản khách tự xoá được. Hai câu này thay nút "Delete account"
+        // cho Owner và Staff, và cũng là câu báo khi role đổi trong lúc trang Settings còn mở.
+        ownerAccount: 'This is the owner account. It runs the back office, so it can’t be deleted.',
+        staffAccount:
+          'This account has staff access. Ask the owner to revoke it first, then you can delete your account here.',
       },
     },
     // Toast SAU khi hành động ghi thành công (Task 7/A2).

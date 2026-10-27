@@ -52,7 +52,7 @@ describe('DeleteAccount', () => {
   });
 
   it('tự mang heading + mô tả — trang không còn bọc AccountSection cho khối này', () => {
-    render(<DeleteAccount email={EMAIL} />);
+    render(<DeleteAccount email={EMAIL} accountRole="CUSTOMER" />);
     expect(
       screen.getByRole('heading', { name: messages.accountProfile.danger.heading }),
     ).toBeInTheDocument();
@@ -61,14 +61,14 @@ describe('DeleteAccount', () => {
 
   it('mở dialog → nút xác nhận bị khoá (disabled) khi ô gõ còn rỗng', async () => {
     const user = userEvent.setup();
-    render(<DeleteAccount email={EMAIL} />);
+    render(<DeleteAccount email={EMAIL} accountRole="CUSTOMER" />);
     await user.click(screen.getByRole('button', { name: 'Delete account' }));
     expect(screen.getByRole('button', { name: 'Yes, delete my account' })).toBeDisabled();
   });
 
   it('gõ sai chữ (thường, thiếu ký tự, thừa ký tự) → nút vẫn khoá', async () => {
     const user = userEvent.setup();
-    render(<DeleteAccount email={EMAIL} />);
+    render(<DeleteAccount email={EMAIL} accountRole="CUSTOMER" />);
     await user.click(screen.getByRole('button', { name: 'Delete account' }));
     const input = screen.getByRole('textbox');
     const confirmBtn = screen.getByRole('button', { name: 'Yes, delete my account' });
@@ -87,7 +87,7 @@ describe('DeleteAccount', () => {
 
   it('gõ đúng chữ "DELETE" nhưng CHƯA nhập mật khẩu → nút vẫn khoá', async () => {
     const user = userEvent.setup();
-    render(<DeleteAccount email={EMAIL} />);
+    render(<DeleteAccount email={EMAIL} accountRole="CUSTOMER" />);
     await user.click(screen.getByRole('button', { name: 'Delete account' }));
     await user.type(screen.getByRole('textbox'), 'DELETE');
     expect(screen.getByRole('button', { name: 'Yes, delete my account' })).toBeDisabled();
@@ -95,7 +95,7 @@ describe('DeleteAccount', () => {
 
   it('ô username ẩn mang email đứng trước ô mật khẩu — trình quản lý mật khẩu khỏi điền email vào ô gõ DELETE (G31)', async () => {
     const user = userEvent.setup();
-    render(<DeleteAccount email={EMAIL} />);
+    render(<DeleteAccount email={EMAIL} accountRole="CUSTOMER" />);
     await user.click(screen.getByRole('button', { name: 'Delete account' }));
 
     const dialog = screen.getByRole('alertdialog');
@@ -113,7 +113,7 @@ describe('DeleteAccount', () => {
 
   it('gõ đúng chữ "DELETE" + có mật khẩu → nút xác nhận bật', async () => {
     const user = userEvent.setup();
-    render(<DeleteAccount email={EMAIL} />);
+    render(<DeleteAccount email={EMAIL} accountRole="CUSTOMER" />);
     await openDialogAndUnlock(user);
     expect(screen.getByRole('button', { name: 'Yes, delete my account' })).toBeEnabled();
   });
@@ -128,7 +128,7 @@ describe('DeleteAccount — xoá tài khoản thật (Task 7/A2)', () => {
     deleteAccount.mockResolvedValueOnce(undefined);
     signOut.mockResolvedValueOnce(undefined);
     const user = userEvent.setup();
-    render(<DeleteAccount email={EMAIL} />);
+    render(<DeleteAccount email={EMAIL} accountRole="CUSTOMER" />);
 
     await openDialogAndUnlock(user);
     await user.click(screen.getByRole('button', { name: 'Yes, delete my account' }));
@@ -143,7 +143,7 @@ describe('DeleteAccount — xoá tài khoản thật (Task 7/A2)', () => {
   it('403 INVALID_PASSWORD → copy "Incorrect password.", không signOut', async () => {
     deleteAccount.mockRejectedValueOnce(new AccountDeleteError(403, 'INVALID_PASSWORD'));
     const user = userEvent.setup();
-    render(<DeleteAccount email={EMAIL} />);
+    render(<DeleteAccount email={EMAIL} accountRole="CUSTOMER" />);
 
     await openDialogAndUnlock(user);
     await user.click(screen.getByRole('button', { name: 'Yes, delete my account' }));
@@ -157,7 +157,7 @@ describe('DeleteAccount — xoá tài khoản thật (Task 7/A2)', () => {
   it('409 ACCOUNT_HAS_PAID_BOOKINGS → copy riêng nói khách xử booking trước', async () => {
     deleteAccount.mockRejectedValueOnce(new AccountDeleteError(409, 'ACCOUNT_HAS_PAID_BOOKINGS'));
     const user = userEvent.setup();
-    render(<DeleteAccount email={EMAIL} />);
+    render(<DeleteAccount email={EMAIL} accountRole="CUSTOMER" />);
 
     await openDialogAndUnlock(user);
     await user.click(screen.getByRole('button', { name: 'Yes, delete my account' }));
@@ -172,7 +172,7 @@ describe('DeleteAccount — xoá tài khoản thật (Task 7/A2)', () => {
       new AccountDeleteError(409, 'ACCOUNT_HAS_OPEN_CANCELLATION'),
     );
     const user = userEvent.setup();
-    render(<DeleteAccount email={EMAIL} />);
+    render(<DeleteAccount email={EMAIL} accountRole="CUSTOMER" />);
 
     await openDialogAndUnlock(user);
     await user.click(screen.getByRole('button', { name: 'Yes, delete my account' }));
@@ -187,7 +187,7 @@ describe('DeleteAccount — xoá tài khoản thật (Task 7/A2)', () => {
       new AccountDeleteError(409, 'CREDENTIAL_ACCOUNT_NOT_FOUND'),
     );
     const user = userEvent.setup();
-    render(<DeleteAccount email={EMAIL} />);
+    render(<DeleteAccount email={EMAIL} accountRole="CUSTOMER" />);
 
     await openDialogAndUnlock(user);
     await user.click(screen.getByRole('button', { name: 'Yes, delete my account' }));
@@ -197,10 +197,38 @@ describe('DeleteAccount — xoá tài khoản thật (Task 7/A2)', () => {
     expect(message.textContent).not.toMatch(/contact support/i);
   });
 
+  it('403 ACCOUNT_IS_STAFF (được cấp Staff trong lúc trang còn mở) → câu bảo nhờ Owner thu quyền, không signOut', async () => {
+    deleteAccount.mockRejectedValueOnce(new AccountDeleteError(403, 'ACCOUNT_IS_STAFF'));
+    const user = userEvent.setup();
+    render(<DeleteAccount email={EMAIL} accountRole="CUSTOMER" />);
+
+    await openDialogAndUnlock(user);
+    await user.click(screen.getByRole('button', { name: 'Yes, delete my account' }));
+
+    expect(
+      await screen.findByText(messages.accountProfile.danger.errors.staffAccount),
+    ).toBeInTheDocument();
+    expect(signOut).not.toHaveBeenCalled();
+  });
+
+  it('403 ACCOUNT_IS_OWNER → câu nói tài khoản Owner không xoá được', async () => {
+    deleteAccount.mockRejectedValueOnce(new AccountDeleteError(403, 'ACCOUNT_IS_OWNER'));
+    const user = userEvent.setup();
+    render(<DeleteAccount email={EMAIL} accountRole="CUSTOMER" />);
+
+    await openDialogAndUnlock(user);
+    await user.click(screen.getByRole('button', { name: 'Yes, delete my account' }));
+
+    expect(
+      await screen.findByText(messages.accountProfile.danger.errors.ownerAccount),
+    ).toBeInTheDocument();
+    expect(signOut).not.toHaveBeenCalled();
+  });
+
   it('deleteAccount lỗi chung → message inline, KHÔNG signOut/push, nút hết pending', async () => {
     deleteAccount.mockRejectedValueOnce(new AccountDeleteError(500));
     const user = userEvent.setup();
-    render(<DeleteAccount email={EMAIL} />);
+    render(<DeleteAccount email={EMAIL} accountRole="CUSTOMER" />);
 
     await openDialogAndUnlock(user);
     await user.click(screen.getByRole('button', { name: 'Yes, delete my account' }));
@@ -214,7 +242,7 @@ describe('DeleteAccount — xoá tài khoản thật (Task 7/A2)', () => {
   it('deleteAccount 401 giữa chừng → message riêng + link /login?redirect=, KHÔNG auto-signout', async () => {
     deleteAccount.mockRejectedValueOnce(new AccountDeleteError(401));
     const user = userEvent.setup();
-    render(<DeleteAccount email={EMAIL} />);
+    render(<DeleteAccount email={EMAIL} accountRole="CUSTOMER" />);
 
     await openDialogAndUnlock(user);
     await user.click(screen.getByRole('button', { name: 'Yes, delete my account' }));
@@ -233,7 +261,7 @@ describe('DeleteAccount — khối Danger zone kiểu mới (spec 09/10 §2)', (
   });
 
   it('khung viền đỏ nhạt; tiêu đề h2 serif màu đỏ kèm dòng mô tả', () => {
-    render(<DeleteAccount email={EMAIL} />);
+    render(<DeleteAccount email={EMAIL} accountRole="CUSTOMER" />);
     const heading = screen.getByRole('heading', { level: 2, name: 'Danger zone' });
     expect(heading).toHaveClass('font-heading', 'text-destructive-emphasis');
     expect(heading.closest('section')).toHaveClass('rounded-2xl', 'border-destructive/30');
@@ -241,7 +269,7 @@ describe('DeleteAccount — khối Danger zone kiểu mới (spec 09/10 §2)', (
   });
 
   it('CHỈ dòng Delete account tô nền đỏ rất nhạt: nhãn, câu giải thích và nút mở hộp nằm trong dòng ấy', () => {
-    render(<DeleteAccount email={EMAIL} />);
+    render(<DeleteAccount email={EMAIL} accountRole="CUSTOMER" />);
     const row = screen.getByRole('button', { name: 'Delete account' }).parentElement;
     expect(row).toHaveClass('bg-destructive/5');
     // Chữ "Delete account" có đúng hai chỗ trong dòng: nhãn `<p>` (nhãn của dòng) rồi nút mở hộp.
@@ -258,9 +286,37 @@ describe('DeleteAccount — khối Danger zone kiểu mới (spec 09/10 §2)', (
   });
 
   it('nút mở hộp là nút đỏ nhỏ (variant destructive), không còn kiểu chữ link', () => {
-    render(<DeleteAccount email={EMAIL} />);
+    render(<DeleteAccount email={EMAIL} accountRole="CUSTOMER" />);
     const trigger = screen.getByRole('button', { name: 'Delete account' });
     expect(trigger).toHaveClass('bg-destructive/10', 'text-destructive-emphasis');
     expect(trigger).not.toHaveClass('underline-offset-4');
+  });
+});
+
+describe('DeleteAccount — Owner và Staff không tự xoá (ADR-0052 AMEND 2)', () => {
+  it.each([
+    ['ADMIN', messages.accountProfile.danger.errors.ownerAccount],
+    ['STAFF', messages.accountProfile.danger.errors.staffAccount],
+  ])('role %s: dòng Delete account in câu giải thích thay cho nút mở hộp', (role, note) => {
+    render(<DeleteAccount email={EMAIL} accountRole={role} />);
+    expect(screen.getByRole('heading', { level: 2, name: 'Danger zone' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Delete account' })).not.toBeInTheDocument();
+    const label = screen.getByText('Delete account');
+    expect(label.tagName).toBe('P');
+    const row = label.parentElement?.parentElement as HTMLElement;
+    expect(row).toHaveClass('bg-destructive/5');
+    expect(row).toHaveTextContent(note);
+    expect(row).not.toHaveTextContent(messages.accountProfile.danger.dialogBody);
+  });
+
+  it('khách (CUSTOMER) vẫn có nút mở hộp, không có câu chặn nào', () => {
+    render(<DeleteAccount email={EMAIL} accountRole="CUSTOMER" />);
+    expect(screen.getByRole('button', { name: 'Delete account' })).toBeInTheDocument();
+    expect(
+      screen.queryByText(messages.accountProfile.danger.errors.ownerAccount),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(messages.accountProfile.danger.errors.staffAccount),
+    ).not.toBeInTheDocument();
   });
 });
