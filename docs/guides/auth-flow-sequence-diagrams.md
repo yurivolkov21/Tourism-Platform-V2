@@ -370,6 +370,8 @@ sequenceDiagram
     A->>DB: Kiểm tra password + điều kiện xoá
     alt thiếu password
         A-->>W: 400 PASSWORD_REQUIRED
+    else tài khoản Owner hoặc Staff (xét trước password)
+        A-->>W: 403 ACCOUNT_IS_OWNER hoặc ACCOUNT_IS_STAFF
     else sai password
         A-->>W: 403 INVALID_PASSWORD
     else quá nhiều lần thử
@@ -378,7 +380,7 @@ sequenceDiagram
         A-->>W: 409 Conflict (lý do cụ thể)
     else hợp lệ
         A->>DB: Đánh dấu deletedAt (tombstone, không xoá cứng)
-        A-->>W: 200 OK
+        A-->>W: 204 No Content
         W->>A: POST /api/auth/sign-out
         W->>U: Redirect trang chủ
     end

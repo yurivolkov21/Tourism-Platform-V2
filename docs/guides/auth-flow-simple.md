@@ -141,7 +141,7 @@ sequenceDiagram
     rect rgb(245, 240, 230)
     U->>App: Yêu cầu xoá tài khoản, nhập mật khẩu
     App->>HT: Gửi yêu cầu xoá
-    alt Không hợp lệ (sai mật khẩu, còn đơn đặt chỗ...)
+    alt Không hợp lệ (sai mật khẩu, còn đơn đặt chỗ, tài khoản Owner hay Staff...)
         HT-->>App: Từ chối, nêu lý do
         App-->>U: Hiện thông báo
     else Hợp lệ
