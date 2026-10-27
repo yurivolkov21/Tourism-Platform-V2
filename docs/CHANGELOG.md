@@ -8,6 +8,36 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-10-27 — Merge loại `dist-seed` khỏi vitest unit của api: `pnpm gate` không còn đỏ trên Windows sau `db:seed` (`c47733d`)
+
+Phát hiện trong đợt dọn máy dev 27/10: Yuri nhờ dọn file rác của dự án và Docker (bỏ 3 image thử Render, build cache,
+npm cache, gói cũ trong pnpm store, nén `docker_data.vhdx` từ 20,2 xuống 3,2 GB; ổ C trống thêm 24,3 GB; không đổi gì
+trong repo). Chạy `gate:int` để kiểm máy sau khi dọn thì đỏ 157 file test, tất cả trong `apps/api/dist-seed/`: bản
+build của `db:seed` lúc 26/10 16:12 (+07) chứa `*.spec.js` đã biên dịch, vì trên Windows `--ignore '**/*.spec.ts'` của
+swc không loại được file spec dù pnpm chạy script bằng Git Bash (đo: `apps/api/dist/` cũng có 145 `*.spec.js` ngay sau
+`pnpm build`). Config unit của Vitest chỉ loại `dist/` nên gom luôn các file đó. CI chạy trên Linux nên không gặp.
+Nhánh `claude/project-thread-54dvl5` từ `main` `7ab4300`,
+[PR #76](https://github.com/yurivolkov21/Tourism-Platform-V2/pull/76), session trên máy Windows của Yuri. Không đổi code
+chạy thật, không migration, không biến env, không dependency.
+
+- `c47733d` (fix): `apps/api/vitest.config.ts` thêm `'**/dist-seed/**'` vào `exclude`, kèm comment ghi lý do.
+  `vitest.int.config.ts` chỉ gom `src/**/*.int.spec.ts` nên không cần đổi.
+
+**Review.** Không có lượt review độc lập. Tự kiểm: để nguyên `dist-seed/` (157 `*.spec.js`), trước khi sửa Vitest báo
+`157 failed | 101 passed (258)` file, sau khi sửa `101 passed (101)`. Gốc ở swc chưa sửa: `dist/` và `dist-seed/` trên
+Windows vẫn chứa spec đã biên dịch, vô hại vì cả hai đều bị Vitest loại và bản deploy build trên Linux. Gotcha 1 của
+CLAUDE.md quy việc `--ignore` mất tác dụng cho cmd.exe, nhưng đo 27/10 thì chạy bằng Git Bash cũng dính; chưa sửa
+CLAUDE.md vì phải hỏi Yuri trước. Yuri bảo merge 27/10 04:19 UTC.
+
+Tests after (`gate:int` trên `c47733d`, 27/10, máy Windows của Yuri, API sống ở :3001 bật giống bước CI): unit 8776
+(web 2502, admin 2458, api 1477, mobile 1050, contract 833, mobile-ui 254, ui 65, i18n 63, core 48, tokens 26) và int
+985; gate 28/28 task; Biome 2156 file; tokens-only của mobile (215 file) xanh; 5 check CI của PR xanh. PR không thêm
+hay bớt test.
+
+**CÒN TREO:**
+
+- Sửa gotcha 1 của CLAUDE.md cho đúng nguyên nhân `--ignore` của swc mất tác dụng trên Windows (chờ Yuri duyệt).
+
 ## 2026-10-27 — Merge gỡ bốn lượt snapshot tháng 9 khỏi `docs/snapshots/`: lượt 26/10 đã chứa đủ bản đồ ảnh của chúng (`e7063e5`)
 
 Đợt rút gọn docs thứ ba, sau PR #70 (26/10, bên dưới). 27/10 00:58 UTC Yuri hỏi vì sao `docs/` vẫn nhiều thư mục và
