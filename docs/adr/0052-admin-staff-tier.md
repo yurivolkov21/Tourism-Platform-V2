@@ -155,6 +155,14 @@ duyệt sửa ngày 27/10.
   bị xoá, mang role `STAFF`. Chấp nhận: kết cục là một tài khoản đã chết (mọi phiên bị xoá,
   AuthGuard trả 401, danh sách Users bỏ qua tombstone), không mở thêm quyền gì.
 
+**Phương án đã bỏ:**
+
+- `@Roles(CUSTOMER)` trên handler: AuthGuard trả 403 trần không mã, nên client không nói được
+  vì sao bị chặn hay phải làm gì tiếp.
+- Chỉ chặn Owner, để Staff tự xoá: Staff rời đội ngũ mà Owner không hay (lý do ở trên).
+- Xét role thêm một lần trong transaction để bịt khe đọc ngoài tx: thêm một chỗ giữ cùng một
+  luật, chỉ để đổi một kết cục vô hại.
+
 Đo ở `account-delete.int.spec.ts` (Owner, Staff và Staff đã bị thu quyền) và
 `delete-account.spec.tsx` của web. App mobile gọi cùng route nhưng chưa map hai mã mới, nên Owner
 hay Staff bấm xoá trên app thấy câu lỗi chung; tài khoản không bị xoá.
