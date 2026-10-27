@@ -8,6 +8,51 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-10-27 — Giấy phép MIT cho repo public: `LICENSE`, danh sách nội dung bên thứ ba mà MIT không áp, mục Giấy phép trong README (`da79afc`)
+
+Repo để public mà chưa có `LICENSE`, nên người ngoài chỉ được xem và fork trên GitHub (mục CÒN TREO của entry PR #70
+bên dưới). 27/10 00:34 UTC Yuri đồng ý phương án của điều phối là giấy phép MIT; 00:56 UTC Yuri, trưởng nhóm, xác
+nhận Nghia và Duy An đã đồng ý cho phần code của mình dùng MIT. Nhánh `claude/project-thread-2j58kl` dựng từ `main`
+`939d66e`, rebase lên `7c10c81` sau PR #73,
+[PR #74](https://github.com/yurivolkov21/Tourism-Platform-V2/pull/74), session cloud. Chỉ thêm hai file ở gốc repo và
+sửa `README.md`: không đổi code, không migration, không biến env, không dependency.
+
+- `da79afc` (docs): `LICENSE` là văn bản MIT chuẩn, giống từng chữ bản của shadcn/ui trừ dòng bản quyền, để GitHub
+  nhận đúng là MIT. Dòng bản quyền `Copyright (c) 2026 yurivolkov21, Nghia, Duy An` theo tác giả trong lịch sử git:
+  2280, 85 và 31 commit; 124 commit mang tên Claude là việc làm thay cho Yuri; commit duy nhất của Duong chỉ thêm
+  `.github/CODEOWNERS`.
+- Cùng commit, `THIRD_PARTY_NOTICES.md` (tiếng Anh, cho người ngoài đọc) liệt kê phần MIT không áp: component chép từ
+  shadcn/ui, ReUI, Magic UI (MIT) và `GradientWaves.tsx` của React Bits (MIT kèm Commons Clause); hình logo "Slidex"
+  cùng `stats-slider.tsx` và `tilt-card.tsx` chuyển từ mẫu PrebuiltUI, mà điều khoản PrebuiltUI không cho phát hành
+  lại; skill cho agent trong `.claude/skills/` và `.agents/skills/`; chín ảnh mẫu trong `apps/web/public/mock/` (ghi
+  công ở `CREDITS.md`); ảnh chụp và dàn trang mẫu ReUI trong `docs/design/mockups/`; thứ sản phẩm dùng mà không nằm
+  trong repo (ảnh trên Cloudinary, font OFL 1.1, tile bản đồ, dependency npm). Kèm toàn văn MIT với ba dòng bản quyền
+  và giấy phép React Bits, vì các giấy phép ấy đòi giữ cùng bản sao.
+- Cùng commit, `README.md` thêm mục "Giấy phép" trước English summary và một đoạn cuối English summary.
+  `package.json` không đổi: cả 11 gói đều `private: true` và không gói nào có trường `license`.
+
+Đóng mục "Repo public nhưng chưa có file `LICENSE`" ở CÒN TREO của entry PR #70 (26/10, bên dưới).
+
+**Review.** Không có lượt review độc lập: PR chỉ có văn bản giấy phép và docs. Tự kiểm: `LICENSE` so với LICENSE của
+shadcn/ui (bỏ dòng bản quyền) giống hệt; giấy phép React Bits trong `THIRD_PARTY_NOTICES.md` giống hệt `LICENSE.md`
+hiện tại của repo gốc; markdownlint-cli2 0.17.2 với `.markdownlint.json` trên `README.md` và `THIRD_PARTY_NOTICES.md`
+không lỗi; không dòng `.md` thêm vào nào bắt đầu bằng dấu cộng; `README.md` chỉ thêm dòng. Yuri bảo làm luôn 27/10
+00:56 UTC, rồi gõ lời đẩy main trong thread của PR #74.
+
+Tests after (`gate:int` trên `0609962`, nền `939d66e`, trước rebase, 27/10, session cloud, API sống ở :3001): unit
+8770 (web 2496, admin 2458, api 1477, mobile 1050, contract 833, mobile-ui 254, ui 65, i18n 63, core 48, tokens 26)
+và int 983; Biome 2184 file; tokens-only của mobile (215 file) xanh; cả lượt chạy với
+`NODE_OPTIONS=--max-old-space-size=4096`; CI của PR trên `0609962` xanh. PR không đổi code nên sau rebase lên
+`7c10c81` số test bằng entry PR #73 ngay dưới (unit 8776, int 985); CI của nhánh chạy lại trên bản rebase trước khi
+đẩy main.
+
+**CÒN TREO:**
+
+- G59 (mở ở `open-items.md` trong lượt merge này): hình logo "Slidex" và hai component chuyển từ mẫu PrebuiltUI.
+  Điều khoản PrebuiltUI không cho phát hành lại mẫu, nên `THIRD_PARTY_NOTICES.md` ghi là không cấp quyền dùng lại.
+  Muốn hết rủi ro thì thay logo và viết lại hai hiệu ứng; Yuri quyết, hợp lý nhất là sau buổi bảo vệ.
+- Dọn nhánh `claude/project-thread-2j58kl` trên origin nếu GitHub không tự xoá.
+
 ## 2026-10-27 — Merge chặn Owner và Staff tự xoá tài khoản: `DELETE /api/account` trả 403 với mã riêng, trang Settings của www thay nút xoá bằng câu giải thích (`a779551`)
 
 Phát hiện phụ của luồng soạn kịch bản test tay cuối (26/10): route không xét role, mà www và admin dùng chung cookie,
