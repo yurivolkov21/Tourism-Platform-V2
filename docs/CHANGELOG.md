@@ -8,6 +8,57 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-10-27 — Merge chặn Owner và Staff tự xoá tài khoản: `DELETE /api/account` trả 403 với mã riêng, trang Settings của www thay nút xoá bằng câu giải thích (`a779551`)
+
+Phát hiện phụ của luồng soạn kịch bản test tay cuối (26/10): route không xét role, mà www và admin dùng chung cookie,
+nên Owner đang đăng nhập admin mở `/account/settings` của www, bấm "Delete account" là tự tombstone: mọi phiên chết,
+admin không còn Owner cho tới khi đăng ký lại đúng email trong `ADMIN_EMAILS`. Staff cũng tự xoá được mà Owner không
+hay. Yuri duyệt sửa 27/10 00:34 UTC. Nhánh `claude/project-thread-o45ama` từ `main` `939d66e`,
+[PR #73](https://github.com/yurivolkov21/Tourism-Platform-V2/pull/73), thi công trên session cloud. Đụng api
+(`AccountService`, `AccountController`), web (khu Danger zone của Settings), lib dùng chung `@tourism/i18n` (chỉ thêm
+hai khoá) và docs: không migration, không đổi contract, không biến env, không dependency mới. Web và API lên trước hay
+sau nhau đều không mất dữ liệu.
+
+- `32f6406` (docs): [ADR-0052 AMEND 2](adr/0052-admin-staff-tier.md): chỉ tài khoản `CUSTOMER` tự xoá được. Chặn cả
+  Staff (Owner thu Staff trước, rồi người đó tự xoá như mọi khách), là ngoại lệ có chủ đích của câu "không chỗ nào
+  của web hay API đòi `role === 'CUSTOMER'`" ở §1. Dòng 0052 ở mục lục ADR thành 2 lần bổ sung. `612e76b` thêm ba
+  phương án đã bỏ: `@Roles(CUSTOMER)` (403 trần không mã), chỉ chặn Owner, xét role thêm một lần trong transaction.
+- `ba9ed89` (api): `AccountService.deleteAccount` đọc role cùng lượt đọc email và xét TRƯỚC bước mật khẩu: `ADMIN`
+  trả 403 `ACCOUNT_IS_OWNER`, `STAFF` và role nào thêm về sau trả 403 `ACCOUNT_IS_STAFF` (fail-closed). Lần bấm ấy
+  không tính vào trần sai mật khẩu, và với Owner hay Staff route không còn là chỗ dò mật khẩu bằng cookie trộm. Role
+  đọc ngoài transaction: Owner cấp Staff đúng lúc một khách đang tự xoá thì tài khoản vẫn bị xoá, mang role `STAFF`;
+  chấp nhận vì đó là một tài khoản đã chết.
+- `cf092ad` (web, i18n): `DeleteAccount` nhận `accountRole` (`SettingsView` truyền `profile.role`). Owner và Staff
+  giữ dòng "Delete account" nền đỏ nhạt nhưng in câu giải thích thay cho câu mô tả, và không có nút mở hộp. Hộp xoá
+  map thêm hai mã mới cho ca role đổi trong lúc trang còn mở. Hai câu nằm ở `accountProfile.danger.errors` (khoá
+  `ownerAccount` và `staffAccount`). Prop tên `accountRole` vì luật `useValidAriaRole` của Biome coi prop `role` của
+  JSX là thuộc tính ARIA.
+- `a779551` (docs): sơ đồ xoá tài khoản ở `guides/auth-flow-sequence-diagrams.md` thêm nhánh 403 của Owner và Staff,
+  và sửa `200 OK` thành `204 No Content` cho đúng controller; `guides/auth-flow-simple.md` thêm "tài khoản Owner hay
+  Staff" vào nhánh không hợp lệ; `open-items.md` mở G58 (app mobile chưa map hai mã mới).
+
+**Review.** Không có lượt review độc lập. Test viết đỏ trước: int test 8 (Owner: 403 `ACCOUNT_IS_OWNER` cả khi gõ
+đúng mật khẩu; sáu lần sai mật khẩu vẫn cùng câu, không ra `INVALID_PASSWORD` hay `TOO_MANY_ATTEMPTS`; tài khoản và
+phiên còn nguyên) và 8b (Staff bị chặn; về lại `CUSTOMER` thì xoá được) của `account-delete.int.spec.ts` đỏ trên mã
+cũ, vì route trả 204; 6 test web (`delete-account.spec.tsx` 5, `settings-view.spec.tsx` 1) đỏ khi chưa có câu và
+prop mới. Yuri bảo đẩy lên main 27/10 01:01 UTC.
+
+Tests after (`gate:int` trên `612e76b`, nền `939d66e`, 27/10, session cloud, API sống ở :3001): unit 8776 (web 2502,
+admin 2458, api 1477, mobile 1050, contract 833, mobile-ui 254, ui 65, i18n 63, core 48, tokens 26) và int 985;
+Biome 2184 file; RLS, tokens-only của mobile và prerender admin xanh; CI của PR (gồm bundle mobile) xanh. So với entry
+seed lại 2 ngay dưới: unit thêm 6 (web), int thêm 2.
+
+**CÒN TREO:**
+
+- Buổi test tay, sau khi bản này lên prod: [Chrome · Owner] mở `https://www.nexora-travel.agency/account/settings`,
+  khu "Danger zone" phải ghi "This is the owner account. It runs the back office, so it can’t be deleted." và không
+  có nút "Delete account". Làm được thêm một bước như vậy cho Mai Tran lúc đang là Staff (bước 100 tới 101 của kịch
+  bản), với câu "This account has staff access. Ask the owner to revoke it first, then you can delete your account
+  here." Các bước tự xoá của khách (Sophie Laurent, bước 114 tới 122) không đổi.
+- G58: app mobile map hai mã mới (vùng của Nghĩa, cần APK mới). Tới lúc đó Owner hay Staff bấm xoá trên app thấy câu
+  lỗi chung; tài khoản không bị xoá.
+- Dọn nhánh `claude/project-thread-o45ama` trên origin nếu GitHub không tự xoá.
+
 ## 2026-10-26 — Lượt seed lại prod 2, lượt cuối trước buổi bảo vệ: làm mới mọi tài khoản kể cả Owner, seed với H = 26/10, snapshot trước khi xoá (`a962bb5`)
 
 Yuri chạy tay trên PC ngày 26/10 theo [hướng dẫn seed lại production](guides/huong-dan-seed-lai-production.md) của
