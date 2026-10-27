@@ -151,6 +151,20 @@ hay ESLint. Quy ước làm việc đầy đủ (nhánh, commit, ADR trước co
 
 Việc còn mở nằm ở [docs/open-items.md](docs/open-items.md).
 
+## Giấy phép
+
+Code và tài liệu viết cho dự án này dùng giấy phép MIT, toàn văn ở
+[LICENSE](LICENSE): ai cũng được dùng, sửa và phát hành lại, kể cả cho mục đích
+thương mại, miễn là giữ nguyên dòng bản quyền và lời giấy phép.
+
+Giấy phép MIT không áp cho phần của tác giả khác có trong repo: ảnh mẫu trong
+`apps/web/public/mock/` (Unsplash và Wikimedia Commons), component chép từ
+shadcn/ui, ReUI, Magic UI và React Bits, hình logo lấy từ mẫu miễn phí của
+PrebuiltUI, và các skill cho agent trong `.claude/skills/`. Mỗi phần giữ giấy
+phép riêng, liệt kê ở [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md). Ảnh trên
+site thật nằm trên Cloudinary chứ không nằm trong repo, và mỗi ảnh cũng giữ giấy
+phép riêng.
+
 ## English summary
 
 Nexora is a tour booking platform for travel in Vietnam, built as a graduation
@@ -173,3 +187,10 @@ shared packages and the API, migrate and seed the database, then start the API
 (port 3001), the customer site (port 3000) and the admin site (port 3002). Seed
 customers use `@example.com` addresses with the password `Nexora!Demo2026`, which
 only works against the local Docker database.
+
+The project's own code and documentation are released under the MIT license
+(see [LICENSE](LICENSE)). Third-party material in the repository keeps its own
+license: the sample photos, UI components copied from shadcn/ui, ReUI, Magic UI
+and React Bits, the logo mark taken from a PrebuiltUI sample, and the vendored
+agent skills. [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) lists each item
+with its license.
