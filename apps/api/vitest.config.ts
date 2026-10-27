@@ -7,7 +7,10 @@ export default defineConfig({
   test: {
     globals: true,
     environment: 'node',
-    exclude: ['**/node_modules/**', '**/dist/**', '**/*.int.spec.ts'],
+    // `dist-seed/` là bản build của `db:seed`. Trên Windows `--ignore '**/*.spec.ts'` của swc
+    // không loại được file spec (đo 27/10), nên thư mục này có `*.spec.js` đã biên dịch; không
+    // loại thì Vitest gom cả chúng và đỏ hàng loạt "failed to read .swcrc".
+    exclude: ['**/node_modules/**', '**/dist/**', '**/dist-seed/**', '**/*.int.spec.ts'],
   },
   oxc: false,
   // esbuild (mặc định của Vitest) không emit decorator metadata → NestJS DI hỏng.
