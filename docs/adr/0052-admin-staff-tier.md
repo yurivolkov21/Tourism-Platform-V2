@@ -125,3 +125,36 @@ Admin mới có MỘT bậc. Năm sự thật đo được quyết định thi�
 số này và ẩn hai nút Delete với Staff (`c4c6d6da`, `23d39d7d`). Bảng `ADMIN_ACCESS` chưa có
 trong code vì P4f chưa thi công; lúc thi công, unit test ghim danh sách Owner-only phải có hai
 khoá này.
+
+## AMEND 2 — Owner và Staff không tự xoá tài khoản (27/10)
+
+`DELETE /api/account` (ADR-0017 §7b, §8b) không xét role. www và admin dùng chung cookie, nên
+Owner đang đăng nhập admin mở Settings của www, bấm "Delete account" là tự tombstone: mọi phiên
+chết, admin không còn Owner cho tới khi đăng ký lại đúng email trong `ADMIN_EMAILS`, và lịch sử
+thao tác trỏ về một tài khoản đã xoá. Phát hiện lúc viết kịch bản test tay cuối (26/10); Yuri
+duyệt sửa ngày 27/10.
+
+**Chốt:**
+
+- Chỉ tài khoản `CUSTOMER` tự xoá được. `AccountService.deleteAccount` xét role ngay đầu, TRƯỚC
+  bước xác thực mật khẩu: `ADMIN` trả 403 `ACCOUNT_IS_OWNER`, `STAFF` (và mọi role thêm về sau,
+  theo lối fail-closed của ADR-0003) trả 403 `ACCOUNT_IS_STAFF`. Xét trước mật khẩu nên lần bấm
+  ấy không tính vào trần sai mật khẩu, và với Owner hay Staff, `DELETE` không còn là chỗ dò mật
+  khẩu bằng cookie trộm.
+- Staff cũng bị chặn. Staff là thành viên đội ngũ do Owner cấp; tự xoá là một người rời đội ngũ
+  mà Owner không hay, kèm một dòng tombstone còn mang role `STAFF`. Đường đi: Owner thu Staff
+  (tài khoản về `CUSTOMER`), rồi người đó tự xoá như mọi khách. Quyền được xoá còn nguyên, chỉ
+  thêm một bước. Đây là ngoại lệ có chủ đích của câu "không chỗ nào của web hay API đòi
+  `role === 'CUSTOMER'`" ở §1; đặt tour và viết review không đổi.
+- Owner không có đường xoá nào qua giao diện. Gỡ một Owner vẫn là runbook SQL của ADR-0026
+  AMEND 1 §D (Giới hạn đã biết 1).
+- Web: khu Danger zone của `/account/settings` đọc role trong hồ sơ; Owner và Staff thấy câu
+  giải thích thay cho nút "Delete account". Hộp xoá vẫn map hai mã mới, cho ca role đổi trong
+  lúc trang đang mở.
+- Role đọc ngoài transaction. Owner cấp Staff đúng lúc một khách đang tự xoá thì tài khoản vẫn
+  bị xoá, mang role `STAFF`. Chấp nhận: kết cục là một tài khoản đã chết (mọi phiên bị xoá,
+  AuthGuard trả 401, danh sách Users bỏ qua tombstone), không mở thêm quyền gì.
+
+Đo ở `account-delete.int.spec.ts` (Owner, Staff và Staff đã bị thu quyền) và
+`delete-account.spec.tsx` của web. App mobile gọi cùng route nhưng chưa map hai mã mới, nên Owner
+hay Staff bấm xoá trên app thấy câu lỗi chung; tài khoản không bị xoá.

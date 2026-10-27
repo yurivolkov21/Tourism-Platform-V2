@@ -105,7 +105,7 @@ bị loại và cái giá phải trả. Bản đồ chung của tài liệu ở 
 | [0033](0033-financial-model.md) | Báo cáo có kết quả kinh doanh, không chỉ dòng tiền | Định nghĩa doanh thu sửa ở ADR-0041 §9; 4 lần bổ sung (lần 3: tháng đang chạy chỉ tính chuyến đã kết thúc; lần 4, 20/10/2026: hai bộ đếm huỷ chỉ đếm lượt khách tự huỷ) |
 | [0034](0034-excel-report-export.md) | Báo cáo tháng xuất file Excel; từ lần bổ sung 3 (10/10/2026) các danh sách cũng xuất Excel thay cho CSV | 3 lần bổ sung |
 | [0036](0036-dashboard-daily-series.md) | Dashboard lấy số thật từ một chuỗi số liệu theo ngày | 3 lần bổ sung; lần 3 (20/10/2026): bốn thẻ ở trang đầu luôn đọc số mới |
-| [0052](0052-admin-staff-tier.md) | Nhân sự quản trị hai bậc: Owner khai trong `ADMIN_EMAILS`, Staff do Owner cấp; khoá tài khoản thì không tạo được phiên | 1 lần bổ sung |
+| [0052](0052-admin-staff-tier.md) | Nhân sự quản trị hai bậc: Owner khai trong `ADMIN_EMAILS`, Staff do Owner cấp; khoá tài khoản thì không tạo được phiên | 2 lần bổ sung; lần 2 (27/10/2026): Owner và Staff không tự xoá được tài khoản |
 | [0061](0061-admin-activity-log.md) | Nhật ký thao tác quản trị: một bảng chỉ ghi thêm, tự ghi sau mỗi lệnh ghi thành công, chỉ Owner xem | |
 
 ## App điện thoại
