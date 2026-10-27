@@ -51,31 +51,34 @@ một lượt mới là đổi luôn hành vi của script dọn dữ liệu. Xu
 ngày thì thư mục `docs/snapshots/<ngày>/` bị ghi đè, còn bản sao lưu sang
 `backups/<ngày>-2/`, `-3`…: bản chụp trước reset không bao giờ bị thay.
 
-Hiện tại: **`2026-10-26/`**.
+Hiện tại: **`2026-10-26/`**, cũng là lượt duy nhất còn trong thư mục.
 
-## Năm lượt đã có, và chuyện trùng lặp
+## Các lượt đã xuất
 
 | Lượt | Dịp |
 | --- | --- |
-| `2026-09-09` | Trước khi dọn tầng vận hành trên prod |
-| `2026-09-10` | Trước khi seed toàn bộ dữ liệu mới |
-| `2026-09-15` | Trước lượt seed prod 1 (trọn năm 2026) |
-| `2026-09-18` | Trước khi triển khai luật hoàn tiền một hạn chót |
-| `2026-10-26` | Trước lượt seed lại 2, lượt cuối: làm mới mọi tài khoản, kể cả Owner |
+| [`2026-09-09`](https://github.com/yurivolkov21/Tourism-Platform-V2/tree/6785326e69949d4ef566c5eaf7c3eaa3706859c8/docs/snapshots/2026-09-09) | Trước khi dọn tầng vận hành trên prod |
+| [`2026-09-10`](https://github.com/yurivolkov21/Tourism-Platform-V2/tree/6785326e69949d4ef566c5eaf7c3eaa3706859c8/docs/snapshots/2026-09-10) | Trước khi seed toàn bộ dữ liệu mới |
+| [`2026-09-15`](https://github.com/yurivolkov21/Tourism-Platform-V2/tree/6785326e69949d4ef566c5eaf7c3eaa3706859c8/docs/snapshots/2026-09-15) | Trước lượt seed prod 1 (trọn năm 2026) |
+| [`2026-09-18`](https://github.com/yurivolkov21/Tourism-Platform-V2/tree/6785326e69949d4ef566c5eaf7c3eaa3706859c8/docs/snapshots/2026-09-18) | Trước khi triển khai luật hoàn tiền một hạn chót |
+| [`2026-10-26`](2026-10-26/) | Trước lượt seed lại 2, lượt cuối: làm mới mọi tài khoản, kể cả Owner |
 
-**Phần lớn nội dung trùng nhau, và điều đó bình thường** — đo ngày 21/09: bốn
-file `*-ids.json` cộng `site-media-slots.json` giống hệt ở cả bốn lượt (danh mục
-không đổi), `media-assets.json` có hai phiên bản, `keep-list.json` có ba. Lượt
-`2026-09-18` trùng `2026-09-15` ở cả bảy file.
+Bốn lượt tháng 9 đã gỡ khỏi thư mục ngày 27/10, chủ dự án duyệt. Link trong bảng mở
+bản lưu trong git ở commit `6785326e`, nên các entry CHANGELOG nhắc tên chúng vẫn
+lần lại được. Gỡ được vì lượt `2026-10-26` đã chứa đủ phần cần dùng: đo 27/10, cả
+517 dòng `media-assets.json` của mỗi lượt cũ đều có trong lượt mới, cùng chủ sở hữu
+và `public_id` (lượt `2026-09-09` chỉ khác ở cột `alt`, lúc ấy còn trống). Cũng
+không script nào đọc lượt cũ: `reset-operational-data.mjs` đọc lượt mới nhất, còn
+`export-snapshot.mjs` đọc lượt mới nhất trước ngày đang xuất.
 
-Lượt `2026-10-26` (đo 26/10) trùng `2026-09-18` ở bốn file. Ba file khác:
-`tours-ids.json` có thêm hai tour thử, xoá ngay sau lượt seed; `media-assets.json`
-có 523 dòng, thêm một ảnh của mỗi tour thử và bốn ảnh của một bài đánh giá, không
-dòng nào bị bớt hay đổi; `keep-list.json` ghi Owner được làm mới thay vì giữ nguyên.
-
-Đừng vội xoá lượt trùng: mỗi lượt là **bằng chứng của một bước đã làm**, và bốn
-lượt gần nhất đều được entry CHANGELOG nhắc đích danh. Cả năm lượt cộng lại chỉ
-khoảng 2 MB.
+Phần lớn nội dung các lượt trùng nhau, và điều đó bình thường. Đo 21/09: bốn file
+`*-ids.json` cộng `site-media-slots.json` giống hệt ở cả bốn lượt tháng 9 (danh mục
+không đổi), `media-assets.json` có hai phiên bản, `keep-list.json` có ba; lượt
+`2026-09-18` trùng `2026-09-15` ở cả bảy file. Lượt `2026-10-26` (đo 26/10) trùng
+`2026-09-18` ở bốn file. Ba file khác: `tours-ids.json` có thêm hai tour thử, xoá
+ngay sau lượt seed; `media-assets.json` có 523 dòng, thêm một ảnh của mỗi tour thử
+và bốn ảnh của một bài đánh giá, không dòng nào bị bớt hay đổi; `keep-list.json`
+ghi Owner được làm mới thay vì giữ nguyên.
 
 ## Khi nào xuất lượt mới
 
