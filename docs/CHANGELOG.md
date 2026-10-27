@@ -8,6 +8,37 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-10-27 — Merge gỡ bốn lượt snapshot tháng 9 khỏi `docs/snapshots/`: lượt 26/10 đã chứa đủ bản đồ ảnh của chúng (`e7063e5`)
+
+Đợt rút gọn docs thứ ba, sau PR #70 (26/10, bên dưới). 27/10 00:58 UTC Yuri hỏi vì sao `docs/` vẫn nhiều thư mục và
+file. Câu trả lời kèm số đo: PR #70 gỡ 117.041 trên 168.108 dòng Markdown nhưng chỉ 2 trong 11 thư mục; phần còn lại
+chủ yếu là ADR, spec và mockup mà khoảng 900 file code trích tới. Đợt 3 đưa lên thẻ quyết định; 01:51 UTC Yuri chọn
+"Xoá 4 thư mục snapshot cũ", giữ `handoff/`. Nhánh `claude/project-thread-kn2hjv` dựng lại từ `main` `7c10c81`,
+rebase lên `e9e8b8a` sau PR #74, [PR #75](https://github.com/yurivolkov21/Tourism-Platform-V2/pull/75), session
+cloud. Chỉ xoá file JSON và sửa một README: không đổi code, không migration, không biến env, không dependency.
+
+- `e7063e5` (docs): xoá `docs/snapshots/2026-09-09/`, `2026-09-10/`, `2026-09-15/` và `2026-09-18/` (28 file JSON,
+  khoảng 1,6 MB), giữ `2026-10-26/`. `docs/snapshots/README.md`: bảng các lượt vẫn đủ năm lượt, bốn lượt cũ trỏ sang
+  bản lưu trong git ở commit `6785326`; đoạn "Đừng vội xoá lượt trùng" (viết 21/09, sửa 26/10) thay bằng lý do gỡ
+  kèm số đo.
+
+**Review.** Không có lượt review độc lập. Tự kiểm: so `id` của `media-assets.json` thì cả 517 dòng của mỗi lượt cũ
+đều có trong lượt `2026-10-26` (523 dòng), cùng chủ sở hữu và `public_id`; lượt `2026-09-09` chỉ khác cột `alt`, lúc
+ấy còn trống. `reset-operational-data.mjs` đọc lượt có ngày lớn nhất, `export-snapshot.mjs` đọc lượt mới nhất trước
+ngày đang xuất, nên cả hai vẫn thấy `2026-10-26/`. Hai file lưu trữ `changelog/2026-09-*.md` nhắc tên lượt cũ dạng
+code chứ không phải link; script kiểm link không thấy link hỏng mới; markdownlint-cli2 0.18.1 không lỗi trên README.
+Yuri bảo đẩy lên main 27/10 02:16 UTC.
+
+Tests after (`gate:int` trên `8197274`, nền `7c10c81`, trước rebase, 27/10, session cloud, API sống ở :3001): unit
+8776 (web 2502, admin 2458, api 1477, mobile 1050, contract 833, mobile-ui 254, ui 65, i18n 63, core 48, tokens 26)
+và int 985; Biome 2156 file (ít hơn entry PR #74 đúng 28 file JSON đã xoá); tokens-only của mobile (215 file) xanh;
+cả lượt chạy với `NODE_OPTIONS=--max-old-space-size=4096`; hai lượt CI của PR trên `8197274` xanh. PR #74 nằm giữa
+hai nền chỉ thêm `LICENSE` và file `.md`, nên sau rebase số test giữ nguyên; PR không thêm hay bớt test.
+
+**CÒN TREO:**
+
+- Dọn nhánh `claude/project-thread-kn2hjv` trên origin nếu GitHub không tự xoá.
+
 ## 2026-10-27 — Giấy phép MIT cho repo public: `LICENSE`, danh sách nội dung bên thứ ba mà MIT không áp, mục Giấy phép trong README (`da79afc`)
 
 Repo để public mà chưa có `LICENSE`, nên người ngoài chỉ được xem và fork trên GitHub (mục CÒN TREO của entry PR #70
