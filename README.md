@@ -9,7 +9,8 @@ khách và một trợ lý AI tư vấn tour trên web.
 
 Xem nhanh sản phẩm trong clip 70 giây:
 
-<!-- Link video github.com/user-attachments gắn vào đây sau khi upload qua GitHub -->
+<!-- markdownlint-disable-next-line MD034 -->
+https://github.com/user-attachments/assets/dc471888-7a3e-4f68-a40a-71e0c756a5d0
 
 Site chạy thật tại [www.nexora-travel.agency](https://www.nexora-travel.agency)
 nhưng không thu tiền thật: Stripe và PayPal luôn ở chế độ thử, chỉ nhận thẻ thử do
