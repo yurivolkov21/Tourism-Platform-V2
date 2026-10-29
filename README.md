@@ -7,6 +7,10 @@ Nexora là website bán tour du lịch Việt Nam, làm đồ án tốt nghiệp
 hoàn tiền và quản lý nội dung trên một trang riêng. Ngoài ra còn có app Android cho
 khách và một trợ lý AI tư vấn tour trên web.
 
+Xem nhanh sản phẩm trong clip 70 giây:
+
+<!-- Link video github.com/user-attachments gắn vào đây sau khi upload qua GitHub -->
+
 Site chạy thật tại [www.nexora-travel.agency](https://www.nexora-travel.agency)
 nhưng không thu tiền thật: Stripe và PayPal luôn ở chế độ thử, chỉ nhận thẻ thử do
 chính hai cổng thanh toán cấp. Chữ trên sản phẩm là tiếng Anh; tài liệu và comment
@@ -173,7 +177,8 @@ write reviews; staff manage bookings, refunds and content in a separate admin
 site. There is also an Android app and an AI assistant that answers questions
 about tours. The live site is
 [www.nexora-travel.agency](https://www.nexora-travel.agency). Payments always run
-in Stripe and PayPal test mode, so no real money changes hands.
+in Stripe and PayPal test mode, so no real money changes hands. The 70-second
+video at the top of this page gives a quick tour of the product.
 
 The repository is a pnpm and Turborepo monorepo: a NestJS API, two Next.js apps
 (customer site and admin), an Expo app, and shared packages for the API contract,
