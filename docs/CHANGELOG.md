@@ -8,6 +8,37 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-10-29 — Merge gắn clip giới thiệu 70 giây vào README gốc: video phát ngay trên trang repo (`5b8f4c8`, `e74dff8`)
+
+Yuri hỏi 29/10 13:23 UTC có gắn được clip quảng cáo `nexora-quang-cao.mp4` (86 MB, 70 giây, 1080p 60 khung/giây) vào
+README trên GitHub không. Phân tích: README chỉ phát video upload qua giao diện web của GitHub (link
+`github.com/user-attachments/...`), tối đa 10 MB với repo của tài khoản Free; file video commit vào repo thì README
+không phát, lại làm mọi lần clone nặng thêm. Khuyến nghị nén còn khoảng 9 MB rồi upload qua bình luận của PR; Yuri
+đồng ý 15:40 UTC và tự upload `nexora-intro.mp4` vào bình luận của PR lúc 16:00 UTC. Nhánh
+`claude/project-thread-k76k0i` từ `main` `6080e21`,
+[PR #77](https://github.com/yurivolkov21/Tourism-Platform-V2/pull/77), session cloud. Chỉ sửa `README.md` gốc: không
+đổi code, không migration, không biến env, không dependency, không thêm file nhị phân nào vào git.
+
+- `5b8f4c8` (docs): `README.md` thêm câu dẫn "Xem nhanh sản phẩm trong clip 70 giây:" và chỗ giữ cho video ngay sau
+  đoạn giới thiệu đầu; English summary thêm một câu trỏ tới video.
+- `e74dff8` (docs): thay chỗ giữ bằng link `github.com/user-attachments/assets/dc471888-…` đứng riêng một dòng để
+  GitHub hiện trình phát, kèm `<!-- markdownlint-disable-next-line MD034 -->` vì luật MD034 cấm URL trần. Gộp hai
+  commit bằng amend bị chặn (viết lại lịch sử) nên giữ nguyên hai commit.
+
+**Review.** Không có lượt review độc lập. Tự kiểm: bản nén 1080p 30 khung/giây, H.264 High@4.1, AAC 96 kbps, 9.053.202
+byte; SSIM so với bản gốc 0,985 khi xem ở 1080p và 0,988 ở 720p (thử thêm 720p 30 và 720p 60 khung/giây cùng cỡ, đều
+kém hơn khi xem toàn màn hình). Trang README ở `e74dff8` render khối `<details open>` mang tên `nexora-intro.mp4` và
+thẻ `<video controls muted>`, tức trình phát tắt tiếng sẵn. markdownlint-cli2 0.18.1 không lỗi trên `README.md`.
+Container không tải được file từ `user-attachments` nên chưa tự xem video phát; Yuri xem trên GitHub. Yuri bảo đẩy
+lên main 29/10 16:19 UTC, biết trước API trên Render đang bị tạm ngưng (hết quota băng thông tháng 10) nên deploy web
+trên Vercel của lần push này sẽ đỏ, vì build web gọi API thật lúc prerender; bản web đang chạy vẫn giữ và code web
+không đổi.
+
+Tests after (`gate:int` trong container cloud, bước cuối trên `e74dff8`, 29/10, API sống ở :3001 bật giống bước CI):
+unit 8776 (web 2502, admin 2458, api 1477, mobile 1050, contract 833, mobile-ui 254, ui 65, i18n 63, core 48, tokens
+26) và int 985; gate 28/28 task; Biome 2156 file; tokens-only của mobile (215 file) xanh; 2 lượt CI `gate` của PR
+xanh. PR không thêm hay bớt test.
+
 ## 2026-10-27 — Merge loại `dist-seed` khỏi vitest unit của api: `pnpm gate` không còn đỏ trên Windows sau `db:seed` (`c47733d`)
 
 Phát hiện trong đợt dọn máy dev 27/10: Yuri nhờ dọn file rác của dự án và Docker (bỏ 3 image thử Render, build cache,
